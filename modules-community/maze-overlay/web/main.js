@@ -53,7 +53,15 @@ function showFocus(item) {
     if (item.text) body.append(el("p", "vm-text", item.text));
   }
   card.append(body);
-  card.append(el("div", "vm-url", item.url));
+  const foot = el("div", "vm-foot");
+  if (item.qrSvg) {
+    // SVG produit par le cœur à partir de l'URL (jamais du HTML venu d'un autre module).
+    const qr = el("div", "vm-qr");
+    qr.innerHTML = item.qrSvg;
+    foot.append(qr);
+  }
+  foot.append(el("div", "vm-url", item.url));
+  card.append(foot);
 
   // Décompte discret : la bordure basse épaisse s'affine sur toute la durée d'affichage.
   const bar = el("div", "vm-bar");

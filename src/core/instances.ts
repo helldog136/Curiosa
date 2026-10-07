@@ -9,7 +9,8 @@ export type Feature = (typeof FEATURES)[number];
 export const DISPLAYS = ["cards", "list", "links", "codes"] as const;
 export type Display = (typeof DISPLAYS)[number];
 
-export type FieldDef = { key: string; label: string; type: "text" | "url" | "number" | "boolean" };
+/** Champ personnalisé. `ref` : référence vers un élément d'un autre module (liste déroulante alimentée par le sujet `topic`). */
+export type FieldDef = { key: string; label: string; type: "text" | "url" | "number" | "boolean" | "ref"; topic?: string };
 
 /** Une instance de module : un exemplaire configuré (un blog, une liste de réseaux…). */
 export type InstanceView = {

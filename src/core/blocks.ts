@@ -8,6 +8,16 @@ export type HeadTag =
   | { tag: "link"; rel: string; href: string; type?: string; title?: string }
   | { tag: "script"; src?: string; inline?: string; defer?: boolean };
 
+export type AdminField = {
+  name: string;
+  label: string;
+  kind?: "text" | "textarea" | "email" | "url" | "number" | "date" | "select" | "hidden" | "image";
+  value?: string;
+  required?: boolean;
+  help?: string;
+  options?: { value: string; label: string }[];
+};
+
 export type Block =
   | { type: "markdown"; text: string }
   /** HTML brut : le module est un code de confiance (voir docs/MODULES.md). */
@@ -25,7 +35,25 @@ export type Block =
       submitLabel: string;
       successText: string;
     }
-  | { type: "table"; columns: string[]; rows: string[][] }
+  | {
+      type: "table";
+      columns: string[];
+      rows: string[][];
+      /** Identifiants des lignes (même ordre que `rows`), requis si `rowActions` est utilisé. */
+      rowIds?: string[];
+      /** Boutons par ligne : `action` exécute une adminAction du module, `href` navigue ({id} est remplacé). */
+      rowActions?: { label: string; action?: string; href?: string; confirm?: string; danger?: boolean }[];
+    }
+  /** Formulaire d'admin : poste sur une adminAction du module (administrateurs seulement, panneau d'admin uniquement). */
+  | {
+      type: "adminForm";
+      action: string;
+      title?: string;
+      submitLabel: string;
+      fields: AdminField[];
+      /** Lien « Annuler » (par exemple retour à la liste après une modification). */
+      cancelHref?: string;
+    }
   | { type: "heading"; text: string }
   | { type: "head"; tags: HeadTag[] };
 

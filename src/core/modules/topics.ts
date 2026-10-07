@@ -133,3 +133,14 @@ export async function collect(
 }
 
 export type SourceChoice = { instance: InstanceView; moduleId: string };
+
+/**
+ * Options d'un champ « référence » (liste déroulante de l'éditeur d'entrée) : les éléments
+ * du sujet, tels que les fournisseurs les exposent. Chaque élément doit avoir `id` et `title`.
+ */
+export async function getRefOptions(instanceId: string, topic: string, locale: string): Promise<{ value: string; label: string }[]> {
+  const consumer = (await getActiveInstances()).find((a) => a.instance.id === instanceId);
+  if (!consumer || !consumer.mod.manifest.consumes?.some((c) => c.topic === topic)) return [];
+  const items = await collect(consumer, topic, { limit: 200, locale });
+  return items.flatMap((i) => (typeof i.id === "string" && typeof i.title === "string" ? [{ value: i.id, label: i.title }] : []));
+}

@@ -43,5 +43,4 @@ Tous les tirages passent par `web/random.js` (jamais `Math.random` directement).
 ## Différences avec la version de helldog136.be
 
 - Le tracé est généré à chaque chargement (la carte figée et son éditeur ne sont pas portés).
-- Pas de QR code sur la carte « focus » (il demandait une dépendance côté serveur).
 - Les clips Twitch / vidéos YouTube ne sont plus récupérés par l'overlay lui-même : ils doivent venir d'un module fournisseur de `maze.poster`.

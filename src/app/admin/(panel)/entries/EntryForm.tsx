@@ -30,13 +30,15 @@ type Props = {
   locale: string;
   data: EntryFormData;
   advanced: boolean;
+  /** Options des champs « référence », par sujet. */
+  refOptions?: Record<string, { value: string; label: string }[]>;
 };
 
 /**
  * Éditeur d'entrée. Une version par langue : on n'en demande qu'une, et les
  * autres s'ajoutent à la demande (jamais imposées).
  */
-export function EntryForm({ t, collection, locales, locale, data, advanced }: Props) {
+export function EntryForm({ t, collection, locales, locale, data, advanced, refOptions = {} }: Props) {
   const has = (f: string) => collection.features.includes(f as never);
   const current = data.translations.find((tr) => tr.locale === locale);
   const missing = locales.filter((l) => !data.translations.some((tr) => tr.locale === l));
@@ -103,7 +105,10 @@ export function EntryForm({ t, collection, locales, locale, data, advanced }: Pr
           {advanced && has("tags") && <TextField name="tags" label={t("field.tags")} help={t("field.tagsHelp")} defaultValue={data.tags} />}
           {advanced && has("featured") && <Checkbox name="featured" label={t("field.featured")} defaultChecked={data.featured} />}
           {collection.fieldSchema.map((f) =>
-            f.type === "boolean" ? (
+            f.type === "ref" ? (
+              <Select key={f.key} name={`field_${f.key}`} label={f.label} defaultValue={String(data.fields[f.key] ?? "")}
+                options={[{ value: "", label: "—" }, ...(refOptions[f.topic ?? ""] ?? [])]} />
+            ) : f.type === "boolean" ? (
               <Checkbox key={f.key} name={`field_${f.key}`} label={f.label} defaultChecked={data.fields[f.key] === true} />
             ) : (
               <TextField key={f.key} name={`field_${f.key}`} label={f.label}

@@ -20,7 +20,7 @@ export type ContentConfig = {
   display: "cards" | "list" | "links" | "codes";
   clickAction: "detail" | "external";
   features: string[];
-  fieldSchema?: { key: string; label: string; type: "text" | "url" | "number" | "boolean" }[];
+  fieldSchema?: { key: string; label: string; type: "text" | "url" | "number" | "boolean" | "ref"; topic?: string }[];
   allowGoLinks?: boolean;
   fallbackToDefault?: boolean;
   /** Chemin public proposé à la création d'une instance. */
@@ -82,16 +82,25 @@ export type ModuleManifest = {
   provides?: ProvideDecl[];
   /** Réglages propres à chaque instance. */
   settings: SettingField[];
+  /** Actions proposées à l'API MCP du cœur (désactivable). */
+  mcp?: McpDecl[];
   /** Livré avec le cœur et proposé à l'assistant de première installation. */
   starter?: boolean;
   /** Modules livrés avec le cœur : activés dès le départ (défaut : oui). */
   defaultEnabled?: boolean;
   /** Déclaratif et informatif : affiché à l'administrateur avant activation. */
-  permissions: ("slots" | "routes" | "storage" | "filters" | "sections" | "pages" | "topics" | "overlay")[];
+  permissions: ("slots" | "routes" | "storage" | "filters" | "sections" | "pages" | "topics" | "overlay" | "mcp" | "admin")[];
 };
 
 export type EntrySummary = {
+  id: string;
   title: string;
+  cover: string | null;
+  icon: string | null;
+  tags: string[];
+  /** Valeurs des champs personnalisés de l'instance (les champs « ref » contiennent l'identifiant référencé). */
+  fields: Record<string, unknown>;
+  slug: string;
   summary: string;
   url: string | null;
   code: string | null;
@@ -119,9 +128,13 @@ export type ModuleApi = {
   instances: {
     list(opts?: { locale?: string; module?: string }): Promise<{ key: string; module: string; basePath: string | null; name: string }[]>;
   };
+  /** Génère un QR code (SVG, fond transparent) pour un texte ou une URL. */
+  qr(text: string): Promise<string>;
   /** Stockage privé de l'instance (messages reçus, compteurs…). */
   store: {
     add(collection: string, data: Record<string, unknown>): Promise<string>;
+    get(id: string): Promise<{ id: string; createdAt: Date; data: Record<string, unknown> } | null>;
+    update(id: string, data: Record<string, unknown>): Promise<boolean>;
     list(
       collection: string,
       opts?: { limit?: number },
@@ -183,13 +196,38 @@ export type ModuleDefinition = {
   routes?: Record<string, RouteHandler>;
   /** Transforme le corps markdown d'une entrée avant son rendu (ex. shortcodes). */
   filters?: { entryBody?: (body: string, ctx: SlotContext) => string | Promise<string> };
-  /** Contenu du panneau d'admin de l'instance, sous ses réglages. */
-  adminPanel?: (ctx: ModuleContext) => Block[] | Promise<Block[]>;
+  /** Contenu du panneau d'admin de l'instance, sous ses réglages. `query` = paramètres de l'URL d'admin. */
+  adminPanel?: (ctx: ModuleContext, request: { query: Record<string, string> }) => Block[] | Promise<Block[]>;
+  /** Actions déclenchées par les blocs `adminForm` et les boutons de ligne des `table` du panneau d'admin. */
+  adminActions?: Record<string, AdminActionHandler>;
+  /** Implémentation des actions MCP déclarées dans `mcp` du manifeste. */
+  mcp?: Record<string, McpHandler>;
   hooks?: {
     onInstanceCreate?(ctx: ModuleContext): void | Promise<void>;
     onInstanceDelete?(ctx: ModuleContext): void | Promise<void>;
   };
 };
+
+/** Sous-ensemble de JSON Schema accepté pour décrire les arguments d'une action MCP. */
+export type JsonSchemaLite = {
+  type: "object";
+  properties?: Record<string, { type: "string" | "number" | "integer" | "boolean" | "array"; description?: string; enum?: string[]; maxLength?: number; minimum?: number; maximum?: number; items?: { type: "string" } }>;
+  required?: string[];
+};
+
+/** Action exposée par le module à l'API MCP du cœur (voir docs/MODULES.md). */
+export type McpDecl = {
+  name: string;
+  description: string;
+  /** Lecture seule (défaut : non). Les jetons « lecture » n'ont accès qu'aux actions en lecture seule. */
+  readOnly?: boolean;
+  input?: JsonSchemaLite;
+};
+
+/** `actor` : le jeton MCP qui appelle (à reporter dans les champs « modifié par » des données). */
+export type McpHandler = (ctx: ModuleContext, args: Record<string, unknown>, actor: { name: string }) => unknown | Promise<unknown>;
+export type AdminActionResult = { ok?: string; error?: string; redirect?: string };
+export type AdminActionHandler = (ctx: ModuleContext, values: Record<string, string>) => AdminActionResult | Promise<AdminActionResult>;
 
 /** Aide de typage : `export default defineModule({...})`. */
 export function defineModule(def: ModuleDefinition): ModuleDefinition {

@@ -89,3 +89,30 @@ test("les réglages avancés sont déclarés par les modules, jamais obligatoire
     }
   }
 });
+
+test("validateArgs : types, bornes, énumérations, requis, propriétés inconnues refusées", async () => {
+  const { validateArgs, McpToolError } = await import("../src/core/mcp/validate.ts");
+  const schema = {
+    type: "object",
+    required: ["title"],
+    properties: { title: { type: "string", maxLength: 5 }, n: { type: "integer", minimum: 1, maximum: 3 }, s: { type: "string", enum: ["a", "b"] }, tags: { type: "array", items: { type: "string" } } },
+  };
+  assert.deepEqual(validateArgs(schema, { title: "ok", n: 2, s: "a", tags: ["x"] }), { title: "ok", n: 2, s: "a", tags: ["x"] });
+  for (const bad of [{}, { title: "toolong" }, { title: "a", n: 9 }, { title: "a", n: 1.5 }, { title: "a", s: "c" }, { title: "a", extra: 1 }, { title: "a", tags: [1] }, { title: 3 }]) {
+    assert.throws(() => validateArgs(schema, bad), McpToolError, JSON.stringify(bad));
+  }
+  assert.deepEqual(validateArgs(undefined, {}), {});
+  assert.throws(() => validateArgs(undefined, { x: 1 }), McpToolError);
+});
+
+test("les modules qui déclarent des actions MCP en implémentent chacune, et aucune n'est destructive", () => {
+  for (const name of fs.readdirSync("modules-community")) {
+    const m = JSON.parse(read(`modules-community/${name}/module.json`));
+    if (!m.mcp) continue;
+    const code = read(`modules-community/${name}/${m.main}`);
+    for (const action of m.mcp) {
+      assert.ok(new RegExp(`\\b${action.name}\\b`).test(code), `${name}.${action.name} n'est pas implémentée`);
+      assert.ok(!/delete|remove|publish|destroy/.test(action.name), `${name}.${action.name} : les actions MCP ne suppriment ni ne publient jamais`);
+    }
+  }
+});

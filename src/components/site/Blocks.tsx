@@ -8,6 +8,7 @@ import { makeTranslator } from "@/core/i18n/dictionary";
 import { EntryList } from "./EntryList";
 import { Markdown } from "./Markdown";
 import { ModuleForm } from "./ModuleForm";
+import { AdminBlockForm, RowActionButton } from "../admin/AdminBlocks";
 
 const TONES = {
   info: "bg-accent text-accent-fg",
@@ -16,7 +17,7 @@ const TONES = {
 };
 
 /** Rend les blocs renvoyés par les modules. Les blocs "head" sont traités à part (voir HeadTags). */
-export async function Blocks({ blocks, locale }: { blocks: Block[]; locale: string }) {
+export async function Blocks({ blocks, locale, adminInstanceId }: { blocks: Block[]; locale: string; adminInstanceId?: string }) {
   const config = await getSiteConfig();
   const out: React.ReactNode[] = [];
   for (const [i, block] of blocks.entries()) {
@@ -99,17 +100,34 @@ export async function Blocks({ blocks, locale }: { blocks: Block[]; locale: stri
           <ModuleForm key={i} action={block.action} fields={block.fields} submitLabel={block.submitLabel} successText={block.successText} />,
         );
         break;
+      case "adminForm":
+        // Les formulaires d'admin n'existent que dans le panneau d'admin (jamais sur le site public).
+        if (adminInstanceId) out.push(<AdminBlockForm key={i} instanceId={adminInstanceId} block={block} />);
+        break;
       case "table":
         out.push(
           <div key={i} className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead className="text-muted">
-                <tr>{block.columns.map((c) => <th key={c} className="px-3 py-2 font-medium">{c}</th>)}</tr>
+                <tr>
+                  {block.columns.map((c) => <th key={c} className="px-3 py-2 font-medium">{c}</th>)}
+                  {adminInstanceId && block.rowActions && <th />}
+                </tr>
               </thead>
               <tbody>
                 {block.rows.map((row, r) => (
                   <tr key={r} className="border-t border-line align-top">
                     {row.map((cell, c) => <td key={c} className="whitespace-pre-wrap px-3 py-2">{cell}</td>)}
+                    {adminInstanceId && block.rowActions && (
+                      <td className="whitespace-nowrap px-3 py-2">
+                        <div className="flex gap-2">
+                          {block.rowActions.map((a) => (
+                            <RowActionButton key={a.label} instanceId={adminInstanceId} label={a.label} action={a.action}
+                              href={a.href?.replace("{id}", encodeURIComponent(block.rowIds?.[r] ?? ""))} id={block.rowIds?.[r]} confirm={a.confirm} danger={a.danger} />
+                          ))}
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

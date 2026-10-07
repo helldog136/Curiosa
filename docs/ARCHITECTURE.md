@@ -66,6 +66,15 @@ applique les abonnements choisis dans l'admin et ajoute la provenance. Les modul
 connaissent pas entre eux. `core.entry` (les entrées publiées de toute instance à contenu) est
 fourni d'office : un blog nourrit un overlay sans code. Voir [MODULES.md](MODULES.md#échanger-des-informations-entre-modules--les-sujets).
 
+## API MCP
+
+`/api/mcp` (Model Context Protocol, JSON-RPC sur HTTP, `src/app/api/mcp/route.ts`) n'a aucun outil codé en dur :
+`src/core/mcp/tools.ts` les collecte auprès de tous les modules actifs (`mcp` du manifeste + du code) et génère des
+actions éditoriales pour les instances à contenu. Authentification par jetons hachés (`ApiToken`, portées lecture /
+écriture), interrupteur général (`mcp.enabled`), retrait possible par instance, validation des arguments contre un
+sous-ensemble de JSON Schema, limitation de débit, audit des écritures. Invariants : aucun outil ne publie ni ne
+supprime ; un agent ne crée et ne modifie que des brouillons.
+
 ## Modèle de données (`prisma/schema.prisma`)
 
 - **ModuleInstance** (+ `InstanceTranslation`) : `moduleId`, `key`, `basePath`, `enabled`, menu,

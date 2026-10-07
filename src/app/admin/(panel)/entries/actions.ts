@@ -47,6 +47,7 @@ export async function saveEntry(_prev: ActionState, formData: FormData): Promise
   for (const f of collection.fieldSchema) {
     const raw = formData.get(`field_${f.key}`);
     if (f.type === "boolean") fields[f.key] = raw === "on";
+    else if (f.type === "ref") { if (raw !== null && String(raw).trim() !== "") fields[f.key] = String(raw).trim().slice(0, 200); }
     else if (raw !== null && String(raw).trim() !== "") fields[f.key] = f.type === "number" ? Number(raw) : String(raw).trim().slice(0, 2000);
   }
 

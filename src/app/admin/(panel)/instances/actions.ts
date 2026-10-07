@@ -12,14 +12,18 @@ import { getModule } from "@/core/modules/registry";
 import { getSources, providersOf, setSources } from "@/core/modules/topics";
 import { audit } from "@/core/permissions";
 import { deleteSetting, setSetting } from "@/core/settings";
+import { mcpInstanceKey } from "@/core/mcp/tools";
 import type { ActionState } from "@/components/admin/ActionForm";
 
 function parseFieldSchema(raw: string) {
-  const out: { key: string; label: string; type: "text" | "url" | "number" | "boolean" }[] = [];
+  const out: { key: string; label: string; type: "text" | "url" | "number" | "boolean" | "ref"; topic?: string }[] = [];
   for (const line of raw.split("\n")) {
     const [key = "", label = "", type = "text"] = line.split("|").map((s) => s.trim());
     if (!/^[a-zA-Z][a-zA-Z0-9_]{0,30}$/.test(key) || !label) continue;
-    out.push({ key, label, type: (["text", "url", "number", "boolean"] as const).find((x) => x === type) ?? "text" });
+    // "ref:<sujet>" : référence vers un élément d'un autre module (ex. ref:partnership.partner).
+    const topic = type.startsWith("ref:") ? type.slice(4) : undefined;
+    if (topic !== undefined && !/^[a-z][a-z0-9-]*(\.[a-z][a-z0-9-]*){0,3}$/.test(topic)) continue;
+    out.push(topic ? { key, label, type: "ref", topic } : { key, label, type: (["text", "url", "number", "boolean"] as const).find((x) => x === type) ?? "text" });
   }
   return out.slice(0, 20);
 }
@@ -39,6 +43,7 @@ export async function saveInstance(_prev: ActionState, formData: FormData): Prom
   };
   if (hasPage(mod.manifest)) data.showInNav = formData.get("showInNav") === "on";
 
+  if (adv) await setSetting(mcpInstanceKey(id), formData.get("mcp") === "on");
   if (adv) data.navOrder = Math.trunc(Number(formData.get("navOrder"))) || 0;
 
   if (adv && hasPage(mod.manifest)) {

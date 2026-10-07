@@ -179,7 +179,7 @@ async function EntryPage({
     runSlot("entry.bottom", locale, extras),
     filterEntryBody(entry.body, locale, extras),
   ]);
-  const customFields = instance.fieldSchema.filter((f) => entry.fields[f.key] !== undefined && entry.fields[f.key] !== "");
+  const customFields = instance.fieldSchema.filter((f) => f.type !== "ref" && entry.fields[f.key] !== undefined && entry.fields[f.key] !== "");
 
   return (
     <article lang={entry.locale} className="mx-auto max-w-3xl space-y-6">

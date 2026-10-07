@@ -188,3 +188,19 @@ model AuditLog {
 
   @@index([createdAt])
 }
+
+// Jetons d'accès à l'API MCP du cœur (agents, assistants…). Seul le hash est conservé :
+// le jeton en clair n'est montré qu'une fois, à sa création.
+model ApiToken {
+  id         String    @id @default(cuid())
+  name       String
+  hash       String    @unique
+  // Premiers caractères, pour reconnaître un jeton dans la liste sans le révéler.
+  prefix     String
+  // read : outils en lecture seule. write : tous les outils déclarés (jamais de publication ni de suppression).
+  scope      String    @default("read")
+  createdBy  String
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+}

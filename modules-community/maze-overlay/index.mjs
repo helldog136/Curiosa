@@ -41,13 +41,12 @@ routes.items = async (_request, ctx) => {
     ctx.api.topics.collect("maze.poster", { limit: 60 }),
     ctx.api.site(ctx.locale),
   ]);
-  const items = [
+  const raw = [
     ...entries.map((e) => ({
       kind: e.code ? "code" : "article",
       title: String(e.title),
       text: String(e.summary ?? ""),
       url: e.url ?? `${ctx.api.siteUrl}${e.path}`,
-      qrSvg: null,
       imageUrl: safeImage(e.cover),
     })),
     ...posters.map((p) => ({
@@ -56,10 +55,11 @@ routes.items = async (_request, ctx) => {
       title: String(p.title),
       text: String(p.text ?? ""),
       url: String(p.url ?? ctx.api.siteUrl),
-      qrSvg: null,
       imageUrl: safeImage(p.image),
     })),
   ];
+  // QR codes générés par le cœur (le module n'a aucune dépendance).
+  const items = await Promise.all(raw.map(async (i) => ({ ...i, qrSvg: i.url ? await ctx.api.qr(i.url) : null })));
   return Response.json({ items, logoUrl: site.logo }, { headers: { "cache-control": "no-store" } });
 };
 
@@ -101,7 +101,10 @@ export default {
         .vm-image{max-height:40%;width:100%;object-fit:cover;border-radius:8px;border:1px solid #fff2}
         .vm-text{margin:0;font-size:24px;line-height:1.5;color:#ad9f92;display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden}
         .vm-video{width:100%;height:100%;min-height:300px;border:1px solid #fff2;border-radius:8px}
-        .vm-url{border-top:1px solid #fff2;padding-top:12px;font-size:14px;color:#ad9f92;word-break:break-all}
+        .vm-foot{display:flex;align-items:center;gap:16px;border-top:1px solid #fff2;padding-top:12px}
+        .vm-qr{width:110px;height:110px;flex:none;background:#fff;border-radius:8px;padding:6px;box-sizing:border-box}
+        .vm-qr svg{width:100%;height:100%;display:block}
+        .vm-url{font-size:14px;color:#ad9f92;word-break:break-all}
         .vm-bar{position:absolute;left:0;right:0;bottom:0;height:10px;background:${cfg.accent}}`,
       script: `window.__MAZE__=${json};import("/m/${ctx.instance.key}/main.js");`,
     };

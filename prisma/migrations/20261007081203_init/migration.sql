@@ -131,6 +131,19 @@ CREATE TABLE "AuditLog" (
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+-- CreateTable
+CREATE TABLE "ApiToken" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "name" TEXT NOT NULL,
+    "hash" TEXT NOT NULL,
+    "prefix" TEXT NOT NULL,
+    "scope" TEXT NOT NULL DEFAULT 'read',
+    "createdBy" TEXT NOT NULL,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "lastUsedAt" DATETIME,
+    "revokedAt" DATETIME
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 
@@ -163,3 +176,6 @@ CREATE INDEX "ModuleRecord_instanceId_collection_createdAt_idx" ON "ModuleRecord
 
 -- CreateIndex
 CREATE INDEX "AuditLog_createdAt_idx" ON "AuditLog"("createdAt");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "ApiToken_hash_key" ON "ApiToken"("hash");

@@ -14,12 +14,38 @@ export const settingField = z.object({
   advanced: z.boolean().optional(),
 });
 
+const topicField = z.object({
+  key: z.string().regex(/^[a-zA-Z][a-zA-Z0-9_]{0,30}$/),
+  type: z.enum(["string", "url", "number", "boolean", "string[]"]),
+  required: z.boolean().optional(),
+});
+const topicId = z.string().regex(/^[a-z][a-z0-9-]*(\.[a-z][a-z0-9-]*){0,3}$/);
+
+const jsonSchemaLite = z.object({
+  type: z.literal("object"),
+  properties: z
+    .record(
+      z.string().regex(/^[a-zA-Z][a-zA-Z0-9_]{0,40}$/),
+      z.object({
+        type: z.enum(["string", "number", "integer", "boolean", "array"]),
+        description: z.string().max(500).optional(),
+        enum: z.array(z.string()).max(50).optional(),
+        maxLength: z.number().int().max(20000).optional(),
+        minimum: z.number().optional(),
+        maximum: z.number().optional(),
+        items: z.object({ type: z.literal("string") }).optional(),
+      }),
+    )
+    .optional(),
+  required: z.array(z.string()).optional(),
+});
+
 const content = z.object({
   display: z.enum(["cards", "list", "links", "codes"]),
   clickAction: z.enum(["detail", "external"]),
   features: z.array(z.enum(["cover", "icon", "summary", "body", "url", "code", "expiresAt", "featured", "tags"])).max(9),
   fieldSchema: z
-    .array(z.object({ key: z.string().regex(/^[a-zA-Z][a-zA-Z0-9_]{0,30}$/), label: z.string().max(100), type: z.enum(["text", "url", "number", "boolean"]) }))
+    .array(z.object({ key: z.string().regex(/^[a-zA-Z][a-zA-Z0-9_]{0,30}$/), label: z.string().max(100), type: z.enum(["text", "url", "number", "boolean", "ref"]), topic: topicId.optional() }))
     .max(20)
     .optional(),
   allowGoLinks: z.boolean().optional(),
@@ -27,13 +53,6 @@ const content = z.object({
   basePath: z.string().regex(/^[a-z0-9-]*$/).optional(),
   showInNav: z.boolean().optional(),
 });
-
-const topicField = z.object({
-  key: z.string().regex(/^[a-zA-Z][a-zA-Z0-9_]{0,30}$/),
-  type: z.enum(["string", "url", "number", "boolean", "string[]"]),
-  required: z.boolean().optional(),
-});
-const topicId = z.string().regex(/^[a-z][a-z0-9-]*(\.[a-z][a-z0-9-]*){0,3}$/);
 
 export const manifestSchema = z.object({
   apiVersion: z.number().int(),
@@ -54,6 +73,7 @@ export const manifestSchema = z.object({
   instances: z.enum(["single", "multiple"]).default("multiple"),
   consumes: z.array(z.object({ topic: topicId, label: localized, schema: z.array(topicField).max(20).optional(), tags: z.boolean().optional() })).max(10).default([]),
   provides: z.array(z.object({ topic: topicId, label: localized.optional() })).max(10).default([]),
+  mcp: z.array(z.object({ name: z.string().regex(/^[a-z][a-z0-9_]{1,39}$/), description: z.string().max(1000), readOnly: z.boolean().optional(), input: jsonSchemaLite.optional() })).max(40).optional(),
   content: content.optional(),
   page: z.boolean().optional(),
   sections: z
@@ -63,7 +83,7 @@ export const manifestSchema = z.object({
   settings: z.array(settingField).max(60).default([]),
   starter: z.boolean().optional(),
   defaultEnabled: z.boolean().optional(),
-  permissions: z.array(z.enum(["slots", "routes", "storage", "filters", "sections", "pages", "topics", "overlay"])).default([]),
+  permissions: z.array(z.enum(["slots", "routes", "storage", "filters", "sections", "pages", "topics", "overlay", "mcp", "admin"])).default([]),
 });
 
 export type ParsedManifest = z.infer<typeof manifestSchema>;

@@ -6,7 +6,8 @@ import { buildContext, instanceSettingKey } from "@/core/modules/context";
 import { hasPage } from "@/core/modules/manifest";
 import { getModule } from "@/core/modules/registry";
 import { localized, type SettingField } from "@/core/modules/types";
-import { getSettingByLocale } from "@/core/settings";
+import { getSetting, getSettingByLocale } from "@/core/settings";
+import { mcpInstanceKey } from "@/core/mcp/tools";
 import { Blocks } from "@/components/site/Blocks";
 import { siteUrl } from "@/core/config";
 import { effectiveType } from "@/core/modules/manifest";
@@ -19,7 +20,7 @@ import { Checkbox, Select, TextArea, TextField } from "@/components/admin/Field"
 import { ui } from "@/components/admin/ui";
 import { deleteInstanceAction, saveInstance, saveInstanceSettings, saveSources } from "../actions";
 
-export default async function InstancePage({ params }: { params: Promise<{ id: string }> }) {
+export default async function InstancePage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | undefined>> }) {
   const { t, locale, config, user, advanced } = await adminCtx("admin");
   const { id } = await params;
   const instance = await getInstanceById(id);
@@ -31,7 +32,9 @@ export default async function InstancePage({ params }: { params: Promise<{ id: s
   let panel: Awaited<ReturnType<NonNullable<typeof mod.def.adminPanel>>> = [];
   if (instance.enabled && mod.row.enabled && mod.def.adminPanel) {
     try {
-      panel = await mod.def.adminPanel(await buildContext(mod, instance, locale));
+      const sp = await searchParams;
+      const query = Object.fromEntries(Object.entries(sp).flatMap(([k, v]) => (typeof v === "string" ? [[k, v]] : [])));
+      panel = await mod.def.adminPanel(await buildContext(mod, instance, locale), { query });
     } catch (error) {
       console.error(`[modules] ${instance.key} adminPanel failed:`, error);
     }
@@ -40,6 +43,7 @@ export default async function InstancePage({ params }: { params: Promise<{ id: s
   const stored: Record<string, Record<string, unknown>> = {};
   for (const f of mod.manifest.settings) stored[f.key] = await getSettingByLocale(instanceSettingKey(id, f.key));
 
+  const mcpOn = (await getSetting<boolean>(mcpInstanceKey(instance.id))) !== false;
   const visibleSettings = mod.manifest.settings.filter((f) => advanced || !f.advanced);
 
   const input = (f: SettingField, name: string, value: unknown, label: string) => {
@@ -102,6 +106,9 @@ export default async function InstancePage({ params }: { params: Promise<{ id: s
           <Checkbox name="enabled" label={t("instances.enabled")} defaultChecked={instance.enabled} />
           {hasPage(mod.manifest) && <Checkbox name="showInNav" label={t("instances.showInNav")} defaultChecked={instance.showInNav} />}
         </div>
+        {advanced && (mod.manifest.mcp?.length || content) && (
+          <Checkbox name="mcp" label={t("instances.mcp")} help={t("instances.mcpHelp")} defaultChecked={mcpOn} />
+        )}
         {hasPage(mod.manifest) && !advanced && (
           <p className="text-sm text-muted">{t("instances.address")} : <code className="font-mono">/{instance.basePath}</code></p>
         )}
@@ -128,7 +135,7 @@ export default async function InstancePage({ params }: { params: Promise<{ id: s
               </div>
             </fieldset>
             <TextArea name="fieldSchema" label={t("instances.customFields")} help={t("instances.customFieldsHelp")} rows={4} mono
-              defaultValue={instance.fieldSchema.map((f) => `${f.key} | ${f.label} | ${f.type}`).join("\n")} />
+              defaultValue={instance.fieldSchema.map((f) => `${f.key} | ${f.label} | ${f.type === "ref" ? `ref:${f.topic}` : f.type}`).join("\n")} />
             <div className="grid gap-3 sm:grid-cols-2">
               <Checkbox name="fallbackToDefault" label={t("instances.fallback")} help={t("instances.fallbackHelp")} defaultChecked={instance.fallbackToDefault} />
               <Checkbox name="allowGoLinks" label={t("instances.goLinks")} help={t("instances.goLinksHelp")} defaultChecked={instance.allowGoLinks} />
@@ -183,7 +190,7 @@ export default async function InstancePage({ params }: { params: Promise<{ id: s
         </ActionForm>
       )}
 
-      {panel.length > 0 && <Blocks blocks={panel} locale={locale} />}
+      {panel.length > 0 && <Blocks blocks={panel} locale={locale} adminInstanceId={instance.id} />}
 
       <form action={deleteInstanceAction.bind(null, instance.id)} className="border-t border-line pt-6">
         <p className="mb-2 text-sm text-muted">{t("instances.deleteWarning")}</p>

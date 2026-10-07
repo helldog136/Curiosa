@@ -4,6 +4,7 @@ import { getInstanceById } from "@/core/instances";
 import { prisma } from "@/core/db";
 import { parseTags } from "@/core/entries";
 import { ConfirmButton } from "@/components/admin/ConfirmButton";
+import { getRefOptions } from "@/core/modules/topics";
 import { EntryForm } from "../EntryForm";
 import { deleteEntry, deleteTranslation } from "../actions";
 
@@ -29,11 +30,13 @@ export default async function EditEntryPage({ params, searchParams }: {
   let fields: Record<string, unknown> = {};
   try { fields = JSON.parse(entry.fields); } catch { /* champs libres illisibles : on repart de zéro */ }
 
+  const refOptions: Record<string, { value: string; label: string }[]> = {};
+  for (const f of collection.fieldSchema) if (f.type === "ref" && f.topic) refOptions[f.topic] = await getRefOptions(collection.id, f.topic, config.defaultLocale);
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">{entry.translations.find((tr) => tr.locale === locale)?.title ?? t("entries.new")}</h1>
       <EntryForm
-        advanced={advanced} t={t} collection={collection} locales={config.locales} locale={locale}
+        refOptions={refOptions} advanced={advanced} t={t} collection={collection} locales={config.locales} locale={locale}
         data={{
           id: entry.id, status: entry.status, cover: entry.cover, icon: entry.icon, url: entry.url, code: entry.code,
           featured: entry.featured, tags: parseTags(entry.tags).join(", "), expiresAt: day(entry.expiresAt), publishedAt: day(entry.publishedAt), fields,

@@ -95,6 +95,77 @@ const items = await ctx.api.topics.collect("overlay.item", { limit: 20 }); // [{
 Pour qu'un module tiers alimente un consommateur existant, il lui suffit de déclarer
 `provides: [{ "topic": "…" }]` et d'implémenter `exports` — sans rien savoir du consommateur.
 
+## Panneau d'admin riche : formulaires et boutons pilotés par le module
+
+Un module dont l'administration dépasse les réglages (suivi de partenaires, liste de contacts…) construit
+son panneau avec des blocs et reçoit les actions correspondantes — sans jamais écrire de React ni gérer les
+droits (réservé aux administrateurs, vérifié par le cœur) :
+
+```js
+export default {
+  async adminPanel(ctx, { query }) {            // query = paramètres de l'URL d'admin (?edit=…)
+    const rows = await ctx.api.store.list("things");
+    return [
+      { type: "table", columns: ["Nom"], rows: rows.map((r) => [r.data.name]), rowIds: rows.map((r) => r.id),
+        rowActions: [{ label: "Modifier", href: "?edit={id}" }, { label: "Supprimer", action: "remove", confirm: "Sûr ?", danger: true }] },
+      { type: "adminForm", action: "save", submitLabel: "Enregistrer",
+        fields: [{ name: "name", label: "Nom", required: true }, { name: "logo", label: "Logo", kind: "image" }] },
+    ];
+  },
+  adminActions: {
+    async save(ctx, values) { await ctx.api.store.add("things", { name: values.name }); return { ok: "Enregistré." /* , redirect: "?x" */ }; },
+    async remove(ctx, values) { await ctx.api.store.remove(values.id); return { ok: "Supprimé." }; },
+  },
+};
+```
+
+Champs : `text`, `textarea`, `email`, `url`, `number`, `date`, `select` (`options`), `image`, `hidden`. Les blocs
+`adminForm` ne s'affichent que dans l'admin (jamais sur le site public). `ctx.api.store` offre `add`, `get`,
+`update`, `list`, `remove`, `count` (stockage privé de l'instance).
+
+## Références entre modules
+
+Un champ personnalisé d'un module à contenu peut être une **référence** vers un élément d'un autre module :
+dans `content.fieldSchema`, `{ "key": "partner", "label": "Partenaire", "type": "ref", "topic": "partnership.partner" }`
+(dans l'admin : `partner | Partenaire | ref:partnership.partner`). Le module déclare le sujet dans `consumes`
+(avec un schéma contenant au moins `id` et `title`), l'éditeur affiche une liste déroulante alimentée par les
+fournisseurs, et la valeur stockée est l'`id`. Le module résout la référence dans son code
+(`ctx.api.topics.collect(...)`) ; elle n'est jamais affichée sur le site public.
+
+## API MCP : exposer des actions aux assistants
+
+Le cœur héberge un serveur MCP (`/api/mcp`, désactivable depuis l'admin → *API & MCP*) **sans aucun outil codé
+en dur** : il collecte les actions déclarées par tous les modules actifs.
+
+```jsonc
+// module.json
+"mcp": [
+  { "name": "partners_list", "readOnly": true, "description": "List partnerships…",
+    "input": { "type": "object", "properties": { "status": { "type": "string", "enum": ["envoye", "discussion"] } } } },
+  { "name": "partner_create", "description": "Create a partnership file…",
+    "input": { "type": "object", "required": ["brand"], "properties": { "brand": { "type": "string", "maxLength": 120 } } } }
+]
+```
+```js
+// index.mjs : (ctx, args, actor) — `args` est déjà validé selon `input` ; `actor.name` = nom du jeton
+export default { mcp: {
+  async partners_list(ctx, args) { return [...]; },
+  async partner_create(ctx, args, actor) {
+    if (!args.brand) throw Object.assign(new Error("brand is required"), { expose: true }); // message visible de l'agent
+    …
+  },
+} };
+```
+
+- Chaque action devient l'outil `<clé de l'instance>__<action>` (autant d'outils que d'instances).
+- **Toute instance à contenu** reçoit aussi `list_entries`, `get_entry`, `create_draft` et `update_draft`.
+- **Garde-fous du cœur, non contournables** : aucun outil ne publie ni ne supprime (n'en déclarez pas : un test
+  l'interdit), `create_draft`/`update_draft` ne touchent que des **brouillons**, un jeton « lecture » ne voit que
+  les actions `readOnly`, les arguments inconnus sont refusés, les erreurs internes sont masquées (seules celles
+  avec `expose: true` sont renvoyées), toute écriture est consignée dans le journal d'audit.
+- Les jetons sont créés par le propriétaire (affichés une fois, seul leur hash est conservé), révocables, limités
+  à 120 requêtes/minute. L'option avancée « Proposer ses actions à l'API MCP » retire une instance du MCP.
+
 ## Overlay (type `overlay`)
 
 ```js
@@ -242,6 +313,7 @@ la vôtre) et, pour `entry.*`, `ctx.entry`.
 - `ctx.api.entries.list({ instance?, locale?, limit? })` — entrées publiées (par défaut, de l'instance courante)
 - `ctx.api.instances.list({ module?, locale? })`, `ctx.api.site(locale)` (nom, accroche, logo)
 - `ctx.api.store.add / list / remove / count` — stockage privé de l'instance
+- `ctx.api.qr(texte)` — QR code en SVG (fond transparent), généré par le cœur : aucune dépendance côté module
 - `ctx.api.siteUrl`
 
 Un module n'importe rien du cœur : tout passe par `ctx`. C'est ce qui garantit qu'il continuera
@@ -257,6 +329,20 @@ défilant. Tout le reste s'installe depuis git. `modules-community/` contient de
 (moteur en JavaScript natif servi par ses propres routes, alimenté par les sujets `core.entry` et
 `maze.poster`). Il montre qu'un module riche — moteur de rendu, assets, réglages, abonnements — tient
 dans le contrat sans rien ajouter au cœur.
+
+### Le trio sponsors
+
+Trois modules communautaires qui coopèrent sans se connaître, uniquement par sujets :
+
+```
+ Partenariats ──partnership.partner──▶ Sponsors ──sponsor.card──▶ Overlay sponsors (OBS)
+ (interne, sans page publique)         (pages publiques,          (bandeau + QR code)
+  + actions MCP                         mention de partenariat)
+```
+
+- [`partnerships`](../modules-community/partnerships) : suivi privé (fiches, journal, contacts, relances) — aucune page publique, panneau d'admin complet, actions MCP.
+- [`sponsors`](../modules-community/sponsors) : module à contenu ; chaque sponsor peut référencer un partenaire ; affiche la mention de partenariat ; fournit `sponsor.card`.
+- [`sponsor-ticker`](../modules-community/sponsor-ticker) : l'overlay, qui ne connaît que `sponsor.card` (ou `core.entry`).
 
 ## Sécurité : à lire avant d'installer
 

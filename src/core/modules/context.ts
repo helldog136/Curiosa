@@ -1,3 +1,4 @@
+import QRCode from "qrcode";
 import { prisma } from "../db";
 import { siteUrl } from "../config";
 import { getSiteConfig, getSetting } from "../settings";
@@ -29,6 +30,12 @@ function makeApi(instance: InstanceView, mod: LoadedModule, locale: string): Mod
         if (!target) return [];
         const views = await listEntries({ instance: target, locale: locale ?? config.defaultLocale, limit });
         return views.map((e) => ({
+          id: e.id,
+          slug: e.slug,
+          cover: e.cover,
+          icon: e.icon,
+          tags: e.tags,
+          fields: e.fields,
           title: e.title,
           summary: e.summary,
           url: e.url,
@@ -55,7 +62,19 @@ function makeApi(instance: InstanceView, mod: LoadedModule, locale: string): Mod
           }));
       },
     },
+    async qr(text) {
+      // Correction d'erreur minimale : moins de modules pour une même URL, donc des « pixels » plus gros à l'écran.
+      return QRCode.toString(String(text).slice(0, 2000), { type: "svg", margin: 0, errorCorrectionLevel: "L", color: { dark: "#000000", light: "#0000" } });
+    },
     store: {
+      async get(id) {
+        const r = await prisma.moduleRecord.findFirst({ where: { id, instanceId: instance.id } });
+        return r ? { id: r.id, createdAt: r.createdAt, data: JSON.parse(r.data) } : null;
+      },
+      async update(id, data) {
+        const res = await prisma.moduleRecord.updateMany({ where: { id, instanceId: instance.id }, data: { data: JSON.stringify(data) } });
+        return res.count > 0;
+      },
       async add(collection, data) {
         const row = await prisma.moduleRecord.create({
           data: { instanceId: instance.id, collection, data: JSON.stringify(data) },
