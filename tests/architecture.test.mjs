@@ -22,6 +22,7 @@ test("les services du cœur sont génériques : chacun n'importe que ce qu'il a 
   // service → imports autorisés (hors modules node:*, paquets tiers et fichiers du même service)
   const rules = {
     "src/core/services/qr.ts": [],
+    "src/core/services/render.ts": [],
     "src/core/services/store.ts": ["@/core/db"],
     "src/core/services/uploads.ts": ["@/core/config"],
     "src/core/services/index.ts": [],

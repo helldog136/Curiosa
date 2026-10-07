@@ -25,3 +25,7 @@ télécharge l'adresse : pas de requête vers le réseau interne). Téléchargem
 ## Non repris de la version d'origine
 
 Les jaquettes de jeux (API RAWG) et l'export PNG du planning pour le panneau Twitch.
+
+## Image à partager (PNG)
+
+`https://votre-site/m/<clé>/image` : la semaine en cours (lundi → dimanche) en image PNG aux couleurs du site, prête pour un panneau Twitch ou un réseau social. `?week=1` pour la semaine suivante (jusqu'à 8). Générée par le service du cœur `ctx.api.png`, mise en cache 5 minutes.

@@ -413,7 +413,7 @@ export default { filters: { entryBody: (body, ctx) => body.replaceAll(":wave:", 
 ```
 
 Permission : `filters`. Le filtre s'applique en chaîne avec ceux des autres modules. **Lecture du site** : `ctx.api.site()` (nom, accroche, logo), `ctx.api.brand()` (identité visuelle complète),
-`ctx.api.instances.list()`, `ctx.api.entries.list()` (entrées publiées d'un module à contenu), `ctx.api.siteUrl`, et `ctx.api.qr(texte)` (QR code en SVG).
+`ctx.api.instances.list()`, `ctx.api.entries.list()` (entrées publiées d'un module à contenu), `ctx.api.siteUrl`, et `ctx.api.qr(texte)` (QR code en SVG) et `ctx.api.png({ width, height, tree })` (image PNG à partir d'une arborescence de boîtes : voir la route `image` du module *planning*).
 
 ## 16. Modules à contenu : zéro code
 

@@ -22,7 +22,7 @@ export function fakeCtx(opts = {}) {
   } = opts;
   const rows = new Map();
   let seq = 0;
-  const calls = { topics: [], qr: [], entries: [], mail: [] };
+  const calls = { topics: [], qr: [], entries: [], mail: [], png: [] };
   const store = {
     async add(collection, data) { const id = `r${++seq}`; rows.set(id, { id, collection, createdAt: new Date(Date.now() + seq), data: structuredClone(data) }); return id; },
     async get(id) { const r = rows.get(id); return r ? { id: r.id, createdAt: r.createdAt, data: structuredClone(r.data) } : null; },
@@ -42,6 +42,7 @@ export function fakeCtx(opts = {}) {
     api: {
       siteUrl,
       qr: async (text) => { calls.qr.push(text); return `<svg data-qr="${String(text).replace(/"/g, "&quot;")}"></svg>`; },
+      png: async (spec) => { calls.png.push(spec); return new Response(new Uint8Array([0x89, 0x50, 0x4e, 0x47]), { headers: { "content-type": "image/png" } }); },
       store,
       mail: { configured: async () => mailConfigured, send: async (m) => { calls.mail.push(m); return typeof mailResult === "function" ? mailResult(m) : mailResult; } },
       topics: { collect: async (topic, o) => { calls.topics.push([topic, o]); const all = topics[topic] ?? []; return o?.limit ? all.slice(0, o.limit) : all; } },

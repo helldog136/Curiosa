@@ -21,5 +21,8 @@
   "badUrl": "Cette adresse n'est pas autorisée (utilisez une adresse publique en https://).",
   "nextUp": "Prochain stream",
   "daysTitle": "Cette semaine",
-  "noneToday": "—"
+  "noneToday": "—",
+  "imageTitle": "Planning",
+  "imageEmpty": "Rien de prévu pour l'instant",
+  "imageEmptyHint": "Repasse bientôt pour le prochain live !"
 }

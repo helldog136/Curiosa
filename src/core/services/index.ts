@@ -17,6 +17,7 @@ export type PlatformService = {
 
 export const PLATFORM_SERVICES: PlatformService[] = [
   { id: "qr", exposedAs: "ctx.api.qr(texte)", where: "services/qr.ts", summary: "Génère un QR code en SVG (fond transparent)." },
+  { id: "png", exposedAs: "ctx.api.png({ width, height, tree })", where: "services/render.ts", summary: "Rend une image PNG à partir d'une arborescence de boîtes (affiche, planning à partager…) ; les images distantes sont limitées aux adresses https publiques." },
   { id: "store", exposedAs: "ctx.api.store", where: "services/store.ts", summary: "Stockage privé par instance : collections de documents JSON." },
   { id: "topics", exposedAs: "ctx.api.topics.collect(sujet)", where: "services/topics.ts", summary: "Échange d'informations typées entre modules (consommateurs ↔ fournisseurs, abonnements, validation)." },
   { id: "mcp", exposedAs: null, where: "services/mcp/", summary: "Serveur MCP : jetons, portées, validation, audit, interrupteur. Les modules déclarent `mcp`, le cœur expose." },

@@ -172,6 +172,11 @@ export type ModuleApi = {
   };
   /** Génère un QR code (SVG, fond transparent) pour un texte ou une URL. */
   qr(text: string): Promise<string>;
+  /**
+   * Rend une image PNG (`Response`) depuis une arborescence de boîtes `{ type: "div" | "span" | "p" | "b" | "img", props: { style, children, src } }`
+   * (flexbox, styles en ligne). Une `img` n'accepte qu'un chemin du site ou une adresse https publique. Lève une erreur si la description est invalide.
+   */
+  png(spec: { width: number; height: number; tree: unknown }): Promise<Response>;
   /** Envoi d'e-mails au nom du site (nécessite la permission « mail »). Ne lève jamais : renvoie `{ ok, reason }`. */
   mail: {
     /** Le site a-t-il un serveur d'e-mail configuré ? */

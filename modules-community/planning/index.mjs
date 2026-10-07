@@ -356,7 +356,57 @@ function slotLine(slot, ctx, tz) {
   return `**${when}** — ${escMd(slot.title)}${games.length ? ` · _${games.map(escMd).join(", ")}_` : ""}`;
 }
 
+/** Une semaine (lundi → dimanche) de créneaux, passés compris : pour l'image à partager. */
+async function loadWeek(ctx, weekOffset) {
+  const url = String(ctx.setting("icsUrl") ?? "").trim();
+  if (!url || !isPublicHttpsUrl(url)) return null;
+  const timeZone = isValidTimeZone(ctx.setting("timezone")) ? ctx.setting("timezone") : "UTC";
+  const text = await fetchIcs(url);
+  if (text === null) return null;
+  const range = getWeekRange(weekOffset, timeZone);
+  const slots = parseIcs(text, { timeZone, windowEnd: range.end }).filter((e) => e.end >= range.start && e.start <= range.end);
+  return { timeZone, range, days: buildDays(range.startWall, 7, slots, timeZone) };
+}
+
+/** L'arborescence de l'image « semaine du X au Y » (voir ctx.api.png) : mêmes couleurs que le site. */
+export function weekImage(ctx, week, site) {
+  const c = ctx.theme, tz = week.timeZone;
+  const box = (style, ...children) => ({ type: "div", props: { style: { display: "flex", ...style }, children } });
+  const day = (d) => new Intl.DateTimeFormat(ctx.locale, { weekday: "long", timeZone: tz }).format(zonedTimeToUtc(d.wall.y, d.wall.m, d.wall.d, 12, 0, 0, tz));
+  const short = (d) => new Intl.DateTimeFormat(ctx.locale, { day: "numeric", month: "short", timeZone: tz }).format(zonedTimeToUtc(d.wall.y, d.wall.m, d.wall.d, 12, 0, 0, tz));
+  const label = `${short({ wall: week.range.startWall })} – ${short({ wall: week.range.endWall })}`;
+  const empty = week.days.every((d) => d.streams.length === 0);
+  const ROW = 96;
+  const rows = week.days.map((d) => box({ height: ROW, alignItems: "center", gap: 14 },
+    box({ width: 200, flexDirection: "column", flexShrink: 0 }, box({ fontSize: 30, fontWeight: 700, color: c.fg }, day(d)), box({ fontSize: 22, color: c.muted }, short(d))),
+    box({ flex: 1, height: ROW - 10, overflow: "hidden", alignItems: "center", backgroundColor: c.surface, borderRadius: 18, padding: "0 20px", flexDirection: "column", justifyContent: "center" },
+      ...(d.streams.length
+        ? d.streams.slice(0, 2).map((s) => box({ fontSize: 24, color: c.fg, width: 600, overflow: "hidden", height: 30 }, `${s.allDay ? ctx.t("allDay") : fmtTime(s.start, ctx.locale, tz)} · ${s.title}${extractGameNames(s.description).length ? ` · ${extractGameNames(s.description).join(", ")}` : ""}`.slice(0, 80)))
+        : [box({ fontSize: 22, color: c.muted }, ctx.t("none"))]))));
+  const height = empty ? 480 : 32 * 2 + 110 + 7 * ROW + 40;
+  const tree = box({ width: "100%", height: "100%", flexDirection: "column", backgroundColor: c.bg, padding: 32 },
+    box({ justifyContent: "space-between", alignItems: "flex-start", height: 96 },
+      box({ flexDirection: "column" }, box({ fontSize: 56, fontWeight: 700, color: c.fg }, ctx.t("imageTitle")), box({ fontSize: 26, color: c.accent }, label)),
+      box({ fontSize: 28, fontWeight: 700, color: c.fg }, String(site.name).slice(0, 30))),
+    empty
+      ? box({ flexDirection: "column", alignItems: "center", justifyContent: "center", height: 260, marginTop: 16, backgroundColor: c.surface, borderRadius: 20, gap: 10 }, box({ fontSize: 32, fontWeight: 700, color: c.fg }, ctx.t("imageEmpty")), box({ fontSize: 24, color: c.muted }, ctx.t("imageEmptyHint")))
+      : box({ flexDirection: "column", marginTop: 14 }, ...rows));
+  return { width: 900, height, tree };
+}
+
 export default {
+  // Image PNG de la semaine (aussi pour une extension de panneau Twitch) : /m/<clé>/image?week=0 (0 = cette semaine, jusqu'à 8).
+  routes: {
+    async image(request, ctx) {
+      const offset = Math.min(8, Math.max(0, Math.trunc(Number(new URL(request.url).searchParams.get("week"))) || 0));
+      const week = await loadWeek(ctx, offset);
+      if (!week) return new Response("Calendar not available", { status: 404 });
+      const res = await ctx.api.png(weekImage(ctx, week, await ctx.api.site(ctx.locale)));
+      res.headers.set("Cache-Control", "public, max-age=300");
+      return res;
+    },
+  },
+
   async page(ctx) {
     const days = clampDays(ctx.setting("days"));
     const { configured, ok, slots, timeZone } = await loadSlots(ctx, days);

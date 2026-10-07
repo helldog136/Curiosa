@@ -4,6 +4,7 @@ import { entryPath, listEntries } from "@/core/content/entries";
 import { getInstanceByKey, listInstances, pickName, type InstanceView } from "@/core/instances";
 import { isMailConfigured, sendMail } from "@/core/services/mail";
 import { qrSvg } from "@/core/services/qr";
+import { renderPng, type PngSpec } from "@/core/services/render";
 import { createStore } from "@/core/services/store";
 import { collect } from "@/core/services/topics";
 import { getSiteConfig } from "@/core/settings";
@@ -16,6 +17,7 @@ import type { ModuleApi } from "./types";
  *
  *   SERVICES (helpers génériques, src/core/services/) — indépendants de toute fonctionnalité
  *     qr      générateur de QR code
+ *     png     rendu d'une image PNG à partir d'une arborescence de boîtes
  *     store   stockage privé de l'instance
  *     mail    envoi d'e-mails au nom du site (SMTP réglé dans l'admin)
  *     topics  échange d'informations typées entre modules
@@ -32,6 +34,7 @@ export function makeApi(instance: InstanceView, locale: string): ModuleApi {
 
     // ── SERVICES du cœur ────────────────────────────────────────────────────────
     qr: qrSvg,
+    png: (spec) => renderPng(spec as PngSpec, siteUrl),
     store: createStore(instance.id),
     mail: { configured: isMailConfigured, send: (message) => sendMail(message, instance.key) },
     topics: {

@@ -451,6 +451,7 @@ Deux familles : les **services** du cœur (génériques, voir [PLATFORM.md](PLAT
 | Appel | Famille | Rôle |
 |---|---|---|
 | `ctx.api.qr(texte)` | service | QR code en SVG (fond transparent) pour un texte ou une URL |
+| `ctx.api.png({ width, height, tree })` | service | Image PNG (une `Response`) à partir d'une arborescence de boîtes `{ type: "div"\|"span"\|"p"\|"b"\|"img", props: { style, children, src } }` (flexbox, styles en ligne, 16 à 2000 px). Une `img` n'accepte qu'un chemin du site ou une adresse https publique. Exemple : l'image de la semaine du module *planning* (`/m/<clé>/image`). |
 | `ctx.api.store.add(collection, data)` | service | ajoute un document JSON, renvoie son `id` |
 | `ctx.api.store.get(id)` | service | `{ id, createdAt, data }` ou `null` (aussi `null` pour un document d'une autre instance) |
 | `ctx.api.store.update(id, data)` | service | **remplace** le document ; renvoie `false` s'il n'existe pas. Pour modifier un champ, relisez, fusionnez, réécrivez. |

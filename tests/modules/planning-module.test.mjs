@@ -216,3 +216,27 @@ test("morceaux du planning : tailles naturelles recommandées pour l'accueil flu
   const size = Object.fromEntries(m.sections.map((s) => [s.id, s.size]));
   assert.deepEqual([size.next, size.days, size.upcoming], ["small", "medium", "large"]);
 });
+
+test("image PNG de la semaine : route qui passe par ctx.api.png, créneaux de la semaine, titres tronqués, cache 5 min, 404 sans calendrier", async () => {
+  const today = new Date(); today.setUTCHours(10, 0, 0, 0);
+  serve(calendar(vevent("1", today, new Date(today.getTime() + 3_600_000), "Soirée " + "x".repeat(200), ["DESCRIPTION:Jeu: Zelda"])));
+  const c = ctxWith({}, { messages: { ...messages, imageTitle: "Planning", imageEmpty: "Rien", imageEmptyHint: "Bientôt" } });
+  const res = await def.routes.image(new Request("https://x.test/m/planning/image"), c);
+  assert.equal(res.headers.get("content-type"), "image/png");
+  assert.equal(res.headers.get("cache-control"), "public, max-age=300");
+  const spec = c.calls.png[0];
+  assert.equal(spec.width, 900);
+  const flat = JSON.stringify(spec.tree);
+  assert.ok(flat.includes("Soirée"), "le créneau du jour est dans l'image");
+  assert.ok(!flat.includes("x".repeat(100)), "titre tronqué");
+  assert.equal(spec.tree.props.children[0].props.children[0].props.children[0].props.children[0], "Planning");
+  // sans calendrier : 404, aucun rendu
+  const none = ctxWith({ icsUrl: "" });
+  assert.equal((await def.routes.image(new Request("https://x.test/m/planning/image"), none)).status, 404);
+  assert.equal(none.calls.png.length, 0);
+  // semaine vide : l'état vide (une seule boîte « Rien de prévu »)
+  serve(calendar());
+  const empty = ctxWith({}, { messages: { ...messages, imageTitle: "Planning", imageEmpty: "Rien", imageEmptyHint: "Bientôt" } });
+  await def.routes.image(new Request("https://x.test/m/planning/image?week=2"), empty);
+  assert.ok(JSON.stringify(empty.calls.png[0].tree).includes("Bientôt"));
+});
