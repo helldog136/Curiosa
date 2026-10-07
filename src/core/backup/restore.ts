@@ -3,6 +3,7 @@ import path from "node:path";
 import { Prisma } from "@prisma/client";
 import { UPLOADS_DIR } from "@/core/config";
 import { prisma } from "@/core/db";
+import { migrateAllInstances, type MigrationOutcome } from "@/core/modules/dataMigrations";
 import { installFromMarketplace, installModule, type InstallResult } from "@/core/modules/installer";
 import { getMarketplace } from "@/core/modules/marketplace";
 import { resetModuleRegistry } from "@/core/modules/registry";
@@ -91,7 +92,7 @@ export async function planModules(modules: BackupModule[]): Promise<ModulePlan[]
 /* ───────────── Application ───────────── */
 
 export type ModuleOutcome = { id: string; outcome: "kept" | "installed" | "skipped" | "failed" | "unavailable"; error?: string };
-export type RestoreReport = { ok: true; modules: ModuleOutcome[]; counts: Record<string, number>; safetyCopy: string | null } | { ok: false; error: "invalid" | "failed"; modules: ModuleOutcome[] };
+export type RestoreReport = { ok: true; modules: ModuleOutcome[]; migrations: MigrationOutcome[]; counts: Record<string, number>; safetyCopy: string | null } | { ok: false; error: "invalid" | "failed"; modules: ModuleOutcome[] };
 
 type Installers = { fromMarketplace: (id: string) => Promise<InstallResult>; fromRepo: (url: string) => Promise<InstallResult> };
 const realInstallers: Installers = { fromMarketplace: installFromMarketplace, fromRepo: (url) => installModule(url) };
@@ -163,6 +164,8 @@ export async function applyRestore(backup: ParsedBackup, opts: { confirmCustom: 
   for (const u of backup.uploads) fs.writeFileSync(path.join(UPLOADS_DIR, u.name), u.content);
 
   resetModuleRegistry();
+  // Les données restaurées peuvent être celles d'une ancienne version d'un module, réinstallée plus récente : on les met à niveau.
+  const migrations = (await migrateAllInstances().catch(() => [])).filter((m) => m.status !== "none");
   await audit(opts.actor, "backup.restore", backup.manifest.createdAt);
-  return { ok: true, modules: outcomes, safetyCopy: copy, counts: { users: d.users.length, entries: d.entries.length, instances: d.instances.length, records: d.records.length, uploads: backup.uploads.length } };
+  return { ok: true, modules: outcomes, migrations, safetyCopy: copy, counts: { users: d.users.length, entries: d.entries.length, instances: d.instances.length, records: d.records.length, uploads: backup.uploads.length } };
 }

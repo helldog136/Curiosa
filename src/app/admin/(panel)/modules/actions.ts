@@ -36,6 +36,7 @@ export async function updateModuleAction(id: string): Promise<void> {
   await audit(user.email, "module.update", id);
   revalidatePath("/", "layout");
   if (!result.ok) redirect(`/admin/modules?error=${encodeURIComponent(result.error)}`);
+  if (result.migrations?.some((m) => m.status === "failed" || m.status === "newer")) redirect("/admin/modules?error=modules.error.migration");
   redirect("/admin/modules");
 }
 

@@ -257,6 +257,12 @@ export type ModuleDefinition = {
   /** Implémentation des actions MCP déclarées dans `mcp` du manifeste. */
   mcp?: Record<string, McpHandler>;
   /**
+   * Migrations de données. `migrations[N](ctx)` fait passer les données d'UNE instance de la version N-1 à la version N
+   * (`dataVersion` du manifeste). Le cœur les exécute, dans l'ordre, après une mise à jour du module et après une restauration
+   * de sauvegarde, pour chaque instance qui est en retard. Voir src/core/modules/dataMigrations.ts.
+   */
+  migrations?: Record<number, (ctx: ModuleContext) => void | Promise<void>>;
+  /**
    * Sauvegarde. Le cœur sauvegarde déjà, pour tout module, ses réglages, son stockage (`ctx.api.store`) et les entrées de ses
    * instances. `readable` ajoute à la sauvegarde des fichiers LISIBLES SANS LE FRAMEWORK (CSV, Markdown, texte…) pour les
    * données que le module juge importantes : si le framework disparaît, l'utilisateur les relit avec n'importe quel éditeur.

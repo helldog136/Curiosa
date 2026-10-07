@@ -69,7 +69,7 @@ export async function createInstance(db: Db, input: NewInstance) {
     // Repli si le chemin est déjà pris ou réservé (un surnom « Admin » ou « EN » ne doit pas voler /admin ni /en).
     if (basePath !== null && (reservedPath(basePath) || (await db.moduleInstance.findUnique({ where: { basePath } })))) basePath = await freeBasePath(db, `${manifest.id}-${key}`);
   }
-  return db.moduleInstance.create({
+  const created = await db.moduleInstance.create({
     data: {
       moduleId: manifest.id,
       key,
@@ -92,6 +92,11 @@ export async function createInstance(db: Db, input: NewInstance) {
       },
     },
   });
+  // Une instance neuve naît à la version courante des données de son module : aucune migration à lui appliquer.
+  if ((manifest.dataVersion ?? 1) > 1) {
+    await db.setting.upsert({ where: { key_locale: { key: `instance.${created.id}.__dataVersion`, locale: "" } }, create: { key: `instance.${created.id}.__dataVersion`, locale: "", value: JSON.stringify(manifest.dataVersion) }, update: { value: JSON.stringify(manifest.dataVersion) } });
+  }
+  return created;
 }
 
 /** Nom proposé pour une première instance, dans chaque langue du site. */

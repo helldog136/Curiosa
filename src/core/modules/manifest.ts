@@ -91,6 +91,8 @@ export const manifestSchema = z.object({
     .max(20)
     .default([]),
   settings: z.array(settingField).max(60).default([]),
+  /** Version de la STRUCTURE des données du module (stockage, réglages). À augmenter quand elle change : voir `migrations`. */
+  dataVersion: z.number().int().min(1).max(10000).optional(),
   starter: z.boolean().optional(),
   onboarding: z
     .object({

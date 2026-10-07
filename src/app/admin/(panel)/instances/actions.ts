@@ -1,5 +1,6 @@
 "use server";
 
+import { retryInstanceMigration } from "@/core/modules/dataMigrations";
 import { isHexColor, themeRef } from "@/core/color";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -150,6 +151,14 @@ export async function saveInstanceSettings(_prev: ActionState, formData: FormDat
   await audit(user.email, "instance.settings", instance.key);
   revalidatePath("/", "layout");
   return { ok: t("action.saved") };
+}
+
+/** « Réessayer » : relance la migration des données d'une instance mise à l'écart. */
+export async function retryMigrationAction(id: string): Promise<void> {
+  await adminCtx("admin");
+  await retryInstanceMigration(id);
+  revalidatePath("/", "layout");
+  redirect(`/admin/instances/${id}`);
 }
 
 export async function deleteInstanceAction(id: string): Promise<void> {

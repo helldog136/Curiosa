@@ -7,6 +7,7 @@ import { MODULES_DIR } from "../config";
 import { parseManifest } from "./manifest";
 import { forgetModule, getModule, moduleDir, readGitManifest } from "./registry";
 import { findMarketplaceEntry, readBundledManifest } from "./marketplace";
+import { migrateModuleInstances, type MigrationOutcome } from "./dataMigrations";
 import { classify, pickLatestTag, TAG_RE, type UpdateLevel } from "../updates/versions";
 import { BUILTIN_MODULES } from "@/modules-builtin";
 
@@ -15,7 +16,7 @@ const run = promisify(execFile);
 const MAX_MODULE_BYTES = 10 * 1024 * 1024;
 const DEFAULT_HOSTS = "github.com,gitlab.com,codeberg.org,bitbucket.org";
 
-export type InstallResult = { ok: true; id: string } | { ok: false; error: string };
+export type InstallResult = { ok: true; id: string; migrations?: MigrationOutcome[] } | { ok: false; error: string };
 
 export type ParsedRepo = { url: string; ref?: string };
 
@@ -189,7 +190,7 @@ export async function updateModule(id: string): Promise<InstallResult> {
     if (!copied.ok) return copied;
     await prisma.module.update({ where: { id }, data: { version: copied.version } });
     forgetModule(id);
-    return { ok: true, id };
+    return { ok: true, id, migrations: await migrateModuleInstances(id) };
   }
   if (!row || row.source !== "git" || !row.repoUrl) return { ok: false, error: "modules.error.notfound" };
   const dir = moduleDir(id);
@@ -216,7 +217,8 @@ export async function updateModule(id: string): Promise<InstallResult> {
     if (dirSize(dir) > MAX_MODULE_BYTES) throw Object.assign(new Error("size"), { code: "modules.error.size" });
     await prisma.module.update({ where: { id }, data: { commit, version: manifest.version, ref: newRef } });
     forgetModule(id);
-    return { ok: true, id };
+    // Les données des instances suivent la nouvelle version du module (voir dataMigrations.ts) ; en cas d'échec, l'instance est remise à l'écart.
+    return { ok: true, id, migrations: await migrateModuleInstances(id) };
   } catch (error) {
     // Retour à la version précédente : un module en place ne doit pas rester à moitié mis à jour.
     if (previous) await git(["reset", "--hard", previous], dir).catch(() => {});

@@ -333,6 +333,13 @@ Un module peut donc **implémenter plus d'actions qu'il n'en active d'office** :
 Les arguments inconnus sont refusés ; le schéma `input` accepte `type`, `properties` (`string`, `number`, `integer`, `boolean`, `array`), `enum`, `maxLength`, `minimum`, `maximum`, `items`, `required`. Écrivez la `description`
 **pour l'assistant** qui la lira. Permission : `mcp`. Voir la référence : « API MCP ».
 
+## 12 bis. Faire évoluer ses données (migrations)
+
+Quand une version de votre module change la **forme** des données qu'il stocke, déclarez `"dataVersion": N` dans `module.json` et écrivez la fonction `migrations[N]` (elle reçoit `ctx`) qui convertit les données
+d'**une** instance de la version N-1 à N (voir [MODULES.md › `migrations`](MODULES.md)). Le cœur les exécute dans l'ordre après une mise à jour du module ou une restauration de sauvegarde, garde
+une copie de la base avant, et si l'une échoue **remet l'instance dans son état d'avant** et la met à l'écart avec un bouton « Réessayer ». Gardez-les idempotentes, testez-les sur des données de
+l'ancienne version, et ne retirez jamais une migration publiée.
+
 ## 13. Sauvegarde lisible
 
 Le cœur sauvegarde déjà tout ce que vous mettez dans `ctx.api.store` (en JSON). Pour que les données importantes restent **lisibles sans le framework**, ajoutez des fichiers à la sauvegarde :
@@ -517,6 +524,7 @@ Un module est **du code de confiance** : il tourne sur le serveur avec les droit
 - [ ] Les routes publiques ont limiteur de débit, piège à robots, plafond ; l'e-mail est **après** la conservation et ne fait jamais échouer la requête.
 - [ ] Aucun secret, ni donnée privée, ni identifiant réel dans le code, les exemples ou les journaux ; exemples neutres (`example.org`, « Demo »).
 - [ ] Le module a des tests (manifeste, parité des langues, comportement, XSS) et ils passent.
+- [ ] Si la forme de mes données a changé : `dataVersion` augmenté et migration écrite et testée sur des données de l'ancienne version.
 - [ ] Essayé en vrai : installation locale, activation, instance, page, formulaire, admin, désinstallation propre.
 - [ ] Un `README.md` explique ce que fait le module, ses réglages et ses limites ; la version est **taguée** (`git tag v1.0.0`).
 - [ ] Pour la Marketplace : dépôt public sur un hôte autorisé, ajouté à `marketplace/index.json` (demande de fusion) ou proposé dans `modules-community/` / `modules-examples/`.

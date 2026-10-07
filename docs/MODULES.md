@@ -114,6 +114,7 @@ Validé à l'installation et au chargement (zod, `src/core/modules/manifest.ts`)
 | `content` | Module à contenu : le cœur fournit l'éditeur d'entrées et les pages (voir ci-dessous). |
 | `starter` | Proposé dans l'assistant de première installation (modules à contenu livrés avec le cœur). |
 | `onboarding` | Comment le module participe à la première installation (voir ci-dessous). |
+| `dataVersion` | Version de la **structure de vos données** (entier ≥ 1, défaut 1). À augmenter quand elle change, avec la migration correspondante (`migrations`). |
 | `defaultEnabled` | Modules livrés avec le cœur : activés dès le départ (défaut : oui). Sans effet pour un module installé, toujours installé désactivé. |
 | `permissions` | Les capacités utilisées (voir ci-dessous). |
 
@@ -277,6 +278,7 @@ export default {
   adminPanel:   async (ctx, { query }) => [{ type: "heading", text: "…" }],
   adminActions: { save: async (ctx, values) => ({ ok: "Enregistré." }) },
   mcp:      { my_action: async (ctx, args, actor) => ({ done: true }) },
+  migrations: { 2: async (ctx) => { /* données v1 → v2 */ } },
   backup:   { readable: async (ctx) => [{ path: "data.csv", content: "…" }] },
   hooks:    { onInstanceCreate: async (ctx) => {}, onInstanceDelete: async (ctx) => {} },
 };
@@ -297,6 +299,7 @@ un slot en échec disparaît, une section en échec donne `[]`, une page en éch
 | `adminPanel` | on ouvre la page d'admin de l'instance | `ctx`, `{ query }` | blocs |
 | `adminActions.<nom>` | un bloc `adminForm` ou un bouton de ligne | `ctx`, `values` (texte) | `{ ok?, error?, redirect? }` |
 | `mcp.<action>` | un assistant appelle l'action | `ctx`, `args` validés, `actor` | une valeur JSON |
+| `migrations.<N>` | après une mise à jour du module ou une restauration, pour chaque instance dont les données sont en retard | `ctx` | rien (lever une erreur annule tout) |
 | `backup.readable` | on exporte une sauvegarde | `ctx` | liste de `{ path, content }` |
 | `hooks.onInstanceCreate` / `hooks.onInstanceDelete` | cycle de vie d'une instance | `ctx` | rien |
 
@@ -362,6 +365,36 @@ Voir « Panneau d'admin riche ».
 ### `mcp` : actions pour les assistants
 
 Voir « API MCP ». Les clés de `mcp` doivent être déclarées dans le manifeste : une action déclarée mais non implémentée (ou l'inverse) n'est pas exposée.
+
+### `migrations` : faire évoluer ses données
+
+Votre stockage (`ctx.api.store`) est du JSON libre : quand une nouvelle version de votre module change la **forme** de ses données (champ renommé, champ ajouté,
+collection coupée en deux), **c'est à vous de les convertir** — le cœur ne peut pas deviner. Vous déclarez :
+
+```json
+"dataVersion": 3
+```
+```js
+export default {
+  migrations: {
+    // N = la version vers laquelle on va : migrations[2] fait passer de la v1 à la v2.
+    2: async (ctx) => { for (const r of await ctx.api.store.list("notes")) { const { name, ...rest } = r.data; await ctx.api.store.update(r.id, { ...rest, author: name }); } },
+    3: async (ctx) => { /* … */ },
+  },
+};
+```
+
+Le cœur retient la version des données **de chaque instance** (absente = 1) et, après une **mise à jour du module** ou une **restauration de sauvegarde**, exécute pour
+chaque instance en retard les migrations manquantes, **dans l'ordre** (une version sans fonction avance simplement le numéro). Une instance **créée** après coup
+naît directement à la version courante. Garanties :
+
+- une **copie de la base** est gardée avant (`data/backups/pre-migration-*.db`) ;
+- si une migration **lève une erreur**, l'instance est **remise exactement dans son état d'avant** (stockage et réglages, rien à moitié converti), **mise à l'écart** (elle ne
+  tourne pas) et l'admin affiche l'erreur avec un bouton « Réessayer » ; les autres instances ne sont pas touchées. Publiez une version corrigée : la mise à jour relance la migration ;
+- des données **plus récentes** que votre code (sauvegarde restaurée dans un module plus ancien) sont aussi mises à l'écart, jamais modifiées.
+
+Écrivez des migrations **idempotentes** quand c'est possible (elles peuvent être rejouées après un échec) et **testez-les** sur des données réelles de l'ancienne version.
+Ne supprimez jamais une migration déjà publiée : un site peut sauter plusieurs versions d'un coup.
 
 ### `backup` : sauvegarde lisible
 

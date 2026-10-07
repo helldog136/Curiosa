@@ -65,7 +65,8 @@ test("MISE À JOUR SANS PERTE DE DONNÉES : le code change, instances, réglages
   const inst = await withData();
   const before = (await mod()).commit;
   repo.release("1.1.0", {}, CODE("1.1.0"));
-  assert.deepEqual(await updateModule("demo"), { ok: true, id: "demo" });
+  const done = await updateModule("demo");
+  assert.deepEqual([done.ok, done.id], [true, "demo"]);
   const row = await mod();
   assert.deepEqual([row.ref, row.version, row.commit !== before, row.enabled], ["v1.1.0", "1.1.0", true, true], "étiquette suivie, version et commit à jour, toujours activé");
   assert.match(fs.readFileSync(path.join(moduleDir("demo"), "index.mjs"), "utf8"), /version 1\.1\.0/);

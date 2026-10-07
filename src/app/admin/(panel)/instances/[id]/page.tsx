@@ -20,7 +20,8 @@ import { ActionForm } from "@/components/admin/ActionForm";
 import { ConfirmButton } from "@/components/admin/ConfirmButton";
 import { Checkbox, Select, TextArea, TextField } from "@/components/admin/Field";
 import { ui } from "@/components/admin/ui";
-import { deleteInstanceAction, saveInstance, saveInstanceSettings, saveSources } from "../actions";
+import { dataStatusOf } from "@/core/modules/dataMigrations";
+import { deleteInstanceAction, retryMigrationAction, saveInstance, saveInstanceSettings, saveSources } from "../actions";
 
 export default async function InstancePage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | undefined>> }) {
   const { t, locale, config, user, advanced } = await adminCtx("admin");
@@ -48,6 +49,7 @@ export default async function InstancePage({ params, searchParams }: { params: P
   for (const f of mod.manifest.settings) stored[f.key] = await getSettingByLocale(instanceSettingKey(id, f.key));
 
   const mcpOn = (await getSetting<boolean>(mcpInstanceKey(instance.id))) !== false;
+  const dataStatus = await dataStatusOf(instance.id);
   const visibleSettings = mod.manifest.settings.filter((f) => advanced || !f.advanced);
   const generalSettings = visibleSettings.filter((f) => f.group !== "appearance");
   const appearanceSettings = visibleSettings.filter((f) => f.group === "appearance");
@@ -101,6 +103,13 @@ export default async function InstancePage({ params, searchParams }: { params: P
           <p className="rounded-lg border border-line bg-surface p-3 text-sm">
             {t("instances.overlayUrl")}: <code className="break-all font-mono">{siteUrl}/overlays/{instance.key}</code>
           </p>
+        )}
+        {dataStatus && (
+          <div role="alert" className="space-y-2 rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm">
+            <p>{t(dataStatus.status === "newer" ? "migration.newer" : "migration.failed")}</p>
+            {dataStatus.error && <p className="font-mono text-xs">{dataStatus.error}</p>}
+            <form action={retryMigrationAction.bind(null, instance.id)}><button className={ui.btn}>{t("migration.retry")}</button></form>
+          </div>
         )}
         {!mod.row.enabled && <p className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">{t("modules.disabledNotice")}</p>}
       </div>

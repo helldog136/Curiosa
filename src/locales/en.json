@@ -503,5 +503,11 @@
   "modules.updateAvailableTo": "An update of {module} is available: {version}. Your data and settings are kept.",
   "modules.updateMajor": "Major change: the module may work differently. Read its release notes before installing. If the new version is invalid, the previous one is restored automatically.",
   "modules.error.uptodate": "This module is already up to date.",
-  "modules.error.pinned": "This module is pinned to a specific commit: it does not update."
+  "modules.error.pinned": "This module is pinned to a specific commit: it does not update.",
+  "migration.failed": "Updating this instance's data failed: it was put back to its previous state and set aside (it does not run on half-converted data). A copy of the database is in data/backups/. Fix or update the module, then retry.",
+  "migration.newer": "This instance's data is newer than the installed module's code (backup restored into an older module?). Update the module, then retry.",
+  "migration.retry": "Retry the migration",
+  "modules.error.migration": "Module updated, but the data migration of at least one instance failed: it was put back to its previous state and set aside. Open it to retry.",
+  "backup.migrated": "Module data upgraded",
+  "backup.migrationFailed": "Migration to redo"
 }

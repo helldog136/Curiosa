@@ -8,6 +8,7 @@ import { MODULES_DIR } from "../config";
 import { BUILTIN_MODULES } from "@/modules-builtin";
 import { parseManifest, type ParsedManifest } from "./manifest";
 import { listInstances, type InstanceView } from "../instances";
+import { getSetting } from "../settings";
 import type { ModuleDefinition, SectionDecl } from "./types";
 
 export type LoadedModule = {
@@ -146,10 +147,13 @@ export type ActiveInstance = { instance: InstanceView; mod: LoadedModule };
 /** Instances actives dont le module est actif et chargeable : ce que le site exécute réellement. */
 export const getActiveInstances = cache(async (): Promise<ActiveInstance[]> => {
   const [mods, instances] = await Promise.all([getEnabledModules(), listInstances()]);
-  return instances.flatMap((instance) => {
+  const all = instances.flatMap((instance) => {
     const mod = mods.find((m) => m.manifest.id === instance.moduleId);
     return instance.enabled && mod ? [{ instance, mod }] : [];
   });
+  // Une instance dont la migration de données a échoué (ou dont les données sont plus récentes que le code du module) ne tourne pas.
+  const sane = await Promise.all(all.map(async (a) => ((await getSetting<{ status?: string }>(`instance.${a.instance.id}.__dataStatus`))?.status ? null : a)));
+  return sane.filter((a): a is ActiveInstance => a !== null);
 });
 
 const LATEST: SectionDecl = {

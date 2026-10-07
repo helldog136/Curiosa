@@ -503,5 +503,11 @@
   "modules.updateAvailableTo": "Une mise à jour de {module} est disponible : {version}. Vos données et réglages sont conservés.",
   "modules.updateMajor": "Changement majeur : le fonctionnement du module peut changer. Lisez ses notes de version avant de l'installer. Si la nouvelle version est invalide, l'ancienne est rétablie automatiquement.",
   "modules.error.uptodate": "Ce module est déjà à jour.",
-  "modules.error.pinned": "Ce module est épinglé sur un commit précis : il ne se met pas à jour."
+  "modules.error.pinned": "Ce module est épinglé sur un commit précis : il ne se met pas à jour.",
+  "migration.failed": "La mise à jour des données de cette instance a échoué : elle a été remise dans son état d'avant et mise à l'écart (elle ne tourne pas sur des données à moitié converties). Une copie de la base est dans data/backups/. Corrigez ou mettez à jour le module, puis réessayez.",
+  "migration.newer": "Les données de cette instance sont plus récentes que le code du module installé (sauvegarde restaurée dans un module plus ancien ?). Mettez le module à jour, puis réessayez.",
+  "migration.retry": "Réessayer la migration",
+  "modules.error.migration": "Module mis à jour, mais la migration des données d'au moins une instance a échoué : elle est remise dans son état d'avant et mise à l'écart. Ouvrez-la pour réessayer.",
+  "backup.migrated": "Données de modules mises à niveau",
+  "backup.migrationFailed": "Migration à refaire"
 }
