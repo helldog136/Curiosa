@@ -232,6 +232,9 @@ export type PageResult = {
   notFound?: boolean;
 };
 
+/** Un fichier texte ajouté à la sauvegarde ; `path` est relatif au dossier de l'instance (`modules/<instance>/<path>`). */
+export type BackupFile = { path: string; content: string };
+
 export type ModuleDefinition = {
   /** Contribue des blocs à un emplacement du site (une fois par instance active). */
   slots?: Partial<Record<Slot, (ctx: SlotContext) => Block[] | null | undefined | Promise<Block[] | null | undefined>>>;
@@ -253,6 +256,14 @@ export type ModuleDefinition = {
   adminActions?: Record<string, AdminActionHandler>;
   /** Implémentation des actions MCP déclarées dans `mcp` du manifeste. */
   mcp?: Record<string, McpHandler>;
+  /**
+   * Sauvegarde. Le cœur sauvegarde déjà, pour tout module, ses réglages, son stockage (`ctx.api.store`) et les entrées de ses
+   * instances. `readable` ajoute à la sauvegarde des fichiers LISIBLES SANS LE FRAMEWORK (CSV, Markdown, texte…) pour les
+   * données que le module juge importantes : si le framework disparaît, l'utilisateur les relit avec n'importe quel éditeur.
+   */
+  backup?: {
+    readable?(ctx: ModuleContext): BackupFile[] | Promise<BackupFile[]>;
+  };
   hooks?: {
     onInstanceCreate?(ctx: ModuleContext): void | Promise<void>;
     onInstanceDelete?(ctx: ModuleContext): void | Promise<void>;

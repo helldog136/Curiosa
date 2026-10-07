@@ -3,31 +3,14 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { adminCtx } from "@/core/admin";
-import { checkForUpdate, installModule, setModuleEnabled, uninstallModule, updateModule } from "@/core/modules/installer";
+import { checkForUpdate, setModuleEnabled, uninstallModule, updateModule } from "@/core/modules/installer";
 import { audit } from "@/core/permissions";
 import { getModule } from "@/core/modules/registry";
 import { prisma } from "@/core/db";
 import { createInstance, defaultNames } from "@/core/instanceService";
 import { checkNickname } from "@/core/instanceLabel";
-import type { ActionState } from "@/components/admin/ActionForm";
 
 // Installer ou mettre à jour du code exécuté côté serveur est réservé au propriétaire.
-
-export async function installModuleAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  const { user, t } = await adminCtx("owner");
-  const result = await installModule(String(formData.get("repo") ?? ""));
-  if (!result.ok) return { error: t(result.error) };
-  await audit(user.email, "module.install", result.id);
-  redirect("/admin/modules");
-}
-
-export async function installFromCatalogue(repo: string): Promise<void> {
-  const { user } = await adminCtx("owner");
-  const result = await installModule(repo);
-  if (!result.ok) redirect(`/admin/modules?error=${encodeURIComponent(result.error)}`);
-  await audit(user.email, "module.install", result.id);
-  redirect("/admin/modules");
-}
 
 export async function toggleModule(id: string, enabled: boolean): Promise<void> {
   const { user } = await adminCtx("owner");

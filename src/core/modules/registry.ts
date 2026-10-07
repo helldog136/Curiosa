@@ -178,3 +178,10 @@ export function sectionsOf(manifest: ParsedManifest): SectionDecl[] {
     ...declared,
   ];
 }
+
+/** Oublie les modules chargés et la synchronisation des modules de base (après une restauration, par exemple). */
+export function resetModuleRegistry(): void {
+  loadedCache.clear();
+  globalCache.vitrineBuiltinsSynced = false;
+  globalCache.vitrineBuiltinsSyncing = null;
+}
