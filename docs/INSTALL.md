@@ -43,7 +43,8 @@ Un exemple d'unité systemd est fourni : [`deploy/vitrine.service`](../deploy/vi
 Dans **Mises à jour** (menu, propriétaire uniquement) :
 
 - le site compare sa version à celles du dépôt d'origine (étiquettes `vX.Y.Z` **stables** ; les pré-versions sont ignorées) ;
-- **Installer** : sauvegarde de la base (`data/backups/`, les 5 dernières), récupération de la version, dépendances, migrations,
+- **Installer** : sauvegarde de la base (`data/backups/`, les 5 dernières), récupération de la version, dépendances (réinstallées
+  **seulement si elles ont changé** : un simple changement de numéro de version ne touche pas à `node_modules`), migrations,
   build, puis redémarrage. **Au moindre échec**, l'ancienne version (et l'ancienne base si les migrations avaient commencé) est rétablie ;
 - le journal de l'opération s'affiche dans la page ; elle se met à jour toute seule ;
 - une version **majeure** (`v2.0.0` après `v1.x`) peut changer le fonctionnement : elle est signalée et **n'est jamais installée automatiquement**.
@@ -65,6 +66,12 @@ Le nouveau code n'est utilisé qu'après un redémarrage du serveur. Dites au fr
 | *(aucune des deux)* | Rien n'est coupé : la page vous demande de redémarrer à la main. |
 
 Une commande avec `sudo` suppose une règle `sudoers` limitée à cette seule commande pour l'utilisateur du site.
+
+### Pendant l'installation
+
+Le site continue de répondre pendant les étapes préparatoires, mais l'installation des dépendances (quand elles changent) et le build
+remplacent des fichiers que le serveur utilise : prévoyez **une courte indisponibilité**, de quelques secondes (version sans nouvelle
+dépendance) à quelques minutes. Choisissez de préférence un moment calme, ou désactivez la mise à jour automatique pour décider vous-même.
 
 ### Conditions
 

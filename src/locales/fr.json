@@ -397,7 +397,7 @@
   "updates.unreachable": "Le dépôt n'a pas pu être joint.",
   "updates.check": "Vérifier maintenant",
   "updates.apply": "Installer {version}",
-  "updates.confirm": "Avant de mettre à jour : une sauvegarde de la base est faite, la nouvelle version est installée et construite ; si quelque chose échoue, l'ancienne version est rétablie automatiquement. Le site peut être indisponible quelques instants au redémarrage.",
+  "updates.confirm": "Avant de mettre à jour : une sauvegarde de la base est faite, puis la nouvelle version est installée et construite ; si quelque chose échoue, l'ancienne version est rétablie automatiquement. Le site peut être indisponible quelques instants au redémarrage — et plus longtemps (quelques minutes) si les dépendances ont changé.",
   "updates.found": "Version {version} disponible.",
   "updates.nothingToApply": "Aucune mise à jour à installer.",
   "updates.started": "Mise à jour vers {version} lancée. Cette page se met à jour toute seule.",

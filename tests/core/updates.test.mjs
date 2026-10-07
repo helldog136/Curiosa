@@ -7,7 +7,7 @@ import { execFile, execFileSync } from "node:child_process";
 import { promisify } from "node:util";
 
 const V = await import("@/core/updates/versions");
-const { runUpdate, readState, resolveSqlitePath } = await import("../../scripts/update-lib.mjs");
+const { runUpdate, readState, resolveSqlitePath, depsFingerprint } = await import("../../scripts/update-lib.mjs");
 const sh = promisify(execFile);
 
 test("versions : étiquettes stables seulement, comparaison numérique (1.10 > 1.9)", () => {
@@ -58,7 +58,10 @@ function setup() {
   git(upstream, "init", "-q", "-b", "main");
   fs.writeFileSync(path.join(upstream, ".gitignore"), "data/\n.env\nnode_modules/\n");
   const release = (version, extra = {}) => {
-    fs.writeFileSync(path.join(upstream, "package.json"), JSON.stringify({ name: "vitrine", version }));
+    const deps = extra.deps ?? { next: "1.0.0" };
+    delete extra.deps;
+    fs.writeFileSync(path.join(upstream, "package.json"), JSON.stringify({ name: "vitrine", version, dependencies: deps }));
+    fs.writeFileSync(path.join(upstream, "package-lock.json"), JSON.stringify({ name: "vitrine", version, lockfileVersion: 3, packages: { "": { name: "vitrine", version, dependencies: deps }, ...Object.fromEntries(Object.entries(deps).map(([k, v]) => [`node_modules/${k}`, { version: v }])) } }));
     for (const [f, c] of Object.entries(extra)) fs.writeFileSync(path.join(upstream, f), c);
     git(upstream, "add", "-A"); git(upstream, "commit", "-q", "-m", `v${version}`); git(upstream, "tag", `v${version}`);
   };
@@ -94,7 +97,7 @@ test("mise à jour : succès — sauvegarde, version récupérée, dépendances,
     const r = await runUpdate({ ...opts(s), tag: "v1.1.0", exec, restartCommand: "systemctl restart vitrine" });
     assert.deepEqual(r, { ok: true });
     assert.equal(fs.readFileSync(path.join(s.app, "feature.txt"), "utf8"), "nouveau", "le code de la version est en place");
-    assert.deepEqual(s.calls, ["npm ci --include=dev", "npx prisma generate", "npx prisma migrate deploy", "npm run build"]);
+    assert.deepEqual(s.calls, ["npx prisma migrate deploy", "npm run build"], "dépendances inchangées : node_modules n'est pas touché");
     assert.deepEqual(restarts, ["systemctl restart vitrine"]);
     const st = readState(s.dataDir);
     assert.deepEqual([st.status, st.target, st.restart, st.error, st.rolledBack], ["success", "v1.1.0", "command", null, false]);
@@ -241,4 +244,32 @@ test("le script en ligne de commande est présent et n'exécute que ce qu'il re�
   const cli = fs.readFileSync("scripts/update.mjs", "utf8");
   assert.ok(cli.includes("execFile") && !/\bexec\(|execSync|shell:\s*true/.test(cli.replace(/promisify\(execFile\)/, "")));
   assert.ok(sh);
+});
+
+test("dépendances : empreinte — le numéro de version du projet est ignoré, une dépendance modifiée ne l'est pas", () => {
+  const pkg = (version, deps) => JSON.stringify({ name: "x", version, dependencies: deps });
+  const lock = (version, deps) => JSON.stringify({ name: "x", version, packages: { "": { name: "x", version, dependencies: deps }, "node_modules/a": { version: deps.a } } });
+  assert.equal(depsFingerprint(pkg("1.0.0", { a: "1" }), lock("1.0.0", { a: "1" })), depsFingerprint(pkg("1.0.1", { a: "1" }), lock("1.0.1", { a: "1" })));
+  assert.notEqual(depsFingerprint(pkg("1.0.0", { a: "1" }), lock("1.0.0", { a: "1" })), depsFingerprint(pkg("1.0.0", { a: "2" }), lock("1.0.0", { a: "2" })));
+  assert.equal(depsFingerprint("{pas du json", ""), null, "illisible → traité comme modifié");
+});
+
+test("mise à jour : dépendances modifiées → réinstallées (npm ci, generate) avant les migrations et le build", async () => {
+  const s = setup(); try {
+    s.release("1.1.0", { deps: { next: "2.0.0" } });
+    assert.equal((await runUpdate({ ...opts(s), tag: "v1.1.0", exec: s.make() })).ok, true);
+    assert.deepEqual(s.calls, ["npm ci --include=dev", "npx prisma generate", "npx prisma migrate deploy", "npm run build"]);
+    assert.match(fs.readFileSync(path.join(s.dataDir, "update", "update.log"), "utf8"), /dépendances modifiées/);
+  } finally { s.cleanup(); }
+});
+
+test("mise à jour : le schéma de base modifié → client régénéré même si les dépendances sont les mêmes", async () => {
+  const s = setup(); try {
+    fs.mkdirSync(path.join(s.upstream, "prisma")); fs.writeFileSync(path.join(s.upstream, "prisma", "schema.prisma"), "// v1");
+    git(s.upstream, "add", "-A"); git(s.upstream, "commit", "-q", "-m", "schema"); git(s.upstream, "tag", "v1.0.5");
+    git(s.app, "pull", "-q", "--ff-only"); // l'installation est à jour du schéma v1
+    s.release("1.1.0", {}); fs.writeFileSync(path.join(s.upstream, "prisma", "schema.prisma"), "// v2"); git(s.upstream, "commit", "-qam", "schema v2"); git(s.upstream, "tag", "-f", "v1.1.0");
+    assert.equal((await runUpdate({ ...opts(s), tag: "v1.1.0", exec: s.make() })).ok, true);
+    assert.deepEqual(s.calls, ["npx prisma generate", "npx prisma migrate deploy", "npm run build"]);
+  } finally { s.cleanup(); }
 });

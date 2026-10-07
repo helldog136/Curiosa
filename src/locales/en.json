@@ -397,7 +397,7 @@
   "updates.unreachable": "The repository could not be reached.",
   "updates.check": "Check now",
   "updates.apply": "Install {version}",
-  "updates.confirm": "Before updating: the database is backed up, the new version is installed and built; if anything fails, the previous version is restored automatically. The site may be unavailable for a moment at restart.",
+  "updates.confirm": "Before updating: the database is backed up, then the new version is installed and built; if anything fails, the previous version is restored automatically. The site may be unavailable for a moment at restart — and longer (a few minutes) if dependencies changed.",
   "updates.found": "Version {version} is available.",
   "updates.nothingToApply": "No update to install.",
   "updates.started": "Update to {version} started. This page refreshes by itself.",

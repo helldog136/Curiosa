@@ -19,6 +19,19 @@ export function resolveSqlitePath(databaseUrl, appDir) {
   return path.isAbsolute(p) ? p : path.resolve(appDir, "prisma", p);
 }
 
+/**
+ * Empreinte des dépendances d'un `package.json` / `package-lock.json` : le numéro de version du projet lui-même est ignoré
+ * (il change à chaque publication sans que les dépendances changent). Illisible → null (on considère alors que ça a changé).
+ */
+export function depsFingerprint(packageJson, lockfile) {
+  try {
+    const pkg = JSON.parse(packageJson);
+    const lock = lockfile ? JSON.parse(lockfile) : null;
+    if (lock) { delete lock.version; if (lock.packages?.[""]) delete lock.packages[""].version; if (lock.name) delete lock.name; if (lock.packages?.[""]?.name) delete lock.packages[""].name; }
+    return JSON.stringify({ d: pkg.dependencies ?? {}, dev: pkg.devDependencies ?? {}, o: pkg.overrides ?? {}, lock });
+  } catch { return null; }
+}
+
 export function readState(dataDir) {
   try { return JSON.parse(fs.readFileSync(path.join(dataDir, "update", "state.json"), "utf8")); } catch { return { status: "idle" }; }
 }
@@ -87,14 +100,21 @@ export async function runUpdate(o) {
   } catch { return fail("backup-failed"); }
 
   // 3. récupération de la version demandée
-  let switched = false, migrated = false;
+  let switched = false, migrated = false, depsChanged = false;
   try {
     await run("fetch", "git", ["fetch", "--tags", "--force", remote]);
     await git("rev-parse", "--verify", `refs/tags/${tag}^{commit}`).catch(() => { throw Object.assign(new Error("unknown-tag"), { code: "unknown-tag" }); });
     await run("checkout", "git", ["-c", "advice.detachedHead=false", "checkout", "--detach", `refs/tags/${tag}`]);
     switched = true;
-    await run("install", "npm", ["ci", "--include=dev"]);
-    await run("generate", "npx", ["prisma", "generate"]);
+    // `npm ci` vide node_modules pendant que le site tourne : on ne réinstalle que si les dépendances (ou le schéma de base) ont changé.
+    const show = async (ref, file) => (await git("show", `${ref}:${file}`)).stdout;
+    const fingerprint = async (ref) => depsFingerprint(await show(ref, "package.json").catch(() => ""), await show(ref, "package-lock.json").catch(() => ""));
+    const [before, after] = [await fingerprint(prevCommit), await fingerprint("HEAD")];
+    depsChanged = before === null || after === null || before !== after;
+    const schemaChanged = (await git("diff", "--name-only", prevCommit, "HEAD", "--", "prisma/schema.prisma")).stdout.trim() !== "";
+    log(`dépendances ${depsChanged ? "modifiées : réinstallation" : "inchangées : pas de réinstallation"}`);
+    if (depsChanged) await run("install", "npm", ["ci", "--include=dev"]);
+    if (depsChanged || schemaChanged) await run("generate", "npx", ["prisma", "generate"]);
     migrated = true;
     await run("migrate", "npx", ["prisma", "migrate", "deploy"]);
     await run("build", "npm", ["run", "build"]);
@@ -108,7 +128,7 @@ export async function runUpdate(o) {
         save({ step: "rollback" });
         await git("-c", "advice.detachedHead=false", "checkout", ...(prevRef ? [prevRef] : ["--detach", prevCommit]));
         if (migrated && dbBackup && dbFile) { const tmp = `${dbFile}.restore`; fs.copyFileSync(dbBackup, tmp); fs.renameSync(tmp, dbFile); log("base restaurée"); }
-        await exec("npm", ["ci", "--include=dev"], { cwd: appDir }).catch((x) => { rollbackOk = false; log(`rollback npm ci : ${x?.message}`); });
+        if (depsChanged) await exec("npm", ["ci", "--include=dev"], { cwd: appDir }).catch((x) => { rollbackOk = false; log(`rollback npm ci : ${x?.message}`); });
         await exec("npx", ["prisma", "generate"], { cwd: appDir }).catch(() => {});
         await exec("npm", ["run", "build"], { cwd: appDir }).catch((x) => { rollbackOk = false; log(`rollback build : ${x?.message}`); });
       } catch (x) { rollbackOk = false; log(`✘ retour arrière impossible : ${x?.message}`); }
