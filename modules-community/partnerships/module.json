@@ -10,7 +10,7 @@
     "en": "Your private partnership pipeline: brands you approach, status, follow-ups, journal and contacts. Has no public page. Other modules (sponsors…) can link to its partners.",
     "fr": "Votre suivi privé des partenariats : marques démarchées, statut, relances, journal et contacts. N'a aucune page publique. D'autres modules (sponsors…) peuvent s'y référer."
   },
-  "author": "Vitrine",
+  "author": "Helldog136",
   "license": "MIT",
   "icon": "🤝",
   "main": "index.mjs",

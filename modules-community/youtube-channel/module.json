@@ -10,7 +10,7 @@
     "en": "Shows your most popular recent video on the home page and offers your videos to the RSS feed, the Discord announcements and the maze overlay. Works with just the channel id; an API key adds Shorts detection and exact durations.",
     "fr": "Met en avant votre vidéo récente la plus vue sur l'accueil et propose vos vidéos au flux RSS, aux annonces Discord et à l'overlay labyrinthe. Fonctionne avec le seul identifiant de chaîne ; une clé d'API ajoute la détection des Shorts et les durées exactes."
   },
-  "author": "Vitrine",
+  "author": "Helldog136",
   "license": "MIT",
   "icon": "▶️",
   "main": "index.mjs",

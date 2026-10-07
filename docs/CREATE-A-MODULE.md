@@ -490,7 +490,7 @@ Testez au minimum : le manifeste est valide, chaque section/action/sujet déclar
 
 ```json
 { "id": "guestbook", "name": "Guestbook", "description": "A moderated guestbook.", "repo": "https://github.com/<vous>/<depot>",
-  "ref": "v1.0.0", "version": "1.0.0", "apiVersion": 2, "author": "Vitrine", "icon": "📖" }
+  "ref": "v1.0.0", "version": "1.0.0", "apiVersion": 2, "author": "Your name", "icon": "📖" }
 ```
 
 `id`, `name`, `description` et `repo` suffisent ; `ref` (**étiquette ou commit que les relecteurs ont relus** : c'est ce qui rend « vérifié » vrai), `version`, `apiVersion`, `author`, `icon` sont facultatifs. Le dépôt cité doit servir **le module annoncé** (`id` identique à celui de son `module.json`),

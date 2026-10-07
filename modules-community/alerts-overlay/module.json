@@ -10,7 +10,7 @@
     "en": "A pop-up for OBS that shows an alert (new follower, sub, raid…) the moment something pushes it. Anything that can send an HTTP request can push an alert: Streamer.bot, a webhook relay, a script.",
     "fr": "Une fenêtre pour OBS qui affiche une alerte (nouveau follow, sub, raid…) dès que quelque chose la pousse. Tout ce qui sait envoyer une requête HTTP peut pousser une alerte : Streamer.bot, un relais de webhook, un script."
   },
-  "author": "Vitrine",
+  "author": "Helldog136",
   "license": "MIT",
   "icon": "🔔",
   "main": "index.mjs",

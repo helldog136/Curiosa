@@ -11,7 +11,7 @@ import type { BuiltinModule } from ".";
  */
 const base = {
   apiVersion: 2,
-  author: "Vitrine",
+  author: "Helldog136",
   license: "MIT",
   instances: "multiple" as const,
   sections: [],

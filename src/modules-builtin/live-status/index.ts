@@ -11,7 +11,7 @@ export const manifest: ParsedManifest = {
     en: "Shows your Twitch player on the home page and a banner when you are live.",
     fr: "Affiche votre lecteur Twitch sur l'accueil et une bannière quand vous êtes en direct.",
   },
-  author: "Vitrine",
+  author: "Helldog136",
   license: "MIT",
   icon: "🔴",
   consumes: [],

@@ -10,7 +10,7 @@
     "en": "Tells the rest of the site when you are live and offers your latest clips. Discord announcements pick the live up; the maze overlay shows the clips.",
     "fr": "Indique au reste du site quand vous êtes en direct et propose vos derniers clips. Les annonces Discord reprennent le live ; l'overlay labyrinthe affiche les clips."
   },
-  "author": "Vitrine",
+  "author": "Helldog136",
   "license": "MIT",
   "icon": "🟣",
   "main": "index.mjs",

@@ -18,7 +18,7 @@ export const manifest: ParsedManifest = {
     en: "A transparent browser source for OBS that rotates cards fed by other modules (promo codes, articles, announcements…).",
     fr: "Une source navigateur transparente pour OBS qui fait défiler des cartes alimentées par d'autres modules (codes promo, articles, annonces…).",
   },
-  author: "Vitrine",
+  author: "Helldog136",
   license: "MIT",
   icon: "📺",
   type: "overlay",

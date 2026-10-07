@@ -95,7 +95,7 @@ test("sections : tailles recommandées (small / medium) et option count", () => 
 });
 
 test("manifeste : aucune donnée métier réelle (adresse, marque) dans le module", () => {
-  const all = JSON.stringify(manifestJson) + source + fs.readFileSync(`${DIR}/README.md`, "utf8");
+  const all = JSON.stringify({ ...manifestJson, author: undefined }) + source + fs.readFileSync(`${DIR}/README.md`, "utf8");
   assert.ok(!new RegExp(["gmail", ["hell", "dog"].join(""), ["rosa", "lia"].join("")].join("|"), "i").test(all));
 });
 

@@ -11,7 +11,7 @@ export const manifest: ParsedManifest = {
     en: "Adds a contact form under a page of your choice. Messages are kept in the admin.",
     fr: "Ajoute un formulaire de contact sous la page de votre choix. Les messages sont consultables dans l'admin.",
   },
-  author: "Vitrine",
+  author: "Helldog136",
   license: "MIT",
   icon: "✉️",
   consumes: [],

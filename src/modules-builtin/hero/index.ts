@@ -8,7 +8,7 @@ export const manifest: ParsedManifest = {
   name: { en: "Home banner", fr: "Bandeau d'accueil" },
   version: "1.0.0",
   description: { en: "Big title and intro for the top of the home page. Place its section where you want it.", fr: "Grand titre et introduction pour le haut de l'accueil. Placez sa section où vous voulez." },
-  author: "Vitrine",
+  author: "Helldog136",
   license: "MIT",
   icon: "🏁",
   onboarding: { always: true, home: { section: "hero" } },

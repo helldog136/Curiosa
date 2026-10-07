@@ -7,7 +7,7 @@
     "en": "A moderated guestbook: visitors sign, you approve. Example module that uses every capability of the framework.",
     "fr": "Un livre d'or modéré : les visiteurs signent, vous validez. Module d'exemple qui utilise toutes les capacités du framework."
   },
-  "author": "Vitrine",
+  "author": "Helldog136",
   "license": "MIT",
   "icon": "📖",
   "main": "index.mjs",

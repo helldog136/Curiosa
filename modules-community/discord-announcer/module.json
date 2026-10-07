@@ -10,7 +10,7 @@
     "en": "Announces your new content on a Discord channel through a webhook: no bot, no account to link. Picks up anything your site publishes (articles, sponsors, planning…) without knowing which module it comes from.",
     "fr": "Annonce vos nouveautés sur un salon Discord via un webhook : pas de bot, pas de compte à lier. Reprend tout ce que votre site publie (articles, sponsors, planning…) sans savoir de quel module cela vient."
   },
-  "author": "Vitrine",
+  "author": "Helldog136",
   "license": "MIT",
   "icon": "📣",
   "main": "index.mjs",

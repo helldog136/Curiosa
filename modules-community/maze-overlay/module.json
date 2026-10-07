@@ -10,7 +10,7 @@
     "en": "A retro 3D maze for OBS. The walker wanders through the corridors and stops in front of posters made from your content (articles, promo codes, clips…).",
     "fr": "Un labyrinthe 3D rétro pour OBS. Le personnage se promène dans les couloirs et s'arrête devant des affiches faites avec votre contenu (articles, codes promo, clips…)."
   },
-  "author": "Vitrine",
+  "author": "Helldog136",
   "license": "MIT",
   "icon": "🌀",
   "main": "index.mjs",

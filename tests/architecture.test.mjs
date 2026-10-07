@@ -165,6 +165,7 @@ test("le framework est agnostique de toute donnée métier : aucun nom de site, 
   // Les motifs sont assemblés pour que ce fichier ne contienne pas lui-même ce qu'il interdit.
   const forbidden = [["rosa", "li"], ["hell", "dog"], ["brux", "elles"], ["brus", "sels"]].map((p) => new RegExp(p.join(""), "i"));
   const AUTHOR = new RegExp(["hell", "dog136(\\.be)?"].join(""), "gi");
+  const AUTHOR_FIELD = new RegExp(`author"?: "${["hell", "dog136"].join("")}"`, "gi");
   const ATTRIBUTION_FILES = new Set(["LICENSE", "README.md", "package.json", "scripts/licenses.mjs", "THIRD-PARTY-NOTICES.md"]);
   const files = execFileSync("git", ["ls-files"], { encoding: "utf8" }).split("\n").filter((f) => f && !/(package-lock\.json|\.(png|jpe?g|ico|woff2?))$/.test(f) && fs.existsSync(f));
   assert.ok(files.length > 100, "les fichiers suivis doivent être listés");
@@ -172,6 +173,7 @@ test("le framework est agnostique de toute donnée métier : aucun nom de site, 
     let text = fs.readFileSync(f, "utf8");
     // Seule exception : la mention du développeur du framework (licence, README, auteur du paquet, notices), rien d'autre.
     if (ATTRIBUTION_FILES.has(f)) text = text.replace(AUTHOR, "");
+    text = text.replace(AUTHOR_FIELD, "");   // le champ « author » des modules livrés
     for (const re of forbidden) assert.ok(!re.test(text), `${f} contient une donnée propre à un site (${re.source}) : le framework doit rester neutre`);
   }
 });

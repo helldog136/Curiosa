@@ -19,7 +19,7 @@ export const manifest: ParsedManifest = {
     en: "A public page presenting your identity to press and partners: presentation, logo, colors, font, contact. It only displays what you set in Settings — nothing to maintain here.",
     fr: "Une page publique qui présente votre identité à la presse et aux partenaires : présentation, logo, couleurs, police, contact. Elle n'affiche que ce que vous réglez dans Réglages — rien à entretenir ici.",
   },
-  author: "Vitrine",
+  author: "Helldog136",
   license: "MIT",
   icon: "📰",
   type: "widget",
