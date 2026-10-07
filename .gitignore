@@ -8,13 +8,30 @@
 # production
 /build
 
-# env
+# env et secrets : jamais dans git (seul .env.example, sans valeurs réelles, est suivi)
 .env
-.env*.local
+.env.*
+!.env.example
+*.env
+.envrc
 
 # misc
 .DS_Store
 *.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+id_rsa*
+id_ed25519*
+*.keystore
+secrets/
+.secrets/
+credentials*.json
+service-account*.json
+auth_secret*
+.npmrc
 npm-debug.log*
 
 # typescript
@@ -35,3 +52,23 @@ deploy.log
 
 # bases de données temporaires des tests
 /tests/.tmp/
+
+# bases SQLite et données d'exécution (sauvegardes, envois, clés générées)
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+*.db
+*.db-journal
+/uploads/
+/backups/
+*.vitrine-backup
+*.vbak
+
+# éditeurs et système
+.idea/
+.vscode/
+*.swp
+Thumbs.db
+*.log
+.claude/settings.local.json
