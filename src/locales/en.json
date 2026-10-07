@@ -331,5 +331,22 @@
   "mcp.onByDefault": "on by default",
   "mcp.offByDefault": "off by default",
   "mcp.action.read": "reads",
-  "mcp.action.write": "writes"
+  "mcp.action.write": "writes",
+  "settings.about": "About (longer presentation)",
+  "settings.aboutHelp": "Markdown. Shown wherever the site presents itself, for example in a press kit.",
+  "brand.color.accent": "Accent",
+  "brand.color.accentFg": "Text on accent",
+  "brand.color.bg": "Background",
+  "brand.color.surface": "Surface",
+  "brand.color.fg": "Text",
+  "brand.color.muted": "Muted text",
+  "brand.color.line": "Borders",
+  "brand.role.accent": "Brand color, buttons and links",
+  "brand.role.accentFg": "Text placed on the accent color",
+  "brand.role.bg": "Page background",
+  "brand.role.surface": "Cards and panels",
+  "brand.role.fg": "Main text",
+  "brand.role.muted": "Secondary text",
+  "brand.role.line": "Separators and outlines",
+  "site.download": "Download"
 }

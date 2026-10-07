@@ -331,5 +331,22 @@
   "mcp.onByDefault": "active par défaut",
   "mcp.offByDefault": "désactivée par défaut",
   "mcp.action.read": "lit",
-  "mcp.action.write": "écrit"
+  "mcp.action.write": "écrit",
+  "settings.about": "À propos (présentation longue)",
+  "settings.aboutHelp": "Markdown. Affichée partout où le site se présente, par exemple dans un kit presse.",
+  "brand.color.accent": "Accent",
+  "brand.color.accentFg": "Texte sur l'accent",
+  "brand.color.bg": "Fond",
+  "brand.color.surface": "Surface",
+  "brand.color.fg": "Texte",
+  "brand.color.muted": "Texte atténué",
+  "brand.color.line": "Bordures",
+  "brand.role.accent": "Couleur de marque, boutons et liens",
+  "brand.role.accentFg": "Texte posé sur la couleur d'accent",
+  "brand.role.bg": "Arrière-plan des pages",
+  "brand.role.surface": "Cartes et encarts",
+  "brand.role.fg": "Texte principal",
+  "brand.role.muted": "Texte secondaire",
+  "brand.role.line": "Séparateurs et contours",
+  "site.download": "Télécharger"
 }

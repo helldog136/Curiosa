@@ -1,5 +1,8 @@
 import type { Block, Slot } from "../blocks";
 
+// Les modules typent leurs blocs avec ce ré-export : ils n'importent rien d'autre du cœur.
+export type { Block, Slot };
+
 export type LocalizedString = string | Record<string, string>;
 
 export type SettingField = {
@@ -74,6 +77,8 @@ export type ModuleManifest = {
   content?: ContentConfig;
   /** Une instance de ce module a une page publique (montée sur un chemin). Défaut : oui si `content`. */
   page?: boolean;
+  /** Chemin public proposé à la création d'une instance d'un module à page (défaut : la clé de l'instance). */
+  basePath?: string;
   /** Morceaux que les instances proposent à la page d'accueil. */
   sections: SectionDecl[];
   /** Informations que ce module digère (ses instances s'abonnent à des sources dans l'admin). */
@@ -124,6 +129,19 @@ export type EntrySummary = {
 /** Un élément reçu d'un fournisseur : champs du schéma du consommateur + sa provenance. */
 export type TopicItem = Record<string, unknown> & { source: { instance: string; module: string; name: string } };
 
+/** Identité visuelle du site, lue depuis les réglages du cœur (voir src/core/brand.ts). Lecture seule. */
+export type ModuleBrand = {
+  name: string;
+  tagline: string;
+  about: string;
+  logo: string | null;
+  contactEmail: string;
+  colors: { key: string; name: string; hex: string; role: string }[];
+  font: { key: string; name: string; stack: string };
+  defaultLocale: string;
+  locales: string[];
+};
+
 export type ModuleApi = {
   topics: {
     /**
@@ -138,6 +156,8 @@ export type ModuleApi = {
     list(opts?: { instance?: string; locale?: string; limit?: number }): Promise<EntrySummary[]>;
   };
   site(locale?: string): Promise<{ name: string; tagline: string; logo: string | null }>;
+  /** Identité visuelle (nom, présentation, logo, palette, police) : exactement ce que le site utilise. */
+  brand(locale?: string): Promise<ModuleBrand>;
   instances: {
     list(opts?: { locale?: string; module?: string }): Promise<{ key: string; module: string; basePath: string | null; name: string }[]>;
   };

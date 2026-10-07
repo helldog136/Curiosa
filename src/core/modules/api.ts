@@ -1,3 +1,4 @@
+import { getBrand } from "@/core/brand";
 import { siteUrl } from "@/core/config";
 import { entryPath, listEntries } from "@/core/content/entries";
 import { getInstanceByKey, listInstances, pickName, type InstanceView } from "@/core/instances";
@@ -19,7 +20,7 @@ import type { ModuleApi } from "./types";
  *     (MCP : pas d'appel côté module ; un module déclare ses actions `mcp`, le cœur les expose)
  *
  *   LECTURE DU SITE (en lecture seule, pour que les modules s'articulent avec le reste)
- *     site, instances, entries
+ *     site, brand (identité visuelle), instances, entries
  *
  * Voir docs/PLATFORM.md.
  */
@@ -42,6 +43,7 @@ export function makeApi(instance: InstanceView, locale: string): ModuleApi {
       const c = await getSiteConfig(loc);
       return { name: c.name, tagline: c.tagline, logo: c.logo };
     },
+    brand: (loc) => getBrand(loc ?? locale),
     instances: {
       async list({ locale: loc, module } = {}) {
         const config = await getSiteConfig();

@@ -52,7 +52,7 @@ export async function createInstance(db: Db, input: NewInstance) {
   const mounted = hasPage(manifest);
   let basePath: string | null = null;
   if (mounted) {
-    basePath = input.basePath === undefined ? (content?.basePath ?? key) : input.basePath;
+    basePath = input.basePath === undefined ? (content?.basePath ?? manifest.basePath ?? key) : input.basePath;
     if (basePath !== null && (await db.moduleInstance.findUnique({ where: { basePath } }))) basePath = key; // repli : chemin déjà pris
   }
   return db.moduleInstance.create({

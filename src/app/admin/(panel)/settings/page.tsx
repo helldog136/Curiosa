@@ -3,13 +3,13 @@ import { getSettingByLocale, getSetting } from "@/core/settings";
 import { KNOWN_LOCALES, localeName } from "@/core/i18n/locales";
 import { UI_LOCALES } from "@/core/i18n/dictionary";
 import { ActionForm } from "@/components/admin/ActionForm";
-import { Checkbox, Select, TextField } from "@/components/admin/Field";
+import { Checkbox, Select, TextArea, TextField } from "@/components/admin/Field";
 import { ImageField } from "@/components/admin/ImageField";
 import { ThemePicker } from "@/components/admin/ThemePicker";
 import { ui } from "@/components/admin/ui";
 import { saveSettings } from "./actions";
 
-const TRANSLATABLE = ["site.name", "site.tagline", "footer.text"] as const;
+const TRANSLATABLE = ["site.name", "site.tagline", "site.about", "footer.text"] as const;
 
 export default async function SettingsPage() {
   const { t, config, advanced } = await adminCtx("admin");
@@ -31,7 +31,7 @@ export default async function SettingsPage() {
             <legend className={ui.label}>{t("settings.enabledLocales")}</legend>
             <div className="grid gap-1 sm:grid-cols-3">
               {Object.entries(KNOWN_LOCALES).map(([code, name]) => (
-                <Checkbox key={code} name="enabledLocales" label={name} defaultChecked={config.locales.includes(code)} />
+                <Checkbox key={code} name="enabledLocales" value={code} label={name} defaultChecked={config.locales.includes(code)} />
               ))}
             </div>
           </fieldset>
@@ -47,6 +47,7 @@ export default async function SettingsPage() {
               <legend className="px-2 text-sm font-medium">{localeName(l)}</legend>
               <TextField name={`site.name__${l}`} label={t("settings.siteName")} defaultValue={String(values["site.name"]?.[l] ?? "")} />
               <TextField name={`site.tagline__${l}`} label={t("settings.tagline")} defaultValue={String(values["site.tagline"]?.[l] ?? "")} />
+              <TextArea name={`site.about__${l}`} label={t("settings.about")} help={t("settings.aboutHelp")} rows={4} defaultValue={String(values["site.about"]?.[l] ?? "")} />
               {advanced && <TextField name={`footer.text__${l}`} label={t("settings.footerText")} defaultValue={String(values["footer.text"]?.[l] ?? "")} />}
             </fieldset>
           ))}

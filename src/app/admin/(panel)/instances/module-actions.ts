@@ -30,6 +30,10 @@ export async function runModuleAdminAction(instanceId: string, action: string, _
   }
   await audit(user.email, `module.${active.instance.key}.${action}`);
   revalidatePath("/admin", "layout");
-  if (result.redirect) redirect(result.redirect);
+  if (result.redirect) {
+    // Un module ne peut rediriger que dans l'admin : "?x=y" reste sur la page de l'instance, "/admin/…" va ailleurs dans l'admin.
+    const to = result.redirect.startsWith("?") ? `/admin/instances/${instanceId}${result.redirect === "?" ? "" : result.redirect}` : result.redirect;
+    if (to.startsWith("/admin/") && !to.startsWith("//")) redirect(to);
+  }
   return { ok: result.ok, error: result.error };
 }

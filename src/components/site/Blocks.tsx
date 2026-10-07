@@ -8,6 +8,8 @@ import { makeTranslator } from "@/core/i18n/dictionary";
 import { EntryList } from "./EntryList";
 import { Markdown } from "./Markdown";
 import { ModuleForm } from "./ModuleForm";
+import { CopyCode } from "./CopyCode";
+import { CopyText } from "./CopyText";
 import { AdminBlockForm, RowActionButton } from "../admin/AdminBlocks";
 
 const TONES = {
@@ -40,6 +42,53 @@ export async function Blocks({ blocks, locale, adminInstanceId }: { blocks: Bloc
           </section>,
         );
         break;
+      case "swatches": {
+        const t = makeTranslator(locale);
+        out.push(
+          <ul key={i} className="grid gap-3 sm:grid-cols-2">
+            {block.items.filter((c) => /^#[0-9a-fA-F]{6}$/.test(c.hex)).map((c) => (
+              <li key={c.name + c.hex} className="flex items-center gap-4 rounded-xl border border-line bg-surface p-3">
+                <span className="h-14 w-14 shrink-0 rounded-lg border border-line" style={{ backgroundColor: c.hex }} aria-hidden="true" />
+                <div className="flex min-w-0 flex-col items-start gap-1">
+                  <span className="text-sm font-semibold">{c.name}</span>
+                  {c.role && <span className="text-xs text-muted">{c.role}</span>}
+                  <CopyCode code={c.hex.toUpperCase()} copyLabel={t("site.copy")} copiedLabel={t("site.copied")} />
+                </div>
+              </li>
+            ))}
+          </ul>,
+        );
+        break;
+      }
+      case "downloads": {
+        const t = makeTranslator(locale);
+        out.push(
+          <ul key={i} className="grid gap-4 sm:grid-cols-2">
+            {block.items.filter((d) => d.src.startsWith("/") || /^https?:\/\//.test(d.src)).map((d) => (
+              <li key={d.src} className="flex flex-col gap-3 rounded-xl border border-line bg-surface p-4">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={d.src} alt={d.label} className="h-40 w-full object-contain" />
+                <div className="flex items-center justify-between gap-3 text-sm">
+                  <span>{d.label}{d.detail && <span className="block text-xs text-muted">{d.detail}</span>}</span>
+                  <a href={d.src} download className="rounded-full bg-accent px-3 py-1 text-xs font-semibold text-accent-fg hover:opacity-90">{t("site.download")}</a>
+                </div>
+              </li>
+            ))}
+          </ul>,
+        );
+        break;
+      }
+      case "copy": {
+        const t = makeTranslator(locale);
+        out.push(
+          <div key={i} className="space-y-2 rounded-xl border border-line bg-surface p-4">
+            {block.label && <p className="text-xs uppercase tracking-wide text-muted">{block.label}</p>}
+            <p className="text-sm">{block.text}</p>
+            <CopyText text={block.text} copyLabel={t("site.copy")} copiedLabel={t("site.copied")} />
+          </div>,
+        );
+        break;
+      }
       case "heading":
         out.push(<h2 key={i} className="mt-6 text-xl font-semibold">{block.text}</h2>);
         break;

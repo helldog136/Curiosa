@@ -64,6 +64,8 @@ export type SiteConfig = {
   adminLocale: string | null;
   name: string;
   tagline: string;
+  /** Présentation longue du site/de la personne (Markdown) — identité, réglée dans l'admin. */
+  about: string;
   logo: string | null;
   footerText: string;
   contactEmail: string;
@@ -90,6 +92,7 @@ export const getSiteConfig = cache(async (locale?: string): Promise<SiteConfig> 
     adminLocale: (await getSetting<string>("i18n.adminDefault")) ?? null,
     name: await str("site.name", "Vitrine"),
     tagline: await str("site.tagline"),
+    about: await str("site.about"),
     logo: (await getSetting<string>("site.logo")) ?? null,
     footerText: await str("footer.text"),
     contactEmail: (await getSetting<string>("site.contactEmail")) ?? "",

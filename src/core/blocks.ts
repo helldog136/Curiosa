@@ -55,6 +55,12 @@ export type Block =
       cancelHref?: string;
     }
   | { type: "heading"; text: string }
+  /** Pastilles de couleur avec code copiable. `hex` : #RRGGBB. */
+  | { type: "swatches"; items: { name: string; hex: string; role?: string }[] }
+  /** Fichiers (images) proposés au téléchargement, avec aperçu. */
+  | { type: "downloads"; items: { src: string; label: string; detail?: string }[] }
+  /** Texte à copier d'un clic (description courte, formule de présentation…). */
+  | { type: "copy"; label?: string; text: string }
   | { type: "head"; tags: HeadTag[] };
 
 /**

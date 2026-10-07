@@ -17,7 +17,7 @@ Ces frontières sont vérifiées par `tests/architecture.test.mjs`.
 ```
  ┌───────────────────────────────────────────────────────────────────────────────┐
  │ FONCTIONNALITÉS   src/modules-builtin/  ·  modules-community/  ·  modules git  │
- │ blog, sponsors, partenariats, overlays, formulaire de contact, RSS…           │
+ │ blog, sponsors, partenariats, overlays, formulaire de contact, RSS, kit presse…           │
  │ N'ont accès qu'à  ctx.api  (et déclarent leurs besoins dans module.json)      │
  └──────────────▲────────────────────────────────────────────────────────────────┘
                 │ ctx.api  (src/core/modules/api.ts)
@@ -71,8 +71,13 @@ sont dans le service (`mcp/access.ts`, `mcp/server.ts`) : aucun fournisseur ne p
 
 ## Ce que le cœur lit pour les modules (hors services)
 
-`ctx.api.site()`, `ctx.api.instances.list()`, `ctx.api.entries.list()` : lecture seule, pour que les modules s'articulent avec le
-reste du site. Ce ne sont pas des services (ils exposent le site, pas un mécanisme).
+`ctx.api.site()`, `ctx.api.brand()`, `ctx.api.instances.list()`, `ctx.api.entries.list()` : lecture seule, pour que les modules
+s'articulent avec le reste du site. Ce ne sont pas des services (ils exposent le site, pas un mécanisme).
+
+**`ctx.api.brand()`** — l'identité visuelle : nom, accroche, présentation, logo, email de contact, palette (couleurs nommées et leur
+rôle, traduits), police. C'est **la même source** (`src/core/brand.ts`, même `buildPalette`) que celle du rendu réel du site : ce que
+l'administrateur règle dans *Réglages* (Identité, Apparence) est stocké une seule fois dans le cœur. Un module qui *montre* l'identité
+(le **kit presse**) ne la copie ni ne la stocke : il la lit. Changer le thème du site change donc le kit presse, sans rien refaire.
 
 ## Ce que le cœur ne fait pas
 

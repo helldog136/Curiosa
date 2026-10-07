@@ -320,6 +320,9 @@ la vôtre) et, pour `entry.*`, `ctx.entry`.
 | `markdown` | `text` (sans HTML brut) |
 | `html` | `html` — brut, sous la responsabilité du module |
 | `heading` | `text` |
+| `swatches` | `items: [{ name, hex, role? }]` — pastilles de couleur avec code copiable |
+| `downloads` | `items: [{ src, label, detail? }]` — images à télécharger, avec aperçu |
+| `copy` | `text`, `label?` — texte à copier d'un clic |
 | `hero` | `title`, `text?`, `image?` |
 | `banner` | `text`, `href?`, `tone?` (`info` · `success` · `warning`) |
 | `links` | `items: [{ label, href, icon? }]` |
@@ -337,7 +340,7 @@ la vôtre) et, pour `entry.*`, `ctx.entry`.
 - `ctx.t("clé", { vars })` — textes de `locales/<langue>.json`
 - `ctx.api.topics.collect(sujet, { limit? })` — informations des sources de l'instance (sujet déclaré dans `consumes`)
 - `ctx.api.entries.list({ instance?, locale?, limit? })` — entrées publiées (par défaut, de l'instance courante)
-- `ctx.api.instances.list({ module?, locale? })`, `ctx.api.site(locale)` (nom, accroche, logo)
+- `ctx.api.instances.list({ module?, locale? })`, `ctx.api.site(locale)` (nom, accroche, logo), `ctx.api.brand(locale)` (identité visuelle complète : présentation, couleurs nommées, police, contact — lecture seule, jamais copiée)
 - `ctx.api.store.add / list / remove / count` — stockage privé de l'instance
 - **Services du cœur** (voir [PLATFORM.md](PLATFORM.md)) : `ctx.api.qr(texte)` (QR code en SVG), `ctx.api.store` (stockage privé), `ctx.api.topics` (échanges entre modules) ; le MCP se déclare dans le manifeste
 - `ctx.api.siteUrl`
@@ -348,8 +351,8 @@ de fonctionner quand le cœur évolue (tant que `apiVersion` est inchangé).
 ## Modules livrés avec le cœur, modules communautaires
 
 Seuls les modules de base vivent dans `src/modules-builtin/` : blog, réseaux sociaux, codes promo,
-pages, collection vierge, bandeau d'accueil, flux RSS, formulaire de contact, statut live et overlay
-défilant. Tout le reste s'installe depuis git. `modules-community/` contient des modules complets qui
+pages, collection vierge, bandeau d'accueil, flux RSS, formulaire de contact, statut live, overlay
+défilant et **kit presse** (une pure vitrine : il lit l'identité réglée dans le cœur via `ctx.api.brand()` et ne stocke rien). Tout le reste s'installe depuis git. `modules-community/` contient des modules complets qui
 **ne font pas partie du cœur** (un test le vérifie) et qui rejoindront chacun leur dépôt : le premier est
 [`maze-overlay`](../modules-community/maze-overlay), le labyrinthe 3D de helldog136.be porté en module
 (moteur en JavaScript natif servi par ses propres routes, alimenté par les sujets `core.entry` et

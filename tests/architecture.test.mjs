@@ -99,3 +99,28 @@ test("le service QR produit un SVG et borne l'entrée", async () => {
   assert.match(svg, /^<svg/);
   assert.ok((await qrSvg("x".repeat(5000))).startsWith("<svg"));
 });
+
+test("le kit presse ne stocke rien : il lit l'identité du cœur (ctx.api.brand) et c'est tout", () => {
+  const code = read("src/modules-builtin/press-kit/index.ts");
+  assert.ok(code.includes("ctx.api.brand"), "le kit presse doit lire l'identité via ctx.api.brand");
+  for (const forbidden of ["ctx.api.store", "adminActions", "adminPanel", "setSetting", "prisma"]) {
+    assert.ok(!code.includes(forbidden), `le kit presse ne doit pas utiliser « ${forbidden} » : il n'a aucune donnée à lui`);
+  }
+});
+
+test("l'identité visuelle a UNE source : le site et les modules lisent la même palette", () => {
+  const brand = read("src/core/brand.ts");
+  const layout = read("src/app/(site)/layout.tsx");
+  assert.ok(brand.includes("buildPalette") && layout.includes("buildPalette"), "brand.ts et le layout doivent partager buildPalette");
+});
+
+test("une case à cocher lue avec getAll() porte une valeur (sinon le navigateur envoie « on »)", () => {
+  const files = [...code("src/app"), ...code("src/components")];
+  const names = new Set();
+  for (const f of files) for (const m of read(f).matchAll(/formData\.getAll\(\s*"([^"]+)"/g)) names.add(m[1]);
+  for (const f of files) {
+    for (const m of read(f).matchAll(/<Checkbox\b[^>]*?name="([^"]+)"[^>]*?\/?>/g)) {
+      if (names.has(m[1])) assert.ok(/\bvalue=/.test(m[0]), `${f} : <Checkbox name="${m[1]}"> est lu avec getAll() mais n'a pas de value`);
+    }
+  }
+});
