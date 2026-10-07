@@ -517,5 +517,15 @@
   "tasks.failed": "dernière exécution en échec",
   "tasks.never": "pas encore exécutée",
   "settings.blockAiBots": "Bloquer les robots d'entraînement IA",
-  "settings.blockAiBotsHelp": "robots.txt interdit le site aux robots de collecte IA (GPTBot, ClaudeBot…). Aucun moteur de recherche n'est bloqué."
+  "settings.blockAiBotsHelp": "robots.txt interdit le site aux robots de collecte IA (GPTBot, ClaudeBot…). Aucun moteur de recherche n'est bloqué.",
+  "nav.audit": "Journal d'audit",
+  "audit.intro": "Qui a fait quoi, quand (connexions, réglages, modules, sauvegardes…). Le contenu des messages n'est jamais journalisé.",
+  "audit.search": "Rechercher (qui, action, cible)",
+  "audit.searchButton": "Chercher",
+  "audit.count": "{n} événement(s)",
+  "audit.when": "Quand",
+  "audit.who": "Qui",
+  "audit.what": "Action",
+  "audit.target": "Cible",
+  "audit.empty": "Rien à afficher."
 }

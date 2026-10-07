@@ -517,5 +517,15 @@
   "tasks.failed": "last run failed",
   "tasks.never": "not run yet",
   "settings.blockAiBots": "Block AI training crawlers",
-  "settings.blockAiBotsHelp": "robots.txt disallows AI scraping bots (GPTBot, ClaudeBot…). No search engine is blocked."
+  "settings.blockAiBotsHelp": "robots.txt disallows AI scraping bots (GPTBot, ClaudeBot…). No search engine is blocked.",
+  "nav.audit": "Audit log",
+  "audit.intro": "Who did what, and when (sign-ins, settings, modules, backups…). Message contents are never logged.",
+  "audit.search": "Search (who, action, target)",
+  "audit.searchButton": "Search",
+  "audit.count": "{n} event(s)",
+  "audit.when": "When",
+  "audit.who": "Who",
+  "audit.what": "Action",
+  "audit.target": "Target",
+  "audit.empty": "Nothing to show."
 }
