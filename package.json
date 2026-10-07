@@ -21,7 +21,8 @@
     "licenses": "node scripts/licenses.mjs",
     "migrations:freeze": "node scripts/migrations-freeze.mjs",
     "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./tests/helpers/register.mjs --test \"tests/**/*.test.mjs\"",
-    "test:watch": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./tests/helpers/register.mjs --test --watch \"tests/**/*.test.mjs\""
+    "test:watch": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./tests/helpers/register.mjs --test --watch \"tests/**/*.test.mjs\"",
+    "import:grav": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./tests/helpers/register.mjs scripts/import-grav.mjs"
   },
   "dependencies": {
     "@prisma/client": "6.19.3",
@@ -49,7 +50,8 @@
     "eslint-config-next": "16.3.8",
     "prisma": "6.19.3",
     "tailwindcss": "4.3.3",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "yaml": "^2.9.1"
   },
   "prisma": {
     "schema": "prisma/schema.prisma"
