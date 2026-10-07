@@ -126,3 +126,31 @@ export async function getRefOptions(instanceId: string, topic: string, locale: s
   const items = await collect(consumer, topic, { limit: 200, locale });
   return items.flatMap((i) => (typeof i.id === "string" && typeof i.title === "string" ? [{ value: i.id, label: i.title }] : []));
 }
+
+/**
+ * Collecte « côté cœur » : le cœur lui-même consomme un sujet (flux RSS, plan du site…), sans instance
+ * consommatrice ni choix de sources — toutes les instances fournisseuses actives contribuent, validées selon
+ * le format donné. L'ordre est celui des fournisseurs (clé d'instance) : déterministe.
+ */
+export async function collectForCore(
+  topic: string,
+  schema: TopicField[],
+  opts: { locale: string; limit?: number; instance?: string },
+): Promise<TopicItem[]> {
+  const limit = Math.min(200, Math.max(1, opts.limit ?? 50));
+  const config = await getSiteConfig();
+  const providers = (await providersOf(topic)).filter((p) => !opts.instance || p.instance.key === opts.instance).sort((a, b) => a.instance.key.localeCompare(b.instance.key));
+  const out: TopicItem[] = [];
+  for (const provider of providers) {
+    try {
+      for (const raw of await fromProvider(provider, topic, opts.locale, limit, [])) {
+        const item = conform(raw, schema);
+        if (!item) continue;
+        out.push({ ...item, source: { instance: provider.instance.key, module: provider.mod.manifest.id, name: pickName(provider.instance, opts.locale, config.defaultLocale) } });
+      }
+    } catch (error) {
+      console.error(`[modules] provider ${provider.instance.key} failed for topic ${topic}:`, error);
+    }
+  }
+  return out;
+}

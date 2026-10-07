@@ -18,6 +18,8 @@ export const RESERVED_PATHS = new Set([
   "go",
   "uploads",
   "overlays",
+  "feed",
+  "feed.xml",
   "_next",
   "sitemap.xml",
   "robots.txt",

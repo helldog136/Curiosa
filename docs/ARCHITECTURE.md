@@ -15,7 +15,7 @@ réglages, le stockage des entrées et leur éditeur, les redirections, le rendu
 l'exécution des modules. Rien de plus.
 
 - Un **module** est un type (code + manifeste) : `blog`, `links`, `codes`, `pages`, `collection`
-  (vierge), `hero`, `feeds`, `contact-form`, `live-status`… livrés ou installés depuis git.
+  (vierge), `hero`, `contact-form`, `live-status`… livrés ou installés depuis git.
 - Une **instance** (`ModuleInstance`) est un exemplaire configuré. Le manifeste dit si le module
   est `single` (une seule instance : RSS, statut live) ou `multiple` (autant qu'on veut : blogs,
   listes de liens, formulaires). Chaque instance a un identifiant technique stable (dérivé de son surnom), un surnom d'admin (superflu s'il n'y en a qu'une, voir `src/core/instanceLabel.ts`), des noms publics par langue, un chemin

@@ -46,6 +46,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
     <html lang={locale} dir={RTL_LOCALES.has(locale) ? "rtl" : "ltr"}>
       <head>
         <style dangerouslySetInnerHTML={{ __html: css }} />
+        <link rel="alternate" type="application/rss+xml" title={localized.name} href={`/feed.xml?lang=${locale}`} />
         <HeadTags blocks={headBlocks} />
       </head>
       <body className="min-h-screen bg-bg text-fg antialiased">

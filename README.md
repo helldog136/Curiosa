@@ -69,7 +69,7 @@ src/core/           Le cœur, agnostique : runtime des modules (registre, instal
                     contexte), moteur de contenu, redirections, langues, réglages
 src/core/platform.ts  Racine de composition : relie les services aux fonctionnalités
 src/modules-builtin Les fonctions de base, déjà sous forme de modules : blog, links, codes,
-                    pages, collection, hero, feeds, contact-form, live-status, ticker-overlay,
+                    pages, collection, hero, contact-form, live-status, ticker-overlay,
                     press-kit (vitrine de l'identité réglée dans le cœur)
 src/app/(site)      Site public (accueil assemblé de sections, pages d'instances, redirections)
 src/app/admin       L'admin unique : assistant, entrées, une sous-page par instance, accueil,

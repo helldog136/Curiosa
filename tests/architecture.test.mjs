@@ -49,7 +49,7 @@ test("aucun service du cœur ne cite un module en particulier", () => {
 });
 
 test("le cœur (hors registre des modules livrés) ne connaît aucun module par son identifiant", () => {
-  const ids = ["blog", "links", "codes", "pages", "hero", "collection", "feeds", "contact-form", "live-status", "ticker-overlay", "partnerships", "sponsors", "sponsor-ticker", "maze-overlay"];
+  const ids = ["blog", "links", "codes", "pages", "hero", "collection", "contact-form", "live-status", "ticker-overlay", "partnerships", "sponsors", "sponsor-ticker", "maze-overlay"];
   for (const file of [...code("src/core"), ...code("src/app"), ...code("src/components")]) {
     if (file.endsWith("src/core/modules/registry.ts")) continue; // importe la liste des modules livrés
     const text = read(file);
