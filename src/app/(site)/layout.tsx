@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { buildTheme, themeCss } from "@/core/color";
+import { glowCss } from "@/core/glow";
+import { backgroundCss, effectiveLayers } from "@/core/background";
 import { RTL_LOCALES } from "@/core/i18n/locales";
 import { getVisitorLocale, getVisitorTranslator, LOCALE_HEADER } from "@/core/i18n/request";
 import { runSlot } from "@/core/modules/runtime";
@@ -36,7 +38,9 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
   const locale = await getVisitorLocale();
   const localized = await getSiteConfig(locale);
   const t = await getVisitorTranslator();
-  const css = themeCss(buildTheme(localized.background, localized.accent, localized.font));
+  const theme = buildTheme(localized.background, localized.accent, localized.font);
+  const layers = effectiveLayers(localized.bg.preset, localized.bg.custom, localized.bg.image);
+  const css = themeCss(theme) + glowCss(localized.glow.level, localized.glow.custom, localized.accent) + backgroundCss(layers, theme);
 
   const [headBlocks, bannerBlocks] = await Promise.all([runSlot("layout.head", locale), runSlot("layout.banner", locale)]);
 
@@ -49,6 +53,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
         <HeadTags blocks={headBlocks} />
       </head>
       <body className="min-h-screen bg-bg text-fg antialiased">
+        {layers.length > 0 && <div className="cbg" aria-hidden="true">{layers.map((_, i) => <i key={i} />)}</div>}
         <a href="#content" className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:bg-accent focus:px-3 focus:py-1 focus:text-accent-fg">
           {t("site.skip")}
         </a>

@@ -10,6 +10,12 @@ import { ui } from "@/components/admin/ui";
 import { hasRole } from "@/core/permissions";
 import { getMailConfig } from "@/core/services/mail";
 import { saveSettings } from "./actions";
+
+/** Exemple affiché tant qu'aucune description personnalisée n'est enregistrée : le format est décrit dans docs/BACKGROUND.md. */
+const BG_EXAMPLE = JSON.stringify([
+  { type: "linear", angle: 90, stops: [{ color: "bg", at: 20 }, { color: "accent", at: 100, a: 38 }] },
+  { type: "dots", color: "#ffffff", size: 2, gap: 28, opacity: 85, side: "left", span: 40 },
+], null, 2);
 import { saveMail, sendTestMail } from "./mail-actions";
 
 const TRANSLATABLE = ["site.name", "site.tagline", "site.about", "footer.text"] as const;
@@ -70,6 +76,34 @@ export default async function SettingsPage() {
           <ThemePicker background={config.background} accent={config.accent} advanced={advanced}
             labels={{ background: t("settings.background"), accent: t("settings.accent") }}
             names={{ night: t("theme.night"), ocean: t("theme.ocean"), forest: t("theme.forest"), rose: t("theme.rose"), violet: t("theme.violet"), daylight: t("theme.daylight"), paper: t("theme.paper") }} />
+          <Select name="glow" label={t("settings.glow")} help={t("settings.glowHelp")} defaultValue={config.glow.level}
+            options={[
+              { value: "none", label: t("settings.glow.none") }, { value: "soft", label: t("settings.glow.soft") }, { value: "strong", label: t("settings.glow.strong") },
+              ...(advanced ? [{ value: "custom", label: t("settings.glow.custom") }] : []),
+            ]} />
+          {advanced && (
+            <fieldset className="space-y-3 rounded-2xl border border-line p-4">
+              <legend className="px-2 text-sm font-medium">{t("settings.glow.tuning")}</legend>
+              <p className={ui.help}>{t("settings.glow.tuningHelp")}</p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <TextField name="glow_count" type="number" label={t("settings.glow.count")} help={t("settings.glow.countHelp")} defaultValue={String(config.glow.custom.count)} />
+                <TextField name="glow_size" type="number" label={t("settings.glow.size")} help={t("settings.glow.sizeHelp")} defaultValue={String(config.glow.custom.size)} />
+                <TextField name="glow_variance" type="number" label={t("settings.glow.variance")} help={t("settings.glow.varianceHelp")} defaultValue={String(config.glow.custom.variance)} />
+                <TextField name="glow_hue" type="number" label={t("settings.glow.hue")} help={t("settings.glow.hueHelp")} defaultValue={String(config.glow.custom.hue)} />
+                <TextField name="glow_intensity" type="number" label={t("settings.glow.intensity")} help={t("settings.glow.intensityHelp")} defaultValue={String(config.glow.custom.intensity)} />
+                <TextField name="glow_seed" type="number" label={t("settings.glow.seed")} help={t("settings.glow.seedHelp")} defaultValue={String(config.glow.custom.seed)} />
+              </div>
+            </fieldset>
+          )}
+          <Select name="bgPreset" label={t("settings.bg")} help={t("settings.bgHelp")} defaultValue={config.bg.preset}
+            options={[
+              { value: "none", label: t("settings.bg.none") }, { value: "dots", label: t("settings.bg.dots") }, { value: "dusk", label: t("settings.bg.dusk") }, { value: "grid", label: t("settings.bg.grid") },
+              ...(advanced ? [{ value: "custom", label: t("settings.bg.custom") }] : []),
+            ]} />
+          <ImageField name="bgImage" label={t("settings.bgImage")} defaultValue={config.bg.image} uploadLabel={t("action.upload")} />
+          {advanced && (
+            <TextArea name="bgCustom" label={t("settings.bgCustom")} help={t("settings.bgCustomHelp")} rows={10} mono defaultValue={config.bg.custom || BG_EXAMPLE} />
+          )}
           {advanced && (
             <Select name="font" label={t("settings.font")} defaultValue={config.font}
               options={[{ value: "sans", label: "Sans-serif" }, { value: "serif", label: "Serif" }, { value: "mono", label: "Monospace" }]} />

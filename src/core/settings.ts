@@ -1,4 +1,6 @@
 import { cache } from "react";
+import { isBackgroundImage, isPreset, type BackgroundPreset } from "./background";
+import { isGlowLevel, normalizeTuning, type GlowLevel, type GlowTuning } from "./glow";
 import { prisma } from "./db";
 
 type Stored = Record<string, Record<string, unknown>>; // key → locale → value
@@ -78,6 +80,10 @@ export type SiteConfig = {
   accent: string;
   background: string;
   font: "sans" | "serif" | "mono";
+  /** Halo de couleur en fond de page (voir core/glow.ts) : niveau, et réglages du niveau « personnalisé ». */
+  glow: { level: GlowLevel; custom: GlowTuning };
+  /** Fond de page : préréglage, description personnalisée (JSON, voir core/background.ts) et image de fond éventuelle. */
+  bg: { preset: BackgroundPreset; custom: string; image: string | null };
   nav: NavItem[];
   homeSections: HomeSection[];
   setupCompleted: boolean;
@@ -105,6 +111,12 @@ export const getSiteConfig = cache(async (locale?: string): Promise<SiteConfig> 
     accent: (await getSetting<string>("theme.accent")) ?? "#e8a23b",
     background: (await getSetting<string>("theme.background")) ?? "#121214",
     font: (await getSetting<SiteConfig["font"]>("theme.font")) ?? "sans",
+    glow: { level: isGlowLevel(all["theme.glow"]?.[""]) ? (all["theme.glow"]![""] as GlowLevel) : "none", custom: normalizeTuning(all["theme.glow.custom"]?.[""]) },
+    bg: {
+      preset: isPreset(all["theme.bgPreset"]?.[""]) ? (all["theme.bgPreset"]![""] as BackgroundPreset) : "none",
+      custom: String(all["theme.bgCustom"]?.[""] ?? ""),
+      image: isBackgroundImage(all["theme.bgImage"]?.[""]) ? (all["theme.bgImage"]![""] as string) : null,
+    },
     nav: (await getSetting<NavItem[]>("nav.custom")) ?? [],
     homeSections: (await getSetting<HomeSection[]>("home.sections")) ?? DEFAULT_HOME_SECTIONS,
     setupCompleted: (await getSetting<boolean>("setup.completed")) ?? false,

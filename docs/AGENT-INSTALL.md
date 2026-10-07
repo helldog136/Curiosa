@@ -47,14 +47,27 @@ ls -la /var/www 2>/dev/null                # dossiers existants (ne pas écraser
 
 Poser ces questions **en une fois**, puis ne plus la déranger :
 
-1. Le **nom de domaine** du site (et s'il pointe déjà vers ce serveur).
-2. Le **dossier d'installation** souhaité (défaut proposé : `/var/www/curiosa`) et le **nom de l'utilisateur système** (défaut : `curiosa`).
-3. Quel **serveur web** est devant (détecté à l'étape 0 ; sinon recommander Caddy).
-4. Part-elle **d'un site vide** ou **d'une sauvegarde / d'un ancien site** (Grav : voir [IMPORT-GRAV.md](IMPORT-GRAV.md)) ?
+1. Le **nom de son site** (court, en minuscules, sans espace : il servira à nommer le dossier et le service, par exemple `monsite` → `/var/www/monsite` et `monsite.service`) et son **nom de domaine** (et s'il pointe déjà vers ce serveur).
+2. Le **nom de l'utilisateur Linux** qui fera tourner le site. **Ne le choisis pas à sa place** : propose une valeur (par exemple `<nom du site>-web`), explique pourquoi il en faut un (voir ci-dessous) et laisse la personne confirmer ou en proposer un autre. Vérifie qu'il n'existe pas déjà (`id <nom>`) : s'il existe, demande si c'est volontaire.
+3. Le **dossier d'installation** souhaité (défaut proposé : `/var/www/<nom du site>`).
+4. Quel **serveur web** est devant (détecté à l'étape 0 ; sinon recommander Caddy).
+5. Part-elle **d'un site vide** ou **d'une sauvegarde / d'un ancien site** (Grav : voir [IMPORT-GRAV.md](IMPORT-GRAV.md)) ?
+
+### Pourquoi un utilisateur dédié — à expliquer à la personne (avec tes mots)
+
+Ne pose pas la question sans l'expliquer. Dis, en langage simple et sans jargon inutile :
+
+- Un site web est un programme **ouvert sur Internet** : n'importe qui peut lui envoyer des requêtes. Si une faille de sécurité est un jour découverte dans ce programme (ou dans une de ses dépendances), un attaquant peut lui faire exécuter des commandes.
+- Ces commandes s'exécutent **avec les droits de l'utilisateur qui fait tourner le site**. Si c'est le compte administrateur de la personne (ou `root`), l'attaquant récupère tout : ses autres sites, ses clés SSH, ses fichiers, la configuration du serveur.
+- Avec un **utilisateur dédié, sans droits d'administration** et qui ne possède que le dossier du site, les dégâts restent **cantonnés à ce seul site**. C'est comme donner à un invité la clé d'une pièce plutôt que celle de toute la maison.
+- Ça sert aussi à la **propreté** : on voit tout de suite quels fichiers et quels processus appartiennent à ce site, et on peut le supprimer sans toucher au reste.
+- Ce n'est pas un surcoût : une commande (`adduser`). Et c'est nécessaire pour les mises à jour depuis l'admin : le dossier doit appartenir à cet utilisateur, et lui seul.
+
+Ajoute que **ce n'est pas obligatoire** techniquement (le site fonctionnerait aussi sous un autre compte), mais que `root` est à proscrire absolument, et que c'est la bonne pratique pour tout service exposé sur Internet.
 
 ## Étape 2 — Installer
 
-Suivre le [README](../README.md#installer), étapes 1 à 6, en remplaçant `/var/www/curiosa`, `curiosa`, `3000` et `example.org`. Points d'attention pour l'agent :
+Suivre le [README](../README.md#installer), étapes 1 à 6, en remplaçant `/var/www/curiosa` (dossier choisi), `curiosa` (utilisateur choisi, et nom du service : `<nom du site>.service`), `3000` (port libre) et `example.org` (domaine). Points d'attention pour l'agent :
 
 - **Utilisateur système** : `adduser --system --group --home <dossier> <nom>`. Les commandes d'installation se lancent **en tant que cet utilisateur** (`sudo -u <nom> -H -s /bin/bash`) ; les commandes `systemctl`/nginx avec l'utilisateur administrateur. Le dossier doit appartenir à l'utilisateur du site : c'est indispensable aux mises à jour depuis l'admin.
 - **Dossier personnel** : l'utilisateur doit avoir un dossier personnel **inscriptible** (`HOME`), sinon `npx`/`npm` échouent (`EACCES … /nonexistent`). Le plus simple : `--home <dossier d'installation>`.
