@@ -8,17 +8,20 @@ export const manifest: ParsedManifest = {
   name: { en: "Contact form", fr: "Formulaire de contact" },
   version: "1.0.0",
   description: {
-    en: "Adds a contact form under a page of your choice. Messages are kept in the admin.",
-    fr: "Ajoute un formulaire de contact sous la page de votre choix. Les messages sont consultables dans l'admin.",
+    en: "Adds a contact form under a page of your choice. Each message becomes a contact to review in your address book (the Contacts module, enabled for you).",
+    fr: "Ajoute un formulaire de contact sous la page de votre choix. Chaque message devient un contact à vérifier dans votre carnet d'adresses (le module Contacts, activé pour vous).",
   },
   author: "Helldog136",
   license: "MIT",
   icon: "✉️",
   consumes: [],
   provides: [],
+  // Le formulaire ne garde rien lui-même : il range chaque message dans le carnet de contacts (service « contact.store »).
+  requires: [{ service: "contact.store", label: { en: "An address book (Contacts module)", fr: "Un carnet d'adresses (module Contacts)" } }],
+  defaultEnabled: false,
   instances: "multiple",
   sections: [{ id: "form", label: { en: "Contact form", fr: "Formulaire de contact" } }],
-  permissions: ["slots", "routes", "storage", "sections", "mail"],
+  permissions: ["slots", "routes", "sections", "mail"],
   settings: [
     {
       key: "pageSlug",
@@ -32,14 +35,14 @@ export const manifest: ParsedManifest = {
       type: "boolean",
       default: true,
       label: { en: "Email me each new message", fr: "Me prévenir par e-mail à chaque message" },
-      help: { en: "Sent to the site's contact address. Needs the email server set in Settings; messages are always kept in the admin.", fr: "Envoyé à l'adresse de contact du site. Demande le serveur d'e-mail réglé dans les Réglages ; les messages restent toujours consultables dans l'admin." },
+      help: { en: "Sent to the site's contact address. Needs the email server set in Settings; messages are always kept in your contacts.", fr: "Envoyé à l'adresse de contact du site. Demande le serveur d'e-mail réglé dans les Réglages ; les messages restent toujours dans vos contacts." },
     },
   ],
 };
 
 export const locales: BuiltinModule["locales"] = {
-  en: { name: "Name", email: "Email", message: "Message", send: "Send", sent: "Thanks! Your message was sent.", messages: "Messages received", date: "Date", from: "From", mailSubject: "New message from {name}", mailBody: "{name} <{email}> wrote on your site:" },
-  fr: { name: "Nom", email: "Email", message: "Message", send: "Envoyer", sent: "Merci ! Votre message a bien été envoyé.", messages: "Messages reçus", date: "Date", from: "De", mailSubject: "Nouveau message de {name}", mailBody: "{name} <{email}> vous a écrit sur votre site :" },
+  en: { name: "Name", email: "Email", message: "Message", send: "Send", sent: "Thanks! Your message was sent.", mailSubject: "New message from {name}", mailBody: "{name} <{email}> wrote on your site:" },
+  fr: { name: "Nom", email: "Email", message: "Message", send: "Envoyer", sent: "Merci ! Votre message a bien été envoyé.", mailSubject: "Nouveau message de {name}", mailBody: "{name} <{email}> vous a écrit sur votre site :" },
 };
 
 // Anti-abus minimal en mémoire : 5 messages / heure / IP.
@@ -71,7 +74,9 @@ export const definition = defineModule({
       if (!name || !message || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
         return Response.json({ ok: false }, { status: 400 });
       }
-      await ctx.api.store.add("messages", { name, email, message });
+      // D'abord on CONSERVE : sans carnet disponible, on refuse plutôt que de perdre le message en annonçant un succès.
+      const saved = await ctx.api.services.call("contact.store", "add", { name, email, message, source: "contact-form" });
+      if (!saved.ok) return Response.json({ ok: false }, { status: 503 });
       // Le message est déjà conservé : une panne d'e-mail ne doit jamais le perdre ni échouer la requête (le service ne lève jamais).
       if (ctx.setting<boolean>("notify") !== false) {
         await ctx.api.mail.send({ to: "owner", replyTo: email, subject: ctx.t("mailSubject", { name }), text: `${ctx.t("mailBody", { name, email })}\n\n${message}\n` });
@@ -88,21 +93,6 @@ export const definition = defineModule({
   },
   sections: {
     form: (ctx) => [form(ctx)],
-  },
-  async adminPanel(ctx) {
-    const messages = await ctx.api.store.list("messages", { limit: 100 });
-    return [
-      { type: "heading", text: `${ctx.t("messages")} (${messages.length})` },
-      {
-        type: "table",
-        columns: [ctx.t("date"), ctx.t("from"), ctx.t("message")],
-        rows: messages.map((m) => [
-          m.createdAt.toISOString().slice(0, 16).replace("T", " "),
-          `${String(m.data.name)} <${String(m.data.email)}>`,
-          String(m.data.message),
-        ]),
-      },
-    ];
   },
 });
 

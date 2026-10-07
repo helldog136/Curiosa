@@ -881,6 +881,10 @@ Des modules communautaires qui coopèrent aussi uniquement par sujets (aucun ne 
 - [`alerts-overlay`](../modules-community/alerts-overlay) : alertes OBS en direct (SSE), alimentées par une requête authentifiée par jeton.
 - [`game-suggestions`](../modules-community/game-suggestions) : suggestions de jeux avec statuts, votes « rejoue-le », jaquettes RAWG.
 
+### Contacts et formulaire de contact : une dépendance
+
+[`contacts`](../modules-community/contacts) est un carnet d'adresses privé (admin, MCP, sauvegarde lisible) qui **offre** le service `contact.store`. Le formulaire de contact intégré le **requiert** : il ne garde aucun message lui-même, il les range dans le carnet comme contacts « à vérifier » (même e-mail → note ajoutée, pas de doublon). Activer le formulaire installe et active `contacts` d'office ; tant que le formulaire est actif, `contacts` ne peut être ni désactivé ni désinstallé. Un assistant MCP complète ensuite la fiche et la passe « active », ou la supprime si c'est du spam.
+
 ### Planning
 
 [`planning`](../modules-community/planning) lit un calendrier au format iCal (l'« adresse secrète » de

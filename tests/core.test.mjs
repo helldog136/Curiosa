@@ -85,7 +85,7 @@ test("les réglages avancés sont déclarés par les modules, jamais obligatoire
   for (const dir of ["modules-examples", "modules-community"]) {
     for (const name of fs.readdirSync(dir)) {
       const m = JSON.parse(read(`${dir}/${name}/module.json`));
-      for (const s of m.settings) if (s.advanced) assert.ok(s.default !== undefined || s.type !== "number", `${name}.${s.key}: un réglage avancé numérique doit avoir une valeur par défaut`);
+      for (const s of m.settings ?? []) if (s.advanced) assert.ok(s.default !== undefined || s.type !== "number", `${name}.${s.key}: un réglage avancé numérique doit avoir une valeur par défaut`);
     }
   }
 });
