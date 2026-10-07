@@ -538,5 +538,12 @@
   "services.replicas": "Replicas",
   "services.save": "Save",
   "services.pending": "To be chosen: until then, the first provider is the master, with no replica.",
-  "services.notice": "This module offers a service that other modules already offer: choose which one is the master."
+  "services.notice": "This module offers a service that other modules already offer: choose which one is the master.",
+  "services.consumers": "Used by",
+  "services.providers": "Providers",
+  "services.replica": "Replica",
+  "services.promote": "Make this module the master",
+  "services.remove": "Remove this replica",
+  "services.hint": "Drag the arrow from the service dot to a provider (or click one).",
+  "services.list": "List view (keyboard)"
 }

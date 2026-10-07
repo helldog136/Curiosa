@@ -67,7 +67,7 @@ export function resolveRouting(providers: ActiveInstance[], routing: Routing | n
 }
 
 /** Services offerts par plusieurs instances actives : l'administrateur doit dire qui est maître. */
-export async function duplicateServices(): Promise<{ service: string; providers: ActiveInstance[]; routing: Routing | null; resolved: boolean }[]> {
+export async function duplicateServices(): Promise<{ service: string; providers: ActiveInstance[]; consumers: ActiveInstance[]; routing: Routing | null; resolved: boolean }[]> {
   const active = await getActiveInstances();
   const services = [...new Set(active.flatMap((a) => offersOf(a.mod.manifest)))].sort();
   const out = [];
@@ -75,7 +75,7 @@ export async function duplicateServices(): Promise<{ service: string; providers:
     const providers = await providerInstances(service);
     if (providers.length < 2) continue;
     const routing = await getRouting(service);
-    out.push({ service, providers, routing, resolved: resolveRouting(providers, routing).resolved });
+    out.push({ service, providers, consumers: active.filter((a) => requiresOf(a.mod.manifest).includes(service)).sort((a, b) => a.instance.key.localeCompare(b.instance.key)), routing, resolved: resolveRouting(providers, routing).resolved });
   }
   return out;
 }

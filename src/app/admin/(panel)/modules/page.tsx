@@ -10,7 +10,7 @@ import { localized } from "@/core/modules/types";
 import { ConfirmButton } from "@/components/admin/ConfirmButton";
 import { ui } from "@/components/admin/ui";
 import { duplicateServices } from "@/core/modules/dependencies";
-import { Checkbox } from "@/components/admin/Field";
+import { ServiceRouter } from "@/components/admin/ServiceRouter";
 import { addInstance, checkUpdateAction, saveServiceRouting, toggleModule, uninstallModuleAction, updateModuleAction } from "./actions";
 
 export default async function ModulesPage({ searchParams }: { searchParams: Promise<{ update?: string; error?: string; detail?: string; notice?: string; module?: string; to?: string; level?: string }> }) {
@@ -39,29 +39,16 @@ export default async function ModulesPage({ searchParams }: { searchParams: Prom
             <h2 className="text-lg font-semibold">{t("services.title")}</h2>
             <p className="mt-1 text-sm text-muted">{t("services.intro")}</p>
           </div>
-          {duplicates.map((d) => (
-            <form key={d.service} action={saveServiceRouting.bind(null, d.service)} className={`${ui.card} space-y-3`}>
-              <p className="font-medium"><span className="font-mono text-sm">{d.service}</span>{!d.resolved && <span className="ml-2 rounded bg-amber-500/20 px-2 py-0.5 text-xs">{t("services.pending")}</span>}</p>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <fieldset className="space-y-1">
-                  <legend className="text-sm text-muted">{t("services.master")}</legend>
-                  {d.providers.map((p) => (
-                    <label key={p.instance.key} className="flex items-center gap-2 text-sm">
-                      <input type="radio" name="master" value={p.instance.key} defaultChecked={(d.routing?.master ?? d.providers[0]!.instance.key) === p.instance.key} required />
-                      {p.mod.manifest.icon ?? "🧩"} {labeler.label(p.instance)} <span className="text-xs text-muted">({localized(p.mod.manifest.name, locale, config.defaultLocale)})</span>
-                    </label>
-                  ))}
-                </fieldset>
-                <fieldset className="space-y-1">
-                  <legend className="text-sm text-muted">{t("services.replicas")}</legend>
-                  {d.providers.map((p) => (
-                    <Checkbox key={p.instance.key} name="replicas" value={p.instance.key} label={`${p.mod.manifest.icon ?? "🧩"} ${labeler.label(p.instance)}`} defaultChecked={d.routing?.replicas.includes(p.instance.key) ?? false} />
-                  ))}
-                </fieldset>
-              </div>
-              <button className={ui.btnPrimary}>{t("services.save")}</button>
-            </form>
-          ))}
+          {duplicates.map((d) => {
+            const node = (p: (typeof d.providers)[number]) => ({ key: p.instance.key, name: labeler.label(p.instance), icon: p.mod.manifest.icon ?? "🧩", sub: localized(p.mod.manifest.name, locale, config.defaultLocale) });
+            const consumers = d.consumers.map((c) => ({ key: c.instance.key, name: labeler.label(c.instance), icon: c.mod.manifest.icon ?? "🧩", sub: localized(c.mod.manifest.name, locale, config.defaultLocale) }));
+            return (
+              <ServiceRouter key={d.service} service={d.service} consumers={consumers} providers={d.providers.map(node)}
+                master={(d.routing && d.providers.some((p) => p.instance.key === d.routing!.master) ? d.routing.master : d.providers[0]!.instance.key)}
+                replicas={d.routing?.replicas ?? []} action={saveServiceRouting.bind(null, d.service)}
+                labels={{ consumers: t("services.consumers"), providers: t("services.providers"), master: t("services.master"), replica: t("services.replica"), promote: t("services.promote"), remove: t("services.remove"), hint: t("services.hint"), list: t("services.list"), save: t("services.save"), pending: d.resolved ? null : t("services.pending") }} />
+            );
+          })}
         </section>
       )}
       {update && <p role="status" className="rounded-lg border border-line bg-surface p-3 text-sm">{update === "yes" ? (to ? t("modules.updateAvailableTo", { module: checked ?? "", version: to }) : t("modules.updateAvailable")) : t("modules.upToDate")}</p>}

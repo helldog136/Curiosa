@@ -538,5 +538,12 @@
   "services.replicas": "Répliques",
   "services.save": "Enregistrer",
   "services.pending": "À choisir : en attendant, le premier fournisseur est le maître, sans réplique.",
-  "services.notice": "Ce module offre un service que d'autres modules offrent déjà : choisissez qui en est le maître."
+  "services.notice": "Ce module offre un service que d'autres modules offrent déjà : choisissez qui en est le maître.",
+  "services.consumers": "Utilisé par",
+  "services.providers": "Fournisseurs",
+  "services.replica": "Réplique",
+  "services.promote": "Faire de ce module le maître",
+  "services.remove": "Retirer cette réplique",
+  "services.hint": "Tirez la flèche depuis la pastille du service jusqu'à un fournisseur (ou cliquez dessus).",
+  "services.list": "Vue liste (clavier)"
 }
