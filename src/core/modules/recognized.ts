@@ -68,7 +68,11 @@ export async function resolveIndexRepo(git: IndexGit = defaultGit, appDir = proc
   let url = explicit || "";
   if (!url) {
     const remote = /^[A-Za-z0-9._-]{1,60}$/.test(process.env.VITRINE_UPDATE_REMOTE ?? "") ? process.env.VITRINE_UPDATE_REMOTE! : "origin";
-    try { url = (await git(["remote", "get-url", remote], appDir)).trim(); } catch { return null; }
+    try { url = (await git(["remote", "get-url", remote], appDir)).trim(); } catch {
+      // Installation par archive (sans git) : le dépôt qui publie les releases est aussi celui qui publie l'index.
+      try { const repo = String(JSON.parse(fs.readFileSync(path.join(appDir, "release.json"), "utf8")).repo ?? ""); url = /^[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/.test(repo) ? `https://github.com/${repo}` : ""; } catch { url = ""; }
+      if (!url) return null;
+    }
   }
   const parsed = parseRepoUrl(toHttpsRemote(url));
   return parsed.ok ? parsed.repo.url : null;

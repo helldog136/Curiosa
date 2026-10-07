@@ -414,7 +414,7 @@
   "updates.auto": "Installer automatiquement les nouvelles versions",
   "updates.autoHelp": "Désactivée par défaut. Activée, le site vérifie toutes les 6 heures et installe seul les correctifs et nouveautés (jamais un changement majeur), avec sauvegarde et retour arrière en cas d'échec.",
   "updates.mode.docker": "Ce site tourne dans un conteneur : on le met à jour en remplaçant l'image (reconstruire et redémarrer le conteneur), pas depuis l'admin.",
-  "updates.mode.manual": "Ce site n'a pas été installé depuis un dépôt git : la mise à jour depuis l'admin n'est pas disponible. Voir la documentation d'installation.",
+  "updates.mode.manual": "Ce site n'a pas été installé depuis une archive de release : la mise à jour depuis l'admin n'est pas disponible. Voir la documentation d'installation.",
   "updates.restart.command": "Après installation, le serveur est redémarré par la commande que vous avez configurée.",
   "updates.restart.supervised": "Après installation, le serveur s'arrête et son superviseur (systemd, pm2, Docker…) le relance.",
   "updates.restart.manual": "Aucune commande de redémarrage n'est configurée : après installation, redémarrez le serveur à la main.",

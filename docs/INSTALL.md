@@ -5,34 +5,38 @@ dépend d'un site en particulier : tout ce qui vous est propre (nom, textes, mod
 
 ## Ce qu'il faut
 
-- Un serveur Linux avec **Node.js 20+**, **git** et un compilateur C standard (pour installer les dépendances).
+- Un serveur **Linux (x64)** avec **Node.js 22+** et **git** (git sert seulement à installer des modules depuis l'admin). **Aucun compilateur** : les releases sont livrées déjà compilées.
 - Un nom de domaine et un proxy HTTPS devant le site (nginx, Caddy…). Le framework écoute en HTTP sur un port local.
 - Un utilisateur système dédié (sans droits d'administration) qui possède le dossier d'installation.
 
 ## Installation
 
-```bash
-# 1. Cloner À UNE VERSION précise (étiquette), pas la branche de développement
-git clone https://<dépôt-du-framework>.git /srv/vitrine
-cd /srv/vitrine
-git checkout --detach "$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n1)"
+On installe une **release** : une archive déjà compilée, publiée sur la page *Releases* du dépôt (`vitrine-vX.Y.Z-linux-x64.tar.gz`).
 
-# 2. Dépendances, base de données, build
-npm ci
-npm run bootstrap          # crée .env, applique les migrations
+```bash
+# 1. Télécharger et déplier la dernière release
+mkdir -p /srv/vitrine && cd /srv/vitrine
+curl -LO https://github.com/<propriétaire>/<dépôt>/releases/latest/download/vitrine-vX.Y.Z-linux-x64.tar.gz
+curl -LO https://github.com/<propriétaire>/<dépôt>/releases/latest/download/vitrine-vX.Y.Z-linux-x64.tar.gz.sha256
+sha256sum -c vitrine-*.sha256 && tar -xzf vitrine-*.tar.gz && rm vitrine-*.tar.gz*
+
+# 2. Configuration et base de données
+cp .env.example .env
 $EDITOR .env               # au minimum : SITE_URL (l'adresse publique, https://…)
-npm run build
+mkdir -p data && npx prisma migrate deploy
 
 # 3. Lancer (voir plus bas pour un démarrage automatique)
-npm start
+npx next start
 ```
 
 Ouvrez le site : **l'assistant de configuration démarre à la première visite** et crée le compte propriétaire — ou, si vous avez déjà une
 sauvegarde, vous la restaurez dès le premier écran ([BACKUP.md](BACKUP.md)).
 Tant que le site est exposé avant d'être configuré, définissez `SETUP_TOKEN` dans `.env` : l'assistant le demandera.
 
-> Cloner depuis le dépôt d'origine est ce qui active les mises à jour depuis l'admin : l'installation retient d'où elle vient
-> (`origin`) et c'est là qu'elle cherche les nouvelles versions.
+> L'archive contient un fichier `release.json` qui indique le dépôt d'où elle vient : c'est ce qui active les mises à jour depuis l'admin.
+
+**Développer le framework** : cloner le dépôt (`git clone`, branche `dev`), puis `npm ci && npm run bootstrap && npm run build && npm start`. Un clone de
+développement ne se met pas à jour depuis l'admin (c'est à vous de faire `git pull`).
 
 ## Démarrage automatique
 
@@ -41,12 +45,15 @@ Un exemple d'unité systemd est fourni : [`deploy/vitrine.service`](../deploy/vi
 
 ## Mises à jour depuis l'admin
 
+**Rien n'est compilé chez vous.** À chaque release, la CI du projet compile, teste et vérifie les failles connues, puis publie l'archive. Votre
+site ne fait que la télécharger : une release qui ne passe pas la CI n'existe pas, donc n'est jamais proposée.
+
 Dans **Mises à jour** (menu, propriétaire uniquement) :
 
-- le site compare sa version à celles du dépôt d'origine (étiquettes `vX.Y.Z` **stables** ; les pré-versions sont ignorées) ;
-- **Installer** : sauvegarde de la base (`data/backups/`, les 5 dernières), récupération de la version, dépendances (réinstallées
-  **seulement si elles ont changé** : un simple changement de numéro de version ne touche pas à `node_modules`), migrations,
-  build, puis redémarrage. **Au moindre échec**, l'ancienne version (et l'ancienne base si les migrations avaient commencé) est rétablie ;
+- le site compare sa version aux releases **stables** publiées par le dépôt d'origine (les pré-versions et les snapshots sont ignorés) ;
+- **Installer** : sauvegarde de la base (`data/backups/`, les 5 dernières) → téléchargement de l'archive → **vérification de son empreinte SHA-256** →
+  remplacement des dossiers de l'application (`.next`, `node_modules`, `prisma/migrations`, `modules-community`…) → migrations → redémarrage.
+  Jamais touchés : `.env`, `data/` (base, envois, modules installés) et `prisma/data/`. **Au moindre échec**, l'ancienne version (et l'ancienne base si les migrations avaient commencé) est rétablie ;
 - le journal de l'opération s'affiche dans la page ; elle se met à jour toute seule ;
 - une version **majeure** (`v2.0.0` après `v1.x`) peut changer le fonctionnement : elle est signalée et **n'est jamais installée automatiquement**.
 
@@ -70,18 +77,25 @@ Une commande avec `sudo` suppose une règle `sudoers` limitée à cette seule co
 
 ### Pendant l'installation
 
-Le site continue de répondre pendant les étapes préparatoires, mais l'installation des dépendances (quand elles changent) et le build
-remplacent des fichiers que le serveur utilise : prévoyez **une courte indisponibilité**, de quelques secondes (version sans nouvelle
-dépendance) à quelques minutes. Choisissez de préférence un moment calme, ou désactivez la mise à jour automatique pour décider vous-même.
+Comme il n'y a ni compilation ni réinstallation de dépendances, la mise à jour est rapide (de l'ordre de la minute, le temps de télécharger
+~250 Mo) et la coupure se limite au redémarrage. Choisissez de préférence un moment calme, ou désactivez la mise à jour automatique pour décider vous-même.
 
 ### Conditions
 
-- L'installation doit être **un clone git** dont le dossier appartient à l'utilisateur qui fait tourner le site (sinon : « mise à jour non disponible »).
-- Aucune **modification locale** des fichiers suivis par git (la base, `data/`, `.env` et `node_modules/` sont ignorés). Si vous en avez, la mise à jour refuse de démarrer et ne touche à rien.
+- L'installation doit venir d'une **archive de release** (présence de `release.json`) et son dossier appartenir à l'utilisateur qui fait tourner le site, sinon : « mise à jour non disponible ».
+- `tar` doit être disponible (présent partout sous Linux). La plateforme de l'archive doit être celle du serveur (`linux-x64`).
 - Avec **Docker**, on remplace l'image au lieu de mettre à jour en place (`VITRINE_INSTALL=docker` est déjà réglé dans l'image) : `docker compose build --pull && docker compose up -d`.
-- Pour changer de dépôt d'origine : `git remote set-url origin <url>`, ou `VITRINE_UPDATE_REMOTE=<nom d'un autre remote>`.
+- Pour suivre un autre dépôt de releases (un fork) : `VITRINE_UPDATE_REPO=<propriétaire>/<dépôt>`.
 
 Le script peut aussi être lancé à la main (`node scripts/update.mjs v1.2.3`), avec les mêmes sauvegardes et le même retour arrière.
+
+## Publier une release (mainteneurs)
+
+- Branche `main` (ou `master`) : la version stable. On y **étiquette** `vX.Y.Z` (`package.json` doit déjà porter cette version). Le workflow
+  [`release.yml`](../.github/workflows/release.yml) lance l'audit des failles, les tests, compile, puis publie l'archive et son empreinte sur la release GitHub.
+  Avant la toute première : `npm run migrations:freeze`.
+- Branche `dev` : chaque push publie un **snapshot** (pré-version `dev-<date>-<commit>`), jamais proposé par les mises à jour d'une instance.
+- Pour fabriquer l'archive à la main : `npm ci && npx prisma generate && npm run build && npm prune --omit=dev && npx prisma generate && GITHUB_REPOSITORY=<propriétaire>/<dépôt> node scripts/release-pack.mjs X.Y.Z`.
 
 ## La Catalogue (modules reconnus)
 
@@ -112,4 +126,4 @@ secret de session) et `.env`.
 
 ## Sécurité des dépendances
 
-`npm run audit` interroge les failles connues (CVE) des dépendances de production. Il est lancé **côté projet**, jamais chez l'utilisateur : en CI à chaque push, chaque PR et chaque lundi (`.github/workflows/security.yml`). Une faille de gravité haute fait échouer la CI, donc empêche de publier une release ; une release publiée est déjà saine, et la mise à jour proposée dans l'admin n'a rien à vérifier. Les exceptions justifiées sont dans `scripts/audit.mjs`.
+`npm run audit` interroge les failles connues (CVE) des dépendances de production. Il est lancé **côté projet**, jamais chez l'utilisateur : en CI à chaque push, chaque PR, chaque lundi (`.github/workflows/security.yml`) et avant chaque release (`release.yml`). Une faille de gravité haute fait échouer la CI, donc empêche de publier une release ; une release publiée est déjà saine, et la mise à jour proposée dans l'admin n'a rien à vérifier. Les exceptions justifiées sont dans `scripts/audit.mjs`.

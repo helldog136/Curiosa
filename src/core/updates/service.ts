@@ -1,58 +1,64 @@
-import { execFile, spawn } from "node:child_process";
+import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { promisify } from "node:util";
 import { DATA_DIR } from "@/core/config";
 import { audit } from "@/core/permissions";
 import { getSetting, setSetting } from "@/core/settings";
-import { classify, compareVersions, pickLatestTag, TAG_RE, type UpdateLevel } from "./versions";
+import { classify, compareVersions, pickLatestRelease, TAG_RE, type UpdateLevel } from "./versions";
 
 /**
  * MISES À JOUR DU FRAMEWORK.
  *
- * Une installation est un dépôt git cloné sur le serveur. Une mise à jour = passer à la plus haute version stable (étiquette
- * `vX.Y.Z`) du dépôt d'où elle a été clonée, avec sauvegarde de la base, migrations et retour arrière automatique en cas d'échec
- * (scripts/update-lib.mjs). Rien n'est supposé du serveur : le redémarrage passe par une commande que l'exploitant définit.
+ * Une release est une ARCHIVE DÉJÀ COMPILÉE, publiée par la CI du dépôt (étiquette `vX.Y.Z`) : l'instance la télécharge, vérifie son
+ * empreinte, remplace ses dossiers, applique les migrations et revient en arrière toute seule en cas d'échec (scripts/update-lib.mjs).
+ * Elle ne compile rien et n'a pas besoin de git. Le redémarrage passe par une commande que l'exploitant définit.
  * La mise à jour AUTOMATIQUE est désactivée par défaut, et ne s'applique jamais à une version majeure.
  */
-const run = promisify(execFile);
-const REMOTE_RE = /^[A-Za-z0-9._-]{1,60}$/;
+const REPO_RE = /^[A-Za-z0-9._-]{1,100}\/[A-Za-z0-9._-]{1,100}$/;
+const platformId = () => `${process.platform}-${process.arch}`;
+const assetName = (tag: string) => `vitrine-${tag}-${platformId()}.tar.gz`;
 
-export type InstallMode = "git" | "docker" | "manual";
+export type InstallMode = "release" | "docker" | "manual";
 export type InstallInfo = {
   mode: InstallMode;
   /** Peut-on se mettre à jour depuis l'admin ? */
   canUpdate: boolean;
   version: string;
-  commit: string | null;
-  remote: string;
+  /** Dépôt qui publie les releases (« propriétaire/nom »). */
+  repo: string | null;
   /** Un redémarrage est-il prévu (commande de l'exploitant ou superviseur) ? Sinon l'admin demandera de redémarrer à la main. */
   restart: "command" | "supervised" | "manual";
 };
 
 export type UpdateCheck = { latest: string | null; level: UpdateLevel | null; available: boolean; checkedAt: number | null; error: string | null };
-export type GitRunner = (args: string[], cwd: string) => Promise<string>;
+/** Lit un JSON https (liste des releases). */
+export type JsonFetcher = (url: string) => Promise<unknown>;
 
-const defaultGit: GitRunner = async (args, cwd) => (await run("git", args, { cwd, timeout: 30_000, env: { ...process.env, GIT_TERMINAL_PROMPT: "0" }, maxBuffer: 1024 * 1024 })).stdout;
+const defaultFetchJson: JsonFetcher = async (url) => {
+  const res = await fetch(url, { headers: { Accept: "application/vnd.github+json", "User-Agent": "vitrine-updater" }, signal: AbortSignal.timeout(20_000) });
+  if (!res.ok) throw new Error(`http ${res.status}`);
+  return res.json();
+};
 
 export function readVersion(appDir = process.cwd()): string {
   try { return String(JSON.parse(fs.readFileSync(path.join(appDir, "package.json"), "utf8")).version ?? "0.0.0"); } catch { return "0.0.0"; }
 }
 
-export async function getInstallInfo(appDir = process.cwd(), git: GitRunner = defaultGit): Promise<InstallInfo> {
-  const remote = REMOTE_RE.test(process.env.VITRINE_UPDATE_REMOTE ?? "") ? process.env.VITRINE_UPDATE_REMOTE! : "origin";
+/** `release.json` : écrit par la CI dans l'archive ; sa présence est ce qui désigne une installation mise à jour par archive. */
+function readRelease(appDir: string): { repo?: string } | null {
+  try { return JSON.parse(fs.readFileSync(path.join(appDir, "release.json"), "utf8")); } catch { return null; }
+}
+
+export function getInstallInfo(appDir = process.cwd()): InstallInfo {
+  const release = readRelease(appDir);
+  const configured = process.env.VITRINE_UPDATE_REPO ?? "";
+  const repo = REPO_RE.test(configured) ? configured : REPO_RE.test(release?.repo ?? "") ? release!.repo! : null;
   const restart = process.env.VITRINE_RESTART_COMMAND ? "command" : process.env.VITRINE_SUPERVISED === "1" ? "supervised" : "manual";
-  const base = { version: readVersion(appDir), remote, restart } as const;
+  const base = { version: readVersion(appDir), repo, restart } as const;
   // Image Docker : on la remplace, on ne la met pas à jour en place.
-  if (process.env.VITRINE_INSTALL === "docker") return { ...base, mode: "docker", canUpdate: false, commit: null };
-  if (!fs.existsSync(path.join(appDir, ".git"))) return { ...base, mode: "manual", canUpdate: false, commit: null };
-  try {
-    const commit = (await git(["rev-parse", "--short=12", "HEAD"], appDir)).trim();
-    await git(["remote", "get-url", remote], appDir);
-    return { ...base, mode: "git", canUpdate: true, commit };
-  } catch {
-    return { ...base, mode: "manual", canUpdate: false, commit: null };
-  }
+  if (process.env.VITRINE_INSTALL === "docker") return { ...base, mode: "docker", canUpdate: false };
+  if (!release || !repo) return { ...base, mode: "manual", canUpdate: false };
+  return { ...base, mode: "release", canUpdate: true };
 }
 
 const KEYS = { auto: "updates.auto", latest: "updates.latest", at: "updates.checkedAt", error: "updates.error" } as const;
@@ -73,13 +79,14 @@ export async function getUpdateCheck(appDir = process.cwd()): Promise<UpdateChec
   return { latest, level, available: level !== null, checkedAt: (await getSetting<number>(KEYS.at)) ?? null, error: (await getSetting<string>(KEYS.error)) || null };
 }
 
-/** Interroge le dépôt d'origine (étiquettes seulement : rien n'est téléchargé) et mémorise la plus haute version stable. */
-export async function checkForUpdate(opts: { appDir?: string; git?: GitRunner; now?: () => number } = {}): Promise<UpdateCheck> {
-  const { appDir = process.cwd(), git = defaultGit, now = Date.now } = opts;
-  const info = await getInstallInfo(appDir, git);
+/** Interroge la liste des releases du dépôt (rien n'est téléchargé) et mémorise la plus haute version stable qui a son archive. */
+export async function checkForUpdate(opts: { appDir?: string; fetchJson?: JsonFetcher; now?: () => number } = {}): Promise<UpdateCheck> {
+  const { appDir = process.cwd(), fetchJson = defaultFetchJson, now = Date.now } = opts;
+  const info = getInstallInfo(appDir);
   if (!info.canUpdate) return getUpdateCheck(appDir);
   try {
-    const latest = pickLatestTag(await git(["ls-remote", "--tags", "--refs", info.remote], appDir)) ?? ((await getSetting<string>(KEYS.latest)) || null);
+    const releases = await fetchJson(`https://api.github.com/repos/${info.repo}/releases?per_page=30`);
+    const latest = pickLatestRelease(releases, assetName) ?? ((await getSetting<string>(KEYS.latest)) || null);
     await setSetting(KEYS.latest, latest ?? "");
     await setSetting(KEYS.error, "");
   } catch {
@@ -113,10 +120,10 @@ const defaultSpawner: Spawner = (tag) => {
 };
 
 /** Lance la mise à jour en tâche détachée (elle survit à l'arrêt du serveur qu'elle provoque). */
-export async function startUpdate(tag: string, actor: string, opts: { appDir?: string; git?: GitRunner; spawner?: Spawner; dataDir?: string } = {}): Promise<{ ok: true } | { ok: false; error: "invalid-tag" | "not-newer" | "unsupported" | "running" }> {
-  const { appDir = process.cwd(), git = defaultGit, spawner = defaultSpawner, dataDir = DATA_DIR } = opts;
+export async function startUpdate(tag: string, actor: string, opts: { appDir?: string; fetchJson?: JsonFetcher; spawner?: Spawner; dataDir?: string } = {}): Promise<{ ok: true } | { ok: false; error: "invalid-tag" | "not-newer" | "unsupported" | "running" }> {
+  const { appDir = process.cwd(), spawner = defaultSpawner, dataDir = DATA_DIR } = opts;
   if (!TAG_RE.test(tag)) return { ok: false, error: "invalid-tag" };
-  const info = await getInstallInfo(appDir, git);
+  const info = getInstallInfo(appDir);
   if (!info.canUpdate) return { ok: false, error: "unsupported" };
   if (compareVersions(tag, info.version) <= 0) return { ok: false, error: "not-newer" };
   const state = readUpdateState(dataDir);
@@ -127,11 +134,11 @@ export async function startUpdate(tag: string, actor: string, opts: { appDir?: s
 }
 
 /** Vérification périodique : met à jour la connaissance de la dernière version et, si l'automatique est activé, l'applique. */
-export async function runScheduledCheck(opts: { appDir?: string; git?: GitRunner; spawner?: Spawner; dataDir?: string } = {}): Promise<"disabled" | "none" | "available" | "started"> {
+export async function runScheduledCheck(opts: { appDir?: string; fetchJson?: JsonFetcher; spawner?: Spawner; dataDir?: string } = {}): Promise<"disabled" | "none" | "available" | "started"> {
   const { appDir = process.cwd() } = opts;
   const check = await checkForUpdate(opts);
   if (!check.available || !check.latest) return "none";
-  const info = await getInstallInfo(appDir, opts.git);
+  const info = getInstallInfo(appDir);
   const running = readUpdateState(opts.dataDir).status === "running";
   if (!shouldAutoApply({ auto: await isAutoUpdateEnabled(), level: check.level, running, canUpdate: info.canUpdate })) return (await isAutoUpdateEnabled()) ? "available" : "disabled";
   return (await startUpdate(check.latest, "auto-update", opts)).ok ? "started" : "available";

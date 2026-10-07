@@ -488,7 +488,7 @@ Testez au minimum : le manifeste est valide, chaque section/action/sujet déclar
 **Être listé dans le Catalogue** : deux voies.
 
 1. **Livré avec le framework** : un dossier de module dans `modules-community/` (modules complets) ou `modules-examples/` (exemples) du dépôt du framework, `module.json` à sa racine. Il est installé depuis les fichiers du serveur, sans réseau.
-2. **Dépôt reconnu** : une entrée dans [`catalogue/index.json`](../catalogue/index.json), le fichier du dépôt du framework que **chaque installation relit à l'exécution** — il ne suit pas le rythme des versions du framework (`VITRINE_UPDATE_REMOTE` choisit le remote d'origine ; `VITRINE_CATALOGUE_REPO`, `VITRINE_CATALOGUE_REF`, `VITRINE_CATALOGUE_RUNTIME` règlent cette lecture ; `MODULES_INDEX_URL` ajoute un index `https://` supplémentaire). On l'ajoute par une demande de fusion :
+2. **Dépôt reconnu** : une entrée dans [`catalogue/index.json`](../catalogue/index.json), le fichier du dépôt du framework que **chaque installation relit à l'exécution** — il ne suit pas le rythme des versions du framework (`VITRINE_UPDATE_REMOTE` choisit le remote d'origine d'un clone ; `VITRINE_CATALOGUE_REPO`, `VITRINE_CATALOGUE_REF`, `VITRINE_CATALOGUE_RUNTIME` règlent cette lecture ; `MODULES_INDEX_URL` ajoute un index `https://` supplémentaire). On l'ajoute par une demande de fusion :
 
 ```json
 { "id": "guestbook", "name": "Guestbook", "description": "A moderated guestbook.", "repo": "https://github.com/<vous>/<depot>",

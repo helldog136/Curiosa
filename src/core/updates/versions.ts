@@ -25,7 +25,23 @@ export function classify(current: string, target: string): UpdateLevel | null {
   return t[0] !== c[0] ? "major" : t[1] !== c[1] ? "minor" : "patch";
 }
 
-/** Plus haute version stable dans la sortie de `git ls-remote --tags` (les lignes `^{}` des étiquettes annotées comptent une fois). */
+export type ReleaseInfo = { tag_name?: unknown; draft?: unknown; prerelease?: unknown; assets?: unknown };
+
+/** Plus haute version stable parmi les releases publiées (API GitHub) qui fournissent l'archive voulue : brouillons, pré-versions et releases sans archive sont ignorés. */
+export function pickLatestRelease(releases: unknown, assetName: (tag: string) => string): string | null {
+  let best: string | null = null;
+  if (!Array.isArray(releases)) return null;
+  for (const r of releases as ReleaseInfo[]) {
+    const tag = r?.tag_name;
+    if (typeof tag !== "string" || !TAG_RE.test(tag) || r.draft === true || r.prerelease === true) continue;
+    const names = Array.isArray(r.assets) ? (r.assets as { name?: unknown }[]).map((a) => a?.name) : [];
+    if (!names.includes(assetName(tag))) continue;
+    if (!best || compareVersions(tag, best) > 0) best = tag;
+  }
+  return best;
+}
+
+/** Plus haute version stable dans la sortie de `git ls-remote --tags` (modules git : les lignes `^{}` des étiquettes annotées comptent une fois). */
 export function pickLatestTag(lsRemote: string): string | null {
   let best: string | null = null;
   for (const line of lsRemote.split("\n")) {

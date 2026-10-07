@@ -3,11 +3,12 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import crypto from "node:crypto";
 import { execFile, execFileSync } from "node:child_process";
 import { promisify } from "node:util";
 
 const V = await import("@/core/updates/versions");
-const { runUpdate, readState, resolveSqlitePath, depsFingerprint } = await import("../../scripts/update-lib.mjs");
+const { runUpdate, readState, resolveSqlitePath, safeEntry } = await import("../../scripts/update-lib.mjs");
 const sh = promisify(execFile);
 
 test("versions : étiquettes stables seulement, comparaison numérique (1.10 > 1.9)", () => {
@@ -29,14 +30,20 @@ test("versions : nature de la mise à jour — patch, minor, major ; rien si la 
   assert.equal(V.classify("pas une version", "v1.0.0"), null);
 });
 
-test("versions : la plus haute version stable d'un `git ls-remote --tags`, pré-versions et étiquettes annotées comprises", () => {
-  const out = [
-    "aaa\trefs/tags/v1.0.0", "bbb\trefs/tags/v1.2.0", "ccc\trefs/tags/v1.2.0^{}", "ddd\trefs/tags/v1.10.0", "eee\trefs/tags/v2.0.0-beta.1",
-    "fff\trefs/tags/nightly", "ggg\trefs/tags/v1.9.9", "hhh\trefs/heads/main", "",
-  ].join("\n");
+test("versions : la plus haute version stable parmi les releases qui ont leur archive — brouillons, pré-versions et releases sans archive ignorés", () => {
+  const asset = (tag) => `vitrine-${tag}-linux-x64.tar.gz`;
+  const rel = (tag, extra = {}) => ({ tag_name: tag, draft: false, prerelease: false, assets: [{ name: asset(tag) }], ...extra });
+  const list = [rel("v1.0.0"), rel("v1.10.0"), rel("v1.9.9"), rel("v2.0.0", { draft: true }), rel("v2.0.1", { prerelease: true }), rel("v3.0.0", { assets: [] }), rel("v2.0.0-beta.1"), rel("nightly"), null, { tag_name: 5 }];
+  assert.equal(V.pickLatestRelease(list, asset), "v1.10.0");
+  assert.equal(V.pickLatestRelease([], asset), null);
+  assert.equal(V.pickLatestRelease("pas une liste", asset), null);
+  assert.equal(V.pickLatestRelease([rel("v1.0.0", { assets: [{ name: "vitrine-v1.0.0-darwin-arm64.tar.gz" }] })], asset), null, "archive d'une autre plateforme : rien à proposer");
+});
+
+test("versions : modules git — la plus haute version stable d'un `git ls-remote --tags`", () => {
+  const out = ["aaa\trefs/tags/v1.0.0", "bbb\trefs/tags/v1.2.0", "ccc\trefs/tags/v1.2.0^{}", "ddd\trefs/tags/v1.10.0", "eee\trefs/tags/v2.0.0-beta.1", "fff\trefs/tags/nightly", "hhh\trefs/heads/main", ""].join("\n");
   assert.equal(V.pickLatestTag(out), "v1.10.0");
   assert.equal(V.pickLatestTag(""), null);
-  assert.equal(V.pickLatestTag("aaa\trefs/tags/v2.0.0-rc1\nbbb\trefs/tags/foo"), null);
 });
 
 test("base : chemin SQLite — absolu tel quel, relatif résolu depuis prisma/ comme le fait Prisma, autre fournisseur ignoré", () => {
@@ -47,165 +54,196 @@ test("base : chemin SQLite — absolu tel quel, relatif résolu depuis prisma/ c
   assert.equal(resolveSqlitePath(undefined, "/srv/app"), null);
 });
 
-/* ───────────── Installation réelle : amont git avec versions, copie « installée » ───────────── */
+/* ───────────── Installation réelle : archives compilées, vrai tar, vraie empreinte ───────────── */
 
-function git(cwd, ...args) { return execFileSync("git", ["-c", "user.email=t@t", "-c", "user.name=t", ...args], { cwd, stdio: "pipe" }).toString().trim(); }
+const PLATFORM = `${process.platform}-${process.arch}`;
+const sha = (f) => crypto.createHash("sha256").update(fs.readFileSync(f)).digest("hex");
 
+/** Une « release » : un dossier de fichiers + release.json, empaqueté en .tar.gz avec son .sha256, comme le fait la CI. */
 function setup() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "vitrine-upd-"));
-  const upstream = path.join(root, "upstream");
-  fs.mkdirSync(upstream);
-  git(upstream, "init", "-q", "-b", "main");
-  fs.writeFileSync(path.join(upstream, ".gitignore"), "data/\n.env\nnode_modules/\n");
-  const release = (version, extra = {}) => {
-    const deps = extra.deps ?? { next: "1.0.0" };
-    delete extra.deps;
-    fs.writeFileSync(path.join(upstream, "package.json"), JSON.stringify({ name: "vitrine", version, dependencies: deps }));
-    fs.writeFileSync(path.join(upstream, "package-lock.json"), JSON.stringify({ name: "vitrine", version, lockfileVersion: 3, packages: { "": { name: "vitrine", version, dependencies: deps }, ...Object.fromEntries(Object.entries(deps).map(([k, v]) => [`node_modules/${k}`, { version: v }])) } }));
-    for (const [f, c] of Object.entries(extra)) fs.writeFileSync(path.join(upstream, f), c);
-    git(upstream, "add", "-A"); git(upstream, "commit", "-q", "-m", `v${version}`); git(upstream, "tag", `v${version}`);
+  const hosted = path.join(root, "hosted"); // ce que « GitHub » sert
+  fs.mkdirSync(hosted);
+  const build = (version, { files = {}, paths, platform = PLATFORM, badSum = false } = {}) => {
+    const dir = path.join(root, `build-${version}`);
+    fs.mkdirSync(path.join(dir, ".next"), { recursive: true });
+    fs.mkdirSync(path.join(dir, "prisma", "migrations"), { recursive: true });
+    fs.writeFileSync(path.join(dir, "package.json"), JSON.stringify({ name: "vitrine", version }));
+    fs.writeFileSync(path.join(dir, ".next", "BUILD_ID"), `build-${version}`);
+    fs.writeFileSync(path.join(dir, "prisma", "migrations", "001.sql"), `migration-${version}`);
+    for (const [f, c] of Object.entries(files)) { fs.mkdirSync(path.dirname(path.join(dir, f)), { recursive: true }); fs.writeFileSync(path.join(dir, f), c); }
+    const all = paths ?? [".next", "package.json", "prisma/migrations", "release.json"];
+    fs.writeFileSync(path.join(dir, "release.json"), JSON.stringify({ name: "vitrine", version, platform, repo: "owner/vitrine", paths: all }));
+    const name = `vitrine-v${version}-${PLATFORM}.tar.gz`;
+    execFileSync("tar", ["-czf", path.join(hosted, name), "-C", dir, ...all.filter((p) => fs.existsSync(path.join(dir, p)))]);
+    fs.writeFileSync(path.join(hosted, `${name}.sha256`), `${badSum ? "0".repeat(64) : sha(path.join(hosted, name))}  ${name}\n`);
   };
-  release("1.0.0");
   const app = path.join(root, "app");
-  git(root, "clone", "-q", upstream, app);
+  fs.mkdirSync(path.join(app, ".next"), { recursive: true });
+  fs.mkdirSync(path.join(app, "prisma", "migrations"), { recursive: true });
+  fs.mkdirSync(path.join(app, "prisma", "data"), { recursive: true });
+  fs.writeFileSync(path.join(app, "package.json"), JSON.stringify({ name: "vitrine", version: "1.0.0" }));
+  fs.writeFileSync(path.join(app, ".next", "BUILD_ID"), "build-1.0.0");
+  fs.writeFileSync(path.join(app, "prisma", "migrations", "001.sql"), "migration-1.0.0");
+  fs.writeFileSync(path.join(app, "prisma", "data", "garde.txt"), "données");
+  fs.writeFileSync(path.join(app, "release.json"), JSON.stringify({ name: "vitrine", version: "1.0.0", platform: PLATFORM, repo: "owner/vitrine", paths: [".next", "package.json", "prisma/migrations", "release.json"] }));
+  fs.writeFileSync(path.join(app, ".env"), "SECRET=1");
   const dataDir = path.join(app, "data");
   fs.mkdirSync(dataDir, { recursive: true });
   const dbFile = path.join(dataDir, "site.db");
   fs.writeFileSync(dbFile, "DONNEES-AVANT");
-  const calls = [];
-  // git est réel ; npm / prisma / build sont simulés (on enregistre l'ordre) — `fail` fait échouer une étape précise.
+  fs.writeFileSync(path.join(dataDir, "upload.png"), "image");
+  build("1.0.0");
+  const calls = [], downloads = [];
+  // tar est réel ; prisma et le redémarrage sont simulés (on enregistre l'ordre) — `fail` fait échouer une commande précise.
   const make = ({ fail = null, mutateDb = false, always = false } = {}) => {
     let failed = false;
     return async (cmd, args, opts = {}) => {
-    const line = `${cmd} ${args.join(" ")}`;
-    if (cmd === "git") return { stdout: git(opts.cwd, ...args) };
-    calls.push(line);
-    if (fail && line.includes(fail) && (always || !failed)) { failed = true; throw new Error(`échec simulé : ${line}`); }
-    if (mutateDb && line.includes("migrate deploy")) fs.writeFileSync(dbFile, "DONNEES-APRES-MIGRATION");
-    return { stdout: "ok" };
+      const line = `${cmd} ${args.join(" ")}`;
+      if (cmd === "tar") return { stdout: execFileSync("tar", args, { cwd: opts.cwd }).toString() };
+      calls.push(line);
+      if (fail && line.includes(fail) && (always || !failed)) { failed = true; throw new Error(`échec simulé : ${line}`); }
+      if (mutateDb && line.includes("migrate deploy")) fs.writeFileSync(dbFile, "DONNEES-APRES-MIGRATION");
+      return { stdout: "ok" };
     };
   };
-  return { root, upstream, app, dataDir, dbFile, calls, release, make, head: () => git(app, "rev-parse", "HEAD"), cleanup: () => fs.rmSync(root, { recursive: true, force: true }) };
+  const download = async (url, dest) => {
+    downloads.push(url);
+    const f = path.join(hosted, path.basename(url));
+    if (!fs.existsSync(f)) throw new Error("404");
+    fs.copyFileSync(f, dest);
+  };
+  const buildId = () => fs.readFileSync(path.join(app, ".next", "BUILD_ID"), "utf8");
+  return { root, app, dataDir, dbFile, calls, downloads, build, make, download, buildId, cleanup: () => fs.rmSync(root, { recursive: true, force: true }) };
 }
-const opts = (s, over = {}) => ({ appDir: s.app, dataDir: s.dataDir, databaseUrl: `file:${s.dbFile}`, ...over });
+const opts = (s, over = {}) => ({ appDir: s.app, dataDir: s.dataDir, databaseUrl: `file:${s.dbFile}`, download: s.download, ...over });
 
-test("mise à jour : succès — sauvegarde, version récupérée, dépendances, migrations, build, redémarrage demandé, dans cet ordre", async () => {
+test("mise à jour : succès — sauvegarde, téléchargement, empreinte, bascule, migrations, redémarrage ; aucune compilation ni git", async () => {
   const s = setup(); try {
-    s.release("1.1.0", { "feature.txt": "nouveau" });
+    s.build("1.1.0", { files: { "modules-community/x.txt": "nouveau" }, paths: [".next", "package.json", "prisma/migrations", "release.json", "modules-community"] });
     const restarts = [];
     const exec = async (cmd, args, o) => { if (cmd === "sh") { restarts.push(args[1]); return { stdout: "" }; } return s.make()(cmd, args, o); };
     const r = await runUpdate({ ...opts(s), tag: "v1.1.0", exec, restartCommand: "systemctl restart vitrine" });
     assert.deepEqual(r, { ok: true });
-    assert.equal(fs.readFileSync(path.join(s.app, "feature.txt"), "utf8"), "nouveau", "le code de la version est en place");
-    assert.deepEqual(s.calls, ["npx prisma migrate deploy", "npm run build"], "dépendances inchangées : node_modules n'est pas touché");
+    assert.equal(s.buildId(), "build-1.1.0", "le build livré est en place");
+    assert.equal(fs.readFileSync(path.join(s.app, "modules-community", "x.txt"), "utf8"), "nouveau");
+    assert.equal(JSON.parse(fs.readFileSync(path.join(s.app, "package.json"), "utf8")).version, "1.1.0");
+    assert.deepEqual(s.calls, ["npx prisma migrate deploy"], "rien d'autre : ni npm ci, ni build, ni git");
+    assert.deepEqual(s.downloads, ["https://github.com/owner/vitrine/releases/download/v1.1.0/vitrine-v1.1.0-" + PLATFORM + ".tar.gz", "https://github.com/owner/vitrine/releases/download/v1.1.0/vitrine-v1.1.0-" + PLATFORM + ".tar.gz.sha256"]);
     assert.deepEqual(restarts, ["systemctl restart vitrine"]);
     const st = readState(s.dataDir);
     assert.deepEqual([st.status, st.target, st.restart, st.error, st.rolledBack], ["success", "v1.1.0", "command", null, false]);
     const backups = fs.readdirSync(path.join(s.dataDir, "backups"));
-    assert.equal(backups.length, 1);
     assert.equal(fs.readFileSync(path.join(s.dataDir, "backups", backups[0]), "utf8"), "DONNEES-AVANT", "sauvegarde faite AVANT les migrations");
+    for (const left of [".vitrine-staging", ".vitrine-previous"]) assert.ok(!fs.existsSync(path.join(s.app, left)), `${left} nettoyé`);
     assert.match(fs.readFileSync(path.join(s.dataDir, "update", "update.log"), "utf8"), /v1\.1\.0 installée/);
+  } finally { s.cleanup(); }
+});
+
+test("mise à jour : les données de l'exploitant (.env, data/, prisma/data) ne sont jamais touchées", async () => {
+  const s = setup(); try {
+    s.build("1.1.0");
+    assert.equal((await runUpdate({ ...opts(s), tag: "v1.1.0", exec: s.make() })).ok, true);
+    assert.equal(fs.readFileSync(path.join(s.app, ".env"), "utf8"), "SECRET=1");
+    assert.equal(fs.readFileSync(path.join(s.dataDir, "upload.png"), "utf8"), "image");
+    assert.equal(fs.readFileSync(path.join(s.app, "prisma", "data", "garde.txt"), "utf8"), "données");
   } finally { s.cleanup(); }
 });
 
 test("mise à jour : sans commande de redémarrage ni superviseur, elle le dit — le site n'est jamais coupé d'office", async () => {
   const s = setup(); try {
-    s.release("1.0.1");
+    s.build("1.0.1");
     assert.equal((await runUpdate({ ...opts(s), tag: "v1.0.1", exec: s.make() })).ok, true);
     assert.equal(readState(s.dataDir).restart, "needed");
   } finally { s.cleanup(); }
 });
 
-test("mise à jour : échec du build → retour à la version précédente, base intacte, etat « failed » lisible", async () => {
+test("mise à jour : échec des migrations → anciens dossiers rétablis, base sauvegardée restaurée, redémarrage demandé", async () => {
   const s = setup(); try {
-    const before = s.head();
-    s.release("1.1.0");
-    // le `release` ne touche pas la copie installée : elle est toujours sur 1.0.0
-    assert.equal(s.head(), before);
-    const r = await runUpdate({ ...opts(s), tag: "v1.1.0", exec: s.make({ fail: "run build" }) });
-    assert.deepEqual(r, { ok: false, error: "step-failed:build" });
-    assert.equal(s.head(), before, "code précédent rétabli");
-    assert.equal(git(s.app, "symbolic-ref", "-q", "--short", "HEAD"), "main", "revenu sur sa branche");
-    const st = readState(s.dataDir);
-    assert.deepEqual([st.status, st.error, st.rolledBack], ["failed", "step-failed:build", true]);
-    assert.ok(s.calls.filter((c) => c === "npm run build").length === 2, "le build précédent est refait pour que le site reste cohérent");
-  } finally { s.cleanup(); }
-});
-
-test("mise à jour : si le retour arrière échoue lui aussi, l'état le dit honnêtement (rolledBack = false)", async () => {
-  const s = setup(); try {
-    s.release("1.1.0");
-    const r = await runUpdate({ ...opts(s), tag: "v1.1.0", exec: s.make({ fail: "run build", always: true }) });
-    assert.equal(r.ok, false);
-    assert.equal(readState(s.dataDir).rolledBack, false);
-  } finally { s.cleanup(); }
-});
-
-test("mise à jour : échec pendant les migrations → la base sauvegardée est restaurée et un redémarrage est demandé", async () => {
-  const s = setup(); try {
-    s.release("1.1.0");
+    s.build("1.1.0");
     const exec = async (cmd, args, o) => {
-      const line = `${cmd} ${args.join(" ")}`;
-      if (line.includes("migrate deploy")) { fs.writeFileSync(s.dbFile, "BASE-A-MOITIE-MIGREE"); throw new Error("migration cassée"); }
+      if (`${cmd} ${args.join(" ")}`.includes("migrate deploy")) { fs.writeFileSync(s.dbFile, "BASE-A-MOITIE-MIGREE"); throw new Error("migration cassée"); }
       return s.make()(cmd, args, o);
     };
     const r = await runUpdate({ ...opts(s), tag: "v1.1.0", exec });
-    assert.equal(r.ok, false);
+    assert.deepEqual(r, { ok: false, error: "step-failed:migrate" });
+    assert.equal(s.buildId(), "build-1.0.0", "build précédent rétabli");
+    assert.equal(JSON.parse(fs.readFileSync(path.join(s.app, "package.json"), "utf8")).version, "1.0.0");
+    assert.equal(fs.readFileSync(path.join(s.app, "prisma", "migrations", "001.sql"), "utf8"), "migration-1.0.0");
     assert.equal(fs.readFileSync(s.dbFile, "utf8"), "DONNEES-AVANT", "base d'avant la mise à jour");
     const st = readState(s.dataDir);
-    assert.equal(st.rolledBack, true);
-    assert.equal(st.restart, "needed", "le serveur en cours tient l'ancien fichier ouvert : il doit redémarrer");
+    assert.deepEqual([st.status, st.rolledBack, st.restart], ["failed", true, "needed"]);
+    for (const left of [".vitrine-staging", ".vitrine-previous"]) assert.ok(!fs.existsSync(path.join(s.app, left)), `${left} nettoyé`);
   } finally { s.cleanup(); }
 });
 
-test("mise à jour : étiquette inconnue ou réseau en panne → rien n'est modifié", async () => {
+test("mise à jour : archive introuvable ou réseau en panne → rien n'est modifié", async () => {
   const s = setup(); try {
-    const before = s.head();
-    assert.deepEqual(await runUpdate({ ...opts(s), tag: "v9.9.9", exec: s.make() }), { ok: false, error: "unknown-tag" });
-    assert.equal(s.head(), before);
-    assert.deepEqual(s.calls, [], "aucune installation tentée");
-    s.release("1.1.0");
-    const exec = async (cmd, args, o) => { if (cmd === "git" && args[0] === "fetch") throw new Error("réseau"); return s.make()(cmd, args, o); };
-    assert.equal((await runUpdate({ ...opts(s), tag: "v1.1.0", exec })).error, "step-failed:fetch");
-    assert.equal(s.head(), before);
+    assert.deepEqual(await runUpdate({ ...opts(s), tag: "v9.9.9", exec: s.make() }), { ok: false, error: "step-failed:download" });
+    assert.equal(s.buildId(), "build-1.0.0");
+    assert.deepEqual(s.calls, []);
     assert.equal(readState(s.dataDir).rolledBack, false, "rien à annuler : la bascule n'a pas eu lieu");
+    assert.ok(!fs.existsSync(path.join(s.app, ".vitrine-staging")));
   } finally { s.cleanup(); }
 });
 
-test("mise à jour : modifications locales → refus net, rien n'est touché", async () => {
+test("mise à jour : empreinte différente de celle publiée → refus net avant d'extraire quoi que ce soit", async () => {
   const s = setup(); try {
-    s.release("1.1.0");
-    fs.writeFileSync(path.join(s.app, "package.json"), '{"name":"vitrine","version":"1.0.0","modifié":true}');
-    const r = await runUpdate({ ...opts(s), tag: "v1.1.0", exec: s.make() });
-    assert.deepEqual(r, { ok: false, error: "local-changes" });
+    s.build("1.1.0", { badSum: true });
+    assert.deepEqual(await runUpdate({ ...opts(s), tag: "v1.1.0", exec: s.make() }), { ok: false, error: "checksum-mismatch" });
+    assert.equal(s.buildId(), "build-1.0.0");
+    assert.deepEqual(s.calls, []);
+  } finally { s.cleanup(); }
+});
+
+test("mise à jour : archive de la mauvaise plateforme ou d'une autre version, ou listant un chemin protégé → refusée", async () => {
+  for (const [label, build] of [
+    ["plateforme", { platform: "darwin-arm64" }],
+    ["chemin protégé", { files: { "data/x": "x" }, paths: [".next", "package.json", "prisma/migrations", "release.json", "data"] }],
+    ["sortie du dossier", { paths: [".next", "package.json", "../evil", "release.json"] }],
+    ["données prisma", { files: { "prisma/data/x": "x" }, paths: [".next", "package.json", "prisma/data", "release.json"] }],
+  ]) {
+    const s = setup(); try {
+      s.build("1.1.0", build);
+      const r = await runUpdate({ ...opts(s), tag: "v1.1.0", exec: s.make() });
+      assert.deepEqual(r, { ok: false, error: "bad-archive" }, label);
+      assert.equal(s.buildId(), "build-1.0.0", label);
+      assert.equal(fs.readFileSync(path.join(s.app, "prisma", "data", "garde.txt"), "utf8"), "données", label);
+    } finally { s.cleanup(); }
+  }
+  const s = setup(); try {
+    s.build("1.1.0"); fs.copyFileSync(path.join(s.root, "hosted", `vitrine-v1.1.0-${PLATFORM}.tar.gz`), path.join(s.root, "hosted", `vitrine-v1.2.0-${PLATFORM}.tar.gz`));
+    fs.writeFileSync(path.join(s.root, "hosted", `vitrine-v1.2.0-${PLATFORM}.tar.gz.sha256`), `${sha(path.join(s.root, "hosted", `vitrine-v1.2.0-${PLATFORM}.tar.gz`))}  x\n`);
+    assert.equal((await runUpdate({ ...opts(s), tag: "v1.2.0", exec: s.make() })).error, "bad-archive", "l'archive dit 1.1.0 alors qu'on a demandé 1.2.0");
+  } finally { s.cleanup(); }
+});
+
+test("mise à jour : installation sans release.json (clone git de développement) → refus net, rien n'est touché", async () => {
+  const s = setup(); try {
+    fs.rmSync(path.join(s.app, "release.json"));
+    s.build("1.1.0");
+    assert.deepEqual(await runUpdate({ ...opts(s), tag: "v1.1.0", exec: s.make() }), { ok: false, error: "not-a-release-install" });
     assert.deepEqual(s.calls, []);
     assert.ok(!fs.existsSync(path.join(s.dataDir, "backups")), "pas même de sauvegarde");
   } finally { s.cleanup(); }
 });
 
-test("mise à jour : les données (base, envois, .env) ne comptent pas comme des modifications locales", async () => {
-  const s = setup(); try {
-    s.release("1.1.0");
-    fs.writeFileSync(path.join(s.app, ".env"), "SECRET=1");
-    fs.writeFileSync(path.join(s.dataDir, "uploads.txt"), "x");
-    assert.equal((await runUpdate({ ...opts(s), tag: "v1.1.0", exec: s.make() })).ok, true);
-    assert.equal(fs.readFileSync(path.join(s.app, ".env"), "utf8"), "SECRET=1", ".env conservé");
-  } finally { s.cleanup(); }
-});
-
-test("mise à jour : valeur de version dangereuse refusée avant toute commande", async () => {
+test("mise à jour : valeur de version ou de dépôt dangereuse refusée avant toute commande", async () => {
   const s = setup(); try {
     for (const tag of ["main", "v1.0.0; rm -rf /", "--upload-pack=x", "../x", "v1.0", ""]) {
       const r = await runUpdate({ ...opts(s), tag, exec: s.make() });
       assert.deepEqual(r, { ok: false, error: "invalid-tag" }, JSON.stringify(tag));
     }
+    s.build("1.1.0");
+    assert.equal((await runUpdate({ ...opts(s), tag: "v1.1.0", repo: "a/b/../c", exec: s.make() })).error, "no-release-source");
     assert.deepEqual(s.calls, []);
+    assert.deepEqual(s.downloads, []);
   } finally { s.cleanup(); }
 });
 
 test("mise à jour : une seule à la fois (verrou), mais un verrou périmé ne bloque pas", async () => {
   const s = setup(); try {
-    s.release("1.1.0");
+    s.build("1.1.0");
     fs.mkdirSync(path.join(s.dataDir, "update"), { recursive: true });
     const lock = (startedAt) => fs.writeFileSync(path.join(s.dataDir, "update", "state.json"), JSON.stringify({ status: "running", startedAt }));
     lock(Date.now());
@@ -221,7 +259,7 @@ test("sauvegardes : on garde les 5 dernières seulement", async () => {
     fs.mkdirSync(backups, { recursive: true });
     for (let i = 1; i <= 8; i++) fs.writeFileSync(path.join(backups, `pre-update-v0.0.${i}-${1000 + i}.db`), "x");
     fs.writeFileSync(path.join(backups, "autre-fichier.db"), "à ne pas toucher");
-    s.release("1.0.1");
+    s.build("1.0.1");
     await runUpdate({ ...opts(s), tag: "v1.0.1", exec: s.make() });
     const left = fs.readdirSync(backups).filter((f) => f.startsWith("pre-update-"));
     assert.equal(left.length, 5);
@@ -231,7 +269,7 @@ test("sauvegardes : on garde les 5 dernières seulement", async () => {
 
 test("redémarrage supervisé : le serveur est arrêté par signal pour que le superviseur le relance", async () => {
   const s = setup(); try {
-    s.release("1.0.1");
+    s.build("1.0.1");
     const child = (await import("node:child_process")).spawn(process.execPath, ["-e", "setInterval(()=>{},1000)"]);
     const exited = new Promise((res) => child.on("exit", (code, signal) => res(signal)));
     await runUpdate({ ...opts(s), tag: "v1.0.1", exec: s.make(), supervised: true, serverPid: child.pid });
@@ -240,36 +278,21 @@ test("redémarrage supervisé : le serveur est arrêté par signal pour que le s
   } finally { s.cleanup(); }
 });
 
-test("le script en ligne de commande est présent et n'exécute que ce qu'il reçoit via exec (aucun shell sur la version)", () => {
+test("entrées d'archive : chemins absolus, `..` ou caractères de contrôle refusés", () => {
+  for (const ok of [".next/BUILD_ID", "./package.json", "node_modules/.bin/next"]) assert.equal(safeEntry(ok), true, ok);
+  for (const bad of ["/etc/passwd", "../x", "a/../../x", "", "a\nb"]) assert.equal(safeEntry(bad), false, JSON.stringify(bad));
+});
+
+test("le script en ligne de commande : https seulement, taille bornée, aucun shell (execFile)", () => {
   const cli = fs.readFileSync("scripts/update.mjs", "utf8");
   assert.ok(cli.includes("execFile") && !/\bexec\(|execSync|shell:\s*true/.test(cli.replace(/promisify\(execFile\)/, "")));
+  assert.ok(cli.includes("https requis"));
+  assert.match(cli, /MAX_BYTES/);
   assert.ok(sh);
 });
 
-test("dépendances : empreinte — le numéro de version du projet est ignoré, une dépendance modifiée ne l'est pas", () => {
-  const pkg = (version, deps) => JSON.stringify({ name: "x", version, dependencies: deps });
-  const lock = (version, deps) => JSON.stringify({ name: "x", version, packages: { "": { name: "x", version, dependencies: deps }, "node_modules/a": { version: deps.a } } });
-  assert.equal(depsFingerprint(pkg("1.0.0", { a: "1" }), lock("1.0.0", { a: "1" })), depsFingerprint(pkg("1.0.1", { a: "1" }), lock("1.0.1", { a: "1" })));
-  assert.notEqual(depsFingerprint(pkg("1.0.0", { a: "1" }), lock("1.0.0", { a: "1" })), depsFingerprint(pkg("1.0.0", { a: "2" }), lock("1.0.0", { a: "2" })));
-  assert.equal(depsFingerprint("{pas du json", ""), null, "illisible → traité comme modifié");
-});
-
-test("mise à jour : dépendances modifiées → réinstallées (npm ci, generate) avant les migrations et le build", async () => {
-  const s = setup(); try {
-    s.release("1.1.0", { deps: { next: "2.0.0" } });
-    assert.equal((await runUpdate({ ...opts(s), tag: "v1.1.0", exec: s.make() })).ok, true);
-    assert.deepEqual(s.calls, ["npm ci --include=dev", "npx prisma generate", "npx prisma migrate deploy", "npm run build"]);
-    assert.match(fs.readFileSync(path.join(s.dataDir, "update", "update.log"), "utf8"), /dépendances modifiées/);
-  } finally { s.cleanup(); }
-});
-
-test("mise à jour : le schéma de base modifié → client régénéré même si les dépendances sont les mêmes", async () => {
-  const s = setup(); try {
-    fs.mkdirSync(path.join(s.upstream, "prisma")); fs.writeFileSync(path.join(s.upstream, "prisma", "schema.prisma"), "// v1");
-    git(s.upstream, "add", "-A"); git(s.upstream, "commit", "-q", "-m", "schema"); git(s.upstream, "tag", "v1.0.5");
-    git(s.app, "pull", "-q", "--ff-only"); // l'installation est à jour du schéma v1
-    s.release("1.1.0", {}); fs.writeFileSync(path.join(s.upstream, "prisma", "schema.prisma"), "// v2"); git(s.upstream, "commit", "-qam", "schema v2"); git(s.upstream, "tag", "-f", "v1.1.0");
-    assert.equal((await runUpdate({ ...opts(s), tag: "v1.1.0", exec: s.make() })).ok, true);
-    assert.deepEqual(s.calls, ["npx prisma generate", "npx prisma migrate deploy", "npm run build"]);
-  } finally { s.cleanup(); }
+test("empaquetage : release-pack refuse une version qui ne correspond pas à package.json et exclut les données de l'exploitant", () => {
+  const src = fs.readFileSync("scripts/release-pack.mjs", "utf8");
+  assert.match(src, /pkg\.version !== version/);
+  assert.ok(!/["']data["']|\.env["'],|prisma\/data/.test(src.split("const PATHS")[1].split("].filter")[0]), "ni data/, ni .env, ni prisma/data dans l'archive");
 });

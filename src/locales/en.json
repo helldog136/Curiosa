@@ -414,7 +414,7 @@
   "updates.auto": "Install new versions automatically",
   "updates.autoHelp": "Off by default. When on, the site checks every 6 hours and installs fixes and new features by itself (never a major change), with a backup and automatic rollback on failure.",
   "updates.mode.docker": "This site runs in a container: update it by replacing the image (rebuild and restart the container), not from the admin.",
-  "updates.mode.manual": "This site was not installed from a git repository: updating from the admin is not available. See the installation guide.",
+  "updates.mode.manual": "This site wasn't installed from a release archive: updating from the admin isn't available. See the installation docs.",
   "updates.restart.command": "After installation, the server is restarted by the command you configured.",
   "updates.restart.supervised": "After installation, the server stops and its supervisor (systemd, pm2, Docker…) restarts it.",
   "updates.restart.manual": "No restart command is configured: after installation, restart the server by hand.",

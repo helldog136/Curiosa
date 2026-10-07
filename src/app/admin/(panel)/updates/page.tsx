@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 export default async function UpdatesPage() {
   const { t, locale } = await adminCtx("owner");
-  const info = await getInstallInfo();
+  const info = getInstallInfo();
   // Première visite : on interroge le dépôt une fois pour ne pas montrer « jamais vérifié ».
   let check = await getUpdateCheck();
   if (check.checkedAt === null && info.canUpdate) check = await checkForUpdate();
@@ -26,7 +26,7 @@ export default async function UpdatesPage() {
       <h1 className="text-2xl font-bold">{t("nav.updates")}</h1>
 
       <section className={`${ui.card} space-y-2`}>
-        <p>{t("updates.current")} <strong>v{info.version}</strong>{info.commit && <span className="ml-2 font-mono text-xs text-muted">{info.commit}</span>}</p>
+        <p>{t("updates.current")} <strong>v{info.version}</strong></p>
         {!info.canUpdate && <p className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">{t(`updates.mode.${info.mode}`)}</p>}
         {info.canUpdate && (
           <>
