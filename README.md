@@ -8,7 +8,7 @@ Le même code peut faire tourner le site d'un streamer, d'un duo, d'un collectif
 dans le dépôt ne parle d'une personne ou d'un projet précis : textes, liens, couleurs,
 langues, menus et même les redirections `/twitch` ou `/youtube` se règlent dans l'admin.
 
-> Nom de travail : « Curiosa ».
+> **Curiosa** : un coin à soi, où l'on expose les petites choses qu'on fait.
 
 ## Les idées clés
 
