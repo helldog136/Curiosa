@@ -1,4 +1,4 @@
-// Porté depuis le labyrinthe de helldog136.be (TypeScript → JavaScript), sans autre changement de logique.
+// Porté depuis un labyrinthe 3D existant (TypeScript → JavaScript), sans autre changement de logique.
 // Résout une URL YouTube/Twitch clip vers son URL d'embed lecture directe —
 // utilisé par le focus promo (la vidéo doit jouer, pas juste être liée).
 // Fonctions pures, sans DOM — utilisables aussi bien côté serveur (route

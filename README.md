@@ -8,8 +8,7 @@ Le même code peut faire tourner le site d'un streamer, d'un duo, d'un collectif
 dans le dépôt ne parle d'une personne ou d'un projet précis : textes, liens, couleurs,
 langues, menus et même les redirections `/twitch` ou `/youtube` se règlent dans l'admin.
 
-> Nom de travail : « Vitrine ». Le dépôt s'appelle encore `Website-Rosaliax` ; il sera
-> renommé avant d'être rendu public.
+> Nom de travail : « Vitrine ».
 
 ## Les idées clés
 

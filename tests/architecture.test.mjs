@@ -3,6 +3,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import { execFileSync } from "node:child_process";
 import path from "node:path";
 
 const read = (p) => fs.readFileSync(p, "utf8");
@@ -157,4 +158,15 @@ test("accueil fluide : la liste d'entrées s'adapte à la place de sa case, pas 
   const list = read("src/components/site/EntryList.tsx");
   assert.ok(list.includes("auto-fill") && list.includes("minmax("), "colonnes intrinsèques (auto-fill + minmax)");
   assert.ok(!/\b(sm|md|lg|xl):grid-cols-/.test(list), "pas de colonnes réglées sur la largeur de l'écran : dans une case étroite, les cartes seraient écrasées");
+});
+
+test("le framework est agnostique de toute donnée métier : aucun nom de site, de marque ou de personne dans le dépôt", () => {
+  // Les motifs sont assemblés pour que ce fichier ne contienne pas lui-même ce qu'il interdit.
+  const forbidden = [["rosa", "li"], ["hell", "dog"], ["brux", "elles"], ["brus", "sels"]].map((p) => new RegExp(p.join(""), "i"));
+  const files = execFileSync("git", ["ls-files"], { encoding: "utf8" }).split("\n").filter((f) => f && !/(package-lock\.json|\.(png|jpe?g|ico|woff2?))$/.test(f) && fs.existsSync(f));
+  assert.ok(files.length > 100, "les fichiers suivis doivent être listés");
+  for (const f of files) {
+    const text = fs.readFileSync(f, "utf8");
+    for (const re of forbidden) assert.ok(!re.test(text), `${f} contient une donnée propre à un site (${re.source}) : le framework doit rester neutre`);
+  }
 });

@@ -368,7 +368,7 @@
   "settings.mailPass": "Password",
   "settings.mailPassHelp": "Leave empty to keep the current one. It is never shown again.",
   "settings.mailFrom": "Sender address",
-  "settings.mailFromHelp": "Example: My site <contact@mysite.com>",
+  "settings.mailFromHelp": "Example: My site <contact@example.org>",
   "settings.mailSave": "Save the email server",
   "settings.mailTest": "Send a test email to my address",
   "settings.mailStatusOn": "Email server configured.",

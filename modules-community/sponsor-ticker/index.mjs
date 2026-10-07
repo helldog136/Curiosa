@@ -1,5 +1,5 @@
 // Overlay sponsors (OBS) — module communautaire de Vitrine. Porté du bandeau « lower third » de
-// helldog136.be : carte à découpe diagonale qui glisse depuis la droite, légère flottaison, QR code.
+// Un bandeau existant : carte à découpe diagonale qui glisse depuis la droite, légère flottaison, QR code.
 //
 // Il ne connaît aucun module : il digère le sujet « sponsor.card » (fourni par le module Sponsors)
 // ou « core.entry » (n'importe quelle liste de codes promo / d'articles). Les QR codes sont générés par

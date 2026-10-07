@@ -1,4 +1,4 @@
-// Porté depuis le labyrinthe de helldog136.be (TypeScript → JavaScript), sans autre changement de logique.
+// Porté depuis un labyrinthe 3D existant (TypeScript → JavaScript), sans autre changement de logique.
 // Une case est soit du vide (mur normal), soit un chemin praticable, soit
 // un mur spécial "promotion" (affiche une promo dans le rendu 3D), soit un
 // mur spécial "portail" — en apparence un mur (texture dédiée), mais

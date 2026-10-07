@@ -1,6 +1,6 @@
 # Overlay sponsors (OBS) — module communautaire de Vitrine
 
-Le bandeau « lower third » de helldog136.be : une carte à découpe diagonale qui glisse depuis la droite toutes les
+Un bandeau « lower third » : une carte à découpe diagonale qui glisse depuis la droite toutes les
 *N* secondes avec le nom du sponsor, son code promo, un résumé et un **QR code**. Trois styles (néon, ciné, broadcast),
 couleur d'accent libre, badge « Nouveau » pendant 14 jours.
 

@@ -32,7 +32,7 @@ test("toute clé t(\"…\") utilisée dans l'interface existe dans les dictionna
 
 test("slugify retire accents et symboles", async () => {
   const { slugify } = await import("../src/core/slug.ts");
-  assert.equal(slugify("Été à Bruxelles !"), "ete-a-bruxelles");
+  assert.equal(slugify("Été à Paris !"), "ete-a-paris");
   assert.equal(slugify("  --  "), "");
 });
 
@@ -163,7 +163,7 @@ test("surnoms d'instances : libellé d'admin, identifiant dérivé, unicité", a
   assert.equal(instanceLabel({ nickname: " ", publicName: "", key: "blog-2" }, "Blog", 3), "blog-2");
   // L'identifiant technique vient du surnom (et jamais d'un numéro opaque).
   assert.equal(keyFromNickname("blog", "Chaîne 2"), "chaine-2");
-  assert.equal(keyFromNickname("blog", "Été à Bruxelles !"), "ete-a-bruxelles");
+  assert.equal(keyFromNickname("blog", "Été à Paris !"), "ete-a-paris");
   assert.equal(keyFromNickname("links", undefined), "links");
   assert.equal(keyFromNickname("blog", "2024"), "blog-2024", "ne commence pas par un chiffre");
   assert.equal(keyFromNickname("blog", "x"), "blog-x", "trop court");

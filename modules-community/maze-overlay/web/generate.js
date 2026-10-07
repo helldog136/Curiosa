@@ -1,4 +1,4 @@
-// Porté depuis le labyrinthe de helldog136.be (TypeScript → JavaScript), sans autre changement de logique.
+// Porté depuis un labyrinthe 3D existant (TypeScript → JavaScript), sans autre changement de logique.
 import { CELL_PATH, CELL_PORTAL, CELL_PROMO, CELL_VOID, DIRECTIONS, SIZE_CELLS } from "./types.js";
 import { random } from "./random.js";
 // Part des murs éligibles (adjacents à un chemin) transformés en cases

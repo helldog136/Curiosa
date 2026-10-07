@@ -108,15 +108,15 @@
     {
       "key": "timezone",
       "type": "text",
-      "default": "Europe/Brussels",
+      "default": "UTC",
       "advanced": true,
       "label": {
         "en": "Time zone",
         "fr": "Fuseau horaire"
       },
       "help": {
-        "en": "IANA name, e.g. Europe/Brussels, America/Montreal.",
-        "fr": "Nom IANA, ex. Europe/Brussels, America/Montreal."
+        "en": "IANA name, e.g. Europe/Paris, America/Montreal.",
+        "fr": "Nom IANA, ex. Europe/Paris, America/Montreal."
       }
     }
   ],

@@ -1,7 +1,7 @@
 # Labyrinthe 3D (overlay OBS) — module communautaire de Vitrine
 
 Un labyrinthe rétro en raycasting pour OBS : le personnage se promène et s'arrête devant des
-affiches construites à partir de votre contenu. Porté depuis le labyrinthe de helldog136.be.
+affiches construites à partir de votre contenu. Porté depuis un labyrinthe 3D existant.
 
 **Ce module n'est pas livré avec le cœur** : il s'installe depuis son dépôt git
 (Modules → Installer un module). Il vit ici, dans `modules-community/`, en attendant son propre
@@ -40,7 +40,7 @@ Les paramètres se combinent (`?dev=1&seed=7`). Désactivé (par défaut), ils s
 dev, `window.__MAZE_DEV__` expose la graine et une empreinte du tracé pour les tests automatiques.
 Tous les tirages passent par `web/random.js` (jamais `Math.random` directement).
 
-## Différences avec la version de helldog136.be
+## Différences avec la version d'origine
 
 - Le tracé est généré à chaque chargement (la carte figée et son éditeur ne sont pas portés).
 - Les clips Twitch / vidéos YouTube ne sont plus récupérés par l'overlay lui-même : ils doivent venir d'un module fournisseur de `maze.poster`.

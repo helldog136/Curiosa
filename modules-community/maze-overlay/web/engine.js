@@ -1,4 +1,4 @@
-// Porté depuis le labyrinthe de helldog136.be (TypeScript → JavaScript), sans autre changement de logique.
+// Porté depuis un labyrinthe 3D existant (TypeScript → JavaScript), sans autre changement de logique.
 import { isOpen, isPortalCell, isPromoCell, randomOpenCell } from "./generate.js";
 import { variantIndex } from "./textures.js";
 import { CELL_PATH, CELL_PORTAL, CELL_PROMO, CELL_VOID, DIRECTIONS } from "./types.js";

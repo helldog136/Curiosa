@@ -1,4 +1,4 @@
-// Porté depuis le labyrinthe de helldog136.be (TypeScript → JavaScript), sans autre changement de logique.
+// Porté depuis un labyrinthe 3D existant (TypeScript → JavaScript), sans autre changement de logique.
 // Rendu une seule fois (pas par frame) puis réutilisé tel quel comme
 // "sticker" sur le mur (voir engine.ts) — résolution généreuse pour rester
 // net même vu de près, malgré le mur environnant en basse résolution

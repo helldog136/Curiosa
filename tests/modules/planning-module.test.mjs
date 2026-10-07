@@ -95,10 +95,10 @@ test("page : un bloc par jour (titre + liste), « Rien » pour les jours vides, 
   assert.equal((await def.page(ctxWith({ days: "abc" }))).blocks.filter((b) => b.type === "heading").length, 7, "valeur absurde → 7 jours");
 });
 
-test("page : un fuseau invalide retombe sur Europe/Brussels sans casser", async () => {
+test("page : un fuseau invalide retombe sur UTC sans casser", async () => {
   serve(calendar(vevent("1", hours(2), hours(3), "X")));
   const page = await def.page(ctxWith({ timezone: "Mars/Olympus" }));
-  assert.match(page.blocks[0].text, /Europe\/Brussels/);
+  assert.match(page.blocks[0].text, /UTC/);
 });
 
 test("export « planning.slot » : éléments au format attendu, limite respectée", async () => {

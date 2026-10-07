@@ -2,7 +2,7 @@
 
 Le suivi **privé** de vos partenariats : marques démarchées, statut (à contacter → envoyé → en discussion →
 accepté → publié…), chances, relances dues, journal daté, contacts. Porté du suivi de prospection de
-helldog136.be. **Aucune page publique** : rien de ce module n'apparaît sur votre site.
+un site existant. **Aucune page publique** : rien de ce module n'apparaît sur votre site.
 
 - **Admin** : panneau complet dans la page de l'instance (fiches, journal, contacts) — `adminPanel` + `adminActions`.
 - **Lien avec les autres modules** : fournit le sujet `partnership.partner` ; le module *Sponsors* s'en sert pour

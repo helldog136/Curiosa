@@ -368,7 +368,7 @@
   "settings.mailPass": "Mot de passe",
   "settings.mailPassHelp": "Laissez vide pour conserver l'actuel. Il n'est jamais réaffiché.",
   "settings.mailFrom": "Adresse d'expédition",
-  "settings.mailFromHelp": "Exemple : Mon site <contact@monsite.be>",
+  "settings.mailFromHelp": "Exemple : Mon site <contact@example.org>",
   "settings.mailSave": "Enregistrer le serveur d'e-mail",
   "settings.mailTest": "Envoyer un e-mail de test à mon adresse",
   "settings.mailStatusOn": "Serveur d'e-mail configuré.",

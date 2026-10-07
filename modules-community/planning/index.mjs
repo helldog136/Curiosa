@@ -1,4 +1,4 @@
-// Planning des streams — module communautaire de Vitrine, porté du planning de helldog136.be.
+// Planning des streams — module communautaire de Vitrine, porté d'un planning existant.
 //
 // Lit un calendrier iCal (adresse secrète d'un Google Agenda), en tire les créneaux à venir et les montre :
 // page publique jour par jour, section d'accueil « prochains streams », sujet `planning.slot` pour d'autres
@@ -333,7 +333,7 @@ export const clearIcsCache = () => cache.clear();
 async function loadSlots(ctx, days) {
   const url = String(ctx.setting("icsUrl") ?? "").trim();
   if (!url || !isPublicHttpsUrl(url)) return { configured: !!url, ok: false, slots: [] };
-  const timeZone = isValidTimeZone(ctx.setting("timezone")) ? ctx.setting("timezone") : "Europe/Brussels";
+  const timeZone = isValidTimeZone(ctx.setting("timezone")) ? ctx.setting("timezone") : "UTC";
   const text = await fetchIcs(url);
   if (text === null) return { configured: true, ok: false, slots: [], timeZone };
   const now = Date.now();
@@ -360,7 +360,7 @@ export default {
   async page(ctx) {
     const days = clampDays(ctx.setting("days"));
     const { configured, ok, slots, timeZone } = await loadSlots(ctx, days);
-    const tz = timeZone ?? "Europe/Brussels";
+    const tz = timeZone ?? "UTC";
     const blocks = [];
     if (!configured || !ok) {
       blocks.push({ type: "markdown", text: ctx.t("notConfigured") });
@@ -379,7 +379,7 @@ export default {
     async next(ctx) {
       const { ok, slots, timeZone } = await loadSlots(ctx, 30);
       if (!ok || slots.length === 0) return null;
-      const tz = timeZone ?? "Europe/Brussels";
+      const tz = timeZone ?? "UTC";
       const s = slots[0];
       const day = new Intl.DateTimeFormat(ctx.locale, { weekday: "long", day: "numeric", month: "long", timeZone: tz }).format(s.start);
       return [{ type: "heading", text: ctx.t("nextUp") }, { type: "markdown", text: `**${day}**\n\n${slotLine(s, ctx, tz)}` }];
@@ -390,7 +390,7 @@ export default {
       const count = Math.min(7, Math.max(1, Math.trunc(Number(options.count)) || 3));
       const { ok, slots, timeZone } = await loadSlots(ctx, count);
       if (!ok) return null;
-      const tz = timeZone ?? "Europe/Brussels";
+      const tz = timeZone ?? "UTC";
       const rows = buildDays(wallDateNow(tz), count, slots, tz).map((day) => {
         const label = new Intl.DateTimeFormat(ctx.locale, { weekday: "short", day: "numeric", timeZone: tz }).format(zonedTimeToUtc(day.wall.y, day.wall.m, day.wall.d, 12, 0, 0, tz));
         return `- **${label}** · ${day.streams.length ? day.streams.map((s) => slotLine(s, ctx, tz)).join(" · ") : ctx.t("noneToday")}`;
@@ -402,7 +402,7 @@ export default {
       const count = Math.min(20, Math.max(1, Math.trunc(Number(options.count)) || 5));
       const { ok, slots, timeZone } = await loadSlots(ctx, 30);
       if (!ok || slots.length === 0) return null;
-      const tz = timeZone ?? "Europe/Brussels";
+      const tz = timeZone ?? "UTC";
       const lines = slots.slice(0, count).map((s) => {
         const day = new Intl.DateTimeFormat(ctx.locale, { weekday: "short", day: "numeric", month: "short", timeZone: tz }).format(s.start);
         return `- ${day} · ${slotLine(s, ctx, tz)}`;
@@ -426,7 +426,7 @@ export default {
     if (!url) return [...blocks, { type: "markdown", text: t("adminNotSet") }];
     if (!isPublicHttpsUrl(url)) return [...blocks, { type: "markdown", text: t("badUrl") }];
     const { ok, slots, timeZone } = await loadSlots(ctx, Math.max(days, 14));
-    const tz = timeZone ?? "Europe/Brussels";
+    const tz = timeZone ?? "UTC";
     blocks.push({ type: "markdown", text: t("adminHint", { hint: url.slice(-6) }) });
     if (!ok) return [...blocks, { type: "markdown", text: `⚠️ ${t("adminError")}` }, { type: "adminForm", action: "refresh", submitLabel: t("refresh"), fields: [] }];
     blocks.push({ type: "markdown", text: t("adminOk", { n: slots.filter((s) => s.start.getTime() <= Date.now() + days * 86_400_000).length, days }) });

@@ -11,7 +11,7 @@ const { resolveIcon } = await import("@/core/icons");
 const { sniffImage, mimeFor, UPLOAD_NAME_RE, saveUpload, MAX_UPLOAD_BYTES } = await import("@/core/services/uploads");
 
 test("slugify : accents, symboles, casse, longueur", () => {
-  assert.equal(slugify("Été à Bruxelles !"), "ete-a-bruxelles");
+  assert.equal(slugify("Été à Paris !"), "ete-a-paris");
   assert.equal(slugify("  --  "), "");
   assert.equal(slugify("Ça va ? Œuvre"), "ca-va-uvre");
   assert.equal(slugify("a".repeat(200)).length, 80);

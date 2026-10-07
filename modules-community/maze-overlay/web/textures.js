@@ -1,4 +1,4 @@
-// Porté depuis le labyrinthe de helldog136.be (TypeScript → JavaScript), sans autre changement de logique.
+// Porté depuis un labyrinthe 3D existant (TypeScript → JavaScript), sans autre changement de logique.
 const FALLBACK_SIZE = 64;
 // Damier généré en code — évite un rendu cassé tant que l'admin n'a pas
 // uploadé de texture (murs et sol utilisent la même mécanique de fallback).

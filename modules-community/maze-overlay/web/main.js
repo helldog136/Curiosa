@@ -1,6 +1,6 @@
 // Colle navigateur du labyrinthe : remplace MazeOverlay.tsx + PromoFocusCard.tsx du site
 // d'origine (React → DOM natif, aucun framework, aucun build). Le moteur, la génération, les
-// textures et les affiches sont ceux de helldog136.be (voir les autres fichiers de ce dossier).
+// textures et les affiches sont ceux de la version d'origine (voir les autres fichiers de ce dossier).
 import { generateMaze } from "./generate.js";
 import { loadTextureSet, loadImage } from "./textures.js";
 import { drawPromoPoster, setAccent, BADGE_LABELS } from "./poster.js";

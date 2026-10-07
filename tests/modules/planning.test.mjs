@@ -9,27 +9,27 @@ const ev = (lines) => `BEGIN:VEVENT\r\n${lines.join("\r\n")}\r\nEND:VEVENT`;
 const WINDOW_END = new Date("2030-01-01T00:00:00Z");
 
 test("fuseaux : conversion heure locale → UTC, heure d'été comprise", () => {
-  assert.equal(zonedTimeToUtc(2026, 1, 15, 20, 0, 0, "Europe/Brussels").toISOString(), "2026-01-15T19:00:00.000Z");
-  assert.equal(zonedTimeToUtc(2026, 7, 15, 20, 0, 0, "Europe/Brussels").toISOString(), "2026-07-15T18:00:00.000Z");
+  assert.equal(zonedTimeToUtc(2026, 1, 15, 20, 0, 0, "Europe/Paris").toISOString(), "2026-01-15T19:00:00.000Z");
+  assert.equal(zonedTimeToUtc(2026, 7, 15, 20, 0, 0, "Europe/Paris").toISOString(), "2026-07-15T18:00:00.000Z");
   assert.equal(zonedTimeToUtc(2026, 7, 15, 20, 0, 0, "UTC").toISOString(), "2026-07-15T20:00:00.000Z");
 });
 
 test("fuseaux : validation", () => {
-  assert.ok(isValidTimeZone("Europe/Brussels") && isValidTimeZone("UTC"));
+  assert.ok(isValidTimeZone("Europe/Paris") && isValidTimeZone("UTC"));
   assert.ok(!isValidTimeZone("Mars/Olympus") && !isValidTimeZone("") && !isValidTimeZone(null));
 });
 
 test("date du jour dans le fuseau demandé (pas celui du serveur)", () => {
   const now = new Date("2026-03-10T23:30:00Z");
-  assert.equal(JSON.stringify(wallDateNow("Europe/Brussels", now)).includes('"d":11'), true, "minuit passé à Bruxelles");
+  assert.equal(JSON.stringify(wallDateNow("Europe/Paris", now)).includes('"d":11'), true, "minuit passé à Paris");
   assert.equal(JSON.stringify(wallDateNow("America/New_York", now)).includes('"d":10'), true);
 });
 
 test("ICS : événement simple, heure UTC et heure locale avec TZID", () => {
   const out = parseIcs(cal(
     ev(["UID:a", "DTSTART:20260110T190000Z", "DTEND:20260110T210000Z", "SUMMARY:Stream A"]),
-    ev(["UID:b", "DTSTART;TZID=Europe/Brussels:20260111T200000", "DTEND;TZID=Europe/Brussels:20260111T220000", "SUMMARY:Stream B"]),
-  ), { timeZone: "Europe/Brussels", windowEnd: WINDOW_END });
+    ev(["UID:b", "DTSTART;TZID=Europe/Paris:20260111T200000", "DTEND;TZID=Europe/Paris:20260111T220000", "SUMMARY:Stream B"]),
+  ), { timeZone: "Europe/Paris", windowEnd: WINDOW_END });
   const byTitle = Object.fromEntries(out.map((e) => [e.title ?? e.summary, e]));
   const a = byTitle["Stream A"], b = byTitle["Stream B"];
   assert.ok(a && b, JSON.stringify(out));
@@ -49,9 +49,9 @@ test("ICS : événements annulés ignorés", () => {
 
 test("ICS : répétition hebdomadaire avec jours, EXDATE et exception déplacée", () => {
   const out = parseIcs(cal(ev([
-    "UID:r", "DTSTART;TZID=Europe/Brussels:20260105T200000", "DTEND;TZID=Europe/Brussels:20260105T220000",
-    "RRULE:FREQ=WEEKLY;BYDAY=MO,WE;COUNT=6", "EXDATE;TZID=Europe/Brussels:20260107T200000", "SUMMARY:Régulier",
-  ])), { timeZone: "Europe/Brussels", windowEnd: WINDOW_END });
+    "UID:r", "DTSTART;TZID=Europe/Paris:20260105T200000", "DTEND;TZID=Europe/Paris:20260105T220000",
+    "RRULE:FREQ=WEEKLY;BYDAY=MO,WE;COUNT=6", "EXDATE;TZID=Europe/Paris:20260107T200000", "SUMMARY:Régulier",
+  ])), { timeZone: "Europe/Paris", windowEnd: WINDOW_END });
   // 6 occurrences (lun 5, mer 7, lun 12, mer 14, lun 19, mer 21) moins le 7 exclu
   assert.equal(out.length, 5);
   assert.ok(!out.some((e) => new Date(e.start).toISOString().startsWith("2026-01-07")));
@@ -112,8 +112,8 @@ test("jeux : lignes Jeu/Jeux/Game(s), séparateurs, limite à 3, entités HTML",
 
 test("semaines : lundi→dimanche dans le fuseau, décalage de semaines", () => {
   const now = new Date("2026-03-11T12:00:00Z"); // mercredi
-  const w0 = getWeekRange(0, "Europe/Brussels", now);
-  const w1 = getWeekRange(1, "Europe/Brussels", now);
+  const w0 = getWeekRange(0, "Europe/Paris", now);
+  const w1 = getWeekRange(1, "Europe/Paris", now);
   const j = JSON.stringify([w0, w1]);
   assert.match(j, /2026/);
   assert.notDeepEqual(w0, w1);

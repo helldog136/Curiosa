@@ -8,8 +8,8 @@ const { definition: def, manifest, locales } = pk;
 
 const T = Object.fromEntries(Object.keys(locales.fr).map((k) => [k, locales.fr[k]]));
 const brandFull = {
-  name: "Rosalia", tagline: "Streameuse", about: "Je **stream** [ici](https://x.test) et `code`.\n\n> citation",
-  logo: "/uploads/logo.png", contactEmail: "pro@rosalia.fr",
+  name: "Jane", tagline: "Créatrice", about: "Je **stream** [ici](https://x.test) et `code`.\n\n> citation",
+  logo: "/uploads/logo.png", contactEmail: "pro@example.org",
   colors: [{ name: "Rose", hex: "#ff66aa", role: "primary" }, { name: "Nuit", hex: "#111111" }],
   font: { key: "serif", name: "Lora", stack: "Lora, serif" }, defaultLocale: "fr", locales: ["fr", "en"],
 };
@@ -39,9 +39,9 @@ test("press-kit : locales en/fr identiques (variable {name} conservée)", () => 
 test("press-kit : page complète — titre, description, blocs dans l'ordre", async () => {
   const p = await run();
   assert.equal(p.title, "Kit presse");
-  assert.equal(p.description, "Streameuse");
+  assert.equal(p.description, "Créatrice");
   assert.deepEqual(types(p), ["markdown", "heading", "markdown", "copy", "copy", "heading", "downloads", "heading", "markdown", "swatches", "heading", "markdown", "heading", "markdown"]);
-  assert.match(p.blocks[0].text, /Rosalia/);
+  assert.match(p.blocks[0].text, /Jane/);
 });
 
 test("press-kit : n'affiche que les données de la marque du cœur (logo, couleurs, police, email)", async () => {
@@ -52,13 +52,13 @@ test("press-kit : n'affiche que les données de la marque du cœur (logo, couleu
   assert.deepEqual(sw.items, [{ name: "Rose", hex: "#ff66aa", role: "primary" }, { name: "Nuit", hex: "#111111", role: undefined }]);
   const md = p.blocks.map((b) => b.text ?? "").join("\n");
   assert.match(md, /\*\*Lora\*\* — `Lora, serif`/);
-  assert.match(md, /\[pro@rosalia.fr\]\(mailto:pro@rosalia.fr\)/);
+  assert.match(md, /\[pro@example.org\]\(mailto:pro@example.org\)/);
 });
 
 test("press-kit : copies — courte = accroche, longue = Markdown aplati en texte brut", async () => {
   const p = await run();
   const [short, long] = p.blocks.filter((b) => b.type === "copy");
-  assert.equal(short.text, "Streameuse");
+  assert.equal(short.text, "Créatrice");
   assert.equal(long.text, "Je stream ici et code. citation");
   assert.ok(!/[*_`>#\[\]]/.test(long.text));
 });

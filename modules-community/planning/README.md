@@ -1,7 +1,7 @@
 # Planning des streams — module communautaire de Vitrine
 
 Vos prochains streams, jour par jour, lus depuis un **Google Agenda** (ou n'importe quel flux iCal). Porté du planning
-de helldog136.be.
+d'un site existant.
 
 - **Page publique** `/planning` : les *N* prochains jours (7 par défaut, réglage avancé), heure du fuseau choisi.
 - **Section d'accueil** « Prochains streams » (à placer depuis *Page d'accueil*).

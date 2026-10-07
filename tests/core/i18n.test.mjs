@@ -16,7 +16,7 @@ test("traducteur : langue demandée, repli sur l'anglais, puis sur la clé", () 
 
 test("traducteur : variables {nom} remplacées partout, valeurs converties en texte", () => {
   const t = makeTranslator("en");
-  assert.equal(t("dashboard.title", { name: "Rosaliax" }), "Welcome to Rosaliax");
+  assert.equal(t("dashboard.title", { name: "Demo Site" }), "Welcome to Demo Site");
   assert.equal(t("mcp.allowedCount", { n: 3, total: 10 }), "3 of 10 actions allowed");
   assert.equal(t("site.expiresOn", { date: "x" }).includes("{date}"), false);
 });

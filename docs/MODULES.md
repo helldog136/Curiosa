@@ -423,7 +423,7 @@ Seuls les modules de base vivent dans `src/modules-builtin/` : blog, réseaux so
 pages, collection vierge, bandeau d'accueil, formulaire de contact, statut live, overlay
 défilant et **kit presse** (une pure vitrine : il lit l'identité réglée dans le cœur via `ctx.api.brand()` et ne stocke rien). Tout le reste s'installe depuis git. `modules-community/` contient des modules complets qui
 **ne font pas partie du cœur** (un test le vérifie) et qui rejoindront chacun leur dépôt : le premier est
-[`maze-overlay`](../modules-community/maze-overlay), le labyrinthe 3D de helldog136.be porté en module
+[`maze-overlay`](../modules-community/maze-overlay), un labyrinthe 3D existant porté en module
 (moteur en JavaScript natif servi par ses propres routes, alimenté par les sujets `core.entry` et
 `maze.poster`). Il montre qu'un module riche — moteur de rendu, assets, réglages, abonnements — tient
 dans le contrat sans rien ajouter au cœur.
