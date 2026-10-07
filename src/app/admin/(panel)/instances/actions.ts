@@ -12,6 +12,7 @@ import { checkNickname } from "@/core/instanceLabel";
 import { instanceSettingKey } from "@/core/modules/context";
 import { hasPage } from "@/core/modules/manifest";
 import { getModule } from "@/core/modules/registry";
+import { providerInstances, requiresOf, setProviderChoice } from "@/core/modules/dependencies";
 import { getSources, providersOf, setSources } from "@/core/services/topics";
 import { audit } from "@/core/permissions";
 import { deleteSetting, setSetting } from "@/core/settings";
@@ -196,6 +197,23 @@ export async function saveSources(_prev: ActionState, formData: FormData): Promi
     await setSources(id, decl.topic, { instances: chosen.length === available.length ? null : chosen, tags });
   }
   await audit(user.email, "instance.sources", instance.key);
+  revalidatePath("/", "layout");
+  return { ok: t("action.saved") };
+}
+
+/** Pour chaque service requis offert par PLUSIEURS fournisseurs : lequel cette instance utilise (vide = le premier). */
+export async function saveServiceChoices(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const { user, t } = await adminCtx("admin");
+  const id = String(formData.get("id") ?? "");
+  const instance = await prisma.moduleInstance.findUnique({ where: { id } });
+  const mod = instance ? await getModule(instance.moduleId) : null;
+  if (!instance || !mod) return { error: t("error.generic") };
+  for (const [i, service] of requiresOf(mod.manifest).entries()) {
+    const available = (await providerInstances(service, mod.manifest.id)).map((p) => p.instance.key);
+    const chosen = String(formData.get(`service_${i}`) ?? "");
+    await setProviderChoice(id, service, available.includes(chosen) ? chosen : null);
+  }
+  await audit(user.email, "instance.services", instance.key);
   revalidatePath("/", "layout");
   return { ok: t("action.saved") };
 }

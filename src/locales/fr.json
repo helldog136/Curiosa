@@ -531,5 +531,8 @@
   "modules.requires": "Nécessite",
   "modules.offers": "Offre",
   "modules.error.requires": "Ce module a besoin de : {services}. Aucun module qui l'offre n'est actif ni livré avec le framework : installez-en un (marketplace) puis réessayez.",
-  "modules.error.requiredBy": "Impossible : ces modules actifs en dépendent ({modules}). Désactivez-les d'abord."
+  "modules.error.requiredBy": "Impossible : ces modules actifs en dépendent ({modules}). Désactivez-les d'abord.",
+  "services.title": "Services utilisés",
+  "services.intro": "Plusieurs modules offrent le même service : choisissez lequel cette instance utilise (un seul reçoit les données, jamais tous à la fois).",
+  "services.first": "Le premier (automatique)"
 }

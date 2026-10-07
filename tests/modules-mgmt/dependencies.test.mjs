@@ -109,3 +109,25 @@ test("choix du fournisseur : premier par clé d'instance, de façon stable", asy
   await instance("prov", "zeta"); await instance("prov", "alpha"); await instance("cons", "form");
   assert.equal((await Dep.callService(await active("cons"), SERVICE, "add", {})).value.by, "alpha");
 });
+
+test("plusieurs fournisseurs : un seul reçoit (jamais tous), celui que l'admin a choisi ; choix invalide ou disparu → le premier", async () => {
+  await install(provider("prov-a"), "prov-a"); await install(provider("prov-b"), "prov-b");
+  await setModuleEnabled("prov-a", true); await setModuleEnabled("prov-b", true);
+  await install(consumer(), "cons"); await setModuleEnabled("cons", true);
+  const pa = await instance("prov-a", "a-store"), pb = await instance("prov-b", "b-store"); const form = await instance("cons", "form");
+  const cons = await active("cons");
+
+  assert.equal((await Dep.callService(cons, SERVICE, "add", { n: 1 })).value.by, "a-store", "par défaut : le premier");
+  await Dep.setProviderChoice(form.id, SERVICE, "b-store");
+  assert.equal((await Dep.callService(cons, SERVICE, "add", { n: 2 })).value.by, "b-store");
+  const counts = async () => ({ "a-store": await db.prisma.moduleRecord.count({ where: { collection: "items", instanceId: pa.id } }), "b-store": await db.prisma.moduleRecord.count({ where: { collection: "items", instanceId: pb.id } }) });
+  assert.deepEqual(await counts(), { "a-store": 1, "b-store": 1 }, "chaque appel n'a atteint qu'un fournisseur");
+
+  await Dep.setProviderChoice(form.id, SERVICE, "n-existe-pas");
+  assert.equal((await Dep.callService(cons, SERVICE, "add", {})).value.by, "a-store", "choix invalide : repli sur le premier");
+  await Dep.setProviderChoice(form.id, SERVICE, "b-store");
+  assert.equal((await setModuleEnabled("prov-b", false)).ok, true, "un fournisseur choisi peut être retiré tant qu'un autre reste");
+  assert.equal((await Dep.callService(await active("cons"), SERVICE, "add", {})).value.by, "a-store", "fournisseur choisi disparu : repli");
+  await Dep.setProviderChoice(form.id, SERVICE, null);
+  assert.equal(await Dep.getProviderChoice(form.id, SERVICE), null);
+});

@@ -1,4 +1,5 @@
 import { buildContext } from "./context";
+import { deleteSetting, getSetting, setSetting } from "../settings";
 import { getActiveInstances, getModule, listModuleRows, type ActiveInstance } from "./registry";
 import type { ParsedManifest } from "./manifest";
 
@@ -36,14 +37,36 @@ export async function dependentsOf(moduleId: string): Promise<string[]> {
   return others.filter((m) => requiresOf(m).some((s) => lost.has(s))).map((m) => m.id);
 }
 
+/**
+ * QUEL fournisseur répond quand plusieurs modules (ou plusieurs instances) offrent le même service ? UN seul : celui que l'administrateur a
+ * choisi pour cette instance consommatrice, à défaut le premier par clé d'instance. On n'envoie pas à tous : un service est une action
+ * « range ceci quelque part », la répéter chez chacun créerait des doublons dont aucun n'est la référence. (Installer un deuxième
+ * fournisseur reste possible, c'est le moyen de changer de carnet : on bascule le choix, puis on retire l'ancien.)
+ */
+const choiceKey = (instanceId: string, service: string) => `instance.${instanceId}.__service.${service}`;
+export const getProviderChoice = async (instanceId: string, service: string): Promise<string | null> => (await getSetting<string>(choiceKey(instanceId, service))) ?? null;
+export async function setProviderChoice(instanceId: string, service: string, providerKey: string | null): Promise<void> {
+  if (providerKey) await setSetting(choiceKey(instanceId, service), providerKey);
+  else await deleteSetting(choiceKey(instanceId, service));
+}
+
+/** Instances actives qui offrent ce service, par clé d'instance. */
+export async function providerInstances(service: string, exceptModule?: string): Promise<ActiveInstance[]> {
+  return (await getActiveInstances()).filter((a) => offersOf(a.mod.manifest).includes(service) && a.mod.manifest.id !== exceptModule).sort((a, b) => a.instance.key.localeCompare(b.instance.key));
+}
+
 type Outcome = { ok: true; value: unknown } | { ok: false; reason: "undeclared" | "unavailable" | "no_method" | "failed" };
 
 /** Appel d'un service au nom d'une instance consommatrice. Ne lève jamais. */
-export async function callService(consumer: Pick<ActiveInstance, "mod">, service: string, method: string, args: unknown, locale?: string): Promise<Outcome> {
+export async function callService(consumer: Pick<ActiveInstance, "mod" | "instance">, service: string, method: string, args: unknown, locale?: string): Promise<Outcome> {
   if (!requiresOf(consumer.mod.manifest).includes(service)) return { ok: false, reason: "undeclared" };
-  const providers = (await getActiveInstances()).filter((a) => offersOf(a.mod.manifest).includes(service) && a.mod.manifest.id !== consumer.mod.manifest.id).sort((a, b) => a.instance.key.localeCompare(b.instance.key));
+  const providers = await providerInstances(service, consumer.mod.manifest.id);
   if (providers.length === 0) return { ok: false, reason: "unavailable" };
-  const handler = providers.map((p) => ({ p, fn: p.mod.def.services?.[service]?.[method] })).find((x) => typeof x.fn === "function");
+  // Le fournisseur choisi (s'il est toujours actif), sinon le premier.
+  const chosen = await getProviderChoice(consumer.instance.id, service);
+  const target = (providers.find((p) => p.instance.key === chosen) ?? providers[0])!;
+  const fn = target.mod.def.services?.[service]?.[method];
+  const handler = typeof fn === "function" ? { p: target, fn } : undefined;
   if (!handler) return { ok: false, reason: "no_method" };
   try {
     return { ok: true, value: await handler.fn!(await buildContext(handler.p.mod, handler.p.instance, locale), args) };
