@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-bg: var(--v-bg);
+  --color-fg: var(--v-fg);
+  --color-muted: var(--v-muted);
+  --color-surface: var(--v-surface);
+  --color-line: var(--v-line);
+  --color-accent: var(--v-accent);
+  --color-accent-fg: var(--v-accent-fg);
+  --font-sans: var(--v-font);
+}
+
+/* Valeurs par défaut ; surchargées par le thème choisi dans l'admin. */
+:root {
+  --v-bg: #121214;
+  --v-fg: #f4f4f5;
+  --v-muted: #a4a4a8;
+  --v-surface: #1c1c1f;
+  --v-line: #2f2f33;
+  --v-accent: #e8a23b;
+  --v-accent-fg: #111111;
+  --v-font: ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  body {
+    font-family: var(--v-font);
+  }
+  a:focus-visible,
+  button:focus-visible,
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

@@ -1,0 +1,186 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Comptes ──────────────────────────────────────────────────────────────
+// role : owner | admin | editor (String : SQLite n'a pas d'enum natif).
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  role         String   @default("editor")
+  passwordHash String
+  // Langue de l'interface d'admin de cet utilisateur (null = défaut du site).
+  locale       String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  entries Entry[]
+}
+
+// ─── Réglages ─────────────────────────────────────────────────────────────
+// Clé/valeur. `locale` vaut "" pour un réglage non traduisible (et non NULL :
+// SQLite traite NULL comme distinct dans un index unique).
+// Les réglages d'un module sont préfixés "module.<id>.".
+model Setting {
+  key    String
+  locale String @default("")
+  value  String // JSON sérialisé
+
+  @@id([key, locale])
+}
+
+// ─── Collections ("blogs") ────────────────────────────────────────────────
+// Une collection = un ensemble d'entrées présentées ensemble : articles,
+// codes promo, réseaux sociaux, pages… Rien n'est codé en dur : un blog, une
+// liste de codes promo et une liste de liens ne diffèrent que par leur
+// configuration (affichage, comportement au clic, champs activés).
+model Collection {
+  id       String @id @default(cuid())
+  // Identifiant technique stable (utilisé par les modules et les réglages).
+  key      String @unique
+  // Segment d'URL public. Vide = les entrées vivent à la racine (/ma-page).
+  basePath String @unique
+  // cards | list | links | codes
+  display  String @default("cards")
+  // detail : le clic ouvre la page de l'entrée ; external : il suit son lien.
+  clickAction String @default("detail")
+  // Champs activés dans l'éditeur (JSON : ["cover","summary","body","url",…]).
+  features String @default("[]")
+  // Champs libres supplémentaires (JSON : [{key,type,label}]).
+  fieldSchema String @default("[]")
+  showInNav Boolean @default(true)
+  navOrder  Int     @default(0)
+  // Public = visible sur le site ; sinon la collection reste interne
+  // (utile à un module).
+  published Boolean @default(true)
+  // Si une entrée n'existe pas dans la langue du visiteur, on affiche la
+  // langue par défaut plutôt que de la masquer.
+  fallbackToDefault Boolean @default(true)
+  // Expose /go/<collection>/<slug> : redirection vers le lien de l'entrée.
+  allowGoLinks Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  translations CollectionTranslation[]
+  entries      Entry[]
+}
+
+model CollectionTranslation {
+  id           String @id @default(cuid())
+  collectionId String
+  locale       String
+  name         String
+  description  String @default("")
+
+  collection Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+
+  @@unique([collectionId, locale])
+}
+
+// ─── Entrées ──────────────────────────────────────────────────────────────
+// Partie commune à toutes les langues. Le texte vit dans EntryTranslation :
+// une entrée n'a besoin que d'UNE traduction, les autres sont optionnelles.
+model Entry {
+  id           String    @id @default(cuid())
+  collectionId String
+  // draft | published
+  status       String    @default("draft")
+  publishedAt  DateTime?
+  expiresAt    DateTime?
+  cover        String?
+  icon         String?
+  url          String?
+  code         String?
+  featured     Boolean   @default(false)
+  position     Int       @default(0)
+  // Valeurs des champs libres de la collection (JSON).
+  fields       String    @default("{}")
+  // Langue dans laquelle l'entrée a été créée.
+  sourceLocale String
+  authorId     String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  collection   Collection         @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  author       User?              @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  translations EntryTranslation[]
+
+  @@index([collectionId, status, publishedAt])
+}
+
+model EntryTranslation {
+  id           String @id @default(cuid())
+  entryId      String
+  // Dénormalisé pour garantir l'unicité du slug par collection et par langue.
+  collectionId String
+  locale       String
+  slug         String
+  title        String
+  summary      String @default("")
+  body         String @default("")
+  updatedAt    DateTime @updatedAt
+
+  entry Entry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+
+  @@unique([entryId, locale])
+  @@unique([collectionId, locale, slug])
+}
+
+// ─── Redirections externes autorisées ─────────────────────────────────────
+// /<path> → targetUrl. Seules les cibles saisies ici (ou le lien d'une
+// entrée, si `entryId` est renseigné) sont atteignables : pas de redirection
+// ouverte.
+model Redirect {
+  id        String   @id @default(cuid())
+  path      String   @unique
+  targetUrl String
+  // Si renseigné, la cible est le lien actuel de cette entrée (la valeur de
+  // targetUrl sert alors de repli). Une seule source de vérité pour un lien.
+  entryId   String?
+  permanent Boolean  @default(false)
+  active    Boolean  @default(true)
+  hits      Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── Modules ──────────────────────────────────────────────────────────────
+model Module {
+  id          String   @id
+  // builtin | git
+  source      String
+  repoUrl     String?
+  ref         String?
+  commit      String?
+  version     String
+  enabled     Boolean  @default(false)
+  installedAt DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// Stockage libre pour les modules (messages reçus, compteurs…).
+model ModuleRecord {
+  id         String   @id @default(cuid())
+  moduleId   String
+  collection String
+  data       String // JSON
+  createdAt  DateTime @default(now())
+
+  @@index([moduleId, collection, createdAt])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actor     String
+  action    String
+  target    String   @default("")
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}

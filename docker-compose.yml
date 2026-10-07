@@ -1,0 +1,14 @@
+services:
+  site:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      SITE_URL: "http://localhost:3000"   # mettez l'URL publique réelle
+      # SETUP_TOKEN: "choisissez-un-jeton"  # recommandé si le site est exposé avant sa configuration
+    volumes:
+      - vitrine_data:/app/data            # base, envois, modules installés, secret de session
+    restart: unless-stopped
+
+volumes:
+  vitrine_data:
