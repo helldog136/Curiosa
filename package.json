@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "license": "MIT",
+  "author": "Helldog136 (https://helldog136.be)",
   "description": "Framework générique de site pour créateurs : collections, redirections, multilingue et modules installables.",
   "engines": {
     "node": ">=20.0.0"
