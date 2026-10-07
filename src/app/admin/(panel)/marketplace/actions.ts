@@ -2,6 +2,8 @@
 
 import { redirect } from "next/navigation";
 import { adminCtx } from "@/core/admin";
+import { revalidatePath } from "next/cache";
+import { clearCatalogueCache } from "@/core/modules/catalogue";
 import { installFromMarketplace, installModule } from "@/core/modules/installer";
 import { audit } from "@/core/permissions";
 import type { ActionState } from "@/components/admin/ActionForm";
@@ -24,4 +26,11 @@ export async function installCustomAction(_prev: ActionState, formData: FormData
   if (!result.ok) return { error: t(result.error) };
   await audit(user.email, "module.install.custom", result.id);
   redirect("/admin/modules");
+}
+
+/** Relit tout de suite la liste des modules reconnus (sinon elle est relue au plus toutes les 15 minutes). */
+export async function refreshMarketplaceAction(): Promise<void> {
+  await adminCtx("owner");
+  clearCatalogueCache();
+  revalidatePath("/admin/marketplace");
 }

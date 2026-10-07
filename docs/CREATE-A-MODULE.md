@@ -476,17 +476,15 @@ Testez au minimum : le manifeste est valide, chaque section/action/sujet déclar
 **Être listé dans la Marketplace** : deux voies.
 
 1. **Livré avec le framework** : un dossier de module dans `modules-community/` (modules complets) ou `modules-examples/` (exemples) du dépôt du framework, `module.json` à sa racine. Il est installé depuis les fichiers du serveur, sans réseau.
-2. **Dépôt reconnu** : celui qui publie un **index** JSON public s'en porte garant. L'administrateur d'un site règle `MODULES_INDEX_URL` (adresse `https://`) vers cet index :
+2. **Dépôt reconnu** : une entrée dans [`marketplace/index.json`](../marketplace/index.json), le fichier du dépôt du framework que **chaque installation relit à l'exécution** — il ne suit pas le rythme des versions du framework (`VITRINE_UPDATE_REMOTE` choisit le remote d'origine ; `VITRINE_MARKETPLACE_REPO`, `VITRINE_MARKETPLACE_REF`, `VITRINE_MARKETPLACE_RUNTIME` règlent cette lecture ; `MODULES_INDEX_URL` ajoute un index `https://` supplémentaire). On l'ajoute par une demande de fusion :
 
 ```json
-[
-  { "id": "guestbook", "name": "Guestbook", "description": "A moderated guestbook.", "repo": "https://github.com/<vous>/<depot>",
-    "ref": "v1.0.0", "version": "1.0.0", "apiVersion": 2, "author": "Vitrine", "icon": "📖" }
-]
+{ "id": "guestbook", "name": "Guestbook", "description": "A moderated guestbook.", "repo": "https://github.com/<vous>/<depot>",
+  "ref": "v1.0.0", "version": "1.0.0", "apiVersion": 2, "author": "Vitrine", "icon": "📖" }
 ```
 
-`id`, `name`, `description` et `repo` suffisent ; `ref` (tag), `version`, `apiVersion`, `author`, `icon` sont facultatifs. Le dépôt cité doit servir **le module annoncé** (`id` identique à celui de son `module.json`),
-sur un hôte autorisé ; rien n'est installé automatiquement. Un modèle est fourni : [`modules-index.example.json`](modules-index.example.json). Tout autre dépôt reste un module **personnel** : il s'installe avec un avertissement.
+`id`, `name`, `description` et `repo` suffisent ; `ref` (**étiquette ou commit que les relecteurs ont relus** : c'est ce qui rend « vérifié » vrai), `version`, `apiVersion`, `author`, `icon` sont facultatifs. Le dépôt cité doit servir **le module annoncé** (`id` identique à celui de son `module.json`),
+sur un hôte autorisé ; rien n'est installé automatiquement. Critères et format : [`marketplace/README.md`](../marketplace/README.md). Un modèle d'index supplémentaire : [`modules-index.example.json`](modules-index.example.json). Tout autre dépôt reste un module **personnel** : il s'installe avec un avertissement.
 
 ## 19. Règles de sécurité
 
@@ -521,4 +519,4 @@ Un module est **du code de confiance** : il tourne sur le serveur avec les droit
 - [ ] Le module a des tests (manifeste, parité des langues, comportement, XSS) et ils passent.
 - [ ] Essayé en vrai : installation locale, activation, instance, page, formulaire, admin, désinstallation propre.
 - [ ] Un `README.md` explique ce que fait le module, ses réglages et ses limites ; la version est **taguée** (`git tag v1.0.0`).
-- [ ] Pour la Marketplace : dépôt public sur un hôte autorisé, ajouté à un index (`MODULES_INDEX_URL`) ou proposé dans `modules-community/` / `modules-examples/`.
+- [ ] Pour la Marketplace : dépôt public sur un hôte autorisé, ajouté à `marketplace/index.json` (demande de fusion) ou proposé dans `modules-community/` / `modules-examples/`.

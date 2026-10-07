@@ -1,11 +1,11 @@
 import { adminCtx } from "@/core/admin";
-import { getMarketplace } from "@/core/modules/marketplace";
+import { getMarketplace, getMarketplaceSource } from "@/core/modules/marketplace";
 import { listModuleRows } from "@/core/modules/registry";
 import { localized } from "@/core/modules/types";
 import { ActionForm } from "@/components/admin/ActionForm";
 import { Checkbox, TextField } from "@/components/admin/Field";
 import { ui } from "@/components/admin/ui";
-import { installCustomAction, installFromMarketplaceAction } from "./actions";
+import { installCustomAction, installFromMarketplaceAction, refreshMarketplaceAction } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +14,7 @@ export default async function MarketplacePage({ searchParams }: { searchParams: 
   const { error } = await searchParams;
   const isOwner = user.role === "owner";
   const entries = await getMarketplace();
+  const source = await getMarketplaceSource();
   const installed = new Set((await listModuleRows()).map((r) => r.id));
   const L = (v: Parameters<typeof localized>[0]) => localized(v, locale, config.defaultLocale);
   const groups = [
@@ -28,6 +29,14 @@ export default async function MarketplacePage({ searchParams }: { searchParams: 
         <h1 className="text-2xl font-bold">🛒 {t("nav.marketplace")}</h1>
         <p className="mt-1 text-sm text-muted">{t("marketplace.intro")}</p>
       </div>
+      <p className="flex flex-wrap items-center gap-3 text-xs text-muted">
+        <span>
+          {source.source === "repository" && t("marketplace.source.repository", { date: new Date(source.fetchedAt ?? 0).toLocaleString(locale) })}
+          {source.source === "cache" && t("marketplace.source.cache", { date: new Date(source.fetchedAt ?? 0).toLocaleString(locale) })}
+          {(source.source === "snapshot" || source.source === "none") && t("marketplace.source.snapshot")}
+        </span>
+        {isOwner && <form action={refreshMarketplaceAction}><button className="underline">{t("marketplace.refresh")}</button></form>}
+      </p>
       {error && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm">{error.startsWith("modules.error.") ? t(error) : t("error.generic")}</p>}
 
       {groups.map((g) => g.list.length > 0 && (

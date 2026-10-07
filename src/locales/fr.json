@@ -495,5 +495,9 @@
   "setup.restore.back": "← Créer un nouveau site à la place",
   "setup.restore.token": "Jeton d'installation (SETUP_TOKEN)",
   "backup.error.already-configured": "Ce site est déjà configuré : connectez-vous à l'admin pour restaurer.",
-  "backup.error.invalid-token": "Jeton d'installation incorrect."
+  "backup.error.invalid-token": "Jeton d'installation incorrect.",
+  "marketplace.source.repository": "Liste des modules reconnus à jour (lue le {date} dans le dépôt du framework).",
+  "marketplace.source.cache": "Dépôt du framework injoignable : dernière liste reçue le {date}.",
+  "marketplace.source.snapshot": "Liste livrée avec cette version du framework (le dépôt n'a pas pu être interrogé ou n'est pas configuré).",
+  "marketplace.refresh": "Actualiser"
 }

@@ -86,7 +86,7 @@ l'administrateur règle dans *Réglages* (Identité, Apparence) est stocké une 
   contenant tout ce qui est à l'utilisateur, **lisible sans le framework**. Elle collecte les données des modules installés
   (stockage, réglages, fichiers lisibles via `backup.readable`) et, à la restauration, réinstalle les modules depuis la marketplace.
 - **Marketplace** (`core/modules/marketplace.ts`) : la liste des modules vérifiés — livrés avec le framework (`modules-community/`,
-  `modules-examples/`) ou publiés par des dépôts reconnus (index public `MODULES_INDEX_URL`). Un dépôt git **personnel** reste
+  `modules-examples/`) ou publiés par des dépôts reconnus, listés dans `marketplace/index.json` — un fichier du dépôt du framework **relu à l'exécution**, qui ne suit pas le rythme des versions (copie livrée en secours hors ligne ; `MODULES_INDEX_URL` pour un index supplémentaire). Un dépôt git **personnel** reste
   installable, mais signalé « non vérifié » et soumis à confirmation explicite.
 
 ## Le flux RSS : une fonctionnalité du cœur

@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { MODULE_API_VERSION } from "../config";
-import { getCatalogue } from "./catalogue";
+import { getCatalogue, getCatalogueDetailed, type CatalogueResult } from "./catalogue";
 import { parseManifest, type ParsedManifest } from "./manifest";
 import type { LocalizedString } from "./types";
 
@@ -94,4 +94,10 @@ export function moduleOrigin(row: { id: string; source: string; repoUrl: string 
   if (row.source === "bundled") return entry.source === "bundled" ? "marketplace" : "custom";
   const norm = (u: string | null | undefined) => (u ?? "").replace(/\.git$/, "").replace(/\/$/, "").toLowerCase();
   return entry.source === "recognized" && norm(entry.repo) === norm(row.repoUrl) ? "marketplace" : "custom";
+}
+
+/** D'où vient la liste des dépôts reconnus affichée (dépôt à jour, dernière copie reçue, ou copie livrée avec cette version) ? */
+export async function getMarketplaceSource(opts: { fetchImpl?: typeof fetch } = {}): Promise<Pick<CatalogueResult, "source" | "fetchedAt" | "origin">> {
+  const { source, fetchedAt, origin } = await getCatalogueDetailed(opts);
+  return { source, fetchedAt, origin };
 }

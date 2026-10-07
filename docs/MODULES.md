@@ -721,19 +721,28 @@ mettre à jour, désinstaller (**supprime aussi ses instances et leurs données*
 est acceptée par « Installer un dépôt personnel ». Le dépôt doit avoir au moins un commit ; pour voir une modification, validez-la
 (`git commit`) puis *Chercher une mise à jour* → *Mettre à jour*. À ne jamais activer sur un serveur public.
 
-**Index des modules reconnus** : `MODULES_INDEX_URL` (adresse `https://`) désigne un JSON public, relu au plus toutes les 5 minutes
-(modèle : [`modules-index.example.json`](modules-index.example.json)) :
+**Index des modules reconnus** : un fichier [`marketplace/index.json`](../marketplace/index.json) **dans le dépôt du framework**, relu **à l'exécution**
+depuis le dépôt d'origine de l'installation (au plus toutes les 15 minutes) : **il ne suit pas le rythme des versions du framework**. Ajouter un module =
+une demande de fusion sur ce fichier, visible par toutes les installations dès qu'elle est fusionnée (voir [`marketplace/README.md`](../marketplace/README.md)).
 
 ```json
-[{ "id": "my-module", "name": "My module", "description": "…", "repo": "https://github.com/<vous>/<depot>",
-   "ref": "v1.0.0", "version": "1.0.0", "apiVersion": 2, "author": "…", "icon": "📖" }]
+{ "version": 1, "modules": [
+  { "id": "my-module", "name": "My module", "description": "…", "repo": "https://github.com/<vous>/<depot>",
+    "ref": "v1.0.0", "version": "1.0.0", "apiVersion": 2, "author": "…", "icon": "📖" } ] }
 ```
 
-`id`, `name`, `description`, `repo` sont les champs de base ; `ref` (tag ou branche), `version`, `apiVersion`, `author`, `icon` sont facultatifs.
-Chaque entrée est revalidée (identifiant, dépôt `https` sur un hôte autorisé ; 300 au plus). Un module dont `apiVersion` diffère de celle du
-framework est listé mais **non installable**. Rien n'est installé automatiquement ; le dépôt installé doit servir le module annoncé (`id` identique à celui de son `module.json`).
-Un module livré avec le framework l'emporte sur un module reconnu de même identifiant. Pour qu'un module rejoigne les modules livrés : un dossier
-dans `modules-community/` (modules complets) ou `modules-examples/` (exemples), avec son `module.json` à sa racine.
+`id`, `name`, `description`, `repo` sont les champs de base ; `ref` (**étiquette ou commit relus** — c'est ce qui rend « vérifié » vrai), `version`, `apiVersion`,
+`author`, `icon` sont facultatifs. Chaque entrée est revalidée (identifiant, dépôt `https` sur un hôte autorisé ; 300 au plus). Un module dont `apiVersion`
+diffère de celle du framework est listé mais **non installable**. Rien n'est installé automatiquement ; le dépôt installé doit servir le module annoncé
+(`id` identique à celui de son `module.json`). Un module livré avec le framework l'emporte sur un module reconnu de même identifiant.
+
+D'où vient la liste, dans l'ordre : (1) le dépôt du framework (le remote `origin` de l'installation, ou `VITRINE_UPDATE_REMOTE` ; `VITRINE_MARKETPLACE_REPO` pour en choisir un autre, `VITRINE_MARKETPLACE_REF` pour une autre
+branche ou étiquette que `HEAD`) ; (2) à défaut, la **dernière copie reçue** (`data/cache/`), puis la **copie livrée avec cette version** : la Marketplace
+fonctionne hors ligne ; (3) **en plus**, un index JSON `https://` (`MODULES_INDEX_URL`, modèle : [`modules-index.example.json`](modules-index.example.json))
+dont les entrées ne peuvent qu'**ajouter** des modules, jamais remplacer ceux du dépôt. `VITRINE_MARKETPLACE_RUNTIME=0` coupe la lecture à l'exécution
+(copie livrée seulement). La page Marketplace indique d'où vient la liste affichée.
+
+Pour qu'un module rejoigne les modules livrés : un dossier dans `modules-community/` (modules complets) ou `modules-examples/` (exemples), avec son `module.json` à sa racine.
 
 ## Modules livrés avec le cœur, communautaires, exemples
 

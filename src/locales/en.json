@@ -495,5 +495,9 @@
   "setup.restore.back": "← Create a new site instead",
   "setup.restore.token": "Setup token (SETUP_TOKEN)",
   "backup.error.already-configured": "This site is already configured: sign in to the admin to restore.",
-  "backup.error.invalid-token": "Wrong setup token."
+  "backup.error.invalid-token": "Wrong setup token.",
+  "marketplace.source.repository": "Recognized modules list is up to date (read on {date} from the framework repository).",
+  "marketplace.source.cache": "Framework repository unreachable: last list received on {date}.",
+  "marketplace.source.snapshot": "List shipped with this framework version (the repository could not be reached or is not configured).",
+  "marketplace.refresh": "Refresh"
 }
