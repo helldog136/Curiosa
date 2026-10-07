@@ -12,7 +12,7 @@ export default {
       if (!ctx.setting("enabled")) return null;
       const text = ctx.setting("text"); // déjà résolu pour la langue du visiteur
       if (!text) return null;
-      return [{ type: "banner", text, href: ctx.setting("link") || undefined, tone: ctx.setting("tone") }];
+      return [{ type: "banner", text, href: /^(https?:\/\/|mailto:|\/(?!\/))/i.test(String(ctx.setting("link") ?? "").trim()) ? String(ctx.setting("link")).trim() : undefined, tone: ctx.setting("tone") }];
     },
   },
 

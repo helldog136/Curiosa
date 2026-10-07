@@ -14,6 +14,8 @@ function devOptions(query) {
   return { fast: query.get("dev") === "1", seed: seed !== null && Number.isFinite(Number(seed)) ? Math.trunc(Number(seed)) : null };
 }
 
+const safeLink = (v) => (typeof v === "string" && /^(https?:\/\/|\/(?!\/))/i.test(v.trim()) ? v.trim() : null);
+
 export default {
   routes: {
     // JSON rafraîchi par la page de l'overlay : l'état courant, rien n'est mis en cache côté serveur.
@@ -21,9 +23,9 @@ export default {
       const site = ctx.api.siteUrl;
       const [cards, entries] = await Promise.all([ctx.api.topics.collect("sponsor.card", { limit: 60 }), ctx.api.topics.collect("core.entry", { limit: 60 })]);
       const raw = [
-        ...cards.map((c) => ({ id: `s:${c.id ?? c.name}`, name: String(c.name), text: String(c.text ?? ""), url: c.url ?? null, code: c.code ?? null, logo: safeImage(c.logo), publishedAt: c.publishedAt ?? null })),
+        ...cards.map((c) => ({ id: `s:${c.id ?? c.name}`, name: String(c.name), text: String(c.text ?? ""), url: safeLink(c.url), code: c.code ?? null, logo: safeImage(c.logo), publishedAt: c.publishedAt ?? null })),
         // Les entrées sans code ni lien ne sont pas des sponsors : on ne garde que ce qui a de quoi être montré.
-        ...entries.filter((e) => e.code || e.url).map((e) => ({ id: `e:${e.path}`, name: String(e.title), text: String(e.summary ?? ""), url: e.url ?? `${site}${e.path}`, code: e.code ?? null, logo: safeImage(e.cover), publishedAt: e.publishedAt ?? null })),
+        ...entries.filter((e) => e.code || e.url).map((e) => ({ id: `e:${e.path}`, name: String(e.title), text: String(e.summary ?? ""), url: safeLink(e.url) ?? `${site}${e.path}`, code: e.code ?? null, logo: safeImage(e.cover), publishedAt: e.publishedAt ?? null })),
       ];
       const items = await Promise.all(raw.map(async (i) => ({ ...i, qrSvg: i.url ? await ctx.api.qr(i.url) : null })));
       return Response.json({ items }, { headers: { "cache-control": "no-store" } });

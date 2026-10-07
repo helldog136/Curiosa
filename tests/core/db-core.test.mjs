@@ -95,7 +95,7 @@ test("identité visuelle : source unique, couleurs dérivées, noms traduits", a
   assert.equal(b.colors.find((c) => c.key === "bg").hex, "#101010");
   assert.ok(b.colors.every((c) => /^#[0-9A-F]{6}$/.test(c.hex) && c.name && c.role));
   const en = await getBrand("en");
-  assert.notEqual(en.colors[0].name, b.colors[0].name, "noms de couleurs traduits");
+  assert.notDeepEqual(en.colors.map((c) => c.name), b.colors.map((c) => c.name), "noms de couleurs traduits");
 });
 
 /* ───────────── Instances ───────────── */

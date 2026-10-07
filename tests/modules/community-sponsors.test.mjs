@@ -124,7 +124,7 @@ test("mention : texte saisi transmis comme texte (pas de HTML ajouté par le mod
   assert.ok(!("html" in block));
 });
 
-test("mention : une mention multi-lignes reste entièrement dans la citation", { todo: "bug: une mention contenant un saut de ligne sort de la citation Markdown (index.mjs:10, `> ℹ️ ${…}` sans préfixer les lignes suivantes)" }, () => {
+test("mention : une mention multi-lignes reste entièrement dans la citation", () => {
   const ctx = ctxFor("en", { key: "s", settings: { disclosure: "Ligne 1\n# Titre" } });
   ctx.page = { key: "s" };
   const text = def.slots["page.top"](ctx)[0].text;
@@ -173,7 +173,7 @@ test("sponsor.card : textes bruts conservés tels quels (jamais interprétés co
   assert.equal(card.code, "A&B");
 });
 
-test("sponsor.card : une URL de lien dangereuse n'est pas relayée aux overlays", { todo: "bug: sponsor.card relaie e.url / e.cover sans contrôle de schéma (index.mjs:27-31) ; seul sponsor-ticker filtre (safeImage) — url `javascript:` transmise telle quelle" }, async () => {
+test("sponsor.card : une URL de lien dangereuse n'est pas relayée aux overlays", async () => {
   const ctx = ctxFor("en", { entries: [entry({ url: "javascript:alert(1)", cover: "javascript:alert(2)" })] });
   const [card] = await def.exports["sponsor.card"](ctx, {});
   assert.ok(!/^javascript:/i.test(String(card.url)));

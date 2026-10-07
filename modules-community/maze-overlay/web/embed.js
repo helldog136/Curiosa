@@ -6,13 +6,15 @@
 export function getYouTubeVideoId(url) {
     try {
         const u = new URL(url);
-        if (u.hostname.includes("youtu.be"))
-            return u.pathname.slice(1) || null;
+        const host = u.hostname.toLowerCase().replace(/^(www|m)\./, "");
+        const valid = (id) => (id && /^[\w-]{1,32}$/.test(id) ? id : null);
+        if (host === "youtu.be")
+            return valid(u.pathname.slice(1));
+        if (host !== "youtube.com")
+            return null;
         if (u.pathname.startsWith("/shorts/"))
-            return u.pathname.split("/")[2] ?? null;
-        if (u.hostname.includes("youtube.com"))
-            return u.searchParams.get("v");
-        return null;
+            return valid(u.pathname.split("/")[2]);
+        return valid(u.searchParams.get("v"));
     }
     catch {
         return null;

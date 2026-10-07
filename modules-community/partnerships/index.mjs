@@ -179,6 +179,7 @@ export default {
       return { id: p.id, ...p.data, journal: journal.filter((j) => j.data.partnerId === p.id).map((j) => ({ id: j.id, ...j.data })), contacts: contacts.filter((c) => c.data.partnerId === p.id).map((c) => ({ id: c.id, ...c.data })) };
     },
     async partner_create(ctx, a, actor) {
+      if (!String(a.brand ?? "").trim()) throw fail("brand is required");
       const id = await ctx.api.store.add("partners", { ...cleanPartner({ ...a, status: a.status ?? "a_contacter" }), updatedBy: `agent:${actor.name}` });
       return { id };
     },
@@ -186,11 +187,13 @@ export default {
       const { id, ...fields } = a;
       const row = await ctx.api.store.get(id);
       if (!row) throw fail("partnership not found");
+      if (fields.brand !== undefined && !String(fields.brand).trim()) throw fail("brand cannot be empty");
       await ctx.api.store.update(id, { ...cleanPartner(fields, row.data), updatedBy: `agent:${actor.name}` });
       return { id, updated: Object.keys(fields) };
     },
     async partner_log(ctx, a, actor) {
       if (!(await ctx.api.store.get(a.id))) throw fail("partnership not found");
+      if (!String(a.text ?? "").trim()) throw fail("text is required");
       const entry = await ctx.api.store.add("journal", { partnerId: a.id, date: validDate(a.date), author: `agent:${actor.name}`, text: clip(a.text, 5000), link: safeUrl(a.link) });
       return { id: entry };
     },
@@ -199,6 +202,7 @@ export default {
     },
     async contact_create(ctx, a, actor) {
       const { partner_id, ...rest } = a;
+      if (!String(rest.name ?? "").trim()) throw fail("name is required");
       const id = await ctx.api.store.add("contacts", { partnerId: partner_id ?? "", name: clip(rest.name, 120), role: clip(rest.role, 120), organization: clip(rest.organization, 120), email: clip(rest.email, 200), phone: clip(rest.phone, 60), relation: clip(rest.relation, 300), notes: clip(rest.notes, 5000), status: "to_review", updatedBy: `agent:${actor.name}` });
       return { id, status: "to_review" };
     },

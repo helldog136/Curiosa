@@ -296,7 +296,7 @@ test("MCP partner_create : fiche créée avec signature de l'agent, URL dangereu
   assert.equal(def2.status, "a_contacter");
 });
 
-test("MCP partner_create : une fiche sans nom est refusée (comme dans l'admin)", { todo: "bug: partner_create ne vérifie pas `brand` (index.mjs:181) — l'admin le fait (savePartner)" }, async () => {
+test("MCP partner_create : une fiche sans nom est refusée (comme dans l'admin)", async () => {
   const ctx = ctxFor();
   await assert.rejects(() => def.mcp.partner_create(ctx, { brand: "   " }, actor));
   assert.equal(await ctx.api.store.count("partners"), 0);
@@ -311,7 +311,7 @@ test("MCP partner_update : mise à jour partielle, retourne les champs, introuva
   await assert.rejects(() => def.mcp.partner_update(ctx, { id: "nope" }, actor), (e) => e.expose === true && /not found/.test(e.message));
 });
 
-test("MCP partner_update : ne peut pas vider le nom d'une fiche", { todo: "bug: partner_update accepte brand \"\" et efface le nom (cleanPartner, index.mjs:22-31)" }, async () => {
+test("MCP partner_update : ne peut pas vider le nom d'une fiche", async () => {
   const ctx = ctxFor();
   const id = await ctx.api.store.add("partners", { brand: "A", status: "envoye" });
   await def.mcp.partner_update(ctx, { id, brand: "  " }, actor).catch(() => {});
@@ -329,7 +329,7 @@ test("MCP partner_log : entrée signée, date par défaut, lien filtré ; fiche 
   await assert.rejects(() => def.mcp.partner_log(ctx, { id: "nope", text: "x" }, actor), (e) => e.expose);
 });
 
-test("MCP partner_log : une note vide est refusée (comme dans l'admin)", { todo: "bug: partner_log enregistre une entrée de journal vide (index.mjs:192) — l'admin refuse un texte vide" }, async () => {
+test("MCP partner_log : une note vide est refusée (comme dans l'admin)", async () => {
   const ctx = ctxFor();
   const id = await ctx.api.store.add("partners", { brand: "A" });
   await def.mcp.partner_log(ctx, { id, text: "   " }, actor).catch(() => {});
@@ -407,7 +407,7 @@ test("MCP contacts : création « à relire », liste filtrée, mise à jour par
   await assert.rejects(() => def.mcp.contact_update(ctx, { id: "nope" }, actor), (e) => e.expose && /contact not found/.test(e.message));
 });
 
-test("MCP contact_create : un contact sans nom est refusé", { todo: "bug: contact_create accepte un nom vide (index.mjs:200) — l'admin le refuse (saveContact)" }, async () => {
+test("MCP contact_create : un contact sans nom est refusé", async () => {
   const ctx = ctxFor();
   await def.mcp.contact_create(ctx, { name: "  " }, actor).catch(() => {});
   assert.equal(await ctx.api.store.count("contacts"), 0);

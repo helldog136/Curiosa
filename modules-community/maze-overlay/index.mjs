@@ -33,7 +33,8 @@ function devOptions(query) {
   return { seed: query.get("seed") !== null && Number.isFinite(seed) ? Math.trunc(seed) : undefined, luck, fast: dev || query.get("fast") === "1" };
 }
 
-const safeImage = (v) => (typeof v === "string" && /^(https?:\/\/|\/)/.test(v) ? v : null);
+const safeImage = (v) => (typeof v === "string" && /^(https?:\/\/|\/(?!\/))/.test(v) ? v : null);
+const safeLink = (v) => (typeof v === "string" && /^(https?:\/\/|\/(?!\/))/i.test(v.trim()) ? v.trim() : null);
 
 routes.items = async (_request, ctx) => {
   const [entries, posters, site] = await Promise.all([
@@ -46,7 +47,7 @@ routes.items = async (_request, ctx) => {
       kind: e.code ? "code" : "article",
       title: String(e.title),
       text: String(e.summary ?? ""),
-      url: e.url ?? `${ctx.api.siteUrl}${e.path}`,
+      url: safeLink(e.url) ?? `${ctx.api.siteUrl}${e.path}`,
       imageUrl: safeImage(e.cover),
     })),
     ...posters.map((p) => ({
@@ -54,7 +55,7 @@ routes.items = async (_request, ctx) => {
       badge: p.badge ? String(p.badge) : undefined,
       title: String(p.title),
       text: String(p.text ?? ""),
-      url: String(p.url ?? ctx.api.siteUrl),
+      url: safeLink(p.url == null ? ctx.api.siteUrl : String(p.url)) ?? ctx.api.siteUrl,
       imageUrl: safeImage(p.image),
     })),
   ];

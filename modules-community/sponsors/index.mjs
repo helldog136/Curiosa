@@ -8,7 +8,11 @@
 //      dont on reprend le logo quand le sponsor n'a pas d'image.
 const disclosure = (ctx) => ctx.setting("disclosure") || ctx.t("disclosure");
 
-const notice = (ctx) => [{ type: "markdown", text: `> ℹ️ ${disclosure(ctx)}` }];
+// Une seule ligne : un réglage multiligne ne doit pas sortir de la citation ni ouvrir un titre ou une liste.
+const notice = (ctx) => [{ type: "markdown", text: `> ℹ️ ${String(disclosure(ctx)).replace(/\s*[\r\n]+\s*/g, " ").trim()}` }];
+
+// Les overlays affichent et encodent ces adresses : seules http(s) et les chemins du site passent.
+const safeLink = (v) => (typeof v === "string" && /^(https?:\/\/|\/(?!\/))/i.test(v.trim()) ? v.trim() : undefined);
 
 export default {
   slots: {
@@ -31,9 +35,9 @@ export default {
           id: e.id,
           name: e.title,
           text: e.summary || undefined,
-          url: e.url ?? `${site}${e.path}`,
+          url: safeLink(e.url) ?? `${site}${e.path}`,
           code: e.code ?? undefined,
-          logo: e.cover ?? partner?.logo ?? undefined,
+          logo: safeLink(e.cover) ?? safeLink(partner?.logo),
           publishedAt: e.publishedAt ? e.publishedAt.toISOString() : undefined,
           tags: e.tags,
         };
