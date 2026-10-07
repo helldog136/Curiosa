@@ -390,7 +390,7 @@ export default {
 Déclarez `"type": "overlay"` et la permission `overlay` ; l'admin affiche l'URL à coller dans OBS. Un overlay lit des **sujets** : il ne connaît pas les fournisseurs.
 
 **Crochets** (`hooks`) : `hooks.onInstanceDelete(ctx)` est appelé quand une instance est supprimée, pour nettoyer ce que seul le module connaît (mémoire, service externe) ; le cœur supprime lui-même réglages et
-stockage. `hooks.onInstanceCreate(ctx)` est prévu par le contrat mais la version actuelle du cœur **ne l'appelle pas encore** : ne construisez rien qui en dépende.
+stockage. `hooks.onInstanceCreate(ctx)` est appelé une fois l'instance créée (depuis l'admin ou l'assistant de première installation) ; une restauration de sauvegarde ne le rappelle pas : soyez idempotent et initialisez aussi paresseusement.
 
 **Emplacements** (`slots`) : des blocs ajoutés au site. `layout.head` (balises `head`), `layout.banner` (tout en haut), `layout.footer` (pied de page), `nav.items` (menu : un bloc `links`),
 `page.top` / `page.bottom` (autour de la page d'une instance ; `ctx.page` dit laquelle), `entry.top` / `entry.bottom` (autour d'une entrée ; `ctx.entry`). L'exemple met un lien dans `layout.footer`.

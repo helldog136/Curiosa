@@ -8,7 +8,7 @@ import { prisma } from "@/core/db";
 import { makeTranslator } from "@/core/i18n/dictionary";
 import { isKnownLocale } from "@/core/i18n/locales";
 import { BUILTIN_MODULES } from "@/modules-builtin";
-import { createInstance, defaultNames } from "@/core/instanceService";
+import { createInstance, defaultNames, runInstanceCreateHook } from "@/core/instanceService";
 import { audit } from "@/core/permissions";
 import { createEntry } from "@/core/content/service";
 import type { HomeSection } from "@/core/settings";
@@ -50,6 +50,7 @@ export async function completeSetup(_prev: ActionState, formData: FormData): Pro
   const linkIcons = formData.getAll("linkIcon").map(String);
   const shortcutRows = new Set(formData.getAll("linkShortcut").map(String));
 
+  const createdIds: string[] = [];
   try {
     await prisma.$transaction(async (tx) => {
       // Garde contre une double soumission ou un second visiteur : un seul propriétaire, une seule fois.
@@ -84,6 +85,7 @@ export async function completeSetup(_prev: ActionState, formData: FormData): Pro
           descriptions: Object.fromEntries(locales.map((l) => [l, localizedText(manifest.description, l)])),
         });
         created.push({ manifest, instance });
+        createdIds.push(instance.id);
         const h = manifest.onboarding?.home;
         if (h) home.push({ id: manifest.id, instance: instance.key, section: h.section, options: h.count ? { count: h.count } : {} });
       }
@@ -137,6 +139,7 @@ export async function completeSetup(_prev: ActionState, formData: FormData): Pro
     return { error: t("setup.error.generic") };
   }
 
+  for (const id of createdIds) await runInstanceCreateHook(id);
   await audit(email, "setup.completed");
   try {
     await signIn("credentials", { email, password, redirectTo: "/admin" });

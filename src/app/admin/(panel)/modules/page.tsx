@@ -51,6 +51,7 @@ export default async function ModulesPage({ searchParams }: { searchParams: Prom
                     {row.source !== "builtin" && <span className={`ml-2 rounded px-2 py-0.5 text-xs ${moduleOrigin(row, market) === "custom" ? "bg-amber-500/20" : "bg-line"}`}>{t(`marketplace.origin.${moduleOrigin(row, market) === "custom" ? "custom" : "marketplace"}`)}</span>}
                   </p>
                   <p className="text-sm text-muted">{mod ? localized(mod.manifest.description, locale, config.defaultLocale) : t("modules.broken")}</p>
+                  {advanced && mod && mod.manifest.permissions.length > 0 && <p className="mt-1 text-xs text-muted">{t("modules.permissions")} : {mod.manifest.permissions.join(", ")}</p>}
                   {advanced && row.repoUrl && <p className="mt-1 break-all font-mono text-xs text-muted">{row.repoUrl}{row.ref ? `#${row.ref}` : ""} @ {row.commit?.slice(0, 7)}</p>}
                 </div>
                 {isOwner && (

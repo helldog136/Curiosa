@@ -100,6 +100,23 @@ export function defaultNames(manifest: ParsedManifest, locales: string[], nickna
   return Object.fromEntries(locales.map((l) => [l, nickname ?? localized(manifest.name, l, "en")]));
 }
 
+/**
+ * Appelle le crochet `hooks.onInstanceCreate` du module, une fois l'instance créée (et la transaction éventuelle terminée :
+ * le module peut alors lire et écrire son stockage). Jamais bloquant : une erreur du module est journalisée, pas propagée.
+ */
+export async function runInstanceCreateHook(id: string): Promise<void> {
+  const row = await prisma.moduleInstance.findUnique({ where: { id }, include: { translations: true } });
+  if (!row) return;
+  const mod = await getModule(row.moduleId);
+  const hook = mod?.def.hooks?.onInstanceCreate;
+  if (!mod || !hook) return;
+  try {
+    await hook(await buildContext(mod, toInstanceView(row)));
+  } catch (error) {
+    console.error(`[modules] onInstanceCreate failed for ${row.key}:`, error);
+  }
+}
+
 export async function deleteInstance(id: string): Promise<void> {
   const row = await prisma.moduleInstance.findUnique({ where: { id }, include: { translations: true } });
   if (!row) return;

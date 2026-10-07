@@ -29,7 +29,7 @@ export type Block =
   | { type: "embed"; src: string; title: string; ratio?: string }
   | {
       type: "form";
-      /** Chemin relatif à la route du module : posté sur /m/<id>/<action>. */
+      /** Chemin relatif à la route du module : posté sur /m/<clé de l'instance>/<route>. */
       action: string;
       fields: { name: string; label: string; kind?: "text" | "email" | "textarea"; required?: boolean }[];
       submitLabel: string;

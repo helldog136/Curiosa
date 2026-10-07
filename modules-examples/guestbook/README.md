@@ -55,7 +55,7 @@ Seuls les messages **validés** sont exposés (au flux RSS comme à ce sujet).
 
 - Le limiteur de débit est en mémoire (remis à zéro au redémarrage) : un garde-fou, pas un pare-feu.
 - Le stockage n'a pas de requête : le module lit jusqu'à 1000 messages et filtre en code.
-- `hooks.onInstanceCreate` est dans le contrat mais n'est pas appelé par cette version du cœur.
+- `hooks.onInstanceCreate` est appelé à la création de l'instance (pas lors d'une restauration de sauvegarde) : il est idempotent.
 
 ## Tests
 

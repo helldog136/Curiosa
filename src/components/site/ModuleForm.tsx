@@ -12,6 +12,7 @@ type Props = {
 /** Rendu du bloc "form" : poste en fetch vers /m/<module>/<route> et affiche le résultat. */
 export function ModuleForm({ action, fields, submitLabel, successText }: Props) {
   const [state, setState] = useState<"idle" | "sending" | "done" | "error">("idle");
+  const [message, setMessage] = useState<string | null>(null);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -19,6 +20,9 @@ export function ModuleForm({ action, fields, submitLabel, successText }: Props) 
     try {
       const form = event.currentTarget;
       const res = await fetch(`/m/${action}`, { method: "POST", body: new FormData(form) });
+      // Une route peut répondre `{ message: "…" }` : texte court affiché tel quel (React l'échappe), succès ou échec.
+      const body = (await res.json().catch(() => null)) as { message?: unknown } | null;
+      setMessage(typeof body?.message === "string" ? body.message.slice(0, 300) : null);
       setState(res.ok ? "done" : "error");
       if (res.ok) form.reset();
     } catch {
@@ -26,7 +30,7 @@ export function ModuleForm({ action, fields, submitLabel, successText }: Props) 
     }
   }
 
-  if (state === "done") return <p role="status" className="rounded-lg border border-line bg-surface p-4">{successText}</p>;
+  if (state === "done") return <p role="status" className="rounded-lg border border-line bg-surface p-4">{message ?? successText}</p>;
 
   const input = "w-full rounded-lg border border-line bg-bg px-3 py-2";
   return (
@@ -50,7 +54,7 @@ export function ModuleForm({ action, fields, submitLabel, successText }: Props) 
       >
         {submitLabel}
       </button>
-      {state === "error" && <p role="alert" className="text-sm text-red-500">!</p>}
+      {state === "error" && <p role="alert" className="text-sm text-red-500">{message ?? "!"}</p>}
     </form>
   );
 }

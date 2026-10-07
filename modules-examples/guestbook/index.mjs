@@ -359,8 +359,8 @@ export default {
   },
 
   hooks: {
-    // ATTENTION : le contrat prévoit `onInstanceCreate`, mais cette version du cœur ne l'appelle pas encore (seul `onInstanceDelete` l'est).
-    // Un module ne doit donc jamais en dépendre : ici, c'est un simple message de bienvenue, idempotent, sans lequel tout marche.
+    // Appelé à la création de l'instance (admin ou assistant d'installation), PAS lors d'une restauration de sauvegarde : un module doit
+    // donc rester idempotent et ne jamais en dépendre. Ici, un simple message de bienvenue, sans lequel tout marche.
     async onInstanceCreate(ctx) {
       if ((await ctx.api.store.count(COLLECTION)) > 0) return;
       await ctx.api.store.add(COLLECTION, { name: ctx.t("welcomeName"), message: ctx.t("welcomeText"), status: "approved" });

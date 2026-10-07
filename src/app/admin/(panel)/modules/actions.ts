@@ -7,7 +7,7 @@ import { checkForUpdate, setModuleEnabled, uninstallModule, updateModule } from 
 import { audit } from "@/core/permissions";
 import { getModule } from "@/core/modules/registry";
 import { prisma } from "@/core/db";
-import { createInstance, defaultNames } from "@/core/instanceService";
+import { createInstance, defaultNames, runInstanceCreateHook } from "@/core/instanceService";
 import { checkNickname } from "@/core/instanceLabel";
 
 // Installer ou mettre à jour du code exécuté côté serveur est réservé au propriétaire.
@@ -79,6 +79,7 @@ export async function addInstance(moduleId: string, formData: FormData): Promise
   }
 
   const created = await createInstance(prisma, { manifest: mod.manifest, nickname, names: nickname ? defaultNames(mod.manifest, config.locales, nickname) : defaultNames(mod.manifest, config.locales) });
+  await runInstanceCreateHook(created.id);
   await audit(user.email, "instance.create", created.key);
   revalidatePath("/", "layout");
   redirect(`/admin/instances/${created.id}`);

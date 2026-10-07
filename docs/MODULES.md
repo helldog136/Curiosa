@@ -372,8 +372,9 @@ Voir « Sauvegarde lisible sans le framework ». `backup.readable(ctx)` renvoie 
 - `hooks.onInstanceDelete(ctx)` : appelé **avant** la suppression d'une instance, pour nettoyer ce que seul le module connaît (mémoire,
   service externe). Le cœur supprime ensuite lui-même les réglages et le stockage de l'instance. Une erreur est journalisée et la
   suppression continue.
-- `hooks.onInstanceCreate(ctx)` : prévu par le contrat, mais **la version actuelle du cœur ne l'appelle pas encore**. Ne bâtissez rien
-  qui en dépende (initialisez paresseusement, au premier usage).
+- `hooks.onInstanceCreate(ctx)` : appelé une fois l'instance créée (depuis l'admin ou l'assistant de première installation), quand son
+  stockage est utilisable. Une erreur du module est journalisée, jamais bloquante. Restez **idempotent** : l'instance peut aussi naître d'une
+  restauration de sauvegarde, qui ne rappelle pas ce crochet — initialisez aussi paresseusement, au premier usage.
 
 ## Le contexte `ctx`
 

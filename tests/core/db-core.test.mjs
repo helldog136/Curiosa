@@ -292,3 +292,25 @@ test("journal d'audit : action consignée avec son auteur", async () => {
   const rows = await db.prisma.auditLog.findMany();
   assert.deepEqual([rows[0].actor, rows[0].action, rows[0].target], ["moi@x.y", "test.action", "cible"]);
 });
+
+test("modules : le crochet onInstanceCreate est appelé après la création, une erreur du module ne bloque rien", async () => {
+  const { runInstanceCreateHook } = await import("@/core/instanceService");
+  const { installModule, setModuleEnabled } = await import("@/core/modules/installer");
+  const { makeRepo } = await import("../helpers/repo.mjs");
+  const { getModule } = await import("@/core/modules/registry");
+  const repo = makeRepo({
+    "module.json": { apiVersion: 2, version: "1.0.0", id: "crochet", name: "Crochet", main: "index.mjs", permissions: ["storage"] },
+    "index.mjs": "export default { hooks: { onInstanceCreate: async (ctx) => { await ctx.api.store.add('init', { key: ctx.instance.key }); } } };",
+  });
+  await installModule(repo.url); await setModuleEnabled("crochet", true);
+  const inst = await createInstance(db.prisma, { manifest: (await getModule("crochet")).manifest, names: { en: "Crochet" } });
+  await runInstanceCreateHook(inst.id);
+  const rows = await db.prisma.moduleRecord.findMany({ where: { instanceId: inst.id } });
+  assert.deepEqual(rows.map((r) => [r.collection, JSON.parse(r.data).key]), [["init", inst.key]]);
+  await runInstanceCreateHook("inconnue"); // aucune erreur
+  const bad = makeRepo({ "module.json": { apiVersion: 2, version: "1.0.0", id: "casse", name: "Casse", main: "index.mjs" }, "index.mjs": "export default { hooks: { onInstanceCreate: () => { throw new Error('boum'); } } };" });
+  await installModule(bad.url); await setModuleEnabled("casse", true);
+  const i2 = await createInstance(db.prisma, { manifest: (await getModule("casse")).manifest, names: { en: "Casse" } });
+  const log = console.error; console.error = () => {};
+  try { await runInstanceCreateHook(i2.id); } finally { console.error = log; }
+});
