@@ -8,7 +8,7 @@ import { ui } from "@/components/admin/ui";
 import { createRedirect, deleteRedirect, toggleRedirect } from "./actions";
 
 export default async function RedirectsPage() {
-  const { t } = await adminCtx("editor");
+  const { t, advanced } = await adminCtx("editor");
   const redirects = await prisma.redirect.findMany({ orderBy: { path: "asc" } });
   const entryIds = redirects.map((r) => r.entryId).filter((x): x is string => !!x);
   const linked = await prisma.entry.findMany({
@@ -26,11 +26,11 @@ export default async function RedirectsPage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold">{t("nav.redirects")}</h1>
-        <p className="mt-1 text-sm text-muted">{t("redirects.intro")}</p>
+        <p className="mt-1 text-sm text-muted">{advanced ? t("redirects.intro") : t("redirects.introSimple")}</p>
       </div>
 
       <table className="w-full">
-        <thead><tr><th className={ui.th}>{t("redirects.path")}</th><th className={ui.th}>{t("redirects.target")}</th><th className={ui.th}>{t("redirects.hits")}</th><th className={ui.th} /></tr></thead>
+        <thead><tr><th className={ui.th}>{t("redirects.path")}</th><th className={ui.th}>{t("redirects.target")}</th>{advanced && <th className={ui.th}>{t("redirects.hits")}</th>}<th className={ui.th} /></tr></thead>
         <tbody>
           {redirects.map((r) => (
             <tr key={r.id} className={`border-t border-line ${r.active ? "" : "opacity-50"}`}>
@@ -39,7 +39,7 @@ export default async function RedirectsPage() {
                 {linked.find((e) => e.id === r.entryId)?.url ?? r.targetUrl}
                 {r.entryId && <span className="ml-2 rounded bg-surface px-1.5 text-xs">{t("redirects.followsEntry")}</span>}
               </td>
-              <td className={ui.td}>{r.hits}</td>
+              {advanced && <td className={ui.td}>{r.hits}</td>}
               <td className={`${ui.td} flex gap-2`}>
                 <form action={toggleRedirect.bind(null, r.id)}><button className={ui.btn}>{r.active ? t("action.disable") : t("action.enable")}</button></form>
                 <form action={deleteRedirect.bind(null, r.id)}><ConfirmButton message={t("confirm.delete")}>{t("action.delete")}</ConfirmButton></form>
@@ -59,7 +59,7 @@ export default async function RedirectsPage() {
           </div>
           <Select name="entryId" label={t("redirects.orEntry")} help={t("redirects.orEntryHelp")}
             options={[{ value: "", label: "—" }, ...withUrl.map((e) => ({ value: e.id, label: `${e.translations[0]?.title ?? e.id} — ${e.url}` }))]} />
-          <Checkbox name="permanent" label={t("redirects.permanent")} />
+          {advanced && <Checkbox name="permanent" label={t("redirects.permanent")} />}
         </ActionForm>
       </section>
     </div>

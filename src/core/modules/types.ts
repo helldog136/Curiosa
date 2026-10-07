@@ -5,12 +5,14 @@ export type LocalizedString = string | Record<string, string>;
 export type SettingField = {
   key: string;
   label: LocalizedString;
-  type: "text" | "textarea" | "url" | "number" | "boolean" | "select" | "color" | "secret";
+  type: "text" | "textarea" | "url" | "number" | "boolean" | "select" | "color" | "secret" | "image";
   help?: LocalizedString;
   default?: string | number | boolean;
   options?: { value: string; label: LocalizedString }[];
   /** Une valeur par langue du site (sinon une seule valeur globale). */
   translatable?: boolean;
+  /** Réglage technique : masqué dans la version simplifiée de l'admin (sa valeur par défaut s'applique). */
+  advanced?: boolean;
 };
 
 /** Un module qui déclare `content` gère des entrées (articles, liens, codes…) via l'éditeur du cœur. */

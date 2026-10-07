@@ -22,6 +22,7 @@ langues, menus et même les redirections `/twitch` ou `/youtube` se règlent dan
 | **Entrée** | Un élément d'une instance à contenu : un article, un code promo, un lien social. Champs optionnels selon l'instance : image, icône, résumé, contenu Markdown, lien, code, expiration, champs personnalisés. |
 | **Section** | Un morceau qu'une instance propose à la **page d'accueil**. L'accueil n'a aucun contenu propre : c'est un assemblage de sections choisies et ordonnées dans l'admin (bandeau, derniers articles du blog 2, liens de la chaîne 1, lecteur Twitch, formulaire de contact…). |
 | **Sujet** | La façon dont les modules s'échangent des informations. Un module *consommateur* (un overlay OBS, par exemple) déclare ce qu'il sait digérer ; les modules *fournisseurs* (blog, codes promo, ou n'importe quel module tiers) exposent des informations à ce format, et l'admin choisit qui alimente quoi. Ils ne se connaissent pas. |
+| **Mode simple / avancé** | L'admin existe en deux versions. La version simple (par défaut) cache le technique : thèmes prêts à l'emploi, barre d'outils de mise en forme, tableau de bord guidé. La version avancée montre tout (adresses, étiquettes, sources de données, installation depuis git…). Bascule en un clic dans la barre latérale ; rien n'est perdu d'un mode à l'autre. |
 | **Redirection** | `/twitch` → une URL externe *explicitement autorisée* dans l'admin (ou le lien d'une entrée, suivi automatiquement). Aucune redirection ouverte possible. |
 | **Langues** | Langue du site, langue de l'admin (par défaut et par utilisateur) et langue du visiteur sont indépendantes. Une entrée n'a besoin que d'**une** version ; on en ajoute d'autres à la demande, jamais de force. |
 
@@ -70,7 +71,8 @@ src/app/admin       L'admin unique : assistant, entrées, une sous-page par inst
                     redirections, modules & marketplace…
 src/app/overlays    Overlays OBS (/overlays/<clé>)
 src/locales         Textes de l'interface (fr, en) — ajouter une langue = un fichier JSON
-modules-examples/   Un module d'exemple prêt à publier dans son propre dépôt git
+modules-examples/   Un module d'exemple minimal, prêt à publier dans son propre dépôt git
+modules-community/  Modules complets qui ne font PAS partie du cœur (ex. le labyrinthe 3D pour OBS)
 docs/               ARCHITECTURE.md, MODULES.md
 ```
 

@@ -12,7 +12,7 @@ const day = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : "");
 export default async function EditEntryPage({ params, searchParams }: {
   params: Promise<{ id: string }>; searchParams: Promise<{ locale?: string }>;
 }) {
-  const { t, config } = await adminCtx("editor");
+  const { t, config, advanced } = await adminCtx("editor");
   const { id } = await params;
   const { locale: requested } = await searchParams;
   const entry = await prisma.entry.findUnique({ where: { id }, include: { translations: true } });
@@ -33,7 +33,7 @@ export default async function EditEntryPage({ params, searchParams }: {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">{entry.translations.find((tr) => tr.locale === locale)?.title ?? t("entries.new")}</h1>
       <EntryForm
-        t={t} collection={collection} locales={config.locales} locale={locale}
+        advanced={advanced} t={t} collection={collection} locales={config.locales} locale={locale}
         data={{
           id: entry.id, status: entry.status, cover: entry.cover, icon: entry.icon, url: entry.url, code: entry.code,
           featured: entry.featured, tags: parseTags(entry.tags).join(", "), expiresAt: day(entry.expiresAt), publishedAt: day(entry.publishedAt), fields,

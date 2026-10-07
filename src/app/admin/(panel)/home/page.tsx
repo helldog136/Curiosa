@@ -7,7 +7,7 @@ import { ui } from "@/components/admin/ui";
 import { saveHome } from "./actions";
 
 export default async function HomeAdminPage() {
-  const { t, locale, config } = await adminCtx("admin");
+  const { t, locale, config, advanced } = await adminCtx("admin");
   const active = await getActiveInstances();
   const L = (v: Parameters<typeof localized>[0]) => localized(v, locale, config.defaultLocale);
 
@@ -69,7 +69,7 @@ export default async function HomeAdminPage() {
             </div>
           );
         })}
-        <p className={ui.help}>{t("home.optionsHint")}</p>
+        {advanced && <p className={ui.help}>{t("home.optionsHint")}</p>}
       </ActionForm>
     </div>
   );

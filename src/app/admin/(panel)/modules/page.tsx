@@ -13,7 +13,7 @@ import { ui } from "@/components/admin/ui";
 import { addInstance, checkUpdateAction, installFromCatalogue, installModuleAction, toggleModule, uninstallModuleAction, updateModuleAction } from "./actions";
 
 export default async function ModulesPage({ searchParams }: { searchParams: Promise<{ update?: string; error?: string }> }) {
-  const { t, locale, user, config } = await adminCtx("admin");
+  const { t, locale, user, config, advanced } = await adminCtx("admin");
   const isOwner = user.role === "owner";
   const { update, error } = await searchParams;
   const rows = await listModuleRows();
@@ -25,7 +25,7 @@ export default async function ModulesPage({ searchParams }: { searchParams: Prom
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold">{t("nav.modules")} <span className="text-base font-normal text-muted">· {t("modules.marketplace")}</span></h1>
-        <p className="mt-1 text-sm text-muted">{t("modules.intro")}</p>
+        <p className="mt-1 text-sm text-muted">{advanced ? t("modules.intro") : t("modules.introSimple")}</p>
       </div>
       {error && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm">{error.startsWith("modules.error.") || error.startsWith("instances.error.") ? t(error) : t("error.generic")}</p>}
       {update && <p role="status" className="rounded-lg border border-line bg-surface p-3 text-sm">{update === "yes" ? t("modules.updateAvailable") : t("modules.upToDate")}</p>}
@@ -46,17 +46,17 @@ export default async function ModulesPage({ searchParams }: { searchParams: Prom
                 <div className="min-w-0">
                   <p className="font-medium">
                     {mod?.manifest.icon ?? "🧩"} {mod ? localized(mod.manifest.name, locale, config.defaultLocale) : row.id}{" "}
-                    <span className="text-xs text-muted">v{row.version} · {row.source === "builtin" ? t("modules.builtin") : "git"}</span>
+                    {advanced && <span className="text-xs text-muted">v{row.version} · {row.source === "builtin" ? t("modules.builtin") : "git"}</span>}
                   </p>
                   <p className="text-sm text-muted">{mod ? localized(mod.manifest.description, locale, config.defaultLocale) : t("modules.broken")}</p>
-                  {row.repoUrl && <p className="mt-1 break-all font-mono text-xs text-muted">{row.repoUrl}{row.ref ? `#${row.ref}` : ""} @ {row.commit?.slice(0, 7)}</p>}
+                  {advanced && row.repoUrl && <p className="mt-1 break-all font-mono text-xs text-muted">{row.repoUrl}{row.ref ? `#${row.ref}` : ""} @ {row.commit?.slice(0, 7)}</p>}
                 </div>
                 {isOwner && (
                   <div className="flex flex-wrap gap-2">
                     <form action={toggleModule.bind(null, row.id, !row.enabled)}>
                       <button className={ui.btn}>{row.enabled ? t("action.disable") : t("action.enable")}</button>
                     </form>
-                    {row.source === "git" && (
+                    {advanced && row.source === "git" && (
                       <>
                         <form action={checkUpdateAction.bind(null, row.id)}><button className={ui.btn}>{t("modules.checkUpdate")}</button></form>
                         <form action={updateModuleAction.bind(null, row.id)}><button className={ui.btn}>{t("modules.update")}</button></form>
@@ -81,7 +81,7 @@ export default async function ModulesPage({ searchParams }: { searchParams: Prom
               )}
               {canAdd && mod && (
                 <form action={addInstance.bind(null, row.id)}>
-                  <button className={ui.btn}>+ {hasPage(mod.manifest) || mod.manifest.content ? t("instances.add") : t("instances.addPlain")}</button>
+                  <button className={ui.btn}>+ {advanced ? (hasPage(mod.manifest) || mod.manifest.content ? t("instances.add") : t("instances.addPlain")) : t("instances.addSimple", { name: localized(mod.manifest.name, locale, config.defaultLocale) })}</button>
                 </form>
               )}
             </li>
@@ -92,7 +92,7 @@ export default async function ModulesPage({ searchParams }: { searchParams: Prom
         );
       })}
 
-      {isOwner && (
+      {isOwner && advanced && (
         <section className={`${ui.card} space-y-4`}>
           <h2 className="text-lg font-semibold">{t("modules.install")}</h2>
           <p className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">{t("modules.warning")}</p>

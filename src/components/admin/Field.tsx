@@ -2,13 +2,13 @@ import { ui } from "./ui";
 
 type Common = { label: string; name: string; help?: string; required?: boolean };
 
-export function TextField({ label, name, help, required, defaultValue, type = "text", placeholder, autoComplete }: Common & {
-  defaultValue?: string | number; type?: string; placeholder?: string; autoComplete?: string;
+export function TextField({ label, name, help, required, defaultValue, type = "text", placeholder, autoComplete, list }: Common & {
+  defaultValue?: string | number; type?: string; placeholder?: string; autoComplete?: string; list?: string;
 }) {
   return (
     <div>
       <label className={ui.label} htmlFor={name}>{label}</label>
-      <input id={name} name={name} type={type} required={required} defaultValue={defaultValue} placeholder={placeholder} autoComplete={autoComplete} className={ui.input} />
+      <input id={name} name={name} type={type} required={required} defaultValue={defaultValue} placeholder={placeholder} autoComplete={autoComplete} list={list} className={ui.input} />
       {help && <p className={ui.help}>{help}</p>}
     </div>
   );

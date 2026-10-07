@@ -22,6 +22,8 @@ export async function saveEntry(_prev: ActionState, formData: FormData): Promise
   const locale = String(formData.getAll("locale").at(-1) ?? "");
   if (!collection || !config.locales.includes(locale)) return { error: t("error.generic") };
 
+  // La version simplifiée n'envoie pas les champs techniques : on ne les modifie alors pas.
+  const adv = formData.get("__adv") === "1";
   const title = String(formData.get("title") ?? "").trim();
   if (!title) return { error: t("error.titleRequired") };
 
@@ -48,45 +50,49 @@ export async function saveEntry(_prev: ActionState, formData: FormData): Promise
     else if (raw !== null && String(raw).trim() !== "") fields[f.key] = f.type === "number" ? Number(raw) : String(raw).trim().slice(0, 2000);
   }
 
-  const shared = {
+  const shared: Record<string, unknown> = {
     status,
     cover,
     icon,
     url,
     code,
-    featured: formData.get("featured") === "on",
-    tags: JSON.stringify(
+    expiresAt: date("expiresAt"),
+    fields: JSON.stringify(fields),
+  };
+  if (adv) {
+    shared.featured = formData.get("featured") === "on";
+    shared.tags = JSON.stringify(
       String(formData.get("tags") ?? "")
         .split(",")
         .map((x) => x.trim().toLowerCase().slice(0, 40))
         .filter(Boolean)
         .slice(0, 20),
-    ),
-    expiresAt: date("expiresAt"),
-    fields: JSON.stringify(fields),
-  };
+    );
+  }
   const text = {
     title,
     summary: String(formData.get("summary") ?? "").trim(),
     body: String(formData.get("body") ?? "").trim(),
   };
   const wantedSlug = slugify(String(formData.get("slug") ?? "") || title);
+  const keepSlug = !adv; // simplifié : le lien d'une entrée existante ne change jamais en douce
 
   let entryId = id;
   if (id) {
     const entry = await prisma.entry.findUnique({ where: { id } });
     if (!entry || entry.instanceId !== collection.id) return { error: t("error.generic") };
     // La date de publication saisie prime ; sinon on garde l'existante, ou on pose "maintenant" à la première publication.
-    const publishedAt = date("publishedAt") ?? entry.publishedAt ?? (status === "published" ? new Date() : null);
+    const publishedAt = (adv ? date("publishedAt") : null) ?? entry.publishedAt ?? (status === "published" ? new Date() : null);
     await prisma.entry.update({ where: { id }, data: { ...shared, publishedAt } });
   } else {
     const created = await prisma.entry.create({
-      data: { ...shared, instanceId: collection.id, sourceLocale: locale, authorId: user.id, publishedAt: date("publishedAt") ?? (status === "published" ? new Date() : null) },
+      data: { ...shared, instanceId: collection.id, sourceLocale: locale, authorId: user.id, publishedAt: (adv ? date("publishedAt") : null) ?? (status === "published" ? new Date() : null) },
     });
     entryId = created.id;
   }
 
-  const slug = await uniqueSlug(prisma, collection.id, locale, wantedSlug, entryId);
+  const existingTr = keepSlug ? await prisma.entryTranslation.findUnique({ where: { entryId_locale: { entryId, locale } } }) : null;
+  const slug = existingTr ? existingTr.slug : await uniqueSlug(prisma, collection.id, locale, wantedSlug, entryId);
   await prisma.entryTranslation.upsert({
     where: { entryId_locale: { entryId, locale } },
     create: { entryId, instanceId: collection.id, locale, slug, ...text },

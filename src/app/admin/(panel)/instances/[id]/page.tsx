@@ -12,6 +12,7 @@ import { siteUrl } from "@/core/config";
 import { effectiveType } from "@/core/modules/manifest";
 import { getSources, providersOf } from "@/core/modules/topics";
 import { InstanceTabs } from "@/components/admin/InstanceTabs";
+import { ImageField } from "@/components/admin/ImageField";
 import { ActionForm } from "@/components/admin/ActionForm";
 import { ConfirmButton } from "@/components/admin/ConfirmButton";
 import { Checkbox, Select, TextArea, TextField } from "@/components/admin/Field";
@@ -19,7 +20,7 @@ import { ui } from "@/components/admin/ui";
 import { deleteInstanceAction, saveInstance, saveInstanceSettings, saveSources } from "../actions";
 
 export default async function InstancePage({ params }: { params: Promise<{ id: string }> }) {
-  const { t, locale, config, user } = await adminCtx("admin");
+  const { t, locale, config, user, advanced } = await adminCtx("admin");
   const { id } = await params;
   const instance = await getInstanceById(id);
   const mod = instance ? await getModule(instance.moduleId) : null;
@@ -39,6 +40,8 @@ export default async function InstancePage({ params }: { params: Promise<{ id: s
   const stored: Record<string, Record<string, unknown>> = {};
   for (const f of mod.manifest.settings) stored[f.key] = await getSettingByLocale(instanceSettingKey(id, f.key));
 
+  const visibleSettings = mod.manifest.settings.filter((f) => advanced || !f.advanced);
+
   const input = (f: SettingField, name: string, value: unknown, label: string) => {
     const common = { name, label, help: f.help ? L(f.help) : undefined };
     const str = value === undefined ? (f.default === undefined ? "" : String(f.default)) : String(value);
@@ -55,6 +58,8 @@ export default async function InstancePage({ params }: { params: Promise<{ id: s
         return <TextField key={name} {...common} type="number" defaultValue={str} />;
       case "color":
         return <TextField key={name} {...common} type="color" defaultValue={str || "#000000"} />;
+      case "image":
+        return <ImageField key={name} name={name} label={label} defaultValue={str} uploadLabel={t("action.upload")} />;
       case "url":
         return <TextField key={name} {...common} type="url" defaultValue={str} />;
       default:
@@ -67,7 +72,7 @@ export default async function InstancePage({ params }: { params: Promise<{ id: s
       <div className="space-y-3">
         <InstanceTabs t={t} id={instance.id} keyName={instance.key} name={pickName(instance, locale, config.defaultLocale)} icon={mod.manifest.icon ?? "🧩"} active="settings" content={!!content} canConfigure={user.role !== "editor"} />
         <p className="text-sm text-muted">
-          {L(mod.manifest.name)} · {t(`type.${effectiveType(mod.manifest)}`)} · v{mod.manifest.version} · <span className="font-mono">{instance.key}</span>
+          {L(mod.manifest.name)}{advanced && <> · {t(`type.${effectiveType(mod.manifest)}`)} · v{mod.manifest.version} · <span className="font-mono">{instance.key}</span></>}
         </p>
         <p>{L(mod.manifest.description)}</p>
         {mod.def.overlay && (
@@ -80,6 +85,7 @@ export default async function InstancePage({ params }: { params: Promise<{ id: s
 
       <ActionForm action={saveInstance} submitLabel={t("action.save")}>
         <input type="hidden" name="id" value={id} />
+        {advanced && <input type="hidden" name="__adv" value="1" />}
         <h2 className="text-lg font-semibold">{t("instances.general")}</h2>
 
         <fieldset className={`${ui.card} space-y-4`}>
@@ -96,14 +102,17 @@ export default async function InstancePage({ params }: { params: Promise<{ id: s
           <Checkbox name="enabled" label={t("instances.enabled")} defaultChecked={instance.enabled} />
           {hasPage(mod.manifest) && <Checkbox name="showInNav" label={t("instances.showInNav")} defaultChecked={instance.showInNav} />}
         </div>
-        {hasPage(mod.manifest) && (
+        {hasPage(mod.manifest) && !advanced && (
+          <p className="text-sm text-muted">{t("instances.address")} : <code className="font-mono">/{instance.basePath}</code></p>
+        )}
+        {hasPage(mod.manifest) && advanced && (
           <div className="grid gap-4 sm:grid-cols-2">
             <TextField name="basePath" label={t("instances.basePath")} help={t("instances.basePathHelp")} defaultValue={instance.basePath ?? ""} />
             <TextField name="navOrder" type="number" label={t("instances.navOrder")} defaultValue={instance.navOrder} />
           </div>
         )}
 
-        {content && (
+        {content && advanced && (
           <>
             <h2 className="text-lg font-semibold">{t("instances.presentation")}</h2>
             <div className="grid gap-4 sm:grid-cols-2">
@@ -132,6 +141,7 @@ export default async function InstancePage({ params }: { params: Promise<{ id: s
       {(mod.manifest.consumes ?? []).length > 0 && (
         <ActionForm action={saveSources} submitLabel={t("action.save")}>
           <input type="hidden" name="id" value={id} />
+          {advanced && <input type="hidden" name="__adv" value="1" />}
           <div>
             <h2 className="text-lg font-semibold">{t("sources.title")}</h2>
             <p className="mt-1 text-sm text-muted">{t("sources.intro")}</p>
@@ -141,25 +151,26 @@ export default async function InstancePage({ params }: { params: Promise<{ id: s
             const current = await getSources(id, decl.topic);
             return (
               <fieldset key={decl.topic} className={`${ui.card} space-y-3`}>
-                <legend className="px-2 text-sm font-medium">{L(decl.label)} <span className="font-mono text-xs text-muted">{decl.topic}</span></legend>
+                <legend className="px-2 text-sm font-medium">{L(decl.label)}{advanced && <span className="ml-2 font-mono text-xs text-muted">{decl.topic}</span>}</legend>
                 {providers.length === 0 && <p className="text-sm text-muted">{t("sources.none")}</p>}
                 {providers.map((p) => (
                   <Checkbox key={p.instance.key} name={`sources_${i}`} value={p.instance.key}
                     label={`${p.mod.manifest.icon ?? "🧩"} ${pickName(p.instance, locale, config.defaultLocale)} (${L(p.mod.manifest.name)})`}
                     defaultChecked={current.instances === null || current.instances.includes(p.instance.key)} />
                 ))}
-                {decl.tags && <TextField name={`tags_${i}`} label={t("sources.tags")} help={t("sources.tagsHelp")} defaultValue={current.tags.join(", ")} />}
+                {advanced && decl.tags && <TextField name={`tags_${i}`} label={t("sources.tags")} help={t("sources.tagsHelp")} defaultValue={current.tags.join(", ")} />}
               </fieldset>
             );
           }))}
         </ActionForm>
       )}
 
-      {mod.manifest.settings.length > 0 && (
+      {visibleSettings.length > 0 && (
         <ActionForm action={saveInstanceSettings} submitLabel={t("action.save")}>
           <input type="hidden" name="id" value={id} />
+          {advanced && <input type="hidden" name="__adv" value="1" />}
           <h2 className="text-lg font-semibold">{t("instances.moduleSettings")}</h2>
-          {mod.manifest.settings.map((f) =>
+          {visibleSettings.map((f) =>
             f.translatable ? (
               <fieldset key={f.key} className={`${ui.card} space-y-3`}>
                 <legend className="px-2 text-sm font-medium">{L(f.label)}</legend>

@@ -45,6 +45,18 @@ instance configurée (nommée par l'utilisateur) ; chaque instance est une sous-
 sections « Site » (accueil, navigation, réglages, redirections) et « Modules » (liste, marketplace,
 installation depuis git) complètent l'ensemble. Aucun module n'a son propre back-office.
 
+## Admin simple et avancée
+
+Chaque utilisateur choisit sa version de l'admin (`User.advanced`, bascule dans la barre latérale ; défaut :
+simple). La version **simple** s'adresse à quelqu'un qui ne connaît rien au web : thèmes de couleurs prêts à
+l'emploi plutôt que des sélecteurs, barre d'outils de mise en forme (gras, lien, liste…) plutôt que du Markdown
+à connaître, pas d'adresses, de slugs, d'étiquettes, de champs personnalisés, de sources techniques ni
+d'installation depuis git, un tableau de bord « pour bien démarrer ». La version **avancée** montre tout.
+Règle d'implémentation : un formulaire n'envoie le marqueur `__adv` que s'il a affiché les champs techniques,
+et son action serveur ne modifie les champs techniques que si le marqueur est présent — éditer en mode simple
+ne remet donc jamais à zéro ce que le mode avancé a réglé. Les modules marquent leurs réglages techniques
+`"advanced": true`.
+
 ## Communication entre modules : les sujets
 
 Un module *consommateur* (type `overlay`, par exemple) déclare dans son manifeste les sujets qu'il

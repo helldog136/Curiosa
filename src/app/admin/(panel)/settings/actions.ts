@@ -13,6 +13,8 @@ const TRANSLATABLE = ["site.name", "site.tagline", "footer.text"];
 export async function saveSettings(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const { user, t } = await adminCtx("admin");
 
+  // Version simplifiée : les réglages techniques ne sont pas envoyés, on ne les touche pas.
+  const adv = formData.get("__adv") === "1";
   const defaultLocale = String(formData.get("defaultLocale") ?? "");
   const enabled = formData.getAll("enabledLocales").map(String).filter(isKnownLocale);
   if (!isKnownLocale(defaultLocale)) return { error: t("error.generic") };
@@ -27,11 +29,14 @@ export async function saveSettings(_prev: ActionState, formData: FormData): Prom
 
   await setSetting("i18n.default", defaultLocale);
   await setSetting("i18n.enabled", locales);
-  const adminLocale = String(formData.get("adminLocale") ?? "");
-  if (isKnownLocale(adminLocale)) await setSetting("i18n.adminDefault", adminLocale);
-  await setSetting("i18n.autoDetect", formData.get("autoDetect") === "on");
+  if (adv) {
+    const adminLocale = String(formData.get("adminLocale") ?? "");
+    if (isKnownLocale(adminLocale)) await setSetting("i18n.adminDefault", adminLocale);
+    await setSetting("i18n.autoDetect", formData.get("autoDetect") === "on");
+  }
 
   for (const key of TRANSLATABLE) {
+    if (key === "footer.text" && !adv) continue;
     for (const locale of locales) {
       const value = String(formData.get(`${key}__${locale}`) ?? "").trim();
       if (value) await setSetting(key, value, locale);
@@ -40,10 +45,10 @@ export async function saveSettings(_prev: ActionState, formData: FormData): Prom
   }
   if (logo) await setSetting("site.logo", logo);
   else await deleteSetting("site.logo");
-  await setSetting("site.contactEmail", String(formData.get("contactEmail") ?? "").trim());
+  if (adv) await setSetting("site.contactEmail", String(formData.get("contactEmail") ?? "").trim());
   await setSetting("theme.background", background);
   await setSetting("theme.accent", accent);
-  await setSetting("theme.font", ["sans", "serif", "mono"].includes(font) ? font : "sans");
+  if (adv) await setSetting("theme.font", ["sans", "serif", "mono"].includes(font) ? font : "sans");
 
   await audit(user.email, "settings.update");
   revalidatePath("/", "layout");

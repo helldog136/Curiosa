@@ -2,11 +2,12 @@ import { signOut } from "@/auth";
 import { adminCtx } from "@/core/admin";
 import { getAdminNav } from "@/core/modules/adminNav";
 import { ui } from "@/components/admin/ui";
+import { setAdminMode } from "./mode/actions";
 
 export const dynamic = "force-dynamic";
 
 export default async function PanelLayout({ children }: { children: React.ReactNode }) {
-  const { user, t, locale, config } = await adminCtx("editor");
+  const { user, t, locale, config, advanced } = await adminCtx("editor");
   const nav = await getAdminNav(locale, config.defaultLocale);
   const canManage = user.role !== "editor";
 
@@ -45,6 +46,10 @@ export default async function PanelLayout({ children }: { children: React.ReactN
           <a href="/admin/account" className={link}>{t("nav.myAccount")}</a>
           <a href="/" className={link} target="_blank" rel="noopener">{t("nav.viewSite")} ↗</a>
         </nav>
+        <form action={setAdminMode.bind(null, !advanced)} className="mt-4 px-3">
+          <p className="mb-1 text-xs text-muted">{advanced ? t("mode.advanced") : t("mode.simple")}</p>
+          <button className={ui.btn} title={t("mode.help")}>{advanced ? t("mode.switchToSimple") : t("mode.switchToAdvanced")}</button>
+        </form>
         <form
           action={async () => {
             "use server";

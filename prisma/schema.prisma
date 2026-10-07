@@ -17,6 +17,8 @@ model User {
   passwordHash String
   // Langue de l'interface d'admin de cet utilisateur (null = défaut du site).
   locale       String?
+  // Mode d'affichage de l'admin : simplifié (défaut) ou avancé (tous les réglages techniques).
+  advanced     Boolean  @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

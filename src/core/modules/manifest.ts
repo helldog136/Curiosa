@@ -6,11 +6,12 @@ const localized = z.union([z.string().max(500), z.record(z.string(), z.string().
 export const settingField = z.object({
   key: z.string().regex(/^[a-zA-Z][a-zA-Z0-9_]{0,40}$/),
   label: localized,
-  type: z.enum(["text", "textarea", "url", "number", "boolean", "select", "color", "secret"]),
+  type: z.enum(["text", "textarea", "url", "number", "boolean", "select", "color", "secret", "image"]),
   help: localized.optional(),
   default: z.union([z.string(), z.number(), z.boolean()]).optional(),
   options: z.array(z.object({ value: z.string(), label: localized })).max(50).optional(),
   translatable: z.boolean().optional(),
+  advanced: z.boolean().optional(),
 });
 
 const content = z.object({

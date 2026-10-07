@@ -70,3 +70,22 @@ test("le module d'exemple est cohérent (id, version, fichier principal, réglag
   assert.ok(fs.existsSync(`${dir}/${m.main}`));
   for (const s of m.settings) assert.match(s.key, /^[a-zA-Z][a-zA-Z0-9_]*$/);
 });
+
+test("les modules communautaires ont un manifeste cohérent et ne sont PAS livrés avec le cœur", () => {
+  const builtin = read("src/modules-builtin/index.ts");
+  for (const dir of fs.readdirSync("modules-community")) {
+    const m = JSON.parse(read(`modules-community/${dir}/module.json`));
+    assert.equal(m.id, dir);
+    assert.ok(fs.existsSync(`modules-community/${dir}/${m.main}`));
+    assert.ok(!builtin.includes(m.id) && !builtin.includes(dir), `${dir} ne doit pas être un module par défaut`);
+  }
+});
+
+test("les réglages avancés sont déclarés par les modules, jamais obligatoires pour le mode simple", () => {
+  for (const dir of ["modules-examples", "modules-community"]) {
+    for (const name of fs.readdirSync(dir)) {
+      const m = JSON.parse(read(`${dir}/${name}/module.json`));
+      for (const s of m.settings) if (s.advanced) assert.ok(s.default !== undefined || s.type !== "number", `${name}.${s.key}: un réglage avancé numérique doit avoir une valeur par défaut`);
+    }
+  }
+});

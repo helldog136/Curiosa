@@ -1,0 +1,217 @@
+{
+  "apiVersion": 2,
+  "id": "maze-overlay",
+  "name": {
+    "en": "3D maze overlay (OBS)",
+    "fr": "Overlay labyrinthe 3D (OBS)"
+  },
+  "version": "1.0.0",
+  "description": {
+    "en": "A retro 3D maze for OBS. The walker wanders through the corridors and stops in front of posters made from your content (articles, promo codes, clips…).",
+    "fr": "Un labyrinthe 3D rétro pour OBS. Le personnage se promène dans les couloirs et s'arrête devant des affiches faites avec votre contenu (articles, codes promo, clips…)."
+  },
+  "author": "Vitrine",
+  "license": "MIT",
+  "icon": "🌀",
+  "main": "index.mjs",
+  "type": "overlay",
+  "instances": "multiple",
+  "consumes": [
+    {
+      "topic": "core.entry",
+      "label": {
+        "en": "Entries of your blogs, codes, links…",
+        "fr": "Entrées de vos blogs, codes, liens…"
+      },
+      "tags": true
+    },
+    {
+      "topic": "maze.poster",
+      "label": {
+        "en": "Posters offered by other modules (clips, videos…)",
+        "fr": "Affiches proposées par d'autres modules (clips, vidéos…)"
+      },
+      "schema": [
+        {
+          "key": "title",
+          "type": "string",
+          "required": true
+        },
+        {
+          "key": "text",
+          "type": "string"
+        },
+        {
+          "key": "url",
+          "type": "url"
+        },
+        {
+          "key": "image",
+          "type": "url"
+        },
+        {
+          "key": "kind",
+          "type": "string"
+        },
+        {
+          "key": "badge",
+          "type": "string"
+        }
+      ]
+    }
+  ],
+  "permissions": [
+    "overlay",
+    "routes",
+    "topics"
+  ],
+  "settings": [
+    {
+      "key": "size",
+      "type": "select",
+      "default": "medium",
+      "label": {
+        "en": "Maze size",
+        "fr": "Taille du labyrinthe"
+      },
+      "options": [
+        {
+          "value": "small",
+          "label": {
+            "en": "Small",
+            "fr": "Petit"
+          }
+        },
+        {
+          "value": "medium",
+          "label": {
+            "en": "Medium",
+            "fr": "Moyen"
+          }
+        },
+        {
+          "value": "large",
+          "label": {
+            "en": "Large",
+            "fr": "Grand"
+          }
+        }
+      ]
+    },
+    {
+      "key": "accent",
+      "type": "color",
+      "default": "#cd853f",
+      "label": {
+        "en": "Accent color",
+        "fr": "Couleur d'accent"
+      }
+    },
+    {
+      "key": "wallTexture",
+      "type": "image",
+      "label": {
+        "en": "Wall texture",
+        "fr": "Texture des murs"
+      },
+      "help": {
+        "en": "Empty = a simple checkerboard.",
+        "fr": "Vide = un damier simple."
+      }
+    },
+    {
+      "key": "floorTexture",
+      "type": "image",
+      "label": {
+        "en": "Floor texture",
+        "fr": "Texture du sol"
+      }
+    },
+    {
+      "key": "hold",
+      "type": "number",
+      "default": 8,
+      "label": {
+        "en": "Seconds a poster stays in focus",
+        "fr": "Secondes d'affichage d'une affiche"
+      }
+    },
+    {
+      "key": "moveSpeed",
+      "type": "number",
+      "default": 1.4,
+      "advanced": true,
+      "label": {
+        "en": "Walking speed (cells/second)",
+        "fr": "Vitesse de marche (cases/seconde)"
+      }
+    },
+    {
+      "key": "turnSpeed",
+      "type": "number",
+      "default": 220,
+      "advanced": true,
+      "label": {
+        "en": "Turning speed (degrees/second)",
+        "fr": "Vitesse de rotation (degrés/seconde)"
+      }
+    },
+    {
+      "key": "stopMin",
+      "type": "number",
+      "default": 12,
+      "advanced": true,
+      "label": {
+        "en": "Minimum seconds between stops",
+        "fr": "Secondes minimum entre deux arrêts"
+      }
+    },
+    {
+      "key": "stopMax",
+      "type": "number",
+      "default": 25,
+      "advanced": true,
+      "label": {
+        "en": "Maximum seconds between stops",
+        "fr": "Secondes maximum entre deux arrêts"
+      }
+    },
+    {
+      "key": "fov",
+      "type": "number",
+      "default": 66,
+      "advanced": true,
+      "label": {
+        "en": "Field of view (degrees)",
+        "fr": "Champ de vision (degrés)"
+      }
+    },
+    {
+      "key": "portalTexture",
+      "type": "image",
+      "advanced": true,
+      "label": {
+        "en": "Portal wall texture",
+        "fr": "Texture des murs-portails"
+      }
+    },
+    {
+      "key": "handsSprite",
+      "type": "image",
+      "advanced": true,
+      "label": {
+        "en": "Hands sprite (HUD)",
+        "fr": "Sprite des mains (HUD)"
+      }
+    },
+    {
+      "key": "extraWall",
+      "type": "textarea",
+      "advanced": true,
+      "label": {
+        "en": "More wall textures (one URL per line, up to 4)",
+        "fr": "Autres textures de murs (une URL par ligne, 4 maximum)"
+      }
+    }
+  ]
+}

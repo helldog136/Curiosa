@@ -5,7 +5,7 @@ import { prisma } from "./db";
 export type Role = "owner" | "admin" | "editor";
 const RANK: Record<Role, number> = { editor: 1, admin: 2, owner: 3 };
 
-export type AdminUser = { id: string; email: string; name: string; role: Role; locale: string | null };
+export type AdminUser = { id: string; email: string; name: string; role: Role; locale: string | null; advanced: boolean };
 
 /** Utilisateur connecté (relu en base : un compte supprimé perd l'accès immédiatement). */
 export async function currentUser(): Promise<AdminUser | null> {
@@ -14,7 +14,7 @@ export async function currentUser(): Promise<AdminUser | null> {
   if (!id) return null;
   const user = await prisma.user.findUnique({ where: { id } });
   if (!user) return null;
-  return { id: user.id, email: user.email, name: user.name, role: user.role as Role, locale: user.locale };
+  return { id: user.id, email: user.email, name: user.name, role: user.role as Role, locale: user.locale, advanced: user.advanced };
 }
 
 export function hasRole(user: AdminUser | null, min: Role): user is AdminUser {

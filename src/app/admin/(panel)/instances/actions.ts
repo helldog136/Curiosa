@@ -9,7 +9,7 @@ import { deleteInstance, validateBasePath } from "@/core/instanceService";
 import { instanceSettingKey } from "@/core/modules/context";
 import { hasPage } from "@/core/modules/manifest";
 import { getModule } from "@/core/modules/registry";
-import { providersOf, setSources } from "@/core/modules/topics";
+import { getSources, providersOf, setSources } from "@/core/modules/topics";
 import { audit } from "@/core/permissions";
 import { deleteSetting, setSetting } from "@/core/settings";
 import type { ActionState } from "@/components/admin/ActionForm";
@@ -32,20 +32,23 @@ export async function saveInstance(_prev: ActionState, formData: FormData): Prom
   const mod = existing ? await getModule(existing.moduleId) : null;
   if (!existing || !mod) return { error: t("error.generic") };
 
+  // La version simplifiée de l'admin n'envoie pas les réglages techniques : on ne touche alors qu'à ce qui a été montré.
+  const adv = formData.get("__adv") === "1";
   const data: Record<string, unknown> = {
     enabled: formData.get("enabled") === "on",
-    showInNav: formData.get("showInNav") === "on",
-    navOrder: Math.trunc(Number(formData.get("navOrder"))) || 0,
   };
+  if (hasPage(mod.manifest)) data.showInNav = formData.get("showInNav") === "on";
 
-  if (hasPage(mod.manifest)) {
+  if (adv) data.navOrder = Math.trunc(Number(formData.get("navOrder"))) || 0;
+
+  if (adv && hasPage(mod.manifest)) {
     const basePath = String(formData.get("basePath") ?? "").trim().toLowerCase();
     const error = await validateBasePath(basePath, id);
     if (error) return { error: t(error) };
     data.basePath = basePath;
   }
 
-  if (mod.manifest.content) {
+  if (adv && mod.manifest.content) {
     const display = String(formData.get("display"));
     if (!(DISPLAYS as readonly string[]).includes(display)) return { error: t("error.generic") };
     Object.assign(data, {
@@ -88,7 +91,9 @@ export async function saveInstanceSettings(_prev: ActionState, formData: FormDat
   const mod = instance ? await getModule(instance.moduleId) : null;
   if (!instance || !mod) return { error: t("error.generic") };
 
+  const adv = formData.get("__adv") === "1";
   for (const field of mod.manifest.settings) {
+    if (field.advanced && !adv) continue; // réglage technique non montré : on garde sa valeur
     const locales = field.translatable ? config.locales : [""];
     for (const locale of locales) {
       const name = field.translatable ? `s__${field.key}__${locale}` : `s__${field.key}`;
@@ -110,6 +115,9 @@ export async function saveInstanceSettings(_prev: ActionState, formData: FormDat
         await setSetting(key, n, locale);
       } else if (field.type === "select") {
         if (!field.options?.some((o) => o.value === raw)) return { error: t("error.generic") };
+        await setSetting(key, raw, locale);
+      } else if (field.type === "image") {
+        if (!/^(https?:\/\/|\/uploads\/)/i.test(raw)) return { error: t("error.badUrl") };
         await setSetting(key, raw, locale);
       } else if (field.type === "url") {
         if (!/^https?:\/\//i.test(raw)) return { error: t("error.badUrl") };
@@ -149,7 +157,11 @@ export async function saveSources(_prev: ActionState, formData: FormData): Promi
   for (const [i, decl] of (mod.manifest.consumes ?? []).entries()) {
     const available = (await providersOf(decl.topic)).map((p) => p.instance.key);
     const chosen = formData.getAll(`sources_${i}`).map(String).filter((k) => available.includes(k));
-    const tags = decl.tags
+    const adv = formData.get("__adv") === "1";
+    const previous = await getSources(id, decl.topic);
+    const tags = !adv
+      ? previous.tags
+      : decl.tags
       ? String(formData.get(`tags_${i}`) ?? "").split(",").map((x) => x.trim().toLowerCase()).filter(Boolean).slice(0, 20)
       : [];
     await setSources(id, decl.topic, { instances: chosen.length === available.length ? null : chosen, tags });

@@ -167,8 +167,16 @@ jour » compare avec le dépôt distant.
 }
 ```
 
-Types de réglages : `text`, `textarea`, `url`, `number`, `boolean`, `select`, `color`,
-`secret` (jamais réaffiché). `translatable: true` = une valeur par langue du site.
+Types de réglages : `text`, `textarea`, `url`, `number`, `boolean`, `select`, `color`, `image`
+(envoi de fichier ou URL), `secret` (jamais réaffiché). `translatable: true` = une valeur par langue
+du site.
+
+**Simple et avancé.** L'admin existe en deux versions (bascule dans la barre latérale, préférence de
+chaque utilisateur). Marquez `"advanced": true` les réglages techniques de votre module : ils sont
+masqués en version simplifiée, et **leur valeur par défaut s'applique** — donnez-en toujours une.
+Gardez dans la version simple l'essentiel : ce qu'une personne sans connaissances web peut comprendre
+(un nom, une couleur, une image, un nombre de secondes). Les réglages avancés déjà enregistrés ne sont
+jamais effacés quand quelqu'un édite en version simple.
 
 ### Module à contenu : zéro code
 
@@ -238,6 +246,17 @@ la vôtre) et, pour `entry.*`, `ctx.entry`.
 
 Un module n'importe rien du cœur : tout passe par `ctx`. C'est ce qui garantit qu'il continuera
 de fonctionner quand le cœur évolue (tant que `apiVersion` est inchangé).
+
+## Modules livrés avec le cœur, modules communautaires
+
+Seuls les modules de base vivent dans `src/modules-builtin/` : blog, réseaux sociaux, codes promo,
+pages, collection vierge, bandeau d'accueil, flux RSS, formulaire de contact, statut live et overlay
+défilant. Tout le reste s'installe depuis git. `modules-community/` contient des modules complets qui
+**ne font pas partie du cœur** (un test le vérifie) et qui rejoindront chacun leur dépôt : le premier est
+[`maze-overlay`](../modules-community/maze-overlay), le labyrinthe 3D de helldog136.be porté en module
+(moteur en JavaScript natif servi par ses propres routes, alimenté par les sujets `core.entry` et
+`maze.poster`). Il montre qu'un module riche — moteur de rendu, assets, réglages, abonnements — tient
+dans le contrat sans rien ajouter au cœur.
 
 ## Sécurité : à lire avant d'installer
 

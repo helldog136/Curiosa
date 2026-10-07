@@ -6,6 +6,7 @@ CREATE TABLE "User" (
     "role" TEXT NOT NULL DEFAULT 'editor',
     "passwordHash" TEXT NOT NULL,
     "locale" TEXT,
+    "advanced" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL
 );
