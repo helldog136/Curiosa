@@ -546,6 +546,14 @@
   "services.hint": "Tirez la flèche depuis la pastille du service jusqu'à un fournisseur (ou cliquez dessus).",
   "services.list": "Vue liste (clavier)",
   "nav.menu": "Menu",
-  "catalogue.donate": "Soutenir l'auteur (don libre)",
-  "catalogue.free": "Tous les modules sont gratuits. Si l'un d'eux vous sert, vous pouvez soutenir son auteur par un don libre : jamais obligatoire."
+  "catalogue.free": "Tous les modules sont gratuits. Le README de chaque module est affiché avant l'installation : un auteur y indique, s'il le souhaite, comment le soutenir par un don libre (jamais obligatoire).",
+  "catalogue.details": "Voir le détail et installer",
+  "catalogue.preview": "Voir le README avant d'installer",
+  "catalogue.back": "Retour au catalogue",
+  "catalogue.asks": "Ce que demande ce module",
+  "catalogue.none": "aucune",
+  "catalogue.license": "Licence",
+  "catalogue.noReadme": "Ce module n'a pas de README.",
+  "catalogue.truncated": "README tronqué (trop long).",
+  "catalogue.previewFailed": "Impossible de lire ce dépôt (adresse refusée, dépôt privé ou injoignable). Rien n'a été installé."
 }

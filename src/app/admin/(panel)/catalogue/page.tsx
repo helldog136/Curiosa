@@ -2,10 +2,9 @@ import { adminCtx } from "@/core/admin";
 import { getCatalogue, getCatalogueSource } from "@/core/modules/catalogue";
 import { listModuleRows } from "@/core/modules/registry";
 import { localized } from "@/core/modules/types";
-import { ActionForm } from "@/components/admin/ActionForm";
-import { Checkbox, TextField } from "@/components/admin/Field";
+import { TextField } from "@/components/admin/Field";
 import { ui } from "@/components/admin/ui";
-import { installCustomAction, installFromCatalogueAction, refreshCatalogueAction } from "./actions";
+import { refreshCatalogueAction } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -52,16 +51,15 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
                     <span className="rounded bg-line px-2 py-0.5 text-xs">✔ {t("catalogue.verified")}</span>
                   </p>
                   <p className="text-sm text-muted">{L(e.description)}</p>
-                  {e.donate && <p className="mt-1 text-xs"><a href={e.donate} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">♥ {t("catalogue.donate")}</a></p>}
                   {e.source === "recognized" && e.repo && <p className="mt-1 break-all font-mono text-xs text-muted">{e.repo}{e.ref ? `#${e.ref}` : ""}</p>}
                 </div>
                 {installed.has(e.id) ? (
                   <a href="/admin/modules" className="text-sm text-accent hover:underline">{t("catalogue.installed")}</a>
                 ) : !e.compatible ? (
                   <span className="text-sm text-muted">{t("catalogue.incompatible")}</span>
-                ) : isOwner ? (
-                  <form action={installFromCatalogueAction.bind(null, e.id)}><button className={ui.btnPrimary}>{t("modules.installButton")}</button></form>
-                ) : null}
+                ) : (
+                  <a href={`/admin/catalogue/details?id=${encodeURIComponent(e.id)}`} className={ui.btnPrimary}>{t("catalogue.details")}</a>
+                )}
               </li>
             ))}
           </ul>
@@ -73,10 +71,10 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
         <details className={`${ui.card} space-y-4`}>
           <summary className="cursor-pointer text-lg font-semibold">{t("catalogue.custom")}</summary>
           <p className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">{t("catalogue.customWarning")}</p>
-          <ActionForm action={installCustomAction} submitLabel={t("modules.installButton")}>
+          <form action="/admin/catalogue/details" method="get" className="space-y-3">
             <TextField name="repo" type="url" label={t("modules.repoUrl")} placeholder="https://github.com/owner/vitrine-module-example" required help={t("modules.repoHelp")} />
-            <Checkbox name="trust" label={t("catalogue.trust")} required />
-          </ActionForm>
+            <button className={ui.btnPrimary}>{t("catalogue.preview")}</button>
+          </form>
         </details>
       )}
     </div>

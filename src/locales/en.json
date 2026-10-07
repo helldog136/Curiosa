@@ -546,6 +546,14 @@
   "services.hint": "Drag the arrow from the service dot to a provider (or click one).",
   "services.list": "List view (keyboard)",
   "nav.menu": "Menu",
-  "catalogue.donate": "Support the author (voluntary donation)",
-  "catalogue.free": "All modules are free. If one is useful to you, you can support its author with a voluntary donation: never required."
+  "catalogue.free": "All modules are free. Each module's README is shown before installing: authors may say there how to support them with a voluntary donation (never required).",
+  "catalogue.details": "View details and install",
+  "catalogue.preview": "Read the README before installing",
+  "catalogue.back": "Back to the catalog",
+  "catalogue.asks": "What this module asks for",
+  "catalogue.none": "none",
+  "catalogue.license": "License",
+  "catalogue.noReadme": "This module has no README.",
+  "catalogue.truncated": "README truncated (too long).",
+  "catalogue.previewFailed": "Could not read this repository (address refused, private repository or unreachable). Nothing was installed."
 }

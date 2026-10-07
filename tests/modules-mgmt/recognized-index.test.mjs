@@ -160,11 +160,3 @@ test("le Catalogue indique d'où vient sa liste, et les dépôts reconnus de l'i
   const src = await M.getCatalogueSource();
   assert.equal(src.source, "repository");
 });
-
-test("dons volontaires : l'entrée d'un index garde `donate` seulement s'il est en https", async () => {
-  const { sanitizeEntries } = await import("@/core/modules/recognized");
-  const entry = (donate) => ({ id: "mon-module", repo: "https://github.com/a/b", ...(donate === undefined ? {} : { donate }) });
-  assert.equal(sanitizeEntries([entry("https://exemple.org/don")])[0].donate, "https://exemple.org/don");
-  for (const bad of ["http://exemple.org/don", "javascript:alert(1)", "https://a b.org", 42, ""]) assert.equal(sanitizeEntries([entry(bad)])[0].donate, undefined, String(bad));
-  assert.equal(sanitizeEntries([entry()])[0].donate, undefined);
-});

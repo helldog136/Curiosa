@@ -115,7 +115,6 @@ Validé à l'installation et au chargement (zod, `src/core/modules/manifest.ts`)
 | `content` | Module à contenu : le cœur fournit l'éditeur d'entrées et les pages (voir ci-dessous). |
 | `starter` | Proposé dans l'assistant de première installation (modules à contenu livrés avec le cœur). |
 | `onboarding` | Comment le module participe à la première installation (voir ci-dessous). |
-| `donate` | Adresse **https** où soutenir l'auteur par un **don volontaire** (page de dons, sponsor…). Le Catalogue est gratuit : l'admin affiche « ♥ Soutenir l'auteur » à côté du module, sans jamais rien exiger. |
 | `dataVersion` | Version de la **structure de vos données** (entier ≥ 1, défaut 1). À augmenter quand elle change, avec la migration correspondante (`migrations`). |
 | `defaultEnabled` | Modules livrés avec le cœur : activés dès le départ (défaut : oui). Sans effet pour un module installé, toujours installé désactivé. |
 | `permissions` | Les capacités utilisées (voir ci-dessous). |
@@ -782,7 +781,9 @@ les guillemets internes) et neutralisez les cellules qui commencent par `=`, `+`
 
 ## Installer, publier, catalogue
 
-**Le Catalogue est gratuit** : aucun module ne s'y vend, tous sont sous licence ouverte ; un auteur peut proposer un **don volontaire** (`donate` dans `module.json`), jamais une condition d'installation.
+**Le Catalogue est gratuit** : aucun module ne s'y vend, tous sont sous licence ouverte. Un auteur qui accepte des dons volontaires l'indique dans le **README.md** de son dépôt, que l'admin affiche avant toute installation ; jamais une condition d'installation.
+
+**Avant d'installer**, l'admin affiche pour chaque module (du catalogue comme d'un dépôt personnel) son **README.md**, ses permissions, les services qu'il offre ou requiert et sa licence, lus **sans l'installer** (module livré : dans son dossier ; dépôt git : clonage superficiel temporaire, mêmes garde-fous que l'installation). Le README est du texte d'un tiers : rendu Markdown sans HTML brut, aucune image distante chargée, liens relatifs inertes. Écrivez donc un vrai README (à quoi sert le module, réglages, permissions).
 
 **Installer** (propriétaire seulement). Admin → **Catalogue** :
 

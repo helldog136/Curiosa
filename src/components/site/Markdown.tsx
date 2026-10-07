@@ -26,11 +26,20 @@ const components: Components = {
   ),
 };
 
-/** Markdown sans HTML brut : un éditeur ne peut pas injecter de script. */
-export function Markdown({ text }: { text: string }) {
+/** Contenu écrit par un tiers (README d'un module avant installation) : aucune image distante chargée (elle révélerait l'administrateur), liens relatifs en simple texte. */
+const untrustedComponents: Components = {
+  ...components,
+  a: ({ href, children }) => (href && /^https?:\/\//i.test(href)
+    ? <a href={href} target="_blank" rel="noopener noreferrer nofollow" className="text-accent underline-offset-2 hover:underline">{children}</a>
+    : <span>{children}</span>),
+  img: ({ alt }) => <span className="text-muted">[{alt || "image"}]</span>,
+};
+
+/** Markdown sans HTML brut : un éditeur ne peut pas injecter de script. `untrusted` : texte d'un tiers (voir ci-dessus). */
+export function Markdown({ text, untrusted = false }: { text: string; untrusted?: boolean }) {
   return (
     <div className="max-w-none">
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
+      <ReactMarkdown remarkPlugins={[remarkGfm]} components={untrusted ? untrustedComponents : components}>
         {text}
       </ReactMarkdown>
     </div>

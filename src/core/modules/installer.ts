@@ -64,7 +64,7 @@ function gitArgs(args: string[]): string[] {
   ];
 }
 
-async function git(args: string[], cwd?: string): Promise<string> {
+export async function git(args: string[], cwd?: string): Promise<string> {
   const { stdout } = await run("git", gitArgs(args), { cwd, timeout: 90_000, env: GIT_ENV, maxBuffer: 1024 * 1024 });
   return stdout.trim();
 }
@@ -131,7 +131,7 @@ export async function installModule(input: string, opts: { expectId?: string } =
 }
 
 const isStableTag = (ref: string | null | undefined): ref is string => !!ref && TAG_RE.test(ref);
-const isCommitRef = (ref: string | null | undefined): boolean => !!ref && /^[0-9a-f]{7,40}$/i.test(ref);
+export const isCommitRef = (ref: string | null | undefined): boolean => !!ref && /^[0-9a-f]{7,40}$/i.test(ref);
 
 export type ModuleUpdateCheck = {
   available: boolean;

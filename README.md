@@ -96,7 +96,7 @@ envoi d'emails, image Docker publiée, messages d'interface dans d'autres langue
 
 ## Gratuit
 
-Le framework et son **Catalogue** de modules sont gratuits. Aucun module ne se vend : les auteurs peuvent seulement indiquer un lien de **don volontaire** (`donate`), affiché dans l'admin sans jamais rien conditionner.
+Le framework et son **Catalogue** de modules sont gratuits. Aucun module ne se vend : un auteur peut mentionner un lien de **don volontaire** dans le README de son module, que l'admin affiche avant l'installation, sans jamais rien conditionner.
 
 ## Licence
 

@@ -27,8 +27,7 @@ le framework dans `modules-community/` et `modules-examples/`).
       "version": "1.2.0",
       "apiVersion": 2,
       "author": "Auteur",
-      "icon": "🧩",
-      "donate": "https://exemple.org/soutenir"
+      "icon": "🧩"
     }
   ]
 }
@@ -40,8 +39,8 @@ c'est ce qui rend la mention « vérifié » vraie ; une branche mouvante ne l'e
 
 ## Gratuit, avec dons volontaires
 
-Le Catalogue **ne vend rien** : tout module qui y figure est gratuit et sous licence ouverte. Un auteur peut ajouter `donate` (une adresse **https**, par exemple sa page de dons) :
-l'admin affiche alors « ♥ Soutenir l'auteur (don libre) » à côté du module. Un don n'est jamais une condition pour installer, ni pour recevoir des mises à jour ; le framework
+Le Catalogue **ne vend rien** : tout module qui y figure est gratuit et sous licence ouverte. Un auteur qui accepte des dons volontaires le dit dans le **README.md** de son dépôt :
+l'admin affiche ce README (et les permissions demandées) **avant toute installation**. Un don n'est jamais une condition pour installer ni pour recevoir des mises à jour ; le framework
 ne gère aucun paiement et ne touche à aucun argent.
 
 ## Proposer un module
