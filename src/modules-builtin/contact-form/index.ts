@@ -51,7 +51,12 @@ export const definition = defineModule({
       if (request.method !== "POST") return new Response("Method not allowed", { status: 405 });
       const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "local";
       if (limited(ip)) return Response.json({ ok: false }, { status: 429 });
-      const form = await request.formData();
+      let form: FormData;
+      try {
+        form = await request.formData();
+      } catch {
+        return Response.json({ ok: false }, { status: 400 }); // corps qui n'est pas un formulaire
+      }
       if (String(form.get("website") ?? "")) return Response.json({ ok: true }); // piège à robots
       const name = String(form.get("name") ?? "").trim().slice(0, 120);
       const email = String(form.get("email") ?? "").trim().slice(0, 200);

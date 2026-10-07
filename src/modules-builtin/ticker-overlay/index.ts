@@ -92,7 +92,7 @@ export const definition = defineModule({
     const vert = pos.startsWith("top") ? "top" : "bottom";
     const text = color(ctx.setting("textColor"), "#ffffff");
     const bg = color(ctx.setting("cardColor"), "#111111");
-    const config = JSON.stringify({ url: `/m/${ctx.instance.key}/items?lang=${ctx.locale}`, ms: interval * 1000 });
+    const config = JSON.stringify({ url: `/m/${ctx.instance.key}/items?lang=${ctx.locale}`, ms: interval * 1000 }).replace(/</g, "\\u003c"); // jamais de « </script » dans le script en ligne
     return {
       title: ctx.instance.name,
       html: `<div id="vt-card" role="status" aria-live="polite"><img id="vt-img" alt="" hidden><div><strong id="vt-title"></strong><span id="vt-sub"></span></div></div>`,
