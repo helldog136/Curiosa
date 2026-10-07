@@ -103,3 +103,18 @@ test("panneau d'admin : état, bouton de test, journal ; le test envoie un messa
   assert.ok(blocks.some((b) => b.type === "table"));
   assert.ok(def.tasks.announce.everyMinutes >= 1);
 });
+
+test("live : annoncé une fois, titre + jeu, 🔴 ; un live relancé dans le délai compte pour le même", async () => {
+  const calls = mockFetch();
+  const live = (id, startedAt) => ({ id, title: "Soirée jeux", url: "https://twitch.tv/moi", startedAt, game: "Zelda", source: {} });
+  const ctx = ctxWith({ "stream.live": [live("s1", ago(0.1))] });
+  assert.equal((await mod.announce(ctx, NOW)).sent, 1);
+  assert.match(calls[0].body.content, /^🔴 Soirée jeux \(Zelda\)\nhttps:\/\/twitch\.tv\/moi$/);
+  // coupure de connexion : nouveau stream 30 min plus tard
+  ctx.api.topics.collect = async (t) => (t === "stream.live" ? [live("s2", new Date(NOW + 30 * 60_000).toISOString())] : []);
+  assert.deepEqual(await mod.announce(ctx, NOW + 31 * 60_000), { sent: 0, skipped: 1 });
+  assert.equal(calls.length, 1);
+  // un vrai nouveau live, 3 h plus tard
+  ctx.api.topics.collect = async (t) => (t === "stream.live" ? [live("s3", new Date(NOW + 3 * 3600_000).toISOString())] : []);
+  assert.equal((await mod.announce(ctx, NOW + 3 * 3600_000 + 60_000)).sent, 1);
+});

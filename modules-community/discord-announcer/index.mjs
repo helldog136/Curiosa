@@ -38,9 +38,10 @@ const absolute = (site, v) => {
 /** Éléments candidats : { key, title, url, at } — l'adresse est toujours absolue, jamais autre chose que http(s). */
 async function candidates(ctx) {
   const site = ctx.api.siteUrl.replace(/\/$/, "");
-  const [entries, items] = await Promise.all([
+  const [entries, items, lives] = await Promise.all([
     ctx.api.topics.collect("core.entry", { limit: 30 }).catch(() => []),
     ctx.api.topics.collect("feed.item", { limit: 30 }).catch(() => []),
+    ctx.api.topics.collect("stream.live", { limit: 5 }).catch(() => []),
   ]);
   const out = [];
   for (const e of entries) {
@@ -51,6 +52,10 @@ async function candidates(ctx) {
   for (const i of items) {
     if (!i.url || !i.title) continue;
     out.push({ key: `item:${i.id ?? i.url}`, title: String(i.title), url: absolute(site, i.url), at: i.publishedAt });
+  }
+  for (const l of lives) {
+    if (!l.id || !l.title) continue;
+    out.push({ key: `live:${l.id}`, live: true, game: l.game ? String(l.game) : "", title: String(l.title), url: absolute(site, l.url), at: l.startedAt });
   }
   return out.filter((c) => c.url);
 }
@@ -72,15 +77,22 @@ export async function announce(ctx, now = Date.now()) {
   const prefix = String(ctx.setting("prefix") ?? "📰").trim();
   const known = new Set((await ctx.api.store.list("known", { limit: 5000 })).map((r) => r.data.key));
   let sent = 0, skipped = 0;
+  let liveAt = Math.max(0, ...(await ctx.api.store.list("known", { limit: 5000 })).filter((r) => String(r.data.key).startsWith("live:") && r.data.sent).map((r) => r.data.at));
   for (const c of await candidates(ctx)) {
     if (known.has(c.key)) continue;
     const at = Date.parse(c.at ?? "");
     if (!Number.isFinite(at) || now - at > fresh) { await ctx.api.store.add("known", { key: c.key, at: now }); known.add(c.key); skipped++; continue; }
-    if (sent >= MAX_PER_RUN) break;                                    // le reste au passage suivant : jamais de rafale
-    const text = `${mention ? `${mention} ` : ""}${prefix ? `${prefix} ` : ""}${c.title}\n${c.url}`;
+    if (sent >= MAX_PER_RUN) break;
+    if (c.live) {
+      // Une coupure de connexion relance souvent le stream : deux lives rapprochés = le même.
+      const cooldown = Math.max(0, Number(ctx.setting("liveCooldownHours") ?? 2)) * 3600_000;
+      if (liveAt && now - liveAt < cooldown) { await ctx.api.store.add("known", { key: c.key, at: now }); known.add(c.key); skipped++; continue; }
+    }                                    // le reste au passage suivant : jamais de rafale
+    const head = c.live ? `🔴 ${c.title}${c.game ? ` (${c.game})` : ""}` : `${prefix ? `${prefix} ` : ""}${c.title}`;
+    const text = `${mention ? `${mention} ` : ""}${head}\n${c.url}`;
     const result = await post(url, text, Boolean(mention));
     await logSend(ctx, c.key, c.title, result);
-    if (result.ok) { await ctx.api.store.add("known", { key: c.key, at: now }); known.add(c.key); sent++; }
+    if (result.ok) { await ctx.api.store.add("known", { key: c.key, at: now, sent: true }); known.add(c.key); sent++; if (c.live) liveAt = now; }
     else if (result.status === 429) break;                             // limite de débit Discord : on attend le passage suivant
   }
   // Ménage : les clés vues il y a longtemps n'ont plus d'intérêt (l'élément n'est plus « récent »).

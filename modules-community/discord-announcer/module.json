@@ -61,6 +61,39 @@
           "type": "string[]"
         }
       ]
+    },
+    {
+      "topic": "stream.live",
+      "label": {
+        "en": "Your live stream (Twitch…)",
+        "fr": "Votre live (Twitch…)"
+      },
+      "tags": false,
+      "schema": [
+        {
+          "key": "id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "key": "title",
+          "type": "string",
+          "required": true
+        },
+        {
+          "key": "url",
+          "type": "url",
+          "required": true
+        },
+        {
+          "key": "startedAt",
+          "type": "string"
+        },
+        {
+          "key": "game",
+          "type": "string"
+        }
+      ]
     }
   ],
   "permissions": [
@@ -115,6 +148,20 @@
       "help": {
         "en": "Older items are marked as seen without being announced, so connecting the webhook never floods the channel with your history.",
         "fr": "Les éléments plus anciens sont notés comme vus sans être annoncés : brancher le webhook n'inonde jamais le salon avec votre historique."
+      }
+    },
+    {
+      "key": "liveCooldownHours",
+      "type": "number",
+      "default": 2,
+      "advanced": true,
+      "label": {
+        "en": "Hours between two live announcements",
+        "fr": "Heures entre deux annonces de live"
+      },
+      "help": {
+        "en": "A connection drop often restarts the stream: two lives closer than this count as the same one.",
+        "fr": "Une coupure de connexion relance souvent le stream : deux lives plus proches que cela comptent pour le même."
       }
     }
   ]

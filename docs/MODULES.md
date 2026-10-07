@@ -529,7 +529,8 @@ Sujets connus (tous fournis par des modules livrés ou communautaires, ou par le
 | `sponsor.card` | `sponsors` | carte de sponsor (nom, code, logo, lien) |
 | `partnership.partner` | `partnerships` | fiche de partenaire (nom, logo) |
 | `planning.slot` | `planning` | créneau de stream |
-| `maze.poster` | tout module | affiche pour le labyrinthe |
+| `maze.poster` | tout module (`youtube-channel`, `twitch-channel`…) | affiche pour le labyrinthe |
+| `stream.live` | `twitch-channel` | live en cours (`id`, `title`, `url`, `startedAt`, `game`) ; vide hors ligne |
 
 ```jsonc
 // module.json du CONSOMMATEUR (un overlay)
