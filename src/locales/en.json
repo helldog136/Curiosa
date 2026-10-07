@@ -499,5 +499,9 @@
   "marketplace.source.repository": "Recognized modules list is up to date (read on {date} from the framework repository).",
   "marketplace.source.cache": "Framework repository unreachable: last list received on {date}.",
   "marketplace.source.snapshot": "List shipped with this framework version (the repository could not be reached or is not configured).",
-  "marketplace.refresh": "Refresh"
+  "marketplace.refresh": "Refresh",
+  "modules.updateAvailableTo": "An update of {module} is available: {version}. Your data and settings are kept.",
+  "modules.updateMajor": "Major change: the module may work differently. Read its release notes before installing. If the new version is invalid, the previous one is restored automatically.",
+  "modules.error.uptodate": "This module is already up to date.",
+  "modules.error.pinned": "This module is pinned to a specific commit: it does not update."
 }

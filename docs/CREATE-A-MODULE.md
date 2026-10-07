@@ -469,7 +469,7 @@ Testez au minimum : le manifeste est valide, chaque section/action/sujet déclar
 
 - **Versionnez** : `version` dans `module.json` suit `x.y.z`. Marquez chaque version publiée d'un **tag git** : `git tag v1.2.0 && git push --tags`.
 - **Installer une version précise** : l'adresse du dépôt accepte `#tag` ou `#branche` : `https://github.com/<vous>/<depot>#v1.2.0`. Sans `#`, c'est la dernière version de la branche par défaut,
-  et « Chercher une mise à jour » détecte les nouveaux commits. Un tag ne bouge pas : une installation épinglée à un tag reste à cette version.
+  et « Chercher une mise à jour » détecte les nouveaux commits. Une installation épinglée à une **étiquette** voit, elle, les nouvelles étiquettes stables (`vX.Y.Z`) de votre dépôt : publier `v1.3.0` suffit pour qu'elle propose « mettre à jour », **sans perte de données** (une version majeure est signalée) ; si votre nouvelle version est invalide, l'ancienne est rétablie. Une installation épinglée à un commit ne bouge pas.
 - **Compatibilité** : tant que `apiVersion` est celle du cœur (`2`), votre module continue de fonctionner quand le cœur évolue ; si l'API change, un module d'une autre version est refusé plutôt que cassé.
 - **Hôtes** : l'administrateur d'un site n'accepte que les dépôts `https://` des hôtes autorisés (`MODULES_ALLOWED_HOSTS`, par défaut GitHub, GitLab, Codeberg, Bitbucket). Gardez le dépôt public.
 

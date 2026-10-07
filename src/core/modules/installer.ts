@@ -7,6 +7,7 @@ import { MODULES_DIR } from "../config";
 import { parseManifest } from "./manifest";
 import { forgetModule, getModule, moduleDir, readGitManifest } from "./registry";
 import { findMarketplaceEntry, readBundledManifest } from "./marketplace";
+import { classify, pickLatestTag, TAG_RE, type UpdateLevel } from "../updates/versions";
 import { BUILTIN_MODULES } from "@/modules-builtin";
 
 const run = promisify(execFile);
@@ -87,7 +88,16 @@ export async function installModule(input: string, opts: { expectId?: string } =
   const tmp = fs.mkdtempSync(path.join(MODULES_DIR, ".incoming-"));
   const checkout = path.join(tmp, "repo");
   try {
-    await git(["clone", "--depth", "1", "--single-branch", ...(ref ? ["--branch", ref] : []), "--", url, checkout]);
+    if (ref && isCommitRef(ref)) {
+      // Épinglé sur un commit : `clone --branch` n'accepte qu'une branche ou une étiquette. On récupère ce commit précis
+      // (récupération superficielle si le serveur l'autorise, sinon tout l'historique), puis on s'y place.
+      await git(["init", "-q", checkout]);
+      await git(["remote", "add", "origin", url], checkout);
+      await git(["fetch", "-q", "--depth", "1", "origin", ref], checkout).catch(() => git(["fetch", "-q", "origin"], checkout));
+      await git(["-c", "advice.detachedHead=false", "checkout", "-q", "--detach", ref], checkout);
+    } else {
+      await git(["clone", "--depth", "1", "--single-branch", ...(ref ? ["--branch", ref] : []), "--", url, checkout]);
+    }
     const commit = await git(["rev-parse", "HEAD"], checkout);
 
     const manifestPath = path.join(checkout, "module.json");
@@ -118,23 +128,58 @@ export async function installModule(input: string, opts: { expectId?: string } =
   }
 }
 
-/** Dernier commit distant, pour savoir si une mise à jour existe. */
-export async function checkForUpdate(id: string): Promise<{ available: boolean; remote?: string }> {
+const isStableTag = (ref: string | null | undefined): ref is string => !!ref && TAG_RE.test(ref);
+const isCommitRef = (ref: string | null | undefined): boolean => !!ref && /^[0-9a-f]{7,40}$/i.test(ref);
+
+export type ModuleUpdateCheck = {
+  available: boolean;
+  /** Version vers laquelle on passerait (étiquette, numéro de version ou commit). */
+  target?: string;
+  /** Pour un module épinglé sur une étiquette : nature du changement (« major » = à lire avant d'installer). */
+  level?: UpdateLevel;
+  remote?: string;
+};
+
+/** Plus haute version stable (`vX.Y.Z`) du dépôt d'un module. */
+async function latestRemoteTag(repoUrl: string): Promise<string | null> {
+  return pickLatestTag(await git(["ls-remote", "--tags", "--refs", "--", repoUrl]));
+}
+
+/**
+ * Y a-t-il une version plus récente ? Le sens dépend de la façon dont le module a été installé :
+ *   - épinglé sur une ÉTIQUETTE (`#v1.2.0`, le cas recommandé) : la plus haute version stable du dépôt ;
+ *   - épinglé sur un commit : jamais (c'est le but) ;
+ *   - sur une branche (ou la branche par défaut) : le dernier commit de cette branche ;
+ *   - livré avec le framework : la version qu'apporte le framework.
+ */
+export async function checkForUpdate(id: string): Promise<ModuleUpdateCheck> {
   const row = await prisma.module.findUnique({ where: { id } });
   if (row?.source === "bundled") {
     const entry = await findMarketplaceEntry(id).catch(() => undefined);
-    return { available: !!entry?.dir && !!entry.version && entry.version !== row.version, remote: entry?.version };
+    const available = !!entry?.dir && !!entry.version && entry.version !== row.version;
+    return { available, remote: entry?.version, target: available ? entry?.version : undefined, level: available ? classify(row.version, entry!.version!) ?? undefined : undefined };
   }
   if (!row || row.source !== "git" || !row.repoUrl) return { available: false };
   try {
+    if (isCommitRef(row.ref)) return { available: false };
+    if (isStableTag(row.ref)) {
+      const latest = await latestRemoteTag(row.repoUrl);
+      const level = latest ? classify(row.ref, latest) : null;
+      return level ? { available: true, target: latest!, remote: latest!, level } : { available: false, remote: latest ?? undefined };
+    }
     const out = await git(["ls-remote", "--", row.repoUrl, row.ref ? `refs/heads/${row.ref}` : "HEAD"]);
     const remote = out.split(/\s+/)[0];
-    return { available: !!remote && remote !== row.commit, remote };
+    return { available: !!remote && remote !== row.commit, remote, target: remote?.slice(0, 7) };
   } catch {
     return { available: false };
   }
 }
 
+/**
+ * Met un module à jour SANS toucher à ses données : seuls les fichiers du module changent ; ses instances, réglages et données
+ * (stockage, entrées) restent tels quels. Épinglé sur une étiquette, il passe à la plus haute version stable. Si la nouvelle version est
+ * invalide (manifeste illisible, autre identifiant, API incompatible, trop volumineuse), l'ancienne est rétablie : le module ne casse jamais.
+ */
 export async function updateModule(id: string): Promise<InstallResult> {
   const row = await prisma.module.findUnique({ where: { id } });
   if (row?.source === "bundled") {
@@ -148,19 +193,36 @@ export async function updateModule(id: string): Promise<InstallResult> {
   }
   if (!row || row.source !== "git" || !row.repoUrl) return { ok: false, error: "modules.error.notfound" };
   const dir = moduleDir(id);
+  let previous: string | null = null;
   try {
-    await git(["fetch", "--depth", "1", "origin", row.ref ?? "HEAD"], dir);
+    previous = await git(["rev-parse", "HEAD"], dir);
+    let newRef = row.ref;
+    let fetchRef: string;
+    if (isCommitRef(row.ref)) return { ok: false, error: "modules.error.pinned" };
+    if (isStableTag(row.ref)) {
+      const latest = await latestRemoteTag(row.repoUrl);
+      if (!latest || !classify(row.ref, latest)) return { ok: false, error: "modules.error.uptodate" };
+      newRef = latest;
+      fetchRef = `refs/tags/${latest}`;
+    } else {
+      fetchRef = row.ref ?? "HEAD";
+    }
+    await git(["fetch", "--depth", "1", "origin", fetchRef], dir);
     await git(["reset", "--hard", "FETCH_HEAD"], dir);
     const commit = await git(["rev-parse", "HEAD"], dir);
     const manifest = readGitManifest(id);
-    if (!manifest || manifest.id !== id) return { ok: false, error: "modules.error.nomanifest" };
-    if (dirSize(dir) > MAX_MODULE_BYTES) return { ok: false, error: "modules.error.size" };
-    await prisma.module.update({ where: { id }, data: { commit, version: manifest.version } });
+    if (!manifest || manifest.id !== id) throw Object.assign(new Error("manifest"), { code: "modules.error.nomanifest" });
+    if (manifest.main && !fs.existsSync(path.join(dir, manifest.main))) throw Object.assign(new Error("main"), { code: "modules.error.nomain" });
+    if (dirSize(dir) > MAX_MODULE_BYTES) throw Object.assign(new Error("size"), { code: "modules.error.size" });
+    await prisma.module.update({ where: { id }, data: { commit, version: manifest.version, ref: newRef } });
     forgetModule(id);
     return { ok: true, id };
   } catch (error) {
-    console.error("[modules] update failed:", error);
-    return { ok: false, error: "modules.error.clone" };
+    // Retour à la version précédente : un module en place ne doit pas rester à moitié mis à jour.
+    if (previous) await git(["reset", "--hard", previous], dir).catch(() => {});
+    forgetModule(id);
+    console.error("[modules] update failed:", (error as Error)?.message);
+    return { ok: false, error: (error as { code?: string })?.code ?? "modules.error.clone" };
   }
 }
 

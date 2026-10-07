@@ -708,14 +708,26 @@ les guillemets internes) et neutralisez les cellules qui commencent par `=`, `+`
 
 ```
 https://github.com/<vous>/<depot>          # dernière version de la branche par défaut
-https://github.com/<vous>/<depot>#v1.2.0   # tag ou branche épinglé
+https://github.com/<vous>/<depot>#v1.2.0   # étiquette, commit ou branche épinglé
 ```
 
 Hôtes autorisés : `MODULES_ALLOWED_HOSTS` (défaut `github.com,gitlab.com,codeberg.org,bitbucket.org` ; `*` = tous). Seul `https://` est
 accepté, sans identifiant ni paramètres. Le module est installé **désactivé** (dans `data/modules/<id>`) ; on l'active après l'avoir relu,
 puis on lui ajoute des instances. Chaque instance active a sa propre entrée dans le menu d'admin.
 Les modules installés se gèrent dans **Modules** : activer, désactiver, « Chercher une mise à jour » (compare avec le dépôt distant),
-mettre à jour, désinstaller (**supprime aussi ses instances et leurs données**). Un module installé à partir d'un tag (`#v1.2.0`) reste sur ce tag : un tag ne bouge pas.
+mettre à jour, désinstaller (**supprime aussi ses instances et leurs données**). 
+**Mise à jour d'un module — sans perdre aucune donnée** : seuls les fichiers du module changent ; ses instances, réglages, données (stockage, entrées) restent
+tels quels. Le sens de « mise à jour » dépend de l'installation :
+
+| Installé avec | « Chercher une mise à jour » propose |
+|---|---|
+| une **étiquette** (`#v1.2.0`, recommandé) | la plus haute version stable du dépôt (`v1.3.0`) ; le module passe d'étiquette en étiquette. Un changement **majeur** (`v2.0.0`) est signalé : lisez ses notes avant |
+| un **commit** (`#a1b2c3d`) | jamais : c'est le but de l'épinglage |
+| une **branche**, ou rien | le dernier commit de la branche |
+| livré avec le framework | la version qu'apporte le framework |
+
+Si la nouvelle version est **invalide** (manifeste illisible, autre identifiant, API incompatible, fichier principal absent, trop volumineuse), l'ancienne est
+rétablie automatiquement : un module ne reste jamais à moitié mis à jour.
 
 **Développer en local** : avec `VITRINE_ALLOW_LOCAL_MODULES=1` dans l'environnement du serveur, une adresse `file:///chemin/absolu/vers/depot`
 est acceptée par « Installer un dépôt personnel ». Le dépôt doit avoir au moins un commit ; pour voir une modification, validez-la

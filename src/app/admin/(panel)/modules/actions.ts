@@ -23,8 +23,11 @@ export async function toggleModule(id: string, enabled: boolean): Promise<void> 
 
 export async function checkUpdateAction(id: string): Promise<void> {
   await adminCtx("owner");
-  const { available } = await checkForUpdate(id);
-  redirect(`/admin/modules?update=${available ? "yes" : "no"}`);
+  const { available, target, level } = await checkForUpdate(id);
+  const params = new URLSearchParams({ update: available ? "yes" : "no", module: id });
+  if (available && target) params.set("to", target);
+  if (available && level) params.set("level", level);
+  redirect(`/admin/modules?${params}`);
 }
 
 export async function updateModuleAction(id: string): Promise<void> {

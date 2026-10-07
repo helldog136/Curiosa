@@ -499,5 +499,9 @@
   "marketplace.source.repository": "Liste des modules reconnus à jour (lue le {date} dans le dépôt du framework).",
   "marketplace.source.cache": "Dépôt du framework injoignable : dernière liste reçue le {date}.",
   "marketplace.source.snapshot": "Liste livrée avec cette version du framework (le dépôt n'a pas pu être interrogé ou n'est pas configuré).",
-  "marketplace.refresh": "Actualiser"
+  "marketplace.refresh": "Actualiser",
+  "modules.updateAvailableTo": "Une mise à jour de {module} est disponible : {version}. Vos données et réglages sont conservés.",
+  "modules.updateMajor": "Changement majeur : le fonctionnement du module peut changer. Lisez ses notes de version avant de l'installer. Si la nouvelle version est invalide, l'ancienne est rétablie automatiquement.",
+  "modules.error.uptodate": "Ce module est déjà à jour.",
+  "modules.error.pinned": "Ce module est épinglé sur un commit précis : il ne se met pas à jour."
 }

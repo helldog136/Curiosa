@@ -11,10 +11,10 @@ import { ConfirmButton } from "@/components/admin/ConfirmButton";
 import { ui } from "@/components/admin/ui";
 import { addInstance, checkUpdateAction, toggleModule, uninstallModuleAction, updateModuleAction } from "./actions";
 
-export default async function ModulesPage({ searchParams }: { searchParams: Promise<{ update?: string; error?: string }> }) {
+export default async function ModulesPage({ searchParams }: { searchParams: Promise<{ update?: string; error?: string; module?: string; to?: string; level?: string }> }) {
   const { t, locale, user, config, advanced } = await adminCtx("admin");
   const isOwner = user.role === "owner";
-  const { update, error } = await searchParams;
+  const { update, error, module: checked, to, level } = await searchParams;
   const rows = await listModuleRows();
   const mods = await Promise.all(rows.map(async (row) => ({ row, mod: await loadModule(row) })));
   const instances = await listInstances();
@@ -29,7 +29,8 @@ export default async function ModulesPage({ searchParams }: { searchParams: Prom
         {isOwner && <a href="/admin/marketplace" className={`${ui.btnPrimary} mt-3 inline-block`}>🛒 {t("modules.browseMarketplace")}</a>}
       </div>
       {error && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm">{error.startsWith("modules.error.") || error.startsWith("instances.error.") ? t(error) : t("error.generic")}</p>}
-      {update && <p role="status" className="rounded-lg border border-line bg-surface p-3 text-sm">{update === "yes" ? t("modules.updateAvailable") : t("modules.upToDate")}</p>}
+      {update && <p role="status" className="rounded-lg border border-line bg-surface p-3 text-sm">{update === "yes" ? (to ? t("modules.updateAvailableTo", { module: checked ?? "", version: to }) : t("modules.updateAvailable")) : t("modules.upToDate")}</p>}
+      {update === "yes" && level === "major" && <p role="alert" className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">{t("modules.updateMajor")}</p>}
 
       {[...MODULE_TYPES, "broken" as const].map((type) => {
         const group = mods.filter(({ mod }) => (mod ? effectiveType(mod.manifest) : "broken") === type);
