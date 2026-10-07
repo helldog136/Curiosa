@@ -45,24 +45,26 @@ export default {
       badge: ctx.t("badge"),
       isNew: ctx.t("new"),
     };
-    const accent = color(ctx.setting("accentColor"), "#ff7a1a");
+    const accent = color(ctx.setting("accentColor"), ctx.theme.accent);
+    // Les couleurs de la carte suivent le thème du site (fond, texte, texte atténué, texte sur l'accent).
+    const t = ctx.theme;
     // `<` échappé : la config est insérée dans un <script>, aucun réglage ne doit pouvoir en sortir.
     const json = JSON.stringify(cfg).replace(/</g, "\\u003c");
     return {
       title: ctx.instance.name,
-      html: `<div id="tk-stage" style="--ticker-accent:${accent}"><div class="ticker-slider" id="tk-slider"></div></div>`,
+      html: `<div id="tk-stage" style="--ticker-accent:${accent};--tk-bg:${t.surface};--tk-fg:${t.fg};--tk-muted:${t.muted};--tk-on-accent:${t.accentFg}"><div class="ticker-slider" id="tk-slider"></div></div>`,
       css: `
         html,body{margin:0;height:100%;background:transparent;overflow:hidden;font-family:system-ui,"Segoe UI",sans-serif}
         #tk-stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:2vh 2vw;box-sizing:border-box}
         .ticker-slider{position:relative;transform:translateX(135%);opacity:0;transition:transform .58s cubic-bezier(.2,.9,.32,1.15),opacity .45s ease;will-change:transform}
         .ticker-slider.on{transform:translateX(0);opacity:1}
         .ticker-card{position:relative;display:flex;align-items:center;overflow:hidden;height:96px;padding-right:26px;clip-path:polygon(3.5% 0,100% 0,96.5% 100%,0 100%);box-shadow:0 14px 34px rgba(0,0,0,.55)}
-        .ticker-card--cine{background:linear-gradient(100deg,rgba(19,14,11,.95),rgba(30,22,17,.95));backdrop-filter:blur(10px);animation:tickerFloat 4.6s ease-in-out infinite}
-        .ticker-card--neon{background:linear-gradient(100deg,rgba(19,14,11,.95),rgba(30,22,17,.95));backdrop-filter:blur(10px);box-shadow:0 14px 34px rgba(0,0,0,.55),0 0 24px color-mix(in srgb,var(--ticker-accent) 35%,transparent);animation:tickerFloat 4.6s ease-in-out infinite}
+        .ticker-card--cine{background:linear-gradient(100deg,color-mix(in srgb,var(--tk-bg) 96%,#000),color-mix(in srgb,var(--tk-bg) 88%,#fff));backdrop-filter:blur(10px);animation:tickerFloat 4.6s ease-in-out infinite}
+        .ticker-card--neon{background:linear-gradient(100deg,color-mix(in srgb,var(--tk-bg) 96%,#000),color-mix(in srgb,var(--tk-bg) 88%,#fff));backdrop-filter:blur(10px);box-shadow:0 14px 34px rgba(0,0,0,.55),0 0 24px color-mix(in srgb,var(--ticker-accent) 35%,transparent);animation:tickerFloat 4.6s ease-in-out infinite}
         .ticker-card--broadcast{background:var(--ticker-accent)}
-        .ticker-card--broadcast .ticker-badge,.ticker-card--broadcast .ticker-name,.ticker-card--broadcast .ticker-blurb{color:#0a0a0a}
+        .ticker-card--broadcast .ticker-badge,.ticker-card--broadcast .ticker-name,.ticker-card--broadcast .ticker-blurb{color:var(--tk-on-accent)}
         .ticker-card--broadcast .ticker-blurb{opacity:.75}
-        .ticker-card--broadcast .ticker-bar{background:#0a0a0a;box-shadow:none}
+        .ticker-card--broadcast .ticker-bar{background:var(--tk-on-accent);box-shadow:none}
         .ticker-card--broadcast .ticker-new{color:#0a0a0a;background:rgba(10,10,10,.12);border-color:rgba(10,10,10,.4)}
         .ticker-card--broadcast .ticker-divider{background:rgba(10,10,10,.2)}
         .ticker-card--broadcast .ticker-domain{color:rgba(10,10,10,.65)}
@@ -70,17 +72,17 @@ export default {
         .ticker-logo{width:60px;height:60px;object-fit:contain;flex:none;margin-right:18px;border-radius:8px}
         .ticker-text-col{display:flex;flex-direction:column;gap:5px;flex:none;max-width:430px;padding:10px 0}
         .ticker-eyebrow{display:flex;align-items:center;gap:8px}
-        .ticker-badge{font-weight:700;font-size:12px;letter-spacing:.18em;color:#ad9f92;text-transform:uppercase}
+        .ticker-badge{font-weight:700;font-size:12px;letter-spacing:.18em;color:var(--tk-muted);text-transform:uppercase}
         .ticker-new{font-weight:700;font-size:10.5px;letter-spacing:.1em;color:var(--ticker-accent);background:color-mix(in srgb,var(--ticker-accent) 14%,transparent);border:1px solid color-mix(in srgb,var(--ticker-accent) 50%,transparent);border-radius:3px;padding:1px 6px}
-        .ticker-name{font-weight:700;font-size:22px;letter-spacing:.02em;color:#f4f0ea;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .ticker-name{font-weight:700;font-size:22px;letter-spacing:.02em;color:var(--tk-fg);line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
         .ticker-code{display:inline-block;font:700 13px ui-monospace,monospace;letter-spacing:.08em;color:var(--ticker-accent)}
-        .ticker-card--broadcast .ticker-code{color:#0a0a0a}
-        .ticker-blurb{font-weight:500;font-size:13px;line-height:1.28;color:#ad9f92;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+        .ticker-card--broadcast .ticker-code{color:var(--tk-on-accent)}
+        .ticker-blurb{font-weight:500;font-size:13px;line-height:1.28;color:var(--tk-muted);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
         .ticker-divider{width:1px;height:60px;background:rgba(255,255,255,.14);margin:0 20px;flex:none}
         .ticker-qr-wrap{display:flex;flex-direction:column;align-items:center;gap:4px;flex:none}
         .ticker-qr{width:62px;height:62px;background:#fff;border-radius:8px;padding:5px;box-sizing:border-box}
         .ticker-qr svg{width:100%;height:100%;display:block}
-        .ticker-domain{font-size:9.5px;letter-spacing:.04em;color:#ad9f92;max-width:74px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .ticker-domain{font-size:9.5px;letter-spacing:.04em;color:var(--tk-muted);max-width:74px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
         .ticker-shine{position:absolute;top:0;left:0;width:26%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.10),transparent);animation:tickerShine 5.5s ease-in-out infinite;pointer-events:none}
         .ticker-card--broadcast .ticker-shine{display:none}
         @keyframes tickerFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}

@@ -8,6 +8,13 @@ import { MazeEngine } from "./engine.js";
 import { configureRandom, getSeed } from "./random.js";
 import { getTwitchClipEmbedUrl, getYouTubeEmbedUrl } from "./embed.js";
 
+// Assombrit une couleur #rrggbb : second ton du damier de repli des murs et du sol (quand aucune texture n'est donnée).
+function shade(hex, k) {
+  const n = parseInt(hex.slice(1), 16);
+  const c = (v) => Math.round(v * k).toString(16).padStart(2, "0");
+  return `#${c((n >> 16) & 255)}${c((n >> 8) & 255)}${c(n & 255)}`;
+}
+
 const cfg = window.__MAZE__;
 const REFRESH_MS = 5 * 60 * 1000;
 
@@ -107,8 +114,8 @@ async function setup() {
   if (cfg.dev) console.info("[maze-overlay] dev mode", cfg.dev);
   const items = await fetchItems();
   const [wall, floor, portal, hands] = await Promise.all([
-    loadTextureSet(cfg.wall, "#2a2118", "#1e1611"),
-    loadTextureSet(cfg.floor, "#181310", "#0f0c09"),
+    loadTextureSet(cfg.wall, cfg.wallColor, shade(cfg.wallColor, 0.75)),
+    loadTextureSet(cfg.floor, cfg.floorColor, shade(cfg.floorColor, 0.65)),
     loadTextureSet(cfg.portal, "#1a3a6b", "#0d1f3d"),
     cfg.hands ? loadImage(cfg.hands).catch(() => null) : Promise.resolve(null),
   ]);

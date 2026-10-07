@@ -81,7 +81,7 @@ test("overlay : configuration par défaut", () => {
   assert.deepEqual(c, { itemsUrl: "/m/ticker/items?lang=en", period: 90, hold: 10, startDelay: 5, visual: "neon", showQr: true, seed: null, badge: "Sponsor", isNew: "New" });
   assert.equal(out.title, "Mon ticker");
   assert.match(out.html, /id="tk-stage"/);
-  assert.match(out.html, /--ticker-accent:#ff7a1a/);
+  assert.match(out.html, /--ticker-accent:#e8a23b/);
 });
 
 test("overlay : langue du visiteur dans l'URL des éléments et les libellés", () => {
@@ -103,10 +103,10 @@ test("overlay : réglages bornés (période 5-3600 s, durée 3-120 s), style inc
 });
 
 test("overlay : couleur d'accent hexadécimale seulement (aucune injection CSS/HTML)", () => {
-  assert.match(overlayOf({ accentColor: "#12abEF" }).out.html, /--ticker-accent:#12abEF"/);
+  assert.match(overlayOf({ accentColor: "#12abEF" }).out.html, /--ticker-accent:#12abEF[;"]/);
   for (const bad of ['red;}</style><script>x</script>', '#fff', 'url(javascript:1)', '"><img src=x>', 42]) {
     const { out } = overlayOf({ accentColor: bad });
-    assert.match(out.html, /--ticker-accent:#ff7a1a"/, String(bad));
+    assert.match(out.html, /--ticker-accent:#e8a23b[;"]/, String(bad));
     assert.ok(!out.html.includes("<img") && !out.css.includes("javascript:"));
   }
 });

@@ -91,10 +91,10 @@ test("routes web : chaque fichier est servi en JavaScript, sans cache, avec son 
 
 test("overlay : configuration par défaut", () => {
   const { out } = overlayOf();
-  assert.deepEqual(cfgOf(out), { itemsUrl: "/m/maze/items?lang=en", size: "medium", moveSpeed: 1.4, turnSpeed: 220, stopMin: 12, stopMax: 25, hold: 8, fov: 66, accent: "#cd853f", wall: [], floor: [], portal: [], hands: null, dev: null });
+  assert.deepEqual(cfgOf(out), { itemsUrl: "/m/maze/items?lang=en", size: "medium", moveSpeed: 1.4, turnSpeed: 220, stopMin: 12, stopMax: 25, hold: 8, fov: 66, accent: "#e8a23b", wallColor: "#2a2118", floorColor: "#181310", wall: [], floor: [], portal: [], hands: null, dev: null });
   assert.equal(out.title, "Mon labyrinthe");
   assert.match(out.html, /id="vm-canvas"/);
-  assert.match(out.css, /border:2px solid #cd853f/);
+  assert.match(out.css, /border:2px solid #e8a23b/);
   assert.doesNotThrow(() => new vm.Script(out.script.replace(/;import\(.*$/s, ";")));
 });
 
@@ -122,9 +122,9 @@ test("overlay : couleur d'accent hexadécimale seulement (aucune injection dans 
   assert.match(overlayOf({ accent: "#0A1b2C" }).out.css, /border:2px solid #0A1b2C/);
   for (const bad of ["red", "#abc", "#12345g", "}</style><script>alert(1)</script>", 7]) {
     const { out } = overlayOf({ accent: bad });
-    assert.match(out.css, /border:2px solid #cd853f/, String(bad));
+    assert.match(out.css, /border:2px solid #e8a23b/, String(bad));
     assert.ok(!out.css.includes("<script>"));
-    assert.equal(cfgOf(out).accent, "#cd853f");
+    assert.equal(cfgOf(out).accent, "#e8a23b");
   }
 });
 

@@ -1,3 +1,4 @@
+import type { Theme } from "../color";
 import type { Block, Slot } from "../blocks";
 
 // Les modules typent leurs blocs avec ce ré-export : ils n'importent rien d'autre du cœur.
@@ -16,6 +17,8 @@ export type SettingField = {
   translatable?: boolean;
   /** Réglage technique : masqué dans la version simplifiée de l'admin (sa valeur par défaut s'applique). */
   advanced?: boolean;
+  /** « appearance » : réglage d'apparence, regroupé à part dans l'admin. Une couleur peut avoir pour défaut `"theme:accent"` (ou bg, fg, surface, muted, line, accentFg) : elle suit alors le thème du site. */
+  group?: "appearance";
 };
 
 /** Un module qui déclare `content` gère des entrées (articles, liens, codes…) via l'éditeur du cœur. */
@@ -194,6 +197,8 @@ export type ModuleContext = {
   locales: string[];
   /** Réglage de l'instance, résolu pour la langue courante, avec sa valeur par défaut. */
   setting<T = string>(key: string): T | undefined;
+  /** Le thème réglé dans l'admin (couleurs dérivées, police) : exactement ce que le site utilise. Pour que l'apparence d'un module suive le site. */
+  theme: Theme;
   /** Traduction depuis locales/<langue>.json du module (repli : langue par défaut puis clé). */
   t(key: string, vars?: Record<string, string | number>): string;
   api: ModuleApi;

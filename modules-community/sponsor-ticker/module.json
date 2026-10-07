@@ -105,16 +105,18 @@
             "fr": "Broadcast"
           }
         }
-      ]
+      ],
+      "group": "appearance"
     },
     {
       "key": "accentColor",
       "type": "color",
-      "default": "#ff7a1a",
+      "default": "theme:accent",
       "label": {
         "en": "Accent color",
         "fr": "Couleur d'accent"
-      }
+      },
+      "group": "appearance"
     },
     {
       "key": "periodSeconds",

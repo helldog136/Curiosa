@@ -108,10 +108,13 @@ test("le kit presse ne stocke rien : il lit l'identité du cœur (ctx.api.brand)
   }
 });
 
-test("l'identité visuelle a UNE source : le site et les modules lisent la même palette", () => {
+test("l'identité visuelle a UNE source : le site, les overlays et les modules lisent la même palette", () => {
   const brand = read("src/core/brand.ts");
-  const layout = read("src/app/(site)/layout.tsx");
-  assert.ok(brand.includes("buildPalette") && layout.includes("buildPalette"), "brand.ts et le layout doivent partager buildPalette");
+  assert.ok(brand.includes("buildPalette"), "brand.ts calcule sa palette avec buildPalette");
+  assert.ok(read("src/core/color.ts").includes("buildPalette(background, accent)"), "buildTheme repose sur buildPalette");
+  for (const f of ["src/app/(site)/layout.tsx", "src/app/overlays/[key]/page.tsx", "src/core/modules/context.ts"]) {
+    assert.ok(read(f).includes("buildTheme"), `${f} doit lire le thème via buildTheme (même calcul que le site)`);
+  }
 });
 
 test("une case à cocher lue avec getAll() porte une valeur (sinon le navigateur envoie « on »)", () => {

@@ -377,5 +377,8 @@
   "settings.mailTestFail": "L'envoi a échoué. Vérifiez le serveur, le port et le mot de passe.",
   "settings.mailTestSubject": "Test d'e-mail de {site}",
   "settings.mailTestBody": "Si vous lisez ceci, l'envoi d'e-mails fonctionne.",
-  "settings.mailInvalid": "Serveur ou adresse d'expédition invalide."
+  "settings.mailInvalid": "Serveur ou adresse d'expédition invalide.",
+  "instances.appearance": "Apparence de ce module",
+  "instances.followTheme": "Suivre le thème du site",
+  "instances.followThemeHelp": "La couleur s'adapte quand vous changez le thème dans Réglages."
 }

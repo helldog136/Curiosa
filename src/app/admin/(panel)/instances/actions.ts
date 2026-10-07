@@ -1,5 +1,6 @@
 "use server";
 
+import { isHexColor, themeRef } from "@/core/color";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { adminCtx } from "@/core/admin";
@@ -116,6 +117,12 @@ export async function saveInstanceSettings(_prev: ActionState, formData: FormDat
         continue;
       }
       const raw = String(formData.get(name) ?? "").trim();
+      // Couleur qui suit le thème du site : on ne garde aucune valeur propre, le thème s'applique en direct.
+      if (field.type === "color" && themeRef(field.default) && formData.get(`${name}__theme`) === "on") {
+        await deleteSetting(key, locale);
+        continue;
+      }
+      if (field.type === "color" && raw !== "" && !isHexColor(raw)) return { error: t("error.generic") };
       // Un secret laissé vide est conservé tel quel.
       if (field.type === "secret" && raw === "") continue;
       if (raw === "") {

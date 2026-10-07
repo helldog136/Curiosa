@@ -5,6 +5,7 @@
  *   await def.sections.upcoming(ctx, { count: 3 });
  *
  * - `ctx.setting(k)` lit `settings` (valeur absente → undefined, comme le vrai contexte sans défaut)
+ * - `ctx.theme` : le thème du site (option `theme`)
  * - `ctx.t(k, vars)` lit `messages` (clé → texte, variables {x} remplacées) ; clé inconnue → la clé
  * - `ctx.api.store` : stockage en mémoire, isolé par appel de fakeCtx (mêmes méthodes que le vrai)
  * - `ctx.api.topics.collect(topic)` renvoie `topics[topic]` ; `ctx.api.entries.list()` renvoie `entries`
@@ -17,7 +18,7 @@ export function fakeCtx(opts = {}) {
     moduleId = "fake", key = "fake", name = "Fake", basePath = "fake", locale = "en", defaultLocale = "en", locales = ["en"],
     settings = {}, messages = {}, topics = {}, entries = [], instances = [],
     brand = { name: "Site", tagline: "", about: "", logo: null, contactEmail: "", colors: [], font: { key: "sans", name: "Sans-serif", stack: "sans-serif" }, defaultLocale, locales },
-    site = { name: "Site", tagline: "", logo: null }, mailConfigured = true, mailResult = { ok: true }, siteUrl = "https://example.test",
+    site = { name: "Site", tagline: "", logo: null }, theme = { accent: "#e8a23b", accentFg: "#111111", bg: "#121214", surface: "#1b1b1d", fg: "#f4f4f5", muted: "#a1a1a3", line: "#2e2e30", fontKey: "sans", font: "sans-serif" }, mailConfigured = true, mailResult = { ok: true }, siteUrl = "https://example.test",
   } = opts;
   const rows = new Map();
   let seq = 0;
@@ -35,6 +36,7 @@ export function fakeCtx(opts = {}) {
     instance: { id: `id-${key}`, key, basePath, name },
     locale, defaultLocale, locales,
     setting: (k) => settings[k],
+    theme,
     t: (k, vars) => { let s = messages[k] ?? k; for (const [n, v] of Object.entries(vars ?? {})) s = s.replaceAll(`{${n}}`, String(v)); return s; },
     calls,
     api: {

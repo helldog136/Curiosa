@@ -77,7 +77,9 @@ export default {
       stopMax: num(ctx.setting("stopMax"), 25, 3, 600),
       hold: num(ctx.setting("hold"), 8, 3, 60),
       fov: num(ctx.setting("fov"), 66, 40, 120),
-      accent: color(ctx.setting("accent"), "#cd853f"),
+      accent: color(ctx.setting("accent"), ctx.theme.accent),
+      wallColor: color(ctx.setting("wallColor"), "#2a2118"),
+      floorColor: color(ctx.setting("floorColor"), "#181310"),
       wall: clean([ctx.setting("wallTexture"), ...lines(ctx.setting("extraWall"))]),
       floor: clean([ctx.setting("floorTexture")]),
       portal: clean([ctx.setting("portalTexture")]),
@@ -95,17 +97,17 @@ export default {
         #vm-canvas{width:100%;height:100%;display:block}
         #vm-focus{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
         .vm-card{position:relative;display:flex;flex-direction:column;gap:12px;box-sizing:border-box;width:72%;max-height:82%;padding:24px;
-          overflow:hidden;border-radius:16px;border:2px solid ${cfg.accent};border-bottom:0;background:#150f0aee;color:#f4f0ea;box-shadow:0 20px 60px #000a;backdrop-filter:blur(4px)}
+          overflow:hidden;border-radius:16px;border:2px solid ${cfg.accent};border-bottom:0;background:${ctx.theme.surface}ee;color:${ctx.theme.fg};box-shadow:0 20px 60px #000a;backdrop-filter:blur(4px)}
         .vm-badge{font-size:12px;font-weight:700;letter-spacing:.2em;color:${cfg.accent}}
         .vm-title{margin:0;font-size:40px;line-height:1.15;font-family:"Arial Black",Impact,sans-serif}
         .vm-body{display:flex;flex-direction:column;gap:8px;min-height:0;flex:1;overflow:hidden}
         .vm-image{max-height:40%;width:100%;object-fit:cover;border-radius:8px;border:1px solid #fff2}
-        .vm-text{margin:0;font-size:24px;line-height:1.5;color:#ad9f92;display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden}
+        .vm-text{margin:0;font-size:24px;line-height:1.5;color:${ctx.theme.muted};display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden}
         .vm-video{width:100%;height:100%;min-height:300px;border:1px solid #fff2;border-radius:8px}
         .vm-foot{display:flex;align-items:center;gap:16px;border-top:1px solid #fff2;padding-top:12px}
         .vm-qr{width:110px;height:110px;flex:none;background:#fff;border-radius:8px;padding:6px;box-sizing:border-box}
         .vm-qr svg{width:100%;height:100%;display:block}
-        .vm-url{font-size:14px;color:#ad9f92;word-break:break-all}
+        .vm-url{font-size:14px;color:${ctx.theme.muted};word-break:break-all}
         .vm-bar{position:absolute;left:0;right:0;bottom:0;height:10px;background:${cfg.accent}}`,
       script: `window.__MAZE__=${json};import("/m/${ctx.instance.key}/main.js");`,
     };

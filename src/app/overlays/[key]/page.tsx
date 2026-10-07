@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { buildTheme, themeCss } from "@/core/color";
 import { buildContext } from "@/core/modules/context";
 import { getActiveInstances } from "@/core/modules/registry";
 import { getSiteConfig } from "@/core/settings";
@@ -34,8 +35,12 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
 export default async function OverlayPage({ params, searchParams }: Props) {
   const result = await render((await params).key, await searchParams);
   if (!result) notFound();
+  const config = await getSiteConfig();
+  const theme = buildTheme(config.background, config.accent, config.font);
   return (
     <>
+      {/* Le thème du site, en variables CSS : l'overlay peut s'y accorder (var(--v-accent)…) sans rien demander. */}
+      <style dangerouslySetInnerHTML={{ __html: themeCss(theme) }} />
       {result.css && <style dangerouslySetInnerHTML={{ __html: result.css }} />}
       <div dangerouslySetInnerHTML={{ __html: result.html }} />
       {result.script && <script dangerouslySetInnerHTML={{ __html: result.script }} />}

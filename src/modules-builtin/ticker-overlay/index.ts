@@ -41,11 +41,12 @@ export const manifest: ParsedManifest = {
   permissions: ["overlay", "routes", "topics"],
   settings: [
     { key: "interval", type: "number", default: 8, label: { en: "Seconds per card", fr: "Secondes par carte" } },
-    { key: "textColor", type: "color", default: "#ffffff", label: { en: "Text color", fr: "Couleur du texte" } },
-    { key: "cardColor", type: "color", default: "#111111", label: { en: "Card color", fr: "Couleur de la carte" } },
+    { key: "textColor", type: "color", group: "appearance", default: "theme:fg", label: { en: "Text color", fr: "Couleur du texte" } },
+    { key: "cardColor", type: "color", group: "appearance", default: "theme:surface", label: { en: "Card color", fr: "Couleur de la carte" } },
     {
       key: "position",
       type: "select",
+      group: "appearance",
       default: "bottom-left",
       label: { en: "Position", fr: "Position" },
       options: [
@@ -90,8 +91,8 @@ export const definition = defineModule({
     const pos = String(ctx.setting("position") ?? "bottom-left");
     const side = pos.endsWith("right") ? "right" : "left";
     const vert = pos.startsWith("top") ? "top" : "bottom";
-    const text = color(ctx.setting("textColor"), "#ffffff");
-    const bg = color(ctx.setting("cardColor"), "#111111");
+    const text = color(ctx.setting("textColor"), ctx.theme.fg);
+    const bg = color(ctx.setting("cardColor"), ctx.theme.surface);
     const config = JSON.stringify({ url: `/m/${ctx.instance.key}/items?lang=${ctx.locale}`, ms: interval * 1000 }).replace(/</g, "\\u003c"); // jamais de « </script » dans le script en ligne
     return {
       title: ctx.instance.name,

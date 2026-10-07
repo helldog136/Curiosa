@@ -377,5 +377,8 @@
   "settings.mailTestFail": "Sending failed. Check the server, port and password.",
   "settings.mailTestSubject": "Email test from {site}",
   "settings.mailTestBody": "If you can read this, sending email works.",
-  "settings.mailInvalid": "Invalid server or sender address."
+  "settings.mailInvalid": "Invalid server or sender address.",
+  "instances.appearance": "This module's appearance",
+  "instances.followTheme": "Follow the site theme",
+  "instances.followThemeHelp": "The color adapts when you change the theme in Settings."
 }

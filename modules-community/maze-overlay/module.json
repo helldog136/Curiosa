@@ -96,16 +96,18 @@
             "fr": "Grand"
           }
         }
-      ]
+      ],
+      "group": "appearance"
     },
     {
       "key": "accent",
       "type": "color",
-      "default": "#cd853f",
+      "default": "theme:accent",
       "label": {
         "en": "Accent color",
         "fr": "Couleur d'accent"
-      }
+      },
+      "group": "appearance"
     },
     {
       "key": "wallTexture",
@@ -117,7 +119,8 @@
       "help": {
         "en": "Empty = a simple checkerboard.",
         "fr": "Vide = un damier simple."
-      }
+      },
+      "group": "appearance"
     },
     {
       "key": "floorTexture",
@@ -125,6 +128,27 @@
       "label": {
         "en": "Floor texture",
         "fr": "Texture du sol"
+      },
+      "group": "appearance"
+    },
+    {
+      "key": "wallColor",
+      "type": "color",
+      "group": "appearance",
+      "default": "#2a2118",
+      "label": {
+        "en": "Wall color (when there is no wall texture)",
+        "fr": "Couleur des murs (sans texture de mur)"
+      }
+    },
+    {
+      "key": "floorColor",
+      "type": "color",
+      "group": "appearance",
+      "default": "#181310",
+      "label": {
+        "en": "Floor color (when there is no floor texture)",
+        "fr": "Couleur du sol (sans texture de sol)"
       }
     },
     {
@@ -193,7 +217,8 @@
       "label": {
         "en": "Portal wall texture",
         "fr": "Texture des murs-portails"
-      }
+      },
+      "group": "appearance"
     },
     {
       "key": "handsSprite",
@@ -202,7 +227,8 @@
       "label": {
         "en": "Hands sprite (HUD)",
         "fr": "Sprite des mains (HUD)"
-      }
+      },
+      "group": "appearance"
     },
     {
       "key": "extraWall",
@@ -211,7 +237,8 @@
       "label": {
         "en": "More wall textures (one URL per line, up to 4)",
         "fr": "Autres textures de murs (une URL par ligne, 4 maximum)"
-      }
+      },
+      "group": "appearance"
     },
     {
       "key": "devMode",

@@ -30,9 +30,8 @@ test("ticker-overlay : sujets consommés valides, schéma overlay.item avec titr
   assert.deepEqual(by["overlay.item"].schema.filter((f) => f.type === "url").map((f) => f.key).sort(), ["image", "url"]);
 });
 
-test("ticker-overlay : défauts — 8 s, texte blanc, carte sombre, bas gauche (couleurs hex valides)", () => {
-  assert.deepEqual(defaults, { interval: 8, textColor: "#ffffff", cardColor: "#111111", position: "bottom-left" });
-  for (const k of ["textColor", "cardColor"]) assert.match(defaults[k], /^#[0-9a-f]{6}$/i);
+test("ticker-overlay : défauts — 8 s, couleurs qui suivent le thème du site, bas gauche", () => {
+  assert.deepEqual(defaults, { interval: 8, textColor: "theme:fg", cardColor: "theme:surface", position: "bottom-left" });
 });
 
 test("items : fusionne les entrées du cœur et les overlay.item", async () => {
@@ -118,7 +117,7 @@ test("overlay : couleurs — seuls #rrggbb acceptés, sinon défaut (pas d'injec
   assert.match(css, /background:#00ff00;color:#ff0000/);
   for (const evil of ["red", "#fff", "#12345g", "#ffffff;}body{display:none", "url(javascript:alert(1))", "expression(1)", 5, null]) {
     css = ov({ textColor: evil, cardColor: evil }).css;
-    assert.match(css, /background:#111111;color:#ffffff/, String(evil));
+    assert.match(css, /background:#1b1b1d;color:#f4f4f5/, String(evil));
     assert.ok(!css.includes("display:none") || css.includes("html,body"), String(evil));
     assert.ok(!/expression|javascript/.test(css));
   }

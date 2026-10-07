@@ -202,6 +202,24 @@ Droit effectif d'un jeton = **plafond du jeton** (un jeton « lecture » n'écri
 - Les jetons sont créés par le propriétaire (affichés une fois, seul leur hash est conservé), révocables, limités à
   120 requêtes/minute. L'option avancée « Proposer ses actions à l'API MCP » retire une instance du MCP.
 
+## Thème du site et apparence d'un module
+
+Le thème réglé dans l'admin (*Réglages › Apparence*) atteint les modules de trois façons, sans rien demander :
+
+- **`ctx.theme`** : `{ accent, accentFg, bg, surface, fg, muted, line, font, fontKey }` — exactement les valeurs que le site utilise (même calcul). Un module qui génère du HTML ou du CSS (overlay, bloc `html`) s'en sert au lieu de couleurs en dur.
+- **Variables CSS** : sur le site comme dans les overlays, `:root` porte `--v-accent`, `--v-bg`, `--v-fg`, `--v-surface`, `--v-muted`, `--v-line`, `--v-accent-fg` et `--v-font`. Un overlay peut écrire `color: var(--v-accent)`.
+- **Couleurs par défaut qui suivent le thème** : `{ "key": "accent", "type": "color", "default": "theme:accent" }` (jetons : `accent`, `accentFg`, `bg`, `surface`, `fg`, `muted`, `line`). Tant que l'administrateur n'a pas choisi sa propre couleur — case « Suivre le thème du site », cochée par défaut — la valeur change avec le thème.
+
+Un module peut en plus déclarer **ses propres réglages d'apparence** (la texture des murs du labyrinthe, la couleur du sol, le style d'un bandeau…) avec `"group": "appearance"` : ils sont regroupés sous « Apparence de ce module » dans son panneau d'admin, séparés de ses réglages de comportement. Types utiles : `color`, `image` (téléversement), `select`.
+
+## Envoyer un e-mail
+
+Un module qui déclare la permission `mail` peut appeler `ctx.api.mail.send({ to: "owner", subject, text, replyTo? })` (`to` : `"owner"` = contact du site, ou une adresse). Le serveur d'envoi (SMTP) est réglé une fois par le propriétaire dans *Réglages › E-mail* ; le module n'a ni identifiants ni choix de l'expéditeur. L'appel ne lève jamais : il renvoie `{ ok: true }` ou `{ ok: false, reason }` (`not_configured`, `no_recipient`, `invalid`, `rate_limited`, `failed`). Prévoyez que l'e-mail est un plus : conservez l'information (`ctx.api.store`) avant de l'envoyer. `ctx.api.mail.configured()` dit si un serveur est réglé.
+
+## Alimenter le flux RSS
+
+Le flux RSS est une fonctionnalité du cœur (`/feed.xml`). Les modules à contenu y sont déjà. Un autre module y ajoute ses éléments en fournissant le sujet `feed.item` : `"provides": [{ "topic": "feed.item" }]` et `exports["feed.item"] = (ctx, { locale, limit }) => [{ title, url, summary?, publishedAt?, id? }]`.
+
 ## Overlay (type `overlay`)
 
 ```js
@@ -249,7 +267,7 @@ jour » compare avec le dépôt distant.
   "main": "index.mjs",                   // absent = module sans code
   "type": "widget",                      // content | overlay | widget | integration | utility
   "instances": "multiple",               // ou "single"
-  "permissions": ["slots", "sections", "routes", "storage", "filters", "pages", "topics", "overlay"], // affiché à l'admin
+  "permissions": ["slots", "sections", "routes", "storage", "filters", "pages", "topics", "overlay", "mail"], // affiché à l'admin
 
   "settings": [                          // réglages PAR INSTANCE ; l'admin génère le formulaire
     { "key": "text", "type": "text", "translatable": true, "label": { "en": "…" } },
@@ -353,7 +371,8 @@ la vôtre) et, pour `entry.*`, `ctx.entry`.
 - `ctx.api.instances.list({ module?, locale? })`, `ctx.api.site(locale)` (nom, accroche, logo), `ctx.api.brand(locale)` (identité visuelle complète : présentation, couleurs nommées, police, contact — lecture seule, jamais copiée)
 - `ctx.api.store.add / list / remove / count` — stockage privé de l'instance
 - **Services du cœur** (voir [PLATFORM.md](PLATFORM.md)) : `ctx.api.qr(texte)` (QR code en SVG), `ctx.api.store` (stockage privé), `ctx.api.topics` (échanges entre modules) ; le MCP se déclare dans le manifeste
-- `ctx.api.siteUrl`
+- `ctx.api.mail.send(…)` / `.configured()` — envoi d'e-mails au nom du site (permission `mail`)
+- `ctx.theme` — le thème du site ; `ctx.api.siteUrl`
 
 Un module n'importe rien du cœur : tout passe par `ctx`. C'est ce qui garantit qu'il continuera
 de fonctionner quand le cœur évolue (tant que `apiVersion` est inchangé).
@@ -361,7 +380,7 @@ de fonctionner quand le cœur évolue (tant que `apiVersion` est inchangé).
 ## Modules livrés avec le cœur, modules communautaires
 
 Seuls les modules de base vivent dans `src/modules-builtin/` : blog, réseaux sociaux, codes promo,
-pages, collection vierge, bandeau d'accueil, flux RSS, formulaire de contact, statut live, overlay
+pages, collection vierge, bandeau d'accueil, formulaire de contact, statut live, overlay
 défilant et **kit presse** (une pure vitrine : il lit l'identité réglée dans le cœur via `ctx.api.brand()` et ne stocke rien). Tout le reste s'installe depuis git. `modules-community/` contient des modules complets qui
 **ne font pas partie du cœur** (un test le vérifie) et qui rejoindront chacun leur dépôt : le premier est
 [`maze-overlay`](../modules-community/maze-overlay), le labyrinthe 3D de helldog136.be porté en module

@@ -44,3 +44,35 @@ export const FONT_STACKS = {
   serif: 'ui-serif, Georgia, Cambria, "Times New Roman", serif',
   mono: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
 } as const;
+
+/** Les jetons du thème du site, tels que les modules les reçoivent (`ctx.theme`) et les utilisent comme valeur par défaut (`"theme:accent"`). */
+export const THEME_TOKENS = ["accent", "accentFg", "bg", "surface", "fg", "muted", "line"] as const;
+export type ThemeToken = (typeof THEME_TOKENS)[number];
+export type Theme = Record<ThemeToken, string> & {
+  /** Famille de police du site (« sans », « serif » ou « mono »). */
+  fontKey: "sans" | "serif" | "mono";
+  /** Pile CSS complète de cette police. */
+  font: string;
+};
+
+const VARS: Record<ThemeToken, string> = { accent: "--v-accent", accentFg: "--v-accent-fg", bg: "--v-bg", surface: "--v-surface", fg: "--v-fg", muted: "--v-muted", line: "--v-line" };
+
+/** Thème complet (couleurs dérivées + police) à partir des deux réglages de l'admin. Même calcul que le site. */
+export function buildTheme(background: string, accent: string, font: string): Theme {
+  const palette = buildPalette(background, accent);
+  const fontKey = font === "serif" || font === "mono" ? font : "sans";
+  const colors = Object.fromEntries(THEME_TOKENS.map((t) => [t, palette[VARS[t]]!])) as Record<ThemeToken, string>;
+  return { ...colors, fontKey, font: FONT_STACKS[fontKey] };
+}
+
+/** Variables CSS `--v-*` (et `--v-font`) du thème : ce que le site met sur `:root`, que les overlays reçoivent aussi. */
+export function themeCss(theme: Theme): string {
+  return `:root{${THEME_TOKENS.map((t) => `${VARS[t]}:${theme[t]}`).join(";")};--v-font:${theme.font}}`;
+}
+
+/** « theme:accent » → jeton ; autre valeur → null. */
+export function themeRef(value: unknown): ThemeToken | null {
+  if (typeof value !== "string" || !value.startsWith("theme:")) return null;
+  const token = value.slice(6);
+  return (THEME_TOKENS as readonly string[]).includes(token) ? (token as ThemeToken) : null;
+}

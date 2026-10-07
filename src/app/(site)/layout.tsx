@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { headers } from "next/headers";
-import { buildPalette, FONT_STACKS } from "@/core/color";
+import { buildTheme, themeCss } from "@/core/color";
 import { RTL_LOCALES } from "@/core/i18n/locales";
 import { getVisitorLocale, getVisitorTranslator, LOCALE_HEADER } from "@/core/i18n/request";
 import { runSlot } from "@/core/modules/runtime";
@@ -35,10 +35,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
   const locale = await getVisitorLocale();
   const localized = await getSiteConfig(locale);
   const t = await getVisitorTranslator();
-  const palette = buildPalette(localized.background, localized.accent);
-  const css = `:root{${Object.entries({ ...palette, "--v-font": FONT_STACKS[localized.font] ?? FONT_STACKS.sans })
-    .map(([k, v]) => `${k}:${v}`)
-    .join(";")}}`;
+  const css = themeCss(buildTheme(localized.background, localized.accent, localized.font));
 
   const [headBlocks, bannerBlocks] = await Promise.all([runSlot("layout.head", locale), runSlot("layout.banner", locale)]);
 

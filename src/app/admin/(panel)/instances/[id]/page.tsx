@@ -6,7 +6,8 @@ import { buildContext, instanceSettingKey } from "@/core/modules/context";
 import { hasPage } from "@/core/modules/manifest";
 import { getModule } from "@/core/modules/registry";
 import { localized, type SettingField } from "@/core/modules/types";
-import { getSetting, getSettingByLocale } from "@/core/settings";
+import { buildTheme, themeRef } from "@/core/color";
+import { getSetting, getSettingByLocale, getSiteConfig } from "@/core/settings";
 import { mcpInstanceKey } from "@/core/modules/mcpProvider";
 import { getInstanceLabeler } from "@/core/modules/labels";
 import { Blocks } from "@/components/site/Blocks";
@@ -48,6 +49,10 @@ export default async function InstancePage({ params, searchParams }: { params: P
 
   const mcpOn = (await getSetting<boolean>(mcpInstanceKey(instance.id))) !== false;
   const visibleSettings = mod.manifest.settings.filter((f) => advanced || !f.advanced);
+  const generalSettings = visibleSettings.filter((f) => f.group !== "appearance");
+  const appearanceSettings = visibleSettings.filter((f) => f.group === "appearance");
+  const siteConfig = await getSiteConfig();
+  const theme = buildTheme(siteConfig.background, siteConfig.accent, siteConfig.font);
 
   const input = (f: SettingField, name: string, value: unknown, label: string) => {
     const common = { name, label, help: f.help ? L(f.help) : undefined };
@@ -63,8 +68,18 @@ export default async function InstancePage({ params, searchParams }: { params: P
         return <TextField key={name} {...common} type="password" placeholder={value ? "••••••••" : ""} autoComplete="off" />;
       case "number":
         return <TextField key={name} {...common} type="number" defaultValue={str} />;
-      case "color":
-        return <TextField key={name} {...common} type="color" defaultValue={str || "#000000"} />;
+      case "color": {
+        // Une couleur qui suit le thème (défaut « theme:… ») : case « Suivre le thème » cochée tant qu'aucune couleur n'est choisie.
+        const token = themeRef(f.default);
+        if (!token) return <TextField key={name} {...common} type="color" defaultValue={str || "#000000"} />;
+        const own = typeof value === "string" && value !== "" ? value : null;
+        return (
+          <div key={name} className="space-y-1">
+            <TextField {...common} type="color" defaultValue={own ?? theme[token]} />
+            <Checkbox name={`${name}__theme`} label={t("instances.followTheme")} help={t("instances.followThemeHelp")} defaultChecked={own === null} />
+          </div>
+        );
+      }
       case "image":
         return <ImageField key={name} name={name} label={label} defaultValue={str} uploadLabel={t("action.upload")} />;
       case "url":
@@ -183,16 +198,23 @@ export default async function InstancePage({ params, searchParams }: { params: P
         <ActionForm action={saveInstanceSettings} submitLabel={t("action.save")}>
           <input type="hidden" name="id" value={id} />
           {advanced && <input type="hidden" name="__adv" value="1" />}
-          <h2 className="text-lg font-semibold">{t("instances.moduleSettings")}</h2>
-          {visibleSettings.map((f) =>
-            f.translatable ? (
-              <fieldset key={f.key} className={`${ui.card} space-y-3`}>
-                <legend className="px-2 text-sm font-medium">{L(f.label)}</legend>
-                {config.locales.map((l) => input(f, `s__${f.key}__${l}`, stored[f.key]?.[l], localeName(l)))}
-              </fieldset>
-            ) : (
-              input(f, `s__${f.key}`, f.type === "secret" ? Boolean(stored[f.key]?.[""]) || undefined : stored[f.key]?.[""], L(f.label))
-            ),
+          {[{ title: t("instances.moduleSettings"), fields: generalSettings }, { title: t("instances.appearance"), fields: appearanceSettings }].map(
+            (group) =>
+              group.fields.length > 0 && (
+                <div key={group.title} className="space-y-4">
+                  <h2 className="text-lg font-semibold">{group.title}</h2>
+                  {group.fields.map((f) =>
+                    f.translatable ? (
+                      <fieldset key={f.key} className={`${ui.card} space-y-3`}>
+                        <legend className="px-2 text-sm font-medium">{L(f.label)}</legend>
+                        {config.locales.map((l) => input(f, `s__${f.key}__${l}`, stored[f.key]?.[l], localeName(l)))}
+                      </fieldset>
+                    ) : (
+                      input(f, `s__${f.key}`, f.type === "secret" ? Boolean(stored[f.key]?.[""]) || undefined : stored[f.key]?.[""], L(f.label))
+                    ),
+                  )}
+                </div>
+              ),
           )}
         </ActionForm>
       )}

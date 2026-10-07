@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { MODULE_API_VERSION } from "../config";
+import { THEME_TOKENS } from "../color";
 
 const localized = z.union([z.string().max(500), z.record(z.string(), z.string().max(500))]);
 
@@ -12,6 +13,14 @@ export const settingField = z.object({
   options: z.array(z.object({ value: z.string(), label: localized })).max(50).optional(),
   translatable: z.boolean().optional(),
   advanced: z.boolean().optional(),
+  /** « appearance » : réglage d'apparence du module (couleurs, textures…), regroupé à part dans l'admin. */
+  group: z.enum(["appearance"]).optional(),
+}).superRefine((f, ctx) => {
+  // Une couleur peut suivre le thème du site : default "theme:<jeton>". Rien d'autre n'est permis comme référence.
+  if (typeof f.default === "string" && f.default.startsWith("theme:")) {
+    if (f.type !== "color") ctx.addIssue({ code: "custom", message: "only a color setting can default to a theme token" });
+    else if (!(THEME_TOKENS as readonly string[]).includes(f.default.slice(6))) ctx.addIssue({ code: "custom", message: `unknown theme token "${f.default.slice(6)}"` });
+  }
 });
 
 const topicField = z.object({
