@@ -21,7 +21,7 @@ npm run import:grav -- ./scratch/grav-user --out ./scratch/mon-site.tar.gz.enc
 ```
 
 Options : `--password <mot de passe de la sauvegarde>` (sinon généré et affiché), `--blog route1,route2` (routes Grav à traiter comme des blogs ; par défaut les pages de modèle `blog`),
-`--owner-email` / `--owner-name` (si aucun compte Grav n'existe), `--no-accounts`, `--domain monsite.be` (les liens absolus vers l'ancien site deviennent des liens internes).
+`--owner-email` / `--owner-name` (si aucun compte Grav n'existe), `--no-accounts`, `--skip-accounts nom1,nom2` (comptes Grav à ne pas importer, par nom de fichier), `--domain monsite.be` (les liens absolus vers l'ancien site deviennent des liens internes).
 
 ## Ce qui est converti
 

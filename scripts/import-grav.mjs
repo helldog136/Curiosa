@@ -2,7 +2,7 @@
 // l'assistant d'installation (« J'ai déjà une sauvegarde ») ou depuis l'admin. Rien n'est écrit sur un site en service.
 //
 //   npm run import:grav -- <dossier user/ de Grav> [--out fichier.tar.gz.enc] [--password <mot de passe de la sauvegarde>]
-//        [--blog route1,route2] [--domain monsite.be] [--owner-email x@y --owner-name "Nom"] [--no-accounts]
+//        [--blog route1,route2] [--domain monsite.be] [--owner-email x@y --owner-name "Nom"] [--no-accounts] [--skip-accounts nom1,nom2]
 //
 // Ce que fait la conversion (Grav stocke tout en fichiers : user/pages/NN.slug/<modèle>[.<langue>].md + médias) :
 //  - config/site.yaml → nom et accroche du site ; config/system.yaml → langues ;
@@ -119,7 +119,8 @@ const enabledLocales = [defaultLocale, ...configured.filter((l) => l !== default
 // ── comptes ──
 const owner = { email: flag("owner-email"), name: flag("owner-name") };
 const accountDir = path.join(root, "accounts");
-const accounts = has("no-accounts") || !fs.existsSync(accountDir) ? [] : fs.readdirSync(accountDir).filter((f) => f.endsWith(".yaml")).map((f) => ({ username: f.replace(/\.yaml$/, ""), ...readYaml(path.join(accountDir, f)) })).filter((a) => a.email && a.state !== "disabled");
+const skipAccounts = new Set((flag("skip-accounts") ?? "").split(",").map((x) => x.trim().toLowerCase()).filter(Boolean));
+const accounts = has("no-accounts") || !fs.existsSync(accountDir) ? [] : fs.readdirSync(accountDir).filter((f) => f.endsWith(".yaml")).map((f) => ({ username: f.replace(/\.yaml$/, ""), ...readYaml(path.join(accountDir, f)) })).filter((a) => a.email && a.state !== "disabled" && !skipAccounts.has(String(a.username).toLowerCase()));
 const users = [];
 const randomPw = () => crypto.randomBytes(15).toString("base64url");
 for (const a of accounts) {
