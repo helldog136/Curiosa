@@ -18,7 +18,7 @@ export const dynamic = "force-dynamic";
  * `?id=` : un module du catalogue ; `?repo=` : un dépôt personnel (non vérifié).
  */
 export default async function CatalogueDetailsPage({ searchParams }: { searchParams: Promise<{ id?: string; repo?: string }> }) {
-  const { t, locale, config, user } = await adminCtx("admin");
+  const { t, locale, config, user, advanced } = await adminCtx("admin");
   const { id, repo } = await searchParams;
   const isOwner = user.role === "owner";
   const L = (v: Parameters<typeof localized>[0]) => localized(v, locale, config.defaultLocale);
@@ -33,7 +33,7 @@ export default async function CatalogueDetailsPage({ searchParams }: { searchPar
   } else if (repo) {
     const parsed = parseRepoUrl(repo);
     if (parsed.ok) { custom = parsed.repo; target = { kind: "repo", url: parsed.repo.url, ref: parsed.repo.ref }; }
-    else return <Shell title={t("catalogue.custom")} back={t("catalogue.back")}><p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm">{t(parsed.error)}</p></Shell>;
+    else return <Shell back={t("catalogue.back")}><p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm">{t(parsed.error)}</p></Shell>;
   } else notFound();
 
   let preview: ModulePreview | null = null;
@@ -43,47 +43,73 @@ export default async function CatalogueDetailsPage({ searchParams }: { searchPar
   const m = preview?.manifest ?? null;
   const installed = entry ? (await listModuleRows()).some((r) => r.id === entry!.id) : false;
 
-  return (
-    <Shell title={`${entry?.icon ?? m?.icon ?? "🧩"} ${entry ? L(entry.name) : m ? L(m.name) : custom?.url ?? ""}`} back={t("catalogue.back")}>
-      <p className="text-sm text-muted">
-        {(entry?.version ?? m?.version) && <>v{entry?.version ?? m?.version} · </>}
-        {entry ? <span className="rounded bg-line px-2 py-0.5 text-xs">✔ {t("catalogue.verified")}</span> : <span className="rounded bg-amber-500/20 px-2 py-0.5 text-xs">{t("catalogue.origin.custom")}</span>}
-        {custom && <span className="ml-2 break-all font-mono text-xs">{custom.url}{custom.ref ? `#${custom.ref}` : ""}</span>}
-      </p>
-      {entry && <p className="text-muted">{L(entry.description)}</p>}
+  const name = entry ? L(entry.name) : m ? L(m.name) : custom?.url ?? "";
+  const icon = entry?.icon ?? m?.icon ?? "🧩";
+  const perms = (m?.permissions ?? []).filter((p) => t(`perm.${p}`) !== `perm.${p}`);
 
-      {failed && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm">{t("catalogue.previewFailed")}</p>}
+  return (
+    <Shell back={t("catalogue.back")}>
+      <header className="flex items-start gap-5">
+        <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-3xl bg-accent/10 text-4xl" aria-hidden>{icon}</span>
+        <div className="min-w-0">
+          <h1 className={ui.pageTitle}>{name}</h1>
+          <p className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted">
+            {entry ? <span className={ui.chipOk}>✔ {t("catalogue.verified")}</span> : <span className={ui.chipWarn}>⚠ {t("catalogue.origin.custom")}</span>}
+            {advanced && (entry?.version ?? m?.version) && <span>v{entry?.version ?? m?.version}</span>}
+            {m?.author && <span>{t("catalogue.by", { author: m.author })}</span>}
+            {m?.license && advanced && <span>· {m.license}</span>}
+          </p>
+          {advanced && custom && <p className="mt-1 break-all font-mono text-xs text-muted">{custom.url}{custom.ref ? `#${custom.ref}` : ""}</p>}
+        </div>
+      </header>
+      {entry && <p className="max-w-2xl text-[17px] leading-7">{L(entry.description)}</p>}
+
+      {failed && <p role="alert" className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-sm">{t("catalogue.previewFailed")}</p>}
 
       {m && (
-        <section className={`${ui.card} space-y-2 text-sm`}>
-          <h2 className="font-semibold">{t("catalogue.asks")}</h2>
-          <p><span className="text-muted">{t("modules.permissions")} :</span> {m.permissions.length ? m.permissions.join(", ") : t("catalogue.none")}</p>
-          {(m.requires ?? []).length > 0 && <p><span className="text-muted">{t("modules.requires")} :</span> {(m.requires ?? []).map((r) => (r.label ? L(r.label) : r.service)).join(", ")}</p>}
-          {(m.offers ?? []).length > 0 && <p><span className="text-muted">{t("modules.offers")} :</span> {(m.offers ?? []).map((o) => (o.label ? L(o.label) : o.service)).join(", ")}</p>}
-          {m.license && <p><span className="text-muted">{t("catalogue.license")} :</span> {m.license}{m.author ? ` · ${m.author}` : ""}</p>}
+        <section className={`${ui.card} space-y-3`}>
+          <h2 className="text-lg font-semibold">{t("catalogue.asks.friendly")}</h2>
+          {perms.length > 0 ? (
+            <ul className="space-y-2 text-[15px]">
+              {perms.map((p) => <li key={p} className="flex items-start gap-3"><span aria-hidden className="mt-0.5">✓</span><span>{t(`perm.${p}`)}</span></li>)}
+              {(m.requires ?? []).length > 0 && <li className="flex items-start gap-3"><span aria-hidden className="mt-0.5">🔗</span><span>{t("catalogue.needs", { what: (m.requires ?? []).map((r) => (r.label ? L(r.label) : r.service)).join(", ") })}</span></li>}
+            </ul>
+          ) : <p className="text-sm text-muted">{t("catalogue.nothingSpecial")}</p>}
+          {advanced && (
+            <p className="border-t border-line pt-3 font-mono text-xs text-muted">
+              {t("modules.permissions")}: {m.permissions.join(", ") || "—"}
+              {(m.offers ?? []).length > 0 && <> · {t("modules.offers")}: {(m.offers ?? []).map((o) => o.service).join(", ")}</>}
+              {(m.requires ?? []).length > 0 && <> · {t("modules.requires")}: {(m.requires ?? []).map((r) => r.service).join(", ")}</>}
+            </p>
+          )}
         </section>
       )}
 
-      <section className="space-y-2">
-        <h2 className="text-lg font-semibold">README</h2>
+      <section className="space-y-3">
+        <h2 className="text-lg font-semibold">{t("catalogue.presentation")}</h2>
         {preview?.readme ? (
-          <div className={`${ui.card} overflow-x-auto`}>
+          <article className={`${ui.card} overflow-x-auto !p-6 text-[16px] sm:!p-8 [&_h2:first-child]:mt-0 [&>div>*:first-child]:mt-0`}>
             <Markdown text={preview.readme} untrusted />
-            {preview.truncated && <p className="mt-4 text-xs text-muted">{t("catalogue.truncated")}</p>}
-          </div>
+            {preview.truncated && <p className="mt-6 text-xs text-muted">{t("catalogue.truncated")}</p>}
+          </article>
         ) : !failed ? <p className="text-sm text-muted">{t("catalogue.noReadme")}</p> : null}
       </section>
 
       {isOwner && !failed && (
-        <section className={`${ui.card} space-y-3`}>
+        <section className={`${ui.card} space-y-4`}>
           {entry ? (
-            installed ? <a href="/admin/modules" className="text-sm text-accent hover:underline">{t("catalogue.installed")}</a>
+            installed ? <a href="/admin/modules" className="text-sm font-medium text-accent hover:underline">{t("catalogue.installed")}</a>
               : !entry.compatible ? <p className="text-sm text-muted">{t("catalogue.incompatible")}</p>
-              : <form action={installFromCatalogueAction.bind(null, entry.id)}><button className={ui.btnPrimary}>{t("modules.installButton")}</button></form>
+              : (
+                <form action={installFromCatalogueAction.bind(null, entry.id)} className="flex flex-wrap items-center gap-4">
+                  <button className={`${ui.btnPrimary} !px-7 !py-3 !text-base`}>{t("catalogue.install")}</button>
+                  <p className="text-sm text-muted">{t("catalogue.installNote")}</p>
+                </form>
+              )
           ) : custom ? (
             <>
-              <p className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">{t("catalogue.customWarning")}</p>
-              <ActionForm action={installCustomAction} submitLabel={t("modules.installButton")}>
+              <p className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm">{t("catalogue.customWarning")}</p>
+              <ActionForm action={installCustomAction} submitLabel={t("catalogue.install")}>
                 <input type="hidden" name="repo" value={`${custom.url}${custom.ref ? `#${custom.ref}` : ""}`} />
                 <Checkbox name="trust" label={t("catalogue.trust")} required />
               </ActionForm>
@@ -95,11 +121,10 @@ export default async function CatalogueDetailsPage({ searchParams }: { searchPar
   );
 }
 
-function Shell({ title, back, children }: { title: string; back: string; children: React.ReactNode }) {
+function Shell({ back, children }: { back: string; children: React.ReactNode }) {
   return (
-    <div className="space-y-6">
-      <a href="/admin/catalogue" className="text-sm text-muted hover:underline">← {back}</a>
-      <h1 className="text-2xl font-bold">{title}</h1>
+    <div className="space-y-7">
+      <a href="/admin/catalogue" className="inline-block text-sm text-muted hover:text-accent">← {back}</a>
       {children}
     </div>
   );

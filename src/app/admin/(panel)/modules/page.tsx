@@ -27,9 +27,9 @@ export default async function ModulesPage({ searchParams }: { searchParams: Prom
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold">{t("nav.modules")}</h1>
-        <p className="mt-1 text-sm text-muted">{advanced ? t("modules.intro") : t("modules.introSimple")}</p>
-        {isOwner && <a href="/admin/catalogue" className={`${ui.btnPrimary} mt-3 inline-block`}>🛒 {t("modules.browseCatalogue")}</a>}
+        <h1 className={ui.pageTitle}>{advanced ? t("nav.modules") : t("nav.modules.simple")}</h1>
+        <p className={ui.pageIntro}>{advanced ? t("modules.intro") : t("modules.introSimple")}</p>
+        {isOwner && <a href="/admin/catalogue" className={`${ui.btnPrimary} mt-4`}>✨ {advanced ? t("modules.browseCatalogue") : t("modules.browseCatalogue.simple")}</a>}
       </div>
       {error && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm">{error.startsWith("modules.error.") || error.startsWith("instances.error.") ? t(error, { services: detail ?? "", modules: detail ?? "" }) : t("error.generic")}</p>}
       {notice === "services" && <p role="alert" className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">{t("services.notice")}</p>}
@@ -54,6 +54,43 @@ export default async function ModulesPage({ searchParams }: { searchParams: Prom
       {update && <p role="status" className="rounded-lg border border-line bg-surface p-3 text-sm">{update === "yes" ? (to ? t("modules.updateAvailableTo", { module: checked ?? "", version: to }) : t("modules.updateAvailable")) : t("modules.upToDate")}</p>}
       {update === "yes" && level === "major" && <p role="alert" className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">{t("modules.updateMajor")}</p>}
 
+      {!advanced && (
+        <ul className="grid gap-4 sm:grid-cols-2">
+          {mods.map(({ row, mod }) => {
+            const mine = instances.filter((i) => i.moduleId === row.id);
+            const name = mod ? localized(mod.manifest.name, locale, config.defaultLocale) : row.id;
+            const toggle = row.enabled ? "bg-accent" : "bg-line";
+            return (
+              <li key={row.id} className={`${ui.card} flex flex-col gap-4 ${row.enabled ? "" : "bg-bg shadow-none"}`}>
+                <div className="flex items-start gap-4">
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-accent/10 text-2xl" aria-hidden>{mod?.manifest.icon ?? "🧩"}</span>
+                  <div className="min-w-0">
+                    <p className="text-lg font-semibold leading-tight">{name}</p>
+                    <p className="mt-1 line-clamp-3 text-sm leading-5 text-muted">{mod ? localized(mod.manifest.description, locale, config.defaultLocale) : t("modules.broken")}</p>
+                  </div>
+                </div>
+                <div className="mt-auto flex flex-wrap items-center justify-between gap-3">
+                  {isOwner && mod ? (
+                    <form action={toggleModule.bind(null, row.id, !row.enabled)}>
+                      <button className="inline-flex items-center gap-2.5 rounded-full py-1 pr-2 text-sm font-medium" aria-pressed={row.enabled}>
+                        <span className={`relative h-6 w-11 rounded-full transition-colors ${toggle}`}><span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${row.enabled ? "left-[22px]" : "left-0.5"}`} /></span>
+                        {row.enabled ? t("modules.on") : t("modules.off")}
+                      </button>
+                    </form>
+                  ) : <span className={row.enabled ? ui.chipOk : ui.chip}>{row.enabled ? t("modules.on") : t("modules.off")}</span>}
+                  {row.enabled && mine.length > 0 && <a href={`/admin/instances/${mine[0]!.id}`} className={ui.btn}>⚙️ {t("modules.adjust")}</a>}
+                  {row.enabled && mine.length === 0 && mod && (
+                    <form action={addInstance.bind(null, row.id)}><button className={ui.btnPrimary}>{t("modules.setUp")}</button></form>
+                  )}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      {advanced && (
+        <>
       {[...MODULE_TYPES, "broken" as const].map((type) => {
         const group = mods.filter(({ mod }) => (mod ? effectiveType(mod.manifest) : "broken") === type);
         if (group.length === 0) return null;
@@ -136,6 +173,8 @@ export default async function ModulesPage({ searchParams }: { searchParams: Prom
       </section>
         );
       })}
+        </>
+      )}
 
     </div>
   );

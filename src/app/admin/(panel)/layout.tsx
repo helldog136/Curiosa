@@ -12,12 +12,12 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   const nav = await getAdminNav(locale, config.defaultLocale);
   const canManage = user.role !== "editor";
 
-  const link = "block rounded-lg px-3 py-1.5 text-sm hover:bg-surface";
-  const group = "mb-1 mt-5 px-3 text-xs font-semibold uppercase tracking-wide text-muted";
+  const link = "block rounded-xl px-3 py-2 text-[15px] transition-colors hover:bg-accent/10 hover:text-accent";
+  const group = "mb-1 mt-6 px-3 text-xs font-semibold uppercase tracking-wider text-muted";
 
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
-      <MobileMenu menuLabel={t("nav.menu")} brand={<a href="/admin" className="block px-3 text-lg font-bold">{config.name}</a>}>
+      <MobileMenu menuLabel={t("nav.menu")} brand={<a href="/admin" className="flex flex-col px-3 leading-tight"><span className="text-lg font-bold">{config.name}</span><span className="text-xs text-muted">{t("nav.adminTagline")}</span></a>}>
         <nav aria-label="Admin">
           <a href="/admin" className={`${link} mt-4`}>{t("nav.dashboard")}</a>
 
@@ -37,8 +37,8 @@ export default async function PanelLayout({ children }: { children: React.ReactN
               <a href="/admin/home" className={link}>{t("nav.home")}</a>
               <a href="/admin/navigation" className={link}>{t("nav.navigation")}</a>
               <a href="/admin/settings" className={link}>{t("nav.settings")}</a>
-              <a href="/admin/modules" className={link}>🧩 {t("nav.modules")}</a>
-              <a href="/admin/catalogue" className={link}>🛒 {t("nav.catalogue")}</a>
+              <a href="/admin/modules" className={link}>🧩 {advanced ? t("nav.modules") : t("nav.modules.simple")}</a>
+              <a href="/admin/catalogue" className={link}>🛒 {advanced ? t("nav.catalogue") : t("nav.catalogue.simple")}</a>
               {advanced && user.role === "owner" && <a href="/admin/mcp" className={link}>🤖 {t("nav.mcp")}</a>}
               {user.role === "owner" && <a href="/admin/backup" className={link}>💾 {t("nav.backup")}</a>}
               {user.role === "owner" && <a href="/admin/audit" className={link}>📜 {t("nav.audit")}</a>}

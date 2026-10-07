@@ -115,6 +115,6 @@ test("morceau isolé : une ligne à lui (flex 100 %), centré, à sa taille natu
 test("morceau isolé : la page et l'admin l'utilisent (classe, case à cocher, enregistrement)", () => {
   const page = fs.readFileSync("src/app/(site)/page.tsx", "utf8");
   assert.ok(page.includes("vh-isolated") && page.includes("vh-solo"));
-  assert.ok(fs.readFileSync("src/app/admin/(panel)/home/page.tsx", "utf8").includes("isolated_"));
+  assert.ok(fs.readFileSync("src/components/admin/HomeBuilder.tsx", "utf8").includes("isolated_"), "l'éditeur de l'accueil envoie isolated_<i>");
   assert.match(fs.readFileSync("src/app/admin/(panel)/home/actions.ts", "utf8"), /isolated_\$\{i\}.*isolated: true/);
 });

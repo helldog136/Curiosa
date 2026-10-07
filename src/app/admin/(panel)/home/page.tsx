@@ -5,7 +5,8 @@ import { localized, type SettingField } from "@/core/modules/types";
 import { ActionForm } from "@/components/admin/ActionForm";
 import { ui } from "@/components/admin/ui";
 import { resolveSize } from "@/core/home";
-import { SECTION_SIZES } from "@/core/modules/types";
+import { SECTION_SIZES, type SectionSize } from "@/core/modules/types";
+import { HomeBuilder, type HomeBlock, type HomeChoice } from "@/components/admin/HomeBuilder";
 import { saveHome } from "./actions";
 
 export default async function HomeAdminPage() {
@@ -15,78 +16,31 @@ export default async function HomeAdminPage() {
   const L = (v: Parameters<typeof localized>[0]) => localized(v, locale, config.defaultLocale);
 
   // Toutes les sections proposables : une par (instance, section déclarée par son module).
-  const choices = active.flatMap(({ instance, mod }) =>
+  const choices: HomeChoice[] = active.flatMap(({ instance, mod }) =>
     sectionsOf(mod.manifest).map((s) => ({
       value: `${instance.key}|${s.id}`,
-      label: `${labeler.label(instance)} — ${L(s.label)}`,
-      options: (s.options ?? []) as SettingField[],
-      size: s.size,
+      icon: mod.manifest.icon ?? "🧩",
+      title: L(s.label),
+      subtitle: labeler.label(instance),
+      defaultSize: resolveSize({}, s.size),
+      options: ((s.options ?? []) as SettingField[]).map((o) => ({ key: o.key, type: o.type, label: L(o.label), default: o.default, options: o.options?.map((op) => ({ value: op.value, label: L(op.label) })) })),
     })),
   );
-  const rows = [...config.homeSections.filter((s) => choices.some((c) => c.value === `${s.instance}|${s.section}`)), null];
+  const initial: HomeBlock[] = config.homeSections.flatMap((row, i) => {
+    const c = choices.find((x) => x.value === `${row.instance}|${row.section}`);
+    return c ? [{ uid: row.id || `s${i}`, value: c.value, size: resolveSize(row, c.defaultSize as SectionSize), isolated: row.isolated === true, options: { ...Object.fromEntries(c.options.filter((o) => o.default !== undefined).map((o) => [o.key, o.default])), ...row.options } }] : [];
+  });
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">{t("nav.home")}</h1>
-        <p className="mt-1 text-sm text-muted">{t("home.intro")}</p>
+        <h1 className={ui.pageTitle}>{t("nav.home")}</h1>
+        <p className={ui.pageIntro}>{advanced ? t("home.intro") : t("home.intro.simple")}</p>
       </div>
       <ActionForm action={saveHome} submitLabel={t("action.save")}>
-        <input type="hidden" name="count" value={rows.length} />
-        {rows.map((row, i) => {
-          const current = row ? choices.find((c) => c.value === `${row.instance}|${row.section}`) : undefined;
-          return (
-            <div key={row?.id ?? "new"} className={`${ui.card} space-y-3`}>
-              <div className="grid items-end gap-3 sm:grid-cols-[5rem_1fr_auto_auto_auto]">
-                <label className="text-sm">
-                  <span className={ui.label}>{t("home.order")}</span>
-                  <input name={`order_${i}`} type="number" defaultValue={(i + 1) * 10} className={ui.input} />
-                </label>
-                <label className="text-sm">
-                  <span className={ui.label}>{t("home.section")}</span>
-                  <select name={`section_${i}`} defaultValue={row ? `${row.instance}|${row.section}` : ""} className={ui.input}>
-                    <option value="">{row ? "—" : `— ${t("home.addSection")} —`}</option>
-                    {choices.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
-                  </select>
-                </label>
-                {row && (
-                  <label className="text-sm">
-                    <span className={ui.label}>{t("home.size")}</span>
-                    <select name={`size_${i}`} defaultValue={resolveSize(row, current?.size)} className={ui.input}>
-                      {SECTION_SIZES.map((z) => <option key={z} value={z}>{t(`home.size.${z}`)}</option>)}
-                    </select>
-                  </label>
-                )}
-                {row && (
-                  <label className="flex items-center gap-2 pb-2 text-sm" title={t("home.isolatedHelp")}>
-                    <input type="checkbox" name={`isolated_${i}`} defaultChecked={row.isolated === true} /> {t("home.isolated")}
-                  </label>
-                )}
-                {row && <label className="flex items-center gap-2 pb-2 text-sm"><input type="checkbox" name={`remove_${i}`} /> {t("action.delete")}</label>}
-              </div>
-              {row && current?.options.map((o) => {
-                const value = row.options[o.key] ?? o.default;
-                const name = `opt_${i}_${o.key}`;
-                return o.type === "boolean" ? (
-                  <label key={o.key} className="flex items-center gap-2 text-sm"><input type="checkbox" name={name} defaultChecked={value === true} /> {L(o.label)}</label>
-                ) : o.type === "select" ? (
-                  <label key={o.key} className="block text-sm">
-                    <span className={ui.label}>{L(o.label)}</span>
-                    <select name={name} defaultValue={String(value ?? "")} className={ui.input}>
-                      {(o.options ?? []).map((op) => <option key={op.value} value={op.value}>{L(op.label)}</option>)}
-                    </select>
-                  </label>
-                ) : (
-                  <label key={o.key} className="block text-sm">
-                    <span className={ui.label}>{L(o.label)}</span>
-                    <input name={name} type={o.type === "number" ? "number" : "text"} defaultValue={value === undefined ? "" : String(value)} className={ui.input} />
-                  </label>
-                );
-              })}
-            </div>
-          );
-        })}
-        <p className={ui.help}>{t("home.sizeHelp")}</p>
+        <HomeBuilder choices={choices} initial={initial}
+          labels={{ empty: t("home.empty"), add: t("home.addBlock"), pick: t("home.pick"), up: t("home.up"), down: t("home.down"), remove: t("home.removeBlock"), size: t("home.size"), alone: t("home.isolated"), aloneHelp: t("home.isolatedHelp"), adjust: t("home.adjust"),
+            sizes: Object.fromEntries(SECTION_SIZES.map((z) => [z, t(`home.size.${z}`)])), sizeHelp: t("home.sizeHelp") }} />
         {advanced && <p className={ui.help}>{t("home.optionsHint")}</p>}
       </ActionForm>
     </div>

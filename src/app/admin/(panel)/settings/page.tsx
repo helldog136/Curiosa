@@ -24,7 +24,7 @@ export default async function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">{t("nav.settings")}</h1>
+      <header><h1 className={ui.pageTitle}>{t("nav.settings")}</h1>{!advanced && <p className={ui.pageIntro}>{t("settings.intro.simple")}</p>}</header>
       <ActionForm action={saveSettings} submitLabel={t("action.save")} className="space-y-8">
         {advanced && <input type="hidden" name="__adv" value="1" />}
         <section className="space-y-4">
@@ -32,14 +32,18 @@ export default async function SettingsPage() {
           <p className="text-sm text-muted">{t("settings.languagesHelp")}</p>
           <Select name="defaultLocale" label={t("settings.defaultLocale")} defaultValue={config.defaultLocale}
             options={Object.entries(KNOWN_LOCALES).map(([c, n]) => ({ value: c, label: n }))} />
-          <fieldset>
-            <legend className={ui.label}>{t("settings.enabledLocales")}</legend>
-            <div className="grid gap-1 sm:grid-cols-3">
-              {Object.entries(KNOWN_LOCALES).map(([code, name]) => (
-                <Checkbox key={code} name="enabledLocales" value={code} label={name} defaultChecked={config.locales.includes(code)} />
-              ))}
-            </div>
-          </fieldset>
+          {/* Version simple : une seule langue suffit à la plupart des sites ; les autres sont repliées (et restent envoyées au formulaire). */}
+          <details open={advanced || config.locales.length > 1} className={advanced ? "" : "rounded-xl border border-line bg-bg px-4 py-3"}>
+            <summary className={`cursor-pointer ${advanced ? "hidden" : "text-[15px] font-medium"}`}>{t("settings.moreLanguages")}</summary>
+            <fieldset className={advanced ? "" : "mt-3"}>
+              <legend className={ui.label}>{t("settings.enabledLocales")}</legend>
+              <div className="grid gap-1 sm:grid-cols-3">
+                {Object.entries(KNOWN_LOCALES).map(([code, name]) => (
+                  <Checkbox key={code} name="enabledLocales" value={code} label={name} defaultChecked={config.locales.includes(code)} />
+                ))}
+              </div>
+            </fieldset>
+          </details>
           {advanced && <Select name="adminLocale" label={t("settings.adminLocale")} help={t("settings.adminLocaleHelp")} defaultValue={config.adminLocale ?? config.defaultLocale}
             options={Object.keys(KNOWN_LOCALES).map((c) => ({ value: c, label: `${localeName(c)}${UI_LOCALES.includes(c) ? "" : ` (${t("settings.fallbackEn")})`}` }))} />}
           {advanced && <Checkbox name="blockAiBots" label={t("settings.blockAiBots")} help={t("settings.blockAiBotsHelp")} defaultChecked={blockAiBots} />}
@@ -49,8 +53,8 @@ export default async function SettingsPage() {
         <section className="space-y-4">
           <h2 className="text-lg font-semibold">{t("settings.identity")}</h2>
           {config.locales.map((l) => (
-            <fieldset key={l} className={`${ui.card} space-y-3`}>
-              <legend className="px-2 text-sm font-medium">{localeName(l)}</legend>
+            <fieldset key={l} className={`${ui.card} space-y-4`}>
+              {(advanced || config.locales.length > 1) && <legend className="px-2 text-sm font-medium">{localeName(l)}</legend>}
               <TextField name={`site.name__${l}`} label={t("settings.siteName")} defaultValue={String(values["site.name"]?.[l] ?? "")} />
               <TextField name={`site.tagline__${l}`} label={t("settings.tagline")} defaultValue={String(values["site.tagline"]?.[l] ?? "")} />
               <TextArea name={`site.about__${l}`} label={t("settings.about")} help={t("settings.aboutHelp")} rows={4} defaultValue={String(values["site.about"]?.[l] ?? "")} />

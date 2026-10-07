@@ -532,5 +532,6 @@ Un module est **du code de confiance** : il tourne sur le serveur avec les droit
 - [ ] Si la forme de mes données a changé : `dataVersion` augmenté et migration écrite et testée sur des données de l'ancienne version.
 - [ ] Essayé en vrai : installation locale, activation, instance, page, formulaire, admin, désinstallation propre.
 - [ ] Un `README.md` explique ce que fait le module, ses réglages et ses limites ; la version est **taguée** (`git tag v1.0.0`).
+- [ ] **Pensez à Emma et à Hugo.** Emma n'a aucun bagage technique : tout réglage qu'elle doit remplir porte un libellé simple (« Adresse de votre salon Discord », pas « webhookUrl ») et une aide en une phrase ; un réglage de technicien (délai, mode de test, format) porte `"advanced": true` : il n'apparaît que dans le mode avancé de Hugo, avec une valeur par défaut raisonnable. Vos textes d'admin (`adminPanel`) disent ce qu'on peut faire, pas comment ça marche.
 - [ ] Un **README.md** à la racine du dépôt : il est affiché dans le Catalogue avant l'installation (à quoi sert le module, réglages, permissions, et si vous le souhaitez un lien pour un don volontaire : le Catalogue est gratuit, rien ne s'y vend).
 - [ ] Pour le Catalogue : dépôt public sur un hôte autorisé, ajouté à `catalogue/index.json` (demande de fusion) ou proposé dans `modules-community/` / `modules-examples/`.

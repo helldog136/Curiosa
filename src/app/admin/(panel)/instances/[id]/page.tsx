@@ -93,42 +93,11 @@ export default async function InstancePage({ params, searchParams }: { params: P
     }
   };
 
-  return (
-    <div className="space-y-8">
-      <div className="space-y-3">
-        <InstanceTabs t={t} id={instance.id} keyName={instance.key} name={labeler.label(instance)} icon={mod.manifest.icon ?? "🧩"} active="settings" content={!!content} canConfigure={user.role !== "editor"} />
-        <p className="text-sm text-muted">
-          {L(mod.manifest.name)}{advanced && <> · {t(`type.${effectiveType(mod.manifest)}`)} · v{mod.manifest.version} · {t("instances.technicalId")} <span className="font-mono">{instance.key}</span></>}
-        </p>
-        <p>{L(mod.manifest.description)}</p>
-        {mod.def.overlay && (
-          <p className="rounded-lg border border-line bg-surface p-3 text-sm">
-            {t("instances.overlayUrl")}: <code className="break-all font-mono">{siteUrl}/overlays/{instance.key}</code>
-          </p>
-        )}
-        {dataStatus && (
-          <div role="alert" className="space-y-2 rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm">
-            <p>{t(dataStatus.status === "newer" ? "migration.newer" : "migration.failed")}</p>
-            {dataStatus.error && <p className="font-mono text-xs">{dataStatus.error}</p>}
-            <form action={retryMigrationAction.bind(null, instance.id)}><button className={ui.btn}>{t("migration.retry")}</button></form>
-          </div>
-        )}
-        {taskRows.length > 0 && (
-          <div className={`${ui.card} space-y-1 text-sm`}>
-            <p className="font-medium">{t("tasks.title")}</p>
-            <ul className="space-y-0.5">
-              {taskRows.map((r) => (
-                <li key={r.name}>
-                  <code className="font-mono">{r.name}</code> · {t("tasks.every", { n: r.every })} ·{" "}
-                  {r.state ? <span className={r.state.status === "ok" ? "" : "text-red-500"}>{t(r.state.status === "ok" ? "tasks.ok" : "tasks.failed")} · {r.state.lastRun.slice(0, 16).replace("T", " ")} UTC{r.state.error ? ` · ${r.state.error}` : ""}</span> : t("tasks.never")}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-        {!mod.row.enabled && <p className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">{t("modules.disabledNotice")}</p>}
-      </div>
-
+  // Un réglage à remplir (clé, adresse, identifiant… encore vide, sans valeur par défaut) : on ouvre les réglages d'office plutôt que de les cacher.
+  const toFill = visibleSettings.some((f) => ["secret", "text", "url"].includes(f.type) && f.default === undefined && !f.translatable && !Object.values(stored[f.key] ?? {}).some((v) => v !== undefined && v !== ""));
+  const panelNode = <Blocks blocks={panel} locale={locale} adminInstanceId={instance.id} />;
+  const forms = (
+    <>
       <ActionForm action={saveInstance} submitLabel={t("action.save")}>
         <input type="hidden" name="id" value={id} />
         {advanced && <input type="hidden" name="__adv" value="1" />}
@@ -138,15 +107,29 @@ export default async function InstancePage({ params, searchParams }: { params: P
           <TextField name="nickname" label={t("instances.nickname")} help={t("instances.nicknameAdminHelp", { module: L(mod.manifest.name) })} required defaultValue={instance.nickname ?? ""} />
         )}
 
-        <fieldset className={`${ui.card} space-y-4`}>
-          <legend className="px-2 text-sm font-medium">{t("instances.names")}</legend>
-          {config.locales.map((l) => (
-            <div key={l} className="grid gap-3 sm:grid-cols-2">
-              <TextField name={`name_${l}`} label={`${t("field.name")} — ${localeName(l)}`} defaultValue={instance.names[l] ?? ""} required={l === config.defaultLocale} />
-              <TextField name={`description_${l}`} label={`${t("field.description")} — ${localeName(l)}`} defaultValue={instance.descriptions[l] ?? ""} />
-            </div>
-          ))}
-        </fieldset>
+        {advanced ? (
+          <fieldset className={`${ui.card} space-y-4`}>
+            <legend className="px-2 text-sm font-medium">{t("instances.names")}</legend>
+            {config.locales.map((l) => (
+              <div key={l} className="grid gap-3 sm:grid-cols-2">
+                <TextField name={`name_${l}`} label={`${t("field.name")} — ${localeName(l)}`} defaultValue={instance.names[l] ?? ""} required={l === config.defaultLocale} />
+                <TextField name={`description_${l}`} label={`${t("field.description")} — ${localeName(l)}`} defaultValue={instance.descriptions[l] ?? ""} />
+              </div>
+            ))}
+          </fieldset>
+        ) : (
+          <>
+            {/* Version simple : un seul nom, dans la langue du site ; les traductions déjà saisies sont conservées telles quelles. */}
+            <TextField name={`name_${config.defaultLocale}`} label={t("instances.displayName")} help={t("instances.displayNameHelp")} defaultValue={instance.names[config.defaultLocale] ?? ""} required />
+            <input type="hidden" name={`description_${config.defaultLocale}`} value={instance.descriptions[config.defaultLocale] ?? ""} />
+            {config.locales.filter((l) => l !== config.defaultLocale).map((l) => (
+              <span key={l}>
+                <input type="hidden" name={`name_${l}`} value={instance.names[l] ?? ""} />
+                <input type="hidden" name={`description_${l}`} value={instance.descriptions[l] ?? ""} />
+              </span>
+            ))}
+          </>
+        )}
 
         <div className="grid gap-3 sm:grid-cols-2">
           <Checkbox name="enabled" label={t("instances.enabled")} defaultChecked={instance.enabled} />
@@ -191,7 +174,7 @@ export default async function InstancePage({ params, searchParams }: { params: P
         )}
       </ActionForm>
 
-      {(mod.manifest.consumes ?? []).length > 0 && (
+      {advanced && (mod.manifest.consumes ?? []).length > 0 && (
         <ActionForm action={saveSources} submitLabel={t("action.save")}>
           <input type="hidden" name="id" value={id} />
           {advanced && <input type="hidden" name="__adv" value="1" />}
@@ -243,11 +226,60 @@ export default async function InstancePage({ params, searchParams }: { params: P
         </ActionForm>
       )}
 
-      {panel.length > 0 && <Blocks blocks={panel} locale={locale} adminInstanceId={instance.id} />}
+    </>
+  );
+
+  return (
+    <div className="space-y-8">
+      <div className="space-y-3">
+        <InstanceTabs t={t} id={instance.id} keyName={instance.key} name={labeler.label(instance)} icon={mod.manifest.icon ?? "🧩"} active="settings" content={!!content} canConfigure={user.role !== "editor"} />
+        {(advanced || labeler.label(instance) !== L(mod.manifest.name)) && (
+          <p className="text-sm text-muted">
+            {L(mod.manifest.name)}{advanced && <> · {t(`type.${effectiveType(mod.manifest)}`)} · v{mod.manifest.version} · {t("instances.technicalId")} <span className="font-mono">{instance.key}</span></>}
+          </p>
+        )}
+        <p>{L(mod.manifest.description)}</p>
+        {mod.def.overlay && (
+          <p className="rounded-lg border border-line bg-surface p-3 text-sm">
+            {t("instances.overlayUrl")}: <code className="break-all font-mono">{siteUrl}/overlays/{instance.key}</code>
+          </p>
+        )}
+        {dataStatus && (
+          <div role="alert" className="space-y-2 rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm">
+            <p>{t(dataStatus.status === "newer" ? "migration.newer" : "migration.failed")}</p>
+            {dataStatus.error && <p className="font-mono text-xs">{dataStatus.error}</p>}
+            <form action={retryMigrationAction.bind(null, instance.id)}><button className={ui.btn}>{t("migration.retry")}</button></form>
+          </div>
+        )}
+        {advanced && taskRows.length > 0 && (
+          <div className={`${ui.card} space-y-1 text-sm`}>
+            <p className="font-medium">{t("tasks.title")}</p>
+            <ul className="space-y-0.5">
+              {taskRows.map((r) => (
+                <li key={r.name}>
+                  <code className="font-mono">{r.name}</code> · {t("tasks.every", { n: r.every })} ·{" "}
+                  {r.state ? <span className={r.state.status === "ok" ? "" : "text-red-500"}>{t(r.state.status === "ok" ? "tasks.ok" : "tasks.failed")} · {r.state.lastRun.slice(0, 16).replace("T", " ")} UTC{r.state.error ? ` · ${r.state.error}` : ""}</span> : t("tasks.never")}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {!mod.row.enabled && <p className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">{t("modules.disabledNotice")}</p>}
+      </div>
+
+      {/* Version simple : ce que la fonctionnalité montre d'abord (ses éléments), puis ses réglages repliés. Version avancée : tout, dans l'ordre. */}
+      {!advanced && panel.length > 0 && panelNode}
+      {!advanced && panel.length > 0 ? (
+        <details className={ui.card} open={toFill}>
+          <summary className="cursor-pointer text-lg font-semibold">{t("instances.settingsFold")}{toFill && <span className={`${ui.chipWarn} ml-3 align-middle`}>{t("instances.toFill")}</span>}</summary>
+          <div className="mt-6 space-y-8">{forms}</div>
+        </details>
+      ) : forms}
+      {advanced && panel.length > 0 && panelNode}
 
       <form action={deleteInstanceAction.bind(null, instance.id)} className="border-t border-line pt-6">
-        <p className="mb-2 text-sm text-muted">{t("instances.deleteWarning")}</p>
-        <ConfirmButton message={t("confirm.delete")}>{t("instances.delete")}</ConfirmButton>
+        <p className="mb-2 text-sm text-muted">{advanced ? t("instances.deleteWarning") : t("instances.deleteWarning.simple")}</p>
+        <ConfirmButton message={t("confirm.delete")}>{advanced ? t("instances.delete") : t("instances.delete.simple")}</ConfirmButton>
       </form>
     </div>
   );
