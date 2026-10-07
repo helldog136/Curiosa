@@ -84,8 +84,11 @@ Le script peut aussi être lancé à la main (`node scripts/update.mjs v1.2.3`),
 
 ## Sauvegarder
 
-Tout ce qui est à vous est dans **`data/`** (base SQLite, images envoyées, modules installés, secret de session) et `.env`.
-Sauvegardez ces deux éléments ; le reste se réinstalle.
+**En un clic depuis l'admin** (*Sauvegarde*) : un fichier chiffré par le mot de passe de votre choix, lisible plus tard même sans le
+framework, et restaurable (les modules sont réinstallés depuis la marketplace). Voir [BACKUP.md](BACKUP.md).
+
+Pour une sauvegarde de serveur « brute », tout ce qui est à vous est dans **`data/`** (base SQLite, images envoyées, modules installés,
+secret de session) et `.env`.
 
 ## Publier une version (pour qui maintient le framework)
 

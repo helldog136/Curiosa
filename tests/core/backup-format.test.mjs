@@ -130,3 +130,13 @@ test("LISIBLE SANS LE FRAMEWORK : un fichier chiffré par `openssl enc` (sans no
   assert.equal(readTarGz(r.plain)[0].content.toString(), "fait par openssl");
   fs.rmSync(dir, { recursive: true });
 });
+
+test("documentation : la commande de déchiffrement affichée partout contient les vraies valeurs (itérations, algorithme)", async () => {
+  const { KDF_ITERATIONS } = await import("@/core/backup/crypto");
+  const { readmeText } = await import("@/core/backup/readme");
+  const cmd = `openssl enc -d -aes-256-cbc -pbkdf2 -iter ${KDF_ITERATIONS} -md sha256`;
+  assert.ok(readmeText({ siteName: "S", createdAt: "x", frameworkVersion: "1" }).includes(cmd), "README placé dans l'archive");
+  assert.ok(fs.readFileSync("docs/BACKUP.md", "utf8").includes(cmd), "docs/BACKUP.md");
+  assert.ok(fs.readFileSync("src/app/admin/(panel)/backup/page.tsx", "utf8").includes(cmd), "page d'admin");
+  assert.ok(fs.readFileSync("src/core/backup/crypto.ts", "utf8").includes(cmd), "commentaire du code");
+});

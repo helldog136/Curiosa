@@ -64,7 +64,7 @@ export default async function MarketplacePage({ searchParams }: { searchParams: 
           <p className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">{t("marketplace.customWarning")}</p>
           <ActionForm action={installCustomAction} submitLabel={t("modules.installButton")}>
             <TextField name="repo" type="url" label={t("modules.repoUrl")} placeholder="https://github.com/owner/vitrine-module-example" required help={t("modules.repoHelp")} />
-            <Checkbox name="trust" label={t("marketplace.trust")} />
+            <Checkbox name="trust" label={t("marketplace.trust")} required />
           </ActionForm>
         </details>
       )}
