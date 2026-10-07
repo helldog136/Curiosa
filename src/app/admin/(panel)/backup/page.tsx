@@ -10,7 +10,7 @@ export default async function BackupPage() {
   const labels = Object.fromEntries(
     ["migrated", "migrationFailed", "file", "password", "check", "apply", "cancel", "done", "login", "entries", "users", "instances", "uploads", "replaceWarning", "confirmReplace", "trustCustom",
       "status.installed", "status.marketplace", "status.custom", "status.unavailable", "outcome.kept", "outcome.installed", "outcome.skipped", "outcome.failed", "outcome.unavailable",
-      "error.wrong-password", "error.not-a-backup", "error.corrupt", "error.tampered", "error.newer-format", "error.no-owner", "error.no-file", "error.too-large", "error.expired", "error.failed", "error.network", "error.forbidden", "error.unauthorized"]
+      "error.wrong-password", "error.not-a-backup", "error.corrupt", "error.tampered", "error.newer-format", "error.newer-schema", "error.no-owner", "error.no-file", "error.too-large", "error.expired", "error.failed", "error.network", "error.forbidden", "error.unauthorized"]
       .map((k) => [k, t(`backup.${k}`)]),
   );
   return (

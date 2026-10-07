@@ -10,6 +10,7 @@ import { resetModuleRegistry } from "@/core/modules/registry";
 import { audit } from "@/core/permissions";
 import { UPLOAD_NAME_RE } from "@/core/services/uploads";
 import { decryptBackup } from "./crypto";
+import { applyUpgrades, currentSchemaVersion, isNewerSchema, pickKnownColumns } from "./schema";
 import { safetyCopy } from "./files";
 import { DATA_FILES, FORMAT, FORMAT_VERSION, sha256, type BackupManifest, type BackupModule } from "./format";
 import { readTarGz } from "./tar";
@@ -20,7 +21,12 @@ export type ParsedBackup = {
   data: { users: Row[]; settings: Row[]; modules: BackupModule[]; instances: Row[]; instanceTranslations: Row[]; entries: Row[]; entryTranslations: Row[]; redirects: Row[]; records: Row[] };
   uploads: { name: string; content: Buffer }[];
 };
-export type ParseError = "not-a-backup" | "wrong-password" | "corrupt" | "tampered" | "newer-format" | "no-owner";
+export type ParseError = "not-a-backup" | "wrong-password" | "corrupt" | "tampered" | "newer-format" | "newer-schema" | "no-owner";
+
+/** Une sauvegarde faite par un schéma de base PLUS RÉCENT que le nôtre ne peut pas être lue : il faut d'abord mettre le framework à jour. */
+export async function checkSchema(manifest: BackupManifest): Promise<"ok" | "newer-schema"> {
+  return isNewerSchema(manifest.schemaVersion, await currentSchemaVersion()) ? "newer-schema" : "ok";
+}
 
 /** Déchiffre puis valide une sauvegarde : format, version, empreintes de TOUS les fichiers, présence d'un propriétaire. */
 export function openBackup(file: Buffer, password: string, iterations?: number): { ok: true; backup: ParsedBackup; plain: Buffer } | { ok: false; error: ParseError } {
@@ -92,7 +98,7 @@ export async function planModules(modules: BackupModule[]): Promise<ModulePlan[]
 /* ───────────── Application ───────────── */
 
 export type ModuleOutcome = { id: string; outcome: "kept" | "installed" | "skipped" | "failed" | "unavailable"; error?: string };
-export type RestoreReport = { ok: true; modules: ModuleOutcome[]; migrations: MigrationOutcome[]; counts: Record<string, number>; safetyCopy: string | null } | { ok: false; error: "invalid" | "failed"; modules: ModuleOutcome[] };
+export type RestoreReport = { ok: false; error: "newer-schema"; modules: ModuleOutcome[] } | { ok: true; modules: ModuleOutcome[]; migrations: MigrationOutcome[]; counts: Record<string, number>; safetyCopy: string | null } | { ok: false; error: "invalid" | "failed"; modules: ModuleOutcome[] };
 
 type Installers = { fromMarketplace: (id: string) => Promise<InstallResult>; fromRepo: (url: string) => Promise<InstallResult> };
 const realInstallers: Installers = { fromMarketplace: installFromMarketplace, fromRepo: (url) => installModule(url) };
@@ -128,8 +134,12 @@ export async function applyRestore(backup: ParsedBackup, opts: { confirmCustom: 
     outcomes.push(result.ok ? { id: m.id, outcome: "installed" } : { id: m.id, outcome: "failed", error: result.error });
   }
 
+  if ((await checkSchema(backup.manifest)) === "newer-schema") return { ok: false, error: "newer-schema", modules: [] };
   const copy = safetyCopy("pre-restore", opts.dataDir);
-  const d = backup.data;
+  // Sauvegarde d'un schéma plus ancien : transformations explicites, puis seules les colonnes encore connues (les nouvelles prennent leur défaut).
+  const d = structuredClone(backup.data);
+  applyUpgrades(d, backup.manifest.schemaVersion);
+  for (const key of ["users", "instances", "instanceTranslations", "entries", "entryTranslations", "redirects", "records"] as const) d[key] = d[key].map((r) => pickKnownColumns(key, r));
   try {
     await prisma.$transaction(async (tx) => {
       await tx.moduleRecord.deleteMany(); await tx.entryTranslation.deleteMany(); await tx.entry.deleteMany();

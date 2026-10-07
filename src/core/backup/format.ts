@@ -43,6 +43,8 @@ export type BackupManifest = {
   formatVersion: number;
   createdAt: string;
   frameworkVersion: string;
+  /** Dernière migration de base appliquée au moment de la sauvegarde (voir schema.ts). */
+  schemaVersion?: string;
   site: { name: string; defaultLocale: string; locales: string[] };
   counts: Record<string, number>;
   modules: BackupModule[];

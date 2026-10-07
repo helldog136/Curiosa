@@ -12,6 +12,7 @@ import { readVersion } from "@/core/updates/service";
 import { encryptBackup } from "./crypto";
 import { backupFilename, DATA_FILES, FORMAT, FORMAT_VERSION, fileOf, jsonFile, sha256, type BackupManifest, type BackupModule } from "./format";
 import { readmeText } from "./readme";
+import { currentSchemaVersion } from "./schema";
 import { createTarGz, isSafeArchivePath, type TarFile } from "./tar";
 
 /** Réglages qui n'ont aucun sens après une restauration (état de la dernière vérification de version). */
@@ -132,7 +133,7 @@ export async function createBackup(password: string, opts: { now?: Date; iterati
   } catch { /* pas encore d'envois */ }
 
   const manifest: BackupManifest = {
-    format: FORMAT, formatVersion: FORMAT_VERSION, createdAt: now.toISOString(), frameworkVersion: readVersion(),
+    format: FORMAT, formatVersion: FORMAT_VERSION, createdAt: now.toISOString(), frameworkVersion: readVersion(), schemaVersion: await currentSchemaVersion(),
     site: { name: config.name, defaultLocale: config.defaultLocale, locales: config.locales },
     counts: { users: users.length, instances: instances.length, entries: entries.length, translations: entryTranslations.length, records: records.length, redirects: redirects.length, modules: modules.length, uploads: uploadCount },
     modules,

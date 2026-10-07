@@ -478,6 +478,7 @@
   "backup.error.not-a-backup": "This file is not a backup of this framework.",
   "backup.error.corrupt": "The file is corrupted or incomplete.",
   "backup.error.tampered": "The backup was modified or is incomplete: refused.",
+  "backup.error.newer-schema": "This backup comes from a newer database version: update the framework first.",
   "backup.error.newer-format": "This backup comes from a newer framework version: update it first.",
   "backup.error.no-owner": "This backup has no owner: refused so you are not locked out.",
   "backup.error.no-file": "Choose a file.",

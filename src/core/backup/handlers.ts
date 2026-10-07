@@ -1,6 +1,6 @@
 import { dropStash, stash, unstash } from "./files";
 import { MAX_UPLOAD } from "./guard";
-import { applyRestore, openBackup, parseBackup, planModules } from "./restore";
+import { applyRestore, checkSchema, openBackup, parseBackup, planModules } from "./restore";
 
 /**
  * Les deux étapes d'une restauration, communes à l'admin (propriétaire connecté) et à l'assistant de première installation
@@ -20,6 +20,7 @@ export async function previewHandler(request: Request, guard: Guard): Promise<Re
   const opened = openBackup(Buffer.from(await file.arrayBuffer()), password);
   if (!opened.ok) return Response.json({ ok: false, error: opened.error }, { status: 400 });
   const { manifest } = opened.backup;
+  if ((await checkSchema(manifest)) === "newer-schema") return Response.json({ ok: false, error: "newer-schema" }, { status: 400 });
   return Response.json({
     ok: true,
     token: stash(opened.plain),

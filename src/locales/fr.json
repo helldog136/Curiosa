@@ -478,6 +478,7 @@
   "backup.error.not-a-backup": "Ce fichier n'est pas une sauvegarde de ce framework.",
   "backup.error.corrupt": "Le fichier est corrompu ou incomplet.",
   "backup.error.tampered": "La sauvegarde a été modifiée ou est incomplète : elle est refusée.",
+  "backup.error.newer-schema": "Cette sauvegarde vient d'une version plus récente de la base de données : mettez le framework à jour d'abord.",
   "backup.error.newer-format": "Cette sauvegarde vient d'une version plus récente du framework : mettez-le à jour d'abord.",
   "backup.error.no-owner": "Cette sauvegarde ne contient aucun propriétaire : elle est refusée pour ne pas vous enfermer dehors.",
   "backup.error.no-file": "Choisissez un fichier.",
