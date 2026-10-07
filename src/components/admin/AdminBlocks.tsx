@@ -33,8 +33,9 @@ export function AdminBlockForm({ instanceId, block }: { instanceId: string; bloc
   return (
     <form action={action} className={`${ui.card} space-y-4`}>
       {block.title && <h3 className="text-lg font-semibold">{block.title}</h3>}
+      {block.fields.filter((f) => f.kind === "hidden").map((f) => <Field key={f.name} f={f} />)}
       <div className="grid gap-4 sm:grid-cols-2">
-        {block.fields.map((f) => (
+        {block.fields.filter((f) => f.kind !== "hidden").map((f) => (
           <div key={f.name} className={f.kind === "textarea" || f.kind === "image" ? "sm:col-span-2" : ""}><Field f={f} /></div>
         ))}
       </div>

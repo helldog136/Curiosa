@@ -29,14 +29,14 @@ export default async function MarketplacePage({ searchParams }: { searchParams: 
         <h1 className="text-2xl font-bold">🛒 {t("nav.marketplace")}</h1>
         <p className="mt-1 text-sm text-muted">{t("marketplace.intro")}</p>
       </div>
-      <p className="flex flex-wrap items-center gap-3 text-xs text-muted">
+      <div className="flex flex-wrap items-center gap-3 text-xs text-muted">
         <span>
           {source.source === "repository" && t("marketplace.source.repository", { date: new Date(source.fetchedAt ?? 0).toLocaleString(locale) })}
           {source.source === "cache" && t("marketplace.source.cache", { date: new Date(source.fetchedAt ?? 0).toLocaleString(locale) })}
           {(source.source === "snapshot" || source.source === "none") && t("marketplace.source.snapshot")}
         </span>
         {isOwner && <form action={refreshMarketplaceAction}><button className="underline">{t("marketplace.refresh")}</button></form>}
-      </p>
+      </div>
       {error && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm">{error.startsWith("modules.error.") ? t(error) : t("error.generic")}</p>}
 
       {groups.map((g) => g.list.length > 0 && (

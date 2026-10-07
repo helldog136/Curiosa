@@ -199,3 +199,10 @@ test("pages d'admin : aucune fonction anonyme passée à un formulaire client (R
     assert.ok(!/<ActionForm[^>]*action=\{(async\s*)?\(/.test(read(f)), `${f} : <ActionForm action={() => …}> n'est pas sérialisable ; exportez une action depuis actions.ts`);
   }
 });
+
+test("HTML valide dans les pages : jamais de <form> à l'intérieur d'un <p> (le navigateur ferme le <p> et React échoue à l'hydratation)", () => {
+  for (const f of [...code("src/app"), ...code("src/components")].filter((x) => x.endsWith(".tsx"))) {
+    const text = read(f);
+    for (const m of text.matchAll(/<p\b[^>]*>(?:(?!<\/p>)[\s\S])*?<form\b/g)) assert.fail(`${f} ligne ${text.slice(0, m.index).split("\n").length} : <form> dans un <p>`);
+  }
+});
