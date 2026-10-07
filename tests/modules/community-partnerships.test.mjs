@@ -449,3 +449,31 @@ test("le texte saisi n'est jamais interprété : transmis tel quel (échappement
   assert.equal(items[0].title, "<img src=x onerror=1>");
   assert.ok(!/\bfetch\(|node:http|node:net/.test(source));
 });
+
+const partnersMod = await import("../../modules-community/partnerships/index.mjs");
+
+test("import CSV : lecture (séparateur détecté, guillemets, retours à la ligne), création, complétion sans écrasement, relance sans doublon", async () => {
+  assert.deepEqual(partnersMod.parseCsv('brand;url\r\n"Acme; Inc";"https://a.io"\r\n\r\nB;'), [["brand", "url"], ["Acme; Inc", "https://a.io"], ["B", ""]]);
+  assert.deepEqual(partnersMod.parseCsv('brand,brief\n"Une ""marque""","ligne 1\nligne 2"'), [["brand", "brief"], ['Une "marque"', "ligne 1\nligne 2"]]);
+
+  const ctx = ctxFor("en");
+  await ctx.api.store.add("partners", { brand: "Acme", status: "discussion", sector: "" });
+  const csv = [
+    "brand,status,url,sector,country,hack,chances",
+    'Acme,envoye,https://acme.io,Gaming,BE,x,40',                // existante : complétée, statut conservé
+    'Nova,pas-un-statut,javascript:alert(1),Tech,FR,y,150',       // nouvelle : statut inconnu → a_contacter, url dangereuse vidée, chances bornées
+    ",ignoree,,,,,",                                              // sans marque : ignorée
+  ].join("\n");
+  const r = await partnersMod.importPartners(ctx, csv);
+  assert.deepEqual([r.created, r.completed, r.skipped], [1, 1, 1]);
+  const rows = (await ctx.api.store.list("partners")).map((x) => x.data);
+  const acme = rows.find((p) => p.brand === "Acme"), nova = rows.find((p) => p.brand === "Nova");
+  assert.deepEqual([acme.status, acme.sector, acme.url, acme.country], ["discussion", "Gaming", "https://acme.io", "BE"], "complétée, statut jamais écrasé");
+  assert.deepEqual([nova.status, nova.url, nova.chances], ["a_contacter", "", 100]);
+  assert.ok(!("hack" in nova) && !("hack" in acme), "colonnes inconnues écartées");
+  const again = await partnersMod.importPartners(ctx, csv);
+  assert.deepEqual([again.created, again.completed], [0, 0], "relancer ne change rien");
+  assert.equal(await ctx.api.store.count("partners"), 2);
+  assert.equal((await partnersMod.importPartners(ctx, "url\nx")).error, "noBrand");
+  assert.equal((await partnersMod.importPartners(ctx, "brand")).error, "empty");
+});

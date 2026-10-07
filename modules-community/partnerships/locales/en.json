@@ -54,5 +54,12 @@
   "s_termine": "Finished",
   "overview": "Overview",
   "private": "Private: nothing here is shown on your website.",
-  "save": "Save"
+  "save": "Save",
+  "importTitle": "Import partners (CSV)",
+  "importSubmit": "Import",
+  "importCsv": "CSV (first line = column names)",
+  "importHelp": "Columns: brand (required), status, url, sector, country, contact, brief, products, benefits, source, chances. A brand you already have is only completed (empty fields), never overwritten, so you can re-run an import safely.",
+  "importDone": "Import done: {created} created, {completed} completed, {skipped} skipped.",
+  "importNoBrand": "The first line must contain a \"brand\" column.",
+  "importEmpty": "Nothing to import."
 }
