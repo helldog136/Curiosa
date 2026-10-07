@@ -837,6 +837,23 @@ Trois modules communautaires qui coopèrent sans se connaître, uniquement par s
 - [`sponsors`](../modules-community/sponsors) : module à contenu ; chaque sponsor peut référencer un partenaire ; affiche la mention de partenariat ; fournit `sponsor.card`.
 - [`sponsor-ticker`](../modules-community/sponsor-ticker) : l'overlay, qui ne connaît que `sponsor.card` (ou `core.entry`).
 
+### Présence en ligne : annonces, live, vidéos, alertes
+
+Des modules communautaires qui coopèrent aussi uniquement par sujets (aucun ne connaît les autres) :
+
+```
+ Chaîne Twitch ──stream.live──────────▶ Annonces Discord ◀──feed.item / core.entry── tout module qui publie
+ (live, clips)  ──maze.poster────────▶ Overlay labyrinthe        (blog, vidéos YouTube, agenda…)
+ Chaîne YouTube ──feed.item (vidéos)──▶ Annonces Discord · flux RSS
+                ──maze.poster────────▶ Overlay labyrinthe
+```
+
+- [`discord-announcer`](../modules-community/discord-announcer) : webhook Discord, anti-doublon, journal, test ; utilise le service `tasks`.
+- [`youtube-channel`](../modules-community/youtube-channel) : vidéo mise en avant (sans lecteur intégré), vidéos proposées au flux RSS et aux affiches.
+- [`twitch-channel`](../modules-community/twitch-channel) : le live en cours (`stream.live`) et les derniers clips.
+- [`alerts-overlay`](../modules-community/alerts-overlay) : alertes OBS en direct (SSE), alimentées par une requête authentifiée par jeton.
+- [`game-suggestions`](../modules-community/game-suggestions) : suggestions de jeux avec statuts, votes « rejoue-le », jaquettes RAWG.
+
 ### Planning
 
 [`planning`](../modules-community/planning) lit un calendrier au format iCal (l'« adresse secrète » de
