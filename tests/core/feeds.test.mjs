@@ -93,11 +93,11 @@ test("flux : un lien d'entrée externe est suivi si l'instance ouvre les liens, 
 test("flux complet : titre du site, langue valide ou repli, instance inconnue → null", async () => {
   await setSetting("i18n.default", "fr");
   await setSetting("i18n.enabled", ["fr", "en"]);
-  await setSetting("site.name", "Ma vitrine", "fr");
+  await setSetting("site.name", "Ma curiosa", "fr");
   await setSetting("site.name", "My showcase", "en");
   const a = await blog("Actus", { fr: "Actus", en: "News" });
   const fr = await F.buildFeed({});
-  assert.equal(fr.title, "Ma vitrine");
+  assert.equal(fr.title, "Ma curiosa");
   assert.equal(fr.language, "fr");
   assert.equal((await F.buildFeed({ locale: "en" })).title, "My showcase");
   assert.equal((await F.buildFeed({ locale: "xx" })).language, "fr", "langue non activée → langue par défaut");

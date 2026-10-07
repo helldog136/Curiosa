@@ -12,7 +12,7 @@ import { UPLOAD_NAME_RE } from "@/core/services/uploads";
 import { decryptBackup } from "./crypto";
 import { applyUpgrades, currentSchemaVersion, isNewerSchema, pickKnownColumns } from "./schema";
 import { safetyCopy } from "./files";
-import { DATA_FILES, FORMAT, FORMAT_VERSION, sha256, type BackupManifest, type BackupModule } from "./format";
+import { DATA_FILES, FORMAT, FORMAT_VERSION, LEGACY_FORMATS, sha256, type BackupManifest, type BackupModule } from "./format";
 import { readTarGz } from "./tar";
 
 type Row = Record<string, unknown>;
@@ -41,7 +41,7 @@ export function parseBackup(plain: Buffer): { ok: true; backup: ParsedBackup } |
   try { files = new Map(readTarGz(plain).map((f) => [f.path, f.content])); } catch { return { ok: false, error: "corrupt" }; }
   let manifest: BackupManifest;
   try { manifest = JSON.parse(files.get("backup.json")?.toString("utf8") ?? ""); } catch { return { ok: false, error: "not-a-backup" }; }
-  if (manifest?.format !== FORMAT || !Array.isArray(manifest.files) || !Array.isArray(manifest.modules)) return { ok: false, error: "not-a-backup" };
+  if ((manifest?.format !== FORMAT && !LEGACY_FORMATS.includes(String(manifest?.format))) || !Array.isArray(manifest.files) || !Array.isArray(manifest.modules)) return { ok: false, error: "not-a-backup" };
   if (!Number.isInteger(manifest.formatVersion) || manifest.formatVersion > FORMAT_VERSION) return { ok: false, error: "newer-format" };
 
   // Chaque fichier annoncé existe et a la bonne empreinte ; aucun fichier n'est ajouté en douce.

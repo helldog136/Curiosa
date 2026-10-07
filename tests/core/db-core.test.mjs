@@ -75,11 +75,11 @@ test("configuration du site : la langue par défaut figure toujours parmi les la
 
 test("configuration du site : textes traduits selon la langue demandée", async () => {
   await setSetting("i18n.default", "fr");
-  await setSetting("site.name", "Ma vitrine", "fr");
+  await setSetting("site.name", "Ma curiosa", "fr");
   await setSetting("site.name", "My showcase", "en");
   assert.equal((await getSiteConfig("en")).name, "My showcase");
-  assert.equal((await getSiteConfig()).name, "Ma vitrine");
-  assert.equal((await getSiteConfig("de")).name, "Ma vitrine");
+  assert.equal((await getSiteConfig()).name, "Ma curiosa");
+  assert.equal((await getSiteConfig("de")).name, "Ma curiosa");
 });
 
 test("identité visuelle : source unique, couleurs dérivées, noms traduits", async () => {

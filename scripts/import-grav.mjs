@@ -26,7 +26,7 @@ const root = args[0] && !args[0].startsWith("--") ? path.resolve(args[0]) : unde
 if (!root || !fs.existsSync(path.join(root, "pages"))) { console.error("Usage : npm run import:grav -- <dossier user/ de Grav> [--out f] [--password p] [--blog route,route]\n(le dossier doit contenir pages/)"); process.exit(1); }
 
 // ── base temporaire : l'import ne touche jamais à une base existante ──
-const work = fs.mkdtempSync(path.join(os.tmpdir(), "vitrine-grav-"));
+const work = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-grav-"));
 process.env.DATA_DIR = work;
 process.env.DATABASE_URL = `file:${path.join(work, "import.db")}`;
 execFileSync("npx", ["prisma", "migrate", "deploy"], { stdio: "ignore", env: process.env });

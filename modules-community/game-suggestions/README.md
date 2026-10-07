@@ -1,4 +1,4 @@
-# Suggestions de jeux — module communautaire de Vitrine
+# Suggestions de jeux — module communautaire de Curiosa
 
 Page publique `/suggestions` : la communauté propose un jeu, vous le faites avancer (proposé → planifié → accepté → déjà joué → fini, ou rejeté, non public).
 

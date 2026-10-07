@@ -1,4 +1,4 @@
-# Overlay sponsors (OBS) — module communautaire de Vitrine
+# Overlay sponsors (OBS) — module communautaire de Curiosa
 
 Un bandeau « lower third » : une carte à découpe diagonale qui glisse depuis la droite toutes les
 *N* secondes avec le nom du sponsor, son code promo, un résumé et un **QR code**. Trois styles (néon, ciné, broadcast),

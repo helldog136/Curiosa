@@ -436,7 +436,7 @@ personnalisés. Les entrées alimentent le sujet `core.entry` : n'importe quel o
 
 ### Sur votre machine, dans le vrai framework
 
-1. Lancez le framework en local (voir [INSTALL.md](INSTALL.md)) avec la variable d'environnement **`VITRINE_ALLOW_LOCAL_MODULES=1`** (elle autorise les dépôts locaux ; **jamais** sur un serveur public).
+1. Lancez le framework en local (voir [INSTALL.md](INSTALL.md)) avec la variable d'environnement **`CURIOSA_ALLOW_LOCAL_MODULES=1`** (elle autorise les dépôts locaux ; **jamais** sur un serveur public).
 2. Votre module est un dépôt git **avec au moins un commit** : `git init && git add . && git commit -m "first version"`.
 3. Admin → **Catalogue** → **Installer un dépôt personnel (non vérifié)** → saisissez `file:///chemin/absolu/vers/votre/depot`, cochez la case de confiance. Le module est installé **désactivé**.
 4. **Modules** → activez-le, ajoutez une instance, ouvrez-la : réglages, panneau d'admin, page publique, section sur l'accueil (admin → Accueil).
@@ -488,7 +488,7 @@ Testez au minimum : le manifeste est valide, chaque section/action/sujet déclar
 **Être listé dans le Catalogue** : deux voies.
 
 1. **Livré avec le framework** : un dossier de module dans `modules-community/` (modules complets) ou `modules-examples/` (exemples) du dépôt du framework, `module.json` à sa racine. Il est installé depuis les fichiers du serveur, sans réseau.
-2. **Dépôt reconnu** : une entrée dans [`catalogue/index.json`](../catalogue/index.json), le fichier du dépôt du framework que **chaque installation relit à l'exécution** — il ne suit pas le rythme des versions du framework (`VITRINE_UPDATE_REMOTE` choisit le remote d'origine d'un clone ; `VITRINE_CATALOGUE_REPO`, `VITRINE_CATALOGUE_REF`, `VITRINE_CATALOGUE_RUNTIME` règlent cette lecture ; `MODULES_INDEX_URL` ajoute un index `https://` supplémentaire). On l'ajoute par une demande de fusion :
+2. **Dépôt reconnu** : une entrée dans [`catalogue/index.json`](../catalogue/index.json), le fichier du dépôt du framework que **chaque installation relit à l'exécution** — il ne suit pas le rythme des versions du framework (`CURIOSA_UPDATE_REMOTE` choisit le remote d'origine d'un clone ; `CURIOSA_CATALOGUE_REPO`, `CURIOSA_CATALOGUE_REF`, `CURIOSA_CATALOGUE_RUNTIME` règlent cette lecture ; `MODULES_INDEX_URL` ajoute un index `https://` supplémentaire). On l'ajoute par une demande de fusion :
 
 ```json
 { "id": "guestbook", "name": "Guestbook", "description": "A moderated guestbook.", "repo": "https://github.com/<vous>/<depot>",

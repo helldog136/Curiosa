@@ -1,4 +1,4 @@
-# Contacts — module communautaire de Vitrine
+# Contacts — module communautaire de Curiosa
 
 Votre carnet d'adresses **privé** : personnes, organisations, e-mail, téléphone, autres canaux, relation, notes datées. Aucune page publique.
 

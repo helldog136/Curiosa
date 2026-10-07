@@ -94,7 +94,7 @@ test("envois : noms servis restreints à ceux que le cœur génère, types MIME 
 });
 
 test("envois : saveUpload écrit un fichier au nom aléatoire et refuse le reste", async () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "vitrine-up-"));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-up-"));
   process.env.DATA_DIR = dir;
   // UPLOADS_DIR est calculé à l'import de config : on réimporte avec un paramètre de requête pour obtenir un module neuf.
   const fresh = await import(`@/core/services/uploads?x=${Date.now()}`).catch(() => null);

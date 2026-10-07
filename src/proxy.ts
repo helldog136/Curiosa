@@ -1,9 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { isKnownLocale } from "@/core/i18n/locales";
 
-const LOCALE_HEADER = "x-vitrine-locale";
-const PATH_HEADER = "x-vitrine-path";
-const COOKIE = "vitrine_locale";
+const LOCALE_HEADER = "x-curiosa-locale";
+const PATH_HEADER = "x-curiosa-path";
+const COOKIE = "curiosa_locale";
 
 /**
  * Langue du visiteur dans l'URL : /en/blog → on réécrit vers /blog et on

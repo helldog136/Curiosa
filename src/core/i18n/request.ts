@@ -4,9 +4,9 @@ import { getSiteConfig } from "../settings";
 import { makeTranslator, type Translator } from "./dictionary";
 import { isKnownLocale } from "./locales";
 
-export const LOCALE_HEADER = "x-vitrine-locale";
-export const VISITOR_COOKIE = "vitrine_locale";
-export const ADMIN_COOKIE = "vitrine_admin_locale";
+export const LOCALE_HEADER = "x-curiosa-locale";
+export const VISITOR_COOKIE = "curiosa_locale";
+export const ADMIN_COOKIE = "curiosa_admin_locale";
 
 /** Langue du visiteur : préfixe d'URL (posé par proxy.ts) sinon langue par défaut. */
 export const getVisitorLocale = cache(async (): Promise<string> => {

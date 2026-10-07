@@ -1,4 +1,4 @@
-// Overlay alertes (OBS) — module communautaire de Vitrine. Porté de l'ancien site.
+// Overlay alertes (OBS) — module communautaire de Curiosa. Porté de l'ancien site.
 //
 // Flux en direct (SSE) en mémoire : un seul processus serveur, un EventEmitter suffit (pas de Redis pour ce volume).
 // Quelque chose POUSSE une alerte : POST /m/<clé>/push avec `Authorization: Bearer <jeton>` et { kind, message, username? }.
@@ -6,7 +6,7 @@
 import { EventEmitter } from "node:events";
 import { timingSafeEqual } from "node:crypto";
 
-const bus = (globalThis.__vitrineAlertsBus ??= Object.assign(new EventEmitter(), {}));
+const bus = (globalThis.__curiosaAlertsBus ??= Object.assign(new EventEmitter(), {}));
 bus.setMaxListeners(100);
 
 const KINDS = ["follow", "sub", "raid", "test", "alert"];

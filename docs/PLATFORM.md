@@ -1,6 +1,6 @@
 # Le cœur offre, les modules apportent
 
-Vitrine sépare nettement deux choses :
+Curiosa sépare nettement deux choses :
 
 | | **Services du cœur** (helpers) | **Fonctionnalités** (modules) |
 |---|---|---|

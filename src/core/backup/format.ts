@@ -10,7 +10,9 @@ import type { TarFile } from "./tar";
  *   readable/…                  les mêmes données, mises en forme pour un humain (Markdown, JSON, CSV…)
  *   uploads/…                   les images et fichiers envoyés
  */
-export const FORMAT = "vitrine-backup";
+export const FORMAT = "curiosa-backup";
+/** Ancien nom du format (le projet s'est appelé autrement avant sa première release) : toujours accepté à la lecture. */
+export const LEGACY_FORMATS: readonly string[] = ["vitrine-backup"];
 export const FORMAT_VERSION = 1;
 
 export const DATA_FILES = {

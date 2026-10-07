@@ -1,4 +1,4 @@
-// Contacts — module communautaire de Vitrine : un carnet d'adresses privé, et le fournisseur du service « contact.store ».
+// Contacts — module communautaire de Curiosa : un carnet d'adresses privé, et le fournisseur du service « contact.store ».
 //
 // Le formulaire de contact du site (ou tout autre module qui `requires` ce service) y range ce qu'il reçoit : un contact « à vérifier » dont la
 // note est le message. Un assistant (MCP) peut ensuite se renseigner sur la personne, compléter la fiche et la passer « active », ou la supprimer

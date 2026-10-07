@@ -1,4 +1,4 @@
-# Vitrine
+# Curiosa
 
 Un framework de site personnel pour créateurs (streamers, vidéastes, artistes…) :
 **installable par n'importe qui, sur n'importe quelle machine**, personnalisé à la
@@ -8,7 +8,7 @@ Le même code peut faire tourner le site d'un streamer, d'un duo, d'un collectif
 dans le dépôt ne parle d'une personne ou d'un projet précis : textes, liens, couleurs,
 langues, menus et même les redirections `/twitch` ou `/youtube` se règlent dans l'admin.
 
-> Nom de travail : « Vitrine ».
+> Nom de travail : « Curiosa ».
 
 ## Les idées clés
 
@@ -36,7 +36,7 @@ docker compose up -d --build
 
 Puis ouvrir http://localhost:3000 : l'**assistant de première installation** démarre
 (langue, nom du site, rubriques de départ, premiers liens, compte propriétaire).
-Les données (base SQLite, images envoyées, modules installés) vivent dans le volume `vitrine_data`.
+Les données (base SQLite, images envoyées, modules installés) vivent dans le volume `curiosa_data`.
 
 Site exposé sur Internet avant d'être configuré ? Définissez `SETUP_TOKEN` : l'assistant
 l'exigera, et personne d'autre ne pourra réclamer le site.
@@ -69,7 +69,7 @@ src/core/           Le cœur, agnostique : runtime des modules (registre, instal
 src/core/platform.ts  Racine de composition : relie les services aux fonctionnalités
 src/modules-builtin Les fonctions de base, déjà sous forme de modules : blog, links, codes,
                     pages, collection, hero, contact-form, live-status, ticker-overlay,
-                    press-kit (vitrine de l'identité réglée dans le cœur)
+                    press-kit (curiosa de l'identité réglée dans le cœur)
 src/app/(site)      Site public (accueil assemblé de sections, pages d'instances, redirections)
 src/app/admin       L'admin unique : assistant, entrées, une sous-page par instance, accueil,
                     redirections, modules & catalogue…
@@ -100,4 +100,4 @@ Le framework et son **Catalogue** de modules sont gratuits. Aucun module ne se v
 
 ## Licence
 
-Vitrine, développé par [Helldog136](https://helldog136.be), est distribué sous licence **MIT** (voir [`LICENSE`](LICENSE)), modules livrés (`modules-community/`, `modules-examples/`) compris. Les dépendances tierces gardent leur propre licence : la liste complète, avec les textes, est dans [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md), générée par `npm run licenses` (un test vérifie qu'elle est à jour et qu'aucune dépendance n'a de licence incompatible). Un module installé depuis un dépôt tiers reste sous la licence que son auteur a déclarée dans `module.json`.
+Curiosa, développé par [Helldog136](https://helldog136.be), est distribué sous licence **MIT** (voir [`LICENSE`](LICENSE)), modules livrés (`modules-community/`, `modules-examples/`) compris. Les dépendances tierces gardent leur propre licence : la liste complète, avec les textes, est dans [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md), générée par `npm run licenses` (un test vérifie qu'elle est à jour et qu'aucune dépendance n'a de licence incompatible). Un module installé depuis un dépôt tiers reste sous la licence que son auteur a déclarée dans `module.json`.

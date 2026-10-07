@@ -1,4 +1,4 @@
-// Labyrinthe 3D pour OBS — module communautaire de Vitrine (hors du cœur : s'installe depuis git).
+// Labyrinthe 3D pour OBS — module communautaire de Curiosa (hors du cœur : s'installe depuis git).
 //
 // Il ne sait rien des blogs, des codes promo ni des sponsors : il digère des « affiches »
 // (sujets `core.entry` — les entrées publiées de n'importe quelle instance — et `maze.poster`,

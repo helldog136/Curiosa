@@ -62,7 +62,7 @@ deploy.log
 *.db-journal
 /uploads/
 /backups/
-*.vitrine-backup
+*.curiosa-backup
 *.vbak
 
 # éditeurs et système

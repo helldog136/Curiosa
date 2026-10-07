@@ -1,4 +1,4 @@
-# Partenariats — module communautaire de Vitrine
+# Partenariats — module communautaire de Curiosa
 
 Le suivi **privé** de vos partenariats : marques démarchées, statut (à contacter → envoyé → en discussion →
 accepté → publié…), chances, relances dues, journal daté, contacts. Porté du suivi de prospection de

@@ -1,4 +1,4 @@
-// Partenariats — module communautaire de Vitrine (suivi interne, aucune page publique).
+// Partenariats — module communautaire de Curiosa (suivi interne, aucune page publique).
 //
 // Les fiches vivent dans le stockage privé de l'instance (ctx.api.store) : collections
 // « partners », « journal » et « contacts ». Le module ne montre RIEN sur le site : il expose

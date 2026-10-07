@@ -1,4 +1,4 @@
-# Planning des streams — module communautaire de Vitrine
+# Planning des streams — module communautaire de Curiosa
 
 Vos prochains streams, jour par jour, lus depuis un **Google Agenda** (ou n'importe quel flux iCal). Porté du planning
 d'un site existant.

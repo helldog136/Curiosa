@@ -8,7 +8,7 @@ import { execFileSync } from "node:child_process";
 const { createTarGz, readTarGz, isSafeArchivePath } = await import("@/core/backup/tar");
 const { encryptBackup, decryptBackup, MIN_PASSWORD_LENGTH } = await import("@/core/backup/crypto");
 
-const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), "vitrine-fmt-"));
+const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-fmt-"));
 const files = [
   { path: "README.txt", content: Buffer.from("Bonjour — lisible.\n", "utf8") },
   { path: "data/a.json", content: Buffer.from('{"é":"ü"}') },

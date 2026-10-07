@@ -8,7 +8,7 @@ import { localeName } from "@/core/i18n/locales";
  */
 export async function LanguageSwitcher({ locales, current, defaultLocale }: { locales: string[]; current: string; defaultLocale: string }) {
   if (locales.length < 2) return null;
-  const path = (await headers()).get("x-vitrine-path") || "/";
+  const path = (await headers()).get("x-curiosa-path") || "/";
   return (
     <nav aria-label="Language" className="flex items-center gap-1 text-sm">
       {locales.map((code) => {

@@ -11,14 +11,14 @@ dépend d'un site en particulier : tout ce qui vous est propre (nom, textes, mod
 
 ## Installation
 
-On installe une **release** : une archive déjà compilée, publiée sur la page *Releases* du dépôt (`vitrine-vX.Y.Z-linux-x64.tar.gz`).
+On installe une **release** : une archive déjà compilée, publiée sur la page *Releases* du dépôt (`curiosa-vX.Y.Z-linux-x64.tar.gz`).
 
 ```bash
 # 1. Télécharger et déplier la dernière release
-mkdir -p /srv/vitrine && cd /srv/vitrine
-curl -LO https://github.com/<propriétaire>/<dépôt>/releases/latest/download/vitrine-vX.Y.Z-linux-x64.tar.gz
-curl -LO https://github.com/<propriétaire>/<dépôt>/releases/latest/download/vitrine-vX.Y.Z-linux-x64.tar.gz.sha256
-sha256sum -c vitrine-*.sha256 && tar -xzf vitrine-*.tar.gz && rm vitrine-*.tar.gz*
+mkdir -p /srv/curiosa && cd /srv/curiosa
+curl -LO https://github.com/<propriétaire>/<dépôt>/releases/latest/download/curiosa-vX.Y.Z-linux-x64.tar.gz
+curl -LO https://github.com/<propriétaire>/<dépôt>/releases/latest/download/curiosa-vX.Y.Z-linux-x64.tar.gz.sha256
+sha256sum -c curiosa-*.sha256 && tar -xzf curiosa-*.tar.gz && rm curiosa-*.tar.gz*
 
 # 2. Configuration et base de données
 cp .env.example .env
@@ -40,8 +40,8 @@ développement ne se met pas à jour depuis l'admin (c'est à vous de faire `git
 
 ## Démarrage automatique
 
-Un exemple d'unité systemd est fourni : [`deploy/vitrine.service`](../deploy/vitrine.service). Avec pm2 : `pm2 start "npx next start -p 3000" --name vitrine`
-(et `VITRINE_SUPERVISED=1` dans son environnement). Avec Docker : voir le `Dockerfile` et `docker-compose.yml`.
+Un exemple d'unité systemd est fourni : [`deploy/curiosa.service`](../deploy/curiosa.service). Avec pm2 : `pm2 start "npx next start -p 3000" --name curiosa`
+(et `CURIOSA_SUPERVISED=1` dans son environnement). Avec Docker : voir le `Dockerfile` et `docker-compose.yml`.
 
 ## Mises à jour depuis l'admin
 
@@ -76,8 +76,8 @@ Le nouveau code n'est utilisé qu'après un redémarrage du serveur. Dites au fr
 
 | Variable | Effet |
 |---|---|
-| `VITRINE_RESTART_COMMAND` | Commande lancée après une mise à jour réussie (ex. `sudo systemctl restart vitrine`, `pm2 restart vitrine`). Prioritaire. |
-| `VITRINE_SUPERVISED=1` | Le serveur s'arrête simplement après la mise à jour et son superviseur (systemd `Restart=always`, pm2, Docker `restart:`) le relance. |
+| `CURIOSA_RESTART_COMMAND` | Commande lancée après une mise à jour réussie (ex. `sudo systemctl restart curiosa`, `pm2 restart curiosa`). Prioritaire. |
+| `CURIOSA_SUPERVISED=1` | Le serveur s'arrête simplement après la mise à jour et son superviseur (systemd `Restart=always`, pm2, Docker `restart:`) le relance. |
 | *(aucune des deux)* | Rien n'est coupé : la page vous demande de redémarrer à la main. |
 
 Une commande avec `sudo` suppose une règle `sudoers` limitée à cette seule commande pour l'utilisateur du site.
@@ -91,8 +91,8 @@ Comme il n'y a ni compilation ni réinstallation de dépendances, la mise à jou
 
 - L'installation doit venir d'une **archive de release** (présence de `release.json`) et son dossier appartenir à l'utilisateur qui fait tourner le site, sinon : « mise à jour non disponible ».
 - `tar` doit être disponible (présent partout sous Linux). La plateforme de l'archive doit être celle du serveur (`linux-x64`).
-- Avec **Docker**, on remplace l'image au lieu de mettre à jour en place (`VITRINE_INSTALL=docker` est déjà réglé dans l'image) : `docker compose build --pull && docker compose up -d`.
-- Pour suivre un autre dépôt de releases (un fork) : `VITRINE_UPDATE_REPO=<propriétaire>/<dépôt>`.
+- Avec **Docker**, on remplace l'image au lieu de mettre à jour en place (`CURIOSA_INSTALL=docker` est déjà réglé dans l'image) : `docker compose build --pull && docker compose up -d`.
+- Pour suivre un autre dépôt de releases (un fork) : `CURIOSA_UPDATE_REPO=<propriétaire>/<dépôt>`.
 
 Le script peut aussi être lancé à la main (`node scripts/update.mjs v1.2.3`), avec les mêmes sauvegardes et le même retour arrière.
 
@@ -118,9 +118,9 @@ dépôt injoignable, le site garde la dernière copie reçue, à défaut celle l
 
 | Variable | Effet |
 |---|---|
-| `VITRINE_CATALOGUE_REPO` | Dépôt git qui publie l'index (défaut : le dépôt d'origine de l'installation ; indispensable avec Docker, où il n'y en a pas). |
-| `VITRINE_CATALOGUE_REF` | Branche ou étiquette à lire (défaut : la branche par défaut). |
-| `VITRINE_CATALOGUE_RUNTIME=0` | Ne pas interroger le dépôt : copie livrée avec la version seulement (serveur sans accès au réseau). |
+| `CURIOSA_CATALOGUE_REPO` | Dépôt git qui publie l'index (défaut : le dépôt d'origine de l'installation ; indispensable avec Docker, où il n'y en a pas). |
+| `CURIOSA_CATALOGUE_REF` | Branche ou étiquette à lire (défaut : la branche par défaut). |
+| `CURIOSA_CATALOGUE_RUNTIME=0` | Ne pas interroger le dépôt : copie livrée avec la version seulement (serveur sans accès au réseau). |
 | `MODULES_INDEX_URL` | Index JSON `https://` **supplémentaire** (le vôtre, celui d'une communauté) : il ne peut qu'ajouter des modules. |
 
 ## Sauvegarder

@@ -1,4 +1,4 @@
-// Planning des streams — module communautaire de Vitrine, porté d'un planning existant.
+// Planning des streams — module communautaire de Curiosa, porté d'un planning existant.
 //
 // Lit un calendrier iCal (adresse secrète d'un Google Agenda), en tire les créneaux à venir et les montre :
 // page publique jour par jour, section d'accueil « prochains streams », sujet `planning.slot` pour d'autres

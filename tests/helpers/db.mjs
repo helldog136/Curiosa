@@ -29,12 +29,12 @@ function ensureTemplate() {
  */
 export async function useTestDb() {
   ensureTemplate();
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "vitrine-test-"));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-test-"));
   const file = path.join(dir, "test.db");
   fs.copyFileSync(template, file);
   process.env.DATABASE_URL = `file:${file}`;
   process.env.DATA_DIR = dir;
-  process.env.VITRINE_ALLOW_LOCAL_MODULES = "1";
+  process.env.CURIOSA_ALLOW_LOCAL_MODULES = "1";
   const { prisma } = await import("@/core/db");
   const tables = ["ApiToken", "AuditLog", "ModuleRecord", "EntryTranslation", "Entry", "InstanceTranslation", "ModuleInstance", "Redirect", "Setting", "Module", "User"];
   return {
@@ -43,8 +43,8 @@ export async function useTestDb() {
     /** Vide toutes les tables (entre deux tests). Le registre des modules livrés est recréé à la demande. */
     async reset() {
       for (const t of tables) await prisma.$executeRawUnsafe(`DELETE FROM "${t}"`);
-      globalThis.vitrineBuiltinsSynced = false; globalThis.vitrineBuiltinsSyncing = null;
-      globalThis.vitrineModuleCache?.clear?.();
+      globalThis.curiosaBuiltinsSynced = false; globalThis.curiosaBuiltinsSyncing = null;
+      globalThis.curiosaModuleCache?.clear?.();
       // Modules installés depuis git : on repart d'un dossier vide.
       fs.rmSync(path.join(dir, "modules"), { recursive: true, force: true });
     },

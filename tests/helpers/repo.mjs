@@ -5,7 +5,7 @@ import { execFileSync } from "node:child_process";
 
 /** Crée un vrai dépôt git local à partir de fichiers { nom: texte | objet JSON }. */
 export function makeRepo(files, { branch = "main" } = {}) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "vitrine-repo-"));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-repo-"));
   for (const [name, content] of Object.entries(files)) {
     fs.mkdirSync(path.dirname(path.join(dir, name)), { recursive: true });
     fs.writeFileSync(path.join(dir, name), typeof content === "string" ? content : JSON.stringify(content));

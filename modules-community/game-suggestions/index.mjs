@@ -1,4 +1,4 @@
-// Suggestions de jeux — module communautaire de Vitrine. Porté de l'ancien site.
+// Suggestions de jeux — module communautaire de Curiosa. Porté de l'ancien site.
 //
 // Le public propose un jeu (liste publique, statut « proposé ») ; l'administrateur le fait avancer (planifié, accepté, déjà joué, fini…).
 // Sur les jeux « déjà joués », le public vote « rejoue-le » : N votes par mois et par visiteur (un cookie + une mémoire côté serveur).

@@ -1,4 +1,4 @@
-// Chaîne YouTube — module communautaire de Vitrine. Porté de l'ancien site.
+// Chaîne YouTube — module communautaire de Curiosa. Porté de l'ancien site.
 //
 // Deux modes (comme l'original) : l'identifiant de chaîne seul (flux RSS public, ~15 dernières vidéos avec leurs vues, pas de durée) ou, avec une
 // clé d'API, l'API officielle (durées exactes, Shorts distingués). Mise en cache 10 minutes : on ne sollicite pas YouTube à chaque visite.

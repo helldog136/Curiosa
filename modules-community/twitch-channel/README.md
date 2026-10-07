@@ -1,4 +1,4 @@
-# Chaîne Twitch — module communautaire de Vitrine
+# Chaîne Twitch — module communautaire de Curiosa
 
 Fournit deux sujets aux autres modules (il n'en consomme aucun) :
 

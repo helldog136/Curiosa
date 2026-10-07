@@ -1,4 +1,4 @@
-// Annonces Discord — module communautaire de Vitrine. Porté de l'ancien site, sans aucune connaissance de ce qui est annoncé :
+// Annonces Discord — module communautaire de Curiosa. Porté de l'ancien site, sans aucune connaissance de ce qui est annoncé :
 // il digère les sujets « core.entry » (toute entrée publiée) et « feed.item » (tout ce qu'un module offre au flux RSS).
 //
 // Webhook entrant : pas de bot. Principe anti-doublon : chaque élément a une clé mémorisée dans le stockage ; un élément inconnu n'est annoncé

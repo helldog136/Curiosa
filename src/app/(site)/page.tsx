@@ -27,7 +27,7 @@ export default async function HomePage() {
   const h = await headers();
 
   if (!h.get(LOCALE_HEADER)) {
-    const remembered = (await cookies()).get("vitrine_locale")?.value;
+    const remembered = (await cookies()).get("curiosa_locale")?.value;
     const target =
       remembered && remembered !== "default"
         ? config.locales.includes(remembered) ? remembered : null

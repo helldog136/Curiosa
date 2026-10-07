@@ -24,7 +24,7 @@ export type ParsedRepo = { url: string; ref?: string };
 /**
  * Accepte https://hôte/propriétaire/dépôt[.git][#ref]. Seuls les hôtes de
  * MODULES_ALLOWED_HOSTS sont autorisés ("*" = tous). Les dépôts locaux
- * (file://) ne sont acceptés que si VITRINE_ALLOW_LOCAL_MODULES=1, pour le
+ * (file://) ne sont acceptés que si CURIOSA_ALLOW_LOCAL_MODULES=1, pour le
  * développement d'un module.
  */
 export function parseRepoUrl(input: string): { ok: true; repo: ParsedRepo } | { ok: false; error: string } {
@@ -37,7 +37,7 @@ export function parseRepoUrl(input: string): { ok: true; repo: ParsedRepo } | { 
     return { ok: false, error: "modules.error.url" };
   }
   if (url.protocol === "file:") {
-    if (process.env.VITRINE_ALLOW_LOCAL_MODULES !== "1") return { ok: false, error: "modules.error.local" };
+    if (process.env.CURIOSA_ALLOW_LOCAL_MODULES !== "1") return { ok: false, error: "modules.error.local" };
     return { ok: true, repo: { url: url.href, ref } };
   }
   if (url.protocol !== "https:" || url.username || url.password || url.search) {
@@ -55,7 +55,7 @@ export function parseRepoUrl(input: string): { ok: true; repo: ParsedRepo } | { 
 const GIT_ENV = { ...process.env, GIT_TERMINAL_PROMPT: "0", GIT_ASKPASS: "echo" };
 
 function gitArgs(args: string[]): string[] {
-  const protocolFile = process.env.VITRINE_ALLOW_LOCAL_MODULES === "1" ? "always" : "never";
+  const protocolFile = process.env.CURIOSA_ALLOW_LOCAL_MODULES === "1" ? "always" : "never";
   return [
     "-c", "protocol.ext.allow=never",
     "-c", `protocol.file.allow=${protocolFile}`,

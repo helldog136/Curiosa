@@ -179,7 +179,7 @@ test("entrées (EntrySummary) et identité (ModuleBrand) lisibles par un module 
 test("variables d'environnement et chemins cités par le code d'installation : documentés", () => {
   const installer = read("src/core/modules/installer.ts") + read("src/core/modules/recognized.ts");
   const vars = [...new Set([...installer.matchAll(/process\.env\.([A-Z_]+)/g)].map((m) => m[1]))];
-  assert.ok(vars.includes("MODULES_INDEX_URL") && vars.includes("VITRINE_ALLOW_LOCAL_MODULES") && vars.includes("MODULES_ALLOWED_HOSTS"));
+  assert.ok(vars.includes("MODULES_INDEX_URL") && vars.includes("CURIOSA_ALLOW_LOCAL_MODULES") && vars.includes("MODULES_ALLOWED_HOSTS"));
   for (const v of vars) assert.ok(reference.includes(v) && tutorial.includes(v), `${v} absent de la documentation`);
   const bundled = [...read("src/core/modules/catalogue.ts").matchAll(/dir: "([a-z-]+)"/g)].map((m) => m[1]);
   assert.deepEqual(bundled.sort(), ["modules-community", "modules-examples"]);
@@ -193,7 +193,7 @@ test("version de l'API des modules : la documentation cite celle du cœur", () =
 });
 
 test("le tutoriel couvre chaque étape annoncée (checklist, test local, publication, sécurité, modules sans code)", () => {
-  for (const needle of ["VITRINE_ALLOW_LOCAL_MODULES", "file://", "fakeCtx", "MODULES_INDEX_URL", "Checklist", "eval", "content", "theme:accent", "destructive", "readOnly", "backup", "overlay", "filters", "onInstanceDelete", "consumes", "provides", "feed.item"]) {
+  for (const needle of ["CURIOSA_ALLOW_LOCAL_MODULES", "file://", "fakeCtx", "MODULES_INDEX_URL", "Checklist", "eval", "content", "theme:accent", "destructive", "readOnly", "backup", "overlay", "filters", "onInstanceDelete", "consumes", "provides", "feed.item"]) {
     assert.ok(tutorial.includes(needle), `le tutoriel ne parle pas de : ${needle}`);
   }
 });

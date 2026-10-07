@@ -9,7 +9,7 @@ import { makeRepo } from "../helpers/repo.mjs";
 const db = await useTestDb();
 const P = await import("@/core/modules/readme");
 
-beforeEach(async () => { await db.reset(); P.clearPreviewCache(); process.env.VITRINE_ALLOW_LOCAL_MODULES = "1"; });
+beforeEach(async () => { await db.reset(); P.clearPreviewCache(); process.env.CURIOSA_ALLOW_LOCAL_MODULES = "1"; });
 after(() => db.close());
 
 const MANIFEST = { apiVersion: 2, id: "demo-mod", name: { en: "Demo", fr: "Démo" }, version: "1.2.0", license: "MIT", author: "Ada", permissions: ["storage", "routes"], requires: [{ service: "contact.store" }] };
@@ -61,12 +61,12 @@ test("README énorme tronqué ; adresses refusées comme à l'installation (hôt
   const big = makeRepo({ "module.json": MANIFEST, "README.md": "x".repeat(250_000) });
   const p = await P.getModulePreview({ kind: "repo", url: big.url });
   assert.deepEqual([p.readme.length, p.truncated], [100_000, true]);
-  delete process.env.VITRINE_ALLOW_LOCAL_MODULES;
+  delete process.env.CURIOSA_ALLOW_LOCAL_MODULES;
   P.clearPreviewCache();
   await assert.rejects(P.getModulePreview({ kind: "repo", url: "https://evil.example/owner/repo" }), /modules\.error\.host/);
   await assert.rejects(P.getModulePreview({ kind: "repo", url: "ssh://git@github.com/owner/repo" }), /modules\.error\.url/);
   await assert.rejects(P.getModulePreview({ kind: "repo", url: big.url }), /modules\.error\.local/);
-  process.env.VITRINE_ALLOW_LOCAL_MODULES = "1";
+  process.env.CURIOSA_ALLOW_LOCAL_MODULES = "1";
   const repo = makeRepo({ "module.json": MANIFEST, "README.md": "v1" });
   const a = await P.getModulePreview({ kind: "repo", url: repo.url });
   fs.writeFileSync(path.join(repo.dir, "README.md"), "v2"); repo.g("commit", "-qam", "x");

@@ -10,14 +10,14 @@ const S = await import("@/core/updates/service");
 
 beforeEach(async () => {
   await db.reset();
-  for (const k of ["VITRINE_INSTALL", "VITRINE_UPDATE_REPO", "VITRINE_RESTART_COMMAND", "VITRINE_SUPERVISED"]) delete process.env[k];
+  for (const k of ["CURIOSA_INSTALL", "CURIOSA_UPDATE_REPO", "CURIOSA_RESTART_COMMAND", "CURIOSA_SUPERVISED"]) delete process.env[k];
 });
 after(() => db.close());
 
-const ASSET = (tag) => `vitrine-${tag}-${process.platform}-${process.arch}.tar.gz`;
-function app({ version = "1.0.0", release = true, repo = "owner/vitrine" } = {}) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "vitrine-svc-"));
-  fs.writeFileSync(path.join(dir, "package.json"), JSON.stringify({ name: "vitrine", version }));
+const ASSET = (tag) => `curiosa-${tag}-${process.platform}-${process.arch}.tar.gz`;
+function app({ version = "1.0.0", release = true, repo = "owner/curiosa" } = {}) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-svc-"));
+  fs.writeFileSync(path.join(dir, "package.json"), JSON.stringify({ name: "curiosa", version }));
   if (release) fs.writeFileSync(path.join(dir, "release.json"), JSON.stringify({ version, repo }));
   return dir;
 }
@@ -36,7 +36,7 @@ const TAGS = ["v1.0.0", "v1.0.1", "v1.1.0"];
 
 test("installation : archive de release avec dépôt connu → mise à jour possible depuis l'admin", () => {
   const info = S.getInstallInfo(app({ version: "1.2.3" }));
-  assert.deepEqual([info.mode, info.canUpdate, info.version, info.repo], ["release", true, "1.2.3", "owner/vitrine"]);
+  assert.deepEqual([info.mode, info.canUpdate, info.version, info.repo], ["release", true, "1.2.3", "owner/curiosa"]);
 });
 
 test("installation : clone git de développement ou archive sans dépôt → pas de mise à jour depuis l'admin, avec la raison", () => {
@@ -47,7 +47,7 @@ test("installation : clone git de développement ou archive sans dépôt → pas
 });
 
 test("installation : une image Docker se remplace, elle ne se met pas à jour en place", async () => {
-  process.env.VITRINE_INSTALL = "docker";
+  process.env.CURIOSA_INSTALL = "docker";
   const info = S.getInstallInfo(app());
   assert.deepEqual([info.mode, info.canUpdate], ["docker", false]);
   assert.equal((await S.checkForUpdate({ appDir: app(), fetchJson: fakeApi({ tags: TAGS }) })).available, false);
@@ -56,14 +56,14 @@ test("installation : une image Docker se remplace, elle ne se met pas à jour en
 test("installation : redémarrage — commande de l'exploitant, superviseur, ou manuel ; dépôt configurable mais validé", () => {
   const dir = app();
   assert.equal(S.getInstallInfo(dir).restart, "manual");
-  process.env.VITRINE_SUPERVISED = "1";
+  process.env.CURIOSA_SUPERVISED = "1";
   assert.equal(S.getInstallInfo(dir).restart, "supervised");
-  process.env.VITRINE_RESTART_COMMAND = "systemctl restart site";
+  process.env.CURIOSA_RESTART_COMMAND = "systemctl restart site";
   assert.equal(S.getInstallInfo(dir).restart, "command");
-  process.env.VITRINE_UPDATE_REPO = "autre/fork";
+  process.env.CURIOSA_UPDATE_REPO = "autre/fork";
   assert.equal(S.getInstallInfo(dir).repo, "autre/fork");
-  process.env.VITRINE_UPDATE_REPO = "../../etc/passwd";
-  assert.equal(S.getInstallInfo(dir).repo, "owner/vitrine", "valeur dangereuse ignorée");
+  process.env.CURIOSA_UPDATE_REPO = "../../etc/passwd";
+  assert.equal(S.getInstallInfo(dir).repo, "owner/curiosa", "valeur dangereuse ignorée");
 });
 
 test("mise à jour automatique : DÉSACTIVÉE par défaut, activable puis désactivable", async () => {
@@ -86,7 +86,7 @@ test("vérification : mémorise la plus haute version stable et sa nature ; la d
 test("vérification : n'interroge que la liste des releases du dépôt (rien n'est téléchargé)", async () => {
   const api = fakeApi({ tags: TAGS });
   await S.checkForUpdate({ appDir: app(), fetchJson: api });
-  assert.deepEqual(api.seen, ["https://api.github.com/repos/owner/vitrine/releases?per_page=30"]);
+  assert.deepEqual(api.seen, ["https://api.github.com/repos/owner/curiosa/releases?per_page=30"]);
 });
 
 test("vérification : dépôt injoignable → erreur signalée, dernière version connue conservée", async () => {
@@ -117,7 +117,7 @@ test("politique automatique : seulement si activée, applicable, sans mise à jo
 
 test("lancement : version invalide, non plus récente, installation non mise à jour, opération déjà en cours → refusés sans rien lancer", async () => {
   const dir = app({ version: "1.1.0" });
-  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "vitrine-data-"));
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-data-"));
   const started = [];
   const o = { appDir: dir, spawner: (t) => started.push(t), dataDir };
   assert.equal((await S.startUpdate("main", "x", o)).error, "invalid-tag");

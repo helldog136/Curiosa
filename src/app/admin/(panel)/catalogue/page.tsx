@@ -78,7 +78,7 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
           <summary className="cursor-pointer text-lg font-semibold">{t("catalogue.custom")}</summary>
           <p className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">{t("catalogue.customWarning")}</p>
           <form action="/admin/catalogue/details" method="get" className="space-y-3">
-            <TextField name="repo" type="url" label={t("modules.repoUrl")} placeholder="https://github.com/owner/vitrine-module-example" required help={t("modules.repoHelp")} />
+            <TextField name="repo" type="url" label={t("modules.repoUrl")} placeholder="https://github.com/owner/curiosa-module-example" required help={t("modules.repoHelp")} />
             <button className={ui.btnPrimary}>{t("catalogue.preview")}</button>
           </form>
         </details>

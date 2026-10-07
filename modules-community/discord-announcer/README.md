@@ -1,4 +1,4 @@
-# Annonces Discord — module communautaire de Vitrine
+# Annonces Discord — module communautaire de Curiosa
 
 Annonce vos nouveautés sur un salon Discord par **webhook entrant** (aucun bot, aucun compte à lier).
 

@@ -23,11 +23,11 @@ export type LoadedModule = {
 const runtimeImport = new Function("specifier", "return import(specifier)") as (s: string) => Promise<unknown>;
 
 const globalCache = globalThis as unknown as {
-  vitrineModuleCache?: Map<string, LoadedModule>;
-  vitrineBuiltinsSynced?: boolean;
-  vitrineBuiltinsSyncing?: Promise<void> | null;
+  curiosaModuleCache?: Map<string, LoadedModule>;
+  curiosaBuiltinsSynced?: boolean;
+  curiosaBuiltinsSyncing?: Promise<void> | null;
 };
-const loadedCache = (globalCache.vitrineModuleCache ??= new Map());
+const loadedCache = (globalCache.curiosaModuleCache ??= new Map());
 
 export function moduleDir(id: string): string {
   return path.join(MODULES_DIR, id);
@@ -35,9 +35,9 @@ export function moduleDir(id: string): string {
 
 /** Crée la ligne de base des modules livrés avec le cœur la première fois qu'on les voit. */
 async function syncBuiltins(): Promise<void> {
-  if (globalCache.vitrineBuiltinsSynced) return;
+  if (globalCache.curiosaBuiltinsSynced) return;
   // Un seul passage à la fois : deux premières requêtes simultanées ne doivent pas toutes deux créer les mêmes lignes.
-  globalCache.vitrineBuiltinsSyncing ??= (async () => {
+  globalCache.curiosaBuiltinsSyncing ??= (async () => {
     try {
       for (const b of BUILTIN_MODULES) {
         const existing = await prisma.module.findUnique({ where: { id: b.manifest.id } });
@@ -49,12 +49,12 @@ async function syncBuiltins(): Promise<void> {
           await prisma.module.update({ where: { id: existing.id }, data: { version: b.manifest.version } });
         }
       }
-      globalCache.vitrineBuiltinsSynced = true;
+      globalCache.curiosaBuiltinsSynced = true;
     } finally {
-      globalCache.vitrineBuiltinsSyncing = null;
+      globalCache.curiosaBuiltinsSyncing = null;
     }
   })();
-  await globalCache.vitrineBuiltinsSyncing;
+  await globalCache.curiosaBuiltinsSyncing;
 }
 
 export function readGitManifest(id: string): ParsedManifest | null {
@@ -186,6 +186,6 @@ export function sectionsOf(manifest: ParsedManifest): SectionDecl[] {
 /** Oublie les modules chargés et la synchronisation des modules de base (après une restauration, par exemple). */
 export function resetModuleRegistry(): void {
   loadedCache.clear();
-  globalCache.vitrineBuiltinsSynced = false;
-  globalCache.vitrineBuiltinsSyncing = null;
+  globalCache.curiosaBuiltinsSynced = false;
+  globalCache.curiosaBuiltinsSyncing = null;
 }

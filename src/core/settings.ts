@@ -96,7 +96,7 @@ export const getSiteConfig = cache(async (locale?: string): Promise<SiteConfig> 
     locales: locales.includes(defaultLocale) ? locales : [defaultLocale, ...locales],
     autoDetect: (await getSetting<boolean>("i18n.autoDetect")) ?? false,
     adminLocale: (await getSetting<string>("i18n.adminDefault")) ?? null,
-    name: await str("site.name", "Vitrine"),
+    name: await str("site.name", "Curiosa"),
     tagline: await str("site.tagline"),
     about: await str("site.about"),
     logo: (await getSetting<string>("site.logo")) ?? null,

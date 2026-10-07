@@ -1,4 +1,4 @@
-# Labyrinthe 3D (overlay OBS) — module communautaire de Vitrine
+# Labyrinthe 3D (overlay OBS) — module communautaire de Curiosa
 
 Un labyrinthe rétro en raycasting pour OBS : le personnage se promène et s'arrête devant des
 affiches construites à partir de votre contenu. Porté depuis un labyrinthe 3D existant.

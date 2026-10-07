@@ -1,4 +1,4 @@
-// Overlay sponsors (OBS) — module communautaire de Vitrine. Porté du bandeau « lower third » de
+// Overlay sponsors (OBS) — module communautaire de Curiosa. Porté du bandeau « lower third » de
 // Un bandeau existant : carte à découpe diagonale qui glisse depuis la droite, légère flottaison, QR code.
 //
 // Il ne connaît aucun module : il digère le sujet « sponsor.card » (fourni par le module Sponsors)

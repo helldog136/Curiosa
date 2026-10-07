@@ -12,13 +12,13 @@ export const TAG_RE = /^v?\d+\.\d+\.\d+(-rc\.\d+)?$/; // stable ou release candi
 export const REPO_RE = /^[A-Za-z0-9._-]{1,100}\/[A-Za-z0-9._-]{1,100}$/;
 const STALE_LOCK_MS = 60 * 60_000;
 const KEEP_BACKUPS = 5;
-const STAGING = ".vitrine-staging";
-const PREVIOUS = ".vitrine-previous";
+const STAGING = ".curiosa-staging";
+const PREVIOUS = ".curiosa-previous";
 /** Ce que l'archive n'a jamais le droit de remplacer : les données de l'exploitant. */
 const PROTECTED = new Set(["data", ".env", ".git", STAGING, PREVIOUS]);
 
 export const platformId = () => `${process.platform}-${process.arch}`;
-export const assetName = (tag, platform = platformId()) => `vitrine-${tag}-${platform}.tar.gz`;
+export const assetName = (tag, platform = platformId()) => `curiosa-${tag}-${platform}.tar.gz`;
 export const assetUrl = (repo, tag, name) => `https://github.com/${repo}/releases/download/${tag}/${name}`;
 
 /** Chemin du fichier SQLite d'une DATABASE_URL `file:` (relatif = relatif au dossier prisma/, comme Prisma). */

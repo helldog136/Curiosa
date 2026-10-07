@@ -32,7 +32,7 @@ test("push : refusé sans jeton, avec un mauvais jeton, ou si aucun jeton n'est 
 
 test("push : corps invalide, message vide ou trop gros refusés ; type inconnu → alerte ; texte nettoyé et borné", async () => {
   const c = ctx({ pushToken: "secret" }, "k1");
-  const got = []; const on = (e) => got.push(e); (globalThis.__vitrineAlertsBus).on("k1", on);
+  const got = []; const on = (e) => got.push(e); (globalThis.__curiosaAlertsBus).on("k1", on);
   assert.equal((await def.routes.push(post("pas du json"), c)).status, 400);
   assert.equal((await def.routes.push(post({ message: "   " }), c)).status, 400);
   assert.equal((await def.routes.push(post("x".repeat(5000)), c)).status, 413);
@@ -42,7 +42,7 @@ test("push : corps invalide, message vide ou trop gros refusés ; type inconnu �
   assert.equal(got[0].kind, "alert");
   assert.ok(got[0].message.length <= 200 && !got[0].message.includes("\n"));
   assert.equal(got[0].username, "bob");
-  (globalThis.__vitrineAlertsBus).off("k1", on);
+  (globalThis.__curiosaAlertsBus).off("k1", on);
 });
 
 test("flux SSE : reçoit les alertes de SA clé uniquement, se désabonne à la fermeture", async () => {
@@ -70,10 +70,10 @@ test("overlay : configuration échappée, texte inséré via textContent (jamais
 
 test("test d'admin : émet une alerte « test » ; panneau avec la commande d'envoi", async () => {
   const c = ctx({ pushToken: "s" }, "k3");
-  const got = []; const on = (e) => got.push(e); (globalThis.__vitrineAlertsBus).on("k3", on);
+  const got = []; const on = (e) => got.push(e); (globalThis.__curiosaAlertsBus).on("k3", on);
   assert.equal((await def.adminActions.test(c)).ok, "Test alert sent.");
   assert.deepEqual(got, [{ kind: "test", message: "This is a test alert" }]);
-  (globalThis.__vitrineAlertsBus).off("k3", on);
+  (globalThis.__curiosaAlertsBus).off("k3", on);
   const blocks = await def.adminPanel(c);
   assert.ok(blocks.some((b) => b.type === "copy" && b.text.includes("/m/k3/push")));
 });

@@ -16,7 +16,7 @@ import { classify, compareVersions, isPrerelease, pickLatestRelease, TAG_RC_RE, 
  */
 const REPO_RE = /^[A-Za-z0-9._-]{1,100}\/[A-Za-z0-9._-]{1,100}$/;
 const platformId = () => `${process.platform}-${process.arch}`;
-const assetName = (tag: string) => `vitrine-${tag}-${platformId()}.tar.gz`;
+const assetName = (tag: string) => `curiosa-${tag}-${platformId()}.tar.gz`;
 
 export type InstallMode = "release" | "docker" | "manual";
 export type InstallInfo = {
@@ -35,7 +35,7 @@ export type UpdateCheck = { channel: UpdateChannel; prerelease: boolean; latest:
 export type JsonFetcher = (url: string) => Promise<unknown>;
 
 const defaultFetchJson: JsonFetcher = async (url) => {
-  const res = await fetch(url, { headers: { Accept: "application/vnd.github+json", "User-Agent": "vitrine-updater" }, signal: AbortSignal.timeout(20_000) });
+  const res = await fetch(url, { headers: { Accept: "application/vnd.github+json", "User-Agent": "curiosa-updater" }, signal: AbortSignal.timeout(20_000) });
   if (!res.ok) throw new Error(`http ${res.status}`);
   return res.json();
 };
@@ -51,12 +51,12 @@ function readRelease(appDir: string): { repo?: string } | null {
 
 export function getInstallInfo(appDir = process.cwd()): InstallInfo {
   const release = readRelease(appDir);
-  const configured = process.env.VITRINE_UPDATE_REPO ?? "";
+  const configured = process.env.CURIOSA_UPDATE_REPO ?? "";
   const repo = REPO_RE.test(configured) ? configured : REPO_RE.test(release?.repo ?? "") ? release!.repo! : null;
-  const restart = process.env.VITRINE_RESTART_COMMAND ? "command" : process.env.VITRINE_SUPERVISED === "1" ? "supervised" : "manual";
+  const restart = process.env.CURIOSA_RESTART_COMMAND ? "command" : process.env.CURIOSA_SUPERVISED === "1" ? "supervised" : "manual";
   const base = { version: readVersion(appDir), repo, restart } as const;
   // Image Docker : on la remplace, on ne la met pas à jour en place.
-  if (process.env.VITRINE_INSTALL === "docker") return { ...base, mode: "docker", canUpdate: false };
+  if (process.env.CURIOSA_INSTALL === "docker") return { ...base, mode: "docker", canUpdate: false };
   if (!release || !repo) return { ...base, mode: "manual", canUpdate: false };
   return { ...base, mode: "release", canUpdate: true };
 }
@@ -125,7 +125,7 @@ export type Spawner = (tag: string) => void;
 const defaultSpawner: Spawner = (tag) => {
   const child = spawn(process.execPath, [path.join(process.cwd(), "scripts", "update.mjs"), tag], {
     cwd: process.cwd(), detached: true, stdio: "ignore",
-    env: { ...process.env, VITRINE_SERVER_PID: String(process.pid) },
+    env: { ...process.env, CURIOSA_SERVER_PID: String(process.pid) },
   });
   child.unref();
 };

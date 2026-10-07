@@ -88,13 +88,13 @@ test("dépôts : refus des protocoles, hôtes, identifiants et chemins inattendu
 });
 
 test("dépôts : file:// refusé sauf mode développement, liste d'hôtes configurable", () => {
-  const prev = process.env.VITRINE_ALLOW_LOCAL_MODULES;
+  const prev = process.env.CURIOSA_ALLOW_LOCAL_MODULES;
   try {
-    process.env.VITRINE_ALLOW_LOCAL_MODULES = "0";
+    process.env.CURIOSA_ALLOW_LOCAL_MODULES = "0";
     assert.equal(parseRepoUrl("file:///tmp/x").error, "modules.error.local");
-    process.env.VITRINE_ALLOW_LOCAL_MODULES = "1";
+    process.env.CURIOSA_ALLOW_LOCAL_MODULES = "1";
     assert.ok(parseRepoUrl("file:///tmp/x").ok);
-  } finally { process.env.VITRINE_ALLOW_LOCAL_MODULES = prev; }
+  } finally { process.env.CURIOSA_ALLOW_LOCAL_MODULES = prev; }
   process.env.MODULES_ALLOWED_HOSTS = "git.example.org";
   try {
     assert.ok(parseRepoUrl("https://git.example.org/a/b").ok);
@@ -107,7 +107,7 @@ test("dépôts : file:// refusé sauf mode développement, liste d'hôtes config
 /* ───────────── Installation depuis un vrai dépôt git local ───────────── */
 
 function makeRepo(files, { branch = "main" } = {}) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "vitrine-repo-"));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-repo-"));
   for (const [name, content] of Object.entries(files)) {
     fs.mkdirSync(path.dirname(path.join(dir, name)), { recursive: true });
     fs.writeFileSync(path.join(dir, name), typeof content === "string" ? content : JSON.stringify(content));

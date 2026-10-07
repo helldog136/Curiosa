@@ -3,7 +3,7 @@ import { defineModule, type Block } from "@/core/modules/types";
 import type { BuiltinModule } from "..";
 
 /**
- * KIT PRESSE — une vitrine, rien d'autre.
+ * KIT PRESSE — une curiosa, rien d'autre.
  *
  * Ce module ne stocke AUCUNE donnée. Tout ce qu'il montre (nom, accroche, présentation, logo, couleurs,
  * police, email de contact) est réglé dans l'admin du cœur (Réglages → Identité et Apparence) et lu via

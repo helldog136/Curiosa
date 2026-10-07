@@ -59,15 +59,15 @@ export function toHttpsRemote(url: string): string {
 }
 
 export type IndexGit = (args: string[], cwd?: string) => Promise<string>;
-const gitConfig = () => ["-c", "protocol.ext.allow=never", "-c", `protocol.file.allow=${process.env.VITRINE_ALLOW_LOCAL_MODULES === "1" ? "always" : "never"}`, "-c", "core.hooksPath=/dev/null"];
+const gitConfig = () => ["-c", "protocol.ext.allow=never", "-c", `protocol.file.allow=${process.env.CURIOSA_ALLOW_LOCAL_MODULES === "1" ? "always" : "never"}`, "-c", "core.hooksPath=/dev/null"];
 const defaultGit: IndexGit = async (args, cwd) => (await run("git", [...gitConfig(), ...args], { cwd, timeout: 25_000, maxBuffer: MAX_INDEX_BYTES + 4096, env: { ...process.env, GIT_TERMINAL_PROMPT: "0" } })).stdout;
 
-/** Dépôt qui publie l'index : VITRINE_CATALOGUE_REPO, sinon le dépôt d'origine de cette installation. */
+/** Dépôt qui publie l'index : CURIOSA_CATALOGUE_REPO, sinon le dépôt d'origine de cette installation. */
 export async function resolveIndexRepo(git: IndexGit = defaultGit, appDir = process.cwd()): Promise<string | null> {
-  const explicit = process.env.VITRINE_CATALOGUE_REPO?.trim();
+  const explicit = process.env.CURIOSA_CATALOGUE_REPO?.trim();
   let url = explicit || "";
   if (!url) {
-    const remote = /^[A-Za-z0-9._-]{1,60}$/.test(process.env.VITRINE_UPDATE_REMOTE ?? "") ? process.env.VITRINE_UPDATE_REMOTE! : "origin";
+    const remote = /^[A-Za-z0-9._-]{1,60}$/.test(process.env.CURIOSA_UPDATE_REMOTE ?? "") ? process.env.CURIOSA_UPDATE_REMOTE! : "origin";
     try { url = (await git(["remote", "get-url", remote], appDir)).trim(); } catch {
       // Installation par archive (sans git) : le dépôt qui publie les releases est aussi celui qui publie l'index.
       try { const repo = String(JSON.parse(fs.readFileSync(path.join(appDir, "release.json"), "utf8")).repo ?? ""); url = /^[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/.test(repo) ? `https://github.com/${repo}` : ""; } catch { url = ""; }
@@ -81,7 +81,7 @@ export async function resolveIndexRepo(git: IndexGit = defaultGit, appDir = proc
 /** Lit `catalogue/index.json` dans le dépôt, sans rien écrire dans l'installation : un dépôt temporaire, une récupération superficielle. */
 export async function fetchIndexFromRepo(url: string, ref = "HEAD", git: IndexGit = defaultGit): Promise<unknown> {
   if (!/^[\w./-]{1,100}$/.test(ref)) throw new Error("bad-ref");
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "vitrine-index-"));
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-index-"));
   try {
     await git(["init", "-q", "--bare", tmp]);
     await git(["fetch", "-q", "--depth", "1", "--no-tags", "--", url, ref], tmp);
@@ -119,15 +119,15 @@ export type RecognizedOptions = { fetchImpl?: typeof fetch; git?: IndexGit; root
 export async function getRecognizedDetailed(opts: RecognizedOptions = {}): Promise<RecognizedResult> {
   const { fetchImpl = fetch, git = defaultGit, root = process.cwd(), now = Date.now } = opts;
   const extraUrl = process.env.MODULES_INDEX_URL;
-  const key = `${process.env.VITRINE_CATALOGUE_REPO ?? ""}|${process.env.VITRINE_CATALOGUE_REF ?? ""}|${extraUrl ?? ""}|${root}`;
+  const key = `${process.env.CURIOSA_CATALOGUE_REPO ?? ""}|${process.env.CURIOSA_CATALOGUE_REF ?? ""}|${extraUrl ?? ""}|${root}`;
   if (memo && memo.key === key && now() - memo.at < TTL) return memo.result;
 
   let base: RecognizedResult = { items: [], source: "none", fetchedAt: null, origin: null };
-  const runtime = process.env.VITRINE_CATALOGUE_RUNTIME !== "0";
+  const runtime = process.env.CURIOSA_CATALOGUE_RUNTIME !== "0";
   const repo = runtime ? await resolveIndexRepo(git, root) : null;
   if (repo) {
     try {
-      const items = sanitizeEntries(await fetchIndexFromRepo(repo, process.env.VITRINE_CATALOGUE_REF || "HEAD", git));
+      const items = sanitizeEntries(await fetchIndexFromRepo(repo, process.env.CURIOSA_CATALOGUE_REF || "HEAD", git));
       base = { items, source: "repository", fetchedAt: now(), origin: repo };
       try {
         fs.mkdirSync(path.dirname(cacheFile()), { recursive: true });

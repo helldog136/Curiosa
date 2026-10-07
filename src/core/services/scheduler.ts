@@ -15,8 +15,8 @@ const TICK = 60_000;
 const FIRST = 30_000;
 const TIMEOUT = 5 * 60_000;
 const NAME_RE = /^[a-z][a-z0-9-]{0,40}$/;
-const g = globalThis as unknown as { vitrineTaskScheduler?: boolean; vitrineTasksRunning?: Set<string> };
-const running = (g.vitrineTasksRunning ??= new Set<string>());
+const g = globalThis as unknown as { curiosaTaskScheduler?: boolean; curiosaTasksRunning?: Set<string> };
+const running = (g.curiosaTasksRunning ??= new Set<string>());
 
 export const taskKey = (instanceId: string, task: string) => `instance.${instanceId}.__task.${task}`;
 export const taskStateOf = (instanceId: string, task: string) => getSetting<TaskState>(taskKey(instanceId, task));
@@ -70,8 +70,8 @@ export async function runDueTasks(opts: { now?: number; instanceId?: string; for
 
 /** Un seul minuteur par processus ; ne retient jamais l'arrêt du serveur. */
 export function startTaskScheduler(): void {
-  if (g.vitrineTaskScheduler) return;
-  g.vitrineTaskScheduler = true;
+  if (g.curiosaTaskScheduler) return;
+  g.curiosaTaskScheduler = true;
   const tick = () => runDueTasks().catch((error) => console.error("[tasks] tick failed:", error?.message));
   setTimeout(() => { void tick(); setInterval(() => void tick(), TICK).unref(); }, FIRST).unref();
 }

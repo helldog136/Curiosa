@@ -1,4 +1,4 @@
-// Sponsors — module communautaire de Vitrine.
+// Sponsors — module communautaire de Curiosa.
 //
 // Un module « à contenu » : l'éditeur, les pages publiques, les langues et les liens /go/… viennent
 // du cœur (voir module.json). Ce code ajoute seulement trois choses :

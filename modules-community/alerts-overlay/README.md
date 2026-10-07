@@ -1,4 +1,4 @@
-# Overlay alertes (OBS) — module communautaire de Vitrine
+# Overlay alertes (OBS) — module communautaire de Curiosa
 
 Une source navigateur pour OBS (`https://votre-site/overlays/<clé>`) qui affiche une alerte (follow, sub, raid…) **dès qu'on la pousse**, en direct (SSE).
 

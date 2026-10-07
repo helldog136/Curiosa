@@ -1,4 +1,4 @@
-# Sponsors — module communautaire de Vitrine
+# Sponsors — module communautaire de Curiosa
 
 Affiche vos sponsors et leurs codes promo sur le site. Un module **à contenu** : l'éditeur multilingue, les pages
 publiques (`/sponsors`, `/sponsors/<sponsor>`), le sitemap et les liens courts `/go/sponsors/<sponsor>` viennent du cœur.

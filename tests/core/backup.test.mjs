@@ -64,7 +64,7 @@ test("sauvegarde : tout ce qui est à l'utilisateur y est, les jetons d'API et l
   assert.equal(JSON.parse(text(files, "data/settings.json")).find((s) => s.key === "mail.pass").value, "mot-de-passe-smtp", "les secrets du site sont sauvegardés (le fichier est chiffré)");
   assert.ok(!JSON.parse(text(files, "data/settings.json")).some((s) => s.key === "updates.latest"), "réglages volatils exclus");
   assert.ok(files[`uploads/${UPLOAD}`].equals(PNG));
-  assert.deepEqual([b.manifest.format, b.manifest.formatVersion, b.manifest.counts.entries, b.manifest.counts.uploads], ["vitrine-backup", 1, 2, 1]);
+  assert.deepEqual([b.manifest.format, b.manifest.formatVersion, b.manifest.counts.entries, b.manifest.counts.uploads], ["curiosa-backup", 1, 2, 1]);
 });
 
 test("sauvegarde : lisible SANS le framework — Markdown des entrées, données des modules, résumé, mode d'emploi", async () => {
@@ -109,7 +109,7 @@ test("sauvegarde : nom de fichier sûr, daté ; mot de passe trop court refusé"
 
 test("LISIBLE SANS LE FRAMEWORK : le fichier produit s'ouvre avec `openssl` puis `tar`, avec les vraies valeurs", async () => {
   await seed();
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "vitrine-bk-"));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-bk-"));
   const b = await B.createBackup(PW); // vraies itérations
   fs.writeFileSync(path.join(dir, b.filename), b.buffer);
   execFileSync("openssl", ["enc", "-d", "-aes-256-cbc", "-pbkdf2", "-iter", "600000", "-md", "sha256", "-pass", `pass:${PW}`, "-in", path.join(dir, b.filename), "-out", path.join(dir, "b.tar.gz")]);
@@ -258,7 +258,7 @@ test("plan de restauration : module de base, déjà installé, catalogue, person
 });
 
 function fakeBackup(modules) {
-  return { manifest: { createdAt: "2026-01-01T00:00:00Z", frameworkVersion: "1.0.0", site: { name: "S" }, counts: {}, modules, files: [], format: "vitrine-backup", formatVersion: 1 },
+  return { manifest: { createdAt: "2026-01-01T00:00:00Z", frameworkVersion: "1.0.0", site: { name: "S" }, counts: {}, modules, files: [], format: "curiosa-backup", formatVersion: 1 },
     data: { users: [{ id: "u1", email: "o@x.org", name: "O", role: "owner", passwordHash: "h", createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z", advanced: false, locale: null }], settings: [], modules, instances: [], instanceTranslations: [], entries: [], entryTranslations: [], redirects: [], records: [] }, uploads: [] };
 }
 
@@ -299,7 +299,7 @@ test("restauration des modules : les modules de base reprennent leur état activ
 /* ───────────── Mise de côté entre aperçu et confirmation ───────────── */
 
 test("mise de côté : jeton aléatoire, lisible une fois valide, expirée après 30 minutes, jamais d'évasion de chemin", () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "vitrine-stash-"));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-stash-"));
   const token = stash(Buffer.from("contenu"), dir);
   assert.match(token, /^[0-9a-f]{32}$/);
   assert.equal(unstash(token, dir).toString(), "contenu");
@@ -311,4 +311,11 @@ test("mise de côté : jeton aléatoire, lisible une fois valide, expirée aprè
   assert.equal((fs.statSync(path.join(dir, "tmp", "restore")).mode & 0o077), 0, "dossier privé");
   fs.rmSync(dir, { recursive: true });
   assert.ok(DATA_DIR);
+});
+
+test("format : l'ancien nom du format (avant le renommage du projet) reste lisible, le nouveau est celui qu'on écrit", async () => {
+  const F = await import("@/core/backup/format");
+  assert.equal(F.FORMAT, "curiosa-backup");
+  assert.ok(F.LEGACY_FORMATS.includes("vitrine-backup"));
+  assert.match(fs.readFileSync("src/core/backup/restore.ts", "utf8"), /LEGACY_FORMATS\.includes/);
 });

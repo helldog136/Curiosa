@@ -1,4 +1,4 @@
-# Announcement banner — module d'exemple pour Vitrine
+# Announcement banner — module d'exemple pour Curiosa
 
 Affiche une bannière d'annonce (une par langue) et une note sur la page d'accueil.
 C'est le plus petit module utile : `module.json` + `index.mjs`.

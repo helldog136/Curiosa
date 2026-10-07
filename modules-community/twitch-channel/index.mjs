@@ -1,4 +1,4 @@
-// Chaîne Twitch — module communautaire de Vitrine. Porté de l'ancien site (Helix, client-credentials).
+// Chaîne Twitch — module communautaire de Curiosa. Porté de l'ancien site (Helix, client-credentials).
 // Il ne fait QUE fournir des informations : `stream.live` (le live en cours, vide sinon) et `maze.poster` (derniers clips).
 // Sans identifiants valides, tout est vide plutôt qu'en erreur.
 const LOGIN = /^[a-zA-Z0-9_]{3,25}$/;

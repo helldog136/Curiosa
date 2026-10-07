@@ -814,7 +814,7 @@ tels quels. Le sens de « mise à jour » dépend de l'installation :
 Si la nouvelle version est **invalide** (manifeste illisible, autre identifiant, API incompatible, fichier principal absent, trop volumineuse), l'ancienne est
 rétablie automatiquement : un module ne reste jamais à moitié mis à jour.
 
-**Développer en local** : avec `VITRINE_ALLOW_LOCAL_MODULES=1` dans l'environnement du serveur, une adresse `file:///chemin/absolu/vers/depot`
+**Développer en local** : avec `CURIOSA_ALLOW_LOCAL_MODULES=1` dans l'environnement du serveur, une adresse `file:///chemin/absolu/vers/depot`
 est acceptée par « Installer un dépôt personnel ». Le dépôt doit avoir au moins un commit ; pour voir une modification, validez-la
 (`git commit`) puis *Chercher une mise à jour* → *Mettre à jour*. À ne jamais activer sur un serveur public.
 
@@ -833,10 +833,10 @@ une demande de fusion sur ce fichier, visible par toutes les installations dès 
 diffère de celle du framework est listé mais **non installable**. Rien n'est installé automatiquement ; le dépôt installé doit servir le module annoncé
 (`id` identique à celui de son `module.json`). Un module livré avec le framework l'emporte sur un module reconnu de même identifiant.
 
-D'où vient la liste, dans l'ordre : (1) le dépôt du framework (le remote `origin` de l'installation, ou `VITRINE_UPDATE_REMOTE` ; pour une installation par archive, le dépôt de `release.json` ; `VITRINE_CATALOGUE_REPO` pour en choisir un autre, `VITRINE_CATALOGUE_REF` pour une autre
+D'où vient la liste, dans l'ordre : (1) le dépôt du framework (le remote `origin` de l'installation, ou `CURIOSA_UPDATE_REMOTE` ; pour une installation par archive, le dépôt de `release.json` ; `CURIOSA_CATALOGUE_REPO` pour en choisir un autre, `CURIOSA_CATALOGUE_REF` pour une autre
 branche ou étiquette que `HEAD`) ; (2) à défaut, la **dernière copie reçue** (`data/cache/`), puis la **copie livrée avec cette version** : le Catalogue
 fonctionne hors ligne ; (3) **en plus**, un index JSON `https://` (`MODULES_INDEX_URL`, modèle : [`modules-index.example.json`](modules-index.example.json))
-dont les entrées ne peuvent qu'**ajouter** des modules, jamais remplacer ceux du dépôt. `VITRINE_CATALOGUE_RUNTIME=0` coupe la lecture à l'exécution
+dont les entrées ne peuvent qu'**ajouter** des modules, jamais remplacer ceux du dépôt. `CURIOSA_CATALOGUE_RUNTIME=0` coupe la lecture à l'exécution
 (copie livrée seulement). La page Catalogue indique d'où vient la liste affichée.
 
 Pour qu'un module rejoigne les modules livrés : un dossier dans `modules-community/` (modules complets) ou `modules-examples/` (exemples), avec son `module.json` à sa racine.
@@ -845,7 +845,7 @@ Pour qu'un module rejoigne les modules livrés : un dossier dans `modules-commun
 
 Seuls les modules de base vivent dans `src/modules-builtin/` : blog, réseaux sociaux, codes promo,
 pages, collection vierge, bandeau d'accueil, formulaire de contact, statut live, overlay
-défilant et **kit presse** (une pure vitrine : il lit l'identité réglée dans le cœur via `ctx.api.brand()` et ne stocke rien). Tout le reste s'installe depuis git.
+défilant et **kit presse** (une pure curiosa : il lit l'identité réglée dans le cœur via `ctx.api.brand()` et ne stocke rien). Tout le reste s'installe depuis git.
 
 - **`modules-examples/`** : exemples pour apprendre. [`guestbook`](../modules-examples/guestbook) (livre d'or modéré : réglages de tous types,
   sections avec taille, page, formulaire, stockage, e-mail, sujets dont `feed.item`, admin, MCP, sauvegarde lisible, thème, i18n, crochets) et

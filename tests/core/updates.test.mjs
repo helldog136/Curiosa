@@ -31,13 +31,13 @@ test("versions : nature de la mise à jour — patch, minor, major ; rien si la 
 });
 
 test("versions : la plus haute version stable parmi les releases qui ont leur archive — brouillons, pré-versions et releases sans archive ignorés", () => {
-  const asset = (tag) => `vitrine-${tag}-linux-x64.tar.gz`;
+  const asset = (tag) => `curiosa-${tag}-linux-x64.tar.gz`;
   const rel = (tag, extra = {}) => ({ tag_name: tag, draft: false, prerelease: false, assets: [{ name: asset(tag) }], ...extra });
   const list = [rel("v1.0.0"), rel("v1.10.0"), rel("v1.9.9"), rel("v2.0.0", { draft: true }), rel("v2.0.1", { prerelease: true }), rel("v3.0.0", { assets: [] }), rel("v2.0.0-beta.1"), rel("nightly"), null, { tag_name: 5 }];
   assert.equal(V.pickLatestRelease(list, asset), "v1.10.0");
   assert.equal(V.pickLatestRelease([], asset), null);
   assert.equal(V.pickLatestRelease("pas une liste", asset), null);
-  assert.equal(V.pickLatestRelease([rel("v1.0.0", { assets: [{ name: "vitrine-v1.0.0-darwin-arm64.tar.gz" }] })], asset), null, "archive d'une autre plateforme : rien à proposer");
+  assert.equal(V.pickLatestRelease([rel("v1.0.0", { assets: [{ name: "curiosa-v1.0.0-darwin-arm64.tar.gz" }] })], asset), null, "archive d'une autre plateforme : rien à proposer");
 });
 
 test("versions : release candidates — ordre rc.1 < rc.2 < stable, canal « stable » les ignore, canal « rc » les propose", () => {
@@ -53,7 +53,7 @@ test("versions : release candidates — ordre rc.1 < rc.2 < stable, canal « sta
   assert.equal(V.classify("1.2.0-rc.1", "v1.2.0-rc.2"), "patch");
   assert.equal(V.classify("1.2.0-rc.2", "v1.2.0"), "patch", "la stable qui suit la rc");
   assert.equal(V.classify("1.2.0", "v1.2.0-rc.3"), null, "on ne « descend » jamais vers une rc");
-  const asset = (tag) => `vitrine-${tag}-linux-x64.tar.gz`;
+  const asset = (tag) => `curiosa-${tag}-linux-x64.tar.gz`;
   const rel = (tag, extra = {}) => ({ tag_name: tag, draft: false, prerelease: tag.includes("-rc."), assets: [{ name: asset(tag) }], ...extra });
   const list = [rel("v1.1.0"), rel("v1.2.0-rc.1"), rel("v1.2.0-rc.2"), rel("v1.3.0-rc.1", { draft: true }), rel("dev-20261007-abc1234", { prerelease: true }), rel("v1.4.0-rc.1", { assets: [] })];
   assert.equal(V.pickLatestRelease(list, asset), "v1.1.0");
@@ -82,20 +82,20 @@ const sha = (f) => crypto.createHash("sha256").update(fs.readFileSync(f)).digest
 
 /** Une « release » : un dossier de fichiers + release.json, empaqueté en .tar.gz avec son .sha256, comme le fait la CI. */
 function setup() {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "vitrine-upd-"));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-upd-"));
   const hosted = path.join(root, "hosted"); // ce que « GitHub » sert
   fs.mkdirSync(hosted);
   const build = (version, { files = {}, paths, platform = PLATFORM, badSum = false } = {}) => {
     const dir = path.join(root, `build-${version}`);
     fs.mkdirSync(path.join(dir, ".next"), { recursive: true });
     fs.mkdirSync(path.join(dir, "prisma", "migrations"), { recursive: true });
-    fs.writeFileSync(path.join(dir, "package.json"), JSON.stringify({ name: "vitrine", version }));
+    fs.writeFileSync(path.join(dir, "package.json"), JSON.stringify({ name: "curiosa", version }));
     fs.writeFileSync(path.join(dir, ".next", "BUILD_ID"), `build-${version}`);
     fs.writeFileSync(path.join(dir, "prisma", "migrations", "001.sql"), `migration-${version}`);
     for (const [f, c] of Object.entries(files)) { fs.mkdirSync(path.dirname(path.join(dir, f)), { recursive: true }); fs.writeFileSync(path.join(dir, f), c); }
     const all = paths ?? [".next", "package.json", "prisma/migrations", "release.json"];
-    fs.writeFileSync(path.join(dir, "release.json"), JSON.stringify({ name: "vitrine", version, platform, repo: "owner/vitrine", paths: all }));
-    const name = `vitrine-v${version}-${PLATFORM}.tar.gz`;
+    fs.writeFileSync(path.join(dir, "release.json"), JSON.stringify({ name: "curiosa", version, platform, repo: "owner/curiosa", paths: all }));
+    const name = `curiosa-v${version}-${PLATFORM}.tar.gz`;
     execFileSync("tar", ["-czf", path.join(hosted, name), "-C", dir, ...all.filter((p) => fs.existsSync(path.join(dir, p)))]);
     fs.writeFileSync(path.join(hosted, `${name}.sha256`), `${badSum ? "0".repeat(64) : sha(path.join(hosted, name))}  ${name}\n`);
   };
@@ -103,11 +103,11 @@ function setup() {
   fs.mkdirSync(path.join(app, ".next"), { recursive: true });
   fs.mkdirSync(path.join(app, "prisma", "migrations"), { recursive: true });
   fs.mkdirSync(path.join(app, "prisma", "data"), { recursive: true });
-  fs.writeFileSync(path.join(app, "package.json"), JSON.stringify({ name: "vitrine", version: "1.0.0" }));
+  fs.writeFileSync(path.join(app, "package.json"), JSON.stringify({ name: "curiosa", version: "1.0.0" }));
   fs.writeFileSync(path.join(app, ".next", "BUILD_ID"), "build-1.0.0");
   fs.writeFileSync(path.join(app, "prisma", "migrations", "001.sql"), "migration-1.0.0");
   fs.writeFileSync(path.join(app, "prisma", "data", "garde.txt"), "données");
-  fs.writeFileSync(path.join(app, "release.json"), JSON.stringify({ name: "vitrine", version: "1.0.0", platform: PLATFORM, repo: "owner/vitrine", paths: [".next", "package.json", "prisma/migrations", "release.json"] }));
+  fs.writeFileSync(path.join(app, "release.json"), JSON.stringify({ name: "curiosa", version: "1.0.0", platform: PLATFORM, repo: "owner/curiosa", paths: [".next", "package.json", "prisma/migrations", "release.json"] }));
   fs.writeFileSync(path.join(app, ".env"), "SECRET=1");
   const dataDir = path.join(app, "data");
   fs.mkdirSync(dataDir, { recursive: true });
@@ -144,19 +144,19 @@ test("mise à jour : succès — sauvegarde, téléchargement, empreinte, bascul
     s.build("1.1.0", { files: { "modules-community/x.txt": "nouveau" }, paths: [".next", "package.json", "prisma/migrations", "release.json", "modules-community"] });
     const restarts = [];
     const exec = async (cmd, args, o) => { if (cmd === "sh") { restarts.push(args[1]); return { stdout: "" }; } return s.make()(cmd, args, o); };
-    const r = await runUpdate({ ...opts(s), tag: "v1.1.0", exec, restartCommand: "systemctl restart vitrine" });
+    const r = await runUpdate({ ...opts(s), tag: "v1.1.0", exec, restartCommand: "systemctl restart curiosa" });
     assert.deepEqual(r, { ok: true });
     assert.equal(s.buildId(), "build-1.1.0", "le build livré est en place");
     assert.equal(fs.readFileSync(path.join(s.app, "modules-community", "x.txt"), "utf8"), "nouveau");
     assert.equal(JSON.parse(fs.readFileSync(path.join(s.app, "package.json"), "utf8")).version, "1.1.0");
     assert.deepEqual(s.calls, ["npx prisma migrate deploy"], "rien d'autre : ni npm ci, ni build, ni git");
-    assert.deepEqual(s.downloads, ["https://github.com/owner/vitrine/releases/download/v1.1.0/vitrine-v1.1.0-" + PLATFORM + ".tar.gz", "https://github.com/owner/vitrine/releases/download/v1.1.0/vitrine-v1.1.0-" + PLATFORM + ".tar.gz.sha256"]);
-    assert.deepEqual(restarts, ["systemctl restart vitrine"]);
+    assert.deepEqual(s.downloads, ["https://github.com/owner/curiosa/releases/download/v1.1.0/curiosa-v1.1.0-" + PLATFORM + ".tar.gz", "https://github.com/owner/curiosa/releases/download/v1.1.0/curiosa-v1.1.0-" + PLATFORM + ".tar.gz.sha256"]);
+    assert.deepEqual(restarts, ["systemctl restart curiosa"]);
     const st = readState(s.dataDir);
     assert.deepEqual([st.status, st.target, st.restart, st.error, st.rolledBack], ["success", "v1.1.0", "command", null, false]);
     const backups = fs.readdirSync(path.join(s.dataDir, "backups"));
     assert.equal(fs.readFileSync(path.join(s.dataDir, "backups", backups[0]), "utf8"), "DONNEES-AVANT", "sauvegarde faite AVANT les migrations");
-    for (const left of [".vitrine-staging", ".vitrine-previous"]) assert.ok(!fs.existsSync(path.join(s.app, left)), `${left} nettoyé`);
+    for (const left of [".curiosa-staging", ".curiosa-previous"]) assert.ok(!fs.existsSync(path.join(s.app, left)), `${left} nettoyé`);
     assert.match(fs.readFileSync(path.join(s.dataDir, "update", "update.log"), "utf8"), /v1\.1\.0 installée/);
   } finally { s.cleanup(); }
 });
@@ -202,7 +202,7 @@ test("mise à jour : échec des migrations → anciens dossiers rétablis, base 
     assert.equal(fs.readFileSync(s.dbFile, "utf8"), "DONNEES-AVANT", "base d'avant la mise à jour");
     const st = readState(s.dataDir);
     assert.deepEqual([st.status, st.rolledBack, st.restart], ["failed", true, "needed"]);
-    for (const left of [".vitrine-staging", ".vitrine-previous"]) assert.ok(!fs.existsSync(path.join(s.app, left)), `${left} nettoyé`);
+    for (const left of [".curiosa-staging", ".curiosa-previous"]) assert.ok(!fs.existsSync(path.join(s.app, left)), `${left} nettoyé`);
   } finally { s.cleanup(); }
 });
 
@@ -212,7 +212,7 @@ test("mise à jour : archive introuvable ou réseau en panne → rien n'est modi
     assert.equal(s.buildId(), "build-1.0.0");
     assert.deepEqual(s.calls, []);
     assert.equal(readState(s.dataDir).rolledBack, false, "rien à annuler : la bascule n'a pas eu lieu");
-    assert.ok(!fs.existsSync(path.join(s.app, ".vitrine-staging")));
+    assert.ok(!fs.existsSync(path.join(s.app, ".curiosa-staging")));
   } finally { s.cleanup(); }
 });
 
@@ -241,8 +241,8 @@ test("mise à jour : archive de la mauvaise plateforme ou d'une autre version, o
     } finally { s.cleanup(); }
   }
   const s = setup(); try {
-    s.build("1.1.0"); fs.copyFileSync(path.join(s.root, "hosted", `vitrine-v1.1.0-${PLATFORM}.tar.gz`), path.join(s.root, "hosted", `vitrine-v1.2.0-${PLATFORM}.tar.gz`));
-    fs.writeFileSync(path.join(s.root, "hosted", `vitrine-v1.2.0-${PLATFORM}.tar.gz.sha256`), `${sha(path.join(s.root, "hosted", `vitrine-v1.2.0-${PLATFORM}.tar.gz`))}  x\n`);
+    s.build("1.1.0"); fs.copyFileSync(path.join(s.root, "hosted", `curiosa-v1.1.0-${PLATFORM}.tar.gz`), path.join(s.root, "hosted", `curiosa-v1.2.0-${PLATFORM}.tar.gz`));
+    fs.writeFileSync(path.join(s.root, "hosted", `curiosa-v1.2.0-${PLATFORM}.tar.gz.sha256`), `${sha(path.join(s.root, "hosted", `curiosa-v1.2.0-${PLATFORM}.tar.gz`))}  x\n`);
     assert.equal((await runUpdate({ ...opts(s), tag: "v1.2.0", exec: s.make() })).error, "bad-archive", "l'archive dit 1.1.0 alors qu'on a demandé 1.2.0");
   } finally { s.cleanup(); }
 });
