@@ -345,10 +345,30 @@ export default {
 };
 ```
 
-### Sections (page d'accueil)
+### Sections (page d'accueil) : une grille
 
-L'accueil n'a pas de contenu propre : c'est la liste ordonnée des sections que l'admin place
-(Page d'accueil). Chaque section est `(instance, section)` + options. Déclarez-la dans
+La page d'accueil appartient au cœur : elle n'a pas de contenu propre, c'est une **grille** de morceaux (sections) proposés par les
+modules actifs. Dans *Accueil*, l'administrateur règle le **nombre maximal de colonnes** (1 à 12, 4 par défaut) puis ajoute, ordonne et
+dimensionne ses morceaux : chacun occupe `largeur × hauteur` **cases**. Le rendu fait de son mieux : sur un écran étroit il affiche
+**moins de colonnes** (une seule sur téléphone, les morceaux s'empilent), un morceau plus large que le nombre de colonnes affichées prend
+toute la largeur, et la hauteur (≥ 2 colonnes seulement) est un minimum que le contenu peut dépasser.
+
+Un module déclare ses sections dans `module.json` et peut **recommander une taille** (l'administrateur peut la changer ; sans
+recommandation : toute la largeur, 1 case de haut) :
+
+```jsonc
+"sections": [
+  { "id": "next", "label": { "en": "Next stream" }, "size": { "w": 2, "h": 1 } },
+  { "id": "days", "label": { "en": "The next days" }, "size": { "w": 2, "h": 2 },
+    "options": [{ "key": "count", "type": "number", "default": 3, "label": { "en": "How many days" } }] }
+]
+```
+
+Le cœur fournit déjà deux sections aux modules à contenu : `latest` (les dernières entrées) et, pour ceux dont les entrées portent un
+code (codes promo…), `random` (un code au hasard, 2 × 1). Un module sans rien à montrer (calendrier vide…) renvoie `null` : sa case disparaît.
+Son rendu doit rester lisible dans une petite case : titre court, peu de texte.
+
+Chaque placement est `(instance, section)` + options + taille. Déclarez-la dans
 `module.json` (`sections`) et implémentez `sections.<id>(ctx, options)` qui renvoie des blocs.
 Plusieurs instances = plusieurs sections : « dernières entrées du blog 2 » et « liens de la
 chaîne 1 » sont deux placements indépendants.

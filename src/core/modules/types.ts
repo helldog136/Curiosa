@@ -39,6 +39,8 @@ export type SectionDecl = {
   label: LocalizedString;
   /** Options réglées à chaque placement de la section sur l'accueil. */
   options?: SettingField[];
+  /** Taille recommandée sur la grille de l'accueil, en cases (l'administrateur peut la changer). Absent = toute la largeur, 1 case de haut. */
+  size?: { w: number; h?: number };
 };
 
 /** Catégorie d'un module : décide où il apparaît dans l'admin et comment ses instances sont exposées. */

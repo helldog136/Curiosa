@@ -35,6 +35,43 @@
             "fr": "Combien"
           }
         }
+      ],
+      "size": {
+        "w": 4,
+        "h": 2
+      }
+    },
+    {
+      "id": "next",
+      "label": {
+        "en": "Next stream",
+        "fr": "Prochain stream"
+      },
+      "size": {
+        "w": 2,
+        "h": 1
+      }
+    },
+    {
+      "id": "days",
+      "label": {
+        "en": "The next days (compact)",
+        "fr": "Les prochains jours (miniature)"
+      },
+      "size": {
+        "w": 2,
+        "h": 2
+      },
+      "options": [
+        {
+          "key": "count",
+          "type": "number",
+          "default": 3,
+          "label": {
+            "en": "How many days",
+            "fr": "Combien de jours"
+          }
+        }
       ]
     }
   ],

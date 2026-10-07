@@ -380,5 +380,10 @@
   "settings.mailInvalid": "Serveur ou adresse d'expédition invalide.",
   "instances.appearance": "Apparence de ce module",
   "instances.followTheme": "Suivre le thème du site",
-  "instances.followThemeHelp": "La couleur s'adapte quand vous changez le thème dans Réglages."
+  "instances.followThemeHelp": "La couleur s'adapte quand vous changez le thème dans Réglages.",
+  "home.columns": "Nombre maximal de colonnes",
+  "home.columnsHelp": "La page d'accueil est une grille. Sur un petit écran, elle affiche moins de colonnes (une seule sur téléphone) : les morceaux s'empilent.",
+  "home.width": "Largeur",
+  "home.height": "Hauteur",
+  "home.sizeHelp": "Largeur et hauteur d'un morceau sont en cases de la grille. Plus large que le nombre de colonnes affichées = toute la largeur. La valeur proposée est celle que recommande le module."
 }

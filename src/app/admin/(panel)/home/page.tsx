@@ -4,6 +4,7 @@ import { getActiveInstances, sectionsOf } from "@/core/modules/registry";
 import { localized, type SettingField } from "@/core/modules/types";
 import { ActionForm } from "@/components/admin/ActionForm";
 import { ui } from "@/components/admin/ui";
+import { MAX_COLUMNS, MAX_ROWS, resolveSize } from "@/core/home";
 import { saveHome } from "./actions";
 
 export default async function HomeAdminPage() {
@@ -18,6 +19,7 @@ export default async function HomeAdminPage() {
       value: `${instance.key}|${s.id}`,
       label: `${labeler.label(instance)} — ${L(s.label)}`,
       options: (s.options ?? []) as SettingField[],
+      size: s.size,
     })),
   );
   const rows = [...config.homeSections.filter((s) => choices.some((c) => c.value === `${s.instance}|${s.section}`)), null];
@@ -30,11 +32,18 @@ export default async function HomeAdminPage() {
       </div>
       <ActionForm action={saveHome} submitLabel={t("action.save")}>
         <input type="hidden" name="count" value={rows.length} />
+        <div className={`${ui.card} space-y-2`}>
+          <label className="block text-sm">
+            <span className={ui.label}>{t("home.columns")}</span>
+            <input name="columns" type="number" min={1} max={MAX_COLUMNS} defaultValue={config.homeColumns} className={`${ui.input} max-w-28`} />
+          </label>
+          <p className={ui.help}>{t("home.columnsHelp")}</p>
+        </div>
         {rows.map((row, i) => {
           const current = row ? choices.find((c) => c.value === `${row.instance}|${row.section}`) : undefined;
           return (
             <div key={row?.id ?? "new"} className={`${ui.card} space-y-3`}>
-              <div className="grid items-end gap-3 sm:grid-cols-[5rem_1fr_auto]">
+              <div className="grid items-end gap-3 sm:grid-cols-[5rem_1fr_auto_auto]">
                 <label className="text-sm">
                   <span className={ui.label}>{t("home.order")}</span>
                   <input name={`order_${i}`} type="number" defaultValue={(i + 1) * 10} className={ui.input} />
@@ -46,6 +55,18 @@ export default async function HomeAdminPage() {
                     {choices.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
                   </select>
                 </label>
+                {row && (
+                  <div className="flex items-end gap-2">
+                    <label className="text-sm">
+                      <span className={ui.label}>{t("home.width")}</span>
+                      <input name={`w_${i}`} type="number" min={1} max={MAX_COLUMNS} defaultValue={resolveSize(row, current?.size).w} className={`${ui.input} w-20`} />
+                    </label>
+                    <label className="text-sm">
+                      <span className={ui.label}>{t("home.height")}</span>
+                      <input name={`h_${i}`} type="number" min={1} max={MAX_ROWS} defaultValue={resolveSize(row, current?.size).h} className={`${ui.input} w-20`} />
+                    </label>
+                  </div>
+                )}
                 {row && <label className="flex items-center gap-2 pb-2 text-sm"><input type="checkbox" name={`remove_${i}`} /> {t("action.delete")}</label>}
               </div>
               {row && current?.options.map((o) => {
@@ -70,6 +91,7 @@ export default async function HomeAdminPage() {
             </div>
           );
         })}
+        <p className={ui.help}>{t("home.sizeHelp")}</p>
         {advanced && <p className={ui.help}>{t("home.optionsHint")}</p>}
       </ActionForm>
     </div>

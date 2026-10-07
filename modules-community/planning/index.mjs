@@ -375,6 +375,29 @@ export default {
   },
 
   sections: {
+    // Le prochain stream, seul : pour une petite case de l'accueil.
+    async next(ctx) {
+      const { ok, slots, timeZone } = await loadSlots(ctx, 30);
+      if (!ok || slots.length === 0) return null;
+      const tz = timeZone ?? "Europe/Brussels";
+      const s = slots[0];
+      const day = new Intl.DateTimeFormat(ctx.locale, { weekday: "long", day: "numeric", month: "long", timeZone: tz }).format(s.start);
+      return [{ type: "heading", text: ctx.t("nextUp") }, { type: "markdown", text: `**${day}**\n\n${slotLine(s, ctx, tz)}` }];
+    },
+
+    // Miniature des X prochains jours : un jour par ligne, les créneaux à la suite.
+    async days(ctx, options) {
+      const count = Math.min(7, Math.max(1, Math.trunc(Number(options.count)) || 3));
+      const { ok, slots, timeZone } = await loadSlots(ctx, count);
+      if (!ok) return null;
+      const tz = timeZone ?? "Europe/Brussels";
+      const rows = buildDays(wallDateNow(tz), count, slots, tz).map((day) => {
+        const label = new Intl.DateTimeFormat(ctx.locale, { weekday: "short", day: "numeric", timeZone: tz }).format(zonedTimeToUtc(day.wall.y, day.wall.m, day.wall.d, 12, 0, 0, tz));
+        return `- **${label}** · ${day.streams.length ? day.streams.map((s) => slotLine(s, ctx, tz)).join(" · ") : ctx.t("noneToday")}`;
+      });
+      return [{ type: "heading", text: ctx.t("daysTitle") }, { type: "markdown", text: rows.join("\n") }];
+    },
+
     async upcoming(ctx, options) {
       const count = Math.min(20, Math.max(1, Math.trunc(Number(options.count)) || 5));
       const { ok, slots, timeZone } = await loadSlots(ctx, 30);

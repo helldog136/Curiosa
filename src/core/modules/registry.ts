@@ -158,9 +158,23 @@ const LATEST: SectionDecl = {
   options: [{ key: "count", type: "number", label: { en: "How many", fr: "Combien" }, default: 3 }],
 };
 
-/** Sections qu'un module propose à l'accueil. Les modules à contenu ont toujours "latest". */
+const RANDOM: SectionDecl = {
+  id: "random",
+  label: { en: "A random entry", fr: "Une entrée au hasard" },
+  options: [{ key: "count", type: "number", label: { en: "How many", fr: "Combien" }, default: 1 }],
+  size: { w: 2, h: 1 },
+};
+
+/**
+ * Sections qu'un module propose à l'accueil. Les modules à contenu ont toujours "latest" ; ceux dont les
+ * entrées portent un code (codes promo…) ont aussi "random" (un code au hasard).
+ */
 export function sectionsOf(manifest: ParsedManifest): SectionDecl[] {
   const declared = manifest.sections as SectionDecl[];
-  if (manifest.content && !declared.some((s) => s.id === "latest")) return [LATEST, ...declared];
-  return declared;
+  if (!manifest.content) return declared;
+  return [
+    ...(declared.some((s) => s.id === "latest") ? [] : [LATEST]),
+    ...(manifest.content.features.includes("code") && !declared.some((s) => s.id === "random") ? [RANDOM] : []),
+    ...declared,
+  ];
 }

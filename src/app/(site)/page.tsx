@@ -1,6 +1,8 @@
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { LOCALE_HEADER, getVisitorLocale } from "@/core/i18n/request";
+import { homeGridCss, homeLayout } from "@/core/home";
+import { getActiveInstances } from "@/core/modules/registry";
 import { runSection } from "@/core/modules/runtime";
 import { getSiteConfig } from "@/core/settings";
 import { Blocks } from "@/components/site/Blocks";
@@ -36,13 +38,23 @@ export default async function HomePage() {
   }
 
   const locale = await getVisitorLocale();
-  const sections = await Promise.all(
-    config.homeSections.map(async (s) => ({ id: s.id, blocks: await runSection(s.instance, s.section, s.options, locale) })),
+  const layout = homeLayout(config.homeSections, await getActiveInstances());
+  const rendered = await Promise.all(
+    layout.map(async ({ section: s, w, h }) => ({ id: s.id, w, h, blocks: await runSection(s.instance, s.section, s.options, locale) })),
   );
+  // Un morceau vide (module sans rien à montrer) ne prend pas de place ; les autres gardent leur taille.
+  const shown = rendered.filter((s) => s.blocks.length > 0);
 
   return (
-    <div className="space-y-12">
-      {sections.map((s) => (s.blocks.length ? <Blocks key={s.id} blocks={s.blocks} locale={locale} /> : null))}
-    </div>
+    <>
+      <style dangerouslySetInnerHTML={{ __html: homeGridCss(config.homeColumns, shown) }} />
+      <div className="vh-grid">
+        {shown.map((s, i) => (
+          <div key={s.id} className={`vh-cell vh-s${i}`}>
+            <Blocks blocks={s.blocks} locale={locale} />
+          </div>
+        ))}
+      </div>
+    </>
   );
 }

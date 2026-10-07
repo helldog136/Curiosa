@@ -24,7 +24,7 @@ export type Block =
   | { type: "html"; html: string }
   | { type: "banner"; text: string; href?: string; tone?: "info" | "success" | "warning" }
   | { type: "links"; items: { label: string; href: string; icon?: string }[] }
-  | { type: "entries"; instance: string; limit?: number; title?: string; link?: boolean }
+  | { type: "entries"; instance: string; limit?: number; title?: string; link?: boolean; /** "random" : `limit` entrées tirées au hasard (au lieu des plus récentes). */ pick?: "random" }
   | { type: "hero"; title: string; text?: string; image?: string }
   | { type: "embed"; src: string; title: string; ratio?: string }
   | {

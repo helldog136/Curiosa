@@ -2,7 +2,7 @@ import type { Block, Slot } from "../blocks";
 import { pickName } from "../instances";
 import { getSiteConfig } from "../settings";
 import { buildContext } from "./context";
-import { getActiveInstances } from "./registry";
+import { getActiveInstances, sectionsOf } from "./registry";
 import type { PageResult, SlotContext } from "./types";
 
 type SlotExtras = Pick<SlotContext, "page" | "entry">;
@@ -58,6 +58,11 @@ export async function runSection(
       const config = await getSiteConfig();
       const limit = Math.min(50, Math.max(1, Number(options.count) || 3));
       return [{ type: "entries", instance: instance.key, limit, title: pickName(instance, locale, config.defaultLocale), link: true }];
+    }
+    // Entrée(s) au hasard : proposée aux modules dont les entrées portent un code (codes promo…).
+    if (sectionId === "random" && mod.manifest.content && sectionsOf(mod.manifest).some((s) => s.id === "random")) {
+      const limit = Math.min(10, Math.max(1, Number(options.count) || 1));
+      return [{ type: "entries", instance: instance.key, limit, pick: "random" }];
     }
   } catch (error) {
     console.error(`[modules] ${instanceKey} failed on section ${sectionId}:`, error);

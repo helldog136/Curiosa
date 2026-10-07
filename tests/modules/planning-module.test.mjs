@@ -11,7 +11,7 @@ const hours = (n) => new Date(Date.now() + n * 3_600_000);
 const vevent = (uid, start, end, summary, extra = []) => ["BEGIN:VEVENT", `UID:${uid}`, `DTSTART:${ics(start)}`, `DTEND:${ics(end)}`, `SUMMARY:${summary}`, ...extra, "END:VEVENT"].join("\r\n");
 const calendar = (...events) => `BEGIN:VCALENDAR\r\nVERSION:2.0\r\n${events.join("\r\n")}\r\nEND:VCALENDAR\r\n`;
 
-const messages = { title: "Planning", intro: "Prochains {days} jours ({tz})", none: "Rien", notConfigured: "Pas configuré", nextTitle: "Prochains streams", allDay: "Toute la journée",
+const messages = { nextUp: "Prochain stream", daysTitle: "Cette semaine", noneToday: "—", title: "Planning", intro: "Prochains {days} jours ({tz})", none: "Rien", notConfigured: "Pas configuré", nextTitle: "Prochains streams", allDay: "Toute la journée",
   adminStatus: "État", adminNotSet: "Adresse absente", badUrl: "Adresse refusée", adminHint: "…{hint}", adminError: "Illisible", adminOk: "{n} sur {days} jours", adminNext: "À venir", refresh: "Rafraîchir", refreshed: "Rafraîchi",
   date: "Date", time: "Heure", slot: "Créneau", games: "Jeux" };
 const ctxWith = (settings = {}, over = {}) => fakeCtx({ settings: { icsUrl: URL_OK, days: 7, timezone: "UTC", ...settings }, messages, locale: "fr", ...over });
@@ -183,4 +183,38 @@ test("déclarations : tout ce que le manifeste annonce est implémenté, et réc
   assert.deepEqual(en, fr);
   const settingKeys = new Set(m.settings.map((s) => s.key));
   for (const k of ["icsUrl", "days", "timezone"]) assert.ok(settingKeys.has(k), k);
+});
+
+test("morceau « prochain stream » : le premier créneau à venir, rien s'il n'y en a pas", async () => {
+  serve(calendar(vevent("1", hours(30), hours(31), "Plus tard"), vevent("2", hours(3), hours(4), "Bientôt", ["DESCRIPTION:Jeu: Zelda"])));
+  const blocks = await def.sections.next(ctxWith(), {});
+  assert.equal(blocks[0].type, "heading");
+  assert.match(blocks[1].text, /Bientôt/);
+  assert.match(blocks[1].text, /_Zelda_/);
+  assert.ok(!blocks[1].text.includes("Plus tard"));
+  serve(calendar());
+  mod.clearIcsCache();
+  assert.equal(await def.sections.next(ctxWith(), {}), null);
+  assert.equal(await def.sections.next(ctxWith({ icsUrl: "" }), {}), null);
+});
+
+test("morceau « prochains jours » : un jour par ligne, nombre de jours borné de 1 à 7, jours vides signalés", async () => {
+  serve(calendar(vevent("1", hours(2), hours(3), "Aujourd'hui peut-être")));
+  const lines = async (count, settings) => (await def.sections.days(ctxWith(settings), { count }))[1].text.split("\n");
+  assert.equal((await lines(3)).length, 3);
+  assert.equal((await lines(99)).length, 7);
+  assert.equal((await lines(0)).length, 3, "valeur absurde → 3");
+  assert.equal((await lines(1)).length, 1);
+  assert.ok((await lines(7)).some((l) => l.endsWith("· —")), "jour sans stream");
+  assert.ok((await lines(7)).join("\n").includes("peut-être"), "le stream apparaît dans son jour");
+  assert.equal(await def.sections.days(ctxWith({ icsUrl: "" }), {}), null);
+});
+
+test("morceaux du planning : tailles recommandées pour la grille de l'accueil", async () => {
+  const fs = await import("node:fs");
+  const m = JSON.parse(fs.readFileSync("modules-community/planning/module.json", "utf8"));
+  const size = Object.fromEntries(m.sections.map((s) => [s.id, s.size]));
+  assert.deepEqual(size.next, { w: 2, h: 1 });
+  assert.deepEqual(size.days, { w: 2, h: 2 });
+  assert.deepEqual(size.upcoming, { w: 4, h: 2 });
 });

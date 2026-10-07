@@ -19,6 +19,16 @@ const TONES = {
 };
 
 /** Rend les blocs renvoyés par les modules. Les blocs "head" sont traités à part (voir HeadTags). */
+/** `n` éléments au hasard, sans répétition. */
+function pickRandom<T>(items: T[], n: number): T[] {
+  const pool = [...items];
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j]!, pool[i]!];
+  }
+  return pool.slice(0, Math.max(1, n));
+}
+
 export async function Blocks({ blocks, locale, adminInstanceId }: { blocks: Block[]; locale: string; adminInstanceId?: string }) {
   const config = await getSiteConfig();
   const out: React.ReactNode[] = [];
@@ -120,7 +130,8 @@ export async function Blocks({ blocks, locale, adminInstanceId }: { blocks: Bloc
       case "entries": {
         const instance = await getInstanceByKey(block.instance);
         if (!instance || !instance.enabled) break;
-        const entries = await listEntries({ instance, locale, limit: block.limit });
+        let entries = await listEntries({ instance, locale, limit: block.pick === "random" ? undefined : block.limit });
+        if (block.pick === "random") entries = pickRandom(entries.filter((e) => !e.expired), block.limit ?? 1);
         if (block.link && entries.length === 0) break;
         const seeAll = block.link && instance.basePath ? withLocale(`/${instance.basePath}`, locale, config.defaultLocale) : null;
         out.push(

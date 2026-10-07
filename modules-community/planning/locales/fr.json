@@ -18,5 +18,8 @@
   "time": "Heure",
   "slot": "Stream",
   "games": "Jeux",
-  "badUrl": "Cette adresse n'est pas autorisée (utilisez une adresse publique en https://)."
+  "badUrl": "Cette adresse n'est pas autorisée (utilisez une adresse publique en https://).",
+  "nextUp": "Prochain stream",
+  "daysTitle": "Cette semaine",
+  "noneToday": "—"
 }

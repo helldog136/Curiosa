@@ -380,5 +380,10 @@
   "settings.mailInvalid": "Invalid server or sender address.",
   "instances.appearance": "This module's appearance",
   "instances.followTheme": "Follow the site theme",
-  "instances.followThemeHelp": "The color adapts when you change the theme in Settings."
+  "instances.followThemeHelp": "The color adapts when you change the theme in Settings.",
+  "home.columns": "Maximum number of columns",
+  "home.columnsHelp": "The home page is a grid. On a small screen it shows fewer columns (a single one on a phone): pieces stack up.",
+  "home.width": "Width",
+  "home.height": "Height",
+  "home.sizeHelp": "A piece's width and height are in grid cells. Wider than the columns shown = full width. The suggested value is the module's recommendation."
 }

@@ -55,7 +55,11 @@ export async function deleteSetting(key: string, locale?: string): Promise<void>
 
 export type NavItem = { label: Record<string, string>; href: string };
 /** Un morceau placé sur la page d'accueil : une section proposée par une instance de module. */
-export type HomeSection = { id: string; instance: string; section: string; options: Record<string, unknown> };
+export type HomeSection = {
+  id: string; instance: string; section: string; options: Record<string, unknown>;
+  /** Taille sur la grille de l'accueil, en cases. Absent = la taille recommandée par le module. */
+  w?: number; h?: number;
+};
 
 export type SiteConfig = {
   defaultLocale: string;
@@ -74,6 +78,8 @@ export type SiteConfig = {
   font: "sans" | "serif" | "mono";
   nav: NavItem[];
   homeSections: HomeSection[];
+  /** Nombre maximal de colonnes de la grille de l'accueil (1 à 12) ; l'affichage en montre moins sur un petit écran. */
+  homeColumns: number;
   setupCompleted: boolean;
 };
 
@@ -101,6 +107,7 @@ export const getSiteConfig = cache(async (locale?: string): Promise<SiteConfig> 
     font: (await getSetting<SiteConfig["font"]>("theme.font")) ?? "sans",
     nav: (await getSetting<NavItem[]>("nav.custom")) ?? [],
     homeSections: (await getSetting<HomeSection[]>("home.sections")) ?? DEFAULT_HOME_SECTIONS,
+    homeColumns: Math.min(12, Math.max(1, Math.trunc(Number(await getSetting<number>("home.columns"))) || 4)),
     setupCompleted: (await getSetting<boolean>("setup.completed")) ?? false,
   };
 });
