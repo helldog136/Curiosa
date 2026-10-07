@@ -37,7 +37,7 @@ export default async function HomeAdminPage() {
           const current = row ? choices.find((c) => c.value === `${row.instance}|${row.section}`) : undefined;
           return (
             <div key={row?.id ?? "new"} className={`${ui.card} space-y-3`}>
-              <div className="grid items-end gap-3 sm:grid-cols-[5rem_1fr_auto_auto]">
+              <div className="grid items-end gap-3 sm:grid-cols-[5rem_1fr_auto_auto_auto]">
                 <label className="text-sm">
                   <span className={ui.label}>{t("home.order")}</span>
                   <input name={`order_${i}`} type="number" defaultValue={(i + 1) * 10} className={ui.input} />
@@ -55,6 +55,11 @@ export default async function HomeAdminPage() {
                     <select name={`size_${i}`} defaultValue={resolveSize(row, current?.size)} className={ui.input}>
                       {SECTION_SIZES.map((z) => <option key={z} value={z}>{t(`home.size.${z}`)}</option>)}
                     </select>
+                  </label>
+                )}
+                {row && (
+                  <label className="flex items-center gap-2 pb-2 text-sm" title={t("home.isolatedHelp")}>
+                    <input type="checkbox" name={`isolated_${i}`} defaultChecked={row.isolated === true} /> {t("home.isolated")}
                   </label>
                 )}
                 {row && <label className="flex items-center gap-2 pb-2 text-sm"><input type="checkbox" name={`remove_${i}`} /> {t("action.delete")}</label>}

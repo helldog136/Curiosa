@@ -47,7 +47,10 @@
 /* Accueil fluide : les morceaux s'écoulent à la ligne, chacun avec une taille naturelle (voir src/core/home.ts). */
 .vh-flow { display: flex; flex-wrap: wrap; gap: 2rem 1.5rem; align-items: stretch; }
 .vh-cell { min-width: 0; flex: 1 1 var(--vh-basis); max-width: min(100%, var(--vh-max)); }
-.vh-small  { --vh-basis: 14rem; --vh-max: 24rem; }
-.vh-medium { --vh-basis: 22rem; --vh-max: 36rem; }
-.vh-large  { --vh-basis: 34rem; --vh-max: 100%; }
-.vh-full   { --vh-basis: 100%;  --vh-max: 100%; }
+.vh-small  { --vh-basis: 14rem; --vh-max: 24rem; --vh-solo: 24rem; }
+.vh-medium { --vh-basis: 22rem; --vh-max: 36rem; --vh-solo: 36rem; }
+.vh-large  { --vh-basis: 34rem; --vh-max: 100%; --vh-solo: 52rem; }
+.vh-full   { --vh-basis: 100%;  --vh-max: 100%; --vh-solo: 100%; }
+/* Morceau isolé : une ligne à lui (retour à la ligne avant et après), centré, à sa taille naturelle. */
+.vh-isolated { flex: 1 1 100%; max-width: 100%; display: flex; justify-content: center; }
+.vh-solo { width: min(100%, var(--vh-solo)); min-width: 0; }

@@ -12,6 +12,8 @@ import type { HomeSection } from "@/core/settings";
  *   full    toute la largeur (bandeau d'accueil, liste)
  *
  * Plusieurs petits morceaux se rangent côte à côte et s'étirent pour remplir la ligne ; sur un téléphone tout s'empile.
+ * Un morceau peut être ISOLÉ : retour à la ligne avant, centré seul sur sa ligne (à sa taille naturelle), retour à la ligne après ;
+ * le flux reprend ensuite avec les morceaux suivants.
  * La hauteur est toujours celle du contenu. Les règles CSS sont statiques (globals.css, classes `vh-flow`, `vh-<taille>`).
  */
 export const isSectionSize = (v: unknown): v is SectionSize => (SECTION_SIZES as readonly unknown[]).includes(v);
@@ -23,10 +25,10 @@ export function resolveSize(section: Pick<HomeSection, "size">, recommended?: Se
 }
 
 /** Taille de chaque placement de l'accueil, selon les modules actifs. */
-export function homeLayout(sections: HomeSection[], active: ActiveInstance[]): { section: HomeSection; size: SectionSize }[] {
+export function homeLayout(sections: HomeSection[], active: ActiveInstance[]): { section: HomeSection; size: SectionSize; isolated: boolean }[] {
   return sections.map((section) => {
     const target = active.find((a) => a.instance.key === section.instance);
     const decl = target ? sectionsOf(target.mod.manifest).find((s) => s.id === section.section) : undefined;
-    return { section, size: resolveSize(section, decl?.size) };
+    return { section, size: resolveSize(section, decl?.size), isolated: section.isolated === true };
   });
 }

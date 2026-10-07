@@ -381,10 +381,12 @@
   "instances.appearance": "Apparence de ce module",
   "instances.followTheme": "Suivre le thème du site",
   "instances.followThemeHelp": "La couleur s'adapte quand vous changez le thème dans Réglages.",
-  "home.sizeHelp": "La page d'accueil est fluide : les morceaux s'écoulent à la ligne selon la place, et s'empilent sur un petit écran. La taille dit seulement la place qu'un morceau aime prendre ; la valeur proposée est celle que recommande le module.",
+  "home.sizeHelp": "La page d'accueil est fluide : les morceaux s'écoulent à la ligne selon la place, et s'empilent sur un petit écran. Le bouton « Isoler » met un morceau seul sur sa ligne, centré. La taille dit seulement la place qu'un morceau aime prendre ; la valeur proposée est celle que recommande le module.",
   "home.size": "Taille",
   "home.size.small": "Petit",
   "home.size.medium": "Moyen",
   "home.size.large": "Grand",
-  "home.size.full": "Pleine largeur"
+  "home.size.full": "Pleine largeur",
+  "home.isolated": "Isoler",
+  "home.isolatedHelp": "Seul sur sa ligne, centré, avec un retour à la ligne avant et après ; les morceaux suivants reprennent ensuite normalement."
 }

@@ -381,10 +381,12 @@
   "instances.appearance": "This module's appearance",
   "instances.followTheme": "Follow the site theme",
   "instances.followThemeHelp": "The color adapts when you change the theme in Settings.",
-  "home.sizeHelp": "The home page is fluid: pieces flow onto new lines as space allows and stack on a small screen. The size only says how much room a piece likes to take; the suggested value is the module's recommendation.",
+  "home.sizeHelp": "The home page is fluid: pieces flow onto new lines as space allows and stack on a small screen. \"Isolate\" puts a piece alone on its own line, centered. The size only says how much room a piece likes to take; the suggested value is the module's recommendation.",
   "home.size": "Size",
   "home.size.small": "Small",
   "home.size.medium": "Medium",
   "home.size.large": "Large",
-  "home.size.full": "Full width"
+  "home.size.full": "Full width",
+  "home.isolated": "Isolate",
+  "home.isolatedHelp": "Alone on its own line, centered, with a line break before and after; the following pieces then flow on normally."
 }

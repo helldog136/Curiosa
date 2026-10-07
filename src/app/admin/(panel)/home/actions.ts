@@ -33,7 +33,7 @@ export async function saveHome(_prev: ActionState, formData: FormData): Promise<
     // On ne garde la taille que si elle diffère de la recommandation du module (elle pourra donc évoluer avec lui).
     const chosen = String(formData.get(`size_${i}`) ?? "");
     const size = isSectionSize(chosen) && chosen !== (decl.size ?? "full") ? chosen : undefined;
-    rows.push({ order: Number(formData.get(`order_${i}`)) || 0, section: { id: `s${i}-${Date.now().toString(36)}`, instance: instanceKey, section: sectionId, options, ...(size ? { size } : {}) } });
+    rows.push({ order: Number(formData.get(`order_${i}`)) || 0, section: { id: `s${i}-${Date.now().toString(36)}`, instance: instanceKey, section: sectionId, options, ...(size ? { size } : {}), ...(formData.get(`isolated_${i}`) === "on" ? { isolated: true } : {}) } });
   }
   rows.sort((a, b) => a.order - b.order);
   await setSetting("home.sections", rows.map((r) => r.section));

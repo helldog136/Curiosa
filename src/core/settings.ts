@@ -59,6 +59,8 @@ export type HomeSection = {
   id: string; instance: string; section: string; options: Record<string, unknown>;
   /** Taille naturelle choisie dans l'admin. Absent = celle que recommande le module. */
   size?: "small" | "medium" | "large" | "full";
+  /** Isolé : seul sur sa ligne, centré, avec un retour à la ligne avant et après. */
+  isolated?: boolean;
 };
 
 export type SiteConfig = {

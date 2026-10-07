@@ -40,7 +40,7 @@ export default async function HomePage() {
   const locale = await getVisitorLocale();
   const layout = homeLayout(config.homeSections, await getActiveInstances());
   const rendered = await Promise.all(
-    layout.map(async ({ section: s, size }) => ({ id: s.id, size, blocks: await runSection(s.instance, s.section, s.options, locale) })),
+    layout.map(async ({ section: s, size, isolated }) => ({ id: s.id, size, isolated, blocks: await runSection(s.instance, s.section, s.options, locale) })),
   );
   // Un morceau vide (module sans rien à montrer) ne prend pas de place : les autres s'écoulent à sa place.
   const shown = rendered.filter((s) => s.blocks.length > 0);
@@ -48,8 +48,14 @@ export default async function HomePage() {
   return (
     <div className="vh-flow">
       {shown.map((s) => (
-        <div key={s.id} className={`vh-cell vh-${s.size}`}>
-          <Blocks blocks={s.blocks} locale={locale} />
+        <div key={s.id} className={`vh-cell vh-${s.size}${s.isolated ? " vh-isolated" : ""}`}>
+          {s.isolated ? (
+            <div className="vh-solo">
+              <Blocks blocks={s.blocks} locale={locale} />
+            </div>
+          ) : (
+            <Blocks blocks={s.blocks} locale={locale} />
+          )}
         </div>
       ))}
     </div>

@@ -82,9 +82,10 @@ test("accueil : tailles résolues selon les modules actifs ; section inconnue �
     { id: "a", instance: "codes", section: "random", options: {} },
     { id: "b", instance: "codes", section: "random", options: {}, size: "large" },
     { id: "c", instance: "blog", section: "latest", options: {} },
-    { id: "d", instance: "inconnue", section: "x", options: {} },
+    { id: "d", instance: "inconnue", section: "x", options: {}, isolated: true },
   ], active);
   assert.deepEqual(layout.map((l) => l.size), ["small", "large", "full", "full"]);
+  assert.deepEqual(layout.map((l) => l.isolated), [false, false, false, true], "isolé seulement si l'admin l'a demandé");
 });
 
 test("accueil : le choix de l'admin est conservé quand le module change sa recommandation", () => {
@@ -100,4 +101,20 @@ test("accueil : une entrée expirée n'est jamais tirée au hasard", async () =>
   const { listEntries } = await import("@/core/content/entries");
   const entries = (await listEntries({ instance: "codes", locale: "en" })).filter((e) => !e.expired);
   assert.deepEqual(entries.map((e) => e.code), ["OK"]);
+});
+
+test("morceau isolé : une ligne à lui (flex 100 %), centré, à sa taille naturelle ; le flux reprend après", () => {
+  const css = fs.readFileSync("src/app/globals.css", "utf8");
+  assert.match(css, /\.vh-isolated\s*\{[^}]*flex:\s*1 1 100%[^}]*display:\s*flex;[^}]*justify-content:\s*center/, "retour à la ligne avant et après, centré");
+  assert.match(css, /\.vh-solo\s*\{[^}]*width:\s*min\(100%,\s*var\(--vh-solo\)\)/, "largeur naturelle, jamais plus que la ligne");
+  const solo = (z) => Number((css.match(new RegExp(`\\.vh-${z}\\s*\\{[^}]*--vh-solo:\\s*([\\d.]+)rem`)) ?? [])[1]);
+  assert.ok(solo("small") < solo("medium") && solo("medium") < solo("large"), "plus le morceau est grand, plus sa ligne est large");
+  assert.match(css, /\.vh-full\s*\{[^}]*--vh-solo:\s*100%/, "pleine largeur isolée = toute la ligne");
+});
+
+test("morceau isolé : la page et l'admin l'utilisent (classe, case à cocher, enregistrement)", () => {
+  const page = fs.readFileSync("src/app/(site)/page.tsx", "utf8");
+  assert.ok(page.includes("vh-isolated") && page.includes("vh-solo"));
+  assert.ok(fs.readFileSync("src/app/admin/(panel)/home/page.tsx", "utf8").includes("isolated_"));
+  assert.match(fs.readFileSync("src/app/admin/(panel)/home/actions.ts", "utf8"), /isolated_\$\{i\}.*isolated: true/);
 });
