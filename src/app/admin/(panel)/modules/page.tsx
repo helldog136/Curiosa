@@ -9,17 +9,20 @@ import { MODULE_TYPES } from "@/core/modules/types";
 import { localized } from "@/core/modules/types";
 import { ConfirmButton } from "@/components/admin/ConfirmButton";
 import { ui } from "@/components/admin/ui";
-import { addInstance, checkUpdateAction, toggleModule, uninstallModuleAction, updateModuleAction } from "./actions";
+import { duplicateServices } from "@/core/modules/dependencies";
+import { Checkbox } from "@/components/admin/Field";
+import { addInstance, checkUpdateAction, saveServiceRouting, toggleModule, uninstallModuleAction, updateModuleAction } from "./actions";
 
-export default async function ModulesPage({ searchParams }: { searchParams: Promise<{ update?: string; error?: string; detail?: string; module?: string; to?: string; level?: string }> }) {
+export default async function ModulesPage({ searchParams }: { searchParams: Promise<{ update?: string; error?: string; detail?: string; notice?: string; module?: string; to?: string; level?: string }> }) {
   const { t, locale, user, config, advanced } = await adminCtx("admin");
   const isOwner = user.role === "owner";
-  const { update, error, detail, module: checked, to, level } = await searchParams;
+  const { update, error, detail, notice, module: checked, to, level } = await searchParams;
   const rows = await listModuleRows();
   const mods = await Promise.all(rows.map(async (row) => ({ row, mod: await loadModule(row) })));
   const instances = await listInstances();
   const labeler = await getInstanceLabeler(locale, config.defaultLocale);
   const market = await getMarketplace().catch(() => []);
+  const duplicates = isOwner ? await duplicateServices() : [];
 
   return (
     <div className="space-y-8">
@@ -29,6 +32,38 @@ export default async function ModulesPage({ searchParams }: { searchParams: Prom
         {isOwner && <a href="/admin/marketplace" className={`${ui.btnPrimary} mt-3 inline-block`}>🛒 {t("modules.browseMarketplace")}</a>}
       </div>
       {error && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm">{error.startsWith("modules.error.") || error.startsWith("instances.error.") ? t(error, { services: detail ?? "", modules: detail ?? "" }) : t("error.generic")}</p>}
+      {notice === "services" && <p role="alert" className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">{t("services.notice")}</p>}
+      {duplicates.length > 0 && (
+        <section className="space-y-3">
+          <div>
+            <h2 className="text-lg font-semibold">{t("services.title")}</h2>
+            <p className="mt-1 text-sm text-muted">{t("services.intro")}</p>
+          </div>
+          {duplicates.map((d) => (
+            <form key={d.service} action={saveServiceRouting.bind(null, d.service)} className={`${ui.card} space-y-3`}>
+              <p className="font-medium"><span className="font-mono text-sm">{d.service}</span>{!d.resolved && <span className="ml-2 rounded bg-amber-500/20 px-2 py-0.5 text-xs">{t("services.pending")}</span>}</p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <fieldset className="space-y-1">
+                  <legend className="text-sm text-muted">{t("services.master")}</legend>
+                  {d.providers.map((p) => (
+                    <label key={p.instance.key} className="flex items-center gap-2 text-sm">
+                      <input type="radio" name="master" value={p.instance.key} defaultChecked={(d.routing?.master ?? d.providers[0]!.instance.key) === p.instance.key} required />
+                      {p.mod.manifest.icon ?? "🧩"} {labeler.label(p.instance)} <span className="text-xs text-muted">({localized(p.mod.manifest.name, locale, config.defaultLocale)})</span>
+                    </label>
+                  ))}
+                </fieldset>
+                <fieldset className="space-y-1">
+                  <legend className="text-sm text-muted">{t("services.replicas")}</legend>
+                  {d.providers.map((p) => (
+                    <Checkbox key={p.instance.key} name="replicas" value={p.instance.key} label={`${p.mod.manifest.icon ?? "🧩"} ${labeler.label(p.instance)}`} defaultChecked={d.routing?.replicas.includes(p.instance.key) ?? false} />
+                  ))}
+                </fieldset>
+              </div>
+              <button className={ui.btnPrimary}>{t("services.save")}</button>
+            </form>
+          ))}
+        </section>
+      )}
       {update && <p role="status" className="rounded-lg border border-line bg-surface p-3 text-sm">{update === "yes" ? (to ? t("modules.updateAvailableTo", { module: checked ?? "", version: to }) : t("modules.updateAvailable")) : t("modules.upToDate")}</p>}
       {update === "yes" && level === "major" && <p role="alert" className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">{t("modules.updateMajor")}</p>}
 

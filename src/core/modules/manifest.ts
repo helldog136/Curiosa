@@ -87,7 +87,7 @@ export const manifestSchema = z.object({
    * `requires` un service ne peut être activé que si un module qui l'offre est actif (livré avec le framework : installé et activé
    * automatiquement). On dépend d'un service, jamais d'un module précis : n'importe quel module qui l'offre convient.
    */
-  offers: z.array(z.object({ service: topicId, label: localized.optional() })).max(10).optional(),
+  offers: z.array(z.object({ service: topicId, label: localized.optional(), /** Méthodes qui ne font que lire : elles ne sont pas répliquées sur les fournisseurs secondaires. */ readOnly: z.array(z.string().regex(/^[a-zA-Z][a-zA-Z0-9_]{0,40}$/)).max(20).optional() })).max(10).optional(),
   requires: z.array(z.object({ service: topicId, label: localized.optional() })).max(10).optional(),
   mcp: z.array(z.object({ name: z.string().regex(/^[a-z][a-z0-9_]{1,39}$/), description: z.string().max(1000), readOnly: z.boolean().optional(), default: z.boolean().optional(), destructive: z.boolean().optional(), input: jsonSchemaLite.optional() }).refine((a) => !a.destructive || a.default !== true, "a destructive action cannot be enabled by default").refine((a) => !(a.readOnly && a.destructive), "a read-only action cannot be destructive")).max(60).optional(),
   content: content.optional(),

@@ -532,8 +532,11 @@
   "modules.offers": "Offers",
   "modules.error.requires": "This module needs: {services}. No active module offers it, and none ships with the framework: install one (marketplace) and try again.",
   "modules.error.requiredBy": "Not possible: these active modules depend on it ({modules}). Disable them first.",
-  "services.title": "Services in use",
-  "services.intro": "Several modules offer the same service: choose which one this instance uses (only one receives the data, never all at once).",
-  "services.first": "The first one (automatic)",
-  "services.split": "Careful: switching provider does not move the data already received. It stays with the old one; only new data goes to the new one. The two are never synchronised."
+  "services.title": "Services offered by several modules",
+  "services.intro": "Several modules offer the same service. The master receives the calls and answers; replicas also receive what is written (from now on: data already received is not copied).",
+  "services.master": "Master",
+  "services.replicas": "Replicas",
+  "services.save": "Save",
+  "services.pending": "To be chosen: until then, the first provider is the master, with no replica.",
+  "services.notice": "This module offers a service that other modules already offer: choose which one is the master."
 }

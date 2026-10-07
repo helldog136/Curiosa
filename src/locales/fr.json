@@ -532,8 +532,11 @@
   "modules.offers": "Offre",
   "modules.error.requires": "Ce module a besoin de : {services}. Aucun module qui l'offre n'est actif ni livré avec le framework : installez-en un (marketplace) puis réessayez.",
   "modules.error.requiredBy": "Impossible : ces modules actifs en dépendent ({modules}). Désactivez-les d'abord.",
-  "services.title": "Services utilisés",
-  "services.intro": "Plusieurs modules offrent le même service : choisissez lequel cette instance utilise (un seul reçoit les données, jamais tous à la fois).",
-  "services.first": "Le premier (automatique)",
-  "services.split": "Attention : changer de fournisseur ne déplace pas les données déjà reçues. Elles restent chez l'ancien ; seules les suivantes vont chez le nouveau. Les deux ne sont jamais synchronisés."
+  "services.title": "Services offerts par plusieurs modules",
+  "services.intro": "Plusieurs modules offrent le même service. Le maître reçoit les appels et répond ; les répliques reçoivent aussi ce qui s'écrit (à partir de maintenant : les données déjà reçues ne sont pas copiées).",
+  "services.master": "Maître",
+  "services.replicas": "Répliques",
+  "services.save": "Enregistrer",
+  "services.pending": "À choisir : en attendant, le premier fournisseur est le maître, sans réplique.",
+  "services.notice": "Ce module offre un service que d'autres modules offrent déjà : choisissez qui en est le maître."
 }

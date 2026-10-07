@@ -110,24 +110,72 @@ test("choix du fournisseur : premier par clé d'instance, de façon stable", asy
   assert.equal((await Dep.callService(await active("cons"), SERVICE, "add", {})).value.by, "alpha");
 });
 
-test("plusieurs fournisseurs : un seul reçoit (jamais tous), celui que l'admin a choisi ; choix invalide ou disparu → le premier", async () => {
+test("doublon de service : détecté, « à choisir » tant que l'admin n'a rien dit ; maître par défaut = le premier, sans réplique", async () => {
+  await install(provider("prov-a"), "prov-a"); await install(provider("prov-b"), "prov-b");
+  await setModuleEnabled("prov-a", true);
+  await instance("prov-a", "a-store");
+  assert.deepEqual(await Dep.duplicateServices(), [], "un seul fournisseur : rien à choisir");
+  await setModuleEnabled("prov-b", true); await instance("prov-b", "b-store");
+  const [dup] = await Dep.duplicateServices();
+  assert.deepEqual([dup.service, dup.resolved, dup.providers.map((p) => p.instance.key)], [SERVICE, false, ["a-store", "b-store"]]);
+  await install(consumer(), "cons"); await setModuleEnabled("cons", true); await instance("cons", "form");
+  assert.equal((await Dep.callService(await active("cons"), SERVICE, "add", {})).value.by, "a-store");
+  assert.equal(await db.prisma.moduleRecord.count({ where: { collection: "items" } }), 1, "pas de réplique tant qu'on n'a pas choisi");
+});
+
+test("maître + répliques : le maître répond, les répliques reçoivent aussi les écritures ; les lectures ne sont pas répliquées", async () => {
+  const code = `export default { services: { "${SERVICE}": {
+    add: async (ctx, args) => ({ id: await ctx.api.store.add("items", args), by: ctx.instance.key }),
+    count: async (ctx) => ({ n: await ctx.api.store.count("items"), by: ctx.instance.key }),
+  } } };`;
+  const prov = (id) => { const r = provider(id, code); return r; };
+  // `count` est déclarée lecture seule dans le manifeste du maître
+  const withReadOnly = (id) => makeRepo({ "module.json": { apiVersion: 2, id, name: id, version: "1.0.0", main: "index.mjs", offers: [{ service: SERVICE, readOnly: ["count"] }] }, "index.mjs": code });
+  await install(withReadOnly("prov-a"), "prov-a"); await install(prov("prov-b"), "prov-b"); await install(prov("prov-c"), "prov-c");
+  for (const id of ["prov-a", "prov-b", "prov-c"]) await setModuleEnabled(id, true);
+  const pa = await instance("prov-a", "a-store"), pb = await instance("prov-b", "b-store"), pc = await instance("prov-c", "c-store");
+  await install(consumer(), "cons"); await setModuleEnabled("cons", true); await instance("cons", "form");
+  const cons = await active("cons");
+  const n = (inst) => db.prisma.moduleRecord.count({ where: { collection: "items", instanceId: inst.id } });
+
+  await Dep.setRouting(SERVICE, { master: "a-store", replicas: ["b-store"] });
+  const r = await Dep.callService(cons, SERVICE, "add", { name: "Alice" });
+  assert.equal(r.value.by, "a-store", "l'appelant voit la réponse du maître");
+  assert.deepEqual([await n(pa), await n(pb), await n(pc)], [1, 1, 0], "maître et réplique reçoivent ; ni l'un ni l'autre n'est « tous »");
+  const read = await Dep.callService(cons, SERVICE, "count", {});
+  assert.deepEqual(read.value, { n: 1, by: "a-store" });
+  assert.deepEqual([await n(pa), await n(pb)], [1, 1], "la lecture n'a rien écrit nulle part");
+  assert.equal((await Dep.duplicateServices())[0].resolved, true);
+
+  // la panne d'une réplique ne fait pas échouer l'appel
+  await db.prisma.moduleRecord.deleteMany({});
+  await Dep.setRouting(SERVICE, { master: "a-store", replicas: ["b-store", "c-store"] });
+  assert.equal((await Dep.callService(cons, SERVICE, "add", { name: "Bob" })).ok, true);
+  assert.deepEqual([await n(pa), await n(pb), await n(pc)], [1, 1, 1]);
+});
+
+test("réplique en panne : l'appel réussit quand même ; maître en panne : l'appel échoue, aucune réplique n'est écrite", async () => {
+  const bad = `export default { services: { "${SERVICE}": { add: async () => { throw new Error("réplique cassée"); } } } };`;
+  await install(provider("prov-a"), "prov-a"); await install(provider("prov-bad", bad), "prov-bad");
+  await setModuleEnabled("prov-a", true); await setModuleEnabled("prov-bad", true);
+  await instance("prov-a", "a-store"); await instance("prov-bad", "bad-store");
+  await install(consumer(), "cons"); await setModuleEnabled("cons", true); await instance("cons", "form");
+  const cons = await active("cons");
+  await Dep.setRouting(SERVICE, { master: "a-store", replicas: ["bad-store"] });
+  assert.equal((await quiet(() => Dep.callService(cons, SERVICE, "add", {}))).ok, true);
+  await Dep.setRouting(SERVICE, { master: "bad-store", replicas: ["a-store"] });
+  assert.deepEqual(await quiet(() => Dep.callService(cons, SERVICE, "add", {})), { ok: false, reason: "failed" });
+  assert.equal(await db.prisma.moduleRecord.count({ where: { collection: "items" } }), 1, "le maître a échoué : la réplique n'a rien reçu de plus");
+});
+
+test("routage périmé (maître ou réplique retiré) : repli sur le premier fournisseur actif, sans erreur", async () => {
   await install(provider("prov-a"), "prov-a"); await install(provider("prov-b"), "prov-b");
   await setModuleEnabled("prov-a", true); await setModuleEnabled("prov-b", true);
-  await install(consumer(), "cons"); await setModuleEnabled("cons", true);
-  const pa = await instance("prov-a", "a-store"), pb = await instance("prov-b", "b-store"); const form = await instance("cons", "form");
-  const cons = await active("cons");
-
-  assert.equal((await Dep.callService(cons, SERVICE, "add", { n: 1 })).value.by, "a-store", "par défaut : le premier");
-  await Dep.setProviderChoice(form.id, SERVICE, "b-store");
-  assert.equal((await Dep.callService(cons, SERVICE, "add", { n: 2 })).value.by, "b-store");
-  const counts = async () => ({ "a-store": await db.prisma.moduleRecord.count({ where: { collection: "items", instanceId: pa.id } }), "b-store": await db.prisma.moduleRecord.count({ where: { collection: "items", instanceId: pb.id } }) });
-  assert.deepEqual(await counts(), { "a-store": 1, "b-store": 1 }, "chaque appel n'a atteint qu'un fournisseur");
-
-  await Dep.setProviderChoice(form.id, SERVICE, "n-existe-pas");
-  assert.equal((await Dep.callService(cons, SERVICE, "add", {})).value.by, "a-store", "choix invalide : repli sur le premier");
-  await Dep.setProviderChoice(form.id, SERVICE, "b-store");
-  assert.equal((await setModuleEnabled("prov-b", false)).ok, true, "un fournisseur choisi peut être retiré tant qu'un autre reste");
-  assert.equal((await Dep.callService(await active("cons"), SERVICE, "add", {})).value.by, "a-store", "fournisseur choisi disparu : repli");
-  await Dep.setProviderChoice(form.id, SERVICE, null);
-  assert.equal(await Dep.getProviderChoice(form.id, SERVICE), null);
+  await instance("prov-a", "a-store"); await instance("prov-b", "b-store");
+  await install(consumer(), "cons"); await setModuleEnabled("cons", true); await instance("cons", "form");
+  await Dep.setRouting(SERVICE, { master: "b-store", replicas: ["a-store"] });
+  assert.equal((await setModuleEnabled("prov-b", false)).ok, true, "le maître peut partir tant qu'un autre fournisseur reste");
+  assert.equal((await Dep.callService(await active("cons"), SERVICE, "add", {})).value.by, "a-store");
+  await Dep.setRouting(SERVICE, null);
+  assert.equal(await Dep.getRouting(SERVICE), null);
 });

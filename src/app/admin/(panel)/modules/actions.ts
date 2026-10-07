@@ -9,6 +9,7 @@ import { getModule } from "@/core/modules/registry";
 import { prisma } from "@/core/db";
 import { createInstance, defaultNames, runInstanceCreateHook } from "@/core/instanceService";
 import { checkNickname } from "@/core/instanceLabel";
+import { duplicateServices, providerInstances, setRouting } from "@/core/modules/dependencies";
 
 // Installer ou mettre à jour du code exécuté côté serveur est réservé au propriétaire.
 
@@ -18,6 +19,21 @@ export async function toggleModule(id: string, enabled: boolean): Promise<void> 
   await audit(user.email, enabled ? "module.enable" : "module.disable", id);
   revalidatePath("/", "layout");
   if (!result.ok) redirect(`/admin/modules?error=${encodeURIComponent(result.error)}${result.detail ? `&detail=${encodeURIComponent(result.detail)}` : ""}`);
+  // Un fournisseur de plus pour un service déjà offert : l'admin doit dire qui est le maître.
+  if (enabled && (await duplicateServices()).some((d) => !d.resolved)) redirect("/admin/modules?notice=services");
+  redirect("/admin/modules");
+}
+
+/** Maître et répliques d'un service offert par plusieurs instances. */
+export async function saveServiceRouting(service: string, formData: FormData): Promise<void> {
+  const { user } = await adminCtx("owner");
+  const keys = (await providerInstances(service)).map((p) => p.instance.key);
+  const master = String(formData.get("master") ?? "");
+  if (!keys.includes(master)) redirect("/admin/modules?error=error.generic");
+  const replicas = formData.getAll("replicas").map(String).filter((k) => keys.includes(k) && k !== master);
+  await setRouting(service, { master, replicas });
+  await audit(user.email, "service.routing", service);
+  revalidatePath("/", "layout");
   redirect("/admin/modules");
 }
 
@@ -87,5 +103,6 @@ export async function addInstance(moduleId: string, formData: FormData): Promise
   await runInstanceCreateHook(created.id);
   await audit(user.email, "instance.create", created.key);
   revalidatePath("/", "layout");
+  if ((await duplicateServices()).some((d) => !d.resolved)) redirect("/admin/modules?notice=services");
   redirect(`/admin/instances/${created.id}`);
 }

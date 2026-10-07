@@ -22,8 +22,7 @@ import { Checkbox, Select, TextArea, TextField } from "@/components/admin/Field"
 import { ui } from "@/components/admin/ui";
 import { dataStatusOf } from "@/core/modules/dataMigrations";
 import { taskStateOf } from "@/core/services/scheduler";
-import { getProviderChoice, providerInstances, requiresOf } from "@/core/modules/dependencies";
-import { deleteInstanceAction, retryMigrationAction, saveInstance, saveInstanceSettings, saveServiceChoices, saveSources } from "../actions";
+import { deleteInstanceAction, retryMigrationAction, saveInstance, saveInstanceSettings, saveSources } from "../actions";
 
 export default async function InstancePage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | undefined>> }) {
   const { t, locale, config, user, advanced } = await adminCtx("admin");
@@ -52,7 +51,6 @@ export default async function InstancePage({ params, searchParams }: { params: P
 
   const mcpOn = (await getSetting<boolean>(mcpInstanceKey(instance.id))) !== false;
   const dataStatus = await dataStatusOf(instance.id);
-  const serviceRows = (await Promise.all(requiresOf(mod.manifest).map(async (service, i) => ({ service, i, label: (mod.manifest.requires ?? [])[i]?.label, providers: await providerInstances(service, mod.manifest.id), chosen: await getProviderChoice(instance.id, service) })))).filter((r) => r.providers.length > 1);
   const taskRows = await Promise.all(Object.entries(mod.def.tasks ?? {}).map(async ([name, task]) => ({ name, every: task.everyMinutes, state: await taskStateOf(instance.id, name) })));
   const visibleSettings = mod.manifest.settings.filter((f) => advanced || !f.advanced);
   const generalSettings = visibleSettings.filter((f) => f.group !== "appearance");
@@ -192,21 +190,6 @@ export default async function InstancePage({ params, searchParams }: { params: P
           </>
         )}
       </ActionForm>
-
-      {serviceRows.length > 0 && (
-        <ActionForm action={saveServiceChoices} submitLabel={t("action.save")}>
-          <input type="hidden" name="id" value={id} />
-          <div>
-            <h2 className="text-lg font-semibold">{t("services.title")}</h2>
-            <p className="mt-1 text-sm text-muted">{t("services.intro")}</p>
-            <p className="mt-1 text-sm text-amber-500">{t("services.split")}</p>
-          </div>
-          {serviceRows.map((r) => (
-            <Select key={r.service} name={`service_${r.i}`} label={r.label ? L(r.label) : r.service} defaultValue={r.chosen ?? ""}
-              options={[{ value: "", label: t("services.first") }, ...r.providers.map((p) => ({ value: p.instance.key, label: `${p.mod.manifest.icon ?? "🧩"} ${labeler.label(p.instance)}` }))]} />
-          ))}
-        </ActionForm>
-      )}
 
       {(mod.manifest.consumes ?? []).length > 0 && (
         <ActionForm action={saveSources} submitLabel={t("action.save")}>
