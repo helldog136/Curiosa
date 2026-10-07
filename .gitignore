@@ -32,3 +32,6 @@ deploy.log
 
 # données métier (seed partenaires, exports) — sur le serveur, jamais dans git
 /data/
+
+# bases de données temporaires des tests
+/tests/.tmp/

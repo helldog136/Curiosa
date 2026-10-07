@@ -1,0 +1,113 @@
+{
+  "apiVersion": 2,
+  "id": "planning",
+  "name": {
+    "en": "Stream schedule",
+    "fr": "Planning des streams"
+  },
+  "version": "1.0.0",
+  "description": {
+    "en": "Shows your upcoming streams, day by day, read from a Google Calendar (or any iCal feed). Public page, home section, and a topic other modules can use.",
+    "fr": "Affiche vos prochains streams, jour par jour, lus depuis un Google Agenda (ou n'importe quel flux iCal). Page publique, section d'accueil, et un sujet que d'autres modules peuvent utiliser."
+  },
+  "author": "Vitrine",
+  "license": "MIT",
+  "icon": "📅",
+  "main": "index.mjs",
+  "type": "widget",
+  "instances": "multiple",
+  "page": true,
+  "basePath": "planning",
+  "sections": [
+    {
+      "id": "upcoming",
+      "label": {
+        "en": "Next streams",
+        "fr": "Prochains streams"
+      },
+      "options": [
+        {
+          "key": "count",
+          "type": "number",
+          "default": 5,
+          "label": {
+            "en": "How many",
+            "fr": "Combien"
+          }
+        }
+      ]
+    }
+  ],
+  "provides": [
+    {
+      "topic": "planning.slot",
+      "label": {
+        "en": "Upcoming streams",
+        "fr": "Prochains streams"
+      }
+    }
+  ],
+  "permissions": [
+    "pages",
+    "sections",
+    "admin",
+    "topics",
+    "mcp"
+  ],
+  "settings": [
+    {
+      "key": "icsUrl",
+      "type": "secret",
+      "label": {
+        "en": "Calendar address (iCal, secret)",
+        "fr": "Adresse du calendrier (iCal, secrète)"
+      },
+      "help": {
+        "en": "In Google Calendar: Settings → your calendar → “Secret address in iCal format”. Never shown again once saved.",
+        "fr": "Dans Google Agenda : Paramètres → votre agenda → « Adresse secrète au format iCal ». Jamais réaffichée une fois enregistrée."
+      }
+    },
+    {
+      "key": "days",
+      "type": "number",
+      "default": 7,
+      "advanced": true,
+      "label": {
+        "en": "Days shown on the page",
+        "fr": "Jours affichés sur la page"
+      }
+    },
+    {
+      "key": "timezone",
+      "type": "text",
+      "default": "Europe/Brussels",
+      "advanced": true,
+      "label": {
+        "en": "Time zone",
+        "fr": "Fuseau horaire"
+      },
+      "help": {
+        "en": "IANA name, e.g. Europe/Brussels, America/Montreal.",
+        "fr": "Nom IANA, ex. Europe/Brussels, America/Montreal."
+      }
+    }
+  ],
+  "mcp": [
+    {
+      "name": "planning_upcoming",
+      "readOnly": true,
+      "default": true,
+      "description": "List the upcoming streams of the schedule (title, start, end, games).",
+      "input": {
+        "type": "object",
+        "properties": {
+          "days": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 60
+          }
+        }
+      }
+    }
+  ]
+}
