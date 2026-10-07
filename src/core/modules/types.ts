@@ -84,8 +84,21 @@ export type ModuleManifest = {
   settings: SettingField[];
   /** Actions proposées à l'API MCP du cœur (désactivable). */
   mcp?: McpDecl[];
-  /** Livré avec le cœur et proposé à l'assistant de première installation. */
+  /** Proposé à l'assistant de première installation (cases à cocher « que voulez-vous publier ? »). */
   starter?: boolean;
+  /** Comment ce module participe à la première installation. Le cœur n'a aucune connaissance d'un module en particulier : tout est déclaré ici. */
+  onboarding?: {
+    /** Créé d'office, sans question (ex. le bandeau d'accueil). */
+    always?: boolean;
+    /** Coché par défaut dans l'assistant. */
+    preselected?: boolean;
+    /** Section placée sur l'accueil à la création (`count` = nombre d'entrées pour « latest »). */
+    home?: { section: string; count?: number };
+    /** Entrée d'exemple créée à la première installation, pour que le site ne soit pas vide. */
+    sample?: { title: LocalizedString; summary?: LocalizedString; body?: LocalizedString };
+    /** L'assistant demande à l'utilisateur ses liens (Twitch, YouTube…) et les range dans ce module. */
+    collectsLinks?: boolean;
+  };
   /** Modules livrés avec le cœur : activés dès le départ (défaut : oui). */
   defaultEnabled?: boolean;
   /** Déclaratif et informatif : affiché à l'administrateur avant activation. */

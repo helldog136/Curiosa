@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { adminCtx } from "@/core/admin";
-import { createToken, revokeToken, type TokenScope } from "@/core/mcp/tokens";
+import { createToken, revokeToken, type TokenScope } from "@/core/services/mcp/tokens";
 import { audit } from "@/core/permissions";
 import { setSetting } from "@/core/settings";
 import type { ActionState } from "@/components/admin/ActionForm";

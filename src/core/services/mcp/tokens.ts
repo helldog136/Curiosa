@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
-import { prisma } from "../db";
-import { getSetting } from "../settings";
+import { prisma } from "@/core/db";
+import { getSetting } from "@/core/settings";
 
 export type TokenScope = "read" | "write";
 

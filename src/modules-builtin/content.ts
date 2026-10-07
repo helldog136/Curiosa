@@ -32,6 +32,18 @@ export const blog = make({
   starter: true,
   description: { en: "Articles with cover, summary and Markdown content. Add as many blogs as you like.", fr: "Des articles avec image, résumé et contenu Markdown. Ajoutez autant de blogs que vous voulez." },
   content: { display: "cards", clickAction: "detail", features: ["cover", "summary", "body", "featured", "tags"], basePath: "blog", showInNav: true },
+  onboarding: {
+    preselected: true,
+    home: { section: "latest", count: 3 },
+    sample: {
+      title: { en: "Welcome to your new site", fr: "Bienvenue sur votre nouveau site" },
+      summary: { en: "This first article was created for you. Edit or delete it from the admin.", fr: "Ce premier article a été créé pour vous. Modifiez-le ou supprimez-le depuis l'admin." },
+      body: {
+        en: "Everything on this site — texts, links, colors, languages — is editable from the admin.\n\n- Add articles, promo codes or any entries to your collections\n- Create redirects such as /twitch\n- Install modules to add features",
+        fr: "Tout ce qui s'affiche ici — textes, liens, couleurs, langues — se modifie depuis l'admin.\n\n- Ajoutez des articles, des codes promo ou n'importe quelles entrées à vos collections\n- Créez des redirections comme /twitch\n- Installez des modules pour ajouter des fonctionnalités",
+      },
+    },
+  },
 });
 
 export const links = make({
@@ -43,6 +55,7 @@ export const links = make({
   starter: true,
   description: { en: "A list of links with icons — your social networks, your channels. Add one list per channel if you have several.", fr: "Une liste de liens avec icônes — vos réseaux, vos chaînes. Ajoutez une liste par chaîne si vous en avez plusieurs." },
   content: { display: "links", clickAction: "external", features: ["icon", "summary", "url", "tags"], basePath: "links", showInNav: false, allowGoLinks: true },
+  onboarding: { preselected: true, collectsLinks: true, home: { section: "latest", count: 20 } },
 });
 
 export const codes = make({
@@ -54,6 +67,7 @@ export const codes = make({
   starter: true,
   description: { en: "Partner offers with a code, a link and an expiry date.", fr: "Les offres de vos partenaires : code, lien et date d'expiration." },
   content: { display: "codes", clickAction: "external", features: ["icon", "cover", "summary", "body", "url", "code", "expiresAt", "tags"], basePath: "codes", showInNav: true, allowGoLinks: true },
+  onboarding: { home: { section: "latest", count: 3 } },
 });
 
 export const pages = make({

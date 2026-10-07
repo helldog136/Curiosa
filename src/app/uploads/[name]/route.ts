@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { UPLOADS_DIR } from "@/core/config";
-import { mimeFor, UPLOAD_NAME_RE } from "@/core/uploads";
+import { mimeFor, UPLOAD_NAME_RE } from "@/core/services/uploads";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ name: string }> }) {
   const { name } = await params;

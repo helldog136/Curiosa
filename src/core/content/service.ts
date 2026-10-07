@@ -1,7 +1,7 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
-import { prisma } from "./db";
-import { uniqueSlug } from "./entries";
-import { slugify } from "./slug";
+import { prisma } from "@/core/db";
+import { uniqueSlug } from "@/core/content/entries";
+import { slugify } from "@/core/slug";
 
 type Db = PrismaClient | Prisma.TransactionClient;
 

@@ -3,7 +3,7 @@ import { notFound, permanentRedirect, redirect } from "next/navigation";
 import { pickDescription, pickName, type InstanceView } from "@/core/instances";
 import { getActiveInstances, type ActiveInstance } from "@/core/modules/registry";
 import { RESERVED_PATHS } from "@/core/config";
-import { findEntryBySlug, listEntries, type EntryView } from "@/core/entries";
+import { findEntryBySlug, listEntries, type EntryView } from "@/core/content/entries";
 import { makeTranslator } from "@/core/i18n/dictionary";
 import { getVisitorLocale } from "@/core/i18n/request";
 import { resolveRedirect } from "@/core/redirects";

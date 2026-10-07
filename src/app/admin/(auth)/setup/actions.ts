@@ -10,7 +10,7 @@ import { isKnownLocale } from "@/core/i18n/locales";
 import { BUILTIN_MODULES } from "@/modules-builtin";
 import { createInstance, defaultNames } from "@/core/instanceService";
 import { audit } from "@/core/permissions";
-import { createEntry } from "@/core/services";
+import { createEntry } from "@/core/content/service";
 import type { HomeSection } from "@/core/settings";
 import { isSafeExternalUrl } from "@/core/url";
 import { slugify } from "@/core/slug";
@@ -68,19 +68,24 @@ export async function completeSetup(_prev: ActionState, formData: FormData): Pro
       ];
       if (str("tagline")) settings.push(["site.tagline", str("tagline"), defaultLocale]);
 
-      // Tout est un module : le bandeau d'accueil, comme les rubriques choisies, sont des instances.
+      // Le cœur ne connaît aucun module en particulier : chaque manifeste dit s'il est créé d'office,
+      // quelle section il place sur l'accueil, s'il a une entrée d'exemple ou s'il reçoit les liens saisis.
       const home: HomeSection[] = [];
-      const ids: Record<string, string> = {};
-      const heroModule = BUILTIN_MODULES.find((m) => m.manifest.id === "hero")!;
-      const hero = await createInstance(tx, { manifest: heroModule.manifest, key: "hero", names: defaultNames(heroModule.manifest, locales) });
-      home.push({ id: "hero", instance: hero.key, section: "hero", options: {} });
-
-      for (const id of presetIds) {
-        const starter = BUILTIN_MODULES.find((m) => m.manifest.id === id && m.manifest.starter && m.manifest.content);
-        if (!starter) continue;
-        const instance = await createInstance(tx, { manifest: starter.manifest, names: defaultNames(starter.manifest, locales), descriptions: Object.fromEntries(locales.map((l) => [l, localizedText(starter.manifest.description, l)])) });
-        ids[id] = instance.id;
-        if (id !== "pages") home.push({ id, instance: instance.key, section: "latest", options: { count: id === "links" ? 20 : 3 } });
+      const created: { manifest: (typeof BUILTIN_MODULES)[number]["manifest"]; instance: { id: string; key: string } }[] = [];
+      const shipped = BUILTIN_MODULES.map((m) => m.manifest);
+      const wanted = [
+        ...shipped.filter((m) => m.onboarding?.always),
+        ...shipped.filter((m) => m.starter && m.content && presetIds.includes(m.id)),
+      ];
+      for (const manifest of wanted) {
+        const instance = await createInstance(tx, {
+          manifest,
+          names: defaultNames(manifest, locales),
+          descriptions: Object.fromEntries(locales.map((l) => [l, localizedText(manifest.description, l)])),
+        });
+        created.push({ manifest, instance });
+        const h = manifest.onboarding?.home;
+        if (h) home.push({ id: manifest.id, instance: instance.key, section: h.section, options: h.count ? { count: h.count } : {} });
       }
 
       for (const [key, value, locale] of settings) {
@@ -98,13 +103,14 @@ export async function completeSetup(_prev: ActionState, formData: FormData): Pro
         update: { value: homeJson },
       });
 
-      // Premiers liens saisis : des entrées de la collection de liens, avec raccourci /<nom> optionnel.
-      if (ids.links) {
+      // Premiers liens saisis : des entrées du module qui les collecte, avec raccourci /<nom> optionnel.
+      const linksTarget = created.find((c) => c.manifest.onboarding?.collectsLinks);
+      if (linksTarget) {
         for (const [i, label] of linkLabels.entries()) {
           const url = linkUrls[i]?.trim() ?? "";
           if (!label.trim() || !isSafeExternalUrl(url)) continue;
           const entry = await createEntry(tx, {
-            instanceId: ids.links, locale: defaultLocale, title: label.trim(), status: "published",
+            instanceId: linksTarget.instance.id, locale: defaultLocale, title: label.trim(), status: "published",
             url, icon: linkIcons[i]?.trim() || null, position: i, authorId: owner.id,
           });
           const path = slugify(label);
@@ -115,11 +121,13 @@ export async function completeSetup(_prev: ActionState, formData: FormData): Pro
         }
       }
 
-      // Un premier article pour que le site ne soit pas vide.
-      if (ids.blog) {
+      // Entrées d'exemple déclarées par les modules, pour que le site ne soit pas vide.
+      for (const { manifest, instance } of created) {
+        const sample = manifest.onboarding?.sample;
+        if (!sample) continue;
         await createEntry(tx, {
-          instanceId: ids.blog, locale: defaultLocale, status: "published", authorId: owner.id,
-          title: t("setup.sample.title"), summary: t("setup.sample.summary"), body: t("setup.sample.body"),
+          instanceId: instance.id, locale: defaultLocale, status: "published", authorId: owner.id,
+          title: localizedText(sample.title, defaultLocale), summary: localizedText(sample.summary, defaultLocale), body: localizedText(sample.body, defaultLocale),
         });
       }
     });

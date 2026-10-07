@@ -11,7 +11,7 @@ export const manifest: ParsedManifest = {
   author: "Vitrine",
   license: "MIT",
   icon: "🏁",
-  starter: true,
+  onboarding: { always: true, home: { section: "hero" } },
   consumes: [],
   provides: [],
   instances: "multiple",

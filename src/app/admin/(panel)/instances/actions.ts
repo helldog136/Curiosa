@@ -9,10 +9,10 @@ import { deleteInstance, validateBasePath } from "@/core/instanceService";
 import { instanceSettingKey } from "@/core/modules/context";
 import { hasPage } from "@/core/modules/manifest";
 import { getModule } from "@/core/modules/registry";
-import { getSources, providersOf, setSources } from "@/core/modules/topics";
+import { getSources, providersOf, setSources } from "@/core/services/topics";
 import { audit } from "@/core/permissions";
 import { deleteSetting, setSetting } from "@/core/settings";
-import { mcpInstanceKey } from "@/core/mcp/tools";
+import { mcpInstanceKey } from "@/core/modules/mcpProvider";
 import type { ActionState } from "@/components/admin/ActionForm";
 
 function parseFieldSchema(raw: string) {

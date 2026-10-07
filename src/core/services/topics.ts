@@ -1,9 +1,9 @@
-import { entryPath, listEntries } from "../entries";
-import { pickName, type InstanceView } from "../instances";
-import { getSetting, getSiteConfig, setSetting } from "../settings";
-import { buildContext } from "./context";
-import { getActiveInstances, type ActiveInstance } from "./registry";
-import type { ConsumeDecl, TopicField, TopicItem } from "./types";
+import { coreEntryAdapter } from "@/core/content/topics";
+import { pickName } from "@/core/instances";
+import { getSetting, getSiteConfig, setSetting } from "@/core/settings";
+import { buildContext } from "@/core/modules/context";
+import { getActiveInstances, type ActiveInstance } from "@/core/modules/registry";
+import type { ConsumeDecl, TopicField, TopicItem } from "@/core/modules/types";
 
 /**
  * Sujets : la façon dont les modules s'échangent des informations.
@@ -17,20 +17,21 @@ import type { ConsumeDecl, TopicField, TopicItem } from "./types";
  * fournisseur ne sait pas qui le lit.
  */
 
-/** Sujet fourni d'office par toute instance à contenu : ses entrées publiées. */
-export const CORE_ENTRY = "core.entry";
+/**
+ * Un sujet « du cœur » : fourni par le cœur lui-même plutôt que par un module (aujourd'hui, seul
+ * `core.entry` existe, implémenté par le moteur de contenu : src/core/content/topics.ts). Le mécanisme
+ * ci-dessous reste identique pour tous les sujets ; seule la façon de trouver et lire les fournisseurs change.
+ */
+export type TopicAdapter = {
+  topic: string;
+  schema: TopicField[];
+  providers(): Promise<ActiveInstance[]>;
+  fetch(provider: ActiveInstance, query: { locale: string; limit: number; tags: string[] }): Promise<Record<string, unknown>[]>;
+};
 
-export const CORE_ENTRY_SCHEMA: TopicField[] = [
-  { key: "title", type: "string", required: true },
-  { key: "summary", type: "string" },
-  { key: "path", type: "string", required: true },
-  { key: "url", type: "url" },
-  { key: "cover", type: "string" },
-  { key: "icon", type: "string" },
-  { key: "code", type: "string" },
-  { key: "tags", type: "string[]" },
-  { key: "publishedAt", type: "string" },
-];
+/** Liste explicite des sujets du cœur. */
+const ADAPTERS: TopicAdapter[] = [coreEntryAdapter];
+const adapterOf = (topic: string) => ADAPTERS.find((a) => a.topic === topic);
 
 export type Sources = { instances: string[] | null; tags: string[] };
 
@@ -48,11 +49,9 @@ export async function setSources(instanceId: string, topic: string, sources: Sou
 
 /** Instances qui peuvent alimenter un sujet. */
 export async function providersOf(topic: string): Promise<ActiveInstance[]> {
-  return (await getActiveInstances()).filter(({ instance, mod }) =>
-    topic === CORE_ENTRY
-      ? !!mod.manifest.content && instance.exposed
-      : mod.manifest.provides?.some((p) => p.topic === topic) && !!mod.def.exports?.[topic],
-  );
+  const adapter = adapterOf(topic);
+  if (adapter) return adapter.providers();
+  return (await getActiveInstances()).filter(({ mod }) => mod.manifest.provides?.some((p) => p.topic === topic) && !!mod.def.exports?.[topic]);
 }
 
 function valid(value: unknown, type: TopicField["type"]): boolean {
@@ -81,25 +80,9 @@ export function conform(item: Record<string, unknown>, schema: TopicField[]): Re
 }
 
 async function fromProvider(provider: ActiveInstance, topic: string, locale: string, limit: number, tags: string[]): Promise<Record<string, unknown>[]> {
+  const adapter = adapterOf(topic);
+  if (adapter) return adapter.fetch(provider, { locale, limit, tags });
   const { instance, mod } = provider;
-  if (topic === CORE_ENTRY) {
-    const config = await getSiteConfig();
-    const entries = await listEntries({ instance, locale, limit: 200 });
-    return entries
-      .filter((e) => !e.expired && (tags.length === 0 || tags.some((t) => e.tags.includes(t))))
-      .slice(0, limit)
-      .map((e) => ({
-        title: e.title,
-        summary: e.summary || undefined,
-        path: entryPath(e, config.defaultLocale),
-        url: e.url ?? undefined,
-        cover: e.cover ?? undefined,
-        icon: e.icon ?? undefined,
-        code: e.code ?? undefined,
-        tags: e.tags,
-        publishedAt: e.publishedAt?.toISOString(),
-      }));
-  }
   return (await mod.def.exports![topic]!(await buildContext(mod, instance, locale), { locale, limit, tags })) ?? [];
 }
 
@@ -111,7 +94,7 @@ export async function collect(
 ): Promise<TopicItem[]> {
   const decl: ConsumeDecl | undefined = consumer.mod.manifest.consumes?.find((c) => c.topic === topic);
   if (!decl) throw new Error(`module "${consumer.mod.manifest.id}" does not declare consuming "${topic}"`);
-  const schema = topic === CORE_ENTRY ? CORE_ENTRY_SCHEMA : (decl.schema ?? []);
+  const schema = adapterOf(topic)?.schema ?? decl.schema ?? [];
   const limit = Math.min(200, Math.max(1, opts.limit ?? 50));
   const sources = await getSources(consumer.instance.id, topic);
   const config = await getSiteConfig();
@@ -132,7 +115,6 @@ export async function collect(
   return out.slice(0, limit);
 }
 
-export type SourceChoice = { instance: InstanceView; moduleId: string };
 
 /**
  * Options d'un champ « référence » (liste déroulante de l'éditeur d'entrée) : les éléments

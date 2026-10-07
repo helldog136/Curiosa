@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { UPLOADS_DIR } from "./config";
+import { UPLOADS_DIR } from "@/core/config";
 
 export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 

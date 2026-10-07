@@ -82,6 +82,15 @@ export const manifestSchema = z.object({
     .default([]),
   settings: z.array(settingField).max(60).default([]),
   starter: z.boolean().optional(),
+  onboarding: z
+    .object({
+      always: z.boolean().optional(),
+      preselected: z.boolean().optional(),
+      home: z.object({ section: z.string(), count: z.number().int().min(1).max(50).optional() }).optional(),
+      sample: z.object({ title: localized, summary: localized.optional(), body: localized.optional() }).optional(),
+      collectsLinks: z.boolean().optional(),
+    })
+    .optional(),
   defaultEnabled: z.boolean().optional(),
   permissions: z.array(z.enum(["slots", "routes", "storage", "filters", "sections", "pages", "topics", "overlay", "mcp", "admin"])).default([]),
 });

@@ -1,7 +1,7 @@
 import type { Entry, EntryTranslation } from "@prisma/client";
-import { prisma } from "./db";
-import { getInstanceByKey, listInstances, type InstanceView } from "./instances";
-import { getSiteConfig } from "./settings";
+import { prisma } from "@/core/db";
+import { getInstanceByKey, listInstances, type InstanceView } from "@/core/instances";
+import { getSiteConfig } from "@/core/settings";
 
 export type EntryView = {
   id: string;

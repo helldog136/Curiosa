@@ -1,8 +1,8 @@
 import { adminCtx } from "@/core/admin";
 import { prisma } from "@/core/db";
 import { siteUrl } from "@/core/config";
-import { buildTools } from "@/core/mcp/tools";
-import { isMcpEnabled } from "@/core/mcp/tokens";
+import { listMcpTools } from "@/core/platform";
+import { isMcpEnabled } from "@/core/services/mcp/tokens";
 import { ActionForm } from "@/components/admin/ActionForm";
 import { ConfirmButton } from "@/components/admin/ConfirmButton";
 import { Select, TextField } from "@/components/admin/Field";
@@ -13,7 +13,7 @@ export default async function McpPage() {
   const { t, advanced } = await adminCtx("owner");
   const enabled = await isMcpEnabled();
   const tokens = await prisma.apiToken.findMany({ orderBy: { createdAt: "desc" } });
-  const tools = enabled ? await buildTools() : [];
+  const tools = enabled ? await listMcpTools() : [];
   const date = (d: Date | null) => (d ? d.toISOString().slice(0, 16).replace("T", " ") : "—");
 
   return (

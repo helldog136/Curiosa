@@ -1,5 +1,5 @@
 import type { InstanceView } from "@/core/instances";
-import { entryPath, type EntryView } from "@/core/entries";
+import { entryPath, type EntryView } from "@/core/content/entries";
 import { makeTranslator } from "@/core/i18n/dictionary";
 import { safeHref } from "@/core/url";
 import { CopyCode } from "./CopyCode";

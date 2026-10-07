@@ -2,9 +2,9 @@ import { notFound } from "next/navigation";
 import { adminCtx } from "@/core/admin";
 import { getInstanceById } from "@/core/instances";
 import { prisma } from "@/core/db";
-import { parseTags } from "@/core/entries";
+import { parseTags } from "@/core/content/entries";
 import { ConfirmButton } from "@/components/admin/ConfirmButton";
-import { getRefOptions } from "@/core/modules/topics";
+import { getRefOptions } from "@/core/services/topics";
 import { EntryForm } from "../EntryForm";
 import { deleteEntry, deleteTranslation } from "../actions";
 

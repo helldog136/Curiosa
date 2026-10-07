@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { adminCtx } from "@/core/admin";
 import { getInstanceByKey, pickName } from "@/core/instances";
-import { getRefOptions } from "@/core/modules/topics";
+import { getRefOptions } from "@/core/services/topics";
 import { EntryForm } from "../EntryForm";
 
 export default async function NewEntryPage({ searchParams }: { searchParams: Promise<{ c?: string; locale?: string }> }) {

@@ -61,16 +61,21 @@ ne remet donc jamais à zéro ce que le mode avancé a réglé. Les modules marq
 
 Un module *consommateur* (type `overlay`, par exemple) déclare dans son manifeste les sujets qu'il
 digère et leur format ; les modules *fournisseurs* exposent des éléments à ce format
-(`provides` + `exports`). Le cœur (`src/core/modules/topics.ts`) valide, filtre par étiquette,
+(`provides` + `exports`). Le cœur (`src/core/services/topics.ts`) valide, filtre par étiquette,
 applique les abonnements choisis dans l'admin et ajoute la provenance. Les modules ne se
 connaissent pas entre eux. `core.entry` (les entrées publiées de toute instance à contenu) est
 fourni d'office : un blog nourrit un overlay sans code. Voir [MODULES.md](MODULES.md#échanger-des-informations-entre-modules--les-sujets).
 
+## Le cœur offre, les modules apportent
+
+Voir [PLATFORM.md](PLATFORM.md) : les *services* génériques (QR, MCP, stockage, sujets, envois — `src/core/services/`) sont
+strictement séparés des *fonctionnalités* (modules), et reliés dans une racine de composition (`src/core/platform.ts`).
+
 ## API MCP
 
-`/api/mcp` (Model Context Protocol, JSON-RPC sur HTTP, `src/app/api/mcp/route.ts`) n'a aucun outil codé en dur :
-`src/core/mcp/tools.ts` les collecte auprès de tous les modules actifs (`mcp` du manifeste + du code) et génère des
-actions éditoriales pour les instances à contenu. Authentification par jetons hachés (`ApiToken`, portées lecture /
+`/api/mcp` (Model Context Protocol, JSON-RPC sur HTTP) n'a aucun outil codé en dur : le service `src/core/services/mcp/`
+serveur les outils que lui fournissent des *fournisseurs* (`src/core/platform.ts`) — les actions déclarées par tous les modules
+actifs, plus des actions éditoriales du moteur de contenu pour les instances à contenu. Authentification par jetons hachés (`ApiToken`, portées lecture /
 écriture), interrupteur général (`mcp.enabled`), retrait possible par instance, validation des arguments contre un
 sous-ensemble de JSON Schema, limitation de débit, audit des écritures. Invariants : aucun outil ne publie ni ne
 supprime ; un agent ne crée et ne modifie que des brouillons.

@@ -313,7 +313,7 @@ la vôtre) et, pour `entry.*`, `ctx.entry`.
 - `ctx.api.entries.list({ instance?, locale?, limit? })` — entrées publiées (par défaut, de l'instance courante)
 - `ctx.api.instances.list({ module?, locale? })`, `ctx.api.site(locale)` (nom, accroche, logo)
 - `ctx.api.store.add / list / remove / count` — stockage privé de l'instance
-- `ctx.api.qr(texte)` — QR code en SVG (fond transparent), généré par le cœur : aucune dépendance côté module
+- **Services du cœur** (voir [PLATFORM.md](PLATFORM.md)) : `ctx.api.qr(texte)` (QR code en SVG), `ctx.api.store` (stockage privé), `ctx.api.topics` (échanges entre modules) ; le MCP se déclare dans le manifeste
 - `ctx.api.siteUrl`
 
 Un module n'importe rien du cœur : tout passe par `ctx`. C'est ce qui garantit qu'il continuera

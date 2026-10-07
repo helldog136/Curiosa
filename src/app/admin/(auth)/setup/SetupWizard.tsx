@@ -8,7 +8,7 @@ type Props = {
   strings: Record<string, Record<string, string>>;
   uiLocales: string[];
   locales: { code: string; name: string }[];
-  presets: { id: string; names: Record<string, string>; descriptions: Record<string, string> }[];
+  presets: { id: string; preselected: boolean; collectsLinks: boolean; names: Record<string, string>; descriptions: Record<string, string> }[];
   needsToken: boolean;
 };
 
@@ -17,7 +17,7 @@ const STEPS = ["language", "identity", "content", "links", "account"] as const;
 export function SetupWizard({ strings, uiLocales, locales, presets, needsToken }: Props) {
   const [step, setStep] = useState(0);
   const [lang, setLang] = useState("fr");
-  const [chosen, setChosen] = useState<string[]>(["blog", "links"]);
+  const [chosen, setChosen] = useState<string[]>(presets.filter((p) => p.preselected).map((p) => p.id));
   const [linkRows, setLinkRows] = useState([0]);
   const formRef = useRef<HTMLFormElement>(null);
   const [state, action, pending] = useActionState(completeSetup, null);
@@ -27,7 +27,8 @@ export function SetupWizard({ strings, uiLocales, locales, presets, needsToken }
   const pick = (m: Record<string, string>) => m[lang] ?? m.en ?? Object.values(m)[0] ?? "";
 
   // L'étape "liens" n'a de sens que si la collection de liens est choisie.
-  const visibleSteps = STEPS.filter((s) => s !== "links" || chosen.includes("links"));
+  const wantsLinks = presets.some((p) => p.collectsLinks && chosen.includes(p.id));
+  const visibleSteps = STEPS.filter((s) => s !== "links" || wantsLinks);
   const current = visibleSteps[Math.min(step, visibleSteps.length - 1)]!;
   const isLast = step >= visibleSteps.length - 1;
 

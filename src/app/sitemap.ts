@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 import { siteUrl } from "@/core/config";
 import { getActiveInstances } from "@/core/modules/registry";
-import { entryPath, listEntries } from "@/core/entries";
+import { entryPath, listEntries } from "@/core/content/entries";
 import { getSiteConfig } from "@/core/settings";
 
 export const dynamic = "force-dynamic";

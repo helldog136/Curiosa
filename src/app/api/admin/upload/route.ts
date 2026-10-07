@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { currentUser } from "@/core/permissions";
-import { MAX_UPLOAD_BYTES, saveUpload } from "@/core/uploads";
+import { MAX_UPLOAD_BYTES, saveUpload } from "@/core/services/uploads";
 
 export async function POST(request: Request) {
   if (!(await currentUser())) return NextResponse.json({ error: "unauthorized" }, { status: 401 });

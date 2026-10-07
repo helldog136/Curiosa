@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { adminCtx } from "@/core/admin";
 import { getInstanceById } from "@/core/instances";
 import { prisma } from "@/core/db";
-import { uniqueSlug } from "@/core/entries";
+import { uniqueSlug } from "@/core/content/entries";
 import { audit } from "@/core/permissions";
 import { slugify } from "@/core/slug";
 import { isSafeExternalUrl } from "@/core/url";

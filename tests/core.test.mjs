@@ -91,7 +91,7 @@ test("les réglages avancés sont déclarés par les modules, jamais obligatoire
 });
 
 test("validateArgs : types, bornes, énumérations, requis, propriétés inconnues refusées", async () => {
-  const { validateArgs, McpToolError } = await import("../src/core/mcp/validate.ts");
+  const { validateArgs, McpToolError } = await import("../src/core/services/mcp/validate.ts");
   const schema = {
     type: "object",
     required: ["title"],

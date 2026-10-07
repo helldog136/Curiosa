@@ -1,4 +1,4 @@
-import type { JsonSchemaLite } from "../modules/types";
+import type { JsonSchemaLite } from "@/core/modules/types";
 
 /** Erreur d'une action MCP destinée à l'agent (message lisible, jamais de détail interne). */
 export class McpToolError extends Error {}

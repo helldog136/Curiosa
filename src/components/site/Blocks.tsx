@@ -1,7 +1,7 @@
 import type { Block } from "@/core/blocks";
 import { getInstanceByKey } from "@/core/instances";
 import { withLocale } from "@/core/links";
-import { listEntries } from "@/core/entries";
+import { listEntries } from "@/core/content/entries";
 import { isSafeExternalUrl, safeHref } from "@/core/url";
 import { getSiteConfig } from "@/core/settings";
 import { makeTranslator } from "@/core/i18n/dictionary";

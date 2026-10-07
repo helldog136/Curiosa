@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getAdminTranslator } from "@/core/i18n/request";
 import { currentUser } from "@/core/permissions";
-import { countUsers } from "@/core/services";
+import { countUsers } from "@/core/content/service";
 import { ActionForm } from "@/components/admin/ActionForm";
 import { TextField } from "@/components/admin/Field";
 import { loginAction } from "./actions";

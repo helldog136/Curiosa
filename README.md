@@ -63,8 +63,11 @@ npm run lint && npm run typecheck && npm test
 ## Structure
 
 ```
-src/core/           Le cœur, agnostique : modules et instances (registre, installateur,
-                    exécution), entrées, redirections, langues, réglages
+src/core/services/  Les HELPERS que le cœur offre aux modules : QR code, MCP, stockage privé,
+                    sujets d'échange, envois d'images (génériques, sans fonctionnalité)
+src/core/           Le cœur, agnostique : runtime des modules (registre, installateur,
+                    contexte), moteur de contenu, redirections, langues, réglages
+src/core/platform.ts  Racine de composition : relie les services aux fonctionnalités
 src/modules-builtin Les fonctions de base, déjà sous forme de modules : blog, links, codes,
                     pages, collection, hero, feeds, contact-form, live-status, ticker-overlay
 src/app/(site)      Site public (accueil assemblé de sections, pages d'instances, redirections)
@@ -76,7 +79,7 @@ src/locales         Textes de l'interface (fr, en) — ajouter une langue = un f
 modules-examples/   Un module d'exemple minimal, prêt à publier dans son propre dépôt git
 modules-community/  Modules complets qui ne font PAS partie du cœur : labyrinthe 3D, partenariats,
                     sponsors, overlay sponsors (OBS)
-docs/               ARCHITECTURE.md, MODULES.md
+docs/               PLATFORM.md (cœur vs modules), ARCHITECTURE.md, MODULES.md
 ```
 
 Voir [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) pour les choix de conception et
