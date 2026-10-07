@@ -644,7 +644,6 @@
   "settings.bg": "Fond de page",
   "settings.bgHelp": "Un décor derrière le contenu, à partir de vos couleurs. Il s'ajoute au halo ci-dessus.",
   "settings.bg.none": "Aucun",
-  "settings.bg.dots": "Dégradé et points",
   "settings.bg.dusk": "Lueur d'aube",
   "settings.bg.grid": "Grille fine",
   "settings.bg.custom": "Personnalisé (description ci-dessous)",

@@ -5,11 +5,13 @@ Le fond du site se règle dans **Réglages → Apparence**. Trois niveaux, du pl
 | Niveau | Où | Pour qui |
 |---|---|---|
 | **Halo de couleur** | liste « Halo de couleur en fond de page » (+ réglages fins en mode avancé : nombre de taches, taille, variation de taille, décalage de teinte maximal, intensité, disposition) | tout le monde |
-| **Préréglage de fond** | liste « Fond de page » : *Dégradé et points*, *Lueur d'aube*, *Grille fine* | tout le monde |
+| **Préréglage de fond** | liste « Fond de page » : *Lueur d'aube*, *Grille fine* | tout le monde |
 | **Description personnalisée** | « Fond de page » → *Personnalisé*, puis le champ « Description du fond (JSON) » | mode avancé |
 | **Image de fond** | champ « Image de fond » (envoi d'un fichier png, jpg, webp ou gif ≤ 5 Mo) | tout le monde ; se place **sous** les autres couches |
 
 Le halo, les préréglages, la description personnalisée et l'image s'**additionnent** : l'image est la couche du bas, puis les couches du fond, le halo étant peint sur la page elle-même.
+
+Le framework ne livre volontairement que des préréglages **neutres**. Le style propre à un site (son identité visuelle) est une **donnée du site** : on la décrit dans « Personnalisé » ou dans l'image de fond, elle fait partie de sa sauvegarde et n'est jamais embarquée dans le framework.
 
 ## Pourquoi un format plutôt que du CSS
 
@@ -36,25 +38,16 @@ Une description est **une liste de couches** (6 au plus), de la plus basse à la
 
 ## Exemples
 
-**Dégradé sombre vers l'accent, avec des points qui s'estompent à gauche** (le préréglage *Dégradé et points*) :
+**Un dégradé et une trame de points qui s'estompent en bas de page** (couleurs fixes, indépendantes du thème) :
 
 ```json
 [
-  { "type": "linear", "angle": 90, "stops": [ { "color": "bg", "at": 20 }, { "color": "accent", "at": 100, "a": 38 } ] },
-  { "type": "dots", "color": "#ffffff", "size": 2, "gap": 28, "opacity": 85, "side": "left", "span": 40 }
+  { "type": "linear", "angle": 180, "stops": [ { "color": "#10161c", "at": 0 }, { "color": "#1d2b3a", "at": 100 } ] },
+  { "type": "dots", "color": "#ffffff", "size": 2, "gap": 30, "opacity": 40, "side": "bottom", "span": 60 }
 ]
 ```
 
-**Dégradé sarcelle fixe, indépendant du thème** :
-
-```json
-[
-  { "type": "linear", "angle": 90, "stops": [ { "color": "#031a1c", "at": 30 }, { "color": "#117d83", "at": 100 } ] },
-  { "type": "dots", "color": "#ffffff", "size": 2, "gap": 26, "side": "left", "span": 35 }
-]
-```
-
-**Lueur d'aube : l'accent monte du bas** (préréglage *Lueur d'aube*) :
+**Lueur d'aube : l'accent monte du bas** (le préréglage *Lueur d'aube*) :
 
 ```json
 [
@@ -77,5 +70,5 @@ Une description est **une liste de couches** (6 au plus), de la plus basse à la
 
 ## Pour un module ou un thème
 
-Le fond est le réglage de site `theme.bgCustom` (texte JSON), `theme.bgPreset` (`none`, `dots`, `dusk`, `grid`, `custom`) et `theme.bgImage`. La validation est faite par `parseBackground` (`src/core/background.ts`), qui ne lève jamais d'exception et renvoie `{ ok, layers }` ou `{ ok: false, error }`.
+Le fond est le réglage de site `theme.bgCustom` (texte JSON), `theme.bgPreset` (`none`, `dusk`, `grid`, `custom`) et `theme.bgImage`. La validation est faite par `parseBackground` (`src/core/background.ts`), qui ne lève jamais d'exception et renvoie `{ ok, layers }` ou `{ ok: false, error }`.
 Le fond est dessiné par des éléments `.cbg > i`, fixes, placés **derrière** le contenu : il ne gêne ni la lecture ni les clics.

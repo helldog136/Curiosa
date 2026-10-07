@@ -83,6 +83,11 @@ test("fond : décalage de teinte sur une étape, et une couche « spots » réut
   assert.equal(B.backgroundCss(ok([{ type: "spots", count: 3, seed: 5 }]), theme), spots, "déterministe");
 });
 
+test("fond : le framework ne livre que des préréglages neutres (aucun style propre à un site)", () => {
+  assert.deepEqual(Object.keys(B.BACKGROUND_PRESETS).sort(), ["dusk", "grid"]);
+  for (const f of ["docs/BACKGROUND.md", "src/core/background.ts", "src/app/admin/(panel)/settings/page.tsx"]) assert.ok(!/sarcelle|#117d83|#031a1c|Dégradé et points/i.test(fs.readFileSync(f, "utf8")), f);
+});
+
 test("fond : les préréglages sont valides, s'adaptent au thème, et l'image de fond passe sous les couches", () => {
   for (const [id, layers] of Object.entries(B.BACKGROUND_PRESETS)) {
     const again = B.parseBackground(layers);
@@ -90,15 +95,15 @@ test("fond : les préréglages sont valides, s'adaptent au thème, et l'image de
     assert.ok(B.backgroundCss(layers, theme).length > 40, id);
   }
   const other = buildTheme("#1c1020", "#d6336c", "sans");
-  assert.notEqual(B.backgroundCss(B.BACKGROUND_PRESETS.dots, theme), B.backgroundCss(B.BACKGROUND_PRESETS.dots, other), "suit les couleurs du site");
+  assert.notEqual(B.backgroundCss(B.BACKGROUND_PRESETS.dusk, theme), B.backgroundCss(B.BACKGROUND_PRESETS.dusk, other), "suit les couleurs du site");
   const img = "/uploads/123e4567-e89b-12d3-a456-426614174000.jpg";
-  const layers = B.effectiveLayers("dots", "", img);
+  const layers = B.effectiveLayers("dusk", "", img);
   assert.equal(layers[0].type, "image");
-  assert.equal(layers.length, B.BACKGROUND_PRESETS.dots.length + 1);
+  assert.equal(layers.length, B.BACKGROUND_PRESETS.dusk.length + 1);
   assert.deepEqual(B.effectiveLayers("none", "ignoré", null), []);
   assert.deepEqual(B.effectiveLayers("custom", "n'importe quoi", null), [], "description invalide : pas de fond plutôt qu'un fond cassé");
   assert.equal(B.effectiveLayers("custom", '[{"type":"grid"}]', null).length, 1);
-  assert.equal(B.isPreset("custom") && B.isPreset("dots") && !B.isPreset("inconnu"), true);
+  assert.equal(B.isPreset("custom") && B.isPreset("dusk") && !B.isPreset("dots") && !B.isPreset("inconnu"), true);
 });
 
 test("fond : branché sur le site et l'admin (préréglage en tous modes, description et « personnalisé » en avancé, validation avant enregistrement)", () => {

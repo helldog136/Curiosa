@@ -13,8 +13,8 @@ import { saveSettings } from "./actions";
 
 /** Exemple affiché tant qu'aucune description personnalisée n'est enregistrée : le format est décrit dans docs/BACKGROUND.md. */
 const BG_EXAMPLE = JSON.stringify([
-  { type: "linear", angle: 90, stops: [{ color: "bg", at: 20 }, { color: "accent", at: 100, a: 38 }] },
-  { type: "dots", color: "#ffffff", size: 2, gap: 28, opacity: 85, side: "left", span: 40 },
+  { type: "radial", x: 50, y: 0, w: 80, h: 50, stops: [{ color: "accent", a: 22 }, { color: "accent", at: 100, a: 0 }] },
+  { type: "grid", color: "fg", gap: 48, opacity: 6, side: "top", span: 80 },
 ], null, 2);
 import { saveMail, sendTestMail } from "./mail-actions";
 
@@ -97,7 +97,7 @@ export default async function SettingsPage() {
           )}
           <Select name="bgPreset" label={t("settings.bg")} help={t("settings.bgHelp")} defaultValue={config.bg.preset}
             options={[
-              { value: "none", label: t("settings.bg.none") }, { value: "dots", label: t("settings.bg.dots") }, { value: "dusk", label: t("settings.bg.dusk") }, { value: "grid", label: t("settings.bg.grid") },
+              { value: "none", label: t("settings.bg.none") }, { value: "dusk", label: t("settings.bg.dusk") }, { value: "grid", label: t("settings.bg.grid") },
               ...(advanced ? [{ value: "custom", label: t("settings.bg.custom") }] : []),
             ]} />
           <ImageField name="bgImage" label={t("settings.bgImage")} defaultValue={config.bg.image} uploadLabel={t("action.upload")} />

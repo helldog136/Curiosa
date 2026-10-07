@@ -5,7 +5,7 @@
  *
  *   { "type": "linear", "angle": 90, "stops": [ { "color": "bg", "at": 0 }, { "color": "accent", "at": 100, "a": 45 } ] }
  *   { "type": "radial", "x": 20, "y": 10, "w": 60, "h": 40, "stops": [ { "color": "accent", "a": 30 }, { "color": "accent", "a": 0 } ] }
- *   { "type": "dots",   "color": "#ffffff", "size": 2, "gap": 28, "opacity": 90, "side": "left", "span": 40 }
+ *   { "type": "dots",   "color": "fg", "size": 2, "gap": 28, "opacity": 40, "side": "bottom", "span": 50 }
  *   { "type": "grid",   "color": "fg", "gap": 48, "opacity": 8, "side": "full" }
  *   { "type": "spots",  "count": 4, "size": 60, "variance": 30, "hue": 40, "intensity": 24, "seed": 7 }
  *   { "type": "image",  "src": "/uploads/….png", "fit": "cover", "position": "center", "opacity": 100 }
@@ -166,13 +166,8 @@ export function backgroundCss(layers: Layer[], theme: Theme): string {
 }
 
 /* ───────────── préréglages (adaptés au thème : ils utilisent les jetons accent/bg) ───────────── */
-export type BackgroundPreset = "none" | "dots" | "dusk" | "grid" | "custom";
+export type BackgroundPreset = "none" | "dusk" | "grid" | "custom";
 export const BACKGROUND_PRESETS: Record<Exclude<BackgroundPreset, "none" | "custom">, Layer[]> = {
-  // dégradé du fond vers l'accent, avec des points qui s'estompent sur le bord gauche
-  dots: [
-    { type: "linear", angle: 90, opacity: 100, stops: [{ color: "bg", at: 20, a: 100 }, { color: "accent", at: 100, a: 38 }] },
-    { type: "dots", color: "#ffffff", size: 2, gap: 28, opacity: 85, side: "left", span: 40 },
-  ],
   // lueur d'aube : l'accent monte du bas de la page
   dusk: [
     { type: "linear", angle: 0, opacity: 100, stops: [{ color: "accent", at: 0, a: 26 }, { color: "accent", at: 55, a: 0 }] },

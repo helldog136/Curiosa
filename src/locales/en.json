@@ -644,7 +644,6 @@
   "settings.bg": "Page background",
   "settings.bgHelp": "A backdrop behind the content, built from your colours. It adds to the glow above.",
   "settings.bg.none": "None",
-  "settings.bg.dots": "Gradient and dots",
   "settings.bg.dusk": "Dawn glow",
   "settings.bg.grid": "Fine grid",
   "settings.bg.custom": "Custom (description below)",
