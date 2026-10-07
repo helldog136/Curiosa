@@ -58,11 +58,11 @@ export function GridEditor({ instanceId, block }: { instanceId: string; block: G
         <button type="button" className={ui.btn} onClick={reset}>{L.reset}</button>
       </div>
       <div ref={gridRef} role="application" aria-label={block.title ?? "grid"} className="touch-none select-none overflow-hidden rounded-lg border border-line"
-        style={{ width: w * cell, display: "grid", gridTemplateColumns: `repeat(${w}, ${cell}px)`, cursor: "crosshair" }}
-        onPointerDown={(e) => { painting.current = true; (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId); paintAt(e.clientX, e.clientY); }}
+        style={{ width: "100%", maxWidth: w * cell, display: "grid", gridTemplateColumns: `repeat(${w}, minmax(0, 1fr))`, cursor: "crosshair" }}
+        onPointerDown={(e) => { painting.current = true; paintAt(e.clientX, e.clientY); try { (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId); } catch { /* le doigt est déjà suivi par le navigateur */ } }}
         onPointerMove={(e) => { if (painting.current) paintAt(e.clientX, e.clientY); }}
         onPointerUp={() => { painting.current = false; }} onPointerCancel={() => { painting.current = false; }}>
-        {cells.map((v, i) => <div key={i} style={{ width: cell, height: cell, background: color(v), boxShadow: "inset 0 0 0 0.5px rgba(0,0,0,.25)" }} />)}
+        {cells.map((v, i) => <div key={i} style={{ aspectRatio: "1 / 1", background: color(v), boxShadow: "inset 0 0 0 0.5px rgba(0,0,0,.25)" }} />)}
       </div>
       <input type="hidden" name="width" value={w} /><input type="hidden" name="height" value={h} /><input type="hidden" name="cells" value={cells.join("")} />
       {state?.error && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm text-red-700">{state.error}</p>}

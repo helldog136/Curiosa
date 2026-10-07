@@ -545,5 +545,6 @@
   "services.promote": "Make this module the master",
   "services.remove": "Remove this replica",
   "services.hint": "Drag the arrow from the service dot to a provider (or click one).",
-  "services.list": "List view (keyboard)"
+  "services.list": "List view (keyboard)",
+  "nav.menu": "Menu"
 }

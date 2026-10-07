@@ -1,6 +1,7 @@
 import { signOut } from "@/auth";
 import { adminCtx } from "@/core/admin";
 import { getAdminNav } from "@/core/modules/adminNav";
+import { MobileMenu } from "@/components/admin/MobileMenu";
 import { ui } from "@/components/admin/ui";
 import { setAdminMode } from "./mode/actions";
 
@@ -16,8 +17,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
 
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
-      <aside className="shrink-0 border-b border-line bg-bg p-4 md:w-64 md:border-b-0 md:border-r">
-        <a href="/admin" className="block px-3 text-lg font-bold">{config.name}</a>
+      <MobileMenu menuLabel={t("nav.menu")} brand={<a href="/admin" className="block px-3 text-lg font-bold">{config.name}</a>}>
         <nav aria-label="Admin">
           <a href="/admin" className={`${link} mt-4`}>{t("nav.dashboard")}</a>
 
@@ -65,7 +65,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
           <p className="mb-2 truncate text-xs text-muted">{user.name} · {user.role}</p>
           <button className={ui.btn}>{t("nav.logout")}</button>
         </form>
-      </aside>
+      </MobileMenu>
       <main className="min-w-0 flex-1 p-6 md:p-10">
         <div className="mx-auto max-w-4xl">{children}</div>
       </main>

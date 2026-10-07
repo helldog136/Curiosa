@@ -35,7 +35,7 @@ export async function Header({ config, locale }: { config: SiteConfig; locale: s
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
           <nav aria-label="Main" className="flex flex-wrap gap-x-5 gap-y-1 text-sm">
             {items.map((item) => (
-              <a key={`${item.href}-${item.label}`} href={item.href} className="text-muted hover:text-fg">
+              <a key={`${item.href}-${item.label}`} href={item.href} className="inline-block py-1.5 text-muted hover:text-fg">
                 {item.label}
               </a>
             ))}

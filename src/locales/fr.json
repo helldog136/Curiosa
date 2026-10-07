@@ -545,5 +545,6 @@
   "services.promote": "Faire de ce module le maître",
   "services.remove": "Retirer cette réplique",
   "services.hint": "Tirez la flèche depuis la pastille du service jusqu'à un fournisseur (ou cliquez dessus).",
-  "services.list": "Vue liste (clavier)"
+  "services.list": "Vue liste (clavier)",
+  "nav.menu": "Menu"
 }
