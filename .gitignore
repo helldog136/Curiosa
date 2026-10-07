@@ -76,3 +76,4 @@ Thumbs.db
 # empaquetage des releases (CI)
 /release.json
 /dist/
+*.tar.gz.enc
