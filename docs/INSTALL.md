@@ -112,4 +112,4 @@ secret de session) et `.env`.
 
 ## Sécurité des dépendances
 
-`npm run audit` interroge les failles connues (CVE) des dépendances de production. Il tourne automatiquement avant chaque `npm run build` (donc à chaque mise à jour du site), et chaque lundi en CI (`.github/workflows/security.yml`). Une faille de gravité haute bloque le build, sauf exception justifiée dans `scripts/audit.mjs`. Hors ligne, il avertit sans bloquer.
+`npm run audit` interroge les failles connues (CVE) des dépendances de production. Il est lancé **côté projet**, jamais chez l'utilisateur : en CI à chaque push, chaque PR et chaque lundi (`.github/workflows/security.yml`). Une faille de gravité haute fait échouer la CI, donc empêche de publier une release ; une release publiée est déjà saine, et la mise à jour proposée dans l'admin n'a rien à vérifier. Les exceptions justifiées sont dans `scripts/audit.mjs`.
