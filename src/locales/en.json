@@ -510,5 +510,10 @@
   "migration.retry": "Retry the migration",
   "modules.error.migration": "Module updated, but the data migration of at least one instance failed: it was put back to its previous state and set aside. Open it to retry.",
   "backup.migrated": "Module data upgraded",
-  "backup.migrationFailed": "Migration to redo"
+  "backup.migrationFailed": "Migration to redo",
+  "tasks.title": "Scheduled tasks",
+  "tasks.every": "every {n} min",
+  "tasks.ok": "last run succeeded",
+  "tasks.failed": "last run failed",
+  "tasks.never": "not run yet"
 }

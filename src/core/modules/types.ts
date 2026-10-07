@@ -270,10 +270,21 @@ export type ModuleDefinition = {
   backup?: {
     readable?(ctx: ModuleContext): BackupFile[] | Promise<BackupFile[]>;
   };
+  /**
+   * Tâches planifiées. Le cœur les exécute en arrière-plan (un passage par minute) pour chaque instance ACTIVE : jamais deux fois en même temps,
+   * une erreur n'arrête ni les autres tâches ni le serveur, le dernier résultat est mémorisé. Voir src/core/services/scheduler.ts.
+   */
+  tasks?: Record<string, ModuleTask>;
   hooks?: {
     onInstanceCreate?(ctx: ModuleContext): void | Promise<void>;
     onInstanceDelete?(ctx: ModuleContext): void | Promise<void>;
   };
+};
+
+export type ModuleTask = {
+  /** Intervalle minimal entre deux exécutions (≥ 1 minute ; le cœur ne passe qu'une fois par minute). */
+  everyMinutes: number;
+  run(ctx: ModuleContext): void | Promise<void>;
 };
 
 /** Sous-ensemble de JSON Schema accepté pour décrire les arguments d'une action MCP. */

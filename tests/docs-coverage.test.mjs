@@ -54,7 +54,7 @@ test("tous les liens relatifs des deux documents mènent à un fichier qui exist
 test("ModuleDefinition : chaque clé de premier niveau (et chaque sous-clé) est documentée", () => {
   const body = bodyOf(types, "export type ModuleDefinition");
   const top = keysAt(body, 2);
-  for (const k of ["slots", "sections", "page", "overlay", "exports", "routes", "filters", "adminPanel", "adminActions", "mcp", "backup", "hooks"]) assert.ok(top.includes(k), `clé attendue absente du code : ${k}`);
+  for (const k of ["slots", "sections", "page", "overlay", "exports", "routes", "filters", "adminPanel", "adminActions", "mcp", "backup", "tasks", "hooks"]) assert.ok(top.includes(k), `clé attendue absente du code : ${k}`);
   assert.deepEqual(missing(reference, top), [], "clés de ModuleDefinition absentes de docs/MODULES.md");
   assert.deepEqual(missing(tutorial, top), [], "clés de ModuleDefinition absentes de docs/CREATE-A-MODULE.md");
   const nested = ["entryBody", "readable", "onInstanceCreate", "onInstanceDelete"];

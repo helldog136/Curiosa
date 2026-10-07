@@ -21,6 +21,7 @@ import { ConfirmButton } from "@/components/admin/ConfirmButton";
 import { Checkbox, Select, TextArea, TextField } from "@/components/admin/Field";
 import { ui } from "@/components/admin/ui";
 import { dataStatusOf } from "@/core/modules/dataMigrations";
+import { taskStateOf } from "@/core/services/scheduler";
 import { deleteInstanceAction, retryMigrationAction, saveInstance, saveInstanceSettings, saveSources } from "../actions";
 
 export default async function InstancePage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | undefined>> }) {
@@ -50,6 +51,7 @@ export default async function InstancePage({ params, searchParams }: { params: P
 
   const mcpOn = (await getSetting<boolean>(mcpInstanceKey(instance.id))) !== false;
   const dataStatus = await dataStatusOf(instance.id);
+  const taskRows = await Promise.all(Object.entries(mod.def.tasks ?? {}).map(async ([name, task]) => ({ name, every: task.everyMinutes, state: await taskStateOf(instance.id, name) })));
   const visibleSettings = mod.manifest.settings.filter((f) => advanced || !f.advanced);
   const generalSettings = visibleSettings.filter((f) => f.group !== "appearance");
   const appearanceSettings = visibleSettings.filter((f) => f.group === "appearance");
@@ -109,6 +111,19 @@ export default async function InstancePage({ params, searchParams }: { params: P
             <p>{t(dataStatus.status === "newer" ? "migration.newer" : "migration.failed")}</p>
             {dataStatus.error && <p className="font-mono text-xs">{dataStatus.error}</p>}
             <form action={retryMigrationAction.bind(null, instance.id)}><button className={ui.btn}>{t("migration.retry")}</button></form>
+          </div>
+        )}
+        {taskRows.length > 0 && (
+          <div className={`${ui.card} space-y-1 text-sm`}>
+            <p className="font-medium">{t("tasks.title")}</p>
+            <ul className="space-y-0.5">
+              {taskRows.map((r) => (
+                <li key={r.name}>
+                  <code className="font-mono">{r.name}</code> · {t("tasks.every", { n: r.every })} ·{" "}
+                  {r.state ? <span className={r.state.status === "ok" ? "" : "text-red-500"}>{t(r.state.status === "ok" ? "tasks.ok" : "tasks.failed")} · {r.state.lastRun.slice(0, 16).replace("T", " ")} UTC{r.state.error ? ` · ${r.state.error}` : ""}</span> : t("tasks.never")}
+                </li>
+              ))}
+            </ul>
           </div>
         )}
         {!mod.row.enabled && <p className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">{t("modules.disabledNotice")}</p>}

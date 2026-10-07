@@ -510,5 +510,10 @@
   "migration.retry": "Réessayer la migration",
   "modules.error.migration": "Module mis à jour, mais la migration des données d'au moins une instance a échoué : elle est remise dans son état d'avant et mise à l'écart. Ouvrez-la pour réessayer.",
   "backup.migrated": "Données de modules mises à niveau",
-  "backup.migrationFailed": "Migration à refaire"
+  "backup.migrationFailed": "Migration à refaire",
+  "tasks.title": "Tâches planifiées",
+  "tasks.every": "toutes les {n} min",
+  "tasks.ok": "dernière exécution réussie",
+  "tasks.failed": "dernière exécution en échec",
+  "tasks.never": "pas encore exécutée"
 }

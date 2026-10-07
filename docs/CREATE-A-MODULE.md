@@ -77,7 +77,7 @@ Les **permissions** sont déclaratives : elles disent à l'administrateur ce que
 
 L'exemple minimal « de production » est [`announcement-banner`](../modules-examples/announcement-banner) ; essayez le vôtre tout de suite :
 [section 17](#17-tester-son-module). Toutes les clés possibles de `index.mjs` sont des **clés optionnelles** de l'objet exporté :
-`slots`, `sections`, `page`, `overlay`, `exports`, `routes`, `filters`, `adminPanel`, `adminActions`, `mcp`, `backup`, `hooks`. On les découvre une à une.
+`slots`, `sections`, `page`, `overlay`, `exports`, `routes`, `filters`, `adminPanel`, `adminActions`, `mcp`, `backup`, `tasks`, `hooks`. On les découvre une à une.
 
 ## 4. Réglages et apparence
 
@@ -395,6 +395,9 @@ export default {
 ```
 
 Déclarez `"type": "overlay"` et la permission `overlay` ; l'admin affiche l'URL à coller dans OBS. Un overlay lit des **sujets** : il ne connaît pas les fournisseurs.
+
+**Tâches planifiées** (`tasks`) : `tasks: { nom: { everyMinutes: 5, run: async (ctx) => {…} } }` ; le cœur les exécute pour chaque instance active (une fois par minute au plus, jamais en parallèle d'elles-mêmes, erreurs
+isolées et visibles dans l'admin). Rendez-les idempotentes et mémorisez ce qui est déjà traité dans `ctx.api.store` ; détails dans [MODULES.md › `tasks`](MODULES.md).
 
 **Crochets** (`hooks`) : `hooks.onInstanceDelete(ctx)` est appelé quand une instance est supprimée, pour nettoyer ce que seul le module connaît (mémoire, service externe) ; le cœur supprime lui-même réglages et
 stockage. `hooks.onInstanceCreate(ctx)` est appelé une fois l'instance créée (depuis l'admin ou l'assistant de première installation) ; une restauration de sauvegarde ne le rappelle pas : soyez idempotent et initialisez aussi paresseusement.

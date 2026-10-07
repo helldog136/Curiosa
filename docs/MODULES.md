@@ -280,6 +280,7 @@ export default {
   mcp:      { my_action: async (ctx, args, actor) => ({ done: true }) },
   migrations: { 2: async (ctx) => { /* données v1 → v2 */ } },
   backup:   { readable: async (ctx) => [{ path: "data.csv", content: "…" }] },
+  tasks:    { sync: { everyMinutes: 15, run: async (ctx) => { /* travail de fond */ } } },
   hooks:    { onInstanceCreate: async (ctx) => {}, onInstanceDelete: async (ctx) => {} },
 };
 ```
@@ -301,6 +302,7 @@ un slot en échec disparaît, une section en échec donne `[]`, une page en éch
 | `mcp.<action>` | un assistant appelle l'action | `ctx`, `args` validés, `actor` | une valeur JSON |
 | `migrations.<N>` | après une mise à jour du module ou une restauration, pour chaque instance dont les données sont en retard | `ctx` | rien (lever une erreur annule tout) |
 | `backup.readable` | on exporte une sauvegarde | `ctx` | liste de `{ path, content }` |
+| `tasks.<nom>` | toutes les `everyMinutes` minutes, pour chaque instance active (jamais deux fois en même temps) | `ctx` | rien (une erreur est mémorisée, rien d'autre ne s'arrête) |
 | `hooks.onInstanceCreate` / `hooks.onInstanceDelete` | cycle de vie d'une instance | `ctx` | rien |
 
 ### `slots` : emplacements
@@ -399,6 +401,21 @@ Ne supprimez jamais une migration déjà publiée : un site peut sauter plusieur
 ### `backup` : sauvegarde lisible
 
 Voir « Sauvegarde lisible sans le framework ». `backup.readable(ctx)` renvoie des fichiers `{ path, content }`.
+
+### `tasks` : travail en arrière-plan
+
+Pour surveiller un service externe, publier à l'heure, envoyer une annonce : déclarez des tâches, le cœur les exécute (pas de cron à installer).
+
+```js
+tasks: {
+  // nom en minuscules/chiffres/tirets ; everyMinutes ≥ 1
+  announce: { everyMinutes: 5, run: async (ctx) => { /* ctx.api.store, ctx.api.mail, ctx.api.topics… comme partout */ } },
+},
+```
+
+Le cœur passe **une fois par minute** : une tâche jamais exécutée l'est au premier passage, puis pas avant `everyMinutes` minutes. Elle ne tourne que pour les instances **actives**, **jamais deux fois en même temps** (une tâche encore en cours est
+ignorée au passage suivant), est interrompue du point de vue du suivi après 5 minutes, et son dernier résultat (date, durée, erreur) est mémorisé et affiché sur la page de l'instance dans l'admin. Une tâche qui plante n'arrête ni les autres ni
+le serveur. Rendez-la **idempotente** : le serveur peut redémarrer ou manquer un passage. Retenez ce que vous avez déjà traité dans `ctx.api.store` plutôt que de supposer.
 
 ### `hooks` : cycle de vie
 
