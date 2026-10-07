@@ -118,6 +118,10 @@ Règles, **à partir de la première version publiée** :
 - **Les sauvegardes suivent** : chacune note la version du schéma (`schemaVersion` dans `backup.json`). Restaurer une sauvegarde plus ancienne ignore les colonnes disparues et laisse les nouvelles à leur défaut ; si une migration change le *sens* d'une donnée, ajouter en même temps une étape dans `schemaUpgrades` (`src/core/backup/schema.ts`). Une sauvegarde plus récente que la base est refusée (« mettez d'abord le framework à jour »).
 - Les données **des modules** ont leur propre mécanisme (`dataVersion` + `migrations`, voir `MODULES.md`).
 
+## Référencement : une fonctionnalité du cœur
+
+`robots.txt` bloque par défaut les robots de collecte et d'entraînement IA (GPTBot, ClaudeBot…, jamais un moteur de recherche) ; réglage avancé *Bloquer les robots d'entraînement IA*. Chaque page porte un JSON-LD `WebSite` + éditeur construit **uniquement** à partir des réglages du site (nom, slogan, logo). Un module qui veut ajouter ses propres données structurées (profils sociaux, `sameAs`…) le fait par le slot `layout.head`. Code : `src/core/seo.ts`.
+
 ## Ce que le cœur ne fait pas
 
 - Il ne cite **aucun module par son identifiant**. L'assistant de première installation lit les manifestes (`starter`,

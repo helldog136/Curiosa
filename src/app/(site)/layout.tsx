@@ -7,6 +7,7 @@ import { getVisitorLocale, getVisitorTranslator, LOCALE_HEADER } from "@/core/i1
 import { runSlot } from "@/core/modules/runtime";
 import { getSiteConfig } from "@/core/settings";
 import { siteUrl } from "@/core/config";
+import { jsonLd, siteJsonLd } from "@/core/seo";
 import { prisma } from "@/core/db";
 import { Blocks, HeadTags } from "@/components/site/Blocks";
 import { Footer } from "@/components/site/Footer";
@@ -44,6 +45,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
       <head>
         <style dangerouslySetInnerHTML={{ __html: css }} />
         <link rel="alternate" type="application/rss+xml" title={localized.name} href={`/feed.xml?lang=${locale}`} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(siteJsonLd({ url: siteUrl, name: localized.name, tagline: localized.tagline, logo: localized.logo, locale })) }} />
         <HeadTags blocks={headBlocks} />
       </head>
       <body className="min-h-screen bg-bg text-fg antialiased">

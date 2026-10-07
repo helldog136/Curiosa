@@ -33,6 +33,7 @@ export async function saveSettings(_prev: ActionState, formData: FormData): Prom
     const adminLocale = String(formData.get("adminLocale") ?? "");
     if (isKnownLocale(adminLocale)) await setSetting("i18n.adminDefault", adminLocale);
     await setSetting("i18n.autoDetect", formData.get("autoDetect") === "on");
+    await setSetting("seo.blockAiBots", formData.get("blockAiBots") === "on");
   }
 
   for (const key of TRANSLATABLE) {

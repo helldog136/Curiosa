@@ -515,5 +515,7 @@
   "tasks.every": "every {n} min",
   "tasks.ok": "last run succeeded",
   "tasks.failed": "last run failed",
-  "tasks.never": "not run yet"
+  "tasks.never": "not run yet",
+  "settings.blockAiBots": "Block AI training crawlers",
+  "settings.blockAiBotsHelp": "robots.txt disallows AI scraping bots (GPTBot, ClaudeBot…). No search engine is blocked."
 }

@@ -20,6 +20,7 @@ export default async function SettingsPage() {
   const values: Record<string, Record<string, unknown>> = {};
   for (const key of TRANSLATABLE) values[key] = await getSettingByLocale(key);
   const logo = await getSetting<string>("site.logo");
+  const blockAiBots = (await getSetting<boolean>("seo.blockAiBots")) !== false;
 
   return (
     <div className="space-y-6">
@@ -41,6 +42,7 @@ export default async function SettingsPage() {
           </fieldset>
           {advanced && <Select name="adminLocale" label={t("settings.adminLocale")} help={t("settings.adminLocaleHelp")} defaultValue={config.adminLocale ?? config.defaultLocale}
             options={Object.keys(KNOWN_LOCALES).map((c) => ({ value: c, label: `${localeName(c)}${UI_LOCALES.includes(c) ? "" : ` (${t("settings.fallbackEn")})`}` }))} />}
+          {advanced && <Checkbox name="blockAiBots" label={t("settings.blockAiBots")} help={t("settings.blockAiBotsHelp")} defaultChecked={blockAiBots} />}
           {advanced && <Checkbox name="autoDetect" label={t("settings.autoDetect")} help={t("settings.autoDetectHelp")} defaultChecked={config.autoDetect} />}
         </section>
 

@@ -515,5 +515,7 @@
   "tasks.every": "toutes les {n} min",
   "tasks.ok": "dernière exécution réussie",
   "tasks.failed": "dernière exécution en échec",
-  "tasks.never": "pas encore exécutée"
+  "tasks.never": "pas encore exécutée",
+  "settings.blockAiBots": "Bloquer les robots d'entraînement IA",
+  "settings.blockAiBotsHelp": "robots.txt interdit le site aux robots de collecte IA (GPTBot, ClaudeBot…). Aucun moteur de recherche n'est bloqué."
 }
