@@ -23,6 +23,9 @@ const PATHS = [
 ].filter((p) => p === "release.json" || fs.existsSync(p));
 if (!PATHS.includes(".next")) { console.error("Pas de build (.next) : lancez `npm run build` d'abord."); process.exit(1); }
 if (!fs.existsSync("node_modules/.prisma/client")) { console.error("Client Prisma absent : lancez `npx prisma generate` après `npm prune --omit=dev`."); process.exit(1); }
+for (const engine of ["debian-openssl-1.1.x", "debian-openssl-3.0.x"]) {
+  if (!fs.existsSync(`node_modules/.prisma/client/libquery_engine-${engine}.so.node`)) { console.error(`Moteur de base de données « ${engine} » absent : vérifiez binaryTargets dans prisma/schema.prisma, puis relancez \`npx prisma generate\`.`); process.exit(1); }
+}
 if (!validManifestPaths(PATHS)) { console.error("Liste de chemins invalide."); process.exit(1); }
 
 fs.writeFileSync("release.json", JSON.stringify({ name: "curiosa", version, platform: platformId(), repo, node: process.versions.node, builtAt: new Date().toISOString(), paths: PATHS }, null, 2));

@@ -5,7 +5,7 @@ dépend d'un site en particulier : tout ce qui vous est propre (nom, textes, mod
 
 ## Ce qu'il faut
 
-- Un serveur **Linux (x64)** avec **Node.js 22+** et **git** (git sert seulement à installer des modules depuis l'admin). **Aucun compilateur** : les releases sont livrées déjà compilées.
+- Un serveur **Linux (x64)** avec **Node.js 20.9+** (22 recommandé) et **git** (git sert seulement à installer des modules depuis l'admin). **Aucun compilateur** : les releases sont livrées déjà compilées.
 - Un nom de domaine et un proxy HTTPS devant le site (nginx, Caddy…). Le framework écoute en HTTP sur un port local.
 - Un utilisateur système dédié (sans droits d'administration) qui possède le dossier d'installation.
 

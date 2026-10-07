@@ -1,5 +1,8 @@
 generator client {
   provider = "prisma-client-js"
+  // Les releases sont compilées une fois (CI) puis installées sur des serveurs différents : le moteur de base de données doit
+  // exister pour chaque version d'OpenSSL courante (Ubuntu 20.04 / Debian 10-11 : 1.1.x ; Ubuntu 22.04+ / Debian 12+ : 3.0.x).
+  binaryTargets = ["native", "debian-openssl-1.1.x", "debian-openssl-3.0.x"]
 }
 
 datasource db {
