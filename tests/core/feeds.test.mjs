@@ -144,82 +144,88 @@ test("flux : un module fournisseur en panne ne casse pas le flux", async () => {
 
 /* ───────────── Rubriques (abonnement à un sous-ensemble) ───────────── */
 
+const AGENDA = (items) => ({
+  ...FEED_PROVIDER,
+  "index.mjs": `export default { exports: { "feed.item": () => ${JSON.stringify(items)} } };`,
+});
+async function agenda(items) {
+  await installModule(makeRepo(AGENDA(items)).url);
+  await setModuleEnabled("agenda", true);
+  await createInstance(db.prisma, { manifest: (await R.getModule("agenda")).manifest, names: { en: "Agenda" } });
+}
+
 test("rubriques : syntaxe vérifiée, doublons et valeurs invalides retirés, 20 au plus", () => {
-  assert.deepEqual(F.parseTopics("blog, Blog,blog/actus"), ["blog", "blog/actus"]);
-  assert.deepEqual(F.parseTopics("a b,../x,blog//x,<script>,,x/y/z,UPPER"), ["upper"]);
+  assert.deepEqual(F.parseTopics("annonce, Annonce,@blog"), ["annonce", "@blog"]);
+  assert.deepEqual(F.parseTopics("a b,../x,blog/actus,<script>,,@@x,@,UPPER"), ["upper"]);
   assert.deepEqual(F.parseTopics(null), []);
   assert.deepEqual(F.parseTopics(""), []);
   assert.equal(F.parseTopics(Array.from({ length: 50 }, (_, i) => `t${i}`).join(",")).length, 20);
 });
 
-test("rubriques : chaque entrée porte son instance et ses étiquettes (accents et casse normalisés)", async () => {
+test("rubriques : chaque entrée porte « @instance » et ses étiquettes, normalisées (accents, casse)", async () => {
   const a = await blog("Actus");
   await publish(a.id, "Un", "2026-01-01", { tags: ["Évènement", "News"] });
-  const [item] = await F.collectFeedItems({ locale: "en" });
-  assert.deepEqual(item.topics, ["actus", "actus/evenement", "actus/news"]);
+  assert.deepEqual((await F.collectFeedItems({ locale: "en" }))[0].topics, ["@actus", "evenement", "news"]);
 });
 
-test("rubriques : filtrer par instance, par étiquette, ou par plusieurs (OU)", async () => {
+test("rubriques : PLUSIEURS modules publient sur la même rubrique, l'abonné les reçoit tous", async () => {
   const a = await blog("Actus"), b = await blog("Videos");
-  await publish(a.id, "Annonce", "2026-03-01", { tags: ["annonce"] });
-  await publish(a.id, "Coulisses", "2026-02-01", { tags: ["coulisses"] });
-  await publish(b.id, "Vidéo", "2026-01-01", { tags: ["annonce"] });
-  const titles = async (topics) => (await F.collectFeedItems({ locale: "en", topics })).map((i) => i.title);
-  assert.deepEqual(await titles([]), ["Annonce", "Coulisses", "Vidéo"], "sans filtre : tout");
-  assert.deepEqual(await titles(["actus"]), ["Annonce", "Coulisses"]);
-  assert.deepEqual(await titles(["actus/annonce"]), ["Annonce"]);
-  assert.deepEqual(await titles(["actus/coulisses", "videos"]), ["Coulisses", "Vidéo"]);
-  assert.deepEqual(await titles(["videos/inconnue"]), []);
-  assert.deepEqual(await titles(["actus"]), await titles(["actus"]), "déterministe");
+  await publish(a.id, "Annonce blog", "2026-03-01", { tags: ["annonce"] });
+  await publish(b.id, "Annonce vidéo", "2026-02-01", { tags: ["Annonce"] });
+  await publish(a.id, "Coulisses", "2026-01-15", { tags: ["coulisses"] });
+  await agenda([{ title: "Annonce concert", url: "/agenda/c", topics: ["annonce", "concert"], publishedAt: "2026-01-01T00:00:00Z" }, { title: "Atelier", url: "/agenda/a", topics: ["atelier"] }]);
+  const titles = async (topics, instance) => (await F.collectFeedItems({ locale: "en", topics, instance })).map((i) => i.title);
+  assert.deepEqual(await titles(["annonce"]), ["Annonce blog", "Annonce vidéo", "Annonce concert"], "trois modules, une rubrique");
+  const feed = await F.buildFeed({ locale: "en", topics: ["annonce"] });
+  assert.equal(feed.items.length, 3);
+  assert.deepEqual(await titles(["annonce", "atelier"]), ["Annonce blog", "Annonce vidéo", "Annonce concert", "Atelier"], "OU entre rubriques ; sans date à la fin");
+  assert.deepEqual(await titles(["concert"]), ["Annonce concert"]);
+  assert.deepEqual(await titles(["annonce"], "videos"), ["Annonce vidéo"], "une rubrique, limitée à une instance");
+  assert.deepEqual(await titles(["annonce"]), await titles(["annonce"]), "déterministe");
 });
 
-test("rubriques : le catalogue liste ce qu'on peut suivre, avec noms lisibles et compteurs", async () => {
+test("rubriques : « @instance » suit tout ce qu'une instance publie, quelles que soient ses rubriques", async () => {
+  const a = await blog("Actus"), b = await blog("Videos");
+  await publish(a.id, "Un", "2026-03-01", { tags: ["x"] });
+  await publish(a.id, "Deux", "2026-02-01");
+  await publish(b.id, "Trois", "2026-01-01");
+  assert.deepEqual((await F.collectFeedItems({ locale: "en", topics: ["@actus"] })).map((i) => i.title), ["Un", "Deux"]);
+  assert.deepEqual((await F.collectFeedItems({ locale: "en", topics: ["@actus", "@videos"] })).length, 3);
+});
+
+test("rubriques : un module ne peut pas se faire passer pour une instance (@ réservé au cœur)", async () => {
+  const a = await blog("Actus");
+  await publish(a.id, "Vrai", "2026-01-01");
+  await agenda([{ title: "Intrus", url: "/x", topics: ["@actus", "@@actus", "../actus", "actus/x"] }]);
+  const actus = await F.collectFeedItems({ locale: "en", topics: ["@actus"] });
+  assert.deepEqual(actus.map((i) => i.title), ["Vrai"], "l'abonné à @actus ne reçoit pas l'intrus");
+  const intrus = (await F.collectFeedItems({ locale: "en" })).find((i) => i.title === "Intrus");
+  assert.equal(intrus.topics[0], "@agenda");
+  assert.ok(intrus.topics.slice(1).every((t) => /^[a-z0-9-]+$/.test(t)), JSON.stringify(intrus.topics));
+});
+
+test("rubriques : le catalogue distingue rubriques partagées et instances, avec compteurs et fournisseurs", async () => {
   const a = await blog("Actus", { en: "News" });
-  await publish(a.id, "Un", "2026-01-01", { tags: ["promo"] });
-  await publish(a.id, "Deux", "2026-01-02", { tags: ["promo"] });
-  await publish(a.id, "Trois", "2026-01-03");
+  await publish(a.id, "Un", "2026-01-01", { tags: ["annonce"] });
+  await publish(a.id, "Deux", "2026-01-02");
+  await agenda([{ title: "C", url: "/c", topics: ["annonce", "concert"] }]);
   const list = await F.listFeedTopics("en");
-  assert.deepEqual(list.map((t) => [t.id, t.count]), [["actus", 3], ["actus/promo", 2]]);
-  assert.deepEqual(list.map((t) => t.label), ["News", "News · promo"]);
-  assert.ok(list.every((t) => t.instance === "actus"));
+  const by = Object.fromEntries(list.map((t) => [t.id, t]));
+  assert.deepEqual(Object.keys(by), ["@actus", "@agenda", "annonce", "concert"]);
+  assert.deepEqual([by["@actus"].kind, by["@actus"].label, by["@actus"].count], ["instance", "News", 2]);
+  assert.deepEqual([by.annonce.kind, by.annonce.count, by.annonce.instances], ["topic", 2, ["actus", "agenda"]], "alimentée par deux modules");
+  assert.deepEqual(by.concert.instances, ["agenda"]);
   assert.deepEqual(await F.listFeedTopics("xx"), await F.listFeedTopics("en"), "langue inconnue → langue par défaut");
 });
 
-test("rubriques : un flux filtré rappelle ses rubriques (titre, adresse) ; rubriques toutes inconnues → pas de flux", async () => {
+test("rubriques : un flux filtré rappelle ses rubriques ; rubriques toutes inconnues → pas de flux", async () => {
   const a = await blog("Actus");
   await publish(a.id, "Un", "2026-01-01", { tags: ["promo"] });
-  const feed = await F.buildFeed({ locale: "en", topics: ["actus/promo", "nope"] });
-  assert.ok(feed.title.endsWith("— actus/promo, nope"));
-  assert.ok(feed.self.includes("topics=actus/promo,nope"));
+  const feed = await F.buildFeed({ locale: "en", topics: ["promo", "nope"] });
+  assert.ok(feed.title.endsWith("— promo, nope"));
+  assert.ok(feed.self.includes("topics=promo,nope"));
   assert.equal(feed.items.length, 1);
-  assert.equal(await F.buildFeed({ locale: "en", topics: ["nope", "autre/chose"] }), null);
+  assert.equal(await F.buildFeed({ locale: "en", topics: ["nope", "@autre"] }), null);
   assert.equal((await F.buildFeed({ locale: "en", topics: [] })).items.length, 1);
-  const one = await F.buildFeed({ locale: "en", instance: "actus", topics: ["actus/promo"] });
-  assert.equal(one.items.length, 1);
-});
-
-test("rubriques : un module propose ses propres rubriques via feed.item, préfixées par sa clé d'instance", async () => {
-  await installModule(makeRepo({
-    ...FEED_PROVIDER,
-    "index.mjs": `export default { exports: { "feed.item": () => [
-      { title: "Concert", url: "/agenda/c", topics: ["Concert", "Soirée"] },
-      { title: "Atelier", url: "/agenda/a", topics: ["atelier"] },
-      { title: "Sans rubrique", url: "/agenda/s" },
-    ] } };`,
-  }).url);
-  await setModuleEnabled("agenda", true);
-  await createInstance(db.prisma, { manifest: (await R.getModule("agenda")).manifest, names: { en: "Agenda" } });
-  const all = await F.collectFeedItems({ locale: "en" });
-  assert.deepEqual(all.find((i) => i.title === "Concert").topics, ["agenda", "agenda/concert", "agenda/soiree"]);
-  assert.deepEqual(all.find((i) => i.title === "Sans rubrique").topics, ["agenda"]);
-  assert.deepEqual((await F.collectFeedItems({ locale: "en", topics: ["agenda/atelier"] })).map((i) => i.title), ["Atelier"]);
-  assert.deepEqual((await F.listFeedTopics("en")).map((t) => t.id), ["agenda", "agenda/atelier", "agenda/concert", "agenda/soiree"]);
-});
-
-test("rubriques : un module ne peut pas se faire passer pour une autre instance", async () => {
-  await installModule(makeRepo({ ...FEED_PROVIDER, "index.mjs": `export default { exports: { "feed.item": () => [{ title: "Intrus", url: "/x", topics: ["../blog", "blog/actus", "a/b"] }] } };` }).url);
-  await setModuleEnabled("agenda", true);
-  await createInstance(db.prisma, { manifest: (await R.getModule("agenda")).manifest, names: { en: "Agenda" } });
-  const [item] = await F.collectFeedItems({ locale: "en" });
-  assert.ok(item.topics.every((t) => t === "agenda" || t.startsWith("agenda/")), JSON.stringify(item.topics));
+  assert.equal((await F.buildFeed({ locale: "en", instance: "actus", topics: ["promo"] })).items.length, 1);
 });

@@ -218,7 +218,7 @@ Un module qui déclare la permission `mail` peut appeler `ctx.api.mail.send({ to
 
 ## Alimenter le flux RSS
 
-Le flux RSS est une fonctionnalité du cœur (`/feed.xml`). Les modules à contenu y sont déjà. Un autre module y ajoute ses éléments en fournissant le sujet `feed.item` : `"provides": [{ "topic": "feed.item" }]` et `exports["feed.item"] = (ctx, { locale, limit }) => [{ title, url, summary?, publishedAt?, id?, topics? }]`. `topics` : vos propres rubriques (`["concert", "atelier"]`) ; le cœur les préfixe par la clé de l'instance (`agenda/concert`) et ajoute `agenda` : les lecteurs peuvent s'abonner à une rubrique (`/feed.xml?topics=agenda/concert`). Un module ne peut pas usurper les rubriques d'une autre instance.
+Le flux RSS est une fonctionnalité du cœur (`/feed.xml`). Les modules à contenu y sont déjà. Un autre module y ajoute ses éléments en fournissant le sujet `feed.item` : `"provides": [{ "topic": "feed.item" }]` et `exports["feed.item"] = (ctx, { locale, limit }) => [{ title, url, summary?, publishedAt?, id?, topics? }]`. `topics` : les rubriques **partagées** sur lesquelles publier (`["annonce", "concert"]`). Elles sont communes à tous les modules : si le blog et votre agenda publient tous deux sur `annonce`, un lecteur abonné à `annonce` reçoit les deux. Le cœur ajoute lui-même `@<instance>` ; un module ne peut pas le déclarer.
 
 ## Overlay (type `overlay`)
 

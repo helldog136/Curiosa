@@ -22,13 +22,16 @@ export const FEED_ITEM_SCHEMA: TopicField[] = [
   { key: "url", type: "url", required: true },
   { key: "summary", type: "string" },
   { key: "publishedAt", type: "string" },
-  /** Rubriques propres au fournisseur (« concert », « annonce »…) : le cœur les préfixe par la clé de l'instance. */
+  /** Rubriques partagées (« annonce », « concert »…) : plusieurs modules peuvent publier sur la même. */
   { key: "topics", type: "string[]" },
 ];
 
 export type FeedItem = { id: string; title: string; link: string; summary: string; publishedAt: Date | null; topics: string[] };
-/** Une rubrique qu'on peut suivre : `<instance>` (tout ce que l'instance publie) ou `<instance>/<rubrique>`. */
-export type FeedTopic = { id: string; label: string; instance: string; count: number };
+/**
+ * Une rubrique qu'on peut suivre. `annonce` : rubrique PARTAGÉE, alimentée par tous les modules qui la publient
+ * (étiquettes d'entrées comprises) ; `@blog` : tout ce qu'une instance publie (le `@` est réservé au cœur).
+ */
+export type FeedTopic = { id: string; label: string; kind: "topic" | "instance"; count: number; instances: string[] };
 export type Feed = { title: string; link: string; description: string; language: string; self: string; items: FeedItem[] };
 
 const escapeXml = (s: string) =>
@@ -61,9 +64,10 @@ export function sortItems(items: FeedItem[]): FeedItem[] {
   return [...items].sort((a, b) => (b.publishedAt?.getTime() ?? -Infinity) - (a.publishedAt?.getTime() ?? -Infinity) || a.link.localeCompare(b.link) || a.id.localeCompare(b.id));
 }
 
-const TOPIC_RE = /^[a-z0-9][a-z0-9_-]*(\/[a-z0-9][a-z0-9_-]*)?$/;
+const TOPIC_RE = /^@?[a-z0-9][a-z0-9_-]*$/;
 const topicSlug = (v: string) => v.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40);
-const topicsOf = (instanceKey: string, names: string[]) => [instanceKey, ...new Set(names.map(topicSlug).filter(Boolean).map((n) => `${instanceKey}/${n}`))];
+/** `@<instance>` (posé par le cœur seul : un module ne peut pas l'usurper) puis les rubriques partagées, normalisées. */
+const topicsOf = (instanceKey: string, names: string[]) => [`@${instanceKey}`, ...new Set(names.map(topicSlug).filter(Boolean))];
 
 /** Rubriques demandées (`?topics=a,b`) : syntaxe vérifiée, doublons retirés, 20 au plus. */
 export function parseTopics(raw: string | null | undefined): string[] {
@@ -102,29 +106,33 @@ export async function collectFeedItems(opts: { locale: string; instance?: string
       topics: topicsOf(i.source.instance, Array.isArray(i.topics) ? i.topics.map(String) : []),
     });
   }
-  // Filtre par rubriques (OU) : choisir « blog » suit tout le blog, « blog/actus » seulement ses articles étiquetés « actus ».
+  // Filtre par rubriques (OU) : « annonce » rassemble tous les modules qui la publient, « @blog » tout ce que le blog publie.
   const wanted = new Set(opts.topics ?? []);
   const kept = wanted.size ? items.filter((i) => i.topics.some((t) => wanted.has(t))) : items;
   return sortItems(kept).slice(0, limit);
 }
 
-/** Catalogue des rubriques qu'on peut suivre, avec le nombre d'éléments actuels. Même source que le flux. */
+/** Catalogue des rubriques qu'on peut suivre, avec le nombre d'éléments actuels et les instances qui les alimentent. */
 export async function listFeedTopics(locale?: string): Promise<FeedTopic[]> {
   const config = await getSiteConfig();
   const lang = locale && config.locales.includes(locale) ? locale : config.defaultLocale;
   const active = await getActiveInstances();
-  const all = await collectFeedItems({ locale: lang, limit: 100 });
-  const counts = new Map<string, number>();
-  for (const i of all) for (const t of i.topics) counts.set(t, (counts.get(t) ?? 0) + 1);
   const nameOf = (key: string) => {
     const a = active.find((x) => x.instance.key === key);
     return a ? (a.instance.names[lang] ?? a.instance.names[config.defaultLocale] ?? key) : key;
   };
-  return [...counts.entries()]
-    .map(([id, count]) => {
-      const [instance, sub] = id.split("/") as [string, string | undefined];
-      return { id, instance, count, label: sub ? `${nameOf(instance)} · ${sub}` : nameOf(instance) };
-    })
+  const found = new Map<string, { count: number; instances: Set<string> }>();
+  for (const item of await collectFeedItems({ locale: lang, limit: 100 })) {
+    const from = item.topics[0]!.slice(1); // « @instance » est toujours le premier
+    for (const id of item.topics) {
+      const entry = found.get(id) ?? { count: 0, instances: new Set<string>() };
+      entry.count++;
+      entry.instances.add(from);
+      found.set(id, entry);
+    }
+  }
+  return [...found.entries()]
+    .map(([id, v]): FeedTopic => ({ id, kind: id.startsWith("@") ? "instance" : "topic", label: id.startsWith("@") ? nameOf(id.slice(1)) : id, count: v.count, instances: [...v.instances].sort() }))
     .sort((a, b) => a.id.localeCompare(b.id));
 }
 
