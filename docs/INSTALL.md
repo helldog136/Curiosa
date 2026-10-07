@@ -98,13 +98,17 @@ Le script peut aussi être lancé à la main (`node scripts/update.mjs v1.2.3`),
 
 ## Publier une release (mainteneurs)
 
-- Branche `main` (ou `master`) : la version stable. On y **étiquette** `vX.Y.Z` (`package.json` doit déjà porter cette version). Le workflow
-  [`release.yml`](../.github/workflows/release.yml) lance l'audit des failles, les tests, compile, puis publie l'archive et son empreinte sur la release GitHub.
-  Avant la toute première : `npm run migrations:freeze`.
-- Branche `dev` : chaque push publie un **snapshot** (pré-version `dev-<date>-<commit>`), jamais proposé par les mises à jour d'une instance. On y **étiquette** aussi
-  les release candidates `vX.Y.Z-rc.N` (`package.json` porte alors `X.Y.Z-rc.N`) : proposées seulement aux instances qui ont choisi le canal « rc ». La stable `vX.Y.Z` se
-  publie ensuite depuis `main` (ou `master`).
-- Pour fabriquer l'archive à la main : `npm ci && npx prisma generate && npm run build && npm prune --omit=dev && npx prisma generate && GITHUB_REPOSITORY=<propriétaire>/<dépôt> node scripts/release-pack.mjs X.Y.Z`.
+Le cycle suit deux branches :
+
+- **`dev`** : le travail courant. Chaque push publie un **snapshot** (pré-version `dev-<date>-<commit>`), jamais proposé aux instances. On y **étiquette** aussi
+  les release candidates `vX.Y.Z-rc.N` (`package.json` porte alors `X.Y.Z-rc.N`) : proposées seulement aux instances qui ont choisi le canal « rc ».
+- **`master`** (ou `main`) : le stable. **Fusionner `dev` dans `master` publie la release** `vX.Y.Z`, où `X.Y.Z` est la version de `package.json` (à monter avant de fusionner,
+  sans suffixe `-rc`). Si cette version est déjà publiée, la CI ne fait rien.
+
+Avant la toute première release : `npm run migrations:freeze` (déjà fait pour `v0.1.0`). Le workflow [`release.yml`](../.github/workflows/release.yml) lance l'audit des failles, les types, les tests,
+compile, puis publie l'archive et son empreinte sur la release GitHub.
+
+Pour fabriquer l'archive à la main : `npm ci && npx prisma generate && npm run build && npm prune --omit=dev && npx prisma generate && GITHUB_REPOSITORY=<propriétaire>/<dépôt> node scripts/release-pack.mjs X.Y.Z`.
 
 ## La Catalogue (modules reconnus)
 

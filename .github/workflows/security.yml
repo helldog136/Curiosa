@@ -1,7 +1,7 @@
 name: Sécurité
 on:
   push:
-    branches: [main]
+    branches: [dev, master, main]
   pull_request:
   schedule:
     - cron: "17 5 * * 1" # chaque lundi : de nouvelles failles apparaissent sans qu'on touche au code
