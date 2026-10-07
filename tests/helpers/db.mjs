@@ -43,8 +43,10 @@ export async function useTestDb() {
     /** Vide toutes les tables (entre deux tests). Le registre des modules livrés est recréé à la demande. */
     async reset() {
       for (const t of tables) await prisma.$executeRawUnsafe(`DELETE FROM "${t}"`);
-      globalThis.vitrineBuiltinsSynced = false;
+      globalThis.vitrineBuiltinsSynced = false; globalThis.vitrineBuiltinsSyncing = null;
       globalThis.vitrineModuleCache?.clear?.();
+      // Modules installés depuis git : on repart d'un dossier vide.
+      fs.rmSync(path.join(dir, "modules"), { recursive: true, force: true });
     },
     async close() {
       await prisma.$disconnect();

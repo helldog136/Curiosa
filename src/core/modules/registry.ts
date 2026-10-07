@@ -24,6 +24,7 @@ const runtimeImport = new Function("specifier", "return import(specifier)") as (
 const globalCache = globalThis as unknown as {
   vitrineModuleCache?: Map<string, LoadedModule>;
   vitrineBuiltinsSynced?: boolean;
+  vitrineBuiltinsSyncing?: Promise<void> | null;
 };
 const loadedCache = (globalCache.vitrineModuleCache ??= new Map());
 
@@ -34,22 +35,25 @@ export function moduleDir(id: string): string {
 /** Crée la ligne de base des modules livrés avec le cœur la première fois qu'on les voit. */
 async function syncBuiltins(): Promise<void> {
   if (globalCache.vitrineBuiltinsSynced) return;
-  for (const b of BUILTIN_MODULES) {
-    const existing = await prisma.module.findUnique({ where: { id: b.manifest.id } });
-    if (!existing) {
-      await prisma.module.create({
-        data: {
-          id: b.manifest.id,
-          source: "builtin",
-          version: b.manifest.version,
-          enabled: b.manifest.defaultEnabled ?? true,
-        },
-      });
-    } else if (existing.version !== b.manifest.version) {
-      await prisma.module.update({ where: { id: existing.id }, data: { version: b.manifest.version } });
+  // Un seul passage à la fois : deux premières requêtes simultanées ne doivent pas toutes deux créer les mêmes lignes.
+  globalCache.vitrineBuiltinsSyncing ??= (async () => {
+    try {
+      for (const b of BUILTIN_MODULES) {
+        const existing = await prisma.module.findUnique({ where: { id: b.manifest.id } });
+        if (!existing) {
+          await prisma.module.create({
+            data: { id: b.manifest.id, source: "builtin", version: b.manifest.version, enabled: b.manifest.defaultEnabled ?? true },
+          });
+        } else if (existing.version !== b.manifest.version) {
+          await prisma.module.update({ where: { id: existing.id }, data: { version: b.manifest.version } });
+        }
+      }
+      globalCache.vitrineBuiltinsSynced = true;
+    } finally {
+      globalCache.vitrineBuiltinsSyncing = null;
     }
-  }
-  globalCache.vitrineBuiltinsSynced = true;
+  })();
+  await globalCache.vitrineBuiltinsSyncing;
 }
 
 export function readGitManifest(id: string): ParsedManifest | null {
