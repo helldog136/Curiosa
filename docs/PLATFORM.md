@@ -90,10 +90,10 @@ construction = élément le plus récent (jamais l'heure courante), adresses `ja
 dans `<head>` ; aucun module n'est nécessaire.
 
 **S'abonner à une partie seulement.** Chaque élément porte des *rubriques* :
-- des rubriques **partagées** (`annonce`, `concert`…) : ce sont les étiquettes des entrées et les `topics` que les modules proposent via `feed.item`. **Plusieurs modules peuvent publier sur la même rubrique** : s'abonner à `annonce` rassemble les annonces du blog, de l'agenda, etc. ;
+- des rubriques **partagées** (`announcement`, `concert`…) : ce sont les étiquettes des entrées et les `topics` que les modules proposent via `feed.item`. **Plusieurs modules peuvent publier sur la même rubrique** : s'abonner à `announcement` rassemble les annonces du blog, de l'agenda, etc. ;
 - `@<instance>` (`@blog`) : tout ce qu'une instance publie. Le `@` est réservé au cœur, un module ne peut pas l'usurper.
 
-`/feed.xml?topics=annonce,@videos` renvoie les éléments de l'une OU l'autre ; `/feed/<instance>.xml?topics=annonce` limite une rubrique à une instance.
+`/feed.xml?topics=announcement,@videos` renvoie les éléments de l'une OU l'autre ; `/feed/<instance>.xml?topics=announcement` limite une rubrique à une instance.
 Le catalogue de ce qu'on peut suivre (nom lisible, nombre d'éléments, instances qui l'alimentent) est sur `/feed/topics.json`.
 Une rubrique inconnue est ignorée ; si toutes le sont, la réponse est 404 (une faute de frappe ne donne pas un flux vide en silence).
 

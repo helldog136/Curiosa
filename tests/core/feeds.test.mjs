@@ -155,7 +155,7 @@ async function agenda(items) {
 }
 
 test("rubriques : syntaxe vérifiée, doublons et valeurs invalides retirés, 20 au plus", () => {
-  assert.deepEqual(F.parseTopics("annonce, Annonce,@blog"), ["annonce", "@blog"]);
+  assert.deepEqual(F.parseTopics("announcement, Announcement,@blog"), ["announcement", "@blog"]);
   assert.deepEqual(F.parseTopics("a b,../x,blog/actus,<script>,,@@x,@,UPPER"), ["upper"]);
   assert.deepEqual(F.parseTopics(null), []);
   assert.deepEqual(F.parseTopics(""), []);
@@ -164,24 +164,24 @@ test("rubriques : syntaxe vérifiée, doublons et valeurs invalides retirés, 20
 
 test("rubriques : chaque entrée porte « @instance » et ses étiquettes, normalisées (accents, casse)", async () => {
   const a = await blog("Actus");
-  await publish(a.id, "Un", "2026-01-01", { tags: ["Évènement", "News"] });
-  assert.deepEqual((await F.collectFeedItems({ locale: "en" }))[0].topics, ["@actus", "evenement", "news"]);
+  await publish(a.id, "Un", "2026-01-01", { tags: ["Café Society", "News"] });
+  assert.deepEqual((await F.collectFeedItems({ locale: "en" }))[0].topics, ["@actus", "cafe-society", "news"]);
 });
 
 test("rubriques : PLUSIEURS modules publient sur la même rubrique, l'abonné les reçoit tous", async () => {
   const a = await blog("Actus"), b = await blog("Videos");
-  await publish(a.id, "Annonce blog", "2026-03-01", { tags: ["annonce"] });
-  await publish(b.id, "Annonce vidéo", "2026-02-01", { tags: ["Annonce"] });
-  await publish(a.id, "Coulisses", "2026-01-15", { tags: ["coulisses"] });
-  await agenda([{ title: "Annonce concert", url: "/agenda/c", topics: ["annonce", "concert"], publishedAt: "2026-01-01T00:00:00Z" }, { title: "Atelier", url: "/agenda/a", topics: ["atelier"] }]);
+  await publish(a.id, "Blog announcement", "2026-03-01", { tags: ["announcement"] });
+  await publish(b.id, "Video announcement", "2026-02-01", { tags: ["Announcement"] });
+  await publish(a.id, "Backstage", "2026-01-15", { tags: ["backstage"] });
+  await agenda([{ title: "Concert announcement", url: "/agenda/c", topics: ["announcement", "concert"], publishedAt: "2026-01-01T00:00:00Z" }, { title: "Workshop", url: "/agenda/a", topics: ["workshop"] }]);
   const titles = async (topics, instance) => (await F.collectFeedItems({ locale: "en", topics, instance })).map((i) => i.title);
-  assert.deepEqual(await titles(["annonce"]), ["Annonce blog", "Annonce vidéo", "Annonce concert"], "trois modules, une rubrique");
-  const feed = await F.buildFeed({ locale: "en", topics: ["annonce"] });
+  assert.deepEqual(await titles(["announcement"]), ["Blog announcement", "Video announcement", "Concert announcement"], "trois modules, une rubrique");
+  const feed = await F.buildFeed({ locale: "en", topics: ["announcement"] });
   assert.equal(feed.items.length, 3);
-  assert.deepEqual(await titles(["annonce", "atelier"]), ["Annonce blog", "Annonce vidéo", "Annonce concert", "Atelier"], "OU entre rubriques ; sans date à la fin");
-  assert.deepEqual(await titles(["concert"]), ["Annonce concert"]);
-  assert.deepEqual(await titles(["annonce"], "videos"), ["Annonce vidéo"], "une rubrique, limitée à une instance");
-  assert.deepEqual(await titles(["annonce"]), await titles(["annonce"]), "déterministe");
+  assert.deepEqual(await titles(["announcement", "workshop"]), ["Blog announcement", "Video announcement", "Concert announcement", "Workshop"], "OU entre rubriques ; sans date à la fin");
+  assert.deepEqual(await titles(["concert"]), ["Concert announcement"]);
+  assert.deepEqual(await titles(["announcement"], "videos"), ["Video announcement"], "une rubrique, limitée à une instance");
+  assert.deepEqual(await titles(["announcement"]), await titles(["announcement"]), "déterministe");
 });
 
 test("rubriques : « @instance » suit tout ce qu'une instance publie, quelles que soient ses rubriques", async () => {
@@ -206,14 +206,14 @@ test("rubriques : un module ne peut pas se faire passer pour une instance (@ ré
 
 test("rubriques : le catalogue distingue rubriques partagées et instances, avec compteurs et fournisseurs", async () => {
   const a = await blog("Actus", { en: "News" });
-  await publish(a.id, "Un", "2026-01-01", { tags: ["annonce"] });
+  await publish(a.id, "Un", "2026-01-01", { tags: ["announcement"] });
   await publish(a.id, "Deux", "2026-01-02");
-  await agenda([{ title: "C", url: "/c", topics: ["annonce", "concert"] }]);
+  await agenda([{ title: "C", url: "/c", topics: ["announcement", "concert"] }]);
   const list = await F.listFeedTopics("en");
   const by = Object.fromEntries(list.map((t) => [t.id, t]));
-  assert.deepEqual(Object.keys(by), ["@actus", "@agenda", "annonce", "concert"]);
+  assert.deepEqual(Object.keys(by), ["@actus", "@agenda", "announcement", "concert"]);
   assert.deepEqual([by["@actus"].kind, by["@actus"].label, by["@actus"].count], ["instance", "News", 2]);
-  assert.deepEqual([by.annonce.kind, by.annonce.count, by.annonce.instances], ["topic", 2, ["actus", "agenda"]], "alimentée par deux modules");
+  assert.deepEqual([by.announcement.kind, by.announcement.count, by.announcement.instances], ["topic", 2, ["actus", "agenda"]], "alimentée par deux modules");
   assert.deepEqual(by.concert.instances, ["agenda"]);
   assert.deepEqual(await F.listFeedTopics("xx"), await F.listFeedTopics("en"), "langue inconnue → langue par défaut");
 });

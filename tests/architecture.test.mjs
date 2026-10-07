@@ -135,3 +135,20 @@ test("l'admin ne montre pas les identifiants techniques d'instance en mode simpl
   const detail = read("src/app/admin/(panel)/instances/[id]/page.tsx");
   assert.ok(/advanced && <>[^]*instances\.technicalId[^]*instance\.key/.test(detail), "la page d'une instance ne doit montrer la clé qu'en mode avancé");
 });
+
+test("sujets : ceux de nos modules sont en anglais, en minuscules, et listés dans docs/MODULES.md", () => {
+  const doc = read("docs/MODULES.md");
+  const used = new Set();
+  for (const dir of ["modules-community", "modules-examples"]) {
+    for (const mod of fs.readdirSync(dir)) {
+      const file = `${dir}/${mod}/module.json`;
+      if (fs.existsSync(file)) for (const m of read(file).matchAll(/"topic": *"([^"]+)"/g)) used.add(m[1]);
+    }
+  }
+  for (const f of code("src/modules-builtin")) for (const m of read(f).matchAll(/\btopic: "([^"]+)"/g)) used.add(m[1]);
+  assert.ok(used.size >= 5, "des sujets doivent être trouvés");
+  for (const topic of used) {
+    assert.match(topic, /^[a-z]+(\.[a-z]+)+$/, `sujet « ${topic} » : minuscules, domaine.objet`);
+    assert.ok(doc.includes(`\`${topic}\``), `sujet « ${topic} » absent du tableau « Sujets connus » de docs/MODULES.md`);
+  }
+});

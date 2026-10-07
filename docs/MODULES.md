@@ -57,6 +57,25 @@ les offres de partenaires… sans que le module d'overlay connaisse le blog ou l
 principe : **le consommateur déclare ce qu'il sait digérer, les fournisseurs exposent des
 informations dans ce format.**
 
+**Convention de nommage : les identifiants de sujets et de rubriques sont en anglais**, en minuscules, `domaine.objet` pour
+un sujet (`sponsor.card`, `planning.slot`, `feed.item`) et un mot ou des mots reliés par des tirets pour une rubrique
+(`announcement`, `behind-the-scenes`). C'est le standard de notre propre code et de nos exemples, pour que des modules écrits
+par des personnes différentes se retrouvent sur les mêmes noms ; rien ne l'impose (un module peut publier sur `annonce`),
+mais deux modules ne partagent un sujet ou une rubrique que s'ils s'écrivent pareil. Les **libellés** montrés aux humains,
+eux, sont traduits comme le reste.
+
+Sujets connus (tous fournis par des modules livrés ou communautaires, ou par le cœur) :
+
+| Sujet | Fourni par | Rôle |
+|---|---|---|
+| `core.entry` | le cœur | entrées publiées de toute instance à contenu |
+| `feed.item` | tout module | éléments proposés au flux RSS (voir plus bas) |
+| `overlay.item` | tout module | éléments simples (titre, texte, image, lien) pour les overlays |
+| `sponsor.card` | `sponsors` | carte de sponsor (nom, code, logo, lien) |
+| `partnership.partner` | `partnerships` | fiche de partenaire (nom, logo) |
+| `planning.slot` | `planning` | créneau de stream |
+| `maze.poster` | tout module | affiche pour le labyrinthe |
+
 ```jsonc
 // module.json du CONSOMMATEUR (un overlay)
 "consumes": [
@@ -218,7 +237,7 @@ Un module qui déclare la permission `mail` peut appeler `ctx.api.mail.send({ to
 
 ## Alimenter le flux RSS
 
-Le flux RSS est une fonctionnalité du cœur (`/feed.xml`). Les modules à contenu y sont déjà. Un autre module y ajoute ses éléments en fournissant le sujet `feed.item` : `"provides": [{ "topic": "feed.item" }]` et `exports["feed.item"] = (ctx, { locale, limit }) => [{ title, url, summary?, publishedAt?, id?, topics? }]`. `topics` : les rubriques **partagées** sur lesquelles publier (`["annonce", "concert"]`). Elles sont communes à tous les modules : si le blog et votre agenda publient tous deux sur `annonce`, un lecteur abonné à `annonce` reçoit les deux. Le cœur ajoute lui-même `@<instance>` ; un module ne peut pas le déclarer.
+Le flux RSS est une fonctionnalité du cœur (`/feed.xml`). Les modules à contenu y sont déjà. Un autre module y ajoute ses éléments en fournissant le sujet `feed.item` : `"provides": [{ "topic": "feed.item" }]` et `exports["feed.item"] = (ctx, { locale, limit }) => [{ title, url, summary?, publishedAt?, id?, topics? }]`. `topics` : les rubriques **partagées** sur lesquelles publier (`["announcement", "concert"]`). Elles sont communes à tous les modules : si le blog et votre agenda publient tous deux sur `announcement`, un lecteur abonné à `announcement` reçoit les deux. Le cœur ajoute lui-même `@<instance>` ; un module ne peut pas le déclarer.
 
 ## Overlay (type `overlay`)
 
