@@ -11,6 +11,7 @@ import { ModuleForm } from "./ModuleForm";
 import { CopyCode } from "./CopyCode";
 import { CopyText } from "./CopyText";
 import { AdminBlockForm, RowActionButton } from "../admin/AdminBlocks";
+import { GridEditor } from "../admin/GridEditor";
 
 const TONES = {
   info: "bg-accent text-accent-fg",
@@ -163,6 +164,9 @@ export async function Blocks({ blocks, locale, adminInstanceId }: { blocks: Bloc
       case "adminForm":
         // Les formulaires d'admin n'existent que dans le panneau d'admin (jamais sur le site public).
         if (adminInstanceId) out.push(<AdminBlockForm key={i} instanceId={adminInstanceId} block={block} />);
+        break;
+      case "gridEditor":
+        if (adminInstanceId) out.push(<GridEditor key={i} instanceId={adminInstanceId} block={block} />);
         break;
       case "table":
         out.push(

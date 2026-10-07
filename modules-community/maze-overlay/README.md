@@ -44,3 +44,7 @@ Tous les tirages passent par `web/random.js` (jamais `Math.random` directement).
 
 - Le tracé est généré à chaque chargement (la carte figée et son éditeur ne sont pas portés).
 - Les clips Twitch / vidéos YouTube ne sont plus récupérés par l'overlay lui-même : ils doivent venir d'un module fournisseur de `maze.poster`.
+
+## Tracé personnalisé (éditeur de carte)
+
+Par défaut, le labyrinthe est généré au hasard à chaque chargement. Dans l'admin de l'instance (section *Tracé du labyrinthe*), vous pouvez **générer un tracé de départ** puis le retoucher à la main avec l'éditeur de grille : choisissez un pinceau (mur, chemin, emplacement d'affiche, portail), cliquez ou glissez sur les cases, redimensionnez (5 à 41), puis enregistrez. Tant qu'un tracé est enregistré, c'est toujours lui qui s'affiche ; *Revenir au tracé automatique* le supprime. Un tracé sans aucune case de chemin est refusé. L'éditeur est le bloc générique `gridEditor` du cœur.

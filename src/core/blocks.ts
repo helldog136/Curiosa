@@ -54,6 +54,25 @@ export type Block =
       /** Lien « Annuler » (par exemple retour à la liste après une modification). */
       cancelHref?: string;
     }
+  /**
+   * Éditeur de GRILLE (panneau d'admin uniquement) : on choisit un pinceau dans la palette puis on peint les cases à la souris ou au doigt ;
+   * on peut redimensionner. Poste sur une adminAction `width`, `height` et `cells` (un caractère par case, ligne après ligne ; chaque
+   * caractère est la `value` d'un élément de la palette). `labels` : textes de l'éditeur (par défaut en anglais).
+   */
+  | {
+      type: "gridEditor";
+      action: string;
+      title?: string;
+      submitLabel: string;
+      width: number;
+      height: number;
+      cells: string;
+      palette: { value: string; label: string; color: string }[];
+      minSize?: number;
+      maxSize?: number;
+      cancelHref?: string;
+      labels?: { width?: string; height?: string; fillAll?: string; border?: string; reset?: string; hint?: string };
+    }
   | { type: "heading"; text: string }
   /** Pastilles de couleur avec code copiable. `hex` : #RRGGBB. */
   | { type: "swatches"; items: { name: string; hex: string; role?: string }[] }

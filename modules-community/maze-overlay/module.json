@@ -61,8 +61,10 @@
     }
   ],
   "permissions": [
+    "admin",
     "overlay",
     "routes",
+    "storage",
     "topics"
   ],
   "settings": [

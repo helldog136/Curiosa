@@ -68,14 +68,17 @@ const cfgOf = (out) => {
 test("manifeste : overlay, sujets consommés, route par fichier web/*.js + items, réglages tous lus par le code", () => {
   assert.equal(manifestJson.type, "overlay");
   assert.deepEqual(manifestJson.consumes.map((c) => c.topic).sort(), ["core.entry", "maze.poster"]);
-  assert.deepEqual(manifestJson.permissions.sort(), ["overlay", "routes", "topics"]);
+  assert.deepEqual(manifestJson.permissions.sort(), ["admin", "overlay", "routes", "storage", "topics"]);
   const webFiles = fs.readdirSync(`${DIR}/web`).filter((f) => /^[a-z-]+\.js$/.test(f));
-  assert.deepEqual(Object.keys(def.routes).sort(), [...webFiles, "items"].sort());
+  assert.deepEqual(Object.keys(def.routes).sort(), [...webFiles, "items", "map"].sort());
   for (const s of manifestJson.settings) assert.ok(source.includes(`"${s.key}"`), `réglage ${s.key} jamais lu`);
   assert.equal(manifestJson.settings.find((s) => s.key === "devMode").default, false);
   assert.deepEqual(manifestJson.settings.find((s) => s.key === "size").options.map((o) => o.value), ["small", "medium", "large"]);
   assert.deepEqual(manifestJson.consumes[1].schema.map((s) => s.key).sort(), ["badge", "image", "kind", "text", "title", "url"]);
-  assert.ok(!fs.existsSync(`${DIR}/locales`), "pas de textes traduits : rien à comparer");
+  const en = JSON.parse(fs.readFileSync(`${DIR}/locales/en.json`, "utf8")), fr = JSON.parse(fs.readFileSync(`${DIR}/locales/fr.json`, "utf8"));
+  assert.deepEqual(Object.keys(fr).sort(), Object.keys(en).sort(), "parité en/fr");
+  for (const m of source.matchAll(/\bt\("([A-Za-z0-9_]+)"/g)) assert.ok(m[1] in en, m[1]);
+  for (const k of ["errInvalid", "errNoPath", "errTooBig"]) assert.ok(k in en, k);
 });
 
 test("routes web : chaque fichier est servi en JavaScript, sans cache, avec son contenu exact", async () => {
@@ -91,7 +94,7 @@ test("routes web : chaque fichier est servi en JavaScript, sans cache, avec son 
 
 test("overlay : configuration par défaut", () => {
   const { out } = overlayOf();
-  assert.deepEqual(cfgOf(out), { itemsUrl: "/m/maze/items?lang=en", size: "medium", moveSpeed: 1.4, turnSpeed: 220, stopMin: 12, stopMax: 25, hold: 8, fov: 66, accent: "#e8a23b", wallColor: "#2a2118", floorColor: "#181310", wall: [], floor: [], portal: [], hands: null, dev: null });
+  assert.deepEqual(cfgOf(out), { itemsUrl: "/m/maze/items?lang=en", mapUrl: "/m/maze/map", size: "medium", moveSpeed: 1.4, turnSpeed: 220, stopMin: 12, stopMax: 25, hold: 8, fov: 66, accent: "#e8a23b", wallColor: "#2a2118", floorColor: "#181310", wall: [], floor: [], portal: [], hands: null, dev: null });
   assert.equal(out.title, "Mon labyrinthe");
   assert.match(out.html, /id="vm-canvas"/);
   assert.match(out.css, /border:2px solid #e8a23b/);
@@ -383,4 +386,60 @@ test("embed Twitch : clip par clips.twitch.tv ou /clip/<slug>, parent obligatoir
   assert.equal(E.getTwitchClipEmbedUrl("https://clips.twitch.tv/Slug", ""), null);
   assert.equal(E.getTwitchClipEmbedUrl("https://clips.twitch.tv/Slug", null), null);
   for (const u of ["", "nope", "https://www.twitch.tv/chaine", "https://clips.twitch.tv/", "javascript:alert(1)"]) assert.equal(E.getTwitchClipEmbedUrl(u, "site.test"), null, u);
+});
+
+// ── Tracé personnalisé (éditeur de grille de l'admin) ────────────────────────────────────────────────────────────
+const P = def.adminActions;
+const mazeCtx = (settings = {}) => ctxFor("en", { key: "maze", settings });
+const form = (width, height, cells) => ({ width: String(width), height: String(height), cells });
+const grid5 = "0".repeat(25).split("").map((_, i) => (i === 12 ? "1" : "0")).join("");
+
+test("tracé : validation — taille bornée, un chiffre 0-3 par case, au moins un chemin", async () => {
+  const { parseMap } = await import("../../modules-community/maze-overlay/index.mjs");
+  assert.deepEqual(parseMap(form(5, 5, grid5)), { width: 5, height: 5, cells: grid5 });
+  for (const [v, err] of [[form(4, 5, grid5), "errTooBig"], [form(42, 5, grid5), "errTooBig"], [form("x", 5, grid5), "errTooBig"], [form(5, 5, grid5.slice(1)), "errInvalid"], [form(5, 5, "9".repeat(25)), "errInvalid"], [form(5, 5, "a".repeat(25)), "errInvalid"], [form(5, 5, "0".repeat(25)), "errNoPath"], [{}, "errTooBig"]]) assert.equal(parseMap(v).error, err, JSON.stringify(v).slice(0, 60));
+});
+
+test("tracé : enregistrer, relire par la route /map, remplacer (un seul tracé), revenir à l'automatique", async () => {
+  const c = mazeCtx();
+  assert.deepEqual(await (await def.routes.map(new Request("https://x.test/m/maze/map"), c)).json(), { grid: null });
+  assert.equal((await P.saveMap(c, form(5, 5, grid5))).ok, "Layout saved.");
+  const out = await (await def.routes.map(new Request("https://x.test/m/maze/map"), c)).json();
+  assert.deepEqual([out.grid.width, out.grid.height, out.grid.walls.length, out.grid.walls[12]], [5, 5, 25, 1]);
+  assert.ok(out.grid.walls.every((n) => Number.isInteger(n)));
+  assert.ok((await P.saveMap(c, form(5, 5, "0".repeat(25)))).error, "tracé sans chemin refusé");
+  await P.saveMap(c, form(6, 5, grid5 + "1".repeat(5)));
+  assert.equal(await c.api.store.count("map"), 1, "un seul tracé par instance");
+  assert.equal((await P.clear(c)).ok, "Back to the automatic layout.");
+  assert.equal(await c.api.store.count("map"), 0);
+});
+
+test("tracé : « générer » crée un tracé jouable à retoucher (portails et affiches compris) à la taille réglée", async () => {
+  const c = mazeCtx({ size: "small" });
+  assert.equal((await P.generate(c)).redirect, "?");
+  const { grid } = await (await def.routes.map(new Request("https://x.test/m/maze/map"), c)).json();
+  assert.equal(grid.width, 11 * 0 + 15);   // petit : 7 cellules → 15 cases
+  assert.ok(grid.walls.includes(1));
+  assert.ok(grid.walls.includes(2) || grid.walls.includes(3), "affiches ou portails présents");
+  assert.ok(grid.walls.every((n) => n >= 0 && n <= 3));
+});
+
+test("tracé : panneau d'admin — sans tracé : explication + « générer » ; avec tracé : éditeur de grille, palette de 4 pinceaux, « revenir à l'automatique »", async () => {
+  const c = mazeCtx();
+  const none = await def.adminPanel(c);
+  assert.ok(!none.some((b) => b.type === "gridEditor"));
+  assert.deepEqual(none.filter((b) => b.type === "adminForm").map((b) => b.action), ["generate"]);
+  await P.saveMap(c, form(5, 5, grid5));
+  const some = await def.adminPanel(c);
+  const editor = some.find((b) => b.type === "gridEditor");
+  assert.deepEqual([editor.action, editor.width, editor.height, editor.cells, editor.palette.map((p) => p.value)], ["saveMap", 5, 5, grid5, ["0", "1", "2", "3"]]);
+  assert.deepEqual(some.filter((b) => b.type === "adminForm").map((b) => b.action), ["generate", "clear"]);
+});
+
+test("tracé : la page de l'overlay le réclame au démarrage (route /map), main.js retombe sur un tracé automatique s'il est invalide", () => {
+  const { out } = overlayOf();
+  assert.equal(cfgOf(out).mapUrl, "/m/maze/map");
+  const main = fs.readFileSync(`${DIR}/web/main.js`, "utf8");
+  assert.match(main, /\(await fetchCustomGrid\(\)\) \?\? generateMaze\(cfg\.size\)/);
+  assert.match(main, /g\.walls\.length === g\.width \* g\.height && g\.walls\.includes\(1\)/);
 });

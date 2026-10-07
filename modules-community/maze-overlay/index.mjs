@@ -22,6 +22,27 @@ for (const file of fs.readdirSync(webDir).filter((f) => /^[a-z-]+\.js$/.test(f))
     });
 }
 
+// ── Tracé personnalisé ────────────────────────────────────────────────────────────────────────────────────────
+// Un seul tracé par instance (collection « map »). Les cases : 0 mur · 1 chemin · 2 emplacement d'affiche · 3 portail.
+const MAP = "map";
+const MAP_MIN = 5, MAP_MAX = 41;
+
+/** Valide un tracé posté : taille bornée, un chiffre 0-3 par case, au moins une case de chemin. Renvoie { width, height, cells } ou un code d'erreur. */
+export function parseMap(values) {
+  const width = Math.trunc(Number(values?.width)), height = Math.trunc(Number(values?.height));
+  const cells = String(values?.cells ?? "");
+  if (!(width >= MAP_MIN && width <= MAP_MAX && height >= MAP_MIN && height <= MAP_MAX)) return { error: "errTooBig" };
+  if (!/^[0-3]+$/.test(cells) || cells.length !== width * height) return { error: "errInvalid" };
+  if (!cells.includes("1")) return { error: "errNoPath" };
+  return { width, height, cells };
+}
+const savedMap = async (ctx) => {
+  const [row] = await ctx.api.store.list(MAP, { limit: 1 });
+  const ok = row ? parseMap(row.data) : null;
+  return ok && !ok.error ? { id: row.id, ...ok } : null;
+};
+const toCells = (grid) => Array.from(grid.walls).join("");
+
 // Mode développeur : ?seed=42 (tracé et trajet reproductibles), ?luck=always|never|0.3 (s'arrêter
 // devant une affiche), ?fast=1 (délais minimaux), ?dev=1 (= luck=always + fast=1). Ignoré tant que
 // le réglage « Mode développeur » de l'instance n'est pas activé.
@@ -64,12 +85,62 @@ routes.items = async (_request, ctx) => {
   return Response.json({ items, logoUrl: site.logo }, { headers: { "cache-control": "no-store" } });
 };
 
+// Le tracé personnalisé (ou rien) : lu par la page de l'overlay au démarrage.
+routes.map = async (_request, ctx) => {
+  const m = await savedMap(ctx);
+  return Response.json({ grid: m ? { width: m.width, height: m.height, walls: Array.from(m.cells, Number) } : null }, { headers: { "cache-control": "no-store" } });
+};
+
 export default {
   routes,
+
+  async adminPanel(ctx) {
+    const t = ctx.t;
+    const m = await savedMap(ctx);
+    const blocks = [{ type: "heading", text: t("mapTitle") }, { type: "markdown", text: `${t(m ? "mapCustom" : "mapAuto")}\n\n${t("mapPoster")}` }];
+    if (m) {
+      blocks.push({
+        type: "gridEditor", action: "saveMap", submitLabel: t("save"), width: m.width, height: m.height, cells: m.cells, minSize: MAP_MIN, maxSize: MAP_MAX,
+        palette: [{ value: "0", label: t("paintWall"), color: "#1e1611" }, { value: "1", label: t("paintPath"), color: "#f4f0ea" }, { value: "2", label: t("paintPoster"), color: "#cd853f" }, { value: "3", label: t("paintPortal"), color: "#2563eb" }],
+        labels: { width: t("lblWidth"), height: t("lblHeight"), fillAll: t("lblFill"), border: t("lblBorder"), reset: t("lblReset"), hint: t("lblHint") },
+      });
+    }
+    blocks.push({ type: "adminForm", action: "generate", submitLabel: t(m ? "generateAgain" : "generate"), fields: [] });
+    if (m) blocks.push({ type: "adminForm", action: "clear", submitLabel: t("clear"), fields: [] });
+    return blocks;
+  },
+
+  adminActions: {
+    async saveMap(ctx, values) {
+      const parsed = parseMap(values);
+      if (parsed.error) return { error: ctx.t(parsed.error) };
+      const { width, height, cells } = parsed;
+      const current = await savedMap(ctx);
+      if (current) await ctx.api.store.update(current.id, { width, height, cells });
+      else await ctx.api.store.add(MAP, { width, height, cells });
+      return { ok: ctx.t("saved") };
+    },
+    // Un tracé aléatoire (de la taille choisie dans les réglages) comme point de départ à retoucher.
+    async generate(ctx) {
+      const { generateMaze } = await import("./web/generate.js");
+      const grid = generateMaze(["small", "medium", "large"].includes(ctx.setting("size")) ? ctx.setting("size") : "medium");
+      const data = { width: grid.width, height: grid.height, cells: toCells(grid) };
+      const current = await savedMap(ctx);
+      if (current) await ctx.api.store.update(current.id, data);
+      else await ctx.api.store.add(MAP, data);
+      return { ok: ctx.t("generated"), redirect: "?" };
+    },
+    async clear(ctx) {
+      for (const r of await ctx.api.store.list(MAP, { limit: 10 })) await ctx.api.store.remove(r.id);
+      return { ok: ctx.t("cleared"), redirect: "?" };
+    },
+  },
+
   overlay(ctx, { query }) {
     const lines = (v) => String(v ?? "").split("\n");
     const cfg = {
       itemsUrl: `/m/${ctx.instance.key}/items?lang=${ctx.locale}`,
+      mapUrl: `/m/${ctx.instance.key}/map`,
       size: ["small", "medium", "large"].includes(ctx.setting("size")) ? ctx.setting("size") : "medium",
       moveSpeed: num(ctx.setting("moveSpeed"), 1.4, 0.2, 5),
       turnSpeed: num(ctx.setting("turnSpeed"), 220, 30, 720),

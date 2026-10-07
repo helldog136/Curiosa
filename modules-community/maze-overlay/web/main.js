@@ -1,7 +1,7 @@
 // Colle navigateur du labyrinthe : remplace MazeOverlay.tsx + PromoFocusCard.tsx du site
 // d'origine (React → DOM natif, aucun framework, aucun build). Le moteur, la génération, les
 // textures et les affiches sont ceux de la version d'origine (voir les autres fichiers de ce dossier).
-import { generateMaze } from "./generate.js";
+import { deserializeMazeGrid, generateMaze } from "./generate.js";
 import { loadTextureSet, loadImage } from "./textures.js";
 import { drawPromoPoster, setAccent, BADGE_LABELS } from "./poster.js";
 import { MazeEngine } from "./engine.js";
@@ -94,6 +94,16 @@ async function fetchItems() {
   }
 }
 
+// Tracé dessiné à la main dans l'admin (sinon `null` : on génère un labyrinthe au hasard).
+async function fetchCustomGrid() {
+  try {
+    const data = await (await fetch(cfg.mapUrl, { cache: "no-store" })).json();
+    const g = data.grid;
+    if (g && Number.isInteger(g.width) && Number.isInteger(g.height) && Array.isArray(g.walls) && g.walls.length === g.width * g.height && g.walls.includes(1)) return deserializeMazeGrid(g);
+  } catch { /* indisponible : tracé automatique */ }
+  return null;
+}
+
 let engine = null;
 async function applyPromos(items) {
   const textures = await Promise.all(
@@ -120,7 +130,7 @@ async function setup() {
     cfg.hands ? loadImage(cfg.hands).catch(() => null) : Promise.resolve(null),
   ]);
 
-  const grid = generateMaze(cfg.size);
+  const grid = (await fetchCustomGrid()) ?? generateMaze(cfg.size);
   if (cfg.dev) {
     // Empreinte du tracé : deux chargements avec la même graine doivent donner la même.
     window.__MAZE_DEV__ = { seed: getSeed(), gridHash: Array.from(grid.walls).reduce((h, v, i) => (h * 31 + v * (i + 1)) % 1000000007, 7) };
