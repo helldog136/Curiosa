@@ -82,6 +82,8 @@ modules-community/  Modules complets qui ne font PAS partie du cœur : labyrinth
 docs/               PLATFORM.md (cœur vs modules), ARCHITECTURE.md, MODULES.md
 ```
 
+**Installer sur un serveur** (et se mettre à jour depuis l'admin) : [docs/INSTALL.md](docs/INSTALL.md).
+
 Voir [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) pour les choix de conception et
 [docs/MODULES.md](docs/MODULES.md) pour écrire et publier un module.
 

@@ -170,3 +170,18 @@ test("le framework est agnostique de toute donnée métier : aucun nom de site, 
     for (const re of forbidden) assert.ok(!re.test(text), `${f} contient une donnée propre à un site (${re.source}) : le framework doit rester neutre`);
   }
 });
+
+test("installation : chaque variable VITRINE_* lue par le code est documentée (.env.example ou docs/INSTALL.md)", () => {
+  const doc = read(".env.example") + read("docs/INSTALL.md");
+  const internal = new Set(["VITRINE_SERVER_PID"]); // passée par le serveur à la tâche de mise à jour, pas un réglage
+  const used = new Set();
+  for (const f of [...code("src"), "scripts/update.mjs", "scripts/update-lib.mjs"]) for (const m of read(f).matchAll(/process\.env\.(VITRINE_[A-Z_]+)/g)) used.add(m[1]);
+  assert.ok(used.has("VITRINE_RESTART_COMMAND") && used.has("VITRINE_SUPERVISED") && used.has("VITRINE_INSTALL"));
+  for (const v of used) if (!internal.has(v)) assert.ok(doc.includes(v), `${v} est lue par le code mais absente de .env.example / docs/INSTALL.md`);
+});
+
+test("mises à jour : le redémarrage n'est jamais supposé — sans commande ni superviseur, le serveur n'est pas coupé", () => {
+  const lib = read("scripts/update-lib.mjs");
+  assert.ok(lib.includes("supervised && serverPid"), "arrêt du serveur seulement s'il est supervisé");
+  assert.ok(lib.includes('restart: "needed"') || lib.includes('save({ restart: "needed" })'));
+});

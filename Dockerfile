@@ -10,7 +10,8 @@ COPY . .
 RUN npx prisma generate && npm run build
 
 FROM base AS run
-ENV NODE_ENV=production PORT=3000 DATA_DIR=/app/data DATABASE_URL=file:/app/data/vitrine.db
+# VITRINE_INSTALL=docker : l'admin n'essaie pas de se mettre à jour en place (on remplace l'image).
+ENV NODE_ENV=production PORT=3000 DATA_DIR=/app/data DATABASE_URL=file:/app/data/vitrine.db VITRINE_INSTALL=docker
 COPY --from=build /app ./
 VOLUME /app/data
 EXPOSE 3000
