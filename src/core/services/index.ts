@@ -20,5 +20,6 @@ export const PLATFORM_SERVICES: PlatformService[] = [
   { id: "store", exposedAs: "ctx.api.store", where: "services/store.ts", summary: "Stockage privé par instance : collections de documents JSON." },
   { id: "topics", exposedAs: "ctx.api.topics.collect(sujet)", where: "services/topics.ts", summary: "Échange d'informations typées entre modules (consommateurs ↔ fournisseurs, abonnements, validation)." },
   { id: "mcp", exposedAs: null, where: "services/mcp/", summary: "Serveur MCP : jetons, portées, validation, audit, interrupteur. Les modules déclarent `mcp`, le cœur expose." },
+  { id: "mail", exposedAs: "ctx.api.mail.send(…)", where: "services/mail.ts", summary: "Envoi d'e-mails au nom du site : SMTP réglé dans l'admin, expéditeur fixe, un destinataire, débit limité, audit." },
   { id: "uploads", exposedAs: "réglage de type « image », champ « image » des formulaires d'admin", where: "services/uploads.ts", summary: "Envoi et service d'images (signature vérifiée, SVG refusé)." },
 ];

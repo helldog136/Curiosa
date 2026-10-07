@@ -18,7 +18,7 @@ export const manifest: ParsedManifest = {
   provides: [],
   instances: "multiple",
   sections: [{ id: "form", label: { en: "Contact form", fr: "Formulaire de contact" } }],
-  permissions: ["slots", "routes", "storage", "sections"],
+  permissions: ["slots", "routes", "storage", "sections", "mail"],
   settings: [
     {
       key: "pageSlug",
@@ -27,12 +27,19 @@ export const manifest: ParsedManifest = {
       label: { en: "Slug of a page that shows the form under its content (optional)", fr: "Slug d'une page qui affiche le formulaire sous son contenu (facultatif)" },
       help: { en: "Example: contact. Or place the form's section on the home page instead.", fr: "Exemple : contact. Ou placez la section du formulaire sur l'accueil." },
     },
+    {
+      key: "notify",
+      type: "boolean",
+      default: true,
+      label: { en: "Email me each new message", fr: "Me prévenir par e-mail à chaque message" },
+      help: { en: "Sent to the site's contact address. Needs the email server set in Settings; messages are always kept in the admin.", fr: "Envoyé à l'adresse de contact du site. Demande le serveur d'e-mail réglé dans les Réglages ; les messages restent toujours consultables dans l'admin." },
+    },
   ],
 };
 
 export const locales: BuiltinModule["locales"] = {
-  en: { name: "Name", email: "Email", message: "Message", send: "Send", sent: "Thanks! Your message was sent.", messages: "Messages received", date: "Date", from: "From" },
-  fr: { name: "Nom", email: "Email", message: "Message", send: "Envoyer", sent: "Merci ! Votre message a bien été envoyé.", messages: "Messages reçus", date: "Date", from: "De" },
+  en: { name: "Name", email: "Email", message: "Message", send: "Send", sent: "Thanks! Your message was sent.", messages: "Messages received", date: "Date", from: "From", mailSubject: "New message from {name}", mailBody: "{name} <{email}> wrote on your site:" },
+  fr: { name: "Nom", email: "Email", message: "Message", send: "Envoyer", sent: "Merci ! Votre message a bien été envoyé.", messages: "Messages reçus", date: "Date", from: "De", mailSubject: "Nouveau message de {name}", mailBody: "{name} <{email}> vous a écrit sur votre site :" },
 };
 
 // Anti-abus minimal en mémoire : 5 messages / heure / IP.
@@ -65,6 +72,10 @@ export const definition = defineModule({
         return Response.json({ ok: false }, { status: 400 });
       }
       await ctx.api.store.add("messages", { name, email, message });
+      // Le message est déjà conservé : une panne d'e-mail ne doit jamais le perdre ni échouer la requête (le service ne lève jamais).
+      if (ctx.setting<boolean>("notify") !== false) {
+        await ctx.api.mail.send({ to: "owner", replyTo: email, subject: ctx.t("mailSubject", { name }), text: `${ctx.t("mailBody", { name, email })}\n\n${message}\n` });
+      }
       return Response.json({ ok: true });
     },
   },

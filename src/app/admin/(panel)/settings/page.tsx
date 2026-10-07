@@ -7,12 +7,16 @@ import { Checkbox, Select, TextArea, TextField } from "@/components/admin/Field"
 import { ImageField } from "@/components/admin/ImageField";
 import { ThemePicker } from "@/components/admin/ThemePicker";
 import { ui } from "@/components/admin/ui";
+import { hasRole } from "@/core/permissions";
+import { getMailConfig } from "@/core/services/mail";
 import { saveSettings } from "./actions";
+import { saveMail, sendTestMail } from "./mail-actions";
 
 const TRANSLATABLE = ["site.name", "site.tagline", "site.about", "footer.text"] as const;
 
 export default async function SettingsPage() {
-  const { t, config, advanced } = await adminCtx("admin");
+  const { t, config, advanced, user } = await adminCtx("admin");
+  const mail = await getMailConfig();
   const values: Record<string, Record<string, unknown>> = {};
   for (const key of TRANSLATABLE) values[key] = await getSettingByLocale(key);
   const logo = await getSetting<string>("site.logo");
@@ -67,6 +71,25 @@ export default async function SettingsPage() {
           {advanced && <p className={ui.help}>{t("settings.appearanceHelp")}</p>}
         </section>
       </ActionForm>
+
+      {hasRole(user, "owner") && (
+        <section className="space-y-4">
+          <h2 className="text-lg font-semibold">{t("settings.mail")}</h2>
+          <p className="text-sm text-muted">{t("settings.mailHelp")}</p>
+          <p className={ui.help}>{mail ? t("settings.mailStatusOn") : t("settings.mailStatusOff")}</p>
+          <ActionForm action={saveMail} submitLabel={t("settings.mailSave")} className="space-y-3">
+            <TextField name="mailHost" label={t("settings.mailHost")} defaultValue={mail?.host ?? ""} placeholder="smtp.example.com" autoComplete="off" />
+            <TextField name="mailPort" type="number" label={t("settings.mailPort")} defaultValue={mail?.port ?? 587} />
+            <Checkbox name="mailSecure" label={t("settings.mailSecure")} defaultChecked={mail?.secure ?? false} />
+            <TextField name="mailUser" label={t("settings.mailUser")} defaultValue={mail?.user ?? ""} autoComplete="off" />
+            <TextField name="mailPass" type="password" label={t("settings.mailPass")} help={t("settings.mailPassHelp")} autoComplete="new-password" />
+            <TextField name="mailFrom" label={t("settings.mailFrom")} help={t("settings.mailFromHelp")} defaultValue={mail?.from ?? ""} />
+          </ActionForm>
+          {mail && (
+            <ActionForm action={sendTestMail} submitLabel={t("settings.mailTest")} className="space-y-3">{null}</ActionForm>
+          )}
+        </section>
+      )}
     </div>
   );
 }

@@ -28,7 +28,7 @@ Ces frontières sont vérifiées par `tests/architecture.test.mjs`.
                 │ composés dans  src/core/platform.ts  (racine de composition)
  ┌──────────────┴────────────────────────────────────────────────────────────────┐
  │ SERVICES (helpers)   src/core/services/                                       │
- │ qr · store · topics · mcp · uploads        génériques, indépendants           │
+ │ qr · store · topics · mail · mcp · uploads génériques, indépendants           │
  └───────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -41,6 +41,7 @@ Catalogue source : `src/core/services/index.ts`.
 | `qr` | `services/qr.ts` | `ctx.api.qr(texte)` | QR code en SVG, fond transparent. Aucune dépendance côté module. |
 | `store` | `services/store.ts` | `ctx.api.store` | Stockage privé par instance (collections de documents JSON) ; une instance ne voit jamais celui d'une autre. |
 | `topics` | `services/topics.ts` | `ctx.api.topics.collect(sujet)` | Échange d'informations typées entre modules : un consommateur déclare ce qu'il digère, des fournisseurs l'exposent, l'admin règle les abonnements, le cœur valide. |
+| `mail` | `services/mail.ts` | `ctx.api.mail.send({ to, subject, text })` (permission `mail`) | Envoi d'e-mails au nom du site. Le SMTP est réglé dans *Réglages* (jamais visible des modules). Expéditeur fixé par le cœur, un seul destinataire (`"owner"` = contact du site, ou une adresse), texte brut, débit limité (10/h par instance, 40/h au total), audit sans contenu, jamais d'exception : `{ ok, reason }`. |
 | `mcp` | `services/mcp/` | *rien à appeler* : le module déclare `mcp` dans son manifeste | Serveur MCP : jetons hachés, plafond lecture/écriture, **accès action par action modifiables en direct**, validation des arguments, limitation de débit, audit, interrupteur. |
 | `uploads` | `services/uploads.ts` | réglage de type `image`, champ `image` des formulaires d'admin | Envoi d'images (signature vérifiée, SVG refusé, taille bornée). |
 
@@ -78,6 +79,15 @@ s'articulent avec le reste du site. Ce ne sont pas des services (ils exposent le
 rôle, traduits), police. C'est **la même source** (`src/core/brand.ts`, même `buildPalette`) que celle du rendu réel du site : ce que
 l'administrateur règle dans *Réglages* (Identité, Apparence) est stocké une seule fois dans le cœur. Un module qui *montre* l'identité
 (le **kit presse**) ne la copie ni ne la stocke : il la lit. Changer le thème du site change donc le kit presse, sans rien refaire.
+
+## Le flux RSS : une fonctionnalité du cœur
+
+`/feed.xml` (tout le site) et `/feed/<instance>.xml` (une instance), `?lang=` pour la langue. Le cœur (`core/feeds.ts`) lit les données
+des modules sans les connaître : le sujet `core.entry` (entrées publiées de toute instance à contenu qui propose ses entrées) et le
+sujet `feed.item` (tout module peut en fournir : `provides: [{ "topic": "feed.item" }]` et `exports["feed.item"]` renvoyant
+`{ title, url, summary?, publishedAt?, id? }`). Le résultat est **déterministe** : tri par date décroissante puis par adresse, date de
+construction = élément le plus récent (jamais l'heure courante), adresses `javascript:` écartées. Les pages du site annoncent le flux
+dans `<head>` ; aucun module n'est nécessaire.
 
 ## Ce que le cœur ne fait pas
 

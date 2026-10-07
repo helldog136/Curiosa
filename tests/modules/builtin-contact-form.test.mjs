@@ -177,3 +177,37 @@ test("contact-form : adminPanel demande au plus 100 messages", async () => {
   await def.adminPanel(ctx);
   assert.deepEqual(seen, ["messages", { limit: 100 }]);
 });
+
+test("contact-form : prévient le propriétaire par e-mail, en répondant à l'expéditeur, sans jamais perdre le message", async () => {
+  const ctx = fakeCtx({ messages: { mailSubject: "Nouveau message de {name}", mailBody: "{name} <{email}> a écrit :" } });
+  const res = await def.routes.send(post(ok), ctx);
+  assert.equal(res.status, 200);
+  assert.equal(ctx.calls.mail.length, 1);
+  const mail = ctx.calls.mail[0];
+  assert.deepEqual([mail.to, mail.replyTo, mail.subject], ["owner", "alice@example.org", "Nouveau message de Alice"]);
+  assert.match(mail.text, /Alice <alice@example.org> a écrit :\n\nBonjour/);
+  assert.equal((await messagesOf(ctx)).length, 1);
+});
+
+test("contact-form : panne ou absence de serveur d'e-mail → le message est quand même conservé et la réponse reste positive", async () => {
+  const ctx = fakeCtx({ mailResult: { ok: false, reason: "not_configured" } });
+  assert.equal((await def.routes.send(post(ok), ctx)).status, 200);
+  assert.equal((await messagesOf(ctx)).length, 1);
+});
+
+test("contact-form : option « me prévenir » décochée → aucun e-mail ; messages invalides ou pièges à robots → aucun e-mail", async () => {
+  const off = fakeCtx({ settings: { notify: false } });
+  await def.routes.send(post(ok), off);
+  assert.equal(off.calls.mail.length, 0);
+  const ctx = fakeCtx();
+  await def.routes.send(post({ ...ok, email: "mauvais" }), ctx);
+  await def.routes.send(post({ ...ok, website: "http://spam" }), ctx);
+  assert.equal(ctx.calls.mail.length, 0);
+});
+
+test("contact-form : la permission « mail » est déclarée et l'option est activée par défaut", async () => {
+  const m = await assertValidManifest(manifest);
+  assert.ok(m.permissions.includes("mail"));
+  const notify = m.settings.find((s) => s.key === "notify");
+  assert.deepEqual([notify.type, notify.default], ["boolean", true]);
+});

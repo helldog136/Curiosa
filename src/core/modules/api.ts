@@ -2,6 +2,7 @@ import { getBrand } from "@/core/brand";
 import { siteUrl } from "@/core/config";
 import { entryPath, listEntries } from "@/core/content/entries";
 import { getInstanceByKey, listInstances, pickName, type InstanceView } from "@/core/instances";
+import { isMailConfigured, sendMail } from "@/core/services/mail";
 import { qrSvg } from "@/core/services/qr";
 import { createStore } from "@/core/services/store";
 import { collect } from "@/core/services/topics";
@@ -16,6 +17,7 @@ import type { ModuleApi } from "./types";
  *   SERVICES (helpers génériques, src/core/services/) — indépendants de toute fonctionnalité
  *     qr      générateur de QR code
  *     store   stockage privé de l'instance
+ *     mail    envoi d'e-mails au nom du site (SMTP réglé dans l'admin)
  *     topics  échange d'informations typées entre modules
  *     (MCP : pas d'appel côté module ; un module déclare ses actions `mcp`, le cœur les expose)
  *
@@ -31,6 +33,7 @@ export function makeApi(instance: InstanceView, locale: string): ModuleApi {
     // ── SERVICES du cœur ────────────────────────────────────────────────────────
     qr: qrSvg,
     store: createStore(instance.id),
+    mail: { configured: isMailConfigured, send: (message) => sendMail(message, instance.key) },
     topics: {
       async collect(topic, opts) {
         const consumer = (await getActiveInstances()).find((a) => a.instance.id === instance.id);

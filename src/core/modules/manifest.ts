@@ -93,7 +93,7 @@ export const manifestSchema = z.object({
     })
     .optional(),
   defaultEnabled: z.boolean().optional(),
-  permissions: z.array(z.enum(["slots", "routes", "storage", "filters", "sections", "pages", "topics", "overlay", "mcp", "admin"])).default([]),
+  permissions: z.array(z.enum(["slots", "routes", "storage", "filters", "sections", "pages", "topics", "overlay", "mcp", "admin", "mail"])).default([]),
 });
 
 export type ParsedManifest = z.infer<typeof manifestSchema>;

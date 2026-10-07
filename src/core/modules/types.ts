@@ -107,7 +107,7 @@ export type ModuleManifest = {
   /** Modules livrés avec le cœur : activés dès le départ (défaut : oui). */
   defaultEnabled?: boolean;
   /** Déclaratif et informatif : affiché à l'administrateur avant activation. */
-  permissions: ("slots" | "routes" | "storage" | "filters" | "sections" | "pages" | "topics" | "overlay" | "mcp" | "admin")[];
+  permissions: ("slots" | "routes" | "storage" | "filters" | "sections" | "pages" | "topics" | "overlay" | "mcp" | "admin" | "mail")[];
 };
 
 export type EntrySummary = {
@@ -163,6 +163,13 @@ export type ModuleApi = {
   };
   /** Génère un QR code (SVG, fond transparent) pour un texte ou une URL. */
   qr(text: string): Promise<string>;
+  /** Envoi d'e-mails au nom du site (nécessite la permission « mail »). Ne lève jamais : renvoie `{ ok, reason }`. */
+  mail: {
+    /** Le site a-t-il un serveur d'e-mail configuré ? */
+    configured(): Promise<boolean>;
+    /** `to` : « owner » (le contact du site) ou une adresse. Texte brut ; l'expéditeur est celui du site. */
+    send(message: { to: "owner" | string; subject: string; text: string; replyTo?: string }): Promise<{ ok: true } | { ok: false; reason: "not_configured" | "no_recipient" | "invalid" | "rate_limited" | "failed" }>;
+  };
   /** Stockage privé de l'instance (messages reçus, compteurs…). */
   store: {
     add(collection: string, data: Record<string, unknown>): Promise<string>;
