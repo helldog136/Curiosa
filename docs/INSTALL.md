@@ -109,3 +109,7 @@ secret de session) et `.env`.
 1. Mettre à jour `version` dans `package.json`, lancer `npm test`.
 2. Étiqueter le commit : `git tag v1.2.3 && git push origin v1.2.3`. Les installations la voient à leur prochaine vérification.
 3. Pour une version **majeure**, détailler dans les notes de version ce qui change et ce que l'exploitant doit faire.
+
+## Sécurité des dépendances
+
+`npm run audit` interroge les failles connues (CVE) des dépendances de production. Il tourne automatiquement avant chaque `npm run build` (donc à chaque mise à jour du site), et chaque lundi en CI (`.github/workflows/security.yml`). Une faille de gravité haute bloque le build, sauf exception justifiée dans `scripts/audit.mjs`. Hors ligne, il avertit sans bloquer.

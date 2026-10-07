@@ -69,7 +69,7 @@ Notes:
 
 ### MIT-0
 
-`nodemailer@8.0.11`
+`nodemailer@10.0.16`
 
 ## License texts
 
