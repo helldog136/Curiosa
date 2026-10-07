@@ -11,36 +11,19 @@ dépend d'un site en particulier : tout ce qui vous est propre (nom, textes, mod
 
 ## Installation
 
-On installe une **release** : une archive déjà compilée, publiée sur la page *Releases* du dépôt (`curiosa-vX.Y.Z-linux-x64.tar.gz`).
+La procédure pas à pas (utilisateur dédié, téléchargement vérifié, `.env`, service systemd, HTTPS avec nginx ou Caddy, premier écran) est dans le [README](../README.md#installer) ; le guide destiné à un agent IA, avec ses vérifications et ses erreurs fréquentes, dans [AGENT-INSTALL.md](AGENT-INSTALL.md).
+Points à retenir :
 
-```bash
-# 1. Télécharger et déplier la dernière release
-mkdir -p /srv/curiosa && cd /srv/curiosa
-curl -LO https://github.com/<propriétaire>/<dépôt>/releases/latest/download/curiosa-vX.Y.Z-linux-x64.tar.gz
-curl -LO https://github.com/<propriétaire>/<dépôt>/releases/latest/download/curiosa-vX.Y.Z-linux-x64.tar.gz.sha256
-sha256sum -c curiosa-*.sha256 && tar -xzf curiosa-*.tar.gz && rm curiosa-*.tar.gz*
-
-# 2. Configuration et base de données
-cp .env.example .env
-$EDITOR .env               # au minimum : SITE_URL (l'adresse publique, https://…)
-mkdir -p data && npx prisma migrate deploy
-
-# 3. Lancer (voir plus bas pour un démarrage automatique)
-npx next start
-```
-
-Ouvrez le site : **l'assistant de configuration démarre à la première visite** et crée le compte propriétaire — ou, si vous avez déjà une
-sauvegarde, vous la restaurez dès le premier écran ([BACKUP.md](BACKUP.md)).
-Tant que le site est exposé avant d'être configuré, définissez `SETUP_TOKEN` dans `.env` : l'assistant le demandera.
-
-> L'archive contient un fichier `release.json` qui indique le dépôt d'où elle vient : c'est ce qui active les mises à jour depuis l'admin.
+- on installe une **release** (archive déjà compilée, `curiosa-vX.Y.Z-linux-x64.tar.gz`) ; elle contient un fichier `release.json` qui indique le dépôt d'où elle vient : c'est ce qui active les mises à jour depuis l'admin ;
+- le moteur de base de données est livré pour OpenSSL 1.1 et 3.0 : l'archive tourne aussi bien sur Ubuntu 20.04 que sur 22.04+ ;
+- `SETUP_TOKEN` dans `.env` protège l'assistant tant que le site n'est pas configuré ; `CURIOSA_SUPERVISED=1` permet à systemd de relancer le serveur après une mise à jour.
 
 **Développer le framework** : cloner le dépôt (`git clone`, branche `dev`), puis `npm ci && npm run bootstrap && npm run build && npm start`. Un clone de
 développement ne se met pas à jour depuis l'admin (c'est à vous de faire `git pull`).
 
 ## Démarrage automatique
 
-Un exemple d'unité systemd est fourni : [`deploy/curiosa.service`](../deploy/curiosa.service). Avec pm2 : `pm2 start "npx next start -p 3000" --name curiosa`
+L'unité systemd est donnée dans le [README](../README.md#installer) (un exemple figure aussi dans [`deploy/curiosa.service`](../deploy/curiosa.service)). Avec pm2 : `pm2 start "npx next start -p 3000" --name curiosa`
 (et `CURIOSA_SUPERVISED=1` dans son environnement). Avec Docker : voir le `Dockerfile` et `docker-compose.yml`.
 
 ## Mises à jour depuis l'admin
