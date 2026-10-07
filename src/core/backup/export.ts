@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { UPLOADS_DIR } from "@/core/config";
 import { prisma } from "@/core/db";
-import { getMarketplace, moduleOrigin } from "@/core/modules/marketplace";
+import { getCatalogue, moduleOrigin } from "@/core/modules/catalogue";
 import { buildContext } from "@/core/modules/context";
 import { getActiveInstances, listModuleRows, loadModule } from "@/core/modules/registry";
 import { localized } from "@/core/modules/types";
@@ -58,7 +58,7 @@ export async function createBackup(password: string, opts: { now?: Date; iterati
     prisma.moduleRecord.findMany({ orderBy: { createdAt: "asc" } }),
   ]);
 
-  const market = await getMarketplace().catch(() => []);
+  const market = await getCatalogue().catch(() => []);
   const modules: BackupModule[] = [];
   for (const row of moduleRows) {
     const loaded = await loadModule(row);

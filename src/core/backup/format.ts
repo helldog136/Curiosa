@@ -33,8 +33,8 @@ export type BackupModule = {
   repoUrl: string | null;
   ref: string | null;
   commit: string | null;
-  /** « marketplace » : livré ou dépôt reconnu — « custom » : dépôt personnel non vérifié — « builtin » : module de base. */
-  origin: "builtin" | "marketplace" | "custom";
+  /** « catalogue » : livré ou dépôt reconnu — « custom » : dépôt personnel non vérifié — « builtin » : module de base. */
+  origin: "builtin" | "catalogue" | "custom";
   name: string;
 };
 

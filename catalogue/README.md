@@ -1,6 +1,6 @@
 # Index des modules reconnus
 
-`index.json` liste les **dépôts git reconnus** que la Marketplace du framework propose en confiance (en plus des modules livrés avec
+`index.json` liste les **dépôts git reconnus** que le Catalogue du framework propose en confiance (en plus des modules livrés avec
 le framework dans `modules-community/` et `modules-examples/`).
 
 ## Comment il est utilisé
@@ -8,8 +8,8 @@ le framework dans `modules-community/` et `modules-examples/`).
 - Chaque installation **relit ce fichier à l'exécution** depuis le dépôt d'origine du framework (celui d'où elle a été clonée), au plus
   toutes les 15 minutes : **ajouter un module ici ne demande aucune nouvelle version du framework**.
 - Si le dépôt est injoignable, l'installation garde la dernière copie reçue, à défaut la copie livrée avec sa version (ce fichier tel qu'il était à la
-  publication) : la Marketplace fonctionne hors ligne.
-- Une installation peut changer de source avec `VITRINE_MARKETPLACE_REPO` (dépôt git) et en ajouter une avec `MODULES_INDEX_URL` (JSON https) ;
+  publication) : le Catalogue fonctionne hors ligne.
+- Une installation peut changer de source avec `VITRINE_CATALOGUE_REPO` (dépôt git) et en ajouter une avec `MODULES_INDEX_URL` (JSON https) ;
   les deux voir `docs/INSTALL.md`. Les entrées d'un index supplémentaire ne peuvent qu'**ajouter** des modules, jamais remplacer ceux de celui-ci.
 
 ## Format

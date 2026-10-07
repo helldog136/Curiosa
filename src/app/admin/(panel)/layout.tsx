@@ -38,7 +38,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
               <a href="/admin/navigation" className={link}>{t("nav.navigation")}</a>
               <a href="/admin/settings" className={link}>{t("nav.settings")}</a>
               <a href="/admin/modules" className={link}>🧩 {t("nav.modules")}</a>
-              <a href="/admin/marketplace" className={link}>🛒 {t("nav.marketplace")}</a>
+              <a href="/admin/catalogue" className={link}>🛒 {t("nav.catalogue")}</a>
               {advanced && user.role === "owner" && <a href="/admin/mcp" className={link}>🤖 {t("nav.mcp")}</a>}
               {user.role === "owner" && <a href="/admin/backup" className={link}>💾 {t("nav.backup")}</a>}
               {user.role === "owner" && <a href="/admin/audit" className={link}>📜 {t("nav.audit")}</a>}

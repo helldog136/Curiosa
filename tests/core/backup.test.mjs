@@ -241,19 +241,19 @@ test("modules : un module qui plante pendant son export lisible n'empêche pas l
   try { assert.ok((await make()).buffer.length > 100); } finally { console.error = log; }
 });
 
-test("plan de restauration : module de base, déjà installé, marketplace, personnel (confirmation), introuvable", async () => {
+test("plan de restauration : module de base, déjà installé, catalogue, personnel (confirmation), introuvable", async () => {
   const modules = [
     { id: "blog", source: "builtin", origin: "builtin", name: "Blog", version: "1", enabled: true, repoUrl: null, ref: null, commit: null },
-    { id: "planning", source: "bundled", origin: "marketplace", name: "Planning", version: "1", enabled: true, repoUrl: null, ref: null, commit: null },
-    { id: "sponsors", source: "bundled", origin: "marketplace", name: "Sponsors", version: "1", enabled: false, repoUrl: null, ref: null, commit: null },
+    { id: "planning", source: "bundled", origin: "catalogue", name: "Planning", version: "1", enabled: true, repoUrl: null, ref: null, commit: null },
+    { id: "sponsors", source: "bundled", origin: "catalogue", name: "Sponsors", version: "1", enabled: false, repoUrl: null, ref: null, commit: null },
     { id: "perso", source: "git", origin: "custom", name: "Perso", version: "2", enabled: true, repoUrl: "https://github.com/moi/perso", ref: "v2", commit: "abc" },
     { id: "fantome", source: "git", origin: "custom", name: "Fantôme", version: "1", enabled: true, repoUrl: null, ref: null, commit: null },
-    { id: "disparu", source: "git", origin: "marketplace", name: "Disparu", version: "1", enabled: true, repoUrl: "https://github.com/x/disparu", ref: null, commit: null },
+    { id: "disparu", source: "git", origin: "catalogue", name: "Disparu", version: "1", enabled: true, repoUrl: "https://github.com/x/disparu", ref: null, commit: null },
   ];
   await db.prisma.module.create({ data: { id: "sponsors", source: "bundled", version: "1", enabled: true } });
   const plan = Object.fromEntries((await Rs.planModules(modules)).map((p) => [p.id, p]));
   assert.deepEqual(Object.fromEntries(Object.entries(plan).map(([k, v]) => [k, [v.status, v.needsConfirmation]])), {
-    blog: ["builtin", false], planning: ["marketplace", false], sponsors: ["installed", false], perso: ["custom", true], fantome: ["unavailable", false], disparu: ["custom", true],
+    blog: ["builtin", false], planning: ["catalogue", false], sponsors: ["installed", false], perso: ["custom", true], fantome: ["unavailable", false], disparu: ["custom", true],
   });
 });
 
@@ -262,29 +262,29 @@ function fakeBackup(modules) {
     data: { users: [{ id: "u1", email: "o@x.org", name: "O", role: "owner", passwordHash: "h", createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z", advanced: false, locale: null }], settings: [], modules, instances: [], instanceTranslations: [], entries: [], entryTranslations: [], redirects: [], records: [] }, uploads: [] };
 }
 
-test("restauration des modules : marketplace → réinstallés d'office ; personnels → SEULEMENT ceux que l'utilisateur confirme, un par un", async () => {
+test("restauration des modules : catalogue → réinstallés d'office ; personnels → SEULEMENT ceux que l'utilisateur confirme, un par un", async () => {
   const mods = [
-    { id: "planning", source: "bundled", origin: "marketplace", name: "P", version: "1", enabled: true, repoUrl: null, ref: null, commit: null },
+    { id: "planning", source: "bundled", origin: "catalogue", name: "P", version: "1", enabled: true, repoUrl: null, ref: null, commit: null },
     { id: "perso-a", source: "git", origin: "custom", name: "A", version: "1", enabled: true, repoUrl: "https://github.com/moi/a", ref: "v1", commit: null },
     { id: "perso-b", source: "git", origin: "custom", name: "B", version: "1", enabled: true, repoUrl: "https://github.com/moi/b", ref: null, commit: null },
     { id: "fantome", source: "git", origin: "custom", name: "F", version: "1", enabled: true, repoUrl: null, ref: null, commit: null },
   ];
   const calls = [];
   const installers = {
-    fromMarketplace: async (id) => { calls.push(`marketplace:${id}`); await db.prisma.module.create({ data: { id, source: "bundled", version: "1", enabled: false } }); return { ok: true, id }; },
+    fromCatalogue: async (id) => { calls.push(`catalogue:${id}`); await db.prisma.module.create({ data: { id, source: "bundled", version: "1", enabled: false } }); return { ok: true, id }; },
     fromRepo: async (url) => { calls.push(`repo:${url}`); const id = url.includes("/a") ? "perso-a" : "perso-b"; await db.prisma.module.create({ data: { id, source: "git", version: "1", enabled: false, repoUrl: url } }); return { ok: true, id }; },
   };
   const report = await Rs.applyRestore(fakeBackup(mods), { confirmCustom: ["perso-a"], actor: "o", installers });
   assert.equal(report.ok, true);
-  assert.deepEqual(calls, ["marketplace:planning", "repo:https://github.com/moi/a#v1"], "perso-b non confirmé : jamais téléchargé");
+  assert.deepEqual(calls, ["catalogue:planning", "repo:https://github.com/moi/a#v1"], "perso-b non confirmé : jamais téléchargé");
   assert.deepEqual(Object.fromEntries(report.modules.map((m) => [m.id, m.outcome])), { planning: "installed", "perso-a": "installed", "perso-b": "skipped", fantome: "unavailable" });
   assert.equal((await db.prisma.module.findUnique({ where: { id: "planning" } })).enabled, true, "remis à « activé » comme sauvegardé");
   assert.equal(await db.prisma.module.findUnique({ where: { id: "perso-b" } }), null);
 });
 
 test("restauration des modules : une installation qui échoue est signalée sans bloquer le reste", async () => {
-  const mods = [{ id: "planning", source: "bundled", origin: "marketplace", name: "P", version: "1", enabled: true, repoUrl: null, ref: null, commit: null }];
-  const installers = { fromMarketplace: async () => ({ ok: false, error: "modules.error.clone" }), fromRepo: async () => ({ ok: false, error: "x" }) };
+  const mods = [{ id: "planning", source: "bundled", origin: "catalogue", name: "P", version: "1", enabled: true, repoUrl: null, ref: null, commit: null }];
+  const installers = { fromCatalogue: async () => ({ ok: false, error: "modules.error.clone" }), fromRepo: async () => ({ ok: false, error: "x" }) };
   const report = await Rs.applyRestore(fakeBackup(mods), { confirmCustom: [], actor: "o", installers });
   assert.equal(report.ok, true, "les données sont restaurées malgré tout");
   assert.deepEqual(report.modules, [{ id: "planning", outcome: "failed", error: "modules.error.clone" }]);

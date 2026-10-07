@@ -4,8 +4,8 @@ import { Prisma } from "@prisma/client";
 import { UPLOADS_DIR } from "@/core/config";
 import { prisma } from "@/core/db";
 import { migrateAllInstances, type MigrationOutcome } from "@/core/modules/dataMigrations";
-import { installFromMarketplace, installModule, type InstallResult } from "@/core/modules/installer";
-import { getMarketplace } from "@/core/modules/marketplace";
+import { installFromCatalogue, installModule, type InstallResult } from "@/core/modules/installer";
+import { getCatalogue } from "@/core/modules/catalogue";
 import { resetModuleRegistry } from "@/core/modules/registry";
 import { audit } from "@/core/permissions";
 import { UPLOAD_NAME_RE } from "@/core/services/uploads";
@@ -74,22 +74,22 @@ export type ModulePlan = {
   name: string;
   version: string;
   enabled: boolean;
-  /** builtin : déjà là · installed : déjà installé · marketplace : sera réinstallé depuis la marketplace · custom : dépôt personnel, CONFIRMATION requise · unavailable : introuvable */
-  status: "builtin" | "installed" | "marketplace" | "custom" | "unavailable";
+  /** builtin : déjà là · installed : déjà installé · catalogue : sera réinstallé depuis le catalogue · custom : dépôt personnel, CONFIRMATION requise · unavailable : introuvable */
+  status: "builtin" | "installed" | "catalogue" | "custom" | "unavailable";
   repoUrl: string | null;
   ref: string | null;
   needsConfirmation: boolean;
 };
 
 export async function planModules(modules: BackupModule[]): Promise<ModulePlan[]> {
-  const market = await getMarketplace().catch(() => []);
+  const market = await getCatalogue().catch(() => []);
   const installed = new Set((await prisma.module.findMany({ select: { id: true } })).map((m) => m.id));
   return modules.map((m): ModulePlan => {
     const base = { id: m.id, name: m.name, version: m.version, enabled: m.enabled, repoUrl: m.repoUrl, ref: m.ref };
     if (m.source === "builtin" || m.origin === "builtin") return { ...base, status: "builtin", needsConfirmation: false };
     if (installed.has(m.id)) return { ...base, status: "installed", needsConfirmation: false };
     const entry = market.find((e) => e.id === m.id);
-    if (m.origin === "marketplace" && entry?.compatible) return { ...base, status: "marketplace", needsConfirmation: false };
+    if (m.origin === "catalogue" && entry?.compatible) return { ...base, status: "catalogue", needsConfirmation: false };
     if (m.repoUrl) return { ...base, status: "custom", needsConfirmation: true };
     return { ...base, status: "unavailable", needsConfirmation: false };
   });
@@ -100,8 +100,8 @@ export async function planModules(modules: BackupModule[]): Promise<ModulePlan[]
 export type ModuleOutcome = { id: string; outcome: "kept" | "installed" | "skipped" | "failed" | "unavailable"; error?: string };
 export type RestoreReport = { ok: false; error: "newer-schema"; modules: ModuleOutcome[] } | { ok: true; modules: ModuleOutcome[]; migrations: MigrationOutcome[]; counts: Record<string, number>; safetyCopy: string | null } | { ok: false; error: "invalid" | "failed"; modules: ModuleOutcome[] };
 
-type Installers = { fromMarketplace: (id: string) => Promise<InstallResult>; fromRepo: (url: string) => Promise<InstallResult> };
-const realInstallers: Installers = { fromMarketplace: installFromMarketplace, fromRepo: (url) => installModule(url) };
+type Installers = { fromCatalogue: (id: string) => Promise<InstallResult>; fromRepo: (url: string) => Promise<InstallResult> };
+const realInstallers: Installers = { fromCatalogue: installFromCatalogue, fromRepo: (url) => installModule(url) };
 
 const MODEL_BY_FILE = { users: "User", settings: "Setting", instances: "ModuleInstance", instanceTranslations: "InstanceTranslation", entries: "Entry", entryTranslations: "EntryTranslation", redirects: "Redirect", records: "ModuleRecord" } as const;
 
@@ -116,7 +116,7 @@ function reviveDates(model: string, row: Row): Row {
 const chunks = <T,>(list: T[], n = 200) => Array.from({ length: Math.ceil(list.length / n) }, (_, i) => list.slice(i * n, (i + 1) * n));
 
 /**
- * Restaure une sauvegarde : réinstalle les modules (marketplace ; dépôts personnels SEULEMENT si confirmés un par un),
+ * Restaure une sauvegarde : réinstalle les modules (catalogue ; dépôts personnels SEULEMENT si confirmés un par un),
  * REMPLACE les données par celles de la sauvegarde dans une seule transaction (tout ou rien), puis les images.
  * Une copie de la base actuelle est gardée avant. Les modules présents ici mais absents de la sauvegarde restent installés.
  */
@@ -130,7 +130,7 @@ export async function applyRestore(backup: ParsedBackup, opts: { confirmCustom: 
     if (m.status === "builtin" || m.status === "installed") { outcomes.push({ id: m.id, outcome: "kept" }); continue; }
     if (m.status === "unavailable") { outcomes.push({ id: m.id, outcome: "unavailable" }); continue; }
     if (m.status === "custom" && !confirmed.has(m.id)) { outcomes.push({ id: m.id, outcome: "skipped" }); continue; }
-    const result = m.status === "marketplace" ? await installers.fromMarketplace(m.id) : await installers.fromRepo(`${m.repoUrl}${m.ref ? `#${m.ref}` : ""}`);
+    const result = m.status === "catalogue" ? await installers.fromCatalogue(m.id) : await installers.fromRepo(`${m.repoUrl}${m.ref ? `#${m.ref}` : ""}`);
     outcomes.push(result.ok ? { id: m.id, outcome: "installed" } : { id: m.id, outcome: "failed", error: result.error });
   }
 

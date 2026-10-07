@@ -82,13 +82,13 @@ rôle, traduits), police. C'est **la même source** (`src/core/brand.ts`, même 
 l'administrateur règle dans *Réglages* (Identité, Apparence) est stocké une seule fois dans le cœur. Un module qui *montre* l'identité
 (le **kit presse**) ne la copie ni ne la stocke : il la lit. Changer le thème du site change donc le kit presse, sans rien refaire.
 
-## Sauvegarde et marketplace : des fonctionnalités du cœur
+## Sauvegarde et catalogue : des fonctionnalités du cœur
 
 - **Sauvegarde** (`core/backup/`, [BACKUP.md](BACKUP.md)) : un fichier chiffré (format OpenSSL, mot de passe choisi à chaque sauvegarde)
   contenant tout ce qui est à l'utilisateur, **lisible sans le framework**. Elle collecte les données des modules installés
-  (stockage, réglages, fichiers lisibles via `backup.readable`) et, à la restauration, réinstalle les modules depuis la marketplace.
-- **Marketplace** (`core/modules/marketplace.ts`) : la liste des modules vérifiés — livrés avec le framework (`modules-community/`,
-  `modules-examples/`) ou publiés par des dépôts reconnus, listés dans `marketplace/index.json` — un fichier du dépôt du framework **relu à l'exécution**, qui ne suit pas le rythme des versions (copie livrée en secours hors ligne ; `MODULES_INDEX_URL` pour un index supplémentaire). Un dépôt git **personnel** reste
+  (stockage, réglages, fichiers lisibles via `backup.readable`) et, à la restauration, réinstalle les modules depuis le catalogue.
+- **Catalogue** (`core/modules/catalogue.ts`) : la liste des modules vérifiés — livrés avec le framework (`modules-community/`,
+  `modules-examples/`) ou publiés par des dépôts reconnus, listés dans `catalogue/index.json` — un fichier du dépôt du framework **relu à l'exécution**, qui ne suit pas le rythme des versions (copie livrée en secours hors ligne ; `MODULES_INDEX_URL` pour un index supplémentaire). Un dépôt git **personnel** reste
   installable, mais signalé « non vérifié » et soumis à confirmation explicite.
 
 ## Le flux RSS : une fonctionnalité du cœur

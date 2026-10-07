@@ -11,7 +11,7 @@ Sommaire : [anatomie](#anatomie-dun-module) · [manifeste `module.json`](#le-man
 [contexte `ctx`](#le-contexte-ctx) · [blocs](#blocs) · [sujets](#échanger-des-informations-entre-modules-les-sujets) ·
 [admin](#panneau-dadmin-riche-formulaires-et-boutons-pilotés-par-le-module) · [MCP](#api-mcp-exposer-des-actions-aux-assistants) ·
 [thème](#thème-du-site-et-apparence-dun-module) · [e-mail](#envoyer-un-e-mail) · [RSS](#alimenter-le-flux-rss) ·
-[overlay](#overlay-type-overlay) · [sauvegarde](#sauvegarde-lisible-sans-le-framework) · [installer et publier](#installer-publier-marketplace) ·
+[overlay](#overlay-type-overlay) · [sauvegarde](#sauvegarde-lisible-sans-le-framework) · [installer et publier](#installer-publier-catalogue) ·
 [sécurité](#sécurité-à-lire-avant-dinstaller)
 
 ## Anatomie d'un module
@@ -66,7 +66,7 @@ et comment ses instances sont exposées :
 
 L'admin est **une seule interface** : la barre latérale regroupe, par type, une entrée pour
 chaque instance configurée (nommée comme l'utilisateur l'a nommée : trois blogs = trois entrées),
-plus la page **Modules** (installés, activation, mises à jour) et la **Marketplace** (installer). La page d'une instance
+plus la page **Modules** (installés, activation, mises à jour) et la **Catalogue** (installer). La page d'une instance
 est une sous-page de cet admin, avec ses réglages (générés depuis `settings`), ses abonnements
 (voir « sujets ») et le panneau `adminPanel` du module.
 
@@ -96,7 +96,7 @@ Validé à l'installation et au chargement (zod, `src/core/modules/manifest.ts`)
 
 | Champ | Rôle |
 |---|---|
-| `apiVersion` | Version de l'API des modules (aujourd'hui `2`). Un module d'une autre version est refusé à l'installation ; dans l'index de la marketplace, il est listé mais marqué incompatible. |
+| `apiVersion` | Version de l'API des modules (aujourd'hui `2`). Un module d'une autre version est refusé à l'installation ; dans l'index du catalogue, il est listé mais marqué incompatible. |
 | `id` | Identifiant du module, stable à jamais (les instances et les sauvegardes s'y réfèrent). |
 | `name`, `description` | Texte ou `{ langue: texte }` (500 caractères au plus). Langue absente : langue par défaut du site, puis `en`. |
 | `version` | `x.y.z`. Sert à détecter les mises à jour des modules livrés avec le framework. |
@@ -779,9 +779,9 @@ uniquement, 50 fichiers et 5 Mo par fichier au plus, chemin relatif sans `..`, u
 et n'empêche pas la sauvegarde. Le contexte est celui de la langue par défaut. Pour un CSV : mettez chaque cellule entre guillemets (doublez
 les guillemets internes) et neutralisez les cellules qui commencent par `=`, `+`, `-` ou `@` (injection de formule dans un tableur) — voir `cell()` dans l'exemple.
 
-## Installer, publier, marketplace
+## Installer, publier, catalogue
 
-**Installer** (propriétaire seulement). Admin → **Marketplace** :
+**Installer** (propriétaire seulement). Admin → **Catalogue** :
 
 - **Modules livrés avec le framework** (dossiers `modules-community/` et `modules-examples/` du serveur) : installés depuis les fichiers du serveur, sans réseau ; leur version suit celle du framework.
 - **Modules reconnus** : dépôts git listés dans un index public (voir ci-dessous) : celui qui publie l'index se porte garant des dépôts qu'il liste.
@@ -814,9 +814,9 @@ rétablie automatiquement : un module ne reste jamais à moitié mis à jour.
 est acceptée par « Installer un dépôt personnel ». Le dépôt doit avoir au moins un commit ; pour voir une modification, validez-la
 (`git commit`) puis *Chercher une mise à jour* → *Mettre à jour*. À ne jamais activer sur un serveur public.
 
-**Index des modules reconnus** : un fichier [`marketplace/index.json`](../marketplace/index.json) **dans le dépôt du framework**, relu **à l'exécution**
+**Index des modules reconnus** : un fichier [`catalogue/index.json`](../catalogue/index.json) **dans le dépôt du framework**, relu **à l'exécution**
 depuis le dépôt d'origine de l'installation (au plus toutes les 15 minutes) : **il ne suit pas le rythme des versions du framework**. Ajouter un module =
-une demande de fusion sur ce fichier, visible par toutes les installations dès qu'elle est fusionnée (voir [`marketplace/README.md`](../marketplace/README.md)).
+une demande de fusion sur ce fichier, visible par toutes les installations dès qu'elle est fusionnée (voir [`catalogue/README.md`](../catalogue/README.md)).
 
 ```json
 { "version": 1, "modules": [
@@ -829,11 +829,11 @@ une demande de fusion sur ce fichier, visible par toutes les installations dès 
 diffère de celle du framework est listé mais **non installable**. Rien n'est installé automatiquement ; le dépôt installé doit servir le module annoncé
 (`id` identique à celui de son `module.json`). Un module livré avec le framework l'emporte sur un module reconnu de même identifiant.
 
-D'où vient la liste, dans l'ordre : (1) le dépôt du framework (le remote `origin` de l'installation, ou `VITRINE_UPDATE_REMOTE` ; `VITRINE_MARKETPLACE_REPO` pour en choisir un autre, `VITRINE_MARKETPLACE_REF` pour une autre
-branche ou étiquette que `HEAD`) ; (2) à défaut, la **dernière copie reçue** (`data/cache/`), puis la **copie livrée avec cette version** : la Marketplace
+D'où vient la liste, dans l'ordre : (1) le dépôt du framework (le remote `origin` de l'installation, ou `VITRINE_UPDATE_REMOTE` ; `VITRINE_CATALOGUE_REPO` pour en choisir un autre, `VITRINE_CATALOGUE_REF` pour une autre
+branche ou étiquette que `HEAD`) ; (2) à défaut, la **dernière copie reçue** (`data/cache/`), puis la **copie livrée avec cette version** : le Catalogue
 fonctionne hors ligne ; (3) **en plus**, un index JSON `https://` (`MODULES_INDEX_URL`, modèle : [`modules-index.example.json`](modules-index.example.json))
-dont les entrées ne peuvent qu'**ajouter** des modules, jamais remplacer ceux du dépôt. `VITRINE_MARKETPLACE_RUNTIME=0` coupe la lecture à l'exécution
-(copie livrée seulement). La page Marketplace indique d'où vient la liste affichée.
+dont les entrées ne peuvent qu'**ajouter** des modules, jamais remplacer ceux du dépôt. `VITRINE_CATALOGUE_RUNTIME=0` coupe la lecture à l'exécution
+(copie livrée seulement). La page Catalogue indique d'où vient la liste affichée.
 
 Pour qu'un module rejoigne les modules livrés : un dossier dans `modules-community/` (modules complets) ou `modules-examples/` (exemples), avec son `module.json` à sa racine.
 

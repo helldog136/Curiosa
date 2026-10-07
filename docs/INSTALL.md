@@ -83,23 +83,23 @@ dépendance) à quelques minutes. Choisissez de préférence un moment calme, ou
 
 Le script peut aussi être lancé à la main (`node scripts/update.mjs v1.2.3`), avec les mêmes sauvegardes et le même retour arrière.
 
-## La Marketplace (modules reconnus)
+## La Catalogue (modules reconnus)
 
-La liste des modules reconnus est le fichier `marketplace/index.json` du dépôt du framework, **relu à l'exécution** depuis le dépôt d'origine de
+La liste des modules reconnus est le fichier `catalogue/index.json` du dépôt du framework, **relu à l'exécution** depuis le dépôt d'origine de
 l'installation (au plus toutes les 15 minutes) : un module ajouté à ce fichier apparaît chez vous **sans mettre le framework à jour**. Hors ligne ou
 dépôt injoignable, le site garde la dernière copie reçue, à défaut celle livrée avec sa version.
 
 | Variable | Effet |
 |---|---|
-| `VITRINE_MARKETPLACE_REPO` | Dépôt git qui publie l'index (défaut : le dépôt d'origine de l'installation ; indispensable avec Docker, où il n'y en a pas). |
-| `VITRINE_MARKETPLACE_REF` | Branche ou étiquette à lire (défaut : la branche par défaut). |
-| `VITRINE_MARKETPLACE_RUNTIME=0` | Ne pas interroger le dépôt : copie livrée avec la version seulement (serveur sans accès au réseau). |
+| `VITRINE_CATALOGUE_REPO` | Dépôt git qui publie l'index (défaut : le dépôt d'origine de l'installation ; indispensable avec Docker, où il n'y en a pas). |
+| `VITRINE_CATALOGUE_REF` | Branche ou étiquette à lire (défaut : la branche par défaut). |
+| `VITRINE_CATALOGUE_RUNTIME=0` | Ne pas interroger le dépôt : copie livrée avec la version seulement (serveur sans accès au réseau). |
 | `MODULES_INDEX_URL` | Index JSON `https://` **supplémentaire** (le vôtre, celui d'une communauté) : il ne peut qu'ajouter des modules. |
 
 ## Sauvegarder
 
 **En un clic depuis l'admin** (*Sauvegarde*) : un fichier chiffré par le mot de passe de votre choix, lisible plus tard même sans le
-framework, et restaurable (les modules sont réinstallés depuis la marketplace). Voir [BACKUP.md](BACKUP.md).
+framework, et restaurable (les modules sont réinstallés depuis le catalogue). Voir [BACKUP.md](BACKUP.md).
 
 Pour une sauvegarde de serveur « brute », tout ce qui est à vous est dans **`data/`** (base SQLite, images envoyées, modules installés,
 secret de session) et `.env`.

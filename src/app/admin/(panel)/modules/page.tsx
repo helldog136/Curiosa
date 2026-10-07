@@ -2,7 +2,7 @@ import { adminCtx } from "@/core/admin";
 import { pickName } from "@/core/instances";
 import { getInstanceLabeler } from "@/core/modules/labels";
 import { listInstances } from "@/core/instances";
-import { getMarketplace, moduleOrigin } from "@/core/modules/marketplace";
+import { getCatalogue, moduleOrigin } from "@/core/modules/catalogue";
 import { listModuleRows, loadModule } from "@/core/modules/registry";
 import { effectiveType, hasPage } from "@/core/modules/manifest";
 import { MODULE_TYPES } from "@/core/modules/types";
@@ -21,7 +21,7 @@ export default async function ModulesPage({ searchParams }: { searchParams: Prom
   const mods = await Promise.all(rows.map(async (row) => ({ row, mod: await loadModule(row) })));
   const instances = await listInstances();
   const labeler = await getInstanceLabeler(locale, config.defaultLocale);
-  const market = await getMarketplace().catch(() => []);
+  const market = await getCatalogue().catch(() => []);
   const duplicates = isOwner ? await duplicateServices() : [];
 
   return (
@@ -29,7 +29,7 @@ export default async function ModulesPage({ searchParams }: { searchParams: Prom
       <div>
         <h1 className="text-2xl font-bold">{t("nav.modules")}</h1>
         <p className="mt-1 text-sm text-muted">{advanced ? t("modules.intro") : t("modules.introSimple")}</p>
-        {isOwner && <a href="/admin/marketplace" className={`${ui.btnPrimary} mt-3 inline-block`}>🛒 {t("modules.browseMarketplace")}</a>}
+        {isOwner && <a href="/admin/catalogue" className={`${ui.btnPrimary} mt-3 inline-block`}>🛒 {t("modules.browseCatalogue")}</a>}
       </div>
       {error && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm">{error.startsWith("modules.error.") || error.startsWith("instances.error.") ? t(error, { services: detail ?? "", modules: detail ?? "" }) : t("error.generic")}</p>}
       {notice === "services" && <p role="alert" className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">{t("services.notice")}</p>}
@@ -71,7 +71,7 @@ export default async function ModulesPage({ searchParams }: { searchParams: Prom
                   <p className="font-medium">
                     {mod?.manifest.icon ?? "🧩"} {mod ? localized(mod.manifest.name, locale, config.defaultLocale) : row.id}{" "}
                     {advanced && <span className="text-xs text-muted">v{row.version} · {row.source === "builtin" ? t("modules.builtin") : row.source === "bundled" ? t("modules.bundled") : "git"}</span>}
-                    {row.source !== "builtin" && <span className={`ml-2 rounded px-2 py-0.5 text-xs ${moduleOrigin(row, market) === "custom" ? "bg-amber-500/20" : "bg-line"}`}>{t(`marketplace.origin.${moduleOrigin(row, market) === "custom" ? "custom" : "marketplace"}`)}</span>}
+                    {row.source !== "builtin" && <span className={`ml-2 rounded px-2 py-0.5 text-xs ${moduleOrigin(row, market) === "custom" ? "bg-amber-500/20" : "bg-line"}`}>{t(`catalogue.origin.${moduleOrigin(row, market) === "custom" ? "custom" : "catalogue"}`)}</span>}
                   </p>
                   <p className="text-sm text-muted">{mod ? localized(mod.manifest.description, locale, config.defaultLocale) : t("modules.broken")}</p>
                   {mod && (mod.manifest.requires ?? []).length > 0 && <p className="mt-1 text-xs text-muted">{t("modules.requires")} : {(mod.manifest.requires ?? []).map((r) => (r.label ? localized(r.label, locale, config.defaultLocale) : r.service)).join(", ")}</p>}

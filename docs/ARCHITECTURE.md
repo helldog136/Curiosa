@@ -42,7 +42,7 @@ logique de langues, un seul sitemap — et un module qui sait lire des entrées 
 `/admin` est l'unique interface. Sa barre latérale regroupe par **type de module** une entrée par
 instance configurée (nommée par l'utilisateur) ; chaque instance est une sous-page de cet admin
 (`/admin/entries?c=<clé>` pour ses entrées, `/admin/instances/<id>` pour ses réglages). Les
-sections « Site » (accueil, navigation, réglages, redirections) et « Modules » (liste, marketplace,
+sections « Site » (accueil, navigation, réglages, redirections) et « Modules » (liste, catalogue,
 installation depuis git) complètent l'ensemble. Aucun module n'a son propre back-office.
 
 ## Admin simple et avancée

@@ -72,7 +72,7 @@ src/modules-builtin Les fonctions de base, déjà sous forme de modules : blog, 
                     press-kit (vitrine de l'identité réglée dans le cœur)
 src/app/(site)      Site public (accueil assemblé de sections, pages d'instances, redirections)
 src/app/admin       L'admin unique : assistant, entrées, une sous-page par instance, accueil,
-                    redirections, modules & marketplace…
+                    redirections, modules & catalogue…
 src/app/overlays    Overlays OBS (/overlays/<clé>)
 src/app/api/mcp     Serveur MCP (outils collectés auprès des modules)
 src/locales         Textes de l'interface (fr, en) — ajouter une langue = un fichier JSON

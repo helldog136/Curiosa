@@ -12,7 +12,7 @@ commentaires dans [`index.mjs`](../modules-examples/guestbook/index.mjs). La **r
 [10. Sujets et RSS](#10-échanger-avec-les-autres-modules-sujets-et-flux-rss) · [11. Admin](#11-panneau-et-actions-dadmin) ·
 [12. MCP](#12-actions-mcp-pour-les-assistants) · [13. Sauvegarde](#13-sauvegarde-lisible) · [14. Thème et langues](#14-thème-et-langues) ·
 [15. Overlays, hooks, slots, filtres](#15-overlays-crochets-emplacements-filtres) · [16. Zéro code](#16-modules-à-contenu-zéro-code) ·
-[17. Tester](#17-tester-son-module) · [18. Versions et marketplace](#18-versions-et-publication) · [19. Sécurité](#19-règles-de-sécurité) ·
+[17. Tester](#17-tester-son-module) · [18. Versions et catalogue](#18-versions-et-publication) · [19. Sécurité](#19-règles-de-sécurité) ·
 [Checklist](#checklist-avant-de-publier)
 
 ## 1. Les idées à connaître
@@ -438,14 +438,14 @@ personnalisés. Les entrées alimentent le sujet `core.entry` : n'importe quel o
 
 1. Lancez le framework en local (voir [INSTALL.md](INSTALL.md)) avec la variable d'environnement **`VITRINE_ALLOW_LOCAL_MODULES=1`** (elle autorise les dépôts locaux ; **jamais** sur un serveur public).
 2. Votre module est un dépôt git **avec au moins un commit** : `git init && git add . && git commit -m "first version"`.
-3. Admin → **Marketplace** → **Installer un dépôt personnel (non vérifié)** → saisissez `file:///chemin/absolu/vers/votre/depot`, cochez la case de confiance. Le module est installé **désactivé**.
+3. Admin → **Catalogue** → **Installer un dépôt personnel (non vérifié)** → saisissez `file:///chemin/absolu/vers/votre/depot`, cochez la case de confiance. Le module est installé **désactivé**.
 4. **Modules** → activez-le, ajoutez une instance, ouvrez-la : réglages, panneau d'admin, page publique, section sur l'accueil (admin → Accueil).
 5. Vous avez modifié le code ? **Validez** (`git commit`), puis **Modules → Chercher une mise à jour → Mettre à jour**. Le module est rechargé depuis le dernier commit.
 
 Si l'installation est refusée, le message vous dit pourquoi : manifeste invalide (`module.json: settings.2.key — …`), `apiVersion` différente, `main` introuvable, lien symbolique, plus de 10 Mo…
 Le serveur journalise aussi les erreurs d'exécution de votre module (un module en erreur ne casse jamais le site).
 
-Pour un module **livré avec le framework** (comme l'exemple), il suffit de poser son dossier dans `modules-examples/` (ou `modules-community/`) : il apparaît dans la Marketplace.
+Pour un module **livré avec le framework** (comme l'exemple), il suffit de poser son dossier dans `modules-examples/` (ou `modules-community/`) : il apparaît dans le Catalogue.
 
 ### Tests unitaires, sans serveur
 
@@ -485,10 +485,10 @@ Testez au minimum : le manifeste est valide, chaque section/action/sujet déclar
 - **Compatibilité** : tant que `apiVersion` est celle du cœur (`2`), votre module continue de fonctionner quand le cœur évolue ; si l'API change, un module d'une autre version est refusé plutôt que cassé.
 - **Hôtes** : l'administrateur d'un site n'accepte que les dépôts `https://` des hôtes autorisés (`MODULES_ALLOWED_HOSTS`, par défaut GitHub, GitLab, Codeberg, Bitbucket). Gardez le dépôt public.
 
-**Être listé dans la Marketplace** : deux voies.
+**Être listé dans le Catalogue** : deux voies.
 
 1. **Livré avec le framework** : un dossier de module dans `modules-community/` (modules complets) ou `modules-examples/` (exemples) du dépôt du framework, `module.json` à sa racine. Il est installé depuis les fichiers du serveur, sans réseau.
-2. **Dépôt reconnu** : une entrée dans [`marketplace/index.json`](../marketplace/index.json), le fichier du dépôt du framework que **chaque installation relit à l'exécution** — il ne suit pas le rythme des versions du framework (`VITRINE_UPDATE_REMOTE` choisit le remote d'origine ; `VITRINE_MARKETPLACE_REPO`, `VITRINE_MARKETPLACE_REF`, `VITRINE_MARKETPLACE_RUNTIME` règlent cette lecture ; `MODULES_INDEX_URL` ajoute un index `https://` supplémentaire). On l'ajoute par une demande de fusion :
+2. **Dépôt reconnu** : une entrée dans [`catalogue/index.json`](../catalogue/index.json), le fichier du dépôt du framework que **chaque installation relit à l'exécution** — il ne suit pas le rythme des versions du framework (`VITRINE_UPDATE_REMOTE` choisit le remote d'origine ; `VITRINE_CATALOGUE_REPO`, `VITRINE_CATALOGUE_REF`, `VITRINE_CATALOGUE_RUNTIME` règlent cette lecture ; `MODULES_INDEX_URL` ajoute un index `https://` supplémentaire). On l'ajoute par une demande de fusion :
 
 ```json
 { "id": "guestbook", "name": "Guestbook", "description": "A moderated guestbook.", "repo": "https://github.com/<vous>/<depot>",
@@ -496,7 +496,7 @@ Testez au minimum : le manifeste est valide, chaque section/action/sujet déclar
 ```
 
 `id`, `name`, `description` et `repo` suffisent ; `ref` (**étiquette ou commit que les relecteurs ont relus** : c'est ce qui rend « vérifié » vrai), `version`, `apiVersion`, `author`, `icon` sont facultatifs. Le dépôt cité doit servir **le module annoncé** (`id` identique à celui de son `module.json`),
-sur un hôte autorisé ; rien n'est installé automatiquement. Critères et format : [`marketplace/README.md`](../marketplace/README.md). Un modèle d'index supplémentaire : [`modules-index.example.json`](modules-index.example.json). Tout autre dépôt reste un module **personnel** : il s'installe avec un avertissement.
+sur un hôte autorisé ; rien n'est installé automatiquement. Critères et format : [`catalogue/README.md`](../catalogue/README.md). Un modèle d'index supplémentaire : [`modules-index.example.json`](modules-index.example.json). Tout autre dépôt reste un module **personnel** : il s'installe avec un avertissement.
 
 ## 19. Règles de sécurité
 
@@ -532,4 +532,4 @@ Un module est **du code de confiance** : il tourne sur le serveur avec les droit
 - [ ] Si la forme de mes données a changé : `dataVersion` augmenté et migration écrite et testée sur des données de l'ancienne version.
 - [ ] Essayé en vrai : installation locale, activation, instance, page, formulaire, admin, désinstallation propre.
 - [ ] Un `README.md` explique ce que fait le module, ses réglages et ses limites ; la version est **taguée** (`git tag v1.0.0`).
-- [ ] Pour la Marketplace : dépôt public sur un hôte autorisé, ajouté à `marketplace/index.json` (demande de fusion) ou proposé dans `modules-community/` / `modules-examples/`.
+- [ ] Pour le Catalogue : dépôt public sur un hôte autorisé, ajouté à `catalogue/index.json` (demande de fusion) ou proposé dans `modules-community/` / `modules-examples/`.

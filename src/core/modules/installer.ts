@@ -6,7 +6,7 @@ import { prisma } from "../db";
 import { MODULES_DIR } from "../config";
 import { parseManifest, type ParsedManifest } from "./manifest";
 import { forgetModule, getModule, moduleDir, readGitManifest } from "./registry";
-import { findMarketplaceEntry, listBundled, readBundledManifest } from "./marketplace";
+import { findCatalogueEntry, listBundled, readBundledManifest } from "./catalogue";
 import { dependentsOf, offersOf, unmetRequirements } from "./dependencies";
 import { migrateModuleInstances, type MigrationOutcome } from "./dataMigrations";
 import { classify, compareVersions, pickLatestTag, TAG_RE, type UpdateLevel } from "../updates/versions";
@@ -164,7 +164,7 @@ async function latestRemoteTag(repoUrl: string): Promise<string | null> {
 export async function checkForUpdate(id: string): Promise<ModuleUpdateCheck> {
   const row = await prisma.module.findUnique({ where: { id } });
   if (row?.source === "bundled") {
-    const entry = await findMarketplaceEntry(id).catch(() => undefined);
+    const entry = await findCatalogueEntry(id).catch(() => undefined);
     const available = !!entry?.dir && !!entry.version && entry.version !== row.version;
     return { available, remote: entry?.version, target: available ? entry?.version : undefined, level: available ? classify(row.version, entry!.version!) ?? undefined : undefined };
   }
@@ -192,7 +192,7 @@ export async function checkForUpdate(id: string): Promise<ModuleUpdateCheck> {
 export async function updateModule(id: string): Promise<InstallResult> {
   const row = await prisma.module.findUnique({ where: { id } });
   if (row?.source === "bundled") {
-    const entry = await findMarketplaceEntry(id);
+    const entry = await findCatalogueEntry(id);
     if (!entry?.dir) return { ok: false, error: "modules.error.notfound" };
     const copied = copyBundled(entry.dir, id);
     if (!copied.ok) return copied;
@@ -350,7 +350,7 @@ function copyBundled(from: string, id: string): { ok: true; version: string } | 
 
 /** Installe un module livré avec le framework. Désactivé tant que l'admin ne l'a pas activé, comme tout module installé. */
 export async function installBundled(id: string): Promise<InstallResult> {
-  const entry = await findMarketplaceEntry(id);
+  const entry = await findCatalogueEntry(id);
   if (!entry || entry.source !== "bundled" || !entry.dir) return { ok: false, error: "modules.error.notfound" };
   if (BUILTIN_MODULES.some((b) => b.manifest.id === id)) return { ok: false, error: "modules.error.builtin" };
   if (await prisma.module.findUnique({ where: { id } })) return { ok: false, error: "modules.error.exists" };
@@ -360,9 +360,9 @@ export async function installBundled(id: string): Promise<InstallResult> {
   return { ok: true, id };
 }
 
-/** Installe un module de la marketplace (livré ou reconnu) par son identifiant. Le dépôt reconnu doit servir ce module-là. */
-export async function installFromMarketplace(id: string): Promise<InstallResult> {
-  const entry = await findMarketplaceEntry(id);
+/** Installe un module du catalogue (livré ou reconnu) par son identifiant. Le dépôt reconnu doit servir ce module-là. */
+export async function installFromCatalogue(id: string): Promise<InstallResult> {
+  const entry = await findCatalogueEntry(id);
   if (!entry) return { ok: false, error: "modules.error.notfound" };
   if (!entry.compatible) return { ok: false, error: "modules.error.incompatible" };
   if (entry.source === "bundled") return installBundled(id);

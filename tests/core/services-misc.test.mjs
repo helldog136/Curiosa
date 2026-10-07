@@ -6,7 +6,7 @@ import { useTestDb } from "../helpers/db.mjs";
 
 const db = await useTestDb();
 const { getAuthSecret } = await import("@/core/secret");
-const { getCatalogue } = await import("@/core/modules/catalogue");
+const { getRecognized } = await import("@/core/modules/recognized");
 const { qrSvg } = await import("@/core/services/qr");
 const { PLATFORM_SERVICES } = await import("@/core/services/index");
 const { hasRole } = await import("@/core/permissions");
@@ -67,16 +67,16 @@ test("catalogue de modules : désactivé sans URL ou hors https, filtre les él�
   const prevUrl = process.env.MODULES_INDEX_URL, realFetch = globalThis.fetch;
   try {
     delete process.env.MODULES_INDEX_URL;
-    assert.deepEqual(await getCatalogue(), []);
+    assert.deepEqual(await getRecognized(), []);
     process.env.MODULES_INDEX_URL = "http://insecure.example/index.json";
-    assert.deepEqual(await getCatalogue(), []);
+    assert.deepEqual(await getRecognized(), []);
     process.env.MODULES_INDEX_URL = "https://catalogue.example/index.json";
     let calls = 0;
     globalThis.fetch = async () => { calls++; return Response.json([{ id: "aa", repo: "https://github.com/x/a", name: "A", description: "d" }, { id: 5, repo: "x" }, { repo: "y" }, null, "texte", { id: "bb", repo: "https://github.com/x/b" }]); };
-    const items = await getCatalogue();
+    const items = await getRecognized();
     assert.deepEqual(items.map((i) => i.id), ["aa", "bb"]);
     assert.equal(items[1].name, "bb", "nom par défaut = identifiant");
-    await getCatalogue();
+    await getRecognized();
     assert.equal(calls, 1, "servi par le cache");
   } finally { globalThis.fetch = realFetch; if (prevUrl === undefined) delete process.env.MODULES_INDEX_URL; else process.env.MODULES_INDEX_URL = prevUrl; }
 });
@@ -88,7 +88,7 @@ test("catalogue de modules : réponse illisible ou en erreur → liste vide, jam
     // le cache du test précédent peut subsister : on le contourne en observant seulement l'absence d'exception
     for (const impl of [async () => new Response("pas du json", { status: 200 }), async () => new Response("", { status: 500 }), async () => { throw new Error("réseau"); }, async () => Response.json({ pas: "un tableau" })]) {
       globalThis.fetch = impl;
-      assert.ok(Array.isArray(await getCatalogue()));
+      assert.ok(Array.isArray(await getRecognized()));
     }
   } finally { globalThis.fetch = realFetch; delete process.env.MODULES_INDEX_URL; }
 });

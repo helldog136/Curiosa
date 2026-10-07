@@ -1,157 +1,103 @@
-import { execFile } from "node:child_process";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
-import { promisify } from "node:util";
-import { DATA_DIR } from "../config";
-import { parseRepoUrl } from "./installer";
-
-export type CatalogueItem = {
-  id: string;
-  name: string;
-  description: string;
-  repo: string;
-  /** Étiquette ou commit à installer (sinon la branche par défaut) — épinglez-en un relu. */
-  ref?: string;
-  version?: string;
-  author?: string;
-  icon?: string;
-  /** Version de l'API des modules que le module vise ; différente de celle du framework → affiché comme incompatible. */
-  apiVersion?: number;
-};
-
-/** D'où vient la liste affichée : le dépôt du framework (à jour), sa dernière copie reçue, ou la copie livrée avec cette version. */
-export type CatalogueSource = "repository" | "cache" | "snapshot" | "none";
-export type CatalogueResult = { items: CatalogueItem[]; source: CatalogueSource; fetchedAt: number | null; origin: string | null };
-
-const run = promisify(execFile);
-const ID_RE = /^[a-z][a-z0-9-]{1,39}$/;
-const INDEX_PATH = "marketplace/index.json";
-const TTL = 15 * 60_000;
-const MAX_INDEX_BYTES = 1024 * 1024;
-const str = (v: unknown, max: number) => (typeof v === "string" ? v.slice(0, max) : undefined);
-
-/** Valide une liste d'entrées (tableau, ou `{ modules: [...] }`) : identifiant, dépôt https sur un hôte autorisé, doublons écartés. */
-export function sanitizeEntries(json: unknown): CatalogueItem[] {
-  const list = Array.isArray(json) ? json : Array.isArray((json as { modules?: unknown })?.modules) ? (json as { modules: unknown[] }).modules : [];
-  const seen = new Set<string>();
-  const items: CatalogueItem[] = [];
-  for (const i of list) {
-    if (!i || typeof i !== "object" || typeof i.id !== "string" || typeof i.repo !== "string" || !ID_RE.test(i.id) || seen.has(i.id)) continue;
-    const repo = parseRepoUrl(i.repo);
-    if (!repo.ok || repo.repo.url.startsWith("file:")) continue;
-    seen.add(i.id);
-    items.push({
-      id: i.id, name: str(i.name, 120) || i.id, description: str(i.description, 500) ?? "", repo: repo.repo.url,
-      ref: typeof i.ref === "string" && /^[\w./-]{1,100}$/.test(i.ref) ? i.ref : undefined,
-      version: str(i.version, 40), author: str(i.author, 120), icon: str(i.icon, 8),
-      apiVersion: Number.isInteger(i.apiVersion) ? i.apiVersion : undefined,
-    });
-    if (items.length >= 300) break;
-  }
-  return items;
-}
-
-/** `git@hote:chemin/depot.git` → `https://hote/chemin/depot` (un dépôt cloné en SSH reste interrogeable en https). */
-export function toHttpsRemote(url: string): string {
-  const m = /^(?:ssh:\/\/)?git@([^:/]+)[:/](.+?)(?:\.git)?\/?$/.exec(url.trim());
-  return m ? `https://${m[1]}/${m[2]}` : url.trim();
-}
-
-export type IndexGit = (args: string[], cwd?: string) => Promise<string>;
-const gitConfig = () => ["-c", "protocol.ext.allow=never", "-c", `protocol.file.allow=${process.env.VITRINE_ALLOW_LOCAL_MODULES === "1" ? "always" : "never"}`, "-c", "core.hooksPath=/dev/null"];
-const defaultGit: IndexGit = async (args, cwd) => (await run("git", [...gitConfig(), ...args], { cwd, timeout: 25_000, maxBuffer: MAX_INDEX_BYTES + 4096, env: { ...process.env, GIT_TERMINAL_PROMPT: "0" } })).stdout;
-
-/** Dépôt qui publie l'index : VITRINE_MARKETPLACE_REPO, sinon le dépôt d'origine de cette installation. */
-export async function resolveIndexRepo(git: IndexGit = defaultGit, appDir = process.cwd()): Promise<string | null> {
-  const explicit = process.env.VITRINE_MARKETPLACE_REPO?.trim();
-  let url = explicit || "";
-  if (!url) {
-    const remote = /^[A-Za-z0-9._-]{1,60}$/.test(process.env.VITRINE_UPDATE_REMOTE ?? "") ? process.env.VITRINE_UPDATE_REMOTE! : "origin";
-    try { url = (await git(["remote", "get-url", remote], appDir)).trim(); } catch { return null; }
-  }
-  const parsed = parseRepoUrl(toHttpsRemote(url));
-  return parsed.ok ? parsed.repo.url : null;
-}
-
-/** Lit `marketplace/index.json` dans le dépôt, sans rien écrire dans l'installation : un dépôt temporaire, une récupération superficielle. */
-export async function fetchIndexFromRepo(url: string, ref = "HEAD", git: IndexGit = defaultGit): Promise<unknown> {
-  if (!/^[\w./-]{1,100}$/.test(ref)) throw new Error("bad-ref");
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "vitrine-index-"));
-  try {
-    await git(["init", "-q", "--bare", tmp]);
-    await git(["fetch", "-q", "--depth", "1", "--no-tags", "--", url, ref], tmp);
-    const text = await git(["show", `FETCH_HEAD:${INDEX_PATH}`], tmp);
-    if (text.length > MAX_INDEX_BYTES) throw new Error("too-large");
-    return JSON.parse(text);
-  } finally {
-    fs.rmSync(tmp, { recursive: true, force: true });
-  }
-}
-
-const cacheFile = () => path.join(DATA_DIR, "cache", "marketplace-index.json");
-function readPersisted(): { items: CatalogueItem[]; fetchedAt: number; origin: string | null } | null {
-  try {
-    const raw = JSON.parse(fs.readFileSync(cacheFile(), "utf8"));
-    return { items: sanitizeEntries(raw), fetchedAt: Number(raw.fetchedAt) || 0, origin: typeof raw.origin === "string" ? raw.origin : null };
-  } catch { return null; }
-}
-function readSnapshot(root: string): CatalogueItem[] {
-  try { return sanitizeEntries(JSON.parse(fs.readFileSync(path.join(root, INDEX_PATH), "utf8"))); } catch { return []; }
-}
-
-let memo: { at: number; key: string; result: CatalogueResult } | null = null;
-export function clearCatalogueCache(): void { memo = null; }
-
-export type CatalogueOptions = { fetchImpl?: typeof fetch; git?: IndexGit; root?: string; now?: () => number };
+import { MODULE_API_VERSION } from "../config";
+import { getRecognized, getRecognizedDetailed, type RecognizedResult } from "./recognized";
+import { parseManifest, type ParsedManifest } from "./manifest";
+import type { LocalizedString } from "./types";
 
 /**
- * Index des modules RECONNUS. Trois sources, la plus fraîche d'abord :
- *   1. le fichier `marketplace/index.json` du dépôt du framework, lu À L'EXÉCUTION (ne suit PAS le rythme des versions) ;
- *   2. à défaut, la dernière copie reçue (gardée dans data/cache) puis la copie livrée avec cette version : hors ligne, ça marche ;
- *   3. en plus, un index JSON https supplémentaire (MODULES_INDEX_URL) dont les entrées ne peuvent qu'AJOUTER des modules.
- * Celui qui publie un index se porte garant des dépôts qu'il liste ; chaque entrée est revalidée ici. Rien n'est installé automatiquement.
+ * MARKETPLACE — la liste des modules que l'on peut installer en confiance, et rien d'autre.
+ *
+ *   bundled      modules livrés AVEC le framework (dossiers `modules-community/` et `modules-examples/`) : installés depuis
+ *                les fichiers du serveur, sans réseau ; leur version suit celle du framework.
+ *   recognized   dépôts git listés dans l'index public (MODULES_INDEX_URL) : celui qui publie l'index s'en porte garant.
+ *
+ * Tout autre dépôt git est un module PERSONNEL, non vérifié : il s'installe depuis l'admin avec un avertissement explicite
+ * (voir installer.ts), jamais d'office. Le catalogue sert aussi à restaurer une sauvegarde (backup/restore.ts).
  */
-export async function getCatalogueDetailed(opts: CatalogueOptions = {}): Promise<CatalogueResult> {
-  const { fetchImpl = fetch, git = defaultGit, root = process.cwd(), now = Date.now } = opts;
-  const extraUrl = process.env.MODULES_INDEX_URL;
-  const key = `${process.env.VITRINE_MARKETPLACE_REPO ?? ""}|${process.env.VITRINE_MARKETPLACE_REF ?? ""}|${extraUrl ?? ""}|${root}`;
-  if (memo && memo.key === key && now() - memo.at < TTL) return memo.result;
+export type CatalogueEntry = {
+  id: string;
+  name: LocalizedString;
+  description: LocalizedString;
+  version?: string;
+  icon?: string;
+  author?: string;
+  kind: "community" | "example" | "recognized";
+  /** Les modules livrés se copient du serveur ; les reconnus se clonent depuis `repo`. */
+  source: "bundled" | "recognized";
+  repo?: string;
+  ref?: string;
+  /** Dossier du module sur le serveur (source « bundled »). */
+  dir?: string;
+  /** Ce module vise-t-il l'API de modules de CE framework ? Sinon il est listé mais non installable. */
+  compatible: boolean;
+};
 
-  let base: CatalogueResult = { items: [], source: "none", fetchedAt: null, origin: null };
-  const runtime = process.env.VITRINE_MARKETPLACE_RUNTIME !== "0";
-  const repo = runtime ? await resolveIndexRepo(git, root) : null;
-  if (repo) {
-    try {
-      const items = sanitizeEntries(await fetchIndexFromRepo(repo, process.env.VITRINE_MARKETPLACE_REF || "HEAD", git));
-      base = { items, source: "repository", fetchedAt: now(), origin: repo };
-      try {
-        fs.mkdirSync(path.dirname(cacheFile()), { recursive: true });
-        fs.writeFileSync(cacheFile(), JSON.stringify({ version: 1, fetchedAt: base.fetchedAt, origin: repo, modules: items }));
-      } catch { /* la copie locale est un plus */ }
-    } catch { /* injoignable : on retombe sur la dernière copie */ }
-  }
-  if (base.source === "none") {
-    const kept = readPersisted();
-    if (kept && kept.items.length + (kept.fetchedAt ? 1 : 0) > 0) base = { items: kept.items, source: "cache", fetchedAt: kept.fetchedAt, origin: kept.origin };
-  }
-  if (base.source === "none") {
-    const items = readSnapshot(root);
-    base = { items, source: "snapshot", fetchedAt: null, origin: null };
-  }
+const BUNDLED: { dir: string; kind: "community" | "example" }[] = [
+  { dir: "modules-community", kind: "community" },
+  { dir: "modules-examples", kind: "example" },
+];
 
-  const items = [...base.items];
-  if (extraUrl?.startsWith("https://")) {
-    try {
-      const res = await fetchImpl(extraUrl, { signal: AbortSignal.timeout(5000), cache: "no-store" });
-      if (res.ok) for (const e of sanitizeEntries(await res.json())) if (!items.some((i) => i.id === e.id)) items.push(e);
-    } catch { /* index supplémentaire injoignable : on garde le reste */ }
-  }
-  const result = { ...base, items: items.slice(0, 300) };
-  memo = { at: now(), key, result };
-  return result;
+export function appRoot(): string {
+  return process.cwd();
 }
 
-export async function getCatalogue(fetchImpl: typeof fetch = fetch): Promise<CatalogueItem[]> {
-  return (await getCatalogueDetailed({ fetchImpl })).items;
+export function readBundledManifest(dir: string): ParsedManifest | null {
+  try {
+    const parsed = parseManifest(JSON.parse(fs.readFileSync(path.join(dir, "module.json"), "utf8")));
+    return parsed.ok ? parsed.manifest : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Modules livrés avec le framework (manifeste valide uniquement). */
+export function listBundled(root = appRoot()): CatalogueEntry[] {
+  const out: CatalogueEntry[] = [];
+  for (const { dir, kind } of BUNDLED) {
+    const base = path.join(root, dir);
+    let names: string[] = [];
+    try { names = fs.readdirSync(base).sort(); } catch { continue; }
+    for (const name of names) {
+      const full = path.join(base, name);
+      if (!fs.statSync(full).isDirectory()) continue;
+      const m = readBundledManifest(full);
+      if (!m || out.some((e) => e.id === m.id)) continue;
+      out.push({ id: m.id, name: m.name, description: m.description ?? "", version: m.version, icon: m.icon, author: m.author, kind, source: "bundled", dir: full, compatible: true });
+    }
+  }
+  return out;
+}
+
+/** Tout ce qu'on peut installer en confiance : modules livrés d'abord, puis dépôts reconnus (un livré l'emporte sur un reconnu de même identifiant). */
+export async function getCatalogue(opts: { root?: string; fetchImpl?: typeof fetch } = {}): Promise<CatalogueEntry[]> {
+  const bundled = listBundled(opts.root);
+  const remote = (await getRecognized(opts.fetchImpl)).filter((c) => !bundled.some((b) => b.id === c.id));
+  return [
+    ...bundled,
+    ...remote.map((c): CatalogueEntry => ({
+      id: c.id, name: c.name, description: c.description, version: c.version, icon: c.icon, author: c.author,
+      kind: "recognized", source: "recognized", repo: c.repo, ref: c.ref, compatible: c.apiVersion === undefined || c.apiVersion === MODULE_API_VERSION,
+    })),
+  ];
+}
+
+export async function findCatalogueEntry(id: string, opts: { root?: string; fetchImpl?: typeof fetch } = {}): Promise<CatalogueEntry | undefined> {
+  return (await getCatalogue(opts)).find((e) => e.id === id);
+}
+
+/** D'où vient un module installé ? « catalogue » = livré ou reconnu ; « custom » = dépôt personnel non vérifié. */
+export function moduleOrigin(row: { id: string; source: string; repoUrl: string | null }, market: CatalogueEntry[]): "builtin" | "catalogue" | "custom" {
+  if (row.source === "builtin") return "builtin";
+  const entry = market.find((e) => e.id === row.id);
+  if (!entry) return "custom";
+  if (row.source === "bundled") return entry.source === "bundled" ? "catalogue" : "custom";
+  const norm = (u: string | null | undefined) => (u ?? "").replace(/\.git$/, "").replace(/\/$/, "").toLowerCase();
+  return entry.source === "recognized" && norm(entry.repo) === norm(row.repoUrl) ? "catalogue" : "custom";
+}
+
+/** D'où vient la liste des dépôts reconnus affichée (dépôt à jour, dernière copie reçue, ou copie livrée avec cette version) ? */
+export async function getCatalogueSource(opts: { fetchImpl?: typeof fetch } = {}): Promise<Pick<RecognizedResult, "source" | "fetchedAt" | "origin">> {
+  const { source, fetchedAt, origin } = await getRecognizedDetailed(opts);
+  return { source, fetchedAt, origin };
 }

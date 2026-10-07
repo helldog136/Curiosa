@@ -7,7 +7,7 @@ le pourquoi. Le tutoriel [docs/CREATE-A-MODULE.md](../../docs/CREATE-A-MODULE.md
 
 ## Installer
 
-Dans l'admin : **Marketplace** (ou **Modules → Installer un module**) → « Livre d'or ». Le module s'installe *désactivé* ;
+Dans l'admin : **Catalogue** (ou **Modules → Installer un module**) → « Livre d'or ». Le module s'installe *désactivé* ;
 activez-le, ajoutez une instance, puis ouvrez-la pour régler. Dépôt personnel : voir « Tester son module en local » du tutoriel.
 
 ## Fichiers
