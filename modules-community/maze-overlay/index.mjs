@@ -22,6 +22,17 @@ for (const file of fs.readdirSync(webDir).filter((f) => /^[a-z-]+\.js$/.test(f))
     });
 }
 
+// Mode développeur : ?seed=42 (tracé et trajet reproductibles), ?luck=always|never|0.3 (s'arrêter
+// devant une affiche), ?fast=1 (délais minimaux), ?dev=1 (= luck=always + fast=1). Ignoré tant que
+// le réglage « Mode développeur » de l'instance n'est pas activé.
+function devOptions(query) {
+  const dev = query.get("dev") === "1";
+  const seed = Number(query.get("seed"));
+  const luckRaw = query.get("luck") ?? (dev ? "always" : "");
+  const luck = luckRaw === "always" || luckRaw === "never" ? luckRaw : luckRaw !== "" && Number.isFinite(Number(luckRaw)) ? Number(luckRaw) : undefined;
+  return { seed: query.get("seed") !== null && Number.isFinite(seed) ? Math.trunc(seed) : undefined, luck, fast: dev || query.get("fast") === "1" };
+}
+
 const safeImage = (v) => (typeof v === "string" && /^(https?:\/\/|\/)/.test(v) ? v : null);
 
 routes.items = async (_request, ctx) => {
@@ -54,7 +65,7 @@ routes.items = async (_request, ctx) => {
 
 export default {
   routes,
-  overlay(ctx) {
+  overlay(ctx, { query }) {
     const lines = (v) => String(v ?? "").split("\n");
     const cfg = {
       itemsUrl: `/m/${ctx.instance.key}/items?lang=${ctx.locale}`,
@@ -70,6 +81,7 @@ export default {
       floor: clean([ctx.setting("floorTexture")]),
       portal: clean([ctx.setting("portalTexture")]),
       hands: clean([ctx.setting("handsSprite")], 1)[0] ?? null,
+      dev: ctx.setting("devMode") ? devOptions(query) : null,
     };
     // `<` échappé : la config est insérée dans un <script>, aucun réglage ne doit pouvoir en sortir.
     const json = JSON.stringify(cfg).replace(/</g, "\\u003c");

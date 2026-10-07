@@ -24,6 +24,22 @@ Un `kind` `clip` / `video` / `short` avec une URL Twitch / YouTube joue la vidé
 Ajoutez une instance, puis collez l'URL affichée sur sa page (`https://votre-site/overlays/<clé>`)
 dans une *Source navigateur* OBS (1920×1080).
 
+## Mode développeur (tests)
+
+Réglage avancé « Mode développeur » de l'instance. Une fois activé, l'URL de l'overlay accepte des
+paramètres qui **manipulent le hasard** — rien d'autre n'est touché :
+
+| Paramètre | Effet |
+|---|---|
+| `?seed=42` | graine : même labyrinthe et même trajet à chaque chargement |
+| `?luck=always` / `never` / `0.3` | issue des tirages « s'arrêter devant une affiche ? » |
+| `?fast=1` | les délais tirés au hasard (entre deux arrêts) prennent leur minimum |
+| `?dev=1` | raccourci : `luck=always` + `fast=1` |
+
+Les paramètres se combinent (`?dev=1&seed=7`). Désactivé (par défaut), ils sont ignorés. En mode
+dev, `window.__MAZE_DEV__` expose la graine et une empreinte du tracé pour les tests automatiques.
+Tous les tirages passent par `web/random.js` (jamais `Math.random` directement).
+
 ## Différences avec la version de helldog136.be
 
 - Le tracé est généré à chaque chargement (la carte figée et son éditeur ne sont pas portés).

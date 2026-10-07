@@ -212,6 +212,20 @@
         "en": "More wall textures (one URL per line, up to 4)",
         "fr": "Autres textures de murs (une URL par ligne, 4 maximum)"
       }
+    },
+    {
+      "key": "devMode",
+      "type": "boolean",
+      "default": false,
+      "advanced": true,
+      "label": {
+        "en": "Developer mode",
+        "fr": "Mode développeur"
+      },
+      "help": {
+        "en": "Lets the overlay URL manipulate chance, for testing: ?seed=42 (same maze and walk every time), ?luck=always|never|0.3 (stop in front of posters), ?fast=1 (shortest delays), ?dev=1 (always stop + fastest). Leave off in production.",
+        "fr": "Permet à l'URL de l'overlay de manipuler le hasard, pour tester : ?seed=42 (même labyrinthe et même trajet à chaque fois), ?luck=always|never|0.3 (s'arrêter devant les affiches), ?fast=1 (délais minimaux), ?dev=1 (arrêt systématique + délais minimaux). À laisser désactivé en production."
+      }
     }
   ]
 }

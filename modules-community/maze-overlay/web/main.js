@@ -5,6 +5,7 @@ import { generateMaze } from "./generate.js";
 import { loadTextureSet, loadImage } from "./textures.js";
 import { drawPromoPoster, setAccent, BADGE_LABELS } from "./poster.js";
 import { MazeEngine } from "./engine.js";
+import { configureRandom, getSeed } from "./random.js";
 import { getTwitchClipEmbedUrl, getYouTubeEmbedUrl } from "./embed.js";
 
 const cfg = window.__MAZE__;
@@ -93,6 +94,9 @@ async function applyPromos(items) {
 
 async function setup() {
   setAccent(cfg.accent);
+  // Mode développeur (réglage de l'instance + paramètres d'URL) : manipule le hasard pour tester.
+  configureRandom(cfg.dev);
+  if (cfg.dev) console.info("[maze-overlay] dev mode", cfg.dev);
   const items = await fetchItems();
   const [wall, floor, portal, hands] = await Promise.all([
     loadTextureSet(cfg.wall, "#2a2118", "#1e1611"),
@@ -101,9 +105,14 @@ async function setup() {
     cfg.hands ? loadImage(cfg.hands).catch(() => null) : Promise.resolve(null),
   ]);
 
+  const grid = generateMaze(cfg.size);
+  if (cfg.dev) {
+    // Empreinte du tracé : deux chargements avec la même graine doivent donner la même.
+    window.__MAZE_DEV__ = { seed: getSeed(), gridHash: Array.from(grid.walls).reduce((h, v, i) => (h * 31 + v * (i + 1)) % 1000000007, 7) };
+  }
   engine = new MazeEngine({
     canvas,
-    grid: generateMaze(cfg.size),
+    grid,
     wallTextures: wall,
     floorTextures: floor,
     portalTextures: portal,

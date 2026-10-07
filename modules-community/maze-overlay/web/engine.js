@@ -2,6 +2,7 @@
 import { isOpen, isPortalCell, isPromoCell, randomOpenCell } from "./generate.js";
 import { variantIndex } from "./textures.js";
 import { CELL_PATH, CELL_PORTAL, CELL_PROMO, CELL_VOID, DIRECTIONS } from "./types.js";
+import { random, roll } from "./random.js";
 const ALIGN_EPSILON = 0.001;
 // Devant une case promo, une chance sur deux (environ) de ne pas s'arrêter
 // et de simplement continuer son chemin — le personnage croise des promos
@@ -62,7 +63,7 @@ function stepAngleTowards(from, to, maxDelta) {
     return from + Math.sign(diff) * maxDelta;
 }
 function randomBetween(min, max) {
-    return min + Math.random() * (max - min);
+    return min + random("timing") * (max - min);
 }
 // Spline de Catmull-Rom (forme uniforme) : passe exactement par P1 (u=0)
 // et P2 (u=1), sa courbure entre les deux étant influencée par P0 (ce qui
@@ -286,7 +287,7 @@ export class MazeEngine {
             return;
         const shuffled = [...this.promoCellKeys];
         for (let i = shuffled.length - 1; i > 0; i--) {
-            const j = (Math.random() * (i + 1)) | 0;
+            const j = (random() * (i + 1)) | 0;
             [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
         }
         const maxSlots = Math.min(shuffled.length, items.length * MAX_REPEATS_PER_ITEM);
@@ -412,7 +413,7 @@ export class MazeEngine {
         return { cells, exits, promoSpots };
     }
     randomCellInRoom(room) {
-        return room.cells[(Math.random() * room.cells.length) | 0];
+        return room.cells[(random() * room.cells.length) | 0];
     }
     // Pathfinding direct à l'intérieur d'une salle (BFS en cases, diagonales
     // incluses avec la même sécurité anti-coin-coupé qu'isMoveOpen) — gère
@@ -479,9 +480,9 @@ export class MazeEngine {
         };
         if (!this.roomVisitedPoster) {
             const posterSpots = room.promoSpots.filter((p) => this.promoIndexForCell(p.promoCell.x, p.promoCell.y) >= 0);
-            const wantsPoster = posterSpots.length > 0 && (isDeadEnd || Math.random() < STOP_PROBABILITY);
+            const wantsPoster = posterSpots.length > 0 && (isDeadEnd || roll(STOP_PROBABILITY));
             if (wantsPoster) {
-                const spot = posterSpots[(Math.random() * posterSpots.length) | 0];
+                const spot = posterSpots[(random() * posterSpots.length) | 0];
                 setTarget(spot.standAt);
                 this.roomTargetKind = "poster";
                 this.roomTargetPromoDir = spot.dir;
@@ -504,7 +505,7 @@ export class MazeEngine {
         const lastExitKey = this.roomJunctionMemory.get(memoryKey);
         const weights = pool.map((e) => (`${e.x},${e.y}` === lastExitKey ? REPEAT_DECISION_PENALTY : 1));
         const total = weights.reduce((sum, w) => sum + w, 0);
-        let roll = Math.random() * total;
+        let roll = random() * total;
         let chosen = pool[pool.length - 1];
         for (let i = 0; i < pool.length; i++) {
             roll -= weights[i];
@@ -526,9 +527,9 @@ export class MazeEngine {
     // "la caméra touche le mur du portail" dans update(), avant même d'avoir
     // eu le temps de s'en éloigner d'un seul pixel — boucle infinie.
     teleportThroughPortal() {
-        const destination = this.portalCells[(Math.random() * this.portalCells.length) | 0];
+        const destination = this.portalCells[(random() * this.portalCells.length) | 0];
         const outOptions = this.openDirections(destination, -1);
-        const outDir = outOptions.length > 0 ? outOptions[(Math.random() * outOptions.length) | 0] : 0;
+        const outDir = outOptions.length > 0 ? outOptions[(random() * outOptions.length) | 0] : 0;
         const outVec = MOVE_DIRECTIONS[outDir];
         const emergeCell = { x: destination.x + outVec.x, y: destination.y + outVec.y };
         this.pos = { x: emergeCell.x + 0.5, y: emergeCell.y + 0.5 };
@@ -682,7 +683,7 @@ export class MazeEngine {
             return w;
         });
         const total = weights.reduce((sum, w) => sum + w, 0);
-        let roll = Math.random() * total;
+        let roll = random() * total;
         let chosen = options[options.length - 1];
         for (let i = 0; i < options.length; i++) {
             roll -= weights[i];
@@ -695,7 +696,7 @@ export class MazeEngine {
         return chosen;
     }
     findPromoDirection(cell) {
-        const order = [0, 1, 2, 3].sort(() => Math.random() - 0.5);
+        const order = [0, 1, 2, 3].sort(() => random() - 0.5);
         for (const i of order) {
             const d = DIRECTIONS[i];
             if (this.promoIndexForCell(cell.x + d.x, cell.y + d.y) >= 0)
@@ -850,7 +851,7 @@ export class MazeEngine {
                 if (this.activeRoom < 0 && nowSeconds >= this.nextStopAt) {
                     const promoDir = this.findPromoDirection(arrivedCell);
                     if (promoDir >= 0) {
-                        if (Math.random() < STOP_PROBABILITY) {
+                        if (roll(STOP_PROBABILITY)) {
                             this.beginLookAt(arrivedCell, promoDir);
                             this.cellFrom = arrivedCell;
                             return;

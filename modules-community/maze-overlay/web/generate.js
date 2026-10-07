@@ -1,5 +1,6 @@
 // Porté depuis le labyrinthe de helldog136.be (TypeScript → JavaScript), sans autre changement de logique.
 import { CELL_PATH, CELL_PORTAL, CELL_PROMO, CELL_VOID, DIRECTIONS, SIZE_CELLS } from "./types.js";
+import { random } from "./random.js";
 // Part des murs éligibles (adjacents à un chemin) transformés en cases
 // promo — assez pour croiser une promo régulièrement, sans en truffer
 // chaque recoin du labyrinthe.
@@ -40,14 +41,14 @@ export function generateMaze(size) {
     const cellIndex = (cx, cy) => cy * cells + cx;
     const bitmapIndex = (bx, by) => by * width + bx;
     const stack = [];
-    let cx = (Math.random() * cells) | 0;
-    let cy = (Math.random() * cells) | 0;
+    let cx = (random() * cells) | 0;
+    let cy = (random() * cells) | 0;
     visited[cellIndex(cx, cy)] = 1;
     walls[bitmapIndex(cx * 2 + 1, cy * 2 + 1)] = CELL_PATH;
     stack.push([cx, cy]);
     while (stack.length > 0) {
         [cx, cy] = stack[stack.length - 1];
-        const order = [...DIRECTIONS].sort(() => Math.random() - 0.5);
+        const order = [...DIRECTIONS].sort(() => random() - 0.5);
         let carved = false;
         for (const dir of order) {
             const nx = cx + dir.x;
@@ -82,16 +83,16 @@ export function generateMaze(size) {
 // de forme quelconque) et les zones ouvertes éditées à la main.
 function carveRooms(walls, width, height, size) {
     const { count, side } = ROOM_SETTINGS[size];
-    const roomCount = count[0] + Math.floor(Math.random() * (count[1] - count[0] + 1));
+    const roomCount = count[0] + Math.floor(random() * (count[1] - count[0] + 1));
     for (let i = 0; i < roomCount; i++) {
-        const w = side[0] + Math.floor(Math.random() * (side[1] - side[0] + 1));
-        const h = side[0] + Math.floor(Math.random() * (side[1] - side[0] + 1));
+        const w = side[0] + Math.floor(random() * (side[1] - side[0] + 1));
+        const h = side[0] + Math.floor(random() * (side[1] - side[0] + 1));
         const maxX = width - 2 - w;
         const maxY = height - 2 - h;
         if (maxX < 1 || maxY < 1)
             continue;
-        const x0 = 1 + Math.floor(Math.random() * maxX);
-        const y0 = 1 + Math.floor(Math.random() * maxY);
+        const x0 = 1 + Math.floor(random() * maxX);
+        const y0 = 1 + Math.floor(random() * maxY);
         for (let y = y0; y < y0 + h; y++) {
             for (let x = x0; x < x0 + w; x++) {
                 walls[y * width + x] = CELL_PATH;
@@ -104,7 +105,7 @@ function carveRooms(walls, width, height, size) {
 // voir CELL_PORTAL dans types.ts.
 function assignPortalCells(walls, width, height, size) {
     const [min, max] = PORTAL_SETTINGS[size];
-    const count = min + Math.floor(Math.random() * (max - min + 1));
+    const count = min + Math.floor(random() * (max - min + 1));
     const eligible = [];
     for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
@@ -123,7 +124,7 @@ function assignPortalCells(walls, width, height, size) {
         }
     }
     for (let i = eligible.length - 1; i > 0; i--) {
-        const j = (Math.random() * (i + 1)) | 0;
+        const j = (random() * (i + 1)) | 0;
         [eligible[i], eligible[j]] = [eligible[j], eligible[i]];
     }
     for (let i = 0; i < Math.min(count, eligible.length); i++) {
@@ -152,7 +153,7 @@ function assignPromoCells(walls, width, height) {
         }
     }
     for (let i = eligible.length - 1; i > 0; i--) {
-        const j = (Math.random() * (i + 1)) | 0;
+        const j = (random() * (i + 1)) | 0;
         [eligible[i], eligible[j]] = [eligible[j], eligible[i]];
     }
     const count = Math.max(PROMO_MIN, Math.round(eligible.length * PROMO_RATIO));
@@ -188,7 +189,7 @@ export function randomOpenCell(grid) {
                 open.push({ x, y });
         }
     }
-    return open[(Math.random() * open.length) | 0];
+    return open[(random() * open.length) | 0];
 }
 export function serializeMazeGrid(grid) {
     return { width: grid.width, height: grid.height, walls: Array.from(grid.walls) };
