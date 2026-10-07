@@ -65,7 +65,8 @@ test("le module d'exemple est cohérent (id, version, fichier principal, réglag
   const m = JSON.parse(read(`${dir}/module.json`));
   assert.match(m.id, /^[a-z][a-z0-9-]{1,39}$/);
   assert.match(m.version, /^\d+\.\d+\.\d+/);
-  assert.equal(m.apiVersion, 1);
+  const core = read("src/core/config.ts").match(/MODULE_API_VERSION = (\d+)/);
+  assert.equal(m.apiVersion, Number(core[1]));
   assert.ok(fs.existsSync(`${dir}/${m.main}`));
   for (const s of m.settings) assert.match(s.key, /^[a-zA-Z][a-zA-Z0-9_]*$/);
 });
