@@ -199,6 +199,7 @@ export default async function InstancePage({ params, searchParams }: { params: P
           <div>
             <h2 className="text-lg font-semibold">{t("services.title")}</h2>
             <p className="mt-1 text-sm text-muted">{t("services.intro")}</p>
+            <p className="mt-1 text-sm text-amber-500">{t("services.split")}</p>
           </div>
           {serviceRows.map((r) => (
             <Select key={r.service} name={`service_${r.i}`} label={r.label ? L(r.label) : r.service} defaultValue={r.chosen ?? ""}

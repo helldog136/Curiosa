@@ -534,5 +534,6 @@
   "modules.error.requiredBy": "Impossible : ces modules actifs en dépendent ({modules}). Désactivez-les d'abord.",
   "services.title": "Services utilisés",
   "services.intro": "Plusieurs modules offrent le même service : choisissez lequel cette instance utilise (un seul reçoit les données, jamais tous à la fois).",
-  "services.first": "Le premier (automatique)"
+  "services.first": "Le premier (automatique)",
+  "services.split": "Attention : changer de fournisseur ne déplace pas les données déjà reçues. Elles restent chez l'ancien ; seules les suivantes vont chez le nouveau. Les deux ne sont jamais synchronisés."
 }

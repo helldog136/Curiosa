@@ -534,5 +534,6 @@
   "modules.error.requiredBy": "Not possible: these active modules depend on it ({modules}). Disable them first.",
   "services.title": "Services in use",
   "services.intro": "Several modules offer the same service: choose which one this instance uses (only one receives the data, never all at once).",
-  "services.first": "The first one (automatic)"
+  "services.first": "The first one (automatic)",
+  "services.split": "Careful: switching provider does not move the data already received. It stays with the old one; only new data goes to the new one. The two are never synchronised."
 }
