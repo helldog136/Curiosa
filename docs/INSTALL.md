@@ -27,7 +27,8 @@ npm run build
 npm start
 ```
 
-Ouvrez le site : **l'assistant de configuration démarre à la première visite** et crée le compte propriétaire.
+Ouvrez le site : **l'assistant de configuration démarre à la première visite** et crée le compte propriétaire — ou, si vous avez déjà une
+sauvegarde, vous la restaurez dès le premier écran ([BACKUP.md](BACKUP.md)).
 Tant que le site est exposé avant d'être configuré, définissez `SETUP_TOKEN` dans `.env` : l'assistant le demandera.
 
 > Cloner depuis le dépôt d'origine est ce qui active les mises à jour depuis l'admin : l'installation retient d'où elle vient

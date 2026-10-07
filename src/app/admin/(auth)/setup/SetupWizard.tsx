@@ -2,6 +2,7 @@
 
 import { useActionState, useRef, useState } from "react";
 import { ui } from "@/components/admin/ui";
+import { RestorePanel } from "@/components/admin/RestorePanel";
 import { completeSetup } from "./actions";
 
 type Props = {
@@ -15,6 +16,7 @@ type Props = {
 const STEPS = ["language", "identity", "content", "links", "account"] as const;
 
 export function SetupWizard({ strings, uiLocales, locales, presets, needsToken }: Props) {
+  const [mode, setMode] = useState<"new" | "restore">("new");
   const [step, setStep] = useState(0);
   const [lang, setLang] = useState("fr");
   const [chosen, setChosen] = useState<string[]>(presets.filter((p) => p.preselected).map((p) => p.id));
@@ -41,10 +43,32 @@ export function SetupWizard({ strings, uiLocales, locales, presets, needsToken }
 
   const section = (id: (typeof STEPS)[number]) => ({ "data-step": id, hidden: current !== id, className: "space-y-4" });
 
+  // Restaurer une sauvegarde : une autre façon de configurer un site neuf (les textes de la restauration viennent du dictionnaire « backup. »).
+  const restoreLabels = Object.fromEntries(Object.entries(ui18n).filter(([k]) => k.startsWith("backup.")).map(([k, v]) => [k.slice(7), v]));
+  restoreLabels.setupToken = t("setup.restore.token");
+
+  if (mode === "restore") {
+    return (
+      <div className="mx-auto max-w-xl px-4 py-12">
+        <h1 className="text-3xl font-bold">{t("setup.restore.title")}</h1>
+        <p className="mt-2 text-sm text-muted">{t("setup.restore.help")}</p>
+        <div className="mt-8">
+          <RestorePanel labels={restoreLabels} previewUrl="/api/setup/restore" applyUrl="/api/setup/restore/apply" loginHref="/admin/login" needsToken={needsToken} />
+        </div>
+        <button type="button" className={`${ui.btn} mt-8`} onClick={() => setMode("new")}>{t("setup.restore.back")}</button>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-xl px-4 py-12">
       <h1 className="text-3xl font-bold">{t("setup.title")}</h1>
       <p className="mt-1 text-sm text-muted">{t("setup.step")} {step + 1} / {visibleSteps.length}</p>
+      {step === 0 && (
+        <p className="mt-3 text-sm">
+          <button type="button" onClick={() => setMode("restore")} className="text-accent underline">{t("setup.restore.link")}</button>
+        </p>
+      )}
 
       <form ref={formRef} action={action} className="mt-8 space-y-6">
         <input type="hidden" name="uiLang" value={lang} />

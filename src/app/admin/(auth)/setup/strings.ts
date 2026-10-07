@@ -8,6 +8,8 @@ const KEYS = [
   "setup.content.title", "setup.content.help",
   "setup.links.title", "setup.links.help", "setup.links.label", "setup.links.url", "setup.links.icon", "setup.links.iconHelp", "setup.links.add", "setup.links.shortcut",
   "setup.account.title", "setup.account.name", "setup.account.email", "setup.account.password", "setup.account.passwordHelp", "setup.account.token", "setup.account.tokenHelp",
+  "setup.restore.link", "setup.restore.title", "setup.restore.help", "setup.restore.back", "setup.restore.token",
+  "backup.file", "backup.password", "backup.check", "backup.apply", "backup.cancel", "backup.done", "backup.login", "backup.entries", "backup.users", "backup.instances", "backup.uploads", "backup.replaceWarning", "backup.confirmReplace", "backup.trustCustom", "backup.status.installed", "backup.status.marketplace", "backup.status.custom", "backup.status.unavailable", "backup.outcome.kept", "backup.outcome.installed", "backup.outcome.skipped", "backup.outcome.failed", "backup.outcome.unavailable", "backup.error.wrong-password", "backup.error.not-a-backup", "backup.error.corrupt", "backup.error.tampered", "backup.error.newer-format", "backup.error.no-owner", "backup.error.no-file", "backup.error.too-large", "backup.error.expired", "backup.error.failed", "backup.error.network", "backup.error.forbidden", "backup.error.unauthorized", "backup.error.already-configured", "backup.error.invalid-token",
 ];
 
 /** Textes de l'assistant, dans chaque langue d'interface disponible (l'assistant change de langue en direct). */

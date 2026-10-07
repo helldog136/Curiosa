@@ -488,5 +488,12 @@
   "backup.error.forbidden": "Action refused.",
   "backup.error.unauthorized": "Session expired: sign in again.",
   "modules.browseMarketplace": "Browse the marketplace",
-  "modules.bundled": "shipped with the framework"
+  "modules.bundled": "shipped with the framework",
+  "setup.restore.link": "I already have a backup: restore it instead of creating a new site",
+  "setup.restore.title": "Restore a backup",
+  "setup.restore.help": "Get your site back as it was: content, settings, users, modules (reinstalled from the marketplace) and images. Choose your backup file and the password you picked when creating it.",
+  "setup.restore.back": "← Create a new site instead",
+  "setup.restore.token": "Setup token (SETUP_TOKEN)",
+  "backup.error.already-configured": "This site is already configured: sign in to the admin to restore.",
+  "backup.error.invalid-token": "Wrong setup token."
 }

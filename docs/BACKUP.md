@@ -63,8 +63,10 @@ Tout est du **texte** (JSON, Markdown, CSV), sauf les images. Pour vérifier l'i
 - Les identifiants sont conservés : les sessions, les liens entre entrées, redirections et données de modules restent valides.
 - Les modules installés ici mais absents de la sauvegarde restent installés (sans leurs instances).
 
-**Sur un serveur neuf** : installez le framework ([INSTALL.md](INSTALL.md)), terminez l'assistant de première installation (il crée un
-propriétaire provisoire), puis restaurez ; reconnectez-vous ensuite avec un compte de la sauvegarde.
+**Sur un serveur neuf** : installez le framework ([INSTALL.md](INSTALL.md)) et ouvrez le site. Le **premier écran de l'assistant propose
+« J'ai déjà une sauvegarde : la restaurer »** : même procédure (fichier, mot de passe, aperçu, confirmation des modules personnels), sans créer
+de compte provisoire. Si `SETUP_TOKEN` est défini, le même jeton est demandé. Ce chemin n'existe que **tant qu'aucun compte n'existe** :
+un site en service ne peut se restaurer que depuis l'admin, par son propriétaire. Reconnectez-vous ensuite avec un compte de la sauvegarde.
 
 ## Bon à savoir
 

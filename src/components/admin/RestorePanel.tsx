@@ -9,19 +9,21 @@ type Report = { ok: boolean; error?: string; modules: { id: string; outcome: str
 type Labels = Record<string, string>;
 
 /** Restauration en deux temps : (1) fichier + mot de passe → aperçu ; (2) confirmation, module personnel par module personnel. */
-export function RestorePanel({ labels }: { labels: Labels }) {
+export function RestorePanel({ labels, previewUrl = "/api/admin/backup/restore", applyUrl = "/api/admin/backup/restore/apply", loginHref = "/admin/login", needsToken = false }: { labels: Labels; previewUrl?: string; applyUrl?: string; loginHref?: string; needsToken?: boolean }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<Preview | null>(null);
   const [accepted, setAccepted] = useState<Set<string>>(new Set());
   const [report, setReport] = useState<Report | null>(null);
+  const [setupToken, setSetupToken] = useState("");
+  const headers = (extra: Record<string, string> = {}) => ({ ...extra, ...(needsToken ? { "x-setup-token": setupToken } : {}) });
   const L = (k: string) => labels[k] ?? k;
 
   async function check(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true); setError(null);
     try {
-      const res = await fetch("/api/admin/backup/restore", { method: "POST", body: new FormData(event.currentTarget) });
+      const res = await fetch(previewUrl, { method: "POST", headers: headers(), body: new FormData(event.currentTarget) });
       const json = await res.json();
       if (!json.ok) setError(L(`error.${json.error}`));
       else { setPreview(json); setAccepted(new Set()); }
@@ -33,7 +35,7 @@ export function RestorePanel({ labels }: { labels: Labels }) {
     if (!preview || !window.confirm(L("confirmReplace"))) return;
     setBusy(true); setError(null);
     try {
-      const res = await fetch("/api/admin/backup/restore/apply", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ token: preview.token, confirm: [...accepted] }) });
+      const res = await fetch(applyUrl, { method: "POST", headers: headers({ "content-type": "application/json" }), body: JSON.stringify({ token: preview.token, confirm: [...accepted] }) });
       const json = await res.json();
       if (json.ok === false && json.error && !json.modules) setError(L(`error.${json.error}`));
       else { setReport(json); setPreview(null); }
@@ -48,7 +50,7 @@ export function RestorePanel({ labels }: { labels: Labels }) {
         <ul className="list-disc pl-5 text-sm">
           {report.modules.map((m) => <li key={m.id}><span className="font-mono">{m.id}</span> — {L(`outcome.${m.outcome}`)}{m.error ? ` (${m.error})` : ""}</li>)}
         </ul>
-        {report.ok && <a href="/admin/login" className={ui.btnPrimary}>{L("login")}</a>}
+        {report.ok && <a href={loginHref} className={ui.btnPrimary}>{L("login")}</a>}
       </div>
     );
   }
@@ -58,6 +60,7 @@ export function RestorePanel({ labels }: { labels: Labels }) {
       {!preview && (
         <form onSubmit={check} className="space-y-3">
           <label className="block text-sm"><span className={ui.label}>{L("file")}</span><input name="file" type="file" required className={ui.input} /></label>
+          {needsToken && <label className="block text-sm"><span className={ui.label}>{L("setupToken")}</span><input type="password" required value={setupToken} onChange={(e) => setSetupToken(e.target.value)} autoComplete="off" className={ui.input} /></label>}
           <label className="block text-sm"><span className={ui.label}>{L("password")}</span><input name="password" type="password" required autoComplete="off" className={ui.input} /></label>
           <button className={ui.btn} disabled={busy}>{L("check")}</button>
         </form>

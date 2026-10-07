@@ -488,5 +488,12 @@
   "backup.error.forbidden": "Action refusée.",
   "backup.error.unauthorized": "Session expirée : reconnectez-vous.",
   "modules.browseMarketplace": "Parcourir la marketplace",
-  "modules.bundled": "livré avec le framework"
+  "modules.bundled": "livré avec le framework",
+  "setup.restore.link": "J'ai déjà une sauvegarde : la restaurer plutôt que créer un nouveau site",
+  "setup.restore.title": "Restaurer une sauvegarde",
+  "setup.restore.help": "Retrouvez votre site tel qu'il était : contenus, réglages, utilisateurs, modules (réinstallés depuis la marketplace) et images. Choisissez votre fichier de sauvegarde et le mot de passe que vous aviez choisi en le créant.",
+  "setup.restore.back": "← Créer un nouveau site à la place",
+  "setup.restore.token": "Jeton d'installation (SETUP_TOKEN)",
+  "backup.error.already-configured": "Ce site est déjà configuré : connectez-vous à l'admin pour restaurer.",
+  "backup.error.invalid-token": "Jeton d'installation incorrect."
 }
