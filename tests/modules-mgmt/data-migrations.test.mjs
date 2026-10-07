@@ -189,3 +189,38 @@ test("suppression d'une instance : sa version de données et son statut disparai
   await deleteInstance(fresh.id);
   assert.equal(await db.prisma.setting.count({ where: { key: { startsWith: `instance.${fresh.id}.` } } }), 0);
 });
+
+test("VERSIONS SAUTÉES : 1.0 → 1.3 rejoue la migration de 1.1 avec le code de 1.1, même si 1.3 ne la contient plus", async () => {
+  const repo = repoV1(); await installV1(repo);
+  const a = await instance("Carnet");
+  repo.release("1.1.0", 2, code([2]));          // renommage name → author
+  repo.release("1.2.0", 2, "export default {};"); // aucune évolution de données
+  repo.release("1.3.0", 3, code([3]));           // le code récent ne connaît plus l'étape 2
+  const result = await updateModule("carnet");
+  assert.equal(result.ok, true);
+  assert.deepEqual(await notes(a), [{ text: "un", author: "Alice", tags: [] }, { text: "deux", author: "Bob", tags: [] }], "étape 2 (code de 1.1) puis 3 (code de 1.3)");
+  assert.equal(await D.dataVersionOf(a.id), 3);
+  assert.equal(await D.dataStatusOf(a.id), null);
+  assert.equal((await db.prisma.module.findUnique({ where: { id: "carnet" } })).ref, "v1.3.0");
+  assert.equal((await R.getModule("carnet")).manifest.version, "1.3.0");
+  assert.ok(fs.readdirSync(path.join(process.env.DATA_DIR, "backups")).some((f) => f.startsWith("pre-migration-")), "copie de la base avant migration");
+});
+
+test("VERSIONS SAUTÉES : si la migration d'une version intermédiaire échoue, on s'arrête sur elle, données intactes, instance à l'écart", async () => {
+  const repo = repoV1(); await installV1(repo);
+  const a = await instance("Carnet");
+  repo.release("1.1.0", 2, "export default { migrations: { 2: async () => { throw new Error('bug en 1.1'); } } };");
+  repo.release("1.2.0", 3, code([3]));
+  const result = await quiet(() => updateModule("carnet"));
+  assert.equal(result.ok, true);
+  assert.equal(result.migrations[0].status, "failed");
+  assert.equal((await db.prisma.module.findUnique({ where: { id: "carnet" } })).ref, "v1.1.0", "arrêté à la version fautive");
+  assert.equal((await D.dataStatusOf(a.id)).status, "failed");
+  assert.deepEqual(await notes(a), [{ name: "Alice", text: "un" }, { name: "Bob", text: "deux" }], "intactes");
+  // l'auteur corrige dans une version suivante : la mise à jour reprend et rejoue la suite
+  repo.release("1.1.1", 2, code([2]));
+  const again = await updateModule("carnet");
+  assert.equal(again.ok, true);
+  assert.deepEqual(await notes(a), [{ text: "un", author: "Alice", tags: [] }, { text: "deux", author: "Bob", tags: [] }]);
+  assert.equal(await D.dataVersionOf(a.id), 3);
+});

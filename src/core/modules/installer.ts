@@ -8,7 +8,7 @@ import { parseManifest } from "./manifest";
 import { forgetModule, getModule, moduleDir, readGitManifest } from "./registry";
 import { findMarketplaceEntry, readBundledManifest } from "./marketplace";
 import { migrateModuleInstances, type MigrationOutcome } from "./dataMigrations";
-import { classify, pickLatestTag, TAG_RE, type UpdateLevel } from "../updates/versions";
+import { classify, compareVersions, pickLatestTag, TAG_RE, type UpdateLevel } from "../updates/versions";
 import { BUILTIN_MODULES } from "@/modules-builtin";
 
 const run = promisify(execFile);
@@ -141,6 +141,13 @@ export type ModuleUpdateCheck = {
   remote?: string;
 };
 
+/** Toutes les versions stables (`vX.Y.Z`) du dépôt, de la plus ancienne à la plus récente. */
+async function remoteTags(repoUrl: string): Promise<string[]> {
+  const out = await git(["ls-remote", "--tags", "--refs", "--", repoUrl]);
+  const tags = out.split("\n").map((l) => l.split("refs/tags/")[1]?.trim()).filter((t): t is string => !!t && TAG_RE.test(t));
+  return tags.sort(compareVersions);
+}
+
 /** Plus haute version stable (`vX.Y.Z`) du dépôt d'un module. */
 async function latestRemoteTag(repoUrl: string): Promise<string | null> {
   return pickLatestTag(await git(["ls-remote", "--tags", "--refs", "--", repoUrl]));
@@ -208,6 +215,11 @@ export async function updateModule(id: string): Promise<InstallResult> {
     } else {
       fetchRef = row.ref ?? "HEAD";
     }
+    // Versions sautées : on rejoue leurs migrations de données, dans l'ordre, avec LEUR code, avant de passer à la dernière.
+    if (isStableTag(row.ref) && newRef !== row.ref) {
+      const replay = await replaySkippedReleases(id, dir, row.repoUrl, row.ref, newRef as string);
+      if (replay) return replay;
+    }
     await git(["fetch", "--depth", "1", "origin", fetchRef], dir);
     await git(["reset", "--hard", "FETCH_HEAD"], dir);
     const commit = await git(["rev-parse", "HEAD"], dir);
@@ -226,6 +238,30 @@ export async function updateModule(id: string): Promise<InstallResult> {
     console.error("[modules] update failed:", (error as Error)?.message);
     return { ok: false, error: (error as { code?: string })?.code ?? "modules.error.clone" };
   }
+}
+
+/**
+ * Mise à jour 1.2 → 1.6 alors que 1.3, 1.4 et 1.5 existent : chaque version intermédiaire change peut-être le modèle de données. On extrait
+ * donc chacune à son tour, on exécute SES migrations (jusqu'à sa propre `dataVersion`), puis on passe à la suivante ; la dernière version
+ * trouve des données déjà au bon format. Les versions sans changement de données n'ont rien à déclarer.
+ * Si une étape échoue, la mise à jour s'arrête sur cette version (données remises comme avant l'étape, instance mise à l'écart, « Réessayer »
+ * possible) et on renvoie le résultat ; sinon `null` et la mise à jour continue vers la cible.
+ */
+async function replaySkippedReleases(id: string, dir: string, repoUrl: string, from: string, to: string): Promise<InstallResult | null> {
+  const between = (await remoteTags(repoUrl)).filter((t) => compareVersions(t, from) > 0 && compareVersions(t, to) < 0);
+  for (const tag of between) {
+    await git(["fetch", "--depth", "1", "origin", `refs/tags/${tag}`], dir);
+    await git(["reset", "--hard", "FETCH_HEAD"], dir);
+    const manifest = readGitManifest(id);
+    if (!manifest || manifest.id !== id || (manifest.dataVersion ?? 1) <= 1) continue;   // version illisible ou sans données propres : rien à rejouer
+    // Le module « devient » cette version le temps de sa migration (le code est chargé d'après le commit enregistré).
+    const commit = await git(["rev-parse", "HEAD"], dir);
+    await prisma.module.update({ where: { id }, data: { commit, version: manifest.version, ref: tag } });
+    forgetModule(id);
+    const migrations = await migrateModuleInstances(id, { skipNewer: true });
+    if (migrations.some((m) => m.status === "failed" || m.status === "newer")) return { ok: true, id, migrations };
+  }
+  return null;
 }
 
 export async function setModuleEnabled(id: string, enabled: boolean): Promise<InstallResult> {

@@ -385,7 +385,7 @@ export default {
 ```
 
 Le cœur retient la version des données **de chaque instance** (absente = 1) et, après une **mise à jour du module** ou une **restauration de sauvegarde**, exécute pour
-chaque instance en retard les migrations manquantes, **dans l'ordre** (une version sans fonction avance simplement le numéro). Une instance **créée** après coup
+chaque instance en retard les migrations manquantes, **dans l'ordre** (si l'utilisateur a sauté des versions, le cœur rejoue chaque étiquette intermédiaire `vX.Y.Z` avec son propre code, l'une après l'autre, puis installe la dernière ; s'il y a un échec il s'arrête sur la version fautive) (une version sans fonction avance simplement le numéro). Une instance **créée** après coup
 naît directement à la version courante. Garanties :
 
 - une **copie de la base** est gardée avant (`data/backups/pre-migration-*.db`) ;

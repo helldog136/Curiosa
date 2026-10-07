@@ -84,14 +84,17 @@ export async function migrateInstance(mod: LoadedModule, instance: InstanceView)
 }
 
 /** Migre toutes les instances d'un module (après sa mise à jour). */
-export async function migrateModuleInstances(moduleId: string): Promise<MigrationOutcome[]> {
+export async function migrateModuleInstances(moduleId: string, opts: { skipNewer?: boolean } = {}): Promise<MigrationOutcome[]> {
   const mod = await getModule(moduleId);
   if (!mod) return [];
   const rows = await prisma.moduleInstance.findMany({ where: { moduleId }, select: { id: true } });
   const results: MigrationOutcome[] = [];
   for (const { id } of rows) {
     const instance = await getInstanceById(id);
-    if (instance) results.push(await migrateInstance(mod, instance));
+    if (!instance) continue;
+    // Rejeu d'une version intermédiaire : une instance déjà plus avancée que cette version n'est pas « plus récente que le code », elle attend la suite.
+    if (opts.skipNewer && (await dataVersionOf(instance.id)) > targetVersion(mod)) continue;
+    results.push(await migrateInstance(mod, instance));
   }
   return results;
 }

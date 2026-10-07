@@ -338,7 +338,7 @@ Les arguments inconnus sont refusés ; le schéma `input` accepte `type`, `prope
 Quand une version de votre module change la **forme** des données qu'il stocke, déclarez `"dataVersion": N` dans `module.json` et écrivez la fonction `migrations[N]` (elle reçoit `ctx`) qui convertit les données
 d'**une** instance de la version N-1 à N (voir [MODULES.md › `migrations`](MODULES.md)). Le cœur les exécute dans l'ordre après une mise à jour du module ou une restauration de sauvegarde, garde
 une copie de la base avant, et si l'une échoue **remet l'instance dans son état d'avant** et la met à l'écart avec un bouton « Réessayer ». Gardez-les idempotentes, testez-les sur des données de
-l'ancienne version, et ne retirez jamais une migration publiée.
+l'ancienne version. Si l'utilisateur **saute des versions** (1.2 → 1.6), le framework récupère chaque étiquette intermédiaire (1.3, 1.4, 1.5) et exécute la migration **de cette version, avec son code**, avant de passer à la suivante : votre dernière version n'a donc pas besoin de garder les anciennes migrations. Pour que cela marche, publiez chaque version sous une étiquette `vX.Y.Z` et ne supprimez pas les étiquettes.
 
 ## 13. Sauvegarde lisible
 
