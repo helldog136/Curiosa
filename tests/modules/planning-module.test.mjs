@@ -210,11 +210,9 @@ test("morceau « prochains jours » : un jour par ligne, nombre de jours borné 
   assert.equal(await def.sections.days(ctxWith({ icsUrl: "" }), {}), null);
 });
 
-test("morceaux du planning : tailles recommandées pour la grille de l'accueil", async () => {
+test("morceaux du planning : tailles naturelles recommandées pour l'accueil fluide", async () => {
   const fs = await import("node:fs");
   const m = JSON.parse(fs.readFileSync("modules-community/planning/module.json", "utf8"));
   const size = Object.fromEntries(m.sections.map((s) => [s.id, s.size]));
-  assert.deepEqual(size.next, { w: 2, h: 1 });
-  assert.deepEqual(size.days, { w: 2, h: 2 });
-  assert.deepEqual(size.upcoming, { w: 4, h: 2 });
+  assert.deepEqual([size.next, size.days, size.upcoming], ["small", "medium", "large"]);
 });

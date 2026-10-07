@@ -87,7 +87,7 @@ export const manifestSchema = z.object({
   page: z.boolean().optional(),
   basePath: z.string().regex(/^[a-z0-9-]*$/).optional(),
   sections: z
-    .array(z.object({ id: z.string().regex(/^[a-z][a-z0-9-]{0,30}$/), label: localized, options: z.array(settingField).max(10).optional(), size: z.object({ w: z.number().int().min(1).max(12), h: z.number().int().min(1).max(6).optional() }).optional() }))
+    .array(z.object({ id: z.string().regex(/^[a-z][a-z0-9-]{0,30}$/), label: localized, options: z.array(settingField).max(10).optional(), size: z.enum(["small", "medium", "large", "full"]).optional() }))
     .max(20)
     .default([]),
   settings: z.array(settingField).max(60).default([]),

@@ -34,13 +34,17 @@ export type ContentConfig = {
   showInNav?: boolean;
 };
 
+/** Taille naturelle d'un morceau de l'accueil : la page s'écoule, ces tailles disent seulement la place qu'il aime prendre. */
+export const SECTION_SIZES = ["small", "medium", "large", "full"] as const;
+export type SectionSize = (typeof SECTION_SIZES)[number];
+
 export type SectionDecl = {
   id: string;
   label: LocalizedString;
   /** Options réglées à chaque placement de la section sur l'accueil. */
   options?: SettingField[];
-  /** Taille recommandée sur la grille de l'accueil, en cases (l'administrateur peut la changer). Absent = toute la largeur, 1 case de haut. */
-  size?: { w: number; h?: number };
+  /** Taille naturelle recommandée sur l'accueil (l'administrateur peut la changer). Absent = pleine largeur. */
+  size?: SectionSize;
 };
 
 /** Catégorie d'un module : décide où il apparaît dans l'admin et comment ses instances sont exposées. */

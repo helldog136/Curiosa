@@ -152,3 +152,9 @@ test("sujets : ceux de nos modules sont en anglais, en minuscules, et listés da
     assert.ok(doc.includes(`\`${topic}\``), `sujet « ${topic} » absent du tableau « Sujets connus » de docs/MODULES.md`);
   }
 });
+
+test("accueil fluide : la liste d'entrées s'adapte à la place de sa case, pas à la largeur de l'écran", () => {
+  const list = read("src/components/site/EntryList.tsx");
+  assert.ok(list.includes("auto-fill") && list.includes("minmax("), "colonnes intrinsèques (auto-fill + minmax)");
+  assert.ok(!/\b(sm|md|lg|xl):grid-cols-/.test(list), "pas de colonnes réglées sur la largeur de l'écran : dans une case étroite, les cartes seraient écrasées");
+});

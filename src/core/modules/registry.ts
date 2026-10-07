@@ -162,7 +162,7 @@ const RANDOM: SectionDecl = {
   id: "random",
   label: { en: "A random entry", fr: "Une entrée au hasard" },
   options: [{ key: "count", type: "number", label: { en: "How many", fr: "Combien" }, default: 1 }],
-  size: { w: 2, h: 1 },
+  size: "small",
 };
 
 /**

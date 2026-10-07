@@ -1,4 +1,5 @@
 import test, { beforeEach, after } from "node:test";
+import fs from "node:fs";
 import assert from "node:assert/strict";
 import { useTestDb } from "../helpers/db.mjs";
 
@@ -11,6 +12,7 @@ const { getSiteConfig, setSetting } = await import("@/core/settings");
 const { createInstance } = await import("@/core/instanceService");
 const { createEntry } = await import("@/core/content/service");
 const { BUILTIN_MODULES } = await import("@/modules-builtin");
+const { SECTION_SIZES } = await import("@/core/modules/types");
 
 beforeEach(() => db.reset());
 after(() => db.close());
@@ -18,61 +20,39 @@ after(() => db.close());
 const manifest = (id) => BUILTIN_MODULES.find((b) => b.manifest.id === id).manifest;
 const base = (over) => ({ apiVersion: 2, version: "1.0.0", id: "demo", name: "Demo", ...over });
 
-test("taille : choix de l'admin > recommandation du module > toute la largeur ; bornes respectées", () => {
-  assert.deepEqual(H.resolveSize({}, undefined), { w: 12, h: 1 }, "sans recommandation : toute la largeur");
-  assert.deepEqual(H.resolveSize({}, { w: 2, h: 3 }), { w: 2, h: 3 });
-  assert.deepEqual(H.resolveSize({ w: 4 }, { w: 2, h: 3 }), { w: 4, h: 3 }, "l'admin change la largeur seulement");
-  assert.deepEqual(H.resolveSize({ w: 1, h: 1 }, { w: 6, h: 6 }), { w: 1, h: 1 });
-  assert.deepEqual(H.resolveSize({ w: 99, h: 99 }, undefined), { w: 12, h: 6 }, "plafonné");
-  assert.deepEqual(H.resolveSize({ w: -3, h: 0 }, { w: 2 }), { w: 2, h: 1 }, "valeurs absurdes → recommandation");
-  assert.deepEqual(H.resolveSize({ w: "abc", h: NaN }, undefined), { w: 12, h: 1 });
+test("taille : choix de l'admin > recommandation du module > pleine largeur ; valeurs inconnues ignorées", () => {
+  assert.equal(H.resolveSize({}, undefined), "full");
+  assert.equal(H.resolveSize({}, "small"), "small");
+  assert.equal(H.resolveSize({ size: "large" }, "small"), "large", "l'admin l'emporte");
+  assert.equal(H.resolveSize({ size: "enorme" }, "medium"), "medium", "taille inconnue → recommandation");
+  assert.equal(H.resolveSize({ size: 12 }, "enorme"), "full");
+  assert.deepEqual([...SECTION_SIZES], ["small", "medium", "large", "full"]);
 });
 
-test("grille : une colonne par défaut (mobile d'abord), une colonne de plus à chaque palier jusqu'au maximum", () => {
-  const css = H.homeGridCss(4, [{ w: 12, h: 1 }, { w: 2, h: 2 }]);
-  assert.match(css, /^\.vh-grid\{display:grid;gap:1\.5rem;grid-template-columns:minmax\(0,1fr\)\}/);
-  const queries = [...css.matchAll(/@media\(min-width:(\d+)px\)\{\.vh-grid\{grid-template-columns:repeat\((\d+),/g)].map((m) => [Number(m[1]), Number(m[2])]);
-  assert.deepEqual(queries.map((q) => q[1]), [2, 3, 4], "jamais plus que le maximum réglé");
-  assert.deepEqual(queries.map((q) => q[0]), [2, 3, 4].map(H.columnBreakpoint));
-  assert.ok(queries.every((q, i) => i === 0 || q[0] > queries[i - 1][0]), "paliers croissants : le plus large l'emporte");
-  assert.equal(H.columnBreakpoint(1), 0);
+test("accueil fluide : aucun réglage de colonnes ni de hauteur — seulement l'ordre et une taille naturelle", async () => {
+  const cfg = await getSiteConfig();
+  assert.ok(!("homeColumns" in cfg));
+  const css = fs.readFileSync("src/app/globals.css", "utf8");
+  assert.match(css, /\.vh-flow\s*\{[^}]*display:\s*flex;[^}]*flex-wrap:\s*wrap/, "les morceaux s'écoulent à la ligne");
+  assert.match(css, /\.vh-cell\s*\{[^}]*flex:\s*1 1 var\(--vh-basis\)/, "ils s'étirent pour remplir la ligne");
+  for (const size of SECTION_SIZES) assert.match(css, new RegExp(`\\.vh-${size}\\s*\\{[^}]*--vh-basis`), size);
+  assert.ok(!/media\s*\(/.test(css.slice(css.indexOf(".vh-flow"))), "pas de paliers fixes : le navigateur décide selon la place");
+  assert.ok(!/grid-template|grid-column|grid-row/.test(css.slice(css.indexOf(".vh-flow"))), "pas de grille");
 });
 
-test("grille : une seule colonne configurée → aucune règle à plusieurs colonnes", () => {
-  assert.ok(!H.homeGridCss(1, [{ w: 3, h: 2 }]).includes("@media"));
+test("accueil fluide : les tailles vont du petit encart à la pleine largeur, dans l'ordre croissant", () => {
+  const css = fs.readFileSync("src/app/globals.css", "utf8");
+  const basis = (z) => css.match(new RegExp(`\\.vh-${z}\\s*\\{\\s*--vh-basis:\\s*([\\d.]+)(rem|%)`));
+  const [small, medium, large] = ["small", "medium", "large"].map((z) => Number(basis(z)[1]));
+  assert.ok(small < medium && medium < large);
+  assert.equal(basis("full")[1], "100");
 });
 
-test("grille : un morceau couvre min(largeur, colonnes affichées) ; la hauteur ne vaut qu'à plusieurs colonnes", () => {
-  const css = H.homeGridCss(4, [{ w: 12, h: 1 }, { w: 2, h: 3 }, { w: 3, h: 1 }]);
-  const at = (c) => css.slice(css.indexOf(`repeat(${c},`), css.indexOf(`repeat(${c + 1},`) > 0 ? css.indexOf(`repeat(${c + 1},`) : undefined);
-  assert.match(at(2), /\.vh-s0\{grid-column:span 2;grid-row:span 1\}\.vh-s1\{grid-column:span 2;grid-row:span 3\}\.vh-s2\{grid-column:span 2;grid-row:span 1\}/, "à 2 colonnes, tout est borné à 2");
-  assert.match(at(4), /\.vh-s0\{grid-column:span 4;/, "pleine largeur = toutes les colonnes affichées");
-  assert.match(at(4), /\.vh-s2\{grid-column:span 3;/);
-  assert.ok(!css.split("@media")[0].includes("grid-row"), "à une colonne : pas de hauteur, les morceaux s'empilent");
-});
-
-test("grille : maximum 12 colonnes, valeurs absurdes → 4 ; le CSS ne contient que des nombres calculés", () => {
-  assert.equal([...H.homeGridCss(99, [{ w: 1, h: 1 }]).matchAll(/repeat\((\d+),/g)].length, 11);
-  assert.equal([...H.homeGridCss("abc", [{ w: 1, h: 1 }]).matchAll(/repeat\((\d+),/g)].length, 3);
-  const css = H.homeGridCss(6, [{ w: 2, h: 2 }, { w: 3, h: 1 }]);
-  assert.ok(!/[<>"'\\]/.test(css), "rien d'injectable");
-});
-
-test("accueil : colonnes réglables (1 à 12, 4 par défaut)", async () => {
-  assert.equal((await getSiteConfig()).homeColumns, 4);
-  await setSetting("home.columns", 6);
-  assert.equal((await getSiteConfig()).homeColumns, 6);
-  await setSetting("home.columns", 50);
-  assert.equal((await getSiteConfig()).homeColumns, 12);
-  await setSetting("home.columns", 0);
-  assert.equal((await getSiteConfig()).homeColumns, 4);
-});
-
-test("manifeste : une section peut recommander une taille, bornée à 12 × 6", () => {
+test("manifeste : une section recommande une taille parmi les quatre connues", () => {
   const sec = (size) => base({ sections: [{ id: "x", label: "X", size }] });
-  assert.ok(parseManifest(sec({ w: 2, h: 3 })).ok);
-  assert.ok(parseManifest(sec({ w: 12 })).ok);
-  for (const bad of [{ w: 0 }, { w: 13 }, { w: 2, h: 7 }, { w: 1.5 }, { h: 2 }]) assert.equal(parseManifest(sec(bad)).ok, false, JSON.stringify(bad));
+  for (const ok of ["small", "medium", "large", "full"]) assert.ok(parseManifest(sec(ok)).ok, ok);
+  for (const bad of ["huge", 2, { w: 2 }, "SMALL"]) assert.equal(parseManifest(sec(bad)).ok, false, JSON.stringify(bad));
+  assert.ok(parseManifest(base({ sections: [{ id: "x", label: "X" }] })).ok, "facultative");
 });
 
 async function blogLike(id, nickname) {
@@ -83,7 +63,7 @@ async function blogLike(id, nickname) {
 test("morceaux : « au hasard » proposé aux modules dont les entrées portent un code (codes promo), pas aux autres", () => {
   assert.ok(R.sectionsOf(manifest("codes")).some((s) => s.id === "random"));
   for (const id of ["blog", "links", "pages", "collection"]) assert.ok(!R.sectionsOf(manifest(id)).some((s) => s.id === "random"), id);
-  assert.deepEqual(R.sectionsOf(manifest("codes")).find((s) => s.id === "random").size, { w: 2, h: 1 });
+  assert.equal(R.sectionsOf(manifest("codes")).find((s) => s.id === "random").size, "small");
   assert.ok(R.sectionsOf(manifest("codes")).some((s) => s.id === "latest"));
 });
 
@@ -100,17 +80,17 @@ test("accueil : tailles résolues selon les modules actifs ; section inconnue �
   const active = await R.getActiveInstances();
   const layout = H.homeLayout([
     { id: "a", instance: "codes", section: "random", options: {} },
-    { id: "b", instance: "codes", section: "random", options: {}, w: 6, h: 2 },
+    { id: "b", instance: "codes", section: "random", options: {}, size: "large" },
     { id: "c", instance: "blog", section: "latest", options: {} },
     { id: "d", instance: "inconnue", section: "x", options: {} },
   ], active);
-  assert.deepEqual(layout.map((l) => [l.w, l.h]), [[2, 1], [6, 2], [12, 1], [12, 1]]);
+  assert.deepEqual(layout.map((l) => l.size), ["small", "large", "full", "full"]);
 });
 
 test("accueil : le choix de l'admin est conservé quand le module change sa recommandation", () => {
-  const section = { id: "a", instance: "k", section: "s", options: {}, w: 3 };
-  assert.deepEqual(H.resolveSize(section, { w: 2, h: 1 }), { w: 3, h: 1 });
-  assert.deepEqual(H.resolveSize(section, { w: 2, h: 4 }), { w: 3, h: 4 }, "la hauteur suit le module tant qu'elle n'est pas choisie");
+  const section = { id: "a", instance: "k", section: "s", options: {}, size: "large" };
+  assert.equal(H.resolveSize(section, "small"), "large");
+  assert.equal(H.resolveSize({ ...section, size: undefined }, "medium"), "medium", "sans choix, la recommandation suit le module");
 });
 
 test("accueil : une entrée expirée n'est jamais tirée au hasard", async () => {

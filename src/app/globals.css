@@ -43,3 +43,11 @@
     transition: none !important;
   }
 }
+
+/* Accueil fluide : les morceaux s'écoulent à la ligne, chacun avec une taille naturelle (voir src/core/home.ts). */
+.vh-flow { display: flex; flex-wrap: wrap; gap: 2rem 1.5rem; align-items: stretch; }
+.vh-cell { min-width: 0; flex: 1 1 var(--vh-basis); max-width: min(100%, var(--vh-max)); }
+.vh-small  { --vh-basis: 14rem; --vh-max: 24rem; }
+.vh-medium { --vh-basis: 22rem; --vh-max: 36rem; }
+.vh-large  { --vh-basis: 34rem; --vh-max: 100%; }
+.vh-full   { --vh-basis: 100%;  --vh-max: 100%; }

@@ -36,10 +36,7 @@
           }
         }
       ],
-      "size": {
-        "w": 4,
-        "h": 2
-      }
+      "size": "large"
     },
     {
       "id": "next",
@@ -47,10 +44,7 @@
         "en": "Next stream",
         "fr": "Prochain stream"
       },
-      "size": {
-        "w": 2,
-        "h": 1
-      }
+      "size": "small"
     },
     {
       "id": "days",
@@ -58,10 +52,7 @@
         "en": "The next days (compact)",
         "fr": "Les prochains jours (miniature)"
       },
-      "size": {
-        "w": 2,
-        "h": 2
-      },
+      "size": "medium",
       "options": [
         {
           "key": "count",

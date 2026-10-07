@@ -345,28 +345,29 @@ export default {
 };
 ```
 
-### Sections (page d'accueil) : une grille
+### Sections (page d'accueil) : un accueil fluide
 
-La page d'accueil appartient au cœur : elle n'a pas de contenu propre, c'est une **grille** de morceaux (sections) proposés par les
-modules actifs. Dans *Accueil*, l'administrateur règle le **nombre maximal de colonnes** (1 à 12, 4 par défaut) puis ajoute, ordonne et
-dimensionne ses morceaux : chacun occupe `largeur × hauteur` **cases**. Le rendu fait de son mieux : sur un écran étroit il affiche
-**moins de colonnes** (une seule sur téléphone, les morceaux s'empilent), un morceau plus large que le nombre de colonnes affichées prend
-toute la largeur, et la hauteur (≥ 2 colonnes seulement) est un minimum que le contenu peut dépasser.
+La page d'accueil appartient au cœur : elle n'a pas de contenu propre, c'est un **flux** de morceaux (sections) proposés par les
+modules actifs. Dans *Accueil*, l'administrateur ajoute, ordonne et choisit la **taille naturelle** de chacun : `small` (petit encart :
+un code, le prochain stream), `medium` (une carte), `large` (un morceau qui aime la place) ou `full` (toute la largeur).
+Il n'y a ni colonnes ni lignes à régler : les morceaux s'écoulent dans l'ordre, **à la ligne quand la place manque, comme du texte**.
+Plusieurs petits morceaux se rangent côte à côte et s'étirent pour remplir la ligne ; sur un téléphone tout s'empile ; la hauteur est
+toujours celle du contenu. Un morceau sans rien à montrer disparaît et les autres s'écoulent à sa place.
 
 Un module déclare ses sections dans `module.json` et peut **recommander une taille** (l'administrateur peut la changer ; sans
-recommandation : toute la largeur, 1 case de haut) :
+recommandation : `full`) :
 
 ```jsonc
 "sections": [
-  { "id": "next", "label": { "en": "Next stream" }, "size": { "w": 2, "h": 1 } },
-  { "id": "days", "label": { "en": "The next days" }, "size": { "w": 2, "h": 2 },
+  { "id": "next", "label": { "en": "Next stream" }, "size": "small" },
+  { "id": "days", "label": { "en": "The next days" }, "size": "medium",
     "options": [{ "key": "count", "type": "number", "default": 3, "label": { "en": "How many days" } }] }
 ]
 ```
 
 Le cœur fournit déjà deux sections aux modules à contenu : `latest` (les dernières entrées) et, pour ceux dont les entrées portent un
-code (codes promo…), `random` (un code au hasard, 2 × 1). Un module sans rien à montrer (calendrier vide…) renvoie `null` : sa case disparaît.
-Son rendu doit rester lisible dans une petite case : titre court, peu de texte.
+code (codes promo…), `random` (un code au hasard, `small`). Le rendu d'une section doit rester lisible quelle que soit la place qu'on lui
+laisse : titre court, peu de texte, pas de largeur fixe.
 
 Chaque placement est `(instance, section)` + options + taille. Déclarez-la dans
 `module.json` (`sections`) et implémentez `sections.<id>(ctx, options)` qui renvoie des blocs.

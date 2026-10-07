@@ -72,7 +72,7 @@ export function EntryList({ entries, collection, locale, defaultLocale }: Props)
   }
 
   return (
-    <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+    <ul className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,15rem),1fr))] gap-5">
       {entries.map((e) => {
         const { href, external } = entryHref(e, collection, defaultLocale);
         const isCode = collection.display === "codes";
