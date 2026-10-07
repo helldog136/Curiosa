@@ -93,3 +93,7 @@ Socle fonctionnel de bout en bout (testé : assistant → site public → deux b
 réseaux → traduction → redirection → installation d'un module git et instances). Pas encore fait, volontairement laissé pour
 la suite : sauvegardes/restauration depuis l'admin, authentification à deux facteurs,
 envoi d'emails, image Docker publiée, messages d'interface dans d'autres langues que fr/en.
+
+## Licence
+
+Vitrine est distribué sous licence **MIT** (voir [`LICENSE`](LICENSE)), modules livrés (`modules-community/`, `modules-examples/`) compris. Les dépendances tierces gardent leur propre licence : la liste complète, avec les textes, est dans [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md), générée par `npm run licenses` (un test vérifie qu'elle est à jour et qu'aucune dépendance n'a de licence incompatible). Un module installé depuis un dépôt tiers reste sous la licence que son auteur a déclarée dans `module.json`.
