@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { adminCtx } from "@/core/admin";
 import { audit } from "@/core/permissions";
-import { checkForUpdate, getUpdateCheck, setAutoUpdate, startUpdate } from "@/core/updates/service";
+import { checkForUpdate, getUpdateCheck, setAutoUpdate, setUpdateChannel, startUpdate } from "@/core/updates/service";
 import type { ActionState } from "@/components/admin/ActionForm";
 
 /** Réservé au propriétaire : une mise à jour change le code qui tourne sur le serveur. */
@@ -30,6 +30,18 @@ export async function saveAutoUpdate(_prev: ActionState, formData: FormData): Pr
   const on = formData.get("auto") === "on";
   await setAutoUpdate(on);
   await audit(user.email, on ? "update.auto.on" : "update.auto.off");
+  revalidatePath("/admin/updates");
+  return { ok: t("action.saved") };
+}
+
+/** Canal « release candidates » : réservé au mode avancé, car une rc n'a pas fini d'être éprouvée. */
+export async function saveChannel(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const { user, t, advanced } = await adminCtx("owner");
+  if (!advanced) return { error: t("error.generic") };
+  const rc = formData.get("rc") === "on" && formData.get("rcRisk") === "on";
+  await setUpdateChannel(rc ? "rc" : "stable");
+  await checkForUpdate();
+  await audit(user.email, rc ? "update.channel.rc" : "update.channel.stable");
   revalidatePath("/admin/updates");
   return { ok: t("action.saved") };
 }

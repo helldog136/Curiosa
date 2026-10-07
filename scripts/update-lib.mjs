@@ -8,7 +8,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
-export const TAG_RE = /^v?\d+\.\d+\.\d+$/;
+export const TAG_RE = /^v?\d+\.\d+\.\d+(-rc\.\d+)?$/; // stable ou release candidate (le choix du canal se fait côté admin)
 export const REPO_RE = /^[A-Za-z0-9._-]{1,100}\/[A-Za-z0-9._-]{1,100}$/;
 const STALE_LOCK_MS = 60 * 60_000;
 const KEEP_BACKUPS = 5;

@@ -9,7 +9,7 @@ import { assetName, platformId, REPO_RE, validManifestPaths } from "./update-lib
 
 const version = String(process.argv[2] ?? "").replace(/^v/, "");
 const outDir = path.resolve(process.argv[3] ?? "dist");
-if (!/^\d+\.\d+\.\d+$/.test(version)) { console.error("Usage : node scripts/release-pack.mjs <X.Y.Z> [sortie]"); process.exit(1); }
+if (!/^\d+\.\d+\.\d+(-rc\.\d+)?$/.test(version)) { console.error("Usage : node scripts/release-pack.mjs <X.Y.Z[-rc.N]> [sortie]"); process.exit(1); }
 const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
 if (pkg.version !== version) { console.error(`package.json est en ${pkg.version}, pas en ${version} : corrigez la version avant d'étiqueter.`); process.exit(1); }
 const repo = process.env.GITHUB_REPOSITORY ?? process.env.VITRINE_RELEASE_REPO ?? "";

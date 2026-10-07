@@ -396,7 +396,7 @@
   "updates.unreachable": "The repository could not be reached.",
   "updates.check": "Check now",
   "updates.apply": "Install {version}",
-  "updates.confirm": "Before updating: the database is backed up, then the new version is installed and built; if anything fails, the previous version is restored automatically. The site may be unavailable for a moment at restart — and longer (a few minutes) if dependencies changed.",
+  "updates.confirm": "Before updating: the database is backed up, then the new (already compiled) version is downloaded, verified and installed; if anything fails, the previous version is restored automatically. The site is unavailable for a moment while it restarts.",
   "updates.found": "Version {version} is available.",
   "updates.nothingToApply": "No update to install.",
   "updates.started": "Update to {version} started. This page refreshes by itself.",
@@ -610,5 +610,11 @@
   "setup.welcome.name": "What's your name?",
   "setup.welcome.nameHelp": "Your first name is enough: that's how your dashboard will talk to you.",
   "setup.account.help": "Your email and password will let you sign back in to your dashboard.",
-  "dashboard.welcome": "Your site is live, {name}! Here's where to start: write a first post, pick your colors, or go and see the result."
+  "dashboard.welcome": "Your site is live, {name}! Here's where to start: write a first post, pick your colors, or go and see the result.",
+  "updates.rcWarning": "⚠️ This version is a release candidate: it hasn't finished being tested and may contain defects. At your own risk — take a real backup first (Backup page).",
+  "updates.channelTitle": "Early versions (release candidates)",
+  "updates.channelHelp": "By default the site only offers stable versions. Release candidates are upcoming versions published ahead of release so they can be tested. Going back to the stable channel doesn't downgrade you: you stay on your version until a newer stable one is out.",
+  "updates.channelRc": "Offer me release candidates",
+  "updates.channelRisk": "I understand this is at my own risk",
+  "updates.channelRiskHelp": "A release candidate is never installed automatically, even when automatic updates are on."
 }

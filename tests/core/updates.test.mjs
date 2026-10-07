@@ -12,8 +12,8 @@ const { runUpdate, readState, resolveSqlitePath, safeEntry } = await import("../
 const sh = promisify(execFile);
 
 test("versions : étiquettes stables seulement, comparaison numérique (1.10 > 1.9)", () => {
-  assert.deepEqual(V.parseVersion("v1.2.3"), [1, 2, 3]);
-  assert.deepEqual(V.parseVersion("10.0.1"), [10, 0, 1]);
+  assert.deepEqual(V.parseVersion("v1.2.3"), [1, 2, 3, Infinity]);
+  assert.deepEqual(V.parseVersion("10.0.1"), [10, 0, 1, Infinity]);
   for (const bad of ["1.2", "v1.2.3-beta", "latest", "1.2.3.4", "", "v1.2.x", "../v1.0.0", "v1.0.0;rm"]) assert.equal(V.parseVersion(bad), null, bad);
   assert.equal(V.compareVersions("1.10.0", "1.9.9"), 1);
   assert.equal(V.compareVersions("v2.0.0", "2.0.0"), 0);
@@ -38,6 +38,27 @@ test("versions : la plus haute version stable parmi les releases qui ont leur ar
   assert.equal(V.pickLatestRelease([], asset), null);
   assert.equal(V.pickLatestRelease("pas une liste", asset), null);
   assert.equal(V.pickLatestRelease([rel("v1.0.0", { assets: [{ name: "vitrine-v1.0.0-darwin-arm64.tar.gz" }] })], asset), null, "archive d'une autre plateforme : rien à proposer");
+});
+
+test("versions : release candidates — ordre rc.1 < rc.2 < stable, canal « stable » les ignore, canal « rc » les propose", () => {
+  assert.equal(V.compareVersions("1.2.0-rc.1", "1.2.0-rc.2"), -1);
+  assert.equal(V.compareVersions("1.2.0-rc.10", "1.2.0-rc.9"), 1);
+  assert.equal(V.compareVersions("1.2.0-rc.9", "1.2.0"), -1);
+  assert.equal(V.compareVersions("1.1.9", "1.2.0-rc.1"), -1);
+  assert.equal(V.parseVersion("v1.2.0-rc.1"), null, "une étiquette rc n'est pas une version stable");
+  assert.equal(V.isPrerelease("v1.2.0-rc.1"), true);
+  assert.equal(V.isPrerelease("v1.2.0"), false);
+  for (const bad of ["v1.2.0-rc", "v1.2.0-rc.", "v1.2.0-beta.1", "v1.2.0-rc.1-x", "dev-20261007-abc1234"]) assert.equal(V.parseVersion(bad, true), null, bad);
+  assert.equal(V.classify("1.1.0", "v1.2.0-rc.1"), "minor");
+  assert.equal(V.classify("1.2.0-rc.1", "v1.2.0-rc.2"), "patch");
+  assert.equal(V.classify("1.2.0-rc.2", "v1.2.0"), "patch", "la stable qui suit la rc");
+  assert.equal(V.classify("1.2.0", "v1.2.0-rc.3"), null, "on ne « descend » jamais vers une rc");
+  const asset = (tag) => `vitrine-${tag}-linux-x64.tar.gz`;
+  const rel = (tag, extra = {}) => ({ tag_name: tag, draft: false, prerelease: tag.includes("-rc."), assets: [{ name: asset(tag) }], ...extra });
+  const list = [rel("v1.1.0"), rel("v1.2.0-rc.1"), rel("v1.2.0-rc.2"), rel("v1.3.0-rc.1", { draft: true }), rel("dev-20261007-abc1234", { prerelease: true }), rel("v1.4.0-rc.1", { assets: [] })];
+  assert.equal(V.pickLatestRelease(list, asset), "v1.1.0");
+  assert.equal(V.pickLatestRelease(list, asset, "rc"), "v1.2.0-rc.2");
+  assert.equal(V.pickLatestRelease([...list, rel("v1.2.0")], asset, "rc"), "v1.2.0", "la stable l'emporte sur ses rc");
 });
 
 test("versions : modules git — la plus haute version stable d'un `git ls-remote --tags`", () => {
@@ -137,6 +158,14 @@ test("mise à jour : succès — sauvegarde, téléchargement, empreinte, bascul
     assert.equal(fs.readFileSync(path.join(s.dataDir, "backups", backups[0]), "utf8"), "DONNEES-AVANT", "sauvegarde faite AVANT les migrations");
     for (const left of [".vitrine-staging", ".vitrine-previous"]) assert.ok(!fs.existsSync(path.join(s.app, left)), `${left} nettoyé`);
     assert.match(fs.readFileSync(path.join(s.dataDir, "update", "update.log"), "utf8"), /v1\.1\.0 installée/);
+  } finally { s.cleanup(); }
+});
+
+test("mise à jour : une release candidate s'installe comme une stable (archive vX.Y.Z-rc.N, version cohérente)", async () => {
+  const s = setup(); try {
+    s.build("1.1.0-rc.1");
+    assert.deepEqual(await runUpdate({ ...opts(s), tag: "v1.1.0-rc.1", exec: s.make() }), { ok: true });
+    assert.equal(JSON.parse(fs.readFileSync(path.join(s.app, "package.json"), "utf8")).version, "1.1.0-rc.1");
   } finally { s.cleanup(); }
 });
 

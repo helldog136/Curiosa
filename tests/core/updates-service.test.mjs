@@ -187,3 +187,45 @@ test("fichiers : le planificateur et l'enregistrement de démarrage existent, et
   assert.match(sched, /6 \* 60 \* 60_000/);
   assert.ok(sched.includes("runScheduledCheck") && sched.includes("unref"));
 });
+
+test("canal rc : stable par défaut ; en rc on propose la release candidate, en revenant à stable elle n'est plus proposée", async () => {
+  const dir = app({ version: "1.0.0" });
+  const api = fakeApi({ tags: ["v1.0.1", "v1.1.0-rc.1"], extra: [] });
+  const withRc = async () => { const a = fakeApi({ tags: ["v1.0.1"] }); const f = async (u) => [...(await a(u)), { tag_name: "v1.1.0-rc.1", draft: false, prerelease: true, assets: [{ name: ASSET("v1.1.0-rc.1") }] }]; return f; };
+  assert.equal(await S.getUpdateChannel(), "stable");
+  assert.equal((await S.checkForUpdate({ appDir: dir, fetchJson: await withRc() })).latest, "v1.0.1");
+  await S.setUpdateChannel("rc");
+  const r = await S.checkForUpdate({ appDir: dir, fetchJson: await withRc() });
+  assert.deepEqual([r.channel, r.latest, r.prerelease, r.available], ["rc", "v1.1.0-rc.1", true, true]);
+  await S.setUpdateChannel("stable");
+  const back = await S.getUpdateCheck(dir);
+  assert.deepEqual([back.latest, back.prerelease], [null, false], "la rc mémorisée n'est plus proposée une fois revenu à stable");
+  assert.ok(api);
+});
+
+test("canal rc : lancer une rc exige le canal rc ; jamais appliquée automatiquement", async () => {
+  const dir = app({ version: "1.0.0" });
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "d-"));
+  const started = [];
+  const o = { appDir: dir, spawner: (t) => started.push(t), dataDir };
+  assert.equal((await S.startUpdate("v1.1.0-rc.1", "x", o)).error, "invalid-tag", "canal stable : refusé");
+  await S.setUpdateChannel("rc");
+  assert.deepEqual(await S.startUpdate("v1.1.0-rc.1", "x", o), { ok: true });
+  assert.deepEqual(started, ["v1.1.0-rc.1"]);
+  assert.equal((await S.startUpdate("v1.1.0-beta.1", "x", o)).error, "invalid-tag");
+  // automatique activé + rc disponible : seulement signalée
+  await S.setAutoUpdate(true);
+  started.length = 0;
+  const api = async () => [{ tag_name: "v1.1.0-rc.1", draft: false, prerelease: true, assets: [{ name: ASSET("v1.1.0-rc.1") }] }];
+  assert.equal(await S.runScheduledCheck({ ...o, fetchJson: api }), "available");
+  assert.deepEqual(started, []);
+  assert.equal(S.shouldAutoApply({ auto: true, level: "minor", running: false, canUpdate: true, prerelease: true }), false);
+});
+
+test("canal rc : le choix n'est offert qu'en mode avancé, avec la case « à mes risques » obligatoire", () => {
+  const actions = fs.readFileSync("src/app/admin/(panel)/updates/actions.ts", "utf8");
+  assert.match(actions, /if \(!advanced\) return/);
+  assert.match(actions, /rcRisk/);
+  const page = fs.readFileSync("src/app/admin/(panel)/updates/page.tsx", "utf8");
+  assert.match(page, /canUpdate && advanced/);
+});

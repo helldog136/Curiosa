@@ -50,12 +50,19 @@ site ne fait que la télécharger : une release qui ne passe pas la CI n'existe 
 
 Dans **Mises à jour** (menu, propriétaire uniquement) :
 
-- le site compare sa version aux releases **stables** publiées par le dépôt d'origine (les pré-versions et les snapshots sont ignorés) ;
+- le site compare sa version aux releases **stables** publiées par le dépôt d'origine (les release candidates et les snapshots sont ignorés par défaut) ;
 - **Installer** : sauvegarde de la base (`data/backups/`, les 5 dernières) → téléchargement de l'archive → **vérification de son empreinte SHA-256** →
   remplacement des dossiers de l'application (`.next`, `node_modules`, `prisma/migrations`, `modules-community`…) → migrations → redémarrage.
   Jamais touchés : `.env`, `data/` (base, envois, modules installés) et `prisma/data/`. **Au moindre échec**, l'ancienne version (et l'ancienne base si les migrations avaient commencé) est rétablie ;
 - le journal de l'opération s'affiche dans la page ; elle se met à jour toute seule ;
 - une version **majeure** (`v2.0.0` après `v1.x`) peut changer le fonctionnement : elle est signalée et **n'est jamais installée automatiquement**.
+
+### Release candidates (mode avancé)
+
+Les release candidates (`vX.Y.Z-rc.N`) sont les prochaines versions, publiées depuis la branche `dev` pour être éprouvées avant la sortie. En **mode avancé**,
+*Mises à jour → Versions en avance* permet de se les faire proposer (case « à mes risques et périls » obligatoire). Une rc n'est **jamais installée automatiquement**,
+même si la mise à jour automatique est activée, et le message de confirmation rappelle de faire une vraie sauvegarde avant. Revenir au canal stable ne fait
+pas redescendre : on reste sur sa version jusqu'à la prochaine stable plus récente. Les snapshots (`dev-…`) ne sont pas proposés aux instances.
 
 ### Mise à jour automatique
 
@@ -94,7 +101,9 @@ Le script peut aussi être lancé à la main (`node scripts/update.mjs v1.2.3`),
 - Branche `main` (ou `master`) : la version stable. On y **étiquette** `vX.Y.Z` (`package.json` doit déjà porter cette version). Le workflow
   [`release.yml`](../.github/workflows/release.yml) lance l'audit des failles, les tests, compile, puis publie l'archive et son empreinte sur la release GitHub.
   Avant la toute première : `npm run migrations:freeze`.
-- Branche `dev` : chaque push publie un **snapshot** (pré-version `dev-<date>-<commit>`), jamais proposé par les mises à jour d'une instance.
+- Branche `dev` : chaque push publie un **snapshot** (pré-version `dev-<date>-<commit>`), jamais proposé par les mises à jour d'une instance. On y **étiquette** aussi
+  les release candidates `vX.Y.Z-rc.N` (`package.json` porte alors `X.Y.Z-rc.N`) : proposées seulement aux instances qui ont choisi le canal « rc ». La stable `vX.Y.Z` se
+  publie ensuite depuis `main` (ou `master`).
 - Pour fabriquer l'archive à la main : `npm ci && npx prisma generate && npm run build && npm prune --omit=dev && npx prisma generate && GITHUB_REPOSITORY=<propriétaire>/<dépôt> node scripts/release-pack.mjs X.Y.Z`.
 
 ## La Catalogue (modules reconnus)

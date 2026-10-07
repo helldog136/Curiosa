@@ -4,12 +4,12 @@ import { ActionForm } from "@/components/admin/ActionForm";
 import { AutoRefresh } from "@/components/admin/AutoRefresh";
 import { Checkbox } from "@/components/admin/Field";
 import { ui } from "@/components/admin/ui";
-import { applyUpdate, checkNow, saveAutoUpdate } from "./actions";
+import { applyUpdate, checkNow, saveAutoUpdate, saveChannel } from "./actions";
 
 export const dynamic = "force-dynamic";
 
 export default async function UpdatesPage() {
-  const { t, locale } = await adminCtx("owner");
+  const { t, locale, advanced } = await adminCtx("owner");
   const info = getInstallInfo();
   // Première visite : on interroge le dépôt une fois pour ne pas montrer « jamais vérifié ».
   let check = await getUpdateCheck();
@@ -36,6 +36,7 @@ export default async function UpdatesPage() {
                 : t("updates.upToDate")}
             </p>
             <p className={ui.help}>{t("updates.checkedAt")} {when(check.checkedAt)}{check.error && <> — <span className="text-red-600">{t("updates.unreachable")}</span></>}</p>
+            {check.prerelease && <p className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">{t("updates.rcWarning")}</p>}
             {check.level === "major" && <p className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">{t("updates.majorWarning")}</p>}
             <p className={ui.help}>{t(`updates.restart.${info.restart}`)}</p>
           </>
@@ -46,7 +47,7 @@ export default async function UpdatesPage() {
         <div className="flex flex-wrap gap-3">
           <ActionForm action={checkNow} submitLabel={t("updates.check")} className="space-y-2">{null}</ActionForm>
           {check.available && !running && (
-            <ActionForm action={applyUpdate} submitLabel={t("updates.apply", { version: check.latest ?? "" })} confirm={t("updates.confirm")} className="space-y-2">{null}</ActionForm>
+            <ActionForm action={applyUpdate} submitLabel={t("updates.apply", { version: check.latest ?? "" })} confirm={check.prerelease ? `${t("updates.rcWarning")}\n\n${t("updates.confirm")}` : t("updates.confirm")} className="space-y-2">{null}</ActionForm>
           )}
         </div>
       )}
@@ -71,6 +72,15 @@ export default async function UpdatesPage() {
         <ActionForm action={saveAutoUpdate} submitLabel={t("action.save")} className="space-y-3">
           <h2 className="text-lg font-semibold">{t("updates.autoTitle")}</h2>
           <Checkbox name="auto" label={t("updates.auto")} help={t("updates.autoHelp")} defaultChecked={auto} />
+        </ActionForm>
+      )}
+    
+      {info.canUpdate && advanced && (
+        <ActionForm action={saveChannel} submitLabel={t("action.save")} className="space-y-3">
+          <h2 className="text-lg font-semibold">{t("updates.channelTitle")}</h2>
+          <p className={ui.help}>{t("updates.channelHelp")}</p>
+          <Checkbox name="rc" label={t("updates.channelRc")} defaultChecked={check.channel === "rc"} />
+          <Checkbox name="rcRisk" label={t("updates.channelRisk")} help={t("updates.channelRiskHelp")} defaultChecked={check.channel === "rc"} />
         </ActionForm>
       )}
     </div>

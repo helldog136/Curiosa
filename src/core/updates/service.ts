@@ -4,7 +4,7 @@ import path from "node:path";
 import { DATA_DIR } from "@/core/config";
 import { audit } from "@/core/permissions";
 import { getSetting, setSetting } from "@/core/settings";
-import { classify, compareVersions, pickLatestRelease, TAG_RE, type UpdateLevel } from "./versions";
+import { classify, compareVersions, isPrerelease, pickLatestRelease, TAG_RC_RE, type UpdateChannel, type UpdateLevel } from "./versions";
 
 /**
  * MISES À JOUR DU FRAMEWORK.
@@ -30,7 +30,7 @@ export type InstallInfo = {
   restart: "command" | "supervised" | "manual";
 };
 
-export type UpdateCheck = { latest: string | null; level: UpdateLevel | null; available: boolean; checkedAt: number | null; error: string | null };
+export type UpdateCheck = { channel: UpdateChannel; prerelease: boolean; latest: string | null; level: UpdateLevel | null; available: boolean; checkedAt: number | null; error: string | null };
 /** Lit un JSON https (liste des releases). */
 export type JsonFetcher = (url: string) => Promise<unknown>;
 
@@ -61,7 +61,15 @@ export function getInstallInfo(appDir = process.cwd()): InstallInfo {
   return { ...base, mode: "release", canUpdate: true };
 }
 
-const KEYS = { auto: "updates.auto", latest: "updates.latest", at: "updates.checkedAt", error: "updates.error" } as const;
+const KEYS = { channel: "updates.channel", auto: "updates.auto", latest: "updates.latest", at: "updates.checkedAt", error: "updates.error" } as const;
+
+/** Canal de mise à jour : « stable » par défaut ; « rc » (release candidates) se choisit en mode avancé, à ses risques et périls. */
+export async function getUpdateChannel(): Promise<UpdateChannel> {
+  return (await getSetting<string>(KEYS.channel)) === "rc" ? "rc" : "stable";
+}
+export async function setUpdateChannel(channel: UpdateChannel): Promise<void> {
+  await setSetting(KEYS.channel, channel === "rc" ? "rc" : "stable");
+}
 
 /** Réglage « mise à jour automatique » — DÉSACTIVÉ tant que l'administrateur ne l'a pas activé. */
 export async function isAutoUpdateEnabled(): Promise<boolean> {
@@ -73,10 +81,13 @@ export async function setAutoUpdate(on: boolean): Promise<void> {
 
 /** Dernier résultat de vérification (mémorisé : l'admin n'interroge pas le dépôt à chaque affichage). */
 export async function getUpdateCheck(appDir = process.cwd()): Promise<UpdateCheck> {
-  const latest = (await getSetting<string>(KEYS.latest)) || null;
+  const channel = await getUpdateChannel();
+  let latest = (await getSetting<string>(KEYS.latest)) || null;
+  // Dernière version connue à l'époque du canal « rc », alors qu'on est revenu sur « stable » : on ne la propose plus.
+  if (latest && channel === "stable" && isPrerelease(latest)) latest = null;
   const current = readVersion(appDir);
   const level = latest ? classify(current, latest) : null;
-  return { latest, level, available: level !== null, checkedAt: (await getSetting<number>(KEYS.at)) ?? null, error: (await getSetting<string>(KEYS.error)) || null };
+  return { channel, prerelease: !!latest && isPrerelease(latest), latest, level, available: level !== null, checkedAt: (await getSetting<number>(KEYS.at)) ?? null, error: (await getSetting<string>(KEYS.error)) || null };
 }
 
 /** Interroge la liste des releases du dépôt (rien n'est téléchargé) et mémorise la plus haute version stable qui a son archive. */
@@ -86,7 +97,7 @@ export async function checkForUpdate(opts: { appDir?: string; fetchJson?: JsonFe
   if (!info.canUpdate) return getUpdateCheck(appDir);
   try {
     const releases = await fetchJson(`https://api.github.com/repos/${info.repo}/releases?per_page=30`);
-    const latest = pickLatestRelease(releases, assetName) ?? ((await getSetting<string>(KEYS.latest)) || null);
+    const latest = pickLatestRelease(releases, assetName, await getUpdateChannel()) ?? ((await getSetting<string>(KEYS.latest)) || null);
     await setSetting(KEYS.latest, latest ?? "");
     await setSetting(KEYS.error, "");
   } catch {
@@ -105,9 +116,9 @@ export function readUpdateLog(lines = 40, dataDir = DATA_DIR): string {
   try { return fs.readFileSync(path.join(dataDir, "update", "update.log"), "utf8").trim().split("\n").slice(-lines).join("\n"); } catch { return ""; }
 }
 
-/** Faut-il appliquer d'office ? Seulement si l'administrateur a activé l'automatique, jamais pour une version majeure, jamais pendant une autre mise à jour. */
-export function shouldAutoApply(p: { auto: boolean; level: UpdateLevel | null; running: boolean; canUpdate: boolean }): boolean {
-  return p.auto === true && p.canUpdate && !p.running && (p.level === "minor" || p.level === "patch");
+/** Faut-il appliquer d'office ? Seulement si l'administrateur a activé l'automatique, jamais pour une version majeure ni une release candidate, jamais pendant une autre mise à jour. */
+export function shouldAutoApply(p: { auto: boolean; level: UpdateLevel | null; running: boolean; canUpdate: boolean; prerelease?: boolean }): boolean {
+  return p.auto === true && p.prerelease !== true && p.canUpdate && !p.running && (p.level === "minor" || p.level === "patch");
 }
 
 export type Spawner = (tag: string) => void;
@@ -122,7 +133,8 @@ const defaultSpawner: Spawner = (tag) => {
 /** Lance la mise à jour en tâche détachée (elle survit à l'arrêt du serveur qu'elle provoque). */
 export async function startUpdate(tag: string, actor: string, opts: { appDir?: string; fetchJson?: JsonFetcher; spawner?: Spawner; dataDir?: string } = {}): Promise<{ ok: true } | { ok: false; error: "invalid-tag" | "not-newer" | "unsupported" | "running" }> {
   const { appDir = process.cwd(), spawner = defaultSpawner, dataDir = DATA_DIR } = opts;
-  if (!TAG_RE.test(tag)) return { ok: false, error: "invalid-tag" };
+  if (!TAG_RC_RE.test(tag)) return { ok: false, error: "invalid-tag" };
+  if (isPrerelease(tag) && (await getUpdateChannel()) !== "rc") return { ok: false, error: "invalid-tag" };
   const info = getInstallInfo(appDir);
   if (!info.canUpdate) return { ok: false, error: "unsupported" };
   if (compareVersions(tag, info.version) <= 0) return { ok: false, error: "not-newer" };
@@ -140,6 +152,6 @@ export async function runScheduledCheck(opts: { appDir?: string; fetchJson?: Jso
   if (!check.available || !check.latest) return "none";
   const info = getInstallInfo(appDir);
   const running = readUpdateState(opts.dataDir).status === "running";
-  if (!shouldAutoApply({ auto: await isAutoUpdateEnabled(), level: check.level, running, canUpdate: info.canUpdate })) return (await isAutoUpdateEnabled()) ? "available" : "disabled";
+  if (!shouldAutoApply({ auto: await isAutoUpdateEnabled(), level: check.level, running, canUpdate: info.canUpdate, prerelease: check.prerelease })) return (await isAutoUpdateEnabled()) ? "available" : "disabled";
   return (await startUpdate(check.latest, "auto-update", opts)).ok ? "started" : "available";
 }

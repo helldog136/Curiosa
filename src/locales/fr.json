@@ -396,7 +396,7 @@
   "updates.unreachable": "Le dépôt n'a pas pu être joint.",
   "updates.check": "Vérifier maintenant",
   "updates.apply": "Installer {version}",
-  "updates.confirm": "Avant de mettre à jour : une sauvegarde de la base est faite, puis la nouvelle version est installée et construite ; si quelque chose échoue, l'ancienne version est rétablie automatiquement. Le site peut être indisponible quelques instants au redémarrage — et plus longtemps (quelques minutes) si les dépendances ont changé.",
+  "updates.confirm": "Avant de mettre à jour : une sauvegarde de la base est faite, puis la nouvelle version (déjà compilée) est téléchargée, vérifiée et installée ; si quelque chose échoue, l'ancienne version est rétablie automatiquement. Le site est indisponible quelques instants, le temps du redémarrage.",
   "updates.found": "Version {version} disponible.",
   "updates.nothingToApply": "Aucune mise à jour à installer.",
   "updates.started": "Mise à jour vers {version} lancée. Cette page se met à jour toute seule.",
@@ -610,5 +610,11 @@
   "setup.welcome.name": "Comment vous appelez-vous ?",
   "setup.welcome.nameHelp": "Votre prénom suffit : c'est comme ça que l'espace de gestion vous parlera.",
   "setup.account.help": "Votre e-mail et votre mot de passe serviront à vous reconnecter à l'espace de gestion.",
-  "dashboard.welcome": "Votre site est en ligne, {name} ! Voici par où commencer : écrivez un premier article, personnalisez les couleurs, ou allez voir le résultat."
+  "dashboard.welcome": "Votre site est en ligne, {name} ! Voici par où commencer : écrivez un premier article, personnalisez les couleurs, ou allez voir le résultat.",
+  "updates.rcWarning": "⚠️ Cette version est une release candidate : elle n'a pas fini d'être éprouvée et peut contenir des défauts. À vos risques et périls — faites une sauvegarde avant, une vraie (page Sauvegarde).",
+  "updates.channelTitle": "Versions en avance (release candidates)",
+  "updates.channelHelp": "Par défaut, le site ne propose que des versions stables. Les release candidates sont les prochaines versions, publiées avant leur sortie pour être testées. Revenir au canal stable ne vous fait pas redescendre : vous restez sur votre version jusqu'à la prochaine stable plus récente.",
+  "updates.channelRc": "Me proposer les release candidates",
+  "updates.channelRisk": "Je comprends que c'est à mes risques et périls",
+  "updates.channelRiskHelp": "Une release candidate n'est jamais installée automatiquement, même si la mise à jour automatique est activée."
 }
