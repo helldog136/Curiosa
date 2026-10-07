@@ -34,6 +34,7 @@ CREATE TABLE "ModuleInstance" (
     "fieldSchema" TEXT NOT NULL DEFAULT '[]',
     "fallbackToDefault" BOOLEAN NOT NULL DEFAULT true,
     "allowGoLinks" BOOLEAN NOT NULL DEFAULT false,
+    "exposed" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL
 );
@@ -60,6 +61,7 @@ CREATE TABLE "Entry" (
     "url" TEXT,
     "code" TEXT,
     "featured" BOOLEAN NOT NULL DEFAULT false,
+    "tags" TEXT NOT NULL DEFAULT '[]',
     "position" INTEGER NOT NULL DEFAULT 0,
     "fields" TEXT NOT NULL DEFAULT '{}',
     "sourceLocale" TEXT NOT NULL,

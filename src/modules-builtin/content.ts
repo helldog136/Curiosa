@@ -15,6 +15,8 @@ const base = {
   license: "MIT",
   instances: "multiple" as const,
   sections: [],
+  consumes: [],
+  provides: [],
   settings: [],
   permissions: ["pages", "sections"] as ParsedManifest["permissions"],
 };
@@ -29,7 +31,7 @@ export const blog = make({
   icon: "📰",
   starter: true,
   description: { en: "Articles with cover, summary and Markdown content. Add as many blogs as you like.", fr: "Des articles avec image, résumé et contenu Markdown. Ajoutez autant de blogs que vous voulez." },
-  content: { display: "cards", clickAction: "detail", features: ["cover", "summary", "body", "featured"], basePath: "blog", showInNav: true },
+  content: { display: "cards", clickAction: "detail", features: ["cover", "summary", "body", "featured", "tags"], basePath: "blog", showInNav: true },
 });
 
 export const links = make({
@@ -40,7 +42,7 @@ export const links = make({
   icon: "🔗",
   starter: true,
   description: { en: "A list of links with icons — your social networks, your channels. Add one list per channel if you have several.", fr: "Une liste de liens avec icônes — vos réseaux, vos chaînes. Ajoutez une liste par chaîne si vous en avez plusieurs." },
-  content: { display: "links", clickAction: "external", features: ["icon", "summary", "url"], basePath: "links", showInNav: false, allowGoLinks: true },
+  content: { display: "links", clickAction: "external", features: ["icon", "summary", "url", "tags"], basePath: "links", showInNav: false, allowGoLinks: true },
 });
 
 export const codes = make({
@@ -51,7 +53,7 @@ export const codes = make({
   icon: "🏷️",
   starter: true,
   description: { en: "Partner offers with a code, a link and an expiry date.", fr: "Les offres de vos partenaires : code, lien et date d'expiration." },
-  content: { display: "codes", clickAction: "external", features: ["icon", "cover", "summary", "body", "url", "code", "expiresAt"], basePath: "codes", showInNav: true, allowGoLinks: true },
+  content: { display: "codes", clickAction: "external", features: ["icon", "cover", "summary", "body", "url", "code", "expiresAt", "tags"], basePath: "codes", showInNav: true, allowGoLinks: true },
 });
 
 export const pages = make({

@@ -15,6 +15,7 @@ export type EntryFormData = {
   url: string | null;
   code: string | null;
   featured: boolean;
+  tags: string;
   expiresAt: string;
   publishedAt: string;
   fields: Record<string, unknown>;
@@ -88,6 +89,7 @@ export function EntryForm({ t, collection, locales, locale, data }: Props) {
           {has("url") && <TextField name="url" type="url" label={t("field.url")} defaultValue={data.url ?? ""} placeholder="https://" />}
           {has("code") && <TextField name="code" label={t("field.code")} defaultValue={data.code ?? ""} />}
           {has("expiresAt") && <TextField name="expiresAt" type="date" label={t("field.expiresAt")} defaultValue={data.expiresAt} />}
+          {has("tags") && <TextField name="tags" label={t("field.tags")} help={t("field.tagsHelp")} defaultValue={data.tags} />}
           {has("featured") && <Checkbox name="featured" label={t("field.featured")} defaultChecked={data.featured} />}
           {collection.fieldSchema.map((f) =>
             f.type === "boolean" ? (

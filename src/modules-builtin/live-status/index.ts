@@ -14,6 +14,8 @@ export const manifest: ParsedManifest = {
   author: "Vitrine",
   license: "MIT",
   icon: "🔴",
+  consumes: [],
+  provides: [],
   instances: "single",
   sections: [{ id: "player", label: { en: "Twitch player", fr: "Lecteur Twitch" } }],
   permissions: ["slots", "sections"],

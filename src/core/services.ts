@@ -19,6 +19,7 @@ export type NewEntry = {
   code?: string | null;
   expiresAt?: Date | null;
   featured?: boolean;
+  tags?: string[];
   position?: number;
   fields?: Record<string, unknown>;
   authorId?: string | null;
@@ -38,6 +39,7 @@ export async function createEntry(db: Db, input: NewEntry) {
       code: input.code ?? null,
       expiresAt: input.expiresAt ?? null,
       featured: input.featured ?? false,
+      tags: JSON.stringify(input.tags ?? []),
       position: input.position ?? 0,
       fields: JSON.stringify(input.fields ?? {}),
       sourceLocale: input.locale,

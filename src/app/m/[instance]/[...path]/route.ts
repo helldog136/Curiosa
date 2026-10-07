@@ -1,5 +1,6 @@
 import { buildContext } from "@/core/modules/context";
 import { getActiveInstances } from "@/core/modules/registry";
+import { getSiteConfig } from "@/core/settings";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +22,10 @@ async function handle(request: Request, { params }: Params): Promise<Response> {
   if (!active || !handler) return new Response("Not found", { status: 404 });
 
   try {
-    return await handler(request, await buildContext(active.mod, active.instance));
+    // ?lang=xx choisit la langue du contenu servi (JSON d'un overlay, par exemple).
+    const config = await getSiteConfig();
+    const lang = new URL(request.url).searchParams.get("lang") ?? "";
+    return await handler(request, await buildContext(active.mod, active.instance, config.locales.includes(lang) ? lang : undefined));
   } catch (error) {
     console.error(`[modules] ${key} route "${path.join("/")}" failed:`, error);
     return new Response("Module error", { status: 500 });

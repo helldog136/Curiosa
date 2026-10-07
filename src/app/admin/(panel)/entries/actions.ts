@@ -55,6 +55,13 @@ export async function saveEntry(_prev: ActionState, formData: FormData): Promise
     url,
     code,
     featured: formData.get("featured") === "on",
+    tags: JSON.stringify(
+      String(formData.get("tags") ?? "")
+        .split(",")
+        .map((x) => x.trim().toLowerCase().slice(0, 40))
+        .filter(Boolean)
+        .slice(0, 20),
+    ),
     expiresAt: date("expiresAt"),
     fields: JSON.stringify(fields),
   };

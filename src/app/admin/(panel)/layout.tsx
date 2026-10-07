@@ -20,22 +20,23 @@ export default async function PanelLayout({ children }: { children: React.ReactN
         <nav aria-label="Admin">
           <a href="/admin" className={`${link} mt-4`}>{t("nav.dashboard")}</a>
 
-          <p className={group}>{t("nav.content")}</p>
-          {nav.content.map((c) => (
-            <a key={c.key} href={`/admin/entries?c=${c.key}`} className={link}>{c.icon} {c.name}</a>
+          {nav.map((g) => (
+            <div key={g.type}>
+              <p className={group}>{t(`type.${g.type}`)}</p>
+              {g.items.map((m) => (
+                <a key={m.id} href={m.content ? `/admin/entries?c=${m.key}` : `/admin/instances/${m.id}`} className={link}>{m.icon} {m.name}</a>
+              ))}
+            </div>
           ))}
-          <a href="/admin/redirects" className={link}>{t("nav.redirects")}</a>
 
+          <p className={group}>{t("nav.site")}</p>
+          <a href="/admin/redirects" className={link}>{t("nav.redirects")}</a>
           {canManage && (
             <>
-              <p className={group}>{t("nav.site")}</p>
               <a href="/admin/home" className={link}>{t("nav.home")}</a>
               <a href="/admin/navigation" className={link}>{t("nav.navigation")}</a>
               <a href="/admin/settings" className={link}>{t("nav.settings")}</a>
-              <a href="/admin/modules" className={link}>{t("nav.modules")}</a>
-              {nav.other.map((m) => (
-                <a key={m.id} href={`/admin/instances/${m.id}`} className={`${link} pl-6 text-muted`}>{m.icon} {m.name}</a>
-              ))}
+              <a href="/admin/modules" className={link}>🧩 {t("nav.modules")}</a>
             </>
           )}
 

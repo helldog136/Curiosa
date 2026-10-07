@@ -7,8 +7,8 @@
   },
   "version": "1.0.0",
   "description": {
-    "en": "Shows a banner at the top of every page, and a note section you can place on the home page. Example module — add several instances for several banners.",
-    "fr": "Affiche une bannière en haut de chaque page, et une section « note » à placer sur l'accueil. Module d'exemple — ajoutez plusieurs instances pour plusieurs bannières."
+    "en": "Shows a banner at the top of every page, a note section for the home page, and offers its text to overlays (topic overlay.item). Example module.",
+    "fr": "Affiche une bannière en haut de chaque page, une section « note » pour l'accueil, et propose son texte aux overlays (sujet overlay.item). Module d'exemple."
   },
   "author": "Vitrine",
   "license": "MIT",
@@ -16,7 +16,8 @@
   "main": "index.mjs",
   "permissions": [
     "slots",
-    "sections"
+    "sections",
+    "topics"
   ],
   "settings": [
     {
@@ -98,6 +99,15 @@
       "label": {
         "en": "Note",
         "fr": "Note"
+      }
+    }
+  ],
+  "provides": [
+    {
+      "topic": "overlay.item",
+      "label": {
+        "en": "Banner text as an overlay item",
+        "fr": "Texte de la bannière comme élément d'overlay"
       }
     }
   ]

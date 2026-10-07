@@ -3,7 +3,8 @@ import { pickName } from "@/core/instances";
 import { listInstances } from "@/core/instances";
 import { getCatalogue } from "@/core/modules/catalogue";
 import { listModuleRows, loadModule } from "@/core/modules/registry";
-import { hasPage } from "@/core/modules/manifest";
+import { effectiveType, hasPage } from "@/core/modules/manifest";
+import { MODULE_TYPES } from "@/core/modules/types";
 import { localized } from "@/core/modules/types";
 import { ActionForm } from "@/components/admin/ActionForm";
 import { ConfirmButton } from "@/components/admin/ConfirmButton";
@@ -23,14 +24,20 @@ export default async function ModulesPage({ searchParams }: { searchParams: Prom
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold">{t("nav.modules")}</h1>
+        <h1 className="text-2xl font-bold">{t("nav.modules")} <span className="text-base font-normal text-muted">· {t("modules.marketplace")}</span></h1>
         <p className="mt-1 text-sm text-muted">{t("modules.intro")}</p>
       </div>
       {error && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm">{error.startsWith("modules.error.") || error.startsWith("instances.error.") ? t(error) : t("error.generic")}</p>}
       {update && <p role="status" className="rounded-lg border border-line bg-surface p-3 text-sm">{update === "yes" ? t("modules.updateAvailable") : t("modules.upToDate")}</p>}
 
+      {[...MODULE_TYPES, "broken" as const].map((type) => {
+        const group = mods.filter(({ mod }) => (mod ? effectiveType(mod.manifest) : "broken") === type);
+        if (group.length === 0) return null;
+        return (
+      <section key={type} className="space-y-3">
+      <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">{type === "broken" ? t("modules.broken") : t(`type.${type}`)}</h2>
       <ul className="space-y-4">
-        {mods.map(({ row, mod }) => {
+        {group.map(({ row, mod }) => {
           const mine = instances.filter((i) => i.moduleId === row.id);
           const canAdd = !!mod && row.enabled && (mod.manifest.instances === "multiple" || mine.length === 0);
           return (
@@ -81,6 +88,9 @@ export default async function ModulesPage({ searchParams }: { searchParams: Prom
           );
         })}
       </ul>
+      </section>
+        );
+      })}
 
       {isOwner && (
         <section className={`${ui.card} space-y-4`}>

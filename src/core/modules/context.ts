@@ -4,16 +4,24 @@ import { getSiteConfig, getSetting } from "../settings";
 import { entryPath, listEntries } from "../entries";
 import { getInstanceByKey, listInstances, pickName, type InstanceView } from "../instances";
 import { makeTranslator } from "../i18n/dictionary";
-import type { LoadedModule } from "./registry";
+import { collect } from "./topics";
+import { getActiveInstances, type LoadedModule } from "./registry";
 import type { ModuleApi, ModuleContext } from "./types";
 
 export function instanceSettingKey(instanceId: string, key: string): string {
   return `instance.${instanceId}.${key}`;
 }
 
-function makeApi(instance: InstanceView): ModuleApi {
+function makeApi(instance: InstanceView, mod: LoadedModule, locale: string): ModuleApi {
   return {
     siteUrl,
+    topics: {
+      async collect(topic, opts) {
+        const consumer = (await getActiveInstances()).find((a) => a.instance.id === instance.id);
+        if (!consumer) return [];
+        return collect(consumer, topic, { limit: opts?.limit, locale });
+      },
+    },
     entries: {
       async list({ instance: key, locale, limit } = {}) {
         const config = await getSiteConfig();
@@ -98,6 +106,6 @@ export async function buildContext(mod: LoadedModule, instance: InstanceView, lo
       for (const [name, value] of Object.entries(vars ?? {})) text = text.replaceAll(`{${name}}`, String(value));
       return text;
     },
-    api: makeApi(instance),
+    api: makeApi(instance, mod, loc),
   };
 }

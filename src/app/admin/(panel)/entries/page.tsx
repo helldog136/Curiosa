@@ -3,10 +3,12 @@ import { adminCtx } from "@/core/admin";
 import { getInstanceByKey, pickName } from "@/core/instances";
 import { prisma } from "@/core/db";
 import { localeName } from "@/core/i18n/locales";
+import { getActiveInstances } from "@/core/modules/registry";
+import { InstanceTabs } from "@/components/admin/InstanceTabs";
 import { ui } from "@/components/admin/ui";
 
 export default async function EntriesPage({ searchParams }: { searchParams: Promise<{ c?: string }> }) {
-  const { t, locale, config } = await adminCtx("editor");
+  const { t, locale, config, user } = await adminCtx("editor");
   const { c } = await searchParams;
   const collection = c ? await getInstanceByKey(c) : undefined;
   if (!collection) notFound();
@@ -19,8 +21,9 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold">{pickName(collection, locale, config.defaultLocale)}</h1>
+      <InstanceTabs t={t} id={collection.id} keyName={collection.key} name={pickName(collection, locale, config.defaultLocale)}
+        icon={(await getActiveInstances()).find((a) => a.instance.id === collection.id)?.mod.manifest.icon ?? "🧩"} active="entries" content canConfigure={user.role !== "editor"} />
+      <div className="flex justify-end">
         <a href={`/admin/entries/new?c=${collection.key}`} className={ui.btnPrimary}>{t("entries.new")}</a>
       </div>
       {entries.length === 0 ? (

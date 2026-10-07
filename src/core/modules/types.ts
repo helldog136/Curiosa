@@ -33,6 +33,25 @@ export type SectionDecl = {
   options?: SettingField[];
 };
 
+/** Catégorie d'un module : décide où il apparaît dans l'admin et comment ses instances sont exposées. */
+export const MODULE_TYPES = ["content", "overlay", "widget", "integration", "utility"] as const;
+export type ModuleType = (typeof MODULE_TYPES)[number];
+
+/** Champ d'un sujet : le consommateur déclare ce qu'il sait digérer. */
+export type TopicField = { key: string; type: "string" | "url" | "number" | "boolean" | "string[]"; required?: boolean };
+
+/** Information qu'un module sait recevoir. Il en publie le format ; les autres modules s'y conforment. */
+export type ConsumeDecl = {
+  topic: string;
+  label: LocalizedString;
+  /** Format attendu. Absent pour les sujets du cœur (core.entry). */
+  schema?: TopicField[];
+  /** L'admin peut restreindre les sources par étiquette. */
+  tags?: boolean;
+};
+
+export type ProvideDecl = { topic: string; label?: LocalizedString };
+
 export type ModuleManifest = {
   apiVersion: number;
   id: string;
@@ -46,6 +65,8 @@ export type ModuleManifest = {
   main?: string;
   /** Icône (emoji) du module dans l'admin. */
   icon?: string;
+  /** Catégorie. Défaut : "content" si `content` est déclaré, sinon "widget". */
+  type?: ModuleType;
   /** "multiple" : autant d'instances que l'on veut (ex. plusieurs blogs). "single" : une seule. */
   instances: "single" | "multiple";
   content?: ContentConfig;
@@ -53,6 +74,10 @@ export type ModuleManifest = {
   page?: boolean;
   /** Morceaux que les instances proposent à la page d'accueil. */
   sections: SectionDecl[];
+  /** Informations que ce module digère (ses instances s'abonnent à des sources dans l'admin). */
+  consumes?: ConsumeDecl[];
+  /** Informations que ce module expose aux consommateurs (`exports.<sujet>` dans son code). */
+  provides?: ProvideDecl[];
   /** Réglages propres à chaque instance. */
   settings: SettingField[];
   /** Livré avec le cœur et proposé à l'assistant de première installation. */
@@ -60,7 +85,7 @@ export type ModuleManifest = {
   /** Modules livrés avec le cœur : activés dès le départ (défaut : oui). */
   defaultEnabled?: boolean;
   /** Déclaratif et informatif : affiché à l'administrateur avant activation. */
-  permissions: ("slots" | "routes" | "storage" | "filters" | "sections" | "pages")[];
+  permissions: ("slots" | "routes" | "storage" | "filters" | "sections" | "pages" | "topics" | "overlay")[];
 };
 
 export type EntrySummary = {
@@ -72,7 +97,17 @@ export type EntrySummary = {
   publishedAt: Date | null;
 };
 
+/** Un élément reçu d'un fournisseur : champs du schéma du consommateur + sa provenance. */
+export type TopicItem = Record<string, unknown> & { source: { instance: string; module: string; name: string } };
+
 export type ModuleApi = {
+  topics: {
+    /**
+     * Récupère les informations des sources auxquelles CETTE instance est abonnée
+     * (réglé dans l'admin). Le sujet doit être déclaré dans `consumes`.
+     */
+    collect(topic: string, opts?: { limit?: number }): Promise<TopicItem[]>;
+  };
   siteUrl: string;
   entries: {
     /** Entrées publiées d'une instance (par défaut : la sienne). */
@@ -118,6 +153,11 @@ export type SlotContext = ModuleContext & {
 
 export type RouteHandler = (request: Request, ctx: ModuleContext) => Response | Promise<Response>;
 
+export type TopicQuery = { locale: string; limit: number; tags: string[] };
+
+/** Rendu d'un overlay (source navigateur OBS) : page nue, fond transparent, sous /overlays/<clé>. */
+export type OverlayResult = { html: string; css?: string; script?: string; title?: string };
+
 export type PageResult = {
   title?: string;
   description?: string;
@@ -133,6 +173,10 @@ export type ModuleDefinition = {
   sections?: Record<string, (ctx: ModuleContext, options: Record<string, unknown>) => Block[] | null | undefined | Promise<Block[] | null | undefined>>;
   /** Page publique de l'instance, montée sur son chemin. `segments` = ce qui suit le chemin. Absent = rendu par défaut du cœur (liste + entrées) pour les modules à contenu. */
   page?: (ctx: ModuleContext, request: { segments: string[] }) => PageResult | null | Promise<PageResult | null>;
+  /** Overlay : rendu de la page /overlays/<clé de l'instance> (modules de type "overlay"). */
+  overlay?: (ctx: ModuleContext, request: { query: URLSearchParams }) => OverlayResult | Promise<OverlayResult>;
+  /** Informations exposées aux consommateurs, par sujet déclaré dans `provides`. Exécuté pour chaque instance fournisseuse. */
+  exports?: Record<string, (ctx: ModuleContext, query: TopicQuery) => Record<string, unknown>[] | Promise<Record<string, unknown>[]>>;
   /** Routes exposées sous /m/<clé d'instance>/<route> (GET et POST). */
   routes?: Record<string, RouteHandler>;
   /** Transforme le corps markdown d'une entrée avant son rendu (ex. shortcodes). */

@@ -3,7 +3,7 @@ import type { InstanceTranslation, ModuleInstance } from "@prisma/client";
 import { prisma } from "./db";
 
 /** Champs de base qu'une instance à contenu peut activer dans l'éditeur d'entrée. */
-export const FEATURES = ["cover", "icon", "summary", "body", "url", "code", "expiresAt", "featured"] as const;
+export const FEATURES = ["cover", "icon", "summary", "body", "url", "code", "expiresAt", "featured", "tags"] as const;
 export type Feature = (typeof FEATURES)[number];
 
 export const DISPLAYS = ["cards", "list", "links", "codes"] as const;
@@ -27,6 +27,8 @@ export type InstanceView = {
   fieldSchema: FieldDef[];
   fallbackToDefault: boolean;
   allowGoLinks: boolean;
+  /** Entrées proposées aux autres modules (sujet core.entry). */
+  exposed: boolean;
   names: Record<string, string>;
   descriptions: Record<string, string>;
 };
@@ -60,6 +62,7 @@ export function toInstanceView(c: ModuleInstance & { translations: InstanceTrans
     fieldSchema: parseJson<FieldDef[]>(c.fieldSchema, []),
     fallbackToDefault: c.fallbackToDefault,
     allowGoLinks: c.allowGoLinks,
+    exposed: c.exposed,
     names,
     descriptions,
   };

@@ -21,6 +21,97 @@ l'instance courante et `ctx.instance.key` l'identifie. N'écrivez jamais comme s
 exemplaire : un site peut en avoir plusieurs (deux blogs, deux formulaires de contact…). Si votre
 module n'a de sens qu'une fois, déclarez `"instances": "single"`.
 
+## Type d'un module
+
+Chaque module a un **type** (`"type"` dans `module.json`) qui décide où il apparaît dans l'admin
+et comment ses instances sont exposées :
+
+| Type | Pour | Particularité |
+|---|---|---|
+| `content` | blog, liens, codes promo, pages… | déduit de `content` ; éditeur d'entrées fourni par le cœur |
+| `overlay` | sources navigateur OBS | chaque instance est servie sur `/overlays/<clé>` (page nue, fond transparent) via `overlay()` |
+| `widget` | morceaux de pages (bandeau, formulaire…) | défaut quand il n'y a pas de `content` |
+| `integration` | services externes (Twitch, Discord…) | — |
+| `utility` | outils divers (RSS…) | — |
+
+L'admin est **une seule interface** : la barre latérale regroupe, par type, une entrée pour
+chaque instance configurée (nommée comme l'utilisateur l'a nommée : trois blogs = trois entrées),
+plus la page **Modules** (installés, marketplace, installation depuis git). La page d'une instance
+est une sous-page de cet admin, avec ses réglages (générés depuis `settings`), ses abonnements
+(voir ci-dessous) et le panneau `adminPanel` du module.
+
+## Échanger des informations entre modules : les sujets
+
+Un overlay « labyrinthe » affiche des affiches tirées d'articles, un overlay « sponsors » affiche
+les offres de partenaires… sans que le module d'overlay connaisse le blog ou les codes promo. Le
+principe : **le consommateur déclare ce qu'il sait digérer, les fournisseurs exposent des
+informations dans ce format.**
+
+```jsonc
+// module.json du CONSOMMATEUR (un overlay)
+"consumes": [
+  { "topic": "core.entry", "label": { "en": "Entries…" }, "tags": true },
+  { "topic": "overlay.item", "label": { "en": "Items offered by other modules" },
+    "schema": [
+      { "key": "title", "type": "string", "required": true },
+      { "key": "text",  "type": "string" },
+      { "key": "image", "type": "url" }
+    ] }
+]
+
+// module.json d'un FOURNISSEUR
+"provides": [{ "topic": "overlay.item" }]
+```
+
+```js
+// index.mjs du FOURNISSEUR : exécuté pour chacune de ses instances
+export default {
+  exports: {
+    "overlay.item": (ctx, { locale, limit, tags }) => [{ title: ctx.setting("text") }],
+  },
+};
+
+// index.mjs du CONSOMMATEUR
+const items = await ctx.api.topics.collect("overlay.item", { limit: 20 }); // [{ title, text, image, source }]
+```
+
+- **Le cœur est l'entremetteur** : il valide chaque élément selon le `schema` du consommateur
+  (champs inconnus supprimés, éléments invalides écartés) et ajoute sa provenance (`source`).
+  Un fournisseur qui plante est ignoré.
+- **Abonnements dans l'admin** : sur la page d'une instance consommatrice, section « Sources de
+  données » : on coche quelles instances fournisseuses l'alimentent (tout coché = toutes, y compris
+  celles ajoutées plus tard) et, si le consommateur a déclaré `"tags": true`, on filtre par étiquette.
+- **`core.entry`** est fourni d'office par toute instance à contenu (sauf si l'option « Proposer ses
+  entrées aux autres modules » est décochée) : titre, résumé, chemin, lien, image, icône, code,
+  étiquettes, date. Un blog, une liste de codes promo ou de liens alimentent donc n'importe quel
+  consommateur **sans écrire une ligne de code**. Les entrées ont des **étiquettes** (`tags`) pour
+  que le consommateur ne prenne que ce qui l'intéresse (« sponsor », « mur »…).
+- **Pull à la consommation** : rien n'est copié ni synchronisé ; le consommateur lit l'état courant
+  à chaque appel. Un overlay rafraîchit ses données depuis sa propre route (`routes.items`), ce qui
+  garde le cœur sans état. Un push (SSE) pourra s'ajouter plus tard sans changer ce contrat.
+- Formats de champs : `string`, `url` (http(s) ou chemin `/…`), `number`, `boolean`, `string[]`.
+  Choisissez un identifiant de sujet préfixé par votre domaine (`monmodule.truc`) ; `core.*` est réservé.
+
+Pour qu'un module tiers alimente un consommateur existant, il lui suffit de déclarer
+`provides: [{ "topic": "…" }]` et d'implémenter `exports` — sans rien savoir du consommateur.
+
+## Overlay (type `overlay`)
+
+```js
+export default {
+  routes: { items: async (_req, ctx) => Response.json(await ctx.api.topics.collect("core.entry")) },
+  overlay: (ctx, { query }) => ({
+    html: '<div id="card"></div>',
+    css: "body{background:transparent}",
+    script: "fetch('/m/" + ctx.instance.key + "/items').then(…)",   // rafraîchissement côté navigateur
+  }),
+};
+```
+
+L'instance est servie sur `/overlays/<clé>` (`?lang=fr` pour la langue) : la page admin de l'instance
+affiche l'URL à coller dans OBS. L'overlay livré, `ticker-overlay`, est un exemple complet : il ne sait
+rien des blogs ni des codes promo, il digère `core.entry` et `overlay.item`.
+
 ## Installer / publier
 
 Admin → **Modules → Installer un module** → adresse du dépôt :
@@ -49,8 +140,9 @@ jour » compare avec le dépôt distant.
   "author": "…", "license": "MIT", "homepage": "https://…",
   "icon": "📣",
   "main": "index.mjs",                   // absent = module sans code
+  "type": "widget",                      // content | overlay | widget | integration | utility
   "instances": "multiple",               // ou "single"
-  "permissions": ["slots", "sections", "routes", "storage", "filters", "pages"], // affiché à l'admin
+  "permissions": ["slots", "sections", "routes", "storage", "filters", "pages", "topics", "overlay"], // affiché à l'admin
 
   "settings": [                          // réglages PAR INSTANCE ; l'admin génère le formulaire
     { "key": "text", "type": "text", "translatable": true, "label": { "en": "…" } },
@@ -95,6 +187,8 @@ export default {
   routes:   { send: async (request, ctx) => Response.json({ ok: true }) },  // /m/<clé de l'instance>/send
   filters:  { entryBody: (body, ctx) => body.replaceAll(":wave:", "👋") },
   adminPanel: async (ctx) => [{ type: "heading", text: "…" }],
+  exports:  { "mon.sujet": (ctx, query) => [/* éléments au format du sujet */] },
+  overlay:  (ctx, { query }) => ({ html, css, script }),   // modules de type overlay
   hooks:    { onInstanceCreate: async (ctx) => {}, onInstanceDelete: async (ctx) => {} },
 };
 ```
@@ -136,6 +230,7 @@ la vôtre) et, pour `entry.*`, `ctx.entry`.
 - `ctx.locale`, `ctx.defaultLocale`, `ctx.locales`
 - `ctx.setting("clé")` — réglage de l'instance pour la langue courante (avec sa valeur par défaut)
 - `ctx.t("clé", { vars })` — textes de `locales/<langue>.json`
+- `ctx.api.topics.collect(sujet, { limit? })` — informations des sources de l'instance (sujet déclaré dans `consumes`)
 - `ctx.api.entries.list({ instance?, locale?, limit? })` — entrées publiées (par défaut, de l'instance courante)
 - `ctx.api.instances.list({ module?, locale? })`, `ctx.api.site(locale)` (nom, accroche, logo)
 - `ctx.api.store.add / list / remove / count` — stockage privé de l'instance

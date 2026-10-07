@@ -14,6 +14,8 @@ export const manifest: ParsedManifest = {
   author: "Vitrine",
   license: "MIT",
   icon: "✉️",
+  consumes: [],
+  provides: [],
   instances: "multiple",
   sections: [{ id: "form", label: { en: "Contact form", fr: "Formulaire de contact" } }],
   permissions: ["slots", "routes", "storage", "sections"],

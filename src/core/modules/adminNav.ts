@@ -1,21 +1,29 @@
 import { pickName } from "../instances";
+import { effectiveType } from "./manifest";
 import { getActiveInstances } from "./registry";
+import { MODULE_TYPES, type ModuleType } from "./types";
 
-export type AdminNav = {
-  /** Instances qui gèrent des entrées : éditeur du cœur. */
-  content: { key: string; name: string; icon: string }[];
-  /** Les autres instances : réglages et panneau du module. */
-  other: { id: string; name: string; icon: string }[];
-};
+export type AdminNavItem = { id: string; key: string; name: string; icon: string; content: boolean };
+export type AdminNav = { type: ModuleType; items: AdminNavItem[] }[];
 
-/** Entrées du menu d'admin : une par instance active, regroupées selon qu'elles portent du contenu. */
+/**
+ * Barre latérale de l'admin : UNE interface pour tout le site. Chaque instance de module
+ * configurée y a sa propre entrée (nommée comme l'utilisateur l'a nommée), regroupée par
+ * type de module ; la page de l'instance est une sous-page de cet admin unique.
+ */
 export async function getAdminNav(locale: string, defaultLocale: string): Promise<AdminNav> {
-  const nav: AdminNav = { content: [], other: [] };
+  const byType = new Map<ModuleType, AdminNavItem[]>();
   for (const { instance, mod } of await getActiveInstances()) {
-    const name = pickName(instance, locale, defaultLocale);
-    const icon = mod.manifest.icon ?? "🧩";
-    if (mod.manifest.content) nav.content.push({ key: instance.key, name, icon });
-    else nav.other.push({ id: instance.id, name, icon });
+    const type = effectiveType(mod.manifest);
+    const list = byType.get(type) ?? [];
+    list.push({
+      id: instance.id,
+      key: instance.key,
+      name: pickName(instance, locale, defaultLocale),
+      icon: mod.manifest.icon ?? "🧩",
+      content: !!mod.manifest.content,
+    });
+    byType.set(type, list);
   }
-  return nav;
+  return MODULE_TYPES.filter((t) => byType.has(t)).map((type) => ({ type, items: byType.get(type)! }));
 }

@@ -24,11 +24,11 @@ export function TextArea({ label, name, help, required, defaultValue, rows = 6, 
   );
 }
 
-export function Checkbox({ label, name, defaultChecked, help }: { label: string; name: string; defaultChecked?: boolean; help?: string }) {
+export function Checkbox({ label, name, defaultChecked, help, value }: { label: string; name: string; defaultChecked?: boolean; help?: string; value?: string }) {
   return (
     <div>
       <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" name={name} defaultChecked={defaultChecked} className="h-4 w-4 accent-[var(--v-accent)]" />
+        <input type="checkbox" name={name} value={value} defaultChecked={defaultChecked} className="h-4 w-4 accent-[var(--v-accent)]" />
         {label}
       </label>
       {help && <p className={ui.help}>{help}</p>}

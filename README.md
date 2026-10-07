@@ -21,6 +21,7 @@ langues, menus et même les redirections `/twitch` ou `/youtube` se règlent dan
 | **Instance** | Un exemplaire configuré d'un module. Un site peut avoir **deux blogs**, ou **deux listes de réseaux sociaux** (une par chaîne) : ce sont deux instances du même module, chacune avec ses réglages, son contenu, son adresse (`/blog`, `/actus`…) et son entrée dans l'admin. |
 | **Entrée** | Un élément d'une instance à contenu : un article, un code promo, un lien social. Champs optionnels selon l'instance : image, icône, résumé, contenu Markdown, lien, code, expiration, champs personnalisés. |
 | **Section** | Un morceau qu'une instance propose à la **page d'accueil**. L'accueil n'a aucun contenu propre : c'est un assemblage de sections choisies et ordonnées dans l'admin (bandeau, derniers articles du blog 2, liens de la chaîne 1, lecteur Twitch, formulaire de contact…). |
+| **Sujet** | La façon dont les modules s'échangent des informations. Un module *consommateur* (un overlay OBS, par exemple) déclare ce qu'il sait digérer ; les modules *fournisseurs* (blog, codes promo, ou n'importe quel module tiers) exposent des informations à ce format, et l'admin choisit qui alimente quoi. Ils ne se connaissent pas. |
 | **Redirection** | `/twitch` → une URL externe *explicitement autorisée* dans l'admin (ou le lien d'une entrée, suivi automatiquement). Aucune redirection ouverte possible. |
 | **Langues** | Langue du site, langue de l'admin (par défaut et par utilisateur) et langue du visiteur sont indépendantes. Une entrée n'a besoin que d'**une** version ; on en ajoute d'autres à la demande, jamais de force. |
 
@@ -63,9 +64,11 @@ npm run lint && npm run typecheck && npm test
 src/core/           Le cœur, agnostique : modules et instances (registre, installateur,
                     exécution), entrées, redirections, langues, réglages
 src/modules-builtin Les fonctions de base, déjà sous forme de modules : blog, links, codes,
-                    pages, collection, hero, feeds, contact-form, live-status
+                    pages, collection, hero, feeds, contact-form, live-status, ticker-overlay
 src/app/(site)      Site public (accueil assemblé de sections, pages d'instances, redirections)
-src/app/admin       Admin : assistant, modules & instances, entrées, accueil, redirections…
+src/app/admin       L'admin unique : assistant, entrées, une sous-page par instance, accueil,
+                    redirections, modules & marketplace…
+src/app/overlays    Overlays OBS (/overlays/<clé>)
 src/locales         Textes de l'interface (fr, en) — ajouter une langue = un fichier JSON
 modules-examples/   Un module d'exemple prêt à publier dans son propre dépôt git
 docs/               ARCHITECTURE.md, MODULES.md

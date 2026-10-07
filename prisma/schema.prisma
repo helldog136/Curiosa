@@ -59,6 +59,8 @@ model ModuleInstance {
   fieldSchema String @default("[]")
   fallbackToDefault Boolean @default(true)
   allowGoLinks Boolean @default(false)
+  // Les entrées de cette instance sont proposées aux autres modules (overlays…) via le sujet "core.entry".
+  exposed Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -96,6 +98,8 @@ model Entry {
   url          String?
   code         String?
   featured     Boolean   @default(false)
+  // Étiquettes libres (JSON : ["sponsor", "gaming"]) : filtrage côté modules consommateurs.
+  tags         String    @default("[]")
   position     Int       @default(0)
   // Valeurs des champs libres de l'instance (JSON).
   fields       String    @default("{}")

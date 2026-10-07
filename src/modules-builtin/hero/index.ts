@@ -12,6 +12,8 @@ export const manifest: ParsedManifest = {
   license: "MIT",
   icon: "🏁",
   starter: true,
+  consumes: [],
+  provides: [],
   instances: "multiple",
   sections: [{ id: "hero", label: { en: "Banner", fr: "Bandeau" } }],
   permissions: ["sections"],

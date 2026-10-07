@@ -23,4 +23,14 @@ export default {
       return note ? [{ type: "markdown", text: note }] : null;
     },
   },
+
+  // Information exposée aux modules consommateurs (ex. un overlay OBS). Le module ne sait pas
+  // qui la lit : il publie des éléments au format du sujet « overlay.item » (déclaré dans
+  // module.json → provides) ; l'admin décide quelles instances d'overlay s'y abonnent.
+  exports: {
+    "overlay.item": (ctx) => {
+      if (!ctx.setting("enabled") || !ctx.setting("text")) return [];
+      return [{ title: ctx.setting("text"), url: ctx.setting("link") || undefined }];
+    },
+  },
 };

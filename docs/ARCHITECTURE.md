@@ -37,6 +37,23 @@ Pourquoi « tout est une entrée » pour le contenu : un code promo est un artic
 un lien, un réseau social est un article avec un lien et une icône. Un seul éditeur, une seule
 logique de langues, un seul sitemap — et un module qui sait lire des entrées marche pour toutes.
 
+## Une seule admin
+
+`/admin` est l'unique interface. Sa barre latérale regroupe par **type de module** une entrée par
+instance configurée (nommée par l'utilisateur) ; chaque instance est une sous-page de cet admin
+(`/admin/entries?c=<clé>` pour ses entrées, `/admin/instances/<id>` pour ses réglages). Les
+sections « Site » (accueil, navigation, réglages, redirections) et « Modules » (liste, marketplace,
+installation depuis git) complètent l'ensemble. Aucun module n'a son propre back-office.
+
+## Communication entre modules : les sujets
+
+Un module *consommateur* (type `overlay`, par exemple) déclare dans son manifeste les sujets qu'il
+digère et leur format ; les modules *fournisseurs* exposent des éléments à ce format
+(`provides` + `exports`). Le cœur (`src/core/modules/topics.ts`) valide, filtre par étiquette,
+applique les abonnements choisis dans l'admin et ajoute la provenance. Les modules ne se
+connaissent pas entre eux. `core.entry` (les entrées publiées de toute instance à contenu) est
+fourni d'office : un blog nourrit un overlay sans code. Voir [MODULES.md](MODULES.md#échanger-des-informations-entre-modules--les-sujets).
+
 ## Modèle de données (`prisma/schema.prisma`)
 
 - **ModuleInstance** (+ `InstanceTranslation`) : `moduleId`, `key`, `basePath`, `enabled`, menu,

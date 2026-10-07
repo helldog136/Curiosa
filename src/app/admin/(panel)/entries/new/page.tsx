@@ -14,7 +14,7 @@ export default async function NewEntryPage({ searchParams }: { searchParams: Pro
       <h1 className="text-2xl font-bold">{t("entries.new")} — {pickName(collection, adminLocale, config.defaultLocale)}</h1>
       <EntryForm
         t={t} collection={collection} locales={config.locales} locale={entryLocale}
-        data={{ status: "draft", cover: null, icon: null, url: null, code: null, featured: false, expiresAt: "", publishedAt: "", fields: {}, translations: [] }}
+        data={{ status: "draft", cover: null, icon: null, url: null, code: null, featured: false, tags: "", expiresAt: "", publishedAt: "", fields: {}, translations: [] }}
       />
     </div>
   );

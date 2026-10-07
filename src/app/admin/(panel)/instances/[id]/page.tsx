@@ -8,14 +8,18 @@ import { getModule } from "@/core/modules/registry";
 import { localized, type SettingField } from "@/core/modules/types";
 import { getSettingByLocale } from "@/core/settings";
 import { Blocks } from "@/components/site/Blocks";
+import { siteUrl } from "@/core/config";
+import { effectiveType } from "@/core/modules/manifest";
+import { getSources, providersOf } from "@/core/modules/topics";
+import { InstanceTabs } from "@/components/admin/InstanceTabs";
 import { ActionForm } from "@/components/admin/ActionForm";
 import { ConfirmButton } from "@/components/admin/ConfirmButton";
 import { Checkbox, Select, TextArea, TextField } from "@/components/admin/Field";
 import { ui } from "@/components/admin/ui";
-import { deleteInstanceAction, saveInstance, saveInstanceSettings } from "../actions";
+import { deleteInstanceAction, saveInstance, saveInstanceSettings, saveSources } from "../actions";
 
 export default async function InstancePage({ params }: { params: Promise<{ id: string }> }) {
-  const { t, locale, config } = await adminCtx("admin");
+  const { t, locale, config, user } = await adminCtx("admin");
   const { id } = await params;
   const instance = await getInstanceById(id);
   const mod = instance ? await getModule(instance.moduleId) : null;
@@ -60,14 +64,18 @@ export default async function InstancePage({ params }: { params: Promise<{ id: s
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold">{mod.manifest.icon ?? "🧩"} {pickName(instance, locale, config.defaultLocale)}</h1>
-        <p className="mt-1 text-sm text-muted">
-          {L(mod.manifest.name)} · v{mod.manifest.version} · <span className="font-mono">{instance.key}</span>
+      <div className="space-y-3">
+        <InstanceTabs t={t} id={instance.id} keyName={instance.key} name={pickName(instance, locale, config.defaultLocale)} icon={mod.manifest.icon ?? "🧩"} active="settings" content={!!content} canConfigure={user.role !== "editor"} />
+        <p className="text-sm text-muted">
+          {L(mod.manifest.name)} · {t(`type.${effectiveType(mod.manifest)}`)} · v{mod.manifest.version} · <span className="font-mono">{instance.key}</span>
         </p>
-        <p className="mt-2">{L(mod.manifest.description)}</p>
-        {content && <a href={`/admin/entries?c=${instance.key}`} className={`${ui.btnPrimary} mt-3`}>{t("instances.editEntries")}</a>}
-        {!mod.row.enabled && <p className="mt-3 rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">{t("modules.disabledNotice")}</p>}
+        <p>{L(mod.manifest.description)}</p>
+        {mod.def.overlay && (
+          <p className="rounded-lg border border-line bg-surface p-3 text-sm">
+            {t("instances.overlayUrl")}: <code className="break-all font-mono">{siteUrl}/overlays/{instance.key}</code>
+          </p>
+        )}
+        {!mod.row.enabled && <p className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">{t("modules.disabledNotice")}</p>}
       </div>
 
       <ActionForm action={saveInstance} submitLabel={t("action.save")}>
@@ -115,10 +123,37 @@ export default async function InstancePage({ params }: { params: Promise<{ id: s
             <div className="grid gap-3 sm:grid-cols-2">
               <Checkbox name="fallbackToDefault" label={t("instances.fallback")} help={t("instances.fallbackHelp")} defaultChecked={instance.fallbackToDefault} />
               <Checkbox name="allowGoLinks" label={t("instances.goLinks")} help={t("instances.goLinksHelp")} defaultChecked={instance.allowGoLinks} />
+              <Checkbox name="exposed" label={t("instances.exposed")} help={t("instances.exposedHelp")} defaultChecked={instance.exposed} />
             </div>
           </>
         )}
       </ActionForm>
+
+      {(mod.manifest.consumes ?? []).length > 0 && (
+        <ActionForm action={saveSources} submitLabel={t("action.save")}>
+          <input type="hidden" name="id" value={id} />
+          <div>
+            <h2 className="text-lg font-semibold">{t("sources.title")}</h2>
+            <p className="mt-1 text-sm text-muted">{t("sources.intro")}</p>
+          </div>
+          {await Promise.all((mod.manifest.consumes ?? []).map(async (decl, i) => {
+            const providers = await providersOf(decl.topic);
+            const current = await getSources(id, decl.topic);
+            return (
+              <fieldset key={decl.topic} className={`${ui.card} space-y-3`}>
+                <legend className="px-2 text-sm font-medium">{L(decl.label)} <span className="font-mono text-xs text-muted">{decl.topic}</span></legend>
+                {providers.length === 0 && <p className="text-sm text-muted">{t("sources.none")}</p>}
+                {providers.map((p) => (
+                  <Checkbox key={p.instance.key} name={`sources_${i}`} value={p.instance.key}
+                    label={`${p.mod.manifest.icon ?? "🧩"} ${pickName(p.instance, locale, config.defaultLocale)} (${L(p.mod.manifest.name)})`}
+                    defaultChecked={current.instances === null || current.instances.includes(p.instance.key)} />
+                ))}
+                {decl.tags && <TextField name={`tags_${i}`} label={t("sources.tags")} help={t("sources.tagsHelp")} defaultValue={current.tags.join(", ")} />}
+              </fieldset>
+            );
+          }))}
+        </ActionForm>
+      )}
 
       {mod.manifest.settings.length > 0 && (
         <ActionForm action={saveInstanceSettings} submitLabel={t("action.save")}>

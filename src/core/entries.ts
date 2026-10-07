@@ -20,6 +20,7 @@ export type EntryView = {
   url: string | null;
   code: string | null;
   featured: boolean;
+  tags: string[];
   expired: boolean;
   publishedAt: Date | null;
   expiresAt: Date | null;
@@ -31,6 +32,15 @@ export type EntryView = {
 };
 
 type EntryWithTr = Entry & { translations: EntryTranslation[] };
+
+export function parseTags(raw: string): string[] {
+  try {
+    const v = JSON.parse(raw);
+    return Array.isArray(v) ? v.filter((t): t is string => typeof t === "string") : [];
+  } catch {
+    return [];
+  }
+}
 
 function parseFields(raw: string): Record<string, unknown> {
   try {
@@ -79,6 +89,7 @@ function toView(
     url: entry.url,
     code: entry.code,
     featured: entry.featured,
+    tags: parseTags(entry.tags),
     expired: !!entry.expiresAt && entry.expiresAt.getTime() < Date.now(),
     publishedAt: entry.publishedAt,
     expiresAt: entry.expiresAt,

@@ -46,5 +46,5 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   // Pas d'admin, d'API, de fichiers statiques ni de routes de modules.
-  matcher: ["/((?!_next|api|admin|m/|uploads/|.*\\..*).*)"],
+  matcher: ["/((?!_next|api|admin|m/|overlays/|uploads/|.*\\..*).*)"],
 };

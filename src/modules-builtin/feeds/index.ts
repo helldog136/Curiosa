@@ -13,6 +13,8 @@ export const manifest: ParsedManifest = {
   author: "Vitrine",
   license: "MIT",
   icon: "📡",
+  consumes: [],
+  provides: [],
   instances: "single",
   sections: [],
   permissions: ["slots", "routes"],

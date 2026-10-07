@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { adminCtx } from "@/core/admin";
 import { getInstanceById } from "@/core/instances";
 import { prisma } from "@/core/db";
+import { parseTags } from "@/core/entries";
 import { ConfirmButton } from "@/components/admin/ConfirmButton";
 import { EntryForm } from "../EntryForm";
 import { deleteEntry, deleteTranslation } from "../actions";
@@ -35,7 +36,7 @@ export default async function EditEntryPage({ params, searchParams }: {
         t={t} collection={collection} locales={config.locales} locale={locale}
         data={{
           id: entry.id, status: entry.status, cover: entry.cover, icon: entry.icon, url: entry.url, code: entry.code,
-          featured: entry.featured, expiresAt: day(entry.expiresAt), publishedAt: day(entry.publishedAt), fields,
+          featured: entry.featured, tags: parseTags(entry.tags).join(", "), expiresAt: day(entry.expiresAt), publishedAt: day(entry.publishedAt), fields,
           translations: entry.translations.map((tr) => ({ locale: tr.locale, slug: tr.slug, title: tr.title, summary: tr.summary, body: tr.body })),
         }}
       />

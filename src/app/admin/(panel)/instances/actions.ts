@@ -9,6 +9,7 @@ import { deleteInstance, validateBasePath } from "@/core/instanceService";
 import { instanceSettingKey } from "@/core/modules/context";
 import { hasPage } from "@/core/modules/manifest";
 import { getModule } from "@/core/modules/registry";
+import { providersOf, setSources } from "@/core/modules/topics";
 import { audit } from "@/core/permissions";
 import { deleteSetting, setSetting } from "@/core/settings";
 import type { ActionState } from "@/components/admin/ActionForm";
@@ -54,6 +55,7 @@ export async function saveInstance(_prev: ActionState, formData: FormData): Prom
       fieldSchema: JSON.stringify(parseFieldSchema(String(formData.get("fieldSchema") ?? ""))),
       fallbackToDefault: formData.get("fallbackToDefault") === "on",
       allowGoLinks: formData.get("allowGoLinks") === "on",
+      exposed: formData.get("exposed") === "on",
     });
   }
 
@@ -130,4 +132,29 @@ export async function deleteInstanceAction(id: string): Promise<void> {
   await audit(user.email, "instance.delete", row.key);
   revalidatePath("/", "layout");
   redirect("/admin/modules");
+}
+
+/**
+ * Abonnements d'une instance consommatrice : pour chaque sujet qu'elle digère, quelles
+ * instances fournisseuses l'alimentent (et, si le module le permet, quelles étiquettes).
+ * Tout coché = « toutes les sources », y compris celles installées plus tard.
+ */
+export async function saveSources(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const { user, t } = await adminCtx("admin");
+  const id = String(formData.get("id") ?? "");
+  const instance = await prisma.moduleInstance.findUnique({ where: { id } });
+  const mod = instance ? await getModule(instance.moduleId) : null;
+  if (!instance || !mod) return { error: t("error.generic") };
+
+  for (const [i, decl] of (mod.manifest.consumes ?? []).entries()) {
+    const available = (await providersOf(decl.topic)).map((p) => p.instance.key);
+    const chosen = formData.getAll(`sources_${i}`).map(String).filter((k) => available.includes(k));
+    const tags = decl.tags
+      ? String(formData.get(`tags_${i}`) ?? "").split(",").map((x) => x.trim().toLowerCase()).filter(Boolean).slice(0, 20)
+      : [];
+    await setSources(id, decl.topic, { instances: chosen.length === available.length ? null : chosen, tags });
+  }
+  await audit(user.email, "instance.sources", instance.key);
+  revalidatePath("/", "layout");
+  return { ok: t("action.saved") };
 }
