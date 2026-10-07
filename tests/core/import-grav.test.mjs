@@ -12,7 +12,7 @@ function run(extra = []) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "vitrine-grav-test-"));
   makeGrav(path.join(dir, "user"));
   const out = path.join(dir, "import.tar.gz.enc");
-  const stdout = execFileSync(process.execPath, ["--disable-warning=MODULE_TYPELESS_PACKAGE_JSON", "--import", "./tests/helpers/register.mjs", "scripts/import-grav.mjs", path.join(dir, "user"), "--out", out, "--password", "mdp-de-test", ...extra], { encoding: "utf8", env: { ...process.env, DATA_DIR: "", DATABASE_URL: "" } });
+  const stdout = execFileSync(process.execPath, ["--disable-warning=MODULE_TYPELESS_PACKAGE_JSON", "--import", "./tests/helpers/register.mjs", "scripts/import-grav.mjs", path.join(dir, "user"), "--out", out, "--password", "mdp-de-test", "--domain", "monsite.be", ...extra], { encoding: "utf8", env: { ...process.env, DATA_DIR: "", DATABASE_URL: "" } });
   const opened = openBackup(fs.readFileSync(out), "mdp-de-test");
   assert.equal(opened.ok, true, JSON.stringify(opened));
   return { dir, stdout, backup: opened.backup, report: fs.readFileSync(`${out}.rapport.txt`, "utf8") };
@@ -25,10 +25,10 @@ test("import Grav : la sauvegarde produite est valide et reprend site, langues, 
   assert.equal(set("site.name", "fr"), "Site de démonstration");
   assert.equal(set("site.tagline", "fr"), "Une accroche de test");
   assert.deepEqual(set("i18n.enabled"), ["fr", "en"]);
-  assert.deepEqual(data.users.map((u) => [u.email, u.role]).sort(), [["boss@example.org", "owner"], ["redac@example.org", "admin"]]);
+  assert.deepEqual(data.users.map((u) => [u.email, u.role]).sort(), [["boss@example.org", "owner"], ["redac@example.org", "editor"]]);
   assert.match(data.users.find((u) => u.email === "boss@example.org").passwordHash, /^\$2y\$/, "le mot de passe Grav est conservé");
   const titles = data.entryTranslations.map((t) => `${t.locale}:${t.title}`).sort();
-  assert.deepEqual(titles, ["en:First post", "fr:L'équipe", "fr:Accueil", "fr:Contact", "fr:Page non listée", "fr:Premier article", "fr:Un brouillon", "fr:À propos"].sort());
+  assert.deepEqual(titles, ["en:First post", "fr:L'équipe", "fr:Contact", "fr:Page non listée", "fr:Premier article", "fr:Un brouillon", "fr:À propos", "fr:Merci", "fr:Chez Dupont"].sort());
   assert.match(stdout, /Mot de passe de la sauvegarde/);
 });
 
@@ -59,7 +59,7 @@ test("import Grav : anciennes adresses redirigées vers les nouvelles, accueil e
   assert.ok(!("blog/premier-article" in rd), "même adresse sous /blog : pas de redirection");
   assert.equal(rd["a-propos/equipe"], "/equipe");
   assert.ok(!("contact" in rd), "adresse inchangée : pas de redirection");
-  assert.ok(backup.data.redirects.every((r) => r.permanent));
+  assert.ok(backup.data.redirects.filter((r) => r.entryId).every((r) => r.permanent));
   assert.match(report, /page d'accueil Grav/);
   assert.match(report, /bloc modulaire ignoré : _footer|bloc modulaire ignoré/);
   assert.match(report, /fichier non importé, lien conservé/);
@@ -71,4 +71,24 @@ test("import Grav : le script refuse un dossier qui n'est pas un site Grav, et n
   assert.throws(() => execFileSync(process.execPath, ["--import", "./tests/helpers/register.mjs", "scripts/import-grav.mjs", dir], { stdio: "pipe" }));
   const src = fs.readFileSync("scripts/import-grav.mjs", "utf8");
   assert.match(src, /mkdtempSync/, "base temporaire : aucune base existante n'est touchée");
+});
+
+test("import Grav : plusieurs collections de type blog, page « external », blocs modulaires de l'accueil et HTML brut", () => {
+  const { backup, report } = run();
+  const { instances, entries, entryTranslations: tr, redirects } = backup.data;
+  const sponsors = instances.find((i) => i.basePath === "partenaires");
+  assert.ok(sponsors, "une page « blog » avec sous-pages = sa propre collection, à la même adresse");
+  const dupont = entries.find((e) => tr.some((t) => t.entryId === e.id && t.title === "Chez Dupont"));
+  assert.equal(dupont.instanceId, sponsors.id);
+  assert.equal(tr.find((t) => t.entryId === dupont.id).summary, "Le sous-titre sert de résumé");
+  const home = tr.find((t) => t.title === "Merci");
+  assert.match(home.body, /Texte du bandeau/);
+  assert.match(home.body, /\[▶ Voir la vidéo\]\(https:\/\/www\.youtube\.com\/watch\?v=abcDEF12345\)/, "iframe YouTube → lien");
+  assert.ok(!/<iframe|<div/.test(home.body), "plus de HTML brut");
+  assert.match(home.body, /\[Nous sponsoriser\]\(\/partenaires\)/, "bouton du bandeau, adresse du site réécrite");
+  assert.ok(!home.body.includes("derniers articles"));
+  const merch = redirects.find((r) => r.path === "boutique");
+  assert.deepEqual([merch.targetUrl, merch.permanent], ["https://shop.example.org/", false]);
+  assert.match(report, /vidéo intégrée → lien/);
+  assert.match(report, /pointait vers un site externe/);
 });
