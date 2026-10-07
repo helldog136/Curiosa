@@ -9,7 +9,7 @@ helldog136.be. **Aucune page publique** : rien de ce module n'apparaît sur votr
   lier un sponsor à sa fiche partenaire.
 - **MCP** : `partners_list`, `partner_get`, `partner_create` (statut « à contacter » ou « en discussion » seulement),
   `partner_update`, `partner_log`, `contacts_list`, `contact_create` (créé « à vérifier »), `contact_update`.
-  Aucune suppression. Les modifications faites par un assistant sont attribuées à son jeton (`agent:<jeton>`).
+  `partner_delete` et `contact_delete` existent mais sont **désactivées par défaut** : à accorder à la main, jeton par jeton (admin → API & MCP). Les modifications faites par un assistant sont attribuées à son jeton (`agent:<jeton>`).
 - **Réglage avancé** : nombre de jours sans nouvelle avant qu'une relance soit due (14).
 
 Un seul exemplaire par site (`instances: single`). Les données sont dans le stockage privé de l'instance.

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/core/db";
 import { getSiteConfig } from "@/core/settings";
+import { canUse } from "./access";
 import { authenticate, isMcpEnabled, rateLimited, type AuthedToken } from "./tokens";
 import type { McpTool } from "./types";
 import { McpToolError } from "./validate";
@@ -12,8 +13,8 @@ import { McpToolError } from "./validate";
  * lecture/écriture, limitation de débit, audit des écritures, interrupteur général. Il reçoit une
  * fonction `listTools` : d'où viennent les outils (modules, éditeur de contenu…) n'est pas son affaire.
  *
- * Invariants garantis ici, quel que soit le fournisseur : un jeton « lecture » ne voit et n'appelle
- * que les outils `readOnly` ; une erreur interne n'est jamais renvoyée à l'agent (seules les erreurs
+ * Invariants garantis ici, quel que soit le fournisseur : un jeton ne voit et n'appelle que les outils
+ * que son plafond (lecture/écriture) ET ses accès action par action autorisent (access.ts) ; une erreur interne n'est jamais renvoyée à l'agent (seules les erreurs
  * `McpToolError` ou marquées `expose: true` le sont) ; toute écriture est consignée dans l'audit.
  */
 const SUPPORTED_VERSIONS = ["2025-06-18", "2025-03-26", "2024-11-05"];
@@ -23,7 +24,8 @@ type RpcRequest = { jsonrpc?: string; id?: string | number | null; method?: stri
 
 const rpcError = (id: RpcRequest["id"], code: number, message: string) => ({ jsonrpc: "2.0", id: id ?? null, error: { code, message } });
 const rpcResult = (id: RpcRequest["id"], result: unknown) => ({ jsonrpc: "2.0", id: id ?? null, result });
-const visible = (tools: McpTool[], token: AuthedToken) => (token.scope === "write" ? tools : tools.filter((t) => t.readOnly));
+/** Ce que ce jeton voit : plafond (lecture/écriture) ET accès accordé action par action. Recalculé à chaque requête. */
+const visible = (tools: McpTool[], token: AuthedToken) => tools.filter((t) => canUse(t, token));
 
 async function handle(rpc: RpcRequest, token: AuthedToken, listTools: () => Promise<McpTool[]>): Promise<unknown | null> {
   switch (rpc.method) {
@@ -49,14 +51,14 @@ async function handle(rpc: RpcRequest, token: AuthedToken, listTools: () => Prom
           title: t.title,
           description: t.description,
           inputSchema: { additionalProperties: false, ...t.input },
-          annotations: { readOnlyHint: t.readOnly, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+          annotations: { readOnlyHint: t.readOnly, destructiveHint: t.destructive, idempotentHint: false, openWorldHint: false },
         })),
       });
     case "tools/call": {
       const name = String(rpc.params?.name ?? "");
       const tool = (await listTools()).find((t) => t.name === name);
-      // Même réponse que l'outil existe ou non : un jeton « lecture » ne découvre rien d'autre.
-      if (!tool || (!tool.readOnly && token.scope !== "write")) return rpcError(rpc.id, -32602, `Unknown tool: ${name}`);
+      // Même réponse que l'outil existe ou non : un jeton ne découvre rien de ce qu'on ne lui a pas accordé.
+      if (!tool || !canUse(tool, token)) return rpcError(rpc.id, -32602, `Unknown tool: ${name}`);
       try {
         const result = await tool.call((rpc.params?.arguments as Record<string, unknown>) ?? {}, { name: token.name });
         if (!tool.readOnly) await prisma.auditLog.create({ data: { actor: `mcp:${token.name}`, action: `mcp.${tool.name}`, target: tool.source } }).catch(() => {});

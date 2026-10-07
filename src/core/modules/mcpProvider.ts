@@ -29,6 +29,9 @@ export const moduleActionProvider: McpToolProvider = {
           title: `${label}: ${decl.name}`,
           description: `[${label}] ${decl.description}`,
           readOnly: decl.readOnly === true,
+          // Le module choisit ce qui est accordé d'office ; à défaut : la lecture seule oui, l'écriture non.
+          default: decl.destructive ? false : (decl.default ?? decl.readOnly === true),
+          destructive: decl.destructive === true,
           input: decl.input ?? { type: "object" },
           source: instance.key,
           instanceId: instance.id,

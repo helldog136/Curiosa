@@ -15,8 +15,9 @@ import type { JsonSchemaLite } from "@/core/modules/types";
  *
  * Toute instance à contenu (blog, sponsors, liste de liens…) reçoit des actions éditoriales :
  * lister, lire, créer un brouillon, éditer un brouillon. C'est une fonctionnalité du moteur de contenu
- * (il connaît les entrées), pas du mécanisme MCP. Garde-fous : aucune action ne publie ni ne supprime ;
- * seuls les brouillons sont modifiables.
+ * (il connaît les entrées), pas du mécanisme MCP. Le moteur de contenu ne propose volontairement ni publication
+ * ni suppression : un module peut en proposer (actions `destructive`, désactivées par défaut) ; ici, seuls les
+ * brouillons sont modifiables.
  */
 const str = (max = 2000) => ({ type: "string" as const, maxLength: max });
 
@@ -30,8 +31,8 @@ export const contentToolProvider: McpToolProvider = {
     for (const { instance, mod } of await getActiveInstances()) {
       if (!mod.manifest.content) continue;
       const label = pickName(instance, "en", config.defaultLocale);
-      const add = (name: string, t: Pick<McpTool, "description" | "readOnly" | "input" | "call">) =>
-        tools.push({ name: `${instance.key}__${name}`, title: `${label}: ${name}`, source: instance.key, instanceId: instance.id, ...t });
+      const add = (name: string, t: Pick<McpTool, "description" | "readOnly" | "input" | "call"> & { default?: boolean }) =>
+        tools.push({ name: `${instance.key}__${name}`, title: `${label}: ${name}`, source: instance.key, instanceId: instance.id, default: t.default ?? true, destructive: false, ...t });
 
       const listSchema: JsonSchemaLite = { type: "object", properties: { status: { type: "string", enum: ["published", "draft", "all"] }, locale: { type: "string", enum: locales }, limit: { type: "integer", minimum: 1, maximum: 100 } } };
       add("list_entries", {

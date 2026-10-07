@@ -197,8 +197,11 @@ model ApiToken {
   hash       String    @unique
   // Premiers caractères, pour reconnaître un jeton dans la liste sans le révéler.
   prefix     String
-  // read : outils en lecture seule. write : tous les outils déclarés (jamais de publication ni de suppression).
+  // Plafond du jeton. read : jamais d'action qui écrit, quoi qu'on lui accorde. write : peut écrire, selon ses accès.
   scope      String    @default("read")
+  // Accès action par action, modifiables à tout moment (JSON : { "<outil>": true|false }). Une action absente de
+  // la liste suit le défaut déclaré par son module. Lu à CHAQUE requête : un changement est immédiat.
+  grants     String    @default("{}")
   createdBy  String
   createdAt  DateTime  @default(now())
   lastUsedAt DateTime?

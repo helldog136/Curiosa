@@ -234,6 +234,14 @@ export type McpDecl = {
   description: string;
   /** Lecture seule (défaut : non). Les jetons « lecture » n'ont accès qu'aux actions en lecture seule. */
   readOnly?: boolean;
+  /**
+   * Accordée par défaut aux nouveaux jetons ? Un module peut implémenter plus d'actions qu'il n'en active
+   * d'office : l'administrateur accorde les autres à la main, jeton par jeton, action par action.
+   * Défaut : oui pour une lecture seule, NON pour une action qui écrit.
+   */
+  default?: boolean;
+  /** Action irréversible (suppression…) : signalée comme telle, confirmation avant de l'accorder. Doit être `default: false`. */
+  destructive?: boolean;
   input?: JsonSchemaLite;
 };
 

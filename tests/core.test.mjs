@@ -105,14 +105,49 @@ test("validateArgs : types, bornes, énumérations, requis, propriétés inconnu
   assert.throws(() => validateArgs(undefined, { x: 1 }), McpToolError);
 });
 
-test("les modules qui déclarent des actions MCP en implémentent chacune, et aucune n'est destructive", () => {
+test("les modules qui déclarent des actions MCP les implémentent ; les actions irréversibles sont désactivées par défaut", () => {
   for (const name of fs.readdirSync("modules-community")) {
     const m = JSON.parse(read(`modules-community/${name}/module.json`));
     if (!m.mcp) continue;
     const code = read(`modules-community/${name}/${m.main}`);
     for (const action of m.mcp) {
       assert.ok(new RegExp(`\\b${action.name}\\b`).test(code), `${name}.${action.name} n'est pas implémentée`);
-      assert.ok(!/delete|remove|publish|destroy/.test(action.name), `${name}.${action.name} : les actions MCP ne suppriment ni ne publient jamais`);
+      // Supprimer / publier est possible, mais jamais d'office : à accorder à la main, jeton par jeton.
+      if (/delete|remove|publish|destroy|purge/.test(action.name)) {
+        assert.equal(action.destructive, true, `${name}.${action.name} doit être déclarée destructive`);
+        assert.notEqual(action.default, true, `${name}.${action.name} ne doit pas être active par défaut`);
+      }
+      if (action.destructive) assert.notEqual(action.default, true, `${name}.${action.name} : destructive ⇒ jamais par défaut`);
+      if (action.readOnly) assert.ok(!action.destructive, `${name}.${action.name} : lecture seule ne peut être destructive`);
     }
   }
+});
+
+test("droits d'un jeton : plafond, défauts du module, surcharges, effet immédiat", async () => {
+  const { canUse, setGrant, parseGrants, isGranted } = await import("../src/core/services/mcp/access.ts");
+  const read = { name: "p__list", readOnly: true, default: true };
+  const write = { name: "p__create", readOnly: false, default: true };
+  const del = { name: "p__delete", readOnly: false, default: false };
+  const t = (scope, grants = {}) => ({ scope, grants });
+
+  // Défauts : un jeton « écriture » voit lecture + écriture par défaut, PAS la suppression.
+  assert.ok(canUse(read, t("write")) && canUse(write, t("write")));
+  assert.ok(!canUse(del, t("write")), "une action destructrice n'est pas accordée d'office");
+  // Plafond : un jeton « lecture » n'écrit jamais, même si on lui accorde.
+  assert.ok(canUse(read, t("read")) && !canUse(write, t("read")));
+  assert.ok(!canUse(del, t("read", { "p__delete": true })), "le plafond l'emporte sur l'octroi");
+  // Octroi manuel, puis retrait : effet sur la requête suivante (la fonction est pure, sans cache).
+  let grants = setGrant({}, del, true);
+  assert.deepEqual(grants, { "p__delete": true });
+  assert.ok(canUse(del, t("write", grants)));
+  grants = setGrant(grants, del, false);
+  assert.deepEqual(grants, {}, "une surcharge égale au défaut est supprimée");
+  assert.ok(!canUse(del, t("write", grants)));
+  // Retirer une action active par défaut.
+  grants = setGrant({}, write, false);
+  assert.ok(!canUse(write, t("write", grants)) && canUse(read, t("write", grants)));
+  assert.equal(isGranted(write, grants), false);
+  // Champ corrompu : aucune surcharge, jamais d'exception.
+  for (const bad of ["", "nope", "[]", "null", '{"a":"x"}']) assert.deepEqual(parseGrants(bad), {});
+  assert.deepEqual(parseGrants('{"a":true,"b":"x"}'), { a: true });
 });

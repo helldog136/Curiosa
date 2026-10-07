@@ -1,8 +1,9 @@
 import crypto from "node:crypto";
 import { prisma } from "@/core/db";
 import { getSetting } from "@/core/settings";
+import { parseGrants, type Grants, type Scope } from "./access";
 
-export type TokenScope = "read" | "write";
+export type TokenScope = Scope;
 
 const hashOf = (token: string) => crypto.createHash("sha256").update(token).digest("hex");
 
@@ -21,7 +22,7 @@ export async function revokeToken(id: string): Promise<void> {
   await prisma.apiToken.updateMany({ where: { id, revokedAt: null }, data: { revokedAt: new Date() } });
 }
 
-export type AuthedToken = { id: string; name: string; scope: TokenScope };
+export type AuthedToken = { id: string; name: string; scope: TokenScope; grants: Grants };
 
 export async function authenticate(header: string | null): Promise<AuthedToken | null> {
   const match = /^Bearer (vit_[A-Za-z0-9_-]{20,})$/.exec(header ?? "");
@@ -30,7 +31,8 @@ export async function authenticate(header: string | null): Promise<AuthedToken |
   if (!row || row.revokedAt) return null;
   // Mise à jour discrète : une erreur ici ne doit jamais empêcher la requête.
   prisma.apiToken.update({ where: { id: row.id }, data: { lastUsedAt: new Date() } }).catch(() => {});
-  return { id: row.id, name: row.name, scope: row.scope === "write" ? "write" : "read" };
+  // Les accès sont relus en base à CHAQUE requête : modifier les droits d'un jeton est immédiat, sans le régénérer.
+  return { id: row.id, name: row.name, scope: row.scope === "write" ? "write" : "read", grants: parseGrants(row.grants) };
 }
 
 // Limitation de débit en mémoire : 120 requêtes / minute / jeton.
@@ -41,4 +43,13 @@ export function rateLimited(tokenId: string): boolean {
   recent.push(now);
   hits.set(tokenId, recent);
   return recent.length > 120;
+}
+
+export async function getTokenGrants(id: string): Promise<{ scope: TokenScope; grants: Grants } | null> {
+  const row = await prisma.apiToken.findUnique({ where: { id } });
+  return row && !row.revokedAt ? { scope: row.scope === "write" ? "write" : "read", grants: parseGrants(row.grants) } : null;
+}
+
+export async function saveTokenGrants(id: string, grants: Grants): Promise<void> {
+  await prisma.apiToken.updateMany({ where: { id, revokedAt: null }, data: { grants: JSON.stringify(grants) } });
 }

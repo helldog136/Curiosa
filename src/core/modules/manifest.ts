@@ -73,7 +73,7 @@ export const manifestSchema = z.object({
   instances: z.enum(["single", "multiple"]).default("multiple"),
   consumes: z.array(z.object({ topic: topicId, label: localized, schema: z.array(topicField).max(20).optional(), tags: z.boolean().optional() })).max(10).default([]),
   provides: z.array(z.object({ topic: topicId, label: localized.optional() })).max(10).default([]),
-  mcp: z.array(z.object({ name: z.string().regex(/^[a-z][a-z0-9_]{1,39}$/), description: z.string().max(1000), readOnly: z.boolean().optional(), input: jsonSchemaLite.optional() })).max(40).optional(),
+  mcp: z.array(z.object({ name: z.string().regex(/^[a-z][a-z0-9_]{1,39}$/), description: z.string().max(1000), readOnly: z.boolean().optional(), default: z.boolean().optional(), destructive: z.boolean().optional(), input: jsonSchemaLite.optional() }).refine((a) => !a.destructive || a.default !== true, "a destructive action cannot be enabled by default").refine((a) => !(a.readOnly && a.destructive), "a read-only action cannot be destructive")).max(60).optional(),
   content: content.optional(),
   page: z.boolean().optional(),
   sections: z

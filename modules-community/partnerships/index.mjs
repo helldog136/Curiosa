@@ -161,7 +161,9 @@ export default {
     },
   },
 
-  // ── Actions MCP (déclarées dans module.json) : aucune ne supprime ──────────────
+  // ── Actions MCP (déclarées dans module.json) ────────────────────────────────────
+  // `partner_delete` et `contact_delete` sont IMPLÉMENTÉES mais déclarées `default: false` : un jeton ne
+  // les a que si un administrateur les lui accorde, une à une, dans l'admin (API & MCP → Accès du jeton).
   mcp: {
     async partners_list(ctx, a) {
       const [partners, journal] = await Promise.all([all(ctx, "partners"), all(ctx, "journal")]);
@@ -199,6 +201,17 @@ export default {
       const { partner_id, ...rest } = a;
       const id = await ctx.api.store.add("contacts", { partnerId: partner_id ?? "", name: clip(rest.name, 120), role: clip(rest.role, 120), organization: clip(rest.organization, 120), email: clip(rest.email, 200), phone: clip(rest.phone, 60), relation: clip(rest.relation, 300), notes: clip(rest.notes, 5000), status: "to_review", updatedBy: `agent:${actor.name}` });
       return { id, status: "to_review" };
+    },
+    async partner_delete(ctx, a) {
+      if (!(await ctx.api.store.get(a.id))) throw fail("partnership not found");
+      for (const collection of ["journal", "contacts"]) for (const r of await all(ctx, collection)) if (r.data.partnerId === a.id) await ctx.api.store.remove(r.id);
+      await ctx.api.store.remove(a.id);
+      return { deleted: a.id };
+    },
+    async contact_delete(ctx, a) {
+      if (!(await ctx.api.store.get(a.id))) throw fail("contact not found");
+      await ctx.api.store.remove(a.id);
+      return { deleted: a.id };
     },
     async contact_update(ctx, a, actor) {
       const { id, partner_id, ...rest } = a;

@@ -43,10 +43,10 @@ export default async function McpPage() {
               <tbody>
                 {tokens.map((k) => (
                   <tr key={k.id} className={`border-t border-line ${k.revokedAt ? "opacity-50" : ""}`}>
-                    <td className={ui.td}>{k.name} <span className="font-mono text-xs text-muted">{k.prefix}…</span></td>
+                    <td className={ui.td}><a href={`/admin/mcp/${k.id}`} className="font-medium hover:text-accent">{k.name}</a> <span className="font-mono text-xs text-muted">{k.prefix}…</span></td>
                     <td className={ui.td}>{t(`mcp.scope.${k.scope}`)}</td>
                     <td className={ui.td}>{k.revokedAt ? t("mcp.revoked") : date(k.lastUsedAt)}</td>
-                    <td className={ui.td}>{!k.revokedAt && <form action={revokeTokenAction.bind(null, k.id)}><ConfirmButton message={t("confirm.delete")}>{t("mcp.revoke")}</ConfirmButton></form>}</td>
+                    <td className={`${ui.td} flex gap-2`}>{!k.revokedAt && <a href={`/admin/mcp/${k.id}`} className={ui.btn}>{t("mcp.access")}</a>}{!k.revokedAt && <form action={revokeTokenAction.bind(null, k.id)}><ConfirmButton message={t("confirm.delete")}>{t("mcp.revoke")}</ConfirmButton></form>}</td>
                   </tr>
                 ))}
                 {tokens.length === 0 && <tr><td colSpan={4} className={`${ui.td} text-muted`}>{t("mcp.noTokens")}</td></tr>}

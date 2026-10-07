@@ -159,12 +159,38 @@ export default { mcp: {
 
 - Chaque action devient l'outil `<clé de l'instance>__<action>` (autant d'outils que d'instances).
 - **Toute instance à contenu** reçoit aussi `list_entries`, `get_entry`, `create_draft` et `update_draft`.
-- **Garde-fous du cœur, non contournables** : aucun outil ne publie ni ne supprime (n'en déclarez pas : un test
-  l'interdit), `create_draft`/`update_draft` ne touchent que des **brouillons**, un jeton « lecture » ne voit que
-  les actions `readOnly`, les arguments inconnus sont refusés, les erreurs internes sont masquées (seules celles
-  avec `expose: true` sont renvoyées), toute écriture est consignée dans le journal d'audit.
-- Les jetons sont créés par le propriétaire (affichés une fois, seul leur hash est conservé), révocables, limités
-  à 120 requêtes/minute. L'option avancée « Proposer ses actions à l'API MCP » retire une instance du MCP.
+
+### Qui a accès à quoi : un module implémente plus qu'il n'active
+
+Un jeton n'a pas « tout » : l'administrateur règle, **jeton par jeton et action par action** (admin → API & MCP →
+*Accès* du jeton), ce qu'il peut faire. Les changements sont **immédiats** : le serveur relit les accès à chaque requête,
+inutile de regénérer le jeton.
+
+Le module décide de ses **défauts** — l'ensemble d'actions accordé d'office aux jetons — et peut implémenter bien plus :
+
+```jsonc
+{ "name": "partner_list",   "readOnly": true },                          // lecture : accordée par défaut
+{ "name": "partner_create", "default": true },                           // écriture accordée d'office (choix du module)
+{ "name": "partner_update" },                                            // écriture sans « default » : désactivée par défaut
+{ "name": "partner_delete", "destructive": true, "default": false }      // implémentée, JAMAIS accordée d'office
+```
+
+| Champ | Effet |
+|---|---|
+| `readOnly` | lecture seule ; défaut `default: true` |
+| `default` | accordée aux jetons sans réglage explicite (défaut : `true` si `readOnly`, sinon `false`) |
+| `destructive` | irréversible (suppression…) : signalée comme telle (`destructiveHint`), **jamais** `default: true` (le manifeste est refusé sinon), confirmation à l'octroi |
+
+Droit effectif d'un jeton = **plafond du jeton** (un jeton « lecture » n'écrit jamais, quoi qu'on lui accorde) **ET**
+(accès accordé à ce jeton **OU** défaut du module). Un jeton ne découvre pas ce qu'on ne lui a pas accordé : l'appel renvoie
+« outil inconnu », comme si l'action n'existait pas. Voir `src/core/services/mcp/access.ts`.
+
+- **Garde-fous du cœur** : un jeton « lecture » n'écrit jamais ; une action destructrice n'est jamais active par défaut ; les
+  arguments inconnus sont refusés ; les erreurs internes sont masquées (seules celles avec `expose: true` sont renvoyées) ;
+  toute écriture et tout changement d'accès sont consignés dans le journal d'audit ; l'éditeur de contenu du cœur ne propose
+  à un assistant que de créer ou modifier des **brouillons**.
+- Les jetons sont créés par le propriétaire (affichés une fois, seul leur hash est conservé), révocables, limités à
+  120 requêtes/minute. L'option avancée « Proposer ses actions à l'API MCP » retire une instance du MCP.
 
 ## Overlay (type `overlay`)
 

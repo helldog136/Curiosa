@@ -138,6 +138,7 @@ CREATE TABLE "ApiToken" (
     "hash" TEXT NOT NULL,
     "prefix" TEXT NOT NULL,
     "scope" TEXT NOT NULL DEFAULT 'read',
+    "grants" TEXT NOT NULL DEFAULT '{}',
     "createdBy" TEXT NOT NULL,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "lastUsedAt" DATETIME,

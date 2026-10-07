@@ -28,6 +28,8 @@ const siteToolProvider: McpToolProvider = {
         title: "Site info",
         description: "Name, languages and the list of module instances of this site.",
         readOnly: true,
+        default: true,
+        destructive: false,
         input: { type: "object" },
         source: "core",
         call: async () => ({
@@ -49,6 +51,15 @@ const siteToolProvider: McpToolProvider = {
 
 /** Les fournisseurs d'outils MCP de ce site, dans l'ordre. */
 export const mcpProviders: McpToolProvider[] = [siteToolProvider, moduleActionProvider, contentToolProvider];
+
+/**
+ * Catalogue complet pour l'admin : tous les outils, y compris ceux d'une instance qui s'est retirée du MCP
+ * (signalés), pour que l'administrateur voie et règle chaque action de chaque module.
+ */
+export async function listMcpToolCatalogue(): Promise<(McpTool & { instanceOptedOut: boolean })[]> {
+  const all = (await Promise.all(mcpProviders.map((p) => p.list()))).flat();
+  return Promise.all(all.map(async (tool) => ({ ...tool, instanceOptedOut: !!tool.instanceId && (await getSetting<boolean>(mcpInstanceKey(tool.instanceId))) === false })));
+}
 
 /** Tous les outils MCP disponibles, en respectant le retrait d'une instance (« Proposer ses actions à l'API MCP »). */
 export async function listMcpTools(): Promise<McpTool[]> {

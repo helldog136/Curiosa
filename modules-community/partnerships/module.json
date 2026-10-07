@@ -71,7 +71,8 @@
             "maxLength": 120
           }
         }
-      }
+      },
+      "default": true
     },
     {
       "name": "partner_get",
@@ -88,7 +89,8 @@
             "maxLength": 60
           }
         }
-      }
+      },
+      "default": true
     },
     {
       "name": "partner_create",
@@ -152,11 +154,12 @@
             "maxLength": 3000
           }
         }
-      }
+      },
+      "default": true
     },
     {
       "name": "partner_update",
-      "description": "Update the prospecting fields of a partnership. Cannot delete.",
+      "description": "Update the prospecting fields of a partnership.",
       "input": {
         "type": "object",
         "required": [
@@ -227,7 +230,8 @@
             "maxLength": 3000
           }
         }
-      }
+      },
+      "default": true
     },
     {
       "name": "partner_log",
@@ -256,7 +260,8 @@
             "maxLength": 500
           }
         }
-      }
+      },
+      "default": true
     },
     {
       "name": "contacts_list",
@@ -270,7 +275,8 @@
             "maxLength": 60
           }
         }
-      }
+      },
+      "default": true
     },
     {
       "name": "contact_create",
@@ -314,11 +320,12 @@
             "maxLength": 5000
           }
         }
-      }
+      },
+      "default": true
     },
     {
       "name": "contact_update",
-      "description": "Update a contact. Cannot delete.",
+      "description": "Update a contact.",
       "input": {
         "type": "object",
         "required": [
@@ -360,6 +367,43 @@
           "notes": {
             "type": "string",
             "maxLength": 5000
+          }
+        }
+      },
+      "default": true
+    },
+    {
+      "name": "partner_delete",
+      "destructive": true,
+      "default": false,
+      "description": "Permanently delete a partnership file together with its journal and contacts. Irreversible. Off by default: an administrator must grant it to a token.",
+      "input": {
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 60
+          }
+        }
+      }
+    },
+    {
+      "name": "contact_delete",
+      "destructive": true,
+      "default": false,
+      "description": "Permanently delete a contact. Irreversible. Off by default: an administrator must grant it to a token.",
+      "input": {
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 60
           }
         }
       }
