@@ -47,6 +47,9 @@ model ModuleInstance {
   moduleId String
   // Identifiant technique stable (URLs /m/<key>/…, réglages, sections de l'accueil).
   key      String @unique
+  // Surnom d'ADMIN pour distinguer deux instances du même module (« Actus », « Chaîne 2 »). Inutile — et masqué — tant
+  // qu'il n'y a qu'une instance. Voir src/core/instanceLabel.ts.
+  nickname String?
   // Chemin public où l'instance est montée ("" = racine du site, NULL = pas de page).
   basePath String? @unique
   enabled  Boolean @default(true)

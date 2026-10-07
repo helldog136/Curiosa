@@ -348,5 +348,15 @@
   "brand.role.fg": "Texte principal",
   "brand.role.muted": "Texte secondaire",
   "brand.role.line": "Séparateurs et contours",
-  "site.download": "Télécharger"
+  "site.download": "Télécharger",
+  "instances.nickname": "Surnom",
+  "instances.nicknameAdminHelp": "Permet de distinguer vos instances de {module} dans l'admin (non affiché sur le site). Le nom que porte le site se règle plus bas.",
+  "instances.nicknameExisting": "Surnom de l'existant « {name} »",
+  "instances.nicknameNew": "Surnom de la nouvelle",
+  "instances.nicknamePlaceholder": "ex. Chaîne 2",
+  "instances.nicknameHelp": "Court et reconnaissable : c'est ainsi que vous la retrouverez dans les menus. Sert uniquement à les distinguer.",
+  "instances.technicalId": "identifiant technique",
+  "instances.error.nickname.empty": "Donnez un surnom pour pouvoir les distinguer.",
+  "instances.error.nickname.long": "Ce surnom est trop long (40 caractères maximum).",
+  "instances.error.nickname.taken": "Une autre en porte déjà le surnom."
 }

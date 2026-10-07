@@ -124,3 +124,11 @@ test("une case à cocher lue avec getAll() porte une valeur (sinon le navigateur
     }
   }
 });
+
+test("l'admin ne montre pas les identifiants techniques d'instance en mode simple", () => {
+  // L'identifiant technique (instance.key / i.key) n'apparaît dans l'interface que derrière « advanced ».
+  const listing = read("src/app/admin/(panel)/modules/page.tsx");
+  assert.ok(/advanced && <span className="font-mono">\{i\.key\}/.test(listing), "la liste des modules ne doit montrer la clé qu'en mode avancé");
+  const detail = read("src/app/admin/(panel)/instances/[id]/page.tsx");
+  assert.ok(/advanced && <>[^]*instances\.technicalId[^]*instance\.key/.test(detail), "la page d'une instance ne doit montrer la clé qu'en mode avancé");
+});

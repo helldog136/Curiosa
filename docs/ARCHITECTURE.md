@@ -18,7 +18,7 @@ l'exécution des modules. Rien de plus.
   (vierge), `hero`, `feeds`, `contact-form`, `live-status`… livrés ou installés depuis git.
 - Une **instance** (`ModuleInstance`) est un exemplaire configuré. Le manifeste dit si le module
   est `single` (une seule instance : RSS, statut live) ou `multiple` (autant qu'on veut : blogs,
-  listes de liens, formulaires). Chaque instance a une clé stable, des noms par langue, un chemin
+  listes de liens, formulaires). Chaque instance a un identifiant technique stable (dérivé de son surnom), un surnom d'admin (superflu s'il n'y en a qu'une, voir `src/core/instanceLabel.ts`), des noms publics par langue, un chemin
   public (`basePath`, null = pas de page), sa place dans le menu, ses réglages
   (`instance.<id>.<clé>`) et son stockage privé.
 - Un module s'exécute **une fois par instance** : `ctx.setting()` renvoie les réglages de

@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { adminCtx } from "@/core/admin";
-import { DISPLAYS, FEATURES, getInstanceById, pickName } from "@/core/instances";
+import { DISPLAYS, FEATURES, getInstanceById } from "@/core/instances";
 import { localeName } from "@/core/i18n/locales";
 import { buildContext, instanceSettingKey } from "@/core/modules/context";
 import { hasPage } from "@/core/modules/manifest";
@@ -8,6 +8,7 @@ import { getModule } from "@/core/modules/registry";
 import { localized, type SettingField } from "@/core/modules/types";
 import { getSetting, getSettingByLocale } from "@/core/settings";
 import { mcpInstanceKey } from "@/core/modules/mcpProvider";
+import { getInstanceLabeler } from "@/core/modules/labels";
 import { Blocks } from "@/components/site/Blocks";
 import { siteUrl } from "@/core/config";
 import { effectiveType } from "@/core/modules/manifest";
@@ -28,6 +29,8 @@ export default async function InstancePage({ params, searchParams }: { params: P
   if (!instance || !mod) notFound();
   const L = (v: Parameters<typeof localized>[0]) => localized(v, locale, config.defaultLocale);
   const content = mod.manifest.content;
+  const labeler = await getInstanceLabeler(locale, config.defaultLocale);
+  const showNickname = labeler.hasSiblings(instance.moduleId);
 
   let panel: Awaited<ReturnType<NonNullable<typeof mod.def.adminPanel>>> = [];
   if (instance.enabled && mod.row.enabled && mod.def.adminPanel) {
@@ -74,9 +77,9 @@ export default async function InstancePage({ params, searchParams }: { params: P
   return (
     <div className="space-y-8">
       <div className="space-y-3">
-        <InstanceTabs t={t} id={instance.id} keyName={instance.key} name={pickName(instance, locale, config.defaultLocale)} icon={mod.manifest.icon ?? "🧩"} active="settings" content={!!content} canConfigure={user.role !== "editor"} />
+        <InstanceTabs t={t} id={instance.id} keyName={instance.key} name={labeler.label(instance)} icon={mod.manifest.icon ?? "🧩"} active="settings" content={!!content} canConfigure={user.role !== "editor"} />
         <p className="text-sm text-muted">
-          {L(mod.manifest.name)}{advanced && <> · {t(`type.${effectiveType(mod.manifest)}`)} · v{mod.manifest.version} · <span className="font-mono">{instance.key}</span></>}
+          {L(mod.manifest.name)}{advanced && <> · {t(`type.${effectiveType(mod.manifest)}`)} · v{mod.manifest.version} · {t("instances.technicalId")} <span className="font-mono">{instance.key}</span></>}
         </p>
         <p>{L(mod.manifest.description)}</p>
         {mod.def.overlay && (
@@ -91,6 +94,10 @@ export default async function InstancePage({ params, searchParams }: { params: P
         <input type="hidden" name="id" value={id} />
         {advanced && <input type="hidden" name="__adv" value="1" />}
         <h2 className="text-lg font-semibold">{t("instances.general")}</h2>
+        {/* Le surnom ne sert qu'à distinguer plusieurs instances du même module : superflu (donc absent) s'il n'y en a qu'une. */}
+        {showNickname && (
+          <TextField name="nickname" label={t("instances.nickname")} help={t("instances.nicknameAdminHelp", { module: L(mod.manifest.name) })} required defaultValue={instance.nickname ?? ""} />
+        )}
 
         <fieldset className={`${ui.card} space-y-4`}>
           <legend className="px-2 text-sm font-medium">{t("instances.names")}</legend>
@@ -162,7 +169,7 @@ export default async function InstancePage({ params, searchParams }: { params: P
                 {providers.length === 0 && <p className="text-sm text-muted">{t("sources.none")}</p>}
                 {providers.map((p) => (
                   <Checkbox key={p.instance.key} name={`sources_${i}`} value={p.instance.key}
-                    label={`${p.mod.manifest.icon ?? "🧩"} ${pickName(p.instance, locale, config.defaultLocale)} (${L(p.mod.manifest.name)})`}
+                    label={`${p.mod.manifest.icon ?? "🧩"} ${labeler.label(p.instance)}${labeler.hasSiblings(p.instance.moduleId) ? ` (${L(p.mod.manifest.name)})` : ""}`}
                     defaultChecked={current.instances === null || current.instances.includes(p.instance.key)} />
                 ))}
                 {advanced && decl.tags && <TextField name={`tags_${i}`} label={t("sources.tags")} help={t("sources.tagsHelp")} defaultValue={current.tags.join(", ")} />}

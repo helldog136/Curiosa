@@ -1,7 +1,7 @@
 import { prisma } from "@/core/db";
 import { parseTags, uniqueSlug } from "@/core/content/entries";
 import { createEntry } from "@/core/content/service";
-import { pickName } from "@/core/instances";
+import { getInstanceLabeler } from "@/core/modules/labels";
 import { getActiveInstances } from "@/core/modules/registry";
 import { getSiteConfig } from "@/core/settings";
 import { slugify } from "@/core/slug";
@@ -27,10 +27,11 @@ export const contentToolProvider: McpToolProvider = {
     const tools: McpTool[] = [];
     const config = await getSiteConfig();
     const locales = config.locales;
+    const labeler = await getInstanceLabeler("en", config.defaultLocale);
 
     for (const { instance, mod } of await getActiveInstances()) {
       if (!mod.manifest.content) continue;
-      const label = pickName(instance, "en", config.defaultLocale);
+      const label = labeler.label(instance);
       const add = (name: string, t: Pick<McpTool, "description" | "readOnly" | "input" | "call"> & { default?: boolean }) =>
         tools.push({ name: `${instance.key}__${name}`, title: `${label}: ${name}`, source: instance.key, instanceId: instance.id, default: t.default ?? true, destructive: false, ...t });
 

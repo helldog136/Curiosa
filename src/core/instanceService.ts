@@ -7,6 +7,7 @@ import { hasPage, type ParsedManifest } from "./modules/manifest";
 import { buildContext } from "./modules/context";
 import { listInstances, toInstanceView } from "./instances";
 import { localized } from "./modules/types";
+import { keyFromNickname } from "./instanceLabel";
 
 type Db = PrismaClient | Prisma.TransactionClient;
 
@@ -25,6 +26,16 @@ export async function validateBasePath(basePath: string, ignoreId?: string): Pro
   return null;
 }
 
+const reservedPath = (p: string) => p !== "" && (RESERVED_PATHS.has(p) || isKnownLocale(p));
+
+async function freeBasePath(db: Db, base: string): Promise<string> {
+  for (let i = 1; i < 100; i++) {
+    const candidate = i === 1 ? base : `${base}-${i}`;
+    if (!reservedPath(candidate) && !(await db.moduleInstance.findUnique({ where: { basePath: candidate } }))) return candidate;
+  }
+  return `${base}-${Date.now()}`;
+}
+
 /** Clé libre dérivée d'une base : blog, blog-2, blog-3… */
 export async function freeKey(db: Db, base: string): Promise<string> {
   for (let i = 1; i < 100; i++) {
@@ -37,6 +48,8 @@ export async function freeKey(db: Db, base: string): Promise<string> {
 export type NewInstance = {
   manifest: ParsedManifest;
   key?: string;
+  /** Surnom d'admin (obligatoire de fait dès qu'il y a plusieurs instances du module) ; l'identifiant technique en est dérivé. */
+  nickname?: string;
   /** undefined = valeur par défaut du module ; null = pas de page. */
   basePath?: string | null;
   names: Record<string, string>;
@@ -48,17 +61,19 @@ export async function createInstance(db: Db, input: NewInstance) {
   const { manifest } = input;
   const content = manifest.content;
   const count = await db.moduleInstance.count();
-  const key = input.key ?? (await freeKey(db, manifest.id));
+  const key = input.key ?? (await freeKey(db, keyFromNickname(manifest.id, input.nickname)));
   const mounted = hasPage(manifest);
   let basePath: string | null = null;
   if (mounted) {
     basePath = input.basePath === undefined ? (content?.basePath ?? manifest.basePath ?? key) : input.basePath;
-    if (basePath !== null && (await db.moduleInstance.findUnique({ where: { basePath } }))) basePath = key; // repli : chemin déjà pris
+    // Repli si le chemin est déjà pris ou réservé (un surnom « Admin » ou « EN » ne doit pas voler /admin ni /en).
+    if (basePath !== null && (reservedPath(basePath) || (await db.moduleInstance.findUnique({ where: { basePath } })))) basePath = await freeBasePath(db, `${manifest.id}-${key}`);
   }
   return db.moduleInstance.create({
     data: {
       moduleId: manifest.id,
       key,
+      nickname: input.nickname?.trim() || null,
       basePath,
       showInNav: content?.showInNav ?? mounted,
       navOrder: count,
@@ -80,8 +95,9 @@ export async function createInstance(db: Db, input: NewInstance) {
 }
 
 /** Nom proposé pour une première instance, dans chaque langue du site. */
-export function defaultNames(manifest: ParsedManifest, locales: string[]): Record<string, string> {
-  return Object.fromEntries(locales.map((l) => [l, localized(manifest.name, l, "en")]));
+export function defaultNames(manifest: ParsedManifest, locales: string[], nickname?: string): Record<string, string> {
+  // Avec un surnom (2e instance et suivantes), le nom public démarre à sa valeur : « Actus » plutôt qu'un second « Blog ».
+  return Object.fromEntries(locales.map((l) => [l, nickname ?? localized(manifest.name, l, "en")]));
 }
 
 export async function deleteInstance(id: string): Promise<void> {

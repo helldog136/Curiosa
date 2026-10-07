@@ -348,5 +348,15 @@
   "brand.role.fg": "Main text",
   "brand.role.muted": "Secondary text",
   "brand.role.line": "Separators and outlines",
-  "site.download": "Download"
+  "site.download": "Download",
+  "instances.nickname": "Nickname",
+  "instances.nicknameAdminHelp": "Tells your {module} instances apart in the admin (not shown on the site). The site's own name for it is set below.",
+  "instances.nicknameExisting": "Nickname for the existing “{name}”",
+  "instances.nicknameNew": "Nickname of the new one",
+  "instances.nicknamePlaceholder": "e.g. Channel 2",
+  "instances.nicknameHelp": "Short and recognizable: it is how you will find it in the menus. Only used to tell them apart.",
+  "instances.technicalId": "technical id",
+  "instances.error.nickname.empty": "Give a nickname so you can tell them apart.",
+  "instances.error.nickname.long": "This nickname is too long (40 characters maximum).",
+  "instances.error.nickname.taken": "Another one already has this nickname."
 }

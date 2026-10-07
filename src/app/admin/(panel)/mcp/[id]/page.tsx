@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
 import { adminCtx } from "@/core/admin";
 import { prisma } from "@/core/db";
-import { listInstances, pickName } from "@/core/instances";
+import { listInstances } from "@/core/instances";
+import { getInstanceLabeler } from "@/core/modules/labels";
 import { listMcpToolCatalogue } from "@/core/platform";
 import { getActiveInstances } from "@/core/modules/registry";
 import { localized } from "@/core/modules/types";
@@ -22,6 +23,7 @@ export default async function TokenAccessPage({ params }: { params: Promise<{ id
   const catalogue = await listMcpToolCatalogue();
   const active = await getActiveInstances();
   const instances = await listInstances();
+  const labeler = await getInstanceLabeler(locale, config.defaultLocale);
 
   // Regroupement par source : la plateforme, puis chaque instance de module.
   const groups = new Map<string, typeof catalogue>();
@@ -44,7 +46,7 @@ export default async function TokenAccessPage({ params }: { params: Promise<{ id
       {[...groups.entries()].map(([source, tools]) => {
         const inst = instances.find((i) => i.key === source);
         const mod = active.find((a) => a.instance.key === source)?.mod;
-        const title = source === "core" ? t("mcp.platform") : `${mod?.manifest.icon ?? "🧩"} ${inst ? pickName(inst, locale, config.defaultLocale) : source}`;
+        const title = source === "core" ? t("mcp.platform") : `${mod?.manifest.icon ?? "🧩"} ${inst ? labeler.label(inst) : source}`;
         return (
           <section key={source} className={`${ui.card} space-y-3`} aria-label={title}>
             <div className="flex flex-wrap items-center justify-between gap-3">

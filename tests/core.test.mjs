@@ -151,3 +151,29 @@ test("droits d'un jeton : plafond, défauts du module, surcharges, effet immédi
   for (const bad of ["", "nope", "[]", "null", '{"a":"x"}']) assert.deepEqual(parseGrants(bad), {});
   assert.deepEqual(parseGrants('{"a":true,"b":"x"}'), { a: true });
 });
+
+test("surnoms d'instances : libellé d'admin, identifiant dérivé, unicité", async () => {
+  const { instanceLabel, keyFromNickname, checkNickname, suggestNickname, needsNickname } = await import("../src/core/instanceLabel.ts");
+  // Une seule instance : le surnom est superflu — le libellé est le nom du module, même si un surnom existe.
+  assert.equal(instanceLabel({ nickname: "Actus", publicName: "Blog", key: "blog" }, "Blog", 1), "Blog");
+  assert.ok(!needsNickname(1) && needsNickname(2));
+  // Plusieurs : le surnom prime, puis le nom public, puis l'identifiant.
+  assert.equal(instanceLabel({ nickname: "Actus", publicName: "News", key: "actus" }, "Blog", 2), "Actus");
+  assert.equal(instanceLabel({ nickname: null, publicName: "News", key: "blog-2" }, "Blog", 2), "News");
+  assert.equal(instanceLabel({ nickname: " ", publicName: "", key: "blog-2" }, "Blog", 3), "blog-2");
+  // L'identifiant technique vient du surnom (et jamais d'un numéro opaque).
+  assert.equal(keyFromNickname("blog", "Chaîne 2"), "chaine-2");
+  assert.equal(keyFromNickname("blog", "Été à Bruxelles !"), "ete-a-bruxelles");
+  assert.equal(keyFromNickname("links", undefined), "links");
+  assert.equal(keyFromNickname("blog", "2024"), "blog-2024", "ne commence pas par un chiffre");
+  assert.equal(keyFromNickname("blog", "x"), "blog-x", "trop court");
+  assert.match(keyFromNickname("blog", "A".repeat(80)), /^[a-z][a-z0-9-]{1,30}$/);
+  // Unicité parmi les instances du même module, sans casse ni accents.
+  assert.deepEqual(checkNickname("  Chaîne   2 ", ["Actus"]), { ok: true, value: "Chaîne 2" });
+  assert.equal(checkNickname("chaine 2", ["Chaîne 2"]).reason, "taken");
+  assert.equal(checkNickname("   ", []).reason, "empty");
+  assert.equal(checkNickname("x".repeat(41), []).reason, "long");
+  // Suggestion : le premier numéro libre.
+  assert.equal(suggestNickname("Blog", []), "Blog 2");
+  assert.equal(suggestNickname("Blog", ["Blog 2", "Blog 3"]), "Blog 4");
+});

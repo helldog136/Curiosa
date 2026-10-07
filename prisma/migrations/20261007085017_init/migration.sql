@@ -25,6 +25,7 @@ CREATE TABLE "ModuleInstance" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "moduleId" TEXT NOT NULL,
     "key" TEXT NOT NULL,
+    "nickname" TEXT,
     "basePath" TEXT,
     "enabled" BOOLEAN NOT NULL DEFAULT true,
     "showInNav" BOOLEAN NOT NULL DEFAULT true,

@@ -1,4 +1,4 @@
-import { pickName } from "@/core/instances";
+import { getInstanceLabeler } from "@/core/modules/labels";
 import { buildContext } from "@/core/modules/context";
 import { getActiveInstances } from "@/core/modules/registry";
 import type { McpTool, McpToolProvider } from "@/core/services/mcp/types";
@@ -19,8 +19,9 @@ export const moduleActionProvider: McpToolProvider = {
   async list() {
     const config = await getSiteConfig();
     const tools: McpTool[] = [];
+    const labeler = await getInstanceLabeler("en", config.defaultLocale);
     for (const { instance, mod } of await getActiveInstances()) {
-      const label = pickName(instance, "en", config.defaultLocale);
+      const label = labeler.label(instance);
       for (const decl of mod.manifest.mcp ?? []) {
         const handler = mod.def.mcp?.[decl.name];
         if (!handler) continue;

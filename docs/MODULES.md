@@ -21,6 +21,16 @@ l'instance courante et `ctx.instance.key` l'identifie. N'écrivez jamais comme s
 exemplaire : un site peut en avoir plusieurs (deux blogs, deux formulaires de contact…). Si votre
 module n'a de sens qu'une fois, déclarez `"instances": "single"`.
 
+### Trois noms, trois publics
+
+| Nom | Pour qui | Détail |
+|---|---|---|
+| **Surnom** | l'administrateur | Distingue deux instances du même module dans l'admin (« Actus », « Chaîne 2 »). **Superflu — donc jamais demandé ni affiché — tant qu'il n'y a qu'une instance** : le libellé est alors le nom du module. Demandé à la création de la 2e instance (et pour la 1re, si elle n'en a pas). Unique parmi les instances du même module. |
+| **Nom public** | les visiteurs | Traduit par langue, affiché sur le site (menu, titre de page). Démarre à la valeur du surnom. |
+| **Identifiant technique** | le code, les URL, les agents | Dérivé du surnom à la création (« Chaîne 2 » → `chaine-2`) : lisible dans `/overlays/<id>`, `/m/<id>/…`, les outils MCP (`chaine-2__list_entries`). Ne change jamais quand on renomme le surnom, pour que les liens continuent de marcher. **Visible en mode avancé seulement.** |
+
+Votre module reçoit `ctx.instance.key` (l'identifiant) et `ctx.instance.name` (le nom public) ; il n'a pas à connaître le surnom.
+
 ## Type d'un module
 
 Chaque module a un **type** (`"type"` dans `module.json`) qui décide où il apparaît dans l'admin

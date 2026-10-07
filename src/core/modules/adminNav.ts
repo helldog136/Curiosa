@@ -1,4 +1,4 @@
-import { pickName } from "../instances";
+import { getInstanceLabeler } from "./labels";
 import { effectiveType } from "./manifest";
 import { getActiveInstances } from "./registry";
 import { MODULE_TYPES, type ModuleType } from "./types";
@@ -12,6 +12,7 @@ export type AdminNav = { type: ModuleType; items: AdminNavItem[] }[];
  * type de module ; la page de l'instance est une sous-page de cet admin unique.
  */
 export async function getAdminNav(locale: string, defaultLocale: string): Promise<AdminNav> {
+  const labeler = await getInstanceLabeler(locale, defaultLocale);
   const byType = new Map<ModuleType, AdminNavItem[]>();
   for (const { instance, mod } of await getActiveInstances()) {
     const type = effectiveType(mod.manifest);
@@ -19,7 +20,7 @@ export async function getAdminNav(locale: string, defaultLocale: string): Promis
     list.push({
       id: instance.id,
       key: instance.key,
-      name: pickName(instance, locale, defaultLocale),
+      name: labeler.label(instance),
       icon: mod.manifest.icon ?? "🧩",
       content: !!mod.manifest.content,
     });

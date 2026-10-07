@@ -1,5 +1,6 @@
 import { adminCtx } from "@/core/admin";
 import { pickName } from "@/core/instances";
+import { getInstanceLabeler } from "@/core/modules/labels";
 import { listInstances } from "@/core/instances";
 import { getCatalogue } from "@/core/modules/catalogue";
 import { listModuleRows, loadModule } from "@/core/modules/registry";
@@ -19,6 +20,7 @@ export default async function ModulesPage({ searchParams }: { searchParams: Prom
   const rows = await listModuleRows();
   const mods = await Promise.all(rows.map(async (row) => ({ row, mod: await loadModule(row) })));
   const instances = await listInstances();
+  const labeler = await getInstanceLabeler(locale, config.defaultLocale);
   const catalogue = (await getCatalogue()).filter((c) => !rows.some((r) => r.id === c.id));
 
   return (
@@ -71,16 +73,33 @@ export default async function ModulesPage({ searchParams }: { searchParams: Prom
                 <ul className="divide-y divide-line rounded-lg border border-line bg-bg">
                   {mine.map((i) => (
                     <li key={i.id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
-                      <a href={`/admin/instances/${i.id}`} className="font-medium hover:text-accent">{pickName(i, locale, config.defaultLocale)}</a>
-                      <span className="font-mono text-xs text-muted">
-                        {i.key}{i.basePath !== null ? ` · /${i.basePath}` : ""}{i.enabled ? "" : ` · ${t("instances.disabled")}`}
+                      <a href={`/admin/instances/${i.id}`} className="font-medium hover:text-accent">{labeler.label(i)}</a>
+                      <span className="text-xs text-muted">
+                        {advanced && <span className="font-mono">{i.key}{i.basePath !== null ? ` · /${i.basePath}` : ""}</span>}
+                        {!i.enabled && <> {advanced ? "· " : ""}{t("instances.disabled")}</>}
                       </span>
                     </li>
                   ))}
                 </ul>
               )}
               {canAdd && mod && (
-                <form action={addInstance.bind(null, row.id)}>
+                <form action={addInstance.bind(null, row.id)} className="space-y-2">
+                  {/* Dès la 2e instance, un surnom devient utile pour les distinguer : on le demande ici (et pour la 1re, si elle n'en a pas). */}
+                  {mine.length > 0 && (
+                    <>
+                      {mine.filter((m) => !m.nickname).map((m) => (
+                        <label key={m.id} className="block text-sm">
+                          <span className={ui.label}>{t("instances.nicknameExisting", { name: pickName(m, locale, config.defaultLocale) })}</span>
+                          <input name={`nickname_${m.id}`} required maxLength={40} defaultValue={pickName(m, locale, config.defaultLocale)} className={ui.input} />
+                        </label>
+                      ))}
+                      <label className="block text-sm">
+                        <span className={ui.label}>{t("instances.nicknameNew")}</span>
+                        <input name="nickname" required maxLength={40} placeholder={t("instances.nicknamePlaceholder")} className={ui.input} />
+                        <span className={ui.help}>{t("instances.nicknameHelp")}</span>
+                      </label>
+                    </>
+                  )}
                   <button className={ui.btn}>+ {advanced ? (hasPage(mod.manifest) || mod.manifest.content ? t("instances.add") : t("instances.addPlain")) : t("instances.addSimple", { name: localized(mod.manifest.name, locale, config.defaultLocale) })}</button>
                 </form>
               )}

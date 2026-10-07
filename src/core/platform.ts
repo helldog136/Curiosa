@@ -11,7 +11,7 @@
  * d'outils, on l'ajoute ici — jamais dans le service.
  */
 import { contentToolProvider } from "@/core/content/mcp";
-import { pickName } from "@/core/instances";
+import { getInstanceLabeler } from "@/core/modules/labels";
 import { mcpInstanceKey, moduleActionProvider } from "@/core/modules/mcpProvider";
 import { getActiveInstances } from "@/core/modules/registry";
 import type { McpTool, McpToolProvider } from "@/core/services/mcp/types";
@@ -22,6 +22,7 @@ const siteToolProvider: McpToolProvider = {
   id: "site",
   async list() {
     const config = await getSiteConfig();
+    const labeler = await getInstanceLabeler("en", config.defaultLocale);
     return [
       {
         name: "site_info",
@@ -39,7 +40,7 @@ const siteToolProvider: McpToolProvider = {
           instances: (await getActiveInstances()).map(({ instance, mod }) => ({
             key: instance.key,
             module: mod.manifest.id,
-            name: pickName(instance, config.defaultLocale, config.defaultLocale),
+            name: labeler.label(instance),
             path: instance.basePath,
             hasEntries: !!mod.manifest.content,
           })),

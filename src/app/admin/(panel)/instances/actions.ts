@@ -6,6 +6,7 @@ import { adminCtx } from "@/core/admin";
 import { prisma } from "@/core/db";
 import { DISPLAYS, FEATURES } from "@/core/instances";
 import { deleteInstance, validateBasePath } from "@/core/instanceService";
+import { checkNickname } from "@/core/instanceLabel";
 import { instanceSettingKey } from "@/core/modules/context";
 import { hasPage } from "@/core/modules/manifest";
 import { getModule } from "@/core/modules/registry";
@@ -41,6 +42,13 @@ export async function saveInstance(_prev: ActionState, formData: FormData): Prom
   const data: Record<string, unknown> = {
     enabled: formData.get("enabled") === "on",
   };
+  // Surnom : envoyé seulement quand il y a plusieurs instances du module ; unique parmi elles.
+  if (formData.get("nickname") !== null) {
+    const others = (await prisma.moduleInstance.findMany({ where: { moduleId: existing.moduleId, NOT: { id } } })).map((o) => o.nickname).filter((n): n is string => !!n);
+    const res = checkNickname(String(formData.get("nickname")), others);
+    if (!res.ok) return { error: t(`instances.error.nickname.${res.reason}`) };
+    data.nickname = res.value;
+  }
   if (hasPage(mod.manifest)) data.showInNav = formData.get("showInNav") === "on";
 
   if (adv) await setSetting(mcpInstanceKey(id), formData.get("mcp") === "on");

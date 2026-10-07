@@ -17,6 +17,8 @@ export type InstanceView = {
   id: string;
   moduleId: string;
   key: string;
+  /** Surnom d'admin (voir instanceLabel.ts) ; null tant qu'il n'a pas servi. */
+  nickname: string | null;
   /** Chemin public où l'instance est montée ("" = racine, null = pas de page). */
   basePath: string | null;
   enabled: boolean;
@@ -53,6 +55,7 @@ export function toInstanceView(c: ModuleInstance & { translations: InstanceTrans
     id: c.id,
     moduleId: c.moduleId,
     key: c.key,
+    nickname: c.nickname,
     basePath: c.basePath,
     enabled: c.enabled,
     showInNav: c.showInNav,

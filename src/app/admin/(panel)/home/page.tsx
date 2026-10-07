@@ -1,5 +1,5 @@
 import { adminCtx } from "@/core/admin";
-import { pickName } from "@/core/instances";
+import { getInstanceLabeler } from "@/core/modules/labels";
 import { getActiveInstances, sectionsOf } from "@/core/modules/registry";
 import { localized, type SettingField } from "@/core/modules/types";
 import { ActionForm } from "@/components/admin/ActionForm";
@@ -9,13 +9,14 @@ import { saveHome } from "./actions";
 export default async function HomeAdminPage() {
   const { t, locale, config, advanced } = await adminCtx("admin");
   const active = await getActiveInstances();
+  const labeler = await getInstanceLabeler(locale, config.defaultLocale);
   const L = (v: Parameters<typeof localized>[0]) => localized(v, locale, config.defaultLocale);
 
   // Toutes les sections proposables : une par (instance, section déclarée par son module).
   const choices = active.flatMap(({ instance, mod }) =>
     sectionsOf(mod.manifest).map((s) => ({
       value: `${instance.key}|${s.id}`,
-      label: `${pickName(instance, locale, config.defaultLocale)} — ${L(s.label)}`,
+      label: `${labeler.label(instance)} — ${L(s.label)}`,
       options: (s.options ?? []) as SettingField[],
     })),
   );
