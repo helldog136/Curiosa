@@ -70,7 +70,7 @@ export async function runUpdate(o) {
     prevCommit = (await git("rev-parse", "HEAD")).stdout.trim();
     prevRef = await git("symbolic-ref", "-q", "--short", "HEAD").then((r) => r.stdout.trim(), () => "");
     save({ from: prevCommit.slice(0, 12) });
-  } catch (e) { return fail("not-a-git-install"); }
+  } catch { return fail("not-a-git-install"); }
 
   // 2. sauvegarde de la base (avant toute migration)
   try {
@@ -84,7 +84,7 @@ export async function runUpdate(o) {
       log(`sauvegarde : ${dbBackup}`);
       for (const old of fs.readdirSync(backups).filter((f) => f.startsWith("pre-update-")).sort().slice(0, -KEEP_BACKUPS)) fs.rmSync(path.join(backups, old), { force: true });
     }
-  } catch (e) { return fail("backup-failed"); }
+  } catch { return fail("backup-failed"); }
 
   // 3. récupération de la version demandée
   let switched = false, migrated = false;

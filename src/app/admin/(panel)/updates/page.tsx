@@ -44,9 +44,9 @@ export default async function UpdatesPage() {
 
       {info.canUpdate && (
         <div className="flex flex-wrap gap-3">
-          <ActionForm action={async () => checkNow()} submitLabel={t("updates.check")} className="space-y-2">{null}</ActionForm>
+          <ActionForm action={checkNow} submitLabel={t("updates.check")} className="space-y-2">{null}</ActionForm>
           {check.available && !running && (
-            <ActionForm action={async () => applyUpdate()} submitLabel={t("updates.apply", { version: check.latest ?? "" })} confirm={t("updates.confirm")} className="space-y-2">{null}</ActionForm>
+            <ActionForm action={applyUpdate} submitLabel={t("updates.apply", { version: check.latest ?? "" })} confirm={t("updates.confirm")} className="space-y-2">{null}</ActionForm>
           )}
         </div>
       )}

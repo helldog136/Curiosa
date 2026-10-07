@@ -185,3 +185,10 @@ test("mises à jour : le redémarrage n'est jamais supposé — sans commande ni
   assert.ok(lib.includes("supervised && serverPid"), "arrêt du serveur seulement s'il est supervisé");
   assert.ok(lib.includes('restart: "needed"') || lib.includes('save({ restart: "needed" })'));
 });
+
+test("pages d'admin : aucune fonction anonyme passée à un formulaire client (React la refuse) — on passe l'action serveur elle-même", () => {
+  for (const f of code("src/app/admin")) {
+    if (!f.endsWith(".tsx") || /^\s*["']use client["']/.test(read(f))) continue;
+    assert.ok(!/<ActionForm[^>]*action=\{(async\s*)?\(/.test(read(f)), `${f} : <ActionForm action={() => …}> n'est pas sérialisable ; exportez une action depuis actions.ts`);
+  }
+});
