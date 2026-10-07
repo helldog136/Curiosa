@@ -89,6 +89,11 @@ sujet `feed.item` (tout module peut en fournir : `provides: [{ "topic": "feed.it
 construction = élément le plus récent (jamais l'heure courante), adresses `javascript:` écartées. Les pages du site annoncent le flux
 dans `<head>` ; aucun module n'est nécessaire.
 
+**S'abonner à une partie seulement.** Chaque élément porte des *rubriques* : la clé de son instance (`blog`) et chacune de ses
+étiquettes (`blog/actus`). `/feed.xml?topics=blog/actus,videos` ne renvoie que les éléments de l'une OU l'autre (suivre `blog`
+suit tout le blog). Le catalogue de ce qu'on peut suivre, avec noms lisibles et nombre d'éléments, est sur `/feed/topics.json`.
+Une rubrique inconnue est ignorée ; si toutes le sont, la réponse est 404 (une faute de frappe ne donne pas un flux vide en silence).
+
 ## Ce que le cœur ne fait pas
 
 - Il ne cite **aucun module par son identifiant**. L'assistant de première installation lit les manifestes (`starter`,

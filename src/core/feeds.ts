@@ -22,9 +22,13 @@ export const FEED_ITEM_SCHEMA: TopicField[] = [
   { key: "url", type: "url", required: true },
   { key: "summary", type: "string" },
   { key: "publishedAt", type: "string" },
+  /** Rubriques propres au fournisseur (« concert », « annonce »…) : le cœur les préfixe par la clé de l'instance. */
+  { key: "topics", type: "string[]" },
 ];
 
-export type FeedItem = { id: string; title: string; link: string; summary: string; publishedAt: Date | null };
+export type FeedItem = { id: string; title: string; link: string; summary: string; publishedAt: Date | null; topics: string[] };
+/** Une rubrique qu'on peut suivre : `<instance>` (tout ce que l'instance publie) ou `<instance>/<rubrique>`. */
+export type FeedTopic = { id: string; label: string; instance: string; count: number };
 export type Feed = { title: string; link: string; description: string; language: string; self: string; items: FeedItem[] };
 
 const escapeXml = (s: string) =>
@@ -57,10 +61,19 @@ export function sortItems(items: FeedItem[]): FeedItem[] {
   return [...items].sort((a, b) => (b.publishedAt?.getTime() ?? -Infinity) - (a.publishedAt?.getTime() ?? -Infinity) || a.link.localeCompare(b.link) || a.id.localeCompare(b.id));
 }
 
+const TOPIC_RE = /^[a-z0-9][a-z0-9_-]*(\/[a-z0-9][a-z0-9_-]*)?$/;
+const topicSlug = (v: string) => v.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40);
+const topicsOf = (instanceKey: string, names: string[]) => [instanceKey, ...new Set(names.map(topicSlug).filter(Boolean).map((n) => `${instanceKey}/${n}`))];
+
+/** Rubriques demandées (`?topics=a,b`) : syntaxe vérifiée, doublons retirés, 20 au plus. */
+export function parseTopics(raw: string | null | undefined): string[] {
+  return [...new Set(String(raw ?? "").split(",").map((t) => t.trim().toLowerCase()).filter((t) => TOPIC_RE.test(t)))].slice(0, 20);
+}
+
 const absolute = (href: string) => (href.startsWith("/") ? `${siteUrl}${href}` : href);
 
 /** Rassemble les éléments du flux. `instance` limite à une instance (clé) ; absent = tout le site. */
-export async function collectFeedItems(opts: { locale: string; instance?: string; limit?: number }): Promise<FeedItem[]> {
+export async function collectFeedItems(opts: { locale: string; instance?: string; topics?: string[]; limit?: number }): Promise<FeedItem[]> {
   const limit = Math.min(100, Math.max(1, opts.limit ?? 30));
   const config = await getSiteConfig();
   const items: FeedItem[] = [];
@@ -72,7 +85,7 @@ export async function collectFeedItems(opts: { locale: string; instance?: string
       if (e.expired) continue;
       const external = instance.clickAction === "external" && isSafeExternalUrl(e.url);
       const link = external ? e.url! : `${siteUrl}${entryPath(e, config.defaultLocale)}`;
-      items.push({ id: `entry:${e.id}`, title: e.title, link, summary: e.summary, publishedAt: e.publishedAt });
+      items.push({ id: `entry:${e.id}`, title: e.title, link, summary: e.summary, publishedAt: e.publishedAt, topics: topicsOf(instance.key, e.tags) });
     }
   }
 
@@ -86,13 +99,37 @@ export async function collectFeedItems(opts: { locale: string; instance?: string
       link: absolute(url),
       summary: String(i.summary ?? ""),
       publishedAt: date && !Number.isNaN(date.getTime()) ? date : null,
+      topics: topicsOf(i.source.instance, Array.isArray(i.topics) ? i.topics.map(String) : []),
     });
   }
-  return sortItems(items).slice(0, limit);
+  // Filtre par rubriques (OU) : choisir « blog » suit tout le blog, « blog/actus » seulement ses articles étiquetés « actus ».
+  const wanted = new Set(opts.topics ?? []);
+  const kept = wanted.size ? items.filter((i) => i.topics.some((t) => wanted.has(t))) : items;
+  return sortItems(kept).slice(0, limit);
+}
+
+/** Catalogue des rubriques qu'on peut suivre, avec le nombre d'éléments actuels. Même source que le flux. */
+export async function listFeedTopics(locale?: string): Promise<FeedTopic[]> {
+  const config = await getSiteConfig();
+  const lang = locale && config.locales.includes(locale) ? locale : config.defaultLocale;
+  const active = await getActiveInstances();
+  const all = await collectFeedItems({ locale: lang, limit: 100 });
+  const counts = new Map<string, number>();
+  for (const i of all) for (const t of i.topics) counts.set(t, (counts.get(t) ?? 0) + 1);
+  const nameOf = (key: string) => {
+    const a = active.find((x) => x.instance.key === key);
+    return a ? (a.instance.names[lang] ?? a.instance.names[config.defaultLocale] ?? key) : key;
+  };
+  return [...counts.entries()]
+    .map(([id, count]) => {
+      const [instance, sub] = id.split("/") as [string, string | undefined];
+      return { id, instance, count, label: sub ? `${nameOf(instance)} · ${sub}` : nameOf(instance) };
+    })
+    .sort((a, b) => a.id.localeCompare(b.id));
 }
 
 /** Flux complet, ou `null` si l'instance demandée n'existe pas / ne propose rien au flux. */
-export async function buildFeed(opts: { locale?: string; instance?: string; limit?: number }): Promise<Feed | null> {
+export async function buildFeed(opts: { locale?: string; instance?: string; topics?: string[]; limit?: number }): Promise<Feed | null> {
   const config = await getSiteConfig();
   const locale = opts.locale && config.locales.includes(opts.locale) ? opts.locale : config.defaultLocale;
   const localized = await getSiteConfig(locale);
@@ -103,13 +140,20 @@ export async function buildFeed(opts: { locale?: string; instance?: string; limi
     if (!active || !publishes) return null;
     title = `${localized.name} — ${active.instance.names[locale] ?? active.instance.names[config.defaultLocale] ?? active.instance.key}`;
   }
-  const lang = `lang=${locale}`;
+  const topics = opts.topics ?? [];
+  if (topics.length) {
+    // Rubriques inconnues : refusées (une faute de frappe ne doit pas donner un flux vide en silence).
+    const known = new Set((await listFeedTopics(locale)).map((t) => t.id));
+    if (!topics.some((t) => known.has(t))) return null;
+    title = `${title} — ${topics.join(", ")}`;
+  }
+  const lang = `lang=${locale}${topics.length ? `&topics=${topics.join(",")}` : ""}`;
   return {
     title,
     link: siteUrl,
     description: localized.tagline || localized.name,
     language: locale,
     self: opts.instance ? `${siteUrl}/feed/${opts.instance}.xml?${lang}` : `${siteUrl}/feed.xml?${lang}`,
-    items: await collectFeedItems({ locale, instance: opts.instance, limit: opts.limit }),
+    items: await collectFeedItems({ locale, instance: opts.instance, topics, limit: opts.limit }),
   };
 }
