@@ -97,8 +97,8 @@
   "home.intro": "La page d'accueil n'a pas de contenu propre : c'est un assemblage de sections proposées par vos instances de modules. Choisissez, ordonnez et réglez-les.",
   "home.order": "Ordre",
   "home.addSection": "ajouter une section",
-  "navigation.intro": "Les collections affichées dans le menu apparaissent automatiquement. Ajoutez ici d'autres liens (pages, sites externes).",
-  "navigation.href": "Lien (/page ou https://…)",
+  "navigation.intro": "Les collections affichées dans le menu apparaissent automatiquement. Choisissez ici quelles pages ajouter, et d'autres liens si besoin.",
+  "navigation.href": "Adresse (https://… ou /raccourci)",
   "navigation.label": "Libellé",
   "navigation.error.label": "Donnez un libellé à chaque lien dans au moins une langue.",
   "settings.languages": "Langues",
@@ -616,5 +616,9 @@
   "updates.channelHelp": "Par défaut, le site ne propose que des versions stables. Les release candidates sont les prochaines versions, publiées avant leur sortie pour être testées. Revenir au canal stable ne vous fait pas redescendre : vous restez sur votre version jusqu'à la prochaine stable plus récente.",
   "updates.channelRc": "Me proposer les release candidates",
   "updates.channelRisk": "Je comprends que c'est à mes risques et périls",
-  "updates.channelRiskHelp": "Une release candidate n'est jamais installée automatiquement, même si la mise à jour automatique est activée."
+  "updates.channelRiskHelp": "Une release candidate n'est jamais installée automatiquement, même si la mise à jour automatique est activée.",
+  "navigation.pagesTitle": "Vos pages",
+  "navigation.pagesHelp": "Cochez les pages à afficher dans le menu. Leur titre sert de libellé.",
+  "navigation.linksTitle": "Autres liens",
+  "navigation.linksHelp": "Un site externe, une boutique, un raccourci (comme /merch)… Laissez vide ce que vous n'utilisez pas."
 }

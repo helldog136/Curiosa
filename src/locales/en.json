@@ -97,8 +97,8 @@
   "home.intro": "The home page has no content of its own: it is an assembly of sections offered by your module instances. Pick, order and configure them.",
   "home.order": "Order",
   "home.addSection": "add a section",
-  "navigation.intro": "Collections shown in the menu appear automatically. Add extra links here (pages, external sites).",
-  "navigation.href": "Link (/page or https://…)",
+  "navigation.intro": "Collections shown in the menu appear automatically. Choose which pages to add here, and other links if needed.",
+  "navigation.href": "Address (https://… or /shortcut)",
   "navigation.label": "Label",
   "navigation.error.label": "Give each link a label in at least one language.",
   "settings.languages": "Languages",
@@ -616,5 +616,9 @@
   "updates.channelHelp": "By default the site only offers stable versions. Release candidates are upcoming versions published ahead of release so they can be tested. Going back to the stable channel doesn't downgrade you: you stay on your version until a newer stable one is out.",
   "updates.channelRc": "Offer me release candidates",
   "updates.channelRisk": "I understand this is at my own risk",
-  "updates.channelRiskHelp": "A release candidate is never installed automatically, even when automatic updates are on."
+  "updates.channelRiskHelp": "A release candidate is never installed automatically, even when automatic updates are on.",
+  "navigation.pagesTitle": "Your pages",
+  "navigation.pagesHelp": "Tick the pages to show in the menu. Their title is used as the label.",
+  "navigation.linksTitle": "Other links",
+  "navigation.linksHelp": "An external site, a shop, a shortcut (like /merch)… Leave empty what you don't use."
 }
