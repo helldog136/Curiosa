@@ -142,7 +142,7 @@ export async function completeSetup(_prev: ActionState, formData: FormData): Pro
   for (const id of createdIds) await runInstanceCreateHook(id);
   await audit(email, "setup.completed");
   try {
-    await signIn("credentials", { email, password, redirectTo: "/admin" });
+    await signIn("credentials", { email, password, redirectTo: "/admin?welcome=1" });
   } catch (error) {
     if (error instanceof AuthError) return { error: t("setup.error.generic") };
     throw error;
