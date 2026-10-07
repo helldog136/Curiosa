@@ -3,6 +3,8 @@ import type { ModuleDefinition } from "@/core/modules/types";
 import * as feeds from "./feeds";
 import * as contactForm from "./contact-form";
 import * as liveStatus from "./live-status";
+import * as hero from "./hero";
+import { blog, codes, collection, links, pages } from "./content";
 
 export type BuiltinModule = {
   manifest: ParsedManifest;
@@ -11,8 +13,8 @@ export type BuiltinModule = {
 };
 
 /**
- * Fonctionnalités "de base" livrées avec le cœur, mais bâties exactement comme
- * un module installé depuis git : même manifeste, même API, même panneau
- * d'admin. Ce sont aussi les meilleurs exemples à copier.
+ * Tout ce que fait le site de base est un module, bâti exactement comme un module
+ * installé depuis git : même manifeste, même API. Aucun n'a d'instance tant qu'on
+ * n'en crée pas (assistant de première installation, ou admin → Modules).
  */
-export const BUILTIN_MODULES: BuiltinModule[] = [feeds, contactForm, liveStatus];
+export const BUILTIN_MODULES: BuiltinModule[] = [hero, blog, links, codes, pages, collection, feeds, contactForm, liveStatus];

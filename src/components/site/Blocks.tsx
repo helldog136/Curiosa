@@ -1,8 +1,10 @@
 import type { Block } from "@/core/blocks";
-import { getCollectionByKey } from "@/core/collections";
+import { getInstanceByKey } from "@/core/instances";
+import { withLocale } from "@/core/links";
 import { listEntries } from "@/core/entries";
 import { isSafeExternalUrl, safeHref } from "@/core/url";
 import { getSiteConfig } from "@/core/settings";
+import { makeTranslator } from "@/core/i18n/dictionary";
 import { EntryList } from "./EntryList";
 import { Markdown } from "./Markdown";
 import { ModuleForm } from "./ModuleForm";
@@ -24,6 +26,18 @@ export async function Blocks({ blocks, locale }: { blocks: Block[]; locale: stri
         break;
       case "html":
         out.push(<div key={i} dangerouslySetInnerHTML={{ __html: block.html }} />);
+        break;
+      case "hero":
+        out.push(
+          <section key={i} className="space-y-4 py-8 text-center">
+            {block.image && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={block.image} alt="" className="mx-auto h-28 w-28 rounded-full object-cover" />
+            )}
+            <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">{block.title}</h1>
+            {block.text && <p className="mx-auto max-w-2xl text-lg text-muted">{block.text}</p>}
+          </section>,
+        );
         break;
       case "heading":
         out.push(<h2 key={i} className="mt-6 text-xl font-semibold">{block.text}</h2>);
@@ -54,13 +68,20 @@ export async function Blocks({ blocks, locale }: { blocks: Block[]; locale: stri
         );
         break;
       case "entries": {
-        const collection = await getCollectionByKey(block.collection);
-        if (!collection) break;
-        const entries = await listEntries({ collection, locale, limit: block.limit });
+        const instance = await getInstanceByKey(block.instance);
+        if (!instance || !instance.enabled) break;
+        const entries = await listEntries({ instance, locale, limit: block.limit });
+        if (block.link && entries.length === 0) break;
+        const seeAll = block.link && instance.basePath ? withLocale(`/${instance.basePath}`, locale, config.defaultLocale) : null;
         out.push(
           <section key={i} className="space-y-4">
-            {block.title && <h2 className="text-xl font-semibold">{block.title}</h2>}
-            <EntryList entries={entries} collection={collection} locale={locale} defaultLocale={config.defaultLocale} />
+            {(block.title || seeAll) && (
+              <div className="flex items-baseline justify-between gap-4">
+                {block.title && <h2 className="text-2xl font-semibold">{block.title}</h2>}
+                {seeAll && <a href={seeAll} className="text-sm text-accent hover:underline">{makeTranslator(locale)("site.seeAll")}</a>}
+              </div>
+            )}
+            <EntryList entries={entries} collection={instance} locale={locale} defaultLocale={config.defaultLocale} />
           </section>,
         );
         break;

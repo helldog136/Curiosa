@@ -7,13 +7,19 @@ import { signIn } from "@/auth";
 import { prisma } from "@/core/db";
 import { makeTranslator } from "@/core/i18n/dictionary";
 import { isKnownLocale } from "@/core/i18n/locales";
-import { getPreset } from "@/core/presets";
+import { BUILTIN_MODULES } from "@/modules-builtin";
+import { createInstance, defaultNames } from "@/core/instanceService";
 import { audit } from "@/core/permissions";
-import { createCollectionFromPreset, createEntry } from "@/core/services";
+import { createEntry } from "@/core/services";
 import type { HomeSection } from "@/core/settings";
 import { isSafeExternalUrl } from "@/core/url";
 import { slugify } from "@/core/slug";
 import type { ActionState } from "@/components/admin/ActionForm";
+
+function localizedText(v: string | Record<string, string> | undefined, locale: string): string {
+  if (!v) return "";
+  return typeof v === "string" ? v : (v[locale] ?? v.en ?? "");
+}
 
 function safeEqual(a: string, b: string): boolean {
   const ha = crypto.createHash("sha256").update(a).digest();
@@ -62,16 +68,19 @@ export async function completeSetup(_prev: ActionState, formData: FormData): Pro
       ];
       if (str("tagline")) settings.push(["site.tagline", str("tagline"), defaultLocale]);
 
-      const home: HomeSection[] = [{ id: "hero", type: "hero" }];
-      const keys: Record<string, string> = {};
+      // Tout est un module : le bandeau d'accueil, comme les rubriques choisies, sont des instances.
+      const home: HomeSection[] = [];
+      const ids: Record<string, string> = {};
+      const heroModule = BUILTIN_MODULES.find((m) => m.manifest.id === "hero")!;
+      const hero = await createInstance(tx, { manifest: heroModule.manifest, key: "hero", names: defaultNames(heroModule.manifest, locales) });
+      home.push({ id: "hero", instance: hero.key, section: "hero", options: {} });
 
       for (const id of presetIds) {
-        const preset = getPreset(id);
-        if (!preset) continue;
-        const collection = await createCollectionFromPreset(tx, preset, locales);
-        keys[id] = collection.id;
-        if (id === "links") home.push({ id, type: "collection", collection: collection.key, count: 20 });
-        if (id === "blog" || id === "codes") home.push({ id, type: "collection", collection: collection.key, count: 3 });
+        const starter = BUILTIN_MODULES.find((m) => m.manifest.id === id && m.manifest.starter && m.manifest.content);
+        if (!starter) continue;
+        const instance = await createInstance(tx, { manifest: starter.manifest, names: defaultNames(starter.manifest, locales), descriptions: Object.fromEntries(locales.map((l) => [l, localizedText(starter.manifest.description, l)])) });
+        ids[id] = instance.id;
+        if (id !== "pages") home.push({ id, instance: instance.key, section: "latest", options: { count: id === "links" ? 20 : 3 } });
       }
 
       for (const [key, value, locale] of settings) {
@@ -90,12 +99,12 @@ export async function completeSetup(_prev: ActionState, formData: FormData): Pro
       });
 
       // Premiers liens saisis : des entrées de la collection de liens, avec raccourci /<nom> optionnel.
-      if (keys.links) {
+      if (ids.links) {
         for (const [i, label] of linkLabels.entries()) {
           const url = linkUrls[i]?.trim() ?? "";
           if (!label.trim() || !isSafeExternalUrl(url)) continue;
           const entry = await createEntry(tx, {
-            collectionId: keys.links, locale: defaultLocale, title: label.trim(), status: "published",
+            instanceId: ids.links, locale: defaultLocale, title: label.trim(), status: "published",
             url, icon: linkIcons[i]?.trim() || null, position: i, authorId: owner.id,
           });
           const path = slugify(label);
@@ -107,9 +116,9 @@ export async function completeSetup(_prev: ActionState, formData: FormData): Pro
       }
 
       // Un premier article pour que le site ne soit pas vide.
-      if (keys.blog) {
+      if (ids.blog) {
         await createEntry(tx, {
-          collectionId: keys.blog, locale: defaultLocale, status: "published", authorId: owner.id,
+          instanceId: ids.blog, locale: defaultLocale, status: "published", authorId: owner.id,
           title: t("setup.sample.title"), summary: t("setup.sample.summary"), body: t("setup.sample.body"),
         });
       }

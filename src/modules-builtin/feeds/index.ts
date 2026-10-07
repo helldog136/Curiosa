@@ -2,7 +2,7 @@ import type { ParsedManifest } from "@/core/modules/manifest";
 import { defineModule } from "@/core/modules/types";
 
 export const manifest: ParsedManifest = {
-  apiVersion: 1,
+  apiVersion: 2,
   id: "feeds",
   name: { en: "RSS feeds", fr: "Flux RSS" },
   version: "1.0.0",
@@ -13,14 +13,15 @@ export const manifest: ParsedManifest = {
   author: "Vitrine",
   license: "MIT",
   icon: "📡",
-  defaultEnabled: true,
+  instances: "single",
+  sections: [],
   permissions: ["slots", "routes"],
   settings: [
     {
-      key: "collections",
+      key: "instances",
       type: "text",
-      label: { en: "Collections to publish (keys, comma-separated)", fr: "Collections à publier (clés, séparées par des virgules)" },
-      help: { en: "Leave empty to publish every public collection.", fr: "Vide = toutes les collections publiques." },
+      label: { en: "Instances to publish (keys, comma-separated)", fr: "Instances à publier (clés, séparées par des virgules)" },
+      help: { en: "Leave empty to publish every public blog, link list and so on.", fr: "Vide = tous les blogs, listes… publics." },
     },
     { key: "limit", type: "number", label: { en: "Entries per feed", fr: "Entrées par flux" }, default: 20 },
   ],
@@ -35,18 +36,18 @@ function selectedKeys(raw: string | undefined): string[] {
 
 export const definition = defineModule({
   routes: {
-    // /m/feeds/rss?c=<collection>&lang=<locale>
+    // /m/<clé de l'instance feeds>/rss?c=<instance à publier>&lang=<langue>
     async rss(request, ctx) {
       const url = new URL(request.url);
       const key = url.searchParams.get("c") ?? "";
       const lang = ctx.locales.includes(url.searchParams.get("lang") ?? "") ? url.searchParams.get("lang")! : ctx.defaultLocale;
-      const allowed = selectedKeys(ctx.setting("collections"));
-      const collections = await ctx.api.collections.list(lang);
-      const collection = collections.find((c) => c.key === key && (allowed.length === 0 || allowed.includes(c.key)));
+      const allowed = selectedKeys(ctx.setting("instances"));
+      const found = (await ctx.api.instances.list({ locale: lang })).filter((c) => c.basePath !== null);
+      const collection = found.find((c) => c.key === key && (allowed.length === 0 || allowed.includes(c.key)));
       if (!collection) return new Response("Not found", { status: 404 });
 
       const limit = Math.min(100, Math.max(1, Number(ctx.setting("limit")) || 20));
-      const entries = await ctx.api.entries.list({ collection: key, locale: lang, limit });
+      const entries = await ctx.api.entries.list({ instance: key, locale: lang, limit });
       const items = entries
         .map((e) => {
           const link = `${ctx.api.siteUrl}${e.path}`;
@@ -64,9 +65,9 @@ export const definition = defineModule({
   slots: {
     // Annonce les flux dans <head> pour les lecteurs RSS.
     async "layout.head"(ctx) {
-      const allowed = selectedKeys(ctx.setting("collections"));
-      const collections = (await ctx.api.collections.list(ctx.locale)).filter(
-        (c) => allowed.length === 0 || allowed.includes(c.key),
+      const allowed = selectedKeys(ctx.setting("instances"));
+      const collections = (await ctx.api.instances.list({ locale: ctx.locale })).filter(
+        (c) => c.basePath !== null && (allowed.length === 0 || allowed.includes(c.key)),
       );
       return [
         {
@@ -76,7 +77,7 @@ export const definition = defineModule({
             rel: "alternate",
             type: "application/rss+xml",
             title: c.name,
-            href: `/m/feeds/rss?c=${encodeURIComponent(c.key)}&lang=${ctx.locale}`,
+            href: `/m/${ctx.instance.key}/rss?c=${encodeURIComponent(c.key)}&lang=${ctx.locale}`,
           })),
         },
       ];

@@ -1,12 +1,13 @@
 import { buildContext } from "@/core/modules/context";
-import { getModule } from "@/core/modules/registry";
+import { getActiveInstances } from "@/core/modules/registry";
 
 export const dynamic = "force-dynamic";
 
-type Params = { params: Promise<{ module: string; path: string[] }> };
+type Params = { params: Promise<{ instance: string; path: string[] }> };
 
+/** /m/<clé d'instance>/<route> : les routes qu'un module expose pour chacune de ses instances. */
 async function handle(request: Request, { params }: Params): Promise<Response> {
-  const { module: id, path } = await params;
+  const { instance: key, path } = await params;
 
   // Refuse les écritures venues d'un autre site (CSRF) : un module n'a pas à y penser.
   if (request.method !== "GET" && request.method !== "HEAD") {
@@ -15,15 +16,14 @@ async function handle(request: Request, { params }: Params): Promise<Response> {
     if (origin && host && new URL(origin).host !== host) return new Response("Forbidden", { status: 403 });
   }
 
-  const mod = await getModule(id);
-  if (!mod || !mod.row.enabled) return new Response("Not found", { status: 404 });
-  const handler = mod.def.routes?.[path.join("/")];
-  if (!handler) return new Response("Not found", { status: 404 });
+  const active = (await getActiveInstances()).find((a) => a.instance.key === key);
+  const handler = active?.mod.def.routes?.[path.join("/")];
+  if (!active || !handler) return new Response("Not found", { status: 404 });
 
   try {
-    return await handler(request, await buildContext(mod));
+    return await handler(request, await buildContext(active.mod, active.instance));
   } catch (error) {
-    console.error(`[modules] ${id} route "${path.join("/")}" failed:`, error);
+    console.error(`[modules] ${key} route "${path.join("/")}" failed:`, error);
     return new Response("Module error", { status: 500 });
   }
 }

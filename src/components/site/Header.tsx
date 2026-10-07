@@ -1,4 +1,5 @@
-import { listCollections, pickName } from "@/core/collections";
+import { pickName } from "@/core/instances";
+import { getActiveInstances } from "@/core/modules/registry";
 import { withLocale } from "@/core/links";
 import { runSlot } from "@/core/modules/runtime";
 import type { SiteConfig } from "@/core/settings";
@@ -6,11 +7,11 @@ import { safeHref } from "@/core/url";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 
 export async function Header({ config, locale }: { config: SiteConfig; locale: string }) {
-  const collections = (await listCollections()).filter((c) => c.published && c.showInNav && c.basePath);
+  const mounted = (await getActiveInstances()).map((a) => a.instance).filter((c) => c.showInNav && c.basePath);
   const moduleNav = await runSlot("nav.items", locale);
 
   const items = [
-    ...collections.map((c) => ({
+    ...mounted.map((c) => ({
       label: pickName(c, locale, config.defaultLocale),
       href: withLocale(`/${c.basePath}`, locale, config.defaultLocale),
     })),

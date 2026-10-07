@@ -1,4 +1,4 @@
-import type { CollectionView } from "@/core/collections";
+import type { InstanceView } from "@/core/instances";
 import { localeName } from "@/core/i18n/locales";
 import type { Translator } from "@/core/i18n/dictionary";
 import { ActionForm } from "@/components/admin/ActionForm";
@@ -23,7 +23,7 @@ export type EntryFormData = {
 
 type Props = {
   t: Translator;
-  collection: CollectionView;
+  collection: InstanceView;
   locales: string[];
   locale: string;
   data: EntryFormData;
@@ -68,7 +68,7 @@ export function EntryForm({ t, collection, locales, locale, data }: Props) {
 
       <ActionForm action={saveEntry} submitLabel={t("action.save")}>
         <input type="hidden" name="id" value={data.id ?? ""} />
-        <input type="hidden" name="collectionId" value={collection.id} />
+        <input type="hidden" name="instanceId" value={collection.id} />
         <input type="hidden" name="locale" value={locale} />
 
         {!data.id && locales.length > 1 && (

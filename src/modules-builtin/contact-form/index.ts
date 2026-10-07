@@ -3,7 +3,7 @@ import { defineModule } from "@/core/modules/types";
 import type { BuiltinModule } from "..";
 
 export const manifest: ParsedManifest = {
-  apiVersion: 1,
+  apiVersion: 2,
   id: "contact-form",
   name: { en: "Contact form", fr: "Formulaire de contact" },
   version: "1.0.0",
@@ -14,17 +14,17 @@ export const manifest: ParsedManifest = {
   author: "Vitrine",
   license: "MIT",
   icon: "✉️",
-  permissions: ["slots", "routes", "storage"],
+  instances: "multiple",
+  sections: [{ id: "form", label: { en: "Contact form", fr: "Formulaire de contact" } }],
+  permissions: ["slots", "routes", "storage", "sections"],
   settings: [
     {
       key: "pageSlug",
       type: "text",
       translatable: true,
-      label: { en: "Slug of the page that shows the form", fr: "Slug de la page qui affiche le formulaire" },
-      help: { en: "Example: contact. Create that page in your 'Pages' collection.", fr: "Exemple : contact. Créez cette page dans votre collection « Pages »." },
-      default: "contact",
+      label: { en: "Slug of a page that shows the form under its content (optional)", fr: "Slug d'une page qui affiche le formulaire sous son contenu (facultatif)" },
+      help: { en: "Example: contact. Or place the form's section on the home page instead.", fr: "Exemple : contact. Ou placez la section du formulaire sur l'accueil." },
     },
-    { key: "onHome", type: "boolean", label: { en: "Also show on the home page", fr: "Afficher aussi sur l'accueil" }, default: false },
   ],
 };
 
@@ -67,9 +67,9 @@ export const definition = defineModule({
       if (!wanted || ctx.entry?.slug !== wanted) return null;
       return [form(ctx)];
     },
-    "home.bottom"(ctx) {
-      return ctx.setting<boolean>("onHome") ? [form(ctx)] : null;
-    },
+  },
+  sections: {
+    form: (ctx) => [form(ctx)],
   },
   async adminPanel(ctx) {
     const messages = await ctx.api.store.list("messages", { limit: 100 });
@@ -88,10 +88,10 @@ export const definition = defineModule({
   },
 });
 
-function form(ctx: { t(key: string): string }) {
+function form(ctx: { t(key: string): string; instance: { key: string } }) {
   return {
     type: "form" as const,
-    action: "contact-form/send",
+    action: `${ctx.instance.key}/send`,
     submitLabel: ctx.t("send"),
     successText: ctx.t("sent"),
     fields: [

@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { adminCtx } from "@/core/admin";
-import { getCollectionByKey, pickName } from "@/core/collections";
+import { getInstanceByKey, pickName } from "@/core/instances";
 import { prisma } from "@/core/db";
 import { localeName } from "@/core/i18n/locales";
 import { ui } from "@/components/admin/ui";
@@ -8,11 +8,11 @@ import { ui } from "@/components/admin/ui";
 export default async function EntriesPage({ searchParams }: { searchParams: Promise<{ c?: string }> }) {
   const { t, locale, config } = await adminCtx("editor");
   const { c } = await searchParams;
-  const collection = c ? await getCollectionByKey(c) : undefined;
+  const collection = c ? await getInstanceByKey(c) : undefined;
   if (!collection) notFound();
 
   const entries = await prisma.entry.findMany({
-    where: { collectionId: collection.id },
+    where: { instanceId: collection.id },
     include: { translations: true },
     orderBy: [{ position: "asc" }, { createdAt: "desc" }],
   });

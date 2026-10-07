@@ -2,31 +2,34 @@
 
 import { revalidatePath } from "next/cache";
 import { adminCtx } from "@/core/admin";
-import { SLOTS } from "@/core/blocks";
-import { getCollectionByKey } from "@/core/collections";
+import { getActiveInstances, sectionsOf } from "@/core/modules/registry";
 import { audit } from "@/core/permissions";
 import { setSetting, type HomeSection } from "@/core/settings";
 import type { ActionState } from "@/components/admin/ActionForm";
 
 export async function saveHome(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const { user, t } = await adminCtx("admin");
+  const active = await getActiveInstances();
   const total = Math.min(Number(formData.get("count")) || 0, 60);
   const rows: { order: number; section: HomeSection }[] = [];
 
   for (let i = 0; i < total; i++) {
     if (formData.get(`remove_${i}`) === "on") continue;
-    const type = String(formData.get(`type_${i}`) ?? "");
-    const source = String(formData.get(`source_${i}`) ?? "");
-    const order = Number(formData.get(`order_${i}`)) || 0;
-    const id = `s${i}-${Date.now().toString(36)}`;
-    if (type === "hero") rows.push({ order, section: { id, type: "hero" } });
-    else if (type === "collection" && source.startsWith("c:")) {
-      const collection = await getCollectionByKey(source.slice(2));
-      const count = Math.min(50, Math.max(1, Number(formData.get(`count_${i}`)) || 3));
-      if (collection) rows.push({ order, section: { id, type: "collection", collection: collection.key, count } });
-    } else if (type === "slot" && source.startsWith("s:") && (SLOTS as string[]).includes(source.slice(2))) {
-      rows.push({ order, section: { id, type: "slot", slot: source.slice(2) } });
+    const [instanceKey = "", sectionId = ""] = String(formData.get(`section_${i}`) ?? "").split("|");
+    const target = active.find((a) => a.instance.key === instanceKey);
+    const decl = target ? sectionsOf(target.mod.manifest).find((s) => s.id === sectionId) : undefined;
+    if (!target || !decl) continue;
+
+    // Les options ne sont lues que si elles sont déclarées par le module, et typées selon sa déclaration.
+    const options: Record<string, unknown> = {};
+    for (const o of decl.options ?? []) {
+      const raw = formData.get(`opt_${i}_${o.key}`);
+      if (o.type === "boolean") options[o.key] = raw === "on";
+      else if (raw !== null && String(raw).trim() !== "") {
+        options[o.key] = o.type === "number" ? Number(raw) || 0 : String(raw).trim().slice(0, 500);
+      } else if (o.default !== undefined) options[o.key] = o.default;
     }
+    rows.push({ order: Number(formData.get(`order_${i}`)) || 0, section: { id: `s${i}-${Date.now().toString(36)}`, instance: instanceKey, section: sectionId, options } });
   }
   rows.sort((a, b) => a.order - b.order);
   await setSetting("home.sections", rows.map((r) => r.section));

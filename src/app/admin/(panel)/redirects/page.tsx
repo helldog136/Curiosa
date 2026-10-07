@@ -1,5 +1,5 @@
 import { adminCtx } from "@/core/admin";
-import { listCollections } from "@/core/collections";
+import { listInstances } from "@/core/instances";
 import { prisma } from "@/core/db";
 import { ActionForm } from "@/components/admin/ActionForm";
 import { Checkbox, Select, TextField } from "@/components/admin/Field";
@@ -15,9 +15,9 @@ export default async function RedirectsPage() {
     where: { id: { in: entryIds } },
     select: { id: true, url: true },
   });
-  const collections = await listCollections();
+  const collections = await listInstances();
   const withUrl = await prisma.entry.findMany({
-    where: { url: { not: null }, collectionId: { in: collections.filter((c) => c.features.includes("url")).map((c) => c.id) } },
+    where: { url: { not: null }, instanceId: { in: collections.filter((c) => c.features.includes("url")).map((c) => c.id) } },
     include: { translations: { take: 1 } },
     take: 200,
   });

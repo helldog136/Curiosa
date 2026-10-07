@@ -1,6 +1,6 @@
 import { prisma } from "./db";
 import { RESERVED_PATHS } from "./config";
-import { listCollections } from "./collections";
+import { listInstances } from "./instances";
 import { isKnownLocale } from "./i18n/locales";
 import { isSafeExternalUrl } from "./url";
 
@@ -15,8 +15,8 @@ export async function validateRedirectPath(path: string, ignoreId?: string): Pro
   if (!PATH_RE.test(path)) return "redirects.error.path";
   const first = path.split("/")[0] ?? "";
   if (RESERVED_PATHS.has(first) || isKnownLocale(first)) return "redirects.error.reserved";
-  const collections = await listCollections();
-  if (collections.some((c) => c.basePath && c.basePath === first)) return "redirects.error.reserved";
+  const instances = await listInstances();
+  if (instances.some((c) => c.basePath && c.basePath === first)) return "redirects.error.reserved";
   const clash = await prisma.redirect.findUnique({ where: { path } });
   if (clash && clash.id !== ignoreId) return "redirects.error.exists";
   return null;

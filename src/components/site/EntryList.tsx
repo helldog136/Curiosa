@@ -1,4 +1,4 @@
-import type { CollectionView } from "@/core/collections";
+import type { InstanceView } from "@/core/instances";
 import { entryPath, type EntryView } from "@/core/entries";
 import { makeTranslator } from "@/core/i18n/dictionary";
 import { safeHref } from "@/core/url";
@@ -7,7 +7,7 @@ import { EntryIcon } from "./EntryIcon";
 
 type Props = {
   entries: EntryView[];
-  collection: Pick<CollectionView, "display" | "clickAction">;
+  collection: Pick<InstanceView, "display" | "clickAction">;
   locale: string;
   defaultLocale: string;
 };
@@ -19,7 +19,7 @@ function formatDate(date: Date | null, locale: string): string {
 /** Où mène le clic sur une entrée : sa page, ou son lien externe selon la collection. */
 export function entryHref(
   entry: EntryView,
-  collection: Pick<CollectionView, "clickAction">,
+  collection: Pick<InstanceView, "clickAction">,
   defaultLocale: string,
 ): { href: string; external: boolean } {
   if (collection.clickAction === "external" && entry.url) return { href: safeHref(entry.url), external: true };

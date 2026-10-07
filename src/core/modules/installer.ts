@@ -6,7 +6,6 @@ import { prisma } from "../db";
 import { MODULES_DIR } from "../config";
 import { parseManifest } from "./manifest";
 import { forgetModule, getModule, moduleDir, readGitManifest } from "./registry";
-import { buildContext } from "./context";
 import { BUILTIN_MODULES } from "@/modules-builtin";
 
 const run = promisify(execFile);
@@ -152,52 +151,20 @@ export async function updateModule(id: string): Promise<InstallResult> {
 export async function setModuleEnabled(id: string, enabled: boolean): Promise<InstallResult> {
   const row = await prisma.module.findUnique({ where: { id } });
   if (!row) return { ok: false, error: "modules.error.notfound" };
-  if (row.enabled === enabled) return { ok: true, id };
-  const mod = await getModule(id);
-  // Un module cassé doit toujours pouvoir être désactivé.
-  if (!mod && enabled) return { ok: false, error: "modules.error.load" };
-  if (mod) {
-    if (enabled) await seedModuleCollections(mod);
-    try {
-      const hook = enabled ? mod.def.hooks?.onEnable : mod.def.hooks?.onDisable;
-      await hook?.(await buildContext(mod));
-    } catch (error) {
-      console.error(`[modules] hook failed for ${id}:`, error);
-    }
-  }
+  if (enabled && !(await getModule(id))) return { ok: false, error: "modules.error.load" };
   await prisma.module.update({ where: { id }, data: { enabled } });
   return { ok: true, id };
-}
-
-async function seedModuleCollections(mod: NonNullable<Awaited<ReturnType<typeof getModule>>>): Promise<void> {
-  for (const seed of mod.def.collections ?? []) {
-    const exists = await prisma.collection.findFirst({
-      where: { OR: [{ key: seed.key }, { basePath: seed.basePath }] },
-    });
-    if (exists) continue;
-    await prisma.collection.create({
-      data: {
-        key: seed.key,
-        basePath: seed.basePath,
-        display: seed.display ?? "cards",
-        clickAction: seed.clickAction ?? "detail",
-        features: JSON.stringify(seed.features ?? ["summary", "body"]),
-        showInNav: seed.showInNav ?? true,
-        translations: {
-          create: Object.entries(seed.names).map(([locale, name]) => ({ locale, name })),
-        },
-      },
-    });
-  }
 }
 
 export async function uninstallModule(id: string): Promise<InstallResult> {
   const row = await prisma.module.findUnique({ where: { id } });
   if (!row || row.source !== "git") return { ok: false, error: "modules.error.notfound" };
-  if (row.enabled) await setModuleEnabled(id, false);
+  const instances = await prisma.moduleInstance.findMany({ where: { moduleId: id }, select: { id: true } });
+  const ids = instances.map((i) => i.id);
+  await prisma.setting.deleteMany({ where: { OR: ids.map((i) => ({ key: { startsWith: `instance.${i}.` } })) } });
+  await prisma.moduleRecord.deleteMany({ where: { instanceId: { in: ids } } });
+  await prisma.moduleInstance.deleteMany({ where: { moduleId: id } });
   await prisma.module.delete({ where: { id } });
-  await prisma.moduleRecord.deleteMany({ where: { moduleId: id } });
-  await prisma.setting.deleteMany({ where: { key: { startsWith: `module.${id}.` } } });
   forgetModule(id);
   fs.rmSync(moduleDir(id), { recursive: true, force: true });
   return { ok: true, id };

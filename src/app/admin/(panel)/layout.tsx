@@ -1,15 +1,13 @@
 import { signOut } from "@/auth";
 import { adminCtx } from "@/core/admin";
-import { listCollections, pickName } from "@/core/collections";
-import { getAdminModuleNav } from "@/core/modules/adminNav";
+import { getAdminNav } from "@/core/modules/adminNav";
 import { ui } from "@/components/admin/ui";
 
 export const dynamic = "force-dynamic";
 
 export default async function PanelLayout({ children }: { children: React.ReactNode }) {
   const { user, t, locale, config } = await adminCtx("editor");
-  const collections = await listCollections();
-  const moduleNav = await getAdminModuleNav(locale, config.defaultLocale);
+  const nav = await getAdminNav(locale, config.defaultLocale);
   const canManage = user.role !== "editor";
 
   const link = "block rounded-lg px-3 py-1.5 text-sm hover:bg-surface";
@@ -23,21 +21,20 @@ export default async function PanelLayout({ children }: { children: React.ReactN
           <a href="/admin" className={`${link} mt-4`}>{t("nav.dashboard")}</a>
 
           <p className={group}>{t("nav.content")}</p>
-          {collections.map((c) => (
-            <a key={c.id} href={`/admin/entries?c=${c.key}`} className={link}>{pickName(c, locale, config.defaultLocale)}</a>
+          {nav.content.map((c) => (
+            <a key={c.key} href={`/admin/entries?c=${c.key}`} className={link}>{c.icon} {c.name}</a>
           ))}
           <a href="/admin/redirects" className={link}>{t("nav.redirects")}</a>
 
           {canManage && (
             <>
               <p className={group}>{t("nav.site")}</p>
-              <a href="/admin/collections" className={link}>{t("nav.collections")}</a>
               <a href="/admin/home" className={link}>{t("nav.home")}</a>
               <a href="/admin/navigation" className={link}>{t("nav.navigation")}</a>
               <a href="/admin/settings" className={link}>{t("nav.settings")}</a>
               <a href="/admin/modules" className={link}>{t("nav.modules")}</a>
-              {moduleNav.map((m) => (
-                <a key={m.id} href={`/admin/modules/${m.id}`} className={`${link} pl-6 text-muted`}>{m.icon} {m.name}</a>
+              {nav.other.map((m) => (
+                <a key={m.id} href={`/admin/instances/${m.id}`} className={`${link} pl-6 text-muted`}>{m.icon} {m.name}</a>
               ))}
             </>
           )}

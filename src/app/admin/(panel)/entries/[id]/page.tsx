@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { adminCtx } from "@/core/admin";
-import { getCollectionById } from "@/core/collections";
+import { getInstanceById } from "@/core/instances";
 import { prisma } from "@/core/db";
 import { ConfirmButton } from "@/components/admin/ConfirmButton";
 import { EntryForm } from "../EntryForm";
@@ -16,7 +16,7 @@ export default async function EditEntryPage({ params, searchParams }: {
   const { locale: requested } = await searchParams;
   const entry = await prisma.entry.findUnique({ where: { id }, include: { translations: true } });
   if (!entry) notFound();
-  const collection = await getCollectionById(entry.collectionId);
+  const collection = await getInstanceById(entry.instanceId);
   if (!collection) notFound();
 
   const locale =

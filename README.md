@@ -13,13 +13,16 @@ langues, menus et même les redirections `/twitch` ou `/youtube` se règlent dan
 
 ## Les idées clés
 
+**Tout est un module, et un module peut avoir plusieurs instances.**
+
 | Concept | Ce que c'est |
 |---|---|
-| **Collection** | Un « blog » générique. Un blog d'articles, une liste de codes promo, la liste de vos réseaux sociaux, des pages libres : *même objet, réglé différemment* (affichage, comportement au clic, champs activés). On peut en créer autant qu'on veut. |
-| **Entrée** | Un élément d'une collection : un article, un code promo, un lien social. Champs optionnels activés par collection : image, icône, résumé, contenu Markdown, lien, code, date d'expiration, champs personnalisés. |
+| **Module** | Un type de fonctionnalité : blog, réseaux sociaux, codes promo, pages, bandeau d'accueil, flux RSS, formulaire de contact, statut live… Installable depuis l'admin avec l'adresse d'un dépôt git (comme HACS pour Home Assistant). Le cœur n'est qu'un conteneur : tout ce que fait le site de base est déjà un module. |
+| **Instance** | Un exemplaire configuré d'un module. Un site peut avoir **deux blogs**, ou **deux listes de réseaux sociaux** (une par chaîne) : ce sont deux instances du même module, chacune avec ses réglages, son contenu, son adresse (`/blog`, `/actus`…) et son entrée dans l'admin. |
+| **Entrée** | Un élément d'une instance à contenu : un article, un code promo, un lien social. Champs optionnels selon l'instance : image, icône, résumé, contenu Markdown, lien, code, expiration, champs personnalisés. |
+| **Section** | Un morceau qu'une instance propose à la **page d'accueil**. L'accueil n'a aucun contenu propre : c'est un assemblage de sections choisies et ordonnées dans l'admin (bandeau, derniers articles du blog 2, liens de la chaîne 1, lecteur Twitch, formulaire de contact…). |
 | **Redirection** | `/twitch` → une URL externe *explicitement autorisée* dans l'admin (ou le lien d'une entrée, suivi automatiquement). Aucune redirection ouverte possible. |
-| **Langues** | Langue du site, langue de l'admin (par défaut et par utilisateur) et langue du visiteur sont trois choses indépendantes. Une entrée n'a besoin que d'**une** version ; on en ajoute d'autres à la demande (bouton « Ajouter une version dans une autre langue »), jamais de force. |
-| **Module** | Une extension installable depuis l'admin avec l'adresse d'un dépôt git (comme HACS pour Home Assistant). Un module a sa propre page de réglages dans l'admin et modifie le contenu du site. Les fonctions de base (flux RSS, formulaire de contact, statut live) sont déjà des modules. |
+| **Langues** | Langue du site, langue de l'admin (par défaut et par utilisateur) et langue du visiteur sont indépendantes. Une entrée n'a besoin que d'**une** version ; on en ajoute d'autres à la demande, jamais de force. |
 
 ## Installer
 
@@ -57,11 +60,12 @@ npm run lint && npm run typecheck && npm test
 ## Structure
 
 ```
-src/core/           Le cœur, agnostique : collections, entrées, redirections, langues,
-                    réglages, modules (registre, installateur, exécution)
-src/modules-builtin Fonctions de base livrées sous forme de modules (feeds, contact-form, live-status)
-src/app/(site)      Site public (accueil, collections, entrées, redirections)
-src/app/admin       Admin : assistant, collections, entrées, redirections, réglages, modules…
+src/core/           Le cœur, agnostique : modules et instances (registre, installateur,
+                    exécution), entrées, redirections, langues, réglages
+src/modules-builtin Les fonctions de base, déjà sous forme de modules : blog, links, codes,
+                    pages, collection, hero, feeds, contact-form, live-status
+src/app/(site)      Site public (accueil assemblé de sections, pages d'instances, redirections)
+src/app/admin       Admin : assistant, modules & instances, entrées, accueil, redirections…
 src/locales         Textes de l'interface (fr, en) — ajouter une langue = un fichier JSON
 modules-examples/   Un module d'exemple prêt à publier dans son propre dépôt git
 docs/               ARCHITECTURE.md, MODULES.md
@@ -72,7 +76,7 @@ Voir [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) pour les choix de conception e
 
 ## État actuel
 
-Socle fonctionnel de bout en bout (testé : assistant → site public → traduction →
-redirection → installation d'un module git). Pas encore fait, volontairement laissé pour
+Socle fonctionnel de bout en bout (testé : assistant → site public → deux blogs et deux listes de
+réseaux → traduction → redirection → installation d'un module git et instances). Pas encore fait, volontairement laissé pour
 la suite : sauvegardes/restauration depuis l'admin, authentification à deux facteurs,
 envoi d'emails, image Docker publiée, messages d'interface dans d'autres langues que fr/en.

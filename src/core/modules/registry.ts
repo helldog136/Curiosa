@@ -7,7 +7,8 @@ import { prisma } from "../db";
 import { MODULES_DIR } from "../config";
 import { BUILTIN_MODULES } from "@/modules-builtin";
 import { parseManifest, type ParsedManifest } from "./manifest";
-import type { ModuleDefinition } from "./types";
+import { listInstances, type InstanceView } from "../instances";
+import type { ModuleDefinition, SectionDecl } from "./types";
 
 export type LoadedModule = {
   row: Module;
@@ -41,7 +42,7 @@ async function syncBuiltins(): Promise<void> {
           id: b.manifest.id,
           source: "builtin",
           version: b.manifest.version,
-          enabled: b.manifest.defaultEnabled ?? false,
+          enabled: b.manifest.defaultEnabled ?? true,
         },
       });
     } else if (existing.version !== b.manifest.version) {
@@ -134,4 +135,28 @@ export async function getModule(id: string): Promise<LoadedModule | null> {
   await syncBuiltins();
   const row = await prisma.module.findUnique({ where: { id } });
   return row ? loadModule(row) : null;
+}
+
+export type ActiveInstance = { instance: InstanceView; mod: LoadedModule };
+
+/** Instances actives dont le module est actif et chargeable : ce que le site exécute réellement. */
+export const getActiveInstances = cache(async (): Promise<ActiveInstance[]> => {
+  const [mods, instances] = await Promise.all([getEnabledModules(), listInstances()]);
+  return instances.flatMap((instance) => {
+    const mod = mods.find((m) => m.manifest.id === instance.moduleId);
+    return instance.enabled && mod ? [{ instance, mod }] : [];
+  });
+});
+
+const LATEST: SectionDecl = {
+  id: "latest",
+  label: { en: "Latest entries", fr: "Dernières entrées" },
+  options: [{ key: "count", type: "number", label: { en: "How many", fr: "Combien" }, default: 3 }],
+};
+
+/** Sections qu'un module propose à l'accueil. Les modules à contenu ont toujours "latest". */
+export function sectionsOf(manifest: ParsedManifest): SectionDecl[] {
+  const declared = manifest.sections as SectionDecl[];
+  if (manifest.content && !declared.some((s) => s.id === "latest")) return [LATEST, ...declared];
+  return declared;
 }

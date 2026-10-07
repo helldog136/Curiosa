@@ -9,7 +9,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
     prisma.entry.count({ where: { status: "draft" } }),
     prisma.entry.count({ where: { status: "published" } }),
     prisma.redirect.count(),
-    prisma.collection.count(),
+    prisma.moduleInstance.count(),
     prisma.module.count({ where: { enabled: true } }),
   ]);
   const stat = (label: string, value: number, href: string) => (
@@ -23,10 +23,10 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
       <h1 className="text-2xl font-bold">{t("dashboard.title", { name: config.name })}</h1>
       {denied && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm">{t("error.denied")}</p>}
       <div className="grid gap-4 sm:grid-cols-3">
-        {stat(t("dashboard.published"), published, "/admin/collections")}
-        {stat(t("dashboard.drafts"), drafts, "/admin/collections")}
+        {stat(t("dashboard.published"), published, "/admin/modules")}
+        {stat(t("dashboard.drafts"), drafts, "/admin/modules")}
         {stat(t("dashboard.redirects"), redirects, "/admin/redirects")}
-        {stat(t("dashboard.collections"), collections, "/admin/collections")}
+        {stat(t("dashboard.instances"), collections, "/admin/modules")}
         {stat(t("dashboard.modules"), modules, "/admin/modules")}
       </div>
     </div>

@@ -6,7 +6,7 @@ export const UPLOADS_DIR = path.join(DATA_DIR, "uploads");
 export const MODULES_DIR = path.join(DATA_DIR, "modules");
 
 /** Version du contrat entre le cœur et les modules (voir docs/MODULES.md). */
-export const MODULE_API_VERSION = 1;
+export const MODULE_API_VERSION = 2;
 
 export const siteUrl = (process.env.SITE_URL || "http://localhost:3000").replace(/\/+$/, "");
 

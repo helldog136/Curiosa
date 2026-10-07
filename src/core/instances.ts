@@ -1,8 +1,8 @@
 import { cache } from "react";
-import type { Collection, CollectionTranslation } from "@prisma/client";
+import type { InstanceTranslation, ModuleInstance } from "@prisma/client";
 import { prisma } from "./db";
 
-/** Champs de base qu'une collection peut activer dans l'éditeur d'entrée. */
+/** Champs de base qu'une instance à contenu peut activer dans l'éditeur d'entrée. */
 export const FEATURES = ["cover", "icon", "summary", "body", "url", "code", "expiresAt", "featured"] as const;
 export type Feature = (typeof FEATURES)[number];
 
@@ -11,17 +11,20 @@ export type Display = (typeof DISPLAYS)[number];
 
 export type FieldDef = { key: string; label: string; type: "text" | "url" | "number" | "boolean" };
 
-export type CollectionView = {
+/** Une instance de module : un exemplaire configuré (un blog, une liste de réseaux…). */
+export type InstanceView = {
   id: string;
+  moduleId: string;
   key: string;
-  basePath: string;
+  /** Chemin public où l'instance est montée ("" = racine, null = pas de page). */
+  basePath: string | null;
+  enabled: boolean;
+  showInNav: boolean;
+  navOrder: number;
   display: Display;
   clickAction: "detail" | "external";
   features: Feature[];
   fieldSchema: FieldDef[];
-  showInNav: boolean;
-  navOrder: number;
-  published: boolean;
   fallbackToDefault: boolean;
   allowGoLinks: boolean;
   names: Record<string, string>;
@@ -36,7 +39,7 @@ function parseJson<T>(raw: string, fallback: T): T {
   }
 }
 
-export function toCollectionView(c: Collection & { translations: CollectionTranslation[] }): CollectionView {
+export function toInstanceView(c: ModuleInstance & { translations: InstanceTranslation[] }): InstanceView {
   const names: Record<string, string> = {};
   const descriptions: Record<string, string> = {};
   for (const tr of c.translations) {
@@ -45,17 +48,16 @@ export function toCollectionView(c: Collection & { translations: CollectionTrans
   }
   return {
     id: c.id,
+    moduleId: c.moduleId,
     key: c.key,
     basePath: c.basePath,
-    display: (DISPLAYS as readonly string[]).includes(c.display) ? (c.display as Display) : "cards",
-    clickAction: c.clickAction === "external" ? "external" : "detail",
-    features: parseJson<string[]>(c.features, []).filter((f): f is Feature =>
-      (FEATURES as readonly string[]).includes(f),
-    ),
-    fieldSchema: parseJson<FieldDef[]>(c.fieldSchema, []),
+    enabled: c.enabled,
     showInNav: c.showInNav,
     navOrder: c.navOrder,
-    published: c.published,
+    display: (DISPLAYS as readonly string[]).includes(c.display) ? (c.display as Display) : "cards",
+    clickAction: c.clickAction === "external" ? "external" : "detail",
+    features: parseJson<string[]>(c.features, []).filter((f): f is Feature => (FEATURES as readonly string[]).includes(f)),
+    fieldSchema: parseJson<FieldDef[]>(c.fieldSchema, []),
     fallbackToDefault: c.fallbackToDefault,
     allowGoLinks: c.allowGoLinks,
     names,
@@ -63,27 +65,27 @@ export function toCollectionView(c: Collection & { translations: CollectionTrans
   };
 }
 
-export const listCollections = cache(async (): Promise<CollectionView[]> => {
-  const rows = await prisma.collection.findMany({
+export const listInstances = cache(async (): Promise<InstanceView[]> => {
+  const rows = await prisma.moduleInstance.findMany({
     include: { translations: true },
     orderBy: [{ navOrder: "asc" }, { createdAt: "asc" }],
   });
-  return rows.map(toCollectionView);
+  return rows.map(toInstanceView);
 });
 
-export async function getCollectionByKey(key: string): Promise<CollectionView | undefined> {
-  return (await listCollections()).find((c) => c.key === key);
+export async function getInstanceByKey(key: string): Promise<InstanceView | undefined> {
+  return (await listInstances()).find((c) => c.key === key);
 }
 
-export async function getCollectionById(id: string): Promise<CollectionView | undefined> {
-  return (await listCollections()).find((c) => c.id === id);
+export async function getInstanceById(id: string): Promise<InstanceView | undefined> {
+  return (await listInstances()).find((c) => c.id === id);
 }
 
 /** Nom affiché : langue demandée → langue par défaut → première disponible → clé. */
-export function pickName(c: CollectionView, locale: string, defaultLocale: string): string {
+export function pickName(c: Pick<InstanceView, "names" | "key">, locale: string, defaultLocale: string): string {
   return c.names[locale] || c.names[defaultLocale] || Object.values(c.names)[0] || c.key;
 }
 
-export function pickDescription(c: CollectionView, locale: string, defaultLocale: string): string {
+export function pickDescription(c: Pick<InstanceView, "descriptions">, locale: string, defaultLocale: string): string {
   return c.descriptions[locale] || c.descriptions[defaultLocale] || "";
 }

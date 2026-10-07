@@ -20,17 +20,18 @@ CREATE TABLE "Setting" (
 );
 
 -- CreateTable
-CREATE TABLE "Collection" (
+CREATE TABLE "ModuleInstance" (
     "id" TEXT NOT NULL PRIMARY KEY,
+    "moduleId" TEXT NOT NULL,
     "key" TEXT NOT NULL,
-    "basePath" TEXT NOT NULL,
+    "basePath" TEXT,
+    "enabled" BOOLEAN NOT NULL DEFAULT true,
+    "showInNav" BOOLEAN NOT NULL DEFAULT true,
+    "navOrder" INTEGER NOT NULL DEFAULT 0,
     "display" TEXT NOT NULL DEFAULT 'cards',
     "clickAction" TEXT NOT NULL DEFAULT 'detail',
     "features" TEXT NOT NULL DEFAULT '[]',
     "fieldSchema" TEXT NOT NULL DEFAULT '[]',
-    "showInNav" BOOLEAN NOT NULL DEFAULT true,
-    "navOrder" INTEGER NOT NULL DEFAULT 0,
-    "published" BOOLEAN NOT NULL DEFAULT true,
     "fallbackToDefault" BOOLEAN NOT NULL DEFAULT true,
     "allowGoLinks" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -38,19 +39,19 @@ CREATE TABLE "Collection" (
 );
 
 -- CreateTable
-CREATE TABLE "CollectionTranslation" (
+CREATE TABLE "InstanceTranslation" (
     "id" TEXT NOT NULL PRIMARY KEY,
-    "collectionId" TEXT NOT NULL,
+    "instanceId" TEXT NOT NULL,
     "locale" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "description" TEXT NOT NULL DEFAULT '',
-    CONSTRAINT "CollectionTranslation_collectionId_fkey" FOREIGN KEY ("collectionId") REFERENCES "Collection" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+    CONSTRAINT "InstanceTranslation_instanceId_fkey" FOREIGN KEY ("instanceId") REFERENCES "ModuleInstance" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 -- CreateTable
 CREATE TABLE "Entry" (
     "id" TEXT NOT NULL PRIMARY KEY,
-    "collectionId" TEXT NOT NULL,
+    "instanceId" TEXT NOT NULL,
     "status" TEXT NOT NULL DEFAULT 'draft',
     "publishedAt" DATETIME,
     "expiresAt" DATETIME,
@@ -65,7 +66,7 @@ CREATE TABLE "Entry" (
     "authorId" TEXT,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL,
-    CONSTRAINT "Entry_collectionId_fkey" FOREIGN KEY ("collectionId") REFERENCES "Collection" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "Entry_instanceId_fkey" FOREIGN KEY ("instanceId") REFERENCES "ModuleInstance" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT "Entry_authorId_fkey" FOREIGN KEY ("authorId") REFERENCES "User" ("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
 
@@ -73,7 +74,7 @@ CREATE TABLE "Entry" (
 CREATE TABLE "EntryTranslation" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "entryId" TEXT NOT NULL,
-    "collectionId" TEXT NOT NULL,
+    "instanceId" TEXT NOT NULL,
     "locale" TEXT NOT NULL,
     "slug" TEXT NOT NULL,
     "title" TEXT NOT NULL,
@@ -112,7 +113,7 @@ CREATE TABLE "Module" (
 -- CreateTable
 CREATE TABLE "ModuleRecord" (
     "id" TEXT NOT NULL PRIMARY KEY,
-    "moduleId" TEXT NOT NULL,
+    "instanceId" TEXT NOT NULL,
     "collection" TEXT NOT NULL,
     "data" TEXT NOT NULL,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -131,28 +132,31 @@ CREATE TABLE "AuditLog" (
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Collection_key_key" ON "Collection"("key");
+CREATE UNIQUE INDEX "ModuleInstance_key_key" ON "ModuleInstance"("key");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Collection_basePath_key" ON "Collection"("basePath");
+CREATE UNIQUE INDEX "ModuleInstance_basePath_key" ON "ModuleInstance"("basePath");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "CollectionTranslation_collectionId_locale_key" ON "CollectionTranslation"("collectionId", "locale");
+CREATE INDEX "ModuleInstance_moduleId_idx" ON "ModuleInstance"("moduleId");
 
 -- CreateIndex
-CREATE INDEX "Entry_collectionId_status_publishedAt_idx" ON "Entry"("collectionId", "status", "publishedAt");
+CREATE UNIQUE INDEX "InstanceTranslation_instanceId_locale_key" ON "InstanceTranslation"("instanceId", "locale");
+
+-- CreateIndex
+CREATE INDEX "Entry_instanceId_status_publishedAt_idx" ON "Entry"("instanceId", "status", "publishedAt");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "EntryTranslation_entryId_locale_key" ON "EntryTranslation"("entryId", "locale");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "EntryTranslation_collectionId_locale_slug_key" ON "EntryTranslation"("collectionId", "locale", "slug");
+CREATE UNIQUE INDEX "EntryTranslation_instanceId_locale_slug_key" ON "EntryTranslation"("instanceId", "locale", "slug");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Redirect_path_key" ON "Redirect"("path");
 
 -- CreateIndex
-CREATE INDEX "ModuleRecord_moduleId_collection_createdAt_idx" ON "ModuleRecord"("moduleId", "collection", "createdAt");
+CREATE INDEX "ModuleRecord_instanceId_collection_createdAt_idx" ON "ModuleRecord"("instanceId", "collection", "createdAt");
 
 -- CreateIndex
 CREATE INDEX "AuditLog_createdAt_idx" ON "AuditLog"("createdAt");

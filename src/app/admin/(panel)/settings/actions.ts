@@ -8,7 +8,7 @@ import { audit } from "@/core/permissions";
 import { deleteSetting, setSetting } from "@/core/settings";
 import type { ActionState } from "@/components/admin/ActionForm";
 
-const TRANSLATABLE = ["site.name", "site.tagline", "hero.title", "hero.text", "footer.text"];
+const TRANSLATABLE = ["site.name", "site.tagline", "footer.text"];
 
 export async function saveSettings(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const { user, t } = await adminCtx("admin");

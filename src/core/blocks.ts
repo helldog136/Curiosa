@@ -14,7 +14,8 @@ export type Block =
   | { type: "html"; html: string }
   | { type: "banner"; text: string; href?: string; tone?: "info" | "success" | "warning" }
   | { type: "links"; items: { label: string; href: string; icon?: string }[] }
-  | { type: "entries"; collection: string; limit?: number; title?: string }
+  | { type: "entries"; instance: string; limit?: number; title?: string; link?: boolean }
+  | { type: "hero"; title: string; text?: string; image?: string }
   | { type: "embed"; src: string; title: string; ratio?: string }
   | {
       type: "form";
@@ -28,15 +29,17 @@ export type Block =
   | { type: "heading"; text: string }
   | { type: "head"; tags: HeadTag[] };
 
+/**
+ * Emplacements où un module peut ajouter des blocs. La page d'accueil n'en a
+ * pas : elle est un assemblage de *sections* (voir ModuleDefinition.sections).
+ */
 export type Slot =
   | "layout.head"
   | "layout.banner"
   | "layout.footer"
   | "nav.items"
-  | "home.top"
-  | "home.bottom"
-  | "collection.top"
-  | "collection.bottom"
+  | "page.top"
+  | "page.bottom"
   | "entry.top"
   | "entry.bottom";
 
@@ -45,10 +48,8 @@ export const SLOTS: Slot[] = [
   "layout.banner",
   "layout.footer",
   "nav.items",
-  "home.top",
-  "home.bottom",
-  "collection.top",
-  "collection.bottom",
+  "page.top",
+  "page.bottom",
   "entry.top",
   "entry.bottom",
 ];

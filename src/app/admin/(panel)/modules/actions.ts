@@ -5,9 +5,9 @@ import { revalidatePath } from "next/cache";
 import { adminCtx } from "@/core/admin";
 import { checkForUpdate, installModule, setModuleEnabled, uninstallModule, updateModule } from "@/core/modules/installer";
 import { audit } from "@/core/permissions";
-import { setSetting, deleteSetting } from "@/core/settings";
 import { getModule } from "@/core/modules/registry";
-import { moduleSettingKey } from "@/core/modules/context";
+import { prisma } from "@/core/db";
+import { createInstance, defaultNames } from "@/core/instanceService";
 import type { ActionState } from "@/components/admin/ActionForm";
 
 // Installer ou mettre à jour du code exécuté côté serveur est réservé au propriétaire.
@@ -17,7 +17,7 @@ export async function installModuleAction(_prev: ActionState, formData: FormData
   const result = await installModule(String(formData.get("repo") ?? ""));
   if (!result.ok) return { error: t(result.error) };
   await audit(user.email, "module.install", result.id);
-  redirect(`/admin/modules/${result.id}`);
+  redirect("/admin/modules");
 }
 
 export async function installFromCatalogue(repo: string): Promise<void> {
@@ -25,7 +25,7 @@ export async function installFromCatalogue(repo: string): Promise<void> {
   const result = await installModule(repo);
   if (!result.ok) redirect(`/admin/modules?error=${encodeURIComponent(result.error)}`);
   await audit(user.email, "module.install", result.id);
-  redirect(`/admin/modules/${result.id}`);
+  redirect("/admin/modules");
 }
 
 export async function toggleModule(id: string, enabled: boolean): Promise<void> {
@@ -60,45 +60,16 @@ export async function uninstallModuleAction(id: string): Promise<void> {
   redirect("/admin/modules");
 }
 
-export async function saveModuleSettings(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  const { user, t, config } = await adminCtx("admin");
-  const id = String(formData.get("id") ?? "");
-  const mod = await getModule(id);
-  if (!mod) return { error: t("error.generic") };
-
-  for (const field of mod.manifest.settings) {
-    const locales = field.translatable ? config.locales : [""];
-    for (const locale of locales) {
-      const name = field.translatable ? `s__${field.key}__${locale}` : `s__${field.key}`;
-      const key = moduleSettingKey(id, field.key);
-      if (field.type === "boolean") {
-        await setSetting(key, formData.get(name) === "on", locale);
-        continue;
-      }
-      const raw = String(formData.get(name) ?? "").trim();
-      // Un secret laissé vide est conservé tel quel.
-      if (field.type === "secret" && raw === "") continue;
-      if (raw === "") {
-        await deleteSetting(key, locale);
-        continue;
-      }
-      if (field.type === "number") {
-        const n = Number(raw);
-        if (!Number.isFinite(n)) return { error: t("error.generic") };
-        await setSetting(key, n, locale);
-      } else if (field.type === "select") {
-        if (!field.options?.some((o) => o.value === raw)) return { error: t("error.generic") };
-        await setSetting(key, raw, locale);
-      } else if (field.type === "url") {
-        if (!/^https?:\/\//i.test(raw)) return { error: t("error.badUrl") };
-        await setSetting(key, raw, locale);
-      } else {
-        await setSetting(key, raw.slice(0, 5000), locale);
-      }
-    }
+/** Ajoute une instance d'un module (un nouveau blog, une nouvelle liste de liens…) avec ses réglages par défaut. */
+export async function addInstance(moduleId: string): Promise<void> {
+  const { user, config } = await adminCtx("admin");
+  const mod = await getModule(moduleId);
+  if (!mod || !mod.row.enabled) redirect("/admin/modules?error=modules.error.load");
+  if (mod.manifest.instances === "single" && (await prisma.moduleInstance.count({ where: { moduleId } })) > 0) {
+    redirect("/admin/modules?error=instances.error.single");
   }
-  await audit(user.email, "module.settings", id);
+  const created = await createInstance(prisma, { manifest: mod.manifest, names: defaultNames(mod.manifest, config.locales) });
+  await audit(user.email, "instance.create", created.key);
   revalidatePath("/", "layout");
-  return { ok: t("action.saved") };
+  redirect(`/admin/instances/${created.id}`);
 }
-

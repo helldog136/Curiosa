@@ -3,7 +3,7 @@ import { defineModule } from "@/core/modules/types";
 import type { BuiltinModule } from "..";
 
 export const manifest: ParsedManifest = {
-  apiVersion: 1,
+  apiVersion: 2,
   id: "live-status",
   name: { en: "Twitch live status", fr: "Statut live Twitch" },
   version: "1.0.0",
@@ -14,10 +14,11 @@ export const manifest: ParsedManifest = {
   author: "Vitrine",
   license: "MIT",
   icon: "🔴",
-  permissions: ["slots"],
+  instances: "single",
+  sections: [{ id: "player", label: { en: "Twitch player", fr: "Lecteur Twitch" } }],
+  permissions: ["slots", "sections"],
   settings: [
     { key: "channel", type: "text", label: { en: "Twitch channel", fr: "Chaîne Twitch" }, help: { en: "Login name, e.g. mychannel", fr: "Identifiant, ex. machaine" } },
-    { key: "embed", type: "boolean", label: { en: "Show the player on the home page", fr: "Afficher le lecteur sur l'accueil" }, default: true },
     { key: "clientId", type: "text", label: { en: "Twitch client id (optional, enables the live banner)", fr: "Client id Twitch (optionnel, active la bannière live)" } },
     { key: "clientSecret", type: "secret", label: { en: "Twitch client secret", fr: "Client secret Twitch" } },
   ],
@@ -68,9 +69,11 @@ export const definition = defineModule({
       if (!(await isLive(channel, clientId, secret))) return null;
       return [{ type: "banner", tone: "success", text: ctx.t("live", { channel }), href: `https://twitch.tv/${channel}` }];
     },
-    "home.top"(ctx) {
+  },
+  sections: {
+    player(ctx) {
       const channel = ctx.setting("channel") ?? "";
-      if (!ctx.setting<boolean>("embed") || !CHANNEL_RE.test(channel)) return null;
+      if (!CHANNEL_RE.test(channel)) return null;
       const parent = new URL(ctx.api.siteUrl).hostname;
       return [
         {

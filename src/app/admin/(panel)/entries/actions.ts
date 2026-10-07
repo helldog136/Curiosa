@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { adminCtx } from "@/core/admin";
-import { getCollectionById } from "@/core/collections";
+import { getInstanceById } from "@/core/instances";
 import { prisma } from "@/core/db";
 import { uniqueSlug } from "@/core/entries";
 import { audit } from "@/core/permissions";
@@ -18,7 +18,7 @@ const opt = (v: FormDataEntryValue | null) => {
 export async function saveEntry(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const { user, t, config } = await adminCtx("editor");
   const id = String(formData.get("id") ?? "");
-  const collection = await getCollectionById(String(formData.get("collectionId") ?? ""));
+  const collection = await getInstanceById(String(formData.get("instanceId") ?? ""));
   const locale = String(formData.getAll("locale").at(-1) ?? "");
   if (!collection || !config.locales.includes(locale)) return { error: t("error.generic") };
 
@@ -68,13 +68,13 @@ export async function saveEntry(_prev: ActionState, formData: FormData): Promise
   let entryId = id;
   if (id) {
     const entry = await prisma.entry.findUnique({ where: { id } });
-    if (!entry || entry.collectionId !== collection.id) return { error: t("error.generic") };
+    if (!entry || entry.instanceId !== collection.id) return { error: t("error.generic") };
     // La date de publication saisie prime ; sinon on garde l'existante, ou on pose "maintenant" à la première publication.
     const publishedAt = date("publishedAt") ?? entry.publishedAt ?? (status === "published" ? new Date() : null);
     await prisma.entry.update({ where: { id }, data: { ...shared, publishedAt } });
   } else {
     const created = await prisma.entry.create({
-      data: { ...shared, collectionId: collection.id, sourceLocale: locale, authorId: user.id, publishedAt: date("publishedAt") ?? (status === "published" ? new Date() : null) },
+      data: { ...shared, instanceId: collection.id, sourceLocale: locale, authorId: user.id, publishedAt: date("publishedAt") ?? (status === "published" ? new Date() : null) },
     });
     entryId = created.id;
   }
@@ -82,7 +82,7 @@ export async function saveEntry(_prev: ActionState, formData: FormData): Promise
   const slug = await uniqueSlug(prisma, collection.id, locale, wantedSlug, entryId);
   await prisma.entryTranslation.upsert({
     where: { entryId_locale: { entryId, locale } },
-    create: { entryId, collectionId: collection.id, locale, slug, ...text },
+    create: { entryId, instanceId: collection.id, locale, slug, ...text },
     update: { slug, ...text },
   });
 
@@ -102,9 +102,9 @@ export async function deleteTranslation(entryId: string, locale: string): Promis
 
 export async function deleteEntry(entryId: string): Promise<void> {
   const { user } = await adminCtx("editor");
-  const entry = await prisma.entry.findUnique({ where: { id: entryId }, include: { collection: true } });
+  const entry = await prisma.entry.findUnique({ where: { id: entryId }, include: { instance: true } });
   if (!entry) return;
   await prisma.entry.delete({ where: { id: entryId } });
   await audit(user.email, "entry.delete", entryId);
-  redirect(`/admin/entries?c=${entry.collection.key}`);
+  redirect(`/admin/entries?c=${entry.instance.key}`);
 }

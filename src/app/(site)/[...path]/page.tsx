@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import { notFound, permanentRedirect, redirect } from "next/navigation";
-import { listCollections, pickDescription, pickName, type CollectionView } from "@/core/collections";
+import { pickDescription, pickName, type InstanceView } from "@/core/instances";
+import { getActiveInstances, type ActiveInstance } from "@/core/modules/registry";
 import { RESERVED_PATHS } from "@/core/config";
 import { findEntryBySlug, listEntries, type EntryView } from "@/core/entries";
 import { makeTranslator } from "@/core/i18n/dictionary";
 import { getVisitorLocale } from "@/core/i18n/request";
 import { resolveRedirect } from "@/core/redirects";
-import { filterEntryBody, runSlot } from "@/core/modules/runtime";
+import { filterEntryBody, runPage, runSlot } from "@/core/modules/runtime";
 import { getSiteConfig } from "@/core/settings";
 import { prisma } from "@/core/db";
 import { isSafeExternalUrl } from "@/core/url";
@@ -21,34 +22,41 @@ export const dynamic = "force-dynamic";
 type Props = { params: Promise<{ path: string[] }> };
 
 type Resolved =
-  | { kind: "list"; collection: CollectionView }
-  | { kind: "entry"; collection: CollectionView; slug: string }
-  | { kind: "go"; collectionKey: string; slug: string }
+  | { kind: "list"; active: ActiveInstance }
+  | { kind: "entry"; active: ActiveInstance; slug: string }
+  | { kind: "module"; active: ActiveInstance; segments: string[] }
+  | { kind: "go"; instanceKey: string; slug: string }
   | { kind: "redirect"; path: string }
   | { kind: "none" };
 
 /**
- * Ordre de résolution d'une URL : /go/<collection>/<slug>, redirections
- * externes autorisées, collection (liste ou entrée), page à la racine.
+ * Ordre de résolution d'une URL : /go/<instance>/<entrée>, instance montée sur ce
+ * chemin (page propre au module, sinon liste + entrées du cœur), redirections
+ * externes autorisées, enfin la page d'une instance montée à la racine.
  */
 async function resolve(segments: string[]): Promise<Resolved> {
   const segs = segments.map((s) => decodeURIComponent(s).toLowerCase());
   const first = segs[0] ?? "";
-  if (first === "go" && segs.length === 3) return { kind: "go", collectionKey: segs[1]!, slug: segs[2]! };
-  if (!RESERVED_PATHS.has(first)) {
-    const collections = (await listCollections()).filter((c) => c.published);
-    const byBase = collections.find((c) => c.basePath && c.basePath === first);
-    if (byBase) {
-      if (segs.length === 1) return { kind: "list", collection: byBase };
-      if (segs.length === 2) return { kind: "entry", collection: byBase, slug: segs[1]! };
-    }
-    if (await prisma.redirect.findUnique({ where: { path: segs.join("/") }, select: { id: true } })) {
-      return { kind: "redirect", path: segs.join("/") };
-    }
-    const root = collections.find((c) => c.basePath === "");
-    if (root && segs.length === 1) return { kind: "entry", collection: root, slug: segs[0]! };
+  if (first === "go" && segs.length === 3) return { kind: "go", instanceKey: segs[1]!, slug: segs[2]! };
+  if (RESERVED_PATHS.has(first)) return { kind: "none" };
+
+  const mounted = (await getActiveInstances()).filter((a) => a.instance.basePath !== null);
+  const serve = (active: ActiveInstance, rest: string[], root: boolean): Resolved => {
+    if (active.mod.def.page) return { kind: "module", active, segments: rest };
+    if (!active.mod.manifest.content) return { kind: "none" };
+    if (root) return rest.length === 1 ? { kind: "entry", active, slug: rest[0]! } : { kind: "none" };
+    if (rest.length === 0) return { kind: "list", active };
+    return rest.length === 1 ? { kind: "entry", active, slug: rest[0]! } : { kind: "none" };
+  };
+
+  const byBase = mounted.find((a) => a.instance.basePath && a.instance.basePath === first);
+  if (byBase) return serve(byBase, segs.slice(1), false);
+
+  if (await prisma.redirect.findUnique({ where: { path: segs.join("/") }, select: { id: true } })) {
+    return { kind: "redirect", path: segs.join("/") };
   }
-  return { kind: "none" };
+  const root = mounted.find((a) => a.instance.basePath === "");
+  return root ? serve(root, segs, true) : { kind: "none" };
 }
 
 function prefixed(path: string, locale: string, defaultLocale: string): string {
@@ -60,9 +68,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const resolved = await resolve(path);
   const locale = await getVisitorLocale();
   const config = await getSiteConfig(locale);
-  if (resolved.kind === "list") return { title: pickName(resolved.collection, locale, config.defaultLocale) };
+  if (resolved.kind === "list") return { title: pickName(resolved.active.instance, locale, config.defaultLocale) };
+  if (resolved.kind === "module") {
+    const page = await runPage(resolved.active.instance.key, resolved.segments, locale);
+    return page ? { title: page.title, description: page.description } : {};
+  }
   if (resolved.kind === "entry") {
-    const found = await findEntryBySlug(resolved.collection, locale, resolved.slug);
+    const found = await findEntryBySlug(resolved.active.instance, locale, resolved.slug);
     if (found.kind !== "found") return {};
     const e = found.entry;
     const languages = Object.fromEntries(
@@ -96,43 +108,56 @@ export default async function CatchAllPage({ params }: Props) {
     }
 
     case "go": {
-      const collection = (await listCollections()).find((c) => c.key === resolved.collectionKey);
-      if (!collection || !collection.allowGoLinks || !collection.published) notFound();
-      const found = await findEntryBySlug(collection, locale, resolved.slug);
+      const active = (await getActiveInstances()).find((a) => a.instance.key === resolved.instanceKey);
+      if (!active || !active.instance.allowGoLinks) notFound();
+      const found = await findEntryBySlug(active.instance, locale, resolved.slug);
       if (found.kind !== "found" || !isSafeExternalUrl(found.entry.url)) notFound();
       return redirect(found.entry.url!);
     }
 
+    case "module": {
+      const page = await runPage(resolved.active.instance.key, resolved.segments, locale);
+      if (!page || page.notFound) notFound();
+      const page_ = { key: resolved.active.instance.key, basePath: resolved.active.instance.basePath };
+      const [top, bottom] = await Promise.all([runSlot("page.top", locale, { page: page_ }), runSlot("page.bottom", locale, { page: page_ })]);
+      return (
+        <div className="space-y-8">
+          {page.title && <h1 className="text-3xl font-bold">{page.title}</h1>}
+          <Blocks blocks={top} locale={locale} />
+          <Blocks blocks={page.blocks} locale={locale} />
+          <Blocks blocks={bottom} locale={locale} />
+        </div>
+      );
+    }
+
     case "list": {
-      const { collection } = resolved;
-      const entries = await listEntries({ collection, locale });
-      const description = pickDescription(collection, locale, config.defaultLocale);
-      const [top, bottom] = await Promise.all([
-        runSlot("collection.top", locale, { collection: { key: collection.key, basePath: collection.basePath } }),
-        runSlot("collection.bottom", locale, { collection: { key: collection.key, basePath: collection.basePath } }),
-      ]);
+      const { instance } = resolved.active;
+      const entries = await listEntries({ instance, locale });
+      const description = pickDescription(instance, locale, config.defaultLocale);
+      const page = { key: instance.key, basePath: instance.basePath };
+      const [top, bottom] = await Promise.all([runSlot("page.top", locale, { page }), runSlot("page.bottom", locale, { page })]);
       return (
         <div className="space-y-8">
           <header className="space-y-2">
-            <h1 className="text-3xl font-bold">{pickName(collection, locale, config.defaultLocale)}</h1>
+            <h1 className="text-3xl font-bold">{pickName(instance, locale, config.defaultLocale)}</h1>
             {description && <p className="text-muted">{description}</p>}
           </header>
           <Blocks blocks={top} locale={locale} />
-          <EntryList entries={entries} collection={collection} locale={locale} defaultLocale={config.defaultLocale} />
+          <EntryList entries={entries} collection={instance} locale={locale} defaultLocale={config.defaultLocale} />
           <Blocks blocks={bottom} locale={locale} />
         </div>
       );
     }
 
     case "entry": {
-      const { collection } = resolved;
-      const found = await findEntryBySlug(collection, locale, resolved.slug);
+      const { instance } = resolved.active;
+      const found = await findEntryBySlug(instance, locale, resolved.slug);
       if (found.kind === "missing") notFound();
       if (found.kind === "other-locale") {
-        const target = `${collection.basePath ? `/${collection.basePath}` : ""}/${found.slug}`;
+        const target = `${instance.basePath ? `/${instance.basePath}` : ""}/${found.slug}`;
         return redirect(prefixed(target, found.locale, config.defaultLocale));
       }
-      return <EntryPage entry={found.entry} collection={collection} locale={locale} t={t} />;
+      return <EntryPage entry={found.entry} instance={instance} locale={locale} t={t} />;
     }
 
     case "none":
@@ -141,20 +166,20 @@ export default async function CatchAllPage({ params }: Props) {
 }
 
 async function EntryPage({
-  entry, collection, locale, t,
+  entry, instance, locale, t,
 }: {
   entry: EntryView;
-  collection: CollectionView;
+  instance: InstanceView;
   locale: string;
   t: ReturnType<typeof makeTranslator>;
 }) {
-  const extras = { collection: { key: collection.key, basePath: collection.basePath }, entry: { id: entry.id, title: entry.title, slug: entry.slug } };
+  const extras = { page: { key: instance.key, basePath: instance.basePath }, entry: { id: entry.id, title: entry.title, slug: entry.slug } };
   const [top, bottom, body] = await Promise.all([
     runSlot("entry.top", locale, extras),
     runSlot("entry.bottom", locale, extras),
     filterEntryBody(entry.body, locale, extras),
   ]);
-  const customFields = collection.fieldSchema.filter((f) => entry.fields[f.key] !== undefined && entry.fields[f.key] !== "");
+  const customFields = instance.fieldSchema.filter((f) => entry.fields[f.key] !== undefined && entry.fields[f.key] !== "");
 
   return (
     <article lang={entry.locale} className="mx-auto max-w-3xl space-y-6">
@@ -167,7 +192,7 @@ async function EntryPage({
       )}
       <header className="space-y-2">
         <h1 className="flex items-center gap-3 text-3xl font-bold"><EntryIcon icon={entry.icon} className="h-7 w-7" />{entry.title}</h1>
-        {collection.display !== "links" && entry.publishedAt && (
+        {instance.display !== "links" && entry.publishedAt && (
           <time className="text-sm text-muted" dateTime={entry.publishedAt.toISOString()}>
             {new Intl.DateTimeFormat(locale, { dateStyle: "long" }).format(entry.publishedAt)}
           </time>

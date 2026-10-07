@@ -54,10 +54,8 @@ export async function deleteSetting(key: string, locale?: string): Promise<void>
 // ─── Réglages du site ─────────────────────────────────────────────────────
 
 export type NavItem = { label: Record<string, string>; href: string };
-export type HomeSection =
-  | { id: string; type: "hero" }
-  | { id: string; type: "collection"; collection: string; count: number }
-  | { id: string; type: "slot"; slot: string };
+/** Un morceau placé sur la page d'accueil : une section proposée par une instance de module. */
+export type HomeSection = { id: string; instance: string; section: string; options: Record<string, unknown> };
 
 export type SiteConfig = {
   defaultLocale: string;
@@ -67,8 +65,6 @@ export type SiteConfig = {
   name: string;
   tagline: string;
   logo: string | null;
-  heroTitle: string;
-  heroText: string;
   footerText: string;
   contactEmail: string;
   accent: string;
@@ -79,7 +75,7 @@ export type SiteConfig = {
   setupCompleted: boolean;
 };
 
-export const DEFAULT_HOME_SECTIONS: HomeSection[] = [{ id: "hero", type: "hero" }];
+export const DEFAULT_HOME_SECTIONS: HomeSection[] = [];
 
 export const getSiteConfig = cache(async (locale?: string): Promise<SiteConfig> => {
   const all = await loadAll();
@@ -95,8 +91,6 @@ export const getSiteConfig = cache(async (locale?: string): Promise<SiteConfig> 
     name: await str("site.name", "Vitrine"),
     tagline: await str("site.tagline"),
     logo: (await getSetting<string>("site.logo")) ?? null,
-    heroTitle: await str("hero.title"),
-    heroText: await str("hero.text"),
     footerText: await str("footer.text"),
     contactEmail: (await getSetting<string>("site.contactEmail")) ?? "",
     accent: (await getSetting<string>("theme.accent")) ?? "#e8a23b",

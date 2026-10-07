@@ -8,7 +8,7 @@ import { ImageField } from "@/components/admin/ImageField";
 import { ui } from "@/components/admin/ui";
 import { saveSettings } from "./actions";
 
-const TRANSLATABLE = ["site.name", "site.tagline", "hero.title", "hero.text", "footer.text"] as const;
+const TRANSLATABLE = ["site.name", "site.tagline", "footer.text"] as const;
 
 export default async function SettingsPage() {
   const { t, config } = await adminCtx("admin");
@@ -45,8 +45,6 @@ export default async function SettingsPage() {
               <legend className="px-2 text-sm font-medium">{localeName(l)}</legend>
               <TextField name={`site.name__${l}`} label={t("settings.siteName")} defaultValue={String(values["site.name"]?.[l] ?? "")} />
               <TextField name={`site.tagline__${l}`} label={t("settings.tagline")} defaultValue={String(values["site.tagline"]?.[l] ?? "")} />
-              <TextField name={`hero.title__${l}`} label={t("settings.heroTitle")} defaultValue={String(values["hero.title"]?.[l] ?? "")} />
-              <TextField name={`hero.text__${l}`} label={t("settings.heroText")} defaultValue={String(values["hero.text"]?.[l] ?? "")} />
               <TextField name={`footer.text__${l}`} label={t("settings.footerText")} defaultValue={String(values["footer.text"]?.[l] ?? "")} />
             </fieldset>
           ))}

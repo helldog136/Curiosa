@@ -26,7 +26,7 @@ model User {
 // ─── Réglages ─────────────────────────────────────────────────────────────
 // Clé/valeur. `locale` vaut "" pour un réglage non traduisible (et non NULL :
 // SQLite traite NULL comme distinct dans un index unique).
-// Les réglages d'un module sont préfixés "module.<id>.".
+// Les réglages d'une instance de module sont préfixés "instance.<id>.".
 model Setting {
   key    String
   locale String @default("")
@@ -35,52 +35,50 @@ model Setting {
   @@id([key, locale])
 }
 
-// ─── Collections ("blogs") ────────────────────────────────────────────────
-// Une collection = un ensemble d'entrées présentées ensemble : articles,
-// codes promo, réseaux sociaux, pages… Rien n'est codé en dur : un blog, une
-// liste de codes promo et une liste de liens ne diffèrent que par leur
-// configuration (affichage, comportement au clic, champs activés).
-model Collection {
+// ─── Instances de modules ─────────────────────────────────────────────────
+// Le cœur ne connaît que des modules. Un module est un type de code (blog,
+// réseaux sociaux, formulaire de contact…) ; une *instance* en est un
+// exemplaire configuré. Un site peut avoir autant de blogs ou de listes de
+// réseaux sociaux qu'il veut : ce sont des instances du même module.
+model ModuleInstance {
   id       String @id @default(cuid())
-  // Identifiant technique stable (utilisé par les modules et les réglages).
+  moduleId String
+  // Identifiant technique stable (URLs /m/<key>/…, réglages, sections de l'accueil).
   key      String @unique
-  // Segment d'URL public. Vide = les entrées vivent à la racine (/ma-page).
-  basePath String @unique
-  // cards | list | links | codes
-  display  String @default("cards")
-  // detail : le clic ouvre la page de l'entrée ; external : il suit son lien.
-  clickAction String @default("detail")
-  // Champs activés dans l'éditeur (JSON : ["cover","summary","body","url",…]).
-  features String @default("[]")
-  // Champs libres supplémentaires (JSON : [{key,type,label}]).
-  fieldSchema String @default("[]")
+  // Chemin public où l'instance est montée ("" = racine du site, NULL = pas de page).
+  basePath String? @unique
+  enabled  Boolean @default(true)
   showInNav Boolean @default(true)
   navOrder  Int     @default(0)
-  // Public = visible sur le site ; sinon la collection reste interne
-  // (utile à un module).
-  published Boolean @default(true)
-  // Si une entrée n'existe pas dans la langue du visiteur, on affiche la
-  // langue par défaut plutôt que de la masquer.
+
+  // Réglages de contenu, utilisés par les modules qui déclarent `content`
+  // dans leur manifeste (blog, liens, codes promo, pages…).
+  display     String @default("cards")
+  clickAction String @default("detail")
+  features    String @default("[]")
+  fieldSchema String @default("[]")
   fallbackToDefault Boolean @default(true)
-  // Expose /go/<collection>/<slug> : redirection vers le lien de l'entrée.
   allowGoLinks Boolean @default(false)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  translations CollectionTranslation[]
+  translations InstanceTranslation[]
   entries      Entry[]
+
+  @@index([moduleId])
 }
 
-model CollectionTranslation {
-  id           String @id @default(cuid())
-  collectionId String
-  locale       String
-  name         String
-  description  String @default("")
+model InstanceTranslation {
+  id          String @id @default(cuid())
+  instanceId  String
+  locale      String
+  name        String
+  description String @default("")
 
-  collection Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  instance ModuleInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
 
-  @@unique([collectionId, locale])
+  @@unique([instanceId, locale])
 }
 
 // ─── Entrées ──────────────────────────────────────────────────────────────
@@ -88,7 +86,7 @@ model CollectionTranslation {
 // une entrée n'a besoin que d'UNE traduction, les autres sont optionnelles.
 model Entry {
   id           String    @id @default(cuid())
-  collectionId String
+  instanceId   String
   // draft | published
   status       String    @default("draft")
   publishedAt  DateTime?
@@ -99,7 +97,7 @@ model Entry {
   code         String?
   featured     Boolean   @default(false)
   position     Int       @default(0)
-  // Valeurs des champs libres de la collection (JSON).
+  // Valeurs des champs libres de l'instance (JSON).
   fields       String    @default("{}")
   // Langue dans laquelle l'entrée a été créée.
   sourceLocale String
@@ -107,29 +105,29 @@ model Entry {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
-  collection   Collection         @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  instance     ModuleInstance     @relation(fields: [instanceId], references: [id], onDelete: Cascade)
   author       User?              @relation(fields: [authorId], references: [id], onDelete: SetNull)
   translations EntryTranslation[]
 
-  @@index([collectionId, status, publishedAt])
+  @@index([instanceId, status, publishedAt])
 }
 
 model EntryTranslation {
-  id           String @id @default(cuid())
-  entryId      String
-  // Dénormalisé pour garantir l'unicité du slug par collection et par langue.
-  collectionId String
-  locale       String
-  slug         String
-  title        String
-  summary      String @default("")
-  body         String @default("")
-  updatedAt    DateTime @updatedAt
+  id         String @id @default(cuid())
+  entryId    String
+  // Dénormalisé pour garantir l'unicité du slug par instance et par langue.
+  instanceId String
+  locale     String
+  slug       String
+  title      String
+  summary    String @default("")
+  body       String @default("")
+  updatedAt  DateTime @updatedAt
 
   entry Entry @relation(fields: [entryId], references: [id], onDelete: Cascade)
 
   @@unique([entryId, locale])
-  @@unique([collectionId, locale, slug])
+  @@unique([instanceId, locale, slug])
 }
 
 // ─── Redirections externes autorisées ─────────────────────────────────────
@@ -164,15 +162,15 @@ model Module {
   updatedAt   DateTime @updatedAt
 }
 
-// Stockage libre pour les modules (messages reçus, compteurs…).
+// Stockage libre d'une instance de module (messages reçus, compteurs…).
 model ModuleRecord {
   id         String   @id @default(cuid())
-  moduleId   String
+  instanceId String
   collection String
   data       String // JSON
   createdAt  DateTime @default(now())
 
-  @@index([moduleId, collection, createdAt])
+  @@index([instanceId, collection, createdAt])
 }
 
 model AuditLog {
