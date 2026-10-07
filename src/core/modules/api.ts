@@ -8,6 +8,7 @@ import { renderPng, type PngSpec } from "@/core/services/render";
 import { createStore } from "@/core/services/store";
 import { collect } from "@/core/services/topics";
 import { getSiteConfig } from "@/core/settings";
+import { callService, serviceAvailable } from "./dependencies";
 import { getActiveInstances } from "./registry";
 import type { ModuleApi } from "./types";
 
@@ -35,6 +36,13 @@ export function makeApi(instance: InstanceView, locale: string): ModuleApi {
     // ── SERVICES du cœur ────────────────────────────────────────────────────────
     qr: qrSvg,
     png: (spec) => renderPng(spec as PngSpec, siteUrl),
+    services: {
+      available: serviceAvailable,
+      async call(service, method, args) {
+        const consumer = (await getActiveInstances()).find((a) => a.instance.id === instance.id);
+        return consumer ? callService(consumer, service, method, args, locale) : { ok: false, reason: "unavailable" };
+      },
+    },
     store: createStore(instance.id),
     mail: { configured: isMailConfigured, send: (message) => sendMail(message, instance.key) },
     topics: {

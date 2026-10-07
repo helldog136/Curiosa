@@ -4,9 +4,10 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { prisma } from "../db";
 import { MODULES_DIR } from "../config";
-import { parseManifest } from "./manifest";
+import { parseManifest, type ParsedManifest } from "./manifest";
 import { forgetModule, getModule, moduleDir, readGitManifest } from "./registry";
-import { findMarketplaceEntry, readBundledManifest } from "./marketplace";
+import { findMarketplaceEntry, listBundled, readBundledManifest } from "./marketplace";
+import { dependentsOf, offersOf, unmetRequirements } from "./dependencies";
 import { migrateModuleInstances, type MigrationOutcome } from "./dataMigrations";
 import { classify, compareVersions, pickLatestTag, TAG_RE, type UpdateLevel } from "../updates/versions";
 import { BUILTIN_MODULES } from "@/modules-builtin";
@@ -16,7 +17,7 @@ const run = promisify(execFile);
 const MAX_MODULE_BYTES = 10 * 1024 * 1024;
 const DEFAULT_HOSTS = "github.com,gitlab.com,codeberg.org,bitbucket.org";
 
-export type InstallResult = { ok: true; id: string; migrations?: MigrationOutcome[] } | { ok: false; error: string };
+export type InstallResult = { ok: true; id: string; migrations?: MigrationOutcome[] } | { ok: false; error: string; /** Précision lisible (ex. les services manquants). */ detail?: string };
 
 export type ParsedRepo = { url: string; ref?: string };
 
@@ -264,17 +265,57 @@ async function replaySkippedReleases(id: string, dir: string, repoUrl: string, f
   return null;
 }
 
+/**
+ * Satisfait les `requires` d'un module avant son activation : un module qui offre le service doit être actif. Un module LIVRÉ avec le
+ * framework qui l'offre est installé et activé d'office ; sinon (module personnel, rien d'installé) on ne devine pas : on renvoie ce qui manque.
+ */
+async function ensureRequirements(manifest: ParsedManifest, depth = 0): Promise<string[]> {
+  const missing: string[] = [];
+  for (const service of await unmetRequirements(manifest)) {
+    let done = false;
+    if (depth < 3) {
+      for (const entry of listBundled()) {
+        const m = entry.dir ? readBundledManifest(entry.dir) : null;
+        if (!m || m.id === manifest.id || !offersOf(m).includes(service)) continue;
+        if (!(await prisma.module.findUnique({ where: { id: m.id } })) && !(await installBundled(m.id)).ok) continue;
+        if ((await enableModule(m.id, depth + 1)).ok) { done = true; break; }
+      }
+    }
+    if (!done) missing.push(service);
+  }
+  return missing;
+}
+
+async function enableModule(id: string, depth: number): Promise<InstallResult> {
+  const row = await prisma.module.findUnique({ where: { id } });
+  if (!row) return { ok: false, error: "modules.error.notfound" };
+  const mod = await getModule(id);
+  if (!mod) return { ok: false, error: "modules.error.load" };
+  const missing = await ensureRequirements(mod.manifest, depth);
+  if (missing.length) return { ok: false, error: "modules.error.requires", detail: missing.join(", ") };
+  await prisma.module.update({ where: { id }, data: { enabled: true } });
+  return { ok: true, id };
+}
+
 export async function setModuleEnabled(id: string, enabled: boolean): Promise<InstallResult> {
   const row = await prisma.module.findUnique({ where: { id } });
   if (!row) return { ok: false, error: "modules.error.notfound" };
-  if (enabled && !(await getModule(id))) return { ok: false, error: "modules.error.load" };
-  await prisma.module.update({ where: { id }, data: { enabled } });
+  if (enabled) return enableModule(id, 0);
+  if (row.enabled) {
+    const dependents = await dependentsOf(id);
+    if (dependents.length) return { ok: false, error: "modules.error.requiredBy", detail: dependents.join(", ") };
+  }
+  await prisma.module.update({ where: { id }, data: { enabled: false } });
   return { ok: true, id };
 }
 
 export async function uninstallModule(id: string): Promise<InstallResult> {
   const row = await prisma.module.findUnique({ where: { id } });
   if (!row || row.source === "builtin") return { ok: false, error: "modules.error.notfound" };
+  if (row.enabled) {
+    const dependents = await dependentsOf(id);
+    if (dependents.length) return { ok: false, error: "modules.error.requiredBy", detail: dependents.join(", ") };
+  }
   const instances = await prisma.moduleInstance.findMany({ where: { moduleId: id }, select: { id: true } });
   const ids = instances.map((i) => i.id);
   await prisma.setting.deleteMany({ where: { OR: ids.map((i) => ({ key: { startsWith: `instance.${i}.` } })) } });

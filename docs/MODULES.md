@@ -109,6 +109,7 @@ Validé à l'installation et au chargement (zod, `src/core/modules/manifest.ts`)
 | `basePath` | Chemin public proposé à la création d'une instance à page (défaut : la clé de l'instance). Lettres minuscules, chiffres, tirets. |
 | `settings` | Réglages **par instance** ; l'admin génère le formulaire (voir ci-dessous). 60 au plus. |
 | `sections` | Morceaux plaçables sur la page d'accueil (voir ci-dessous). 20 au plus. |
+| `offers` / `requires` | **Dépendances** : services que le module offre aux autres / dont il a besoin (voir « dépendances entre modules »). 10 au plus chacun. |
 | `consumes` / `provides` | Sujets que le module digère / expose (voir « sujets »). 10 au plus chacun. |
 | `mcp` | Actions proposées à l'API MCP (voir « API MCP »). 60 au plus. |
 | `content` | Module à contenu : le cœur fournit l'éditeur d'entrées et les pages (voir ci-dessous). |
@@ -280,6 +281,7 @@ export default {
   mcp:      { my_action: async (ctx, args, actor) => ({ done: true }) },
   migrations: { 2: async (ctx) => { /* données v1 → v2 */ } },
   backup:   { readable: async (ctx) => [{ path: "data.csv", content: "…" }] },
+  services: { "contact.store": { add: async (ctx, args) => ({ id: "…" }) } },
   tasks:    { sync: { everyMinutes: 15, run: async (ctx) => { /* travail de fond */ } } },
   hooks:    { onInstanceCreate: async (ctx) => {}, onInstanceDelete: async (ctx) => {} },
 };
@@ -302,6 +304,7 @@ un slot en échec disparaît, une section en échec donne `[]`, une page en éch
 | `mcp.<action>` | un assistant appelle l'action | `ctx`, `args` validés, `actor` | une valeur JSON |
 | `migrations.<N>` | après une mise à jour du module ou une restauration, pour chaque instance dont les données sont en retard | `ctx` | rien (lever une erreur annule tout) |
 | `backup.readable` | on exporte une sauvegarde | `ctx` | liste de `{ path, content }` |
+| `services.<service>.<méthode>` | un module qui `requires` ce service l'appelle | `ctx` (celui du fournisseur), `args` | une valeur (objet JSON de préférence) |
 | `tasks.<nom>` | toutes les `everyMinutes` minutes, pour chaque instance active (jamais deux fois en même temps) | `ctx` | rien (une erreur est mémorisée, rien d'autre ne s'arrête) |
 | `hooks.onInstanceCreate` / `hooks.onInstanceDelete` | cycle de vie d'une instance | `ctx` | rien |
 
@@ -402,6 +405,29 @@ Ne supprimez jamais une migration déjà publiée : un site peut sauter plusieur
 
 Voir « Sauvegarde lisible sans le framework ». `backup.readable(ctx)` renvoie des fichiers `{ path, content }`.
 
+### Dépendances entre modules : `offers` / `requires` / `services`
+
+Un module peut avoir **besoin** d'un autre (un formulaire de contact a besoin d'un carnet où ranger les contacts). On dépend d'un **service** (un nom : `contact.store`), jamais d'un module précis : n'importe quel module qui l'offre convient.
+
+```jsonc
+// module.json du FOURNISSEUR                       // module.json du CONSOMMATEUR
+"offers":   [{ "service": "contact.store" }]        "requires": [{ "service": "contact.store" }]
+```
+
+```js
+// fournisseur : les méthodes du service                // consommateur
+services: { "contact.store": {                           const r = await ctx.api.services.call("contact.store", "add", { name, email });
+  add: async (ctx, args) => ({ id: await ctx.api.store.add("contacts", args) }),   // r = { ok: true, value } | { ok: false, reason }
+} },
+```
+
+Ce que fait le cœur :
+
+- **Activer** un module qui `requires` un service qu'aucun module actif n'offre : si un module **livré avec le framework** l'offre, il est installé et activé d'office ; sinon l'activation est refusée en nommant ce qui manque.
+- **Désactiver ou désinstaller** un module que d'autres modules actifs requièrent (parce que lui seul offre le service) est refusé, avec la liste de ces modules.
+- `ctx.api.services.call` n'accepte que les services déclarés dans `requires` (sinon `undeclared`), prend le premier fournisseur actif (par clé d'instance), ne lève jamais : à vous de gérer `unavailable` (par exemple après une restauration) en dégradant proprement.
+- Le `ctx` reçu par la méthode est celui de l'instance **fournisseur** : elle écrit dans **son** stockage, jamais dans celui de l'appelant.
+
 ### `tasks` : travail en arrière-plan
 
 Pour surveiller un service externe, publier à l'heure, envoyer une annonce : déclarez des tâches, le cœur les exécute (pas de cron à installer).
@@ -450,6 +476,7 @@ Deux familles : les **services** du cœur (génériques, voir [PLATFORM.md](PLAT
 
 | Appel | Famille | Rôle |
 |---|---|---|
+| `ctx.api.services.call(service, méthode, args)` / `.available(service)` | dépendance | Appelle un service offert par un autre module (déclaré dans `requires`) ; renvoie `{ ok: true, value }` ou `{ ok: false, reason }` (`undeclared`, `unavailable`, `no_method`, `failed`), ne lève jamais. |
 | `ctx.api.qr(texte)` | service | QR code en SVG (fond transparent) pour un texte ou une URL |
 | `ctx.api.png({ width, height, tree })` | service | Image PNG (une `Response`) à partir d'une arborescence de boîtes `{ type: "div"\|"span"\|"p"\|"b"\|"img", props: { style, children, src } }` (flexbox, styles en ligne, 16 à 2000 px). Une `img` n'accepte qu'un chemin du site ou une adresse https publique. Exemple : l'image de la semaine du module *planning* (`/m/<clé>/image`). |
 | `ctx.api.store.add(collection, data)` | service | ajoute un document JSON, renvoie son `id` |

@@ -527,5 +527,9 @@
   "audit.who": "Who",
   "audit.what": "Action",
   "audit.target": "Target",
-  "audit.empty": "Nothing to show."
+  "audit.empty": "Nothing to show.",
+  "modules.requires": "Requires",
+  "modules.offers": "Offers",
+  "modules.error.requires": "This module needs: {services}. No active module offers it, and none ships with the framework: install one (marketplace) and try again.",
+  "modules.error.requiredBy": "Not possible: these active modules depend on it ({modules}). Disable them first."
 }

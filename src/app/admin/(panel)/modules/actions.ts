@@ -17,7 +17,7 @@ export async function toggleModule(id: string, enabled: boolean): Promise<void> 
   const result = await setModuleEnabled(id, enabled);
   await audit(user.email, enabled ? "module.enable" : "module.disable", id);
   revalidatePath("/", "layout");
-  if (!result.ok) redirect(`/admin/modules?error=${encodeURIComponent(result.error)}`);
+  if (!result.ok) redirect(`/admin/modules?error=${encodeURIComponent(result.error)}${result.detail ? `&detail=${encodeURIComponent(result.detail)}` : ""}`);
   redirect("/admin/modules");
 }
 
@@ -42,9 +42,10 @@ export async function updateModuleAction(id: string): Promise<void> {
 
 export async function uninstallModuleAction(id: string): Promise<void> {
   const { user } = await adminCtx("owner");
-  await uninstallModule(id);
-  await audit(user.email, "module.uninstall", id);
+  const result = await uninstallModule(id);
+  if (result.ok) await audit(user.email, "module.uninstall", id);
   revalidatePath("/", "layout");
+  if (!result.ok) redirect(`/admin/modules?error=${encodeURIComponent(result.error)}${result.detail ? `&detail=${encodeURIComponent(result.detail)}` : ""}`);
   redirect("/admin/modules");
 }
 

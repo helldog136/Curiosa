@@ -196,6 +196,13 @@ export type ModuleApi = {
     remove(id: string): Promise<void>;
     count(collection: string): Promise<number>;
   };
+  /** Appel d'un service offert par un autre module (voir `requires` / `offers`). Ne lève jamais. */
+  services: {
+    /** Y a-t-il un fournisseur actif de ce service ? */
+    available(service: string): Promise<boolean>;
+    /** Appelle `method` du service sur le premier fournisseur actif. Le service doit être déclaré dans `requires` du manifeste. */
+    call(service: string, method: string, args?: unknown): Promise<{ ok: true; value: unknown } | { ok: false; reason: "undeclared" | "unavailable" | "no_method" | "failed" }>;
+  };
 };
 
 export type ModuleContext = {
@@ -280,6 +287,11 @@ export type ModuleDefinition = {
    * une erreur n'arrête ni les autres tâches ni le serveur, le dernier résultat est mémorisé. Voir src/core/services/scheduler.ts.
    */
   tasks?: Record<string, ModuleTask>;
+  /**
+   * Services offerts aux autres modules (déclarés dans `offers` du manifeste) : `services["contact.store"].add(ctx, args)`. `ctx` est celui de
+   * l'instance qui FOURNIT le service. Un module qui `requires` ce service l'appelle par `ctx.api.services.call(…)`.
+   */
+  services?: Record<string, Record<string, (ctx: ModuleContext, args: unknown) => unknown | Promise<unknown>>>;
   hooks?: {
     onInstanceCreate?(ctx: ModuleContext): void | Promise<void>;
     onInstanceDelete?(ctx: ModuleContext): void | Promise<void>;
