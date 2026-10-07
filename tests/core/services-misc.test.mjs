@@ -72,10 +72,10 @@ test("catalogue de modules : désactivé sans URL ou hors https, filtre les él�
     assert.deepEqual(await getCatalogue(), []);
     process.env.MODULES_INDEX_URL = "https://catalogue.example/index.json";
     let calls = 0;
-    globalThis.fetch = async () => { calls++; return Response.json([{ id: "a", repo: "https://github.com/x/a", name: "A", description: "d" }, { id: 5, repo: "x" }, { repo: "y" }, null, "texte", { id: "b", repo: "https://github.com/x/b" }]); };
+    globalThis.fetch = async () => { calls++; return Response.json([{ id: "aa", repo: "https://github.com/x/a", name: "A", description: "d" }, { id: 5, repo: "x" }, { repo: "y" }, null, "texte", { id: "bb", repo: "https://github.com/x/b" }]); };
     const items = await getCatalogue();
-    assert.deepEqual(items.map((i) => i.id), ["a", "b"]);
-    assert.equal(items[1].name, "b", "nom par défaut = identifiant");
+    assert.deepEqual(items.map((i) => i.id), ["aa", "bb"]);
+    assert.equal(items[1].name, "bb", "nom par défaut = identifiant");
     await getCatalogue();
     assert.equal(calls, 1, "servi par le cache");
   } finally { globalThis.fetch = realFetch; if (prevUrl === undefined) delete process.env.MODULES_INDEX_URL; else process.env.MODULES_INDEX_URL = prevUrl; }
