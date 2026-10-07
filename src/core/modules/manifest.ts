@@ -99,6 +99,8 @@ export const manifestSchema = z.object({
     .default([]),
   settings: z.array(settingField).max(60).default([]),
   /** Version de la STRUCTURE des données du module (stockage, réglages). À augmenter quand elle change : voir `migrations`. */
+  /** Adresse https où soutenir l'auteur par un don VOLONTAIRE (le catalogue est gratuit : aucun module ne se vend). */
+  donate: z.string().url().max(300).refine((u) => u.startsWith("https://"), "donate must be an https URL").optional(),
   dataVersion: z.number().int().min(1).max(10000).optional(),
   starter: z.boolean().optional(),
   onboarding: z

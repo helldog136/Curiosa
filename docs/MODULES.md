@@ -115,6 +115,7 @@ Validé à l'installation et au chargement (zod, `src/core/modules/manifest.ts`)
 | `content` | Module à contenu : le cœur fournit l'éditeur d'entrées et les pages (voir ci-dessous). |
 | `starter` | Proposé dans l'assistant de première installation (modules à contenu livrés avec le cœur). |
 | `onboarding` | Comment le module participe à la première installation (voir ci-dessous). |
+| `donate` | Adresse **https** où soutenir l'auteur par un **don volontaire** (page de dons, sponsor…). Le Catalogue est gratuit : l'admin affiche « ♥ Soutenir l'auteur » à côté du module, sans jamais rien exiger. |
 | `dataVersion` | Version de la **structure de vos données** (entier ≥ 1, défaut 1). À augmenter quand elle change, avec la migration correspondante (`migrations`). |
 | `defaultEnabled` | Modules livrés avec le cœur : activés dès le départ (défaut : oui). Sans effet pour un module installé, toujours installé désactivé. |
 | `permissions` | Les capacités utilisées (voir ci-dessous). |
@@ -780,6 +781,8 @@ et n'empêche pas la sauvegarde. Le contexte est celui de la langue par défaut.
 les guillemets internes) et neutralisez les cellules qui commencent par `=`, `+`, `-` ou `@` (injection de formule dans un tableur) — voir `cell()` dans l'exemple.
 
 ## Installer, publier, catalogue
+
+**Le Catalogue est gratuit** : aucun module ne s'y vend, tous sont sous licence ouverte ; un auteur peut proposer un **don volontaire** (`donate` dans `module.json`), jamais une condition d'installation.
 
 **Installer** (propriétaire seulement). Admin → **Catalogue** :
 

@@ -74,6 +74,7 @@ export default async function ModulesPage({ searchParams }: { searchParams: Prom
                     {row.source !== "builtin" && <span className={`ml-2 rounded px-2 py-0.5 text-xs ${moduleOrigin(row, market) === "custom" ? "bg-amber-500/20" : "bg-line"}`}>{t(`catalogue.origin.${moduleOrigin(row, market) === "custom" ? "custom" : "catalogue"}`)}</span>}
                   </p>
                   <p className="text-sm text-muted">{mod ? localized(mod.manifest.description, locale, config.defaultLocale) : t("modules.broken")}</p>
+                  {mod?.manifest.donate && <p className="mt-1 text-xs"><a href={mod.manifest.donate} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">♥ {t("catalogue.donate")}</a></p>}
                   {mod && (mod.manifest.requires ?? []).length > 0 && <p className="mt-1 text-xs text-muted">{t("modules.requires")} : {(mod.manifest.requires ?? []).map((r) => (r.label ? localized(r.label, locale, config.defaultLocale) : r.service)).join(", ")}</p>}
                   {advanced && mod && (mod.manifest.offers ?? []).length > 0 && <p className="mt-1 text-xs text-muted">{t("modules.offers")} : {(mod.manifest.offers ?? []).map((o) => (o.label ? localized(o.label, locale, config.defaultLocale) : o.service)).join(", ")}</p>}
                   {advanced && mod && mod.manifest.permissions.length > 0 && <p className="mt-1 text-xs text-muted">{t("modules.permissions")} : {mod.manifest.permissions.join(", ")}</p>}

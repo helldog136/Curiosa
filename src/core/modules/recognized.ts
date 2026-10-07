@@ -18,6 +18,8 @@ export type RecognizedItem = {
   icon?: string;
   /** Version de l'API des modules que le module vise ; différente de celle du framework → affiché comme incompatible. */
   apiVersion?: number;
+  /** Adresse https pour soutenir l'auteur (don volontaire). */
+  donate?: string;
 };
 
 /** D'où vient la liste affichée : le dépôt du framework (à jour), sa dernière copie reçue, ou la copie livrée avec cette version. */
@@ -46,6 +48,7 @@ export function sanitizeEntries(json: unknown): RecognizedItem[] {
       ref: typeof i.ref === "string" && /^[\w./-]{1,100}$/.test(i.ref) ? i.ref : undefined,
       version: str(i.version, 40), author: str(i.author, 120), icon: str(i.icon, 8),
       apiVersion: Number.isInteger(i.apiVersion) ? i.apiVersion : undefined,
+      donate: typeof i.donate === "string" && /^https:\/\/[^\s]{1,280}$/.test(i.donate) ? i.donate : undefined,
     });
     if (items.length >= 300) break;
   }

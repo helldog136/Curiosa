@@ -130,3 +130,10 @@ test("installation depuis le catalogue : inconnu, incompatible → refus ; livr�
     assert.deepEqual(await installFromCatalogue("sponsors"), { ok: true, id: "sponsors" });
   } finally { globalThis.fetch = realFetch; }
 });
+
+test("dons volontaires : `donate` accepté en https seulement dans un manifeste ; le catalogue le propose sans rien conditionner", async () => {
+  const { parseManifest } = await import("@/core/modules/manifest");
+  const m = (donate) => ({ apiVersion: 2, id: "xx", name: "X", version: "1.0.0", ...(donate === undefined ? {} : { donate }) });
+  for (const ok of [undefined, "https://exemple.org/don", "https://ko-fi.com/auteur"]) assert.ok(parseManifest(m(ok)).ok, String(ok));
+  for (const bad of ["http://exemple.org/don", "javascript:alert(1)", "pas une adresse", "ftp://x.org/d", "https://" + "a".repeat(400) + ".org"]) assert.equal(parseManifest(m(bad)).ok, false, bad);
+});

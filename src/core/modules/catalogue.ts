@@ -22,6 +22,8 @@ export type CatalogueEntry = {
   version?: string;
   icon?: string;
   author?: string;
+  /** Adresse https où soutenir l'auteur : un don volontaire, jamais une condition d'installation. */
+  donate?: string;
   kind: "community" | "example" | "recognized";
   /** Les modules livrés se copient du serveur ; les reconnus se clonent depuis `repo`. */
   source: "bundled" | "recognized";
@@ -63,7 +65,7 @@ export function listBundled(root = appRoot()): CatalogueEntry[] {
       if (!fs.statSync(full).isDirectory()) continue;
       const m = readBundledManifest(full);
       if (!m || out.some((e) => e.id === m.id)) continue;
-      out.push({ id: m.id, name: m.name, description: m.description ?? "", version: m.version, icon: m.icon, author: m.author, kind, source: "bundled", dir: full, compatible: true });
+      out.push({ id: m.id, name: m.name, description: m.description ?? "", version: m.version, icon: m.icon, author: m.author, donate: m.donate, kind, source: "bundled", dir: full, compatible: true });
     }
   }
   return out;
@@ -76,7 +78,7 @@ export async function getCatalogue(opts: { root?: string; fetchImpl?: typeof fet
   return [
     ...bundled,
     ...remote.map((c): CatalogueEntry => ({
-      id: c.id, name: c.name, description: c.description, version: c.version, icon: c.icon, author: c.author,
+      id: c.id, name: c.name, description: c.description, version: c.version, icon: c.icon, author: c.author, donate: c.donate,
       kind: "recognized", source: "recognized", repo: c.repo, ref: c.ref, compatible: c.apiVersion === undefined || c.apiVersion === MODULE_API_VERSION,
     })),
   ];

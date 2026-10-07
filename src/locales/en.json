@@ -545,5 +545,7 @@
   "services.remove": "Remove this replica",
   "services.hint": "Drag the arrow from the service dot to a provider (or click one).",
   "services.list": "List view (keyboard)",
-  "nav.menu": "Menu"
+  "nav.menu": "Menu",
+  "catalogue.donate": "Support the author (voluntary donation)",
+  "catalogue.free": "All modules are free. If one is useful to you, you can support its author with a voluntary donation: never required."
 }

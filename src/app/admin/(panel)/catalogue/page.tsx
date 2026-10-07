@@ -28,6 +28,7 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
       <div>
         <h1 className="text-2xl font-bold">🛒 {t("nav.catalogue")}</h1>
         <p className="mt-1 text-sm text-muted">{t("catalogue.intro")}</p>
+        <p className="mt-1 text-sm text-muted">{t("catalogue.free")}</p>
       </div>
       <div className="flex flex-wrap items-center gap-3 text-xs text-muted">
         <span>
@@ -51,6 +52,7 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
                     <span className="rounded bg-line px-2 py-0.5 text-xs">✔ {t("catalogue.verified")}</span>
                   </p>
                   <p className="text-sm text-muted">{L(e.description)}</p>
+                  {e.donate && <p className="mt-1 text-xs"><a href={e.donate} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">♥ {t("catalogue.donate")}</a></p>}
                   {e.source === "recognized" && e.repo && <p className="mt-1 break-all font-mono text-xs text-muted">{e.repo}{e.ref ? `#${e.ref}` : ""}</p>}
                 </div>
                 {installed.has(e.id) ? (

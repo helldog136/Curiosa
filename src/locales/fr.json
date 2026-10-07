@@ -545,5 +545,7 @@
   "services.remove": "Retirer cette réplique",
   "services.hint": "Tirez la flèche depuis la pastille du service jusqu'à un fournisseur (ou cliquez dessus).",
   "services.list": "Vue liste (clavier)",
-  "nav.menu": "Menu"
+  "nav.menu": "Menu",
+  "catalogue.donate": "Soutenir l'auteur (don libre)",
+  "catalogue.free": "Tous les modules sont gratuits. Si l'un d'eux vous sert, vous pouvez soutenir son auteur par un don libre : jamais obligatoire."
 }

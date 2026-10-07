@@ -27,7 +27,8 @@ le framework dans `modules-community/` et `modules-examples/`).
       "version": "1.2.0",
       "apiVersion": 2,
       "author": "Auteur",
-      "icon": "🧩"
+      "icon": "🧩",
+      "donate": "https://exemple.org/soutenir"
     }
   ]
 }
@@ -36,6 +37,12 @@ le framework dans `modules-community/` et `modules-examples/`).
 `id` doit être **celui du `module.json`** du dépôt (sinon l'installation est refusée). `ref` : **épinglez une étiquette ou un commit relus** —
 c'est ce qui rend la mention « vérifié » vraie ; une branche mouvante ne l'est pas. `apiVersion` : la version de l'API des modules visée
 (autre que celle du framework = listé comme incompatible).
+
+## Gratuit, avec dons volontaires
+
+Le Catalogue **ne vend rien** : tout module qui y figure est gratuit et sous licence ouverte. Un auteur peut ajouter `donate` (une adresse **https**, par exemple sa page de dons) :
+l'admin affiche alors « ♥ Soutenir l'auteur (don libre) » à côté du module. Un don n'est jamais une condition pour installer, ni pour recevoir des mises à jour ; le framework
+ne gère aucun paiement et ne touche à aucun argent.
 
 ## Proposer un module
 

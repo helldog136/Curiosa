@@ -532,4 +532,5 @@ Un module est **du code de confiance** : il tourne sur le serveur avec les droit
 - [ ] Si la forme de mes données a changé : `dataVersion` augmenté et migration écrite et testée sur des données de l'ancienne version.
 - [ ] Essayé en vrai : installation locale, activation, instance, page, formulaire, admin, désinstallation propre.
 - [ ] Un `README.md` explique ce que fait le module, ses réglages et ses limites ; la version est **taguée** (`git tag v1.0.0`).
+- [ ] Facultatif : `"donate": "https://…"` dans `module.json` pour recevoir des dons volontaires (le Catalogue est gratuit, rien ne s'y vend).
 - [ ] Pour le Catalogue : dépôt public sur un hôte autorisé, ajouté à `catalogue/index.json` (demande de fusion) ou proposé dans `modules-community/` / `modules-examples/`.
