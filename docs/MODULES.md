@@ -383,6 +383,22 @@ Trois modules communautaires qui coopèrent sans se connaître, uniquement par s
 - [`sponsors`](../modules-community/sponsors) : module à contenu ; chaque sponsor peut référencer un partenaire ; affiche la mention de partenariat ; fournit `sponsor.card`.
 - [`sponsor-ticker`](../modules-community/sponsor-ticker) : l'overlay, qui ne connaît que `sponsor.card` (ou `core.entry`).
 
+### Planning
+
+[`planning`](../modules-community/planning) lit un calendrier au format iCal (l'« adresse secrète » de
+Google Agenda) et affiche les prochains streams : section d'accueil, page `/planning`, sujet `planning.slot`
+et action MCP `planning_upcoming` (lecture seule). Il comprend les répétitions (`RRULE`, `EXDATE`),
+les exceptions et les fuseaux horaires. L'adresse du calendrier est un réglage secret, n'accepte que
+du https public (aucune adresse interne, redirections revérifiées) et n'est jamais réaffichée.
+
+## Tests
+
+`npm test` lance toute la batterie (Node, sans dépendance de test) : cœur, services, gestion des modules
+(installation depuis un vrai dépôt git local, registre, exécution, sujets, MCP) et chaque module. Les outils
+sont dans `tests/helpers/` : un chargeur qui résout l'alias `@/` et les modules `next/*`, une base SQLite
+temporaire (`useTestDb`), des dépôts git jetables (`makeRepo`) et un contexte de module factice (`fakeCtx`)
+pour tester le code d'un module sans serveur.
+
 ## Sécurité : à lire avant d'installer
 
 Un module s'exécute dans le serveur avec les mêmes droits que le site. Installez seulement des

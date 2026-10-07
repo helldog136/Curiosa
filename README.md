@@ -78,7 +78,7 @@ src/app/overlays    Overlays OBS (/overlays/<clé>)
 src/app/api/mcp     Serveur MCP (outils collectés auprès des modules)
 src/locales         Textes de l'interface (fr, en) — ajouter une langue = un fichier JSON
 modules-examples/   Un module d'exemple minimal, prêt à publier dans son propre dépôt git
-modules-community/  Modules complets qui ne font PAS partie du cœur : labyrinthe 3D, partenariats,
+modules-community/  Modules complets qui ne font PAS partie du cœur : labyrinthe 3D, planning, partenariats,
                     sponsors, overlay sponsors (OBS)
 docs/               PLATFORM.md (cœur vs modules), ARCHITECTURE.md, MODULES.md
 ```
