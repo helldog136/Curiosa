@@ -53,6 +53,10 @@ jobs:
       - name: Empaqueter
         if: steps.v.outputs.publish == 'true'
         run: node scripts/release-pack.mjs "${{ steps.v.outputs.version }}" dist
+      # une archive qui ne démarre pas n'est jamais publiée : on la décompresse ailleurs et on la démarre (installation neuve ET mise à jour d'un site existant)
+      - name: Test de fumée de l'archive
+        if: steps.v.outputs.publish == 'true'
+        run: node scripts/smoke-release.mjs dist/*.tar.gz
       - name: Notes de version
         if: steps.v.outputs.publish == 'true'
         # Le texte de la release est la section du CHANGELOG.md de cette version (ce qui change depuis la précédente) ; à défaut, un renvoi vers le fichier.

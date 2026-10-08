@@ -54,10 +54,11 @@ test("le cœur ne livre aucun module : sans instantané, l'assistant de premièr
 test("instantané : récupéré par un script sans propriétaire écrit en dur, embarqué dans l'archive, jamais versionné", () => {
   const fetch = fs.readFileSync("scripts/fetch-extras.mjs", "utf8");
   assert.match(fetch, /GITHUB_REPOSITORY/, "propriétaire pris du dépôt qui publie");
-  assert.ok(!/helldog136/i.test(fetch), "aucun propriétaire en dur");
+  assert.ok(!new RegExp(["hell", "dog"].join(""), "i").test(fetch), "aucun propriétaire en dur");
   assert.match(fs.readFileSync("scripts/release-pack.mjs", "utf8"), /"extras"/);
   const wf = fs.readFileSync(".github/workflows/release.yml", "utf8");
   assert.ok(wf.indexOf("fetch-extras.mjs") > 0 && wf.indexOf("fetch-extras.mjs") < wf.indexOf("release-pack.mjs"), "l'instantané est pris avant l'empaquetage");
   assert.match(fs.readFileSync(".gitignore", "utf8"), /^\/extras\/$/m);
   assert.match(fs.readFileSync("package.json", "utf8"), /"extras:fetch"/);
+  assert.ok(wf.indexOf("smoke-release.mjs") > wf.indexOf("release-pack.mjs") && wf.indexOf("smoke-release.mjs") < wf.indexOf("gh release create"), "l'archive est démarrée (installation neuve et mise à jour) avant d'être publiée");
 });
