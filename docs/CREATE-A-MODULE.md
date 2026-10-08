@@ -364,6 +364,7 @@ Le fichier atterrit dans `readable/modules/<clé de l'instance>/messages.csv` de
 - dans un bloc `html` ou un overlay, utilisez les variables CSS `--v-accent`, `--v-bg`, `--v-fg`, `--v-surface`, `--v-muted`, `--v-line`, `--v-accent-fg`, `--v-font` ;
 - dans le code, `ctx.theme` donne les mêmes valeurs (`accent`, `accentFg`, `bg`, `surface`, `fg`, `muted`, `line`, `font`, `fontKey`) ;
 - `ctx.visit.lastVisit` donne la date du passage précédent du visiteur (1er janvier 1970 s'il est inconnu) ; une fonction `news(ctx)` qui renvoie `true` fait apparaître une pastille « nouveau » sur le lien du menu de l'instance (par défaut : des entrées publiées depuis cette date) ;
+- `adminBadge(ctx)` renvoie le nombre d'éléments qui attendent l'équipe (messages à lire, fiches à vérifier…) : une pastille s'affiche sur le lien de votre instance dans le menu de l'admin ;
 - un réglage `color` avec `"default": "theme:accent"` suit le thème tant que l'administrateur ne choisit pas (l'exemple en fait la couleur du liseré des cartes, avec `ctx.theme.accent` en repli).
 
 **Langues.** Mettez vos textes dans `locales/en.json` et `locales/fr.json` (mêmes clés), lisez-les avec `ctx.t("clé", { variable: valeur })` :

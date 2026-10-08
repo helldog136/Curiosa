@@ -132,3 +132,14 @@ test("branchements : balise de visite, route, cookies du proxy, hook `news`, pas
   assert.match(read("src/components/site/Header.tsx"), /data-testid="news-dot"/);
   assert.match(read("src/app/admin/(panel)/page.tsx"), /data-testid="visits"/);
 });
+
+test("pastilles d'admin : hook adminBadge → menu et carte « À traiter » ; mises à jour pour le propriétaire ; module Contacts compte les fiches à vérifier", () => {
+  const read = (p) => fs.readFileSync(p, "utf8");
+  assert.match(read("src/core/modules/types.ts"), /adminBadge\?: \(ctx: ModuleContext\) => number/);
+  assert.match(read("src/core/modules/adminNav.ts"), /Math\.min\(Math\.floor\(n\), 999\)/, "borné, une erreur = 0");
+  const layout = read("src/app/admin/(panel)/layout.tsx");
+  assert.match(layout, /user\.role === "owner" && \(await getUpdateCheck/);
+  assert.match(layout, /href="\/admin\/updates" badge=/);
+  assert.match(read("src/app/admin/(panel)/page.tsx"), /data-testid="todo"/);
+  assert.match(read("modules-community/contacts/index.mjs"), /async adminBadge[\s\S]*to_review/);
+});

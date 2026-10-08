@@ -58,6 +58,11 @@ export default {
     },
   },
 
+  // Pastille du menu d'admin : les messages reçus et pas encore vérifiés.
+  async adminBadge(ctx) {
+    return (await contacts(ctx)).filter((c) => c.data.status === "to_review").length;
+  },
+
   async adminPanel(ctx, { query }) {
     const t = ctx.t;
     const list = await contacts(ctx);

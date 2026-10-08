@@ -294,6 +294,7 @@ un slot en échec disparaît, une section en échec donne `[]`, une page en éch
 |---|---|---|---|
 | `slots.<emplacement>` | on rend l'emplacement, pour chaque instance active | `SlotContext` | blocs, `null` ou `undefined` |
 | `sections.<id>` | on rend un placement d'accueil | `ctx`, `options` du placement | blocs, `null` ou `undefined` |
+| `adminBadge` | le cœur construit le menu de l'admin | `ctx` | un nombre : éléments qui attendent l'équipe (pastille sur le lien du menu et carte « À traiter » du tableau de bord) ; 0 = rien |
 | `news` | le cœur construit le menu du site | `ctx` (avec `ctx.visit.lastVisit`) | `true` s'il y a du nouveau pour ce visiteur (pastille sur le lien du menu) |
 | `page` | on visite le chemin de l'instance | `ctx`, `{ segments }` | `PageResult` ou `null` |
 | `overlay` | on visite `/overlays/<clé>` | `ctx`, `{ query }` (`URLSearchParams`) | `OverlayResult` |
@@ -429,6 +430,10 @@ Ce que fait le cœur :
 - `ctx.api.services.call` n'accepte que les services déclarés dans `requires` (sinon `undeclared`), prend le premier fournisseur actif (par clé d'instance), ne lève jamais : à vous de gérer `unavailable` (par exemple après une restauration) en dégradant proprement.
 - **Plusieurs fournisseurs du même service** (un doublon, ou un changement de fournisseur) : dès qu'un deuxième module qui offre le service est activé (ou qu'une de ses instances est créée), l'admin est invité (page *Modules* → *Services offerts par plusieurs modules*) à choisir un **maître** — il reçoit les appels et c'est sa réponse que voit l'appelant — et des **répliques**, qui reçoivent aussi les appels qui **écrivent**, au mieux (la panne d'une réplique ne fait jamais échouer l'appel ; celle du maître, si). Le fournisseur peut déclarer ses méthodes de lecture dans `offers` (`"readOnly": ["count"]`) : elles ne sont jamais répliquées. Tant que rien n'est choisi, le premier fournisseur (par clé d'instance) est le maître, sans réplique ; un choix périmé (maître retiré) retombe sur le premier. **Une réplique reçoit les appels futurs** : les données déjà reçues par l'ancien fournisseur ne sont pas copiées (aucun conflit à fusionner, mais un historique réparti : pour une bascule propre, mettez le nouveau en maître, gardez l'ancien en réplique le temps voulu, puis retirez-le).
 - Le `ctx` reçu par la méthode est celui de l'instance **fournisseur** : elle écrit dans **son** stockage, jamais dans celui de l'appelant.
+
+### `adminBadge` : ce qui attend l'équipe
+
+`adminBadge: async (ctx) => (await ctx.api.store.list("messages", { limit: 500 })).filter((m) => !m.data.read).length` fait apparaître ce nombre dans une pastille sur le lien de l'instance dans le menu de l'admin, et la liste sur le tableau de bord (« À traiter »). Rendez-la rapide (elle s'exécute à chaque page d'admin) ; une erreur n'affiche simplement pas de pastille. Le cœur ajoute lui-même une pastille « Mises à jour » pour le propriétaire quand une version est disponible.
 
 ### `news` : y a-t-il du nouveau depuis la dernière visite ?
 

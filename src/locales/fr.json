@@ -707,5 +707,8 @@
   "nav.redirects.simple": "Raccourcis de liens",
   "redirects.examples": "Exemples : /twitch → votre chaîne, /boutique → votre boutique en ligne, /don → votre page de soutien.",
   "redirects.howTo": "Comment faire : choisissez un mot court (le « chemin »), puis collez l'adresse complète de destination, qui commence par https://.",
-  "redirects.add.simple": "Ajouter un raccourci"
+  "redirects.add.simple": "Ajouter un raccourci",
+  "nav.badge.todo": "à traiter",
+  "nav.badge.update": "mise à jour disponible",
+  "dashboard.todo": "À traiter"
 }

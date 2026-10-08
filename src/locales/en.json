@@ -707,5 +707,8 @@
   "nav.redirects.simple": "Link shortcuts",
   "redirects.examples": "Examples: /twitch → your channel, /shop → your online shop, /donate → your support page.",
   "redirects.howTo": "How: pick a short word (the \"path\"), then paste the full destination address, which starts with https://.",
-  "redirects.add.simple": "Add a shortcut"
+  "redirects.add.simple": "Add a shortcut",
+  "nav.badge.todo": "to review",
+  "nav.badge.update": "update available",
+  "dashboard.todo": "To do"
 }

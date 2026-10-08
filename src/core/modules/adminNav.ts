@@ -1,9 +1,10 @@
+import { buildContext } from "./context";
 import { getInstanceLabeler } from "./labels";
 import { effectiveType } from "./manifest";
 import { getActiveInstances } from "./registry";
 import { MODULE_TYPES, type ModuleType } from "./types";
 
-export type AdminNavItem = { id: string; key: string; name: string; icon: string; content: boolean };
+export type AdminNavItem = { id: string; key: string; name: string; icon: string; content: boolean; badge: number };
 export type AdminNav = { type: ModuleType; items: AdminNavItem[] }[];
 
 /**
@@ -11,6 +12,18 @@ export type AdminNav = { type: ModuleType; items: AdminNavItem[] }[];
  * configurée y a sa propre entrée (nommée comme l'utilisateur l'a nommée), regroupée par
  * type de module ; la page de l'instance est une sous-page de cet admin unique.
  */
+/** Pastille d'une instance : la valeur du hook `adminBadge` du module (0 sans hook, ou en cas d'erreur). */
+async function badgeOf(mod: Parameters<typeof buildContext>[0], instance: Parameters<typeof buildContext>[1], locale: string): Promise<number> {
+  if (!mod.def.adminBadge) return 0;
+  try {
+    const n = Number(await mod.def.adminBadge(await buildContext(mod, instance, locale)));
+    return Number.isFinite(n) && n > 0 ? Math.min(Math.floor(n), 999) : 0;
+  } catch (error) {
+    console.error(`[modules] ${instance.key} failed on adminBadge:`, error);
+    return 0;
+  }
+}
+
 export async function getAdminNav(locale: string, defaultLocale: string): Promise<AdminNav> {
   const labeler = await getInstanceLabeler(locale, defaultLocale);
   const byType = new Map<ModuleType, AdminNavItem[]>();
@@ -23,6 +36,7 @@ export async function getAdminNav(locale: string, defaultLocale: string): Promis
       name: labeler.label(instance),
       icon: mod.manifest.icon ?? "🧩",
       content: !!mod.manifest.content,
+      badge: await badgeOf(mod, instance, locale),
     });
     byType.set(type, list);
   }

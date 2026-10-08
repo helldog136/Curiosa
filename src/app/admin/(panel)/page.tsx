@@ -2,6 +2,7 @@ import { adminCtx } from "@/core/admin";
 import { prisma } from "@/core/db";
 import { getAdminNav } from "@/core/modules/adminNav";
 import { ui } from "@/components/admin/ui";
+import { getUpdateCheck } from "@/core/updates/service";
 import { statsEnabled, statsSummary } from "@/core/stats";
 
 export default async function Dashboard({ searchParams }: { searchParams: Promise<{ denied?: string; welcome?: string }> }) {
@@ -16,6 +17,8 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
     prisma.moduleInstance.count(),
     prisma.module.count({ where: { enabled: true } }),
   ]);
+  const todo = nav.flatMap((g) => g.items).filter((i) => i.badge > 0);
+  const updateAvailable = user.role === "owner" && (await getUpdateCheck().catch(() => null))?.available === true;
   const stats = (await statsEnabled()) ? await statsSummary() : null;
   const peak = Math.max(1, ...(stats?.days.map((d) => d.visitors) ?? [1]));
   const stat = (label: string, value: number, href: string) => (
@@ -66,6 +69,17 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
                 <p className="mt-1 text-sm leading-5 text-muted">{t("dashboard.viewSiteHelp")}</p>
             </a>
           </div>
+        </section>
+      )}
+      {(todo.length > 0 || updateAvailable) && (
+        <section aria-label={t("dashboard.todo")} data-testid="todo" className={`${ui.card} space-y-2`}>
+          <h2 className="text-lg font-semibold">{t("dashboard.todo")}</h2>
+          <ul className="space-y-1.5">
+            {todo.map((i) => (
+              <li key={i.id}><a href={i.content ? `/admin/entries?c=${i.key}` : `/admin/instances/${i.id}`} className="flex items-center justify-between gap-3 rounded-xl px-3 py-2 hover:bg-accent/10"><span>{i.icon} {i.name}</span><span className="rounded-full bg-accent px-2 text-sm font-semibold text-accent-fg">{i.badge} {t("nav.badge.todo")}</span></a></li>
+            ))}
+            {updateAvailable && <li><a href="/admin/updates" className="flex items-center justify-between gap-3 rounded-xl px-3 py-2 hover:bg-accent/10"><span>⬆️ {t("nav.updates")}</span><span className="rounded-full bg-accent px-2 text-sm font-semibold text-accent-fg">{t("nav.badge.update")}</span></a></li>}
+          </ul>
         </section>
       )}
       {stats && (

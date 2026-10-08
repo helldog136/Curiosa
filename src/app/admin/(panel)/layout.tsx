@@ -2,7 +2,7 @@ import { signOut } from "@/auth";
 import { adminCtx } from "@/core/admin";
 import { NavLink } from "@/components/admin/NavLink";
 import { getAdminNav } from "@/core/modules/adminNav";
-import { readVersion } from "@/core/updates/service";
+import { getUpdateCheck, readVersion } from "@/core/updates/service";
 import { MobileMenu } from "@/components/admin/MobileMenu";
 import { ui } from "@/components/admin/ui";
 import { cookies } from "next/headers";
@@ -16,6 +16,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   const nav = await getAdminNav(locale, config.defaultLocale);
   const theme = parseAdminTheme((await cookies()).get(ADMIN_THEME_COOKIE)?.value);
   const canManage = user.role !== "editor";
+  const updateAvailable = user.role === "owner" && (await getUpdateCheck().catch(() => null))?.available === true;
   const items = nav.flatMap((g) => g.items.map((i) => ({ ...i, type: g.type })));
   const contentItems = items.filter((i) => i.type === "content");
   const otherItems = items.filter((i) => i.type !== "content");
@@ -31,7 +32,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
           {contentItems.length > 0 && (
             <div>
               <p className={group}>{t("nav.myContent")}</p>
-              {contentItems.map((m) => <NavLink key={m.id} href={`/admin/entries?c=${m.key}`}>{m.icon} {m.name}</NavLink>)}
+              {contentItems.map((m) => <NavLink key={m.id} href={`/admin/entries?c=${m.key}`} badge={m.badge} badgeLabel={t("nav.badge.todo")}>{m.icon} {m.name}</NavLink>)}
             </div>
           )}
 
@@ -42,7 +43,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
           <NavLink href="/admin/redirects">{advanced ? t("nav.redirects") : t("nav.redirects.simple")}</NavLink>
 
           <p className={group}>{t("nav.features")}</p>
-          {otherItems.map((m) => <NavLink key={m.id} href={m.content ? `/admin/entries?c=${m.key}` : `/admin/instances/${m.id}`}>{m.icon} {m.name}</NavLink>)}
+          {otherItems.map((m) => <NavLink key={m.id} href={m.content ? `/admin/entries?c=${m.key}` : `/admin/instances/${m.id}`} badge={m.badge} badgeLabel={t("nav.badge.todo")}>{m.icon} {m.name}</NavLink>)}
           {canManage && <NavLink href="/admin/modules">{advanced ? t("nav.modules") : t("nav.modules.simple")}</NavLink>}
           {canManage && <NavLink href="/admin/catalogue">{advanced ? t("nav.catalogue") : t("nav.catalogue.simple")}</NavLink>}
 
@@ -51,7 +52,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
               <p className={group}>{t("nav.admin")}</p>
               {canManage && <NavLink href="/admin/users">{t("nav.users")}</NavLink>}
               {user.role === "owner" && <NavLink href="/admin/backup">{t("nav.backup")}</NavLink>}
-              {user.role === "owner" && <NavLink href="/admin/updates">{t("nav.updates")}</NavLink>}
+              {user.role === "owner" && <NavLink href="/admin/updates" badge={updateAvailable ? 1 : 0} badgeLabel={t("nav.badge.update")}>{t("nav.updates")}</NavLink>}
               {advanced && user.role === "owner" && <NavLink href="/admin/audit">{t("nav.audit")}</NavLink>}
               {advanced && user.role === "owner" && <NavLink href="/admin/mcp">{t("nav.mcp")}</NavLink>}
             </>

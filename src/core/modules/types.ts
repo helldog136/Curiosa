@@ -263,6 +263,11 @@ export type ModuleDefinition = {
    * Un visiteur inconnu (1970) n'a rien manqué : le cœur n'affiche alors aucune pastille.
    */
   news?: (ctx: ModuleContext) => boolean | Promise<boolean>;
+  /**
+   * Pastille du menu d'admin : nombre d'éléments qui attendent l'équipe dans cette instance (messages à lire, fiches à vérifier…). 0 = pas de pastille.
+   * Appelée à chaque affichage de l'admin : restez rapide. Une erreur n'affiche simplement pas de pastille.
+   */
+  adminBadge?: (ctx: ModuleContext) => number | Promise<number>;
   /** Page publique de l'instance, montée sur son chemin. `segments` = ce qui suit le chemin. Absent = rendu par défaut du cœur (liste + entrées) pour les modules à contenu. */
   page?: (ctx: ModuleContext, request: { segments: string[] }) => PageResult | null | Promise<PageResult | null>;
   /** Overlay : rendu de la page /overlays/<clé de l'instance> (modules de type "overlay"). */
