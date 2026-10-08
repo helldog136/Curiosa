@@ -6,7 +6,12 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ## Prochaine version (non publiée)
 
-*Rien pour l'instant.*
+*Changements depuis la 0.1.3-rc.2.*
+
+### Documentation
+- **« Pourquoi Curiosa, et quand ne pas le choisir »** dans le README : le public visé, ce qui distingue le projet (avec comment le vérifier) et les cas où un autre outil est meilleur.
+- **docs/MESURES.md** : chiffres mesurés sur une release publiée (installation chronométrée, poids sur disque, ce que la page envoie, mémoire, cookies, services tiers) avec leur méthode, y compris les points faibles, et la liste de ce qui n'est pas mesuré. **`scripts/measure.mjs`** permet de refaire la mesure d'une page soi-même.
+- Vocabulaire : le README ne parle plus d'« ouvert » à tort ; la licence est celle d'un code source **disponible**, pas d'un logiciel « open source » au sens strict.
 
 ## 0.1.3-rc.2
 
