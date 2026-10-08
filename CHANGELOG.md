@@ -6,7 +6,11 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ## Prochaine version (non publiée)
 
-*Changements depuis la 0.1.3-rc.1.*
+*Rien pour l'instant.*
+
+## 0.1.3-rc.2
+
+*Release candidate : changements depuis la 0.1.3-rc.1. À essayer avant la version stable, à vos risques.*
 
 ### Nouveautés
 - **Les blocs de page sont maintenant dans le cœur** : « Blocs de page » n'est plus un module à activer puis à instancier, mais une fonction de la page d'accueil. **Page d'accueil → Ajouter un bloc** propose cinq blocs aux descriptions claires (Texte et images, Onglets, Chiffres clés, Appel à l'action, Texte sur une vidéo), qui se remplissent directement dans l'éditeur du bloc (textes par langue, images, onglets, chiffres, vidéo, fond) sans passer par « Fonctionnalités ».
@@ -18,6 +22,11 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **« Développer son propre module » dans le README** : un module complet en deux fichiers (testé), comment l'essayer en local, les règles à connaître (licence du module, vie privée, sécurité), et l'ordre de lecture de la documentation ; ainsi qu'un index de toute la documentation.
 - **Tutoriel des modules complété** : type de réglage `video`, nouvelle section « Vie privée, cookies et licence » (champ `privacy`, pas de cookie non essentiel, licence de son module), nouveaux hooks `news` et `adminBadge`, chemin d'installation locale mis à jour.
 - **Wiki GitHub** : la documentation est reflétée automatiquement sur le wiki à chaque release stable (le dépôt reste la source de vérité ; le wiki n'est qu'un miroir).
+
+### À essayer en priorité
+- Page d'accueil → Ajouter un bloc : créez un bloc de chaque type (texte et images, onglets, chiffres, appel à l'action, texte sur une vidéo), enregistrez, regardez le site.
+- Si votre site avait des blocs créés avec l'ancien module : vérifiez que l'accueil est identique après la mise à jour.
+- Modifiez un réglage et enregistrez avec la barre flottante, sans défiler.
 
 ### Améliorations
 - **Barre flottante « Enregistrer / Annuler »** : dès qu'une modification est enregistrable (réglages, menu, page d'accueil, réglages d'une fonctionnalité, entrées), une petite barre apparaît en bas à droite de l'écran, sans avoir à défiler jusqu'au bouton. « Annuler » abandonne les modifications (après confirmation), « Enregistrer » les enregistre et la barre affiche brièvement « Enregistré ». **Ctrl/Cmd+S** enregistre aussi, et le navigateur prévient si l'on quitte la page avec des modifications non enregistrées.
