@@ -6,7 +6,11 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ## Prochaine version (non publiée)
 
-*Changements depuis la 0.1.2.*
+*Rien pour l'instant.*
+
+## 0.1.3-rc.1
+
+*Release candidate : changements depuis la 0.1.2. À essayer avant la version stable, à vos risques.*
 
 ### Nouveautés
 - **Jeu de logos** (Réglages → Identité → Logos) : logo horizontal, icône carrée, versions pour fond sombre, favicon et image de partage. Rien n'est obligatoire : le site choisit seul le bon logo selon l'endroit et la couleur du fond (horizontal sur grand écran, icône sur téléphone), sans jamais étirer un logo horizontal dans un carré. Le kit presse propose tous les logos envoyés.
