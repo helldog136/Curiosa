@@ -4,15 +4,19 @@ Ce que chaque version change pour vous. Chaque version (stable ou release candid
 
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
-## Prochaine version (non publiée)
+## 0.1.4
 
 *Changements depuis la 0.1.3.*
 
 ### Améliorations
 - **Archive de release plus légère** : elle n'embarque plus ce que le serveur de production n'utilise jamais : le compilateur de Next (≈ 180 Mo), `sharp` (le site n'utilise pas `next/image`), TypeScript, les 3 000 fichiers SVG de `simple-icons` (les icônes restent), les variantes WebAssembly du client de base de données (PostgreSQL, MySQL… : le site utilise SQLite) et les copies de moteurs gardées par l'outil Prisma. La configuration de Next est maintenant du JavaScript (`next.config.mjs`) pour ne plus avoir besoin du compilateur au démarrage. Les deux moteurs de base de données (OpenSSL 1.1 et 3.0) restent, pour que l'archive marche sur les systèmes anciens comme récents. Chaque archive est démarrée **sans ces dossiers** avant d'être publiée.
 
+### À savoir en mettant à jour
+- **Rien à faire.** La mise à jour depuis l'admin installe `next.config.mjs` à côté de l'ancien `next.config.ts` : Next ne lit que le premier, l'ancien fichier est inoffensif et peut être supprimé.
+- La mise à jour est plus rapide et plus petite : l'archive à télécharger pèse environ **128 Mo au lieu de 268 Mo**, et le site occupe environ **500 Mo au lieu de 880 Mo** une fois installé (mesuré sur l'archive construite par la CI).
+
 ### Documentation
-- **docs/MESURES.md** refait sur la 0.1.3 publiée : installation par la machine ≈ 26 s, 880 Mo une fois installé (les modules livrés ne pèsent que 0,8 Mo), 634 Ko de code envoyé à la première visite (≈ 189 Ko compressé), 234 Mo de mémoire au repos, 875 tests automatiques (501 pour le cœur, 374 pour les modules).
+- **docs/MESURES.md** refait sur la 0.1.3 publiée (les chiffres de la 0.1.4 suivront sa publication) : installation par la machine ≈ 26 s, 880 Mo une fois installé (les modules livrés ne pèsent que 0,8 Mo), 634 Ko de code envoyé à la première visite (≈ 189 Ko compressé), 234 Mo de mémoire au repos, 875 tests automatiques (501 pour le cœur, 374 pour les modules).
 
 ## 0.1.3
 

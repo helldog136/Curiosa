@@ -3,9 +3,9 @@ import { listBundled } from "@/core/modules/catalogue";
 import { copyBundled } from "@/core/modules/installer";
 
 /**
- * ⚠️ TEMPORAIRE — À SUPPRIMER APRÈS LA 0.1.3. Cette migration n'a d'utilité que pour les sites passés par la 0.1.2 ou une 0.1.3 release candidate, où
+ * ⚠️ TEMPORAIRE — À SUPPRIMER APRÈS LA 0.1.4. Cette migration n'a d'utilité que pour les sites passés par la 0.1.2 ou une 0.1.3 release candidate, où
  * dix modules (blog, réseaux sociaux, codes promo, pages, collection, bandeau, formulaire de contact, statut live, bandeau défilant, dossier de presse)
- * étaient « intégrés » au cœur. Dès qu'une version supérieure à la 0.1.3 est préparée, un test (tests/core/temporary-code.test.mjs) échoue tant que ces fichiers existent :
+ * étaient « intégrés » au cœur. Dès qu'une version supérieure à la 0.1.4 est préparée, un test (tests/core/temporary-code.test.mjs) échoue tant que ces fichiers existent :
  *   - src/core/migrations/builtinToBundled.ts (ce fichier) et son appel dans src/core/modules/registry.ts (syncLegacy) ;
  *   - tests/core/builtin-migration.test.mjs.
  *
