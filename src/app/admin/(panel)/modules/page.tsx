@@ -8,6 +8,7 @@ import { effectiveType, hasPage } from "@/core/modules/manifest";
 import { MODULE_TYPES } from "@/core/modules/types";
 import { localized } from "@/core/modules/types";
 import { ConfirmButton } from "@/components/admin/ConfirmButton";
+import { FeatureTabs } from "@/components/admin/FeatureTabs";
 import { ui } from "@/components/admin/ui";
 import { duplicateServices } from "@/core/modules/dependencies";
 import { ServiceRouter } from "@/components/admin/ServiceRouter";
@@ -29,8 +30,8 @@ export default async function ModulesPage({ searchParams }: { searchParams: Prom
       <div>
         <h1 className={ui.pageTitle}>{advanced ? t("nav.modules") : t("nav.modules.simple")}</h1>
         <p className={ui.pageIntro}>{advanced ? t("modules.intro") : t("modules.introSimple")}</p>
-        {isOwner && <a href="/admin/catalogue" className={`${ui.btnPrimary} mt-4`}>✨ {advanced ? t("modules.browseCatalogue") : t("modules.browseCatalogue.simple")}</a>}
       </div>
+      <FeatureTabs current="installed" labels={{ installed: advanced ? t("nav.modules") : t("nav.modules.simple"), add: advanced ? t("nav.catalogue") : t("nav.catalogue.simple") }} />
       {error && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm">{error.startsWith("modules.error.") || error.startsWith("instances.error.") ? t(error, { services: detail ?? "", modules: detail ?? "" }) : t("error.generic")}</p>}
       {notice === "services" && <p role="alert" className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">{t("services.notice")}</p>}
       {duplicates.length > 0 && (

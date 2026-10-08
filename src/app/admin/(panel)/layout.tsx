@@ -46,8 +46,8 @@ export default async function PanelLayout({ children }: { children: React.ReactN
 
           <p className={group}>{t("nav.features")}</p>
           {otherItems.map((m) => <NavLink key={m.id} href={m.content ? `/admin/entries?c=${m.key}` : `/admin/instances/${m.id}`} badge={m.badge} badgeLabel={t("nav.badge.todo")}>{m.icon} {m.name}</NavLink>)}
-          {canManage && <NavLink href="/admin/modules">{advanced ? t("nav.modules") : t("nav.modules.simple")}</NavLink>}
-          {canManage && <NavLink href="/admin/catalogue">{advanced ? t("nav.catalogue") : t("nav.catalogue.simple")}</NavLink>}
+          {/* Une seule entrée : « installé » et « ajouter » (catalogue) sont deux onglets d'un même endroit. */}
+          {canManage && <NavLink href="/admin/modules" also={["/admin/catalogue"]}>{advanced ? t("nav.modules") : t("nav.modules.simple")}</NavLink>}
 
           {(canManage || user.role === "owner") && (
             <>

@@ -751,5 +751,8 @@
   "settings.header.label": "Texte",
   "settings.header.href": "Adresse",
   "settings.header.linksHelp": "Un lien ou un bouton n'apparaît que si son texte et son adresse sont remplis. L'adresse est une page du site (/contact), un lien https://… ou mailto:…",
-  "updates.whatsNew": "Ce que change la {version}"
+  "updates.whatsNew": "Ce que change la {version}",
+  "settings.privacy": "Confidentialité",
+  "settings.privacyHelp": "Ce que le site mesure et ce qu'il laisse aux robots.",
+  "settings.privacyCookies": "Le site retient seulement dans le navigateur du visiteur la date de sa dernière visite (pour signaler les nouveautés), jamais d'identifiant ni de suivi."
 }

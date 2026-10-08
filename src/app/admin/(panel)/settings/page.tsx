@@ -34,8 +34,8 @@ export default async function SettingsPage() {
   return (
     <div className="space-y-6">
       <header><h1 className={ui.pageTitle}>{t("nav.settings")}</h1>{!advanced && <p className={ui.pageIntro}>{t("settings.intro.simple")}</p>}</header>
-      <Tabs tabs={[{ id: "site", label: t("settings.identity") }, { id: "languages", label: t("settings.languages") }, { id: "appearance", label: t("settings.appearance") }, ...(hasRole(user, "owner") ? [{ id: "mail", label: t("settings.mail") }] : [])]}>
-      <ActionForm action={saveSettings} submitLabel={t("action.save")} className="space-y-8" submitTabs="site languages appearance">
+      <Tabs tabs={[{ id: "site", label: t("settings.identity") }, { id: "languages", label: t("settings.languages") }, { id: "appearance", label: t("settings.appearance") }, { id: "privacy", label: t("settings.privacy") }, ...(hasRole(user, "owner") ? [{ id: "mail", label: t("settings.mail") }] : [])]}>
+      <ActionForm action={saveSettings} submitLabel={t("action.save")} className="space-y-8" submitTabs="site languages appearance privacy">
         {advanced && <input type="hidden" name="__adv" value="1" />}
         <section data-tab="site" className="space-y-4">
           <h2 className="text-lg font-semibold">{t("settings.identity")}</h2>
@@ -66,7 +66,6 @@ export default async function SettingsPage() {
               </div>
             </details>
           </fieldset>
-          <Checkbox name="statsEnabled" label={t("settings.stats")} help={t("settings.statsHelp")} defaultChecked={config.statsEnabled} />
           {advanced && <TextField name="contactEmail" type="email" label={t("settings.contactEmail")} defaultValue={config.contactEmail} />}
         </section>
 
@@ -89,8 +88,17 @@ export default async function SettingsPage() {
           </details>
           {advanced && <Select name="adminLocale" label={t("settings.adminLocale")} help={t("settings.adminLocaleHelp")} defaultValue={config.adminLocale ?? config.defaultLocale}
             options={Object.keys(KNOWN_LOCALES).map((c) => ({ value: c, label: `${localeName(c)}${UI_LOCALES.includes(c) ? "" : ` (${t("settings.fallbackEn")})`}` }))} />}
-          {advanced && <Checkbox name="blockAiBots" label={t("settings.blockAiBots")} help={t("settings.blockAiBotsHelp")} defaultChecked={blockAiBots} />}
           {advanced && <Checkbox name="autoDetect" label={t("settings.autoDetect")} help={t("settings.autoDetectHelp")} defaultChecked={config.autoDetect} />}
+        </section>
+
+        <section data-tab="privacy" className="space-y-4">
+          <h2 className="text-lg font-semibold">{t("settings.privacy")}</h2>
+          <p className="text-sm text-muted">{t("settings.privacyHelp")}</p>
+          <div className={`${ui.card} space-y-4`}>
+            <Checkbox name="statsEnabled" label={t("settings.stats")} help={t("settings.statsHelp")} defaultChecked={config.statsEnabled} />
+            {advanced && <Checkbox name="blockAiBots" label={t("settings.blockAiBots")} help={t("settings.blockAiBotsHelp")} defaultChecked={blockAiBots} />}
+          </div>
+          <p className={ui.help}>{t("settings.privacyCookies")}</p>
         </section>
 
         <section data-tab="appearance" className="space-y-6">

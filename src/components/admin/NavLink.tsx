@@ -3,10 +3,10 @@
 import { usePathname } from "next/navigation";
 
 /** Lien du menu d'admin ; celui de la page ouverte est mis en évidence (et signalé aux lecteurs d'écran par aria-current). */
-export function NavLink({ href, children, external, exact, badge = 0, badgeLabel }: { href: string; children: React.ReactNode; external?: boolean; exact?: boolean; badge?: number; badgeLabel?: string }) {
+export function NavLink({ href, children, external, exact, also = [], badge = 0, badgeLabel }: { href: string; children: React.ReactNode; external?: boolean; exact?: boolean; /** Autres chemins qui font aussi de ce lien le lien « courant » (pages liées sous une même entrée de menu). */ also?: string[]; badge?: number; badgeLabel?: string }) {
   const path = usePathname();
   const base = href.split("?")[0]!;
-  const here = !external && (exact ? path === base : path === base || path.startsWith(`${base}/`));
+  const here = !external && ([base, ...also].some((b) => (exact ? path === b : path === b || path.startsWith(`${b}/`))));
   const cls = "block rounded-xl px-3 py-2 text-[15px] transition-colors hover:bg-accent/10 hover:text-accent";
   return (
     <a href={href} aria-current={here ? "page" : undefined} className={`${cls} ${here ? "bg-accent/10 font-semibold text-accent" : ""}`} {...(external ? { target: "_blank", rel: "noopener" } : {})}>

@@ -15,6 +15,10 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **En-tête au choix** (Réglages → Apparence) : Classique, Deux niveaux, Centré ou Discret, avec un lien secondaire (« Nous contacter »), un bouton (« Devenir membre ») et les icônes de **toutes** vos listes de réseaux sociaux.
 - **Bandeau d'accueil** : une petite ligne au-dessus du titre et un bouton d'appel à l'action.
 
+### Améliorations
+- **Fonctionnalités et Ajouter** : « Modules » et « Catalogue » ne sont plus deux entrées de menu mais un seul endroit à deux onglets (*Fonctionnalités* | *Ajouter*, ou *Modules* | *Catalogue* en mode avancé). Les adresses restent les mêmes.
+- **Réglages → Confidentialité** : la case « Compter les visites (anonyme) » (et, en mode avancé, le blocage des robots d'IA) quitte l'onglet Identité pour un onglet à part, avec la précision de ce que le site retient dans le navigateur des visiteurs.
+
 ### À savoir en mettant à jour
 - Aucune migration de base de données. Votre logo actuel devient l'« icône » ; il s'affiche entier au lieu d'être rogné en rond.
 

@@ -751,5 +751,8 @@
   "settings.header.label": "Text",
   "settings.header.href": "Address",
   "settings.header.linksHelp": "A link or button only appears when both its text and address are filled. The address is a site page (/contact), an https://… link or mailto:…",
-  "updates.whatsNew": "What {version} changes"
+  "updates.whatsNew": "What {version} changes",
+  "settings.privacy": "Privacy",
+  "settings.privacyHelp": "What the site measures and what it lets robots do.",
+  "settings.privacyCookies": "The site only remembers, in the visitor's browser, the date of their last visit (to flag what is new), never an identifier or any tracking."
 }
