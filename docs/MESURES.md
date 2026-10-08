@@ -1,6 +1,6 @@
 # Mesures : ce qui est vérifié, et comment le refaire
 
-Ces chiffres ont été **mesurés**, pas estimés, sur la release publiée `v0.1.3-rc.2`, le 8 octobre 2026, dans un conteneur Linux (4 cœurs, 16 Go de mémoire, Node 22). Chaque chiffre dit comment il a été obtenu. **Ce qui n'a pas été mesuré est listé en bas** : ne tirez pas de ce document plus que ce qu'il dit.
+Ces chiffres ont été **mesurés**, pas estimés, sur la release publiée `v0.1.3`, le 8 octobre 2026, dans un conteneur Linux (4 cœurs, 16 Go de mémoire, Node 22). Chaque chiffre dit comment il a été obtenu. **Ce qui n'a pas été mesuré est listé en bas** : ne tirez pas de ce document plus que ce qu'il dit.
 
 ## Installation, depuis l'archive publiée
 
@@ -8,12 +8,14 @@ On télécharge l'archive de la release, on vérifie son empreinte, on l'extrait
 
 | Étape | Durée mesurée |
 |---|---|
-| Téléchargement (254 Mo) | 5,6 s (dépend de votre connexion) |
-| Vérification de l'empreinte `sha256` | 0,7 s |
-| Extraction | 11,8 s |
-| Création de la base de données (migrations) | 3,1 s |
-| Démarrage jusqu'à la première page servie | 2,1 s |
-| **Travail de la machine, au total** | **≈ 23 s** |
+| Téléchargement (257 Mo) | 3,4 s (dépend de votre connexion) |
+| Vérification de l'empreinte `sha256` | 0,8 s |
+| Extraction | 15,2 s |
+| Création de la base de données (migrations) | 4,4 s |
+| Démarrage jusqu'à la première page servie | 2,3 s |
+| **Travail de la machine, au total** | **≈ 26 s** |
+
+Une seule mesure par étape : l'extraction (disque) varie d'une exécution à l'autre (11,8 s sur la 0.1.3-rc.2, 15,2 s ici), ne tirez pas de conclusion d'un écart de quelques secondes. Ensuite, l'assistant de première installation (4 écrans, un site avec blog et réseaux sociaux) a été parcouru par un script en ≈ 10 s, temps de pauses compris ; **le temps d'une vraie personne n'est pas mesuré**.
 
 Le reste de l'installation (créer l'utilisateur système, le service, le HTTPS) est du travail humain, **non chronométré** : le guide du README l'estime à une quinzaine de minutes, ce chiffre est une estimation, pas une mesure.
 
@@ -21,10 +23,13 @@ Le reste de l'installation (créer l'utilisateur système, le service, le HTTPS)
 
 | | Taille |
 |---|---|
-| Installé, sans l'archive | **868 Mo** |
+| Installé, sans l'archive | **880 Mo** |
 | dont `node_modules` (dépendances et moteurs de base de données) | 816 Mo |
-| dont le site compilé (`.next`) | 52 Mo |
-| Base de données d'un site neuf | 188 Ko |
+| dont le site compilé (`.next`) | 64 Mo |
+| dont les modules livrés (`extras/`, 23 modules) | 0,8 Mo |
+| Base de données d'un site neuf | 176 Ko |
+
+Les modules ne pèsent presque rien : séparer le cœur de ses modules n'allège pas l'installation, qui est dominée par les dépendances. Le site compilé a grossi de 12 Mo depuis la 0.1.3-rc.2 (fonctions ajoutées : dépôts de modules personnels, assistant, blocs de page…).
 
 **C'est lourd** pour ce que fait le logiciel : les dépendances (dont les deux moteurs Prisma, pour être compatible avec plusieurs systèmes) pèsent beaucoup plus que le code. Si l'espace disque est votre contrainte, c'est un vrai point faible.
 
@@ -34,11 +39,11 @@ Mesuré avec `scripts/measure.mjs` (voir plus bas), puis recoupé dans un vrai n
 
 | Type | Requêtes | Poids | ≈ gzip |
 |---|---|---|---|
-| HTML | 1 | 17 Ko | 4 Ko |
+| HTML | 1 | 15 Ko | 4 Ko |
 | JavaScript | 9 | 575 Ko | 177 Ko |
 | CSS | 1 | 43 Ko | 8 Ko |
 | Images (icône du site) | 1 | < 1 Ko | < 1 Ko |
-| **Code envoyé (HTML + JavaScript + CSS)** | **11** | **636 Ko** | **≈ 189 Ko** |
+| **Code envoyé (HTML + JavaScript + CSS)** | **11** | **634 Ko** | **≈ 189 Ko** |
 
 - **Services tiers contactés : aucun.** Le navigateur ne parle qu'au site lui-même (12 requêtes au total, toutes vers le même serveur).
 - **Cookies déposés à la première visite : aucun.**
@@ -48,11 +53,11 @@ Mesuré avec `scripts/measure.mjs` (voir plus bas), puis recoupé dans un vrai n
 
 ## Mémoire du serveur
 
-**223 Mo** (mémoire résidente du processus `next-server`) après avoir servi quelques pages d'un site neuf. Ce chiffre est un ordre de grandeur pour un trafic nul : il n'est pas mesuré sous charge.
+**234 Mo** (mémoire résidente du processus `next-server`) après avoir servi quelques pages d'un site neuf. Ce chiffre est un ordre de grandeur pour un trafic nul : il n'est pas mesuré sous charge.
 
 ## Qualité du code
 
-- **850 tests automatiques** (`npm test`), exécutés à chaque publication ; une release n'existe que si les tests, la vérification des types, le build et l'audit des dépendances passent.
+- **875 tests automatiques** : 501 pour le cœur (`npm test`, ≈ 30 s) et 374 pour les modules (dépôt `curiosa-extras`), exécutés à chaque publication ; une release n'existe que si les tests, la vérification des types, le build et l'audit des dépendances passent.
 - **200 paquets de production**, vérifiés à chaque publication contre les failles connues (`npm run audit`) ; leurs licences sont listées dans `THIRD-PARTY-NOTICES.md`.
 
 ## Ce qui n'est PAS mesuré

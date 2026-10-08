@@ -4,6 +4,13 @@ Ce que chaque version change pour vous. Chaque version (stable ou release candid
 
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
+## Prochaine version (non publiée)
+
+*Changements depuis la 0.1.3.*
+
+### Documentation
+- **docs/MESURES.md** refait sur la 0.1.3 publiée : installation par la machine ≈ 26 s, 880 Mo une fois installé (les modules livrés ne pèsent que 0,8 Mo), 634 Ko de code envoyé à la première visite (≈ 189 Ko compressé), 234 Mo de mémoire au repos, 875 tests automatiques (501 pour le cœur, 374 pour les modules).
+
 ## 0.1.3
 
 *Changements depuis la 0.1.2 (cumule les release candidates 0.1.3-rc.1 à rc.3 et ce qui a suivi).*

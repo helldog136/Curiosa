@@ -46,9 +46,12 @@ test("preuves : les chiffres du README viennent de docs/MESURES.md, et le docume
   const fs = await import("node:fs");
   const readme = fs.readFileSync("README.md", "utf8");
   const mesures = fs.readFileSync("docs/MESURES.md", "utf8");
-  for (const chiffre of ["868 Mo", "223 Mo", "850 tests", "636 Ko", "≈ 23 s"]) {
-    assert.ok(mesures.includes(chiffre.replace(" tests", " tests automatiques")) || mesures.includes(chiffre), `${chiffre} absent de docs/MESURES.md`);
-  }
+  // Chaque chiffre cité par le README doit se retrouver dans MESURES.md (plus aucun chiffre écrit à la main des deux côtés sans contrôle).
+  const paragraph = readme.split("\n").find((l) => l.startsWith("**Les chiffres, avec leur méthode**")) ?? "";
+  const cited = [...paragraph.replace(/\(\[docs[^)]*\)[^)]*\)/, "").matchAll(/(?:≈ )?\d[\d,]*(?: (?:Mo|Ko|s|tests))/g)].map((m) => m[0]);
+  assert.ok(cited.length >= 6, `chiffres du README introuvables : ${cited.join(" | ")}`);
+  for (const chiffre of cited) assert.ok(mesures.includes(chiffre) || mesures.includes(chiffre.replace(" tests", " tests automatiques")) || mesures.includes(chiffre.replace("≈ ", "")), `${chiffre} (README) absent de docs/MESURES.md`);
+  for (const chiffre of ["880 Mo", "234 Mo", "634 Ko", "≈ 26 s"]) assert.ok(readme.includes(chiffre), `${chiffre} : le README n'a pas été mis à jour avec les dernières mesures`);
   assert.match(mesures, /## Ce qui n'est PAS mesuré/);
   assert.match(mesures, /node scripts\/measure\.mjs/);
   assert.match(readme, /docs\/MESURES\.md/);
