@@ -61,7 +61,7 @@ test("halo : suit la couleur d'accent (teinte de base) et reste visible même av
 
 test("halo : réglages normalisés — hors limites ramenés aux bornes, texte ou vide ignorés", () => {
   const n = G.normalizeTuning({ count: 99, size: 5, variance: -3, hue: 999, intensity: "abc", seed: 0 });
-  assert.deepEqual(n, { count: 8, size: 30, variance: 0, hue: 180, intensity: G.GLOW_PRESETS.soft.intensity, seed: 1 });
+  assert.deepEqual(n, { count: 8, size: 30, variance: 0, hue: 180, intensity: G.GLOW_PRESETS.soft.intensity, seed: 1, color: "" });
   assert.deepEqual(G.normalizeTuning(undefined), G.GLOW_PRESETS.soft);
   assert.deepEqual(G.normalizeTuning({ count: "", size: "75.4" }).size, 75);
 });
@@ -77,10 +77,41 @@ test("halo : branché sur le site, choisi dans l'admin (simple : niveaux ; avanc
   assert.match(actions, /adv \|\| glow !== "custom"/, "le mode simple ne peut pas activer le personnalisé");
 });
 
-test("admin : le numéro de version est toujours affiché en bas du menu, pour tous les rôles et dans les deux modes", () => {
+test("admin : « Powered by Curiosa vX.Y.Z » est tout en bas de la page (hors du menu), pour tous les rôles et dans les deux modes", () => {
   const layout = fs.readFileSync("src/app/admin/(panel)/layout.tsx", "utf8");
-  const tail = layout.slice(layout.lastIndexOf("nav.logout"));
-  assert.match(tail, /data-testid="app-version">Curiosa v\{readVersion\(\)\}/, "après le bouton de déconnexion, dans le menu");
-  const before = layout.slice(0, layout.indexOf("data-testid=\"app-version\""));
+  const footer = layout.slice(layout.indexOf('<footer'));
+  assert.match(footer, /data-testid="app-version"/);
+  assert.match(footer, /href=\{CREDIT_URL\}[^>]*>Curiosa<\/a> v\{readVersion\(\)\}/);
+  assert.ok(layout.indexOf("</MobileMenu>") < layout.indexOf('<footer'), "après le menu et le contenu, pas dans la liste des liens");
+  const before = layout.slice(0, layout.indexOf('data-testid="app-version"'));
   assert.ok(!/(role|advanced)\s*(===|&&)[^<]{0,40}$/.test(before.slice(-120)), "pas conditionné au rôle ni au mode");
+});
+
+test("halo : couleur propre aux taches (sinon l'accent) ; le décalage de teinte part de cette couleur ; valeur invalide ignorée", () => {
+  const hue = (css) => spots(css)[0].hue;
+  const accent = hue(G.glowCss("custom", T({ hue: 0 }), ACCENT));
+  const pink = hue(G.glowCss("custom", T({ hue: 0, color: "#e8337a" }), ACCENT));
+  assert.ok(Math.abs(pink - accent) > 100, "les taches prennent la couleur choisie, pas celle de l'accent");
+  assert.ok(Math.abs(pink - 337) < 6);
+  assert.equal(G.normalizeTuning({ color: "#E8337A" }).color, "#e8337a");
+  for (const bad of ["red", "#12", "url(x)", 5, null, "#ggg111"]) assert.equal(G.normalizeTuning({ color: bad }).color, "", String(bad));
+  assert.equal(G.GLOW_PRESETS.soft.color, "", "les préréglages suivent l'accent");
+  const shifted = spots(G.glowCss("custom", T({ count: 6, hue: 30, color: "#e8337a", seed: 4 }), ACCENT)).map((x) => x.hue);
+  assert.ok(shifted.every((h) => Math.min(Math.abs(h - 337), 360 - Math.abs(h - 337)) <= 31), JSON.stringify(shifted));
+});
+
+test("admin : un bloc de réglages n'apparaît que lorsque son choix est sélectionné (halo « personnalisé », description du fond « personnalisé »), sans perdre les valeurs", () => {
+  const page = fs.readFileSync("src/app/admin/(panel)/settings/page.tsx", "utf8");
+  assert.match(page, /<ShowWhen field="glow" equals="custom" initial=\{config\.glow\.level\}>/);
+  assert.match(page, /<ShowWhen field="bgPreset" equals="custom" initial=\{config\.bg\.preset\}>/);
+  const comp = fs.readFileSync("src/components/admin/ShowWhen.tsx", "utf8");
+  assert.match(comp, /hidden=\{value !== equals\}/, "masqué par `hidden` : les champs restent dans le formulaire et sont envoyés");
+  assert.match(comp, /RadioNodeList/);
+});
+
+test("admin : les sélecteurs de couleur sont de vraies pastilles visibles (pas aplaties par le remplissage des champs texte)", () => {
+  const ui = fs.readFileSync("src/components/admin/ui.ts", "utf8");
+  assert.match(ui, /colorInput: "block h-11 w-full cursor-pointer[^"]*p-1/);
+  assert.equal((fs.readFileSync("src/components/admin/ThemePicker.tsx", "utf8").match(/type="color"[^\n]*className=\{ui\.colorInput\}/g) ?? []).length, 2, "fond et accent");
+  assert.match(fs.readFileSync("src/components/admin/Field.tsx", "utf8"), /type === "color" \? ui\.colorInput : ui\.input/);
 });

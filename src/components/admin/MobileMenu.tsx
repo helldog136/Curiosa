@@ -10,7 +10,7 @@ import { ui } from "./ui";
 export function MobileMenu({ brand, menuLabel, children }: { brand: React.ReactNode; menuLabel: string; children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   return (
-    <aside className="sticky top-0 z-30 shrink-0 border-b border-line bg-surface md:static md:min-h-screen md:w-64 md:border-b-0 md:border-r">
+    <aside className="sticky top-0 z-30 shrink-0 border-b border-line bg-surface md:static md:w-64 md:border-b-0 md:border-r">
       <div className="flex items-center justify-between gap-3 p-4 pb-3 md:pb-0">
         {brand}
         <button type="button" className={`${ui.btn} md:hidden`} aria-expanded={open} aria-controls="admin-nav" onClick={() => setOpen((o) => !o)}>

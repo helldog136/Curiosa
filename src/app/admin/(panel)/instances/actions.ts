@@ -16,6 +16,7 @@ import { getSources, providersOf, setSources } from "@/core/services/topics";
 import { audit } from "@/core/permissions";
 import { deleteSetting, setSetting } from "@/core/settings";
 import { mcpInstanceKey } from "@/core/modules/mcpProvider";
+import { isSort, sortSettingKey } from "@/core/content/sort";
 import type { ActionState } from "@/components/admin/ActionForm";
 
 function parseFieldSchema(raw: string) {
@@ -55,6 +56,9 @@ export async function saveInstance(_prev: ActionState, formData: FormData): Prom
 
   if (adv) await setSetting(mcpInstanceKey(id), formData.get("mcp") === "on");
   if (adv) data.navOrder = Math.trunc(Number(formData.get("navOrder"))) || 0;
+
+  // Ordre d'affichage des entrées : proposé dans les deux modes pour les modules à contenu.
+  if (mod.manifest.content && isSort(formData.get("sort"))) await setSetting(sortSettingKey(id), String(formData.get("sort")));
 
   if (adv && hasPage(mod.manifest)) {
     const basePath = String(formData.get("basePath") ?? "").trim().toLowerCase();
@@ -136,6 +140,9 @@ export async function saveInstanceSettings(_prev: ActionState, formData: FormDat
         await setSetting(key, n, locale);
       } else if (field.type === "select") {
         if (!field.options?.some((o) => o.value === raw)) return { error: t("error.generic") };
+        await setSetting(key, raw, locale);
+      } else if (field.type === "video") {
+        if (!/^\/uploads\/[0-9a-f-]{36}\.(mp4|webm)$/.test(raw)) return { error: t("error.badUrl") };
         await setSetting(key, raw, locale);
       } else if (field.type === "image") {
         if (!/^(https?:\/\/|\/uploads\/)/i.test(raw)) return { error: t("error.badUrl") };

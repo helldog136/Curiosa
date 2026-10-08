@@ -12,7 +12,7 @@ export const manifest: ParsedManifest = {
     fr: "Affiche votre lecteur Twitch sur l'accueil et une bannière quand vous êtes en direct.",
   },
   author: "Helldog136",
-  license: "MIT",
+  license: "Curiosa License 1.0",
   icon: "🔴",
   consumes: [],
   provides: [],

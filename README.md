@@ -1,30 +1,70 @@
+<div align="center">
+
 # Curiosa
 
-Un framework de site personnel pour créateurs (streamers, vidéastes, artistes…) :
-**installable par n'importe qui, sur n'importe quelle machine**, personnalisé à la
-première connexion admin, et **sans aucun contenu codé en dur**.
+**Le site de votre activité, sans agence ni abonnement.**
+Un site personnel complet pour créateurs, indépendants et petites équipes : vous l'installez une fois, vous le gérez seul depuis un espace d'administration pensé pour les non-techniciens.
 
-Le même code peut faire tourner le site d'un streamer, d'un duo, d'un collectif… Rien
-dans le dépôt ne parle d'une personne ou d'un projet précis : textes, liens, couleurs,
-langues, menus et même les redirections `/twitch` ou `/youtube` se règlent dans l'admin.
+*Un coin à soi, où l'on expose les petites choses qu'on fait.*
 
-> **Curiosa** : un coin à soi, où l'on expose les petites choses qu'on fait.
+</div>
 
-## Les idées clés
+---
 
-**Tout est un module, et un module peut avoir plusieurs instances.**
+## En une phrase
 
-| Concept | Ce que c'est |
+Curiosa est un **site vitrine clé en main que vous possédez** : votre contenu, vos visiteurs et vos données restent chez vous, sur votre propre serveur, pour le seul coût d'un petit serveur. Aucun abonnement, aucune commission, aucun verrouillage.
+
+## Pour qui ?
+
+| Vous êtes… | Curiosa vous donne… |
 |---|---|
-| **Module** | Un type de fonctionnalité : blog, réseaux sociaux, codes promo, pages, bandeau d'accueil, flux RSS, formulaire de contact, statut live… Installable depuis l'admin avec l'adresse d'un dépôt git (comme HACS pour Home Assistant). Le cœur n'est qu'un conteneur : tout ce que fait le site de base est déjà un module. |
-| **Instance** | Un exemplaire configuré d'un module. Un site peut avoir **deux blogs**, ou **deux listes de réseaux sociaux** (une par chaîne) : ce sont deux instances du même module, chacune avec ses réglages, son contenu, son adresse (`/blog`, `/actus`…) et son entrée dans l'admin. Dès la deuxième, on leur donne un **surnom** (« Actus », « Chaîne 2 ») pour les distinguer ; avec une seule, aucun surnom n'est demandé. Les identifiants techniques restent en coulisses (mode avancé). |
-| **Entrée** | Un élément d'une instance à contenu : un article, un code promo, un lien social. Champs optionnels selon l'instance : image, icône, résumé, contenu Markdown, lien, code, expiration, champs personnalisés. |
-| **Section** | Un morceau qu'une instance propose à la **page d'accueil**. L'accueil n'a aucun contenu propre : c'est un assemblage de sections choisies et ordonnées dans l'admin (bandeau, derniers articles du blog 2, liens de la chaîne 1, lecteur Twitch, formulaire de contact…). |
-| **Sujet** | La façon dont les modules s'échangent des informations. Un module *consommateur* (un overlay OBS, par exemple) déclare ce qu'il sait digérer ; les modules *fournisseurs* (blog, codes promo, ou n'importe quel module tiers) exposent des informations à ce format, et l'admin choisit qui alimente quoi. Ils ne se connaissent pas. |
-| **Mode simple / avancé** | L'admin existe en deux versions. La version simple (par défaut) cache le technique : thèmes prêts à l'emploi, barre d'outils de mise en forme, tableau de bord guidé. La version avancée montre tout (adresses, étiquettes, sources de données, installation depuis git…). Bascule en un clic dans la barre latérale ; rien n'est perdu d'un mode à l'autre. |
-| **API MCP** | Le cœur expose, si le propriétaire l'active, un serveur MCP qui collecte les actions déclarées par tous les modules : un assistant IA peut lire le contenu, rédiger des brouillons, tenir à jour le suivi de partenariats. Jetons révocables, avec des accès réglables action par action et en direct ; les actions irréversibles ne sont jamais actives par défaut. |
-| **Redirection** | `/twitch` → une URL externe *explicitement autorisée* dans l'admin (ou le lien d'une entrée, suivi automatiquement). Aucune redirection ouverte possible. |
-| **Langues** | Langue du site, langue de l'admin (par défaut et par utilisateur) et langue du visiteur sont indépendantes. Une entrée n'a besoin que d'**une** version ; on en ajoute d'autres à la demande, jamais de force. |
+| **Streamer, vidéaste, musicien, artiste** | une page d'accueil soignée, un blog, vos réseaux, vos codes promo et sponsors, un statut « en direct », un kit presse |
+| **Indépendant, petite association, collectif** | un site professionnel qui s'édite aussi simplement qu'un document, sans dépendre d'un développeur |
+| **Une personne qui gère le site d'une autre** | une interface en deux niveaux : **simple** (vocabulaire de tous les jours) et **avancée** (tous les réglages) |
+| **Développeur ou agence** | un framework ouvert, modulaire, documenté, où l'on ajoute des fonctionnalités sans toucher au cœur |
+
+## Ce que vous obtenez
+
+- **Un site à votre image, sans code.** Nom, logo, couleurs, polices, fond de page, icône d'onglet, menus, langues : tout se règle dans l'admin, avec un thème clair ou sombre pour l'admin lui-même.
+- **Des fonctionnalités à la carte.** Blog, pages, liens et réseaux sociaux, codes promo, sponsors, formulaire de contact, flux RSS, statut live, bandeaux, overlays pour OBS… Vous n'activez que ce dont vous avez besoin, et vous en ajoutez d'autres depuis le **Catalogue**.
+- **Un tableau de bord utile.** Combien de visiteurs aujourd'hui, quelles pages sont les plus lues, d'où viennent vos lecteurs, et des pastilles « nouveau » dans le menu pour vos visiteurs de retour.
+- **Multilingue sans douleur.** Une seule version suffit pour publier ; on en ajoute d'autres quand on veut.
+- **Des mises à jour en un clic**, vérifiées, avec retour automatique à la version précédente en cas de problème.
+- **Des sauvegardes chiffrées** que vous pouvez relire même sans Curiosa, et une restauration depuis l'assistant de démarrage.
+- **Un assistant IA à votre service (optionnel).** Votre site peut exposer une interface sécurisée (MCP) pour qu'un assistant rédige des brouillons ou tienne un suivi à jour, avec des accès révocables, réglés action par action.
+
+## Respect des visiteurs et sécurité
+
+- **Statistiques anonymes** : aucun identifiant de suivi, aucune adresse IP conservée (seule la date de la dernière visite est gardée dans le navigateur du visiteur, pour signaler les nouveautés), aucun service tiers ; les visiteurs qui refusent le suivi ne sont pas comptés.
+- **Aucune publicité, aucun traceur.** Votre site ne parle à personne d'autre que vous.
+- **Accès protégés** : comptes avec rôles (propriétaire, éditeur…), mots de passe protégés (jamais stockés en clair), journal d'audit, jetons d'API révocables.
+- **Sous votre contrôle** : une base de données dans un seul fichier, sur votre serveur ; vérification régulière des failles connues dans les dépendances.
+
+## Gratuit, ouvert, et reconnu
+
+Curiosa est **gratuit** et son code est **lisible et modifiable**. Ce que la licence garantit, en clair :
+
+- ✅ **Vous pouvez l'utiliser pour le site de votre propre activité**, y compris commerciale (boutique, sponsors, dons, publicité…), le modifier et l'adapter.
+- ✅ **Vous pouvez monter, personnaliser et entretenir un site pour un client** et facturer ce travail, tant que vous ne lui vendez pas Curiosa lui-même.
+- ✅ **Un hébergeur peut le proposer préinstallé** (par exemple un VPS avec Curiosa, comme on le fait avec WordPress) : il facture l'hébergement et le support, chaque client garde sa propre installation, qu'il contrôle entièrement.
+- ❌ **On ne peut pas vendre Curiosa** (ni une version modifiée), ni en faire une plateforme où une seule installation sert les sites de nombreux clients, ni facturer l'accès à ses fonctionnalités.
+- 🏷️ **Le crédit « Propulsé par Curiosa » reste affiché** dans le pied de page du site (« Curiosa » est un lien vers le dépôt du projet), et les mentions d'auteur restent dans le code.
+- 🧩 **Les modules écrits par des tiers leur appartiennent** : leur auteur choisit sa licence, garde tout le mérite et peut les vendre.
+
+Le texte juridique complet est dans [`LICENSE`](LICENSE). Un auteur de module peut aussi proposer un don volontaire dans la description de son module ; rien n'est jamais conditionné à un paiement.
+
+## Démarrer
+
+Trois façons de l'installer, de la plus simple à la plus technique :
+
+1. **Se faire aider par une IA** : donnez [docs/AGENT-INSTALL.md](docs/AGENT-INSTALL.md) à un assistant (dans Claude Code, le skill `install-curiosa` fait tout pas à pas). Il vous posera les questions utiles (nom du site, domaine…) et vérifiera chaque étape.
+2. **Installer sur un serveur Linux** : environ 15 minutes en suivant le guide ci-dessous, copier-coller de commandes à l'appui.
+3. **Essayer chez soi avec Docker** : une seule commande, voir plus bas.
+
+Un site existant sous **Grav CMS** ? Il peut être converti : [docs/IMPORT-GRAV.md](docs/IMPORT-GRAV.md).
+
+---
 
 ## Installer
 
@@ -165,7 +205,25 @@ npm run dev            # http://localhost:3000
 npm run lint && npm run typecheck && npm test
 ```
 
-## Structure
+## Le vocabulaire en deux minutes
+
+Pas besoin de tout retenir pour utiliser Curiosa : l'assistant et l'admin vous guident. Ces notions servent surtout à comprendre comment les pièces s'assemblent.
+
+**Tout est un module, et un module peut avoir plusieurs instances.**
+
+| Concept | Ce que c'est |
+|---|---|
+| **Module** | Un type de fonctionnalité : blog, réseaux sociaux, codes promo, pages, bandeau d'accueil, flux RSS, formulaire de contact, statut live… Installable depuis l'admin avec l'adresse d'un dépôt git (comme HACS pour Home Assistant). Le cœur n'est qu'un conteneur : tout ce que fait le site de base est déjà un module. |
+| **Instance** | Un exemplaire configuré d'un module. Un site peut avoir **deux blogs**, ou **deux listes de réseaux sociaux** (une par chaîne) : ce sont deux instances du même module, chacune avec ses réglages, son contenu, son adresse (`/blog`, `/actus`…) et son entrée dans l'admin. Dès la deuxième, on leur donne un **surnom** (« Actus », « Chaîne 2 ») pour les distinguer ; avec une seule, aucun surnom n'est demandé. Les identifiants techniques restent en coulisses (mode avancé). |
+| **Entrée** | Un élément d'une instance à contenu : un article, un code promo, un lien social. Champs optionnels selon l'instance : image, icône, résumé, contenu Markdown, lien, code, expiration, champs personnalisés. |
+| **Section** | Un morceau qu'une instance propose à la **page d'accueil**. L'accueil n'a aucun contenu propre : c'est un assemblage de sections choisies et ordonnées dans l'admin (bandeau, derniers articles du blog 2, liens de la chaîne 1, lecteur Twitch, formulaire de contact…). |
+| **Sujet** | La façon dont les modules s'échangent des informations. Un module *consommateur* (un overlay OBS, par exemple) déclare ce qu'il sait digérer ; les modules *fournisseurs* (blog, codes promo, ou n'importe quel module tiers) exposent des informations à ce format, et l'admin choisit qui alimente quoi. Ils ne se connaissent pas. |
+| **Mode simple / avancé** | L'admin existe en deux versions. La version simple (par défaut) cache le technique : thèmes prêts à l'emploi, barre d'outils de mise en forme, tableau de bord guidé. La version avancée montre tout (adresses, étiquettes, sources de données, installation depuis git…). Bascule en un clic dans la barre latérale ; rien n'est perdu d'un mode à l'autre. |
+| **API MCP** | Le cœur expose, si le propriétaire l'active, un serveur MCP qui collecte les actions déclarées par tous les modules : un assistant IA peut lire le contenu, rédiger des brouillons, tenir à jour le suivi de partenariats. Jetons révocables, avec des accès réglables action par action et en direct ; les actions irréversibles ne sont jamais actives par défaut. |
+| **Redirection** | `/twitch` → une URL externe *explicitement autorisée* dans l'admin (ou le lien d'une entrée, suivi automatiquement). Aucune redirection ouverte possible. |
+| **Langues** | Langue du site, langue de l'admin (par défaut et par utilisateur) et langue du visiteur sont indépendantes. Une entrée n'a besoin que d'**une** version ; on en ajoute d'autres à la demande, jamais de force. |
+
+## Pour les développeurs : structure du dépôt
 
 ```
 src/core/services/  Les HELPERS que le cœur offre aux modules : QR code, MCP, stockage privé,
@@ -193,17 +251,10 @@ docs/               PLATFORM.md (cœur vs modules), ARCHITECTURE.md, MODULES.md
 Voir [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) pour les choix de conception et
 [docs/MODULES.md](docs/MODULES.md) pour écrire et publier un module.
 
-## État actuel
+## Où en est le projet
 
-Socle fonctionnel de bout en bout (testé : assistant → site public → deux blogs et deux listes de
-réseaux → traduction → redirection → installation d'un module git et instances). Pas encore fait, volontairement laissé pour
-la suite : sauvegardes/restauration depuis l'admin, authentification à deux facteurs,
-envoi d'emails, image Docker publiée, messages d'interface dans d'autres langues que fr/en.
-
-## Gratuit
-
-Le framework et son **Catalogue** de modules sont gratuits. Aucun module ne se vend : un auteur peut mentionner un lien de **don volontaire** dans le README de son module, que l'admin affiche avant l'installation, sans jamais rien conditionner.
+Curiosa est **utilisé en production** et évolue par versions publiées sur la page *Releases* (versions stables, plus des versions candidates à essayer à vos risques). Reste volontairement à faire : l'authentification à deux facteurs, l'envoi d'e-mails depuis plus d'écrans de l'admin, et des traductions de l'interface au-delà du français et de l'anglais.
 
 ## Licence
 
-Curiosa, développé par [Helldog136](https://helldog136.be), est distribué sous licence **MIT** (voir [`LICENSE`](LICENSE)), modules livrés (`modules-community/`, `modules-examples/`) compris. Les dépendances tierces gardent leur propre licence : la liste complète, avec les textes, est dans [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md), générée par `npm run licenses` (un test vérifie qu'elle est à jour et qu'aucune dépendance n'a de licence incompatible). Un module installé depuis un dépôt tiers reste sous la licence que son auteur a déclarée dans `module.json`.
+Curiosa, développé par [Helldog136](https://helldog136.be), est distribué sous la **Curiosa License 1.0** (voir [`LICENSE`](LICENSE)) : usage libre pour sa propre activité, vente et revente interdites, crédit obligatoire. Les versions publiées **avant la 0.1.2-rc.4** l'ont été sous licence MIT, et ceux qui les ont reçues les gardent sous cette licence. Les modules livrés dans `modules-community/` et `modules-examples/` portent la licence déclarée dans leur `module.json`. Les dépendances tierces gardent leur propre licence : la liste complète, avec les textes, est dans [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md), générée par `npm run licenses` (un test vérifie qu'elle est à jour et qu'aucune dépendance n'a de licence incompatible). Un module installé depuis un dépôt tiers reste sous la licence que son auteur a déclarée dans `module.json`.

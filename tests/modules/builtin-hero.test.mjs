@@ -23,7 +23,9 @@ test("hero : réglages — title/text traduisibles, showLogo vrai par défaut", 
   assert.equal(by.title.translatable, true);
   assert.equal(by.text.translatable, true);
   assert.equal(by.showLogo.default, true);
-  assert.deepEqual(Object.keys(settingsDefaults(m)), ["showLogo"]);
+  assert.deepEqual(Object.keys(settingsDefaults(m)).sort(), ["showLogo", "videoSound"]);
+  assert.equal(by.video.type, "video");
+  assert.equal(by.videoSound.default, false);
 });
 
 test("hero : sans réglages, retombe sur le nom, l'accroche et le logo du site", async () => {
@@ -71,3 +73,14 @@ test("hero : le texte saisi est renvoyé tel quel comme donnée (jamais du HTML 
 const col = (key, name, basePath = key) => ({ key, name, basePath });
 const entry = (o = {}) => ({ title: "T", path: "/blog/a", summary: "S", publishedAt: new Date("2026-01-02T03:04:05Z"), ...o });
 
+
+test("hero : vidéo de fond — seulement un fichier envoyé sur le site ; son = simple possibilité ; adresse externe ignorée", async () => {
+  const U = "/uploads/0f1e2d3c-4b5a-6978-8091-a2b3c4d5e6f7.mp4";
+  let [b] = await hero.definition.sections.hero(fakeCtx({ settings: { video: U, videoSound: true, poster: "/uploads/p.png", showLogo: false }, site: { name: "S", tagline: "", logo: "" } }));
+  assert.equal(b.video, U);
+  assert.equal(b.videoSound, true);
+  assert.equal(b.videoPoster, "/uploads/p.png");
+  [b] = await hero.definition.sections.hero(fakeCtx({ settings: { video: "https://evil.example/x.mp4", showLogo: false }, site: { name: "S", tagline: "", logo: "" } }));
+  assert.equal(b.video, undefined);
+  assert.equal("videoSound" in b, false);
+});

@@ -1,7 +1,8 @@
 import type { Entry, EntryTranslation } from "@prisma/client";
 import { prisma } from "@/core/db";
 import { getInstanceByKey, listInstances, type InstanceView } from "@/core/instances";
-import { getSiteConfig } from "@/core/settings";
+import { getSetting, getSiteConfig } from "@/core/settings";
+import { effectiveSort, orderBy, sortByTitle, sortSettingKey } from "./sort";
 
 export type EntryView = {
   id: string;
@@ -111,10 +112,11 @@ export async function listEntries(opts: {
     typeof opts.instance === "string" ? await getInstanceByKey(opts.instance) : opts.instance;
   if (!instance) return [];
   const { defaultLocale } = await getSiteConfig();
+  const sort = effectiveSort(await getSetting(sortSettingKey(instance.id)), instance.display);
   const rows = await prisma.entry.findMany({
     where: { instanceId: instance.id, ...publishedWhere() },
     include: { translations: true },
-    orderBy: [{ featured: "desc" }, { position: "asc" }, { publishedAt: "desc" }],
+    orderBy: orderBy(sort),
   });
   const views: EntryView[] = [];
   for (const row of rows) {
@@ -122,9 +124,10 @@ export async function listEntries(opts: {
     if (picked) views.push(toView(row, instance, picked));
   }
   // Les offres expirées passent après les autres sans disparaître.
-  views.sort((a, b) => Number(a.expired) - Number(b.expired));
+  const ordered = sort === "title" ? sortByTitle(views, opts.locale) : views;
+  ordered.sort((a, b) => Number(a.expired) - Number(b.expired));
   const start = opts.offset ?? 0;
-  return opts.limit ? views.slice(start, start + opts.limit) : views.slice(start);
+  return opts.limit ? ordered.slice(start, start + opts.limit) : ordered.slice(start);
 }
 
 export type EntryLookup =

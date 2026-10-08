@@ -4,6 +4,8 @@ export const ui = {
   label: "mb-1.5 block text-[15px] font-medium",
   help: "mt-1.5 text-[13px] leading-5 text-muted",
   card: "rounded-2xl border border-line bg-surface p-5 shadow-[0_1px_2px_rgba(60,40,20,.04),0_10px_28px_-16px_rgba(60,40,20,.18)] sm:p-6",
+  /** Sélecteur de couleur : une grande pastille bien visible (avec `input`, le remplissage écrasait la couleur en un trait). */
+  colorInput: "block h-11 w-full cursor-pointer rounded-xl border border-line bg-surface p-1 transition-colors hover:border-accent/50 focus:border-accent [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:rounded-lg [&::-webkit-color-swatch]:border-0 [&::-moz-color-swatch]:rounded-lg [&::-moz-color-swatch]:border-0",
   btn: "inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-surface px-4 py-2.5 text-sm font-medium shadow-sm transition-colors hover:border-accent hover:text-accent disabled:opacity-60",
   btnPrimary:
     "inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-accent-fg shadow-sm transition hover:brightness-110 disabled:opacity-60",

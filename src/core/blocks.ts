@@ -25,7 +25,22 @@ export type Block =
   | { type: "banner"; text: string; href?: string; tone?: "info" | "success" | "warning" }
   | { type: "links"; items: { label: string; href: string; icon?: string }[] }
   | { type: "entries"; instance: string; limit?: number; title?: string; link?: boolean; /** "random" : `limit` entrées tirées au hasard (au lieu des plus récentes). */ pick?: "random" }
-  | { type: "hero"; title: string; text?: string; image?: string }
+  | { type: "hero"; title: string; text?: string; image?: string; video?: string; videoPoster?: string; videoSound?: boolean }
+  /**
+   * Morceau de page (module « Blocs de page ») : `media` (texte + images), `tabs` (onglets), `stats` (chiffres clés), `cta` (appel à l'action) ou `video` (texte sur une vidéo).
+   * `items` : onglets ou chiffres (`title` = libellé ou nombre, `heading` = titre du texte ou légende, `text` = texte Markdown, `image`). `bg` : image de fond du bloc.
+   */
+  | {
+      type: "panel";
+      kind: "media" | "tabs" | "stats" | "cta" | "video";
+      eyebrow?: string; title?: string; text?: string;
+      button?: { label: string; href: string };
+      images?: string[]; imageSide?: "left" | "right";
+      tone?: "plain" | "surface" | "accent";
+      bg?: { src: string; size: "cover" | "contain" | "auto"; position: string; veil: "none" | "light" | "dark" };
+      items?: { title: string; heading?: string; text?: string; image?: string }[];
+      video?: string; videoPoster?: string; videoSound?: boolean;
+    }
   | { type: "embed"; src: string; title: string; ratio?: string }
   | {
       type: "form";

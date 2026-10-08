@@ -8,7 +8,7 @@ export function TextField({ label, name, help, required, defaultValue, type = "t
   return (
     <div>
       <label className={ui.label} htmlFor={name}>{label}</label>
-      <input id={name} name={name} type={type} required={required} defaultValue={defaultValue} placeholder={placeholder} autoComplete={autoComplete} list={list} className={ui.input} />
+      <input id={name} name={name} type={type} required={required} defaultValue={defaultValue} placeholder={placeholder} autoComplete={autoComplete} list={list} className={type === "color" ? ui.colorInput : ui.input} />
       {help && <p className={ui.help}>{help}</p>}
     </div>
   );

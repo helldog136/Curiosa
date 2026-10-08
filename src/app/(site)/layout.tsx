@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { buildTheme, themeCss } from "@/core/color";
 import { glowCss } from "@/core/glow";
+import { faviconUrl } from "@/core/favicon";
 import { backgroundCss, effectiveLayers } from "@/core/background";
 import { RTL_LOCALES } from "@/core/i18n/locales";
 import { getVisitorLocale, getVisitorTranslator, LOCALE_HEADER } from "@/core/i18n/request";
@@ -14,6 +15,7 @@ import { prisma } from "@/core/db";
 import { Blocks, HeadTags } from "@/components/site/Blocks";
 import { Footer } from "@/components/site/Footer";
 import { Header } from "@/components/site/Header";
+import { VisitBeacon } from "@/components/site/VisitBeacon";
 import "../globals.css";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -23,6 +25,7 @@ export async function generateMetadata(): Promise<Metadata> {
     metadataBase: new URL(siteUrl),
     title: { default: config.name, template: `%s | ${config.name}` },
     description: config.tagline || undefined,
+    icons: { icon: faviconUrl(config.favicon), ...(config.favicon ? { apple: config.favicon } : {}) },
     openGraph: { siteName: config.name, title: config.name, description: config.tagline || undefined, images: config.logo ? [config.logo] : undefined },
   };
 }
@@ -39,7 +42,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
   const localized = await getSiteConfig(locale);
   const t = await getVisitorTranslator();
   const theme = buildTheme(localized.background, localized.accent, localized.font);
-  const layers = effectiveLayers(localized.bg.preset, localized.bg.custom, localized.bg.image);
+  const layers = effectiveLayers(localized.bg.preset, localized.bg.custom, localized.bg.image, localized.bg.svg);
   const css = themeCss(theme) + glowCss(localized.glow.level, localized.glow.custom, localized.accent) + backgroundCss(layers, theme);
 
   const [headBlocks, bannerBlocks] = await Promise.all([runSlot("layout.head", locale), runSlot("layout.banner", locale)]);
@@ -63,6 +66,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
           {children}
         </main>
         <Footer config={localized} locale={locale} />
+        {config.statsEnabled && <VisitBeacon />}
       </body>
     </html>
   );

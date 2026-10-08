@@ -1,6 +1,7 @@
 import { buildTheme, themeRef } from "@/core/color";
 import { makeTranslator } from "@/core/i18n/dictionary";
 import { pickName, type InstanceView } from "@/core/instances";
+import { currentVisit } from "@/core/visit";
 import { getSetting, getSiteConfig } from "@/core/settings";
 import { makeApi } from "./api";
 import type { LoadedModule } from "./registry";
@@ -11,7 +12,7 @@ export function instanceSettingKey(instanceId: string, key: string): string {
 }
 
 /** Contexte d'exécution d'un module pour une instance donnée. */
-export async function buildContext(mod: LoadedModule, instance: InstanceView, locale?: string): Promise<ModuleContext> {
+export async function buildContext(mod: LoadedModule, instance: InstanceView, locale?: string, lastVisit?: Date): Promise<ModuleContext> {
   const config = await getSiteConfig();
   const loc = locale ?? config.defaultLocale;
 
@@ -36,6 +37,7 @@ export async function buildContext(mod: LoadedModule, instance: InstanceView, lo
     locales: config.locales,
     setting: <T = string>(key: string) => values[key] as T | undefined,
     theme,
+    visit: { lastVisit: lastVisit ?? (await currentVisit().catch(() => ({ lastVisit: new Date(0) }))).lastVisit },
     t(key, vars) {
       let text = dict(loc)[key] ?? dict(config.defaultLocale)[key] ?? dict("en")[key];
       if (text === undefined) return ui(key, vars);

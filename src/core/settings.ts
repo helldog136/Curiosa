@@ -75,6 +75,8 @@ export type SiteConfig = {
   /** Présentation longue du site/de la personne (Markdown) — identité, réglée dans l'admin. */
   about: string;
   logo: string | null;
+  /** Image de l'onglet du navigateur ; vide : l'icône générée (voir core/favicon.ts). */
+  favicon: string | null;
   footerText: string;
   contactEmail: string;
   accent: string;
@@ -83,7 +85,9 @@ export type SiteConfig = {
   /** Halo de couleur en fond de page (voir core/glow.ts) : niveau, et réglages du niveau « personnalisé ». */
   glow: { level: GlowLevel; custom: GlowTuning };
   /** Fond de page : préréglage, description personnalisée (JSON, voir core/background.ts) et image de fond éventuelle. */
-  bg: { preset: BackgroundPreset; custom: string; image: string | null };
+  bg: { preset: BackgroundPreset; custom: string; image: string | null; svg: { markup: string; fit: "cover" | "contain" | "tile"; align: "left" | "center" | "right"; tile: number } };
+  /** Compter les visites, anonymement (voir core/stats.ts). */
+  statsEnabled: boolean;
   nav: NavItem[];
   homeSections: HomeSection[];
   setupCompleted: boolean;
@@ -106,6 +110,7 @@ export const getSiteConfig = cache(async (locale?: string): Promise<SiteConfig> 
     tagline: await str("site.tagline"),
     about: await str("site.about"),
     logo: (await getSetting<string>("site.logo")) ?? null,
+    favicon: (await getSetting<string>("site.favicon")) || null,
     footerText: await str("footer.text"),
     contactEmail: (await getSetting<string>("site.contactEmail")) ?? "",
     accent: (await getSetting<string>("theme.accent")) ?? "#e8a23b",
@@ -116,7 +121,14 @@ export const getSiteConfig = cache(async (locale?: string): Promise<SiteConfig> 
       preset: isPreset(all["theme.bgPreset"]?.[""]) ? (all["theme.bgPreset"]![""] as BackgroundPreset) : "none",
       custom: String(all["theme.bgCustom"]?.[""] ?? ""),
       image: isBackgroundImage(all["theme.bgImage"]?.[""]) ? (all["theme.bgImage"]![""] as string) : null,
+      svg: {
+        markup: String(all["theme.bgSvg"]?.[""] ?? ""),
+        fit: (["contain", "tile"] as const).find((f) => f === all["theme.bgSvgFit"]?.[""]) ?? "cover",
+        align: (["left", "right"] as const).find((f) => f === all["theme.bgSvgAlign"]?.[""]) ?? "center",
+        tile: Math.min(1200, Math.max(20, Math.round(Number(all["theme.bgSvgTile"]?.[""]) || 200))),
+      },
     },
+    statsEnabled: (await getSetting<boolean>("stats.enabled")) !== false,
     nav: (await getSetting<NavItem[]>("nav.custom")) ?? [],
     homeSections: (await getSetting<HomeSection[]>("home.sections")) ?? DEFAULT_HOME_SECTIONS,
     setupCompleted: (await getSetting<boolean>("setup.completed")) ?? false,

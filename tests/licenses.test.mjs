@@ -4,9 +4,28 @@ import fs from "node:fs";
 import { execFileSync } from "node:child_process";
 const L = await import("../scripts/licenses.mjs");
 
-test("le projet a sa licence (MIT) et la déclare ; chaque module livré déclare la sienne", () => {
-  assert.match(fs.readFileSync("LICENSE", "utf8"), /^MIT License/);
-  assert.equal(JSON.parse(fs.readFileSync("package.json", "utf8")).license, "MIT");
+test("le projet a sa licence (Curiosa License) et la déclare ; chaque module livré déclare la sienne", () => {
+  const text = fs.readFileSync("LICENSE", "utf8");
+  assert.match(text, /^Curiosa License, Version 1\.0/);
+  assert.equal(JSON.parse(fs.readFileSync("package.json", "utf8")).license, "SEE LICENSE IN LICENSE");
+  // Les trois exigences du propriétaire : usage pour sa propre activité (même commerciale) permis, vente interdite, crédit obligatoire, modules tiers libres.
+  assert.match(text, /including\s+a commercial or profit-making activity/);
+  assert.match(text, /Sell the Software or any Derivative Work/);
+  assert.match(text, /multi-tenant or white-label\s+service/);
+  assert.match(text, /Provide hosting infrastructure on which a customer's own, independent installation/, "un hébergeur peut préinstaller Curiosa sur un VPS");
+  assert.match(text, /the price pays for the infrastructure and services, not for the Software itself/);
+  assert.match(text, /Powered by Curiosa", where "Curiosa" is a link to the project\s+repository \(https:\/\/github\.com\/helldog136\/Curiosa\)/);
+  assert.match(text, /3\. WHAT YOU MAY NOT DO[\s\S]*6\. THIRD-PARTY MODULES[\s\S]*free of the restrictions of section 3/);
+  assert.match(text, /Versions of the Software released before version 0\.1\.2-rc\.4 were published under the MIT/);
+});
+
+test("le crédit « développé par » est affiché sur toutes les pages publiques (pied de page du site)", () => {
+  const footer = fs.readFileSync("src/components/site/Footer.tsx", "utf8");
+  assert.match(footer, /data-testid="credit"/);
+  assert.match(footer, /href=\{CREDIT_URL\}[^>]*>Curiosa<\/a>/);
+  assert.match(fs.readFileSync("src/core/credit.ts", "utf8"), /CREDIT_URL = "https:\/\/github\.com\/helldog136\/Curiosa"/);
+  assert.ok(!/readVersion|version/i.test(footer), "jamais de numéro de version côté public");
+  assert.match(fs.readFileSync("src/app/(site)/layout.tsx", "utf8"), /<Footer /);
   for (const dir of ["modules-community", "modules-examples"]) {
     for (const d of fs.readdirSync(dir, { withFileTypes: true }).filter((e) => e.isDirectory())) {
       const m = JSON.parse(fs.readFileSync(`${dir}/${d.name}/module.json`, "utf8"));

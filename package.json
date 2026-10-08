@@ -1,8 +1,8 @@
 {
   "name": "curiosa",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
-  "license": "MIT",
+  "license": "SEE LICENSE IN LICENSE",
   "author": "Helldog136 (https://helldog136.be)",
   "description": "Framework générique de site pour créateurs : collections, redirections, multilingue et modules installables.",
   "engines": {

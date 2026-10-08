@@ -15,18 +15,21 @@
  */
 import { GLOW_BOUNDS, normalizeTuning, spotGradients, type GlowTuning } from "./glow";
 import type { Theme } from "./color";
+import { sanitizeSvg } from "./svg";
 
 export const MAX_LAYERS = 6;
 export const MAX_JSON_BYTES = 8_000;
 
 export type Stop = { color: string; at?: number; a?: number; hue?: number };
 type Side = "full" | "left" | "right" | "top" | "bottom";
+type Edge = "soft" | "hard";
 export type Layer =
   | { type: "linear"; angle: number; stops: Stop[]; opacity: number }
   | { type: "radial"; x: number; y: number; w: number; h: number; stops: Stop[]; opacity: number }
-  | { type: "dots"; color: string; size: number; gap: number; opacity: number; side: Side; span: number }
+  | { type: "dots"; color: string; size: number; gap: number; opacity: number; side: Side; span: number; edge: Edge; stagger: boolean }
   | { type: "grid"; color: string; gap: number; opacity: number; side: Side; span: number }
-  | ({ type: "spots"; opacity: number } & GlowTuning)
+  | ({ type: "spots"; opacity: number } & Omit<GlowTuning, "color"> & { color: string })
+  | { type: "svg"; svg: string; fit: "cover" | "contain" | "tile"; align: "left" | "center" | "right"; tile: number; opacity: number; side: Side; span: number; edge: Edge }
   | { type: "image"; src: string; fit: "cover" | "contain" | "tile"; position: string; opacity: number };
 
 const TOKENS = ["accent", "bg", "fg", "muted", "surface", "line"] as const;
@@ -76,13 +79,29 @@ export function parseBackground(raw: unknown): { ok: true; layers: Layer[] } | {
       const o = obj(item, `couche ${i + 1}`);
       const at = `couche ${i + 1}`;
       const opacity = num(o.opacity, 0, 100, 100, `${at}.opacity`);
+      const edge = (v: unknown, where: string): Edge => (v === undefined || v === "soft" ? "soft" : v === "hard" ? "hard" : (() => { throw new Bad(`${where}.edge : soft ou hard`); })());
+      const bool = (v: unknown, what: string): boolean => (v === undefined || v === false ? false : v === true ? true : (() => { throw new Bad(`${what} : true ou false`); })());
       const side = (v: unknown): Side => (v === undefined ? "full" : SIDES.includes(v as Side) ? (v as Side) : (() => { throw new Bad(`${at}.side : ${SIDES.join(", ")}`); })());
       switch (o.type) {
         case "linear": return { type: "linear", angle: num(o.angle, 0, 360, 180, `${at}.angle`), stops: stops(o.stops, `${at}.stops`), opacity };
         case "radial": return { type: "radial", x: num(o.x, -20, 120, 50, `${at}.x`), y: num(o.y, -20, 120, 50, `${at}.y`), w: num(o.w, 10, 200, 60, `${at}.w`), h: num(o.h, 10, 200, 40, `${at}.h`), stops: stops(o.stops, `${at}.stops`), opacity };
-        case "dots": return { type: "dots", color: color(o.color ?? "#ffffff", `${at}.color`), size: num(o.size, 1, 12, 2, `${at}.size`), gap: num(o.gap, 8, 80, 28, `${at}.gap`), opacity, side: side(o.side), span: num(o.span, 5, 100, 40, `${at}.span`) };
+        case "dots": return {
+          type: "dots", color: color(o.color ?? "#ffffff", `${at}.color`), size: num(o.size, 1, 12, 2, `${at}.size`), gap: num(o.gap, 8, 80, 28, `${at}.gap`), opacity,
+          side: side(o.side), span: num(o.span, 5, 100, 40, `${at}.span`), edge: edge(o.edge, at), stagger: bool(o.stagger, `${at}.stagger`),
+        };
         case "grid": return { type: "grid", color: color(o.color ?? "fg", `${at}.color`), gap: num(o.gap, 16, 160, 48, `${at}.gap`), opacity: num(o.opacity, 0, 100, 10, `${at}.opacity`), side: side(o.side), span: num(o.span, 5, 100, 40, `${at}.span`) };
-        case "spots": return { type: "spots", opacity, ...normalizeTuning(Object.fromEntries((Object.keys(GLOW_BOUNDS) as string[]).map((k) => [k, o[k]]))) };
+        // `color` : « #rrggbb » ou jeton du thème ; absent = la couleur d'accent.
+        case "spots": return { type: "spots", opacity, ...normalizeTuning(Object.fromEntries((Object.keys(GLOW_BOUNDS) as string[]).map((k) => [k, o[k]]))), color: o.color === undefined || o.color === null || o.color === "" ? "" : color(o.color, `${at}.color`) };
+        // Un dessin SVG (« #accent » etc. : jetons {accent}, {bg}… remplacés par les couleurs du thème). Voir core/svg.ts pour ce qui est accepté.
+        case "svg": {
+          const fit = o.fit === undefined ? "cover" : (["cover", "contain", "tile"] as const).find((f) => f === o.fit);
+          if (!fit) throw new Bad(`${at}.fit : cover, contain ou tile`);
+          const align = o.align === undefined ? "center" : (["left", "center", "right"] as const).find((f) => f === o.align);
+          if (!align) throw new Bad(`${at}.align : left, center ou right`);
+          const checked = sanitizeSvg(o.svg, undefined, fit, align);
+          if (!checked.ok) throw new Bad(`${at}.svg : ${checked.error}`);
+          return { type: "svg", svg: String(o.svg), fit, align, tile: num(o.tile, 20, 1200, 200, `${at}.tile`), opacity, side: side(o.side), span: num(o.span, 5, 100, 40, `${at}.span`), edge: edge(o.edge, at) };
+        }
         case "image": {
           const src = String(o.src ?? "");
           if (!IMAGE_RE.test(src)) throw new Bad(`${at}.src : une image envoyée sur le site (/uploads/…) ou une adresse https`);
@@ -92,7 +111,7 @@ export function parseBackground(raw: unknown): { ok: true; layers: Layer[] } | {
           if (!position) throw new Bad(`${at}.position : ${POSITIONS.join(", ")}`);
           return { type: "image", src, fit, position, opacity };
         }
-        default: throw new Bad(`${at}.type : linear, radial, dots, grid, spots ou image`);
+        default: throw new Bad(`${at}.type : linear, radial, dots, grid, spots, svg ou image`);
       }
     });
     return { ok: true, layers };
@@ -129,11 +148,18 @@ function css(c: string, theme: Theme, a = 100, hue = 0): string {
 const stopList = (s: Stop[], theme: Theme) => s.map((x) => `${css(x.color, theme, x.a, x.hue)} ${x.at}%`).join(",");
 
 /** Masque d'estompage d'une couche sur un côté : pleine au bord, transparente à `span` % de la largeur. */
-function fade(side: Side, span: number): string {
+function fade(side: Side, span: number, edge: Edge = "soft"): string {
   if (side === "full") return "";
   const dir = { left: "to right", right: "to left", top: "to bottom", bottom: "to top" }[side];
-  const g = `linear-gradient(${dir},#000 0%,transparent ${span}%)`;
+  // « soft » : s'efface progressivement jusqu'à `span` % ; « hard » : trame pleine jusqu'à `span` %, puis coupée net.
+  const g = edge === "hard" ? `linear-gradient(${dir},#000 ${span}%,transparent ${span}%)` : `linear-gradient(${dir},#000 0%,transparent ${span}%)`;
   return `-webkit-mask-image:${g};mask-image:${g};`;
+}
+
+/** Couleur « #rrggbb » ou jeton du thème → « #rrggbb ». */
+function hexOf(c: string, theme: Theme): string {
+  const hex = (TOKENS as readonly string[]).includes(c) ? (theme[c as keyof Theme] as string) : c;
+  return /^#[0-9a-fA-F]{6}$/.test(hex) ? hex : "#808080";
 }
 
 /** Une couche → les déclarations CSS de son élément (jamais de valeur issue du JSON sans validation préalable). */
@@ -144,13 +170,23 @@ function layerCss(l: Layer, theme: Theme, accent: string): string {
     case "radial": return `${op}background-image:radial-gradient(${Math.round(l.w)}rem ${Math.round(l.h)}rem at ${Math.round(l.x)}% ${Math.round(l.y)}%,${stopList(l.stops, theme)});background-repeat:no-repeat;`;
     case "dots": {
       const dot = css(l.color, theme), s = Math.round(l.size * 10) / 10, gap = Math.round(l.gap);
-      return `${op}background-image:radial-gradient(circle,${dot} ${s}px,transparent ${s + 0.5}px);background-size:${gap}px ${gap}px;${fade(l.side, Math.round(l.span))}`;
+      const d = (at: string) => `radial-gradient(circle at ${at},${dot} ${s}px,transparent ${s + 0.5}px)`;
+      // Quinconce : une tuile d'un pas de large sur deux pas de haut ; la 2e ligne est décalée d'un demi-pas (points aux bords, dupliqués à 0 % et 100 %).
+      const image = l.stagger ? `${d("50% 25%")},${d("0% 75%")},${d("100% 75%")}` : d("50% 50%");
+      return `${op}background-image:${image};background-size:${gap}px ${l.stagger ? gap * 2 : gap}px;${fade(l.side, Math.round(l.span), l.edge)}`;
     }
     case "grid": {
       const line = css(l.color, theme), gap = Math.round(l.gap);
       return `${op}background-image:linear-gradient(${line} 1px,transparent 1px),linear-gradient(90deg,${line} 1px,transparent 1px);background-size:${gap}px ${gap}px;${fade(l.side, Math.round(l.span))}`;
     }
-    case "spots": return `${op}background-image:${spotGradients(l, accent).join(",")};background-repeat:no-repeat;`;
+    case "spots": return `${op}background-image:${spotGradients({ ...l, color: l.color ? hexOf(l.color, theme) : "" }, accent).join(",")};background-repeat:no-repeat;`;
+    case "svg": {
+      const checked = sanitizeSvg(l.svg, theme, l.fit, l.align);
+      if (!checked.ok) return "";
+      const uri = `data:image/svg+xml;base64,${Buffer.from(checked.svg, "utf8").toString("base64")}`;
+      const size = l.fit === "tile" ? `${Math.round(l.tile)}px auto` : "100% 100%";
+      return `${op}background-image:url("${uri}");background-size:${size};background-position:center;background-repeat:${l.fit === "tile" ? "repeat" : "no-repeat"};${fade(l.side, Math.round(l.span), l.edge)}`;
+    }
     case "image": {
       const size = l.fit === "tile" ? "auto" : l.fit;
       return `${op}background-image:url("${l.src}");background-size:${size};background-position:${l.position};background-repeat:${l.fit === "tile" ? "repeat" : "no-repeat"};`;
@@ -166,8 +202,8 @@ export function backgroundCss(layers: Layer[], theme: Theme): string {
 }
 
 /* ───────────── préréglages (adaptés au thème : ils utilisent les jetons accent/bg) ───────────── */
-export type BackgroundPreset = "none" | "dusk" | "grid" | "custom";
-export const BACKGROUND_PRESETS: Record<Exclude<BackgroundPreset, "none" | "custom">, Layer[]> = {
+export type BackgroundPreset = "none" | "dusk" | "grid" | "svg" | "custom";
+export const BACKGROUND_PRESETS: Record<Exclude<BackgroundPreset, "none" | "custom" | "svg">, Layer[]> = {
   // lueur d'aube : l'accent monte du bas de la page
   dusk: [
     { type: "linear", angle: 0, opacity: 100, stops: [{ color: "accent", at: 0, a: 26 }, { color: "accent", at: 55, a: 0 }] },
@@ -176,12 +212,15 @@ export const BACKGROUND_PRESETS: Record<Exclude<BackgroundPreset, "none" | "cust
   // fine grille technique qui s'efface vers le bas
   grid: [{ type: "grid", color: "fg", gap: 48, opacity: 7, side: "top", span: 85 }],
 };
-export const isPreset = (v: unknown): v is BackgroundPreset => v === "none" || v === "custom" || (typeof v === "string" && v in BACKGROUND_PRESETS);
+export const isPreset = (v: unknown): v is BackgroundPreset => v === "none" || v === "custom" || v === "svg" || (typeof v === "string" && v in BACKGROUND_PRESETS);
 
 /** Couches effectives : préréglage ou description personnalisée, avec une image de fond éventuelle en dessous. */
-export function effectiveLayers(preset: BackgroundPreset, custom: string, image: string | null): Layer[] {
+export type SvgBackground = { markup: string; fit: "cover" | "contain" | "tile"; align?: "left" | "center" | "right"; tile: number };
+
+export function effectiveLayers(preset: BackgroundPreset, custom: string, image: string | null, svg?: SvgBackground): Layer[] {
   let layers: Layer[] = [];
   if (preset === "custom") { const p = parseBackground(custom); if (p.ok) layers = p.layers; }
+  else if (preset === "svg") { const p = parseBackground([{ type: "svg", svg: svg?.markup ?? "", fit: svg?.fit ?? "cover", align: svg?.align ?? "center", tile: svg?.tile ?? 200 }]); if (p.ok) layers = p.layers; }
   else if (preset !== "none") layers = BACKGROUND_PRESETS[preset];
   if (image) {
     const base = parseBackground([{ type: "image", src: image, fit: "cover", position: "center" }]);

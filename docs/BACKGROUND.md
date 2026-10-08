@@ -29,12 +29,14 @@ Une description est **une liste de couches** (6 au plus), de la plus basse à la
 |---|---|---|
 | `linear` | dégradé linéaire | `angle` 0–360 (180), `stops` |
 | `radial` | tache ou dégradé radial | `x`, `y` en % (50, 50) ; `w`, `h` en rem, 10–200 (60, 40) ; `stops` |
-| `dots` | trame de points | `color` (#ffffff), `size` en px 1–12 (2), `gap` en px 8–80 (28), `side`, `span` |
+| `dots` | trame de points | `color` (#ffffff), `size` = **rayon** en px 1–12 (2), `gap` = pas en px 8–80 (28), `stagger` (`false`), `side`, `span`, `edge` |
 | `grid` | fine grille | `color` (fg), `gap` en px 16–160 (48), `opacity` (10), `side`, `span` |
-| `spots` | halo de taches teintées de l'accent | `count` 1–8, `size` 30–120 (rem), `variance` 0–100, `hue` 0–180, `intensity` 5–50, `seed` 1–9999 |
+| `spots` | halo de taches | `count` 1–8, `size` 30–120 (rem), `variance` 0–100, `hue` 0–180, `intensity` 5–50, `seed` 1–9999, `color` (`#rrggbb` ou jeton ; absent = l'accent) |
 | `image` | une image | `src` (envoi du site `/uploads/…` ou adresse `https://…`), `fit` `cover` / `contain` / `tile` (cover), `position` (center) |
 
-**Estompage** (`dots` et `grid`) : `side` vaut `full` (partout, par défaut), `left`, `right`, `top` ou `bottom` ; avec un côté, la couche est pleine au bord de ce côté et s'efface complètement à `span` % de la largeur (ou de la hauteur), 5–100.
+**Quinconce** (`dots`) : avec `"stagger": true`, une ligne de points sur deux est décalée d'un demi-pas (trame de demi-teintes) ; par défaut les points forment une grille régulière.
+
+**Estompage** (`dots` et `grid`) : `side` vaut `full` (partout, par défaut), `left`, `right`, `top` ou `bottom` ; avec un côté, la couche est pleine au bord de ce côté et s'efface complètement à `span` % de la largeur (ou de la hauteur), 5–100. Pour les points, `"edge": "hard"` coupe la trame net à `span` % au lieu de l'estomper (`"soft"`, par défaut).
 
 ## Exemples
 
@@ -43,7 +45,7 @@ Une description est **une liste de couches** (6 au plus), de la plus basse à la
 ```json
 [
   { "type": "linear", "angle": 180, "stops": [ { "color": "#10161c", "at": 0 }, { "color": "#1d2b3a", "at": 100 } ] },
-  { "type": "dots", "color": "#ffffff", "size": 2, "gap": 30, "opacity": 40, "side": "bottom", "span": 60 }
+  { "type": "dots", "color": "#ffffff", "size": 2, "gap": 30, "stagger": true, "opacity": 40, "side": "bottom", "span": 60 }
 ]
 ```
 

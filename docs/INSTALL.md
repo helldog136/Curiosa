@@ -122,3 +122,8 @@ secret de session) et `.env`.
 ## Sécurité des dépendances
 
 `npm run audit` interroge les failles connues (CVE) des dépendances de production. Il est lancé **côté projet**, jamais chez l'utilisateur : en CI à chaque push, chaque PR, chaque lundi (`.github/workflows/security.yml`) et avant chaque release (`release.yml`). Une faille de gravité haute fait échouer la CI, donc empêche de publier une release ; une release publiée est déjà saine, et la mise à jour proposée dans l'admin n'a rien à vérifier. Les exceptions justifiées sont dans `scripts/audit.mjs`.
+
+## Statistiques de visite et nouveautés
+
+- **Statistiques anonymes** (Réglages → Apparence… « Compter les visites ») : des compteurs par jour affichés sur le tableau de bord (visiteurs, pages les plus lues, provenances). Jamais d'adresse IP, de cookie ni d'identifiant conservé : un visiteur est reconnu seulement dans la journée par une empreinte à sel quotidien détruite le lendemain. Les robots, les visiteurs qui refusent le suivi (Do Not Track, Global Privacy Control) et l'équipe connectée à l'admin ne sont pas comptés. Aucun service externe.
+- **Pastilles de nouveautés** : le navigateur du visiteur garde la date de sa dernière visite (cookies `curiosa_seen` et `curiosa_since`, sans donnée personnelle) ; le menu signale ce qui est nouveau depuis. Voir `news` dans [MODULES.md](MODULES.md).

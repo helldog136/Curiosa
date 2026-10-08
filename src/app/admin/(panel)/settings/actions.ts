@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { adminCtx } from "@/core/admin";
 import { isHexColor } from "@/core/color";
 import { isBackgroundImage, isPreset, parseBackground } from "@/core/background";
+import { sanitizeSvg } from "@/core/svg";
 import { isGlowLevel, normalizeTuning } from "@/core/glow";
 import { isKnownLocale } from "@/core/i18n/locales";
 import { audit } from "@/core/permissions";
@@ -28,6 +29,8 @@ export async function saveSettings(_prev: ActionState, formData: FormData): Prom
   const font = String(formData.get("font"));
   const logo = String(formData.get("logo") ?? "").trim();
   if (logo && !(logo.startsWith("/uploads/") || /^https?:\/\//.test(logo))) return { error: t("error.badUrl") };
+  const favicon = String(formData.get("favicon") ?? "").trim();
+  if (favicon && !(favicon.startsWith("/uploads/") || /^https:\/\//.test(favicon))) return { error: t("error.badUrl") };
 
   await setSetting("i18n.default", defaultLocale);
   await setSetting("i18n.enabled", locales);
@@ -48,6 +51,9 @@ export async function saveSettings(_prev: ActionState, formData: FormData): Prom
   }
   if (logo) await setSetting("site.logo", logo);
   else await deleteSetting("site.logo");
+  await setSetting("stats.enabled", formData.get("statsEnabled") === "on");
+  if (favicon) await setSetting("site.favicon", favicon);
+  else await deleteSetting("site.favicon");
   if (adv) await setSetting("site.contactEmail", String(formData.get("contactEmail") ?? "").trim());
   // Fond de page : préréglage (tous modes), description personnalisée (avancé), image de fond. Une description invalide n'enregistre rien.
   const bgPreset = String(formData.get("bgPreset") ?? "none");
@@ -58,7 +64,21 @@ export async function saveSettings(_prev: ActionState, formData: FormData): Prom
     const parsed = parseBackground(bgCustom);
     if (!parsed.ok) return { error: `${t("settings.bg.invalid")} ${parsed.error}` };
   }
-  await setSetting("theme.bgPreset", isPreset(bgPreset) && (adv || bgPreset !== "custom") ? bgPreset : "none");
+  // Dessin SVG (avancé) : validé avant tout enregistrement, avec le message précis de ce qui ne passe pas.
+  const bgSvg = adv ? String(formData.get("bgSvg") ?? "").trim() : null;
+  const bgSvgFit = ["contain", "tile"].includes(String(formData.get("bgSvgFit"))) ? String(formData.get("bgSvgFit")) : "cover";
+  const bgSvgAlign = ["left", "right"].includes(String(formData.get("bgSvgAlign"))) ? String(formData.get("bgSvgAlign")) : "center";
+  if (bgSvg) {
+    const checked = sanitizeSvg(bgSvg, undefined, bgSvgFit as "cover" | "contain" | "tile", bgSvgAlign as "left" | "center" | "right");
+    if (!checked.ok) return { error: `${t("settings.bg.invalidSvg")} ${checked.error}` };
+  }
+  await setSetting("theme.bgPreset", isPreset(bgPreset) && (adv || (bgPreset !== "custom" && bgPreset !== "svg")) ? bgPreset : "none");
+  if (bgSvg !== null) {
+    await setSetting("theme.bgSvg", bgSvg);
+    await setSetting("theme.bgSvgFit", bgSvgFit);
+    await setSetting("theme.bgSvgAlign", bgSvgAlign);
+    await setSetting("theme.bgSvgTile", Math.min(1200, Math.max(20, Math.round(Number(formData.get("bgSvgTile")) || 200))));
+  }
   if (bgCustom !== null) await setSetting("theme.bgCustom", bgCustom);
   if (bgImage) await setSetting("theme.bgImage", bgImage);
   else await deleteSetting("theme.bgImage");
@@ -68,7 +88,9 @@ export async function saveSettings(_prev: ActionState, formData: FormData): Prom
   // « personnalisé » n'existe qu'en mode avancé ; en mode simple on ne touche pas aux réglages fins déjà enregistrés.
   await setSetting("theme.glow", isGlowLevel(glow) && (adv || glow !== "custom") ? glow : "none");
   if (adv) {
-    const raw = Object.fromEntries(["count", "size", "variance", "hue", "intensity", "seed"].map((k) => [k, formData.get(`glow_${k}`)]));
+    const raw: Record<string, unknown> = Object.fromEntries(["count", "size", "variance", "hue", "intensity", "seed"].map((k) => [k, formData.get(`glow_${k}`)]));
+    // Couleur propre aux taches, sauf si « suivre la couleur d'accent » est coché.
+    raw.color = formData.get("glow_followAccent") === "on" ? "" : String(formData.get("glow_color") ?? "");
     await setSetting("theme.glow.custom", normalizeTuning(raw));
   }
   if (adv) await setSetting("theme.font", ["sans", "serif", "mono"].includes(font) ? font : "sans");

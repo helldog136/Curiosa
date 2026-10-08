@@ -42,9 +42,9 @@ export function ThemePicker({ background, accent, advanced, names, labels }: {
       {advanced ? (
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block text-sm"><span className={ui.label}>{labels.background}</span>
-            <input name="background" type="color" value={bg} onChange={(e) => setBg(e.target.value)} className={ui.input} /></label>
+            <input name="background" type="color" value={bg} onChange={(e) => setBg(e.target.value)} className={ui.colorInput} /></label>
           <label className="block text-sm"><span className={ui.label}>{labels.accent}</span>
-            <input name="accent" type="color" value={ac} onChange={(e) => setAc(e.target.value)} className={ui.input} /></label>
+            <input name="accent" type="color" value={ac} onChange={(e) => setAc(e.target.value)} className={ui.colorInput} /></label>
         </div>
       ) : (
         <>

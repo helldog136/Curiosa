@@ -2,6 +2,8 @@ import { adminCtx } from "@/core/admin";
 import { prisma } from "@/core/db";
 import { getAdminNav } from "@/core/modules/adminNav";
 import { ui } from "@/components/admin/ui";
+import { getUpdateCheck } from "@/core/updates/service";
+import { statsEnabled, statsSummary } from "@/core/stats";
 
 export default async function Dashboard({ searchParams }: { searchParams: Promise<{ denied?: string; welcome?: string }> }) {
   const { t, config, advanced, user } = await adminCtx("editor");
@@ -15,6 +17,10 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
     prisma.moduleInstance.count(),
     prisma.module.count({ where: { enabled: true } }),
   ]);
+  const todo = nav.flatMap((g) => g.items).filter((i) => i.badge > 0);
+  const updateAvailable = user.role === "owner" && (await getUpdateCheck().catch(() => null))?.available === true;
+  const stats = (await statsEnabled()) ? await statsSummary() : null;
+  const peak = Math.max(1, ...(stats?.days.map((d) => d.visitors) ?? [1]));
   const stat = (label: string, value: number, href: string) => (
     <a href={href} className={`${ui.card} block transition hover:-translate-y-0.5 hover:border-accent`}>
       <p className="text-3xl font-bold">{value}</p>
@@ -63,6 +69,45 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
                 <p className="mt-1 text-sm leading-5 text-muted">{t("dashboard.viewSiteHelp")}</p>
             </a>
           </div>
+        </section>
+      )}
+      {(todo.length > 0 || updateAvailable) && (
+        <section aria-label={t("dashboard.todo")} data-testid="todo" className={`${ui.card} space-y-2`}>
+          <h2 className="text-lg font-semibold">{t("dashboard.todo")}</h2>
+          <ul className="space-y-1.5">
+            {todo.map((i) => (
+              <li key={i.id}><a href={i.content ? `/admin/entries?c=${i.key}` : `/admin/instances/${i.id}`} className="flex items-center justify-between gap-3 rounded-xl px-3 py-2 hover:bg-accent/10"><span>{i.icon} {i.name}</span><span className="rounded-full bg-accent px-2 text-sm font-semibold text-accent-fg">{i.badge} {t("nav.badge.todo")}</span></a></li>
+            ))}
+            {updateAvailable && <li><a href="/admin/updates" className="flex items-center justify-between gap-3 rounded-xl px-3 py-2 hover:bg-accent/10"><span>⬆️ {t("nav.updates")}</span><span className="rounded-full bg-accent px-2 text-sm font-semibold text-accent-fg">{t("nav.badge.update")}</span></a></li>}
+          </ul>
+        </section>
+      )}
+      {stats && (
+        <section aria-label={t("dashboard.visits")} data-testid="visits" className={`${ui.card} space-y-4`}>
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="text-lg font-semibold">{t("dashboard.visits")}</h2>
+            <p className="text-xs text-muted">{t("dashboard.visitsPrivacy")}</p>
+          </div>
+          <div className="grid grid-cols-3 gap-3 text-center">
+            {([["today", stats.totals.today], ["last7", stats.totals.last7], ["last30", stats.totals.last30]] as const).map(([k, v]) => (
+              <div key={k}><p className="text-2xl font-bold">{v.visitors}</p><p className="text-xs text-muted">{t(`dashboard.visits.${k}`)}</p></div>
+            ))}
+          </div>
+          <div className="flex h-20 items-end gap-px" role="img" aria-label={t("dashboard.visitsChart")}>
+            {stats.days.map((d) => (
+              <div key={d.day} title={`${d.day} : ${d.visitors}`} className="min-h-px flex-1 rounded-t bg-accent/70" style={{ height: `${Math.max(2, (d.visitors / peak) * 100)}%`, opacity: d.visitors ? 1 : 0.25 }} />
+            ))}
+          </div>
+          {(stats.topPages.length > 0 || stats.topSources.length > 0) && (
+            <div className="grid gap-4 sm:grid-cols-2">
+              {([["dashboard.topPages", stats.topPages.map((p) => [p.path, p.views] as const)], ["dashboard.topSources", stats.topSources.map((p) => [p.host, p.views] as const)]] as const).map(([title, rows]) => rows.length > 0 && (
+                <div key={title}>
+                  <h3 className="mb-1 text-sm font-semibold">{t(title)}</h3>
+                  <ul className="space-y-0.5 text-sm">{rows.map(([label, n]) => <li key={label} className="flex justify-between gap-3"><span className="truncate">{label}</span><span className="text-muted">{n}</span></li>)}</ul>
+                </div>
+              ))}
+            </div>
+          )}
         </section>
       )}
       {advanced && <div className="grid gap-4 sm:grid-cols-3">

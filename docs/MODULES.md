@@ -155,7 +155,7 @@ Chaque réglage est un objet (`SettingField`) :
 | `advanced` | `true` : réglage technique, masqué dans la version simplifiée de l'admin ; **sa valeur par défaut s'applique** — donnez-en toujours une. |
 | `group` | `"appearance"` : réglage d'apparence, regroupé sous « Apparence de ce module ». |
 
-Types : `text`, `textarea`, `url`, `number`, `boolean`, `select`, `color`, `image` (envoi de fichier ou URL), `secret`
+Types : `text`, `textarea`, `url`, `number`, `boolean`, `select`, `color`, `image` (envoi de fichier ou URL), `video` (envoi d'une vidéo MP4 ou WebM de 50 Mo au plus, réservée aux fichiers du site : `/uploads/…`), `secret`
 (jamais réaffiché une fois enregistré ; ne l'écrivez jamais dans un journal).
 
 - **Valeurs** : `ctx.setting` renvoie ce que l'admin a saisi, **sans garantie de type** (un nombre peut arriver en texte, une
@@ -294,6 +294,8 @@ un slot en échec disparaît, une section en échec donne `[]`, une page en éch
 |---|---|---|---|
 | `slots.<emplacement>` | on rend l'emplacement, pour chaque instance active | `SlotContext` | blocs, `null` ou `undefined` |
 | `sections.<id>` | on rend un placement d'accueil | `ctx`, `options` du placement | blocs, `null` ou `undefined` |
+| `adminBadge` | le cœur construit le menu de l'admin | `ctx` | un nombre : éléments qui attendent l'équipe (pastille sur le lien du menu et carte « À traiter » du tableau de bord) ; 0 = rien |
+| `news` | le cœur construit le menu du site | `ctx` (avec `ctx.visit.lastVisit`) | `true` s'il y a du nouveau pour ce visiteur (pastille sur le lien du menu) |
 | `page` | on visite le chemin de l'instance | `ctx`, `{ segments }` | `PageResult` ou `null` |
 | `overlay` | on visite `/overlays/<clé>` | `ctx`, `{ query }` (`URLSearchParams`) | `OverlayResult` |
 | `exports.<sujet>` | un consommateur (ou le cœur) collecte | `ctx`, `{ locale, limit, tags }` | liste d'objets au format du sujet |
@@ -429,6 +431,20 @@ Ce que fait le cœur :
 - **Plusieurs fournisseurs du même service** (un doublon, ou un changement de fournisseur) : dès qu'un deuxième module qui offre le service est activé (ou qu'une de ses instances est créée), l'admin est invité (page *Modules* → *Services offerts par plusieurs modules*) à choisir un **maître** — il reçoit les appels et c'est sa réponse que voit l'appelant — et des **répliques**, qui reçoivent aussi les appels qui **écrivent**, au mieux (la panne d'une réplique ne fait jamais échouer l'appel ; celle du maître, si). Le fournisseur peut déclarer ses méthodes de lecture dans `offers` (`"readOnly": ["count"]`) : elles ne sont jamais répliquées. Tant que rien n'est choisi, le premier fournisseur (par clé d'instance) est le maître, sans réplique ; un choix périmé (maître retiré) retombe sur le premier. **Une réplique reçoit les appels futurs** : les données déjà reçues par l'ancien fournisseur ne sont pas copiées (aucun conflit à fusionner, mais un historique réparti : pour une bascule propre, mettez le nouveau en maître, gardez l'ancien en réplique le temps voulu, puis retirez-le).
 - Le `ctx` reçu par la méthode est celui de l'instance **fournisseur** : elle écrit dans **son** stockage, jamais dans celui de l'appelant.
 
+### `adminBadge` : ce qui attend l'équipe
+
+`adminBadge: async (ctx) => (await ctx.api.store.list("messages", { limit: 500 })).filter((m) => !m.data.read).length` fait apparaître ce nombre dans une pastille sur le lien de l'instance dans le menu de l'admin, et la liste sur le tableau de bord (« À traiter »). Rendez-la rapide (elle s'exécute à chaque page d'admin) ; une erreur n'affiche simplement pas de pastille. Le cœur ajoute lui-même une pastille « Mises à jour » pour le propriétaire quand une version est disponible.
+
+### `news` : y a-t-il du nouveau depuis la dernière visite ?
+
+Le cœur retient, dans le navigateur du visiteur, la date de son passage précédent (deux cookies qui ne contiennent que des dates) et affiche une **pastille** sur le lien du menu des instances où il y a du nouveau. Sans `news`, la règle du cœur s'applique : des entrées **publiées** (ni brouillon ni expirées) depuis cette date. Un module qui compte autre chose (un message, un résultat…) fournit sa propre règle :
+
+```js
+news: async (ctx) => (await ctx.api.store.get("lastPostAt") ?? 0) > ctx.visit.lastVisit.getTime(),
+```
+
+`ctx.visit.lastVisit` vaut le 1er janvier 1970 pour un visiteur inconnu ; le cœur n'affiche alors aucune pastille (il n'a rien « manqué »). La date est figée pour toute la durée d'une visite : la pastille ne disparaît pas dès la deuxième page ouverte. Une erreur dans `news` n'affiche simplement pas de pastille.
+
 ### `tasks` : travail en arrière-plan
 
 Pour surveiller un service externe, publier à l'heure, envoyer une annonce : déclarez des tâches, le cœur les exécute (pas de cron à installer).
@@ -467,6 +483,7 @@ Chaque fonction du module reçoit un `ctx` (`ModuleContext`) ; les slots reçoiv
 | `ctx.setting("clé")` | réglage de l'instance pour la langue courante, avec sa valeur par défaut (voir « Réglages ») |
 | `ctx.t("clé", { vars })` | texte de `locales/<langue>.json` du module, `{variable}` remplacée. Repli : langue par défaut, puis `en`, puis les textes du cœur, puis la clé elle-même. |
 | `ctx.theme` | thème du site : `{ accent, accentFg, bg, surface, fg, muted, line, font, fontKey }` (couleurs `#RRGGBB`, `font` = pile CSS, `fontKey` = `sans`, `serif` ou `mono`) |
+| `ctx.visit` | `{ lastVisit: Date }` : le passage précédent du visiteur (cookie tenu par le cœur, rien de personnel) ; **1er janvier 1970** s'il est inconnu |
 | `ctx.page` | (slots `page.*` et `entry.*`) `{ key, basePath }` de l'instance dont on affiche la page |
 | `ctx.entry` | (slots `entry.*`) `{ id, title, slug }` de l'entrée affichée |
 | `ctx.api` | tout ce que le cœur met à disposition (ci-dessous) |
@@ -516,7 +533,8 @@ Un module renvoie des **blocs déclaratifs** ; le cœur se charge du rendu, des 
 | `swatches` | `items: [{ name, hex, role? }]` — pastilles de couleur avec code copiable |
 | `downloads` | `items: [{ src, label, detail? }]` — images à télécharger, avec aperçu |
 | `copy` | `text`, `label?` — texte à copier d'un clic |
-| `hero` | `title`, `text?`, `image?` |
+| `hero` | `title`, `text?`, `image?`, `video?` (fichier envoyé sur le site), `videoPoster?`, `videoSound?` |
+| `panel` | `kind` (`media`, `tabs`, `stats`, `cta`, `video`), `eyebrow?`, `title?`, `text?` (Markdown), `button?` (`label`, `href`), `images?` (jusqu'à 3), `imageSide?`, `tone?` (`plain`, `surface`, `accent`), `bg?` (`src`, `size`, `position`, `veil`), `items?` (`title`, `heading?`, `text?`, `image?`), `video?` — un morceau de page ; voir le module livré « Blocs de page » |
 | `banner` | `text`, `href?`, `tone?` (`info` · `success` · `warning`) |
 | `links` | `items: [{ label, href, icon? }]` — les adresses non sûres deviennent `#` |
 | `entries` | `instance` (clé), `limit?`, `title?`, `link?`, `pick?` (`"random"`) — entrées d'une instance, rendues par le cœur |

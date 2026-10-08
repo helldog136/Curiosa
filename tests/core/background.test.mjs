@@ -69,7 +69,7 @@ test("fond : CSS produit — dégradé, points estompés sur un côté, grille, 
   ]), theme);
   assert.match(css, /^\.cbg\{position:fixed;inset:0;z-index:-1;pointer-events:none;overflow:hidden\}/);
   assert.match(css, /\.cbg>i:nth-child\(1\)\{background-image:linear-gradient\(90deg,rgba\(11,20,22,1\) 20%,rgba\(26,154,163,0\.4\) 100%\);\}/);
-  assert.match(css, /\.cbg>i:nth-child\(2\)\{opacity:0\.85;background-image:radial-gradient\(circle,rgba\(255,255,255,1\) 2px,transparent 2\.5px\);background-size:28px 28px;-webkit-mask-image:linear-gradient\(to right,#000 0%,transparent 40%\)/);
+  assert.match(css, /\.cbg>i:nth-child\(2\)\{opacity:0\.85;background-image:radial-gradient\(circle at 50% 50%,rgba\(255,255,255,1\) 2px,transparent 2\.5px\);background-size:28px 28px;-webkit-mask-image:linear-gradient\(to right,#000 0%,transparent 40%\)/);
   assert.match(css, /nth-child\(3\).*linear-gradient\(rgba\(.*\) 1px,transparent 1px\),linear-gradient\(90deg.*mask-image:linear-gradient\(to bottom,#000 0%,transparent 80%\)/);
   assert.match(css, /nth-child\(4\)\{opacity:0\.5;background-image:url\("\/uploads\/[0-9a-f-]{36}\.webp"\);background-size:auto;background-position:center;background-repeat:repeat;\}/);
   assert.equal(B.backgroundCss([], theme), "");
@@ -108,15 +108,41 @@ test("fond : les préréglages sont valides, s'adaptent au thème, et l'image de
 
 test("fond : branché sur le site et l'admin (préréglage en tous modes, description et « personnalisé » en avancé, validation avant enregistrement)", () => {
   const layout = fs.readFileSync("src/app/(site)/layout.tsx", "utf8");
-  assert.match(layout, /effectiveLayers\(localized\.bg\.preset, localized\.bg\.custom, localized\.bg\.image\)/);
+  assert.match(layout, /effectiveLayers\(localized\.bg\.preset, localized\.bg\.custom, localized\.bg\.image, localized\.bg\.svg\)/);
   assert.match(layout, /className="cbg" aria-hidden="true"/);
   const page = fs.readFileSync("src/app/admin/(panel)/settings/page.tsx", "utf8");
   for (const n of ["bgPreset", "bgImage", "bgCustom"]) assert.match(page, new RegExp(`name="${n}"`));
   assert.match(page, /advanced \? \[\{ value: "custom"/);
-  assert.ok(/\{advanced && \(\s*<TextArea name="bgCustom"/.test(page), "la description JSON n'est offerte qu'en mode avancé");
+  assert.ok(/\{advanced && \(\s*<ShowWhen field="bgPreset" equals="custom" initial=\{config\.bg\.preset\}>\s*<TextArea name="bgCustom"/.test(page), "la description JSON n'est offerte qu'en mode avancé, et seulement si « Personnalisé » est choisi");
   const actions = fs.readFileSync("src/app/admin/(panel)/settings/actions.ts", "utf8");
   assert.match(actions, /parseBackground\(bgCustom\)/);
   assert.match(actions, /isBackgroundImage\(bgImage\)/);
-  assert.match(actions, /adv \|\| bgPreset !== "custom"/);
+  assert.match(actions, /adv \|\| \(bgPreset !== "custom" && bgPreset !== "svg"\)/);
   assert.ok(fs.existsSync("docs/BACKGROUND.md"));
+});
+
+test("fond : points en quinconce (une ligne sur deux décalée d'un demi-pas) et arrêt net de la trame", () => {
+  const css = (o) => B.backgroundCss(ok([{ type: "dots", color: "#ffffff", size: 3, gap: 27, ...o }]), theme);
+  const regular = css({});
+  assert.ok(regular.includes("background-size:27px 27px") && !regular.includes("0% 75%"), "par défaut : grille régulière");
+  const st = css({ stagger: true });
+  // tuile d'un pas de large sur deux de haut : une ligne de points au centre, la suivante décalée d'un demi-pas (aux bords)
+  assert.match(st, /radial-gradient\(circle at 50% 25%,.*\),radial-gradient\(circle at 0% 75%,.*\),radial-gradient\(circle at 100% 75%,.*\);background-size:27px 54px;/);
+  const soft = css({ side: "left", span: 22 }), hard = css({ side: "left", span: 22, edge: "hard" });
+  assert.match(soft, /mask-image:linear-gradient\(to right,#000 0%,transparent 22%\)/);
+  assert.match(hard, /mask-image:linear-gradient\(to right,#000 22%,transparent 22%\)/);
+  assert.match(bad([{ type: "dots", edge: "flou" }]), /edge/);
+  assert.match(bad([{ type: "dots", stagger: "oui" }]), /stagger/);
+  assert.deepEqual(ok([{ type: "dots", stagger: true, edge: "hard" }]).map((l) => [l.stagger, l.edge]), [[true, "hard"]]);
+  assert.deepEqual(ok([{ type: "dots" }]).map((l) => [l.stagger, l.edge]), [[false, "soft"]], "valeurs par défaut");
+});
+
+test("fond : la couche « spots » accepte une couleur (jeton du thème ou #rrggbb) ; absente, elle suit l'accent", () => {
+  const hueOf = (css) => +/hsla\((\d+),/.exec(css)[1];
+  const base = B.backgroundCss(ok([{ type: "spots", count: 1, hue: 0 }]), theme);
+  const pink = B.backgroundCss(ok([{ type: "spots", count: 1, hue: 0, color: "#e8337a" }]), theme);
+  const token = B.backgroundCss(ok([{ type: "spots", count: 1, hue: 0, color: "fg" }]), theme);
+  assert.ok(Math.abs(hueOf(pink) - 337) < 6 && Math.abs(hueOf(base) - hueOf(pink)) > 100);
+  assert.ok(token.includes("hsla("));
+  assert.match(bad([{ type: "spots", color: "rouge" }]), /couleur/);
 });

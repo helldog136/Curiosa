@@ -74,7 +74,7 @@ export function makeApi(instance: InstanceView, locale: string): ModuleApi {
         const views = await listEntries({ instance: target, locale: loc ?? config.defaultLocale, limit });
         return views.map((e) => ({
           id: e.id, slug: e.slug, cover: e.cover, icon: e.icon, tags: e.tags, fields: e.fields,
-          title: e.title, summary: e.summary, url: e.url, code: e.code,
+          title: e.title, summary: e.summary, body: e.body, url: e.url, code: e.code,
           path: entryPath(e, config.defaultLocale), publishedAt: e.publishedAt,
         }));
       },

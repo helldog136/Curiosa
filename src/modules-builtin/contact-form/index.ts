@@ -12,7 +12,7 @@ export const manifest: ParsedManifest = {
     fr: "Ajoute un formulaire de contact sous la page de votre choix. Chaque message devient un contact à vérifier dans votre carnet d'adresses (le module Contacts, activé pour vous).",
   },
   author: "Helldog136",
-  license: "MIT",
+  license: "Curiosa License 1.0",
   icon: "✉️",
   consumes: [],
   provides: [],

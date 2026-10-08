@@ -18,8 +18,12 @@ function newestMigration() {
 function ensureTemplate() {
   fs.mkdirSync(tmp, { recursive: true });
   if (fs.existsSync(template) && fs.statSync(template).mtimeMs > newestMigration()) return;
-  fs.rmSync(template, { force: true });
-  execFileSync("npx", ["prisma", "migrate", "deploy"], { cwd: root, env: { ...process.env, DATABASE_URL: `file:${template}` }, stdio: "pipe" });
+  // Les fichiers de test tournent en parallèle : à froid, plusieurs processus arrivent ici en même temps. Chacun construit SA copie
+  // sous un nom unique puis la pose d'un coup (rename atomique) : personne ne lit jamais une base à moitié construite.
+  const mine = path.join(tmp, `template.${process.pid}.db`);
+  fs.rmSync(mine, { force: true });
+  execFileSync("npx", ["prisma", "migrate", "deploy"], { cwd: root, env: { ...process.env, DATABASE_URL: `file:${mine}` }, stdio: "pipe" });
+  fs.renameSync(mine, template);
 }
 
 /**
@@ -36,7 +40,7 @@ export async function useTestDb() {
   process.env.DATA_DIR = dir;
   process.env.CURIOSA_ALLOW_LOCAL_MODULES = "1";
   const { prisma } = await import("@/core/db");
-  const tables = ["ApiToken", "AuditLog", "ModuleRecord", "EntryTranslation", "Entry", "InstanceTranslation", "ModuleInstance", "Redirect", "Setting", "Module", "User"];
+  const tables = ["VisitSeen", "VisitDaily", "ApiToken", "AuditLog", "ModuleRecord", "EntryTranslation", "Entry", "InstanceTranslation", "ModuleInstance", "Redirect", "Setting", "Module", "User"];
   return {
     dir,
     prisma,

@@ -20,7 +20,7 @@ export const manifest: ParsedManifest = {
     fr: "Une page publique qui présente votre identité à la presse et aux partenaires : présentation, logo, couleurs, police, contact. Elle n'affiche que ce que vous réglez dans Réglages — rien à entretenir ici.",
   },
   author: "Helldog136",
-  license: "MIT",
+  license: "Curiosa License 1.0",
   icon: "📰",
   type: "widget",
   instances: "single",
