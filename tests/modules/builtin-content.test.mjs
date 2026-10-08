@@ -8,13 +8,14 @@ const { effectiveType, hasPage } = await import("@/core/modules/manifest");
 
 const content = { blog, links, codes, pages, collection };
 
-test("registre builtin : identifiants uniques, les 11 modules livrés présents", () => {
+test("registre builtin : identifiants uniques, les 10 modules livrés présents", () => {
   const ids = BUILTIN_MODULES.map((m) => m.manifest.id);
   assert.equal(new Set(ids).size, ids.length);
-  for (const id of ["hero", "blog", "links", "codes", "pages", "collection", "contact-form", "live-status", "ticker-overlay", "press-kit", "blocks"]) {
+  for (const id of ["hero", "blog", "links", "codes", "pages", "collection", "contact-form", "live-status", "ticker-overlay", "press-kit"]) {
     assert.ok(ids.includes(id), id);
   }
-  assert.equal(ids.length, 11);
+  assert.equal(ids.length, 10);
+  assert.ok(!ids.includes("blocks"), "« Blocs de page » est une fonction du cœur, plus un module (migration automatique)");
 });
 
 test("registre builtin : chaque module a manifeste valide, sections/permissions cohérentes, pas de MCP orphelin", async () => {

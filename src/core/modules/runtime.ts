@@ -1,3 +1,4 @@
+import { blockToBlocks, CORE_INSTANCE, CORE_SECTION, normalizeBlockDef } from "../homeBlocks";
 import type { Block, Slot } from "../blocks";
 import { pickName } from "../instances";
 import { getSiteConfig } from "../settings";
@@ -48,6 +49,12 @@ export async function runSection(
   options: Record<string, unknown>,
   locale: string,
 ): Promise<Block[]> {
+  // Blocs de page du cœur (créés dans Page d'accueil) : aucune instance de module.
+  if (instanceKey === CORE_INSTANCE) {
+    if (sectionId !== CORE_SECTION) return [];
+    const config = await getSiteConfig();
+    return blockToBlocks(normalizeBlockDef(options.block, config.locales), locale, config.defaultLocale);
+  }
   const active = (await getActiveInstances()).find((a) => a.instance.key === instanceKey);
   if (!active) return [];
   const { instance, mod } = active;

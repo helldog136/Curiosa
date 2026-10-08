@@ -1,3 +1,4 @@
+import { migrateBlocksModule } from "../migrations/blocksToCore";
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -49,6 +50,8 @@ async function syncBuiltins(): Promise<void> {
           await prisma.module.update({ where: { id: existing.id }, data: { version: b.manifest.version } });
         }
       }
+      // Modules retirés du cœur et devenus des fonctions du cœur : leurs données sont converties une fois (voir core/migrations).
+      await migrateBlocksModule().catch((error) => console.error("[migration] blocs de page :", error));
       globalCache.curiosaBuiltinsSynced = true;
     } finally {
       globalCache.curiosaBuiltinsSyncing = null;
