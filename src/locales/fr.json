@@ -674,5 +674,17 @@
   "settings.bgSvgAlignHelp": "Quand la fenêtre n'a pas les proportions du dessin, le dessin est recadré : choisissez le côté à garder visible.",
   "settings.bgSvgAlign.center": "Centré",
   "settings.bgSvgAlign.left": "À gauche",
-  "settings.bgSvgAlign.right": "À droite"
+  "settings.bgSvgAlign.right": "À droite",
+  "settings.favicon": "Icône de l'onglet (favicon)",
+  "settings.faviconHelp": "Une image carrée (png, jpg, webp ou gif ; 64 × 64 px ou plus). Sans image, le site fabrique une icône à partir de ses couleurs.",
+  "theme.admin": "Thème de l'admin",
+  "theme.admin.auto": "Auto",
+  "theme.admin.light": "Clair",
+  "theme.admin.dark": "Sombre",
+  "instances.sort": "Ordre d'affichage",
+  "instances.sortHelp": "Par défaut, le plus récent d'abord. Une entrée « mise en avant » passe toujours devant.",
+  "sort.newest": "Du plus récent au plus ancien",
+  "sort.oldest": "Du plus ancien au plus récent",
+  "sort.title": "Par titre (A → Z)",
+  "sort.manual": "Ordre d'ajout"
 }

@@ -1,30 +1,32 @@
 import type { Metadata } from "next";
-import { buildPalette } from "@/core/color";
+import { cookies } from "next/headers";
+import { ADMIN_THEME_COOKIE, adminThemeCss, parseAdminTheme } from "@/core/adminTheme";
 import { getAdminTranslator } from "@/core/i18n/request";
 import { RTL_LOCALES } from "@/core/i18n/locales";
 import { currentUser } from "@/core/permissions";
+import { faviconUrl } from "@/core/favicon";
+import { getSiteConfig } from "@/core/settings";
 import "../globals.css";
 
-export const metadata: Metadata = {
-  title: { default: "Admin", template: "%s · Admin" },
-  robots: { index: false, follow: false },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  // L'onglet de l'admin porte l'icône du site, comme le site lui-même.
+  const config = await getSiteConfig().catch(() => null);
+  return {
+    title: { default: "Admin", template: "%s · Admin" },
+    robots: { index: false, follow: false },
+    icons: { icon: faviconUrl(config?.favicon ?? null) },
+  };
+}
 
-// Interface d'admin : palette chaleureuse et claire (papier crème, cartes blanches, accent violet doux), indépendante du thème du site.
-const PALETTE = {
-  ...buildPalette("#faf7f2", "#6c5ce7"),
-  "--v-surface": "#ffffff",
-  "--v-fg": "#2b2622",
-  "--v-muted": "#7a7066",
-  "--v-line": "#ebe4d9",
-};
-const CSS = `:root{${Object.entries(PALETTE).map(([k, v]) => `${k}:${v}`).join(";")}}`;
+// Interface d'admin : palette chaleureuse (papier crème, cartes blanches, accent violet doux) ou sombre, indépendante du thème du site (voir core/adminTheme.ts).
+const CSS = adminThemeCss();
 
 export default async function AdminRootLayout({ children }: { children: React.ReactNode }) {
   const user = await currentUser();
   const { locale } = await getAdminTranslator(user?.locale);
+  const theme = parseAdminTheme((await cookies()).get(ADMIN_THEME_COOKIE)?.value);
   return (
-    <html lang={locale} dir={RTL_LOCALES.has(locale) ? "rtl" : "ltr"}>
+    <html lang={locale} dir={RTL_LOCALES.has(locale) ? "rtl" : "ltr"} data-admin-theme={theme}>
       <head>
         <style dangerouslySetInnerHTML={{ __html: CSS }} />
       </head>

@@ -29,6 +29,8 @@ export async function saveSettings(_prev: ActionState, formData: FormData): Prom
   const font = String(formData.get("font"));
   const logo = String(formData.get("logo") ?? "").trim();
   if (logo && !(logo.startsWith("/uploads/") || /^https?:\/\//.test(logo))) return { error: t("error.badUrl") };
+  const favicon = String(formData.get("favicon") ?? "").trim();
+  if (favicon && !(favicon.startsWith("/uploads/") || /^https:\/\//.test(favicon))) return { error: t("error.badUrl") };
 
   await setSetting("i18n.default", defaultLocale);
   await setSetting("i18n.enabled", locales);
@@ -49,6 +51,8 @@ export async function saveSettings(_prev: ActionState, formData: FormData): Prom
   }
   if (logo) await setSetting("site.logo", logo);
   else await deleteSetting("site.logo");
+  if (favicon) await setSetting("site.favicon", favicon);
+  else await deleteSetting("site.favicon");
   if (adv) await setSetting("site.contactEmail", String(formData.get("contactEmail") ?? "").trim());
   // Fond de page : préréglage (tous modes), description personnalisée (avancé), image de fond. Une description invalide n'enregistre rien.
   const bgPreset = String(formData.get("bgPreset") ?? "none");

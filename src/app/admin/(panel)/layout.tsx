@@ -4,13 +4,16 @@ import { getAdminNav } from "@/core/modules/adminNav";
 import { readVersion } from "@/core/updates/service";
 import { MobileMenu } from "@/components/admin/MobileMenu";
 import { ui } from "@/components/admin/ui";
-import { setAdminMode } from "./mode/actions";
+import { cookies } from "next/headers";
+import { ADMIN_THEMES, ADMIN_THEME_COOKIE, parseAdminTheme } from "@/core/adminTheme";
+import { setAdminMode, setAdminTheme } from "./mode/actions";
 
 export const dynamic = "force-dynamic";
 
 export default async function PanelLayout({ children }: { children: React.ReactNode }) {
   const { user, t, locale, config, advanced } = await adminCtx("editor");
   const nav = await getAdminNav(locale, config.defaultLocale);
+  const theme = parseAdminTheme((await cookies()).get(ADMIN_THEME_COOKIE)?.value);
   const canManage = user.role !== "editor";
 
   const link = "block rounded-xl px-3 py-2 text-[15px] transition-colors hover:bg-accent/10 hover:text-accent";
@@ -56,6 +59,16 @@ export default async function PanelLayout({ children }: { children: React.ReactN
           <p className="mb-1 text-xs text-muted">{advanced ? t("mode.advanced") : t("mode.simple")}</p>
           <button className={ui.btn} title={t("mode.help")}>{advanced ? t("mode.switchToSimple") : t("mode.switchToAdvanced")}</button>
         </form>
+        <div className="mt-4 px-3" role="group" aria-label={t("theme.admin")}>
+          <p className="mb-1 text-xs text-muted">{t("theme.admin")}</p>
+          <div className="inline-flex overflow-hidden rounded-xl border border-line">
+            {ADMIN_THEMES.map((id) => (
+              <form key={id} action={setAdminTheme.bind(null, id)}>
+                <button aria-pressed={theme === id} className={`px-3 py-1.5 text-xs transition-colors ${theme === id ? "bg-accent font-semibold text-accent-fg" : "bg-surface hover:bg-accent/10"}`}>{t(`theme.admin.${id}`)}</button>
+              </form>
+            ))}
+          </div>
+        </div>
         <form
           action={async () => {
             "use server";

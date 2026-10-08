@@ -16,6 +16,7 @@ import { getSources, providersOf, setSources } from "@/core/services/topics";
 import { audit } from "@/core/permissions";
 import { deleteSetting, setSetting } from "@/core/settings";
 import { mcpInstanceKey } from "@/core/modules/mcpProvider";
+import { isSort, sortSettingKey } from "@/core/content/sort";
 import type { ActionState } from "@/components/admin/ActionForm";
 
 function parseFieldSchema(raw: string) {
@@ -55,6 +56,9 @@ export async function saveInstance(_prev: ActionState, formData: FormData): Prom
 
   if (adv) await setSetting(mcpInstanceKey(id), formData.get("mcp") === "on");
   if (adv) data.navOrder = Math.trunc(Number(formData.get("navOrder"))) || 0;
+
+  // Ordre d'affichage des entrées : proposé dans les deux modes pour les modules à contenu.
+  if (mod.manifest.content && isSort(formData.get("sort"))) await setSetting(sortSettingKey(id), String(formData.get("sort")));
 
   if (adv && hasPage(mod.manifest)) {
     const basePath = String(formData.get("basePath") ?? "").trim().toLowerCase();

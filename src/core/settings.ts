@@ -75,6 +75,8 @@ export type SiteConfig = {
   /** Présentation longue du site/de la personne (Markdown) — identité, réglée dans l'admin. */
   about: string;
   logo: string | null;
+  /** Image de l'onglet du navigateur ; vide : l'icône générée (voir core/favicon.ts). */
+  favicon: string | null;
   footerText: string;
   contactEmail: string;
   accent: string;
@@ -106,6 +108,7 @@ export const getSiteConfig = cache(async (locale?: string): Promise<SiteConfig> 
     tagline: await str("site.tagline"),
     about: await str("site.about"),
     logo: (await getSetting<string>("site.logo")) ?? null,
+    favicon: (await getSetting<string>("site.favicon")) || null,
     footerText: await str("footer.text"),
     contactEmail: (await getSetting<string>("site.contactEmail")) ?? "",
     accent: (await getSetting<string>("theme.accent")) ?? "#e8a23b",

@@ -674,5 +674,17 @@
   "settings.bgSvgAlignHelp": "When the window doesn't have the drawing's proportions, the drawing is cropped: choose which side stays visible.",
   "settings.bgSvgAlign.center": "Centred",
   "settings.bgSvgAlign.left": "Left",
-  "settings.bgSvgAlign.right": "Right"
+  "settings.bgSvgAlign.right": "Right",
+  "settings.favicon": "Browser tab icon (favicon)",
+  "settings.faviconHelp": "A square image (png, jpg, webp or gif; 64 × 64 px or larger). Without an image, the site builds an icon from its colours.",
+  "theme.admin": "Admin theme",
+  "theme.admin.auto": "Auto",
+  "theme.admin.light": "Light",
+  "theme.admin.dark": "Dark",
+  "instances.sort": "Display order",
+  "instances.sortHelp": "Newest first by default. A \"featured\" entry always comes first.",
+  "sort.newest": "Newest to oldest",
+  "sort.oldest": "Oldest to newest",
+  "sort.title": "By title (A → Z)",
+  "sort.manual": "Order added"
 }

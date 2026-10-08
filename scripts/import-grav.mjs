@@ -295,7 +295,8 @@ for (const p of all) {
   if (!cover) cover = p.blockCover ?? null;
   const entry = await prisma.entry.create({ data: {
     instanceId: inst.id, status: published ? "published" : "draft", publishedAt: published ? (date ?? new Date()) : null,
-    cover, tags: JSON.stringify(tags), position: p.order ?? 0, fields: "{}", sourceLocale: base.locale, authorId, ...(date ? { createdAt: date } : {}),
+    cover, tags: JSON.stringify(tags), position: d === "pages" ? (p.order ?? 0) : 0, // articles : triés par date (les numéros de dossier Grav ne sont pas un ordre voulu)
+    fields: "{}", sourceLocale: base.locale, authorId, ...(date ? { createdAt: date } : {}),
   } });
   for (const [locale, text] of texts) {
     const t = p.templates.get(locale);

@@ -8,6 +8,7 @@ import { getModule } from "@/core/modules/registry";
 import { localized, type SettingField } from "@/core/modules/types";
 import { buildTheme, themeRef } from "@/core/color";
 import { getSetting, getSettingByLocale, getSiteConfig } from "@/core/settings";
+import { effectiveSort, SORTS, sortSettingKey } from "@/core/content/sort";
 import { mcpInstanceKey } from "@/core/modules/mcpProvider";
 import { getInstanceLabeler } from "@/core/modules/labels";
 import { Blocks } from "@/components/site/Blocks";
@@ -50,6 +51,7 @@ export default async function InstancePage({ params, searchParams }: { params: P
   for (const f of mod.manifest.settings) stored[f.key] = await getSettingByLocale(instanceSettingKey(id, f.key));
 
   const mcpOn = (await getSetting<boolean>(mcpInstanceKey(instance.id))) !== false;
+  const sort = effectiveSort(await getSetting(sortSettingKey(instance.id)), instance.display);
   const dataStatus = await dataStatusOf(instance.id);
   const taskRows = await Promise.all(Object.entries(mod.def.tasks ?? {}).map(async ([name, task]) => ({ name, every: task.everyMinutes, state: await taskStateOf(instance.id, name) })));
   const visibleSettings = mod.manifest.settings.filter((f) => advanced || !f.advanced);
@@ -135,6 +137,10 @@ export default async function InstancePage({ params, searchParams }: { params: P
           <Checkbox name="enabled" label={t("instances.enabled")} defaultChecked={instance.enabled} />
           {hasPage(mod.manifest) && <Checkbox name="showInNav" label={t("instances.showInNav")} defaultChecked={instance.showInNav} />}
         </div>
+        {content && (
+          <Select name="sort" label={t("instances.sort")} help={t("instances.sortHelp")} defaultValue={sort}
+            options={SORTS.map((s) => ({ value: s, label: t(`sort.${s}`) }))} />
+        )}
         {advanced && (mod.manifest.mcp?.length || content) && (
           <Checkbox name="mcp" label={t("instances.mcp")} help={t("instances.mcpHelp")} defaultChecked={mcpOn} />
         )}
