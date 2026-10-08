@@ -2,17 +2,18 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 
+// Échéance repoussée de la 0.1.3 à la 0.1.4 : la 0.1.4 ne change que l'archive, et un site en 0.1.2 qui se met à jour depuis l'admin reçoit la dernière stable — il saute la 0.1.3 et a donc encore besoin de ces conversions.
 // Code jetable : chaque entrée dit jusqu'à quelle version stable il a une raison d'exister. Passé ce jalon, ce test échoue et impose le ménage.
 const TEMPORARY = [
   {
     why: "migration automatique du module « Blocs de page » vers les blocs du cœur (0.1.2 et 0.1.3-rc.x)",
-    removeAfter: "0.1.3",
+    removeAfter: "0.1.4",
     files: ["src/core/migrations/blocksToCore.ts", "tests/core/blocks-migration.test.mjs"],
     alsoRemove: ["l'appel à migrateBlocksModule dans src/core/modules/registry.ts (syncLegacy)"],
   },
   {
     why: "migration automatique des modules « intégrés » (0.1.2 et 0.1.3-rc.x) vers des modules ordinaires copiés depuis l'instantané extras/",
-    removeAfter: "0.1.3",
+    removeAfter: "0.1.4",
     files: ["src/core/migrations/builtinToBundled.ts", "tests/core/builtin-migration.test.mjs"],
     alsoRemove: ["l'appel à migrateBuiltinModules dans src/core/modules/registry.ts (syncLegacy) et le statut « builtin » de la lecture des anciennes sauvegardes (src/core/backup/restore.ts, format.ts)"],
   },

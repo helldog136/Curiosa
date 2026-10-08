@@ -17,7 +17,7 @@ if (!REPO_RE.test(repo)) { console.error("Dépôt inconnu : GITHUB_REPOSITORY (o
 
 /** Tout ce que le site lit à l'exécution ; rien d'autre. Les données de l'exploitant n'y sont jamais. */
 const PATHS = [
-  ".next", "node_modules", "package.json", "package-lock.json", "next.config.ts", "release.json",
+  ".next", "node_modules", "package.json", "package-lock.json", "next.config.mjs", "release.json",
   "prisma/schema.prisma", "prisma/migrations", "scripts", "extras",
   ".env.example", "LICENSE", "THIRD-PARTY-NOTICES.md",
 ].filter((p) => p === "release.json" || fs.existsSync(p));
@@ -29,10 +29,22 @@ for (const engine of ["debian-openssl-1.1.x", "debian-openssl-3.0.x"]) {
 }
 if (!validManifestPaths(PATHS)) { console.error("Liste de chemins invalide."); process.exit(1); }
 
+/**
+ * Ce que l'installation de production n'utilise JAMAIS et que l'archive n'embarque donc pas (≈ 270 Mo sur ≈ 880) : elles restent dans le dépôt de développement.
+ *   - le compilateur de Next (SWC, un binaire par libc, et son dossier « fallback » que Next remplit tout seul s'il le cherche) : le site est déjà compilé et sa configuration est du JavaScript (next.config.mjs) ;
+ *   - `sharp` (@img) : le site n'utilise pas next/image (images.unoptimized) ;
+ *   - TypeScript : seulement une dépendance facultative de Prisma, jamais chargée pour appliquer les migrations ;
+ *   - les 3 000 fichiers SVG de simple-icons : le paquet porte déjà les tracés dans son index JavaScript ;
+ *   - les variantes WebAssembly du client Prisma (PostgreSQL, MySQL, SQL Server… ≈ 66 Mo) : le site utilise le moteur natif SQLite ;
+ *   - les copies des moteurs de requête que l'outil Prisma (CLI) garde pour lui : le site utilise celles du client généré (node_modules/.prisma/client), et les migrations n'emploient que le moteur de schéma.
+ * scripts/smoke-release.mjs démarre l'archive SANS ces dossiers avant toute publication : si le site en dépend un jour, la release n'est pas publiée.
+ */
+export const NOT_SHIPPED = ["node_modules/@next/swc-*", "node_modules/next/next-swc-fallback", "node_modules/@img", "node_modules/typescript", "node_modules/simple-icons/icons", "node_modules/@prisma/client/runtime/*wasm*", "node_modules/prisma/libquery_engine-*", "node_modules/@prisma/engines/libquery_engine-*"];
+
 fs.writeFileSync("release.json", JSON.stringify({ name: "curiosa", version, platform: platformId(), repo, node: process.versions.node, builtAt: new Date().toISOString(), paths: PATHS }, null, 2));
 fs.mkdirSync(outDir, { recursive: true });
 const file = path.join(outDir, assetName(`v${version}`));
-execFileSync("tar", ["-czf", file, "--exclude=.next/cache", "--exclude=node_modules/.cache", ...PATHS], { stdio: "inherit" });
+execFileSync("tar", ["-czf", file, "--exclude=.next/cache", "--exclude=node_modules/.cache", ...NOT_SHIPPED.map((p) => `--exclude=${p}`), ...PATHS], { stdio: "inherit" });
 const hash = crypto.createHash("sha256").update(fs.readFileSync(file)).digest("hex");
 fs.writeFileSync(`${file}.sha256`, `${hash}  ${path.basename(file)}\n`);
 console.log(`${file}\n${hash}  ${(fs.statSync(file).size / 1048576).toFixed(0)} Mo`);
