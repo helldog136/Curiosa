@@ -1,3 +1,5 @@
+import { headerLink, isHeaderLayout, type HeaderConfig, type HeaderLayout } from "./header";
+import { LOGO_KEYS, type LogoSet } from "./logos";
 import { cache } from "react";
 import { isBackgroundImage, isPreset, type BackgroundPreset } from "./background";
 import { isGlowLevel, normalizeTuning, type GlowLevel, type GlowTuning } from "./glow";
@@ -55,7 +57,9 @@ export async function deleteSetting(key: string, locale?: string): Promise<void>
 
 // ─── Réglages du site ─────────────────────────────────────────────────────
 
-export type NavItem = { label: Record<string, string>; href: string };
+export type NavLeaf = { label: Record<string, string>; href: string };
+/** Entrée du menu : un lien, ou un GROUPE (menu déroulant : `children`, un seul niveau ; son `href` est alors vide). */
+export type NavItem = NavLeaf & { children?: NavLeaf[] };
 /** Un morceau placé sur la page d'accueil : une section proposée par une instance de module. */
 export type HomeSection = {
   id: string; instance: string; section: string; options: Record<string, unknown>;
@@ -74,7 +78,10 @@ export type SiteConfig = {
   tagline: string;
   /** Présentation longue du site/de la personne (Markdown) — identité, réglée dans l'admin. */
   about: string;
+  /** Icône / logo carré (le « logo » historique). Le jeu complet est dans `logos`. */
   logo: string | null;
+  /** Jeu de logos : horizontal, carré, versions pour fond sombre, favicon, image de partage (voir core/logos.ts). */
+  logos: LogoSet;
   /** Image de l'onglet du navigateur ; vide : l'icône générée (voir core/favicon.ts). */
   favicon: string | null;
   footerText: string;
@@ -88,7 +95,11 @@ export type SiteConfig = {
   bg: { preset: BackgroundPreset; custom: string; image: string | null; svg: { markup: string; fit: "cover" | "contain" | "tile"; align: "left" | "center" | "right"; tile: number } };
   /** Compter les visites, anonymement (voir core/stats.ts). */
   statsEnabled: boolean;
+  /** Proposer aux visiteurs le bouton « Me prévenir des nouveautés » (pastilles de nouveautés, avec leur accord : voir core/visit.ts). */
+  newsToggle: boolean;
   nav: NavItem[];
+  /** Mise en page de l'en-tête et ses éléments facultatifs (voir core/header.ts). */
+  header: HeaderConfig;
   homeSections: HomeSection[];
   setupCompleted: boolean;
 };
@@ -110,6 +121,11 @@ export const getSiteConfig = cache(async (locale?: string): Promise<SiteConfig> 
     tagline: await str("site.tagline"),
     about: await str("site.about"),
     logo: (await getSetting<string>("site.logo")) ?? null,
+    logos: {
+      square: (await getSetting<string>(LOGO_KEYS.square)) || null, wide: (await getSetting<string>(LOGO_KEYS.wide)) || null,
+      squareDark: (await getSetting<string>(LOGO_KEYS.squareDark)) || null, wideDark: (await getSetting<string>(LOGO_KEYS.wideDark)) || null,
+      favicon: (await getSetting<string>(LOGO_KEYS.favicon)) || null, share: (await getSetting<string>(LOGO_KEYS.share)) || null,
+    },
     favicon: (await getSetting<string>("site.favicon")) || null,
     footerText: await str("footer.text"),
     contactEmail: (await getSetting<string>("site.contactEmail")) ?? "",
@@ -129,7 +145,14 @@ export const getSiteConfig = cache(async (locale?: string): Promise<SiteConfig> 
       },
     },
     statsEnabled: (await getSetting<boolean>("stats.enabled")) !== false,
+    newsToggle: (await getSetting<boolean>("news.toggle")) === true,
     nav: (await getSetting<NavItem[]>("nav.custom")) ?? [],
+    header: {
+      layout: isHeaderLayout(all["header.layout"]?.[""]) ? (all["header.layout"]![""] as HeaderLayout) : "classic",
+      socials: all["header.socials"]?.[""] === true,
+      secondary: headerLink(await str("header.secondaryLabel"), all["header.secondaryHref"]?.[""]),
+      button: headerLink(await str("header.buttonLabel"), all["header.buttonHref"]?.[""]),
+    },
     homeSections: (await getSetting<HomeSection[]>("home.sections")) ?? DEFAULT_HOME_SECTIONS,
     setupCompleted: (await getSetting<boolean>("setup.completed")) ?? false,
   };

@@ -1,3 +1,4 @@
+import { isDarkBackground, listLogos, pickLogo } from "./logos";
 import { buildPalette, FONT_STACKS } from "@/core/color";
 import { makeTranslator } from "@/core/i18n/dictionary";
 import { getSiteConfig } from "@/core/settings";
@@ -16,7 +17,10 @@ export type Brand = {
   name: string;
   tagline: string;
   about: string;
+  /** Le visuel de marque principal (symbole, sinon logo horizontal). */
   logo: string | null;
+  /** Tous les logos du jeu (horizontal, carré, versions pour fond sombre), pour un kit presse. */
+  logos: { kind: "wide" | "square" | "wideDark" | "squareDark"; src: string }[];
   contactEmail: string;
   colors: BrandColor[];
   font: { key: keyof typeof FONT_STACKS; name: string; stack: string };
@@ -45,7 +49,8 @@ export async function getBrand(locale?: string): Promise<Brand> {
     name: config.name,
     tagline: config.tagline,
     about: config.about,
-    logo: config.logo,
+    logo: pickLogo(config.logos, "any", isDarkBackground(config.background)),
+    logos: listLogos(config.logos) as Brand["logos"],
     contactEmail: config.contactEmail,
     colors: TOKENS.map(([variable, key]) => ({
       key,

@@ -36,15 +36,30 @@ export async function useTestDb() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-test-"));
   const file = path.join(dir, "test.db");
   fs.copyFileSync(template, file);
-  process.env.DATABASE_URL = `file:${file}`;
+  // Une seule connexion : les réglages ci-dessous (propres à la connexion) s'appliquent à toutes les requêtes du test.
+  process.env.DATABASE_URL = `file:${file}?connection_limit=1`;
   process.env.DATA_DIR = dir;
   process.env.CURIOSA_ALLOW_LOCAL_MODULES = "1";
+  // Les dépôts git des tests sont jetables, y compris ceux que l'installateur crée lui-même : modèle vide, pas de fsync, pas de ramasse-miettes (même résultat, bien plus vite).
+  Object.assign(process.env, { GIT_CONFIG_COUNT: "3", GIT_CONFIG_KEY_0: "init.templateDir", GIT_CONFIG_VALUE_0: "", GIT_CONFIG_KEY_1: "core.fsync", GIT_CONFIG_VALUE_1: "none", GIT_CONFIG_KEY_2: "gc.auto", GIT_CONFIG_VALUE_2: "0" });
+  // Modules livrés des tests : de petites fixtures, jamais les vrais modules (le cœur n'en contient aucun).
+  process.env.CURIOSA_EXTRAS_DIR ??= path.join(root, "tests/fixtures/extras");
   const { prisma } = await import("@/core/db");
+  // Base jetable, détruite à la fin du test : on n'attend pas les écritures sur disque (synchronous=OFF, journal en mémoire). Aucun effet sur ce qui est vérifié.
+  await prisma.$queryRawUnsafe("PRAGMA journal_mode=MEMORY");
+  await prisma.$queryRawUnsafe("PRAGMA synchronous=OFF");
   const tables = ["VisitSeen", "VisitDaily", "ApiToken", "AuditLog", "ModuleRecord", "EntryTranslation", "Entry", "InstanceTranslation", "ModuleInstance", "Redirect", "Setting", "Module", "User"];
   return {
     dir,
     prisma,
-    /** Vide toutes les tables (entre deux tests). Le registre des modules livrés est recréé à la demande. */
+    /** Installe un module de test (tests/fixtures/modules/<id>) : fichiers copiés + ligne en base, activé. */
+    async fixture(id, enabled = true) {
+      const { installFixtureFiles } = await import("./fixtureModules.mjs");
+      installFixtureFiles(dir, id);
+      const version = JSON.parse(fs.readFileSync(path.join(dir, "modules", id, "module.json"), "utf8")).version;
+      return prisma.module.upsert({ where: { id }, create: { id, source: "bundled", version, enabled }, update: { enabled } });
+    },
+    /** Vide toutes les tables (entre deux tests). Les migrations de mise à jour repassent à la demande. */
     async reset() {
       for (const t of tables) await prisma.$executeRawUnsafe(`DELETE FROM "${t}"`);
       globalThis.curiosaBuiltinsSynced = false; globalThis.curiosaBuiltinsSyncing = null;

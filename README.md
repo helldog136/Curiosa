@@ -22,7 +22,33 @@ Curiosa est un **site vitrine clé en main que vous possédez** : votre contenu,
 | **Streamer, vidéaste, musicien, artiste** | une page d'accueil soignée, un blog, vos réseaux, vos codes promo et sponsors, un statut « en direct », un kit presse |
 | **Indépendant, petite association, collectif** | un site professionnel qui s'édite aussi simplement qu'un document, sans dépendre d'un développeur |
 | **Une personne qui gère le site d'une autre** | une interface en deux niveaux : **simple** (vocabulaire de tous les jours) et **avancée** (tous les réglages) |
-| **Développeur ou agence** | un framework ouvert, modulaire, documenté, où l'on ajoute des fonctionnalités sans toucher au cœur |
+| **Développeur ou agence** | un framework au code lisible, modulaire, documenté, où l'on ajoute des fonctionnalités sans toucher au cœur |
+
+## Pourquoi Curiosa, et quand ne pas le choisir
+
+Curiosa ne cherche pas à remplacer WordPress : il n'en a ni l'écosystème, ni les années. Il vise un public précis, **le créateur de contenu qui veut son propre site sans en devenir l'administrateur**, et il mise sur quatre choses, chacune vérifiable :
+
+| Ce qui le distingue | Comment le vérifier |
+|---|---|
+| **Aucun bandeau de cookies à prévoir** : statistiques anonymes sans cookie, cookie de nouveautés seulement si le visiteur le demande, page de confidentialité écrite d'après ce que le site fait vraiment | [docs/PRIVACY.md](docs/PRIVACY.md), et `node scripts/measure.mjs <votre-site>` : zéro cookie, zéro service tiers |
+| **Rien à exploiter** : un seul fichier de base de données, mises à jour depuis l'admin avec retour arrière, sauvegardes chiffrées lisibles sans le logiciel | [docs/INSTALL.md](docs/INSTALL.md), [docs/BACKUP.md](docs/BACKUP.md) |
+| **Fait pour les créateurs** : overlays OBS, statut live, codes promo, sponsors, kit presse, réseaux sociaux dans l'en-tête | la liste des modules livrés |
+| **Gérable par un assistant IA** : serveur MCP (comme d'autres CMS en proposent maintenant), installation menée par un agent, modules écrits à partir d'une doc conçue pour cela | [docs/AGENT-INSTALL.md](docs/AGENT-INSTALL.md), [docs/CREATE-A-MODULE.md](docs/CREATE-A-MODULE.md) |
+
+**Les chiffres, avec leur méthode** ([docs/MESURES.md](docs/MESURES.md), mesurés sur la 0.1.3-rc.2) : installation par la machine ≈ 23 s ; zéro cookie et zéro service tiers à la première visite ; 636 Ko de code (≈ 189 Ko compressé) pour une page d'accueil ; 223 Mo de mémoire au repos ; 850 tests automatiques. Et ce qui ne flatte pas : **868 Mo sur le disque** une fois installé, et ≈ 177 Ko de JavaScript compressé même pour une page simple.
+
+**Choisissez plutôt autre chose si…**
+
+| Votre besoin | Mieux adapté |
+|---|---|
+| une vraie boutique (catalogue, paiement, stocks) | WooCommerce, Shopify |
+| un énorme choix de thèmes, d'extensions et de prestataires | WordPress |
+| un blog avec abonnements payants et lettre d'information | Ghost |
+| ne rien héberger du tout | un constructeur hébergé (Wix, Squarespace), ou un lien-bio (Linktree) |
+| un site statique ultra-léger, sans JavaScript | Hugo, Astro |
+| un très fort trafic | à ce jour **non testé en charge** : ne pariez pas dessus sans l'essayer |
+
+Le projet est jeune : **un seul site en production à ce jour**. Il progresse en étant utilisé.
 
 ## Ce que vous obtenez
 
@@ -41,9 +67,9 @@ Curiosa est un **site vitrine clé en main que vous possédez** : votre contenu,
 - **Accès protégés** : comptes avec rôles (propriétaire, éditeur…), mots de passe protégés (jamais stockés en clair), journal d'audit, jetons d'API révocables.
 - **Sous votre contrôle** : une base de données dans un seul fichier, sur votre serveur ; vérification régulière des failles connues dans les dépendances.
 
-## Gratuit, ouvert, et reconnu
+## Gratuit, lisible, et reconnu
 
-Curiosa est **gratuit** et son code est **lisible et modifiable**. Ce que la licence garantit, en clair :
+Curiosa est **gratuit** et son code source est **lisible et modifiable**. Précision de vocabulaire : ce n'est **pas** de l'« open source » au sens strict (la revente est interdite, voir ci-dessous), mais du code source disponible. Ce que la licence garantit, en clair :
 
 - ✅ **Vous pouvez l'utiliser pour le site de votre propre activité**, y compris commerciale (boutique, sponsors, dons, publicité…), le modifier et l'adapter.
 - ✅ **Vous pouvez monter, personnaliser et entretenir un site pour un client** et facturer ce travail, tant que vous ne lui vendez pas Curiosa lui-même.
@@ -223,6 +249,74 @@ Pas besoin de tout retenir pour utiliser Curiosa : l'assistant et l'admin vous g
 | **Redirection** | `/twitch` → une URL externe *explicitement autorisée* dans l'admin (ou le lien d'une entrée, suivi automatiquement). Aucune redirection ouverte possible. |
 | **Langues** | Langue du site, langue de l'admin (par défaut et par utilisateur) et langue du visiteur sont indépendantes. Une entrée n'a besoin que d'**une** version ; on en ajoute d'autres à la demande, jamais de force. |
 
+## Développer son propre module
+
+Une fonctionnalité de Curiosa est un **module** : un petit dépôt git que n'importe qui peut écrire, publier et faire installer depuis l'admin d'un site. Deux fichiers suffisent pour commencer.
+
+`module.json` (ce que le module *est*) :
+
+```json
+{
+  "apiVersion": 2,
+  "id": "hello",
+  "name": { "en": "Hello", "fr": "Bonjour" },
+  "version": "1.0.0",
+  "main": "index.mjs",
+  "instances": "multiple",
+  "permissions": ["slots"],
+  "settings": [
+    { "key": "text", "type": "text", "default": "Hello!", "translatable": true, "label": { "en": "Banner text", "fr": "Texte de la bannière" } }
+  ]
+}
+```
+
+`index.mjs` (ce qu'il *fait*) :
+
+```js
+export default {
+  slots: { "layout.banner": (ctx) => [{ type: "banner", text: ctx.setting("text") }] },
+};
+```
+
+C'est un module complet : une bannière en haut de chaque page, dont le texte se règle dans l'admin, traduisible, avec autant d'instances qu'on veut. Un module peut aussi ajouter une page publique, des sections pour l'accueil, des routes et formulaires, un panneau d'admin, des actions pour assistants IA (MCP), des tâches planifiées, une sauvegarde lisible, des overlays pour OBS, et échanger des informations avec d'autres modules.
+
+**Pour l'essayer** : lancez Curiosa en local avec `CURIOSA_ALLOW_LOCAL_MODULES=1`, faites de votre dossier un dépôt git (`git init && git add . && git commit -m "v1"`), puis dans l'admin : *Fonctionnalités → Ajouter → Installer un dépôt personnel* avec `file:///chemin/vers/votre/depot`.
+
+**Les règles à connaître avant de publier** :
+
+- **Le module est à vous** : sa licence (`license` dans `module.json`), son mérite, et sa vente éventuelle vous appartiennent. La licence de Curiosa ne le concerne pas tant qu'il n'utilise que l'interface publique des modules.
+- **Vie privée** : un module qui collecte des données de visiteurs le déclare dans `privacy` ; le cœur l'ajoute à la page « Politique de confidentialité » du site. Pas de cookie ni de service tiers non essentiel sans consentement (voir [docs/PRIVACY.md](docs/PRIVACY.md)).
+- **Sécurité** : tout ce qui vient d'un visiteur est hostile (validation à l'entrée, échappement à la sortie), et un module ne demande que les permissions qu'il utilise.
+- **Simple avant tout** : Emma (sans bagage technique) ne voit que des réglages aux libellés clairs ; les réglages de technicien sont `advanced`.
+
+**La documentation, dans l'ordre** :
+
+| Pour… | Lire |
+|---|---|
+| apprendre pas à pas, avec un module d'exemple complet (un livre d'or modéré) | [docs/CREATE-A-MODULE.md](docs/CREATE-A-MODULE.md) |
+| chercher un champ, une clé, un type de bloc | [docs/MODULES.md](docs/MODULES.md) (référence exhaustive) |
+| lire un vrai module | [`examples/guestbook`](https://github.com/helldog136/curiosa-extras/tree/master/examples/guestbook), [`examples/announcement-banner`](https://github.com/helldog136/curiosa-extras/tree/master/examples/announcement-banner) |
+| comprendre comment le cœur et les modules se partagent le travail | [docs/PLATFORM.md](docs/PLATFORM.md) et [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
+| être listé dans le Catalogue | [catalogue/README.md](catalogue/README.md) |
+
+Un assistant IA peut écrire un module à partir de ces documents : donnez-lui `docs/CREATE-A-MODULE.md` et la liste de ce que vous voulez.
+
+## Toute la documentation
+
+| Document | Contenu |
+|---|---|
+| [docs/INSTALL.md](docs/INSTALL.md) | installer, mettre à jour, publier une release, logos, en-tête et menu, statistiques |
+| [docs/AGENT-INSTALL.md](docs/AGENT-INSTALL.md) | installation menée par un assistant IA |
+| [docs/CREATE-A-MODULE.md](docs/CREATE-A-MODULE.md) | créer un module, pas à pas |
+| [docs/MODULES.md](docs/MODULES.md) | référence complète des modules |
+| [docs/PLATFORM.md](docs/PLATFORM.md), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | le cœur, ses services, les choix de conception |
+| [docs/BACKUP.md](docs/BACKUP.md) | sauvegarde chiffrée, lisible sans le framework |
+| [docs/BACKGROUND.md](docs/BACKGROUND.md) | décrire le fond de page |
+| [docs/IMPORT-GRAV.md](docs/IMPORT-GRAV.md) | convertir un site Grav |
+| [docs/PRIVACY.md](docs/PRIVACY.md) | cookies, statistiques, politique de confidentialité |
+| [docs/MESURES.md](docs/MESURES.md) | les chiffres mesurés (installation, poids, mémoire, cookies), leur méthode, et ce qui n'est pas mesuré |
+| [CHANGELOG.md](CHANGELOG.md) | ce qui change à chaque version |
+
 ## Pour les développeurs : structure du dépôt
 
 ```
@@ -240,9 +334,8 @@ src/app/admin       L'admin unique : assistant, entrées, une sous-page par inst
 src/app/overlays    Overlays OBS (/overlays/<clé>)
 src/app/api/mcp     Serveur MCP (outils collectés auprès des modules)
 src/locales         Textes de l'interface (fr, en) — ajouter une langue = un fichier JSON
-modules-examples/   Un module d'exemple minimal, prêt à publier dans son propre dépôt git
-modules-community/  Modules complets qui ne font PAS partie du cœur : labyrinthe 3D, planning, partenariats,
-                    sponsors, overlay sponsors (OBS)
+extras/             (non versionné) Instantané des modules livrés, récupéré de curiosa-extras par `npm run extras:fetch`
+                    et embarqué dans chaque release. Le cœur ne contient AUCUN module.
 docs/               PLATFORM.md (cœur vs modules), ARCHITECTURE.md, MODULES.md
 ```
 
@@ -257,4 +350,4 @@ Curiosa est **utilisé en production** et évolue par versions publiées sur la 
 
 ## Licence
 
-Curiosa, développé par [Helldog136](https://helldog136.be), est distribué sous la **Curiosa License 1.0** (voir [`LICENSE`](LICENSE)) : usage libre pour sa propre activité, vente et revente interdites, crédit obligatoire. Les versions publiées **avant la 0.1.2-rc.4** l'ont été sous licence MIT, et ceux qui les ont reçues les gardent sous cette licence. Les modules livrés dans `modules-community/` et `modules-examples/` portent la licence déclarée dans leur `module.json`. Les dépendances tierces gardent leur propre licence : la liste complète, avec les textes, est dans [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md), générée par `npm run licenses` (un test vérifie qu'elle est à jour et qu'aucune dépendance n'a de licence incompatible). Un module installé depuis un dépôt tiers reste sous la licence que son auteur a déclarée dans `module.json`.
+Curiosa, développé par [Helldog136](https://helldog136.be), est distribué sous la **Curiosa License 1.0** (voir [`LICENSE`](LICENSE)) : usage libre pour sa propre activité, vente et revente interdites, crédit obligatoire. Les versions publiées **avant la 0.1.2-rc.4** l'ont été sous licence MIT, et ceux qui les ont reçues les gardent sous cette licence. Les modules du dépôt [curiosa-extras](https://github.com/helldog136/curiosa-extras) portent la licence déclarée dans leur `module.json`. Les dépendances tierces gardent leur propre licence : la liste complète, avec les textes, est dans [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md), générée par `npm run licenses` (un test vérifie qu'elle est à jour et qu'aucune dépendance n'a de licence incompatible). Un module installé depuis un dépôt tiers reste sous la licence que son auteur a déclarée dans `module.json`.

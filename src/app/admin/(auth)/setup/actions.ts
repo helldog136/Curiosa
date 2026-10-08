@@ -7,7 +7,8 @@ import { signIn } from "@/auth";
 import { prisma } from "@/core/db";
 import { makeTranslator } from "@/core/i18n/dictionary";
 import { isKnownLocale } from "@/core/i18n/locales";
-import { BUILTIN_MODULES } from "@/modules-builtin";
+import { provisionBundled, setupModules } from "@/core/modules/starter";
+import type { ParsedManifest } from "@/core/modules/manifest";
 import { createInstance, defaultNames, runInstanceCreateHook } from "@/core/instanceService";
 import { audit } from "@/core/permissions";
 import { createEntry } from "@/core/content/service";
@@ -51,6 +52,8 @@ export async function completeSetup(_prev: ActionState, formData: FormData): Pro
   const shortcutRows = new Set(formData.getAll("linkShortcut").map(String));
 
   const createdIds: string[] = [];
+  // Les fichiers des modules choisis sont copiés avant la transaction (leur ligne est ce qu'attendent les instances).
+  for (const m of setupModules()) if (presetIds.includes(m.id)) await provisionBundled(m.id);
   try {
     await prisma.$transaction(async (tx) => {
       // Garde contre une double soumission ou un second visiteur : un seul propriétaire, une seule fois.
@@ -72,12 +75,9 @@ export async function completeSetup(_prev: ActionState, formData: FormData): Pro
       // Le cœur ne connaît aucun module en particulier : chaque manifeste dit s'il est créé d'office,
       // quelle section il place sur l'accueil, s'il a une entrée d'exemple ou s'il reçoit les liens saisis.
       const home: HomeSection[] = [];
-      const created: { manifest: (typeof BUILTIN_MODULES)[number]["manifest"]; instance: { id: string; key: string } }[] = [];
-      const shipped = BUILTIN_MODULES.map((m) => m.manifest);
-      const wanted = [
-        ...shipped.filter((m) => m.onboarding?.always),
-        ...shipped.filter((m) => m.starter && m.content && presetIds.includes(m.id)),
-      ];
+      const created: { manifest: ParsedManifest; instance: { id: string; key: string } }[] = [];
+      // Seuls les modules que l'utilisateur a cochés, parmi ceux que l'assistant propose (une valeur envoyée à la main n'en ajoute aucun).
+      const wanted = setupModules().filter((m) => presetIds.includes(m.id));
       for (const manifest of wanted) {
         const instance = await createInstance(tx, {
           manifest,

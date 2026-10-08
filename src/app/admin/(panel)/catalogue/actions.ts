@@ -5,6 +5,7 @@ import { adminCtx } from "@/core/admin";
 import { revalidatePath } from "next/cache";
 import { clearRecognizedCache } from "@/core/modules/recognized";
 import { installFromCatalogue, installModule } from "@/core/modules/installer";
+import { addSource, clearSourcesCache, removeSource } from "@/core/modules/sources";
 import { audit } from "@/core/permissions";
 import type { ActionState } from "@/components/admin/ActionForm";
 
@@ -32,5 +33,29 @@ export async function installCustomAction(_prev: ActionState, formData: FormData
 export async function refreshCatalogueAction(): Promise<void> {
   await adminCtx("owner");
   clearRecognizedCache();
+  revalidatePath("/admin/catalogue");
+}
+
+/** Ajoute un dépôt de modules personnel (propriétaire seulement) : il doit contenir au moins un module. */
+export async function addSourceAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const { user, t } = await adminCtx("owner");
+  const result = await addSource(String(formData.get("repo") ?? ""));
+  if (!result.ok) return { error: t(result.error) };
+  await audit(user.email, "module.source.add", String(formData.get("repo") ?? "").slice(0, 200));
+  revalidatePath("/admin/catalogue");
+  return { ok: t("catalogue.sources.added", { count: String(result.modules.length) }) };
+}
+
+export async function removeSourceAction(url: string): Promise<void> {
+  const { user } = await adminCtx("owner");
+  await removeSource(url);
+  await audit(user.email, "module.source.remove", url.slice(0, 200));
+  revalidatePath("/admin/catalogue");
+}
+
+/** Relit tout de suite les modules des dépôts personnels (sinon relus au plus toutes les 10 minutes). */
+export async function refreshSourcesAction(): Promise<void> {
+  await adminCtx("owner");
+  clearSourcesCache();
   revalidatePath("/admin/catalogue");
 }

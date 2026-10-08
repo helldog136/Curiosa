@@ -1,5 +1,5 @@
 import { HeroVideo } from "./HeroVideo";
-import { Panel } from "./Panel";
+import { Panel, HeroButton } from "./Panel";
 import type { Block } from "@/core/blocks";
 import { getInstanceByKey } from "@/core/instances";
 import { withLocale } from "@/core/links";
@@ -51,7 +51,7 @@ export async function Blocks({ blocks, locale, adminInstanceId }: { blocks: Bloc
       case "hero":
         if (block.video) {
           const t = makeTranslator(locale);
-          out.push(<HeroVideo key={i} src={block.video} poster={block.videoPoster} sound={!!block.videoSound} title={block.title} text={block.text} logo={block.image}
+          out.push(<HeroVideo key={i} src={block.video} poster={block.videoPoster} sound={!!block.videoSound} title={block.title} text={block.text} logo={block.image} eyebrow={block.eyebrow} button={block.button}
             labels={{ play: t("site.video.play"), pause: t("site.video.pause"), soundOn: t("site.video.soundOn"), soundOff: t("site.video.soundOff") }} />);
           break;
         }
@@ -61,8 +61,10 @@ export async function Blocks({ blocks, locale, adminInstanceId }: { blocks: Bloc
               // eslint-disable-next-line @next/next/no-img-element
               <img src={block.image} alt="" className="mx-auto h-28 w-28 rounded-full object-cover" />
             )}
+            {block.eyebrow && <p className="text-sm font-semibold uppercase tracking-wide text-muted">{block.eyebrow}</p>}
             <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">{block.title}</h1>
             {block.text && <p className="mx-auto max-w-2xl text-lg text-muted">{block.text}</p>}
+            {block.button && <p><HeroButton button={block.button} /></p>}
           </section>,
         );
         break;

@@ -42,6 +42,11 @@ function Button({ button, light }: { button?: { label: string; href: string }; l
   );
 }
 
+/** Bouton du bandeau d'accueil (même bouton que celui des blocs de page). */
+export function HeroButton({ button }: { button: { label: string; href: string } }) {
+  return <Button button={button} />;
+}
+
 export function Panel({ block, labels }: { block: PanelBlock; labels: VideoLabels }) {
   const images = (block.images ?? []).map(safeImage).filter((x): x is string => !!x).slice(0, 3);
   if (block.kind === "video" && block.video) {

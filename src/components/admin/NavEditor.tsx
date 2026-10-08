@@ -5,32 +5,117 @@ import { ui } from "./ui";
 
 export type NavPage = { id: string; title: string; href: string };
 export type NavLocale = { code: string; name: string };
-export type NavItem =
+export type NavLeaf =
   | { uid: string; kind: "page"; id: string }
   | { uid: string; kind: "link"; href: string; label: Record<string, string> };
+export type NavItem = NavLeaf | { uid: string; kind: "group"; label: Record<string, string>; items: NavLeaf[] };
 type Labels = {
-  empty: string; addPage: string; addLink: string; pickPage: string; noMorePages: string; cancel: string;
-  up: string; down: string; remove: string; page: string; link: string; href: string; hrefPlaceholder: string; label: string;
+  empty: string; addPage: string; addLink: string; addGroup: string; pickPage: string; noMorePages: string; cancel: string;
+  up: string; down: string; remove: string; page: string; link: string; group: string; groupName: string; groupEmpty: string; href: string; hrefPlaceholder: string; label: string;
 };
 
 let counter = 0;
 const uid = () => `n${Date.now().toString(36)}${counter++}`;
 
+function swap<T>(list: T[], i: number, d: -1 | 1): T[] {
+  const j = i + d;
+  if (j < 0 || j >= list.length) return list;
+  const n = [...list];
+  [n[i], n[j]] = [n[j]!, n[i]!];
+  return n;
+}
+
+const leafPayload = (i: NavLeaf) => (i.kind === "page" ? { k: "page", id: i.id } : { k: "link", href: i.href, label: i.label });
+
 /**
- * Éditeur du menu : UNE liste ordonnée où pages du site et liens libres se mélangent. On réordonne avec des flèches, on retire avec la
- * corbeille rouge en haut à droite de chaque élément, on ajoute une page (choisie dans la liste des pages) ou un lien.
- * Le champ envoyé est un seul JSON `items`, dans l'ordre affiché : [{ k: "page", id } | { k: "link", href, label }].
+ * Éditeur du menu : UNE liste ordonnée où pages du site, liens libres et GROUPES (menus déroulants qui rangent des pages et des liens, un seul niveau)
+ * se mélangent. On réordonne avec des flèches, on retire avec la corbeille rouge en haut à droite de chaque élément.
+ * Le champ envoyé est un seul JSON `items`, dans l'ordre affiché :
+ * [{ k: "page", id } | { k: "link", href, label } | { k: "group", label, items: [page | link] }].
  */
 export function NavEditor({ pages, locales, initial, labels }: { pages: NavPage[]; locales: NavLocale[]; initial: NavItem[]; labels: Labels }) {
   const [items, setItems] = useState<NavItem[]>(initial);
-  const [picking, setPicking] = useState(false);
+  /** Où ajoute-t-on une page : « root » (le menu) ou l'identifiant d'un groupe ; null = personne. */
+  const [picking, setPicking] = useState<string | null>(null);
   const byId = new Map(pages.map((p) => [p.id, p]));
-  const used = new Set(items.flatMap((i) => (i.kind === "page" ? [i.id] : [])));
+  const used = new Set(items.flatMap((i) => (i.kind === "page" ? [i.id] : i.kind === "group" ? i.items.flatMap((c) => (c.kind === "page" ? [c.id] : [])) : [])));
   const available = pages.filter((p) => !used.has(p.id));
 
-  const move = (i: number, d: -1 | 1) => setItems((a) => { const j = i + d; if (j < 0 || j >= a.length) return a; const n = [...a]; [n[i], n[j]] = [n[j]!, n[i]!]; return n; });
-  const patch = (id: string, p: Partial<Extract<NavItem, { kind: "link" }>>) => setItems((a) => a.map((x) => (x.uid === id && x.kind === "link" ? { ...x, ...p } : x)));
-  const payload = JSON.stringify(items.map((i) => (i.kind === "page" ? { k: "page", id: i.id } : { k: "link", href: i.href, label: i.label })));
+  const payload = JSON.stringify(items.map((i) => (i.kind === "group" ? { k: "group", label: i.label, items: i.items.map(leafPayload) } : leafPayload(i))));
+
+  const patchLink = (list: NavItem[], id: string, p: Partial<Extract<NavLeaf, { kind: "link" }>>): NavItem[] =>
+    list.map((x) => (x.uid === id && x.kind === "link" ? { ...x, ...p } : x.kind === "group" ? { ...x, items: x.items.map((c) => (c.uid === id && c.kind === "link" ? { ...c, ...p } : c)) } : x));
+  const patchGroup = (id: string, fn: (g: Extract<NavItem, { kind: "group" }>) => Extract<NavItem, { kind: "group" }>) =>
+    setItems((a) => a.map((x) => (x.uid === id && x.kind === "group" ? fn(x) : x)));
+  const addLeaf = (target: string, leaf: NavLeaf) => setItems((a) => (target === "root" ? [...a, leaf] : a.map((x) => (x.uid === target && x.kind === "group" ? { ...x, items: [...x.items, leaf] } : x))));
+
+  const controls = (i: number, count: number, onMove: (d: -1 | 1) => void, onRemove: () => void) => (
+    <div className="absolute right-3 top-3 flex items-center gap-1">
+      <button type="button" className={`${ui.btn} !px-3`} onClick={() => onMove(-1)} disabled={i === 0} aria-label={labels.up} title={labels.up}>↑</button>
+      <button type="button" className={`${ui.btn} !px-3`} onClick={() => onMove(1)} disabled={i === count - 1} aria-label={labels.down} title={labels.down}>↓</button>
+      <button type="button" className={`${ui.btnDanger} !px-3`} onClick={onRemove} aria-label={labels.remove} title={labels.remove}>🗑</button>
+    </div>
+  );
+
+  const leafBody = (item: NavLeaf) => {
+    if (item.kind === "page") {
+      const page = byId.get(item.id);
+      if (!page) return null;
+      return (
+        <div className="pr-36">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted">{labels.page}</p>
+          <p className="font-semibold leading-tight">{page.title}</p>
+          <p className="text-sm text-muted">{page.href}</p>
+        </div>
+      );
+    }
+    return (
+      <>
+        <p className="pr-36 text-xs font-medium uppercase tracking-wide text-muted">{labels.link}</p>
+        <label className="block text-sm">
+          <span className={ui.label}>{labels.href}</span>
+          <input value={item.href} onChange={(e) => setItems((a) => patchLink(a, item.uid, { href: e.target.value }))} placeholder={labels.hrefPlaceholder} className={ui.input} />
+        </label>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {locales.map((l) => (
+            <label key={l.code} className="block text-sm">
+              <span className={ui.label}>{labels.label} — {l.name}</span>
+              <input value={item.label[l.code] ?? ""} onChange={(e) => setItems((a) => patchLink(a, item.uid, { label: { ...item.label, [l.code]: e.target.value } }))} className={ui.input} />
+            </label>
+          ))}
+        </div>
+      </>
+    );
+  };
+
+  const picker = (target: string) => (
+    <div className={`${ui.card} space-y-3`}>
+      <p className="font-semibold">{labels.pickPage}</p>
+      {available.length === 0 ? <p className={ui.help}>{labels.noMorePages}</p> : (
+        <ul className="grid gap-2 sm:grid-cols-2">
+          {available.map((p) => (
+            <li key={p.id}>
+              <button type="button" onClick={() => { addLeaf(target, { uid: uid(), kind: "page", id: p.id }); setPicking(null); }}
+                className="flex w-full flex-col rounded-xl border border-line bg-bg px-3 py-2.5 text-left transition-colors hover:border-accent">
+                <span className="text-sm font-medium leading-tight">{p.title}</span>
+                <span className="truncate text-xs text-muted">{p.href}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <button type="button" className={ui.btn} onClick={() => setPicking(null)}>{labels.cancel}</button>
+    </div>
+  );
+
+  const adders = (target: string) =>
+    picking === target ? picker(target) : (
+      <div className={`grid gap-3 ${target === "root" ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
+        <button type="button" className={`${ui.btn} !border-dashed !py-3`} onClick={() => setPicking(target)}>＋ {labels.addPage}</button>
+        <button type="button" className={`${ui.btn} !border-dashed !py-3`} onClick={() => addLeaf(target, { uid: uid(), kind: "link", href: "", label: {} })}>＋ {labels.addLink}</button>
+        {target === "root" && <button type="button" className={`${ui.btn} !border-dashed !py-3`} onClick={() => setItems((a) => [...a, { uid: uid(), kind: "group", label: {}, items: [] }])}>＋ {labels.addGroup}</button>}
+      </div>
+    );
 
   return (
     <div className="space-y-4">
@@ -38,67 +123,47 @@ export function NavEditor({ pages, locales, initial, labels }: { pages: NavPage[
       {items.length === 0 && <p className={`${ui.card} text-center text-muted`}>{labels.empty}</p>}
       <ol className="space-y-3">
         {items.map((item, i) => {
-          const page = item.kind === "page" ? byId.get(item.id) : null;
-          if (item.kind === "page" && !page) return null;
+          if (item.kind === "group") {
+            return (
+              <li key={item.uid} className={`${ui.card} relative space-y-3 border-accent/40`} data-testid="nav-group">
+                {controls(i, items.length, (d) => setItems((a) => swap(a, i, d)), () => setItems((a) => a.filter((x) => x.uid !== item.uid)))}
+                <p className="pr-36 text-xs font-medium uppercase tracking-wide text-muted">▾ {labels.group}</p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {locales.map((l) => (
+                    <label key={l.code} className="block text-sm">
+                      <span className={ui.label}>{labels.groupName} — {l.name}</span>
+                      <input value={item.label[l.code] ?? ""} onChange={(e) => patchGroup(item.uid, (g) => ({ ...g, label: { ...g.label, [l.code]: e.target.value } }))} className={ui.input} />
+                    </label>
+                  ))}
+                </div>
+                <ol className="space-y-3 border-l-2 border-line pl-4">
+                  {item.items.length === 0 && <li className={ui.help}>{labels.groupEmpty}</li>}
+                  {item.items.map((child, j) => {
+                    const body = leafBody(child);
+                    if (!body) return null;
+                    return (
+                      <li key={child.uid} className="relative space-y-3 rounded-xl border border-line bg-bg p-3">
+                        {controls(j, item.items.length, (d) => patchGroup(item.uid, (g) => ({ ...g, items: swap(g.items, j, d) })), () => patchGroup(item.uid, (g) => ({ ...g, items: g.items.filter((c) => c.uid !== child.uid) })))}
+                        {body}
+                      </li>
+                    );
+                  })}
+                </ol>
+                {adders(item.uid)}
+              </li>
+            );
+          }
+          const body = leafBody(item);
+          if (!body) return null;
           return (
             <li key={item.uid} className={`${ui.card} relative space-y-3`}>
-              <div className="absolute right-3 top-3 flex items-center gap-1">
-                <button type="button" className={`${ui.btn} !px-3`} onClick={() => move(i, -1)} disabled={i === 0} aria-label={labels.up} title={labels.up}>↑</button>
-                <button type="button" className={`${ui.btn} !px-3`} onClick={() => move(i, 1)} disabled={i === items.length - 1} aria-label={labels.down} title={labels.down}>↓</button>
-                <button type="button" className={`${ui.btnDanger} !px-3`} onClick={() => setItems((a) => a.filter((x) => x.uid !== item.uid))} aria-label={labels.remove} title={labels.remove}>🗑</button>
-              </div>
-              {page ? (
-                <div className="pr-36">
-                  <p className="text-xs font-medium uppercase tracking-wide text-muted">{labels.page}</p>
-                  <p className="font-semibold leading-tight">{page.title}</p>
-                  <p className="text-sm text-muted">{page.href}</p>
-                </div>
-              ) : item.kind === "link" ? (
-                <>
-                  <p className="pr-36 text-xs font-medium uppercase tracking-wide text-muted">{labels.link}</p>
-                  <label className="block text-sm">
-                    <span className={ui.label}>{labels.href}</span>
-                    <input value={item.href} onChange={(e) => patch(item.uid, { href: e.target.value })} placeholder={labels.hrefPlaceholder} className={ui.input} />
-                  </label>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {locales.map((l) => (
-                      <label key={l.code} className="block text-sm">
-                        <span className={ui.label}>{labels.label} — {l.name}</span>
-                        <input value={item.label[l.code] ?? ""} onChange={(e) => patch(item.uid, { label: { ...item.label, [l.code]: e.target.value } })} className={ui.input} />
-                      </label>
-                    ))}
-                  </div>
-                </>
-              ) : null}
+              {controls(i, items.length, (d) => setItems((a) => swap(a, i, d)), () => setItems((a) => a.filter((x) => x.uid !== item.uid)))}
+              {body}
             </li>
           );
         })}
       </ol>
-
-      {picking ? (
-        <div className={`${ui.card} space-y-3`}>
-          <p className="font-semibold">{labels.pickPage}</p>
-          {available.length === 0 ? <p className={ui.help}>{labels.noMorePages}</p> : (
-            <ul className="grid gap-2 sm:grid-cols-2">
-              {available.map((p) => (
-                <li key={p.id}>
-                  <button type="button" onClick={() => { setItems((a) => [...a, { uid: uid(), kind: "page", id: p.id }]); setPicking(false); }}
-                    className="flex w-full flex-col rounded-xl border border-line bg-bg px-3 py-2.5 text-left transition-colors hover:border-accent">
-                    <span className="text-sm font-medium leading-tight">{p.title}</span>
-                    <span className="truncate text-xs text-muted">{p.href}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-          <button type="button" className={ui.btn} onClick={() => setPicking(false)}>{labels.cancel}</button>
-        </div>
-      ) : (
-        <div className="grid gap-3 sm:grid-cols-2">
-          <button type="button" className={`${ui.btn} !border-dashed !py-3.5`} onClick={() => setPicking(true)}>＋ {labels.addPage}</button>
-          <button type="button" className={`${ui.btn} !border-dashed !py-3.5`} onClick={() => setItems((a) => [...a, { uid: uid(), kind: "link", href: "", label: {} }])}>＋ {labels.addLink}</button>
-        </div>
-      )}
+      {adders("root")}
     </div>
   );
 }

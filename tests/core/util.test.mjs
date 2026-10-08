@@ -87,9 +87,10 @@ test("envois : le vrai format est détecté par signature, pas par le nom", () =
 
 test("envois : noms servis restreints à ceux que le cœur génère, types MIME corrects", () => {
   assert.ok(UPLOAD_NAME_RE.test("0f1e2d3c-4b5a-6978-8091-a2b3c4d5e6f7.png"));
-  for (const bad of ["../etc/passwd", "a.png", "0f1e2d3c-4b5a-6978-8091-a2b3c4d5e6f7.svg", "0f1e2d3c-4b5a-6978-8091-a2b3c4d5e6f7.png/../x", ""]) assert.ok(!UPLOAD_NAME_RE.test(bad), bad);
+  for (const bad of ["../etc/passwd", "a.png", "0f1e2d3c-4b5a-6978-8091-a2b3c4d5e6f7.exe", "0f1e2d3c-4b5a-6978-8091-a2b3c4d5e6f7.png/../x", ""]) assert.ok(!UPLOAD_NAME_RE.test(bad), bad);
   assert.equal(mimeFor("x.png"), "image/png");
   assert.equal(mimeFor("x.jpg"), "image/jpeg");
+  assert.ok(UPLOAD_NAME_RE.test("0f1e2d3c-4b5a-6978-8091-a2b3c4d5e6f7.svg"), "les SVG de logo (nettoyés à l'envoi) sont servis");
   assert.equal(mimeFor("x.exe"), "application/octet-stream");
 });
 

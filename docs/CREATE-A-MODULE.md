@@ -2,8 +2,8 @@
 
 Ce tutoriel s'adresse à quelqu'un qui n'a **jamais vu le framework**. À la fin, vous saurez tout ce qu'un module peut faire et comment le
 faire, vous aurez testé le vôtre sur votre machine et vous saurez le publier. Il s'appuie sur un module d'exemple complet et fonctionnel,
-[`modules-examples/guestbook`](../modules-examples/guestbook) (un livre d'or modéré), dont chaque partie est expliquée par des
-commentaires dans [`index.mjs`](../modules-examples/guestbook/index.mjs). La **référence exhaustive** de chaque champ est
+`examples/guestbook` (`curiosa-extras/examples/guestbook`) (un livre d'or modéré), dont chaque partie est expliquée par des
+commentaires dans `index.mjs` (`curiosa-extras/examples/guestbook/index.mjs`). La **référence exhaustive** de chaque champ est
 [MODULES.md](MODULES.md) ; quand ce tutoriel dit « voir la référence », c'est là.
 
 **Sommaire** : [1. Les idées](#1-les-idées-à-connaître) · [2. Prérequis](#2-prérequis) · [3. Un premier module](#3-un-premier-module-hello) ·
@@ -12,7 +12,7 @@ commentaires dans [`index.mjs`](../modules-examples/guestbook/index.mjs). La **r
 [10. Sujets et RSS](#10-échanger-avec-les-autres-modules-sujets-et-flux-rss) · [11. Admin](#11-panneau-et-actions-dadmin) ·
 [12. MCP](#12-actions-mcp-pour-les-assistants) · [13. Sauvegarde](#13-sauvegarde-lisible) · [14. Thème et langues](#14-thème-et-langues) ·
 [15. Overlays, hooks, slots, filtres](#15-overlays-crochets-emplacements-filtres) · [16. Zéro code](#16-modules-à-contenu-zéro-code) ·
-[17. Tester](#17-tester-son-module) · [18. Versions et catalogue](#18-versions-et-publication) · [19. Sécurité](#19-règles-de-sécurité) ·
+[17. Tester](#17-tester-son-module) · [18. Versions et catalogue](#18-versions-et-publication) · [19. Sécurité](#19-règles-de-sécurité) · [20. Vie privée et licence](#20-vie-privée-cookies-et-licence) ·
 [Checklist](#checklist-avant-de-publier)
 
 ## 1. Les idées à connaître
@@ -75,9 +75,9 @@ Les champs importants : `apiVersion` (toujours `2` aujourd'hui : le contrat avec
 Les **permissions** sont déclaratives : elles disent à l'administrateur ce que fait le module. Une par capacité utilisée : `slots`, `sections`, `pages`,
 `routes`, `storage`, `filters`, `topics`, `overlay`, `mcp`, `admin`, `mail`. Le cœur ne bloque pas une capacité non déclarée — déclarez-les fidèlement.
 
-L'exemple minimal « de production » est [`announcement-banner`](../modules-examples/announcement-banner) ; essayez le vôtre tout de suite :
+L'exemple minimal « de production » est `announcement-banner` (`curiosa-extras/examples/announcement-banner`) ; essayez le vôtre tout de suite :
 [section 17](#17-tester-son-module). Toutes les clés possibles de `index.mjs` sont des **clés optionnelles** de l'objet exporté :
-`slots`, `sections`, `page`, `overlay`, `exports`, `routes`, `filters`, `adminPanel`, `adminActions`, `mcp`, `backup`, `tasks`, `services`, `hooks`. On les découvre une à une.
+`slots`, `sections`, `page`, `news`, `adminBadge`, `overlay`, `exports`, `routes`, `filters`, `adminPanel`, `adminActions`, `mcp`, `backup`, `tasks`, `services`, `hooks`. On les découvre une à une.
 
 ## 4. Réglages et apparence
 
@@ -99,13 +99,14 @@ la langue courante, ou la valeur par défaut.
 | `number`, `boolean`, `select` | nombre, case à cocher, liste (`options`) |
 | `color` | couleur `#RRGGBB` ; avec `"default": "theme:accent"` elle **suit le thème du site** tant que l'administrateur n'en choisit pas |
 | `image` | téléversement ou adresse |
+| `video` | téléversement d'une vidéo MP4 ou WebM (50 Mo au plus), **réservée aux fichiers du site** (`/uploads/…`) ; vérifiez la valeur avant de l'utiliser, comme le fait le module « Bandeau d'accueil » |
 | `secret` | jamais réaffiché après enregistrement (clé d'API, code…) |
 
 Attributs : `translatable: true` (une valeur par langue du site), `advanced: true` (masqué en admin simplifié — **donnez toujours une valeur par défaut**),
 `group: "appearance"` (rangé sous « Apparence de ce module »). Les jetons de thème permis pour `theme:` sont `accent`, `accentFg`, `bg`, `surface`, `fg`, `muted`, `line`.
 
 **Piège classique** : la valeur d'un réglage n'est **pas garantie** (un nombre peut arriver en texte, une couleur ou une adresse peut être n'importe quoi). Convertissez,
-bornez, validez avant d'utiliser. L'exemple a des petits outils pour cela (`num()`, `safeColor()`, `safeSrc()` dans [`index.mjs`](../modules-examples/guestbook/index.mjs)).
+bornez, validez avant d'utiliser. L'exemple a des petits outils pour cela (`num()`, `safeColor()`, `safeSrc()` dans `index.mjs` (`curiosa-extras/examples/guestbook/index.mjs`)).
 
 Voir la référence : « Réglages (`settings`) ».
 
@@ -261,7 +262,7 @@ const items = await ctx.api.topics.collect("overlay.item", { limit: 20 });   // 
 ```
 
 Le sujet du cœur `core.entry` donne les entrées publiées de tout module à contenu (blog, liens…) : pas besoin de `schema`. Le guestbook ne **consomme** rien (un livre d'or n'a pas besoin des données des autres) ;
-pour un exemple de consommateur, lisez [`sponsor-ticker`](../modules-community/sponsor-ticker). Formats de champs : `string`, `url`, `number`, `boolean`, `string[]`.
+pour un exemple de consommateur, lisez `sponsor-ticker` (`curiosa-extras/modules/sponsor-ticker`). Formats de champs : `string`, `url`, `number`, `boolean`, `string[]`.
 Nommez vos sujets `domaine.objet` en anglais. Permission : `topics`. Voir la référence : « sujets ».
 
 ## 11. Panneau et actions d'admin
@@ -442,14 +443,14 @@ personnalisés. Les entrées alimentent le sujet `core.entry` : n'importe quel o
 
 1. Lancez le framework en local (voir [INSTALL.md](INSTALL.md)) avec la variable d'environnement **`CURIOSA_ALLOW_LOCAL_MODULES=1`** (elle autorise les dépôts locaux ; **jamais** sur un serveur public).
 2. Votre module est un dépôt git **avec au moins un commit** : `git init && git add . && git commit -m "first version"`.
-3. Admin → **Catalogue** → **Installer un dépôt personnel (non vérifié)** → saisissez `file:///chemin/absolu/vers/votre/depot`, cochez la case de confiance. Le module est installé **désactivé**.
+3. Admin → **Fonctionnalités** → onglet **Ajouter** (le catalogue) → **Installer un dépôt personnel (non vérifié)** → saisissez `file:///chemin/absolu/vers/votre/depot`, cochez la case de confiance. Le module est installé **désactivé**.
 4. **Modules** → activez-le, ajoutez une instance, ouvrez-la : réglages, panneau d'admin, page publique, section sur l'accueil (admin → Accueil).
 5. Vous avez modifié le code ? **Validez** (`git commit`), puis **Modules → Chercher une mise à jour → Mettre à jour**. Le module est rechargé depuis le dernier commit.
 
 Si l'installation est refusée, le message vous dit pourquoi : manifeste invalide (`module.json: settings.2.key — …`), `apiVersion` différente, `main` introuvable, lien symbolique, plus de 10 Mo…
 Le serveur journalise aussi les erreurs d'exécution de votre module (un module en erreur ne casse jamais le site).
 
-Pour un module **livré avec le framework** (comme l'exemple), il suffit de poser son dossier dans `modules-examples/` (ou `modules-community/`) : il apparaît dans le Catalogue.
+Pour un module **livré avec le framework** (comme l'exemple), il suffit de proposer son dossier dans `examples/` (ou `modules/`) du dépôt `curiosa-extras` : il apparaît dans le Catalogue.
 
 ### Tests unitaires, sans serveur
 
@@ -476,9 +477,9 @@ test("signer conserve le message en attente et prévient le propriétaire", asyn
 });
 ```
 
-Lancez : `node --test`. Dans ce dépôt, les tests des modules vont plus loin (ils valident aussi le manifeste avec `parseManifest`, la parité des langues, les permissions, le XSS…) : prenez
-[`tests/modules/example-guestbook.test.mjs`](../tests/modules/example-guestbook.test.mjs) pour modèle et lancez
-`node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./tests/helpers/register.mjs --test tests/modules/example-guestbook.test.mjs`.
+Lancez : `node --test`. Dans `curiosa-extras`, les tests des modules vont plus loin (ils valident aussi le manifeste avec `parseManifest`, la parité des langues, les permissions, le XSS…) : prenez
+`tests/guestbook.test.mjs` du dépôt `curiosa-extras` pour modèle et lancez
+`CURIOSA_DIR=../Curiosa npm test` (les tests de `curiosa-extras` passent par le chargeur de test du cœur).
 Testez au minimum : le manifeste est valide, chaque section/action/sujet déclaré est implémenté, un visiteur malveillant ne peut rien injecter, un échec d'e-mail ne perd rien.
 
 ## 18. Versions et publication
@@ -491,8 +492,9 @@ Testez au minimum : le manifeste est valide, chaque section/action/sujet déclar
 
 **Être listé dans le Catalogue** : deux voies.
 
-1. **Livré avec le framework** : un dossier de module dans `modules-community/` (modules complets) ou `modules-examples/` (exemples) du dépôt du framework, `module.json` à sa racine. Il est installé depuis les fichiers du serveur, sans réseau.
-2. **Dépôt reconnu** : une entrée dans [`catalogue/index.json`](../catalogue/index.json), le fichier du dépôt du framework que **chaque installation relit à l'exécution** — il ne suit pas le rythme des versions du framework (`CURIOSA_UPDATE_REMOTE` choisit le remote d'origine d'un clone ; `CURIOSA_CATALOGUE_REPO`, `CURIOSA_CATALOGUE_REF`, `CURIOSA_CATALOGUE_RUNTIME` règlent cette lecture ; `MODULES_INDEX_URL` ajoute un index `https://` supplémentaire). On l'ajoute par une demande de fusion :
+1. **Livré avec le framework** : un dossier de module dans `modules/` (modules complets) ou `examples/` (exemples) du dépôt `curiosa-extras`, `module.json` à sa racine. Il est installé depuis l'instantané `extras/` du serveur (variable `CURIOSA_EXTRAS_DIR` pour un autre dossier), sans réseau. Un dépôt peut aussi regrouper plusieurs modules : `https://hôte/propriétaire/dépôt#ref:dossier` installe le seul module de ce dossier.
+2. **Votre propre dépôt de modules** : un dépôt (par exemple `jeanmi/mes-modules-curiosa`) qui regroupe vos modules, un dossier chacun. Le propriétaire d'un site l'ajoute dans Catalogue → *Mes dépôts de modules* (mode avancé) et installe ceux qu'il veut ; rien à faire de votre côté que de publier le dépôt.
+3. **Dépôt reconnu** : une entrée dans [`catalogue/index.json`](../catalogue/README.md), le fichier du dépôt du framework que **chaque installation relit à l'exécution** — il ne suit pas le rythme des versions du framework (`CURIOSA_UPDATE_REMOTE` choisit le remote d'origine d'un clone ; `CURIOSA_CATALOGUE_REPO`, `CURIOSA_CATALOGUE_REF`, `CURIOSA_CATALOGUE_RUNTIME` règlent cette lecture ; `MODULES_INDEX_URL` ajoute un index `https://` supplémentaire). On l'ajoute par une demande de fusion :
 
 ```json
 { "id": "guestbook", "name": "Guestbook", "description": "A moderated guestbook.", "repo": "https://github.com/<vous>/<depot>",
@@ -518,6 +520,23 @@ Un module est **du code de confiance** : il tourne sur le serveur avec les droit
 - **Réponses d'erreur muettes.** Ne renvoyez jamais de détail interne (chemin, requête, identifiant technique) à un visiteur.
 - **Sorties de tableur.** Neutralisez `=`, `+`, `-`, `@` en tête de cellule d'un CSV (injection de formule).
 
+## 20. Vie privée, cookies et licence
+
+**Vie privée.** Le cœur fournit à chaque site une page « Politique de confidentialité » (`/privacy`, liée dans le pied de page) qu'il écrit lui-même d'après ce que le site fait. Pour qu'elle soit **vraie**, un module qui collecte des données de visiteurs doit le **déclarer** dans son manifeste, en une ou deux phrases (quoi, pourquoi, comment les faire effacer) :
+
+```json
+"privacy": {
+  "en": "If you sign the guestbook, your name and message are shown publicly once approved. To have them removed, write to the site's contact.",
+  "fr": "Si vous signez le livre d'or, votre nom et votre message sont affichés publiquement une fois validés. Pour les faire retirer, écrivez au contact du site."
+}
+```
+
+Le cœur reprend ce texte tel quel, sous le nom de l'instance. Un module qui ne collecte **rien** n'a rien à écrire. Voir [PRIVACY.md](PRIVACY.md).
+
+**Cookies et stockage.** Le framework ne demande aucun consentement parce qu'il ne dépose rien d'inutile. **Ne rompez pas cela** : un module qui dépose un cookie, utilise le stockage du navigateur ou charge un service tiers (lecteur vidéo, widget, statistiques) pour autre chose que ce que le visiteur vient de demander impose un consentement préalable, et c'est à vous de le prévoir et de le déclarer dans `privacy`. En cas de doute : n'en déposez pas.
+
+**Licence.** Votre module est **à vous** : `license` dans `module.json` est votre choix (MIT, propriétaire, payant…), vous en gardez tout le mérite, et vous pouvez le vendre. La licence du framework (Curiosa License) ne s'applique pas à un module qui l'utilise seulement par son interface publique (`module.json` et l'API des modules) sans copier de code du cœur. Elle s'applique, en revanche, au cœur et aux modules livrés dans `src/modules-builtin/` ; voir [LICENSE](../LICENSE).
+
 ## Checklist avant de publier
 
 - [ ] `module.json` est à la **racine** du dépôt ; `apiVersion` vaut `2` ; `id` stable ; `version` à jour ; `main` pointe un fichier existant.
@@ -534,8 +553,10 @@ Un module est **du code de confiance** : il tourne sur le serveur avec les droit
 - [ ] Aucun secret, ni donnée privée, ni identifiant réel dans le code, les exemples ou les journaux ; exemples neutres (`example.org`, « Demo »).
 - [ ] Le module a des tests (manifeste, parité des langues, comportement, XSS) et ils passent.
 - [ ] Si la forme de mes données a changé : `dataVersion` augmenté et migration écrite et testée sur des données de l'ancienne version.
+- [ ] Si le module collecte des données de visiteurs : champ `privacy` renseigné (en **et** fr) ; aucun cookie, stockage navigateur ni service tiers non essentiel sans consentement.
+- [ ] `license` choisie dans `module.json` (elle n'a pas à être celle du framework).
 - [ ] Essayé en vrai : installation locale, activation, instance, page, formulaire, admin, désinstallation propre.
 - [ ] Un `README.md` explique ce que fait le module, ses réglages et ses limites ; la version est **taguée** (`git tag v1.0.0`).
 - [ ] **Pensez à Emma et à Hugo.** Emma n'a aucun bagage technique : tout réglage qu'elle doit remplir porte un libellé simple (« Adresse de votre salon Discord », pas « webhookUrl ») et une aide en une phrase ; un réglage de technicien (délai, mode de test, format) porte `"advanced": true` : il n'apparaît que dans le mode avancé de Hugo, avec une valeur par défaut raisonnable. Vos textes d'admin (`adminPanel`) disent ce qu'on peut faire, pas comment ça marche.
 - [ ] Un **README.md** à la racine du dépôt : il est affiché dans le Catalogue avant l'installation (à quoi sert le module, réglages, permissions, et si vous le souhaitez un lien pour un don volontaire : le Catalogue est gratuit, rien ne s'y vend).
-- [ ] Pour le Catalogue : dépôt public sur un hôte autorisé, ajouté à `catalogue/index.json` (demande de fusion) ou proposé dans `modules-community/` / `modules-examples/`.
+- [ ] Pour le Catalogue : dépôt public sur un hôte autorisé, ajouté à `catalogue/index.json` de `curiosa-extras` (demande de fusion), ou proposé dans son `modules/` / `examples/`.

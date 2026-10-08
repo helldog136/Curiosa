@@ -20,7 +20,7 @@ const { createInstance } = await import("@/core/instanceService");
 const { createEntry } = await import("@/core/content/service");
 const { setSetting } = await import("@/core/settings");
 const { UPLOADS_DIR, DATA_DIR } = await import("@/core/config");
-const { BUILTIN_MODULES } = await import("@/modules-builtin");
+const { FIXTURE_MODULES: BUILTIN_MODULES } = await import("../helpers/fixtureModules.mjs");
 
 const PW = "un-mot-de-passe-solide";
 const FAST = 1000;
@@ -35,7 +35,7 @@ async function seed() {
   const owner = await db.prisma.user.create({ data: { email: "owner@example.org", name: "Owner", role: "owner", passwordHash: "$2a$12$hash-du-proprietaire", locale: "fr", advanced: true } });
   await setSetting("i18n.default", "fr"); await setSetting("i18n.enabled", ["fr", "en"]); await setSetting("setup.completed", true);
   await setSetting("site.name", "Mon site", "fr"); await setSetting("mail.pass", "mot-de-passe-smtp"); await setSetting("updates.latest", "v9.9.9");
-  await db.prisma.module.upsert({ where: { id: "blog" }, create: { id: "blog", source: "builtin", version: "1", enabled: true }, update: {} });
+  await db.fixture("blog");
   const blog = await createInstance(db.prisma, { manifest: BUILTIN_MODULES.find((b) => b.manifest.id === "blog").manifest, nickname: "Actus", names: { fr: "Actus", en: "News" } });
   const e1 = await createEntry(db.prisma, { instanceId: blog.id, locale: "fr", title: "Premier article", body: "Texte avec accents é à ü\n\n- liste", summary: "Résumé", status: "published", tags: ["promo", "news"], authorId: owner.id, url: "https://exemple.org/x", code: "CODE10" });
   await db.prisma.entryTranslation.create({ data: { entryId: e1.id, instanceId: blog.id, locale: "en", slug: "first-article", title: "First article", summary: "", body: "English body" } });
@@ -229,7 +229,7 @@ test("modules : les données de CHAQUE module installé sont sauvegardées (stoc
   assert.ok(!Object.keys(files).some((p) => p.includes("evil")), "un chemin dangereux fourni par un module est ignoré");
   const m = b.manifest.modules.find((x) => x.id === "perso");
   assert.deepEqual([m.source, m.origin, m.enabled, m.repoUrl.startsWith("file:")], ["git", "custom", true, true]);
-  assert.equal(b.manifest.modules.find((x) => x.id === "blog").origin, "builtin");
+  assert.equal(b.manifest.modules.find((x) => x.id === "blog").origin, "catalogue", "le cœur ne livre aucun module : le blog vient du catalogue comme les autres");
 });
 
 test("modules : un module qui plante pendant son export lisible n'empêche pas la sauvegarde", async () => {
@@ -241,19 +241,19 @@ test("modules : un module qui plante pendant son export lisible n'empêche pas l
   try { assert.ok((await make()).buffer.length > 100); } finally { console.error = log; }
 });
 
-test("plan de restauration : module de base, déjà installé, catalogue, personnel (confirmation), introuvable", async () => {
+test("plan de restauration : ancienne sauvegarde (module « intégré »), déjà installé, catalogue, personnel (confirmation), introuvable", async () => {
   const modules = [
     { id: "blog", source: "builtin", origin: "builtin", name: "Blog", version: "1", enabled: true, repoUrl: null, ref: null, commit: null },
-    { id: "planning", source: "bundled", origin: "catalogue", name: "Planning", version: "1", enabled: true, repoUrl: null, ref: null, commit: null },
-    { id: "sponsors", source: "bundled", origin: "catalogue", name: "Sponsors", version: "1", enabled: false, repoUrl: null, ref: null, commit: null },
+    { id: "demo-planner", source: "bundled", origin: "catalogue", name: "Planning", version: "1", enabled: true, repoUrl: null, ref: null, commit: null },
+    { id: "demo-sponsors", source: "bundled", origin: "catalogue", name: "Sponsors", version: "1", enabled: false, repoUrl: null, ref: null, commit: null },
     { id: "perso", source: "git", origin: "custom", name: "Perso", version: "2", enabled: true, repoUrl: "https://github.com/moi/perso", ref: "v2", commit: "abc" },
     { id: "fantome", source: "git", origin: "custom", name: "Fantôme", version: "1", enabled: true, repoUrl: null, ref: null, commit: null },
     { id: "disparu", source: "git", origin: "catalogue", name: "Disparu", version: "1", enabled: true, repoUrl: "https://github.com/x/disparu", ref: null, commit: null },
   ];
-  await db.prisma.module.create({ data: { id: "sponsors", source: "bundled", version: "1", enabled: true } });
+  await db.prisma.module.create({ data: { id: "demo-sponsors", source: "bundled", version: "1", enabled: true } });
   const plan = Object.fromEntries((await Rs.planModules(modules)).map((p) => [p.id, p]));
   assert.deepEqual(Object.fromEntries(Object.entries(plan).map(([k, v]) => [k, [v.status, v.needsConfirmation]])), {
-    blog: ["builtin", false], planning: ["catalogue", false], sponsors: ["installed", false], perso: ["custom", true], fantome: ["unavailable", false], disparu: ["custom", true],
+    blog: ["catalogue", false], "demo-planner": ["catalogue", false], "demo-sponsors": ["installed", false], perso: ["custom", true], fantome: ["unavailable", false], disparu: ["custom", true],
   });
 });
 
@@ -264,7 +264,7 @@ function fakeBackup(modules) {
 
 test("restauration des modules : catalogue → réinstallés d'office ; personnels → SEULEMENT ceux que l'utilisateur confirme, un par un", async () => {
   const mods = [
-    { id: "planning", source: "bundled", origin: "catalogue", name: "P", version: "1", enabled: true, repoUrl: null, ref: null, commit: null },
+    { id: "demo-planner", source: "bundled", origin: "catalogue", name: "P", version: "1", enabled: true, repoUrl: null, ref: null, commit: null },
     { id: "perso-a", source: "git", origin: "custom", name: "A", version: "1", enabled: true, repoUrl: "https://github.com/moi/a", ref: "v1", commit: null },
     { id: "perso-b", source: "git", origin: "custom", name: "B", version: "1", enabled: true, repoUrl: "https://github.com/moi/b", ref: null, commit: null },
     { id: "fantome", source: "git", origin: "custom", name: "F", version: "1", enabled: true, repoUrl: null, ref: null, commit: null },
@@ -276,21 +276,21 @@ test("restauration des modules : catalogue → réinstallés d'office ; personne
   };
   const report = await Rs.applyRestore(fakeBackup(mods), { confirmCustom: ["perso-a"], actor: "o", installers });
   assert.equal(report.ok, true);
-  assert.deepEqual(calls, ["catalogue:planning", "repo:https://github.com/moi/a#v1"], "perso-b non confirmé : jamais téléchargé");
-  assert.deepEqual(Object.fromEntries(report.modules.map((m) => [m.id, m.outcome])), { planning: "installed", "perso-a": "installed", "perso-b": "skipped", fantome: "unavailable" });
-  assert.equal((await db.prisma.module.findUnique({ where: { id: "planning" } })).enabled, true, "remis à « activé » comme sauvegardé");
+  assert.deepEqual(calls, ["catalogue:demo-planner", "repo:https://github.com/moi/a#v1"], "perso-b non confirmé : jamais téléchargé");
+  assert.deepEqual(Object.fromEntries(report.modules.map((m) => [m.id, m.outcome])), { "demo-planner": "installed", "perso-a": "installed", "perso-b": "skipped", fantome: "unavailable" });
+  assert.equal((await db.prisma.module.findUnique({ where: { id: "demo-planner" } })).enabled, true, "remis à « activé » comme sauvegardé");
   assert.equal(await db.prisma.module.findUnique({ where: { id: "perso-b" } }), null);
 });
 
 test("restauration des modules : une installation qui échoue est signalée sans bloquer le reste", async () => {
-  const mods = [{ id: "planning", source: "bundled", origin: "catalogue", name: "P", version: "1", enabled: true, repoUrl: null, ref: null, commit: null }];
+  const mods = [{ id: "demo-planner", source: "bundled", origin: "catalogue", name: "P", version: "1", enabled: true, repoUrl: null, ref: null, commit: null }];
   const installers = { fromCatalogue: async () => ({ ok: false, error: "modules.error.clone" }), fromRepo: async () => ({ ok: false, error: "x" }) };
   const report = await Rs.applyRestore(fakeBackup(mods), { confirmCustom: [], actor: "o", installers });
   assert.equal(report.ok, true, "les données sont restaurées malgré tout");
-  assert.deepEqual(report.modules, [{ id: "planning", outcome: "failed", error: "modules.error.clone" }]);
+  assert.deepEqual(report.modules, [{ id: "demo-planner", outcome: "failed", error: "modules.error.clone" }]);
 });
 
-test("restauration des modules : les modules de base reprennent leur état activé / désactivé", async () => {
+test("restauration des modules : les modules d'une ancienne sauvegarde (« intégrés ») sont réinstallés depuis le catalogue et reprennent leur état activé / désactivé", async () => {
   const mods = [{ id: "blog", source: "builtin", origin: "builtin", name: "Blog", version: "1", enabled: false, repoUrl: null, ref: null, commit: null }];
   await Rs.applyRestore(fakeBackup(mods), { confirmCustom: [], actor: "o" });
   assert.equal((await db.prisma.module.findUnique({ where: { id: "blog" } })).enabled, false);

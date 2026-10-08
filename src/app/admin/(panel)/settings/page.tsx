@@ -1,9 +1,11 @@
+import { floatingLabels } from "@/components/admin/floating";
 import { adminCtx } from "@/core/admin";
 import { getSettingByLocale, getSetting } from "@/core/settings";
 import { KNOWN_LOCALES, localeName } from "@/core/i18n/locales";
 import { UI_LOCALES } from "@/core/i18n/dictionary";
 import { ActionForm } from "@/components/admin/ActionForm";
 import { Checkbox, Select, TextArea, TextField } from "@/components/admin/Field";
+import { HeaderLayoutPicker } from "@/components/admin/HeaderLayoutPicker";
 import { ImageField } from "@/components/admin/ImageField";
 import { ShowWhen } from "@/components/admin/ShowWhen";
 import { Tabs } from "@/components/admin/Tabs";
@@ -20,7 +22,7 @@ const BG_EXAMPLE = JSON.stringify([
 ], null, 2);
 import { saveMail, sendTestMail } from "./mail-actions";
 
-const TRANSLATABLE = ["site.name", "site.tagline", "site.about", "footer.text"] as const;
+const TRANSLATABLE = ["site.name", "site.tagline", "site.about", "footer.text", "header.secondaryLabel", "header.buttonLabel", "privacy.extra"] as const;
 
 export default async function SettingsPage() {
   const { t, config, advanced, user } = await adminCtx("admin");
@@ -33,8 +35,8 @@ export default async function SettingsPage() {
   return (
     <div className="space-y-6">
       <header><h1 className={ui.pageTitle}>{t("nav.settings")}</h1>{!advanced && <p className={ui.pageIntro}>{t("settings.intro.simple")}</p>}</header>
-      <Tabs tabs={[{ id: "site", label: t("settings.identity") }, { id: "languages", label: t("settings.languages") }, { id: "appearance", label: t("settings.appearance") }, ...(hasRole(user, "owner") ? [{ id: "mail", label: t("settings.mail") }] : [])]}>
-      <ActionForm action={saveSettings} submitLabel={t("action.save")} className="space-y-8" submitTabs="site languages appearance">
+      <Tabs tabs={[{ id: "site", label: t("settings.identity") }, { id: "languages", label: t("settings.languages") }, { id: "appearance", label: t("settings.appearance") }, { id: "privacy", label: t("settings.privacy") }, ...(hasRole(user, "owner") ? [{ id: "mail", label: t("settings.mail") }] : [])]}>
+      <ActionForm action={saveSettings} floating={floatingLabels(t)} submitLabel={t("action.save")} className="space-y-8" submitTabs="site languages appearance privacy">
         {advanced && <input type="hidden" name="__adv" value="1" />}
         <section data-tab="site" className="space-y-4">
           <h2 className="text-lg font-semibold">{t("settings.identity")}</h2>
@@ -47,10 +49,24 @@ export default async function SettingsPage() {
               {advanced && <TextField name={`footer.text__${l}`} label={t("settings.footerText")} defaultValue={String(values["footer.text"]?.[l] ?? "")} />}
             </fieldset>
           ))}
-          <ImageField name="logo" label={t("settings.logo")} defaultValue={logo} uploadLabel={t("action.upload")} />
-          <Checkbox name="statsEnabled" label={t("settings.stats")} help={t("settings.statsHelp")} defaultChecked={config.statsEnabled} />
-          <ImageField name="favicon" label={t("settings.favicon")} defaultValue={config.favicon} uploadLabel={t("action.upload")} />
-          <p className={ui.help}>{t("settings.faviconHelp")}</p>
+          <fieldset className={`${ui.card} space-y-4`}>
+            <legend className="px-2 text-sm font-medium">{t("settings.logos")}</legend>
+            <p className={ui.help}>{t("settings.logosHelp")}</p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1"><ImageField svg name="logoWide" label={t("settings.logoWide")} defaultValue={config.logos.wide} uploadLabel={t("action.upload")} /><p className={ui.help}>{t("settings.logoWideHelp")}</p></div>
+              <div className="space-y-1"><ImageField svg name="logo" label={t("settings.logoSquare")} defaultValue={logo} uploadLabel={t("action.upload")} /><p className={ui.help}>{t("settings.logoSquareHelp")}</p></div>
+              <div className="space-y-1"><ImageField svg name="favicon" label={t("settings.favicon")} defaultValue={config.favicon} uploadLabel={t("action.upload")} /><p className={ui.help}>{t("settings.faviconHelp")}</p></div>
+              <div className="space-y-1"><ImageField name="logoShare" label={t("settings.logoShare")} defaultValue={config.logos.share} uploadLabel={t("action.upload")} /><p className={ui.help}>{t("settings.logoShareHelp")}</p></div>
+            </div>
+            <details className="rounded-xl border border-line p-3" open={!!(config.logos.wideDark || config.logos.squareDark)}>
+              <summary className="cursor-pointer text-sm font-medium">{t("settings.logosDark")}</summary>
+              <p className={`${ui.help} mt-2`}>{t("settings.logosDarkHelp")}</p>
+              <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                <ImageField svg name="logoWideDark" label={t("settings.logoWideDark")} defaultValue={config.logos.wideDark} uploadLabel={t("action.upload")} />
+                <ImageField svg name="logoDark" label={t("settings.logoSquareDark")} defaultValue={config.logos.squareDark} uploadLabel={t("action.upload")} />
+              </div>
+            </details>
+          </fieldset>
           {advanced && <TextField name="contactEmail" type="email" label={t("settings.contactEmail")} defaultValue={config.contactEmail} />}
         </section>
 
@@ -73,12 +89,52 @@ export default async function SettingsPage() {
           </details>
           {advanced && <Select name="adminLocale" label={t("settings.adminLocale")} help={t("settings.adminLocaleHelp")} defaultValue={config.adminLocale ?? config.defaultLocale}
             options={Object.keys(KNOWN_LOCALES).map((c) => ({ value: c, label: `${localeName(c)}${UI_LOCALES.includes(c) ? "" : ` (${t("settings.fallbackEn")})`}` }))} />}
-          {advanced && <Checkbox name="blockAiBots" label={t("settings.blockAiBots")} help={t("settings.blockAiBotsHelp")} defaultChecked={blockAiBots} />}
           {advanced && <Checkbox name="autoDetect" label={t("settings.autoDetect")} help={t("settings.autoDetectHelp")} defaultChecked={config.autoDetect} />}
+        </section>
+
+        <section data-tab="privacy" className="space-y-4">
+          <h2 className="text-lg font-semibold">{t("settings.privacy")}</h2>
+          <p className="text-sm text-muted">{t("settings.privacyHelp")}</p>
+          <div className={`${ui.card} space-y-4`}>
+            <Checkbox name="statsEnabled" label={t("settings.stats")} help={t("settings.statsHelp")} defaultChecked={config.statsEnabled} />
+            <Checkbox name="newsToggle" label={t("settings.newsToggle")} help={t("settings.newsToggleHelp")} defaultChecked={config.newsToggle} />
+            {advanced && <Checkbox name="blockAiBots" label={t("settings.blockAiBots")} help={t("settings.blockAiBotsHelp")} defaultChecked={blockAiBots} />}
+          </div>
+          <div className={`${ui.card} space-y-4`}>
+            <h3 className="font-semibold">{t("settings.privacyPage")}</h3>
+            <p className={ui.help}>{t("settings.privacyPageHelp")}</p>
+            {config.locales.map((l) => (
+              <TextArea key={l} name={`privacy.extra__${l}`} label={`${t("settings.privacyExtra")}${config.locales.length > 1 ? ` — ${localeName(l)}` : ""}`} rows={6} defaultValue={String(values["privacy.extra"]?.[l] ?? "")} help={t("settings.privacyExtraHelp")} />
+            ))}
+            <a href="/privacy" target="_blank" rel="noopener" className="inline-block text-sm font-medium text-accent hover:underline">{t("settings.privacyView")} ↗</a>
+          </div>
+          <p className={ui.help}>{t("settings.privacyCookies")}</p>
+          <p className={ui.help}>{t("settings.privacyLaw")}</p>
         </section>
 
         <section data-tab="appearance" className="space-y-6">
           <h2 className="text-lg font-semibold">{t("settings.appearance")}</h2>
+          <div className={`${ui.card} space-y-4`}>
+            <h3 className="font-semibold">{t("settings.header")}</h3>
+            <p className={ui.help}>{t("settings.headerHelp")}</p>
+            <HeaderLayoutPicker name="headerLayout" value={config.header.layout}
+              labels={{ classic: { title: t("settings.header.classic"), help: t("settings.header.classicHelp") }, twoRows: { title: t("settings.header.twoRows"), help: t("settings.header.twoRowsHelp") },
+                centered: { title: t("settings.header.centered"), help: t("settings.header.centeredHelp") }, minimal: { title: t("settings.header.minimal"), help: t("settings.header.minimalHelp") } }} />
+            <Checkbox name="headerSocials" label={t("settings.header.socials")} help={t("settings.header.socialsHelp")} defaultChecked={config.header.socials} />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-3">
+                <p className="text-sm font-medium">{t("settings.header.secondary")}</p>
+                {config.locales.map((l) => <TextField key={l} name={`header.secondaryLabel__${l}`} label={`${t("settings.header.label")}${config.locales.length > 1 ? ` — ${localeName(l)}` : ""}`} defaultValue={String(values["header.secondaryLabel"]?.[l] ?? "")} />)}
+                <TextField name="headerSecondaryHref" label={t("settings.header.href")} placeholder="/contact" defaultValue={String((await getSetting<string>("header.secondaryHref")) ?? "")} />
+              </div>
+              <div className="space-y-3">
+                <p className="text-sm font-medium">{t("settings.header.button")}</p>
+                {config.locales.map((l) => <TextField key={l} name={`header.buttonLabel__${l}`} label={`${t("settings.header.label")}${config.locales.length > 1 ? ` — ${localeName(l)}` : ""}`} defaultValue={String(values["header.buttonLabel"]?.[l] ?? "")} />)}
+                <TextField name="headerButtonHref" label={t("settings.header.href")} placeholder="https://…" defaultValue={String((await getSetting<string>("header.buttonHref")) ?? "")} />
+              </div>
+            </div>
+            <p className={ui.help}>{t("settings.header.linksHelp")}</p>
+          </div>
           <div className={`${ui.card} space-y-4`}>
           <ThemePicker background={config.background} accent={config.accent} advanced={advanced}
             labels={{ background: t("settings.background"), accent: t("settings.accent") }}

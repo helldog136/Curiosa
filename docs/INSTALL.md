@@ -35,7 +35,7 @@ Dans **Mises à jour** (menu, propriétaire uniquement) :
 
 - le site compare sa version aux releases **stables** publiées par le dépôt d'origine (les release candidates et les snapshots sont ignorés par défaut) ;
 - **Installer** : sauvegarde de la base (`data/backups/`, les 5 dernières) → téléchargement de l'archive → **vérification de son empreinte SHA-256** →
-  remplacement des dossiers de l'application (`.next`, `node_modules`, `prisma/migrations`, `modules-community`…) → migrations → redémarrage.
+  remplacement des dossiers de l'application (`.next`, `node_modules`, `prisma/migrations`, `extras`…) → migrations → redémarrage.
   Jamais touchés : `.env`, `data/` (base, envois, modules installés) et `prisma/data/`. **Au moindre échec**, l'ancienne version (et l'ancienne base si les migrations avaient commencé) est rétablie ;
 - le journal de l'opération s'affiche dans la page ; elle se met à jour toute seule ;
 - une version **majeure** (`v2.0.0` après `v1.x`) peut changer le fonctionnement : elle est signalée et **n'est jamais installée automatiquement**.
@@ -81,6 +81,8 @@ Le script peut aussi être lancé à la main (`node scripts/update.mjs v1.2.3`),
 
 ## Publier une release (mainteneurs)
 
+**Avant chaque publication (stable ou release candidate), rédigez dans `CHANGELOG.md` ce qui change depuis la version précédente publiée** : une section « ## X.Y.Z » (pour une RC, « ## X.Y.Z-rc.N ») dont le contenu est pour les utilisateurs, pas pour les développeurs. Ce texte devient celui de la release GitHub et celui de la page *Mises à jour* de l'admin ; un test échoue si la version de `package.json` n'a pas sa section. Entre deux publications, les changements s'accumulent sous « Prochaine version (non publiée) ».
+
 Le cycle suit deux branches :
 
 - **`dev`** : le travail courant. Chaque push publie un **snapshot** (pré-version `dev-<date>-<commit>`), jamais proposé aux instances. Pour publier une **release candidate**, mettez la version de `package.json` à `X.Y.Z-rc.N` (supérieure à la version des instances à mettre à jour) et poussez sur `dev` : la CI publie `vX.Y.Z-rc.N` (une seule fois ; montez le numéro pour en publier une autre). Poser l'étiquette `vX.Y.Z-rc.N` marche aussi. Les rc ne sont proposées qu'aux instances qui ont choisi le canal « rc ».
@@ -100,7 +102,8 @@ dépôt injoignable, le site garde la dernière copie reçue, à défaut celle l
 
 | Variable | Effet |
 |---|---|
-| `CURIOSA_CATALOGUE_REPO` | Dépôt git qui publie l'index (défaut : le dépôt d'origine de l'installation ; indispensable avec Docker, où il n'y en a pas). |
+| `CURIOSA_CATALOGUE_REPO` | Dépôt git qui publie l'index (défaut : `curiosa-extras`, le dépôt de modules voisin du dépôt d'origine de l'installation, même propriétaire ; indispensable avec Docker, où il n'y a pas de dépôt d'origine). |
+| `CURIOSA_EXTRAS_DIR` | Dossier des modules livrés avec cette version (défaut : `extras/` à côté de l'application, instantané de `curiosa-extras` ; `npm run extras:fetch` le récupère pour un clone du dépôt). |
 | `CURIOSA_CATALOGUE_REF` | Branche ou étiquette à lire (défaut : la branche par défaut). |
 | `CURIOSA_CATALOGUE_RUNTIME=0` | Ne pas interroger le dépôt : copie livrée avec la version seulement (serveur sans accès au réseau). |
 | `MODULES_INDEX_URL` | Index JSON `https://` **supplémentaire** (le vôtre, celui d'une communauté) : il ne peut qu'ajouter des modules. |
@@ -127,3 +130,23 @@ secret de session) et `.env`.
 
 - **Statistiques anonymes** (Réglages → Apparence… « Compter les visites ») : des compteurs par jour affichés sur le tableau de bord (visiteurs, pages les plus lues, provenances). Jamais d'adresse IP, de cookie ni d'identifiant conservé : un visiteur est reconnu seulement dans la journée par une empreinte à sel quotidien détruite le lendemain. Les robots, les visiteurs qui refusent le suivi (Do Not Track, Global Privacy Control) et l'équipe connectée à l'admin ne sont pas comptés. Aucun service externe.
 - **Pastilles de nouveautés** : le navigateur du visiteur garde la date de sa dernière visite (cookies `curiosa_seen` et `curiosa_since`, sans donnée personnelle) ; le menu signale ce qui est nouveau depuis. Voir `news` dans [MODULES.md](MODULES.md).
+
+## Logos
+
+Réglages → Identité → **Logos** : envoyez ce que vous avez, rien n'est obligatoire.
+
+| Image | Où elle sert | Si elle manque |
+|---|---|---|
+| **Logo horizontal** (symbole + nom) | en haut du site, à la place du nom écrit | l'icône et le nom écrit |
+| **Icône** (logo carré) | petit format (téléphone, pastilles), bandeau d'accueil | le logo horizontal, ou rien |
+| **Favicon** (onglet du navigateur) | onglet, écran d'accueil du téléphone | l'icône, sinon une icône fabriquée avec les couleurs du site |
+| **Image de partage** (1200 × 630 px idéal) | aperçu quand on partage le site | l'icône, puis le logo horizontal |
+| **Versions pour fond sombre** | choisies seules si le fond du site est sombre | la version claire |
+
+Formats acceptés : png, jpg, webp, gif, et **SVG pour les logos et le favicon** (pas pour l'image de partage : les réseaux sociaux ne l'affichent pas). Un SVG est relu élément par élément et réécrit avant d'être enregistré : scripts, styles, textes, images intégrées et liens externes sont refusés avec un message précis (exportez le texte en tracés, et les styles « en ligne »). Servi, il ne peut rien exécuter. Le kit presse propose tous les logos envoyés.
+
+## En-tête et menu
+
+- **Réglages → Apparence → En-tête du site** : quatre dispositions au choix (*Classique*, *Deux niveaux*, *Centré*, *Discret*). Le logo (voir *Logos*), le menu, les langues, les icônes sociales, un lien secondaire (ex. « Nous contacter ») et un bouton (ex. « Devenir membre ») s'y placent tout seuls.
+- **Icônes sociales** : elles reprennent les entrées de **toutes** les listes de réseaux sociaux actives du site (une liste par chaîne si vous en avez plusieurs) ; rien à ressaisir.
+- **Menu → Menu déroulant** : un groupe range des pages et des liens sous un nom (« À propos ▾ »), un seul niveau. Il s'ouvre au clic, au toucher, au survol et au clavier (Échap le ferme). Un groupe vide n'est pas enregistré.

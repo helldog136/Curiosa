@@ -8,6 +8,7 @@ import { effectiveType, hasPage } from "@/core/modules/manifest";
 import { MODULE_TYPES } from "@/core/modules/types";
 import { localized } from "@/core/modules/types";
 import { ConfirmButton } from "@/components/admin/ConfirmButton";
+import { FeatureTabs } from "@/components/admin/FeatureTabs";
 import { ui } from "@/components/admin/ui";
 import { duplicateServices } from "@/core/modules/dependencies";
 import { ServiceRouter } from "@/components/admin/ServiceRouter";
@@ -29,8 +30,8 @@ export default async function ModulesPage({ searchParams }: { searchParams: Prom
       <div>
         <h1 className={ui.pageTitle}>{advanced ? t("nav.modules") : t("nav.modules.simple")}</h1>
         <p className={ui.pageIntro}>{advanced ? t("modules.intro") : t("modules.introSimple")}</p>
-        {isOwner && <a href="/admin/catalogue" className={`${ui.btnPrimary} mt-4`}>✨ {advanced ? t("modules.browseCatalogue") : t("modules.browseCatalogue.simple")}</a>}
       </div>
+      <FeatureTabs current="installed" labels={{ installed: advanced ? t("nav.modules") : t("nav.modules.simple"), add: advanced ? t("nav.catalogue") : t("nav.catalogue.simple") }} />
       {error && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm">{error.startsWith("modules.error.") || error.startsWith("instances.error.") ? t(error, { services: detail ?? "", modules: detail ?? "" }) : t("error.generic")}</p>}
       {notice === "services" && <p role="alert" className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">{t("services.notice")}</p>}
       {duplicates.length > 0 && (
@@ -107,21 +108,21 @@ export default async function ModulesPage({ searchParams }: { searchParams: Prom
                 <div className="min-w-0">
                   <p className="font-medium">
                     {mod?.manifest.icon ?? "🧩"} {mod ? localized(mod.manifest.name, locale, config.defaultLocale) : row.id}{" "}
-                    {advanced && <span className="text-xs text-muted">v{row.version} · {row.source === "builtin" ? t("modules.builtin") : row.source === "bundled" ? t("modules.bundled") : "git"}</span>}
-                    {row.source !== "builtin" && <span className={`ml-2 rounded px-2 py-0.5 text-xs ${moduleOrigin(row, market) === "custom" ? "bg-amber-500/20" : "bg-line"}`}>{t(`catalogue.origin.${moduleOrigin(row, market) === "custom" ? "custom" : "catalogue"}`)}</span>}
+                    {advanced && <span className="text-xs text-muted">v{row.version}{row.source === "git" ? " · git" : ""}</span>}
+                    <span className={`ml-2 rounded px-2 py-0.5 text-xs ${moduleOrigin(row, market) === "custom" ? "bg-amber-500/20" : "bg-line"}`}>{t(`catalogue.origin.${moduleOrigin(row, market)}`)}</span>
                   </p>
                   <p className="text-sm text-muted">{mod ? localized(mod.manifest.description, locale, config.defaultLocale) : t("modules.broken")}</p>
                   {mod && (mod.manifest.requires ?? []).length > 0 && <p className="mt-1 text-xs text-muted">{t("modules.requires")} : {(mod.manifest.requires ?? []).map((r) => (r.label ? localized(r.label, locale, config.defaultLocale) : r.service)).join(", ")}</p>}
                   {advanced && mod && (mod.manifest.offers ?? []).length > 0 && <p className="mt-1 text-xs text-muted">{t("modules.offers")} : {(mod.manifest.offers ?? []).map((o) => (o.label ? localized(o.label, locale, config.defaultLocale) : o.service)).join(", ")}</p>}
                   {advanced && mod && mod.manifest.permissions.length > 0 && <p className="mt-1 text-xs text-muted">{t("modules.permissions")} : {mod.manifest.permissions.join(", ")}</p>}
-                  {advanced && row.repoUrl && <p className="mt-1 break-all font-mono text-xs text-muted">{row.repoUrl}{row.ref ? `#${row.ref}` : ""} @ {row.commit?.slice(0, 7)}</p>}
+                  {advanced && row.repoUrl && <p className="mt-1 break-all font-mono text-xs text-muted">{row.repoUrl}{row.ref || row.subdir ? `#${row.ref ?? ""}${row.subdir ? `:${row.subdir}` : ""}` : ""} @ {row.commit?.slice(0, 7)}</p>}
                 </div>
                 {isOwner && (
                   <div className="flex flex-wrap gap-2">
                     <form action={toggleModule.bind(null, row.id, !row.enabled)}>
                       <button className={ui.btn}>{row.enabled ? t("action.disable") : t("action.enable")}</button>
                     </form>
-                    {advanced && row.source !== "builtin" && (
+                    {advanced && (
                       <>
                         <form action={checkUpdateAction.bind(null, row.id)}><button className={ui.btn}>{t("modules.checkUpdate")}</button></form>
                         <form action={updateModuleAction.bind(null, row.id)}><button className={ui.btn}>{t("modules.update")}</button></form>

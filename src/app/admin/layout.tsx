@@ -1,3 +1,4 @@
+import { pickLogo } from "@/core/logos";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { ADMIN_THEME_COOKIE, adminThemeCss, parseAdminTheme } from "@/core/adminTheme";
@@ -14,7 +15,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: { default: "Admin", template: "%s · Admin" },
     robots: { index: false, follow: false },
-    icons: { icon: faviconUrl(config?.favicon ?? null) },
+    icons: { icon: faviconUrl(config ? pickLogo(config.logos, "favicon", false) : null) },
   };
 }
 

@@ -24,10 +24,10 @@ test("formulaires admin : la confirmation reste demandée, les mots de passe son
     assert.ok(!/<ActionForm[^>]*\breset\b/.test(fs.readFileSync(`src/app/admin/(panel)/${f}`, "utf8")), `${f} : un formulaire de réglages ne se vide jamais`);
 });
 
-test("réglages : une page à onglets (site, langues, apparence, e-mail) au lieu d'une page interminable ; un seul formulaire, onglets mémorisés dans l'adresse", () => {
+test("réglages : une page à onglets (site, langues, apparence, confidentialité, e-mail) au lieu d'une page interminable ; un seul formulaire, onglets mémorisés dans l'adresse", () => {
   const page = fs.readFileSync("src/app/admin/(panel)/settings/page.tsx", "utf8");
-  for (const id of ["site", "languages", "appearance", "mail"]) assert.match(page, new RegExp(`data-tab="${id}"`));
-  assert.match(page, /submitTabs="site languages appearance"/, "pas de bouton « Enregistrer » sur l'onglet e-mail (autre formulaire)");
+  for (const id of ["site", "languages", "appearance", "privacy", "mail"]) assert.match(page, new RegExp(`data-tab="${id}"`));
+  assert.match(page, /submitTabs="site languages appearance privacy"/, "pas de bouton « Enregistrer » sur l'onglet e-mail (autre formulaire)");
   const tabs = fs.readFileSync("src/components/admin/Tabs.tsx", "utf8");
   assert.match(tabs, /window\.location\.hash/);
   assert.match(tabs, /addEventListener\("invalid"/, "un champ obligatoire invalide dans un onglet caché fait basculer sur cet onglet");

@@ -11,7 +11,7 @@ const { parseManifest } = await import("@/core/modules/manifest");
 const { getSiteConfig, setSetting } = await import("@/core/settings");
 const { createInstance } = await import("@/core/instanceService");
 const { createEntry } = await import("@/core/content/service");
-const { BUILTIN_MODULES } = await import("@/modules-builtin");
+const { FIXTURE_MODULES: BUILTIN_MODULES } = await import("../helpers/fixtureModules.mjs");
 const { SECTION_SIZES } = await import("@/core/modules/types");
 
 beforeEach(() => db.reset());
@@ -56,7 +56,7 @@ test("manifeste : une section recommande une taille parmi les quatre connues", (
 });
 
 async function blogLike(id, nickname) {
-  await db.prisma.module.upsert({ where: { id }, create: { id, source: "builtin", version: "1", enabled: true }, update: {} });
+  await db.fixture(id);
   return createInstance(db.prisma, { manifest: manifest(id), nickname, names: { en: nickname ?? id } });
 }
 

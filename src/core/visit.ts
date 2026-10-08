@@ -8,7 +8,12 @@ import { prisma } from "@/core/db";
  *    disparaissent pas dès la deuxième page ouverte.
  * Le proxy les tient à jour et transmet la date retenue aux pages (en-tête `x-curiosa-since`). Les modules la reçoivent dans
  * `ctx.visit.lastVisit` : le 1er janvier 1970 pour un visiteur inconnu, sinon la date de sa visite précédente.
+ *
+ * CONSENTEMENT : cette mémoire n'est pas indispensable au fonctionnement du site ; elle n'existe donc QUE si le visiteur l'a demandée lui-même (bouton « Me prévenir des
+ * nouveautés », cookie `curiosa_news`). Sans ce choix : rien n'est déposé, la date est 1970 (aucune pastille), et les cookies d'avant sont effacés.
  */
+/** Choix du visiteur (« me prévenir des nouveautés ») : sans lui, aucun des deux cookies ci-dessous n'est déposé, et les anciens sont effacés. */
+export const NEWS_COOKIE = "curiosa_news";
 export const SEEN_COOKIE = "curiosa_seen";
 export const SINCE_COOKIE = "curiosa_since";
 export const SINCE_HEADER = "x-curiosa-since";

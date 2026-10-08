@@ -1,7 +1,9 @@
 # Index des modules reconnus
 
+**L'index lui-même vit dans le dépôt `curiosa-extras`** (`catalogue/index.json`) : le cœur ne contient ni module ni index. Ce document décrit son format.
+
 `index.json` liste les **dépôts git reconnus** que le Catalogue du framework propose en confiance (en plus des modules livrés avec
-le framework dans `modules-community/` et `modules-examples/`).
+le framework dans `extras/`).
 
 ## Comment il est utilisé
 

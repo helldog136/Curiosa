@@ -1,3 +1,4 @@
+import { isDarkBackground, pickLogo } from "@/core/logos";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { headers } from "next/headers";
@@ -25,8 +26,8 @@ export async function generateMetadata(): Promise<Metadata> {
     metadataBase: new URL(siteUrl),
     title: { default: config.name, template: `%s | ${config.name}` },
     description: config.tagline || undefined,
-    icons: { icon: faviconUrl(config.favicon), ...(config.favicon ? { apple: config.favicon } : {}) },
-    openGraph: { siteName: config.name, title: config.name, description: config.tagline || undefined, images: config.logo ? [config.logo] : undefined },
+    icons: { icon: faviconUrl(pickLogo(config.logos, "favicon", false)), ...(pickLogo(config.logos, "favicon", false) ? { apple: pickLogo(config.logos, "favicon", false)! } : {}) },
+    openGraph: { siteName: config.name, title: config.name, description: config.tagline || undefined, images: pickLogo(config.logos, "share", false) ? [pickLogo(config.logos, "share", false)!] : undefined },
   };
 }
 
@@ -52,7 +53,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
       <head>
         <style dangerouslySetInnerHTML={{ __html: css }} />
         <link rel="alternate" type="application/rss+xml" title={localized.name} href={`/feed.xml?lang=${locale}`} />
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(siteJsonLd({ url: siteUrl, name: localized.name, tagline: localized.tagline, logo: localized.logo, locale })) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(siteJsonLd({ url: siteUrl, name: localized.name, tagline: localized.tagline, logo: pickLogo(localized.logos, "any", isDarkBackground(localized.background)), locale })) }} />
         <HeadTags blocks={headBlocks} />
       </head>
       <body className="min-h-screen bg-bg text-fg antialiased">

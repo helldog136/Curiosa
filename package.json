@@ -1,6 +1,6 @@
 {
   "name": "curiosa",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "private": true,
   "license": "SEE LICENSE IN LICENSE",
   "author": "Helldog136 (https://helldog136.be)",
@@ -18,9 +18,10 @@
     "bootstrap": "node scripts/bootstrap.mjs",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
+    "extras:fetch": "node scripts/fetch-extras.mjs",
     "licenses": "node scripts/licenses.mjs",
     "migrations:freeze": "node scripts/migrations-freeze.mjs",
-    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./tests/helpers/register.mjs --test \"tests/**/*.test.mjs\"",
+    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./tests/helpers/register.mjs --test --test-concurrency=6 \"tests/**/*.test.mjs\"",
     "test:watch": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./tests/helpers/register.mjs --test --watch \"tests/**/*.test.mjs\"",
     "import:grav": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./tests/helpers/register.mjs scripts/import-grav.mjs"
   },

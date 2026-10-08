@@ -53,6 +53,13 @@ export function pickLatestRelease(releases: unknown, assetName: (tag: string) =>
   return best;
 }
 
+/** Texte (notes de version) de la release portant cette étiquette ; vide si elle n'en a pas. */
+export function releaseNotes(releases: unknown, tag: string): string {
+  if (!Array.isArray(releases)) return "";
+  const r = (releases as ReleaseInfo[]).find((x) => x?.tag_name === tag) as (ReleaseInfo & { body?: unknown }) | undefined;
+  return typeof r?.body === "string" ? r.body.slice(0, 6000) : "";
+}
+
 /** Plus haute version stable dans la sortie de `git ls-remote --tags` (modules git : les lignes `^{}` des étiquettes annotées comptent une fois). */
 export function pickLatestTag(lsRemote: string): string | null {
   let best: string | null = null;

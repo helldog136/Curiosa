@@ -71,6 +71,8 @@ export const manifestSchema = z.object({
   description: localized.optional(),
   author: z.string().max(200).optional(),
   homepage: z.string().url().optional(),
+  /** Ce que le module collecte comme données personnelles et pourquoi : repris tel quel dans la page de confidentialité du site (voir core/privacy.ts). */
+  privacy: localized.optional(),
   license: z.string().max(60).optional(),
   main: z
     .string()
@@ -100,11 +102,8 @@ export const manifestSchema = z.object({
   settings: z.array(settingField).max(60).default([]),
   /** Version de la STRUCTURE des données du module (stockage, réglages). À augmenter quand elle change : voir `migrations`. */
   dataVersion: z.number().int().min(1).max(10000).optional(),
-  starter: z.boolean().optional(),
   onboarding: z
     .object({
-      always: z.boolean().optional(),
-      preselected: z.boolean().optional(),
       home: z.object({ section: z.string(), count: z.number().int().min(1).max(50).optional() }).optional(),
       sample: z.object({ title: localized, summary: localized.optional(), body: localized.optional() }).optional(),
       collectsLinks: z.boolean().optional(),

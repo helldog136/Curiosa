@@ -14,7 +14,7 @@ const { getAdminNav } = await import("@/core/modules/adminNav");
 const { getInstanceLabeler } = await import("@/core/modules/labels");
 const { createInstance } = await import("@/core/instanceService");
 const { listInstances } = await import("@/core/instances");
-const { BUILTIN_MODULES } = await import("@/modules-builtin");
+const { FIXTURE_MODULES: BUILTIN_MODULES } = await import("../helpers/fixtureModules.mjs");
 const { DATA_DIR } = await import("@/core/config");
 
 beforeEach(() => db.reset());
@@ -94,7 +94,7 @@ test("catalogue de modules : réponse illisible ou en erreur → liste vide, jam
 });
 
 async function inst(id, nickname, names = { en: id }) {
-  await db.prisma.module.upsert({ where: { id }, create: { id, source: "builtin", version: "1", enabled: true }, update: {} });
+  await db.fixture(id);
   return createInstance(db.prisma, { manifest: BUILTIN_MODULES.find((b) => b.manifest.id === id).manifest, nickname, names });
 }
 

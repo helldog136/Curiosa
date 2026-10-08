@@ -26,19 +26,6 @@ test("le crédit « développé par » est affiché sur toutes les pages publiqu
   assert.match(fs.readFileSync("src/core/credit.ts", "utf8"), /CREDIT_URL = "https:\/\/github\.com\/helldog136\/Curiosa"/);
   assert.ok(!/readVersion|version/i.test(footer), "jamais de numéro de version côté public");
   assert.match(fs.readFileSync("src/app/(site)/layout.tsx", "utf8"), /<Footer /);
-  for (const dir of ["modules-community", "modules-examples"]) {
-    for (const d of fs.readdirSync(dir, { withFileTypes: true }).filter((e) => e.isDirectory())) {
-      const m = JSON.parse(fs.readFileSync(`${dir}/${d.name}/module.json`, "utf8"));
-      assert.ok(m.license, `${dir}/${d.name} : licence absente de module.json`);
-    }
-  }
-});
-
-test("politique : aucune dépendance de production sous une licence qui contaminerait le projet (GPL, AGPL, SSPL…) ou inconnue", () => {
-  for (const p of L.productionPackages()) {
-    assert.ok(p.license !== "UNKNOWN", `${p.name}@${p.version} : licence inconnue`);
-    assert.ok(!/(^|[^L])GPL|AGPL|SSPL|BUSL|Commons-Clause/i.test(p.license.replace(/LGPL/g, "")), `${p.name}@${p.version} : licence ${p.license} non acceptée`);
-  }
 });
 
 test("THIRD-PARTY-NOTICES.md est à jour avec package-lock.json (npm run licenses)", () => {

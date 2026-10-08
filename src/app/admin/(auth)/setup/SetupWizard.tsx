@@ -9,18 +9,18 @@ type Props = {
   strings: Record<string, Record<string, string>>;
   uiLocales: string[];
   locales: { code: string; name: string }[];
-  presets: { id: string; preselected: boolean; collectsLinks: boolean; names: Record<string, string>; descriptions: Record<string, string> }[];
+  presets: { id: string; icon: string; collectsLinks: boolean; names: Record<string, string>; descriptions: Record<string, string> }[];
   needsToken: boolean;
 };
 
-const STEPS = ["welcome", "identity", "content", "links", "account"] as const;
+const STEPS = ["welcome", "identity", "modules", "links", "account"] as const;
 
 export function SetupWizard({ strings, uiLocales, locales, presets, needsToken }: Props) {
   const [mode, setMode] = useState<"new" | "restore">("new");
   const [step, setStep] = useState(0);
   const [lang, setLang] = useState("fr");
   const [ownerName, setOwnerName] = useState("");
-  const [chosen, setChosen] = useState<string[]>(presets.filter((p) => p.preselected).map((p) => p.id));
+  const [chosen, setChosen] = useState<string[]>([]);
   const [linkRows, setLinkRows] = useState([0]);
   const formRef = useRef<HTMLFormElement>(null);
   const [state, action, pending] = useActionState(completeSetup, null);
@@ -118,9 +118,10 @@ export function SetupWizard({ strings, uiLocales, locales, presets, needsToken }
           </div>
         </div>
 
-        <div {...section("content")}>
-          <h2 className="text-2xl font-semibold tracking-tight">{t("setup.content.title")}</h2>
-          <p className="text-[15px] text-muted">{t("setup.content.help")}</p>
+        <div {...section("modules")}>
+          <h2 className="text-2xl font-semibold tracking-tight">{t("setup.modules.title")}</h2>
+          <p className="text-[15px] text-muted">{t("setup.modules.help")}</p>
+          {presets.length === 0 && <p className="rounded-2xl border border-line p-4 text-sm text-muted">{t("setup.modules.none")}</p>}
           {presets.map((p) => (
             <label key={p.id} className={`flex cursor-pointer items-start gap-4 rounded-2xl border p-4 transition-colors ${chosen.includes(p.id) ? "border-accent bg-accent/5" : "border-line hover:border-accent/50"}`}>
               <input
@@ -129,11 +130,13 @@ export function SetupWizard({ strings, uiLocales, locales, presets, needsToken }
                 onChange={(e) => setChosen((c) => (e.target.checked ? [...c, p.id] : c.filter((x) => x !== p.id)))}
               />
               <span>
-                <span className="block text-[17px] font-medium">{pick(p.names)}</span>
+                <span className="block text-[17px] font-medium"><span aria-hidden>{p.icon}</span> {pick(p.names)}</span>
                 <span className="block text-sm text-muted">{pick(p.descriptions)}</span>
               </span>
             </label>
           ))}
+          <p className="rounded-2xl bg-accent/5 p-4 text-sm" data-testid="modules-skip-note">{t("setup.modules.skip")}</p>
+          <button type="button" className={ui.btn} onClick={() => { setChosen([]); setStep((s) => s + 1); }}>{t("setup.modules.skipButton")} →</button>
         </div>
 
         <div {...section("links")}>

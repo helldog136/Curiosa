@@ -46,9 +46,21 @@ jobs:
           GH_TOKEN: ${{ github.token }}
       - run: npm prune --omit=dev
       - run: npx prisma generate
+      # Le cœur ne contient aucun module : l'archive embarque un instantané du dépôt de modules (même propriétaire ; master pour une release stable, dev sinon)
+      - name: Modules livrés (instantané)
+        if: steps.v.outputs.publish == 'true'
+        run: node scripts/fetch-extras.mjs
       - name: Empaqueter
         if: steps.v.outputs.publish == 'true'
         run: node scripts/release-pack.mjs "${{ steps.v.outputs.version }}" dist
+      # une archive qui ne démarre pas n'est jamais publiée : on la décompresse ailleurs et on la démarre (installation neuve ET mise à jour d'un site existant)
+      - name: Test de fumée de l'archive
+        if: steps.v.outputs.publish == 'true'
+        run: node scripts/smoke-release.mjs dist/*.tar.gz
+      - name: Notes de version
+        if: steps.v.outputs.publish == 'true'
+        # Le texte de la release est la section du CHANGELOG.md de cette version (ce qui change depuis la précédente) ; à défaut, un renvoi vers le fichier.
+        run: node scripts/changelog.mjs "${{ steps.v.outputs.version }}" > "$RUNNER_TEMP/notes.md" || echo "Voir le CHANGELOG.md du dépôt." > "$RUNNER_TEMP/notes.md"
       - name: Publier
         if: steps.v.outputs.publish == 'true'
         env:
@@ -57,4 +69,4 @@ jobs:
           flags="--target $GITHUB_SHA"
           [[ "${{ steps.v.outputs.pre }}" == "true" ]] && flags="$flags --prerelease"
           [[ "$GITHUB_REF" == refs/tags/* ]] && flags="--prerelease"
-          gh release create "${{ steps.v.outputs.tag }}" dist/* --title "${{ steps.v.outputs.tag }}" --generate-notes $flags
+          gh release create "${{ steps.v.outputs.tag }}" dist/* --title "${{ steps.v.outputs.tag }}" --notes-file "$RUNNER_TEMP/notes.md" $flags

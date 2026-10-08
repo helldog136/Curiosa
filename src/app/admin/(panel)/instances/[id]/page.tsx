@@ -1,3 +1,4 @@
+import { floatingLabels } from "@/components/admin/floating";
 import { notFound } from "next/navigation";
 import { adminCtx } from "@/core/admin";
 import { DISPLAYS, FEATURES, getInstanceById } from "@/core/instances";
@@ -102,7 +103,7 @@ export default async function InstancePage({ params, searchParams }: { params: P
   const panelNode = <Blocks blocks={panel} locale={locale} adminInstanceId={instance.id} />;
   const forms = (
     <>
-      <ActionForm action={saveInstance} submitLabel={t("action.save")}>
+      <ActionForm action={saveInstance} floating={floatingLabels(t)} submitLabel={t("action.save")}>
         <input type="hidden" name="id" value={id} />
         {advanced && <input type="hidden" name="__adv" value="1" />}
         <h2 className="text-lg font-semibold">{t("instances.general")}</h2>
@@ -183,7 +184,7 @@ export default async function InstancePage({ params, searchParams }: { params: P
       </ActionForm>
 
       {advanced && (mod.manifest.consumes ?? []).length > 0 && (
-        <ActionForm action={saveSources} submitLabel={t("action.save")}>
+        <ActionForm action={saveSources} floating={floatingLabels(t)} submitLabel={t("action.save")}>
           <input type="hidden" name="id" value={id} />
           {advanced && <input type="hidden" name="__adv" value="1" />}
           <div>
@@ -210,7 +211,7 @@ export default async function InstancePage({ params, searchParams }: { params: P
       )}
 
       {visibleSettings.length > 0 && (
-        <ActionForm action={saveInstanceSettings} submitLabel={t("action.save")}>
+        <ActionForm action={saveInstanceSettings} floating={floatingLabels(t)} submitLabel={t("action.save")}>
           <input type="hidden" name="id" value={id} />
           {advanced && <input type="hidden" name="__adv" value="1" />}
           {[{ title: t("instances.moduleSettings"), fields: generalSettings }, { title: t("instances.appearance"), fields: appearanceSettings }].map(

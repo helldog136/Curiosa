@@ -15,7 +15,7 @@ const { setSetting } = await import("@/core/settings");
 const { listMcpTools, listMcpToolCatalogue } = await import("@/core/platform");
 const { mcpInstanceKey } = await import("@/core/modules/mcpProvider");
 const { parseManifest } = await import("@/core/modules/manifest");
-const { BUILTIN_MODULES } = await import("@/modules-builtin");
+const { FIXTURE_MODULES: BUILTIN_MODULES } = await import("../helpers/fixtureModules.mjs");
 
 beforeEach(() => db.reset());
 after(() => db.close());
@@ -136,7 +136,7 @@ test("exécution : page d'un module — rendue, absente (404 du module), en erre
 });
 
 test("exécution : section « latest » par défaut des modules à contenu, bornée entre 1 et 50", async () => {
-  await db.prisma.module.upsert({ where: { id: "blog" }, create: { id: "blog", source: "builtin", version: "1", enabled: true }, update: {} });
+  await db.fixture("blog");
   const blog = BUILTIN_MODULES.find((b) => b.manifest.id === "blog").manifest;
   await createInstance(db.prisma, { manifest: blog, names: { en: "Blog" } });
   assert.deepEqual((await RT.runSection("blog", "latest", {}, "en"))[0], { type: "entries", instance: "blog", limit: 3, title: "Blog", link: true });
@@ -200,7 +200,7 @@ test("sujets : un fournisseur en panne n'empêche pas les autres d'alimenter le 
 });
 
 test("sujets : le sujet « core.entry » expose les entrées publiées des instances à contenu, avec chemin public", async () => {
-  await db.prisma.module.upsert({ where: { id: "blog" }, create: { id: "blog", source: "builtin", version: "1", enabled: true }, update: {} });
+  await db.fixture("blog");
   const blog = BUILTIN_MODULES.find((b) => b.manifest.id === "blog").manifest;
   const inst = await createInstance(db.prisma, { manifest: blog, names: { en: "Blog" } });
   await createEntry(db.prisma, { instanceId: inst.id, locale: "en", title: "Hello", status: "published", tags: ["news"], summary: "S" });
@@ -270,7 +270,7 @@ test("MCP : outil « site_info » toujours présent, lecture seule, liste les in
 test("MCP contenu : lister, lire, créer et modifier des BROUILLONS — jamais publier ni supprimer", async () => {
   await setSetting("i18n.default", "fr");
   await setSetting("i18n.enabled", ["fr", "en"]);
-  await db.prisma.module.upsert({ where: { id: "blog" }, create: { id: "blog", source: "builtin", version: "1", enabled: true }, update: {} });
+  await db.fixture("blog");
   const blog = BUILTIN_MODULES.find((b) => b.manifest.id === "blog").manifest;
   const inst = await createInstance(db.prisma, { manifest: blog, names: { fr: "Blog" } });
   const tools = (await listMcpTools()).filter((t) => t.source === "blog");
@@ -308,7 +308,7 @@ test("MCP contenu : lister, lire, créer et modifier des BROUILLONS — jamais p
 });
 
 test("MCP contenu : les actions éditoriales ne sont jamais destructives et créer/modifier ne sont pas accordées par défaut aux lecteurs", async () => {
-  await db.prisma.module.upsert({ where: { id: "blog" }, create: { id: "blog", source: "builtin", version: "1", enabled: true }, update: {} });
+  await db.fixture("blog");
   const blog = BUILTIN_MODULES.find((b) => b.manifest.id === "blog").manifest;
   await createInstance(db.prisma, { manifest: blog, names: { en: "Blog" } });
   for (const t of (await listMcpTools()).filter((x) => x.source === "blog")) {

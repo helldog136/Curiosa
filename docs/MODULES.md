@@ -3,8 +3,8 @@
 > **Première fois ?** Lisez d'abord le tutoriel pas à pas : [CREATE-A-MODULE.md](CREATE-A-MODULE.md).
 > Cette page en est la **référence exhaustive** : chaque champ du manifeste, chaque clé du code, chaque bloc, chaque
 > service. L'exemple complet et fonctionnel, qui utilise toutes les capacités, est
-> [`modules-examples/guestbook`](../modules-examples/guestbook) (un livre d'or modéré) ; le plus petit module utile est
-> [`modules-examples/announcement-banner`](../modules-examples/announcement-banner). Un test
+> `examples/guestbook` (`curiosa-extras/examples/guestbook`) (un livre d'or modéré) ; le plus petit module utile est
+> `examples/announcement-banner` (`curiosa-extras/examples/announcement-banner`). Un test
 > (`tests/docs-coverage.test.mjs`) vérifie que cette page cite chaque capacité présente dans le code.
 
 Sommaire : [anatomie](#anatomie-dun-module) · [manifeste `module.json`](#le-manifeste-modulejson) · [code `index.mjs`](#le-code-indexmjs) ·
@@ -90,7 +90,7 @@ Validé à l'installation et au chargement (zod, `src/core/modules/manifest.ts`)
   "page": true, "basePath": "guestbook", // l'instance a une page publique, sur ce chemin proposé
   "permissions": ["slots", "sections", "routes", "storage", "filters", "pages", "topics", "overlay", "mcp", "admin", "mail"],
   "settings": [ /* … */ ], "sections": [ /* … */ ], "consumes": [ /* … */ ], "provides": [ /* … */ ], "mcp": [ /* … */ ],
-  "content": { /* … */ }, "starter": true, "onboarding": { /* … */ }, "defaultEnabled": true
+  "content": { /* … */ }, "onboarding": { /* … */ }, "defaultEnabled": true
 }
 ```
 
@@ -101,6 +101,7 @@ Validé à l'installation et au chargement (zod, `src/core/modules/manifest.ts`)
 | `name`, `description` | Texte ou `{ langue: texte }` (500 caractères au plus). Langue absente : langue par défaut du site, puis `en`. |
 | `version` | `x.y.z`. Sert à détecter les mises à jour des modules livrés avec le framework. |
 | `author`, `license`, `homepage` | Informatifs (`homepage` : URL valide). |
+| `privacy` | Facultatif : ce que le module collecte comme données personnelles, pourquoi et comment les faire effacer (texte simple, traduisible comme `description`). **Un module qui collecte des données de visiteurs doit le déclarer** : le cœur reprend ce texte tel quel, sous le nom de l'instance, dans la page « Politique de confidentialité » du site (`/privacy`, lien permanent du pied de page). Un module qui ne collecte rien n'a rien à écrire. |
 | `icon` | Emoji affiché dans l'admin. |
 | `main` | Fichier ES module du code, relatif à la racine. Absent : module « sans code » (réglages, contenu). |
 | `type` | Catégorie (voir ci-dessus). Défaut : `content` si `content` est déclaré, sinon `widget`. |
@@ -113,10 +114,9 @@ Validé à l'installation et au chargement (zod, `src/core/modules/manifest.ts`)
 | `consumes` / `provides` | Sujets que le module digère / expose (voir « sujets »). 10 au plus chacun. |
 | `mcp` | Actions proposées à l'API MCP (voir « API MCP »). 60 au plus. |
 | `content` | Module à contenu : le cœur fournit l'éditeur d'entrées et les pages (voir ci-dessous). |
-| `starter` | Proposé dans l'assistant de première installation (modules à contenu livrés avec le cœur). |
 | `onboarding` | Comment le module participe à la première installation (voir ci-dessous). |
 | `dataVersion` | Version de la **structure de vos données** (entier ≥ 1, défaut 1). À augmenter quand elle change, avec la migration correspondante (`migrations`). |
-| `defaultEnabled` | Modules livrés avec le cœur : activés dès le départ (défaut : oui). Sans effet pour un module installé, toujours installé désactivé. |
+| `defaultEnabled` | Modules livrés avec cette version : activés dès le départ (défaut : oui). Sans effet pour un module installé, toujours installé désactivé. |
 | `permissions` | Les capacités utilisées (voir ci-dessous). |
 
 ### Permissions
@@ -252,15 +252,16 @@ Avec `content`, le cœur fournit gratuitement l'éditeur d'entrées (multilingue
 entrée), le sitemap, le flux RSS, les liens `/go/…`, la section d'accueil `latest`, le sujet `core.entry` et quatre actions MCP
 (`list_entries`, `get_entry`, `create_draft`, `update_draft`). Un module « galerie », « FAQ » ou « événements » peut n'être qu'un `module.json`.
 
-### Première installation (`starter`, `onboarding`)
+### Première installation (`onboarding`)
 
-Le cœur ne connaît aucun module par son nom : l'assistant de première installation lit les manifestes. `starter: true` propose le
-module (cases à cocher « que voulez-vous publier ? ») ; `onboarding` règle sa participation :
+Le cœur ne connaît aucun module par son nom. L'assistant de première installation a une étape facultative « Voulez-vous ajouter des modules ? » (qu'on peut
+passer sans aucun risque) : elle propose les modules que le **Catalogue suggère**. Cette suggestion n'est **pas** un champ du manifeste (n'importe quel
+auteur pourrait se l'attribuer) : c'est une liste, `catalogue/suggested.json`, tenue par le dépôt de modules `curiosa-extras` ; seul un module livré avec la
+version et inscrit dans cette liste est proposé (et marqué « suggéré » dans le Catalogue). Les modules qui exigent un autre module ne sont pas proposés
+là : ils s'ajoutent depuis le Catalogue. `onboarding` règle ce qui se passe quand l'utilisateur coche le module :
 
 | Clé | Rôle |
 |---|---|
-| `always` | Créé d'office, sans question (ex. le bandeau d'accueil). |
-| `preselected` | Coché par défaut dans l'assistant. |
 | `home` | `{ section, count? }` : section placée sur l'accueil à la création (`count` = nombre d'entrées pour `latest`). |
 | `sample` | `{ title, summary?, body? }` : entrée d'exemple créée pour que le site ne soit pas vide. |
 | `collectsLinks` | L'assistant demande à l'utilisateur ses liens (Twitch, YouTube…) et les range dans ce module. |
@@ -515,7 +516,7 @@ Deux familles : les **services** du cœur (génériques, voir [PLATFORM.md](PLAT
 **Stockage** : privé à l'instance (une instance ne voit jamais celui d'une autre), en collections libres de documents JSON, sans
 requête (filtrez en code, d'où le `limit`). Il est sauvegardé par le cœur (JSON) et supprimé avec l'instance ou la désinstallation du module.
 
-`ModuleBrand` : `name`, `tagline`, `about`, `logo`, `contactEmail`, `colors` (`[{ key, name, hex, role }]`), `font` (`{ key, name, stack }`),
+`ModuleBrand` : `name`, `tagline`, `about`, `logo` (le visuel principal : l'icône, sinon le logo horizontal), `logos` (`[{ kind: "wide" | "square" | "wideDark" | "squareDark", src }]` : le jeu complet), `contactEmail`, `colors` (`[{ key, name, hex, role }]`), `font` (`{ key, name, stack }`),
 `defaultLocale`, `locales`. Lecture seule : un module qui *montre* l'identité (kit presse) la lit au lieu de la copier.
 
 `EntrySummary` : `id`, `title`, `cover`, `icon`, `tags`, `fields` (valeurs des champs personnalisés ; les champs `ref` contiennent
@@ -533,8 +534,8 @@ Un module renvoie des **blocs déclaratifs** ; le cœur se charge du rendu, des 
 | `swatches` | `items: [{ name, hex, role? }]` — pastilles de couleur avec code copiable |
 | `downloads` | `items: [{ src, label, detail? }]` — images à télécharger, avec aperçu |
 | `copy` | `text`, `label?` — texte à copier d'un clic |
-| `hero` | `title`, `text?`, `image?`, `video?` (fichier envoyé sur le site), `videoPoster?`, `videoSound?` |
-| `panel` | `kind` (`media`, `tabs`, `stats`, `cta`, `video`), `eyebrow?`, `title?`, `text?` (Markdown), `button?` (`label`, `href`), `images?` (jusqu'à 3), `imageSide?`, `tone?` (`plain`, `surface`, `accent`), `bg?` (`src`, `size`, `position`, `veil`), `items?` (`title`, `heading?`, `text?`, `image?`), `video?` — un morceau de page ; voir le module livré « Blocs de page » |
+| `hero` | `title`, `text?`, `image?`, `eyebrow?`, `button?` (`label`, `href`), `video?` (fichier envoyé sur le site), `videoPoster?`, `videoSound?` |
+| `panel` | `kind` (`media`, `tabs`, `stats`, `cta`, `video`), `eyebrow?`, `title?`, `text?` (Markdown), `button?` (`label`, `href`), `images?` (jusqu'à 3), `imageSide?`, `tone?` (`plain`, `surface`, `accent`), `bg?` (`src`, `size`, `position`, `veil`), `items?` (`title`, `heading?`, `text?`, `image?`), `video?` — un morceau de page d'accueil ; fonction du cœur, créée dans Page d'accueil → Ajouter un bloc (voir `core/homeBlocks.ts`) ; un module peut aussi renvoyer ce bloc depuis une section |
 | `banner` | `text`, `href?`, `tone?` (`info` · `success` · `warning`) |
 | `links` | `items: [{ label, href, icon? }]` — les adresses non sûres deviennent `#` |
 | `entries` | `instance` (clé), `limit?`, `title?`, `link?`, `pick?` (`"random"`) — entrées d'une instance, rendues par le cœur |
@@ -805,8 +806,9 @@ les guillemets internes) et neutralisez les cellules qui commencent par `=`, `+`
 
 **Installer** (propriétaire seulement). Admin → **Catalogue** :
 
-- **Modules livrés avec le framework** (dossiers `modules-community/` et `modules-examples/` du serveur) : installés depuis les fichiers du serveur, sans réseau ; leur version suit celle du framework.
+- **Modules livrés avec le framework** (dossier `extras/` du serveur : instantané du dépôt `curiosa-extras`, dossiers `modules/` et `examples/`) : installés depuis les fichiers du serveur, sans réseau ; leur version suit celle du framework.
 - **Modules reconnus** : dépôts git listés dans un index public (voir ci-dessous) : celui qui publie l'index se porte garant des dépôts qu'il liste.
+- **Mes dépôts de modules** (mode avancé) : vous publiez vos modules dans UN dépôt git (un dossier par module, chacun avec son `module.json`, jusqu'à trois niveaux de profondeur ; ou un seul module à la racine). Le propriétaire du site ajoute l'adresse du dépôt dans Catalogue → *Mes dépôts de modules* ; Curiosa lit les manifestes (sans rien exécuter) et liste les modules, qui s'installent un par un avec la même confirmation que ci-dessous. Chaque module se met à jour depuis son dossier de ce dépôt, et seulement quand ce dossier change. Dix dépôts au plus.
 - **Installer un dépôt personnel (non vérifié)** : n'importe quelle adresse de dépôt, avec un avertissement et une case « je comprends » à cocher :
 
 ```
@@ -836,7 +838,7 @@ rétablie automatiquement : un module ne reste jamais à moitié mis à jour.
 est acceptée par « Installer un dépôt personnel ». Le dépôt doit avoir au moins un commit ; pour voir une modification, validez-la
 (`git commit`) puis *Chercher une mise à jour* → *Mettre à jour*. À ne jamais activer sur un serveur public.
 
-**Index des modules reconnus** : un fichier [`catalogue/index.json`](../catalogue/index.json) **dans le dépôt du framework**, relu **à l'exécution**
+**Index des modules reconnus** : un fichier `catalogue/index.json` (format : [`catalogue/README.md`](../catalogue/README.md)) **dans le dépôt de modules `curiosa-extras`**, relu **à l'exécution**
 depuis le dépôt d'origine de l'installation (au plus toutes les 15 minutes) : **il ne suit pas le rythme des versions du framework**. Ajouter un module =
 une demande de fusion sur ce fichier, visible par toutes les installations dès qu'elle est fusionnée (voir [`catalogue/README.md`](../catalogue/README.md)).
 
@@ -851,25 +853,27 @@ une demande de fusion sur ce fichier, visible par toutes les installations dès 
 diffère de celle du framework est listé mais **non installable**. Rien n'est installé automatiquement ; le dépôt installé doit servir le module annoncé
 (`id` identique à celui de son `module.json`). Un module livré avec le framework l'emporte sur un module reconnu de même identifiant.
 
-D'où vient la liste, dans l'ordre : (1) le dépôt du framework (le remote `origin` de l'installation, ou `CURIOSA_UPDATE_REMOTE` ; pour une installation par archive, le dépôt de `release.json` ; `CURIOSA_CATALOGUE_REPO` pour en choisir un autre, `CURIOSA_CATALOGUE_REF` pour une autre
+D'où vient la liste, dans l'ordre : (1) le dépôt de modules `curiosa-extras` (voisin du remote `origin` de l'installation : même propriétaire, ou `CURIOSA_UPDATE_REMOTE` ; pour une installation par archive, le dépôt de `release.json` ; `CURIOSA_CATALOGUE_REPO` pour en choisir un autre, `CURIOSA_CATALOGUE_REF` pour une autre
 branche ou étiquette que `HEAD`) ; (2) à défaut, la **dernière copie reçue** (`data/cache/`), puis la **copie livrée avec cette version** : le Catalogue
 fonctionne hors ligne ; (3) **en plus**, un index JSON `https://` (`MODULES_INDEX_URL`, modèle : [`modules-index.example.json`](modules-index.example.json))
-dont les entrées ne peuvent qu'**ajouter** des modules, jamais remplacer ceux du dépôt. `CURIOSA_CATALOGUE_RUNTIME=0` coupe la lecture à l'exécution
+dont les entrées ne peuvent qu'**ajouter** des modules, jamais remplacer ceux du dépôt. `CURIOSA_EXTRAS_DIR` désigne le dossier des modules livrés (défaut : `extras/` à côté de l'application). `CURIOSA_CATALOGUE_RUNTIME=0` coupe la lecture à l'exécution
 (copie livrée seulement). La page Catalogue indique d'où vient la liste affichée.
 
-Pour qu'un module rejoigne les modules livrés : un dossier dans `modules-community/` (modules complets) ou `modules-examples/` (exemples), avec son `module.json` à sa racine.
+Pour qu'un module rejoigne les modules livrés : une demande de fusion sur `curiosa-extras` avec un dossier dans `modules/` (modules complets) ou `examples/` (exemples), son `module.json` à sa racine.
 
-## Modules livrés avec le cœur, communautaires, exemples
+## Les modules : dépôt `curiosa-extras`
 
-Seuls les modules de base vivent dans `src/modules-builtin/` : blog, réseaux sociaux, codes promo,
-pages, collection vierge, bandeau d'accueil, formulaire de contact, statut live, overlay
-défilant et **kit presse** (une pure curiosa : il lit l'identité réglée dans le cœur via `ctx.api.brand()` et ne stocke rien). Tout le reste s'installe depuis git.
+**Le cœur ne contient aucun module** : il fait fonctionner le site et son admin, point. Blog, réseaux sociaux, codes promo, pages, collection vierge,
+bandeau d'accueil, formulaire de contact, statut live, overlay défilant, **kit presse** (il lit l'identité réglée dans le cœur via `ctx.api.brand()` et
+ne stocke rien) et tous les autres vivent dans le dépôt `curiosa-extras` et s'installent comme n'importe quel module. Si le cœur avait
+besoin d'un module pour fonctionner, ce ne serait pas un module : ce serait une fonction du cœur (c'est le cas des blocs de page de l'accueil). Un test
+vérifie que le cœur ne cite aucun module.
 
-- **`modules-examples/`** : exemples pour apprendre. [`guestbook`](../modules-examples/guestbook) (livre d'or modéré : réglages de tous types,
+- **`examples/`** : exemples pour apprendre. `guestbook` (`curiosa-extras/examples/guestbook`) (livre d'or modéré : réglages de tous types,
   sections avec taille, page, formulaire, stockage, e-mail, sujets dont `feed.item`, admin, MCP, sauvegarde lisible, thème, i18n, crochets) et
-  [`announcement-banner`](../modules-examples/announcement-banner) (le plus petit module utile : un slot, une section, un sujet).
-- **`modules-community/`** : modules complets qui **ne font pas partie du cœur** (un test le vérifie) et qui rejoindront chacun leur dépôt : le premier est
-  [`maze-overlay`](../modules-community/maze-overlay), un labyrinthe 3D existant porté en module
+  `announcement-banner` (`curiosa-extras/examples/announcement-banner`) (le plus petit module utile : un slot, une section, un sujet).
+- **`modules/`** : modules complets, dont les modules de base. Par exemple
+  `maze-overlay` (`curiosa-extras/modules/maze-overlay`), un labyrinthe 3D existant porté en module
   (moteur en JavaScript natif servi par ses propres routes, alimenté par les sujets `core.entry` et
   `maze.poster`). Il montre qu'un module riche — moteur de rendu, assets, réglages, abonnements — tient
   dans le contrat sans rien ajouter au cœur.
@@ -884,9 +888,9 @@ Trois modules communautaires qui coopèrent sans se connaître, uniquement par s
   + actions MCP                         mention de partenariat)
 ```
 
-- [`partnerships`](../modules-community/partnerships) : suivi privé (fiches, journal, contacts, relances) — aucune page publique, panneau d'admin complet, actions MCP.
-- [`sponsors`](../modules-community/sponsors) : module à contenu ; chaque sponsor peut référencer un partenaire ; affiche la mention de partenariat ; fournit `sponsor.card`.
-- [`sponsor-ticker`](../modules-community/sponsor-ticker) : l'overlay, qui ne connaît que `sponsor.card` (ou `core.entry`).
+- `partnerships` (`curiosa-extras/modules/partnerships`) : suivi privé (fiches, journal, contacts, relances) — aucune page publique, panneau d'admin complet, actions MCP.
+- `sponsors` (`curiosa-extras/modules/sponsors`) : module à contenu ; chaque sponsor peut référencer un partenaire ; affiche la mention de partenariat ; fournit `sponsor.card`.
+- `sponsor-ticker` (`curiosa-extras/modules/sponsor-ticker`) : l'overlay, qui ne connaît que `sponsor.card` (ou `core.entry`).
 
 ### Présence en ligne : annonces, live, vidéos, alertes
 
@@ -899,19 +903,19 @@ Des modules communautaires qui coopèrent aussi uniquement par sujets (aucun ne 
                 ──maze.poster────────▶ Overlay labyrinthe
 ```
 
-- [`discord-announcer`](../modules-community/discord-announcer) : webhook Discord, anti-doublon, journal, test ; utilise le service `tasks`.
-- [`youtube-channel`](../modules-community/youtube-channel) : vidéo mise en avant (sans lecteur intégré), vidéos proposées au flux RSS et aux affiches.
-- [`twitch-channel`](../modules-community/twitch-channel) : le live en cours (`stream.live`) et les derniers clips.
-- [`alerts-overlay`](../modules-community/alerts-overlay) : alertes OBS en direct (SSE), alimentées par une requête authentifiée par jeton.
-- [`game-suggestions`](../modules-community/game-suggestions) : suggestions de jeux avec statuts, votes « rejoue-le », jaquettes RAWG.
+- `discord-announcer` (`curiosa-extras/modules/discord-announcer`) : webhook Discord, anti-doublon, journal, test ; utilise le service `tasks`.
+- `youtube-channel` (`curiosa-extras/modules/youtube-channel`) : vidéo mise en avant (sans lecteur intégré), vidéos proposées au flux RSS et aux affiches.
+- `twitch-channel` (`curiosa-extras/modules/twitch-channel`) : le live en cours (`stream.live`) et les derniers clips.
+- `alerts-overlay` (`curiosa-extras/modules/alerts-overlay`) : alertes OBS en direct (SSE), alimentées par une requête authentifiée par jeton.
+- `game-suggestions` (`curiosa-extras/modules/game-suggestions`) : suggestions de jeux avec statuts, votes « rejoue-le », jaquettes RAWG.
 
 ### Contacts et formulaire de contact : une dépendance
 
-[`contacts`](../modules-community/contacts) est un carnet d'adresses privé (admin, MCP, sauvegarde lisible) qui **offre** le service `contact.store`. Le formulaire de contact intégré le **requiert** : il ne garde aucun message lui-même, il les range dans le carnet comme contacts « à vérifier » (même e-mail → note ajoutée, pas de doublon). Activer le formulaire installe et active `contacts` d'office ; tant que le formulaire est actif, `contacts` ne peut être ni désactivé ni désinstallé. Un assistant MCP complète ensuite la fiche et la passe « active », ou la supprime si c'est du spam.
+`contacts` (`curiosa-extras/modules/contacts`) est un carnet d'adresses privé (admin, MCP, sauvegarde lisible) qui **offre** le service `contact.store`. Le formulaire de contact intégré le **requiert** : il ne garde aucun message lui-même, il les range dans le carnet comme contacts « à vérifier » (même e-mail → note ajoutée, pas de doublon). Activer le formulaire installe et active `contacts` d'office ; tant que le formulaire est actif, `contacts` ne peut être ni désactivé ni désinstallé. Un assistant MCP complète ensuite la fiche et la passe « active », ou la supprime si c'est du spam.
 
 ### Planning
 
-[`planning`](../modules-community/planning) lit un calendrier au format iCal (l'« adresse secrète » de
+`planning` (`curiosa-extras/modules/planning`) lit un calendrier au format iCal (l'« adresse secrète » de
 Google Agenda) et affiche les prochains streams : section d'accueil, page `/planning`, sujet `planning.slot`
 et action MCP `planning_upcoming` (lecture seule). Il comprend les répétitions (`RRULE`, `EXDATE`),
 les exceptions et les fuseaux horaires. L'adresse du calendrier est un réglage secret, n'accepte que
@@ -923,7 +927,7 @@ du https public (aucune adresse interne, redirections revérifiées) et n'est ja
 (installation depuis un vrai dépôt git local, registre, exécution, sujets, MCP) et chaque module. Les outils
 sont dans `tests/helpers/` : un chargeur qui résout l'alias `@/` et les modules `next/*`, une base SQLite
 temporaire (`useTestDb`), des dépôts git jetables (`makeRepo`) et un contexte de module factice (`fakeCtx`)
-pour tester le code d'un module sans serveur (voir `tests/modules/example-guestbook.test.mjs`, qui sert de modèle). `tests/docs-coverage.test.mjs` garde cette
+pour tester le code d'un module sans serveur (voir `tests/guestbook.test.mjs` de `curiosa-extras`, qui sert de modèle). `tests/docs-coverage.test.mjs` garde cette
 documentation alignée sur le code.
 
 ## Sécurité : à lire avant d'installer

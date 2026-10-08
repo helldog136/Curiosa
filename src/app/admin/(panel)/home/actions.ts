@@ -1,5 +1,6 @@
 "use server";
 
+import { CORE_INSTANCE, CORE_SECTION, isBlockKind, normalizeBlockDef } from "@/core/homeBlocks";
 import { revalidatePath } from "next/cache";
 import { adminCtx } from "@/core/admin";
 import { getActiveInstances, sectionsOf } from "@/core/modules/registry";
@@ -9,7 +10,7 @@ import { setSetting, type HomeSection } from "@/core/settings";
 import type { ActionState } from "@/components/admin/ActionForm";
 
 export async function saveHome(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  const { user, t } = await adminCtx("admin");
+  const { user, t, config } = await adminCtx("admin");
   const active = await getActiveInstances();
   const total = Math.min(Number(formData.get("count")) || 0, 60);
   const rows: { order: number; section: HomeSection }[] = [];
@@ -17,6 +18,16 @@ export async function saveHome(_prev: ActionState, formData: FormData): Promise<
   for (let i = 0; i < total; i++) {
     if (formData.get(`remove_${i}`) === "on") continue;
     const [instanceKey = "", sectionId = ""] = String(formData.get(`section_${i}`) ?? "").split("|");
+    // Bloc de page du cœur : une définition JSON, relue champ par champ (jamais prise telle quelle).
+    if (instanceKey === CORE_INSTANCE) {
+      if (!isBlockKind(sectionId)) continue;
+      let raw: unknown;
+      try { raw = JSON.parse(String(formData.get(`block_${i}`) ?? "{}")); } catch { continue; }
+      const block = normalizeBlockDef({ ...(raw as object), kind: sectionId }, config.locales);
+      const chosenSize = String(formData.get(`size_${i}`) ?? "");
+      rows.push({ order: Number(formData.get(`order_${i}`)) || 0, section: { id: `s${i}-${Date.now().toString(36)}`, instance: CORE_INSTANCE, section: CORE_SECTION, options: { block }, ...(isSectionSize(chosenSize) && chosenSize !== "full" ? { size: chosenSize } : {}), ...(formData.get(`isolated_${i}`) === "on" ? { isolated: true } : {}) } });
+      continue;
+    }
     const target = active.find((a) => a.instance.key === instanceKey);
     const decl = target ? sectionsOf(target.mod.manifest).find((s) => s.id === sectionId) : undefined;
     if (!target || !decl) continue;

@@ -42,14 +42,6 @@ test("dépôt cloné en SSH : interrogé en https", () => {
   assert.equal(C.toHttpsRemote("https://github.com/owner/repo.git"), "https://github.com/owner/repo.git");
 });
 
-test("la copie livrée avec le framework existe et est valide (filet de sécurité hors ligne)", () => {
-  const snap = JSON.parse(fs.readFileSync("catalogue/index.json", "utf8"));
-  assert.equal(snap.version, 1);
-  assert.ok(Array.isArray(snap.modules));
-  assert.equal(C.sanitizeEntries(snap).length, snap.modules.length, "toutes ses entrées sont valides");
-  assert.ok(fs.existsSync("catalogue/README.md"));
-});
-
 test("LU À L'EXÉCUTION : une entrée ajoutée au dépôt apparaît sans nouvelle version du framework", async () => {
   const root = emptyRoot();
   const repo = makeRepo(indexOf(ENTRY("premier")));
@@ -145,8 +137,8 @@ test("index supplémentaire (MODULES_INDEX_URL) : il AJOUTE des modules, il ne r
 
 test("dépôt de l'index : celui d'origine de l'installation, ou celui choisi ; valeurs dangereuses refusées", async () => {
   const git = (url) => async (args) => { if (args[0] === "remote") { if (!url) throw new Error("pas de remote"); return `${url}\n`; } return ""; };
-  assert.equal(await C.resolveIndexRepo(git("git@github.com:owner/framework.git")), "https://github.com/owner/framework");
-  assert.equal(await C.resolveIndexRepo(git(null)), null, "installation sans dépôt (Docker) : copie livrée");
+  assert.equal(await C.resolveIndexRepo(git("git@github.com:owner/framework.git")), "https://github.com/owner/curiosa-extras", "dépôt de modules voisin du cœur");
+  assert.equal(await C.resolveIndexRepo(git(null), fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-noapp-"))), null, "installation sans dépôt (Docker) : copie livrée");
   process.env.CURIOSA_CATALOGUE_REPO = "https://gitlab.com/communaute/index";
   assert.equal(await C.resolveIndexRepo(git(null)), "https://gitlab.com/communaute/index");
   for (const bad of ["http://github.com/x/y", "https://evil.example/x/y", "https://u:p@github.com/x/y", "ext::sh -c id"]) { process.env.CURIOSA_CATALOGUE_REPO = bad; assert.equal(await C.resolveIndexRepo(git(null)), null, bad); }
@@ -156,7 +148,7 @@ test("le Catalogue indique d'où vient sa liste, et les dépôts reconnus de l'i
   process.env.CURIOSA_CATALOGUE_REPO = makeRepo(indexOf(ENTRY("tiers", { version: "2.0.0" }))).url;
   const list = await M.getCatalogue();
   assert.ok(list.some((e) => e.id === "tiers" && e.source === "recognized" && e.version === "2.0.0"));
-  assert.ok(list.some((e) => e.id === "planning" && e.source === "bundled"), "les modules livrés restent là");
+  assert.ok(list.some((e) => e.id === "demo-planner" && e.source === "bundled"), "les modules livrés restent là");
   const src = await M.getCatalogueSource();
   assert.equal(src.source, "repository");
 });

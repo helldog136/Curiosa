@@ -2,6 +2,7 @@ import type { InstanceView } from "@/core/instances";
 import { localeName } from "@/core/i18n/locales";
 import type { Translator } from "@/core/i18n/dictionary";
 import { ActionForm } from "@/components/admin/ActionForm";
+import { floatingLabels } from "@/components/admin/floating";
 import { Checkbox, Select, TextArea, TextField } from "@/components/admin/Field";
 import { ImageField } from "@/components/admin/ImageField";
 import { MarkdownField } from "@/components/admin/MarkdownField";
@@ -71,7 +72,7 @@ export function EntryForm({ t, collection, locales, locale, data, advanced, refO
         <p className="rounded-lg border border-line bg-surface p-3 text-sm">{t("entries.newVersionHint", { lang: localeName(locale) })}</p>
       )}
 
-      <ActionForm action={saveEntry} submitLabel={t("action.save")}>
+      <ActionForm action={saveEntry} floating={floatingLabels(t)} submitLabel={t("action.save")}>
         <input type="hidden" name="id" value={data.id ?? ""} />
         <input type="hidden" name="instanceId" value={collection.id} />
         <input type="hidden" name="locale" value={locale} />

@@ -4,8 +4,7 @@
  *
  *   src/core/services/   les HELPERS que le cœur offre (QR, MCP, stockage, sujets, envois) —
  *                        génériques, ils ne connaissent ni les modules ni le contenu
- *   src/modules-builtin/ les FONCTIONNALITÉS de base, livrées comme des modules
- *   modules-community/   les FONCTIONNALITÉS installables
+ *   (aucun module dans ce dépôt : les fonctionnalités vivent dans `curiosa-extras` et s'installent comme des modules)
  *
  * Ce fichier dit, par exemple, d'où le service MCP tire ses outils. Pour brancher une nouvelle source
  * d'outils, on l'ajoute ici — jamais dans le service.

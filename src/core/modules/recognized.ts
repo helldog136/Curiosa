@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import { DATA_DIR } from "../config";
-import { parseRepoUrl } from "./installer";
+import { isSubdir, parseRepoUrl } from "./installer";
 
 export type RecognizedItem = {
   id: string;
@@ -13,6 +13,8 @@ export type RecognizedItem = {
   repo: string;
   /** Étiquette ou commit à installer (sinon la branche par défaut) — épinglez-en un relu. */
   ref?: string;
+  /** Dossier du module dans `repo`, pour un dépôt qui regroupe plusieurs modules. */
+  subdir?: string;
   version?: string;
   author?: string;
   icon?: string;
@@ -44,6 +46,7 @@ export function sanitizeEntries(json: unknown): RecognizedItem[] {
     items.push({
       id: i.id, name: str(i.name, 120) || i.id, description: str(i.description, 500) ?? "", repo: repo.repo.url,
       ref: typeof i.ref === "string" && /^[\w./-]{1,100}$/.test(i.ref) ? i.ref : undefined,
+      subdir: isSubdir(i.subdir) ? i.subdir : undefined,
       version: str(i.version, 40), author: str(i.author, 120), icon: str(i.icon, 8),
       apiVersion: Number.isInteger(i.apiVersion) ? i.apiVersion : undefined,
     });
@@ -62,7 +65,10 @@ export type IndexGit = (args: string[], cwd?: string) => Promise<string>;
 const gitConfig = () => ["-c", "protocol.ext.allow=never", "-c", `protocol.file.allow=${process.env.CURIOSA_ALLOW_LOCAL_MODULES === "1" ? "always" : "never"}`, "-c", "core.hooksPath=/dev/null"];
 const defaultGit: IndexGit = async (args, cwd) => (await run("git", [...gitConfig(), ...args], { cwd, timeout: 25_000, maxBuffer: MAX_INDEX_BYTES + 4096, env: { ...process.env, GIT_TERMINAL_PROMPT: "0" } })).stdout;
 
-/** Dépôt qui publie l'index : CURIOSA_CATALOGUE_REPO, sinon le dépôt d'origine de cette installation. */
+/** Nom du dépôt de modules, voisin du dépôt du cœur (même propriétaire, même hôte). */
+const EXTRAS_REPO_NAME = "curiosa-extras";
+
+/** Dépôt qui publie l'index : CURIOSA_CATALOGUE_REPO, sinon le dépôt de modules voisin du dépôt d'origine de cette installation (même propriétaire). */
 export async function resolveIndexRepo(git: IndexGit = defaultGit, appDir = process.cwd()): Promise<string | null> {
   const explicit = process.env.CURIOSA_CATALOGUE_REPO?.trim();
   let url = explicit || "";
@@ -74,6 +80,8 @@ export async function resolveIndexRepo(git: IndexGit = defaultGit, appDir = proc
       if (!url) return null;
     }
   }
+  // Le cœur ne contient aucun module : l'index est dans le dépôt de modules, voisin du dépôt du cœur.
+  if (!explicit) url = toHttpsRemote(url).replace(/\/[^/]+?(?:\.git)?\/?$/, `/${EXTRAS_REPO_NAME}`);
   const parsed = parseRepoUrl(toHttpsRemote(url));
   return parsed.ok ? parsed.repo.url : null;
 }
@@ -92,6 +100,9 @@ export async function fetchIndexFromRepo(url: string, ref = "HEAD", git: IndexGi
     fs.rmSync(tmp, { recursive: true, force: true });
   }
 }
+
+/** Copie de l'index livrée avec cette version : dans l'instantané des modules (`extras/catalogue/index.json`). */
+const defaultRoot = () => process.env.CURIOSA_EXTRAS_DIR ?? path.join(process.cwd(), "extras");
 
 const cacheFile = () => path.join(DATA_DIR, "cache", "recognized-index.json");
 function readPersisted(): { items: RecognizedItem[]; fetchedAt: number; origin: string | null } | null {
@@ -117,14 +128,14 @@ export type RecognizedOptions = { fetchImpl?: typeof fetch; git?: IndexGit; root
  * Celui qui publie un index se porte garant des dépôts qu'il liste ; chaque entrée est revalidée ici. Rien n'est installé automatiquement.
  */
 export async function getRecognizedDetailed(opts: RecognizedOptions = {}): Promise<RecognizedResult> {
-  const { fetchImpl = fetch, git = defaultGit, root = process.cwd(), now = Date.now } = opts;
+  const { fetchImpl = fetch, git = defaultGit, root = defaultRoot(), now = Date.now } = opts;
   const extraUrl = process.env.MODULES_INDEX_URL;
   const key = `${process.env.CURIOSA_CATALOGUE_REPO ?? ""}|${process.env.CURIOSA_CATALOGUE_REF ?? ""}|${extraUrl ?? ""}|${root}`;
   if (memo && memo.key === key && now() - memo.at < TTL) return memo.result;
 
   let base: RecognizedResult = { items: [], source: "none", fetchedAt: null, origin: null };
   const runtime = process.env.CURIOSA_CATALOGUE_RUNTIME !== "0";
-  const repo = runtime ? await resolveIndexRepo(git, root) : null;
+  const repo = runtime ? await resolveIndexRepo(git) : null;
   if (repo) {
     try {
       const items = sanitizeEntries(await fetchIndexFromRepo(repo, process.env.CURIOSA_CATALOGUE_REF || "HEAD", git));

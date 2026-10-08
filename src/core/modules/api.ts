@@ -1,3 +1,4 @@
+import { isDarkBackground, pickLogo } from "../logos";
 import { getBrand } from "@/core/brand";
 import { siteUrl } from "@/core/config";
 import { entryPath, listEntries } from "@/core/content/entries";
@@ -55,7 +56,7 @@ export function makeApi(instance: InstanceView, locale: string): ModuleApi {
     // ── LECTURE du site ─────────────────────────────────────────────────────────
     async site(loc) {
       const c = await getSiteConfig(loc);
-      return { name: c.name, tagline: c.tagline, logo: c.logo };
+      return { name: c.name, tagline: c.tagline, logo: pickLogo(c.logos, "any", isDarkBackground(c.background)) };
     },
     brand: (loc) => getBrand(loc ?? locale),
     instances: {

@@ -10,7 +10,7 @@ const { listInstances, getInstanceByKey, toInstanceView, pickName, pickDescripti
 const { normalizeRedirectPath, validateRedirectPath, resolveRedirect } = await import("@/core/redirects");
 const { createEntry } = await import("@/core/content/service");
 const E = await import("@/core/content/entries");
-const { BUILTIN_MODULES } = await import("@/modules-builtin");
+const { FIXTURE_MODULES: BUILTIN_MODULES } = await import("../helpers/fixtureModules.mjs");
 const { audit } = await import("@/core/permissions");
 
 beforeEach(() => db.reset());
@@ -20,7 +20,7 @@ const manifest = (id) => BUILTIN_MODULES.find((b) => b.manifest.id === id).manif
 const blog = () => manifest("blog");
 
 async function newInstance(over = {}) {
-  await db.prisma.module.upsert({ where: { id: "blog" }, create: { id: "blog", source: "builtin", version: "1", enabled: true }, update: {} });
+  await db.fixture("blog");
   return createInstance(db.prisma, { manifest: blog(), names: { fr: "Blog", en: "Blog" }, ...over });
 }
 
@@ -142,7 +142,7 @@ test("instances : chemin public validé (format, réservé, déjà pris, redirec
 });
 
 test("instances : un module sans page n'a pas de chemin public", async () => {
-  await db.prisma.module.create({ data: { id: "hero", source: "builtin", version: "1", enabled: true } });
+  await db.fixture("hero");
   const i = await createInstance(db.prisma, { manifest: manifest("hero"), names: { en: "Hero" } });
   assert.equal(i.basePath, null);
 });

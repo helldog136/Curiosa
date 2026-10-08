@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ui } from "./ui";
 
-type Plan = { id: string; name: string; version: string; status: "builtin" | "installed" | "catalogue" | "custom" | "unavailable"; repoUrl: string | null; ref: string | null; needsConfirmation: boolean };
+type Plan = { id: string; name: string; version: string; status: "installed" | "catalogue" | "custom" | "unavailable"; repoUrl: string | null; ref: string | null; needsConfirmation: boolean };
 type Preview = { token: string; site: { name: string }; createdAt: string; frameworkVersion: string; counts: Record<string, number>; modules: Plan[] };
 type Report = { ok: boolean; error?: string; modules: { id: string; outcome: string; error?: string }[]; migrations?: { key: string; from: number; to: number; status: string; error?: string }[]; counts?: Record<string, number> };
 type Labels = Record<string, string>;
@@ -79,7 +79,7 @@ export function RestorePanel({ labels, previewUrl = "/api/admin/backup/restore",
           </p>
           <p className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">{L("replaceWarning")}</p>
           <ul className="space-y-2">
-            {preview.modules.filter((m) => m.status !== "builtin").map((m) => (
+            {preview.modules.map((m) => (
               <li key={m.id} className={`${ui.card} text-sm`}>
                 <p className="font-medium">{m.name} <span className="text-xs text-muted">v{m.version}</span> — {L(`status.${m.status}`)}</p>
                 {m.status === "custom" && (

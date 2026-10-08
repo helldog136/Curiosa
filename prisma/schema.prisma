@@ -168,6 +168,10 @@ model Module {
   repoUrl     String?
   ref         String?
   commit      String?
+  // Dossier du module dans le dépôt (dépôt regroupant plusieurs modules) ; null = le module est à la racine du dépôt.
+  subdir      String?
+  // Empreinte git du contenu de ce dossier : une mise à jour n'est proposée que si CE module a changé, pas le dépôt entier.
+  tree        String?
   version     String
   enabled     Boolean  @default(false)
   installedAt DateTime @default(now())

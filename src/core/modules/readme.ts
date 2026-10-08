@@ -12,7 +12,7 @@ import { parseManifest, type ParsedManifest } from "./manifest";
  * il n'est affiché que par le rendu Markdown sans HTML brut.
  */
 export type ModulePreview = { manifest: ParsedManifest | null; readme: string | null; truncated: boolean };
-export type PreviewTarget = { kind: "bundled"; dir: string } | { kind: "repo"; url: string; ref?: string };
+export type PreviewTarget = { kind: "bundled"; dir: string } | { kind: "repo"; url: string; ref?: string; subdir?: string };
 
 const MAX_README = 100_000;
 const MAX_MANIFEST = 100_000;
@@ -34,8 +34,8 @@ function readBundled(dir: string): ModulePreview {
   return finish(read("module.json"), name ? read(name) : null);
 }
 
-async function readRepo(url: string, ref?: string): Promise<ModulePreview> {
-  const parsed = parseRepoUrl(ref ? `${url}#${ref}` : url);
+async function readRepo(url: string, ref?: string, subdir?: string): Promise<ModulePreview> {
+  const parsed = parseRepoUrl(ref || subdir ? `${url}#${ref ?? ""}${subdir ? `:${subdir}` : ""}` : url);
   if (!parsed.ok) throw new Error(parsed.error);
   fs.mkdirSync(path.join(DATA_DIR, "tmp"), { recursive: true });
   const tmp = fs.mkdtempSync(path.join(DATA_DIR, "tmp", "preview-"));
@@ -52,8 +52,10 @@ async function readRepo(url: string, ref?: string): Promise<ModulePreview> {
       await git(["clone", "-q", "--depth", "1", "--single-branch", "--filter=blob:none", "--no-checkout", ...branch, "--", parsed.repo.url, dir])
         .catch(async () => { fs.rmSync(dir, { recursive: true, force: true }); await git(["clone", "-q", "--depth", "1", "--single-branch", "--no-checkout", ...branch, "--", parsed.repo.url, dir]); });
     }
-    const names = (await git(["ls-tree", "--name-only", "HEAD"], dir)).split("\n");
-    const show = async (name: string | undefined) => (name ? git(["show", `HEAD:${name}`], dir).then((t) => t.slice(0, MAX_README + 1)) : null);
+    // Module dans un dossier du dépôt : on ne lit que les fichiers de CE dossier.
+    const prefix = subdir ? `${subdir}/` : "";
+    const names = (await git(["ls-tree", "--name-only", subdir ? `HEAD:${subdir}` : "HEAD"], dir)).split("\n");
+    const show = async (name: string | undefined) => (name ? git(["show", `HEAD:${prefix}${name}`], dir).then((t) => t.slice(0, MAX_README + 1)) : null);
     const readme = names.find((n) => README_RE.test(n));
     return finish(await show(names.includes("module.json") ? "module.json" : undefined).then((t) => (t ?? "").slice(0, MAX_MANIFEST) || null), await show(readme));
   } finally {
@@ -63,10 +65,10 @@ async function readRepo(url: string, ref?: string): Promise<ModulePreview> {
 
 /** Lit l'aperçu d'un module (10 minutes de cache). Lève une `Error` si le dépôt est refusé ou injoignable. */
 export async function getModulePreview(target: PreviewTarget): Promise<ModulePreview> {
-  const key = target.kind === "bundled" ? `b:${target.dir}` : `r:${target.url}#${target.ref ?? ""}`;
+  const key = target.kind === "bundled" ? `b:${target.dir}` : `r:${target.url}#${target.ref ?? ""}:${target.subdir ?? ""}`;
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at < TTL) return hit.value;
-  const value = target.kind === "bundled" ? readBundled(target.dir) : await readRepo(target.url, target.ref);
+  const value = target.kind === "bundled" ? readBundled(target.dir) : await readRepo(target.url, target.ref, target.subdir);
   cache.set(key, { at: Date.now(), value });
   if (cache.size > 100) cache.delete(cache.keys().next().value!);
   return value;

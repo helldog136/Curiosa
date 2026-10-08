@@ -14,6 +14,7 @@ const TYPES: Record<string, { ext: string; mime: string }> = {
   gif: { ext: "gif", mime: "image/gif" },
   mp4: { ext: "mp4", mime: "video/mp4" },
   webm: { ext: "webm", mime: "video/webm" },
+  svg: { ext: "svg", mime: "image/svg+xml" },
 };
 
 /** Détecte le vrai format par signature (on ne fait pas confiance au nom ni au Content-Type). SVG exclu : il peut contenir du script. */
@@ -36,6 +37,14 @@ export function sniffVideo(buf: Buffer): "mp4" | "webm" | null {
 
 export const isVideoName = (name: string) => /\.(mp4|webm)$/.test(name);
 
+/** Écrit un fichier déjà validé sous un nom aléatoire et renvoie son adresse. Réservé au cœur : l'appelant a vérifié le contenu. */
+export async function storeUpload(content: Buffer | string, ext: keyof typeof TYPES): Promise<string> {
+  await fs.mkdir(UPLOADS_DIR, { recursive: true });
+  const name = `${crypto.randomUUID()}.${TYPES[ext]!.ext}`;
+  await fs.writeFile(path.join(UPLOADS_DIR, name), content);
+  return `/uploads/${name}`;
+}
+
 export async function saveUpload(buf: Buffer): Promise<string | null> {
   const image = sniffImage(buf);
   const kind = image ?? sniffVideo(buf);
@@ -46,7 +55,7 @@ export async function saveUpload(buf: Buffer): Promise<string | null> {
   return `/uploads/${name}`;
 }
 
-export const UPLOAD_NAME_RE = /^[0-9a-f-]{36}\.(png|jpg|webp|gif|mp4|webm)$/;
+export const UPLOAD_NAME_RE = /^[0-9a-f-]{36}\.(png|jpg|webp|gif|mp4|webm|svg)$/;
 
 export function mimeFor(name: string): string {
   const ext = name.split(".").pop() ?? "";

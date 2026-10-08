@@ -159,9 +159,9 @@ test("dépôt injoignable : pas d'erreur, simplement rien à proposer", async ()
 
 test("module livré avec le framework : la mise à jour indique la version cible", async () => {
   const { installBundled } = await import("@/core/modules/installer");
-  await installBundled("announcement-banner");
-  await db.prisma.module.update({ where: { id: "announcement-banner" }, data: { version: "0.0.1" } });
-  const c = await checkForUpdate("announcement-banner");
+  await installBundled("demo-banner");
+  await db.prisma.module.update({ where: { id: "demo-banner" }, data: { version: "0.0.1" } });
+  const c = await checkForUpdate("demo-banner");
   assert.equal(c.available, true);
   assert.ok(["minor", "major", "patch"].includes(c.level));
   assert.ok(c.target);

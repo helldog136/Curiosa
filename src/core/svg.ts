@@ -13,6 +13,8 @@
  */
 export const MAX_SVG_BYTES = 24_000;
 const MAX_ELEMENTS = 1500;
+/** Limites plus larges pour un logo (un dessin détaillé pèse plus qu'un motif de fond). */
+export const LOGO_SVG_LIMITS = { maxBytes: 300_000, maxElements: 6000 } as const;
 
 const ELEMENTS = new Set([
   "svg", "g", "defs", "rect", "circle", "ellipse", "line", "polyline", "polygon", "path", "linearGradient", "radialGradient", "stop",
@@ -39,9 +41,9 @@ function substitute(raw: string, theme?: Partial<Record<Token, string>>): string
   return raw.replace(/\{(accent|bg|fg|muted|surface|line)\}/g, (_, t: Token) => (/^#[0-9a-fA-F]{6}$/.test(theme?.[t] ?? "") ? theme![t]! : "#808080"));
 }
 
-export function sanitizeSvg(input: unknown, theme?: Partial<Record<Token, string>>, fit: "cover" | "contain" | "tile" = "cover", align: "left" | "center" | "right" = "center"): SvgResult {
+export function sanitizeSvg(input: unknown, theme?: Partial<Record<Token, string>>, fit: "cover" | "contain" | "tile" = "cover", align: "left" | "center" | "right" = "center", limits: { maxBytes: number; maxElements: number } = { maxBytes: MAX_SVG_BYTES, maxElements: MAX_ELEMENTS }): SvgResult {
   if (typeof input !== "string" || input.trim() === "") return fail("dessin vide");
-  if (input.length > MAX_SVG_BYTES) return fail(`dessin trop lourd (${MAX_SVG_BYTES / 1000} Ko au plus : simplifiez les tracés)`);
+  if (input.length > limits.maxBytes) return fail(`dessin trop lourd (${limits.maxBytes / 1000} Ko au plus : simplifiez les tracés)`);
   const src = substitute(input, theme).replace(/^﻿/, "").replace(/<\?xml[\s\S]*?\?>/g, "").replace(/<!--[\s\S]*?-->/g, "").trim();
   if (/<!DOCTYPE|<!ENTITY|<!\[CDATA\[/i.test(src)) return fail("DOCTYPE, entités et CDATA ne sont pas acceptés");
 
@@ -71,7 +73,7 @@ export function sanitizeSvg(input: unknown, theme?: Partial<Record<Token, string
       out.push(`</${name}>`);
       continue;
     }
-    if (++count > MAX_ELEMENTS) return fail("trop d'éléments (1500 au plus)");
+    if (++count > limits.maxElements) return fail(`trop d'éléments (${limits.maxElements} au plus)`);
     if (!rootSeen) { if (name !== "svg") return fail("le dessin doit commencer par <svg>"); rootSeen = true; }
     else if (name === "svg") return fail("<svg> imbriqué non accepté");
 
@@ -118,6 +120,9 @@ export function sanitizeSvg(input: unknown, theme?: Partial<Record<Token, string
       const keep = attrs.filter(([k]) => !["preserveAspectRatio", "width", "height", "xmlns", "xmlns:xlink", "version"].includes(k));
       const x = align === "left" ? "xMin" : align === "right" ? "xMax" : "xMid";
       const par = `${x}YMid ${fit === "cover" ? "slice" : "meet"}`;
+      // Sans viewBox mais avec des dimensions chiffrées (export courant des logiciels de dessin) : le viewBox en est déduit.
+      const num = (k: string) => /^\d+(\.\d+)?(px)?$/.test(attrs.find(([a]) => a === k)?.[1] ?? "") ? parseFloat(attrs.find(([a]) => a === k)![1]) : 0;
+      if (!keep.some(([k]) => k === "viewBox") && num("width") > 0 && num("height") > 0) keep.push(["viewBox", `0 0 ${num("width")} ${num("height")}`]);
       const hasBox = keep.some(([k]) => k === "viewBox");
       if (!hasBox) return fail("le dessin doit avoir un viewBox (ex. viewBox=\"0 0 1920 1080\") : exportez-le depuis votre outil de dessin avec les dimensions");
       if (!keep.find(([k]) => k === "viewBox")![1].match(/^-?[\d.]+[\s,]+-?[\d.]+[\s,]+[\d.]+[\s,]+[\d.]+$/)) return fail("viewBox invalide (4 nombres attendus)");
