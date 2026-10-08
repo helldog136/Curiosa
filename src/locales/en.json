@@ -710,5 +710,6 @@
   "redirects.add.simple": "Add a shortcut",
   "nav.badge.todo": "to review",
   "nav.badge.update": "update available",
-  "dashboard.todo": "To do"
+  "dashboard.todo": "To do",
+  "site.poweredBy": "Powered by"
 }

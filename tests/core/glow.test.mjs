@@ -77,11 +77,13 @@ test("halo : branché sur le site, choisi dans l'admin (simple : niveaux ; avanc
   assert.match(actions, /adv \|\| glow !== "custom"/, "le mode simple ne peut pas activer le personnalisé");
 });
 
-test("admin : le numéro de version est toujours affiché en bas du menu, pour tous les rôles et dans les deux modes", () => {
+test("admin : « Powered by Curiosa vX.Y.Z » est tout en bas de la page (hors du menu), pour tous les rôles et dans les deux modes", () => {
   const layout = fs.readFileSync("src/app/admin/(panel)/layout.tsx", "utf8");
-  const tail = layout.slice(layout.lastIndexOf("nav.logout"));
-  assert.match(tail, /data-testid="app-version">Curiosa v\{readVersion\(\)\}/, "après le bouton de déconnexion, dans le menu");
-  const before = layout.slice(0, layout.indexOf("data-testid=\"app-version\""));
+  const footer = layout.slice(layout.indexOf('<footer'));
+  assert.match(footer, /data-testid="app-version"/);
+  assert.match(footer, /href=\{CREDIT_URL\}[^>]*>Curiosa<\/a> v\{readVersion\(\)\}/);
+  assert.ok(layout.indexOf("</MobileMenu>") < layout.indexOf('<footer'), "après le menu et le contenu, pas dans la liste des liens");
+  const before = layout.slice(0, layout.indexOf('data-testid="app-version"'));
   assert.ok(!/(role|advanced)\s*(===|&&)[^<]{0,40}$/.test(before.slice(-120)), "pas conditionné au rôle ni au mode");
 });
 

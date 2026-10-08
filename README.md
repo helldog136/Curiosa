@@ -41,9 +41,17 @@ Curiosa est un **site vitrine clé en main que vous possédez** : votre contenu,
 - **Accès protégés** : comptes avec rôles (propriétaire, éditeur…), mots de passe protégés (jamais stockés en clair), journal d'audit, jetons d'API révocables.
 - **Sous votre contrôle** : une base de données dans un seul fichier, sur votre serveur ; vérification régulière des failles connues dans les dépendances.
 
-## Gratuit et ouvert
+## Gratuit, ouvert, et reconnu
 
-Le framework et son **Catalogue** de modules sont **gratuits** et sous licence **MIT** : utilisez-le pour vous, pour vos clients, modifiez-le. Un auteur de module peut proposer un don volontaire dans la description de son module ; rien n'est jamais conditionné à un paiement.
+Curiosa est **gratuit** et son code est **lisible et modifiable**. Ce que la licence garantit, en clair :
+
+- ✅ **Vous pouvez l'utiliser pour le site de votre propre activité**, y compris commerciale (boutique, sponsors, dons, publicité…), le modifier et l'adapter.
+- ✅ **Vous pouvez monter, personnaliser et entretenir un site pour un client** et facturer ce travail, tant que vous ne lui vendez pas Curiosa lui-même.
+- ❌ **On ne peut pas vendre Curiosa** (ni une version modifiée), ni le proposer en abonnement ou en service hébergé à des créateurs.
+- 🏷️ **Le crédit « Propulsé par Curiosa » reste affiché** dans le pied de page du site (« Curiosa » est un lien vers le dépôt du projet), et les mentions d'auteur restent dans le code.
+- 🧩 **Les modules écrits par des tiers leur appartiennent** : leur auteur choisit sa licence, garde tout le mérite et peut les vendre.
+
+Le texte juridique complet est dans [`LICENSE`](LICENSE). Un auteur de module peut aussi proposer un don volontaire dans la description de son module ; rien n'est jamais conditionné à un paiement.
 
 ## Démarrer
 
@@ -248,4 +256,4 @@ Curiosa est **utilisé en production** et évolue par versions publiées sur la 
 
 ## Licence
 
-Curiosa, développé par [Helldog136](https://helldog136.be), est distribué sous licence **MIT** (voir [`LICENSE`](LICENSE)), modules livrés (`modules-community/`, `modules-examples/`) compris. Les dépendances tierces gardent leur propre licence : la liste complète, avec les textes, est dans [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md), générée par `npm run licenses` (un test vérifie qu'elle est à jour et qu'aucune dépendance n'a de licence incompatible). Un module installé depuis un dépôt tiers reste sous la licence que son auteur a déclarée dans `module.json`.
+Curiosa, développé par [Helldog136](https://helldog136.be), est distribué sous la **Curiosa License 1.0** (voir [`LICENSE`](LICENSE)) : usage libre pour sa propre activité, vente et revente interdites, crédit obligatoire. Les versions publiées **avant la 0.1.2-rc.4** l'ont été sous licence MIT, et ceux qui les ont reçues les gardent sous cette licence. Les modules livrés dans `modules-community/` et `modules-examples/` portent la licence déclarée dans leur `module.json`. Les dépendances tierces gardent leur propre licence : la liste complète, avec les textes, est dans [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md), générée par `npm run licenses` (un test vérifie qu'elle est à jour et qu'aucune dépendance n'a de licence incompatible). Un module installé depuis un dépôt tiers reste sous la licence que son auteur a déclarée dans `module.json`.

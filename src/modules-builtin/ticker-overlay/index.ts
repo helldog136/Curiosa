@@ -19,7 +19,7 @@ export const manifest: ParsedManifest = {
     fr: "Une source navigateur transparente pour OBS qui fait défiler des cartes alimentées par d'autres modules (codes promo, articles, annonces…).",
   },
   author: "Helldog136",
-  license: "MIT",
+  license: "Curiosa License 1.0",
   icon: "📺",
   type: "overlay",
   instances: "multiple",

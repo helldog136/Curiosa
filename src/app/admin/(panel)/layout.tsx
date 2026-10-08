@@ -1,5 +1,6 @@
 import { signOut } from "@/auth";
 import { adminCtx } from "@/core/admin";
+import { CREDIT_URL } from "@/core/credit";
 import { NavLink } from "@/components/admin/NavLink";
 import { getAdminNav } from "@/core/modules/adminNav";
 import { getUpdateCheck, readVersion } from "@/core/updates/service";
@@ -24,7 +25,8 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   const group = "mb-1 mt-6 px-3 text-xs font-semibold uppercase tracking-wider text-muted";
 
   return (
-    <div className="flex min-h-screen flex-col md:flex-row">
+    <div className="flex min-h-screen flex-col">
+      <div className="flex flex-1 flex-col md:flex-row">
       <MobileMenu menuLabel={t("nav.menu")} brand={<a href="/admin" className="flex flex-col px-3 leading-tight"><span className="text-lg font-bold">{config.name}</span><span className="text-xs text-muted">{t("nav.adminTagline")}</span></a>}>
         <nav aria-label="Admin">
           <div className="mt-4"><NavLink href="/admin" exact>{t("nav.dashboard")}</NavLink></div>
@@ -86,12 +88,15 @@ export default async function PanelLayout({ children }: { children: React.ReactN
           <p className="mb-2 truncate text-xs text-muted">{user.name} · {user.role}</p>
           <button className={ui.btn}>{t("nav.logout")}</button>
         </form>
-        {/* Toujours visible, pour tous les rôles et dans les deux modes : c'est le numéro à donner pour un signalement ou une mise à jour. */}
-        <p className="mt-6 px-3 pb-2 text-xs text-muted" data-testid="app-version">Curiosa v{readVersion()}</p>
       </MobileMenu>
       <main className="min-w-0 flex-1 p-6 md:p-10">
         <div className="mx-auto max-w-4xl">{children}</div>
       </main>
+      </div>
+      {/* Tout en bas de la page, pour tous les rôles et dans les deux modes : crédit exigé par la licence, et numéro de version à donner pour un signalement ou une mise à jour. */}
+      <footer className="border-t border-line px-4 py-3 text-center text-xs text-muted" data-testid="app-version">
+        {t("site.poweredBy")} <a href={CREDIT_URL} target="_blank" rel="noopener" className="underline underline-offset-2 hover:text-fg">Curiosa</a> v{readVersion()}
+      </footer>
     </div>
   );
 }

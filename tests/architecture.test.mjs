@@ -166,7 +166,7 @@ test("le framework est agnostique de toute donnée métier : aucun nom de site, 
   const forbidden = [["rosa", "li"], ["hell", "dog"], ["brux", "elles"], ["brus", "sels"]].map((p) => new RegExp(p.join(""), "i"));
   const AUTHOR = new RegExp(["hell", "dog136(\\.be)?"].join(""), "gi");
   const AUTHOR_FIELD = new RegExp(`author"?: "${["hell", "dog136"].join("")}"`, "gi");
-  const ATTRIBUTION_FILES = new Set(["LICENSE", "README.md", "package.json", "scripts/licenses.mjs", "THIRD-PARTY-NOTICES.md"]);
+  const ATTRIBUTION_FILES = new Set(["LICENSE", "README.md", "package.json", "scripts/licenses.mjs", "THIRD-PARTY-NOTICES.md", "src/core/credit.ts", "tests/licenses.test.mjs", "tests/core/glow.test.mjs"]);
   const files = execFileSync("git", ["ls-files"], { encoding: "utf8" }).split("\n").filter((f) => f && !/(package-lock\.json|\.(png|jpe?g|ico|woff2?))$/.test(f) && fs.existsSync(f));
   assert.ok(files.length > 100, "les fichiers suivis doivent être listés");
   for (const f of files) {

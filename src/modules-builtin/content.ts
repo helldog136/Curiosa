@@ -12,7 +12,7 @@ import type { BuiltinModule } from ".";
 const base = {
   apiVersion: 2,
   author: "Helldog136",
-  license: "MIT",
+  license: "Curiosa License 1.0",
   instances: "multiple" as const,
   sections: [],
   consumes: [],

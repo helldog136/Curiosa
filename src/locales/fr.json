@@ -710,5 +710,6 @@
   "redirects.add.simple": "Ajouter un raccourci",
   "nav.badge.todo": "à traiter",
   "nav.badge.update": "mise à jour disponible",
-  "dashboard.todo": "À traiter"
+  "dashboard.todo": "À traiter",
+  "site.poweredBy": "Propulsé par"
 }
