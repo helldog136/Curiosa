@@ -70,9 +70,16 @@ test("stats : anonymat — aucune IP ni navigateur en base, le sel change chaque
 });
 
 test("stats : plafond de pages par jour (un robot ne remplit pas la base) mais le total du site continue", async () => {
-  for (let i = 0; i < S.MAX_PAGES_PER_DAY + 20; i++) await S.recordVisit(hit({ ip: "7.7.7." + (i % 250), path: "/p" + i }), NOW);
-  assert.equal(await db.prisma.visitDaily.count({ where: { kind: "page" } }), S.MAX_PAGES_PER_DAY);
-  assert.ok((await S.statsSummary({ now: NOW })).totals.today.views >= S.MAX_PAGES_PER_DAY + 20);
+  // On part d'une journée qui compte déjà 499 pages (ce que 499 visites distinctes auraient écrit), puis on franchit le plafond visite par visite :
+  // la 500e page est acceptée, les suivantes refusées, et le total du site continue de grimper. (Évite 500 visites une à une : même logique, 10 s de moins.)
+  const day = S.dayOf(NOW);
+  const before = S.MAX_PAGES_PER_DAY - 1;
+  await db.prisma.visitDaily.createMany({ data: [{ day, kind: "site", key: "", views: before, visitors: 1 }, ...Array.from({ length: before }, (_, i) => ({ day, kind: "page", key: "/seed" + i, views: 1, visitors: 1 }))] });
+  for (let i = 0; i < 21; i++) await S.recordVisit(hit({ ip: "7.7.7." + (i % 250), path: "/p" + i }), NOW);
+  assert.equal(await db.prisma.visitDaily.count({ where: { kind: "page" } }), S.MAX_PAGES_PER_DAY, "la 500e page est acceptée, pas la 501e");
+  assert.equal(await db.prisma.visitDaily.count({ where: { kind: "page", key: "/p0" } }), 1, "la première page au-dessus de 499 est comptée");
+  assert.equal(await db.prisma.visitDaily.count({ where: { kind: "page", key: "/p1" } }), 0, "au-delà du plafond, la page n'est plus enregistrée");
+  assert.equal((await S.statsSummary({ now: NOW })).totals.today.views, before + 21, "le total du site continue de compter chaque visite");
 });
 
 test("stats : remise à zéro", async () => {

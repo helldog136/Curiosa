@@ -8,7 +8,14 @@ import { makeGrav } from "../helpers/fakeGrav.mjs";
 
 const { openBackup } = await import("@/core/backup/restore");
 
+// Le même faux site Grav donne toujours le même résultat : on l'importe UNE fois pour tous les tests qui le lisent (chacun vérifie un aspect différent du même import).
+let shared;
 function run(extra = []) {
+  if (extra.length) return execute(extra);
+  return (shared ??= execute([]));
+}
+
+function execute(extra) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-grav-test-"));
   makeGrav(path.join(dir, "user"));
   const out = path.join(dir, "import.tar.gz.enc");

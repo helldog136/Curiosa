@@ -36,12 +36,18 @@ export async function useTestDb() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-test-"));
   const file = path.join(dir, "test.db");
   fs.copyFileSync(template, file);
-  process.env.DATABASE_URL = `file:${file}`;
+  // Une seule connexion : les réglages ci-dessous (propres à la connexion) s'appliquent à toutes les requêtes du test.
+  process.env.DATABASE_URL = `file:${file}?connection_limit=1`;
   process.env.DATA_DIR = dir;
   process.env.CURIOSA_ALLOW_LOCAL_MODULES = "1";
+  // Les dépôts git des tests sont jetables, y compris ceux que l'installateur crée lui-même : modèle vide, pas de fsync, pas de ramasse-miettes (même résultat, bien plus vite).
+  Object.assign(process.env, { GIT_CONFIG_COUNT: "3", GIT_CONFIG_KEY_0: "init.templateDir", GIT_CONFIG_VALUE_0: "", GIT_CONFIG_KEY_1: "core.fsync", GIT_CONFIG_VALUE_1: "none", GIT_CONFIG_KEY_2: "gc.auto", GIT_CONFIG_VALUE_2: "0" });
   // Modules livrés des tests : de petites fixtures, jamais les vrais modules (le cœur n'en contient aucun).
   process.env.CURIOSA_EXTRAS_DIR ??= path.join(root, "tests/fixtures/extras");
   const { prisma } = await import("@/core/db");
+  // Base jetable, détruite à la fin du test : on n'attend pas les écritures sur disque (synchronous=OFF, journal en mémoire). Aucun effet sur ce qui est vérifié.
+  await prisma.$queryRawUnsafe("PRAGMA journal_mode=MEMORY");
+  await prisma.$queryRawUnsafe("PRAGMA synchronous=OFF");
   const tables = ["VisitSeen", "VisitDaily", "ApiToken", "AuditLog", "ModuleRecord", "EntryTranslation", "Entry", "InstanceTranslation", "ModuleInstance", "Redirect", "Setting", "Module", "User"];
   return {
     dir,
