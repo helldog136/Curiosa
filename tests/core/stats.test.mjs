@@ -143,3 +143,18 @@ test("pastilles d'admin : hook adminBadge → menu et carte « À traiter » ; m
   assert.match(read("src/app/admin/(panel)/page.tsx"), /data-testid="todo"/);
   assert.match(read("modules-community/contacts/index.mjs"), /async adminBadge[\s\S]*to_review/);
 });
+
+test("vie privée : la dernière visite n'est retenue que si le visiteur l'a demandé (bouton), sans bandeau ; les cookies d'avant sont effacés", () => {
+  const read = (p) => fs.readFileSync(p, "utf8");
+  const proxy = read("src/proxy.ts");
+  assert.match(proxy, /request\.cookies\.get\(NEWS_COOKIE\)\?\.value === "1"/);
+  assert.match(proxy, /if \(!optedIn\) \{[\s\S]*maxAge: 0[\s\S]*return res;/, "sans choix : rien n'est déposé, les anciens cookies sont effacés");
+  assert.match(proxy, /optedIn \? String\(visit\.since\.getTime\(\)\) : "0"/, "sans choix : 1970, donc aucune pastille");
+  const toggle = read("src/components/site/NewsToggle.tsx");
+  assert.match(toggle, /curiosa_news=1/);
+  assert.match(toggle, /for \(const name of \["curiosa_news", "curiosa_seen", "curiosa_since"\]\)[\s\S]*max-age=0/, "le second clic efface tout");
+  assert.match(read("src/components/site/Header.tsx"), /config\.newsToggle && <NewsToggle/);
+  assert.match(read("src/core/settings.ts"), /newsToggle: \(await getSetting<boolean>\("news\.toggle"\)\) === true/, "désactivé par défaut");
+  const privacy = read("docs/PRIVACY.md");
+  for (const c of ["curiosa_locale", "curiosa_news", "curiosa_seen", "curiosa_since"]) assert.ok(privacy.includes(c), `docs/PRIVACY.md doit décrire ${c}`);
+});

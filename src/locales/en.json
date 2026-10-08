@@ -754,5 +754,11 @@
   "updates.whatsNew": "What {version} changes",
   "settings.privacy": "Privacy",
   "settings.privacyHelp": "What the site measures and what it lets robots do.",
-  "settings.privacyCookies": "The site only remembers, in the visitor's browser, the date of their last visit (to flag what is new), never an identifier or any tracking."
+  "settings.privacyCookies": "Unless a visitor turns on the \"news\" button, the site sets no tracking cookie: only the chosen language.",
+  "site.newsOn": "News alerts: on",
+  "site.newsOff": "Notify me of news",
+  "site.newsHelp": "Remembers the date of your last visit in your browser to flag what is new. A second click erases everything.",
+  "settings.newsToggle": "Let visitors choose to be notified of news",
+  "settings.newsToggleHelp": "Adds a \"Notify me of news\" button to the header. The menu's news dots only appear for visitors who turned it on: nothing is stored for the others, so no cookie banner is needed.",
+  "settings.privacyLaw": "Statistics store nothing in the browser and keep no personal data (no banner needed). Remember to say so on your site's privacy page: see docs/PRIVACY.md."
 }

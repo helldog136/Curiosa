@@ -754,5 +754,11 @@
   "updates.whatsNew": "Ce que change la {version}",
   "settings.privacy": "Confidentialité",
   "settings.privacyHelp": "Ce que le site mesure et ce qu'il laisse aux robots.",
-  "settings.privacyCookies": "Le site retient seulement dans le navigateur du visiteur la date de sa dernière visite (pour signaler les nouveautés), jamais d'identifiant ni de suivi."
+  "settings.privacyCookies": "Sans le bouton « nouveautés » activé par le visiteur, le site ne dépose aucun cookie de suivi : seulement celui de la langue choisie.",
+  "site.newsOn": "Nouveautés : activé",
+  "site.newsOff": "Me prévenir des nouveautés",
+  "site.newsHelp": "Retient dans votre navigateur la date de votre dernière visite pour signaler ce qui est nouveau. Un second clic efface tout.",
+  "settings.newsToggle": "Proposer aux visiteurs d'être prévenus des nouveautés",
+  "settings.newsToggleHelp": "Ajoute un bouton « Me prévenir des nouveautés » dans l'en-tête. Les pastilles de nouveautés du menu n'apparaissent que pour les visiteurs qui l'ont activé : rien n'est déposé chez les autres, donc aucun bandeau de cookies n'est nécessaire.",
+  "settings.privacyLaw": "Les statistiques ne déposent rien dans le navigateur et ne gardent aucune donnée personnelle (aucun bandeau nécessaire). Pensez à le dire dans la page de confidentialité de votre site : voir docs/PRIVACY.md."
 }

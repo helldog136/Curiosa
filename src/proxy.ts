@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { isKnownLocale } from "@/core/i18n/locales";
-import { planVisit, SEEN_COOKIE, SINCE_COOKIE, SINCE_HEADER } from "@/core/visit";
+import { NEWS_COOKIE, planVisit, SEEN_COOKIE, SINCE_COOKIE, SINCE_HEADER } from "@/core/visit";
 
 const LOCALE_HEADER = "x-curiosa-locale";
 const PATH_HEADER = "x-curiosa-path";
@@ -20,9 +20,15 @@ export function proxy(request: NextRequest) {
   headers.delete(PATH_HEADER);
   headers.delete(SINCE_HEADER);
   // Dernière visite : date retenue pour cette visite, transmise aux pages ; les cookies ne contiennent que des dates.
-  const visit = planVisit({ seen: request.cookies.get(SEEN_COOKIE)?.value, since: request.cookies.get(SINCE_COOKIE)?.value });
-  headers.set(SINCE_HEADER, String(visit.since.getTime()));
+  // Seulement si le visiteur l'a DEMANDÉ (cookie de son choix) ; sinon rien n'est déposé et les cookies d'avant sont effacés.
+  const optedIn = request.cookies.get(NEWS_COOKIE)?.value === "1";
+  const visit = planVisit(optedIn ? { seen: request.cookies.get(SEEN_COOKIE)?.value, since: request.cookies.get(SINCE_COOKIE)?.value } : {});
+  headers.set(SINCE_HEADER, optedIn ? String(visit.since.getTime()) : "0");
   const stamp = <T extends NextResponse>(res: T): T => {
+    if (!optedIn) {
+      for (const name of [SEEN_COOKIE, SINCE_COOKIE]) if (request.cookies.has(name)) res.cookies.set(name, "", { path: "/", maxAge: 0 });
+      return res;
+    }
     if (visit.setSince !== undefined) res.cookies.set(SINCE_COOKIE, visit.setSince, { path: "/", sameSite: "lax" });
     res.cookies.set(SEEN_COOKIE, visit.setSeen, { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
     return res;

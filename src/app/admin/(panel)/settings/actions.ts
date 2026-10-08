@@ -71,6 +71,7 @@ export async function saveSettings(_prev: ActionState, formData: FormData): Prom
     else await deleteSetting(key);
   }
   await setSetting("stats.enabled", formData.get("statsEnabled") === "on");
+  await setSetting("news.toggle", formData.get("newsToggle") === "on");
   if (adv) await setSetting("site.contactEmail", String(formData.get("contactEmail") ?? "").trim());
   // Fond de page : préréglage (tous modes), description personnalisée (avancé), image de fond. Une description invalide n'enregistre rien.
   const bgPreset = String(formData.get("bgPreset") ?? "none");

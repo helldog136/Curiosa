@@ -96,9 +96,11 @@ export default async function SettingsPage() {
           <p className="text-sm text-muted">{t("settings.privacyHelp")}</p>
           <div className={`${ui.card} space-y-4`}>
             <Checkbox name="statsEnabled" label={t("settings.stats")} help={t("settings.statsHelp")} defaultChecked={config.statsEnabled} />
+            <Checkbox name="newsToggle" label={t("settings.newsToggle")} help={t("settings.newsToggleHelp")} defaultChecked={config.newsToggle} />
             {advanced && <Checkbox name="blockAiBots" label={t("settings.blockAiBots")} help={t("settings.blockAiBotsHelp")} defaultChecked={blockAiBots} />}
           </div>
           <p className={ui.help}>{t("settings.privacyCookies")}</p>
+          <p className={ui.help}>{t("settings.privacyLaw")}</p>
         </section>
 
         <section data-tab="appearance" className="space-y-6">
