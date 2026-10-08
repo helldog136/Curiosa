@@ -2,7 +2,7 @@
 
 # Philosophie de licence (à appliquer par défaut à tous les projets de l'auteur)
 
-Voulue par l'auteur (Helldog136) : le code est **ouvert et lisible**, mais il **reste sa propriété** et on lui en doit le crédit. Concrètement, pour un nouveau projet :
+Voulue par l'auteur : le code est **ouvert et lisible**, mais il **reste sa propriété** et on lui en doit le crédit. Concrètement, pour un nouveau projet :
 
 - **Usage libre** pour la propre activité de l'utilisateur, **y compris commerciale** (son site, sa boutique, ses sponsors).
 - **Interdit** : vendre le logiciel ou une version modifiée, le revendre en abonnement ou en service hébergé à d'autres.
