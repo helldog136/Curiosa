@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 
-const mods = ["modules-community", "modules-examples"].flatMap((root) =>
+// Les modules du catalogue. Les modules d'exemple (pour développeurs) disent « Example module » et décrivent des sujets techniques : hors règle.
+const mods = ["modules-community"].flatMap((root) =>
   fs.readdirSync(root, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => JSON.parse(fs.readFileSync(path.join(root, d.name, "module.json"), "utf8"))));
 const text = (v) => (typeof v === "string" ? [v] : Object.values(v ?? {}).map(String));
 const norm = (s) => s.toLowerCase().replace(/\s*\((obs|interne|internal)\)\s*/g, " ").replace(/\s+/g, " ").trim();
@@ -26,6 +27,6 @@ test("catalogue : la description d'un module dit ce que fait CE module — jamai
 });
 
 test("catalogue : pas de jargon technique dans une description (sujets d'échange, noms d'API)", () => {
-  for (const m of mods.filter((x) => !x.id.match(/^(announcement-banner|guestbook)$/))) // modules d'exemple pour développeurs : exclus
+  for (const m of mods)
     for (const description of text(m.description)) assert.ok(!/\b(topic|sujet [a-z]+\.[a-z]+|overlay\.item|feed\.item|ctx\.api|mcp)\b/i.test(description), `${m.id} → « ${description} »`);
 });
