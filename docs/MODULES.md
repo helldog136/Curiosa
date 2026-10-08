@@ -808,6 +808,7 @@ les guillemets internes) et neutralisez les cellules qui commencent par `=`, `+`
 
 - **Modules livrés avec le framework** (dossier `extras/` du serveur : instantané du dépôt `curiosa-extras`, dossiers `modules/` et `examples/`) : installés depuis les fichiers du serveur, sans réseau ; leur version suit celle du framework.
 - **Modules reconnus** : dépôts git listés dans un index public (voir ci-dessous) : celui qui publie l'index se porte garant des dépôts qu'il liste.
+- **Mes dépôts de modules** (mode avancé) : vous publiez vos modules dans UN dépôt git (un dossier par module, chacun avec son `module.json`, jusqu'à trois niveaux de profondeur ; ou un seul module à la racine). Le propriétaire du site ajoute l'adresse du dépôt dans Catalogue → *Mes dépôts de modules* ; Curiosa lit les manifestes (sans rien exécuter) et liste les modules, qui s'installent un par un avec la même confirmation que ci-dessous. Chaque module se met à jour depuis son dossier de ce dépôt, et seulement quand ce dossier change. Dix dépôts au plus.
 - **Installer un dépôt personnel (non vérifié)** : n'importe quelle adresse de dépôt, avec un avertissement et une case « je comprends » à cocher :
 
 ```

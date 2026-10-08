@@ -865,5 +865,17 @@
   "block.pos.bottom-left": "Bottom left",
   "block.pos.bottom-right": "Bottom right",
   "modules.error.subdir": "Invalid module folder name.",
-  "modules.error.nosubdir": "Module folder not found in the repository, or no valid module.json in it."
+  "modules.error.nosubdir": "Module folder not found in the repository, or no valid module.json in it.",
+  "catalogue.sources": "My module repositories",
+  "catalogue.sources.intro": "A developer (you or someone else) publishes their modules in a single git repository, one folder per module. Add that repository here: its modules show up below and are installed one by one. Nobody verifies them, and they update from that same repository.",
+  "catalogue.sources.add": "Add this repository",
+  "catalogue.sources.remove": "Remove this repository",
+  "catalogue.sources.removeConfirm": "Remove this repository from the list? Modules already installed stay installed.",
+  "catalogue.sources.refresh": "Reload repositories",
+  "catalogue.sources.unreachable": "Repository unreachable for now.",
+  "catalogue.sources.none": "No module found in this repository.",
+  "catalogue.sources.added": "Repository added: {count} module(s) found.",
+  "modules.error.sourceSubdir": "Give the repository address without a folder: its modules are found automatically.",
+  "modules.error.sourceMax": "Too many repositories: remove one before adding another.",
+  "modules.error.sourceEmpty": "No module (module.json file) found in this repository."
 }

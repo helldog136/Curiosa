@@ -865,5 +865,17 @@
   "block.pos.bottom-left": "Bas gauche",
   "block.pos.bottom-right": "Bas droite",
   "modules.error.subdir": "Nom de dossier de module invalide.",
-  "modules.error.nosubdir": "Dossier du module introuvable dans le dépôt, ou sans module.json valide."
+  "modules.error.nosubdir": "Dossier du module introuvable dans le dépôt, ou sans module.json valide.",
+  "catalogue.sources": "Mes dépôts de modules",
+  "catalogue.sources.intro": "Un développeur (vous ou quelqu'un d'autre) publie ses modules dans un seul dépôt git, un dossier par module. Ajoutez ce dépôt ici : ses modules apparaissent ci-dessous et s'installent un par un. Ils ne sont vérifiés par personne et se mettent à jour depuis ce même dépôt.",
+  "catalogue.sources.add": "Ajouter ce dépôt",
+  "catalogue.sources.remove": "Retirer ce dépôt",
+  "catalogue.sources.removeConfirm": "Retirer ce dépôt de la liste ? Les modules déjà installés restent installés.",
+  "catalogue.sources.refresh": "Relire les dépôts",
+  "catalogue.sources.unreachable": "Dépôt injoignable pour le moment.",
+  "catalogue.sources.none": "Aucun module trouvé dans ce dépôt.",
+  "catalogue.sources.added": "Dépôt ajouté : {count} module(s) trouvé(s).",
+  "modules.error.sourceSubdir": "Indiquez l'adresse du dépôt, sans dossier : ses modules seront trouvés tout seuls.",
+  "modules.error.sourceMax": "Trop de dépôts : retirez-en un avant d'en ajouter un autre.",
+  "modules.error.sourceEmpty": "Aucun module (fichier module.json) trouvé dans ce dépôt."
 }

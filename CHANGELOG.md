@@ -4,9 +4,9 @@ Ce que chaque version change pour vous. Chaque version (stable ou release candid
 
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
-## Prochaine version (non publiée)
+## 0.1.3-rc.3
 
-*Changements depuis la 0.1.3-rc.2.*
+*Release candidate : changements depuis la 0.1.3-rc.2. À essayer avant la version stable, à vos risques.*
 
 ### Nouveautés
 - **Le cœur ne contient plus aucun module.** Il se limite à ce qu'il faut pour faire fonctionner le site et son admin ; blog, réseaux sociaux, codes promo, pages, bandeau d'accueil, formulaire de contact, statut live, overlays, sponsors, planning… vivent désormais dans leur propre dépôt, **`curiosa-extras`**, et s'installent depuis le **Catalogue** comme n'importe quel module. Si le cœur avait besoin d'un module pour fonctionner, ce n'était pas un module : un test vérifie maintenant que le cœur n'en cite aucun.
@@ -18,7 +18,13 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - Les **anciennes sauvegardes** qui mentionnent des modules « intégrés » se restaurent normalement : ces modules sont réinstallés depuis le Catalogue.
 - Les **archives de version** embarquent un instantané des modules (dossier `extras/`) : la première installation et le Catalogue fonctionnent toujours sans réseau.
 
+- **Vos propres dépôts de modules.** Catalogue → **Mes dépôts de modules** (mode avancé, propriétaire) : on ajoute l'adresse d'un dépôt git (par exemple `https://github.com/jeanmi/mes-modules-curiosa`) ; Curiosa y trouve tous les modules (un dossier par module, ou un seul module à la racine) et les affiche. Chacun s'installe séparément après avoir lu son README et ses permissions, avec la confirmation habituelle d'un dépôt non vérifié, et se met à jour depuis ce même dépôt. Un dépôt sans module, injoignable ou à l'adresse refusée est rejeté ; dix dépôts au plus.
+
+### Fiabilité
+- **Chaque archive de release est démarrée avant d'être publiée.** La CI la décompresse ailleurs et vérifie, comme chez un hébergeur : l'assistant de première installation sur une installation neuve, et le démarrage d'un site existant (modules « intégrés » convertis, instance intacte, page publique du module qui répond). Une archive qui échoue n'est pas publiée.
+
 ### À essayer en priorité
+- Catalogue → Mes dépôts de modules : ajoutez un dépôt de modules (le vôtre ou un dépôt de test), installez-en un module, puis cherchez une mise à jour.
 - Après la mise à jour : le site s'affiche comme avant (accueil, menu, réseaux sociaux en en-tête) ; Admin → Modules montre vos modules comme « du catalogue ».
 - Admin → Catalogue : installer un module, puis vérifier « Chercher une mise à jour ».
 - Sur une installation neuve, l'assistant de première installation propose toujours blog, réseaux sociaux, codes promo et pages.
