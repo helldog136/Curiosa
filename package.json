@@ -1,0 +1,73 @@
+{
+  "name": "curiosa",
+  "version": "0.1.1",
+  "private": true,
+  "license": "MIT",
+  "author": "Helldog136 (https://helldog136.be)",
+  "description": "Framework générique de site pour créateurs : collections, redirections, multilingue et modules installables.",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "audit": "node scripts/audit.mjs",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "bootstrap": "node scripts/bootstrap.mjs",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "licenses": "node scripts/licenses.mjs",
+    "migrations:freeze": "node scripts/migrations-freeze.mjs",
+    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./tests/helpers/register.mjs --test \"tests/**/*.test.mjs\"",
+    "test:watch": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./tests/helpers/register.mjs --test --watch \"tests/**/*.test.mjs\"",
+    "import:grav": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./tests/helpers/register.mjs scripts/import-grav.mjs"
+  },
+  "dependencies": {
+    "@prisma/client": "6.19.3",
+    "@types/qrcode": "^1.5.6",
+    "bcryptjs": "^3.0.3",
+    "next": "16.3.8",
+    "next-auth": "5.0.0-beta.32",
+    "nodemailer": "^10.0.16",
+    "qrcode": "^1.5.4",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
+    "simple-icons": "^16.29.0",
+    "zod": "^4.1.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "4.3.3",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^20.17.10",
+    "@types/nodemailer": "^8.0.2",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.5",
+    "eslint": "^9.17.0",
+    "eslint-config-next": "16.3.8",
+    "prisma": "6.19.3",
+    "tailwindcss": "4.3.3",
+    "typescript": "^5.9.3",
+    "yaml": "^2.9.1"
+  },
+  "prisma": {
+    "schema": "prisma/schema.prisma"
+  },
+  "allowScripts": {
+    "prisma@6.19.3": true,
+    "@prisma/engines@6.19.3": true,
+    "unrs-resolver@1.12.2": true,
+    "@prisma/client@6.19.3": true
+  },
+  "overrides": {
+    "next-auth": {
+      "nodemailer": "$nodemailer"
+    },
+    "@auth/core": {
+      "nodemailer": "$nodemailer"
+    }
+  }
+}

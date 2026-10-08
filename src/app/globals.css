@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-bg: var(--v-bg);
+  --color-fg: var(--v-fg);
+  --color-muted: var(--v-muted);
+  --color-surface: var(--v-surface);
+  --color-line: var(--v-line);
+  --color-accent: var(--v-accent);
+  --color-accent-fg: var(--v-accent-fg);
+  --font-sans: var(--v-font);
+}
+
+/* Valeurs par défaut ; surchargées par le thème choisi dans l'admin. */
+:root {
+  --v-bg: #121214;
+  --v-fg: #f4f4f5;
+  --v-muted: #a4a4a8;
+  --v-surface: #1c1c1f;
+  --v-line: #2f2f33;
+  --v-accent: #e8a23b;
+  --v-accent-fg: #111111;
+  --v-font: ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  body {
+    font-family: var(--v-font);
+  }
+  a:focus-visible,
+  button:focus-visible,
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* Accueil fluide : les morceaux s'écoulent à la ligne, chacun avec une taille naturelle (voir src/core/home.ts). */
+.vh-flow { display: flex; flex-wrap: wrap; gap: 2rem 1.5rem; align-items: stretch; }
+.vh-cell { min-width: 0; flex: 1 1 var(--vh-basis); max-width: min(100%, var(--vh-max)); }
+.vh-small  { --vh-basis: 14rem; --vh-max: 24rem; --vh-solo: 24rem; }
+.vh-medium { --vh-basis: 22rem; --vh-max: 36rem; --vh-solo: 36rem; }
+.vh-large  { --vh-basis: 34rem; --vh-max: 100%; --vh-solo: 52rem; }
+.vh-full   { --vh-basis: 100%;  --vh-max: 100%; --vh-solo: 100%; }
+/* Morceau isolé : une ligne à lui (retour à la ligne avant et après), centré, à sa taille naturelle. */
+.vh-isolated { flex: 1 1 100%; max-width: 100%; display: flex; justify-content: center; }
+.vh-solo { width: min(100%, var(--vh-solo)); min-width: 0; }

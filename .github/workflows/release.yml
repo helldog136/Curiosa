@@ -1,0 +1,60 @@
+name: Release
+# Cycle de release :
+# - push sur dev : snapshot (pré-version dev-…), jamais proposé par les mises à jour d'une instance ;
+# - release candidate vX.Y.Z-rc.N : proposée seulement aux instances qui ont choisi le canal « rc » (mode avancé). Elle est publiée quand `package.json`
+#   porte une version `X.Y.Z-rc.N` sur dev (ou quand on pose l'étiquette vX.Y.Z-rc.N) ;
+# - fusion de dev dans master (ou main) : RELEASE STABLE vX.Y.Z, où X.Y.Z est la version de package.json (rien si cette version est déjà publiée).
+on:
+  push:
+    branches: [dev, master, main]
+    tags: ["v[0-9]+.[0-9]+.[0-9]+-rc.[0-9]+"]
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest # linux-x64 : la plateforme des serveurs d'hébergement
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm ci --ignore-scripts
+      - run: npx prisma generate
+      # une release n'existe que si tout passe : failles connues, types, tests, build
+      - run: npm run audit
+      - run: npx tsc --noEmit
+      - run: npm test
+      - run: npm run build
+      - name: Version à publier
+        id: v
+        run: |
+          base=$(node -p "require('./package.json').version")
+          echo "version=$base" >> "$GITHUB_OUTPUT"
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "tag=$GITHUB_REF_NAME" >> "$GITHUB_OUTPUT"; echo "pre=true" >> "$GITHUB_OUTPUT"; echo "publish=true" >> "$GITHUB_OUTPUT"
+          elif [[ "$GITHUB_REF" == refs/heads/dev && "$base" == *-rc.* ]]; then
+            # version de package.json = release candidate : on publie vX.Y.Z-rc.N (une seule fois), sans avoir à poser d'étiquette
+            echo "tag=v$base" >> "$GITHUB_OUTPUT"; echo "pre=true" >> "$GITHUB_OUTPUT"
+            if gh release view "v$base" >/dev/null 2>&1; then echo "publish=false" >> "$GITHUB_OUTPUT"; echo "v$base est déjà publiée : montez le numéro de rc dans package.json"; else echo "publish=true" >> "$GITHUB_OUTPUT"; fi
+          elif [[ "$GITHUB_REF" == refs/heads/dev ]]; then
+            echo "tag=dev-$(date -u +%Y%m%d)-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"; echo "pre=true" >> "$GITHUB_OUTPUT"; echo "publish=true" >> "$GITHUB_OUTPUT"
+          else
+            if [[ "$base" == *-* ]]; then echo "::error::package.json porte une pré-version ($base) : une release stable doit être X.Y.Z"; exit 1; fi
+            echo "tag=v$base" >> "$GITHUB_OUTPUT"; echo "pre=false" >> "$GITHUB_OUTPUT"
+            if gh release view "v$base" >/dev/null 2>&1; then echo "publish=false" >> "$GITHUB_OUTPUT"; echo "v$base est déjà publiée : rien à faire (montez la version dans package.json)"; else echo "publish=true" >> "$GITHUB_OUTPUT"; fi
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - run: npm prune --omit=dev
+      - run: npx prisma generate
+      - name: Empaqueter
+        if: steps.v.outputs.publish == 'true'
+        run: node scripts/release-pack.mjs "${{ steps.v.outputs.version }}" dist
+      - name: Publier
+        if: steps.v.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          flags="--target $GITHUB_SHA"
+          [[ "${{ steps.v.outputs.pre }}" == "true" ]] && flags="$flags --prerelease"
+          [[ "$GITHUB_REF" == refs/tags/* ]] && flags="--prerelease"
+          gh release create "${{ steps.v.outputs.tag }}" dist/* --title "${{ steps.v.outputs.tag }}" --generate-notes $flags

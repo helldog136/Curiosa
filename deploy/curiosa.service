@@ -1,0 +1,22 @@
+# Exemple d'unité systemd — à copier dans /etc/systemd/system/curiosa.service, puis :
+#   sudo systemctl daemon-reload && sudo systemctl enable --now curiosa
+#
+# Adaptez User, WorkingDirectory et le chemin de node. Le point important pour les mises à jour depuis l'admin :
+# `Restart=always` + CURIOSA_SUPERVISED=1 → après une mise à jour, le serveur s'arrête et systemd le relance sur la nouvelle version.
+[Unit]
+Description=Site (Curiosa)
+After=network.target
+
+[Service]
+Type=simple
+User=curiosa
+WorkingDirectory=/srv/curiosa
+EnvironmentFile=/srv/curiosa/.env
+Environment=NODE_ENV=production
+Environment=CURIOSA_SUPERVISED=1
+ExecStart=/usr/bin/npx next start -p 3000
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

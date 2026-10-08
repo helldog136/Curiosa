@@ -1,0 +1,79 @@
+# dependencies
+/node_modules
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# env et secrets : jamais dans git (seul .env.example, sans valeurs réelles, est suivi)
+.env
+.env.*
+!.env.example
+*.env
+.envrc
+
+# misc
+.DS_Store
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+id_rsa*
+id_ed25519*
+*.keystore
+secrets/
+.secrets/
+credentials*.json
+service-account*.json
+auth_secret*
+.npmrc
+npm-debug.log*
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# prisma (SQLite local)
+prisma/data/
+
+# journal du script de déploiement continu (scripts/auto-deploy.sh)
+deploy.log
+
+# scratch perso (maquettes, tests locaux) — jamais committé
+/scratch/
+
+# données métier (seed partenaires, exports) — sur le serveur, jamais dans git
+/data/
+
+# bases de données temporaires des tests
+/tests/.tmp/
+
+# bases SQLite et données d'exécution (sauvegardes, envois, clés générées)
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+*.db
+*.db-journal
+/uploads/
+/backups/
+*.curiosa-backup
+*.vbak
+
+# éditeurs et système
+.idea/
+.vscode/
+*.swp
+Thumbs.db
+*.log
+.claude/settings.local.json
+
+# empaquetage des releases (CI)
+/release.json
+/dist/
+*.tar.gz.enc

@@ -1,0 +1,215 @@
+generator client {
+  provider = "prisma-client-js"
+  // Les releases sont compilées une fois (CI) puis installées sur des serveurs différents : le moteur de base de données doit
+  // exister pour chaque version d'OpenSSL courante (Ubuntu 20.04 / Debian 10-11 : 1.1.x ; Ubuntu 22.04+ / Debian 12+ : 3.0.x).
+  binaryTargets = ["native", "debian-openssl-1.1.x", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Comptes ──────────────────────────────────────────────────────────────
+// role : owner | admin | editor (String : SQLite n'a pas d'enum natif).
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  role         String   @default("editor")
+  passwordHash String
+  // Langue de l'interface d'admin de cet utilisateur (null = défaut du site).
+  locale       String?
+  // Mode d'affichage de l'admin : simplifié (défaut) ou avancé (tous les réglages techniques).
+  advanced     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  entries Entry[]
+}
+
+// ─── Réglages ─────────────────────────────────────────────────────────────
+// Clé/valeur. `locale` vaut "" pour un réglage non traduisible (et non NULL :
+// SQLite traite NULL comme distinct dans un index unique).
+// Les réglages d'une instance de module sont préfixés "instance.<id>.".
+model Setting {
+  key    String
+  locale String @default("")
+  value  String // JSON sérialisé
+
+  @@id([key, locale])
+}
+
+// ─── Instances de modules ─────────────────────────────────────────────────
+// Le cœur ne connaît que des modules. Un module est un type de code (blog,
+// réseaux sociaux, formulaire de contact…) ; une *instance* en est un
+// exemplaire configuré. Un site peut avoir autant de blogs ou de listes de
+// réseaux sociaux qu'il veut : ce sont des instances du même module.
+model ModuleInstance {
+  id       String @id @default(cuid())
+  moduleId String
+  // Identifiant technique stable (URLs /m/<key>/…, réglages, sections de l'accueil).
+  key      String @unique
+  // Surnom d'ADMIN pour distinguer deux instances du même module (« Actus », « Chaîne 2 »). Inutile — et masqué — tant
+  // qu'il n'y a qu'une instance. Voir src/core/instanceLabel.ts.
+  nickname String?
+  // Chemin public où l'instance est montée ("" = racine du site, NULL = pas de page).
+  basePath String? @unique
+  enabled  Boolean @default(true)
+  showInNav Boolean @default(true)
+  navOrder  Int     @default(0)
+
+  // Réglages de contenu, utilisés par les modules qui déclarent `content`
+  // dans leur manifeste (blog, liens, codes promo, pages…).
+  display     String @default("cards")
+  clickAction String @default("detail")
+  features    String @default("[]")
+  fieldSchema String @default("[]")
+  fallbackToDefault Boolean @default(true)
+  allowGoLinks Boolean @default(false)
+  // Les entrées de cette instance sont proposées aux autres modules (overlays…) via le sujet "core.entry".
+  exposed Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  translations InstanceTranslation[]
+  entries      Entry[]
+
+  @@index([moduleId])
+}
+
+model InstanceTranslation {
+  id          String @id @default(cuid())
+  instanceId  String
+  locale      String
+  name        String
+  description String @default("")
+
+  instance ModuleInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+
+  @@unique([instanceId, locale])
+}
+
+// ─── Entrées ──────────────────────────────────────────────────────────────
+// Partie commune à toutes les langues. Le texte vit dans EntryTranslation :
+// une entrée n'a besoin que d'UNE traduction, les autres sont optionnelles.
+model Entry {
+  id           String    @id @default(cuid())
+  instanceId   String
+  // draft | published
+  status       String    @default("draft")
+  publishedAt  DateTime?
+  expiresAt    DateTime?
+  cover        String?
+  icon         String?
+  url          String?
+  code         String?
+  featured     Boolean   @default(false)
+  // Étiquettes libres (JSON : ["sponsor", "gaming"]) : filtrage côté modules consommateurs.
+  tags         String    @default("[]")
+  position     Int       @default(0)
+  // Valeurs des champs libres de l'instance (JSON).
+  fields       String    @default("{}")
+  // Langue dans laquelle l'entrée a été créée.
+  sourceLocale String
+  authorId     String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  instance     ModuleInstance     @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  author       User?              @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  translations EntryTranslation[]
+
+  @@index([instanceId, status, publishedAt])
+}
+
+model EntryTranslation {
+  id         String @id @default(cuid())
+  entryId    String
+  // Dénormalisé pour garantir l'unicité du slug par instance et par langue.
+  instanceId String
+  locale     String
+  slug       String
+  title      String
+  summary    String @default("")
+  body       String @default("")
+  updatedAt  DateTime @updatedAt
+
+  entry Entry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+
+  @@unique([entryId, locale])
+  @@unique([instanceId, locale, slug])
+}
+
+// ─── Redirections externes autorisées ─────────────────────────────────────
+// /<path> → targetUrl. Seules les cibles saisies ici (ou le lien d'une
+// entrée, si `entryId` est renseigné) sont atteignables : pas de redirection
+// ouverte.
+model Redirect {
+  id        String   @id @default(cuid())
+  path      String   @unique
+  targetUrl String
+  // Si renseigné, la cible est le lien actuel de cette entrée (la valeur de
+  // targetUrl sert alors de repli). Une seule source de vérité pour un lien.
+  entryId   String?
+  permanent Boolean  @default(false)
+  active    Boolean  @default(true)
+  hits      Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── Modules ──────────────────────────────────────────────────────────────
+model Module {
+  id          String   @id
+  // builtin | git
+  source      String
+  repoUrl     String?
+  ref         String?
+  commit      String?
+  version     String
+  enabled     Boolean  @default(false)
+  installedAt DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// Stockage libre d'une instance de module (messages reçus, compteurs…).
+model ModuleRecord {
+  id         String   @id @default(cuid())
+  instanceId String
+  collection String
+  data       String // JSON
+  createdAt  DateTime @default(now())
+
+  @@index([instanceId, collection, createdAt])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actor     String
+  action    String
+  target    String   @default("")
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+// Jetons d'accès à l'API MCP du cœur (agents, assistants…). Seul le hash est conservé :
+// le jeton en clair n'est montré qu'une fois, à sa création.
+model ApiToken {
+  id         String    @id @default(cuid())
+  name       String
+  hash       String    @unique
+  // Premiers caractères, pour reconnaître un jeton dans la liste sans le révéler.
+  prefix     String
+  // Plafond du jeton. read : jamais d'action qui écrit, quoi qu'on lui accorde. write : peut écrire, selon ses accès.
+  scope      String    @default("read")
+  // Accès action par action, modifiables à tout moment (JSON : { "<outil>": true|false }). Une action absente de
+  // la liste suit le défaut déclaré par son module. Lu à CHAQUE requête : un changement est immédiat.
+  grants     String    @default("{}")
+  createdBy  String
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+}
