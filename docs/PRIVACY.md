@@ -6,6 +6,14 @@ Ce document décrit ce que le framework stocke chez vos visiteurs et dans sa bas
 
 La règle européenne (directive ePrivacy, RGPD) exige l'accord du visiteur avant de déposer ou lire quelque chose dans son navigateur, **sauf** ce qui est strictement nécessaire au service qu'il demande ou qu'il a choisi lui-même. Curiosa est conçu pour rester dans ces exceptions : **tant que vous n'ajoutez pas de module qui dépose autre chose, aucun bandeau n'est nécessaire.**
 
+## La page « Politique de confidentialité » est fournie par le cœur
+
+Chaque site Curiosa a une page `/privacy`, liée en permanence dans le pied de page. Le cœur l'écrit lui-même d'après ce que **votre** site fait vraiment : cookies, statistiques activées ou non, bouton « nouveautés », et ce que déclare chaque module actif (champ `privacy` de son manifeste, par exemple le formulaire de contact).
+
+- Le texte obligatoire **ne peut pas être modifié ni retiré** : il suit le fonctionnement réel du site, il ne peut donc pas être faux.
+- Vous pouvez **ajouter** vos propres informations (responsable du traitement, durée de conservation, comment exercer ses droits…) dans Réglages → Confidentialité : elles s'affichent à la fin, par langue.
+- Le chemin `/privacy` est réservé : une page ou une collection ne peut pas le prendre.
+
 ## Ce que le framework dépose chez un visiteur
 
 | Quoi | Quand | Durée | Pourquoi c'est sans consentement |

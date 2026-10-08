@@ -21,7 +21,7 @@ const BG_EXAMPLE = JSON.stringify([
 ], null, 2);
 import { saveMail, sendTestMail } from "./mail-actions";
 
-const TRANSLATABLE = ["site.name", "site.tagline", "site.about", "footer.text", "header.secondaryLabel", "header.buttonLabel"] as const;
+const TRANSLATABLE = ["site.name", "site.tagline", "site.about", "footer.text", "header.secondaryLabel", "header.buttonLabel", "privacy.extra"] as const;
 
 export default async function SettingsPage() {
   const { t, config, advanced, user } = await adminCtx("admin");
@@ -98,6 +98,14 @@ export default async function SettingsPage() {
             <Checkbox name="statsEnabled" label={t("settings.stats")} help={t("settings.statsHelp")} defaultChecked={config.statsEnabled} />
             <Checkbox name="newsToggle" label={t("settings.newsToggle")} help={t("settings.newsToggleHelp")} defaultChecked={config.newsToggle} />
             {advanced && <Checkbox name="blockAiBots" label={t("settings.blockAiBots")} help={t("settings.blockAiBotsHelp")} defaultChecked={blockAiBots} />}
+          </div>
+          <div className={`${ui.card} space-y-4`}>
+            <h3 className="font-semibold">{t("settings.privacyPage")}</h3>
+            <p className={ui.help}>{t("settings.privacyPageHelp")}</p>
+            {config.locales.map((l) => (
+              <TextArea key={l} name={`privacy.extra__${l}`} label={`${t("settings.privacyExtra")}${config.locales.length > 1 ? ` — ${localeName(l)}` : ""}`} rows={6} defaultValue={String(values["privacy.extra"]?.[l] ?? "")} help={t("settings.privacyExtraHelp")} />
+            ))}
+            <a href="/privacy" target="_blank" rel="noopener" className="inline-block text-sm font-medium text-accent hover:underline">{t("settings.privacyView")} ↗</a>
           </div>
           <p className={ui.help}>{t("settings.privacyCookies")}</p>
           <p className={ui.help}>{t("settings.privacyLaw")}</p>

@@ -71,6 +71,8 @@ export const manifestSchema = z.object({
   description: localized.optional(),
   author: z.string().max(200).optional(),
   homepage: z.string().url().optional(),
+  /** Ce que le module collecte comme données personnelles et pourquoi : repris tel quel dans la page de confidentialité du site (voir core/privacy.ts). */
+  privacy: localized.optional(),
   license: z.string().max(60).optional(),
   main: z
     .string()

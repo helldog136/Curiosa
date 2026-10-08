@@ -13,7 +13,7 @@ import { audit } from "@/core/permissions";
 import { deleteSetting, setSetting } from "@/core/settings";
 import type { ActionState } from "@/components/admin/ActionForm";
 
-const TRANSLATABLE = ["site.name", "site.tagline", "site.about", "footer.text", "header.secondaryLabel", "header.buttonLabel"];
+const TRANSLATABLE = ["site.name", "site.tagline", "site.about", "footer.text", "header.secondaryLabel", "header.buttonLabel", "privacy.extra"];
 
 export async function saveSettings(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const { user, t } = await adminCtx("admin");
@@ -49,7 +49,7 @@ export async function saveSettings(_prev: ActionState, formData: FormData): Prom
   for (const key of TRANSLATABLE) {
     if (key === "footer.text" && !adv) continue;
     for (const locale of locales) {
-      const value = String(formData.get(`${key}__${locale}`) ?? "").trim();
+      const value = String(formData.get(`${key}__${locale}`) ?? "").trim().slice(0, 20000);
       if (value) await setSetting(key, value, locale);
       else await deleteSetting(key, locale);
     }

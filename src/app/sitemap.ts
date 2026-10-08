@@ -11,6 +11,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const urls: MetadataRoute.Sitemap = config.locales.map((l) => ({
     url: `${siteUrl}${l === config.defaultLocale ? "" : `/${l}`}/`,
   }));
+  for (const l of config.locales) urls.push({ url: `${siteUrl}${l === config.defaultLocale ? "" : `/${l}`}/privacy` });
   for (const { instance: collection, mod } of (await getActiveInstances()).filter((a) => a.instance.basePath !== null)) {
     for (const locale of config.locales) {
       const prefix = locale === config.defaultLocale ? "" : `/${locale}`;

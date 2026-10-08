@@ -12,6 +12,7 @@ export const manifest: ParsedManifest = {
     fr: "Ajoute un formulaire de contact sous la page de votre choix. Chaque message devient un contact à vérifier dans votre carnet d'adresses (le module Contacts, activé pour vous).",
   },
   author: "Helldog136",
+  privacy: { en: "If you write through the contact form, your name, e-mail address and message are saved in the site team's private address book, only to answer you. They are neither published nor passed on to third parties. To have them erased, write to the site's contact.", fr: "Si vous écrivez par le formulaire de contact, votre nom, votre adresse e-mail et votre message sont enregistrés dans le carnet d'adresses privé de l'équipe du site, uniquement pour vous répondre. Ils ne sont ni publiés ni transmis à des tiers. Pour les faire effacer, écrivez au contact du site." },
   license: "Curiosa License 1.0",
   icon: "✉️",
   consumes: [],

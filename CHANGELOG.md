@@ -17,6 +17,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Vie privée
 - **Pas de bandeau de cookies à prévoir** : les cookies de « dernière visite » ne sont plus déposés chez tout le monde. Ils n'existent que si le visiteur clique sur le nouveau bouton **« Me prévenir des nouveautés »** (à activer dans Réglages → Confidentialité, désactivé par défaut) ; un second clic efface tout. Les anciens cookies sont supprimés chez les visiteurs qui ne l'ont pas demandé. Les statistiques ne déposent rien et ne gardent aucune donnée personnelle.
+- **Page « Politique de confidentialité » fournie par le cœur** (`/privacy`, lien permanent dans le pied de page de tous les sites) : elle est écrite d'après ce que votre site fait vraiment (cookies, statistiques, bouton « nouveautés », données déclarées par chaque module actif : champ `privacy` du manifeste, déjà renseigné pour le formulaire de contact). Le texte obligatoire ne peut ni être modifié ni retiré ; le propriétaire peut **ajouter** ses propres informations (Réglages → Confidentialité, par langue). Le chemin `/privacy` devient réservé : une page nommée « privacy » est masquée par celle du cœur.
 - **docs/PRIVACY.md** : ce que le framework dépose et enregistre, et quoi écrire dans votre page de confidentialité.
 
 ### Améliorations

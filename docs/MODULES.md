@@ -101,6 +101,7 @@ Validé à l'installation et au chargement (zod, `src/core/modules/manifest.ts`)
 | `name`, `description` | Texte ou `{ langue: texte }` (500 caractères au plus). Langue absente : langue par défaut du site, puis `en`. |
 | `version` | `x.y.z`. Sert à détecter les mises à jour des modules livrés avec le framework. |
 | `author`, `license`, `homepage` | Informatifs (`homepage` : URL valide). |
+| `privacy` | Facultatif : ce que le module collecte comme données personnelles, pourquoi et comment les faire effacer (texte simple, traduisible comme `description`). **Un module qui collecte des données de visiteurs doit le déclarer** : le cœur reprend ce texte tel quel, sous le nom de l'instance, dans la page « Politique de confidentialité » du site (`/privacy`, lien permanent du pied de page). Un module qui ne collecte rien n'a rien à écrire. |
 | `icon` | Emoji affiché dans l'admin. |
 | `main` | Fichier ES module du code, relatif à la racine. Absent : module « sans code » (réglages, contenu). |
 | `type` | Catégorie (voir ci-dessus). Défaut : `content` si `content` est déclaré, sinon `widget`. |

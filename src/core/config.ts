@@ -25,4 +25,6 @@ export const RESERVED_PATHS = new Set([
   "robots.txt",
   "icon",
   "favicon.ico",
+  // Page de confidentialité du cœur (obligatoire, voir core/privacy.ts)
+  "privacy",
 ]);
