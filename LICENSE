@@ -23,15 +23,24 @@ c. Build, set up, customize, maintain and host a website for a specific client a
    for that work, provided the client is not charged for the Software itself and the
    Software is not presented as your own product.
 d. Write modules for the Software (see section 6).
+e. Provide hosting infrastructure on which a customer's own, independent installation of the
+   Software runs (for example a VPS or hosting plan with the Software preinstalled or
+   installable in one click), and charge for that infrastructure, its support and its
+   maintenance, provided that: (i) each installation is a separate instance that the
+   customer fully controls (administrator access, own data, ability to export it);
+   (ii) the price pays for the infrastructure and services, not for the Software itself;
+   and (iii) the Software is not presented as the provider's own product and the notices of
+   section 4 remain in place.
 
 3. WHAT YOU MAY NOT DO
 
 a. Sell the Software or any Derivative Work, license it for a fee, or otherwise charge for
    access to the Software or a Derivative Work as such (including bundling it into a paid
    product, template, theme or subscription whose value comes from the Software).
-b. Offer the Software or a Derivative Work to third parties as a hosted, managed or
-   white-label service or platform (for example a service that creates and runs Curiosa
-   sites for many creators or customers in exchange for payment).
+b. Offer the Software or a Derivative Work to third parties as a multi-tenant or white-label
+   service or platform (for example one installation serving the sites of many customers,
+   or a service whose paid product is access to the Software's features rather than
+   infrastructure as described in section 2e).
 c. Present the Software or a Derivative Work as your own creation, or remove, hide or alter
    the notices described in section 4.
 

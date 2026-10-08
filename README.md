@@ -47,7 +47,8 @@ Curiosa est **gratuit** et son code est **lisible et modifiable**. Ce que la lic
 
 - ✅ **Vous pouvez l'utiliser pour le site de votre propre activité**, y compris commerciale (boutique, sponsors, dons, publicité…), le modifier et l'adapter.
 - ✅ **Vous pouvez monter, personnaliser et entretenir un site pour un client** et facturer ce travail, tant que vous ne lui vendez pas Curiosa lui-même.
-- ❌ **On ne peut pas vendre Curiosa** (ni une version modifiée), ni le proposer en abonnement ou en service hébergé à des créateurs.
+- ✅ **Un hébergeur peut le proposer préinstallé** (par exemple un VPS avec Curiosa, comme on le fait avec WordPress) : il facture l'hébergement et le support, chaque client garde sa propre installation, qu'il contrôle entièrement.
+- ❌ **On ne peut pas vendre Curiosa** (ni une version modifiée), ni en faire une plateforme où une seule installation sert les sites de nombreux clients, ni facturer l'accès à ses fonctionnalités.
 - 🏷️ **Le crédit « Propulsé par Curiosa » reste affiché** dans le pied de page du site (« Curiosa » est un lien vers le dépôt du projet), et les mentions d'auteur restent dans le code.
 - 🧩 **Les modules écrits par des tiers leur appartiennent** : leur auteur choisit sa licence, garde tout le mérite et peut les vendre.
 

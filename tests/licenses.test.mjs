@@ -11,7 +11,9 @@ test("le projet a sa licence (Curiosa License) et la déclare ; chaque module li
   // Les trois exigences du propriétaire : usage pour sa propre activité (même commerciale) permis, vente interdite, crédit obligatoire, modules tiers libres.
   assert.match(text, /including\s+a commercial or profit-making activity/);
   assert.match(text, /Sell the Software or any Derivative Work/);
-  assert.match(text, /hosted, managed or\s+white-label service/);
+  assert.match(text, /multi-tenant or white-label\s+service/);
+  assert.match(text, /Provide hosting infrastructure on which a customer's own, independent installation/, "un hébergeur peut préinstaller Curiosa sur un VPS");
+  assert.match(text, /the price pays for the infrastructure and services, not for the Software itself/);
   assert.match(text, /Powered by Curiosa", where "Curiosa" is a link to the project\s+repository \(https:\/\/github\.com\/helldog136\/Curiosa\)/);
   assert.match(text, /3\. WHAT YOU MAY NOT DO[\s\S]*6\. THIRD-PARTY MODULES[\s\S]*free of the restrictions of section 3/);
   assert.match(text, /Versions of the Software released before version 0\.1\.2-rc\.4 were published under the MIT/);
