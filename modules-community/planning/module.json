@@ -7,8 +7,8 @@
   },
   "version": "1.0.0",
   "description": {
-    "en": "Shows your upcoming streams, day by day, read from a Google Calendar (or any iCal feed). Public page, home section, and a topic other modules can use.",
-    "fr": "Affiche vos prochains streams, jour par jour, lus depuis un Google Agenda (ou n'importe quel flux iCal). Page publique, section d'accueil, et un sujet que d'autres modules peuvent utiliser."
+    "en": "Shows your upcoming streams, day by day, read from a Google Calendar (or any iCal feed).",
+    "fr": "Affiche vos prochains streams, jour par jour, lus depuis un Google Agenda (ou n'importe quel flux iCal)."
   },
   "author": "Helldog136",
   "license": "MIT",

@@ -7,8 +7,8 @@
   },
   "version": "1.0.0",
   "description": {
-    "en": "Your private address book: people, organisations, notes. It is also where the contact form puts the messages it receives (as contacts to review), and where an assistant can complete or clean them up.",
-    "fr": "Votre carnet d'adresses privé : personnes, organisations, notes. C'est aussi là que le formulaire de contact range les messages reçus (comme contacts à vérifier), et là qu'un assistant peut les compléter ou les nettoyer."
+    "en": "Your private address book: people, organisations, notes.",
+    "fr": "Votre carnet d'adresses privé : personnes, organisations, notes."
   },
   "author": "Helldog136",
   "license": "MIT",

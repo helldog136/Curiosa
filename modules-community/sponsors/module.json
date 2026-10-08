@@ -7,8 +7,8 @@
   },
   "version": "1.0.0",
   "description": {
-    "en": "Shows your sponsors and their promo codes on the site, with the mandatory partnership mention. Each sponsor can be linked to a partner of the Partnerships module, and feeds sponsor overlays.",
-    "fr": "Affiche vos sponsors et leurs codes promo sur le site, avec la mention de partenariat obligatoire. Chaque sponsor peut être lié à un partenaire du module Partenariats, et alimente les overlays sponsors."
+    "en": "Shows your sponsors and their promo codes on the site, with the mandatory partnership mention.",
+    "fr": "Affiche vos sponsors et leurs codes promo sur le site, avec la mention de partenariat obligatoire."
   },
   "author": "Helldog136",
   "license": "MIT",

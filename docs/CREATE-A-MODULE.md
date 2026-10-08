@@ -375,6 +375,8 @@ Le fichier atterrit dans `readable/modules/<clé de l'instance>/messages.csv` de
 ctx.t("mailSubject", { name })   // repli : langue par défaut, puis « en », puis la clé elle-même
 ```
 
+**Règle pour la `description`** (affichée dans le catalogue) : dites ce que fait **votre** module, pour la personne qui l'installe, en une ou deux phrases. Ne citez jamais un autre module (ni ce qui vous consomme, ni ce qui vous alimente) : ces liens se déclarent dans `offers` / `requires` / `provides` / `consumes`, et l'admin les affiche à part. Pas de jargon technique non plus (noms de sujets, d'API…).
+
 Les libellés de `module.json` (`name`, `label`, `help`, `description`…) sont du texte ou `{ "en": "…", "fr": "…" }`. Les réglages `translatable` donnent une valeur par langue.
 Le contexte porte `ctx.locale`, `ctx.defaultLocale`, `ctx.locales`. Quand vous construisez un lien interne, préfixez la langue si elle n'est pas la langue par défaut (`/fr/guestbook`) — voir `pageHref()` dans l'exemple.
 
