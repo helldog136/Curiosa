@@ -9,7 +9,7 @@ export type LocalizedString = string | Record<string, string>;
 export type SettingField = {
   key: string;
   label: LocalizedString;
-  type: "text" | "textarea" | "url" | "number" | "boolean" | "select" | "color" | "secret" | "image";
+  type: "text" | "textarea" | "url" | "number" | "boolean" | "select" | "color" | "secret" | "image" | "video";
   help?: LocalizedString;
   default?: string | number | boolean;
   options?: { value: string; label: LocalizedString }[];

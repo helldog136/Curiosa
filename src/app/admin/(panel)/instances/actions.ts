@@ -141,6 +141,9 @@ export async function saveInstanceSettings(_prev: ActionState, formData: FormDat
       } else if (field.type === "select") {
         if (!field.options?.some((o) => o.value === raw)) return { error: t("error.generic") };
         await setSetting(key, raw, locale);
+      } else if (field.type === "video") {
+        if (!/^\/uploads\/[0-9a-f-]{36}\.(mp4|webm)$/.test(raw)) return { error: t("error.badUrl") };
+        await setSetting(key, raw, locale);
       } else if (field.type === "image") {
         if (!/^(https?:\/\/|\/uploads\/)/i.test(raw)) return { error: t("error.badUrl") };
         await setSetting(key, raw, locale);

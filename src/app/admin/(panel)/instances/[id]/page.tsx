@@ -88,6 +88,8 @@ export default async function InstancePage({ params, searchParams }: { params: P
       }
       case "image":
         return <ImageField key={name} name={name} label={label} defaultValue={str} uploadLabel={t("action.upload")} />;
+      case "video":
+        return <ImageField key={name} name={name} label={label} defaultValue={str} uploadLabel={t("action.upload")} kind="video" />;
       case "url":
         return <TextField key={name} {...common} type="url" defaultValue={str} />;
       default:

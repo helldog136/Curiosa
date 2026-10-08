@@ -711,5 +711,9 @@
   "nav.badge.todo": "to review",
   "nav.badge.update": "update available",
   "dashboard.todo": "To do",
-  "site.poweredBy": "Powered by"
+  "site.poweredBy": "Powered by",
+  "site.video.play": "Play",
+  "site.video.pause": "Pause",
+  "site.video.soundOn": "Sound on",
+  "site.video.soundOff": "Sound off"
 }

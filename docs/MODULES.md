@@ -155,7 +155,7 @@ Chaque réglage est un objet (`SettingField`) :
 | `advanced` | `true` : réglage technique, masqué dans la version simplifiée de l'admin ; **sa valeur par défaut s'applique** — donnez-en toujours une. |
 | `group` | `"appearance"` : réglage d'apparence, regroupé sous « Apparence de ce module ». |
 
-Types : `text`, `textarea`, `url`, `number`, `boolean`, `select`, `color`, `image` (envoi de fichier ou URL), `secret`
+Types : `text`, `textarea`, `url`, `number`, `boolean`, `select`, `color`, `image` (envoi de fichier ou URL), `video` (envoi d'une vidéo MP4 ou WebM de 50 Mo au plus, réservée aux fichiers du site : `/uploads/…`), `secret`
 (jamais réaffiché une fois enregistré ; ne l'écrivez jamais dans un journal).
 
 - **Valeurs** : `ctx.setting` renvoie ce que l'admin a saisi, **sans garantie de type** (un nombre peut arriver en texte, une

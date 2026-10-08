@@ -1,3 +1,4 @@
+import { HeroVideo } from "./HeroVideo";
 import type { Block } from "@/core/blocks";
 import { getInstanceByKey } from "@/core/instances";
 import { withLocale } from "@/core/links";
@@ -42,6 +43,12 @@ export async function Blocks({ blocks, locale, adminInstanceId }: { blocks: Bloc
         out.push(<div key={i} dangerouslySetInnerHTML={{ __html: block.html }} />);
         break;
       case "hero":
+        if (block.video) {
+          const t = makeTranslator(locale);
+          out.push(<HeroVideo key={i} src={block.video} poster={block.videoPoster} sound={!!block.videoSound} title={block.title} text={block.text} logo={block.image}
+            labels={{ play: t("site.video.play"), pause: t("site.video.pause"), soundOn: t("site.video.soundOn"), soundOff: t("site.video.soundOff") }} />);
+          break;
+        }
         out.push(
           <section key={i} className="space-y-4 py-8 text-center">
             {block.image && (

@@ -711,5 +711,9 @@
   "nav.badge.todo": "à traiter",
   "nav.badge.update": "mise à jour disponible",
   "dashboard.todo": "À traiter",
-  "site.poweredBy": "Propulsé par"
+  "site.poweredBy": "Propulsé par",
+  "site.video.play": "Lecture",
+  "site.video.pause": "Pause",
+  "site.video.soundOn": "Activer le son",
+  "site.video.soundOff": "Couper le son"
 }
