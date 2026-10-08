@@ -140,4 +140,4 @@ Réglages → Identité → **Logos** : envoyez ce que vous avez, rien n'est obl
 | **Image de partage** (1200 × 630 px idéal) | aperçu quand on partage le site | l'icône, puis le logo horizontal |
 | **Versions pour fond sombre** | choisies seules si le fond du site est sombre | la version claire |
 
-Formats acceptés : png, jpg, webp, gif (le SVG est refusé : il peut contenir du code). Le kit presse propose tous les logos envoyés.
+Formats acceptés : png, jpg, webp, gif, et **SVG pour les logos et le favicon** (pas pour l'image de partage : les réseaux sociaux ne l'affichent pas). Un SVG est relu élément par élément et réécrit avant d'être enregistré : scripts, styles, textes, images intégrées et liens externes sont refusés avec un message précis (exportez le texte en tracés, et les styles « en ligne »). Servi, il ne peut rien exécuter. Le kit presse propose tous les logos envoyés.

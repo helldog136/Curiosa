@@ -18,7 +18,7 @@ export const EMPTY_LOGOS: LogoSet = { wide: null, square: null, wideDark: null, 
 export const isDarkBackground = (background: unknown): boolean => isHexColor(background) && luminance(background) <= 0.4;
 
 /** Une image de logo valable : un fichier envoyé sur le site, ou une adresse https. */
-export const isLogoUrl = (v: unknown): v is string => typeof v === "string" && (/^\/uploads\/[0-9a-f-]{36}\.(png|jpe?g|webp|gif)$/.test(v) || /^https:\/\/[^\s"'()<>\\]+$/.test(v));
+export const isLogoUrl = (v: unknown): v is string => typeof v === "string" && (/^\/uploads\/[0-9a-f-]{36}\.(png|jpe?g|webp|gif|svg)$/.test(v) || /^https:\/\/[^\s"'()<>\\]+$/.test(v));
 
 /** `a` d'abord ; sinon l'autre version (mieux qu'aucun logo). */
 const either = (a: string | null, b: string | null) => a || b || null;
@@ -32,7 +32,8 @@ export function pickLogo(set: LogoSet, role: LogoRole, darkBackground: boolean):
     // L'onglet du navigateur : l'icône carrée (version pour fond clair d'abord : les onglets sont le plus souvent clairs), jamais le logo horizontal.
     case "favicon": return set.favicon || either(set.square, set.squareDark);
     // Partage : l'image prévue pour ça, sinon le symbole, sinon le logo horizontal.
-    case "share": return set.share || either(icon, wide);
+    // (Les réseaux sociaux n'affichent pas les SVG : un SVG n'est jamais proposé comme image de partage.)
+    case "share": return [set.share, icon, wide].find((v) => v && !/\.svg$/i.test(v)) || null;
     // Un seul visuel de marque (avatar d'un bandeau, données structurées, kit presse) : le symbole, sinon le logo horizontal.
     default: return either(icon, wide);
   }

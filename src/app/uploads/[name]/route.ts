@@ -24,5 +24,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ name: st
     return new Response(body, { status: 206, headers: { ...HEADERS, "content-type": type, "content-range": `bytes ${start}-${end}/${size}`, "content-length": String(end - start + 1) } });
   }
   if (isVideoName(name)) return new Response(Readable.toWeb(fs.createReadStream(file)) as ReadableStream, { headers: { ...HEADERS, "content-type": type, "content-length": String(size) } });
-  return new Response(new Uint8Array(fs.readFileSync(file)), { headers: { ...HEADERS, "content-type": type } });
+  // Un SVG ouvert directement dans un onglet ne doit rien pouvoir exécuter, même si le nettoyage avait une faille : aucune ressource, aucun script, bac à sable.
+  const extra: Record<string, string> = name.endsWith(".svg") ? { "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'; sandbox" } : {};
+  return new Response(new Uint8Array(fs.readFileSync(file)), { headers: { ...HEADERS, ...extra, "content-type": type } });
 }
