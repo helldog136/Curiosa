@@ -15,6 +15,7 @@
  */
 import { GLOW_BOUNDS, normalizeTuning, spotGradients, type GlowTuning } from "./glow";
 import type { Theme } from "./color";
+import { sanitizeSvg } from "./svg";
 
 export const MAX_LAYERS = 6;
 export const MAX_JSON_BYTES = 8_000;
@@ -28,6 +29,7 @@ export type Layer =
   | { type: "dots"; color: string; size: number; gap: number; opacity: number; side: Side; span: number; edge: Edge; stagger: boolean }
   | { type: "grid"; color: string; gap: number; opacity: number; side: Side; span: number }
   | ({ type: "spots"; opacity: number } & Omit<GlowTuning, "color"> & { color: string })
+  | { type: "svg"; svg: string; fit: "cover" | "contain" | "tile"; align: "left" | "center" | "right"; tile: number; opacity: number; side: Side; span: number; edge: Edge }
   | { type: "image"; src: string; fit: "cover" | "contain" | "tile"; position: string; opacity: number };
 
 const TOKENS = ["accent", "bg", "fg", "muted", "surface", "line"] as const;
@@ -90,6 +92,16 @@ export function parseBackground(raw: unknown): { ok: true; layers: Layer[] } | {
         case "grid": return { type: "grid", color: color(o.color ?? "fg", `${at}.color`), gap: num(o.gap, 16, 160, 48, `${at}.gap`), opacity: num(o.opacity, 0, 100, 10, `${at}.opacity`), side: side(o.side), span: num(o.span, 5, 100, 40, `${at}.span`) };
         // `color` : « #rrggbb » ou jeton du thème ; absent = la couleur d'accent.
         case "spots": return { type: "spots", opacity, ...normalizeTuning(Object.fromEntries((Object.keys(GLOW_BOUNDS) as string[]).map((k) => [k, o[k]]))), color: o.color === undefined || o.color === null || o.color === "" ? "" : color(o.color, `${at}.color`) };
+        // Un dessin SVG (« #accent » etc. : jetons {accent}, {bg}… remplacés par les couleurs du thème). Voir core/svg.ts pour ce qui est accepté.
+        case "svg": {
+          const fit = o.fit === undefined ? "cover" : (["cover", "contain", "tile"] as const).find((f) => f === o.fit);
+          if (!fit) throw new Bad(`${at}.fit : cover, contain ou tile`);
+          const align = o.align === undefined ? "center" : (["left", "center", "right"] as const).find((f) => f === o.align);
+          if (!align) throw new Bad(`${at}.align : left, center ou right`);
+          const checked = sanitizeSvg(o.svg, undefined, fit, align);
+          if (!checked.ok) throw new Bad(`${at}.svg : ${checked.error}`);
+          return { type: "svg", svg: String(o.svg), fit, align, tile: num(o.tile, 20, 1200, 200, `${at}.tile`), opacity, side: side(o.side), span: num(o.span, 5, 100, 40, `${at}.span`), edge: edge(o.edge, at) };
+        }
         case "image": {
           const src = String(o.src ?? "");
           if (!IMAGE_RE.test(src)) throw new Bad(`${at}.src : une image envoyée sur le site (/uploads/…) ou une adresse https`);
@@ -99,7 +111,7 @@ export function parseBackground(raw: unknown): { ok: true; layers: Layer[] } | {
           if (!position) throw new Bad(`${at}.position : ${POSITIONS.join(", ")}`);
           return { type: "image", src, fit, position, opacity };
         }
-        default: throw new Bad(`${at}.type : linear, radial, dots, grid, spots ou image`);
+        default: throw new Bad(`${at}.type : linear, radial, dots, grid, spots, svg ou image`);
       }
     });
     return { ok: true, layers };
@@ -168,6 +180,13 @@ function layerCss(l: Layer, theme: Theme, accent: string): string {
       return `${op}background-image:linear-gradient(${line} 1px,transparent 1px),linear-gradient(90deg,${line} 1px,transparent 1px);background-size:${gap}px ${gap}px;${fade(l.side, Math.round(l.span))}`;
     }
     case "spots": return `${op}background-image:${spotGradients({ ...l, color: l.color ? hexOf(l.color, theme) : "" }, accent).join(",")};background-repeat:no-repeat;`;
+    case "svg": {
+      const checked = sanitizeSvg(l.svg, theme, l.fit, l.align);
+      if (!checked.ok) return "";
+      const uri = `data:image/svg+xml;base64,${Buffer.from(checked.svg, "utf8").toString("base64")}`;
+      const size = l.fit === "tile" ? `${Math.round(l.tile)}px auto` : "100% 100%";
+      return `${op}background-image:url("${uri}");background-size:${size};background-position:center;background-repeat:${l.fit === "tile" ? "repeat" : "no-repeat"};${fade(l.side, Math.round(l.span), l.edge)}`;
+    }
     case "image": {
       const size = l.fit === "tile" ? "auto" : l.fit;
       return `${op}background-image:url("${l.src}");background-size:${size};background-position:${l.position};background-repeat:${l.fit === "tile" ? "repeat" : "no-repeat"};`;
@@ -183,8 +202,8 @@ export function backgroundCss(layers: Layer[], theme: Theme): string {
 }
 
 /* ───────────── préréglages (adaptés au thème : ils utilisent les jetons accent/bg) ───────────── */
-export type BackgroundPreset = "none" | "dusk" | "grid" | "custom";
-export const BACKGROUND_PRESETS: Record<Exclude<BackgroundPreset, "none" | "custom">, Layer[]> = {
+export type BackgroundPreset = "none" | "dusk" | "grid" | "svg" | "custom";
+export const BACKGROUND_PRESETS: Record<Exclude<BackgroundPreset, "none" | "custom" | "svg">, Layer[]> = {
   // lueur d'aube : l'accent monte du bas de la page
   dusk: [
     { type: "linear", angle: 0, opacity: 100, stops: [{ color: "accent", at: 0, a: 26 }, { color: "accent", at: 55, a: 0 }] },
@@ -193,12 +212,15 @@ export const BACKGROUND_PRESETS: Record<Exclude<BackgroundPreset, "none" | "cust
   // fine grille technique qui s'efface vers le bas
   grid: [{ type: "grid", color: "fg", gap: 48, opacity: 7, side: "top", span: 85 }],
 };
-export const isPreset = (v: unknown): v is BackgroundPreset => v === "none" || v === "custom" || (typeof v === "string" && v in BACKGROUND_PRESETS);
+export const isPreset = (v: unknown): v is BackgroundPreset => v === "none" || v === "custom" || v === "svg" || (typeof v === "string" && v in BACKGROUND_PRESETS);
 
 /** Couches effectives : préréglage ou description personnalisée, avec une image de fond éventuelle en dessous. */
-export function effectiveLayers(preset: BackgroundPreset, custom: string, image: string | null): Layer[] {
+export type SvgBackground = { markup: string; fit: "cover" | "contain" | "tile"; align?: "left" | "center" | "right"; tile: number };
+
+export function effectiveLayers(preset: BackgroundPreset, custom: string, image: string | null, svg?: SvgBackground): Layer[] {
   let layers: Layer[] = [];
   if (preset === "custom") { const p = parseBackground(custom); if (p.ok) layers = p.layers; }
+  else if (preset === "svg") { const p = parseBackground([{ type: "svg", svg: svg?.markup ?? "", fit: svg?.fit ?? "cover", align: svg?.align ?? "center", tile: svg?.tile ?? 200 }]); if (p.ok) layers = p.layers; }
   else if (preset !== "none") layers = BACKGROUND_PRESETS[preset];
   if (image) {
     const base = parseBackground([{ type: "image", src: image, fit: "cover", position: "center" }]);

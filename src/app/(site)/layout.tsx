@@ -39,7 +39,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
   const localized = await getSiteConfig(locale);
   const t = await getVisitorTranslator();
   const theme = buildTheme(localized.background, localized.accent, localized.font);
-  const layers = effectiveLayers(localized.bg.preset, localized.bg.custom, localized.bg.image);
+  const layers = effectiveLayers(localized.bg.preset, localized.bg.custom, localized.bg.image, localized.bg.svg);
   const css = themeCss(theme) + glowCss(localized.glow.level, localized.glow.custom, localized.accent) + backgroundCss(layers, theme);
 
   const [headBlocks, bannerBlocks] = await Promise.all([runSlot("layout.head", locale), runSlot("layout.banner", locale)]);

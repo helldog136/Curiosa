@@ -659,5 +659,20 @@
   "navigation.link": "Link",
   "settings.glow.followAccent": "Follow the site's accent colour",
   "settings.glow.color": "Spot colour",
-  "settings.glow.colorHelp": "Used when the box above is unchecked. The \"hue shift\" applies starting from this colour."
+  "settings.glow.colorHelp": "Used when the box above is unchecked. The \"hue shift\" applies starting from this colour.",
+  "settings.bg.svg": "SVG drawing (paste)",
+  "settings.bgSvg": "SVG drawing",
+  "settings.bgSvgHelp": "Paste the code of an SVG drawing (exported from Inkscape, Figma, Illustrator…): gradients, dot patterns, silhouettes, motifs. It needs a viewBox. Colours can follow the theme: write {accent}, {bg}, {fg}… instead of a colour code. No scripts, text or embedded images: see docs/BACKGROUND.md.",
+  "settings.bgSvgFit": "Drawing placement",
+  "settings.bgSvgFit.cover": "Fill the page (cropped if needed)",
+  "settings.bgSvgFit.contain": "Fit entirely in the page",
+  "settings.bgSvgFit.tile": "Repeat as a pattern",
+  "settings.bgSvgTile": "Width of one tile (px)",
+  "settings.bgSvgTileHelp": "20 to 1200.",
+  "settings.bg.invalidSvg": "SVG drawing rejected:",
+  "settings.bgSvgAlign": "Drawing alignment",
+  "settings.bgSvgAlignHelp": "When the window doesn't have the drawing's proportions, the drawing is cropped: choose which side stays visible.",
+  "settings.bgSvgAlign.center": "Centred",
+  "settings.bgSvgAlign.left": "Left",
+  "settings.bgSvgAlign.right": "Right"
 }

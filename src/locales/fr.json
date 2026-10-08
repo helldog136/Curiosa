@@ -659,5 +659,20 @@
   "navigation.link": "Lien",
   "settings.glow.followAccent": "Suivre la couleur d'accent du site",
   "settings.glow.color": "Couleur des taches",
-  "settings.glow.colorHelp": "Utilisée si la case ci-dessus est décochée. Le « décalage de teinte » s'applique à partir de cette couleur."
+  "settings.glow.colorHelp": "Utilisée si la case ci-dessus est décochée. Le « décalage de teinte » s'applique à partir de cette couleur.",
+  "settings.bg.svg": "Dessin SVG (à coller)",
+  "settings.bgSvg": "Dessin SVG",
+  "settings.bgSvgHelp": "Collez le code d'un dessin SVG (exporté depuis Inkscape, Figma, Illustrator…) : dégradés, trames de points, silhouettes, motifs. Il doit avoir un viewBox. Les couleurs peuvent suivre le thème : écrivez {accent}, {bg}, {fg}… à la place d'un code couleur. Pas de script, de texte ni d'image intégrée : voir docs/BACKGROUND.md.",
+  "settings.bgSvgFit": "Placement du dessin",
+  "settings.bgSvgFit.cover": "Remplir la page (recadré si besoin)",
+  "settings.bgSvgFit.contain": "Tenir entièrement dans la page",
+  "settings.bgSvgFit.tile": "Répéter en motif",
+  "settings.bgSvgTile": "Largeur d'un motif (px)",
+  "settings.bgSvgTileHelp": "20 à 1200.",
+  "settings.bg.invalidSvg": "Dessin SVG refusé :",
+  "settings.bgSvgAlign": "Alignement du dessin",
+  "settings.bgSvgAlignHelp": "Quand la fenêtre n'a pas les proportions du dessin, le dessin est recadré : choisissez le côté à garder visible.",
+  "settings.bgSvgAlign.center": "Centré",
+  "settings.bgSvgAlign.left": "À gauche",
+  "settings.bgSvgAlign.right": "À droite"
 }

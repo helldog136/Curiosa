@@ -116,9 +116,23 @@ export default async function SettingsPage() {
           <Select name="bgPreset" label={t("settings.bg")} help={t("settings.bgHelp")} defaultValue={config.bg.preset}
             options={[
               { value: "none", label: t("settings.bg.none") }, { value: "dusk", label: t("settings.bg.dusk") }, { value: "grid", label: t("settings.bg.grid") },
-              ...(advanced ? [{ value: "custom", label: t("settings.bg.custom") }] : []),
+              ...(advanced ? [{ value: "svg", label: t("settings.bg.svg") }, { value: "custom", label: t("settings.bg.custom") }] : []),
             ]} />
           <ImageField name="bgImage" label={t("settings.bgImage")} defaultValue={config.bg.image} uploadLabel={t("action.upload")} />
+          {advanced && (
+            <ShowWhen field="bgPreset" equals="svg" initial={config.bg.preset}>
+              <div className="space-y-3">
+                <TextArea name="bgSvg" label={t("settings.bgSvg")} help={t("settings.bgSvgHelp")} rows={12} mono defaultValue={config.bg.svg.markup} />
+                <Select name="bgSvgFit" label={t("settings.bgSvgFit")} defaultValue={config.bg.svg.fit}
+                  options={[{ value: "cover", label: t("settings.bgSvgFit.cover") }, { value: "contain", label: t("settings.bgSvgFit.contain") }, { value: "tile", label: t("settings.bgSvgFit.tile") }]} />
+                <Select name="bgSvgAlign" label={t("settings.bgSvgAlign")} help={t("settings.bgSvgAlignHelp")} defaultValue={config.bg.svg.align}
+                  options={[{ value: "center", label: t("settings.bgSvgAlign.center") }, { value: "left", label: t("settings.bgSvgAlign.left") }, { value: "right", label: t("settings.bgSvgAlign.right") }]} />
+                <ShowWhen field="bgSvgFit" equals="tile" initial={config.bg.svg.fit}>
+                  <TextField name="bgSvgTile" type="number" label={t("settings.bgSvgTile")} help={t("settings.bgSvgTileHelp")} defaultValue={String(config.bg.svg.tile)} />
+                </ShowWhen>
+              </div>
+            </ShowWhen>
+          )}
           {advanced && (
             <ShowWhen field="bgPreset" equals="custom" initial={config.bg.preset}>
             <TextArea name="bgCustom" label={t("settings.bgCustom")} help={t("settings.bgCustomHelp")} rows={10} mono defaultValue={config.bg.custom || BG_EXAMPLE} />

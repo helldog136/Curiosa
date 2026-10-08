@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { adminCtx } from "@/core/admin";
 import { isHexColor } from "@/core/color";
 import { isBackgroundImage, isPreset, parseBackground } from "@/core/background";
+import { sanitizeSvg } from "@/core/svg";
 import { isGlowLevel, normalizeTuning } from "@/core/glow";
 import { isKnownLocale } from "@/core/i18n/locales";
 import { audit } from "@/core/permissions";
@@ -58,7 +59,21 @@ export async function saveSettings(_prev: ActionState, formData: FormData): Prom
     const parsed = parseBackground(bgCustom);
     if (!parsed.ok) return { error: `${t("settings.bg.invalid")} ${parsed.error}` };
   }
-  await setSetting("theme.bgPreset", isPreset(bgPreset) && (adv || bgPreset !== "custom") ? bgPreset : "none");
+  // Dessin SVG (avancé) : validé avant tout enregistrement, avec le message précis de ce qui ne passe pas.
+  const bgSvg = adv ? String(formData.get("bgSvg") ?? "").trim() : null;
+  const bgSvgFit = ["contain", "tile"].includes(String(formData.get("bgSvgFit"))) ? String(formData.get("bgSvgFit")) : "cover";
+  const bgSvgAlign = ["left", "right"].includes(String(formData.get("bgSvgAlign"))) ? String(formData.get("bgSvgAlign")) : "center";
+  if (bgSvg) {
+    const checked = sanitizeSvg(bgSvg, undefined, bgSvgFit as "cover" | "contain" | "tile", bgSvgAlign as "left" | "center" | "right");
+    if (!checked.ok) return { error: `${t("settings.bg.invalidSvg")} ${checked.error}` };
+  }
+  await setSetting("theme.bgPreset", isPreset(bgPreset) && (adv || (bgPreset !== "custom" && bgPreset !== "svg")) ? bgPreset : "none");
+  if (bgSvg !== null) {
+    await setSetting("theme.bgSvg", bgSvg);
+    await setSetting("theme.bgSvgFit", bgSvgFit);
+    await setSetting("theme.bgSvgAlign", bgSvgAlign);
+    await setSetting("theme.bgSvgTile", Math.min(1200, Math.max(20, Math.round(Number(formData.get("bgSvgTile")) || 200))));
+  }
   if (bgCustom !== null) await setSetting("theme.bgCustom", bgCustom);
   if (bgImage) await setSetting("theme.bgImage", bgImage);
   else await deleteSetting("theme.bgImage");

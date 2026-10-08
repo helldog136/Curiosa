@@ -108,7 +108,7 @@ test("fond : les préréglages sont valides, s'adaptent au thème, et l'image de
 
 test("fond : branché sur le site et l'admin (préréglage en tous modes, description et « personnalisé » en avancé, validation avant enregistrement)", () => {
   const layout = fs.readFileSync("src/app/(site)/layout.tsx", "utf8");
-  assert.match(layout, /effectiveLayers\(localized\.bg\.preset, localized\.bg\.custom, localized\.bg\.image\)/);
+  assert.match(layout, /effectiveLayers\(localized\.bg\.preset, localized\.bg\.custom, localized\.bg\.image, localized\.bg\.svg\)/);
   assert.match(layout, /className="cbg" aria-hidden="true"/);
   const page = fs.readFileSync("src/app/admin/(panel)/settings/page.tsx", "utf8");
   for (const n of ["bgPreset", "bgImage", "bgCustom"]) assert.match(page, new RegExp(`name="${n}"`));
@@ -117,7 +117,7 @@ test("fond : branché sur le site et l'admin (préréglage en tous modes, descri
   const actions = fs.readFileSync("src/app/admin/(panel)/settings/actions.ts", "utf8");
   assert.match(actions, /parseBackground\(bgCustom\)/);
   assert.match(actions, /isBackgroundImage\(bgImage\)/);
-  assert.match(actions, /adv \|\| bgPreset !== "custom"/);
+  assert.match(actions, /adv \|\| \(bgPreset !== "custom" && bgPreset !== "svg"\)/);
   assert.ok(fs.existsSync("docs/BACKGROUND.md"));
 });
 
