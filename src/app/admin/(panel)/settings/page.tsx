@@ -4,6 +4,7 @@ import { KNOWN_LOCALES, localeName } from "@/core/i18n/locales";
 import { UI_LOCALES } from "@/core/i18n/dictionary";
 import { ActionForm } from "@/components/admin/ActionForm";
 import { Checkbox, Select, TextArea, TextField } from "@/components/admin/Field";
+import { HeaderLayoutPicker } from "@/components/admin/HeaderLayoutPicker";
 import { ImageField } from "@/components/admin/ImageField";
 import { ShowWhen } from "@/components/admin/ShowWhen";
 import { Tabs } from "@/components/admin/Tabs";
@@ -20,7 +21,7 @@ const BG_EXAMPLE = JSON.stringify([
 ], null, 2);
 import { saveMail, sendTestMail } from "./mail-actions";
 
-const TRANSLATABLE = ["site.name", "site.tagline", "site.about", "footer.text"] as const;
+const TRANSLATABLE = ["site.name", "site.tagline", "site.about", "footer.text", "header.secondaryLabel", "header.buttonLabel"] as const;
 
 export default async function SettingsPage() {
   const { t, config, advanced, user } = await adminCtx("admin");
@@ -94,6 +95,27 @@ export default async function SettingsPage() {
 
         <section data-tab="appearance" className="space-y-6">
           <h2 className="text-lg font-semibold">{t("settings.appearance")}</h2>
+          <div className={`${ui.card} space-y-4`}>
+            <h3 className="font-semibold">{t("settings.header")}</h3>
+            <p className={ui.help}>{t("settings.headerHelp")}</p>
+            <HeaderLayoutPicker name="headerLayout" value={config.header.layout}
+              labels={{ classic: { title: t("settings.header.classic"), help: t("settings.header.classicHelp") }, twoRows: { title: t("settings.header.twoRows"), help: t("settings.header.twoRowsHelp") },
+                centered: { title: t("settings.header.centered"), help: t("settings.header.centeredHelp") }, minimal: { title: t("settings.header.minimal"), help: t("settings.header.minimalHelp") } }} />
+            <Checkbox name="headerSocials" label={t("settings.header.socials")} help={t("settings.header.socialsHelp")} defaultChecked={config.header.socials} />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-3">
+                <p className="text-sm font-medium">{t("settings.header.secondary")}</p>
+                {config.locales.map((l) => <TextField key={l} name={`header.secondaryLabel__${l}`} label={`${t("settings.header.label")}${config.locales.length > 1 ? ` — ${localeName(l)}` : ""}`} defaultValue={String(values["header.secondaryLabel"]?.[l] ?? "")} />)}
+                <TextField name="headerSecondaryHref" label={t("settings.header.href")} placeholder="/contact" defaultValue={String((await getSetting<string>("header.secondaryHref")) ?? "")} />
+              </div>
+              <div className="space-y-3">
+                <p className="text-sm font-medium">{t("settings.header.button")}</p>
+                {config.locales.map((l) => <TextField key={l} name={`header.buttonLabel__${l}`} label={`${t("settings.header.label")}${config.locales.length > 1 ? ` — ${localeName(l)}` : ""}`} defaultValue={String(values["header.buttonLabel"]?.[l] ?? "")} />)}
+                <TextField name="headerButtonHref" label={t("settings.header.href")} placeholder="https://…" defaultValue={String((await getSetting<string>("header.buttonHref")) ?? "")} />
+              </div>
+            </div>
+            <p className={ui.help}>{t("settings.header.linksHelp")}</p>
+          </div>
           <div className={`${ui.card} space-y-4`}>
           <ThemePicker background={config.background} accent={config.accent} advanced={advanced}
             labels={{ background: t("settings.background"), accent: t("settings.accent") }}

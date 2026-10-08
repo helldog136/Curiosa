@@ -141,3 +141,9 @@ Réglages → Identité → **Logos** : envoyez ce que vous avez, rien n'est obl
 | **Versions pour fond sombre** | choisies seules si le fond du site est sombre | la version claire |
 
 Formats acceptés : png, jpg, webp, gif, et **SVG pour les logos et le favicon** (pas pour l'image de partage : les réseaux sociaux ne l'affichent pas). Un SVG est relu élément par élément et réécrit avant d'être enregistré : scripts, styles, textes, images intégrées et liens externes sont refusés avec un message précis (exportez le texte en tracés, et les styles « en ligne »). Servi, il ne peut rien exécuter. Le kit presse propose tous les logos envoyés.
+
+## En-tête et menu
+
+- **Réglages → Apparence → En-tête du site** : quatre dispositions au choix (*Classique*, *Deux niveaux*, *Centré*, *Discret*). Le logo (voir *Logos*), le menu, les langues, les icônes sociales, un lien secondaire (ex. « Nous contacter ») et un bouton (ex. « Devenir membre ») s'y placent tout seuls.
+- **Icônes sociales** : elles reprennent les entrées de **toutes** les listes de réseaux sociaux actives du site (une liste par chaîne si vous en avez plusieurs) ; rien à ressaisir.
+- **Menu → Menu déroulant** : un groupe range des pages et des liens sous un nom (« À propos ▾ »), un seul niveau. Il s'ouvre au clic, au toucher, au survol et au clavier (Échap le ferme). Un groupe vide n'est pas enregistré.

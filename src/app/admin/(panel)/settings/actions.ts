@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { adminCtx } from "@/core/admin";
 import { isHexColor } from "@/core/color";
 import { isBackgroundImage, isPreset, parseBackground } from "@/core/background";
+import { headerLink, isHeaderLayout } from "@/core/header";
 import { LOGO_KEYS } from "@/core/logos";
 import { sanitizeSvg } from "@/core/svg";
 import { isGlowLevel, normalizeTuning } from "@/core/glow";
@@ -12,7 +13,7 @@ import { audit } from "@/core/permissions";
 import { deleteSetting, setSetting } from "@/core/settings";
 import type { ActionState } from "@/components/admin/ActionForm";
 
-const TRANSLATABLE = ["site.name", "site.tagline", "site.about", "footer.text"];
+const TRANSLATABLE = ["site.name", "site.tagline", "site.about", "footer.text", "header.secondaryLabel", "header.buttonLabel"];
 
 export async function saveSettings(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const { user, t } = await adminCtx("admin");
@@ -57,6 +58,17 @@ export async function saveSettings(_prev: ActionState, formData: FormData): Prom
     const settingKey = LOGO_KEYS[key as keyof typeof LOGO_KEYS];
     if (value) await setSetting(settingKey, value);
     else await deleteSetting(settingKey);
+  }
+  // En-tête : disposition, icônes sociales, lien secondaire et bouton (adresse : page du site, https ou mailto ; une adresse invalide n'enregistre rien).
+  const layout = String(formData.get("headerLayout") ?? "classic");
+  await setSetting("header.layout", isHeaderLayout(layout) ? layout : "classic");
+  await setSetting("header.socials", formData.get("headerSocials") === "on");
+  for (const [field, key] of [["headerSecondaryHref", "header.secondaryHref"], ["headerButtonHref", "header.buttonHref"]] as const) {
+    if (!(formData.has(field))) continue;
+    const href = String(formData.get(field) ?? "").trim();
+    if (href && !headerLink("x", href)) return { error: t("error.badUrl") };
+    if (href) await setSetting(key, href);
+    else await deleteSetting(key);
   }
   await setSetting("stats.enabled", formData.get("statsEnabled") === "on");
   if (adv) await setSetting("site.contactEmail", String(formData.get("contactEmail") ?? "").trim());

@@ -1,3 +1,4 @@
+import { headerLink, isHeaderLayout, type HeaderConfig, type HeaderLayout } from "./header";
 import { LOGO_KEYS, type LogoSet } from "./logos";
 import { cache } from "react";
 import { isBackgroundImage, isPreset, type BackgroundPreset } from "./background";
@@ -56,7 +57,9 @@ export async function deleteSetting(key: string, locale?: string): Promise<void>
 
 // ─── Réglages du site ─────────────────────────────────────────────────────
 
-export type NavItem = { label: Record<string, string>; href: string };
+export type NavLeaf = { label: Record<string, string>; href: string };
+/** Entrée du menu : un lien, ou un GROUPE (menu déroulant : `children`, un seul niveau ; son `href` est alors vide). */
+export type NavItem = NavLeaf & { children?: NavLeaf[] };
 /** Un morceau placé sur la page d'accueil : une section proposée par une instance de module. */
 export type HomeSection = {
   id: string; instance: string; section: string; options: Record<string, unknown>;
@@ -93,6 +96,8 @@ export type SiteConfig = {
   /** Compter les visites, anonymement (voir core/stats.ts). */
   statsEnabled: boolean;
   nav: NavItem[];
+  /** Mise en page de l'en-tête et ses éléments facultatifs (voir core/header.ts). */
+  header: HeaderConfig;
   homeSections: HomeSection[];
   setupCompleted: boolean;
 };
@@ -139,6 +144,12 @@ export const getSiteConfig = cache(async (locale?: string): Promise<SiteConfig> 
     },
     statsEnabled: (await getSetting<boolean>("stats.enabled")) !== false,
     nav: (await getSetting<NavItem[]>("nav.custom")) ?? [],
+    header: {
+      layout: isHeaderLayout(all["header.layout"]?.[""]) ? (all["header.layout"]![""] as HeaderLayout) : "classic",
+      socials: all["header.socials"]?.[""] === true,
+      secondary: headerLink(await str("header.secondaryLabel"), all["header.secondaryHref"]?.[""]),
+      button: headerLink(await str("header.buttonLabel"), all["header.buttonHref"]?.[""]),
+    },
     homeSections: (await getSetting<HomeSection[]>("home.sections")) ?? DEFAULT_HOME_SECTIONS,
     setupCompleted: (await getSetting<boolean>("setup.completed")) ?? false,
   };
