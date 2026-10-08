@@ -24,6 +24,18 @@ const check = (ok, what) => { console.log(`${ok ? "✓" : "✗"} ${what}`); if (
 const freePort = () => new Promise((resolve) => { const s = net.createServer().listen(0, () => { const { port } = s.address(); s.close(() => resolve(port)); }); });
 
 // ── 1. contenu ──
+// Ce que l'archive n'embarque volontairement pas (voir NOT_SHIPPED dans release-pack.mjs) : absent, et le site tourne quand même (vérifié plus bas).
+for (const gone of ["node_modules/@img", "node_modules/typescript", "node_modules/simple-icons/icons", "node_modules/@next/swc-linux-x64-gnu", "node_modules/@next/swc-linux-x64-musl", "node_modules/next/next-swc-fallback"]) check(!fs.existsSync(path.join(app, gone)), `l'archive n'embarque pas « ${gone} »`);
+for (const dir of ["node_modules/@prisma/client/runtime", "node_modules/prisma", "node_modules/@prisma/engines"]) {
+  const left = fs.readdirSync(path.join(app, dir)).filter((f) => /wasm|^libquery_engine/.test(f));
+  check(left.length === 0, `l'archive n'embarque pas les variantes inutiles de « ${dir} »`);
+}
+check(fs.existsSync(path.join(app, "node_modules/.prisma/client/libquery_engine-debian-openssl-3.0.x.so.node")) && fs.existsSync(path.join(app, "node_modules/.prisma/client/libquery_engine-debian-openssl-1.1.x.so.node")), "les deux moteurs de base de données du client restent (OpenSSL 1.1 et 3.0)");
+check(fs.existsSync(path.join(app, "next.config.mjs")) && !fs.existsSync(path.join(app, "next.config.ts")), "la configuration de Next est du JavaScript (next.config.mjs)");
+{
+  const n = execFileSync(process.execPath, ["-e", "const s=require('simple-icons');console.log(Object.values(s).filter((v)=>v&&v.slug&&v.path).length)"], { cwd: app, encoding: "utf8" }).trim();
+  check(Number(n) > 3000, `les icônes des réseaux sociaux fonctionnent sans leurs SVG (${n} icônes)`);
+}
 for (const old of ["modules-community", "modules-examples", "src"]) check(!fs.existsSync(path.join(app, old)), `l'archive ne contient pas « ${old} »`);
 const index = path.join(app, "extras/catalogue/index.json");
 check(fs.existsSync(path.join(app, "extras/modules/blog/module.json")), "extras/modules/blog/module.json présent");
@@ -56,6 +68,7 @@ const q = (env, code) => execFileSync(process.execPath, ["-e", code], { cwd: app
     for (const id of ["blog", "links", "pages"]) check(html.includes(`value="${id}"`), `installation neuve : le module suggéré « ${id} » est proposé (lu dans extras/)`);
     check(html.includes("sans aucun risque") || html.includes("without any risk"), "installation neuve : l'étape des modules dit qu'on peut la passer sans risque");
     check(!/Application error|Internal Server Error/.test(html), "installation neuve : pas d'erreur côté serveur");
+    check(!/swc|sharp/i.test(s.log()), "installation neuve : le serveur ne cherche ni le compilateur ni sharp (rien à télécharger au démarrage)");
   } finally { s.stop(); }
 }
 

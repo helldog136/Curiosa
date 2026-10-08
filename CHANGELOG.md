@@ -8,6 +8,9 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 *Changements depuis la 0.1.3.*
 
+### Améliorations
+- **Archive de release plus légère** : elle n'embarque plus ce que le serveur de production n'utilise jamais : le compilateur de Next (≈ 180 Mo), `sharp` (le site n'utilise pas `next/image`), TypeScript, les 3 000 fichiers SVG de `simple-icons` (les icônes restent), les variantes WebAssembly du client de base de données (PostgreSQL, MySQL… : le site utilise SQLite) et les copies de moteurs gardées par l'outil Prisma. La configuration de Next est maintenant du JavaScript (`next.config.mjs`) pour ne plus avoir besoin du compilateur au démarrage. Les deux moteurs de base de données (OpenSSL 1.1 et 3.0) restent, pour que l'archive marche sur les systèmes anciens comme récents. Chaque archive est démarrée **sans ces dossiers** avant d'être publiée.
+
 ### Documentation
 - **docs/MESURES.md** refait sur la 0.1.3 publiée : installation par la machine ≈ 26 s, 880 Mo une fois installé (les modules livrés ne pèsent que 0,8 Mo), 634 Ko de code envoyé à la première visite (≈ 189 Ko compressé), 234 Mo de mémoire au repos, 875 tests automatiques (501 pour le cœur, 374 pour les modules).
 
