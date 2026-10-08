@@ -68,7 +68,9 @@ export async function saveSettings(_prev: ActionState, formData: FormData): Prom
   // « personnalisé » n'existe qu'en mode avancé ; en mode simple on ne touche pas aux réglages fins déjà enregistrés.
   await setSetting("theme.glow", isGlowLevel(glow) && (adv || glow !== "custom") ? glow : "none");
   if (adv) {
-    const raw = Object.fromEntries(["count", "size", "variance", "hue", "intensity", "seed"].map((k) => [k, formData.get(`glow_${k}`)]));
+    const raw: Record<string, unknown> = Object.fromEntries(["count", "size", "variance", "hue", "intensity", "seed"].map((k) => [k, formData.get(`glow_${k}`)]));
+    // Couleur propre aux taches, sauf si « suivre la couleur d'accent » est coché.
+    raw.color = formData.get("glow_followAccent") === "on" ? "" : String(formData.get("glow_color") ?? "");
     await setSetting("theme.glow.custom", normalizeTuning(raw));
   }
   if (adv) await setSetting("theme.font", ["sans", "serif", "mono"].includes(font) ? font : "sans");

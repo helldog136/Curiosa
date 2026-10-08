@@ -54,7 +54,7 @@ export default async function McpPage() {
             </table>
             <div className={`${ui.card} space-y-4`}>
               <h3 className="font-semibold">{t("mcp.newToken")}</h3>
-              <ActionForm action={createTokenAction} submitLabel={t("action.create")}>
+              <ActionForm action={createTokenAction} submitLabel={t("action.create")} reset>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <TextField name="name" label={t("field.name")} required placeholder="Claude" />
                   <Select name="scope" label={t("mcp.scope")} defaultValue="read" help={t("mcp.scopeHelp")}

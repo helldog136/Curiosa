@@ -19,15 +19,19 @@ export type GlowTuning = {
   intensity: number;
   /** Graine de la disposition (1 à 9999) : change les positions, tailles et teintes tirées au sort. */
   seed: number;
+  /** Couleur de base des taches « #rrggbb » ; vide : la couleur d'accent du site. Le décalage de teinte s'applique à partir d'elle. */
+  color: string;
 };
 
-export const GLOW_BOUNDS: Record<keyof GlowTuning, [number, number]> = {
+const HEX = /^#[0-9a-fA-F]{6}$/;
+
+export const GLOW_BOUNDS: Record<Exclude<keyof GlowTuning, "color">, [number, number]> = {
   count: [1, 8], size: [30, 120], variance: [0, 100], hue: [0, 180], intensity: [5, 50], seed: [1, 9999],
 };
 
 export const GLOW_PRESETS: Record<"soft" | "strong", GlowTuning> = {
-  soft: { count: 2, size: 60, variance: 20, hue: 0, intensity: 14, seed: 7 },
-  strong: { count: 3, size: 60, variance: 30, hue: 0, intensity: 28, seed: 7 },
+  soft: { count: 2, size: 60, variance: 20, hue: 0, intensity: 14, seed: 7, color: "" },
+  strong: { count: 3, size: 60, variance: 30, hue: 0, intensity: 28, seed: 7, color: "" },
 };
 
 const clamp = (n: number, [lo, hi]: [number, number]) => Math.min(hi, Math.max(lo, n));
@@ -36,10 +40,11 @@ const clamp = (n: number, [lo, hi]: [number, number]) => Math.min(hi, Math.max(l
 export function normalizeTuning(raw: unknown): GlowTuning {
   const src = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
   const out = { ...GLOW_PRESETS.soft };
-  for (const key of Object.keys(GLOW_BOUNDS) as (keyof GlowTuning)[]) {
+  for (const key of Object.keys(GLOW_BOUNDS) as (keyof typeof GLOW_BOUNDS)[]) {
     const n = Number(src[key]);
     if (src[key] !== undefined && src[key] !== "" && Number.isFinite(n)) out[key] = Math.round(clamp(n, GLOW_BOUNDS[key]));
   }
+  out.color = typeof src.color === "string" && HEX.test(src.color) ? src.color.toLowerCase() : "";
   return out;
 }
 
@@ -79,7 +84,7 @@ export function tuningFor(level: GlowLevel, custom: GlowTuning): GlowTuning | nu
 /** Les dégradés radiaux d'un halo : déterministes pour un même (réglages, accent). */
 export function spotGradients(t: GlowTuning, accent: string): string[] {
   const rand = rng(t.seed);
-  const [h, s, l] = hexToHsl(accent);
+  const [h, s, l] = hexToHsl(t.color || accent);
   // Une couleur trop claire ou trop sombre ne se verrait pas sur un fond uni : on borne la luminosité.
   const light = Math.min(68, Math.max(38, l));
   const spots: string[] = [];

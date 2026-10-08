@@ -656,5 +656,8 @@
   "navigation.down": "Move down",
   "navigation.remove": "Remove from menu",
   "navigation.page": "Page",
-  "navigation.link": "Link"
+  "navigation.link": "Link",
+  "settings.glow.followAccent": "Follow the site's accent colour",
+  "settings.glow.color": "Spot colour",
+  "settings.glow.colorHelp": "Used when the box above is unchecked. The \"hue shift\" applies starting from this colour."
 }

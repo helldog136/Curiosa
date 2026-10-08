@@ -656,5 +656,8 @@
   "navigation.down": "Descendre",
   "navigation.remove": "Retirer du menu",
   "navigation.page": "Page",
-  "navigation.link": "Lien"
+  "navigation.link": "Lien",
+  "settings.glow.followAccent": "Suivre la couleur d'accent du site",
+  "settings.glow.color": "Couleur des taches",
+  "settings.glow.colorHelp": "Utilisée si la case ci-dessus est décochée. Le « décalage de teinte » s'applique à partir de cette couleur."
 }

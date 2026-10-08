@@ -52,7 +52,7 @@ export default async function RedirectsPage() {
 
       <section className={`${ui.card} space-y-4`}>
         <h2 className="text-lg font-semibold">{t("redirects.add")}</h2>
-        <ActionForm action={createRedirect} submitLabel={t("action.create")}>
+        <ActionForm action={createRedirect} submitLabel={t("action.create")} reset>
           <div className="grid gap-4 sm:grid-cols-2">
             <TextField name="path" label={t("redirects.path")} placeholder="twitch" required help={t("redirects.pathHelp")} />
             <TextField name="targetUrl" type="url" label={t("redirects.target")} placeholder="https://" help={t("redirects.targetHelp")} />

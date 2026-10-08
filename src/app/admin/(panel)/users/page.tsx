@@ -42,7 +42,7 @@ export default async function UsersPage() {
       </table>
       <section className={`${ui.card} space-y-4`}>
         <h2 className="text-lg font-semibold">{t("users.add")}</h2>
-        <ActionForm action={createUser} submitLabel={t("action.create")}>
+        <ActionForm action={createUser} submitLabel={t("action.create")} reset>
           <div className="grid gap-4 sm:grid-cols-2">
             <TextField name="name" label={t("field.name")} required />
             <TextField name="email" type="email" label={t("field.email")} required />
