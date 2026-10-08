@@ -12,7 +12,7 @@ commentaires dans [`index.mjs`](../modules-examples/guestbook/index.mjs). La **r
 [10. Sujets et RSS](#10-échanger-avec-les-autres-modules-sujets-et-flux-rss) · [11. Admin](#11-panneau-et-actions-dadmin) ·
 [12. MCP](#12-actions-mcp-pour-les-assistants) · [13. Sauvegarde](#13-sauvegarde-lisible) · [14. Thème et langues](#14-thème-et-langues) ·
 [15. Overlays, hooks, slots, filtres](#15-overlays-crochets-emplacements-filtres) · [16. Zéro code](#16-modules-à-contenu-zéro-code) ·
-[17. Tester](#17-tester-son-module) · [18. Versions et catalogue](#18-versions-et-publication) · [19. Sécurité](#19-règles-de-sécurité) ·
+[17. Tester](#17-tester-son-module) · [18. Versions et catalogue](#18-versions-et-publication) · [19. Sécurité](#19-règles-de-sécurité) · [20. Vie privée et licence](#20-vie-privée-cookies-et-licence) ·
 [Checklist](#checklist-avant-de-publier)
 
 ## 1. Les idées à connaître
@@ -77,7 +77,7 @@ Les **permissions** sont déclaratives : elles disent à l'administrateur ce que
 
 L'exemple minimal « de production » est [`announcement-banner`](../modules-examples/announcement-banner) ; essayez le vôtre tout de suite :
 [section 17](#17-tester-son-module). Toutes les clés possibles de `index.mjs` sont des **clés optionnelles** de l'objet exporté :
-`slots`, `sections`, `page`, `overlay`, `exports`, `routes`, `filters`, `adminPanel`, `adminActions`, `mcp`, `backup`, `tasks`, `services`, `hooks`. On les découvre une à une.
+`slots`, `sections`, `page`, `news`, `adminBadge`, `overlay`, `exports`, `routes`, `filters`, `adminPanel`, `adminActions`, `mcp`, `backup`, `tasks`, `services`, `hooks`. On les découvre une à une.
 
 ## 4. Réglages et apparence
 
@@ -99,6 +99,7 @@ la langue courante, ou la valeur par défaut.
 | `number`, `boolean`, `select` | nombre, case à cocher, liste (`options`) |
 | `color` | couleur `#RRGGBB` ; avec `"default": "theme:accent"` elle **suit le thème du site** tant que l'administrateur n'en choisit pas |
 | `image` | téléversement ou adresse |
+| `video` | téléversement d'une vidéo MP4 ou WebM (50 Mo au plus), **réservée aux fichiers du site** (`/uploads/…`) ; vérifiez la valeur avant de l'utiliser, comme le fait le module « Bandeau d'accueil » |
 | `secret` | jamais réaffiché après enregistrement (clé d'API, code…) |
 
 Attributs : `translatable: true` (une valeur par langue du site), `advanced: true` (masqué en admin simplifié — **donnez toujours une valeur par défaut**),
@@ -442,7 +443,7 @@ personnalisés. Les entrées alimentent le sujet `core.entry` : n'importe quel o
 
 1. Lancez le framework en local (voir [INSTALL.md](INSTALL.md)) avec la variable d'environnement **`CURIOSA_ALLOW_LOCAL_MODULES=1`** (elle autorise les dépôts locaux ; **jamais** sur un serveur public).
 2. Votre module est un dépôt git **avec au moins un commit** : `git init && git add . && git commit -m "first version"`.
-3. Admin → **Catalogue** → **Installer un dépôt personnel (non vérifié)** → saisissez `file:///chemin/absolu/vers/votre/depot`, cochez la case de confiance. Le module est installé **désactivé**.
+3. Admin → **Fonctionnalités** → onglet **Ajouter** (le catalogue) → **Installer un dépôt personnel (non vérifié)** → saisissez `file:///chemin/absolu/vers/votre/depot`, cochez la case de confiance. Le module est installé **désactivé**.
 4. **Modules** → activez-le, ajoutez une instance, ouvrez-la : réglages, panneau d'admin, page publique, section sur l'accueil (admin → Accueil).
 5. Vous avez modifié le code ? **Validez** (`git commit`), puis **Modules → Chercher une mise à jour → Mettre à jour**. Le module est rechargé depuis le dernier commit.
 
@@ -518,6 +519,23 @@ Un module est **du code de confiance** : il tourne sur le serveur avec les droit
 - **Réponses d'erreur muettes.** Ne renvoyez jamais de détail interne (chemin, requête, identifiant technique) à un visiteur.
 - **Sorties de tableur.** Neutralisez `=`, `+`, `-`, `@` en tête de cellule d'un CSV (injection de formule).
 
+## 20. Vie privée, cookies et licence
+
+**Vie privée.** Le cœur fournit à chaque site une page « Politique de confidentialité » (`/privacy`, liée dans le pied de page) qu'il écrit lui-même d'après ce que le site fait. Pour qu'elle soit **vraie**, un module qui collecte des données de visiteurs doit le **déclarer** dans son manifeste, en une ou deux phrases (quoi, pourquoi, comment les faire effacer) :
+
+```json
+"privacy": {
+  "en": "If you sign the guestbook, your name and message are shown publicly once approved. To have them removed, write to the site's contact.",
+  "fr": "Si vous signez le livre d'or, votre nom et votre message sont affichés publiquement une fois validés. Pour les faire retirer, écrivez au contact du site."
+}
+```
+
+Le cœur reprend ce texte tel quel, sous le nom de l'instance. Un module qui ne collecte **rien** n'a rien à écrire. Voir [PRIVACY.md](PRIVACY.md).
+
+**Cookies et stockage.** Le framework ne demande aucun consentement parce qu'il ne dépose rien d'inutile. **Ne rompez pas cela** : un module qui dépose un cookie, utilise le stockage du navigateur ou charge un service tiers (lecteur vidéo, widget, statistiques) pour autre chose que ce que le visiteur vient de demander impose un consentement préalable, et c'est à vous de le prévoir et de le déclarer dans `privacy`. En cas de doute : n'en déposez pas.
+
+**Licence.** Votre module est **à vous** : `license` dans `module.json` est votre choix (MIT, propriétaire, payant…), vous en gardez tout le mérite, et vous pouvez le vendre. La licence du framework (Curiosa License) ne s'applique pas à un module qui l'utilise seulement par son interface publique (`module.json` et l'API des modules) sans copier de code du cœur. Elle s'applique, en revanche, au cœur et aux modules livrés dans `src/modules-builtin/` ; voir [LICENSE](../LICENSE).
+
 ## Checklist avant de publier
 
 - [ ] `module.json` est à la **racine** du dépôt ; `apiVersion` vaut `2` ; `id` stable ; `version` à jour ; `main` pointe un fichier existant.
@@ -534,6 +552,8 @@ Un module est **du code de confiance** : il tourne sur le serveur avec les droit
 - [ ] Aucun secret, ni donnée privée, ni identifiant réel dans le code, les exemples ou les journaux ; exemples neutres (`example.org`, « Demo »).
 - [ ] Le module a des tests (manifeste, parité des langues, comportement, XSS) et ils passent.
 - [ ] Si la forme de mes données a changé : `dataVersion` augmenté et migration écrite et testée sur des données de l'ancienne version.
+- [ ] Si le module collecte des données de visiteurs : champ `privacy` renseigné (en **et** fr) ; aucun cookie, stockage navigateur ni service tiers non essentiel sans consentement.
+- [ ] `license` choisie dans `module.json` (elle n'a pas à être celle du framework).
 - [ ] Essayé en vrai : installation locale, activation, instance, page, formulaire, admin, désinstallation propre.
 - [ ] Un `README.md` explique ce que fait le module, ses réglages et ses limites ; la version est **taguée** (`git tag v1.0.0`).
 - [ ] **Pensez à Emma et à Hugo.** Emma n'a aucun bagage technique : tout réglage qu'elle doit remplir porte un libellé simple (« Adresse de votre salon Discord », pas « webhookUrl ») et une aide en une phrase ; un réglage de technicien (délai, mode de test, format) porte `"advanced": true` : il n'apparaît que dans le mode avancé de Hugo, avec une valeur par défaut raisonnable. Vos textes d'admin (`adminPanel`) disent ce qu'on peut faire, pas comment ça marche.

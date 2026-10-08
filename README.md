@@ -223,6 +223,73 @@ Pas besoin de tout retenir pour utiliser Curiosa : l'assistant et l'admin vous g
 | **Redirection** | `/twitch` → une URL externe *explicitement autorisée* dans l'admin (ou le lien d'une entrée, suivi automatiquement). Aucune redirection ouverte possible. |
 | **Langues** | Langue du site, langue de l'admin (par défaut et par utilisateur) et langue du visiteur sont indépendantes. Une entrée n'a besoin que d'**une** version ; on en ajoute d'autres à la demande, jamais de force. |
 
+## Développer son propre module
+
+Une fonctionnalité de Curiosa est un **module** : un petit dépôt git que n'importe qui peut écrire, publier et faire installer depuis l'admin d'un site. Deux fichiers suffisent pour commencer.
+
+`module.json` (ce que le module *est*) :
+
+```json
+{
+  "apiVersion": 2,
+  "id": "hello",
+  "name": { "en": "Hello", "fr": "Bonjour" },
+  "version": "1.0.0",
+  "main": "index.mjs",
+  "instances": "multiple",
+  "permissions": ["slots"],
+  "settings": [
+    { "key": "text", "type": "text", "default": "Hello!", "translatable": true, "label": { "en": "Banner text", "fr": "Texte de la bannière" } }
+  ]
+}
+```
+
+`index.mjs` (ce qu'il *fait*) :
+
+```js
+export default {
+  slots: { "layout.banner": (ctx) => [{ type: "banner", text: ctx.setting("text") }] },
+};
+```
+
+C'est un module complet : une bannière en haut de chaque page, dont le texte se règle dans l'admin, traduisible, avec autant d'instances qu'on veut. Un module peut aussi ajouter une page publique, des sections pour l'accueil, des routes et formulaires, un panneau d'admin, des actions pour assistants IA (MCP), des tâches planifiées, une sauvegarde lisible, des overlays pour OBS, et échanger des informations avec d'autres modules.
+
+**Pour l'essayer** : lancez Curiosa en local avec `CURIOSA_ALLOW_LOCAL_MODULES=1`, faites de votre dossier un dépôt git (`git init && git add . && git commit -m "v1"`), puis dans l'admin : *Fonctionnalités → Ajouter → Installer un dépôt personnel* avec `file:///chemin/vers/votre/depot`.
+
+**Les règles à connaître avant de publier** :
+
+- **Le module est à vous** : sa licence (`license` dans `module.json`), son mérite, et sa vente éventuelle vous appartiennent. La licence de Curiosa ne le concerne pas tant qu'il n'utilise que l'interface publique des modules.
+- **Vie privée** : un module qui collecte des données de visiteurs le déclare dans `privacy` ; le cœur l'ajoute à la page « Politique de confidentialité » du site. Pas de cookie ni de service tiers non essentiel sans consentement (voir [docs/PRIVACY.md](docs/PRIVACY.md)).
+- **Sécurité** : tout ce qui vient d'un visiteur est hostile (validation à l'entrée, échappement à la sortie), et un module ne demande que les permissions qu'il utilise.
+- **Simple avant tout** : Emma (sans bagage technique) ne voit que des réglages aux libellés clairs ; les réglages de technicien sont `advanced`.
+
+**La documentation, dans l'ordre** :
+
+| Pour… | Lire |
+|---|---|
+| apprendre pas à pas, avec un module d'exemple complet (un livre d'or modéré) | [docs/CREATE-A-MODULE.md](docs/CREATE-A-MODULE.md) |
+| chercher un champ, une clé, un type de bloc | [docs/MODULES.md](docs/MODULES.md) (référence exhaustive) |
+| lire un vrai module | [`modules-examples/guestbook`](modules-examples/guestbook), [`modules-examples/announcement-banner`](modules-examples/announcement-banner) |
+| comprendre comment le cœur et les modules se partagent le travail | [docs/PLATFORM.md](docs/PLATFORM.md) et [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
+| être listé dans le Catalogue | [catalogue/README.md](catalogue/README.md) |
+
+Un assistant IA peut écrire un module à partir de ces documents : donnez-lui `docs/CREATE-A-MODULE.md` et la liste de ce que vous voulez.
+
+## Toute la documentation
+
+| Document | Contenu |
+|---|---|
+| [docs/INSTALL.md](docs/INSTALL.md) | installer, mettre à jour, publier une release, logos, en-tête et menu, statistiques |
+| [docs/AGENT-INSTALL.md](docs/AGENT-INSTALL.md) | installation menée par un assistant IA |
+| [docs/CREATE-A-MODULE.md](docs/CREATE-A-MODULE.md) | créer un module, pas à pas |
+| [docs/MODULES.md](docs/MODULES.md) | référence complète des modules |
+| [docs/PLATFORM.md](docs/PLATFORM.md), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | le cœur, ses services, les choix de conception |
+| [docs/BACKUP.md](docs/BACKUP.md) | sauvegarde chiffrée, lisible sans le framework |
+| [docs/BACKGROUND.md](docs/BACKGROUND.md) | décrire le fond de page |
+| [docs/IMPORT-GRAV.md](docs/IMPORT-GRAV.md) | convertir un site Grav |
+| [docs/PRIVACY.md](docs/PRIVACY.md) | cookies, statistiques, politique de confidentialité |
+| [CHANGELOG.md](CHANGELOG.md) | ce qui change à chaque version |
+
 ## Pour les développeurs : structure du dépôt
 
 ```

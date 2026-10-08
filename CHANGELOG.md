@@ -8,6 +8,11 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 *Changements depuis la 0.1.3-rc.1.*
 
+### Documentation
+- **« Développer son propre module » dans le README** : un module complet en deux fichiers (testé), comment l'essayer en local, les règles à connaître (licence du module, vie privée, sécurité), et l'ordre de lecture de la documentation ; ainsi qu'un index de toute la documentation.
+- **Tutoriel des modules complété** : type de réglage `video`, nouvelle section « Vie privée, cookies et licence » (champ `privacy`, pas de cookie non essentiel, licence de son module), nouveaux hooks `news` et `adminBadge`, chemin d'installation locale mis à jour.
+- **Wiki GitHub** : la documentation est reflétée automatiquement sur le wiki à chaque release stable (le dépôt reste la source de vérité ; le wiki n'est qu'un miroir).
+
 ### Améliorations
 - **Barre flottante « Enregistrer / Annuler »** : dès qu'une modification est enregistrable (réglages, menu, page d'accueil, réglages d'une fonctionnalité, entrées), une petite barre apparaît en bas à droite de l'écran, sans avoir à défiler jusqu'au bouton. « Annuler » abandonne les modifications (après confirmation), « Enregistrer » les enregistre et la barre affiche brièvement « Enregistré ». **Ctrl/Cmd+S** enregistre aussi, et le navigateur prévient si l'on quitte la page avec des modifications non enregistrées.
 
