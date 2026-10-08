@@ -28,7 +28,6 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
       <div>
         <h1 className={ui.pageTitle}>✨ {advanced ? t("nav.catalogue") : t("nav.catalogue.title.simple")}</h1>
         <p className={ui.pageIntro}>{advanced ? t("catalogue.intro") : t("catalogue.intro.simple")}</p>
-        <p className="mt-2 inline-flex rounded-full bg-emerald-500/10 px-3 py-1 text-sm text-emerald-800">💚 {t("catalogue.free")}</p>
       </div>
       {advanced && (
         <div className="flex flex-wrap items-center gap-3 text-xs text-muted">
