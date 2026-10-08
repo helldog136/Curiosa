@@ -781,5 +781,10 @@
   "settings.privacyPageHelp": "This page is created by the site's core and stays shown at the bottom of every page: the mandatory text (cookies, statistics, your features' data, visitors' rights) is generated from what the site really does and cannot be removed. You can only add your own information to it.",
   "settings.privacyExtra": "Your additional information (optional)",
   "settings.privacyExtraHelp": "Simple Markdown. Shown after the mandatory text: data controller, retention period, how to exercise rights…",
-  "settings.privacyView": "View the public page"
+  "settings.privacyView": "View the public page",
+  "floating.dirty": "Unsaved changes",
+  "floating.discard": "Cancel",
+  "floating.discardConfirm": "Discard unsaved changes?",
+  "floating.saved": "Saved",
+  "floating.leave": "Some changes are not saved."
 }

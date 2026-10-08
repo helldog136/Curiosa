@@ -6,7 +6,10 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ## Prochaine version (non publiée)
 
-*Rien pour l'instant.*
+*Changements depuis la 0.1.3-rc.1.*
+
+### Améliorations
+- **Barre flottante « Enregistrer / Annuler »** : dès qu'une modification est enregistrable (réglages, menu, page d'accueil, réglages d'une fonctionnalité, entrées), une petite barre apparaît en bas à droite de l'écran, sans avoir à défiler jusqu'au bouton. « Annuler » abandonne les modifications (après confirmation), « Enregistrer » les enregistre et la barre affiche brièvement « Enregistré ». **Ctrl/Cmd+S** enregistre aussi, et le navigateur prévient si l'on quitte la page avec des modifications non enregistrées.
 
 ## 0.1.3-rc.1
 

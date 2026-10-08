@@ -781,5 +781,10 @@
   "settings.privacyPageHelp": "Cette page est créée par le cœur du site et reste affichée en bas de toutes les pages : le texte obligatoire (cookies, statistiques, données de vos fonctionnalités, droits des visiteurs) est généré d'après ce que le site fait vraiment et ne peut pas être retiré. Vous pouvez seulement y ajouter vos propres informations.",
   "settings.privacyExtra": "Vos informations complémentaires (facultatif)",
   "settings.privacyExtraHelp": "Markdown simple. Affiché après le texte obligatoire : responsable du traitement, durée de conservation, façon d'exercer ses droits…",
-  "settings.privacyView": "Voir la page publique"
+  "settings.privacyView": "Voir la page publique",
+  "floating.dirty": "Modifications non enregistrées",
+  "floating.discard": "Annuler",
+  "floating.discardConfirm": "Abandonner les modifications non enregistrées ?",
+  "floating.saved": "Enregistré",
+  "floating.leave": "Des modifications ne sont pas enregistrées."
 }

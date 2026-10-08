@@ -1,3 +1,4 @@
+import { floatingLabels } from "@/components/admin/floating";
 import { adminCtx } from "@/core/admin";
 import { getInstanceLabeler } from "@/core/modules/labels";
 import { getActiveInstances, sectionsOf } from "@/core/modules/registry";
@@ -37,7 +38,7 @@ export default async function HomeAdminPage() {
         <h1 className={ui.pageTitle}>{t("nav.home")}</h1>
         <p className={ui.pageIntro}>{advanced ? t("home.intro") : t("home.intro.simple")}</p>
       </div>
-      <ActionForm action={saveHome} submitLabel={t("action.save")}>
+      <ActionForm action={saveHome} floating={floatingLabels(t)} submitLabel={t("action.save")}>
         <HomeBuilder choices={choices} initial={initial}
           labels={{ empty: t("home.empty"), add: t("home.addBlock"), pick: t("home.pick"), up: t("home.up"), down: t("home.down"), remove: t("home.removeBlock"), size: t("home.size"), alone: t("home.isolated"), aloneHelp: t("home.isolatedHelp"), adjust: t("home.adjust"),
             sizes: Object.fromEntries(SECTION_SIZES.map((z) => [z, t(`home.size.${z}`)])), sizeHelp: t("home.sizeHelp") }} />

@@ -1,3 +1,4 @@
+import { floatingLabels } from "@/components/admin/floating";
 import { adminCtx } from "@/core/admin";
 import { localeName } from "@/core/i18n/locales";
 import { ActionForm } from "@/components/admin/ActionForm";
@@ -26,7 +27,7 @@ export default async function NavigationPage() {
         <h1 className={ui.pageTitle}>{t("nav.navigation")}</h1>
         <p className={ui.pageIntro}>{t("navigation.intro")}</p>
       </div>
-      <ActionForm action={saveNavigation} submitLabel={t("action.save")}>
+      <ActionForm action={saveNavigation} floating={floatingLabels(t)} submitLabel={t("action.save")}>
         <NavEditor
           pages={pages}
           locales={config.locales.map((l) => ({ code: l, name: localeName(l) }))}
