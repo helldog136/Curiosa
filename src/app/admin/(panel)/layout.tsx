@@ -1,6 +1,7 @@
 import { signOut } from "@/auth";
 import { adminCtx } from "@/core/admin";
 import { getAdminNav } from "@/core/modules/adminNav";
+import { readVersion } from "@/core/updates/service";
 import { MobileMenu } from "@/components/admin/MobileMenu";
 import { ui } from "@/components/admin/ui";
 import { setAdminMode } from "./mode/actions";
@@ -65,6 +66,8 @@ export default async function PanelLayout({ children }: { children: React.ReactN
           <p className="mb-2 truncate text-xs text-muted">{user.name} · {user.role}</p>
           <button className={ui.btn}>{t("nav.logout")}</button>
         </form>
+        {/* Toujours visible, pour tous les rôles et dans les deux modes : c'est le numéro à donner pour un signalement ou une mise à jour. */}
+        <p className="mt-6 px-3 pb-2 text-xs text-muted" data-testid="app-version">Curiosa v{readVersion()}</p>
       </MobileMenu>
       <main className="min-w-0 flex-1 p-6 md:p-10">
         <div className="mx-auto max-w-4xl">{children}</div>
