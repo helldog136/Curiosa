@@ -85,7 +85,7 @@ test("ModuleContext et SlotContext : chaque membre est documenté", () => {
 test("manifeste : chaque champ de module.json est documenté", () => {
   const body = bodyOf(manifestSrc, "export const manifestSchema");
   const fields = keysAt(body, 2);
-  for (const k of ["apiVersion", "id", "name", "version", "main", "icon", "type", "instances", "consumes", "provides", "mcp", "content", "page", "basePath", "sections", "settings", "starter", "onboarding", "defaultEnabled", "permissions"]) assert.ok(fields.includes(k), k);
+  for (const k of ["apiVersion", "id", "name", "version", "main", "icon", "type", "instances", "consumes", "provides", "mcp", "content", "page", "basePath", "sections", "settings", "onboarding", "defaultEnabled", "permissions"]) assert.ok(fields.includes(k), k);
   assert.deepEqual(missing(reference, fields), []);
 });
 

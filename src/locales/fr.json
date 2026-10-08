@@ -187,8 +187,6 @@
   "setup.identity.title": "Enchanté {name} ! Comment s'appelle votre site ?",
   "setup.identity.name": "Le nom de votre site",
   "setup.identity.tagline": "Une phrase pour le présenter (facultatif)",
-  "setup.content.title": "Que voulez-vous publier, {name} ?",
-  "setup.content.help": "Choisissez de quoi démarrer. Vous pourrez tout changer, renommer ou retirer ensuite.",
   "setup.links.title": "Où vous retrouver ailleurs ?",
   "setup.links.help": "Ajoutez vos réseaux (Twitch, YouTube…). Chacun peut aussi avoir une adresse courte, comme /twitch.",
   "setup.links.label": "Nom (ex. Twitch)",
@@ -876,5 +874,11 @@
   "catalogue.sources.added": "Dépôt ajouté : {count} module(s) trouvé(s).",
   "modules.error.sourceSubdir": "Indiquez l'adresse du dépôt, sans dossier : ses modules seront trouvés tout seuls.",
   "modules.error.sourceMax": "Trop de dépôts : retirez-en un avant d'en ajouter un autre.",
-  "modules.error.sourceEmpty": "Aucun module (fichier module.json) trouvé dans ce dépôt."
+  "modules.error.sourceEmpty": "Aucun module (fichier module.json) trouvé dans ce dépôt.",
+  "catalogue.suggested": "suggéré",
+  "setup.modules.title": "Voulez-vous ajouter des modules, {name} ?",
+  "setup.modules.help": "Un module ajoute une fonctionnalité à votre site (un blog, vos réseaux sociaux, des pages…). Voici ceux que nous suggérons pour démarrer.",
+  "setup.modules.skip": "Vous pouvez passer cette étape sans aucun risque : rien n'est obligatoire, et tous les modules (ceux-ci et bien d'autres) s'ajoutent ou se retirent plus tard depuis l'admin, dans Fonctionnalités → Ajouter.",
+  "setup.modules.skipButton": "Passer cette étape",
+  "setup.modules.none": "Aucun module à suggérer pour le moment : vous en ajouterez depuis l'admin quand vous voudrez."
 }

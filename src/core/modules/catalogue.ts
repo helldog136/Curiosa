@@ -23,6 +23,8 @@ export type CatalogueEntry = {
   icon?: string;
   author?: string;
   kind: "community" | "example" | "recognized";
+  /** Module suggéré par le Catalogue (liste du dépôt de modules, voir suggestedModuleIds) : mis en avant, proposé à l'assistant de première installation. */
+  suggested?: boolean;
   /** Les modules livrés se copient du serveur ; les reconnus se clonent depuis `repo`. */
   source: "bundled" | "recognized";
   repo?: string;
@@ -45,6 +47,18 @@ export function appRoot(): string {
   return process.env.CURIOSA_EXTRAS_DIR ?? path.join(process.cwd(), "extras");
 }
 
+/**
+ * Modules SUGGÉRÉS : une liste tenue par le dépôt de modules (`catalogue/suggested.json`, livrée avec l'instantané), jamais une case que cocherait un module :
+ * seul ce que le mainteneur de ce dépôt y inscrit l'est, et seulement s'il est livré avec cette version (jamais un dépôt personnel ou reconnu).
+ * Le cœur ne connaît aucun identifiant.
+ */
+export function suggestedModuleIds(root = appRoot()): Set<string> {
+  try {
+    const raw = JSON.parse(fs.readFileSync(path.join(root, "catalogue", "suggested.json"), "utf8"));
+    return new Set(Array.isArray(raw) ? raw.filter((id): id is string => typeof id === "string" && /^[a-z][a-z0-9-]{1,39}$/.test(id)) : []);
+  } catch { return new Set(); }
+}
+
 export function readBundledManifest(dir: string): ParsedManifest | null {
   try {
     const parsed = parseManifest(JSON.parse(fs.readFileSync(path.join(dir, "module.json"), "utf8")));
@@ -57,6 +71,7 @@ export function readBundledManifest(dir: string): ParsedManifest | null {
 /** Modules livrés avec le framework (manifeste valide uniquement). */
 export function listBundled(root = appRoot()): CatalogueEntry[] {
   const out: CatalogueEntry[] = [];
+  const suggested = suggestedModuleIds(root);
   for (const { dir, kind } of BUNDLED) {
     const base = path.join(root, dir);
     let names: string[] = [];
@@ -66,7 +81,7 @@ export function listBundled(root = appRoot()): CatalogueEntry[] {
       if (!fs.statSync(full).isDirectory()) continue;
       const m = readBundledManifest(full);
       if (!m || out.some((e) => e.id === m.id)) continue;
-      out.push({ id: m.id, name: m.name, description: m.description ?? "", version: m.version, icon: m.icon, author: m.author, kind, source: "bundled", dir: full, compatible: true });
+      out.push({ id: m.id, name: m.name, description: m.description ?? "", version: m.version, icon: m.icon, author: m.author, kind, suggested: suggested.has(m.id), source: "bundled", dir: full, compatible: true });
     }
   }
   return out;

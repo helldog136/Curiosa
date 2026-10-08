@@ -90,7 +90,7 @@ Validé à l'installation et au chargement (zod, `src/core/modules/manifest.ts`)
   "page": true, "basePath": "guestbook", // l'instance a une page publique, sur ce chemin proposé
   "permissions": ["slots", "sections", "routes", "storage", "filters", "pages", "topics", "overlay", "mcp", "admin", "mail"],
   "settings": [ /* … */ ], "sections": [ /* … */ ], "consumes": [ /* … */ ], "provides": [ /* … */ ], "mcp": [ /* … */ ],
-  "content": { /* … */ }, "starter": true, "onboarding": { /* … */ }, "defaultEnabled": true
+  "content": { /* … */ }, "onboarding": { /* … */ }, "defaultEnabled": true
 }
 ```
 
@@ -114,10 +114,9 @@ Validé à l'installation et au chargement (zod, `src/core/modules/manifest.ts`)
 | `consumes` / `provides` | Sujets que le module digère / expose (voir « sujets »). 10 au plus chacun. |
 | `mcp` | Actions proposées à l'API MCP (voir « API MCP »). 60 au plus. |
 | `content` | Module à contenu : le cœur fournit l'éditeur d'entrées et les pages (voir ci-dessous). |
-| `starter` | Proposé dans l'assistant de première installation (modules à contenu livrés avec le cœur). |
 | `onboarding` | Comment le module participe à la première installation (voir ci-dessous). |
 | `dataVersion` | Version de la **structure de vos données** (entier ≥ 1, défaut 1). À augmenter quand elle change, avec la migration correspondante (`migrations`). |
-| `defaultEnabled` | Modules livrés avec le cœur : activés dès le départ (défaut : oui). Sans effet pour un module installé, toujours installé désactivé. |
+| `defaultEnabled` | Modules livrés avec cette version : activés dès le départ (défaut : oui). Sans effet pour un module installé, toujours installé désactivé. |
 | `permissions` | Les capacités utilisées (voir ci-dessous). |
 
 ### Permissions
@@ -253,15 +252,16 @@ Avec `content`, le cœur fournit gratuitement l'éditeur d'entrées (multilingue
 entrée), le sitemap, le flux RSS, les liens `/go/…`, la section d'accueil `latest`, le sujet `core.entry` et quatre actions MCP
 (`list_entries`, `get_entry`, `create_draft`, `update_draft`). Un module « galerie », « FAQ » ou « événements » peut n'être qu'un `module.json`.
 
-### Première installation (`starter`, `onboarding`)
+### Première installation (`onboarding`)
 
-Le cœur ne connaît aucun module par son nom : l'assistant de première installation lit les manifestes. `starter: true` propose le
-module (cases à cocher « que voulez-vous publier ? ») ; `onboarding` règle sa participation :
+Le cœur ne connaît aucun module par son nom. L'assistant de première installation a une étape facultative « Voulez-vous ajouter des modules ? » (qu'on peut
+passer sans aucun risque) : elle propose les modules que le **Catalogue suggère**. Cette suggestion n'est **pas** un champ du manifeste (n'importe quel
+auteur pourrait se l'attribuer) : c'est une liste, `catalogue/suggested.json`, tenue par le dépôt de modules `curiosa-extras` ; seul un module livré avec la
+version et inscrit dans cette liste est proposé (et marqué « suggéré » dans le Catalogue). Les modules qui exigent un autre module ne sont pas proposés
+là : ils s'ajoutent depuis le Catalogue. `onboarding` règle ce qui se passe quand l'utilisateur coche le module :
 
 | Clé | Rôle |
 |---|---|
-| `always` | Créé d'office, sans question (ex. le bandeau d'accueil). |
-| `preselected` | Coché par défaut dans l'assistant. |
 | `home` | `{ section, count? }` : section placée sur l'accueil à la création (`count` = nombre d'entrées pour `latest`). |
 | `sample` | `{ title, summary?, body? }` : entrée d'exemple créée pour que le site ne soit pas vide. |
 | `collectsLinks` | L'assistant demande à l'utilisateur ses liens (Twitch, YouTube…) et les range dans ce module. |

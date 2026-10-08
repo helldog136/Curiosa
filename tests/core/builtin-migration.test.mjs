@@ -45,8 +45,8 @@ test("le cœur ne livre aucun module : sans instantané, l'assistant de premièr
   const keep = process.env.CURIOSA_EXTRAS_DIR;
   process.env.CURIOSA_EXTRAS_DIR = path.join(db.dir, "pas-d-extras");
   try {
-    const { starterManifests } = await import("@/core/modules/starter");
-    assert.deepEqual(starterManifests(), []);
+    const { setupModules } = await import("@/core/modules/starter");
+    assert.deepEqual(setupModules(), []);
     assert.deepEqual(await R.listModuleRows(), []);
   } finally { process.env.CURIOSA_EXTRAS_DIR = keep; }
 });

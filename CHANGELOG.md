@@ -8,6 +8,10 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 *Changements depuis la 0.1.3-rc.3.*
 
+### Nouveautés
+- **Une étape « Modules » dans l'assistant de première installation.** L'assistant ne propose plus de modules précis : il présente les modules que le **Catalogue suggère** (blog, réseaux sociaux, pages pour l'instant), décochés, avec la mention qu'on peut **passer cette étape sans aucun risque** (un bouton « Passer cette étape » la saute) : tout s'ajoute ou se retire plus tard depuis Fonctionnalités → Ajouter. Rien n'est plus créé d'office : un site neuf n'a que ce qu'on a coché.
+- **« Suggéré » dans le Catalogue.** Les modules suggérés portent une pastille. La suggestion est une **liste tenue par le dépôt de modules** (`catalogue/suggested.json`), pas un champ que pourrait s'attribuer n'importe quel module : un auteur ne peut pas faire passer son module pour suggéré. Les anciens champs `starter`, `onboarding.always` et `onboarding.preselected` du manifeste disparaissent.
+
 ### Améliorations
 - **Plus de mention « livré avec le framework »** dans la page Modules et dans le Catalogue : elle n'apprenait rien à l'utilisateur. Tous les modules se présentent de la même façon ; un module installé depuis un dépôt personnel garde son avertissement « non vérifié ».
 

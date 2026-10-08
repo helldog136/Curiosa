@@ -14,7 +14,6 @@
   "license": "MIT",
   "icon": "🏁",
   "onboarding": {
-    "always": true,
     "home": {
       "section": "hero"
     }

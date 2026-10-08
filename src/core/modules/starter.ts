@@ -4,14 +4,14 @@ import { copyBundled } from "./installer";
 import type { ParsedManifest } from "./manifest";
 
 /**
- * Modules de départ de l'assistant de première installation. Le cœur n'en connaît aucun : il lit les manifestes des modules livrés avec cette
- * version (instantané de `curiosa-extras` dans `extras/`) et ne retient que ceux qui se déclarent « de départ ». Sans instantané, la liste est vide
- * et l'assistant crée simplement un site sans contenu : le cœur ne dépend d'aucun module.
+ * Modules proposés par l'assistant de première installation : ceux que le Catalogue SUGGÈRE (liste du dépôt de modules, pas un drapeau du module lui-même),
+ * sauf ceux qui exigent d'abord un autre module (ils s'ajoutent ensuite depuis le Catalogue, qui sait résoudre ces dépendances).
+ * Cette étape est facultative : sans instantané ni liste, elle est vide et le site se crée quand même. Le cœur ne dépend d'aucun module.
  */
-export function starterManifests(): ParsedManifest[] {
+export function setupModules(): ParsedManifest[] {
   return listBundled().flatMap((e) => {
-    const m = e.dir ? readBundledManifest(e.dir) : null;
-    return m && (m.starter || m.onboarding?.always) ? [m] : [];
+    const m = e.dir && e.suggested && e.kind !== "example" ? readBundledManifest(e.dir) : null;
+    return m && e.compatible && (m.requires ?? []).length === 0 ? [m] : [];
   });
 }
 

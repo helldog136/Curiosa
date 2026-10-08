@@ -53,7 +53,8 @@ const q = (env, code) => execFileSync(process.execPath, ["-e", code], { cwd: app
     const res = await fetch(`${s.base}/admin/setup`);
     const html = await res.text();
     check(res.status === 200, "installation neuve : l'assistant répond (200)");
-    for (const id of ["blog", "links", "codes", "pages"]) check(html.includes(`value="${id}"`), `installation neuve : le module de départ « ${id} » est proposé (lu dans extras/)`);
+    for (const id of ["blog", "links", "pages"]) check(html.includes(`value="${id}"`), `installation neuve : le module suggéré « ${id} » est proposé (lu dans extras/)`);
+    check(html.includes("sans aucun risque") || html.includes("without any risk"), "installation neuve : l'étape des modules dit qu'on peut la passer sans risque");
     check(!/Application error|Internal Server Error/.test(html), "installation neuve : pas d'erreur côté serveur");
   } finally { s.stop(); }
 }

@@ -187,8 +187,6 @@
   "setup.identity.title": "Nice to meet you, {name}! What's your site called?",
   "setup.identity.name": "Your site's name",
   "setup.identity.tagline": "A sentence to introduce it (optional)",
-  "setup.content.title": "What do you want to publish, {name}?",
-  "setup.content.help": "Pick a starting point. You can change, rename or remove everything later.",
   "setup.links.title": "Where else can people find you?",
   "setup.links.help": "Add your networks (Twitch, YouTube…). Each can also get a short address, like /twitch.",
   "setup.links.label": "Name (e.g. Twitch)",
@@ -876,5 +874,11 @@
   "catalogue.sources.added": "Repository added: {count} module(s) found.",
   "modules.error.sourceSubdir": "Give the repository address without a folder: its modules are found automatically.",
   "modules.error.sourceMax": "Too many repositories: remove one before adding another.",
-  "modules.error.sourceEmpty": "No module (module.json file) found in this repository."
+  "modules.error.sourceEmpty": "No module (module.json file) found in this repository.",
+  "catalogue.suggested": "suggested",
+  "setup.modules.title": "Would you like to add modules, {name}?",
+  "setup.modules.help": "A module adds a feature to your site (a blog, your social networks, pages…). Here are the ones we suggest to get started.",
+  "setup.modules.skip": "You can skip this step without any risk: nothing is required, and every module (these and many more) can be added or removed later from the admin, under Features → Add.",
+  "setup.modules.skipButton": "Skip this step",
+  "setup.modules.none": "No module to suggest for now: you can add some from the admin whenever you like."
 }

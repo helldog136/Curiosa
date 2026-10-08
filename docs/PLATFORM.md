@@ -124,9 +124,9 @@ Règles, **à partir de la première version publiée** :
 
 ## Ce que le cœur ne fait pas
 
-- Il ne cite **aucun module par son identifiant**. L'assistant de première installation lit les manifestes (`starter`,
-  `onboarding.always`, `onboarding.home`, `onboarding.sample`, `onboarding.collectsLinks`) au lieu de connaître « blog » ou « hero ».
-  Seul `core/modules/registry.ts` importe la liste des modules livrés.
+- Il ne cite **aucun module par son identifiant**. L'assistant de première installation propose les modules que suggère
+  le Catalogue (`catalogue/suggested.json`, tenu par le dépôt de modules) et lit leurs manifestes (`onboarding.home`, `onboarding.sample`,
+  `onboarding.collectsLinks`) au lieu de connaître « blog » ou « hero ».
 - Il ne contient aucune fonctionnalité de sponsor, de partenaire, d'overlay… Les cartes de sponsors, les fiches de partenaires, le
   labyrinthe sont des modules ; le cœur ne fournit que de quoi les faire (QR, stockage, sujets, MCP, formulaires d'admin).
 

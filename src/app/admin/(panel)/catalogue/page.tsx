@@ -63,7 +63,7 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
                   </div>
                 </div>
                 <div className="mt-auto flex flex-wrap items-center justify-between gap-3">
-                  <span className={ui.chipOk}>✔ {t("catalogue.verified")}</span>
+                  <span className="flex flex-wrap items-center gap-2"><span className={ui.chipOk}>✔ {t("catalogue.verified")}</span>{e.suggested && <span className={ui.chipOk}>⭐ {t("catalogue.suggested")}</span>}</span>
                   {installed.has(e.id) ? (
                     <a href="/admin/modules" className="text-sm font-medium text-accent hover:underline">{t("catalogue.installed")}</a>
                   ) : !e.compatible ? (
