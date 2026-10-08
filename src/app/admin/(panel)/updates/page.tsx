@@ -2,6 +2,7 @@ import { adminCtx } from "@/core/admin";
 import { checkForUpdate, getInstallInfo, getUpdateCheck, isAutoUpdateEnabled, readUpdateLog, readUpdateState } from "@/core/updates/service";
 import { ActionForm } from "@/components/admin/ActionForm";
 import { AutoRefresh } from "@/components/admin/AutoRefresh";
+import { Markdown } from "@/components/site/Markdown";
 import { Checkbox } from "@/components/admin/Field";
 import { ui } from "@/components/admin/ui";
 import { applyUpdate, checkNow, saveAutoUpdate, saveChannel } from "./actions";
@@ -38,6 +39,12 @@ export default async function UpdatesPage() {
             <p className={ui.help}>{t("updates.checkedAt")} {when(check.checkedAt)}{check.error && <> — <span className="text-red-600">{t("updates.unreachable")}</span></>}</p>
             {check.prerelease && <p className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">{t("updates.rcWarning")}</p>}
             {check.level === "major" && <p className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">{t("updates.majorWarning")}</p>}
+            {check.available && check.notes && (
+              <details open className="rounded-xl border border-line p-3" data-testid="update-notes">
+                <summary className="cursor-pointer text-sm font-semibold">{t("updates.whatsNew", { version: check.latest ?? "" })}</summary>
+                <div className="mt-2 text-sm"><Markdown text={check.notes} /></div>
+              </details>
+            )}
             <p className={ui.help}>{t(`updates.restart.${info.restart}`)}</p>
           </>
         )}

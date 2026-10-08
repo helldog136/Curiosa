@@ -49,6 +49,10 @@ jobs:
       - name: Empaqueter
         if: steps.v.outputs.publish == 'true'
         run: node scripts/release-pack.mjs "${{ steps.v.outputs.version }}" dist
+      - name: Notes de version
+        if: steps.v.outputs.publish == 'true'
+        # Le texte de la release est la section du CHANGELOG.md de cette version (ce qui change depuis la précédente) ; à défaut, un renvoi vers le fichier.
+        run: node scripts/changelog.mjs "${{ steps.v.outputs.version }}" > "$RUNNER_TEMP/notes.md" || echo "Voir le CHANGELOG.md du dépôt." > "$RUNNER_TEMP/notes.md"
       - name: Publier
         if: steps.v.outputs.publish == 'true'
         env:
@@ -57,4 +61,4 @@ jobs:
           flags="--target $GITHUB_SHA"
           [[ "${{ steps.v.outputs.pre }}" == "true" ]] && flags="$flags --prerelease"
           [[ "$GITHUB_REF" == refs/tags/* ]] && flags="--prerelease"
-          gh release create "${{ steps.v.outputs.tag }}" dist/* --title "${{ steps.v.outputs.tag }}" --generate-notes $flags
+          gh release create "${{ steps.v.outputs.tag }}" dist/* --title "${{ steps.v.outputs.tag }}" --notes-file "$RUNNER_TEMP/notes.md" $flags

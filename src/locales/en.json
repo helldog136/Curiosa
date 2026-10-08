@@ -750,5 +750,6 @@
   "settings.header.button": "Button (e.g. \"Join\")",
   "settings.header.label": "Text",
   "settings.header.href": "Address",
-  "settings.header.linksHelp": "A link or button only appears when both its text and address are filled. The address is a site page (/contact), an https://… link or mailto:…"
+  "settings.header.linksHelp": "A link or button only appears when both its text and address are filled. The address is a site page (/contact), an https://… link or mailto:…",
+  "updates.whatsNew": "What {version} changes"
 }

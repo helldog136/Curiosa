@@ -750,5 +750,6 @@
   "settings.header.button": "Bouton (ex. « Devenir membre »)",
   "settings.header.label": "Texte",
   "settings.header.href": "Adresse",
-  "settings.header.linksHelp": "Un lien ou un bouton n'apparaît que si son texte et son adresse sont remplis. L'adresse est une page du site (/contact), un lien https://… ou mailto:…"
+  "settings.header.linksHelp": "Un lien ou un bouton n'apparaît que si son texte et son adresse sont remplis. L'adresse est une page du site (/contact), un lien https://… ou mailto:…",
+  "updates.whatsNew": "Ce que change la {version}"
 }

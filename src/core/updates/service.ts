@@ -4,7 +4,7 @@ import path from "node:path";
 import { DATA_DIR } from "@/core/config";
 import { audit } from "@/core/permissions";
 import { getSetting, setSetting } from "@/core/settings";
-import { classify, compareVersions, isPrerelease, pickLatestRelease, TAG_RC_RE, type UpdateChannel, type UpdateLevel } from "./versions";
+import { classify, compareVersions, isPrerelease, pickLatestRelease, releaseNotes, TAG_RC_RE, type UpdateChannel, type UpdateLevel } from "./versions";
 
 /**
  * MISES À JOUR DU FRAMEWORK.
@@ -30,7 +30,7 @@ export type InstallInfo = {
   restart: "command" | "supervised" | "manual";
 };
 
-export type UpdateCheck = { channel: UpdateChannel; prerelease: boolean; latest: string | null; level: UpdateLevel | null; available: boolean; checkedAt: number | null; error: string | null };
+export type UpdateCheck = { channel: UpdateChannel; prerelease: boolean; latest: string | null; level: UpdateLevel | null; available: boolean; checkedAt: number | null; error: string | null; /** Ce que la version proposée change (texte Markdown du CHANGELOG), vide si inconnu. */ notes: string };
 /** Lit un JSON https (liste des releases). */
 export type JsonFetcher = (url: string) => Promise<unknown>;
 
@@ -61,7 +61,7 @@ export function getInstallInfo(appDir = process.cwd()): InstallInfo {
   return { ...base, mode: "release", canUpdate: true };
 }
 
-const KEYS = { channel: "updates.channel", auto: "updates.auto", latest: "updates.latest", at: "updates.checkedAt", error: "updates.error" } as const;
+const KEYS = { channel: "updates.channel", auto: "updates.auto", latest: "updates.latest", at: "updates.checkedAt", error: "updates.error", notes: "updates.notes" } as const;
 
 /** Canal de mise à jour : « stable » par défaut ; « rc » (release candidates) se choisit en mode avancé, à ses risques et périls. */
 export async function getUpdateChannel(): Promise<UpdateChannel> {
@@ -87,7 +87,7 @@ export async function getUpdateCheck(appDir = process.cwd()): Promise<UpdateChec
   if (latest && channel === "stable" && isPrerelease(latest)) latest = null;
   const current = readVersion(appDir);
   const level = latest ? classify(current, latest) : null;
-  return { channel, prerelease: !!latest && isPrerelease(latest), latest, level, available: level !== null, checkedAt: (await getSetting<number>(KEYS.at)) ?? null, error: (await getSetting<string>(KEYS.error)) || null };
+  return { channel, prerelease: !!latest && isPrerelease(latest), latest, level, available: level !== null, checkedAt: (await getSetting<number>(KEYS.at)) ?? null, error: (await getSetting<string>(KEYS.error)) || null, notes: latest ? ((await getSetting<string>(KEYS.notes)) || "") : "" };
 }
 
 /** Interroge la liste des releases du dépôt (rien n'est téléchargé) et mémorise la plus haute version stable qui a son archive. */
@@ -99,6 +99,7 @@ export async function checkForUpdate(opts: { appDir?: string; fetchJson?: JsonFe
     const releases = await fetchJson(`https://api.github.com/repos/${info.repo}/releases?per_page=30`);
     const latest = pickLatestRelease(releases, assetName, await getUpdateChannel()) ?? ((await getSetting<string>(KEYS.latest)) || null);
     await setSetting(KEYS.latest, latest ?? "");
+    if (latest) await setSetting(KEYS.notes, releaseNotes(releases, latest));
     await setSetting(KEYS.error, "");
   } catch {
     await setSetting(KEYS.error, "unreachable");

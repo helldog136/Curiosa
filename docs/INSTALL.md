@@ -81,6 +81,8 @@ Le script peut aussi être lancé à la main (`node scripts/update.mjs v1.2.3`),
 
 ## Publier une release (mainteneurs)
 
+**Avant chaque publication (stable ou release candidate), rédigez dans `CHANGELOG.md` ce qui change depuis la version précédente publiée** : une section « ## X.Y.Z » (pour une RC, « ## X.Y.Z-rc.N ») dont le contenu est pour les utilisateurs, pas pour les développeurs. Ce texte devient celui de la release GitHub et celui de la page *Mises à jour* de l'admin ; un test échoue si la version de `package.json` n'a pas sa section. Entre deux publications, les changements s'accumulent sous « Prochaine version (non publiée) ».
+
 Le cycle suit deux branches :
 
 - **`dev`** : le travail courant. Chaque push publie un **snapshot** (pré-version `dev-<date>-<commit>`), jamais proposé aux instances. Pour publier une **release candidate**, mettez la version de `package.json` à `X.Y.Z-rc.N` (supérieure à la version des instances à mettre à jour) et poussez sur `dev` : la CI publie `vX.Y.Z-rc.N` (une seule fois ; montez le numéro pour en publier une autre). Poser l'étiquette `vX.Y.Z-rc.N` marche aussi. Les rc ne sont proposées qu'aux instances qui ont choisi le canal « rc ».
