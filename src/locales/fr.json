@@ -715,5 +715,17 @@
   "site.video.play": "Lecture",
   "site.video.pause": "Pause",
   "site.video.soundOn": "Activer le son",
-  "site.video.soundOff": "Couper le son"
+  "site.video.soundOff": "Couper le son",
+  "settings.logos": "Logos",
+  "settings.logosHelp": "Envoyez ce que vous avez : rien n'est obligatoire, le site fait au mieux avec les images reçues.",
+  "settings.logoWide": "Logo horizontal",
+  "settings.logoWideHelp": "Symbole et nom côte à côte. Affiché en haut du site, à la place du nom écrit.",
+  "settings.logoSquare": "Icône (logo carré)",
+  "settings.logoSquareHelp": "Le symbole seul. Utilisé en petit (téléphone, pastilles) et à la place du logo horizontal s'il manque.",
+  "settings.logoShare": "Image de partage",
+  "settings.logoShareHelp": "Affichée quand on partage le site (réseaux, messageries). Idéal : 1200 × 630 px. Sans image, le site prend votre icône.",
+  "settings.logosDark": "Versions pour fond sombre (facultatif)",
+  "settings.logosDarkHelp": "Si votre site a un fond sombre et que votre logo est foncé, envoyez ici une version claire. Le site choisit seul la bonne selon la couleur de fond.",
+  "settings.logoWideDark": "Logo horizontal (fond sombre)",
+  "settings.logoSquareDark": "Icône (fond sombre)"
 }

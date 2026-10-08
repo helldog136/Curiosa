@@ -127,3 +127,17 @@ secret de session) et `.env`.
 
 - **Statistiques anonymes** (Réglages → Apparence… « Compter les visites ») : des compteurs par jour affichés sur le tableau de bord (visiteurs, pages les plus lues, provenances). Jamais d'adresse IP, de cookie ni d'identifiant conservé : un visiteur est reconnu seulement dans la journée par une empreinte à sel quotidien détruite le lendemain. Les robots, les visiteurs qui refusent le suivi (Do Not Track, Global Privacy Control) et l'équipe connectée à l'admin ne sont pas comptés. Aucun service externe.
 - **Pastilles de nouveautés** : le navigateur du visiteur garde la date de sa dernière visite (cookies `curiosa_seen` et `curiosa_since`, sans donnée personnelle) ; le menu signale ce qui est nouveau depuis. Voir `news` dans [MODULES.md](MODULES.md).
+
+## Logos
+
+Réglages → Identité → **Logos** : envoyez ce que vous avez, rien n'est obligatoire.
+
+| Image | Où elle sert | Si elle manque |
+|---|---|---|
+| **Logo horizontal** (symbole + nom) | en haut du site, à la place du nom écrit | l'icône et le nom écrit |
+| **Icône** (logo carré) | petit format (téléphone, pastilles), bandeau d'accueil | le logo horizontal, ou rien |
+| **Favicon** (onglet du navigateur) | onglet, écran d'accueil du téléphone | l'icône, sinon une icône fabriquée avec les couleurs du site |
+| **Image de partage** (1200 × 630 px idéal) | aperçu quand on partage le site | l'icône, puis le logo horizontal |
+| **Versions pour fond sombre** | choisies seules si le fond du site est sombre | la version claire |
+
+Formats acceptés : png, jpg, webp, gif (le SVG est refusé : il peut contenir du code). Le kit presse propose tous les logos envoyés.

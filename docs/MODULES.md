@@ -515,7 +515,7 @@ Deux familles : les **services** du cœur (génériques, voir [PLATFORM.md](PLAT
 **Stockage** : privé à l'instance (une instance ne voit jamais celui d'une autre), en collections libres de documents JSON, sans
 requête (filtrez en code, d'où le `limit`). Il est sauvegardé par le cœur (JSON) et supprimé avec l'instance ou la désinstallation du module.
 
-`ModuleBrand` : `name`, `tagline`, `about`, `logo`, `contactEmail`, `colors` (`[{ key, name, hex, role }]`), `font` (`{ key, name, stack }`),
+`ModuleBrand` : `name`, `tagline`, `about`, `logo` (le visuel principal : l'icône, sinon le logo horizontal), `logos` (`[{ kind: "wide" | "square" | "wideDark" | "squareDark", src }]` : le jeu complet), `contactEmail`, `colors` (`[{ key, name, hex, role }]`), `font` (`{ key, name, stack }`),
 `defaultLocale`, `locales`. Lecture seule : un module qui *montre* l'identité (kit presse) la lit au lieu de la copier.
 
 `EntrySummary` : `id`, `title`, `cover`, `icon`, `tags`, `fields` (valeurs des champs personnalisés ; les champs `ref` contiennent

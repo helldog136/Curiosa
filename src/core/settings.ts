@@ -1,3 +1,4 @@
+import { LOGO_KEYS, type LogoSet } from "./logos";
 import { cache } from "react";
 import { isBackgroundImage, isPreset, type BackgroundPreset } from "./background";
 import { isGlowLevel, normalizeTuning, type GlowLevel, type GlowTuning } from "./glow";
@@ -74,7 +75,10 @@ export type SiteConfig = {
   tagline: string;
   /** Présentation longue du site/de la personne (Markdown) — identité, réglée dans l'admin. */
   about: string;
+  /** Icône / logo carré (le « logo » historique). Le jeu complet est dans `logos`. */
   logo: string | null;
+  /** Jeu de logos : horizontal, carré, versions pour fond sombre, favicon, image de partage (voir core/logos.ts). */
+  logos: LogoSet;
   /** Image de l'onglet du navigateur ; vide : l'icône générée (voir core/favicon.ts). */
   favicon: string | null;
   footerText: string;
@@ -110,6 +114,11 @@ export const getSiteConfig = cache(async (locale?: string): Promise<SiteConfig> 
     tagline: await str("site.tagline"),
     about: await str("site.about"),
     logo: (await getSetting<string>("site.logo")) ?? null,
+    logos: {
+      square: (await getSetting<string>(LOGO_KEYS.square)) || null, wide: (await getSetting<string>(LOGO_KEYS.wide)) || null,
+      squareDark: (await getSetting<string>(LOGO_KEYS.squareDark)) || null, wideDark: (await getSetting<string>(LOGO_KEYS.wideDark)) || null,
+      favicon: (await getSetting<string>(LOGO_KEYS.favicon)) || null, share: (await getSetting<string>(LOGO_KEYS.share)) || null,
+    },
     favicon: (await getSetting<string>("site.favicon")) || null,
     footerText: await str("footer.text"),
     contactEmail: (await getSetting<string>("site.contactEmail")) ?? "",

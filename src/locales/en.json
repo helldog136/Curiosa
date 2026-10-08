@@ -715,5 +715,17 @@
   "site.video.play": "Play",
   "site.video.pause": "Pause",
   "site.video.soundOn": "Sound on",
-  "site.video.soundOff": "Sound off"
+  "site.video.soundOff": "Sound off",
+  "settings.logos": "Logos",
+  "settings.logosHelp": "Upload what you have: nothing is required, the site does its best with the images it receives.",
+  "settings.logoWide": "Horizontal logo",
+  "settings.logoWideHelp": "Symbol and name side by side. Shown at the top of the site instead of the written name.",
+  "settings.logoSquare": "Icon (square logo)",
+  "settings.logoSquareHelp": "The symbol alone. Used small (phone, badges) and in place of the horizontal logo when it is missing.",
+  "settings.logoShare": "Share image",
+  "settings.logoShareHelp": "Shown when the site is shared (social networks, messengers). Ideal: 1200 × 630 px. Without one, the site uses your icon.",
+  "settings.logosDark": "Versions for dark backgrounds (optional)",
+  "settings.logosDarkHelp": "If your site has a dark background and your logo is dark, upload a light version here. The site picks the right one from the background color.",
+  "settings.logoWideDark": "Horizontal logo (dark background)",
+  "settings.logoSquareDark": "Icon (dark background)"
 }

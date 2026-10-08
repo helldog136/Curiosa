@@ -22,11 +22,11 @@ test("favicon : couleurs invalides → valeurs sûres (jamais de contenu libre d
 test("favicon : l'image envoyée l'emporte, sinon /icon ; câblé dans le site, l'admin et les réglages", () => {
   assert.equal(faviconUrl("/uploads/123e4567-e89b-12d3-a456-426614174000.png"), "/uploads/123e4567-e89b-12d3-a456-426614174000.png");
   assert.equal(faviconUrl(null), "/icon");
-  assert.match(fs.readFileSync("src/app/(site)/layout.tsx", "utf8"), /icons: \{ icon: faviconUrl\(config\.favicon\)/);
+  assert.match(fs.readFileSync("src/app/(site)/layout.tsx", "utf8"), /icons: \{ icon: faviconUrl\(pickLogo\(config\.logos, "favicon", false\)\)/);
   assert.match(fs.readFileSync("src/app/admin/layout.tsx", "utf8"), /icons: \{ icon: faviconUrl\(/);
   assert.match(fs.readFileSync("src/app/admin/(panel)/settings/page.tsx", "utf8"), /name="favicon"/);
   const actions = fs.readFileSync("src/app/admin/(panel)/settings/actions.ts", "utf8");
-  assert.match(actions, /favicon\.startsWith\("\/uploads\/"\) \|\| \/\^https:/, "uploads ou https seulement (jamais http, javascript:…)");
+  assert.match(actions, /v\.startsWith\("\/uploads\/"\) \|\| \/\^https:/, "uploads ou https seulement (jamais http, javascript:…)");
   for (const f of ["src/app/icon/route.ts", "src/app/favicon.ico/route.ts"]) assert.ok(fs.existsSync(f), f);
   const cfg = fs.readFileSync("src/core/config.ts", "utf8");
   assert.ok(cfg.includes('"icon"') && cfg.includes('"favicon.ico"'), "chemins réservés : aucune collection ne peut les prendre");

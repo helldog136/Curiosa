@@ -37,8 +37,8 @@ export const manifest: ParsedManifest = {
 };
 
 export const locales: BuiltinModule["locales"] = {
-  en: { title: "Press kit", intro: "Everything you need to talk about {name}: who we are, our logo, colors and font. Feel free to use them to present us.", about: "About", short: "Short description (copy)", long: "Long description (copy)", visuals: "Logo", logo: "Logo", colors: "Colors", colorsHelp: "Click a code to copy it.", typography: "Typography", contact: "Contact", languages: "Available in" },
-  fr: { title: "Kit presse", intro: "Tout ce qu'il faut pour parler de {name} : qui nous sommes, notre logo, nos couleurs et notre police. Utilisez-les librement pour nous présenter.", about: "Qui sommes-nous", short: "Description courte (à copier)", long: "Description longue (à copier)", visuals: "Logo", logo: "Logo", colors: "Couleurs", colorsHelp: "Cliquez sur un code pour le copier.", typography: "Typographie", contact: "Contact", languages: "Disponible en" },
+  en: { title: "Press kit", intro: "Everything you need to talk about {name}: who we are, our logo, colors and font. Feel free to use them to present us.", about: "About", short: "Short description (copy)", long: "Long description (copy)", visuals: "Logo", logo: "Logo", "logo.wide": "Horizontal logo", "logo.square": "Icon", "logo.wideDark": "Horizontal logo (dark background)", "logo.squareDark": "Icon (dark background)",  colors: "Colors", colorsHelp: "Click a code to copy it.", typography: "Typography", contact: "Contact", languages: "Available in" },
+  fr: { title: "Kit presse", intro: "Tout ce qu'il faut pour parler de {name} : qui nous sommes, notre logo, nos couleurs et notre police. Utilisez-les librement pour nous présenter.", about: "Qui sommes-nous", short: "Description courte (à copier)", long: "Description longue (à copier)", visuals: "Logo", logo: "Logo", "logo.wide": "Logo horizontal", "logo.square": "Icône", "logo.wideDark": "Logo horizontal (fond sombre)", "logo.squareDark": "Icône (fond sombre)", colors: "Couleurs", colorsHelp: "Cliquez sur un code pour le copier.", typography: "Typographie", contact: "Contact", languages: "Disponible en" },
 };
 
 /** Texte brut d'un Markdown simple, pour les descriptions à copier. */
@@ -57,7 +57,8 @@ export const definition = defineModule({
     if (brand.about) copies.push({ type: "copy", label: t("long"), text: plain(brand.about) });
     blocks.push(...copies);
 
-    if (brand.logo) blocks.push({ type: "heading", text: t("visuals") }, { type: "downloads", items: [{ src: brand.logo, label: t("logo") }] });
+    const logos = brand.logos?.length ? brand.logos.map((l) => ({ src: l.src, label: t(`logo.${l.kind}`) })) : brand.logo ? [{ src: brand.logo, label: t("logo") }] : [];
+    if (logos.length) blocks.push({ type: "heading", text: t("visuals") }, { type: "downloads", items: logos });
 
     blocks.push(
       { type: "heading", text: t("colors") },

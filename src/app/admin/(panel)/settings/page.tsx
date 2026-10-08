@@ -47,10 +47,25 @@ export default async function SettingsPage() {
               {advanced && <TextField name={`footer.text__${l}`} label={t("settings.footerText")} defaultValue={String(values["footer.text"]?.[l] ?? "")} />}
             </fieldset>
           ))}
-          <ImageField name="logo" label={t("settings.logo")} defaultValue={logo} uploadLabel={t("action.upload")} />
+          <fieldset className={`${ui.card} space-y-4`}>
+            <legend className="px-2 text-sm font-medium">{t("settings.logos")}</legend>
+            <p className={ui.help}>{t("settings.logosHelp")}</p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1"><ImageField name="logoWide" label={t("settings.logoWide")} defaultValue={config.logos.wide} uploadLabel={t("action.upload")} /><p className={ui.help}>{t("settings.logoWideHelp")}</p></div>
+              <div className="space-y-1"><ImageField name="logo" label={t("settings.logoSquare")} defaultValue={logo} uploadLabel={t("action.upload")} /><p className={ui.help}>{t("settings.logoSquareHelp")}</p></div>
+              <div className="space-y-1"><ImageField name="favicon" label={t("settings.favicon")} defaultValue={config.favicon} uploadLabel={t("action.upload")} /><p className={ui.help}>{t("settings.faviconHelp")}</p></div>
+              <div className="space-y-1"><ImageField name="logoShare" label={t("settings.logoShare")} defaultValue={config.logos.share} uploadLabel={t("action.upload")} /><p className={ui.help}>{t("settings.logoShareHelp")}</p></div>
+            </div>
+            <details className="rounded-xl border border-line p-3" open={!!(config.logos.wideDark || config.logos.squareDark)}>
+              <summary className="cursor-pointer text-sm font-medium">{t("settings.logosDark")}</summary>
+              <p className={`${ui.help} mt-2`}>{t("settings.logosDarkHelp")}</p>
+              <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                <ImageField name="logoWideDark" label={t("settings.logoWideDark")} defaultValue={config.logos.wideDark} uploadLabel={t("action.upload")} />
+                <ImageField name="logoDark" label={t("settings.logoSquareDark")} defaultValue={config.logos.squareDark} uploadLabel={t("action.upload")} />
+              </div>
+            </details>
+          </fieldset>
           <Checkbox name="statsEnabled" label={t("settings.stats")} help={t("settings.statsHelp")} defaultChecked={config.statsEnabled} />
-          <ImageField name="favicon" label={t("settings.favicon")} defaultValue={config.favicon} uploadLabel={t("action.upload")} />
-          <p className={ui.help}>{t("settings.faviconHelp")}</p>
           {advanced && <TextField name="contactEmail" type="email" label={t("settings.contactEmail")} defaultValue={config.contactEmail} />}
         </section>
 

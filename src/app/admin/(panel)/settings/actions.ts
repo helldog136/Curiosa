@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { adminCtx } from "@/core/admin";
 import { isHexColor } from "@/core/color";
 import { isBackgroundImage, isPreset, parseBackground } from "@/core/background";
+import { LOGO_KEYS } from "@/core/logos";
 import { sanitizeSvg } from "@/core/svg";
 import { isGlowLevel, normalizeTuning } from "@/core/glow";
 import { isKnownLocale } from "@/core/i18n/locales";
@@ -27,10 +28,13 @@ export async function saveSettings(_prev: ActionState, formData: FormData): Prom
   const accent = String(formData.get("accent") ?? "");
   if (!isHexColor(background) || !isHexColor(accent)) return { error: t("error.generic") };
   const font = String(formData.get("font"));
-  const logo = String(formData.get("logo") ?? "").trim();
-  if (logo && !(logo.startsWith("/uploads/") || /^https?:\/\//.test(logo))) return { error: t("error.badUrl") };
-  const favicon = String(formData.get("favicon") ?? "").trim();
-  if (favicon && !(favicon.startsWith("/uploads/") || /^https:\/\//.test(favicon))) return { error: t("error.badUrl") };
+  // Jeu de logos : chaque image est optionnelle ; une adresse invalide n'enregistre rien.
+  const logoValues: Record<string, string> = {};
+  for (const [field, key] of [["logo", "square"], ["logoWide", "wide"], ["logoDark", "squareDark"], ["logoWideDark", "wideDark"], ["favicon", "favicon"], ["logoShare", "share"]] as const) {
+    const v = String(formData.get(field) ?? "").trim();
+    if (v && !(v.startsWith("/uploads/") || /^https:\/\//.test(v))) return { error: t("error.badUrl") };
+    logoValues[key] = v;
+  }
 
   await setSetting("i18n.default", defaultLocale);
   await setSetting("i18n.enabled", locales);
@@ -49,11 +53,12 @@ export async function saveSettings(_prev: ActionState, formData: FormData): Prom
       else await deleteSetting(key, locale);
     }
   }
-  if (logo) await setSetting("site.logo", logo);
-  else await deleteSetting("site.logo");
+  for (const [key, value] of Object.entries(logoValues)) {
+    const settingKey = LOGO_KEYS[key as keyof typeof LOGO_KEYS];
+    if (value) await setSetting(settingKey, value);
+    else await deleteSetting(settingKey);
+  }
   await setSetting("stats.enabled", formData.get("statsEnabled") === "on");
-  if (favicon) await setSetting("site.favicon", favicon);
-  else await deleteSetting("site.favicon");
   if (adv) await setSetting("site.contactEmail", String(formData.get("contactEmail") ?? "").trim());
   // Fond de page : préréglage (tous modes), description personnalisée (avancé), image de fond. Une description invalide n'enregistre rien.
   const bgPreset = String(formData.get("bgPreset") ?? "none");

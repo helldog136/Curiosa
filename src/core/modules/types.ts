@@ -145,7 +145,10 @@ export type ModuleBrand = {
   name: string;
   tagline: string;
   about: string;
+  /** Le visuel de marque principal (symbole, sinon logo horizontal). */
   logo: string | null;
+  /** Tous les logos du jeu : `wide` (horizontal), `square` (icône), `wideDark` et `squareDark` (pour fond sombre). */
+  logos: { kind: "wide" | "square" | "wideDark" | "squareDark"; src: string }[];
   contactEmail: string;
   colors: { key: string; name: string; hex: string; role: string }[];
   font: { key: string; name: string; stack: string };
