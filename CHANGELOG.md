@@ -4,6 +4,13 @@ Ce que chaque version change pour vous. Chaque version (stable ou release candid
 
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
+## Prochaine version (non publiée)
+
+*Changements depuis la 0.1.3-rc.3.*
+
+### Améliorations
+- **Plus de mention « livré avec le framework »** dans la page Modules et dans le Catalogue : elle n'apprenait rien à l'utilisateur. Tous les modules se présentent de la même façon ; un module installé depuis un dépôt personnel garde son avertissement « non vérifié ».
+
 ## 0.1.3-rc.3
 
 *Release candidate : changements depuis la 0.1.3-rc.2. À essayer avant la version stable, à vos risques.*

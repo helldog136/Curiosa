@@ -108,7 +108,7 @@ export default async function ModulesPage({ searchParams }: { searchParams: Prom
                 <div className="min-w-0">
                   <p className="font-medium">
                     {mod?.manifest.icon ?? "🧩"} {mod ? localized(mod.manifest.name, locale, config.defaultLocale) : row.id}{" "}
-                    {advanced && <span className="text-xs text-muted">v{row.version} · {row.source === "bundled" ? t("modules.bundled") : "git"}</span>}
+                    {advanced && <span className="text-xs text-muted">v{row.version}{row.source === "git" ? " · git" : ""}</span>}
                     <span className={`ml-2 rounded px-2 py-0.5 text-xs ${moduleOrigin(row, market) === "custom" ? "bg-amber-500/20" : "bg-line"}`}>{t(`catalogue.origin.${moduleOrigin(row, market)}`)}</span>
                   </p>
                   <p className="text-sm text-muted">{mod ? localized(mod.manifest.description, locale, config.defaultLocale) : t("modules.broken")}</p>
