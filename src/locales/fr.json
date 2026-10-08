@@ -274,7 +274,7 @@
   "editor.quote": "Citation",
   "instances.address": "Adresse de la page",
   "instances.addSimple": "Ajouter : {name}",
-  "redirects.introSimple": "Un raccourci permet de taper votre-site/twitch et d'arriver sur votre Twitch. Choisissez un mot court et la destination.",
+  "redirects.introSimple": "Un raccourci est une adresse courte de votre site qui envoie vos visiteurs ailleurs. Par exemple, « {site}/twitch » peut mener à votre chaîne Twitch : pratique à dire à voix haute, à mettre dans une bio ou sous une vidéo, et si votre lien change un jour, vous ne le modifiez qu'ici.",
   "modules.introSimple": "Voici ce que fait votre site. Allumez ou éteignez chaque fonctionnalité, et réglez-la en un clic.",
   "theme.night": "Nuit",
   "theme.ocean": "Océan",
@@ -697,5 +697,15 @@
   "dashboard.visits.last30": "sur 30 jours",
   "dashboard.visitsChart": "Visiteurs par jour sur 30 jours",
   "dashboard.topPages": "Pages les plus lues",
-  "dashboard.topSources": "D'où viennent les visiteurs"
+  "dashboard.topSources": "D'où viennent les visiteurs",
+  "nav.myContent": "Mon contenu",
+  "nav.mySite": "Mon site",
+  "nav.features": "Fonctionnalités",
+  "nav.admin": "Administration",
+  "nav.navigation.simple": "Menu du site",
+  "nav.settings.simple": "Apparence et réglages",
+  "nav.redirects.simple": "Raccourcis de liens",
+  "redirects.examples": "Exemples : /twitch → votre chaîne, /boutique → votre boutique en ligne, /don → votre page de soutien.",
+  "redirects.howTo": "Comment faire : choisissez un mot court (le « chemin »), puis collez l'adresse complète de destination, qui commence par https://.",
+  "redirects.add.simple": "Ajouter un raccourci"
 }

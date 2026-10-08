@@ -1,5 +1,6 @@
 import { signOut } from "@/auth";
 import { adminCtx } from "@/core/admin";
+import { NavLink } from "@/components/admin/NavLink";
 import { getAdminNav } from "@/core/modules/adminNav";
 import { readVersion } from "@/core/updates/service";
 import { MobileMenu } from "@/components/admin/MobileMenu";
@@ -15,45 +16,50 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   const nav = await getAdminNav(locale, config.defaultLocale);
   const theme = parseAdminTheme((await cookies()).get(ADMIN_THEME_COOKIE)?.value);
   const canManage = user.role !== "editor";
+  const items = nav.flatMap((g) => g.items.map((i) => ({ ...i, type: g.type })));
+  const contentItems = items.filter((i) => i.type === "content");
+  const otherItems = items.filter((i) => i.type !== "content");
 
-  const link = "block rounded-xl px-3 py-2 text-[15px] transition-colors hover:bg-accent/10 hover:text-accent";
   const group = "mb-1 mt-6 px-3 text-xs font-semibold uppercase tracking-wider text-muted";
 
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
       <MobileMenu menuLabel={t("nav.menu")} brand={<a href="/admin" className="flex flex-col px-3 leading-tight"><span className="text-lg font-bold">{config.name}</span><span className="text-xs text-muted">{t("nav.adminTagline")}</span></a>}>
         <nav aria-label="Admin">
-          <a href="/admin" className={`${link} mt-4`}>{t("nav.dashboard")}</a>
+          <div className="mt-4"><NavLink href="/admin" exact>{t("nav.dashboard")}</NavLink></div>
 
-          {nav.map((g) => (
-            <div key={g.type}>
-              <p className={group}>{t(`type.${g.type}`)}</p>
-              {g.items.map((m) => (
-                <a key={m.id} href={m.content ? `/admin/entries?c=${m.key}` : `/admin/instances/${m.id}`} className={link}>{m.icon} {m.name}</a>
-              ))}
+          {contentItems.length > 0 && (
+            <div>
+              <p className={group}>{t("nav.myContent")}</p>
+              {contentItems.map((m) => <NavLink key={m.id} href={`/admin/entries?c=${m.key}`}>{m.icon} {m.name}</NavLink>)}
             </div>
-          ))}
+          )}
 
-          <p className={group}>{t("nav.site")}</p>
-          <a href="/admin/redirects" className={link}>{t("nav.redirects")}</a>
-          {canManage && (
+          <p className={group}>{t("nav.mySite")}</p>
+          {canManage && <NavLink href="/admin/home">{t("nav.home")}</NavLink>}
+          {canManage && <NavLink href="/admin/navigation">{advanced ? t("nav.navigation") : t("nav.navigation.simple")}</NavLink>}
+          {canManage && <NavLink href="/admin/settings">{advanced ? t("nav.settings") : t("nav.settings.simple")}</NavLink>}
+          <NavLink href="/admin/redirects">{advanced ? t("nav.redirects") : t("nav.redirects.simple")}</NavLink>
+
+          <p className={group}>{t("nav.features")}</p>
+          {otherItems.map((m) => <NavLink key={m.id} href={m.content ? `/admin/entries?c=${m.key}` : `/admin/instances/${m.id}`}>{m.icon} {m.name}</NavLink>)}
+          {canManage && <NavLink href="/admin/modules">{advanced ? t("nav.modules") : t("nav.modules.simple")}</NavLink>}
+          {canManage && <NavLink href="/admin/catalogue">{advanced ? t("nav.catalogue") : t("nav.catalogue.simple")}</NavLink>}
+
+          {(canManage || user.role === "owner") && (
             <>
-              <a href="/admin/home" className={link}>{t("nav.home")}</a>
-              <a href="/admin/navigation" className={link}>{t("nav.navigation")}</a>
-              <a href="/admin/settings" className={link}>{t("nav.settings")}</a>
-              <a href="/admin/modules" className={link}>🧩 {advanced ? t("nav.modules") : t("nav.modules.simple")}</a>
-              <a href="/admin/catalogue" className={link}>🛒 {advanced ? t("nav.catalogue") : t("nav.catalogue.simple")}</a>
-              {advanced && user.role === "owner" && <a href="/admin/mcp" className={link}>🤖 {t("nav.mcp")}</a>}
-              {user.role === "owner" && <a href="/admin/backup" className={link}>💾 {t("nav.backup")}</a>}
-              {user.role === "owner" && <a href="/admin/audit" className={link}>📜 {t("nav.audit")}</a>}
-              {user.role === "owner" && <a href="/admin/updates" className={link}>⬆️ {t("nav.updates")}</a>}
+              <p className={group}>{t("nav.admin")}</p>
+              {canManage && <NavLink href="/admin/users">{t("nav.users")}</NavLink>}
+              {user.role === "owner" && <NavLink href="/admin/backup">{t("nav.backup")}</NavLink>}
+              {user.role === "owner" && <NavLink href="/admin/updates">{t("nav.updates")}</NavLink>}
+              {advanced && user.role === "owner" && <NavLink href="/admin/audit">{t("nav.audit")}</NavLink>}
+              {advanced && user.role === "owner" && <NavLink href="/admin/mcp">{t("nav.mcp")}</NavLink>}
             </>
           )}
 
           <p className={group}>{t("nav.account")}</p>
-          {canManage && <a href="/admin/users" className={link}>{t("nav.users")}</a>}
-          <a href="/admin/account" className={link}>{t("nav.myAccount")}</a>
-          <a href="/" className={link} target="_blank" rel="noopener">{t("nav.viewSite")} ↗</a>
+          <NavLink href="/admin/account">{t("nav.myAccount")}</NavLink>
+          <NavLink href="/" external>{t("nav.viewSite")} ↗</NavLink>
         </nav>
         <form action={setAdminMode.bind(null, !advanced)} className="mt-4 px-3">
           <p className="mb-1 text-xs text-muted">{advanced ? t("mode.advanced") : t("mode.simple")}</p>

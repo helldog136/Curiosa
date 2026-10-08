@@ -274,7 +274,7 @@
   "editor.quote": "Quote",
   "instances.address": "Page address",
   "instances.addSimple": "Add: {name}",
-  "redirects.introSimple": "A shortcut lets people type your-site/twitch and land on your Twitch. Pick a short word and where it should lead.",
+  "redirects.introSimple": "A shortcut is a short address on your site that sends visitors somewhere else. For example, \"{site}/twitch\" can lead to your Twitch channel: easy to say out loud, to put in a bio or under a video, and if your link ever changes you only update it here.",
   "modules.introSimple": "This is what your site does. Switch each feature on or off, and adjust it in one click.",
   "theme.night": "Night",
   "theme.ocean": "Ocean",
@@ -697,5 +697,15 @@
   "dashboard.visits.last30": "last 30 days",
   "dashboard.visitsChart": "Visitors per day over 30 days",
   "dashboard.topPages": "Most read pages",
-  "dashboard.topSources": "Where visitors come from"
+  "dashboard.topSources": "Where visitors come from",
+  "nav.myContent": "My content",
+  "nav.mySite": "My site",
+  "nav.features": "Features",
+  "nav.admin": "Administration",
+  "nav.navigation.simple": "Site menu",
+  "nav.settings.simple": "Appearance & settings",
+  "nav.redirects.simple": "Link shortcuts",
+  "redirects.examples": "Examples: /twitch → your channel, /shop → your online shop, /donate → your support page.",
+  "redirects.howTo": "How: pick a short word (the \"path\"), then paste the full destination address, which starts with https://.",
+  "redirects.add.simple": "Add a shortcut"
 }

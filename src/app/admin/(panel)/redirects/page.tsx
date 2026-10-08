@@ -5,6 +5,7 @@ import { ActionForm } from "@/components/admin/ActionForm";
 import { Checkbox, Select, TextField } from "@/components/admin/Field";
 import { ConfirmButton } from "@/components/admin/ConfirmButton";
 import { ui } from "@/components/admin/ui";
+import { siteUrl } from "@/core/config";
 import { createRedirect, deleteRedirect, toggleRedirect } from "./actions";
 
 export default async function RedirectsPage() {
@@ -25,8 +26,14 @@ export default async function RedirectsPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold">{t("nav.redirects")}</h1>
-        <p className="mt-1 text-sm text-muted">{advanced ? t("redirects.intro") : t("redirects.introSimple")}</p>
+        <h1 className={ui.pageTitle}>{advanced ? t("nav.redirects") : t("nav.redirects.simple")}</h1>
+        <p className={ui.pageIntro}>{advanced ? t("redirects.intro") : t("redirects.introSimple", { site: new URL(siteUrl).host })}</p>
+        {!advanced && (
+          <div className={`${ui.card} mt-4 space-y-1 text-[15px] leading-6`}>
+            <p>{t("redirects.examples")}</p>
+            <p className="text-muted">{t("redirects.howTo")}</p>
+          </div>
+        )}
       </div>
 
       <table className="w-full">
@@ -51,7 +58,7 @@ export default async function RedirectsPage() {
       </table>
 
       <section className={`${ui.card} space-y-4`}>
-        <h2 className="text-lg font-semibold">{t("redirects.add")}</h2>
+        <h2 className="text-lg font-semibold">{advanced ? t("redirects.add") : t("redirects.add.simple")}</h2>
         <ActionForm action={createRedirect} submitLabel={t("action.create")} reset>
           <div className="grid gap-4 sm:grid-cols-2">
             <TextField name="path" label={t("redirects.path")} placeholder="twitch" required help={t("redirects.pathHelp")} />
