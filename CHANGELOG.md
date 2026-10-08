@@ -4,6 +4,13 @@ Ce que chaque version change pour vous. Chaque version (stable ou release candid
 
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
+## Prochaine version (non publiée)
+
+*Changements depuis la 0.1.4.*
+
+### Documentation
+- **docs/MESURES.md** refait sur la 0.1.4 publiée : installation par la machine ≈ 16 s (≈ 26 s avant), 517 Mo une fois installé (880 Mo avant), archive de 122 Mo (257 Mo avant), 224 Mo de mémoire au repos, 878 tests automatiques. La migration de la base marche aussi sans accès à Internet.
+
 ## 0.1.4
 
 *Changements depuis la 0.1.3.*
