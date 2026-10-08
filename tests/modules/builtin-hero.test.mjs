@@ -84,3 +84,16 @@ test("hero : vidéo de fond — seulement un fichier envoyé sur le site ; son =
   assert.equal(b.video, undefined);
   assert.equal("videoSound" in b, false);
 });
+
+test("hero : ligne d'accroche et bouton — recopiés ; le lien du bouton doit être une page du site ou https/mailto, sinon pas de bouton", async () => {
+  let [b] = await hero.definition.sections.hero(fakeCtx({ settings: { eyebrow: "L'association", buttonLabel: "Devenir membre", buttonUrl: "/membres", showLogo: false }, site: { name: "S", tagline: "", logo: "" } }));
+  assert.equal(b.eyebrow, "L'association");
+  assert.deepEqual(b.button, { label: "Devenir membre", href: "/membres" });
+  for (const bad of ["javascript:alert(1)", "//evil.example", "ftp://x", ""]) {
+    [b] = await hero.definition.sections.hero(fakeCtx({ settings: { buttonLabel: "Go", buttonUrl: bad, showLogo: false }, site: { name: "S", tagline: "", logo: "" } }));
+    assert.equal(b.button, undefined, bad);
+  }
+  [b] = await hero.definition.sections.hero(fakeCtx({ settings: { buttonLabel: "", buttonUrl: "/x", showLogo: false }, site: { name: "S", tagline: "", logo: "" } }));
+  assert.equal(b.button, undefined, "sans libellé, pas de bouton");
+  assert.equal("eyebrow" in b, false);
+});

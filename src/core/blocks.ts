@@ -25,7 +25,7 @@ export type Block =
   | { type: "banner"; text: string; href?: string; tone?: "info" | "success" | "warning" }
   | { type: "links"; items: { label: string; href: string; icon?: string }[] }
   | { type: "entries"; instance: string; limit?: number; title?: string; link?: boolean; /** "random" : `limit` entrées tirées au hasard (au lieu des plus récentes). */ pick?: "random" }
-  | { type: "hero"; title: string; text?: string; image?: string; video?: string; videoPoster?: string; videoSound?: boolean }
+  | { type: "hero"; title: string; text?: string; image?: string; /** Petite ligne au-dessus du titre. */ eyebrow?: string; /** Bouton d'appel à l'action (libellé + page du site ou adresse https). */ button?: { label: string; href: string }; video?: string; videoPoster?: string; videoSound?: boolean }
   /**
    * Morceau de page (module « Blocs de page ») : `media` (texte + images), `tabs` (onglets), `stats` (chiffres clés), `cta` (appel à l'action) ou `video` (texte sur une vidéo).
    * `items` : onglets ou chiffres (`title` = libellé ou nombre, `heading` = titre du texte ou légende, `text` = texte Markdown, `image`). `bg` : image de fond du bloc.

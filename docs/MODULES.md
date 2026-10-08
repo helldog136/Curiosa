@@ -533,7 +533,7 @@ Un module renvoie des **blocs déclaratifs** ; le cœur se charge du rendu, des 
 | `swatches` | `items: [{ name, hex, role? }]` — pastilles de couleur avec code copiable |
 | `downloads` | `items: [{ src, label, detail? }]` — images à télécharger, avec aperçu |
 | `copy` | `text`, `label?` — texte à copier d'un clic |
-| `hero` | `title`, `text?`, `image?`, `video?` (fichier envoyé sur le site), `videoPoster?`, `videoSound?` |
+| `hero` | `title`, `text?`, `image?`, `eyebrow?`, `button?` (`label`, `href`), `video?` (fichier envoyé sur le site), `videoPoster?`, `videoSound?` |
 | `panel` | `kind` (`media`, `tabs`, `stats`, `cta`, `video`), `eyebrow?`, `title?`, `text?` (Markdown), `button?` (`label`, `href`), `images?` (jusqu'à 3), `imageSide?`, `tone?` (`plain`, `surface`, `accent`), `bg?` (`src`, `size`, `position`, `veil`), `items?` (`title`, `heading?`, `text?`, `image?`), `video?` — un morceau de page ; voir le module livré « Blocs de page » |
 | `banner` | `text`, `href?`, `tone?` (`info` · `success` · `warning`) |
 | `links` | `items: [{ label, href, icon? }]` — les adresses non sûres deviennent `#` |

@@ -20,6 +20,9 @@ export const manifest: ParsedManifest = {
   settings: [
     { key: "title", type: "text", translatable: true, label: { en: "Title", fr: "Titre" }, help: { en: "Empty = the site name.", fr: "Vide = le nom du site." } },
     { key: "text", type: "textarea", translatable: true, label: { en: "Intro", fr: "Introduction" }, help: { en: "Empty = the site tagline.", fr: "Vide = l'accroche du site." } },
+    { key: "eyebrow", type: "text", translatable: true, label: { en: "Small line above the title", fr: "Petite ligne au-dessus du titre" } },
+    { key: "buttonLabel", type: "text", translatable: true, label: { en: "Button text", fr: "Texte du bouton" }, help: { en: "Empty = no button.", fr: "Vide = pas de bouton." } },
+    { key: "buttonUrl", type: "text", label: { en: "Button link", fr: "Lien du bouton" }, help: { en: "A page of the site (/contact) or an https://… address.", fr: "Une page du site (/contact) ou une adresse https://…" } },
     { key: "video", type: "video", label: { en: "Background video", fr: "Vidéo de fond" }, help: { en: "MP4 or WebM, 50 MB at most. It only plays while it is on screen. Keep it short and light (a few seconds in a loop).", fr: "MP4 ou WebM, 50 Mo au plus. Elle ne joue que lorsqu'elle est à l'écran. Préférez une vidéo courte et légère (quelques secondes en boucle)." } },
     { key: "poster", type: "image", label: { en: "Image shown before playing", fr: "Image affichée avant la lecture" }, help: { en: "Also shown if the video cannot play.", fr: "Aussi affichée si la vidéo ne peut pas se lancer." } },
     { key: "videoSound", type: "boolean", default: false, label: { en: "Let visitors turn the sound on", fr: "Permettre aux visiteurs d'activer le son" }, help: { en: "The video always starts muted (browsers require it); a button lets visitors unmute it.", fr: "La vidéo démarre toujours sans son (les navigateurs l'imposent) ; un bouton permet de l'activer." } },
@@ -36,6 +39,9 @@ export const definition = defineModule({
       // Vidéo : seulement une vidéo envoyée sur ce site, jamais d'adresse externe.
       const video = ctx.setting("video") ?? "";
       const poster = ctx.setting("poster") ?? "";
+      const label = (ctx.setting("buttonLabel") ?? "").trim();
+      const href = (ctx.setting("buttonUrl") ?? "").trim();
+      const button = label && /^(\/(?!\/)|https?:\/\/|mailto:)/.test(href) ? { label, href } : undefined;
       const withVideo = /^\/uploads\/[0-9a-f-]{36}\.(mp4|webm)$/.test(video)
         ? { video, videoSound: ctx.setting<boolean>("videoSound") === true, ...(/^(https:\/\/|\/uploads\/)/.test(poster) ? { videoPoster: poster } : {}) }
         : {};
@@ -45,6 +51,8 @@ export const definition = defineModule({
           title: ctx.setting("title") || site.name,
           text: ctx.setting("text") || site.tagline || undefined,
           image: ctx.setting<boolean>("showLogo") && site.logo ? site.logo : undefined,
+          ...(ctx.setting("eyebrow") ? { eyebrow: ctx.setting("eyebrow") } : {}),
+          ...(button ? { button } : {}),
           ...withVideo,
         },
       ];
