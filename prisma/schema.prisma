@@ -213,3 +213,26 @@ model ApiToken {
   lastUsedAt DateTime?
   revokedAt  DateTime?
 }
+
+/// Statistiques de visite ANONYMES, agrégées par jour : jamais d'adresse IP, de cookie ni d'identifiant stocké.
+/// kind : "site" (totaux, key vide) · "page" (key = chemin) · "ref" (key = nom d'hôte de la provenance).
+model VisitDaily {
+  day      String
+  kind     String
+  key      String
+  views    Int    @default(0)
+  visitors Int    @default(0)
+
+  @@id([day, kind, key])
+}
+
+/// Sert uniquement à ne compter qu'une fois un visiteur par jour : empreinte salée (sel renouvelé chaque jour, jamais conservé),
+/// supprimée dès que le jour est passé. Impossible de remonter à une personne.
+model VisitSeen {
+  day  String
+  hash String
+  kind String
+  key  String
+
+  @@id([day, hash, kind, key])
+}

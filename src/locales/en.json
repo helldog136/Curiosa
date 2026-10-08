@@ -686,5 +686,16 @@
   "sort.newest": "Newest to oldest",
   "sort.oldest": "Oldest to newest",
   "sort.title": "By title (A → Z)",
-  "sort.manual": "Order added"
+  "sort.manual": "Order added",
+  "settings.stats": "Count visits (anonymous)",
+  "settings.statsHelp": "Daily counters shown on the dashboard: no IP address, cookie or identifier is ever kept. Visitors who refuse tracking (Do Not Track) are not counted.",
+  "site.news": "New since your last visit",
+  "dashboard.visits": "Visits",
+  "dashboard.visitsPrivacy": "Anonymous counting: no personal data is kept.",
+  "dashboard.visits.today": "visitors today",
+  "dashboard.visits.last7": "last 7 days",
+  "dashboard.visits.last30": "last 30 days",
+  "dashboard.visitsChart": "Visitors per day over 30 days",
+  "dashboard.topPages": "Most read pages",
+  "dashboard.topSources": "Where visitors come from"
 }

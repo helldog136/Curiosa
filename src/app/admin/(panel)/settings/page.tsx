@@ -48,6 +48,7 @@ export default async function SettingsPage() {
             </fieldset>
           ))}
           <ImageField name="logo" label={t("settings.logo")} defaultValue={logo} uploadLabel={t("action.upload")} />
+          <Checkbox name="statsEnabled" label={t("settings.stats")} help={t("settings.statsHelp")} defaultChecked={config.statsEnabled} />
           <ImageField name="favicon" label={t("settings.favicon")} defaultValue={config.favicon} uploadLabel={t("action.upload")} />
           <p className={ui.help}>{t("settings.faviconHelp")}</p>
           {advanced && <TextField name="contactEmail" type="email" label={t("settings.contactEmail")} defaultValue={config.contactEmail} />}

@@ -86,6 +86,8 @@ export type SiteConfig = {
   glow: { level: GlowLevel; custom: GlowTuning };
   /** Fond de page : préréglage, description personnalisée (JSON, voir core/background.ts) et image de fond éventuelle. */
   bg: { preset: BackgroundPreset; custom: string; image: string | null; svg: { markup: string; fit: "cover" | "contain" | "tile"; align: "left" | "center" | "right"; tile: number } };
+  /** Compter les visites, anonymement (voir core/stats.ts). */
+  statsEnabled: boolean;
   nav: NavItem[];
   homeSections: HomeSection[];
   setupCompleted: boolean;
@@ -126,6 +128,7 @@ export const getSiteConfig = cache(async (locale?: string): Promise<SiteConfig> 
         tile: Math.min(1200, Math.max(20, Math.round(Number(all["theme.bgSvgTile"]?.[""]) || 200))),
       },
     },
+    statsEnabled: (await getSetting<boolean>("stats.enabled")) !== false,
     nav: (await getSetting<NavItem[]>("nav.custom")) ?? [],
     homeSections: (await getSetting<HomeSection[]>("home.sections")) ?? DEFAULT_HOME_SECTIONS,
     setupCompleted: (await getSetting<boolean>("setup.completed")) ?? false,

@@ -217,6 +217,11 @@ export type ModuleContext = {
   setting<T = string>(key: string): T | undefined;
   /** Le thème réglé dans l'admin (couleurs dérivées, police) : exactement ce que le site utilise. Pour que l'apparence d'un module suive le site. */
   theme: Theme;
+  /**
+   * Visite en cours. `lastVisit` = date du passage précédent du visiteur, tenue par le cœur dans un cookie (le 1er janvier 1970 s'il est inconnu).
+   * Sert à savoir ce qui est nouveau pour lui, cf. `news`.
+   */
+  visit: { lastVisit: Date };
   /** Traduction depuis locales/<langue>.json du module (repli : langue par défaut puis clé). */
   t(key: string, vars?: Record<string, string | number>): string;
   api: ModuleApi;
@@ -252,6 +257,12 @@ export type ModuleDefinition = {
   slots?: Partial<Record<Slot, (ctx: SlotContext) => Block[] | null | undefined | Promise<Block[] | null | undefined>>>;
   /** Morceaux placés sur la page d'accueil. `options` = réglages du placement. Les modules à contenu ont déjà la section "latest". */
   sections?: Record<string, (ctx: ModuleContext, options: Record<string, unknown>) => Block[] | null | undefined | Promise<Block[] | null | undefined>>;
+  /**
+   * Y a-t-il du nouveau dans cette instance depuis la dernière visite (`ctx.visit.lastVisit`) ? Le cœur affiche alors une pastille sur son lien
+   * du menu. Absent = règle du cœur : des entrées publiées depuis cette date. Libre au module de compter autre chose (un message, un score…).
+   * Un visiteur inconnu (1970) n'a rien manqué : le cœur n'affiche alors aucune pastille.
+   */
+  news?: (ctx: ModuleContext) => boolean | Promise<boolean>;
   /** Page publique de l'instance, montée sur son chemin. `segments` = ce qui suit le chemin. Absent = rendu par défaut du cœur (liste + entrées) pour les modules à contenu. */
   page?: (ctx: ModuleContext, request: { segments: string[] }) => PageResult | null | Promise<PageResult | null>;
   /** Overlay : rendu de la page /overlays/<clé de l'instance> (modules de type "overlay"). */

@@ -2,7 +2,8 @@ import type { Block, Slot } from "../blocks";
 import { pickName } from "../instances";
 import { getSiteConfig } from "../settings";
 import { buildContext } from "./context";
-import { getActiveInstances, sectionsOf } from "./registry";
+import { currentVisit, hasNewEntries } from "../visit";
+import { getActiveInstances, sectionsOf, type ActiveInstance } from "./registry";
 import type { PageResult, SlotContext } from "./types";
 
 type SlotExtras = Pick<SlotContext, "page" | "entry">;
@@ -79,5 +80,21 @@ export async function runPage(instanceKey: string, segments: string[], locale: s
   } catch (error) {
     console.error(`[modules] ${instanceKey} failed rendering its page:`, error);
     return { notFound: true, blocks: [] };
+  }
+}
+
+/**
+ * Pastille de nouveauté d'une instance : la règle du module (`news`) si elle en a une, sinon celle du cœur (entrées publiées depuis la dernière visite).
+ * Jamais de pastille pour un visiteur inconnu, et une erreur du module n'en affiche pas non plus.
+ */
+export async function instanceHasNews({ instance, mod }: ActiveInstance, locale: string): Promise<boolean> {
+  const { lastVisit, isFirstVisit } = await currentVisit().catch(() => ({ lastVisit: new Date(0), isFirstVisit: true }));
+  if (isFirstVisit) return false;
+  try {
+    if (mod.def.news) return Boolean(await mod.def.news(await buildContext(mod, instance, locale, lastVisit)));
+    return await hasNewEntries(instance.id, lastVisit);
+  } catch (error) {
+    console.error(`[modules] ${instance.key} failed on news:`, error);
+    return false;
   }
 }

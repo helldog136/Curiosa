@@ -36,7 +36,7 @@ export async function useTestDb() {
   process.env.DATA_DIR = dir;
   process.env.CURIOSA_ALLOW_LOCAL_MODULES = "1";
   const { prisma } = await import("@/core/db");
-  const tables = ["ApiToken", "AuditLog", "ModuleRecord", "EntryTranslation", "Entry", "InstanceTranslation", "ModuleInstance", "Redirect", "Setting", "Module", "User"];
+  const tables = ["VisitSeen", "VisitDaily", "ApiToken", "AuditLog", "ModuleRecord", "EntryTranslation", "Entry", "InstanceTranslation", "ModuleInstance", "Redirect", "Setting", "Module", "User"];
   return {
     dir,
     prisma,

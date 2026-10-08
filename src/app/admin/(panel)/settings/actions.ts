@@ -51,6 +51,7 @@ export async function saveSettings(_prev: ActionState, formData: FormData): Prom
   }
   if (logo) await setSetting("site.logo", logo);
   else await deleteSetting("site.logo");
+  await setSetting("stats.enabled", formData.get("statsEnabled") === "on");
   if (favicon) await setSetting("site.favicon", favicon);
   else await deleteSetting("site.favicon");
   if (adv) await setSetting("site.contactEmail", String(formData.get("contactEmail") ?? "").trim());

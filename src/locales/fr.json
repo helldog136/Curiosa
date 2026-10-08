@@ -686,5 +686,16 @@
   "sort.newest": "Du plus récent au plus ancien",
   "sort.oldest": "Du plus ancien au plus récent",
   "sort.title": "Par titre (A → Z)",
-  "sort.manual": "Ordre d'ajout"
+  "sort.manual": "Ordre d'ajout",
+  "settings.stats": "Compter les visites (anonyme)",
+  "settings.statsHelp": "Compteurs par jour affichés sur le tableau de bord : jamais d'adresse IP, de cookie ni d'identifiant conservé. Les visiteurs qui refusent le suivi (Do Not Track) ne sont pas comptés.",
+  "site.news": "Nouveautés depuis votre dernière visite",
+  "dashboard.visits": "Visites",
+  "dashboard.visitsPrivacy": "Comptage anonyme : aucune donnée personnelle conservée.",
+  "dashboard.visits.today": "visiteurs aujourd'hui",
+  "dashboard.visits.last7": "sur 7 jours",
+  "dashboard.visits.last30": "sur 30 jours",
+  "dashboard.visitsChart": "Visiteurs par jour sur 30 jours",
+  "dashboard.topPages": "Pages les plus lues",
+  "dashboard.topSources": "D'où viennent les visiteurs"
 }

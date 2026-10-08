@@ -15,6 +15,7 @@ import { prisma } from "@/core/db";
 import { Blocks, HeadTags } from "@/components/site/Blocks";
 import { Footer } from "@/components/site/Footer";
 import { Header } from "@/components/site/Header";
+import { VisitBeacon } from "@/components/site/VisitBeacon";
 import "../globals.css";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -65,6 +66,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
           {children}
         </main>
         <Footer config={localized} locale={locale} />
+        {config.statsEnabled && <VisitBeacon />}
       </body>
     </html>
   );
