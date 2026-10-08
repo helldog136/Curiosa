@@ -159,7 +159,7 @@ export default {
 (`/guestbook/page/2`), comme le fait l'exemple. Le résultat : `title`, `description`, `blocks`, `notFound`. Permission : `pages`.
 
 Les **blocs** les plus utiles (liste complète dans la référence, « Blocs ») : `markdown` (sans HTML brut), `html` (brut — **vous échappez**), `heading`, `banner`, `links`,
-`hero`, `entries`, `embed`, `form`, `table`, `copy`, `swatches`, `downloads`, `head`, `adminForm`. Pour afficher du texte de visiteur avec une mise en forme, le plus sûr est un
+`hero`, `panel`, `entries`, `embed`, `form`, `table`, `copy`, `swatches`, `downloads`, `head`, `adminForm`. Pour afficher du texte de visiteur avec une mise en forme, le plus sûr est un
 bloc `html` dont vous échappez chaque valeur (`esc()` dans l'exemple) ; **jamais** de texte de visiteur dans un bloc `markdown` (les liens et images Markdown fonctionnent).
 
 ## 7. Routes et formulaires

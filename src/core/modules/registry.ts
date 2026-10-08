@@ -175,7 +175,8 @@ const RANDOM: SectionDecl = {
  */
 export function sectionsOf(manifest: ParsedManifest): SectionDecl[] {
   const declared = manifest.sections as SectionDecl[];
-  if (!manifest.content) return declared;
+  // Pas de page publique (ex. « Blocs de page ») : pas de section « dernières entrées » vers une page qui n'existe pas.
+  if (!manifest.content || manifest.page === false) return declared;
   return [
     ...(declared.some((s) => s.id === "latest") ? [] : [LATEST]),
     ...(manifest.content.features.includes("code") && !declared.some((s) => s.id === "random") ? [RANDOM] : []),

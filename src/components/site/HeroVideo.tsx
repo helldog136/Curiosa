@@ -9,7 +9,7 @@ type Labels = { play: string; pause: string; soundOn: string; soundOff: string }
  * elle est en pause et ne consomme rien. Elle démarre sans son (les navigateurs l'imposent) ; si le propriétaire le permet, un bouton laisse
  * le visiteur activer le son. Si le visiteur préfère les animations réduites, elle ne démarre pas toute seule (un bouton la lance).
  */
-export function HeroVideo({ src, poster, sound, title, text, logo, labels }: { src: string; poster?: string; sound: boolean; title: string; text?: string; logo?: string; labels: Labels }) {
+export function HeroVideo({ src, poster, sound, title, text, logo, eyebrow, button, labels }: { src: string; poster?: string; sound: boolean; title: string; text?: string; logo?: string; eyebrow?: string; button?: { label: string; href: string }; labels: Labels }) {
   const ref = useRef<HTMLVideoElement>(null);
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(true);
@@ -41,8 +41,10 @@ export function HeroVideo({ src, poster, sound, title, text, logo, labels }: { s
           // eslint-disable-next-line @next/next/no-img-element
           <img src={logo} alt="" className="mx-auto h-24 w-24 rounded-full object-cover" />
         )}
-        <h1 className="text-4xl font-bold tracking-tight drop-shadow sm:text-6xl">{title}</h1>
+        {eyebrow && <p className="text-lg font-semibold drop-shadow">{eyebrow}</p>}
+        {title && <h1 className="text-4xl font-bold tracking-tight drop-shadow sm:text-6xl">{title}</h1>}
         {text && <p className="mx-auto max-w-2xl text-lg drop-shadow">{text}</p>}
+        {button?.label && /^(\/(?!\/)|https?:\/\/|mailto:)/.test(button.href) && <a href={button.href} className="inline-block rounded-full border-2 border-white px-6 py-3 font-semibold transition-colors hover:bg-white hover:text-black">{button.label}</a>}
       </div>
       <div className="absolute bottom-3 right-3 flex gap-2">
         <button type="button" className={btn} aria-pressed={playing} onClick={() => setWanted(!playing)}>{playing ? `⏸ ${labels.pause}` : `▶ ${labels.play}`}</button>

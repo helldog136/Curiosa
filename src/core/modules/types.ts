@@ -129,6 +129,8 @@ export type EntrySummary = {
   fields: Record<string, unknown>;
   slug: string;
   summary: string;
+  /** Contenu complet en Markdown. */
+  body: string;
   url: string | null;
   code: string | null;
   path: string;
