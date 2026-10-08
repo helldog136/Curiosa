@@ -58,8 +58,8 @@ test("documentation du module : l'exemple du README est un vrai module (manifest
   const def = (await import(`data:text/javascript;base64,${Buffer.from(js).toString("base64")}`)).default;
   const { fakeCtx } = await import("../helpers/fakeCtx.mjs");
   assert.deepEqual(def.slots["layout.banner"](fakeCtx({ settings: { text: "Salut" } })), [{ type: "banner", text: "Salut" }]);
-  for (const link of ["docs/CREATE-A-MODULE.md", "docs/MODULES.md", "modules-examples/guestbook", "catalogue/README.md"]) {
+  for (const link of ["docs/CREATE-A-MODULE.md", "docs/MODULES.md", "curiosa-extras/tree/master/examples/guestbook", "catalogue/README.md"]) {
     assert.ok(section.includes(link), `la section doit renvoyer vers ${link}`);
-    assert.ok(fs.existsSync(link), link);
+    if (!link.startsWith("curiosa-extras")) assert.ok(fs.existsSync(link), link);
   }
 });

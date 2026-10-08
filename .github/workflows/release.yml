@@ -46,6 +46,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
       - run: npm prune --omit=dev
       - run: npx prisma generate
+      # Le cœur ne contient aucun module : l'archive embarque un instantané du dépôt de modules (même propriétaire ; master pour une release stable, dev sinon)
+      - name: Modules livrés (instantané)
+        if: steps.v.outputs.publish == 'true'
+        run: node scripts/fetch-extras.mjs
       - name: Empaqueter
         if: steps.v.outputs.publish == 'true'
         run: node scripts/release-pack.mjs "${{ steps.v.outputs.version }}" dist

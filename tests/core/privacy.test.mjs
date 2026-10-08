@@ -49,5 +49,4 @@ test("confidentialité : page publique, lien permanent en pied de page, chemin r
   assert.match(page, /buildPrivacyPolicy/);
   assert.match(page, /mod\.manifest\.privacy/, "ce que déclarent les modules actifs");
   assert.match(read("src/app/admin/(panel)/settings/page.tsx"), /name=\{`privacy\.extra__\$\{l\}`\}/);
-  assert.match(read("src/modules-builtin/contact-form/index.ts"), /privacy: \{ en:/, "le formulaire de contact déclare ce qu'il collecte");
 });

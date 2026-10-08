@@ -8,7 +8,7 @@ import type { LocalizedString } from "./types";
 /**
  * MARKETPLACE — la liste des modules que l'on peut installer en confiance, et rien d'autre.
  *
- *   bundled      modules livrés AVEC le framework (dossiers `modules-community/` et `modules-examples/`) : installés depuis
+ *   bundled      modules livrés AVEC le framework (dossier `extras/`, instantané du dépôt de modules `curiosa-extras` embarqué à la publication) : installés depuis
  *                les fichiers du serveur, sans réseau ; leur version suit celle du framework.
  *   recognized   dépôts git listés dans l'index public (MODULES_INDEX_URL) : celui qui publie l'index s'en porte garant.
  *
@@ -27,6 +27,8 @@ export type CatalogueEntry = {
   source: "bundled" | "recognized";
   repo?: string;
   ref?: string;
+  /** Dossier du module dans `repo` quand ce dépôt en regroupe plusieurs (source « recognized »). */
+  subdir?: string;
   /** Dossier du module sur le serveur (source « bundled »). */
   dir?: string;
   /** Ce module vise-t-il l'API de modules de CE framework ? Sinon il est listé mais non installable. */
@@ -34,12 +36,13 @@ export type CatalogueEntry = {
 };
 
 const BUNDLED: { dir: string; kind: "community" | "example" }[] = [
-  { dir: "modules-community", kind: "community" },
-  { dir: "modules-examples", kind: "example" },
+  { dir: "modules", kind: "community" },
+  { dir: "examples", kind: "example" },
 ];
 
+/** Dossier des modules livrés : `extras/` à côté de l'application (instantané de curiosa-extras), ou celui que désigne CURIOSA_EXTRAS_DIR. */
 export function appRoot(): string {
-  return process.cwd();
+  return process.env.CURIOSA_EXTRAS_DIR ?? path.join(process.cwd(), "extras");
 }
 
 export function readBundledManifest(dir: string): ParsedManifest | null {
@@ -77,7 +80,7 @@ export async function getCatalogue(opts: { root?: string; fetchImpl?: typeof fet
     ...bundled,
     ...remote.map((c): CatalogueEntry => ({
       id: c.id, name: c.name, description: c.description, version: c.version, icon: c.icon, author: c.author,
-      kind: "recognized", source: "recognized", repo: c.repo, ref: c.ref, compatible: c.apiVersion === undefined || c.apiVersion === MODULE_API_VERSION,
+      kind: "recognized", source: "recognized", repo: c.repo, ref: c.ref, subdir: c.subdir, compatible: c.apiVersion === undefined || c.apiVersion === MODULE_API_VERSION,
     })),
   ];
 }
@@ -87,13 +90,12 @@ export async function findCatalogueEntry(id: string, opts: { root?: string; fetc
 }
 
 /** D'où vient un module installé ? « catalogue » = livré ou reconnu ; « custom » = dépôt personnel non vérifié. */
-export function moduleOrigin(row: { id: string; source: string; repoUrl: string | null }, market: CatalogueEntry[]): "builtin" | "catalogue" | "custom" {
-  if (row.source === "builtin") return "builtin";
+export function moduleOrigin(row: { id: string; source: string; repoUrl: string | null; subdir?: string | null }, market: CatalogueEntry[]): "catalogue" | "custom" {
   const entry = market.find((e) => e.id === row.id);
   if (!entry) return "custom";
   if (row.source === "bundled") return entry.source === "bundled" ? "catalogue" : "custom";
   const norm = (u: string | null | undefined) => (u ?? "").replace(/\.git$/, "").replace(/\/$/, "").toLowerCase();
-  return entry.source === "recognized" && norm(entry.repo) === norm(row.repoUrl) ? "catalogue" : "custom";
+  return entry.source === "recognized" && norm(entry.repo) === norm(row.repoUrl) && (entry.subdir ?? null) === (row.subdir ?? null) ? "catalogue" : "custom";
 }
 
 /** D'où vient la liste des dépôts reconnus affichée (dépôt à jour, dernière copie reçue, ou copie livrée avec cette version) ? */

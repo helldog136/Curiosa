@@ -39,12 +39,21 @@ export async function useTestDb() {
   process.env.DATABASE_URL = `file:${file}`;
   process.env.DATA_DIR = dir;
   process.env.CURIOSA_ALLOW_LOCAL_MODULES = "1";
+  // Modules livrés des tests : de petites fixtures, jamais les vrais modules (le cœur n'en contient aucun).
+  process.env.CURIOSA_EXTRAS_DIR ??= path.join(root, "tests/fixtures/extras");
   const { prisma } = await import("@/core/db");
   const tables = ["VisitSeen", "VisitDaily", "ApiToken", "AuditLog", "ModuleRecord", "EntryTranslation", "Entry", "InstanceTranslation", "ModuleInstance", "Redirect", "Setting", "Module", "User"];
   return {
     dir,
     prisma,
-    /** Vide toutes les tables (entre deux tests). Le registre des modules livrés est recréé à la demande. */
+    /** Installe un module de test (tests/fixtures/modules/<id>) : fichiers copiés + ligne en base, activé. */
+    async fixture(id, enabled = true) {
+      const { installFixtureFiles } = await import("./fixtureModules.mjs");
+      installFixtureFiles(dir, id);
+      const version = JSON.parse(fs.readFileSync(path.join(dir, "modules", id, "module.json"), "utf8")).version;
+      return prisma.module.upsert({ where: { id }, create: { id, source: "bundled", version, enabled }, update: { enabled } });
+    },
+    /** Vide toutes les tables (entre deux tests). Les migrations de mise à jour repassent à la demande. */
     async reset() {
       for (const t of tables) await prisma.$executeRawUnsafe(`DELETE FROM "${t}"`);
       globalThis.curiosaBuiltinsSynced = false; globalThis.curiosaBuiltinsSyncing = null;

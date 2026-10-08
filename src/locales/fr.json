@@ -122,7 +122,6 @@
   "settings.font": "Police",
   "settings.appearanceHelp": "Les couleurs du texte et des surfaces sont dérivées automatiquement pour rester lisibles.",
   "modules.intro": "Tout sur le site est un module : blogs, réseaux sociaux, codes promo, pages, bandeau d'accueil, RSS, formulaire de contact… Chaque module peut avoir plusieurs instances — deux blogs, deux listes de réseaux sociaux (une par chaîne) — chacune avec ses réglages, son contenu, son adresse et son entrée d'admin.",
-  "modules.builtin": "intégré",
   "modules.broken": "Ce module ne peut pas être chargé (voir les logs du serveur).",
   "modules.configure": "Configurer",
   "modules.checkUpdate": "Chercher une mise à jour",
@@ -148,7 +147,6 @@
   "modules.error.nomain": "Le fichier déclaré dans « main » n'existe pas.",
   "modules.error.size": "Le module est trop volumineux.",
   "modules.error.exists": "Un module avec cet identifiant est déjà installé.",
-  "modules.error.builtin": "Cet identifiant est réservé à un module intégré.",
   "modules.error.notfound": "Module introuvable.",
   "modules.error.load": "Le module n'a pas pu être chargé.",
   "users.role": "Rôle",
@@ -865,5 +863,7 @@
   "block.pos.top-left": "Haut gauche",
   "block.pos.top-right": "Haut droite",
   "block.pos.bottom-left": "Bas gauche",
-  "block.pos.bottom-right": "Bas droite"
+  "block.pos.bottom-right": "Bas droite",
+  "modules.error.subdir": "Nom de dossier de module invalide.",
+  "modules.error.nosubdir": "Dossier du module introuvable dans le dépôt, ou sans module.json valide."
 }

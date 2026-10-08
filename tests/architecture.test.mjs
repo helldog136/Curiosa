@@ -43,45 +43,22 @@ test("les services du cœur sont génériques : chacun n'importe que ce qu'il a 
 });
 
 test("aucun service du cœur ne cite un module en particulier", () => {
-  const ids = fs.readdirSync("src/modules-builtin", { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name);
-  ids.push("blog", "links", "codes", "pages", "hero", "partnerships", "sponsors", "maze-overlay");
+  const ids = ["blog", "links", "codes", "pages", "hero", "partnerships", "sponsors", "maze-overlay"];
   for (const file of code("src/core/services")) {
     for (const id of new Set(ids)) assert.ok(!new RegExp(`["'\`]${id}["'\`]`).test(read(file)), `${file} cite le module « ${id} »`);
   }
 });
 
-test("le cœur (hors registre des modules livrés) ne connaît aucun module par son identifiant", () => {
+test("le cœur ne contient aucun module et n'en connaît aucun par son identifiant (s'il en dépendait, ce ne serait pas un module)", () => {
+  for (const dir of ["src/modules-builtin", "modules-community", "modules-examples"]) assert.ok(!fs.existsSync(dir), `${dir} : les modules vivent dans curiosa-extras`);
   const ids = ["blog", "links", "codes", "pages", "hero", "collection", "contact-form", "live-status", "ticker-overlay", "partnerships", "sponsors", "sponsor-ticker", "maze-overlay", "discord-announcer", "youtube-channel", "twitch-channel", "alerts-overlay", "game-suggestions", "contacts"];
   for (const file of [...code("src/core"), ...code("src/app"), ...code("src/components")]) {
-    if (file.endsWith("src/core/modules/registry.ts")) continue; // importe la liste des modules livrés
     const text = read(file);
     for (const id of ids) {
       // Une valeur de display ("links", "codes") ou un type de bloc n'est pas un identifiant de module : on ne
       // cherche que les comparaisons/accès directs à un module précis.
       assert.ok(!new RegExp(`(manifest\\.id|moduleId|\\.id)\\s*===?\\s*["']${id}["']`).test(text), `${file} compare un identifiant à « ${id} »`);
       assert.ok(!new RegExp(`find\\([^)]*===\\s*["']${id}["']`).test(text), `${file} cherche le module « ${id} »`);
-    }
-  }
-});
-
-test("les modules (livrés, communautaires, exemples) n'importent rien du cœur hormis les types", () => {
-  for (const file of code("src/modules-builtin")) {
-    for (const spec of importsOf(file)) {
-      if (!spec.startsWith("@/")) continue;
-      assert.ok(["@/core/modules/types", "@/core/modules/manifest"].includes(spec) || spec === "@/modules-builtin", `${file} importe « ${spec} »`);
-    }
-  }
-  for (const dir of ["modules-community", "modules-examples"]) {
-    for (const file of code(dir)) {
-      for (const spec of importsOf(file)) assert.ok(!spec.startsWith("@/") && !spec.includes("/src/"), `${file} importe du cœur (« ${spec} ») : un module n'a que ctx.api`);
-    }
-  }
-});
-
-test("les modules n'appellent jamais Prisma ni le disque du cœur : tout passe par ctx.api", () => {
-  for (const dir of ["modules-community", "modules-examples"]) {
-    for (const file of code(dir).filter((f) => f.endsWith(".mjs"))) {
-      assert.ok(!/prisma|@prisma\/client/.test(read(file)), `${file} accède directement à la base`);
     }
   }
 });
@@ -100,14 +77,6 @@ test("le service QR produit un SVG et borne l'entrée", async () => {
   const svg = await qrSvg("https://example.com");
   assert.match(svg, /^<svg/);
   assert.ok((await qrSvg("x".repeat(5000))).startsWith("<svg"));
-});
-
-test("le kit presse ne stocke rien : il lit l'identité du cœur (ctx.api.brand) et c'est tout", () => {
-  const code = read("src/modules-builtin/press-kit/index.ts");
-  assert.ok(code.includes("ctx.api.brand"), "le kit presse doit lire l'identité via ctx.api.brand");
-  for (const forbidden of ["ctx.api.store", "adminActions", "adminPanel", "setSetting", "prisma"]) {
-    assert.ok(!code.includes(forbidden), `le kit presse ne doit pas utiliser « ${forbidden} » : il n'a aucune donnée à lui`);
-  }
 });
 
 test("l'identité visuelle a UNE source : le site, les overlays et les modules lisent la même palette", () => {
@@ -136,23 +105,6 @@ test("l'admin ne montre pas les identifiants techniques d'instance en mode simpl
   assert.ok(/advanced && <span className="font-mono">\{i\.key\}/.test(listing), "la liste des modules ne doit montrer la clé qu'en mode avancé");
   const detail = read("src/app/admin/(panel)/instances/[id]/page.tsx");
   assert.ok(/advanced && <>[^]*instances\.technicalId[^]*instance\.key/.test(detail), "la page d'une instance ne doit montrer la clé qu'en mode avancé");
-});
-
-test("sujets : ceux de nos modules sont en anglais, en minuscules, et listés dans docs/MODULES.md", () => {
-  const doc = read("docs/MODULES.md");
-  const used = new Set();
-  for (const dir of ["modules-community", "modules-examples"]) {
-    for (const mod of fs.readdirSync(dir)) {
-      const file = `${dir}/${mod}/module.json`;
-      if (fs.existsSync(file)) for (const m of read(file).matchAll(/"topic": *"([^"]+)"/g)) used.add(m[1]);
-    }
-  }
-  for (const f of code("src/modules-builtin")) for (const m of read(f).matchAll(/\btopic: "([^"]+)"/g)) used.add(m[1]);
-  assert.ok(used.size >= 5, "des sujets doivent être trouvés");
-  for (const topic of used) {
-    assert.match(topic, /^[a-z]+(\.[a-z]+)+$/, `sujet « ${topic} » : minuscules, domaine.objet`);
-    assert.ok(doc.includes(`\`${topic}\``), `sujet « ${topic} » absent du tableau « Sujets connus » de docs/MODULES.md`);
-  }
 });
 
 test("accueil fluide : la liste d'entrées s'adapte à la place de sa case, pas à la largeur de l'écran", () => {

@@ -2,6 +2,7 @@ import { execFile } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { promisify } from "node:util";
+import type { Module } from "@prisma/client";
 import { prisma } from "../db";
 import { MODULES_DIR } from "../config";
 import { parseManifest, type ParsedManifest } from "./manifest";
@@ -10,7 +11,6 @@ import { findCatalogueEntry, listBundled, readBundledManifest } from "./catalogu
 import { dependentsOf, offersOf, unmetRequirements } from "./dependencies";
 import { migrateModuleInstances, type MigrationOutcome } from "./dataMigrations";
 import { classify, compareVersions, pickLatestTag, TAG_RE, type UpdateLevel } from "../updates/versions";
-import { BUILTIN_MODULES } from "@/modules-builtin";
 
 const run = promisify(execFile);
 
@@ -19,17 +19,27 @@ const DEFAULT_HOSTS = "github.com,gitlab.com,codeberg.org,bitbucket.org";
 
 export type InstallResult = { ok: true; id: string; migrations?: MigrationOutcome[] } | { ok: false; error: string; /** Précision lisible (ex. les services manquants). */ detail?: string };
 
-export type ParsedRepo = { url: string; ref?: string };
+/** Dépôt d'un module : `subdir` = dossier du module dans un dépôt qui en regroupe plusieurs (absent = module à la racine). */
+export type ParsedRepo = { url: string; ref?: string; subdir?: string };
+
+/** Dossier d'un module dans un dépôt : 1 à 3 niveaux, noms simples, jamais « .. » ni chemin absolu. */
+export const SUBDIR_RE = /^[A-Za-z0-9][\w.-]{0,60}(\/[A-Za-z0-9][\w.-]{0,60}){0,2}$/;
+export const isSubdir = (v: unknown): v is string => typeof v === "string" && SUBDIR_RE.test(v);
 
 /**
  * Accepte https://hôte/propriétaire/dépôt[.git][#ref]. Seuls les hôtes de
- * MODULES_ALLOWED_HOSTS sont autorisés ("*" = tous). Les dépôts locaux
+ * MODULES_ALLOWED_HOSTS sont autorisés ("*" = tous). Un module peut vivre dans un DOSSIER d'un dépôt qui en regroupe plusieurs :
+ * `https://hôte/propriétaire/dépôt#étiquette:dossier` (ou `#:dossier` pour la branche par défaut). Les dépôts locaux
  * (file://) ne sont acceptés que si CURIOSA_ALLOW_LOCAL_MODULES=1, pour le
  * développement d'un module.
  */
 export function parseRepoUrl(input: string): { ok: true; repo: ParsedRepo } | { ok: false; error: string } {
-  const [rawUrl = "", ref] = input.trim().split("#");
+  const [rawUrl = "", fragment] = input.trim().split("#");
+  const [rawRef, subdir] = fragment === undefined ? [undefined, undefined] : fragment.split(":");
+  const ref = rawRef === "" ? undefined : rawRef;
   if (ref !== undefined && !/^[\w./-]{1,100}$/.test(ref)) return { ok: false, error: "modules.error.ref" };
+  if (subdir !== undefined && !isSubdir(subdir)) return { ok: false, error: "modules.error.subdir" };
+  if (fragment !== undefined && fragment.split(":").length > 2) return { ok: false, error: "modules.error.ref" };
   let url: URL;
   try {
     url = new URL(rawUrl);
@@ -38,7 +48,7 @@ export function parseRepoUrl(input: string): { ok: true; repo: ParsedRepo } | { 
   }
   if (url.protocol === "file:") {
     if (process.env.CURIOSA_ALLOW_LOCAL_MODULES !== "1") return { ok: false, error: "modules.error.local" };
-    return { ok: true, repo: { url: url.href, ref } };
+    return { ok: true, repo: { url: url.href, ref, ...(subdir ? { subdir } : {}) } };
   }
   if (url.protocol !== "https:" || url.username || url.password || url.search) {
     return { ok: false, error: "modules.error.url" };
@@ -49,7 +59,7 @@ export function parseRepoUrl(input: string): { ok: true; repo: ParsedRepo } | { 
   }
   if (!/^\/[\w.-]+(\/[\w.-]+){1,3}(\.git)?\/?$/.test(url.pathname)) return { ok: false, error: "modules.error.url" };
   url.hash = "";
-  return { ok: true, repo: { url: url.href.replace(/\/$/, ""), ref } };
+  return { ok: true, repo: { url: url.href.replace(/\/$/, ""), ref, ...(subdir ? { subdir } : {}) } };
 }
 
 const GIT_ENV = { ...process.env, GIT_TERMINAL_PROMPT: "0", GIT_ASKPASS: "echo" };
@@ -80,11 +90,35 @@ function dirSize(dir: string): number {
   return total;
 }
 
+/** `child` est-il bien DANS `parent` (liens symboliques résolus) ? Empêche un dossier de module qui pointerait hors du dépôt. */
+function isInside(parent: string, child: string): boolean {
+  try {
+    const p = fs.realpathSync(parent);
+    const c = fs.realpathSync(child);
+    return c.startsWith(p + path.sep) && fs.lstatSync(child).isDirectory();
+  } catch { return false; }
+}
+
+/** Copie les fichiers d'un module (sans .git ni node_modules) vers son dossier d'installation, par un dossier intermédiaire : jamais à moitié copié. */
+function copyModuleFiles(from: string, target: string): void {
+  const staging = `${target}.incoming-${process.pid}`;
+  try {
+    fs.rmSync(staging, { recursive: true, force: true });
+    fs.cpSync(from, staging, { recursive: true, filter: (src) => path.basename(src) !== ".git" && path.basename(src) !== "node_modules" });
+    if (dirSize(staging) > MAX_MODULE_BYTES) throw new Error("size");
+    fs.rmSync(target, { recursive: true, force: true });
+    fs.renameSync(staging, target);
+  } catch (error) {
+    fs.rmSync(staging, { recursive: true, force: true });
+    throw error;
+  }
+}
+
 /** Installe un module depuis un dépôt git. Il est installé *désactivé* : rien ne s'exécute avant l'accord de l'admin. */
 export async function installModule(input: string, opts: { expectId?: string } = {}): Promise<InstallResult> {
   const parsed = parseRepoUrl(input);
   if (!parsed.ok) return parsed;
-  const { url, ref } = parsed.repo;
+  const { url, ref, subdir } = parsed.repo;
 
   fs.mkdirSync(MODULES_DIR, { recursive: true });
   const tmp = fs.mkdtempSync(path.join(MODULES_DIR, ".incoming-"));
@@ -102,24 +136,32 @@ export async function installModule(input: string, opts: { expectId?: string } =
     }
     const commit = await git(["rev-parse", "HEAD"], checkout);
 
-    const manifestPath = path.join(checkout, "module.json");
-    if (!fs.existsSync(manifestPath)) return { ok: false, error: "modules.error.nomanifest" };
+    // Module dans un dossier d'un dépôt qui en regroupe plusieurs : seul ce dossier est lu, copié et installé.
+    const root = subdir ? path.join(checkout, subdir) : checkout;
+    if (subdir && !isInside(checkout, root)) return { ok: false, error: "modules.error.nosubdir" };
+    const manifestPath = path.join(root, "module.json");
+    if (!fs.existsSync(manifestPath)) return { ok: false, error: subdir ? "modules.error.nosubdir" : "modules.error.nomanifest" };
     const manifest = parseManifest(JSON.parse(fs.readFileSync(manifestPath, "utf8")));
     if (!manifest.ok) return { ok: false, error: manifest.error };
     const m = manifest.manifest;
     // Un dépôt reconnu ne peut pas servir un autre module que celui annoncé.
     if (opts.expectId && m.id !== opts.expectId) return { ok: false, error: "modules.error.idmismatch" };
 
-    if (BUILTIN_MODULES.some((b) => b.manifest.id === m.id)) return { ok: false, error: "modules.error.builtin" };
-    if (m.main && !fs.existsSync(path.join(checkout, m.main))) return { ok: false, error: "modules.error.nomain" };
-    if (dirSize(checkout) > MAX_MODULE_BYTES) return { ok: false, error: "modules.error.size" };
+    if (m.main && !fs.existsSync(path.join(root, m.main))) return { ok: false, error: "modules.error.nomain" };
+    if (dirSize(root) > MAX_MODULE_BYTES) return { ok: false, error: "modules.error.size" };
 
     const existing = await prisma.module.findUnique({ where: { id: m.id } });
     if (existing) return { ok: false, error: "modules.error.exists" };
 
-    fs.renameSync(checkout, moduleDir(m.id));
+    let tree: string | null = null;
+    if (subdir) {
+      tree = await git(["rev-parse", `HEAD:${subdir}`], checkout);
+      copyModuleFiles(root, moduleDir(m.id));
+    } else {
+      fs.renameSync(checkout, moduleDir(m.id));
+    }
     await prisma.module.create({
-      data: { id: m.id, source: "git", repoUrl: url, ref: ref ?? null, commit, version: m.version, enabled: false },
+      data: { id: m.id, source: "git", repoUrl: url, ref: ref ?? null, commit, subdir: subdir ?? null, tree, version: m.version, enabled: false },
     });
     return { ok: true, id: m.id };
   } catch (error) {
@@ -141,6 +183,102 @@ export type ModuleUpdateCheck = {
   level?: UpdateLevel;
   remote?: string;
 };
+
+/* ───────────── Modules logés dans un dossier d'un dépôt qui en regroupe plusieurs ───────────── */
+
+type Fetched = { root: string; commit: string; tree: string; manifest: ParsedManifest | null; cleanup: () => void };
+
+/**
+ * Récupère (superficiellement) un dépôt à une étiquette, une branche ou un commit, et lit le dossier du module. L'empreinte `tree` est celle du CONTENU de ce
+ * dossier : elle ne change que si ce module change, pas quand un autre module du même dépôt évolue.
+ */
+async function fetchSubdirSource(url: string, ref: string | null | undefined, subdir: string): Promise<Fetched> {
+  fs.mkdirSync(MODULES_DIR, { recursive: true });
+  const tmp = fs.mkdtempSync(path.join(MODULES_DIR, ".incoming-"));
+  const cleanup = () => fs.rmSync(tmp, { recursive: true, force: true });
+  try {
+    const checkout = path.join(tmp, "repo");
+    await git(["init", "-q", checkout]);
+    await git(["remote", "add", "origin", url], checkout);
+    await git(["fetch", "-q", "--depth", "1", "origin", ref || "HEAD"], checkout).catch((e) => {
+      if (ref && isCommitRef(ref)) return git(["fetch", "-q", "origin"], checkout);   // certains serveurs refusent de livrer un commit seul
+      throw e;
+    });
+    await git(["-c", "advice.detachedHead=false", "checkout", "-q", "--detach", isCommitRef(ref) ? ref! : "FETCH_HEAD"], checkout);
+    const root = path.join(checkout, subdir);
+    if (!isInside(checkout, root)) throw Object.assign(new Error("subdir"), { code: "modules.error.nosubdir" });
+    const commit = await git(["rev-parse", "HEAD"], checkout);
+    const tree = await git(["rev-parse", `HEAD:${subdir}`], checkout);
+    let manifest: ParsedManifest | null = null;
+    try { const p = parseManifest(JSON.parse(fs.readFileSync(path.join(root, "module.json"), "utf8"))); manifest = p.ok ? p.manifest : null; } catch { manifest = null; }
+    return { root, commit, tree, manifest, cleanup };
+  } catch (error) {
+    cleanup();
+    throw error;
+  }
+}
+
+const sameRepo = (a: string | null | undefined, b: string | null | undefined) => {
+  const norm = (u: string | null | undefined) => (u ?? "").replace(/\.git$/, "").replace(/\/$/, "").toLowerCase();
+  return norm(a) === norm(b);
+};
+
+/** Quelle étiquette ou quel commit suivre ? Un module installé DEPUIS LE CATALOGUE suit le commit relu que le catalogue épingle ; un module personnel suit la sienne. */
+async function subdirTarget(row: Module): Promise<{ ref: string | null; fromCatalogue: boolean }> {
+  const entry = await findCatalogueEntry(row.id).catch(() => undefined);
+  const same = entry?.source === "recognized" && sameRepo(entry.repo, row.repoUrl) && (entry.subdir ?? null) === row.subdir;
+  return { ref: same ? entry!.ref ?? null : row.ref, fromCatalogue: !!same };
+}
+
+async function checkSubdirUpdate(row: Module): Promise<ModuleUpdateCheck> {
+  const { ref, fromCatalogue } = await subdirTarget(row);
+  if (!fromCatalogue && isCommitRef(row.ref)) return { available: false };   // épinglé sur un commit : c'est le but
+  const f = await fetchSubdirSource(row.repoUrl!, ref, row.subdir!);
+  try {
+    const available = f.tree !== row.tree;
+    const version = f.manifest?.version;
+    return {
+      available, remote: f.commit,
+      target: available ? (version && version !== row.version ? version : f.commit.slice(0, 7)) : undefined,
+      level: available && version ? classify(row.version, version) ?? undefined : undefined,
+    };
+  } finally { f.cleanup(); }
+}
+
+async function updateSubdirModule(row: Module): Promise<InstallResult> {
+  const id = row.id;
+  const { ref, fromCatalogue } = await subdirTarget(row);
+  if (!fromCatalogue && isCommitRef(row.ref)) return { ok: false, error: "modules.error.pinned" };
+  const target = moduleDir(id);
+  const backup = `${target}.previous-${process.pid}`;
+  let fetched: Fetched | null = null;
+  let swapped = false;
+  try {
+    fetched = await fetchSubdirSource(row.repoUrl!, ref, row.subdir!);
+    if (fetched.tree === row.tree) return { ok: false, error: "modules.error.uptodate" };
+    const manifest = fetched.manifest;
+    if (!manifest || manifest.id !== id) throw Object.assign(new Error("manifest"), { code: "modules.error.nomanifest" });
+    if (manifest.main && !fs.existsSync(path.join(fetched.root, manifest.main))) throw Object.assign(new Error("main"), { code: "modules.error.nomain" });
+    if (dirSize(fetched.root) > MAX_MODULE_BYTES) throw Object.assign(new Error("size"), { code: "modules.error.size" });
+    // On met l'ancienne version de côté pendant l'échange : au moindre échec, elle revient telle quelle.
+    fs.rmSync(backup, { recursive: true, force: true });
+    fs.renameSync(target, backup);
+    swapped = true;
+    copyModuleFiles(fetched.root, target);
+    await prisma.module.update({ where: { id }, data: { commit: fetched.commit, tree: fetched.tree, version: manifest.version, ref: ref ?? row.ref } });
+    swapped = false;
+    forgetModule(id);
+    return { ok: true, id, migrations: await migrateModuleInstances(id) };
+  } catch (error) {
+    if (swapped) { fs.rmSync(target, { recursive: true, force: true }); fs.renameSync(backup, target); }
+    forgetModule(id);
+    console.error("[modules] update failed:", (error as Error)?.message);
+    return { ok: false, error: (error as { code?: string })?.code ?? "modules.error.clone" };
+  } finally {
+    fetched?.cleanup();
+    fs.rmSync(backup, { recursive: true, force: true });
+  }
+}
 
 /** Toutes les versions stables (`vX.Y.Z`) du dépôt, de la plus ancienne à la plus récente. */
 async function remoteTags(repoUrl: string): Promise<string[]> {
@@ -170,6 +308,7 @@ export async function checkForUpdate(id: string): Promise<ModuleUpdateCheck> {
   }
   if (!row || row.source !== "git" || !row.repoUrl) return { available: false };
   try {
+    if (row.subdir) return await checkSubdirUpdate(row);
     if (isCommitRef(row.ref)) return { available: false };
     if (isStableTag(row.ref)) {
       const latest = await latestRemoteTag(row.repoUrl);
@@ -201,6 +340,7 @@ export async function updateModule(id: string): Promise<InstallResult> {
     return { ok: true, id, migrations: await migrateModuleInstances(id) };
   }
   if (!row || row.source !== "git" || !row.repoUrl) return { ok: false, error: "modules.error.notfound" };
+  if (row.subdir) return updateSubdirModule(row);
   const dir = moduleDir(id);
   let previous: string | null = null;
   try {
@@ -311,7 +451,7 @@ export async function setModuleEnabled(id: string, enabled: boolean): Promise<In
 
 export async function uninstallModule(id: string): Promise<InstallResult> {
   const row = await prisma.module.findUnique({ where: { id } });
-  if (!row || row.source === "builtin") return { ok: false, error: "modules.error.notfound" };
+  if (!row) return { ok: false, error: "modules.error.notfound" };
   if (row.enabled) {
     const dependents = await dependentsOf(id);
     if (dependents.length) return { ok: false, error: "modules.error.requiredBy", detail: dependents.join(", ") };
@@ -328,7 +468,7 @@ export async function uninstallModule(id: string): Promise<InstallResult> {
 }
 
 /** Copie un module livré avec le framework vers le dossier des modules installés (sans .git ni lien symbolique). */
-function copyBundled(from: string, id: string): { ok: true; version: string } | { ok: false; error: string } {
+export function copyBundled(from: string, id: string): { ok: true; version: string } | { ok: false; error: string } {
   const manifest = readBundledManifest(from);
   if (!manifest || manifest.id !== id) return { ok: false, error: "modules.error.nomanifest" };
   const target = moduleDir(id);
@@ -352,7 +492,6 @@ function copyBundled(from: string, id: string): { ok: true; version: string } | 
 export async function installBundled(id: string): Promise<InstallResult> {
   const entry = await findCatalogueEntry(id);
   if (!entry || entry.source !== "bundled" || !entry.dir) return { ok: false, error: "modules.error.notfound" };
-  if (BUILTIN_MODULES.some((b) => b.manifest.id === id)) return { ok: false, error: "modules.error.builtin" };
   if (await prisma.module.findUnique({ where: { id } })) return { ok: false, error: "modules.error.exists" };
   const copied = copyBundled(entry.dir, id);
   if (!copied.ok) return copied;
@@ -366,5 +505,6 @@ export async function installFromCatalogue(id: string): Promise<InstallResult> {
   if (!entry) return { ok: false, error: "modules.error.notfound" };
   if (!entry.compatible) return { ok: false, error: "modules.error.incompatible" };
   if (entry.source === "bundled") return installBundled(id);
-  return installModule(`${entry.repo}${entry.ref ? `#${entry.ref}` : ""}`, { expectId: id });
+  const fragment = entry.ref || entry.subdir ? `#${entry.ref ?? ""}${entry.subdir ? `:${entry.subdir}` : ""}` : "";
+  return installModule(`${entry.repo}${fragment}`, { expectId: id });
 }

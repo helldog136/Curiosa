@@ -141,13 +141,13 @@ const opts = (s, over = {}) => ({ appDir: s.app, dataDir: s.dataDir, databaseUrl
 
 test("mise à jour : succès — sauvegarde, téléchargement, empreinte, bascule, migrations, redémarrage ; aucune compilation ni git", async () => {
   const s = setup(); try {
-    s.build("1.1.0", { files: { "modules-community/x.txt": "nouveau" }, paths: [".next", "package.json", "prisma/migrations", "release.json", "modules-community"] });
+    s.build("1.1.0", { files: { "extras/x.txt": "nouveau" }, paths: [".next", "package.json", "prisma/migrations", "release.json", "extras"] });
     const restarts = [];
     const exec = async (cmd, args, o) => { if (cmd === "sh") { restarts.push(args[1]); return { stdout: "" }; } return s.make()(cmd, args, o); };
     const r = await runUpdate({ ...opts(s), tag: "v1.1.0", exec, restartCommand: "systemctl restart curiosa" });
     assert.deepEqual(r, { ok: true });
     assert.equal(s.buildId(), "build-1.1.0", "le build livré est en place");
-    assert.equal(fs.readFileSync(path.join(s.app, "modules-community", "x.txt"), "utf8"), "nouveau");
+    assert.equal(fs.readFileSync(path.join(s.app, "extras", "x.txt"), "utf8"), "nouveau");
     assert.equal(JSON.parse(fs.readFileSync(path.join(s.app, "package.json"), "utf8")).version, "1.1.0");
     assert.deepEqual(s.calls, ["npx prisma migrate deploy"], "rien d'autre : ni npm ci, ni build, ni git");
     assert.deepEqual(s.downloads, ["https://github.com/owner/curiosa/releases/download/v1.1.0/curiosa-v1.1.0-" + PLATFORM + ".tar.gz", "https://github.com/owner/curiosa/releases/download/v1.1.0/curiosa-v1.1.0-" + PLATFORM + ".tar.gz.sha256"]);

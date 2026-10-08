@@ -1,0 +1,18 @@
+{
+  "apiVersion": 2,
+  "id": "demo-banner",
+  "name": {
+    "en": "Demo banner",
+    "fr": "Demo banner"
+  },
+  "version": "1.0.0",
+  "main": "index.mjs",
+  "description": {
+    "en": "Demo banner: a test module.",
+    "fr": "Demo banner : un module pour les tests."
+  },
+  "author": "Tests",
+  "license": "MIT",
+  "icon": "🧪",
+  "settings": []
+}

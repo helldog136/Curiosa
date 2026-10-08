@@ -11,7 +11,6 @@ const { parseManifest, effectiveType, hasPage } = await import("@/core/modules/m
 const { parseRepoUrl, installModule, setModuleEnabled, uninstallModule, checkForUpdate, updateModule } = await import("@/core/modules/installer");
 const R = await import("@/core/modules/registry");
 const { MODULES_DIR } = await import("@/core/config");
-const { BUILTIN_MODULES } = await import("@/modules-builtin");
 
 beforeEach(() => db.reset());
 after(() => db.close());
@@ -142,15 +141,13 @@ test("installation : activation charge réellement le code, désactivation le re
   assert.equal((await setModuleEnabled("inconnu", true)).ok, false);
 });
 
-test("installation : refus d'un module déjà installé, d'un module sans manifeste, invalide, ou qui usurpe un module livré", async () => {
+test("installation : refus d'un module déjà installé, sans manifeste ou invalide", async () => {
   const repo = makeRepo(SIMPLE());
   assert.equal((await installModule(repo.url)).ok, true);
   assert.equal((await installModule(repo.url)).error, "modules.error.exists");
   assert.equal((await installModule(makeRepo({ "readme.md": "x" }).url)).error, "modules.error.nomanifest");
   const bad = await installModule(makeRepo({ "module.json": base({ id: "autre", version: "x" }) }).url);
   assert.ok(!bad.ok); assert.match(bad.error, /^module\.json:/);
-  const builtinId = BUILTIN_MODULES[0].manifest.id;
-  assert.equal((await installModule(makeRepo({ "module.json": base({ id: builtinId }) }).url)).error, "modules.error.builtin");
   assert.equal((await installModule(makeRepo({ "module.json": base({ id: "sansmain", main: "absent.mjs" }) }).url)).error, "modules.error.nomain");
 });
 
@@ -210,20 +207,10 @@ test("désinstallation : supprime fichiers, instances, réglages et données du 
   assert.equal((await uninstallModule("demo")).ok, false);
 });
 
-test("désinstallation : un module livré avec le cœur ne peut pas être désinstallé", async () => {
-  await R.listModuleRows();
-  assert.equal((await uninstallModule(BUILTIN_MODULES[0].manifest.id)).ok, false);
-});
-
 /* ───────────── Registre ───────────── */
 
-test("registre : les modules livrés sont créés en base au premier passage, selon defaultEnabled", async () => {
-  const rows = await R.listModuleRows();
-  assert.equal(rows.length, BUILTIN_MODULES.length);
-  for (const b of BUILTIN_MODULES) assert.equal(rows.find((r) => r.id === b.manifest.id).enabled, b.manifest.defaultEnabled ?? true, b.manifest.id);
-});
-
 test("registre : un module cassé est ignoré sans casser les autres", async () => {
+  await db.fixture("blog");
   await installModule(makeRepo({ "module.json": base({ id: "casse", main: "index.mjs" }), "index.mjs": "throw new Error('boum');" }).url);
   await db.prisma.module.update({ where: { id: "casse" }, data: { enabled: true } });
   const log = console.error; console.error = () => {};
@@ -245,8 +232,7 @@ test("registre : sections proposées — « latest » ajoutée d'office aux modu
 });
 
 test("registre : les instances actives excluent les instances ou modules désactivés", async () => {
-  const mods = await R.listModuleRows();
-  const first = mods.find((m) => m.enabled);
+  const first = await db.fixture("blog");
   const a = await db.prisma.moduleInstance.create({ data: { moduleId: first.id, key: "un", basePath: "un" } });
   await db.prisma.moduleInstance.create({ data: { moduleId: first.id, key: "deux", basePath: "deux", enabled: false } });
   assert.deepEqual((await R.getActiveInstances()).map((x) => x.instance.key), ["un"]);
@@ -255,8 +241,3 @@ test("registre : les instances actives excluent les instances ou modules désact
   void a;
 });
 
-test("registre : deux premiers appels simultanés ne créent les modules livrés qu'une fois", async () => {
-  const results = await Promise.all([R.listModuleRows(), R.listModuleRows(), R.getModule(BUILTIN_MODULES[0].manifest.id), R.getEnabledModules()]);
-  assert.equal(results[0].length, BUILTIN_MODULES.length);
-  assert.equal(await db.prisma.module.count(), BUILTIN_MODULES.length);
-});

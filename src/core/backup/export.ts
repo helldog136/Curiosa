@@ -63,7 +63,7 @@ export async function createBackup(password: string, opts: { now?: Date; iterati
   for (const row of moduleRows) {
     const loaded = await loadModule(row);
     modules.push({
-      id: row.id, source: row.source as BackupModule["source"], version: row.version, enabled: row.enabled, repoUrl: row.repoUrl, ref: row.ref, commit: row.commit,
+      id: row.id, source: row.source as BackupModule["source"], version: row.version, enabled: row.enabled, repoUrl: row.repoUrl, ref: row.ref, subdir: row.subdir, commit: row.commit,
       origin: moduleOrigin(row, market), name: loaded ? localized(loaded.manifest.name, "en", "en") : row.id,
     });
   }

@@ -8,7 +8,23 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 *Changements depuis la 0.1.3-rc.2.*
 
+### Nouveautés
+- **Le cœur ne contient plus aucun module.** Il se limite à ce qu'il faut pour faire fonctionner le site et son admin ; blog, réseaux sociaux, codes promo, pages, bandeau d'accueil, formulaire de contact, statut live, overlays, sponsors, planning… vivent désormais dans leur propre dépôt, **`curiosa-extras`**, et s'installent depuis le **Catalogue** comme n'importe quel module. Si le cœur avait besoin d'un module pour fonctionner, ce n'était pas un module : un test vérifie maintenant que le cœur n'en cite aucun.
+- **Un seul dépôt peut contenir plusieurs modules.** Une adresse du type `https://github.com/propriétaire/dépôt#ref:dossier` installe le seul module de ce dossier. Chaque module est mis à jour **indépendamment** : une mise à jour n'est proposée que si le contenu de *son* dossier a changé. Le Catalogue, l'aperçu avant installation, les sauvegardes et la restauration savent maintenant dans quel dossier se trouve un module.
+- **Le Catalogue lit son index dans `curiosa-extras`** (le dépôt de modules voisin du dépôt du cœur) ; la variable `CURIOSA_CATALOGUE_REPO` permet d'en choisir un autre, et `CURIOSA_EXTRAS_DIR` désigne le dossier des modules livrés.
+
+### À savoir en mettant à jour
+- **Rien à refaire.** Au premier démarrage, chaque module qui était « intégré » (blog, réseaux sociaux, codes promo, pages, collection, bandeau d'accueil, formulaire de contact, statut live, bandeau défilant, kit presse) devient un module ordinaire, copié depuis les modules livrés avec cette version : mêmes réglages, mêmes entrées, même affichage, et il se met à jour ensuite comme les autres. La mention « intégré » disparaît de la page Modules.
+- Les **anciennes sauvegardes** qui mentionnent des modules « intégrés » se restaurent normalement : ces modules sont réinstallés depuis le Catalogue.
+- Les **archives de version** embarquent un instantané des modules (dossier `extras/`) : la première installation et le Catalogue fonctionnent toujours sans réseau.
+
+### À essayer en priorité
+- Après la mise à jour : le site s'affiche comme avant (accueil, menu, réseaux sociaux en en-tête) ; Admin → Modules montre vos modules comme « du catalogue ».
+- Admin → Catalogue : installer un module, puis vérifier « Chercher une mise à jour ».
+- Sur une installation neuve, l'assistant de première installation propose toujours blog, réseaux sociaux, codes promo et pages.
+
 ### Documentation
+- Documentation des modules mise à jour : où vivent les modules, comment ils sont livrés, installation depuis un dossier d'un dépôt, nouvelle variable `CURIOSA_EXTRAS_DIR`.
 - **« Pourquoi Curiosa, et quand ne pas le choisir »** dans le README : le public visé, ce qui distingue le projet (avec comment le vérifier) et les cas où un autre outil est meilleur.
 - **docs/MESURES.md** : chiffres mesurés sur une release publiée (installation chronométrée, poids sur disque, ce que la page envoie, mémoire, cookies, services tiers) avec leur méthode, y compris les points faibles, et la liste de ce qui n'est pas mesuré. **`scripts/measure.mjs`** permet de refaire la mesure d'une page soi-même.
 - Vocabulaire : le README ne parle plus d'« ouvert » à tort ; la licence est celle d'un code source **disponible**, pas d'un logiciel « open source » au sens strict.

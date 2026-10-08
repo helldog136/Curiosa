@@ -295,7 +295,7 @@ C'est un module complet : une bannière en haut de chaque page, dont le texte se
 |---|---|
 | apprendre pas à pas, avec un module d'exemple complet (un livre d'or modéré) | [docs/CREATE-A-MODULE.md](docs/CREATE-A-MODULE.md) |
 | chercher un champ, une clé, un type de bloc | [docs/MODULES.md](docs/MODULES.md) (référence exhaustive) |
-| lire un vrai module | [`modules-examples/guestbook`](modules-examples/guestbook), [`modules-examples/announcement-banner`](modules-examples/announcement-banner) |
+| lire un vrai module | [`examples/guestbook`](https://github.com/helldog136/curiosa-extras/tree/master/examples/guestbook), [`examples/announcement-banner`](https://github.com/helldog136/curiosa-extras/tree/master/examples/announcement-banner) |
 | comprendre comment le cœur et les modules se partagent le travail | [docs/PLATFORM.md](docs/PLATFORM.md) et [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
 | être listé dans le Catalogue | [catalogue/README.md](catalogue/README.md) |
 
@@ -334,9 +334,8 @@ src/app/admin       L'admin unique : assistant, entrées, une sous-page par inst
 src/app/overlays    Overlays OBS (/overlays/<clé>)
 src/app/api/mcp     Serveur MCP (outils collectés auprès des modules)
 src/locales         Textes de l'interface (fr, en) — ajouter une langue = un fichier JSON
-modules-examples/   Un module d'exemple minimal, prêt à publier dans son propre dépôt git
-modules-community/  Modules complets qui ne font PAS partie du cœur : labyrinthe 3D, planning, partenariats,
-                    sponsors, overlay sponsors (OBS)
+extras/             (non versionné) Instantané des modules livrés, récupéré de curiosa-extras par `npm run extras:fetch`
+                    et embarqué dans chaque release. Le cœur ne contient AUCUN module.
 docs/               PLATFORM.md (cœur vs modules), ARCHITECTURE.md, MODULES.md
 ```
 
@@ -351,4 +350,4 @@ Curiosa est **utilisé en production** et évolue par versions publiées sur la 
 
 ## Licence
 
-Curiosa, développé par [Helldog136](https://helldog136.be), est distribué sous la **Curiosa License 1.0** (voir [`LICENSE`](LICENSE)) : usage libre pour sa propre activité, vente et revente interdites, crédit obligatoire. Les versions publiées **avant la 0.1.2-rc.4** l'ont été sous licence MIT, et ceux qui les ont reçues les gardent sous cette licence. Les modules livrés dans `modules-community/` et `modules-examples/` portent la licence déclarée dans leur `module.json`. Les dépendances tierces gardent leur propre licence : la liste complète, avec les textes, est dans [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md), générée par `npm run licenses` (un test vérifie qu'elle est à jour et qu'aucune dépendance n'a de licence incompatible). Un module installé depuis un dépôt tiers reste sous la licence que son auteur a déclarée dans `module.json`.
+Curiosa, développé par [Helldog136](https://helldog136.be), est distribué sous la **Curiosa License 1.0** (voir [`LICENSE`](LICENSE)) : usage libre pour sa propre activité, vente et revente interdites, crédit obligatoire. Les versions publiées **avant la 0.1.2-rc.4** l'ont été sous licence MIT, et ceux qui les ont reçues les gardent sous cette licence. Les modules du dépôt [curiosa-extras](https://github.com/helldog136/curiosa-extras) portent la licence déclarée dans leur `module.json`. Les dépendances tierces gardent leur propre licence : la liste complète, avec les textes, est dans [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md), générée par `npm run licenses` (un test vérifie qu'elle est à jour et qu'aucune dépendance n'a de licence incompatible). Un module installé depuis un dépôt tiers reste sous la licence que son auteur a déclarée dans `module.json`.

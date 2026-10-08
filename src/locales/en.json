@@ -122,7 +122,6 @@
   "settings.font": "Font",
   "settings.appearanceHelp": "Text and surface colors are derived automatically so they stay readable.",
   "modules.intro": "Everything on the site is a module: blogs, social links, promo codes, pages, the home banner, RSS, the contact form… Each module can have several instances — two blogs, two lists of social links (one per channel) — each with its own settings, content, address and admin entry.",
-  "modules.builtin": "built-in",
   "modules.broken": "This module cannot be loaded (see server logs).",
   "modules.configure": "Configure",
   "modules.checkUpdate": "Check for updates",
@@ -148,7 +147,6 @@
   "modules.error.nomain": "The file declared in \"main\" does not exist.",
   "modules.error.size": "The module is too large.",
   "modules.error.exists": "A module with this id is already installed.",
-  "modules.error.builtin": "This id is reserved by a built-in module.",
   "modules.error.notfound": "Module not found.",
   "modules.error.load": "The module could not be loaded.",
   "users.role": "Role",
@@ -865,5 +863,7 @@
   "block.pos.top-left": "Top left",
   "block.pos.top-right": "Top right",
   "block.pos.bottom-left": "Bottom left",
-  "block.pos.bottom-right": "Bottom right"
+  "block.pos.bottom-right": "Bottom right",
+  "modules.error.subdir": "Invalid module folder name.",
+  "modules.error.nosubdir": "Module folder not found in the repository, or no valid module.json in it."
 }

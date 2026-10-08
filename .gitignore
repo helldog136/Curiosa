@@ -5,6 +5,9 @@
 /.next/
 /out/
 
+# instantané des modules (curiosa-extras), récupéré par `npm run extras:fetch` : jamais versionné ici
+/extras/
+
 # production
 /build
 

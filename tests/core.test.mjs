@@ -19,8 +19,7 @@ test("les dictionnaires fr et en ont exactement les mêmes clés", () => {
 
 test("toute clé t(\"…\") utilisée dans l'interface existe dans les dictionnaires", () => {
   const en = JSON.parse(read("src/locales/en.json"));
-  // Les modules livrés avec le cœur ont leurs propres textes (locales du module).
-  const files = walk("src").filter((f) => /\.(ts|tsx)$/.test(f) && !f.includes("modules-builtin"));
+  const files = walk("src").filter((f) => /\.(ts|tsx)$/.test(f));
   const missing = [];
   for (const file of files) {
     for (const m of read(file).matchAll(/\bt\("([a-zA-Z0-9_.]+)"/g)) {
@@ -60,36 +59,6 @@ test("les préfixes de langue connus ne collident pas avec les chemins réservé
   for (const code of Object.keys(KNOWN_LOCALES)) assert.ok(!RESERVED_PATHS.has(code), code);
 });
 
-test("le module d'exemple est cohérent (id, version, fichier principal, réglages)", () => {
-  const dir = "modules-examples/announcement-banner";
-  const m = JSON.parse(read(`${dir}/module.json`));
-  assert.match(m.id, /^[a-z][a-z0-9-]{1,39}$/);
-  assert.match(m.version, /^\d+\.\d+\.\d+/);
-  const core = read("src/core/config.ts").match(/MODULE_API_VERSION = (\d+)/);
-  assert.equal(m.apiVersion, Number(core[1]));
-  assert.ok(fs.existsSync(`${dir}/${m.main}`));
-  for (const s of m.settings) assert.match(s.key, /^[a-zA-Z][a-zA-Z0-9_]*$/);
-});
-
-test("les modules communautaires ont un manifeste cohérent et ne sont PAS livrés avec le cœur", () => {
-  const builtin = read("src/modules-builtin/index.ts");
-  for (const dir of fs.readdirSync("modules-community")) {
-    const m = JSON.parse(read(`modules-community/${dir}/module.json`));
-    assert.equal(m.id, dir);
-    assert.ok(fs.existsSync(`modules-community/${dir}/${m.main}`));
-    assert.ok(!builtin.includes(m.id) && !builtin.includes(dir), `${dir} ne doit pas être un module par défaut`);
-  }
-});
-
-test("les réglages avancés sont déclarés par les modules, jamais obligatoires pour le mode simple", () => {
-  for (const dir of ["modules-examples", "modules-community"]) {
-    for (const name of fs.readdirSync(dir)) {
-      const m = JSON.parse(read(`${dir}/${name}/module.json`));
-      for (const s of m.settings ?? []) if (s.advanced) assert.ok(s.default !== undefined || s.type !== "number", `${name}.${s.key}: un réglage avancé numérique doit avoir une valeur par défaut`);
-    }
-  }
-});
-
 test("validateArgs : types, bornes, énumérations, requis, propriétés inconnues refusées", async () => {
   const { validateArgs, McpToolError } = await import("../src/core/services/mcp/validate.ts");
   const schema = {
@@ -103,24 +72,6 @@ test("validateArgs : types, bornes, énumérations, requis, propriétés inconnu
   }
   assert.deepEqual(validateArgs(undefined, {}), {});
   assert.throws(() => validateArgs(undefined, { x: 1 }), McpToolError);
-});
-
-test("les modules qui déclarent des actions MCP les implémentent ; les actions irréversibles sont désactivées par défaut", () => {
-  for (const name of fs.readdirSync("modules-community")) {
-    const m = JSON.parse(read(`modules-community/${name}/module.json`));
-    if (!m.mcp) continue;
-    const code = read(`modules-community/${name}/${m.main}`);
-    for (const action of m.mcp) {
-      assert.ok(new RegExp(`\\b${action.name}\\b`).test(code), `${name}.${action.name} n'est pas implémentée`);
-      // Supprimer / publier est possible, mais jamais d'office : à accorder à la main, jeton par jeton.
-      if (/delete|remove|publish|destroy|purge/.test(action.name)) {
-        assert.equal(action.destructive, true, `${name}.${action.name} doit être déclarée destructive`);
-        assert.notEqual(action.default, true, `${name}.${action.name} ne doit pas être active par défaut`);
-      }
-      if (action.destructive) assert.notEqual(action.default, true, `${name}.${action.name} : destructive ⇒ jamais par défaut`);
-      if (action.readOnly) assert.ok(!action.destructive, `${name}.${action.name} : lecture seule ne peut être destructive`);
-    }
-  }
 });
 
 test("droits d'un jeton : plafond, défauts du module, surcharges, effet immédiat", async () => {

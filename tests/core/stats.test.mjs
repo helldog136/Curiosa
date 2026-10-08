@@ -9,7 +9,7 @@ const V = await import("@/core/visit");
 const { setSetting } = await import("@/core/settings");
 const { createInstance } = await import("@/core/instanceService");
 const { createEntry } = await import("@/core/content/service");
-const { BUILTIN_MODULES } = await import("@/modules-builtin");
+const { FIXTURE_MODULES: BUILTIN_MODULES } = await import("../helpers/fixtureModules.mjs");
 
 beforeEach(() => db.reset());
 after(() => db.close());
@@ -103,7 +103,7 @@ test("dernière visite : la date de session est figée pendant la visite ; sinon
 
 test("nouveautés : règle du cœur — entrées publiées depuis la dernière visite ; jamais à la première visite ; brouillons et expirées ignorés", async () => {
   const manifest = BUILTIN_MODULES.find((b) => b.manifest.id === "blog").manifest;
-  await db.prisma.module.upsert({ where: { id: "blog" }, create: { id: "blog", source: "builtin", version: "1", enabled: true }, update: {} });
+  await db.fixture("blog");
   const inst = await createInstance(db.prisma, { manifest, names: { fr: "Blog", en: "Blog" } });
   const make = async (title, status, days, extra = {}) => {
     const e = await createEntry(db.prisma, { instanceId: inst.id, locale: "fr", title, status });
@@ -141,7 +141,6 @@ test("pastilles d'admin : hook adminBadge → menu et carte « À traiter » ; m
   assert.match(layout, /user\.role === "owner" && \(await getUpdateCheck/);
   assert.match(layout, /href="\/admin\/updates" badge=/);
   assert.match(read("src/app/admin/(panel)/page.tsx"), /data-testid="todo"/);
-  assert.match(read("modules-community/contacts/index.mjs"), /async adminBadge[\s\S]*to_review/);
 });
 
 test("vie privée : la dernière visite n'est retenue que si le visiteur l'a demandé (bouton), sans bandeau ; les cookies d'avant sont effacés", () => {

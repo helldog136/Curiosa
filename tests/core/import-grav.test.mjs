@@ -12,7 +12,7 @@ function run(extra = []) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-grav-test-"));
   makeGrav(path.join(dir, "user"));
   const out = path.join(dir, "import.tar.gz.enc");
-  const stdout = execFileSync(process.execPath, ["--disable-warning=MODULE_TYPELESS_PACKAGE_JSON", "--import", "./tests/helpers/register.mjs", "scripts/import-grav.mjs", path.join(dir, "user"), "--out", out, "--password", "mdp-de-test", "--domain", "monsite.be", ...extra], { encoding: "utf8", env: { ...process.env, DATA_DIR: "", DATABASE_URL: "" } });
+  const stdout = execFileSync(process.execPath, ["--disable-warning=MODULE_TYPELESS_PACKAGE_JSON", "--import", "./tests/helpers/register.mjs", "scripts/import-grav.mjs", path.join(dir, "user"), "--out", out, "--password", "mdp-de-test", "--domain", "monsite.be", ...extra], { encoding: "utf8", env: { ...process.env, DATA_DIR: "", DATABASE_URL: "", CURIOSA_EXTRAS_DIR: path.resolve("tests/fixtures/extras") } });
   const opened = openBackup(fs.readFileSync(out), "mdp-de-test");
   assert.equal(opened.ok, true, JSON.stringify(opened));
   return { dir, stdout, backup: opened.backup, report: fs.readFileSync(`${out}.rapport.txt`, "utf8") };

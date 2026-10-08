@@ -25,14 +25,14 @@ export default async function CatalogueDetailsPage({ searchParams }: { searchPar
 
   let target: PreviewTarget | null = null;
   let entry: Awaited<ReturnType<typeof findCatalogueEntry>> | undefined;
-  let custom: { url: string; ref?: string } | null = null;
+  let custom: { url: string; ref?: string; subdir?: string } | null = null;
   if (id) {
     entry = await findCatalogueEntry(id);
     if (!entry) notFound();
-    target = entry.source === "bundled" && entry.dir ? { kind: "bundled", dir: entry.dir } : entry.repo ? { kind: "repo", url: entry.repo, ref: entry.ref } : null;
+    target = entry.source === "bundled" && entry.dir ? { kind: "bundled", dir: entry.dir } : entry.repo ? { kind: "repo", url: entry.repo, ref: entry.ref, subdir: entry.subdir } : null;
   } else if (repo) {
     const parsed = parseRepoUrl(repo);
-    if (parsed.ok) { custom = parsed.repo; target = { kind: "repo", url: parsed.repo.url, ref: parsed.repo.ref }; }
+    if (parsed.ok) { custom = parsed.repo; target = { kind: "repo", url: parsed.repo.url, ref: parsed.repo.ref, subdir: parsed.repo.subdir }; }
     else return <Shell back={t("catalogue.back")}><p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm">{t(parsed.error)}</p></Shell>;
   } else notFound();
 
@@ -59,7 +59,7 @@ export default async function CatalogueDetailsPage({ searchParams }: { searchPar
             {m?.author && <span>{t("catalogue.by", { author: m.author })}</span>}
             {m?.license && advanced && <span>· {m.license}</span>}
           </p>
-          {advanced && custom && <p className="mt-1 break-all font-mono text-xs text-muted">{custom.url}{custom.ref ? `#${custom.ref}` : ""}</p>}
+          {advanced && custom && <p className="mt-1 break-all font-mono text-xs text-muted">{custom.url}{custom.ref || custom.subdir ? `#${custom.ref ?? ""}${custom.subdir ? `:${custom.subdir}` : ""}` : ""}</p>}
         </div>
       </header>
       {entry && <p className="max-w-2xl text-[17px] leading-7">{L(entry.description)}</p>}
@@ -110,7 +110,7 @@ export default async function CatalogueDetailsPage({ searchParams }: { searchPar
             <>
               <p className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm">{t("catalogue.customWarning")}</p>
               <ActionForm action={installCustomAction} submitLabel={t("catalogue.install")}>
-                <input type="hidden" name="repo" value={`${custom.url}${custom.ref ? `#${custom.ref}` : ""}`} />
+                <input type="hidden" name="repo" value={`${custom.url}${custom.ref || custom.subdir ? `#${custom.ref ?? ""}${custom.subdir ? `:${custom.subdir}` : ""}` : ""}`} />
                 <Checkbox name="trust" label={t("catalogue.trust")} required />
               </ActionForm>
             </>

@@ -74,10 +74,11 @@ export type ModulePlan = {
   name: string;
   version: string;
   enabled: boolean;
-  /** builtin : déjà là · installed : déjà installé · catalogue : sera réinstallé depuis le catalogue · custom : dépôt personnel, CONFIRMATION requise · unavailable : introuvable */
-  status: "builtin" | "installed" | "catalogue" | "custom" | "unavailable";
+  /** installed : déjà installé · catalogue : sera réinstallé depuis le catalogue · custom : dépôt personnel, CONFIRMATION requise · unavailable : introuvable */
+  status: "installed" | "catalogue" | "custom" | "unavailable";
   repoUrl: string | null;
   ref: string | null;
+  subdir?: string | null;
   needsConfirmation: boolean;
 };
 
@@ -85,11 +86,11 @@ export async function planModules(modules: BackupModule[]): Promise<ModulePlan[]
   const market = await getCatalogue().catch(() => []);
   const installed = new Set((await prisma.module.findMany({ select: { id: true } })).map((m) => m.id));
   return modules.map((m): ModulePlan => {
-    const base = { id: m.id, name: m.name, version: m.version, enabled: m.enabled, repoUrl: m.repoUrl, ref: m.ref };
-    if (m.source === "builtin" || m.origin === "builtin") return { ...base, status: "builtin", needsConfirmation: false };
+    const base = { id: m.id, name: m.name, version: m.version, enabled: m.enabled, repoUrl: m.repoUrl, ref: m.ref, subdir: m.subdir ?? null };
     if (installed.has(m.id)) return { ...base, status: "installed", needsConfirmation: false };
     const entry = market.find((e) => e.id === m.id);
-    if (m.origin === "catalogue" && entry?.compatible) return { ...base, status: "catalogue", needsConfirmation: false };
+    // Une sauvegarde d'une version où les modules de base étaient « intégrés » les nomme « builtin » : ce sont aujourd'hui des modules du catalogue.
+    if ((m.origin === "catalogue" || m.origin === "builtin") && entry?.compatible) return { ...base, status: "catalogue", needsConfirmation: false };
     if (m.repoUrl) return { ...base, status: "custom", needsConfirmation: true };
     return { ...base, status: "unavailable", needsConfirmation: false };
   });
@@ -127,10 +128,10 @@ export async function applyRestore(backup: ParsedBackup, opts: { confirmCustom: 
   const outcomes: ModuleOutcome[] = [];
 
   for (const m of plan) {
-    if (m.status === "builtin" || m.status === "installed") { outcomes.push({ id: m.id, outcome: "kept" }); continue; }
+    if (m.status === "installed") { outcomes.push({ id: m.id, outcome: "kept" }); continue; }
     if (m.status === "unavailable") { outcomes.push({ id: m.id, outcome: "unavailable" }); continue; }
     if (m.status === "custom" && !confirmed.has(m.id)) { outcomes.push({ id: m.id, outcome: "skipped" }); continue; }
-    const result = m.status === "catalogue" ? await installers.fromCatalogue(m.id) : await installers.fromRepo(`${m.repoUrl}${m.ref ? `#${m.ref}` : ""}`);
+    const result = m.status === "catalogue" ? await installers.fromCatalogue(m.id) : await installers.fromRepo(`${m.repoUrl}${m.ref || m.subdir ? `#${m.ref ?? ""}${m.subdir ? `:${m.subdir}` : ""}` : ""}`);
     outcomes.push(result.ok ? { id: m.id, outcome: "installed" } : { id: m.id, outcome: "failed", error: result.error });
   }
 
@@ -155,12 +156,11 @@ export async function applyRestore(backup: ParsedBackup, opts: { confirmCustom: 
       for (const c of chunks(d.redirects)) await tx.redirect.createMany({ data: c.map((r) => reviveDates(MODEL_BY_FILE.redirects, r)) as never });
       for (const c of chunks(d.records)) await tx.moduleRecord.createMany({ data: c.map((r) => ({ ...reviveDates(MODEL_BY_FILE.records, r), data: JSON.stringify(r.data) })) as never });
 
-      // Modules : on remet « activé / désactivé » tel que sauvegardé (les lignes des modules de base sont créées si besoin).
+      // Modules : on remet « activé / désactivé » tel que sauvegardé (les modules réinstallés ci-dessus existent déjà).
       for (const m of d.modules) {
         const outcome = outcomes.find((o) => o.id === m.id)?.outcome;
         if (outcome === "skipped" || outcome === "failed" || outcome === "unavailable") continue;
-        if (m.source === "builtin") await tx.module.upsert({ where: { id: m.id }, create: { id: m.id, source: "builtin", version: m.version, enabled: m.enabled }, update: { enabled: m.enabled } });
-        else await tx.module.updateMany({ where: { id: m.id }, data: { enabled: m.enabled } });
+        await tx.module.updateMany({ where: { id: m.id }, data: { enabled: m.enabled } });
       }
     }, { timeout: 120_000, maxWait: 10_000 });
   } catch (error) {

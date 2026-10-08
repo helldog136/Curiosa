@@ -35,7 +35,7 @@ Dans **Mises à jour** (menu, propriétaire uniquement) :
 
 - le site compare sa version aux releases **stables** publiées par le dépôt d'origine (les release candidates et les snapshots sont ignorés par défaut) ;
 - **Installer** : sauvegarde de la base (`data/backups/`, les 5 dernières) → téléchargement de l'archive → **vérification de son empreinte SHA-256** →
-  remplacement des dossiers de l'application (`.next`, `node_modules`, `prisma/migrations`, `modules-community`…) → migrations → redémarrage.
+  remplacement des dossiers de l'application (`.next`, `node_modules`, `prisma/migrations`, `extras`…) → migrations → redémarrage.
   Jamais touchés : `.env`, `data/` (base, envois, modules installés) et `prisma/data/`. **Au moindre échec**, l'ancienne version (et l'ancienne base si les migrations avaient commencé) est rétablie ;
 - le journal de l'opération s'affiche dans la page ; elle se met à jour toute seule ;
 - une version **majeure** (`v2.0.0` après `v1.x`) peut changer le fonctionnement : elle est signalée et **n'est jamais installée automatiquement**.
@@ -102,7 +102,8 @@ dépôt injoignable, le site garde la dernière copie reçue, à défaut celle l
 
 | Variable | Effet |
 |---|---|
-| `CURIOSA_CATALOGUE_REPO` | Dépôt git qui publie l'index (défaut : le dépôt d'origine de l'installation ; indispensable avec Docker, où il n'y en a pas). |
+| `CURIOSA_CATALOGUE_REPO` | Dépôt git qui publie l'index (défaut : `curiosa-extras`, le dépôt de modules voisin du dépôt d'origine de l'installation, même propriétaire ; indispensable avec Docker, où il n'y a pas de dépôt d'origine). |
+| `CURIOSA_EXTRAS_DIR` | Dossier des modules livrés avec cette version (défaut : `extras/` à côté de l'application, instantané de `curiosa-extras` ; `npm run extras:fetch` le récupère pour un clone du dépôt). |
 | `CURIOSA_CATALOGUE_REF` | Branche ou étiquette à lire (défaut : la branche par défaut). |
 | `CURIOSA_CATALOGUE_RUNTIME=0` | Ne pas interroger le dépôt : copie livrée avec la version seulement (serveur sans accès au réseau). |
 | `MODULES_INDEX_URL` | Index JSON `https://` **supplémentaire** (le vôtre, celui d'une communauté) : il ne peut qu'ajouter des modules. |

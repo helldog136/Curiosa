@@ -37,8 +37,8 @@ const missing = (doc, words) => [...new Set(words)].filter((w) => !mentions(doc,
 
 test("les deux documents existent et se renvoient l'un à l'autre, et à l'exemple", () => {
   assert.ok(/CREATE-A-MODULE\.md/.test(reference.slice(0, 1500)), "MODULES.md doit pointer vers le tutoriel dès son début");
-  assert.ok(/modules-examples\/guestbook/.test(reference.slice(0, 1500)), "MODULES.md doit pointer vers l'exemple guestbook dès son début");
-  assert.ok(/MODULES\.md/.test(tutorial) && /modules-examples\/guestbook/.test(tutorial));
+  assert.ok(/examples\/guestbook/.test(reference.slice(0, 1500)), "MODULES.md doit pointer vers l'exemple guestbook dès son début");
+  assert.ok(/MODULES\.md/.test(tutorial) && /examples\/guestbook/.test(tutorial));
 });
 
 test("tous les liens relatifs des deux documents mènent à un fichier qui existe", () => {
@@ -182,7 +182,7 @@ test("variables d'environnement et chemins cités par le code d'installation : d
   assert.ok(vars.includes("MODULES_INDEX_URL") && vars.includes("CURIOSA_ALLOW_LOCAL_MODULES") && vars.includes("MODULES_ALLOWED_HOSTS"));
   for (const v of vars) assert.ok(reference.includes(v) && tutorial.includes(v), `${v} absent de la documentation`);
   const bundled = [...read("src/core/modules/catalogue.ts").matchAll(/dir: "([a-z-]+)"/g)].map((m) => m[1]);
-  assert.deepEqual(bundled.sort(), ["modules-community", "modules-examples"]);
+  assert.deepEqual(bundled.sort(), ["examples", "modules"]);
   for (const d of bundled) assert.ok(reference.includes(d) && tutorial.includes(d), `${d} absent de la documentation`);
 });
 

@@ -5,7 +5,7 @@ Curiosa sépare nettement deux choses :
 | | **Services du cœur** (helpers) | **Fonctionnalités** (modules) |
 |---|---|---|
 | Nature | Des mécanismes génériques : « générer un QR code », « exposer un serveur MCP », « stocker des données privées »… | Ce qu'on *fait* avec : un overlay qui affiche un QR, des actions MCP pour suivre des partenaires, un blog… |
-| Où | `src/core/services/` | `src/modules-builtin/` (livrés) et `modules-community/` (installables) |
+| Où | `src/core/services/` | le dépôt `curiosa-extras` (aucun module dans le cœur) |
 | Connaît les modules ? | **Non** (sauf `topics`, dont c'est l'objet). Jamais un module en particulier. | Connaît uniquement `ctx.api` — rien d'autre du cœur. |
 | Contient du contenu éditorial ? | Non | Oui |
 
@@ -16,7 +16,7 @@ Ces frontières sont vérifiées par `tests/architecture.test.mjs`.
 
 ```
  ┌───────────────────────────────────────────────────────────────────────────────┐
- │ FONCTIONNALITÉS   src/modules-builtin/  ·  modules-community/  ·  modules git  │
+ │ FONCTIONNALITÉS   curiosa-extras  ·  modules git (Catalogue ou dépôt perso)    │
  │ blog, sponsors, partenariats, overlays, formulaire de contact, RSS, kit presse…           │
  │ N'ont accès qu'à  ctx.api  (et déclarent leurs besoins dans module.json)      │
  └──────────────▲────────────────────────────────────────────────────────────────┘
@@ -87,8 +87,7 @@ l'administrateur règle dans *Réglages* (Identité, Apparence) est stocké une 
 - **Sauvegarde** (`core/backup/`, [BACKUP.md](BACKUP.md)) : un fichier chiffré (format OpenSSL, mot de passe choisi à chaque sauvegarde)
   contenant tout ce qui est à l'utilisateur, **lisible sans le framework**. Elle collecte les données des modules installés
   (stockage, réglages, fichiers lisibles via `backup.readable`) et, à la restauration, réinstalle les modules depuis le catalogue.
-- **Catalogue** (`core/modules/catalogue.ts`) : la liste des modules vérifiés — livrés avec le framework (`modules-community/`,
-  `modules-examples/`) ou publiés par des dépôts reconnus, listés dans `catalogue/index.json` — un fichier du dépôt du framework **relu à l'exécution**, qui ne suit pas le rythme des versions (copie livrée en secours hors ligne ; `MODULES_INDEX_URL` pour un index supplémentaire). Un dépôt git **personnel** reste
+- **Catalogue** (`core/modules/catalogue.ts`) : la liste des modules vérifiés — livrés avec le framework (`extras/`, instantané du dépôt `curiosa-extras`) ou publiés par des dépôts reconnus, listés dans `catalogue/index.json` du dépôt `curiosa-extras` — un fichier **relu à l'exécution**, qui ne suit pas le rythme des versions (copie livrée en secours hors ligne ; `MODULES_INDEX_URL` pour un index supplémentaire). Un dépôt git **personnel** reste
   installable, mais signalé « non vérifié » et soumis à confirmation explicite.
 
 ## Le flux RSS : une fonctionnalité du cœur

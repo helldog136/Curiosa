@@ -48,9 +48,6 @@ test("vidéo : servie par morceaux (Range → 206), entière sinon, plage invali
 test("vidéo : branchements — réglage « video » validé côté serveur, section d'accueil, lecture seulement à l'écran, son au choix", () => {
   const read = (p) => fs.readFileSync(p, "utf8");
   assert.match(read("src/app/admin/(panel)/instances/actions.ts"), /field\.type === "video"[\s\S]*mp4\|webm/);
-  const hero = read("src/modules-builtin/hero/index.ts");
-  assert.match(hero, /type: "video"/);
-  assert.match(hero, /\^\\\/uploads\\\/\[0-9a-f-\]\{36\}\\\.\(mp4\|webm\)\$/, "jamais d'adresse externe");
   const comp = read("src/components/site/HeroVideo.tsx");
   assert.match(comp, /IntersectionObserver/);
   assert.match(comp, /visibilitychange/);

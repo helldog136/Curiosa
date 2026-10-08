@@ -13,7 +13,7 @@ beforeEach(() => db.reset());
 after(() => db.close());
 
 async function instance(key) {
-  const mod = await db.prisma.module.upsert({ where: { id: "m" }, create: { id: "m", source: "builtin", version: "1", enabled: true }, update: {} });
+  const mod = await db.prisma.module.upsert({ where: { id: "m" }, create: { id: "m", source: "bundled", version: "1", enabled: true }, update: {} });
   return db.prisma.moduleInstance.create({ data: { moduleId: mod.id, key, basePath: key } });
 }
 

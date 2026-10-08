@@ -22,8 +22,8 @@ const MAX_SOCIALS = 10;
 /** Icônes des réseaux sociaux : les entrées de TOUTES les listes de réseaux actives du site (il peut y en avoir plusieurs). */
 async function loadSocials(locale: string): Promise<Social[]> {
   const out: Social[] = [];
-  for (const { instance, mod } of await getActiveInstances()) {
-    if (mod.manifest.id !== "links") continue;
+  for (const { instance } of await getActiveInstances()) {
+    if (instance.display !== "links") continue; // toute liste d'affichage « liens », quel que soit le module qui la fournit
     for (const e of await listEntries({ instance: instance.key, locale })) {
       if (e.url && isSafeExternalUrl(e.url) && out.length < MAX_SOCIALS) out.push({ label: e.title, href: e.url, icon: e.icon });
     }

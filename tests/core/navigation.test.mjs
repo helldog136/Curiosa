@@ -51,7 +51,7 @@ test("menus déroulants : un groupe range des pages et des liens (un seul niveau
 test("en-tête : quatre dispositions au choix, réseaux sociaux repris de TOUTES les listes actives, lien secondaire et bouton validés", () => {
   const header = read("src/components/site/Header.tsx");
   for (const k of ['case "twoRows"', 'case "centered"', 'case "minimal"']) assert.ok(header.includes(k), k);
-  assert.match(header, /mod\.manifest\.id !== "links"/, "toutes les instances de réseaux sociaux, pas une seule");
+  assert.match(header, /instance\.display !== "links"/, "toutes les listes d'affichage « liens », quel que soit le module — le cœur ne connaît aucun module");
   assert.match(header, /isSafeExternalUrl\(e\.url\)/);
   const actions2 = read("src/app/admin/(panel)/settings/actions.ts");
   assert.match(actions2, /isHeaderLayout\(layout\) \? layout : "classic"/);

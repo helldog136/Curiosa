@@ -33,10 +33,9 @@ execFileSync("npx", ["prisma", "migrate", "deploy"], { stdio: "ignore", env: pro
 
 const { prisma } = await import("@/core/db");
 const { createInstance, defaultNames } = await import("@/core/instanceService");
-const { BUILTIN_MODULES } = await import("@/modules-builtin");
+const { bundledManifests, provisionBundled } = await import("@/core/modules/starter");
 const { saveUpload, MAX_UPLOAD_BYTES } = await import("@/core/services/uploads");
 const { slugify } = await import("@/core/slug");
-const R = await import("@/core/modules/registry");
 const { createBackup } = await import("@/core/backup/export");
 const bcrypt = (await import("bcryptjs")).default;
 
@@ -196,8 +195,8 @@ async function importImage(file, ctx) {
 }
 
 // ── collections et adresses ──
-await R.getEnabledModules();
-const mk = async (id, opts = {}) => { const m = BUILTIN_MODULES.find((b) => b.manifest.id === id).manifest; return { m, inst: await createInstance(prisma, { manifest: m, ...opts, names: opts.names ?? defaultNames(m, enabledLocales) }) }; };
+// Les modules de contenu (blog, pages…) viennent de l'instantané `extras/` (ou de CURIOSA_EXTRAS_DIR) : on copie ceux dont l'import a besoin.
+const mk = async (id, opts = {}) => { if (!(await provisionBundled(id))) throw new Error(`Module « ${id} » introuvable : lancez « npm run extras:fetch » ou indiquez CURIOSA_EXTRAS_DIR.`); const m = bundledManifests().find((b) => b.id === id); return { m, inst: await createInstance(prisma, { manifest: m, ...opts, names: opts.names ?? defaultNames(m, enabledLocales) }) }; };
 const hero = await mk("hero");
 const blogs = new Map(); // page racine → { inst, base }
 for (const root of blogRoots) {

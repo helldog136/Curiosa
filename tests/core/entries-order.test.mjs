@@ -8,14 +8,14 @@ const { createEntry } = await import("@/core/content/service");
 const { listEntries } = await import("@/core/content/entries");
 const { setSetting } = await import("@/core/settings");
 const { sortSettingKey } = await import("@/core/content/sort");
-const { BUILTIN_MODULES } = await import("@/modules-builtin");
+const { FIXTURE_MODULES: BUILTIN_MODULES } = await import("../helpers/fixtureModules.mjs");
 
 beforeEach(() => db.reset());
 after(() => db.close());
 
 const manifest = (id) => BUILTIN_MODULES.find((b) => b.manifest.id === id).manifest;
 async function collection(id) {
-  await db.prisma.module.upsert({ where: { id }, create: { id, source: "builtin", version: "1", enabled: true }, update: {} });
+  await db.fixture(id);
   return createInstance(db.prisma, { manifest: manifest(id), names: { fr: id, en: id } });
 }
 async function add(instance, title, daysAgo, position = 0, extra = {}) {

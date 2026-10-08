@@ -34,8 +34,10 @@ export type BackupModule = {
   enabled: boolean;
   repoUrl: string | null;
   ref: string | null;
+  /** Dossier du module dans le dépôt (dépôt regroupant plusieurs modules). */
+  subdir?: string | null;
   commit: string | null;
-  /** « catalogue » : livré ou dépôt reconnu — « custom » : dépôt personnel non vérifié — « builtin » : module de base. */
+  /** « catalogue » : livré ou dépôt reconnu — « custom » : dépôt personnel non vérifié — « builtin » : sauvegardes d'avant la 0.1.3, quand le cœur « intégrait » des modules (lecture seule). */
   origin: "builtin" | "catalogue" | "custom";
   name: string;
 };

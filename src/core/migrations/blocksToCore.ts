@@ -5,7 +5,7 @@ import type { HomeSection } from "@/core/settings";
 /**
  * ⚠️ TEMPORAIRE — À SUPPRIMER APRÈS LA 0.1.3. Cette migration n'a d'utilité que pour les sites passés par la 0.1.2 ou une 0.1.3 release candidate (où « Blocs de page »
  * était un module). Dès qu'une version supérieure à la 0.1.3 est préparée, un test (tests/core/temporary-code.test.mjs) échoue tant que ces fichiers existent :
- *   - src/core/migrations/blocksToCore.ts (ce fichier) et son appel dans src/core/modules/registry.ts (syncBuiltins) ;
+ *   - src/core/migrations/blocksToCore.ts (ce fichier) et son appel dans src/core/modules/registry.ts (syncLegacy) ;
  *   - tests/core/blocks-migration.test.mjs.
  * (Un site qui sauterait directement de la 0.1.2 à une version plus récente garderait des instances orphelines : à convertir à la main dans Page d'accueil.)
  *

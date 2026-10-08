@@ -8,7 +8,13 @@ const TEMPORARY = [
     why: "migration automatique du module « Blocs de page » vers les blocs du cœur (0.1.2 et 0.1.3-rc.x)",
     removeAfter: "0.1.3",
     files: ["src/core/migrations/blocksToCore.ts", "tests/core/blocks-migration.test.mjs"],
-    alsoRemove: ["l'appel à migrateBlocksModule dans src/core/modules/registry.ts (syncBuiltins)"],
+    alsoRemove: ["l'appel à migrateBlocksModule dans src/core/modules/registry.ts (syncLegacy)"],
+  },
+  {
+    why: "migration automatique des modules « intégrés » (0.1.2 et 0.1.3-rc.x) vers des modules ordinaires copiés depuis l'instantané extras/",
+    removeAfter: "0.1.3",
+    files: ["src/core/migrations/builtinToBundled.ts", "tests/core/builtin-migration.test.mjs"],
+    alsoRemove: ["l'appel à migrateBuiltinModules dans src/core/modules/registry.ts (syncLegacy) et le statut « builtin » de la lecture des anciennes sauvegardes (src/core/backup/restore.ts, format.ts)"],
   },
 ];
 

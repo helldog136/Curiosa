@@ -108,21 +108,21 @@ export default async function ModulesPage({ searchParams }: { searchParams: Prom
                 <div className="min-w-0">
                   <p className="font-medium">
                     {mod?.manifest.icon ?? "🧩"} {mod ? localized(mod.manifest.name, locale, config.defaultLocale) : row.id}{" "}
-                    {advanced && <span className="text-xs text-muted">v{row.version} · {row.source === "builtin" ? t("modules.builtin") : row.source === "bundled" ? t("modules.bundled") : "git"}</span>}
-                    {row.source !== "builtin" && <span className={`ml-2 rounded px-2 py-0.5 text-xs ${moduleOrigin(row, market) === "custom" ? "bg-amber-500/20" : "bg-line"}`}>{t(`catalogue.origin.${moduleOrigin(row, market) === "custom" ? "custom" : "catalogue"}`)}</span>}
+                    {advanced && <span className="text-xs text-muted">v{row.version} · {row.source === "bundled" ? t("modules.bundled") : "git"}</span>}
+                    <span className={`ml-2 rounded px-2 py-0.5 text-xs ${moduleOrigin(row, market) === "custom" ? "bg-amber-500/20" : "bg-line"}`}>{t(`catalogue.origin.${moduleOrigin(row, market)}`)}</span>
                   </p>
                   <p className="text-sm text-muted">{mod ? localized(mod.manifest.description, locale, config.defaultLocale) : t("modules.broken")}</p>
                   {mod && (mod.manifest.requires ?? []).length > 0 && <p className="mt-1 text-xs text-muted">{t("modules.requires")} : {(mod.manifest.requires ?? []).map((r) => (r.label ? localized(r.label, locale, config.defaultLocale) : r.service)).join(", ")}</p>}
                   {advanced && mod && (mod.manifest.offers ?? []).length > 0 && <p className="mt-1 text-xs text-muted">{t("modules.offers")} : {(mod.manifest.offers ?? []).map((o) => (o.label ? localized(o.label, locale, config.defaultLocale) : o.service)).join(", ")}</p>}
                   {advanced && mod && mod.manifest.permissions.length > 0 && <p className="mt-1 text-xs text-muted">{t("modules.permissions")} : {mod.manifest.permissions.join(", ")}</p>}
-                  {advanced && row.repoUrl && <p className="mt-1 break-all font-mono text-xs text-muted">{row.repoUrl}{row.ref ? `#${row.ref}` : ""} @ {row.commit?.slice(0, 7)}</p>}
+                  {advanced && row.repoUrl && <p className="mt-1 break-all font-mono text-xs text-muted">{row.repoUrl}{row.ref || row.subdir ? `#${row.ref ?? ""}${row.subdir ? `:${row.subdir}` : ""}` : ""} @ {row.commit?.slice(0, 7)}</p>}
                 </div>
                 {isOwner && (
                   <div className="flex flex-wrap gap-2">
                     <form action={toggleModule.bind(null, row.id, !row.enabled)}>
                       <button className={ui.btn}>{row.enabled ? t("action.disable") : t("action.enable")}</button>
                     </form>
-                    {advanced && row.source !== "builtin" && (
+                    {advanced && (
                       <>
                         <form action={checkUpdateAction.bind(null, row.id)}><button className={ui.btn}>{t("modules.checkUpdate")}</button></form>
                         <form action={updateModuleAction.bind(null, row.id)}><button className={ui.btn}>{t("modules.update")}</button></form>

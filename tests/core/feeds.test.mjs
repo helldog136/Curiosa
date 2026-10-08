@@ -10,14 +10,14 @@ const R = await import("@/core/modules/registry");
 const { createInstance } = await import("@/core/instanceService");
 const { createEntry } = await import("@/core/content/service");
 const { setSetting } = await import("@/core/settings");
-const { BUILTIN_MODULES } = await import("@/modules-builtin");
+const { FIXTURE_MODULES: BUILTIN_MODULES } = await import("../helpers/fixtureModules.mjs");
 
 beforeEach(() => db.reset());
 after(() => db.close());
 
 const manifest = (id) => BUILTIN_MODULES.find((b) => b.manifest.id === id).manifest;
 async function blog(nickname, names = { en: nickname ?? "Blog" }) {
-  await db.prisma.module.upsert({ where: { id: "blog" }, create: { id: "blog", source: "builtin", version: "1", enabled: true }, update: {} });
+  await db.fixture("blog");
   return createInstance(db.prisma, { manifest: manifest("blog"), nickname, names });
 }
 const publish = (instanceId, title, when, extra = {}) =>
