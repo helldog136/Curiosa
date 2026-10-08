@@ -83,8 +83,7 @@ Le script peut aussi être lancé à la main (`node scripts/update.mjs v1.2.3`),
 
 Le cycle suit deux branches :
 
-- **`dev`** : le travail courant. Chaque push publie un **snapshot** (pré-version `dev-<date>-<commit>`), jamais proposé aux instances. On y **étiquette** aussi
-  les release candidates `vX.Y.Z-rc.N` (`package.json` porte alors `X.Y.Z-rc.N`) : proposées seulement aux instances qui ont choisi le canal « rc ».
+- **`dev`** : le travail courant. Chaque push publie un **snapshot** (pré-version `dev-<date>-<commit>`), jamais proposé aux instances. Pour publier une **release candidate**, mettez la version de `package.json` à `X.Y.Z-rc.N` (supérieure à la version des instances à mettre à jour) et poussez sur `dev` : la CI publie `vX.Y.Z-rc.N` (une seule fois ; montez le numéro pour en publier une autre). Poser l'étiquette `vX.Y.Z-rc.N` marche aussi. Les rc ne sont proposées qu'aux instances qui ont choisi le canal « rc ».
 - **`master`** (ou `main`) : le stable. **Fusionner `dev` dans `master` publie la release** `vX.Y.Z`, où `X.Y.Z` est la version de `package.json` (à monter avant de fusionner,
   sans suffixe `-rc`). Si cette version est déjà publiée, la CI ne fait rien.
 
