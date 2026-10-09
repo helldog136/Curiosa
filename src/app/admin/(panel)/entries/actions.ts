@@ -101,7 +101,7 @@ export async function saveEntry(_prev: ActionState, formData: FormData): Promise
   });
 
   await audit(user.email, id ? "entry.update" : "entry.create", `${collection.key}/${slug}`);
-  if (!id) redirect(`/admin/entries/${entryId}?locale=${locale}`);
+  if (!id) redirect(`/admin/entries/${entryId}?locale=${locale}&created=1`);
   return { ok: t("action.saved") };
 }
 
