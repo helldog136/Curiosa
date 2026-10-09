@@ -46,7 +46,7 @@ export function PasskeysPanel({ items, labels, start, finish, remove, rename }: 
 
   return (
     <section className={`${ui.card} space-y-4`} data-testid="passkeys-card">
-      <h2 className="text-lg font-semibold">{labels.title}</h2>
+      <h3 className="text-lg font-semibold">{labels.title}</h3>
       <p className="text-sm text-muted">{labels.help}</p>
       {error && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm">{error}</p>}
       {list.length === 0 && <p className="text-sm text-muted">{labels.none}</p>}

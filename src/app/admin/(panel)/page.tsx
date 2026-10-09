@@ -2,6 +2,7 @@ import { adminCtx } from "@/core/admin";
 import { prisma } from "@/core/db";
 import { getAdminNav } from "@/core/modules/adminNav";
 import { ui } from "@/components/admin/ui";
+import { Callout, PageHeader } from "@/components/admin/Page";
 import { getUpdateCheck } from "@/core/updates/service";
 import { statsEnabled, statsSummary } from "@/core/stats";
 
@@ -27,14 +28,25 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
       <p className="text-sm text-muted">{label}</p>
     </a>
   );
+  const entriesHref = firstContent ? `/admin/entries?c=${firstContent.key}` : "/admin/modules";
+  const first = user.name.split(" ")[0] ?? user.name;
+  const noVisits = !!stats && stats.totals.last30.visitors === 0;
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className={ui.pageTitle}>{advanced ? t("dashboard.title", { name: config.name }) : t("dashboard.hello", { name: user.name.split(" ")[0] ?? user.name })}</h1>
-        {!advanced && <p className={ui.pageIntro}>{t("dashboard.helloIntro", { site: config.name })}</p>}
-      </header>
-      {welcome && !advanced && <p role="status" className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-[15px] leading-6 text-emerald-900">🎉 {t("dashboard.welcome", { name: user.name.split(" ")[0] ?? user.name })}</p>}
-      {denied && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm">{t("error.denied")}</p>}
+      <PageHeader title={advanced ? t("dashboard.title", { name: config.name }) : t("dashboard.hello", { name: first })} intro={advanced ? t("dashboard.introAdvanced") : t("dashboard.helloIntro", { site: config.name })} />
+      {welcome && !advanced && <Callout tone="ok" role="status">🎉 {t("dashboard.welcome", { name: first })}</Callout>}
+      {denied && <Callout tone="danger">{t("error.denied")}</Callout>}
+      {(todo.length > 0 || updateAvailable) && (
+        <section aria-label={t("dashboard.todo")} data-testid="todo" className={`${ui.card} space-y-2`}>
+          <h2 className="text-lg font-semibold">{t("dashboard.todo")}</h2>
+          <ul className="space-y-1.5">
+            {todo.map((i) => (
+              <li key={i.id}><a href={i.content ? `/admin/entries?c=${i.key}` : `/admin/instances/${i.id}`} className="flex items-center justify-between gap-3 rounded-xl px-3 py-2 hover:bg-accent/10"><span>{i.icon} {i.name}</span><span className="rounded-full bg-accent px-2 text-sm font-semibold text-accent-fg">{i.badge} {t("nav.badge.todo")}</span></a></li>
+            ))}
+            {updateAvailable && <li><a href="/admin/updates" className="flex items-center justify-between gap-3 rounded-xl px-3 py-2 hover:bg-accent/10"><span>⬆️ {t("dashboard.updateReady")}</span><span className="rounded-full bg-accent px-2 text-sm font-semibold text-accent-fg">{t("nav.badge.update")}</span></a></li>}
+          </ul>
+        </section>
+      )}
       {!advanced && (
         <section aria-label={t("dashboard.start")} className="space-y-3">
           <h2 className="text-lg font-semibold">{t("dashboard.start")}</h2>
@@ -71,17 +83,6 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
           </div>
         </section>
       )}
-      {(todo.length > 0 || updateAvailable) && (
-        <section aria-label={t("dashboard.todo")} data-testid="todo" className={`${ui.card} space-y-2`}>
-          <h2 className="text-lg font-semibold">{t("dashboard.todo")}</h2>
-          <ul className="space-y-1.5">
-            {todo.map((i) => (
-              <li key={i.id}><a href={i.content ? `/admin/entries?c=${i.key}` : `/admin/instances/${i.id}`} className="flex items-center justify-between gap-3 rounded-xl px-3 py-2 hover:bg-accent/10"><span>{i.icon} {i.name}</span><span className="rounded-full bg-accent px-2 text-sm font-semibold text-accent-fg">{i.badge} {t("nav.badge.todo")}</span></a></li>
-            ))}
-            {updateAvailable && <li><a href="/admin/updates" className="flex items-center justify-between gap-3 rounded-xl px-3 py-2 hover:bg-accent/10"><span>⬆️ {t("nav.updates")}</span><span className="rounded-full bg-accent px-2 text-sm font-semibold text-accent-fg">{t("nav.badge.update")}</span></a></li>}
-          </ul>
-        </section>
-      )}
       {stats && (
         <section aria-label={t("dashboard.visits")} data-testid="visits" className={`${ui.card} space-y-4`}>
           <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -93,6 +94,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
               <div key={k}><p className="text-2xl font-bold">{v.visitors}</p><p className="text-xs text-muted">{t(`dashboard.visits.${k}`)}</p></div>
             ))}
           </div>
+          {noVisits && <p className="text-sm text-muted">{t("dashboard.visitsEmpty")}</p>}
           <div className="flex h-20 items-end gap-px" role="img" aria-label={t("dashboard.visitsChart")}>
             {stats.days.map((d) => (
               <div key={d.day} title={`${d.day} : ${d.visitors}`} className="min-h-px flex-1 rounded-t bg-accent/70" style={{ height: `${Math.max(2, (d.visitors / peak) * 100)}%`, opacity: d.visitors ? 1 : 0.25 }} />
@@ -110,13 +112,18 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
           )}
         </section>
       )}
-      {advanced && <div className="grid gap-4 sm:grid-cols-3">
-        {stat(t("dashboard.published"), published, "/admin/modules")}
-        {stat(t("dashboard.drafts"), drafts, "/admin/modules")}
-        {stat(t("dashboard.redirects"), redirects, "/admin/redirects")}
-        {stat(t("dashboard.instances"), collections, "/admin/modules")}
-        {stat(t("dashboard.modules"), modules, "/admin/modules")}
-      </div>}
+      {advanced && (
+        <section aria-label={t("dashboard.inNumbers")} className="space-y-3">
+          <h2 className="text-lg font-semibold">{t("dashboard.inNumbers")}</h2>
+          <div className="grid gap-4 sm:grid-cols-3">
+            {stat(t("dashboard.published"), published, entriesHref)}
+            {stat(t("dashboard.drafts"), drafts, entriesHref)}
+            {stat(t("dashboard.redirects"), redirects, "/admin/redirects")}
+            {stat(t("dashboard.instances"), collections, "/admin/modules")}
+            {stat(t("dashboard.modules"), modules, "/admin/modules")}
+          </div>
+        </section>
+      )}
     </div>
   );
 }
