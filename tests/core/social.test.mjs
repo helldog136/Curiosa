@@ -25,10 +25,10 @@ async function add(id, mod, nickname, names = { en: nickname ?? id }) {
 }
 
 test("réseaux : le cœur ne connaît aucun réseau — il collecte le bouton (nom, adresse, icône) de chaque module qui fournit « social.link »", async () => {
-  await add("twitch", network("twitch", { items: `[{ label: "Twitch", url: "https://twitch.tv/helldog136", icon: "twitch" }]` }));
+  await add("twitch", network("twitch", { items: `[{ label: "Twitch", url: "https://twitch.tv/moncompte", icon: "twitch" }]` }));
   await add("youtube", network("youtube", { items: `[{ label: "YouTube", url: "https://youtube.com/@x", icon: "youtube" }]` }));
   const links = await S.loadSocialLinks("en");
-  assert.deepEqual(links.map((l) => [l.label, l.href, l.icon, l.module]), [["Twitch", "https://twitch.tv/helldog136", "twitch", "twitch"], ["YouTube", "https://youtube.com/@x", "youtube", "youtube"]]);
+  assert.deepEqual(links.map((l) => [l.label, l.href, l.icon, l.module]), [["Twitch", "https://twitch.tv/moncompte", "twitch", "twitch"], ["YouTube", "https://youtube.com/@x", "youtube", "youtube"]]);
 });
 
 test("réseaux : plusieurs instances du même réseau — chacune apporte SON bouton (la chaîne de l'un, celle d'un ami)", async () => {
@@ -37,9 +37,9 @@ test("réseaux : plusieurs instances du même réseau — chacune apporte SON bo
   const a = await add("twitch", mod, "Moi", { en: "Moi" });
   const b = await add("twitch", mod, "Ami", { en: "Ami" });
   const set = (inst, channel) => db.prisma.setting.create({ data: { key: `instance.${inst.id}.channel`, locale: "", value: JSON.stringify(channel) } });
-  await set(a, "helldog136"); await set(b, "rascane");
+  await set(a, "moncompte"); await set(b, "ami");
   const links = await S.loadSocialLinks("en");
-  assert.deepEqual(links.map((l) => l.href).sort(), ["https://twitch.tv/helldog136", "https://twitch.tv/rascane"]);
+  assert.deepEqual(links.map((l) => l.href).sort(), ["https://twitch.tv/ami", "https://twitch.tv/moncompte"]);
   assert.notEqual(links[0].instance, links[1].instance);
 });
 

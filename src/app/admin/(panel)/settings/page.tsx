@@ -26,6 +26,22 @@ import { saveMail, sendTestMail } from "./mail-actions";
 
 const TRANSLATABLE = ["site.name", "site.tagline", "site.about", "footer.text", "header.secondaryLabel", "header.buttonLabel", "privacy.extra"] as const;
 
+/** Une couche de l'arrière-plan : numéro (du bas vers le haut), titre, ce qu'elle fait, puis ses réglages. */
+function LayerRow({ n, title, note, children }: { n: number; title: string; note: string; children: React.ReactNode }) {
+  return (
+    <li className="flex gap-3">
+      <span aria-hidden="true" className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-line text-xs font-semibold text-muted">{n}</span>
+      <div className="min-w-0 flex-1 space-y-3">
+        <div>
+          <p className="font-medium">{title}</p>
+          <p className={ui.help}>{note}</p>
+        </div>
+        {children}
+      </div>
+    </li>
+  );
+}
+
 export default async function SettingsPage() {
   const { t, config, advanced, user } = await adminCtx("admin");
   const socialCount = (await providersOf(SOCIAL_TOPIC)).length;
@@ -141,6 +157,7 @@ export default async function SettingsPage() {
             <p className={ui.help}>{t("settings.header.linksHelp")}</p>
           </div>
           <div className={`${ui.card} space-y-4`}>
+          <h3 className="font-semibold">{t("settings.colors")}</h3>
           <ThemePicker background={config.background} accent={config.accent} advanced={advanced}
             labels={{ background: t("settings.background"), accent: t("settings.accent") }}
             names={{ night: t("theme.night"), ocean: t("theme.ocean"), forest: t("theme.forest"), rose: t("theme.rose"), violet: t("theme.violet"), daylight: t("theme.daylight"), paper: t("theme.paper") }} />
@@ -149,8 +166,17 @@ export default async function SettingsPage() {
               options={[{ value: "sans", label: "Sans-serif" }, { value: "serif", label: "Serif" }, { value: "mono", label: "Monospace" }]} />
           )}
           </div>
-          <div className={`${ui.card} space-y-4`}>
-          <Select name="glow" label={t("settings.glow")} help={t("settings.glowHelp")} defaultValue={config.glow.level}
+          <div className={`${ui.card} space-y-5`} data-testid="bg-layers">
+            <div>
+              <h3 className="font-semibold">{t("settings.layers")}</h3>
+              <p className={ui.help}>{t("settings.layersHelp")}</p>
+            </div>
+            <ol className="space-y-5">
+              <LayerRow n={1} title={t("settings.layer.color")} note={t("settings.layer.colorNote")}>
+                <span className="inline-flex items-center gap-2 text-sm"><span aria-hidden="true" className="h-5 w-5 rounded-md border border-line" style={{ background: config.background }} />{config.background}</span>
+              </LayerRow>
+              <LayerRow n={2} title={t("settings.layer.glow")} note={t("settings.layer.glowNote")}>
+          <Select name="glow" label={t("settings.glow")} defaultValue={config.glow.level}
             options={[
               { value: "none", label: t("settings.glow.none") }, { value: "soft", label: t("settings.glow.soft") }, { value: "strong", label: t("settings.glow.strong") },
               ...(advanced ? [{ value: "custom", label: t("settings.glow.custom") }] : []),
@@ -175,14 +201,16 @@ export default async function SettingsPage() {
             </fieldset>
             </ShowWhen>
           )}
-          </div>
-          <div className={`${ui.card} space-y-4`}>
-          <Select name="bgPreset" label={t("settings.bg")} help={t("settings.bgHelp")} defaultValue={config.bg.preset}
+              </LayerRow>
+              <LayerRow n={3} title={t("settings.layer.image")} note={t("settings.layer.imageNote")}>
+          <ImageField name="bgImage" label={t("settings.bgImage")} defaultValue={config.bg.image} uploadLabel={t("action.upload")} />
+              </LayerRow>
+              <LayerRow n={4} title={t("settings.layer.pattern")} note={t("settings.layer.patternNote")}>
+          <Select name="bgPreset" label={t("settings.bg")} defaultValue={config.bg.preset}
             options={[
               { value: "none", label: t("settings.bg.none") }, { value: "dusk", label: t("settings.bg.dusk") }, { value: "grid", label: t("settings.bg.grid") },
               ...(advanced ? [{ value: "svg", label: t("settings.bg.svg") }, { value: "custom", label: t("settings.bg.custom") }] : []),
             ]} />
-          <ImageField name="bgImage" label={t("settings.bgImage")} defaultValue={config.bg.image} uploadLabel={t("action.upload")} />
           {advanced && (
             <ShowWhen field="bgPreset" equals="svg" initial={config.bg.preset}>
               <div className="space-y-3">
@@ -202,6 +230,8 @@ export default async function SettingsPage() {
             <TextArea name="bgCustom" label={t("settings.bgCustom")} help={t("settings.bgCustomHelp")} rows={10} mono defaultValue={config.bg.custom || BG_EXAMPLE} />
             </ShowWhen>
           )}
+              </LayerRow>
+            </ol>
           </div>
           {advanced && <p className={ui.help}>{t("settings.appearanceHelp")}</p>}
         </section>
