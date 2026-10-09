@@ -4,12 +4,16 @@ import { ActionForm } from "@/components/admin/ActionForm";
 import { ConfirmButton } from "@/components/admin/ConfirmButton";
 import { Select, TextField } from "@/components/admin/Field";
 import { ui } from "@/components/admin/ui";
-import { createUser, deleteUser, setUserRole } from "./actions";
+import { isEmailLocked, formatUntil } from "@/core/auth/lockout";
+import { getSetting } from "@/core/settings";
+import { createUser, deleteUser, resetUserTwoFactor, revokeUserSessions, setRequireTwoFactor, setUserRole, unlockUser } from "./actions";
 
 export default async function UsersPage() {
-  const { t, user } = await adminCtx("admin");
-  const users = await prisma.user.findMany({ orderBy: { createdAt: "asc" } });
+  const { t, user, locale } = await adminCtx("admin");
+  const users = await prisma.user.findMany({ orderBy: { createdAt: "asc" }, include: { _count: { select: { passkeys: true } } } });
   const isOwner = user.role === "owner";
+  const required = (await getSetting<boolean>("security.require2fa")) === true;
+  const locks = new Map(await Promise.all(users.map(async (u) => [u.id, await isEmailLocked(u.email)] as const)));
   const roles = isOwner ? ["admin", "editor"] : ["editor"];
   return (
     <div className="space-y-8">
@@ -20,7 +24,16 @@ export default async function UsersPage() {
           {users.map((u) => (
             <tr key={u.id} className="border-t border-line">
               <td className={ui.td}>{u.name}</td>
-              <td className={ui.td}>{u.email}</td>
+              <td className={ui.td}>
+                {u.email}
+                {(u.totpEnabledAt || u._count.passkeys > 0) && <span className="ml-2 text-xs text-green-600" data-testid="user-2fa" title={t("users.twofa")}>🔐</span>}
+                {locks.get(u.id) && (
+                  <span className="mt-1 flex flex-wrap items-center gap-2 text-xs text-amber-600" data-testid="user-locked">
+                    {t("users.locked", { time: formatUntil(locks.get(u.id)!, locale) })}
+                    {isOwner && <form action={unlockUser.bind(null, u.id)}><button className="underline">{t("users.unlock")}</button></form>}
+                  </span>
+                )}
+              </td>
               <td className={ui.td}>
                 {isOwner && u.role !== "owner" ? (
                   <form action={setUserRole.bind(null, u.id)} className="flex gap-2">
@@ -32,6 +45,12 @@ export default async function UsersPage() {
                 ) : t(`role.${u.role}`)}
               </td>
               <td className={ui.td}>
+                {isOwner && u.id !== user.id && (u.totpEnabledAt || u._count.passkeys > 0) && (
+                  <form action={resetUserTwoFactor.bind(null, u.id)} className="mb-1"><ConfirmButton message={t("users.twofaResetConfirm")}>{t("users.twofaReset")}</ConfirmButton></form>
+                )}
+                {isOwner && u.id !== user.id && (
+                  <form action={revokeUserSessions.bind(null, u.id)} className="mb-1"><ConfirmButton message={t("users.revokeConfirm")}>{t("users.revoke")}</ConfirmButton></form>
+                )}
                 {u.role !== "owner" && u.id !== user.id && (isOwner || u.role === "editor") && (
                   <form action={deleteUser.bind(null, u.id)}><ConfirmButton message={t("confirm.delete")}>{t("action.delete")}</ConfirmButton></form>
                 )}
@@ -40,6 +59,13 @@ export default async function UsersPage() {
           ))}
         </tbody>
       </table>
+      {isOwner && (
+        <section className={`${ui.card} space-y-3`} data-testid="require-2fa">
+          <ActionForm action={setRequireTwoFactor} submitLabel={t("action.save")}>
+            <label className="flex items-start gap-3 text-sm"><input type="checkbox" name="require" defaultChecked={required} className="mt-1 h-4 w-4" /><span><span className="font-medium">{t("users.require2fa")}</span><span className="block text-muted">{t("users.require2faHelp")}</span></span></label>
+          </ActionForm>
+        </section>
+      )}
       <section className={`${ui.card} space-y-4`}>
         <h2 className="text-lg font-semibold">{t("users.add")}</h2>
         <ActionForm action={createUser} submitLabel={t("action.create")} reset>

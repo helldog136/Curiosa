@@ -62,7 +62,8 @@ export default async function InstancePage({ params, searchParams }: { params: P
   const theme = buildTheme(siteConfig.background, siteConfig.accent, siteConfig.font);
 
   const input = (f: SettingField, name: string, value: unknown, label: string) => {
-    const common = { name, label, help: f.help ? L(f.help) : undefined };
+    // Réglages d'un module : jamais remplis par le navigateur (un identifiant client + un secret ressemblent à un login/mot de passe).
+    const common = { name, label, help: f.help ? L(f.help) : undefined, autoComplete: "off" };
     const str = value === undefined ? (f.default === undefined ? "" : String(f.default)) : String(value);
     switch (f.type) {
       case "boolean":
@@ -72,7 +73,7 @@ export default async function InstancePage({ params, searchParams }: { params: P
       case "select":
         return <Select key={name} {...common} defaultValue={str} options={(f.options ?? []).map((o) => ({ value: o.value, label: L(o.label) }))} />;
       case "secret":
-        return <TextField key={name} {...common} type="password" placeholder={value ? "••••••••" : ""} autoComplete="off" />;
+        return <TextField key={name} {...common} type="password" placeholder={value ? "••••••••" : ""} autoComplete="new-password" />;
       case "number":
         return <TextField key={name} {...common} type="number" defaultValue={str} />;
       case "color": {

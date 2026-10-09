@@ -35,7 +35,7 @@ Curiosa ne cherche pas à remplacer WordPress : il n'en a ni l'écosystème, ni 
 | **Fait pour les créateurs** : overlays OBS, statut live, codes promo, sponsors, kit presse, réseaux sociaux dans l'en-tête | la liste des modules livrés |
 | **Gérable par un assistant IA** : serveur MCP (comme d'autres CMS en proposent maintenant), installation menée par un agent, modules écrits à partir d'une doc conçue pour cela | [docs/AGENT-INSTALL.md](docs/AGENT-INSTALL.md), [docs/CREATE-A-MODULE.md](docs/CREATE-A-MODULE.md) |
 
-**Les chiffres, avec leur méthode** ([docs/MESURES.md](docs/MESURES.md), mesurés sur la 0.1.3) : installation par la machine ≈ 26 s ; zéro cookie et zéro service tiers à la première visite ; 634 Ko de code (≈ 189 Ko compressé) pour une page d'accueil ; 234 Mo de mémoire au repos ; 875 tests automatiques (cœur et modules). Et ce qui ne flatte pas : **880 Mo sur le disque** une fois installé, et ≈ 177 Ko de JavaScript compressé même pour une page simple.
+**Les chiffres, avec leur méthode** ([docs/MESURES.md](docs/MESURES.md), mesurés sur la 0.1.4) : installation par la machine ≈ 16 s ; zéro cookie et zéro service tiers à la première visite ; 634 Ko de code (≈ 189 Ko compressé) pour une page d'accueil ; 224 Mo de mémoire au repos ; 878 tests automatiques (cœur et modules). Et ce qui ne flatte pas : **517 Mo sur le disque** une fois installé, et ≈ 177 Ko de JavaScript compressé même pour une page simple.
 
 **Choisissez plutôt autre chose si…**
 
@@ -314,6 +314,7 @@ Un assistant IA peut écrire un module à partir de ces documents : donnez-lui `
 | [docs/BACKGROUND.md](docs/BACKGROUND.md) | décrire le fond de page |
 | [docs/IMPORT-GRAV.md](docs/IMPORT-GRAV.md) | convertir un site Grav |
 | [docs/PRIVACY.md](docs/PRIVACY.md) | cookies, statistiques, politique de confidentialité |
+| [docs/SECURITE.md](docs/SECURITE.md) | blocages progressifs, sessions, dépannage en SSH |
 | [docs/MESURES.md](docs/MESURES.md) | les chiffres mesurés (installation, poids, mémoire, cookies), leur méthode, et ce qui n'est pas mesuré |
 | [CHANGELOG.md](CHANGELOG.md) | ce qui change à chaque version |
 

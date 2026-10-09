@@ -20,7 +20,7 @@ type Props = {
   /** Dans une page à onglets : les onglets (séparés par des espaces) où le bouton d'envoi est visible. */
   submitTabs?: string;
   /**
-   * Barre flottante en bas à droite de la page quand des modifications sont enregistrables : « Enregistrer » et « Annuler » restent à portée sans remonter ni
+   * Barre flottante en bas, au centre de la page quand des modifications sont enregistrables : « Enregistrer » et « Annuler » restent à portée sans remonter ni
    * descendre dans une longue page de réglages. Pour les formulaires qui MODIFIENT quelque chose (réglages, menu, accueil, entrée), pas pour ceux qui créent.
    */
   floating?: FloatingLabels;
@@ -28,14 +28,16 @@ type Props = {
 
 /** Formulaires dont la barre est affichée en ce moment, dans l'ordre d'apparition : plusieurs barres se superposent sans se recouvrir. */
 const shown: string[] = [];
+/** Formulaire et état « modifié » de chaque barre affichée : une seule barre sert pour toute la page (celle du premier formulaire), et enregistre tous les formulaires modifiés. */
+const registry = new Map<string, { form: HTMLFormElement; dirty: boolean }>();
 const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((l) => l());
 const subscribe = (cb: () => void) => { listeners.add(cb); return () => { listeners.delete(cb); }; };
-function show(id: string, on: boolean) {
+function show(id: string, on: boolean, form?: HTMLFormElement | null, dirty = false) {
+  if (on && form) registry.set(id, { form, dirty }); else registry.delete(id);
   const i = shown.indexOf(id);
   if (on && i === -1) shown.push(id);
   else if (!on && i !== -1) shown.splice(i, 1);
-  else return;
   emit();
 }
 
@@ -102,14 +104,16 @@ export function ActionForm({ action, children, submitLabel, className = "space-y
   }, [floating, state]);
   const recent: "ok" | "error" | null = state && state !== seen ? (state.ok ? "ok" : state.error ? "error" : null) : null;
   const visible = !!floating && (dirty || recent !== null);
-  useEffect(() => { show(id, visible); }, [id, visible]);
+  useEffect(() => { show(id, visible, ref.current, dirty); }, [id, visible, dirty]);
+  const anyDirty = slot === 0 && [...registry.values()].some((r) => r.dirty);
+  const saveAll = () => { for (const r of [...registry.values()]) if (r.dirty) r.form.requestSubmit(); };
 
   return (
     <form ref={ref} onSubmit={onSubmit} className={className}>
       {children}
       {state?.error && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm text-red-700">{state.error}</p>}
       {state?.ok && <p role="status" className="rounded-lg border border-emerald-500/50 bg-emerald-500/10 p-3 text-sm text-emerald-700">{state.ok}</p>}
-      {!hideSubmit && (
+      {!hideSubmit && !floating && (
         <div data-tab={submitTabs}>
           <button type="submit" disabled={pending} className={ui.btnPrimary}>
             {submitLabel}
@@ -117,14 +121,14 @@ export function ActionForm({ action, children, submitLabel, className = "space-y
         </div>
       )}
       {floating && <div aria-hidden="true" className="h-12" />}
-      {floating && visible && (
-        <div role="region" aria-label={floating.dirty} data-testid="floating-bar" style={{ bottom: `calc(1.25rem + ${Math.max(slot, 0)} * 4.25rem)` }}
-          className="fixed right-4 z-40 flex max-w-[calc(100vw-2rem)] items-center gap-3 rounded-2xl border border-line bg-surface/95 px-4 py-2.5 shadow-lg backdrop-blur sm:right-6">
-          {dirty ? (
+      {floating && visible && slot <= 0 && (
+        <div role="region" aria-label={floating.dirty} data-testid="floating-bar" style={{ bottom: "1.25rem" }}
+          className="fixed left-1/2 z-40 flex w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-3 rounded-2xl border border-line bg-surface/95 px-4 py-2.5 shadow-lg backdrop-blur">
+          {dirty || anyDirty ? (
             <>
               <span className="hidden text-sm text-muted sm:inline">{floating.dirty}</span>
               <button type="button" className={ui.btn} onClick={() => { if (window.confirm(floating.discardConfirm)) { leaving.current = true; window.location.reload(); } }}>{floating.discard}</button>
-              <button type="submit" disabled={pending} className={ui.btnPrimary}>{submitLabel}</button>
+              <button type="button" onClick={saveAll} disabled={pending} className={ui.btnPrimary}>{submitLabel}</button>
             </>
           ) : recent === "ok" ? (
             <span role="status" className="text-sm font-medium text-emerald-700">✓ {floating.saved}</span>

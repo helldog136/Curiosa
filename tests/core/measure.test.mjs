@@ -51,7 +51,7 @@ test("preuves : les chiffres du README viennent de docs/MESURES.md, et le docume
   const cited = [...paragraph.replace(/\(\[docs[^)]*\)[^)]*\)/, "").matchAll(/(?:≈ )?\d[\d,]*(?: (?:Mo|Ko|s|tests))/g)].map((m) => m[0]);
   assert.ok(cited.length >= 6, `chiffres du README introuvables : ${cited.join(" | ")}`);
   for (const chiffre of cited) assert.ok(mesures.includes(chiffre) || mesures.includes(chiffre.replace(" tests", " tests automatiques")) || mesures.includes(chiffre.replace("≈ ", "")), `${chiffre} (README) absent de docs/MESURES.md`);
-  for (const chiffre of ["880 Mo", "234 Mo", "634 Ko", "≈ 26 s"]) assert.ok(readme.includes(chiffre), `${chiffre} : le README n'a pas été mis à jour avec les dernières mesures`);
+  for (const chiffre of ["517 Mo", "224 Mo", "634 Ko", "≈ 16 s"]) assert.ok(readme.includes(chiffre), `${chiffre} : le README n'a pas été mis à jour avec les dernières mesures`);
   assert.match(mesures, /## Ce qui n'est PAS mesuré/);
   assert.match(mesures, /node scripts\/measure\.mjs/);
   assert.match(readme, /docs\/MESURES\.md/);

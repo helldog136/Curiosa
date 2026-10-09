@@ -81,7 +81,7 @@ Le script peut aussi être lancé à la main (`node scripts/update.mjs v1.2.3`),
 
 ## Publier une release (mainteneurs)
 
-**Avant chaque publication (stable ou release candidate), rédigez dans `CHANGELOG.md` ce qui change depuis la version précédente publiée** : une section « ## X.Y.Z » (pour une RC, « ## X.Y.Z-rc.N ») dont le contenu est pour les utilisateurs, pas pour les développeurs. Ce texte devient celui de la release GitHub et celui de la page *Mises à jour* de l'admin ; un test échoue si la version de `package.json` n'a pas sa section. Entre deux publications, les changements s'accumulent sous « Prochaine version (non publiée) ».
+**Avant chaque publication (stable ou release candidate), rédigez dans `CHANGELOG.md` ce qui change depuis la version précédente publiée** : une section « ## X.Y.Z » (pour une RC, « ## X.Y.Z-rc.N ») dont le contenu est pour les utilisateurs, pas pour les développeurs. Ce texte devient celui de la release GitHub et celui de la page *Mises à jour* de l'admin ; un test échoue si la version de `package.json` n'a pas sa section. Entre deux publications, les changements s'accumulent sous « Prochaine version (non publiée) ». **Style** : écrivez pour quelqu'un qui n'est pas technicien (Emma, pas Hugo). Un point = une à trois phrases, qui disent ce que ça change pour l'utilisateur et non comment c'est fait ; pas de code ni de mots techniques en dehors de la rubrique « Pour les développeurs ». Un test (`tests/core/changelog.test.mjs`) vérifie la longueur, le nombre de phrases et le vocabulaire.
 
 Le cycle suit deux branches :
 
@@ -104,6 +104,7 @@ dépôt injoignable, le site garde la dernière copie reçue, à défaut celle l
 |---|---|
 | `CURIOSA_CATALOGUE_REPO` | Dépôt git qui publie l'index (défaut : `curiosa-extras`, le dépôt de modules voisin du dépôt d'origine de l'installation, même propriétaire ; indispensable avec Docker, où il n'y a pas de dépôt d'origine). |
 | `CURIOSA_EXTRAS_DIR` | Dossier des modules livrés avec cette version (défaut : `extras/` à côté de l'application, instantané de `curiosa-extras` ; `npm run extras:fetch` le récupère pour un clone du dépôt). |
+| `CURIOSA_TRUSTED_PROXIES` | Nombre de reverse proxys devant le site (1 par défaut) : sert à lire la vraie adresse du visiteur pour les blocages de connexion. Voir [SECURITE.md](SECURITE.md). |
 | `CURIOSA_CATALOGUE_REF` | Branche ou étiquette à lire (défaut : la branche par défaut). |
 | `CURIOSA_CATALOGUE_RUNTIME=0` | Ne pas interroger le dépôt : copie livrée avec la version seulement (serveur sans accès au réseau). |
 | `MODULES_INDEX_URL` | Index JSON `https://` **supplémentaire** (le vôtre, celui d'une communauté) : il ne peut qu'ajouter des modules. |

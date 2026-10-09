@@ -35,3 +35,25 @@ test("changelog : repris comme texte de chaque release (CI) et affiché dans l'a
   assert.equal(releaseNotes("n'importe quoi", "v1.0.0"), "");
   assert.equal(releaseNotes([{ tag_name: "v1.0.0", body: "x".repeat(9000) }], "v1.0.0").length, 6000, "borné");
 });
+
+test("changelog : écrit pour un non-technicien — un point = 1 à 3 phrases courtes, sans jargon ni code hors de la rubrique « Pour les développeurs »", () => {
+  const JARGON = /\b(archive|migration|manifeste|sqlite|typescript|compilateur|prisma|next\.js|webassembly|serveur de production|endpoint|api)\b/i;
+  const problems = [];
+  for (const section of sections(changelog)) {
+    let rubric = "";
+    for (const line of section.body.split("\n")) {
+      const h = /^### (.+)/.exec(line);
+      if (h) { rubric = h[1]; continue; }
+      if (!line.startsWith("- ")) continue;
+      const text = line.slice(2);
+      const where = `${section.title} › ${rubric} : « ${text.slice(0, 50)}… »`;
+      const dev = /développeurs/i.test(rubric);
+      const sentences = text.replace(/\*\*/g, "").split(/(?<=[.!?…])\s+(?=[A-ZÀ-ÝÉ«(])/).filter(Boolean).length;
+      if (sentences > 3) problems.push(`${where} — ${sentences} phrases (3 au plus)`);
+      if (text.length > (dev ? 420 : 330)) problems.push(`${where} — ${text.length} caractères (${dev ? 420 : 330} au plus) : résumez`);
+      if (!dev && /`/.test(text)) problems.push(`${where} — du code (« \` ») : à mettre dans « Pour les développeurs »`);
+      if (!dev && JARGON.test(text)) problems.push(`${where} — mot technique « ${JARGON.exec(text)[0]} » : dites ce que ça change pour l'utilisateur`);
+    }
+  }
+  assert.deepEqual(problems, [], "\n" + problems.join("\n"));
+});

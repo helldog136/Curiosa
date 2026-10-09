@@ -22,10 +22,80 @@ model User {
   locale       String?
   // Mode d'affichage de l'admin : simplifié (défaut) ou avancé (tous les réglages techniques).
   advanced     Boolean  @default(false)
+  // Augmente pour couper toutes les sessions ouvertes de cet utilisateur (« déconnecter tous les appareils », changement de mot de passe…).
+  sessionVersion Int    @default(0)
+  // Double vérification (code à usage unique d'une application) : secret actif, secret en cours d'activation, date d'activation, dernier code accepté (jamais deux fois le même).
+  totpSecret    String?
+  totpPending   String?
+  totpEnabledAt DateTime?
+  totpLastStep  Int?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   entries Entry[]
+  trustedIps TrustedIp[]
+  recoveryCodes RecoveryCode[]
+  passkeys      Passkey[]
+}
+
+// ─── Connexion : blocages progressifs ──────────────────────────────────────
+// Une ligne par « clé » (ip:<adresse> ou email:<adresse>) : erreurs de mot de passe, paliers déjà atteints, fin du blocage.
+model AuthLock {
+  key           String    @id
+  failures      Int       @default(0)
+  strikes       Int       @default(0)
+  lastFailureAt DateTime?
+  lockedUntil   DateTime?
+  updatedAt     DateTime  @updatedAt
+}
+
+// Codes de secours de la double vérification : seule leur empreinte est gardée, chacun ne sert qu'une fois.
+model RecoveryCode {
+  id        String    @id @default(cuid())
+  userId    String
+  codeHash  String
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// Clés d'accès (passkeys) : seule la clé PUBLIQUE est gardée ; la clé privée ne quitte jamais l'appareil de la personne.
+model Passkey {
+  id           String    @id @default(cuid())
+  userId       String
+  credentialId String    @unique
+  publicKey    Bytes
+  counter      Int       @default(0)
+  transports   String?
+  name         String
+  deviceType   String?
+  backedUp     Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  lastUsedAt   DateTime?
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// Défi à signer, valable quelques minutes et utilisable UNE seule fois (enregistrement ou connexion).
+model PasskeyChallenge {
+  id        String   @id @default(cuid())
+  challenge String
+  purpose   String
+  userId    String?
+  expiresAt DateTime
+}
+
+// Adresses (empreintes, jamais en clair) d'où un utilisateur s'est déjà connecté : un inconnu qui tape de faux mots de passe ne peut pas l'en bloquer depuis chez lui.
+model TrustedIp {
+  userId   String
+  hash     String
+  lastSeen DateTime
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, hash])
 }
 
 // ─── Réglages ─────────────────────────────────────────────────────────────
