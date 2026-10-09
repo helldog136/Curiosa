@@ -30,6 +30,8 @@ export default async function PanelLayout({ children }: { children: React.ReactN
       <MobileMenu menuLabel={t("nav.menu")} brand={<a href="/admin" className="flex flex-col px-3 leading-tight"><span className="text-lg font-bold">{config.name}</span><span className="text-xs text-muted">{t("nav.adminTagline")}</span></a>}>
         <nav aria-label="Admin">
           <div className="mt-4"><NavLink href="/admin" exact>{t("nav.dashboard")}</NavLink></div>
+          {/* Là où se gère tout le reste : en premier, et bien visible. « installé » et « ajouter » (catalogue) sont deux onglets d'un même endroit. */}
+          {canManage && <div className="mt-3"><NavLink href="/admin/modules" also={["/admin/catalogue"]} prominent>🧩 {advanced ? t("nav.modules") : t("nav.modules.simple")}</NavLink></div>}
 
           {contentItems.length > 0 && (
             <div>
@@ -47,8 +49,6 @@ export default async function PanelLayout({ children }: { children: React.ReactN
 
           <p className={group}>{t("nav.features")}</p>
           {otherItems.map((m) => <NavLink key={m.id} href={m.content ? `/admin/entries?c=${m.key}` : `/admin/instances/${m.id}`} badge={m.badge} badgeLabel={t("nav.badge.todo")}>{m.icon} {m.name}</NavLink>)}
-          {/* Une seule entrée : « installé » et « ajouter » (catalogue) sont deux onglets d'un même endroit. */}
-          {canManage && <NavLink href="/admin/modules" also={["/admin/catalogue"]}>{advanced ? t("nav.modules") : t("nav.modules.simple")}</NavLink>}
 
           {(canManage || user.role === "owner") && (
             <>
