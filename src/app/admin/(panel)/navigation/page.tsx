@@ -10,7 +10,7 @@ import { listMenuPages } from "./pages";
 export const dynamic = "force-dynamic";
 
 export default async function NavigationPage() {
-  const { t, config } = await adminCtx("admin");
+  const { t, config, advanced } = await adminCtx("admin");
   const pages = await listMenuPages(config.defaultLocale);
   const byHref = new Map(pages.map((p) => [p.href, p]));
   // Le menu actuel, dans son ordre : une entrée qui correspond à une page du site est une « page », les autres sont des liens libres.
@@ -24,7 +24,7 @@ export default async function NavigationPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className={ui.pageTitle}>{t("nav.navigation")}</h1>
+        <h1 className={ui.pageTitle}>{advanced ? t("nav.navigation") : t("nav.navigation.simple")}</h1>
         <p className={ui.pageIntro}>{t("navigation.intro")}</p>
       </div>
       <ActionForm action={saveNavigation} floating={floatingLabels(t)} submitLabel={t("action.save")}>
@@ -35,7 +35,7 @@ export default async function NavigationPage() {
           labels={{
             empty: t("navigation.empty"), addPage: t("navigation.addPage"), addLink: t("navigation.addLink"), addGroup: t("navigation.addGroup"), group: t("navigation.group"), groupName: t("navigation.groupName"), groupEmpty: t("navigation.groupEmpty"), pickPage: t("navigation.pickPage"),
             noMorePages: t("navigation.noMorePages"), cancel: t("navigation.cancel"), up: t("navigation.up"), down: t("navigation.down"), remove: t("navigation.remove"),
-            page: t("navigation.page"), link: t("navigation.link"), href: t("navigation.href"), hrefPlaceholder: "https://…  ·  /raccourci", label: t("navigation.label"),
+            page: t("navigation.page"), link: t("navigation.link"), href: t("navigation.href"), hrefPlaceholder: t("navigation.hrefPlaceholder"), label: t("navigation.label"),
           }}
         />
       </ActionForm>

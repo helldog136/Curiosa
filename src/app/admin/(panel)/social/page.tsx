@@ -12,7 +12,7 @@ import { addNetwork } from "./actions";
 export const dynamic = "force-dynamic";
 
 export default async function SocialPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
-  const { t, locale, config, user } = await adminCtx("admin");
+  const { t, locale, config, user, advanced } = await adminCtx("admin");
   const { error } = await searchParams;
   const providers = await providersOf(SOCIAL_TOPIC);
   const links = await loadSocialLinks(locale, 200);
@@ -32,42 +32,61 @@ export default async function SocialPage({ searchParams }: { searchParams: Promi
 
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">{t("social.active")}</h2>
-        {providers.length === 0 ? <p className={ui.help}>{t("social.none")}</p> : (
-          <ul className="space-y-2" data-testid="social-active">
-            {providers.map(({ instance, mod }) => {
-              const shown = links.filter((l) => l.instance === instance.key);
-              return (
-                <li key={instance.id} className={`${ui.card} flex flex-wrap items-center gap-3`}>
-                  <span className="inline-flex h-6 w-6 items-center justify-center">{shown[0] ? <EntryIcon icon={shown[0].icon} className="h-5 w-5" /> : mod.manifest.icon}</span>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium">{labeler.label(instance)}</p>
-                    <p className={`${ui.help} truncate`}>{shown.length > 0 ? shown.map((l) => l.href).join(" · ") : t("social.toSet")}</p>
-                  </div>
-                  <a href={`/admin/instances/${instance.id}`} className={ui.btn}>{t("social.settings")}</a>
-                </li>
-              );
-            })}
-          </ul>
+        {providers.length === 0 ? (
+          <div className={`${ui.card} text-[15px] leading-6`}>
+            <p className="font-medium">{t("social.none")}</p>
+            <p className="text-muted">{t("social.noneHelp")}</p>
+          </div>
+        ) : (
+          <>
+            <ul className="space-y-2" data-testid="social-active">
+              {providers.map(({ instance, mod }) => {
+                const shown = links.filter((l) => l.instance === instance.key);
+                return (
+                  <li key={instance.id} className={`${ui.card} flex flex-wrap items-center gap-3`}>
+                    <span className="inline-flex h-6 w-6 items-center justify-center">{shown[0] ? <EntryIcon icon={shown[0].icon} className="h-5 w-5" /> : mod.manifest.icon}</span>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium">{labeler.label(instance)}</p>
+                      <p className={`${ui.help} truncate`}>{shown.length > 0 ? shown.map((l) => l.href).join(" · ") : t("social.toSet")}</p>
+                    </div>
+                    <a href={`/admin/instances/${instance.id}`} className={ui.btn}>{t("social.settings")}</a>
+                  </li>
+                );
+              })}
+            </ul>
+            <p className={ui.help}>{t("social.headerHint", { page: advanced ? t("nav.settings") : t("nav.settings.simple") })}</p>
+          </>
         )}
-        <p className={ui.help}>{t("social.headerHint")}</p>
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-lg font-semibold">{t("social.add")}</h2>
+        <div>
+          <h2 className="text-lg font-semibold">{t("social.add")}</h2>
+          {market.length > 0 && <p className={ui.help}>{t("social.addHelp")}</p>}
+        </div>
         {market.length === 0 ? <p className={ui.help}>{t("social.noneAvailable")}</p> : (
-          <ul className="grid gap-4 sm:grid-cols-2" data-testid="social-available">
-            {market.map((e) => (
-              <li key={e.id} className={`${ui.card} space-y-2`}>
-                <p className="font-medium">{e.icon} {localized(e.name, locale, config.defaultLocale)}</p>
-                <p className={ui.help}>{localized(e.description, locale, config.defaultLocale)}</p>
-                {isOwner ? (
-                  <form action={addNetwork.bind(null, e.id)} className="flex flex-wrap items-center gap-2">
-                    {(counts.get(e.id) ?? 0) > 0 && <input name="nickname" required placeholder={t("social.nickname")} aria-label={t("social.nickname")} className={`${ui.input} max-w-48`} />}
-                    <button type="submit" className={ui.btnPrimary}>{t("social.addButton")}</button>
-                  </form>
-                ) : <p className={ui.help}>{t("social.ownerOnly")}</p>}
-              </li>
-            ))}
+          <ul className="grid gap-3 sm:grid-cols-2" data-testid="social-available">
+            {market.map((e) => {
+              const name = localized(e.name, locale, config.defaultLocale);
+              const description = localized(e.description, locale, config.defaultLocale);
+              return (
+                <li key={e.id} className="rounded-2xl border border-line bg-surface p-3 sm:p-4" title={description}>
+                  {isOwner ? (
+                    <form action={addNetwork.bind(null, e.id)} className="flex flex-wrap items-center gap-2">
+                      <p className="min-w-0 flex-1 font-medium">{e.icon} {name}</p>
+                      {(counts.get(e.id) ?? 0) > 0 && <input name="nickname" required placeholder={t("social.nickname")} aria-label={t("social.nickname")} className={`${ui.input} max-w-48`} />}
+                      <button type="submit" className={ui.btn}>+ {t("social.addButton")}</button>
+                    </form>
+                  ) : (
+                    <>
+                      <p className="font-medium">{e.icon} {name}</p>
+                      <p className={ui.help}>{t("social.ownerOnly")}</p>
+                    </>
+                  )}
+                  {advanced && <p className={ui.help}>{description}</p>}
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>
