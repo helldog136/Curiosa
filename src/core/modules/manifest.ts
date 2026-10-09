@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { MODULE_API_VERSION } from "../config";
-import { THEME_TOKENS } from "../color";
+import { COLOR_TOKENS } from "../color";
 import { groupIssues } from "./groups";
 import { siteDefaultRef } from "./settingValues";
 
@@ -21,7 +21,7 @@ export const settingField = z.object({
   // Une couleur peut suivre le thème du site : default "theme:<jeton>". Rien d'autre n'est permis comme référence.
   if (typeof f.default === "string" && f.default.startsWith("theme:")) {
     if (f.type !== "color") ctx.addIssue({ code: "custom", message: "only a color setting can default to a theme token" });
-    else if (!(THEME_TOKENS as readonly string[]).includes(f.default.slice(6))) ctx.addIssue({ code: "custom", message: `unknown theme token "${f.default.slice(6)}"` });
+    else if (!(COLOR_TOKENS as readonly string[]).includes(f.default.slice(6))) ctx.addIssue({ code: "custom", message: `unknown theme token "${f.default.slice(6)}"` });
   }
   // Un texte peut suivre le site : default "site:name" ou "site:tagline" (seulement pour text / textarea).
   if (typeof f.default === "string" && f.default.startsWith("site:")) {

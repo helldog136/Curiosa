@@ -61,13 +61,32 @@ const STATES = {
   light: { success: "#15803d", warning: "#b45309", danger: "#b91c1c" },
 } as const;
 
-/** Palette complète dérivée de deux couleurs : le fond et l'accent. */
-export function buildPalette(background: string, accent: string): Record<string, string> {
-  const bg = isHexColor(background) ? background : "#121214";
-  const ac = isHexColor(accent) ? accent : "#e8a23b";
+/** Choix facultatifs qui s'ajoutent au fond et à l'accent. Absent, vide ou invalide : la valeur est dérivée comme avant. */
+export type ThemeExtra = {
+  /** Accent secondaire (2e extrémité du dégradé). Absent = l'accent : aucun changement visible. */
+  accent2?: string | null;
+  /** Fond des cartes et panneaux. Absent = mélange de 6 % de texte dans le fond. */
+  surface?: string | null;
+  /** Couleur du texte. Absent = gris neutre clair ou foncé selon le fond. */
+  text?: string | null;
+};
+
+const DEFAULT_BG = "#121214";
+const DEFAULT_ACCENT = "#e8a23b";
+
+/** Dégradé accent → accent2 (inclinaison 120°) : interpolé en OKLCH quand `oklch` est vrai (évite le milieu boueux), en sRGB sinon. Deux couleurs identiques : couleur unie. */
+export function gradientOf(accent: string, accent2: string, oklch = true): string {
+  return `linear-gradient(120deg${oklch && accent.toLowerCase() !== accent2.toLowerCase() ? " in oklch" : ""}, ${accent}, ${accent2})`;
+}
+
+/** Palette complète dérivée de deux couleurs (le fond et l'accent), et des choix facultatifs `extra`. Sans `extra`, le résultat est celui d'avant leur existence. */
+export function buildPalette(background: string, accent: string, extra: ThemeExtra = {}): Record<string, string> {
+  const bg = isHexColor(background) ? background : DEFAULT_BG;
+  const ac = isHexColor(accent) ? accent : DEFAULT_ACCENT;
   const light = luminance(bg) > 0.4;
-  const fg = light ? "#18181b" : "#f4f4f5";
-  const surface = mix(bg, fg, 0.06);
+  const fg = isHexColor(extra.text) ? extra.text : light ? "#18181b" : "#f4f4f5";
+  const surface = isHexColor(extra.surface) ? extra.surface : mix(bg, fg, 0.06);
+  const ac2 = isHexColor(extra.accent2) ? extra.accent2 : ac;
   const palette: Record<string, string> = {
     "--v-bg": bg,
     "--v-fg": fg,
@@ -82,7 +101,19 @@ export function buildPalette(background: string, accent: string): Record<string,
     palette[`--v-${name}`] = c;
     palette[`--v-${name}-fg`] = textOn(c);
   }
+  palette["--v-accent2"] = ac2;
+  palette["--v-accent2-fg"] = textOn(ac2);
+  palette["--v-gradient"] = gradientOf(ac, ac2);
   return palette;
+}
+
+/** Problèmes de lisibilité d'une combinaison de couleurs (rapports WCAG sous les seuils : texte/fond 4,5, accents/fond 3). Calcul pur, utilisable côté navigateur. */
+export type ContrastIssue = { kind: "text" | "accent" | "accent2"; ratio: number; min: number };
+export function contrastIssues(background: string, accent: string, extra: ThemeExtra = {}): ContrastIssue[] {
+  const p = buildPalette(background, accent, extra);
+  const checks: [ContrastIssue["kind"], string, number][] = [["text", p["--v-fg"]!, 4.5], ["accent", p["--v-accent"]!, 3]];
+  if (isHexColor(extra.accent2)) checks.push(["accent2", p["--v-accent2"]!, 3]);
+  return checks.map(([kind, color, min]) => ({ kind, min, ratio: Math.round(contrast(color, p["--v-bg"]!) * 100) / 100 })).filter((c) => c.ratio < c.min);
 }
 
 export const FONT_STACKS = {
@@ -92,8 +123,10 @@ export const FONT_STACKS = {
 } as const;
 
 /** Les jetons du thème du site, tels que les modules les reçoivent (`ctx.theme`) et les utilisent comme valeur par défaut (`"theme:accent"`). */
-export const THEME_TOKENS = ["accent", "accentFg", "bg", "surface", "fg", "muted", "line", "success", "successFg", "warning", "warningFg", "danger", "dangerFg"] as const;
+export const THEME_TOKENS = ["accent", "accentFg", "bg", "surface", "fg", "muted", "line", "success", "successFg", "warning", "warningFg", "danger", "dangerFg", "accent2", "accent2Fg", "gradient"] as const;
 export type ThemeToken = (typeof THEME_TOKENS)[number];
+/** Les jetons qui sont une couleur « #rrggbb » (tout sauf `gradient`, un dégradé CSS) : les seuls utilisables comme défaut « theme:… » d'un réglage de couleur. */
+export const COLOR_TOKENS = THEME_TOKENS.filter((t) => t !== "gradient") as Exclude<ThemeToken, "gradient">[];
 export type Theme = Record<ThemeToken, string> & {
   /** Famille de police du site (« sans », « serif » ou « mono »). */
   fontKey: "sans" | "serif" | "mono";
@@ -102,11 +135,12 @@ export type Theme = Record<ThemeToken, string> & {
 };
 
 const VARS: Record<ThemeToken, string> = { accent: "--v-accent", accentFg: "--v-accent-fg", bg: "--v-bg", surface: "--v-surface", fg: "--v-fg", muted: "--v-muted", line: "--v-line",
-  success: "--v-success", successFg: "--v-success-fg", warning: "--v-warning", warningFg: "--v-warning-fg", danger: "--v-danger", dangerFg: "--v-danger-fg" };
+  success: "--v-success", successFg: "--v-success-fg", warning: "--v-warning", warningFg: "--v-warning-fg", danger: "--v-danger", dangerFg: "--v-danger-fg",
+  accent2: "--v-accent2", accent2Fg: "--v-accent2-fg", gradient: "--v-gradient" };
 
-/** Thème complet (couleurs dérivées + police) à partir des deux réglages de l'admin. Même calcul que le site. */
-export function buildTheme(background: string, accent: string, font: string): Theme {
-  const palette = buildPalette(background, accent);
+/** Thème complet (couleurs dérivées + police) à partir des réglages de l'admin (fond, accent, police, et choix facultatifs). Même calcul que le site. */
+export function buildTheme(background: string, accent: string, font: string, extra: ThemeExtra = {}): Theme {
+  const palette = buildPalette(background, accent, extra);
   const fontKey = font === "serif" || font === "mono" ? font : "sans";
   const colors = Object.fromEntries(THEME_TOKENS.map((t) => [t, palette[VARS[t]]!])) as Record<ThemeToken, string>;
   return { ...colors, fontKey, font: FONT_STACKS[fontKey] };
@@ -114,12 +148,16 @@ export function buildTheme(background: string, accent: string, font: string): Th
 
 /** Variables CSS `--v-*` (et `--v-font`) du thème : ce que le site met sur `:root`, que les overlays reçoivent aussi. */
 export function themeCss(theme: Theme): string {
-  return `:root{${THEME_TOKENS.map((t) => `${VARS[t]}:${theme[t]}`).join(";")};--v-font:${theme.font}}`;
+  // Le dégradé est posé en sRGB (compris partout), puis amélioré en OKLCH par les navigateurs qui le savent.
+  const plain = THEME_TOKENS.filter((t) => t !== "gradient").map((t) => `${VARS[t]}:${theme[t]}`).join(";");
+  const fallback = gradientOf(theme.accent, theme.accent2, false);
+  const upgrade = theme.gradient !== fallback ? `@supports (background-image:linear-gradient(in oklch,#000,#fff)){:root{--v-gradient:${theme.gradient}}}` : "";
+  return `:root{${plain};--v-gradient:${fallback};--v-font:${theme.font}}${upgrade}`;
 }
 
 /** « theme:accent » → jeton ; autre valeur → null. */
-export function themeRef(value: unknown): ThemeToken | null {
+export function themeRef(value: unknown): Exclude<ThemeToken, "gradient"> | null {
   if (typeof value !== "string" || !value.startsWith("theme:")) return null;
   const token = value.slice(6);
-  return (THEME_TOKENS as readonly string[]).includes(token) ? (token as ThemeToken) : null;
+  return (COLOR_TOKENS as readonly string[]).includes(token) ? (token as Exclude<ThemeToken, "gradient">) : null;
 }

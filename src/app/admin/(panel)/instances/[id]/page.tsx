@@ -8,7 +8,7 @@ import { hasPage } from "@/core/modules/manifest";
 import { getModule } from "@/core/modules/registry";
 import { localized } from "@/core/modules/types";
 import { buildTheme } from "@/core/color";
-import { getSetting, getSettingByLocale, getSiteConfig } from "@/core/settings";
+import { getSetting, getSettingByLocale, getSiteConfig, themeExtraOf } from "@/core/settings";
 import { effectiveSort, SORTS, sortSettingKey } from "@/core/content/sort";
 import { mcpInstanceKey } from "@/core/modules/mcpProvider";
 import { getInstanceLabeler } from "@/core/modules/labels";
@@ -57,7 +57,7 @@ export default async function InstancePage({ params, searchParams }: { params: P
   const taskRows = await Promise.all(Object.entries(mod.def.tasks ?? {}).map(async ([name, task]) => ({ name, every: task.everyMinutes, state: await taskStateOf(instance.id, name) })));
   const visibleSettings = mod.manifest.settings.filter((f) => advanced || !f.advanced);
   const siteConfig = await getSiteConfig();
-  const theme = buildTheme(siteConfig.background, siteConfig.accent, siteConfig.font);
+  const theme = buildTheme(siteConfig.background, siteConfig.accent, siteConfig.font, themeExtraOf(siteConfig));
 
   const siteByLocale = Object.fromEntries(await Promise.all(config.locales.map(async (l) => { const c = await getSiteConfig(l); return [l, { name: c.name, tagline: c.tagline }] as const; })));
 

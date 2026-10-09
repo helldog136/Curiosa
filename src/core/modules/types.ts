@@ -18,7 +18,7 @@ export type SettingField = {
   translatable?: boolean;
   /** Réglage technique : masqué dans la version simplifiée de l'admin (sa valeur par défaut s'applique). */
   advanced?: boolean;
-  /** « appearance » : réglage d'apparence, regroupé à part dans l'admin. Une couleur peut avoir pour défaut `"theme:accent"` (ou bg, fg, surface, muted, line, accentFg) : elle suit alors le thème du site. */
+  /** « appearance » : réglage d'apparence, regroupé à part dans l'admin. Une couleur peut avoir pour défaut `"theme:accent"` (ou accent2, bg, fg, surface, muted, line, accentFg) : elle suit alors le thème du site. */
   group?: "appearance";
 };
 

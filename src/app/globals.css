@@ -14,6 +14,8 @@
   --color-warning-fg: var(--v-warning-fg);
   --color-danger: var(--v-danger);
   --color-danger-fg: var(--v-danger-fg);
+  --color-accent2: var(--v-accent2);
+  --color-accent2-fg: var(--v-accent2-fg);
   --font-sans: var(--v-font);
 }
 
@@ -32,6 +34,9 @@
   --v-warning-fg: #111111;
   --v-danger: #f87171;
   --v-danger-fg: #111111;
+  --v-accent2: var(--v-accent);
+  --v-accent2-fg: var(--v-accent-fg);
+  --v-gradient: linear-gradient(120deg, var(--v-accent), var(--v-accent));
   --v-font: ui-sans-serif, system-ui, sans-serif;
 }
 

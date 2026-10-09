@@ -9,7 +9,7 @@ import { backgroundCss, effectiveLayers } from "@/core/background";
 import { RTL_LOCALES } from "@/core/i18n/locales";
 import { getVisitorLocale, getVisitorTranslator, LOCALE_HEADER } from "@/core/i18n/request";
 import { runSlot } from "@/core/modules/runtime";
-import { getSiteConfig } from "@/core/settings";
+import { getSiteConfig, themeExtraOf } from "@/core/settings";
 import { siteUrl } from "@/core/config";
 import { jsonLd, siteJsonLd } from "@/core/seo";
 import { prisma } from "@/core/db";
@@ -42,7 +42,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
   const locale = await getVisitorLocale();
   const localized = await getSiteConfig(locale);
   const t = await getVisitorTranslator();
-  const theme = buildTheme(localized.background, localized.accent, localized.font);
+  const theme = buildTheme(localized.background, localized.accent, localized.font, themeExtraOf(localized));
   const layers = effectiveLayers(localized.bg.preset, localized.bg.custom, localized.bg.image, localized.bg.svg);
   const css = themeCss(theme) + glowCss(localized.glow.level, localized.glow.custom, localized.accent) + backgroundCss(layers, theme);
 

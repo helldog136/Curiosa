@@ -32,7 +32,7 @@ export type Layer =
   | { type: "svg"; svg: string; fit: "cover" | "contain" | "tile"; align: "left" | "center" | "right"; tile: number; opacity: number; side: Side; span: number; edge: Edge }
   | { type: "image"; src: string; fit: "cover" | "contain" | "tile"; position: string; opacity: number };
 
-const TOKENS = ["accent", "bg", "fg", "muted", "surface", "line"] as const;
+const TOKENS = ["accent", "bg", "fg", "muted", "surface", "line", "accent2"] as const;
 const SIDES: Side[] = ["full", "left", "right", "top", "bottom"];
 const POSITIONS = ["center", "top", "bottom", "left", "right", "top left", "top right", "bottom left", "bottom right"];
 const IMAGE_RE = /^(\/uploads\/[0-9a-f-]{36}\.(png|jpg|webp|gif)|https:\/\/[^\s"'()\\<>]{1,300})$/;

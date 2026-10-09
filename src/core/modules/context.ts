@@ -2,7 +2,7 @@ import { buildTheme, themeRef } from "@/core/color";
 import { makeTranslator } from "@/core/i18n/dictionary";
 import { pickName, type InstanceView } from "@/core/instances";
 import { currentVisit } from "@/core/visit";
-import { getSetting, getSettingByLocale, getSiteConfig } from "@/core/settings";
+import { getSetting, getSettingByLocale, getSiteConfig, themeExtraOf } from "@/core/settings";
 import { makeApi } from "./api";
 import type { LoadedModule } from "./registry";
 import { followsSite, resolveDefault } from "./settingValues";
@@ -18,7 +18,7 @@ export async function buildContext(mod: LoadedModule, instance: InstanceView, lo
   const loc = locale ?? config.defaultLocale;
 
   const localized = await getSiteConfig(loc);
-  const theme = buildTheme(localized.background, localized.accent, localized.font);
+  const theme = buildTheme(localized.background, localized.accent, localized.font, themeExtraOf(localized));
 
   const values: Record<string, unknown> = {};
   for (const field of mod.manifest.settings) {
