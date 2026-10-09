@@ -75,3 +75,19 @@ test("secours SSH : le script se lance tout seul depuis l'application (lit .env,
   assert.ok(!/from "@\/|\.ts"/.test(src), "aucune importation du code TypeScript du cœur");
   assert.match(fs.readFileSync("scripts/release-pack.mjs", "utf8"), /"scripts"/, "le script est dans l'archive de production");
 });
+
+test("secours SSH : « reset-2fa » retire la double vérification du propriétaire (secret, codes de secours), coupe ses sessions, et ne touche personne d'autre", async () => {
+  const T = await import("@/core/auth/totp");
+  const F = await import("@/core/auth/twoFactor");
+  const o = await owner(); const e = await editor();
+  for (const u of [o, e]) { const b = await F.beginEnroll(u.id, "S"); await F.confirmEnroll(u.id, T.codeAt(b.secret, T.stepOf(Date.now()))); }
+  assert.match((await run()).text, /o@example\.org \(double vérification activée\)/);
+  assert.equal((await run("reset-2fa", "e@example.org")).code, 1, "pas le propriétaire : refusé");
+  assert.ok((await db.prisma.user.findUnique({ where: { id: e.id } })).totpEnabledAt, "celui de l'éditeur est intact");
+  const r = await run("reset-2fa", "o@example.org");
+  assert.equal(r.code, 0);
+  const row = await db.prisma.user.findUnique({ where: { id: o.id } });
+  assert.deepEqual([row.totpSecret, row.totpEnabledAt, row.sessionVersion], [null, null, 1], "secret retiré ; sessions coupées");
+  assert.equal(await db.prisma.recoveryCode.count({ where: { userId: o.id } }), 0);
+  assert.deepEqual((await db.prisma.auditLog.findMany({ where: { actor: "ssh" } })).map((l) => l.action), ["recovery.2fa"]);
+});

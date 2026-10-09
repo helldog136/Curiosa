@@ -4,27 +4,65 @@ import { AuthError } from "next-auth";
 import { headers } from "next/headers";
 import { signIn } from "@/auth";
 import { clientIp } from "@/core/auth/clientIp";
-import { checkLogin, formatUntil } from "@/core/auth/lockout";
+import { checkLogin, formatUntil, recordFailure, recordSuccess } from "@/core/auth/lockout";
+import { verifyPassword } from "@/core/auth/password";
+import { passwordBinding, peekToken, readToken, signToken, verifySecondFactor } from "@/core/auth/twoFactor";
+import { prisma } from "@/core/db";
 import { getAdminTranslator } from "@/core/i18n/request";
-import type { ActionState } from "@/components/admin/ActionForm";
+import { audit } from "@/core/permissions";
 
-export async function loginAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+/** `step: "code"` : le mot de passe est bon, on attend le code de la double vérification (`token` prouve l'étape 1, valable 5 minutes). */
+export type LoginState = { error?: string; step?: "code"; token?: string } | null;
+
+export async function loginAction(_prev: LoginState, formData: FormData): Promise<LoginState> {
   const { t, locale } = await getAdminTranslator();
-  const email = String(formData.get("email") ?? "");
   const h = await headers();
   const ip = clientIp((name) => h.get(name));
   // Trop d'essais : on le dit tout de suite, avec l'heure à laquelle on peut revenir (jamais un blocage définitif).
-  const blocked = async () => {
+  const blocked = async (email: string): Promise<LoginState> => {
     const lock = await checkLogin(ip, email);
     return lock.locked ? { error: t("login.locked", { time: formatUntil(lock.until, locale) }) } : null;
   };
-  const before = await blocked();
-  if (before) return before;
-  try {
-    await signIn("credentials", { email, password: String(formData.get("password") ?? ""), redirectTo: "/admin" });
-  } catch (error) {
-    if (error instanceof AuthError) return (await blocked()) ?? { error: t("login.invalid") };
-    throw error; // la redirection de signIn est une exception à laisser passer
+  // Dernière étape, commune : tout est vérifié, la session est créée au moyen d'un billet signé de 60 secondes.
+  const open = async (userId: string): Promise<LoginState> => {
+    try {
+      await signIn("credentials", { ticket: signToken("ticket", userId), redirectTo: "/admin" });
+    } catch (error) {
+      if (error instanceof AuthError) return { error: t("login.invalid") };
+      throw error; // la redirection de signIn est une exception à laisser passer
+    }
+    return null;
+  };
+
+  const token = String(formData.get("token") ?? "");
+  if (token) {
+    // Étape 2 : le code de l'application (ou un code de secours).
+    const uid = peekToken(token);
+    const user = uid ? await prisma.user.findUnique({ where: { id: uid } }) : null;
+    if (!user || !readToken("pwd", token, passwordBinding(user.passwordHash))) return { error: t("login.expired") };
+    const before = await blocked(user.email);
+    if (before) return before;
+    const second = await verifySecondFactor(user.id, String(formData.get("code") ?? ""));
+    if (!second.ok) {
+      await recordFailure(ip, user.email);
+      return (await blocked(user.email)) ?? { step: "code", token, error: t("login.codeInvalid") };
+    }
+    await recordSuccess(ip, user.id, user.email);
+    await audit(user.email, second.kind === "recovery" ? "login.recovery" : "login", ip);
+    return open(user.id);
   }
-  return null;
+
+  // Étape 1 : e-mail et mot de passe.
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const before = await blocked(email);
+  if (before) return before;
+  const user = await verifyPassword(email, String(formData.get("password") ?? ""));
+  if (!user) {
+    await recordFailure(ip, email);
+    return (await blocked(email)) ?? { error: t("login.invalid") };
+  }
+  if (user.totpEnabledAt) return { step: "code", token: signToken("pwd", user.id, passwordBinding(user.passwordHash)) };
+  await recordSuccess(ip, user.id, user.email);
+  await audit(user.email, "login", ip);
+  return open(user.id);
 }

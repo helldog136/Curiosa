@@ -111,8 +111,8 @@ test("le propriétaire débloque un e-mail ; l'état est en base (survit à un r
 
 test("branchements : mot de passe jamais regardé quand c'est bloqué, comparaison faite même si le compte n'existe pas, message avec l'heure, bouton réservé au propriétaire", () => {
   const auth = fs.readFileSync("src/auth.ts", "utf8");
-  assert.ok(auth.indexOf("checkLogin") < auth.indexOf("bcrypt.compare(password"), "blocage vérifié avant le mot de passe");
-  assert.match(auth, /DUMMY_HASH/);
+  assert.ok(auth.indexOf("checkLogin") < auth.indexOf("verifyPassword(email, password)"), "blocage vérifié avant le mot de passe");
+  assert.match(fs.readFileSync("src/core/auth/password.ts", "utf8"), /DUMMY_HASH[\s\S]*bcrypt\.compare\(password, user\?\.passwordHash \?\? DUMMY_HASH\)/, "comparaison faite même si le compte n'existe pas");
   assert.match(auth, /recordFailure/); assert.match(auth, /recordSuccess/);
   assert.ok(!/x-forwarded-for/i.test(auth), "l'adresse vient de clientIp, jamais de la première entrée d'un en-tête");
   const action = fs.readFileSync("src/app/admin/(auth)/login/actions.ts", "utf8");

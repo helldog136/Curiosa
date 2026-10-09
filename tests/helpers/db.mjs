@@ -48,7 +48,7 @@ export async function useTestDb() {
   // Base jetable, détruite à la fin du test : on n'attend pas les écritures sur disque (synchronous=OFF, journal en mémoire). Aucun effet sur ce qui est vérifié.
   await prisma.$queryRawUnsafe("PRAGMA journal_mode=MEMORY");
   await prisma.$queryRawUnsafe("PRAGMA synchronous=OFF");
-  const tables = ["VisitSeen", "VisitDaily", "ApiToken", "AuditLog", "ModuleRecord", "EntryTranslation", "Entry", "InstanceTranslation", "ModuleInstance", "Redirect", "Setting", "Module", "AuthLock", "TrustedIp", "User"];
+  const tables = ["VisitSeen", "VisitDaily", "ApiToken", "AuditLog", "ModuleRecord", "EntryTranslation", "Entry", "InstanceTranslation", "ModuleInstance", "Redirect", "Setting", "Module", "AuthLock", "TrustedIp", "RecoveryCode", "User"];
   return {
     dir,
     prisma,

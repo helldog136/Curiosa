@@ -16,6 +16,17 @@ Après **5 mots de passe faux de suite**, la connexion est bloquée **1 heure**.
 
 L'adresse du visiteur est lue dans l'en-tête `X-Forwarded-For`, **à la fin** : c'est l'entrée que **votre proxy** ajoute (voir la configuration nginx du [README](../README.md#installer)). Le début de l'en-tête vient du visiteur et peut être inventé, il est ignoré. Si plusieurs proxys se suivent devant le site, indiquez leur nombre avec `CURIOSA_TRUSTED_PROXIES` (1 par défaut). Une adresse IPv6 compte pour tout son réseau /64.
 
+## Double vérification (code à usage unique)
+
+Chacun peut l'activer dans **Mon compte → Double vérification** : on scanne un QR code avec une application d'authentification (Google Authenticator, Authy, 1Password…), puis on confirme avec le code affiché. Ensuite, la connexion se fait en deux temps : mot de passe, puis code à 6 chiffres.
+
+- **8 codes de secours** sont donnés à l'activation (une seule fois) : chacun ne sert qu'une fois si le téléphone est perdu. On peut en générer de nouveaux (mot de passe demandé), ce qui annule les anciens.
+- Un code ne sert **jamais deux fois**, même dans ses 30 secondes de validité. Un mauvais code compte comme un mot de passe raté : il alimente les mêmes blocages.
+- Le mot de passe seul n'ouvre **jamais** un compte protégé, y compris en s'adressant directement à l'API d'authentification.
+- Désactiver demande le mot de passe **et** un code.
+- Le propriétaire peut **exiger la double vérification de toute l'équipe** (page *Utilisateurs*), à condition de l'avoir activée lui-même ; chacun la configure alors à sa prochaine visite. Il peut aussi **réinitialiser** celle d'un collègue qui a perdu son téléphone et ses codes.
+- Le secret est gardé dans la base (comme le reste de vos données) : protégez-la et ses sauvegardes, qui sont chiffrées.
+
 ## Sessions
 
 Une session dure **14 jours au plus**. Elle se coupe aussi à tout moment :
@@ -34,6 +45,7 @@ node scripts/auth-recover.mjs unlock                   # tout débloquer
 node scripts/auth-recover.mjs unlock 203.0.113.7       # une adresse IP
 node scripts/auth-recover.mjs unlock vous@exemple.org  # l'e-mail du propriétaire
 node scripts/auth-recover.mjs reset-password vous@exemple.org   # nouveau mot de passe, affiché une seule fois
+node scripts/auth-recover.mjs reset-2fa vous@exemple.org        # retire la double vérification (téléphone et codes de secours perdus)
 ```
 
 Elle ne touche **jamais** au compte d'une autre personne que le propriétaire (les autres comptes se gèrent depuis *Utilisateurs*), lit le même `.env` que le service, ne demande aucune installation de plus, et note chaque action dans le journal d'audit (acteur « ssh »).

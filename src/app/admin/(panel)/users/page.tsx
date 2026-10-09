@@ -5,12 +5,14 @@ import { ConfirmButton } from "@/components/admin/ConfirmButton";
 import { Select, TextField } from "@/components/admin/Field";
 import { ui } from "@/components/admin/ui";
 import { isEmailLocked, formatUntil } from "@/core/auth/lockout";
-import { createUser, deleteUser, revokeUserSessions, setUserRole, unlockUser } from "./actions";
+import { getSetting } from "@/core/settings";
+import { createUser, deleteUser, resetUserTwoFactor, revokeUserSessions, setRequireTwoFactor, setUserRole, unlockUser } from "./actions";
 
 export default async function UsersPage() {
   const { t, user, locale } = await adminCtx("admin");
   const users = await prisma.user.findMany({ orderBy: { createdAt: "asc" } });
   const isOwner = user.role === "owner";
+  const required = (await getSetting<boolean>("security.require2fa")) === true;
   const locks = new Map(await Promise.all(users.map(async (u) => [u.id, await isEmailLocked(u.email)] as const)));
   const roles = isOwner ? ["admin", "editor"] : ["editor"];
   return (
@@ -24,6 +26,7 @@ export default async function UsersPage() {
               <td className={ui.td}>{u.name}</td>
               <td className={ui.td}>
                 {u.email}
+                {u.totpEnabledAt && <span className="ml-2 text-xs text-green-600" data-testid="user-2fa" title={t("users.twofa")}>🔐</span>}
                 {locks.get(u.id) && (
                   <span className="mt-1 flex flex-wrap items-center gap-2 text-xs text-amber-600" data-testid="user-locked">
                     {t("users.locked", { time: formatUntil(locks.get(u.id)!, locale) })}
@@ -42,6 +45,9 @@ export default async function UsersPage() {
                 ) : t(`role.${u.role}`)}
               </td>
               <td className={ui.td}>
+                {isOwner && u.id !== user.id && u.totpEnabledAt && (
+                  <form action={resetUserTwoFactor.bind(null, u.id)} className="mb-1"><ConfirmButton message={t("users.twofaResetConfirm")}>{t("users.twofaReset")}</ConfirmButton></form>
+                )}
                 {isOwner && u.id !== user.id && (
                   <form action={revokeUserSessions.bind(null, u.id)} className="mb-1"><ConfirmButton message={t("users.revokeConfirm")}>{t("users.revoke")}</ConfirmButton></form>
                 )}
@@ -53,6 +59,13 @@ export default async function UsersPage() {
           ))}
         </tbody>
       </table>
+      {isOwner && (
+        <section className={`${ui.card} space-y-3`} data-testid="require-2fa">
+          <ActionForm action={setRequireTwoFactor} submitLabel={t("action.save")}>
+            <label className="flex items-start gap-3 text-sm"><input type="checkbox" name="require" defaultChecked={required} className="mt-1 h-4 w-4" /><span><span className="font-medium">{t("users.require2fa")}</span><span className="block text-muted">{t("users.require2faHelp")}</span></span></label>
+          </ActionForm>
+        </section>
+      )}
       <section className={`${ui.card} space-y-4`}>
         <h2 className="text-lg font-semibold">{t("users.add")}</h2>
         <ActionForm action={createUser} submitLabel={t("action.create")} reset>

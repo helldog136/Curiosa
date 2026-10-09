@@ -6,6 +6,8 @@ import { adminCtx } from "@/core/admin";
 import { prisma } from "@/core/db";
 import { unlockEmail } from "@/core/auth/lockout";
 import { revokeSessions } from "@/core/auth/sessions";
+import { disableTwoFactor } from "@/core/auth/twoFactor";
+import { getSetting, setSetting } from "@/core/settings";
 import { audit } from "@/core/permissions";
 import type { ActionState } from "@/components/admin/ActionForm";
 
@@ -65,4 +67,28 @@ export async function revokeUserSessions(id: string): Promise<void> {
   await revokeSessions(target.id);
   await audit(user.email, "user.sessions.revoke", target.email);
   revalidatePath("/admin/users");
+}
+
+/** Le propriétaire réinitialise la double vérification de quelqu'un qui a perdu son téléphone et ses codes de secours (ses sessions ouvertes sont coupées). */
+export async function resetUserTwoFactor(id: string): Promise<void> {
+  const { user } = await adminCtx("owner");
+  const target = await prisma.user.findUnique({ where: { id } });
+  if (!target || target.id === user.id || !target.totpEnabledAt) return;
+  await disableTwoFactor(target.id);
+  await audit(user.email, "user.2fa.reset", target.email);
+  revalidatePath("/admin/users");
+}
+
+/** Exiger la double vérification de toute l'équipe — seulement si le propriétaire l'a lui-même activée (sinon il s'enfermerait dehors). */
+export async function setRequireTwoFactor(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const { user, t } = await adminCtx("owner");
+  const on = formData.get("require") === "on";
+  const me = await prisma.user.findUnique({ where: { id: user.id } });
+  if (on && !me?.totpEnabledAt) return { error: t("users.require2faNeedsYou") };
+  if (((await getSetting<boolean>("security.require2fa")) === true) !== on) {
+    await setSetting("security.require2fa", on);
+    await audit(user.email, on ? "security.2fa.require" : "security.2fa.optional");
+  }
+  revalidatePath("/admin/users");
+  return { ok: t("action.saved") };
 }
