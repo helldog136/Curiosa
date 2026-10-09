@@ -15,6 +15,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Catalogue plus vivant.** La recherche répond au fil de la frappe. La fiche d'un module s'ouvre en fenêtre par-dessus la liste, et l'installation s'anime pour montrer qu'elle avance.
 - **Éléments facultatifs dans les modules.** Dans les réglages d'un module, vous ajoutez à la demande un bouton ou une vidéo de fond. Les liens saisis sont vérifiés avant l'enregistrement.
 - **Arrière-plan en quatre couches.** Dans Réglages, l'arrière-plan se compose de quatre couches numérotées : couleur, halo, image et motif. Chacune se règle séparément.
+- **15 palettes et une couleur secondaire.** Réglages → Apparence propose huit nouvelles palettes complètes. Chacune règle d'un coup le fond, les cartes, le texte, l'accent et une couleur secondaire.
 - **Mises à jour en 4 temps.** La page suit chaque étape et affiche la progression, pour savoir où l'on en est.
 
 ### Améliorations
@@ -33,6 +34,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 ### Corrections
 - Le nom d'une fonctionnalité renommée se met à jour tout de suite dans le menu.
 - Le navigateur ne remplit plus les réglages d'un module avec votre adresse e-mail.
+- Le texte posé sur la couleur d'accent est lisible sur toutes les palettes. Le texte secondaire et les messages d'état le sont aussi.
 
 ### À savoir en mettant à jour
 - **Anciens modules.** Les modules déjà installés gardent leur ancienne présentation tant que vous ne les mettez pas à jour. C'est le cas du Bandeau d'accueil, de Twitch et de YouTube.
