@@ -6,7 +6,7 @@
 //   node scripts/auth-recover.mjs unlock <adresse IP>     débloque une adresse
 //   node scripts/auth-recover.mjs unlock <e-mail>         débloque l'e-mail d'un propriétaire
 //   node scripts/auth-recover.mjs reset-password <e-mail> nouveau mot de passe généré (affiché une seule fois), anciennes sessions coupées
-//   node scripts/auth-recover.mjs reset-2fa <e-mail>      retire la double vérification du propriétaire (téléphone et codes de secours perdus), sessions coupées
+//   node scripts/auth-recover.mjs reset-2fa <e-mail>      retire la double vérification ET les clés d'accès du propriétaire (téléphone et codes de secours perdus), sessions coupées
 //
 // Lancer depuis le dossier de l'application (celui de .env), avec le même utilisateur que le service. Aucune dépendance à TypeScript : fonctionne dans l'archive de production.
 import crypto from "node:crypto";
@@ -80,10 +80,11 @@ export async function recover(args, { prisma, bcrypt, out = console.log }) {
     const user = await owner(target);
     if (!user) return 1;
     await prisma.recoveryCode.deleteMany({ where: { userId: user.id } });
+    await prisma.passkey.deleteMany({ where: { userId: user.id } });
     await prisma.user.update({ where: { id: user.id }, data: { totpSecret: null, totpPending: null, totpEnabledAt: null, totpLastStep: null, sessionVersion: { increment: 1 } } });
     await prisma.authLock.deleteMany({ where: { key: `email:${user.email}` } });
     await note("recovery.2fa", user.email);
-    out(`La double vérification de ${user.email} est retirée et ses sessions sont coupées. Connectez-vous avec le mot de passe, puis réactivez-la dans Mon compte.`);
+    out(`La double vérification et les clés d'accès de ${user.email} sont retirées, ses sessions sont coupées. Connectez-vous avec le mot de passe, puis réactivez-la dans Mon compte.`);
     return 0;
   }
   out("Commandes : status | unlock [adresse IP | e-mail du propriétaire] | reset-password <e-mail du propriétaire> | reset-2fa <e-mail du propriétaire>");

@@ -27,6 +27,17 @@ Chacun peut l'activer dans **Mon compte → Double vérification** : on scanne u
 - Le propriétaire peut **exiger la double vérification de toute l'équipe** (page *Utilisateurs*), à condition de l'avoir activée lui-même ; chacun la configure alors à sa prochaine visite. Il peut aussi **réinitialiser** celle d'un collègue qui a perdu son téléphone et ses codes.
 - Le secret est gardé dans la base (comme le reste de vos données) : protégez-la et ses sauvegardes, qui sont chiffrées.
 
+## Clés d'accès (passkeys)
+
+La méthode la plus sûre : on se connecte avec l'**empreinte, le visage, le code de l'appareil** ou une clé de sécurité (YubiKey), **sans mot de passe ni code**. À enregistrer dans **Mon compte → Clés d'accès** (une par appareil, dix au plus ; le mot de passe est redemandé pour en ajouter ou en retirer). Sur la page de connexion, le bouton *Se connecter avec une clé d'accès* n'exige aucun e-mail.
+
+- Le site ne garde que la **clé publique** ; la clé privée ne quitte jamais l'appareil. Une clé n'est valable que pour **le domaine du site** : un faux site ne peut pas s'en servir.
+- La vérification de la personne (empreinte, code…) est **exigée** : une clé d'accès vaut les deux facteurs à elle seule, elle n'est donc pas suivie du code de la double vérification.
+- Le mot de passe reste possible à côté (avec son code si la double vérification est activée) : une clé d'accès s'ajoute, elle ne remplace rien d'office.
+- Les clés d'accès comptent pour l'exigence de double vérification de l'équipe.
+- **Le domaine compte** : réglez `SITE_URL` dans `.env` avec l'adresse définitive du site. Si elle change, les clés d'accès déjà enregistrées ne fonctionnent plus (le mot de passe, lui, continue) et il faut les recréer.
+- Un propriétaire qui perd l'accès à ses appareils se dépanne en SSH (voir plus bas) : la commande `reset-2fa` retire aussi ses clés d'accès. Pour un collègue, *Utilisateurs → Réinitialiser sa double vérification et ses clés d'accès*.
+
 ## Sessions
 
 Une session dure **14 jours au plus**. Elle se coupe aussi à tout moment :
@@ -45,7 +56,7 @@ node scripts/auth-recover.mjs unlock                   # tout débloquer
 node scripts/auth-recover.mjs unlock 203.0.113.7       # une adresse IP
 node scripts/auth-recover.mjs unlock vous@exemple.org  # l'e-mail du propriétaire
 node scripts/auth-recover.mjs reset-password vous@exemple.org   # nouveau mot de passe, affiché une seule fois
-node scripts/auth-recover.mjs reset-2fa vous@exemple.org        # retire la double vérification (téléphone et codes de secours perdus)
+node scripts/auth-recover.mjs reset-2fa vous@exemple.org        # retire la double vérification et les clés d'accès (appareils et codes de secours perdus)
 ```
 
 Elle ne touche **jamais** au compte d'une autre personne que le propriétaire (les autres comptes se gèrent depuis *Utilisateurs*), lit le même `.env` que le service, ne demande aucune installation de plus, et note chaque action dans le journal d'audit (acteur « ssh »).

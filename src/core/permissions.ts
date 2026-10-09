@@ -8,7 +8,7 @@ export type Role = "owner" | "admin" | "editor";
 const RANK: Record<Role, number> = { editor: 1, admin: 2, owner: 3 };
 
 /** `needsTwoFactor` : le propriétaire exige la double vérification de tous et ce compte ne l'a pas encore activée. */
-export type AdminUser = { id: string; email: string; name: string; role: Role; locale: string | null; advanced: boolean; twoFactor: boolean; needsTwoFactor: boolean };
+export type AdminUser = { id: string; email: string; name: string; role: Role; locale: string | null; advanced: boolean; totp: boolean; passkeys: number; twoFactor: boolean; needsTwoFactor: boolean };
 
 /** Utilisateur connecté (relu en base : un compte supprimé perd l'accès immédiatement). */
 export async function currentUser(): Promise<AdminUser | null> {
@@ -19,9 +19,11 @@ export async function currentUser(): Promise<AdminUser | null> {
   if (!user) return null;
   // Session coupée (déconnexion de tous les appareils, mot de passe changé…) : le jeton d'avant ne vaut plus rien.
   if (!sessionIsCurrent(session?.user?.sv, user.sessionVersion)) return null;
-  const twoFactor = !!user.totpEnabledAt;
+  const totp = !!user.totpEnabledAt;
+  const passkeys = await prisma.passkey.count({ where: { userId: user.id } });
+  const twoFactor = totp || passkeys > 0; // une clé d'accès vaut les deux facteurs à elle seule
   const required = (await getSetting<boolean>("security.require2fa")) === true;
-  return { id: user.id, email: user.email, name: user.name, role: user.role as Role, locale: user.locale, advanced: user.advanced, twoFactor, needsTwoFactor: required && !twoFactor };
+  return { id: user.id, email: user.email, name: user.name, role: user.role as Role, locale: user.locale, advanced: user.advanced, totp, passkeys, twoFactor, needsTwoFactor: required && !twoFactor };
 }
 
 export function hasRole(user: AdminUser | null, min: Role): user is AdminUser {

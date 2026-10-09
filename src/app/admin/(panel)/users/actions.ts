@@ -69,12 +69,13 @@ export async function revokeUserSessions(id: string): Promise<void> {
   revalidatePath("/admin/users");
 }
 
-/** Le propriétaire réinitialise la double vérification de quelqu'un qui a perdu son téléphone et ses codes de secours (ses sessions ouvertes sont coupées). */
+/** Le propriétaire réinitialise la double vérification ET les clés d'accès de quelqu'un qui a perdu son téléphone et ses codes de secours (ses sessions ouvertes sont coupées). */
 export async function resetUserTwoFactor(id: string): Promise<void> {
   const { user } = await adminCtx("owner");
   const target = await prisma.user.findUnique({ where: { id } });
-  if (!target || target.id === user.id || !target.totpEnabledAt) return;
+  if (!target || target.id === user.id) return;
   await disableTwoFactor(target.id);
+  await prisma.passkey.deleteMany({ where: { userId: target.id } });
   await audit(user.email, "user.2fa.reset", target.email);
   revalidatePath("/admin/users");
 }

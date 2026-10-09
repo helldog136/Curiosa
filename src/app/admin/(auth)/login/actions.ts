@@ -6,6 +6,8 @@ import { signIn } from "@/auth";
 import { clientIp } from "@/core/auth/clientIp";
 import { checkLogin, formatUntil, recordFailure, recordSuccess } from "@/core/auth/lockout";
 import { verifyPassword } from "@/core/auth/password";
+import { currentRelying } from "@/core/auth/relying";
+import { finishLogin, startLogin } from "@/core/auth/passkeys";
 import { passwordBinding, peekToken, readToken, signToken, verifySecondFactor } from "@/core/auth/twoFactor";
 import { prisma } from "@/core/db";
 import { getAdminTranslator } from "@/core/i18n/request";
@@ -65,4 +67,37 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
   await recordSuccess(ip, user.id, user.email);
   await audit(user.email, "login", ip);
   return open(user.id);
+}
+
+/* ───────────── Connexion avec une clé d'accès ───────────── */
+
+export type PasskeyLoginStart = { options?: Record<string, unknown>; challengeId?: string; error?: string };
+
+export async function passkeyLoginStart(): Promise<PasskeyLoginStart> {
+  const started = await startLogin(await currentRelying());
+  return { options: started.options as unknown as Record<string, unknown>, challengeId: started.challengeId };
+}
+
+/** La clé d'accès a signé le défi : c'est le mot de passe ET le deuxième facteur à la fois (la vérification de l'utilisateur est exigée). */
+export async function passkeyLoginFinish(challengeId: string, response: Record<string, unknown>): Promise<{ error?: string }> {
+  const { t, locale } = await getAdminTranslator();
+  const h = await headers();
+  const ip = clientIp((name) => h.get(name));
+  const lock = await checkLogin(ip, "");
+  if (lock.locked) return { error: t("login.locked", { time: formatUntil(lock.until, locale) }) };
+  const found = await finishLogin(String(challengeId ?? ""), response as never, await currentRelying());
+  if (!found) {
+    await recordFailure(ip, "");
+    const again = await checkLogin(ip, "");
+    return { error: again.locked ? t("login.locked", { time: formatUntil(again.until, locale) }) : t("login.passkeyInvalid") };
+  }
+  await recordSuccess(ip, found.userId, found.email);
+  await audit(found.email, "login.passkey", ip);
+  try {
+    await signIn("credentials", { ticket: signToken("ticket", found.userId), redirectTo: "/admin" });
+  } catch (error) {
+    if (error instanceof AuthError) return { error: t("login.invalid") };
+    throw error;
+  }
+  return {};
 }

@@ -8,6 +8,8 @@ import { isKnownLocale } from "@/core/i18n/locales";
 import { signOut } from "@/auth";
 import { verifyPassword } from "@/core/auth/password";
 import { beginEnroll, confirmEnroll, disableTwoFactor, regenerateRecoveryCodes, remainingRecoveryCodes, verifySecondFactor } from "@/core/auth/twoFactor";
+import { countPasskeys, deletePasskey, finishRegistration, renamePasskey, startRegistration } from "@/core/auth/passkeys";
+import { currentRelying } from "@/core/auth/relying";
 import { qrSvg } from "@/core/services/qr";
 import { getSetting } from "@/core/settings";
 import { revokeSessions } from "@/core/auth/sessions";
@@ -72,7 +74,8 @@ export async function confirmTwoFactor(code: string): Promise<TwoFactorResult> {
 /** Désactiver demande le mot de passe ET un code : une session laissée ouverte ne suffit pas. Impossible si le propriétaire l'exige de tous. */
 export async function disableMyTwoFactor(password: string, code: string): Promise<TwoFactorResult> {
   const { user, t } = await adminCtx("editor", { allowUnenrolled: true });
-  if ((await getSetting<boolean>("security.require2fa")) === true) return { error: t("account.twofa.required") };
+  // Exigé par le propriétaire : on peut changer de facteur, pas rester sans (il faut au moins une clé d'accès pour désactiver le code).
+  if ((await getSetting<boolean>("security.require2fa")) === true && (await countPasskeys(user.id)) === 0) return { error: t("account.twofa.required") };
   const ok = await verifyPassword(user.email, String(password ?? ""));
   if (!ok) return { error: t("account.wrongPassword") };
   if (!(await verifySecondFactor(user.id, String(code ?? ""))).ok) return { error: t("account.twofa.wrongCode") };
@@ -90,4 +93,45 @@ export async function regenerateMyRecoveryCodes(password: string): Promise<TwoFa
   if (!codes) return { error: t("error.generic") };
   await audit(user.email, "user.2fa.codes");
   return { codes, remaining: await remainingRecoveryCodes(user.id) };
+}
+
+/* ───────────── Clés d'accès ───────────── */
+
+export type PasskeyResult = { error?: string; options?: Record<string, unknown>; challengeId?: string; ok?: boolean };
+
+/** Ajouter une clé : le mot de passe est redemandé (une session laissée ouverte ne suffit pas). */
+export async function startPasskeyRegistration(password: string): Promise<PasskeyResult> {
+  const { user, t } = await adminCtx("editor", { allowUnenrolled: true });
+  if (!(await verifyPassword(user.email, String(password ?? "")))) return { error: t("account.wrongPassword") };
+  const started = await startRegistration(user.id, await currentRelying());
+  if ("error" in started) return { error: started.error === "max" ? t("account.passkeys.max") : t("error.generic") };
+  return { options: started.options as unknown as Record<string, unknown>, challengeId: started.challengeId };
+}
+
+export async function finishPasskeyRegistration(challengeId: string, response: Record<string, unknown>, name: string): Promise<PasskeyResult> {
+  const { user, t } = await adminCtx("editor", { allowUnenrolled: true });
+  const done = await finishRegistration(user.id, String(challengeId ?? ""), response as never, String(name ?? ""), await currentRelying());
+  if (!done.ok) return { error: t("account.passkeys.failed") };
+  await audit(user.email, "user.passkey.add");
+  revalidatePath("/admin/account");
+  return { ok: true };
+}
+
+export async function renameMyPasskey(id: string, name: string): Promise<PasskeyResult> {
+  const { user, t } = await adminCtx("editor", { allowUnenrolled: true });
+  if (!(await renamePasskey(user.id, String(id ?? ""), String(name ?? "")))) return { error: t("error.generic") };
+  revalidatePath("/admin/account");
+  return { ok: true };
+}
+
+/** Retirer une clé : mot de passe demandé ; impossible de retirer la dernière si le propriétaire exige la double vérification et qu'on n'a pas le code. */
+export async function removeMyPasskey(id: string, password: string): Promise<PasskeyResult> {
+  const { user, t } = await adminCtx("editor", { allowUnenrolled: true });
+  if (!(await verifyPassword(user.email, String(password ?? "")))) return { error: t("account.wrongPassword") };
+  const enforced = (await getSetting<boolean>("security.require2fa")) === true;
+  if (enforced && !user.totp && (await countPasskeys(user.id)) <= 1) return { error: t("account.twofa.required") };
+  if (!(await deletePasskey(user.id, String(id ?? "")))) return { error: t("error.generic") };
+  await audit(user.email, "user.passkey.remove");
+  revalidatePath("/admin/account");
+  return { ok: true };
 }

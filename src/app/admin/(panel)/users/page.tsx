@@ -10,7 +10,7 @@ import { createUser, deleteUser, resetUserTwoFactor, revokeUserSessions, setRequ
 
 export default async function UsersPage() {
   const { t, user, locale } = await adminCtx("admin");
-  const users = await prisma.user.findMany({ orderBy: { createdAt: "asc" } });
+  const users = await prisma.user.findMany({ orderBy: { createdAt: "asc" }, include: { _count: { select: { passkeys: true } } } });
   const isOwner = user.role === "owner";
   const required = (await getSetting<boolean>("security.require2fa")) === true;
   const locks = new Map(await Promise.all(users.map(async (u) => [u.id, await isEmailLocked(u.email)] as const)));
@@ -26,7 +26,7 @@ export default async function UsersPage() {
               <td className={ui.td}>{u.name}</td>
               <td className={ui.td}>
                 {u.email}
-                {u.totpEnabledAt && <span className="ml-2 text-xs text-green-600" data-testid="user-2fa" title={t("users.twofa")}>🔐</span>}
+                {(u.totpEnabledAt || u._count.passkeys > 0) && <span className="ml-2 text-xs text-green-600" data-testid="user-2fa" title={t("users.twofa")}>🔐</span>}
                 {locks.get(u.id) && (
                   <span className="mt-1 flex flex-wrap items-center gap-2 text-xs text-amber-600" data-testid="user-locked">
                     {t("users.locked", { time: formatUntil(locks.get(u.id)!, locale) })}
@@ -45,7 +45,7 @@ export default async function UsersPage() {
                 ) : t(`role.${u.role}`)}
               </td>
               <td className={ui.td}>
-                {isOwner && u.id !== user.id && u.totpEnabledAt && (
+                {isOwner && u.id !== user.id && (u.totpEnabledAt || u._count.passkeys > 0) && (
                   <form action={resetUserTwoFactor.bind(null, u.id)} className="mb-1"><ConfirmButton message={t("users.twofaResetConfirm")}>{t("users.twofaReset")}</ConfirmButton></form>
                 )}
                 {isOwner && u.id !== user.id && (

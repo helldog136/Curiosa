@@ -35,6 +35,7 @@ model User {
   entries Entry[]
   trustedIps TrustedIp[]
   recoveryCodes RecoveryCode[]
+  passkeys      Passkey[]
 }
 
 // ─── Connexion : blocages progressifs ──────────────────────────────────────
@@ -58,6 +59,33 @@ model RecoveryCode {
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+// Clés d'accès (passkeys) : seule la clé PUBLIQUE est gardée ; la clé privée ne quitte jamais l'appareil de la personne.
+model Passkey {
+  id           String    @id @default(cuid())
+  userId       String
+  credentialId String    @unique
+  publicKey    Bytes
+  counter      Int       @default(0)
+  transports   String?
+  name         String
+  deviceType   String?
+  backedUp     Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  lastUsedAt   DateTime?
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// Défi à signer, valable quelques minutes et utilisable UNE seule fois (enregistrement ou connexion).
+model PasskeyChallenge {
+  id        String   @id @default(cuid())
+  challenge String
+  purpose   String
+  userId    String?
+  expiresAt DateTime
 }
 
 // Adresses (empreintes, jamais en clair) d'où un utilisateur s'est déjà connecté : un inconnu qui tape de faux mots de passe ne peut pas l'en bloquer depuis chez lui.
