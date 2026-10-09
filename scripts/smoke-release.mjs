@@ -4,8 +4,8 @@
 //
 // 1. contenu : les modules livrés sont dans extras/, aucun ancien dossier de modules, l'index du Catalogue est présent ;
 // 2. installation neuve : l'assistant répond et propose les modules de départ lus dans extras/ ;
-// 3. mise à jour d'un site existant : une base d'avant (modules « intégrés », compte, instance) démarre, le site répond, les modules sont convertis
-//    en modules ordinaires et leurs fichiers copiés, l'instance est intacte.
+// 3. mise à jour d'un site existant : une base d'avant (compte propriétaire, réglages) démarre, le site répond, le compte est intact et les
+//    tables de sécurité ajoutées depuis (verrouillage, clés d'accès, codes de secours) existent.
 import { execFileSync, spawn } from "node:child_process";
 import fs from "node:fs";
 import net from "node:net";
@@ -72,9 +72,8 @@ const q = (env, code) => execFileSync(process.execPath, ["-e", code], { cwd: app
   } finally { s.stop(); }
 }
 
-// ── 3. mise à jour d'un site existant (modules « intégrés » d'avant) ──
+// ── 3. mise à jour d'un site existant ──
 {
-  const ids = ["blog", "links", "hero", "pages"];
   const s = await boot("upgrade", async (env) => {
     q(env, `
       const { PrismaClient } = require("@prisma/client"); const p = new PrismaClient();
@@ -82,8 +81,6 @@ const q = (env, code) => execFileSync(process.execPath, ["-e", code], { cwd: app
         await p.user.create({ data: { email: "o@example.org", name: "O", role: "owner", passwordHash: "x" } });
         await p.setting.create({ data: { key: "setup.completed", locale: "", value: "true" } });
         await p.setting.create({ data: { key: "site.name", locale: "", value: JSON.stringify("Site d'avant") } });
-        for (const id of ${JSON.stringify(ids)}) await p.module.create({ data: { id, source: "builtin", version: "0.1.2", enabled: true } });
-        await p.moduleInstance.create({ data: { moduleId: "blog", key: "actus", basePath: "actus" } });
         await p.$disconnect();
       })();`);
   });
@@ -92,13 +89,12 @@ const q = (env, code) => execFileSync(process.execPath, ["-e", code], { cwd: app
     const html = await res.text();
     check(res.status === 200, "mise à jour : le site d'avant répond (200)");
     check(html.includes("Site d&#x27;avant") || html.includes("Site d'avant"), "mise à jour : le nom du site est affiché");
-    const rows = JSON.parse(q(s.env, `const { PrismaClient } = require("@prisma/client"); const p = new PrismaClient(); p.module.findMany().then((r) => console.log(JSON.stringify(r.map((m) => [m.id, m.source])))).finally(() => p.$disconnect())`));
-    check(rows.length === ids.length && rows.every(([, src]) => src === "bundled"), `mise à jour : les ${ids.length} modules intégrés sont devenus des modules ordinaires`);
-    check(ids.every((id) => fs.existsSync(path.join(s.data, "modules", id, "module.json"))), "mise à jour : leurs fichiers sont copiés depuis extras/");
-    const n = q(s.env, `const { PrismaClient } = require("@prisma/client"); const p = new PrismaClient(); p.moduleInstance.count().then(console.log).finally(() => p.$disconnect())`);
-    check(n === "1", "mise à jour : l'instance existante est intacte");
-    const blog = await fetch(`${s.base}/actus`);
-    check(blog.status === 200, "mise à jour : la page publique du module (/actus) répond");
+    const owner = q(s.env, `const { PrismaClient } = require("@prisma/client"); const p = new PrismaClient(); p.user.findUnique({ where: { email: "o@example.org" } }).then((u) => console.log(u ? u.role + ":" + u.sessionVersion + ":" + u.totpEnabledAt : "absent")).finally(() => p.$disconnect())`);
+    check(owner === "owner:0:null", "mise à jour : le compte propriétaire est intact, sans double vérification imposée");
+    const tables = q(s.env, `const { PrismaClient } = require("@prisma/client"); const p = new PrismaClient(); Promise.all([p.authLock.count(), p.passkey.count(), p.recoveryCode.count(), p.passkeyChallenge.count()]).then((r) => console.log(r.join(","))).finally(() => p.$disconnect())`);
+    check(tables === "0,0,0,0", "mise à jour : les tables de sécurité (verrouillage, clés d'accès, codes de secours) existent");
+    const login = await fetch(`${s.base}/admin/login`);
+    check(login.status === 200, "mise à jour : la page de connexion répond");
   } finally { s.stop(); }
 }
 
