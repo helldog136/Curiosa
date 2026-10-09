@@ -12,7 +12,7 @@ export const isHeaderLayout = (v: unknown): v is HeaderLayout => (HEADER_LAYOUTS
 
 export type HeaderLink = { label: string; href: string };
 export type HeaderConfig = { layout: HeaderLayout; socials: boolean; secondary: HeaderLink | null; button: HeaderLink | null };
-export const DEFAULT_HEADER: HeaderConfig = { layout: "classic", socials: false, secondary: null, button: null };
+export const DEFAULT_HEADER: HeaderConfig = { layout: "classic", socials: true, secondary: null, button: null };
 
 /** Un lien d'en-tête n'existe que s'il a un libellé ET une adresse valable (page du site, https ou mailto). */
 export function headerLink(label: unknown, href: unknown): HeaderLink | null {

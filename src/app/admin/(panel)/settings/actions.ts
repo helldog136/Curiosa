@@ -1,5 +1,7 @@
 "use server";
 
+import { providersOf } from "@/core/services/topics";
+import { SOCIAL_TOPIC } from "@/core/social";
 import { revalidatePath } from "next/cache";
 import { adminCtx } from "@/core/admin";
 import { isHexColor } from "@/core/color";
@@ -62,7 +64,8 @@ export async function saveSettings(_prev: ActionState, formData: FormData): Prom
   // En-tête : disposition, icônes sociales, lien secondaire et bouton (adresse : page du site, https ou mailto ; une adresse invalide n'enregistre rien).
   const layout = String(formData.get("headerLayout") ?? "classic");
   await setSetting("header.layout", isHeaderLayout(layout) ? layout : "classic");
-  await setSetting("header.socials", formData.get("headerSocials") === "on");
+  // La case n'existe que s'il y a au moins un réseau : sans réseau, on ne touche pas au choix (sinon il serait remis à « masqué » sans que personne l'ait voulu).
+  if ((await providersOf(SOCIAL_TOPIC)).length > 0) await setSetting("header.socials", formData.get("headerSocials") === "on");
   for (const [field, key] of [["headerSecondaryHref", "header.secondaryHref"], ["headerButtonHref", "header.buttonHref"]] as const) {
     if (!(formData.has(field))) continue;
     const href = String(formData.get(field) ?? "").trim();

@@ -1,3 +1,5 @@
+import { providersOf } from "@/core/services/topics";
+import { SOCIAL_TOPIC } from "@/core/social";
 import { floatingLabels } from "@/components/admin/floating";
 import { adminCtx } from "@/core/admin";
 import { getSettingByLocale, getSetting } from "@/core/settings";
@@ -26,6 +28,7 @@ const TRANSLATABLE = ["site.name", "site.tagline", "site.about", "footer.text", 
 
 export default async function SettingsPage() {
   const { t, config, advanced, user } = await adminCtx("admin");
+  const socialCount = (await providersOf(SOCIAL_TOPIC)).length;
   const mail = await getMailConfig();
   const values: Record<string, Record<string, unknown>> = {};
   for (const key of TRANSLATABLE) values[key] = await getSettingByLocale(key);
@@ -120,7 +123,9 @@ export default async function SettingsPage() {
             <HeaderLayoutPicker name="headerLayout" value={config.header.layout}
               labels={{ classic: { title: t("settings.header.classic"), help: t("settings.header.classicHelp") }, twoRows: { title: t("settings.header.twoRows"), help: t("settings.header.twoRowsHelp") },
                 centered: { title: t("settings.header.centered"), help: t("settings.header.centeredHelp") }, minimal: { title: t("settings.header.minimal"), help: t("settings.header.minimalHelp") } }} />
-            <Checkbox name="headerSocials" label={t("settings.header.socials")} help={t("settings.header.socialsHelp")} defaultChecked={config.header.socials} />
+            {socialCount > 0
+              ? <Checkbox name="headerSocials" label={t("settings.header.socials")} help={t("settings.header.socialsHelp", { count: socialCount })} defaultChecked={config.header.socials} />
+              : <p className={ui.help}>{t("settings.header.socialsNone")}</p>}
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-3">
                 <p className="text-sm font-medium">{t("settings.header.secondary")}</p>

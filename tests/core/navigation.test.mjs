@@ -48,11 +48,11 @@ test("menus déroulants : un groupe range des pages et des liens (un seul niveau
   assert.match(read("src/components/site/Header.tsx"), /<NavDropdown key=\{item\.label\}/);
 });
 
-test("en-tête : quatre dispositions au choix, réseaux sociaux repris de TOUTES les listes actives, lien secondaire et bouton validés", () => {
+test("en-tête : quatre dispositions au choix, réseaux sociaux repris de TOUS les modules réseau actifs, lien secondaire et bouton validés", () => {
   const header = read("src/components/site/Header.tsx");
   for (const k of ['case "twoRows"', 'case "centered"', 'case "minimal"']) assert.ok(header.includes(k), k);
-  assert.match(header, /instance\.display !== "links"/, "toutes les listes d'affichage « liens », quel que soit le module — le cœur ne connaît aucun module");
-  assert.match(header, /isSafeExternalUrl\(e\.url\)/);
+  assert.match(header, /loadSocialLinks\(locale\)/, "les réseaux viennent de tous les modules qui fournissent « social.link » — le cœur ne connaît aucun réseau");
+  assert.match(read("src/core/social.ts"), /isSafeExternalUrl\(href\)/);
   const actions2 = read("src/app/admin/(panel)/settings/actions.ts");
   assert.match(actions2, /isHeaderLayout\(layout\) \? layout : "classic"/);
   assert.match(actions2, /!headerLink\("x", href\)\) return \{ error/);

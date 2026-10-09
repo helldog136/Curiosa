@@ -20,6 +20,8 @@ export type RecognizedItem = {
   icon?: string;
   /** Version de l'API des modules que le module vise ; différente de celle du framework → affiché comme incompatible. */
   apiVersion?: number;
+  /** Sujets fournis par le module (annoncés par l'index, relus à l'installation). */
+  provides?: string[];
 };
 
 /** D'où vient la liste affichée : le dépôt du framework (à jour), sa dernière copie reçue, ou la copie livrée avec cette version. */
@@ -49,6 +51,7 @@ export function sanitizeEntries(json: unknown): RecognizedItem[] {
       subdir: isSubdir(i.subdir) ? i.subdir : undefined,
       version: str(i.version, 40), author: str(i.author, 120), icon: str(i.icon, 8),
       apiVersion: Number.isInteger(i.apiVersion) ? i.apiVersion : undefined,
+      provides: Array.isArray(i.provides) ? i.provides.filter((x: unknown): x is string => typeof x === "string" && /^[a-z][a-z0-9.-]{0,40}$/.test(x)).slice(0, 20) : undefined,
     });
     if (items.length >= 300) break;
   }

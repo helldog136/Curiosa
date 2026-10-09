@@ -48,7 +48,7 @@ export type SectionDecl = {
 };
 
 /** Catégorie d'un module : décide où il apparaît dans l'admin et comment ses instances sont exposées. */
-export const MODULE_TYPES = ["content", "overlay", "widget", "integration", "utility"] as const;
+export const MODULE_TYPES = ["content", "social", "overlay", "widget", "integration", "utility"] as const;
 export type ModuleType = (typeof MODULE_TYPES)[number];
 
 /** Champ d'un sujet : le consommateur déclare ce qu'il sait digérer. */

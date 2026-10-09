@@ -149,7 +149,7 @@ export const getSiteConfig = cache(async (locale?: string): Promise<SiteConfig> 
     nav: (await getSetting<NavItem[]>("nav.custom")) ?? [],
     header: {
       layout: isHeaderLayout(all["header.layout"]?.[""]) ? (all["header.layout"]![""] as HeaderLayout) : "classic",
-      socials: all["header.socials"]?.[""] === true,
+      socials: all["header.socials"]?.[""] !== false,
       secondary: headerLink(await str("header.secondaryLabel"), all["header.secondaryHref"]?.[""]),
       button: headerLink(await str("header.buttonLabel"), all["header.buttonHref"]?.[""]),
     },

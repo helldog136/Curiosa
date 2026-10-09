@@ -59,6 +59,7 @@ et comment ses instances sont exposées :
 | Type | Pour | Particularité |
 |---|---|---|
 | `content` | blog, liens, codes promo, pages… | déduit de `content` ; éditeur d'entrées fourni par le cœur |
+| `social` | un réseau social (Twitch, YouTube, Instagram…) | fournit son bouton au cœur (sujet `social.link`) ; une instance par compte |
 | `overlay` | sources navigateur OBS | chaque instance est servie sur `/overlays/<clé>` (page nue, fond transparent) via `overlay()` |
 | `widget` | morceaux de pages (bandeau, formulaire…) | défaut quand il n'y a pas de `content` |
 | `integration` | services externes (Twitch, Discord…) | — |
@@ -85,7 +86,7 @@ Validé à l'installation et au chargement (zod, `src/core/modules/manifest.ts`)
   "author": "…", "license": "MIT", "homepage": "https://…",
   "icon": "📣",                          // un emoji (8 caractères au plus)
   "main": "index.mjs",                   // absent = module sans code
-  "type": "widget",                      // content | overlay | widget | integration | utility
+  "type": "widget",                      // content | social | overlay | widget | integration | utility
   "instances": "multiple",               // ou "single"
   "page": true, "basePath": "guestbook", // l'instance a une page publique, sur ce chemin proposé
   "permissions": ["slots", "sections", "routes", "storage", "filters", "pages", "topics", "overlay", "mcp", "admin", "mail"],
@@ -573,6 +574,7 @@ Sujets connus (tous fournis par des modules livrés ou communautaires, ou par le
 |---|---|---|
 | `core.entry` | le cœur | entrées publiées de toute instance à contenu |
 | `feed.item` | tout module | éléments proposés au flux RSS (voir plus bas) |
+| `social.link` | tout module « réseau social » | le bouton d'un réseau (`label`, `url`, `icon`) que le cœur affiche dans l'en-tête (voir « Réseaux sociaux ») |
 | `overlay.item` | tout module | éléments simples (titre, texte, image, lien) pour les overlays |
 | `guestbook.message` | `guestbook` (exemple) | message validé d'un livre d'or (`id`, `name`, `text`, `publishedAt`) |
 | `sponsor.card` | `sponsors` | carte de sponsor (nom, code, logo, lien) |
@@ -761,6 +763,10 @@ Garde-fous du cœur : texte brut uniquement (20 000 caractères au plus), objet 
 chaque envoi consigné dans le journal d'audit (sans contenu).
 
 ## Alimenter le flux RSS
+
+### Réseaux sociaux
+
+Le cœur ne connaît aucun réseau : il demande à **tous** les modules actifs qui fournissent `social.link` leur bouton et l'affiche dans l'en-tête. Un réseau est donc un module (`"type": "social"`, `"instances": "multiple"` pour en ajouter un par compte) : `"provides": [{ "topic": "social.link" }]` et `exports["social.link"] = (ctx) => [{ label, url, icon? }]`. `label` et `url` sont obligatoires (`url` : adresse https externe ; les autres sont écartées), `icon` est un identifiant d'icône (`twitch`, `youtube`…) ou un emoji. Le cœur garde 10 boutons au plus, sans doublon, dans l'ordre des instances. Renvoyez une liste vide tant que le module n'est pas réglé.
 
 Le flux RSS est une fonctionnalité du cœur (`/feed.xml`). Les modules à contenu y sont déjà. Un autre module y ajoute ses éléments en fournissant le sujet `feed.item` : `"provides": [{ "topic": "feed.item" }]` et `exports["feed.item"] = (ctx, { locale, limit }) => [{ title, url, summary?, publishedAt?, id?, topics? }]`. `title` et `url` sont obligatoires (`url` : chemin du site `/…` ou adresse http(s) ; les autres schémas sont écartés), `publishedAt` est une date ISO **en texte**. `topics` : les rubriques **partagées** sur lesquelles publier (`["announcement", "concert"]`). Elles sont communes à tous les modules : si le blog et votre agenda publient tous deux sur `announcement`, un lecteur abonné à `announcement` reçoit les deux. Le cœur ajoute lui-même `@<instance>` ; un module ne peut pas le déclarer. Ne mettez que des éléments **publics** (jamais un message en attente de modération) : le flux est lisible par tous. Le cœur échappe le XML : donnez du texte brut.
 

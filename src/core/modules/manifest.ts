@@ -80,7 +80,7 @@ export const manifestSchema = z.object({
     .refine((p) => !p.includes("..") && !p.startsWith("/"), "main must stay inside the module")
     .optional(),
   icon: z.string().max(8).optional(),
-  type: z.enum(["content", "overlay", "widget", "integration", "utility"]).optional(),
+  type: z.enum(["content", "social", "overlay", "widget", "integration", "utility"]).optional(),
   instances: z.enum(["single", "multiple"]).default("multiple"),
   consumes: z.array(z.object({ topic: topicId, label: localized, schema: z.array(topicField).max(20).optional(), tags: z.boolean().optional() })).max(10).default([]),
   provides: z.array(z.object({ topic: topicId, label: localized.optional() })).max(10).default([]),
