@@ -23,8 +23,9 @@ test("barre flottante : détecte aussi les éditeurs qui changent leurs champs c
   assert.match(form, /e\.ctrlKey \|\| e\.metaKey\) && e\.key\.toLowerCase\(\) === "s"/);
 });
 
-test("barre flottante : plusieurs formulaires modifiés sur une page ne se recouvrent pas ; branchée sur les formulaires qui MODIFIENT, pas sur ceux qui créent", () => {
-  assert.match(form, /calc\(1\.25rem \+ \$\{Math\.max\(slot, 0\)\} \* 4\.25rem\)/);
+test("barre flottante : plusieurs formulaires modifiés sur une page partagent une seule barre ; branchée sur les formulaires qui MODIFIENT, pas sur ceux qui créent", () => {
+  assert.match(form, /floating && visible && slot <= 0/, "une seule barre par page, jamais en double");
+  assert.match(form, /requestSubmit\(\)/, "son Enregistrer envoie tous les formulaires modifiés");
   for (const [file, action] of [["settings/page.tsx", "saveSettings"], ["navigation/page.tsx", "saveNavigation"], ["home/page.tsx", "saveHome"], ["instances/[id]/page.tsx", "saveInstanceSettings"], ["entries/EntryForm.tsx", "saveEntry"]]) {
     assert.match(read(`src/app/admin/(panel)/${file}`), new RegExp(`<ActionForm action=\\{${action}\\} floating=\\{floatingLabels\\(t\\)\\}`), `${file} : ${action}`);
   }
