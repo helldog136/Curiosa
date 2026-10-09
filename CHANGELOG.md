@@ -10,6 +10,9 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 *Changements depuis la 0.1.7.*
 
+### Nouveautés
+- **Vos modules en retard enfin signalés.** La page « Mises à jour » liste les modules qui ont une nouvelle version, avec un bouton « Tout mettre à jour » (ou un bouton par module), et un bilan à la fin. Le menu affiche une pastille tant qu'il en reste.
+
 ### Améliorations
 - **Chiffres clés mieux présentés.** Les chiffres se centrent dans leur bloc, quel que soit leur nombre, et un long chiffre tient sur moins de lignes. Les légendes restent lisibles, sur ordinateur comme sur téléphone.
 
