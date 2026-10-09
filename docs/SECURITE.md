@@ -41,7 +41,7 @@ La méthode la plus sûre : on se connecte avec l'**empreinte, le visage, le cod
 ## Sessions
 
 Une session dure **14 jours au plus**. Elle se coupe aussi à tout moment :
-- **Mon compte → Déconnecter tous mes appareils** (à faire si vous avez perdu un téléphone ou prêté un ordinateur) ;
+- **Mon compte → Appareils connectés → En cas de perte ou de prêt d'un appareil → Déconnecter tous mes appareils** (à faire si vous avez perdu un téléphone ou prêté un ordinateur) ;
 - **changer son mot de passe** coupe toutes les sessions ouvertes et demande de se reconnecter ;
 - le propriétaire peut **couper les sessions** de quelqu'un depuis *Utilisateurs*.
 

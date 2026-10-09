@@ -30,11 +30,13 @@ export default async function PanelLayout({ children }: { children: React.ReactN
       <MobileMenu menuLabel={t("nav.menu")} brand={<a href="/admin" className="flex flex-col px-3 leading-tight"><span className="text-lg font-bold">{config.name}</span><span className="text-xs text-muted">{t("nav.adminTagline")}</span></a>}>
         <nav aria-label="Admin">
           <div className="mt-4"><NavLink href="/admin" exact>{t("nav.dashboard")}</NavLink></div>
+          {/* Là où se gère tout le reste : en premier, et bien visible. « installé » et « ajouter » (catalogue) sont deux onglets d'un même endroit. */}
+          {canManage && <div className="mt-3"><NavLink href="/admin/modules" also={["/admin/catalogue"]} prominent>🧩 {advanced ? t("nav.modules") : t("nav.modules.simple")}</NavLink></div>}
 
           {contentItems.length > 0 && (
             <div>
               <p className={group}>{t("nav.myContent")}</p>
-              {contentItems.map((m) => <NavLink key={m.id} href={`/admin/entries?c=${m.key}`} badge={m.badge} badgeLabel={t("nav.badge.todo")}>{m.icon} {m.name}</NavLink>)}
+              {contentItems.map((m) => <NavLink key={m.id} href={`/admin/entries?c=${m.key}`} also={[`/admin/instances/${m.id}`]} badge={m.badge} badgeLabel={t("nav.badge.todo")}>{m.icon} {m.name}</NavLink>)}
             </div>
           )}
 
@@ -42,12 +44,11 @@ export default async function PanelLayout({ children }: { children: React.ReactN
           {canManage && <NavLink href="/admin/home">{t("nav.home")}</NavLink>}
           {canManage && <NavLink href="/admin/navigation">{advanced ? t("nav.navigation") : t("nav.navigation.simple")}</NavLink>}
           {canManage && <NavLink href="/admin/settings">{advanced ? t("nav.settings") : t("nav.settings.simple")}</NavLink>}
+          {canManage && <NavLink href="/admin/social">{t("nav.social")}</NavLink>}
           <NavLink href="/admin/redirects">{advanced ? t("nav.redirects") : t("nav.redirects.simple")}</NavLink>
 
           <p className={group}>{t("nav.features")}</p>
-          {otherItems.map((m) => <NavLink key={m.id} href={m.content ? `/admin/entries?c=${m.key}` : `/admin/instances/${m.id}`} badge={m.badge} badgeLabel={t("nav.badge.todo")}>{m.icon} {m.name}</NavLink>)}
-          {/* Une seule entrée : « installé » et « ajouter » (catalogue) sont deux onglets d'un même endroit. */}
-          {canManage && <NavLink href="/admin/modules" also={["/admin/catalogue"]}>{advanced ? t("nav.modules") : t("nav.modules.simple")}</NavLink>}
+          {otherItems.map((m) => <NavLink key={m.id} href={m.content ? `/admin/entries?c=${m.key}` : `/admin/instances/${m.id}`} also={m.content ? [`/admin/instances/${m.id}`] : []} badge={m.badge} badgeLabel={t("nav.badge.todo")}>{m.icon} {m.name}</NavLink>)}
 
           {(canManage || user.role === "owner") && (
             <>
@@ -65,7 +66,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
           <NavLink href="/" external>{t("nav.viewSite")} ↗</NavLink>
         </nav>
         <form action={setAdminMode.bind(null, !advanced)} className="mt-4 px-3">
-          <p className="mb-1 text-xs text-muted">{advanced ? t("mode.advanced") : t("mode.simple")}</p>
+          <p className="mb-1 text-xs text-muted"><a href="/admin/mode" className="hover:text-accent hover:underline">{advanced ? t("mode.advanced") : t("mode.simple")}</a></p>
           <button className={ui.btn} title={t("mode.help")}>{advanced ? t("mode.switchToSimple") : t("mode.switchToAdvanced")}</button>
         </form>
         <div className="mt-4 px-3" role="group" aria-label={t("theme.admin")}>

@@ -9,16 +9,34 @@ export type LocalizedString = string | Record<string, string>;
 export type SettingField = {
   key: string;
   label: LocalizedString;
-  type: "text" | "textarea" | "url" | "number" | "boolean" | "select" | "color" | "secret" | "image" | "video";
+  type: "text" | "textarea" | "url" | "link" | "number" | "boolean" | "select" | "color" | "secret" | "image" | "video";
   help?: LocalizedString;
+  /** Valeur par défaut. Pour `text` / `textarea` : `"site:name"` (nom du site) ou `"site:tagline"` (accroche), dans la langue du champ. */
   default?: string | number | boolean;
   options?: { value: string; label: LocalizedString }[];
   /** Une valeur par langue du site (sinon une seule valeur globale). */
   translatable?: boolean;
   /** Réglage technique : masqué dans la version simplifiée de l'admin (sa valeur par défaut s'applique). */
   advanced?: boolean;
-  /** « appearance » : réglage d'apparence, regroupé à part dans l'admin. Une couleur peut avoir pour défaut `"theme:accent"` (ou bg, fg, surface, muted, line, accentFg) : elle suit alors le thème du site. */
+  /** « appearance » : réglage d'apparence, regroupé à part dans l'admin. Une couleur peut avoir pour défaut `"theme:accent"` (ou accent2, bg, fg, surface, muted, line, accentFg) : elle suit alors le thème du site. */
   group?: "appearance";
+};
+
+/**
+ * Groupe de réglages FACULTATIF : tant qu'aucun de ses champs n'a de valeur, l'admin ne montre qu'un bouton « Ajouter… » ;
+ * une fois ouvert, les champs `required` doivent être remplis pour enregistrer, et « Retirer » efface toutes les valeurs du groupe.
+ */
+export type OptionalGroupDecl = {
+  id: string;
+  label: LocalizedString;
+  /** Texte du bouton qui ouvre le groupe (« Ajouter un bouton »). */
+  addLabel: LocalizedString;
+  /** Texte du bouton qui referme le groupe et efface ses valeurs (défaut : « Retirer »). */
+  removeLabel?: LocalizedString;
+  /** Clés des réglages du groupe (le groupe s'affiche à la place du premier d'entre eux). */
+  fields: string[];
+  /** Sous-ensemble de `fields` à remplir obligatoirement dès que le groupe est ouvert. */
+  required?: string[];
 };
 
 /** Un module qui déclare `content` gère des entrées (articles, liens, codes…) via l'éditeur du cœur. */
@@ -48,7 +66,7 @@ export type SectionDecl = {
 };
 
 /** Catégorie d'un module : décide où il apparaît dans l'admin et comment ses instances sont exposées. */
-export const MODULE_TYPES = ["content", "overlay", "widget", "integration", "utility"] as const;
+export const MODULE_TYPES = ["content", "social", "overlay", "widget", "integration", "utility"] as const;
 export type ModuleType = (typeof MODULE_TYPES)[number];
 
 /** Champ d'un sujet : le consommateur déclare ce qu'il sait digérer. */
@@ -96,6 +114,8 @@ export type ModuleManifest = {
   provides?: ProvideDecl[];
   /** Réglages propres à chaque instance. */
   settings: SettingField[];
+  /** Groupes de réglages facultatifs (un bouton « Ajouter… » les ouvre). */
+  optionalGroups?: OptionalGroupDecl[];
   /** Actions proposées à l'API MCP du cœur (désactivable). */
   mcp?: McpDecl[];
   /** Ce qui se passe si l'utilisateur choisit ce module pendant l'assistant de première installation. Le cœur n'a aucune connaissance d'un module en particulier : tout est déclaré ici. */

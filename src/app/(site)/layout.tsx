@@ -2,14 +2,14 @@ import { isDarkBackground, pickLogo } from "@/core/logos";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { headers } from "next/headers";
-import { buildTheme, themeCss } from "@/core/color";
+import { buildTheme, gradientTextOn, hasAccent2, hasChosenSurface, themeCss } from "@/core/color";
 import { glowCss } from "@/core/glow";
 import { faviconUrl } from "@/core/favicon";
 import { backgroundCss, effectiveLayers } from "@/core/background";
 import { RTL_LOCALES } from "@/core/i18n/locales";
 import { getVisitorLocale, getVisitorTranslator, LOCALE_HEADER } from "@/core/i18n/request";
 import { runSlot } from "@/core/modules/runtime";
-import { getSiteConfig } from "@/core/settings";
+import { getSiteConfig, themeExtraOf } from "@/core/settings";
 import { siteUrl } from "@/core/config";
 import { jsonLd, siteJsonLd } from "@/core/seo";
 import { prisma } from "@/core/db";
@@ -42,14 +42,15 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
   const locale = await getVisitorLocale();
   const localized = await getSiteConfig(locale);
   const t = await getVisitorTranslator();
-  const theme = buildTheme(localized.background, localized.accent, localized.font);
+  const theme = buildTheme(localized.background, localized.accent, localized.font, themeExtraOf(localized));
   const layers = effectiveLayers(localized.bg.preset, localized.bg.custom, localized.bg.image, localized.bg.svg);
-  const css = themeCss(theme) + glowCss(localized.glow.level, localized.glow.custom, localized.accent) + backgroundCss(layers, theme);
+  const two = hasAccent2(localized);
+  const css = themeCss(theme) + (two ? `[data-accent2]{--c-grad-fg:${gradientTextOn(localized.accent, localized.accent2)}}` : "") + glowCss(localized.glow.level, localized.glow.custom, localized.accent) + backgroundCss(layers, theme);
 
   const [headBlocks, bannerBlocks] = await Promise.all([runSlot("layout.head", locale), runSlot("layout.banner", locale)]);
 
   return (
-    <html lang={locale} dir={RTL_LOCALES.has(locale) ? "rtl" : "ltr"}>
+    <html lang={locale} dir={RTL_LOCALES.has(locale) ? "rtl" : "ltr"} data-accent2={two ? "1" : undefined} data-surface={hasChosenSurface(localized) ? "1" : undefined}>
       <head>
         <style dangerouslySetInnerHTML={{ __html: css }} />
         <link rel="alternate" type="application/rss+xml" title={localized.name} href={`/feed.xml?lang=${locale}`} />

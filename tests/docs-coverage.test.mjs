@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import { parseNeutralityRules, findViolations, loadNeutralityText } from "./helpers/neutrality.mjs";
 
 /**
  * La documentation des modules ne doit pas pourrir en silence : ce test lit le CODE (types.ts, manifest.ts, blocks.ts,
@@ -199,5 +200,7 @@ test("le tutoriel couvre chaque étape annoncée (checklist, test local, publica
 });
 
 test("la documentation reste agnostique : aucune donnée métier réelle", () => {
-  for (const doc of [reference, tutorial]) assert.ok(!new RegExp([["hell", "dog"].join(""), ["rosa", "lia"].join(""), "gmail\\.com"].join("|"), "i").test(doc));
+  // Les termes viennent de NEUTRALITY_TERMS / .neutrality-terms (hors dépôt) ; sans eux, seule l'adresse e-mail générique est vérifiée.
+  const rules = parseNeutralityRules(loadNeutralityText() + "\ngmail\\.com");
+  for (const [name, doc] of [["reference", reference], ["tutorial", tutorial]]) assert.deepEqual(findViolations({ [name]: doc }, rules.map((r) => ({ ...r, allowed: new Set() }))), []);
 });

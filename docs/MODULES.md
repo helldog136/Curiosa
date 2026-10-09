@@ -59,6 +59,7 @@ et comment ses instances sont exposées :
 | Type | Pour | Particularité |
 |---|---|---|
 | `content` | blog, liens, codes promo, pages… | déduit de `content` ; éditeur d'entrées fourni par le cœur |
+| `social` | un réseau social (Twitch, YouTube, Instagram…) | fournit son bouton au cœur (sujet `social.link`) ; une instance par compte |
 | `overlay` | sources navigateur OBS | chaque instance est servie sur `/overlays/<clé>` (page nue, fond transparent) via `overlay()` |
 | `widget` | morceaux de pages (bandeau, formulaire…) | défaut quand il n'y a pas de `content` |
 | `integration` | services externes (Twitch, Discord…) | — |
@@ -85,7 +86,7 @@ Validé à l'installation et au chargement (zod, `src/core/modules/manifest.ts`)
   "author": "…", "license": "MIT", "homepage": "https://…",
   "icon": "📣",                          // un emoji (8 caractères au plus)
   "main": "index.mjs",                   // absent = module sans code
-  "type": "widget",                      // content | overlay | widget | integration | utility
+  "type": "widget",                      // content | social | overlay | widget | integration | utility
   "instances": "multiple",               // ou "single"
   "page": true, "basePath": "guestbook", // l'instance a une page publique, sur ce chemin proposé
   "permissions": ["slots", "sections", "routes", "storage", "filters", "pages", "topics", "overlay", "mcp", "admin", "mail"],
@@ -109,6 +110,7 @@ Validé à l'installation et au chargement (zod, `src/core/modules/manifest.ts`)
 | `page` | L'instance a une page publique. Défaut : oui si `content` (sauf type `overlay`). Le code la fournit avec `page()`. |
 | `basePath` | Chemin public proposé à la création d'une instance à page (défaut : la clé de l'instance). Lettres minuscules, chiffres, tirets. |
 | `settings` | Réglages **par instance** ; l'admin génère le formulaire (voir ci-dessous). 60 au plus. |
+| `optionalGroups` | Groupes de réglages **facultatifs** derrière un bouton « Ajouter… » (voir « Groupes facultatifs »). 6 au plus. |
 | `sections` | Morceaux plaçables sur la page d'accueil (voir ci-dessous). 20 au plus. |
 | `offers` / `requires` | **Dépendances** : services que le module offre aux autres / dont il a besoin (voir « dépendances entre modules »). 10 au plus chacun. |
 | `consumes` / `provides` | Sujets que le module digère / expose (voir « sujets »). 10 au plus chacun. |
@@ -149,24 +151,55 @@ Chaque réglage est un objet (`SettingField`) :
 | `label` | Libellé affiché dans l'admin (texte ou `{ langue: texte }`). |
 | `type` | L'un des types ci-dessous. |
 | `help` | Aide sous le champ. |
-| `default` | Valeur par défaut (texte, nombre ou booléen). `ctx.setting` la renvoie tant que rien n'est réglé. |
+| `default` | Valeur par défaut (texte, nombre ou booléen). `ctx.setting` la renvoie tant que rien n'est réglé, et l'admin **pré-remplit** le champ avec elle. Pour `text` / `textarea` : `"site:name"` (nom du site) ou `"site:tagline"` (accroche), dans la langue du champ (voir ci-dessous). |
 | `options` | Pour `select` : `[{ "value": "info", "label": { "en": "…" } }]` (50 au plus). |
 | `translatable` | `true` : une valeur par langue du site (sinon une seule valeur globale). `ctx.setting` renvoie celle de la langue courante. |
 | `advanced` | `true` : réglage technique, masqué dans la version simplifiée de l'admin ; **sa valeur par défaut s'applique** — donnez-en toujours une. |
 | `group` | `"appearance"` : réglage d'apparence, regroupé sous « Apparence de ce module ». |
 
-Types : `text`, `textarea`, `url`, `number`, `boolean`, `select`, `color`, `image` (envoi de fichier ou URL), `video` (envoi d'une vidéo MP4 ou WebM de 50 Mo au plus, réservée aux fichiers du site : `/uploads/…`), `secret`
+Types : `text`, `textarea`, `url` (adresse http ou https), `link` (une page du site comme `/contact`, une adresse `https://…` ou `mailto:…` ; contrôlé dans le navigateur et par le serveur), `number`, `boolean`, `select`, `color`, `image` (envoi de fichier ou URL), `video` (envoi d'une vidéo MP4 ou WebM de 50 Mo au plus, réservée aux fichiers du site : `/uploads/…`), `secret`
 (jamais réaffiché une fois enregistré ; ne l'écrivez jamais dans un journal).
 
 - **Valeurs** : `ctx.setting` renvoie ce que l'admin a saisi, **sans garantie de type** (un nombre peut arriver en texte, une
   adresse peut être n'importe quoi) : convertissez, bornez et validez avant d'utiliser. Un réglage inconnu du manifeste vaut `undefined`.
 - **Couleur qui suit le thème** : `{ "key": "accent", "type": "color", "default": "theme:accent" }`. Jetons : `accent`, `accentFg`,
-  `bg`, `surface`, `fg`, `muted`, `line`. Seul un réglage `color` peut avoir un défaut `theme:…`, et le jeton doit exister (sinon le
+  `bg`, `surface`, `fg`, `muted`, `line`, `success`, `successFg`, `warning`, `warningFg`, `danger`, `dangerFg`, `accent2`, `accent2Fg` (pas `gradient`, qui n'est pas une couleur unie). Seul un réglage `color` peut avoir un défaut `theme:…`, et le jeton doit exister (sinon le
   manifeste est refusé). Tant que l'administrateur n'a pas choisi sa couleur (case « Suivre le thème du site »), `ctx.setting`
   renvoie la valeur du thème courant.
+- **Texte qui suit le site** : `{ "key": "title", "type": "text", "translatable": true, "default": "site:name" }`. Le champ s'affiche
+  pré-rempli avec le nom du site (`site:name`) ou son accroche (`site:tagline`) dans la langue du champ, et `ctx.setting` renvoie cette
+  valeur tant que rien d'autre n'est saisi. Si la valeur saisie est identique à celle du site, **rien n'est enregistré** : le champ continue de
+  suivre le site quand celui-ci change. Réservé aux réglages `text` et `textarea` (sinon le manifeste est refusé).
+- **Réglage traduisible.** Avec une seule langue sur le site, l'admin montre un champ simple ; avec plusieurs, une ligne par langue
+  sous le libellé du réglage.
 - **Simple et avancé.** L'admin existe en deux versions (bascule dans la barre latérale). Gardez dans la version simple l'essentiel :
   ce qu'une personne sans connaissances web comprend (un nom, une couleur, une image, un nombre). Les réglages avancés déjà
   enregistrés ne sont jamais effacés quand quelqu'un édite en version simple.
+
+### Groupes facultatifs (`optionalGroups`)
+
+Des réglages qu'on ne veut pas toujours (un bouton, une vidéo de fond) restent cachés derrière un seul bouton « ＋ … » :
+
+```jsonc
+"optionalGroups": [
+  { "id": "button", "label": { "fr": "Bouton" }, "addLabel": { "fr": "Ajouter un bouton" }, "removeLabel": { "fr": "Retirer le bouton" },
+    "fields": ["buttonLabel", "buttonUrl"], "required": ["buttonLabel", "buttonUrl"] }
+]
+```
+
+| Clé | Rôle |
+|---|---|
+| `id` | Identifiant du groupe (minuscules, chiffres, tirets). |
+| `label` | Titre de la carte du groupe, une fois ouverte. |
+| `addLabel` | Texte du bouton qui ouvre le groupe (« Ajouter un bouton »). |
+| `removeLabel` | Texte du bouton qui le retire (défaut : « Retirer »). |
+| `fields` | Clés de `settings` du groupe. Un réglage n'est que dans un seul groupe ; le groupe s'affiche à la place de son premier réglage. |
+| `required` | Sous-ensemble de `fields` à remplir dès que le groupe est ouvert (pas une case à cocher). |
+
+Tant qu'aucun champ du groupe n'a de valeur, l'admin ne montre que le bouton. Ouvert, le groupe est une carte avec ses champs et
+« Retirer » ; on ne peut pas enregistrer tant que les champs `required` ne sont pas remplis (navigateur **et** serveur). « Retirer »
+supprime toutes les valeurs du groupe à l'enregistrement : `ctx.setting` renvoie alors les défauts. Le manifeste est refusé si un champ
+est inconnu, si `required` n'est pas inclus dans `fields`, si un champ est dans deux groupes ou s'il y a plus de 6 groupes.
 
 ### Sections d'accueil (`sections`)
 
@@ -483,7 +516,7 @@ Chaque fonction du module reçoit un `ctx` (`ModuleContext`) ; les slots reçoiv
 | `ctx.locales` | toutes les langues du site |
 | `ctx.setting("clé")` | réglage de l'instance pour la langue courante, avec sa valeur par défaut (voir « Réglages ») |
 | `ctx.t("clé", { vars })` | texte de `locales/<langue>.json` du module, `{variable}` remplacée. Repli : langue par défaut, puis `en`, puis les textes du cœur, puis la clé elle-même. |
-| `ctx.theme` | thème du site : `{ accent, accentFg, bg, surface, fg, muted, line, font, fontKey }` (couleurs `#RRGGBB`, `font` = pile CSS, `fontKey` = `sans`, `serif` ou `mono`) |
+| `ctx.theme` | thème du site : `{ accent, accentFg, bg, surface, fg, muted, line, success, successFg, warning, warningFg, danger, dangerFg, accent2, accent2Fg, gradient, font, fontKey }` (couleurs `#RRGGBB`, sauf `gradient`, un dégradé CSS ; `font` = pile CSS, `fontKey` = `sans`, `serif` ou `mono`) |
 | `ctx.visit` | `{ lastVisit: Date }` : le passage précédent du visiteur (cookie tenu par le cœur, rien de personnel) ; **1er janvier 1970** s'il est inconnu |
 | `ctx.page` | (slots `page.*` et `entry.*`) `{ key, basePath }` de l'instance dont on affiche la page |
 | `ctx.entry` | (slots `entry.*`) `{ id, title, slug }` de l'entrée affichée |
@@ -573,6 +606,7 @@ Sujets connus (tous fournis par des modules livrés ou communautaires, ou par le
 |---|---|---|
 | `core.entry` | le cœur | entrées publiées de toute instance à contenu |
 | `feed.item` | tout module | éléments proposés au flux RSS (voir plus bas) |
+| `social.link` | tout module « réseau social » | le bouton d'un réseau (`label`, `url`, `icon`) que le cœur affiche dans l'en-tête (voir « Réseaux sociaux ») |
 | `overlay.item` | tout module | éléments simples (titre, texte, image, lien) pour les overlays |
 | `guestbook.message` | `guestbook` (exemple) | message validé d'un livre d'or (`id`, `name`, `text`, `publishedAt`) |
 | `sponsor.card` | `sponsors` | carte de sponsor (nom, code, logo, lien) |
@@ -746,9 +780,13 @@ Droit effectif d'un jeton = **plafond du jeton** (un jeton « lecture » n'écri
 
 Le thème réglé dans l'admin (*Réglages › Apparence*) atteint les modules de trois façons, sans rien demander :
 
-- **`ctx.theme`** : `{ accent, accentFg, bg, surface, fg, muted, line, font, fontKey }` — exactement les valeurs que le site utilise (même calcul). Un module qui génère du HTML ou du CSS (overlay, bloc `html`) s'en sert au lieu de couleurs en dur.
-- **Variables CSS** : sur le site comme dans les overlays, `:root` porte `--v-accent`, `--v-bg`, `--v-fg`, `--v-surface`, `--v-muted`, `--v-line`, `--v-accent-fg` et `--v-font`. Un bloc `html` ou un overlay peut écrire `color: var(--v-accent)`.
-- **Couleurs par défaut qui suivent le thème** : `{ "key": "accent", "type": "color", "default": "theme:accent" }` (jetons : `accent`, `accentFg`, `bg`, `surface`, `fg`, `muted`, `line`). Tant que l'administrateur n'a pas choisi sa propre couleur — case « Suivre le thème du site », cochée par défaut — la valeur change avec le thème.
+- **`ctx.theme`** : `{ accent, accentFg, bg, surface, fg, muted, line, success, successFg, warning, warningFg, danger, dangerFg, accent2, accent2Fg, gradient, font, fontKey }` — exactement les valeurs que le site utilise (même calcul). Un module qui génère du HTML ou du CSS (overlay, bloc `html`) s'en sert au lieu de couleurs en dur.
+- **Variables CSS** : sur le site comme dans les overlays, `:root` porte `--v-accent`, `--v-bg`, `--v-fg`, `--v-surface`, `--v-muted`, `--v-line`, `--v-accent-fg`, `--v-success`, `--v-warning`, `--v-danger` (chacune avec son texte : `--v-success-fg`, `--v-warning-fg`, `--v-danger-fg`) `--v-accent2` (avec `--v-accent2-fg`), `--v-gradient` et `--v-font`. Un bloc `html` ou un overlay peut écrire `color: var(--v-accent)`.
+- **Lisibilité garantie** : `accentFg` est le texte (noir `#111111` ou blanc) au meilleur contraste WCAG sur `accent` ; `muted` est lisible (≥ 4,5:1) sur `bg` et sur `surface`. `success`, `warning` et `danger` sont les couleurs d'état (succès, avertissement, erreur) : une version claire sur fond sombre, une version foncée sur fond clair, toutes lisibles (≥ 4,5:1) sur `bg` et `surface` ; `successFg`, `warningFg` et `dangerFg` sont le texte à poser dessus. Ils n'existent pas dans les cœurs plus anciens : un module qui les utilise en valeur par défaut `theme:…` exige un cœur récent.
+- **Accent secondaire et dégradé** : `accent2` est la deuxième couleur de la marque, que l'administrateur choisit facultativement (« ＋ Couleur secondaire »). Tant qu'il n'en a pas choisi, `accent2` est identique à `accent`. `accent2Fg` est le texte (noir `#111111` ou blanc) au meilleur contraste sur `accent2`. `gradient` (variable CSS `--v-gradient`) est le dégradé de l'accent vers l'accent secondaire, à 120° : à utiliser tel quel comme `background: var(--v-gradient)` (ou `background-image`), jamais comme couleur. Quand les deux accents sont identiques, c'est une couleur unie. Les navigateurs qui savent interpoler en OKLCH (milieu net, sans teinte boueuse) l'utilisent ; les autres reçoivent le même dégradé en sRGB. Pour du texte en dégradé : `background: var(--v-gradient); -webkit-background-clip: text; color: transparent`. Ces trois jetons n'existent pas dans les cœurs plus anciens : un module qui utilise `theme:accent2` ou `theme:accent2Fg` en valeur par défaut exige un cœur récent (`gradient` n'est pas utilisable en `theme:…`).
+- **Règle `data-accent2`** : quand l'administrateur a choisi un accent secondaire différent de l'accent, le site pose `data-accent2="1"` sur `<html>` (et `data-surface="1"` s'il a choisi la couleur des cartes). Le site s'en sert pour passer ses boutons principaux en plein, colorer ses petits détails en `accent2` (puces, onglet actif, soulignements au survol), mettre ses chiffres clés et son panneau d'appel à l'action en dégradé et mieux séparer ses cartes. Un module n'a rien à faire pour suivre : il lit `--v-*` comme d'habitude. Pour adopter le même style, écrivez des règles scopées, par exemple `[data-accent2] .mon-badge { background: var(--v-accent2); color: var(--v-accent2-fg); }`, et gardez `accent2` pour les détails (environ 10 % de la surface) : fond plein = `accent2-fg` ; texte en dégradé = `background: var(--v-gradient); -webkit-background-clip: text; color: transparent`, avec une couleur unie en repli. Sans l'attribut, le rendu doit rester celui d'avant.
+- **Surface et texte choisis** : l'administrateur peut aussi fixer lui-même `surface` (fond des cartes) et `fg` (couleur du texte) au lieu de les laisser dériver du fond ; `muted` et `line` se calculent alors à partir de ces valeurs. Un module n'a rien à faire de spécial : il lit toujours `ctx.theme.surface` et `ctx.theme.fg`.
+- **Couleurs par défaut qui suivent le thème** : `{ "key": "accent", "type": "color", "default": "theme:accent" }` (jetons : `accent`, `accentFg`, `bg`, `surface`, `fg`, `muted`, `line`, `success`, `successFg`, `warning`, `warningFg`, `danger`, `dangerFg`, `accent2`, `accent2Fg`). Tant que l'administrateur n'a pas choisi sa propre couleur — case « Suivre le thème du site », cochée par défaut — la valeur change avec le thème.
 
 Un module peut en plus déclarer **ses propres réglages d'apparence** (la texture des murs du labyrinthe, la couleur du sol, le style d'un bandeau…) avec `"group": "appearance"` : ils sont regroupés sous « Apparence de ce module » dans son panneau d'admin, séparés de ses réglages de comportement. Types utiles : `color`, `image` (téléversement), `select`.
 
@@ -761,6 +799,10 @@ Garde-fous du cœur : texte brut uniquement (20 000 caractères au plus), objet 
 chaque envoi consigné dans le journal d'audit (sans contenu).
 
 ## Alimenter le flux RSS
+
+### Réseaux sociaux
+
+Le cœur ne connaît aucun réseau : il demande à **tous** les modules actifs qui fournissent `social.link` leur bouton et l'affiche dans l'en-tête. Un réseau est donc un module (`"type": "social"`, `"instances": "multiple"` pour en ajouter un par compte) : `"provides": [{ "topic": "social.link" }]` et `exports["social.link"] = (ctx) => [{ label, url, icon? }]`. `label` et `url` sont obligatoires (`url` : adresse https externe ; les autres sont écartées), `icon` est un identifiant d'icône (`twitch`, `youtube`…) ou un emoji. Le cœur garde 10 boutons au plus, sans doublon, dans l'ordre des instances. Renvoyez une liste vide tant que le module n'est pas réglé.
 
 Le flux RSS est une fonctionnalité du cœur (`/feed.xml`). Les modules à contenu y sont déjà. Un autre module y ajoute ses éléments en fournissant le sujet `feed.item` : `"provides": [{ "topic": "feed.item" }]` et `exports["feed.item"] = (ctx, { locale, limit }) => [{ title, url, summary?, publishedAt?, id?, topics? }]`. `title` et `url` sont obligatoires (`url` : chemin du site `/…` ou adresse http(s) ; les autres schémas sont écartés), `publishedAt` est une date ISO **en texte**. `topics` : les rubriques **partagées** sur lesquelles publier (`["announcement", "concert"]`). Elles sont communes à tous les modules : si le blog et votre agenda publient tous deux sur `announcement`, un lecteur abonné à `announcement` reçoit les deux. Le cœur ajoute lui-même `@<instance>` ; un module ne peut pas le déclarer. Ne mettez que des éléments **publics** (jamais un message en attente de modération) : le flux est lisible par tous. Le cœur échappe le XML : donnez du texte brut.
 

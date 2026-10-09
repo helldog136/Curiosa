@@ -9,10 +9,12 @@ import { MODULE_TYPES } from "@/core/modules/types";
 import { localized } from "@/core/modules/types";
 import { ConfirmButton } from "@/components/admin/ConfirmButton";
 import { FeatureTabs } from "@/components/admin/FeatureTabs";
+import { Callout, DangerZone, EmptyState, PageHeader } from "@/components/admin/Page";
 import { ui } from "@/components/admin/ui";
 import { duplicateServices } from "@/core/modules/dependencies";
 import { ServiceRouter } from "@/components/admin/ServiceRouter";
-import { addInstance, checkUpdateAction, saveServiceRouting, toggleModule, uninstallModuleAction, updateModuleAction } from "./actions";
+import { ModuleUpdateButton } from "@/components/admin/ModuleUpdateButton";
+import { addInstance, saveServiceRouting, toggleModule, uninstallModuleAction } from "./actions";
 
 export default async function ModulesPage({ searchParams }: { searchParams: Promise<{ update?: string; error?: string; detail?: string; notice?: string; module?: string; to?: string; level?: string }> }) {
   const { t, locale, user, config, advanced } = await adminCtx("admin");
@@ -27,13 +29,10 @@ export default async function ModulesPage({ searchParams }: { searchParams: Prom
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className={ui.pageTitle}>{advanced ? t("nav.modules") : t("nav.modules.simple")}</h1>
-        <p className={ui.pageIntro}>{advanced ? t("modules.intro") : t("modules.introSimple")}</p>
-      </div>
+      <PageHeader title={advanced ? t("nav.modules") : t("nav.modules.simple")} intro={advanced ? t("modules.intro") : t("modules.introSimple")} />
       <FeatureTabs current="installed" labels={{ installed: advanced ? t("nav.modules") : t("nav.modules.simple"), add: advanced ? t("nav.catalogue") : t("nav.catalogue.simple") }} />
-      {error && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm">{error.startsWith("modules.error.") || error.startsWith("instances.error.") ? t(error, { services: detail ?? "", modules: detail ?? "" }) : t("error.generic")}</p>}
-      {notice === "services" && <p role="alert" className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">{t("services.notice")}</p>}
+      {error && <Callout tone="danger">{error.startsWith("modules.error.") || error.startsWith("instances.error.") ? t(error, { services: detail ?? "", modules: detail ?? "" }) : t("error.generic")}</Callout>}
+      {notice === "services" && <Callout tone="warn" role="alert">{t("services.notice")}</Callout>}
       {duplicates.length > 0 && (
         <section className="space-y-3">
           <div>
@@ -52,14 +51,18 @@ export default async function ModulesPage({ searchParams }: { searchParams: Prom
           })}
         </section>
       )}
-      {update && <p role="status" className="rounded-lg border border-line bg-surface p-3 text-sm">{update === "yes" ? (to ? t("modules.updateAvailableTo", { module: checked ?? "", version: to }) : t("modules.updateAvailable")) : t("modules.upToDate")}</p>}
-      {update === "yes" && level === "major" && <p role="alert" className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">{t("modules.updateMajor")}</p>}
+      {update && <Callout role="status">{update === "yes" ? (to ? t("modules.updateAvailableTo", { module: checked ?? "", version: to }) : t("modules.updateAvailable")) : t("modules.upToDate")}</Callout>}
+      {update === "yes" && level === "major" && <Callout tone="warn" role="alert">{t("modules.updateMajor")}</Callout>}
+      {mods.length === 0 && (
+        <EmptyState icon="🧩" title={t("modules.emptyTitle")} action={<a href="/admin/catalogue" className={ui.btnPrimary}>{t("modules.emptyAction")}</a>}>{t("modules.emptyHelp")}</EmptyState>
+      )}
 
       {!advanced && (
         <ul className="grid gap-4 sm:grid-cols-2">
           {mods.map(({ row, mod }) => {
             const mine = instances.filter((i) => i.moduleId === row.id);
-            const name = mod ? localized(mod.manifest.name, locale, config.defaultLocale) : row.id;
+            // Une seule instance : la carte porte le nom que l'admin lui a donné (comme le menu de gauche).
+            const name = mine.length === 1 ? labeler.label(mine[0]!) : mod ? localized(mod.manifest.name, locale, config.defaultLocale) : row.id;
             const toggle = row.enabled ? "bg-accent" : "bg-line";
             return (
               <li key={row.id} className={`${ui.card} flex flex-col gap-4 ${row.enabled ? "" : "bg-bg shadow-none"}`}>
@@ -120,15 +123,10 @@ export default async function ModulesPage({ searchParams }: { searchParams: Prom
                 {isOwner && (
                   <div className="flex flex-wrap gap-2">
                     <form action={toggleModule.bind(null, row.id, !row.enabled)}>
-                      <button className={ui.btn}>{row.enabled ? t("action.disable") : t("action.enable")}</button>
+                      <button className={row.enabled ? ui.btn : ui.btnPrimary}>{row.enabled ? t("action.disable") : t("action.enable")}</button>
                     </form>
-                    {advanced && (
-                      <>
-                        <form action={checkUpdateAction.bind(null, row.id)}><button className={ui.btn}>{t("modules.checkUpdate")}</button></form>
-                        <form action={updateModuleAction.bind(null, row.id)}><button className={ui.btn}>{t("modules.update")}</button></form>
-                        <form action={uninstallModuleAction.bind(null, row.id)}><ConfirmButton message={t("modules.uninstallConfirm")}>{t("modules.uninstall")}</ConfirmButton></form>
-                      </>
-                    )}
+                    <ModuleUpdateButton id={row.id} kind="check" labels={{ idle: t("modules.checkUpdate"), working: t("modules.checking"), done: t("modules.checked"), failed: t("modules.updateFailed") }} />
+                    <ModuleUpdateButton id={row.id} kind="update" labels={{ idle: t("modules.update"), working: t("modules.updating"), done: t("modules.updated"), failed: t("modules.updateFailed") }} />
                   </div>
                 )}
               </div>
@@ -166,6 +164,11 @@ export default async function ModulesPage({ searchParams }: { searchParams: Prom
                   )}
                   <button className={ui.btn}>+ {advanced ? (hasPage(mod.manifest) || mod.manifest.content ? t("instances.add") : t("instances.addPlain")) : t("instances.addSimple", { name: localized(mod.manifest.name, locale, config.defaultLocale) })}</button>
                 </form>
+              )}
+              {isOwner && (
+                <DangerZone title={t("modules.dangerTitle")} help={t("modules.uninstallHelp")}>
+                  <form action={uninstallModuleAction.bind(null, row.id)}><ConfirmButton message={t("modules.uninstallConfirm")}>{t("modules.uninstall")}</ConfirmButton></form>
+                </DangerZone>
               )}
             </li>
           );

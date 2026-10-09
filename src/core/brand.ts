@@ -1,7 +1,7 @@
 import { isDarkBackground, listLogos, pickLogo } from "./logos";
 import { buildPalette, FONT_STACKS } from "@/core/color";
 import { makeTranslator } from "@/core/i18n/dictionary";
-import { getSiteConfig } from "@/core/settings";
+import { getSiteConfig, themeExtraOf } from "@/core/settings";
 
 /**
  * IDENTITÉ VISUELLE DU SITE — UNE seule source de vérité.
@@ -44,7 +44,7 @@ const FONT_NAMES: Record<keyof typeof FONT_STACKS, string> = { sans: "Sans-serif
 export async function getBrand(locale?: string): Promise<Brand> {
   const config = await getSiteConfig(locale);
   const t = makeTranslator(locale ?? config.defaultLocale);
-  const palette = buildPalette(config.background, config.accent);
+  const palette = buildPalette(config.background, config.accent, themeExtraOf(config));
   return {
     name: config.name,
     tagline: config.tagline,

@@ -13,6 +13,8 @@ type Props = {
   className?: string;
   /** Pas de bouton d'envoi (le formulaire en fournit un) */
   hideSubmit?: boolean;
+  /** Bouton d'envoi discret (action secondaire de la page) : l'action principale reste la seule à être pleine couleur. */
+  secondary?: boolean;
   /** Demande confirmation (boîte du navigateur) avant d'envoyer. */
   confirm?: string;
   /** Vide les champs après un succès : pour les formulaires qui CRÉENT quelque chose (utilisateur, redirection, jeton). Par défaut les valeurs saisies restent affichées. */
@@ -49,7 +51,7 @@ function snapshot(form: HTMLFormElement): string {
 }
 
 /** Formulaire branché sur une action serveur, avec retour d'erreur / succès. */
-export function ActionForm({ action, children, submitLabel, className = "space-y-4", hideSubmit, confirm: confirmMessage, reset = false, submitTabs, floating }: Props) {
+export function ActionForm({ action, children, submitLabel, className = "space-y-4", hideSubmit, secondary, confirm: confirmMessage, reset = false, submitTabs, floating }: Props) {
   const [state, formAction, pending] = useActionState(action, null);
   const ref = useRef<HTMLFormElement>(null);
   // On n'utilise pas `<form action>` : React remettrait alors tous les champs à leur ancienne valeur après l'envoi (les listes et cases
@@ -115,7 +117,7 @@ export function ActionForm({ action, children, submitLabel, className = "space-y
       {state?.ok && <p role="status" className="rounded-lg border border-emerald-500/50 bg-emerald-500/10 p-3 text-sm text-emerald-700">{state.ok}</p>}
       {!hideSubmit && !floating && (
         <div data-tab={submitTabs}>
-          <button type="submit" disabled={pending} className={ui.btnPrimary}>
+          <button type="submit" disabled={pending} className={secondary ? ui.btn : ui.btnPrimary}>
             {submitLabel}
           </button>
         </div>

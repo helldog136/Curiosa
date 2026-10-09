@@ -1,8 +1,10 @@
 "use server";
 
+import { providersOf } from "@/core/services/topics";
+import { SOCIAL_TOPIC } from "@/core/social";
 import { revalidatePath } from "next/cache";
 import { adminCtx } from "@/core/admin";
-import { isHexColor } from "@/core/color";
+import { isHexColor, parseOptionalColors } from "@/core/color";
 import { isBackgroundImage, isPreset, parseBackground } from "@/core/background";
 import { headerLink, isHeaderLayout } from "@/core/header";
 import { LOGO_KEYS } from "@/core/logos";
@@ -28,6 +30,9 @@ export async function saveSettings(_prev: ActionState, formData: FormData): Prom
   const background = String(formData.get("background") ?? "");
   const accent = String(formData.get("accent") ?? "");
   if (!isHexColor(background) || !isHexColor(accent)) return { error: t("error.generic") };
+  // Couleurs facultatives : vide = dérivée (le réglage est supprimé) ; sinon « #rrggbb » strict, rien n'est enregistré à tort.
+  const optionalColors = parseOptionalColors(formData);
+  if (!optionalColors) return { error: t("error.generic") };
   const font = String(formData.get("font"));
   // Jeu de logos : chaque image est optionnelle ; une adresse invalide n'enregistre rien.
   const logoValues: Record<string, string> = {};
@@ -62,7 +67,8 @@ export async function saveSettings(_prev: ActionState, formData: FormData): Prom
   // En-tête : disposition, icônes sociales, lien secondaire et bouton (adresse : page du site, https ou mailto ; une adresse invalide n'enregistre rien).
   const layout = String(formData.get("headerLayout") ?? "classic");
   await setSetting("header.layout", isHeaderLayout(layout) ? layout : "classic");
-  await setSetting("header.socials", formData.get("headerSocials") === "on");
+  // La case n'existe que s'il y a au moins un réseau : sans réseau, on ne touche pas au choix (sinon il serait remis à « masqué » sans que personne l'ait voulu).
+  if ((await providersOf(SOCIAL_TOPIC)).length > 0) await setSetting("header.socials", formData.get("headerSocials") === "on");
   for (const [field, key] of [["headerSecondaryHref", "header.secondaryHref"], ["headerButtonHref", "header.buttonHref"]] as const) {
     if (!(formData.has(field))) continue;
     const href = String(formData.get(field) ?? "").trim();
@@ -102,6 +108,10 @@ export async function saveSettings(_prev: ActionState, formData: FormData): Prom
   else await deleteSetting("theme.bgImage");
   await setSetting("theme.background", background);
   await setSetting("theme.accent", accent);
+  for (const [key, value] of Object.entries(optionalColors)) {
+    if (value) await setSetting(key, value);
+    else await deleteSetting(key);
+  }
   const glow = String(formData.get("glow") ?? "none");
   // « personnalisé » n'existe qu'en mode avancé ; en mode simple on ne touche pas aux réglages fins déjà enregistrés.
   await setSetting("theme.glow", isGlowLevel(glow) && (adv || glow !== "custom") ? glow : "none");

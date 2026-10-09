@@ -17,8 +17,8 @@ import { GridEditor } from "../admin/GridEditor";
 
 const TONES = {
   info: "bg-accent text-accent-fg",
-  success: "bg-emerald-600 text-white",
-  warning: "bg-amber-500 text-black",
+  success: "bg-success text-success-fg",
+  warning: "bg-warning text-warning-fg",
 };
 
 /** Rend les blocs renvoyés par les modules. Les blocs "head" sont traités à part (voir HeadTags). */
@@ -73,7 +73,7 @@ export async function Blocks({ blocks, locale, adminInstanceId }: { blocks: Bloc
         out.push(
           <ul key={i} className="grid gap-3 sm:grid-cols-2">
             {block.items.filter((c) => /^#[0-9a-fA-F]{6}$/.test(c.hex)).map((c) => (
-              <li key={c.name + c.hex} className="flex items-center gap-4 rounded-xl border border-line bg-surface p-3">
+              <li key={c.name + c.hex} data-card="" className="flex items-center gap-4 rounded-xl border border-line bg-surface p-3">
                 <span className="h-14 w-14 shrink-0 rounded-lg border border-line" style={{ backgroundColor: c.hex }} aria-hidden="true" />
                 <div className="flex min-w-0 flex-col items-start gap-1">
                   <span className="text-sm font-semibold">{c.name}</span>
@@ -91,12 +91,12 @@ export async function Blocks({ blocks, locale, adminInstanceId }: { blocks: Bloc
         out.push(
           <ul key={i} className="grid gap-4 sm:grid-cols-2">
             {block.items.filter((d) => d.src.startsWith("/") || /^https?:\/\//.test(d.src)).map((d) => (
-              <li key={d.src} className="flex flex-col gap-3 rounded-xl border border-line bg-surface p-4">
+              <li key={d.src} data-card="" className="flex flex-col gap-3 rounded-xl border border-line bg-surface p-4">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={d.src} alt={d.label} className="h-40 w-full object-contain" />
                 <div className="flex items-center justify-between gap-3 text-sm">
                   <span>{d.label}{d.detail && <span className="block text-xs text-muted">{d.detail}</span>}</span>
-                  <a href={d.src} download className="rounded-full bg-accent px-3 py-1 text-xs font-semibold text-accent-fg hover:opacity-90">{t("site.download")}</a>
+                  <a href={d.src} download data-btn="primary" className="rounded-full bg-accent px-3 py-1 text-xs font-semibold text-accent-fg hover:opacity-90">{t("site.download")}</a>
                 </div>
               </li>
             ))}
@@ -107,7 +107,7 @@ export async function Blocks({ blocks, locale, adminInstanceId }: { blocks: Bloc
       case "copy": {
         const t = makeTranslator(locale);
         out.push(
-          <div key={i} className="space-y-2 rounded-xl border border-line bg-surface p-4">
+          <div key={i} data-card="" className="space-y-2 rounded-xl border border-line bg-surface p-4">
             {block.label && <p className="text-xs uppercase tracking-wide text-muted">{block.label}</p>}
             <p className="text-sm">{block.text}</p>
             <CopyText text={block.text} copyLabel={t("site.copy")} copiedLabel={t("site.copied")} />
@@ -135,7 +135,7 @@ export async function Blocks({ blocks, locale, adminInstanceId }: { blocks: Bloc
           <ul key={i} className="flex flex-wrap gap-3">
             {block.items.map((item) => (
               <li key={`${item.href}-${item.label}`}>
-                <a href={safeHref(item.href)} className="rounded-full border border-line px-4 py-2 text-sm hover:border-accent hover:text-accent">
+                <a href={safeHref(item.href)} data-chip="" className="rounded-full border border-line px-4 py-2 text-sm hover:border-accent hover:text-accent">
                   {item.label}
                 </a>
               </li>
@@ -154,7 +154,7 @@ export async function Blocks({ blocks, locale, adminInstanceId }: { blocks: Bloc
           <section key={i} className="space-y-4">
             {(block.title || seeAll) && (
               <div className="flex items-baseline justify-between gap-4">
-                {block.title && <h2 className="text-2xl font-semibold">{block.title}</h2>}
+                {block.title && <h2 data-marker="" className="text-2xl font-semibold">{block.title}</h2>}
                 {seeAll && <a href={seeAll} className="text-sm text-accent hover:underline">{makeTranslator(locale)("site.seeAll")}</a>}
               </div>
             )}

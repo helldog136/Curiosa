@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { buildTheme, themeCss } from "@/core/color";
 import { buildContext } from "@/core/modules/context";
 import { getActiveInstances } from "@/core/modules/registry";
-import { getSiteConfig } from "@/core/settings";
+import { getSiteConfig, themeExtraOf } from "@/core/settings";
 
 export const dynamic = "force-dynamic";
 
@@ -36,7 +36,7 @@ export default async function OverlayPage({ params, searchParams }: Props) {
   const result = await render((await params).key, await searchParams);
   if (!result) notFound();
   const config = await getSiteConfig();
-  const theme = buildTheme(config.background, config.accent, config.font);
+  const theme = buildTheme(config.background, config.accent, config.font, themeExtraOf(config));
   return (
     <>
       {/* Le thème du site, en variables CSS : l'overlay peut s'y accorder (var(--v-accent)…) sans rien demander. */}

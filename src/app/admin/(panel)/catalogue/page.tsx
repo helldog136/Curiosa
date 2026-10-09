@@ -5,12 +5,16 @@ import { localized } from "@/core/modules/types";
 import { TextField } from "@/components/admin/Field";
 import { FeatureTabs } from "@/components/admin/FeatureTabs";
 import { ui } from "@/components/admin/ui";
+import Link from "next/link";
+import { CatalogueSearch } from "@/components/admin/CatalogueSearch";
 import { ActionForm } from "@/components/admin/ActionForm";
 import { ConfirmButton } from "@/components/admin/ConfirmButton";
 import { discoverModules, listSources, sourceAddress, type SourceModule } from "@/core/modules/sources";
 import { addSourceAction, refreshCatalogueAction, refreshSourcesAction, removeSourceAction } from "./actions";
 
 export const dynamic = "force-dynamic";
+
+const fold = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
 export default async function CataloguePage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const { t, locale, config, user, advanced } = await adminCtx("admin");
@@ -48,12 +52,14 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
       )}
       {error && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm">{error.startsWith("modules.error.") ? t(error) : t("error.generic")}</p>}
 
+      <CatalogueSearch placeholder={t("catalogue.search")} noneLabel={t("catalogue.searchNone")} clearLabel={t("catalogue.searchClear")} />
+
       {groups.map((g) => g.list.length > 0 && (
-        <section key={g.id} className="space-y-4">
+        <section key={g.id} data-catalogue-section className="space-y-4">
           <h2 className="text-xl font-semibold">{g.title}</h2>
           <ul className="grid gap-4 sm:grid-cols-2">
             {g.list.map((e) => (
-              <li key={e.id} className={`${ui.card} flex flex-col gap-4`}>
+              <li key={e.id} data-catalogue-item data-search={fold(`${L(e.name)} ${L(e.description)} ${e.id}`)} className={`${ui.card} flex flex-col gap-4`}>
                 <div className="flex items-start gap-4">
                   <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-accent/10 text-2xl" aria-hidden>{e.icon ?? "🧩"}</span>
                   <div className="min-w-0">
@@ -69,7 +75,7 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
                   ) : !e.compatible ? (
                     <span className="text-sm text-muted">{t("catalogue.incompatible")}</span>
                   ) : (
-                    <a href={`/admin/catalogue/details?id=${encodeURIComponent(e.id)}`} className={ui.btnPrimary}>{advanced ? t("catalogue.details") : t("catalogue.details.simple")}</a>
+                    <Link href={`/admin/catalogue/details?id=${encodeURIComponent(e.id)}`} scroll={false} className={ui.btnPrimary}>{advanced ? t("catalogue.details") : t("catalogue.details.simple")}</Link>
                   )}
                 </div>
               </li>

@@ -8,6 +8,14 @@
   --color-line: var(--v-line);
   --color-accent: var(--v-accent);
   --color-accent-fg: var(--v-accent-fg);
+  --color-success: var(--v-success);
+  --color-success-fg: var(--v-success-fg);
+  --color-warning: var(--v-warning);
+  --color-warning-fg: var(--v-warning-fg);
+  --color-danger: var(--v-danger);
+  --color-danger-fg: var(--v-danger-fg);
+  --color-accent2: var(--v-accent2);
+  --color-accent2-fg: var(--v-accent2-fg);
   --font-sans: var(--v-font);
 }
 
@@ -20,6 +28,15 @@
   --v-line: #2f2f33;
   --v-accent: #e8a23b;
   --v-accent-fg: #111111;
+  --v-success: #4ade80;
+  --v-success-fg: #111111;
+  --v-warning: #fbbf24;
+  --v-warning-fg: #111111;
+  --v-danger: #f87171;
+  --v-danger-fg: #111111;
+  --v-accent2: var(--v-accent);
+  --v-accent2-fg: var(--v-accent-fg);
+  --v-gradient: linear-gradient(120deg, var(--v-accent), var(--v-accent));
   --v-font: ui-sans-serif, system-ui, sans-serif;
 }
 
@@ -54,3 +71,36 @@
 /* Morceau isolé : une ligne à lui (retour à la ligne avant et après), centré, à sa taille naturelle. */
 .vh-isolated { flex: 1 1 100%; max-width: 100%; display: flex; justify-content: center; }
 .vh-solo { width: min(100%, var(--vh-solo)); min-width: 0; }
+
+/* Boutons d'action animés : barre qui défile en continu (immobile si l'animation est réduite, voir la règle ci-dessus). */
+@keyframes curiosa-indeterminate { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
+.curiosa-indeterminate { animation: curiosa-indeterminate 1.3s ease-in-out infinite; }
+
+/* Accent secondaire choisi (attribut data-accent2 posé sur <html> seulement si accent2 est défini ET différent de l'accent) :
+   boutons pleins, accents de détail, dégradé. Sans cet attribut, rien ci-dessous ne s'applique et le site garde son apparence d'origine (règle 60-30-10 : le secondaire reste dans les petits détails). */
+[data-accent2] [data-btn="primary"] { background-color: var(--v-accent); border-color: var(--v-accent); color: var(--v-accent-fg); transition: filter 0.15s; }
+[data-accent2] [data-btn="primary"]:hover { background-color: var(--v-accent); color: var(--v-accent-fg); filter: brightness(1.12); }
+[data-accent2] [data-testid="news-dot"] { background-color: var(--v-accent2); }
+[data-accent2] [role="tab"][aria-selected="true"] { color: var(--v-accent2); border-color: var(--v-accent2); }
+[data-accent2] [role="tab"]:hover { color: var(--v-accent2); }
+[data-accent2] header nav a:hover, [data-accent2] footer a:hover { text-decoration: underline; text-decoration-color: var(--v-accent2); text-decoration-thickness: 2px; text-underline-offset: 5px; }
+[data-accent2] [data-testid="header-socials"] a:hover { color: var(--v-accent2); }
+[data-accent2] [data-chip]:hover { border-color: var(--v-accent2); color: var(--v-accent2); }
+[data-accent2] [data-marker]::before { content: ""; display: block; width: 2.5rem; height: 3px; margin-bottom: 0.6rem; border-radius: 2px; background: var(--v-accent2); }
+[data-accent2] [data-kind="stats"] [data-marker]::before, [data-accent2] [data-kind="cta"] [data-marker]::before { margin-inline: auto; }
+/* Chiffres clés en dégradé : couleur unie d'abord (repli), dégradé là où le navigateur sait le découper dans le texte. */
+[data-accent2] [data-stat] { color: var(--v-accent); }
+@supports ((-webkit-background-clip: text) or (background-clip: text)) {
+  [data-accent2] [data-stat] { background-image: var(--v-gradient); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent; }
+}
+/* Panneau « appel à l'action » : fond en dégradé, texte choisi pour rester lisible sur les deux extrémités (--c-grad-fg, calculé à côté du thème). */
+[data-accent2] [data-testid="panel"][data-on="accent"] { background: var(--v-accent); background-image: var(--v-gradient); color: var(--c-grad-fg); }
+[data-accent2] [data-testid="panel"][data-on="accent"] a[class*="border-accent-fg"] { border-color: var(--c-grad-fg); color: var(--c-grad-fg); }
+[data-accent2] [data-testid="panel"][data-on="accent"] a[class*="border-accent-fg"]:hover { background: var(--c-grad-fg); color: var(--v-accent); }
+/* Liseré fin en dégradé sous l'en-tête (ignoré par les navigateurs qui ne comprennent pas : la ligne habituelle reste). */
+[data-accent2] header[data-header-layout] { border-image: var(--v-gradient) 1; }
+/* Cartes mieux séparées du fond : accent secondaire choisi OU surface choisie (data-surface). Jamais pour les sites existants. */
+[data-accent2] [data-card], [data-surface] [data-card] {
+  border-color: color-mix(in srgb, var(--v-line) 65%, var(--v-fg));
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--v-fg) 10%, transparent), 0 8px 20px -10px color-mix(in srgb, var(--v-fg) 28%, transparent);
+}

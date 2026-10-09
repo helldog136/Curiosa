@@ -34,12 +34,12 @@ export default async function TokenAccessPage({ params }: { params: Promise<{ id
     <div className="space-y-6">
       <div>
         <a href="/admin/mcp" className="text-sm text-muted hover:text-accent">← {t("mcp.title")}</a>
-        <h1 className="mt-1 text-2xl font-bold">{row.name} <span className="font-mono text-base text-muted">{row.prefix}…</span></h1>
+        <h1 className={`mt-1 ${ui.pageTitle}`}>{row.name} <span className="font-mono text-base text-muted">{row.prefix}…</span></h1>
         <p className="mt-1 text-sm text-muted">
           {t(`mcp.scope.${token.scope}`)} · {t("mcp.allowedCount", { n: allowedCount, total: catalogue.filter((x) => !x.instanceOptedOut).length })}
         </p>
         {revoked && <p className="mt-2 rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm">{t("mcp.revoked")}</p>}
-        <p className="mt-3 text-sm">{t("mcp.accessIntro")}</p>
+        <p className={ui.pageIntro}>{t("mcp.accessIntro")}</p>
         {token.scope === "read" && <p className="mt-2 rounded-lg border border-line bg-surface p-3 text-sm">{t("mcp.readCeiling")}</p>}
       </div>
 

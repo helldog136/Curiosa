@@ -4,6 +4,7 @@ import { cache } from "react";
 import { isBackgroundImage, isPreset, type BackgroundPreset } from "./background";
 import { isGlowLevel, normalizeTuning, type GlowLevel, type GlowTuning } from "./glow";
 import { prisma } from "./db";
+import { isHexColor, type ThemeExtra } from "./color";
 
 type Stored = Record<string, Record<string, unknown>>; // key → locale → value
 
@@ -88,6 +89,10 @@ export type SiteConfig = {
   contactEmail: string;
   accent: string;
   background: string;
+  /** Choix facultatifs du thème (vide = dérivé) : accent secondaire, fond des cartes, couleur du texte. */
+  accent2: string;
+  surface: string;
+  textColor: string;
   font: "sans" | "serif" | "mono";
   /** Halo de couleur en fond de page (voir core/glow.ts) : niveau, et réglages du niveau « personnalisé ». */
   glow: { level: GlowLevel; custom: GlowTuning };
@@ -103,6 +108,11 @@ export type SiteConfig = {
   homeSections: HomeSection[];
   setupCompleted: boolean;
 };
+
+const optionalHex = (v: unknown): string => (isHexColor(v) ? v.toLowerCase() : "");
+
+/** Les choix facultatifs du thème d'une configuration, au format attendu par `buildTheme` / `buildPalette`. */
+export const themeExtraOf = (c: Pick<SiteConfig, "accent2" | "surface" | "textColor">): ThemeExtra => ({ accent2: c.accent2, surface: c.surface, text: c.textColor });
 
 export const DEFAULT_HOME_SECTIONS: HomeSection[] = [];
 
@@ -131,6 +141,9 @@ export const getSiteConfig = cache(async (locale?: string): Promise<SiteConfig> 
     contactEmail: (await getSetting<string>("site.contactEmail")) ?? "",
     accent: (await getSetting<string>("theme.accent")) ?? "#e8a23b",
     background: (await getSetting<string>("theme.background")) ?? "#121214",
+    accent2: optionalHex(await getSetting("theme.accent2")),
+    surface: optionalHex(await getSetting("theme.surface")),
+    textColor: optionalHex(await getSetting("theme.text")),
     font: (await getSetting<SiteConfig["font"]>("theme.font")) ?? "sans",
     glow: { level: isGlowLevel(all["theme.glow"]?.[""]) ? (all["theme.glow"]![""] as GlowLevel) : "none", custom: normalizeTuning(all["theme.glow.custom"]?.[""]) },
     bg: {
@@ -149,7 +162,7 @@ export const getSiteConfig = cache(async (locale?: string): Promise<SiteConfig> 
     nav: (await getSetting<NavItem[]>("nav.custom")) ?? [],
     header: {
       layout: isHeaderLayout(all["header.layout"]?.[""]) ? (all["header.layout"]![""] as HeaderLayout) : "classic",
-      socials: all["header.socials"]?.[""] === true,
+      socials: all["header.socials"]?.[""] !== false,
       secondary: headerLink(await str("header.secondaryLabel"), all["header.secondaryHref"]?.[""]),
       button: headerLink(await str("header.buttonLabel"), all["header.buttonHref"]?.[""]),
     },

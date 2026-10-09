@@ -1,12 +1,12 @@
 import { pickName } from "@/core/instances";
-import { listEntries } from "@/core/content/entries";
+import { loadSocialLinks } from "@/core/social";
 import { makeTranslator } from "@/core/i18n/dictionary";
 import { isDarkBackground, pickLogo } from "@/core/logos";
 import { getActiveInstances } from "@/core/modules/registry";
 import { withLocale } from "@/core/links";
 import { instanceHasNews, runSlot } from "@/core/modules/runtime";
 import type { SiteConfig } from "@/core/settings";
-import { isSafeExternalUrl, safeHref } from "@/core/url";
+import { safeHref } from "@/core/url";
 import { EntryIcon } from "./EntryIcon";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { MenuToggle } from "./MenuToggle";
@@ -15,21 +15,6 @@ import { NewsToggle } from "./NewsToggle";
 
 type Link = { label: string; href: string };
 type Item = Link & { news: boolean; children?: Link[] };
-type Social = Link & { icon: string | null };
-
-const MAX_SOCIALS = 10;
-
-/** Icônes des réseaux sociaux : les entrées de TOUTES les listes de réseaux actives du site (il peut y en avoir plusieurs). */
-async function loadSocials(locale: string): Promise<Social[]> {
-  const out: Social[] = [];
-  for (const { instance } of await getActiveInstances()) {
-    if (instance.display !== "links") continue; // toute liste d'affichage « liens », quel que soit le module qui la fournit
-    for (const e of await listEntries({ instance: instance.key, locale })) {
-      if (e.url && isSafeExternalUrl(e.url) && out.length < MAX_SOCIALS) out.push({ label: e.title, href: e.url, icon: e.icon });
-    }
-  }
-  return out;
-}
 
 export async function Header({ config, locale }: { config: SiteConfig; locale: string }) {
   const t = makeTranslator(locale);
@@ -42,7 +27,7 @@ export async function Header({ config, locale }: { config: SiteConfig; locale: s
   const mounted = (await getActiveInstances()).filter((a) => a.instance.showInNav && a.instance.basePath);
   const fresh = await Promise.all(mounted.map((a) => instanceHasNews(a, locale)));
   const moduleNav = await runSlot("nav.items", locale);
-  const socials = config.header.socials ? await loadSocials(locale) : [];
+  const socials = config.header.socials ? await loadSocialLinks(locale) : [];
 
   const items: Item[] = [
     ...mounted.map(({ instance: c }, i) => ({ label: pickName(c, locale, config.defaultLocale), href: withLocale(`/${c.basePath}`, locale, config.defaultLocale), news: fresh[i] === true })),
@@ -90,7 +75,7 @@ export async function Header({ config, locale }: { config: SiteConfig; locale: s
   );
   const secondaryEl = config.header.secondary && <a href={local(config.header.secondary.href)} className="text-sm text-muted hover:text-fg">{config.header.secondary.label}</a>;
   const buttonEl = config.header.button && (
-    <a href={local(config.header.button.href)} data-testid="header-button" className="rounded-full border-2 border-accent px-4 py-1.5 text-sm font-semibold text-accent transition-colors hover:bg-accent hover:text-accent-fg">{config.header.button.label}</a>
+    <a href={local(config.header.button.href)} data-testid="header-button" data-btn="primary" className="rounded-full border-2 border-accent px-4 py-1.5 text-sm font-semibold text-accent transition-colors hover:bg-accent hover:text-accent-fg">{config.header.button.label}</a>
   );
   const bell = config.newsToggle && <NewsToggle labels={{ on: t("site.newsOn"), off: t("site.newsOff"), title: t("site.newsHelp") }} />;
   const lang = <>{bell}<LanguageSwitcher locales={config.locales} current={locale} defaultLocale={config.defaultLocale} /></>;

@@ -13,9 +13,14 @@ export default async function NewEntryPage({ searchParams }: { searchParams: Pro
   const entryLocale = locale && config.locales.includes(locale) ? locale : config.defaultLocale;
   const refOptions: Record<string, { value: string; label: string }[]> = {};
   for (const f of collection.fieldSchema) if (f.type === "ref" && f.topic) refOptions[f.topic] = await getRefOptions(collection.id, f.topic, config.defaultLocale);
+  const name = (await getInstanceLabeler(adminLocale, config.defaultLocale)).label(collection);
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">{t("entries.new")} — {(await getInstanceLabeler(adminLocale, config.defaultLocale)).label(collection)}</h1>
+      <div>
+        <a href={`/admin/entries?c=${collection.key}`} className="text-sm text-muted hover:text-accent">← {t("entries.backTo", { name })}</a>
+        <h1 className="mt-1 text-2xl font-bold">{t("entries.new")}</h1>
+        <p className="mt-1 text-sm text-muted">{t("entries.newIntro")}</p>
+      </div>
       <EntryForm
         refOptions={refOptions} advanced={advanced} t={t} collection={collection} locales={config.locales} locale={entryLocale}
         data={{ status: "draft", cover: null, icon: null, url: null, code: null, featured: false, tags: "", expiresAt: "", publishedAt: "", fields: {}, translations: [] }}

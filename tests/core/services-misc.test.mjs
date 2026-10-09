@@ -98,12 +98,12 @@ async function inst(id, nickname, names = { en: id }) {
   return createInstance(db.prisma, { manifest: BUILTIN_MODULES.find((b) => b.manifest.id === id).manifest, nickname, names });
 }
 
-test("libellés d'admin : nom du module si l'instance est seule, surnom dès qu'il y en a plusieurs", async () => {
+test("libellés d'admin : nom (renommable) de l'instance si elle est seule, surnom dès qu'il y en a plusieurs", async () => {
   await inst("blog", undefined, { en: "Mon blog public" });
   await inst("links", undefined);
   let labeler = await getInstanceLabeler("en", "en");
   const [a] = (await listInstances()).filter((i) => i.moduleId === "blog");
-  assert.equal(labeler.label(a), "Blog", "nom du module, pas le nom public ni la clé technique");
+  assert.equal(labeler.label(a), "Mon blog public", "le nom que l'admin a donné à l'instance, pas la clé technique");
   assert.equal(labeler.hasSiblings("blog"), false);
   await inst("blog", "Actus", { en: "Actus" });
   const all = (await listInstances()).filter((i) => i.moduleId === "blog");

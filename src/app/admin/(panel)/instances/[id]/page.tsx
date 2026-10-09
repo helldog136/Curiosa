@@ -6,9 +6,9 @@ import { localeName } from "@/core/i18n/locales";
 import { buildContext, instanceSettingKey } from "@/core/modules/context";
 import { hasPage } from "@/core/modules/manifest";
 import { getModule } from "@/core/modules/registry";
-import { localized, type SettingField } from "@/core/modules/types";
-import { buildTheme, themeRef } from "@/core/color";
-import { getSetting, getSettingByLocale, getSiteConfig } from "@/core/settings";
+import { localized } from "@/core/modules/types";
+import { buildTheme } from "@/core/color";
+import { getSetting, getSettingByLocale, getSiteConfig, themeExtraOf } from "@/core/settings";
 import { effectiveSort, SORTS, sortSettingKey } from "@/core/content/sort";
 import { mcpInstanceKey } from "@/core/modules/mcpProvider";
 import { getInstanceLabeler } from "@/core/modules/labels";
@@ -17,10 +17,10 @@ import { siteUrl } from "@/core/config";
 import { effectiveType } from "@/core/modules/manifest";
 import { getSources, providersOf } from "@/core/services/topics";
 import { InstanceTabs } from "@/components/admin/InstanceTabs";
-import { ImageField } from "@/components/admin/ImageField";
 import { ActionForm } from "@/components/admin/ActionForm";
 import { ConfirmButton } from "@/components/admin/ConfirmButton";
 import { Checkbox, Select, TextArea, TextField } from "@/components/admin/Field";
+import { ModuleSettings } from "@/components/admin/ModuleSettings";
 import { ui } from "@/components/admin/ui";
 import { dataStatusOf } from "@/core/modules/dataMigrations";
 import { taskStateOf } from "@/core/services/scheduler";
@@ -56,107 +56,75 @@ export default async function InstancePage({ params, searchParams }: { params: P
   const dataStatus = await dataStatusOf(instance.id);
   const taskRows = await Promise.all(Object.entries(mod.def.tasks ?? {}).map(async ([name, task]) => ({ name, every: task.everyMinutes, state: await taskStateOf(instance.id, name) })));
   const visibleSettings = mod.manifest.settings.filter((f) => advanced || !f.advanced);
-  const generalSettings = visibleSettings.filter((f) => f.group !== "appearance");
-  const appearanceSettings = visibleSettings.filter((f) => f.group === "appearance");
   const siteConfig = await getSiteConfig();
-  const theme = buildTheme(siteConfig.background, siteConfig.accent, siteConfig.font);
+  const theme = buildTheme(siteConfig.background, siteConfig.accent, siteConfig.font, themeExtraOf(siteConfig));
 
-  const input = (f: SettingField, name: string, value: unknown, label: string) => {
-    // Réglages d'un module : jamais remplis par le navigateur (un identifiant client + un secret ressemblent à un login/mot de passe).
-    const common = { name, label, help: f.help ? L(f.help) : undefined, autoComplete: "off" };
-    const str = value === undefined ? (f.default === undefined ? "" : String(f.default)) : String(value);
-    switch (f.type) {
-      case "boolean":
-        return <Checkbox key={name} {...common} defaultChecked={value === undefined ? f.default === true : value === true} />;
-      case "textarea":
-        return <TextArea key={name} {...common} rows={4} defaultValue={str} />;
-      case "select":
-        return <Select key={name} {...common} defaultValue={str} options={(f.options ?? []).map((o) => ({ value: o.value, label: L(o.label) }))} />;
-      case "secret":
-        return <TextField key={name} {...common} type="password" placeholder={value ? "••••••••" : ""} autoComplete="new-password" />;
-      case "number":
-        return <TextField key={name} {...common} type="number" defaultValue={str} />;
-      case "color": {
-        // Une couleur qui suit le thème (défaut « theme:… ») : case « Suivre le thème » cochée tant qu'aucune couleur n'est choisie.
-        const token = themeRef(f.default);
-        if (!token) return <TextField key={name} {...common} type="color" defaultValue={str || "#000000"} />;
-        const own = typeof value === "string" && value !== "" ? value : null;
-        return (
-          <div key={name} className="space-y-1">
-            <TextField {...common} type="color" defaultValue={own ?? theme[token]} />
-            <Checkbox name={`${name}__theme`} label={t("instances.followTheme")} help={t("instances.followThemeHelp")} defaultChecked={own === null} />
-          </div>
-        );
-      }
-      case "image":
-        return <ImageField key={name} name={name} label={label} defaultValue={str} uploadLabel={t("action.upload")} />;
-      case "video":
-        return <ImageField key={name} name={name} label={label} defaultValue={str} uploadLabel={t("action.upload")} kind="video" />;
-      case "url":
-        return <TextField key={name} {...common} type="url" defaultValue={str} />;
-      default:
-        return <TextField key={name} {...common} defaultValue={str} />;
-    }
-  };
+  const siteByLocale = Object.fromEntries(await Promise.all(config.locales.map(async (l) => { const c = await getSiteConfig(l); return [l, { name: c.name, tagline: c.tagline }] as const; })));
 
   // Un réglage à remplir (clé, adresse, identifiant… encore vide, sans valeur par défaut) : on ouvre les réglages d'office plutôt que de les cacher.
-  const toFill = visibleSettings.some((f) => ["secret", "text", "url"].includes(f.type) && f.default === undefined && !f.translatable && !Object.values(stored[f.key] ?? {}).some((v) => v !== undefined && v !== ""));
+  const grouped = new Set((mod.manifest.optionalGroups ?? []).flatMap((g) => g.fields));
+  const toFill = visibleSettings.some((f) => !grouped.has(f.key) && ["secret", "text", "url", "link"].includes(f.type) && f.default === undefined && !f.translatable && !Object.values(stored[f.key] ?? {}).some((v) => v !== undefined && v !== ""));
+  // Le bouton flottant laisse un peu de place sous le DERNIER formulaire seulement.
+  const hasMoreForms = visibleSettings.length > 0 || (advanced && (mod.manifest.consumes ?? []).length > 0);
   const panelNode = <Blocks blocks={panel} locale={locale} adminInstanceId={instance.id} />;
   const forms = (
     <>
-      <ActionForm action={saveInstance} floating={floatingLabels(t)} submitLabel={t("action.save")}>
+      <ActionForm action={saveInstance} floating={floatingLabels(t)} submitLabel={t("action.save")} className={`space-y-8 ${hasMoreForms ? "[&>div[aria-hidden]]:hidden" : ""}`}>
         <input type="hidden" name="id" value={id} />
         {advanced && <input type="hidden" name="__adv" value="1" />}
-        <h2 className="text-lg font-semibold">{t("instances.general")}</h2>
-        {/* Le surnom ne sert qu'à distinguer plusieurs instances du même module : superflu (donc absent) s'il n'y en a qu'une. */}
-        {showNickname && (
-          <TextField name="nickname" label={t("instances.nickname")} help={t("instances.nicknameAdminHelp", { module: L(mod.manifest.name) })} required defaultValue={instance.nickname ?? ""} />
-        )}
+        <section className="space-y-3">
+          <h2 className="text-lg font-semibold">{t("instances.general")}</h2>
+          <div className={`${ui.card} space-y-4`}>
+            {/* Le surnom ne sert qu'à distinguer plusieurs instances du même module : superflu (donc absent) s'il n'y en a qu'une. */}
+            {showNickname && (
+              <TextField name="nickname" label={t("instances.nickname")} help={t("instances.nicknameAdminHelp", { module: L(mod.manifest.name) })} required defaultValue={instance.nickname ?? ""} />
+            )}
 
-        {advanced ? (
-          <fieldset className={`${ui.card} space-y-4`}>
-            <legend className="px-2 text-sm font-medium">{t("instances.names")}</legend>
-            {config.locales.map((l) => (
-              <div key={l} className="grid gap-3 sm:grid-cols-2">
-                <TextField name={`name_${l}`} label={`${t("field.name")} — ${localeName(l)}`} defaultValue={instance.names[l] ?? ""} required={l === config.defaultLocale} />
-                <TextField name={`description_${l}`} label={`${t("field.description")} — ${localeName(l)}`} defaultValue={instance.descriptions[l] ?? ""} />
+            {advanced ? (
+              <div className="space-y-3">
+                {config.locales.map((l) => (
+                  <div key={l} className="grid gap-3 sm:grid-cols-2">
+                    <TextField name={`name_${l}`} label={`${t("field.name")} — ${localeName(l)}`} defaultValue={instance.names[l] ?? ""} required={l === config.defaultLocale} />
+                    <TextField name={`description_${l}`} label={`${t("field.description")} — ${localeName(l)}`} defaultValue={instance.descriptions[l] ?? ""} />
+                  </div>
+                ))}
               </div>
-            ))}
-          </fieldset>
-        ) : (
-          <>
-            {/* Version simple : un seul nom, dans la langue du site ; les traductions déjà saisies sont conservées telles quelles. */}
-            <TextField name={`name_${config.defaultLocale}`} label={t("instances.displayName")} help={t("instances.displayNameHelp")} defaultValue={instance.names[config.defaultLocale] ?? ""} required />
-            <input type="hidden" name={`description_${config.defaultLocale}`} value={instance.descriptions[config.defaultLocale] ?? ""} />
-            {config.locales.filter((l) => l !== config.defaultLocale).map((l) => (
-              <span key={l}>
-                <input type="hidden" name={`name_${l}`} value={instance.names[l] ?? ""} />
-                <input type="hidden" name={`description_${l}`} value={instance.descriptions[l] ?? ""} />
-              </span>
-            ))}
-          </>
-        )}
+            ) : (
+              <>
+                {/* Version simple : un seul nom, dans la langue du site ; les traductions déjà saisies sont conservées telles quelles. */}
+                <TextField name={`name_${config.defaultLocale}`} label={t("instances.displayName")} defaultValue={instance.names[config.defaultLocale] ?? ""} required />
+                <input type="hidden" name={`description_${config.defaultLocale}`} value={instance.descriptions[config.defaultLocale] ?? ""} />
+                {config.locales.filter((l) => l !== config.defaultLocale).map((l) => (
+                  <span key={l}>
+                    <input type="hidden" name={`name_${l}`} value={instance.names[l] ?? ""} />
+                    <input type="hidden" name={`description_${l}`} value={instance.descriptions[l] ?? ""} />
+                  </span>
+                ))}
+              </>
+            )}
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Checkbox name="enabled" label={t("instances.enabled")} defaultChecked={instance.enabled} />
-          {hasPage(mod.manifest) && <Checkbox name="showInNav" label={t("instances.showInNav")} defaultChecked={instance.showInNav} />}
-        </div>
-        {content && (
-          <Select name="sort" label={t("instances.sort")} help={t("instances.sortHelp")} defaultValue={sort}
-            options={SORTS.map((s) => ({ value: s, label: t(`sort.${s}`) }))} />
-        )}
-        {advanced && (mod.manifest.mcp?.length || content) && (
-          <Checkbox name="mcp" label={t("instances.mcp")} help={t("instances.mcpHelp")} defaultChecked={mcpOn} />
-        )}
-        {hasPage(mod.manifest) && !advanced && (
-          <p className="text-sm text-muted">{t("instances.address")} : <code className="font-mono">/{instance.basePath}</code></p>
-        )}
-        {hasPage(mod.manifest) && advanced && (
-          <div className="grid gap-4 sm:grid-cols-2">
-            <TextField name="basePath" label={t("instances.basePath")} help={t("instances.basePathHelp")} defaultValue={instance.basePath ?? ""} />
-            <TextField name="navOrder" type="number" label={t("instances.navOrder")} defaultValue={instance.navOrder} />
+            <div className="flex flex-wrap gap-x-8 gap-y-2">
+              <Checkbox name="enabled" label={t("instances.enabled")} defaultChecked={instance.enabled} />
+              {hasPage(mod.manifest) && <Checkbox name="showInNav" label={t("instances.showInNav")} defaultChecked={instance.showInNav} />}
+            </div>
+            {content && (
+              <Select name="sort" label={t("instances.sort")} help={t("instances.sortHelp")} defaultValue={sort}
+                options={SORTS.map((s) => ({ value: s, label: t(`sort.${s}`) }))} />
+            )}
+            {advanced && (mod.manifest.mcp?.length || content) && (
+              <Checkbox name="mcp" label={t("instances.mcp")} help={t("instances.mcpHelp")} defaultChecked={mcpOn} />
+            )}
+            {hasPage(mod.manifest) && !advanced && (
+              <p className="text-sm text-muted">{t("instances.address")} : <code className="font-mono">/{instance.basePath}</code></p>
+            )}
+            {hasPage(mod.manifest) && advanced && (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <TextField name="basePath" label={t("instances.basePath")} help={t("instances.basePathHelp")} defaultValue={instance.basePath ?? ""} />
+                <TextField name="navOrder" type="number" label={t("instances.navOrder")} defaultValue={instance.navOrder} />
+              </div>
+            )}
           </div>
-        )}
+        </section>
 
         {content && advanced && (
           <>
@@ -185,7 +153,7 @@ export default async function InstancePage({ params, searchParams }: { params: P
       </ActionForm>
 
       {advanced && (mod.manifest.consumes ?? []).length > 0 && (
-        <ActionForm action={saveSources} floating={floatingLabels(t)} submitLabel={t("action.save")}>
+        <ActionForm action={saveSources} floating={floatingLabels(t)} submitLabel={t("action.save")} className={`space-y-4 ${visibleSettings.length > 0 ? "[&>div[aria-hidden]]:hidden" : ""}`}>
           <input type="hidden" name="id" value={id} />
           {advanced && <input type="hidden" name="__adv" value="1" />}
           <div>
@@ -198,13 +166,21 @@ export default async function InstancePage({ params, searchParams }: { params: P
             return (
               <fieldset key={decl.topic} className={`${ui.card} space-y-3`}>
                 <legend className="px-2 text-sm font-medium">{L(decl.label)}{advanced && <span className="ml-2 font-mono text-xs text-muted">{decl.topic}</span>}</legend>
-                {providers.length === 0 && <p className="text-sm text-muted">{t("sources.none")}</p>}
+                {providers.length === 0 && (
+                  <p className="text-sm text-muted">{t("sources.none")} <a href="/admin/catalogue" className="underline hover:text-accent">{t("sources.addModule")}</a></p>
+                )}
+                {providers.length > 0 && <p className="text-[13px] text-muted">{current.instances === null ? t("sources.allUsed") : t("sources.onlyChecked")}</p>}
                 {providers.map((p) => (
                   <Checkbox key={p.instance.key} name={`sources_${i}`} value={p.instance.key}
                     label={`${p.mod.manifest.icon ?? "🧩"} ${labeler.label(p.instance)}${labeler.hasSiblings(p.instance.moduleId) ? ` (${L(p.mod.manifest.name)})` : ""}`}
                     defaultChecked={current.instances === null || current.instances.includes(p.instance.key)} />
                 ))}
-                {advanced && decl.tags && <TextField name={`tags_${i}`} label={t("sources.tags")} help={t("sources.tagsHelp")} defaultValue={current.tags.join(", ")} />}
+                {advanced && decl.tags && (
+                  <details open={current.tags.length > 0} className="pt-1">
+                    <summary className="cursor-pointer text-sm font-medium">{t("sources.filter")}</summary>
+                    <div className="mt-3"><TextField name={`tags_${i}`} label={t("sources.tags")} help={t("sources.tagsHelp")} defaultValue={current.tags.join(", ")} /></div>
+                  </details>
+                )}
               </fieldset>
             );
           }))}
@@ -212,27 +188,11 @@ export default async function InstancePage({ params, searchParams }: { params: P
       )}
 
       {visibleSettings.length > 0 && (
-        <ActionForm action={saveInstanceSettings} floating={floatingLabels(t)} submitLabel={t("action.save")}>
+        <ActionForm action={saveInstanceSettings} floating={floatingLabels(t)} submitLabel={t("action.save")} className="space-y-8">
           <input type="hidden" name="id" value={id} />
           {advanced && <input type="hidden" name="__adv" value="1" />}
-          {[{ title: t("instances.moduleSettings"), fields: generalSettings }, { title: t("instances.appearance"), fields: appearanceSettings }].map(
-            (group) =>
-              group.fields.length > 0 && (
-                <div key={group.title} className="space-y-4">
-                  <h2 className="text-lg font-semibold">{group.title}</h2>
-                  {group.fields.map((f) =>
-                    f.translatable ? (
-                      <fieldset key={f.key} className={`${ui.card} space-y-3`}>
-                        <legend className="px-2 text-sm font-medium">{L(f.label)}</legend>
-                        {config.locales.map((l) => input(f, `s__${f.key}__${l}`, stored[f.key]?.[l], localeName(l)))}
-                      </fieldset>
-                    ) : (
-                      input(f, `s__${f.key}`, f.type === "secret" ? Boolean(stored[f.key]?.[""]) || undefined : stored[f.key]?.[""], L(f.label))
-                    ),
-                  )}
-                </div>
-              ),
-          )}
+          <ModuleSettings t={t} locale={locale} defaultLocale={config.defaultLocale} locales={config.locales} fields={visibleSettings} allFields={mod.manifest.settings}
+            groups={mod.manifest.optionalGroups ?? []} stored={stored} siteByLocale={siteByLocale} theme={theme} />
         </ActionForm>
       )}
 
@@ -287,8 +247,9 @@ export default async function InstancePage({ params, searchParams }: { params: P
       ) : forms}
       {advanced && panel.length > 0 && panelNode}
 
-      <form action={deleteInstanceAction.bind(null, instance.id)} className="border-t border-line pt-6">
-        <p className="mb-2 text-sm text-muted">{advanced ? t("instances.deleteWarning") : t("instances.deleteWarning.simple")}</p>
+      <form action={deleteInstanceAction.bind(null, instance.id)} className="space-y-3 rounded-2xl border border-red-500/30 p-5">
+        <h2 className="text-base font-semibold">{t("instances.s.deleteTitle")}</h2>
+        <p className="text-sm text-muted">{advanced ? t("instances.deleteWarning") : t("instances.deleteWarning.simple")}</p>
         <ConfirmButton message={t("confirm.delete")}>{advanced ? t("instances.delete") : t("instances.delete.simple")}</ConfirmButton>
       </form>
     </div>

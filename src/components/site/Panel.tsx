@@ -31,12 +31,20 @@ function Collage({ images }: { images: string[] }) {
   /* eslint-enable @next/next/no-img-element */
 }
 
-function Button({ button, light }: { button?: { label: string; href: string }; light?: boolean }) {
+/** Où le bouton est posé : sur un voile sombre (texte blanc), sur un fond d'accent (texte `accent-fg`, calculé pour être lisible sur l'accent), ou sur le fond du site. */
+type ButtonOn = "veil" | "accent";
+const BUTTON_STYLES: Record<ButtonOn | "page", string> = {
+  veil: "border-white text-white hover:bg-white hover:text-black",
+  accent: "border-accent-fg text-accent-fg hover:bg-accent-fg hover:text-accent",
+  page: "border-accent text-accent hover:bg-accent hover:text-accent-fg",
+};
+
+function Button({ button, on }: { button?: { label: string; href: string }; on?: ButtonOn }) {
   if (!button?.label) return null;
   const href = safeHref(button.href);
   return (
-    <a href={href} {...(isExternalHref(href) ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-      className={`inline-block rounded-full border-2 px-6 py-3 font-semibold transition-colors ${light ? "border-white text-white hover:bg-white hover:text-black" : "border-accent text-accent hover:bg-accent hover:text-accent-fg"}`}>
+    <a href={href} data-btn={on ? undefined : "primary"} {...(isExternalHref(href) ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+      className={`inline-block rounded-full border-2 px-6 py-3 font-semibold transition-colors ${BUTTON_STYLES[on ?? "page"]}`}>
       {button.label}
     </a>
   );
@@ -54,9 +62,10 @@ export function Panel({ block, labels }: { block: PanelBlock; labels: VideoLabel
   }
   const bg = block.bg && safeImage(block.bg.src);
   const veil = bg ? block.bg?.veil : undefined;
-  const dark = veil === "dark" || block.tone === "accent";
-  const tone = block.tone === "accent" ? "bg-accent text-accent-fg" : block.tone === "surface" ? "bg-surface" : "";
-  const heading = block.title ? <h2 className={`text-3xl font-bold tracking-tight sm:text-4xl ${!dark ? "text-accent" : ""}`}>{block.title}</h2> : null;
+  const on: ButtonOn | undefined = veil === "dark" ? "veil" : block.tone === "accent" ? "accent" : undefined;
+  const dark = on !== undefined;
+  const tone = block.tone === "accent" ? (on === "veil" ? "bg-accent" : "bg-accent text-accent-fg") : block.tone === "surface" ? "bg-surface" : "";
+  const heading = block.title ? <h2 data-marker={!dark ? "" : undefined} className={`text-3xl font-bold tracking-tight sm:text-4xl ${!dark ? "text-accent" : ""}`}>{block.title}</h2> : null;
   const head = (
     <>
       {block.eyebrow && <p className="text-sm font-semibold uppercase tracking-wide">{block.eyebrow}</p>}
@@ -79,16 +88,16 @@ export function Panel({ block, labels }: { block: PanelBlock; labels: VideoLabel
         <div className="mx-auto max-w-3xl space-y-3 text-center">{head}</div>
         <ul className="grid gap-6 text-center sm:grid-cols-2 lg:grid-cols-4">
           {block.items.map((it, i) => (
-            <li key={i}><p className="text-5xl font-extrabold tracking-tight">{it.title}</p>{it.heading && <p className="mt-1 text-sm opacity-80">{it.heading}</p>}</li>
+            <li key={i}><p data-stat={dark ? undefined : ""} className="text-5xl font-extrabold tracking-tight">{it.title}</p>{it.heading && <p className={`mt-1 text-sm ${on === "accent" ? "" : "opacity-80"}`}>{it.heading}</p>}</li>
           ))}
         </ul>
       </div>
     );
   } else if (block.kind === "cta") {
-    body = <div className="mx-auto max-w-2xl space-y-4 py-6 text-center">{head}<Button button={block.button} light={dark} /></div>;
+    body = <div className="mx-auto max-w-2xl space-y-4 py-6 text-center">{head}<Button button={block.button} on={on} /></div>;
   } else {
     // « media » : texte d'un côté, images de l'autre (côté réglable). Sans image, le texte prend toute la place.
-    const text = <div className="space-y-4">{head}<Button button={block.button} light={dark} /></div>;
+    const text = <div className="space-y-4">{head}<Button button={block.button} on={on} /></div>;
     body = images.length ? (
       <div className="grid items-center gap-8 md:grid-cols-2">
         {block.imageSide === "left" ? <><Collage images={images} />{text}</> : <>{text}<Collage images={images} /></>}
@@ -97,7 +106,7 @@ export function Panel({ block, labels }: { block: PanelBlock; labels: VideoLabel
   }
 
   return (
-    <section data-testid="panel" data-kind={block.kind} className={`relative isolate overflow-hidden rounded-2xl px-6 py-10 sm:px-10 ${tone} ${veil === "dark" ? "text-white" : ""}`}
+    <section data-testid="panel" data-kind={block.kind} data-on={on} className={`relative isolate overflow-hidden rounded-2xl px-6 py-10 sm:px-10 ${tone} ${veil === "dark" ? "text-white" : ""}`}
       style={bg ? { backgroundImage: `url("${bg}")`, backgroundSize: SIZES[block.bg?.size ?? "cover"] ?? "cover", backgroundPosition: POSITIONS[block.bg?.position ?? "center"] ?? "center", backgroundRepeat: "no-repeat" } : undefined}>
       {veil && veil !== "none" && <div aria-hidden="true" className={`absolute inset-0 -z-10 ${veil === "dark" ? "bg-black/55" : "bg-bg/70"}`} />}
       {body}
