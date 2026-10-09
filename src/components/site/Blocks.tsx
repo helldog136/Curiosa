@@ -17,8 +17,8 @@ import { GridEditor } from "../admin/GridEditor";
 
 const TONES = {
   info: "bg-accent text-accent-fg",
-  success: "bg-emerald-600 text-white",
-  warning: "bg-amber-500 text-black",
+  success: "bg-success text-success-fg",
+  warning: "bg-warning text-warning-fg",
 };
 
 /** Rend les blocs renvoyés par les modules. Les blocs "head" sont traités à part (voir HeadTags). */

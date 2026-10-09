@@ -54,7 +54,7 @@ export function ModuleForm({ action, fields, submitLabel, successText }: Props) 
       >
         {submitLabel}
       </button>
-      {state === "error" && <p role="alert" className="text-sm text-red-500">{message ?? "!"}</p>}
+      {state === "error" && <p role="alert" className="text-sm text-danger">{message ?? "!"}</p>}
     </form>
   );
 }

@@ -163,7 +163,7 @@ Types : `text`, `textarea`, `url` (adresse http ou https), `link` (une page du s
 - **Valeurs** : `ctx.setting` renvoie ce que l'admin a saisi, **sans garantie de type** (un nombre peut arriver en texte, une
   adresse peut être n'importe quoi) : convertissez, bornez et validez avant d'utiliser. Un réglage inconnu du manifeste vaut `undefined`.
 - **Couleur qui suit le thème** : `{ "key": "accent", "type": "color", "default": "theme:accent" }`. Jetons : `accent`, `accentFg`,
-  `bg`, `surface`, `fg`, `muted`, `line`. Seul un réglage `color` peut avoir un défaut `theme:…`, et le jeton doit exister (sinon le
+  `bg`, `surface`, `fg`, `muted`, `line`, `success`, `successFg`, `warning`, `warningFg`, `danger`, `dangerFg`. Seul un réglage `color` peut avoir un défaut `theme:…`, et le jeton doit exister (sinon le
   manifeste est refusé). Tant que l'administrateur n'a pas choisi sa couleur (case « Suivre le thème du site »), `ctx.setting`
   renvoie la valeur du thème courant.
 - **Texte qui suit le site** : `{ "key": "title", "type": "text", "translatable": true, "default": "site:name" }`. Le champ s'affiche
@@ -516,7 +516,7 @@ Chaque fonction du module reçoit un `ctx` (`ModuleContext`) ; les slots reçoiv
 | `ctx.locales` | toutes les langues du site |
 | `ctx.setting("clé")` | réglage de l'instance pour la langue courante, avec sa valeur par défaut (voir « Réglages ») |
 | `ctx.t("clé", { vars })` | texte de `locales/<langue>.json` du module, `{variable}` remplacée. Repli : langue par défaut, puis `en`, puis les textes du cœur, puis la clé elle-même. |
-| `ctx.theme` | thème du site : `{ accent, accentFg, bg, surface, fg, muted, line, font, fontKey }` (couleurs `#RRGGBB`, `font` = pile CSS, `fontKey` = `sans`, `serif` ou `mono`) |
+| `ctx.theme` | thème du site : `{ accent, accentFg, bg, surface, fg, muted, line, success, successFg, warning, warningFg, danger, dangerFg, font, fontKey }` (couleurs `#RRGGBB`, `font` = pile CSS, `fontKey` = `sans`, `serif` ou `mono`) |
 | `ctx.visit` | `{ lastVisit: Date }` : le passage précédent du visiteur (cookie tenu par le cœur, rien de personnel) ; **1er janvier 1970** s'il est inconnu |
 | `ctx.page` | (slots `page.*` et `entry.*`) `{ key, basePath }` de l'instance dont on affiche la page |
 | `ctx.entry` | (slots `entry.*`) `{ id, title, slug }` de l'entrée affichée |
@@ -780,9 +780,10 @@ Droit effectif d'un jeton = **plafond du jeton** (un jeton « lecture » n'écri
 
 Le thème réglé dans l'admin (*Réglages › Apparence*) atteint les modules de trois façons, sans rien demander :
 
-- **`ctx.theme`** : `{ accent, accentFg, bg, surface, fg, muted, line, font, fontKey }` — exactement les valeurs que le site utilise (même calcul). Un module qui génère du HTML ou du CSS (overlay, bloc `html`) s'en sert au lieu de couleurs en dur.
-- **Variables CSS** : sur le site comme dans les overlays, `:root` porte `--v-accent`, `--v-bg`, `--v-fg`, `--v-surface`, `--v-muted`, `--v-line`, `--v-accent-fg` et `--v-font`. Un bloc `html` ou un overlay peut écrire `color: var(--v-accent)`.
-- **Couleurs par défaut qui suivent le thème** : `{ "key": "accent", "type": "color", "default": "theme:accent" }` (jetons : `accent`, `accentFg`, `bg`, `surface`, `fg`, `muted`, `line`). Tant que l'administrateur n'a pas choisi sa propre couleur — case « Suivre le thème du site », cochée par défaut — la valeur change avec le thème.
+- **`ctx.theme`** : `{ accent, accentFg, bg, surface, fg, muted, line, success, successFg, warning, warningFg, danger, dangerFg, font, fontKey }` — exactement les valeurs que le site utilise (même calcul). Un module qui génère du HTML ou du CSS (overlay, bloc `html`) s'en sert au lieu de couleurs en dur.
+- **Variables CSS** : sur le site comme dans les overlays, `:root` porte `--v-accent`, `--v-bg`, `--v-fg`, `--v-surface`, `--v-muted`, `--v-line`, `--v-accent-fg`, `--v-success`, `--v-warning`, `--v-danger` (chacune avec son texte : `--v-success-fg`, `--v-warning-fg`, `--v-danger-fg`) et `--v-font`. Un bloc `html` ou un overlay peut écrire `color: var(--v-accent)`.
+- **Lisibilité garantie** : `accentFg` est le texte (noir `#111111` ou blanc) au meilleur contraste WCAG sur `accent` ; `muted` est lisible (≥ 4,5:1) sur `bg` et sur `surface`. `success`, `warning` et `danger` sont les couleurs d'état (succès, avertissement, erreur) : une version claire sur fond sombre, une version foncée sur fond clair, toutes lisibles (≥ 4,5:1) sur `bg` et `surface` ; `successFg`, `warningFg` et `dangerFg` sont le texte à poser dessus. Ils n'existent pas dans les cœurs plus anciens : un module qui les utilise en valeur par défaut `theme:…` exige un cœur récent.
+- **Couleurs par défaut qui suivent le thème** : `{ "key": "accent", "type": "color", "default": "theme:accent" }` (jetons : `accent`, `accentFg`, `bg`, `surface`, `fg`, `muted`, `line`, `success`, `successFg`, `warning`, `warningFg`, `danger`, `dangerFg`). Tant que l'administrateur n'a pas choisi sa propre couleur — case « Suivre le thème du site », cochée par défaut — la valeur change avec le thème.
 
 Un module peut en plus déclarer **ses propres réglages d'apparence** (la texture des murs du labyrinthe, la couleur du sol, le style d'un bandeau…) avec `"group": "appearance"` : ils sont regroupés sous « Apparence de ce module » dans son panneau d'admin, séparés de ses réglages de comportement. Types utiles : `color`, `image` (téléversement), `select`.
 
