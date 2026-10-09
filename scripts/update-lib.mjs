@@ -17,6 +17,46 @@ const PREVIOUS = ".curiosa-previous";
 /** Ce que l'archive n'a jamais le droit de remplacer : les données de l'exploitant. */
 const PROTECTED = new Set(["data", ".env", ".git", STAGING, PREVIOUS]);
 
+/** Fichier publié avec chaque release (asset `upgrade.json`) : la plus ancienne version depuis laquelle elle s'installe directement. */
+export const UPGRADE_FILE = "upgrade.json";
+const PLAIN_VERSION_RE = /^\d+\.\d+\.\d+$/;
+const MAX_STEPS = 6;
+
+/** Compare deux versions stables « 1.2.3 » (ou « v1.2.3 ») ; une release candidate compte comme sa stable. */
+export function compareVersions(a, b) {
+  const n = (v) => String(v).replace(/^v/, "").replace(/-rc\.\d+$/, "").split(".").map(Number);
+  const x = n(a), y = n(b);
+  for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return x[i] < y[i] ? -1 : 1;
+  return 0;
+}
+
+/**
+ * Par quelles versions passer pour atteindre `target` depuis `current` ? Chaque release peut déclarer (asset `upgrade.json`, {"minFrom":"0.1.4"})
+ * la plus ancienne version depuis laquelle elle s'installe directement — typiquement parce qu'elle a retiré le code qui convertissait les données
+ * d'avant. Le chemin se déduit en remontant : la cible exige 0.1.4, qui n'exige rien → [0.1.4, cible]. Rien exigé → [cible].
+ * `fetchText(url)` renvoie le texte, null si le fichier n'existe pas (404) et rejette pour toute autre erreur : un réseau en panne ne doit jamais
+ * faire croire qu'aucune étape n'est nécessaire.
+ */
+export async function planUpdate({ current, target, repo, fetchText }) {
+  const minFrom = async (tag) => {
+    const text = await fetchText(assetUrl(repo, tag, UPGRADE_FILE));
+    if (text === null) return null;
+    const need = JSON.parse(text)?.minFrom;
+    if (need === undefined) return null;
+    if (typeof need !== "string" || !PLAIN_VERSION_RE.test(need)) throw new Error("upgrade.json invalide");
+    return need;
+  };
+  const steps = [target];
+  let need = await minFrom(target);
+  while (need && compareVersions(current, need) < 0) {
+    // Une étape est toujours strictement plus ancienne que la suivante, et le chemin reste court : sinon, fichier incohérent.
+    if (steps.length >= MAX_STEPS || compareVersions(need, steps[0]) >= 0) throw new Error("chemin de mise à jour incohérent");
+    steps.unshift(`v${need}`);
+    need = await minFrom(`v${need}`);
+  }
+  return steps;
+}
+
 export const platformId = () => `${process.platform}-${process.arch}`;
 export const assetName = (tag, platform = platformId()) => `curiosa-${tag}-${platform}.tar.gz`;
 export const assetUrl = (repo, tag, name) => `https://github.com/${repo}/releases/download/${tag}/${name}`;
@@ -76,6 +116,9 @@ async function sha256(file) {
  * @param {number} [o.serverPid]         processus à arrêter si l'installation est supervisée
  * @param {boolean} [o.supervised]
  * @param {() => number} [o.now]
+ * @param {{index:number,total:number,steps:string[]}} [o.chain]  étape d'une mise à jour en plusieurs versions (voir runUpdateChain)
+ * @param {boolean} [o.last]     faux : une étape suit, le statut reste « en cours » après celle-ci
+ * @param {boolean} [o.resume]   étape suivante d'une même mise à jour : le verrou posé par l'étape précédente n'est pas un conflit
  */
 export async function runUpdate(o) {
   const { appDir, dataDir, tag, exec, download, databaseUrl, platform = platformId(), restartCommand, serverPid, supervised = false, now = Date.now } = o;
@@ -83,7 +126,7 @@ export async function runUpdate(o) {
   fs.mkdirSync(dir, { recursive: true });
   const logFile = path.join(dir, "update.log");
   const log = (line) => fs.appendFileSync(logFile, `[${new Date(now()).toISOString()}] ${line}\n`);
-  const state = { status: "running", target: tag, from: null, step: "starting", startedAt: now(), finishedAt: null, error: null, rolledBack: false, restart: "none" };
+  const state = { status: "running", target: tag, chain: o.chain ?? null, from: null, step: "starting", startedAt: now(), finishedAt: null, error: null, rolledBack: false, restart: "none" };
   const save = (patch = {}) => { Object.assign(state, patch); fs.writeFileSync(path.join(dir, "state.json"), JSON.stringify(state, null, 2)); };
   const run = async (step, cmd, args, extraEnv) => {
     save({ step });
@@ -95,7 +138,7 @@ export async function runUpdate(o) {
 
   // 1. verrou et vérifications — rien n'est touché tant qu'elles ne passent pas
   const previous = readState(dataDir);
-  if (previous.status === "running" && now() - (previous.startedAt ?? 0) < STALE_LOCK_MS) return { ok: false, error: "already-running" };
+  if (!o.resume && previous.status === "running" && now() - (previous.startedAt ?? 0) < STALE_LOCK_MS) return { ok: false, error: "already-running" };
   if (!TAG_RE.test(String(tag))) { save({ status: "failed", error: "invalid-tag", finishedAt: now() }); return { ok: false, error: "invalid-tag" }; }
   log(`=== mise à jour vers ${tag} ===`);
   save({});
@@ -193,7 +236,8 @@ export async function runUpdate(o) {
   fs.rmSync(previousDir, { recursive: true, force: true });
   log(`✔ ${tag} installée`);
   await restart(true);
-  save({ status: "success", step: "done", finishedAt: now() });
+  if (o.last === false) save({ step: "between" }); // l'étape suivante reprend le même état « en cours »
+  else save({ status: "success", step: "done", finishedAt: now() });
   return { ok: true };
 
   async function restart(wanted) {
@@ -207,6 +251,56 @@ export async function runUpdate(o) {
     } else {
       save({ restart: "needed" });
       log("redémarrage manuel nécessaire (aucune commande de redémarrage configurée)");
+    }
+  }
+}
+
+/** Le serveur répond-il (de nouveau) ? Attend d'abord qu'il s'arrête (l'ancien peut répondre encore un instant), puis qu'il revienne. */
+export async function waitForSite(url, { timeoutMs = 5 * 60_000, intervalMs = 2000, fetchImpl = fetch } = {}) {
+  const up = async () => { try { return (await fetchImpl(url, { redirect: "manual", signal: AbortSignal.timeout(10_000) })).status < 500; } catch { return false; } };
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const limit = Date.now() + timeoutMs;
+  for (let i = 0; i < 10 && (await up()); i++) await sleep(intervalMs);
+  while (Date.now() < limit) { if (await up()) return true; await sleep(intervalMs); }
+  return false;
+}
+
+/**
+ * Mise à jour vers `o.tag` en passant, si nécessaire, par les versions intermédiaires qu'elle exige (planUpdate) : chacune est téléchargée,
+ * installée, puis le serveur redémarre et se relance AVANT l'étape suivante — c'est ce premier démarrage qui convertit les données d'avant.
+ * Sans redémarrage automatique, on s'arrête après l'étape et le prochain « Installer » reprend (le chemin est recalculé depuis la nouvelle version).
+ * Mêmes options que runUpdate, plus : `fetchText`, `waitForSite()` (booléen), `findServerPid()` (serveur actuel, pour un redémarrage supervisé).
+ */
+export async function runUpdateChain(o) {
+  const { appDir, dataDir, tag, fetchText, waitForSite: wait, findServerPid, now = Date.now } = o;
+  const current = readRelease(appDir);
+  const repo = o.repo ?? current?.repo;
+  let steps = [tag];
+  if (current?.version && REPO_RE.test(String(repo ?? "")) && TAG_RE.test(String(tag))) {
+    try { steps = await planUpdate({ current: current.version, target: tag, repo, fetchText }); }
+    catch (e) {
+      const dir = path.join(dataDir, "update");
+      fs.mkdirSync(dir, { recursive: true });
+      fs.appendFileSync(path.join(dir, "update.log"), `[${new Date(now()).toISOString()}] ✘ chemin de mise à jour introuvable : ${String(e?.message ?? e)}\n`);
+      fs.writeFileSync(path.join(dir, "state.json"), JSON.stringify({ status: "failed", target: tag, from: `v${current.version}`, step: "plan", error: "plan-failed", rolledBack: false, startedAt: now(), finishedAt: now() }, null, 2));
+      return { ok: false, error: "plan-failed" };
+    }
+  }
+  for (let i = 0; i < steps.length; i++) {
+    const last = i === steps.length - 1;
+    const r = await runUpdate({ ...o, tag: steps[i], last, resume: i > 0, chain: steps.length > 1 ? { index: i + 1, total: steps.length, steps } : null,
+      // Après la première étape, le serveur n'est plus celui qui a lancé la mise à jour : on retrouve le nouveau.
+      serverPid: i > 0 ? findServerPid?.() : o.serverPid });
+    if (!r.ok || last) return r;
+    const st = readState(dataDir);
+    const file = path.join(dataDir, "update", "state.json");
+    if (st.restart === "needed") {
+      fs.writeFileSync(file, JSON.stringify({ ...st, status: "success", step: "done", target: steps[i], remaining: steps.slice(i + 1), finishedAt: now() }, null, 2));
+      return { ok: true, partial: true, remaining: steps.slice(i + 1) };
+    }
+    if (!(await wait())) {
+      fs.writeFileSync(file, JSON.stringify({ ...st, status: "failed", error: "site-not-back", finishedAt: now() }, null, 2));
+      return { ok: false, error: "site-not-back" };
     }
   }
 }

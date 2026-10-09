@@ -47,4 +47,8 @@ const file = path.join(outDir, assetName(`v${version}`));
 execFileSync("tar", ["-czf", file, "--exclude=.next/cache", "--exclude=node_modules/.cache", ...NOT_SHIPPED.map((p) => `--exclude=${p}`), ...PATHS], { stdio: "inherit" });
 const hash = crypto.createHash("sha256").update(fs.readFileSync(file)).digest("hex");
 fs.writeFileSync(`${file}.sha256`, `${hash}  ${path.basename(file)}\n`);
+// Publié à côté de l'archive : les installations existantes y lisent, AVANT de rien télécharger, depuis quelle version cette release s'installe directement.
+const upgrade = JSON.parse(fs.readFileSync("upgrade.json", "utf8"));
+if (!/^\d+\.\d+\.\d+$/.test(String(upgrade.minFrom ?? "0.0.0"))) throw new Error("upgrade.json : minFrom doit être une version X.Y.Z");
+fs.copyFileSync("upgrade.json", path.join(outDir, "upgrade.json"));
 console.log(`${file}\n${hash}  ${(fs.statSync(file).size / 1048576).toFixed(0)} Mo`);

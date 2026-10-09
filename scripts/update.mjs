@@ -5,7 +5,7 @@ import path from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { promisify } from "node:util";
-import { runUpdate } from "./update-lib.mjs";
+import { runUpdateChain, waitForSite } from "./update-lib.mjs";
 
 const run = promisify(execFile);
 const appDir = process.cwd();
@@ -22,7 +22,33 @@ async function download(url, dest) {
   await pipeline(Readable.fromWeb(res.body), limit, fs.createWriteStream(dest));
 }
 
-const result = await runUpdate({
+/** Texte d'un fichier publié avec une release ; null s'il n'existe pas (404), erreur pour tout autre échec. */
+async function fetchText(url) {
+  if (!/^https:\/\//.test(url)) throw new Error("https requis");
+  const res = await fetch(url, { redirect: "follow", signal: AbortSignal.timeout(30_000) });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`lecture impossible (${res.status})`);
+  return (await res.text()).slice(0, 10_000);
+}
+
+/** Serveur en cours d'exécution pour cette installation (Linux) : le processus « next » dont le dossier courant est le nôtre. */
+function findServerPid() {
+  try {
+    for (const name of fs.readdirSync("/proc").filter((n) => /^\d+$/.test(n))) {
+      const pid = Number(name);
+      if (pid === process.pid || pid === process.ppid) continue;
+      try {
+        if (fs.realpathSync(`/proc/${name}/cwd`) !== fs.realpathSync(appDir)) continue;
+        if (/next/.test(fs.readFileSync(`/proc/${name}/cmdline`, "utf8"))) return pid;
+      } catch { /* processus disparu ou inaccessible */ }
+    }
+  } catch { /* pas de /proc */ }
+  return undefined;
+}
+
+const result = await runUpdateChain({
+  fetchText, findServerPid,
+  waitForSite: () => waitForSite(process.env.CURIOSA_READY_URL || `http://127.0.0.1:${process.env.PORT || 3000}/`),
   appDir,
   dataDir: path.resolve(process.env.DATA_DIR || path.join(appDir, "data")),
   tag: process.argv[2],

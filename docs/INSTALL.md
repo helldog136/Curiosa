@@ -60,6 +60,7 @@ Le nouveau code n'est utilisé qu'après un redémarrage du serveur. Dites au fr
 | Variable | Effet |
 |---|---|
 | `CURIOSA_RESTART_COMMAND` | Commande lancée après une mise à jour réussie (ex. `sudo systemctl restart curiosa`, `pm2 restart curiosa`). Prioritaire. |
+| `CURIOSA_READY_URL` | Adresse locale où le site répond (défaut `http://127.0.0.1:$PORT/`). Utilisée seulement par les mises à jour en plusieurs étapes, pour attendre que le site soit revenu avant l'étape suivante. |
 | `CURIOSA_SUPERVISED=1` | Le serveur s'arrête simplement après la mise à jour et son superviseur (systemd `Restart=always`, pm2, Docker `restart:`) le relance. |
 | *(aucune des deux)* | Rien n'est coupé : la page vous demande de redémarrer à la main. |
 
@@ -75,6 +76,7 @@ Comme il n'y a ni compilation ni réinstallation de dépendances, la mise à jou
 - L'installation doit venir d'une **archive de release** (présence de `release.json`) et son dossier appartenir à l'utilisateur qui fait tourner le site, sinon : « mise à jour non disponible ».
 - `tar` doit être disponible (présent partout sous Linux). La plateforme de l'archive doit être celle du serveur (`linux-x64`).
 - Avec **Docker**, on remplace l'image au lieu de mettre à jour en place (`CURIOSA_INSTALL=docker` est déjà réglé dans l'image) : `docker compose build --pull && docker compose up -d`.
+- **Mises à jour en plusieurs étapes.** Certaines versions ne s'installent directement qu'à partir d'une version assez récente (elles ont retiré le code qui convertissait les données d'avant). Chaque release publie pour cela un fichier `upgrade.json` (`{"minFrom":"0.1.4"}`) : le système de mise à jour le lit avant de télécharger quoi que ce soit, installe d'abord les versions intermédiaires nécessaires, redémarre le serveur, attend qu'il réponde (c'est ce premier démarrage qui convertit les données), puis installe la suivante. Sans redémarrage automatique (ni `CURIOSA_RESTART_COMMAND` ni `CURIOSA_SUPERVISED`), il s'arrête après chaque étape : redémarrez, puis cliquez de nouveau sur « Installer ». **Pour qui publie une release** : en supprimant du code de conversion temporaire (voir `tests/core/temporary-code.test.mjs`), remontez `minFrom` dans `upgrade.json` à la dernière version qui le contenait encore.
 - Pour suivre un autre dépôt de releases (un fork) : `CURIOSA_UPDATE_REPO=<propriétaire>/<dépôt>`.
 
 Le script peut aussi être lancé à la main (`node scripts/update.mjs v1.2.3`), avec les mêmes sauvegardes et le même retour arrière.
