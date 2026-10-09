@@ -100,12 +100,12 @@ test("utilisateurs : suppression et coupure de sessions sont à part (zone dange
 test("mises à jour : un parcours (ma version, la nouvelle, ce que ça change, un seul gros bouton) et une étape « en cours » qui suit la chaîne", () => {
   const page = read(`${PANEL}/updates/page.tsx`);
   const at = (s) => page.indexOf(s);
-  const order = [at('t("updates.yourVersion")'), at('t("updates.newVersion")'), at('t("updates.whatChanges")'), at('t("updates.whatHappens")'), at("action={applyUpdate}")];
+  const order = [at('t("updates.yourVersion")'), at('t("updates.newVersion")'), at('t("updates.whatChanges")'), at('t("updates.whatHappens")'), at("<UpdateButton running={false}")];
   assert.ok(order.every((v, i) => v > 0 && (i === 0 || v > order[i - 1])), `ordre inattendu : ${order}`);
   assert.match(page, /describeProgress\(state\)/);
   assert.match(page, /role="progressbar"/);
   assert.match(page, /action=\{checkNow\}[^>]*\bsecondary\b/, "« Vérifier maintenant » est une action discrète");
-  assert.equal([...page.matchAll(/<ActionForm action=\{applyUpdate\}/g)].length, 1, "un seul bouton d'installation");
+  assert.equal([...page.matchAll(/<UpdateButton running=\{false\}/g)].length, 1, "un seul bouton d'installation (l'autre n'apparaît que pendant la mise à jour)");
   assert.ok(/advanced && state\.error/.test(page), "le code d'erreur technique n'est montré qu'en mode avancé");
 });
 

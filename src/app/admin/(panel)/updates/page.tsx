@@ -2,12 +2,13 @@ import { adminCtx } from "@/core/admin";
 import { checkForUpdate, getInstallInfo, getUpdateCheck, isAutoUpdateEnabled, readUpdateLog, readUpdateState } from "@/core/updates/service";
 import { describeProgress, failureKey, hasRemaining } from "@/core/updates/progress";
 import { ActionForm } from "@/components/admin/ActionForm";
+import { UpdateButton } from "@/components/admin/UpdateButton";
 import { AutoRefresh } from "@/components/admin/AutoRefresh";
 import { Markdown } from "@/components/site/Markdown";
 import { Checkbox } from "@/components/admin/Field";
 import { Callout, PageHeader, Panel } from "@/components/admin/Page";
 import { ui } from "@/components/admin/ui";
-import { applyUpdate, checkNow, saveAutoUpdate, saveChannel } from "./actions";
+import { checkNow, saveAutoUpdate, saveChannel } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -40,6 +41,7 @@ export default async function UpdatesPage() {
   const fail = failed ? failureKey(state.error) : null;
   const finished = state.status === "success" || failed;
   const current = `v${info.version}`;
+  const updateLabels = { idle: t("updates.apply", { version: check.latest ?? "" }), working: t("updates.working"), done: t("updates.done"), failed: t("updates.failedShort", { version: check.latest ?? "" }) };
 
   return (
     <div className="space-y-8">
@@ -79,6 +81,7 @@ export default async function UpdatesPage() {
               ))}
             </ol>
           )}
+          <div className="flex justify-center"><UpdateButton running confirm="" labels={updateLabels} /></div>
           <Callout tone="info">{t("updates.dontClose")}</Callout>
         </section>
       )}
@@ -140,7 +143,7 @@ export default async function UpdatesPage() {
                 <li>{t(`updates.restart.${info.restart}`)}</li>
                 <li>{t("updates.chainNote")}</li>
               </ul>
-              <ActionForm action={applyUpdate} submitLabel={t("updates.apply", { version: check.latest ?? "" })} confirm={check.prerelease ? `${t("updates.rcWarning")}\n\n${t("updates.confirm")}` : t("updates.confirm")} className="space-y-2">{null}</ActionForm>
+              <div className="flex justify-center sm:justify-start"><UpdateButton running={false} confirm={check.prerelease ? `${t("updates.rcWarning")}\n\n${t("updates.confirm")}` : t("updates.confirm")} labels={updateLabels} /></div>
             </div>
           )}
 

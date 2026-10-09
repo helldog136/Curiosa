@@ -37,23 +37,26 @@ export async function saveServiceRouting(service: string, formData: FormData): P
   redirect("/admin/modules");
 }
 
-export async function checkUpdateAction(id: string): Promise<void> {
+/** Résultat des actions de mise à jour : sans redirection, pour que le bouton montre l'animation avant d'ouvrir `href` (la page des modules, avec le résultat ou l'erreur). */
+export type ModuleActionResult = { ok: boolean; href: string };
+
+export async function checkUpdateAction(id: string): Promise<ModuleActionResult> {
   await adminCtx("owner");
   const { available, target, level } = await checkForUpdate(id);
   const params = new URLSearchParams({ update: available ? "yes" : "no", module: id });
   if (available && target) params.set("to", target);
   if (available && level) params.set("level", level);
-  redirect(`/admin/modules?${params}`);
+  return { ok: true, href: `/admin/modules?${params}` };
 }
 
-export async function updateModuleAction(id: string): Promise<void> {
+export async function updateModuleAction(id: string): Promise<ModuleActionResult> {
   const { user } = await adminCtx("owner");
   const result = await updateModule(id);
   await audit(user.email, "module.update", id);
   revalidatePath("/", "layout");
-  if (!result.ok) redirect(`/admin/modules?error=${encodeURIComponent(result.error)}`);
-  if (result.migrations?.some((m) => m.status === "failed" || m.status === "newer")) redirect("/admin/modules?error=modules.error.migration");
-  redirect("/admin/modules");
+  if (!result.ok) return { ok: false, href: `/admin/modules?error=${encodeURIComponent(result.error)}` };
+  if (result.migrations?.some((m) => m.status === "failed" || m.status === "newer")) return { ok: false, href: "/admin/modules?error=modules.error.migration" };
+  return { ok: true, href: "/admin/modules" };
 }
 
 export async function uninstallModuleAction(id: string): Promise<void> {

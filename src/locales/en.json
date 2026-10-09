@@ -1194,5 +1194,12 @@
   "sources.addModule": "Add a module",
   "sources.allUsed": "Every source is used, including ones you add later.",
   "sources.onlyChecked": "Only the checked sources are used.",
-  "sources.filter": "Filter by tag"
+  "sources.filter": "Filter by tag",
+  "modules.checking": "Checking…",
+  "modules.checked": "✓ Checked",
+  "modules.updating": "Updating…",
+  "modules.updated": "✓ Updated",
+  "modules.updateFailed": "The update failed",
+  "updates.working": "Update in progress…",
+  "updates.done": "✓ Installed"
 }

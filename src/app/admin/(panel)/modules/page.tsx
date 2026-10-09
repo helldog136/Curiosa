@@ -13,7 +13,8 @@ import { Callout, DangerZone, EmptyState, PageHeader } from "@/components/admin/
 import { ui } from "@/components/admin/ui";
 import { duplicateServices } from "@/core/modules/dependencies";
 import { ServiceRouter } from "@/components/admin/ServiceRouter";
-import { addInstance, checkUpdateAction, saveServiceRouting, toggleModule, uninstallModuleAction, updateModuleAction } from "./actions";
+import { ModuleUpdateButton } from "@/components/admin/ModuleUpdateButton";
+import { addInstance, saveServiceRouting, toggleModule, uninstallModuleAction } from "./actions";
 
 export default async function ModulesPage({ searchParams }: { searchParams: Promise<{ update?: string; error?: string; detail?: string; notice?: string; module?: string; to?: string; level?: string }> }) {
   const { t, locale, user, config, advanced } = await adminCtx("admin");
@@ -124,8 +125,8 @@ export default async function ModulesPage({ searchParams }: { searchParams: Prom
                     <form action={toggleModule.bind(null, row.id, !row.enabled)}>
                       <button className={row.enabled ? ui.btn : ui.btnPrimary}>{row.enabled ? t("action.disable") : t("action.enable")}</button>
                     </form>
-                    <form action={checkUpdateAction.bind(null, row.id)}><button className={ui.btn}>{t("modules.checkUpdate")}</button></form>
-                    <form action={updateModuleAction.bind(null, row.id)}><button className={ui.btn}>{t("modules.update")}</button></form>
+                    <ModuleUpdateButton id={row.id} kind="check" labels={{ idle: t("modules.checkUpdate"), working: t("modules.checking"), done: t("modules.checked"), failed: t("modules.updateFailed") }} />
+                    <ModuleUpdateButton id={row.id} kind="update" labels={{ idle: t("modules.update"), working: t("modules.updating"), done: t("modules.updated"), failed: t("modules.updateFailed") }} />
                   </div>
                 )}
               </div>

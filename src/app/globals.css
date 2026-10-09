@@ -54,3 +54,7 @@
 /* Morceau isolé : une ligne à lui (retour à la ligne avant et après), centré, à sa taille naturelle. */
 .vh-isolated { flex: 1 1 100%; max-width: 100%; display: flex; justify-content: center; }
 .vh-solo { width: min(100%, var(--vh-solo)); min-width: 0; }
+
+/* Boutons d'action animés : barre qui défile en continu (immobile si l'animation est réduite, voir la règle ci-dessus). */
+@keyframes curiosa-indeterminate { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
+.curiosa-indeterminate { animation: curiosa-indeterminate 1.3s ease-in-out infinite; }

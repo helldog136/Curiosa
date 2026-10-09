@@ -47,6 +47,7 @@ test("menu : « Modules » est la première entrée après le tableau de bord, m
   assert.match(view, /data-testid="floating-install"/);
   assert.match(view, /sticky bottom-0/);
   const button = read("src/components/admin/InstallButton.tsx");
-  assert.match(button, /MIN_MS = 900/, "animation d'au moins une demi-seconde, même si l'installation est instantanée");
-  assert.match(button, /Promise\.all\(\[installModuleAction\(id\), sleep\(MIN_MS\)\]\)/);
+  assert.match(read("src/components/admin/animatedAction.ts"), /MIN_MS = 900/, "animation d'au moins une demi-seconde, même si l'installation est instantanée");
+  assert.match(button, /installModuleAction\(id\)/);
+  assert.match(read("src/components/admin/animatedAction.ts"), /Promise\.all\(\[run\(\), sleep\(minMs\)\]\)/);
 });
