@@ -105,8 +105,10 @@ test("droits d'un jeton : plafond, défauts du module, surcharges, effet immédi
 
 test("surnoms d'instances : libellé d'admin, identifiant dérivé, unicité", async () => {
   const { instanceLabel, keyFromNickname, checkNickname, suggestNickname, needsNickname } = await import("../src/core/instanceLabel.ts");
-  // Une seule instance : le surnom est superflu — le libellé est le nom du module, même si un surnom existe.
+  // Une seule instance : le surnom est superflu — le libellé est le nom public (renommé par l'admin, il se voit aussitôt dans le menu), à défaut le nom du module.
   assert.equal(instanceLabel({ nickname: "Actus", publicName: "Blog", key: "blog" }, "Blog", 1), "Blog");
+  assert.equal(instanceLabel({ nickname: null, publicName: "Bandeau d'accueil2", key: "hero" }, "Bandeau d'accueil", 1), "Bandeau d'accueil2");
+  assert.equal(instanceLabel({ nickname: null, publicName: " ", key: "hero" }, "Bandeau d'accueil", 1), "Bandeau d'accueil");
   assert.ok(!needsNickname(1) && needsNickname(2));
   // Plusieurs : le surnom prime, puis le nom public, puis l'identifiant.
   assert.equal(instanceLabel({ nickname: "Actus", publicName: "News", key: "actus" }, "Blog", 2), "Actus");

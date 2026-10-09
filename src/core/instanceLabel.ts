@@ -41,11 +41,11 @@ export function checkNickname(input: string, takenByOthers: string[]): NicknameC
 export const needsNickname = (siblings: number) => siblings > 1;
 
 /**
- * Libellé d'admin d'une instance : le nom du module quand elle est seule de son espèce, sinon son surnom
- * (à défaut, son nom public, puis son identifiant).
+ * Libellé d'admin d'une instance : quand elle est seule de son espèce, son nom public (celui que l'admin a pu modifier ; au départ
+ * c'est le nom du module, qui sert aussi de repli) ; sinon son surnom (à défaut, son nom public, puis son identifiant).
  */
 export function instanceLabel(i: { nickname?: string | null; publicName?: string | null; key: string }, moduleName: string, siblings: number): string {
-  if (!needsNickname(siblings)) return moduleName;
+  if (!needsNickname(siblings)) return i.publicName?.trim() || moduleName;
   return i.nickname?.trim() || i.publicName?.trim() || i.key;
 }
 

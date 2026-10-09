@@ -59,7 +59,8 @@ export default async function ModulesPage({ searchParams }: { searchParams: Prom
         <ul className="grid gap-4 sm:grid-cols-2">
           {mods.map(({ row, mod }) => {
             const mine = instances.filter((i) => i.moduleId === row.id);
-            const name = mod ? localized(mod.manifest.name, locale, config.defaultLocale) : row.id;
+            // Une seule instance : la carte porte le nom que l'admin lui a donné (comme le menu de gauche).
+            const name = mine.length === 1 ? labeler.label(mine[0]!) : mod ? localized(mod.manifest.name, locale, config.defaultLocale) : row.id;
             const toggle = row.enabled ? "bg-accent" : "bg-line";
             return (
               <li key={row.id} className={`${ui.card} flex flex-col gap-4 ${row.enabled ? "" : "bg-bg shadow-none"}`}>
