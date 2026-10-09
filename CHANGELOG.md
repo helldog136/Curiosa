@@ -6,7 +6,7 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
-## Prochaine version (non publiée)
+## 0.1.5
 
 *Changements depuis la 0.1.4.*
 
@@ -28,6 +28,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 ### Pour les développeurs
 - Les clés d'accès utilisent la bibliothèque `@simplewebauthn/server` ; le code à usage unique est écrit sans dépendance. Nouvelle variable `CURIOSA_TRUSTED_PROXIES` : nombre de reverse proxys devant le site, pour lire la vraie adresse du visiteur.
 - Voir `docs/SECURITE.md`.
+- Suppression du code de migration des versions 0.1.2 et 0.1.3-rc (modules « intégrés », « Blocs de page »), dont l'échéance était la 0.1.4 : un site encore en 0.1.2 doit d'abord passer par la 0.1.4.
 
 ## 0.1.4
 

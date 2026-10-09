@@ -1,5 +1,3 @@
-import { migrateBlocksModule } from "../migrations/blocksToCore";
-import { migrateBuiltinModules } from "../migrations/builtinToBundled";
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -25,32 +23,11 @@ const runtimeImport = new Function("specifier", "return import(specifier)") as (
 
 const globalCache = globalThis as unknown as {
   curiosaModuleCache?: Map<string, LoadedModule>;
-  curiosaBuiltinsSynced?: boolean;
-  curiosaBuiltinsSyncing?: Promise<void> | null;
 };
 const loadedCache = (globalCache.curiosaModuleCache ??= new Map());
 
 export function moduleDir(id: string): string {
   return path.join(MODULES_DIR, id);
-}
-
-/**
- * Le cœur ne livre aucun module : il n'a donc rien à synchroniser. Cette étape ne sert qu'aux migrations de MISE À JOUR (code jetable,
- * une fois par démarrage) : modules « intégrés » des versions précédentes devenus des modules ordinaires, « Blocs de page » devenu une fonction du cœur.
- */
-async function syncLegacy(): Promise<void> {
-  if (globalCache.curiosaBuiltinsSynced) return;
-  // Un seul passage à la fois : deux premières requêtes simultanées ne doivent pas toutes deux migrer.
-  globalCache.curiosaBuiltinsSyncing ??= (async () => {
-    try {
-      await migrateBuiltinModules().catch((error) => console.error("[migration] modules intégrés :", error));
-      await migrateBlocksModule().catch((error) => console.error("[migration] blocs de page :", error));
-      globalCache.curiosaBuiltinsSynced = true;
-    } finally {
-      globalCache.curiosaBuiltinsSyncing = null;
-    }
-  })();
-  await globalCache.curiosaBuiltinsSyncing;
 }
 
 export function readGitManifest(id: string): ParsedManifest | null {
@@ -108,7 +85,6 @@ export function forgetModule(id: string): void {
 }
 
 export async function listModuleRows(): Promise<Module[]> {
-  await syncLegacy();
   return prisma.module.findMany({ orderBy: { id: "asc" } });
 }
 
@@ -120,7 +96,6 @@ export const getEnabledModules = cache(async (): Promise<LoadedModule[]> => {
 });
 
 export async function getModule(id: string): Promise<LoadedModule | null> {
-  await syncLegacy();
   const row = await prisma.module.findUnique({ where: { id } });
   return row ? loadModule(row) : null;
 }
@@ -170,6 +145,4 @@ export function sectionsOf(manifest: ParsedManifest): SectionDecl[] {
 /** Oublie les modules chargés et les migrations de mise à jour (après une restauration, par exemple). */
 export function resetModuleRegistry(): void {
   loadedCache.clear();
-  globalCache.curiosaBuiltinsSynced = false;
-  globalCache.curiosaBuiltinsSyncing = null;
 }
