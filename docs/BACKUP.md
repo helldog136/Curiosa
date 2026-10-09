@@ -20,6 +20,7 @@ Un module peut en plus ajouter ses propres fichiers lisibles (un CSV de ses donn
 Le fichier téléchargé se nomme `backup-<site>-<date>.tar.gz.enc`. Il est **chiffré par le mot de passe choisi au moment de la sauvegarde**
 (il n'est enregistré nulle part ; sans lui, rien n'est récupérable). Le chiffrement est le **format standard d'OpenSSL** : aucun
 logiciel du framework n'est nécessaire pour l'ouvrir, même s'il a disparu.
+(La commande ci-dessous est aussi affichée dans la page *Sauvegarde*, en mode avancé.)
 
 ```bash
 openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -md sha256 -in backup-mon-site-2026-10-07.tar.gz.enc -out backup.tar.gz
@@ -52,7 +53,7 @@ Tout est du **texte** (JSON, Markdown, CSV), sauf les images. Pour vérifier l'i
 
 ## Restaurer
 
-*Sauvegarde › Restaurer une sauvegarde* : choisissez le fichier, saisissez le mot de passe, puis **vérifiez l'aperçu** avant de confirmer.
+*Sauvegarde › Restaurer une sauvegarde* (encadré rouge : la restauration **remplace** les données actuelles) : choisissez le fichier, saisissez le mot de passe, puis **vérifiez l'aperçu** avant de confirmer.
 
 - Le fichier est **vérifié avant tout** : mot de passe, format, version, empreinte de chaque fichier (une sauvegarde modifiée ou incomplète
   est refusée), présence d'un propriétaire (une restauration ne doit jamais vous enfermer dehors).

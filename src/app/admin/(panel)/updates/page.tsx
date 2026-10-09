@@ -1,14 +1,28 @@
 import { adminCtx } from "@/core/admin";
 import { checkForUpdate, getInstallInfo, getUpdateCheck, isAutoUpdateEnabled, readUpdateLog, readUpdateState } from "@/core/updates/service";
+import { describeProgress, failureKey, hasRemaining } from "@/core/updates/progress";
 import { ActionForm } from "@/components/admin/ActionForm";
 import { AutoRefresh } from "@/components/admin/AutoRefresh";
 import { Markdown } from "@/components/site/Markdown";
 import { Checkbox } from "@/components/admin/Field";
+import { Callout, PageHeader, Panel } from "@/components/admin/Page";
 import { ui } from "@/components/admin/ui";
 import { applyUpdate, checkNow, saveAutoUpdate, saveChannel } from "./actions";
 
 export const dynamic = "force-dynamic";
 
+/** Une version dans le parcours « ma version → la nouvelle ». */
+function VersionCard({ label, version, tone, children }: { label: string; version: string; tone: "now" | "next"; children?: React.ReactNode }) {
+  return (
+    <div className={`flex-1 rounded-2xl border p-4 ${tone === "next" ? "border-accent bg-accent/5" : "border-line bg-bg"}`}>
+      <p className="text-xs font-medium uppercase tracking-wide text-muted">{label}</p>
+      <p className="mt-1 text-2xl font-bold">{version}</p>
+      {children && <div className="mt-1.5">{children}</div>}
+    </div>
+  );
+}
+
+/** Mettre le site à jour, dans l'ordre où on y pense : où j'en suis, ce qui existe, ce que ça change, puis un seul bouton ; pendant l'installation, où on en est. */
 export default async function UpdatesPage() {
   const { t, locale, advanced } = await adminCtx("owner");
   const info = getInstallInfo();
@@ -20,76 +34,154 @@ export default async function UpdatesPage() {
   const auto = await isAutoUpdateEnabled();
   const log = readUpdateLog();
   const when = (ms: number | null | undefined) => (ms ? new Date(ms).toLocaleString(locale) : "—");
+  const progress = running ? describeProgress(state) : null;
+  const partial = hasRemaining(state);
+  const failed = state.status === "failed";
+  const fail = failed ? failureKey(state.error) : null;
+  const finished = state.status === "success" || failed;
+  const current = `v${info.version}`;
 
   return (
     <div className="space-y-8">
       <AutoRefresh active={running} />
-      <h1 className="text-2xl font-bold">{t("nav.updates")}</h1>
+      <PageHeader title={t("nav.updates")} intro={t("updates.intro")} />
 
-      <section className={`${ui.card} space-y-2`}>
-        <p>{t("updates.current")} <strong>v{info.version}</strong></p>
-        {!info.canUpdate && <p className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">{t(`updates.mode.${info.mode}`)}</p>}
-        {info.canUpdate && (
-          <>
-            <p>
-              {check.available
-                ? <>{t("updates.available")} <strong>{check.latest}</strong> <span className={ui.help}>({t(`updates.level.${check.level}`)})</span></>
-                : t("updates.upToDate")}
-            </p>
-            <p className={ui.help}>{t("updates.checkedAt")} {when(check.checkedAt)}{check.error && <> — <span className="text-red-600">{t("updates.unreachable")}</span></>}</p>
-            {check.prerelease && <p className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">{t("updates.rcWarning")}</p>}
-            {check.level === "major" && <p className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">{t("updates.majorWarning")}</p>}
-            {check.available && check.notes && (
-              <details open className="rounded-xl border border-line p-3" data-testid="update-notes">
-                <summary className="cursor-pointer text-sm font-semibold">{t("updates.whatsNew", { version: check.latest ?? "" })}</summary>
-                <div className="mt-2 text-sm"><Markdown text={check.notes} /></div>
-              </details>
-            )}
-            <p className={ui.help}>{t(`updates.restart.${info.restart}`)}</p>
-            {check.available && <p className={ui.help}>{t("updates.chainNote")}</p>}
-          </>
-        )}
-      </section>
-
-      {info.canUpdate && (
-        <div className="flex flex-wrap gap-3">
-          <ActionForm action={checkNow} submitLabel={t("updates.check")} className="space-y-2">{null}</ActionForm>
-          {check.available && !running && (
-            <ActionForm action={applyUpdate} submitLabel={t("updates.apply", { version: check.latest ?? "" })} confirm={check.prerelease ? `${t("updates.rcWarning")}\n\n${t("updates.confirm")}` : t("updates.confirm")} className="space-y-2">{null}</ActionForm>
-          )}
-        </div>
+      {!info.canUpdate && (
+        <Panel title={t("updates.yourVersion")}>
+          <p className="text-2xl font-bold">{current}</p>
+          <Callout tone="warn">{t(`updates.mode.${info.mode}`)}</Callout>
+        </Panel>
       )}
 
-      {(running || state.status !== "idle") && (
-        <section className={`${ui.card} space-y-2`}>
-          <h2 className="text-lg font-semibold">{t("updates.last")}</h2>
-          <p>
-            {running && <>⏳ {t("updates.running", { version: state.target ?? "", step: state.step ?? "" })}{state.chain && <> {t("updates.stepOf", { index: state.chain.index, total: state.chain.total })}</>}</>}
-            {state.status === "success" && (state.remaining?.length ? <>⏸️ {t("updates.partial", { version: state.target ?? "" })}</> : <>✅ {t("updates.success", { version: state.target ?? "" })}</>)}
-            {state.status === "failed" && <>❌ {t("updates.failed", { error: state.error ?? "" })}{state.rolledBack ? ` — ${t("updates.rolledBack")}` : ""}</>}
-          </p>
-          {(state.status === "success" || state.status === "failed") && state.restart === "needed" && (
-            <p className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">{t("updates.restartNeeded")}</p>
+      {info.canUpdate && progress && (
+        <section className={`${ui.card} space-y-5`} data-testid="update-running" aria-live="polite">
+          <div>
+            <h2 className="text-lg font-semibold">⏳ {t("updates.runningTitle", { version: state.target ?? "" })}</h2>
+            <p className="mt-1 text-sm text-muted">{t("updates.runningHelp")}</p>
+          </div>
+          <div>
+            <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-2 text-sm">
+              <span className="font-medium">{progress.total > 1 ? t("updates.versionOf", { index: progress.index, total: progress.total }) : t("updates.installing")}</span>
+              <span className="text-muted">{progress.stepKey ? t(progress.stepKey) : ""}</span>
+            </div>
+            <div className="h-3 overflow-hidden rounded-full bg-line" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress.percent}>
+              <div className="h-full rounded-full bg-accent transition-all duration-700" style={{ width: `${Math.max(4, progress.percent)}%` }} />
+            </div>
+          </div>
+          {progress.chain.length > 0 && (
+            <ol className="space-y-1.5 text-sm" data-testid="update-chain">
+              {progress.chain.map((c) => (
+                <li key={c.tag} className={`flex items-center gap-2 ${c.status === "waiting" ? "text-muted" : ""} ${c.status === "current" ? "font-semibold" : ""}`}>
+                  <span aria-hidden>{c.status === "done" ? "✅" : c.status === "current" ? "⏳" : "○"}</span>
+                  {c.tag}
+                  <span className="text-xs font-normal text-muted">{t(`updates.chain.${c.status}`)}</span>
+                </li>
+              ))}
+            </ol>
           )}
-          <p className={ui.help}>{when(state.startedAt)} → {when(state.finishedAt)}</p>
-          {log && <pre className="max-h-72 overflow-auto rounded-lg bg-surface p-3 text-xs">{log}</pre>}
+          <Callout tone="info">{t("updates.dontClose")}</Callout>
+        </section>
+      )}
+
+      {info.canUpdate && !running && failed && fail && (
+        <Panel tone="danger" title={`❌ ${t("updates.failedTitle")}`} testid="update-failed">
+          <p className="text-sm leading-6">{t(fail.key)}{state.rolledBack ? ` ${t("updates.rolledBack")}` : ""}</p>
+          {advanced && state.error && <p className="font-mono text-xs text-muted">{state.error}</p>}
+        </Panel>
+      )}
+
+      {info.canUpdate && !running && partial && (
+        <Callout tone="warn" testid="update-partial">
+          <p className="font-semibold">⏸️ {t("updates.partialTitle", { version: state.target ?? "" })}</p>
+          <p className="mt-1">{t("updates.partialHelp", { n: state.remaining?.length ?? 0 })}</p>
+          <p className="mt-1 text-muted">{(state.remaining ?? []).join(" → ")}</p>
+        </Callout>
+      )}
+
+      {info.canUpdate && finished && !running && state.restart === "needed" && <Callout tone="warn">{t("updates.restartNeeded")}</Callout>}
+
+      {info.canUpdate && !running && (
+        <section className={`${ui.card} space-y-5`} data-testid="update-journey">
+          <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
+            <VersionCard label={t("updates.yourVersion")} version={current} tone="now" />
+            {check.available && check.latest ? (
+              <>
+                <span className="self-center text-2xl text-muted" aria-hidden>→</span>
+                <VersionCard label={t("updates.newVersion")} version={check.latest} tone="next">
+                  {check.level && <span className={check.level === "major" ? ui.chipWarn : ui.chip}>{t(`updates.level.${check.level}`)}</span>}
+                </VersionCard>
+              </>
+            ) : (
+              <p className="flex-1 text-lg font-semibold" data-testid="update-uptodate">✅ {t("updates.upToDate")}</p>
+            )}
+          </div>
+
+          {check.error && <Callout tone="warn">{t("updates.unreachable")}</Callout>}
+          {check.available && check.prerelease && <Callout tone="warn">{t("updates.rcWarning")}</Callout>}
+          {check.available && check.level === "major" && <Callout tone="warn">{t("updates.majorWarning")}</Callout>}
+
+          {check.available && (
+            <div className="space-y-2">
+              <h2 className="text-base font-semibold">{t("updates.whatChanges")}</h2>
+              {check.notes ? (
+                <div className="max-h-80 overflow-auto rounded-xl border border-line bg-bg p-4 text-sm" data-testid="update-notes" aria-label={t("updates.whatsNew", { version: check.latest ?? "" })}>
+                  <Markdown text={check.notes} />
+                </div>
+              ) : <p className="text-sm text-muted">{t("updates.noNotes")}</p>}
+            </div>
+          )}
+
+          {check.available && (
+            <div className="space-y-3 border-t border-line pt-5">
+              <h2 className="text-base font-semibold">{t("updates.whatHappens")}</h2>
+              <ul className="list-disc space-y-1 pl-5 text-sm leading-6 text-muted">
+                <li>{t("updates.happens.backup")}</li>
+                <li>{t("updates.happens.rollback")}</li>
+                <li>{t(`updates.restart.${info.restart}`)}</li>
+                <li>{t("updates.chainNote")}</li>
+              </ul>
+              <ActionForm action={applyUpdate} submitLabel={t("updates.apply", { version: check.latest ?? "" })} confirm={check.prerelease ? `${t("updates.rcWarning")}\n\n${t("updates.confirm")}` : t("updates.confirm")} className="space-y-2">{null}</ActionForm>
+            </div>
+          )}
+
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
+            <p className="text-sm text-muted">{t("updates.checkedAt")} {when(check.checkedAt)}</p>
+            <ActionForm action={checkNow} submitLabel={t("updates.check")} secondary className="space-y-2">{null}</ActionForm>
+          </div>
         </section>
       )}
 
       {info.canUpdate && (
-        <ActionForm action={saveAutoUpdate} submitLabel={t("action.save")} className="space-y-3">
-          <h2 className="text-lg font-semibold">{t("updates.autoTitle")}</h2>
-          <Checkbox name="auto" label={t("updates.auto")} help={t("updates.autoHelp")} defaultChecked={auto} />
-        </ActionForm>
+        <Panel title={t("updates.autoTitle")}>
+          <ActionForm action={saveAutoUpdate} submitLabel={t("action.save")} className="space-y-3">
+            <Checkbox name="auto" label={t("updates.auto")} help={t("updates.autoHelp")} defaultChecked={auto} />
+          </ActionForm>
+        </Panel>
       )}
-    
+
       {info.canUpdate && advanced && (
-        <ActionForm action={saveChannel} submitLabel={t("action.save")} className="space-y-3">
-          <h2 className="text-lg font-semibold">{t("updates.channelTitle")}</h2>
-          <p className={ui.help}>{t("updates.channelHelp")}</p>
-          <Checkbox name="rc" label={t("updates.channelRc")} defaultChecked={check.channel === "rc"} />
-          <Checkbox name="rcRisk" label={t("updates.channelRisk")} help={t("updates.channelRiskHelp")} defaultChecked={check.channel === "rc"} />
-        </ActionForm>
+        <Panel title={t("updates.channelTitle")} help={t("updates.channelHelp")}>
+          <ActionForm action={saveChannel} submitLabel={t("action.save")} className="space-y-3">
+            <Checkbox name="rc" label={t("updates.channelRc")} defaultChecked={check.channel === "rc"} />
+            <Checkbox name="rcRisk" label={t("updates.channelRisk")} help={t("updates.channelRiskHelp")} defaultChecked={check.channel === "rc"} />
+          </ActionForm>
+        </Panel>
+      )}
+
+      {info.canUpdate && finished && !running && (
+        <Panel title={t("updates.last")} testid="update-last">
+          <p className="text-sm">
+            {state.status === "success" && (partial ? <>⏸️ {t("updates.partialShort", { version: state.target ?? "" })}</> : <>✅ {t("updates.success", { version: state.target ?? "" })}</>)}
+            {failed && <>❌ {t("updates.failedShort", { version: state.target ?? "" })}</>}
+            <span className="ml-2 text-muted">{when(state.finishedAt ?? state.startedAt)}</span>
+          </p>
+          {log && (advanced || failed) && (
+            <details className="text-sm">
+              <summary className="cursor-pointer">{t("updates.technicalDetails")}</summary>
+              <pre className="mt-2 max-h-72 overflow-auto rounded-lg bg-surface p-3 text-xs">{log}</pre>
+            </details>
+          )}
+        </Panel>
       )}
     </div>
   );

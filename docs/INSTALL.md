@@ -37,7 +37,7 @@ Dans **Mises à jour** (menu, propriétaire uniquement) :
 - **Installer** : sauvegarde de la base (`data/backups/`, les 5 dernières) → téléchargement de l'archive → **vérification de son empreinte SHA-256** →
   remplacement des dossiers de l'application (`.next`, `node_modules`, `prisma/migrations`, `extras`…) → migrations → redémarrage.
   Jamais touchés : `.env`, `data/` (base, envois, modules installés) et `prisma/data/`. **Au moindre échec**, l'ancienne version (et l'ancienne base si les migrations avaient commencé) est rétablie ;
-- le journal de l'opération s'affiche dans la page ; elle se met à jour toute seule ;
+- la page suit un parcours : *ma version* → *nouvelle version* → *ce que ça change* (les notes de version) → un seul bouton **Installer**. Pendant l'installation, une barre de progression et la liste des versions à installer (si le chemin en compte plusieurs) montrent l'étape en cours ; la page se met à jour toute seule. Le journal détaillé est dans *Détails techniques* (affiché d'office en cas d'échec, sinon en mode avancé) ;
 - une version **majeure** (`v2.0.0` après `v1.x`) peut changer le fonctionnement : elle est signalée et **n'est jamais installée automatiquement**.
 
 ### Release candidates (mode avancé)

@@ -33,7 +33,7 @@ export function TwoFactorPanel({ enabled, remaining, enforced, needed, labels, s
 
   return (
     <section className={`${ui.card} space-y-4`} data-testid="twofa-card">
-      <h2 className="text-lg font-semibold">{labels.title} {isOn && <span className={ui.chipOk}>✔ {labels.enabled}</span>}</h2>
+      <h3 className="text-lg font-semibold">{labels.title} {isOn && <span className={ui.chipOk}>✔ {labels.enabled}</span>}</h3>
       {needed && !isOn && <p role="alert" className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">{labels.need}</p>}
       <p className="text-sm text-muted">{labels.help}</p>
       {error && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm">{error}</p>}

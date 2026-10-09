@@ -66,7 +66,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
           <NavLink href="/" external>{t("nav.viewSite")} ↗</NavLink>
         </nav>
         <form action={setAdminMode.bind(null, !advanced)} className="mt-4 px-3">
-          <p className="mb-1 text-xs text-muted">{advanced ? t("mode.advanced") : t("mode.simple")}</p>
+          <p className="mb-1 text-xs text-muted"><a href="/admin/mode" className="hover:text-accent hover:underline">{advanced ? t("mode.advanced") : t("mode.simple")}</a></p>
           <button className={ui.btn} title={t("mode.help")}>{advanced ? t("mode.switchToSimple") : t("mode.switchToAdvanced")}</button>
         </form>
         <div className="mt-4 px-3" role="group" aria-label={t("theme.admin")}>
