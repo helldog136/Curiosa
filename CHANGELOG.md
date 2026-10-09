@@ -6,7 +6,7 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
-## Prochaine version (non publiée)
+## 0.1.9
 
 *Changements depuis la 0.1.8.*
 
