@@ -1202,5 +1202,22 @@
   "modules.updateFailed": "Échec de la mise à jour",
   "updates.working": "Mise à jour en cours…",
   "updates.done": "✓ Installée",
-  "theme.custom": "Personnalisé"
+  "theme.custom": "Personnalisé",
+  "theme.arcade": "Arcade",
+  "theme.vinyl": "Vinyle",
+  "theme.workshop": "Atelier",
+  "theme.stadium": "Stade",
+  "theme.solidarity": "Solidaire",
+  "theme.boutique": "Boutique",
+  "theme.lagoon": "Lagon",
+  "settings.accent2": "Couleur secondaire",
+  "settings.accent2.add": "＋ Couleur secondaire",
+  "settings.accent2.remove": "Retirer",
+  "settings.surface": "Surface (cartes et panneaux)",
+  "settings.text": "Texte",
+  "settings.colorOptionalHint": "Facultatif : laissez vide pour un calcul automatique.",
+  "settings.colorInvalid": "Écrivez une couleur au format #rrggbb.",
+  "settings.contrast.text": "Le texte est peu lisible sur ce fond (contraste {ratio}:1, au moins 4,5:1 conseillé).",
+  "settings.contrast.accent": "L'accent se distingue mal du fond (contraste {ratio}:1, au moins 3:1 conseillé).",
+  "settings.contrast.accent2": "La couleur secondaire se distingue mal du fond (contraste {ratio}:1, au moins 3:1 conseillé)."
 }

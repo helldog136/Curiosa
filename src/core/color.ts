@@ -116,6 +116,18 @@ export function contrastIssues(background: string, accent: string, extra: ThemeE
   return checks.map(([kind, color, min]) => ({ kind, min, ratio: Math.round(contrast(color, p["--v-bg"]!) * 100) / 100 })).filter((c) => c.ratio < c.min);
 }
 
+/** Couleurs facultatives du thème envoyées par le formulaire (champ absent = on n'y touche pas ; vide = retour au dérivé). Null si l'une n'est pas un « #rrggbb ». */
+export function parseOptionalColors(formData: { has(name: string): boolean; get(name: string): unknown }): Record<string, string> | null {
+  const out: Record<string, string> = {};
+  for (const [field, key] of [["accent2", "theme.accent2"], ["surface", "theme.surface"], ["text", "theme.text"]] as const) {
+    if (!formData.has(field)) continue;
+    const v = String(formData.get(field) ?? "").trim().toLowerCase();
+    if (v && !isHexColor(v)) return null;
+    out[key] = v;
+  }
+  return out;
+}
+
 export const FONT_STACKS = {
   sans: 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
   serif: 'ui-serif, Georgia, Cambria, "Times New Roman", serif',

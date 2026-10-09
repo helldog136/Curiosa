@@ -82,7 +82,7 @@ test("le service QR produit un SVG et borne l'entrée", async () => {
 test("l'identité visuelle a UNE source : le site, les overlays et les modules lisent la même palette", () => {
   const brand = read("src/core/brand.ts");
   assert.ok(brand.includes("buildPalette"), "brand.ts calcule sa palette avec buildPalette");
-  assert.ok(read("src/core/color.ts").includes("buildPalette(background, accent)"), "buildTheme repose sur buildPalette");
+  assert.ok(read("src/core/color.ts").includes("buildPalette(background, accent, extra)"), "buildTheme repose sur buildPalette");
   for (const f of ["src/app/(site)/layout.tsx", "src/app/overlays/[key]/page.tsx", "src/core/modules/context.ts"]) {
     assert.ok(read(f).includes("buildTheme"), `${f} doit lire le thème via buildTheme (même calcul que le site)`);
   }

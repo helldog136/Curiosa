@@ -52,7 +52,7 @@ test("palette : texte lisible quelle que soit la couleur de fond, valeurs invali
   const bad = buildPalette("javascript:1", "<script>");
   assert.equal(bad["--v-bg"], "#121214");
   assert.equal(bad["--v-accent"], "#e8a23b");
-  for (const v of Object.values(buildPalette("#123456", "#abcdef"))) assert.match(v, /^#[0-9a-f]{6}$/, "toute valeur est injectable en CSS sans risque");
+  for (const [k, v] of Object.entries(buildPalette("#123456", "#abcdef"))) if (k !== "--v-gradient") assert.match(v, /^#[0-9a-f]{6}$/, "toute valeur est injectable en CSS sans risque");
 });
 
 test("polices : trois familles système, pas de police externe", () => {

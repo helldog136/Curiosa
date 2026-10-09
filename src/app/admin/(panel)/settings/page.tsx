@@ -12,6 +12,7 @@ import { ImageField } from "@/components/admin/ImageField";
 import { ShowWhen } from "@/components/admin/ShowWhen";
 import { Tabs } from "@/components/admin/Tabs";
 import { ThemePicker } from "@/components/admin/ThemePicker";
+import { CUSTOM_PALETTE, THEME_PRESETS } from "@/core/palettes";
 import { ui } from "@/components/admin/ui";
 import { hasRole } from "@/core/permissions";
 import { getMailConfig } from "@/core/services/mail";
@@ -176,9 +177,11 @@ export default async function SettingsPage() {
           </div>
           <div className={`${ui.card} space-y-4`}>
           <h3 className="font-semibold">{t("settings.colors")}</h3>
-          <ThemePicker background={config.background} accent={config.accent} advanced={advanced}
-            labels={{ background: t("settings.background"), accent: t("settings.accent") }}
-            names={{ night: t("theme.night"), ocean: t("theme.ocean"), forest: t("theme.forest"), rose: t("theme.rose"), violet: t("theme.violet"), daylight: t("theme.daylight"), paper: t("theme.paper"), custom: t("theme.custom") }} />
+          <ThemePicker background={config.background} accent={config.accent} accent2={config.accent2} surface={config.surface} text={config.textColor} advanced={advanced}
+            labels={{ background: t("settings.background"), accent: t("settings.accent"), accent2: t("settings.accent2"), surface: t("settings.surface"), text: t("settings.text"),
+              addSecond: t("settings.accent2.add"), removeSecond: t("settings.accent2.remove"), optionalHint: t("settings.colorOptionalHint"), invalid: t("settings.colorInvalid"),
+              warnText: t("settings.contrast.text"), warnAccent: t("settings.contrast.accent"), warnAccent2: t("settings.contrast.accent2") }}
+            names={Object.fromEntries([...THEME_PRESETS.map((p) => p.id), CUSTOM_PALETTE].map((id) => [id, t(`theme.${id}`)]))} />
           {advanced && (
             <Select name="font" label={t("settings.font")} defaultValue={config.font}
               options={[{ value: "sans", label: "Sans-serif" }, { value: "serif", label: "Serif" }, { value: "mono", label: "Monospace" }]} />

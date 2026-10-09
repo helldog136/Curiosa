@@ -1202,5 +1202,22 @@
   "modules.updateFailed": "The update failed",
   "updates.working": "Update in progress…",
   "updates.done": "✓ Installed",
-  "theme.custom": "Custom"
+  "theme.custom": "Custom",
+  "theme.arcade": "Arcade",
+  "theme.vinyl": "Vinyl",
+  "theme.workshop": "Workshop",
+  "theme.stadium": "Stadium",
+  "theme.solidarity": "Solidarity",
+  "theme.boutique": "Boutique",
+  "theme.lagoon": "Lagoon",
+  "settings.accent2": "Secondary color",
+  "settings.accent2.add": "＋ Secondary color",
+  "settings.accent2.remove": "Remove",
+  "settings.surface": "Surface (cards and panels)",
+  "settings.text": "Text",
+  "settings.colorOptionalHint": "Optional: leave empty for an automatic value.",
+  "settings.colorInvalid": "Enter a color in #rrggbb format.",
+  "settings.contrast.text": "Text is hard to read on this background (contrast {ratio}:1, at least 4.5:1 recommended).",
+  "settings.contrast.accent": "The accent barely stands out from the background (contrast {ratio}:1, at least 3:1 recommended).",
+  "settings.contrast.accent2": "The secondary color barely stands out from the background (contrast {ratio}:1, at least 3:1 recommended)."
 }
