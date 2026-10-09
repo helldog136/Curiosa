@@ -119,15 +119,28 @@ test("le framework est agnostique de toute donnée métier : aucun nom de site, 
   const AUTHOR = new RegExp(["hell", "dog136(\\.be)?"].join(""), "gi");
   const AUTHOR_FIELD = new RegExp(`author"?: "${["hell", "dog136"].join("")}"`, "gi");
   const ATTRIBUTION_FILES = new Set(["LICENSE", "README.md", "package.json", "scripts/licenses.mjs", "THIRD-PARTY-NOTICES.md", "src/core/credit.ts", "tests/licenses.test.mjs", "tests/core/glow.test.mjs"]);
+  // EXCEPTION voulue par le propriétaire (clin d'œil à son projet) : la palette « Rosaliax » du sélecteur de couleurs.
+  // Le mot n'est toléré QUE dans ces fichiers, rien d'autre (ni docs/, ni composants, ni ailleurs).
+  const ROSALIAX_FILES = new Set(["src/core/palettes.ts", "src/locales/fr.json", "src/locales/en.json", "tests/core/palettes.test.mjs", "tests/core/theme-colors.test.mjs"]);
+  const ROSALIAX = new RegExp(["rosa", "liax"].join(""), "gi");
   const files = execFileSync("git", ["ls-files"], { encoding: "utf8" }).split("\n").filter((f) => f && !/(package-lock\.json|\.(png|jpe?g|ico|woff2?))$/.test(f) && fs.existsSync(f));
   assert.ok(files.length > 100, "les fichiers suivis doivent être listés");
   for (const f of files) {
     let text = fs.readFileSync(f, "utf8");
     // Seule exception : la mention du développeur du framework (licence, README, auteur du paquet, notices), rien d'autre.
     if (ATTRIBUTION_FILES.has(f)) text = text.replace(AUTHOR, "");
-    text = text.replace(AUTHOR_FIELD, "");   // le champ « author » des modules livrés
+    text = text.replace(AUTHOR_FIELD, "");
+    if (ROSALIAX_FILES.has(f)) text = text.replace(ROSALIAX, "");   // le champ « author » des modules livrés
     for (const re of forbidden) assert.ok(!re.test(text), `${f} contient une donnée propre à un site (${re.source}) : le framework doit rester neutre`);
   }
+});
+
+test("exception « Rosaliax » : le mot n'apparaît que dans les fichiers de la palette, uniquement comme nom de palette", () => {
+  const word = new RegExp(["rosa", "liax"].join(""), "i");
+  const files = execFileSync("git", ["ls-files"], { encoding: "utf8" }).split("\n").filter((f) => f && !/(package-lock\.json|\.(png|jpe?g|ico|woff2?))$/.test(f) && fs.existsSync(f));
+  const found = files.filter((f) => word.test(fs.readFileSync(f, "utf8"))).sort();
+  assert.deepEqual(found.filter((f) => !["src/core/palettes.ts", "src/locales/fr.json", "src/locales/en.json", "tests/core/palettes.test.mjs", "tests/core/theme-colors.test.mjs", "tests/architecture.test.mjs"].includes(f)), [], "hors des fichiers autorisés");
+  assert.ok(!fs.readFileSync("src/components/admin/ThemePicker.tsx", "utf8").match(word), "aucun nom propre dans les composants");
 });
 
 test("installation : chaque variable CURIOSA_* lue par le code est documentée (.env.example ou docs/INSTALL.md)", () => {

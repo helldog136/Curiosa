@@ -9,11 +9,11 @@ const byId = (id) => THEME_PRESETS.find((p) => p.id === id);
 const full = (p, over = {}) => { const q = { ...p, ...over }; return matchPalette(q.background, q.accent, q.accent2, q.surface, q.text); };
 
 test("14 palettes complètes, ids distincts, couleurs en minuscules, les 7 d'origine en tête", () => {
-  assert.equal(THEME_PRESETS.length, 14);
+  assert.equal(THEME_PRESETS.length, 15);
   assert.deepEqual(THEME_PRESETS.slice(0, 7).map((p) => p.id), ORIGINAL);
-  assert.deepEqual(THEME_PRESETS.slice(7).map((p) => p.id), ["arcade", "vinyl", "workshop", "stadium", "solidarity", "boutique", "lagoon"]);
-  assert.equal(new Set(THEME_PRESETS.map((p) => p.id)).size, 14);
-  assert.equal(new Set(THEME_PRESETS.map((p) => p.background + p.accent)).size, 14, "chaque couple fond/accent est unique");
+  assert.deepEqual(THEME_PRESETS.slice(7).map((p) => p.id), ["rosaliax", "arcade", "vinyl", "workshop", "stadium", "solidarity", "boutique", "lagoon"]);
+  assert.equal(new Set(THEME_PRESETS.map((p) => p.id)).size, 15);
+  assert.equal(new Set(THEME_PRESETS.map((p) => p.background + p.accent)).size, 15, "chaque couple fond/accent est unique");
   for (const p of THEME_PRESETS) {
     for (const k of ["background", "surface", "text", "accent", "accent2"]) assert.match(p[k], /^#[0-9a-f]{6}$/, `${p.id}.${k}`);
     assert.ok(p.mode === "dark" || p.mode === "light");
@@ -24,7 +24,7 @@ test("valeurs exactes du rapport : fond, accent et accent 2 des palettes", () =>
   const expected = { night: ["#121214", "#e8a23b", "#7aa2ff"], ocean: ["#0b1220", "#38bdf8", "#fb7185"], forest: ["#0f1a14", "#4ade80", "#facc15"], rose: ["#1a0f14", "#f472b6", "#22d3ee"],
     violet: ["#14111f", "#a78bfa", "#f0abfc"], daylight: ["#fafafa", "#2563eb", "#7c3aed"], paper: ["#f5f0e6", "#c2410c", "#0f766e"], arcade: ["#0d0221", "#ff2a6d", "#05d9e8"],
     vinyl: ["#181414", "#f43f5e", "#fbbf24"], workshop: ["#1c1917", "#e07a5f", "#81b29a"], stadium: ["#f3f6fb", "#c2410c", "#1d4ed8"], solidarity: ["#fbf8f3", "#15803d", "#0369a1"],
-    boutique: ["#fff7f5", "#be185d", "#6d28d9"], lagoon: ["#effcf8", "#0f766e", "#be185d"] };
+    rosaliax: ["#0b1716", "#e8782f", "#5fd3cc"], boutique: ["#fff7f5", "#be185d", "#6d28d9"], lagoon: ["#effcf8", "#0f766e", "#be185d"] };
   for (const [id, [background, accent, accent2]] of Object.entries(expected)) assert.deepEqual([byId(id).background, byId(id).accent, byId(id).accent2], [background, accent, accent2], id);
   assert.deepEqual([byId("night").surface, byId("night").text], ["#1d1d21", "#f4f4f5"]);
   assert.deepEqual([byId("lagoon").surface, byId("lagoon").text], ["#ffffff", "#12302a"]);

@@ -131,7 +131,7 @@ test("globals.css : classes Tailwind et valeurs par défaut des nouveaux jetons"
 
 // ─── Contrastes WCAG de chaque palette ───
 
-test("chaque palette (14) : texte, texte secondaire, accents, boutons et dégradé lisibles", () => {
+test("chaque palette (15) : texte, texte secondaire, accents, boutons et dégradé lisibles", () => {
   for (const p of THEME_PRESETS) {
     const t = C.buildTheme(p.background, p.accent, "sans", { accent2: p.accent2, surface: p.surface, text: p.text });
     const r = (a, b) => C.contrast(a, b);

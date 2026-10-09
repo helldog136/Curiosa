@@ -11,6 +11,7 @@ export const THEME_PRESETS = [
   { id: "violet", mode: "dark", background: "#14111f", surface: "#1e1a2e", text: "#f1eefb", accent: "#a78bfa", accent2: "#f0abfc" },
   { id: "daylight", mode: "light", background: "#fafafa", surface: "#ffffff", text: "#18181b", accent: "#2563eb", accent2: "#7c3aed" },
   { id: "paper", mode: "light", background: "#f5f0e6", surface: "#fffaf0", text: "#2b2118", accent: "#c2410c", accent2: "#0f766e" },
+  { id: "rosaliax", mode: "dark", background: "#0b1716", surface: "#122321", text: "#e9f3f1", accent: "#e8782f", accent2: "#5fd3cc" },
   { id: "arcade", mode: "dark", background: "#0d0221", surface: "#1a0b38", text: "#f5ecff", accent: "#ff2a6d", accent2: "#05d9e8" },
   { id: "vinyl", mode: "dark", background: "#181414", surface: "#241d1d", text: "#f5efe9", accent: "#f43f5e", accent2: "#fbbf24" },
   { id: "workshop", mode: "dark", background: "#1c1917", surface: "#29241f", text: "#f5f0e8", accent: "#e07a5f", accent2: "#81b29a" },
