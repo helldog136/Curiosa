@@ -22,10 +22,34 @@ model User {
   locale       String?
   // Mode d'affichage de l'admin : simplifié (défaut) ou avancé (tous les réglages techniques).
   advanced     Boolean  @default(false)
+  // Augmente pour couper toutes les sessions ouvertes de cet utilisateur (« déconnecter tous les appareils », changement de mot de passe…).
+  sessionVersion Int    @default(0)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   entries Entry[]
+  trustedIps TrustedIp[]
+}
+
+// ─── Connexion : blocages progressifs ──────────────────────────────────────
+// Une ligne par « clé » (ip:<adresse> ou email:<adresse>) : erreurs de mot de passe, paliers déjà atteints, fin du blocage.
+model AuthLock {
+  key           String    @id
+  failures      Int       @default(0)
+  strikes       Int       @default(0)
+  lastFailureAt DateTime?
+  lockedUntil   DateTime?
+  updatedAt     DateTime  @updatedAt
+}
+
+// Adresses (empreintes, jamais en clair) d'où un utilisateur s'est déjà connecté : un inconnu qui tape de faux mots de passe ne peut pas l'en bloquer depuis chez lui.
+model TrustedIp {
+  userId   String
+  hash     String
+  lastSeen DateTime
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, hash])
 }
 
 // ─── Réglages ─────────────────────────────────────────────────────────────

@@ -104,6 +104,7 @@ dépôt injoignable, le site garde la dernière copie reçue, à défaut celle l
 |---|---|
 | `CURIOSA_CATALOGUE_REPO` | Dépôt git qui publie l'index (défaut : `curiosa-extras`, le dépôt de modules voisin du dépôt d'origine de l'installation, même propriétaire ; indispensable avec Docker, où il n'y a pas de dépôt d'origine). |
 | `CURIOSA_EXTRAS_DIR` | Dossier des modules livrés avec cette version (défaut : `extras/` à côté de l'application, instantané de `curiosa-extras` ; `npm run extras:fetch` le récupère pour un clone du dépôt). |
+| `CURIOSA_TRUSTED_PROXIES` | Nombre de reverse proxys devant le site (1 par défaut) : sert à lire la vraie adresse du visiteur pour les blocages de connexion. Voir [SECURITE.md](SECURITE.md). |
 | `CURIOSA_CATALOGUE_REF` | Branche ou étiquette à lire (défaut : la branche par défaut). |
 | `CURIOSA_CATALOGUE_RUNTIME=0` | Ne pas interroger le dépôt : copie livrée avec la version seulement (serveur sans accès au réseau). |
 | `MODULES_INDEX_URL` | Index JSON `https://` **supplémentaire** (le vôtre, celui d'une communauté) : il ne peut qu'ajouter des modules. |

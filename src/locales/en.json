@@ -880,5 +880,15 @@
   "setup.modules.help": "A module adds a feature to your site (a blog, your social networks, pages…). Here are the ones we suggest to get started.",
   "setup.modules.skip": "You can skip this step without any risk: nothing is required, and every module (these and many more) can be added or removed later from the admin, under Features → Add.",
   "setup.modules.skipButton": "Skip this step",
-  "setup.modules.none": "No module to suggest for now: you can add some from the admin whenever you like."
+  "setup.modules.none": "No module to suggest for now: you can add some from the admin whenever you like.",
+  "login.locked": "Too many attempts. You can try again at {time}.",
+  "users.locked": "Locked until {time}",
+  "users.unlock": "Unlock",
+  "account.sessions": "Open sessions",
+  "account.sessionsHelp": "You are signed in on this device, and maybe on others. This button signs out every device at once, this one included: do it if you lost a phone or lent your computer.",
+  "account.sessionsButton": "Sign out all my devices",
+  "account.sessionsConfirm": "Sign out all your devices, including this one?",
+  "users.revoke": "Cut their sessions",
+  "users.revokeConfirm": "Sign this person out of all their devices? They can sign back in with their password.",
+  "login.changed": "Password changed: sign in again with the new one."
 }

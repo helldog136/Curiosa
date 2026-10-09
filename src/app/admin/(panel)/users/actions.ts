@@ -4,6 +4,8 @@ import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
 import { adminCtx } from "@/core/admin";
 import { prisma } from "@/core/db";
+import { unlockEmail } from "@/core/auth/lockout";
+import { revokeSessions } from "@/core/auth/sessions";
 import { audit } from "@/core/permissions";
 import type { ActionState } from "@/components/admin/ActionForm";
 
@@ -42,5 +44,25 @@ export async function deleteUser(id: string): Promise<void> {
   if (target.role === "admin" && user.role !== "owner") return;
   await prisma.user.delete({ where: { id } });
   await audit(user.email, "user.delete", target.email);
+  revalidatePath("/admin/users");
+}
+
+/** Le propriétaire débloque quelqu'un qui a trop essayé de se connecter (son e-mail redevient libre tout de suite). */
+export async function unlockUser(id: string): Promise<void> {
+  const { user } = await adminCtx("owner");
+  const target = await prisma.user.findUnique({ where: { id } });
+  if (!target) return;
+  await unlockEmail(target.email);
+  await audit(user.email, "user.unlock", target.email);
+  revalidatePath("/admin/users");
+}
+
+/** Le propriétaire coupe toutes les sessions ouvertes de quelqu'un (appareil perdu, compte douteux). */
+export async function revokeUserSessions(id: string): Promise<void> {
+  const { user } = await adminCtx("owner");
+  const target = await prisma.user.findUnique({ where: { id } });
+  if (!target || target.id === user.id) return;
+  await revokeSessions(target.id);
+  await audit(user.email, "user.sessions.revoke", target.email);
   revalidatePath("/admin/users");
 }

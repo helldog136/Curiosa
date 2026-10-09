@@ -4,9 +4,10 @@ declare module "next-auth" {
   interface User {
     role?: string;
     locale?: string | null;
+    sessionVersion?: number;
   }
   interface Session {
-    user: { id: string; role: string; locale: string | null } & DefaultSession["user"];
+    user: { id: string; role: string; locale: string | null; sv: number } & DefaultSession["user"];
   }
 }
 
@@ -15,5 +16,6 @@ declare module "next-auth/jwt" {
     id?: string;
     role?: string;
     locale?: string | null;
+    sv?: number;
   }
 }

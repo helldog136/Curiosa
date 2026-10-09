@@ -4,7 +4,8 @@ import { UI_LOCALES } from "@/core/i18n/dictionary";
 import { ActionForm } from "@/components/admin/ActionForm";
 import { Select, TextField } from "@/components/admin/Field";
 import { ui } from "@/components/admin/ui";
-import { changePassword, updateProfile } from "./actions";
+import { ConfirmButton } from "@/components/admin/ConfirmButton";
+import { changePassword, signOutEverywhere, updateProfile } from "./actions";
 
 export default async function AccountPage() {
   const { t, user, config } = await adminCtx("editor");
@@ -27,6 +28,11 @@ export default async function AccountPage() {
           <TextField name="current" type="password" label={t("account.currentPassword")} required autoComplete="current-password" />
           <TextField name="next" type="password" label={t("account.newPassword")} required autoComplete="new-password" help={t("users.passwordHelp")} />
         </ActionForm>
+      </section>
+      <section className={`${ui.card} space-y-3`} data-testid="sessions-card">
+        <h2 className="text-lg font-semibold">{t("account.sessions")}</h2>
+        <p className="text-sm text-muted">{t("account.sessionsHelp")}</p>
+        <form action={signOutEverywhere}><ConfirmButton message={t("account.sessionsConfirm")}>{t("account.sessionsButton")}</ConfirmButton></form>
       </section>
     </div>
   );

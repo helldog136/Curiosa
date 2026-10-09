@@ -880,5 +880,15 @@
   "setup.modules.help": "Un module ajoute une fonctionnalité à votre site (un blog, vos réseaux sociaux, des pages…). Voici ceux que nous suggérons pour démarrer.",
   "setup.modules.skip": "Vous pouvez passer cette étape sans aucun risque : rien n'est obligatoire, et tous les modules (ceux-ci et bien d'autres) s'ajoutent ou se retirent plus tard depuis l'admin, dans Fonctionnalités → Ajouter.",
   "setup.modules.skipButton": "Passer cette étape",
-  "setup.modules.none": "Aucun module à suggérer pour le moment : vous en ajouterez depuis l'admin quand vous voudrez."
+  "setup.modules.none": "Aucun module à suggérer pour le moment : vous en ajouterez depuis l'admin quand vous voudrez.",
+  "login.locked": "Trop d'essais. Vous pourrez réessayer à {time}.",
+  "users.locked": "Bloqué jusqu'à {time}",
+  "users.unlock": "Débloquer",
+  "account.sessions": "Sessions ouvertes",
+  "account.sessionsHelp": "Vous êtes connecté sur cet appareil, et peut-être sur d'autres. Ce bouton déconnecte tous les appareils d'un coup, celui-ci compris : à faire si vous avez perdu un téléphone ou prêté votre ordinateur.",
+  "account.sessionsButton": "Déconnecter tous mes appareils",
+  "account.sessionsConfirm": "Déconnecter tous vos appareils, y compris celui-ci ?",
+  "users.revoke": "Couper ses sessions",
+  "users.revokeConfirm": "Déconnecter cette personne de tous ses appareils ? Elle pourra se reconnecter avec son mot de passe.",
+  "login.changed": "Mot de passe changé : reconnectez-vous avec le nouveau."
 }

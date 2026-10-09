@@ -314,6 +314,7 @@ Un assistant IA peut écrire un module à partir de ces documents : donnez-lui `
 | [docs/BACKGROUND.md](docs/BACKGROUND.md) | décrire le fond de page |
 | [docs/IMPORT-GRAV.md](docs/IMPORT-GRAV.md) | convertir un site Grav |
 | [docs/PRIVACY.md](docs/PRIVACY.md) | cookies, statistiques, politique de confidentialité |
+| [docs/SECURITE.md](docs/SECURITE.md) | blocages progressifs, sessions, dépannage en SSH |
 | [docs/MESURES.md](docs/MESURES.md) | les chiffres mesurés (installation, poids, mémoire, cookies), leur méthode, et ce qui n'est pas mesuré |
 | [CHANGELOG.md](CHANGELOG.md) | ce qui change à chaque version |
 

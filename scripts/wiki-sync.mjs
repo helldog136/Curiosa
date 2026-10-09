@@ -20,6 +20,7 @@ export const PAGES = [
   { file: "docs/BACKGROUND.md", page: "Fond-de-page", blurb: "décrire le fond de page" },
   { file: "docs/IMPORT-GRAV.md", page: "Importer-depuis-Grav", blurb: "convertir un site Grav" },
   { file: "docs/PRIVACY.md", page: "Vie-privée-et-cookies", blurb: "cookies, statistiques, politique de confidentialité" },
+  { file: "docs/SECURITE.md", page: "Sécurité-de-la-connexion", blurb: "blocages progressifs, sessions, dépannage en SSH" },
   { file: "docs/MESURES.md", page: "Mesures", blurb: "les chiffres mesurés, leur méthode, et ce qui n'est pas mesuré" },
   { file: "CHANGELOG.md", page: "Changelog", blurb: "ce qui change à chaque version" },
 ];
