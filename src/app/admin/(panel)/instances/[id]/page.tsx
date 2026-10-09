@@ -166,13 +166,21 @@ export default async function InstancePage({ params, searchParams }: { params: P
             return (
               <fieldset key={decl.topic} className={`${ui.card} space-y-3`}>
                 <legend className="px-2 text-sm font-medium">{L(decl.label)}{advanced && <span className="ml-2 font-mono text-xs text-muted">{decl.topic}</span>}</legend>
-                {providers.length === 0 && <p className="text-sm text-muted">{t("sources.none")}</p>}
+                {providers.length === 0 && (
+                  <p className="text-sm text-muted">{t("sources.none")} <a href="/admin/catalogue" className="underline hover:text-accent">{t("sources.addModule")}</a></p>
+                )}
+                {providers.length > 0 && <p className="text-[13px] text-muted">{current.instances === null ? t("sources.allUsed") : t("sources.onlyChecked")}</p>}
                 {providers.map((p) => (
                   <Checkbox key={p.instance.key} name={`sources_${i}`} value={p.instance.key}
                     label={`${p.mod.manifest.icon ?? "🧩"} ${labeler.label(p.instance)}${labeler.hasSiblings(p.instance.moduleId) ? ` (${L(p.mod.manifest.name)})` : ""}`}
                     defaultChecked={current.instances === null || current.instances.includes(p.instance.key)} />
                 ))}
-                {advanced && decl.tags && <TextField name={`tags_${i}`} label={t("sources.tags")} help={t("sources.tagsHelp")} defaultValue={current.tags.join(", ")} />}
+                {advanced && decl.tags && (
+                  <details open={current.tags.length > 0} className="pt-1">
+                    <summary className="cursor-pointer text-sm font-medium">{t("sources.filter")}</summary>
+                    <div className="mt-3"><TextField name={`tags_${i}`} label={t("sources.tags")} help={t("sources.tagsHelp")} defaultValue={current.tags.join(", ")} /></div>
+                  </details>
+                )}
               </fieldset>
             );
           }))}
