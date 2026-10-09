@@ -34,7 +34,7 @@ test("boutons animés : un composant commun sert l'installation, la mise à jour
   for (const f of ["InstallButton", "UpdateButton", "ModuleUpdateButton"]) assert.match(read(`src/components/admin/${f}.tsx`), /AnimatedActionButton/, f);
   assert.match(button, /motion-safe:animate-bounce/, "la flèche ne rebondit pas si l'animation est réduite");
   assert.match(button, /aria-live="polite"/);
-  assert.match(button, /window\.confirm\(confirmMessage\)/);
+  assert.match(button, /askConfirm\(confirmMessage\)/, "la confirmation passe par la boîte dans la page (la boîte native est supprimée en silence hors premier plan)");
   assert.match(read("src/app/globals.css"), /prefers-reduced-motion: reduce[\s\S]*animation: none !important/);
   assert.match(read("src/app/globals.css"), /\.curiosa-indeterminate/);
 });

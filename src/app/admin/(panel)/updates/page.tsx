@@ -8,7 +8,9 @@ import { Markdown } from "@/components/site/Markdown";
 import { Checkbox } from "@/components/admin/Field";
 import { Callout, PageHeader, Panel } from "@/components/admin/Page";
 import { ui } from "@/components/admin/ui";
-import { checkNow, saveAutoUpdate, saveChannel } from "./actions";
+import { ModulesUpdates, type ModuleUpdateRow } from "@/components/admin/ModulesUpdates";
+import { getModulesReport, moduleNames } from "@/core/modules/updateStatus";
+import { checkNow, recheckModules, saveAutoUpdate, saveChannel } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +27,7 @@ function VersionCard({ label, version, tone, children }: { label: string; versio
 
 /** Mettre le site à jour, dans l'ordre où on y pense : où j'en suis, ce qui existe, ce que ça change, puis un seul bouton ; pendant l'installation, où on en est. */
 export default async function UpdatesPage() {
-  const { t, locale, advanced } = await adminCtx("owner");
+  const { t, locale, advanced, config } = await adminCtx("owner");
   const info = getInstallInfo();
   // Première visite : on interroge le dépôt une fois pour ne pas montrer « jamais vérifié ».
   let check = await getUpdateCheck();
@@ -41,6 +43,41 @@ export default async function UpdatesPage() {
   const fail = failed ? failureKey(state.error) : null;
   const finished = state.status === "success" || failed;
   const current = `v${info.version}`;
+  // Modules en retard (vérifiés au plus toutes les quelques minutes ; jamais d'erreur ici : un échec devient un simple message par module).
+  const report = await getModulesReport();
+  const names = await moduleNames(locale, config.defaultLocale);
+  const nameOf = (id: string) => names.get(id) ?? id;
+  const moduleRows: ModuleUpdateRow[] = report.outdated.map((o) => ({ id: o.id, name: nameOf(o.id), icon: "🧩", current: o.current, target: o.target, major: o.level === "major", levelLabel: o.level ? t(`updates.level.${o.level}`) : "" }));
+  // Juste après une mise à jour réussie du site, c'est la suite logique : on met la section en avant.
+  const recent = state.status === "success" && !!state.finishedAt && report.checkedAt - state.finishedAt < 14 * 24 * 3600_000;
+  const highlightModules = recent && moduleRows.length > 0;
+  const modulesSection = !running && (
+    <section className={`${ui.card} space-y-4 ${highlightModules ? "border-accent bg-accent/5" : ""}`} data-testid="modules-updates">
+      <div>
+        <h2 className="text-lg font-semibold">🧩 {t("updates.modules.title")}</h2>
+        {highlightModules && <p className="mt-1 text-sm font-semibold text-accent" data-testid="modules-remind">{t("updates.modules.remind")}</p>}
+        <p className="mt-1 text-sm leading-6 text-muted">{moduleRows.length > 0 ? t("updates.modules.behind", { n: moduleRows.length }) : t("updates.modules.help")}</p>
+      </div>
+      {moduleRows.some((r) => r.major) && <Callout tone="warn">{t("updates.modules.majorWarning")}</Callout>}
+      {moduleRows.length === 0 && report.checked > 0 && report.unchecked.length < report.checked && <p className="text-sm font-medium" data-testid="modules-uptodate">✅ {t("updates.modules.upToDate")}</p>}
+      {report.checked === 0 && <p className="text-sm text-muted" data-testid="modules-none">{t("updates.modules.none")}</p>}
+      <ModulesUpdates rows={moduleRows} labels={{
+        all: { idle: t("updates.modules.all"), working: t("modules.updating"), done: t("modules.updated"), failed: t("modules.updateFailed") },
+        one: { idle: t("modules.update"), working: t("modules.updating"), done: t("modules.updated"), failed: t("modules.updateFailed") },
+        confirmAll: t("updates.modules.confirmAll"), confirmMajor: t("updates.modules.confirmMajor"), incomplete: t("updates.modules.incomplete"),
+        updatedLine: t("updates.modules.updatedLine"), failedLine: t("updates.modules.failedLine"), stoppedLine: t("updates.modules.stoppedLine"), skippedLine: t("updates.modules.skippedLine"),
+      }} />
+      {report.unchecked.length > 0 && (
+        <ul className="space-y-0.5 text-xs text-muted" data-testid="modules-unchecked">
+          {report.unchecked.map((id) => <li key={id}>{t("updates.modules.unchecked", { name: nameOf(id) })}</li>)}
+        </ul>
+      )}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
+        <p className="text-sm text-muted">{t("updates.checkedAt")} {when(report.checkedAt)}</p>
+        <ActionForm action={recheckModules} submitLabel={t("updates.modules.recheck")} secondary className="space-y-2">{null}</ActionForm>
+      </div>
+    </section>
+  );
   const updateLabels = { idle: t("updates.apply", { version: check.latest ?? "" }), working: t("updates.working"), done: t("updates.done"), failed: t("updates.failedShort", { version: check.latest ?? "" }) };
 
   return (
@@ -103,6 +140,8 @@ export default async function UpdatesPage() {
 
       {info.canUpdate && finished && !running && state.restart === "needed" && <Callout tone="warn">{t("updates.restartNeeded")}</Callout>}
 
+      {highlightModules && modulesSection}
+
       {info.canUpdate && !running && (
         <section className={`${ui.card} space-y-5`} data-testid="update-journey">
           <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
@@ -153,6 +192,8 @@ export default async function UpdatesPage() {
           </div>
         </section>
       )}
+
+      {!highlightModules && modulesSection}
 
       {info.canUpdate && (
         <Panel title={t("updates.autoTitle")}>

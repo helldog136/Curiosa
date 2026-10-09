@@ -4,6 +4,7 @@ import { CREDIT_URL } from "@/core/credit";
 import { NavLink } from "@/components/admin/NavLink";
 import { getAdminNav } from "@/core/modules/adminNav";
 import { getUpdateCheck, readVersion } from "@/core/updates/service";
+import { peekModulesReport } from "@/core/modules/updateStatus";
 import { MobileMenu } from "@/components/admin/MobileMenu";
 import { ui } from "@/components/admin/ui";
 import { cookies } from "next/headers";
@@ -18,6 +19,8 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   const theme = parseAdminTheme((await cookies()).get(ADMIN_THEME_COOKIE)?.value);
   const canManage = user.role !== "editor";
   const updateAvailable = user.role === "owner" && (await getUpdateCheck().catch(() => null))?.available === true;
+  // Modules en retard : jamais d'attente du réseau ici (menu de toutes les pages) ; la vérification se fait en arrière-plan et reste en mémoire quelques minutes.
+  const modulesBehind = user.role === "owner" ? (peekModulesReport()?.outdated.length ?? 0) : 0;
   const items = nav.flatMap((g) => g.items.map((i) => ({ ...i, type: g.type })));
   const contentItems = items.filter((i) => i.type === "content");
   const otherItems = items.filter((i) => i.type !== "content");
@@ -55,7 +58,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
               <p className={group}>{t("nav.admin")}</p>
               {canManage && <NavLink href="/admin/users">{t("nav.users")}</NavLink>}
               {user.role === "owner" && <NavLink href="/admin/backup">{t("nav.backup")}</NavLink>}
-              {user.role === "owner" && <NavLink href="/admin/updates" badge={updateAvailable ? 1 : 0} badgeLabel={t("nav.badge.update")}>{t("nav.updates")}</NavLink>}
+              {user.role === "owner" && <NavLink href="/admin/updates" badge={(updateAvailable ? 1 : 0) + modulesBehind} badgeLabel={modulesBehind > 0 ? t("nav.badge.updates") : t("nav.badge.update")}>{t("nav.updates")}</NavLink>}
               {advanced && user.role === "owner" && <NavLink href="/admin/audit">{t("nav.audit")}</NavLink>}
               {advanced && user.role === "owner" && <NavLink href="/admin/mcp">{t("nav.mcp")}</NavLink>}
             </>

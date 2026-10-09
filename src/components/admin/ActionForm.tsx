@@ -2,6 +2,7 @@
 
 import { startTransition, useActionState, useEffect, useId, useRef, useState, useSyncExternalStore, type FormEvent } from "react";
 import type { FloatingLabels } from "./floating";
+import { askConfirm } from "./confirmDialog";
 import { ui } from "./ui";
 
 export type ActionState = { ok?: string; error?: string } | null;
@@ -56,11 +57,12 @@ export function ActionForm({ action, children, submitLabel, className = "space-y
   const ref = useRef<HTMLFormElement>(null);
   // On n'utilise pas `<form action>` : React remettrait alors tous les champs à leur ancienne valeur après l'envoi (les listes et cases
   // reviendraient à ce qui était affiché avant l'enregistrement). On envoie nous-mêmes, et on ne vide que si `reset` le demande.
-  function onSubmit(e: FormEvent<HTMLFormElement>) {
+  async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (confirmMessage && !window.confirm(confirmMessage)) return;
+    const form = e.currentTarget;
     const submitter = (e.nativeEvent as SubmitEvent).submitter ?? undefined;
-    const data = new FormData(e.currentTarget, submitter as HTMLElement | undefined);
+    if (confirmMessage && !(await askConfirm(confirmMessage))) return;
+    const data = new FormData(form, submitter as HTMLElement | undefined);
     startTransition(() => formAction(data));
   }
   useEffect(() => {

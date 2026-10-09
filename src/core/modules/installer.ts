@@ -300,26 +300,31 @@ async function latestRemoteTag(repoUrl: string): Promise<string | null> {
  *   - livré avec le framework : la version qu'apporte le framework.
  */
 export async function checkForUpdate(id: string): Promise<ModuleUpdateCheck> {
+  return (await checkForUpdateDetailed(id)).check;
+}
+
+/** Comme `checkForUpdate`, mais dit si la vérification elle-même a échoué (réseau, dépôt absent) plutôt que de la confondre avec « à jour ». */
+export async function checkForUpdateDetailed(id: string): Promise<{ check: ModuleUpdateCheck; failed: boolean }> {
   const row = await prisma.module.findUnique({ where: { id } });
   if (row?.source === "bundled") {
     const entry = await findCatalogueEntry(id).catch(() => undefined);
     const available = !!entry?.dir && !!entry.version && entry.version !== row.version;
-    return { available, remote: entry?.version, target: available ? entry?.version : undefined, level: available ? classify(row.version, entry!.version!) ?? undefined : undefined };
+    return { check: { available, remote: entry?.version, target: available ? entry?.version : undefined, level: available ? classify(row.version, entry!.version!) ?? undefined : undefined }, failed: !entry };
   }
-  if (!row || row.source !== "git" || !row.repoUrl) return { available: false };
+  if (!row || row.source !== "git" || !row.repoUrl) return { check: { available: false }, failed: false };
   try {
-    if (row.subdir) return await checkSubdirUpdate(row);
-    if (isCommitRef(row.ref)) return { available: false };
+    if (row.subdir) return { check: await checkSubdirUpdate(row), failed: false };
+    if (isCommitRef(row.ref)) return { check: { available: false }, failed: false };
     if (isStableTag(row.ref)) {
       const latest = await latestRemoteTag(row.repoUrl);
       const level = latest ? classify(row.ref, latest) : null;
-      return level ? { available: true, target: latest!, remote: latest!, level } : { available: false, remote: latest ?? undefined };
+      return { check: level ? { available: true, target: latest!, remote: latest!, level } : { available: false, remote: latest ?? undefined }, failed: false };
     }
     const out = await git(["ls-remote", "--", row.repoUrl, row.ref ? `refs/heads/${row.ref}` : "HEAD"]);
     const remote = out.split(/\s+/)[0];
-    return { available: !!remote && remote !== row.commit, remote, target: remote?.slice(0, 7) };
+    return { check: { available: !!remote && remote !== row.commit, remote, target: remote?.slice(0, 7) }, failed: false };
   } catch {
-    return { available: false };
+    return { check: { available: false }, failed: true };
   }
 }
 

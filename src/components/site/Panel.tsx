@@ -86,9 +86,9 @@ export function Panel({ block, labels }: { block: PanelBlock; labels: VideoLabel
     body = (
       <div className="space-y-8">
         <div className="mx-auto max-w-3xl space-y-3 text-center">{head}</div>
-        <ul className="grid gap-6 text-center sm:grid-cols-2 lg:grid-cols-4">
+        <ul className="flex flex-wrap justify-center gap-x-14 gap-y-8 text-center">
           {block.items.map((it, i) => (
-            <li key={i}><p data-stat={dark ? undefined : ""} className="text-5xl font-extrabold tracking-tight">{it.title}</p>{it.heading && <p className={`mt-1 text-sm ${on === "accent" ? "" : "opacity-80"}`}>{it.heading}</p>}</li>
+            <li key={i} className="min-w-40 max-w-xs flex-1 basis-40"><p data-stat={dark ? undefined : ""} className="text-balance text-4xl font-extrabold tracking-tight sm:text-5xl">{it.title}</p>{it.heading && <p className={`mx-auto mt-2 max-w-[22ch] text-balance text-sm ${on === "accent" ? "" : "opacity-80"}`}>{it.heading}</p>}</li>
           ))}
         </ul>
       </div>

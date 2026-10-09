@@ -9,11 +9,11 @@ test("formulaires admin : après « Enregistrer », les champs gardent la valeur
   assert.match(src, /onSubmit=\{onSubmit\}/);
   assert.match(src, /e\.preventDefault\(\)/);
   assert.match(src, /startTransition\(\(\) => formAction\(data\)\)/);
-  assert.match(src, /new FormData\(e\.currentTarget, submitter/, "le bouton qui a envoyé le formulaire est pris en compte");
+  assert.match(src, /new FormData\(form, submitter/, "le bouton qui a envoyé le formulaire est pris en compte");
 });
 
 test("formulaires admin : la confirmation reste demandée, les mots de passe sont vidés, seuls les formulaires de création se vident", () => {
-  assert.match(src, /window\.confirm\(confirmMessage\)\) return/);
+  assert.match(src, /askConfirm\(confirmMessage\)\)\) return/);
   assert.match(src, /input\[type=password\]/);
   assert.match(src, /if \(reset\) ref\.current\.reset\(\)/);
   for (const f of ["users/page.tsx", "redirects/page.tsx", "mcp/page.tsx"]) {
