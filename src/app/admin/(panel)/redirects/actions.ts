@@ -27,7 +27,7 @@ export async function createRedirect(_prev: ActionState, formData: FormData): Pr
   await prisma.redirect.create({ data: { path, targetUrl, entryId, permanent: formData.get("permanent") === "on" } });
   await audit(user.email, "redirect.create", path);
   revalidatePath("/admin/redirects");
-  return { ok: t("action.saved") };
+  return { ok: t("redirects.created") };
 }
 
 export async function toggleRedirect(id: string): Promise<void> {

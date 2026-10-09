@@ -9,7 +9,7 @@ type Opt = { key: string; type: string; label: string; default?: unknown; option
 export type HomeChoice = { value: string; icon: string; title: string; subtitle: string; defaultSize: string; options: Opt[]; /** Bloc de page du cœur (créé ici, sans module) : son type. */ core?: BlockKind };
 export type HomeBlock = { uid: string; value: string; size: string; isolated: boolean; options: Record<string, unknown> };
 type Labels = {
-  editBlock: string; coreGroup: string; modulesGroup: string;
+  editBlock: string; coreGroup: string; modulesGroup: string; noFeatures: string; cancel: string; layoutHelpTitle: string;
   empty: string; add: string; pick: string; up: string; down: string; remove: string; size: string; alone: string; aloneHelp: string; adjust: string;
   sizes: Record<string, string>; sizeHelp: string;
 };
@@ -123,6 +123,7 @@ export function HomeBuilder({ choices, initial, labels, blockLabels, locales }: 
             ))}
           </ul>
           <p className="pt-2 text-xs font-semibold uppercase tracking-wide text-muted">{labels.modulesGroup}</p>
+          {choices.every((c) => c.core) && <p className={ui.help}>{labels.noFeatures}</p>}
           <ul className="grid gap-2 sm:grid-cols-2">
             {choices.filter((c) => !c.core).map((c) => (
               <li key={c.value}>
@@ -133,12 +134,17 @@ export function HomeBuilder({ choices, initial, labels, blockLabels, locales }: 
               </li>
             ))}
           </ul>
-          <button type="button" className={ui.btn} onClick={() => setPicking(false)}>↩</button>
+          <button type="button" className={ui.btn} onClick={() => setPicking(false)}>{labels.cancel}</button>
         </div>
       ) : (
         <button type="button" className={`${ui.btn} w-full !border-dashed !py-4 !text-base`} onClick={() => setPicking(true)}>＋ {labels.add}</button>
       )}
-      <p className={ui.help}>{labels.sizeHelp}</p>
+      {blocks.length > 0 && (
+        <details className="text-[13px] leading-5 text-muted">
+          <summary className="cursor-pointer font-medium">{labels.layoutHelpTitle}</summary>
+          <p className="mt-1.5">{labels.sizeHelp}</p>
+        </details>
+      )}
     </div>
   );
 }

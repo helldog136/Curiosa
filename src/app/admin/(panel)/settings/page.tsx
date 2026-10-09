@@ -53,24 +53,29 @@ export default async function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <header><h1 className={ui.pageTitle}>{t("nav.settings")}</h1>{!advanced && <p className={ui.pageIntro}>{t("settings.intro.simple")}</p>}</header>
+      <header><h1 className={ui.pageTitle}>{advanced ? t("nav.settings") : t("nav.settings.simple")}</h1>{!advanced && <p className={ui.pageIntro}>{t("settings.intro.simple")}</p>}</header>
       <Tabs tabs={[{ id: "site", label: t("settings.identity") }, { id: "languages", label: t("settings.languages") }, { id: "appearance", label: t("settings.appearance") }, { id: "privacy", label: t("settings.privacy") }, ...(hasRole(user, "owner") ? [{ id: "mail", label: t("settings.mail") }] : [])]}>
+      <div data-tab="site languages appearance privacy">
       <ActionForm action={saveSettings} floating={floatingLabels(t)} submitLabel={t("action.save")} className="space-y-8" submitTabs="site languages appearance privacy">
         {advanced && <input type="hidden" name="__adv" value="1" />}
-        <section data-tab="site" className="space-y-4">
-          <h2 className="text-lg font-semibold">{t("settings.identity")}</h2>
-          {config.locales.map((l) => (
-            <fieldset key={l} className={`${ui.card} space-y-4`}>
-              {(advanced || config.locales.length > 1) && <legend className="px-2 text-sm font-medium">{localeName(l)}</legend>}
-              <TextField name={`site.name__${l}`} label={t("settings.siteName")} defaultValue={String(values["site.name"]?.[l] ?? "")} />
-              <TextField name={`site.tagline__${l}`} label={t("settings.tagline")} defaultValue={String(values["site.tagline"]?.[l] ?? "")} />
-              <TextArea name={`site.about__${l}`} label={t("settings.about")} help={t("settings.aboutHelp")} rows={4} defaultValue={String(values["site.about"]?.[l] ?? "")} />
-              {advanced && <TextField name={`footer.text__${l}`} label={t("settings.footerText")} defaultValue={String(values["footer.text"]?.[l] ?? "")} />}
-            </fieldset>
-          ))}
-          <fieldset className={`${ui.card} space-y-4`}>
-            <legend className="px-2 text-sm font-medium">{t("settings.logos")}</legend>
-            <p className={ui.help}>{t("settings.logosHelp")}</p>
+        <section data-tab="site" className="space-y-5">
+          <p className={ui.help}>{t("settings.identityIntro")}</p>
+          <div className={`${ui.card} space-y-5`}>
+            <h3 className="font-semibold">{t("settings.who")}</h3>
+            {config.locales.map((l) => (
+              <fieldset key={l} className="space-y-4">
+                {config.locales.length > 1 && <legend className="mb-2 text-sm font-medium text-muted">{localeName(l)}</legend>}
+                <TextField name={`site.name__${l}`} label={t("settings.siteName")} defaultValue={String(values["site.name"]?.[l] ?? "")} />
+                <TextField name={`site.tagline__${l}`} label={t("settings.tagline")} help={t("settings.taglineHelp")} defaultValue={String(values["site.tagline"]?.[l] ?? "")} />
+                <TextArea name={`site.about__${l}`} label={t("settings.about")} help={t("settings.aboutHelp")} rows={4} defaultValue={String(values["site.about"]?.[l] ?? "")} />
+              </fieldset>
+            ))}
+          </div>
+          <div className={`${ui.card} space-y-4`}>
+            <div>
+              <h3 className="font-semibold">{t("settings.logos")}</h3>
+              <p className={ui.help}>{t("settings.logosHelp")}</p>
+            </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1"><ImageField svg name="logoWide" label={t("settings.logoWide")} defaultValue={config.logos.wide} uploadLabel={t("action.upload")} /><p className={ui.help}>{t("settings.logoWideHelp")}</p></div>
               <div className="space-y-1"><ImageField svg name="logo" label={t("settings.logoSquare")} defaultValue={logo} uploadLabel={t("action.upload")} /><p className={ui.help}>{t("settings.logoSquareHelp")}</p></div>
@@ -85,36 +90,51 @@ export default async function SettingsPage() {
                 <ImageField svg name="logoDark" label={t("settings.logoSquareDark")} defaultValue={config.logos.squareDark} uploadLabel={t("action.upload")} />
               </div>
             </details>
-          </fieldset>
-          {advanced && <TextField name="contactEmail" type="email" label={t("settings.contactEmail")} defaultValue={config.contactEmail} />}
+          </div>
+          {advanced && (
+            <div className={`${ui.card} space-y-4`}>
+              <h3 className="font-semibold">{t("settings.contactCard")}</h3>
+              <TextField name="contactEmail" type="email" label={t("settings.contactEmail")} help={t("settings.contactEmailHelp")} defaultValue={config.contactEmail} />
+              {config.locales.map((l) => (
+                <TextField key={l} name={`footer.text__${l}`} label={`${t("settings.footerText")}${config.locales.length > 1 ? ` — ${localeName(l)}` : ""}`} defaultValue={String(values["footer.text"]?.[l] ?? "")} />
+              ))}
+            </div>
+          )}
         </section>
 
-        <section data-tab="languages" className="space-y-4">
-          <h2 className="text-lg font-semibold">{t("settings.languages")}</h2>
-          <p className="text-sm text-muted">{t("settings.languagesHelp")}</p>
-          <Select name="defaultLocale" label={t("settings.defaultLocale")} defaultValue={config.defaultLocale}
-            options={Object.entries(KNOWN_LOCALES).map(([c, n]) => ({ value: c, label: n }))} />
-          {/* Version simple : une seule langue suffit à la plupart des sites ; les autres sont repliées (et restent envoyées au formulaire). */}
-          <details open={advanced || config.locales.length > 1} className={advanced ? "" : "rounded-xl border border-line bg-bg px-4 py-3"}>
-            <summary className={`cursor-pointer ${advanced ? "hidden" : "text-[15px] font-medium"}`}>{t("settings.moreLanguages")}</summary>
-            <fieldset className={advanced ? "" : "mt-3"}>
-              <legend className={ui.label}>{t("settings.enabledLocales")}</legend>
-              <div className="grid gap-1 sm:grid-cols-3">
-                {Object.entries(KNOWN_LOCALES).map(([code, name]) => (
-                  <Checkbox key={code} name="enabledLocales" value={code} label={name} defaultChecked={config.locales.includes(code)} />
-                ))}
-              </div>
-            </fieldset>
-          </details>
-          {advanced && <Select name="adminLocale" label={t("settings.adminLocale")} help={t("settings.adminLocaleHelp")} defaultValue={config.adminLocale ?? config.defaultLocale}
-            options={Object.keys(KNOWN_LOCALES).map((c) => ({ value: c, label: `${localeName(c)}${UI_LOCALES.includes(c) ? "" : ` (${t("settings.fallbackEn")})`}` }))} />}
-          {advanced && <Checkbox name="autoDetect" label={t("settings.autoDetect")} help={t("settings.autoDetectHelp")} defaultChecked={config.autoDetect} />}
+        <section data-tab="languages" className="space-y-5">
+          <p className={ui.help}>{t("settings.languagesHelp")}</p>
+          <div className={`${ui.card} space-y-5`}>
+            <Select name="defaultLocale" label={t("settings.defaultLocale")} defaultValue={config.defaultLocale}
+              options={Object.entries(KNOWN_LOCALES).map(([c, n]) => ({ value: c, label: n }))} />
+            {/* Version simple : une seule langue suffit à la plupart des sites ; les autres sont repliées (et restent envoyées au formulaire). */}
+            <details open={advanced || config.locales.length > 1} className={advanced ? "" : "rounded-xl border border-line bg-bg px-4 py-3"}>
+              <summary className={`cursor-pointer ${advanced ? "hidden" : "text-[15px] font-medium"}`}>{t("settings.moreLanguages")}</summary>
+              <fieldset className={advanced ? "" : "mt-3"}>
+                <legend className={ui.label}>{t("settings.enabledLocales")}</legend>
+                <p className={`${ui.help} mb-2`}>{t("settings.enabledLocalesHelp")}</p>
+                <div className="grid gap-1 sm:grid-cols-3">
+                  {Object.entries(KNOWN_LOCALES).map(([code, name]) => (
+                    <Checkbox key={code} name="enabledLocales" value={code} label={name} defaultChecked={config.locales.includes(code)} />
+                  ))}
+                </div>
+              </fieldset>
+            </details>
+          </div>
+          {advanced && (
+            <div className={`${ui.card} space-y-4`}>
+              <h3 className="font-semibold">{t("settings.languagesMore")}</h3>
+              <Select name="adminLocale" label={t("settings.adminLocale")} help={t("settings.adminLocaleHelp")} defaultValue={config.adminLocale ?? config.defaultLocale}
+                options={Object.keys(KNOWN_LOCALES).map((c) => ({ value: c, label: `${localeName(c)}${UI_LOCALES.includes(c) ? "" : ` (${t("settings.fallbackEn")})`}` }))} />
+              <Checkbox name="autoDetect" label={t("settings.autoDetect")} help={t("settings.autoDetectHelp")} defaultChecked={config.autoDetect} />
+            </div>
+          )}
         </section>
 
-        <section data-tab="privacy" className="space-y-4">
-          <h2 className="text-lg font-semibold">{t("settings.privacy")}</h2>
-          <p className="text-sm text-muted">{t("settings.privacyHelp")}</p>
+        <section data-tab="privacy" className="space-y-5">
+          <p className={ui.help}>{t("settings.privacyHelp")}</p>
           <div className={`${ui.card} space-y-4`}>
+            <h3 className="font-semibold">{t("settings.privacyVisits")}</h3>
             <Checkbox name="statsEnabled" label={t("settings.stats")} help={t("settings.statsHelp")} defaultChecked={config.statsEnabled} />
             <Checkbox name="newsToggle" label={t("settings.newsToggle")} help={t("settings.newsToggleHelp")} defaultChecked={config.newsToggle} />
             {advanced && <Checkbox name="blockAiBots" label={t("settings.blockAiBots")} help={t("settings.blockAiBotsHelp")} defaultChecked={blockAiBots} />}
@@ -127,8 +147,6 @@ export default async function SettingsPage() {
             ))}
             <a href="/privacy" target="_blank" rel="noopener" className="inline-block text-sm font-medium text-accent hover:underline">{t("settings.privacyView")} ↗</a>
           </div>
-          <p className={ui.help}>{t("settings.privacyCookies")}</p>
-          <p className={ui.help}>{t("settings.privacyLaw")}</p>
         </section>
 
         <section data-tab="appearance" className="space-y-6">
@@ -236,19 +254,29 @@ export default async function SettingsPage() {
           {advanced && <p className={ui.help}>{t("settings.appearanceHelp")}</p>}
         </section>
       </ActionForm>
+      </div>
 
       {hasRole(user, "owner") && (
-        <section data-tab="mail" className="space-y-4">
-          <h2 className="text-lg font-semibold">{t("settings.mail")}</h2>
-          <p className="text-sm text-muted">{t("settings.mailHelp")}</p>
-          <p className={ui.help}>{mail ? t("settings.mailStatusOn") : t("settings.mailStatusOff")}</p>
-          <ActionForm action={saveMail} submitLabel={t("settings.mailSave")} className="space-y-3">
-            <TextField name="mailHost" label={t("settings.mailHost")} defaultValue={mail?.host ?? ""} placeholder="smtp.example.com" autoComplete="off" />
-            <TextField name="mailPort" type="number" label={t("settings.mailPort")} defaultValue={mail?.port ?? 587} />
-            <Checkbox name="mailSecure" label={t("settings.mailSecure")} defaultChecked={mail?.secure ?? false} />
-            <TextField name="mailUser" label={t("settings.mailUser")} defaultValue={mail?.user ?? ""} autoComplete="off" />
-            <TextField name="mailPass" type="password" label={t("settings.mailPass")} help={t("settings.mailPassHelp")} autoComplete="new-password" />
-            <TextField name="mailFrom" label={t("settings.mailFrom")} help={t("settings.mailFromHelp")} defaultValue={mail?.from ?? ""} />
+        <section data-tab="mail" className="space-y-5">
+          <p className={ui.help}>{t("settings.mailHelp")}</p>
+          <p><span className={mail ? ui.chipOk : ui.chipWarn}>{mail ? t("settings.mailStatusOn") : t("settings.mailStatusOff")}</span></p>
+          <ActionForm action={saveMail} submitLabel={t("settings.mailSave")} className="space-y-5">
+            <div className={`${ui.card} space-y-4`}>
+              <h3 className="font-semibold">{t("settings.mailServer")}</h3>
+              <div className="grid gap-4 sm:grid-cols-[1fr_8rem]">
+                <TextField name="mailHost" label={t("settings.mailHost")} defaultValue={mail?.host ?? ""} placeholder="smtp.example.com" autoComplete="off" />
+                <TextField name="mailPort" type="number" label={t("settings.mailPort")} defaultValue={mail?.port ?? 587} />
+              </div>
+              <Checkbox name="mailSecure" label={t("settings.mailSecure")} defaultChecked={mail?.secure ?? false} />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <TextField name="mailUser" label={t("settings.mailUser")} defaultValue={mail?.user ?? ""} autoComplete="off" />
+                <TextField name="mailPass" type="password" label={t("settings.mailPass")} help={t("settings.mailPassHelp")} autoComplete="new-password" />
+              </div>
+            </div>
+            <div className={`${ui.card} space-y-4`}>
+              <h3 className="font-semibold">{t("settings.mailSender")}</h3>
+              <TextField name="mailFrom" label={t("settings.mailFrom")} help={t("settings.mailFromHelp")} defaultValue={mail?.from ?? ""} />
+            </div>
           </ActionForm>
           {mail && (
             <ActionForm action={sendTestMail} submitLabel={t("settings.mailTest")} className="space-y-3">{null}</ActionForm>
