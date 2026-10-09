@@ -1,12 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-
-const fold = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+import { foldText as fold } from "@/core/modules/installedList";
 
 /**
  * Barre de recherche du catalogue : elle filtre au fil de la frappe les fiches déjà affichées (`[data-catalogue-item]`, texte cherché dans
- * `data-search`), sans accents ni majuscules, tous les mots devant s'y trouver. Les rubriques vides disparaissent. « / » met le curseur dans la barre.
+ * `data-search`) ; la page des modules installés s'en sert aussi, sans accents ni majuscules, tous les mots devant s'y trouver. Les rubriques vides disparaissent. « / » met le curseur dans la barre.
  */
 export function CatalogueSearch({ placeholder, noneLabel, clearLabel }: { placeholder: string; noneLabel: string; clearLabel: string }) {
   const [query, setQuery] = useState("");

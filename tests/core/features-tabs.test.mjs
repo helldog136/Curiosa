@@ -37,7 +37,8 @@ test("menu : « Modules » est la première entrée après le tableau de bord, m
   assert.match(page, /<CatalogueSearch/);
   assert.match(page, /data-catalogue-item data-search=/);
   assert.match(page, /<Link href=\{`\/admin\/catalogue\/details\?id=/, "navigation douce : la fiche s'ouvre par-dessus");
-  assert.match(read("src/components/admin/CatalogueSearch.tsx"), /normalize\("NFD"\)/, "sans accents ni majuscules");
+  assert.match(read("src/components/admin/CatalogueSearch.tsx"), /foldText/, "sans accents ni majuscules (filtre partagé avec la page Modules)");
+  assert.match(read("src/core/modules/installedList.ts"), /normalize\("NFD"\)/, "sans accents ni majuscules");
   // fiche en fenêtre : route interceptée + emplacement parallèle ; ouverte seule, la même fiche s'affiche en page entière
   assert.ok(fs.existsSync("src/app/admin/(panel)/catalogue/@modal/(.)details/page.tsx"));
   assert.ok(fs.existsSync("src/app/admin/(panel)/catalogue/@modal/default.tsx"));

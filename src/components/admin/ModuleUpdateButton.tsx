@@ -10,8 +10,8 @@ type Labels = { idle: string; working: string; done: string; failed: string };
 /** « Chercher une mise à jour » / « Mettre à jour » d'un module : même animation que l'installation, puis la page des modules affiche le résultat. */
 export function ModuleUpdateButton({ id, kind, labels }: { id: string; kind: "check" | "update"; labels: Labels }) {
   const router = useRouter();
-  // L'action dit où aller ensuite (page des modules, avec le résultat ou l'erreur) ; on y va après l'animation.
-  const target = { href: "/admin/modules" };
+  // L'action dit où aller ensuite (page du module, avec le résultat ou l'erreur) ; on y va après l'animation.
+  const target = { href: `/admin/modules/${id}` };
   return (
     <AnimatedActionButton look="secondary" progress={kind === "update" ? "continuous" : "fill"} icon={kind === "update" ? "⬆" : "🔍"} testid={`module-${kind}-${id}`} labels={labels}
       run={async () => { const r = await (kind === "update" ? updateModuleAction(id) : checkUpdateAction(id)); target.href = r.href; return { ok: r.ok }; }}

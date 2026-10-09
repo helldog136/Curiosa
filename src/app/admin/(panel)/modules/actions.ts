@@ -13,15 +13,20 @@ import { duplicateServices, providerInstances, setRouting } from "@/core/modules
 
 // Installer ou mettre à jour du code exécuté côté serveur est réservé au propriétaire.
 
-export async function toggleModule(id: string, enabled: boolean): Promise<void> {
+/** Page d'un module (messages d'erreur, de résultat… compris) : c'est là qu'on atterrit après une action sur lui. */
+const modulePage = (id: string, query = "") => `/admin/modules/${encodeURIComponent(id)}${query ? `?${query}` : ""}`;
+
+export async function toggleModule(id: string, enabled: boolean, formData?: FormData): Promise<void> {
   const { user } = await adminCtx("owner");
   const result = await setModuleEnabled(id, enabled);
   await audit(user.email, enabled ? "module.enable" : "module.disable", id);
   revalidatePath("/", "layout");
-  if (!result.ok) redirect(`/admin/modules?error=${encodeURIComponent(result.error)}${result.detail ? `&detail=${encodeURIComponent(result.detail)}` : ""}`);
+  // Depuis la liste (mode simple) on y reste ; depuis la page du module, on y reste aussi.
+  const home = formData?.get("from") === "list" ? "/admin/modules" : modulePage(id);
+  if (!result.ok) redirect(modulePage(id, `error=${encodeURIComponent(result.error)}${result.detail ? `&detail=${encodeURIComponent(result.detail)}` : ""}`));
   // Un fournisseur de plus pour un service déjà offert : l'admin doit dire qui est le maître.
   if (enabled && (await duplicateServices()).some((d) => !d.resolved)) redirect("/admin/modules?notice=services");
-  redirect("/admin/modules");
+  redirect(home);
 }
 
 /** Maître et répliques d'un service offert par plusieurs instances. */
@@ -46,7 +51,7 @@ export async function checkUpdateAction(id: string): Promise<ModuleActionResult>
   const params = new URLSearchParams({ update: available ? "yes" : "no", module: id });
   if (available && target) params.set("to", target);
   if (available && level) params.set("level", level);
-  return { ok: true, href: `/admin/modules?${params}` };
+  return { ok: true, href: modulePage(id, params.toString()) };
 }
 
 export async function updateModuleAction(id: string): Promise<ModuleActionResult> {
@@ -54,9 +59,9 @@ export async function updateModuleAction(id: string): Promise<ModuleActionResult
   const result = await updateModule(id);
   await audit(user.email, "module.update", id);
   revalidatePath("/", "layout");
-  if (!result.ok) return { ok: false, href: `/admin/modules?error=${encodeURIComponent(result.error)}` };
-  if (result.migrations?.some((m) => m.status === "failed" || m.status === "newer")) return { ok: false, href: "/admin/modules?error=modules.error.migration" };
-  return { ok: true, href: "/admin/modules" };
+  if (!result.ok) return { ok: false, href: modulePage(id, `error=${encodeURIComponent(result.error)}`) };
+  if (result.migrations?.some((m) => m.status === "failed" || m.status === "newer")) return { ok: false, href: modulePage(id, "error=modules.error.migration") };
+  return { ok: true, href: modulePage(id) };
 }
 
 export async function uninstallModuleAction(id: string): Promise<void> {
@@ -64,7 +69,7 @@ export async function uninstallModuleAction(id: string): Promise<void> {
   const result = await uninstallModule(id);
   if (result.ok) await audit(user.email, "module.uninstall", id);
   revalidatePath("/", "layout");
-  if (!result.ok) redirect(`/admin/modules?error=${encodeURIComponent(result.error)}${result.detail ? `&detail=${encodeURIComponent(result.detail)}` : ""}`);
+  if (!result.ok) redirect(modulePage(id, `error=${encodeURIComponent(result.error)}${result.detail ? `&detail=${encodeURIComponent(result.detail)}` : ""}`));
   redirect("/admin/modules");
 }
 
@@ -76,9 +81,9 @@ export async function uninstallModuleAction(id: string): Promise<void> {
 export async function addInstance(moduleId: string, formData: FormData): Promise<void> {
   const { user, config } = await adminCtx("admin");
   const mod = await getModule(moduleId);
-  if (!mod || !mod.row.enabled) redirect("/admin/modules?error=modules.error.load");
+  if (!mod || !mod.row.enabled) redirect(modulePage(moduleId, "error=modules.error.load"));
   const existing = await prisma.moduleInstance.findMany({ where: { moduleId } });
-  if (mod.manifest.instances === "single" && existing.length > 0) redirect("/admin/modules?error=instances.error.single");
+  if (mod.manifest.instances === "single" && existing.length > 0) redirect(modulePage(moduleId, "error=instances.error.single"));
 
   let nickname: string | undefined;
   if (existing.length > 0) {
@@ -93,11 +98,11 @@ export async function addInstance(moduleId: string, formData: FormData): Promise
       if (e.nickname) continue;
       const others = [...assigned.entries()].filter(([id]) => id !== e.id).map(([, v]) => v);
       const res = check(assigned.get(e.id) ?? "", others);
-      if (!res.ok) redirect(`/admin/modules?error=instances.error.nickname.${res.reason}`);
+      if (!res.ok) redirect(modulePage(moduleId, `error=instances.error.nickname.${res.reason}`));
       assigned.set(e.id, res.value);
     }
     const res = check(String(formData.get("nickname") ?? ""), [...assigned.values()]);
-    if (!res.ok) redirect(`/admin/modules?error=instances.error.nickname.${res.reason}`);
+    if (!res.ok) redirect(modulePage(moduleId, `error=instances.error.nickname.${res.reason}`));
     nickname = res.value;
     for (const e of existing) if (!e.nickname) await prisma.moduleInstance.update({ where: { id: e.id }, data: { nickname: assigned.get(e.id) } });
   }

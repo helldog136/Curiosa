@@ -72,7 +72,7 @@ test("journal d'audit : toute action écrite par le code est dans la liste (sino
 });
 
 test("pages d'admin : chaque clé de traduction écrite en dur dans ces pages existe en français et en anglais", () => {
-  const files = ["page.tsx", "users/page.tsx", "backup/page.tsx", "updates/page.tsx", "account/page.tsx", "audit/page.tsx", "mcp/page.tsx", "mcp/[id]/page.tsx", "mode/page.tsx", "modules/page.tsx"];
+  const files = ["page.tsx", "users/page.tsx", "backup/page.tsx", "updates/page.tsx", "account/page.tsx", "audit/page.tsx", "mcp/page.tsx", "mcp/[id]/page.tsx", "mode/page.tsx", "modules/page.tsx", "modules/[id]/page.tsx"];
   for (const f of files) {
     for (const m of read(`${PANEL}/${f}`).matchAll(/\bt\("([a-zA-Z0-9_.-]+)"/g)) {
       assert.ok(m[1] in fr, `${f} : « ${m[1]} » manque en français`);
@@ -126,7 +126,8 @@ test("API & MCP : ordre en étapes, désactivation et révocation confirmées, �
 test("modules installés : état vide qui mène au catalogue, désinstallation dans la zone danger", () => {
   const page = read(`${PANEL}/modules/page.tsx`);
   assert.match(page, /mods\.length === 0 && \(\s*<EmptyState[^]*\/admin\/catalogue/);
-  assert.match(page, /<DangerZone[^]*uninstallModuleAction[^]*<\/DangerZone>/);
+  const one = read(`${PANEL}/modules/[id]/page.tsx`);
+  assert.match(one, /<DangerZone[^]*uninstallModuleAction[^]*<\/DangerZone>/);
 });
 
 test("mode simple / avancé : une page explique la différence et ne change que le choix de la personne connectée", () => {
