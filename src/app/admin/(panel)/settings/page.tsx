@@ -178,7 +178,7 @@ export default async function SettingsPage() {
           <h3 className="font-semibold">{t("settings.colors")}</h3>
           <ThemePicker background={config.background} accent={config.accent} advanced={advanced}
             labels={{ background: t("settings.background"), accent: t("settings.accent") }}
-            names={{ night: t("theme.night"), ocean: t("theme.ocean"), forest: t("theme.forest"), rose: t("theme.rose"), violet: t("theme.violet"), daylight: t("theme.daylight"), paper: t("theme.paper") }} />
+            names={{ night: t("theme.night"), ocean: t("theme.ocean"), forest: t("theme.forest"), rose: t("theme.rose"), violet: t("theme.violet"), daylight: t("theme.daylight"), paper: t("theme.paper"), custom: t("theme.custom") }} />
           {advanced && (
             <Select name="font" label={t("settings.font")} defaultValue={config.font}
               options={[{ value: "sans", label: "Sans-serif" }, { value: "serif", label: "Serif" }, { value: "mono", label: "Monospace" }]} />

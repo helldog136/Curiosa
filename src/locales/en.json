@@ -1201,5 +1201,6 @@
   "modules.updated": "✓ Updated",
   "modules.updateFailed": "The update failed",
   "updates.working": "Update in progress…",
-  "updates.done": "✓ Installed"
+  "updates.done": "✓ Installed",
+  "theme.custom": "Custom"
 }

@@ -1201,5 +1201,6 @@
   "modules.updated": "✓ Mis à jour",
   "modules.updateFailed": "Échec de la mise à jour",
   "updates.working": "Mise à jour en cours…",
-  "updates.done": "✓ Installée"
+  "updates.done": "✓ Installée",
+  "theme.custom": "Personnalisé"
 }
