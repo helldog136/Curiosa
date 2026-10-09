@@ -11,7 +11,7 @@ export type NavLeaf =
 export type NavItem = NavLeaf | { uid: string; kind: "group"; label: Record<string, string>; items: NavLeaf[] };
 type Labels = {
   empty: string; addPage: string; addLink: string; addGroup: string; pickPage: string; noMorePages: string; cancel: string;
-  up: string; down: string; remove: string; page: string; link: string; group: string; groupName: string; groupEmpty: string; href: string; hrefPlaceholder: string; label: string;
+  up: string; down: string; remove: string; page: string; link: string; group: string; groupName: string; groupEmpty: string; href: string; hrefHelp: string; hrefPlaceholder: string; label: string;
 };
 
 let counter = 0;
@@ -29,7 +29,7 @@ const leafPayload = (i: NavLeaf) => (i.kind === "page" ? { k: "page", id: i.id }
 
 /**
  * Éditeur du menu : UNE liste ordonnée où pages du site, liens libres et GROUPES (menus déroulants qui rangent des pages et des liens, un seul niveau)
- * se mélangent. On réordonne avec des flèches, on retire avec la corbeille rouge en haut à droite de chaque élément.
+ * se mélangent. On réordonne avec des flèches, on retire avec le bouton rouge en bas de chaque élément.
  * Le champ envoyé est un seul JSON `items`, dans l'ordre affiché :
  * [{ k: "page", id } | { k: "link", href, label } | { k: "group", label, items: [page | link] }].
  */
@@ -49,20 +49,44 @@ export function NavEditor({ pages, locales, initial, labels }: { pages: NavPage[
     setItems((a) => a.map((x) => (x.uid === id && x.kind === "group" ? fn(x) : x)));
   const addLeaf = (target: string, leaf: NavLeaf) => setItems((a) => (target === "root" ? [...a, leaf] : a.map((x) => (x.uid === target && x.kind === "group" ? { ...x, items: [...x.items, leaf] } : x))));
 
+  /** Pied de carte : déplacer à gauche, retirer à l'autre bout, séparés des champs par un filet. Boutons avec un texte visible. */
   const controls = (i: number, count: number, onMove: (d: -1 | 1) => void, onRemove: () => void) => (
-    <div className="absolute right-3 top-3 flex items-center gap-1">
-      <button type="button" className={`${ui.btn} !px-3`} onClick={() => onMove(-1)} disabled={i === 0} aria-label={labels.up} title={labels.up}>↑</button>
-      <button type="button" className={`${ui.btn} !px-3`} onClick={() => onMove(1)} disabled={i === count - 1} aria-label={labels.down} title={labels.down}>↓</button>
-      <button type="button" className={`${ui.btnDanger} !px-3`} onClick={onRemove} aria-label={labels.remove} title={labels.remove}>🗑</button>
+    <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3">
+      <div className="flex items-center gap-2">
+        <button type="button" className={`${ui.btn} !px-3`} onClick={() => onMove(-1)} disabled={i === 0} aria-label={labels.up}>↑ {labels.up}</button>
+        <button type="button" className={`${ui.btn} !px-3`} onClick={() => onMove(1)} disabled={i === count - 1} aria-label={labels.down}>↓ {labels.down}</button>
+      </div>
+      <button type="button" className={`${ui.btnDanger} !px-3`} onClick={onRemove} aria-label={labels.remove}>{labels.remove}</button>
     </div>
   );
+
+  /** Libellé : un seul champ « Libellé » si le site n'a qu'une langue ; sinon un champ par langue, regroupés sous un même titre. */
+  const labelFields = (title: string, value: Record<string, string>, onChange: (next: Record<string, string>) => void) =>
+    locales.length <= 1 ? (
+      <label className="block text-sm">
+        <span className={ui.label}>{title}</span>
+        <input value={value[locales[0]?.code ?? ""] ?? ""} onChange={(e) => onChange({ ...value, [locales[0]?.code ?? ""]: e.target.value })} className={ui.input} />
+      </label>
+    ) : (
+      <fieldset className="space-y-2">
+        <legend className={ui.label}>{title}</legend>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {locales.map((l) => (
+            <label key={l.code} className="block text-sm">
+              <span className="mb-1 block text-xs text-muted">{l.name}</span>
+              <input value={value[l.code] ?? ""} onChange={(e) => onChange({ ...value, [l.code]: e.target.value })} className={ui.input} />
+            </label>
+          ))}
+        </div>
+      </fieldset>
+    );
 
   const leafBody = (item: NavLeaf) => {
     if (item.kind === "page") {
       const page = byId.get(item.id);
       if (!page) return null;
       return (
-        <div className="pr-36">
+        <div>
           <p className="text-xs font-medium uppercase tracking-wide text-muted">{labels.page}</p>
           <p className="font-semibold leading-tight">{page.title}</p>
           <p className="text-sm text-muted">{page.href}</p>
@@ -71,19 +95,13 @@ export function NavEditor({ pages, locales, initial, labels }: { pages: NavPage[
     }
     return (
       <>
-        <p className="pr-36 text-xs font-medium uppercase tracking-wide text-muted">{labels.link}</p>
+        <p className="text-xs font-medium uppercase tracking-wide text-muted">{labels.link}</p>
+        {labelFields(labels.label, item.label, (label) => setItems((a) => patchLink(a, item.uid, { label })))}
         <label className="block text-sm">
           <span className={ui.label}>{labels.href}</span>
           <input value={item.href} onChange={(e) => setItems((a) => patchLink(a, item.uid, { href: e.target.value }))} placeholder={labels.hrefPlaceholder} className={ui.input} />
+          <span className={`${ui.help} mt-1 block`}>{labels.hrefHelp}</span>
         </label>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {locales.map((l) => (
-            <label key={l.code} className="block text-sm">
-              <span className={ui.label}>{labels.label} — {l.name}</span>
-              <input value={item.label[l.code] ?? ""} onChange={(e) => setItems((a) => patchLink(a, item.uid, { label: { ...item.label, [l.code]: e.target.value } }))} className={ui.input} />
-            </label>
-          ))}
-        </div>
       </>
     );
   };
@@ -125,40 +143,33 @@ export function NavEditor({ pages, locales, initial, labels }: { pages: NavPage[
         {items.map((item, i) => {
           if (item.kind === "group") {
             return (
-              <li key={item.uid} className={`${ui.card} relative space-y-3 border-accent/40`} data-testid="nav-group">
-                {controls(i, items.length, (d) => setItems((a) => swap(a, i, d)), () => setItems((a) => a.filter((x) => x.uid !== item.uid)))}
-                <p className="pr-36 text-xs font-medium uppercase tracking-wide text-muted">▾ {labels.group}</p>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {locales.map((l) => (
-                    <label key={l.code} className="block text-sm">
-                      <span className={ui.label}>{labels.groupName} — {l.name}</span>
-                      <input value={item.label[l.code] ?? ""} onChange={(e) => patchGroup(item.uid, (g) => ({ ...g, label: { ...g.label, [l.code]: e.target.value } }))} className={ui.input} />
-                    </label>
-                  ))}
-                </div>
+              <li key={item.uid} className={`${ui.card} space-y-3 border-accent/40`} data-testid="nav-group">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted">▾ {labels.group}</p>
+                {labelFields(labels.groupName, item.label, (label) => patchGroup(item.uid, (g) => ({ ...g, label })))}
                 <ol className="space-y-3 border-l-2 border-line pl-4">
                   {item.items.length === 0 && <li className={ui.help}>{labels.groupEmpty}</li>}
                   {item.items.map((child, j) => {
                     const body = leafBody(child);
                     if (!body) return null;
                     return (
-                      <li key={child.uid} className="relative space-y-3 rounded-xl border border-line bg-bg p-3">
-                        {controls(j, item.items.length, (d) => patchGroup(item.uid, (g) => ({ ...g, items: swap(g.items, j, d) })), () => patchGroup(item.uid, (g) => ({ ...g, items: g.items.filter((c) => c.uid !== child.uid) })))}
+                      <li key={child.uid} className="space-y-3 rounded-xl border border-line bg-bg p-3">
                         {body}
+                        {controls(j, item.items.length, (d) => patchGroup(item.uid, (g) => ({ ...g, items: swap(g.items, j, d) })), () => patchGroup(item.uid, (g) => ({ ...g, items: g.items.filter((c) => c.uid !== child.uid) })))}
                       </li>
                     );
                   })}
                 </ol>
                 {adders(item.uid)}
+                {controls(i, items.length, (d) => setItems((a) => swap(a, i, d)), () => setItems((a) => a.filter((x) => x.uid !== item.uid)))}
               </li>
             );
           }
           const body = leafBody(item);
           if (!body) return null;
           return (
-            <li key={item.uid} className={`${ui.card} relative space-y-3`}>
-              {controls(i, items.length, (d) => setItems((a) => swap(a, i, d)), () => setItems((a) => a.filter((x) => x.uid !== item.uid)))}
+            <li key={item.uid} className={`${ui.card} space-y-3`}>
               {body}
+              {controls(i, items.length, (d) => setItems((a) => swap(a, i, d)), () => setItems((a) => a.filter((x) => x.uid !== item.uid)))}
             </li>
           );
         })}

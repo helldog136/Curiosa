@@ -35,7 +35,7 @@ export default async function NavigationPage() {
           labels={{
             empty: t("navigation.empty"), addPage: t("navigation.addPage"), addLink: t("navigation.addLink"), addGroup: t("navigation.addGroup"), group: t("navigation.group"), groupName: t("navigation.groupName"), groupEmpty: t("navigation.groupEmpty"), pickPage: t("navigation.pickPage"),
             noMorePages: t("navigation.noMorePages"), cancel: t("navigation.cancel"), up: t("navigation.up"), down: t("navigation.down"), remove: t("navigation.remove"),
-            page: t("navigation.page"), link: t("navigation.link"), href: t("navigation.href"), hrefPlaceholder: t("navigation.hrefPlaceholder"), label: t("navigation.label"),
+            page: t("navigation.page"), link: t("navigation.link"), href: t("navigation.href"), hrefHelp: t("navigation.hrefHelp"), hrefPlaceholder: t("navigation.hrefPlaceholder"), label: t("navigation.label"),
           }}
         />
       </ActionForm>
