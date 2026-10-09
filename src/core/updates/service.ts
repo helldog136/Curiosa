@@ -108,7 +108,7 @@ export async function checkForUpdate(opts: { appDir?: string; fetchJson?: JsonFe
   return getUpdateCheck(appDir);
 }
 
-export function readUpdateState(dataDir = DATA_DIR): { status: "idle" | "running" | "success" | "failed"; target?: string; from?: string; step?: string; error?: string | null; rolledBack?: boolean; restart?: string; startedAt?: number; finishedAt?: number | null } {
+export function readUpdateState(dataDir = DATA_DIR): { status: "idle" | "running" | "success" | "failed"; target?: string; from?: string; step?: string; chain?: { index: number; total: number; steps: string[] } | null; remaining?: string[]; error?: string | null; rolledBack?: boolean; restart?: string; startedAt?: number; finishedAt?: number | null } {
   try { return JSON.parse(fs.readFileSync(path.join(dataDir, "update", "state.json"), "utf8")); } catch { return { status: "idle" }; }
 }
 

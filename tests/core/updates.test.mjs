@@ -8,7 +8,7 @@ import { execFile, execFileSync } from "node:child_process";
 import { promisify } from "node:util";
 
 const V = await import("@/core/updates/versions");
-const { runUpdate, readState, resolveSqlitePath, safeEntry } = await import("../../scripts/update-lib.mjs");
+const { runUpdate, runUpdateChain, planUpdate, readState, resolveSqlitePath, safeEntry } = await import("../../scripts/update-lib.mjs");
 const sh = promisify(execFile);
 
 test("versions : étiquettes stables seulement, comparaison numérique (1.10 > 1.9)", () => {
@@ -331,4 +331,140 @@ test("empaquetage : le moteur de base de données est livré pour OpenSSL 1.1 (U
   assert.match(schema, /binaryTargets\s*=\s*\[[^\]]*"debian-openssl-1\.1\.x"[^\]]*"debian-openssl-3\.0\.x"|binaryTargets\s*=\s*\[[^\]]*"debian-openssl-3\.0\.x"[^\]]*"debian-openssl-1\.1\.x"/);
   const pack = fs.readFileSync("scripts/release-pack.mjs", "utf8");
   assert.ok(pack.includes("debian-openssl-1.1.x") && pack.includes("debian-openssl-3.0.x"));
+});
+
+/* ───────────── Mise à jour en plusieurs versions : les étapes exigées par la cible sont installées d'abord ───────────── */
+
+/** `upgrade.json` des releases, tel que GitHub les servirait : { "v1.2.0": { minFrom: "1.1.0" } } ; absent = 404 (null). */
+const published = (files) => async (url) => {
+  const m = /\/download\/(v[^/]+)\/upgrade\.json$/.exec(url);
+  if (!m) throw new Error(`url inattendue : ${url}`);
+  if (files[m[1]] === "panne") throw new Error("réseau");
+  return files[m[1]] === undefined ? null : JSON.stringify(files[m[1]]);
+};
+const REPO = "owner/curiosa";
+
+test("chemin de mise à jour : rien d'exigé → directement ; exigence satisfaite → directement ; sinon les étapes dans l'ordre, de proche en proche", async () => {
+  const plan = (current, target, files) => planUpdate({ current, target, repo: REPO, fetchText: published(files) });
+  assert.deepEqual(await plan("1.0.0", "v1.2.0", {}), ["v1.2.0"], "aucun upgrade.json : pas d'étape");
+  assert.deepEqual(await plan("1.1.0", "v1.2.0", { "v1.2.0": { minFrom: "1.1.0" } }), ["v1.2.0"], "déjà assez récent");
+  assert.deepEqual(await plan("1.3.0", "v1.4.0", { "v1.4.0": { minFrom: "1.1.0" } }), ["v1.4.0"]);
+  assert.deepEqual(await plan("1.0.0", "v1.2.0", { "v1.2.0": { minFrom: "1.1.0" } }), ["v1.1.0", "v1.2.0"]);
+  assert.deepEqual(await plan("1.0.0", "v1.3.0", { "v1.3.0": { minFrom: "1.2.0" }, "v1.2.0": { minFrom: "1.1.0" } }), ["v1.1.0", "v1.2.0", "v1.3.0"], "une étape peut elle-même en exiger une autre");
+  assert.deepEqual(await plan("1.0.0", "v1.3.0", { "v1.3.0": {} }), ["v1.3.0"], "fichier sans minFrom : aucune exigence");
+});
+
+test("chemin de mise à jour : fichier incohérent ou réseau en panne → erreur, jamais « pas d'étape » par défaut", async () => {
+  const plan = (files) => planUpdate({ current: "1.0.0", target: "v1.2.0", repo: REPO, fetchText: published(files) });
+  await assert.rejects(plan({ "v1.2.0": { minFrom: "pas une version" } }), /invalide/);
+  await assert.rejects(plan({ "v1.2.0": { minFrom: "1.2.0" } }), /incohérent/, "une version qui s'exige elle-même");
+  await assert.rejects(plan({ "v1.2.0": { minFrom: "1.3.0" } }), /incohérent/, "une exigence plus récente que la cible");
+  await assert.rejects(plan({ "v1.2.0": { minFrom: "1.1.0" }, "v1.1.0": { minFrom: "1.1.5" } }), /incohérent/, "une étape qui exige plus récent qu'elle");
+  await assert.rejects(plan({ "v1.2.0": "panne" }), /réseau/, "réseau en panne ≠ 404");
+  await assert.rejects(planUpdate({ current: "1.0.0", target: "v1.2.0", repo: REPO, fetchText: async () => "pas du json" }));
+});
+
+test("mise à jour en chaîne : installe l'étape, redémarre, attend que le site revienne, puis installe la cible — la base est sauvegardée à chaque étape", async () => {
+  const s = setup(); try {
+    s.build("1.1.0"); s.build("1.2.0");
+    const events = [];
+    const exec = async (cmd, args, o) => { if (cmd === "sh") { events.push(`restart@${s.buildId()}`); return { stdout: "" }; } return s.make()(cmd, args, o); };
+    const r = await runUpdateChain({ ...opts(s), tag: "v1.2.0", exec, restartCommand: "restart", fetchText: published({ "v1.2.0": { minFrom: "1.1.0" } }),
+      waitForSite: async () => { events.push(`attente@${s.buildId()}`); return true; } });
+    assert.deepEqual(r, { ok: true });
+    assert.deepEqual(events, ["restart@build-1.1.0", "attente@build-1.1.0", "restart@build-1.2.0"], "la version intermédiaire tourne VRAIMENT avant la suivante");
+    assert.equal(s.buildId(), "build-1.2.0");
+    assert.deepEqual(s.downloads.filter((u) => u.endsWith(".tar.gz")).map((u) => /\/(v[^/]+)\//.exec(u)[1]), ["v1.1.0", "v1.2.0"]);
+    assert.equal(s.calls.filter((c) => c.includes("migrate deploy")).length, 2, "les migrations de chaque étape");
+    assert.equal(fs.readdirSync(path.join(s.dataDir, "backups")).length, 2, "une sauvegarde avant chaque étape");
+    const st = readState(s.dataDir);
+    assert.deepEqual([st.status, st.target, st.error, st.chain?.total, st.chain?.index], ["success", "v1.2.0", null, 2, 2]);
+  } finally { s.cleanup(); }
+});
+
+test("mise à jour en chaîne : pendant l'étape intermédiaire l'état reste « en cours » (pas de faux succès affiché)", async () => {
+  const s = setup(); try {
+    s.build("1.1.0"); s.build("1.2.0");
+    const seen = [];
+    const exec = async (cmd, args, o) => { if (cmd === "sh") return { stdout: "" }; return s.make()(cmd, args, o); };
+    await runUpdateChain({ ...opts(s), tag: "v1.2.0", exec, restartCommand: "restart", fetchText: published({ "v1.2.0": { minFrom: "1.1.0" } }),
+      waitForSite: async () => { const st = readState(s.dataDir); seen.push([st.status, st.chain?.index, st.chain?.total]); return true; } });
+    assert.deepEqual(seen, [["running", 1, 2]]);
+  } finally { s.cleanup(); }
+});
+
+test("mise à jour en chaîne : sans redémarrage automatique, on s'arrête après l'étape (version intermédiaire en place) ; le prochain essai reprend", async () => {
+  const s = setup(); try {
+    s.build("1.1.0"); s.build("1.2.0");
+    const fetchText = published({ "v1.2.0": { minFrom: "1.1.0" } });
+    let waited = 0;
+    const first = await runUpdateChain({ ...opts(s), tag: "v1.2.0", exec: s.make(), fetchText, waitForSite: async () => { waited++; return true; } });
+    assert.deepEqual(first, { ok: true, partial: true, remaining: ["v1.2.0"] });
+    assert.equal(waited, 0);
+    assert.equal(s.buildId(), "build-1.1.0");
+    const st = readState(s.dataDir);
+    assert.deepEqual([st.status, st.restart, st.remaining], ["success", "needed", ["v1.2.0"]]);
+    // le propriétaire redémarre, puis relance : le chemin est recalculé depuis la 1.1.0 → une seule étape
+    const second = await runUpdateChain({ ...opts(s), tag: "v1.2.0", exec: s.make(), fetchText, waitForSite: async () => true });
+    assert.deepEqual(second, { ok: true });
+    assert.equal(s.buildId(), "build-1.2.0");
+  } finally { s.cleanup(); }
+});
+
+test("mise à jour en chaîne : le site ne revient pas après l'étape → on s'arrête sur la version intermédiaire qui fonctionne, la cible n'est pas installée", async () => {
+  const s = setup(); try {
+    s.build("1.1.0"); s.build("1.2.0");
+    const exec = async (cmd, args, o) => { if (cmd === "sh") return { stdout: "" }; return s.make()(cmd, args, o); };
+    const r = await runUpdateChain({ ...opts(s), tag: "v1.2.0", exec, restartCommand: "restart", fetchText: published({ "v1.2.0": { minFrom: "1.1.0" } }), waitForSite: async () => false });
+    assert.deepEqual(r, { ok: false, error: "site-not-back" });
+    assert.equal(s.buildId(), "build-1.1.0");
+    assert.ok(!s.downloads.some((u) => u.includes("v1.2.0/curiosa")), "la cible n'est même pas téléchargée");
+    assert.equal(readState(s.dataDir).status, "failed");
+  } finally { s.cleanup(); }
+});
+
+test("mise à jour en chaîne : une étape qui échoue est annulée (retour arrière) et la suite n'est pas tentée", async () => {
+  const s = setup(); try {
+    s.build("1.1.0"); s.build("1.2.0");
+    const exec = async (cmd, args, o) => { if (cmd === "sh") return { stdout: "" }; return s.make({ fail: "migrate deploy", always: true })(cmd, args, o); };
+    const r = await runUpdateChain({ ...opts(s), tag: "v1.2.0", exec, restartCommand: "restart", fetchText: published({ "v1.2.0": { minFrom: "1.1.0" } }), waitForSite: async () => true });
+    assert.deepEqual(r, { ok: false, error: "step-failed:migrate" });
+    assert.equal(s.buildId(), "build-1.0.0", "l'installation d'origine est rétablie");
+    assert.equal(readState(s.dataDir).rolledBack, true);
+  } finally { s.cleanup(); }
+});
+
+test("mise à jour en chaîne : chemin introuvable (réseau, fichier invalide) → rien n'est touché et l'échec est expliqué", async () => {
+  const s = setup(); try {
+    s.build("1.2.0");
+    const r = await runUpdateChain({ ...opts(s), tag: "v1.2.0", exec: s.make(), fetchText: published({ "v1.2.0": "panne" }), waitForSite: async () => true });
+    assert.deepEqual(r, { ok: false, error: "plan-failed" });
+    assert.equal(s.buildId(), "build-1.0.0");
+    assert.deepEqual(s.downloads, []);
+    const st = readState(s.dataDir);
+    assert.deepEqual([st.status, st.error], ["failed", "plan-failed"]);
+    assert.match(fs.readFileSync(path.join(s.dataDir, "update", "update.log"), "utf8"), /chemin de mise à jour introuvable/);
+  } finally { s.cleanup(); }
+});
+
+test("mise à jour en chaîne : sans étape intermédiaire elle se comporte comme une mise à jour simple", async () => {
+  const s = setup(); try {
+    s.build("1.1.0");
+    let waited = 0;
+    const r = await runUpdateChain({ ...opts(s), tag: "v1.1.0", exec: s.make(), fetchText: published({}), waitForSite: async () => { waited++; return true; } });
+    assert.deepEqual(r, { ok: true });
+    assert.equal(waited, 0);
+    const st = readState(s.dataDir);
+    assert.deepEqual([st.status, st.chain], ["success", null]);
+  } finally { s.cleanup(); }
+});
+
+test("release : chaque release publie `upgrade.json` (minFrom) à côté de l'archive ; il est vérifié, valide et jamais plus récent que la version elle-même", () => {
+  const up = JSON.parse(fs.readFileSync("upgrade.json", "utf8"));
+  const version = JSON.parse(fs.readFileSync("package.json", "utf8")).version;
+  assert.match(up.minFrom, /^\d+\.\d+\.\d+$/);
+  assert.ok(V.compareVersions(up.minFrom, version) <= 0, "on n'exige pas une version plus récente que soi");
+  const pack = fs.readFileSync("scripts/release-pack.mjs", "utf8");
+  assert.match(pack, /copyFileSync\("upgrade\.json"/);
+  assert.match(fs.readFileSync(".github/workflows/release.yml", "utf8"), /gh release create .* dist\/\*/, "tout dist/ est publié, upgrade.json compris");
 });

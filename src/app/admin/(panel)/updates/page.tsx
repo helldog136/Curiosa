@@ -46,6 +46,7 @@ export default async function UpdatesPage() {
               </details>
             )}
             <p className={ui.help}>{t(`updates.restart.${info.restart}`)}</p>
+            {check.available && <p className={ui.help}>{t("updates.chainNote")}</p>}
           </>
         )}
       </section>
@@ -63,8 +64,8 @@ export default async function UpdatesPage() {
         <section className={`${ui.card} space-y-2`}>
           <h2 className="text-lg font-semibold">{t("updates.last")}</h2>
           <p>
-            {running && <>⏳ {t("updates.running", { version: state.target ?? "", step: state.step ?? "" })}</>}
-            {state.status === "success" && <>✅ {t("updates.success", { version: state.target ?? "" })}</>}
+            {running && <>⏳ {t("updates.running", { version: state.target ?? "", step: state.step ?? "" })}{state.chain && <> {t("updates.stepOf", { index: state.chain.index, total: state.chain.total })}</>}</>}
+            {state.status === "success" && (state.remaining?.length ? <>⏸️ {t("updates.partial", { version: state.target ?? "" })}</> : <>✅ {t("updates.success", { version: state.target ?? "" })}</>)}
             {state.status === "failed" && <>❌ {t("updates.failed", { error: state.error ?? "" })}{state.rolledBack ? ` — ${t("updates.rolledBack")}` : ""}</>}
           </p>
           {(state.status === "success" || state.status === "failed") && state.restart === "needed" && (
