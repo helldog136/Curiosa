@@ -41,7 +41,7 @@ export function EntryList({ entries, collection, locale, defaultLocale }: Props)
                 href={href}
                 lang={e.locale}
                 {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-                className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-4 py-2 text-sm transition-colors hover:border-accent hover:text-accent"
+                data-chip="" className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-4 py-2 text-sm transition-colors hover:border-accent hover:text-accent"
               >
                 <EntryIcon icon={e.icon} />
                 {e.title}
@@ -80,7 +80,7 @@ export function EntryList({ entries, collection, locale, defaultLocale }: Props)
           <li
             key={e.id}
             lang={e.locale}
-            className={`flex flex-col overflow-hidden rounded-xl border border-line bg-surface ${e.expired ? "opacity-60" : ""}`}
+            data-card="" className={`flex flex-col overflow-hidden rounded-xl border border-line bg-surface ${e.expired ? "opacity-60" : ""}`}
           >
             {e.cover && (
               // eslint-disable-next-line @next/next/no-img-element

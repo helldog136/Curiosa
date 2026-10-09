@@ -79,6 +79,23 @@ export function gradientOf(accent: string, accent2: string, oklch = true): strin
   return `linear-gradient(120deg${oklch && accent.toLowerCase() !== accent2.toLowerCase() ? " in oklch" : ""}, ${accent}, ${accent2})`;
 }
 
+/** Vrai si le site a choisi un accent secondaire différent de l'accent : c'est alors seulement que les accents de détail, les boutons pleins et les dégradés s'activent (attribut `data-accent2`). Sans choix, le site garde son apparence d'origine. */
+export function hasAccent2(config: { accent?: string | null; accent2?: string | null }): boolean {
+  return isHexColor(config.accent2) && (!isHexColor(config.accent) || config.accent2.toLowerCase() !== config.accent.toLowerCase());
+}
+
+/** Vrai si l'administrateur a choisi lui-même la couleur des cartes (attribut `data-surface`). */
+export function hasChosenSurface(config: { surface?: string | null }): boolean {
+  return isHexColor(config.surface);
+}
+
+/** Texte (noir ou blanc) à poser sur le dégradé accent → accent2 : celui dont le plus mauvais contraste, mesuré aux deux extrémités et en trois points intermédiaires, est le meilleur. */
+export function gradientTextOn(accent: string, accent2: string): string {
+  const points = [0, 0.25, 0.5, 0.75, 1].map((r) => mix(accent, accent2, r));
+  const worst = (ink: string) => Math.min(...points.map((p) => contrast(p, ink)));
+  return worst(INK) >= worst(PAPER) ? INK : PAPER;
+}
+
 /** Palette complète dérivée de deux couleurs (le fond et l'accent), et des choix facultatifs `extra`. Sans `extra`, le résultat est celui d'avant leur existence. */
 export function buildPalette(background: string, accent: string, extra: ThemeExtra = {}): Record<string, string> {
   const bg = isHexColor(background) ? background : DEFAULT_BG;

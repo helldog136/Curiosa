@@ -75,7 +75,7 @@ export async function Header({ config, locale }: { config: SiteConfig; locale: s
   );
   const secondaryEl = config.header.secondary && <a href={local(config.header.secondary.href)} className="text-sm text-muted hover:text-fg">{config.header.secondary.label}</a>;
   const buttonEl = config.header.button && (
-    <a href={local(config.header.button.href)} data-testid="header-button" className="rounded-full border-2 border-accent px-4 py-1.5 text-sm font-semibold text-accent transition-colors hover:bg-accent hover:text-accent-fg">{config.header.button.label}</a>
+    <a href={local(config.header.button.href)} data-testid="header-button" data-btn="primary" className="rounded-full border-2 border-accent px-4 py-1.5 text-sm font-semibold text-accent transition-colors hover:bg-accent hover:text-accent-fg">{config.header.button.label}</a>
   );
   const bell = config.newsToggle && <NewsToggle labels={{ on: t("site.newsOn"), off: t("site.newsOff"), title: t("site.newsHelp") }} />;
   const lang = <>{bell}<LanguageSwitcher locales={config.locales} current={locale} defaultLocale={config.defaultLocale} /></>;

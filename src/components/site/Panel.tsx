@@ -43,7 +43,7 @@ function Button({ button, on }: { button?: { label: string; href: string }; on?:
   if (!button?.label) return null;
   const href = safeHref(button.href);
   return (
-    <a href={href} {...(isExternalHref(href) ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+    <a href={href} data-btn={on ? undefined : "primary"} {...(isExternalHref(href) ? { target: "_blank", rel: "noopener noreferrer" } : {})}
       className={`inline-block rounded-full border-2 px-6 py-3 font-semibold transition-colors ${BUTTON_STYLES[on ?? "page"]}`}>
       {button.label}
     </a>
@@ -65,7 +65,7 @@ export function Panel({ block, labels }: { block: PanelBlock; labels: VideoLabel
   const on: ButtonOn | undefined = veil === "dark" ? "veil" : block.tone === "accent" ? "accent" : undefined;
   const dark = on !== undefined;
   const tone = block.tone === "accent" ? (on === "veil" ? "bg-accent" : "bg-accent text-accent-fg") : block.tone === "surface" ? "bg-surface" : "";
-  const heading = block.title ? <h2 className={`text-3xl font-bold tracking-tight sm:text-4xl ${!dark ? "text-accent" : ""}`}>{block.title}</h2> : null;
+  const heading = block.title ? <h2 data-marker={!dark ? "" : undefined} className={`text-3xl font-bold tracking-tight sm:text-4xl ${!dark ? "text-accent" : ""}`}>{block.title}</h2> : null;
   const head = (
     <>
       {block.eyebrow && <p className="text-sm font-semibold uppercase tracking-wide">{block.eyebrow}</p>}
@@ -88,7 +88,7 @@ export function Panel({ block, labels }: { block: PanelBlock; labels: VideoLabel
         <div className="mx-auto max-w-3xl space-y-3 text-center">{head}</div>
         <ul className="grid gap-6 text-center sm:grid-cols-2 lg:grid-cols-4">
           {block.items.map((it, i) => (
-            <li key={i}><p className="text-5xl font-extrabold tracking-tight">{it.title}</p>{it.heading && <p className={`mt-1 text-sm ${on === "accent" ? "" : "opacity-80"}`}>{it.heading}</p>}</li>
+            <li key={i}><p data-stat={dark ? undefined : ""} className="text-5xl font-extrabold tracking-tight">{it.title}</p>{it.heading && <p className={`mt-1 text-sm ${on === "accent" ? "" : "opacity-80"}`}>{it.heading}</p>}</li>
           ))}
         </ul>
       </div>
@@ -106,7 +106,7 @@ export function Panel({ block, labels }: { block: PanelBlock; labels: VideoLabel
   }
 
   return (
-    <section data-testid="panel" data-kind={block.kind} className={`relative isolate overflow-hidden rounded-2xl px-6 py-10 sm:px-10 ${tone} ${veil === "dark" ? "text-white" : ""}`}
+    <section data-testid="panel" data-kind={block.kind} data-on={on} className={`relative isolate overflow-hidden rounded-2xl px-6 py-10 sm:px-10 ${tone} ${veil === "dark" ? "text-white" : ""}`}
       style={bg ? { backgroundImage: `url("${bg}")`, backgroundSize: SIZES[block.bg?.size ?? "cover"] ?? "cover", backgroundPosition: POSITIONS[block.bg?.position ?? "center"] ?? "center", backgroundRepeat: "no-repeat" } : undefined}>
       {veil && veil !== "none" && <div aria-hidden="true" className={`absolute inset-0 -z-10 ${veil === "dark" ? "bg-black/55" : "bg-bg/70"}`} />}
       {body}
