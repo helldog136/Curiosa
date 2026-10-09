@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { DONE_MS, fillStyle, isBusy, runAtLeast, shownPhase, sleep, type Phase } from "./animatedAction";
+import { askConfirm } from "./confirmDialog";
 import { ui } from "./ui";
 
 export type ActionLabels = { idle: string; working: string; done: string; failed: string };
@@ -21,7 +22,7 @@ type Props = {
   progress?: "fill" | "continuous";
   /** Variante : grand bouton plein (fiche, mise à jour) ou petit bouton de liste. */
   look?: "hero" | "primary" | "secondary";
-  /** Demande confirmation (boîte du navigateur) avant de lancer. */
+  /** Demande confirmation (boîte dans la page) avant de lancer. */
   confirm?: string;
   /** Le serveur travaille déjà (mise à jour en cours au chargement de la page) : bouton animé et désactivé. */
   running?: boolean;
@@ -50,7 +51,7 @@ export function AnimatedActionButton({ run, onDone, onFail, labels, icon, progre
 
   async function click() {
     if (busy) return;
-    if (confirmMessage && !window.confirm(confirmMessage)) return;
+    if (confirmMessage && !(await askConfirm(confirmMessage))) return;
     setMessage(null);
     setPhase("working");
     const result = await runAtLeast(run);
