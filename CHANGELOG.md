@@ -6,6 +6,13 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
+## 0.1.9
+
+*Changements depuis la 0.1.8.*
+
+### Améliorations
+- **Page Modules plus claire.** Les modules installés forment une liste compacte, avec une recherche qui répond pendant que vous tapez. Chaque module a sa propre page pour l'activer, le mettre à jour, gérer ses instances ou le désinstaller.
+
 ## 0.1.8
 
 *Changements depuis la 0.1.7.*

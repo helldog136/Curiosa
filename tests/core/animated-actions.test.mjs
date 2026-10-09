@@ -51,7 +51,7 @@ test("mise à jour du site : le bouton animé remplace le formulaire, confirmati
 });
 
 test("modules : chercher / mettre à jour passent par le bouton animé ; les actions ne redirigent plus mais disent où aller", () => {
-  const page = read("src/app/admin/(panel)/modules/page.tsx");
+  const page = read("src/app/admin/(panel)/modules/[id]/page.tsx");
   assert.match(page, /<ModuleUpdateButton id=\{row\.id\} kind="check"/);
   assert.match(page, /<ModuleUpdateButton id=\{row\.id\} kind="update"/);
   const actions = read("src/app/admin/(panel)/modules/actions.ts");
