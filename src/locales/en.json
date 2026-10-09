@@ -976,5 +976,12 @@
   "account.passkeys.unsupported": "This browser does not support passkeys.",
   "account.passkeys.cancelled": "Creation cancelled.",
   "account.passkeys.failed": "The passkey could not be registered.",
-  "account.passkeys.max": "You reached the maximum number of passkeys (10)."
+  "account.passkeys.max": "You reached the maximum number of passkeys (10).",
+  "instances.s.options": "Options",
+  "instances.s.appearance": "Appearance",
+  "instances.s.deleteTitle": "Deletion",
+  "instances.groupRemove": "Remove",
+  "instances.linkHelp": "A page of the site (for example /contact), an https://… address or a mailto:… address",
+  "instances.error.link": "The link \"{field}\" is not valid: enter a page of the site (/contact), an https://… address or mailto:…",
+  "instances.error.groupRequired": "To save \"{group}\", fill in: {fields} (or remove it)."
 }

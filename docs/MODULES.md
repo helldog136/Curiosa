@@ -110,6 +110,7 @@ Validé à l'installation et au chargement (zod, `src/core/modules/manifest.ts`)
 | `page` | L'instance a une page publique. Défaut : oui si `content` (sauf type `overlay`). Le code la fournit avec `page()`. |
 | `basePath` | Chemin public proposé à la création d'une instance à page (défaut : la clé de l'instance). Lettres minuscules, chiffres, tirets. |
 | `settings` | Réglages **par instance** ; l'admin génère le formulaire (voir ci-dessous). 60 au plus. |
+| `optionalGroups` | Groupes de réglages **facultatifs** derrière un bouton « Ajouter… » (voir « Groupes facultatifs »). 6 au plus. |
 | `sections` | Morceaux plaçables sur la page d'accueil (voir ci-dessous). 20 au plus. |
 | `offers` / `requires` | **Dépendances** : services que le module offre aux autres / dont il a besoin (voir « dépendances entre modules »). 10 au plus chacun. |
 | `consumes` / `provides` | Sujets que le module digère / expose (voir « sujets »). 10 au plus chacun. |
@@ -150,13 +151,13 @@ Chaque réglage est un objet (`SettingField`) :
 | `label` | Libellé affiché dans l'admin (texte ou `{ langue: texte }`). |
 | `type` | L'un des types ci-dessous. |
 | `help` | Aide sous le champ. |
-| `default` | Valeur par défaut (texte, nombre ou booléen). `ctx.setting` la renvoie tant que rien n'est réglé. |
+| `default` | Valeur par défaut (texte, nombre ou booléen). `ctx.setting` la renvoie tant que rien n'est réglé, et l'admin **pré-remplit** le champ avec elle. Pour `text` / `textarea` : `"site:name"` (nom du site) ou `"site:tagline"` (accroche), dans la langue du champ (voir ci-dessous). |
 | `options` | Pour `select` : `[{ "value": "info", "label": { "en": "…" } }]` (50 au plus). |
 | `translatable` | `true` : une valeur par langue du site (sinon une seule valeur globale). `ctx.setting` renvoie celle de la langue courante. |
 | `advanced` | `true` : réglage technique, masqué dans la version simplifiée de l'admin ; **sa valeur par défaut s'applique** — donnez-en toujours une. |
 | `group` | `"appearance"` : réglage d'apparence, regroupé sous « Apparence de ce module ». |
 
-Types : `text`, `textarea`, `url`, `number`, `boolean`, `select`, `color`, `image` (envoi de fichier ou URL), `video` (envoi d'une vidéo MP4 ou WebM de 50 Mo au plus, réservée aux fichiers du site : `/uploads/…`), `secret`
+Types : `text`, `textarea`, `url` (adresse http ou https), `link` (une page du site comme `/contact`, une adresse `https://…` ou `mailto:…` ; contrôlé dans le navigateur et par le serveur), `number`, `boolean`, `select`, `color`, `image` (envoi de fichier ou URL), `video` (envoi d'une vidéo MP4 ou WebM de 50 Mo au plus, réservée aux fichiers du site : `/uploads/…`), `secret`
 (jamais réaffiché une fois enregistré ; ne l'écrivez jamais dans un journal).
 
 - **Valeurs** : `ctx.setting` renvoie ce que l'admin a saisi, **sans garantie de type** (un nombre peut arriver en texte, une
@@ -165,9 +166,40 @@ Types : `text`, `textarea`, `url`, `number`, `boolean`, `select`, `color`, `imag
   `bg`, `surface`, `fg`, `muted`, `line`. Seul un réglage `color` peut avoir un défaut `theme:…`, et le jeton doit exister (sinon le
   manifeste est refusé). Tant que l'administrateur n'a pas choisi sa couleur (case « Suivre le thème du site »), `ctx.setting`
   renvoie la valeur du thème courant.
+- **Texte qui suit le site** : `{ "key": "title", "type": "text", "translatable": true, "default": "site:name" }`. Le champ s'affiche
+  pré-rempli avec le nom du site (`site:name`) ou son accroche (`site:tagline`) dans la langue du champ, et `ctx.setting` renvoie cette
+  valeur tant que rien d'autre n'est saisi. Si la valeur saisie est identique à celle du site, **rien n'est enregistré** : le champ continue de
+  suivre le site quand celui-ci change. Réservé aux réglages `text` et `textarea` (sinon le manifeste est refusé).
+- **Réglage traduisible.** Avec une seule langue sur le site, l'admin montre un champ simple ; avec plusieurs, une ligne par langue
+  sous le libellé du réglage.
 - **Simple et avancé.** L'admin existe en deux versions (bascule dans la barre latérale). Gardez dans la version simple l'essentiel :
   ce qu'une personne sans connaissances web comprend (un nom, une couleur, une image, un nombre). Les réglages avancés déjà
   enregistrés ne sont jamais effacés quand quelqu'un édite en version simple.
+
+### Groupes facultatifs (`optionalGroups`)
+
+Des réglages qu'on ne veut pas toujours (un bouton, une vidéo de fond) restent cachés derrière un seul bouton « ＋ … » :
+
+```jsonc
+"optionalGroups": [
+  { "id": "button", "label": { "fr": "Bouton" }, "addLabel": { "fr": "Ajouter un bouton" }, "removeLabel": { "fr": "Retirer le bouton" },
+    "fields": ["buttonLabel", "buttonUrl"], "required": ["buttonLabel", "buttonUrl"] }
+]
+```
+
+| Clé | Rôle |
+|---|---|
+| `id` | Identifiant du groupe (minuscules, chiffres, tirets). |
+| `label` | Titre de la carte du groupe, une fois ouverte. |
+| `addLabel` | Texte du bouton qui ouvre le groupe (« Ajouter un bouton »). |
+| `removeLabel` | Texte du bouton qui le retire (défaut : « Retirer »). |
+| `fields` | Clés de `settings` du groupe. Un réglage n'est que dans un seul groupe ; le groupe s'affiche à la place de son premier réglage. |
+| `required` | Sous-ensemble de `fields` à remplir dès que le groupe est ouvert (pas une case à cocher). |
+
+Tant qu'aucun champ du groupe n'a de valeur, l'admin ne montre que le bouton. Ouvert, le groupe est une carte avec ses champs et
+« Retirer » ; on ne peut pas enregistrer tant que les champs `required` ne sont pas remplis (navigateur **et** serveur). « Retirer »
+supprime toutes les valeurs du groupe à l'enregistrement : `ctx.setting` renvoie alors les défauts. Le manifeste est refusé si un champ
+est inconnu, si `required` n'est pas inclus dans `fields`, si un champ est dans deux groupes ou s'il y a plus de 6 groupes.
 
 ### Sections d'accueil (`sections`)
 

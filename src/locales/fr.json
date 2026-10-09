@@ -976,5 +976,12 @@
   "account.passkeys.unsupported": "Ce navigateur ne gère pas les clés d'accès.",
   "account.passkeys.cancelled": "Création annulée.",
   "account.passkeys.failed": "La clé d'accès n'a pas pu être enregistrée.",
-  "account.passkeys.max": "Vous avez atteint le nombre maximal de clés d'accès (10)."
+  "account.passkeys.max": "Vous avez atteint le nombre maximal de clés d'accès (10).",
+  "instances.s.options": "Options",
+  "instances.s.appearance": "Apparence",
+  "instances.s.deleteTitle": "Suppression",
+  "instances.groupRemove": "Retirer",
+  "instances.linkHelp": "Une page du site (par exemple /contact), une adresse https://… ou une adresse mailto:…",
+  "instances.error.link": "Le lien « {field} » n'est pas valide : indiquez une page du site (/contact), une adresse https://… ou mailto:…",
+  "instances.error.groupRequired": "Pour enregistrer « {group} », remplissez : {fields} (ou retirez-le)."
 }
