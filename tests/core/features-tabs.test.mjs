@@ -14,7 +14,8 @@ test("fonctionnalités : « installé » et « ajouter » sont deux onglets d'un
   const layout = read("src/app/admin/(panel)/layout.tsx");
   assert.match(layout, /href="\/admin\/modules" also=\{\["\/admin\/catalogue"\]\}/, "le lien reste surligné dans le catalogue");
   assert.ok(!layout.includes('href="/admin/catalogue"'), "plus d'entrée de menu séparée pour le catalogue");
-  assert.match(read("src/components/admin/NavLink.tsx"), /\[base, \.\.\.also\]/);
+  assert.match(read("src/components/admin/navCurrent.ts"), /\[href, \.\.\.\(opts\.also \?\? \[\]\)\]/, "`also` reste pris en compte");
+  assert.match(read("src/components/admin/NavLink.tsx"), /isCurrent\(href, path, search, \{ exact, also \}\)/);
 });
 
 test("réglages : la case « compter les visites » (et le blocage des robots d'IA) vivent dans l'onglet Confidentialité, pas sous le logo", () => {

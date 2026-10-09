@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { adminCtx } from "@/core/admin";
 import { getInstanceById } from "@/core/instances";
 import { prisma } from "@/core/db";
@@ -15,15 +15,17 @@ const day = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : "");
 const CHIP = { draft: ui.chipWarn, scheduled: ui.chip, expired: ui.chipWarn, published: ui.chipOk } as const;
 
 export default async function EditEntryPage({ params, searchParams }: {
-  params: Promise<{ id: string }>; searchParams: Promise<{ locale?: string; created?: string }>;
+  params: Promise<{ id: string }>; searchParams: Promise<{ c?: string; locale?: string; created?: string }>;
 }) {
   const { t, locale: adminLocale, config, advanced } = await adminCtx("editor");
   const { id } = await params;
-  const { locale: requested, created } = await searchParams;
+  const { c, locale: requested, created } = await searchParams;
   const entry = await prisma.entry.findUnique({ where: { id }, include: { translations: true } });
   if (!entry) notFound();
   const collection = await getInstanceById(entry.instanceId);
   if (!collection) notFound();
+  // Le menu repère le contenu ouvert par `?c=` : on l'ajoute si l'adresse n'en porte pas (ou un autre).
+  if (c !== collection.key) redirect(`/admin/entries/${id}?${new URLSearchParams({ c: collection.key, ...(requested ? { locale: requested } : {}), ...(created ? { created } : {}) })}`);
 
   const locale =
     requested && config.locales.includes(requested)

@@ -36,7 +36,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
           {contentItems.length > 0 && (
             <div>
               <p className={group}>{t("nav.myContent")}</p>
-              {contentItems.map((m) => <NavLink key={m.id} href={`/admin/entries?c=${m.key}`} badge={m.badge} badgeLabel={t("nav.badge.todo")}>{m.icon} {m.name}</NavLink>)}
+              {contentItems.map((m) => <NavLink key={m.id} href={`/admin/entries?c=${m.key}`} also={[`/admin/instances/${m.id}`]} badge={m.badge} badgeLabel={t("nav.badge.todo")}>{m.icon} {m.name}</NavLink>)}
             </div>
           )}
 
@@ -48,7 +48,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
           <NavLink href="/admin/redirects">{advanced ? t("nav.redirects") : t("nav.redirects.simple")}</NavLink>
 
           <p className={group}>{t("nav.features")}</p>
-          {otherItems.map((m) => <NavLink key={m.id} href={m.content ? `/admin/entries?c=${m.key}` : `/admin/instances/${m.id}`} badge={m.badge} badgeLabel={t("nav.badge.todo")}>{m.icon} {m.name}</NavLink>)}
+          {otherItems.map((m) => <NavLink key={m.id} href={m.content ? `/admin/entries?c=${m.key}` : `/admin/instances/${m.id}`} also={m.content ? [`/admin/instances/${m.id}`] : []} badge={m.badge} badgeLabel={t("nav.badge.todo")}>{m.icon} {m.name}</NavLink>)}
 
           {(canManage || user.role === "owner") && (
             <>
