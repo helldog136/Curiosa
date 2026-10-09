@@ -15,11 +15,17 @@ test("navigation : une seule liste ordonnée où pages et liens se mélangent, s
   assert.match(editor, /aria-label=\{labels\.down\}/);
 });
 
-test("navigation : chaque élément a une corbeille rouge en haut à droite pour le retirer", () => {
-  assert.match(editor, /absolute right-3 top-3/);
+test("navigation : chaque élément a un bouton de retrait rouge « Retirer du menu » en bas de carte, avec Monter/Descendre (plus de corbeille)", () => {
+  assert.ok(!editor.includes("absolute right-3 top-3"), "plus de corbeille en haut à droite");
+  assert.ok(!editor.includes("🗑"), "plus d'icône corbeille");
+  assert.match(editor, /↑ \{labels\.up\}/);
+  assert.match(editor, /↓ \{labels\.down\}/);
   assert.match(editor, /ui\.btnDanger[^>]*onClick=\{onRemove\}/);
+  assert.match(editor, /aria-label=\{labels\.remove\}>\{labels\.remove\}</, "bouton de retrait avec texte visible");
+  assert.match(editor, /border-t border-line pt-3/, "filet qui sépare les boutons des champs");
   assert.match(editor, /setItems\(\(a\) => a\.filter\(\(x\) => x\.uid !== item\.uid\)\)/);
-  assert.match(editor, /🗑/);
+  const fr = JSON.parse(read("src/locales/fr.json"));
+  assert.equal(fr["navigation.remove"], "Retirer du menu");
 });
 
 test("navigation : côté serveur, les pages viennent de la base (jamais du navigateur), les liens sont validés, les doublons et les lignes vides ignorés", () => {
