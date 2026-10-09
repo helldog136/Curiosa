@@ -1,13 +1,15 @@
 import { z } from "zod";
 import { MODULE_API_VERSION } from "../config";
 import { THEME_TOKENS } from "../color";
+import { groupIssues } from "./groups";
+import { siteDefaultRef } from "./settingValues";
 
 const localized = z.union([z.string().max(500), z.record(z.string(), z.string().max(500))]);
 
 export const settingField = z.object({
   key: z.string().regex(/^[a-zA-Z][a-zA-Z0-9_]{0,40}$/),
   label: localized,
-  type: z.enum(["text", "textarea", "url", "number", "boolean", "select", "color", "secret", "image", "video"]),
+  type: z.enum(["text", "textarea", "url", "link", "number", "boolean", "select", "color", "secret", "image", "video"]),
   help: localized.optional(),
   default: z.union([z.string(), z.number(), z.boolean()]).optional(),
   options: z.array(z.object({ value: z.string(), label: localized })).max(50).optional(),
@@ -20,6 +22,11 @@ export const settingField = z.object({
   if (typeof f.default === "string" && f.default.startsWith("theme:")) {
     if (f.type !== "color") ctx.addIssue({ code: "custom", message: "only a color setting can default to a theme token" });
     else if (!(THEME_TOKENS as readonly string[]).includes(f.default.slice(6))) ctx.addIssue({ code: "custom", message: `unknown theme token "${f.default.slice(6)}"` });
+  }
+  // Un texte peut suivre le site : default "site:name" ou "site:tagline" (seulement pour text / textarea).
+  if (typeof f.default === "string" && f.default.startsWith("site:")) {
+    if (f.type !== "text" && f.type !== "textarea") ctx.addIssue({ code: "custom", message: "only a text or textarea setting can default to a site value" });
+    else if (!siteDefaultRef(f.default)) ctx.addIssue({ code: "custom", message: `unknown site value "${f.default.slice(5)}" (use site:name or site:tagline)` });
   }
 });
 
@@ -100,6 +107,18 @@ export const manifestSchema = z.object({
     .max(20)
     .default([]),
   settings: z.array(settingField).max(60).default([]),
+  /** Réglages facultatifs regroupés derrière un bouton « Ajouter… » (voir `groupIssues` pour les règles). */
+  optionalGroups: z
+    .array(z.object({
+      id: z.string().regex(/^[a-z][a-z0-9-]{0,30}$/),
+      label: localized,
+      addLabel: localized,
+      removeLabel: localized.optional(),
+      fields: z.array(z.string()).min(1).max(20),
+      required: z.array(z.string()).max(20).optional(),
+    }))
+    .max(6)
+    .optional(),
   /** Version de la STRUCTURE des données du module (stockage, réglages). À augmenter quand elle change : voir `migrations`. */
   dataVersion: z.number().int().min(1).max(10000).optional(),
   onboarding: z
@@ -111,6 +130,8 @@ export const manifestSchema = z.object({
     .optional(),
   defaultEnabled: z.boolean().optional(),
   permissions: z.array(z.enum(["slots", "routes", "storage", "filters", "sections", "pages", "topics", "overlay", "mcp", "admin", "mail"])).default([]),
+}).superRefine((m, ctx) => {
+  for (const message of groupIssues(m.optionalGroups ?? [], m.settings)) ctx.addIssue({ code: "custom", path: ["optionalGroups"], message });
 });
 
 export type ParsedManifest = z.infer<typeof manifestSchema>;

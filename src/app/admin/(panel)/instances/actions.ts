@@ -11,10 +11,13 @@ import { deleteInstance, validateBasePath } from "@/core/instanceService";
 import { checkNickname } from "@/core/instanceLabel";
 import { instanceSettingKey } from "@/core/modules/context";
 import { hasPage } from "@/core/modules/manifest";
+import { groupFlagName, judgeGroup } from "@/core/modules/groups";
+import { isValidLink, resolveDefault, shouldStore } from "@/core/modules/settingValues";
+import { localized } from "@/core/modules/types";
 import { getModule } from "@/core/modules/registry";
 import { getSources, providersOf, setSources } from "@/core/services/topics";
 import { audit } from "@/core/permissions";
-import { deleteSetting, setSetting } from "@/core/settings";
+import { deleteSetting, getSettingByLocale, getSiteConfig, setSetting } from "@/core/settings";
 import { mcpInstanceKey } from "@/core/modules/mcpProvider";
 import { isSort, sortSettingKey } from "@/core/content/sort";
 import type { ActionState } from "@/components/admin/ActionForm";
@@ -111,49 +114,78 @@ export async function saveInstanceSettings(_prev: ActionState, formData: FormDat
   if (!instance || !mod) return { error: t("error.generic") };
 
   const adv = formData.get("__adv") === "1";
+  const L = (v: Parameters<typeof localized>[0]) => localized(v, config.defaultLocale, config.defaultLocale);
+  const siteByLocale = Object.fromEntries(await Promise.all(config.locales.map(async (l) => { const c = await getSiteConfig(l); return [l, { name: c.name, tagline: c.tagline }] as const; })));
+  /** Opérations à appliquer : on contrôle TOUT avant d'écrire quoi que ce soit (une erreur n'enregistre rien). */
+  const ops: ({ key: string; locale?: string } & ({ del: true } | { del?: false; value: unknown }))[] = [];
+
+  // Groupes facultatifs : « Retirer » efface tout le groupe ; ouvert, il faut que les champs obligatoires soient remplis.
+  const cleared = new Set<string>();
+  for (const group of mod.manifest.optionalGroups ?? []) {
+    const filled: Record<string, boolean> = {};
+    for (const key of group.fields) {
+      const f = mod.manifest.settings.find((x) => x.key === key);
+      if (!f) continue;
+      if (f.advanced && !adv) { filled[key] = true; continue; } // réglage non montré : on ne l'exige pas
+      const name = f.translatable ? `s__${key}__${config.defaultLocale}` : `s__${key}`;
+      const raw = String(formData.get(name) ?? "").trim();
+      filled[key] = raw !== "" || (f.type === "secret" && Boolean((await getSettingByLocale(instanceSettingKey(id, key)))[""]));
+    }
+    const verdict = judgeGroup(group, formData.get(groupFlagName(group.id)) as string | null, filled);
+    if (verdict.action === "error") {
+      const names = verdict.missing.map((k) => L(mod.manifest.settings.find((x) => x.key === k)?.label)).join(", ");
+      return { error: t("instances.error.groupRequired", { group: L(group.label), fields: names }) };
+    }
+    if (verdict.action === "clear") {
+      for (const key of group.fields) { cleared.add(key); ops.push({ key: instanceSettingKey(id, key), del: true }); }
+    }
+  }
+
   for (const field of mod.manifest.settings) {
     if (field.advanced && !adv) continue; // réglage technique non montré : on garde sa valeur
+    if (cleared.has(field.key)) continue; // groupe retiré : déjà effacé
     const locales = field.translatable ? config.locales : [""];
     for (const locale of locales) {
       const name = field.translatable ? `s__${field.key}__${locale}` : `s__${field.key}`;
       const key = instanceSettingKey(id, field.key);
-      if (field.type === "boolean") {
-        await setSetting(key, formData.get(name) === "on", locale);
-        continue;
-      }
+      const op = (value: unknown) => ops.push({ key, locale, value });
+      const del = () => ops.push({ key, locale, del: true });
+      if (field.type === "boolean") { op(formData.get(name) === "on"); continue; }
       const raw = String(formData.get(name) ?? "").trim();
       // Couleur qui suit le thème du site : on ne garde aucune valeur propre, le thème s'applique en direct.
-      if (field.type === "color" && themeRef(field.default) && formData.get(`${name}__theme`) === "on") {
-        await deleteSetting(key, locale);
-        continue;
-      }
+      if (field.type === "color" && themeRef(field.default) && formData.get(`${name}__theme`) === "on") { del(); continue; }
       if (field.type === "color" && raw !== "" && !isHexColor(raw)) return { error: t("error.generic") };
       // Un secret laissé vide est conservé tel quel.
       if (field.type === "secret" && raw === "") continue;
-      if (raw === "") {
-        await deleteSetting(key, locale);
-        continue;
-      }
+      // Vide, ou identique au défaut qui suit le site (nom, accroche) : rien n'est enregistré, le champ continue de suivre le site.
+      if (!shouldStore(field, raw, resolveDefault(field, siteByLocale[field.translatable ? locale : config.defaultLocale] ?? { name: "", tagline: "" }))) { del(); continue; }
       if (field.type === "number") {
         const n = Number(raw);
         if (!Number.isFinite(n)) return { error: t("error.generic") };
-        await setSetting(key, n, locale);
+        op(n);
       } else if (field.type === "select") {
         if (!field.options?.some((o) => o.value === raw)) return { error: t("error.generic") };
-        await setSetting(key, raw, locale);
+        op(raw);
       } else if (field.type === "video") {
         if (!/^\/uploads\/[0-9a-f-]{36}\.(mp4|webm)$/.test(raw)) return { error: t("error.badUrl") };
-        await setSetting(key, raw, locale);
+        op(raw);
       } else if (field.type === "image") {
         if (!/^(https?:\/\/|\/uploads\/)/i.test(raw)) return { error: t("error.badUrl") };
-        await setSetting(key, raw, locale);
+        op(raw);
       } else if (field.type === "url") {
         if (!/^https?:\/\//i.test(raw)) return { error: t("error.badUrl") };
-        await setSetting(key, raw, locale);
+        op(raw);
+      } else if (field.type === "link") {
+        if (!isValidLink(raw)) return { error: t("instances.error.link", { field: L(field.label) }) };
+        op(raw);
       } else {
-        await setSetting(key, raw.slice(0, 5000), locale);
+        op(raw.slice(0, 5000));
       }
     }
+  }
+  for (const o of ops) {
+    if (o.del) await deleteSetting(o.key, o.locale);
+    else await setSetting(o.key, o.value, o.locale);
   }
   await audit(user.email, "instance.settings", instance.key);
   revalidatePath("/", "layout");
