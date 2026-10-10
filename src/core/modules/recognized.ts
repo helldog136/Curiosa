@@ -5,6 +5,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { DATA_DIR } from "../config";
 import { isSubdir, parseRepoUrl } from "./installer";
+import { sanitizeRequires, type CoreRequirement } from "./compat";
 
 export type RecognizedItem = {
   id: string;
@@ -22,6 +23,8 @@ export type RecognizedItem = {
   apiVersion?: number;
   /** Sujets fournis par le module (annoncés par l'index, relus à l'installation). */
   provides?: string[];
+  /** Cœur minimal annoncé par l'index (`"requires": { "core": "0.1.10" }`) : permet de savoir SANS télécharger si le module convient. Absent = aucune exigence. Un cœur plus ancien ignore ce champ. */
+  requires?: CoreRequirement;
 };
 
 /** D'où vient la liste affichée : le dépôt du framework (à jour), sa dernière copie reçue, ou la copie livrée avec cette version. */
@@ -52,6 +55,7 @@ export function sanitizeEntries(json: unknown): RecognizedItem[] {
       version: str(i.version, 40), author: str(i.author, 120), icon: str(i.icon, 8),
       apiVersion: Number.isInteger(i.apiVersion) ? i.apiVersion : undefined,
       provides: Array.isArray(i.provides) ? i.provides.filter((x: unknown): x is string => typeof x === "string" && /^[a-z][a-z0-9.-]{0,40}$/.test(x)).slice(0, 20) : undefined,
+      requires: sanitizeRequires(i.requires),
     });
     if (items.length >= 300) break;
   }

@@ -70,7 +70,7 @@ export default {
 
 C'est tout : un module complet. Le manifeste dit **ce que le module est** (identité, réglages, ce qu'il utilise) ; le code dit **ce qu'il fait**.
 Les champs importants : `apiVersion` (toujours `2` aujourd'hui : le contrat avec le cœur), `id` (minuscules, chiffres, tirets, stable à jamais),
-`version` (`x.y.z`), `main` (le fichier de code ; sans lui, module « sans code »), `instances` (`"multiple"` ou `"single"`), `permissions` (ce que vous utilisez).
+`version` (`x.y.z`), `main` (le fichier de code ; sans lui, module « sans code »), `instances` (`"multiple"` ou `"single"`), `permissions` (ce que vous utilisez). Si votre module a besoin d'une fonction récente du cœur, ajoutez `"minCore": "0.1.10"` (la version minimale du cœur, trois nombres) : un site plus ancien refusera de l'installer ou de monter de version, avec un message qui lui dit de se mettre à jour d'abord. Détails : [`MODULES.md`](MODULES.md).
 
 Les **permissions** sont déclaratives : elles disent à l'administrateur ce que fait le module. Une par capacité utilisée : `slots`, `sections`, `pages`,
 `routes`, `storage`, `filters`, `topics`, `overlay`, `mcp`, `admin`, `mail`, `rawg`. Le cœur ne bloque pas une capacité non déclarée — déclarez-les fidèlement.

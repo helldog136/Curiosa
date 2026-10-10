@@ -75,6 +75,11 @@ export const manifestSchema = z.object({
   id: z.string().regex(/^[a-z][a-z0-9-]{1,39}$/),
   name: localized,
   version: z.string().regex(/^\d+\.\d+\.\d+([-+][\w.]+)?$/),
+  /**
+   * Version MINIMALE du cœur qui fait fonctionner ce module (« 0.1.10 », rien d'autre : pas de pré-version). Absent = aucune exigence. Vérifié à l'installation
+   * et à la mise à jour (jamais à l'exécution : un module déjà installé n'est pas désactivé pour cela). Voir compat.ts. (Pas `requires` : ce nom désigne déjà les services.)
+   */
+  minCore: z.string().regex(/^\d+\.\d+\.\d+$/, "minCore must be a plain version like 0.1.10 (X.Y.Z, numbers only)").optional(),
   description: localized.optional(),
   author: z.string().max(200).optional(),
   homepage: z.string().url().optional(),

@@ -3,6 +3,7 @@ import path from "node:path";
 import { MODULE_API_VERSION } from "../config";
 import { getRecognized, getRecognizedDetailed, type RecognizedResult } from "./recognized";
 import { parseManifest, type ParsedManifest } from "./manifest";
+import { incompatWithThisCore, requirementOf, type CoreRequirement } from "./compat";
 import type { LocalizedString } from "./types";
 
 /**
@@ -37,6 +38,10 @@ export type CatalogueEntry = {
   provides?: string[];
   /** Ce module vise-t-il l'API de modules de CE framework ? Sinon il est listé mais non installable. */
   compatible: boolean;
+  /** Cœur minimal demandé (index ou manifeste), absent = aucune exigence. Ne change pas `compatible` (API) : voir `needsNewerCore`. */
+  requires?: CoreRequirement;
+  /** Version du cœur demandée quand CE cœur est trop ancien (le module est listé, mais ni installable ni mis à jour ici). */
+  needsNewerCore?: string;
 };
 
 const BUNDLED: { dir: string; kind: "community" | "example" }[] = [
@@ -83,7 +88,7 @@ export function listBundled(root = appRoot()): CatalogueEntry[] {
       if (!fs.statSync(full).isDirectory()) continue;
       const m = readBundledManifest(full);
       if (!m || out.some((e) => e.id === m.id)) continue;
-      out.push({ id: m.id, name: m.name, description: m.description ?? "", version: m.version, icon: m.icon, author: m.author, kind, suggested: suggested.has(m.id), source: "bundled", dir: full, provides: (m.provides ?? []).map((p) => p.topic), compatible: true });
+      out.push({ id: m.id, name: m.name, description: m.description ?? "", version: m.version, icon: m.icon, author: m.author, kind, suggested: suggested.has(m.id), source: "bundled", dir: full, provides: (m.provides ?? []).map((p) => p.topic), compatible: true, requires: requirementOf(m) });
     }
   }
   return out;
@@ -98,6 +103,7 @@ export async function getCatalogue(opts: { root?: string; fetchImpl?: typeof fet
     ...remote.map((c): CatalogueEntry => ({
       id: c.id, name: c.name, description: c.description, version: c.version, icon: c.icon, author: c.author,
       kind: "recognized", source: "recognized", provides: c.provides, repo: c.repo, ref: c.ref, subdir: c.subdir, compatible: c.apiVersion === undefined || c.apiVersion === MODULE_API_VERSION,
+      requires: c.requires, needsNewerCore: incompatWithThisCore(c.requires)?.needs,
     })),
   ];
 }

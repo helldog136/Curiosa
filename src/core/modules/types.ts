@@ -89,6 +89,8 @@ export type ModuleManifest = {
   id: string;
   name: LocalizedString;
   version: string;
+  /** Version minimale du cœur (« 0.1.10 »), vérifiée à l'installation et à la mise à jour ; absent = aucune exigence. Voir compat.ts. */
+  minCore?: string;
   description?: LocalizedString;
   author?: string;
   homepage?: string;

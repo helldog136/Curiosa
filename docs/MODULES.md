@@ -98,6 +98,7 @@ Validé à l'installation et au chargement (zod, `src/core/modules/manifest.ts`)
 | Champ | Rôle |
 |---|---|
 | `apiVersion` | Version de l'API des modules (aujourd'hui `2`). Un module d'une autre version est refusé à l'installation ; dans l'index du catalogue, il est listé mais marqué incompatible. |
+| `minCore` | **Version minimale du cœur** (`"0.1.10"` : trois nombres, rien d'autre ; une autre forme est refusée). Absent = aucune exigence. Voir [Version minimale du cœur](#version-minimale-du-cœur-mincore). |
 | `id` | Identifiant du module, stable à jamais (les instances et les sauvegardes s'y réfèrent). |
 | `name`, `description` | Texte ou `{ langue: texte }` (500 caractères au plus). Langue absente : langue par défaut du site, puis `en`. |
 | `version` | `x.y.z`. Sert à détecter les mises à jour des modules livrés avec le framework. |
@@ -120,6 +121,20 @@ Validé à l'installation et au chargement (zod, `src/core/modules/manifest.ts`)
 | `dataVersion` | Version de la **structure de vos données** (entier ≥ 1, défaut 1). À augmenter quand elle change, avec la migration correspondante (`migrations`). |
 | `defaultEnabled` | Modules livrés avec cette version : activés dès le départ (défaut : oui). Sans effet pour un module installé, toujours installé désactivé. |
 | `permissions` | Les capacités utilisées (voir ci-dessous). |
+
+### Version minimale du cœur (`minCore`)
+
+Un module qui s'appuie sur une fonction récente du cœur (par exemple la permission `rawg`, cœur 0.1.10 ou plus) le déclare : `"minCore": "0.1.10"`. Sans ce champ, aucune exigence (tous les modules existants).
+(Le nom `requires` est pris : il désigne les *services* dont le module dépend, voir plus bas.)
+
+- **Comparaison** : sur `majeure.mineure.correctif`, en comparant des **nombres** (0.1.10 est plus récent que 0.1.9) et en **ignorant l'étiquette de pré-version du cœur** : un cœur `0.1.10-rc.1` satisfait `"0.1.10"` (on teste les release candidates). La version du cœur est celle de `package.json`, la même que sur la page Mises à jour.
+- **Installation** (Catalogue, dépôt personnel, assistant, restauration) et **mise à jour** (une par une ou « Tout mettre à jour ») : un cœur trop ancien **refuse** avec « Ce module demande Curiosa 0.1.10 ou plus. Mettez d'abord le site à jour (Admin → Mises à jour). ». Rien n'est téléchargé quand l'index du catalogue annonce déjà l'exigence (ci-dessous) ; une mise à jour refusée laisse le module exactement comme il était.
+- **« Tout mettre à jour »** : le module incompatible est **sauté** et listé à part dans le bilan (`incompatible`), sans compter comme un échec ni arrêter les autres.
+- **Restauration d'une sauvegarde** : un module du catalogue qui demande un cœur plus récent n'est pas réinstallé ; l'aperçu (`needsCore`) et le bilan le signalent comme module à réinstaller après la mise à jour du site. Ses données sont gardées.
+- **Jamais rétroactif** : un module déjà installé et chargé n'est jamais désactivé ni cassé à cause de ce champ (la vérification ne porte que sur l'entrée ou la montée de version). Les modules livrés avec le cœur restent chargés tels quels.
+- **Catalogue** : l'entrée de l'index peut porter `"requires": { "core": "0.1.10" }` (même numéro) pour que le cœur sache **sans télécharger** si le module convient ; le script du dépôt de modules la recopie depuis `minCore`. Un champ mal formé est ignoré.
+- **Anciens cœurs (0.1.9 et avant)** : `minCore` et `requires.core` d'une entrée d'index sont des clés inconnues, **ignorées sans erreur** (schémas non stricts) ; le module reste lisible, mais l'ancien cœur n'applique évidemment pas l'exigence.
+- Côté code : `isCompatible(requires, coreVersion)` et `describeIncompat(requires, coreVersion)` (`src/core/modules/compat.ts`), fonctions pures.
 
 ### Permissions
 
@@ -905,7 +920,7 @@ une demande de fusion sur ce fichier, visible par toutes les installations dès 
 ```
 
 `id`, `name`, `description`, `repo` sont les champs de base ; `ref` (**étiquette ou commit relus** — c'est ce qui rend « vérifié » vrai), `version`, `apiVersion`,
-`author`, `icon` sont facultatifs. Chaque entrée est revalidée (identifiant, dépôt `https` sur un hôte autorisé ; 300 au plus). Un module dont `apiVersion`
+`author`, `icon`, `requires` (`{ "core": "0.1.10" }` : cœur minimal, voir `minCore`) sont facultatifs. Chaque entrée est revalidée (identifiant, dépôt `https` sur un hôte autorisé ; 300 au plus). Un module dont `apiVersion`
 diffère de celle du framework est listé mais **non installable**. Rien n'est installé automatiquement ; le dépôt installé doit servir le module annoncé
 (`id` identique à celui de son `module.json`). Un module livré avec le framework l'emporte sur un module reconnu de même identifiant.
 
