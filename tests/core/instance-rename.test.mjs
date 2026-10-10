@@ -15,7 +15,7 @@ after(() => db.close());
 
 const manifest = (id) => FIXTURE_MODULES.find((b) => b.manifest.id === id).manifest;
 const rename = (instanceId, name) => db.prisma.instanceTranslation.update({ where: { instanceId_locale: { instanceId, locale: "en" } }, data: { name } });
-const navNames = async () => (await getAdminNav("en", "en")).flatMap((g) => g.items.map((i) => i.name));
+const navNames = async () => (await getAdminNav("en", "en")).map((i) => i.name);
 
 test("renommer l'instance seule d'un module : le menu de gauche, les libellés d'admin et la liste d'instances montrent le nouveau nom", async () => {
   await db.fixture("hero");

@@ -9,7 +9,7 @@ import { statsEnabled, statsSummary } from "@/core/stats";
 export default async function Dashboard({ searchParams }: { searchParams: Promise<{ denied?: string; welcome?: string }> }) {
   const { t, config, advanced, user } = await adminCtx("editor");
   const nav = await getAdminNav(config.defaultLocale, config.defaultLocale);
-  const firstContent = nav.flatMap((g) => g.items).find((i) => i.content);
+  const firstContent = nav.find((i) => i.content && i.enabled && !i.error);
   const { denied, welcome } = await searchParams;
   const [drafts, published, redirects, collections, modules] = await Promise.all([
     prisma.entry.count({ where: { status: "draft" } }),
@@ -18,7 +18,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
     prisma.moduleInstance.count(),
     prisma.module.count({ where: { enabled: true } }),
   ]);
-  const todo = nav.flatMap((g) => g.items).filter((i) => i.badge > 0);
+  const todo = nav.filter((i) => i.badge > 0);
   const updateAvailable = user.role === "owner" && (await getUpdateCheck().catch(() => null))?.available === true;
   const stats = (await statsEnabled()) ? await statsSummary() : null;
   const peak = Math.max(1, ...(stats?.days.map((d) => d.visitors) ?? [1]));

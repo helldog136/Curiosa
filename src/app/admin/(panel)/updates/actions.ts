@@ -52,6 +52,7 @@ export async function recheckModules(): Promise<ActionState> {
   const { t } = await adminCtx("owner");
   await getModulesReport(true);
   revalidatePath("/admin/updates");
+  revalidatePath("/admin/modules");
   return { ok: t("updates.modules.rechecked") };
 }
 

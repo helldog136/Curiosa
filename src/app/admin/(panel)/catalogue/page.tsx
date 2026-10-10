@@ -3,7 +3,7 @@ import { getCatalogue, getCatalogueSource } from "@/core/modules/catalogue";
 import { listModuleRows } from "@/core/modules/registry";
 import { localized } from "@/core/modules/types";
 import { TextField } from "@/components/admin/Field";
-import { FeatureTabs } from "@/components/admin/FeatureTabs";
+import { FeatureTabs, featureTabProps } from "@/components/admin/FeatureTabs";
 import { ui } from "@/components/admin/ui";
 import Link from "next/link";
 import { CatalogueSearch } from "@/components/admin/CatalogueSearch";
@@ -39,7 +39,7 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
         <h1 className={ui.pageTitle}>✨ {advanced ? t("nav.catalogue") : t("nav.catalogue.title.simple")}</h1>
         <p className={ui.pageIntro}>{advanced ? t("catalogue.intro") : t("catalogue.intro.simple")}</p>
       </div>
-      <FeatureTabs current="add" labels={{ installed: advanced ? t("nav.modules") : t("nav.modules.simple"), add: advanced ? t("nav.catalogue") : t("nav.catalogue.simple") }} />
+      <FeatureTabs current="add" {...featureTabProps(t, advanced, isOwner)} />
       {advanced && (
         <div className="flex flex-wrap items-center gap-3 text-xs text-muted">
           <span>
