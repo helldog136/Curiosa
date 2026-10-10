@@ -11,7 +11,7 @@ export async function loadModulesUpdates(t: Translator, locale: string, defaultL
   const report = await getModulesReport();
   const names = await moduleNames(locale, defaultLocale);
   const nameOf = (id: string) => names.get(id) ?? id;
-  const rows: ModuleUpdateRow[] = report.outdated.map((o) => ({ id: o.id, name: nameOf(o.id), icon: "🧩", current: o.current, target: o.target, major: o.level === "major", levelLabel: o.level ? t(`updates.level.${o.level}`) : "" }));
+  const rows: ModuleUpdateRow[] = report.outdated.map((o) => ({ id: o.id, name: nameOf(o.id), icon: "🧩", current: o.current, target: o.target, major: o.level === "major", levelLabel: o.level ? t(`updates.level.${o.level}`) : "", ...(o.needsCore ? { needsCore: o.needsCore } : {}) }));
   return { report, rows, nameOf };
 }
 export type ModulesUpdatesData = Awaited<ReturnType<typeof loadModulesUpdates>>;
@@ -33,7 +33,7 @@ export function ModulesUpdatesSection({ t, data, when, highlight = false }: { t:
         all: { idle: t("updates.modules.all"), working: t("modules.updating"), done: t("modules.updated"), failed: t("modules.updateFailed") },
         one: { idle: t("modules.update"), working: t("modules.updating"), done: t("modules.updated"), failed: t("modules.updateFailed") },
         confirmAll: t("updates.modules.confirmAll"), confirmMajor: t("updates.modules.confirmMajor"), incomplete: t("updates.modules.incomplete"),
-        updatedLine: t("updates.modules.updatedLine"), failedLine: t("updates.modules.failedLine"), stoppedLine: t("updates.modules.stoppedLine"), skippedLine: t("updates.modules.skippedLine"),
+        updatedLine: t("updates.modules.updatedLine"), failedLine: t("updates.modules.failedLine"), stoppedLine: t("updates.modules.stoppedLine"), skippedLine: t("updates.modules.skippedLine"), incompatLine: t("updates.modules.incompatLine"), needsCore: t("modules.core.needs"),
       }} />
       {report.unchecked.length > 0 && (
         <ul className="space-y-0.5 text-xs text-muted" data-testid="modules-unchecked">

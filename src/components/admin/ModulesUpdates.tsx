@@ -7,7 +7,7 @@ import { AnimatedActionButton } from "./AnimatedActionButton";
 import { sleep } from "./animatedAction";
 import { ui } from "./ui";
 
-export type ModuleUpdateRow = { id: string; name: string; icon: string; current: string; target: string; major: boolean; levelLabel: string };
+export type ModuleUpdateRow = { id: string; name: string; icon: string; current: string; target: string; major: boolean; levelLabel: string; /** La version proposée demande un cœur plus récent : pas de bouton, un message. */ needsCore?: string };
 type Labels = {
   all: { idle: string; working: string; done: string; failed: string };
   one: { idle: string; working: string; done: string; failed: string };
@@ -19,6 +19,8 @@ type Labels = {
   failedLine: string;    // {name} {reason}
   stoppedLine: string;   // {name}
   skippedLine: string;   // {names}
+  incompatLine: string;  // {names}
+  needsCore: string;     // {version}
 };
 
 const fill = (text: string, vars: Record<string, string | number>) => text.replace(/\{(\w+)\}/g, (m, k) => (k in vars ? String(vars[k]) : m));
@@ -53,8 +55,10 @@ export function ModulesUpdates({ rows, labels }: { rows: ModuleUpdateRow[]; labe
                     {r.levelLabel && <span className={r.major ? ui.chipWarn : ui.chip}>{r.levelLabel}</span>}
                   </p>
                 </div>
-                <AnimatedActionButton look="secondary" progress="continuous" icon="⬆" testid={`modules-update-${r.id}`} labels={labels.one}
-                  confirm={r.major ? fill(labels.confirmMajor, { name: r.name }) : undefined} run={go([r.id])} {...after} />
+                {r.needsCore
+                  ? <p className="text-sm text-muted" data-testid={`modules-needs-core-${r.id}`}>{fill(labels.needsCore, { version: r.needsCore })}</p>
+                  : <AnimatedActionButton look="secondary" progress="continuous" icon="⬆" testid={`modules-update-${r.id}`} labels={labels.one}
+                      confirm={r.major ? fill(labels.confirmMajor, { name: r.name }) : undefined} run={go([r.id])} {...after} />}
               </li>
             ))}
           </ul>
@@ -70,6 +74,7 @@ export function ModulesUpdates({ rows, labels }: { rows: ModuleUpdateRow[]; labe
           {bilan.updated.length > 0 && <p>✅ {fill(labels.updatedLine, { n: bilan.updated.length, names: bilan.updated.join(", ") })}</p>}
           {bilan.failed.map((f) => <p key={f.name} className="text-red-700">❌ {fill(labels.failedLine, { name: f.name, reason: f.reason })}</p>)}
           {bilan.stoppedOn && <p className="font-medium">⏸️ {fill(labels.stoppedLine, { name: bilan.stoppedOn })}</p>}
+          {bilan.incompatible && bilan.incompatible.length > 0 && <p className="text-muted">🕒 {fill(labels.incompatLine, { names: bilan.incompatible.map((i) => i.name).join(", ") })}</p>}
           {bilan.skipped.length > 0 && <p className="text-muted">{fill(labels.skippedLine, { names: bilan.skipped.join(", ") })}</p>}
         </div>
       )}

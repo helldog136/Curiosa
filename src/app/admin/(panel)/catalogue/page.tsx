@@ -1,5 +1,6 @@
 import { adminCtx } from "@/core/admin";
 import { getCatalogue, getCatalogueSource } from "@/core/modules/catalogue";
+import { getCoreVersion } from "@/core/modules/compat";
 import { listModuleRows } from "@/core/modules/registry";
 import { localized } from "@/core/modules/types";
 import { TextField } from "@/components/admin/Field";
@@ -74,6 +75,8 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
                     <a href="/admin/modules" className="text-sm font-medium text-accent hover:underline">{t("catalogue.installed")}</a>
                   ) : !e.compatible ? (
                     <span className="text-sm text-muted">{t("catalogue.incompatible")}</span>
+                  ) : e.needsNewerCore ? (
+                    <span className="text-sm text-muted">{t("modules.core.badge", { version: e.needsNewerCore, current: getCoreVersion() })}</span>
                   ) : (
                     <Link href={`/admin/catalogue/details?id=${encodeURIComponent(e.id)}`} scroll={false} className={ui.btnPrimary}>{advanced ? t("catalogue.details") : t("catalogue.details.simple")}</Link>
                   )}
