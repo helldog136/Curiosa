@@ -170,7 +170,7 @@ test("états d'une carte : erreur > désactivée > à configurer > active", () =
 test("« à configurer » : un réglage à remplir, vide et sans valeur par défaut, hors groupes facultatifs et textes traduisibles", () => {
   const fields = [{ key: "channel", type: "text" }, { key: "title", type: "text", translatable: true }, { key: "on", type: "boolean" }, { key: "color", type: "text", default: "x" }];
   assert.equal(P.settingsToFill(fields, new Set(), {}), true);
-  assert.equal(P.settingsToFill(fields, new Set(), { channel: { "": "rosalie" } }), false);
+  assert.equal(P.settingsToFill(fields, new Set(), { channel: { "": "machaine" } }), false);
   assert.equal(P.settingsToFill(fields, new Set(["channel"]), {}), false, "un groupe facultatif n'est pas exigé");
   assert.equal(P.settingsToFill(fields, new Set(), { channel: { "": "" } }), true, "une valeur vide ne compte pas");
   assert.equal(P.settingsToFill([], new Set(), {}), false);
