@@ -5,7 +5,8 @@ import { DISPLAYS, FEATURES, getInstanceById } from "@/core/instances";
 import { localeName } from "@/core/i18n/locales";
 import { buildContext, instanceSettingKey } from "@/core/modules/context";
 import { hasPage } from "@/core/modules/manifest";
-import { defaultPlacement, placementSettingKey, resolvePlacement, settingsToFill } from "@/core/modules/menuPlacement";
+import { overlayUrl } from "@/core/modules/overlayUrl";
+import { defaultPlacement, placementSettingKey, placementsFor, resolvePlacement, settingsToFill } from "@/core/modules/menuPlacement";
 import { getModule } from "@/core/modules/registry";
 import { localized } from "@/core/modules/types";
 import { buildTheme } from "@/core/color";
@@ -26,6 +27,8 @@ import { ui } from "@/components/admin/ui";
 import { dataStatusOf } from "@/core/modules/dataMigrations";
 import { taskStateOf } from "@/core/services/scheduler";
 import { deleteInstanceAction, retryMigrationAction, saveInstance, saveInstanceSettings, saveSources } from "../actions";
+
+const PLACE_LABEL = { menu: "placement.pin", integrations: "placement.park", overlays: "placement.parkOverlays" } as const;
 
 export default async function InstancePage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | undefined>> }) {
   const { t, locale, config, user, advanced } = await adminCtx("admin");
@@ -113,7 +116,7 @@ export default async function InstancePage({ params, searchParams }: { params: P
             {/* Où la retrouver : dans le menu, ou rangée dans la page Intégrations (réglée une fois). Le choix l'emporte sur la règle par défaut. */}
             <input type="hidden" name="placement_was" value={placement} />
             <Select name="placement" label={t("placement.title")} help={placementIsDefault ? t("placement.helpDefault") : t("placement.helpChosen")} defaultValue={placement}
-              options={[{ value: "menu", label: t("placement.pin") }, { value: "integrations", label: t("placement.park") }]} />
+              options={placementsFor(mod.manifest).map((value) => ({ value, label: t(PLACE_LABEL[value]) }))} />
             {content && (
               <Select name="sort" label={t("instances.sort")} help={t("instances.sortHelp")} defaultValue={sort}
                 options={SORTS.map((s) => ({ value: s, label: t(`sort.${s}`) }))} />
@@ -218,7 +221,7 @@ export default async function InstancePage({ params, searchParams }: { params: P
         <p>{L(mod.manifest.description)}</p>
         {mod.def.overlay && (
           <p className="rounded-lg border border-line bg-surface p-3 text-sm">
-            {t("instances.overlayUrl")}: <code className="break-all font-mono">{siteUrl}/overlays/{instance.key}</code>
+            {t("instances.overlayUrl")}: <code className="break-all font-mono">{overlayUrl(siteUrl, instance.key)}</code>
           </p>
         )}
         {dataStatus && (

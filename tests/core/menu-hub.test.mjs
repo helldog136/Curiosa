@@ -47,27 +47,30 @@ const EXTRAS = [
 ];
 const asManifest = (e) => ({ type: e.type, content: e.content, mcp: Array(e.mcp ?? 0).fill({}), offers: Array(e.offers ?? 0).fill({}), requires: Array(e.requires ?? 0).fill({}) });
 const MENU = ["blog", "codes", "collection", "contact-form", "contacts", "game-suggestions", "pages", "partnerships", "planning", "sponsors"];
-const INTEGRATIONS = ["alerts-overlay", "discord-announcer", "hero", "links", "live-status", "maze-overlay", "press-kit", "sponsor-ticker", "ticker-overlay", "twitch-channel", "youtube-channel"];
+const INTEGRATIONS = ["discord-announcer", "hero", "links", "live-status", "press-kit", "twitch-channel", "youtube-channel"];
+const OVERLAYS = ["alerts-overlay", "maze-overlay", "sponsor-ticker", "ticker-overlay"];
 
-test("rangement par défaut : les 21 modules d'extras se répartissent en « de travail » (menu) et « réglés une fois » (Intégrations)", () => {
+test("rangement par défaut : les 21 modules d'extras se répartissent en « de travail » (menu), « réglés une fois » (Intégrations) et Overlays (famille à part)", () => {
   assert.equal(EXTRAS.length, 21);
   const placed = (family) => EXTRAS.filter((e) => P.defaultPlacement(asManifest(e)) === family).map((e) => e.id).sort();
   assert.deepEqual(placed("menu"), MENU);
   assert.deepEqual(placed("integrations"), INTEGRATIONS);
+  assert.deepEqual(placed("overlays"), OVERLAYS);
 });
 
 test("rangement par défaut : le tableau ci-dessus correspond aux vrais manifestes quand extras/ est présent", { skip: !fs.existsSync("extras/modules") }, () => {
   const ids = fs.readdirSync("extras/modules").filter((id) => fs.existsSync(`extras/modules/${id}/module.json`)).sort();
   for (const id of ids) {
     const m = JSON.parse(read(`extras/modules/${id}/module.json`));
-    const expected = MENU.includes(id) ? "menu" : "integrations";
+    const expected = MENU.includes(id) ? "menu" : OVERLAYS.includes(id) ? "overlays" : "integrations";
     assert.equal(P.defaultPlacement(m), expected, `${id} : rangement par défaut`);
   }
   assert.deepEqual(ids, EXTRAS.map((e) => e.id).sort(), "un nouveau module livré doit être ajouté au tableau");
 });
 
 test("rangement par défaut : règle déterministe lue dans le manifeste (catégorie, contenu, données gérables)", () => {
-  for (const type of ["overlay", "social", "integration"]) assert.equal(P.defaultPlacement({ type, mcp: [{}] }), "integrations", `${type} : réglé une fois, même avec des actions MCP`);
+  for (const type of ["social", "integration"]) assert.equal(P.defaultPlacement({ type, mcp: [{}] }), "integrations", `${type} : réglé une fois, même avec des actions MCP`);
+  assert.equal(P.defaultPlacement({ type: "overlay", mcp: [{}] }), "overlays", "overlay : une famille à part, même avec des actions MCP");
   assert.equal(P.defaultPlacement({ content: { display: "cards", clickAction: "detail" } }), "menu");
   assert.equal(P.defaultPlacement({ content: { display: "links", clickAction: "detail" } }), "menu", "des liens qui s'ouvrent dans le site : on y travaille");
   assert.equal(P.defaultPlacement({ content: { display: "links", clickAction: "external" } }), "integrations", "une liste de liens vers l'extérieur : réseaux, chaînes");
@@ -109,7 +112,7 @@ test("menu : contenu à part, puis des groupes dans l'ordre fixe ; les groupes v
 test("menu : seules les instances qui tournent y figurent ; Intégrations compte toutes celles qui y sont rangées et cumule leurs pastilles", () => {
   const layout = P.buildMenuLayout([
     item("a", "utility", { enabled: false }), item("b", "utility", { error: true }), item("c", "widget", { badge: 2 }),
-    item("t", "utility", { placement: "integrations", badge: 3 }), item("o", "overlay", { placement: "integrations", enabled: false, badge: 9 }), item("e", "utility", { placement: "integrations", error: true, badge: 4 }),
+    item("t", "utility", { placement: "integrations", badge: 3 }), item("o", "utility", { placement: "integrations", enabled: false, badge: 9 }), item("e", "utility", { placement: "integrations", error: true, badge: 4 }),
   ]);
   assert.deepEqual(layout.groups.flatMap((g) => g.items.map((i) => i.id)), ["c"], "désactivée ou en erreur : pas dans le menu");
   assert.equal(layout.integrations.count, 3, "la page Intégrations les liste toutes (désactivée et en erreur comprises)");

@@ -1,7 +1,7 @@
-// Rangement des instances dans le menu de l'admin : « épinglée au menu » ou « rangée dans Intégrations ». Logique pure (ni base ni React), testée telle quelle.
+// Rangement des instances dans le menu de l'admin : « épinglée au menu », « rangée dans Intégrations » ou « rangée dans Overlays ». Logique pure (ni base ni React), testée telle quelle.
 
-/** Où une instance apparaît : directement dans le menu (on y travaille souvent), ou dans la page Intégrations (réglée une fois). */
-export const PLACEMENTS = ["menu", "integrations"] as const;
+/** Où une instance apparaît : directement dans le menu (on y travaille souvent), dans la page Intégrations (réglée une fois), ou dans la page Overlays (sources navigateur pour OBS : une famille à part). */
+export const PLACEMENTS = ["menu", "integrations", "overlays"] as const;
 export type Placement = (typeof PLACEMENTS)[number];
 
 /** Choix de l'utilisateur, stocké avec l'instance (réglage du cœur, jamais dans le module). Absent = la règle par défaut. */
@@ -16,27 +16,42 @@ export type PlacementManifest = {
   mcp?: readonly unknown[];
   offers?: readonly unknown[];
   requires?: readonly unknown[];
+  permissions?: readonly string[];
 };
+
+/** Un module de type « overlay », ou qui déclare la permission « overlay » : une source navigateur pour OBS. */
+export function isOverlayManifest(m: Pick<PlacementManifest, "type" | "permissions">): boolean {
+  return m.type === "overlay" || (m.permissions ?? []).includes("overlay");
+}
 
 /**
  * RÈGLE PAR DÉFAUT, déterministe, lue dans le manifeste seul :
- * 1. catégorie « overlay », « social » ou « integration » : se règle une fois → Intégrations ;
+ * 0. type « overlay » ou permission « overlay » : famille à part → Overlays (ni menu de travail ni Intégrations) ;
+ * 1. catégorie « social » ou « integration » : se règle une fois → Intégrations ;
  * 2. module à contenu : on y écrit → menu, SAUF une simple liste de liens qui s'ouvrent ailleurs (affichage « links » + clic externe : vos réseaux, vos chaînes), qui se règle une fois → Intégrations ;
  * 3. les autres (widget, outil…) : des données à gérer (actions MCP, service offert ou service de stockage requis) → menu ; sinon rien à entretenir → Intégrations.
  */
 export function defaultPlacement(m: PlacementManifest): Placement {
+  if (isOverlayManifest(m)) return "overlays";
   const type = m.type ?? (m.content ? "content" : "widget");
-  if (type === "overlay" || type === "social" || type === "integration") return "integrations";
+  if (type === "social" || type === "integration") return "integrations";
   if (m.content) return m.content.display === "links" && m.content.clickAction === "external" ? "integrations" : "menu";
   if (type === "content") return "menu";
   const manages = (m.mcp?.length ?? 0) > 0 || (m.offers?.length ?? 0) > 0 || (m.requires?.length ?? 0) > 0;
   return manages ? "menu" : "integrations";
 }
 
-/** Le choix de l'utilisateur l'emporte sur la règle par défaut. */
+/**
+ * Le choix de l'utilisateur l'emporte sur la règle par défaut. Seul un overlay peut être rangé dans Overlays (la page y affiche l'adresse OBS) :
+ * ce choix, posé sur autre chose, est ignoré.
+ */
 export function resolvePlacement(m: PlacementManifest, pinned: unknown): Placement {
-  return parsePlacement(pinned) ?? defaultPlacement(m);
+  const chosen = parsePlacement(pinned);
+  return chosen && (chosen !== "overlays" || isOverlayManifest(m)) ? chosen : defaultPlacement(m);
 }
+
+/** Les rangements possibles d'une instance de ce module (« Overlays » seulement pour un overlay). */
+export const placementsFor = (m: PlacementManifest): Placement[] => (isOverlayManifest(m) ? [...PLACEMENTS] : ["menu", "integrations"]);
 
 // ─── Groupes du menu ─────────────────────────────────────────────────────────
 
@@ -57,20 +72,24 @@ export type MenuLayout<T extends MenuEntry> = {
   groups: { id: MenuGroupId; items: T[] }[];
   /** Entrée unique « Intégrations » : nombre d'instances rangées (désactivées comprises) et pastilles remontées. */
   integrations: { items: T[]; count: number; badge: number };
+  /** Entrée unique « Overlays » : même principe. */
+  overlays: { items: T[]; count: number; badge: number };
 };
 
 /**
  * Répartit les instances : seules celles qui tournent (actives, sans erreur de données) figurent dans le menu ;
- * toutes celles rangées dans Intégrations y sont comptées, et leurs pastilles s'additionnent sur l'entrée.
+ * toutes celles rangées dans Intégrations (ou dans Overlays) y sont comptées, et leurs pastilles s'additionnent sur l'entrée.
  */
 export function buildMenuLayout<T extends MenuEntry>(items: readonly T[]): MenuLayout<T> {
   const shown = items.filter((i) => i.enabled && !i.error);
   const pinned = shown.filter((i) => i.placement === "menu");
   const parked = items.filter((i) => i.placement === "integrations");
+  const overlays = items.filter((i) => i.placement === "overlays");
+  const badgeOf = (list: readonly T[]) => list.reduce((n, i) => n + (i.enabled && !i.error ? i.badge : 0), 0);
   const content = pinned.filter((i) => i.type === "content");
   const rest = pinned.filter((i) => i.type !== "content");
   const groups = MENU_GROUPS.map((id) => ({ id, items: rest.filter((i) => menuGroupOf(i.type) === id) })).filter((g) => g.items.length > 0);
-  return { content, groups, integrations: { items: parked, count: parked.length, badge: parked.reduce((n, i) => n + (i.enabled && !i.error ? i.badge : 0), 0) } };
+  return { content, groups, integrations: { items: parked, count: parked.length, badge: badgeOf(parked) }, overlays: { items: overlays, count: overlays.length, badge: badgeOf(overlays) } };
 }
 
 // ─── Plié / déplié ──────────────────────────────────────────────────────────

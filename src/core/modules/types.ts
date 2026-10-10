@@ -101,6 +101,8 @@ export type ModuleManifest = {
   icon?: string;
   /** Catégorie. Défaut : "content" si `content` est déclaré, sinon "widget". */
   type?: ModuleType;
+  /** Plateforme concernée (« twitch », « discord »…) : regroupe à l'écran les instances d'une même plateforme. Facultatif, purement visuel. Voir platform.ts. */
+  platform?: string;
   /** "multiple" : autant d'instances que l'on veut (ex. plusieurs blogs). "single" : une seule. */
   instances: "single" | "multiple";
   content?: ContentConfig;

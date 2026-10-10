@@ -3,6 +3,7 @@ import { MODULE_API_VERSION } from "../config";
 import { COLOR_TOKENS } from "../color";
 import { groupIssues } from "./groups";
 import { siteDefaultRef } from "./settingValues";
+import { PLATFORM_PATTERN } from "./platform";
 
 const localized = z.union([z.string().max(500), z.record(z.string(), z.string().max(500))]);
 
@@ -93,6 +94,11 @@ export const manifestSchema = z.object({
     .optional(),
   icon: z.string().max(8).optional(),
   type: z.enum(["content", "social", "overlay", "widget", "integration", "utility"]).optional(),
+  /**
+   * Plateforme concernée (« twitch », « discord », « youtube »…), facultative : l'admin regroupe sous une même plateforme les instances qui la partagent (Intégrations, liste des modules).
+   * Purement visuel, aucune dépendance. Absent = aucune plateforme. Un ancien cœur ignore ce champ. Voir platform.ts.
+   */
+  platform: z.string().regex(PLATFORM_PATTERN, "platform must be a lowercase identifier like twitch or discord (a-z, 0-9 and dashes, 31 characters at most, starting with a letter)").optional(),
   instances: z.enum(["single", "multiple"]).default("multiple"),
   consumes: z.array(z.object({ topic: topicId, label: localized, schema: z.array(topicField).max(20).optional(), tags: z.boolean().optional() })).max(10).default([]),
   provides: z.array(z.object({ topic: topicId, label: localized.optional() })).max(10).default([]),

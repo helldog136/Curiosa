@@ -11,7 +11,7 @@ import { deleteInstance, validateBasePath } from "@/core/instanceService";
 import { checkNickname } from "@/core/instanceLabel";
 import { instanceSettingKey } from "@/core/modules/context";
 import { hasPage } from "@/core/modules/manifest";
-import { defaultPlacement, parsePlacement, placementSettingKey } from "@/core/modules/menuPlacement";
+import { defaultPlacement, parsePlacement, placementSettingKey, placementsFor } from "@/core/modules/menuPlacement";
 import { groupFlagName, judgeGroup } from "@/core/modules/groups";
 import { isValidLink, resolveDefault, shouldStore } from "@/core/modules/settingValues";
 import { localized } from "@/core/modules/types";
@@ -58,7 +58,7 @@ export async function saveInstance(_prev: ActionState, formData: FormData): Prom
   }
   // Épingler au menu / ranger dans Intégrations : un choix différent de ce qui était affiché est mémorisé ; revenir à la règle par défaut l'efface.
   const placement = parsePlacement(formData.get("placement"));
-  if (placement && placement !== parsePlacement(formData.get("placement_was"))) {
+  if (placement && placementsFor(mod.manifest).includes(placement) && placement !== parsePlacement(formData.get("placement_was"))) {
     if (placement === defaultPlacement(mod.manifest)) await deleteSetting(placementSettingKey(id));
     else await setSetting(placementSettingKey(id), placement);
   }

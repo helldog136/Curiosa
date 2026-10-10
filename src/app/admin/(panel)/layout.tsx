@@ -31,7 +31,8 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   const entryAlso = (m: (typeof nav)[number]) => (m.content ? [`/admin/instances/${m.id}`] : []);
   const entryLink = (m: (typeof nav)[number]) => <NavLink key={m.id} href={entryHref(m)} also={entryAlso(m)} badge={m.badge} badgeLabel={t("nav.badge.todo")}>{m.icon} {m.name}</NavLink>;
   const showIntegrations = canManage && menu.integrations.count > 0;
-  const hasFeatures = menu.groups.length > 0 || showIntegrations;
+  const showOverlays = canManage && menu.overlays.count > 0;
+  const hasFeatures = menu.groups.length > 0 || showIntegrations || showOverlays;
 
   const group = "mb-1 mt-6 px-3 text-xs font-semibold uppercase tracking-wider text-muted";
 
@@ -68,6 +69,12 @@ export default async function PanelLayout({ children }: { children: React.ReactN
           {showIntegrations && (
             <NavLink href="/admin/integrations" also={menu.integrations.items.flatMap((m) => [`/admin/instances/${m.id}`, ...(m.content ? [`/admin/entries?c=${m.key}`] : [])])} badge={menu.integrations.badge} badgeLabel={t("nav.badge.todo")}>
               🔌 {t("nav.integrations", { n: menu.integrations.count })}
+            </NavLink>
+          )}
+          {/* Les overlays (sources navigateur pour OBS) sont une famille à part : une entrée, avec l'adresse à coller dans OBS. */}
+          {showOverlays && (
+            <NavLink href="/admin/overlays" also={menu.overlays.items.map((m) => `/admin/instances/${m.id}`)} badge={menu.overlays.badge} badgeLabel={t("nav.badge.todo")}>
+              🎬 {t("nav.overlays", { n: menu.overlays.count })}
             </NavLink>
           )}
 

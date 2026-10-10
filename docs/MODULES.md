@@ -66,31 +66,37 @@ et comment ses instances sont exposées :
 | `utility` | outils divers (RSS…) | — |
 
 L'admin est **une seule interface**. Le menu ne liste que les instances où l'on **travaille souvent** (voir « Rangement dans le menu » ci-dessous) ;
-les autres tiennent dans **une seule entrée « Intégrations (n) »**, une carte par instance. Le hub **Modules** a trois onglets : *Installés* (liste compacte,
+les autres tiennent dans **une seule entrée « Intégrations (n) »**, une carte par instance, et les overlays dans **une seule entrée « Overlays (n) »**. Le hub **Modules** a trois onglets : *Installés* (liste compacte,
 un module à plusieurs instances se déplie), *Catalogue* (installer) et *Mises à jour* (modules en retard). La page d'une instance
 est une sous-page de cet admin, avec ses réglages (générés depuis `settings`), ses abonnements
 (voir « sujets ») et le panneau `adminPanel` du module.
 
-#### Rangement dans le menu : épinglée ou rangée dans Intégrations
+#### Rangement dans le menu : épinglée, rangée dans Intégrations ou dans Overlays
 
-Deux familles d'instances : celles où l'on **travaille souvent** (du contenu ou des données à gérer : blog, pages, contacts, planning…) et celles que l'on
-**règle une fois** (réseaux sociaux, chaînes, overlays, annonces, statut live, kit presse…). Le cœur décide, **sans rien demander au module**, à partir de son manifeste seul, dans cet ordre :
+Trois familles d'instances : celles où l'on **travaille souvent** (du contenu ou des données à gérer : blog, pages, contacts, planning…) et celles que l'on
+**règle une fois** (réseaux sociaux, chaînes, annonces, statut live, kit presse…), plus les **overlays** (sources navigateur pour OBS), une famille à part. Le cœur décide, **sans rien demander au module**, à partir de son manifeste seul, dans cet ordre :
 
-1. type `overlay`, `social` ou `integration` → **Intégrations** ;
-2. module à `content` → **menu**, sauf une simple liste de liens qui s'ouvrent ailleurs (`content.display: "links"` avec `clickAction: "external"`) → **Intégrations** ;
-3. les autres (`widget`, `utility`, type inconnu ou absent) : s'ils ont des données à gérer, c'est-à-dire des actions `mcp`, un service `offers` ou un service `requires` → **menu** ; sinon → **Intégrations**.
+1. type `overlay` **ou** permission `overlay` → **Overlays** (ni menu de travail ni Intégrations) ;
+2. type `social` ou `integration` → **Intégrations** ;
+3. module à `content` → **menu**, sauf une simple liste de liens qui s'ouvrent ailleurs (`content.display: "links"` avec `clickAction: "external"`) → **Intégrations** ;
+4. les autres (`widget`, `utility`, type inconnu ou absent) : s'ils ont des données à gérer, c'est-à-dire des actions `mcp`, un service `offers` ou un service `requires` → **menu** ; sinon → **Intégrations**.
 
 Sur les modules d'`extras/modules` : *menu* = `blog`, `codes`, `collection`, `contact-form`, `contacts`, `game-suggestions`, `pages`, `partnerships`, `planning`, `sponsors` ;
-*Intégrations* = `alerts-overlay`, `discord-announcer`, `hero`, `links`, `live-status`, `maze-overlay`, `press-kit`, `sponsor-ticker`, `ticker-overlay`, `twitch-channel`, `youtube-channel`.
-Un module sans type ni contenu (module tiers) suit la règle 3 ; pour qu'il apparaisse dans le menu, déclarez des actions `mcp` ou un `type` qui le dit.
+*Intégrations* = `discord-announcer`, `hero`, `links`, `live-status`, `press-kit`, `twitch-channel`, `youtube-channel` ;
+*Overlays* = `alerts-overlay`, `maze-overlay`, `sponsor-ticker`, `ticker-overlay`.
+Un module sans type ni contenu (module tiers) suit la règle 4 ; pour qu'il apparaisse dans le menu, déclarez des actions `mcp` ou un `type` qui le dit.
 
-**Épingler.** L'utilisateur peut changer ce rangement instance par instance (« Épingler au menu » / « Ranger dans Intégrations », sur la page de réglages de l'instance et sur sa carte Intégrations).
+**Épingler.** L'utilisateur peut changer ce rangement instance par instance (« Épingler au menu » / « Ranger dans Intégrations » / « Ranger dans Overlays », sur la page de réglages de l'instance et sur sa carte). « Overlays » n'est proposé que pour un overlay (type ou permission `overlay`) : posé sur autre chose, ce choix est ignoré.
 Ce choix est un réglage **du cœur**, mémorisé avec l'instance (`instance.<id>.__placement`) : le module ne le voit pas et n'a rien à déclarer. Il l'emporte toujours sur la règle ; revenir au rangement par défaut l'efface.
 
 **Groupes du menu.** Les instances épinglées sont rangées sous des titres pliables selon la catégorie du manifeste : *Mon contenu* (type `content`, liste simple), *Relations* (`utility` : contacts, partenariats…),
 *Pages interactives* (`widget` : planning, formulaire…) et *Autres* (toute autre catégorie, ou aucune). Jusqu'à 6 instances épinglées les groupes sont dépliés, au-delà ils sont repliés ; le dernier choix est mémorisé
 dans un cookie (`curiosa_nav_groups`, lu côté serveur : pas de clignotement) et la page ouverte déplie toujours son groupe. La pastille d'une instance (`adminBadge`) reste sur son lien, le total d'un groupe plié s'affiche sur son titre,
 et la pastille d'une instance rangée dans Intégrations s'ajoute à celle de l'entrée « Intégrations ».
+
+**Page Overlays** (`/admin/overlays`, entrée « Overlays (n) », réservée aux rôles qui peuvent gérer comme Intégrations). Une carte par instance overlay : icône, nom, état (mêmes états que ci-dessous), **l'adresse à coller dans OBS** (`<SITE_URL>/overlays/<clé>`, avec un bouton « Copier » ; la route publique est inchangée), lien vers les réglages, interrupteur actif/désactivé et « Épingler au menu ». Recherche interactive comme les autres pages.
+
+**Plateformes.** Le champ facultatif `platform` du manifeste (voir ci-dessous) regroupe à l'écran les instances qui parlent de la même plateforme. Sur la page Intégrations, **une section par plateforme dès que 2 instances au moins la partagent** (« Twitch » : Chaîne Twitch + Live Twitch ; « Discord » : Discord + Annonces Discord) ; les autres restent dans « Réseaux sociaux » (type `social`) ou « Autres ». Sans plateforme partagée, la page est une seule grille, comme avant. L'onglet *Installés* du hub affiche une pastille de plateforme. Purement visuel : aucune dépendance entre modules, chaque instance reste épinglable seule.
 
 **États d'une carte Intégrations.** *Actif* ; *Désactivé* (instance ou module désactivé) ; *À configurer* (un réglage à remplir est encore vide : texte, secret ou adresse sans valeur par défaut, hors groupes facultatifs et textes traduisibles) ; *Erreur* (la migration des données du module a échoué ou une de ses tâches `tasks` a échoué à son dernier passage).
 
@@ -110,6 +116,7 @@ Validé à l'installation et au chargement (zod, `src/core/modules/manifest.ts`)
   "icon": "📣",                          // un emoji (8 caractères au plus)
   "main": "index.mjs",                   // absent = module sans code
   "type": "widget",                      // content | social | overlay | widget | integration | utility
+  "platform": "twitch",                  // facultatif : plateforme concernée (regroupement à l'écran)
   "instances": "multiple",               // ou "single"
   "page": true, "basePath": "guestbook", // l'instance a une page publique, sur ce chemin proposé
   "permissions": ["slots", "sections", "routes", "storage", "filters", "pages", "topics", "overlay", "mcp", "admin", "mail", "rawg"],
@@ -121,6 +128,7 @@ Validé à l'installation et au chargement (zod, `src/core/modules/manifest.ts`)
 | Champ | Rôle |
 |---|---|
 | `apiVersion` | Version de l'API des modules (aujourd'hui `2`). Un module d'une autre version est refusé à l'installation ; dans l'index du catalogue, il est listé mais marqué incompatible. |
+| `platform` | **Plateforme** concernée, facultative : `^[a-z][a-z0-9-]{0,30}$` (`twitch`, `discord`, `youtube`, `instagram`, `tiktok`, `x`…). Regroupe à l'écran les instances d'une même plateforme (voir « Plateformes »). Libellé affiché : table du cœur pour les plateformes connues (`twitch` → Twitch, `youtube` → YouTube, `tiktok` → TikTok, `x` → X, `kofi` → Ko-fi, `github` → GitHub… voir `src/core/modules/platform.ts`), sinon l'identifiant avec une majuscule initiale. Une autre forme est refusée (`module.json: platform — …`). Absent = aucune plateforme. Un cœur plus ancien ignore la clé. |
 | `minCore` | **Version minimale du cœur** (`"0.1.10"` : trois nombres, rien d'autre ; une autre forme est refusée). Absent = aucune exigence. Voir [Version minimale du cœur](#version-minimale-du-cœur-mincore). |
 | `id` | Identifiant du module, stable à jamais (les instances et les sauvegardes s'y réfèrent). |
 | `name`, `description` | Texte ou `{ langue: texte }` (500 caractères au plus). Langue absente : langue par défaut du site, puis `en`. |
@@ -870,7 +878,7 @@ export default {
 ```
 
 L'instance est servie sur `/overlays/<clé>` (`?lang=fr` pour la langue) : la page admin de l'instance
-affiche l'URL à coller dans OBS. L'overlay livré, `ticker-overlay`, est un exemple complet : il ne sait
+affiche l'URL à coller dans OBS, et la page **Overlays** de l'admin les réunit toutes avec un bouton « Copier ». Un module de type `overlay` (ou qui déclare la permission `overlay`) est rangé dans cette famille par défaut. L'overlay livré, `ticker-overlay`, est un exemple complet : il ne sait
 rien des blogs ni des codes promo, il digère `core.entry` et `overlay.item`.
 
 ## Sauvegarde lisible sans le framework

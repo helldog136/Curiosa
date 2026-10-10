@@ -7,6 +7,7 @@ import { getInstanceLabeler } from "@/core/modules/labels";
 import { listInstances } from "@/core/instances";
 import { listModuleRows, loadModule } from "@/core/modules/registry";
 import { effectiveType } from "@/core/modules/manifest";
+import { platformLabel, platformOf } from "@/core/modules/platform";
 import { MODULE_TYPES } from "@/core/modules/types";
 import { localized } from "@/core/modules/types";
 import { FeatureTabs, featureTabProps } from "@/components/admin/FeatureTabs";
@@ -41,13 +42,14 @@ export default async function ModulesPage({ searchParams }: { searchParams: Prom
     const modName = mod ? localized(mod.manifest.name, locale, config.defaultLocale) : row.id;
     const type = mod ? effectiveType(mod.manifest) : "broken";
     const description = mod ? localized(mod.manifest.description, locale, config.defaultLocale) : t("modules.broken");
+    const platform = mod ? platformOf(mod.manifest) : null;
     return {
-      id: row.id, type, enabled: row.enabled, version: row.version, loaded: !!mod, icon: mod?.manifest.icon ?? "🧩", description,
+      id: row.id, type, platform: platform ? platformLabel(platform) : null, enabled: row.enabled, version: row.version, loaded: !!mod, icon: mod?.manifest.icon ?? "🧩", description,
       // Mode simple, une seule instance : la carte porte le nom que l'admin lui a donné (comme le menu de gauche).
       name: !advanced && mine.length === 1 ? labeler.label(mine[0]!) : modName,
       instances: mine.map((i) => ({ id: i.id, name: labeler.label(i), state: statuses.get(i.id)?.state ?? "off" })),
       count: mine.length, firstInstanceId: mine[0]?.id ?? null, update: behind.has(row.id),
-      search: moduleSearchText([modName, description, row.id, type === "broken" ? null : t(`type.${type}`), type, ...mine.flatMap((i) => [labeler.label(i), i.nickname, i.key])]),
+      search: moduleSearchText([modName, description, row.id, platform ? platformLabel(platform) : null, type === "broken" ? null : t(`type.${type}`), type, ...mine.flatMap((i) => [labeler.label(i), i.nickname, i.key])]),
     };
   });
   const groups = buildModuleGroups(items, MODULE_TYPES);
@@ -121,6 +123,8 @@ export default async function ModulesPage({ searchParams }: { searchParams: Prom
                         <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
                           <span className="font-semibold">{m.name}</span>
                           <span className="text-xs text-muted">v{m.version}</span>
+                      {m.platform && m.platform !== m.name && <span className={ui.chip} data-testid="platform-chip">{m.platform}</span>}
+                          {m.platform && m.platform !== m.name && <span className={ui.chip} data-testid="platform-chip">{m.platform}</span>}
                           <span className={m.enabled ? ui.chipOk : ui.chip}>{m.enabled ? t("modules.on") : t("modules.off")}</span>
                           {m.update && <span className={ui.chipWarn} data-testid={`module-behind-${m.id}`}>⬆ {t("modules.updateBadge")}</span>}
                         </span>
@@ -142,6 +146,7 @@ export default async function ModulesPage({ searchParams }: { searchParams: Prom
                     <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
                       <span className="font-semibold">{m.name}</span>
                       <span className="text-xs text-muted">v{m.version}</span>
+                      {m.platform && m.platform !== m.name && <span className={ui.chip} data-testid="platform-chip">{m.platform}</span>}
                       <span className={m.enabled ? ui.chipOk : ui.chip}>{m.enabled ? t("modules.on") : t("modules.off")}</span>
                       {m.update && <span className={ui.chipWarn} data-testid={`module-behind-${m.id}`}>⬆ {t("modules.updateBadge")}</span>}
                     </span>
@@ -157,7 +162,7 @@ export default async function ModulesPage({ searchParams }: { searchParams: Prom
                 <div className="flex items-start gap-4">
                   <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-accent/10 text-2xl" aria-hidden>{m.icon}</span>
                   <div className="min-w-0">
-                    <p className="text-lg font-semibold leading-tight">{m.name}</p>
+                    <p className="text-lg font-semibold leading-tight">{m.name}{m.platform && m.platform !== m.name && <span className={`${ui.chip} ml-2 align-middle`} data-testid="platform-chip">{m.platform}</span>}</p>
                     <p className="mt-1 line-clamp-3 text-sm leading-5 text-muted">{m.description}</p>
                   </div>
                 </div>
