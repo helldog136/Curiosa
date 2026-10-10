@@ -18,6 +18,9 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Les fonctionnalités d'une même plateforme sont regroupées.** Chaîne et statut live Twitch, lien et annonces Discord : ils apparaissent ensemble sous le nom de la plateforme.
 - **Les modules au même endroit.** La page Modules réunit trois onglets : ce qui est installé, le catalogue et les mises à jour des modules en retard.
 
+### Corrections
+- La page « Mises à jour » ne s'actualise plus trop vite à la fin d'une mise à jour : elle attend 2 secondes de plus que le site ait redémarré, au lieu d'afficher une page d'erreur « 502 Bad Gateway ».
+
 ## 0.1.9
 
 *Changements depuis la 0.1.8.*

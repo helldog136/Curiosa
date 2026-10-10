@@ -6,6 +6,8 @@ export type Phase = "idle" | "working" | "done" | "error";
 export const MIN_MS = 900;
 /** Temps pendant lequel « ✓ » reste affiché avant de passer à la suite (navigation, rafraîchissement). */
 export const DONE_MS = 700;
+/** Après une mise à jour du site : le serveur redémarre, on laisse 2 s de plus avant de relire la page (sinon le proxy répond « 502 Bad Gateway »). */
+export const AFTER_UPDATE_MS = 2000;
 
 export const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 

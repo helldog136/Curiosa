@@ -74,3 +74,11 @@ test("textes : mêmes clés en français et en anglais pour les boutons animés"
     assert.ok(at >= all.length - 120, "vers la fin du fichier (avant les clés de thème et de couleurs)");
   }
 });
+
+test("mise à jour du site : 2 s d'attente avant de relire la page (le serveur redémarre), et le suivi automatique ne relit que si le serveur répond", () => {
+  assert.match(read("src/components/admin/animatedAction.ts"), /AFTER_UPDATE_MS = 2000/);
+  assert.match(read("src/components/admin/UpdateButton.tsx"), /sleep\(AFTER_UPDATE_MS\)/);
+  const auto = read("src/components/admin/AutoRefresh.tsx");
+  assert.match(auto, /status >= 500/);
+  assert.match(auto, /catch \{ return; \}/);
+});
