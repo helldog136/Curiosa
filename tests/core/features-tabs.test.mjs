@@ -6,10 +6,11 @@ const read = (p) => fs.readFileSync(p, "utf8");
 
 test("fonctionnalités : « installé » et « ajouter » sont deux onglets d'un même endroit, avec une seule entrée de menu", () => {
   const tabs = read("src/components/admin/FeatureTabs.tsx");
-  assert.match(tabs, /href="\/admin\/modules"|"installed", "\/admin\/modules"/);
-  assert.match(tabs, /"add", "\/admin\/catalogue"/);
+  assert.match(tabs, /installed: "\/admin\/modules"/);
+  assert.match(tabs, /add: "\/admin\/catalogue"/);
+  assert.match(tabs, /updates: "\/admin\/modules\?tab=updates"/, "troisième onglet : les mises à jour des modules");
   assert.match(tabs, /aria-current=\{current === id \? "page" : undefined\}/);
-  assert.match(read("src/app/admin/(panel)/modules/page.tsx"), /<FeatureTabs current="installed"/);
+  assert.match(read("src/app/admin/(panel)/modules/page.tsx"), /<FeatureTabs current=\{tab === "updates" \? "updates" : "installed"\}/);
   assert.match(read("src/app/admin/(panel)/catalogue/page.tsx"), /<FeatureTabs current="add"/);
   const layout = read("src/app/admin/(panel)/layout.tsx");
   assert.match(layout, /href="\/admin\/modules" also=\{\["\/admin\/catalogue"\]\}/, "le lien reste surligné dans le catalogue");

@@ -5,6 +5,7 @@ import { DISPLAYS, FEATURES, getInstanceById } from "@/core/instances";
 import { localeName } from "@/core/i18n/locales";
 import { buildContext, instanceSettingKey } from "@/core/modules/context";
 import { hasPage } from "@/core/modules/manifest";
+import { defaultPlacement, placementSettingKey, resolvePlacement, settingsToFill } from "@/core/modules/menuPlacement";
 import { getModule } from "@/core/modules/registry";
 import { localized } from "@/core/modules/types";
 import { buildTheme } from "@/core/color";
@@ -63,7 +64,9 @@ export default async function InstancePage({ params, searchParams }: { params: P
 
   // Un réglage à remplir (clé, adresse, identifiant… encore vide, sans valeur par défaut) : on ouvre les réglages d'office plutôt que de les cacher.
   const grouped = new Set((mod.manifest.optionalGroups ?? []).flatMap((g) => g.fields));
-  const toFill = visibleSettings.some((f) => !grouped.has(f.key) && ["secret", "text", "url", "link"].includes(f.type) && f.default === undefined && !f.translatable && !Object.values(stored[f.key] ?? {}).some((v) => v !== undefined && v !== ""));
+  const toFill = settingsToFill(visibleSettings, grouped, stored);
+  const placement = resolvePlacement(mod.manifest, await getSetting(placementSettingKey(id)));
+  const placementIsDefault = placement === defaultPlacement(mod.manifest);
   // Le bouton flottant laisse un peu de place sous le DERNIER formulaire seulement.
   const hasMoreForms = visibleSettings.length > 0 || (advanced && (mod.manifest.consumes ?? []).length > 0);
   const panelNode = <Blocks blocks={panel} locale={locale} adminInstanceId={instance.id} />;
@@ -107,6 +110,10 @@ export default async function InstancePage({ params, searchParams }: { params: P
               <Checkbox name="enabled" label={t("instances.enabled")} defaultChecked={instance.enabled} />
               {hasPage(mod.manifest) && <Checkbox name="showInNav" label={t("instances.showInNav")} defaultChecked={instance.showInNav} />}
             </div>
+            {/* Où la retrouver : dans le menu, ou rangée dans la page Intégrations (réglée une fois). Le choix l'emporte sur la règle par défaut. */}
+            <input type="hidden" name="placement_was" value={placement} />
+            <Select name="placement" label={t("placement.title")} help={placementIsDefault ? t("placement.helpDefault") : t("placement.helpChosen")} defaultValue={placement}
+              options={[{ value: "menu", label: t("placement.pin") }, { value: "integrations", label: t("placement.park") }]} />
             {content && (
               <Select name="sort" label={t("instances.sort")} help={t("instances.sortHelp")} defaultValue={sort}
                 options={SORTS.map((s) => ({ value: s, label: t(`sort.${s}`) }))} />

@@ -65,11 +65,34 @@ et comment ses instances sont exposées :
 | `integration` | services externes (Twitch, Discord…) | — |
 | `utility` | outils divers (RSS…) | — |
 
-L'admin est **une seule interface** : la barre latérale regroupe, par type, une entrée pour
-chaque instance configurée (nommée comme l'utilisateur l'a nommée : trois blogs = trois entrées),
-plus la page **Modules** (installés, activation, mises à jour) et la **Catalogue** (installer). La page d'une instance
+L'admin est **une seule interface**. Le menu ne liste que les instances où l'on **travaille souvent** (voir « Rangement dans le menu » ci-dessous) ;
+les autres tiennent dans **une seule entrée « Intégrations (n) »**, une carte par instance. Le hub **Modules** a trois onglets : *Installés* (liste compacte,
+un module à plusieurs instances se déplie), *Catalogue* (installer) et *Mises à jour* (modules en retard). La page d'une instance
 est une sous-page de cet admin, avec ses réglages (générés depuis `settings`), ses abonnements
 (voir « sujets ») et le panneau `adminPanel` du module.
+
+#### Rangement dans le menu : épinglée ou rangée dans Intégrations
+
+Deux familles d'instances : celles où l'on **travaille souvent** (du contenu ou des données à gérer : blog, pages, contacts, planning…) et celles que l'on
+**règle une fois** (réseaux sociaux, chaînes, overlays, annonces, statut live, kit presse…). Le cœur décide, **sans rien demander au module**, à partir de son manifeste seul, dans cet ordre :
+
+1. type `overlay`, `social` ou `integration` → **Intégrations** ;
+2. module à `content` → **menu**, sauf une simple liste de liens qui s'ouvrent ailleurs (`content.display: "links"` avec `clickAction: "external"`) → **Intégrations** ;
+3. les autres (`widget`, `utility`, type inconnu ou absent) : s'ils ont des données à gérer, c'est-à-dire des actions `mcp`, un service `offers` ou un service `requires` → **menu** ; sinon → **Intégrations**.
+
+Sur les modules d'`extras/modules` : *menu* = `blog`, `codes`, `collection`, `contact-form`, `contacts`, `game-suggestions`, `pages`, `partnerships`, `planning`, `sponsors` ;
+*Intégrations* = `alerts-overlay`, `discord-announcer`, `hero`, `links`, `live-status`, `maze-overlay`, `press-kit`, `sponsor-ticker`, `ticker-overlay`, `twitch-channel`, `youtube-channel`.
+Un module sans type ni contenu (module tiers) suit la règle 3 ; pour qu'il apparaisse dans le menu, déclarez des actions `mcp` ou un `type` qui le dit.
+
+**Épingler.** L'utilisateur peut changer ce rangement instance par instance (« Épingler au menu » / « Ranger dans Intégrations », sur la page de réglages de l'instance et sur sa carte Intégrations).
+Ce choix est un réglage **du cœur**, mémorisé avec l'instance (`instance.<id>.__placement`) : le module ne le voit pas et n'a rien à déclarer. Il l'emporte toujours sur la règle ; revenir au rangement par défaut l'efface.
+
+**Groupes du menu.** Les instances épinglées sont rangées sous des titres pliables selon la catégorie du manifeste : *Mon contenu* (type `content`, liste simple), *Relations* (`utility` : contacts, partenariats…),
+*Pages interactives* (`widget` : planning, formulaire…) et *Autres* (toute autre catégorie, ou aucune). Jusqu'à 6 instances épinglées les groupes sont dépliés, au-delà ils sont repliés ; le dernier choix est mémorisé
+dans un cookie (`curiosa_nav_groups`, lu côté serveur : pas de clignotement) et la page ouverte déplie toujours son groupe. La pastille d'une instance (`adminBadge`) reste sur son lien, le total d'un groupe plié s'affiche sur son titre,
+et la pastille d'une instance rangée dans Intégrations s'ajoute à celle de l'entrée « Intégrations ».
+
+**États d'une carte Intégrations.** *Actif* ; *Désactivé* (instance ou module désactivé) ; *À configurer* (un réglage à remplir est encore vide : texte, secret ou adresse sans valeur par défaut, hors groupes facultatifs et textes traduisibles) ; *Erreur* (la migration des données du module a échoué ou une de ses tâches `tasks` a échoué à son dernier passage).
 
 ## Le manifeste `module.json`
 

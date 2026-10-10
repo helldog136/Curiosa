@@ -8,9 +8,8 @@ import { Markdown } from "@/components/site/Markdown";
 import { Checkbox } from "@/components/admin/Field";
 import { Callout, PageHeader, Panel } from "@/components/admin/Page";
 import { ui } from "@/components/admin/ui";
-import { ModulesUpdates, type ModuleUpdateRow } from "@/components/admin/ModulesUpdates";
-import { getModulesReport, moduleNames } from "@/core/modules/updateStatus";
-import { checkNow, recheckModules, saveAutoUpdate, saveChannel } from "./actions";
+import { loadModulesUpdates } from "@/components/admin/ModulesUpdatesSection";
+import { checkNow, saveAutoUpdate, saveChannel } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -43,39 +42,19 @@ export default async function UpdatesPage() {
   const fail = failed ? failureKey(state.error) : null;
   const finished = state.status === "success" || failed;
   const current = `v${info.version}`;
-  // Modules en retard (vérifiés au plus toutes les quelques minutes ; jamais d'erreur ici : un échec devient un simple message par module).
-  const report = await getModulesReport();
-  const names = await moduleNames(locale, config.defaultLocale);
-  const nameOf = (id: string) => names.get(id) ?? id;
-  const moduleRows: ModuleUpdateRow[] = report.outdated.map((o) => ({ id: o.id, name: nameOf(o.id), icon: "🧩", current: o.current, target: o.target, major: o.level === "major", levelLabel: o.level ? t(`updates.level.${o.level}`) : "" }));
+  const { report, rows: moduleRows } = await loadModulesUpdates(t, locale, config.defaultLocale);
   // Juste après une mise à jour réussie du site, c'est la suite logique : on met la section en avant.
   const recent = state.status === "success" && !!state.finishedAt && report.checkedAt - state.finishedAt < 14 * 24 * 3600_000;
   const highlightModules = recent && moduleRows.length > 0;
+  // Les modules se gèrent dans l'onglet « Mises à jour » du hub Modules ; ici, seulement un rappel et le lien.
   const modulesSection = !running && (
-    <section className={`${ui.card} space-y-4 ${highlightModules ? "border-accent bg-accent/5" : ""}`} data-testid="modules-updates">
-      <div>
+    <section className={`${ui.card} flex flex-wrap items-center justify-between gap-4 ${highlightModules ? "border-accent bg-accent/5" : ""}`} data-testid="modules-updates-link">
+      <div className="min-w-0">
         <h2 className="text-lg font-semibold">🧩 {t("updates.modules.title")}</h2>
         {highlightModules && <p className="mt-1 text-sm font-semibold text-accent" data-testid="modules-remind">{t("updates.modules.remind")}</p>}
-        <p className="mt-1 text-sm leading-6 text-muted">{moduleRows.length > 0 ? t("updates.modules.behind", { n: moduleRows.length }) : t("updates.modules.help")}</p>
+        <p className="mt-1 text-sm leading-6 text-muted">{moduleRows.length > 0 ? t("updates.modulesLink.behind", { n: moduleRows.length }) : t("updates.modulesLink.ok")}</p>
       </div>
-      {moduleRows.some((r) => r.major) && <Callout tone="warn">{t("updates.modules.majorWarning")}</Callout>}
-      {moduleRows.length === 0 && report.checked > 0 && report.unchecked.length < report.checked && <p className="text-sm font-medium" data-testid="modules-uptodate">✅ {t("updates.modules.upToDate")}</p>}
-      {report.checked === 0 && <p className="text-sm text-muted" data-testid="modules-none">{t("updates.modules.none")}</p>}
-      <ModulesUpdates rows={moduleRows} labels={{
-        all: { idle: t("updates.modules.all"), working: t("modules.updating"), done: t("modules.updated"), failed: t("modules.updateFailed") },
-        one: { idle: t("modules.update"), working: t("modules.updating"), done: t("modules.updated"), failed: t("modules.updateFailed") },
-        confirmAll: t("updates.modules.confirmAll"), confirmMajor: t("updates.modules.confirmMajor"), incomplete: t("updates.modules.incomplete"),
-        updatedLine: t("updates.modules.updatedLine"), failedLine: t("updates.modules.failedLine"), stoppedLine: t("updates.modules.stoppedLine"), skippedLine: t("updates.modules.skippedLine"),
-      }} />
-      {report.unchecked.length > 0 && (
-        <ul className="space-y-0.5 text-xs text-muted" data-testid="modules-unchecked">
-          {report.unchecked.map((id) => <li key={id}>{t("updates.modules.unchecked", { name: nameOf(id) })}</li>)}
-        </ul>
-      )}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
-        <p className="text-sm text-muted">{t("updates.checkedAt")} {when(report.checkedAt)}</p>
-        <ActionForm action={recheckModules} submitLabel={t("updates.modules.recheck")} secondary className="space-y-2">{null}</ActionForm>
-      </div>
+      <a href="/admin/modules?tab=updates" className={moduleRows.length > 0 ? ui.btnPrimary : ui.btn}>{t("updates.modulesLink.open")}</a>
     </section>
   );
   const updateLabels = { idle: t("updates.apply", { version: check.latest ?? "" }), working: t("updates.working"), done: t("updates.done"), failed: t("updates.failedShort", { version: check.latest ?? "" }) };
