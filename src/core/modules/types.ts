@@ -376,7 +376,8 @@ export type McpDecl = {
 
 /** `actor` : le jeton MCP qui appelle (à reporter dans les champs « modifié par » des données). */
 export type McpHandler = (ctx: ModuleContext, args: Record<string, unknown>, actor: { name: string }) => unknown | Promise<unknown>;
-export type AdminActionResult = { ok?: string; error?: string; redirect?: string };
+/** `grid` : réponse d'une action de génération du bloc `gridEditor` (`generateAction`) — un tracé proposé, jamais enregistré par le cœur. */
+export type AdminActionResult = { ok?: string; error?: string; redirect?: string; grid?: { width: number; height: number; cells: string } };
 export type AdminActionHandler = (ctx: ModuleContext, values: Record<string, string>) => AdminActionResult | Promise<AdminActionResult>;
 
 /** Aide de typage : `export default defineModule({...})`. */

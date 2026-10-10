@@ -383,7 +383,7 @@ un slot en échec disparaît, une section en échec donne `[]`, une page en éch
 | `routes.<nom>` | requête GET ou POST sur `/m/<clé>/<nom>` | `Request`, `ctx` | `Response` |
 | `filters.entryBody` | on rend le corps d'une entrée | `body` (markdown), `SlotContext` | le corps transformé (texte) |
 | `adminPanel` | on ouvre la page d'admin de l'instance | `ctx`, `{ query }` | blocs |
-| `adminActions.<nom>` | un bloc `adminForm` ou un bouton de ligne | `ctx`, `values` (texte) | `{ ok?, error?, redirect? }` |
+| `adminActions.<nom>` | un bloc `adminForm` ou un bouton de ligne | `ctx`, `values` (texte) | `{ ok?, error?, redirect? }` (`grid?` pour une `generateAction` de `gridEditor`) |
 | `mcp.<action>` | un assistant appelle l'action | `ctx`, `args` validés, `actor` | une valeur JSON |
 | `migrations.<N>` | après une mise à jour du module ou une restauration, pour chaque instance dont les données sont en retard | `ctx` | rien (lever une erreur annule tout) |
 | `backup.readable` | on exporte une sauvegarde | `ctx` | liste de `{ path, content }` |
@@ -625,8 +625,13 @@ Un module renvoie des **blocs déclaratifs** ; le cœur se charge du rendu, des 
 | `form` | `action` (`<clé d'instance>/<route>`), `fields: [{ name, label, kind?, required? }]` (`kind` : `text`, `email`, `textarea`), `submitLabel`, `successText` |
 | `table` | `columns`, `rows` (tableaux de texte), `rowIds?`, `rowActions?` (admin seulement, voir plus bas) |
 | `adminForm` | `action`, `fields`, `submitLabel`, `title?`, `cancelHref?` — panneau d'admin uniquement |
-| `gridEditor` | éditeur de **grille** (panneau d'admin uniquement) : `action`, `width`, `height`, `cells` (un caractère par case, ligne après ligne), `palette` (`[{ value, label, color }]`, une `value` = un caractère), `submitLabel`, `title?`, `minSize?`, `maxSize?`, `cancelHref?`, `labels?` (`width`, `height`, `fillAll`, `border`, `reset`, `hint`). L'utilisateur choisit un pinceau et peint à la souris ou au doigt, redimensionne, et enregistre : l'action reçoit `width`, `height` et `cells` en texte (à valider !). Exemple : le tracé du module *maze-overlay*. |
+| `gridEditor` | éditeur de **grille** (panneau d'admin uniquement) : `action`, `width`, `height`, `cells` (un caractère par case, ligne après ligne), `palette` (`[{ value, label, color }]`, une `value` = un caractère), `submitLabel`, `title?`, `minSize?`, `maxSize?`, `cancelHref?`, `labels?` (`width`, `height`, `fillAll`, `border`, `reset`, `hint`, `generateError`), et, en option, `generateAction` + `generateLabel` (bouton « générer ») et `autoLabel` + `autoNotice` + `autoActive?` (mode « automatique »). L'utilisateur choisit un pinceau et peint à la souris ou au doigt, redimensionne, et enregistre : l'action reçoit `width`, `height` et `cells` en texte (à valider !). Les options sont décrites sous le tableau. Exemple : le tracé du module *maze-overlay*. |
 | `head` | `tags`: `meta` / `link` / `script` (uniquement dans `layout.head`) |
+
+**`gridEditor` : génération et mode automatique (optionnels, un module qui ne les passe pas se comporte comme avant).** Aucun de ces boutons n'enregistre quoi que ce soit : tout reste dans l'éditeur jusqu'à « Enregistrer » (la barre flottante d'enregistrement et l'avertissement en quittant la page s'appliquent), et « Annuler les modifications » revient exactement à l'état chargé (grille et mode).
+
+- `generateAction` (nom d'une `adminAction`) + `generateLabel` : le bouton appelle cette action (réservée aux administrateurs, comme toute `adminAction`, `values` vide). Elle **renvoie** un tracé sans le persister : `{ grid: { width, height, cells } }` (ou `{ error }`). Le cœur n'enregistre rien et charge le résultat dans l'éditeur ; il refuse une réponse invalide (largeur/hauteur non entières ou hors de `minSize`–`maxSize`, `cells` de longueur différente de `width × height`, caractère absent de la `palette`) et affiche `labels.generateError`.
+- `autoLabel` (+ `autoNotice`, `autoActive`) : bouton qui met l'éditeur en mode « automatique » : la grille est atténuée et `autoNotice` s'affiche. Enregistrer envoie alors à `action` `auto` = `"true"` **à la place** de `width`, `height` et `cells` ; l'action décide de ce que cela veut dire (supprimer son tracé, par exemple). Retoucher la grille, la redimensionner ou générer sort du mode. `autoActive: true` : l'éditeur démarre dans ce mode (la grille passée dans `width`/`height`/`cells` sert alors de support si on le quitte).
 
 Une valeur de cellule de `table`, un `text` de `heading`, de `banner`… sont du **texte** : le cœur les échappe. Seul `html` est brut.
 

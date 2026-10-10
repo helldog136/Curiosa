@@ -7,6 +7,7 @@ import { buildContext } from "@/core/modules/context";
 import { getActiveInstances } from "@/core/modules/registry";
 import { audit } from "@/core/permissions";
 import type { ActionState } from "@/components/admin/ActionForm";
+import { parseGeneratedGrid, type GridData } from "@/core/gridEditor";
 
 /**
  * Exécute une `adminAction` d'un module (formulaire ou bouton de ligne de son panneau d'admin).
@@ -36,4 +37,26 @@ export async function runModuleAdminAction(instanceId: string, action: string, _
     if (to.startsWith("/admin/") && !to.startsWith("//")) redirect(to);
   }
   return { ok: result.ok, error: result.error };
+}
+
+/**
+ * « Générer » d'un bloc `gridEditor` : exécute l'adminAction `generateAction` du module et renvoie le tracé proposé SANS rien enregistrer
+ * (le module ne doit pas persister ; l'enregistrement reste le rôle de l'action de sauvegarde). Mêmes contrôles d'accès que
+ * `runModuleAdminAction`. Une réponse mal formée (taille, contenu) est refusée.
+ */
+export async function runModuleGridGenerate(instanceId: string, action: string): Promise<{ grid?: GridData; error?: string }> {
+  const { t, locale } = await adminCtx("admin");
+  const active = (await getActiveInstances()).find((a) => a.instance.id === instanceId);
+  const handler = active?.mod.def.adminActions?.[action];
+  if (!active || !handler) return { error: t("error.generic") };
+  let result;
+  try {
+    result = await handler(await buildContext(active.mod, active.instance, locale), {});
+  } catch (error) {
+    console.error(`[modules] ${active.instance.key} adminAction ${action} (génération) failed:`, error);
+    return { error: t("error.generic") };
+  }
+  if (result.error) return { error: result.error };
+  const grid = parseGeneratedGrid(result.grid);
+  return grid ? { grid } : { error: t("error.generic") };
 }

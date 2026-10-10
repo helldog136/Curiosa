@@ -14,6 +14,7 @@ import { CopyCode } from "./CopyCode";
 import { CopyText } from "./CopyText";
 import { AdminBlockForm, RowActionButton } from "../admin/AdminBlocks";
 import { GridEditor } from "../admin/GridEditor";
+import { floatingLabels } from "../admin/floating";
 
 const TONES = {
   info: "bg-accent text-accent-fg",
@@ -181,7 +182,7 @@ export async function Blocks({ blocks, locale, adminInstanceId }: { blocks: Bloc
         if (adminInstanceId) out.push(<AdminBlockForm key={i} instanceId={adminInstanceId} block={block} />);
         break;
       case "gridEditor":
-        if (adminInstanceId) out.push(<GridEditor key={i} instanceId={adminInstanceId} block={block} />);
+        if (adminInstanceId) out.push(<GridEditor key={i} instanceId={adminInstanceId} block={block} floating={floatingLabels(makeTranslator(locale))} />);
         break;
       case "table":
         out.push(
