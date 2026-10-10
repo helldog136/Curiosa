@@ -8,7 +8,7 @@ export const AUDIT_ACTIONS = [
   "user.2fa.enable", "user.2fa.disable", "user.2fa.reset", "user.2fa.codes", "user.passkey.add", "user.passkey.remove",
   "security.2fa.require", "security.2fa.optional",
   "entry.create", "entry.update", "entry.delete", "entry.deleteTranslation",
-  "home.update", "navigation.update", "settings.update", "settings.mail", "redirect.create", "redirect.delete", "redirect.toggle",
+  "home.update", "navigation.update", "settings.update", "settings.mail", "settings.rawg", "settings.rawg.import", "redirect.create", "redirect.delete", "redirect.toggle",
   "module.install", "module.install.custom", "module.update", "module.uninstall", "module.enable", "module.disable", "module.source.add", "module.source.remove",
   "instance.create", "instance.delete", "instance.update", "instance.settings", "instance.sources", "service.routing",
   "backup.create", "backup.restore",

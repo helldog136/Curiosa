@@ -24,6 +24,8 @@ const BG_EXAMPLE = JSON.stringify([
   { type: "grid", color: "fg", gap: 48, opacity: 6, side: "top", span: 80 },
 ], null, 2);
 import { saveMail, sendTestMail } from "./mail-actions";
+import { saveRawg, testRawgKey } from "./rawg-actions";
+import { getRawgState, isRawgConfigured } from "@/core/services/rawg";
 
 const TRANSLATABLE = ["site.name", "site.tagline", "site.about", "footer.text", "header.secondaryLabel", "header.buttonLabel", "privacy.extra"] as const;
 
@@ -44,9 +46,12 @@ function LayerRow({ n, title, note, children }: { n: number; title: string; note
 }
 
 export default async function SettingsPage() {
-  const { t, config, advanced, user } = await adminCtx("admin");
+  const { t, config, advanced, user, locale } = await adminCtx("admin");
   const socialCount = (await providersOf(SOCIAL_TOPIC)).length;
   const mail = await getMailConfig();
+  const isOwner = hasRole(user, "owner");
+  const rawgOn = isOwner && (await isRawgConfigured());
+  const rawgState = isOwner ? await getRawgState() : null;
   const values: Record<string, Record<string, unknown>> = {};
   for (const key of TRANSLATABLE) values[key] = await getSettingByLocale(key);
   const logo = await getSetting<string>("site.logo");
@@ -55,7 +60,7 @@ export default async function SettingsPage() {
   return (
     <div className="space-y-6">
       <header><h1 className={ui.pageTitle}>{advanced ? t("nav.settings") : t("nav.settings.simple")}</h1>{!advanced && <p className={ui.pageIntro}>{t("settings.intro.simple")}</p>}</header>
-      <Tabs tabs={[{ id: "site", label: t("settings.identity") }, { id: "languages", label: t("settings.languages") }, { id: "appearance", label: t("settings.appearance") }, { id: "privacy", label: t("settings.privacy") }, ...(hasRole(user, "owner") ? [{ id: "mail", label: t("settings.mail") }] : [])]}>
+      <Tabs tabs={[{ id: "site", label: t("settings.identity") }, { id: "languages", label: t("settings.languages") }, { id: "appearance", label: t("settings.appearance") }, { id: "privacy", label: t("settings.privacy") }, ...(hasRole(user, "owner") ? [{ id: "mail", label: t("settings.mail") }, { id: "services", label: t("settings.services") }] : [])]}>
       <div data-tab="site languages appearance privacy">
       <ActionForm action={saveSettings} floating={floatingLabels(t)} submitLabel={t("action.save")} className="space-y-8" submitTabs="site languages appearance privacy">
         {advanced && <input type="hidden" name="__adv" value="1" />}
@@ -259,7 +264,7 @@ export default async function SettingsPage() {
       </ActionForm>
       </div>
 
-      {hasRole(user, "owner") && (
+      {isOwner && (
         <section data-tab="mail" className="space-y-5">
           <p className={ui.help}>{t("settings.mailHelp")}</p>
           <p><span className={mail ? ui.chipOk : ui.chipWarn}>{mail ? t("settings.mailStatusOn") : t("settings.mailStatusOff")}</span></p>
@@ -284,6 +289,34 @@ export default async function SettingsPage() {
           {mail && (
             <ActionForm action={sendTestMail} submitLabel={t("settings.mailTest")} className="space-y-3">{null}</ActionForm>
           )}
+        </section>
+      )}
+      {isOwner && (
+        <section data-tab="services" className="space-y-5">
+          <p className={ui.help}>{t("settings.servicesHelp")}</p>
+          <div className={`${ui.card} space-y-4`} data-testid="rawg-card">
+            <div>
+              <h3 className="font-semibold">{t("settings.rawgTitle")}</h3>
+              <p className={ui.help}>{t("settings.rawgHelp")}</p>
+              <a href="https://rawg.io/apidocs" target="_blank" rel="noopener noreferrer" className="inline-block text-sm font-medium text-accent hover:underline">{t("settings.rawgLink")} ↗</a>
+            </div>
+            <p><span className={rawgOn ? ui.chipOk : ui.chipWarn}>{rawgOn ? t("settings.rawgStatusOn") : t("settings.rawgStatusOff")}</span></p>
+            {rawgOn && (
+              <p className={ui.help} data-testid="rawg-last">
+                {rawgState
+                  ? t("settings.rawgLast", { date: new Date(rawgState.at).toLocaleString(locale), state: t(`settings.rawgState.${rawgState.state}`) })
+                  : t("settings.rawgNever")}
+              </p>
+            )}
+            <ActionForm action={saveRawg} submitLabel={t("settings.rawgSave")} className="space-y-4">
+              <TextField name="rawgKey" type="password" label={t("settings.rawgKey")} help={t("settings.rawgKeyHelp")} autoComplete="new-password" />
+              {rawgOn && <Checkbox name="rawgClear" label={t("settings.rawgClear")} />}
+            </ActionForm>
+            <div className="space-y-2">
+              <ActionForm action={testRawgKey} submitLabel={t("settings.rawgTest")} className="space-y-3">{null}</ActionForm>
+              <p className={ui.help}>{t("settings.rawgTestHelp")}</p>
+            </div>
+          </div>
         </section>
       )}
       </Tabs>

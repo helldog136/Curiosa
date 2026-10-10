@@ -10,7 +10,7 @@
 Sommaire : [anatomie](#anatomie-dun-module) · [manifeste `module.json`](#le-manifeste-modulejson) · [code `index.mjs`](#le-code-indexmjs) ·
 [contexte `ctx`](#le-contexte-ctx) · [blocs](#blocs) · [sujets](#échanger-des-informations-entre-modules-les-sujets) ·
 [admin](#panneau-dadmin-riche-formulaires-et-boutons-pilotés-par-le-module) · [MCP](#api-mcp-exposer-des-actions-aux-assistants) ·
-[thème](#thème-du-site-et-apparence-dun-module) · [e-mail](#envoyer-un-e-mail) · [RSS](#alimenter-le-flux-rss) ·
+[thème](#thème-du-site-et-apparence-dun-module) · [e-mail](#envoyer-un-e-mail) · [jaquettes RAWG](#jaquettes-de-jeux-rawg) · [RSS](#alimenter-le-flux-rss) ·
 [overlay](#overlay-type-overlay) · [sauvegarde](#sauvegarde-lisible-sans-le-framework) · [installer et publier](#installer-publier-catalogue) ·
 [sécurité](#sécurité-à-lire-avant-dinstaller)
 
@@ -65,11 +65,40 @@ et comment ses instances sont exposées :
 | `integration` | services externes (Twitch, Discord…) | — |
 | `utility` | outils divers (RSS…) | — |
 
-L'admin est **une seule interface** : la barre latérale regroupe, par type, une entrée pour
-chaque instance configurée (nommée comme l'utilisateur l'a nommée : trois blogs = trois entrées),
-plus la page **Modules** (installés, activation, mises à jour) et la **Catalogue** (installer). La page d'une instance
+L'admin est **une seule interface**. Le menu ne liste que les instances où l'on **travaille souvent** (voir « Rangement dans le menu » ci-dessous) ;
+les autres tiennent dans **une seule entrée « Intégrations (n) »**, une carte par instance, et les overlays dans **une seule entrée « Overlays (n) »**. Le hub **Modules** a trois onglets : *Installés* (liste compacte,
+un module à plusieurs instances se déplie), *Catalogue* (installer) et *Mises à jour* (modules en retard). La page d'une instance
 est une sous-page de cet admin, avec ses réglages (générés depuis `settings`), ses abonnements
 (voir « sujets ») et le panneau `adminPanel` du module.
+
+#### Rangement dans le menu : épinglée, rangée dans Intégrations ou dans Overlays
+
+Trois familles d'instances : celles où l'on **travaille souvent** (du contenu ou des données à gérer : blog, pages, contacts, planning…) et celles que l'on
+**règle une fois** (réseaux sociaux, chaînes, annonces, statut live, kit presse…), plus les **overlays** (sources navigateur pour OBS), une famille à part. Le cœur décide, **sans rien demander au module**, à partir de son manifeste seul, dans cet ordre :
+
+1. type `overlay` **ou** permission `overlay` → **Overlays** (ni menu de travail ni Intégrations) ;
+2. type `social` ou `integration` → **Intégrations** ;
+3. module à `content` → **menu**, sauf une simple liste de liens qui s'ouvrent ailleurs (`content.display: "links"` avec `clickAction: "external"`) → **Intégrations** ;
+4. les autres (`widget`, `utility`, type inconnu ou absent) : s'ils ont des données à gérer, c'est-à-dire des actions `mcp`, un service `offers` ou un service `requires` → **menu** ; sinon → **Intégrations**.
+
+Sur les modules d'`extras/modules` : *menu* = `blog`, `codes`, `collection`, `contact-form`, `contacts`, `game-suggestions`, `pages`, `partnerships`, `planning`, `sponsors` ;
+*Intégrations* = `discord-announcer`, `hero`, `links`, `live-status`, `press-kit`, `twitch-channel`, `youtube-channel` ;
+*Overlays* = `alerts-overlay`, `maze-overlay`, `sponsor-ticker`, `ticker-overlay`.
+Un module sans type ni contenu (module tiers) suit la règle 4 ; pour qu'il apparaisse dans le menu, déclarez des actions `mcp` ou un `type` qui le dit.
+
+**Épingler.** L'utilisateur peut changer ce rangement instance par instance (« Épingler au menu » / « Ranger dans Intégrations » / « Ranger dans Overlays », sur la page de réglages de l'instance et sur sa carte). « Overlays » n'est proposé que pour un overlay (type ou permission `overlay`) : posé sur autre chose, ce choix est ignoré.
+Ce choix est un réglage **du cœur**, mémorisé avec l'instance (`instance.<id>.__placement`) : le module ne le voit pas et n'a rien à déclarer. Il l'emporte toujours sur la règle ; revenir au rangement par défaut l'efface.
+
+**Groupes du menu.** Les instances épinglées sont rangées sous des titres pliables selon la catégorie du manifeste : *Mon contenu* (type `content`, liste simple), *Relations* (`utility` : contacts, partenariats…),
+*Pages interactives* (`widget` : planning, formulaire…) et *Autres* (toute autre catégorie, ou aucune). Jusqu'à 6 instances épinglées les groupes sont dépliés, au-delà ils sont repliés ; le dernier choix est mémorisé
+dans un cookie (`curiosa_nav_groups`, lu côté serveur : pas de clignotement) et la page ouverte déplie toujours son groupe. La pastille d'une instance (`adminBadge`) reste sur son lien, le total d'un groupe plié s'affiche sur son titre,
+et la pastille d'une instance rangée dans Intégrations s'ajoute à celle de l'entrée « Intégrations ».
+
+**Page Overlays** (`/admin/overlays`, entrée « Overlays (n) », réservée aux rôles qui peuvent gérer comme Intégrations). Une carte par instance overlay : icône, nom, état (mêmes états que ci-dessous), **l'adresse à coller dans OBS** (`<SITE_URL>/overlays/<clé>`, avec un bouton « Copier » ; la route publique est inchangée), lien vers les réglages, interrupteur actif/désactivé et « Épingler au menu ». Recherche interactive comme les autres pages.
+
+**Plateformes.** Le champ facultatif `platform` du manifeste (voir ci-dessous) regroupe à l'écran les instances qui parlent de la même plateforme. Sur la page Intégrations, **une section par plateforme dès que 2 instances au moins la partagent** (« Twitch » : Chaîne Twitch + Live Twitch ; « Discord » : Discord + Annonces Discord) ; les autres restent dans « Réseaux sociaux » (type `social`) ou « Autres ». Sans plateforme partagée, la page est une seule grille, comme avant. L'onglet *Installés* du hub affiche une pastille de plateforme. Purement visuel : aucune dépendance entre modules, chaque instance reste épinglable seule.
+
+**États d'une carte Intégrations.** *Actif* ; *Désactivé* (instance ou module désactivé) ; *À configurer* (un réglage à remplir est encore vide : texte, secret ou adresse sans valeur par défaut, hors groupes facultatifs et textes traduisibles) ; *Erreur* (la migration des données du module a échoué ou une de ses tâches `tasks` a échoué à son dernier passage).
 
 ## Le manifeste `module.json`
 
@@ -87,9 +116,10 @@ Validé à l'installation et au chargement (zod, `src/core/modules/manifest.ts`)
   "icon": "📣",                          // un emoji (8 caractères au plus)
   "main": "index.mjs",                   // absent = module sans code
   "type": "widget",                      // content | social | overlay | widget | integration | utility
+  "platform": "twitch",                  // facultatif : plateforme concernée (regroupement à l'écran)
   "instances": "multiple",               // ou "single"
   "page": true, "basePath": "guestbook", // l'instance a une page publique, sur ce chemin proposé
-  "permissions": ["slots", "sections", "routes", "storage", "filters", "pages", "topics", "overlay", "mcp", "admin", "mail"],
+  "permissions": ["slots", "sections", "routes", "storage", "filters", "pages", "topics", "overlay", "mcp", "admin", "mail", "rawg"],
   "settings": [ /* … */ ], "sections": [ /* … */ ], "consumes": [ /* … */ ], "provides": [ /* … */ ], "mcp": [ /* … */ ],
   "content": { /* … */ }, "onboarding": { /* … */ }, "defaultEnabled": true
 }
@@ -98,6 +128,8 @@ Validé à l'installation et au chargement (zod, `src/core/modules/manifest.ts`)
 | Champ | Rôle |
 |---|---|
 | `apiVersion` | Version de l'API des modules (aujourd'hui `2`). Un module d'une autre version est refusé à l'installation ; dans l'index du catalogue, il est listé mais marqué incompatible. |
+| `platform` | **Plateforme** concernée, facultative : `^[a-z][a-z0-9-]{0,30}$` (`twitch`, `discord`, `youtube`, `instagram`, `tiktok`, `x`…). Regroupe à l'écran les instances d'une même plateforme (voir « Plateformes »). Libellé affiché : table du cœur pour les plateformes connues (`twitch` → Twitch, `youtube` → YouTube, `tiktok` → TikTok, `x` → X, `kofi` → Ko-fi, `github` → GitHub… voir `src/core/modules/platform.ts`), sinon l'identifiant avec une majuscule initiale. Une autre forme est refusée (`module.json: platform — …`). Absent = aucune plateforme. Un cœur plus ancien ignore la clé. |
+| `minCore` | **Version minimale du cœur** (`"0.1.10"` : trois nombres, rien d'autre ; une autre forme est refusée). Absent = aucune exigence. Voir [Version minimale du cœur](#version-minimale-du-cœur-mincore). |
 | `id` | Identifiant du module, stable à jamais (les instances et les sauvegardes s'y réfèrent). |
 | `name`, `description` | Texte ou `{ langue: texte }` (500 caractères au plus). Langue absente : langue par défaut du site, puis `en`. |
 | `version` | `x.y.z`. Sert à détecter les mises à jour des modules livrés avec le framework. |
@@ -121,6 +153,20 @@ Validé à l'installation et au chargement (zod, `src/core/modules/manifest.ts`)
 | `defaultEnabled` | Modules livrés avec cette version : activés dès le départ (défaut : oui). Sans effet pour un module installé, toujours installé désactivé. |
 | `permissions` | Les capacités utilisées (voir ci-dessous). |
 
+### Version minimale du cœur (`minCore`)
+
+Un module qui s'appuie sur une fonction récente du cœur (par exemple la permission `rawg`, cœur 0.1.10 ou plus) le déclare : `"minCore": "0.1.10"`. Sans ce champ, aucune exigence (tous les modules existants).
+(Le nom `requires` est pris : il désigne les *services* dont le module dépend, voir plus bas.)
+
+- **Comparaison** : sur `majeure.mineure.correctif`, en comparant des **nombres** (0.1.10 est plus récent que 0.1.9) et en **ignorant l'étiquette de pré-version du cœur** : un cœur `0.1.10-rc.1` satisfait `"0.1.10"` (on teste les release candidates). La version du cœur est celle de `package.json`, la même que sur la page Mises à jour.
+- **Installation** (Catalogue, dépôt personnel, assistant, restauration) et **mise à jour** (une par une ou « Tout mettre à jour ») : un cœur trop ancien **refuse** avec « Ce module demande Curiosa 0.1.10 ou plus. Mettez d'abord le site à jour (Admin → Mises à jour). ». Rien n'est téléchargé quand l'index du catalogue annonce déjà l'exigence (ci-dessous) ; une mise à jour refusée laisse le module exactement comme il était.
+- **« Tout mettre à jour »** : le module incompatible est **sauté** et listé à part dans le bilan (`incompatible`), sans compter comme un échec ni arrêter les autres.
+- **Restauration d'une sauvegarde** : un module du catalogue qui demande un cœur plus récent n'est pas réinstallé ; l'aperçu (`needsCore`) et le bilan le signalent comme module à réinstaller après la mise à jour du site. Ses données sont gardées.
+- **Jamais rétroactif** : un module déjà installé et chargé n'est jamais désactivé ni cassé à cause de ce champ (la vérification ne porte que sur l'entrée ou la montée de version). Les modules livrés avec le cœur restent chargés tels quels.
+- **Catalogue** : l'entrée de l'index peut porter `"requires": { "core": "0.1.10" }` (même numéro) pour que le cœur sache **sans télécharger** si le module convient ; le script du dépôt de modules la recopie depuis `minCore`. Un champ mal formé est ignoré.
+- **Anciens cœurs (0.1.9 et avant)** : `minCore` et `requires.core` d'une entrée d'index sont des clés inconnues, **ignorées sans erreur** (schémas non stricts) ; le module reste lisible, mais l'ancien cœur n'applique évidemment pas l'exigence.
+- Côté code : `isCompatible(requires, coreVersion)` et `describeIncompat(requires, coreVersion)` (`src/core/modules/compat.ts`), fonctions pures.
+
 ### Permissions
 
 Déclaratives : elles disent à l'administrateur ce que le module fait. **Le cœur ne bloque pas** un module qui utilise une
@@ -140,6 +186,7 @@ fidèlement (le test de l'exemple vérifie qu'elles correspondent au code), elle
 | `mcp` | le module déclare des actions `mcp` |
 | `admin` | le code définit `adminPanel` / `adminActions` |
 | `mail` | le module appelle `ctx.api.mail.send` |
+| `rawg` | le module appelle `ctx.api.rawg.cover` (jaquettes de jeux, voir « Jaquettes de jeux (RAWG) ») |
 
 ### Réglages (`settings`)
 
@@ -336,7 +383,7 @@ un slot en échec disparaît, une section en échec donne `[]`, une page en éch
 | `routes.<nom>` | requête GET ou POST sur `/m/<clé>/<nom>` | `Request`, `ctx` | `Response` |
 | `filters.entryBody` | on rend le corps d'une entrée | `body` (markdown), `SlotContext` | le corps transformé (texte) |
 | `adminPanel` | on ouvre la page d'admin de l'instance | `ctx`, `{ query }` | blocs |
-| `adminActions.<nom>` | un bloc `adminForm` ou un bouton de ligne | `ctx`, `values` (texte) | `{ ok?, error?, redirect? }` |
+| `adminActions.<nom>` | un bloc `adminForm` ou un bouton de ligne | `ctx`, `values` (texte) | `{ ok?, error?, redirect? }` (`grid?` pour une `generateAction` de `gridEditor`) |
 | `mcp.<action>` | un assistant appelle l'action | `ctx`, `args` validés, `actor` | une valeur JSON |
 | `migrations.<N>` | après une mise à jour du module ou une restauration, pour chaque instance dont les données sont en retard | `ctx` | rien (lever une erreur annule tout) |
 | `backup.readable` | on exporte une sauvegarde | `ctx` | liste de `{ path, content }` |
@@ -540,6 +587,8 @@ Deux familles : les **services** du cœur (génériques, voir [PLATFORM.md](PLAT
 | `ctx.api.topics.collect(sujet, { limit? })` | service | éléments des sources auxquelles l'instance est abonnée (le sujet doit figurer dans `consumes`, sinon erreur) |
 | `ctx.api.mail.configured()` | service | un serveur d'e-mail est-il réglé ? |
 | `ctx.api.mail.send({ to, subject, text, replyTo? })` | service | e-mail au nom du site (permission `mail`, voir « Envoyer un e-mail ») |
+| `ctx.api.rawg.configured()` | service | une clé RAWG est-elle réglée par le propriétaire ? (permission `rawg` ; `false` sans elle) |
+| `ctx.api.rawg.cover(title)` | service | jaquette d'un jeu : `{ status, url }` avec `status` = `found` (`url` en https), `none` (aucun résultat), `no-key` (pas de clé), `refused` (RAWG refuse la clé), `unreachable` (RAWG injoignable) ; permission `rawg`, voir « Jaquettes de jeux (RAWG) » |
 | `ctx.api.site(locale?)` | lecture | `{ name, tagline, logo }` du site |
 | `ctx.api.brand(locale?)` | lecture | identité visuelle complète (`ModuleBrand`, ci-dessous) |
 | `ctx.api.instances.list({ module?, locale? })` | lecture | `[{ key, module, basePath, name }]` des instances actives |
@@ -576,8 +625,13 @@ Un module renvoie des **blocs déclaratifs** ; le cœur se charge du rendu, des 
 | `form` | `action` (`<clé d'instance>/<route>`), `fields: [{ name, label, kind?, required? }]` (`kind` : `text`, `email`, `textarea`), `submitLabel`, `successText` |
 | `table` | `columns`, `rows` (tableaux de texte), `rowIds?`, `rowActions?` (admin seulement, voir plus bas) |
 | `adminForm` | `action`, `fields`, `submitLabel`, `title?`, `cancelHref?` — panneau d'admin uniquement |
-| `gridEditor` | éditeur de **grille** (panneau d'admin uniquement) : `action`, `width`, `height`, `cells` (un caractère par case, ligne après ligne), `palette` (`[{ value, label, color }]`, une `value` = un caractère), `submitLabel`, `title?`, `minSize?`, `maxSize?`, `cancelHref?`, `labels?` (`width`, `height`, `fillAll`, `border`, `reset`, `hint`). L'utilisateur choisit un pinceau et peint à la souris ou au doigt, redimensionne, et enregistre : l'action reçoit `width`, `height` et `cells` en texte (à valider !). Exemple : le tracé du module *maze-overlay*. |
+| `gridEditor` | éditeur de **grille** (panneau d'admin uniquement) : `action`, `width`, `height`, `cells` (un caractère par case, ligne après ligne), `palette` (`[{ value, label, color }]`, une `value` = un caractère), `submitLabel`, `title?`, `minSize?`, `maxSize?`, `cancelHref?`, `labels?` (`width`, `height`, `fillAll`, `border`, `reset`, `hint`, `generateError`), et, en option, `generateAction` + `generateLabel` (bouton « générer ») et `autoLabel` + `autoNotice` + `autoActive?` (mode « automatique »). L'utilisateur choisit un pinceau et peint à la souris ou au doigt, redimensionne, et enregistre : l'action reçoit `width`, `height` et `cells` en texte (à valider !). Les options sont décrites sous le tableau. Exemple : le tracé du module *maze-overlay*. |
 | `head` | `tags`: `meta` / `link` / `script` (uniquement dans `layout.head`) |
+
+**`gridEditor` : génération et mode automatique (optionnels, un module qui ne les passe pas se comporte comme avant).** Aucun de ces boutons n'enregistre quoi que ce soit : tout reste dans l'éditeur jusqu'à « Enregistrer » (la barre flottante d'enregistrement et l'avertissement en quittant la page s'appliquent), et « Annuler les modifications » revient exactement à l'état chargé (grille et mode).
+
+- `generateAction` (nom d'une `adminAction`) + `generateLabel` : le bouton appelle cette action (réservée aux administrateurs, comme toute `adminAction`, `values` vide). Elle **renvoie** un tracé sans le persister : `{ grid: { width, height, cells } }` (ou `{ error }`). Le cœur n'enregistre rien et charge le résultat dans l'éditeur ; il refuse une réponse invalide (largeur/hauteur non entières ou hors de `minSize`–`maxSize`, `cells` de longueur différente de `width × height`, caractère absent de la `palette`) et affiche `labels.generateError`.
+- `autoLabel` (+ `autoNotice`, `autoActive`) : bouton qui met l'éditeur en mode « automatique » : la grille est atténuée et `autoNotice` s'affiche. Enregistrer envoie alors à `action` `auto` = `"true"` **à la place** de `width`, `height` et `cells` ; l'action décide de ce que cela veut dire (supprimer son tracé, par exemple). Retoucher la grille, la redimensionner ou générer sort du mode. `autoActive: true` : l'éditeur démarre dans ce mode (la grille passée dans `width`/`height`/`cells` sert alors de support si on le quitte).
 
 Une valeur de cellule de `table`, un `text` de `heading`, de `banner`… sont du **texte** : le cœur les échappe. Seul `html` est brut.
 
@@ -798,6 +852,15 @@ Garde-fous du cœur : texte brut uniquement (20 000 caractères au plus), objet 
 `replyTo` doit être une adresse valide, 10 envois par heure et par instance et 40 par heure pour tout le site (`rate_limited` au-delà),
 chaque envoi consigné dans le journal d'audit (sans contenu).
 
+
+## Jaquettes de jeux (RAWG)
+
+Un module qui déclare la permission `rawg` peut demander la jaquette d'un jeu : `const cover = await ctx.api.rawg.cover("Hades")`. La **clé d'API RAWG se règle une seule fois**, par le propriétaire, dans *Réglages › Services externes* (comme le serveur d'e-mail) : un module ne demande **jamais** la clé à l'utilisateur, n'a pas de réglage « clé RAWG », et ne la voit jamais. Si un ancien module en avait une, le cœur la reprend une fois au démarrage quand le réglage du cœur est vide.
+
+`cover(title)` ne lève jamais et renvoie `{ status, url }` : `found` (`url` = adresse https de l'image, celle du premier résultat), `none` (RAWG ne connaît pas ce titre), `no-key` (le propriétaire n'a pas saisi de clé, ou le module n'a pas la permission), `refused` (RAWG refuse la clé : à ne pas confondre avec « aucun résultat »), `unreachable` (RAWG ne répond pas). `url` vaut `null` sauf pour `found`. `ctx.api.rawg.configured()` dit si une clé est réglée. La jaquette est un plus : affichez le jeu sans image dans tous les autres cas, et gardez l'adresse trouvée plutôt que de la redemander.
+
+Garde-fous du cœur, partagés par tous les modules : titre nettoyé et limité à 100 caractères, https uniquement, délai de 5 secondes, cache en mémoire (24 h pour une jaquette trouvée, 1 h pour « aucun résultat »), deux requêtes simultanées au plus. Le dernier état de la clé (fonctionne, refusée, injoignable, avec la date) est mémorisé dans les réglages et affiché à l'administrateur.
+
 ## Alimenter le flux RSS
 
 ### Réseaux sociaux
@@ -820,7 +883,7 @@ export default {
 ```
 
 L'instance est servie sur `/overlays/<clé>` (`?lang=fr` pour la langue) : la page admin de l'instance
-affiche l'URL à coller dans OBS. L'overlay livré, `ticker-overlay`, est un exemple complet : il ne sait
+affiche l'URL à coller dans OBS, et la page **Overlays** de l'admin les réunit toutes avec un bouton « Copier ». Un module de type `overlay` (ou qui déclare la permission `overlay`) est rangé dans cette famille par défaut. L'overlay livré, `ticker-overlay`, est un exemple complet : il ne sait
 rien des blogs ni des codes promo, il digère `core.entry` et `overlay.item`.
 
 ## Sauvegarde lisible sans le framework
@@ -893,7 +956,7 @@ une demande de fusion sur ce fichier, visible par toutes les installations dès 
 ```
 
 `id`, `name`, `description`, `repo` sont les champs de base ; `ref` (**étiquette ou commit relus** — c'est ce qui rend « vérifié » vrai), `version`, `apiVersion`,
-`author`, `icon` sont facultatifs. Chaque entrée est revalidée (identifiant, dépôt `https` sur un hôte autorisé ; 300 au plus). Un module dont `apiVersion`
+`author`, `icon`, `requires` (`{ "core": "0.1.10" }` : cœur minimal, voir `minCore`) sont facultatifs. Chaque entrée est revalidée (identifiant, dépôt `https` sur un hôte autorisé ; 300 au plus). Un module dont `apiVersion`
 diffère de celle du framework est listé mais **non installable**. Rien n'est installé automatiquement ; le dépôt installé doit servir le module annoncé
 (`id` identique à celui de son `module.json`). Un module livré avec le framework l'emporte sur un module reconnu de même identifiant.
 

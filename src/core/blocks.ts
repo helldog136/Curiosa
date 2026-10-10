@@ -73,6 +73,13 @@ export type Block =
    * Éditeur de GRILLE (panneau d'admin uniquement) : on choisit un pinceau dans la palette puis on peint les cases à la souris ou au doigt ;
    * on peut redimensionner. Poste sur une adminAction `width`, `height` et `cells` (un caractère par case, ligne après ligne ; chaque
    * caractère est la `value` d'un élément de la palette). `labels` : textes de l'éditeur (par défaut en anglais).
+   *
+   * Deux options (absentes = comportement d'avant) :
+   * - `generateAction` + `generateLabel` : bouton « générer » qui appelle l'adminAction `generateAction` (elle RENVOIE `{ grid: { width, height, cells } }`
+   *   sans rien enregistrer) et charge le résultat dans l'éditeur ; rien n'est persisté avant « Enregistrer ».
+   * - `autoLabel` (+ `autoNotice`, `autoActive`) : bouton qui bascule l'éditeur en mode « automatique » (grille atténuée, message `autoNotice`) ;
+   *   enregistrer envoie alors `auto=true` à `action` au lieu de la grille. `autoActive` : l'éditeur démarre dans ce mode.
+   * « Annuler les modifications » défait aussi la génération et le mode automatique.
    */
   | {
       type: "gridEditor";
@@ -86,7 +93,12 @@ export type Block =
       minSize?: number;
       maxSize?: number;
       cancelHref?: string;
-      labels?: { width?: string; height?: string; fillAll?: string; border?: string; reset?: string; hint?: string };
+      generateAction?: string;
+      generateLabel?: string;
+      autoLabel?: string;
+      autoNotice?: string;
+      autoActive?: boolean;
+      labels?: { width?: string; height?: string; fillAll?: string; border?: string; reset?: string; hint?: string; generateError?: string };
     }
   | { type: "heading"; text: string }
   /** Pastilles de couleur avec code copiable. `hex` : #RRGGBB. */

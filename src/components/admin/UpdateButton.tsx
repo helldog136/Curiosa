@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { applyUpdate } from "@/app/admin/(panel)/updates/actions";
+import { AFTER_UPDATE_MS, sleep } from "./animatedAction";
 import { AnimatedActionButton } from "./AnimatedActionButton";
 
 type Labels = { idle: string; working: string; done: string; failed: string };
@@ -15,6 +16,6 @@ export function UpdateButton({ running, confirm, labels }: { running: boolean; c
   return (
     <AnimatedActionButton look="hero" icon="⬆" progress="continuous" testid="update-button" confirm={confirm} running={running} labels={labels}
       run={async () => { const r = await applyUpdate(); return r?.error ? { ok: false, error: r.error } : { ok: true }; }}
-      onDone={() => router.refresh()} />
+      onDone={async () => { await sleep(AFTER_UPDATE_MS); router.refresh(); }} />
   );
 }

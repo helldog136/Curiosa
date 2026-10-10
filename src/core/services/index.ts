@@ -22,6 +22,7 @@ export const PLATFORM_SERVICES: PlatformService[] = [
   { id: "topics", exposedAs: "ctx.api.topics.collect(sujet)", where: "services/topics.ts", summary: "Échange d'informations typées entre modules (consommateurs ↔ fournisseurs, abonnements, validation)." },
   { id: "mcp", exposedAs: null, where: "services/mcp/", summary: "Serveur MCP : jetons, portées, validation, audit, interrupteur. Les modules déclarent `mcp`, le cœur expose." },
   { id: "mail", exposedAs: "ctx.api.mail.send(…)", where: "services/mail.ts", summary: "Envoi d'e-mails au nom du site : SMTP réglé dans l'admin, expéditeur fixe, un destinataire, débit limité, audit." },
+  { id: "rawg", exposedAs: "ctx.api.rawg.cover(titre)", where: "services/rawg.ts", summary: "Jaquettes de jeux (RAWG) : la clé d'API est un réglage du cœur (secret), jamais transmise aux modules ; https seulement, délai court, cache, 2 requêtes simultanées au plus, dernier état de la clé mémorisé." },
   { id: "scheduler", exposedAs: null, where: "services/scheduler.ts", summary: "Tâches planifiées : les modules déclarent `tasks`, le cœur les exécute (une par instance active, sans chevauchement, erreurs isolées, dernier résultat mémorisé)." },
   { id: "uploads", exposedAs: "réglage de type « image », champ « image » des formulaires d'admin", where: "services/uploads.ts", summary: "Envoi et service d'images (signature vérifiée, SVG refusé)." },
 ];

@@ -133,9 +133,15 @@ test("de bout en bout (dépôts locaux, sans réseau) : un module en retard est 
 
 test("la page Mises à jour : section Modules, actions réservées au propriétaire et inscrites au journal, aucune boîte native", () => {
   const page = fs.readFileSync("src/app/admin/(panel)/updates/page.tsx", "utf8");
-  assert.match(page, /getModulesReport\(\)/);
-  assert.match(page, /data-testid="modules-updates"/);
+  // La liste « Vos modules » vit dans l'onglet Mises à jour du hub Modules ; la page du site n'en garde que le rappel et le lien.
+  assert.match(page, /loadModulesUpdates/);
+  assert.match(page, /data-testid="modules-updates-link"/);
+  assert.match(page, /\/admin\/modules\?tab=updates/);
   assert.match(page, /highlightModules/);
+  const section = fs.readFileSync("src/components/admin/ModulesUpdatesSection.tsx", "utf8");
+  assert.match(section, /getModulesReport\(\)/);
+  assert.match(section, /data-testid="modules-updates"/);
+  assert.match(fs.readFileSync("src/app/admin/(panel)/modules/page.tsx", "utf8"), /ModulesUpdatesSection/);
   const actions = fs.readFileSync("src/app/admin/(panel)/updates/actions.ts", "utf8");
   for (const fn of ["recheckModules", "updateModulesAction"]) assert.match(actions, new RegExp(`export async function ${fn}[^]*?adminCtx\\("owner"\\)`));
   assert.match(actions, /audit\(user\.email, "module\.update", id\)/);

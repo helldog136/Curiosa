@@ -89,6 +89,8 @@ export type ModuleManifest = {
   id: string;
   name: LocalizedString;
   version: string;
+  /** Version minimale du cœur (« 0.1.10 »), vérifiée à l'installation et à la mise à jour ; absent = aucune exigence. Voir compat.ts. */
+  minCore?: string;
   description?: LocalizedString;
   author?: string;
   homepage?: string;
@@ -99,6 +101,8 @@ export type ModuleManifest = {
   icon?: string;
   /** Catégorie. Défaut : "content" si `content` est déclaré, sinon "widget". */
   type?: ModuleType;
+  /** Plateforme concernée (« twitch », « discord »…) : regroupe à l'écran les instances d'une même plateforme. Facultatif, purement visuel. Voir platform.ts. */
+  platform?: string;
   /** "multiple" : autant d'instances que l'on veut (ex. plusieurs blogs). "single" : une seule. */
   instances: "single" | "multiple";
   content?: ContentConfig;
@@ -130,7 +134,7 @@ export type ModuleManifest = {
   /** Modules livrés avec le cœur : activés dès le départ (défaut : oui). */
   defaultEnabled?: boolean;
   /** Déclaratif et informatif : affiché à l'administrateur avant activation. */
-  permissions: ("slots" | "routes" | "storage" | "filters" | "sections" | "pages" | "topics" | "overlay" | "mcp" | "admin" | "mail")[];
+  permissions: ("slots" | "routes" | "storage" | "filters" | "sections" | "pages" | "topics" | "overlay" | "mcp" | "admin" | "mail" | "rawg")[];
 };
 
 export type EntrySummary = {
@@ -202,6 +206,13 @@ export type ModuleApi = {
     configured(): Promise<boolean>;
     /** `to` : « owner » (le contact du site) ou une adresse. Texte brut ; l'expéditeur est celui du site. */
     send(message: { to: "owner" | string; subject: string; text: string; replyTo?: string }): Promise<{ ok: true } | { ok: false; reason: "not_configured" | "no_recipient" | "invalid" | "rate_limited" | "failed" }>;
+  };
+  /** Jaquettes de jeux (RAWG), avec la clé réglée une fois par le propriétaire (nécessite la permission « rawg »). Ne lève jamais ; la clé n'est jamais transmise. */
+  rawg: {
+    /** Une clé RAWG est-elle réglée (et ce module a-t-il la permission) ? */
+    configured(): Promise<boolean>;
+    /** Jaquette du jeu `title` : `found` (url https), `none` (aucun résultat), `no-key`, `refused` (RAWG refuse la clé), `unreachable`. */
+    cover(title: string): Promise<{ status: "found" | "none" | "no-key" | "refused" | "unreachable"; url: string | null }>;
   };
   /** Stockage privé de l'instance (messages reçus, compteurs…). */
   store: {
@@ -365,7 +376,8 @@ export type McpDecl = {
 
 /** `actor` : le jeton MCP qui appelle (à reporter dans les champs « modifié par » des données). */
 export type McpHandler = (ctx: ModuleContext, args: Record<string, unknown>, actor: { name: string }) => unknown | Promise<unknown>;
-export type AdminActionResult = { ok?: string; error?: string; redirect?: string };
+/** `grid` : réponse d'une action de génération du bloc `gridEditor` (`generateAction`) — un tracé proposé, jamais enregistré par le cœur. */
+export type AdminActionResult = { ok?: string; error?: string; redirect?: string; grid?: { width: number; height: number; cells: string } };
 export type AdminActionHandler = (ctx: ModuleContext, values: Record<string, string>) => AdminActionResult | Promise<AdminActionResult>;
 
 /** Aide de typage : `export default defineModule({...})`. */

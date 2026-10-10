@@ -52,11 +52,12 @@ export async function recheckModules(): Promise<ActionState> {
   const { t } = await adminCtx("owner");
   await getModulesReport(true);
   revalidatePath("/admin/updates");
+  revalidatePath("/admin/modules");
   return { ok: t("updates.modules.rechecked") };
 }
 
 /** Bilan d'une mise à jour de modules, déjà en clair (noms et raisons traduits) pour l'afficher tel quel. */
-export type ModulesBilan = { updated: string[]; failed: { name: string; reason: string; migration: boolean }[]; skipped: string[]; stoppedOn: string | null };
+export type ModulesBilan = { updated: string[]; failed: { name: string; reason: string; migration: boolean }[]; skipped: string[]; stoppedOn: string | null; /** Sautés sans échec : le module demande un cœur plus récent (`core`). */ incompatible?: { name: string; core: string }[] };
 
 /**
  * Met à jour des modules (ceux demandés, sinon tous ceux qui sont en retard) un par un. Réservé au propriétaire : c'est du code qui tourne sur le serveur.
@@ -74,5 +75,6 @@ export async function updateModulesAction(ids?: string[]): Promise<ModulesBilan>
     failed: summary.failed.map((f) => ({ name: name(f.id), reason: t(f.error), migration: f.migration })),
     skipped: summary.skipped.map(name),
     stoppedOn: summary.stoppedOn ? name(summary.stoppedOn) : null,
+    ...(summary.incompatible ? { incompatible: summary.incompatible.map((i) => ({ name: name(i.id), core: i.core })) } : {}),
   };
 }

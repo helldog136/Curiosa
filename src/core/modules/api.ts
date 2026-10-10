@@ -5,6 +5,7 @@ import { entryPath, listEntries } from "@/core/content/entries";
 import { getInstanceByKey, listInstances, pickName, type InstanceView } from "@/core/instances";
 import { isMailConfigured, sendMail } from "@/core/services/mail";
 import { qrSvg } from "@/core/services/qr";
+import { isRawgConfigured, rawgCover } from "@/core/services/rawg";
 import { renderPng, type PngSpec } from "@/core/services/render";
 import { createStore } from "@/core/services/store";
 import { collect } from "@/core/services/topics";
@@ -22,6 +23,7 @@ import type { ModuleApi } from "./types";
  *     png     rendu d'une image PNG à partir d'une arborescence de boîtes
  *     store   stockage privé de l'instance
  *     mail    envoi d'e-mails au nom du site (SMTP réglé dans l'admin)
+ *     rawg    jaquettes de jeux (clé RAWG réglée une fois dans l'admin ; permission « rawg »)
  *     topics  échange d'informations typées entre modules
  *     (MCP : pas d'appel côté module ; un module déclare ses actions `mcp`, le cœur les expose)
  *
@@ -30,7 +32,8 @@ import type { ModuleApi } from "./types";
  *
  * Voir docs/PLATFORM.md.
  */
-export function makeApi(instance: InstanceView, locale: string): ModuleApi {
+export function makeApi(instance: InstanceView, locale: string, permissions: readonly string[] = []): ModuleApi {
+  const rawgAllowed = permissions.includes("rawg");
   return {
     siteUrl,
 
@@ -46,6 +49,11 @@ export function makeApi(instance: InstanceView, locale: string): ModuleApi {
     },
     store: createStore(instance.id),
     mail: { configured: isMailConfigured, send: (message) => sendMail(message, instance.key) },
+    // Sans la permission « rawg » : comme s'il n'y avait pas de clé (le module ne peut ni l'utiliser ni la deviner).
+    rawg: {
+      configured: async () => rawgAllowed && (await isRawgConfigured()),
+      cover: async (title) => (rawgAllowed ? rawgCover(title) : { status: "no-key", url: null }),
+    },
     topics: {
       async collect(topic, opts) {
         const consumer = (await getActiveInstances()).find((a) => a.instance.id === instance.id);

@@ -52,6 +52,6 @@ export async function buildContext(mod: LoadedModule, instance: InstanceView, lo
       for (const [name, value] of Object.entries(vars ?? {})) text = text.replaceAll(`{${name}}`, String(value));
       return text;
     },
-    api: makeApi(instance, loc),
+    api: makeApi(instance, loc, mod.manifest.permissions),
   };
 }

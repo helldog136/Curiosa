@@ -3,9 +3,9 @@
 // ce qui permet de tout tester sans réseau.
 
 export type UpdateLevel = "patch" | "minor" | "major";
-export type CheckOutcome = { check: { available: boolean; target?: string; level?: UpdateLevel }; failed: boolean };
+export type CheckOutcome = { check: { available: boolean; target?: string; level?: UpdateLevel; /** Cœur minimal demandé par la version proposée, si CE cœur est trop ancien. */ needsCore?: string }; failed: boolean };
 export type SourcedModule = { id: string; version: string };
-export type OutdatedModule = { id: string; current: string; target: string; level?: UpdateLevel };
+export type OutdatedModule = { id: string; current: string; target: string; level?: UpdateLevel; /** La mise à jour demande ce cœur (ou plus) : elle sera sautée tant que le site n'est pas mis à jour. */ needsCore?: string };
 export type ModulesReport = {
   checkedAt: number;
   /** Modules vérifiés (avec une source). */
@@ -15,7 +15,9 @@ export type ModulesReport = {
   unchecked: string[];
 };
 
-export type UpdateResult = { ok: true; migrations?: { status: string }[] } | { ok: false; error: string };
+export type UpdateResult = { ok: true; migrations?: { status: string }[] } | { ok: false; error: string; needsCore?: string };
+/** Erreur renvoyée par le cœur quand un module demande un cœur plus récent (voir compat.ts) : ce n'est pas un échec, la mise à jour est SAUTÉE. */
+export const CORE_TOO_OLD = "modules.error.core";
 export type Failure = { id: string; /** Clé de traduction de la raison. */ error: string; migration: boolean };
 export type Summary = {
   updated: string[];
@@ -24,6 +26,8 @@ export type Summary = {
   skipped: string[];
   /** Module sur lequel on s'est arrêté (erreur de migration de données). */
   stoppedOn: string | null;
+  /** Sautés sans erreur : le module demande un cœur plus récent (`core` = version demandée) ; absent s'il n'y en a aucun. À dire dans le bilan : « mettez d'abord le site à jour ». */
+  incompatible?: { id: string; core: string }[];
 };
 
 const clean = (v: string) => v.replace(/^v(?=\d)/, "");
@@ -44,7 +48,7 @@ export async function collectReport(modules: SourcedModule[], check: (id: string
   modules.forEach((m, i) => {
     const r = results[i]!;
     if (r.failed) report.unchecked.push(m.id);
-    else if (r.check.available) report.outdated.push({ id: m.id, current: clean(m.version), target: clean(r.check.target ?? "?"), level: r.check.level });
+    else if (r.check.available) report.outdated.push({ id: m.id, current: clean(m.version), target: clean(r.check.target ?? "?"), level: r.check.level, ...(r.check.needsCore ? { needsCore: r.check.needsCore } : {}) });
   });
   return report;
 }
@@ -62,6 +66,7 @@ export async function updateSequentially(ids: string[], update: (id: string) => 
     const id = ids[i]!;
     let result: UpdateResult;
     try { result = await update(id); } catch { result = { ok: false, error: "error.generic" }; }
+    if (!result.ok && result.error === CORE_TOO_OLD) { (summary.incompatible ??= []).push({ id, core: result.needsCore ?? "" }); continue; }
     if (!result.ok) { summary.failed.push({ id, error: result.error, migration: false }); continue; }
     if (hasMigrationProblem(result)) {
       summary.failed.push({ id, error: "modules.error.migration", migration: true });

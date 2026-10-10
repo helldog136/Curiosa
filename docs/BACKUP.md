@@ -5,7 +5,7 @@ données — pas le code du framework :
 
 | Inclus | Pas inclus |
 |---|---|
-| utilisateurs (mots de passe **hachés**), réglages (secrets compris : mot de passe e-mail, adresses privées…) | jetons d'API (à recréer) |
+| utilisateurs (mots de passe **hachés**), réglages (secrets compris : mot de passe e-mail, clé RAWG, adresses privées…) | jetons d'API (à recréer) |
 | instances de modules, entrées (toutes langues, brouillons compris), redirections | journal d'audit |
 | données de **chaque module installé** (leur stockage, leurs réglages) | le code du framework et des modules (réinstallé depuis le catalogue) |
 | images et fichiers envoyés | |

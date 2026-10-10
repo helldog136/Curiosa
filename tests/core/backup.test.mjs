@@ -34,7 +34,7 @@ const PNG = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a
 async function seed() {
   const owner = await db.prisma.user.create({ data: { email: "owner@example.org", name: "Owner", role: "owner", passwordHash: "$2a$12$hash-du-proprietaire", locale: "fr", advanced: true } });
   await setSetting("i18n.default", "fr"); await setSetting("i18n.enabled", ["fr", "en"]); await setSetting("setup.completed", true);
-  await setSetting("site.name", "Mon site", "fr"); await setSetting("mail.pass", "mot-de-passe-smtp"); await setSetting("updates.latest", "v9.9.9");
+  await setSetting("site.name", "Mon site", "fr"); await setSetting("mail.pass", "mot-de-passe-smtp"); await setSetting("rawg.key", "cle-rawg-factice-0001"); await setSetting("updates.latest", "v9.9.9");
   await db.fixture("blog");
   const blog = await createInstance(db.prisma, { manifest: BUILTIN_MODULES.find((b) => b.manifest.id === "blog").manifest, nickname: "Actus", names: { fr: "Actus", en: "News" } });
   const e1 = await createEntry(db.prisma, { instanceId: blog.id, locale: "fr", title: "Premier article", body: "Texte avec accents é à ü\n\n- liste", summary: "Résumé", status: "published", tags: ["promo", "news"], authorId: owner.id, url: "https://exemple.org/x", code: "CODE10" });
@@ -62,6 +62,7 @@ test("sauvegarde : tout ce qui est à l'utilisateur y est, les jetons d'API et l
   const users = JSON.parse(text(files, "data/users.json"));
   assert.deepEqual([users.length, users[0].email, users[0].passwordHash], [1, "owner@example.org", "$2a$12$hash-du-proprietaire"]);
   assert.equal(JSON.parse(text(files, "data/settings.json")).find((s) => s.key === "mail.pass").value, "mot-de-passe-smtp", "les secrets du site sont sauvegardés (le fichier est chiffré)");
+  assert.equal(JSON.parse(text(files, "data/settings.json")).find((s) => s.key === "rawg.key").value, "cle-rawg-factice-0001", "la clé RAWG du cœur est sauvegardée comme le mot de passe e-mail");
   assert.ok(!JSON.parse(text(files, "data/settings.json")).some((s) => s.key === "updates.latest"), "réglages volatils exclus");
   assert.ok(files[`uploads/${UPLOAD}`].equals(PNG));
   assert.deepEqual([b.manifest.format, b.manifest.formatVersion, b.manifest.counts.entries, b.manifest.counts.uploads], ["curiosa-backup", 1, 2, 1]);
@@ -82,6 +83,8 @@ test("sauvegarde : lisible SANS le framework — Markdown des entrées, données
   const site = text(files, "readable/site.txt");
   assert.match(site, /Mon site/); assert.match(site, /fr, en/);
   assert.ok(!site.includes("mot-de-passe-smtp") && site.includes("••••"), "le résumé lisible ne montre pas les secrets");
+  assert.ok(!site.includes("cle-rawg-factice-0001") && /rawg\.key = ••••/.test(site), "la clé RAWG est masquée dans le résumé lisible");
+  assert.ok(Object.entries(files).every(([p, c]) => p === "data/settings.json" || !c.toString("utf8").includes("cle-rawg-factice-0001")), "la clé RAWG n'apparaît dans aucun fichier lisible");
   const readme = text(files, "README.txt");
   assert.match(readme, /openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -md sha256/);
   assert.match(readme, /tar xzf/);
@@ -142,6 +145,7 @@ test("restauration : aller-retour complet — mêmes utilisateurs, réglages, in
   assert.deepEqual(JSON.parse(JSON.stringify(after)), JSON.parse(JSON.stringify(before.entry)), "entrée, traductions, dates, identifiants identiques");
   assert.deepEqual(JSON.parse(JSON.stringify(await db.prisma.setting.findMany({ orderBy: [{ key: "asc" }, { locale: "asc" }] }))).filter((s) => s.key !== "updates.latest"), JSON.parse(JSON.stringify(before.settings)).filter((s) => s.key !== "updates.latest"));
   assert.equal((await db.prisma.moduleInstance.findUnique({ where: { id: blog.id } })).key, "actus");
+  assert.equal(await (await import("@/core/services/rawg")).getRawgKey(), "cle-rawg-factice-0001", "la clé RAWG du cœur survit à la restauration");
   assert.equal((await db.prisma.redirect.findUnique({ where: { path: "twitch" } })).hits, 7);
   assert.deepEqual(JSON.parse((await db.prisma.moduleRecord.findFirst()).data), { name: "Alice", message: "Salut é" });
   assert.deepEqual(fs.readFileSync(path.join(UPLOADS_DIR, UPLOAD)), PNG);

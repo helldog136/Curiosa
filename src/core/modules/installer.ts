@@ -10,6 +10,7 @@ import { forgetModule, getModule, moduleDir, readGitManifest } from "./registry"
 import { findCatalogueEntry, listBundled, readBundledManifest } from "./catalogue";
 import { dependentsOf, offersOf, unmetRequirements } from "./dependencies";
 import { migrateModuleInstances, type MigrationOutcome } from "./dataMigrations";
+import { incompatWithThisCore, requirementOf, type CoreRequirement } from "./compat";
 import { classify, compareVersions, pickLatestTag, TAG_RE, type UpdateLevel } from "../updates/versions";
 
 const run = promisify(execFile);
@@ -17,7 +18,19 @@ const run = promisify(execFile);
 const MAX_MODULE_BYTES = 10 * 1024 * 1024;
 const DEFAULT_HOSTS = "github.com,gitlab.com,codeberg.org,bitbucket.org";
 
-export type InstallResult = { ok: true; id: string; migrations?: MigrationOutcome[] } | { ok: false; error: string; /** Précision lisible (ex. les services manquants). */ detail?: string };
+export type InstallResult = { ok: true; id: string; migrations?: MigrationOutcome[] } | { ok: false; error: string; /** Précision lisible (ex. les services manquants). */ detail?: string; /** Erreur « modules.error.core » : version du cœur que le module demande (voir compat.ts). */ needsCore?: string };
+
+/** Le module demande un cœur plus récent que celui-ci : on refuse d'entrer ou de monter de version (jamais de désactiver un module déjà là). */
+export class CoreTooOld extends Error {
+  readonly needs: string;
+  constructor(needs: string) { super("core too old"); this.needs = needs; }
+}
+const coreRefusal = (e: CoreTooOld): InstallResult => ({ ok: false, error: "modules.error.core", detail: e.needs, needsCore: e.needs });
+/** Lève CoreTooOld si CE cœur ne satisfait pas l'exigence. */
+function assertCore(requires: CoreRequirement | undefined): void {
+  const inc = incompatWithThisCore(requires);
+  if (inc) throw new CoreTooOld(inc.needs);
+}
 
 /** Dépôt d'un module : `subdir` = dossier du module dans un dépôt qui en regroupe plusieurs (absent = module à la racine). */
 export type ParsedRepo = { url: string; ref?: string; subdir?: string };
@@ -146,6 +159,7 @@ export async function installModule(input: string, opts: { expectId?: string } =
     const m = manifest.manifest;
     // Un dépôt reconnu ne peut pas servir un autre module que celui annoncé.
     if (opts.expectId && m.id !== opts.expectId) return { ok: false, error: "modules.error.idmismatch" };
+    assertCore(requirementOf(m));
 
     if (m.main && !fs.existsSync(path.join(root, m.main))) return { ok: false, error: "modules.error.nomain" };
     if (dirSize(root) > MAX_MODULE_BYTES) return { ok: false, error: "modules.error.size" };
@@ -165,6 +179,7 @@ export async function installModule(input: string, opts: { expectId?: string } =
     });
     return { ok: true, id: m.id };
   } catch (error) {
+    if (error instanceof CoreTooOld) return coreRefusal(error);
     console.error("[modules] install failed:", error);
     return { ok: false, error: "modules.error.clone" };
   } finally {
@@ -182,6 +197,8 @@ export type ModuleUpdateCheck = {
   /** Pour un module épinglé sur une étiquette : nature du changement (« major » = à lire avant d'installer). */
   level?: UpdateLevel;
   remote?: string;
+  /** La version proposée demande ce cœur (ou plus) et le nôtre est trop ancien : la mise à jour sera refusée. */
+  needsCore?: string;
 };
 
 /* ───────────── Modules logés dans un dossier d'un dépôt qui en regroupe plusieurs ───────────── */
@@ -241,6 +258,7 @@ async function checkSubdirUpdate(row: Module): Promise<ModuleUpdateCheck> {
       available, remote: f.commit,
       target: available ? (version && version !== row.version ? version : f.commit.slice(0, 7)) : undefined,
       level: available && version ? classify(row.version, version) ?? undefined : undefined,
+      needsCore: available ? incompatWithThisCore(f.manifest ? requirementOf(f.manifest) : undefined)?.needs : undefined,
     };
   } finally { f.cleanup(); }
 }
@@ -260,6 +278,7 @@ async function updateSubdirModule(row: Module): Promise<InstallResult> {
     if (!manifest || manifest.id !== id) throw Object.assign(new Error("manifest"), { code: "modules.error.nomanifest" });
     if (manifest.main && !fs.existsSync(path.join(fetched.root, manifest.main))) throw Object.assign(new Error("main"), { code: "modules.error.nomain" });
     if (dirSize(fetched.root) > MAX_MODULE_BYTES) throw Object.assign(new Error("size"), { code: "modules.error.size" });
+    assertCore(requirementOf(manifest));
     // On met l'ancienne version de côté pendant l'échange : au moindre échec, elle revient telle quelle.
     fs.rmSync(backup, { recursive: true, force: true });
     fs.renameSync(target, backup);
@@ -272,6 +291,7 @@ async function updateSubdirModule(row: Module): Promise<InstallResult> {
   } catch (error) {
     if (swapped) { fs.rmSync(target, { recursive: true, force: true }); fs.renameSync(backup, target); }
     forgetModule(id);
+    if (error instanceof CoreTooOld) return coreRefusal(error);
     console.error("[modules] update failed:", (error as Error)?.message);
     return { ok: false, error: (error as { code?: string })?.code ?? "modules.error.clone" };
   } finally {
@@ -312,15 +332,25 @@ export async function checkForUpdateDetailed(id: string): Promise<{ check: Modul
     return { check: { available, remote: entry?.version, target: available ? entry?.version : undefined, level: available ? classify(row.version, entry!.version!) ?? undefined : undefined }, failed: !entry };
   }
   if (!row || row.source !== "git" || !row.repoUrl) return { check: { available: false }, failed: false };
+  const res = await checkGitUpdate(row);
+  if (res.check.available && !res.check.needsCore && !row.subdir) {
+    // Sans télécharger : l'index du catalogue dit si la version proposée demande un cœur plus récent (sinon le refus viendra à la mise à jour).
+    const entry = await findCatalogueEntry(id).catch(() => undefined);
+    if (entry?.source === "recognized" && sameRepo(entry.repo, row.repoUrl) && !entry.subdir && entry.needsNewerCore) return { ...res, check: { ...res.check, needsCore: entry.needsNewerCore } };
+  }
+  return res;
+}
+
+async function checkGitUpdate(row: Module): Promise<{ check: ModuleUpdateCheck; failed: boolean }> {
   try {
     if (row.subdir) return { check: await checkSubdirUpdate(row), failed: false };
     if (isCommitRef(row.ref)) return { check: { available: false }, failed: false };
     if (isStableTag(row.ref)) {
-      const latest = await latestRemoteTag(row.repoUrl);
+      const latest = await latestRemoteTag(row.repoUrl!);
       const level = latest ? classify(row.ref, latest) : null;
       return { check: level ? { available: true, target: latest!, remote: latest!, level } : { available: false, remote: latest ?? undefined }, failed: false };
     }
-    const out = await git(["ls-remote", "--", row.repoUrl, row.ref ? `refs/heads/${row.ref}` : "HEAD"]);
+    const out = await git(["ls-remote", "--", row.repoUrl!, row.ref ? `refs/heads/${row.ref}` : "HEAD"]);
     const remote = out.split(/\s+/)[0];
     return { check: { available: !!remote && remote !== row.commit, remote, target: remote?.slice(0, 7) }, failed: false };
   } catch {
@@ -361,6 +391,10 @@ export async function updateModule(id: string): Promise<InstallResult> {
     } else {
       fetchRef = row.ref ?? "HEAD";
     }
+    // Le cœur est-il assez récent pour la version visée ? On le lit AVANT de toucher au dossier du module (ni retour en arrière, ni migration à défaire).
+    await git(["fetch", "--depth", "1", "origin", fetchRef], dir);
+    const incoming = await git(["show", "FETCH_HEAD:module.json"], dir).then((t) => parseManifest(JSON.parse(t))).catch(() => null);   // illisible : le contrôle habituel plus bas s'en charge
+    if (incoming?.ok) assertCore(requirementOf(incoming.manifest));
     // Versions sautées : on rejoue leurs migrations de données, dans l'ordre, avec LEUR code, avant de passer à la dernière.
     if (isStableTag(row.ref) && newRef !== row.ref) {
       const replay = await replaySkippedReleases(id, dir, row.repoUrl, row.ref, newRef as string);
@@ -381,6 +415,7 @@ export async function updateModule(id: string): Promise<InstallResult> {
     // Retour à la version précédente : un module en place ne doit pas rester à moitié mis à jour.
     if (previous) await git(["reset", "--hard", previous], dir).catch(() => {});
     forgetModule(id);
+    if (error instanceof CoreTooOld) return coreRefusal(error);
     console.error("[modules] update failed:", (error as Error)?.message);
     return { ok: false, error: (error as { code?: string })?.code ?? "modules.error.clone" };
   }
@@ -509,6 +544,8 @@ export async function installFromCatalogue(id: string): Promise<InstallResult> {
   const entry = await findCatalogueEntry(id);
   if (!entry) return { ok: false, error: "modules.error.notfound" };
   if (!entry.compatible) return { ok: false, error: "modules.error.incompatible" };
+  // L'index dit déjà quel cœur il faut : on refuse AVANT de télécharger quoi que ce soit.
+  if (entry.needsNewerCore) return { ok: false, error: "modules.error.core", detail: entry.needsNewerCore, needsCore: entry.needsNewerCore };
   if (entry.source === "bundled") return installBundled(id);
   const fragment = entry.ref || entry.subdir ? `#${entry.ref ?? ""}${entry.subdir ? `:${entry.subdir}` : ""}` : "";
   return installModule(`${entry.repo}${fragment}`, { expectId: id });

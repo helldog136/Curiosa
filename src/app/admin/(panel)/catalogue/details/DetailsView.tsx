@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { adminCtx } from "@/core/admin";
 import { findCatalogueEntry } from "@/core/modules/catalogue";
+import { getCoreVersion } from "@/core/modules/compat";
 import { parseRepoUrl } from "@/core/modules/installer";
 import { getModulePreview, type ModulePreview, type PreviewTarget } from "@/core/modules/readme";
 import { listModuleRows } from "@/core/modules/registry";
@@ -47,7 +48,7 @@ export async function DetailsView({ id, repo, embedded = false }: { id?: string;
   const perms = (m?.permissions ?? []).filter((p) => t(`perm.${p}`) !== `perm.${p}`);
 
   const installLabels = { install: t("catalogue.install"), installing: t("catalogue.installing"), done: t("catalogue.installDone"), failed: t("catalogue.installFailed") };
-  const canInstall = isOwner && !failed && !!entry && !installed && entry.compatible;
+  const canInstall = isOwner && !failed && !!entry && !installed && entry.compatible && !entry.needsNewerCore;
 
   return (
     <Frame embedded={embedded} back={t("catalogue.back")}>
@@ -102,6 +103,7 @@ export async function DetailsView({ id, repo, embedded = false }: { id?: string;
           {entry ? (
             installed ? <a href="/admin/modules" className="text-sm font-medium text-accent hover:underline">{t("catalogue.installed")}</a>
               : !entry.compatible ? <p className="text-sm text-muted">{t("catalogue.incompatible")}</p>
+              : entry.needsNewerCore ? <p className="text-sm text-muted">{t("modules.core.badge", { version: entry.needsNewerCore, current: getCoreVersion() })}</p>
               : (
                 embedded
                   ? <p className="text-sm text-muted">{t("catalogue.installNote")}</p>

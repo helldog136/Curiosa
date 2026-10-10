@@ -80,6 +80,8 @@ export type ModulePlan = {
   ref: string | null;
   subdir?: string | null;
   needsConfirmation: boolean;
+  /** Le module demande ce cœur (ou plus) et celui-ci est trop ancien : il ne sera pas réinstallé (ses données sont gardées), à refaire après la mise à jour du site. */
+  needsCore?: string;
 };
 
 export async function planModules(modules: BackupModule[]): Promise<ModulePlan[]> {
@@ -90,7 +92,7 @@ export async function planModules(modules: BackupModule[]): Promise<ModulePlan[]
     if (installed.has(m.id)) return { ...base, status: "installed", needsConfirmation: false };
     const entry = market.find((e) => e.id === m.id);
     // Une sauvegarde d'une version où les modules de base étaient « intégrés » les nomme « builtin » : ce sont aujourd'hui des modules du catalogue.
-    if ((m.origin === "catalogue" || m.origin === "builtin") && entry?.compatible) return { ...base, status: "catalogue", needsConfirmation: false };
+    if ((m.origin === "catalogue" || m.origin === "builtin") && entry?.compatible) return { ...base, status: "catalogue", needsConfirmation: false, ...(entry.needsNewerCore ? { needsCore: entry.needsNewerCore } : {}) };
     if (m.repoUrl) return { ...base, status: "custom", needsConfirmation: true };
     return { ...base, status: "unavailable", needsConfirmation: false };
   });
@@ -98,7 +100,7 @@ export async function planModules(modules: BackupModule[]): Promise<ModulePlan[]
 
 /* ───────────── Application ───────────── */
 
-export type ModuleOutcome = { id: string; outcome: "kept" | "installed" | "skipped" | "failed" | "unavailable"; error?: string };
+export type ModuleOutcome = { id: string; outcome: "kept" | "installed" | "skipped" | "failed" | "unavailable"; error?: string; /** Avec l'erreur « modules.error.core » : cœur demandé par le module. */ needsCore?: string };
 export type RestoreReport = { ok: false; error: "newer-schema"; modules: ModuleOutcome[] } | { ok: true; modules: ModuleOutcome[]; migrations: MigrationOutcome[]; counts: Record<string, number>; safetyCopy: string | null } | { ok: false; error: "invalid" | "failed"; modules: ModuleOutcome[] };
 
 type Installers = { fromCatalogue: (id: string) => Promise<InstallResult>; fromRepo: (url: string) => Promise<InstallResult> };
@@ -131,8 +133,9 @@ export async function applyRestore(backup: ParsedBackup, opts: { confirmCustom: 
     if (m.status === "installed") { outcomes.push({ id: m.id, outcome: "kept" }); continue; }
     if (m.status === "unavailable") { outcomes.push({ id: m.id, outcome: "unavailable" }); continue; }
     if (m.status === "custom" && !confirmed.has(m.id)) { outcomes.push({ id: m.id, outcome: "skipped" }); continue; }
+    if (m.needsCore) { outcomes.push({ id: m.id, outcome: "failed", error: "modules.error.core", needsCore: m.needsCore }); continue; }
     const result = m.status === "catalogue" ? await installers.fromCatalogue(m.id) : await installers.fromRepo(`${m.repoUrl}${m.ref || m.subdir ? `#${m.ref ?? ""}${m.subdir ? `:${m.subdir}` : ""}` : ""}`);
-    outcomes.push(result.ok ? { id: m.id, outcome: "installed" } : { id: m.id, outcome: "failed", error: result.error });
+    outcomes.push(result.ok ? { id: m.id, outcome: "installed" } : { id: m.id, outcome: "failed", error: result.error, ...(result.needsCore ? { needsCore: result.needsCore } : {}) });
   }
 
   if ((await checkSchema(backup.manifest)) === "newer-schema") return { ok: false, error: "newer-schema", modules: [] };

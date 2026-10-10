@@ -116,14 +116,14 @@ test("libellés d'admin : nom (renommable) de l'instance si elle est seule, surn
   assert.equal(labeler.moduleName("inconnu"), "inconnu");
 });
 
-test("navigation d'admin : instances regroupées par type de module, nom lisible, vide sans instance", async () => {
+test("navigation d'admin : une entrée par instance (type, rangement, nom lisible), vide sans instance", async () => {
   assert.deepEqual(await getAdminNav("en", "en"), []);
   await inst("blog");
   await inst("hero");
   const nav = await getAdminNav("en", "en");
-  const types = nav.map((g) => g.type);
-  assert.equal(new Set(types).size, types.length, "un seul groupe par type");
-  const items = nav.flatMap((g) => g.items);
+  const items = nav;
+  assert.deepEqual(items.map((i) => i.type).sort(), ["content", "widget"]);
+  assert.deepEqual(items.map((i) => [i.key, i.placement]).sort(), [["blog", "menu"], ["hero", "integrations"]], "rangement par défaut lu dans le manifeste");
   assert.deepEqual(items.map((i) => i.key).sort(), ["blog", "hero"]);
   assert.equal(items.find((i) => i.key === "blog").content, true);
   assert.equal(items.find((i) => i.key === "hero").content, false);

@@ -5,4 +5,7 @@ export async function register() {
   startUpdateScheduler();
   const { startTaskScheduler } = await import("@/core/services/scheduler");
   startTaskScheduler();
+  // Reprise unique d'une clé RAWG saisie autrefois dans un module (ne lève jamais).
+  const { importRawgKeyFromModules } = await import("@/core/services/rawg");
+  await importRawgKeyFromModules();
 }
