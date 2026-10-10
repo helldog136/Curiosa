@@ -30,7 +30,7 @@ Que trouve-t-on dedans ?
   backup.json               inventaire et empreintes SHA-256 des fichiers (pour vérifier que rien n'est altéré)
 
 ATTENTION : data/users.json contient les empreintes (hachées, pas en clair) des mots de passe des utilisateurs, et
-data/settings.json peut contenir des secrets (mot de passe du serveur e-mail, adresses privées de calendrier…).
+data/settings.json peut contenir des secrets (mot de passe du serveur e-mail, clé RAWG, adresses privées de calendrier…).
 Gardez ce fichier et son mot de passe à l'abri. Sans le mot de passe, le contenu est irrécupérable : il n'existe aucun
 moyen de le réinitialiser. Les jetons d'API et le journal d'audit ne sont pas sauvegardés.
 

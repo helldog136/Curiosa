@@ -130,7 +130,7 @@ export type ModuleManifest = {
   /** Modules livrés avec le cœur : activés dès le départ (défaut : oui). */
   defaultEnabled?: boolean;
   /** Déclaratif et informatif : affiché à l'administrateur avant activation. */
-  permissions: ("slots" | "routes" | "storage" | "filters" | "sections" | "pages" | "topics" | "overlay" | "mcp" | "admin" | "mail")[];
+  permissions: ("slots" | "routes" | "storage" | "filters" | "sections" | "pages" | "topics" | "overlay" | "mcp" | "admin" | "mail" | "rawg")[];
 };
 
 export type EntrySummary = {
@@ -202,6 +202,13 @@ export type ModuleApi = {
     configured(): Promise<boolean>;
     /** `to` : « owner » (le contact du site) ou une adresse. Texte brut ; l'expéditeur est celui du site. */
     send(message: { to: "owner" | string; subject: string; text: string; replyTo?: string }): Promise<{ ok: true } | { ok: false; reason: "not_configured" | "no_recipient" | "invalid" | "rate_limited" | "failed" }>;
+  };
+  /** Jaquettes de jeux (RAWG), avec la clé réglée une fois par le propriétaire (nécessite la permission « rawg »). Ne lève jamais ; la clé n'est jamais transmise. */
+  rawg: {
+    /** Une clé RAWG est-elle réglée (et ce module a-t-il la permission) ? */
+    configured(): Promise<boolean>;
+    /** Jaquette du jeu `title` : `found` (url https), `none` (aucun résultat), `no-key`, `refused` (RAWG refuse la clé), `unreachable`. */
+    cover(title: string): Promise<{ status: "found" | "none" | "no-key" | "refused" | "unreachable"; url: string | null }>;
   };
   /** Stockage privé de l'instance (messages reçus, compteurs…). */
   store: {

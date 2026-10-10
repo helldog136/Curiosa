@@ -11,6 +11,7 @@
  * - `ctx.api.topics.collect(topic)` renvoie `topics[topic]` ; `ctx.api.entries.list()` renvoie `entries`
  * - `ctx.api.qr(text)` renvoie un SVG factice contenant le texte ; `ctx.api.brand()` / `site()` valeurs réglables
  * - `ctx.api.mail` : `configured` (option `mailConfigured`, défaut true) et `send` qui enregistre dans `ctx.calls.mail` (résultat réglable via `mailResult`)
+ * - `ctx.api.rawg` : `configured` (option `rawgConfigured`, défaut true) et `cover(title)` qui enregistre dans `ctx.calls.rawg` (résultat réglable via `rawgCover`)
  * - `ctx.api.services` : `services` = { nom: { méthode: (args) => valeur } } ; absent → `unavailable`
  * - `ctx.calls` enregistre les appels utiles aux assertions
  */
@@ -19,11 +20,11 @@ export function fakeCtx(opts = {}) {
     moduleId = "fake", key = "fake", name = "Fake", basePath = "fake", locale = "en", defaultLocale = "en", locales = ["en"],
     settings = {}, messages = {}, topics = {}, entries = [], instances = [],
     brand = { name: "Site", tagline: "", about: "", logo: null, contactEmail: "", colors: [], font: { key: "sans", name: "Sans-serif", stack: "sans-serif" }, defaultLocale, locales },
-    site = { name: "Site", tagline: "", logo: null }, theme = { accent: "#e8a23b", accentFg: "#111111", bg: "#121214", surface: "#1b1b1d", fg: "#f4f4f5", muted: "#a1a1a3", line: "#2e2e30", fontKey: "sans", font: "sans-serif" }, services = {}, mailConfigured = true, mailResult = { ok: true }, siteUrl = "https://example.test",
+    site = { name: "Site", tagline: "", logo: null }, theme = { accent: "#e8a23b", accentFg: "#111111", bg: "#121214", surface: "#1b1b1d", fg: "#f4f4f5", muted: "#a1a1a3", line: "#2e2e30", fontKey: "sans", font: "sans-serif" }, services = {}, mailConfigured = true, mailResult = { ok: true }, rawgConfigured = true, rawgCover = { status: "found", url: "https://media.example.test/cover.jpg" }, siteUrl = "https://example.test",
   } = opts;
   const rows = new Map();
   let seq = 0;
-  const calls = { topics: [], qr: [], entries: [], mail: [], png: [], services: [] };
+  const calls = { topics: [], qr: [], entries: [], mail: [], png: [], services: [], rawg: [] };
   const store = {
     async add(collection, data) { const id = `r${++seq}`; rows.set(id, { id, collection, createdAt: new Date(Date.now() + seq), data: structuredClone(data) }); return id; },
     async get(id) { const r = rows.get(id); return r ? { id: r.id, createdAt: r.createdAt, data: structuredClone(r.data) } : null; },
@@ -55,6 +56,7 @@ export function fakeCtx(opts = {}) {
         },
       },
       store,
+      rawg: { configured: async () => rawgConfigured, cover: async (title) => { calls.rawg.push(title); return typeof rawgCover === "function" ? rawgCover(title) : rawgCover; } },
       mail: { configured: async () => mailConfigured, send: async (m) => { calls.mail.push(m); return typeof mailResult === "function" ? mailResult(m) : mailResult; } },
       topics: { collect: async (topic, o) => { calls.topics.push([topic, o]); const all = topics[topic] ?? []; return o?.limit ? all.slice(0, o.limit) : all; } },
       site: async () => site,

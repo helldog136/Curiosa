@@ -73,7 +73,7 @@ Les champs importants : `apiVersion` (toujours `2` aujourd'hui : le contrat avec
 `version` (`x.y.z`), `main` (le fichier de code ; sans lui, module « sans code »), `instances` (`"multiple"` ou `"single"`), `permissions` (ce que vous utilisez).
 
 Les **permissions** sont déclaratives : elles disent à l'administrateur ce que fait le module. Une par capacité utilisée : `slots`, `sections`, `pages`,
-`routes`, `storage`, `filters`, `topics`, `overlay`, `mcp`, `admin`, `mail`. Le cœur ne bloque pas une capacité non déclarée — déclarez-les fidèlement.
+`routes`, `storage`, `filters`, `topics`, `overlay`, `mcp`, `admin`, `mail`, `rawg`. Le cœur ne bloque pas une capacité non déclarée — déclarez-les fidèlement.
 
 L'exemple minimal « de production » est `announcement-banner` (`curiosa-extras/examples/announcement-banner`) ; essayez le vôtre tout de suite :
 [section 17](#17-tester-son-module). Toutes les clés possibles de `index.mjs` sont des **clés optionnelles** de l'objet exporté :
@@ -220,6 +220,9 @@ const result = await ctx.api.mail.send({ to: "owner", subject: "New message", te
 `to: "owner"` = le contact du site (ou une adresse). Le serveur d'e-mail est réglé une fois par le propriétaire du site ; vous n'avez ni identifiants ni choix de l'expéditeur.
 `send` **ne lève jamais** ; `ctx.api.mail.configured()` dit si un serveur est réglé. **Règle d'or** : l'e-mail est un plus. **Conservez d'abord** (`store.add`), **prévenez ensuite**, et ne faites
 jamais échouer la requête si l'e-mail échoue — c'est exactement l'ordre de `routes.sign` dans l'exemple. Permission : `mail`.
+
+**Jaquettes de jeux.** `await ctx.api.rawg.cover("Hades")` renvoie `{ status, url }` (`found`, `none`, `no-key`, `refused`, `unreachable`) et ne lève jamais ; `api.rawg.configured()` dit si une clé est réglée.
+La clé RAWG se règle une fois par le propriétaire (*Réglages › Services externes*) : ne la demandez jamais dans les réglages de votre module. Permission : `rawg`. Détails : [MODULES.md](MODULES.md#jaquettes-de-jeux-rawg).
 
 ## 10. Échanger avec les autres modules : sujets et flux RSS
 

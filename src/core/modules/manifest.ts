@@ -129,7 +129,7 @@ export const manifestSchema = z.object({
     })
     .optional(),
   defaultEnabled: z.boolean().optional(),
-  permissions: z.array(z.enum(["slots", "routes", "storage", "filters", "sections", "pages", "topics", "overlay", "mcp", "admin", "mail"])).default([]),
+  permissions: z.array(z.enum(["slots", "routes", "storage", "filters", "sections", "pages", "topics", "overlay", "mcp", "admin", "mail", "rawg"])).default([]),
 }).superRefine((m, ctx) => {
   for (const message of groupIssues(m.optionalGroups ?? [], m.settings)) ctx.addIssue({ code: "custom", path: ["optionalGroups"], message });
 });

@@ -10,7 +10,7 @@
 Sommaire : [anatomie](#anatomie-dun-module) · [manifeste `module.json`](#le-manifeste-modulejson) · [code `index.mjs`](#le-code-indexmjs) ·
 [contexte `ctx`](#le-contexte-ctx) · [blocs](#blocs) · [sujets](#échanger-des-informations-entre-modules-les-sujets) ·
 [admin](#panneau-dadmin-riche-formulaires-et-boutons-pilotés-par-le-module) · [MCP](#api-mcp-exposer-des-actions-aux-assistants) ·
-[thème](#thème-du-site-et-apparence-dun-module) · [e-mail](#envoyer-un-e-mail) · [RSS](#alimenter-le-flux-rss) ·
+[thème](#thème-du-site-et-apparence-dun-module) · [e-mail](#envoyer-un-e-mail) · [jaquettes RAWG](#jaquettes-de-jeux-rawg) · [RSS](#alimenter-le-flux-rss) ·
 [overlay](#overlay-type-overlay) · [sauvegarde](#sauvegarde-lisible-sans-le-framework) · [installer et publier](#installer-publier-catalogue) ·
 [sécurité](#sécurité-à-lire-avant-dinstaller)
 
@@ -89,7 +89,7 @@ Validé à l'installation et au chargement (zod, `src/core/modules/manifest.ts`)
   "type": "widget",                      // content | social | overlay | widget | integration | utility
   "instances": "multiple",               // ou "single"
   "page": true, "basePath": "guestbook", // l'instance a une page publique, sur ce chemin proposé
-  "permissions": ["slots", "sections", "routes", "storage", "filters", "pages", "topics", "overlay", "mcp", "admin", "mail"],
+  "permissions": ["slots", "sections", "routes", "storage", "filters", "pages", "topics", "overlay", "mcp", "admin", "mail", "rawg"],
   "settings": [ /* … */ ], "sections": [ /* … */ ], "consumes": [ /* … */ ], "provides": [ /* … */ ], "mcp": [ /* … */ ],
   "content": { /* … */ }, "onboarding": { /* … */ }, "defaultEnabled": true
 }
@@ -140,6 +140,7 @@ fidèlement (le test de l'exemple vérifie qu'elles correspondent au code), elle
 | `mcp` | le module déclare des actions `mcp` |
 | `admin` | le code définit `adminPanel` / `adminActions` |
 | `mail` | le module appelle `ctx.api.mail.send` |
+| `rawg` | le module appelle `ctx.api.rawg.cover` (jaquettes de jeux, voir « Jaquettes de jeux (RAWG) ») |
 
 ### Réglages (`settings`)
 
@@ -540,6 +541,8 @@ Deux familles : les **services** du cœur (génériques, voir [PLATFORM.md](PLAT
 | `ctx.api.topics.collect(sujet, { limit? })` | service | éléments des sources auxquelles l'instance est abonnée (le sujet doit figurer dans `consumes`, sinon erreur) |
 | `ctx.api.mail.configured()` | service | un serveur d'e-mail est-il réglé ? |
 | `ctx.api.mail.send({ to, subject, text, replyTo? })` | service | e-mail au nom du site (permission `mail`, voir « Envoyer un e-mail ») |
+| `ctx.api.rawg.configured()` | service | une clé RAWG est-elle réglée par le propriétaire ? (permission `rawg` ; `false` sans elle) |
+| `ctx.api.rawg.cover(title)` | service | jaquette d'un jeu : `{ status, url }` avec `status` = `found` (`url` en https), `none` (aucun résultat), `no-key` (pas de clé), `refused` (RAWG refuse la clé), `unreachable` (RAWG injoignable) ; permission `rawg`, voir « Jaquettes de jeux (RAWG) » |
 | `ctx.api.site(locale?)` | lecture | `{ name, tagline, logo }` du site |
 | `ctx.api.brand(locale?)` | lecture | identité visuelle complète (`ModuleBrand`, ci-dessous) |
 | `ctx.api.instances.list({ module?, locale? })` | lecture | `[{ key, module, basePath, name }]` des instances actives |
@@ -797,6 +800,15 @@ Un module qui déclare la permission `mail` peut appeler `ctx.api.mail.send({ to
 Garde-fous du cœur : texte brut uniquement (20 000 caractères au plus), objet nettoyé (une ligne, 150 caractères), un seul destinataire,
 `replyTo` doit être une adresse valide, 10 envois par heure et par instance et 40 par heure pour tout le site (`rate_limited` au-delà),
 chaque envoi consigné dans le journal d'audit (sans contenu).
+
+
+## Jaquettes de jeux (RAWG)
+
+Un module qui déclare la permission `rawg` peut demander la jaquette d'un jeu : `const cover = await ctx.api.rawg.cover("Hades")`. La **clé d'API RAWG se règle une seule fois**, par le propriétaire, dans *Réglages › Services externes* (comme le serveur d'e-mail) : un module ne demande **jamais** la clé à l'utilisateur, n'a pas de réglage « clé RAWG », et ne la voit jamais. Si un ancien module en avait une, le cœur la reprend une fois au démarrage quand le réglage du cœur est vide.
+
+`cover(title)` ne lève jamais et renvoie `{ status, url }` : `found` (`url` = adresse https de l'image, celle du premier résultat), `none` (RAWG ne connaît pas ce titre), `no-key` (le propriétaire n'a pas saisi de clé, ou le module n'a pas la permission), `refused` (RAWG refuse la clé : à ne pas confondre avec « aucun résultat »), `unreachable` (RAWG ne répond pas). `url` vaut `null` sauf pour `found`. `ctx.api.rawg.configured()` dit si une clé est réglée. La jaquette est un plus : affichez le jeu sans image dans tous les autres cas, et gardez l'adresse trouvée plutôt que de la redemander.
+
+Garde-fous du cœur, partagés par tous les modules : titre nettoyé et limité à 100 caractères, https uniquement, délai de 5 secondes, cache en mémoire (24 h pour une jaquette trouvée, 1 h pour « aucun résultat »), deux requêtes simultanées au plus. Le dernier état de la clé (fonctionne, refusée, injoignable, avec la date) est mémorisé dans les réglages et affiché à l'administrateur.
 
 ## Alimenter le flux RSS
 

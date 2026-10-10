@@ -6,6 +6,13 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
+## Prochaine version (non publiée)
+
+*Changements depuis la 0.1.9.*
+
+### Nouveautés
+- **Une seule clé pour les jaquettes de jeux.** Vous saisissez la clé RAWG une fois dans Réglages, à côté de l'e-mail, avec un bouton pour la tester. Vos fonctionnalités s'en servent sans jamais la demander, et celle déjà saisie dans une fonctionnalité est reprise.
+
 ## 0.1.9
 
 *Changements depuis la 0.1.8.*
