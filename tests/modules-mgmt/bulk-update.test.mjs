@@ -150,3 +150,8 @@ test("la page Mises à jour : section Modules, actions réservées au propriéta
   assert.match(ui, /AnimatedActionButton/);
   assert.match(fs.readFileSync("src/app/admin/(panel)/layout.tsx", "utf8"), /peekModulesReport/);
 });
+
+test("« Revérifier » relit aussi l'index du catalogue (sinon une version publiée depuis moins de 15 min resterait invisible)", () => {
+  const src = fs.readFileSync("src/core/modules/updateStatus.ts", "utf8");
+  assert.match(src, /if \(force\) clearRecognizedCache\(\)/);
+});
