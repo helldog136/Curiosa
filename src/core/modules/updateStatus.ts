@@ -2,6 +2,7 @@ import { prisma } from "@/core/db";
 import { listModuleRows, loadModule } from "./registry";
 import { localized } from "./types";
 import { checkForUpdateDetailed, updateModule } from "./installer";
+import { clearRecognizedCache } from "./recognized";
 import { collectReport, createReportCache, updateSequentially, type ModulesReport, type Summary } from "./bulkUpdate";
 
 /** Modules qui ont une source où chercher une mise à jour : livrés avec le catalogue, ou installés depuis un dépôt. */
@@ -14,6 +15,8 @@ const cache = createReportCache(async () => collectReport(await sourcedModules()
 
 /** Modules en retard (vérification réelle, gardée quelques minutes). Ne lève jamais : un échec global donne un rapport vide. */
 export async function getModulesReport(force = false): Promise<ModulesReport> {
+  // « Revérifier » relit aussi l'index du catalogue (gardé 15 min) : sans cela, une version publiée depuis moins de 15 minutes resterait invisible.
+  if (force) clearRecognizedCache();
   try { return await cache.get(force); } catch { return { checkedAt: Date.now(), checked: 0, outdated: [], unchecked: [] }; }
 }
 

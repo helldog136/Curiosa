@@ -6,6 +6,13 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
+## Prochaine version (non publiée)
+
+*Changements depuis la 0.1.10.*
+
+### Corrections
+- Le bouton « Revérifier » de l'onglet « Mises à jour » des modules voit maintenant tout de suite une version publiée à l'instant. Avant, il pouvait annoncer « Tous vos modules sont à jour » pendant 15 minutes.
+
 ## 0.1.10
 
 *Changements depuis la 0.1.9.*
