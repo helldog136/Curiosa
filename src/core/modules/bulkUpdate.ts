@@ -15,7 +15,9 @@ export type ModulesReport = {
   unchecked: string[];
 };
 
-export type UpdateResult = { ok: true; migrations?: { status: string }[] } | { ok: false; error: string; needsCore?: string };
+/** Ce qui manque à un module mis à jour (service, version voulue, version disponible, cause) : voir dependencyInstaller.ts. */
+export type MissingService = { service: string; min: number; have: number | null; reason: string; module?: string; error?: string };
+export type UpdateResult = { ok: true; migrations?: { status: string }[]; /** Mise à jour réussie, mais il manque de quoi faire fonctionner le module. */ missing?: MissingService[]; /** Fournisseurs installés d'office pour la nouvelle version. */ provided?: string[] } | { ok: false; error: string; needsCore?: string };
 /** Erreur renvoyée par le cœur quand un module demande un cœur plus récent (voir compat.ts) : ce n'est pas un échec, la mise à jour est SAUTÉE. */
 export const CORE_TOO_OLD = "modules.error.core";
 export type Failure = { id: string; /** Clé de traduction de la raison. */ error: string; migration: boolean };
@@ -28,6 +30,10 @@ export type Summary = {
   stoppedOn: string | null;
   /** Sautés sans erreur : le module demande un cœur plus récent (`core` = version demandée) ; absent s'il n'y en a aucun. À dire dans le bilan : « mettez d'abord le site à jour ». */
   incompatible?: { id: string; core: string }[];
+  /** Mis à jour (donc aussi dans `updated`) mais auxquels il manque encore un service : à dire dans le bilan. N'empêche jamais les autres mises à jour. */
+  warnings?: { id: string; missing: MissingService[] }[];
+  /** Fournisseurs installés d'office par ces mises à jour. */
+  provided?: string[];
 };
 
 const clean = (v: string) => v.replace(/^v(?=\d)/, "");
@@ -75,6 +81,8 @@ export async function updateSequentially(ids: string[], update: (id: string) => 
       break;
     }
     summary.updated.push(id);
+    if (result.missing?.length) (summary.warnings ??= []).push({ id, missing: result.missing });
+    if (result.provided?.length) summary.provided = [...new Set([...(summary.provided ?? []), ...result.provided])];
   }
   return summary;
 }

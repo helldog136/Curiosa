@@ -11,6 +11,8 @@ import { CatalogueSearch } from "@/components/admin/CatalogueSearch";
 import { ActionForm } from "@/components/admin/ActionForm";
 import { ConfirmButton } from "@/components/admin/ConfirmButton";
 import { discoverModules, listSources, sourceAddress, type SourceModule } from "@/core/modules/sources";
+import { buildNames, viewPlan, type PlanView } from "@/core/modules/dependencyView";
+import { DependencyPlanBox } from "@/components/admin/DependencyPlanBox";
 import { addSourceAction, refreshCatalogueAction, refreshSourcesAction, removeSourceAction } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -27,6 +29,10 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
   const sources = isOwner && advanced ? await listSources() : [];
   const found = await Promise.all(sources.map(async (s) => ({ s, modules: await discoverModules(s).catch((): SourceModule[] | null => null) })));
   const L = (v: Parameters<typeof localized>[0]) => localized(v, locale, config.defaultLocale);
+  // « Installe aussi : … » sur chaque carte dont le module dépend d'un autre (ce que le manifeste livré ou l'index annonce).
+  const names = await buildNames(locale, config.defaultLocale, entries);
+  const plans = new Map<string, PlanView>();
+  for (const e of entries) if (!installed.has(e.id) && e.compatible && (e.needs?.length ?? 0) > 0) plans.set(e.id, await viewPlan(e.id, e.needs!, names, entries));
   const groups = [
     { id: "community", title: advanced ? t("catalogue.community") : t("catalogue.community.simple"), list: entries.filter((e) => e.kind === "community") },
     { id: "recognized", title: advanced ? t("catalogue.recognized") : t("catalogue.recognized.simple"), list: entries.filter((e) => e.kind === "recognized") },
@@ -69,6 +75,7 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
                     {advanced && e.source === "recognized" && e.repo && <p className="mt-1 break-all font-mono text-xs text-muted">{e.repo}{e.ref ? `#${e.ref}` : ""}</p>}
                   </div>
                 </div>
+                {plans.get(e.id) && <DependencyPlanBox view={plans.get(e.id)!} t={t} names={names} compact />}
                 <div className="mt-auto flex flex-wrap items-center justify-between gap-3">
                   <span className="flex flex-wrap items-center gap-2"><span className={ui.chipOk}>✔ {t("catalogue.verified")}</span>{e.suggested && <span className={ui.chipOk}>⭐ {t("catalogue.suggested")}</span>}</span>
                   {installed.has(e.id) ? (

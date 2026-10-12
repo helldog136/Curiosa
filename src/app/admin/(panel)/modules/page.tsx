@@ -18,12 +18,15 @@ import { Callout, EmptyState, PageHeader } from "@/components/admin/Page";
 import { ui } from "@/components/admin/ui";
 import { duplicateServices } from "@/core/modules/dependencies";
 import { ServiceRouter } from "@/components/admin/ServiceRouter";
+import { buildNames, missingByModule } from "@/core/modules/dependencyView";
+import { cleanupSuggestions, readAuto } from "@/core/modules/autoInstalled";
+import { decodeMissing, describeMissingList } from "@/core/modules/dependencyMessages";
 import { addInstance, saveServiceRouting, toggleModule } from "./actions";
 
-export default async function ModulesPage({ searchParams }: { searchParams: Promise<{ tab?: string; update?: string; error?: string; detail?: string; notice?: string; module?: string; to?: string; level?: string }> }) {
+export default async function ModulesPage({ searchParams }: { searchParams: Promise<{ tab?: string; update?: string; error?: string; detail?: string; missing?: string; notice?: string; module?: string; to?: string; level?: string }> }) {
   const { t, locale, user, config, advanced } = await adminCtx("admin");
   const isOwner = user.role === "owner";
-  const { tab, update, error, detail, notice, module: checked, to, level } = await searchParams;
+  const { tab, update, error, detail, missing, notice, module: checked, to, level } = await searchParams;
   // Anciens liens (résultat d'une recherche de mise à jour) : le message s'affiche sur la page du module concerné.
   if (tab === "updates" && !isOwner) redirect("/admin/modules");
   const rows = await listModuleRows();
@@ -35,6 +38,10 @@ export default async function ModulesPage({ searchParams }: { searchParams: Prom
   const behind = new Map((isOwner ? peekModulesReport()?.outdated ?? [] : []).map((o) => [o.id, o]));
   const duplicates = isOwner ? await duplicateServices() : [];
   const statuses = await loadInstanceStatuses();
+  const names = await buildNames(locale, config.defaultLocale);
+  const missingMap = await missingByModule();
+  const auto = await readAuto();
+  const cleanup = isOwner ? await cleanupSuggestions() : [];
   const tabs = <FeatureTabs current={tab === "updates" ? "updates" : "installed"} {...featureTabProps(t, advanced, isOwner)} />;
 
   const items = mods.map(({ row, mod }) => {
@@ -48,7 +55,7 @@ export default async function ModulesPage({ searchParams }: { searchParams: Prom
       // Mode simple, une seule instance : la carte porte le nom que l'admin lui a donné (comme le menu de gauche).
       name: !advanced && mine.length === 1 ? labeler.label(mine[0]!) : modName,
       instances: mine.map((i) => ({ id: i.id, name: labeler.label(i), state: statuses.get(i.id)?.state ?? "off" })),
-      count: mine.length, firstInstanceId: mine[0]?.id ?? null, update: behind.has(row.id),
+      count: mine.length, firstInstanceId: mine[0]?.id ?? null, update: behind.has(row.id), missing: missingMap.has(row.id), auto: !!auto[row.id]?.module,
       search: moduleSearchText([modName, description, row.id, platform ? platformLabel(platform) : null, type === "broken" ? null : t(`type.${type}`), type, ...mine.flatMap((i) => [labeler.label(i), i.nickname, i.key])]),
     };
   });
@@ -82,7 +89,15 @@ export default async function ModulesPage({ searchParams }: { searchParams: Prom
     <div className="space-y-8">
       <PageHeader title={advanced ? t("nav.modules") : t("nav.modules.simple")} intro={advanced ? t("modules.intro") : t("modules.introSimple")} />
       {tabs}
-      {error && <Callout tone="danger">{error.startsWith("modules.error.") || error.startsWith("instances.error.") ? t(error, { services: detail ?? "", modules: detail ?? "" }) : t("error.generic")}</Callout>}
+      {error && <Callout tone="danger">{error === "modules.error.requires" && decodeMissing(missing).length ? describeMissingList(decodeMissing(missing), t, names).join(" ") : error.startsWith("modules.error.") || error.startsWith("instances.error.") ? t(error, { services: detail ? detail.split(", ").map(names.service).join(", ") : "", modules: detail ? detail.split(", ").map(names.module).join(", ") : "" }) : t("error.generic")}</Callout>}
+      {cleanup.length > 0 && (
+        <Callout tone="info" role="status">
+          <p className="font-medium" data-testid="cleanup-banner">🧹 {t("deps.cleanup.bannerTitle")}</p>
+          <ul className="mt-2 space-y-1 text-sm">
+            {cleanup.map((c) => <li key={c.id}><a href={`/admin/modules/${encodeURIComponent(c.id)}`} className="font-medium text-accent hover:underline">{names.module(c.id)}</a>{c.for.length > 0 && <span className="text-muted"> — {t("deps.auto.for", { names: c.for.map(names.module).join(", ") })}</span>}{c.hasData && <span className="text-amber-700"> ⚠ {t("deps.cleanup.data")}</span>}</li>)}
+          </ul>
+        </Callout>
+      )}
       {notice === "services" && <Callout tone="warn" role="alert">{t("services.notice")}</Callout>}
       {duplicates.length > 0 && (
         <section className="space-y-3">
@@ -127,6 +142,8 @@ export default async function ModulesPage({ searchParams }: { searchParams: Prom
                           {m.platform && m.platform !== m.name && <span className={ui.chip} data-testid="platform-chip">{m.platform}</span>}
                           <span className={m.enabled ? ui.chipOk : ui.chip}>{m.enabled ? t("modules.on") : t("modules.off")}</span>
                           {m.update && <span className={ui.chipWarn} data-testid={`module-behind-${m.id}`}>⬆ {t("modules.updateBadge")}</span>}
+                          {m.missing && <span className={ui.chipWarn} data-testid={`module-missing-${m.id}`}>⚠ {t("deps.missing.badge")}</span>}
+                          {m.auto && <span className={ui.chip} data-testid={`module-auto-${m.id}`}>🔗 {t("deps.auto.badge")}</span>}
                         </span>
                         <span className="mt-0.5 block truncate text-sm text-muted">{m.description}</span>
                       </span>
@@ -149,6 +166,8 @@ export default async function ModulesPage({ searchParams }: { searchParams: Prom
                       {m.platform && m.platform !== m.name && <span className={ui.chip} data-testid="platform-chip">{m.platform}</span>}
                       <span className={m.enabled ? ui.chipOk : ui.chip}>{m.enabled ? t("modules.on") : t("modules.off")}</span>
                       {m.update && <span className={ui.chipWarn} data-testid={`module-behind-${m.id}`}>⬆ {t("modules.updateBadge")}</span>}
+                          {m.missing && <span className={ui.chipWarn} data-testid={`module-missing-${m.id}`}>⚠ {t("deps.missing.badge")}</span>}
+                          {m.auto && <span className={ui.chip} data-testid={`module-auto-${m.id}`}>🔗 {t("deps.auto.badge")}</span>}
                     </span>
                     <span className="mt-0.5 block truncate text-sm text-muted">{m.description}</span>
                   </span>
@@ -164,6 +183,7 @@ export default async function ModulesPage({ searchParams }: { searchParams: Prom
                   <div className="min-w-0">
                     <p className="text-lg font-semibold leading-tight">{m.name}{m.platform && m.platform !== m.name && <span className={`${ui.chip} ml-2 align-middle`} data-testid="platform-chip">{m.platform}</span>}</p>
                     <p className="mt-1 line-clamp-3 text-sm leading-5 text-muted">{m.description}</p>
+                    {(m.missing || m.auto) && <p className="mt-2 flex flex-wrap gap-2">{m.missing && <span className={ui.chipWarn} data-testid={`module-missing-${m.id}`}>⚠ {t("deps.missing.badge")}</span>}{m.auto && <span className={ui.chip} data-testid={`module-auto-${m.id}`}>🔗 {t("deps.auto.badge")}</span>}</p>}
                   </div>
                 </div>
                 {m.instances.length > 1 && (

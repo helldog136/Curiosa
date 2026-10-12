@@ -15,7 +15,7 @@ export function InstallButton({ id, labels, redirectTo = "/admin/modules" }: { i
   return (
     <AnimatedActionButton look="hero" icon="⬇" testid="install-button"
       labels={{ idle: labels.install, working: labels.installing, done: labels.done, failed: labels.failed }}
-      run={async () => ({ ok: (await installModuleAction(id)).ok })}
+      run={async () => { const r = await installModuleAction(id); return r.ok ? { ok: true } : { ok: false, error: r.error }; }}
       onDone={() => { router.push(redirectTo); router.refresh(); }} />
   );
 }

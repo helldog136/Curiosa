@@ -23,7 +23,8 @@ const provider = (id, code) => makeRepo({
   } } };`,
 });
 const consumer = (id = "cons", requires = [{ service: SERVICE }]) => makeRepo({ "module.json": { apiVersion: 2, id, name: id, version: "1.0.0", main: "index.mjs", requires }, "index.mjs": "export default {};" });
-const install = async (repo, id) => { assert.equal((await installModule(repo.url)).ok, true); return id; };
+// Sans cascade : ces tests vérifient l'activation et les appels de service ; la résolution à l'installation est dans dependencies-v2.test.mjs.
+const install = async (repo, id) => { assert.equal((await installModule(repo.url, { dependencies: false })).ok, true); return id; };
 const instance = async (id, key) => createInstance(db.prisma, { manifest: (await R.getModule(id)).manifest, nickname: key, names: { fr: key } });
 const active = async (id) => (await R.getActiveInstances()).find((a) => a.mod.manifest.id === id);
 
@@ -40,8 +41,11 @@ test("activer un module sans son fournisseur : refusé, avec ce qui manque ; ave
   assert.equal((await db.prisma.module.findUnique({ where: { id: "cons" } })).enabled, false);
 
   await install(provider("prov"), "prov");
-  assert.equal((await setModuleEnabled("cons", true)).ok, false, "fournisseur installé mais pas activé : toujours refusé");
-  assert.equal((await setModuleEnabled("prov", true)).ok, true);
+  // Avant : « fournisseur installé mais pas activé : refusé ». Désormais la cascade l'active d'office et lui donne son instance.
+  const cascade = await setModuleEnabled("cons", true);
+  assert.deepEqual([cascade.ok, cascade.provided], [true, ["prov"]]);
+  assert.equal((await db.prisma.module.findUnique({ where: { id: "prov" } })).enabled, true);
+  assert.equal(await db.prisma.moduleInstance.count({ where: { moduleId: "prov" } }), 1);
   assert.equal((await setModuleEnabled("cons", true)).ok, true);
 });
 

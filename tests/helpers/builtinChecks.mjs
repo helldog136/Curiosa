@@ -63,3 +63,50 @@ export function assertSettingsSane(manifest) {
 
 export const settingsDefaults = (manifest) =>
   Object.fromEntries((manifest.settings ?? []).filter((s) => s.default !== undefined).map((s) => [s.key, s.default]));
+
+/**
+ * SRP (une responsabilité par module, un propriétaire par donnée ou capacité) — vérification PURE sur un ensemble de manifestes (objets module.json
+ * déjà lus, ou passés par parseManifest). Détecte les violations évidentes, sans rien lire ailleurs :
+ *   service  un même service `offers` par plusieurs modules, sauf substitution voulue (`opts.substitutes` : liste explicite des services dont
+ *            plusieurs fournisseurs sont voulus, le mécanisme maître/répliques du cœur s'en charge) ;
+ *   mcp      une action MCP du même nom (`mcp[].name`) dans deux modules (sauf `opts.mcp`, liste de noms voulus) ;
+ *   secret   un réglage secret de même clé (`type: "secret"`) dans deux modules qui ne sont PAS fournisseur/consommateur l'un de l'autre
+ *            (sauf `opts.secrets`, liste de clés voulues). Deux modules liés par `requires` → `offers` partagent la donnée par le service :
+ *            s'ils la dupliquent, c'est une autre violation, que cette règle ne détecte pas.
+ * Renvoie une liste de { rule, key, modules, message } ; vide = rien à signaler.
+ */
+export function findSrpViolations(manifests, opts = {}) {
+  const substitutes = new Set(opts.substitutes ?? []);
+  const allowedMcp = new Set(opts.mcp ?? []);
+  const allowedSecrets = new Set(opts.secrets ?? []);
+  const list = (manifests ?? []).filter((m) => m && typeof m.id === "string");
+  const offered = (m) => new Set((m.offers ?? []).map((o) => o.service));
+  const needed = (m) => new Set((m.requires ?? []).map((r) => r.service));
+  const related = (a, b) => [...needed(a)].some((s) => offered(b).has(s)) || [...needed(b)].some((s) => offered(a).has(s));
+  const group = (pick) => {
+    const by = new Map();
+    for (const m of list) for (const key of new Set(pick(m))) by.set(key, [...(by.get(key) ?? []), m]);
+    return by;
+  };
+  const out = [];
+  for (const [service, mods] of group((m) => [...offered(m)])) {
+    if (mods.length > 1 && !substitutes.has(service)) out.push({ rule: "service", key: service, modules: mods.map((m) => m.id).sort(), message: `le service « ${service} » est offert par plusieurs modules (${mods.map((m) => m.id).sort().join(", ")}) : un seul propriétaire, ou déclarez la substitution voulue` });
+  }
+  for (const [name, mods] of group((m) => (m.mcp ?? []).map((a) => a.name))) {
+    if (mods.length > 1 && !allowedMcp.has(name)) out.push({ rule: "mcp", key: name, modules: mods.map((m) => m.id).sort(), message: `l'action MCP « ${name} » existe dans plusieurs modules (${mods.map((m) => m.id).sort().join(", ")})` });
+  }
+  const secrets = (m) => [...(m.settings ?? []), ...(m.sections ?? []).flatMap((s) => s.options ?? [])].filter((s) => s.type === "secret").map((s) => s.key);
+  for (const [key, mods] of group(secrets)) {
+    if (allowedSecrets.has(key)) continue;
+    const bad = new Set();
+    for (let i = 0; i < mods.length; i++) for (let j = i + 1; j < mods.length; j++) if (!related(mods[i], mods[j])) { bad.add(mods[i].id); bad.add(mods[j].id); }
+    if (bad.size) out.push({ rule: "secret", key, modules: [...bad].sort(), message: `le secret « ${key} » est demandé par des modules sans lien de service (${[...bad].sort().join(", ")}) : confiez-le à un module fournisseur` });
+  }
+  return out;
+}
+
+/** Échoue avec la liste lisible des violations SRP. */
+export function assertNoSrpViolations(manifests, opts) {
+  const v = findSrpViolations(manifests, opts);
+  assert.deepEqual(v.map((x) => x.message), [], "violations du principe « un module fait une chose, une donnée n'a qu'un propriétaire »");
+}

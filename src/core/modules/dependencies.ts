@@ -1,3 +1,5 @@
+import { prisma } from "../db";
+import { normalizeNeeds, offerVersionOf, satisfiesVersion } from "./serviceVersions";
 import { buildContext } from "./context";
 import { deleteSetting, getSetting, setSetting } from "../settings";
 import { getActiveInstances, getModule, listModuleRows, type ActiveInstance } from "./registry";
@@ -10,31 +12,91 @@ import type { ParsedManifest } from "./manifest";
 export const offersOf = (m: Pick<ParsedManifest, "offers">) => (m.offers ?? []).map((o) => o.service);
 export const requiresOf = (m: Pick<ParsedManifest, "requires">) => (m.requires ?? []).map((r) => r.service);
 
-/** Manifestes des modules ACTIFS (activés et chargeables), éventuellement sans l'un d'eux. */
-async function enabledManifests(except?: string): Promise<ParsedManifest[]> {
-  const out: ParsedManifest[] = [];
+/**
+ * Fournisseurs VIVANTS : instances actives d'un module actif et chargeable. Lu directement en base (pas de cache de requête) : une cascade
+ * qui vient de créer une instance doit la voir tout de suite. Une instance dont les données sont à l'écart (migration échouée) ne compte pas.
+ */
+export async function liveProviders(except?: string): Promise<{ manifest: ParsedManifest; instanceKeys: string[] }[]> {
+  const out: { manifest: ParsedManifest; instanceKeys: string[] }[] = [];
   for (const row of await listModuleRows()) {
     if (!row.enabled || row.id === except) continue;
     const mod = await getModule(row.id);
-    if (mod) out.push(mod.manifest);
+    if (!mod) continue;
+    const keys: string[] = [];
+    for (const inst of await prisma.moduleInstance.findMany({ where: { moduleId: row.id, enabled: true }, orderBy: { key: "asc" } })) {
+      if (!(await getSetting<{ status?: string }>(`instance.${inst.id}.__dataStatus`))?.status) keys.push(inst.key);
+    }
+    if (keys.length) out.push({ manifest: mod.manifest, instanceKeys: keys });
   }
   return out;
 }
 
-/** Services dont ce module a besoin et qu'aucun module actif n'offre. */
-export async function unmetRequirements(manifest: ParsedManifest): Promise<string[]> {
-  const offered = new Set((await enabledManifests(manifest.id)).flatMap(offersOf));
-  return requiresOf(manifest).filter((s) => !offered.has(s));
+/** Meilleure version d'un service offerte par ces fournisseurs (null = aucun). */
+const bestVersion = (providers: { manifest: ParsedManifest }[], service: string): number | null => {
+  const versions = providers.map((p) => offerVersionOf(p.manifest.offers, service)).filter((v): v is number => v !== null);
+  return versions.length ? Math.max(...versions) : null;
+};
+
+export type Gap = {
+  service: string;
+  /** Version minimale exigée (1 par défaut). */
+  min: number;
+  /** Meilleure version actuellement disponible (null = aucun fournisseur) : « Il faut la 2 (vous avez la 1) ». */
+  have: number | null;
+  reason: "none" | "old";
+};
+
+/**
+ * Ce qui manque à un module pour fonctionner : pour chaque service exigé, une INSTANCE active d'un module actif qui l'offre, dans une version ≥ `min`.
+ * Un module actif sans instance, ou en version trop ancienne, ne compte pas.
+ */
+export async function requirementGaps(manifest: ParsedManifest): Promise<Gap[]> {
+  const needs = normalizeNeeds(manifest.requires);
+  if (!needs.length) return [];
+  const live = await liveProviders(manifest.id);
+  const gaps: Gap[] = [];
+  for (const n of needs) {
+    const have = bestVersion(live, n.service);
+    if (!satisfiesVersion(have, n.min)) gaps.push({ service: n.service, min: n.min, have, reason: have === null ? "none" : "old" });
+  }
+  return gaps;
 }
 
-/** Modules actifs qui cesseraient de fonctionner si `moduleId` s'arrêtait : ils requièrent un service que lui seul offre. */
+/** Services dont ce module a besoin et qu'aucune instance active ne fournit (dans la version voulue). */
+export async function unmetRequirements(manifest: ParsedManifest): Promise<string[]> {
+  return (await requirementGaps(manifest)).map((g) => g.service);
+}
+
+/** Modules actifs qui cesseraient de fonctionner si `moduleId` s'arrêtait : ils exigent un service que lui seul fournit (version comprise). */
 export async function dependentsOf(moduleId: string): Promise<string[]> {
   const mine = await getModule(moduleId);
   if (!mine) return [];
-  const others = await enabledManifests(moduleId);
-  const stillOffered = new Set(others.flatMap(offersOf));
-  const lost = new Set(offersOf(mine.manifest).filter((s) => !stillOffered.has(s)));
-  return others.filter((m) => requiresOf(m).some((s) => lost.has(s))).map((m) => m.id);
+  const others = await liveProviders(moduleId);
+  const mineOffers = new Set(offersOf(mine.manifest));
+  const out: string[] = [];
+  for (const row of await listModuleRows()) {
+    if (!row.enabled || row.id === moduleId) continue;
+    const m = await getModule(row.id);
+    if (!m) continue;
+    const lost = normalizeNeeds(m.manifest.requires).filter((n) => mineOffers.has(n.service) && !satisfiesVersion(bestVersion(others.filter((o) => o.manifest.id !== row.id), n.service), n.min));
+    if (lost.length) out.push(row.id);
+  }
+  return out;
+}
+
+/** Ce que perdraient les dépendants : pour chaque module actif touché, les services qu'il ne trouverait plus. */
+export async function lossesIfStopped(moduleId: string): Promise<{ module: string; services: string[] }[]> {
+  const mine = await getModule(moduleId);
+  if (!mine) return [];
+  const others = await liveProviders(moduleId);
+  const mineOffers = new Set(offersOf(mine.manifest));
+  const out: { module: string; services: string[] }[] = [];
+  for (const id of await dependentsOf(moduleId)) {
+    const m = await getModule(id);
+    const lost = normalizeNeeds(m?.manifest.requires).filter((n) => mineOffers.has(n.service) && !satisfiesVersion(bestVersion(others.filter((o) => o.manifest.id !== id), n.service), n.min)).map((n) => n.service);
+    out.push({ module: id, services: lost });
+  }
+  return out;
 }
 
 /**
@@ -85,7 +147,8 @@ type Outcome = { ok: true; value: unknown } | { ok: false; reason: "undeclared" 
 /** Appel d'un service au nom d'une instance consommatrice : le maître répond, les répliques reçoivent aussi les écritures. Ne lève jamais. */
 export async function callService(consumer: Pick<ActiveInstance, "mod" | "instance">, service: string, method: string, args: unknown, locale?: string): Promise<Outcome> {
   if (!requiresOf(consumer.mod.manifest).includes(service)) return { ok: false, reason: "undeclared" };
-  const providers = await providerInstances(service, consumer.mod.manifest.id);
+  const min = normalizeNeeds(consumer.mod.manifest.requires).find((n) => n.service === service)?.min ?? 1;
+  const providers = (await providerInstances(service, consumer.mod.manifest.id)).filter((p) => satisfiesVersion(offerVersionOf(p.mod.manifest.offers, service), min));
   if (providers.length === 0) return { ok: false, reason: "unavailable" };
   const { master, replicas } = resolveRouting(providers, await getRouting(service));
   const run = async (p: ActiveInstance) => p.mod.def.services?.[service]?.[method]?.(await buildContext(p.mod, p.instance, locale), args);

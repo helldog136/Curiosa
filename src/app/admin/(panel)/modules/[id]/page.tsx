@@ -11,16 +11,19 @@ import { Callout, DangerZone } from "@/components/admin/Page";
 import { ui } from "@/components/admin/ui";
 import { ModuleUpdateButton } from "@/components/admin/ModuleUpdateButton";
 import { peekModulesReport } from "@/core/modules/updateStatus";
+import { buildNames, viewModuleLinks } from "@/core/modules/dependencyView";
+import { decodeMissing, describeMissingList } from "@/core/modules/dependencyMessages";
+import { ModuleLinksBox } from "@/components/admin/ModuleLinksBox";
 import { addInstance, toggleModule, uninstallModuleAction } from "../actions";
 
 export const dynamic = "force-dynamic";
 
 /** Page d'un module : tout ce qu'on peut en faire (activer, mettre à jour, instances, désinstaller). Les messages des actions arrivent ici. */
-export default async function ModulePage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ update?: string; error?: string; detail?: string; module?: string; to?: string; level?: string }> }) {
+export default async function ModulePage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ update?: string; error?: string; detail?: string; missing?: string; op?: string; module?: string; to?: string; level?: string }> }) {
   const { id } = await params;
   const { t, locale, user, config, advanced } = await adminCtx("admin");
   const isOwner = user.role === "owner";
-  const { update, error, detail, to, level } = await searchParams;
+  const { update, error, detail, missing, op, to, level } = await searchParams;
   const row = (await listModuleRows()).find((r) => r.id === decodeURIComponent(id));
   if (!row) notFound();
   const mod = await loadModule(row);
@@ -31,6 +34,17 @@ export default async function ModulePage({ params, searchParams }: { params: Pro
   const behind = isOwner ? peekModulesReport()?.outdated.find((o) => o.id === row.id) : undefined;   // sans réseau
   const canAdd = !!mod && row.enabled && (mod.manifest.instances === "multiple" || mine.length === 0);
   const name = mod ? L(mod.manifest.name) : row.id;
+  const names = await buildNames(locale, config.defaultLocale);
+  const links = await viewModuleLinks(row.id, names);
+  // Refus lisibles : les modules par leur nom, ce qu'ils perdraient, et quoi faire.
+  const lost = links.losses;
+  const refusalText = error === "modules.error.requiredBy" && lost.length
+    ? t(op === "uninstall" ? "deps.refusal.uninstall" : "deps.refusal.disable", { name, users: lost.map((l) => l.name).join(", "), losses: lost.map((l) => t("deps.refusal.loss", { module: l.name, services: l.services.join(", ") })).join(". ") })
+    : error === "modules.error.requires" && decodeMissing(missing).length
+      ? describeMissingList(decodeMissing(missing), t, names).join(" ")
+      : error?.startsWith("modules.error.") || error?.startsWith("instances.error.")
+        ? t(error, { services: detail ? detail.split(", ").map(names.service).join(", ") : "", modules: detail ? detail.split(", ").map(names.module).join(", ") : "" })
+        : error ? t("error.generic") : null;
   const listTitle = advanced ? t("nav.modules") : t("nav.modules.simple");
 
   return (
@@ -49,13 +63,12 @@ export default async function ModulePage({ params, searchParams }: { params: Pro
         </div>
       </header>
 
-      {error && <Callout tone="danger">{error.startsWith("modules.error.") || error.startsWith("instances.error.") ? t(error, { services: detail ?? "", modules: detail ?? "" }) : t("error.generic")}</Callout>}
+      {refusalText && <Callout tone="danger" role="alert"><span data-testid="module-error">{refusalText}</span></Callout>}
       {update && <Callout role="status">{update === "yes" ? (to ? t("modules.updateAvailableTo", { module: name, version: to }) : t("modules.updateAvailable")) : t("modules.upToDate")}</Callout>}
       {update === "yes" && level === "major" && <Callout tone="warn" role="alert">{t("modules.updateMajor")}</Callout>}
 
       <section className={`${ui.card} space-y-3 ${row.enabled ? "" : "bg-bg"}`}>
         <p className="text-sm">{mod ? L(mod.manifest.description) : t("modules.broken")}</p>
-        {mod && (mod.manifest.requires ?? []).length > 0 && <p className="text-xs text-muted">{t("modules.requires")} : {(mod.manifest.requires ?? []).map((r) => (r.label ? L(r.label) : r.service)).join(", ")}</p>}
         {advanced && mod && (mod.manifest.offers ?? []).length > 0 && <p className="text-xs text-muted">{t("modules.offers")} : {(mod.manifest.offers ?? []).map((o) => (o.label ? L(o.label) : o.service)).join(", ")}</p>}
         {advanced && mod && mod.manifest.permissions.length > 0 && <p className="text-xs text-muted">{t("modules.permissions")} : {mod.manifest.permissions.join(", ")}</p>}
         {advanced && row.repoUrl && <p className="break-all font-mono text-xs text-muted">{row.repoUrl}{row.ref || row.subdir ? `#${row.ref ?? ""}${row.subdir ? `:${row.subdir}` : ""}` : ""} @ {row.commit?.slice(0, 7)}</p>}
@@ -69,6 +82,8 @@ export default async function ModulePage({ params, searchParams }: { params: Pro
           </div>
         )}
       </section>
+
+      <ModuleLinksBox id={row.id} name={name} view={links} t={t} names={names} advanced={advanced} isOwner={isOwner} enabled={row.enabled} />
 
       {(mine.length > 0 || canAdd) && (
         <section className="space-y-3">

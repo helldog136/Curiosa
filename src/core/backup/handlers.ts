@@ -1,5 +1,7 @@
 import { dropStash, stash, unstash } from "./files";
 import { MAX_UPLOAD } from "./guard";
+import { buildNames } from "@/core/modules/dependencyView";
+import { getSiteConfig } from "@/core/settings";
 import { applyRestore, checkSchema, openBackup, parseBackup, planModules } from "./restore";
 
 /**
@@ -7,6 +9,12 @@ import { applyRestore, checkSchema, openBackup, parseBackup, planModules } from 
  * (site encore vide). L'appelant fait d'abord son contrôle d'accès (`guard`), AVANT toute lecture du corps de la requête.
  */
 type Guard = (request: Request) => Promise<Response | null>;
+
+/** Noms lisibles pour l'aperçu et le bilan (langue par défaut du site : la restauration n'a pas de session d'administrateur à suivre). */
+async function readableNames() {
+  try { return await buildNames((await getSiteConfig()).defaultLocale, (await getSiteConfig()).defaultLocale); } catch { return null; }
+}
+const serviceLabel = (names: Awaited<ReturnType<typeof readableNames>>, m: { service: string; min: number }) => `${names?.service(m.service) ?? m.service}${m.min > 1 ? ` (v${m.min}+)` : ""}`;
 
 /** Étape 1 : déchiffrer et vérifier le fichier, puis montrer ce qui va se passer (aucune donnée n'est encore touchée). */
 export async function previewHandler(request: Request, guard: Guard): Promise<Response> {
@@ -28,7 +36,10 @@ export async function previewHandler(request: Request, guard: Guard): Promise<Re
     createdAt: manifest.createdAt,
     frameworkVersion: manifest.frameworkVersion,
     counts: manifest.counts,
-    modules: await planModules(opened.backup.data.modules),
+    modules: await (async () => {
+      const names = await readableNames();
+      return (await planModules(opened.backup.data.modules)).map((p) => (p.missing?.length ? { ...p, missingLabels: p.missing.map((m) => serviceLabel(names, m)) } : p));
+    })(),
   });
 }
 
@@ -44,5 +55,13 @@ export async function applyHandler(request: Request, guard: Guard, actor: () => 
   const confirm = Array.isArray(body?.confirm) ? body.confirm.filter((x): x is string => typeof x === "string").slice(0, 200) : [];
   const report = await applyRestore(parsed.backup, { confirmCustom: confirm, actor: await actor() });
   dropStash(String(body?.token));
+  if (report.ok && (report.dependencies.length || report.provided.length)) {
+    const names = await readableNames();
+    return Response.json({
+      ...report,
+      dependencyLines: report.dependencies.map((d) => ({ id: d.id, name: names?.module(d.id) ?? d.id, labels: d.missing.map((m) => serviceLabel(names, m)) })),
+      providedNames: report.provided.map((id) => names?.module(id) ?? id),
+    });
+  }
   return Response.json(report, { status: report.ok ? 200 : 500 });
 }
