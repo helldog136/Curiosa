@@ -1014,7 +1014,7 @@ une demande de fusion sur ce fichier, visible par toutes les installations dès 
 diffère de celle du framework est listé mais **non installable**. Rien n'est installé automatiquement ; le dépôt installé doit servir le module annoncé
 (`id` identique à celui de son `module.json`). Le catalogue ne vient que de ces dépôts (voir « Un module installé et le catalogue »).
 
-D'où vient la liste, dans l'ordre : (1) le dépôt de modules `curiosa-extras` (constante nommée `DEFAULT_CATALOGUE_REPO`, `https://github.com/helldog136/curiosa-extras` : la seule adresse que le cœur connaît ; `CURIOSA_CATALOGUE_REPO` pour en choisir un autre, `CURIOSA_CATALOGUE_REF` pour une autre
+D'où vient la liste, dans l'ordre : (1) le dépôt de modules `curiosa-extras` (constante nommée `DEFAULT_CATALOGUE_REPO`, son adresse par défaut : la seule adresse que le cœur connaît ; `CURIOSA_CATALOGUE_REPO` pour en choisir un autre, `CURIOSA_CATALOGUE_REF` pour une autre
 branche ou étiquette que `HEAD`) ; (2) à défaut, la **dernière copie reçue** (`data/cache/`) : une panne réseau passagère ne vide pas le Catalogue ; sans elle, la liste est **vide** (jamais une copie locale) ; (3) **en plus**, un index JSON `https://` (`MODULES_INDEX_URL`, modèle : [`modules-index.example.json`](modules-index.example.json))
 dont les entrées ne peuvent qu'**ajouter** des modules, jamais remplacer ceux du dépôt. Le dépôt publie aussi `catalogue/suggested.json` (les identifiants que l'assistant de première installation propose, lu comme l'index). La page Catalogue indique d'où vient la liste affichée.
 
