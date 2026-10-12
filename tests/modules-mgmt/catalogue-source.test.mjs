@@ -179,7 +179,7 @@ test("« Tout mettre à jour » : le module apparaît dans le rapport et la mise
   assert.equal((await Upd.getModulesReport(true)).outdated.length, 0);
 });
 
-test("retour arrière complet : dépôt injoignable, autre identifiant, trop gros, cœur trop ancien, permissions élargies", async () => {
+test("retour arrière complet : dépôt injoignable, autre identifiant, trop gros, cœur trop ancien", async () => {
   const cases = {
     clone: (c) => fs.rmSync(c.repo.dir, { recursive: true, force: true }),
     idmismatch: null, size: null, core: null, perms: null,
@@ -203,8 +203,13 @@ test("retour arrière complet : dépôt injoignable, autre identifiant, trop gro
   await run("trop-gros", { files: { "gros.bin": "x".repeat(10 * 1024 * 1024 + 1) } }, "modules.error.size");
   const core = await run("vieux-coeur", { over: { version: "1.1.0", minCore: "99.0.0" } }, "modules.error.core");
   assert.equal(core.needsCore, "99.0.0");
-  const perms = await run("perm-plus", { over: { version: "1.1.0", permissions: ["mail"] } }, "modules.error.reinstallPerms");
-  assert.equal(perms.detail, "mail");
+});
+
+test("mise à jour vers le catalogue : une version qui déclare de nouvelles permissions est appliquée (comme toute mise à jour), la réinstallation simple, elle, les refuse", async () => {
+  await installedOldCopy("perm-plus", { over: { version: "1.1.0", permissions: ["mail"] } });
+  const r = await quiet(() => I.updateModule("perm-plus"));
+  assert.equal(r.ok, true);
+  assert.equal((await row("perm-plus")).source, "git");
 });
 
 test("retour arrière complet aussi après l'échange et l'écriture de la ligne (panne tardive) : fichiers ET ligne Module", async () => {

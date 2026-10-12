@@ -222,9 +222,10 @@ export async function reinstallModule(id: string, opts: ReinstallOptions = {}): 
     if (dirSize(source.root) > MAX_MODULE_BYTES) return fail(id, "modules.error.size");
     const inc = incompatWithThisCore(requirementOf(manifest));
     if (inc) return fail(id, "modules.error.core", { detail: inc.needs, needsCore: inc.needs });
-    // Jamais de permission accordée en silence : une version qui en demande de nouvelles passe par la mise à jour / le catalogue (où elles sont montrées).
+    // Réinstaller ne doit jamais élargir les permissions en silence : une version qui en demande de nouvelles passe par la mise à jour / le catalogue (où elles sont montrées).
+    // La mise à jour vers le catalogue (`catalogueOnly`) EST ce chemin : comme toute mise à jour, elle suit le manifeste du catalogue.
     const installedManifest = readGitManifest(id);
-    if (installedManifest) {
+    if (installedManifest && !opts.catalogueOnly) {
       const added = manifest.permissions.filter((p) => !installedManifest.permissions.includes(p));
       if (added.length) return fail(id, "modules.error.reinstallPerms", { detail: added.join(", ") });
     }

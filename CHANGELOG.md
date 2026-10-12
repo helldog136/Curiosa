@@ -6,13 +6,13 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
-## Prochaine version (non publiée)
+## 0.1.13
 
 *Changements depuis la 0.1.12.*
 
 ### Corrections
 
-- Un module installé avec le site (Contacts, par exemple) se met maintenant à jour vers la version du catalogue, au lieu de rester bloqué en « à jour ». Vos réglages, vos instances et vos données sont conservés.
+- Un module installé avec une ancienne copie (Contacts, par exemple) se met maintenant à jour vers la version du catalogue, au lieu de rester bloqué sur « à jour ». Vos réglages, vos instances et vos données sont conservés.
 
 ## 0.1.12
 
