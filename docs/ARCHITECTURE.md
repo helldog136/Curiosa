@@ -75,7 +75,7 @@ strictement séparés des *fonctionnalités* (modules), et reliés dans une raci
 
 `/api/mcp` (Model Context Protocol, JSON-RPC sur HTTP) n'a aucun outil codé en dur : le service `src/core/services/mcp/`
 serveur les outils que lui fournissent des *fournisseurs* (`src/core/platform.ts`) — les actions déclarées par tous les modules
-actifs, plus des actions éditoriales du moteur de contenu pour les instances à contenu. Authentification par jetons hachés (`ApiToken` : plafond lecture / écriture + accès action par action, relus à chaque requête), interrupteur général (`mcp.enabled`), retrait possible par instance, validation des arguments contre un
+actifs, plus des actions éditoriales du moteur de contenu pour les instances à contenu. Authentification par jetons hachés (`ApiToken` : plafond lecture / écriture + accès action par action, relus à chaque requête), authentification par en-tête `Authorization: Bearer` ou, jeton par jeton et sur option (`mcp.urlTokens`), par adresse secrète `/api/mcp/<jeton>`, interrupteur général (`mcp.enabled`), retrait possible par instance, validation des arguments contre un
 sous-ensemble de JSON Schema, limitation de débit, audit des écritures. Invariants : une action destructrice n'est jamais accordée par défaut ; le moteur de contenu ne laisse un
 assistant créer ou modifier que des brouillons.
 

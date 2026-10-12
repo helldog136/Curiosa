@@ -10,11 +10,20 @@ import { prisma } from "@/core/db";
 import { createInstance, defaultNames, runInstanceCreateHook } from "@/core/instanceService";
 import { checkNickname } from "@/core/instanceLabel";
 import { duplicateServices, providerInstances, setRouting } from "@/core/modules/dependencies";
+import { cleanupSuggestions, forgetAuto } from "@/core/modules/autoInstalled";
+import { encodeMissing } from "@/core/modules/dependencyMessages";
+import type { InstallResult } from "@/core/modules/installer";
 
 // Installer ou mettre à jour du code exécuté côté serveur est réservé au propriétaire.
 
 /** Page d'un module (messages d'erreur, de résultat… compris) : c'est là qu'on atterrit après une action sur lui. */
 const modulePage = (id: string, query = "") => `/admin/modules/${encodeURIComponent(id)}${query ? `?${query}` : ""}`;
+
+/** Paramètres d'adresse d'un refus : l'erreur, sa précision, et (si l'installateur a détaillé ce qui manque) ce détail pour l'afficher en clair. */
+const refusal = (result: Extract<InstallResult, { ok: false }>, op = "") => {
+  const missing = encodeMissing(result.missing);
+  return `error=${encodeURIComponent(result.error)}${result.detail ? `&detail=${encodeURIComponent(result.detail)}` : ""}${missing ? `&missing=${encodeURIComponent(missing)}` : ""}${op ? `&op=${op}` : ""}`;
+};
 
 export async function toggleModule(id: string, enabled: boolean, formData?: FormData): Promise<void> {
   const { user } = await adminCtx("owner");
@@ -23,7 +32,7 @@ export async function toggleModule(id: string, enabled: boolean, formData?: Form
   revalidatePath("/", "layout");
   // Depuis la liste (mode simple) on y reste ; depuis la page du module, on y reste aussi.
   const home = formData?.get("from") === "list" ? "/admin/modules" : modulePage(id);
-  if (!result.ok) redirect(modulePage(id, `error=${encodeURIComponent(result.error)}${result.detail ? `&detail=${encodeURIComponent(result.detail)}` : ""}`));
+  if (!result.ok) redirect(modulePage(id, refusal(result, enabled ? "enable" : "disable")));
   // Un fournisseur de plus pour un service déjà offert : l'admin doit dire qui est le maître.
   if (enabled && (await duplicateServices()).some((d) => !d.resolved)) redirect("/admin/modules?notice=services");
   redirect(home);
@@ -69,8 +78,33 @@ export async function uninstallModuleAction(id: string): Promise<void> {
   const result = await uninstallModule(id);
   if (result.ok) await audit(user.email, "module.uninstall", id);
   revalidatePath("/", "layout");
-  if (!result.ok) redirect(modulePage(id, `error=${encodeURIComponent(result.error)}${result.detail ? `&detail=${encodeURIComponent(result.detail)}` : ""}`));
+  if (!result.ok) redirect(modulePage(id, refusal(result, "uninstall")));
   redirect("/admin/modules");
+}
+
+/**
+ * Nettoyage PROPOSÉ d'un module installé automatiquement dont plus personne ne dépend : jamais d'office, toujours confirmé par le propriétaire.
+ * S'il porte des données ou des réglages, la case « je comprends » est obligatoire.
+ */
+export async function cleanupAutoModuleAction(id: string, formData: FormData): Promise<void> {
+  const { user } = await adminCtx("owner");
+  const suggestion = (await cleanupSuggestions()).find((c) => c.id === id);
+  if (!suggestion) redirect(modulePage(id, "error=modules.error.autoUsed"));
+  if (suggestion.hasData && formData.get("ack") !== "on") redirect(modulePage(id, "error=modules.error.autoData"));
+  const result = await uninstallModule(id);
+  if (result.ok) await audit(user.email, "module.uninstall.auto", id);
+  revalidatePath("/", "layout");
+  if (!result.ok) redirect(modulePage(id, refusal(result)));
+  redirect("/admin/modules");
+}
+
+/** « Le garder » : le module n'est plus considéré comme installé automatiquement (plus de proposition de nettoyage). */
+export async function keepAutoModuleAction(id: string): Promise<void> {
+  const { user } = await adminCtx("owner");
+  await forgetAuto(id);
+  await audit(user.email, "module.keep.auto", id);
+  revalidatePath("/", "layout");
+  redirect(modulePage(id));
 }
 
 /**

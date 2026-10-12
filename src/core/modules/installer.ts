@@ -7,8 +7,10 @@ import { prisma } from "../db";
 import { MODULES_DIR } from "../config";
 import { parseManifest, type ParsedManifest } from "./manifest";
 import { forgetModule, getModule, moduleDir, readGitManifest } from "./registry";
-import { findCatalogueEntry, listBundled, readBundledManifest } from "./catalogue";
-import { dependentsOf, offersOf, unmetRequirements } from "./dependencies";
+import { findCatalogueEntry, getCatalogue, readBundledManifest } from "./catalogue";
+import { dependentsOf } from "./dependencies";
+import { commitJournal, satisfyRequirements, unwind, type DepOps, type Journal, type Missing } from "./dependencyInstaller";
+import { forgetAuto } from "./autoInstalled";
 import { migrateModuleInstances, type MigrationOutcome } from "./dataMigrations";
 import { incompatWithThisCore, requirementOf, type CoreRequirement } from "./compat";
 import { classify, compareVersions, pickLatestTag, TAG_RE, type UpdateLevel } from "../updates/versions";
@@ -18,7 +20,13 @@ const run = promisify(execFile);
 const MAX_MODULE_BYTES = 10 * 1024 * 1024;
 const DEFAULT_HOSTS = "github.com,gitlab.com,codeberg.org,bitbucket.org";
 
-export type InstallResult = { ok: true; id: string; migrations?: MigrationOutcome[] } | { ok: false; error: string; /** Précision lisible (ex. les services manquants). */ detail?: string; /** Erreur « modules.error.core » : version du cœur que le module demande (voir compat.ts). */ needsCore?: string };
+export type InstallResult = {
+  ok: true; id: string; migrations?: MigrationOutcome[];
+  /** Modules apportés d'office par la cascade des dépendances (installés ou activés). */
+  provided?: string[];
+  /** Mise à jour réussie, mais il manque encore de quoi faire fonctionner le module : à dire à l'administrateur. */
+  missing?: Missing[];
+} | { ok: false; error: string; /** Détail structuré de ce qui manque (service, version, cause) quand l'erreur est « modules.error.requires ». */ missing?: Missing[]; /** Précision lisible (ex. les services manquants). */ detail?: string; /** Erreur « modules.error.core » : version du cœur que le module demande (voir compat.ts). */ needsCore?: string };
 
 /** Le module demande un cœur plus récent que celui-ci : on refuse d'entrer ou de monter de version (jamais de désactiver un module déjà là). */
 export class CoreTooOld extends Error {
@@ -92,7 +100,7 @@ export async function git(args: string[], cwd?: string): Promise<string> {
   return stdout.trim();
 }
 
-function dirSize(dir: string): number {
+export function dirSize(dir: string): number {
   let total = 0;
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     if (entry.name === ".git") continue;
@@ -104,7 +112,7 @@ function dirSize(dir: string): number {
 }
 
 /** `child` est-il bien DANS `parent` (liens symboliques résolus) ? Empêche un dossier de module qui pointerait hors du dépôt. */
-function isInside(parent: string, child: string): boolean {
+export function isInside(parent: string, child: string): boolean {
   try {
     const p = fs.realpathSync(parent);
     const c = fs.realpathSync(child);
@@ -113,7 +121,7 @@ function isInside(parent: string, child: string): boolean {
 }
 
 /** Copie les fichiers d'un module (sans .git ni node_modules) vers son dossier d'installation, par un dossier intermédiaire : jamais à moitié copié. */
-function copyModuleFiles(from: string, target: string): void {
+export function copyModuleFiles(from: string, target: string): void {
   const staging = `${target}.incoming-${process.pid}`;
   try {
     fs.rmSync(staging, { recursive: true, force: true });
@@ -128,7 +136,7 @@ function copyModuleFiles(from: string, target: string): void {
 }
 
 /** Installe un module depuis un dépôt git. Il est installé *désactivé* : rien ne s'exécute avant l'accord de l'admin. */
-export async function installModule(input: string, opts: { expectId?: string } = {}): Promise<InstallResult> {
+export async function installModule(input: string, opts: { expectId?: string; /** false : ne pas installer les fournisseurs (restauration, cascade elle-même). */ dependencies?: boolean } = {}): Promise<InstallResult> {
   const parsed = parseRepoUrl(input);
   if (!parsed.ok) return parsed;
   const { url, ref, subdir } = parsed.repo;
@@ -136,6 +144,7 @@ export async function installModule(input: string, opts: { expectId?: string } =
   fs.mkdirSync(MODULES_DIR, { recursive: true });
   const tmp = fs.mkdtempSync(path.join(MODULES_DIR, ".incoming-"));
   const checkout = path.join(tmp, "repo");
+  let deps: Journal | null = null;
   try {
     if (ref && isCommitRef(ref)) {
       // Épinglé sur un commit : `clone --branch` n'accepte qu'une branche ou une étiquette. On récupère ce commit précis
@@ -167,6 +176,13 @@ export async function installModule(input: string, opts: { expectId?: string } =
     const existing = await prisma.module.findUnique({ where: { id: m.id } });
     if (existing) return { ok: false, error: "modules.error.exists" };
 
+    // Les fournisseurs d'abord : si l'un d'eux ne peut pas être installé, rien n'est laissé (ni lui, ni ce module).
+    if (opts.dependencies !== false && m.requires?.length) {
+      const r = await satisfyRequirements(m, depOps());
+      deps = r.journal;
+      if (!r.ok) { await unwind(deps); deps = null; return requirementsRefusal(r.missing); }
+    }
+
     let tree: string | null = null;
     if (subdir) {
       tree = await git(["rev-parse", `HEAD:${subdir}`], checkout);
@@ -177,8 +193,10 @@ export async function installModule(input: string, opts: { expectId?: string } =
     await prisma.module.create({
       data: { id: m.id, source: "git", repoUrl: url, ref: ref ?? null, commit, subdir: subdir ?? null, tree, version: m.version, enabled: false },
     });
-    return { ok: true, id: m.id };
+    if (deps) await commitJournal(deps);
+    return { ok: true, id: m.id, ...(deps?.provided.length ? { provided: deps.provided } : {}) };
   } catch (error) {
+    if (deps) await unwind(deps);
     if (error instanceof CoreTooOld) return coreRefusal(error);
     console.error("[modules] install failed:", error);
     return { ok: false, error: "modules.error.clone" };
@@ -235,13 +253,13 @@ async function fetchSubdirSource(url: string, ref: string | null | undefined, su
   }
 }
 
-const sameRepo = (a: string | null | undefined, b: string | null | undefined) => {
+export const sameRepo = (a: string | null | undefined, b: string | null | undefined) => {
   const norm = (u: string | null | undefined) => (u ?? "").replace(/\.git$/, "").replace(/\/$/, "").toLowerCase();
   return norm(a) === norm(b);
 };
 
 /** Quelle étiquette ou quel commit suivre ? Un module installé DEPUIS LE CATALOGUE suit le commit relu que le catalogue épingle ; un module personnel suit la sienne. */
-async function subdirTarget(row: Module): Promise<{ ref: string | null; fromCatalogue: boolean }> {
+export async function subdirTarget(row: Module): Promise<{ ref: string | null; fromCatalogue: boolean }> {
   const entry = await findCatalogueEntry(row.id).catch(() => undefined);
   const same = entry?.source === "recognized" && sameRepo(entry.repo, row.repoUrl) && (entry.subdir ?? null) === row.subdir;
   return { ref: same ? entry!.ref ?? null : row.ref, fromCatalogue: !!same };
@@ -364,6 +382,11 @@ async function checkGitUpdate(row: Module): Promise<{ check: ModuleUpdateCheck; 
  * invalide (manifeste illisible, autre identifiant, API incompatible, trop volumineuse), l'ancienne est rétablie : le module ne casse jamais.
  */
 export async function updateModule(id: string): Promise<InstallResult> {
+  const result = await updateModuleFiles(id);
+  return result.ok ? { ...result, ...(await settleDependencies(id)) } : result;
+}
+
+async function updateModuleFiles(id: string): Promise<InstallResult> {
   const row = await prisma.module.findUnique({ where: { id } });
   if (row?.source === "bundled") {
     const entry = await findCatalogueEntry(id);
@@ -445,42 +468,61 @@ async function replaySkippedReleases(id: string, dir: string, repoUrl: string, f
   return null;
 }
 
-/**
- * Satisfait les `requires` d'un module avant son activation : un module qui offre le service doit être actif. Un module LIVRÉ avec le
- * framework qui l'offre est installé et activé d'office ; sinon (module personnel, rien d'installé) on ne devine pas : on renvoie ce qui manque.
- */
-async function ensureRequirements(manifest: ParsedManifest, depth = 0): Promise<string[]> {
-  const missing: string[] = [];
-  for (const service of await unmetRequirements(manifest)) {
-    let done = false;
-    if (depth < 3) {
-      for (const entry of listBundled()) {
-        const m = entry.dir ? readBundledManifest(entry.dir) : null;
-        if (!m || m.id === manifest.id || !offersOf(m).includes(service)) continue;
-        if (!(await prisma.module.findUnique({ where: { id: m.id } })) && !(await installBundled(m.id)).ok) continue;
-        if ((await enableModule(m.id, depth + 1)).ok) { done = true; break; }
-      }
-    }
-    if (!done) missing.push(service);
-  }
-  return missing;
-}
+/* ───────────── Dépendances : gestes prêtés à dependencyInstaller.ts ───────────── */
 
-async function enableModule(id: string, depth: number): Promise<InstallResult> {
+/** Refus « il manque quelque chose » : `detail` garde la liste des services (lisible tel quel), `missing` le détail pour l'interface. */
+export const requirementsRefusal = (missing: Missing[]): InstallResult => ({ ok: false, error: "modules.error.requires", detail: missing.map((x) => x.service).join(", "), missing });
+
+const depOps = (): DepOps => ({
+  catalogue: () => getCatalogue(),
+  installEntry: async (entry) => {
+    const r = entry.source === "bundled" ? await installBundled(entry.id, { dependencies: false }) : await installModule(`${entry.repo}${entry.ref || entry.subdir ? `#${entry.ref ?? ""}${entry.subdir ? `:${entry.subdir}` : ""}` : ""}`, { expectId: entry.id, dependencies: false });
+    return r.ok ? { ok: true } : { ok: false, error: r.error, detail: r.detail };
+  },
+  purge: purgeModule,
+});
+
+/** Active un module : ses fournisseurs sont d'abord installés/activés (avec leur instance par défaut) ; au moindre échec tout est défait. */
+async function enableModule(id: string): Promise<InstallResult> {
   const row = await prisma.module.findUnique({ where: { id } });
   if (!row) return { ok: false, error: "modules.error.notfound" };
   const mod = await getModule(id);
   if (!mod) return { ok: false, error: "modules.error.load" };
-  const missing = await ensureRequirements(mod.manifest, depth);
-  if (missing.length) return { ok: false, error: "modules.error.requires", detail: missing.join(", ") };
-  await prisma.module.update({ where: { id }, data: { enabled: true } });
-  return { ok: true, id };
+  const r = await satisfyRequirements(mod.manifest, depOps());
+  if (!r.ok) { await unwind(r.journal); return requirementsRefusal(r.missing); }
+  try {
+    await prisma.module.update({ where: { id }, data: { enabled: true } });
+    await commitJournal(r.journal);
+  } catch (error) {
+    await unwind(r.journal);
+    throw error;
+  }
+  return { ok: true, id, ...(r.journal.provided.length ? { provided: r.journal.provided } : {}) };
+}
+
+/**
+ * Vérifie les `requires` d'un module ACTIF et, s'il manque un fournisseur disponible (livré, catalogue), l'installe d'office avec son instance par défaut.
+ * Impossible → rien n'est laissé à moitié et `missing` dit quoi. Sert après une mise à jour et après une restauration. Ne lève jamais.
+ */
+export async function settleDependencies(id: string): Promise<{ provided?: string[]; missing?: Missing[] }> {
+  try {
+    const row = await prisma.module.findUnique({ where: { id } });
+    const mod = row?.enabled ? await getModule(id) : null;
+    if (!mod?.manifest.requires?.length) return {};
+    const r = await satisfyRequirements(mod.manifest, depOps());
+    if (!r.ok) { await unwind(r.journal); return { missing: r.missing }; }
+    await commitJournal(r.journal);
+    return r.journal.provided.length ? { provided: r.journal.provided } : {};
+  } catch (error) {
+    console.error("[modules] dependency check failed:", (error as Error)?.message);
+    return {};
+  }
 }
 
 export async function setModuleEnabled(id: string, enabled: boolean): Promise<InstallResult> {
   const row = await prisma.module.findUnique({ where: { id } });
   if (!row) return { ok: false, error: "modules.error.notfound" };
-  if (enabled) return enableModule(id, 0);
+  if (enabled) return enableModule(id);
   if (row.enabled) {
     const dependents = await dependentsOf(id);
     if (dependents.length) return { ok: false, error: "modules.error.requiredBy", detail: dependents.join(", ") };
@@ -496,6 +538,13 @@ export async function uninstallModule(id: string): Promise<InstallResult> {
     const dependents = await dependentsOf(id);
     if (dependents.length) return { ok: false, error: "modules.error.requiredBy", detail: dependents.join(", ") };
   }
+  await purgeModule(id);
+  await forgetAuto(id);
+  return { ok: true, id };
+}
+
+/** Supprime un module, ses instances et leurs données SANS contrôle des dépendants (le contrôle est dans `uninstallModule` ; ici, l'annulation d'une cascade). */
+export async function purgeModule(id: string): Promise<void> {
   const instances = await prisma.moduleInstance.findMany({ where: { moduleId: id }, select: { id: true } });
   const ids = instances.map((i) => i.id);
   await prisma.setting.deleteMany({ where: { OR: ids.map((i) => ({ key: { startsWith: `instance.${i}.` } })) } });
@@ -504,7 +553,6 @@ export async function uninstallModule(id: string): Promise<InstallResult> {
   await prisma.module.delete({ where: { id } });
   forgetModule(id);
   fs.rmSync(moduleDir(id), { recursive: true, force: true });
-  return { ok: true, id };
 }
 
 /** Copie un module livré avec le framework vers le dossier des modules installés (sans .git ni lien symbolique). */
@@ -529,24 +577,38 @@ export function copyBundled(from: string, id: string): { ok: true; version: stri
 }
 
 /** Installe un module livré avec le framework. Désactivé tant que l'admin ne l'a pas activé, comme tout module installé. */
-export async function installBundled(id: string): Promise<InstallResult> {
+export async function installBundled(id: string, opts: { dependencies?: boolean } = {}): Promise<InstallResult> {
   const entry = await findCatalogueEntry(id);
   if (!entry || entry.source !== "bundled" || !entry.dir) return { ok: false, error: "modules.error.notfound" };
   if (await prisma.module.findUnique({ where: { id } })) return { ok: false, error: "modules.error.exists" };
-  const copied = copyBundled(entry.dir, id);
-  if (!copied.ok) return copied;
-  await prisma.module.create({ data: { id, source: "bundled", version: copied.version, enabled: false } });
-  return { ok: true, id };
+  // Les fournisseurs d'abord (voir installModule) : s'ils ne peuvent pas être installés, ce module ne l'est pas non plus.
+  let deps: Journal | null = null;
+  const manifest = readBundledManifest(entry.dir);
+  if (opts.dependencies !== false && manifest?.requires?.length) {
+    const r = await satisfyRequirements(manifest, depOps());
+    deps = r.journal;
+    if (!r.ok) { await unwind(deps); return requirementsRefusal(r.missing); }
+  }
+  try {
+    const copied = copyBundled(entry.dir, id);
+    if (!copied.ok) { if (deps) await unwind(deps); return copied; }
+    await prisma.module.create({ data: { id, source: "bundled", version: copied.version, enabled: false } });
+    if (deps) await commitJournal(deps);
+  } catch (error) {
+    if (deps) await unwind(deps);
+    throw error;
+  }
+  return { ok: true, id, ...(deps?.provided.length ? { provided: deps.provided } : {}) };
 }
 
 /** Installe un module du catalogue (livré ou reconnu) par son identifiant. Le dépôt reconnu doit servir ce module-là. */
-export async function installFromCatalogue(id: string): Promise<InstallResult> {
+export async function installFromCatalogue(id: string, opts: { dependencies?: boolean } = {}): Promise<InstallResult> {
   const entry = await findCatalogueEntry(id);
   if (!entry) return { ok: false, error: "modules.error.notfound" };
   if (!entry.compatible) return { ok: false, error: "modules.error.incompatible" };
   // L'index dit déjà quel cœur il faut : on refuse AVANT de télécharger quoi que ce soit.
   if (entry.needsNewerCore) return { ok: false, error: "modules.error.core", detail: entry.needsNewerCore, needsCore: entry.needsNewerCore };
-  if (entry.source === "bundled") return installBundled(id);
+  if (entry.source === "bundled") return installBundled(id, opts);
   const fragment = entry.ref || entry.subdir ? `#${entry.ref ?? ""}${entry.subdir ? `:${entry.subdir}` : ""}` : "";
-  return installModule(`${entry.repo}${fragment}`, { expectId: id });
+  return installModule(`${entry.repo}${fragment}`, { expectId: id, ...opts });
 }

@@ -14,6 +14,8 @@ import { applyUpgrades, currentSchemaVersion, isNewerSchema, pickKnownColumns } 
 import { safetyCopy } from "./files";
 import { DATA_FILES, FORMAT, FORMAT_VERSION, LEGACY_FORMATS, sha256, type BackupManifest, type BackupModule } from "./format";
 import { readTarGz } from "./tar";
+import { linksFor, orderByDependencies, previewMissing, settleRestored, type DependencyIssue } from "./restoreDeps";
+import type { Missing } from "@/core/modules/dependencyInstaller";
 
 type Row = Record<string, unknown>;
 export type ParsedBackup = {
@@ -82,9 +84,17 @@ export type ModulePlan = {
   needsConfirmation: boolean;
   /** Le module demande ce cœur (ou plus) et celui-ci est trop ancien : il ne sera pas réinstallé (ses données sont gardées), à refaire après la mise à jour du site. */
   needsCore?: string;
+  /** Module actif dont le fournisseur d'un service n'est ni dans la sauvegarde, ni installé, ni disponible : il sera restauré avec ses données, mais ne fonctionnera pas encore. */
+  missing?: Missing[];
 };
 
 export async function planModules(modules: BackupModule[]): Promise<ModulePlan[]> {
+  const plans = await planModulesBase(modules);
+  const issues = await previewMissing(plans).catch((): DependencyIssue[] => []);
+  return plans.map((p) => { const i = issues.find((x) => x.id === p.id); return i ? { ...p, missing: i.missing } : p; });
+}
+
+async function planModulesBase(modules: BackupModule[]): Promise<ModulePlan[]> {
   const market = await getCatalogue().catch(() => []);
   const installed = new Set((await prisma.module.findMany({ select: { id: true } })).map((m) => m.id));
   return modules.map((m): ModulePlan => {
@@ -101,10 +111,11 @@ export async function planModules(modules: BackupModule[]): Promise<ModulePlan[]
 /* ───────────── Application ───────────── */
 
 export type ModuleOutcome = { id: string; outcome: "kept" | "installed" | "skipped" | "failed" | "unavailable"; error?: string; /** Avec l'erreur « modules.error.core » : cœur demandé par le module. */ needsCore?: string };
-export type RestoreReport = { ok: false; error: "newer-schema"; modules: ModuleOutcome[] } | { ok: true; modules: ModuleOutcome[]; migrations: MigrationOutcome[]; counts: Record<string, number>; safetyCopy: string | null } | { ok: false; error: "invalid" | "failed"; modules: ModuleOutcome[] };
+export type RestoreReport = { ok: false; error: "newer-schema"; modules: ModuleOutcome[] } | { ok: true; modules: ModuleOutcome[]; migrations: MigrationOutcome[]; /** Modules actifs restaurés auxquels il manque encore un fournisseur (restaurés avec leurs données, à compléter). */ dependencies: DependencyIssue[]; /** Fournisseurs installés d'office pour eux. */ provided: string[]; counts: Record<string, number>; safetyCopy: string | null } | { ok: false; error: "invalid" | "failed"; modules: ModuleOutcome[] };
 
 type Installers = { fromCatalogue: (id: string) => Promise<InstallResult>; fromRepo: (url: string) => Promise<InstallResult> };
-const realInstallers: Installers = { fromCatalogue: installFromCatalogue, fromRepo: (url) => installModule(url) };
+// Sans cascade ici : l'ordre et la vérification des dépendances se font pour toute la sauvegarde (restoreDeps.ts).
+const realInstallers: Installers = { fromCatalogue: (id) => installFromCatalogue(id, { dependencies: false }), fromRepo: (url) => installModule(url, { dependencies: false }) };
 
 const MODEL_BY_FILE = { users: "User", settings: "Setting", instances: "ModuleInstance", instanceTranslations: "InstanceTranslation", entries: "Entry", entryTranslations: "EntryTranslation", redirects: "Redirect", records: "ModuleRecord" } as const;
 
@@ -126,7 +137,10 @@ const chunks = <T,>(list: T[], n = 200) => Array.from({ length: Math.ceil(list.l
 export async function applyRestore(backup: ParsedBackup, opts: { confirmCustom: string[]; actor: string; installers?: Installers; dataDir?: string }): Promise<RestoreReport> {
   const installers = opts.installers ?? realInstallers;
   const confirmed = new Set(opts.confirmCustom);
-  const plan = await planModules(backup.data.modules);
+  const planned = await planModulesBase(backup.data.modules);
+  // Fournisseurs d'abord : les liens connus (manifeste installé, catalogue) donnent l'ordre ; un module sans lien connu garde sa place.
+  const links = await linksFor(planned.map((p) => p.id));
+  const plan = orderByDependencies(planned, (id) => links.get(id));
   const outcomes: ModuleOutcome[] = [];
 
   for (const m of plan) {
@@ -179,6 +193,9 @@ export async function applyRestore(backup: ParsedBackup, opts: { confirmCustom: 
   resetModuleRegistry();
   // Les données restaurées peuvent être celles d'une ancienne version d'un module, réinstallée plus récente : on les met à niveau.
   const migrations = (await migrateAllInstances().catch(() => [])).filter((m) => m.status !== "none");
+  // Les modules actifs retrouvent ce dont ils ont besoin (fournisseur disponible installé avec son instance) ; sinon le bilan le dit.
+  const active = d.modules.filter((m) => m.enabled && !["skipped", "failed", "unavailable"].includes(outcomes.find((o) => o.id === m.id)?.outcome ?? "")).map((m) => m.id);
+  const settled = await settleRestored(active).catch(() => ({ issues: [] as DependencyIssue[], provided: [] as string[] }));
   await audit(opts.actor, "backup.restore", backup.manifest.createdAt);
-  return { ok: true, modules: outcomes, migrations, safetyCopy: copy, counts: { users: d.users.length, entries: d.entries.length, instances: d.instances.length, records: d.records.length, uploads: backup.uploads.length } };
+  return { ok: true, modules: outcomes, migrations, dependencies: settled.issues, provided: settled.provided, safetyCopy: copy, counts: { users: d.users.length, entries: d.entries.length, instances: d.instances.length, records: d.records.length, uploads: backup.uploads.length } };
 }

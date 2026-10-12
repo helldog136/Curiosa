@@ -6,6 +6,18 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
+## 0.1.12
+
+*Changements depuis la 0.1.11.*
+
+### Nouveautés
+- **Réparer un module en un clic.** Sur la page d'un module, une section « Maintenance » dit si son code est à jour et permet de le réinstaller en gardant vos réglages, vos instances et vos données. Utile quand un module se comporte comme une ancienne version.
+- **Brancher Claude devient simple.** La page où l'on branche un assistant explique la marche à suivre en trois étapes, avec pour chacun un bloc à copier. Pour Claude (claude.ai), on peut maintenant créer un jeton qui se connecte par une adresse secrète, sans rien saisir d'autre.
+- **Un assistant plus facile à brancher partout.** Le site respecte mieux les règles de connexion des assistants, pour que les outils courants s'y connectent sans réglage particulier.
+- Un module qui a besoin d'un autre l'installe tout seul, avec ce qu'il faut pour fonctionner tout de suite. Par exemple, installer Partenariats met aussi en place Contacts, prêt à servir.
+- Avant d'installer, la fiche d'un module dit ce qui sera installé en plus. Sur la page d'un module, on voit de quoi il a besoin et qui s'en sert, et on peut retirer ce qui ne sert plus.
+- Les mises à jour et les restaurations de sauvegarde signalent clairement ce qui manque, au lieu de se taire. Vos données ne sont jamais perdues.
+
 ## 0.1.11
 
 *Changements depuis la 0.1.10.*

@@ -21,6 +21,8 @@ type Labels = {
   skippedLine: string;   // {names}
   incompatLine: string;  // {names}
   needsCore: string;     // {version}
+  missingLine: string;   // {name} {list}
+  providedLine: string;  // {names}
 };
 
 const fill = (text: string, vars: Record<string, string | number>) => text.replace(/\{(\w+)\}/g, (m, k) => (k in vars ? String(vars[k]) : m));
@@ -75,6 +77,8 @@ export function ModulesUpdates({ rows, labels }: { rows: ModuleUpdateRow[]; labe
           {bilan.failed.map((f) => <p key={f.name} className="text-red-700">❌ {fill(labels.failedLine, { name: f.name, reason: f.reason })}</p>)}
           {bilan.stoppedOn && <p className="font-medium">⏸️ {fill(labels.stoppedLine, { name: bilan.stoppedOn })}</p>}
           {bilan.incompatible && bilan.incompatible.length > 0 && <p className="text-muted">🕒 {fill(labels.incompatLine, { names: bilan.incompatible.map((i) => i.name).join(", ") })}</p>}
+          {bilan.warnings?.map((w) => <p key={w.name} className="text-amber-700" data-testid="bilan-missing">⚠️ {fill(labels.missingLine, { name: w.name, list: w.list })}</p>)}
+          {bilan.provided && bilan.provided.length > 0 && <p className="text-muted">➕ {fill(labels.providedLine, { names: bilan.provided.join(", ") })}</p>}
           {bilan.skipped.length > 0 && <p className="text-muted">{fill(labels.skippedLine, { names: bilan.skipped.join(", ") })}</p>}
         </div>
       )}

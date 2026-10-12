@@ -33,7 +33,7 @@ export function ModulesUpdatesSection({ t, data, when, highlight = false }: { t:
         all: { idle: t("updates.modules.all"), working: t("modules.updating"), done: t("modules.updated"), failed: t("modules.updateFailed") },
         one: { idle: t("modules.update"), working: t("modules.updating"), done: t("modules.updated"), failed: t("modules.updateFailed") },
         confirmAll: t("updates.modules.confirmAll"), confirmMajor: t("updates.modules.confirmMajor"), incomplete: t("updates.modules.incomplete"),
-        updatedLine: t("updates.modules.updatedLine"), failedLine: t("updates.modules.failedLine"), stoppedLine: t("updates.modules.stoppedLine"), skippedLine: t("updates.modules.skippedLine"), incompatLine: t("updates.modules.incompatLine"), needsCore: t("modules.core.needs"),
+        updatedLine: t("updates.modules.updatedLine"), failedLine: t("updates.modules.failedLine"), stoppedLine: t("updates.modules.stoppedLine"), skippedLine: t("updates.modules.skippedLine"), incompatLine: t("updates.modules.incompatLine"), needsCore: t("modules.core.needs"), missingLine: t("updates.modules.missingLine"), providedLine: t("updates.modules.providedLine"),
       }} />
       {report.unchecked.length > 0 && (
         <ul className="space-y-0.5 text-xs text-muted" data-testid="modules-unchecked">

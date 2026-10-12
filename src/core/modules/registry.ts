@@ -26,6 +26,23 @@ const globalCache = globalThis as unknown as {
 };
 const loadedCache = (globalCache.curiosaModuleCache ??= new Map());
 
+/**
+ * Compteur de rechargement par module : Node garde en mémoire tout `import()` déjà fait pour une même adresse. Quand le code d'un module change SANS
+ * changer de numéro de version ni de commit (réinstallation, voir reinstall.ts), on ajoute ce compteur à l'adresse importée pour que le nouveau code serve tout de suite.
+ */
+const globalStamps = globalThis as unknown as { curiosaImportStamps?: Map<string, number> };
+const importStamps = (globalStamps.curiosaImportStamps ??= new Map());
+export function bumpImportStamp(id: string): number {
+  const next = (importStamps.get(id) ?? 0) + 1;
+  importStamps.set(id, next);
+  return next;
+}
+/** Clé de version de l'import du fichier principal (adresse `?v=`), compteur de rechargement compris. */
+export function importVersionKey(id: string, row: { commit?: string | null; version: string }): string {
+  const stamp = importStamps.get(id);
+  return `${row.commit ?? row.version}${stamp ? `.r${stamp}` : ""}`;
+}
+
 export function moduleDir(id: string): string {
   return path.join(MODULES_DIR, id);
 }
@@ -66,7 +83,7 @@ export async function loadModule(row: Module): Promise<LoadedModule | null> {
     let def: ModuleDefinition = {};
     if (manifest.main) {
       const file = path.join(moduleDir(row.id), manifest.main);
-      const mod = (await runtimeImport(`${pathToFileURL(file).href}?v=${row.commit ?? row.version}`)) as {
+      const mod = (await runtimeImport(`${pathToFileURL(file).href}?v=${importVersionKey(row.id, row)}`)) as {
         default?: ModuleDefinition;
       };
       def = mod.default ?? {};

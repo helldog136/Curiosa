@@ -2,11 +2,11 @@ import { adminCtx } from "@/core/admin";
 import { prisma } from "@/core/db";
 import { siteUrl } from "@/core/config";
 import { listMcpTools } from "@/core/platform";
-import { isMcpEnabled } from "@/core/services/mcp/tokens";
-import { ActionForm } from "@/components/admin/ActionForm";
+import { isMcpEnabled, urlAccessIds } from "@/core/services/mcp/tokens";
 import { ConfirmButton } from "@/components/admin/ConfirmButton";
-import { Select, TextField } from "@/components/admin/Field";
-import { Callout, EmptyState, PageHeader, Panel } from "@/components/admin/Page";
+import { GUIDE_KEYS, McpConnectGuide, type GuideTexts } from "@/components/admin/McpConnectGuide";
+import { McpTokenCreator } from "@/components/admin/McpTokenCreator";
+import { EmptyState, PageHeader, Panel } from "@/components/admin/Page";
 import { ui } from "@/components/admin/ui";
 import { createTokenAction, revokeTokenAction, setMcpEnabled } from "./actions";
 
@@ -15,6 +15,8 @@ export default async function McpPage() {
   const { t, advanced } = await adminCtx("owner");
   const enabled = await isMcpEnabled();
   const tokens = await prisma.apiToken.findMany({ orderBy: { createdAt: "desc" } });
+  const byUrl = new Set(await urlAccessIds());
+  const guide = Object.fromEntries(GUIDE_KEYS.map((k) => [k, t(k)])) as GuideTexts;
   const tools = enabled ? await listMcpTools() : [];
   const date = (d: Date | null) => (d ? d.toISOString().slice(0, 16).replace("T", " ") : t("mcp.neverUsed"));
   const active = tokens.filter((k) => !k.revokedAt);
@@ -23,6 +25,18 @@ export default async function McpPage() {
   return (
     <div className="space-y-8">
       <PageHeader title={t("mcp.title")} intro={t("mcp.intro")} />
+
+      <Panel title={t("mcp.connect.title")} help={t("mcp.connect.intro")} testid="mcp-connect">
+        <ol className="grid gap-3 sm:grid-cols-3">
+          {(["s1", "s2", "s3"] as const).map((k, i) => (
+            <li key={k} className="rounded-xl border border-line bg-bg p-4">
+              <p className="flex items-center gap-2 font-semibold"><span className="grid h-6 w-6 place-items-center rounded-full bg-accent text-sm text-accent-fg">{i + 1}</span>{t(`mcp.connect.${k}`)}</p>
+              <p className="mt-2 text-sm leading-6 text-muted">{t(`mcp.connect.${k}d`)}</p>
+            </li>
+          ))}
+        </ol>
+        <McpConnectGuide texts={guide} baseUrl={siteUrl} advanced={advanced} />
+      </Panel>
 
       <Panel title={t("mcp.step1")} testid="mcp-status">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -50,7 +64,7 @@ export default async function McpPage() {
                     <div className="min-w-0">
                       <a href={`/admin/mcp/${k.id}`} className="font-medium hover:text-accent">{k.name}</a>
                       {advanced && <span className="ml-2 font-mono text-xs text-muted">{k.prefix}…</span>}
-                      <p className="mt-0.5 flex flex-wrap items-center gap-2 text-sm text-muted"><span className={k.scope === "write" ? ui.chipWarn : ui.chip}>{t(`mcp.scope.${k.scope}`)}</span>{t("mcp.lastUsed")} : {date(k.lastUsedAt)}</p>
+                      <p className="mt-0.5 flex flex-wrap items-center gap-2 text-sm text-muted"><span className={k.scope === "write" ? ui.chipWarn : ui.chip}>{t(`mcp.scope.${k.scope}`)}</span>{byUrl.has(k.id) && <span className={ui.chip}>{t("mcp.urlChip")}</span>}{t("mcp.lastUsed")} : {date(k.lastUsedAt)}</p>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                       <a href={`/admin/mcp/${k.id}`} className={ui.btn}>{t("mcp.access")}</a>
@@ -70,14 +84,19 @@ export default async function McpPage() {
 
           <Panel title={t("mcp.newToken")} help={t("mcp.newTokenHelp")} testid="new-token">
             <span id="new-token" className="sr-only" />
-            <ActionForm action={createTokenAction} submitLabel={t("mcp.createToken")} reset>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <TextField name="name" label={t("mcp.tokenName")} required placeholder="Claude" help={t("mcp.tokenNameHelp")} />
-                <Select name="scope" label={t("mcp.scope")} defaultValue="read" help={t("mcp.scopeHelp")}
-                  options={[{ value: "read", label: t("mcp.scope.read") }, { value: "write", label: t("mcp.scope.write") }]} />
-              </div>
-            </ActionForm>
-            <Callout tone="info">{t("mcp.afterCreate")}</Callout>
+            <McpTokenCreator
+              action={createTokenAction}
+              baseUrl={siteUrl}
+              advanced={advanced}
+              guide={guide}
+              labels={{
+                name: t("mcp.tokenName"), nameHelp: t("mcp.tokenNameHelp"), scope: t("mcp.scope"), scopeHelp: t("mcp.scopeHelp"),
+                read: t("mcp.scope.read"), write: t("mcp.scope.write"), urlOption: t("mcp.urlOption"), urlOptionHelp: t("mcp.urlOptionHelp"),
+                submit: t("mcp.createToken"), afterCreate: t("mcp.afterCreate"),
+                createdTitle: t("mcp.created.title", { name: "{name}" }), createdToken: t("mcp.created.token"), createdUrl: t("mcp.created.url"), createdOnce: t("mcp.created.once"),
+                copy: t("mcp.guide.copy"), copied: t("mcp.guide.copied"),
+              }}
+            />
           </Panel>
 
           <details className="rounded-2xl border border-line bg-surface p-5">
