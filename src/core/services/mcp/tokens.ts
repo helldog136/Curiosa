@@ -34,11 +34,16 @@ export async function setUrlAccess(id: string, enabled: boolean): Promise<void> 
 }
 
 /** Crée un jeton. Le texte en clair n'est renvoyé qu'ici : seul son hash est conservé. */
-export async function createToken(name: string, scope: TokenScope, createdBy: string, options: { byUrl?: boolean } = {}): Promise<string> {
+export async function createToken(name: string, scope: TokenScope, createdBy: string, options: { byUrl?: boolean; grants?: Grants } = {}): Promise<string> {
   const token = `vit_${crypto.randomBytes(32).toString("base64url")}`;
-  const row = await prisma.apiToken.create({ data: { name: name.slice(0, 80), hash: hashOf(token), prefix: token.slice(0, 8), scope, createdBy } });
+  const row = await prisma.apiToken.create({ data: { name: name.slice(0, 80), hash: hashOf(token), prefix: token.slice(0, 8), scope, createdBy, ...(options.grants ? { grants: JSON.stringify(options.grants) } : {}) } });
   if (options.byUrl) await setUrlAccess(row.id, true);
   return token;
+}
+
+/** Identifiant d'un jeton à partir de son texte (juste après sa création). */
+export async function findTokenId(token: string): Promise<string | null> {
+  return (await prisma.apiToken.findUnique({ where: { hash: hashOf(token) }, select: { id: true } }))?.id ?? null;
 }
 
 export async function revokeToken(id: string): Promise<void> {

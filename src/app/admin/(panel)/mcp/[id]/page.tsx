@@ -7,12 +7,15 @@ import { listMcpToolCatalogue } from "@/core/platform";
 import { getActiveInstances } from "@/core/modules/registry";
 import { localized } from "@/core/modules/types";
 import { siteUrl } from "@/core/config";
-import { canUse, isGranted, parseGrants, withinCeiling } from "@/core/services/mcp/access";
+import { canUse, defaultFor, isGranted, MAINTENANCE_PROFILE, parseGrants, withinCeiling } from "@/core/services/mcp/access";
+import { getApprovalMode } from "@/core/maintenance/settings";
+import { MAINTENANCE_TOOLS } from "@/core/maintenance/tools";
 import { isUrlAccessEnabled } from "@/core/services/mcp/tokens";
 import { ConfirmButton } from "@/components/admin/ConfirmButton";
 import { GrantToggle } from "@/components/admin/GrantToggle";
 import { ui } from "@/components/admin/ui";
 import { resetGrantsAction, setGrantAction, setUrlAccessAction } from "../actions";
+import { setApprovalAction } from "../../maintenance-ia/actions";
 
 /** Accès d'un jeton, action par action, module par module. Modifiable en direct. */
 export default async function TokenAccessPage({ params }: { params: Promise<{ id: string }> }) {
@@ -23,6 +26,8 @@ export default async function TokenAccessPage({ params }: { params: Promise<{ id
   const token = { scope: row.scope === "write" ? ("write" as const) : ("read" as const), grants: parseGrants(row.grants) };
   const revoked = !!row.revokedAt;
   const urlOn = !revoked && (await isUrlAccessEnabled(id));
+  const approval = await getApprovalMode(id);
+  const levelOf = new Map(MAINTENANCE_TOOLS.map((m) => [m.name, m.level]));
 
   const catalogue = await listMcpToolCatalogue();
   const active = await getActiveInstances();
@@ -63,7 +68,8 @@ export default async function TokenAccessPage({ params }: { params: Promise<{ id
       {[...groups.entries()].map(([source, tools]) => {
         const inst = instances.find((i) => i.key === source);
         const mod = active.find((a) => a.instance.key === source)?.mod;
-        const title = source === "core" ? t("mcp.platform") : `${mod?.manifest.icon ?? "🧩"} ${inst ? labeler.label(inst) : source}`;
+        const isMaintenance = source === "maintenance";
+        const title = isMaintenance ? `🛠️ ${t("aim.group")}` : source === "core" ? t("mcp.platform") : `${mod?.manifest.icon ?? "🧩"} ${inst ? labeler.label(inst) : source}`;
         return (
           <section key={source} className={`${ui.card} space-y-3`} aria-label={title}>
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -78,14 +84,32 @@ export default async function TokenAccessPage({ params }: { params: Promise<{ id
                 </div>
               )}
             </div>
+            {isMaintenance && (
+              <div className="space-y-3 rounded-xl border border-line bg-bg p-4 text-sm" data-testid="maintenance-approval">
+                <p className="font-medium">{t("aim.approval.title")}</p>
+                <p className="text-muted">{approval === "human" ? t("aim.approval.humanHelp") : t("aim.approval.directHelp")}</p>
+                {!revoked && (
+                  <form action={setApprovalAction.bind(null, id, approval === "human" ? "direct" : "human")}>
+                    {approval === "human"
+                      ? <ConfirmButton message={t("aim.approval.directConfirm", { token: row.name })}>{t("aim.approval.direct")}</ConfirmButton>
+                      : <button className={ui.btn}>{t("aim.approval.human")}</button>}
+                  </form>
+                )}
+                {token.grants[MAINTENANCE_PROFILE] === true && <p className="text-muted">{t("mcp.profile.maintenance")}</p>}
+              </div>
+            )}
             {tools[0]?.instanceOptedOut && <p className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-2 text-sm">{t("mcp.instanceOptedOut")}</p>}
             <ul className="divide-y divide-line">
               {tools.map((tool) => {
                 const ceilingBlocks = !withinCeiling(tool, token.scope);
                 const effective = !ceilingBlocks && isGranted(tool, token.grants);
                 const short = tool.name.includes("__") ? tool.name.split("__")[1]! : tool.name;
+                const level = levelOf.get(tool.name);
+                const firstOfLevel = isMaintenance && level !== undefined && tools.findIndex((x) => levelOf.get(x.name) === level) === tools.indexOf(tool);
                 return (
-                  <li key={tool.name} className="flex items-start gap-4 py-3">
+                  <li key={tool.name} className="py-3">
+                    {firstOfLevel && <div className="mb-3 rounded-lg bg-surface p-3 text-sm"><p className="font-semibold">{t(`aim.level.${level}`)}</p><p className="text-muted">{t(`aim.level.${level}.help`)}</p></div>}
+                    <div className="flex items-start gap-4">
                     <div className="pt-0.5">
                       <GrantToggle
                         label={`${title} — ${short}`}
@@ -101,9 +125,10 @@ export default async function TokenAccessPage({ params }: { params: Promise<{ id
                         <span className={`ml-1 rounded px-1.5 py-0.5 text-xs ${tool.destructive ? "bg-red-500/20 text-red-700" : tool.readOnly ? "bg-surface" : "bg-amber-500/20"}`}>
                           {tool.destructive ? t("mcp.destructive") : tool.readOnly ? t("mcp.action.read") : t("mcp.action.write")}
                         </span>
-                        <span className="ml-1 text-xs text-muted">{tool.default ? t("mcp.onByDefault") : t("mcp.offByDefault")}</span>
+                        <span className="ml-1 text-xs text-muted">{defaultFor(tool, token.grants) ? t("mcp.onByDefault") : t("mcp.offByDefault")}</span>
                       </p>
-                      {advanced && <p className="mt-0.5 text-muted">{tool.description}</p>}
+                      {isMaintenance ? <p className="mt-0.5 text-muted">{t(`aim.tool.${short.replace(/^maintenance_/, "")}`)}</p> : advanced && <p className="mt-0.5 text-muted">{tool.description}</p>}
+                    </div>
                     </div>
                   </li>
                 );

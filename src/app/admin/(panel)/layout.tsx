@@ -1,6 +1,9 @@
 import { signOut } from "@/auth";
 import { adminCtx } from "@/core/admin";
+import { adminBugReportUrl } from "@/core/bugReport";
 import { CREDIT_URL } from "@/core/credit";
+import { BugReportLink } from "@/components/admin/BugReportLink";
+import { maintenanceSummary } from "@/core/maintenance/summary";
 import { NavLink } from "@/components/admin/NavLink";
 import { NavGroup } from "@/components/admin/NavGroup";
 import { NAV_STATE_COOKIE, buildMenuLayout, groupOpenByDefault, parseNavState } from "@/core/modules/menuPlacement";
@@ -23,6 +26,8 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   const updateAvailable = user.role === "owner" && (await getUpdateCheck().catch(() => null))?.available === true;
   // Modules en retard : jamais d'attente du réseau ici (menu de toutes les pages) ; la vérification se fait en arrière-plan et reste en mémoire quelques minutes.
   const modulesBehind = user.role === "owner" ? (peekModulesReport()?.outdated.length ?? 0) : 0;
+  const aiWaiting = user.role === "owner" ? (await maintenanceSummary().catch(() => null))?.total ?? 0 : 0;
+  const bugUrl = await adminBugReportUrl(t);
   const menu = buildMenuLayout(nav);
   const contentItems = menu.content;
   const navState = parseNavState((await cookies()).get(NAV_STATE_COOKIE)?.value);
@@ -84,6 +89,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
               {canManage && <NavLink href="/admin/users">{t("nav.users")}</NavLink>}
               {user.role === "owner" && <NavLink href="/admin/backup">{t("nav.backup")}</NavLink>}
               {user.role === "owner" && <NavLink href="/admin/updates" badge={(updateAvailable ? 1 : 0) + modulesBehind} badgeLabel={modulesBehind > 0 ? t("nav.badge.updates") : t("nav.badge.update")}>{t("nav.updates")}</NavLink>}
+              {user.role === "owner" && <NavLink href="/admin/maintenance-ia" badge={aiWaiting} badgeLabel={t("nav.badge.ai")}>{t("nav.maintenanceAi")}</NavLink>}
               {advanced && user.role === "owner" && <NavLink href="/admin/audit">{t("nav.audit")}</NavLink>}
               {advanced && user.role === "owner" && <NavLink href="/admin/mcp">{t("nav.mcp")}</NavLink>}
             </>
@@ -107,6 +113,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
             ))}
           </div>
         </div>
+        <p className="mt-4 px-3"><BugReportLink href={bugUrl}>🐞 {t("bugReport.link")} ↗</BugReportLink></p>
         <form
           action={async () => {
             "use server";

@@ -14,6 +14,7 @@ export const AUDIT_ACTIONS = [
   "backup.create", "backup.restore",
   "update.start", "update.auto.on", "update.auto.off", "update.channel.rc", "update.channel.stable",
   "mcp.enable", "mcp.disable", "mcp.token.create", "mcp.token.revoke", "mcp.token.url.on", "mcp.token.url.off", "mcp.grant.on", "mcp.grant.off", "mcp.grants.defaults", "mcp.grants.none",
+  "mcp.maintenance.request", "mcp.maintenance.approve", "mcp.maintenance.deny", "mcp.maintenance.mode", "mcp.maintenance.notify",
   "mail.sent",
 ] as const;
 
@@ -23,6 +24,7 @@ const KNOWN = new Set<string>(AUDIT_ACTIONS);
 export function auditLabelKey(action: string): string | null {
   if (KNOWN.has(action)) return `audit.action.${action}`;
   if (/^module\.[^.]+\.[^.]+/.test(action)) return "audit.action.module.custom"; // action d'un module : `module.<instance>.<action>`
+  if (action.startsWith("mcp.maintenance.")) return "audit.action.mcp.maintenance.tool"; // outil de maintenance appelé par une IA (ou approuvé par un humain) : `mcp.maintenance.<outil>`
   if (action.startsWith("mcp.")) return "audit.action.mcp.tool"; // outil MCP appelé par un assistant : `mcp.<outil>`
   return null;
 }

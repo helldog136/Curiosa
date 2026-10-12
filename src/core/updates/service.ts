@@ -4,7 +4,7 @@ import path from "node:path";
 import { DATA_DIR } from "@/core/config";
 import { audit } from "@/core/permissions";
 import { getSetting, setSetting } from "@/core/settings";
-import { classify, compareVersions, isPrerelease, pickLatestRelease, releaseNotes, TAG_RC_RE, type UpdateChannel, type UpdateLevel } from "./versions";
+import { classify, compareVersions, isPrerelease, pickLatestRelease, releaseNotes, TAG_RC_RE, TAG_RE, type UpdateChannel, type UpdateLevel } from "./versions";
 
 /**
  * MISES À JOUR DU FRAMEWORK.
@@ -108,6 +108,19 @@ export async function checkForUpdate(opts: { appDir?: string; fetchJson?: JsonFe
   return getUpdateCheck(appDir);
 }
 
+/**
+ * Plus haute release STABLE publiée (étiquette `vX.Y.Z` avec son archive), QUEL QUE SOIT le canal du site, sans rien mémoriser.
+ * Sert aux mises à jour demandées par une IA : une candidate (`-rc.N`) ou un instantané (`dev-…`) n'est jamais proposé.
+ */
+export async function findLatestStable(opts: { appDir?: string; fetchJson?: JsonFetcher } = {}): Promise<{ tag: string; notes: string } | null> {
+  const { appDir = process.cwd(), fetchJson = defaultFetchJson } = opts;
+  const info = getInstallInfo(appDir);
+  if (!info.canUpdate) return null;
+  const releases = await fetchJson(`https://api.github.com/repos/${info.repo}/releases?per_page=30`);
+  const tag = pickLatestRelease(releases, assetName, "stable");
+  return tag ? { tag, notes: releaseNotes(releases, tag) } : null;
+}
+
 export function readUpdateState(dataDir = DATA_DIR): { status: "idle" | "running" | "success" | "failed"; target?: string; from?: string; step?: string; chain?: { index: number; total: number; steps: string[] } | null; remaining?: string[]; error?: string | null; rolledBack?: boolean; restart?: string; startedAt?: number; finishedAt?: number | null } {
   try { return JSON.parse(fs.readFileSync(path.join(dataDir, "update", "state.json"), "utf8")); } catch { return { status: "idle" }; }
 }
@@ -132,10 +145,10 @@ const defaultSpawner: Spawner = (tag) => {
 };
 
 /** Lance la mise à jour en tâche détachée (elle survit à l'arrêt du serveur qu'elle provoque). */
-export async function startUpdate(tag: string, actor: string, opts: { appDir?: string; fetchJson?: JsonFetcher; spawner?: Spawner; dataDir?: string } = {}): Promise<{ ok: true } | { ok: false; error: "invalid-tag" | "not-newer" | "unsupported" | "running" }> {
+export async function startUpdate(tag: string, actor: string, opts: { appDir?: string; fetchJson?: JsonFetcher; spawner?: Spawner; dataDir?: string; /** Version stable `vX.Y.Z` SEULEMENT, quel que soit le canal du site (mises à jour demandées par une IA). */ stableOnly?: boolean } = {}): Promise<{ ok: true } | { ok: false; error: "invalid-tag" | "not-newer" | "unsupported" | "running" }> {
   const { appDir = process.cwd(), spawner = defaultSpawner, dataDir = DATA_DIR } = opts;
-  if (!TAG_RC_RE.test(tag)) return { ok: false, error: "invalid-tag" };
-  if (isPrerelease(tag) && (await getUpdateChannel()) !== "rc") return { ok: false, error: "invalid-tag" };
+  if (!(opts.stableOnly ? TAG_RE : TAG_RC_RE).test(tag)) return { ok: false, error: "invalid-tag" };
+  if (isPrerelease(tag) && (opts.stableOnly || (await getUpdateChannel()) !== "rc")) return { ok: false, error: "invalid-tag" };
   const info = getInstallInfo(appDir);
   if (!info.canUpdate) return { ok: false, error: "unsupported" };
   if (compareVersions(tag, info.version) <= 0) return { ok: false, error: "not-newer" };

@@ -1,6 +1,7 @@
 import type { JsonSchemaLite } from "@/core/modules/types";
 
-export type McpActor = { name: string };
+/** Qui appelle : le nom du jeton et son identifiant (pour les réglages propres à un jeton). */
+export type McpActor = { name: string; tokenId?: string };
 
 export type McpTool = {
   name: string;
@@ -9,6 +10,10 @@ export type McpTool = {
   readOnly: boolean;
   /** Accordée par défaut aux nouveaux jetons (le module décide) ; l'admin peut accorder/retirer, jeton par jeton. */
   default: boolean;
+  /** Défaut pour un jeton « maintenance » (access.ts). Seuls les outils de maintenance le déclarent. */
+  profileDefault?: boolean;
+  /** L'outil consigne lui-même son action dans l'audit : le serveur n'ajoute pas sa ligne générique. */
+  audited?: boolean;
   /** Irréversible (suppression…) : jamais accordée par défaut, confirmation à l'octroi. */
   destructive: boolean;
   input: JsonSchemaLite;

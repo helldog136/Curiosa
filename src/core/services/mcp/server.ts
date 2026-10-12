@@ -68,8 +68,8 @@ async function handle(rpc: RpcRequest, token: AuthedToken, listTools: () => Prom
       // Même réponse que l'outil existe ou non : un jeton ne découvre rien de ce qu'on ne lui a pas accordé.
       if (!tool || !canUse(tool, token)) return rpcError(rpc.id, -32602, `Unknown tool: ${name}`);
       try {
-        const result = await tool.call((rpc.params?.arguments as Record<string, unknown>) ?? {}, { name: token.name });
-        if (!tool.readOnly) await prisma.auditLog.create({ data: { actor: `mcp:${token.name}`, action: `mcp.${tool.name}`, target: tool.source } }).catch(() => {});
+        const result = await tool.call((rpc.params?.arguments as Record<string, unknown>) ?? {}, { name: token.name, tokenId: token.id });
+        if (!tool.readOnly && !tool.audited) await prisma.auditLog.create({ data: { actor: `mcp:${token.name}`, action: `mcp.${tool.name}`, target: tool.source } }).catch(() => {});
         return rpcResult(rpc.id, { content: [{ type: "text", text: JSON.stringify(result ?? null, null, 2).slice(0, 200_000) }] });
       } catch (error) {
         const exposed = error instanceof McpToolError || (error as { expose?: boolean })?.expose === true;
