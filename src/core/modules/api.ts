@@ -10,7 +10,7 @@ import { renderPng, type PngSpec } from "@/core/services/render";
 import { createStore } from "@/core/services/store";
 import { collect } from "@/core/services/topics";
 import { getSiteConfig } from "@/core/settings";
-import { callService, serviceAvailable } from "./dependencies";
+import { callService, callServiceAll, serviceAvailable } from "./dependencies";
 import { getActiveInstances } from "./registry";
 import type { ModuleApi } from "./types";
 
@@ -25,6 +25,7 @@ import type { ModuleApi } from "./types";
  *     mail    envoi d'e-mails au nom du site (SMTP réglé dans l'admin)
  *     rawg    jaquettes de jeux (clé RAWG réglée une fois dans l'admin ; permission « rawg »)
  *     topics  échange d'informations typées entre modules
+ *     services  appel du service d'un autre module (`call` : maître ; `callAll` : toutes les instances d'un service `each`)
  *     (MCP : pas d'appel côté module ; un module déclare ses actions `mcp`, le cœur les expose)
  *
  *   LECTURE DU SITE (en lecture seule, pour que les modules s'articulent avec le reste)
@@ -45,6 +46,10 @@ export function makeApi(instance: InstanceView, locale: string, permissions: rea
       async call(service, method, args) {
         const consumer = (await getActiveInstances()).find((a) => a.instance.id === instance.id);
         return consumer ? callService(consumer, service, method, args, locale) : { ok: false, reason: "unavailable" };
+      },
+      async callAll(service, method, args) {
+        const consumer = (await getActiveInstances()).find((a) => a.instance.id === instance.id);
+        return consumer ? callServiceAll(consumer, service, method, args, locale) : [];
       },
     },
     store: createStore(instance.id),

@@ -9,7 +9,7 @@ import { getModule } from "@/core/modules/registry";
 import { prisma } from "@/core/db";
 import { createInstance, defaultNames, runInstanceCreateHook } from "@/core/instanceService";
 import { checkNickname } from "@/core/instanceLabel";
-import { duplicateServices, providerInstances, setRouting } from "@/core/modules/dependencies";
+import { duplicateServices, isEachService, providerInstances, setRouting } from "@/core/modules/dependencies";
 import { cleanupSuggestions, forgetAuto } from "@/core/modules/autoInstalled";
 import { encodeMissing } from "@/core/modules/dependencyMessages";
 import type { InstallResult } from "@/core/modules/installer";
@@ -41,7 +41,9 @@ export async function toggleModule(id: string, enabled: boolean, formData?: Form
 /** Maître et répliques d'un service offert par plusieurs instances. */
 export async function saveServiceRouting(service: string, formData: FormData): Promise<void> {
   const { user } = await adminCtx("owner");
-  const keys = (await providerInstances(service)).map((p) => p.instance.key);
+  const providers = await providerInstances(service);
+  if (isEachService(providers, service)) redirect("/admin/modules");   // chaque instance répond pour elle-même : aucun maître à choisir
+  const keys = providers.map((p) => p.instance.key);
   const master = String(formData.get("master") ?? "");
   if (!keys.includes(master)) redirect("/admin/modules?error=error.generic");
   const replicas = formData.getAll("replicas").map(String).filter((k) => keys.includes(k) && k !== master);

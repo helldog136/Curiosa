@@ -13,6 +13,8 @@
  * - `ctx.api.mail` : `configured` (option `mailConfigured`, défaut true) et `send` qui enregistre dans `ctx.calls.mail` (résultat réglable via `mailResult`)
  * - `ctx.api.rawg` : `configured` (option `rawgConfigured`, défaut true) et `cover(title)` qui enregistre dans `ctx.calls.rawg` (résultat réglable via `rawgCover`)
  * - `ctx.api.services` : `services` = { nom: { méthode: (args) => valeur } } ; absent → `unavailable`
+ * - `ctx.api.services.callAll(nom, méthode, args)` : `serviceInstances` = { nom: [{ instance, name?, methods: { méthode: (args) => valeur } }] } → une entrée par instance (un fournisseur qui lève
+ *   donne `{ ok: false, error: "failed" }`) ; sans `serviceInstances[nom]`, UNE entrée tirée de `services[nom]` (comme un service non-each) ; service inconnu → []
  * - `ctx.calls` enregistre les appels utiles aux assertions
  */
 export function fakeCtx(opts = {}) {
@@ -20,7 +22,7 @@ export function fakeCtx(opts = {}) {
     moduleId = "fake", key = "fake", name = "Fake", basePath = "fake", locale = "en", defaultLocale = "en", locales = ["en"],
     settings = {}, messages = {}, topics = {}, entries = [], instances = [],
     brand = { name: "Site", tagline: "", about: "", logo: null, contactEmail: "", colors: [], font: { key: "sans", name: "Sans-serif", stack: "sans-serif" }, defaultLocale, locales },
-    site = { name: "Site", tagline: "", logo: null }, theme = { accent: "#e8a23b", accentFg: "#111111", bg: "#121214", surface: "#1b1b1d", fg: "#f4f4f5", muted: "#a1a1a3", line: "#2e2e30", fontKey: "sans", font: "sans-serif" }, services = {}, mailConfigured = true, mailResult = { ok: true }, rawgConfigured = true, rawgCover = { status: "found", url: "https://media.example.test/cover.jpg" }, siteUrl = "https://example.test",
+    site = { name: "Site", tagline: "", logo: null }, theme = { accent: "#e8a23b", accentFg: "#111111", bg: "#121214", surface: "#1b1b1d", fg: "#f4f4f5", muted: "#a1a1a3", line: "#2e2e30", fontKey: "sans", font: "sans-serif" }, services = {}, serviceInstances = {}, mailConfigured = true, mailResult = { ok: true }, rawgConfigured = true, rawgCover = { status: "found", url: "https://media.example.test/cover.jpg" }, siteUrl = "https://example.test",
   } = opts;
   const rows = new Map();
   let seq = 0;
@@ -53,6 +55,15 @@ export function fakeCtx(opts = {}) {
           if (!services[name]) return { ok: false, reason: "unavailable" };
           if (typeof fn !== "function") return { ok: false, reason: "no_method" };
           try { return { ok: true, value: await fn(args) }; } catch { return { ok: false, reason: "failed" }; }
+        },
+        callAll: async (name, method, args) => {
+          calls.services.push([name, method, args]);
+          const list = serviceInstances[name] ?? (services[name] ? [{ instance: key, name, methods: services[name] }] : []);
+          return Promise.all(list.map(async (p) => {
+            const fn = p.methods?.[method];
+            if (typeof fn !== "function") return { instance: p.instance, name: p.name, ok: false, error: "no_method" };
+            try { return { instance: p.instance, name: p.name, ok: true, value: await fn(args) }; } catch { return { instance: p.instance, name: p.name, ok: false, error: "failed" }; }
+          }));
         },
       },
       store,

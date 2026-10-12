@@ -73,6 +73,10 @@ sont dans le service (`mcp/access.ts`, `mcp/server.ts`) : aucun fournisseur ne p
 (les entrées publiées de toute instance à contenu) est fourni par le **moteur de contenu** (`core/content/topics.ts`) via un
 `TopicAdapter` : le service n'a aucune idée de ce qu'est une entrée.
 
+## Appeler le service d'un autre module
+
+`ctx.api.services.available(service)`, `.call(service, method, args)` et `.callAll(service, method, args)` (module `requires` le service, un autre l'`offers`) : le cœur ne connaît que des **noms** de services. `call` s'adresse au maître (service classique) ou à la première instance (service `each`) ; `callAll` interroge toutes les instances d'un service `each` (`offers: [{ service, each: true }]`, une réponse par instance, une panne n'en gêne pas une autre). Voir [MODULES.md › Dépendances](MODULES.md).
+
 ## Ce que le cœur lit pour les modules (hors services)
 
 `ctx.api.site()`, `ctx.api.brand()`, `ctx.api.instances.list()`, `ctx.api.entries.list()` : lecture seule, pour que les modules

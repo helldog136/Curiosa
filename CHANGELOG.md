@@ -6,6 +6,18 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
+## Prochaine version (non publiée)
+
+*Changements depuis la 0.1.13.*
+
+### Nouveautés
+
+- **Une fonctionnalité en plusieurs exemplaires sert à tous.** Quand une même fonctionnalité existe plusieurs fois (par exemple deux chaînes Twitch), le site peut maintenant s'en servir pour toutes à la fois, sans devoir en choisir une seule.
+
+### Pour les développeurs
+
+- Une offre de service peut déclarer `"each": true` (manifeste et index du catalogue) : chaque instance répond pour elle-même, sans maître ni réplique. Nouvelle API `ctx.api.services.callAll(service, method, args)`, qui interroge toutes les instances actives ; `call` répond avec la première, par ordre de création.
+
 ## 0.1.13
 
 *Changements depuis la 0.1.12.*
