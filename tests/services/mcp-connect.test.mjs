@@ -284,7 +284,7 @@ test("page « API & MCP » : encadré en 3 étapes en tête, un bloc par assista
 
 test("changelog : une entrée « Prochaine version » non technique pour la connexion simplifiée", () => {
   const md = read("CHANGELOG.md");
-  const head = md.slice(md.indexOf("## Prochaine version"), md.indexOf("## 0.1.11"));
+  const head = md.slice(md.indexOf("## 0.1.12"), md.indexOf("## 0.1.11"));
   assert.match(head, /\*Changements depuis la 0\.1\.11\.\*/);
   assert.match(head, /### Nouveautés\n- /);
 });
