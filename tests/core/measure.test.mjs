@@ -42,20 +42,15 @@ test("mesure : requêtes, poids, services tiers et cookies d'une vraie page", as
   } finally { server.close(); }
 });
 
-test("preuves : les chiffres du README viennent de docs/MESURES.md, et le document dit ce qui n'est pas mesuré ; aucun « open source » à tort", async () => {
+test("preuves : docs/MESURES.md porte les chiffres et le document dit ce qui n'est pas mesuré ; aucun « open source » à tort", async () => {
   const fs = await import("node:fs");
   const readme = fs.readFileSync("README.md", "utf8");
   const mesures = fs.readFileSync("docs/MESURES.md", "utf8");
-  // Chaque chiffre cité par le README doit se retrouver dans MESURES.md (plus aucun chiffre écrit à la main des deux côtés sans contrôle).
-  const paragraph = readme.split("\n").find((l) => l.startsWith("**Les chiffres, avec leur méthode**")) ?? "";
-  const cited = [...paragraph.replace(/\(\[docs[^)]*\)[^)]*\)/, "").matchAll(/(?:≈ )?\d[\d,]*(?: (?:Mo|Ko|s|tests))/g)].map((m) => m[0]);
-  assert.ok(cited.length >= 6, `chiffres du README introuvables : ${cited.join(" | ")}`);
-  for (const chiffre of cited) assert.ok(mesures.includes(chiffre) || mesures.includes(chiffre.replace(" tests", " tests automatiques")) || mesures.includes(chiffre.replace("≈ ", "")), `${chiffre} (README) absent de docs/MESURES.md`);
-  for (const chiffre of ["517 Mo", "224 Mo", "634 Ko", "≈ 16 s"]) assert.ok(readme.includes(chiffre), `${chiffre} : le README n'a pas été mis à jour avec les dernières mesures`);
+  // Le README est écrit pour le grand public : il ne cite plus de chiffres techniques, mais renvoie vers le document qui les porte.
   assert.match(mesures, /## Ce qui n'est PAS mesuré/);
   assert.match(mesures, /node scripts\/measure\.mjs/);
   assert.match(readme, /docs\/MESURES\.md/);
-  assert.match(readme, /Choisissez plutôt autre chose si/);
+  assert.ok(!/Choisissez plutôt autre chose|WooCommerce|WordPress|Shopify/.test(readme), "le README ne se compare pas aux autres outils");
   assert.ok(!/open[- ]?source/i.test(readme.replace(/pas\*\* de l'« open source »[^.]*\./, "")), "« open source » n'est employé que pour dire que ce n'est pas le cas");
   assert.match(readme, /code source disponible/);
   for (const f of ["README.md", "docs/INSTALL.md", "docs/MODULES.md", "docs/CREATE-A-MODULE.md", "package.json"]) {
