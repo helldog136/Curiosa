@@ -7,7 +7,7 @@ import { parseManifest, type ParsedManifest } from "./manifest";
 /**
  * APERÇU AVANT INSTALLATION : le README.md et le module.json d'un module, lus SANS l'installer, pour que l'administrateur sache ce qu'il
  * s'apprête à faire tourner sur son serveur (à quoi il sert, quelles permissions, comment soutenir son auteur s'il le souhaite).
- * Un module livré avec le framework se lit dans son dossier ; un dépôt git (reconnu ou personnel) se lit par un clonage superficiel dans
+ * Un module de la copie locale se lit dans son dossier ; un dépôt git (reconnu ou personnel) se lit par un clonage superficiel dans
  * un dossier temporaire, avec les mêmes garde-fous que l'installation (hôtes autorisés, https, aucun crochet git). Le texte est NON FIABLE :
  * il n'est affiché que par le rendu Markdown sans HTML brut.
  */

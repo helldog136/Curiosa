@@ -105,7 +105,7 @@ export const manifestSchema = z.object({
   provides: z.array(z.object({ topic: topicId, label: localized.optional() })).max(10).default([]),
   /**
    * DÉPENDANCES ENTRE MODULES. Un module `offers` un SERVICE (un nom, comme `contact.store`) que d'autres peuvent appeler ; un module qui
-   * `requires` un service ne peut être activé que si un module qui l'offre est actif (livré avec le framework : installé et activé
+   * `requires` un service ne peut être activé que si un module qui l'offre est actif (installé et activé
    * automatiquement). On dépend d'un service, jamais d'un module précis : n'importe quel module qui l'offre convient.
    */
   offers: z.array(z.object({ service: topicId, label: localized.optional(), /** Version de l'interface du service (entier ≥ 1, défaut 1) : à augmenter quand le service gagne une capacité. */ version: serviceVersion.optional(), /** Méthodes qui ne font que lire : elles ne sont pas répliquées sur les fournisseurs secondaires. */ readOnly: z.array(z.string().regex(/^[a-zA-Z][a-zA-Z0-9_]{0,40}$/)).max(20).optional() })).max(10).optional(),

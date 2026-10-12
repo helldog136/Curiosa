@@ -32,7 +32,7 @@ Curiosa ne cherche pas à remplacer WordPress : il n'en a ni l'écosystème, ni 
 |---|---|
 | **Aucun bandeau de cookies à prévoir** : statistiques anonymes sans cookie, cookie de nouveautés seulement si le visiteur le demande, page de confidentialité écrite d'après ce que le site fait vraiment | [docs/PRIVACY.md](docs/PRIVACY.md), et `node scripts/measure.mjs <votre-site>` : zéro cookie, zéro service tiers |
 | **Rien à exploiter** : un seul fichier de base de données, mises à jour depuis l'admin avec retour arrière, sauvegardes chiffrées lisibles sans le logiciel | [docs/INSTALL.md](docs/INSTALL.md), [docs/BACKUP.md](docs/BACKUP.md) |
-| **Fait pour les créateurs** : overlays OBS, statut live, codes promo, sponsors, kit presse, réseaux sociaux dans l'en-tête | la liste des modules livrés |
+| **Fait pour les créateurs** : overlays OBS, statut live, codes promo, sponsors, kit presse, réseaux sociaux dans l'en-tête | la liste des modules du catalogue |
 | **Gérable par un assistant IA** : serveur MCP (comme d'autres CMS en proposent maintenant), installation menée par un agent, modules écrits à partir d'une doc conçue pour cela | [docs/AGENT-INSTALL.md](docs/AGENT-INSTALL.md), [docs/CREATE-A-MODULE.md](docs/CREATE-A-MODULE.md) |
 
 **Les chiffres, avec leur méthode** ([docs/MESURES.md](docs/MESURES.md), mesurés sur la 0.1.4) : installation par la machine ≈ 16 s ; zéro cookie et zéro service tiers à la première visite ; 634 Ko de code (≈ 189 Ko compressé) pour une page d'accueil ; 224 Mo de mémoire au repos ; 878 tests automatiques (cœur et modules). Et ce qui ne flatte pas : **517 Mo sur le disque** une fois installé, et ≈ 177 Ko de JavaScript compressé même pour une page simple.
@@ -335,7 +335,7 @@ src/app/admin       L'admin unique : assistant, entrées, une sous-page par inst
 src/app/overlays    Overlays OBS (/overlays/<clé>)
 src/app/api/mcp     Serveur MCP (outils collectés auprès des modules)
 src/locales         Textes de l'interface (fr, en) — ajouter une langue = un fichier JSON
-extras/             (non versionné) Instantané des modules livrés, récupéré de curiosa-extras par `npm run extras:fetch`
+extras/             (non versionné) Copie de repli hors ligne du catalogue, récupérée de curiosa-extras par `npm run extras:fetch`
                     et embarqué dans chaque release. Le cœur ne contient AUCUN module.
 docs/               PLATFORM.md (cœur vs modules), ARCHITECTURE.md, MODULES.md
 ```

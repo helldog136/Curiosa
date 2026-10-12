@@ -43,7 +43,7 @@ test("livrés : un module au manifeste invalide ou sans manifeste n'est pas prop
   assert.deepEqual(M.listBundled(path.join(root, "absent")), []);
 });
 
-test("catalogue : livrés d'abord, puis dépôts reconnus de l'index ; un livré l'emporte sur un reconnu de même identifiant", async () => {
+test("catalogue : les dépôts reconnus de l'index sont la source ; la copie hors ligne ne masque jamais une entrée du catalogue", async () => {
   process.env.MODULES_INDEX_URL = "https://index.example/modules.json";
   const fetchImpl = indexOf([
     { id: "tiers-un", name: "Tiers", description: "d", repo: "https://github.com/x/tiers", version: "2.0.0" },
@@ -52,10 +52,11 @@ test("catalogue : livrés d'abord, puis dépôts reconnus de l'index ; un livré
   ]);
   const list = await M.getCatalogue({ fetchImpl });
   const by = Object.fromEntries(list.map((e) => [e.id, e]));
-  assert.equal(by["demo-planner"].source, "bundled", "pas de doublon : le module livré gagne");
+  assert.equal(by["demo-planner"].source, "recognized", "pas de doublon : l'entrée du catalogue gagne, la copie hors ligne n'est qu'un repli");
   assert.deepEqual([by["tiers-un"].source, by["tiers-un"].kind, by["tiers-un"].compatible, by["tiers-un"].repo], ["recognized", "recognized", true, "https://github.com/x/tiers"]);
   assert.equal(by.ancien.compatible, false, "autre version de l'API des modules : listé mais non installable");
-  assert.ok(list.findIndex((e) => e.id === "demo-planner") < list.findIndex((e) => e.id === "tiers-un"));
+  assert.equal(list.filter((e) => e.id === "demo-planner").length, 1);
+  assert.ok(list.some((e) => e.source === "bundled"), "les modules que le catalogue ne liste pas restent proposés depuis la copie hors ligne");
 });
 
 test("index reconnu : entrées invalides écartées (identifiant, dépôt non https, hôte non autorisé, file://, doublons)", async () => {

@@ -5,7 +5,7 @@ import { checkForUpdateDetailed, updateModule } from "./installer";
 import { clearRecognizedCache } from "./recognized";
 import { collectReport, createReportCache, updateSequentially, type ModulesReport, type Summary } from "./bulkUpdate";
 
-/** Modules qui ont une source où chercher une mise à jour : livrés avec le catalogue, ou installés depuis un dépôt. */
+/** Modules qui ont une source où chercher une mise à jour : le catalogue ou un dépôt. */
 async function sourcedModules() {
   const rows = await prisma.module.findMany({ orderBy: { id: "asc" } });
   return rows.filter((r) => r.source === "bundled" || (r.source === "git" && !!r.repoUrl)).map((r) => ({ id: r.id, version: r.version }));
@@ -24,10 +24,10 @@ export async function getModulesReport(force = false): Promise<ModulesReport> {
 export const peekModulesReport = () => cache.peek();
 
 /** Met à jour ces modules un par un (voir updateSequentially) puis retire du rapport ceux qui ont réussi. */
-export async function updateModules(ids: string[], onEach?: (id: string, ok: boolean) => Promise<void>): Promise<Summary> {
+export async function updateModules(ids: string[], onEach?: (id: string, ok: boolean, result: Awaited<ReturnType<typeof updateModule>>) => Promise<void>): Promise<Summary> {
   const summary = await updateSequentially(ids, async (id) => {
     const r = await updateModule(id);
-    await onEach?.(id, r.ok);
+    await onEach?.(id, r.ok, r);
     return r;
   });
   cache.markUpdated(summary.updated);

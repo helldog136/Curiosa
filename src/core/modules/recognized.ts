@@ -32,7 +32,7 @@ export type RecognizedItem = {
   needs?: { service: string; min?: number }[];
 };
 
-/** D'où vient la liste affichée : le dépôt du framework (à jour), sa dernière copie reçue, ou la copie livrée avec cette version. */
+/** D'où vient la liste affichée : le dépôt du framework (à jour), sa dernière copie reçue, ou la copie de repli de cette version. */
 export type RecognizedSource = "repository" | "cache" | "snapshot" | "none";
 export type RecognizedResult = { items: RecognizedItem[]; source: RecognizedSource; fetchedAt: number | null; origin: string | null };
 
@@ -115,7 +115,7 @@ export async function fetchIndexFromRepo(url: string, ref = "HEAD", git: IndexGi
   }
 }
 
-/** Copie de l'index livrée avec cette version : dans l'instantané des modules (`extras/catalogue/index.json`). */
+/** Copie de repli de l'index, dans cette version : dans l'instantané des modules (`extras/catalogue/index.json`). */
 const defaultRoot = () => process.env.CURIOSA_EXTRAS_DIR ?? path.join(process.cwd(), "extras");
 
 const cacheFile = () => path.join(DATA_DIR, "cache", "recognized-index.json");
@@ -137,7 +137,7 @@ export type RecognizedOptions = { fetchImpl?: typeof fetch; git?: IndexGit; root
 /**
  * Index des modules RECONNUS. Trois sources, la plus fraîche d'abord :
  *   1. le fichier `catalogue/index.json` du dépôt du framework, lu À L'EXÉCUTION (ne suit PAS le rythme des versions) ;
- *   2. à défaut, la dernière copie reçue (gardée dans data/cache) puis la copie livrée avec cette version : hors ligne, ça marche ;
+ *   2. à défaut, la dernière copie reçue (gardée dans data/cache) puis la copie de repli de cette version : hors ligne, ça marche ;
  *   3. en plus, un index JSON https supplémentaire (MODULES_INDEX_URL) dont les entrées ne peuvent qu'AJOUTER des modules.
  * Celui qui publie un index se porte garant des dépôts qu'il liste ; chaque entrée est revalidée ici. Rien n'est installé automatiquement.
  */

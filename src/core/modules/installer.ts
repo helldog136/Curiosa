@@ -8,6 +8,7 @@ import { MODULES_DIR } from "../config";
 import { parseManifest, type ParsedManifest } from "./manifest";
 import { forgetModule, getModule, moduleDir, readGitManifest } from "./registry";
 import { findCatalogueEntry, getCatalogue, readBundledManifest } from "./catalogue";
+import { checkBundledRow, convertToCatalogue } from "./bundledUpdate";
 import { dependentsOf } from "./dependencies";
 import { commitJournal, satisfyRequirements, unwind, type DepOps, type Journal, type Missing } from "./dependencyInstaller";
 import { forgetAuto } from "./autoInstalled";
@@ -22,6 +23,8 @@ const DEFAULT_HOSTS = "github.com,gitlab.com,codeberg.org,bitbucket.org";
 
 export type InstallResult = {
   ok: true; id: string; migrations?: MigrationOutcome[];
+  /** Ligne du journal d'audit quand la mise à jour a changé la SOURCE du module (module de base converti en module du catalogue). */
+  auditTarget?: string;
   /** Modules apportés d'office par la cascade des dépendances (installés ou activés). */
   provided?: string[];
   /** Mise à jour réussie, mais il manque encore de quoi faire fonctionner le module : à dire à l'administrateur. */
@@ -335,7 +338,7 @@ async function latestRemoteTag(repoUrl: string): Promise<string | null> {
  *   - épinglé sur une ÉTIQUETTE (`#v1.2.0`, le cas recommandé) : la plus haute version stable du dépôt ;
  *   - épinglé sur un commit : jamais (c'est le but) ;
  *   - sur une branche (ou la branche par défaut) : le dernier commit de cette branche ;
- *   - livré avec le framework : la version qu'apporte le framework.
+ *   - module de base installé depuis l'instantané hors ligne : la version du catalogue (qui le convertit en module du catalogue).
  */
 export async function checkForUpdate(id: string): Promise<ModuleUpdateCheck> {
   return (await checkForUpdateDetailed(id)).check;
@@ -345,9 +348,7 @@ export async function checkForUpdate(id: string): Promise<ModuleUpdateCheck> {
 export async function checkForUpdateDetailed(id: string): Promise<{ check: ModuleUpdateCheck; failed: boolean }> {
   const row = await prisma.module.findUnique({ where: { id } });
   if (row?.source === "bundled") {
-    const entry = await findCatalogueEntry(id).catch(() => undefined);
-    const available = !!entry?.dir && !!entry.version && entry.version !== row.version;
-    return { check: { available, remote: entry?.version, target: available ? entry?.version : undefined, level: available ? classify(row.version, entry!.version!) ?? undefined : undefined }, failed: !entry };
+    return checkBundledRow(row, await findCatalogueEntry(id).catch(() => undefined));
   }
   if (!row || row.source !== "git" || !row.repoUrl) return { check: { available: false }, failed: false };
   const res = await checkGitUpdate(row);
@@ -390,6 +391,7 @@ async function updateModuleFiles(id: string): Promise<InstallResult> {
   const row = await prisma.module.findUnique({ where: { id } });
   if (row?.source === "bundled") {
     const entry = await findCatalogueEntry(id);
+    if (entry?.source === "recognized") return convertToCatalogue(row, entry);   // le catalogue est la source : voir bundledUpdate.ts
     if (!entry?.dir) return { ok: false, error: "modules.error.notfound" };
     const copied = copyBundled(entry.dir, id);
     if (!copied.ok) return copied;
@@ -501,7 +503,7 @@ async function enableModule(id: string): Promise<InstallResult> {
 }
 
 /**
- * Vérifie les `requires` d'un module ACTIF et, s'il manque un fournisseur disponible (livré, catalogue), l'installe d'office avec son instance par défaut.
+ * Vérifie les `requires` d'un module ACTIF et, s'il manque un fournisseur disponible (catalogue), l'installe d'office avec son instance par défaut.
  * Impossible → rien n'est laissé à moitié et `missing` dit quoi. Sert après une mise à jour et après une restauration. Ne lève jamais.
  */
 export async function settleDependencies(id: string): Promise<{ provided?: string[]; missing?: Missing[] }> {
@@ -555,7 +557,7 @@ export async function purgeModule(id: string): Promise<void> {
   fs.rmSync(moduleDir(id), { recursive: true, force: true });
 }
 
-/** Copie un module livré avec le framework vers le dossier des modules installés (sans .git ni lien symbolique). */
+/** Copie un module de la copie locale (repli hors ligne) vers le dossier des modules installés (sans .git ni lien symbolique). */
 export function copyBundled(from: string, id: string): { ok: true; version: string } | { ok: false; error: string } {
   const manifest = readBundledManifest(from);
   if (!manifest || manifest.id !== id) return { ok: false, error: "modules.error.nomanifest" };
@@ -576,7 +578,7 @@ export function copyBundled(from: string, id: string): { ok: true; version: stri
   }
 }
 
-/** Installe un module livré avec le framework. Désactivé tant que l'admin ne l'a pas activé, comme tout module installé. */
+/** Installe un module depuis la copie locale (repli hors ligne). Désactivé tant que l'admin ne l'a pas activé, comme tout module installé. */
 export async function installBundled(id: string, opts: { dependencies?: boolean } = {}): Promise<InstallResult> {
   const entry = await findCatalogueEntry(id);
   if (!entry || entry.source !== "bundled" || !entry.dir) return { ok: false, error: "modules.error.notfound" };
@@ -601,7 +603,7 @@ export async function installBundled(id: string, opts: { dependencies?: boolean 
   return { ok: true, id, ...(deps?.provided.length ? { provided: deps.provided } : {}) };
 }
 
-/** Installe un module du catalogue (livré ou reconnu) par son identifiant. Le dépôt reconnu doit servir ce module-là. */
+/** Installe un module du catalogue (catalogue) par son identifiant. Le dépôt reconnu doit servir ce module-là. */
 export async function installFromCatalogue(id: string, opts: { dependencies?: boolean } = {}): Promise<InstallResult> {
   const entry = await findCatalogueEntry(id);
   if (!entry) return { ok: false, error: "modules.error.notfound" };

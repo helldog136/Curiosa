@@ -7,7 +7,7 @@ import { signIn } from "@/auth";
 import { prisma } from "@/core/db";
 import { makeTranslator } from "@/core/i18n/dictionary";
 import { isKnownLocale } from "@/core/i18n/locales";
-import { provisionBundled, setupModules } from "@/core/modules/starter";
+import { provisionModule, setupModules } from "@/core/modules/starter";
 import type { ParsedManifest } from "@/core/modules/manifest";
 import { createInstance, defaultNames, runInstanceCreateHook } from "@/core/instanceService";
 import { audit } from "@/core/permissions";
@@ -52,8 +52,9 @@ export async function completeSetup(_prev: ActionState, formData: FormData): Pro
   const shortcutRows = new Set(formData.getAll("linkShortcut").map(String));
 
   const createdIds: string[] = [];
-  // Les fichiers des modules choisis sont copiés avant la transaction (leur ligne est ce qu'attendent les instances).
-  for (const m of setupModules()) if (presetIds.includes(m.id)) await provisionBundled(m.id);
+  // Les modules choisis sont installés avant la transaction (leur ligne est ce qu'attendent les instances), depuis le catalogue ; la copie hors ligne n'est qu'un repli, dit au journal.
+  const offline: string[] = [];
+  for (const m of setupModules()) if (presetIds.includes(m.id) && (await provisionModule(m.id)) === "offline-copy") offline.push(m.id);
   try {
     await prisma.$transaction(async (tx) => {
       // Garde contre une double soumission ou un second visiteur : un seul propriétaire, une seule fois.
@@ -140,7 +141,7 @@ export async function completeSetup(_prev: ActionState, formData: FormData): Pro
   }
 
   for (const id of createdIds) await runInstanceCreateHook(id);
-  await audit(email, "setup.completed");
+  await audit(email, "setup.completed", offline.length ? `offline copy: ${offline.join(", ")}` : "");
   try {
     await signIn("credentials", { email, password, redirectTo: "/admin?welcome=1" });
   } catch (error) {

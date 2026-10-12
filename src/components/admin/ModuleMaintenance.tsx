@@ -7,10 +7,11 @@ type T = (key: string, params?: Record<string, string | number>) => string;
 
 /** Section « Maintenance » de la page d'un module (repliée) : diagnostic de la source et réinstallation. En mode simple, seul un lien discret « Problème avec ce module ? » la déplie. Propriétaire seulement (vérifié par la page et par les actions). */
 export async function ModuleMaintenance({ row, name, advanced, t }: { row: Module; name: string; advanced: boolean; t: T }) {
-  const d = await diagnoseModule(row.id, { compare: "local" });   // copie livrée : lecture locale ; un dépôt git ne se compare qu'à la demande
+  const d = await diagnoseModule(row.id, { compare: "local" });   // un dépôt ne se compare qu'à la demande (réseau)
   if (!d) return null;
-  const repo = d.repoUrl ? `${d.repoUrl}${d.ref || d.subdir ? `#${d.ref ?? ""}${d.subdir ? `:${d.subdir}` : ""}` : ""}` : "";
-  const source = d.kind === "bundled" ? t("maintenance.source.bundled") : d.kind === "git" ? t("maintenance.source.git", { repo }) : t("maintenance.source.none");
+  const from = d.repoUrl ? { url: d.repoUrl, ref: d.ref, subdir: d.subdir } : d.catalogue ? { url: d.catalogue.repoUrl, ref: d.catalogue.ref, subdir: d.catalogue.subdir } : null;
+  const repo = from ? `${from.url}${from.ref || from.subdir ? `#${from.ref ?? ""}${from.subdir ? `:${from.subdir}` : ""}` : ""}` : "";
+  const source = d.kind === "bundled" && !d.catalogue ? t("maintenance.source.bundled") : (d.kind === "git" || d.catalogue) ? t("maintenance.source.git", { repo }) : t("maintenance.source.none");
   const c = d.comparison;
   return (
     <details id="maintenance" data-testid="module-maintenance" className={advanced ? `${ui.card} group` : "group text-sm"}>
@@ -29,9 +30,9 @@ export async function ModuleMaintenance({ row, name, advanced, t }: { row: Modul
             {c.state === "identical" ? t("maintenance.identical") : t("maintenance.different", { version: c.sourceVersion ?? "?" })}
           </p>
         )}
-        {d.kind === "git" && advanced && <p className="text-xs text-muted">{t("maintenance.compareNetwork")}</p>}
+        {(d.kind === "git" || !!d.catalogue) && advanced && <p className="text-xs text-muted">{t("maintenance.compareNetwork")}</p>}
         {d.kind !== "none" && (
-          <ReinstallButton id={row.id} canCompare={d.kind === "git"} labels={{
+          <ReinstallButton id={row.id} canCompare={d.kind === "git" || !!d.catalogue} labels={{
             button: t("maintenance.button"), working: t("maintenance.working"), done: t("maintenance.done"), failed: t("maintenance.failed"),
             confirm: t("maintenance.confirm", { name }), compare: t("maintenance.compare"), comparing: t("maintenance.comparing"), compared: t("maintenance.compared"), compareFailed: t("maintenance.compareFailed"),
             identical: t("maintenance.identical"), different: t("maintenance.different"),

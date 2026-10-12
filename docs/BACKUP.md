@@ -57,7 +57,7 @@ Tout est du **texte** (JSON, Markdown, CSV), sauf les images. Pour vérifier l'i
 
 - Le fichier est **vérifié avant tout** : mot de passe, format, version, empreinte de chaque fichier (une sauvegarde modifiée ou incomplète
   est refusée), présence d'un propriétaire (une restauration ne doit jamais vous enfermer dehors).
-- Les **modules sont réinstallés depuis le catalogue** (modules livrés avec le framework, dépôts reconnus). Un module **personnel**
+- Les **modules sont réinstallés depuis le catalogue** (dépôts du catalogue). Un module **personnel**
   (dépôt non vérifié) n'est réinstallé que si vous le **confirmez, module par module** ; sinon ses données sont gardées mais le module reste à réinstaller.
 - La restauration **remplace** les données actuelles, en une seule transaction : tout ou rien. Une copie de la base actuelle est gardée dans
   `data/backups/pre-restore-*.db` (les 5 dernières).

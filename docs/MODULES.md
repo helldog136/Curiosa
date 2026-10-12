@@ -132,7 +132,7 @@ Validé à l'installation et au chargement (zod, `src/core/modules/manifest.ts`)
 | `minCore` | **Version minimale du cœur** (`"0.1.10"` : trois nombres, rien d'autre ; une autre forme est refusée). Absent = aucune exigence. Voir [Version minimale du cœur](#version-minimale-du-cœur-mincore). |
 | `id` | Identifiant du module, stable à jamais (les instances et les sauvegardes s'y réfèrent). |
 | `name`, `description` | Texte ou `{ langue: texte }` (500 caractères au plus). Langue absente : langue par défaut du site, puis `en`. |
-| `version` | `x.y.z`. Sert à détecter les mises à jour des modules livrés avec le framework. |
+| `version` | `x.y.z`. Sert à détecter les mises à jour (comparée à la version du catalogue). |
 | `author`, `license`, `homepage` | Informatifs (`homepage` : URL valide). |
 | `privacy` | Facultatif : ce que le module collecte comme données personnelles, pourquoi et comment les faire effacer (texte simple, traduisible comme `description`). **Un module qui collecte des données de visiteurs doit le déclarer** : le cœur reprend ce texte tel quel, sous le nom de l'instance, dans la page « Politique de confidentialité » du site (`/privacy`, lien permanent du pied de page). Un module qui ne collecte rien n'a rien à écrire. |
 | `icon` | Emoji affiché dans l'admin. |
@@ -336,7 +336,7 @@ entrée), le sitemap, le flux RSS, les liens `/go/…`, la section d'accueil `la
 
 Le cœur ne connaît aucun module par son nom. L'assistant de première installation a une étape facultative « Voulez-vous ajouter des modules ? » (qu'on peut
 passer sans aucun risque) : elle propose les modules que le **Catalogue suggère**. Cette suggestion n'est **pas** un champ du manifeste (n'importe quel
-auteur pourrait se l'attribuer) : c'est une liste, `catalogue/suggested.json`, tenue par le dépôt de modules `curiosa-extras` ; seul un module livré avec la
+auteur pourrait se l'attribuer) : c'est une liste, `catalogue/suggested.json`, tenue par le dépôt de modules `curiosa-extras` ; seul un module du catalogue avec la
 version et inscrit dans cette liste est proposé (et marqué « suggéré » dans le Catalogue). Les modules qui exigent un autre module ne sont pas proposés
 là : ils s'ajoutent depuis le Catalogue. `onboarding` règle ce qui se passe quand l'utilisateur coche le module :
 
@@ -456,9 +456,9 @@ Voir « API MCP ». Les clés de `mcp` doivent être déclarées dans le manifes
 
 ### Réinstaller un module (maintenance)
 
-Quand un module se comporte comme une ancienne version alors que son numéro est à jour (le cœur ne compare que le **numéro** d'un module livré, et l'empreinte git d'un module installé depuis un dépôt), le propriétaire ouvre *Modules › le module › Maintenance* (en mode simple : « Problème avec ce module ? Réinstaller »). La section montre la version, la **source** (livré avec le framework, ou dépôt git `adresse#référence`) et l'**empreinte du code installé** (7 caractères d'une empreinte SHA-256 du contenu du dossier). Pour un module livré, elle dit tout de suite si le code installé est **identique ou différent** de la copie livrée ; pour un module git, le bouton « Comparer avec la source » fait un téléchargement explicite pour le dire.
+Quand un module se comporte comme une ancienne version alors que son numéro est à jour (le cœur compare le **numéro** d'un module installé depuis la copie locale, et l'empreinte git d'un module installé depuis un dépôt), le propriétaire ouvre *Modules › le module › Maintenance* (en mode simple : « Problème avec ce module ? Réinstaller »). La section montre la version, la **source** (dépôt `adresse#référence` ; une copie locale du serveur seulement si le dépôt n'est pas joignable) et l'**empreinte du code installé** (7 caractères d'une empreinte SHA-256 du contenu du dossier). Le bouton « Comparer avec la source » fait un téléchargement explicite du dépôt pour dire si le code installé est **identique ou différent**.
 
-« Réinstaller ce module » remet le **code** à neuf depuis la source : copie livrée pour un module livré ; pour un module git, la référence que suit la mise à jour (celle du catalogue reconnu s'il en vient, sinon la sienne), même à numéro et à empreinte identiques. Un module installé à la main n'a pas de source : refus. La réinstallation **conserve tout le reste** : instances, réglages, données, état activé/désactivé, rangement et épinglage, placements d'accueil, droits MCP. Elle remet la version de la **source actuelle**, rien de plus : si le catalogue reconnu en propose une plus récente, le bilan le signale (il ne la prend pas en silence).
+« Réinstaller ce module » remet le **code** à neuf depuis la source : la référence que suit la mise à jour (celle du catalogue s'il en vient, sinon la sienne), même à numéro et à empreinte identiques. Un module encore installé depuis la copie locale (ligne `bundled`) dont le catalogue est joignable est **converti** en module du catalogue (voir « Un module installé et le catalogue : lequel gagne »). Un module installé à la main n'a pas de source : refus. La réinstallation **conserve tout le reste** : instances, réglages, données, état activé/désactivé, rangement et épinglage, placements d'accueil, droits MCP. Elle remet la version de la **source actuelle**. Seul le repli hors ligne (catalogue injoignable) remet la copie locale : le bilan dit alors « Une mise à jour est disponible (1.1.0) : lancez-la depuis Modules › Mises à jour » si le catalogue en propose une.
 
 Garde-fous : refus si le module est inconnu, si une mise à jour du site est en cours, si le manifeste porte un autre `id`, un `main` absent, plus de 10 Mo ou un `minCore` plus récent que le cœur, et si la source demande de **nouvelles permissions** (jamais accordées en silence : passer par « Mettre à jour »). L'ancien dossier est mis de côté pendant l'échange (`.previous-<pid>`) et revient tel quel au moindre échec. Si la `dataVersion` change, les migrations de données sont rejouées comme après une mise à jour. Action de journal : `module.reinstall` (identifiant, versions et empreintes, jamais d'adresse ni de réglage). Idempotente : sur un code déjà identique, « Code identique : rien n'a changé ».
 
@@ -532,7 +532,7 @@ Exemple court : *Contacts* offre `contact.store` et possède le carnet ; *Parten
 - **Mises à jour** : après `updateModule` (et « Tout mettre à jour »), si la nouvelle version **ajoute** un `requires` ou en relève le `min`, le fournisseur disponible est installé d'office (mêmes règles) ; sinon la mise à jour **réussit quand même**, le module dégrade comme avant (jamais de plantage), et l'administrateur est **averti** (bilan de la mise à jour, page du module : *« Il manque : … »*, avec un bouton pour mettre en place ce qui manque). Une alerte ne bloque jamais les autres mises à jour de la liste.
 - **Restauration** ([BACKUP.md](BACKUP.md)) : les modules sont réinstallés dans l'ordre des dépendances (fournisseurs d'abord), puis les `requires` de chaque module actif restauré sont vérifiés ; un fournisseur absent de la sauvegarde mais disponible est installé avec son instance par défaut. Sinon le consommateur est restauré avec ses données, l'état « activé » de la sauvegarde est respecté, et l'aperçu comme le bilan disent *« il manque : … »*.
 - **Désactiver ou désinstaller** un module que d'autres modules actifs requièrent (parce que lui seul fournit le service, dans la version voulue) est refusé en nommant ces modules (leurs noms, pas leurs identifiants), ce qu'ils perdraient, et ce qu'il faut faire (*« désactivez d'abord … »*).
-- **Interface** : le Catalogue (liste et fiche) annonce *« Installe aussi : Contacts »* **avant** d'installer — ce qui sera installé, activé ou déjà en place ✔ — pour un module livré ou un module de l'index qui déclare ses services. Le bouton **Installer** fait tout en une action. La page d'un module montre *« A besoin de »* et *« Utilisé par »* en noms lisibles (identifiants techniques et versions en mode avancé).
+- **Interface** : le Catalogue (liste et fiche) annonce *« Installe aussi : Contacts »* **avant** d'installer — ce qui sera installé, activé ou déjà en place ✔ — pour un module du catalogue qui déclare ses services. Le bouton **Installer** fait tout en une action. La page d'un module montre *« A besoin de »* et *« Utilisé par »* en noms lisibles (identifiants techniques et versions en mode avancé).
 - `ctx.api.services.call` n'accepte que les services déclarés dans `requires` (sinon `undeclared`), prend le premier fournisseur actif de version suffisante (par clé d'instance), ne lève jamais : à vous de gérer `unavailable` (par exemple après une restauration) en dégradant proprement.
 - **Plusieurs fournisseurs du même service** (un doublon, ou un changement de fournisseur) : dès qu'un deuxième module qui offre le service est activé (ou qu'une de ses instances est créée), l'admin est invité (page *Modules* → *Services offerts par plusieurs modules*) à choisir un **maître** — il reçoit les appels et c'est sa réponse que voit l'appelant — et des **répliques**, qui reçoivent aussi les appels qui **écrivent**, au mieux (la panne d'une réplique ne fait jamais échouer l'appel ; celle du maître, si). Le fournisseur peut déclarer ses méthodes de lecture dans `offers` (`"readOnly": ["count"]`) : elles ne sont jamais répliquées. Tant que rien n'est choisi, le premier fournisseur (par clé d'instance) est le maître, sans réplique ; un choix périmé (maître retiré) retombe sur le premier. **Une réplique reçoit les appels futurs** : les données déjà reçues par l'ancien fournisseur ne sont pas copiées (aucun conflit à fusionner, mais un historique réparti : pour une bascule propre, mettez le nouveau en maître, gardez l'ancien en réplique le temps voulu, puis retirez-le).
 - Le `ctx` reçu par la méthode est celui de l'instance **fournisseur** : elle écrit dans **son** stockage, jamais dans celui de l'appelant.
@@ -687,7 +687,7 @@ par des personnes différentes se retrouvent sur les mêmes noms ; rien ne l'imp
 mais deux modules ne partagent un sujet ou une rubrique que s'ils s'écrivent pareil. Les **libellés** montrés aux humains,
 eux, sont traduits comme le reste.
 
-Sujets connus (tous fournis par des modules livrés ou communautaires, ou par le cœur) :
+Sujets connus (tous fournis par des modules du catalogue, ou par le cœur) :
 
 | Sujet | Fourni par | Rôle |
 |---|---|---|
@@ -953,12 +953,11 @@ les guillemets internes) et neutralisez les cellules qui commencent par `=`, `+`
 
 **Le Catalogue est gratuit** : aucun module ne s'y vend, tous sont sous licence ouverte. Un auteur qui accepte des dons volontaires l'indique dans le **README.md** de son dépôt, que l'admin affiche avant toute installation ; jamais une condition d'installation.
 
-**Avant d'installer**, l'admin affiche pour chaque module (du catalogue comme d'un dépôt personnel) son **README.md**, ses permissions, les services qu'il offre ou requiert et sa licence, lus **sans l'installer** (module livré : dans son dossier ; dépôt git : clonage superficiel temporaire, mêmes garde-fous que l'installation). Le README est du texte d'un tiers : rendu Markdown sans HTML brut, aucune image distante chargée, liens relatifs inertes. Écrivez donc un vrai README (à quoi sert le module, réglages, permissions).
+**Avant d'installer**, l'admin affiche pour chaque module (du catalogue comme d'un dépôt personnel) son **README.md**, ses permissions, les services qu'il offre ou requiert et sa licence, lus **sans l'installer** (copie locale : dans son dossier ; dépôt git : clonage superficiel temporaire, mêmes garde-fous que l'installation). Le README est du texte d'un tiers : rendu Markdown sans HTML brut, aucune image distante chargée, liens relatifs inertes. Écrivez donc un vrai README (à quoi sert le module, réglages, permissions).
 
 **Installer** (propriétaire seulement). Admin → **Catalogue** :
 
-- **Modules livrés avec le framework** (dossier `extras/` du serveur : instantané du dépôt `curiosa-extras`, dossiers `modules/` et `examples/`) : installés depuis les fichiers du serveur, sans réseau ; leur version suit celle du framework.
-- **Modules reconnus** : dépôts git listés dans un index public (voir ci-dessous) : celui qui publie l'index se porte garant des dépôts qu'il liste.
+- **Le catalogue** : dépôts git listés dans l'index du dépôt `curiosa-extras` (voir ci-dessous), chacun avec sa version épinglée par étiquette : celui qui publie l'index se porte garant des dépôts qu'il liste. C'est la seule source de vérité. Le dossier `extras/` du serveur (instantané de ce dépôt) n'est qu'un détail interne : un repli quand le catalogue est injoignable (première installation sans réseau).
 - **Mes dépôts de modules** (mode avancé) : vous publiez vos modules dans UN dépôt git (un dossier par module, chacun avec son `module.json`, jusqu'à trois niveaux de profondeur ; ou un seul module à la racine). Le propriétaire du site ajoute l'adresse du dépôt dans Catalogue → *Mes dépôts de modules* ; Curiosa lit les manifestes (sans rien exécuter) et liste les modules, qui s'installent un par un avec la même confirmation que ci-dessous. Chaque module se met à jour depuis son dossier de ce dépôt, et seulement quand ce dossier change. Dix dépôts au plus.
 - **Installer un dépôt personnel (non vérifié)** : n'importe quelle adresse de dépôt, avec un avertissement et une case « je comprends » à cocher :
 
@@ -980,7 +979,7 @@ tels quels. Le sens de « mise à jour » dépend de l'installation :
 | une **étiquette** (`#v1.2.0`, recommandé) | la plus haute version stable du dépôt (`v1.3.0`) ; le module passe d'étiquette en étiquette. Un changement **majeur** (`v2.0.0`) est signalé : lisez ses notes avant |
 | un **commit** (`#a1b2c3d`) | jamais : c'est le but de l'épinglage |
 | une **branche**, ou rien | le dernier commit de la branche |
-| livré avec le framework | la version qu'apporte le framework |
+| le catalogue (module encore installé depuis la copie locale) | la version du catalogue : la mise à jour le **convertit** en module du catalogue (voir ci-dessous) |
 
 Si la nouvelle version est **invalide** (manifeste illisible, autre identifiant, API incompatible, fichier principal absent, trop volumineuse), l'ancienne est
 rétablie automatiquement : un module ne reste jamais à moitié mis à jour.
@@ -988,6 +987,15 @@ rétablie automatiquement : un module ne reste jamais à moitié mis à jour.
 **Développer en local** : avec `CURIOSA_ALLOW_LOCAL_MODULES=1` dans l'environnement du serveur, une adresse `file:///chemin/absolu/vers/depot`
 est acceptée par « Installer un dépôt personnel ». Le dépôt doit avoir au moins un commit ; pour voir une modification, validez-la
 (`git commit`) puis *Chercher une mise à jour* → *Mettre à jour*. À ne jamais activer sur un serveur public.
+
+### Un module installé et le catalogue : lequel gagne
+
+Il n'y a que deux états : un module est **installé** ou **non installé**. Le catalogue (dépôt de modules, version épinglée par étiquette) est la source de vérité de tout module installé, quel que soit le moment de l'installation. La copie du dossier `extras/` n'est qu'un repli hors ligne : elle ne figure dans le Catalogue que pour les modules que l'index ne liste pas, et elle ne masque jamais une entrée de l'index (`getCatalogue`).
+
+- **Mise à jour.** Un module dont la ligne est `bundled` (installé depuis la copie de repli, par exemple en 1.0.0) est comparé à l'entrée du catalogue : si elle propose une version plus récente, la liste *Modules › Mises à jour* et « Tout mettre à jour » l'affichent (`1.0.0 → 1.1.0`) ; à égalité ou si le catalogue est en retard, rien. Si cette version demande un cœur plus récent, la mise à jour affiche « demande Curiosa X » et est sautée.
+- **Conversion, sans rien perdre.** La mise à jour récupère le dépôt à l'étiquette épinglée, vérifie `id`, `main`, taille, `minCore` et permissions (jamais élargies en silence), échange le dossier (`.previous-<pid>` conservé jusqu'au bout), passe la ligne en `git` (dépôt, étiquette, dossier, commit, empreinte), casse le cache d'imports et rejoue les migrations de données. Instances, réglages, données, état activé, placements, droits MCP et date d'installation ne sont pas touchés. Au moindre échec, fichiers **et** ligne `Module` reviennent à l'état d'origine. Ensuite le module suit le catalogue comme tout module du catalogue. Journal : `module.update` avec « version avant → après (bundled -> catalogue) ».
+- **Origine.** Un module `bundled` que le catalogue liste est « catalogue », converti ou non.
+- **Installation initiale.** L'assistant de configuration installe les modules cochés depuis le catalogue ; il ne retombe sur la copie de repli que si le dépôt est injoignable, et le dit au journal (`setup.completed`, « offline copy »).
 
 **Mises à jour en bloc.** Admin → **Mises à jour** (propriétaire) contient une section « Vos modules » : au chargement (résultat gardé quelques minutes, bouton « Revérifier »), elle vérifie chaque module installé qui a une source (catalogue ou dépôt) avec le même `checkForUpdate` et ne liste que ceux qui ont une version plus récente (`1.0.0 → 1.0.1`, avertissement pour un changement « majeur »). « Tout mettre à jour » les met à jour **un par un**, jamais en parallèle (`updateModule`) : l'échec d'un module n'arrête pas les autres, une **erreur de migration** de données arrête tout et nomme le module ; un bilan est affiché. Une vérification impossible (réseau, source absente) n'est qu'un message discret sur ce module. Après une mise à jour réussie du site, la section est mise en avant, et le lien « Mises à jour » du menu porte une pastille tant que des modules sont en retard (vérifiés en arrière-plan, jamais d'attente réseau dans le menu).
 
@@ -1004,15 +1012,15 @@ une demande de fusion sur ce fichier, visible par toutes les installations dès 
 `id`, `name`, `description`, `repo` sont les champs de base ; `ref` (**étiquette ou commit relus** — c'est ce qui rend « vérifié » vrai), `version`, `apiVersion`,
 `author`, `icon`, `requires` (`{ "core": "0.1.10" }` : cœur minimal, voir `minCore`) sont facultatifs. Chaque entrée est revalidée (identifiant, dépôt `https` sur un hôte autorisé ; 300 au plus). Un module dont `apiVersion`
 diffère de celle du framework est listé mais **non installable**. Rien n'est installé automatiquement ; le dépôt installé doit servir le module annoncé
-(`id` identique à celui de son `module.json`). Un module livré avec le framework l'emporte sur un module reconnu de même identifiant.
+(`id` identique à celui de son `module.json`). L'entrée du catalogue n'est jamais masquée par la copie locale (voir « Un module installé et le catalogue : lequel gagne »).
 
 D'où vient la liste, dans l'ordre : (1) le dépôt de modules `curiosa-extras` (voisin du remote `origin` de l'installation : même propriétaire, ou `CURIOSA_UPDATE_REMOTE` ; pour une installation par archive, le dépôt de `release.json` ; `CURIOSA_CATALOGUE_REPO` pour en choisir un autre, `CURIOSA_CATALOGUE_REF` pour une autre
-branche ou étiquette que `HEAD`) ; (2) à défaut, la **dernière copie reçue** (`data/cache/`), puis la **copie livrée avec cette version** : le Catalogue
+branche ou étiquette que `HEAD`) ; (2) à défaut, la **dernière copie reçue** (`data/cache/`), puis la **copie de repli de cette version** : le Catalogue
 fonctionne hors ligne ; (3) **en plus**, un index JSON `https://` (`MODULES_INDEX_URL`, modèle : [`modules-index.example.json`](modules-index.example.json))
-dont les entrées ne peuvent qu'**ajouter** des modules, jamais remplacer ceux du dépôt. `CURIOSA_EXTRAS_DIR` désigne le dossier des modules livrés (défaut : `extras/` à côté de l'application). `CURIOSA_CATALOGUE_RUNTIME=0` coupe la lecture à l'exécution
-(copie livrée seulement). La page Catalogue indique d'où vient la liste affichée.
+dont les entrées ne peuvent qu'**ajouter** des modules, jamais remplacer ceux du dépôt. `CURIOSA_EXTRAS_DIR` désigne le dossier de la copie de repli (défaut : `extras/` à côté de l'application). `CURIOSA_CATALOGUE_RUNTIME=0` coupe la lecture à l'exécution
+(copie de repli seulement). La page Catalogue indique d'où vient la liste affichée.
 
-Pour qu'un module rejoigne les modules livrés : une demande de fusion sur `curiosa-extras` avec un dossier dans `modules/` (modules complets) ou `examples/` (exemples), son `module.json` à sa racine.
+Pour qu'un module rejoigne le catalogue : une demande de fusion sur `curiosa-extras` avec un dossier dans `modules/` (modules complets) ou `examples/` (exemples), son `module.json` à sa racine.
 
 ## Les modules : dépôt `curiosa-extras`
 

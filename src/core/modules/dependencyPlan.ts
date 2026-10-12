@@ -10,8 +10,8 @@ import type { ParsedManifest } from "./manifest";
  *   1. un fournisseur déjà ACTIF (instance active, version suffisante) → rien à faire (si deux le sont, le mécanisme maître/répliques décide) ;
  *   2. sinon un module DÉJÀ INSTALLÉ qui offre le service, version suffisante : d'abord ceux qui sont activés (mais sans instance), puis les
  *      désactivés, chaque groupe par identifiant ;
- *   3. sinon un module du CATALOGUE non installé : les livrés avec l'archive d'abord, puis les reconnus, dans l'ordre de l'index (stable).
- * Seuls les modules du catalogue (livrés, reconnus), compatibles avec ce cœur, sont installés d'office ; jamais un dépôt personnel.
+ *   3. sinon un module du CATALOGUE non installé : dans l'ordre de l'index, dans l'ordre de l'index (stable).
+ * Seuls les modules du catalogue (reconnus), compatibles avec ce cœur, sont installés d'office ; jamais un dépôt personnel.
  */
 export type Candidate =
   | { id: string; from: "installed"; enabled: boolean }
@@ -63,7 +63,7 @@ export type DependencyPlan = { steps: PlanStep[]; problems: PlanProblem[] };
 export const MAX_DEPTH = 3;
 
 /**
- * Aperçu pour un module dont on connaît les besoins (`needs`) : installé (manifeste), livré (manifeste) ou reconnu (index, facultatif).
+ * Aperçu pour un module dont on connaît les besoins (`needs`) : installé (manifeste) ou du catalogue (index, facultatif).
  * Ordre topologique : les fournisseurs des fournisseurs d'abord.
  */
 export async function planDependencies(rootId: string, needs: ServiceNeed[], opts: { catalogue?: CatalogueEntry[]; path?: string[] } = {}): Promise<DependencyPlan> {

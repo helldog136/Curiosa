@@ -100,15 +100,15 @@ Pour fabriquer l'archive à la main : `npm ci && npx prisma generate && npm run 
 
 La liste des modules reconnus est le fichier `catalogue/index.json` du dépôt du framework, **relu à l'exécution** depuis le dépôt d'origine de
 l'installation (au plus toutes les 15 minutes) : un module ajouté à ce fichier apparaît chez vous **sans mettre le framework à jour**. Hors ligne ou
-dépôt injoignable, le site garde la dernière copie reçue, à défaut celle livrée avec sa version.
+dépôt injoignable, le site garde la dernière copie reçue, à défaut la copie de repli de sa version.
 
 | Variable | Effet |
 |---|---|
 | `CURIOSA_CATALOGUE_REPO` | Dépôt git qui publie l'index (défaut : `curiosa-extras`, le dépôt de modules voisin du dépôt d'origine de l'installation, même propriétaire ; indispensable avec Docker, où il n'y a pas de dépôt d'origine). |
-| `CURIOSA_EXTRAS_DIR` | Dossier des modules livrés avec cette version (défaut : `extras/` à côté de l'application, instantané de `curiosa-extras` ; `npm run extras:fetch` le récupère pour un clone du dépôt). |
+| `CURIOSA_EXTRAS_DIR` | Dossier de la copie de repli hors ligne (défaut : `extras/` à côté de l'application, instantané de `curiosa-extras` ; `npm run extras:fetch` le récupère pour un clone du dépôt). |
 | `CURIOSA_TRUSTED_PROXIES` | Nombre de reverse proxys devant le site (1 par défaut) : sert à lire la vraie adresse du visiteur pour les blocages de connexion. Voir [SECURITE.md](SECURITE.md). |
 | `CURIOSA_CATALOGUE_REF` | Branche ou étiquette à lire (défaut : la branche par défaut). |
-| `CURIOSA_CATALOGUE_RUNTIME=0` | Ne pas interroger le dépôt : copie livrée avec la version seulement (serveur sans accès au réseau). |
+| `CURIOSA_CATALOGUE_RUNTIME=0` | Ne pas interroger le dépôt : copie de repli de la version seulement (serveur sans accès au réseau). |
 | `MODULES_INDEX_URL` | Index JSON `https://` **supplémentaire** (le vôtre, celui d'une communauté) : il ne peut qu'ajouter des modules. |
 
 ## Sauvegarder

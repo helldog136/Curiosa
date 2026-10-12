@@ -29,7 +29,7 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
   const sources = isOwner && advanced ? await listSources() : [];
   const found = await Promise.all(sources.map(async (s) => ({ s, modules: await discoverModules(s).catch((): SourceModule[] | null => null) })));
   const L = (v: Parameters<typeof localized>[0]) => localized(v, locale, config.defaultLocale);
-  // « Installe aussi : … » sur chaque carte dont le module dépend d'un autre (ce que le manifeste livré ou l'index annonce).
+  // « Installe aussi : … » sur chaque carte dont le module dépend d'un autre (ce que l'index ou le manifeste annonce).
   const names = await buildNames(locale, config.defaultLocale, entries);
   const plans = new Map<string, PlanView>();
   for (const e of entries) if (!installed.has(e.id) && e.compatible && (e.needs?.length ?? 0) > 0) plans.set(e.id, await viewPlan(e.id, e.needs!, names, entries));
