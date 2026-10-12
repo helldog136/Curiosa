@@ -1,6 +1,7 @@
 import { prisma } from "../db";
-import { normalizeNeeds, offerVersionOf, satisfiesVersion } from "./serviceVersions";
+import { normalizeNeeds, offerIsEach, offerVersionOf, satisfiesVersion } from "./serviceVersions";
 import { buildContext } from "./context";
+import { pickName } from "../instances";
 import { deleteSetting, getSetting, setSetting } from "../settings";
 import { getActiveInstances, getModule, listModuleRows, type ActiveInstance } from "./registry";
 import type { ParsedManifest } from "./manifest";
@@ -121,6 +122,20 @@ export async function providerInstances(service: string, exceptModule?: string):
   return (await getActiveInstances()).filter((a) => offersOf(a.mod.manifest).includes(service) && a.mod.manifest.id !== exceptModule).sort((a, b) => a.instance.key.localeCompare(b.instance.key));
 }
 
+/**
+ * Service « chaque instance pour elle-même » (`each` dans `offers`) : chaque instance parle de SA propre chose (une chaîne, un compte…), il n'y a donc
+ * ni maître ni réplique à choisir. Vrai quand TOUS les fournisseurs actifs le déclarent ; si un seul fournisseur ne le déclare pas, le service reste
+ * un service classique (maître/réplique), le choix le plus prudent pour des données partagées.
+ */
+export const isEachService = (providers: ActiveInstance[], service: string): boolean => providers.length > 0 && providers.every((p) => offerIsEach(p.mod.manifest.offers, service));
+
+/** Ordre de création des instances (clé en cas d'égalité) : la « première » instance d'un service each. */
+async function byCreation(list: ActiveInstance[]): Promise<ActiveInstance[]> {
+  const rows = await prisma.moduleInstance.findMany({ where: { id: { in: list.map((a) => a.instance.id) } }, select: { id: true, createdAt: true } });
+  const at = new Map(rows.map((r) => [r.id, r.createdAt.getTime()]));
+  return [...list].sort((a, b) => (at.get(a.instance.id) ?? 0) - (at.get(b.instance.id) ?? 0) || a.instance.key.localeCompare(b.instance.key));
+}
+
 /** Qui est maître et qui réplique, parmi les fournisseurs ACTIFS (un choix périmé retombe sur le premier). */
 export function resolveRouting(providers: ActiveInstance[], routing: Routing | null): { master: ActiveInstance; replicas: ActiveInstance[]; resolved: boolean } {
   const master = providers.find((p) => p.instance.key === routing?.master);
@@ -135,7 +150,7 @@ export async function duplicateServices(): Promise<{ service: string; providers:
   const out = [];
   for (const service of services) {
     const providers = await providerInstances(service);
-    if (providers.length < 2) continue;
+    if (providers.length < 2 || isEachService(providers, service)) continue;   // un service `each` n'a pas de maître à choisir
     const routing = await getRouting(service);
     out.push({ service, providers, consumers: active.filter((a) => requiresOf(a.mod.manifest).includes(service)).sort((a, b) => a.instance.key.localeCompare(b.instance.key)), routing, resolved: resolveRouting(providers, routing).resolved });
   }
@@ -144,31 +159,76 @@ export async function duplicateServices(): Promise<{ service: string; providers:
 
 type Outcome = { ok: true; value: unknown } | { ok: false; reason: "undeclared" | "unavailable" | "no_method" | "failed" };
 
-/** Appel d'un service au nom d'une instance consommatrice : le maître répond, les répliques reçoivent aussi les écritures. Ne lève jamais. */
-export async function callService(consumer: Pick<ActiveInstance, "mod" | "instance">, service: string, method: string, args: unknown, locale?: string): Promise<Outcome> {
-  if (!requiresOf(consumer.mod.manifest).includes(service)) return { ok: false, reason: "undeclared" };
+/** Fournisseurs que ce consommateur peut appeler : déclarés dans son `requires`, dans une version suffisante (hors son propre module). */
+async function providersFor(consumer: Pick<ActiveInstance, "mod">, service: string): Promise<ActiveInstance[] | null> {
+  if (!requiresOf(consumer.mod.manifest).includes(service)) return null;
   const min = normalizeNeeds(consumer.mod.manifest.requires).find((n) => n.service === service)?.min ?? 1;
-  const providers = (await providerInstances(service, consumer.mod.manifest.id)).filter((p) => satisfiesVersion(offerVersionOf(p.mod.manifest.offers, service), min));
-  if (providers.length === 0) return { ok: false, reason: "unavailable" };
-  const { master, replicas } = resolveRouting(providers, await getRouting(service));
-  const run = async (p: ActiveInstance) => p.mod.def.services?.[service]?.[method]?.(await buildContext(p.mod, p.instance, locale), args);
-  if (typeof master.mod.def.services?.[service]?.[method] !== "function") return { ok: false, reason: "no_method" };
+  return (await providerInstances(service, consumer.mod.manifest.id)).filter((p) => satisfiesVersion(offerVersionOf(p.mod.manifest.offers, service), min));
+}
+
+const hasMethod = (p: ActiveInstance, service: string, method: string) => typeof p.mod.def.services?.[service]?.[method] === "function";
+const runOn = async (p: ActiveInstance, service: string, method: string, args: unknown, locale?: string) => p.mod.def.services?.[service]?.[method]?.(await buildContext(p.mod, p.instance, locale), args);
+
+/**
+ * Appel d'un service au nom d'une instance consommatrice. Service classique : le maître répond, les répliques reçoivent aussi les écritures.
+ * Service `each` : la PREMIÈRE instance active (par ordre de création) répond, sans réplique (pour `callAll`, voir plus bas). Ne lève jamais.
+ */
+async function dispatch(consumer: Pick<ActiveInstance, "mod" | "instance">, service: string, method: string, args: unknown, locale?: string): Promise<{ outcome: Outcome; master?: ActiveInstance }> {
+  const found = await providersFor(consumer, service);
+  if (found === null) return { outcome: { ok: false, reason: "undeclared" } };
+  if (found.length === 0) return { outcome: { ok: false, reason: "unavailable" } };
+  const each = isEachService(found, service);
+  const providers = each ? await byCreation(found) : found;
+  const { master, replicas } = each ? { master: providers[0]!, replicas: [] as ActiveInstance[] } : resolveRouting(providers, await getRouting(service));
+  if (!hasMethod(master, service, method)) return { outcome: { ok: false, reason: "no_method" }, master };
   let value: unknown;
   try {
-    value = await run(master);
+    value = await runOn(master, service, method, args, locale);
   } catch (error) {
     console.error(`[modules] service ${service}.${method} failed:`, (error as Error)?.message);
-    return { ok: false, reason: "failed" };
+    return { outcome: { ok: false, reason: "failed" }, master };
   }
   // Répliques : seulement pour les méthodes qui écrivent (celles que le fournisseur n'a pas déclarées en lecture seule), jamais bloquant.
   const readOnly = new Set((master.mod.manifest.offers ?? []).find((o) => o.service === service)?.readOnly ?? []);
   if (!readOnly.has(method)) {
     await Promise.allSettled(replicas.map(async (r) => {
-      if (typeof r.mod.def.services?.[service]?.[method] !== "function") return;
-      try { await run(r); } catch (error) { console.error(`[modules] replica ${r.instance.key} of ${service}.${method} failed:`, (error as Error)?.message); }
+      if (!hasMethod(r, service, method)) return;
+      try { await runOn(r, service, method, args, locale); } catch (error) { console.error(`[modules] replica ${r.instance.key} of ${service}.${method} failed:`, (error as Error)?.message); }
     }));
   }
-  return { ok: true, value };
+  return { outcome: { ok: true, value }, master };
+}
+
+export async function callService(consumer: Pick<ActiveInstance, "mod" | "instance">, service: string, method: string, args: unknown, locale?: string): Promise<Outcome> {
+  return (await dispatch(consumer, service, method, args, locale)).outcome;
+}
+
+/** Réponse d'UNE instance à `callAll`. `error` est un code court (« failed », « no_method »), jamais le message du fournisseur (il pourrait contenir un secret ; il est seulement journalisé). */
+export type FanoutResult = { instance: string; name?: string } & ({ ok: true; value: unknown } | { ok: false; error: string });
+
+/**
+ * Appel d'un service `each` sur TOUTES ses instances actives, par ordre de création : chacune répond pour elle-même, et un fournisseur qui lève
+ * ou n'a pas la méthode ne gêne pas les autres. Mêmes règles que `callService` (service déclaré dans `requires`, version suffisante, contexte
+ * de l'instance fournisseuse). Service non-each : UNE entrée, la réponse du maître. Service non déclaré ou sans fournisseur : tableau vide. Ne lève jamais.
+ */
+export async function callServiceAll(consumer: Pick<ActiveInstance, "mod" | "instance">, service: string, method: string, args: unknown, locale?: string): Promise<FanoutResult[]> {
+  const found = await providersFor(consumer, service);
+  if (!found || found.length === 0) return [];
+  const label = (p: ActiveInstance) => ({ instance: p.instance.key, name: p.instance.nickname || pickName(p.instance, locale ?? "", locale ?? "") });
+  if (!isEachService(found, service)) {
+    const { outcome, master } = await dispatch(consumer, service, method, args, locale);
+    if (!master) return [];
+    return [outcome.ok ? { ...label(master), ok: true, value: outcome.value } : { ...label(master), ok: false, error: outcome.reason }];
+  }
+  return Promise.all((await byCreation(found)).map(async (p): Promise<FanoutResult> => {
+    if (!hasMethod(p, service, method)) return { ...label(p), ok: false, error: "no_method" };
+    try {
+      return { ...label(p), ok: true, value: await runOn(p, service, method, args, locale) };
+    } catch (error) {
+      console.error(`[modules] service ${service}.${method} failed on ${p.instance.key}:`, (error as Error)?.message);
+      return { ...label(p), ok: false, error: "failed" };
+    }
+  }));
 }
 
 export async function serviceAvailable(service: string): Promise<boolean> {

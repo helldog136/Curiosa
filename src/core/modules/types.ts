@@ -230,8 +230,15 @@ export type ModuleApi = {
   services: {
     /** Y a-t-il un fournisseur actif de ce service ? */
     available(service: string): Promise<boolean>;
-    /** Appelle `method` du service sur le premier fournisseur actif. Le service doit être déclaré dans `requires` du manifeste. */
+    /** Appelle `method` du service sur le fournisseur qui répond (le maître ; pour un service `each`, la première instance par ordre de création). Le service doit être déclaré dans `requires` du manifeste. */
     call(service: string, method: string, args?: unknown): Promise<{ ok: true; value: unknown } | { ok: false; reason: "undeclared" | "unavailable" | "no_method" | "failed" }>;
+    /**
+     * Appelle `method` sur TOUTES les instances actives d'un service offert avec `each: true` (chaque instance répond pour elle-même : plusieurs chaînes,
+     * plusieurs comptes…), par ordre de création. Une entrée par instance ; `instance` = sa clé, `name` = son surnom lisible. Un fournisseur qui échoue
+     * donne `{ ok: false, error }` (code court, jamais le message du fournisseur) sans gêner les autres. Service non-each : UNE entrée, la réponse du
+     * maître (comme `call`). Service non déclaré dans `requires` ou sans fournisseur actif : `[]`. Ne lève jamais.
+     */
+    callAll(service: string, method: string, args?: unknown): Promise<Array<{ instance: string; name?: string; ok: true; value: unknown } | { instance: string; name?: string; ok: false; error: string }>>;
   };
 };
 

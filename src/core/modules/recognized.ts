@@ -27,7 +27,7 @@ export type RecognizedItem = {
   /** Cœur minimal annoncé par l'index (`"requires": { "core": "0.1.10" }`) : permet de savoir SANS télécharger si le module convient. Absent = aucune exigence. Un cœur plus ancien ignore ce champ. */
   requires?: CoreRequirement;
   /** Services que le module offre, annoncés par l'index (`"offers": ["contact.store"]`, ou `{ service, version }`) : permet de le choisir comme fournisseur SANS le télécharger. Facultatif, relu à l'installation. */
-  offers?: { service: string; version?: number }[];
+  offers?: { service: string; version?: number; each?: true }[];
   /** Services dont le module a besoin (`"requires": ["contact.store"]`, ou `{ service, min }` ; une liste, à ne pas confondre avec `requires: { core }`). Forme interne gardée dans la copie locale : `needs`. */
   needs?: { service: string; min?: number }[];
 };
