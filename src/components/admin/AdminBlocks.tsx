@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import type { AdminField, Block } from "@/core/blocks";
 import { ImageField } from "./ImageField";
 import { ui } from "./ui";
+import { askConfirm } from "./confirmDialog";
 import { runModuleAdminAction } from "@/app/admin/(panel)/instances/module-actions";
 
 type FormBlock = Extract<Block, { type: "adminForm" }>;
@@ -58,7 +59,13 @@ export function RowActionButton({ instanceId, label, action, href, id, confirm: 
     <form action={formAction}>
       <input type="hidden" name="id" value={id ?? ""} />
       <button disabled={pending} className={danger ? ui.btnDanger : ui.btn}
-        onClick={(e) => { if (confirmText && !confirm(confirmText)) e.preventDefault(); }}>{label}</button>
+        onClick={async (e) => {
+          if (!confirmText) return;
+          // Boîte dans la page (jamais window.confirm : le navigateur la supprime en silence quand l'onglet n'est pas au premier plan).
+          const form = e.currentTarget.form;
+          e.preventDefault();
+          if (await askConfirm(confirmText)) form?.requestSubmit();
+        }}>{label}</button>
     </form>
   );
 }
