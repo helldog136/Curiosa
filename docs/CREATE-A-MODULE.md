@@ -453,7 +453,7 @@ personnalisés. Les entrées alimentent le sujet `core.entry` : n'importe quel o
 Si l'installation est refusée, le message vous dit pourquoi : manifeste invalide (`module.json: settings.2.key — …`), `apiVersion` différente, `main` introuvable, lien symbolique, plus de 10 Mo…
 Le serveur journalise aussi les erreurs d'exécution de votre module (un module en erreur ne casse jamais le site).
 
-Pour un module **livré avec le framework** (comme l'exemple), il suffit de proposer son dossier dans `examples/` (ou `modules/`) du dépôt `curiosa-extras` : il apparaît dans le Catalogue.
+Pour un module **du dépôt `curiosa-extras`** (comme l'exemple), il suffit de proposer son dossier dans `examples/` (ou `modules/`) de ce dépôt et de l'ajouter à son `catalogue/index.json` : il apparaît dans le Catalogue.
 
 ### Tests unitaires, sans serveur
 
@@ -495,9 +495,9 @@ Testez au minimum : le manifeste est valide, chaque section/action/sujet déclar
 
 **Être listé dans le Catalogue** : deux voies.
 
-1. **Livré avec le framework** : un dossier de module dans `modules/` (modules complets) ou `examples/` (exemples) du dépôt `curiosa-extras`, `module.json` à sa racine. Il est installé depuis l'instantané `extras/` du serveur (variable `CURIOSA_EXTRAS_DIR` pour un autre dossier), sans réseau. Un dépôt peut aussi regrouper plusieurs modules : `https://hôte/propriétaire/dépôt#ref:dossier` installe le seul module de ce dossier.
+1. **Dans le dépôt `curiosa-extras`** : un dossier de module dans `modules/` (modules complets) ou `examples/` (exemples), `module.json` à sa racine, et une entrée dans son `catalogue/index.json` (étiquette épinglée). Le cœur n'embarque aucun module : il est installé depuis ce dépôt, lu sur le réseau. Un dépôt peut aussi regrouper plusieurs modules : `https://hôte/propriétaire/dépôt#ref:dossier` installe le seul module de ce dossier.
 2. **Votre propre dépôt de modules** : un dépôt (par exemple `jeanmi/mes-modules-curiosa`) qui regroupe vos modules, un dossier chacun. Le propriétaire d'un site l'ajoute dans Catalogue → *Mes dépôts de modules* (mode avancé) et installe ceux qu'il veut ; rien à faire de votre côté que de publier le dépôt.
-3. **Dépôt reconnu** : une entrée dans [`catalogue/index.json`](../catalogue/README.md), le fichier du dépôt du framework que **chaque installation relit à l'exécution** — il ne suit pas le rythme des versions du framework (`CURIOSA_UPDATE_REMOTE` choisit le remote d'origine d'un clone ; `CURIOSA_CATALOGUE_REPO`, `CURIOSA_CATALOGUE_REF`, `CURIOSA_CATALOGUE_RUNTIME` règlent cette lecture ; `MODULES_INDEX_URL` ajoute un index `https://` supplémentaire). On l'ajoute par une demande de fusion :
+3. **Dépôt reconnu** : une entrée dans [`catalogue/index.json`](../catalogue/README.md), le fichier du dépôt de modules que **chaque installation relit à l'exécution sur le réseau** — il ne suit pas le rythme des versions du framework (`CURIOSA_CATALOGUE_REPO` et `CURIOSA_CATALOGUE_REF` règlent cette lecture ; `MODULES_INDEX_URL` ajoute un index `https://` supplémentaire). On l'ajoute par une demande de fusion :
 
 ```json
 { "id": "guestbook", "name": "Guestbook", "description": "A moderated guestbook.", "repo": "https://github.com/<vous>/<depot>",

@@ -11,6 +11,7 @@
 //  - images → fichiers envoyés du framework (png/jpg/webp/gif ≤ 5 Mo), liens et images relatifs réécrits ;
 //  - ancienne adresse ≠ nouvelle → redirection permanente (les liens existants continuent de marcher) ;
 //  - comptes Grav (user/accounts/*.yaml) → utilisateurs ; leur mot de passe Grav (bcrypt) reste valable.
+// Les modules Blog, Pages et Hero sont installés depuis le catalogue (réseau requis, ou CURIOSA_CATALOGUE_REPO vers un dépôt local) : le cœur n'en embarque aucun.
 // Ce qui ne peut pas être converti (modules Twig, fichiers PDF/vidéo/SVG, images trop lourdes…) est listé dans le rapport, jamais ignoré en silence.
 import { execFileSync } from "node:child_process";
 import crypto from "node:crypto";
@@ -33,7 +34,8 @@ execFileSync("npx", ["prisma", "migrate", "deploy"], { stdio: "ignore", env: pro
 
 const { prisma } = await import("@/core/db");
 const { createInstance, defaultNames } = await import("@/core/instanceService");
-const { bundledManifests, provisionBundled } = await import("@/core/modules/starter");
+const { provisionModule } = await import("@/core/modules/starter");
+const { getModule } = await import("@/core/modules/registry");
 const { saveUpload, MAX_UPLOAD_BYTES } = await import("@/core/services/uploads");
 const { slugify } = await import("@/core/slug");
 const { createBackup } = await import("@/core/backup/export");
@@ -195,8 +197,14 @@ async function importImage(file, ctx) {
 }
 
 // ── collections et adresses ──
-// Les modules de contenu (blog, pages…) viennent de l'instantané `extras/` (ou de CURIOSA_EXTRAS_DIR) : on copie ceux dont l'import a besoin.
-const mk = async (id, opts = {}) => { if (!(await provisionBundled(id))) throw new Error(`Module « ${id} » introuvable : lancez « npm run extras:fetch » ou indiquez CURIOSA_EXTRAS_DIR.`); const m = bundledManifests().find((b) => b.id === id); return { m, inst: await createInstance(prisma, { manifest: m, ...opts, names: opts.names ?? defaultNames(m, enabledLocales) }) }; };
+// Les modules de contenu (blog, pages…) ne sont pas dans le cœur : ils s'installent depuis le catalogue (dépôt curiosa-extras par défaut, ou CURIOSA_CATALOGUE_REPO),
+// dans la base temporaire de l'import, comme le fait l'assistant de configuration. Catalogue injoignable : l'import s'arrête avec un message clair (aucune copie locale).
+const mk = async (id, opts = {}) => {
+  if (!(await provisionModule(id))) throw new Error(`Module « ${id} » : le catalogue n'est pas joignable ou ne le propose pas. Vérifiez la connexion et réessayez (CURIOSA_CATALOGUE_REPO désigne un autre dépôt de modules).`);
+  const m = (await getModule(id))?.manifest;
+  if (!m) throw new Error(`Module « ${id} » installé mais illisible.`);
+  return { m, inst: await createInstance(prisma, { manifest: m, ...opts, names: opts.names ?? defaultNames(m, enabledLocales) }) };
+};
 const hero = await mk("hero");
 const blogs = new Map(); // page racine → { inst, base }
 for (const root of blogRoots) {

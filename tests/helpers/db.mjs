@@ -40,10 +40,13 @@ export async function useTestDb() {
   process.env.DATABASE_URL = `file:${file}?connection_limit=1`;
   process.env.DATA_DIR = dir;
   process.env.CURIOSA_ALLOW_LOCAL_MODULES = "1";
+  // gitconfig global jetable, posé AVANT que l'installateur ne lise l'environnement : tests/helpers/catalogue.mjs y ajoute la redirection https → dépôt local du faux catalogue.
+  if (!process.env.GIT_CONFIG_GLOBAL) { process.env.GIT_CONFIG_GLOBAL = path.join(dir, "gitconfig"); fs.writeFileSync(process.env.GIT_CONFIG_GLOBAL, ""); }
   // Les dépôts git des tests sont jetables, y compris ceux que l'installateur crée lui-même : modèle vide, pas de fsync, pas de ramasse-miettes (même résultat, bien plus vite).
   Object.assign(process.env, { GIT_CONFIG_COUNT: "3", GIT_CONFIG_KEY_0: "init.templateDir", GIT_CONFIG_VALUE_0: "", GIT_CONFIG_KEY_1: "core.fsync", GIT_CONFIG_VALUE_1: "none", GIT_CONFIG_KEY_2: "gc.auto", GIT_CONFIG_VALUE_2: "0" });
-  // Modules livrés des tests : de petites fixtures, jamais les vrais modules (le cœur n'en contient aucun).
-  process.env.CURIOSA_EXTRAS_DIR ??= path.join(root, "tests/fixtures/extras");
+  // Le cœur ne contient aucun module et le catalogue vient UNIQUEMENT du réseau : par défaut un test n'a donc AUCUN catalogue (dépôt local inexistant, jamais Internet).
+  // Un test qui a besoin d'un catalogue en fabrique un (tests/helpers/catalogue.mjs : dépôt git local + index factice).
+  process.env.CURIOSA_CATALOGUE_REPO ??= "file:///nonexistent/curiosa-extras";
   const { prisma } = await import("@/core/db");
   // Base jetable, détruite à la fin du test : on n'attend pas les écritures sur disque (synchronous=OFF, journal en mémoire). Aucun effet sur ce qui est vérifié.
   await prisma.$queryRawUnsafe("PRAGMA journal_mode=MEMORY");
@@ -52,7 +55,7 @@ export async function useTestDb() {
   return {
     dir,
     prisma,
-    /** Installe un module de test (tests/fixtures/modules/<id>) : fichiers copiés + ligne en base, activé. */
+    /** Installe un module de test (tests/fixtures/extras/modules/<id>) : fichiers copiés + ligne en base, activé. La ligne est `bundled` : un site ancien (compatibilité), dossier déjà sur le disque. */
     async fixture(id, enabled = true) {
       const { installFixtureFiles } = await import("./fixtureModules.mjs");
       installFixtureFiles(dir, id);

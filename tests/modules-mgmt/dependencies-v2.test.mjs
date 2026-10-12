@@ -1,19 +1,16 @@
 import test, { beforeEach, after } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { useTestDb } from "../helpers/db.mjs";
 import { makeRepo } from "../helpers/repo.mjs";
+import { createCatalogue } from "../helpers/catalogue.mjs";
 
-// Modules livrés ET catalogue reconnu fabriqués dans des dossiers temporaires : aucun réseau (les dépôts https sont redirigés vers des dépôts locaux).
-const EX = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-deps-extras-"));
-const GITCONF = path.join(EX, "gitconfig");
-fs.writeFileSync(GITCONF, "");
-process.env.CURIOSA_EXTRAS_DIR = EX;
-process.env.GIT_CONFIG_GLOBAL = GITCONF;
-
+// Le cœur n'embarque aucun module : TOUS les modules de ces tests viennent d'un catalogue (dépôts git locaux joints par une adresse https réécrite vers eux, index factice). Aucun réseau.
 const db = await useTestDb();
+const GITCONF = process.env.GIT_CONFIG_GLOBAL;
+const cat = createCatalogue();
+const BASE_GITCONF = fs.readFileSync(process.env.GIT_CONFIG_GLOBAL, "utf8");
 const I = await import("@/core/modules/installer");
 const R = await import("@/core/modules/registry");
 const Dep = await import("@/core/modules/dependencies");
@@ -31,15 +28,20 @@ const { parseManifest } = await import("@/core/modules/manifest");
 const { createInstance } = await import("@/core/instanceService");
 const { setSetting } = await import("@/core/settings");
 
+/** Les entrées de l'index servi par le faux catalogue : id → entrée (dans l'ordre où elles ont été publiées). */
+const listed = new Map();
+const repos = new Map();
+const publishIndex = () => { cat.writeIndex(...listed.values()); Rec.clearRecognizedCache(); };
+
 beforeEach(async () => {
   await db.reset();
-  fs.rmSync(path.join(EX, "modules"), { recursive: true, force: true });
-  fs.rmSync(path.join(EX, "catalogue"), { recursive: true, force: true });
-  fs.writeFileSync(GITCONF, "");
+  await cat.clear();
+  listed.clear(); repos.clear();
+  fs.writeFileSync(process.env.GIT_CONFIG_GLOBAL, BASE_GITCONF);
   Rec.clearRecognizedCache();
   await setSetting("i18n.default", "fr"); await setSetting("i18n.enabled", ["fr", "en"]);
 });
-after(() => { fs.rmSync(EX, { recursive: true, force: true }); return db.close(); });
+after(() => { cat.close(); return db.close(); });
 const quiet = async (fn) => { const log = console.error; console.error = () => {}; try { return await fn(); } finally { console.error = log; } };
 
 const SVC = "demo.store";
@@ -47,12 +49,23 @@ const SVC2 = "demo.mail";
 const code = (service = SVC) => `export default { services: { "${service}": { add: async (ctx, args) => ({ by: ctx.instance.key }) } } };`;
 const manifestOf = (id, extra = {}) => ({ apiVersion: 2, id, name: id.toUpperCase(), version: "1.0.0", main: "index.mjs", ...extra });
 
-/** Module LIVRÉ avec l'archive (extras/modules/<id>). */
+/** Module du catalogue annoncé par l'index (offers/requires compris) ; le republier avec une autre version commite dans le même dépôt. */
 function bundled(id, extra = {}, main = code()) {
-  const dir = path.join(EX, "modules", id);
-  fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(path.join(dir, "module.json"), JSON.stringify(manifestOf(id, extra)));
-  fs.writeFileSync(path.join(dir, "index.mjs"), main);
+  let repo = repos.get(id);
+  if (!repo) {
+    repo = makeRepo({ "module.json": manifestOf(id, extra), "index.mjs": main });
+    repos.set(id, repo);
+    fs.appendFileSync(GITCONF, `[url "${repo.url}"]\n\tinsteadOf = https://github.com/t/${id}\n`);
+  } else {
+    fs.writeFileSync(path.join(repo.dir, "module.json"), JSON.stringify(manifestOf(id, extra)));
+    fs.writeFileSync(path.join(repo.dir, "index.mjs"), main);
+    repo.g("add", "-A"); repo.g("commit", "-q", "--allow-empty", "--no-verify", "-m", `${id} ${extra.version ?? "1.0.0"}`);
+  }
+  const entry = { id, name: id.toUpperCase(), description: "d", repo: `https://github.com/t/${id}`, version: extra.version ?? "1.0.0", apiVersion: 2 };
+  if (extra.offers) entry.offers = extra.offers.map((o) => (o.version ? o : o.service));
+  if (extra.requires) entry.requires = extra.requires.map((r) => (r.min ? r : r.service));
+  listed.set(id, entry);
+  publishIndex();
 }
 /** Module d'un dépôt reconnu : un vrai dépôt git local, joint par son adresse https (réécrite vers le dépôt local). Renvoie l'entrée d'index. */
 function remote(id, extra = {}, { announce = true, files = {} } = {}) {
@@ -66,11 +79,7 @@ function remote(id, extra = {}, { announce = true, files = {} } = {}) {
   }
   return { repo, entry };
 }
-function setIndex(...entries) {
-  fs.mkdirSync(path.join(EX, "catalogue"), { recursive: true });
-  fs.writeFileSync(path.join(EX, "catalogue", "index.json"), JSON.stringify({ version: 1, modules: entries }));
-  Rec.clearRecognizedCache();
-}
+function setIndex(...entries) { for (const e of entries) listed.set(e.id, e); publishIndex(); }
 const row = (id) => db.prisma.module.findUnique({ where: { id } });
 const insts = (id) => db.prisma.moduleInstance.findMany({ where: { moduleId: id }, orderBy: { key: "asc" } });
 const active = async (id) => (await R.getActiveInstances()).find((a) => a.mod.manifest.id === id);
@@ -149,7 +158,7 @@ test("versions : un module installé en version 1 est mis à jour en version 2 �
 
 /* ───────────── B6 : cascade avec instance par défaut, marques « automatique » ───────────── */
 
-test("installer un consommateur installe le fournisseur livré, l'active et lui donne son instance (multiple)", async () => {
+test("installer un consommateur installe le fournisseur du catalogue, l'active et lui donne son instance (multiple)", async () => {
   bundled("prov", { instances: "multiple", offers: [{ service: SVC, label: { fr: "Carnet" } }] });
   bundled("cons", { requires: [{ service: SVC }] });
   const r = await I.installFromCatalogue("cons");
@@ -181,8 +190,8 @@ test("activation : fournisseur installé mais désactivé → réactivé + insta
   bundled("prov", { offers: [{ service: SVC }] });
   bundled("cons", { requires: [{ service: SVC }] });
   // 1) installé, désactivé, aucune instance
-  assert.equal((await I.installBundled("prov", { dependencies: false })).ok, true);
-  assert.equal((await I.installBundled("cons", { dependencies: false })).ok, true);
+  assert.equal((await I.installFromCatalogue("prov", { dependencies: false })).ok, true);
+  assert.equal((await I.installFromCatalogue("cons", { dependencies: false })).ok, true);
   let r = await I.setModuleEnabled("cons", true);
   assert.deepEqual([r.ok, r.provided], [true, ["prov"]]);
   assert.deepEqual([(await row("prov")).enabled, (await insts("prov")).length], [true, 1]);
@@ -209,7 +218,7 @@ test("activation : fournisseur installé mais désactivé → réactivé + insta
 test("un module installé À LA MAIN n'est jamais marqué automatique ; un module déjà actif avec instance ne change pas", async () => {
   bundled("prov", { offers: [{ service: SVC }] });
   bundled("cons", { requires: [{ service: SVC }] });
-  await I.installBundled("prov", { dependencies: false }); await I.setModuleEnabled("prov", true);
+  await I.installFromCatalogue("prov", { dependencies: false }); await I.setModuleEnabled("prov", true);
   await createInstance(db.prisma, { manifest: (await R.getModule("prov")).manifest, names: { fr: "carnet" } });
   assert.equal((await I.installFromCatalogue("cons")).provided, undefined);
   assert.equal((await I.setModuleEnabled("cons", true)).ok, true);
@@ -253,22 +262,22 @@ test("dépôt personnel : son installation résout aussi ses besoins (fournisseu
   assert.deepEqual([(await row("prov")).enabled, (await row("perso")).enabled], [true, false]);
 });
 
-test("choix du fournisseur : un module déjà installé d'abord, puis un livré, puis le premier du catalogue reconnu", () => {
-  const entry = (id, source, offers) => ({ id, source, compatible: true, offers: offers ?? [{ service: SVC, version: 1 }] });
-  const catalogue = [entry("b-livre", "bundled"), entry("a-livre", "bundled"), entry("z-recu", "recognized"), entry("m-recu", "recognized"), { ...entry("ancien", "recognized"), compatible: false }, { ...entry("trop-neuf", "recognized"), needsNewerCore: "9.9.9" }, entry("autre", "bundled", [{ service: SVC2, version: 1 }])];
+test("choix du fournisseur : un module déjà installé d'abord, puis le premier du catalogue (dans l'ordre de l'index)", () => {
+  const entry = (id, offers) => ({ id, kind: "recognized", compatible: true, offers: offers ?? [{ service: SVC, version: 1 }] });
+  const catalogue = [entry("b-un"), entry("a-deux"), entry("z-trois"), entry("m-quatre"), { ...entry("ancien"), compatible: false }, { ...entry("trop-neuf"), needsNewerCore: "9.9.9" }, entry("autre", [{ service: SVC2, version: 1 }])];
   const need = { service: SVC, min: 1 };
   const order = (installed, exclude = []) => Plan.rankCandidates(need, installed, catalogue, new Set(exclude)).map((c) => c.id);
-  assert.deepEqual(order([]), ["b-livre", "a-livre", "z-recu", "m-recu"], "ordre du catalogue : livrés puis reconnus, incompatibles écartés");
+  assert.deepEqual(order([]), ["b-un", "a-deux", "z-trois", "m-quatre"], "ordre de l'index (stable), incompatibles écartés");
   const inst = (id, enabled) => ({ id, enabled, offers: [{ service: SVC, version: 1 }] });
-  assert.deepEqual(order([inst("zz-off", false), inst("bb-on", true), inst("aa-on", true)]), ["aa-on", "bb-on", "zz-off", "b-livre", "a-livre", "z-recu", "m-recu"], "installés : activés d'abord, par identifiant");
-  assert.deepEqual(order([], ["b-livre"]).slice(0, 1), ["a-livre"], "le module qui demande n'est jamais son propre fournisseur");
+  assert.deepEqual(order([inst("zz-off", false), inst("bb-on", true), inst("aa-on", true)]), ["aa-on", "bb-on", "zz-off", "b-un", "a-deux", "z-trois", "m-quatre"], "installés : activés d'abord, par identifiant");
+  assert.deepEqual(order([], ["b-un"]).slice(0, 1), ["a-deux"], "le module qui demande n'est jamais son propre fournisseur");
   assert.deepEqual(Plan.rankCandidates({ service: SVC, min: 2 }, [], catalogue, new Set()), [], "version insuffisante : pas candidat");
 });
 
 test("deux fournisseurs déjà actifs : rien n'est choisi ni installé (le mécanisme maître/répliques décide)", async () => {
   bundled("prov-a", { offers: [{ service: SVC }] }); bundled("prov-b", { offers: [{ service: SVC }] });
   bundled("cons", { requires: [{ service: SVC }] });
-  for (const id of ["prov-a", "prov-b"]) { await I.installBundled(id, { dependencies: false }); await I.setModuleEnabled(id, true); await createInstance(db.prisma, { manifest: (await R.getModule(id)).manifest, nickname: id, names: { fr: id } }); }
+  for (const id of ["prov-a", "prov-b"]) { await I.installFromCatalogue(id, { dependencies: false }); await I.setModuleEnabled(id, true); await createInstance(db.prisma, { manifest: (await R.getModule(id)).manifest, nickname: id, names: { fr: id } }); }
   const r = await I.installFromCatalogue("cons");
   assert.deepEqual([r.ok, r.provided], [true, undefined]);
   assert.equal((await Dep.duplicateServices()).length, 1, "le doublon reste à arbitrer par l'admin");
@@ -295,7 +304,7 @@ test("profondeur : trois fournisseurs enchaînés passent, quatre sont refusés 
   assert.equal(ok.ok, true);
   assert.deepEqual(await allModules(), ["m0", "m1", "m2", "m3"]);
   assert.deepEqual([(await row("m3")).enabled, (await insts("m3")).length], [true, 1], "chaque maillon actif a son instance");
-  await db.reset(); fs.rmSync(path.join(EX, "modules"), { recursive: true, force: true });
+  await db.reset(); listed.clear(); publishIndex();
   chain(4);
   const refused = await I.installFromCatalogue("m0");
   assert.equal(refused.ok, false);
@@ -328,8 +337,7 @@ test("un candidat qui ment (l'index annonce un service que le manifeste n'offre 
   setIndex(liar.entry);
   // le livré passe avant le reconnu : le menteur n'est jamais essayé
   assert.equal((await I.installFromCatalogue("cons")).provided[0], "honnete");
-  await db.reset(); fs.rmSync(path.join(EX, "modules", "honnete"), { recursive: true, force: true });
-  Rec.clearRecognizedCache();
+  await db.reset(); listed.delete("honnete"); publishIndex();
   const r = await I.installFromCatalogue("cons");
   assert.equal(r.ok, false);
   assert.equal(r.missing[0].error, "modules.error.serviceMismatch");

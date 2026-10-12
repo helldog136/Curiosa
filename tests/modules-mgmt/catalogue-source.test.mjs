@@ -1,20 +1,18 @@
 import test, { beforeEach, after } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { useTestDb } from "../helpers/db.mjs";
 import { makeRepo } from "../helpers/repo.mjs";
+import { createCatalogue } from "../helpers/catalogue.mjs";
 
-// Le catalogue (dépôt de modules, version épinglée) est la source de tout module installé ; la copie hors ligne n'est qu'un repli.
+// Le catalogue (dépôt de modules, version épinglée) est la SEULE source de tout module installé. Les « anciennes lignes » `bundled` sont celles d'un site créé avec une
+// ancienne version du cœur (compatibilité, à retirer en 0.3.0) : leur dossier est déjà sur le disque, le catalogue est leur source, jamais un repli local.
 // Aucun réseau : les dépôts https du catalogue sont redirigés vers des dépôts git locaux.
-const EX = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-catsrc-"));
-const GITCONF = path.join(EX, "gitconfig");
-fs.writeFileSync(GITCONF, "");
-process.env.CURIOSA_EXTRAS_DIR = EX;
-process.env.GIT_CONFIG_GLOBAL = GITCONF;
-
 const db = await useTestDb();
+const GITCONF = process.env.GIT_CONFIG_GLOBAL;
+const cat0 = createCatalogue();
+const BASE_GITCONF = fs.readFileSync(GITCONF, "utf8");
 const I = await import("@/core/modules/installer");
 const R = await import("@/core/modules/registry");
 const Cat = await import("@/core/modules/catalogue");
@@ -30,13 +28,12 @@ const { setSetting, getSetting } = await import("@/core/settings");
 
 beforeEach(async () => {
   await db.reset();
-  fs.rmSync(path.join(EX, "modules"), { recursive: true, force: true });
-  fs.rmSync(path.join(EX, "catalogue"), { recursive: true, force: true });
-  fs.writeFileSync(GITCONF, "");
+  await cat0.clear();
+  fs.writeFileSync(GITCONF, BASE_GITCONF);
   C.setCoreVersionForTests(null);
   Rec.clearRecognizedCache();
 });
-after(() => { fs.rmSync(EX, { recursive: true, force: true }); return db.close(); });
+after(() => { cat0.close(); return db.close(); });
 
 const quiet = async (fn) => { const log = console.error; console.error = () => {}; try { return await fn(); } finally { console.error = log; } };
 const code = (marker, migr = "") => `export default { marker: ${JSON.stringify(marker)}${migr} };\n`;
@@ -46,12 +43,14 @@ const row = (id) => db.prisma.module.findUnique({ where: { id } });
 const dir = (id) => R.moduleDir(id);
 const leftovers = (id) => fs.readdirSync(path.dirname(dir(id))).filter((n) => /previous|incoming/.test(n));
 
-/** Copie hors ligne de l'archive (extras/modules/<id>). */
-function snapshot(id, over = {}, marker = "v1") {
-  const d = path.join(EX, "modules", id);
+/** Un site d'avant : le dossier du module est déjà sur le disque (ancien code) avec sa ligne `bundled`. */
+async function legacySite(id, over = {}, marker = "v1") {
+  const d = dir(id);
+  fs.rmSync(d, { recursive: true, force: true });
   fs.mkdirSync(d, { recursive: true });
   fs.writeFileSync(path.join(d, "module.json"), JSON.stringify(man(id, over)));
   fs.writeFileSync(path.join(d, "index.mjs"), code(marker));
+  await db.prisma.module.create({ data: { id, source: "bundled", version: man(id, over).version, enabled: false } });
 }
 /** Dépôt du catalogue : un vrai dépôt git, un dossier par module, une étiquette épinglée. Renvoie le dépôt et l'entrée d'index. */
 function catalogueRepo(id, { over = { version: "1.1.0" }, marker = "v2", files = {}, entry = {}, manifest } = {}) {
@@ -61,40 +60,32 @@ function catalogueRepo(id, { over = { version: "1.1.0" }, marker = "v2", files =
   fs.appendFileSync(GITCONF, `[url "${repo.url}"]\n\tinsteadOf = ${https}\n`);
   return { repo, entry: { id, name: id, description: "d", repo: https, subdir: `modules/${id}`, ref: "v1.0.0", version: man(id, over).version, apiVersion: 2, ...entry } };
 }
-function setIndex(...entries) {
-  fs.mkdirSync(path.join(EX, "catalogue"), { recursive: true });
-  fs.writeFileSync(path.join(EX, "catalogue", "index.json"), JSON.stringify({ version: 1, modules: entries }));
-  Rec.clearRecognizedCache();
-}
-/** Le cas du propriétaire : module installé depuis la copie hors ligne en 1.0.0, avec instance, réglages, données ; le catalogue propose la suite. */
+const setIndex = (...entries) => cat0.setIndex(...entries);
+/** Le cas du propriétaire : module installé par une ancienne version en 1.0.0, avec instance, réglages, données ; le catalogue propose la suite. */
 async function installedOldCopy(id, remote = {}, own = {}) {
-  snapshot(id, own.manifest ?? {}, "v1");
+  await legacySite(id, own.manifest ?? {}, "v1");
   const cat = catalogueRepo(id, remote);
-  // Installation d'abord avec un index SANS ce module : la ligne est `bundled`, comme sur le site du propriétaire.
-  setIndex();
-  assert.equal((await I.installFromCatalogue(id)).ok, true);
   assert.equal((await row(id)).source, "bundled");
   assert.equal((await I.setModuleEnabled(id, true)).ok, true);
   const inst = await createInstance(db.prisma, { manifest: (await R.getModule(id)).manifest, nickname: "Carnet", names: { fr: "Carnet" } });
   await setSetting(`instance.${inst.id}.titre`, "Mon carnet");
   await db.prisma.moduleRecord.create({ data: { instanceId: inst.id, collection: "events", data: JSON.stringify({ t: "x" }) } });
-  setIndex(cat.entry);
+  await setIndex(cat.entry);
   return { ...cat, inst };
 }
 
-test("priorité : l'entrée du catalogue n'est jamais masquée, même à égalité de version ; la copie hors ligne ne sert que pour ce que le catalogue ne liste pas", async () => {
-  snapshot("alpha"); snapshot("beta"); snapshot("gamma", { version: "1.1.0" });
-  setIndex(catalogueRepo("alpha").entry, catalogueRepo("gamma", { over: { version: "1.1.0" } }).entry);
+test("catalogue : l'index est la seule source (dépôt git épinglé) ; un module absent de l'index n'est pas proposé, même s'il est installé", async () => {
+  await legacySite("beta");
+  await setIndex(catalogueRepo("alpha").entry, catalogueRepo("gamma", { over: { version: "1.1.0" } }).entry);
   const by = Object.fromEntries((await Cat.getCatalogue()).map((e) => [e.id, e]));
-  assert.deepEqual([by.alpha.source, by.alpha.version, by.alpha.ref, by.alpha.subdir, by.alpha.repo], ["recognized", "1.1.0", "v1.0.0", "modules/alpha", "https://github.com/t/alpha"]);
-  assert.equal(by.gamma.source, "recognized", "à égalité aussi : une seule source de vérité");
-  assert.equal(by.beta.source, "bundled", "repli : le catalogue ne le liste pas");
-  assert.equal((await Cat.findCatalogueEntry("alpha")).source, "recognized");
+  assert.deepEqual([by.alpha.kind, by.alpha.version, by.alpha.ref, by.alpha.subdir, by.alpha.repo], ["recognized", "1.1.0", "v1.0.0", "modules/alpha", "https://github.com/t/alpha"]);
+  assert.equal(by.beta, undefined, "ni dans l'index, ni ailleurs : aucune copie locale ne le propose");
+  assert.equal(await Cat.findCatalogueEntry("beta"), undefined);
+  assert.equal(by.gamma.kind, "recognized");
 });
 
 test("module jamais installé : l'installation passe par le dépôt du catalogue (source git épinglée)", async () => {
-  snapshot("delta");
-  setIndex(catalogueRepo("delta").entry);
+  await setIndex(catalogueRepo("delta").entry);
   assert.equal((await I.installFromCatalogue("delta")).ok, true);
   const r = await row("delta");
   assert.deepEqual([r.source, r.version, r.ref, r.subdir], ["git", "1.1.0", "v1.0.0", "modules/delta"]);
@@ -104,10 +95,11 @@ test("mise à jour : une copie 1.0.0 est proposée en 1.1.0 (niveau, version cib
   await installedOldCopy("epsilon");
   const c = await I.checkForUpdateDetailed("epsilon");
   assert.deepEqual([c.failed, c.check.available, c.check.target, c.check.level, c.check.needsCore], [false, true, "1.1.0", "minor", undefined]);
-  setIndex({ ...(await Cat.findCatalogueEntry("epsilon")), version: "1.0.0", dir: undefined, source: undefined, kind: undefined });
+  const known = await Cat.findCatalogueEntry("epsilon");
+  await setIndex({ id: "epsilon", name: "epsilon", description: "d", repo: known.repo, subdir: known.subdir, ref: known.ref, apiVersion: 2, version: "1.0.0" });
   assert.equal((await I.checkForUpdateDetailed("epsilon")).check.available, false, "égalité : rien");
   await db.prisma.module.update({ where: { id: "epsilon" }, data: { version: "2.0.0" } });
-  setIndex(catalogueRepo("epsilon").entry);
+  await setIndex(catalogueRepo("epsilon").entry);
   assert.equal((await I.checkForUpdateDetailed("epsilon")).check.available, false, "catalogue en retard : rien");
 });
 
@@ -150,11 +142,18 @@ test("conversion : le module devient un module du catalogue et GARDE instances, 
   assert.equal((await I.updateModule("eta")).error, "modules.error.uptodate");
 });
 
-test("origine : un module non converti dont le catalogue propose plus récent reste « catalogue », jamais « custom »", async () => {
+test("origine : un module non converti dont le catalogue propose plus récent reste « catalogue », jamais « custom » ; le catalogue ne le liste plus : source inconnue, il reste installé", async () => {
   await installedOldCopy("theta");
   assert.equal(Cat.moduleOrigin(await row("theta"), await Cat.getCatalogue()), "catalogue");
-  setIndex();
-  assert.equal(Cat.moduleOrigin(await row("theta"), await Cat.getCatalogue()), "catalogue", "la copie hors ligne le liste encore");
+  await setIndex();
+  assert.equal(Cat.moduleOrigin(await row("theta"), await Cat.getCatalogue()), "custom", "non listé : plus aucune garantie du catalogue");
+  assert.equal((await row("theta")).source, "bundled", "installé tel quel");
+  assert.equal((await R.getModule("theta")).def.marker, "v1", "et il continue de fonctionner");
+  const c = await I.checkForUpdateDetailed("theta");
+  assert.deepEqual([c.check.available, c.failed], [false, true], "la vérification est signalée comme impossible, pas comme « à jour »");
+  assert.equal((await I.updateModule("theta")).error, "modules.error.unknownSource");
+  const d = await X.diagnoseModule("theta", { compare: "network" });
+  assert.deepEqual([d.kind, d.catalogue, d.comparison], ["bundled", undefined, null]);
   assert.equal(Cat.moduleOrigin({ id: "inconnu", source: "bundled", repoUrl: null }, await Cat.getCatalogue()), "custom");
 });
 
@@ -182,7 +181,6 @@ test("« Tout mettre à jour » : le module apparaît dans le rapport et la mise
 test("retour arrière complet : dépôt injoignable, autre identifiant, trop gros, cœur trop ancien", async () => {
   const cases = {
     clone: (c) => fs.rmSync(c.repo.dir, { recursive: true, force: true }),
-    idmismatch: null, size: null, core: null, perms: null,
   };
   const run = async (id, remote, error, prep) => {
     const w = await installedOldCopy(id, remote);
@@ -198,7 +196,7 @@ test("retour arrière complet : dépôt injoignable, autre identifiant, trop gro
     assert.equal((await R.getModule(id)).def.marker, "v1");
     return r;
   };
-  await run("clone-ko", {}, "modules.error.clone", cases.clone);
+  await run("clone-ko", {}, "modules.error.catalogue", cases.clone);
   await run("autre-id", { manifest: man("intrus", { version: "1.1.0" }) }, "modules.error.idmismatch");
   await run("trop-gros", { files: { "gros.bin": "x".repeat(10 * 1024 * 1024 + 1) } }, "modules.error.size");
   const core = await run("vieux-coeur", { over: { version: "1.1.0", minCore: "99.0.0" } }, "modules.error.core");
@@ -243,27 +241,40 @@ test("Maintenance : le diagnostic donne le dépôt du catalogue ; réinstaller c
   assert.equal((await X.reinstallModule("mu")).changed, false);
 });
 
-test("repli hors ligne : catalogue injoignable, la réinstallation remet la copie locale sans rien convertir ; la mise à jour, elle, échoue proprement", async () => {
+test("catalogue injoignable : AUCUN repli local — la mise à jour et la réinstallation échouent avec un message clair, le module installé reste tel quel", async () => {
   const w = await installedOldCopy("nu");
-  fs.rmSync(w.repo.dir, { recursive: true, force: true });
   fs.writeFileSync(path.join(dir("nu"), "index.mjs"), code("abime"));
-  const r = await quiet(() => X.reinstallModule("nu"));
-  assert.deepEqual([r.ok, r.changed], [true, true]);
+  const hash = X.fingerprintDir(dir("nu")).hash;
+  // 1. le dépôt du module est parti
+  fs.rmSync(w.repo.dir, { recursive: true, force: true });
+  for (const run of [() => X.reinstallModule("nu"), () => I.updateModule("nu")]) {
+    const r = await quiet(run);
+    assert.deepEqual([r.ok, r.error], [false, "modules.error.catalogue"]);
+  }
+  // 2. le catalogue entier est injoignable (aucune copie reçue non plus)
+  await cat0.down({ forget: true });
+  for (const run of [() => X.reinstallModule("nu"), () => I.updateModule("nu")]) {
+    const r = await quiet(run);
+    assert.deepEqual([r.ok, r.error], [false, "modules.error.catalogue"]);
+  }
+  const c = await I.checkForUpdateDetailed("nu");
+  assert.deepEqual([c.check.available, c.failed], [false, true]);
   assert.equal((await row("nu")).source, "bundled");
-  assert.equal((await quiet(() => I.updateModule("nu"))).error, "modules.error.clone");
+  assert.equal(X.fingerprintDir(dir("nu")).hash, hash, "pas de copie locale remise à la place : le dossier n'a pas bougé");
+  assert.deepEqual(leftovers("nu"), []);
 });
 
-test("assistant de configuration : le catalogue d'abord, la copie hors ligne seulement s'il est injoignable", async () => {
-  snapshot("xi"); snapshot("omicron");
+test("assistant de configuration : depuis le catalogue seulement, jamais de copie locale", async () => {
   const xi = catalogueRepo("xi"); const om = catalogueRepo("omicron");
-  setIndex(xi.entry, om.entry);
-  assert.equal(await S.provisionModule("xi"), "catalogue");
+  await setIndex(xi.entry, om.entry);
+  assert.equal(await S.provisionModule("xi"), true);
   const r = await row("xi");
   assert.deepEqual([r.source, r.version, r.enabled], ["git", "1.1.0", true]);
   fs.rmSync(om.repo.dir, { recursive: true, force: true });
   const warn = console.warn; console.warn = () => {};
-  try { assert.equal(await S.provisionModule("omicron"), "offline-copy"); } finally { console.warn = warn; }
-  assert.deepEqual([(await row("omicron")).source, (await row("omicron")).version], ["bundled", "1.0.0"]);
+  try { assert.equal(await S.provisionModule("omicron"), false); } finally { console.warn = warn; }
+  assert.equal(await row("omicron"), null);
+  assert.ok(!fs.existsSync(dir("omicron")));
 });
 
 test("neutralité : le cœur ne cite aucun identifiant de module dans les fichiers de cette règle", () => {
@@ -273,10 +284,10 @@ test("neutralité : le cœur ne cite aucun identifiant de module dans les fichie
   }
 });
 
-test("libellés : aucune clé manquante (fr/en) et aucune formulation « livré » dans l'interface", () => {
+test("libellés : aucune clé manquante (fr/en) et aucune formulation « livré / embarqué / copie hors ligne / instantané » dans l'interface", () => {
   const fr = JSON.parse(fs.readFileSync("src/locales/fr.json", "utf8")); const en = JSON.parse(fs.readFileSync("src/locales/en.json", "utf8"));
-  for (const k of ["maintenance.result.catalogue", "maintenance.source.git", "maintenance.source.bundled"]) assert.ok(fr[k] && en[k], k);
-  assert.match(fr["maintenance.result.catalogue"], /Une mise à jour est disponible \(\{version\}\) : lancez-la depuis Modules › Mises à jour/);
+  for (const k of ["maintenance.source.git", "maintenance.source.unknown", "modules.error.catalogue", "modules.error.unknownSource", "catalogue.unreachable"]) assert.ok(fr[k] && en[k], k);
+  assert.match(fr["modules.error.catalogue"], /Le catalogue n'est pas joignable, réessayez/);
   assert.deepEqual(Object.keys(fr).filter((k) => !(k in en)), []);
-  assert.deepEqual(Object.values(fr).filter((v) => typeof v === "string" && /livré|installé à la configuration/i.test(v)), []);
+  assert.deepEqual(Object.values(fr).filter((v) => typeof v === "string" && /livré|embarqué|hors ligne|instantané|copie locale|installé à la configuration/i.test(v)), []);
 });

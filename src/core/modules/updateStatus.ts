@@ -5,7 +5,7 @@ import { checkForUpdateDetailed, updateModule } from "./installer";
 import { clearRecognizedCache } from "./recognized";
 import { collectReport, createReportCache, updateSequentially, type ModulesReport, type Summary } from "./bulkUpdate";
 
-/** Modules qui ont une source où chercher une mise à jour : le catalogue ou un dépôt. */
+/** Modules qui ont une source où chercher une mise à jour : un dépôt, ou le catalogue pour une ligne `bundled` d'un ancien site (compatibilité, à retirer en 0.3.0). */
 async function sourcedModules() {
   const rows = await prisma.module.findMany({ orderBy: { id: "asc" } });
   return rows.filter((r) => r.source === "bundled" || (r.source === "git" && !!r.repoUrl)).map((r) => ({ id: r.id, version: r.version }));

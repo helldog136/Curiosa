@@ -11,7 +11,7 @@ const eslintConfig = [
     rules: { "@next/next/no-html-link-for-pages": "off" },
   },
   {
-    ignores: [".next/**", "node_modules/**", "public/**", "extras/**"],
+    ignores: [".next/**", "node_modules/**", "public/**"],
   },
 ];
 
