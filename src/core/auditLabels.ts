@@ -13,7 +13,7 @@ export const AUDIT_ACTIONS = [
   "instance.create", "instance.delete", "instance.update", "instance.settings", "instance.sources", "service.routing",
   "backup.create", "backup.restore",
   "update.start", "update.auto.on", "update.auto.off", "update.channel.rc", "update.channel.stable",
-  "mcp.enable", "mcp.disable", "mcp.token.create", "mcp.token.revoke", "mcp.grant.on", "mcp.grant.off", "mcp.grants.defaults", "mcp.grants.none",
+  "mcp.enable", "mcp.disable", "mcp.token.create", "mcp.token.revoke", "mcp.token.url.on", "mcp.token.url.off", "mcp.grant.on", "mcp.grant.off", "mcp.grants.defaults", "mcp.grants.none",
   "mail.sent",
 ] as const;
 

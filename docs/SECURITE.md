@@ -38,6 +38,15 @@ La méthode la plus sûre : on se connecte avec l'**empreinte, le visage, le cod
 - **Le domaine compte** : réglez `SITE_URL` dans `.env` avec l'adresse définitive du site. Si elle change, les clés d'accès déjà enregistrées ne fonctionnent plus (le mot de passe, lui, continue) et il faut les recréer.
 - Un propriétaire qui perd l'accès à ses appareils se dépanne en SSH (voir plus bas) : la commande `reset-2fa` retire aussi ses clés d'accès. Pour un collègue, *Utilisateurs → Réinitialiser sa double vérification et ses clés d'accès*.
 
+## Assistants IA (MCP) : deux façons de s'authentifier
+
+Un assistant se connecte à `/api/mcp` avec un **jeton** (`vit_…`, créé par le propriétaire, affiché une seule fois, seul son hash est gardé). Deux modes :
+
+- **En-tête (par défaut, recommandé)** : `Authorization: Bearer vit_…`. Le jeton ne figure ni dans l'adresse ni dans les journaux du serveur web. C'est ce qu'utilisent Claude Code, Cursor, VS Code, Windsurf, MCP Inspector et les scripts.
+- **Adresse secrète (option par jeton, désactivée par défaut)** : `{SITE_URL}/api/mcp/<jeton>`, pour les clients qui ne savent saisir qu'une adresse (les « connecteurs personnalisés » de claude.ai). **L'adresse EST le mot de passe** : elle apparaît dans les journaux de votre serveur web ou de votre proxy (nginx…), elle ne doit pas être partagée, et si elle fuit il faut **révoquer le jeton**. Seul le propriétaire peut l'autoriser (à la création du jeton, ou ensuite sur la page du jeton) ; l'adresse complète n'est montrée qu'à la création. Un jeton qui n'a pas l'option est refusé par adresse, même s'il est valide en en-tête.
+
+Garde-fous communs : droits réglés jeton par jeton et action par action, relus à chaque requête ; 120 requêtes par minute et par jeton ; révocation immédiate (elle retire aussi l'option d'adresse). Garde-fous propres à l'adresse : un jeton inconnu, mal formé, révoqué ou non autorisé par adresse reçoit **la même réponse** (404) ; le jeton n'est jamais écrit dans le journal d'audit (qui note seulement « connexion par adresse activée/désactivée » avec le nom du jeton), ni dans les erreurs ; les réponses portent `Cache-Control: no-store` et `Referrer-Policy: no-referrer`. Si vous activez l'option, évitez de journaliser les chemins des requêtes `/api/mcp/` dans votre proxy (le serveur de développement `next dev` les affiche aussi dans son terminal ; le serveur de production ne journalise pas les requêtes).
+
 ## Sessions
 
 Une session dure **14 jours au plus**. Elle se coupe aussi à tout moment :

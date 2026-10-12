@@ -4,10 +4,13 @@ import { revalidatePath } from "next/cache";
 import { adminCtx } from "@/core/admin";
 import { listMcpToolCatalogue } from "@/core/platform";
 import { setGrant, withinCeiling, type Grants } from "@/core/services/mcp/access";
-import { createToken, getTokenGrants, revokeToken, saveTokenGrants, type TokenScope } from "@/core/services/mcp/tokens";
+import { createToken, getTokenGrants, revokeToken, saveTokenGrants, setUrlAccess, type TokenScope } from "@/core/services/mcp/tokens";
 import { audit } from "@/core/permissions";
 import { setSetting } from "@/core/settings";
-import type { ActionState } from "@/components/admin/ActionForm";
+import { prisma } from "@/core/db";
+
+/** Résultat de la création d'un jeton : le seul moment où le texte en clair (et l'adresse secrète) existe. Jamais relu depuis la base. */
+export type CreateTokenState = { error?: string; created?: { name: string; token: string; byUrl: boolean } } | null;
 
 export async function setMcpEnabled(enabled: boolean): Promise<void> {
   const { user } = await adminCtx("owner");
@@ -16,15 +19,29 @@ export async function setMcpEnabled(enabled: boolean): Promise<void> {
   revalidatePath("/admin/mcp");
 }
 
-export async function createTokenAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+export async function createTokenAction(_prev: CreateTokenState, formData: FormData): Promise<CreateTokenState> {
   const { user, t } = await adminCtx("owner");
   const name = String(formData.get("name") ?? "").trim();
   const scope: TokenScope = formData.get("scope") === "write" ? "write" : "read";
+  const byUrl = formData.get("byUrl") === "on";
   if (!name) return { error: t("error.generic") };
-  const token = await createToken(name, scope, user.email);
+  const token = await createToken(name, scope, user.email, { byUrl });
   await audit(user.email, "mcp.token.create", name);
+  if (byUrl) await audit(user.email, "mcp.token.url.on", name);
   revalidatePath("/admin/mcp");
-  return { ok: `${t("mcp.tokenCreated")} ${token}` };
+  return { created: { name, token, byUrl } };
+}
+
+/** Autorise ou retire la connexion par adresse secrète d'un jeton existant (propriétaire seulement). Le journal ne garde jamais l'adresse ni le jeton. */
+export async function setUrlAccessAction(tokenId: string, enabled: boolean): Promise<void> {
+  const { user } = await adminCtx("owner");
+  const row = await prisma.apiToken.findUnique({ where: { id: tokenId } });
+  if (!row || row.revokedAt) return;
+  await setUrlAccess(tokenId, enabled);
+  if (enabled) await audit(user.email, "mcp.token.url.on", row.name);
+  else await audit(user.email, "mcp.token.url.off", row.name);
+  revalidatePath("/admin/mcp");
+  revalidatePath(`/admin/mcp/${tokenId}`);
 }
 
 export async function revokeTokenAction(id: string): Promise<void> {

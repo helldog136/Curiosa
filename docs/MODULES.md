@@ -827,6 +827,19 @@ Droit effectif d'un jeton = **plafond du jeton** (un jeton « lecture » n'écri
   arguments inconnus sont refusés ; les erreurs internes sont masquées (seules celles avec `expose: true` sont renvoyées) ;
   toute écriture et tout changement d'accès sont consignés dans le journal d'audit ; l'éditeur de contenu du cœur ne propose
   à un assistant que de créer ou modifier des **brouillons**.
+### Se connecter : en-tête ou adresse secrète
+
+Le serveur parle le transport MCP « Streamable HTTP » dans sa forme la plus simple : les requêtes JSON-RPC 2.0 arrivent en **POST** sur `/api/mcp`, la réponse est un JSON (`Content-Type: application/json`), sans session (`Mcp-Session-Id` n'est jamais exigé) ni flux SSE. `initialize` négocie `protocolVersion` (2025-06-18, 2025-03-26, 2024-11-05) ; toute notification (message sans `id`, dont `notifications/initialized`) reçoit **202 sans corps** ; `ping`, `tools/list` (sans pagination), `tools/call` et les lots sont acceptés ; `GET` et `DELETE` répondent **405** avec `Allow: POST`.
+
+Deux authentifications, au choix de chaque jeton :
+
+| Mode | Forme | Pour qui |
+|---|---|---|
+| En-tête (toujours possible) | `POST {site}/api/mcp` avec `Authorization: Bearer vit_…` | Claude Code (`claude mcp add --transport http curiosa <adresse> --header "Authorization: Bearer vit_…"`), Cursor, VS Code, Windsurf, MCP Inspector, scripts |
+| Adresse secrète (option **par jeton**, désactivée par défaut) | `POST {site}/api/mcp/vit_…` (segment de chemin, jamais un paramètre de requête) | claude.ai et les clients qui ne saisissent qu'une adresse |
+
+L'option se coche à la création du jeton (*Autoriser la connexion par adresse secrète*) ou se règle ensuite sur la page du jeton ; elle est gardée dans le réglage du cœur `mcp.urlTokens` (liste d'identifiants de jeton, sans migration) et disparaît à la révocation. Le jeton en clair n'existe qu'à la création : c'est le seul écran qui affiche l'adresse complète et les consignes de branchement avec le vrai jeton ; ailleurs elles montrent `<votre-jeton>`. Un jeton inconnu, mal formé, révoqué ou non autorisé par adresse reçoit la même réponse 404. Compromis : l'adresse apparaît dans les journaux du serveur web, voir [SECURITE.md](SECURITE.md).
+
 - Les jetons sont créés par le propriétaire (affichés une fois, seul leur hash est conservé), révocables, limités à
   120 requêtes/minute. L'option avancée « Proposer ses actions à l'API MCP » retire une instance du MCP.
 

@@ -6,10 +6,13 @@ import { getInstanceLabeler } from "@/core/modules/labels";
 import { listMcpToolCatalogue } from "@/core/platform";
 import { getActiveInstances } from "@/core/modules/registry";
 import { localized } from "@/core/modules/types";
+import { siteUrl } from "@/core/config";
 import { canUse, isGranted, parseGrants, withinCeiling } from "@/core/services/mcp/access";
+import { isUrlAccessEnabled } from "@/core/services/mcp/tokens";
+import { ConfirmButton } from "@/components/admin/ConfirmButton";
 import { GrantToggle } from "@/components/admin/GrantToggle";
 import { ui } from "@/components/admin/ui";
-import { resetGrantsAction, setGrantAction } from "../actions";
+import { resetGrantsAction, setGrantAction, setUrlAccessAction } from "../actions";
 
 /** Accès d'un jeton, action par action, module par module. Modifiable en direct. */
 export default async function TokenAccessPage({ params }: { params: Promise<{ id: string }> }) {
@@ -19,6 +22,7 @@ export default async function TokenAccessPage({ params }: { params: Promise<{ id
   if (!row) notFound();
   const token = { scope: row.scope === "write" ? ("write" as const) : ("read" as const), grants: parseGrants(row.grants) };
   const revoked = !!row.revokedAt;
+  const urlOn = !revoked && (await isUrlAccessEnabled(id));
 
   const catalogue = await listMcpToolCatalogue();
   const active = await getActiveInstances();
@@ -42,6 +46,19 @@ export default async function TokenAccessPage({ params }: { params: Promise<{ id
         <p className={ui.pageIntro}>{t("mcp.accessIntro")}</p>
         {token.scope === "read" && <p className="mt-2 rounded-lg border border-line bg-surface p-3 text-sm">{t("mcp.readCeiling")}</p>}
       </div>
+
+      {!revoked && (
+        <section className={`${ui.card} space-y-3`} aria-label={t("mcp.url.title")} data-testid="mcp-url-access">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="flex items-center gap-2 text-lg font-semibold">{t("mcp.url.title")} <span className={urlOn ? ui.chipWarn : ui.chip}>{urlOn ? t("mcp.url.stateOn") : t("mcp.url.stateOff")}</span></h2>
+            <form action={setUrlAccessAction.bind(null, id, !urlOn)}>
+              {urlOn ? <button className={ui.btn}>{t("mcp.url.disable")}</button> : <ConfirmButton danger={false} message={t("mcp.url.enableConfirm")}>{t("mcp.url.enable")}</ConfirmButton>}
+            </form>
+          </div>
+          <p className="text-sm leading-6 text-muted">{t("mcp.url.help", { siteUrl })}</p>
+          {urlOn && <p className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">{t("mcp.guide.secretWarn")}</p>}
+        </section>
+      )}
 
       {[...groups.entries()].map(([source, tools]) => {
         const inst = instances.find((i) => i.key === source);

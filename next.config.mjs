@@ -19,6 +19,9 @@ const nextConfig = {
           { key: "X-Frame-Options", value: "SAMEORIGIN" },
         ],
       },
+      // Serveur MCP : l'adresse secrète `/api/mcp/<jeton>` ne doit jamais fuir par un en-tête « Referer », ni être mise en cache.
+      { source: "/api/mcp/:path*", headers: [{ key: "Referrer-Policy", value: "no-referrer" }, { key: "Cache-Control", value: "no-store" }] },
+      { source: "/api/mcp", headers: [{ key: "Referrer-Policy", value: "no-referrer" }] },
       { source: "/admin/:path*", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] },
     ];
   },
