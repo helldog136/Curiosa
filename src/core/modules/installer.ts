@@ -100,7 +100,7 @@ export async function git(args: string[], cwd?: string): Promise<string> {
   return stdout.trim();
 }
 
-function dirSize(dir: string): number {
+export function dirSize(dir: string): number {
   let total = 0;
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     if (entry.name === ".git") continue;
@@ -112,7 +112,7 @@ function dirSize(dir: string): number {
 }
 
 /** `child` est-il bien DANS `parent` (liens symboliques résolus) ? Empêche un dossier de module qui pointerait hors du dépôt. */
-function isInside(parent: string, child: string): boolean {
+export function isInside(parent: string, child: string): boolean {
   try {
     const p = fs.realpathSync(parent);
     const c = fs.realpathSync(child);
@@ -121,7 +121,7 @@ function isInside(parent: string, child: string): boolean {
 }
 
 /** Copie les fichiers d'un module (sans .git ni node_modules) vers son dossier d'installation, par un dossier intermédiaire : jamais à moitié copié. */
-function copyModuleFiles(from: string, target: string): void {
+export function copyModuleFiles(from: string, target: string): void {
   const staging = `${target}.incoming-${process.pid}`;
   try {
     fs.rmSync(staging, { recursive: true, force: true });
@@ -253,13 +253,13 @@ async function fetchSubdirSource(url: string, ref: string | null | undefined, su
   }
 }
 
-const sameRepo = (a: string | null | undefined, b: string | null | undefined) => {
+export const sameRepo = (a: string | null | undefined, b: string | null | undefined) => {
   const norm = (u: string | null | undefined) => (u ?? "").replace(/\.git$/, "").replace(/\/$/, "").toLowerCase();
   return norm(a) === norm(b);
 };
 
 /** Quelle étiquette ou quel commit suivre ? Un module installé DEPUIS LE CATALOGUE suit le commit relu que le catalogue épingle ; un module personnel suit la sienne. */
-async function subdirTarget(row: Module): Promise<{ ref: string | null; fromCatalogue: boolean }> {
+export async function subdirTarget(row: Module): Promise<{ ref: string | null; fromCatalogue: boolean }> {
   const entry = await findCatalogueEntry(row.id).catch(() => undefined);
   const same = entry?.source === "recognized" && sameRepo(entry.repo, row.repoUrl) && (entry.subdir ?? null) === row.subdir;
   return { ref: same ? entry!.ref ?? null : row.ref, fromCatalogue: !!same };

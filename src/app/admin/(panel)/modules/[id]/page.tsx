@@ -10,6 +10,7 @@ import { ConfirmButton } from "@/components/admin/ConfirmButton";
 import { Callout, DangerZone } from "@/components/admin/Page";
 import { ui } from "@/components/admin/ui";
 import { ModuleUpdateButton } from "@/components/admin/ModuleUpdateButton";
+import { ModuleMaintenance } from "@/components/admin/ModuleMaintenance";
 import { peekModulesReport } from "@/core/modules/updateStatus";
 import { buildNames, viewModuleLinks } from "@/core/modules/dependencyView";
 import { decodeMissing, describeMissingList } from "@/core/modules/dependencyMessages";
@@ -124,6 +125,8 @@ export default async function ModulePage({ params, searchParams }: { params: Pro
           )}
         </section>
       )}
+
+      {isOwner && <ModuleMaintenance row={row} name={name} advanced={advanced} t={t} />}
 
       {isOwner && (
         <DangerZone title={t("modules.dangerTitle")} help={t("modules.uninstallHelp")}>
