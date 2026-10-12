@@ -11,6 +11,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 *Changements depuis la 0.1.11.*
 
 ### Nouveautés
+- **Réparer un module en un clic.** Sur la page d'un module, une section « Maintenance » dit si son code est à jour et permet de le réinstaller en gardant vos réglages, vos instances et vos données. Utile quand un module se comporte comme une ancienne version.
 - **Brancher Claude devient simple.** La page où l'on branche un assistant explique la marche à suivre en trois étapes, avec pour chacun un bloc à copier. Pour Claude (claude.ai), on peut maintenant créer un jeton qui se connecte par une adresse secrète, sans rien saisir d'autre.
 - **Un assistant plus facile à brancher partout.** Le site respecte mieux les règles de connexion des assistants, pour que les outils courants s'y connectent sans réglage particulier.
 

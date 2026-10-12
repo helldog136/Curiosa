@@ -454,6 +454,16 @@ Voir « Panneau d'admin riche ».
 
 Voir « API MCP ». Les clés de `mcp` doivent être déclarées dans le manifeste : une action déclarée mais non implémentée (ou l'inverse) n'est pas exposée.
 
+### Réinstaller un module (maintenance)
+
+Quand un module se comporte comme une ancienne version alors que son numéro est à jour (le cœur ne compare que le **numéro** d'un module livré, et l'empreinte git d'un module installé depuis un dépôt), le propriétaire ouvre *Modules › le module › Maintenance* (en mode simple : « Problème avec ce module ? Réinstaller »). La section montre la version, la **source** (livré avec le framework, ou dépôt git `adresse#référence`) et l'**empreinte du code installé** (7 caractères d'une empreinte SHA-256 du contenu du dossier). Pour un module livré, elle dit tout de suite si le code installé est **identique ou différent** de la copie livrée ; pour un module git, le bouton « Comparer avec la source » fait un téléchargement explicite pour le dire.
+
+« Réinstaller ce module » remet le **code** à neuf depuis la source : copie livrée pour un module livré ; pour un module git, la référence que suit la mise à jour (celle du catalogue reconnu s'il en vient, sinon la sienne), même à numéro et à empreinte identiques. Un module installé à la main n'a pas de source : refus. La réinstallation **conserve tout le reste** : instances, réglages, données, état activé/désactivé, rangement et épinglage, placements d'accueil, droits MCP. Elle remet la version de la **source actuelle**, rien de plus : si le catalogue reconnu en propose une plus récente, le bilan le signale (il ne la prend pas en silence).
+
+Garde-fous : refus si le module est inconnu, si une mise à jour du site est en cours, si le manifeste porte un autre `id`, un `main` absent, plus de 10 Mo ou un `minCore` plus récent que le cœur, et si la source demande de **nouvelles permissions** (jamais accordées en silence : passer par « Mettre à jour »). L'ancien dossier est mis de côté pendant l'échange (`.previous-<pid>`) et revient tel quel au moindre échec. Si la `dataVersion` change, les migrations de données sont rejouées comme après une mise à jour. Action de journal : `module.reinstall` (identifiant, versions et empreintes, jamais d'adresse ni de réglage). Idempotente : sur un code déjà identique, « Code identique : rien n'a changé ».
+
+**Cache d'imports.** Node garde en mémoire un `import()` déjà fait pour une même adresse. Le cœur importe le fichier principal avec `?v=<commit ou version>` ; la réinstallation y ajoute un **compteur de rechargement** (`.r<n>`), si bien que le nouveau code du fichier principal sert tout de suite. Limite : les fichiers que ce fichier importe en chemin relatif (`./lib.mjs`) ne portent pas ce paramètre ; s'ils ont changé, le bilan demande de **redémarrer le site**.
+
 ### `migrations` : faire évoluer ses données
 
 Votre stockage (`ctx.api.store`) est du JSON libre : quand une nouvelle version de votre module change la **forme** de ses données (champ renommé, champ ajouté,
