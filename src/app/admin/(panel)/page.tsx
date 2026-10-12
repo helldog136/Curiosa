@@ -6,11 +6,11 @@ import { Callout, PageHeader } from "@/components/admin/Page";
 import { getUpdateCheck } from "@/core/updates/service";
 import { statsEnabled, statsSummary } from "@/core/stats";
 
-export default async function Dashboard({ searchParams }: { searchParams: Promise<{ denied?: string; welcome?: string }> }) {
+export default async function Dashboard({ searchParams }: { searchParams: Promise<{ denied?: string; welcome?: string; modules?: string }> }) {
   const { t, config, advanced, user } = await adminCtx("editor");
   const nav = await getAdminNav(config.defaultLocale, config.defaultLocale);
   const firstContent = nav.find((i) => i.content && i.enabled && !i.error);
-  const { denied, welcome } = await searchParams;
+  const { denied, welcome, modules: setupModulesState } = await searchParams;
   const [drafts, published, redirects, collections, modules] = await Promise.all([
     prisma.entry.count({ where: { status: "draft" } }),
     prisma.entry.count({ where: { status: "published" } }),
@@ -35,6 +35,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
     <div className="space-y-6">
       <PageHeader title={advanced ? t("dashboard.title", { name: config.name }) : t("dashboard.hello", { name: first })} intro={advanced ? t("dashboard.introAdvanced") : t("dashboard.helloIntro", { site: config.name })} />
       {welcome && !advanced && <Callout tone="ok" role="status">🎉 {t("dashboard.welcome", { name: first })}</Callout>}
+      {welcome && (setupModulesState === "failed" || setupModulesState === "partial") && <Callout tone="warn" role="status" testid="setup-modules-failed">{t(setupModulesState === "failed" ? "dashboard.modulesFailed" : "dashboard.modulesPartial")}</Callout>}
       {denied && <Callout tone="danger">{t("error.denied")}</Callout>}
       {(todo.length > 0 || updateAvailable) && (
         <section aria-label={t("dashboard.todo")} data-testid="todo" className={`${ui.card} space-y-2`}>

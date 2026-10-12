@@ -19,9 +19,10 @@ after(() => db.close());
 const read = (p) => fs.readFileSync(p, "utf8");
 const PANEL = "src/app/admin/(panel)";
 
-// ─── Règle par défaut, sur les 21 modules de extras/modules ─────────────────────────────────────────────────────
-// Ce que la règle lit de chaque manifeste (type, contenu, nombre d'actions MCP / services offerts / requis). Si le dossier extras/ est présent
-// (récupéré par `npm run extras:fetch`), le test vérifie aussi que ce tableau est fidèle aux vrais manifestes.
+// ─── Règle par défaut, sur les 21 modules du dépôt curiosa-extras ─────────────────────────────────────────────────────
+// Ce que la règle lit de chaque manifeste (type, contenu, nombre d'actions MCP / services offerts / requis). Si EXTRAS_CHECKOUT désigne un clone
+// de curiosa-extras (le cœur n'en embarque aucun), le test vérifie aussi que ce tableau est fidèle aux vrais manifestes.
+const EXTRAS_CHECKOUT = process.env.EXTRAS_CHECKOUT;
 const EXTRAS = [
   { id: "alerts-overlay", type: "overlay" },
   { id: "blog", content: { display: "cards", clickAction: "detail" } },
@@ -58,14 +59,14 @@ test("rangement par défaut : les 21 modules d'extras se répartissent en « de 
   assert.deepEqual(placed("overlays"), OVERLAYS);
 });
 
-test("rangement par défaut : le tableau ci-dessus correspond aux vrais manifestes quand extras/ est présent", { skip: !fs.existsSync("extras/modules") }, () => {
-  const ids = fs.readdirSync("extras/modules").filter((id) => fs.existsSync(`extras/modules/${id}/module.json`)).sort();
+test("rangement par défaut : le tableau ci-dessus correspond aux vrais manifestes quand EXTRAS_CHECKOUT désigne un clone de curiosa-extras", { skip: !EXTRAS_CHECKOUT || !fs.existsSync(`${EXTRAS_CHECKOUT}/modules`) }, () => {
+  const ids = fs.readdirSync(`${EXTRAS_CHECKOUT}/modules`).filter((id) => fs.existsSync(`${EXTRAS_CHECKOUT}/modules/${id}/module.json`)).sort();
   for (const id of ids) {
-    const m = JSON.parse(read(`extras/modules/${id}/module.json`));
+    const m = JSON.parse(fs.readFileSync(`${EXTRAS_CHECKOUT}/modules/${id}/module.json`, "utf8"));
     const expected = MENU.includes(id) ? "menu" : OVERLAYS.includes(id) ? "overlays" : "integrations";
     assert.equal(P.defaultPlacement(m), expected, `${id} : rangement par défaut`);
   }
-  assert.deepEqual(ids, EXTRAS.map((e) => e.id).sort(), "un nouveau module livré doit être ajouté au tableau");
+  assert.deepEqual(ids, EXTRAS.map((e) => e.id).sort(), "un nouveau module du dépôt doit être ajouté au tableau");
 });
 
 test("rangement par défaut : règle déterministe lue dans le manifeste (catégorie, contenu, données gérables)", () => {

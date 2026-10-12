@@ -3,10 +3,16 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { makeGrav } from "../helpers/fakeGrav.mjs";
+import { createCatalogue } from "../helpers/catalogue.mjs";
 
 const { openBackup } = await import("@/core/backup/restore");
+
+// L'import installe les modules Blog, Pages et Hero DEPUIS LE CATALOGUE (le cœur n'en embarque aucun) : ici, un faux dépôt curiosa-extras local que le processus enfant hérite par l'environnement.
+const cat = createCatalogue();
+await cat.fixtures(["blog", "pages", "hero"]);
+test.after(() => cat.close());
 
 // Le même faux site Grav donne toujours le même résultat : on l'importe UNE fois pour tous les tests qui le lisent (chacun vérifie un aspect différent du même import).
 let shared;
@@ -98,4 +104,13 @@ test("import Grav : plusieurs collections de type blog, page « external », blo
   assert.deepEqual([merch.targetUrl, merch.permanent], ["https://shop.example.org/", false]);
   assert.match(report, /vidéo intégrée → lien/);
   assert.match(report, /pointait vers un site externe/);
+});
+
+test("import Grav sans catalogue : arrêt net avec un message clair, aucune copie locale de module", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-grav-down-"));
+  makeGrav(path.join(dir, "user"));
+  const r = spawnSync(process.execPath, ["--disable-warning=MODULE_TYPELESS_PACKAGE_JSON", "--import", "./tests/helpers/register.mjs", "scripts/import-grav.mjs", path.join(dir, "user"), "--out", path.join(dir, "x.enc"), "--password", "mdp-de-test"], { encoding: "utf8", env: { ...process.env, CURIOSA_CATALOGUE_REPO: "file:///nonexistent/curiosa-extras" } });
+  assert.notEqual(r.status, 0);
+  assert.match(r.stderr, /le catalogue n'est pas joignable/);
+  assert.ok(!fs.existsSync(path.join(dir, "x.enc")), "aucune sauvegarde à moitié produite");
 });

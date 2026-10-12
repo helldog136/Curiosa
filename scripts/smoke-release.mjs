@@ -2,8 +2,8 @@
 // utilisateur verrait. Lancé par la CI avant toute publication (.github/workflows/release.yml) : une archive qui ne démarre pas n'est jamais publiée.
 //   node scripts/smoke-release.mjs dist/curiosa-vX.Y.Z-linux-x64.tar.gz
 //
-// 1. contenu : les modules livrés sont dans extras/, aucun ancien dossier de modules, l'index du Catalogue est présent ;
-// 2. installation neuve : l'assistant répond et propose les modules de départ lus dans extras/ ;
+// 1. contenu : AUCUN module dans l'archive (ni extras/, ni examples/, ni modules/, ni copie de l'index du catalogue) ;
+// 2. installation neuve, catalogue injoignable : l'assistant répond, ne propose aucun module et le dit (jamais une copie locale) ;
 // 3. mise à jour d'un site existant : une base d'avant (compte propriétaire, réglages) démarre, le site répond, le compte est intact et les
 //    tables de sécurité ajoutées depuis (verrouillage, clés d'accès, codes de secours) existent.
 import { execFileSync, spawn } from "node:child_process";
@@ -36,16 +36,13 @@ check(fs.existsSync(path.join(app, "next.config.mjs")) && !fs.existsSync(path.jo
   const n = execFileSync(process.execPath, ["-e", "const s=require('simple-icons');console.log(Object.values(s).filter((v)=>v&&v.slug&&v.path).length)"], { cwd: app, encoding: "utf8" }).trim();
   check(Number(n) > 3000, `les icônes des réseaux sociaux fonctionnent sans leurs SVG (${n} icônes)`);
 }
-for (const old of ["modules-community", "modules-examples", "src"]) check(!fs.existsSync(path.join(app, old)), `l'archive ne contient pas « ${old} »`);
-const index = path.join(app, "extras/catalogue/index.json");
-check(fs.existsSync(path.join(app, "extras/modules/blog/module.json")), "extras/modules/blog/module.json présent");
-check(fs.existsSync(path.join(app, "extras/SOURCE.json")), "extras/SOURCE.json (d'où vient l'instantané) présent");
-check(fs.existsSync(index) && JSON.parse(fs.readFileSync(index, "utf8")).modules.length > 0, "index du Catalogue présent et non vide");
+for (const old of ["modules-community", "modules-examples", "src", "extras", "examples", "modules", "catalogue"]) check(!fs.existsSync(path.join(app, old)), `l'archive ne contient pas « ${old} » (Curiosa s'installe seul)`);
 
 async function boot(name, prepare) {
   const data = path.join(root, name);
   fs.mkdirSync(data, { recursive: true });
-  const env = { ...process.env, NODE_ENV: "production", DATA_DIR: data, DATABASE_URL: `file:${path.join(data, "db.sqlite")}`, AUTH_SECRET: "smoke", AUTH_TRUST_HOST: "true", SITE_URL: "http://localhost" };
+  // Catalogue injoignable (dépôt inexistant, aucun réseau utilisé) : le test ne dépend pas d'Internet.
+  const env = { ...process.env, CURIOSA_ALLOW_LOCAL_MODULES: "1", CURIOSA_CATALOGUE_REPO: "file:///nonexistent/curiosa-extras", NODE_ENV: "production", DATA_DIR: data, DATABASE_URL: `file:${path.join(data, "db.sqlite")}`, AUTH_SECRET: "smoke", AUTH_TRUST_HOST: "true", SITE_URL: "http://localhost" };
   execFileSync("npx", ["prisma", "migrate", "deploy"], { cwd: app, env, stdio: "pipe" });
   if (prepare) await prepare(env);
   const port = await freePort();
@@ -65,7 +62,8 @@ const q = (env, code) => execFileSync(process.execPath, ["-e", code], { cwd: app
     const res = await fetch(`${s.base}/admin/setup`);
     const html = await res.text();
     check(res.status === 200, "installation neuve : l'assistant répond (200)");
-    for (const id of ["blog", "links", "pages"]) check(html.includes(`value="${id}"`), `installation neuve : le module suggéré « ${id} » est proposé (lu dans extras/)`);
+    check(!html.includes('name="presets"'), "installation neuve, catalogue injoignable : aucun module n'est proposé (pas de copie locale)");
+    check(html.includes("catalogue n&#x27;est pas joignable") || html.includes("catalogue n'est pas joignable") || html.includes("catalogue cannot be reached"), "installation neuve, catalogue injoignable : l'assistant le dit simplement");
     check(html.includes("sans aucun risque") || html.includes("without any risk"), "installation neuve : l'étape des modules dit qu'on peut la passer sans risque");
     check(!/Application error|Internal Server Error/.test(html), "installation neuve : pas d'erreur côté serveur");
     check(!/swc|sharp/i.test(s.log()), "installation neuve : le serveur ne cherche ni le compilateur ni sharp (rien à télécharger au démarrage)");

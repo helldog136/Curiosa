@@ -80,10 +80,12 @@ Un site existant sous **Grav CMS** ? Il peut être converti : [docs/IMPORT-GRAV.
 
 Rien n'est compilé chez vous : on installe une **release** déjà compilée (publiée sur la page *Releases* du dépôt), puis les mises à jour se font depuis l'admin.
 
+**Curiosa s'installe seul ; ses modules s'installent depuis le catalogue** (dépôt [curiosa-extras](https://github.com/helldog136/curiosa-extras) par défaut). L'archive ne contient aucun module : l'assistant de première installation propose ceux qui sont suggérés, et tous les autres se choisissent plus tard dans *Modules › Catalogue*. Le serveur doit donc pouvoir joindre le catalogue (github.com) ; s'il ne le peut pas au moment de l'installation, le site se crée quand même, sans module, et vous les ajouterez ensuite.
+
 **Il faut :**
 
 - un serveur Linux **x64** (testé sur Ubuntu 20.04 et plus récent ; Debian aussi) ;
-- **Node.js 20.9 ou plus** (`node -v`) et `git` (utilisé seulement pour installer des modules depuis l'admin) ;
+- **Node.js 20.9 ou plus** (`node -v`) et `git` (utilisé seulement pour installer des modules depuis le catalogue ou un dépôt) ;
 - un nom de domaine qui pointe vers le serveur, et un proxy HTTPS devant le site (nginx, Caddy…) ;
 - un accès administrateur (`sudo`).
 
@@ -182,7 +184,7 @@ server {
 
 Testez toujours avant de recharger : `sudo nginx -t && sudo systemctl reload nginx`.
 
-**6. Premier écran.** Ouvrez `https://example.org/admin/setup` : l'**assistant de première installation** démarre (code d'installation, prénom, langue, nom du site, rubriques de départ, premiers liens, compte propriétaire).
+**6. Premier écran.** Ouvrez `https://example.org/admin/setup` : l'**assistant de première installation** démarre (code d'installation, prénom, langue, nom du site, modules suggérés par le catalogue, premiers liens, compte propriétaire).
 Vous avez déjà une sauvegarde ? Choisissez **« J'ai déjà une sauvegarde »** dès le premier écran (voir [docs/BACKUP.md](docs/BACKUP.md)). Une fois le site configuré, vous pouvez retirer `SETUP_TOKEN` du `.env`, puis `sudo systemctl restart curiosa`.
 
 **Mises à jour** : page *Mises à jour* de l'admin (propriétaire). Le site télécharge la release, vérifie son empreinte, sauvegarde la base, migre et redémarre ; au moindre échec il revient à la version précédente.
@@ -305,17 +307,14 @@ src/core/services/  Les HELPERS que le cœur offre aux modules : QR code, MCP, s
 src/core/           Le cœur, agnostique : runtime des modules (registre, installateur,
                     contexte), moteur de contenu, redirections, langues, réglages
 src/core/platform.ts  Racine de composition : relie les services aux fonctionnalités
-src/modules-builtin Les fonctions de base, déjà sous forme de modules : blog, links, codes,
-                    pages, collection, hero, contact-form, live-status, ticker-overlay,
-                    press-kit (vitrine de l'identité réglée dans le cœur)
 src/app/(site)      Site public (accueil assemblé de sections, pages d'instances, redirections)
 src/app/admin       L'admin unique : assistant, entrées, une sous-page par instance, accueil,
                     redirections, modules & catalogue…
 src/app/overlays    Overlays OBS (/overlays/<clé>)
 src/app/api/mcp     Serveur MCP (outils collectés auprès des modules)
 src/locales         Textes de l'interface (fr, en) — ajouter une langue = un fichier JSON
-extras/             (non versionné) Copie de repli hors ligne du catalogue, récupérée de curiosa-extras par `npm run extras:fetch`
-                    et embarqué dans chaque release. Le cœur ne contient AUCUN module.
+                    Le cœur ne contient AUCUN module (ni dossier de modules, ni copie du catalogue) :
+                    ils vivent dans curiosa-extras et s'installent depuis le catalogue.
 docs/               PLATFORM.md (cœur vs modules), ARCHITECTURE.md, MODULES.md
 ```
 

@@ -157,16 +157,6 @@ test("dépôt injoignable : pas d'erreur, simplement rien à proposer", async ()
   assert.deepEqual(await checkForUpdate("demo"), { available: false });
 });
 
-test("module livré avec le framework : la mise à jour indique la version cible", async () => {
-  const { installBundled } = await import("@/core/modules/installer");
-  await installBundled("demo-banner");
-  await db.prisma.module.update({ where: { id: "demo-banner" }, data: { version: "0.0.1" } });
-  const c = await checkForUpdate("demo-banner");
-  assert.equal(c.available, true);
-  assert.ok(["minor", "major", "patch"].includes(c.level));
-  assert.ok(c.target);
-});
-
 test("installation épinglée sur un commit : le module est exactement ce commit, même si le dépôt a avancé depuis", async () => {
   const repo = moduleRepo();
   const pinned = repo.commit;

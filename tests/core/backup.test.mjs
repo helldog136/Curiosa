@@ -6,8 +6,12 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { useTestDb } from "../helpers/db.mjs";
 import { makeRepo } from "../helpers/repo.mjs";
+import { createCatalogue } from "../helpers/catalogue.mjs";
 
 const db = await useTestDb();
+// Le cœur ne contient aucun module : ceux que ces tests appellent « du catalogue » viennent d'un faux dépôt curiosa-extras local (index factice).
+const cat = createCatalogue();
+await cat.fixtures(["blog", "demo-planner", "demo-sponsors"]);
 const B = await import("@/core/backup/export");
 const Rs = await import("@/core/backup/restore");
 const F = await import("@/core/backup/format");
@@ -25,7 +29,7 @@ const { FIXTURE_MODULES: BUILTIN_MODULES } = await import("../helpers/fixtureMod
 const PW = "un-mot-de-passe-solide";
 const FAST = 1000;
 beforeEach(async () => { await db.reset(); fs.rmSync(UPLOADS_DIR, { recursive: true, force: true }); });
-after(() => db.close());
+after(() => { cat.close(); return db.close(); });
 
 const UPLOAD = "0f1e2d3c-4b5a-6978-8091-a2b3c4d5e6f7.png";
 const PNG = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.from("contenu-image")]);

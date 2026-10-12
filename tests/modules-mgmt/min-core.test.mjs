@@ -1,12 +1,13 @@
 import test, { beforeEach, after } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { useTestDb } from "../helpers/db.mjs";
 import { makeRepo } from "../helpers/repo.mjs";
+import { createCatalogue } from "../helpers/catalogue.mjs";
 
 const db = await useTestDb();
+const cat = createCatalogue();   // l'index du catalogue vient d'un faux dépôt curiosa-extras local
 const { parseManifest } = await import("@/core/modules/manifest");
 const C = await import("@/core/modules/compat");
 const { sanitizeEntries, clearRecognizedCache } = await import("@/core/modules/recognized");
@@ -17,9 +18,8 @@ const { getCatalogue } = await import("@/core/modules/catalogue");
 const { getModule } = await import("@/core/modules/registry");
 const Rs = await import("@/core/backup/restore");
 
-const EXTRAS = process.env.CURIOSA_EXTRAS_DIR;
-beforeEach(async () => { await db.reset(); C.setCoreVersionForTests("0.1.9"); process.env.CURIOSA_EXTRAS_DIR = EXTRAS; clearRecognizedCache(); });
-after(() => { C.setCoreVersionForTests(null); process.env.CURIOSA_EXTRAS_DIR = EXTRAS; return db.close(); });
+beforeEach(async () => { await db.reset(); await cat.clear(); C.setCoreVersionForTests("0.1.9"); clearRecognizedCache(); });
+after(() => { C.setCoreVersionForTests(null); cat.close(); return db.close(); });
 
 const base = (over = {}) => ({ apiVersion: 2, id: "demo", name: "Demo", version: "1.0.0", ...over });
 const manifest = (id, version, minCore) => ({ apiVersion: 2, id, name: id, version, main: "index.mjs", ...(minCore ? { minCore } : {}) });
@@ -89,17 +89,11 @@ test("index : une entrée avec requires.core est lue, sans requires elle n'a auc
   assert.deepEqual(by, { avec: { core: "0.1.10" }, sans: undefined, mauvais: undefined, tableau: undefined, texte: undefined });
 });
 
-function indexRoot(modules) {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-idx-"));
-  fs.mkdirSync(path.join(root, "catalogue"), { recursive: true });
-  fs.writeFileSync(path.join(root, "catalogue", "index.json"), JSON.stringify({ version: 1, modules }));
-  process.env.CURIOSA_EXTRAS_DIR = root; clearRecognizedCache();
-  return root;
-}
+const indexRoot = (modules) => cat.setIndex(...modules);
 const remote = (id, requires) => ({ id, name: id, repo: "https://github.com/moi/extras", subdir: `modules/${id}`, apiVersion: 2, ...(requires ? { requires } : {}) });
 
 test("catalogue : l'index dit SANS télécharger si le module convient à ce cœur", async () => {
-  indexRoot([remote("recent", { core: "0.1.10" }), remote("ancien", { core: "0.1.0" }), remote("libre")]);
+  await indexRoot([remote("recent", { core: "0.1.10" }), remote("ancien", { core: "0.1.0" }), remote("libre")]);
   const by = Object.fromEntries((await getCatalogue()).map((e) => [e.id, e]));
   assert.equal(by.recent.needsNewerCore, "0.1.10");
   assert.equal(by.ancien.needsNewerCore, undefined);
@@ -112,7 +106,7 @@ test("catalogue : l'index dit SANS télécharger si le module convient à ce cœ
 /* ───────────── Installation ───────────── */
 
 test("installation depuis le catalogue : refusée avant tout téléchargement, avec la version demandée", async () => {
-  indexRoot([remote("recent", { core: "0.1.10" })]);
+  await indexRoot([remote("recent", { core: "0.1.10" })]);
   const r = await installFromCatalogue("recent");
   assert.deepEqual(r, { ok: false, error: "modules.error.core", detail: "0.1.10", needsCore: "0.1.10" });
   assert.equal(await db.prisma.module.findUnique({ where: { id: "recent" } }), null);
@@ -218,7 +212,7 @@ const fakeBackup = (modules) => ({ manifest: { createdAt: "2026-01-01T00:00:00Z"
 const saved = (id) => ({ id, source: "git", origin: "catalogue", name: id, version: "1", enabled: true, repoUrl: "https://github.com/moi/extras", ref: null, commit: null });
 
 test("restauration : un module du catalogue qui demande un cœur plus récent est signalé dans l'aperçu et le bilan, jamais installé", async () => {
-  indexRoot([remote("recent", { core: "0.1.10" }), remote("libre")]);
+  await indexRoot([remote("recent", { core: "0.1.10" }), remote("libre")]);
   const mods = [saved("recent"), saved("libre")];
   const plan = Object.fromEntries((await Rs.planModules(mods)).map((p) => [p.id, p]));
   assert.equal(plan.recent.needsCore, "0.1.10"); assert.equal(plan.libre.needsCore, undefined);

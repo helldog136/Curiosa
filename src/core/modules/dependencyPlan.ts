@@ -1,4 +1,4 @@
-import { getCatalogue, readBundledManifest, type CatalogueEntry } from "./catalogue";
+import { getCatalogue, type CatalogueEntry } from "./catalogue";
 import { liveProviders } from "./dependencies";
 import { listModuleRows, getModule } from "./registry";
 import { normalizeNeeds, normalizeOffers, offerVersionOf, satisfiesVersion, type ServiceNeed, type ServiceOffer } from "./serviceVersions";
@@ -95,7 +95,7 @@ export async function planDependencies(rootId: string, needs: ServiceNeed[], opt
       // Les besoins du fournisseur d'abord (ordre topologique), puis lui.
       const own = candidate.from === "installed"
         ? normalizeNeeds((await getModule(candidate.id))?.manifest.requires)
-        : candidate.entry.source === "bundled" && candidate.entry.dir ? normalizeNeeds(readBundledManifest(candidate.entry.dir)?.requires) : candidate.entry.needs ?? [];
+        : candidate.entry.needs ?? [];
       await resolve(candidate.id, own, [...path, candidate.id]);
       add({ id: candidate.id, action: candidate.from === "installed" ? "enable" : "install", services: [need.service] });
     }

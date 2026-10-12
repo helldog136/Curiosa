@@ -33,12 +33,9 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
   const names = await buildNames(locale, config.defaultLocale, entries);
   const plans = new Map<string, PlanView>();
   for (const e of entries) if (!installed.has(e.id) && e.compatible && (e.needs?.length ?? 0) > 0) plans.set(e.id, await viewPlan(e.id, e.needs!, names, entries));
-  const groups = [
-    { id: "community", title: advanced ? t("catalogue.community") : t("catalogue.community.simple"), list: entries.filter((e) => e.kind === "community") },
-    { id: "recognized", title: advanced ? t("catalogue.recognized") : t("catalogue.recognized.simple"), list: entries.filter((e) => e.kind === "recognized") },
-    // Les exemples servent à apprendre à créer un module : inutile pour qui veut seulement un site.
-    ...(advanced ? [{ id: "example", title: t("catalogue.examples"), list: entries.filter((e) => e.kind === "example") }] : []),
-  ];
+  const groups = [{ id: "recognized", title: advanced ? t("catalogue.community") : t("catalogue.community.simple"), list: entries }];
+  // Sans réseau ni dernière copie reçue, la liste est vide : on le dit (jamais une copie locale), et « Actualiser » réessaie.
+  const unreachable = source.source === "none" && entries.length === 0;
 
   return (
     <div className="space-y-8">
@@ -52,7 +49,7 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
           <span>
             {source.source === "repository" && t("catalogue.source.repository", { date: new Date(source.fetchedAt ?? 0).toLocaleString(locale) })}
             {source.source === "cache" && t("catalogue.source.cache", { date: new Date(source.fetchedAt ?? 0).toLocaleString(locale) })}
-            {(source.source === "snapshot" || source.source === "none") && t("catalogue.source.snapshot")}
+            {source.source === "none" && t("catalogue.source.unreachable")}
           </span>
           {isOwner && <form action={refreshCatalogueAction}><button className="underline">{t("catalogue.refresh")}</button></form>}
         </div>
@@ -72,7 +69,7 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
                   <div className="min-w-0">
                     <p className="text-lg font-semibold leading-tight">{L(e.name)}{advanced && e.version && <span className="ml-2 text-xs font-normal text-muted">v{e.version}</span>}</p>
                     <p className="mt-1 line-clamp-4 text-sm leading-5 text-muted">{L(e.description)}</p>
-                    {advanced && e.source === "recognized" && e.repo && <p className="mt-1 break-all font-mono text-xs text-muted">{e.repo}{e.ref ? `#${e.ref}` : ""}</p>}
+                    {advanced && e.repo && <p className="mt-1 break-all font-mono text-xs text-muted">{e.repo}{e.ref ? `#${e.ref}` : ""}</p>}
                   </div>
                 </div>
                 {plans.get(e.id) && <DependencyPlanBox view={plans.get(e.id)!} t={t} names={names} compact />}
@@ -93,7 +90,13 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
           </ul>
         </section>
       ))}
-      {entries.length === 0 && <p className="text-muted">{t("catalogue.empty")}</p>}
+      {unreachable && (
+        <div role="alert" data-testid="catalogue-unreachable" className="flex flex-wrap items-center gap-3 rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
+          <span>{t("catalogue.unreachable")}</span>
+          {isOwner && <form action={refreshCatalogueAction}><button className="underline">{t("catalogue.refresh")}</button></form>}
+        </div>
+      )}
+      {entries.length === 0 && !unreachable && <p className="text-muted">{t("catalogue.empty")}</p>}
 
       {isOwner && advanced && (
         <section className={`${ui.card} space-y-4`}>

@@ -5,7 +5,7 @@ dépend d'un site en particulier : tout ce qui vous est propre (nom, textes, mod
 
 ## Ce qu'il faut
 
-- Un serveur **Linux (x64)** avec **Node.js 20.9+** (22 recommandé) et **git** (git sert seulement à installer des modules depuis l'admin). **Aucun compilateur** : les releases sont livrées déjà compilées.
+- Un serveur **Linux (x64)** avec **Node.js 20.9+** (22 recommandé) et **git** (git sert seulement à installer des modules depuis le catalogue ou un dépôt). **Aucun compilateur** : les releases sont déjà compilées.
 - Un nom de domaine et un proxy HTTPS devant le site (nginx, Caddy…). Le framework écoute en HTTP sur un port local.
 - Un utilisateur système dédié (sans droits d'administration) qui possède le dossier d'installation.
 
@@ -14,8 +14,9 @@ dépend d'un site en particulier : tout ce qui vous est propre (nom, textes, mod
 La procédure pas à pas (utilisateur dédié, téléchargement vérifié, `.env`, service systemd, HTTPS avec nginx ou Caddy, premier écran) est dans le [README](../README.md#installer) ; le guide destiné à un agent IA, avec ses vérifications et ses erreurs fréquentes, dans [AGENT-INSTALL.md](AGENT-INSTALL.md).
 Points à retenir :
 
+- **Curiosa s'installe seul ; ses modules s'installent depuis le catalogue** (dépôt `curiosa-extras` par défaut) : l'archive ne contient aucun module. L'assistant de première installation propose les modules suggérés par le catalogue ; si le catalogue est injoignable à ce moment, le site se crée quand même, sans module, et on les ajoute plus tard depuis *Modules › Catalogue* ;
 - on installe une **release** (archive déjà compilée, `curiosa-vX.Y.Z-linux-x64.tar.gz`) ; elle contient un fichier `release.json` qui indique le dépôt d'où elle vient : c'est ce qui active les mises à jour depuis l'admin ;
-- le moteur de base de données est livré pour OpenSSL 1.1 et 3.0 : l'archive tourne aussi bien sur Ubuntu 20.04 que sur 22.04+ ;
+- le moteur de base de données est fourni pour OpenSSL 1.1 et 3.0 : l'archive tourne aussi bien sur Ubuntu 20.04 que sur 22.04+ ;
 - `SETUP_TOKEN` dans `.env` protège l'assistant tant que le site n'est pas configuré ; `CURIOSA_SUPERVISED=1` permet à systemd de relancer le serveur après une mise à jour.
 
 **Développer le framework** : cloner le dépôt (`git clone`, branche `dev`), puis `npm ci && npm run bootstrap && npm run build && npm start`. Un clone de
@@ -35,8 +36,8 @@ Dans **Mises à jour** (menu, propriétaire uniquement) :
 
 - le site compare sa version aux releases **stables** publiées par le dépôt d'origine (les release candidates et les snapshots sont ignorés par défaut) ;
 - **Installer** : sauvegarde de la base (`data/backups/`, les 5 dernières) → téléchargement de l'archive → **vérification de son empreinte SHA-256** →
-  remplacement des dossiers de l'application (`.next`, `node_modules`, `prisma/migrations`, `extras`…) → migrations → redémarrage.
-  Jamais touchés : `.env`, `data/` (base, envois, modules installés) et `prisma/data/`. **Au moindre échec**, l'ancienne version (et l'ancienne base si les migrations avaient commencé) est rétablie ;
+  remplacement des dossiers de l'application (`.next`, `node_modules`, `prisma/migrations`…) → migrations → redémarrage.
+  Jamais touchés : `.env`, `data/` (base, envois, modules installés) et `prisma/data/`. Un dossier `extras/` laissé par une ancienne version n'est plus lu : vous pouvez le supprimer. **Au moindre échec**, l'ancienne version (et l'ancienne base si les migrations avaient commencé) est rétablie ;
 - la page suit un parcours : *ma version* → *nouvelle version* → *ce que ça change* (les notes de version) → un seul bouton **Installer**. Pendant l'installation, une barre de progression et la liste des versions à installer (si le chemin en compte plusieurs) montrent l'étape en cours ; la page se met à jour toute seule. Le journal détaillé est dans *Détails techniques* (affiché d'office en cas d'échec, sinon en mode avancé) ;
 - une version **majeure** (`v2.0.0` après `v1.x`) peut changer le fonctionnement : elle est signalée et **n'est jamais installée automatiquement**.
 
@@ -96,19 +97,18 @@ compile, puis publie l'archive et son empreinte sur la release GitHub.
 
 Pour fabriquer l'archive à la main : `npm ci && npx prisma generate && npm run build && npm prune --omit=dev && npx prisma generate && GITHUB_REPOSITORY=<propriétaire>/<dépôt> node scripts/release-pack.mjs X.Y.Z`.
 
-## La Catalogue (modules reconnus)
+## Le Catalogue (modules reconnus)
 
-La liste des modules reconnus est le fichier `catalogue/index.json` du dépôt du framework, **relu à l'exécution** depuis le dépôt d'origine de
-l'installation (au plus toutes les 15 minutes) : un module ajouté à ce fichier apparaît chez vous **sans mettre le framework à jour**. Hors ligne ou
-dépôt injoignable, le site garde la dernière copie reçue, à défaut la copie de repli de sa version.
+La liste des modules reconnus (`catalogue/index.json`) et la liste des modules suggérés à l'installation (`catalogue/suggested.json`) sont des fichiers du dépôt `curiosa-extras`,
+**lus sur le réseau à l'exécution** (au plus toutes les 15 minutes) : un module ajouté à ce dépôt apparaît chez vous **sans mettre le framework à jour**. Le cœur n'en garde aucune copie :
+si le dépôt est injoignable, le site tient avec la dernière liste reçue (gardée dans `data/cache`) ; sans elle, le Catalogue est vide avec le message « Le catalogue n'est pas joignable, réessayez »
+(les modules déjà installés continuent de fonctionner).
 
 | Variable | Effet |
 |---|---|
-| `CURIOSA_CATALOGUE_REPO` | Dépôt git qui publie l'index (défaut : `curiosa-extras`, le dépôt de modules voisin du dépôt d'origine de l'installation, même propriétaire ; indispensable avec Docker, où il n'y a pas de dépôt d'origine). |
-| `CURIOSA_EXTRAS_DIR` | Dossier de la copie de repli hors ligne (défaut : `extras/` à côté de l'application, instantané de `curiosa-extras` ; `npm run extras:fetch` le récupère pour un clone du dépôt). |
+| `CURIOSA_CATALOGUE_REPO` | Dépôt git qui publie l'index et la liste des suggestions (défaut : `https://github.com/helldog136/curiosa-extras`, le seul dépôt que le cœur connaît). |
 | `CURIOSA_TRUSTED_PROXIES` | Nombre de reverse proxys devant le site (1 par défaut) : sert à lire la vraie adresse du visiteur pour les blocages de connexion. Voir [SECURITE.md](SECURITE.md). |
 | `CURIOSA_CATALOGUE_REF` | Branche ou étiquette à lire (défaut : la branche par défaut). |
-| `CURIOSA_CATALOGUE_RUNTIME=0` | Ne pas interroger le dépôt : copie de repli de la version seulement (serveur sans accès au réseau). |
 | `MODULES_INDEX_URL` | Index JSON `https://` **supplémentaire** (le vôtre, celui d'une communauté) : il ne peut qu'ajouter des modules. |
 
 ## Sauvegarder

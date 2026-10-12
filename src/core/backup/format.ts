@@ -29,6 +29,7 @@ export const DATA_FILES = {
 
 export type BackupModule = {
   id: string;
+  // « builtin » et « bundled » : sauvegardes et lignes d'anciens sites (compatibilité, à retirer en 0.3.0) ; le cœur n'embarque plus aucun module.
   source: "builtin" | "bundled" | "git";
   version: string;
   enabled: boolean;
