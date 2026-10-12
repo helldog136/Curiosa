@@ -10,12 +10,14 @@ type Props = {
   uiLocales: string[];
   locales: { code: string; name: string }[];
   presets: { id: string; icon: string; collectsLinks: boolean; names: Record<string, string>; descriptions: Record<string, string> }[];
+  /** Le catalogue n'a pas pu être lu : aucune suggestion, le site se crée quand même. */
+  catalogueUnreachable?: boolean;
   needsToken: boolean;
 };
 
 const STEPS = ["welcome", "identity", "modules", "links", "account"] as const;
 
-export function SetupWizard({ strings, uiLocales, locales, presets, needsToken }: Props) {
+export function SetupWizard({ strings, uiLocales, locales, presets, needsToken, catalogueUnreachable = false }: Props) {
   const [mode, setMode] = useState<"new" | "restore">("new");
   const [step, setStep] = useState(0);
   const [lang, setLang] = useState("fr");
@@ -121,7 +123,7 @@ export function SetupWizard({ strings, uiLocales, locales, presets, needsToken }
         <div {...section("modules")}>
           <h2 className="text-2xl font-semibold tracking-tight">{t("setup.modules.title")}</h2>
           <p className="text-[15px] text-muted">{t("setup.modules.help")}</p>
-          {presets.length === 0 && <p className="rounded-2xl border border-line p-4 text-sm text-muted">{t("setup.modules.none")}</p>}
+          {presets.length === 0 && <p data-testid="modules-none" className="rounded-2xl border border-line p-4 text-sm text-muted">{t(catalogueUnreachable ? "setup.modules.unreachable" : "setup.modules.none")}</p>}
           {presets.map((p) => (
             <label key={p.id} className={`flex cursor-pointer items-start gap-4 rounded-2xl border p-4 transition-colors ${chosen.includes(p.id) ? "border-accent bg-accent/5" : "border-line hover:border-accent/50"}`}>
               <input

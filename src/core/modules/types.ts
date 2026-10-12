@@ -131,7 +131,7 @@ export type ModuleManifest = {
     /** L'assistant demande à l'utilisateur ses liens (Twitch, YouTube…) et les range dans ce module. */
     collectsLinks?: boolean;
   };
-  /** Modules livrés avec le cœur : activés dès le départ (défaut : oui). */
+  /** Modules activés dès le départ (défaut : oui). */
   defaultEnabled?: boolean;
   /** Déclaratif et informatif : affiché à l'administrateur avant activation. */
   permissions: ("slots" | "routes" | "storage" | "filters" | "sections" | "pages" | "topics" | "overlay" | "mcp" | "admin" | "mail" | "rawg")[];

@@ -29,6 +29,7 @@ export const DATA_FILES = {
 
 export type BackupModule = {
   id: string;
+  // « builtin » et « bundled » : sauvegardes et lignes d'anciens sites (compatibilité, à retirer en 0.3.0) ; le cœur n'embarque plus aucun module.
   source: "builtin" | "bundled" | "git";
   version: string;
   enabled: boolean;
@@ -37,7 +38,7 @@ export type BackupModule = {
   /** Dossier du module dans le dépôt (dépôt regroupant plusieurs modules). */
   subdir?: string | null;
   commit: string | null;
-  /** « catalogue » : livré ou dépôt reconnu — « custom » : dépôt personnel non vérifié — « builtin » : sauvegardes d'avant la 0.1.3, quand le cœur « intégrait » des modules (lecture seule). */
+  /** « catalogue » : dépôt reconnu — « custom » : dépôt personnel non vérifié — « builtin » : sauvegardes d'avant la 0.1.3, quand le cœur « intégrait » des modules (lecture seule). */
   origin: "builtin" | "catalogue" | "custom";
   name: string;
 };

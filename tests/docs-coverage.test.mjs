@@ -182,9 +182,8 @@ test("variables d'environnement et chemins cités par le code d'installation : d
   const vars = [...new Set([...installer.matchAll(/process\.env\.([A-Z_]+)/g)].map((m) => m[1]))];
   assert.ok(vars.includes("MODULES_INDEX_URL") && vars.includes("CURIOSA_ALLOW_LOCAL_MODULES") && vars.includes("MODULES_ALLOWED_HOSTS"));
   for (const v of vars) assert.ok(reference.includes(v) && tutorial.includes(v), `${v} absent de la documentation`);
-  const bundled = [...read("src/core/modules/catalogue.ts").matchAll(/dir: "([a-z-]+)"/g)].map((m) => m[1]);
-  assert.deepEqual(bundled.sort(), ["examples", "modules"]);
-  for (const d of bundled) assert.ok(reference.includes(d) && tutorial.includes(d), `${d} absent de la documentation`);
+  // Le cœur ne lit aucun dossier de modules local : le catalogue vient du réseau (voir tests/modules-mgmt/no-embedded-modules.test.mjs).
+  assert.ok(!/readdirSync|fs\./.test(read("src/core/modules/catalogue.ts")), "le catalogue ne lit aucun dossier local");
 });
 
 test("version de l'API des modules : la documentation cite celle du cœur", () => {

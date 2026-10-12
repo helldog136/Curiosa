@@ -15,13 +15,12 @@ if (pkg.version !== version) { console.error(`package.json est en ${pkg.version}
 const repo = process.env.GITHUB_REPOSITORY ?? process.env.CURIOSA_RELEASE_REPO ?? "";
 if (!REPO_RE.test(repo)) { console.error("Dépôt inconnu : GITHUB_REPOSITORY (ou CURIOSA_RELEASE_REPO) doit valoir « propriétaire/nom »."); process.exit(1); }
 
-/** Tout ce que le site lit à l'exécution ; rien d'autre. Les données de l'exploitant n'y sont jamais. */
+/** Tout ce que le site lit à l'exécution ; rien d'autre. Les données de l'exploitant n'y sont jamais, ni AUCUN module : Curiosa s'installe seul, ses modules viennent du catalogue. */
 const PATHS = [
   ".next", "node_modules", "package.json", "package-lock.json", "next.config.mjs", "release.json",
-  "prisma/schema.prisma", "prisma/migrations", "scripts", "extras",
+  "prisma/schema.prisma", "prisma/migrations", "scripts",
   ".env.example", "LICENSE", "THIRD-PARTY-NOTICES.md",
 ].filter((p) => p === "release.json" || fs.existsSync(p));
-if (!PATHS.includes("extras")) { console.error("Pas de modules (extras/) : lancez `node scripts/fetch-extras.mjs` d'abord."); process.exit(1); }
 if (!PATHS.includes(".next")) { console.error("Pas de build (.next) : lancez `npm run build` d'abord."); process.exit(1); }
 if (!fs.existsSync("node_modules/.prisma/client")) { console.error("Client Prisma absent : lancez `npx prisma generate` après `npm prune --omit=dev`."); process.exit(1); }
 for (const engine of ["debian-openssl-1.1.x", "debian-openssl-3.0.x"]) {

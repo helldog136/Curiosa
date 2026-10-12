@@ -7,7 +7,7 @@ import { signIn } from "@/auth";
 import { prisma } from "@/core/db";
 import { makeTranslator } from "@/core/i18n/dictionary";
 import { isKnownLocale } from "@/core/i18n/locales";
-import { provisionBundled, setupModules } from "@/core/modules/starter";
+import { installChosenModules } from "@/core/modules/starter";
 import type { ParsedManifest } from "@/core/modules/manifest";
 import { createInstance, defaultNames, runInstanceCreateHook } from "@/core/instanceService";
 import { audit } from "@/core/permissions";
@@ -52,8 +52,10 @@ export async function completeSetup(_prev: ActionState, formData: FormData): Pro
   const shortcutRows = new Set(formData.getAll("linkShortcut").map(String));
 
   const createdIds: string[] = [];
-  // Les fichiers des modules choisis sont copiés avant la transaction (leur ligne est ce qu'attendent les instances).
-  for (const m of setupModules()) if (presetIds.includes(m.id)) await provisionBundled(m.id);
+  // Les modules choisis (parmi ceux que le catalogue suggère : une valeur envoyée à la main n'en ajoute aucun) sont installés avant la transaction
+  // (leur ligne est ce qu'attendent les instances), depuis le catalogue, version épinglée. Jamais de copie locale : catalogue injoignable → le site
+  // se crée quand même, sans ces modules, et le tableau de bord le dit.
+  const { installed: wanted, failed } = await installChosenModules(presetIds);
   try {
     await prisma.$transaction(async (tx) => {
       // Garde contre une double soumission ou un second visiteur : un seul propriétaire, une seule fois.
@@ -76,8 +78,6 @@ export async function completeSetup(_prev: ActionState, formData: FormData): Pro
       // quelle section il place sur l'accueil, s'il a une entrée d'exemple ou s'il reçoit les liens saisis.
       const home: HomeSection[] = [];
       const created: { manifest: ParsedManifest; instance: { id: string; key: string } }[] = [];
-      // Seuls les modules que l'utilisateur a cochés, parmi ceux que l'assistant propose (une valeur envoyée à la main n'en ajoute aucun).
-      const wanted = setupModules().filter((m) => presetIds.includes(m.id));
       for (const manifest of wanted) {
         const instance = await createInstance(tx, {
           manifest,
@@ -140,9 +140,9 @@ export async function completeSetup(_prev: ActionState, formData: FormData): Pro
   }
 
   for (const id of createdIds) await runInstanceCreateHook(id);
-  await audit(email, "setup.completed");
+  await audit(email, "setup.completed", failed.length ? `modules not installed (catalogue): ${failed.join(", ")}` : "");
   try {
-    await signIn("credentials", { email, password, redirectTo: "/admin?welcome=1" });
+    await signIn("credentials", { email, password, redirectTo: !failed.length ? "/admin?welcome=1" : wanted.length ? "/admin?welcome=1&modules=partial" : "/admin?welcome=1&modules=failed" });
   } catch (error) {
     if (error instanceof AuthError) return { error: t("setup.error.generic") };
     throw error;

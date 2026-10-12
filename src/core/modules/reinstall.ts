@@ -5,22 +5,20 @@ import type { Module } from "@prisma/client";
 import { prisma } from "../db";
 import { MODULES_DIR } from "../config";
 import { readUpdateState } from "../updates/service";
-import { compareVersions } from "../updates/versions";
-import { listBundled } from "./catalogue";
+import { catalogueUnreachable, findCatalogueEntry } from "./catalogue";
 import { incompatWithThisCore, requirementOf } from "./compat";
 import { migrateModuleInstances, type MigrationOutcome } from "./dataMigrations";
 import { CoreTooOld, dirSize, git, isCommitRef, isInside, copyModuleFiles, subdirTarget } from "./installer";
 import { parseManifest, type ParsedManifest } from "./manifest";
-import { getRecognized } from "./recognized";
 import { bumpImportStamp, forgetModule, moduleDir, readGitManifest } from "./registry";
 
 /**
  * RÉINSTALLATION D'UN MODULE (maintenance). Remet le CODE d'un module installé à neuf depuis sa source, même si le numéro de version est identique
- * (le cas qui piège la mise à jour : un module « livré » n'est comparé que par son numéro). Tout le reste est conservé : instances, réglages,
+ * (le cas qui piège la mise à jour : un module de base n'était comparé que par son numéro). Tout le reste est conservé : instances, réglages,
  * données, état activé/désactivé, rangement, placements d'accueil, droits MCP (rien de cela n'est touché : seule la ligne `Module` et son dossier le sont).
  *
- * Sources : livré avec le framework (copie du serveur) ; dépôt git (en sous-dossier ou à la racine : même référence que la mise à jour, voir
- * `subdirTarget`) ; sinon refus. « Réinstaller = remettre la version actuellement proposée par la source du module », jamais plus.
+ * Sources : dépôt git (en sous-dossier ou à la racine : même référence que la mise à jour, voir `subdirTarget`) ; le catalogue pour une ligne `bundled` d'un ancien site
+ * (compatibilité, à retirer en 0.3.0 : réinstaller la CONVERTIT en module du catalogue, version épinglée, sans AUCUN repli local : catalogue injoignable → erreur claire) ; sinon refus. « Réinstaller = remettre la version actuellement proposée par la source du module », jamais plus.
  * Sécurité : l'ancien dossier est mis de côté pendant l'échange (`.previous-<pid>`) et revient tel quel au moindre échec ; jamais de nouvelle permission accordée en silence.
  */
 
@@ -56,7 +54,6 @@ export const shortHash = (h: string | null | undefined): string => (h ? h.slice(
 
 type Source = { root: string; wholeDir?: string; commit: string | null; tree: string | null; ref: string | null; cleanup: () => void };
 
-const bundledDir = (id: string): string | undefined => listBundled().find((e) => e.id === id)?.dir;
 export const sourceKind = (row: Pick<Module, "source" | "repoUrl">): "bundled" | "git" | "none" => (row.source === "bundled" ? "bundled" : row.source === "git" && row.repoUrl ? "git" : "none");
 
 /** Récupère la source d'un module installé par git (dépôt temporaire, supprimé par `cleanup`). */
@@ -85,6 +82,14 @@ async function fetchGitSource(row: Module): Promise<Source> {
   }
 }
 
+/** Ligne `bundled` d'un ancien site (compatibilité, à retirer en 0.3.0) que le catalogue liste : la ligne telle qu'elle serait une fois convertie (dépôt, étiquette épinglée, dossier). Sinon null. */
+async function catalogueSource(row: Module): Promise<{ row: Module; version?: string } | null> {
+  if (row.source !== "bundled") return null;
+  const entry = await findCatalogueEntry(row.id).catch(() => undefined);
+  if (!entry?.repo || !entry.compatible) return null;
+  return { row: { ...row, source: "git", repoUrl: entry.repo, ref: entry.ref ?? null, subdir: entry.subdir ?? null }, version: entry.version };
+}
+
 function readManifestAt(dir: string): ParsedManifest | null {
   try { const p = parseManifest(JSON.parse(fs.readFileSync(path.join(dir, "module.json"), "utf8"))); return p.ok ? p.manifest : null; } catch { return null; }
 }
@@ -100,6 +105,8 @@ export type Diagnostic = {
   ref?: string;
   subdir?: string;
   commit?: string;
+  /** Ligne `bundled` d'un ancien site que le catalogue liste : sa source est le catalogue (dépôt, étiquette). */
+  catalogue?: { repoUrl: string; ref?: string; subdir?: string; version?: string };
   /** Empreinte du dossier installé, calculée à la demande. */
   installedHash: string | null;
   /** Null : pas comparé (la source est sur le réseau et on n'a pas demandé la comparaison). */
@@ -107,8 +114,8 @@ export type Diagnostic = {
 };
 
 /**
- * Ce que le propriétaire voit : version, source, empreinte du code installé. `compare: "local"` compare avec la copie livrée (aucun réseau) ;
- * `compare: "network"` compare aussi avec un dépôt git (téléchargement explicite). Ne lève jamais.
+ * Ce que le propriétaire voit : version, source, empreinte du code installé. `compare: "local"` ne compare à rien (aucun réseau) ;
+ * `compare: "network"` compare avec le dépôt git de la source (téléchargement explicite). Ne lève jamais.
  */
 export async function diagnoseModule(id: string, opts: { compare?: "none" | "local" | "network" } = {}): Promise<Diagnostic | null> {
   const row = await prisma.module.findUnique({ where: { id } });
@@ -120,6 +127,8 @@ export async function diagnoseModule(id: string, opts: { compare?: "none" | "loc
     ...(kind === "git" ? { repoUrl: row.repoUrl!, ...(row.ref ? { ref: row.ref } : {}), ...(row.subdir ? { subdir: row.subdir } : {}), ...(row.commit ? { commit: row.commit } : {}) } : {}),
   };
   const mode = opts.compare ?? "none";
+  const cat = await catalogueSource(row);
+  if (cat) out.catalogue = { repoUrl: cat.row.repoUrl!, ...(cat.row.ref ? { ref: cat.row.ref } : {}), ...(cat.row.subdir ? { subdir: cat.row.subdir } : {}), ...(cat.version ? { version: cat.version } : {}) };
   const compareTo = (root: string, cleanup?: () => void): Comparison => {
     try {
       const src = fingerprintDir(root);
@@ -127,9 +136,8 @@ export async function diagnoseModule(id: string, opts: { compare?: "none" | "loc
       return { state: installed && installed.hash === src.hash ? "identical" : "different", sourceHash: src.hash, ...(sv ? { sourceVersion: sv } : {}) };
     } catch { return { state: "unavailable" }; } finally { cleanup?.(); }
   };
-  if (kind === "bundled" && mode !== "none") {
-    const dir = bundledDir(id);
-    out.comparison = dir ? compareTo(dir) : { state: "unavailable" };
+  if (cat && mode === "network") {
+    try { const s = await fetchGitSource(cat.row); out.comparison = compareTo(s.root, s.cleanup); } catch { out.comparison = { state: "unavailable" }; }
   } else if (kind === "git" && mode === "network") {
     try { const s = await fetchGitSource(row); out.comparison = compareTo(s.root, s.cleanup); } catch { out.comparison = { state: "unavailable" }; }
   }
@@ -148,16 +156,14 @@ export type ReinstallResult =
     migrations: MigrationOutcome[];
     /** Des fichiers secondaires du module (pas le fichier principal) ont changé : Node peut en garder l'ancienne copie en mémoire jusqu'au redémarrage du site. */
     restartAdvised: boolean;
-    /** Le catalogue reconnu propose une version plus récente de ce module : la réinstallation ne la prend PAS (elle remet la version de la source actuelle). */
-    catalogueNewer?: string;
   }
   | { ok: false; id: string; error: string; detail?: string; needsCore?: string; /** L'échange avait commencé : l'ancien code a été remis tel quel. */ rolledBack: boolean };
 
 export type ReinstallOptions = {
   /** Dossier de l'état des mises à jour du site (tests). */
   dataDir?: string;
-  /** Index du catalogue reconnu (tests, sans réseau). */
-  recognized?: () => Promise<{ id: string; version?: string }[]>;
+  /** Mise à jour d'une ligne `bundled` vers le catalogue : suit le manifeste du catalogue, même avec de nouvelles permissions (montrées par la mise à jour). */
+  catalogueOnly?: boolean;
   /** Appelé juste après l'échange des fichiers, avant la base (tests : simule un échec en cours d'échange). */
   afterSwap?: () => Promise<void> | void;
 };
@@ -177,12 +183,16 @@ export async function reinstallModule(id: string, opts: ReinstallOptions = {}): 
   let source: Source | null = null;
   let swapped = false;
   let dbChanged = false;
+  let viaCatalogue: { row: Module; version?: string } | null = null;
   try {
-    // 1. La source : copie livrée ou dépôt git.
+    // 1. La source : le dépôt git du module ; pour une ligne `bundled`, le catalogue (jamais une copie locale).
     if (kind === "bundled") {
-      const dir = bundledDir(id);
-      if (!dir) return fail(id, "modules.error.reinstallNoSource");
-      source = { root: dir, commit: null, tree: null, ref: null, cleanup: () => {} };
+      viaCatalogue = await catalogueSource(row);
+      if (!viaCatalogue) return fail(id, (await catalogueUnreachable()) ? "modules.error.catalogue" : "modules.error.unknownSource");
+      try { source = await fetchGitSource(viaCatalogue.row); } catch (error) {
+        console.error("[modules] catalogue repository unreachable:", (error as Error)?.message);
+        return fail(id, "modules.error.catalogue");
+      }
     } else {
       source = await fetchGitSource(row);
     }
@@ -195,9 +205,10 @@ export async function reinstallModule(id: string, opts: ReinstallOptions = {}): 
     if (dirSize(source.root) > MAX_MODULE_BYTES) return fail(id, "modules.error.size");
     const inc = incompatWithThisCore(requirementOf(manifest));
     if (inc) return fail(id, "modules.error.core", { detail: inc.needs, needsCore: inc.needs });
-    // Jamais de permission accordée en silence : une version qui en demande de nouvelles passe par la mise à jour / le catalogue (où elles sont montrées).
+    // Réinstaller ne doit jamais élargir les permissions en silence : une version qui en demande de nouvelles passe par la mise à jour / le catalogue (où elles sont montrées).
+    // La mise à jour vers le catalogue (`catalogueOnly`) EST ce chemin : comme toute mise à jour, elle suit le manifeste du catalogue.
     const installedManifest = readGitManifest(id);
-    if (installedManifest) {
+    if (installedManifest && !opts.catalogueOnly) {
       const added = manifest.permissions.filter((p) => !installedManifest.permissions.includes(p));
       if (added.length) return fail(id, "modules.error.reinstallPerms", { detail: added.join(", ") });
     }
@@ -206,17 +217,19 @@ export async function reinstallModule(id: string, opts: ReinstallOptions = {}): 
     const newFp = fingerprintDir(source.root);
     const before: Snapshot = { version: row.version, hash: oldFp?.hash ?? null, commit: row.commit };
     const after: Snapshot = { version: manifest.version, hash: newFp.hash, commit: source.commit ?? row.commit };
-    const catalogueNewer = kind === "bundled" ? await newerInCatalogue(id, manifest.version, opts) : undefined;
-    const extra = catalogueNewer ? { catalogueNewer } : {};
+    // Données de la ligne `Module` après l'opération : un module de base lu dans le catalogue DEVIENT un module du catalogue (source git épinglée).
+    const data = viaCatalogue
+      ? { source: "git", repoUrl: viaCatalogue.row.repoUrl, ref: viaCatalogue.row.ref, subdir: viaCatalogue.row.subdir, version: manifest.version, commit: source.commit, tree: source.tree }
+      : kind === "git" ? { version: manifest.version, commit: source.commit, tree: source.tree } : { version: manifest.version };
 
     // 3. Déjà identique : rien à échanger (on vide seulement la mémoire du module, au cas où le processus en garderait une autre copie).
     if (oldFp && oldFp.hash === newFp.hash && row.version === manifest.version) {
-      if (source.commit && (source.commit !== row.commit || (source.tree ?? null) !== (row.tree ?? null))) {
-        await prisma.module.update({ where: { id }, data: { commit: source.commit, tree: source.tree } });
+      if (viaCatalogue || (source.commit && (source.commit !== row.commit || (source.tree ?? null) !== (row.tree ?? null)))) {
+        await prisma.module.update({ where: { id }, data: viaCatalogue ? data : { commit: source.commit, tree: source.tree } });
       }
       bumpImportStamp(id);
       forgetModule(id);
-      return { ok: true, id, changed: false, before, after: { ...after, commit: source.commit ?? row.commit }, migrations: [], restartAdvised: false, ...extra };
+      return { ok: true, id, changed: false, before, after: { ...after, commit: source.commit ?? row.commit }, migrations: [], restartAdvised: false };
     }
 
     // 4. Échange : l'ancien dossier est mis de côté, et revient tel quel au moindre échec.
@@ -226,7 +239,6 @@ export async function reinstallModule(id: string, opts: ReinstallOptions = {}): 
     if (source.wholeDir) fs.renameSync(source.wholeDir, target);   // module à la racine d'un dépôt : le dossier garde son .git
     else copyModuleFiles(source.root, target);
     await opts.afterSwap?.();
-    const data = kind === "git" ? { version: manifest.version, commit: source.commit, tree: source.tree } : { version: manifest.version };
     await prisma.module.update({ where: { id }, data });
     dbChanged = true;
     bumpImportStamp(id);
@@ -236,13 +248,13 @@ export async function reinstallModule(id: string, opts: ReinstallOptions = {}): 
 
     const mainOf = manifest.main;
     const restartAdvised = !!oldFp && Object.keys({ ...oldFp.files, ...newFp.files }).some((f) => /\.(m?js|cjs)$/.test(f) && f !== mainOf && oldFp.files[f] !== newFp.files[f]);
-    return { ok: true, id, changed: true, before, after, migrations, restartAdvised, ...extra };
+    return { ok: true, id, changed: true, before, after, migrations, restartAdvised };
   } catch (error) {
     let rolledBack = false;
     if (swapped) {
       fs.rmSync(target, { recursive: true, force: true });
       if (fs.existsSync(backup)) fs.renameSync(backup, target);
-      if (dbChanged) await prisma.module.update({ where: { id }, data: { version: row.version, commit: row.commit, tree: row.tree } }).catch(() => {});
+      if (dbChanged) await prisma.module.update({ where: { id }, data: { source: row.source, repoUrl: row.repoUrl, ref: row.ref, subdir: row.subdir, version: row.version, commit: row.commit, tree: row.tree } }).catch(() => {});
       rolledBack = true;
     }
     bumpImportStamp(id);   // si le nouveau code a été chargé le temps d'un essai, le rétabli ne doit pas en hériter
@@ -255,14 +267,6 @@ export async function reinstallModule(id: string, opts: ReinstallOptions = {}): 
     fs.rmSync(backup, { recursive: true, force: true });
     busy.delete(id);
   }
-}
-
-async function newerInCatalogue(id: string, current: string, opts: ReinstallOptions): Promise<string | undefined> {
-  try {
-    const items = await (opts.recognized ?? (() => getRecognized()))();
-    const v = items.find((i) => i.id === id)?.version;
-    return v && compareVersions(v, current) > 0 ? v : undefined;
-  } catch { return undefined; }
 }
 
 /** Ligne du journal d'audit : identifiants, versions et empreintes seulement (jamais d'adresse de dépôt, de jeton ni de réglage). */
@@ -286,6 +290,5 @@ export function describeReinstall(r: ReinstallResult, t: T): { ok: boolean; line
   const lines = [r.changed ? t("maintenance.result.changed", { before: s(r.before), after: s(r.after) }) : t("maintenance.result.same")];
   if (r.migrations.some((m) => m.status === "failed" || m.status === "newer")) lines.push(t("maintenance.result.migration"));
   if (r.restartAdvised) lines.push(t("maintenance.result.restart"));
-  if (r.catalogueNewer) lines.push(t("maintenance.result.catalogue", { version: r.catalogueNewer }));
   return { ok: !r.migrations.some((m) => m.status === "failed" || m.status === "newer"), lines };
 }

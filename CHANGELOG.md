@@ -6,6 +6,18 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
+## 0.1.13
+
+*Changements depuis la 0.1.12.*
+
+### Nouveautés
+
+- **Curiosa s'installe seul, sans aucun module.** Les modules s'installent ensuite depuis le catalogue, quand vous le souhaitez. Les sites déjà en ligne ne sont pas touchés : leurs modules, réglages et données restent comme ils sont.
+
+### Corrections
+
+- Un module installé avec une ancienne copie (Contacts, par exemple) se met maintenant à jour vers la version du catalogue, au lieu de rester bloqué sur « à jour ». Vos réglages, vos instances et vos données sont conservés.
+
 ## 0.1.12
 
 *Changements depuis la 0.1.11.*

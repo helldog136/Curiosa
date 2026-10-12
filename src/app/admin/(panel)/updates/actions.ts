@@ -68,7 +68,7 @@ export type ModulesBilan = { updated: string[]; failed: { name: string; reason: 
 export async function updateModulesAction(ids?: string[]): Promise<ModulesBilan> {
   const { user, t, locale, config } = await adminCtx("owner");
   const todo = ids?.length ? ids.filter((id) => typeof id === "string") : (await getModulesReport(true)).outdated.map((o) => o.id);
-  const summary = await updateModules(todo, async (id) => { await audit(user.email, "module.update", id); });
+  const summary = await updateModules(todo, async (id, _ok, result) => { await audit(user.email, "module.update", result.ok && result.auditTarget ? result.auditTarget : id); });
   revalidatePath("/", "layout");
   const names = await moduleNames(locale, config.defaultLocale);
   const name = (id: string) => names.get(id) ?? id;

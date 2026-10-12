@@ -32,13 +32,14 @@ export type RecognizedItem = {
   needs?: { service: string; min?: number }[];
 };
 
-/** D'où vient la liste affichée : le dépôt du framework (à jour), sa dernière copie reçue, ou la copie livrée avec cette version. */
-export type RecognizedSource = "repository" | "cache" | "snapshot" | "none";
-export type RecognizedResult = { items: RecognizedItem[]; source: RecognizedSource; fetchedAt: number | null; origin: string | null };
+/** D'où vient la liste affichée : le dépôt du catalogue (à jour), ou la dernière copie reçue de lui ; « none » = catalogue injoignable et jamais reçu (liste vide, jamais une copie locale). */
+export type RecognizedSource = "repository" | "cache" | "none";
+export type RecognizedResult = { items: RecognizedItem[]; source: RecognizedSource; fetchedAt: number | null; origin: string | null; /** Identifiants que le dépôt du catalogue suggère (`catalogue/suggested.json`). */ suggested: string[] };
 
 const run = promisify(execFile);
 const ID_RE = /^[a-z][a-z0-9-]{1,39}$/;
 const INDEX_PATH = "catalogue/index.json";
+const SUGGESTED_PATH = "catalogue/suggested.json";
 const TTL = 15 * 60_000;
 const MAX_INDEX_BYTES = 1024 * 1024;
 const str = (v: unknown, max: number) => (typeof v === "string" ? v.slice(0, max) : undefined);
@@ -79,29 +80,18 @@ export type IndexGit = (args: string[], cwd?: string) => Promise<string>;
 const gitConfig = () => ["-c", "protocol.ext.allow=never", "-c", `protocol.file.allow=${process.env.CURIOSA_ALLOW_LOCAL_MODULES === "1" ? "always" : "never"}`, "-c", "core.hooksPath=/dev/null"];
 const defaultGit: IndexGit = async (args, cwd) => (await run("git", [...gitConfig(), ...args], { cwd, timeout: 25_000, maxBuffer: MAX_INDEX_BYTES + 4096, env: { ...process.env, GIT_TERMINAL_PROMPT: "0" } })).stdout;
 
-/** Nom du dépôt de modules, voisin du dépôt du cœur (même propriétaire, même hôte). */
-const EXTRAS_REPO_NAME = "curiosa-extras";
+/** Adresse du dépôt de modules que le catalogue connaît par défaut (le seul) ; d'autres se configurent (CURIOSA_CATALOGUE_REPO, MODULES_INDEX_URL, « Mes dépôts de modules »). */
+export const DEFAULT_CATALOGUE_REPO = "https://github.com/helldog136/curiosa-extras";
 
-/** Dépôt qui publie l'index : CURIOSA_CATALOGUE_REPO, sinon le dépôt de modules voisin du dépôt d'origine de cette installation (même propriétaire). */
-export async function resolveIndexRepo(git: IndexGit = defaultGit, appDir = process.cwd()): Promise<string | null> {
-  const explicit = process.env.CURIOSA_CATALOGUE_REPO?.trim();
-  let url = explicit || "";
-  if (!url) {
-    const remote = /^[A-Za-z0-9._-]{1,60}$/.test(process.env.CURIOSA_UPDATE_REMOTE ?? "") ? process.env.CURIOSA_UPDATE_REMOTE! : "origin";
-    try { url = (await git(["remote", "get-url", remote], appDir)).trim(); } catch {
-      // Installation par archive (sans git) : le dépôt qui publie les releases est aussi celui qui publie l'index.
-      try { const repo = String(JSON.parse(fs.readFileSync(path.join(appDir, "release.json"), "utf8")).repo ?? ""); url = /^[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/.test(repo) ? `https://github.com/${repo}` : ""; } catch { url = ""; }
-      if (!url) return null;
-    }
-  }
-  // Le cœur ne contient aucun module : l'index est dans le dépôt de modules, voisin du dépôt du cœur.
-  if (!explicit) url = toHttpsRemote(url).replace(/\/[^/]+?(?:\.git)?\/?$/, `/${EXTRAS_REPO_NAME}`);
+/** Dépôt qui publie l'index : CURIOSA_CATALOGUE_REPO, sinon le dépôt par défaut (DEFAULT_CATALOGUE_REPO). */
+export function resolveIndexRepo(): string | null {
+  const url = process.env.CURIOSA_CATALOGUE_REPO?.trim() || DEFAULT_CATALOGUE_REPO;
   const parsed = parseRepoUrl(toHttpsRemote(url));
   return parsed.ok ? parsed.repo.url : null;
 }
 
-/** Lit `catalogue/index.json` dans le dépôt, sans rien écrire dans l'installation : un dépôt temporaire, une récupération superficielle. */
-export async function fetchIndexFromRepo(url: string, ref = "HEAD", git: IndexGit = defaultGit): Promise<unknown> {
+/** Lit `catalogue/index.json` et `catalogue/suggested.json` (facultatif) dans le dépôt, sans rien écrire dans l'installation : un dépôt temporaire, une récupération superficielle. */
+export async function fetchCatalogueFromRepo(url: string, ref = "HEAD", git: IndexGit = defaultGit): Promise<{ index: unknown; suggested: unknown }> {
   if (!/^[\w./-]{1,100}$/.test(ref)) throw new Error("bad-ref");
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-index-"));
   try {
@@ -109,64 +99,63 @@ export async function fetchIndexFromRepo(url: string, ref = "HEAD", git: IndexGi
     await git(["fetch", "-q", "--depth", "1", "--no-tags", "--", url, ref], tmp);
     const text = await git(["show", `FETCH_HEAD:${INDEX_PATH}`], tmp);
     if (text.length > MAX_INDEX_BYTES) throw new Error("too-large");
-    return JSON.parse(text);
+    let suggested: unknown = [];
+    try { suggested = JSON.parse(await git(["show", `FETCH_HEAD:${SUGGESTED_PATH}`], tmp)); } catch { /* pas de liste : rien n'est suggéré */ }
+    return { index: JSON.parse(text), suggested };
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }
 }
 
-/** Copie de l'index livrée avec cette version : dans l'instantané des modules (`extras/catalogue/index.json`). */
-const defaultRoot = () => process.env.CURIOSA_EXTRAS_DIR ?? path.join(process.cwd(), "extras");
+/** Identifiants valides d'une liste de suggestions (tout le reste est écarté). */
+export const sanitizeSuggested = (raw: unknown): string[] => (Array.isArray(raw) ? raw.filter((id): id is string => typeof id === "string" && ID_RE.test(id)) : []);
 
 const cacheFile = () => path.join(DATA_DIR, "cache", "recognized-index.json");
-function readPersisted(): { items: RecognizedItem[]; fetchedAt: number; origin: string | null } | null {
+function readPersisted(): { items: RecognizedItem[]; suggested: string[]; fetchedAt: number; origin: string | null } | null {
   try {
     const raw = JSON.parse(fs.readFileSync(cacheFile(), "utf8"));
-    return { items: sanitizeEntries(raw), fetchedAt: Number(raw.fetchedAt) || 0, origin: typeof raw.origin === "string" ? raw.origin : null };
+    return { items: sanitizeEntries(raw), suggested: sanitizeSuggested(raw.suggested), fetchedAt: Number(raw.fetchedAt) || 0, origin: typeof raw.origin === "string" ? raw.origin : null };
   } catch { return null; }
 }
-function readSnapshot(root: string): RecognizedItem[] {
-  try { return sanitizeEntries(JSON.parse(fs.readFileSync(path.join(root, INDEX_PATH), "utf8"))); } catch { return []; }
-}
 
+/** Un catalogue injoignable n'est retenu que quelques secondes : « réessayez » doit pouvoir réussir sans attendre un quart d'heure. */
+const FAILED_TTL = 20_000;
 let memo: { at: number; key: string; result: RecognizedResult } | null = null;
 export function clearRecognizedCache(): void { memo = null; }
 
-export type RecognizedOptions = { fetchImpl?: typeof fetch; git?: IndexGit; root?: string; now?: () => number };
+export type RecognizedOptions = { fetchImpl?: typeof fetch; git?: IndexGit; now?: () => number };
 
 /**
- * Index des modules RECONNUS. Trois sources, la plus fraîche d'abord :
- *   1. le fichier `catalogue/index.json` du dépôt du framework, lu À L'EXÉCUTION (ne suit PAS le rythme des versions) ;
- *   2. à défaut, la dernière copie reçue (gardée dans data/cache) puis la copie livrée avec cette version : hors ligne, ça marche ;
- *   3. en plus, un index JSON https supplémentaire (MODULES_INDEX_URL) dont les entrées ne peuvent qu'AJOUTER des modules.
+ * Index des modules RECONNUS, lu UNIQUEMENT sur le réseau : le cœur ne contient ni module ni copie de l'index. Deux sources, la plus fraîche d'abord :
+ *   1. le fichier `catalogue/index.json` du dépôt du catalogue (par défaut curiosa-extras), lu À L'EXÉCUTION, avec `catalogue/suggested.json` ;
+ *   2. à défaut, la dernière copie reçue (gardée dans data/cache) : une panne réseau passagère ne vide pas le Catalogue.
+ * Sans réseau et sans copie reçue : liste VIDE (source « none »), jamais une copie locale.
+ * En plus, un index JSON https supplémentaire (MODULES_INDEX_URL) dont les entrées ne peuvent qu'AJOUTER des modules.
  * Celui qui publie un index se porte garant des dépôts qu'il liste ; chaque entrée est revalidée ici. Rien n'est installé automatiquement.
  */
 export async function getRecognizedDetailed(opts: RecognizedOptions = {}): Promise<RecognizedResult> {
-  const { fetchImpl = fetch, git = defaultGit, root = defaultRoot(), now = Date.now } = opts;
+  const { fetchImpl = fetch, git = defaultGit, now = Date.now } = opts;
   const extraUrl = process.env.MODULES_INDEX_URL;
-  const key = `${process.env.CURIOSA_CATALOGUE_REPO ?? ""}|${process.env.CURIOSA_CATALOGUE_REF ?? ""}|${extraUrl ?? ""}|${root}`;
-  if (memo && memo.key === key && now() - memo.at < TTL) return memo.result;
+  const key = `${process.env.CURIOSA_CATALOGUE_REPO ?? ""}|${process.env.CURIOSA_CATALOGUE_REF ?? ""}|${extraUrl ?? ""}`;
+  if (memo && memo.key === key && now() - memo.at < (memo.result.source === "none" ? FAILED_TTL : TTL)) return memo.result;
 
-  let base: RecognizedResult = { items: [], source: "none", fetchedAt: null, origin: null };
-  const runtime = process.env.CURIOSA_CATALOGUE_RUNTIME !== "0";
-  const repo = runtime ? await resolveIndexRepo(git) : null;
+  let base: RecognizedResult = { items: [], source: "none", fetchedAt: null, origin: null, suggested: [] };
+  const repo = resolveIndexRepo();
   if (repo) {
     try {
-      const items = sanitizeEntries(await fetchIndexFromRepo(repo, process.env.CURIOSA_CATALOGUE_REF || "HEAD", git));
-      base = { items, source: "repository", fetchedAt: now(), origin: repo };
+      const got = await fetchCatalogueFromRepo(repo, process.env.CURIOSA_CATALOGUE_REF || "HEAD", git);
+      const items = sanitizeEntries(got.index);
+      const suggested = sanitizeSuggested(got.suggested);
+      base = { items, source: "repository", fetchedAt: now(), origin: repo, suggested };
       try {
         fs.mkdirSync(path.dirname(cacheFile()), { recursive: true });
-        fs.writeFileSync(cacheFile(), JSON.stringify({ version: 1, fetchedAt: base.fetchedAt, origin: repo, modules: items }));
+        fs.writeFileSync(cacheFile(), JSON.stringify({ version: 1, fetchedAt: base.fetchedAt, origin: repo, modules: items, suggested }));
       } catch { /* la copie locale est un plus */ }
-    } catch { /* injoignable : on retombe sur la dernière copie */ }
+    } catch { /* injoignable : on retombe sur la dernière copie reçue */ }
   }
   if (base.source === "none") {
     const kept = readPersisted();
-    if (kept && kept.items.length + (kept.fetchedAt ? 1 : 0) > 0) base = { items: kept.items, source: "cache", fetchedAt: kept.fetchedAt, origin: kept.origin };
-  }
-  if (base.source === "none") {
-    const items = readSnapshot(root);
-    base = { items, source: "snapshot", fetchedAt: null, origin: null };
+    if (kept && kept.items.length + (kept.fetchedAt ? 1 : 0) > 0) base = { items: kept.items, source: "cache", fetchedAt: kept.fetchedAt, origin: kept.origin, suggested: kept.suggested };
   }
 
   const items = [...base.items];

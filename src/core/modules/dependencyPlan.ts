@@ -1,4 +1,4 @@
-import { getCatalogue, readBundledManifest, type CatalogueEntry } from "./catalogue";
+import { getCatalogue, type CatalogueEntry } from "./catalogue";
 import { liveProviders } from "./dependencies";
 import { listModuleRows, getModule } from "./registry";
 import { normalizeNeeds, normalizeOffers, offerVersionOf, satisfiesVersion, type ServiceNeed, type ServiceOffer } from "./serviceVersions";
@@ -10,8 +10,8 @@ import type { ParsedManifest } from "./manifest";
  *   1. un fournisseur déjà ACTIF (instance active, version suffisante) → rien à faire (si deux le sont, le mécanisme maître/répliques décide) ;
  *   2. sinon un module DÉJÀ INSTALLÉ qui offre le service, version suffisante : d'abord ceux qui sont activés (mais sans instance), puis les
  *      désactivés, chaque groupe par identifiant ;
- *   3. sinon un module du CATALOGUE non installé : les livrés avec l'archive d'abord, puis les reconnus, dans l'ordre de l'index (stable).
- * Seuls les modules du catalogue (livrés, reconnus), compatibles avec ce cœur, sont installés d'office ; jamais un dépôt personnel.
+ *   3. sinon un module du CATALOGUE non installé : dans l'ordre de l'index, dans l'ordre de l'index (stable).
+ * Seuls les modules du catalogue (reconnus), compatibles avec ce cœur, sont installés d'office ; jamais un dépôt personnel.
  */
 export type Candidate =
   | { id: string; from: "installed"; enabled: boolean }
@@ -63,7 +63,7 @@ export type DependencyPlan = { steps: PlanStep[]; problems: PlanProblem[] };
 export const MAX_DEPTH = 3;
 
 /**
- * Aperçu pour un module dont on connaît les besoins (`needs`) : installé (manifeste), livré (manifeste) ou reconnu (index, facultatif).
+ * Aperçu pour un module dont on connaît les besoins (`needs`) : installé (manifeste) ou du catalogue (index, facultatif).
  * Ordre topologique : les fournisseurs des fournisseurs d'abord.
  */
 export async function planDependencies(rootId: string, needs: ServiceNeed[], opts: { catalogue?: CatalogueEntry[]; path?: string[] } = {}): Promise<DependencyPlan> {
@@ -95,7 +95,7 @@ export async function planDependencies(rootId: string, needs: ServiceNeed[], opt
       // Les besoins du fournisseur d'abord (ordre topologique), puis lui.
       const own = candidate.from === "installed"
         ? normalizeNeeds((await getModule(candidate.id))?.manifest.requires)
-        : candidate.entry.source === "bundled" && candidate.entry.dir ? normalizeNeeds(readBundledManifest(candidate.entry.dir)?.requires) : candidate.entry.needs ?? [];
+        : candidate.entry.needs ?? [];
       await resolve(candidate.id, own, [...path, candidate.id]);
       add({ id: candidate.id, action: candidate.from === "installed" ? "enable" : "install", services: [need.service] });
     }

@@ -66,7 +66,7 @@ export async function checkUpdateAction(id: string): Promise<ModuleActionResult>
 export async function updateModuleAction(id: string): Promise<ModuleActionResult> {
   const { user } = await adminCtx("owner");
   const result = await updateModule(id);
-  await audit(user.email, "module.update", id);
+  await audit(user.email, "module.update", result.ok && result.auditTarget ? result.auditTarget : id);
   revalidatePath("/", "layout");
   if (!result.ok) return { ok: false, href: modulePage(id, `error=${encodeURIComponent(result.error)}`) };
   if (result.migrations?.some((m) => m.status === "failed" || m.status === "newer")) return { ok: false, href: modulePage(id, "error=modules.error.migration") };

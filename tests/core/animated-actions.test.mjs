@@ -58,7 +58,7 @@ test("modules : chercher / mettre à jour passent par le bouton animé ; les act
   const check = actions.slice(actions.indexOf("export async function checkUpdateAction"), actions.indexOf("export async function uninstallModuleAction"));
   assert.ok(!check.includes("redirect("));
   assert.match(check, /await adminCtx\("owner"\)/);
-  assert.match(check, /audit\(user\.email, "module\.update", id\)/);
+  assert.match(check, /audit\(user\.email, "module\.update", /);
   assert.match(check, /revalidatePath\("\/", "layout"\)/);
 });
 

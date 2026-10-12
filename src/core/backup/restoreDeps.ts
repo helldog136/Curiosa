@@ -10,7 +10,7 @@ import type { Missing } from "@/core/modules/dependencyInstaller";
  * ils ont besoin, sans jamais interrompre la restauration ni perdre de donnée :
  *   - avant : réinstaller les modules dans l'ORDRE des dépendances (fournisseurs d'abord) ;
  *   - aperçu : dire « il manque : … » pour un module actif dont le fournisseur n'est ni dans la sauvegarde, ni installé, ni disponible ;
- *   - après : pour chaque module restauré ACTIF, installer d'office le fournisseur disponible (livré, catalogue) avec son instance par défaut ;
+ *   - après : pour chaque module restauré ACTIF, installer d'office le fournisseur disponible (catalogue) avec son instance par défaut ;
  *     sinon le module est gardé tel que sauvegardé et le bilan dit ce qui manque.
  */
 export type DependencyIssue = { id: string; missing: Missing[] };
@@ -37,7 +37,7 @@ export function orderByDependencies<T extends { id: string }>(items: T[], linksO
   return out;
 }
 
-/** Offres et besoins connus d'un module de la sauvegarde SANS le télécharger : installé (manifeste), sinon catalogue (livré : manifeste, reconnu : index). */
+/** Offres et besoins connus d'un module de la sauvegarde SANS le télécharger : installé (manifeste), sinon catalogue (catalogue : index). */
 export async function linksFor(ids: string[], catalogue?: CatalogueEntry[]): Promise<Map<string, ModuleLinks>> {
   const market = catalogue ?? (await getCatalogue().catch(() => []));
   const out = new Map<string, ModuleLinks>();

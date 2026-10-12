@@ -7,7 +7,8 @@ import { prisma } from "../db";
 import { MODULES_DIR } from "../config";
 import { parseManifest, type ParsedManifest } from "./manifest";
 import { forgetModule, getModule, moduleDir, readGitManifest } from "./registry";
-import { findCatalogueEntry, getCatalogue, readBundledManifest } from "./catalogue";
+import { catalogueUnreachable, findCatalogueEntry, getCatalogue } from "./catalogue";
+import { checkBundledRow, convertToCatalogue } from "./bundledUpdate";
 import { dependentsOf } from "./dependencies";
 import { commitJournal, satisfyRequirements, unwind, type DepOps, type Journal, type Missing } from "./dependencyInstaller";
 import { forgetAuto } from "./autoInstalled";
@@ -22,6 +23,8 @@ const DEFAULT_HOSTS = "github.com,gitlab.com,codeberg.org,bitbucket.org";
 
 export type InstallResult = {
   ok: true; id: string; migrations?: MigrationOutcome[];
+  /** Ligne du journal d'audit quand la mise à jour a changé la SOURCE du module (module de base converti en module du catalogue). */
+  auditTarget?: string;
   /** Modules apportés d'office par la cascade des dépendances (installés ou activés). */
   provided?: string[];
   /** Mise à jour réussie, mais il manque encore de quoi faire fonctionner le module : à dire à l'administrateur. */
@@ -261,7 +264,7 @@ export const sameRepo = (a: string | null | undefined, b: string | null | undefi
 /** Quelle étiquette ou quel commit suivre ? Un module installé DEPUIS LE CATALOGUE suit le commit relu que le catalogue épingle ; un module personnel suit la sienne. */
 export async function subdirTarget(row: Module): Promise<{ ref: string | null; fromCatalogue: boolean }> {
   const entry = await findCatalogueEntry(row.id).catch(() => undefined);
-  const same = entry?.source === "recognized" && sameRepo(entry.repo, row.repoUrl) && (entry.subdir ?? null) === row.subdir;
+  const same = !!entry && sameRepo(entry.repo, row.repoUrl) && (entry.subdir ?? null) === row.subdir;
   return { ref: same ? entry!.ref ?? null : row.ref, fromCatalogue: !!same };
 }
 
@@ -335,7 +338,7 @@ async function latestRemoteTag(repoUrl: string): Promise<string | null> {
  *   - épinglé sur une ÉTIQUETTE (`#v1.2.0`, le cas recommandé) : la plus haute version stable du dépôt ;
  *   - épinglé sur un commit : jamais (c'est le but) ;
  *   - sur une branche (ou la branche par défaut) : le dernier commit de cette branche ;
- *   - livré avec le framework : la version qu'apporte le framework.
+ *   - ligne `bundled` d'un ancien site (compatibilité, à retirer en 0.3.0) : la version du catalogue (qui la convertit en module du catalogue).
  */
 export async function checkForUpdate(id: string): Promise<ModuleUpdateCheck> {
   return (await checkForUpdateDetailed(id)).check;
@@ -345,16 +348,14 @@ export async function checkForUpdate(id: string): Promise<ModuleUpdateCheck> {
 export async function checkForUpdateDetailed(id: string): Promise<{ check: ModuleUpdateCheck; failed: boolean }> {
   const row = await prisma.module.findUnique({ where: { id } });
   if (row?.source === "bundled") {
-    const entry = await findCatalogueEntry(id).catch(() => undefined);
-    const available = !!entry?.dir && !!entry.version && entry.version !== row.version;
-    return { check: { available, remote: entry?.version, target: available ? entry?.version : undefined, level: available ? classify(row.version, entry!.version!) ?? undefined : undefined }, failed: !entry };
+    return checkBundledRow(row, await findCatalogueEntry(id).catch(() => undefined));
   }
   if (!row || row.source !== "git" || !row.repoUrl) return { check: { available: false }, failed: false };
   const res = await checkGitUpdate(row);
   if (res.check.available && !res.check.needsCore && !row.subdir) {
     // Sans télécharger : l'index du catalogue dit si la version proposée demande un cœur plus récent (sinon le refus viendra à la mise à jour).
     const entry = await findCatalogueEntry(id).catch(() => undefined);
-    if (entry?.source === "recognized" && sameRepo(entry.repo, row.repoUrl) && !entry.subdir && entry.needsNewerCore) return { ...res, check: { ...res.check, needsCore: entry.needsNewerCore } };
+    if (entry && sameRepo(entry.repo, row.repoUrl) && !entry.subdir && entry.needsNewerCore) return { ...res, check: { ...res.check, needsCore: entry.needsNewerCore } };
   }
   return res;
 }
@@ -389,13 +390,10 @@ export async function updateModule(id: string): Promise<InstallResult> {
 async function updateModuleFiles(id: string): Promise<InstallResult> {
   const row = await prisma.module.findUnique({ where: { id } });
   if (row?.source === "bundled") {
+    // Compatibilité sites anciens, à retirer en 0.3.0 : le catalogue est la source, jamais une copie locale.
     const entry = await findCatalogueEntry(id);
-    if (!entry?.dir) return { ok: false, error: "modules.error.notfound" };
-    const copied = copyBundled(entry.dir, id);
-    if (!copied.ok) return copied;
-    await prisma.module.update({ where: { id }, data: { version: copied.version } });
-    forgetModule(id);
-    return { ok: true, id, migrations: await migrateModuleInstances(id) };
+    if (entry) return convertToCatalogue(row, entry);   // voir bundledUpdate.ts
+    return { ok: false, error: (await catalogueUnreachable()) ? "modules.error.catalogue" : "modules.error.unknownSource" };
   }
   if (!row || row.source !== "git" || !row.repoUrl) return { ok: false, error: "modules.error.notfound" };
   if (row.subdir) return updateSubdirModule(row);
@@ -476,7 +474,7 @@ export const requirementsRefusal = (missing: Missing[]): InstallResult => ({ ok:
 const depOps = (): DepOps => ({
   catalogue: () => getCatalogue(),
   installEntry: async (entry) => {
-    const r = entry.source === "bundled" ? await installBundled(entry.id, { dependencies: false }) : await installModule(`${entry.repo}${entry.ref || entry.subdir ? `#${entry.ref ?? ""}${entry.subdir ? `:${entry.subdir}` : ""}` : ""}`, { expectId: entry.id, dependencies: false });
+    const r = await installModule(`${entry.repo}${entry.ref || entry.subdir ? `#${entry.ref ?? ""}${entry.subdir ? `:${entry.subdir}` : ""}` : ""}`, { expectId: entry.id, dependencies: false });
     return r.ok ? { ok: true } : { ok: false, error: r.error, detail: r.detail };
   },
   purge: purgeModule,
@@ -501,7 +499,7 @@ async function enableModule(id: string): Promise<InstallResult> {
 }
 
 /**
- * Vérifie les `requires` d'un module ACTIF et, s'il manque un fournisseur disponible (livré, catalogue), l'installe d'office avec son instance par défaut.
+ * Vérifie les `requires` d'un module ACTIF et, s'il manque un fournisseur disponible (catalogue), l'installe d'office avec son instance par défaut.
  * Impossible → rien n'est laissé à moitié et `missing` dit quoi. Sert après une mise à jour et après une restauration. Ne lève jamais.
  */
 export async function settleDependencies(id: string): Promise<{ provided?: string[]; missing?: Missing[] }> {
@@ -555,60 +553,13 @@ export async function purgeModule(id: string): Promise<void> {
   fs.rmSync(moduleDir(id), { recursive: true, force: true });
 }
 
-/** Copie un module livré avec le framework vers le dossier des modules installés (sans .git ni lien symbolique). */
-export function copyBundled(from: string, id: string): { ok: true; version: string } | { ok: false; error: string } {
-  const manifest = readBundledManifest(from);
-  if (!manifest || manifest.id !== id) return { ok: false, error: "modules.error.nomanifest" };
-  const target = moduleDir(id);
-  const staging = `${target}.incoming-${process.pid}`;
-  try {
-    fs.mkdirSync(MODULES_DIR, { recursive: true });
-    fs.rmSync(staging, { recursive: true, force: true });
-    fs.cpSync(from, staging, { recursive: true, filter: (src) => path.basename(src) !== ".git" && path.basename(src) !== "node_modules" });
-    if (dirSize(staging) > MAX_MODULE_BYTES) throw new Error("size");
-    fs.rmSync(target, { recursive: true, force: true });
-    fs.renameSync(staging, target);
-    return { ok: true, version: manifest.version };
-  } catch (error) {
-    fs.rmSync(staging, { recursive: true, force: true });
-    console.error("[modules] bundled copy failed:", error);
-    return { ok: false, error: "modules.error.clone" };
-  }
-}
-
-/** Installe un module livré avec le framework. Désactivé tant que l'admin ne l'a pas activé, comme tout module installé. */
-export async function installBundled(id: string, opts: { dependencies?: boolean } = {}): Promise<InstallResult> {
-  const entry = await findCatalogueEntry(id);
-  if (!entry || entry.source !== "bundled" || !entry.dir) return { ok: false, error: "modules.error.notfound" };
-  if (await prisma.module.findUnique({ where: { id } })) return { ok: false, error: "modules.error.exists" };
-  // Les fournisseurs d'abord (voir installModule) : s'ils ne peuvent pas être installés, ce module ne l'est pas non plus.
-  let deps: Journal | null = null;
-  const manifest = readBundledManifest(entry.dir);
-  if (opts.dependencies !== false && manifest?.requires?.length) {
-    const r = await satisfyRequirements(manifest, depOps());
-    deps = r.journal;
-    if (!r.ok) { await unwind(deps); return requirementsRefusal(r.missing); }
-  }
-  try {
-    const copied = copyBundled(entry.dir, id);
-    if (!copied.ok) { if (deps) await unwind(deps); return copied; }
-    await prisma.module.create({ data: { id, source: "bundled", version: copied.version, enabled: false } });
-    if (deps) await commitJournal(deps);
-  } catch (error) {
-    if (deps) await unwind(deps);
-    throw error;
-  }
-  return { ok: true, id, ...(deps?.provided.length ? { provided: deps.provided } : {}) };
-}
-
-/** Installe un module du catalogue (livré ou reconnu) par son identifiant. Le dépôt reconnu doit servir ce module-là. */
+/** Installe un module du catalogue (catalogue) par son identifiant. Le dépôt reconnu doit servir ce module-là. */
 export async function installFromCatalogue(id: string, opts: { dependencies?: boolean } = {}): Promise<InstallResult> {
   const entry = await findCatalogueEntry(id);
   if (!entry) return { ok: false, error: "modules.error.notfound" };
   if (!entry.compatible) return { ok: false, error: "modules.error.incompatible" };
   // L'index dit déjà quel cœur il faut : on refuse AVANT de télécharger quoi que ce soit.
   if (entry.needsNewerCore) return { ok: false, error: "modules.error.core", detail: entry.needsNewerCore, needsCore: entry.needsNewerCore };
-  if (entry.source === "bundled") return installBundled(id, opts);
   const fragment = entry.ref || entry.subdir ? `#${entry.ref ?? ""}${entry.subdir ? `:${entry.subdir}` : ""}` : "";
   return installModule(`${entry.repo}${fragment}`, { expectId: id, ...opts });
 }

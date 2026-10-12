@@ -24,48 +24,27 @@ Curiosa est un **site vitrine clé en main que vous possédez** : votre contenu,
 | **Une personne qui gère le site d'une autre** | une interface en deux niveaux : **simple** (vocabulaire de tous les jours) et **avancée** (tous les réglages) |
 | **Développeur ou agence** | un framework au code lisible, modulaire, documenté, où l'on ajoute des fonctionnalités sans toucher au cœur |
 
-## Pourquoi Curiosa, et quand ne pas le choisir
+## Pourquoi Curiosa
 
-Curiosa ne cherche pas à remplacer WordPress : il n'en a ni l'écosystème, ni les années. Il vise un public précis, **le créateur de contenu qui veut son propre site sans en devenir l'administrateur**, et il mise sur quatre choses, chacune vérifiable :
-
-| Ce qui le distingue | Comment le vérifier |
-|---|---|
-| **Aucun bandeau de cookies à prévoir** : statistiques anonymes sans cookie, cookie de nouveautés seulement si le visiteur le demande, page de confidentialité écrite d'après ce que le site fait vraiment | [docs/PRIVACY.md](docs/PRIVACY.md), et `node scripts/measure.mjs <votre-site>` : zéro cookie, zéro service tiers |
-| **Rien à exploiter** : un seul fichier de base de données, mises à jour depuis l'admin avec retour arrière, sauvegardes chiffrées lisibles sans le logiciel | [docs/INSTALL.md](docs/INSTALL.md), [docs/BACKUP.md](docs/BACKUP.md) |
-| **Fait pour les créateurs** : overlays OBS, statut live, codes promo, sponsors, kit presse, réseaux sociaux dans l'en-tête | la liste des modules livrés |
-| **Gérable par un assistant IA** : serveur MCP (comme d'autres CMS en proposent maintenant), installation menée par un agent, modules écrits à partir d'une doc conçue pour cela | [docs/AGENT-INSTALL.md](docs/AGENT-INSTALL.md), [docs/CREATE-A-MODULE.md](docs/CREATE-A-MODULE.md) |
-
-**Les chiffres, avec leur méthode** ([docs/MESURES.md](docs/MESURES.md), mesurés sur la 0.1.4) : installation par la machine ≈ 16 s ; zéro cookie et zéro service tiers à la première visite ; 634 Ko de code (≈ 189 Ko compressé) pour une page d'accueil ; 224 Mo de mémoire au repos ; 878 tests automatiques (cœur et modules). Et ce qui ne flatte pas : **517 Mo sur le disque** une fois installé, et ≈ 177 Ko de JavaScript compressé même pour une page simple.
-
-**Choisissez plutôt autre chose si…**
-
-| Votre besoin | Mieux adapté |
-|---|---|
-| une vraie boutique (catalogue, paiement, stocks) | WooCommerce, Shopify |
-| un énorme choix de thèmes, d'extensions et de prestataires | WordPress |
-| un blog avec abonnements payants et lettre d'information | Ghost |
-| ne rien héberger du tout | un constructeur hébergé (Wix, Squarespace), ou un lien-bio (Linktree) |
-| un site statique ultra-léger, sans JavaScript | Hugo, Astro |
-| un très fort trafic | à ce jour **non testé en charge** : ne pariez pas dessus sans l'essayer |
-
-Le projet est jeune : **un seul site en production à ce jour**. Il progresse en étant utilisé.
+- **Un site vraiment à vous.** Vos textes, vos images et la liste de vos visiteurs restent chez vous. Pas d'abonnement, pas de commission : juste le prix d'un petit serveur.
+- **Des visiteurs accueillis sans fenêtre à fermer.** Curiosa ne suit pas les personnes qui passent : pas de bandeau à faire accepter, rien à régler pour ça. Vous savez pourtant combien de monde vient et ce qui se lit le plus.
+- **Rien à surveiller.** Les mises à jour se font en un clic, avec retour automatique à la version d'avant si quelque chose se passe mal. Vos sauvegardes sont chiffrées et restent lisibles même sans Curiosa.
+- **Pensé pour les créateurs.** Habillage de stream, bouton « en direct », planning, codes promo, sponsors, kit presse, réseaux sociaux dans l'en-tête : tout est prévu, vous n'activez que ce qui vous sert.
+- **Votre IA préférée peut vous aider.** Si vous le souhaitez, un assistant prépare des brouillons ou tient à jour vos listes ; vous relisez tout avant que ça paraisse, et vous retirez son accès quand vous voulez.
 
 ## Ce que vous obtenez
 
-- **Un site à votre image, sans code.** Nom, logo, couleurs, polices, fond de page, icône d'onglet, menus, langues : tout se règle dans l'admin, avec un thème clair ou sombre pour l'admin lui-même.
-- **Des fonctionnalités à la carte.** Blog, pages, liens et réseaux sociaux, codes promo, sponsors, formulaire de contact, flux RSS, statut live, bandeaux, overlays pour OBS… Vous n'activez que ce dont vous avez besoin, et vous en ajoutez d'autres depuis le **Catalogue**.
-- **Un tableau de bord utile.** Combien de visiteurs aujourd'hui, quelles pages sont les plus lues, d'où viennent vos lecteurs, et des pastilles « nouveau » dans le menu pour vos visiteurs de retour.
-- **Multilingue sans douleur.** Une seule version suffit pour publier ; on en ajoute d'autres quand on veut.
-- **Des mises à jour en un clic**, vérifiées, avec retour automatique à la version précédente en cas de problème.
-- **Des sauvegardes chiffrées** que vous pouvez relire même sans Curiosa, et une restauration depuis l'assistant de démarrage.
-- **Un assistant IA à votre service (optionnel).** Votre site peut exposer une interface sécurisée (MCP) pour qu'un assistant rédige des brouillons ou tienne un suivi à jour, avec des accès révocables, réglés action par action.
+- **Un site à votre image, sans écrire une ligne de code.** Nom, logo, couleurs, polices, fond de page, menus, langues : tout se règle depuis votre espace d'administration, en clair ou en sombre.
+- **Des fonctionnalités à la carte.** Blog, pages, liens et réseaux sociaux, codes promo, sponsors, formulaire de contact, statut live, bandeaux, overlays pour OBS… Vous choisissez ce que vous voulez dans le **Catalogue** et vous l'installez en un clic.
+- **Un tableau de bord qui parle.** Combien de visiteurs aujourd'hui, quelles pages ont du succès, d'où viennent vos lecteurs, et une pastille « nouveau » pour ceux qui reviennent.
+- **Plusieurs langues sans effort.** Une seule suffit pour publier ; vous en ajoutez quand vous le voulez.
+- **Des mises à jour et des sauvegardes simples.** Un clic pour mettre à jour, une restauration guidée si un jour vous changez de serveur.
 
-## Respect des visiteurs et sécurité
+## Respect de vos visiteurs, et sécurité
 
-- **Statistiques anonymes** : aucun identifiant de suivi, aucune adresse IP conservée (seule la date de la dernière visite est gardée dans le navigateur du visiteur, pour signaler les nouveautés), aucun service tiers ; les visiteurs qui refusent le suivi ne sont pas comptés.
-- **Aucune publicité, aucun traceur.** Votre site ne parle à personne d'autre que vous.
-- **Accès protégés** : comptes avec rôles (propriétaire, éditeur…), mots de passe protégés (jamais stockés en clair), journal d'audit, jetons d'API révocables.
-- **Sous votre contrôle** : une base de données dans un seul fichier, sur votre serveur ; vérification régulière des failles connues dans les dépendances.
+- **Des statistiques sans suivi personnel.** Vous voyez combien de personnes passent, jamais qui. Aucun outil extérieur, aucune publicité.
+- **Des accès protégés.** Chacun a son compte avec son rôle (propriétaire, éditeur…), les mots de passe ne sont jamais lisibles, et un journal garde la trace de chaque action importante.
+- **Tout est chez vous.** Vos données tiennent dans un seul fichier, sur votre serveur, et les failles connues sont vérifiées régulièrement.
 
 ## Gratuit, lisible, et reconnu
 
@@ -73,7 +52,7 @@ Curiosa est **gratuit** et son code source est **lisible et modifiable**. Préci
 
 - ✅ **Vous pouvez l'utiliser pour le site de votre propre activité**, y compris commerciale (boutique, sponsors, dons, publicité…), le modifier et l'adapter.
 - ✅ **Vous pouvez monter, personnaliser et entretenir un site pour un client** et facturer ce travail, tant que vous ne lui vendez pas Curiosa lui-même.
-- ✅ **Un hébergeur peut le proposer préinstallé** (par exemple un VPS avec Curiosa, comme on le fait avec WordPress) : il facture l'hébergement et le support, chaque client garde sa propre installation, qu'il contrôle entièrement.
+- ✅ **Un hébergeur peut le proposer préinstallé** (par exemple un serveur loué avec Curiosa déjà prêt à l'emploi) : il facture l'hébergement et le support, chaque client garde sa propre installation, qu'il contrôle entièrement.
 - ❌ **On ne peut pas vendre Curiosa** (ni une version modifiée), ni en faire une plateforme où une seule installation sert les sites de nombreux clients, ni facturer l'accès à ses fonctionnalités.
 - 🏷️ **Le crédit « Propulsé par Curiosa » reste affiché** dans le pied de page du site (« Curiosa » est un lien vers le dépôt du projet), et les mentions d'auteur restent dans le code.
 - 🧩 **Les modules écrits par des tiers leur appartiennent** : leur auteur choisit sa licence, garde tout le mérite et peut les vendre.
@@ -101,10 +80,12 @@ Un site existant sous **Grav CMS** ? Il peut être converti : [docs/IMPORT-GRAV.
 
 Rien n'est compilé chez vous : on installe une **release** déjà compilée (publiée sur la page *Releases* du dépôt), puis les mises à jour se font depuis l'admin.
 
+**Curiosa s'installe seul ; ses modules s'installent depuis le catalogue** (dépôt [curiosa-extras](https://github.com/helldog136/curiosa-extras) par défaut). L'archive ne contient aucun module : l'assistant de première installation propose ceux qui sont suggérés, et tous les autres se choisissent plus tard dans *Modules › Catalogue*. Le serveur doit donc pouvoir joindre le catalogue (github.com) ; s'il ne le peut pas au moment de l'installation, le site se crée quand même, sans module, et vous les ajouterez ensuite.
+
 **Il faut :**
 
 - un serveur Linux **x64** (testé sur Ubuntu 20.04 et plus récent ; Debian aussi) ;
-- **Node.js 20.9 ou plus** (`node -v`) et `git` (utilisé seulement pour installer des modules depuis l'admin) ;
+- **Node.js 20.9 ou plus** (`node -v`) et `git` (utilisé seulement pour installer des modules depuis le catalogue ou un dépôt) ;
 - un nom de domaine qui pointe vers le serveur, et un proxy HTTPS devant le site (nginx, Caddy…) ;
 - un accès administrateur (`sudo`).
 
@@ -203,7 +184,7 @@ server {
 
 Testez toujours avant de recharger : `sudo nginx -t && sudo systemctl reload nginx`.
 
-**6. Premier écran.** Ouvrez `https://example.org/admin/setup` : l'**assistant de première installation** démarre (code d'installation, prénom, langue, nom du site, rubriques de départ, premiers liens, compte propriétaire).
+**6. Premier écran.** Ouvrez `https://example.org/admin/setup` : l'**assistant de première installation** démarre (code d'installation, prénom, langue, nom du site, modules suggérés par le catalogue, premiers liens, compte propriétaire).
 Vous avez déjà une sauvegarde ? Choisissez **« J'ai déjà une sauvegarde »** dès le premier écran (voir [docs/BACKUP.md](docs/BACKUP.md)). Une fois le site configuré, vous pouvez retirer `SETUP_TOKEN` du `.env`, puis `sudo systemctl restart curiosa`.
 
 **Mises à jour** : page *Mises à jour* de l'admin (propriétaire). Le site télécharge la release, vérifie son empreinte, sauvegarde la base, migre et redémarre ; au moindre échec il revient à la version précédente.
@@ -326,17 +307,14 @@ src/core/services/  Les HELPERS que le cœur offre aux modules : QR code, MCP, s
 src/core/           Le cœur, agnostique : runtime des modules (registre, installateur,
                     contexte), moteur de contenu, redirections, langues, réglages
 src/core/platform.ts  Racine de composition : relie les services aux fonctionnalités
-src/modules-builtin Les fonctions de base, déjà sous forme de modules : blog, links, codes,
-                    pages, collection, hero, contact-form, live-status, ticker-overlay,
-                    press-kit (vitrine de l'identité réglée dans le cœur)
 src/app/(site)      Site public (accueil assemblé de sections, pages d'instances, redirections)
 src/app/admin       L'admin unique : assistant, entrées, une sous-page par instance, accueil,
                     redirections, modules & catalogue…
 src/app/overlays    Overlays OBS (/overlays/<clé>)
 src/app/api/mcp     Serveur MCP (outils collectés auprès des modules)
 src/locales         Textes de l'interface (fr, en) — ajouter une langue = un fichier JSON
-extras/             (non versionné) Instantané des modules livrés, récupéré de curiosa-extras par `npm run extras:fetch`
-                    et embarqué dans chaque release. Le cœur ne contient AUCUN module.
+                    Le cœur ne contient AUCUN module (ni dossier de modules, ni copie du catalogue) :
+                    ils vivent dans curiosa-extras et s'installent depuis le catalogue.
 docs/               PLATFORM.md (cœur vs modules), ARCHITECTURE.md, MODULES.md
 ```
 

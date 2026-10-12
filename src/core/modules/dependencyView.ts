@@ -1,4 +1,4 @@
-import { getCatalogue, readBundledManifest, type CatalogueEntry } from "./catalogue";
+import { getCatalogue, type CatalogueEntry } from "./catalogue";
 import { cleanupSuggestions, readAuto } from "./autoInstalled";
 import { liveProviders, lossesIfStopped, requirementGaps, type Gap } from "./dependencies";
 import { planDependencies, type DependencyPlan, type PlanProblem, type PlanStep } from "./dependencyPlan";
@@ -21,8 +21,6 @@ export async function buildNames(locale: string, defaultLocale: string, catalogu
   for (const e of market) {
     modules.set(e.id, localized(e.name, locale, defaultLocale));
     for (const o of e.offers ?? []) remember(o.service, undefined, localized(e.name, locale, defaultLocale));
-    const m = e.source === "bundled" && e.dir ? readBundledManifest(e.dir) : null;
-    for (const o of m?.offers ?? []) if (o.label) services.set(o.service, localized(o.label, locale, defaultLocale));
   }
   for (const row of await listModuleRows()) {
     const mod = await loadModule(row).catch(() => null);

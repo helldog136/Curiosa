@@ -32,7 +32,7 @@ export async function DetailsView({ id, repo, embedded = false }: { id?: string;
   if (id) {
     entry = await findCatalogueEntry(id);
     if (!entry) notFound();
-    target = entry.source === "bundled" && entry.dir ? { kind: "bundled", dir: entry.dir } : entry.repo ? { kind: "repo", url: entry.repo, ref: entry.ref, subdir: entry.subdir } : null;
+    target = entry.repo ? { kind: "repo", url: entry.repo, ref: entry.ref, subdir: entry.subdir } : null;
   } else if (repo) {
     const parsed = parseRepoUrl(repo);
     if (parsed.ok) { custom = parsed.repo; target = { kind: "repo", url: parsed.repo.url, ref: parsed.repo.ref, subdir: parsed.repo.subdir }; }
