@@ -5,6 +5,8 @@ import { adminCtx } from "@/core/admin";
 import { audit } from "@/core/permissions";
 import { checkForUpdate, getUpdateCheck, setAutoUpdate, setUpdateChannel, startUpdate } from "@/core/updates/service";
 import { getModulesReport, moduleNames, updateModules } from "@/core/modules/updateStatus";
+import { buildNames } from "@/core/modules/dependencyView";
+import { describeMissingList } from "@/core/modules/dependencyMessages";
 import type { ActionState } from "@/components/admin/ActionForm";
 
 /** Réservé au propriétaire : une mise à jour change le code qui tourne sur le serveur. */
@@ -57,7 +59,7 @@ export async function recheckModules(): Promise<ActionState> {
 }
 
 /** Bilan d'une mise à jour de modules, déjà en clair (noms et raisons traduits) pour l'afficher tel quel. */
-export type ModulesBilan = { updated: string[]; failed: { name: string; reason: string; migration: boolean }[]; skipped: string[]; stoppedOn: string | null; /** Sautés sans échec : le module demande un cœur plus récent (`core`). */ incompatible?: { name: string; core: string }[] };
+export type ModulesBilan = { updated: string[]; failed: { name: string; reason: string; migration: boolean }[]; skipped: string[]; stoppedOn: string | null; /** Sautés sans échec : le module demande un cœur plus récent (`core`). */ incompatible?: { name: string; core: string }[]; /** Mis à jour, mais il manque encore un module pour fonctionner (texte déjà en clair). */ warnings?: { name: string; list: string }[]; /** Modules installés d'office pour eux. */ provided?: string[] };
 
 /**
  * Met à jour des modules (ceux demandés, sinon tous ceux qui sont en retard) un par un. Réservé au propriétaire : c'est du code qui tourne sur le serveur.
@@ -70,11 +72,14 @@ export async function updateModulesAction(ids?: string[]): Promise<ModulesBilan>
   revalidatePath("/", "layout");
   const names = await moduleNames(locale, config.defaultLocale);
   const name = (id: string) => names.get(id) ?? id;
+  const readable = summary.warnings?.length || summary.provided?.length ? await buildNames(locale, config.defaultLocale) : null;
   return {
     updated: summary.updated.map(name),
     failed: summary.failed.map((f) => ({ name: name(f.id), reason: t(f.error), migration: f.migration })),
     skipped: summary.skipped.map(name),
     stoppedOn: summary.stoppedOn ? name(summary.stoppedOn) : null,
+    ...(readable && summary.warnings?.length ? { warnings: summary.warnings.map((w) => ({ name: name(w.id), list: describeMissingList(w.missing, t, readable).join(" ") })) } : {}),
+    ...(readable && summary.provided?.length ? { provided: summary.provided.map(readable.module) } : {}),
     ...(summary.incompatible ? { incompatible: summary.incompatible.map((i) => ({ name: name(i.id), core: i.core })) } : {}),
   };
 }

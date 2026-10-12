@@ -490,11 +490,13 @@ Voir « Sauvegarde lisible sans le framework ». `backup.readable(ctx)` renvoie 
 
 ### Dépendances entre modules : `offers` / `requires` / `services`
 
-Un module peut avoir **besoin** d'un autre (un formulaire de contact a besoin d'un carnet où ranger les contacts). On dépend d'un **service** (un nom : `contact.store`), jamais d'un module précis : n'importe quel module qui l'offre convient.
+**Principe : pas de doublons.** Les modules sont comme des microservices à l'intérieur du backend de Curiosa. **Un module fait une chose** ; ce qui appartient à un autre module s'obtient **par service, jamais par copie** ; **une donnée n'a qu'un propriétaire**. Un module qui a besoin d'une capacité d'un autre le **déclare** dans `requires`, et **le cœur s'occupe d'installer le fournisseur** : « si on installe Partenariats, Contacts s'installe aussi », avec une instance prête à l'emploi.
+
+On dépend d'un **service** (un nom : `contact.store`), jamais d'un module précis : n'importe quel module qui l'offre convient.
 
 ```jsonc
-// module.json du FOURNISSEUR                       // module.json du CONSOMMATEUR
-"offers":   [{ "service": "contact.store" }]        "requires": [{ "service": "contact.store" }]
+// module.json du FOURNISSEUR (Contacts)                          // module.json du CONSOMMATEUR (Partenariats, formulaire…)
+"offers":   [{ "service": "contact.store", "version": 2 }]        "requires": [{ "service": "contact.store", "min": 2 }]
 ```
 
 ```js
@@ -504,13 +506,34 @@ services: { "contact.store": {                           const r = await ctx.api
 } },
 ```
 
-Ce que fait le cœur :
+Exemple court : *Contacts* offre `contact.store` et possède le carnet ; *Partenariats* et le formulaire de contact le `requires`. Ni l'un ni l'autre ne recopie un champ de contact : ils appellent le service. Installer Partenariats depuis le Catalogue installe, active et prépare Contacts (une instance), puis Partenariats.
 
-- **Activer** un module qui `requires` un service qu'aucun module actif n'offre : si un module **livré avec le framework** l'offre, il est installé et activé d'office ; sinon l'activation est refusée en nommant ce qui manque.
-- **Désactiver ou désinstaller** un module que d'autres modules actifs requièrent (parce que lui seul offre le service) est refusé, avec la liste de ces modules.
-- `ctx.api.services.call` n'accepte que les services déclarés dans `requires` (sinon `undeclared`), prend le premier fournisseur actif (par clé d'instance), ne lève jamais : à vous de gérer `unavailable` (par exemple après une restauration) en dégradant proprement.
+#### Versions de services (rétrocompatibles)
+
+`offers[].version` (entier ≥ 1, **défaut 1**) : la version de l'interface offerte, à augmenter quand le service gagne une capacité. `requires[].min` (entier ≥ 1, **défaut 1**) : la plus ancienne version dont le consommateur s'accommode. Un fournisseur ne **satisfait** une exigence que si sa version est ≥ `min` (ce que fait aussi `ctx.api.services.call` : il ignore les fournisseurs trop anciens). Un manifeste sans version reste valide (version 1 partout). Si seul un fournisseur trop ancien est disponible, l'installation ou l'activation est refusée avec un message dédié : *« Il faut Contacts en version 2 (vous avez la 1) : mettez le module à jour »* ; mettre à jour le fournisseur lève le blocage. Les modules sont versionnés indépendamment du cœur : changez la `version` du service quand vous ajoutez une méthode dont dépendent des consommateurs, pas à chaque correctif.
+
+#### Ce que fait le cœur
+
+- **Un fournisseur est « présent »** quand une **instance active** d'un module actif l'offre, en version suffisante. Un module actif sans instance, ou une instance dont les données sont à l'écart, ne compte pas : le service est alors `unavailable`.
+- **Résolution avant l'installation** (Catalogue, dépôt personnel, activation d'un module installé) : pour chaque service qui manque, le cœur cherche un fournisseur — (1) un module **déjà installé** qui l'offre (activés d'abord, puis par identifiant) ; (2) un module **livré** avec l'archive ; (3) le **premier du catalogue reconnu** (dans l'ordre de l'index). Il l'**installe, l'active et crée son instance par défaut** (`single` : une ; `multiple` : une, sans surnom — la première n'en a pas besoin), après avoir fait de même pour **ses propres besoins** (profondeur 3 au plus ; un cycle est refusé). Le consommateur vient ensuite, **désactivé** comme tout module installé (c'est l'administrateur qui l'active). Jamais un dépôt personnel n'est choisi comme fournisseur.
+- **Rien à moitié** : si un maillon échoue (clone impossible, dépôt qui ne sert pas le module annoncé, service absent du manifeste réel, cycle, profondeur), tout ce que la cascade avait fait est **défait** (modules installés, activés, instances créées, fichiers) et le message dit **quel module** a échoué et **pourquoi**. L'index peut se tromper : c'est le manifeste réellement téléchargé qui tranche, et le candidat suivant est essayé.
+- **Deux fournisseurs déjà actifs** : rien n'est choisi ni installé ; le mécanisme maître/répliques ci-dessous décide.
+- **Installé automatiquement** : un module (ou une instance) apporté par la cascade est noté dans le réglage cœur `modules.auto` (`{ "<id>": { "for": ["<consommateurs>"], "module": true, "instances": ["<id d'instance>"], "at": … } }` ; sans migration de base, sauvegardé avec les réglages). La page du module dit *« Installé automatiquement pour : … »*, et quand plus aucun module **actif** n'en dépend, un **nettoyage est proposé** (page du module, et encadré dans Modules › Installés). **Jamais de suppression automatique** : le propriétaire confirme, et si le module porte des données ou des réglages saisis, l'avertissement est affiché et une case « je comprends » est exigée. « Le garder » retire la marque.
+- **Mises à jour** : après `updateModule` (et « Tout mettre à jour »), si la nouvelle version **ajoute** un `requires` ou en relève le `min`, le fournisseur disponible est installé d'office (mêmes règles) ; sinon la mise à jour **réussit quand même**, le module dégrade comme avant (jamais de plantage), et l'administrateur est **averti** (bilan de la mise à jour, page du module : *« Il manque : … »*, avec un bouton pour mettre en place ce qui manque). Une alerte ne bloque jamais les autres mises à jour de la liste.
+- **Restauration** ([BACKUP.md](BACKUP.md)) : les modules sont réinstallés dans l'ordre des dépendances (fournisseurs d'abord), puis les `requires` de chaque module actif restauré sont vérifiés ; un fournisseur absent de la sauvegarde mais disponible est installé avec son instance par défaut. Sinon le consommateur est restauré avec ses données, l'état « activé » de la sauvegarde est respecté, et l'aperçu comme le bilan disent *« il manque : … »*.
+- **Désactiver ou désinstaller** un module que d'autres modules actifs requièrent (parce que lui seul fournit le service, dans la version voulue) est refusé en nommant ces modules (leurs noms, pas leurs identifiants), ce qu'ils perdraient, et ce qu'il faut faire (*« désactivez d'abord … »*).
+- **Interface** : le Catalogue (liste et fiche) annonce *« Installe aussi : Contacts »* **avant** d'installer — ce qui sera installé, activé ou déjà en place ✔ — pour un module livré ou un module de l'index qui déclare ses services. Le bouton **Installer** fait tout en une action. La page d'un module montre *« A besoin de »* et *« Utilisé par »* en noms lisibles (identifiants techniques et versions en mode avancé).
+- `ctx.api.services.call` n'accepte que les services déclarés dans `requires` (sinon `undeclared`), prend le premier fournisseur actif de version suffisante (par clé d'instance), ne lève jamais : à vous de gérer `unavailable` (par exemple après une restauration) en dégradant proprement.
 - **Plusieurs fournisseurs du même service** (un doublon, ou un changement de fournisseur) : dès qu'un deuxième module qui offre le service est activé (ou qu'une de ses instances est créée), l'admin est invité (page *Modules* → *Services offerts par plusieurs modules*) à choisir un **maître** — il reçoit les appels et c'est sa réponse que voit l'appelant — et des **répliques**, qui reçoivent aussi les appels qui **écrivent**, au mieux (la panne d'une réplique ne fait jamais échouer l'appel ; celle du maître, si). Le fournisseur peut déclarer ses méthodes de lecture dans `offers` (`"readOnly": ["count"]`) : elles ne sont jamais répliquées. Tant que rien n'est choisi, le premier fournisseur (par clé d'instance) est le maître, sans réplique ; un choix périmé (maître retiré) retombe sur le premier. **Une réplique reçoit les appels futurs** : les données déjà reçues par l'ancien fournisseur ne sont pas copiées (aucun conflit à fusionner, mais un historique réparti : pour une bascule propre, mettez le nouveau en maître, gardez l'ancien en réplique le temps voulu, puis retirez-le).
 - Le `ctx` reçu par la méthode est celui de l'instance **fournisseur** : elle écrit dans **son** stockage, jamais dans celui de l'appelant.
+
+#### Dire ses services dans l'index du catalogue
+
+Pour qu'un module d'un dépôt reconnu puisse être choisi comme fournisseur (ou annonce ses besoins) **avant d'être téléchargé**, son entrée de `catalogue/index.json` peut porter, en plus de ses champs habituels, deux listes facultatives : `"offers": ["contact.store"]` et `"requires": ["contact.store"]` — chaque élément est un nom de service, ou un objet `{ "service": "contact.store", "version": 2 }` (offres) / `{ "service": "contact.store", "min": 2 }` (besoins). Valeurs validées (noms de services, entiers ≥ 1, 10 au plus, doublons écartés) ; un cœur plus ancien ignore ces clés. À ne pas confondre avec `"requires": { "core": "0.1.10" }` (version minimale du cœur, un objet) : le cœur distingue les deux par la forme. Ces listes ne servent qu'à **choisir et annoncer** ; à l'installation c'est le `module.json` réel qui fait foi. Un module livré avec l'archive n'a rien à ajouter : son manifeste est lu directement.
+
+#### Vérifier le principe dans un dépôt de modules
+
+`tests/helpers/builtinChecks.mjs` fournit `findSrpViolations(manifests, opts)` (fonction pure) et `assertNoSrpViolations`. Règles exactes : (1) **service** — un même `offers[].service` dans plusieurs modules est une violation, sauf s'il est listé dans `opts.substitutes` (substitution voulue, gérée par maître/répliques) ; (2) **mcp** — deux modules déclarent une action MCP du même nom (sauf `opts.mcp`) ; (3) **secret** — la même clé de réglage de `type: "secret"` dans deux modules qui ne sont **pas** fournisseur/consommateur l'un de l'autre (sauf `opts.secrets`). Elle ne juge que les manifestes qu'on lui passe.
 
 ### `adminBadge` : ce qui attend l'équipe
 
@@ -1018,7 +1041,7 @@ Des modules communautaires qui coopèrent aussi uniquement par sujets (aucun ne 
 
 ### Contacts et formulaire de contact : une dépendance
 
-`contacts` (`curiosa-extras/modules/contacts`) est un carnet d'adresses privé (admin, MCP, sauvegarde lisible) qui **offre** le service `contact.store`. Le formulaire de contact intégré le **requiert** : il ne garde aucun message lui-même, il les range dans le carnet comme contacts « à vérifier » (même e-mail → note ajoutée, pas de doublon). Activer le formulaire installe et active `contacts` d'office ; tant que le formulaire est actif, `contacts` ne peut être ni désactivé ni désinstallé. Un assistant MCP complète ensuite la fiche et la passe « active », ou la supprime si c'est du spam.
+`contacts` (`curiosa-extras/modules/contacts`) est un carnet d'adresses privé (admin, MCP, sauvegarde lisible) qui **offre** le service `contact.store`. Le formulaire de contact intégré le **requiert** : il ne garde aucun message lui-même, il les range dans le carnet comme contacts « à vérifier » (même e-mail → note ajoutée, pas de doublon). Installer ou activer le formulaire installe et active `contacts` d'office, avec son carnet prêt à l'emploi ; tant que le formulaire est actif, `contacts` ne peut être ni désactivé ni désinstallé. Un assistant MCP complète ensuite la fiche et la passe « active », ou la supprime si c'est du spam.
 
 ### Planning
 

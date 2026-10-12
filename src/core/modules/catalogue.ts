@@ -5,6 +5,7 @@ import { getRecognized, getRecognizedDetailed, type RecognizedResult } from "./r
 import { parseManifest, type ParsedManifest } from "./manifest";
 import { incompatWithThisCore, requirementOf, type CoreRequirement } from "./compat";
 import type { LocalizedString } from "./types";
+import { normalizeNeeds, normalizeOffers, type ServiceNeed, type ServiceOffer } from "./serviceVersions";
 
 /**
  * MARKETPLACE — la liste des modules que l'on peut installer en confiance, et rien d'autre.
@@ -42,6 +43,9 @@ export type CatalogueEntry = {
   requires?: CoreRequirement;
   /** Version du cœur demandée quand CE cœur est trop ancien (le module est listé, mais ni installable ni mis à jour ici). */
   needsNewerCore?: string;
+  /** Services offerts / exigés (manifeste du module livré, ou index pour un module reconnu) : lus SANS installer, pour dire ce que l'installation apportera. */
+  offers?: ServiceOffer[];
+  needs?: ServiceNeed[];
 };
 
 const BUNDLED: { dir: string; kind: "community" | "example" }[] = [
@@ -88,7 +92,7 @@ export function listBundled(root = appRoot()): CatalogueEntry[] {
       if (!fs.statSync(full).isDirectory()) continue;
       const m = readBundledManifest(full);
       if (!m || out.some((e) => e.id === m.id)) continue;
-      out.push({ id: m.id, name: m.name, description: m.description ?? "", version: m.version, icon: m.icon, author: m.author, kind, suggested: suggested.has(m.id), source: "bundled", dir: full, provides: (m.provides ?? []).map((p) => p.topic), compatible: true, requires: requirementOf(m) });
+      out.push({ id: m.id, name: m.name, description: m.description ?? "", version: m.version, icon: m.icon, author: m.author, kind, suggested: suggested.has(m.id), source: "bundled", dir: full, provides: (m.provides ?? []).map((p) => p.topic), compatible: true, requires: requirementOf(m), offers: normalizeOffers(m.offers), needs: normalizeNeeds(m.requires) });
     }
   }
   return out;
@@ -104,6 +108,7 @@ export async function getCatalogue(opts: { root?: string; fetchImpl?: typeof fet
       id: c.id, name: c.name, description: c.description, version: c.version, icon: c.icon, author: c.author,
       kind: "recognized", source: "recognized", provides: c.provides, repo: c.repo, ref: c.ref, subdir: c.subdir, compatible: c.apiVersion === undefined || c.apiVersion === MODULE_API_VERSION,
       requires: c.requires, needsNewerCore: incompatWithThisCore(c.requires)?.needs,
+      offers: normalizeOffers(c.offers), needs: normalizeNeeds(c.needs),
     })),
   ];
 }

@@ -6,6 +6,9 @@ import { parseRepoUrl } from "@/core/modules/installer";
 import { getModulePreview, type ModulePreview, type PreviewTarget } from "@/core/modules/readme";
 import { listModuleRows } from "@/core/modules/registry";
 import { localized } from "@/core/modules/types";
+import { buildNames, viewPlan } from "@/core/modules/dependencyView";
+import { normalizeNeeds } from "@/core/modules/serviceVersions";
+import { DependencyPlanBox } from "@/components/admin/DependencyPlanBox";
 import { ActionForm } from "@/components/admin/ActionForm";
 import { Checkbox } from "@/components/admin/Field";
 import { ui } from "@/components/admin/ui";
@@ -47,6 +50,11 @@ export async function DetailsView({ id, repo, embedded = false }: { id?: string;
   const icon = entry?.icon ?? m?.icon ?? "🧩";
   const perms = (m?.permissions ?? []).filter((p) => t(`perm.${p}`) !== `perm.${p}`);
 
+  // Ce que l'installation apportera aussi : le manifeste lu s'il l'est, sinon ce que l'index annonce. Toujours montré, avec ou sans permissions.
+  const names = await buildNames(locale, config.defaultLocale);
+  const needs = m ? normalizeNeeds(m.requires) : entry?.needs ?? [];
+  const planView = !installed && (entry || m) ? await viewPlan(entry?.id ?? m?.id ?? "", needs, names) : null;
+
   const installLabels = { install: t("catalogue.install"), installing: t("catalogue.installing"), done: t("catalogue.installDone"), failed: t("catalogue.installFailed") };
   const canInstall = isOwner && !failed && !!entry && !installed && entry.compatible && !entry.needsNewerCore;
 
@@ -69,20 +77,21 @@ export async function DetailsView({ id, repo, embedded = false }: { id?: string;
 
       {failed && <p role="alert" className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-sm">{t("catalogue.previewFailed")}</p>}
 
+      {planView && <DependencyPlanBox view={planView} t={t} names={names} advanced={advanced} />}
+
       {m && (
         <section className={`${ui.card} space-y-3`}>
           <h2 className="text-lg font-semibold">{t("catalogue.asks.friendly")}</h2>
           {perms.length > 0 ? (
             <ul className="space-y-2 text-[15px]">
               {perms.map((p) => <li key={p} className="flex items-start gap-3"><span aria-hidden className="mt-0.5">✓</span><span>{t(`perm.${p}`)}</span></li>)}
-              {(m.requires ?? []).length > 0 && <li className="flex items-start gap-3"><span aria-hidden className="mt-0.5">🔗</span><span>{t("catalogue.needs", { what: (m.requires ?? []).map((r) => (r.label ? L(r.label) : r.service)).join(", ") })}</span></li>}
             </ul>
           ) : <p className="text-sm text-muted">{t("catalogue.nothingSpecial")}</p>}
           {advanced && (
             <p className="border-t border-line pt-3 font-mono text-xs text-muted">
               {t("modules.permissions")}: {m.permissions.join(", ") || "—"}
-              {(m.offers ?? []).length > 0 && <> · {t("modules.offers")}: {(m.offers ?? []).map((o) => o.service).join(", ")}</>}
-              {(m.requires ?? []).length > 0 && <> · {t("modules.requires")}: {(m.requires ?? []).map((r) => r.service).join(", ")}</>}
+              {(m.offers ?? []).length > 0 && <> · {t("modules.offers")}: {(m.offers ?? []).map((o) => `${o.service}${(o.version ?? 1) > 1 ? ` v${o.version}` : ""}`).join(", ")}</>}
+              {(m.requires ?? []).length > 0 && <> · {t("modules.requires")}: {(m.requires ?? []).map((r) => `${r.service}${(r.min ?? 1) > 1 ? ` ≥ ${r.min}` : ""}`).join(", ")}</>}
             </p>
           )}
         </section>

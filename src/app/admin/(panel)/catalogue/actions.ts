@@ -7,6 +7,8 @@ import { clearRecognizedCache } from "@/core/modules/recognized";
 import { installFromCatalogue, installModule } from "@/core/modules/installer";
 import { addSource, clearSourcesCache, removeSource } from "@/core/modules/sources";
 import { audit } from "@/core/permissions";
+import { buildNames } from "@/core/modules/dependencyView";
+import { describeMissingList } from "@/core/modules/dependencyMessages";
 import type { ActionState } from "@/components/admin/ActionForm";
 
 // Installer du code exécuté côté serveur est réservé au propriétaire.
@@ -15,15 +17,24 @@ export async function installFromCatalogueAction(id: string): Promise<void> {
   const { user } = await adminCtx("owner");
   const result = await installFromCatalogue(id);
   if (!result.ok) redirect(`/admin/catalogue?error=${encodeURIComponent(result.error)}`);
+  for (const provided of result.provided ?? []) await audit(user.email, "module.install.auto", provided);
   await audit(user.email, "module.install", id);
   redirect("/admin/modules");
 }
 
 /** Installation depuis la fiche d'un module : sans redirection, pour que le bouton montre le téléchargement avant de passer à la page des modules. */
 export async function installModuleAction(id: string): Promise<{ ok: true } | { ok: false; error: string }> {
-  const { user } = await adminCtx("owner");
+  const { user, t, locale, config } = await adminCtx("owner");
   const result = await installFromCatalogue(id);
-  if (!result.ok) return { ok: false, error: result.error };
+  if (!result.ok) {
+    // Un fournisseur qui n'a pas pu être mis en place : on dit lequel et pourquoi (le bouton affiche ce message).
+    if (result.missing?.length) {
+      const names = await buildNames(locale, config.defaultLocale);
+      return { ok: false, error: describeMissingList(result.missing, t, names).join(" ") };
+    }
+    return { ok: false, error: t(result.error, { services: result.detail ?? "", modules: result.detail ?? "" }) };
+  }
+  for (const provided of result.provided ?? []) await audit(user.email, "module.install.auto", provided);
   await audit(user.email, "module.install", id);
   revalidatePath("/admin/modules");
   return { ok: true };
@@ -31,10 +42,11 @@ export async function installModuleAction(id: string): Promise<{ ok: true } | { 
 
 /** Dépôt git personnel : jamais vérifié. L'installation exige que l'utilisateur ait coché qu'il l'a compris. */
 export async function installCustomAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  const { user, t } = await adminCtx("owner");
+  const { user, t, locale, config } = await adminCtx("owner");
   if (formData.get("trust") !== "on") return { error: t("catalogue.trustRequired") };
   const result = await installModule(String(formData.get("repo") ?? ""));
-  if (!result.ok) return { error: t(result.error) };
+  if (!result.ok) return { error: result.missing?.length ? describeMissingList(result.missing, t, await buildNames(locale, config.defaultLocale)).join(" ") : t(result.error) };
+  for (const provided of result.provided ?? []) await audit(user.email, "module.install.auto", provided);
   await audit(user.email, "module.install.custom", result.id);
   redirect("/admin/modules");
 }

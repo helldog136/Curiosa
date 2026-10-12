@@ -3,9 +3,9 @@
 import { useState } from "react";
 import { ui } from "./ui";
 
-type Plan = { id: string; name: string; version: string; status: "installed" | "catalogue" | "custom" | "unavailable"; repoUrl: string | null; ref: string | null; needsConfirmation: boolean };
+type Plan = { id: string; name: string; version: string; status: "installed" | "catalogue" | "custom" | "unavailable"; repoUrl: string | null; ref: string | null; needsConfirmation: boolean; /** Module actif dont un fournisseur manque : services en clair. */ missingLabels?: string[] };
 type Preview = { token: string; site: { name: string }; createdAt: string; frameworkVersion: string; counts: Record<string, number>; modules: Plan[] };
-type Report = { ok: boolean; error?: string; modules: { id: string; outcome: string; error?: string }[]; migrations?: { key: string; from: number; to: number; status: string; error?: string }[]; counts?: Record<string, number> };
+type Report = { ok: boolean; error?: string; modules: { id: string; outcome: string; error?: string }[]; migrations?: { key: string; from: number; to: number; status: string; error?: string }[]; counts?: Record<string, number>; dependencyLines?: { id: string; name: string; labels: string[] }[]; providedNames?: string[] };
 type Labels = Record<string, string>;
 
 /** Restauration en deux temps : (1) fichier + mot de passe → aperçu ; (2) confirmation, module personnel par module personnel. */
@@ -50,6 +50,14 @@ export function RestorePanel({ labels, previewUrl = "/api/admin/backup/restore",
         <ul className="list-disc pl-5 text-sm">
           {report.modules.map((m) => <li key={m.id}><span className="font-mono">{m.id}</span> — {L(`outcome.${m.outcome}`)}{m.error ? ` (${m.error})` : ""}</li>)}
         </ul>
+        {(report.providedNames ?? []).length > 0 && <p className="text-sm text-muted" data-testid="restore-provided">➕ {L("deps.provided").replace("{names}", report.providedNames!.join(", "))}</p>}
+        {(report.dependencyLines ?? []).length > 0 && (
+          <div className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm" data-testid="restore-missing" role="alert">
+            <p className="font-medium">⚠ {L("deps.title")}</p>
+            <ul className="mt-1 list-disc pl-5">{report.dependencyLines!.map((d) => <li key={d.id}><strong>{d.name}</strong> — {L("deps.missing").replace("{list}", d.labels.join(", "))}</li>)}</ul>
+            <p className="mt-2 text-muted">{L("deps.note")}</p>
+          </div>
+        )}
         {(report.migrations ?? []).length > 0 && (
           <ul className="list-disc pl-5 text-sm">
             {report.migrations!.map((m) => <li key={m.key}><span className="font-mono">{m.key}</span> — {m.status === "ok" ? `${L("migrated")} (v${m.from} → v${m.to})` : `${L("migrationFailed")}${m.error ? ` : ${m.error}` : ""}`}</li>)}
@@ -82,6 +90,7 @@ export function RestorePanel({ labels, previewUrl = "/api/admin/backup/restore",
             {preview.modules.map((m) => (
               <li key={m.id} className={`${ui.card} text-sm`}>
                 <p className="font-medium">{m.name} <span className="text-xs text-muted">v{m.version}</span> — {L(`status.${m.status}`)}</p>
+                {m.missingLabels && m.missingLabels.length > 0 && <p className="mt-1 text-amber-700" data-testid={`restore-plan-missing-${m.id}`}>⚠ {L("deps.missing").replace("{list}", m.missingLabels.join(", "))}</p>}
                 {m.status === "custom" && (
                   <label className="mt-2 flex items-start gap-2">
                     <input type="checkbox" checked={accepted.has(m.id)} onChange={(e) => setAccepted((s) => { const n = new Set(s); if (e.target.checked) n.add(m.id); else n.delete(m.id); return n; })} className="mt-1 h-4 w-4" />

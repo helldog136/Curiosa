@@ -6,6 +6,7 @@ import { promisify } from "node:util";
 import { DATA_DIR } from "../config";
 import { isSubdir, parseRepoUrl } from "./installer";
 import { sanitizeRequires, type CoreRequirement } from "./compat";
+import { sanitizeServiceList } from "./serviceVersions";
 
 export type RecognizedItem = {
   id: string;
@@ -25,6 +26,10 @@ export type RecognizedItem = {
   provides?: string[];
   /** Cœur minimal annoncé par l'index (`"requires": { "core": "0.1.10" }`) : permet de savoir SANS télécharger si le module convient. Absent = aucune exigence. Un cœur plus ancien ignore ce champ. */
   requires?: CoreRequirement;
+  /** Services que le module offre, annoncés par l'index (`"offers": ["contact.store"]`, ou `{ service, version }`) : permet de le choisir comme fournisseur SANS le télécharger. Facultatif, relu à l'installation. */
+  offers?: { service: string; version?: number }[];
+  /** Services dont le module a besoin (`"requires": ["contact.store"]`, ou `{ service, min }` ; une liste, à ne pas confondre avec `requires: { core }`). Forme interne gardée dans la copie locale : `needs`. */
+  needs?: { service: string; min?: number }[];
 };
 
 /** D'où vient la liste affichée : le dépôt du framework (à jour), sa dernière copie reçue, ou la copie livrée avec cette version. */
@@ -56,6 +61,8 @@ export function sanitizeEntries(json: unknown): RecognizedItem[] {
       apiVersion: Number.isInteger(i.apiVersion) ? i.apiVersion : undefined,
       provides: Array.isArray(i.provides) ? i.provides.filter((x: unknown): x is string => typeof x === "string" && /^[a-z][a-z0-9.-]{0,40}$/.test(x)).slice(0, 20) : undefined,
       requires: sanitizeRequires(i.requires),
+      offers: sanitizeServiceList(i.offers, "version"),
+      needs: sanitizeServiceList(Array.isArray(i.requires) ? i.requires : i.needs, "min"),
     });
     if (items.length >= 300) break;
   }
