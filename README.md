@@ -349,6 +349,10 @@ Voir [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) pour les choix de conception e
 
 Curiosa est **utilisé en production** et évolue par versions publiées sur la page *Releases* (versions stables, plus des versions candidates à essayer à vos risques). Reste volontairement à faire : l'authentification à deux facteurs, l'envoi d'e-mails depuis plus d'écrans de l'admin, et des traductions de l'interface au-delà du français et de l'anglais.
 
+## Soutenir le projet
+
+Curiosa est gratuit et le restera. Si vous l'aimez et que vous voulez soutenir son développement, un pourboire est possible sur [helldog136.be/tip-me](https://helldog136.be/tip-me) ; c'est entièrement volontaire, rien n'en dépend.
+
 ## Licence
 
 Curiosa, développé par [Helldog136](https://helldog136.be), est distribué sous la **Curiosa License 1.0** (voir [`LICENSE`](LICENSE)) : usage libre pour sa propre activité, vente et revente interdites, crédit obligatoire. Les versions publiées **avant la 0.1.2-rc.4** l'ont été sous licence MIT, et ceux qui les ont reçues les gardent sous cette licence. Les modules du dépôt [curiosa-extras](https://github.com/helldog136/curiosa-extras) portent la licence déclarée dans leur `module.json`. Les dépendances tierces gardent leur propre licence : la liste complète, avec les textes, est dans [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md), générée par `npm run licenses` (un test vérifie qu'elle est à jour et qu'aucune dépendance n'a de licence incompatible). Un module installé depuis un dépôt tiers reste sous la licence que son auteur a déclarée dans `module.json`.
