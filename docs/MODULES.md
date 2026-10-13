@@ -148,6 +148,7 @@ Validé à l'installation et au chargement (zod, `src/core/modules/manifest.ts`)
 | `mcp` | Actions proposées à l'API MCP (voir « API MCP »). 60 au plus. |
 | `content` | Module à contenu : le cœur fournit l'éditeur d'entrées et les pages (voir ci-dessous). |
 | `onboarding` | Comment le module participe à la première installation (voir ci-dessous). |
+| `seeds` | **Graines** : modules dans lesquels une migration de données de ce module pourra créer UNE instance (`{ "module": "<id>", "reason": { "fr": "…", "en": "…" } }`, 3 au plus). Exige un `requires` et que le module cible offre un service requis (voir « `migrations` › Semer une instance »). |
 | `dataVersion` | Version de la **structure de vos données** (entier ≥ 1, défaut 1). À augmenter quand elle change, avec la migration correspondante (`migrations`). |
 | `defaultEnabled` | Sans effet pour un module installé depuis le catalogue ou un dépôt : toujours installé désactivé (l'assistant de première installation active ceux que l'on coche). |
 | `permissions` | Les capacités utilisées (voir ci-dessous). |
@@ -289,7 +290,7 @@ entrées portent un code (codes promo…), `random` (un code au hasard, `small`)
 |---|---|
 | `topic` | Identifiant du sujet : minuscules, `domaine.objet` (jusqu'à 4 niveaux séparés par des points). |
 | `label` | Nom montré à l'administrateur (`consumes` : obligatoire ; `provides` : facultatif). |
-| `schema` | `consumes` seulement : le format que le consommateur sait digérer, une liste de `{ key, type, required? }`. Types : `string`, `url`, `number`, `boolean`, `string[]`. Absent pour les sujets du cœur (`core.entry`). |
+| `schema` | `consumes` seulement : le format que le consommateur sait digérer, une liste de `{ key, type, required? }`. Types : `string`, `url`, `number`, `boolean`, `string[]`, `datetime` (chaîne ISO 8601 : voir « sujets »). Absent pour les sujets du cœur (`core.entry`). |
 | `tags` | `consumes` seulement : l'administrateur peut restreindre les sources par étiquette. |
 
 ### Actions MCP (`mcp`)
@@ -429,7 +430,8 @@ Voir « Overlay (type `overlay`) ». `OverlayResult` : `html`, `css?`, `script?`
 
 ### `exports` : fournir un sujet
 
-`exports["mon.sujet"](ctx, { locale, limit, tags })`, pour chaque instance fournisseuse. Le sujet doit être déclaré dans `provides`.
+`exports["mon.sujet"](ctx, { locale, limit, tags, from?, to? })`, pour chaque instance fournisseuse. Le sujet doit être déclaré dans `provides`.
+`from` / `to` n'existent que si le consommateur a demandé une période (voir « sujets » › Période) : ce sont des `Date`, que vous pouvez utiliser pour ne renvoyer que ce qui tombe dans la période, ou ignorer.
 Le cœur ne garde que les champs du schéma du consommateur et écarte les éléments invalides ; voir « sujets ».
 
 ### `routes` : endpoints HTTP
@@ -489,6 +491,54 @@ naît directement à la version courante. Garanties :
 - si une migration **lève une erreur**, l'instance est **remise exactement dans son état d'avant** (stockage et réglages, rien à moitié converti), **mise à l'écart** (elle ne
   tourne pas) et l'admin affiche l'erreur avec un bouton « Réessayer » ; les autres instances ne sont pas touchées. Publiez une version corrigée : la mise à jour relance la migration ;
 - des données **plus récentes** que votre code (sauvegarde restaurée dans un module plus ancien) sont aussi mises à l'écart, jamais modifiées.
+
+#### Semer une instance d'un autre module (`seeds`, `ctx.seedInstance`, `ctx.clearSetting`)
+
+Cas typique : votre module gardait lui-même une adresse (un calendrier iCal) et, dans la nouvelle version, c'est un autre module dont vous dépendez qui s'en charge. Votre migration peut **créer UNE instance de ce
+module, une seule fois, avec des réglages initiaux** (secrets compris), puis **effacer vos propres réglages**. Un module ne peut toujours ni lire ni écrire les réglages ou les instances d'un autre : le cœur fait le travail,
+dans des limites qu'il contrôle.
+
+```jsonc
+// module.json : déclaration explicite (l'administrateur la voit), + le service dont vous dépendez
+"requires": [{ "service": "calendar.source" }],
+"seeds": [{ "module": "calendar-provider", "reason": { "fr": "Reprendre votre adresse iCal", "en": "Carry over your iCal address" } }],
+"dataVersion": 2
+```
+```js
+migrations: {
+  2: async (ctx) => {
+    const url = ctx.setting("icalUrl");
+    if (!url) return;
+    const { created, instanceKey } = await ctx.seedInstance("calendar-provider", {
+      nickname: "Agenda iCal",              // surnom d'admin (rendu unique : « Agenda iCal 2 »…)
+      names: { fr: "Agenda", en: "Calendar" }, // facultatif ; sinon le surnom
+      settings: { url, token: ctx.setting("icalToken") },   // validés par le manifeste du module cible, comme dans l'admin
+      seedKey: "ical-url",                  // identifiant stable de cette graine
+    });
+    await ctx.clearSetting("icalUrl");      // seulement après le semis
+    await ctx.clearSetting("icalToken");
+  },
+}
+```
+
+- **`ctx.seedInstance(cible, { nickname, names?, settings, seedKey })`** n'existe que **pendant une migration de données** (`undefined` ailleurs). Renvoie `{ created, instanceKey }`. Le module `cible` doit figurer dans votre `seeds`,
+  **et** offrir un service que vous `requires` (version comprise) : on ne sème que chez un fournisseur dont on dépend. Sinon : erreur, la migration échoue.
+- **Les réglages** (`settings`) sont validés par le manifeste du **module cible**, avec les **mêmes règles que le formulaire d'admin** (type du champ : adresse `http(s)`, nombre, choix dans `options`, couleur…) ; une clé inconnue ou une valeur invalide
+  refuse tout, **sans que la valeur apparaisse dans l'erreur** (ce peut être un secret). Un réglage traduisible accepte un texte (toutes les langues du site) ou `{ langue: texte }`. Un texte vide n'enregistre rien. Les secrets sont stockés comme ceux de l'admin.
+- **Une seule fois par `seedKey`** (`a-z0-9._-`, commence par une lettre, 41 caractères au plus) et par instance du module semeur : une graine déjà semée renvoie `{ created: false, instanceKey }`, **même si l'instance a été supprimée depuis** ;
+  la marque est dans les réglages de l'instance semeuse (hors de portée du module, sauvegardée avec elle). Vous pouvez donc appeler `seedInstance` à chaque passage sans risque de doublon.
+- **Jamais d'écrasement** : le semis crée toujours une **nouvelle** instance (clé libre dérivée du surnom) ; les instances existantes du module cible ne sont ni lues ni modifiées. Un module cible en `"instances": "single"` qui a déjà une instance : refus.
+- **Activée seulement si son module l'est** : si le module cible est installé mais désactivé, l'instance semée est créée désactivée (le semis n'active jamais un module). Le module cible n'est pas encore installé : voir la séquence ci-dessous.
+- **`ctx.clearSetting(clé)`** (migration seulement) efface l'un de **vos** réglages d'instance (déclaré dans votre `settings`, toutes langues). Il est **refusé tant qu'aucun `seedInstance` n'a abouti** dans cette migration
+  (`created: false` compte : la graine est confirmée). Si la migration échoue plus tard, le réglage revient.
+- **Tout ou rien** : si une étape lève une erreur, la migration échoue comme d'habitude (vos réglages et votre stockage reviennent comme avant, l'instance est mise à l'écart, « Réessayer »), **et** tout ce que le semis avait créé est défait
+  (instance, marque, module cible installé pour l'occasion). L'audit `module.seed` (module semeur, module cible, clé de l'instance créée : jamais de valeur) et les crochets `onInstanceCreate` de la cible ne passent qu'**une fois la migration réussie**.
+- **Module cible absent.** La migration d'une mise à jour s'exécute **avant** la résolution des dépendances de cette mise à jour. Pour qu'une graine ne laisse pas une instance vide à côté de l'instance semée, le cœur, au premier `seedInstance` :
+  (1) vérifie que le catalogue annonce un module compatible qui offre le service ; (2) l'installe **sans créer d'instance par défaut** ; (3) vérifie dans son manifeste réel qu'il offre bien le service ; (4) si votre module est activé : installe ses
+  propres dépendances et l'active (sinon il reste désactivé) ; (5) crée l'instance semée (activée si le module cible l'est) ; (6) à la réussite, marque le module cible « installé automatiquement » pour vous (comme une cascade de dépendances) ; en cas
+  d'échec, le retire avec ses fichiers. La résolution des dépendances qui suit la migration trouve alors le service déjà fourni et ne crée rien de plus. Cible introuvable (ni installée ni au catalogue, ou catalogue injoignable) : la migration échoue,
+  « Réessayer » plus tard.
+- Pour tester un module : `fakeCtx({ migration: true, settings: {...} })` ajoute `ctx.seedInstance` et `ctx.clearSetting` factices (appels enregistrés dans `ctx.calls.seeds` et `ctx.calls.cleared`, résultat réglable par `seedResult`).
 
 Écrivez des migrations **idempotentes** quand c'est possible (elles peuvent être rejouées après un échec) et **testez-les** sur des données réelles de l'ancienne version.
 Ne supprimez jamais une migration déjà publiée : un site peut sauter plusieurs versions d'un coup.
@@ -746,9 +796,29 @@ const items = await ctx.api.topics.collect("overlay.item", { limit: 20 }); // [{
 - **Pull à la consommation** : rien n'est copié ni synchronisé ; le consommateur lit l'état courant
   à chaque appel. Un overlay rafraîchit ses données depuis sa propre route (`routes.items`), ce qui
   garde le cœur sans état. Un push (SSE) pourra s'ajouter plus tard sans changer ce contrat.
-- Formats de champs : `string`, `url` (http(s) ou chemin `/…`), `number`, `boolean`, `string[]`.
+- Formats de champs : `string`, `url` (http(s) ou chemin `/…`), `number`, `boolean`, `string[]`, `datetime` (chaîne ISO 8601 : `2026-10-14`, `2026-10-14T20:30`, `2026-10-14T20:30:00Z` ou avec décalage `+02:00` ;
+  la date et l'heure doivent exister — le 30 février est refusé ; sans décalage, l'heure est lue en UTC). Un élément dont un champ est invalide est **écarté seul** : les autres éléments du même
+  fournisseur, et les autres fournisseurs, sont servis. Un élément qui n'est pas un objet (`null`, texte…) est écarté de même ; un fournisseur qui ne renvoie pas un tableau ne donne rien.
+  Les types d'avant sont inchangés : un manifeste qui n'emploie pas `datetime` marche aussi sur un ancien cœur (un module qui l'emploie doit déclarer `minCore`).
   Choisissez un identifiant de sujet préfixé par votre domaine (`monmodule.truc`) ; `core.*` est réservé.
 - `limit` : 50 par défaut, 200 au plus.
+
+#### Période : `from` / `to`
+
+Un consommateur dont les éléments ont une date (un calendrier, des évènements) peut demander une **période** :
+
+```js
+const events = await ctx.api.topics.collect("calendar.event", { from: "2026-10-12", to: new Date("2026-10-19T00:00:00Z"), limit: 100 });
+```
+
+- `from` et `to` sont **facultatifs** et indépendants (`from` seul : à partir de cet instant). Acceptés : un objet `Date` ou une chaîne ISO 8601 (mêmes formes que `datetime`), entre 1970 et 2100.
+- Le cœur **valide** : `from` ne peut pas être après `to`, et la période ne dépasse pas **400 jours**. Une période invalide **lève une erreur** chez le module qui appelle `collect` (c'est un bogue du consommateur,
+  pas une donnée à ignorer) ; rien n'est collecté.
+- Les fournisseurs reçoivent `{ locale, limit, tags, from, to }` avec `from` / `to` en objets `Date` (les clés sont **absentes** si le consommateur n'a rien demandé). Un fournisseur qui les **ignore** continue de marcher :
+  ses éléments sont servis tels quels, c'est au consommateur de filtrer ce qu'il ne veut pas. Un fournisseur qui les utilise doit rester borné (`limit` s'applique toujours).
+- Le cœur ne filtre pas lui-même les éléments par date : le champ qui porte la date (`start`…) n'a pas de sens pour lui.
+- Exemple de schéma d'un évènement de calendrier : `id`, `title` (`string`), `start`, `end?` (`datetime`), `allDay?` (`boolean`), `description?`, `location?`, `status?`, `color?`, `sourceLabel?` (`string`), `url?` (`url`).
+- Pour tester : `fakeCtx({ topics: { "calendar.event": (opts) => [...] } })` appelle la fonction avec `{ limit, from, to }` tels que le module les a passés, et lève comme le vrai cœur si la période est invalide.
 
 Pour qu'un module tiers alimente un consommateur existant, il lui suffit de déclarer
 `provides: [{ "topic": "…" }]` et d'implémenter `exports` — sans rien savoir du consommateur.

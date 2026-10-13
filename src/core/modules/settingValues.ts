@@ -1,3 +1,4 @@
+import { isHexColor } from "../color";
 import type { SettingField } from "./types";
 
 /**
@@ -39,4 +40,23 @@ export const followsSite = (field: Pick<SettingField, "default">): boolean => si
 export function shouldStore(field: Pick<SettingField, "default">, raw: string, resolved: string | number | boolean | undefined): boolean {
   if (raw === "") return false;
   return !(followsSite(field) && raw === String(resolved ?? ""));
+}
+
+export type FieldCheck = { ok: true; value: unknown } | { ok: false; reason: "color" | "number" | "select" | "video" | "image" | "url" | "link" };
+
+/**
+ * Valide la saisie (texte déjà « trimé », non vide) d'un réglage selon son type — LA règle commune à l'admin (formulaire des réglages d'une instance)
+ * et à la création d'une instance semée par une migration (`ctx.seedInstance`). Un booléen ne passe pas par ici (il vaut « coché » ou non).
+ */
+export function checkFieldInput(field: Pick<SettingField, "type" | "options">, raw: string): FieldCheck {
+  switch (field.type) {
+    case "color": return isHexColor(raw) ? { ok: true, value: raw.slice(0, 5000) } : { ok: false, reason: "color" };
+    case "number": { const n = Number(raw); return Number.isFinite(n) ? { ok: true, value: n } : { ok: false, reason: "number" }; }
+    case "select": return field.options?.some((o) => o.value === raw) ? { ok: true, value: raw } : { ok: false, reason: "select" };
+    case "video": return /^\/uploads\/[0-9a-f-]{36}\.(mp4|webm)$/.test(raw) ? { ok: true, value: raw } : { ok: false, reason: "video" };
+    case "image": return /^(https?:\/\/|\/uploads\/)/i.test(raw) ? { ok: true, value: raw } : { ok: false, reason: "image" };
+    case "url": return /^https?:\/\//i.test(raw) ? { ok: true, value: raw } : { ok: false, reason: "url" };
+    case "link": return isValidLink(raw) ? { ok: true, value: raw } : { ok: false, reason: "link" };
+    default: return { ok: true, value: raw.slice(0, 5000) };   // text, textarea, secret
+  }
 }

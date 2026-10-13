@@ -344,6 +344,11 @@ d'**une** instance de la version N-1 à N (voir [MODULES.md › `migrations`](MO
 une copie de la base avant, et si l'une échoue **remet l'instance dans son état d'avant** et la met à l'écart avec un bouton « Réessayer ». Gardez-les idempotentes, testez-les sur des données de
 l'ancienne version. Si l'utilisateur **saute des versions** (1.2 → 1.6), le framework récupère chaque étiquette intermédiaire (1.3, 1.4, 1.5) et exécute la migration **de cette version, avec son code**, avant de passer à la suivante : votre dernière version n'a donc pas besoin de garder les anciennes migrations. Pour que cela marche, publiez chaque version sous une étiquette `vX.Y.Z` et ne supprimez pas les étiquettes.
 
+**Reprendre vos réglages dans un autre module.** Si, dans la nouvelle version, un module dont vous dépendez prend en charge une donnée que vous gardiez vous-même (une adresse de calendrier, une clé), déclarez-le dans `seeds`
+(avec le `requires` correspondant) et, dans votre migration, appelez `ctx.seedInstance(cible, { nickname, settings, seedKey })` puis `ctx.clearSetting(clé)` : le cœur crée l'instance **une seule fois**, sans jamais écraser
+l'existante, défait tout si la migration échoue, et n'écrit jamais les valeurs dans le journal. Détails et séquence d'installation de la cible : [MODULES.md › `migrations`](MODULES.md). Les sujets, eux, acceptent une période
+(`collect(sujet, { from, to })`) et le type `datetime` : voir « sujets ».
+
 ## 13. Sauvegarde lisible
 
 Le cœur sauvegarde déjà tout ce que vous mettez dans `ctx.api.store` (en JSON). Pour que les données importantes restent **lisibles sans le framework**, ajoutez des fichiers à la sauvegarde :

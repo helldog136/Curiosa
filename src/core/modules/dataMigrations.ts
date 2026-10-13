@@ -4,6 +4,7 @@ import { getInstanceById } from "@/core/instances";
 import { deleteSetting, setSetting, getSetting } from "@/core/settings";
 import { buildContext } from "./context";
 import { getModule, listModuleRows, type LoadedModule } from "./registry";
+import { openSeedSession } from "./seeding";
 import type { InstanceView } from "@/core/instances";
 
 /**
@@ -15,6 +16,9 @@ import type { InstanceView } from "@/core/instances";
  *   - exécute les migrations manquantes, dans l'ordre, après une mise à jour du module et après une restauration de sauvegarde ;
  *   - garde une copie de la base avant, et si une migration échoue, REMET l'instance dans son état d'avant (stockage et réglages),
  *     la met à l'écart (elle ne tourne pas sur des données à moitié converties) et signale l'erreur dans l'admin, avec « Réessayer ».
+ * Un module qui déclare `seeds` dispose en plus, pendant sa migration, de `ctx.seedInstance` (créer UNE instance d'un module dont il dépend, une seule fois)
+ * et `ctx.clearSetting` (effacer l'un de ses propres réglages) : voir seeding.ts. Ce qu'il crée ailleurs est défait si la migration échoue, et n'est
+ * confirmé (audit, crochets de création) qu'une fois la migration réussie.
  * Les données plus récentes que le code du module (restauration dans un module plus ancien) sont aussi mises à l'écart : mieux vaut ne rien
  * faire tourner que lire des données qu'on ne comprend pas.
  */
@@ -60,16 +64,19 @@ export async function migrateInstance(mod: LoadedModule, instance: InstanceView)
   const records = await prisma.moduleRecord.findMany({ where: { instanceId: instance.id } });
   const settings = await prisma.setting.findMany({ where: { key: { startsWith: `instance.${instance.id}.` } } });
   let reached = from;
+  const seeds = openSeedSession(mod, instance);
   try {
     for (let v = from + 1; v <= to; v++) {
       const step = mod.def.migrations?.[v];
-      if (step) await step(await buildContext(mod, instance));
+      if (step) await step(seeds.attach(await buildContext(mod, instance)));
       await setSetting(versionKey(instance.id), v);
       reached = v;
     }
     await deleteSetting(statusKey(instance.id));
+    await seeds.commit();
     return out("ok", undefined, to);
   } catch (error) {
+    await seeds.rollback();
     const message = String((error as Error)?.message ?? error).slice(0, 300);
     console.error(`[modules] migration of ${instance.key} failed at v${reached + 1}:`, message);
     await prisma.$transaction([

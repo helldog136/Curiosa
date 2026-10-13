@@ -75,6 +75,18 @@ Il n'y a **volontairement pas** d'outil de restauration : elle remplace tout le 
 
 Remettre le code d'un module à neuf (*Modules › le module › Maintenance*) exécute du code côté serveur : l'action est réservée au **propriétaire**, avec confirmation dans la page. Elle ne reprend que la source du module (le dépôt du catalogue ou le dépôt git déjà connu, mêmes règles d'hôtes que l'installation), **n'accorde jamais de nouvelle permission** (refus, il faut passer par la mise à jour), met l'ancien dossier de côté et le rétablit au moindre échec, et est inscrite au journal (`module.reinstall`, sans adresse ni secret).
 
+## Module qui sème une instance (modèle de menace)
+
+Pendant la migration de données d'un module, il peut demander au cœur de créer une instance d'**un autre** module avec des réglages initiaux (`ctx.seedInstance`, voir [MODULES.md](MODULES.md#migrations--faire-évoluer-ses-données)). Un module ne peut toujours ni lire ni écrire les réglages ou les instances d'un autre ; ce que le cœur autorise est étroit :
+
+- *Module malveillant qui sème n'importe où* : refusé. La cible doit être déclarée dans `seeds` du manifeste **et** offrir un service que le module `requires`. Une mise à jour qui ajoute `seeds` ne contourne rien : la cible n'est qu'un fournisseur dont le module dépend déjà (ou dépendrait, s'il est installé), et la cascade d'installation reste celle des dépendances (modules du catalogue reconnus et compatibles seulement, jamais un dépôt personnel).
+- *Écraser ou lire une instance existante* : impossible. Le semis crée toujours une instance **neuve** ; il n'y a aucune lecture. Un module cible en instance unique déjà instancié refuse.
+- *Semer en boucle (spam d'instances)* : une graine (`seedKey`) ne sème qu'une fois par instance semeuse, la marque est hors de portée du module ; l'API n'existe que pendant sa migration (une fois par version de données), pour 3 cibles au plus.
+- *Réglage détourné* : les réglages sont validés par le manifeste du **module cible** avec les règles de l'admin (adresses `http(s)`, nombres, choix, couleurs) ; une clé inconnue refuse tout. Un secret n'apparaît ni dans le message d'erreur, ni dans le journal d'audit, ni dans les journaux du serveur.
+- *Effacer les réglages d'autrui* : `ctx.clearSetting` ne touche que les réglages **déclarés par le module lui-même**, pour **sa propre** instance, et seulement après un semis abouti ; tout revient si la migration échoue.
+- *Échec à mi-chemin* : l'instance créée, la marque et le module cible installé pour l'occasion sont retirés ; l'instance semeuse est remise à l'écart (« Réessayer ») ; le journal ne garde rien d'un semis défait.
+- *Traces* : `module.seed` (semeur → cible : clé de l'instance créée), jamais de valeur. Limite connue : un secret semé est stocké comme tous les réglages de l'instance (dans la base, donc dans ses sauvegardes chiffrées) ; un module cible malveillant pourrait le lire, comme n'importe quelle instance de lui — c'est pourquoi on ne sème que chez un module dont on dépend et que l'administrateur a choisi d'installer.
+
 ## Sessions
 
 Une session dure **14 jours au plus**. Elle se coupe aussi à tout moment :

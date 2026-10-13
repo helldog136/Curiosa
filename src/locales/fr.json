@@ -395,6 +395,7 @@
   "audit.action.module.uninstall": "Fonctionnalité désinstallée",
   "audit.action.module.install.auto": "Fonctionnalité installée automatiquement (dépendance)",
   "audit.action.module.uninstall.auto": "Fonctionnalité installée automatiquement, retirée",
+  "audit.action.module.seed": "Instance créée par une migration de données (reprise de réglages)",
   "audit.action.module.keep.auto": "Fonctionnalité installée automatiquement, gardée",
   "audit.action.module.enable": "Fonctionnalité activée",
   "audit.action.module.disable": "Fonctionnalité désactivée",

@@ -395,6 +395,7 @@
   "audit.action.module.uninstall": "Feature uninstalled",
   "audit.action.module.install.auto": "Feature installed automatically (dependency)",
   "audit.action.module.uninstall.auto": "Automatically installed feature removed",
+  "audit.action.module.seed": "Instance created by a data migration (settings carried over)",
   "audit.action.module.keep.auto": "Automatically installed feature kept",
   "audit.action.module.enable": "Feature turned on",
   "audit.action.module.disable": "Feature turned off",

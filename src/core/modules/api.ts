@@ -62,7 +62,7 @@ export function makeApi(instance: InstanceView, locale: string, permissions: rea
     topics: {
       async collect(topic, opts) {
         const consumer = (await getActiveInstances()).find((a) => a.instance.id === instance.id);
-        return consumer ? collect(consumer, topic, { limit: opts?.limit, locale }) : [];
+        return consumer ? collect(consumer, topic, { limit: opts?.limit, from: opts?.from, to: opts?.to, locale }) : [];
       },
     },
 
