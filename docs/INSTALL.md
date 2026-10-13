@@ -14,6 +14,8 @@ dépend d'un site en particulier : tout ce qui vous est propre (nom, textes, mod
 La procédure pas à pas (utilisateur dédié, téléchargement vérifié, `.env`, service systemd, HTTPS avec nginx ou Caddy, premier écran) est dans le [README](../README.md#installer) ; le guide destiné à un agent IA, avec ses vérifications et ses erreurs fréquentes, dans [AGENT-INSTALL.md](AGENT-INSTALL.md).
 Points à retenir :
 
+- **Venir d'ailleurs** : un site Grav se convertit en sauvegarde ([IMPORT-GRAV.md](IMPORT-GRAV.md)) ; une page de liens (Linktree et équivalents) aussi ([IMPORT-LIENS.md](IMPORT-LIENS.md)). Dans les deux cas, la sauvegarde se restaure au premier écran, sur « J'ai déjà une sauvegarde ».
+
 - **Curiosa s'installe seul ; ses modules s'installent depuis le catalogue** (dépôt `curiosa-extras` par défaut) : l'archive ne contient aucun module. L'assistant de première installation propose les modules suggérés par le catalogue ; si le catalogue est injoignable à ce moment, le site se crée quand même, sans module, et on les ajoute plus tard depuis *Modules › Catalogue* ;
 - on installe une **release** (archive déjà compilée, `curiosa-vX.Y.Z-linux-x64.tar.gz`) ; elle contient un fichier `release.json` qui indique le dépôt d'où elle vient : c'est ce qui active les mises à jour depuis l'admin ;
 - le moteur de base de données est fourni pour OpenSSL 1.1 et 3.0 : l'archive tourne aussi bien sur Ubuntu 20.04 que sur 22.04+ ;

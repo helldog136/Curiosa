@@ -67,7 +67,7 @@ Trois façons de l'installer, de la plus simple à la plus technique :
 2. **Installer sur un serveur Linux** : environ 15 minutes en suivant le guide ci-dessous, copier-coller de commandes à l'appui.
 3. **Essayer chez soi avec Docker** : une seule commande, voir plus bas.
 
-Un site existant sous **Grav CMS** ? Il peut être converti : [docs/IMPORT-GRAV.md](docs/IMPORT-GRAV.md).
+Un site existant sous **Grav CMS** ? Il peut être converti : [docs/IMPORT-GRAV.md](docs/IMPORT-GRAV.md). Pas de site, juste un **Linktree** (ou Beacons, Bio.link…) ? Un assistant IA peut en tirer votre premier site : [docs/IMPORT-LIENS.md](docs/IMPORT-LIENS.md).
 
 ---
 
@@ -190,7 +190,7 @@ Vous avez déjà une sauvegarde ? Choisissez **« J'ai déjà une sauvegarde »*
 **Mises à jour** : page *Mises à jour* de l'admin (propriétaire). Le site télécharge la release, vérifie son empreinte, sauvegarde la base, migre et redémarre ; au moindre échec il revient à la version précédente.
 Le détail (variables d'environnement, canal des *release candidates*, publication d'une release) est dans [docs/INSTALL.md](docs/INSTALL.md).
 
-**Venir d'un autre site ?** Un site **Grav CMS** peut être converti en sauvegarde Curiosa : voir [docs/IMPORT-GRAV.md](docs/IMPORT-GRAV.md).
+**Venir d'un autre site ?** Un site **Grav CMS** peut être converti en sauvegarde Curiosa : voir [docs/IMPORT-GRAV.md](docs/IMPORT-GRAV.md). Une simple page de liens (**Linktree** et équivalents) aussi : voir [docs/IMPORT-LIENS.md](docs/IMPORT-LIENS.md).
 
 ### Avec Docker
 
@@ -294,6 +294,7 @@ Un assistant IA peut écrire un module à partir de ces documents : donnez-lui `
 | [docs/BACKUP.md](docs/BACKUP.md) | sauvegarde chiffrée, lisible sans le framework |
 | [docs/BACKGROUND.md](docs/BACKGROUND.md) | décrire le fond de page |
 | [docs/IMPORT-GRAV.md](docs/IMPORT-GRAV.md) | convertir un site Grav |
+| [docs/IMPORT-LIENS.md](docs/IMPORT-LIENS.md) | partir d'un Linktree (ou équivalent) |
 | [docs/PRIVACY.md](docs/PRIVACY.md) | cookies, statistiques, politique de confidentialité |
 | [docs/SECURITE.md](docs/SECURITE.md) | blocages progressifs, sessions, dépannage en SSH |
 | [docs/MESURES.md](docs/MESURES.md) | les chiffres mesurés (installation, poids, mémoire, cookies), leur méthode, et ce qui n'est pas mesuré |
