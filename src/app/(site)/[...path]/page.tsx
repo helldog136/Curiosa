@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import { notFound, permanentRedirect, redirect } from "next/navigation";
 import { pickDescription, pickName, type InstanceView } from "@/core/instances";
 import { getActiveInstances, type ActiveInstance } from "@/core/modules/registry";
-import { RESERVED_PATHS } from "@/core/config";
-import { findEntryBySlug, listEntries, type EntryView } from "@/core/content/entries";
+import { RESERVED_PATHS, siteUrl } from "@/core/config";
+import { pickLogo } from "@/core/logos";
+import { breadcrumbDocument, jsonLd, languageAlternates, pageUrl, socialMeta, type BreadcrumbItem } from "@/core/seo";
+import { entryPath, findEntryBySlug, listEntries, type EntryView } from "@/core/content/entries";
 import { makeTranslator } from "@/core/i18n/dictionary";
 import { getVisitorLocale } from "@/core/i18n/request";
 import { resolveRedirect } from "@/core/redirects";
@@ -63,15 +65,35 @@ function prefixed(path: string, locale: string, defaultLocale: string): string {
   return locale === defaultLocale ? path : `/${locale}${path}`;
 }
 
+/** Adresse canonique, partage (Open Graph + Twitter) et titre d'une page, tous cohérents entre eux. */
+function pageMeta(opts: { siteName: string; title: string; description?: string; image?: string | null; canonical: string; locale: string; type?: "website" | "article"; languages?: Record<string, string> }): Metadata {
+  return {
+    title: opts.title,
+    description: opts.description || undefined,
+    alternates: { canonical: opts.canonical, ...(opts.languages ? { languages: opts.languages } : {}) },
+    ...socialMeta({ siteName: opts.siteName, title: opts.title, description: opts.description || undefined, image: opts.image, url: opts.canonical, type: opts.type, locale: opts.locale }),
+  };
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { path } = await params;
   const resolved = await resolve(path);
   const locale = await getVisitorLocale();
   const config = await getSiteConfig(locale);
-  if (resolved.kind === "list") return { title: pickName(resolved.active.instance, locale, config.defaultLocale) };
+  const site = await getSiteConfig();
+  const share = pickLogo(config.logos, "share", false);
+  const all = (p: string) => languageAlternates(siteUrl, site.locales, locale, site.defaultLocale, p);
+  if (resolved.kind === "list") {
+    const { instance } = resolved.active;
+    const alt = all("/" + path.join("/"));
+    return pageMeta({ siteName: config.name, title: pickName(instance, locale, site.defaultLocale), description: pickDescription(instance, locale, site.defaultLocale), image: share, canonical: alt.canonical, languages: alt.languages, locale });
+  }
   if (resolved.kind === "module") {
     const page = await runPage(resolved.active.instance.key, resolved.segments, locale);
-    return page ? { title: page.title, description: page.description } : {};
+    // Titre et description fournis par le module ; la même page existe dans les autres langues (même chemin).
+    if (!page) return {};
+    const alt = all("/" + path.join("/"));
+    return pageMeta({ siteName: config.name, title: page.title || config.name, description: page.description, image: share, canonical: alt.canonical, languages: alt.languages, locale });
   }
   if (resolved.kind === "entry") {
     const found = await findEntryBySlug(resolved.active.instance, locale, resolved.slug);
@@ -80,17 +102,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const languages = Object.fromEntries(
       e.translations.map((tr) => [
         tr.locale,
-        prefixed(`${e.basePath ? `/${e.basePath}` : ""}/${tr.slug}`, tr.locale, config.defaultLocale),
+        prefixed(`${e.basePath ? `/${e.basePath}` : ""}/${tr.slug}`, tr.locale, site.defaultLocale),
       ]),
     );
-    return {
-      title: e.title,
-      description: e.summary || undefined,
-      openGraph: { title: e.title, description: e.summary || undefined, images: e.cover ? [e.cover] : undefined, type: "article" },
-      alternates: e.translations.length > 1 ? { languages } : undefined,
-    };
+    // Canonique : l'adresse de la langue réellement affichée (une page en repli de langue pointe vers la vraie version).
+    const canonical = `${siteUrl}${entryPath(e, site.defaultLocale)}`;
+    return pageMeta({ siteName: config.name, title: e.title, description: e.summary || undefined, image: e.cover || share, canonical, locale: e.locale, type: "article", languages: e.translations.length > 1 ? languages : undefined });
   }
   return {};
+}
+
+/** Fil d'Ariane (schema.org) : accueil > collection > page. */
+function BreadcrumbLd({ items }: { items: BreadcrumbItem[] }) {
+  const doc = breadcrumbDocument(items);
+  return doc ? <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(doc) }} /> : null;
 }
 
 export default async function CatchAllPage({ params }: Props) {
@@ -99,6 +124,7 @@ export default async function CatchAllPage({ params }: Props) {
   const locale = await getVisitorLocale();
   const config = await getSiteConfig(locale);
   const t = makeTranslator(locale);
+  const home: BreadcrumbItem = { name: config.name, url: pageUrl(siteUrl, locale, config.defaultLocale, "/") };
 
   switch (resolved.kind) {
     case "redirect": {
@@ -122,6 +148,7 @@ export default async function CatchAllPage({ params }: Props) {
       const [top, bottom] = await Promise.all([runSlot("page.top", locale, { page: page_ }), runSlot("page.bottom", locale, { page: page_ })]);
       return (
         <div className="space-y-8">
+          {page.title && <BreadcrumbLd items={[home, { name: page.title, url: pageUrl(siteUrl, locale, config.defaultLocale, `/${[resolved.active.instance.basePath, ...resolved.segments].filter(Boolean).join("/")}`) }]} />}
           {page.title && <h1 className="text-3xl font-bold">{page.title}</h1>}
           <Blocks blocks={top} locale={locale} />
           <Blocks blocks={page.blocks} locale={locale} />
@@ -138,6 +165,7 @@ export default async function CatchAllPage({ params }: Props) {
       const [top, bottom] = await Promise.all([runSlot("page.top", locale, { page }), runSlot("page.bottom", locale, { page })]);
       return (
         <div className="space-y-8">
+          <BreadcrumbLd items={[home, { name: pickName(instance, locale, config.defaultLocale), url: pageUrl(siteUrl, locale, config.defaultLocale, `/${instance.basePath}`) }]} />
           <header className="space-y-2">
             <h1 className="text-3xl font-bold">{pickName(instance, locale, config.defaultLocale)}</h1>
             {description && <p className="text-muted">{description}</p>}
@@ -157,7 +185,7 @@ export default async function CatchAllPage({ params }: Props) {
         const target = `${instance.basePath ? `/${instance.basePath}` : ""}/${found.slug}`;
         return redirect(prefixed(target, found.locale, config.defaultLocale));
       }
-      return <EntryPage entry={found.entry} instance={instance} locale={locale} t={t} />;
+      return <EntryPage entry={found.entry} instance={instance} locale={locale} t={t} crumbs={[home, ...(instance.basePath ? [{ name: pickName(instance, locale, config.defaultLocale), url: pageUrl(siteUrl, locale, config.defaultLocale, `/${instance.basePath}`) }] : []), { name: found.entry.title, url: `${siteUrl}${entryPath(found.entry, config.defaultLocale)}` }]} />;
     }
 
     case "none":
@@ -166,8 +194,9 @@ export default async function CatchAllPage({ params }: Props) {
 }
 
 async function EntryPage({
-  entry, instance, locale, t,
+  entry, instance, locale, t, crumbs,
 }: {
+  crumbs: BreadcrumbItem[];
   entry: EntryView;
   instance: InstanceView;
   locale: string;
@@ -183,6 +212,7 @@ async function EntryPage({
 
   return (
     <article lang={entry.locale} className="mx-auto max-w-3xl space-y-6">
+      <BreadcrumbLd items={crumbs} />
       {entry.isFallback && (
         <p className="rounded-lg border border-line bg-surface p-3 text-sm text-muted">{t("site.fallbackNotice", { lang: entry.locale.toUpperCase() })}</p>
       )}

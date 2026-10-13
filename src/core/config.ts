@@ -23,6 +23,7 @@ export const RESERVED_PATHS = new Set([
   "_next",
   "sitemap.xml",
   "robots.txt",
+  "llms.txt",
   "icon",
   "favicon.ico",
   // Page de confidentialité du cœur (obligatoire, voir core/privacy.ts)

@@ -1,6 +1,7 @@
 import { isDarkBackground, pickLogo } from "../logos";
 import { getBrand } from "@/core/brand";
 import { siteUrl } from "@/core/config";
+import { moduleJsonLd } from "@/core/seo";
 import { entryPath, listEntries } from "@/core/content/entries";
 import { getInstanceByKey, listInstances, pickName, type InstanceView } from "@/core/instances";
 import { isMailConfigured, sendMail } from "@/core/services/mail";
@@ -37,6 +38,8 @@ export function makeApi(instance: InstanceView, locale: string, permissions: rea
   const rawgAllowed = permissions.includes("rawg");
   return {
     siteUrl,
+
+    seo: { jsonLd: (data) => { const ld = moduleJsonLd(data); return ld ? { tag: "script", jsonLd: ld } : null; } },
 
     // ── SERVICES du cœur ────────────────────────────────────────────────────────
     qr: qrSvg,

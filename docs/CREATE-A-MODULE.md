@@ -423,7 +423,38 @@ export default { filters: { entryBody: (body, ctx) => body.replaceAll(":wave:", 
 ```
 
 Permission : `filters`. Le filtre s'applique en chaîne avec ceux des autres modules. **Lecture du site** : `ctx.api.site()` (nom, accroche, logo), `ctx.api.brand()` (identité visuelle complète),
-`ctx.api.instances.list()`, `ctx.api.entries.list()` (entrées publiées d'un module à contenu), `ctx.api.siteUrl`, et `ctx.api.qr(texte)` (QR code en SVG) et `ctx.api.png({ width, height, tree })` (image PNG à partir d'une arborescence de boîtes : voir la route `image` du module *planning*).
+`ctx.api.instances.list()`, `ctx.api.entries.list()` (entrées publiées d'un module à contenu), `ctx.api.siteUrl`, et `ctx.api.qr(texte)` (QR code en SVG) et `ctx.api.png({ width, height, tree })` (image PNG à partir d'une arborescence de boîtes : voir la route `image` du module *planning*), `ctx.api.seo.jsonLd(données)` (données structurées pour `layout.head`, voir la section suivante).
+
+### Données structurées (JSON-LD) : être compris par les moteurs et les IA
+
+Un module qui publie quelque chose de précis (un article, un événement, une vidéo…) peut le décrire aux moteurs de recherche et aux assistants IA avec des **données structurées** schema.org. Le cœur en met déjà sur chaque page (le site, son éditeur, ses profils, le fil d'Ariane) ; vous ajoutez les vôtres par l'emplacement `layout.head`, avec `ctx.api.seo.jsonLd(…)` :
+
+```js
+export default { slots: { "layout.head": async (ctx) => {
+  const next = (await ctx.api.store.list("streams", { limit: 1 }))[0];
+  if (!next) return [];
+  const tag = ctx.api.seo.jsonLd({
+    "@type": "BroadcastEvent", name: next.data.title, startDate: next.data.startsAt,   // ISO 8601, avec fuseau
+    isLiveBroadcast: true, url: `${ctx.api.siteUrl}/planning`,
+  });
+  return tag ? [{ type: "head", tags: [tag] }] : [];
+} } };
+```
+
+Le cœur ajoute `@context`, **échappe** `</script>` (jamais de code exécuté) et **borne** la taille (texte de 5 000 caractères, 100 éléments par liste, 8 niveaux, 20 000 caractères au total) ; une donnée sans `@type` est refusée (`null`). Trois règles : ne décrivez que ce qui est **visible** sur la page, ne mettez **aucune donnée privée** (e-mail, brouillon), et donnez des dates en ISO 8601.
+
+Types recommandés :
+
+| Votre module | Type schema.org | Champs utiles |
+|---|---|---|
+| un blog | `Article` / `BlogPosting` | `headline`, `datePublished`, `author`, `image` |
+| un planning de streams | `Event` / `BroadcastEvent` | `name`, `startDate`, `endDate`, `isLiveBroadcast`, `url` |
+| des vidéos | `VideoObject` | `name`, `description`, `thumbnailUrl`, `uploadDate`, `embedUrl` |
+| une page de présentation | `Person` | `name`, `description`, `image`, `sameAs` |
+| une foire aux questions | `FAQPage` | `mainEntity` : liste de `Question` avec `acceptedAnswer` |
+| un produit ou une offre | `Product` | `name`, `description`, `image`, `offers` |
+
+Voir aussi [GEO.md](GEO.md).
 
 ## 16. Modules à contenu : zéro code
 

@@ -193,6 +193,14 @@ export type ModuleApi = {
   instances: {
     list(opts?: { locale?: string; module?: string }): Promise<{ key: string; module: string; basePath: string | null; name: string }[]>;
   };
+  /** Données structurées (schema.org) pour les moteurs de recherche et les assistants IA. */
+  seo: {
+    /**
+     * Prépare un JSON-LD à renvoyer dans l'emplacement `layout.head` : `{ type: "head", tags: [ctx.api.seo.jsonLd({ "@type": "Event", … })] }`.
+     * Le cœur ajoute `@context`, borne la taille et échappe `</script>`. Renvoie `null` si la donnée est inutilisable (pas de `@type`, trop grosse).
+     */
+    jsonLd(data: Record<string, unknown>): { tag: "script"; jsonLd: Record<string, unknown> } | null;
+  };
   /** Génère un QR code (SVG, fond transparent) pour un texte ou une URL. */
   qr(text: string): Promise<string>;
   /**

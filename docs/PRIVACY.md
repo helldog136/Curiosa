@@ -33,6 +33,13 @@ L'équipe du site, elle, reçoit un cookie de **session** à la connexion à l'a
 - Ne sont pas comptés : les robots, les visiteurs qui envoient « Do Not Track » ou « Global Privacy Control », et l'équipe connectée à l'admin.
 - Elles se coupent dans Réglages → Confidentialité.
 
+## Les robots IA et le fichier llms.txt
+
+- Les **robots de réponse** des assistants IA (ceux qui lisent une page pour répondre à une question) sont autorisés par défaut ; les robots d'**entraînement** sont bloqués par défaut. Les deux se règlent dans Réglages › Confidentialité (voir [GEO.md](GEO.md)).
+- Ces robots ne lisent que des **pages publiques**, comme n'importe quel visiteur : rien de privé n'est exposé (l'admin, l'API et les routes des modules sont exclus par `robots.txt`).
+- Le fichier `/llms.txt` est construit uniquement à partir de ce qui est déjà public (nom, description, pages et publications, liens de réseaux sociaux). Il ne contient ni adresse e-mail, ni brouillon, ni page non publiée. Il se désactive dans les mêmes réglages.
+- Le cœur n'envoie rien à ces services : ce sont eux qui viennent lire le site.
+
 ## Ce que vous devriez écrire dans votre page de confidentialité
 
 - que le site compte ses visites de façon anonyme, sans cookie, sans conserver l'adresse IP, et que c'est désactivable ;

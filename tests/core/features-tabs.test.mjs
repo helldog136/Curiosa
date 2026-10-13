@@ -23,9 +23,11 @@ test("réglages : la case « compter les visites » (et le blocage des robots d'
   const page = read("src/app/admin/(panel)/settings/page.tsx");
   const privacy = page.slice(page.indexOf('data-tab="privacy"'), page.indexOf('data-tab="appearance"'));
   assert.match(privacy, /name="statsEnabled"/);
-  assert.match(privacy, /name="blockAiBots"/);
+  assert.match(privacy, /name="aiTraining"/);
+  assert.match(privacy, /name="aiAnswers"/);
+  assert.match(privacy, /name="llmsTxt"/);
   const identity = page.slice(page.indexOf('data-tab="site"'), page.indexOf('data-tab="languages"'));
-  assert.ok(!identity.includes("statsEnabled") && !identity.includes("blockAiBots"));
+  assert.ok(!identity.includes("statsEnabled") && !identity.includes("aiAnswers"));
 });
 
 test("menu : « Modules » est la première entrée après le tableau de bord, mise en avant ; le catalogue a une recherche, ses fiches s'ouvrent en fenêtre avec un bouton d'installation animé", () => {
