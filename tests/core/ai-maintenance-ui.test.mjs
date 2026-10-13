@@ -171,7 +171,7 @@ test("docs-coverage : chaque outil de maintenance est décrit dans le guide, qui
 
 test("changelog : les deux nouveautés de la prochaine version sont écrites pour un non-technicien", () => {
   const md = read("CHANGELOG.md");
-  const section = md.split("\n## ").find((s) => s.startsWith("Prochaine version (non publiée)"));
+  const section = md.split("\n## ").find((s) => s.startsWith("0.1.15"));
   assert.ok(section.includes("*Changements depuis la 0.1.14.*"));
   const items = section.split("\n").filter((l) => l.startsWith("- "));
   assert.equal(items.length, 2);
