@@ -14,6 +14,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 - **Laissez votre IA surveiller et entretenir le site.** Elle voit si tout va bien, fait des copies de sécurité et propose les mises à jour ; pour tout ce qui est risqué, elle attend votre accord, depuis la nouvelle page « Maintenance par IA ».
 - **Un lien « Signaler un bug » dans l'admin.** Il ouvre une page de signalement déjà remplie avec la version de votre site, sans aucune donnée personnelle ni secret.
+- **Un Linktree suffit pour démarrer.** Si vous n'avez qu'un Linktree (ou un service semblable), votre assistant IA peut en tirer un premier site Curiosa prêt à l'emploi : vos liens, votre présentation, votre photo et vos réseaux sociaux.
 
 ## 0.1.14
 

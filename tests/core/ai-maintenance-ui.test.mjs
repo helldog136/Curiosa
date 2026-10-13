@@ -174,7 +174,7 @@ test("changelog : les deux nouveautés de la prochaine version sont écrites pou
   const section = md.split("\n## ").find((s) => s.startsWith("Prochaine version (non publiée)"));
   assert.ok(section.includes("*Changements depuis la 0.1.14.*"));
   const items = section.split("\n").filter((l) => l.startsWith("- "));
-  assert.equal(items.length, 2);
-  assert.match(items[0], /IA/);
-  assert.match(items[1], /Signaler un bug/);
+  assert.ok(items.length >= 2, "d'autres branches ajoutent leurs propres points : on vérifie seulement la présence de ceux-ci");
+  assert.ok(items.some((i) => /IA/.test(i) && /entretenir/.test(i)));
+  assert.ok(items.some((i) => /Signaler un bug/.test(i)));
 });

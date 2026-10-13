@@ -23,3 +23,4 @@ Suis le runbook complet : `docs/AGENT-INSTALL.md` (lis-le en entier avant d'agir
 - Port occupé : en prendre un autre, ne pas toucher au processus qui l'occupe.
 - Si aucune release stable n'est publiée ou si l'architecture n'est pas `x86_64`, le dire et s'arrêter plutôt que d'improviser une compilation.
 - Venant d'un site Grav : voir `docs/IMPORT-GRAV.md` pour le convertir en sauvegarde, restaurée ensuite via « J'ai déjà une sauvegarde ».
+- Venant d'une simple page de liens (Linktree, Beacons, Bio.link…) : voir le skill `migrate-from-link-aggregator` (`docs/IMPORT-LIENS.md`), qui produit la sauvegarde à restaurer de la même façon.

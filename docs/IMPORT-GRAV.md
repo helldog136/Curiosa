@@ -1,5 +1,7 @@
 # Importer un site Grav CMS
 
+*(Vous n'avez qu'une page de liens, un Linktree par exemple ? Voir plutôt [IMPORT-LIENS.md](IMPORT-LIENS.md).)*
+
 Grav stocke tout en fichiers : on rapatrie le dossier `user/` tel quel, et l'outil le convertit en **sauvegarde du framework**, que l'on restaure ensuite
 comme n'importe quelle sauvegarde (assistant d'installation → « J'ai déjà une sauvegarde », voir [BACKUP.md](BACKUP.md)). Rien n'est écrit sur un site en service.
 

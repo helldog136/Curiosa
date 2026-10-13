@@ -51,7 +51,7 @@ Poser ces questions **en une fois**, puis ne plus la déranger :
 2. Le **nom de l'utilisateur Linux** qui fera tourner le site. **Ne le choisis pas à sa place** : propose une valeur (par exemple `<nom du site>-web`), explique pourquoi il en faut un (voir ci-dessous) et laisse la personne confirmer ou en proposer un autre. Vérifie qu'il n'existe pas déjà (`id <nom>`) : s'il existe, demande si c'est volontaire.
 3. Le **dossier d'installation** souhaité (défaut proposé : `/var/www/<nom du site>`).
 4. Quel **serveur web** est devant (détecté à l'étape 0 ; sinon recommander Caddy).
-5. Part-elle **d'un site vide** ou **d'une sauvegarde / d'un ancien site** (Grav : voir [IMPORT-GRAV.md](IMPORT-GRAV.md)) ?
+5. Part-elle **d'un site vide** ou **d'une sauvegarde / d'un ancien site** (Grav : voir [IMPORT-GRAV.md](IMPORT-GRAV.md) ; page de liens Linktree ou équivalent : voir [IMPORT-LIENS.md](IMPORT-LIENS.md), skill `migrate-from-link-aggregator`) ?
 
 ### Pourquoi un utilisateur dédié — à expliquer à la personne (avec tes mots)
 
