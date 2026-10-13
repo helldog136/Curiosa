@@ -5,6 +5,7 @@ import { ui } from "@/components/admin/ui";
 import { Callout, PageHeader } from "@/components/admin/Page";
 import { getUpdateCheck } from "@/core/updates/service";
 import { statsEnabled, statsSummary } from "@/core/stats";
+import { maintenanceSummary } from "@/core/maintenance/summary";
 
 export default async function Dashboard({ searchParams }: { searchParams: Promise<{ denied?: string; welcome?: string; modules?: string }> }) {
   const { t, config, advanced, user } = await adminCtx("editor");
@@ -20,6 +21,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   ]);
   const todo = nav.filter((i) => i.badge > 0);
   const updateAvailable = user.role === "owner" && (await getUpdateCheck().catch(() => null))?.available === true;
+  const ai = user.role === "owner" ? await maintenanceSummary().catch(() => null) : null;
   const stats = (await statsEnabled()) ? await statsSummary() : null;
   const peak = Math.max(1, ...(stats?.days.map((d) => d.visitors) ?? [1]));
   const stat = (label: string, value: number, href: string) => (
@@ -37,6 +39,14 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
       {welcome && !advanced && <Callout tone="ok" role="status">🎉 {t("dashboard.welcome", { name: first })}</Callout>}
       {welcome && (setupModulesState === "failed" || setupModulesState === "partial") && <Callout tone="warn" role="status" testid="setup-modules-failed">{t(setupModulesState === "failed" ? "dashboard.modulesFailed" : "dashboard.modulesPartial")}</Callout>}
       {denied && <Callout tone="danger">{t("error.denied")}</Callout>}
+      {ai && ai.total > 0 && (
+        <Callout tone={ai.pending > 0 ? "warn" : "info"} role="status" testid="ai-maintenance-notice">
+          <span className="flex flex-wrap items-center justify-between gap-3">
+            <span>🤖 {ai.pending > 0 ? t("dashboard.ai.pending", { n: ai.pending }) : t("dashboard.ai.done", { n: ai.doneSinceVisit })}</span>
+            <a href="/admin/maintenance-ia" className={ui.btn}>{t("dashboard.ai.open")}</a>
+          </span>
+        </Callout>
+      )}
       {(todo.length > 0 || updateAvailable) && (
         <section aria-label={t("dashboard.todo")} data-testid="todo" className={`${ui.card} space-y-2`}>
           <h2 className="text-lg font-semibold">{t("dashboard.todo")}</h2>

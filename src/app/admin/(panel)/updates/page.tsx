@@ -8,6 +8,8 @@ import { Markdown } from "@/components/site/Markdown";
 import { Checkbox } from "@/components/admin/Field";
 import { Callout, PageHeader, Panel } from "@/components/admin/Page";
 import { ui } from "@/components/admin/ui";
+import { adminBugReportUrl } from "@/core/bugReport";
+import { BugReportLink } from "@/components/admin/BugReportLink";
 import { loadModulesUpdates } from "@/components/admin/ModulesUpdatesSection";
 import { checkNow, saveAutoUpdate, saveChannel } from "./actions";
 
@@ -57,6 +59,7 @@ export default async function UpdatesPage() {
       <a href="/admin/modules?tab=updates" className={moduleRows.length > 0 ? ui.btnPrimary : ui.btn}>{t("updates.modulesLink.open")}</a>
     </section>
   );
+  const bugUrl = await adminBugReportUrl(t);
   const updateLabels = { idle: t("updates.apply", { version: check.latest ?? "" }), working: t("updates.working"), done: t("updates.done"), failed: t("updates.failedShort", { version: check.latest ?? "" }) };
 
   return (
@@ -206,6 +209,7 @@ export default async function UpdatesPage() {
           )}
         </Panel>
       )}
+      <p className="text-sm text-muted">{t("bugReport.help")} <BugReportLink href={bugUrl} className="whitespace-nowrap text-sm underline underline-offset-2 hover:text-accent">🐞 {t("bugReport.link")} ↗</BugReportLink></p>
     </div>
   );
 }

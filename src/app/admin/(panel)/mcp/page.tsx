@@ -11,8 +11,9 @@ import { ui } from "@/components/admin/ui";
 import { createTokenAction, revokeTokenAction, setMcpEnabled } from "./actions";
 
 /** Brancher un assistant IA : 1) l'activer, 2) lui créer un jeton, 3) choisir ce qu'il a le droit de faire. */
-export default async function McpPage() {
+export default async function McpPage({ searchParams }: { searchParams: Promise<{ profile?: string }> }) {
   const { t, advanced } = await adminCtx("owner");
+  const { profile } = await searchParams;
   const enabled = await isMcpEnabled();
   const tokens = await prisma.apiToken.findMany({ orderBy: { createdAt: "desc" } });
   const byUrl = new Set(await urlAccessIds());
@@ -25,6 +26,11 @@ export default async function McpPage() {
   return (
     <div className="space-y-8">
       <PageHeader title={t("mcp.title")} intro={t("mcp.intro")} />
+
+      <a href="/admin/maintenance-ia" className={`${ui.card} flex flex-wrap items-center justify-between gap-3 transition hover:border-accent`} data-testid="mcp-maintenance-link">
+        <span><span className="block text-lg font-semibold">🤖 {t("mcp.maintenanceLink")}</span><span className="mt-1 block text-sm text-muted">{t("mcp.maintenanceLinkHelp")}</span></span>
+        <span className={ui.btn}>{t("nav.maintenanceAi")}</span>
+      </a>
 
       <Panel title={t("mcp.connect.title")} help={t("mcp.connect.intro")} testid="mcp-connect">
         <ol className="grid gap-3 sm:grid-cols-3">
@@ -89,12 +95,19 @@ export default async function McpPage() {
               baseUrl={siteUrl}
               advanced={advanced}
               guide={guide}
+              defaultProfile={profile === "maintenance" ? "maintenance" : "standard"}
               labels={{
                 name: t("mcp.tokenName"), nameHelp: t("mcp.tokenNameHelp"), scope: t("mcp.scope"), scopeHelp: t("mcp.scopeHelp"),
                 read: t("mcp.scope.read"), write: t("mcp.scope.write"), urlOption: t("mcp.urlOption"), urlOptionHelp: t("mcp.urlOptionHelp"),
                 submit: t("mcp.createToken"), afterCreate: t("mcp.afterCreate"),
                 createdTitle: t("mcp.created.title", { name: "{name}" }), createdToken: t("mcp.created.token"), createdUrl: t("mcp.created.url"), createdOnce: t("mcp.created.once"),
                 copy: t("mcp.guide.copy"), copied: t("mcp.guide.copied"),
+                profile: {
+                  label: t("mcp.profile"), standard: t("mcp.profile.standard"), maintenance: t("mcp.profile.maintenance"), help: t("mcp.profile.help"),
+                  levels: [t("mcp.profile.l1"), t("mcp.profile.l2"), t("mcp.profile.l3")],
+                  approval: t("mcp.profile.approval"), approvalHuman: t("mcp.profile.approval.human"), approvalDirect: t("mcp.profile.approval.direct"),
+                  notify: t("mcp.profile.notify"), notifyAdmin: t("mcp.profile.notify.admin"), notifyEmail: t("mcp.profile.notify.email"),
+                },
               }}
             />
           </Panel>

@@ -59,6 +59,7 @@ Le service MCP sait *servir* des outils, pas *d'où ils viennent*. Il reçoit un
 | Fournisseur | Fichier | Apporte |
 |---|---|---|
 | `site` | `platform.ts` | `site_info` : s'orienter sur le site |
+| `maintenance` | `core/maintenance/tools.ts` | les outils `maintenance_…` du cœur (diagnostic, sauvegarde, mises à jour) : voir [MAINTENANCE-IA.md](MAINTENANCE-IA.md) ; désactivés pour un jeton ordinaire, niveau 3 `destructive` avec validation humaine |
 | `modules` | `core/modules/mcpProvider.ts` | les actions déclarées par les modules (`mcp` du manifeste + du code) |
 | `content` | `core/content/mcp.ts` | actions éditoriales (lister, lire, brouillons) de toute instance à contenu |
 

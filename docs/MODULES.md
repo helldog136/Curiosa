@@ -801,7 +801,7 @@ export default {
 ## API MCP : exposer des actions aux assistants
 
 Le cœur héberge un serveur MCP (`/api/mcp`, désactivable depuis l'admin → *API & MCP*) **sans aucun outil codé
-en dur** : il collecte les actions déclarées par tous les modules actifs.
+en dur** : il collecte les actions déclarées par tous les modules actifs. Le cœur y ajoute ses propres outils `site_info` et `maintenance_…` (maintenance du site par une IA : voir [MAINTENANCE-IA.md](MAINTENANCE-IA.md)) ; un jeton « Maintenance » n'a que ceux-là, jamais vos actions de module sans que vous les lui accordiez.
 
 ```jsonc
 // module.json
