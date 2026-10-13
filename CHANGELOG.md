@@ -6,12 +6,17 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
-## Prochaine version (non publiée)
+## 0.1.16
 
 *Changements depuis la 0.1.15.*
 
+### Nouveautés
+
+- **Votre site est plus facile à lire et à citer pour les assistants IA.** Les robots qui répondent aux questions sont autorisés, un fichier présente votre site aux IA, et une page vous montre ce qu'il reste à faire.
+
 ### Pour les développeurs
 
+- Nouveau `ctx.api.seo.jsonLd(données)` : un module ajoute ses données structurées (JSON-LD) par `layout.head`, avec échappement et bornes gérés par le cœur. Détails dans `docs/GEO.md`.
 - Sujets : `ctx.api.topics.collect(sujet, { from, to })` demande une période (`Date` ou ISO 8601, 400 jours au plus, sinon erreur) ; les `exports` reçoivent `from` / `to` en `Date` et peuvent les ignorer. Nouveau type de champ `datetime` ; un élément invalide est écarté seul.
 - Une migration de données peut semer UNE instance d'un module dont elle dépend (`seeds` du manifeste, `ctx.seedInstance`, une seule fois par `seedKey`, jamais d'écrasement, audit `module.seed` sans valeur) et effacer ses propres réglages (`ctx.clearSetting`). Tout est défait si la migration échoue.
 

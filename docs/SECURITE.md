@@ -38,6 +38,10 @@ La méthode la plus sûre : on se connecte avec l'**empreinte, le visage, le cod
 - **Le domaine compte** : réglez `SITE_URL` dans `.env` avec l'adresse définitive du site. Si elle change, les clés d'accès déjà enregistrées ne fonctionnent plus (le mot de passe, lui, continue) et il faut les recréer.
 - Un propriétaire qui perd l'accès à ses appareils se dépanne en SSH (voir plus bas) : la commande `reset-2fa` retire aussi ses clés d'accès. Pour un collègue, *Utilisateurs → Réinitialiser sa double vérification et ses clés d'accès*.
 
+## Robots IA et llms.txt
+
+`robots.txt` exclut toujours `/admin`, `/api` et `/m/` pour tous les robots ; il ne protège de rien (un robot malhonnête l'ignore) : la protection d'une page privée est son authentification, jamais `robots.txt`. `/llms.txt` est généré à partir des seules données publiques (aucune adresse e-mail, aucun brouillon, aucune page non publiée), borné à 40 Ko et 120 liens ; les liens des réseaux sociaux n'y figurent qu'en `https`. Les JSON-LD des modules passent par `ctx.api.seo.jsonLd` : bornés, `</script>` échappé, jamais exécutés comme du code. Voir [GEO.md](GEO.md).
+
 ## Assistants IA (MCP) : deux façons de s'authentifier
 
 Un assistant se connecte à `/api/mcp` avec un **jeton** (`vit_…`, créé par le propriétaire, affiché une seule fois, seul son hash est gardé). Deux modes :

@@ -16,6 +16,7 @@ import { CUSTOM_PALETTE, THEME_PRESETS } from "@/core/palettes";
 import { ui } from "@/components/admin/ui";
 import { hasRole } from "@/core/permissions";
 import { getMailConfig } from "@/core/services/mail";
+import { getAiBlocking, getSiteEntity, isLlmsTxtEnabled } from "@/core/seoSettings";
 import { saveSettings } from "./actions";
 
 /** Exemple affiché tant qu'aucune description personnalisée n'est enregistrée : le format est décrit dans docs/BACKGROUND.md. */
@@ -55,7 +56,9 @@ export default async function SettingsPage() {
   const values: Record<string, Record<string, unknown>> = {};
   for (const key of TRANSLATABLE) values[key] = await getSettingByLocale(key);
   const logo = await getSetting<string>("site.logo");
-  const blockAiBots = (await getSetting<boolean>("seo.blockAiBots")) !== false;
+  const ai = await getAiBlocking();
+  const llmsTxt = await isLlmsTxtEnabled();
+  const entity = await getSiteEntity();
 
   return (
     <div className="space-y-6">
@@ -68,6 +71,8 @@ export default async function SettingsPage() {
           <p className={ui.help}>{t("settings.identityIntro")}</p>
           <div className={`${ui.card} space-y-5`}>
             <h3 className="font-semibold">{t("settings.who")}</h3>
+            <Select name="entityType" label={t("settings.entity")} help={t("settings.entityHelp")} defaultValue={entity}
+              options={[{ value: "organization", label: t("settings.entity.organization") }, { value: "person", label: t("settings.entity.person") }]} />
             {config.locales.map((l) => (
               <fieldset key={l} className="space-y-4">
                 {config.locales.length > 1 && <legend className="mb-2 text-sm font-medium text-muted">{localeName(l)}</legend>}
@@ -143,7 +148,20 @@ export default async function SettingsPage() {
             <h3 className="font-semibold">{t("settings.privacyVisits")}</h3>
             <Checkbox name="statsEnabled" label={t("settings.stats")} help={t("settings.statsHelp")} defaultChecked={config.statsEnabled} />
             <Checkbox name="newsToggle" label={t("settings.newsToggle")} help={t("settings.newsToggleHelp")} defaultChecked={config.newsToggle} />
-            {advanced && <Checkbox name="blockAiBots" label={t("settings.blockAiBots")} help={t("settings.blockAiBotsHelp")} defaultChecked={blockAiBots} />}
+          </div>
+          <div className={`${ui.card} space-y-4`} id="ai-robots" data-testid="ai-settings">
+            <input type="hidden" name="__ai" value="1" />
+            <div>
+              <h3 className="font-semibold">{t("settings.aiCard")}</h3>
+              <p className={ui.help}>{t("settings.aiExplain")}</p>
+            </div>
+            {ai.fromLegacy && ai.blockAnswers && <p role="note" className="rounded-lg border border-line bg-bg p-3 text-sm" data-testid="ai-legacy-note">{t("settings.aiLegacyNote")}</p>}
+            <Select name="aiTraining" label={t("settings.aiTraining")} help={t("settings.aiTrainingHelp")} defaultValue={ai.blockTraining ? "block" : "allow"}
+              options={[{ value: "block", label: t("settings.aiBlocked") }, { value: "allow", label: t("settings.aiAllowed") }]} />
+            <Select name="aiAnswers" label={t("settings.aiAnswers")} help={t("settings.aiAnswersHelp")} defaultValue={ai.blockAnswers ? "block" : "allow"}
+              options={[{ value: "allow", label: t("settings.aiAllowed") }, { value: "block", label: t("settings.aiBlocked") }]} />
+            <Checkbox name="llmsTxt" label={t("settings.llmsTxt")} help={t("settings.llmsTxtHelp")} defaultChecked={llmsTxt} />
+            <a href="/admin/ai-visibility" className="inline-block text-sm font-medium text-accent hover:underline">{t("settings.aiSeeChecks")}</a>
           </div>
           <div className={`${ui.card} space-y-4`}>
             <h3 className="font-semibold">{t("settings.privacyPage")}</h3>

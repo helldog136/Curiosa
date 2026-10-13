@@ -679,6 +679,7 @@ Deux familles : les **services** du cœur (génériques, voir [PLATFORM.md](PLAT
 | `ctx.api.instances.list({ module?, locale? })` | lecture | `[{ key, module, basePath, name }]` des instances actives |
 | `ctx.api.entries.list({ instance?, locale?, limit? })` | lecture | entrées publiées (`EntrySummary`) ; par défaut celles de l'instance courante |
 | `ctx.api.siteUrl` | lecture | adresse publique du site, sans `/` final |
+| `ctx.api.seo.jsonLd(données)` | service | prépare des données structurées (JSON-LD) pour le slot `layout.head` : renvoie la balise `{ tag: "script", jsonLd }` à mettre dans un bloc `head`, ou `null` si la donnée est inutilisable (pas de `@type`, trop volumineuse). Le cœur ajoute `@context`, borne la taille (texte 5 000 caractères, 100 éléments par liste, 8 niveaux, 20 000 caractères au total) et échappe `</script>`. Voir « Données structurées » dans [CREATE-A-MODULE.md](CREATE-A-MODULE.md). |
 
 **Stockage** : privé à l'instance (une instance ne voit jamais celui d'une autre), en collections libres de documents JSON, sans
 requête (filtrez en code, d'où le `limit`). Il est sauvegardé par le cœur (JSON) et supprimé avec l'instance ou la désinstallation du module.
@@ -720,7 +721,7 @@ Un module renvoie des **blocs déclaratifs** ; le cœur se charge du rendu, des 
 
 Une valeur de cellule de `table`, un `text` de `heading`, de `banner`… sont du **texte** : le cœur les échappe. Seul `html` est brut.
 
-Balises de `head` : `{ tag: "meta", name?, property?, content }`, `{ tag: "link", rel, href, type?, title? }`, `{ tag: "script", src?, inline?, defer? }`.
+Balises de `head` : `{ tag: "meta", name?, property?, content }`, `{ tag: "link", rel, href, type?, title? }`, `{ tag: "script", src?, inline?, defer?, jsonLd? }`. `jsonLd` (un objet, obtenu par `ctx.api.seo.jsonLd`) : le cœur écrit une balise `application/ld+json` sûre ; `src` et `inline` restent du code exécuté, à éviter.
 
 Champs d'un `adminForm` (`AdminField`) : `{ name, label, kind?, value?, required?, help?, options? }`. `kind` : `text`, `textarea`, `email`,
 `url`, `number`, `date`, `select` (avec `options: [{ value, label }]`), `hidden`, `image` (téléversement).
