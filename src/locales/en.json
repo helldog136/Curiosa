@@ -513,7 +513,7 @@
   "instances.mcpHelp": "Assistants connected through MCP can use this instance's actions (drafts, internal files…).",
   "mcp.access": "Choose the actions",
   "mcp.allowedCount": "{n} of {total} actions allowed",
-  "mcp.accessIntro": "Choose, action by action, what this token may do. Changes apply immediately — no need to create a new token. Each module decides which of its actions are on by default; the others stay off until you turn them on here.",
+  "mcp.accessIntro": "Choose, action by action, what this token may do. Changes apply immediately on the site — no need to create a new token — but your AI assistant only reads its list of tools when it connects: after turning an action on or off, disconnect and reconnect this server in your assistant (or start a new conversation). Each module decides which of its actions are on by default; the others stay off until you turn them on here.",
   "mcp.readCeiling": "This is a read-only token: actions that write stay locked, whatever is checked. Create a read & write token to allow them.",
   "mcp.platform": "Platform",
   "mcp.resetDefaults": "Back to defaults",

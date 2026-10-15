@@ -288,3 +288,10 @@ test("changelog : une entrée « Prochaine version » non technique pour la conn
   assert.match(head, /\*Changements depuis la 0\.1\.11\.\*/);
   assert.match(head, /### Nouveautés\n- /);
 });
+
+test("page des accès d'un jeton : prévient que l'assistant relit ses outils à la connexion (pas de tools/list_changed envoyé)", async () => {
+  assert.match(fr["mcp.accessIntro"], /reconnect/i);
+  assert.match(en["mcp.accessIntro"], /reconnect/i);
+  const init = await viaHeader(await T.createToken("c", "read", "o"), { jsonrpc: "2.0", id: 0, method: "initialize", params: { protocolVersion: "2025-06-18" } });
+  assert.equal((await init.json()).result.capabilities.tools.listChanged, false, "le serveur n'annonce pas de notification : le texte d'aide est donc nécessaire");
+});
