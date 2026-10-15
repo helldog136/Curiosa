@@ -513,7 +513,7 @@
   "instances.mcpHelp": "Les assistants connectés par MCP peuvent utiliser les actions de cette instance (brouillons, fiches internes…).",
   "mcp.access": "Choisir les actions",
   "mcp.allowedCount": "{n} actions autorisées sur {total}",
-  "mcp.accessIntro": "Choisissez, action par action, ce que ce jeton peut faire. Les changements sont immédiats — inutile de créer un nouveau jeton. Chaque module décide lesquelles de ses actions sont actives par défaut ; les autres restent désactivées tant que vous ne les activez pas ici.",
+  "mcp.accessIntro": "Choisissez, action par action, ce que ce jeton peut faire. Les changements sont immédiats côté site — inutile de créer un nouveau jeton — mais votre assistant IA ne relit la liste de ses outils qu'à la connexion : après avoir coché ou décoché une action, déconnectez puis reconnectez ce serveur dans votre assistant (ou ouvrez une nouvelle conversation). Chaque module décide lesquelles de ses actions sont actives par défaut ; les autres restent désactivées tant que vous ne les activez pas ici.",
   "mcp.readCeiling": "Ce jeton est en lecture seule : les actions qui écrivent restent verrouillées, quoi qu'on coche. Créez un jeton lecture et écriture pour les autoriser.",
   "mcp.platform": "Plateforme",
   "mcp.resetDefaults": "Remettre les défauts",
