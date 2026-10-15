@@ -364,11 +364,34 @@ test("menu : l'ordre des rubriques et des entrées d'Administration", () => {
   const layout = read(`${PANEL}/layout.tsx`);
   const order = ["nav.dashboard", "nav.myContent", "nav.myCommunity", "nav.mySite", "nav.admin", "nav.account"].map((k) => layout.indexOf(`"${k}"`));
   assert.ok(order.every((n, i) => n > -1 && (i === 0 || n > order[i - 1])), "Tableau de bord, Mon contenu, Ma communauté, Mon site, Administration, Compte");
-  const admin = layout.slice(layout.indexOf('t("nav.admin")'), layout.indexOf('t("nav.account")'));
-  const entries = ["nav.extensions", "nav.maintenanceAi", "nav.mcp", "nav.users", "nav.backup", "nav.updates", "nav.audit"].map((k) => admin.indexOf(`"${k}"`));
-  assert.ok(entries.every((n, i) => n > -1 && (i === 0 || n > entries[i - 1])), "Extensions, les deux entrées d'assistants IA côte à côte, Utilisateurs, Sauvegarde, Mises à jour, Journal d'audit");
+  // Les entrées viennent de administrationEntries (adminMenu.ts) ; le layout les range dans cet ordre.
+  const links = layout.slice(layout.indexOf("const adminLinks"), layout.indexOf("const group ="));
+  const entries = ["nav.extensions", "nav.assistants", "nav.users", "nav.backup", "nav.updates", "nav.audit"].map((k) => links.indexOf(`"${k}"`));
+  assert.ok(entries.every((n, i) => n > -1 && (i === 0 || n > entries[i - 1])), "Extensions, Assistants IA (une seule entrée), Utilisateurs, Sauvegarde, Mises à jour, Journal d'audit");
+  assert.ok(!layout.includes("nav.mcp") && !layout.includes("nav.maintenanceAi") && !layout.includes("/admin/mcp") && !layout.includes("/admin/maintenance-ia"), "les deux anciennes entrées ont disparu");
   const site = layout.slice(layout.indexOf('t("nav.mySite")'), layout.indexOf('t("nav.admin")'));
   for (const href of ["/admin/home", "/admin/navigation", "/admin/settings", "/admin/social", "/admin/ai-visibility", "/admin/redirects"]) assert.ok(site.includes(`href="${href}"`), href);
+});
+
+test("menu Administration : Assistants IA est UNE entrée, visible du propriétaire en mode simple ET avancé ; le journal d'audit reste avancé", async () => {
+  const { administrationEntries } = await import("@/core/modules/adminMenu");
+  assert.deepEqual(administrationEntries({ role: "owner", advanced: false }), ["extensions", "assistants", "users", "backup", "updates"], "mode simple : Assistants IA y est, pas le journal");
+  assert.deepEqual(administrationEntries({ role: "owner", advanced: true }), ["extensions", "assistants", "users", "backup", "updates", "audit"]);
+  for (const advanced of [false, true]) {
+    assert.deepEqual(administrationEntries({ role: "admin", advanced }), ["extensions", "users"], "un administrateur gère les extensions et les utilisateurs, pas les assistants");
+    assert.deepEqual(administrationEntries({ role: "editor", advanced }), [], "un éditeur n'a pas de rubrique Administration");
+    assert.equal(administrationEntries({ role: "owner", advanced }).filter((e) => e === "assistants").length, 1, "jamais deux entrées d'assistants");
+  }
+  const layout = read(`${PANEL}/layout.tsx`);
+  assert.match(layout, /administrationEntries\(\{ role: user\.role, advanced \}\)/);
+  assert.match(layout, /<NavLink key="assistants" href=\{ASSISTANTS_HREF\} badge=\{aiWaiting\} badgeLabel=\{t\("nav\.badge\.ai"\)\}>\{t\("nav\.assistants"\)\}<\/NavLink>/, "la pastille = demandes d'IA en attente");
+  assert.match(layout, /\{adminEntries\.length > 0 && \(/, "la rubrique disparaît quand elle est vide");
+});
+
+test("menu : la page Assistants IA et celle d'un accès restent surlignées dans le menu (sous-pages)", () => {
+  assert.ok(isCurrent("/admin/assistants", "/admin/assistants", new URLSearchParams("tab=requests")));
+  assert.ok(isCurrent("/admin/assistants", "/admin/assistants/abc123", null));
+  assert.ok(!isCurrent("/admin/assistants", "/admin/audit", null));
 });
 
 // ─── Familles d'Extensions ──────────────────────────────────────────────────────────────────────────────────────

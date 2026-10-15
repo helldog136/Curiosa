@@ -721,7 +721,7 @@ test("e-mail : « dans l'admin » (défaut) n'envoie rien ; « dans l'admin et p
   for (const m of calls.mails) {
     const all = `${m.subject}\n${m.text}`;
     assert.ok(!all.includes(token) && !/vit_|password|hunter|secret/i.test(all), `secret dans l'e-mail : ${all}`);
-    assert.ok(all.includes("Claude") && all.includes("/admin/maintenance-ia"));
+    assert.ok(all.includes("Claude") && all.includes("/admin/assistants?tab=requests"));
   }
   assert.equal((await S.getNotifyMode()), "email");
   void id;

@@ -6,6 +6,26 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
+## 0.1.21
+
+### Nouveautés
+
+- **Une seule entrée « Assistants IA » dans Administration.** Elle remplace « Maintenance par IA » et l'ancienne page de branchement des IA : plus de doublon dans le menu, et elle est visible en mode simple comme en mode avancé.
+- **Une page à trois onglets.** « Accès » (vos assistants connectés), « Demandes à valider » et « Historique » : tout ce qui se trouvait sur les deux anciennes pages y est réuni, sans rien perdre.
+- **Des accès faciles à lire.** Chaque assistant s'affiche avec son nom, ce qu'il peut faire en une phrase, sa dernière utilisation et son expiration. Les accès retirés sont rangés dans une zone repliée en bas.
+- **Un bouton « Connecter un assistant IA »** et des mots de tous les jours : plus de « jeton » ni de sigles en mode simple. Le secret de connexion ne s'affiche toujours qu'une seule fois, à la création.
+
+### Améliorations
+
+- Les anciennes adresses de ces deux pages mènent automatiquement à la bonne vue : vos favoris, vos e-mails d'alerte et le tableau de bord continuent de fonctionner.
+- Les assistants déjà connectés ne changent pas : leurs accès continuent de fonctionner sans rien refaire.
+- La page d'un accès réunit ses droits et la façon dont vous validez les actions à risque.
+- En mode avancé, la page garde l'ancien nom en sous-titre et les réglages techniques (adresse du serveur, liste des actions, consignes par outil).
+
+### Pour les développeurs
+
+- Routes `/admin/assistants` et `/admin/assistants/[id]` ; `/admin/mcp`, `/admin/mcp/[id]` et `/admin/maintenance-ia` redirigent (`legacyAssistantsTarget`). Logique pure : `assistantsLinks.ts`, `accessView.ts`, `core/modules/adminMenu.ts`. `/api/mcp` inchangé.
+
 ## 0.1.20
 
 ### Nouveautés

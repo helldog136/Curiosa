@@ -16,7 +16,7 @@ const read = (p) => fs.readFileSync(p, "utf8");
 const fr = JSON.parse(read("src/locales/fr.json"));
 const en = JSON.parse(read("src/locales/en.json"));
 const PANEL = "src/app/admin/(panel)";
-const UI_FILES = [`${PANEL}/maintenance-ia/page.tsx`, `${PANEL}/maintenance-ia/actions.ts`, `${PANEL}/layout.tsx`, `${PANEL}/page.tsx`, `${PANEL}/mcp/page.tsx`, `${PANEL}/mcp/[id]/page.tsx`, `${PANEL}/updates/page.tsx`, "src/core/maintenance/notify.ts"];
+const UI_FILES = [`${PANEL}/assistants/page.tsx`, `${PANEL}/assistants/AccessTab.tsx`, `${PANEL}/assistants/RequestsTab.tsx`, `${PANEL}/assistants/HistoryTab.tsx`, `${PANEL}/assistants/AssistantTabs.tsx`, `${PANEL}/assistants/requestsActions.ts`, `${PANEL}/assistants/requestsShared.ts`, `${PANEL}/layout.tsx`, `${PANEL}/page.tsx`, `${PANEL}/assistants/actions.ts`, `${PANEL}/assistants/[id]/page.tsx`, `${PANEL}/updates/page.tsx`, "src/core/maintenance/notify.ts"];
 
 // ── Lien « Signaler un bug » ────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -74,7 +74,7 @@ test("signalement : le lien est dans le menu d'admin (les deux modes), la page d
   // Hors des blocs `advanced && …` : visible en mode simple ET avancé.
   const line = layout.split("\n").find((l) => l.includes("<BugReportLink"));
   assert.ok(!/advanced/.test(line));
-  for (const f of [`${PANEL}/updates/page.tsx`, `${PANEL}/maintenance-ia/page.tsx`]) assert.match(read(f), /<BugReportLink href=\{bugUrl\}/, f);
+  for (const f of [`${PANEL}/updates/page.tsx`, `${PANEL}/assistants/page.tsx`]) assert.match(read(f), /<BugReportLink href=\{bugUrl\}/, f);
   const error = read(`${PANEL}/error.tsx`);
   assert.match(error, /^"use client"/);
   assert.match(error, /href="\/admin\/bug-report" target="_blank" rel="noopener noreferrer"/);
@@ -88,22 +88,23 @@ test("signalement : le lien est dans le menu d'admin (les deux modes), la page d
 // ── Maintenance par IA : branchement dans l'admin ──────────────────────────────────────────────────────────────────────────
 
 test("admin : la page et ses actions sont réservées au propriétaire ; menu, tableau de bord et jeton « Maintenance » sont branchés", () => {
-  assert.match(read(`${PANEL}/maintenance-ia/page.tsx`), /adminCtx\("owner"\)/);
-  const actions = read(`${PANEL}/maintenance-ia/actions.ts`);
+  assert.match(read(`${PANEL}/assistants/page.tsx`), /adminCtx\("owner"\)/);
+  assert.match(read(`${PANEL}/assistants/[id]/page.tsx`), /adminCtx\("owner"\)/);
+  const actions = read(`${PANEL}/assistants/requestsActions.ts`);
   assert.match(actions, /^"use server"/);
   assert.equal((actions.match(/adminCtx\("owner"\)/g) ?? []).length, 4, "approuver, refuser, validation par jeton, avertissements");
-  assert.match(read(`${PANEL}/layout.tsx`), /user\.role === "owner" && <NavLink href="\/admin\/maintenance-ia"/);
+  assert.match(read(`${PANEL}/layout.tsx`), /<NavLink key="assistants" href=\{ASSISTANTS_HREF\}/);
   assert.match(read(`${PANEL}/page.tsx`), /data-testid="ai-maintenance-notice"|testid="ai-maintenance-notice"/);
-  assert.match(read(`${PANEL}/mcp/actions.ts`), /MAINTENANCE_PROFILE/);
+  assert.match(read(`${PANEL}/assistants/actions.ts`), /MAINTENANCE_PROFILE/);
   const creator = read("src/components/admin/McpTokenCreator.tsx");
   assert.match(creator, /name="profile"/);
   assert.match(creator, /name="approval" defaultValue="human"/, "validation humaine par défaut");
   assert.match(creator, /name="notify" defaultValue="admin"/, "avertissement dans l'admin par défaut");
-  assert.match(read(`${PANEL}/mcp/page.tsx`), /profile=maintenance|defaultProfile/);
+  assert.match(read(`${PANEL}/assistants/AccessTab.tsx`), /defaultProfile=\{profile === "maintenance"/);
 });
 
 test("admin : le guide pour l'IA est un lien vers le dépôt (construit sur la constante du crédit), pas un fichier servi par le site", () => {
-  const page = read(`${PANEL}/maintenance-ia/page.tsx`);
+  const page = read(`${PANEL}/assistants/page.tsx`);
   assert.match(page, /\$\{CREDIT_URL\}\/blob\/HEAD\/docs\/MAINTENANCE-IA\.md/);
   assert.match(page, /data-testid="ai-guide-link"/);
 });
@@ -124,6 +125,10 @@ test("i18n : toutes les clés de traduction citées par les écrans de la mainte
   for (const n of ["busy", "expired", "not-pending", "unknown", "forbidden"]) keys.add(`aim.notice.${n}`);
   for (const l of [1, 2, 3]) { keys.add(`aim.level.${l}`); keys.add(`aim.level.${l}.help`); }
   for (const m of ["admin", "email"]) keys.add(`aim.notify.${m}`);
+  for (const a of ["none", "read", "write", "delete", "maintenance.watch", "maintenance.act"]) keys.add(`assistants.can.${a}`);
+  for (const n of ["1", "2", "3"]) { keys.add(`assistants.step.${n}`); keys.add(`assistants.step.${n}d`); }
+  for (const tab of ["access", "requests", "history"]) keys.add(`assistants.tab.${tab}`);
+  for (const k of ["mcp.profile.help", "assistants.new.kind.upkeepHelp", "mcp.scope", "mcp.scopeHelp", "mcp.created.token", "mcp.created.url", "mcp.created.once", "mcp.afterCreate", "assistants.confirmDestructive", "mcp.confirmDestructive"]) keys.add(k);
   for (const m of ["pending", "done", "failed"]) { keys.add(`aim.mail.${m}.subject`); keys.add(`aim.mail.${m}.body`); }
   for (const k of ["profile", "profile.standard", "profile.maintenance", "profile.help", "profile.l1", "profile.l2", "profile.l3", "profile.approval", "profile.approval.human", "profile.approval.direct", "profile.notify", "profile.notify.admin", "profile.notify.email"]) keys.add(`mcp.${k}`);
   const missing = [...keys].filter((k) => !(k in fr) || !(k in en));
@@ -146,7 +151,7 @@ test("journal d'audit : les actions de maintenance ont un libellé en clair (fr/
 test("langage simple : les textes destinés à un non-technicien n'emploient pas de jargon sans explication", () => {
   const jargon = /\b(MCP|JSON|RPC|endpoint|token|API|CLI|SQL|npm|rc\.\d|snapshot|git)\b/;
   for (const [k, v] of Object.entries(fr)) {
-    if (!/^(aim\.|mcp\.profile|dashboard\.ai|nav\.maintenanceAi|bugReport\.)/.test(k)) continue;
+    if (!/^(aim\.|mcp\.profile|dashboard\.ai|nav\.assistants|assistants\.|bugReport\.)/.test(k) || k === "assistants.subtitle") continue;  // le sous-titre « API & MCP » n'est montré qu'en mode avancé
     const m = jargon.exec(v.replaceAll("« API & MCP »", "« »").replace(/\{\w+\}/g, ""));  // nom du menu, variables
     // « MCP » n'apparaît qu'avec une explication courte entre parenthèses.
     if (m && m[1] === "MCP") assert.match(v, /MCP[^.]*\(/, `${k} : MCP sans explication`);

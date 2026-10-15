@@ -17,7 +17,7 @@ const read = (p) => fs.readFileSync(p, "utf8");
 const GUIDE_KEYS = [...read("src/components/admin/McpConnectGuide.tsx").match(/GUIDE_KEYS = \[([^\]]+)\]/)[1].matchAll(/"([\w.]+)"/g)].map((m) => m[1]);
 const fr = JSON.parse(read("src/locales/fr.json"));
 const en = JSON.parse(read("src/locales/en.json"));
-const PANEL = "src/app/admin/(panel)/mcp";
+const PANEL = "src/app/admin/(panel)/assistants";
 
 const tool = (over = {}) => ({ name: "lire", title: "Lire", description: "d", readOnly: true, default: true, destructive: false, input: { type: "object", properties: {} }, source: "core", call: async () => ({ ok: 1 }), ...over });
 const post = (body, headers = {}, url = "http://x/api/mcp") => new Request(url, { method: "POST", headers: { "content-type": "application/json", accept: "application/json, text/event-stream", ...headers }, body: typeof body === "string" ? body : JSON.stringify(body) });
@@ -250,9 +250,9 @@ test("interface : clés fr/en présentes pour le guide, la création et l'accès
   assert.ok(keys.length > 40);
   for (const k of keys) assert.ok(en[k]?.trim(), k);
   const used = new Set();
-  for (const f of [`${PANEL}/page.tsx`, `${PANEL}/[id]/page.tsx`, "src/components/admin/McpConnectGuide.tsx", "src/components/admin/McpTokenCreator.tsx"]) for (const m of read(f).matchAll(/\bt\(\s*"([\w.]+)"/g)) used.add(m[1]);
+  for (const f of [`${PANEL}/page.tsx`, `${PANEL}/AccessTab.tsx`, `${PANEL}/[id]/page.tsx`, "src/components/admin/McpConnectGuide.tsx", "src/components/admin/McpTokenCreator.tsx"]) for (const m of read(f).matchAll(/\bt\(\s*"([\w.]+)"/g)) used.add(m[1]);
   for (const k of used) assert.ok(fr[k] && en[k], `clé manquante : ${k}`);
-  for (const k of ["mcp.url.title", "mcp.url.enable", "mcp.url.disable", "mcp.urlChip", "mcp.created.title", "mcp.urlOption"]) assert.ok(used.has(k) || fr[k], k);
+  for (const k of ["mcp.url.title", "mcp.url.enable", "mcp.url.disable", "mcp.urlChip", "assistants.created.title", "mcp.urlOption"]) assert.ok(used.has(k) || fr[k], k);
   assert.match(fr["mcp.urlOptionHelp"], /EST le mot de passe/);
   assert.match(fr["mcp.urlOptionHelp"], /journaux de votre serveur web/);
   assert.match(fr["mcp.urlOptionHelp"], /révoquez le jeton/);
@@ -260,12 +260,12 @@ test("interface : clés fr/en présentes pour le guide, la création et l'accès
   assert.match(en["mcp.guide.test.expected"], /missing or malformed/);
 });
 
-test("page « API & MCP » : encadré en 3 étapes en tête, un bloc par assistant, jeton réel seulement à la création", () => {
-  const page = read(`${PANEL}/page.tsx`);
+test("page Assistants IA : étapes en tête du formulaire, un bloc par assistant (mode avancé), jeton réel seulement à la création", () => {
+  const page = read(`${PANEL}/AccessTab.tsx`);
   const guide = read("src/components/admin/McpConnectGuide.tsx");
   const creator = read("src/components/admin/McpTokenCreator.tsx");
-  assert.ok(page.indexOf('testid="mcp-connect"') < page.indexOf('testid="mcp-status"'), "l'encadré vient en premier");
-  for (const k of ["mcp.connect.s1", "mcp.connect.s2", "mcp.connect.s3"].map((x) => x.replace("mcp.connect.", ""))) assert.ok(page.includes(`"${k}"`));
+  assert.ok(page.indexOf('t(`assistants.step.${n}`)') > 0 && page.indexOf('t(`assistants.step.${n}`)') < page.indexOf("<McpTokenCreator"), "les trois étapes viennent avant le formulaire");
+  assert.ok(page.includes('{advanced && (') && page.indexOf("<McpConnectGuide") > page.indexOf("{advanced && ("), "les blocs de configuration par outil sont réservés au mode avancé");
   for (const id of ["mcp-guide-claude", "mcp-guide-code", "mcp-guide-other", "mcp-guide-test", "mcp-guide-how"]) assert.ok(guide.includes(id), id);
   assert.match(guide, /claude mcp add --transport http curiosa \$\{endpoint\} --header "Authorization: Bearer \$\{secret\}"/);
   assert.match(guide, /mcpServers/);

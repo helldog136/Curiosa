@@ -38,7 +38,7 @@ test("réglages : la case « compter les visites » (et le blocage des robots d'
 
 test("menu : « Modules » n'est plus en haut ni en surbrillance ; le catalogue a une recherche, ses fiches s'ouvrent en fenêtre avec un bouton d'installation animé", () => {
   const layout = read("src/app/admin/(panel)/layout.tsx");
-  assert.ok(layout.indexOf("EXTENSIONS_HREF}") > layout.indexOf("nav.admin"), "Extensions est dans Administration, après le contenu et le site");
+  assert.ok(layout.includes("extensions: <NavLink") && layout.indexOf("adminEntries.map") > layout.indexOf("nav.mySite"), "Extensions est dans Administration, après le contenu et le site");
   assert.equal((layout.match(/href=\{EXTENSIONS_HREF\}/g) ?? []).length, 1, "une seule entrée");
   assert.ok(!/prominent/.test(read("src/components/admin/NavLink.tsx")), "aucune entrée en surbrillance permanente");
   const page = read("src/app/admin/(panel)/extensions/add/page.tsx");
