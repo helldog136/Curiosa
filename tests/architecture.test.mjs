@@ -153,3 +153,14 @@ test("HTML valide dans les pages : jamais de <form> à l'intérieur d'un <p> (le
     for (const m of text.matchAll(/<p\b[^>]*>(?:(?!<\/p>)[\s\S])*?<form\b/g)) assert.fail(`${f} ligne ${text.slice(0, m.index).split("\n").length} : <form> dans un <p>`);
   }
 });
+
+test("routes : jamais de « catch-all optionnel » [[...x]] sous un segment qui a aussi sa page (le build de production le refuse ; npm test ne lance pas next build)", () => {
+  const bad = [];
+  for (const file of walk("src/app").filter((f) => /\[\[\.\.\.[^\]]+\]\]/.test(f))) {
+    const dir = file.split("/").slice(0, file.split("/").findIndex((s) => /^\[\[\.\.\./.test(s)));
+    // un emplacement parallèle (@slot) se comporte comme le segment qui le contient
+    const owner = dir[dir.length - 1].startsWith("@") ? dir.slice(0, -1) : dir;
+    if (["page.tsx", "page.ts", "page.js"].some((p) => fs.existsSync([...owner, p].join("/")))) bad.push(file);
+  }
+  assert.deepEqual(bad, [], "utilisez [...x] (catch-all obligatoire) : l'adresse du segment est déjà couverte par page.tsx ou default.tsx");
+});
