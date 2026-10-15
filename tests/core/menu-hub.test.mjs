@@ -241,12 +241,20 @@ test("Extensions > Installées : une carte par module avec ses instances (nom, �
   assert.match(page, /<FamilyFilter /);
   assert.match(page, /parseFamily\(query\.family\)/);
   const card = read("src/components/admin/ExtensionCard.tsx");
-  assert.match(card, /<InstanceState t=\{t\} state=\{i\.state\}/);
-  assert.match(card, /href=\{`\/admin\/instances\/\$\{i\.id\}`\}/, "lien vers les réglages");
+  assert.match(card, /<InstanceState t=\{t\} state=\{m\.attention\}/, "pastille seulement pour « à configurer » ou « erreur »");
+  assert.match(card, /const settingsHref = single \? `\/admin\/instances\/\$\{single\.id\}` : `\/admin\/modules\//, "une seule action visible : Réglages");
+  assert.match(card, /const single = m\.instances\.length === 1/, "une seule instance : jamais montrée à part");
+  assert.match(card, /<details className="group mt-2[^]*?extensions\.manyItems/, "plusieurs instances : repliées sous la ligne");
+  assert.match(card, /<RowMenu /, "les actions rares tiennent dans un menu « ⋯ »");
   assert.match(card, /toggleInstanceAction\.bind\(null, i\.id, !i\.enabled\)/);
   assert.match(card, /setPlacementAction\.bind\(null, i\.id, i\.pinned \? i\.unpinTo : "menu"\)/, "épingler / retirer du menu");
-  assert.match(card, /<CopyText text=\{i\.obsUrl\}/, "l'adresse OBS des overlays est reprise");
+  assert.match(card, /<CopyText text=\{url\}/, "l'adresse OBS des overlays est reprise");
   assert.match(card, /data-testid="admin-badge"/, "les pastilles restent visibles");
+  assert.ok(!/instanceCountOne|hub\.openModule/.test(card), "plus de « 1 instance » ni « Page du module »");
+  const menu = read("src/components/admin/RowMenu.tsx");
+  assert.match(menu, /<details/, "natif : clavier et toucher");
+  assert.match(menu, /e\.key === "Escape"/);
+  assert.match(menu, /aria-label=\{label\}/);
   assert.match(read(`${PANEL}/extensions/loadInstalled.ts`), /overlayUrl\(siteUrl, i\.key\)/);
   const actions = read(`${PANEL}/extensions/actions.ts`);
   for (const fn of ["setPlacementAction", "toggleInstanceAction"]) assert.match(actions, new RegExp(`export async function ${fn}[^]*?adminCtx\\("admin"\\)`));
@@ -424,7 +432,7 @@ test("i18n : toutes les clés utilisées par le menu, Extensions et ses onglets 
 test("mode simple : pas de jargon dans les textes d'Extensions (ni « instance », ni « manifeste »)", () => {
   const fr = JSON.parse(read("src/locales/fr.json"));
   const en = JSON.parse(read("src/locales/en.json"));
-  for (const k of ["extensions.introSimple", "hub.tab.installed.simple", "hub.tab.catalogue.simple", "hub.instancesSimple", "nav.myCommunity", "nav.extensions", "placement.pin", "placement.unpin", "placement.park", "family.content.help", "family.community.help", "family.connections.help", "family.overlays.help"]) {
+  for (const k of ["extensions.introSimple", "hub.tab.installed.simple", "hub.tab.catalogue.simple", "extensions.manyItems", "extensions.turnOff", "extensions.menu", "nav.myCommunity", "nav.extensions", "placement.pin", "placement.unpin", "placement.park", "family.content.help", "family.community.help", "family.connections.help", "family.overlays.help"]) {
     assert.ok(!/instance|manifest|manifeste/i.test(fr[k]), `fr ${k}`);
     assert.ok(!/instance|manifest/i.test(en[k]), `en ${k}`);
   }

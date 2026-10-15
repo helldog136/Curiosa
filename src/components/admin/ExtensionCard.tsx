@@ -4,91 +4,122 @@ import { addInstance, toggleModule } from "@/app/admin/(panel)/modules/actions";
 import type { InstalledInstance, InstalledModule } from "@/app/admin/(panel)/extensions/loadInstalled";
 import { CopyText } from "@/components/site/CopyText";
 import { InstanceState } from "./InstanceState";
+import { RowMenu } from "./RowMenu";
 import { ui } from "./ui";
 
-const SWITCH = (on: boolean) => (
-  <span className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${on ? "bg-accent" : "bg-line"}`}><span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${on ? "left-[22px]" : "left-0.5"}`} /></span>
-);
+const ITEM = "flex min-h-11 w-full items-center gap-2 px-3 text-left text-sm hover:bg-accent/10 hover:text-accent";
 
-/** Une extension installée : de quoi la reconnaître, puis chacune de ses fonctionnalités avec son état, son réglage et, si elle y a sa place, « épingler au menu ». */
-export function ExtensionCard({ t, m, advanced, isOwner }: { t: Translator; m: InstalledModule; advanced: boolean; isOwner: boolean }) {
-  const chips = (
-    <>
-      {m.platform && m.platform !== m.name && <span className={ui.chip} data-testid="platform-chip">{m.platform}</span>}
-      {advanced && <span className={m.enabled ? ui.chipOk : ui.chip}>{m.enabled ? t("modules.on") : t("modules.off")}</span>}
-      {m.update && <span className={ui.chipWarn} data-testid={`module-behind-${m.id}`}>⬆ {t("modules.updateBadge")}</span>}
-      {m.missing && <span className={ui.chipWarn} data-testid={`module-missing-${m.id}`}>⚠ {t("deps.missing.badge")}</span>}
-      {m.auto && <span className={ui.chip} data-testid={`module-auto-${m.id}`}>🔗 {t("deps.auto.badge")}</span>}
-    </>
-  );
+/** Adresse à coller dans OBS, sur une ligne : l'adresse (coupée si besoin) et « Copier ». */
+function ObsLine({ t, url }: { t: Translator; url: string }) {
   return (
-    <li data-catalogue-item data-search={m.search} data-testid={`extension-${m.id}`} className={`${ui.card} flex flex-col gap-4 !p-4 sm:!p-5 ${m.enabled ? "" : "bg-bg shadow-none"}`}>
-      <div className="flex items-start gap-4">
-        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-accent/10 text-2xl" aria-hidden>{m.icon}</span>
-        <div className="min-w-0 flex-1">
-          <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span className="break-words text-lg font-semibold leading-tight">{m.name}</span>
-            {advanced && <span className="text-xs text-muted">v{m.version}</span>}
-          </p>
-          <p className="mt-1 line-clamp-3 text-sm leading-5 text-muted">{m.description}</p>
-          <p className="mt-2 flex flex-wrap items-center gap-2 empty:hidden">{chips}</p>
-        </div>
-      </div>
-
-      {m.instances.length > 0 && (
-        <ul className="divide-y divide-line rounded-xl border border-line bg-bg" aria-label={advanced ? t("hub.instances") : t("hub.instancesSimple")}>
-          {m.instances.map((i) => <InstanceRow key={i.id} t={t} i={i} moduleEnabled={m.enabled} solo={!advanced && m.instances.length === 1} />)}
-        </ul>
-      )}
-
-      <div className="mt-auto flex flex-wrap items-center justify-between gap-3">
-        {!advanced && isOwner && m.loaded ? (
-          <form action={toggleModule.bind(null, m.id, !m.enabled)}>
-            <input type="hidden" name="from" value="list" />
-            <button className="inline-flex min-h-10 items-center gap-2.5 rounded-full py-1 pr-2 text-sm font-medium" aria-pressed={m.enabled}>{SWITCH(m.enabled)}{m.enabled ? t("modules.on") : t("modules.off")}</button>
-          </form>
-        ) : !advanced ? <span className={m.enabled ? ui.chipOk : ui.chip}>{m.enabled ? t("modules.on") : t("modules.off")}</span> : <span className="text-sm text-muted">{m.count === 0 ? t("modules.instanceCountNone") : m.count === 1 ? t("modules.instanceCountOne") : t("modules.instanceCountMany", { count: m.count })}</span>}
-        <span className="flex flex-wrap items-center gap-2">
-          {m.enabled && m.loaded && m.count === 0 && <form action={addInstance.bind(null, m.id)}><button className={ui.btnPrimary}>{t("modules.setUp")}</button></form>}
-          <a href={`/admin/modules/${encodeURIComponent(m.id)}`} aria-label={t("modules.openModule", { name: m.name })} className="inline-flex min-h-10 items-center text-sm text-muted hover:text-accent">{advanced ? t("hub.openModule") : t("modules.moreOptions")} ›</a>
-        </span>
-      </div>
-    </li>
+    <div className="flex min-w-0 items-center gap-2 text-xs" title={t("overlays.obsAddress")}>
+      <span className="shrink-0 font-medium text-muted">OBS</span>
+      <code data-testid="overlay-url" className="min-w-0 flex-1 truncate font-mono">{url}</code>
+      <CopyText text={url} copyLabel={t("overlays.copy")} copiedLabel={t("overlays.copied")} />
+    </div>
   );
 }
 
-/** `solo` : mode simple, une seule fonctionnalité dans la carte — son nom et son interrupteur doublonneraient ceux de la carte. */
-function InstanceRow({ t, i, moduleEnabled, solo }: { t: Translator; i: InstalledInstance; moduleEnabled: boolean; solo: boolean }) {
+/** Les actions rares d'une instance, dans le menu « ⋯ » : voir son contenu, épingler / retirer du menu, allumer / éteindre. */
+function InstanceActions({ t, i, withToggle = true }: { t: Translator; i: InstalledInstance; withToggle?: boolean }) {
   return (
-    <li className="space-y-2 px-3 py-3 sm:px-4" data-testid={`extension-instance-${i.id}`} data-state={i.state} data-pinned={i.pinned ? "1" : "0"}>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        {!solo && <a href={`/admin/instances/${i.id}`} className="min-w-0 flex-1 basis-40 break-words font-medium hover:text-accent">{i.name}</a>}
-        <InstanceState t={t} state={i.state} />
-        {i.badge > 0 && <span data-testid="admin-badge" className="min-w-5 rounded-full bg-accent px-1.5 text-center text-xs font-semibold leading-5 text-accent-fg">{i.badge}<span className="sr-only"> {t("nav.badge.todo")}</span></span>}
-      </div>
-      {i.state === "error" && <p className="text-sm text-red-600" role="status">{t("integrations.errorHint")}</p>}
-      {i.obsUrl && (
-        <div className="rounded-xl border border-line bg-surface p-3">
-          <p className="text-xs font-medium text-muted">{t("overlays.obsAddress")}</p>
-          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-2">
-            <code data-testid="overlay-url" className="min-w-0 flex-1 break-all font-mono text-sm">{i.obsUrl}</code>
-            <CopyText text={i.obsUrl} copyLabel={t("overlays.copy")} copiedLabel={t("overlays.copied")} />
-          </div>
-          <p className="mt-2 text-xs text-muted">{i.enabled && moduleEnabled ? t("overlays.obsHelp") : t("overlays.obsOff")}</p>
-        </div>
+    <>
+      {i.content && <a href={`/admin/entries?c=${i.key}`} className={ITEM}>{t("integrations.items")}</a>}
+      {i.unpinTo && (
+        <form action={setPlacementAction.bind(null, i.id, i.pinned ? i.unpinTo : "menu")}>
+          <button className={ITEM} data-testid={i.pinned ? "unpin" : "pin"}>📌 {i.pinned ? t("placement.unpin") : t("placement.pin")}</button>
+        </form>
       )}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-        {!solo && <form action={toggleInstanceAction.bind(null, i.id, !i.enabled)}>
-          <button className="inline-flex min-h-10 items-center gap-2 rounded-full pr-2 text-sm" aria-pressed={i.enabled} aria-label={t(i.enabled ? "integrations.disable" : "integrations.enable", { name: i.name })}>{SWITCH(i.enabled)}{i.enabled ? t("integrations.state.on") : t("integrations.state.off")}</button>
-        </form>}
-        {i.content && <a href={`/admin/entries?c=${i.key}`} className="inline-flex min-h-10 items-center text-sm text-accent hover:underline">{t("integrations.items")}</a>}
-        <a href={`/admin/instances/${i.id}`} className="inline-flex min-h-10 items-center text-sm text-accent hover:underline">⚙️ {t("integrations.settings")}</a>
-        {i.unpinTo && (
-          <form action={setPlacementAction.bind(null, i.id, i.pinned ? i.unpinTo : "menu")} className="sm:ml-auto">
-            <button className="inline-flex min-h-10 items-center text-sm text-muted hover:text-accent" data-testid={i.pinned ? "unpin" : "pin"}>📌 {i.pinned ? t("placement.unpin") : t("placement.pin")}</button>
-          </form>
-        )}
+      {withToggle && (
+        <form action={toggleInstanceAction.bind(null, i.id, !i.enabled)}>
+          <button className={ITEM} aria-label={t(i.enabled ? "integrations.disable" : "integrations.enable", { name: i.name })}>{i.enabled ? t("extensions.turnOff") : t("extensions.turnOn")}</button>
+        </form>
+      )}
+    </>
+  );
+}
+
+/** Pastilles qui demandent un regard : à configurer, erreur, éteinte, mise à jour, dépendance manquante. Un état normal n'a pas de pastille. */
+function Chips({ t, m, off }: { t: Translator; m: InstalledModule; off: boolean }) {
+  return (
+    <>
+      {(m.attention === "setup" || m.attention === "error") && <InstanceState t={t} state={m.attention} />}
+      {off && <span className={ui.chip}>{t("modules.off")}</span>}
+      {m.update && <span className={ui.chipWarn} data-testid={`module-behind-${m.id}`}>⬆ {t("modules.updateBadge")}</span>}
+      {m.missing && <span className={ui.chipWarn} data-testid={`module-missing-${m.id}`}>⚠ {t("deps.missing.badge")}</span>}
+      {m.auto && <span className={ui.chip} data-testid={`module-auto-${m.id}`}>🔗 {t("deps.auto.badge")}</span>}
+      {m.platform && m.platform !== m.name && <span className={ui.chip} data-testid="platform-chip">{m.platform}</span>}
+    </>
+  );
+}
+
+/**
+ * Une extension installée = UNE ligne : icône, nom, courte description, pastilles utiles, et une seule action visible (« Réglages »).
+ * Le reste tient dans « ⋯ ». Une seule instance : jamais montrée à part (même nom). Plusieurs : repliées sous la ligne.
+ */
+export function ExtensionCard({ t, m, advanced, isOwner }: { t: Translator; m: InstalledModule; advanced: boolean; isOwner: boolean }) {
+  const single = m.instances.length === 1 ? m.instances[0]! : null;
+  const many = m.instances.length > 1;
+  const settingsHref = single ? `/admin/instances/${single.id}` : `/admin/modules/${encodeURIComponent(m.id)}`;
+  const badge = m.instances.reduce((n, i) => n + i.badge, 0);
+  const off = !m.enabled || (single !== null && !single.enabled);
+  const canToggleModule = isOwner && m.loaded;
+  const hasMenu = single !== null || canToggleModule;
+  return (
+    <li data-catalogue-item data-search={m.search} data-testid={`extension-${m.id}`} className={`${ui.card} !p-3 sm:!p-4 ${off ? "bg-bg shadow-none" : ""}`}>
+      <div className="flex items-center gap-3">
+        <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-2xl ${off ? "opacity-60" : ""}`} aria-hidden>{m.icon}</span>
+        <div className="min-w-0 flex-1">
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="break-words font-semibold leading-tight">{m.name}</span>
+            {advanced && <span className="hidden text-xs text-muted sm:inline">v{m.version}</span>}
+            {badge > 0 && <span data-testid="admin-badge" className="min-w-5 rounded-full bg-accent px-1.5 text-center text-xs font-semibold leading-5 text-accent-fg">{badge}<span className="sr-only"> {t("nav.badge.todo")}</span></span>}
+            <Chips t={t} m={m} off={off} />
+          </p>
+          <p className="truncate text-sm text-muted" title={m.description}>{m.description}</p>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          {m.enabled && m.loaded && m.count === 0
+            ? <form action={addInstance.bind(null, m.id)}><button className={ui.btnPrimary}>{t("modules.setUp")}</button></form>
+            : <a href={settingsHref} aria-label={`${t("integrations.settings")} — ${m.name}`} className={`${ui.btn} !px-3`}>{t("integrations.settings")}</a>}
+          {hasMenu && (
+            <RowMenu label={t("extensions.menu", { name: m.name })}>
+              {single && <InstanceActions t={t} i={single} withToggle={!canToggleModule} />}
+              {canToggleModule && (
+                <form action={toggleModule.bind(null, m.id, !m.enabled)}>
+                  <input type="hidden" name="from" value="list" />
+                  <button className={ITEM}>{m.enabled ? t(single ? "extensions.turnOff" : "extensions.turnOffAll") : t(single ? "extensions.turnOn" : "extensions.turnOnAll")}</button>
+                </form>
+              )}
+            </RowMenu>
+          )}
+        </div>
       </div>
+
+      {single?.obsUrl && <div className="mt-2"><ObsLine t={t} url={single.obsUrl} /></div>}
+
+      {many && (
+        <details className="group mt-2 rounded-xl border border-line bg-bg" data-testid={`extension-many-${m.id}`}>
+          <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 px-3 text-sm font-medium [&::-webkit-details-marker]:hidden">
+            <span aria-hidden className="text-[10px] text-muted transition-transform group-open:rotate-90">▶</span>
+            {advanced ? t("modules.instanceCountMany", { count: m.count }) : t("extensions.manyItems", { count: m.count })}
+          </summary>
+          <ul className="divide-y divide-line border-t border-line">
+            {m.instances.map((i) => (
+              <li key={i.id} className="space-y-2 px-3 py-2" data-testid={`extension-instance-${i.id}`} data-state={i.state} data-pinned={i.pinned ? "1" : "0"}>
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-2">
+                  <a href={`/admin/instances/${i.id}`} className="min-w-0 basis-full break-words text-sm font-medium hover:text-accent sm:flex-1 sm:basis-0">{i.name}</a>
+                  {i.state !== "on" && <InstanceState t={t} state={i.state} />}
+                  {i.badge > 0 && <span data-testid="admin-badge" className="min-w-5 rounded-full bg-accent px-1.5 text-center text-xs font-semibold leading-5 text-accent-fg">{i.badge}<span className="sr-only"> {t("nav.badge.todo")}</span></span>}
+                  <a href={`/admin/instances/${i.id}`} aria-label={`${t("integrations.settings")} — ${i.name}`} className={`${ui.btn} !px-3 !py-1.5`}>{t("integrations.settings")}</a>
+                  <RowMenu label={t("extensions.menu", { name: i.name })}><InstanceActions t={t} i={i} /></RowMenu>
+                </div>
+                {i.obsUrl && <ObsLine t={t} url={i.obsUrl} />}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
     </li>
   );
 }

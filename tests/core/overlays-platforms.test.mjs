@@ -58,9 +58,10 @@ test("menu : un overlay n'est dans le menu que s'il est épinglé ; sinon sa pas
 
 test("Extensions : l'adresse OBS d'un overlay (avec « Copier »), l'état, les réglages, l'interrupteur et l'épinglage sont repris ; la recherche trouve « obs »", () => {
   const card = read("src/components/admin/ExtensionCard.tsx");
-  assert.match(card, /<CopyText text=\{i\.obsUrl\}/);
-  assert.match(card, /<InstanceState t=\{t\} state=\{i\.state\}/);
-  assert.match(card, /href=\{`\/admin\/instances\/\$\{i\.id\}`\}/);
+  assert.match(card, /<CopyText text=\{url\}/);
+  assert.match(card, /<ObsLine t=\{t\} url=\{i\.obsUrl\}/, "adresse OBS sur une ligne compacte");
+  assert.match(card, /<InstanceState t=\{t\} state=\{m\.attention\}/);
+  assert.match(card, /settingsHref/);
   assert.match(card, /toggleInstanceAction\.bind\(null, i\.id, !i\.enabled\)/);
   assert.match(card, /setPlacementAction\.bind\(null, i\.id, i\.pinned \? i\.unpinTo : "menu"\)/);
   assert.match(read(`${PANEL}/extensions/loadInstalled.ts`), /overlayUrl\(siteUrl, i\.key\)/);
@@ -159,7 +160,7 @@ test("i18n : toutes les clés d'Extensions, du menu et du rangement existent en 
   const keys = new Set(["placement.parkOverlays", "placement.unpin", "nav.extensions", "nav.myCommunity"]);
   for (const f of [`${PANEL}/extensions/page.tsx`, "src/components/admin/ExtensionCard.tsx", `${PANEL}/layout.tsx`, `${PANEL}/instances/[id]/page.tsx`]) for (const m of read(f).matchAll(/\bt\(\s*(?:"|\w+ \? t\(")([a-zA-Z][\w.]*)"/g)) keys.add(m[1]);
   for (const m of read(`${PANEL}/instances/[id]/page.tsx`).matchAll(/"(placement\.\w+)"/g)) keys.add(m[1]);
-  assert.ok([...keys].filter((k) => k.startsWith("overlays.")).length >= 4);
+  assert.ok([...keys].filter((k) => k.startsWith("overlays.")).length >= 3);
   for (const k of keys) { assert.ok(fr[k], `fr : clé manquante ${k}`); assert.ok(en[k], `en : clé manquante ${k}`); }
   for (const dict of [fr, en]) {
     const all = Object.keys(dict);
