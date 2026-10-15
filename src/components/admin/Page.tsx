@@ -6,7 +6,7 @@ import { ui } from "./ui";
  */
 
 /** En-tête de page : un titre, une phrase qui dit à quoi sert la page, et (à droite) l'action principale si elle est unique. */
-export function PageHeader({ title, intro, icon, children }: { title: string; intro?: React.ReactNode; icon?: string; children?: React.ReactNode }) {
+export function PageHeader({ title, intro, icon, children }: { title: React.ReactNode; intro?: React.ReactNode; icon?: string; children?: React.ReactNode }) {
   return (
     <header className="flex flex-wrap items-start justify-between gap-4">
       <div className="min-w-0">

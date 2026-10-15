@@ -875,7 +875,7 @@ export default {
 
 ## API MCP : exposer des actions aux assistants
 
-Le cœur héberge un serveur MCP (`/api/mcp`, désactivable depuis l'admin → *API & MCP*) **sans aucun outil codé
+Le cœur héberge un serveur MCP (`/api/mcp`, désactivable depuis l'admin → *Assistants IA*, qui s'intitule aussi « API & MCP » en mode avancé) **sans aucun outil codé
 en dur** : il collecte les actions déclarées par tous les modules actifs. Le cœur y ajoute ses propres outils `site_info` et `maintenance_…` (maintenance du site par une IA : voir [MAINTENANCE-IA.md](MAINTENANCE-IA.md)) ; un jeton « Maintenance » n'a que ceux-là, jamais vos actions de module sans que vous les lui accordiez.
 
 ```jsonc
@@ -910,8 +910,8 @@ export default { mcp: {
 
 ### Qui a accès à quoi : un module implémente plus qu'il n'active
 
-Un jeton n'a pas « tout » : l'administrateur règle, **jeton par jeton et action par action** (admin → API & MCP →
-*Accès* du jeton), ce qu'il peut faire. Les changements sont **immédiats** : le serveur relit les accès à chaque requête,
+Un jeton n'a pas « tout » : l'administrateur règle, **jeton par jeton et action par action** (admin → Assistants IA →
+page de l'accès, en mode avancé), ce qu'il peut faire. Les changements sont **immédiats** : le serveur relit les accès à chaque requête,
 inutile de regénérer le jeton.
 
 Le module décide de ses **défauts** — l'ensemble d'actions accordé d'office aux jetons — et peut implémenter bien plus :

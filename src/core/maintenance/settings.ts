@@ -1,10 +1,10 @@
 import { prisma } from "@/core/db";
 
 /**
- * Réglages de la maintenance par IA, tous modifiables par le propriétaire seulement (voir app/admin/(panel)/maintenance-ia).
+ * Réglages de la maintenance par IA, tous modifiables par le propriétaire seulement (voir app/admin/(panel)/assistants).
  *  - validation : par jeton, « human » (DÉFAUT : une demande en attente, un humain approuve) ou « direct » (l'action s'exécute tout de suite) ;
  *  - avertissement : « admin » (DÉFAUT : pastille et encadrés dans l'admin) ou « email » (aussi un e-mail au propriétaire) ;
- *  - dernière visite de la page « Maintenance par IA » (pour savoir ce que le propriétaire n'a pas encore vu).
+ *  - dernière visite des vues « Demandes à valider » et « Historique » de la page Assistants IA (pour savoir ce que le propriétaire n'a pas encore vu).
  * Lus directement en base (pas via le cache de requête) : un réglage change d'effet à la requête suivante.
  */
 export type ApprovalMode = "human" | "direct";

@@ -62,7 +62,7 @@ test("journal d'audit : chaque action connue se lit en langage courant, les autr
 });
 
 test("journal d'audit : toute action écrite par le code est dans la liste (sinon elle s'afficherait en code brut)", () => {
-  const files = ["users/actions.ts", "modules/actions.ts", "updates/actions.ts", "mcp/actions.ts", "entries/actions.ts", "redirects/actions.ts", "settings/actions.ts", "navigation/actions.ts", "home/actions.ts", "account/actions.ts", "extensions/actions.ts", "extensions/add/actions.ts"];
+  const files = ["users/actions.ts", "modules/actions.ts", "updates/actions.ts", "assistants/actions.ts", "assistants/requestsActions.ts", "entries/actions.ts", "redirects/actions.ts", "settings/actions.ts", "navigation/actions.ts", "home/actions.ts", "account/actions.ts", "extensions/actions.ts", "extensions/add/actions.ts"];
   const known = new Set(AUDIT_ACTIONS);
   for (const f of files) {
     const path = `${PANEL}/${f}`;
@@ -72,7 +72,7 @@ test("journal d'audit : toute action écrite par le code est dans la liste (sino
 });
 
 test("pages d'admin : chaque clé de traduction écrite en dur dans ces pages existe en français et en anglais", () => {
-  const files = ["page.tsx", "users/page.tsx", "backup/page.tsx", "updates/page.tsx", "account/page.tsx", "audit/page.tsx", "mcp/page.tsx", "mcp/[id]/page.tsx", "mode/page.tsx", "modules/page.tsx", "modules/[id]/page.tsx"];
+  const files = ["page.tsx", "users/page.tsx", "backup/page.tsx", "updates/page.tsx", "account/page.tsx", "audit/page.tsx", "assistants/page.tsx", "assistants/AccessTab.tsx", "assistants/RequestsTab.tsx", "assistants/HistoryTab.tsx", "assistants/AssistantTabs.tsx", "assistants/[id]/page.tsx", "mode/page.tsx", "modules/page.tsx", "modules/[id]/page.tsx"];
   for (const f of files) {
     for (const m of read(`${PANEL}/${f}`).matchAll(/\bt\("([a-zA-Z0-9_.-]+)"/g)) {
       assert.ok(m[1] in fr, `${f} : « ${m[1]} » manque en français`);
@@ -115,11 +115,11 @@ test("sauvegarde : le détail technique (openssl) est réservé au mode avancé,
   assert.match(page, /<Panel title=\{t\("backup\.restoreTitle"\)\}[^>]*tone="danger"/);
 });
 
-test("API & MCP : ordre en étapes, désactivation et révocation confirmées, états vides qui expliquent", () => {
-  const page = read(`${PANEL}/mcp/page.tsx`);
-  assert.ok(page.indexOf("mcp.step1") < page.indexOf("mcp.step2") && page.indexOf("mcp.step2") < page.indexOf("mcp.newToken"));
-  assert.match(page, /ConfirmButton message=\{t\("mcp\.disableConfirm"\)\}/);
-  assert.match(page, /ConfirmButton message=\{t\("mcp\.revokeConfirm", \{ name: k\.name \}\)\}/);
+test("Assistants IA : étapes, suspension et retrait confirmés, états vides qui expliquent", () => {
+  const page = read(`${PANEL}/assistants/AccessTab.tsx`);
+  assert.ok(page.indexOf('"assistants.active.title"') < page.indexOf('"assistants.new.title"') && page.indexOf('"assistants.new.title"') < page.indexOf('"assistants.master.title"'), "accès actifs, puis création, puis suspension générale");
+  assert.match(page, /ConfirmButton message=\{t\("assistants\.master\.confirm"\)\}/);
+  assert.match(page, /ConfirmButton message=\{t\("assistants\.revokeConfirm", \{ name: k\.name \}\)\}/);
   assert.match(page, /<EmptyState/);
 });
 

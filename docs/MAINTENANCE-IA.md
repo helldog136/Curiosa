@@ -14,7 +14,7 @@ Une IA ne peut agir sur votre site que par un **jeton** : c'est son mot de passe
 
 ### Créer le jeton « Maintenance »
 
-1. Ouvrez **Admin › Maintenance par IA**, puis *Créer un jeton Maintenance* (ou **API & MCP › Nouveau jeton**, type *Maintenance*). « MCP » est simplement le moyen par lequel une IA se branche à un site.
+1. Ouvrez **Admin › Assistants IA** (onglet *Accès*), puis *Connecter un assistant IA* en choisissant *À surveiller et entretenir le site* (en mode avancé, ce type s'appelle *Maintenance*). « MCP » est simplement le moyen par lequel une IA se branche à un site.
 2. Donnez-lui le nom de l'IA (« Claude », par exemple).
 3. Gardez les réglages proposés, ce sont les plus prudents : l'IA peut **regarder et diagnostiquer**, rien d'autre ; chaque demande risquée vous est soumise ; vous êtes prévenu dans l'admin.
 4. Copiez le jeton (il n'est montré qu'une fois) et suivez les consignes de branchement affichées dessous. Donnez aussi à votre IA ce guide.
@@ -39,20 +39,20 @@ Une IA ne peut agir sur votre site que par un **jeton** : c'est son mot de passe
 
 Quand l'IA veut faire une action à risque, **elle ne fait rien** : elle crée une demande. Vous la voyez :
 
-- dans **Admin › Maintenance par IA**, en haut, avec ce qui va se passer **en langage simple** (« Mettre Curiosa à jour de la version 0.1.14 vers la version 0.1.15 ») et ce que cela implique ;
+- dans **Admin › Assistants IA › Demandes à valider**, avec ce qui va se passer **en langage simple** (« Mettre Curiosa à jour de la version 0.1.14 vers la version 0.1.15 ») et ce que cela implique ;
 - avec une pastille dans le menu et un encadré sur le tableau de bord ;
 - et par e-mail si vous l'avez choisi.
 
 Vous cliquez **Approuver et exécuter** ou **Refuser**. Une demande sans réponse **expire au bout de 24 heures** et ne s'exécutera jamais ; une demande refusée non plus ; une demande ne s'approuve qu'**une seule fois**. Au moment d'exécuter, le site revérifie que la situation est la même (par exemple qu'aucune mise à jour n'est déjà en cours et que la version visée n'a pas changé) ; sinon rien n'est fait et l'IA doit refaire une demande.
 
-### Réglages (sur la page Maintenance par IA)
+### Réglages (Assistants IA › Demandes à valider, et la page de chaque accès)
 
 - **Actions à risque, jeton par jeton** : *Je valide chaque demande* (recommandé) ou *L'IA agit sans me demander*. Dans ce second cas, les mises à jour et désinstallations se font **tout de suite, sans votre accord** : à réserver à une IA en qui vous avez toute confiance, et à un site sauvegardé.
 - **Être prévenu** : *Dans l'admin* (par défaut) ou *Dans l'admin et par e-mail*. L'e-mail part au propriétaire quand une demande attend et quand une IA a fait une action ; il ne contient jamais de mot de passe ni de secret. L'envoi d'e-mails doit être réglé dans les réglages du site.
 
 ### En cas de doute
 
-- Retirez l'accès : **API & MCP › révoquer le jeton**. C'est immédiat.
+- Retirez l'accès : **Assistants IA › Retirer l'accès**. C'est immédiat.
 - Le **journal d'audit** (mode avancé) garde chaque action, avec le nom du jeton et le résultat.
 - Une copie de sécurité faite par l'IA est une copie de la base **gardée sur le serveur** (les cinq dernières). Pour un fichier de sauvegarde chiffré que vous téléchargez, utilisez **Admin › Sauvegarde**.
 
@@ -91,7 +91,7 @@ Il n'y a pas d'outil pour restaurer une sauvegarde : dis au propriétaire de le 
 
 Avec la validation humaine (le défaut), un outil de niveau 3 renvoie `{"status":"pending_approval","requestId":"req_…"}` et **n'a rien fait**. Alors :
 
-1. dis au propriétaire, en une phrase simple, ce que tu as demandé et pourquoi ; indique-lui **Admin › Maintenance par IA** ;
+1. dis au propriétaire, en une phrase simple, ce que tu as demandé et pourquoi ; indique-lui **Admin › Assistants IA › Demandes à valider** ;
 2. attends, puis interroge `maintenance_request_status` avec le `requestId` (pas plus d'une fois par minute) ; **ne redemande pas** : une demande identique qui attend est renvoyée telle quelle ;
 3. à `done` : vérifie avec `maintenance_status` (le site peut redémarrer après une mise à jour du cœur) ; à `failed` : lis `result.message` et `maintenance_health`, puis explique ; à `denied` ou `expired` : n'insiste pas, redemande seulement si le propriétaire te le demande.
 

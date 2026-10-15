@@ -9,6 +9,7 @@ import { audit } from "@/core/permissions";
 import { setApprovalMode, setNotifyMode } from "@/core/maintenance/settings";
 import { setSetting } from "@/core/settings";
 import { prisma } from "@/core/db";
+import { accessHref, ASSISTANTS_HREF } from "@/core/services/mcp/assistantsLinks";
 
 /** Résultat de la création d'un jeton : le seul moment où le texte en clair (et l'adresse secrète) existe. Jamais relu depuis la base. */
 export type CreateTokenState = { error?: string; created?: { name: string; token: string; byUrl: boolean } } | null;
@@ -17,7 +18,7 @@ export async function setMcpEnabled(enabled: boolean): Promise<void> {
   const { user } = await adminCtx("owner");
   await setSetting("mcp.enabled", enabled);
   await audit(user.email, enabled ? "mcp.enable" : "mcp.disable");
-  revalidatePath("/admin/mcp");
+  revalidatePath(ASSISTANTS_HREF);
 }
 
 export async function createTokenAction(_prev: CreateTokenState, formData: FormData): Promise<CreateTokenState> {
@@ -28,7 +29,7 @@ export async function createTokenAction(_prev: CreateTokenState, formData: FormD
   // sont proposés, et seule la lecture est active ; le reste se coche plus tard, action par action (voir access.ts, MAINTENANCE_PROFILE).
   const scope: TokenScope = maintenance || formData.get("scope") === "write" ? "write" : "read";
   const byUrl = formData.get("byUrl") === "on";
-  if (!name) return { error: t("error.generic") };
+  if (!name) return { error: t("assistants.error.name") };
   const token = await createToken(name, scope, user.email, { byUrl, ...(maintenance ? { grants: { [MAINTENANCE_PROFILE]: true } } : {}) });
   await audit(user.email, "mcp.token.create", maintenance ? `${name} (maintenance)` : name);
   if (maintenance) {
@@ -40,7 +41,7 @@ export async function createTokenAction(_prev: CreateTokenState, formData: FormD
     await audit(user.email, "mcp.maintenance.notify", notify);
   }
   if (byUrl) await audit(user.email, "mcp.token.url.on", name);
-  revalidatePath("/admin/mcp");
+  revalidatePath(ASSISTANTS_HREF);
   return { created: { name, token, byUrl } };
 }
 
@@ -52,15 +53,16 @@ export async function setUrlAccessAction(tokenId: string, enabled: boolean): Pro
   await setUrlAccess(tokenId, enabled);
   if (enabled) await audit(user.email, "mcp.token.url.on", row.name);
   else await audit(user.email, "mcp.token.url.off", row.name);
-  revalidatePath("/admin/mcp");
-  revalidatePath(`/admin/mcp/${tokenId}`);
+  revalidatePath(ASSISTANTS_HREF);
+  revalidatePath(accessHref(tokenId));
 }
 
 export async function revokeTokenAction(id: string): Promise<void> {
   const { user } = await adminCtx("owner");
   await revokeToken(id);
   await audit(user.email, "mcp.token.revoke", id);
-  revalidatePath("/admin/mcp");
+  revalidatePath(ASSISTANTS_HREF);
+  revalidatePath(accessHref(id));
 }
 
 /**
@@ -76,7 +78,7 @@ export async function setGrantAction(tokenId: string, toolName: string, enabled:
   if (enabled && !withinCeiling(tool, token.scope)) return { ok: false };
   await saveTokenGrants(tokenId, setGrant(token.grants, tool, enabled));
   await audit(user.email, `mcp.grant.${enabled ? "on" : "off"}`, `${tokenId}:${toolName}`);
-  revalidatePath(`/admin/mcp/${tokenId}`);
+  revalidatePath(accessHref(tokenId));
   return { ok: true };
 }
 
@@ -89,6 +91,6 @@ export async function resetGrantsAction(tokenId: string, instanceKey: string | n
   for (const tool of catalogue.filter((t) => instanceKey === null || t.source === instanceKey)) grants = setGrant(grants, tool, mode === "defaults" ? defaultFor(tool, grants) : false);
   await saveTokenGrants(tokenId, grants);
   await audit(user.email, `mcp.grants.${mode}`, `${tokenId}:${instanceKey ?? "all"}`);
-  revalidatePath(`/admin/mcp/${tokenId}`);
+  revalidatePath(accessHref(tokenId));
 }
 

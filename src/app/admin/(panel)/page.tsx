@@ -7,6 +7,7 @@ import { getUpdateCheck } from "@/core/updates/service";
 import { statsEnabled, statsSummary } from "@/core/stats";
 import { maintenanceSummary } from "@/core/maintenance/summary";
 import { EXTENSIONS_HREF } from "@/core/modules/extensionsLinks";
+import { assistantsTabHref } from "@/core/services/mcp/assistantsLinks";
 
 export default async function Dashboard({ searchParams }: { searchParams: Promise<{ denied?: string; welcome?: string; modules?: string }> }) {
   const { t, config, advanced, user } = await adminCtx("editor");
@@ -44,7 +45,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         <Callout tone={ai.pending > 0 ? "warn" : "info"} role="status" testid="ai-maintenance-notice">
           <span className="flex flex-wrap items-center justify-between gap-3">
             <span>🤖 {ai.pending > 0 ? t("dashboard.ai.pending", { n: ai.pending }) : t("dashboard.ai.done", { n: ai.doneSinceVisit })}</span>
-            <a href="/admin/maintenance-ia" className={ui.btn}>{t("dashboard.ai.open")}</a>
+            <a href={assistantsTabHref("requests")} className={ui.btn}>{t("dashboard.ai.open")}</a>
           </span>
         </Callout>
       )}

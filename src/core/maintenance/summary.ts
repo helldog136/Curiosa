@@ -5,7 +5,7 @@ import { getSeenAt } from "./settings";
 /**
  * Ce que l'administrateur doit voir sans chercher (pastille du menu, encadré du tableau de bord) :
  *  - les demandes d'une IA qui attendent sa réponse ;
- *  - les actions de niveau 2 ou 3 faites par une IA depuis sa dernière visite de la page « Maintenance par IA ».
+ *  - les actions de niveau 2 ou 3 faites par une IA depuis sa dernière visite des vues « Demandes à valider » ou « Historique » de la page Assistants IA.
  */
 export const AI_ACTION_PREFIX = "mcp.maintenance.";
 /** Lignes du journal qui ne sont pas une action exécutée. */

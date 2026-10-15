@@ -10,6 +10,8 @@ import { NAV_STATE_COOKIE, buildMenuLayout, extensionsBadge, parseNavState } fro
 import { EXTENSIONS_HREF } from "@/core/modules/extensionsLinks";
 import { loadInstanceStatuses } from "@/core/modules/integrations";
 import { getAdminNav } from "@/core/modules/adminNav";
+import { administrationEntries, type AdminEntry } from "@/core/modules/adminMenu";
+import { ASSISTANTS_HREF } from "@/core/services/mcp/assistantsLinks";
 import { getUpdateCheck, readVersion } from "@/core/updates/service";
 import { peekModulesReport } from "@/core/modules/updateStatus";
 import { MobileMenu } from "@/components/admin/MobileMenu";
@@ -41,6 +43,17 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   const extensions = extensionsBadge({ modulesBehind, toSetUp, unpinnedBadge: menu.unpinnedBadge });
   // Les fiches d'une extension non épinglée restent « sous » l'entrée Extensions.
   const unpinnedPages = nav.filter((m) => !menu.content.includes(m) && !menu.community.items.includes(m)).flatMap((m) => [`/admin/instances/${m.id}`, ...(m.content ? [`/admin/entries?c=${m.key}`] : [])]);
+
+  // Administration : quelles entrées pour ce rôle et ce mode (adminMenu.ts), puis leur lien. Assistants IA : un seul lien, en mode simple comme avancé.
+  const adminEntries = administrationEntries({ role: user.role, advanced });
+  const adminLinks: Record<AdminEntry, React.ReactNode> = {
+    extensions: <NavLink key="extensions" href={EXTENSIONS_HREF} also={["/admin/modules", ...unpinnedPages]} badge={extensions.count} badgeLabel={extensions.onlyUpdates ? t("nav.badge.updates") : t("nav.badge.todo")}>{t("nav.extensions")}</NavLink>,
+    assistants: <NavLink key="assistants" href={ASSISTANTS_HREF} badge={aiWaiting} badgeLabel={t("nav.badge.ai")}>{t("nav.assistants")}</NavLink>,
+    users: <NavLink key="users" href="/admin/users">{t("nav.users")}</NavLink>,
+    backup: <NavLink key="backup" href="/admin/backup">{t("nav.backup")}</NavLink>,
+    updates: <NavLink key="updates" href="/admin/updates" badge={updateAvailable ? 1 : 0} badgeLabel={t("nav.badge.update")}>{t("nav.updates")}</NavLink>,
+    audit: <NavLink key="audit" href="/admin/audit">{t("nav.audit")}</NavLink>,
+  };
 
   const group = "mb-1 mt-6 px-3 text-xs font-semibold uppercase tracking-wider text-muted";
 
@@ -78,17 +91,10 @@ export default async function PanelLayout({ children }: { children: React.ReactN
           {canManage && <NavLink href="/admin/ai-visibility">{t("nav.aiVisibility")}</NavLink>}
           <NavLink href="/admin/redirects">{advanced ? t("nav.redirects") : t("nav.redirects.simple")}</NavLink>
 
-          {(canManage || user.role === "owner") && (
+          {adminEntries.length > 0 && (
             <>
               <p className={group}>{t("nav.admin")}</p>
-              {canManage && <NavLink href={EXTENSIONS_HREF} also={["/admin/modules", ...unpinnedPages]} badge={extensions.count} badgeLabel={extensions.onlyUpdates ? t("nav.badge.updates") : t("nav.badge.todo")}>{t("nav.extensions")}</NavLink>}
-              {/* Les deux entrées « assistants IA » restent côte à côte (elles seront réunies plus tard). */}
-              {user.role === "owner" && <NavLink href="/admin/maintenance-ia" badge={aiWaiting} badgeLabel={t("nav.badge.ai")}>{t("nav.maintenanceAi")}</NavLink>}
-              {advanced && user.role === "owner" && <NavLink href="/admin/mcp">{t("nav.mcp")}</NavLink>}
-              {canManage && <NavLink href="/admin/users">{t("nav.users")}</NavLink>}
-              {user.role === "owner" && <NavLink href="/admin/backup">{t("nav.backup")}</NavLink>}
-              {user.role === "owner" && <NavLink href="/admin/updates" badge={updateAvailable ? 1 : 0} badgeLabel={t("nav.badge.update")}>{t("nav.updates")}</NavLink>}
-              {advanced && user.role === "owner" && <NavLink href="/admin/audit">{t("nav.audit")}</NavLink>}
+              {adminEntries.map((id) => adminLinks[id])}
             </>
           )}
 

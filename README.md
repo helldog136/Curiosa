@@ -313,6 +313,7 @@ src/app/admin       L'admin unique : assistant, entrées, une sous-page par inst
                     redirections, modules & catalogue…
 src/app/overlays    Overlays OBS (/overlays/<clé>)
 src/app/api/mcp     Serveur MCP (outils collectés auprès des modules)
+                    (admin : « Assistants IA », /admin/assistants)
 src/locales         Textes de l'interface (fr, en) — ajouter une langue = un fichier JSON
                     Le cœur ne contient AUCUN module (ni dossier de modules, ni copie du catalogue) :
                     ils vivent dans curiosa-extras et s'installent depuis le catalogue.
