@@ -12,6 +12,7 @@ import { loadInstanceStatuses } from "@/core/modules/integrations";
 import { getInstanceLabeler } from "@/core/modules/labels";
 import { effectiveType } from "@/core/modules/manifest";
 import { isPinned, placementSettingKey, placementsFor, resolvePlacement, unpinnedPlacementFor, type IntegrationState, type Placement } from "@/core/modules/menuPlacement";
+import { summarizeMissing, summarizeMissingAcross, type MissingSummary } from "@/core/modules/missingSettings";
 import { overlayUrl } from "@/core/modules/overlayUrl";
 import { platformLabel, platformOf } from "@/core/modules/platform";
 import { listModuleRows, loadModule } from "@/core/modules/registry";
@@ -21,6 +22,8 @@ import { listRetired } from "@/core/modules/retired";
 
 export type InstalledInstance = {
   id: string; key: string; name: string; state: IntegrationState; badge: number; content: boolean;
+  /** Ce qu'il reste à renseigner (état « à configurer ») : rien, un réglage nommé, ou leur nombre. */
+  setup: MissingSummary;
   pinned: boolean;
   /** Le rangement qu'applique « Retirer du menu » ; null = ce module ne se range pas (module illisible ou sans épinglage possible). */
   unpinTo: Placement | null;
@@ -30,7 +33,7 @@ export type InstalledInstance = {
 
 export type InstalledModule = {
   id: string; name: string; family: ExtensionFamily | "broken"; type: string; platform: string | null; version: string; loaded: boolean; icon: string; description: string;
-  instances: InstalledInstance[]; count: number; /** Instances retirées dont les données sont gardées de côté. */ kept: number; update: boolean; missing: boolean; auto: boolean; attention: IntegrationState; search: string;
+  instances: InstalledInstance[]; count: number; /** Instances retirées dont les données sont gardées de côté. */ kept: number; update: boolean; missing: boolean; auto: boolean; attention: IntegrationState; /** Motif de la pastille « à configurer » du module (voir `summarizeMissingAcross`). */ setup: MissingSummary; search: string;
 };
 
 /** Les modules installés avec leurs instances, rangés par famille (les plus à regarder d'abord : erreur, puis à configurer). Sans réseau : le dernier rapport de mises à jour connu. */
@@ -41,7 +44,7 @@ export async function loadInstalled(opts: { t: Translator; locale: string; defau
   const instances = await listInstances();
   const labeler = await getInstanceLabeler(locale, defaultLocale);
   const behind = new Set((isOwner ? peekModulesReport()?.outdated ?? [] : []).map((o) => o.id));
-  const statuses = await loadInstanceStatuses();
+  const statuses = await loadInstanceStatuses(locale, defaultLocale);
   const missingMap = await missingByModule();
   const auto = await readAuto();
   const badges = new Map((await getAdminNav(locale, defaultLocale)).map((n) => [n.id, n.badge]));
@@ -55,9 +58,13 @@ export async function loadInstalled(opts: { t: Translator; locale: string; defau
     const type = mod ? effectiveType(mod.manifest) : "broken";
     const platform = mod ? platformOf(mod.manifest) : null;
     const list: InstalledInstance[] = [];
+    const missingBy = new Map<string, string[]>();
     for (const i of mine) {
       const placement = mod ? resolvePlacement(mod.manifest, await getSetting(placementSettingKey(i.id))) : "integrations";
+      const missing = statuses.get(i.id)?.missing ?? [];
+      missingBy.set(i.id, missing);
       list.push({
+        setup: summarizeMissing(missing),
         id: i.id, key: i.key, name: labeler.label(i), state: statuses.get(i.id)?.state ?? "on", badge: badges.get(i.id) ?? 0, content: !!mod?.manifest.content,
         pinned: isPinned(placement),
         unpinTo: mod && placementsFor(mod.manifest).includes("menu") ? unpinnedPlacementFor(mod.manifest) : null,
@@ -73,6 +80,7 @@ export async function loadInstalled(opts: { t: Translator; locale: string; defau
       name: !advanced && mine.length === 1 ? labeler.label(mine[0]!) : modName,
       instances: list, count: list.length, kept: keptBy.get(row.id) ?? 0, update: behind.has(row.id), missing: missingMap.has(row.id), auto: !!auto[row.id]?.module,
       attention: worstState(list.map((i) => i.state)),
+      setup: summarizeMissingAcross(list.filter((i) => i.state === "setup").map((i) => missingBy.get(i.id) ?? [])),
       search: moduleSearchText([modName, mod ? localized(mod.manifest.description, locale, defaultLocale) : "", row.id, platform ? platformLabel(platform) : null, fam === "broken" ? null : t(`family.${fam}`), ...mine.flatMap((i) => [labeler.label(i), i.nickname, i.key]), ...list.map((i) => t(`integrations.state.${i.state}`))]),
     });
   }

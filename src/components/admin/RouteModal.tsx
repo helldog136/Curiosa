@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { MODAL_WIDTH, type ModalSize } from "./modalWidth";
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), summary, [tabindex]:not([tabindex="-1"])';
 
@@ -11,7 +12,7 @@ const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([t
  * Tab y reste (il ne part pas dans la page cachée derrière) et, à la fermeture, revient sur le lien qui l'avait ouverte. Sur mobile, elle prend tout l'écran ;
  * jamais de défilement horizontal. Une boîte de confirmation ouverte par-dessus se ferme seule avec Échap (la fenêtre reste).
  */
-export function RouteModal({ children, label, closeLabel, testid = "route-modal" }: { children: React.ReactNode; /** Nom de la fenêtre pour les lecteurs d'écran. */ label: string; closeLabel: string; testid?: string }) {
+export function RouteModal({ children, label, closeLabel, testid = "route-modal", size = "wide" }: { children: React.ReactNode; /** Nom de la fenêtre pour les lecteurs d'écran. */ label: string; closeLabel: string; testid?: string; size?: ModalSize }) {
   const router = useRouter();
   const panel = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -42,10 +43,10 @@ export function RouteModal({ children, label, closeLabel, testid = "route-modal"
     };
   }, [router]);
   return (
-    <div className="fixed inset-0 z-50 flex items-stretch justify-center bg-black/60 backdrop-blur-sm sm:items-start sm:p-8" data-testid={testid}
+    <div className="fixed inset-0 z-50 flex items-stretch justify-center bg-black/60 backdrop-blur-sm sm:items-start sm:p-4 lg:p-6" data-testid={testid}
       onMouseDown={(e) => { if (e.target === e.currentTarget) router.back(); }}>
       <div ref={panel} role="dialog" aria-modal="true" aria-label={label} tabIndex={-1} data-testid={`${testid}-panel`}
-        className="relative h-full w-full max-w-3xl overflow-y-auto overflow-x-hidden overscroll-contain bg-surface px-4 pb-8 outline-none sm:h-auto sm:max-h-full sm:rounded-3xl sm:border sm:border-line sm:px-8 sm:shadow-2xl">
+        className={`relative h-full w-full ${MODAL_WIDTH[size]} overflow-y-auto overflow-x-hidden overscroll-contain bg-surface px-4 pb-8 outline-none sm:h-auto sm:max-h-full sm:rounded-3xl sm:border sm:border-line sm:px-8 sm:shadow-2xl`}>
         {/* La barre du haut reste visible quand on fait défiler : le bouton « Fermer » ne se perd jamais, et le contenu passe dessous sans le cacher. */}
         <div className="sticky top-0 z-10 -mx-4 mb-2 flex justify-end border-b border-line/60 bg-surface px-3 py-2 sm:-mx-8 sm:px-5">
           <button type="button" onClick={() => router.back()} data-testid="modal-close"

@@ -42,7 +42,7 @@ function InstanceActions({ t, i }: { t: Translator; i: InstalledInstance }) {
 function Chips({ t, m }: { t: Translator; m: InstalledModule }) {
   return (
     <>
-      {(m.attention === "setup" || m.attention === "error") && <InstanceState t={t} state={m.attention} />}
+      {(m.attention === "setup" || m.attention === "error") && <InstanceState t={t} state={m.attention} missing={m.setup} />}
       {m.update && <span className={ui.chipWarn} data-testid={`module-behind-${m.id}`}>⬆ {t("modules.updateBadge")}</span>}
       {m.missing && <span className={ui.chipWarn} data-testid={`module-missing-${m.id}`}>⚠ {t("deps.missing.badge")}</span>}
       {m.auto && <span className={ui.chip} data-testid={`module-auto-${m.id}`}>🔗 {t("deps.auto.badge")}</span>}
@@ -101,7 +101,7 @@ export function ExtensionCard({ t, m, advanced }: { t: Translator; m: InstalledM
               <li key={i.id} className="space-y-2 px-3 py-2" data-testid={`extension-instance-${i.id}`} data-state={i.state} data-pinned={i.pinned ? "1" : "0"}>
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-2">
                   <Link href={`/admin/instances/${i.id}`} scroll={false} className="min-w-0 basis-full break-words text-sm font-medium hover:text-accent sm:flex-1 sm:basis-0">{i.name}</Link>
-                  {i.state !== "on" && <InstanceState t={t} state={i.state} />}
+                  {i.state !== "on" && <InstanceState t={t} state={i.state} missing={i.setup} />}
                   {i.badge > 0 && <span data-testid="admin-badge" className="min-w-5 rounded-full bg-accent px-1.5 text-center text-xs font-semibold leading-5 text-accent-fg">{i.badge}<span className="sr-only"> {t("nav.badge.todo")}</span></span>}
                   <Link href={`/admin/instances/${i.id}`} scroll={false} aria-label={`${t("integrations.settings")} — ${i.name}`} className={`${ui.btn} !px-3 !py-1.5`}>{t("integrations.settings")}</Link>
                   {hasActions(i) && <RowMenu label={t("extensions.menu", { name: i.name })}><InstanceActions t={t} i={i} /></RowMenu>}

@@ -204,6 +204,7 @@ Chaque réglage est un objet (`SettingField`) :
 | `options` | Pour `select` : `[{ "value": "info", "label": { "en": "…" } }]` (50 au plus). |
 | `translatable` | `true` : une valeur par langue du site (sinon une seule valeur globale). `ctx.setting` renvoie celle de la langue courante. |
 | `advanced` | `true` : réglage technique, masqué dans la version simplifiée de l'admin ; **sa valeur par défaut s'applique** — donnez-en toujours une. |
+| `optional` | `true` : réglage facultatif. Vide, il ne met pas l'extension « À configurer » ; sans cela, un texte, une adresse, un lien ou un secret vide et sans valeur par défaut est signalé à l'administrateur comme « à remplir » (avec son libellé). |
 | `group` | `"appearance"` : réglage d'apparence, regroupé sous « Apparence de ce module ». |
 
 Types : `text`, `textarea`, `url` (adresse http ou https), `link` (une page du site comme `/contact`, une adresse `https://…` ou `mailto:…` ; contrôlé dans le navigateur et par le serveur), `number`, `boolean`, `select`, `color`, `image` (envoi de fichier ou URL), `video` (envoi d'une vidéo MP4 ou WebM de 50 Mo au plus, réservée aux fichiers du site : `/uploads/…`), `secret`
