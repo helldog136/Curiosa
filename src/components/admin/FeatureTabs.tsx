@@ -1,12 +1,13 @@
 import type { Translator } from "@/core/i18n/dictionary";
+import { EXTENSIONS_ADD_HREF, EXTENSIONS_HREF, EXTENSIONS_UPDATES_HREF } from "@/core/modules/extensionsLinks";
 import { peekModulesReport } from "@/core/modules/updateStatus";
 
 /**
- * Onglets du hub « Modules » : ce qui est installé, le catalogue (pour en ajouter) et les mises à jour des modules. Pour l'utilisateur
- * c'est un seul endroit, avec une seule entrée dans le menu. Chaque onglet garde son adresse : /admin/modules, /admin/catalogue et /admin/modules?tab=updates.
+ * Onglets de la page Extensions : ce qui est installé, de quoi en ajouter (le catalogue) et les mises à jour des modules. Pour l'utilisateur
+ * c'est un seul endroit, avec une seule entrée dans le menu. Chaque onglet a son adresse (voir extensionsLinks.ts).
  */
 export type FeatureTab = "installed" | "add" | "updates";
-export const FEATURE_TAB_HREFS: Record<FeatureTab, string> = { installed: "/admin/modules", add: "/admin/catalogue", updates: "/admin/modules?tab=updates" };
+export const FEATURE_TAB_HREFS: Record<FeatureTab, string> = { installed: EXTENSIONS_HREF, add: EXTENSIONS_ADD_HREF, updates: EXTENSIONS_UPDATES_HREF };
 
 export function FeatureTabs({ current, labels, behind = 0, behindLabel }: { current: FeatureTab; labels: { installed: string; add: string; updates?: string }; /** Modules en retard : compteur dans l'onglet « Mises à jour ». */ behind?: number; behindLabel?: string }) {
   const tab = (id: FeatureTab, label: string, count = 0) => (

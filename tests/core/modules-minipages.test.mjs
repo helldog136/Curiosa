@@ -46,9 +46,12 @@ test("minipage : module inconnu = 404, actions et sidebar ramènent sur la bonne
   const actions = read(`${PANEL}/actions.ts`);
   assert.match(actions, /const modulePage = \(id: string/);
   assert.ok(!/redirect\("\/admin\/modules\?error=(instances|modules)/.test(actions) && !actions.includes("`/admin/modules?error"), "les erreurs d'un module atterrissent sur sa page");
-  assert.ok(isCurrent("/admin/modules", "/admin/modules/blog", "", { also: ["/admin/catalogue"] }), "« Modules » reste actif sur la minipage");
-  const list = read(`${PANEL}/page.tsx`);
+  assert.ok(isCurrent("/admin/extensions", "/admin/modules/blog", "", { also: ["/admin/modules"] }), "« Extensions » reste actif sur la minipage d'un module");
+  assert.match(actions, /EXTENSIONS_HREF/, "les retours d'action mènent à la page Extensions");
+  assert.ok(!/redirect\("\/admin\/modules"\)/.test(actions), "plus de détour par l'ancienne adresse");
+  const list = read("src/app/admin/(panel)/extensions/page.tsx");
   assert.match(list, /CatalogueSearch/);
-  assert.match(list, /peekModulesReport/, "pastille sans réseau");
-  assert.ok(!list.includes("getModulesReport"), "pas de vérification réseau sur la liste");
+  const loader = read("src/app/admin/(panel)/extensions/loadInstalled.ts");
+  assert.match(loader, /peekModulesReport/, "pastille sans réseau");
+  assert.ok(!loader.includes("getModulesReport") && !list.includes("getModulesReport"), "pas de vérification réseau sur la liste");
 });

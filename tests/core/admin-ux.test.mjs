@@ -62,7 +62,7 @@ test("journal d'audit : chaque action connue se lit en langage courant, les autr
 });
 
 test("journal d'audit : toute action écrite par le code est dans la liste (sinon elle s'afficherait en code brut)", () => {
-  const files = ["users/actions.ts", "modules/actions.ts", "updates/actions.ts", "mcp/actions.ts", "entries/actions.ts", "redirects/actions.ts", "settings/actions.ts", "navigation/actions.ts", "home/actions.ts", "account/actions.ts"];
+  const files = ["users/actions.ts", "modules/actions.ts", "updates/actions.ts", "mcp/actions.ts", "entries/actions.ts", "redirects/actions.ts", "settings/actions.ts", "navigation/actions.ts", "home/actions.ts", "account/actions.ts", "extensions/actions.ts", "extensions/add/actions.ts"];
   const known = new Set(AUDIT_ACTIONS);
   for (const f of files) {
     const path = `${PANEL}/${f}`;
@@ -124,8 +124,8 @@ test("API & MCP : ordre en étapes, désactivation et révocation confirmées, �
 });
 
 test("modules installés : état vide qui mène au catalogue, désinstallation dans la zone danger", () => {
-  const page = read(`${PANEL}/modules/page.tsx`);
-  assert.match(page, /mods\.length === 0 && \(\s*<EmptyState[^]*\/admin\/catalogue/);
+  const page = read(`${PANEL}/extensions/page.tsx`);
+  assert.match(page, /total === 0 && \(\s*<EmptyState[^]*EXTENSIONS_ADD_HREF/);
   const one = read(`${PANEL}/modules/[id]/page.tsx`);
   assert.match(one, /<DangerZone[^]*uninstallModuleAction[^]*<\/DangerZone>/);
 });

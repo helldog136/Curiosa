@@ -6,6 +6,23 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
+## 0.1.19
+
+### Nouveautés
+
+- Une page **Extensions** réunit tout ce qui fait fonctionner votre site, en trois onglets : *Installées*, *Ajouter* et *Mises à jour*. Les extensions installées sont classées par famille (Contenu, Communauté, Réseaux et connexions, Overlays), avec une recherche.
+- Chaque extension tient sur une ligne, avec un bouton « Réglages » et un petit menu « ⋯ » pour le reste. Elle peut être **épinglée au menu** ou non. Épinglée, elle apparaît dans sa rubrique ; sinon, elle reste simplement dans Extensions.
+
+### Améliorations
+
+- Le menu est réorganisé : **Mon contenu** (blog, pages, sponsoring…), **Ma communauté** (contacts, partenariats, pages interactives…), **Mon site**, puis **Administration**, qui accueille désormais Extensions. Quand il y a beaucoup d'entrées dans Ma communauté, elles se rangent en groupes repliables.
+- « Modules » n'est plus en haut du menu ni en surbrillance, et les entrées « Intégrations » et « Overlays » disparaissent : leurs cartes, leurs états et l'adresse à coller dans OBS se retrouvent dans Extensions. Les anciennes adresses mènent automatiquement au bon endroit.
+- Les pastilles restent visibles : les mises à jour de modules et les extensions à régler s'affichent sur l'entrée Extensions.
+
+### Pour les développeurs
+
+- Les pages `/admin/modules`, `/admin/catalogue`, `/admin/integrations` et `/admin/overlays` redirigent (paramètres conservés) vers `/admin/extensions`, `/admin/extensions/add` (fiches en fenêtre comprises) et `/admin/extensions/updates`. La rubrique d'une instance épinglée se déduit du manifeste (`defaultSection`, dans `menuPlacement.ts`), sans nouveau champ.
+
 ## 0.1.18
 
 *Changements depuis la 0.1.17.*

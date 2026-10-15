@@ -22,6 +22,7 @@ import { deleteSetting, getSettingByLocale, getSiteConfig, setSetting } from "@/
 import { mcpInstanceKey } from "@/core/modules/mcpProvider";
 import { isSort, sortSettingKey } from "@/core/content/sort";
 import type { ActionState } from "@/components/admin/ActionForm";
+import { EXTENSIONS_HREF } from "@/core/modules/extensionsLinks";
 
 function parseFieldSchema(raw: string) {
   const out: { key: string; label: string; type: "text" | "url" | "number" | "boolean" | "ref"; topic?: string }[] = [];
@@ -198,7 +199,7 @@ export async function deleteInstanceAction(id: string): Promise<void> {
   await deleteInstance(id);
   await audit(user.email, "instance.delete", row.key);
   revalidatePath("/", "layout");
-  redirect("/admin/modules");
+  redirect(EXTENSIONS_HREF);
 }
 
 /**

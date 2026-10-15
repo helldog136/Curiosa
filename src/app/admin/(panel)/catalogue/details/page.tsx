@@ -1,9 +1,9 @@
-import { DetailsView } from "./DetailsView";
+import { redirectLegacy } from "@/app/admin/(panel)/legacyRedirect";
+import type { RawQuery } from "@/core/modules/extensionsLinks";
 
 export const dynamic = "force-dynamic";
 
-/** `?id=` : un module du catalogue ; `?repo=` : un dépôt personnel (non vérifié). Depuis le catalogue, la même fiche s'ouvre en fenêtre (voir @modal). */
-export default async function CatalogueDetailsPage({ searchParams }: { searchParams: Promise<{ id?: string; repo?: string }> }) {
-  const { id, repo } = await searchParams;
-  return <DetailsView id={id} repo={repo} />;
+/** Ancienne adresse : mène à la page Extensions (voir core/modules/extensionsLinks.ts). */
+export default function Page({ searchParams }: { searchParams: Promise<RawQuery> }) {
+  return redirectLegacy("/admin/catalogue/details", searchParams);
 }

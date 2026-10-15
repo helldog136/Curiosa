@@ -5,7 +5,7 @@ import { getInstanceLabeler } from "./labels";
 import { effectiveType } from "./manifest";
 import { platformOf } from "./platform";
 import { getEnabledModules } from "./registry";
-import { defaultPlacement, parsePlacement, placementSettingKey, placementsFor, resolvePlacement, type MenuEntry, type Placement } from "./menuPlacement";
+import { defaultPlacement, defaultSection, parsePlacement, placementSettingKey, placementsFor, resolvePlacement, type MenuEntry, type Placement } from "./menuPlacement";
 
 export type AdminNavItem = MenuEntry & {
   key: string;
@@ -37,7 +37,7 @@ async function badgeOf(mod: Parameters<typeof buildContext>[0], instance: Parame
 }
 
 /**
- * Toutes les instances des modules actifs, avec où les ranger (menu, Intégrations ou Overlays : voir menuPlacement.ts), leur pastille et leur état.
+ * Toutes les instances des modules actifs, avec où les ranger (épinglée au menu, dans quelle rubrique, ou seulement dans Extensions : voir menuPlacement.ts), leur pastille et leur état.
  * Le rangement en groupes et la liste des seules instances actives se font dans `buildMenuLayout`.
  */
 export async function getAdminNav(locale: string, defaultLocale: string): Promise<AdminNavItem[]> {
@@ -47,7 +47,7 @@ export async function getAdminNav(locale: string, defaultLocale: string): Promis
   for (const instance of await listInstances()) {
     const mod = mods.find((m) => m.manifest.id === instance.moduleId);
     if (!mod) continue;
-    // Une instance dont la migration de données a échoué ne tourne pas (comme sur le site) : elle n'a ni pastille ni place dans le menu, mais reste dans Intégrations avec son erreur.
+    // Une instance dont la migration de données a échoué ne tourne pas (comme sur le site) : elle n'a ni pastille ni place dans le menu, mais reste dans Extensions avec son erreur.
     const error = !!(await getSetting<{ status?: string }>(`instance.${instance.id}.__dataStatus`))?.status;
     const stored = await getSetting(placementSettingKey(instance.id));
     const parsed = parsePlacement(stored);
@@ -59,6 +59,7 @@ export async function getAdminNav(locale: string, defaultLocale: string): Promis
       name: labeler.label(instance),
       icon: mod.manifest.icon ?? "🧩",
       content: !!mod.manifest.content,
+      section: defaultSection(mod.manifest),
       type: effectiveType(mod.manifest),
       enabled: instance.enabled,
       error,

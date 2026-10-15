@@ -98,7 +98,7 @@ test("catalogue injoignable : liste vide et message clair — jamais une copie l
     assert.equal((await I.installFromCatalogue("leurre")).ok, false);
     const fr = JSON.parse(read("src/locales/fr.json"));
     assert.equal(fr["catalogue.unreachable"], "Le catalogue n'est pas joignable, réessayez.");
-    const page = read("src/app/admin/(panel)/catalogue/page.tsx");
+    const page = read("src/app/admin/(panel)/extensions/add/page.tsx");
     assert.match(page, /catalogue\.unreachable/);
     assert.match(page, /data-testid="catalogue-unreachable"/);
   } finally { delete process.env.CURIOSA_EXTRAS_DIR; process.chdir(root); fs.rmSync(decoy, { recursive: true, force: true }); }

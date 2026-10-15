@@ -16,6 +16,7 @@ import { buildNames, viewModuleLinks } from "@/core/modules/dependencyView";
 import { decodeMissing, describeMissingList } from "@/core/modules/dependencyMessages";
 import { ModuleLinksBox } from "@/components/admin/ModuleLinksBox";
 import { addInstance, toggleModule, uninstallModuleAction } from "../actions";
+import { EXTENSIONS_HREF } from "@/core/modules/extensionsLinks";
 
 export const dynamic = "force-dynamic";
 
@@ -46,11 +47,11 @@ export default async function ModulePage({ params, searchParams }: { params: Pro
       : error?.startsWith("modules.error.") || error?.startsWith("instances.error.")
         ? t(error, { services: detail ? detail.split(", ").map(names.service).join(", ") : "", modules: detail ? detail.split(", ").map(names.module).join(", ") : "" })
         : error ? t("error.generic") : null;
-  const listTitle = advanced ? t("nav.modules") : t("nav.modules.simple");
+  const listTitle = t("nav.extensions");
 
   return (
     <div className="space-y-6">
-      <a href="/admin/modules" className="inline-block text-sm text-muted hover:text-accent">← {listTitle}</a>
+      <a href={EXTENSIONS_HREF} className="inline-block text-sm text-muted hover:text-accent">← {listTitle}</a>
       <header className="flex items-start gap-4">
         <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-accent/10 text-3xl" aria-hidden>{mod?.manifest.icon ?? "🧩"}</span>
         <div className="min-w-0">

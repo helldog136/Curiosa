@@ -27,6 +27,7 @@ import { ui } from "@/components/admin/ui";
 import { dataStatusOf } from "@/core/modules/dataMigrations";
 import { taskStateOf } from "@/core/services/scheduler";
 import { deleteInstanceAction, retryMigrationAction, saveInstance, saveInstanceSettings, saveSources } from "../actions";
+import { EXTENSIONS_ADD_HREF } from "@/core/modules/extensionsLinks";
 
 const PLACE_LABEL = { menu: "placement.pin", integrations: "placement.park", overlays: "placement.parkOverlays" } as const;
 
@@ -177,7 +178,7 @@ export default async function InstancePage({ params, searchParams }: { params: P
               <fieldset key={decl.topic} className={`${ui.card} space-y-3`}>
                 <legend className="px-2 text-sm font-medium">{L(decl.label)}{advanced && <span className="ml-2 font-mono text-xs text-muted">{decl.topic}</span>}</legend>
                 {providers.length === 0 && (
-                  <p className="text-sm text-muted">{t("sources.none")} <a href="/admin/catalogue" className="underline hover:text-accent">{t("sources.addModule")}</a></p>
+                  <p className="text-sm text-muted">{t("sources.none")} <a href={EXTENSIONS_ADD_HREF} className="underline hover:text-accent">{t("sources.addModule")}</a></p>
                 )}
                 {providers.length > 0 && <p className="text-[13px] text-muted">{current.instances === null ? t("sources.allUsed") : t("sources.onlyChecked")}</p>}
                 {providers.map((p) => (
