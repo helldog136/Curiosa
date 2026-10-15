@@ -6,6 +6,23 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
+## 0.1.22
+
+### Nouveautés
+
+- **On voit enfin ce qu'il reste à renseigner.** Une extension « À configurer » dit maintenant pourquoi : la pastille dit par exemple « À configurer : Adresse du calendrier » (ou « 2 réglages à remplir »), dans la liste des extensions, sur le tableau de bord et au survol de « Extensions » dans le menu.
+- **Un encadré « Il reste à renseigner » en haut des réglages.** Chaque ligne est un lien : un clic vous amène au champ, le met en évidence et y place le curseur. Les champs concernés portent aussi la mention « à remplir ».
+- **Les fenêtres de réglages s'adaptent à votre écran.** Sur un grand écran, la fenêtre occupe presque toute la largeur au lieu d'une colonne étroite, et les champs se rangent sur deux colonnes quand il y a de la place. Sur mobile, rien ne change : elle prend tout l'écran.
+
+### Améliorations
+
+- Un réglage peut être déclaré facultatif par son extension : le laisser vide ne la met plus « À configurer ».
+- Les textes d'aide ne s'étirent plus en lignes interminables sur grand écran.
+
+### Pour les développeurs
+
+- Nouveau `optional: true` sur un réglage du manifeste. Logique pure : `core/modules/missingSettings.ts` (réglages manquants, libellés, ancres) et `settingsLayout.ts` ; `loadInstanceStatuses(locale, defaultLocale)` renvoie aussi `missing`. Largeur de la fenêtre : `components/admin/modalWidth.ts`.
+
 ## 0.1.21
 
 ### Nouveautés

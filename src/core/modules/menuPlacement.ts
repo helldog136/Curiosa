@@ -1,3 +1,5 @@
+import { missingSettings, type FillField } from "./missingSettings";
+
 // Rangement des instances dans le menu de l'admin : « épinglée au menu » (placement « menu ») ou « seulement dans Extensions » (les autres valeurs). Logique pure (ni base ni React), testée telle quelle.
 
 /**
@@ -156,12 +158,10 @@ export function integrationState(i: { error: boolean; toFill: boolean }): Integr
   return i.toFill ? "setup" : "on";
 }
 
-type FillField = { key: string; type: string; default?: unknown; translatable?: boolean; advanced?: boolean };
-
 /**
- * Un réglage à remplir (clé, adresse, identifiant… encore vide, sans valeur par défaut, hors groupes facultatifs) manque-t-il ?
- * `stored[clé]` = valeurs enregistrées par langue. Sert à la mention « à compléter » de l'instance et à l'état « à configurer ».
+ * Un réglage à remplir (clé, adresse, identifiant… encore vide, sans valeur par défaut, hors groupes et réglages facultatifs) manque-t-il ?
+ * Sert à l'état « à configurer » de l'instance ; la liste de ce qui manque est dans `missingSettings`.
  */
 export function settingsToFill(fields: readonly FillField[], groupedKeys: ReadonlySet<string>, stored: Record<string, Record<string, unknown> | undefined>): boolean {
-  return fields.some((f) => !groupedKeys.has(f.key) && ["secret", "text", "url", "link"].includes(f.type) && f.default === undefined && !f.translatable && !Object.values(stored[f.key] ?? {}).some((v) => v !== undefined && v !== ""));
+  return missingSettings(fields, groupedKeys, stored).length > 0;
 }

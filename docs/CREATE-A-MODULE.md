@@ -103,7 +103,7 @@ la langue courante, ou la valeur par défaut.
 | `secret` | jamais réaffiché après enregistrement (clé d'API, code…) |
 
 Attributs : `translatable: true` (une valeur par langue du site), `advanced: true` (masqué en admin simplifié — **donnez toujours une valeur par défaut**),
-`group: "appearance"` (rangé sous « Apparence de ce module »). Les jetons de thème permis pour `theme:` sont `accent`, `accentFg`, `bg`, `surface`, `fg`, `muted`, `line`.
+`optional: true` (réglage facultatif : vide, il ne met pas l'extension « À configurer » — sans cela, un texte, une adresse, un lien ou un secret vide et sans valeur par défaut est signalé à l'administrateur comme « à remplir », avec son libellé), `group: "appearance"` (rangé sous « Apparence de ce module »). Les jetons de thème permis pour `theme:` sont `accent`, `accentFg`, `bg`, `surface`, `fg`, `muted`, `line`.
 
 **Piège classique** : la valeur d'un réglage n'est **pas garantie** (un nombre peut arriver en texte, une couleur ou une adresse peut être n'importe quoi). Convertissez,
 bornez, validez avant d'utiliser. L'exemple a des petits outils pour cela (`num()`, `safeColor()`, `safeSrc()` dans `index.mjs` (`curiosa-extras/examples/guestbook/index.mjs`)).

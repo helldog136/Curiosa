@@ -2,6 +2,9 @@ import { adminCtx } from "@/core/admin";
 import { prisma } from "@/core/db";
 import { getAdminNav } from "@/core/modules/adminNav";
 import { ui } from "@/components/admin/ui";
+import { InstanceState } from "@/components/admin/InstanceState";
+import { loadInstanceStatuses } from "@/core/modules/integrations";
+import { summarizeMissing } from "@/core/modules/missingSettings";
 import { Callout, PageHeader } from "@/components/admin/Page";
 import { getUpdateCheck } from "@/core/updates/service";
 import { statsEnabled, statsSummary } from "@/core/stats";
@@ -10,7 +13,7 @@ import { EXTENSIONS_HREF } from "@/core/modules/extensionsLinks";
 import { assistantsTabHref } from "@/core/services/mcp/assistantsLinks";
 
 export default async function Dashboard({ searchParams }: { searchParams: Promise<{ denied?: string; welcome?: string; modules?: string }> }) {
-  const { t, config, advanced, user } = await adminCtx("editor");
+  const { t, locale, config, advanced, user } = await adminCtx("editor");
   const nav = await getAdminNav(config.defaultLocale, config.defaultLocale);
   const firstContent = nav.find((i) => i.content && !i.error);
   const { denied, welcome, modules: setupModulesState } = await searchParams;
@@ -22,6 +25,9 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
     prisma.module.count(),
   ]);
   const todo = nav.filter((i) => i.badge > 0);
+  // Extensions à configurer : chacune dit ce qu'il reste à renseigner (réservé à qui règle les extensions).
+  const statuses = user.role !== "editor" ? await loadInstanceStatuses(locale, config.defaultLocale).catch(() => null) : null;
+  const toSetUp = nav.flatMap((i) => { const s = statuses?.get(i.id); return s?.state === "setup" ? [{ item: i, summary: summarizeMissing(s.missing) }] : []; });
   const updateAvailable = user.role === "owner" && (await getUpdateCheck().catch(() => null))?.available === true;
   const ai = user.role === "owner" ? await maintenanceSummary().catch(() => null) : null;
   const stats = (await statsEnabled()) ? await statsSummary() : null;
@@ -49,12 +55,15 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
           </span>
         </Callout>
       )}
-      {(todo.length > 0 || updateAvailable) && (
+      {(todo.length > 0 || toSetUp.length > 0 || updateAvailable) && (
         <section aria-label={t("dashboard.todo")} data-testid="todo" className={`${ui.card} space-y-2`}>
           <h2 className="text-lg font-semibold">{t("dashboard.todo")}</h2>
           <ul className="space-y-1.5">
             {todo.map((i) => (
               <li key={i.id}><a href={i.content ? `/admin/entries?c=${i.key}` : `/admin/instances/${i.id}`} className="flex items-center justify-between gap-3 rounded-xl px-3 py-2 hover:bg-accent/10"><span>{i.icon} {i.name}</span><span className="rounded-full bg-accent px-2 text-sm font-semibold text-accent-fg">{i.badge} {t("nav.badge.todo")}</span></a></li>
+            ))}
+            {toSetUp.map(({ item, summary }) => (
+              <li key={`setup-${item.id}`}><a href={`/admin/instances/${item.id}`} data-testid="todo-setup" className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-xl px-3 py-2 hover:bg-accent/10"><span>{item.icon} {item.name}</span><InstanceState t={t} state="setup" missing={summary} /></a></li>
             ))}
             {updateAvailable && <li><a href="/admin/updates" className="flex items-center justify-between gap-3 rounded-xl px-3 py-2 hover:bg-accent/10"><span>⬆️ {t("dashboard.updateReady")}</span><span className="rounded-full bg-accent px-2 text-sm font-semibold text-accent-fg">{t("nav.badge.update")}</span></a></li>}
           </ul>
