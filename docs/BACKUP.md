@@ -37,6 +37,7 @@ readable/           VOS DONNÉES MISES EN FORME POUR UN HUMAIN — commencez ici
   <instance>/*.md     une entrée par fichier Markdown et par langue, avec un en-tête (titre, statut, dates, étiquettes, lien, code…)
   modules/<instance>/ les données de chaque module (JSON ; CSV et autres fichiers que le module fournit)
 data/               les mêmes données, brutes, en JSON : c'est ce que la restauration relit
+                    (dont retired-instances.json : les données GARDÉES de modules ou d'instances retirés, inertes ; absent des sauvegardes d'avant la 0.1.20)
 uploads/            images et fichiers envoyés
 ```
 

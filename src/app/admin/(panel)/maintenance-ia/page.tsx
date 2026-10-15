@@ -24,7 +24,7 @@ function describe(r: MaintenanceRequest, t: Translator, name: (id: string) => st
   if (r.action === "core_update") return t("aim.req.core_update", { from: p.from ?? "?", to: p.to ?? "?" });
   if (r.action === "module_update") return t("aim.req.module_update", { name: name(p.module ?? ""), from: p.from ?? "?", to: p.to ?? "?" });
   if (r.action === "modules_update_all") return t("aim.req.modules_update_all", { n: p.modules?.length ?? 0, list: (p.modules ?? []).map((m) => `${name(m.id)} (${m.from} → ${m.to})`).join(", ") });
-  return t("aim.req.module_uninstall", { name: name(p.module ?? "") });
+  return t(p.keepData === false ? "aim.req.module_uninstall_erase" : "aim.req.module_uninstall", { name: name(p.module ?? "") });
 }
 
 /** Maintenance par IA : les demandes qui attendent un accord, ce qui s'est passé, et comment chaque jeton se comporte. Propriétaire seulement. */

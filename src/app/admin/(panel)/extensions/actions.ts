@@ -20,13 +20,3 @@ export async function setPlacementAction(instanceId: string, placement: string):
   await audit(user.email, "instance.update", instance.key);
   revalidatePath("/", "layout");
 }
-
-/** Active ou désactive une instance (l'interrupteur d'une carte Intégrations). */
-export async function toggleInstanceAction(instanceId: string, enabled: boolean): Promise<void> {
-  const { user } = await adminCtx("admin");
-  const instance = await prisma.moduleInstance.findUnique({ where: { id: instanceId } });
-  if (!instance) return;
-  await prisma.moduleInstance.update({ where: { id: instanceId }, data: { enabled } });
-  await audit(user.email, "instance.update", instance.key);
-  revalidatePath("/", "layout");
-}

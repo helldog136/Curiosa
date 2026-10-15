@@ -3,7 +3,7 @@
  * n'est pas au premier plan (outils de développement, autre fenêtre, clic relayé) : la réponse est alors « non » et l'action ne part jamais,
  * sans aucun message. Cette boîte-ci s'affiche toujours et se ferme au clavier (Échap = annuler).
  */
-export function askConfirm(message: string): Promise<boolean> {
+export function askConfirm(message: string, opts: { /** Texte du bouton qui valide (par défaut « Continuer »). */ confirmLabel?: string; /** Bouton de validation en rouge : pour ce qui efface. */ danger?: boolean } = {}): Promise<boolean> {
   const fr = (document.documentElement.lang || "fr").toLowerCase().startsWith("fr");
   return new Promise((resolve) => {
     const dialog = document.createElement("dialog");
@@ -13,15 +13,15 @@ export function askConfirm(message: string): Promise<boolean> {
     text.className = "mb-6 whitespace-pre-line text-base";
     text.textContent = message;
     const row = document.createElement("div");
-    row.className = "flex justify-end gap-3";
+    row.className = "flex flex-wrap justify-end gap-3";
     const cancel = document.createElement("button");
     cancel.type = "button";
     cancel.className = "rounded-full border border-line px-5 py-2 text-sm font-medium";
     cancel.textContent = fr ? "Annuler" : "Cancel";
     const ok = document.createElement("button");
     ok.type = "button";
-    ok.className = "rounded-full bg-accent px-5 py-2 text-sm font-semibold text-accent-fg";
-    ok.textContent = fr ? "Continuer" : "Continue";
+    ok.className = `rounded-full px-5 py-2 text-sm font-semibold ${opts.danger ? "bg-red-600 text-white" : "bg-accent text-accent-fg"}`;
+    ok.textContent = opts.confirmLabel ?? (fr ? "Continuer" : "Continue");
     let answer = false;
     cancel.onclick = () => dialog.close();
     ok.onclick = () => { answer = true; dialog.close(); };

@@ -43,7 +43,7 @@ function makeDir(files) {
 /** Ce que le catalogue publie pour « planning » (ou un autre id) : le code « nouveau », éventuellement avec d'autres fichiers ou un autre manifeste. */
 const publish = (over = {}, id = "planning") => cat.add(id, { manifest: { name: "Planning", version: "1.1.0", ...over.manifest }, marker: over.marker ?? "nouveau", files: over.files ?? {} });
 /** Un site d'avant : dossier posé sur le disque (ancien code) + ligne `bundled`, comme les anciennes versions du cœur l'ont laissés. */
-function legacyFolder(id = "planning", { files = { "index.mjs": code("ancien") }, manifest: m = {}, enabled = false } = {}) {
+function legacyFolder(id = "planning", { files = { "index.mjs": code("ancien") }, manifest: m = {}, enabled = true } = {}) {
   const dir = installed(id);
   fs.rmSync(dir, { recursive: true, force: true });
   fs.mkdirSync(dir, { recursive: true });
@@ -56,7 +56,7 @@ function legacyFolder(id = "planning", { files = { "index.mjs": code("ancien") }
 async function bundledWithData(extra = {}) {
   await legacyFolder("planning", { manifest: extra.manifest });
   await publish({ manifest: extra.manifest });
-  await I.setModuleEnabled("planning", true);
+
   const inst = await createInstance(db.prisma, { manifest: (await R.getModule("planning")).manifest, nickname: "Agenda", names: { fr: "Agenda" } });
   await setSetting(`instance.${inst.id}.titre`, "Mon planning");
   await db.prisma.moduleRecord.create({ data: { instanceId: inst.id, collection: "events", data: JSON.stringify({ t: "x" }) } });
@@ -202,7 +202,7 @@ test("module git à la racine d'un dépôt : le dossier garde son .git", async (
 test("refus : inconnu, sans source, mise à jour du site en cours, autre identifiant, trop gros, cœur trop ancien, nouvelles permissions", async () => {
   assert.equal((await X.reinstallModule("inconnu")).error, "modules.error.notfound");
 
-  await db.prisma.module.create({ data: { id: "manuel", source: "manual", version: "1.0.0", enabled: false } });
+  await db.prisma.module.create({ data: { id: "manuel", source: "manual", version: "1.0.0", enabled: true } });
   assert.equal((await X.reinstallModule("manuel")).error, "modules.error.reinstallNoSource");
 
   await bundledWithData();
@@ -292,13 +292,9 @@ test("migration relancée si la dataVersion de la source est plus haute", async 
   assert.equal(JSON.parse((await db.prisma.moduleRecord.findFirst({ where: { instanceId: inst.id } })).data).migre, true);
 });
 
-test("un module désactivé le reste ; une dépendance ne le désactive jamais", async () => {
+test("réinstaller laisse le module installé et actif, et ne touche pas à ses instances", async () => {
   await legacyFolder("planning", { files: { "index.mjs": code("a") } });
   await publish({ marker: "b" });
-  assert.equal((await X.reinstallModule("planning")).ok, true);
-  assert.equal((await row()).enabled, false);
-  await I.setModuleEnabled("planning", true);
-  fs.writeFileSync(path.join(installed(), "index.mjs"), code("c"));
   assert.equal((await X.reinstallModule("planning")).ok, true);
   assert.equal((await row()).enabled, true);
 });
@@ -328,6 +324,6 @@ test("réservé au propriétaire : chaque action serveur de maintenance exige le
   const actions = [...src.matchAll(/export async function (\w+)[\s\S]*?\n}\n/g)];
   assert.equal(actions.length, 2);
   for (const a of actions) assert.match(a[0], /adminCtx\("owner"\)/, a[1]);
-  const page = fs.readFileSync("src/app/admin/(panel)/modules/[id]/page.tsx", "utf8");
+  const page = fs.readFileSync("src/app/admin/(panel)/modules/[id]/ModuleView.tsx", "utf8");
   assert.match(page, /isOwner && <ModuleMaintenance/);
 });

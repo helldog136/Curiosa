@@ -2,34 +2,32 @@ import { prisma } from "../db";
 import { getSiteConfig } from "../settings";
 import { createInstance, defaultNames, runInstanceCreateHook } from "../instanceService";
 import { getModule } from "./registry";
+import { restoreModuleInstances, retireInstance } from "./retired";
 
 /**
  * INSTANCE PAR DÉFAUT d'un fournisseur apporté par la cascade : un module sans instance ne fournit rien. On fait en sorte qu'il y en ait une qui tourne.
- *   - déjà une instance active : rien à faire ;
- *   - des instances mais toutes désactivées : on réactive la première (par clé), sans rien créer ;
- *   - aucune : on en crée une, avec les réglages par défaut du module (single comme multiple ; la première n'a pas besoin de surnom).
+ *   - déjà une instance : rien à faire ;
+ *   - des données gardées d'une désinstallation précédente : elles reviennent telles quelles (rien n'est créé) ;
+ *   - sinon on en crée une, avec les réglages par défaut du module (single comme multiple ; la première n'a pas besoin de surnom).
  * Renvoie ce qui a été fait, pour pouvoir le défaire si la cascade échoue.
  */
-export type EnsureOutcome = { kind: "present" } | { kind: "created"; instanceId: string } | { kind: "reenabled"; instanceId: string };
+export type EnsureOutcome = { kind: "present" } | { kind: "created"; instanceId: string } | { kind: "restored"; instanceIds: string[] };
 
 export async function ensureDefaultInstance(moduleId: string): Promise<EnsureOutcome | null> {
   const mod = await getModule(moduleId);
   if (!mod) return null;
-  const existing = await prisma.moduleInstance.findMany({ where: { moduleId }, orderBy: { key: "asc" } });
-  if (existing.some((i) => i.enabled)) return { kind: "present" };
-  if (existing.length) {
-    await prisma.moduleInstance.update({ where: { id: existing[0]!.id }, data: { enabled: true } });
-    return { kind: "reenabled", instanceId: existing[0]!.id };
-  }
+  if ((await prisma.moduleInstance.count({ where: { moduleId } })) > 0) return { kind: "present" };
+  const kept = await restoreModuleInstances(moduleId);
+  if (kept.restored.length) return { kind: "restored", instanceIds: kept.restored.map((r) => r.id) };
   const { locales } = await getSiteConfig();
   const created = await createInstance(prisma, { manifest: mod.manifest, names: defaultNames(mod.manifest, locales) });
   await runInstanceCreateHook(created.id);
   return { kind: "created", instanceId: created.id };
 }
 
-/** Défait `ensureDefaultInstance` (échec de la cascade) : l'instance créée est supprimée avec ses réglages, celle réactivée est remise à l'arrêt. */
+/** Défait `ensureDefaultInstance` (échec de la cascade) : l'instance créée est supprimée avec ses réglages, celles retrouvées sont rangées de nouveau (leurs données ne sont JAMAIS effacées). */
 export async function undoDefaultInstance(outcome: EnsureOutcome): Promise<void> {
-  if (outcome.kind === "reenabled") { await prisma.moduleInstance.update({ where: { id: outcome.instanceId }, data: { enabled: false } }).catch(() => {}); return; }
+  if (outcome.kind === "restored") { for (const id of outcome.instanceIds) await retireInstance(id, "uninstall").catch(() => {}); return; }
   if (outcome.kind !== "created") return;
   const id = outcome.instanceId;
   await prisma.setting.deleteMany({ where: { key: { startsWith: `instance.${id}.` } } });

@@ -21,11 +21,11 @@ export function extensionFamily(m: PlacementManifest & { platform?: unknown }): 
   return m.type === "content" ? "content" : "community";
 }
 
-/** Ordre d'attention d'une carte : une erreur d'abord, puis ce qui reste à configurer, puis ce qui tourne, puis ce qui est éteint. */
-export const ATTENTION_ORDER = { error: 0, setup: 1, on: 2, off: 3 } as const;
+/** Ordre d'attention d'une carte : une erreur d'abord, puis ce qui reste à configurer, puis ce qui tourne. */
+export const ATTENTION_ORDER = { error: 0, setup: 1, on: 2 } as const;
 export type AttentionState = keyof typeof ATTENTION_ORDER;
 
-/** L'état « le plus urgent » d'un ensemble d'instances (« off » s'il n'y en a aucune). */
+/** L'état « le plus urgent » d'un ensemble d'instances (« on », rien à signaler, s'il n'y en a aucune). */
 export function worstState(states: readonly AttentionState[]): AttentionState {
-  return states.reduce<AttentionState>((worst, s) => (ATTENTION_ORDER[s] < ATTENTION_ORDER[worst] ? s : worst), "off");
+  return states.reduce<AttentionState>((worst, s) => (ATTENTION_ORDER[s] < ATTENTION_ORDER[worst] ? s : worst), "on");
 }

@@ -141,6 +141,6 @@ un panneau d'admin. Le cœur s'occupe du rendu, du thème et des langues.
 Les modules sont **du code de confiance** : ils tournent dans le processus du serveur. Les
 garde-fous sont organisationnels et explicites : installation réservée au propriétaire,
 hébergeurs autorisés (`MODULES_ALLOWED_HOSTS`), clone sans hooks ni protocoles exotiques,
-module installé **désactivé**, manifeste validé, taille et liens symboliques contrôlés,
+module installé **actif** (installé = actif, pas d'état intermédiaire), manifeste validé, taille et liens symboliques contrôlés,
 version épinglable (`#tag`), mises à jour manuelles. Un module qui plante est isolé (log
 + ignoré), il ne casse pas le site.

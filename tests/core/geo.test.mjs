@@ -13,7 +13,7 @@ const { default: robots } = await import("@/app/robots");
 const { default: sitemap } = await import("@/app/sitemap");
 const { GET: llmsDefault } = await import("@/app/llms.txt/route");
 const { GET: llmsLang } = await import("@/app/[lang]/llms.txt/route");
-const { installModule, setModuleEnabled } = await import("@/core/modules/installer");
+const { installModule } = await import("@/core/modules/installer");
 const R = await import("@/core/modules/registry");
 const { createInstance } = await import("@/core/instanceService");
 const { createEntry } = await import("@/core/content/service");
@@ -130,7 +130,7 @@ test("llms.txt : construit à partir des données publiques du site — nom, acc
   await createEntry(db.prisma, { instanceId: blog.id, locale: "en", title: "Brouillon secret" });
   const net = { "module.json": { apiVersion: 2, version: "1.0.0", id: "twitch", name: "Twitch", instances: "multiple", provides: [{ topic: "social.link" }], main: "index.mjs" },
     "index.mjs": `export default { exports: { "social.link": () => [{ label: "Twitch", url: "https://twitch.tv/ada", icon: "twitch" }, { label: "Piège", url: "javascript:alert(1)" }] } };` };
-  await installModule(makeRepo(net).url); await setModuleEnabled("twitch", true);
+  await installModule(makeRepo(net).url);
   await createInstance(db.prisma, { manifest: (await R.getModule("twitch")).manifest, nickname: "Twitch", names: { en: "Twitch" } });
 
   const txt = await L.buildLlmsTxt("en");

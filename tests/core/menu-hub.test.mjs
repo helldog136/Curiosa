@@ -105,7 +105,7 @@ test("épinglage : le choix de l'utilisateur l'emporte dans les deux sens ; une 
 });
 
 // ─── Rubriques, groupes et ordre ────────────────────────────────────────────────────────────────────────────────
-const item = (id, type, over = {}) => ({ id, type, section: P.defaultSection({ type, content: type === "content" ? {} : undefined }), placement: "menu", enabled: true, error: false, badge: 0, content: type === "content", ...over });
+const item = (id, type, over = {}) => ({ id, type, section: P.defaultSection({ type, content: type === "content" ? {} : undefined }), placement: "menu", error: false, badge: 0, content: type === "content", ...over });
 
 test("rubrique par défaut : lue dans le manifeste (contenu → Mon contenu ; le reste → Ma communauté), sans nouveau champ", () => {
   assert.deepEqual(P.MENU_SECTIONS, ["content", "community"]);
@@ -139,12 +139,12 @@ test("menu : Ma communauté passe en groupes pliables au-delà de OPEN_BY_DEFAUL
 
 test("menu : seules les instances épinglées qui tournent y figurent ; les autres ne vivent que dans Extensions et leurs pastilles remontent", () => {
   const layout = P.buildMenuLayout([
-    item("a", "utility", { enabled: false }), item("b", "utility", { error: true }), item("c", "widget", { badge: 2 }),
-    item("t", "utility", { placement: "integrations", badge: 3 }), item("o", "utility", { placement: "integrations", enabled: false, badge: 9 }), item("e", "utility", { placement: "integrations", error: true, badge: 4 }),
+    item("b", "utility", { error: true }), item("c", "widget", { badge: 2 }),
+    item("t", "utility", { placement: "integrations", badge: 3 }), item("e", "utility", { placement: "integrations", error: true, badge: 4 }),
     item("ov", "overlay", { placement: "overlays", badge: 1 }),
   ]);
-  assert.deepEqual(layout.community.items.map((i) => i.id), ["c"], "désactivée, en erreur ou non épinglée : pas dans le menu");
-  assert.equal(layout.unpinnedBadge, 4, "seule une pastille d'instance qui tourne remonte (3 + 1) ; désactivée ou en erreur : non");
+  assert.deepEqual(layout.community.items.map((i) => i.id), ["c"], "en erreur ou non épinglée : pas dans le menu");
+  assert.equal(layout.unpinnedBadge, 4, "seule une pastille d'instance qui tourne remonte (3 + 1) ; en erreur : non");
   assert.equal(P.buildMenuLayout([]).unpinnedBadge, 0);
   assert.equal(P.buildMenuLayout([item("c", "widget", { badge: 5 })]).unpinnedBadge, 0, "une instance épinglée garde sa pastille sur son propre lien");
 });
@@ -197,13 +197,11 @@ test("plié mémorisé : le serveur lit le cookie (pas de clignotement) et le gr
 });
 
 // ─── Intégrations : états, recherche, page ──────────────────────────────────────────────────────────────────────
-test("états d'une carte : erreur > désactivée > à configurer > active", () => {
-  const base = { enabled: true, moduleEnabled: true, error: false, toFill: false };
+test("états d'une carte : erreur > à configurer > en place (jamais « éteint »)", () => {
+  const base = { error: false, toFill: false };
   assert.equal(P.integrationState(base), "on");
   assert.equal(P.integrationState({ ...base, toFill: true }), "setup");
-  assert.equal(P.integrationState({ ...base, enabled: false, toFill: true }), "off");
-  assert.equal(P.integrationState({ ...base, moduleEnabled: false }), "off");
-  assert.equal(P.integrationState({ ...base, error: true, enabled: false, toFill: true }), "error");
+  assert.equal(P.integrationState({ error: true, toFill: true }), "error");
 });
 
 test("« à configurer » : un réglage à remplir, vide et sans valeur par défaut, hors groupes facultatifs et textes traduisibles", () => {
@@ -224,7 +222,7 @@ test("Extensions > Installées : cherchable avec le même champ, par nom, famill
   const cards = [
     { name: "Chaîne Twitch", mod: "Twitch channel", state: "setup" },
     { name: "Instagram", mod: "Social links", state: "on" },
-    { name: "Annonces Discord", mod: "Discord announcements", state: "off" },
+    { name: "Annonces Discord", mod: "Discord announcements", state: "setup" },
   ].map((c) => ({ ...c, search: moduleSearchText([c.name, c.mod, `integrations.state.${c.state}`]) }));
   const find = (q) => cards.filter((c) => matchesQuery(c.search, q)).map((c) => c.name);
   assert.deepEqual(find("twitch"), ["Chaîne Twitch"]);
@@ -234,7 +232,7 @@ test("Extensions > Installées : cherchable avec le même champ, par nom, famill
   assert.equal(find("").length, 3);
 });
 
-test("Extensions > Installées : une carte par module avec ses instances (nom, état, réglages, interrupteur, épingler au menu, adresse OBS) ; réservé à ceux qui gèrent", () => {
+test("Extensions > Installées : une carte par module avec ses instances (nom, état, réglages en fenêtre, épingler au menu, adresse OBS) ; aucun interrupteur ; réservé à ceux qui gèrent", () => {
   const page = read(`${PANEL}/extensions/page.tsx`);
   assert.match(page, /adminCtx\("admin"\)/);
   assert.match(page, /<ExtensionCard /);
@@ -243,10 +241,11 @@ test("Extensions > Installées : une carte par module avec ses instances (nom, �
   const card = read("src/components/admin/ExtensionCard.tsx");
   assert.match(card, /<InstanceState t=\{t\} state=\{m\.attention\}/, "pastille seulement pour « à configurer » ou « erreur »");
   assert.match(card, /const settingsHref = single \? `\/admin\/instances\/\$\{single\.id\}` : `\/admin\/modules\//, "une seule action visible : Réglages");
+  assert.match(card, /<Link href=\{settingsHref\} scroll=\{false\}/, "navigation douce : les réglages s'ouvrent en fenêtre");
+  assert.ok(!/toggle(Instance|Module)|turnOn|turnOff|modules\.off|opacity-60/.test(card), "plus d'interrupteur, de pastille « éteint » ni de carte grisée");
   assert.match(card, /const single = m\.instances\.length === 1/, "une seule instance : jamais montrée à part");
   assert.match(card, /<details className="group mt-2[^]*?extensions\.manyItems/, "plusieurs instances : repliées sous la ligne");
   assert.match(card, /<RowMenu /, "les actions rares tiennent dans un menu « ⋯ »");
-  assert.match(card, /toggleInstanceAction\.bind\(null, i\.id, !i\.enabled\)/);
   assert.match(card, /setPlacementAction\.bind\(null, i\.id, i\.pinned \? i\.unpinTo : "menu"\)/, "épingler / retirer du menu");
   assert.match(card, /<CopyText text=\{url\}/, "l'adresse OBS des overlays est reprise");
   assert.match(card, /data-testid="admin-badge"/, "les pastilles restent visibles");
@@ -257,10 +256,10 @@ test("Extensions > Installées : une carte par module avec ses instances (nom, �
   assert.match(menu, /aria-label=\{label\}/);
   assert.match(read(`${PANEL}/extensions/loadInstalled.ts`), /overlayUrl\(siteUrl, i\.key\)/);
   const actions = read(`${PANEL}/extensions/actions.ts`);
-  for (const fn of ["setPlacementAction", "toggleInstanceAction"]) assert.match(actions, new RegExp(`export async function ${fn}[^]*?adminCtx\\("admin"\\)`));
+  for (const fn of ["setPlacementAction"]) assert.match(actions, new RegExp(`export async function ${fn}[^]*?adminCtx\\("admin"\\)`));
   assert.match(actions, /deleteSetting\(placementSettingKey/, "revenir à la règle par défaut efface le choix");
   // la page de réglages d'une instance propose le même choix
-  assert.match(read(`${PANEL}/instances/[id]/page.tsx`), /name="placement"/);
+  assert.match(read(`${PANEL}/instances/[id]/InstanceView.tsx`), /name="placement"/);
   assert.match(read(`${PANEL}/instances/actions.ts`), /placementSettingKey\(id\)/);
 });
 
@@ -292,8 +291,6 @@ test("états et épinglage de bout en bout : instances réelles, état par insta
   await setSetting(`instance.${hero.id}.buttonUrl`, "https://example.org");
   s = await loadInstanceStatuses();
   assert.equal(s.get(hero.id).state, "on");
-  await db.prisma.moduleInstance.update({ where: { id: hero.id }, data: { enabled: false } });
-  assert.equal((await loadInstanceStatuses()).get(hero.id).state, "off");
   await setSetting(`instance.${hero.id}.__dataStatus`, { status: "failed", error: "boom" });
   assert.equal((await loadInstanceStatuses()).get(hero.id).state, "error", "le module signale une erreur (migration de données échouée)");
   assert.equal((await getAdminNav("en", "en")).find((i) => i.key === hero.key).error, true);
@@ -393,10 +390,10 @@ test("familles d'Extensions : Contenu, Communauté, Réseaux et connexions, Over
   assert.equal(F.parseFamily("n'importe quoi"), null);
 });
 
-test("familles d'Extensions : ce qui demande de l'attention passe d'abord (erreur, à configurer, actif, éteint)", () => {
-  assert.equal(F.worstState(["on", "setup", "off"]), "setup");
+test("familles d'Extensions : ce qui demande de l'attention passe d'abord (erreur, à configurer, en place)", () => {
+  assert.equal(F.worstState(["on", "setup"]), "setup");
   assert.equal(F.worstState(["on", "error", "setup"]), "error");
-  assert.equal(F.worstState([]), "off");
+  assert.equal(F.worstState([]), "on", "rien à signaler");
   const groups = buildModuleGroups([
     { id: "a", name: "Alpha", type: "widget", family: "community", search: "" }, { id: "b", name: "Blog", type: "content", family: "content", search: "" },
     { id: "c", name: "Chaîne", type: "utility", family: "connections", search: "" }, { id: "x", name: "X", type: "broken", family: "broken", search: "" },
@@ -409,14 +406,14 @@ test("i18n : toutes les clés utilisées par le menu, Extensions et ses onglets 
   const fr = JSON.parse(read("src/locales/fr.json"));
   const en = JSON.parse(read("src/locales/en.json"));
   const files = [
-    `${PANEL}/layout.tsx`, `${PANEL}/extensions/page.tsx`, `${PANEL}/extensions/updates/page.tsx`, `${PANEL}/updates/page.tsx`, `${PANEL}/instances/[id]/page.tsx`,
+    `${PANEL}/layout.tsx`, `${PANEL}/extensions/page.tsx`, `${PANEL}/extensions/updates/page.tsx`, `${PANEL}/updates/page.tsx`, `${PANEL}/instances/[id]/InstanceView.tsx`,
     "src/components/admin/FeatureTabs.tsx", "src/components/admin/InstanceState.tsx", "src/components/admin/ModulesUpdatesSection.tsx", "src/components/admin/NavGroup.tsx",
     "src/components/admin/ExtensionCard.tsx", "src/components/admin/ExtensionsHeader.tsx", "src/components/admin/ExtensionsNotices.tsx", "src/components/admin/FamilyFilter.tsx",
   ];
   const keys = new Set();
   for (const f of files) for (const m of read(f).matchAll(/\bt\(\s*(?:advanced \? )?"([a-zA-Z][\w.]*)"/g)) keys.add(m[1]);
   for (const g of P.MENU_GROUPS) keys.add(`navgroup.${g}`);
-  for (const s of ["on", "off", "setup", "error"]) keys.add(`integrations.state.${s}`);
+  for (const s of ["on", "setup", "error"]) keys.add(`integrations.state.${s}`);
   for (const f of F.EXTENSION_FAMILIES) { keys.add(`family.${f}`); keys.add(`family.${f}.help`); }
   assert.ok(keys.size > 30);
   for (const k of keys) { assert.ok(fr[k], `fr : clé manquante ${k}`); assert.ok(en[k], `en : clé manquante ${k}`); }
@@ -432,7 +429,7 @@ test("i18n : toutes les clés utilisées par le menu, Extensions et ses onglets 
 test("mode simple : pas de jargon dans les textes d'Extensions (ni « instance », ni « manifeste »)", () => {
   const fr = JSON.parse(read("src/locales/fr.json"));
   const en = JSON.parse(read("src/locales/en.json"));
-  for (const k of ["extensions.introSimple", "hub.tab.installed.simple", "hub.tab.catalogue.simple", "extensions.manyItems", "extensions.turnOff", "extensions.menu", "nav.myCommunity", "nav.extensions", "placement.pin", "placement.unpin", "placement.park", "family.content.help", "family.community.help", "family.connections.help", "family.overlays.help"]) {
+  for (const k of ["extensions.introSimple", "hub.tab.installed.simple", "hub.tab.catalogue.simple", "extensions.manyItems", "extensions.menu", "nav.myCommunity", "nav.extensions", "placement.pin", "placement.unpin", "placement.park", "family.content.help", "family.community.help", "family.connections.help", "family.overlays.help"]) {
     assert.ok(!/instance|manifest|manifeste/i.test(fr[k]), `fr ${k}`);
     assert.ok(!/instance|manifest/i.test(en[k]), `en ${k}`);
   }

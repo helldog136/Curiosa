@@ -20,11 +20,11 @@ export const requiresOf = (m: Pick<ParsedManifest, "requires">) => (m.requires ?
 export async function liveProviders(except?: string): Promise<{ manifest: ParsedManifest; instanceKeys: string[] }[]> {
   const out: { manifest: ParsedManifest; instanceKeys: string[] }[] = [];
   for (const row of await listModuleRows()) {
-    if (!row.enabled || row.id === except) continue;
+    if (row.id === except) continue;
     const mod = await getModule(row.id);
     if (!mod) continue;
     const keys: string[] = [];
-    for (const inst of await prisma.moduleInstance.findMany({ where: { moduleId: row.id, enabled: true }, orderBy: { key: "asc" } })) {
+    for (const inst of await prisma.moduleInstance.findMany({ where: { moduleId: row.id }, orderBy: { key: "asc" } })) {
       if (!(await getSetting<{ status?: string }>(`instance.${inst.id}.__dataStatus`))?.status) keys.push(inst.key);
     }
     if (keys.length) out.push({ manifest: mod.manifest, instanceKeys: keys });
@@ -76,7 +76,7 @@ export async function dependentsOf(moduleId: string): Promise<string[]> {
   const mineOffers = new Set(offersOf(mine.manifest));
   const out: string[] = [];
   for (const row of await listModuleRows()) {
-    if (!row.enabled || row.id === moduleId) continue;
+    if (row.id === moduleId) continue;
     const m = await getModule(row.id);
     if (!m) continue;
     const lost = normalizeNeeds(m.manifest.requires).filter((n) => mineOffers.has(n.service) && !satisfiesVersion(bestVersion(others.filter((o) => o.manifest.id !== row.id), n.service), n.min));

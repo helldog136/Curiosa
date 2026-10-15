@@ -11,7 +11,7 @@ const cat = createCatalogue();   // l'index du catalogue vient d'un faux dépôt
 const { parseManifest } = await import("@/core/modules/manifest");
 const C = await import("@/core/modules/compat");
 const { sanitizeEntries, clearRecognizedCache } = await import("@/core/modules/recognized");
-const { installModule, installFromCatalogue, updateModule, checkForUpdate, setModuleEnabled } = await import("@/core/modules/installer");
+const { installModule, installFromCatalogue, updateModule, checkForUpdate } = await import("@/core/modules/installer");
 const { updateSequentially, collectReport } = await import("@/core/modules/bulkUpdate");
 const { getModulesReport, updateModules } = await import("@/core/modules/updateStatus");
 const { getCatalogue } = await import("@/core/modules/catalogue");
@@ -138,7 +138,7 @@ function releasable(id) {
 test("mise à jour refusée : version et fichiers inchangés, message clair ; acceptée dès que le cœur suit", async () => {
   const repo = releasable("alpha");
   assert.equal((await installModule(`${repo.url}#v1.0.0`)).ok, true);
-  await setModuleEnabled("alpha", true);
+
   repo.release("1.1.0", "0.1.10");
   const before = await db.prisma.module.findUnique({ where: { id: "alpha" } });
   const r = await updateModule("alpha");
@@ -196,13 +196,12 @@ test("de bout en bout : « Tout mettre à jour » saute le module incompatible, 
 test("un module déjà installé et activé n'est jamais désactivé ni cassé, même si son manifeste demande un cœur plus récent que le nôtre", async () => {
   const repo = makeRepo({ "module.json": manifest("deja", "1.0.0", "0.1.0"), "index.mjs": "export default {};\n" });
   assert.equal((await installModule(repo.url)).ok, true);
-  await setModuleEnabled("deja", true);
+
   C.setCoreVersionForTests("0.0.5");   // le cœur « recule » : le module reste chargé tel quel
   const mod = await getModule("deja");
   assert.ok(mod, "chargé");
   assert.equal(mod.manifest.minCore, "0.1.0");
   assert.equal((await db.prisma.module.findUnique({ where: { id: "deja" } })).enabled, true);
-  assert.equal((await setModuleEnabled("deja", true)).ok, true, "même l'activation ne regarde pas ce champ");
 });
 
 /* ───────────── Restauration ───────────── */

@@ -4,7 +4,7 @@ import { useTestDb } from "../helpers/db.mjs";
 import { makeRepo } from "../helpers/repo.mjs";
 
 const db = await useTestDb();
-const { installModule, setModuleEnabled, uninstallModule } = await import("@/core/modules/installer");
+const { installModule, uninstallModule, repairRequirements } = await import("@/core/modules/installer");
 const R = await import("@/core/modules/registry");
 const Dep = await import("@/core/modules/dependencies");
 const { parseManifest } = await import("@/core/modules/manifest");
@@ -34,29 +34,22 @@ test("manifeste : offers / requires valides, noms de services contrôlés", () =
   for (const bad of ["Contact", "a b", "a..b", ""]) assert.equal(parseManifest(m({ requires: [{ service: bad }] })).ok, false, bad);
 });
 
-test("activer un module sans son fournisseur : refusé, avec ce qui manque ; avec le fournisseur actif : accepté", async () => {
+test("mettre en place ce qui manque : refusé avec ce qui manque ; avec le fournisseur installé, il reçoit son instance", async () => {
   await install(consumer(), "cons");
-  const refused = await setModuleEnabled("cons", true);
+  const refused = await repairRequirements("cons");
   assert.deepEqual([refused.ok, refused.error, refused.detail], [false, "modules.error.requires", SERVICE]);
-  assert.equal((await db.prisma.module.findUnique({ where: { id: "cons" } })).enabled, false);
 
   await install(provider("prov"), "prov");
-  // Avant : « fournisseur installé mais pas activé : refusé ». Désormais la cascade l'active d'office et lui donne son instance.
-  const cascade = await setModuleEnabled("cons", true);
+  // Un module installé est actif : la cascade lui donne seulement son instance par défaut.
+  const cascade = await repairRequirements("cons");
   assert.deepEqual([cascade.ok, cascade.provided], [true, ["prov"]]);
-  assert.equal((await db.prisma.module.findUnique({ where: { id: "prov" } })).enabled, true);
   assert.equal(await db.prisma.moduleInstance.count({ where: { moduleId: "prov" } }), 1);
-  assert.equal((await setModuleEnabled("cons", true)).ok, true);
-});
-
-test("un module sans dépendance s'active comme avant", async () => {
-  await install(provider("prov"), "prov");
-  assert.equal((await setModuleEnabled("prov", true)).ok, true);
+  assert.equal((await repairRequirements("inconnu")).ok, false);
 });
 
 test("appel de service : le fournisseur écrit dans SON stockage, la valeur revient, le contexte est celui du fournisseur", async () => {
-  await install(provider("prov"), "prov"); await setModuleEnabled("prov", true);
-  await install(consumer(), "cons"); await setModuleEnabled("cons", true);
+  await install(provider("prov"), "prov");
+  await install(consumer(), "cons");
   const p = await instance("prov", "carnet"); await instance("cons", "form");
   const r = await Dep.callService(await active("cons"), SERVICE, "add", { name: "Alice" });
   assert.equal(r.ok, true);
@@ -67,9 +60,9 @@ test("appel de service : le fournisseur écrit dans SON stockage, la valeur revi
 });
 
 test("appel de service : non déclaré, méthode inconnue, erreur du fournisseur (jamais d'exception ni de détail), fournisseur absent", async () => {
-  await install(provider("prov"), "prov"); await setModuleEnabled("prov", true);
-  await install(consumer(), "cons"); await setModuleEnabled("cons", true);
-  await install(consumer("other", []), "other"); await setModuleEnabled("other", true);
+  await install(provider("prov"), "prov");
+  await install(consumer(), "cons");
+  await install(consumer("other", []), "other");
   await instance("prov", "carnet"); await instance("cons", "form"); await instance("other", "autre");
   const cons = await active("cons");
   assert.deepEqual(await Dep.callService(cons, SERVICE, "nope", {}), { ok: false, reason: "no_method" });
@@ -77,52 +70,48 @@ test("appel de service : non déclaré, méthode inconnue, erreur du fournisseur
   assert.deepEqual(await Dep.callService(await active("other"), SERVICE, "add", {}), { ok: false, reason: "undeclared" }, "sans `requires`, pas d'accès");
   assert.deepEqual(await Dep.callService(cons, "autre.service", "add", {}), { ok: false, reason: "undeclared" });
   // plus d'instance fournisseur active → indisponible, sans erreur
-  await db.prisma.moduleInstance.updateMany({ where: { moduleId: "prov" }, data: { enabled: false } });
+  await db.prisma.moduleInstance.deleteMany({ where: { moduleId: "prov" } });
   assert.deepEqual(await Dep.callService(cons, SERVICE, "add", {}), { ok: false, reason: "unavailable" });
   assert.equal(await Dep.serviceAvailable(SERVICE), false);
 });
 
-test("désactiver ou désinstaller un fournisseur dont un module actif dépend : refusé ; libre dès que le dépendant est arrêté", async () => {
-  await install(provider("prov"), "prov"); await setModuleEnabled("prov", true);
-  await install(consumer(), "cons"); await setModuleEnabled("cons", true);
-  const off = await setModuleEnabled("prov", false);
-  assert.deepEqual([off.ok, off.error, off.detail], [false, "modules.error.requiredBy", "cons"]);
-  assert.equal((await db.prisma.module.findUnique({ where: { id: "prov" } })).enabled, true);
-  const un = await uninstallModule("prov");
+test("désinstaller un fournisseur dont un module installé dépend : refusé ; libre dès que le dépendant est arrêté", async () => {
+  await install(provider("prov"), "prov");
+  await install(consumer(), "cons");
+  const un = await uninstallModule("prov", { keepData: false });
   assert.deepEqual([un.ok, un.error, un.detail], [false, "modules.error.requiredBy", "cons"]);
   assert.ok(await db.prisma.module.findUnique({ where: { id: "prov" } }), "toujours installé");
-  assert.equal((await setModuleEnabled("cons", false)).ok, true);
-  assert.equal((await setModuleEnabled("prov", false)).ok, true);
-  assert.equal((await uninstallModule("prov")).ok, true);
+  assert.equal((await uninstallModule("cons", { keepData: false })).ok, true);
+  assert.equal((await uninstallModule("prov", { keepData: false })).ok, true);
 });
 
-test("deux fournisseurs du même service : l'un peut s'arrêter tant que l'autre reste ; un fournisseur désactivé est ignoré", async () => {
+test("deux fournisseurs du même service : l'un peut s'arrêter tant que l'autre reste ; un fournisseur retiré est ignoré", async () => {
   await install(provider("prov-a"), "prov-a"); await install(provider("prov-b"), "prov-b");
-  await setModuleEnabled("prov-a", true); await setModuleEnabled("prov-b", true);
-  await install(consumer(), "cons"); await setModuleEnabled("cons", true);
+
+  await install(consumer(), "cons");
   await instance("prov-a", "a-store"); await instance("prov-b", "b-store"); await instance("cons", "form");
-  assert.equal((await setModuleEnabled("prov-a", false)).ok, true);
+  assert.equal((await uninstallModule("prov-a", { keepData: false })).ok, true);
   const r = await Dep.callService(await active("cons"), SERVICE, "add", { n: 1 });
   assert.equal(r.value.by, "b-store");
-  assert.equal((await setModuleEnabled("prov-b", false)).ok, false, "le dernier fournisseur ne peut pas partir");
+  assert.equal((await uninstallModule("prov-b", { keepData: false })).ok, false, "le dernier fournisseur ne peut pas partir");
 });
 
 test("choix du fournisseur : premier par clé d'instance, de façon stable", async () => {
-  await install(provider("prov"), "prov"); await setModuleEnabled("prov", true);
-  await install(consumer(), "cons"); await setModuleEnabled("cons", true);
+  await install(provider("prov"), "prov");
+  await install(consumer(), "cons");
   await instance("prov", "zeta"); await instance("prov", "alpha"); await instance("cons", "form");
   assert.equal((await Dep.callService(await active("cons"), SERVICE, "add", {})).value.by, "alpha");
 });
 
 test("doublon de service : détecté, « à choisir » tant que l'admin n'a rien dit ; maître par défaut = le premier, sans réplique", async () => {
   await install(provider("prov-a"), "prov-a"); await install(provider("prov-b"), "prov-b");
-  await setModuleEnabled("prov-a", true);
+
   await instance("prov-a", "a-store");
   assert.deepEqual(await Dep.duplicateServices(), [], "un seul fournisseur : rien à choisir");
-  await setModuleEnabled("prov-b", true); await instance("prov-b", "b-store");
+await instance("prov-b", "b-store");
   const [dup] = await Dep.duplicateServices();
   assert.deepEqual([dup.service, dup.resolved, dup.providers.map((p) => p.instance.key)], [SERVICE, false, ["a-store", "b-store"]]);
-  await install(consumer(), "cons"); await setModuleEnabled("cons", true); await instance("cons", "form");
+  await install(consumer(), "cons");await instance("cons", "form");
   assert.equal((await Dep.callService(await active("cons"), SERVICE, "add", {})).value.by, "a-store");
   assert.equal(await db.prisma.moduleRecord.count({ where: { collection: "items" } }), 1, "pas de réplique tant qu'on n'a pas choisi");
 });
@@ -136,9 +125,8 @@ test("maître + répliques : le maître répond, les répliques reçoivent aussi
   // `count` est déclarée lecture seule dans le manifeste du maître
   const withReadOnly = (id) => makeRepo({ "module.json": { apiVersion: 2, id, name: id, version: "1.0.0", main: "index.mjs", offers: [{ service: SERVICE, readOnly: ["count"] }] }, "index.mjs": code });
   await install(withReadOnly("prov-a"), "prov-a"); await install(prov("prov-b"), "prov-b"); await install(prov("prov-c"), "prov-c");
-  for (const id of ["prov-a", "prov-b", "prov-c"]) await setModuleEnabled(id, true);
   const pa = await instance("prov-a", "a-store"), pb = await instance("prov-b", "b-store"), pc = await instance("prov-c", "c-store");
-  await install(consumer(), "cons"); await setModuleEnabled("cons", true); await instance("cons", "form");
+  await install(consumer(), "cons");await instance("cons", "form");
   const cons = await active("cons");
   const n = (inst) => db.prisma.moduleRecord.count({ where: { collection: "items", instanceId: inst.id } });
 
@@ -161,9 +149,9 @@ test("maître + répliques : le maître répond, les répliques reçoivent aussi
 test("réplique en panne : l'appel réussit quand même ; maître en panne : l'appel échoue, aucune réplique n'est écrite", async () => {
   const bad = `export default { services: { "${SERVICE}": { add: async () => { throw new Error("réplique cassée"); } } } };`;
   await install(provider("prov-a"), "prov-a"); await install(provider("prov-bad", bad), "prov-bad");
-  await setModuleEnabled("prov-a", true); await setModuleEnabled("prov-bad", true);
+
   await instance("prov-a", "a-store"); await instance("prov-bad", "bad-store");
-  await install(consumer(), "cons"); await setModuleEnabled("cons", true); await instance("cons", "form");
+  await install(consumer(), "cons");await instance("cons", "form");
   const cons = await active("cons");
   await Dep.setRouting(SERVICE, { master: "a-store", replicas: ["bad-store"] });
   assert.equal((await quiet(() => Dep.callService(cons, SERVICE, "add", {}))).ok, true);
@@ -174,11 +162,11 @@ test("réplique en panne : l'appel réussit quand même ; maître en panne : l'a
 
 test("routage périmé (maître ou réplique retiré) : repli sur le premier fournisseur actif, sans erreur", async () => {
   await install(provider("prov-a"), "prov-a"); await install(provider("prov-b"), "prov-b");
-  await setModuleEnabled("prov-a", true); await setModuleEnabled("prov-b", true);
+
   await instance("prov-a", "a-store"); await instance("prov-b", "b-store");
-  await install(consumer(), "cons"); await setModuleEnabled("cons", true); await instance("cons", "form");
+  await install(consumer(), "cons");await instance("cons", "form");
   await Dep.setRouting(SERVICE, { master: "b-store", replicas: ["a-store"] });
-  assert.equal((await setModuleEnabled("prov-b", false)).ok, true, "le maître peut partir tant qu'un autre fournisseur reste");
+  assert.equal((await uninstallModule("prov-b", { keepData: false })).ok, true, "le maître peut partir tant qu'un autre fournisseur reste");
   assert.equal((await Dep.callService(await active("cons"), SERVICE, "add", {})).value.by, "a-store");
   await Dep.setRouting(SERVICE, null);
   assert.equal(await Dep.getRouting(SERVICE), null);

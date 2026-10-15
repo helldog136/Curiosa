@@ -7,7 +7,8 @@ import { redirect } from "next/navigation";
 import { adminCtx } from "@/core/admin";
 import { prisma } from "@/core/db";
 import { DISPLAYS, FEATURES } from "@/core/instances";
-import { deleteInstance, validateBasePath } from "@/core/instanceService";
+import { removeInstance, validateBasePath } from "@/core/instanceService";
+import { noticeFor, removalNoticeHref } from "@/core/modules/removal";
 import { checkNickname } from "@/core/instanceLabel";
 import { instanceSettingKey } from "@/core/modules/context";
 import { hasPage } from "@/core/modules/manifest";
@@ -47,9 +48,7 @@ export async function saveInstance(_prev: ActionState, formData: FormData): Prom
 
   // La version simplifiée de l'admin n'envoie pas les réglages techniques : on ne touche alors qu'à ce qui a été montré.
   const adv = formData.get("__adv") === "1";
-  const data: Record<string, unknown> = {
-    enabled: formData.get("enabled") === "on",
-  };
+  const data: Record<string, unknown> = {};
   // Surnom : envoyé seulement quand il y a plusieurs instances du module ; unique parmi elles.
   if (formData.get("nickname") !== null) {
     const others = (await prisma.moduleInstance.findMany({ where: { moduleId: existing.moduleId, NOT: { id } } })).map((o) => o.nickname).filter((n): n is string => !!n);
@@ -192,14 +191,17 @@ export async function retryMigrationAction(id: string): Promise<void> {
   redirect(`/admin/instances/${id}`);
 }
 
-export async function deleteInstanceAction(id: string): Promise<void> {
-  const { user } = await adminCtx("admin");
+/** Retire une instance : « Retirer et garder mes données » (rangées, retrouvables) ou « Retirer et tout effacer » (irréversible). */
+export async function deleteInstanceAction(id: string, keepData: boolean): Promise<void> {
+  const { user, locale, config } = await adminCtx("admin");
   const row = await prisma.moduleInstance.findUnique({ where: { id } });
   if (!row) return;
-  await deleteInstance(id);
-  await audit(user.email, "instance.delete", row.key);
+  const mod = await getModule(row.moduleId).catch(() => null);
+  const name = mod ? localized(mod.manifest.name, locale, config.defaultLocale) : row.key;
+  if (!(await removeInstance(id, { keepData }))) return;
+  await audit(user.email, keepData ? "instance.retire" : "instance.delete", row.key);
   revalidatePath("/", "layout");
-  redirect(EXTENSIONS_HREF);
+  redirect(removalNoticeHref(EXTENSIONS_HREF, { notice: noticeFor(keepData), name }));
 }
 
 /**

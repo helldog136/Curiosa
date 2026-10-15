@@ -8,7 +8,7 @@ import { useTestDb } from "../helpers/db.mjs";
 
 const db = await useTestDb();
 const { parseManifest, effectiveType, hasPage } = await import("@/core/modules/manifest");
-const { parseRepoUrl, installModule, setModuleEnabled, uninstallModule, checkForUpdate, updateModule } = await import("@/core/modules/installer");
+const { parseRepoUrl, installModule, uninstallModule, repairRequirements, checkForUpdate, updateModule } = await import("@/core/modules/installer");
 const R = await import("@/core/modules/registry");
 const { MODULES_DIR } = await import("@/core/config");
 
@@ -117,28 +117,27 @@ function makeRepo(files, { branch = "main" } = {}) {
 }
 const SIMPLE = (over = {}) => ({ "module.json": base({ main: "index.mjs", ...over }), "index.mjs": "export default { sections: { hello: () => [{ type: 'text', text: 'salut' }] } };\n" });
 
-test("installation : le module arrive désactivé, rien ne s'exécute avant l'accord de l'admin", async () => {
+test("installation : installé = actif, il n'y a pas d'état intermédiaire", async () => {
   const repo = makeRepo(SIMPLE());
   const r = await installModule(repo.url);
   assert.deepEqual(r, { ok: true, id: "demo" });
   const row = await db.prisma.module.findUnique({ where: { id: "demo" } });
-  assert.equal(row.enabled, false);
+  assert.equal(row.enabled, true);
   assert.equal(row.source, "git");
   assert.equal(row.commit, repo.commit);
   assert.ok(fs.existsSync(path.join(MODULES_DIR, "demo", "module.json")));
   assert.deepEqual(fs.readdirSync(MODULES_DIR).filter((n) => n.startsWith(".incoming")), [], "dossier temporaire nettoyé");
 });
 
-test("installation : activation charge réellement le code, désactivation le retire des modules actifs", async () => {
+test("installation : charge réellement le code, la désinstallation le retire des modules chargés", async () => {
   await installModule(makeRepo(SIMPLE()).url);
-  assert.equal((await R.getEnabledModules()).some((m) => m.manifest.id === "demo"), false);
-  assert.deepEqual(await setModuleEnabled("demo", true), { ok: true, id: "demo" });
-  const mod = (await R.getEnabledModules()).find((m) => m.manifest.id === "demo");
+  const mod = (await R.getInstalledModules()).find((m) => m.manifest.id === "demo");
   assert.ok(mod);
   assert.equal(typeof mod.def.sections.hello, "function");
-  await setModuleEnabled("demo", false);
-  assert.equal((await R.getEnabledModules()).some((m) => m.manifest.id === "demo"), false);
-  assert.equal((await setModuleEnabled("inconnu", true)).ok, false);
+
+  assert.equal((await uninstallModule("demo", { keepData: false })).ok, true);
+  assert.equal((await R.getInstalledModules()).some((m) => m.manifest.id === "demo"), false);
+  assert.equal((await uninstallModule("inconnu", { keepData: false })).ok, false);
 });
 
 test("installation : refus d'un module déjà installé, sans manifeste ou invalide", async () => {
@@ -194,17 +193,17 @@ test("mises à jour : détection d'un nouveau commit puis application", async ()
 
 test("désinstallation : supprime fichiers, instances, réglages et données du module, rien d'autre", async () => {
   await installModule(makeRepo(SIMPLE()).url);
-  await setModuleEnabled("demo", true);
+
   const inst = await db.prisma.moduleInstance.create({ data: { moduleId: "demo", key: "demo", basePath: "demo" } });
   await db.prisma.setting.create({ data: { key: `instance.${inst.id}.x`, locale: "", value: "1" } });
   await db.prisma.setting.create({ data: { key: "site.name", locale: "", value: '"Garde"' } });
   await db.prisma.moduleRecord.create({ data: { instanceId: inst.id, collection: "c", data: "{}" } });
-  assert.equal((await uninstallModule("demo")).ok, true);
+  assert.equal((await uninstallModule("demo", { keepData: false })).ok, true);
   assert.equal(fs.existsSync(path.join(MODULES_DIR, "demo")), false);
   assert.equal(await db.prisma.moduleInstance.count(), 0);
   assert.equal(await db.prisma.moduleRecord.count(), 0);
   assert.deepEqual((await db.prisma.setting.findMany()).map((s) => s.key), ["site.name"]);
-  assert.equal((await uninstallModule("demo")).ok, false);
+  assert.equal((await uninstallModule("demo", { keepData: false })).ok, false);
 });
 
 /* ───────────── Registre ───────────── */
@@ -215,10 +214,10 @@ test("registre : un module cassé est ignoré sans casser les autres", async () 
   await db.prisma.module.update({ where: { id: "casse" }, data: { enabled: true } });
   const log = console.error; console.error = () => {};
   try {
-    const mods = await R.getEnabledModules();
+    const mods = await R.getInstalledModules();
     assert.ok(mods.length >= 1);
     assert.equal(mods.some((m) => m.manifest.id === "casse"), false);
-    assert.equal((await setModuleEnabled("casse", true)).error, "modules.error.load");
+    assert.equal((await repairRequirements("casse")).error, "modules.error.load");
   } finally { console.error = log; }
 });
 
@@ -231,12 +230,12 @@ test("registre : sections proposées — « latest » ajoutée d'office aux modu
   assert.equal(R.sectionsOf(own).filter((s) => s.id === "latest").length, 1);
 });
 
-test("registre : les instances actives excluent les instances ou modules désactivés", async () => {
+test("registre : les instances actives sont celles des modules installés et chargeables", async () => {
   const first = await db.fixture("blog");
   const a = await db.prisma.moduleInstance.create({ data: { moduleId: first.id, key: "un", basePath: "un" } });
-  await db.prisma.moduleInstance.create({ data: { moduleId: first.id, key: "deux", basePath: "deux", enabled: false } });
-  assert.deepEqual((await R.getActiveInstances()).map((x) => x.instance.key), ["un"]);
-  await db.prisma.module.update({ where: { id: first.id }, data: { enabled: false } });
+  await db.prisma.moduleInstance.create({ data: { moduleId: "inconnu", key: "orpheline", basePath: "orpheline" } });
+  assert.deepEqual((await R.getActiveInstances()).map((x) => x.instance.key), ["un"], "une instance dont le module n'est pas installé ne tourne pas");
+  await uninstallModule(first.id, { keepData: false });
   assert.deepEqual(await R.getActiveInstances(), []);
   void a;
 });

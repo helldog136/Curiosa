@@ -6,6 +6,26 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
+## Prochaine version (non publiée)
+
+### Nouveautés
+
+- **Une extension est installée, ou elle ne l'est pas.** Plus d'interrupteur « Allumer / Éteindre » : une extension installée fonctionne, et pour ne plus l'avoir, on la retire.
+- **Vous choisissez ce que deviennent vos données.** Deux boutons clairs : « Retirer et garder mes données » (vos réglages et contenus sont mis de côté, invisibles) ou « Retirer et tout effacer » (définitif, avec un conseil de sauvegarde).
+- **Réinstaller retrouve tout.** Remettez une extension retirée en gardant ses données : elle revient exactement comme vous l'aviez laissée. La page « Ajouter » vous prévient que vos données ont été gardées, et vous pouvez les effacer pour de bon.
+- **Les réglages s'ouvrent dans une fenêtre** par-dessus la liste des extensions : réglages, éléments, adresse à coller dans OBS, menu et retrait au même endroit. Échap ou le bouton « Fermer » vous ramène à la liste, là où vous étiez ; sur mobile, la fenêtre prend tout l'écran.
+
+### Améliorations
+
+- Ce qui était éteint avant cette version n'est pas perdu : au premier démarrage, chaque extension ou élément éteint est retiré en gardant ses données. Réinstallez-le quand vous voulez pour tout retrouver.
+- Plus de pastille « éteint » ni de carte grisée dans Extensions : une carte n'affiche que ce qui demande votre attention.
+- La sauvegarde du site contient aussi les données gardées.
+- Les assistants branchés au site (maintenance par IA) peuvent retirer une extension en gardant ses données, ce qui est le choix par défaut ; effacer reste soumis à votre accord.
+
+### Pour les développeurs
+
+- Plus de `enabled` lu pour les modules ni les instances (colonnes gardées, lues par `legacyOff.ts` seul, à retirer en 0.3.0). Données gardées : table `RetiredInstance`, un bloc inerte par instance, lu par `retired.ts` seul. `uninstallModule(id, { keepData })` ; MCP `keepData` (défaut vrai). Fenêtre : route interceptée `extensions/@modal`.
+
 ## 0.1.19
 
 ### Nouveautés

@@ -127,14 +127,10 @@ async function tryCandidate(c: Candidate, gap: Gap, consumer: ParsedManifest, op
   if (!sub.ok) return sub;
   const row = await prisma.module.findUnique({ where: { id: c.id } });
   if (!row) return fail({ error: "modules.error.notfound" });
-  if (!row.enabled) {
-    await prisma.module.update({ where: { id: c.id }, data: { enabled: true } });
-    journal.undo.push(async () => { await prisma.module.update({ where: { id: c.id }, data: { enabled: false } }); });
-  }
   const instance = await ensureDefaultInstance(c.id);
   if (!instance) return fail({ error: "modules.error.load" });
   if (instance.kind !== "present") journal.undo.push(() => undoDefaultInstance(instance));
-  if (installedHere || instance.kind !== "present" || !row.enabled) {
+  if (installedHere || instance.kind !== "present") {
     journal.auto.push({ id: c.id, module: installedHere, instances: instance.kind === "created" ? [instance.instanceId] : [] });
     journal.provided.push(c.id);
   }

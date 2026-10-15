@@ -10,6 +10,7 @@ import { forgetModule, getModule, moduleDir, readGitManifest } from "./registry"
 import { catalogueUnreachable, findCatalogueEntry, getCatalogue } from "./catalogue";
 import { checkBundledRow, convertToCatalogue } from "./bundledUpdate";
 import { dependentsOf } from "./dependencies";
+import { eraseRetired, restoreModuleInstances, retireModuleInstances } from "./retired";
 import { commitJournal, newJournal, satisfyRequirements, unwind, type DepOps, type Journal, type Missing } from "./dependencyInstaller";
 import { forgetAuto } from "./autoInstalled";
 import { migrateModuleInstances, type MigrationOutcome } from "./dataMigrations";
@@ -27,6 +28,10 @@ export type InstallResult = {
   auditTarget?: string;
   /** Modules apportés d'office par la cascade des dépendances (installés ou activés). */
   provided?: string[];
+  /** Réinstallation d'un module dont les données avaient été gardées : clés des instances retrouvées telles quelles. */
+  restored?: string[];
+  /** Désinstallation en gardant les données : combien d'instances ont été rangées. */
+  kept?: number;
   /** Mise à jour réussie, mais il manque encore de quoi faire fonctionner le module : à dire à l'administrateur. */
   missing?: Missing[];
 } | { ok: false; error: string; /** Détail structuré de ce qui manque (service, version, cause) quand l'erreur est « modules.error.requires ». */ missing?: Missing[]; /** Précision lisible (ex. les services manquants). */ detail?: string; /** Erreur « modules.error.core » : version du cœur que le module demande (voir compat.ts). */ needsCore?: string };
@@ -138,8 +143,15 @@ export function copyModuleFiles(from: string, target: string): void {
   }
 }
 
-/** Installe un module depuis un dépôt git. Il est installé *désactivé* : rien ne s'exécute avant l'accord de l'admin. */
-export async function installModule(input: string, opts: { expectId?: string; /** false : ne pas installer les fournisseurs (restauration, cascade elle-même). */ dependencies?: boolean } = {}): Promise<InstallResult> {
+/**
+ * Installe un module depuis un dépôt git. « Installé » = « actif » : il n'y a pas d'état intermédiaire, c'est pourquoi l'accord de l'administrateur se donne AVANT
+ * (case « je fais confiance » pour un dépôt personnel, fiche du catalogue). Si les données d'une désinstallation précédente avaient été gardées, elles reviennent.
+ */
+export async function installModule(input: string, opts: {
+  expectId?: string;
+  /** false : ne pas installer les fournisseurs (restauration, cascade elle-même). */ dependencies?: boolean;
+  /** false : ne pas remettre les données gardées (restauration d'une sauvegarde, graine, cascade : elles ont leur propre chemin). */ restoreKept?: boolean;
+} = {}): Promise<InstallResult> {
   const parsed = parseRepoUrl(input);
   if (!parsed.ok) return parsed;
   const { url, ref, subdir } = parsed.repo;
@@ -194,10 +206,14 @@ export async function installModule(input: string, opts: { expectId?: string; /*
       fs.renameSync(checkout, moduleDir(m.id));
     }
     await prisma.module.create({
-      data: { id: m.id, source: "git", repoUrl: url, ref: ref ?? null, commit, subdir: subdir ?? null, tree, version: m.version, enabled: false },
+      data: { id: m.id, source: "git", repoUrl: url, ref: ref ?? null, commit, subdir: subdir ?? null, tree, version: m.version, enabled: true },
     });
     if (deps) await commitJournal(deps);
-    return { ok: true, id: m.id, ...(deps?.provided.length ? { provided: deps.provided } : {}) };
+    const kept = opts.restoreKept === false ? null : await restoreModuleInstances(m.id);
+    return {
+      ok: true, id: m.id, ...(deps?.provided.length ? { provided: deps.provided } : {}),
+      ...(kept?.restored.length ? { restored: kept.restored.map((r) => r.key) } : {}), ...(kept?.migrations.length ? { migrations: kept.migrations } : {}),
+    };
   } catch (error) {
     if (deps) await unwind(deps);
     if (error instanceof CoreTooOld) return coreRefusal(error);
@@ -474,14 +490,15 @@ export const requirementsRefusal = (missing: Missing[]): InstallResult => ({ ok:
 const depOps = (): DepOps => ({
   catalogue: () => getCatalogue(),
   installEntry: async (entry) => {
-    const r = await installModule(`${entry.repo}${entry.ref || entry.subdir ? `#${entry.ref ?? ""}${entry.subdir ? `:${entry.subdir}` : ""}` : ""}`, { expectId: entry.id, dependencies: false });
+    // Ses données gardées (s'il y en a) reviennent avec son instance par défaut (voir ensureDefaultInstance), pas ici : le journal sait les défaire.
+    const r = await installModule(`${entry.repo}${entry.ref || entry.subdir ? `#${entry.ref ?? ""}${entry.subdir ? `:${entry.subdir}` : ""}` : ""}`, { expectId: entry.id, dependencies: false, restoreKept: false });
     return r.ok ? { ok: true } : { ok: false, error: r.error, detail: r.detail };
   },
   purge: purgeModule,
 });
 
-/** Active un module : ses fournisseurs sont d'abord installés/activés (avec leur instance par défaut) ; au moindre échec tout est défait. */
-async function enableModule(id: string): Promise<InstallResult> {
+/** « Mettre en place ce qui manque » : les fournisseurs des services dont le module a besoin sont installés d'office (avec leur instance) ; au moindre échec tout est défait. */
+export async function repairRequirements(id: string): Promise<InstallResult> {
   const row = await prisma.module.findUnique({ where: { id } });
   if (!row) return { ok: false, error: "modules.error.notfound" };
   const mod = await getModule(id);
@@ -489,7 +506,6 @@ async function enableModule(id: string): Promise<InstallResult> {
   const r = await satisfyRequirements(mod.manifest, depOps());
   if (!r.ok) { await unwind(r.journal); return requirementsRefusal(r.missing); }
   try {
-    await prisma.module.update({ where: { id }, data: { enabled: true } });
     await commitJournal(r.journal);
   } catch (error) {
     await unwind(r.journal);
@@ -499,13 +515,13 @@ async function enableModule(id: string): Promise<InstallResult> {
 }
 
 /**
- * Vérifie les `requires` d'un module ACTIF et, s'il manque un fournisseur disponible (catalogue), l'installe d'office avec son instance par défaut.
+ * Vérifie les `requires` d'un module installé et, s'il manque un fournisseur disponible (catalogue), l'installe d'office avec son instance par défaut.
  * Impossible → rien n'est laissé à moitié et `missing` dit quoi. Sert après une mise à jour et après une restauration. Ne lève jamais.
  */
 export async function settleDependencies(id: string): Promise<{ provided?: string[]; missing?: Missing[] }> {
   try {
     const row = await prisma.module.findUnique({ where: { id } });
-    const mod = row?.enabled ? await getModule(id) : null;
+    const mod = row ? await getModule(id) : null;
     if (!mod?.manifest.requires?.length) return {};
     const r = await satisfyRequirements(mod.manifest, depOps());
     if (!r.ok) { await unwind(r.journal); return { missing: r.missing }; }
@@ -519,24 +535,21 @@ export async function settleDependencies(id: string): Promise<{ provided?: strin
 
 /**
  * Installe le module cible d'une graine (`ctx.seedInstance`, voir seeding.ts) quand il manque : depuis le catalogue, SANS lui créer d'instance par défaut
- * (c'est l'instance semée qui fournira le service), avec ses propres dépendances s'il est activé. Il n'est activé que si le module semeur l'est.
+ * (c'est l'instance semée qui fournira le service), avec ses propres dépendances.
  * Renvoie le journal de la cascade (à défaire en bloc si la migration échoue ; ses marques « installé automatiquement » s'écrivent à la réussite).
  */
-export async function installSeedTarget(id: string, forModule: string, enable: boolean): Promise<{ ok: true; journal: Journal } | { ok: false; error: string; detail?: string }> {
-  const r = await installFromCatalogue(id, { dependencies: false });
+export async function installSeedTarget(id: string, forModule: string): Promise<{ ok: true; journal: Journal } | { ok: false; error: string; detail?: string }> {
+  const r = await installFromCatalogue(id, { dependencies: false, restoreKept: false });
   if (!r.ok) return { ok: false, error: r.error, detail: r.detail };
   const journal = newJournal(forModule);
   journal.undo.push(() => purgeModule(id));
   journal.auto.push({ id, module: true, instances: [] });
   journal.provided.push(id);
   try {
-    if (enable) {
-      const mod = await getModule(id);
-      if (!mod) throw new Error("modules.error.load");
-      const deps = await satisfyRequirements(mod.manifest, depOps(), journal, [forModule, id]);
-      if (!deps.ok) throw new Error(`modules.error.requires:${deps.missing.map((x) => x.service).join(",")}`);
-      await prisma.module.update({ where: { id }, data: { enabled: true } });
-    }
+    const mod = await getModule(id);
+    if (!mod) throw new Error("modules.error.load");
+    const deps = await satisfyRequirements(mod.manifest, depOps(), journal, [forModule, id]);
+    if (!deps.ok) throw new Error(`modules.error.requires:${deps.missing.map((x) => x.service).join(",")}`);
     return { ok: true, journal };
   } catch (error) {
     await unwind(journal);
@@ -544,35 +557,30 @@ export async function installSeedTarget(id: string, forModule: string, enable: b
   }
 }
 
-export async function setModuleEnabled(id: string, enabled: boolean): Promise<InstallResult> {
+/**
+ * Désinstalle un module : plus de page, de menu, de tâche, d'outil MCP ni de route publique. Deux issues, au choix de l'administrateur :
+ *   - `keepData: true`  : ses instances (réglages, contenus, stockage) sont RANGÉES, inertes, dans le cœur ; réinstaller le même module les retrouve telles quelles ;
+ *   - `keepData: false` : tout est effacé, y compris des données rangées auparavant (irréversible).
+ * Refusée tant qu'un autre module a besoin d'un service que celui-ci est seul à fournir.
+ */
+export async function uninstallModule(id: string, opts: { keepData: boolean }): Promise<InstallResult> {
   const row = await prisma.module.findUnique({ where: { id } });
   if (!row) return { ok: false, error: "modules.error.notfound" };
-  if (enabled) return enableModule(id);
-  if (row.enabled) {
-    const dependents = await dependentsOf(id);
-    if (dependents.length) return { ok: false, error: "modules.error.requiredBy", detail: dependents.join(", ") };
-  }
-  await prisma.module.update({ where: { id }, data: { enabled: false } });
-  return { ok: true, id };
-}
-
-export async function uninstallModule(id: string): Promise<InstallResult> {
-  const row = await prisma.module.findUnique({ where: { id } });
-  if (!row) return { ok: false, error: "modules.error.notfound" };
-  if (row.enabled) {
-    const dependents = await dependentsOf(id);
-    if (dependents.length) return { ok: false, error: "modules.error.requiredBy", detail: dependents.join(", ") };
-  }
+  const dependents = await dependentsOf(id);
+  if (dependents.length) return { ok: false, error: "modules.error.requiredBy", detail: dependents.join(", ") };
+  let kept = 0;
+  if (opts.keepData) kept = (await retireModuleInstances(id, "uninstall")).length;
+  else await eraseRetired({ moduleId: id });
   await purgeModule(id);
   await forgetAuto(id);
-  return { ok: true, id };
+  return { ok: true, id, ...(opts.keepData ? { kept } : {}) };
 }
 
-/** Supprime un module, ses instances et leurs données SANS contrôle des dépendants (le contrôle est dans `uninstallModule` ; ici, l'annulation d'une cascade). */
+/** Supprime un module, ses instances et leurs données vivantes SANS contrôle des dépendants (le contrôle est dans `uninstallModule` ; ici, l'annulation d'une cascade). Les données gardées ne sont pas touchées. */
 export async function purgeModule(id: string): Promise<void> {
   const instances = await prisma.moduleInstance.findMany({ where: { moduleId: id }, select: { id: true } });
   const ids = instances.map((i) => i.id);
-  await prisma.setting.deleteMany({ where: { OR: ids.map((i) => ({ key: { startsWith: `instance.${i}.` } })) } });
+  if (ids.length) await prisma.setting.deleteMany({ where: { OR: ids.map((i) => ({ key: { startsWith: `instance.${i}.` } })) } });
   await prisma.moduleRecord.deleteMany({ where: { instanceId: { in: ids } } });
   await prisma.moduleInstance.deleteMany({ where: { moduleId: id } });
   await prisma.module.delete({ where: { id } });
@@ -581,7 +589,7 @@ export async function purgeModule(id: string): Promise<void> {
 }
 
 /** Installe un module du catalogue (catalogue) par son identifiant. Le dépôt reconnu doit servir ce module-là. */
-export async function installFromCatalogue(id: string, opts: { dependencies?: boolean } = {}): Promise<InstallResult> {
+export async function installFromCatalogue(id: string, opts: { dependencies?: boolean; restoreKept?: boolean } = {}): Promise<InstallResult> {
   const entry = await findCatalogueEntry(id);
   if (!entry) return { ok: false, error: "modules.error.notfound" };
   if (!entry.compatible) return { ok: false, error: "modules.error.incompatible" };

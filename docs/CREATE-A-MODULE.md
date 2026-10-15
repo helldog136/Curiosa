@@ -482,9 +482,9 @@ personnalisés. Les entrées alimentent le sujet `core.entry` : n'importe quel o
 
 1. Lancez le framework en local (voir [INSTALL.md](INSTALL.md)) avec la variable d'environnement **`CURIOSA_ALLOW_LOCAL_MODULES=1`** (elle autorise les dépôts locaux ; **jamais** sur un serveur public).
 2. Votre module est un dépôt git **avec au moins un commit** : `git init && git add . && git commit -m "first version"`.
-3. Admin → **Fonctionnalités** → onglet **Ajouter** (le catalogue) → **Installer un dépôt personnel (non vérifié)** → saisissez `file:///chemin/absolu/vers/votre/depot`, cochez la case de confiance. Le module est installé **désactivé**.
-4. **Modules** → activez-le, ajoutez une instance, ouvrez-la : réglages, panneau d'admin, page publique, section sur l'accueil (admin → Accueil).
-5. Vous avez modifié le code ? **Validez** (`git commit`), puis **Modules → Chercher une mise à jour → Mettre à jour**. Le module est rechargé depuis le dernier commit.
+3. Admin → **Fonctionnalités** → onglet **Ajouter** (le catalogue) → **Installer un dépôt personnel (non vérifié)** → saisissez `file:///chemin/absolu/vers/votre/depot`, cochez la case de confiance. Le module est installé **actif** (l'accord se donne par cette case, avant).
+4. **Extensions** → « Réglages » (une fenêtre) : ajoutez une instance, ouvrez-la : réglages, panneau d'admin, page publique, section sur l'accueil (admin → Accueil).
+5. Vous avez modifié le code ? **Validez** (`git commit`), puis **Extensions → Réglages → Chercher une mise à jour → Mettre à jour**. Le module est rechargé depuis le dernier commit.
 
 Si l'installation est refusée, le message vous dit pourquoi : manifeste invalide (`module.json: settings.2.key — …`), `apiVersion` différente, `main` introuvable, lien symbolique, plus de 10 Mo…
 Le serveur journalise aussi les erreurs d'exécution de votre module (un module en erreur ne casse jamais le site).
@@ -594,7 +594,8 @@ Le cœur reprend ce texte tel quel, sous le nom de l'instance. Un module qui ne 
 - [ ] Si la forme de mes données a changé : `dataVersion` augmenté et migration écrite et testée sur des données de l'ancienne version.
 - [ ] Si le module collecte des données de visiteurs : champ `privacy` renseigné (en **et** fr) ; aucun cookie, stockage navigateur ni service tiers non essentiel sans consentement.
 - [ ] `license` choisie dans `module.json` (elle n'a pas à être celle du framework).
-- [ ] Essayé en vrai : installation locale, activation, instance, page, formulaire, admin, désinstallation propre.
+- [ ] Essayé en vrai : installation locale, instance, page, formulaire, admin, désinstallation en gardant les données puis réinstallation (tout revient), désinstallation en effaçant tout.
+- [ ] Rien ne suppose un état « éteint » : un module installé tourne ; `hooks.onInstanceDelete` n'est appelé que quand les données sont effacées (en « garder », elles sont rangées, pas détruites).
 - [ ] Un `README.md` explique ce que fait le module, ses réglages et ses limites ; la version est **taguée** (`git tag v1.0.0`).
 - [ ] **Pensez à Emma et à Hugo.** Emma n'a aucun bagage technique : tout réglage qu'elle doit remplir porte un libellé simple (« Adresse de votre salon Discord », pas « webhookUrl ») et une aide en une phrase ; un réglage de technicien (délai, mode de test, format) porte `"advanced": true` : il n'apparaît que dans le mode avancé de Hugo, avec une valeur par défaut raisonnable. Vos textes d'admin (`adminPanel`) disent ce qu'on peut faire, pas comment ça marche.
 - [ ] Un **README.md** à la racine du dépôt : il est affiché dans le Catalogue avant l'installation (à quoi sert le module, réglages, permissions, et si vous le souhaitez un lien pour un don volontaire : le Catalogue est gratuit, rien ne s'y vend).

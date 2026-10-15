@@ -11,14 +11,14 @@ import { EXTENSIONS_HREF } from "@/core/modules/extensionsLinks";
 export default async function Dashboard({ searchParams }: { searchParams: Promise<{ denied?: string; welcome?: string; modules?: string }> }) {
   const { t, config, advanced, user } = await adminCtx("editor");
   const nav = await getAdminNav(config.defaultLocale, config.defaultLocale);
-  const firstContent = nav.find((i) => i.content && i.enabled && !i.error);
+  const firstContent = nav.find((i) => i.content && !i.error);
   const { denied, welcome, modules: setupModulesState } = await searchParams;
   const [drafts, published, redirects, collections, modules] = await Promise.all([
     prisma.entry.count({ where: { status: "draft" } }),
     prisma.entry.count({ where: { status: "published" } }),
     prisma.redirect.count(),
     prisma.moduleInstance.count(),
-    prisma.module.count({ where: { enabled: true } }),
+    prisma.module.count(),
   ]);
   const todo = nav.filter((i) => i.badge > 0);
   const updateAvailable = user.role === "owner" && (await getUpdateCheck().catch(() => null))?.available === true;

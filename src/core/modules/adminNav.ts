@@ -4,7 +4,7 @@ import { buildContext } from "./context";
 import { getInstanceLabeler } from "./labels";
 import { effectiveType } from "./manifest";
 import { platformOf } from "./platform";
-import { getEnabledModules } from "./registry";
+import { getInstalledModules } from "./registry";
 import { defaultPlacement, defaultSection, parsePlacement, placementSettingKey, placementsFor, resolvePlacement, type MenuEntry, type Placement } from "./menuPlacement";
 
 export type AdminNavItem = MenuEntry & {
@@ -37,12 +37,12 @@ async function badgeOf(mod: Parameters<typeof buildContext>[0], instance: Parame
 }
 
 /**
- * Toutes les instances des modules actifs, avec où les ranger (épinglée au menu, dans quelle rubrique, ou seulement dans Extensions : voir menuPlacement.ts), leur pastille et leur état.
- * Le rangement en groupes et la liste des seules instances actives se font dans `buildMenuLayout`.
+ * Toutes les instances des modules installés, avec où les ranger (épinglée au menu, dans quelle rubrique, ou seulement dans Extensions : voir menuPlacement.ts), leur pastille et leur état.
+ * Le rangement en groupes se fait dans `buildMenuLayout`.
  */
 export async function getAdminNav(locale: string, defaultLocale: string): Promise<AdminNavItem[]> {
   const labeler = await getInstanceLabeler(locale, defaultLocale);
-  const mods = await getEnabledModules();
+  const mods = await getInstalledModules();
   const out: AdminNavItem[] = [];
   for (const instance of await listInstances()) {
     const mod = mods.find((m) => m.manifest.id === instance.moduleId);
@@ -61,7 +61,6 @@ export async function getAdminNav(locale: string, defaultLocale: string): Promis
       content: !!mod.manifest.content,
       section: defaultSection(mod.manifest),
       type: effectiveType(mod.manifest),
-      enabled: instance.enabled,
       error,
       pinned,
       placement: resolvePlacement(mod.manifest, pinned),
@@ -69,7 +68,7 @@ export async function getAdminNav(locale: string, defaultLocale: string): Promis
       platform: platformOf(mod.manifest),
       placements: placementsFor(mod.manifest),
       overlay: !!mod.def.overlay,
-      badge: instance.enabled && !error ? await badgeOf(mod, instance, locale) : 0,
+      badge: !error ? await badgeOf(mod, instance, locale) : 0,
     });
   }
   return out;

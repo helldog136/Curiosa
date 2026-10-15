@@ -18,7 +18,7 @@ const F = await import("@/core/backup/format");
 const { createTarGz, readTarGz } = await import("@/core/backup/tar");
 const { encryptBackup } = await import("@/core/backup/crypto");
 const { stash, unstash, purgeStash, dropStash } = await import("@/core/backup/files");
-const { installModule, setModuleEnabled } = await import("@/core/modules/installer");
+const { installModule } = await import("@/core/modules/installer");
 const R = await import("@/core/modules/registry");
 const { createInstance } = await import("@/core/instanceService");
 const { createEntry } = await import("@/core/content/service");
@@ -220,7 +220,7 @@ const base = (over) => ({ apiVersion: 2, version: "1.0.0", name: "Perso", ...ove
 async function withCustomModule() {
   const repo = makeRepo({ "module.json": base({ id: "perso", main: "index.mjs" }), "index.mjs": "export default { backup: { readable: (ctx) => [{ path: 'resume.csv', content: 'nom;valeur\\nclé;42\\n' }, { path: '../evil.txt', content: 'x' }] } };" });
   await installModule(repo.url);
-  await setModuleEnabled("perso", true);
+
   const mod = await R.getModule("perso");
   const inst = await createInstance(db.prisma, { manifest: mod.manifest, names: { fr: "Perso" } });
   await db.prisma.moduleRecord.create({ data: { instanceId: inst.id, collection: "items", data: JSON.stringify({ a: 1 }) } });
@@ -243,7 +243,7 @@ test("modules : les données de CHAQUE module installé sont sauvegardées (stoc
 test("modules : un module qui plante pendant son export lisible n'empêche pas la sauvegarde", async () => {
   await seed();
   const repo = makeRepo({ "module.json": base({ id: "casse", main: "index.mjs" }), "index.mjs": "export default { backup: { readable: () => { throw new Error('boum'); } } };" });
-  await installModule(repo.url); await setModuleEnabled("casse", true);
+  await installModule(repo.url);
   await createInstance(db.prisma, { manifest: (await R.getModule("casse")).manifest, names: { fr: "Casse" } });
   const log = console.error; console.error = () => {};
   try { assert.ok((await make()).buffer.length > 100); } finally { console.error = log; }
@@ -298,10 +298,10 @@ test("restauration des modules : une installation qui échoue est signalée sans
   assert.deepEqual(report.modules, [{ id: "demo-planner", outcome: "failed", error: "modules.error.clone" }]);
 });
 
-test("restauration des modules : les modules d'une ancienne sauvegarde (« intégrés ») sont réinstallés depuis le catalogue et reprennent leur état activé / désactivé", async () => {
+test("restauration des modules : les modules d'une ancienne sauvegarde (« intégrés ») sont réinstallés depuis le catalogue ; un module « éteint » est ensuite désinstallé, données gardées", async () => {
   const mods = [{ id: "blog", source: "builtin", origin: "builtin", name: "Blog", version: "1", enabled: false, repoUrl: null, ref: null, commit: null }];
   await Rs.applyRestore(fakeBackup(mods), { confirmCustom: [], actor: "o" });
-  assert.equal((await db.prisma.module.findUnique({ where: { id: "blog" } })).enabled, false);
+  assert.equal(await db.prisma.module.findUnique({ where: { id: "blog" } }), null, "éteint dans l'ancienne sauvegarde : plus installé");
 });
 
 /* ───────────── Mise de côté entre aperçu et confirmation ───────────── */

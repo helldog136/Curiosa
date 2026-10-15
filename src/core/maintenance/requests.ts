@@ -26,6 +26,8 @@ export type Plan = {
   from?: string; to?: string; level?: string;
   /** Un module (mise à jour, désinstallation). */
   module?: string;
+  /** Désinstallation : true = les réglages et données sont gardés (rangés, retrouvés à la réinstallation), false = tout est effacé. */
+  keepData?: boolean;
   /** Plusieurs modules (tout mettre à jour) : identifiant, version actuelle, version visée. */
   modules?: { id: string; from: string; to: string }[];
 };

@@ -25,6 +25,8 @@ export const DATA_FILES = {
   entryTranslations: "data/entry-translations.json",
   redirects: "data/redirects.json",
   records: "data/module-records.json",
+  /** Données gardées d'instances retirées (voir modules/retired.ts). Absent des sauvegardes d'avant la 0.1.20 : lu comme « aucune ». */
+  retired: "data/retired-instances.json",
 } as const;
 
 export type BackupModule = {
@@ -32,6 +34,7 @@ export type BackupModule = {
   // « builtin » et « bundled » : sauvegardes et lignes d'anciens sites (compatibilité, à retirer en 0.3.0) ; le cœur n'embarque plus aucun module.
   source: "builtin" | "bundled" | "git";
   version: string;
+  /** Toujours true à l'écriture (plus d'état « éteint » depuis la 0.1.20) ; lu pour les sauvegardes plus anciennes, dont les modules éteints sont désinstallés en gardant leurs données. */
   enabled: boolean;
   repoUrl: string | null;
   ref: string | null;

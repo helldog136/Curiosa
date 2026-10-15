@@ -6,7 +6,7 @@ import { useTestDb } from "../helpers/db.mjs";
 import { makeRepo } from "../helpers/repo.mjs";
 
 const db = await useTestDb();
-const { installModule, setModuleEnabled, updateModule } = await import("@/core/modules/installer");
+const { installModule, updateModule } = await import("@/core/modules/installer");
 const D = await import("@/core/modules/dataMigrations");
 const R = await import("@/core/modules/registry");
 const { parseManifest } = await import("@/core/modules/manifest");
@@ -38,7 +38,7 @@ function repoV1() {
 }
 async function installV1(repo) {
   assert.equal((await installModule(`${repo.url}#v1.0.0`)).ok, true);
-  await setModuleEnabled("carnet", true);
+
 }
 async function instance(nickname, notes = [{ name: "Alice", text: "un" }, { name: "Bob", text: "deux" }]) {
   const inst = await createInstance(db.prisma, { manifest: (await R.getModule("carnet")).manifest, nickname, names: { fr: nickname } });

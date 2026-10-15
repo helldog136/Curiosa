@@ -6,7 +6,7 @@ import { fakeCtx } from "../helpers/fakeCtx.mjs";
 
 // Service « each » : chaque instance répond pour elle-même (pas de maître/réplique) ; `callAll` les interroge toutes. Aucun réseau.
 const db = await useTestDb();
-const { installModule, setModuleEnabled } = await import("@/core/modules/installer");
+const { installModule } = await import("@/core/modules/installer");
 const R = await import("@/core/modules/registry");
 const Dep = await import("@/core/modules/dependencies");
 const Ver = await import("@/core/modules/serviceVersions");
@@ -33,8 +33,8 @@ const instance = async (id, key) => createInstance(db.prisma, { manifest: (await
 const active = async (id) => (await R.getActiveInstances()).find((a) => a.mod.manifest.id === id);
 
 async function setup() {
-  await install(provider("chan")); await setModuleEnabled("chan", true);
-  await install(consumer()); await setModuleEnabled("cons", true);
+  await install(provider("chan"));
+  await install(consumer());
   await db.prisma.moduleInstance.deleteMany({ where: { key: { in: ["chan", "cons"] } } });   // instances par défaut créées à l'activation
   // Créées dans l'ordre z, a, b : l'ordre de CRÉATION (pas l'ordre alphabétique des clés) fait foi.
   await instance("chan", "z-chan"); await new Promise((r) => setTimeout(r, 5));
@@ -68,26 +68,26 @@ test("page des services partagés : un service each n'a ni « à choisir » ni m
   await setup();
   assert.deepEqual(await Dep.duplicateServices(), [], "chaque instance répond pour elle-même : rien à arbitrer");
   // Un second service, classique, offert par deux instances : il reste à arbitrer.
-  await install(provider("plain", { service: "demo.plain" }, "export default {};")); await setModuleEnabled("plain", true);
+  await install(provider("plain", { service: "demo.plain" }, "export default {};"));
   await instance("plain", "p1"); await instance("plain", "p2");
   const list = await Dep.duplicateServices();
   assert.deepEqual(list.map((d) => [d.service, d.resolved]), [["demo.plain", false]]);
   // Un fournisseur qui ne déclare pas each rend le service classique (prudence : données partagées).
-  await install(provider("mixed", { service: SVC })); await setModuleEnabled("mixed", true); await instance("mixed", "m1");
+  await install(provider("mixed", { service: SVC }));await instance("mixed", "m1");
   assert.deepEqual((await Dep.duplicateServices()).map((d) => d.service).sort(), ["demo.live", "demo.plain"]);
 });
 
 test("dépendances : une instance active du service each suffit ; plus aucune → il manque", async () => {
-  await install(provider("chan")); await setModuleEnabled("chan", true);
+  await install(provider("chan"));
   await install(consumer()); 
   const cons = (await R.getModule("cons")).manifest;
   assert.deepEqual((await Dep.requirementGaps(cons)).map((g) => g.service), [SVC], "module actif mais sans instance");
   await instance("chan", "solo");
   assert.deepEqual(await Dep.requirementGaps(cons), []);
   await instance("chan", "duo");
-  await db.prisma.moduleInstance.updateMany({ where: { key: "solo" }, data: { enabled: false } });
+  await db.prisma.moduleInstance.deleteMany({ where: { key: "solo" } });
   assert.deepEqual(await Dep.requirementGaps(cons), [], "une instance restante suffit");
-  await db.prisma.moduleInstance.updateMany({ where: { key: "duo" }, data: { enabled: false } });
+  await db.prisma.moduleInstance.deleteMany({ where: { key: "duo" } });
   assert.deepEqual((await Dep.requirementGaps(cons)).map((g) => g.reason), ["none"]);
 });
 
@@ -97,7 +97,7 @@ test("call : réponse de la PREMIÈRE instance active par ordre de création, ja
   assert.equal((await Dep.callService(cons, SVC, "status", {})).value.who, "z-chan");
   await Dep.setRouting(SVC, { master: "b-chan", replicas: ["a-chan"] });   // un vieux choix d'admin est ignoré
   assert.equal((await Dep.callService(cons, SVC, "status", {})).value.who, "z-chan");
-  await db.prisma.moduleInstance.updateMany({ where: { key: "z-chan" }, data: { enabled: false } });
+  await db.prisma.moduleInstance.deleteMany({ where: { key: "z-chan" } });
   assert.equal((await Dep.callService(cons, SVC, "status", {})).value.who, "a-chan");
 });
 
@@ -106,7 +106,7 @@ test("callAll : une entrée par instance active, dans l'ordre de création, avec
   const cons = await active("cons");
   const all = await Dep.callServiceAll(cons, SVC, "status", {});
   assert.deepEqual(all.map((r) => [r.instance, r.name, r.ok, r.value?.who]), [["z-chan", "z-chan", true, "z-chan"], ["a-chan", "a-chan", true, "a-chan"], ["b-chan", "b-chan", true, "b-chan"]]);
-  await db.prisma.moduleInstance.updateMany({ where: { key: "a-chan" }, data: { enabled: false } });
+  await db.prisma.moduleInstance.deleteMany({ where: { key: "a-chan" } });
   assert.deepEqual((await Dep.callServiceAll(await active("cons"), SVC, "status", {})).map((r) => r.instance), ["z-chan", "b-chan"]);
 });
 
@@ -122,8 +122,8 @@ test("callAll : un fournisseur qui lève ou n'a pas la méthode n'empêche pas l
 });
 
 test("callAll : service non-each → UNE entrée (le maître) ; non déclaré ou inconnu ou sans fournisseur → tableau vide", async () => {
-  await install(provider("plain", { service: SVC }, CODE)); await setModuleEnabled("plain", true);
-  await install(consumer()); await setModuleEnabled("cons", true);
+  await install(provider("plain", { service: SVC }, CODE));
+  await install(consumer());
   await instance("plain", "p2"); await instance("plain", "p1"); await instance("cons", "form");
   const cons = await active("cons");
   const one = await Dep.callServiceAll(cons, SVC, "status", {});
@@ -131,9 +131,9 @@ test("callAll : service non-each → UNE entrée (le maître) ; non déclaré ou
   await Dep.setRouting(SVC, { master: "p2", replicas: [] });
   assert.deepEqual((await Dep.callServiceAll(cons, SVC, "status", {})).map((r) => r.instance), ["p2"]);
   assert.deepEqual(await Dep.callServiceAll(cons, "demo.inconnu", "status", {}), []);
-  await install(consumer("other", [])); await setModuleEnabled("other", true); await instance("other", "o");
+  await install(consumer("other", []));await instance("other", "o");
   assert.deepEqual(await Dep.callServiceAll(await active("other"), SVC, "status", {}), [], "non déclaré dans requires");
-  await db.prisma.moduleInstance.updateMany({ where: { moduleId: "plain" }, data: { enabled: false } });
+  await db.prisma.moduleInstance.deleteMany({ where: { moduleId: "plain" } });
   assert.deepEqual(await Dep.callServiceAll(cons, SVC, "status", {}), []);
 });
 

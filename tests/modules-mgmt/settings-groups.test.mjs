@@ -109,7 +109,7 @@ test("admin : attribut required natif, motif de lien, champ caché du groupe, un
   assert.match(form, /required/);
   assert.match(form, /pattern=\{LINK_PATTERN\}/);
   assert.match(read("src/components/admin/OptionalGroup.tsx"), /groupFlagName\(id\)/);
-  const page = read("src/app/admin/(panel)/instances/[id]/page.tsx");
+  const page = read("src/app/admin/(panel)/instances/[id]/InstanceView.tsx");
   assert.ok(!/instances\.noneMeansSite|Vide =/.test(page + form));
   assert.ok(!page.includes("hideSubmit"), "pas de bouton d'enregistrement en double");
 });
@@ -118,5 +118,5 @@ test("i18n : mêmes clés en français et en anglais pour les réglages de group
   const fr = JSON.parse(read("src/locales/fr.json"));
   const en = JSON.parse(read("src/locales/en.json"));
   assert.deepEqual(Object.keys(fr).sort(), Object.keys(en).sort());
-  for (const k of ["instances.s.options", "instances.s.appearance", "instances.s.deleteTitle", "instances.groupRemove", "instances.linkHelp", "instances.error.link", "instances.error.groupRequired"]) assert.ok(fr[k] && en[k], k);
+  for (const k of ["instances.s.options", "instances.s.appearance", "remove.title", "instances.groupRemove", "instances.linkHelp", "instances.error.link", "instances.error.groupRequired"]) assert.ok(fr[k] && en[k], k);
 });

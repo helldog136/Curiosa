@@ -167,11 +167,10 @@ test("ancien site (ligne `bundled`) : fonctionne sans catalogue (son dossier est
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, "module.json"), JSON.stringify({ apiVersion: 2, id: "carnet", name: "Carnet", version: "1.0.0", main: "index.mjs" }));
   fs.writeFileSync(path.join(dir, "index.mjs"), "export default { marker: 'ancien' };\n");
-  await db.prisma.module.create({ data: { id: "carnet", source: "bundled", version: "1.0.0", enabled: false } });
+  await db.prisma.module.create({ data: { id: "carnet", source: "bundled", version: "1.0.0", enabled: true } });
   await cat.down({ forget: true });
 
   // 1. hors ligne : il marche, il est activable, une instance se crée, le rapport de mises à jour ne casse pas
-  assert.equal((await I.setModuleEnabled("carnet", true)).ok, true);
   assert.equal((await R.getModule("carnet")).def.marker, "ancien");
   const inst = await createInstance(db.prisma, { manifest: (await R.getModule("carnet")).manifest, nickname: "Carnet", names: { fr: "Carnet" } });
   await setSetting(`instance.${inst.id}.titre`, "Mon carnet");
@@ -200,7 +199,7 @@ test("ancien site (ligne `bundled`) : fonctionne sans catalogue (son dossier est
   // 3. un autre ancien module que le catalogue ne liste plus : il reste installé, « source inconnue »
   fs.mkdirSync(R.moduleDir("orphelin"), { recursive: true });
   fs.writeFileSync(path.join(R.moduleDir("orphelin"), "module.json"), JSON.stringify({ apiVersion: 2, id: "orphelin", name: "O", version: "1.0.0" }));
-  await db.prisma.module.create({ data: { id: "orphelin", source: "bundled", version: "1.0.0", enabled: false } });
+  await db.prisma.module.create({ data: { id: "orphelin", source: "bundled", version: "1.0.0", enabled: true } });
   assert.equal((await I.updateModule("orphelin")).error, "modules.error.unknownSource");
   assert.equal((await X.diagnoseModule("orphelin")).catalogue, undefined);
   assert.ok(await db.prisma.module.findUnique({ where: { id: "orphelin" } }), "il reste installé");

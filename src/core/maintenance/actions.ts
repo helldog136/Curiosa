@@ -26,7 +26,7 @@ import { getApprovalMode } from "./settings";
  */
 export type Outcome = { ok: boolean; message: string; details?: unknown; /** L'opération n'a pas commencé (verrou pris) : rien n'a été fait. */ busy?: boolean };
 export type Level2Tool = "check_updates" | "backup_run" | "module_reinstall" | "module_restart";
-export type Params = { module?: string; instance?: string };
+export type Params = { module?: string; instance?: string; /** Désinstallation : garder (défaut) ou effacer les données. */ keepData?: boolean };
 
 /* ───────────── Verrou et cadence ───────────── */
 
@@ -158,8 +158,10 @@ export async function prepare(action: Level3Action, args: Params): Promise<Plan>
     const row = await prisma.module.findUnique({ where: { id } });
     if (!row) return refuse(`Unknown module "${id}" (see maintenance_modules).`);
     if (action === "module_uninstall") {
-      if (row.enabled) { const need = await dependentsOf(id).catch(() => []); if (need.length) refuse(`Module "${id}" is needed by: ${need.join(", ")}. It cannot be uninstalled.`); }
-      return { module: id, from: row.version };
+      const need = await dependentsOf(id).catch(() => []);
+      if (need.length) refuse(`Module "${id}" is needed by: ${need.join(", ")}. It cannot be uninstalled.`);
+      // Garder les données (non destructif) est le défaut ; les effacer doit être demandé en toutes lettres.
+      return { module: id, from: row.version, keepData: args.keepData !== false };
     }
     const { check, failed } = await deps.checkModule(id);
     if (failed) refuse(`The update of "${id}" could not be checked (network or repository unreachable). Try again later.`);
@@ -187,7 +189,7 @@ export async function prepare(action: Level3Action, args: Params): Promise<Plan>
 async function execute(action: Level3Action, plan: Plan, actorLabel: string): Promise<Outcome> {
   // Les conditions sont relues maintenant : la demande a pu attendre des heures.
   let fresh: Plan;
-  try { fresh = await prepare(action, { module: plan.module }); } catch (error) {
+  try { fresh = await prepare(action, { module: plan.module, keepData: plan.keepData }); } catch (error) {
     if (error instanceof McpToolError) return { ok: false, message: `Not done: ${error.message}` };
     throw error;
   }
@@ -199,8 +201,11 @@ async function execute(action: Level3Action, plan: Plan, actorLabel: string): Pr
     return started.ok ? { ok: true, message: `Update to ${plan.to} started in the background; the site will restart. Check maintenance_status in a few minutes.` } : { ok: false, message: `Update not started: ${started.error === "running" ? "an update is already running" : started.error === "not-newer" ? "no newer stable release" : started.error === "unsupported" ? "this installation cannot be updated from the admin" : "invalid version"}.` };
   }
   if (action === "module_uninstall") {
-    const r = await deps.uninstall(plan.module!);
-    return r.ok ? { ok: true, message: `Module "${plan.module}" was uninstalled with its instances and data.` } : { ok: false, message: `Uninstall of "${plan.module}" failed: ${reason(r.error)}.` };
+    const keepData = plan.keepData !== false;
+    const r = await deps.uninstall(plan.module!, { keepData });
+    return r.ok
+      ? { ok: true, message: keepData ? `Module "${plan.module}" was uninstalled. Its settings and data were kept aside: reinstalling the module brings them back.` : `Module "${plan.module}" was uninstalled and ALL its instances and data were erased.` }
+      : { ok: false, message: `Uninstall of "${plan.module}" failed: ${reason(r.error)}.` };
   }
   // module_update, modules_update_all
   const wanted = action === "module_update" ? [{ id: plan.module!, to: plan.to! }] : (plan.modules ?? []);
@@ -213,7 +218,7 @@ async function execute(action: Level3Action, plan: Plan, actorLabel: string): Pr
   return { ok: s.failed.length === 0 && !s.stoppedOn && s.updated.length > 0, message: parts.join("; ") || "Nothing was updated.", details: { updated: s.updated } };
 }
 
-const paramsText = (plan: Plan) => plan.module ?? (plan.modules ? plan.modules.map((m) => `${m.id} ${m.from}>${m.to}`).join(", ") : plan.to ? `${plan.from}>${plan.to}` : "");
+const paramsText = (plan: Plan) => (plan.module ? (plan.keepData === undefined ? plan.module : `${plan.module}${plan.keepData ? " keepData" : " erase"}`) : null) ?? (plan.modules ? plan.modules.map((m) => `${m.id} ${m.from}>${m.to}`).join(", ") : plan.to ? `${plan.from}>${plan.to}` : "");
 
 /** Verrou + audit + avertissement autour d'une exécution de niveau 3. */
 async function runGuarded(action: Level3Action, plan: Plan, who: { tokenName: string; tokenId?: string; via: "direct" | "approved" }): Promise<Outcome> {

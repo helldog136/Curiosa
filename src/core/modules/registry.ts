@@ -105,9 +105,9 @@ export async function listModuleRows(): Promise<Module[]> {
   return prisma.module.findMany({ orderBy: { id: "asc" } });
 }
 
-/** Modules actifs et chargeables. Un module cassé est ignoré, jamais fatal pour le site. */
-export const getEnabledModules = cache(async (): Promise<LoadedModule[]> => {
-  const rows = (await listModuleRows()).filter((r) => r.enabled);
+/** Modules installés et chargeables (installé = actif : il n'y a plus d'état intermédiaire). Un module cassé est ignoré, jamais fatal pour le site. */
+export const getInstalledModules = cache(async (): Promise<LoadedModule[]> => {
+  const rows = await listModuleRows();
   const loaded = await Promise.all(rows.map(loadModule));
   return loaded.filter((m): m is LoadedModule => m !== null);
 });
@@ -119,12 +119,12 @@ export async function getModule(id: string): Promise<LoadedModule | null> {
 
 export type ActiveInstance = { instance: InstanceView; mod: LoadedModule };
 
-/** Instances actives dont le module est actif et chargeable : ce que le site exécute réellement. */
+/** Instances dont le module est installé et chargeable : ce que le site exécute réellement. */
 export const getActiveInstances = cache(async (): Promise<ActiveInstance[]> => {
-  const [mods, instances] = await Promise.all([getEnabledModules(), listInstances()]);
+  const [mods, instances] = await Promise.all([getInstalledModules(), listInstances()]);
   const all = instances.flatMap((instance) => {
     const mod = mods.find((m) => m.manifest.id === instance.moduleId);
-    return instance.enabled && mod ? [{ instance, mod }] : [];
+    return mod ? [{ instance, mod }] : [];
   });
   // Une instance dont la migration de données a échoué (ou dont les données sont plus récentes que le code du module) ne tourne pas.
   const sane = await Promise.all(all.map(async (a) => ((await getSetting<{ status?: string }>(`instance.${a.instance.id}.__dataStatus`))?.status ? null : a)));

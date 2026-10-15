@@ -4,7 +4,7 @@ import { useTestDb } from "../helpers/db.mjs";
 import { makeRepo } from "../helpers/repo.mjs";
 
 const db = await useTestDb();
-const { installModule, setModuleEnabled } = await import("@/core/modules/installer");
+const { installModule } = await import("@/core/modules/installer");
 const R = await import("@/core/modules/registry");
 const RT = await import("@/core/modules/runtime");
 const { buildContext } = await import("@/core/modules/context");
@@ -70,8 +70,8 @@ const CONSUMER = {
 async function setup() {
   await installModule(makeRepo(PROVIDER).url);
   await installModule(makeRepo(CONSUMER).url);
-  await setModuleEnabled("prov", true);
-  await setModuleEnabled("cons", true);
+
+
   const mk = async (id, nickname) => {
     const mod = await R.getModule(id);
     return createInstance(db.prisma, { manifest: mod.manifest, nickname, names: { en: nickname ?? id } });
@@ -113,7 +113,7 @@ test("exécution : emplacements — un module en panne n'empêche pas les autres
     assert.deepEqual((await RT.runSlot("layout.banner", "fr")), []);
     const footer = await RT.runSlot("layout.footer", "fr");
     assert.deepEqual(footer.map((b) => b.text), ["pied alpha", "pied beta"]);
-    await db.prisma.moduleInstance.update({ where: { key: "beta" }, data: { enabled: false } });
+    await db.prisma.moduleInstance.delete({ where: { key: "beta" } });
     assert.deepEqual((await RT.runSlot("layout.footer", "fr")).map((b) => b.text), ["pied alpha"]);
   } finally { console.error = log; }
 });
@@ -192,7 +192,7 @@ test("sujets : un consommateur ne peut collecter que ce qu'il a déclaré", asyn
 test("sujets : un fournisseur en panne n'empêche pas les autres d'alimenter le consommateur", async () => {
   const { c } = await setup();
   await installModule(makeRepo({ "module.json": base({ id: "cass", name: "Cassé", provides: [{ topic: "demo.item" }], main: "index.mjs" }), "index.mjs": `export default { exports: { "demo.item": () => { throw new Error("panne"); } } };` }).url);
-  await setModuleEnabled("cass", true);
+
   const mod = await R.getModule("cass");
   await createInstance(db.prisma, { manifest: mod.manifest, names: { en: "Cassé" } });
   const log = console.error; console.error = () => {};

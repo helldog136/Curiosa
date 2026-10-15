@@ -35,7 +35,7 @@ Curiosa est un **site vitrine clé en main que vous possédez** : votre contenu,
 ## Ce que vous obtenez
 
 - **Un site à votre image, sans écrire une ligne de code.** Nom, logo, couleurs, polices, fond de page, menus, langues : tout se règle depuis votre espace d'administration, en clair ou en sombre.
-- **Des fonctionnalités à la carte.** Blog, pages, liens et réseaux sociaux, codes promo, sponsors, formulaire de contact, statut live, bandeaux, overlays pour OBS… Vous choisissez ce que vous voulez dans le **Catalogue** et vous l'installez en un clic.
+- **Des fonctionnalités à la carte.** Blog, pages, liens et réseaux sociaux, codes promo, sponsors, formulaire de contact, statut live, bandeaux, overlays pour OBS… Vous choisissez ce que vous voulez dans le **Catalogue** et vous l'installez en un clic. Une fonctionnalité est installée ou elle ne l'est pas, sans état intermédiaire ; quand vous la retirez, vous choisissez de **garder vos données** (elles reviennent si vous la réinstallez) ou de **tout effacer**.
 - **Un tableau de bord qui parle.** Combien de visiteurs aujourd'hui, quelles pages ont du succès, d'où viennent vos lecteurs, et une pastille « nouveau » pour ceux qui reviennent.
 - **Un site facile à lire pour les assistants IA.** Fichier pour les IA, liens sociaux et description du site sont préparés, et une page de l'admin montre ce qui reste à faire ; voir [Être cité par les IA](docs/GEO.md).
 - **Plusieurs langues sans effort.** Une seule suffit pour publier ; vous en ajoutez quand vous le voulez.

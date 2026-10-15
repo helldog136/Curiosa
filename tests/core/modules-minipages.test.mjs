@@ -38,7 +38,8 @@ test("liste : regroupée par catégorie dans l'ordre voulu, triée par nom, modu
 });
 
 test("minipage : module inconnu = 404, actions et sidebar ramènent sur la bonne page", () => {
-  const page = read(`${PANEL}/[id]/page.tsx`);
+  const page = read(`${PANEL}/[id]/ModuleView.tsx`);
+  assert.match(read(`${PANEL}/[id]/page.tsx`), /<ModuleView/, "la page entière et la fenêtre montrent le même contenu");
   assert.match(page, /if \(!row\) notFound\(\)/);
   assert.match(page, /ConfirmButton/);
   assert.ok(!/\bconfirm\(/.test(read("src/components/admin/ConfirmButton.tsx")), "jamais window.confirm");
