@@ -6,6 +6,14 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
+## 0.1.18
+
+*Changements depuis la 0.1.17.*
+
+### Corrections
+
+- La page d'un accès pour assistant IA explique maintenant qu'il faut reconnecter l'assistant après avoir coché ou décoché une action, sinon il ne voit pas le changement.
+
 ## 0.1.17
 
 *Changements depuis la 0.1.16.*
