@@ -8,6 +8,7 @@ import { getModulesReport, moduleNames, updateModules } from "@/core/modules/upd
 import { buildNames } from "@/core/modules/dependencyView";
 import { describeMissingList } from "@/core/modules/dependencyMessages";
 import type { ActionState } from "@/components/admin/ActionForm";
+import { EXTENSIONS_HREF, EXTENSIONS_UPDATES_HREF } from "@/core/modules/extensionsLinks";
 
 /** Réservé au propriétaire : une mise à jour change le code qui tourne sur le serveur. */
 export async function checkNow(): Promise<ActionState> {
@@ -54,7 +55,8 @@ export async function recheckModules(): Promise<ActionState> {
   const { t } = await adminCtx("owner");
   await getModulesReport(true);
   revalidatePath("/admin/updates");
-  revalidatePath("/admin/modules");
+  revalidatePath(EXTENSIONS_HREF);
+  revalidatePath(EXTENSIONS_UPDATES_HREF);
   return { ok: t("updates.modules.rechecked") };
 }
 

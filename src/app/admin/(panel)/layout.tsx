@@ -6,7 +6,9 @@ import { BugReportLink } from "@/components/admin/BugReportLink";
 import { maintenanceSummary } from "@/core/maintenance/summary";
 import { NavLink } from "@/components/admin/NavLink";
 import { NavGroup } from "@/components/admin/NavGroup";
-import { NAV_STATE_COOKIE, buildMenuLayout, groupOpenByDefault, parseNavState } from "@/core/modules/menuPlacement";
+import { NAV_STATE_COOKIE, buildMenuLayout, extensionsBadge, parseNavState } from "@/core/modules/menuPlacement";
+import { EXTENSIONS_HREF } from "@/core/modules/extensionsLinks";
+import { loadInstanceStatuses } from "@/core/modules/integrations";
 import { getAdminNav } from "@/core/modules/adminNav";
 import { getUpdateCheck, readVersion } from "@/core/updates/service";
 import { peekModulesReport } from "@/core/modules/updateStatus";
@@ -29,15 +31,16 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   const aiWaiting = user.role === "owner" ? (await maintenanceSummary().catch(() => null))?.total ?? 0 : 0;
   const bugUrl = await adminBugReportUrl(t);
   const menu = buildMenuLayout(nav);
-  const contentItems = menu.content;
   const navState = parseNavState((await cookies()).get(NAV_STATE_COOKIE)?.value);
-  const openByDefault = groupOpenByDefault(contentItems.length + menu.groups.reduce((n, g) => n + g.items.length, 0));
   const entryHref = (m: (typeof nav)[number]) => (m.content ? `/admin/entries?c=${m.key}` : `/admin/instances/${m.id}`);
   const entryAlso = (m: (typeof nav)[number]) => (m.content ? [`/admin/instances/${m.id}`] : []);
   const entryLink = (m: (typeof nav)[number]) => <NavLink key={m.id} href={entryHref(m)} also={entryAlso(m)} badge={m.badge} badgeLabel={t("nav.badge.todo")}>{m.icon} {m.name}</NavLink>;
-  const showIntegrations = canManage && menu.integrations.count > 0;
-  const showOverlays = canManage && menu.overlays.count > 0;
-  const hasFeatures = menu.groups.length > 0 || showIntegrations || showOverlays;
+  // Extensions : les mises à jour de modules, les modules à régler (à configurer ou en erreur) et les pastilles des modules qui ne sont pas épinglés au menu y remontent.
+  const statuses = canManage ? await loadInstanceStatuses().catch(() => null) : null;
+  const toSetUp = [...(statuses?.values() ?? [])].filter((s) => s.state === "setup" || s.state === "error").length;
+  const extensions = extensionsBadge({ modulesBehind, toSetUp, unpinnedBadge: menu.unpinnedBadge });
+  // Les fiches d'une extension non épinglée restent « sous » l'entrée Extensions.
+  const unpinnedPages = nav.filter((m) => !menu.content.includes(m) && !menu.community.items.includes(m)).flatMap((m) => [`/admin/instances/${m.id}`, ...(m.content ? [`/admin/entries?c=${m.key}`] : [])]);
 
   const group = "mb-1 mt-6 px-3 text-xs font-semibold uppercase tracking-wider text-muted";
 
@@ -47,13 +50,23 @@ export default async function PanelLayout({ children }: { children: React.ReactN
       <MobileMenu menuLabel={t("nav.menu")} brand={<a href="/admin" className="flex flex-col px-3 leading-tight"><span className="text-lg font-bold">{config.name}</span><span className="text-xs text-muted">{t("nav.adminTagline")}</span></a>}>
         <nav aria-label="Admin">
           <div className="mt-4"><NavLink href="/admin" exact>{t("nav.dashboard")}</NavLink></div>
-          {/* Là où se gère tout le reste : en premier, et bien visible. « installé » et « ajouter » (catalogue) sont deux onglets d'un même endroit. */}
-          {canManage && <div className="mt-3"><NavLink href="/admin/modules" also={["/admin/catalogue"]} prominent>🧩 {advanced ? t("nav.modules") : t("nav.modules.simple")}</NavLink></div>}
-
-          {contentItems.length > 0 && (
+          {menu.content.length > 0 && (
             <div>
               <p className={group}>{t("nav.myContent")}</p>
-              {contentItems.map(entryLink)}
+              {menu.content.map(entryLink)}
+            </div>
+          )}
+
+          {menu.community.items.length > 0 && (
+            <div>
+              <p className={group}>{t("nav.myCommunity")}</p>
+              {menu.community.collapsible
+                ? menu.community.groups.map((g) => (
+                    <NavGroup key={g.id} id={g.id} title={t(`navgroup.${g.id}`)} targets={g.items.flatMap((m) => [entryHref(m), ...entryAlso(m)])} stored={navState[g.id]} openByDefault={false} badge={g.items.reduce((n, m) => n + m.badge, 0)} badgeLabel={t("nav.badge.todo")}>
+                      {g.items.map(entryLink)}
+                    </NavGroup>
+                  ))
+                : menu.community.items.map(entryLink)}
             </div>
           )}
 
@@ -65,34 +78,17 @@ export default async function PanelLayout({ children }: { children: React.ReactN
           {canManage && <NavLink href="/admin/ai-visibility">{t("nav.aiVisibility")}</NavLink>}
           <NavLink href="/admin/redirects">{advanced ? t("nav.redirects") : t("nav.redirects.simple")}</NavLink>
 
-          {hasFeatures && <p className={group}>{t("nav.features")}</p>}
-          {menu.groups.map((g) => (
-            <NavGroup key={g.id} id={g.id} title={t(`navgroup.${g.id}`)} targets={g.items.flatMap((m) => [entryHref(m), ...entryAlso(m)])} stored={navState[g.id]} openByDefault={openByDefault} badge={g.items.reduce((n, m) => n + m.badge, 0)} badgeLabel={t("nav.badge.todo")}>
-              {g.items.map(entryLink)}
-            </NavGroup>
-          ))}
-          {/* Tout ce qui se règle une fois (réseaux, overlays, annonces…) tient en UNE entrée : sa pastille cumule celles de ses instances. */}
-          {showIntegrations && (
-            <NavLink href="/admin/integrations" also={menu.integrations.items.flatMap((m) => [`/admin/instances/${m.id}`, ...(m.content ? [`/admin/entries?c=${m.key}`] : [])])} badge={menu.integrations.badge} badgeLabel={t("nav.badge.todo")}>
-              🔌 {t("nav.integrations", { n: menu.integrations.count })}
-            </NavLink>
-          )}
-          {/* Les overlays (sources navigateur pour OBS) sont une famille à part : une entrée, avec l'adresse à coller dans OBS. */}
-          {showOverlays && (
-            <NavLink href="/admin/overlays" also={menu.overlays.items.map((m) => `/admin/instances/${m.id}`)} badge={menu.overlays.badge} badgeLabel={t("nav.badge.todo")}>
-              🎬 {t("nav.overlays", { n: menu.overlays.count })}
-            </NavLink>
-          )}
-
           {(canManage || user.role === "owner") && (
             <>
               <p className={group}>{t("nav.admin")}</p>
+              {canManage && <NavLink href={EXTENSIONS_HREF} also={["/admin/modules", ...unpinnedPages]} badge={extensions.count} badgeLabel={extensions.onlyUpdates ? t("nav.badge.updates") : t("nav.badge.todo")}>{t("nav.extensions")}</NavLink>}
+              {/* Les deux entrées « assistants IA » restent côte à côte (elles seront réunies plus tard). */}
+              {user.role === "owner" && <NavLink href="/admin/maintenance-ia" badge={aiWaiting} badgeLabel={t("nav.badge.ai")}>{t("nav.maintenanceAi")}</NavLink>}
+              {advanced && user.role === "owner" && <NavLink href="/admin/mcp">{t("nav.mcp")}</NavLink>}
               {canManage && <NavLink href="/admin/users">{t("nav.users")}</NavLink>}
               {user.role === "owner" && <NavLink href="/admin/backup">{t("nav.backup")}</NavLink>}
-              {user.role === "owner" && <NavLink href="/admin/updates" badge={(updateAvailable ? 1 : 0) + modulesBehind} badgeLabel={modulesBehind > 0 ? t("nav.badge.updates") : t("nav.badge.update")}>{t("nav.updates")}</NavLink>}
-              {user.role === "owner" && <NavLink href="/admin/maintenance-ia" badge={aiWaiting} badgeLabel={t("nav.badge.ai")}>{t("nav.maintenanceAi")}</NavLink>}
+              {user.role === "owner" && <NavLink href="/admin/updates" badge={updateAvailable ? 1 : 0} badgeLabel={t("nav.badge.update")}>{t("nav.updates")}</NavLink>}
               {advanced && user.role === "owner" && <NavLink href="/admin/audit">{t("nav.audit")}</NavLink>}
-              {advanced && user.role === "owner" && <NavLink href="/admin/mcp">{t("nav.mcp")}</NavLink>}
             </>
           )}
 

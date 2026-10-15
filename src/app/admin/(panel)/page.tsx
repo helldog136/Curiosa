@@ -6,6 +6,7 @@ import { Callout, PageHeader } from "@/components/admin/Page";
 import { getUpdateCheck } from "@/core/updates/service";
 import { statsEnabled, statsSummary } from "@/core/stats";
 import { maintenanceSummary } from "@/core/maintenance/summary";
+import { EXTENSIONS_HREF } from "@/core/modules/extensionsLinks";
 
 export default async function Dashboard({ searchParams }: { searchParams: Promise<{ denied?: string; welcome?: string; modules?: string }> }) {
   const { t, config, advanced, user } = await adminCtx("editor");
@@ -30,7 +31,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
       <p className="text-sm text-muted">{label}</p>
     </a>
   );
-  const entriesHref = firstContent ? `/admin/entries?c=${firstContent.key}` : "/admin/modules";
+  const entriesHref = firstContent ? `/admin/entries?c=${firstContent.key}` : EXTENSIONS_HREF;
   const first = user.name.split(" ")[0] ?? user.name;
   const noVisits = !!stats && stats.totals.last30.visitors === 0;
   return (
@@ -80,7 +81,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
                 <p className="mt-1 text-sm leading-5 text-muted">{t("dashboard.shortcutsHelp")}</p>
             </a>
             {user.role !== "editor" && (
-              <a href="/admin/modules" className={`${ui.card} block transition hover:-translate-y-0.5 hover:border-accent`}>
+              <a href={EXTENSIONS_HREF} className={`${ui.card} block transition hover:-translate-y-0.5 hover:border-accent`}>
                 <span className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-accent/10 text-2xl" aria-hidden>🧩</span>
                 <p className="text-lg font-semibold">{t("dashboard.addFeature")}</p>
                 <p className="mt-1 text-sm leading-5 text-muted">{t("dashboard.addFeatureHelp")}</p>
@@ -130,8 +131,8 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
             {stat(t("dashboard.published"), published, entriesHref)}
             {stat(t("dashboard.drafts"), drafts, entriesHref)}
             {stat(t("dashboard.redirects"), redirects, "/admin/redirects")}
-            {stat(t("dashboard.instances"), collections, "/admin/modules")}
-            {stat(t("dashboard.modules"), modules, "/admin/modules")}
+            {stat(t("dashboard.instances"), collections, EXTENSIONS_HREF)}
+            {stat(t("dashboard.modules"), modules, EXTENSIONS_HREF)}
           </div>
         </section>
       )}

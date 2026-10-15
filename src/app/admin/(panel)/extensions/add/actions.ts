@@ -9,6 +9,7 @@ import { addSource, clearSourcesCache, removeSource } from "@/core/modules/sourc
 import { audit } from "@/core/permissions";
 import { buildNames } from "@/core/modules/dependencyView";
 import { describeMissingList } from "@/core/modules/dependencyMessages";
+import { EXTENSIONS_ADD_HREF, EXTENSIONS_HREF } from "@/core/modules/extensionsLinks";
 import type { ActionState } from "@/components/admin/ActionForm";
 
 // Installer du code exécuté côté serveur est réservé au propriétaire.
@@ -16,10 +17,10 @@ import type { ActionState } from "@/components/admin/ActionForm";
 export async function installFromCatalogueAction(id: string): Promise<void> {
   const { user } = await adminCtx("owner");
   const result = await installFromCatalogue(id);
-  if (!result.ok) redirect(`/admin/catalogue?error=${encodeURIComponent(result.error)}`);
+  if (!result.ok) redirect(`${EXTENSIONS_ADD_HREF}?error=${encodeURIComponent(result.error)}`);
   for (const provided of result.provided ?? []) await audit(user.email, "module.install.auto", provided);
   await audit(user.email, "module.install", id);
-  redirect("/admin/modules");
+  redirect(EXTENSIONS_HREF);
 }
 
 /** Installation depuis la fiche d'un module : sans redirection, pour que le bouton montre le téléchargement avant de passer à la page des modules. */
@@ -36,7 +37,7 @@ export async function installModuleAction(id: string): Promise<{ ok: true } | { 
   }
   for (const provided of result.provided ?? []) await audit(user.email, "module.install.auto", provided);
   await audit(user.email, "module.install", id);
-  revalidatePath("/admin/modules");
+  revalidatePath(EXTENSIONS_HREF);
   return { ok: true };
 }
 
@@ -48,14 +49,14 @@ export async function installCustomAction(_prev: ActionState, formData: FormData
   if (!result.ok) return { error: result.missing?.length ? describeMissingList(result.missing, t, await buildNames(locale, config.defaultLocale)).join(" ") : t(result.error) };
   for (const provided of result.provided ?? []) await audit(user.email, "module.install.auto", provided);
   await audit(user.email, "module.install.custom", result.id);
-  redirect("/admin/modules");
+  redirect(EXTENSIONS_HREF);
 }
 
 /** Relit tout de suite la liste des modules reconnus (sinon elle est relue au plus toutes les 15 minutes). */
 export async function refreshCatalogueAction(): Promise<void> {
   await adminCtx("owner");
   clearRecognizedCache();
-  revalidatePath("/admin/catalogue");
+  revalidatePath(EXTENSIONS_ADD_HREF);
 }
 
 /** Ajoute un dépôt de modules personnel (propriétaire seulement) : il doit contenir au moins un module. */
@@ -64,7 +65,7 @@ export async function addSourceAction(_prev: ActionState, formData: FormData): P
   const result = await addSource(String(formData.get("repo") ?? ""));
   if (!result.ok) return { error: t(result.error) };
   await audit(user.email, "module.source.add", String(formData.get("repo") ?? "").slice(0, 200));
-  revalidatePath("/admin/catalogue");
+  revalidatePath(EXTENSIONS_ADD_HREF);
   return { ok: t("catalogue.sources.added", { count: String(result.modules.length) }) };
 }
 
@@ -72,12 +73,12 @@ export async function removeSourceAction(url: string): Promise<void> {
   const { user } = await adminCtx("owner");
   await removeSource(url);
   await audit(user.email, "module.source.remove", url.slice(0, 200));
-  revalidatePath("/admin/catalogue");
+  revalidatePath(EXTENSIONS_ADD_HREF);
 }
 
 /** Relit tout de suite les modules des dépôts personnels (sinon relus au plus toutes les 10 minutes). */
 export async function refreshSourcesAction(): Promise<void> {
   await adminCtx("owner");
   clearSourcesCache();
-  revalidatePath("/admin/catalogue");
+  revalidatePath(EXTENSIONS_ADD_HREF);
 }

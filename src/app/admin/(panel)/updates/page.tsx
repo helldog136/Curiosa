@@ -12,6 +12,7 @@ import { adminBugReportUrl } from "@/core/bugReport";
 import { BugReportLink } from "@/components/admin/BugReportLink";
 import { loadModulesUpdates } from "@/components/admin/ModulesUpdatesSection";
 import { checkNow, saveAutoUpdate, saveChannel } from "./actions";
+import { EXTENSIONS_UPDATES_HREF } from "@/core/modules/extensionsLinks";
 
 export const dynamic = "force-dynamic";
 
@@ -56,7 +57,7 @@ export default async function UpdatesPage() {
         {highlightModules && <p className="mt-1 text-sm font-semibold text-accent" data-testid="modules-remind">{t("updates.modules.remind")}</p>}
         <p className="mt-1 text-sm leading-6 text-muted">{moduleRows.length > 0 ? t("updates.modulesLink.behind", { n: moduleRows.length }) : t("updates.modulesLink.ok")}</p>
       </div>
-      <a href="/admin/modules?tab=updates" className={moduleRows.length > 0 ? ui.btnPrimary : ui.btn}>{t("updates.modulesLink.open")}</a>
+      <a href={EXTENSIONS_UPDATES_HREF} className={moduleRows.length > 0 ? ui.btnPrimary : ui.btn}>{t("updates.modulesLink.open")}</a>
     </section>
   );
   const bugUrl = await adminBugReportUrl(t);

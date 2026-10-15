@@ -13,6 +13,7 @@ import { duplicateServices, isEachService, providerInstances, setRouting } from 
 import { cleanupSuggestions, forgetAuto } from "@/core/modules/autoInstalled";
 import { encodeMissing } from "@/core/modules/dependencyMessages";
 import type { InstallResult } from "@/core/modules/installer";
+import { EXTENSIONS_HREF } from "@/core/modules/extensionsLinks";
 
 // Installer ou mettre à jour du code exécuté côté serveur est réservé au propriétaire.
 
@@ -31,10 +32,10 @@ export async function toggleModule(id: string, enabled: boolean, formData?: Form
   await audit(user.email, enabled ? "module.enable" : "module.disable", id);
   revalidatePath("/", "layout");
   // Depuis la liste (mode simple) on y reste ; depuis la page du module, on y reste aussi.
-  const home = formData?.get("from") === "list" ? "/admin/modules" : modulePage(id);
+  const home = formData?.get("from") === "list" ? EXTENSIONS_HREF : modulePage(id);
   if (!result.ok) redirect(modulePage(id, refusal(result, enabled ? "enable" : "disable")));
   // Un fournisseur de plus pour un service déjà offert : l'admin doit dire qui est le maître.
-  if (enabled && (await duplicateServices()).some((d) => !d.resolved)) redirect("/admin/modules?notice=services");
+  if (enabled && (await duplicateServices()).some((d) => !d.resolved)) redirect(`${EXTENSIONS_HREF}?notice=services`);
   redirect(home);
 }
 
@@ -42,15 +43,15 @@ export async function toggleModule(id: string, enabled: boolean, formData?: Form
 export async function saveServiceRouting(service: string, formData: FormData): Promise<void> {
   const { user } = await adminCtx("owner");
   const providers = await providerInstances(service);
-  if (isEachService(providers, service)) redirect("/admin/modules");   // chaque instance répond pour elle-même : aucun maître à choisir
+  if (isEachService(providers, service)) redirect(EXTENSIONS_HREF);   // chaque instance répond pour elle-même : aucun maître à choisir
   const keys = providers.map((p) => p.instance.key);
   const master = String(formData.get("master") ?? "");
-  if (!keys.includes(master)) redirect("/admin/modules?error=error.generic");
+  if (!keys.includes(master)) redirect(`${EXTENSIONS_HREF}?error=error.generic`);
   const replicas = formData.getAll("replicas").map(String).filter((k) => keys.includes(k) && k !== master);
   await setRouting(service, { master, replicas });
   await audit(user.email, "service.routing", service);
   revalidatePath("/", "layout");
-  redirect("/admin/modules");
+  redirect(EXTENSIONS_HREF);
 }
 
 /** Résultat des actions de mise à jour : sans redirection, pour que le bouton montre l'animation avant d'ouvrir `href` (la page des modules, avec le résultat ou l'erreur). */
@@ -81,7 +82,7 @@ export async function uninstallModuleAction(id: string): Promise<void> {
   if (result.ok) await audit(user.email, "module.uninstall", id);
   revalidatePath("/", "layout");
   if (!result.ok) redirect(modulePage(id, refusal(result, "uninstall")));
-  redirect("/admin/modules");
+  redirect(EXTENSIONS_HREF);
 }
 
 /**
@@ -97,7 +98,7 @@ export async function cleanupAutoModuleAction(id: string, formData: FormData): P
   if (result.ok) await audit(user.email, "module.uninstall.auto", id);
   revalidatePath("/", "layout");
   if (!result.ok) redirect(modulePage(id, refusal(result)));
-  redirect("/admin/modules");
+  redirect(EXTENSIONS_HREF);
 }
 
 /** « Le garder » : le module n'est plus considéré comme installé automatiquement (plus de proposition de nettoyage). */
@@ -147,6 +148,6 @@ export async function addInstance(moduleId: string, formData: FormData): Promise
   await runInstanceCreateHook(created.id);
   await audit(user.email, "instance.create", created.key);
   revalidatePath("/", "layout");
-  if ((await duplicateServices()).some((d) => !d.resolved)) redirect("/admin/modules?notice=services");
+  if ((await duplicateServices()).some((d) => !d.resolved)) redirect(`${EXTENSIONS_HREF}?notice=services`);
   redirect(`/admin/instances/${created.id}`);
 }

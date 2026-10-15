@@ -5,11 +5,13 @@ import { useTestDb } from "../helpers/db.mjs";
 
 const db = await useTestDb();
 const P = await import("@/core/modules/menuPlacement");
+const X = await import("@/core/modules/extensionsLinks");
+const F = await import("@/core/modules/extensionFamilies");
 const { getAdminNav } = await import("@/core/modules/adminNav");
 const { loadInstanceStatuses } = await import("@/core/modules/integrations");
 const { createInstance } = await import("@/core/instanceService");
 const { setSetting } = await import("@/core/settings");
-const { moduleSearchText, matchesQuery } = await import("@/core/modules/installedList");
+const { moduleSearchText, matchesQuery, buildModuleGroups } = await import("@/core/modules/installedList");
 const { isCurrent } = await import("../../src/components/admin/navCurrent.ts");
 const { FIXTURE_MODULES } = await import("../helpers/fixtureModules.mjs");
 
@@ -93,37 +95,70 @@ test("épinglage : le choix de l'utilisateur l'emporte dans les deux sens ; une 
   assert.equal(P.resolvePlacement(twitch, "n'importe quoi"), "integrations");
   assert.equal(P.parsePlacement("menu"), "menu");
   assert.equal(P.parsePlacement(42), null);
+  assert.equal(P.isPinned("menu"), true, "épinglée = placement « menu »");
+  assert.equal(P.isPinned("integrations") || P.isPinned("overlays"), false, "les autres rangements : seulement dans Extensions");
+  assert.deepEqual(P.placementsFor({ type: "overlay" }), ["menu", "overlays"]);
+  assert.deepEqual(P.placementsFor({ type: "utility" }), ["menu", "integrations"]);
+  assert.equal(P.unpinnedPlacementFor({ type: "overlay" }), "overlays");
+  assert.equal(P.unpinnedPlacementFor({ type: "widget" }), "integrations");
   assert.equal(P.placementSettingKey("abc"), "instance.abc.__placement", "stocké avec l'instance (réglage du cœur), pas dans le module");
 });
 
-// ─── Groupes et ordre ───────────────────────────────────────────────────────────────────────────────────────────
-const item = (id, type, over = {}) => ({ id, type, placement: "menu", enabled: true, error: false, badge: 0, content: type === "content", ...over });
+// ─── Rubriques, groupes et ordre ────────────────────────────────────────────────────────────────────────────────
+const item = (id, type, over = {}) => ({ id, type, section: P.defaultSection({ type, content: type === "content" ? {} : undefined }), placement: "menu", enabled: true, error: false, badge: 0, content: type === "content", ...over });
 
-test("menu : contenu à part, puis des groupes dans l'ordre fixe ; les groupes vides n'existent pas ; catégorie inconnue → « Autres »", () => {
+test("rubrique par défaut : lue dans le manifeste (contenu → Mon contenu ; le reste → Ma communauté), sans nouveau champ", () => {
+  assert.deepEqual(P.MENU_SECTIONS, ["content", "community"]);
+  const sections = Object.fromEntries(EXTRAS.map((e) => [e.id, P.defaultSection(asManifest(e))]));
+  for (const id of ["blog", "pages", "sponsors", "collection", "codes", "links"]) assert.equal(sections[id], "content", id);
+  for (const id of ["contacts", "partnerships", "planning", "contact-form", "game-suggestions", "twitch-channel", "live-status", "hero"]) assert.equal(sections[id], "community", id);
+  assert.equal(P.defaultSection({ type: "content" }), "content", "catégorie « content » sans bloc de contenu");
+  assert.equal(P.defaultSection({ content: { display: "cards" } }), "content");
+  assert.equal(P.defaultSection({}), "community", "module tiers sans rien de déclaré");
+  assert.equal(P.defaultSection({ type: "inconnu" }), "community");
+});
+
+test("menu : Mon contenu à part, puis Ma communauté en groupes dans l'ordre fixe ; les groupes vides n'existent pas ; catégorie inconnue → « Autres »", () => {
   const layout = P.buildMenuLayout([
     item("tiers", "zzz"), item("plan", "widget"), item("blog", "content"), item("contacts", "utility"), item("form", "widget"), item("sans-type", undefined),
   ]);
   assert.deepEqual(layout.content.map((i) => i.id), ["blog"]);
-  assert.deepEqual(layout.groups.map((g) => g.id), ["utility", "widget", "other"]);
-  assert.deepEqual(layout.groups.map((g) => g.items.map((i) => i.id)), [["contacts"], ["plan", "form"], ["tiers", "sans-type"]], "l'ordre d'arrivée est conservé dans un groupe");
-  assert.deepEqual(P.buildMenuLayout([item("blog", "content")]).groups, []);
+  assert.deepEqual(layout.community.groups.map((g) => g.id), ["utility", "widget", "other"]);
+  assert.deepEqual(layout.community.groups.map((g) => g.items.map((i) => i.id)), [["contacts"], ["plan", "form"], ["tiers", "sans-type"]], "l'ordre d'arrivée est conservé dans un groupe");
+  assert.deepEqual(layout.community.items.map((i) => i.id), ["contacts", "plan", "form", "tiers", "sans-type"], "en liste simple, dans l'ordre des groupes");
+  assert.deepEqual(P.buildMenuLayout([item("blog", "content")]).community, { items: [], groups: [], collapsible: false });
   assert.equal(P.menuGroupOf("social"), "other");
 });
 
-test("menu : seules les instances qui tournent y figurent ; Intégrations compte toutes celles qui y sont rangées et cumule leurs pastilles", () => {
+test("menu : Ma communauté passe en groupes pliables au-delà de OPEN_BY_DEFAULT_MAX entrées, jamais avant", () => {
+  const many = (n) => Array.from({ length: n }, (_, i) => item(`c${i}`, i % 2 ? "widget" : "utility"));
+  assert.equal(P.buildMenuLayout(many(P.OPEN_BY_DEFAULT_MAX)).community.collapsible, false);
+  assert.equal(P.buildMenuLayout(many(P.OPEN_BY_DEFAULT_MAX + 1)).community.collapsible, true);
+  assert.equal(P.buildMenuLayout([...many(3), ...Array.from({ length: 9 }, (_, i) => item(`b${i}`, "content"))]).community.collapsible, false, "les entrées de Mon contenu ne comptent pas");
+});
+
+test("menu : seules les instances épinglées qui tournent y figurent ; les autres ne vivent que dans Extensions et leurs pastilles remontent", () => {
   const layout = P.buildMenuLayout([
     item("a", "utility", { enabled: false }), item("b", "utility", { error: true }), item("c", "widget", { badge: 2 }),
     item("t", "utility", { placement: "integrations", badge: 3 }), item("o", "utility", { placement: "integrations", enabled: false, badge: 9 }), item("e", "utility", { placement: "integrations", error: true, badge: 4 }),
+    item("ov", "overlay", { placement: "overlays", badge: 1 }),
   ]);
-  assert.deepEqual(layout.groups.flatMap((g) => g.items.map((i) => i.id)), ["c"], "désactivée ou en erreur : pas dans le menu");
-  assert.equal(layout.integrations.count, 3, "la page Intégrations les liste toutes (désactivée et en erreur comprises)");
-  assert.equal(layout.integrations.badge, 3, "seule une pastille d'instance qui tourne remonte sur l'entrée");
-  assert.equal(P.buildMenuLayout([]).integrations.count, 0);
+  assert.deepEqual(layout.community.items.map((i) => i.id), ["c"], "désactivée, en erreur ou non épinglée : pas dans le menu");
+  assert.equal(layout.unpinnedBadge, 4, "seule une pastille d'instance qui tourne remonte (3 + 1) ; désactivée ou en erreur : non");
+  assert.equal(P.buildMenuLayout([]).unpinnedBadge, 0);
+  assert.equal(P.buildMenuLayout([item("c", "widget", { badge: 5 })]).unpinnedBadge, 0, "une instance épinglée garde sa pastille sur son propre lien");
 });
 
 test("menu : la pastille d'un contenu épinglé reste sur son lien (Contacts : 5)", () => {
   const layout = P.buildMenuLayout([item("contacts", "utility", { badge: 5 })]);
-  assert.equal(layout.groups[0].items[0].badge, 5);
+  assert.equal(layout.community.groups[0].items[0].badge, 5);
+});
+
+test("pastille d'Extensions : mises à jour de modules + modules à régler + pastilles des modules non épinglés ; le libellé dit « mises à jour » seulement s'il n'y a que cela", () => {
+  assert.deepEqual(P.extensionsBadge({ modulesBehind: 0, toSetUp: 0, unpinnedBadge: 0 }), { count: 0, onlyUpdates: false });
+  assert.deepEqual(P.extensionsBadge({ modulesBehind: 2, toSetUp: 0, unpinnedBadge: 0 }), { count: 2, onlyUpdates: true });
+  assert.deepEqual(P.extensionsBadge({ modulesBehind: 2, toSetUp: 1, unpinnedBadge: 3 }), { count: 6, onlyUpdates: false });
+  assert.deepEqual(P.extensionsBadge({ modulesBehind: 0, toSetUp: 1, unpinnedBadge: 0 }), { count: 1, onlyUpdates: false });
 });
 
 // ─── Plié / déplié ──────────────────────────────────────────────────────────────────────────────────────────────
@@ -151,8 +186,8 @@ test("plié par défaut : dépliés jusqu'à 6 instances épinglées, repliés a
 test("plié mémorisé : le serveur lit le cookie (pas de clignotement) et le groupe suit la page courante", () => {
   const layout = read(`${PANEL}/layout.tsx`);
   assert.match(layout, /parseNavState\(\(await cookies\(\)\)\.get\(NAV_STATE_COOKIE\)\?\.value\)/);
-  assert.match(layout, /<NavGroup key=\{g\.id\} id=\{g\.id\}[^]*?stored=\{navState\[g\.id\]\} openByDefault=\{openByDefault\}/);
-  assert.match(layout, /groupOpenByDefault\(/);
+  assert.match(layout, /menu\.community\.collapsible/, "groupes pliables seulement quand il y a beaucoup d'entrées");
+  assert.match(layout, /<NavGroup key=\{g\.id\} id=\{g\.id\}[^]*?stored=\{navState\[g\.id\]\} openByDefault=\{false\}/);
   const group = read("src/components/admin/NavGroup.tsx");
   assert.match(group, /<details open=\{open\}/, "rendu côté serveur déjà dans le bon état");
   assert.match(group, /isCurrent\(t, path, search\)/, "la page ouverte déplie son groupe");
@@ -180,12 +215,12 @@ test("« à configurer » : un réglage à remplir, vide et sans valeur par déf
   assert.equal(P.settingsToFill([], new Set(), {}), false);
 });
 
-test("page Intégrations : cherchable avec le même champ que la page Modules, par nom, module, état ou clé", () => {
-  const page = read(`${PANEL}/integrations/page.tsx`);
+test("Extensions > Installées : cherchable avec le même champ, par nom, famille, état, plateforme ou clé", () => {
+  const page = read(`${PANEL}/extensions/page.tsx`);
   assert.match(page, /<CatalogueSearch/);
-  assert.match(page, /data-catalogue-item data-search=\{c\.search\}/);
   assert.match(page, /data-catalogue-section/);
-  assert.match(page, /moduleSearchText\(\[i\.name, moduleName, i\.key/);
+  assert.match(read("src/components/admin/ExtensionCard.tsx"), /data-catalogue-item data-search=\{m\.search\}/);
+  assert.match(read(`${PANEL}/extensions/loadInstalled.ts`), /moduleSearchText\(\[modName/);
   const cards = [
     { name: "Chaîne Twitch", mod: "Twitch channel", state: "setup" },
     { name: "Instagram", mod: "Social links", state: "on" },
@@ -199,15 +234,21 @@ test("page Intégrations : cherchable avec le même champ que la page Modules, p
   assert.equal(find("").length, 3);
 });
 
-test("page Intégrations : une carte par instance rangée, avec nom, état, réglages, interrupteur et choix d'épinglage", () => {
-  const page = read(`${PANEL}/integrations/page.tsx`);
-  assert.match(page, /\.filter\(\(i\) => i\.placement === "integrations"\)/);
-  assert.match(page, /<InstanceState t=\{t\} state=\{c\.state\}/);
-  assert.match(page, /href=\{`\/admin\/instances\/\$\{c\.id\}`\}/, "lien vers les réglages");
-  assert.match(page, /toggleInstanceAction\.bind\(null, c\.id, !c\.enabled\)/);
-  assert.match(page, /setPlacementAction\.bind\(null, c\.id, "menu"\)/);
+test("Extensions > Installées : une carte par module avec ses instances (nom, état, réglages, interrupteur, épingler au menu, adresse OBS) ; réservé à ceux qui gèrent", () => {
+  const page = read(`${PANEL}/extensions/page.tsx`);
   assert.match(page, /adminCtx\("admin"\)/);
-  const actions = read(`${PANEL}/integrations/actions.ts`);
+  assert.match(page, /<ExtensionCard /);
+  assert.match(page, /<FamilyFilter /);
+  assert.match(page, /parseFamily\(query\.family\)/);
+  const card = read("src/components/admin/ExtensionCard.tsx");
+  assert.match(card, /<InstanceState t=\{t\} state=\{i\.state\}/);
+  assert.match(card, /href=\{`\/admin\/instances\/\$\{i\.id\}`\}/, "lien vers les réglages");
+  assert.match(card, /toggleInstanceAction\.bind\(null, i\.id, !i\.enabled\)/);
+  assert.match(card, /setPlacementAction\.bind\(null, i\.id, i\.pinned \? i\.unpinTo : "menu"\)/, "épingler / retirer du menu");
+  assert.match(card, /<CopyText text=\{i\.obsUrl\}/, "l'adresse OBS des overlays est reprise");
+  assert.match(card, /data-testid="admin-badge"/, "les pastilles restent visibles");
+  assert.match(read(`${PANEL}/extensions/loadInstalled.ts`), /overlayUrl\(siteUrl, i\.key\)/);
+  const actions = read(`${PANEL}/extensions/actions.ts`);
   for (const fn of ["setPlacementAction", "toggleInstanceAction"]) assert.match(actions, new RegExp(`export async function ${fn}[^]*?adminCtx\\("admin"\\)`));
   assert.match(actions, /deleteSetting\(placementSettingKey/, "revenir à la règle par défaut efface le choix");
   // la page de réglages d'une instance propose le même choix
@@ -251,77 +292,140 @@ test("états et épinglage de bout en bout : instances réelles, état par insta
   assert.equal(s.get(blog.id).state, "on");
 });
 
-// ─── Hub Modules : onglets, anciennes adresses, entrée de menu ──────────────────────────────────────────────────
-test("hub Modules : trois onglets (Installés, Catalogue, Mises à jour), l'onglet des mises à jour compte les modules en retard", () => {
+// ─── Extensions : onglets, anciennes adresses, entrée de menu ────────────────────────────────────────────────────
+test("Extensions : trois onglets (Installées, Ajouter, Mises à jour), l'onglet des mises à jour compte les modules en retard", () => {
   const tabs = read("src/components/admin/FeatureTabs.tsx");
-  assert.match(tabs, /updates: "\/admin\/modules\?tab=updates"/);
+  assert.match(tabs, /updates: EXTENSIONS_UPDATES_HREF/);
   assert.match(tabs, /data-testid="tab-badge"/);
   assert.match(tabs, /peekModulesReport\(\)\?\.outdated\.length/, "compteur sans réseau");
   assert.match(tabs, /isOwner \? t\("hub\.tab\.updates"\) : undefined/, "réservé au propriétaire");
-  const modules = read(`${PANEL}/modules/page.tsx`);
-  assert.match(modules, /tab === "updates" && !isOwner\) redirect\("\/admin\/modules"\)/);
-  assert.match(modules, /<ModulesUpdatesSection/);
-  assert.match(modules, /instances\.length > 1/, "un module à plusieurs instances se déplie");
-  assert.match(modules, /<InstanceState/);
-  assert.match(modules, /CatalogueSearch/);
+  const updates = read(`${PANEL}/extensions/updates/page.tsx`);
+  assert.match(updates, /user\.role !== "owner"\) redirect\(EXTENSIONS_HREF\)/);
+  assert.match(updates, /<ModulesUpdatesSection/);
+  assert.match(updates, /href="\/admin\/updates"/, "les mises à jour du cœur gardent leur page");
+  assert.match(read(`${PANEL}/extensions/page.tsx`), /current="installed"/);
   const section = read("src/components/admin/ModulesUpdatesSection.tsx");
   assert.match(section, /updates\.modules\.all/, "« Tout mettre à jour »");
   assert.match(section, /data-testid="modules-updates"/);
   // la page Mises à jour du site garde le cœur et renvoie vers l'onglet
-  const updates = read(`${PANEL}/updates/page.tsx`);
-  assert.match(updates, /href="\/admin\/modules\?tab=updates"/);
-  assert.ok(!updates.includes("<ModulesUpdates "), "la liste des modules en retard n'est plus dupliquée ici");
-  assert.match(updates, /data-testid="update-journey"/);
+  const core = read(`${PANEL}/updates/page.tsx`);
+  assert.match(core, /href=\{EXTENSIONS_UPDATES_HREF\}/);
+  assert.ok(!core.includes("<ModulesUpdates "), "la liste des modules en retard n'est plus dupliquée ici");
+  assert.match(core, /data-testid="update-journey"/);
 });
 
-test("anciennes adresses : /admin/catalogue, /admin/catalogue/details, /admin/updates et /admin/modules/[id] existent toujours", () => {
-  for (const f of ["catalogue/page.tsx", "catalogue/details/page.tsx", "catalogue/@modal/(.)details/page.tsx", "updates/page.tsx", "modules/[id]/page.tsx", "modules/page.tsx", "integrations/page.tsx"]) assert.ok(fs.existsSync(`${PANEL}/${f}`), f);
-  // les anciens liens d'un résultat de recherche de mise à jour redirigent encore vers la page du module
-  assert.match(read(`${PANEL}/modules/page.tsx`), /redirect\(`\/admin\/modules\/\$\{encodeURIComponent\(checked\)\}\?/);
-  assert.match(read(`${PANEL}/catalogue/page.tsx`), /<FeatureTabs current="add"/);
+test("anciennes adresses : Modules, Catalogue, Intégrations et Overlays redirigent vers Extensions ; les fiches de module et d'instance existent toujours", () => {
+  for (const f of ["modules/page.tsx", "catalogue/page.tsx", "catalogue/details/page.tsx", "integrations/page.tsx", "overlays/page.tsx"]) assert.match(read(`${PANEL}/${f}`), /redirectLegacy\("\/admin\//, f);
+  for (const f of ["modules/[id]/page.tsx", "instances/[id]/page.tsx", "updates/page.tsx", "extensions/page.tsx", "extensions/add/page.tsx", "extensions/add/details/page.tsx", "extensions/add/@modal/(.)details/page.tsx", "extensions/updates/page.tsx"]) assert.ok(fs.existsSync(`${PANEL}/${f}`), f);
+  assert.match(read(`${PANEL}/extensions/add/page.tsx`), /current="add"/);
+  const L = X;
+  assert.equal(L.legacyExtensionsTarget("/admin/modules"), "/admin/extensions");
+  assert.equal(L.legacyExtensionsTarget("/admin/modules", { tab: "updates" }), "/admin/extensions/updates");
+  assert.equal(L.legacyExtensionsTarget("/admin/modules", { error: "modules.error.requires", missing: "a,b", notice: "services" }), "/admin/extensions?error=modules.error.requires&missing=a%2Cb&notice=services", "les messages d'erreur sont conservés");
+  assert.equal(L.legacyExtensionsTarget("/admin/modules", { module: "blog", update: "ok", to: "1.2.0" }), "/admin/modules/blog?module=blog&update=ok&to=1.2.0", "ancien retour d'une recherche de mise à jour : la page du module");
+  assert.equal(L.legacyExtensionsTarget("/admin/catalogue"), "/admin/extensions/add");
+  assert.equal(L.legacyExtensionsTarget("/admin/catalogue", { error: "modules.error.clone" }), "/admin/extensions/add?error=modules.error.clone");
+  assert.equal(L.legacyExtensionsTarget("/admin/catalogue/details", { id: "blog" }), "/admin/extensions/add/details?id=blog");
+  assert.equal(L.legacyExtensionsTarget("/admin/catalogue/details", { repo: "https://example.org/x/y" }), "/admin/extensions/add/details?repo=https%3A%2F%2Fexample.org%2Fx%2Fy");
+  assert.equal(L.legacyExtensionsTarget("/admin/integrations"), "/admin/extensions?family=connections");
+  assert.equal(L.legacyExtensionsTarget("/admin/overlays/"), "/admin/extensions?family=overlays");
+  assert.equal(L.legacyExtensionsTarget("/admin/modules/blog"), null, "la page d'un module ne bouge pas");
+  assert.equal(L.legacyExtensionsTarget("/admin/instances/abc"), null);
+  assert.equal(L.legacyExtensionsTarget("/admin/users"), null);
 });
 
-test("entrée de menu « Modules » : active sur le hub (3 onglets), le catalogue, ses fiches et la page d'un module ; « Intégrations » sur ses instances", () => {
-  const modules = { href: "/admin/modules", also: ["/admin/catalogue"] };
-  const here = (path, search = "") => isCurrent(modules.href, path, search, modules);
-  assert.ok(here("/admin/modules"));
-  assert.ok(here("/admin/modules", "?tab=updates"));
+test("entrée de menu « Extensions » : active sur ses trois onglets, le catalogue, la page d'un module et les réglages d'une instance non épinglée", () => {
+  const ext = { href: "/admin/extensions", also: ["/admin/modules", "/admin/instances/i-twitch", "/admin/entries?c=links-1"] };
+  const here = (path, search = "") => isCurrent(ext.href, path, search, ext);
+  assert.ok(here("/admin/extensions"));
+  assert.ok(here("/admin/extensions", "?family=overlays"));
+  assert.ok(here("/admin/extensions/add"));
+  assert.ok(here("/admin/extensions/add/details", "?id=blog"));
+  assert.ok(here("/admin/extensions/updates"));
   assert.ok(here("/admin/modules/blog"));
-  assert.ok(here("/admin/catalogue"));
-  assert.ok(here("/admin/catalogue/details", "?id=blog"));
-  assert.ok(!here("/admin/integrations"));
+  assert.ok(here("/admin/instances/i-twitch"));
+  assert.ok(here("/admin/entries", "?c=links-1"));
+  assert.ok(!here("/admin/entries", "?c=blog"));
   assert.ok(!here("/admin/updates"), "la page Mises à jour du site garde sa propre entrée");
-  const integrations = { href: "/admin/integrations", also: ["/admin/instances/i-twitch", "/admin/entries?c=links-1"] };
-  const inInt = (path, search = "") => isCurrent(integrations.href, path, search, integrations);
-  assert.ok(inInt("/admin/integrations"));
-  assert.ok(inInt("/admin/instances/i-twitch"));
-  assert.ok(inInt("/admin/entries", "?c=links-1"));
-  assert.ok(!inInt("/admin/entries", "?c=blog"));
   const layout = read(`${PANEL}/layout.tsx`);
-  assert.match(layout, /href="\/admin\/modules" also=\{\["\/admin\/catalogue"\]\} prominent/);
-  assert.match(layout, /href="\/admin\/integrations"/);
-  assert.match(layout, /nav\.integrations/);
-  assert.match(layout, /badge=\{menu\.integrations\.badge\}/, "la pastille des intégrations remonte sur l'entrée");
+  assert.match(layout, /href=\{EXTENSIONS_HREF\} also=\{\["\/admin\/modules", \.\.\.unpinnedPages\]\}/);
+  assert.ok(!/prominent/.test(layout) && !/prominent/.test(read("src/components/admin/NavLink.tsx")), "plus d'entrée en surbrillance");
+  assert.ok(!layout.includes("nav.integrations") && !layout.includes("nav.overlays") && !layout.includes("/admin/integrations") && !layout.includes("/admin/overlays"), "Intégrations et Overlays ont disparu du menu");
+  assert.match(layout, /extensionsBadge\(\{ modulesBehind, toSetUp, unpinnedBadge: menu\.unpinnedBadge \}\)/, "les pastilles remontent sur Extensions");
+  assert.match(layout, /badge=\{extensions\.count\}/);
+});
+
+test("menu : l'ordre des rubriques et des entrées d'Administration", () => {
+  const layout = read(`${PANEL}/layout.tsx`);
+  const order = ["nav.dashboard", "nav.myContent", "nav.myCommunity", "nav.mySite", "nav.admin", "nav.account"].map((k) => layout.indexOf(`"${k}"`));
+  assert.ok(order.every((n, i) => n > -1 && (i === 0 || n > order[i - 1])), "Tableau de bord, Mon contenu, Ma communauté, Mon site, Administration, Compte");
+  const admin = layout.slice(layout.indexOf('t("nav.admin")'), layout.indexOf('t("nav.account")'));
+  const entries = ["nav.extensions", "nav.maintenanceAi", "nav.mcp", "nav.users", "nav.backup", "nav.updates", "nav.audit"].map((k) => admin.indexOf(`"${k}"`));
+  assert.ok(entries.every((n, i) => n > -1 && (i === 0 || n > entries[i - 1])), "Extensions, les deux entrées d'assistants IA côte à côte, Utilisateurs, Sauvegarde, Mises à jour, Journal d'audit");
+  const site = layout.slice(layout.indexOf('t("nav.mySite")'), layout.indexOf('t("nav.admin")'));
+  for (const href of ["/admin/home", "/admin/navigation", "/admin/settings", "/admin/social", "/admin/ai-visibility", "/admin/redirects"]) assert.ok(site.includes(`href="${href}"`), href);
+});
+
+// ─── Familles d'Extensions ──────────────────────────────────────────────────────────────────────────────────────
+test("familles d'Extensions : Contenu, Communauté, Réseaux et connexions, Overlays — règle lue dans le manifeste, sur les 21 modules d'extras", () => {
+  assert.deepEqual(F.EXTENSION_FAMILIES, ["content", "community", "connections", "overlays"]);
+  const fam = (e) => F.extensionFamily({ ...asManifest(e), ...(e.platform ? { platform: e.platform } : {}) });
+  const byId = Object.fromEntries(EXTRAS.map((e) => [e.id, fam(e)]));
+  for (const id of ["alerts-overlay", "maze-overlay", "sponsor-ticker", "ticker-overlay"]) assert.equal(byId[id], "overlays", id);
+  for (const id of ["blog", "pages", "sponsors", "collection", "codes"]) assert.equal(byId[id], "content", id);
+  assert.equal(byId.links, "connections", "une liste de liens vers l'extérieur : vos réseaux");
+  for (const id of ["contacts", "partnerships", "planning", "contact-form", "game-suggestions", "hero"]) assert.equal(byId[id], "community", id);
+  assert.equal(F.extensionFamily({ type: "social" }), "connections");
+  assert.equal(F.extensionFamily({ type: "integration", mcp: [{}] }), "connections");
+  assert.equal(F.extensionFamily({ type: "utility", platform: "twitch" }), "connections", "une plateforme déclarée : réseaux et connexions");
+  assert.equal(F.extensionFamily({ type: "utility", platform: "Mal Formé" }), "community", "plateforme illisible : ignorée");
+  assert.equal(F.extensionFamily({ permissions: ["overlay"] }), "overlays");
+  assert.equal(F.extensionFamily({}), "community");
+  assert.equal(F.parseFamily("overlays"), "overlays");
+  assert.equal(F.parseFamily("n'importe quoi"), null);
+});
+
+test("familles d'Extensions : ce qui demande de l'attention passe d'abord (erreur, à configurer, actif, éteint)", () => {
+  assert.equal(F.worstState(["on", "setup", "off"]), "setup");
+  assert.equal(F.worstState(["on", "error", "setup"]), "error");
+  assert.equal(F.worstState([]), "off");
+  const groups = buildModuleGroups([
+    { id: "a", name: "Alpha", type: "widget", family: "community", search: "" }, { id: "b", name: "Blog", type: "content", family: "content", search: "" },
+    { id: "c", name: "Chaîne", type: "utility", family: "connections", search: "" }, { id: "x", name: "X", type: "broken", family: "broken", search: "" },
+  ], F.EXTENSION_FAMILIES, "", (m) => m.family);
+  assert.deepEqual(groups.map((g) => g.type), ["content", "community", "connections", "broken"], "familles dans l'ordre, modules illisibles en dernier");
 });
 
 // ─── i18n ───────────────────────────────────────────────────────────────────────────────────────────────────────
-test("i18n : toutes les clés utilisées par le menu, les intégrations et le hub existent en français et en anglais", () => {
+test("i18n : toutes les clés utilisées par le menu, Extensions et ses onglets existent en français et en anglais", () => {
   const fr = JSON.parse(read("src/locales/fr.json"));
   const en = JSON.parse(read("src/locales/en.json"));
   const files = [
-    `${PANEL}/layout.tsx`, `${PANEL}/integrations/page.tsx`, `${PANEL}/modules/page.tsx`, `${PANEL}/updates/page.tsx`, `${PANEL}/instances/[id]/page.tsx`,
+    `${PANEL}/layout.tsx`, `${PANEL}/extensions/page.tsx`, `${PANEL}/extensions/updates/page.tsx`, `${PANEL}/updates/page.tsx`, `${PANEL}/instances/[id]/page.tsx`,
     "src/components/admin/FeatureTabs.tsx", "src/components/admin/InstanceState.tsx", "src/components/admin/ModulesUpdatesSection.tsx", "src/components/admin/NavGroup.tsx",
+    "src/components/admin/ExtensionCard.tsx", "src/components/admin/ExtensionsHeader.tsx", "src/components/admin/ExtensionsNotices.tsx", "src/components/admin/FamilyFilter.tsx",
   ];
   const keys = new Set();
   for (const f of files) for (const m of read(f).matchAll(/\bt\(\s*(?:advanced \? )?"([a-zA-Z][\w.]*)"/g)) keys.add(m[1]);
   for (const g of P.MENU_GROUPS) keys.add(`navgroup.${g}`);
   for (const s of ["on", "off", "setup", "error"]) keys.add(`integrations.state.${s}`);
+  for (const f of F.EXTENSION_FAMILIES) { keys.add(`family.${f}`); keys.add(`family.${f}.help`); }
   assert.ok(keys.size > 30);
   for (const k of keys) { assert.ok(fr[k], `fr : clé manquante ${k}`); assert.ok(en[k], `en : clé manquante ${k}`); }
   // les clés de thème restent en fin de fichier : les nouvelles sont insérées avant
   for (const dict of [fr, en]) {
     const all = Object.keys(dict);
     assert.ok(all.indexOf("hub.tab.installed") < all.indexOf("theme.custom"), "nouvelles clés avant les clés de thème");
+    assert.ok(all.indexOf("nav.extensions") < all.indexOf("theme.custom"));
     assert.equal(all.at(-1), "settings.contrast.accent2");
+  }
+});
+
+test("mode simple : pas de jargon dans les textes d'Extensions (ni « instance », ni « manifeste »)", () => {
+  const fr = JSON.parse(read("src/locales/fr.json"));
+  const en = JSON.parse(read("src/locales/en.json"));
+  for (const k of ["extensions.introSimple", "hub.tab.installed.simple", "hub.tab.catalogue.simple", "hub.instancesSimple", "nav.myCommunity", "nav.extensions", "placement.pin", "placement.unpin", "placement.park", "family.content.help", "family.community.help", "family.connections.help", "family.overlays.help"]) {
+    assert.ok(!/instance|manifest|manifeste/i.test(fr[k]), `fr ${k}`);
+    assert.ok(!/instance|manifest/i.test(en[k]), `en ${k}`);
   }
 });

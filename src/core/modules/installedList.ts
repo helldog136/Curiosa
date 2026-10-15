@@ -17,12 +17,12 @@ export function matchesQuery(searchText: string, query: string): boolean {
 export type ListItem = { id: string; type: string; search: string };
 export type ListGroup<T extends ListItem> = { type: string; items: T[] };
 
-/** Regroupe par catégorie dans l'ordre donné, puis les catégories inconnues (hors « broken ») par ordre d'arrivée, et enfin « broken » ; les groupes vides disparaissent. Dans un groupe : ordre alphabétique des noms. */
-export function buildModuleGroups<T extends ListItem & { name: string }>(items: T[], order: readonly string[], query = ""): ListGroup<T>[] {
+/** Regroupe par catégorie (ou par la clé que donne `keyOf`, p. ex. la famille) dans l'ordre donné, puis les catégories inconnues (hors « broken ») par ordre d'arrivée, et enfin « broken » ; les groupes vides disparaissent. Dans un groupe : ordre alphabétique des noms. */
+export function buildModuleGroups<T extends ListItem & { name: string }>(items: T[], order: readonly string[], query = "", keyOf: (i: T) => string = (i) => i.type): ListGroup<T>[] {
   const kept = items.filter((i) => matchesQuery(i.search, query));
   const known = new Set(order);
-  const extra = [...new Set(kept.map((i) => i.type))].filter((t) => !known.has(t) && t !== "broken");
+  const extra = [...new Set(kept.map(keyOf))].filter((t) => !known.has(t) && t !== "broken");
   return [...order, ...extra, "broken"]
-    .map((type) => ({ type, items: kept.filter((i) => i.type === type).sort((a, b) => a.name.localeCompare(b.name)) }))
+    .map((type) => ({ type, items: kept.filter((i) => keyOf(i) === type).sort((a, b) => a.name.localeCompare(b.name)) }))
     .filter((g) => g.items.length > 0);
 }

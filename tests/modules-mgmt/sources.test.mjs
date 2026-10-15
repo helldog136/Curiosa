@@ -85,10 +85,10 @@ test("installer depuis un dépôt ajouté : un seul module, désactivé, « pers
 });
 
 test("branchements : réservé au propriétaire, journalisé, affiché dans le Catalogue avancé avec confirmation avant installation", () => {
-  const actions = fs.readFileSync("src/app/admin/(panel)/catalogue/actions.ts", "utf8");
+  const actions = fs.readFileSync("src/app/admin/(panel)/extensions/add/actions.ts", "utf8");
   for (const name of ["addSourceAction", "removeSourceAction", "refreshSourcesAction"]) assert.match(actions, new RegExp(`export async function ${name}[\\s\\S]*?adminCtx\\("owner"\\)`));
   assert.match(actions, /module\.source\.add/);
-  const page = fs.readFileSync("src/app/admin/(panel)/catalogue/page.tsx", "utf8");
+  const page = fs.readFileSync("src/app/admin/(panel)/extensions/add/page.tsx", "utf8");
   assert.match(page, /isOwner && advanced && \(\s*<section[\s\S]*catalogue\.sources/);
   assert.match(page, /details\?repo=/, "chaque module passe par la page de détails (README, permissions, case « je comprends »)");
 });

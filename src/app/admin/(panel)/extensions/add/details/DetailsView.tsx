@@ -14,6 +14,7 @@ import { Checkbox } from "@/components/admin/Field";
 import { ui } from "@/components/admin/ui";
 import { Markdown } from "@/components/site/Markdown";
 import { InstallButton } from "@/components/admin/InstallButton";
+import { EXTENSIONS_ADD_HREF, EXTENSIONS_HREF } from "@/core/modules/extensionsLinks";
 import { installCustomAction } from "../actions";
 
 /**
@@ -110,7 +111,7 @@ export async function DetailsView({ id, repo, embedded = false }: { id?: string;
       {isOwner && !failed && (
         <section className={`${ui.card} space-y-4`}>
           {entry ? (
-            installed ? <a href="/admin/modules" className="text-sm font-medium text-accent hover:underline">{t("catalogue.installed")}</a>
+            installed ? <a href={EXTENSIONS_HREF} className="text-sm font-medium text-accent hover:underline">{t("catalogue.installed")}</a>
               : !entry.compatible ? <p className="text-sm text-muted">{t("catalogue.incompatible")}</p>
               : entry.needsNewerCore ? <p className="text-sm text-muted">{t("modules.core.badge", { version: entry.needsNewerCore, current: getCoreVersion() })}</p>
               : (
@@ -151,7 +152,7 @@ function Frame({ embedded, back, children }: { embedded: boolean; back: string; 
 function Shell({ back, children }: { back: string; children: React.ReactNode }) {
   return (
     <div className="space-y-7">
-      <a href="/admin/catalogue" className="inline-block text-sm text-muted hover:text-accent">← {back}</a>
+      <a href={EXTENSIONS_ADD_HREF} className="inline-block text-sm text-muted hover:text-accent">← {back}</a>
       {children}
     </div>
   );
