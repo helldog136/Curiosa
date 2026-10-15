@@ -27,7 +27,7 @@ const setVersion = (v) => fs.writeFileSync(path.join(app, "package.json"), JSON.
 fs.writeFileSync(path.join(app, "release.json"), JSON.stringify({ repo: "owner/repo" }));
 setVersion("0.1.14");
 
-const calls = { core: [], update: [], reinstall: [], uninstall: [], retry: [], recheck: 0, mails: [] };
+const calls = { core: [], update: [], reinstall: [], uninstall: [], uninstallOpts: [], retry: [], recheck: 0, mails: [] };
 let latest = { tag: "v0.1.15", notes: "Corrections." };
 let report = { checkedAt: Date.now(), checked: 0, outdated: [], unchecked: [] };
 let moduleCheck = { check: { available: false }, failed: false };
@@ -58,7 +58,7 @@ beforeEach(async () => {
     checkModule: async () => moduleCheck,
     updateModules: async (ids) => { calls.update.push(ids); return { ...summary, updated: summary.updated.length ? summary.updated : ids }; },
     reinstall: async (id) => { calls.reinstall.push(id); return reinstallResult; },
-    uninstall: async (id) => { calls.uninstall.push(id); return uninstallResult; },
+    uninstall: async (id, opts) => { calls.uninstall.push(id); calls.uninstallOpts.push(opts); return uninstallResult; },
     retryInstance: async (id) => { calls.retry.push(id); return retryResult; },
     startCoreUpdate: async (tag, actor) => { calls.core.push({ tag, actor }); return { ok: true }; },
     mail: async (subject, text) => { calls.mails.push({ subject, text }); return { ok: true }; },
@@ -156,7 +156,7 @@ test("status : version, canal, Node, uptime, modules, mise à jour en cours", as
   assert.equal(value.core.channel, "stable");
   assert.equal(value.runtime.node, process.version);
   assert.ok(value.runtime.uptimeSeconds >= 0);
-  assert.deepEqual(value.modules, { installed: 2, enabled: 1 });
+  assert.deepEqual(value.modules, { installed: 2 }, "plus d'état éteint : seulement le nombre de modules installés");
   assert.deepEqual([value.update.state, value.update.target, value.update.step], ["running", "v0.1.15", "download"]);
   assert.equal(JSON.stringify(value).includes(db.dir), false, "aucun chemin du serveur");
 });
@@ -192,7 +192,7 @@ test("health : une sauvegarde faite par la maintenance, ou téléchargée par le
   assert.deepEqual([(await I.lastBackup()).recent, (await I.lastBackup()).by], [true, "ai"]);
 });
 
-test("modules : version, activé, source (sans identifiants), instances en erreur, mise à jour disponible", async () => {
+test("modules : version, source (sans identifiants), instances en erreur, mise à jour disponible", async () => {
   await db.prisma.module.create({ data: { id: "alpha", source: "git", repoUrl: "https://bob:s3cr3t@example.org/alpha.git", ref: "v1.0.0", version: "1.0.0", enabled: true } });
   await db.prisma.moduleInstance.create({ data: { moduleId: "alpha", key: "alpha-1" } });
   const inst = await db.prisma.moduleInstance.findUnique({ where: { key: "alpha-1" } });
@@ -201,7 +201,7 @@ test("modules : version, activé, source (sans identifiants), instances en erreu
   const { token } = await maintenanceToken();
   const { value } = await call(token, "maintenance_modules");
   const m = value.modules[0];
-  assert.deepEqual([m.id, m.version, m.enabled, m.source, m.update.available, m.update.target, m.update.followsStableTag], ["alpha", "1.0.0", true, "git", true, "1.1.0", true]);
+  assert.deepEqual([m.id, m.version, m.source, m.update.available, m.update.target, m.update.followsStableTag], ["alpha", "1.0.0", "git", true, "1.1.0", true]);
   assert.equal(m.loadable, false, "dossier absent : module non chargeable, signalé");
   assert.match(m.instances[0].error, /failed/);
   const text = JSON.stringify(value);
@@ -646,6 +646,7 @@ test("module_uninstall : demande, puis approbation → désinstallé ; refusé d
   assert.equal(calls.uninstall.length, 0);
   assert.equal((await M.approveRequest(req.requestId, owner)).ok, true);
   assert.deepEqual(calls.uninstall, ["alpha"]);
+  assert.deepEqual(calls.uninstallOpts, [{ keepData: true }], "sans précision : les données sont GARDÉES (non destructif)");
   uninstallResult = { ok: false, error: "modules.error.requiredBy" };
   await db.prisma.module.create({ data: { id: "beta", source: "git", repoUrl: "https://example.org/b.git", ref: "v1.0.0", version: "1.0.0", enabled: false } });
   const req2 = (await call(token, "maintenance_module_uninstall", { module: "beta" })).value;
@@ -653,6 +654,25 @@ test("module_uninstall : demande, puis approbation → désinstallé ; refusé d
   assert.equal(r.ok, false);
   assert.match(r.message, /other modules need it/);
   assert.equal((await Q.getRequest(req2.requestId)).status, "failed");
+});
+
+test("module_uninstall : keepData=false (tout effacer) est une demande distincte, dite telle quelle à l'humain ; la valeur doit être un booléen", async () => {
+  const { token } = await maintenanceToken(["module_uninstall"]);
+  await db.prisma.module.create({ data: { id: "gamma", source: "git", repoUrl: "https://example.org/g.git", ref: "v1.0.0", version: "1.0.0", enabled: true } });
+  assert.match((await call(token, "maintenance_module_uninstall", { module: "gamma", keepData: "non" })).error, /boolean/);
+  const keep = (await call(token, "maintenance_module_uninstall", { module: "gamma" })).value;
+  assert.equal((await Q.getRequest(keep.requestId)).plan.keepData, true);
+  const erase = (await call(token, "maintenance_module_uninstall", { module: "gamma", keepData: false })).value;
+  assert.notEqual(erase.requestId, keep.requestId, "garder et effacer ne sont pas la même demande");
+  assert.equal((await Q.getRequest(erase.requestId)).plan.keepData, false);
+  uninstallResult = { ok: true, id: "gamma" };
+  calls.uninstallOpts.length = 0;
+  const done = await M.approveRequest(erase.requestId, owner);
+  assert.equal(done.ok, true);
+  assert.match(done.message, /erased/);
+  assert.deepEqual(calls.uninstallOpts, [{ keepData: false }]);
+  const tool = (await call(token, "maintenance_module_uninstall", {})).error;
+  assert.match(tool, /module/);
 });
 
 // ── Audit, avertissements, e-mail ───────────────────────────────────────────────────────────────────────────────────────────

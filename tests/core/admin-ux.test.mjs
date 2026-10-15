@@ -126,8 +126,8 @@ test("API & MCP : ordre en étapes, désactivation et révocation confirmées, �
 test("modules installés : état vide qui mène au catalogue, désinstallation dans la zone danger", () => {
   const page = read(`${PANEL}/extensions/page.tsx`);
   assert.match(page, /total === 0 && \(\s*<EmptyState[^]*EXTENSIONS_ADD_HREF/);
-  const one = read(`${PANEL}/modules/[id]/page.tsx`);
-  assert.match(one, /<DangerZone[^]*uninstallModuleAction[^]*<\/DangerZone>/);
+  const one = read(`${PANEL}/modules/[id]/ModuleView.tsx`);
+  assert.match(one, /<RemoveSection[^]*uninstallModuleAction\.bind\(null, row\.id, true\)[^]*uninstallModuleAction\.bind\(null, row\.id, false\)/, "retirer : garder les données OU tout effacer");
 });
 
 test("mode simple / avancé : une page explique la différence et ne change que le choix de la personne connectée", () => {

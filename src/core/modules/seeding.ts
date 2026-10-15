@@ -74,13 +74,12 @@ export function openSeedSession(mod: LoadedModule, owner: InstanceView): SeedSes
     }
 
     const target = await resolveTarget(mod, targetId);
-    const ownerRow = await prisma.module.findUnique({ where: { id: mod.manifest.id } });
 
-    // Module cible absent : installé depuis le catalogue (sans instance par défaut : c'est l'instance semée qui fournit), puis activé si CE module l'est.
+    // Module cible absent : installé depuis le catalogue (sans instance par défaut : c'est l'instance semée qui fournit).
     let targetMod = target.installed;
     if (!targetMod) {
       const { installSeedTarget } = await import("./installer");
-      const r = await installSeedTarget(targetId, mod.manifest.id, ownerRow?.enabled === true);
+      const r = await installSeedTarget(targetId, mod.manifest.id);
       if (!r.ok) throw new SeedError("target-unavailable", `cannot install "${targetId}": ${r.error}`);
       journals.push(r.journal);
       undo.push(() => unwind(r.journal));
@@ -88,9 +87,6 @@ export function openSeedSession(mod: LoadedModule, owner: InstanceView): SeedSes
       if (!targetMod) throw new SeedError("target-unavailable", `"${targetId}" did not load after install`);
       assertOffers(mod, targetMod.manifest);   // l'index annonçait, le manifeste réel tranche
     }
-    // L'instance semée n'est active que si son module l'est (installé par nos soins : activé seulement si le module semeur l'est).
-    const targetEnabled = (await prisma.module.findUnique({ where: { id: targetId } }))?.enabled === true;
-
     const manifest = targetMod.manifest;
     const siblings = await prisma.moduleInstance.findMany({ where: { moduleId: targetId } });
     if (manifest.instances === "single" && siblings.length) throw new SeedError("single", `"${targetId}" accepts a single instance and already has one`);
@@ -105,7 +101,6 @@ export function openSeedSession(mod: LoadedModule, owner: InstanceView): SeedSes
     const created = await prisma.$transaction(async (tx) => {
       const key = await freeKey(tx, keyFromNickname(manifest.id, nickname));
       const instance = await createInstance(tx, { manifest, key, nickname, names });
-      if (!targetEnabled) await tx.moduleInstance.update({ where: { id: instance.id }, data: { enabled: false } });
       for (const s of settings) {
         await tx.setting.upsert({
           where: { key_locale: { key: instanceSettingKey(instance.id, s.key), locale: s.locale } },

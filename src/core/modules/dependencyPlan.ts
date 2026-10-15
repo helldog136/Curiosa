@@ -7,29 +7,25 @@ import type { ParsedManifest } from "./manifest";
 /**
  * RÉSOLUTION DES DÉPENDANCES — QUI fournira un service qui manque (choix + aperçu). Ne modifie rien : l'installation réelle est dans
  * dependencyInstaller.ts. Règle de choix, toujours la même et sans hasard :
- *   1. un fournisseur déjà ACTIF (instance active, version suffisante) → rien à faire (si deux le sont, le mécanisme maître/répliques décide) ;
- *   2. sinon un module DÉJÀ INSTALLÉ qui offre le service, version suffisante : d'abord ceux qui sont activés (mais sans instance), puis les
- *      désactivés, chaque groupe par identifiant ;
+ *   1. un fournisseur déjà EN PLACE (instance existante, version suffisante) → rien à faire (si deux le sont, le mécanisme maître/répliques décide) ;
+ *   2. sinon un module DÉJÀ INSTALLÉ qui offre le service, version suffisante (mais sans instance), par identifiant ;
  *   3. sinon un module du CATALOGUE non installé : dans l'ordre de l'index, dans l'ordre de l'index (stable).
  * Seuls les modules du catalogue (reconnus), compatibles avec ce cœur, sont installés d'office ; jamais un dépôt personnel.
  */
 export type Candidate =
-  | { id: string; from: "installed"; enabled: boolean }
+  | { id: string; from: "installed" }
   | { id: string; from: "catalogue"; entry: CatalogueEntry };
 
-export type InstalledView = { id: string; enabled: boolean; offers: ServiceOffer[] };
+export type InstalledView = { id: string; offers: ServiceOffer[] };
 
 /** Candidats pour `need`, du préféré au dernier. Pur : le monde (installés, catalogue) est passé en paramètre. */
 export function rankCandidates(need: ServiceNeed, installed: InstalledView[], catalogue: CatalogueEntry[], exclude: ReadonlySet<string>): Candidate[] {
   const offers = (offs: ServiceOffer[] | undefined) => satisfiesVersion(offerVersionOf(offs, need.service), need.min);
   const fromInstalled = installed.filter((m) => !exclude.has(m.id) && offers(m.offers));
-  const enabled = fromInstalled.filter((m) => m.enabled).sort((a, b) => a.id.localeCompare(b.id));
-  const disabled = fromInstalled.filter((m) => !m.enabled).sort((a, b) => a.id.localeCompare(b.id));
   const have = new Set(installed.map((m) => m.id));
   const fromCatalogue = catalogue.filter((e) => !have.has(e.id) && !exclude.has(e.id) && e.compatible && !e.needsNewerCore && offers(e.offers));
   return [
-    ...enabled.map((m): Candidate => ({ id: m.id, from: "installed", enabled: true })),
-    ...disabled.map((m): Candidate => ({ id: m.id, from: "installed", enabled: false })),
+    ...[...fromInstalled].sort((a, b) => a.id.localeCompare(b.id)).map((m): Candidate => ({ id: m.id, from: "installed" })),
     ...fromCatalogue.map((entry): Candidate => ({ id: entry.id, from: "catalogue", entry })),
   ];
 }
@@ -44,7 +40,7 @@ export async function installedViews(): Promise<InstalledView[]> {
   const out: InstalledView[] = [];
   for (const row of await listModuleRows()) {
     const mod = await getModule(row.id);
-    if (mod) out.push({ id: row.id, enabled: row.enabled, offers: normalizeOffers(mod.manifest.offers) });
+    if (mod) out.push({ id: row.id, offers: normalizeOffers(mod.manifest.offers) });
   }
   return out;
 }
@@ -53,8 +49,8 @@ export async function installedViews(): Promise<InstalledView[]> {
 
 export type PlanStep = {
   id: string;
-  /** present : déjà actif · enable : installé, sera activé (et recevra une instance si besoin) · install : sera téléchargé, activé, avec son instance. */
-  action: "present" | "enable" | "install";
+  /** present : déjà en place · setup : installé, recevra son instance (ses données gardées, sinon une neuve) · install : sera téléchargé, avec son instance. */
+  action: "present" | "setup" | "install";
   services: string[];
 };
 export type PlanProblem = { service: string; min: number; have: number | null; reason: "none" | "old" | "cycle" | "depth"; chain?: string[] };
@@ -97,7 +93,7 @@ export async function planDependencies(rootId: string, needs: ServiceNeed[], opt
         ? normalizeNeeds((await getModule(candidate.id))?.manifest.requires)
         : candidate.entry.needs ?? [];
       await resolve(candidate.id, own, [...path, candidate.id]);
-      add({ id: candidate.id, action: candidate.from === "installed" ? "enable" : "install", services: [need.service] });
+      add({ id: candidate.id, action: candidate.from === "installed" ? "setup" : "install", services: [need.service] });
     }
   }
   await resolve(rootId, needs, opts.path ?? [rootId]);

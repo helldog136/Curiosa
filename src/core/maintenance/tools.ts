@@ -28,12 +28,20 @@ type Def = {
 
 const level2 = (name: Level2Tool): Def["run"] => (args, actor) => runLevel2(name, validateArgs(name === "module_restart" ? INSTANCE_ARG : name === "module_reinstall" ? MODULE_ARG : NONE, args), actor);
 const INSTANCE_ARG = { type: "object", properties: { instance: { type: "string", maxLength: 64, description: "Instance key, as listed by maintenance_modules." } }, required: ["instance"] } as const;
-const level3 = (name: Level3Action): Def["run"] => (args, actor) => callLevel3(name, validateArgs(name === "core_update" || name === "modules_update_all" ? NONE : MODULE_ARG, args), actor);
+const UNINSTALL_ARG = {
+  type: "object",
+  properties: {
+    module: { type: "string", maxLength: 64, description: "Module identifier, as listed by maintenance_modules." },
+    keepData: { type: "boolean", description: "true (default): the module's settings and data are kept aside, inert, and come back if the module is installed again. false: everything is erased for good (irreversible)." },
+  },
+  required: ["module"],
+} as const;
+const level3 = (name: Level3Action): Def["run"] => (args, actor) => callLevel3(name, validateArgs(name === "core_update" || name === "modules_update_all" ? NONE : name === "module_uninstall" ? UNINSTALL_ARG : MODULE_ARG, args), actor);
 
 const DEFS: Def[] = [
   { name: "status", level: 1, title: "Site status", description: "Core version and update channel, Node version, uptime, number of modules, state of the update in progress. Start here.", input: NONE, run: () => status() },
   { name: "health", level: 1, title: "Site health", description: "Disk space, database state, date of the last backup (and whether it is recent), recent errors (limited and with secrets masked).", input: NONE, run: () => health() },
-  { name: "modules", level: 1, title: "Installed modules", description: "Installed modules: version, enabled, source, instances in error, missing dependencies, update available.", input: NONE, run: () => modules() },
+  { name: "modules", level: 1, title: "Installed modules", description: "Installed modules: version, source, instances in error, missing dependencies, update available.", input: NONE, run: () => modules() },
   { name: "updates", level: 1, title: "Available updates", description: "Updates of the core (STABLE releases only) and of modules: target version, patch/minor/major level, short release notes, and whether a module needs a newer core.", input: NONE, run: () => updates() },
   { name: "diagnose", level: 1, title: "Guided diagnosis", description: "One report that gathers health, modules, backup and updates: what is wrong, the probable cause, the proposed action and the tool that does it. Call it after status and health.", input: NONE, run: () => diagnose() },
   { name: "audit", level: 1, title: "Recent maintenance actions", description: "The latest maintenance actions done by AIs and by humans (limited, no secrets).", input: { type: "object", properties: { limit: { type: "integer", minimum: 1, maximum: 50, description: "How many entries (default 20)." } } }, run: (args) => auditTrail(Number(validateArgs({ type: "object", properties: { limit: { type: "integer", minimum: 1, maximum: 50 } } }, args).limit ?? 20)) },
@@ -57,7 +65,7 @@ const DEFS: Def[] = [
   { name: "module_update", level: 3, title: "Update a module", description: "Updates one module to its latest STABLE version (never a pre-release). By default this only creates a request that the owner approves; then poll request_status.", input: MODULE_ARG, run: level3("module_update") },
   { name: "modules_update_all", level: 3, title: "Update all modules", description: "Updates every module that has a STABLE update, one by one. By default this only creates a request that the owner approves; then poll request_status.", input: NONE, run: level3("modules_update_all") },
   { name: "core_update", level: 3, title: "Update the core", description: "Updates Curiosa to the highest STABLE release, only if it is newer (never a release candidate or snapshot, never a downgrade). By default this only creates a request that the owner approves; then poll request_status. Make a backup first.", input: NONE, run: level3("core_update") },
-  { name: "module_uninstall", level: 3, title: "Uninstall a module", description: "Uninstalls a module WITH its instances and data (irreversible). By default this only creates a request that the owner approves; then poll request_status.", input: MODULE_ARG, run: level3("module_uninstall") },
+  { name: "module_uninstall", level: 3, title: "Uninstall a module", description: "Uninstalls a module: no more page, menu, tasks, tools or public route. By default its settings and data are KEPT aside (inert, never readable by anyone) and come back if the module is installed again; pass keepData=false to erase everything for good (irreversible). By default this only creates a request that the owner approves; then poll request_status.", input: UNINSTALL_ARG, run: level3("module_uninstall") },
 ];
 
 /** Catalogue statique (nom, niveau, droits) : sert à l'admin, aux tests et à la documentation. */

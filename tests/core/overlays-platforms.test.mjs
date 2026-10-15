@@ -49,20 +49,19 @@ test("épinglage : menu | integrations | overlays ; le choix l'emporte, mais « 
 });
 
 test("menu : un overlay n'est dans le menu que s'il est épinglé ; sinon sa pastille remonte sur Extensions (s'il tourne)", () => {
-  const it = (id, over = {}) => ({ id, type: "overlay", section: "community", placement: "overlays", enabled: true, error: false, badge: 0, content: false, ...over });
-  const layout = P.buildMenuLayout([it("a", { badge: 2 }), it("b", { enabled: false, badge: 5 }), it("c", { error: true }), it("d", { placement: "menu", type: "utility" }), it("e", { placement: "integrations", badge: 1 })]);
-  assert.equal(layout.unpinnedBadge, 3, "2 + 1 : ni la désactivée ni celle en erreur");
+  const it = (id, over = {}) => ({ id, type: "overlay", section: "community", placement: "overlays", error: false, badge: 0, content: false, ...over });
+  const layout = P.buildMenuLayout([it("a", { badge: 2 }), it("c", { error: true }), it("d", { placement: "menu", type: "utility" }), it("e", { placement: "integrations", badge: 1 })]);
+  assert.equal(layout.unpinnedBadge, 3, "2 + 1 : pas celle en erreur");
   assert.deepEqual(layout.community.groups.flatMap((g) => g.items.map((i) => i.id)), ["d"], "un overlay non épinglé n'est pas dans le menu de travail");
   assert.equal(Object.hasOwn(layout, "overlays") || Object.hasOwn(layout, "integrations"), false, "plus d'entrées « Intégrations » ni « Overlays »");
 });
 
-test("Extensions : l'adresse OBS d'un overlay (avec « Copier »), l'état, les réglages, l'interrupteur et l'épinglage sont repris ; la recherche trouve « obs »", () => {
+test("Extensions : l'adresse OBS d'un overlay (avec « Copier »), l'état, les réglages (en fenêtre) et l'épinglage sont repris ; la recherche trouve « obs »", () => {
   const card = read("src/components/admin/ExtensionCard.tsx");
   assert.match(card, /<CopyText text=\{url\}/);
   assert.match(card, /<ObsLine t=\{t\} url=\{i\.obsUrl\}/, "adresse OBS sur une ligne compacte");
   assert.match(card, /<InstanceState t=\{t\} state=\{m\.attention\}/);
   assert.match(card, /settingsHref/);
-  assert.match(card, /toggleInstanceAction\.bind\(null, i\.id, !i\.enabled\)/);
   assert.match(card, /setPlacementAction\.bind\(null, i\.id, i\.pinned \? i\.unpinTo : "menu"\)/);
   assert.match(read(`${PANEL}/extensions/loadInstalled.ts`), /overlayUrl\(siteUrl, i\.key\)/);
   assert.match(read(`${PANEL}/extensions/loadInstalled.ts`), /unpinnedPlacementFor\(mod\.manifest\)/);
@@ -73,7 +72,7 @@ test("Extensions : l'adresse OBS d'un overlay (avec « Copier »), l'état, les 
   assert.deepEqual(find("obs"), ["Alertes", "Labyrinthe"]);
   assert.deepEqual(find("zzz"), []);
   // la page de l'instance affiche toujours la même adresse
-  assert.match(read(`${PANEL}/instances/[id]/page.tsx`), /overlayUrl\(siteUrl, instance\.key\)/);
+  assert.match(read(`${PANEL}/instances/[id]/InstanceView.tsx`), /overlayUrl\(siteUrl, instance\.key\)/);
   // l'action d'épinglage refuse « overlays » pour un module qui n'est pas un overlay
   assert.match(read(`${PANEL}/extensions/actions.ts`), /placementsFor\(mod\.manifest\)\.includes\(chosen\)/);
   assert.match(read(`${PANEL}/instances/actions.ts`), /placementsFor\(mod\.manifest\)\.includes\(placement\)/);

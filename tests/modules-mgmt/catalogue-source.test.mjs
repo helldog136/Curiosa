@@ -50,7 +50,7 @@ async function legacySite(id, over = {}, marker = "v1") {
   fs.mkdirSync(d, { recursive: true });
   fs.writeFileSync(path.join(d, "module.json"), JSON.stringify(man(id, over)));
   fs.writeFileSync(path.join(d, "index.mjs"), code(marker));
-  await db.prisma.module.create({ data: { id, source: "bundled", version: man(id, over).version, enabled: false } });
+  await db.prisma.module.create({ data: { id, source: "bundled", version: man(id, over).version, enabled: true } });
 }
 /** Dépôt du catalogue : un vrai dépôt git, un dossier par module, une étiquette épinglée. Renvoie le dépôt et l'entrée d'index. */
 function catalogueRepo(id, { over = { version: "1.1.0" }, marker = "v2", files = {}, entry = {}, manifest } = {}) {
@@ -66,7 +66,6 @@ async function installedOldCopy(id, remote = {}, own = {}) {
   await legacySite(id, own.manifest ?? {}, "v1");
   const cat = catalogueRepo(id, remote);
   assert.equal((await row(id)).source, "bundled");
-  assert.equal((await I.setModuleEnabled(id, true)).ok, true);
   const inst = await createInstance(db.prisma, { manifest: (await R.getModule(id)).manifest, nickname: "Carnet", names: { fr: "Carnet" } });
   await setSetting(`instance.${inst.id}.titre`, "Mon carnet");
   await db.prisma.moduleRecord.create({ data: { instanceId: inst.id, collection: "events", data: JSON.stringify({ t: "x" }) } });

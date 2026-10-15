@@ -12,12 +12,12 @@ export function DependencyPlanBox({ view, t, names, compact = false, advanced = 
   if (!view.lines.length && !view.problems.length) return null;
   const by = (action: string) => view.lines.filter((l) => l.action === action).map((l) => l.name);
   const installs = by("install");
-  const enables = by("enable");
+  const setups = by("setup");
   const present = by("present");
   const headline = [
     installs.length ? t("deps.plan.alsoInstall", { names: installs.join(", ") }) : "",
-    enables.length ? t("deps.plan.alsoEnable", { names: enables.join(", ") }) : "",
-    !installs.length && !enables.length && present.length ? t("deps.plan.alreadyThere", { names: present.join(", ") }) : "",
+    setups.length ? t("deps.plan.alsoSetup", { names: setups.join(", ") }) : "",
+    !installs.length && !setups.length && present.length ? t("deps.plan.alreadyThere", { names: present.join(", ") }) : "",
   ].filter(Boolean);
 
   if (compact) {

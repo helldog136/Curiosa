@@ -9,7 +9,7 @@ import { createCatalogue } from "../helpers/catalogue.mjs";
 const db = await useTestDb();
 const cat = createCatalogue();
 const M = await import("@/core/modules/catalogue");
-const { installFromCatalogue, installModule, uninstallModule, updateModule, checkForUpdate, setModuleEnabled } = await import("@/core/modules/installer");
+const { installFromCatalogue, installModule, uninstallModule, updateModule, checkForUpdate } = await import("@/core/modules/installer");
 const { clearRecognizedCache } = await import("@/core/modules/recognized");
 const R = await import("@/core/modules/registry");
 const { MODULES_DIR } = await import("@/core/config");
@@ -67,15 +67,14 @@ test("index reconnu : entrées invalides écartées (identifiant, dépôt non ht
   assert.equal(remote[0].repo, "https://github.com/x/ok", "premier de l'index conservé");
 });
 
-test("installation d'un module du catalogue : cloné à l'étiquette épinglée, désactivé, source git", async () => {
+test("installation d'un module du catalogue : cloné à l'étiquette épinglée, actif, source git", async () => {
   await cat.fixtures(["demo-planner"]);
   assert.deepEqual(await installFromCatalogue("demo-planner"), { ok: true, id: "demo-planner" });
   const row = await db.prisma.module.findUnique({ where: { id: "demo-planner" } });
-  assert.deepEqual([row.source, row.enabled, row.repoUrl, row.subdir], ["git", false, cat.https, "modules/demo-planner"]);
+  assert.deepEqual([row.source, row.enabled, row.repoUrl, row.subdir], ["git", true, cat.https, "modules/demo-planner"]);
   assert.ok(row.commit);
   assert.ok(fs.existsSync(path.join(MODULES_DIR, "demo-planner", "module.json")) && fs.existsSync(path.join(MODULES_DIR, "demo-planner", "index.mjs")));
-  assert.deepEqual(await setModuleEnabled("demo-planner", true), { ok: true, id: "demo-planner" });
-  assert.ok((await R.getEnabledModules()).some((m) => m.manifest.id === "demo-planner"), "il est chargé et actif");
+  assert.ok((await R.getInstalledModules()).some((m) => m.manifest.id === "demo-planner"), "il est chargé et actif");
 });
 
 test("installation d'un module du catalogue : refus si déjà installé ou inconnu ; catalogue injoignable → erreur, rien d'installé", async () => {
@@ -99,7 +98,7 @@ test("module du catalogue : mise à jour quand le catalogue publie une version, 
   assert.equal((await updateModule("demo-banner")).ok, true);
   assert.equal((await db.prisma.module.findUnique({ where: { id: "demo-banner" } })).version, "1.1.0");
   assert.equal((await checkForUpdate("demo-banner")).available, false);
-  await uninstallModule("demo-banner");
+  await uninstallModule("demo-banner", { keepData: false });
   assert.equal(await db.prisma.module.findUnique({ where: { id: "demo-banner" } }), null);
   assert.ok(!fs.existsSync(path.join(MODULES_DIR, "demo-banner")));
 });

@@ -7,7 +7,7 @@ import { makeRepo } from "../helpers/repo.mjs";
 const db = await useTestDb();
 const { collectReport, updateSequentially, createReportCache } = await import("@/core/modules/bulkUpdate");
 const { getModulesReport, peekModulesReport, updateModules } = await import("@/core/modules/updateStatus");
-const { installModule, setModuleEnabled } = await import("@/core/modules/installer");
+const { installModule } = await import("@/core/modules/installer");
 
 beforeEach(() => db.reset());
 after(() => db.close());
@@ -111,7 +111,7 @@ function moduleRepo(id, version = "1.0.0") {
 test("de bout en bout (dépôts locaux, sans réseau) : un module en retard est listé, mis à jour, puis retiré ; un dépôt disparu devient un simple message", async () => {
   const a = moduleRepo("alpha"); const b = moduleRepo("beta");
   for (const [repo] of [[a], [b]]) assert.equal((await installModule(`${repo.url}#v1.0.0`)).ok, true);
-  await setModuleEnabled("alpha", true);
+
   a.release("1.0.1"); b.release("2.0.0");
   let report = await getModulesReport(true);
   assert.deepEqual(report.outdated.map((o) => [o.id, o.current, o.target, o.level]), [["alpha", "1.0.0", "1.0.1", "patch"], ["beta", "1.0.0", "2.0.0", "major"]]);

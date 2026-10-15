@@ -5,6 +5,8 @@ import { getCoreVersion } from "@/core/modules/compat";
 import { parseRepoUrl } from "@/core/modules/installer";
 import { getModulePreview, type ModulePreview, type PreviewTarget } from "@/core/modules/readme";
 import { listModuleRows } from "@/core/modules/registry";
+import { listRetired } from "@/core/modules/retired";
+import { Callout } from "@/components/admin/Page";
 import { localized } from "@/core/modules/types";
 import { buildNames, viewPlan } from "@/core/modules/dependencyView";
 import { normalizeNeeds } from "@/core/modules/serviceVersions";
@@ -46,6 +48,8 @@ export async function DetailsView({ id, repo, embedded = false }: { id?: string;
 
   const m = preview?.manifest ?? null;
   const installed = entry ? (await listModuleRows()).some((r) => r.id === entry!.id) : false;
+  // Données gardées d'une désinstallation précédente : elles reviennent telles quelles avec le module.
+  const kept = !installed && (entry?.id ?? m?.id) ? await listRetired(entry?.id ?? m?.id) : [];
 
   const name = entry ? L(entry.name) : m ? L(m.name) : custom?.url ?? "";
   const icon = entry?.icon ?? m?.icon ?? "🧩";
@@ -75,6 +79,8 @@ export async function DetailsView({ id, repo, embedded = false }: { id?: string;
         </div>
       </header>
       {entry && <p className="max-w-2xl text-[17px] leading-7">{L(entry.description)}</p>}
+
+      {kept.length > 0 && <Callout tone="info" role="status"><span data-testid="kept-note">🗂 {t("kept.detailsNote", { name, count: kept.length })}</span></Callout>}
 
       {failed && <p role="alert" className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-sm">{t("catalogue.previewFailed")}</p>}
 
@@ -119,7 +125,7 @@ export async function DetailsView({ id, repo, embedded = false }: { id?: string;
                   ? <p className="text-sm text-muted">{t("catalogue.installNote")}</p>
                   : (
                     <div className="flex flex-wrap items-center gap-4">
-                      <InstallButton id={entry.id} labels={installLabels} />
+                      <InstallButton id={entry.id} name={name} labels={installLabels} />
                       <p className="text-sm text-muted">{t("catalogue.installNote")}</p>
                     </div>
                   )
@@ -136,8 +142,8 @@ export async function DetailsView({ id, repo, embedded = false }: { id?: string;
         </section>
       )}
       {embedded && canInstall && entry && (
-        <div className="pointer-events-none sticky bottom-0 -mx-6 -mb-6 flex justify-center bg-gradient-to-t from-surface via-surface/90 to-transparent px-6 pb-5 pt-8 sm:-mx-8 sm:-mb-8 sm:pb-6" data-testid="floating-install">
-          <div className="pointer-events-auto"><InstallButton id={entry.id} labels={installLabels} /></div>
+        <div className="pointer-events-none sticky bottom-0 -mx-4 -mb-8 flex justify-center bg-gradient-to-t from-surface via-surface/90 to-transparent px-4 pb-6 pt-8 sm:-mx-8 sm:px-8" data-testid="floating-install">
+          <div className="pointer-events-auto"><InstallButton id={entry.id} name={name} labels={installLabels} /></div>
         </div>
       )}
     </Frame>

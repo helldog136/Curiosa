@@ -21,7 +21,6 @@ export type InstanceView = {
   nickname: string | null;
   /** Chemin public où l'instance est montée ("" = racine, null = pas de page). */
   basePath: string | null;
-  enabled: boolean;
   showInNav: boolean;
   navOrder: number;
   display: Display;
@@ -57,7 +56,6 @@ export function toInstanceView(c: ModuleInstance & { translations: InstanceTrans
     key: c.key,
     nickname: c.nickname,
     basePath: c.basePath,
-    enabled: c.enabled,
     showInNav: c.showInNav,
     navOrder: c.navOrder,
     display: (DISPLAYS as readonly string[]).includes(c.display) ? (c.display as Display) : "cards",

@@ -8,6 +8,7 @@ import { buildContext } from "./modules/context";
 import { listInstances, toInstanceView } from "./instances";
 import { localized } from "./modules/types";
 import { keyFromNickname } from "./instanceLabel";
+import { retireInstance } from "./modules/retired";
 
 type Db = PrismaClient | Prisma.TransactionClient;
 
@@ -120,6 +121,19 @@ export async function runInstanceCreateHook(id: string): Promise<void> {
   } catch (error) {
     console.error(`[modules] onInstanceCreate failed for ${row.key}:`, error);
   }
+}
+
+/**
+ * Retire une instance. `keepData: true` : ses réglages, contenus et stockage sont RANGÉS (inertes, retrouvables, voir modules/retired.ts) ; le module n'est
+ * pas prévenu (rien n'est détruit). `keepData: false` : tout est effacé, et le module est prévenu (`onInstanceDelete`) pour nettoyer ce qu'il a pu créer ailleurs.
+ */
+export async function removeInstance(id: string, opts: { keepData: boolean }): Promise<boolean> {
+  if (!opts.keepData) {
+    if (!(await prisma.moduleInstance.findUnique({ where: { id }, select: { id: true } }))) return false;
+    await deleteInstance(id);
+    return true;
+  }
+  return (await retireInstance(id, "delete")) !== null;
 }
 
 export async function deleteInstance(id: string): Promise<void> {

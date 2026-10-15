@@ -6,7 +6,7 @@ import { useTestDb } from "../helpers/db.mjs";
 import { makeRepo } from "../helpers/repo.mjs";
 
 const db = await useTestDb();
-const { installModule, setModuleEnabled, checkForUpdate, updateModule } = await import("@/core/modules/installer");
+const { installModule, checkForUpdate, updateModule } = await import("@/core/modules/installer");
 const R = await import("@/core/modules/registry");
 const { createInstance } = await import("@/core/instanceService");
 const { setSetting, getSetting } = await import("@/core/settings");
@@ -33,7 +33,7 @@ const mod = () => db.prisma.module.findUnique({ where: { id: "demo" } });
 async function installPinned(repo, ref = "v1.0.0") {
   repo.release ??= null;
   assert.equal((await installModule(`${repo.url}#${ref}`)).ok, true);
-  await setModuleEnabled("demo", true);
+
 }
 async function withData() {
   const inst = await createInstance(db.prisma, { manifest: (await R.getModule("demo")).manifest, nickname: "Mon demo", names: { fr: "Mon demo" } });

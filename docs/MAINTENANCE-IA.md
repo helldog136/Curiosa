@@ -83,7 +83,7 @@ Tu es branchée à un site Curiosa par un jeton « Maintenance ». Ton rôle : s
 | `maintenance_module_update {module}` | 3 | met un module à jour (étiquettes stables seulement) |
 | `maintenance_modules_update_all` | 3 | met à jour tous les modules éligibles, un par un |
 | `maintenance_core_update` | 3 | met Curiosa à jour vers la **plus haute version stable**, si elle est plus récente |
-| `maintenance_module_uninstall {module}` | 3 | désinstalle un module **avec ses données** (irréversible) |
+| `maintenance_module_uninstall {module}` | 3 | désinstalle un module ; `keepData` (défaut **vrai**) garde ses données de côté (retrouvées à la réinstallation), `keepData: false` efface tout (irréversible) |
 
 Il n'y a pas d'outil pour restaurer une sauvegarde : dis au propriétaire de le faire dans **Admin › Sauvegarde**.
 

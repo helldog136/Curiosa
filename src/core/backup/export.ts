@@ -46,7 +46,7 @@ export type BackupResult = { buffer: Buffer; filename: string; manifest: BackupM
 export async function createBackup(password: string, opts: { now?: Date; iterations?: number } = {}): Promise<BackupResult> {
   const now = opts.now ?? new Date();
   const config = await getSiteConfig();
-  const [users, settings, moduleRows, instances, instanceTranslations, entries, entryTranslations, redirects, records] = await Promise.all([
+  const [users, settings, moduleRows, instances, instanceTranslations, entries, entryTranslations, redirects, records, retired] = await Promise.all([
     prisma.user.findMany({ orderBy: { createdAt: "asc" } }),
     prisma.setting.findMany({ orderBy: [{ key: "asc" }, { locale: "asc" }] }),
     listModuleRows(),
@@ -56,6 +56,7 @@ export async function createBackup(password: string, opts: { now?: Date; iterati
     prisma.entryTranslation.findMany({ orderBy: [{ entryId: "asc" }, { locale: "asc" }] }),
     prisma.redirect.findMany({ orderBy: { path: "asc" } }),
     prisma.moduleRecord.findMany({ orderBy: { createdAt: "asc" } }),
+    prisma.retiredInstance.findMany({ orderBy: [{ retiredAt: "asc" }, { id: "asc" }] }),
   ]);
 
   const market = await getCatalogue().catch(() => []);
@@ -63,7 +64,7 @@ export async function createBackup(password: string, opts: { now?: Date; iterati
   for (const row of moduleRows) {
     const loaded = await loadModule(row);
     modules.push({
-      id: row.id, source: row.source as BackupModule["source"], version: row.version, enabled: row.enabled, repoUrl: row.repoUrl, ref: row.ref, subdir: row.subdir, commit: row.commit,
+      id: row.id, source: row.source as BackupModule["source"], version: row.version, enabled: true, repoUrl: row.repoUrl, ref: row.ref, subdir: row.subdir, commit: row.commit,
       origin: moduleOrigin(row, market), name: loaded ? localized(loaded.manifest.name, "en", "en") : row.id,
     });
   }
@@ -78,6 +79,8 @@ export async function createBackup(password: string, opts: { now?: Date; iterati
     jsonFile(DATA_FILES.entryTranslations, entryTranslations),
     jsonFile(DATA_FILES.redirects, redirects),
     jsonFile(DATA_FILES.records, records.map((r) => ({ ...r, data: safeParse(r.data) }))),
+    // Données gardées de modules ou d'instances retirés : la sauvegarde reste complète (le bloc est écrit en JSON lisible, pas en texte échappé).
+    jsonFile(DATA_FILES.retired, retired.map((r) => ({ ...r, payload: safeParse(r.payload) }))),
   ];
 
   // ── Copie lisible ───────────────────────────────────────────────────────────
@@ -117,7 +120,8 @@ export async function createBackup(password: string, opts: { now?: Date; iterati
   files.push(fileOf("readable/site.txt", [
     `${config.name}`, "=".repeat(Math.max(3, config.name.length)), `Langue par défaut / default language : ${config.defaultLocale}`, `Langues / languages : ${config.locales.join(", ")}`, "",
     "Modules / instances :", ...instances.map((i) => `- ${i.nickname ?? i.moduleId} (module ${i.moduleId}, id ${i.key})`), "",
-    `Entrées / entries : ${entries.length}`, `Utilisateurs / users : ${users.length}`, `Redirections : ${redirects.length}`, "",
+    `Entrées / entries : ${entries.length}`, `Utilisateurs / users : ${users.length}`, `Redirections : ${redirects.length}`,
+    `Données gardées de modules retirés / kept data of removed modules : ${retired.length}${retired.length ? ` (${retired.map((r) => `${r.moduleId}/${r.key}`).join(", ")})` : ""}`, "",
     "Réglages / settings (valeurs secrètes masquées / secret values hidden) :",
     ...settings.filter((s) => !VOLATILE_SETTINGS.has(s.key) && !s.key.startsWith("instance.")).map((s) => `- ${s.key}${s.locale ? `[${s.locale}]` : ""} = ${secretKeys(s.key) ? "••••" : s.value.slice(0, 300)}`), "",
   ].join("\n")));
@@ -135,7 +139,7 @@ export async function createBackup(password: string, opts: { now?: Date; iterati
   const manifest: BackupManifest = {
     format: FORMAT, formatVersion: FORMAT_VERSION, createdAt: now.toISOString(), frameworkVersion: readVersion(), schemaVersion: await currentSchemaVersion(),
     site: { name: config.name, defaultLocale: config.defaultLocale, locales: config.locales },
-    counts: { users: users.length, instances: instances.length, entries: entries.length, translations: entryTranslations.length, records: records.length, redirects: redirects.length, modules: modules.length, uploads: uploadCount },
+    counts: { users: users.length, instances: instances.length, entries: entries.length, translations: entryTranslations.length, records: records.length, retired: retired.length, redirects: redirects.length, modules: modules.length, uploads: uploadCount },
     modules,
     files: files.map((f) => ({ path: f.path, sha256: sha256(f.content), bytes: f.content.length })),
   };

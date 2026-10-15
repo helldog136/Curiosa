@@ -102,9 +102,9 @@ test("une case à cocher lue avec getAll() porte une valeur (sinon le navigateur
 
 test("l'admin ne montre pas les identifiants techniques d'instance en mode simple", () => {
   // L'identifiant technique (instance.key / i.key) n'apparaît dans l'interface que derrière « advanced ».
-  const listing = read("src/app/admin/(panel)/modules/[id]/page.tsx");
-  assert.ok(/advanced && <span className="font-mono">\{i\.key\}/.test(listing), "la page d'un module ne doit montrer la clé qu'en mode avancé");
-  const detail = read("src/app/admin/(panel)/instances/[id]/page.tsx");
+  const listing = read("src/app/admin/(panel)/modules/[id]/ModuleView.tsx");
+  assert.ok(/advanced && <span[^>]*><span className="font-mono">\{i\.key\}/.test(listing), "la page d'un module ne doit montrer la clé qu'en mode avancé");
+  const detail = read("src/app/admin/(panel)/instances/[id]/InstanceView.tsx");
   assert.ok(/advanced && <>[^]*instances\.technicalId[^]*instance\.key/.test(detail), "la page d'une instance ne doit montrer la clé qu'en mode avancé");
 });
 
@@ -152,4 +152,15 @@ test("HTML valide dans les pages : jamais de <form> à l'intérieur d'un <p> (le
     const text = read(f);
     for (const m of text.matchAll(/<p\b[^>]*>(?:(?!<\/p>)[\s\S])*?<form\b/g)) assert.fail(`${f} ligne ${text.slice(0, m.index).split("\n").length} : <form> dans un <p>`);
   }
+});
+
+test("routes : jamais de « catch-all optionnel » [[...x]] sous un segment qui a aussi sa page (le build de production le refuse ; npm test ne lance pas next build)", () => {
+  const bad = [];
+  for (const file of walk("src/app").filter((f) => /\[\[\.\.\.[^\]]+\]\]/.test(f))) {
+    const dir = file.split("/").slice(0, file.split("/").findIndex((s) => /^\[\[\.\.\./.test(s)));
+    // un emplacement parallèle (@slot) se comporte comme le segment qui le contient
+    const owner = dir[dir.length - 1].startsWith("@") ? dir.slice(0, -1) : dir;
+    if (["page.tsx", "page.ts", "page.js"].some((p) => fs.existsSync([...owner, p].join("/")))) bad.push(file);
+  }
+  assert.deepEqual(bad, [], "utilisez [...x] (catch-all obligatoire) : l'adresse du segment est déjà couverte par page.tsx ou default.tsx");
 });

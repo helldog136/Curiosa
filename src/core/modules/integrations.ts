@@ -6,8 +6,8 @@ import { dataStatusOf } from "./dataMigrations";
 import { integrationState, settingsToFill, type IntegrationState } from "./menuPlacement";
 import { listModuleRows, loadModule } from "./registry";
 
-/** Ce que l'admin montre de chaque instance : son état (active, désactivée, à configurer, erreur). Pour la page Intégrations et la liste des modules installés. */
-export type InstanceStatus = { state: IntegrationState; enabled: boolean; moduleEnabled: boolean; toFill: boolean; error: boolean };
+/** Ce que l'admin montre de chaque instance : son état (en place, à configurer, erreur). Pour la page Intégrations et la liste des modules installés. */
+export type InstanceStatus = { state: IntegrationState; toFill: boolean; error: boolean };
 
 /**
  * État de toutes les instances (clé : identifiant d'instance).
@@ -31,8 +31,7 @@ export async function loadInstanceStatuses(): Promise<Map<string, InstanceStatus
       for (const f of fields) stored[f.key] = await getSettingByLocale(instanceSettingKey(instance.id, f.key));
       toFill = settingsToFill(fields, new Set((mod.manifest.optionalGroups ?? []).flatMap((g) => g.fields)), stored);
     }
-    const moduleEnabled = !!row?.enabled;
-    out.set(instance.id, { state: integrationState({ enabled: instance.enabled, moduleEnabled, error, toFill }), enabled: instance.enabled, moduleEnabled, toFill, error });
+    out.set(instance.id, { state: integrationState({ error, toFill }), toFill, error });
   }
   return out;
 }

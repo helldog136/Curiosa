@@ -85,7 +85,7 @@ export function menuGroupOf(type: string): MenuGroupId {
   return type === "utility" ? "utility" : type === "widget" ? "widget" : "other";
 }
 
-export type MenuEntry = { id: string; type: string; section: MenuSectionId; placement: Placement; enabled: boolean; error: boolean; badge: number; content: boolean };
+export type MenuEntry = { id: string; type: string; section: MenuSectionId; placement: Placement; error: boolean; badge: number; content: boolean };
 export type MenuLayout<T extends MenuEntry> = {
   /** Instances épinglées de la rubrique « Mon contenu ». */
   content: T[];
@@ -96,16 +96,16 @@ export type MenuLayout<T extends MenuEntry> = {
 };
 
 /**
- * Répartit les instances : seules les épinglées qui tournent (actives, sans erreur de données) figurent dans le menu, chacune dans sa rubrique.
+ * Répartit les instances : seules les épinglées qui tournent (sans erreur de données) figurent dans le menu, chacune dans sa rubrique.
  * Les autres ne vivent que dans Extensions, et leurs pastilles s'additionnent dans `unpinnedBadge` pour ne rien cacher.
  * Dès qu'il y a plus de OPEN_BY_DEFAULT_MAX entrées dans « Ma communauté », elles passent en groupes pliables.
  */
 export function buildMenuLayout<T extends MenuEntry>(items: readonly T[]): MenuLayout<T> {
-  const pinned = items.filter((i) => i.enabled && !i.error && isPinned(i.placement));
+  const pinned = items.filter((i) => !i.error && isPinned(i.placement));
   const content = pinned.filter((i) => i.section === "content");
   const rest = pinned.filter((i) => i.section === "community");
   const groups = MENU_GROUPS.map((id) => ({ id, items: rest.filter((i) => menuGroupOf(i.type) === id) })).filter((g) => g.items.length > 0);
-  const unpinnedBadge = items.reduce((n, i) => n + (!isPinned(i.placement) && i.enabled && !i.error ? i.badge : 0), 0);
+  const unpinnedBadge = items.reduce((n, i) => n + (!isPinned(i.placement) && !i.error ? i.badge : 0), 0);
   return { content, community: { items: groups.flatMap((g) => g.items), groups, collapsible: rest.length > OPEN_BY_DEFAULT_MAX }, unpinnedBadge };
 }
 
@@ -148,12 +148,11 @@ export function isGroupOpen(id: string, state: NavState, openByDefault: boolean,
 
 // ─── Cartes « Intégrations » ────────────────────────────────────────────────
 
-export type IntegrationState = "on" | "off" | "setup" | "error";
+export type IntegrationState = "on" | "setup" | "error";
 
-/** État d'une carte : une erreur signalée passe avant tout, puis « désactivée », puis « à configurer ». */
-export function integrationState(i: { enabled: boolean; moduleEnabled: boolean; error: boolean; toFill: boolean }): IntegrationState {
+/** État d'une carte : une erreur signalée passe avant tout, puis « à configurer ». Il n'y a pas d'état « éteint » : une instance qui existe tourne. */
+export function integrationState(i: { error: boolean; toFill: boolean }): IntegrationState {
   if (i.error) return "error";
-  if (!i.enabled || !i.moduleEnabled) return "off";
   return i.toFill ? "setup" : "on";
 }
 

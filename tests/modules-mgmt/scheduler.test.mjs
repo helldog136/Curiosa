@@ -4,7 +4,7 @@ import { useTestDb } from "../helpers/db.mjs";
 import { makeRepo } from "../helpers/repo.mjs";
 
 const db = await useTestDb();
-const { installModule, setModuleEnabled } = await import("@/core/modules/installer");
+const { installModule } = await import("@/core/modules/installer");
 const R = await import("@/core/modules/registry");
 const T = await import("@/core/services/scheduler");
 const { createInstance } = await import("@/core/instanceService");
@@ -26,7 +26,7 @@ export default { tasks: {
 async function setup() {
   const repo = makeRepo({ "module.json": { apiVersion: 2, id: "carnet", name: "Carnet", version: "1.0.0", main: "index.mjs" }, "index.mjs": CODE });
   assert.equal((await installModule(repo.url)).ok, true);
-  await setModuleEnabled("carnet", true);
+
   return createInstance(db.prisma, { manifest: (await R.getModule("carnet")).manifest, nickname: "Carnet", names: { fr: "Carnet" } });
 }
 const NOW = Date.now();
@@ -68,7 +68,7 @@ test("noms invalides et intervalles < 1 minute ignorés ; instance désactivée 
   const inst = await setup();
   await quiet(() => T.runDueTasks({ now: NOW }));
   assert.ok(!globalThis.__log.includes("bad-name") && !globalThis.__log.includes("nope"));
-  await db.prisma.moduleInstance.update({ where: { id: inst.id }, data: { enabled: false } });
+  await db.prisma.moduleInstance.delete({ where: { id: inst.id } });
   R.resetModuleRegistry?.();
   globalThis.__log = [];
   const out = await quiet(() => T.runDueTasks({ now: NOW + 7_200_000 }));

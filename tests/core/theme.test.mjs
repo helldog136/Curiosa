@@ -7,7 +7,7 @@ import { fakeCtx } from "../helpers/fakeCtx.mjs";
 const db = await useTestDb();
 const C = await import("@/core/color");
 const { parseManifest } = await import("@/core/modules/manifest");
-const { installModule, setModuleEnabled } = await import("@/core/modules/installer");
+const { installModule } = await import("@/core/modules/installer");
 const R = await import("@/core/modules/registry");
 const { buildContext } = await import("@/core/modules/context");
 const { createInstance } = await import("@/core/instanceService");
@@ -65,7 +65,7 @@ const MOD = {
 };
 async function demo() {
   await installModule(makeRepo(MOD).url);
-  await setModuleEnabled("demo", true);
+
   const mod = await R.getModule("demo");
   const inst = await createInstance(db.prisma, { manifest: mod.manifest, names: { en: "Demo" } });
   return { mod, inst: (await R.getActiveInstances()).find((a) => a.instance.id === inst.id).instance };

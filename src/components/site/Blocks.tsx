@@ -147,7 +147,7 @@ export async function Blocks({ blocks, locale, adminInstanceId }: { blocks: Bloc
         break;
       case "entries": {
         const instance = await getInstanceByKey(block.instance);
-        if (!instance || !instance.enabled) break;
+        if (!instance) break;
         let entries = await listEntries({ instance, locale, limit: block.pick === "random" ? undefined : block.limit });
         if (block.pick === "random") entries = pickRandom(entries.filter((e) => !e.expired), block.limit ?? 1);
         if (block.link && entries.length === 0) break;

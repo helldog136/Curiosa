@@ -55,7 +55,7 @@ test("installation des modules cochés : depuis le catalogue (git, étiquette é
   const row = await db.prisma.module.findUnique({ where: { id: "blog" } });
   assert.deepEqual([row.source, row.enabled, row.repoUrl, row.ref, row.subdir], ["git", true, cat.https, "blog-v1.0.0", "modules/blog"]);
   assert.equal(await db.prisma.module.findUnique({ where: { id: "cache" } }), null);
-  assert.ok((await R.getEnabledModules()).some((m) => m.manifest.id === "pages"));
+  assert.ok((await R.getInstalledModules()).some((m) => m.manifest.id === "pages"));
 });
 
 test("assistant sans réseau : aucun module proposé (message dédié), rien n'est installé, aucune copie locale — l'installation du site peut se terminer", async () => {

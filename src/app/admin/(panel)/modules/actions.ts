@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { adminCtx } from "@/core/admin";
-import { checkForUpdate, setModuleEnabled, uninstallModule, updateModule } from "@/core/modules/installer";
+import { checkForUpdate, repairRequirements, uninstallModule, updateModule } from "@/core/modules/installer";
 import { audit } from "@/core/permissions";
 import { getModule } from "@/core/modules/registry";
 import { prisma } from "@/core/db";
@@ -13,7 +13,10 @@ import { duplicateServices, isEachService, providerInstances, setRouting } from 
 import { cleanupSuggestions, forgetAuto } from "@/core/modules/autoInstalled";
 import { encodeMissing } from "@/core/modules/dependencyMessages";
 import type { InstallResult } from "@/core/modules/installer";
-import { EXTENSIONS_HREF } from "@/core/modules/extensionsLinks";
+import { EXTENSIONS_ADD_HREF, EXTENSIONS_HREF } from "@/core/modules/extensionsLinks";
+import { listRetired, eraseRetired, restoreInstance } from "@/core/modules/retired";
+import { noticeFor, removalNoticeHref } from "@/core/modules/removal";
+import { localized } from "@/core/modules/types";
 
 // Installer ou mettre à jour du code exécuté côté serveur est réservé au propriétaire.
 
@@ -26,17 +29,16 @@ const refusal = (result: Extract<InstallResult, { ok: false }>, op = "") => {
   return `error=${encodeURIComponent(result.error)}${result.detail ? `&detail=${encodeURIComponent(result.detail)}` : ""}${missing ? `&missing=${encodeURIComponent(missing)}` : ""}${op ? `&op=${op}` : ""}`;
 };
 
-export async function toggleModule(id: string, enabled: boolean, formData?: FormData): Promise<void> {
+/** « Mettre en place ce qui manque » : les modules dont celui-ci a besoin sont installés d'office (avec leur instance). */
+export async function repairModuleAction(id: string): Promise<void> {
   const { user } = await adminCtx("owner");
-  const result = await setModuleEnabled(id, enabled);
-  await audit(user.email, enabled ? "module.enable" : "module.disable", id);
+  const result = await repairRequirements(id);
+  for (const provided of result.ok ? result.provided ?? [] : []) await audit(user.email, "module.install.auto", provided);
   revalidatePath("/", "layout");
-  // Depuis la liste (mode simple) on y reste ; depuis la page du module, on y reste aussi.
-  const home = formData?.get("from") === "list" ? EXTENSIONS_HREF : modulePage(id);
-  if (!result.ok) redirect(modulePage(id, refusal(result, enabled ? "enable" : "disable")));
+  if (!result.ok) redirect(modulePage(id, refusal(result, "repair")));
   // Un fournisseur de plus pour un service déjà offert : l'admin doit dire qui est le maître.
-  if (enabled && (await duplicateServices()).some((d) => !d.resolved)) redirect(`${EXTENSIONS_HREF}?notice=services`);
-  redirect(home);
+  if ((await duplicateServices()).some((d) => !d.resolved)) redirect(`${EXTENSIONS_HREF}?notice=services`);
+  redirect(modulePage(id));
 }
 
 /** Maître et répliques d'un service offert par plusieurs instances. */
@@ -76,29 +78,63 @@ export async function updateModuleAction(id: string): Promise<ModuleActionResult
   return { ok: true, href: modulePage(id) };
 }
 
-export async function uninstallModuleAction(id: string): Promise<void> {
-  const { user } = await adminCtx("owner");
-  const result = await uninstallModule(id);
-  if (result.ok) await audit(user.email, "module.uninstall", id);
+/** Nom lisible d'un module, à lire AVANT de le désinstaller (ensuite on ne sait plus le charger). */
+async function nameOf(id: string, locale: string, defaultLocale: string): Promise<string> {
+  const mod = await getModule(id).catch(() => null);
+  return mod ? localized(mod.manifest.name, locale, defaultLocale) : id;
+}
+
+/** Désinstalle un module. `keepData` : « Retirer et garder mes données » (rangées, retrouvées à la réinstallation) ou « Retirer et tout effacer » (irréversible). */
+export async function uninstallModuleAction(id: string, keepData: boolean): Promise<void> {
+  const { user, locale, config } = await adminCtx("owner");
+  const name = await nameOf(id, locale, config.defaultLocale);
+  const result = await uninstallModule(id, { keepData });
+  if (result.ok) await audit(user.email, keepData ? "module.uninstall.keep" : "module.uninstall.erase", id);
   revalidatePath("/", "layout");
   if (!result.ok) redirect(modulePage(id, refusal(result, "uninstall")));
-  redirect(EXTENSIONS_HREF);
+  redirect(removalNoticeHref(EXTENSIONS_HREF, { notice: noticeFor(keepData), name }));
+}
+
+/** Données gardées d'une instance retirée : les retrouver (le module est installé). */
+export async function restoreRetiredAction(id: string): Promise<void> {
+  const { user, locale, config } = await adminCtx("admin");
+  const line = (await listRetired()).find((r) => r.id === id);
+  if (!line) redirect(EXTENSIONS_HREF);
+  const result = await restoreInstance(id);
+  revalidatePath("/", "layout");
+  if (!result.ok) redirect(modulePage(line.moduleId, `error=${result.reason === "single" ? "instances.error.single" : "modules.error.restore"}`));
+  await audit(user.email, "instance.restore", result.key);
+  redirect(removalNoticeHref(EXTENSIONS_HREF, { notice: "restored", name: await nameOf(line.moduleId, locale, config.defaultLocale) }));
+}
+
+/** Efface pour de bon des données gardées : une instance (`id`) ou tout ce qui reste d'un module (`moduleId`). */
+export async function eraseRetiredAction(target: { id: string } | { moduleId: string }): Promise<void> {
+  // Une instance : un administrateur, comme pour la supprimer. Tout ce qui reste d'un module : le propriétaire, comme pour le désinstaller.
+  const { user } = await adminCtx("moduleId" in target ? "owner" : "admin");
+  const lines = await listRetired("moduleId" in target ? target.moduleId : undefined);
+  const mine = "id" in target ? lines.filter((l) => l.id === target.id) : lines;
+  if (!mine.length) redirect(EXTENSIONS_HREF);
+  const moduleId = mine[0]!.moduleId;
+  await eraseRetired(target);
+  await audit(user.email, "retired.erase", mine.map((l) => l.key).join(", ").slice(0, 200));
+  revalidatePath("/", "layout");
+  redirect((await getModule(moduleId).catch(() => null)) ? modulePage(moduleId) : EXTENSIONS_ADD_HREF);
 }
 
 /**
- * Nettoyage PROPOSÉ d'un module installé automatiquement dont plus personne ne dépend : jamais d'office, toujours confirmé par le propriétaire.
- * S'il porte des données ou des réglages, la case « je comprends » est obligatoire.
+ * Nettoyage PROPOSÉ d'un module installé automatiquement dont plus personne ne dépend : jamais d'office, toujours confirmé par le propriétaire,
+ * avec le même choix qu'une désinstallation : garder ses données (rangées) ou tout effacer.
  */
-export async function cleanupAutoModuleAction(id: string, formData: FormData): Promise<void> {
-  const { user } = await adminCtx("owner");
+export async function cleanupAutoModuleAction(id: string, keepData: boolean): Promise<void> {
+  const { user, locale, config } = await adminCtx("owner");
   const suggestion = (await cleanupSuggestions()).find((c) => c.id === id);
   if (!suggestion) redirect(modulePage(id, "error=modules.error.autoUsed"));
-  if (suggestion.hasData && formData.get("ack") !== "on") redirect(modulePage(id, "error=modules.error.autoData"));
-  const result = await uninstallModule(id);
+  const name = await nameOf(id, locale, config.defaultLocale);
+  const result = await uninstallModule(id, { keepData });
   if (result.ok) await audit(user.email, "module.uninstall.auto", id);
   revalidatePath("/", "layout");
   if (!result.ok) redirect(modulePage(id, refusal(result)));
-  redirect(EXTENSIONS_HREF);
+  redirect(removalNoticeHref(EXTENSIONS_HREF, { notice: noticeFor(keepData), name }));
 }
 
 /** « Le garder » : le module n'est plus considéré comme installé automatiquement (plus de proposition de nettoyage). */
@@ -118,7 +154,7 @@ export async function keepAutoModuleAction(id: string): Promise<void> {
 export async function addInstance(moduleId: string, formData: FormData): Promise<void> {
   const { user, config } = await adminCtx("admin");
   const mod = await getModule(moduleId);
-  if (!mod || !mod.row.enabled) redirect(modulePage(moduleId, "error=modules.error.load"));
+  if (!mod) redirect(modulePage(moduleId, "error=modules.error.load"));
   const existing = await prisma.moduleInstance.findMany({ where: { moduleId } });
   if (mod.manifest.instances === "single" && existing.length > 0) redirect(modulePage(moduleId, "error=instances.error.single"));
 

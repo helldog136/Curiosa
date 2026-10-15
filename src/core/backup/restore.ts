@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import { UPLOADS_DIR } from "@/core/config";
 import { prisma } from "@/core/db";
 import { migrateAllInstances, type MigrationOutcome } from "@/core/modules/dataMigrations";
+import { retireLegacyOff } from "@/core/modules/legacyOff";
 import { installFromCatalogue, installModule, type InstallResult } from "@/core/modules/installer";
 import { getCatalogue } from "@/core/modules/catalogue";
 import { resetModuleRegistry } from "@/core/modules/registry";
@@ -20,7 +21,7 @@ import type { Missing } from "@/core/modules/dependencyInstaller";
 type Row = Record<string, unknown>;
 export type ParsedBackup = {
   manifest: BackupManifest;
-  data: { users: Row[]; settings: Row[]; modules: BackupModule[]; instances: Row[]; instanceTranslations: Row[]; entries: Row[]; entryTranslations: Row[]; redirects: Row[]; records: Row[] };
+  data: { users: Row[]; settings: Row[]; modules: BackupModule[]; instances: Row[]; instanceTranslations: Row[]; entries: Row[]; entryTranslations: Row[]; redirects: Row[]; records: Row[]; /** Données gardées de modules retirés (absent des sauvegardes d'avant la 0.1.20). */ retired?: Row[] };
   uploads: { name: string; content: Buffer }[];
 };
 export type ParseError = "not-a-backup" | "wrong-password" | "corrupt" | "tampered" | "newer-format" | "newer-schema" | "no-owner";
@@ -62,11 +63,14 @@ export function parseBackup(plain: Buffer): { ok: true; backup: ParsedBackup } |
     entries: list(DATA_FILES.entries), entryTranslations: list(DATA_FILES.entryTranslations), redirects: list(DATA_FILES.redirects), records: list(DATA_FILES.records),
   };
   if (Object.values(data).some((v) => v === null)) return { ok: false, error: "corrupt" };
+  // Facultatif : une sauvegarde d'avant la 0.1.20 n'a pas ce fichier (= aucune donnée gardée) ; présent mais illisible = sauvegarde abîmée.
+  const retired = files.has(DATA_FILES.retired) ? list(DATA_FILES.retired) : [];
+  if (retired === null) return { ok: false, error: "corrupt" };
   const modules = manifest.modules;
   const d = data as Record<keyof typeof data, Row[]>;
   if (!d.users.some((u) => u.role === "owner" && typeof u.email === "string" && typeof u.passwordHash === "string")) return { ok: false, error: "no-owner" };
   const uploads = [...files.entries()].filter(([p]) => p.startsWith("uploads/") && UPLOAD_NAME_RE.test(p.slice(8))).map(([p, content]) => ({ name: p.slice(8), content }));
-  return { ok: true, backup: { manifest, data: { ...d, modules }, uploads } };
+  return { ok: true, backup: { manifest, data: { ...d, modules, retired }, uploads } };
 }
 
 /* ───────────── Plan : que va-t-il se passer pour chaque module ? ───────────── */
@@ -115,7 +119,7 @@ export type RestoreReport = { ok: false; error: "newer-schema"; modules: ModuleO
 
 type Installers = { fromCatalogue: (id: string) => Promise<InstallResult>; fromRepo: (url: string) => Promise<InstallResult> };
 // Sans cascade ici : l'ordre et la vérification des dépendances se font pour toute la sauvegarde (restoreDeps.ts).
-const realInstallers: Installers = { fromCatalogue: (id) => installFromCatalogue(id, { dependencies: false }), fromRepo: (url) => installModule(url, { dependencies: false }) };
+const realInstallers: Installers = { fromCatalogue: (id) => installFromCatalogue(id, { dependencies: false, restoreKept: false }), fromRepo: (url) => installModule(url, { dependencies: false, restoreKept: false }) };
 
 const MODEL_BY_FILE = { users: "User", settings: "Setting", instances: "ModuleInstance", instanceTranslations: "InstanceTranslation", entries: "Entry", entryTranslations: "EntryTranslation", redirects: "Redirect", records: "ModuleRecord" } as const;
 
@@ -162,7 +166,7 @@ export async function applyRestore(backup: ParsedBackup, opts: { confirmCustom: 
     await prisma.$transaction(async (tx) => {
       await tx.moduleRecord.deleteMany(); await tx.entryTranslation.deleteMany(); await tx.entry.deleteMany();
       await tx.instanceTranslation.deleteMany(); await tx.moduleInstance.deleteMany(); await tx.redirect.deleteMany();
-      await tx.setting.deleteMany(); await tx.user.deleteMany();
+      await tx.setting.deleteMany(); await tx.user.deleteMany(); await tx.retiredInstance.deleteMany();
 
       for (const c of chunks(d.users)) await tx.user.createMany({ data: c.map((r) => reviveDates(MODEL_BY_FILE.users, r)) as never });
       for (const c of chunks(d.settings)) await tx.setting.createMany({ data: c.map((r) => ({ key: String(r.key), locale: String(r.locale ?? ""), value: JSON.stringify(r.value) })) });
@@ -172,12 +176,13 @@ export async function applyRestore(backup: ParsedBackup, opts: { confirmCustom: 
       for (const c of chunks(d.entryTranslations)) await tx.entryTranslation.createMany({ data: c.map((r) => reviveDates(MODEL_BY_FILE.entryTranslations, r)) as never });
       for (const c of chunks(d.redirects)) await tx.redirect.createMany({ data: c.map((r) => reviveDates(MODEL_BY_FILE.redirects, r)) as never });
       for (const c of chunks(d.records)) await tx.moduleRecord.createMany({ data: c.map((r) => ({ ...reviveDates(MODEL_BY_FILE.records, r), data: JSON.stringify(r.data) })) as never });
+      for (const c of chunks(d.retired ?? [])) await tx.retiredInstance.createMany({ data: c.map((r) => ({ ...reviveDates("RetiredInstance", pickKnownColumns("retired", r)), payload: JSON.stringify(r.payload) })) as never });
 
-      // Modules : on remet « activé / désactivé » tel que sauvegardé (les modules réinstallés ci-dessus existent déjà).
+      // Modules : un module « éteint » dans une sauvegarde d'avant la 0.1.20 garde ce drapeau le temps que la migration ci-dessous le désinstalle (données gardées).
       for (const m of d.modules) {
         const outcome = outcomes.find((o) => o.id === m.id)?.outcome;
         if (outcome === "skipped" || outcome === "failed" || outcome === "unavailable") continue;
-        await tx.module.updateMany({ where: { id: m.id }, data: { enabled: m.enabled } });
+        await tx.module.updateMany({ where: { id: m.id }, data: { enabled: m.enabled !== false } });
       }
     }, { timeout: 120_000, maxWait: 10_000 });
   } catch (error) {
@@ -191,11 +196,13 @@ export async function applyRestore(backup: ParsedBackup, opts: { confirmCustom: 
   for (const u of backup.uploads) fs.writeFileSync(path.join(UPLOADS_DIR, u.name), u.content);
 
   resetModuleRegistry();
+  // TEMPORAIRE (retrait en 0.3.0) : une sauvegarde d'un site d'avant la 0.1.20 peut contenir des modules ou instances « éteints » ; ils deviennent « désinstallés, données gardées ».
+  await retireLegacyOff().catch((e) => console.error("[backup] legacy off migration failed:", (e as Error)?.message));
   // Les données restaurées peuvent être celles d'une ancienne version d'un module, réinstallée plus récente : on les met à niveau.
   const migrations = (await migrateAllInstances().catch(() => [])).filter((m) => m.status !== "none");
   // Les modules actifs retrouvent ce dont ils ont besoin (fournisseur disponible installé avec son instance) ; sinon le bilan le dit.
-  const active = d.modules.filter((m) => m.enabled && !["skipped", "failed", "unavailable"].includes(outcomes.find((o) => o.id === m.id)?.outcome ?? "")).map((m) => m.id);
+  const active = d.modules.filter((m) => m.enabled !== false && !["skipped", "failed", "unavailable"].includes(outcomes.find((o) => o.id === m.id)?.outcome ?? "")).map((m) => m.id);
   const settled = await settleRestored(active).catch(() => ({ issues: [] as DependencyIssue[], provided: [] as string[] }));
   await audit(opts.actor, "backup.restore", backup.manifest.createdAt);
-  return { ok: true, modules: outcomes, migrations, dependencies: settled.issues, provided: settled.provided, safetyCopy: copy, counts: { users: d.users.length, entries: d.entries.length, instances: d.instances.length, records: d.records.length, uploads: backup.uploads.length } };
+  return { ok: true, modules: outcomes, migrations, dependencies: settled.issues, provided: settled.provided, safetyCopy: copy, counts: { users: d.users.length, entries: d.entries.length, instances: d.instances.length, records: d.records.length, retired: (d.retired ?? []).length, uploads: backup.uploads.length } };
 }

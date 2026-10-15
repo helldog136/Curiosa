@@ -26,7 +26,7 @@ export async function currentSchemaVersion(migrationsDir = path.join(process.cwd
 export const isNewerSchema = (backup: string | undefined, current: string): boolean => !!backup && !!current && backup > current;
 
 type Row = Record<string, unknown>;
-export type BackupData = { users: Row[]; settings: Row[]; modules: Row[]; instances: Row[]; instanceTranslations: Row[]; entries: Row[]; entryTranslations: Row[]; redirects: Row[]; records: Row[] };
+export type BackupData = { users: Row[]; settings: Row[]; modules: Row[]; instances: Row[]; instanceTranslations: Row[]; entries: Row[]; entryTranslations: Row[]; redirects: Row[]; records: Row[]; retired?: Row[] };
 
 /**
  * Transformations explicites des données d'une sauvegarde faite AVANT une migration qui change le sens d'une donnée (renommage, découpage…).
@@ -40,7 +40,7 @@ export function applyUpgrades(data: BackupData, backupSchema: string | undefined
   for (const u of [...upgrades].sort((a, b) => a.before.localeCompare(b.before))) if (!backupSchema || backupSchema < u.before) u.upgrade(data);
 }
 
-const MODEL_BY_KEY: Record<string, string> = { users: "User", instances: "ModuleInstance", instanceTranslations: "InstanceTranslation", entries: "Entry", entryTranslations: "EntryTranslation", redirects: "Redirect", records: "ModuleRecord" };
+const MODEL_BY_KEY: Record<string, string> = { users: "User", instances: "ModuleInstance", instanceTranslations: "InstanceTranslation", entries: "Entry", entryTranslations: "EntryTranslation", redirects: "Redirect", records: "ModuleRecord", retired: "RetiredInstance" };
 
 /** Ne garde que les colonnes que le schéma actuel connaît : une sauvegarde plus ancienne peut en avoir que cette version a retirées. */
 export function pickKnownColumns(key: keyof typeof MODEL_BY_KEY | string, row: Row): Row {

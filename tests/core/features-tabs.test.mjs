@@ -51,7 +51,7 @@ test("menu : « Modules » n'est plus en haut ni en surbrillance ; le catalogue 
   assert.ok(fs.existsSync("src/app/admin/(panel)/extensions/add/@modal/(.)details/page.tsx"));
   assert.ok(fs.existsSync("src/app/admin/(panel)/extensions/add/@modal/default.tsx"));
   assert.match(read("src/app/admin/(panel)/extensions/add/layout.tsx"), /\{children\}\{modal\}/);
-  assert.match(read("src/components/admin/CatalogueModal.tsx"), /key === "Escape"/);
+  assert.match(read("src/components/admin/RouteModal.tsx"), /key === "Escape"/);
   const view = read("src/app/admin/(panel)/extensions/add/details/DetailsView.tsx");
   assert.match(view, /data-testid="floating-install"/);
   assert.match(view, /sticky bottom-0/);

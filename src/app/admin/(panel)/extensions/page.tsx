@@ -43,7 +43,7 @@ export default async function ExtensionsPage({ searchParams }: { searchParams: P
             {g.type !== "broken" && <p className="mt-1 text-sm text-muted">{t(`family.${g.type}.help`)}</p>}
           </div>
           <ul className="grid grid-cols-[minmax(0,1fr)] gap-3 lg:grid-cols-[repeat(2,minmax(0,1fr))]">
-            {g.items.map((m) => <ExtensionCard key={m.id} t={t} m={m} advanced={advanced} isOwner={isOwner} />)}
+            {g.items.map((m) => <ExtensionCard key={m.id} t={t} m={m} advanced={advanced} />)}
           </ul>
         </section>
       ))}

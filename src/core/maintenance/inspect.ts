@@ -39,7 +39,7 @@ export async function status() {
   return {
     core: { version: readVersion(appDir()), channel: await getUpdateChannel(), install: info.mode, canUpdateFromAdmin: info.canUpdate, restart: info.restart },
     runtime: { node: process.version, platform: `${process.platform}-${process.arch}`, uptimeSeconds: Math.round(process.uptime()) },
-    modules: { installed: rows.length, enabled: rows.filter((r) => r.enabled).length },
+    modules: { installed: rows.length },
     update: {
       state: state.status,
       ...(state.target ? { target: redactSecrets(state.target, 40) } : {}),
@@ -115,9 +115,9 @@ export async function health() {
 }
 
 export type ModuleLine = {
-  id: string; version: string; enabled: boolean; source: string; repository: string | null; ref: string | null;
+  id: string; version: string; source: string; repository: string | null; ref: string | null;
   loadable: boolean;
-  instances: { key: string; enabled: boolean; error?: string }[];
+  instances: { key: string; error?: string }[];
   missingDependencies: { service: string; neededVersion: number; availableVersion: number | null }[];
   update: { available: boolean; target?: string; level?: string; needsCore?: string; followsStableTag: boolean };
 };
@@ -131,13 +131,13 @@ export async function modules(): Promise<{ modules: ModuleLine[]; truncated: boo
   const lines: ModuleLine[] = [];
   for (const row of rows.slice(0, MAX_MODULES)) {
     const mod = await loadModule(row).catch(() => null);
-    const gaps = mod && row.enabled ? await requirementGaps(mod.manifest).catch(() => []) : [];
+    const gaps = mod ? await requirementGaps(mod.manifest).catch(() => []) : [];
     const outdated = report?.outdated.find((o) => o.id === row.id);
     const mine = instances.filter((i) => i.moduleId === row.id);
     const lineInstances: ModuleLine["instances"] = [];
-    for (const i of mine) { const s = await dataStatusOf(i.id); lineInstances.push({ key: i.key, enabled: i.enabled, ...(s ? { error: `${s.status}${s.error ? `: ${redactSecrets(s.error, 160)}` : ""}` } : {}) }); }
+    for (const i of mine) { const s = await dataStatusOf(i.id); lineInstances.push({ key: i.key, ...(s ? { error: `${s.status}${s.error ? `: ${redactSecrets(s.error, 160)}` : ""}` } : {}) }); }
     lines.push({
-      id: row.id, version: row.version, enabled: row.enabled, source: sourceKind(row), repository: publicRepo(row.repoUrl), ref: row.ref ? redactSecrets(row.ref, 60) : null,
+      id: row.id, version: row.version, source: sourceKind(row), repository: publicRepo(row.repoUrl), ref: row.ref ? redactSecrets(row.ref, 60) : null,
       loadable: !!mod, instances: lineInstances,
       missingDependencies: gaps.map((g) => ({ service: g.service, neededVersion: g.min, availableVersion: g.have })),
       update: { available: !!outdated, ...(outdated ? { target: outdated.target, level: outdated.level, ...(outdated.needsCore ? { needsCore: outdated.needsCore } : {}) } : {}), followsStableTag: row.source !== "git" || isStableTagRef(row.ref) },
@@ -207,9 +207,9 @@ export async function diagnose() {
   if (state.status === "failed") add({ severity: "critical", problem: "The last core update failed.", probableCause: redactSecrets(state.error ?? "unknown", 120), proposedAction: "Read the recent errors with maintenance_health, then tell the owner. Do not retry blindly.", tool: "maintenance_health", needsHuman: true });
 
   for (const m of mods.modules) {
-    if (m.enabled && !m.loadable) add({ severity: "critical", problem: `Module "${m.id}" cannot be loaded.`, probableCause: "its files are damaged or incompatible with this version", proposedAction: "Reinstall it: code is renewed, data and settings are kept.", tool: "maintenance_module_reinstall", needsHuman: false });
+    if (!m.loadable) add({ severity: "critical", problem: `Module "${m.id}" cannot be loaded.`, probableCause: "its files are damaged or incompatible with this version", proposedAction: "Reinstall it: code is renewed, data and settings are kept.", tool: "maintenance_module_reinstall", needsHuman: false });
     for (const i of m.instances) if (i.error) add({ severity: "critical", problem: `Instance "${i.key}" (module "${m.id}") was set aside: ${i.error}`, probableCause: "a data conversion failed after an update", proposedAction: "Try to bring it back; if it fails again, reinstall the module or tell the owner.", tool: "maintenance_module_restart", needsHuman: false });
-    if (m.enabled && m.missingDependencies.length) add({ severity: "warning", problem: `Module "${m.id}" lacks what it needs: ${m.missingDependencies.map((d) => d.service).join(", ")}.`, probableCause: "the module providing that service is not installed or not active", proposedAction: "Tell the owner to install or activate the missing module in Admin > Modules.", tool: null, needsHuman: true });
+    if (m.missingDependencies.length) add({ severity: "warning", problem: `Module "${m.id}" lacks what it needs: ${m.missingDependencies.map((d) => d.service).join(", ")}.`, probableCause: "the module providing that service is not installed, or has nothing set up yet", proposedAction: "Tell the owner to install the missing module, or set it up, in Admin > Extensions.", tool: null, needsHuman: true });
   }
   if (up.core.available) add({ severity: up.core.level === "major" ? "warning" : "info", problem: `A new stable core version is available (${up.core.current} to ${up.core.latestStable}, ${up.core.level}).`, probableCause: "a release was published", proposedAction: "Make a backup, then ask for the core update (the owner approves it unless they chose direct execution).", tool: "maintenance_core_update", needsHuman: false });
   const eligible = up.modules.filter((u) => u.aiCanUpdate);

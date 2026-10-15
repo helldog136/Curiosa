@@ -35,9 +35,8 @@ export async function setupModules(): Promise<SetupModules> {
 export async function provisionModule(id: string): Promise<boolean> {
   if (await prisma.module.findUnique({ where: { id } })) return true;
   try {
-    const r = await installFromCatalogue(id, { dependencies: false });
+    const r = await installFromCatalogue(id, { dependencies: false, restoreKept: false });
     if (!r.ok) { console.warn(`[setup] catalogue install of ${id} failed (${r.error})`); return false; }
-    await prisma.module.update({ where: { id }, data: { enabled: true } });
     return true;
   } catch (error) {
     console.warn(`[setup] catalogue install of ${id} failed:`, (error as Error)?.message);

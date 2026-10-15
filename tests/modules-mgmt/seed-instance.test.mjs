@@ -75,8 +75,7 @@ async function setupPlan({ body = STANDARD, v2 = {}, enabled = true, direct = fa
 async function installAgenda(over = {}, { enabled = true } = {}) {
   const repo = makeRepo({ "module.json": agendaManifest(over), "index.mjs": "export default {};" });
   assert.equal((await I.installModule(repo.url)).ok, true);
-  if (enabled) assert.equal((await I.setModuleEnabled(over.id ?? "agenda", true)).ok, true);
-  return repo;
+  if (enabled)  return repo;
 }
 const agendaInstances = () => db.prisma.moduleInstance.findMany({ where: { moduleId: "agenda" }, orderBy: { key: "asc" } });
 const sv = (id, key) => getSetting(`instance.${id}.${key}`);
@@ -232,7 +231,7 @@ test("module non déclaré dans seeds : refus ; module sans seeds : refus ; clé
   await fresh();
   await installAgenda();
   const repo = makeRepo({ "module.json": planManifest("1.0.0"), "index.mjs": "export default {};" }); repo.g("tag", "v1.0.0");
-  await I.installModule(`${repo.url}#v1.0.0`); await I.setModuleEnabled("plan", true);
+  await I.installModule(`${repo.url}#v1.0.0`);
   await createInstance(db.prisma, { manifest: (await R.getModule("plan")).manifest, names: { fr: "Plan" } });
   fs.writeFileSync(path.join(repo.dir, "module.json"), JSON.stringify({ ...planManifest("1.1.0", 2), seeds: undefined }));
   fs.writeFileSync(path.join(repo.dir, "index.mjs"), migration(`await ctx.seedInstance("agenda", { nickname: "A", seedKey: "k", settings: {} });`));
@@ -282,15 +281,14 @@ test("une instance existante n'est jamais écrasée : la graine crée une AUTRE 
   assert.equal(await sv(inst.id, "icalUrl"), URL1);
 });
 
-test("module cible installé mais DÉSACTIVÉ : l'instance semée est créée désactivée ; réglages traduisibles et noms acceptés", async () => {
+test("module cible déjà installé : l'instance semée est créée, active ; réglages traduisibles et noms acceptés", async () => {
   await installAgenda({}, { enabled: false });
   const { update } = await setupPlan({ direct: true, body: `
     await ctx.seedInstance("agenda", { nickname: "Planning", names: { fr: "Planning Twitch", en: "Twitch schedule", de: "ignoré" }, seedKey: "k", settings: { url: ctx.setting("icalUrl"), label: { fr: "Bonjour", en: "Hello" }, mode: "b", count: 3 } });
     await ctx.clearSetting("icalUrl");` });
   assert.equal((await update()).ok, true);
   const [seeded] = await agendaInstances();
-  assert.equal(seeded.enabled, false);
-  assert.equal((await db.prisma.module.findUnique({ where: { id: "agenda" } })).enabled, false, "le module cible n'est pas activé par le semis");
+  assert.equal((await db.prisma.module.findUnique({ where: { id: "agenda" } })).enabled, true);
   assert.deepEqual((await db.prisma.instanceTranslation.findMany({ where: { instanceId: seeded.id } })).map((n) => [n.locale, n.name]).sort(), [["en", "Twitch schedule"], ["fr", "Planning Twitch"]]);
   assert.deepEqual([await sv(seeded.id, "mode"), await sv(seeded.id, "count")], ["b", 3]);
   assert.equal(await getSetting(`instance.${seeded.id}.label`, "en"), "Hello");
@@ -373,12 +371,12 @@ test("cascade : cible ni installée ni dans le catalogue, ou catalogue injoignab
   assert.equal(await db.prisma.module.findUnique({ where: { id: "agenda" } }), null);
 });
 
-test("cascade : module semeur désactivé → cible installée mais laissée désactivée, instance semée désactivée", async () => {
+test("cascade : la cible installée par le semis est active, avec son instance semée", async () => {
   await publishAgenda();
   const { update } = await setupPlan({ direct: true, enabled: false });
   assert.deepEqual(migrated(await update()), [["ok", undefined]]);
-  assert.equal((await db.prisma.module.findUnique({ where: { id: "agenda" } })).enabled, false);
-  assert.equal((await agendaInstances())[0].enabled, false);
+  assert.equal((await db.prisma.module.findUnique({ where: { id: "agenda" } })).enabled, true);
+  assert.equal((await agendaInstances()).length, 1);
 });
 
 test("cascade : le manifeste réel de la cible tranche (l'index annonçait un service qu'elle n'offre pas) → refus, cible retirée", async () => {

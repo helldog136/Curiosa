@@ -99,7 +99,7 @@ ou simple liste de liens vers l'extérieur) ; **Contenu** (module à `content`) 
 
 **Plateformes.** Le champ facultatif `platform` du manifeste (voir ci-dessous) range le module dans *Réseaux et connexions* et ajoute une pastille de plateforme sur sa carte. Purement visuel : aucune dépendance entre modules, chaque instance reste épinglable seule.
 
-**États d'une instance.** *Actif* ; *Désactivé* (instance ou module désactivé) ; *À configurer* (un réglage à remplir est encore vide : texte, secret ou adresse sans valeur par défaut, hors groupes facultatifs et textes traduisibles) ; *Erreur* (la migration des données du module a échoué ou une de ses tâches `tasks` a échoué à son dernier passage).
+**États d'une instance.** *Actif* (il n'y a pas d'état « éteint » : une instance qui existe tourne) ; *À configurer* (un réglage à remplir est encore vide : texte, secret ou adresse sans valeur par défaut, hors groupes facultatifs et textes traduisibles) ; *Erreur* (la migration des données du module a échoué ou une de ses tâches `tasks` a échoué à son dernier passage).
 
 ## Le manifeste `module.json`
 
@@ -152,7 +152,7 @@ Validé à l'installation et au chargement (zod, `src/core/modules/manifest.ts`)
 | `onboarding` | Comment le module participe à la première installation (voir ci-dessous). |
 | `seeds` | **Graines** : modules dans lesquels une migration de données de ce module pourra créer UNE instance (`{ "module": "<id>", "reason": { "fr": "…", "en": "…" } }`, 3 au plus). Exige un `requires` et que le module cible offre un service requis (voir « `migrations` › Semer une instance »). |
 | `dataVersion` | Version de la **structure de vos données** (entier ≥ 1, défaut 1). À augmenter quand elle change, avec la migration correspondante (`migrations`). |
-| `defaultEnabled` | Sans effet pour un module installé depuis le catalogue ou un dépôt : toujours installé désactivé (l'assistant de première installation active ceux que l'on coche). |
+| `defaultEnabled` | Sans effet pour un module installé depuis le catalogue ou un dépôt : sans effet non plus sur l'état : un module installé est toujours actif (l'assistant de première installation n'installe que ceux que l'on coche). |
 | `permissions` | Les capacités utilisées (voir ci-dessous). |
 
 ### Version minimale du cœur (`minCore`)
@@ -530,14 +530,14 @@ migrations: {
 - **Une seule fois par `seedKey`** (`a-z0-9._-`, commence par une lettre, 41 caractères au plus) et par instance du module semeur : une graine déjà semée renvoie `{ created: false, instanceKey }`, **même si l'instance a été supprimée depuis** ;
   la marque est dans les réglages de l'instance semeuse (hors de portée du module, sauvegardée avec elle). Vous pouvez donc appeler `seedInstance` à chaque passage sans risque de doublon.
 - **Jamais d'écrasement** : le semis crée toujours une **nouvelle** instance (clé libre dérivée du surnom) ; les instances existantes du module cible ne sont ni lues ni modifiées. Un module cible en `"instances": "single"` qui a déjà une instance : refus.
-- **Activée seulement si son module l'est** : si le module cible est installé mais désactivé, l'instance semée est créée désactivée (le semis n'active jamais un module). Le module cible n'est pas encore installé : voir la séquence ci-dessous.
+- **Active d'office** : un module installé est actif, donc l'instance semée l'est aussi. Le module cible n'est pas encore installé : voir la séquence ci-dessous.
 - **`ctx.clearSetting(clé)`** (migration seulement) efface l'un de **vos** réglages d'instance (déclaré dans votre `settings`, toutes langues). Il est **refusé tant qu'aucun `seedInstance` n'a abouti** dans cette migration
   (`created: false` compte : la graine est confirmée). Si la migration échoue plus tard, le réglage revient.
 - **Tout ou rien** : si une étape lève une erreur, la migration échoue comme d'habitude (vos réglages et votre stockage reviennent comme avant, l'instance est mise à l'écart, « Réessayer »), **et** tout ce que le semis avait créé est défait
   (instance, marque, module cible installé pour l'occasion). L'audit `module.seed` (module semeur, module cible, clé de l'instance créée : jamais de valeur) et les crochets `onInstanceCreate` de la cible ne passent qu'**une fois la migration réussie**.
 - **Module cible absent.** La migration d'une mise à jour s'exécute **avant** la résolution des dépendances de cette mise à jour. Pour qu'une graine ne laisse pas une instance vide à côté de l'instance semée, le cœur, au premier `seedInstance` :
-  (1) vérifie que le catalogue annonce un module compatible qui offre le service ; (2) l'installe **sans créer d'instance par défaut** ; (3) vérifie dans son manifeste réel qu'il offre bien le service ; (4) si votre module est activé : installe ses
-  propres dépendances et l'active (sinon il reste désactivé) ; (5) crée l'instance semée (activée si le module cible l'est) ; (6) à la réussite, marque le module cible « installé automatiquement » pour vous (comme une cascade de dépendances) ; en cas
+  (1) vérifie que le catalogue annonce un module compatible qui offre le service ; (2) l'installe **sans créer d'instance par défaut** ; (3) vérifie dans son manifeste réel qu'il offre bien le service ; (4) installe ses
+  propres dépendances ; (5) crée l'instance semée ; (6) à la réussite, marque le module cible « installé automatiquement » pour vous (comme une cascade de dépendances) ; en cas
   d'échec, le retire avec ses fichiers. La résolution des dépendances qui suit la migration trouve alors le service déjà fourni et ne crée rien de plus. Cible introuvable (ni installée ni au catalogue, ou catalogue injoignable) : la migration échoue,
   « Réessayer » plus tard.
 - Pour tester un module : `fakeCtx({ migration: true, settings: {...} })` ajoute `ctx.seedInstance` et `ctx.clearSetting` factices (appels enregistrés dans `ctx.calls.seeds` et `ctx.calls.cleared`, résultat réglable par `seedResult`).
@@ -575,14 +575,14 @@ Exemple court : *Contacts* offre `contact.store` et possède le carnet ; *Parten
 
 #### Ce que fait le cœur
 
-- **Un fournisseur est « présent »** quand une **instance active** d'un module actif l'offre, en version suffisante. Un module actif sans instance, ou une instance dont les données sont à l'écart, ne compte pas : le service est alors `unavailable`.
-- **Résolution avant l'installation** (Catalogue, dépôt personnel, activation d'un module installé) : pour chaque service qui manque, le cœur cherche un fournisseur — (1) un module **déjà installé** qui l'offre (activés d'abord, puis par identifiant) ; (2) le **premier module non installé du catalogue** qui l'offre (dans l'ordre de l'index). Il l'**installe, l'active et crée son instance par défaut** (`single` : une ; `multiple` : une, sans surnom — la première n'en a pas besoin), après avoir fait de même pour **ses propres besoins** (profondeur 3 au plus ; un cycle est refusé). Le consommateur vient ensuite, **désactivé** comme tout module installé (c'est l'administrateur qui l'active). Jamais un dépôt personnel n'est choisi comme fournisseur.
+- **Un fournisseur est « présent »** quand une **instance** d'un module installé l'offre, en version suffisante. Un module installé sans instance, ou une instance dont les données sont à l'écart, ne compte pas : le service est alors `unavailable`.
+- **Résolution avant l'installation** (Catalogue, dépôt personnel, activation d'un module installé) : pour chaque service qui manque, le cœur cherche un fournisseur — (1) un module **déjà installé** qui l'offre (par identifiant ; ses données gardées, s'il en a, reviennent à la place d'une instance neuve) ; (2) le **premier module non installé du catalogue** qui l'offre (dans l'ordre de l'index). Il l'**installe et crée son instance par défaut** (`single` : une ; `multiple` : une, sans surnom — la première n'en a pas besoin), après avoir fait de même pour **ses propres besoins** (profondeur 3 au plus ; un cycle est refusé). Le consommateur vient ensuite. Jamais un dépôt personnel n'est choisi comme fournisseur.
 - **Rien à moitié** : si un maillon échoue (clone impossible, dépôt qui ne sert pas le module annoncé, service absent du manifeste réel, cycle, profondeur), tout ce que la cascade avait fait est **défait** (modules installés, activés, instances créées, fichiers) et le message dit **quel module** a échoué et **pourquoi**. L'index peut se tromper : c'est le manifeste réellement téléchargé qui tranche, et le candidat suivant est essayé.
 - **Deux fournisseurs déjà actifs** : rien n'est choisi ni installé ; le mécanisme maître/répliques ci-dessous décide.
 - **Installé automatiquement** : un module (ou une instance) apporté par la cascade est noté dans le réglage cœur `modules.auto` (`{ "<id>": { "for": ["<consommateurs>"], "module": true, "instances": ["<id d'instance>"], "at": … } }` ; sans migration de base, sauvegardé avec les réglages). La page du module dit *« Installé automatiquement pour : … »*, et quand plus aucun module **actif** n'en dépend, un **nettoyage est proposé** (page du module, et encadré dans Modules › Installés). **Jamais de suppression automatique** : le propriétaire confirme, et si le module porte des données ou des réglages saisis, l'avertissement est affiché et une case « je comprends » est exigée. « Le garder » retire la marque.
 - **Mises à jour** : après `updateModule` (et « Tout mettre à jour »), si la nouvelle version **ajoute** un `requires` ou en relève le `min`, le fournisseur disponible est installé d'office (mêmes règles) ; sinon la mise à jour **réussit quand même**, le module dégrade comme avant (jamais de plantage), et l'administrateur est **averti** (bilan de la mise à jour, page du module : *« Il manque : … »*, avec un bouton pour mettre en place ce qui manque). Une alerte ne bloque jamais les autres mises à jour de la liste.
 - **Restauration** ([BACKUP.md](BACKUP.md)) : les modules sont réinstallés dans l'ordre des dépendances (fournisseurs d'abord), puis les `requires` de chaque module actif restauré sont vérifiés ; un fournisseur absent de la sauvegarde mais disponible est installé avec son instance par défaut. Sinon le consommateur est restauré avec ses données, l'état « activé » de la sauvegarde est respecté, et l'aperçu comme le bilan disent *« il manque : … »*.
-- **Désactiver ou désinstaller** un module que d'autres modules actifs requièrent (parce que lui seul fournit le service, dans la version voulue) est refusé en nommant ces modules (leurs noms, pas leurs identifiants), ce qu'ils perdraient, et ce qu'il faut faire (*« désactivez d'abord … »*).
+- **Désinstaller** un module que d'autres modules installés requièrent (parce que lui seul fournit le service, dans la version voulue) est refusé en nommant ces modules (leurs noms, pas leurs identifiants), ce qu'ils perdraient, et ce qu'il faut faire (*« retirez d'abord … »*).
 - **Interface** : le Catalogue (liste et fiche) annonce *« Installe aussi : Contacts »* **avant** d'installer — ce qui sera installé, activé ou déjà en place ✔ — pour un module du catalogue qui déclare ses services. Le bouton **Installer** fait tout en une action. La page d'un module montre *« A besoin de »* et *« Utilisé par »* en noms lisibles (identifiants techniques et versions en mode avancé).
 - `ctx.api.services.call` n'accepte que les services déclarés dans `requires` (sinon `undeclared`), prend le premier fournisseur actif de version suffisante (par clé d'instance), ne lève jamais : à vous de gérer `unavailable` (par exemple après une restauration) en dégradant proprement.
 - **Plusieurs fournisseurs du même service** (un doublon, ou un changement de fournisseur) : dès qu'un deuxième module qui offre le service est activé (ou qu'une de ses instances est créée), l'admin est invité (page *Modules* → *Services offerts par plusieurs modules*) à choisir un **maître** — il reçoit les appels et c'est sa réponse que voit l'appelant — et des **répliques**, qui reçoivent aussi les appels qui **écrivent**, au mieux (la panne d'une réplique ne fait jamais échouer l'appel ; celle du maître, si). Le fournisseur peut déclarer ses méthodes de lecture dans `offers` (`"readOnly": ["count"]`) : elles ne sont jamais répliquées. Tant que rien n'est choisi, le premier fournisseur (par clé d'instance) est le maître, sans réplique ; un choix périmé (maître retiré) retombe sur le premier. **Une réplique reçoit les appels futurs** : les données déjà reçues par l'ancien fournisseur ne sont pas copiées (aucun conflit à fusionner, mais un historique réparti : pour une bascule propre, mettez le nouveau en maître, gardez l'ancien en réplique le temps voulu, puis retirez-le).
@@ -1026,6 +1026,23 @@ uniquement, 50 fichiers et 5 Mo par fichier au plus, chemin relatif sans `..`, u
 et n'empêche pas la sauvegarde. Le contexte est celui de la langue par défaut. Pour un CSV : mettez chaque cellule entre guillemets (doublez
 les guillemets internes) et neutralisez les cellules qui commencent par `=`, `+`, `-` ou `@` (injection de formule dans un tableur) — voir `cell()` dans l'exemple.
 
+
+## Installé ou pas : le cycle de vie d'un module
+
+Il n'y a que **deux états** : *installé* (actif : page, menu, tâches, outils MCP, routes publiques) et *pas installé*. Pas d'interrupteur « on/off » ni pour un module ni pour une instance ; pour ne plus avoir l'un ou l'autre, on le **retire**, en choisissant le sort de ses données :
+
+| Choix (boutons) | Effet |
+|---|---|
+| **Retirer et garder mes données** | le module n'est plus installé (son code est retiré) ; ses instances, réglages, contenus et stockage sont **rangés**, inertes, dans la table `RetiredInstance` du cœur |
+| **Retirer et tout effacer** | tout est supprimé, y compris des données rangées auparavant (irréversible ; la confirmation conseille une sauvegarde) |
+
+- **Un module = propriétaire de ses données (SRP).** Le cœur ne les interprète pas : il les range en un bloc JSON par instance (ligne d'instance, traductions, entrées et traductions, réglages `instance.<id>.…`, stockage) et les remet **à l'identique** (mêmes identifiants), sans jamais les rendre au module. Aucune lecture par le module retiré, ni par l'API (`ctx.api`), le MCP, les flux, les tâches planifiées, le menu ou le site : les tables vivantes ne contiennent plus rien de lui. La sauvegarde du site contient ce bloc (`data/retired-instances.json`).
+- **Réinstaller le même module** (catalogue, dépôt) remet ses instances et leurs données, puis les met à niveau si le module a changé de `dataVersion` (comme après une mise à jour). La liste *Ajouter* et la fiche du module annoncent « vos données ont été gardées ». Ce qui ne peut pas revenir (module à instance unique déjà servi) reste rangé, intact. Une adresse ou un identifiant pris entre-temps est remplacé par un libre (`-2`), rien n'est écrasé.
+- **Retirer une seule instance** suit le même choix. En « garder », `hooks.onInstanceDelete` n'est **pas** appelé (rien n'est détruit) ; en « effacer », il l'est. Le propriétaire qui retire la *seule* instance de son module retire le module.
+- **Dépendances.** Retirer un module dont un autre module installé a besoin est refusé. Le nettoyage proposé des modules « installés automatiquement » (plus personne n'en dépend) offre le même choix. Si une cascade échoue après avoir retrouvé des données gardées, elles sont rangées de nouveau, jamais effacées.
+- **MCP de maintenance.** `maintenance_module_uninstall` prend `keepData` (défaut **vrai**, non destructif) ; `keepData: false` efface. Comme tout outil destructif, il reste soumis à la validation humaine.
+- **Migration des « éteints » (temporaire, retrait en 0.3.0).** Un site d'avant la 0.1.20 peut avoir des modules ou instances « éteints » : au premier démarrage (et après la restauration d'une ancienne sauvegarde), un module éteint est désinstallé et une instance éteinte retirée, **données gardées** (`src/core/modules/legacyOff.ts`). Les colonnes `enabled` restent dans la base pour cette seule lecture.
+
 ## Installer, publier, catalogue
 
 **Le Catalogue est gratuit** : aucun module ne s'y vend, tous sont sous licence ouverte. Un auteur qui accepte des dons volontaires l'indique dans le **README.md** de son dépôt, que l'admin affiche avant toute installation ; jamais une condition d'installation.
@@ -1044,10 +1061,9 @@ https://github.com/<vous>/<depot>#v1.2.0   # étiquette, commit ou branche épin
 ```
 
 Hôtes autorisés : `MODULES_ALLOWED_HOSTS` (défaut `github.com,gitlab.com,codeberg.org,bitbucket.org` ; `*` = tous). Seul `https://` est
-accepté, sans identifiant ni paramètres. Le module est installé **désactivé** (dans `data/modules/<id>`) ; on l'active après l'avoir relu,
-puis on lui ajoute des instances. Chaque instance active a sa propre entrée dans le menu d'admin.
-Les modules installés se gèrent dans **Modules** : activer, désactiver, « Chercher une mise à jour » (compare avec le dépôt distant),
-mettre à jour, désinstaller (**supprime aussi ses instances et leurs données**). 
+accepté, sans identifiant ni paramètres. Le module est installé **actif** (dans `data/modules/<id>`) : l'accord se donne avant, sur la fiche (case « je fais confiance » pour un dépôt personnel) ; on lui ajoute ensuite des instances. Chaque instance active a sa propre entrée dans le menu d'admin.
+Les modules installés se gèrent dans **Extensions** : « Réglages » (une fenêtre), « Chercher une mise à jour » (compare avec le dépôt distant),
+mettre à jour, retirer (voir « Installé ou pas : le cycle de vie » ci-dessous).
 **Mise à jour d'un module — sans perdre aucune donnée** : seuls les fichiers du module changent ; ses instances, réglages, données (stockage, entrées) restent
 tels quels. Le sens de « mise à jour » dépend de l'installation :
 

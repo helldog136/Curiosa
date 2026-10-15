@@ -24,7 +24,7 @@ export type MaintenanceDeps = {
   checkModule(id: string): Promise<{ check: ModuleUpdateCheck; failed: boolean }>;
   updateModules(ids: string[]): Promise<Summary>;
   reinstall(id: string): Promise<ReinstallResult>;
-  uninstall(id: string): Promise<InstallResult>;
+  uninstall(id: string, opts: { keepData: boolean }): Promise<InstallResult>;
   retryInstance(instanceId: string): Promise<MigrationOutcome | null>;
   /** Plus haute release STABLE du cœur (jamais une candidate ni un instantané), ou null. */
   latestStable(force?: boolean): Promise<{ tag: string; notes: string } | null>;
@@ -47,7 +47,7 @@ export const realDeps = (): MaintenanceDeps => ({
   checkModule: (id) => checkForUpdateDetailed(id),
   updateModules: (ids) => updateModules(ids),
   reinstall: (id) => reinstallModule(id),
-  uninstall: (id) => uninstallModule(id),
+  uninstall: (id, opts) => uninstallModule(id, opts),
   retryInstance: (instanceId) => retryInstanceMigration(instanceId),
   async latestStable(force = false) {
     if (!force && stableCache && Date.now() - stableCache.at < STABLE_CACHE_MS) return stableCache.value;

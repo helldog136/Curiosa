@@ -54,7 +54,7 @@ test("installation d'un module d'un dépôt qui en regroupe plusieurs : seul son
   assert.equal(row.repoUrl, repo.url);
   assert.match(row.tree, /^[0-9a-f]{40}$/);
   assert.equal(row.commit, repo.commit);
-  assert.equal(row.enabled, false, "désactivé tant que l'administrateur ne l'a pas activé");
+  assert.equal(row.enabled, true, "installé = actif");
   // Le second module du même dépôt s'installe séparément.
   assert.equal((await I.installModule(`${repo.url}#:beta`)).ok, true);
   assert.equal((await mod("beta")).subdir, "beta");

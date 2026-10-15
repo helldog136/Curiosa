@@ -4,7 +4,12 @@ import fs from "node:fs";
 
 // Code jetable : chaque entrée dit jusqu'à quelle version stable il a une raison d'exister. Passé ce jalon, ce test échoue et impose le ménage.
 const TEMPORARY = [
-  // Rien pour l'instant.
+  {
+    why: "migration des modules et instances « éteints » (avant la 0.1.20) vers « désinstallé, données gardées »",
+    removeAfter: "0.2.99",
+    files: ["src/core/modules/legacyOff.ts"],
+    alsoRemove: ["son appel dans src/instrumentation.ts et dans applyRestore (src/core/backup/restore.ts) ; les colonnes Module.enabled et ModuleInstance.enabled (prisma/schema.prisma, nouvelle migration), le champ enabled de BackupModule (backup/format.ts) ; les tests « migration des éteints » de tests/modules-mgmt/module-lifecycle.test.mjs"],
+  },
 ];
 
 // Code jetable déjà supprimé : une instance plus ancienne que `needs` n'a plus le droit de sauter à la version courante, elle doit passer par `needs`

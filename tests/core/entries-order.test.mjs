@@ -77,7 +77,7 @@ test("tri : le choix s'applique aussi aux limites (derniers articles de l'accuei
 });
 
 test("tri : le choix est proposé dans les deux modes de l'admin, pour les modules à contenu seulement", () => {
-  const page = fs.readFileSync("src/app/admin/(panel)/instances/[id]/page.tsx", "utf8");
+  const page = fs.readFileSync("src/app/admin/(panel)/instances/[id]/InstanceView.tsx", "utf8");
   assert.match(page, /\{content && \(\s*<Select name="sort"/);
   assert.ok(!/advanced && content[^)]*<Select name="sort"/.test(page));
   const actions = fs.readFileSync("src/app/admin/(panel)/instances/actions.ts", "utf8");

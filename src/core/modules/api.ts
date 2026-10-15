@@ -79,7 +79,7 @@ export function makeApi(instance: InstanceView, locale: string, permissions: rea
       async list({ locale: loc, module } = {}) {
         const config = await getSiteConfig();
         return (await listInstances())
-          .filter((i) => i.enabled && (!module || i.moduleId === module))
+          .filter((i) => !module || i.moduleId === module)
           .map((i) => ({ key: i.key, module: i.moduleId, basePath: i.basePath, name: pickName(i, loc ?? config.defaultLocale, config.defaultLocale) }));
       },
     },

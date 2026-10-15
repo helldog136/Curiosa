@@ -5,7 +5,7 @@ import { makeRepo } from "../helpers/repo.mjs";
 
 const db = await useTestDb();
 const S = await import("@/core/social");
-const { installModule, setModuleEnabled } = await import("@/core/modules/installer");
+const { installModule } = await import("@/core/modules/installer");
 const R = await import("@/core/modules/registry");
 const { createInstance } = await import("@/core/instanceService");
 const { getSiteConfig } = await import("@/core/settings");
@@ -19,7 +19,7 @@ const network = (id, { items, instances = "multiple" } = {}) => ({
   "index.mjs": `export default { exports: { "social.link": (ctx) => ${items ?? `[{ label: ctx.setting("url") ? "${id}" : "", url: ctx.setting("url") ?? "", icon: "${id}" }]`} } };`,
 });
 async function add(id, mod, nickname, names = { en: nickname ?? id }) {
-  if (!(await R.getModule(id))) { await installModule(makeRepo(mod).url); await setModuleEnabled(id, true); }
+  if (!(await R.getModule(id))) { await installModule(makeRepo(mod).url);}
   const inst = await createInstance(db.prisma, { manifest: (await R.getModule(id)).manifest, nickname, names });
   return inst;
 }

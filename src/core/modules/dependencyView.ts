@@ -50,7 +50,7 @@ export async function viewPlan(rootId: string, needs: ServiceNeed[], names: Name
 /* ───────────── Page d'un module ───────────── */
 
 export type NeedView = { service: string; label: string; min: number; ok: boolean; /** Modules qui le fournissent (actifs d'abord). */ providers: { id: string; name: string; active: boolean }[]; gap?: Gap };
-export type UsedByView = { id: string; name: string; enabled: boolean; services: string[] };
+export type UsedByView = { id: string; name: string; services: string[] };
 export type ModuleLinksView = {
   needs: NeedView[];
   usedBy: UsedByView[];
@@ -88,7 +88,7 @@ export async function viewModuleLinks(moduleId: string, names: Names): Promise<M
       if (row.id === moduleId) continue;
       const other = await getModule(row.id);
       const used = (other?.manifest.requires ?? []).filter((r) => offered.has(r.service));
-      if (used.length) usedBy.push({ id: row.id, name: names.module(row.id), enabled: row.enabled, services: used.map((r) => names.service(r.service)) });
+      if (used.length) usedBy.push({ id: row.id, name: names.module(row.id), services: used.map((r) => names.service(r.service)) });
     }
   }
   const auto = (await readAuto())[moduleId];
@@ -103,7 +103,6 @@ export async function viewModuleLinks(moduleId: string, names: Names): Promise<M
 export async function missingByModule(): Promise<Map<string, Gap[]>> {
   const out = new Map<string, Gap[]>();
   for (const row of await listModuleRows()) {
-    if (!row.enabled) continue;
     const mod = await getModule(row.id);
     const gaps = mod ? await requirementGaps(mod.manifest) : [];
     if (gaps.length) out.set(row.id, gaps);

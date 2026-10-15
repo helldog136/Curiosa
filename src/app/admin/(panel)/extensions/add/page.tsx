@@ -2,6 +2,9 @@ import { adminCtx } from "@/core/admin";
 import { getCatalogue, getCatalogueSource } from "@/core/modules/catalogue";
 import { getCoreVersion } from "@/core/modules/compat";
 import { listModuleRows } from "@/core/modules/registry";
+import { listRetired } from "@/core/modules/retired";
+import { groupByModule } from "@/core/modules/retiredPlan";
+import { eraseRetiredAction } from "../../modules/actions";
 import { localized } from "@/core/modules/types";
 import { TextField } from "@/components/admin/Field";
 import { ExtensionsHeader } from "@/components/admin/ExtensionsHeader";
@@ -27,6 +30,9 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
   const entries = await getCatalogue();
   const source = await getCatalogueSource();
   const installed = new Set((await listModuleRows()).map((r) => r.id));
+  // Données gardées d'extensions retirées : on le dit sur leur carte, et on les liste (pour les effacer ou réinstaller) tant que l'extension n'est pas revenue.
+  const keptGroups = groupByModule(await listRetired()).filter((g) => !installed.has(g.moduleId));
+  const keptIds = new Set(keptGroups.map((g) => g.moduleId));
   const sources = isOwner && advanced ? await listSources() : [];
   const found = await Promise.all(sources.map(async (s) => ({ s, modules: await discoverModules(s).catch((): SourceModule[] | null => null) })));
   const L = (v: Parameters<typeof localized>[0]) => localized(v, locale, config.defaultLocale);
@@ -69,6 +75,7 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
                     {advanced && e.repo && <p className="mt-1 break-all font-mono text-xs text-muted">{e.repo}{e.ref ? `#${e.ref}` : ""}</p>}
                   </div>
                 </div>
+                {keptIds.has(e.id) && <p className="rounded-xl bg-accent/10 px-3 py-2 text-sm" data-testid={`kept-card-${e.id}`}>🗂 {t("kept.cardNote", { name: L(e.name) })}</p>}
                 {plans.get(e.id) && <DependencyPlanBox view={plans.get(e.id)!} t={t} names={names} compact />}
                 <div className="mt-auto flex flex-wrap items-center justify-between gap-3">
                   <span className="flex flex-wrap items-center gap-2"><span className={ui.chipOk}>✔ {t("catalogue.verified")}</span>{e.suggested && <span className={ui.chipOk}>⭐ {t("catalogue.suggested")}</span>}</span>
@@ -87,6 +94,33 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
           </ul>
         </section>
       ))}
+      {keptGroups.length > 0 && (
+        <section className="space-y-3" data-testid="kept-groups">
+          <div>
+            <h2 className="text-lg font-semibold">{t("kept.addTitle")}</h2>
+            <p className="mt-1 text-sm text-muted">{t("kept.addHelp")}</p>
+          </div>
+          <ul className="divide-y divide-line rounded-xl border border-line bg-surface">
+            {keptGroups.map((g) => {
+              const entry = entries.find((e) => e.id === g.moduleId);
+              const name = entry ? L(entry.name) : g.moduleName;
+              const href = entry && entry.compatible && !entry.needsNewerCore ? `/admin/extensions/add/details?id=${encodeURIComponent(g.moduleId)}` : g.repoUrl && advanced ? `/admin/extensions/add/details?repo=${encodeURIComponent(`${g.repoUrl}${g.ref || g.subdir ? `#${g.ref ?? ""}${g.subdir ? `:${g.subdir}` : ""}` : ""}`)}` : null;
+              return (
+                <li key={g.moduleId} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-sm" data-testid={`kept-group-${g.moduleId}`}>
+                  <span className="min-w-0 flex-1 basis-56">
+                    <span className="block break-words font-medium">{name}</span>
+                    <span className="block text-xs text-muted">{t("kept.counts", { entries: g.entryCount, records: g.recordCount })} · {g.retiredAt.toLocaleDateString(locale)}{!href && ` · ${t("kept.noSource")}`}</span>
+                  </span>
+                  <span className="flex flex-wrap gap-2">
+                    {href && <Link href={href} scroll={false} className={ui.btn}>{t("kept.reinstall")}</Link>}
+                    {isOwner && <form action={eraseRetiredAction.bind(null, { moduleId: g.moduleId })}><ConfirmButton confirmLabel={t("remove.eraseYes")} dangerConfirm message={t("kept.eraseConfirm", { name })}>{t("kept.erase")}</ConfirmButton></form>}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
       {unreachable && (
         <div role="alert" data-testid="catalogue-unreachable" className="flex flex-wrap items-center gap-3 rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
           <span>{t("catalogue.unreachable")}</span>
