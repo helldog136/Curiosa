@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import type { AdminField, Block } from "@/core/blocks";
 import { ImageField } from "./ImageField";
 import { ui } from "./ui";
+import { Checkbox } from "./Field";
 import { askConfirm } from "./confirmDialog";
 import { runModuleAdminAction } from "@/app/admin/(panel)/instances/module-actions";
 
@@ -13,6 +14,8 @@ type FormBlock = Extract<Block, { type: "adminForm" }>;
 function Field({ f }: { f: AdminField }) {
   if (f.kind === "hidden") return <input type="hidden" name={f.name} value={f.value ?? ""} />;
   if (f.kind === "image") return <ImageField name={f.name} label={f.label} defaultValue={f.value} uploadLabel="↑" />;
+  // Case à cocher : `value` « on », « 1 » ou « true » = cochée ; décochée, le champ est absent des `values` reçus par le module.
+  if (f.kind === "checkbox") return <Checkbox label={f.label} name={f.name} value="on" defaultChecked={["on", "1", "true"].includes(f.value ?? "")} help={f.help} required={f.required} />;
   const common = { id: `f_${f.name}`, name: f.name, required: f.required, defaultValue: f.value ?? "", className: ui.input };
   return (
     <div>

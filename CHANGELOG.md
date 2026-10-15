@@ -6,6 +6,14 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
+## 0.1.17
+
+*Changements depuis la 0.1.16.*
+
+### Pour les développeurs
+
+- Un champ `checkbox` pour les formulaires d'admin des modules (`adminForm`) : une vraie case à cocher, absente des valeurs reçues quand elle est décochée. Les sujets `social.stat` et `calendar.event` sont listés dans `docs/MODULES.md`.
+
 ## 0.1.16
 
 *Changements depuis la 0.1.15.*

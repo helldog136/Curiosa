@@ -12,7 +12,7 @@ export type HeadTag =
 export type AdminField = {
   name: string;
   label: string;
-  kind?: "text" | "textarea" | "email" | "url" | "number" | "date" | "select" | "hidden" | "image";
+  kind?: "text" | "textarea" | "email" | "url" | "number" | "date" | "select" | "hidden" | "image" | "checkbox";
   value?: string;
   required?: boolean;
   help?: string;

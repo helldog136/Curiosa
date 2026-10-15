@@ -724,7 +724,7 @@ Une valeur de cellule de `table`, un `text` de `heading`, de `banner`… sont du
 Balises de `head` : `{ tag: "meta", name?, property?, content }`, `{ tag: "link", rel, href, type?, title? }`, `{ tag: "script", src?, inline?, defer?, jsonLd? }`. `jsonLd` (un objet, obtenu par `ctx.api.seo.jsonLd`) : le cœur écrit une balise `application/ld+json` sûre ; `src` et `inline` restent du code exécuté, à éviter.
 
 Champs d'un `adminForm` (`AdminField`) : `{ name, label, kind?, value?, required?, help?, options? }`. `kind` : `text`, `textarea`, `email`,
-`url`, `number`, `date`, `select` (avec `options: [{ value, label }]`), `hidden`, `image` (téléversement).
+`url`, `number`, `date`, `select` (avec `options: [{ value, label }]`), `hidden`, `image` (téléversement), `checkbox` (case à cocher : cochée si `value` vaut `on`, `1` ou `true` ; une fois envoyée, le module reçoit `values[name] === "on"`, et rien du tout si elle est décochée).
 
 ## Échanger des informations entre modules : les sujets
 
@@ -752,6 +752,8 @@ Sujets connus (tous fournis par des modules du catalogue, ou par le cœur) :
 | `sponsor.card` | `sponsors` | carte de sponsor (nom, code, logo, lien) |
 | `partnership.partner` | `partnerships` | fiche de partenaire (nom, logo) |
 | `planning.slot` | `planning` | créneau de stream |
+| `social.stat` | tout module « réseau social » | les chiffres d'un compte (`id`, `metric` : `followers` / `paying` / `content` / `views`, `value`, `asOf`, `error?`) collectés par `community-stats` |
+| `calendar.event` | tout module « calendrier » | un évènement d'agenda (`id`, `title`, `start`, `end?`, `allDay?`, `description?`, `location?`, `url?`, `status?`, `category?`, `color?`, `sourceLabel?`) consommé par `planning` ; reçoit une période `from` / `to` |
 | `maze.poster` | tout module (`youtube-channel`, `twitch-channel`…) | affiche pour le labyrinthe |
 | `stream.live` | `twitch-channel` | live en cours (`id`, `title`, `url`, `startedAt`, `game`) ; vide hors ligne |
 
@@ -857,7 +859,7 @@ export default {
 };
 ```
 
-- **Champs** d'un `adminForm` : `text`, `textarea`, `email`, `url`, `number`, `date`, `select` (`options`), `image`, `hidden`. Les blocs
+- **Champs** d'un `adminForm` : `text`, `textarea`, `email`, `url`, `number`, `date`, `select` (`options`), `image`, `hidden`, `checkbox`. Les blocs
   `adminForm` ne s'affichent que dans l'admin (jamais sur le site public).
 - **Boutons de ligne** d'une `table` (`rowActions`, admin seulement) : `{ label, action?, href?, confirm?, danger? }`. `action` exécute une
   `adminAction` en lui envoyant `values.id` (pris dans `rowIds`, même ordre que `rows`) ; `href` navigue (`{id}` est remplacé par l'identifiant) ;
