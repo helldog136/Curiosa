@@ -2,6 +2,8 @@ import type { Translator } from "@/core/i18n/dictionary";
 import { localeName } from "@/core/i18n/locales";
 import { themeRef } from "@/core/color";
 import { groupHasValue, layoutFields, type Slot } from "@/core/modules/groups";
+import { fieldSpan, SPAN_CLASS } from "@/core/modules/settingsLayout";
+import { settingFieldId } from "@/core/modules/missingSettings";
 import { LINK_PATTERN, resolveDefault } from "@/core/modules/settingValues";
 import { localized, type OptionalGroupDecl, type SettingField } from "@/core/modules/types";
 import { ImageField } from "./ImageField";
@@ -16,7 +18,7 @@ type Site = { name: string; tagline: string };
  * quand le site n'a qu'une langue, sinon une ligne par langue) et groupes facultatifs. Composant serveur : les champs sont rendus
  * ici, seuls les groupes facultatifs (OptionalGroup) ont besoin du navigateur.
  */
-export function ModuleSettings({ t, locale, defaultLocale, locales, fields, allFields, groups, stored, siteByLocale, theme }: {
+export function ModuleSettings({ t, locale, defaultLocale, locales, fields, allFields, groups, stored, siteByLocale, theme, missing }: {
   t: Translator;
   /** Langue de l'admin (pour les libellés du manifeste). */
   locale: string;
@@ -30,6 +32,8 @@ export function ModuleSettings({ t, locale, defaultLocale, locales, fields, allF
   /** Nom et accroche du site, par langue : valeurs des défauts « site:… ». */
   siteByLocale: Record<string, Site>;
   theme: Record<string, string>;
+  /** Clés des réglages à remplir qui manquent (voir `missingSettings`) : marqués « à remplir ». */
+  missing: ReadonlySet<string>;
 }) {
   const L = (v: Parameters<typeof localized>[0]) => localized(v, locale, defaultLocale);
   const site = (l: string): Site => siteByLocale[l] ?? siteByLocale[defaultLocale] ?? { name: "", tagline: "" };
@@ -38,11 +42,11 @@ export function ModuleSettings({ t, locale, defaultLocale, locales, fields, allF
   const ordered = [defaultLocale, ...locales.filter((l) => l !== defaultLocale)];
 
   /** Le contrôle d'un réglage (sans libellé propre pour les lignes « par langue »). */
-  const control = (f: SettingField, name: string, value: unknown, label: string, opts: { inline?: boolean; required?: boolean; resolved?: string | number | boolean } = {}) => {
+  const control = (f: SettingField, name: string, value: unknown, label: string, opts: { inline?: boolean; required?: boolean; resolved?: string | number | boolean; flag?: string } = {}) => {
     const required = opts.required;
     const help = f.help ? L(f.help) : f.type === "link" ? t("instances.linkHelp") : undefined;
     // Réglages d'un module : jamais remplis par le navigateur (un identifiant client + un secret ressemblent à un login/mot de passe).
-    const common = { name, label, help: opts.inline ? undefined : help, autoComplete: "off", required, inline: opts.inline };
+    const common = { name, label, help: opts.inline ? undefined : help, autoComplete: "off", required, inline: opts.inline, flag: opts.flag };
     const base = opts.resolved ?? resolveDefault(f, site(defaultLocale));
     const str = value === undefined ? (base === undefined ? "" : String(base)) : String(value);
     switch (f.type) {
@@ -87,7 +91,7 @@ export function ModuleSettings({ t, locale, defaultLocale, locales, fields, allF
     const label = mark(L(f.label), requiredKeys.has(f.key));
     const required = requiredKeys.has(f.key);
     if (!f.translatable) {
-      return control(f, `s__${f.key}`, f.type === "secret" ? Boolean(stored[f.key]?.[""]) || undefined : stored[f.key]?.[""], label, { required });
+      return control(f, settingFieldId(f.key), f.type === "secret" ? Boolean(stored[f.key]?.[""]) || undefined : stored[f.key]?.[""], label, { required, flag: missing.has(f.key) ? t("missing.field") : undefined });
     }
     // Un seul langage : un champ simple, comme n'importe quel réglage.
     if (ordered.length === 1) {
@@ -107,13 +111,13 @@ export function ModuleSettings({ t, locale, defaultLocale, locales, fields, allF
   };
 
   const slotNode = (slot: Slot) => {
-    if (slot.kind === "field") return <div key={slot.field.key}>{field(slot.field)}</div>;
+    if (slot.kind === "field") return <div key={slot.field.key} data-setting={slot.field.key} className={`${SPAN_CLASS[fieldSpan(slot.field)]} scroll-mt-20 rounded-xl transition-[box-shadow,background-color] duration-500`}>{field(slot.field)}</div>;
     const { group } = slot;
     return (
-      <OptionalGroup key={group.id} id={group.id} title={L(group.label)} addLabel={L(group.addLabel)} removeLabel={group.removeLabel ? L(group.removeLabel) : t("instances.groupRemove")}
+      <div key={group.id} className={`${SPAN_CLASS.full} scroll-mt-20`}><OptionalGroup id={group.id} title={L(group.label)} addLabel={L(group.addLabel)} removeLabel={group.removeLabel ? L(group.removeLabel) : t("instances.groupRemove")}
         initiallyOpen={groupHasValue(group, allFields, stored)}>
-        {slot.fields.map((f) => <div key={f.key}>{field(f)}</div>)}
-      </OptionalGroup>
+        {slot.fields.map((f) => <div key={f.key} data-setting={f.key} className="scroll-mt-20 rounded-xl transition-[box-shadow,background-color] duration-500">{field(f)}</div>)}
+      </OptionalGroup></div>
     );
   };
 
@@ -128,7 +132,7 @@ export function ModuleSettings({ t, locale, defaultLocale, locales, fields, allF
       {sections.map((s) => s.slots.length > 0 && (
         <section key={s.id} className="space-y-3" data-section={s.id}>
           <h2 className="text-lg font-semibold">{s.title}</h2>
-          <div className={`${ui.card} space-y-5`}>{s.slots.map(slotNode)}</div>
+          <div className={`${ui.card} grid grid-cols-1 items-start gap-x-8 gap-y-5 min-[1100px]:grid-cols-2`}>{s.slots.map(slotNode)}</div>
         </section>
       ))}
     </>

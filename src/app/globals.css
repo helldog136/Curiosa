@@ -76,6 +76,12 @@
 @keyframes curiosa-indeterminate { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
 .curiosa-indeterminate { animation: curiosa-indeterminate 1.3s ease-in-out infinite; }
 
+/* Réglage mis en évidence quand on y arrive depuis l'encadré « Il reste à renseigner » (retiré par le script au bout de quelques secondes). */
+.setting-flash {
+  background-color: color-mix(in srgb, var(--color-accent) 14%, transparent);
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--color-accent) 14%, transparent), 0 0 0 8px color-mix(in srgb, var(--color-accent) 55%, transparent);
+}
+
 /* Accent secondaire choisi (attribut data-accent2 posé sur <html> seulement si accent2 est défini ET différent de l'accent) :
    boutons pleins, accents de détail, dégradé. Sans cet attribut, rien ci-dessous ne s'applique et le site garde son apparence d'origine (règle 60-30-10 : le secondaire reste dans les petits détails). */
 [data-accent2] [data-btn="primary"] { background-color: var(--v-accent); border-color: var(--v-accent); color: var(--v-accent-fg); transition: filter 0.15s; }

@@ -8,5 +8,5 @@ export const dynamic = "force-dynamic";
 export default async function CatalogueDetailsModal({ searchParams }: { searchParams: Promise<{ id?: string; repo?: string }> }) {
   const { id, repo } = await searchParams;
   const { t } = await adminCtx("admin");
-  return <RouteModal testid="catalogue-modal" label={t("catalogue.modalLabel")} closeLabel={t("modal.close")}><DetailsView id={id} repo={repo} embedded /></RouteModal>;
+  return <RouteModal size="medium" testid="catalogue-modal" label={t("catalogue.modalLabel")} closeLabel={t("modal.close")}><DetailsView id={id} repo={repo} embedded /></RouteModal>;
 }

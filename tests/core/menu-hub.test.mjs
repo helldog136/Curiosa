@@ -286,13 +286,16 @@ test("états et épinglage de bout en bout : instances réelles, état par insta
   assert.equal(n[blog.key].defaultPlacement, "menu");
 
   // états
-  let s = await loadInstanceStatuses();
+  let s = await loadInstanceStatuses("en", "en");
   assert.equal(s.get(hero.id).state, "setup", "un réglage à remplir manque");
+  assert.equal(s.get(hero.id).missing.length, 1, "l'état dit lequel manque (son libellé)");
+  assert.ok(s.get(hero.id).missing[0].length > 0);
   await setSetting(`instance.${hero.id}.buttonUrl`, "https://example.org");
-  s = await loadInstanceStatuses();
+  s = await loadInstanceStatuses("en", "en");
   assert.equal(s.get(hero.id).state, "on");
+  assert.deepEqual(s.get(hero.id).missing, []);
   await setSetting(`instance.${hero.id}.__dataStatus`, { status: "failed", error: "boom" });
-  assert.equal((await loadInstanceStatuses()).get(hero.id).state, "error", "le module signale une erreur (migration de données échouée)");
+  assert.equal((await loadInstanceStatuses("en", "en")).get(hero.id).state, "error", "le module signale une erreur (migration de données échouée)");
   assert.equal((await getAdminNav("en", "en")).find((i) => i.key === hero.key).error, true);
   assert.equal(s.get(blog.id).state, "on");
 });

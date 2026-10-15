@@ -103,7 +103,7 @@ export async function ModuleView({ id, query, embedded = false }: { id: string; 
             </ul>
           )}
           {canAdd && mod && (
-            <form action={addInstance.bind(null, row.id)} className="space-y-2">
+            <form action={addInstance.bind(null, row.id)} className="max-w-xl space-y-2">
               {/* Dès la 2e instance, un surnom devient utile pour les distinguer : on le demande ici (et pour la 1re, si elle n'en a pas). */}
               {mine.length > 0 && (
                 <>

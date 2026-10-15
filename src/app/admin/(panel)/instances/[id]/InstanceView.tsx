@@ -6,7 +6,9 @@ import { localeName } from "@/core/i18n/locales";
 import { buildContext, instanceSettingKey } from "@/core/modules/context";
 import { hasPage } from "@/core/modules/manifest";
 import { overlayUrl } from "@/core/modules/overlayUrl";
-import { defaultPlacement, placementSettingKey, placementsFor, resolvePlacement, settingsToFill } from "@/core/modules/menuPlacement";
+import { defaultPlacement, placementSettingKey, placementsFor, resolvePlacement } from "@/core/modules/menuPlacement";
+import { missingLinks, missingSettings } from "@/core/modules/missingSettings";
+import { MissingBox } from "@/components/admin/MissingBox";
 import { getModule } from "@/core/modules/registry";
 import { localized } from "@/core/modules/types";
 import { buildTheme } from "@/core/color";
@@ -77,7 +79,9 @@ export async function InstanceView({ id, query: sp }: { id: string; query: Recor
 
   // Un réglage à remplir (clé, adresse, identifiant… encore vide, sans valeur par défaut) : on ouvre les réglages d'office plutôt que de les cacher.
   const grouped = new Set((mod.manifest.optionalGroups ?? []).flatMap((g) => g.fields));
-  const toFill = settingsToFill(visibleSettings, grouped, stored);
+  const missingFields = missingSettings(mod.manifest.settings, grouped, stored);
+  const toFill = missingFields.length > 0;
+  const missingItems = missingLinks(missingFields, (key) => L(mod.manifest.settings.find((f) => f.key === key)?.label ?? key));
   const placement = resolvePlacement(mod.manifest, await getSetting(placementSettingKey(id)));
   const placementIsDefault = placement === defaultPlacement(mod.manifest);
   // Le bouton flottant laisse un peu de place sous le DERNIER formulaire seulement.
@@ -90,14 +94,14 @@ export async function InstanceView({ id, query: sp }: { id: string; query: Recor
         {advanced && <input type="hidden" name="__adv" value="1" />}
         <section className="space-y-3">
           <h2 className="text-lg font-semibold">{t("instances.general")}</h2>
-          <div className={`${ui.card} space-y-4`}>
+          <div className={`${ui.card} grid grid-cols-1 items-start gap-4 min-[1100px]:grid-cols-2`}>
             {/* Le surnom ne sert qu'à distinguer plusieurs instances du même module : superflu (donc absent) s'il n'y en a qu'une. */}
             {showNickname && (
               <TextField name="nickname" label={t("instances.nickname")} help={t("instances.nicknameAdminHelp", { module: L(mod.manifest.name) })} required defaultValue={instance.nickname ?? ""} />
             )}
 
             {advanced ? (
-              <div className="space-y-3">
+              <div className="space-y-3 min-[1100px]:col-span-2">
                 {config.locales.map((l) => (
                   <div key={l} className="grid gap-3 sm:grid-cols-2">
                     <TextField name={`name_${l}`} label={`${t("field.name")} — ${localeName(l)}`} defaultValue={instance.names[l] ?? ""} required={l === config.defaultLocale} />
@@ -111,7 +115,7 @@ export async function InstanceView({ id, query: sp }: { id: string; query: Recor
                 <TextField name={`name_${config.defaultLocale}`} label={t("instances.displayName")} defaultValue={instance.names[config.defaultLocale] ?? ""} required />
                 <input type="hidden" name={`description_${config.defaultLocale}`} value={instance.descriptions[config.defaultLocale] ?? ""} />
                 {config.locales.filter((l) => l !== config.defaultLocale).map((l) => (
-                  <span key={l}>
+                  <span key={l} className="hidden">
                     <input type="hidden" name={`name_${l}`} value={instance.names[l] ?? ""} />
                     <input type="hidden" name={`description_${l}`} value={instance.descriptions[l] ?? ""} />
                   </span>
@@ -119,9 +123,11 @@ export async function InstanceView({ id, query: sp }: { id: string; query: Recor
               </>
             )}
 
-            <div className="flex flex-wrap gap-x-8 gap-y-2">
-              {hasPage(mod.manifest) && <Checkbox name="showInNav" label={t("instances.showInNav")} defaultChecked={instance.showInNav} />}
-            </div>
+            {hasPage(mod.manifest) && (
+              <div className="flex flex-wrap gap-x-8 gap-y-2 min-[1100px]:col-span-2">
+                <Checkbox name="showInNav" label={t("instances.showInNav")} defaultChecked={instance.showInNav} />
+              </div>
+            )}
             {/* Où la retrouver : dans le menu, ou rangée dans la page Intégrations (réglée une fois). Le choix l'emporte sur la règle par défaut. */}
             <input type="hidden" name="placement_was" value={placement} />
             <Select name="placement" label={t("placement.title")} help={placementIsDefault ? t("placement.helpDefault") : t("placement.helpChosen")} defaultValue={placement}
@@ -131,13 +137,13 @@ export async function InstanceView({ id, query: sp }: { id: string; query: Recor
                 options={SORTS.map((s) => ({ value: s, label: t(`sort.${s}`) }))} />
             )}
             {advanced && (mod.manifest.mcp?.length || content) && (
-              <Checkbox name="mcp" label={t("instances.mcp")} help={t("instances.mcpHelp")} defaultChecked={mcpOn} />
+              <div className="min-[1100px]:col-span-2"><Checkbox name="mcp" label={t("instances.mcp")} help={t("instances.mcpHelp")} defaultChecked={mcpOn} /></div>
             )}
             {hasPage(mod.manifest) && !advanced && (
-              <p className="text-sm text-muted">{t("instances.address")} : <code className="font-mono">/{instance.basePath}</code></p>
+              <p className="text-sm text-muted min-[1100px]:col-span-2">{t("instances.address")} : <code className="font-mono">/{instance.basePath}</code></p>
             )}
             {hasPage(mod.manifest) && advanced && (
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-2 min-[1100px]:col-span-2">
                 <TextField name="basePath" label={t("instances.basePath")} help={t("instances.basePathHelp")} defaultValue={instance.basePath ?? ""} />
                 <TextField name="navOrder" type="number" label={t("instances.navOrder")} defaultValue={instance.navOrder} />
               </div>
@@ -211,7 +217,7 @@ export async function InstanceView({ id, query: sp }: { id: string; query: Recor
           <input type="hidden" name="id" value={id} />
           {advanced && <input type="hidden" name="__adv" value="1" />}
           <ModuleSettings t={t} locale={locale} defaultLocale={config.defaultLocale} locales={config.locales} fields={visibleSettings} allFields={mod.manifest.settings}
-            groups={mod.manifest.optionalGroups ?? []} stored={stored} siteByLocale={siteByLocale} theme={theme} />
+            groups={mod.manifest.optionalGroups ?? []} stored={stored} siteByLocale={siteByLocale} theme={theme} missing={new Set(missingFields.map((f) => f.key))} />
         </ActionForm>
       )}
 
@@ -227,7 +233,8 @@ export async function InstanceView({ id, query: sp }: { id: string; query: Recor
             {L(mod.manifest.name)}{advanced && <> · {t(`type.${effectiveType(mod.manifest)}`)} · v{mod.manifest.version} · {t("instances.technicalId")} <span className="font-mono">{instance.key}</span></>}
           </p>
         )}
-        <p>{L(mod.manifest.description)}</p>
+        <p className="max-w-[70ch]">{L(mod.manifest.description)}</p>
+        <MissingBox title={t("missing.title")} items={missingItems} />
         {mod.def.overlay && (
           <p className="rounded-lg border border-line bg-surface p-3 text-sm">
             {t("instances.overlayUrl")}: <code className="break-all font-mono">{overlayUrl(siteUrl, instance.key)}</code>

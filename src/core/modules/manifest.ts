@@ -16,6 +16,8 @@ export const settingField = z.object({
   options: z.array(z.object({ value: z.string(), label: localized })).max(50).optional(),
   translatable: z.boolean().optional(),
   advanced: z.boolean().optional(),
+  /** Réglage facultatif : le laisser vide ne met pas l'extension « à configurer » (sinon, un texte, une adresse ou un secret vide sans valeur par défaut est à remplir). */
+  optional: z.boolean().optional(),
   /** « appearance » : réglage d'apparence du module (couleurs, textures…), regroupé à part dans l'admin. */
   group: z.enum(["appearance"]).optional(),
 }).superRefine((f, ctx) => {
