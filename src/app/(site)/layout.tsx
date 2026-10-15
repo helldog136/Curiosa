@@ -1,7 +1,7 @@
 import { isDarkBackground, pickLogo } from "@/core/logos";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { buildTheme, gradientTextOn, hasAccent2, hasChosenSurface, themeCss } from "@/core/color";
 import { glowCss } from "@/core/glow";
 import { faviconUrl } from "@/core/favicon";
@@ -16,6 +16,10 @@ import { getSiteEntity } from "@/core/seoSettings";
 import { loadSocialLinks } from "@/core/social";
 import { prisma } from "@/core/db";
 import { Blocks, HeadTags } from "@/components/site/Blocks";
+import { CookieTray } from "@/components/site/CookieTray";
+import { CHOICE_COOKIE, TRAY_TEXT_KEYS, trayState, type TrayLabels } from "@/core/cookieTray";
+import { NEWS_COOKIE } from "@/core/visit";
+import { withLocale } from "@/core/links";
 import { Footer } from "@/components/site/Footer";
 import { Header } from "@/components/site/Header";
 import { VisitBeacon } from "@/components/site/VisitBeacon";
@@ -66,6 +70,11 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
   const entity = await getSiteEntity();
   const [headBlocks, bannerBlocks] = await Promise.all([runSlot("layout.head", locale), runSlot("layout.banner", locale)]);
 
+  // Bandeau de cookies : décidé ici, côté serveur, d'après le réglage et les cookies du visiteur (donc aucun clignotement au chargement).
+  const jar = await cookies();
+  const tray = trayState({ enabled: config.newsToggle, newsCookie: jar.get(NEWS_COOKIE)?.value, choiceCookie: jar.get(CHOICE_COOKIE)?.value });
+  const trayLabels = Object.fromEntries(TRAY_TEXT_KEYS.map((k) => [k, t(`cookies.${k}`)])) as TrayLabels;
+
   return (
     <html lang={locale} dir={RTL_LOCALES.has(locale) ? "rtl" : "ltr"} data-accent2={two ? "1" : undefined} data-surface={hasChosenSurface(localized) ? "1" : undefined}>
       <head>
@@ -79,6 +88,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
         <a href="#content" className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:bg-accent focus:px-3 focus:py-1 focus:text-accent-fg">
           {t("site.skip")}
         </a>
+        {tray.enabled && <CookieTray labels={trayLabels} privacyHref={`${withLocale("/privacy", locale, config.defaultLocale)}#cookies`} initialOpen={tray.showTray} />}
         <Blocks blocks={bannerBlocks} locale={locale} />
         <Header config={localized} locale={locale} />
         <main id="content" className="mx-auto max-w-5xl px-4 py-10">

@@ -100,7 +100,7 @@ export type SiteConfig = {
   bg: { preset: BackgroundPreset; custom: string; image: string | null; svg: { markup: string; fit: "cover" | "contain" | "tile"; align: "left" | "center" | "right"; tile: number } };
   /** Compter les visites, anonymement (voir core/stats.ts). */
   statsEnabled: boolean;
-  /** Proposer aux visiteurs le bouton « Me prévenir des nouveautés » (pastilles de nouveautés, avec leur accord : voir core/visit.ts). */
+  /** Proposer aux visiteurs le bandeau de cookies « Accepter les cookies » (pastilles de nouveautés, avec leur accord : voir core/visit.ts et core/cookieTray.ts). */
   newsToggle: boolean;
   nav: NavItem[];
   /** Mise en page de l'en-tête et ses éléments facultatifs (voir core/header.ts). */
