@@ -20,6 +20,8 @@ import { effectiveType } from "@/core/modules/manifest";
 import { getSources, providersOf } from "@/core/services/topics";
 import { InstanceTabs } from "@/components/admin/InstanceTabs";
 import { ActionForm } from "@/components/admin/ActionForm";
+import { KeptData } from "@/components/admin/KeptData";
+import { listRetired } from "@/core/modules/retired";
 import { RemoveSection } from "@/components/admin/RemoveSection";
 import { Checkbox, Select, TextArea, TextField } from "@/components/admin/Field";
 import { ModuleSettings } from "@/components/admin/ModuleSettings";
@@ -262,6 +264,8 @@ export async function InstanceView({ id, query: sp }: { id: string; query: Recor
         </details>
       ) : forms}
       {advanced && panel.length > 0 && panelNode}
+
+      <KeptData t={t} locale={locale} name={moduleName} kept={await listRetired(instance.moduleId)} />
 
       {scope === "module" ? (
         <RemoveSection t={t} title={t("remove.title")} intro={t("remove.introModule", { name: moduleName })} name={moduleName}

@@ -46,14 +46,14 @@ export function RouteModal({ children, label, closeLabel, testid = "route-modal"
       onMouseDown={(e) => { if (e.target === e.currentTarget) router.back(); }}>
       <div ref={panel} role="dialog" aria-modal="true" aria-label={label} tabIndex={-1} data-testid={`${testid}-panel`}
         className="relative h-full w-full max-w-3xl overflow-y-auto overflow-x-hidden overscroll-contain bg-surface px-4 pb-8 outline-none sm:h-auto sm:max-h-full sm:rounded-3xl sm:border sm:border-line sm:px-8 sm:shadow-2xl">
-        {/* Le bouton reste visible quand on fait défiler la fenêtre. */}
-        <div className="pointer-events-none sticky top-0 z-10 -mx-4 flex justify-end px-3 pb-1 pt-3 sm:-mx-8 sm:px-5">
+        {/* La barre du haut reste visible quand on fait défiler : le bouton « Fermer » ne se perd jamais, et le contenu passe dessous sans le cacher. */}
+        <div className="sticky top-0 z-10 -mx-4 mb-2 flex justify-end border-b border-line/60 bg-surface px-3 py-2 sm:-mx-8 sm:px-5">
           <button type="button" onClick={() => router.back()} data-testid="modal-close"
-            className="pointer-events-auto inline-flex min-h-11 items-center gap-2 rounded-full border border-line bg-surface px-4 text-sm font-medium text-fg shadow-sm transition-colors hover:border-accent hover:text-accent">
+            className="inline-flex min-h-11 items-center gap-2 rounded-full border border-line bg-surface px-4 text-sm font-medium text-fg shadow-sm transition-colors hover:border-accent hover:text-accent">
             <span aria-hidden>✕</span>{closeLabel}
           </button>
         </div>
-        <div className="min-w-0 pt-1 [overflow-wrap:anywhere]">{children}</div>
+        <div className="min-w-0 pt-3 [overflow-wrap:anywhere]">{children}</div>
       </div>
     </div>
   );

@@ -41,7 +41,7 @@ test("minipage : module inconnu = 404, actions et sidebar ramènent sur la bonne
   const page = read(`${PANEL}/[id]/ModuleView.tsx`);
   assert.match(read(`${PANEL}/[id]/page.tsx`), /<ModuleView/, "la page entière et la fenêtre montrent le même contenu");
   assert.match(page, /if \(!row\) notFound\(\)/);
-  assert.match(page, /ConfirmButton/);
+  assert.match(read("src/components/admin/RemoveSection.tsx") + read("src/components/admin/KeptData.tsx"), /ConfirmButton/, "retrait et effacement passent par une confirmation");
   assert.ok(!/\bconfirm\(/.test(read("src/components/admin/ConfirmButton.tsx")), "jamais window.confirm");
   assert.match(read("src/components/admin/ConfirmButton.tsx"), /askConfirm/);
   const actions = read(`${PANEL}/actions.ts`);

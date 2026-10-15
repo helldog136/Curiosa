@@ -46,7 +46,7 @@ function Chips({ t, m }: { t: Translator; m: InstalledModule }) {
       {m.update && <span className={ui.chipWarn} data-testid={`module-behind-${m.id}`}>⬆ {t("modules.updateBadge")}</span>}
       {m.missing && <span className={ui.chipWarn} data-testid={`module-missing-${m.id}`}>⚠ {t("deps.missing.badge")}</span>}
       {m.auto && <span className={ui.chip} data-testid={`module-auto-${m.id}`}>🔗 {t("deps.auto.badge")}</span>}
-      {m.kept > 0 && m.count === 0 && <span className={ui.chip} data-testid={`module-kept-${m.id}`}>🗂 {t("kept.badge")}</span>}
+      {m.kept > 0 && <span className={ui.chip} data-testid={`module-kept-${m.id}`}>🗂 {t("kept.badge")}</span>}
       {m.platform && m.platform !== m.name && <span className={ui.chip} data-testid="platform-chip">{m.platform}</span>}
     </>
   );

@@ -7,8 +7,8 @@ import { listModuleRows, loadModule } from "@/core/modules/registry";
 import { hasPage } from "@/core/modules/manifest";
 import { localized } from "@/core/modules/types";
 import Link from "next/link";
-import { ConfirmButton } from "@/components/admin/ConfirmButton";
 import { Callout } from "@/components/admin/Page";
+import { KeptData } from "@/components/admin/KeptData";
 import { RemoveSection } from "@/components/admin/RemoveSection";
 import { listRetired } from "@/core/modules/retired";
 import { ui } from "@/components/admin/ui";
@@ -18,7 +18,7 @@ import { peekModulesReport } from "@/core/modules/updateStatus";
 import { buildNames, viewModuleLinks } from "@/core/modules/dependencyView";
 import { decodeMissing, describeMissingList } from "@/core/modules/dependencyMessages";
 import { ModuleLinksBox } from "@/components/admin/ModuleLinksBox";
-import { addInstance, eraseRetiredAction, restoreRetiredAction, uninstallModuleAction } from "../actions";
+import { addInstance, uninstallModuleAction } from "../actions";
 import { EXTENSIONS_HREF } from "@/core/modules/extensionsLinks";
 
 export type ModuleQuery = { update?: string; error?: string; detail?: string; missing?: string; op?: string; module?: string; to?: string; level?: string };
@@ -126,23 +126,7 @@ export async function ModuleView({ id, query, embedded = false }: { id: string; 
         </section>
       )}
 
-      {kept.length > 0 && (
-        <section className="space-y-3" data-testid="kept-data">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">{t("kept.title")}</h2>
-          <p className="text-sm text-muted">{t("kept.help", { name })}</p>
-          <ul className="divide-y divide-line rounded-xl border border-line bg-surface">
-            {kept.map((k) => (
-              <li key={k.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-sm" data-testid={`kept-${k.id}`}>
-                <span className="min-w-0 flex-1 basis-48"><span className="block break-words font-medium">{k.label}</span><span className="block text-xs text-muted">{t("kept.counts", { entries: k.entryCount, records: k.recordCount })} · {k.retiredAt.toLocaleDateString(locale)}</span></span>
-                <span className="flex flex-wrap gap-2">
-                  <form action={restoreRetiredAction.bind(null, k.id)}><button className={ui.btn}>{t("kept.restore")}</button></form>
-                  <form action={eraseRetiredAction.bind(null, { id: k.id })}><ConfirmButton confirmLabel={t("remove.eraseYes")} dangerConfirm message={t("kept.eraseConfirm", { name: k.label })}>{t("kept.erase")}</ConfirmButton></form>
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+      <KeptData t={t} locale={locale} name={name} kept={kept} />
 
       {isOwner && <ModuleMaintenance row={row} name={name} advanced={advanced} t={t} />}
 
