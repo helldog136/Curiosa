@@ -64,40 +64,42 @@ et comment ses instances sont exposées :
 | `integration` | services externes (Twitch, Discord…) | — |
 | `utility` | outils divers (RSS…) | — |
 
-L'admin est **une seule interface**. Le menu ne liste que les instances où l'on **travaille souvent** (voir « Rangement dans le menu » ci-dessous) ;
-les autres tiennent dans **une seule entrée « Intégrations (n) »**, une carte par instance, et les overlays dans **une seule entrée « Overlays (n) »**. Le hub **Modules** a trois onglets : *Installés* (liste compacte,
-un module à plusieurs instances se déplie), *Catalogue* (installer) et *Mises à jour* (modules en retard). La page d'une instance
-est une sous-page de cet admin, avec ses réglages (générés depuis `settings`), ses abonnements
-(voir « sujets ») et le panneau `adminPanel` du module.
+L'admin est **une seule interface**. Le menu ne liste que les instances **épinglées** (voir « Rangement dans le menu » ci-dessous), rangées par rubrique : **Mon contenu**, **Ma communauté**.
+Tout le reste vit dans **Extensions** (rubrique *Administration* du menu), une page à trois onglets : *Installées* (les modules et leurs instances, par famille, avec recherche), *Ajouter* (le catalogue, fiches en fenêtre comprises) et
+*Mises à jour* (modules en retard ; propriétaire seulement). Les adresses sont `/admin/extensions`, `/admin/extensions/add` et `/admin/extensions/updates` ; les anciennes (`/admin/modules`, `/admin/catalogue`,
+`/admin/integrations`, `/admin/overlays`) redirigent, paramètres conservés. La page d'un module (`/admin/modules/<id>`) et celle d'une instance (`/admin/instances/<id>`) ne changent pas : elles sont des sous-pages de cet admin,
+avec leurs réglages (générés depuis `settings`), leurs abonnements (voir « sujets ») et le panneau `adminPanel` du module.
 
-#### Rangement dans le menu : épinglée, rangée dans Intégrations ou dans Overlays
+#### Rangement dans le menu : épinglée ou seulement dans Extensions
 
-Trois familles d'instances : celles où l'on **travaille souvent** (du contenu ou des données à gérer : blog, pages, contacts, planning…) et celles que l'on
-**règle une fois** (réseaux sociaux, chaînes, annonces, statut live, kit presse…), plus les **overlays** (sources navigateur pour OBS), une famille à part. Le cœur décide, **sans rien demander au module**, à partir de son manifeste seul, dans cet ordre :
+Une instance est **épinglée au menu** (placement `menu`) ou **seulement dans Extensions** (placements `integrations` et `overlays`, noms conservés pour ne pas perdre les choix déjà faits). Le cœur décide du choix par défaut, **sans rien demander au module**, à partir de son manifeste seul, dans cet ordre :
 
-1. type `overlay` **ou** permission `overlay` → **Overlays** (ni menu de travail ni Intégrations) ;
-2. type `social` ou `integration` → **Intégrations** ;
-3. module à `content` → **menu**, sauf une simple liste de liens qui s'ouvrent ailleurs (`content.display: "links"` avec `clickAction: "external"`) → **Intégrations** ;
-4. les autres (`widget`, `utility`, type inconnu ou absent) : s'ils ont des données à gérer, c'est-à-dire des actions `mcp`, un service `offers` ou un service `requires` → **menu** ; sinon → **Intégrations**.
+1. type `overlay` **ou** permission `overlay` → **seulement dans Extensions** (placement `overlays`) ;
+2. type `social` ou `integration` → **seulement dans Extensions** (`integrations`) ;
+3. module à `content` → **épinglée**, sauf une simple liste de liens qui s'ouvrent ailleurs (`content.display: "links"` avec `clickAction: "external"`) → **seulement dans Extensions** ;
+4. les autres (`widget`, `utility`, type inconnu ou absent) : s'ils ont des données à gérer, c'est-à-dire des actions `mcp`, un service `offers` ou un service `requires` → **épinglée** ; sinon → **seulement dans Extensions**.
 
-Sur les modules du dépôt `curiosa-extras` (dossier `modules/`) : *menu* = `blog`, `codes`, `collection`, `contact-form`, `contacts`, `game-suggestions`, `pages`, `partnerships`, `planning`, `sponsors` ;
-*Intégrations* = `discord-announcer`, `hero`, `links`, `live-status`, `press-kit`, `twitch-channel`, `youtube-channel` ;
-*Overlays* = `alerts-overlay`, `maze-overlay`, `sponsor-ticker`, `ticker-overlay`.
-Un module sans type ni contenu (module tiers) suit la règle 4 ; pour qu'il apparaisse dans le menu, déclarez des actions `mcp` ou un `type` qui le dit.
+Sur les modules du dépôt `curiosa-extras` (dossier `modules/`) : *épinglés* = `blog`, `codes`, `collection`, `contact-form`, `contacts`, `game-suggestions`, `pages`, `partnerships`, `planning`, `sponsors` ;
+*seulement dans Extensions* = `discord-announcer`, `hero`, `links`, `live-status`, `press-kit`, `twitch-channel`, `youtube-channel` et les overlays `alerts-overlay`, `maze-overlay`, `sponsor-ticker`, `ticker-overlay`.
+Un module sans type ni contenu (module tiers) suit la règle 4 ; pour qu'il soit épinglé par défaut, déclarez des actions `mcp` ou un `type` qui le dit.
 
-**Épingler.** L'utilisateur peut changer ce rangement instance par instance (« Épingler au menu » / « Ranger dans Intégrations » / « Ranger dans Overlays », sur la page de réglages de l'instance et sur sa carte). « Overlays » n'est proposé que pour un overlay (type ou permission `overlay`) : posé sur autre chose, ce choix est ignoré.
-Ce choix est un réglage **du cœur**, mémorisé avec l'instance (`instance.<id>.__placement`) : le module ne le voit pas et n'a rien à déclarer. Il l'emporte toujours sur la règle ; revenir au rangement par défaut l'efface.
+**Épingler.** L'utilisateur peut changer ce choix instance par instance (« Épingler au menu » / « Retirer du menu », sur la page de réglages de l'instance et sur sa carte dans Extensions > Installées). Le rangement « overlays » n'est proposé que pour un overlay (type ou permission `overlay`) : posé sur autre chose, il est ignoré.
+Ce choix est un réglage **du cœur**, mémorisé avec l'instance (`instance.<id>.__placement`) : le module ne le voit pas et n'a rien à déclarer. Il l'emporte toujours sur la règle ; revenir au choix par défaut l'efface.
 
-**Groupes du menu.** Les instances épinglées sont rangées sous des titres pliables selon la catégorie du manifeste : *Mon contenu* (type `content`, liste simple), *Relations* (`utility` : contacts, partenariats…),
-*Pages interactives* (`widget` : planning, formulaire…) et *Autres* (toute autre catégorie, ou aucune). Jusqu'à 6 instances épinglées les groupes sont dépliés, au-delà ils sont repliés ; le dernier choix est mémorisé
-dans un cookie (`curiosa_nav_groups`, lu côté serveur : pas de clignotement) et la page ouverte déplie toujours son groupe. La pastille d'une instance (`adminBadge`) reste sur son lien, le total d'un groupe plié s'affiche sur son titre,
-et la pastille d'une instance rangée dans Intégrations s'ajoute à celle de l'entrée « Intégrations ».
+**Rubrique d'une instance épinglée.** Elle se déduit aussi du manifeste seul (`defaultSection` dans `menuPlacement.ts`, aucun champ à ajouter) : un module à `content` ou de type `content` → **Mon contenu** (blog, pages, sponsoring…) ;
+tout le reste → **Ma communauté** (contacts, partenariats, statistiques de la communauté, formulaire, planning, live…). Jusqu'à 6 entrées dans Ma communauté, elles forment une liste simple ; au-delà, elles passent en groupes pliables
+selon la catégorie : *Relations* (`utility`), *Pages interactives* (`widget`) et *Autres* (toute autre catégorie, ou aucune), repliés par défaut. Le dernier choix est mémorisé dans un cookie (`curiosa_nav_groups`, lu côté serveur : pas de clignotement)
+et la page ouverte déplie toujours son groupe. La pastille d'une instance (`adminBadge`) reste sur son lien et le total d'un groupe plié s'affiche sur son titre.
 
-**Page Overlays** (`/admin/overlays`, entrée « Overlays (n) », réservée aux rôles qui peuvent gérer comme Intégrations). Une carte par instance overlay : icône, nom, état (mêmes états que ci-dessous), **l'adresse à coller dans OBS** (`<SITE_URL>/overlays/<clé>`, avec un bouton « Copier » ; la route publique est inchangée), lien vers les réglages, interrupteur actif/désactivé et « Épingler au menu ». Recherche interactive comme les autres pages.
+**Pastille d'Extensions.** L'entrée Extensions cumule les modules en retard (propriétaire), les instances à régler (état *À configurer* ou *Erreur*) et les pastilles des instances qui ne sont pas épinglées : rien ne se cache parce qu'une extension n'est pas dans le menu.
 
-**Plateformes.** Le champ facultatif `platform` du manifeste (voir ci-dessous) regroupe à l'écran les instances qui parlent de la même plateforme. Sur la page Intégrations, **une section par plateforme dès que 2 instances au moins la partagent** (« Twitch » : Chaîne Twitch + Live Twitch ; « Discord » : Discord + Annonces Discord) ; les autres restent dans « Réseaux sociaux » (type `social`) ou « Autres ». Sans plateforme partagée, la page est une seule grille, comme avant. L'onglet *Installés* du hub affiche une pastille de plateforme. Purement visuel : aucune dépendance entre modules, chaque instance reste épinglable seule.
+**Familles (Extensions > Installées).** Chaque module est rangé dans une famille, déduite elle aussi du manifeste seul (`extensionFamily`) : **Overlays** (type ou permission `overlay`) ; **Réseaux et connexions** (type `social` ou `integration`, `platform` déclarée,
+ou simple liste de liens vers l'extérieur) ; **Contenu** (module à `content`) ; **Communauté** (le reste). Les modules en erreur ou à configurer passent en tête de leur famille. Pour un overlay, la carte affiche **l'adresse à coller dans OBS**
+(`<SITE_URL>/overlays/<clé>`, avec un bouton « Copier » ; la route publique est inchangée).
 
-**États d'une carte Intégrations.** *Actif* ; *Désactivé* (instance ou module désactivé) ; *À configurer* (un réglage à remplir est encore vide : texte, secret ou adresse sans valeur par défaut, hors groupes facultatifs et textes traduisibles) ; *Erreur* (la migration des données du module a échoué ou une de ses tâches `tasks` a échoué à son dernier passage).
+**Plateformes.** Le champ facultatif `platform` du manifeste (voir ci-dessous) range le module dans *Réseaux et connexions* et ajoute une pastille de plateforme sur sa carte. Purement visuel : aucune dépendance entre modules, chaque instance reste épinglable seule.
+
+**États d'une instance.** *Actif* ; *Désactivé* (instance ou module désactivé) ; *À configurer* (un réglage à remplir est encore vide : texte, secret ou adresse sans valeur par défaut, hors groupes facultatifs et textes traduisibles) ; *Erreur* (la migration des données du module a échoué ou une de ses tâches `tasks` a échoué à son dernier passage).
 
 ## Le manifeste `module.json`
 
@@ -1004,7 +1006,7 @@ export default {
 ```
 
 L'instance est servie sur `/overlays/<clé>` (`?lang=fr` pour la langue) : la page admin de l'instance
-affiche l'URL à coller dans OBS, et la page **Overlays** de l'admin les réunit toutes avec un bouton « Copier ». Un module de type `overlay` (ou qui déclare la permission `overlay`) est rangé dans cette famille par défaut. L'overlay livré, `ticker-overlay`, est un exemple complet : il ne sait
+affiche l'URL à coller dans OBS, et la famille **Overlays** d'Extensions (Installées) les réunit toutes avec un bouton « Copier ». Un module de type `overlay` (ou qui déclare la permission `overlay`) est rangé dans cette famille par défaut. L'overlay livré, `ticker-overlay`, est un exemple complet : il ne sait
 rien des blogs ni des codes promo, il digère `core.entry` et `overlay.item`.
 
 ## Sauvegarde lisible sans le framework

@@ -532,7 +532,7 @@ Testez au minimum : le manifeste est valide, chaque section/action/sujet déclar
 **Être listé dans le Catalogue** : deux voies.
 
 1. **Dans le dépôt `curiosa-extras`** : un dossier de module dans `modules/` (modules complets) ou `examples/` (exemples), `module.json` à sa racine, et une entrée dans son `catalogue/index.json` (étiquette épinglée). Le cœur n'embarque aucun module : il est installé depuis ce dépôt, lu sur le réseau. Un dépôt peut aussi regrouper plusieurs modules : `https://hôte/propriétaire/dépôt#ref:dossier` installe le seul module de ce dossier.
-2. **Votre propre dépôt de modules** : un dépôt (par exemple `jeanmi/mes-modules-curiosa`) qui regroupe vos modules, un dossier chacun. Le propriétaire d'un site l'ajoute dans Catalogue → *Mes dépôts de modules* (mode avancé) et installe ceux qu'il veut ; rien à faire de votre côté que de publier le dépôt.
+2. **Votre propre dépôt de modules** : un dépôt (par exemple `jeanmi/mes-modules-curiosa`) qui regroupe vos modules, un dossier chacun. Le propriétaire d'un site l’ajoute dans Extensions → Ajouter → *Mes dépôts de modules* (mode avancé) et installe ceux qu'il veut ; rien à faire de votre côté que de publier le dépôt.
 3. **Dépôt reconnu** : une entrée dans [`catalogue/index.json`](../catalogue/README.md), le fichier du dépôt de modules que **chaque installation relit à l'exécution sur le réseau** — il ne suit pas le rythme des versions du framework (`CURIOSA_CATALOGUE_REPO` et `CURIOSA_CATALOGUE_REF` règlent cette lecture ; `MODULES_INDEX_URL` ajoute un index `https://` supplémentaire). On l'ajoute par une demande de fusion :
 
 ```json
