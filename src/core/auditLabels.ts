@@ -9,7 +9,7 @@ export const AUDIT_ACTIONS = [
   "security.2fa.require", "security.2fa.optional",
   "entry.create", "entry.update", "entry.delete", "entry.deleteTranslation",
   "home.update", "navigation.update", "settings.update", "settings.mail", "settings.rawg", "settings.rawg.import", "redirect.create", "redirect.delete", "redirect.toggle",
-  "module.install", "module.install.custom", "module.update", "module.uninstall", "module.install.auto", "module.uninstall.auto", "module.keep.auto", "module.enable", "module.disable", "module.source.add", "module.source.remove",
+  "module.install", "module.install.custom", "module.update", "module.uninstall", "module.install.auto", "module.uninstall.auto", "module.keep.auto", "module.seed", "module.enable", "module.disable", "module.source.add", "module.source.remove",
   "instance.create", "instance.delete", "instance.update", "instance.settings", "instance.sources", "service.routing",
   "backup.create", "backup.restore",
   "update.start", "update.auto.on", "update.auto.off", "update.channel.rc", "update.channel.stable",

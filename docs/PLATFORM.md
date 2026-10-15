@@ -126,7 +126,14 @@ Règles, **à partir de la première version publiée** :
 
 ## Référencement : une fonctionnalité du cœur
 
-`robots.txt` bloque par défaut les robots de collecte et d'entraînement IA (GPTBot, ClaudeBot…, jamais un moteur de recherche) ; réglage avancé *Bloquer les robots d'entraînement IA*. Chaque page porte un JSON-LD `WebSite` + éditeur construit **uniquement** à partir des réglages du site (nom, slogan, logo). Un module qui veut ajouter ses propres données structurées (profils sociaux, `sameAs`…) le fait par le slot `layout.head`. Code : `src/core/seo.ts`.
+Voir aussi [GEO.md](GEO.md) (être cité par les IA, expliqué pour le propriétaire du site).
+
+- **`robots.txt`** distingue deux familles de robots IA, deux réglages (Réglages › Confidentialité) : les robots d'**entraînement** (GPTBot, ClaudeBot, CCBot, Google-Extended…, bloqués par défaut) et les robots de **réponse** (OAI-SearchBot, ChatGPT-User, Claude-User, PerplexityBot…, autorisés par défaut : ils lisent une page pour répondre à une question et la citent). Jamais un moteur de recherche classique. Les listes sont dans `src/core/seo.ts` (`AI_TRAINING_BOTS`, `AI_ANSWER_BOTS`), à revoir à chaque version.
+  **Règle de compatibilité** (`resolveAiBlocking`) : un réglage propre à une famille (`seo.blockAiTraining`, `seo.blockAiAnswers`), s'il est enregistré, l'emporte ; sinon l'ancien réglage unique `seo.blockAiBots`, **s'il a été enregistré**, s'applique aux deux familles (vrai : les deux bloquées ; faux : aucune) ; sinon (jamais touché) : entraînement bloqué, réponse autorisée. Enregistrer le formulaire des réglages écrit les deux nouveaux choix et retire l'ancien. Seuls les vrais booléens comptent.
+- **`/llms.txt`** (`seo.llmsTxt`, activé par défaut) : titre, citation, puis des sections de liens (Pages, Dernières publications, Ailleurs, Optional), par langue (`/llms.txt` = langue principale, `/<langue>/llms.txt` pour les autres). Construit uniquement à partir de données publiques : réglages d'identité, pages et entrées publiées, éléments du sujet `feed.item`, liens `social.link` ; jamais d'e-mail ni de brouillon. 40 Ko, 120 liens au plus ; mis en cache 5 minutes. Code : `src/core/llms.ts`.
+- **Données structurées** : chaque page porte un JSON-LD (`Organization` ou `Person` selon le réglage *Ce site est celui d'…*, `WebSite`, `sameAs` = liens `social.link` en https, dédoublonnés, 10 au plus) ; les pages à chemin ajoutent un `BreadcrumbList`. Un module ajoute les siennes par le slot `layout.head` avec `ctx.api.seo.jsonLd(…)` (voir [CREATE-A-MODULE.md](CREATE-A-MODULE.md)).
+- **Métadonnées** : `canonical`, `hreflang` (dont `x-default`), Open Graph et carte Twitter cohérents, `lastmod` du plan du site quand une date de publication existe, flux RSS annoncé, `lang` de la page.
+- **Page d'admin « Visibilité dans les réponses des IA »** (`/admin/ai-visibility`, `src/core/aiVisibility.ts`) : une liste de contrôles « fait / à faire » avec un bouton *Corriger* ; elle appelle en interne les fonctions de `robots.txt`, du plan du site et de `llms.txt` (aucun réseau) et n'affiche aucune note chiffrée.
 
 ## Ce que le cœur ne fait pas
 

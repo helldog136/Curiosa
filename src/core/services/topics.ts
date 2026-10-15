@@ -4,6 +4,7 @@ import { getSetting, getSiteConfig, setSetting } from "@/core/settings";
 import { buildContext } from "@/core/modules/context";
 import { getActiveInstances, type ActiveInstance } from "@/core/modules/registry";
 import type { ConsumeDecl, TopicField, TopicItem } from "@/core/modules/types";
+import { isIsoDatetime, parseTopicWindow, type TopicWindow, type TopicWindowInput } from "./topicWindow";
 
 /**
  * Sujets : la façon dont les modules s'échangent des informations.
@@ -26,7 +27,7 @@ export type TopicAdapter = {
   topic: string;
   schema: TopicField[];
   providers(): Promise<ActiveInstance[]>;
-  fetch(provider: ActiveInstance, query: { locale: string; limit: number; tags: string[] }): Promise<Record<string, unknown>[]>;
+  fetch(provider: ActiveInstance, query: { locale: string; limit: number; tags: string[]; from?: Date; to?: Date }): Promise<Record<string, unknown>[]>;
 };
 
 /** Liste explicite des sujets du cœur. */
@@ -61,11 +62,13 @@ function valid(value: unknown, type: TopicField["type"]): boolean {
     case "number": return typeof value === "number" && Number.isFinite(value);
     case "boolean": return typeof value === "boolean";
     case "string[]": return Array.isArray(value) && value.every((v) => typeof v === "string");
+    case "datetime": return isIsoDatetime(value);
   }
 }
 
 /** Ne garde que les champs du schéma ; rejette l'élément si un champ requis manque ou est mal typé. */
 export function conform(item: Record<string, unknown>, schema: TopicField[]): Record<string, unknown> | null {
+  if (typeof item !== "object" || item === null || Array.isArray(item)) return null;   // un fournisseur peut renvoyer n'importe quoi : cet élément-là est écarté, pas la collecte
   const out: Record<string, unknown> = {};
   for (const f of schema) {
     const v = item[f.key];
@@ -79,23 +82,27 @@ export function conform(item: Record<string, unknown>, schema: TopicField[]): Re
   return out;
 }
 
-async function fromProvider(provider: ActiveInstance, topic: string, locale: string, limit: number, tags: string[]): Promise<Record<string, unknown>[]> {
+async function fromProvider(provider: ActiveInstance, topic: string, locale: string, limit: number, tags: string[], window: TopicWindow = {}): Promise<Record<string, unknown>[]> {
+  const query = { locale, limit, tags, ...window };   // `from` / `to` n'existent que si le consommateur les a demandés
   const adapter = adapterOf(topic);
-  if (adapter) return adapter.fetch(provider, { locale, limit, tags });
+  if (adapter) return adapter.fetch(provider, query);
   const { instance, mod } = provider;
-  return (await mod.def.exports![topic]!(await buildContext(mod, instance, locale), { locale, limit, tags })) ?? [];
+  const items = await mod.def.exports![topic]!(await buildContext(mod, instance, locale), query);
+  return Array.isArray(items) ? items : [];
 }
 
 /** Collecte, pour une instance consommatrice, les éléments de ses sources, validés selon son format. */
 export async function collect(
   consumer: ActiveInstance,
   topic: string,
-  opts: { limit?: number; locale: string },
+  opts: { limit?: number; locale: string } & TopicWindowInput,
 ): Promise<TopicItem[]> {
   const decl: ConsumeDecl | undefined = consumer.mod.manifest.consumes?.find((c) => c.topic === topic);
   if (!decl) throw new Error(`module "${consumer.mod.manifest.id}" does not declare consuming "${topic}"`);
   const schema = adapterOf(topic)?.schema ?? decl.schema ?? [];
   const limit = Math.min(200, Math.max(1, opts.limit ?? 50));
+  // Plage facultative, validée une fois pour toutes les sources (une plage invalide est une erreur du consommateur : elle lève, rien n'est collecté).
+  const window = parseTopicWindow(opts);
   const sources = await getSources(consumer.instance.id, topic);
   const config = await getSiteConfig();
 
@@ -103,7 +110,7 @@ export async function collect(
   for (const provider of await providersOf(topic)) {
     if (sources.instances && !sources.instances.includes(provider.instance.key)) continue;
     try {
-      for (const raw of await fromProvider(provider, topic, opts.locale, limit, sources.tags)) {
+      for (const raw of await fromProvider(provider, topic, opts.locale, limit, sources.tags, window)) {
         const item = conform(raw, schema);
         if (!item) continue;
         out.push({ ...item, source: { instance: provider.instance.key, module: provider.mod.manifest.id, name: pickName(provider.instance, opts.locale, config.defaultLocale) } });

@@ -13,7 +13,7 @@ import { instanceSettingKey } from "@/core/modules/context";
 import { hasPage } from "@/core/modules/manifest";
 import { defaultPlacement, parsePlacement, placementSettingKey, placementsFor } from "@/core/modules/menuPlacement";
 import { groupFlagName, judgeGroup } from "@/core/modules/groups";
-import { isValidLink, resolveDefault, shouldStore } from "@/core/modules/settingValues";
+import { checkFieldInput, resolveDefault, shouldStore } from "@/core/modules/settingValues";
 import { localized } from "@/core/modules/types";
 import { getModule } from "@/core/modules/registry";
 import { getSources, providersOf, setSources } from "@/core/services/topics";
@@ -166,28 +166,12 @@ export async function saveInstanceSettings(_prev: ActionState, formData: FormDat
       if (field.type === "secret" && raw === "") continue;
       // Vide, ou identique au défaut qui suit le site (nom, accroche) : rien n'est enregistré, le champ continue de suivre le site.
       if (!shouldStore(field, raw, resolveDefault(field, siteByLocale[field.translatable ? locale : config.defaultLocale] ?? { name: "", tagline: "" }))) { del(); continue; }
-      if (field.type === "number") {
-        const n = Number(raw);
-        if (!Number.isFinite(n)) return { error: t("error.generic") };
-        op(n);
-      } else if (field.type === "select") {
-        if (!field.options?.some((o) => o.value === raw)) return { error: t("error.generic") };
-        op(raw);
-      } else if (field.type === "video") {
-        if (!/^\/uploads\/[0-9a-f-]{36}\.(mp4|webm)$/.test(raw)) return { error: t("error.badUrl") };
-        op(raw);
-      } else if (field.type === "image") {
-        if (!/^(https?:\/\/|\/uploads\/)/i.test(raw)) return { error: t("error.badUrl") };
-        op(raw);
-      } else if (field.type === "url") {
-        if (!/^https?:\/\//i.test(raw)) return { error: t("error.badUrl") };
-        op(raw);
-      } else if (field.type === "link") {
-        if (!isValidLink(raw)) return { error: t("instances.error.link", { field: L(field.label) }) };
-        op(raw);
-      } else {
-        op(raw.slice(0, 5000));
+      const checked = checkFieldInput(field, raw);
+      if (!checked.ok) {
+        const { reason } = checked;
+        return { error: reason === "link" ? t("instances.error.link", { field: L(field.label) }) : reason === "video" || reason === "image" || reason === "url" ? t("error.badUrl") : t("error.generic") };
       }
+      op(checked.value);
     }
   }
   for (const o of ops) {

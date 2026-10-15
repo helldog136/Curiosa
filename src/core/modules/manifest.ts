@@ -33,7 +33,7 @@ export const settingField = z.object({
 
 const topicField = z.object({
   key: z.string().regex(/^[a-zA-Z][a-zA-Z0-9_]{0,30}$/),
-  type: z.enum(["string", "url", "number", "boolean", "string[]"]),
+  type: z.enum(["string", "url", "number", "boolean", "string[]", "datetime"]),
   required: z.boolean().optional(),
 });
 const topicId = z.string().regex(/^[a-z][a-z0-9-]*(\.[a-z][a-z0-9-]*){0,3}$/);
@@ -131,6 +131,11 @@ export const manifestSchema = z.object({
     }))
     .max(6)
     .optional(),
+  /**
+   * GRAINES : modules dans lesquels une MIGRATION DE DONNÉES de ce module pourra créer UNE instance (`ctx.seedInstance`), une seule fois, avec des réglages initiaux.
+   * Déclaration explicite (affichée à l'administrateur) ; le cœur exige en plus que le module cible offre un service que celui-ci `requires`. Voir seeding.ts.
+   */
+  seeds: z.array(z.object({ module: z.string().regex(/^[a-z][a-z0-9-]{1,39}$/), reason: localized })).max(3).optional(),
   /** Version de la STRUCTURE des données du module (stockage, réglages). À augmenter quand elle change : voir `migrations`. */
   dataVersion: z.number().int().min(1).max(10000).optional(),
   onboarding: z
@@ -143,6 +148,11 @@ export const manifestSchema = z.object({
   defaultEnabled: z.boolean().optional(),
   permissions: z.array(z.enum(["slots", "routes", "storage", "filters", "sections", "pages", "topics", "overlay", "mcp", "admin", "mail", "rawg"])).default([]),
 }).superRefine((m, ctx) => {
+  for (const [i, seed] of (m.seeds ?? []).entries()) {
+    if (seed.module === m.id) ctx.addIssue({ code: "custom", path: ["seeds", i, "module"], message: "a module cannot seed itself" });
+    if (!m.requires?.length) ctx.addIssue({ code: "custom", path: ["seeds", i, "module"], message: "seeds needs a matching `requires` (the target must offer a service this module requires)" });
+  }
+  if (new Set((m.seeds ?? []).map((x) => x.module)).size < (m.seeds ?? []).length) ctx.addIssue({ code: "custom", path: ["seeds"], message: "duplicate seed target" });
   for (const message of groupIssues(m.optionalGroups ?? [], m.settings)) ctx.addIssue({ code: "custom", path: ["optionalGroups"], message });
 });
 

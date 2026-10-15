@@ -97,9 +97,10 @@ test("défauts « site: » : résolus dans la langue, rien n'est stocké si la v
 test("serveur : contrôle des groupes et des liens avant toute écriture, défaut du site appliqué par ctx.setting", () => {
   const actions = read("src/app/admin/(panel)/instances/actions.ts");
   assert.match(actions, /judgeGroup\(/);
-  assert.match(actions, /isValidLink\(/);
+  assert.match(actions, /checkFieldInput\(/, "les valeurs sont contrôlées par la règle commune (admin et semis de migration)");
+  assert.match(read("src/core/modules/settingValues.ts"), /isValidLink\(raw\)/);
   assert.match(actions, /shouldStore\(/);
-  assert.ok(actions.indexOf("for (const o of ops)") > actions.indexOf("isValidLink("), "les écritures viennent après les contrôles");
+  assert.ok(actions.indexOf("for (const o of ops)") > actions.indexOf("checkFieldInput("), "les écritures viennent après les contrôles");
   assert.match(read("src/core/modules/context.ts"), /followsSite\(field\)/);
 });
 

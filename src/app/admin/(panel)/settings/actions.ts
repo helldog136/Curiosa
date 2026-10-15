@@ -11,6 +11,7 @@ import { LOGO_KEYS } from "@/core/logos";
 import { sanitizeSvg } from "@/core/svg";
 import { isGlowLevel, normalizeTuning } from "@/core/glow";
 import { isKnownLocale } from "@/core/i18n/locales";
+import { isSiteEntity } from "@/core/seo";
 import { audit } from "@/core/permissions";
 import { deleteSetting, setSetting } from "@/core/settings";
 import type { ActionState } from "@/components/admin/ActionForm";
@@ -48,7 +49,16 @@ export async function saveSettings(_prev: ActionState, formData: FormData): Prom
     const adminLocale = String(formData.get("adminLocale") ?? "");
     if (isKnownLocale(adminLocale)) await setSetting("i18n.adminDefault", adminLocale);
     await setSetting("i18n.autoDetect", formData.get("autoDetect") === "on");
-    await setSetting("seo.blockAiBots", formData.get("blockAiBots") === "on");
+  }
+  // Robots IA et fichier pour les IA : le formulaire les envoie dans les deux versions de l'admin (marqueur `__ai`).
+  // Les deux choix sont enregistrés ensemble ; l'ancien réglage unique est retiré (les nouveaux le remplacent).
+  if (formData.get("__ai") === "1") {
+    await setSetting("seo.blockAiTraining", formData.get("aiTraining") !== "allow");
+    await setSetting("seo.blockAiAnswers", formData.get("aiAnswers") === "block");
+    await deleteSetting("seo.blockAiBots");
+    await setSetting("seo.llmsTxt", formData.get("llmsTxt") === "on");
+    const entity = String(formData.get("entityType") ?? "");
+    await setSetting("seo.entityType", isSiteEntity(entity) ? entity : "organization");
   }
 
   for (const key of TRANSLATABLE) {

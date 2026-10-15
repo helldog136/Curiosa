@@ -1,6 +1,7 @@
 import { isDarkBackground, pickLogo } from "../logos";
 import { getBrand } from "@/core/brand";
 import { siteUrl } from "@/core/config";
+import { moduleJsonLd } from "@/core/seo";
 import { entryPath, listEntries } from "@/core/content/entries";
 import { getInstanceByKey, listInstances, pickName, type InstanceView } from "@/core/instances";
 import { isMailConfigured, sendMail } from "@/core/services/mail";
@@ -38,6 +39,8 @@ export function makeApi(instance: InstanceView, locale: string, permissions: rea
   return {
     siteUrl,
 
+    seo: { jsonLd: (data) => { const ld = moduleJsonLd(data); return ld ? { tag: "script", jsonLd: ld } : null; } },
+
     // ── SERVICES du cœur ────────────────────────────────────────────────────────
     qr: qrSvg,
     png: (spec) => renderPng(spec as PngSpec, siteUrl),
@@ -62,7 +65,7 @@ export function makeApi(instance: InstanceView, locale: string, permissions: rea
     topics: {
       async collect(topic, opts) {
         const consumer = (await getActiveInstances()).find((a) => a.instance.id === instance.id);
-        return consumer ? collect(consumer, topic, { limit: opts?.limit, locale }) : [];
+        return consumer ? collect(consumer, topic, { limit: opts?.limit, from: opts?.from, to: opts?.to, locale }) : [];
       },
     },
 

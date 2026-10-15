@@ -70,7 +70,7 @@ export const MODULE_TYPES = ["content", "social", "overlay", "widget", "integrat
 export type ModuleType = (typeof MODULE_TYPES)[number];
 
 /** Champ d'un sujet : le consommateur déclare ce qu'il sait digérer. */
-export type TopicField = { key: string; type: "string" | "url" | "number" | "boolean" | "string[]"; required?: boolean };
+export type TopicField = { key: string; type: "string" | "url" | "number" | "boolean" | "string[]" | "datetime"; required?: boolean };
 
 /** Information qu'un module sait recevoir. Il en publie le format ; les autres modules s'y conforment. */
 export type ConsumeDecl = {
@@ -81,6 +81,19 @@ export type ConsumeDecl = {
   /** L'admin peut restreindre les sources par étiquette. */
   tags?: boolean;
 };
+
+/** Demande de semis : voir `ctx.seedInstance`. */
+export type SeedRequest = {
+  /** Surnom d'admin de l'instance créée (rendu unique parmi les instances du module cible : « Agenda », « Agenda 2 »…). */
+  nickname: string;
+  /** Noms publics par langue ; absent = le surnom, dans chaque langue du site. */
+  names?: Record<string, string>;
+  /** Réglages initiaux, validés par le manifeste du module cible (secrets compris). Réglage traduisible : une chaîne (toutes les langues) ou une valeur par langue. */
+  settings: Record<string, string | number | boolean | Record<string, string>>;
+  /** Identifiant stable de CETTE graine (« ical-url ») : une graine déjà semée, même si l'instance a été supprimée depuis, n'est jamais semée de nouveau. */
+  seedKey: string;
+};
+export type SeedResult = { created: boolean; instanceKey: string };
 
 export type ProvideDecl = { topic: string; label?: LocalizedString };
 
@@ -118,6 +131,8 @@ export type ModuleManifest = {
   provides?: ProvideDecl[];
   /** Réglages propres à chaque instance. */
   settings: SettingField[];
+  /** Modules dans lesquels une migration de données de ce module peut semer UNE instance (`ctx.seedInstance`). Le module cible doit offrir un service que celui-ci `requires`. */
+  seeds?: SeedDecl[];
   /** Groupes de réglages facultatifs (un bouton « Ajouter… » les ouvre). */
   optionalGroups?: OptionalGroupDecl[];
   /** Actions proposées à l'API MCP du cœur (désactivable). */
@@ -179,8 +194,10 @@ export type ModuleApi = {
     /**
      * Récupère les informations des sources auxquelles CETTE instance est abonnée
      * (réglé dans l'admin). Le sujet doit être déclaré dans `consumes`.
+     * `from` / `to` (facultatifs) : période demandée, en `Date` ou chaîne ISO 8601 ; `from <= to`, 400 jours au plus ; sinon l'appel LÈVE une erreur.
+     * Les fournisseurs les reçoivent en `Date` dans `exports`, et peuvent les ignorer.
      */
-    collect(topic: string, opts?: { limit?: number }): Promise<TopicItem[]>;
+    collect(topic: string, opts?: { limit?: number; from?: Date | string; to?: Date | string }): Promise<TopicItem[]>;
   };
   siteUrl: string;
   entries: {
@@ -192,6 +209,14 @@ export type ModuleApi = {
   brand(locale?: string): Promise<ModuleBrand>;
   instances: {
     list(opts?: { locale?: string; module?: string }): Promise<{ key: string; module: string; basePath: string | null; name: string }[]>;
+  };
+  /** Données structurées (schema.org) pour les moteurs de recherche et les assistants IA. */
+  seo: {
+    /**
+     * Prépare un JSON-LD à renvoyer dans l'emplacement `layout.head` : `{ type: "head", tags: [ctx.api.seo.jsonLd({ "@type": "Event", … })] }`.
+     * Le cœur ajoute `@context`, borne la taille et échappe `</script>`. Renvoie `null` si la donnée est inutilisable (pas de `@type`, trop grosse).
+     */
+    jsonLd(data: Record<string, unknown>): { tag: "script"; jsonLd: Record<string, unknown> } | null;
   };
   /** Génère un QR code (SVG, fond transparent) pour un texte ou une URL. */
   qr(text: string): Promise<string>;
@@ -252,6 +277,18 @@ export type ModuleContext = {
   locales: string[];
   /** Réglage de l'instance, résolu pour la langue courante, avec sa valeur par défaut. */
   setting<T = string>(key: string): T | undefined;
+  /**
+   * Présent UNIQUEMENT pendant une migration de données (`migrations[N]`) ; refuse tout module non déclaré dans `seeds`. Crée UNE instance d'un module cible déclaré
+   * (réglages initiaux validés par son manifeste, secrets compris), une seule fois par `seedKey`, sans jamais écraser une instance existante.
+   * Renvoie `{ created, instanceKey }` (`created: false` : déjà semée plus tôt). Lève une erreur si la graine est refusée : la migration échoue alors
+   * entièrement (instance mise à l'écart, « Réessayer »), et tout ce qu'elle a créé est défait.
+   */
+  seedInstance?(targetModuleId: string, request: SeedRequest): Promise<SeedResult>;
+  /**
+   * Présent UNIQUEMENT pendant une migration de données : efface un réglage de CETTE instance (déclaré dans `settings` du manifeste du module, dans toutes les
+   * langues). Refusé tant qu'aucun `seedInstance` n'a abouti dans cette migration ; si la migration échoue, le réglage est remis comme avant.
+   */
+  clearSetting?(key: string): Promise<void>;
   /** Le thème réglé dans l'admin (couleurs dérivées, police) : exactement ce que le site utilise. Pour que l'apparence d'un module suive le site. */
   theme: Theme;
   /**
@@ -273,7 +310,7 @@ export type SlotContext = ModuleContext & {
 
 export type RouteHandler = (request: Request, ctx: ModuleContext) => Response | Promise<Response>;
 
-export type TopicQuery = { locale: string; limit: number; tags: string[] };
+export type TopicQuery = { locale: string; limit: number; tags: string[]; from?: Date; to?: Date };
 
 /** Rendu d'un overlay (source navigateur OBS) : page nue, fond transparent, sous /overlays/<clé>. */
 export type OverlayResult = { html: string; css?: string; script?: string; title?: string };
@@ -397,3 +434,6 @@ export function localized(value: LocalizedString | undefined, locale: string, de
   if (typeof value === "string") return value;
   return value[locale] ?? value[defaultLocale] ?? value.en ?? Object.values(value)[0] ?? "";
 }
+
+/** Autorisation de semer : le module cible, et pourquoi (affiché à l'administrateur). */
+export type SeedDecl = { module: string; reason: LocalizedString };

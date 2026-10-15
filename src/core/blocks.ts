@@ -6,7 +6,8 @@
 export type HeadTag =
   | { tag: "meta"; name?: string; property?: string; content: string }
   | { tag: "link"; rel: string; href: string; type?: string; title?: string }
-  | { tag: "script"; src?: string; inline?: string; defer?: boolean };
+  /** `jsonLd` : données structurées schema.org (objet) — le cœur écrit la balise `application/ld+json` et échappe tout ; à obtenir par `ctx.api.seo.jsonLd(…)`. */
+  | { tag: "script"; src?: string; inline?: string; defer?: boolean; jsonLd?: Record<string, unknown> };
 
 export type AdminField = {
   name: string;

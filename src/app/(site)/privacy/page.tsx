@@ -6,12 +6,20 @@ import { getActiveInstances } from "@/core/modules/registry";
 import { localized } from "@/core/modules/types";
 import { buildPrivacyPolicy } from "@/core/privacy";
 import { getSetting, getSiteConfig } from "@/core/settings";
+import { siteUrl } from "@/core/config";
+import { pickLogo } from "@/core/logos";
+import { languageAlternates, socialMeta } from "@/core/seo";
 import { Markdown } from "@/components/site/Markdown";
 
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
-  return { title: makeTranslator(await getVisitorLocale())("privacy.title") };
+  const locale = await getVisitorLocale();
+  const site = await getSiteConfig();
+  const config = await getSiteConfig(locale);
+  const title = makeTranslator(locale)("privacy.title");
+  const alt = languageAlternates(siteUrl, site.locales, locale, site.defaultLocale, "/privacy");
+  return { title, alternates: { canonical: alt.canonical, ...(alt.languages ? { languages: alt.languages } : {}) }, ...socialMeta({ siteName: config.name, title, image: pickLogo(config.logos, "share", false), url: alt.canonical, locale }) };
 }
 
 /** Page obligatoire du site : le cœur l'écrit à partir de ce que le site fait réellement ; le propriétaire peut y ajouter, pas y retirer. */

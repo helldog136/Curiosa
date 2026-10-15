@@ -1,6 +1,7 @@
 import { HeroVideo } from "./HeroVideo";
 import { Panel, HeroButton } from "./Panel";
 import type { Block } from "@/core/blocks";
+import { jsonLd, moduleJsonLd } from "@/core/seo";
 import { getInstanceByKey } from "@/core/instances";
 import { withLocale } from "@/core/links";
 import { listEntries } from "@/core/content/entries";
@@ -230,6 +231,10 @@ export function HeadTags({ blocks }: { blocks: Block[] }) {
       {tags.map((tag, i) => {
         if (tag.tag === "meta") return <meta key={i} name={tag.name} property={tag.property} content={tag.content} />;
         if (tag.tag === "link") return <link key={i} rel={tag.rel} href={tag.href} type={tag.type} title={tag.title} />;
+        if (tag.jsonLd) {
+          const data = moduleJsonLd(tag.jsonLd);
+          return data ? <script key={i} type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(data) }} /> : null;
+        }
         if (tag.inline) return <script key={i} dangerouslySetInnerHTML={{ __html: tag.inline }} />;
         return <script key={i} src={tag.src} defer={tag.defer} />;
       })}

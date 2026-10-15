@@ -10,7 +10,7 @@ import { forgetModule, getModule, moduleDir, readGitManifest } from "./registry"
 import { catalogueUnreachable, findCatalogueEntry, getCatalogue } from "./catalogue";
 import { checkBundledRow, convertToCatalogue } from "./bundledUpdate";
 import { dependentsOf } from "./dependencies";
-import { commitJournal, satisfyRequirements, unwind, type DepOps, type Journal, type Missing } from "./dependencyInstaller";
+import { commitJournal, newJournal, satisfyRequirements, unwind, type DepOps, type Journal, type Missing } from "./dependencyInstaller";
 import { forgetAuto } from "./autoInstalled";
 import { migrateModuleInstances, type MigrationOutcome } from "./dataMigrations";
 import { incompatWithThisCore, requirementOf, type CoreRequirement } from "./compat";
@@ -514,6 +514,33 @@ export async function settleDependencies(id: string): Promise<{ provided?: strin
   } catch (error) {
     console.error("[modules] dependency check failed:", (error as Error)?.message);
     return {};
+  }
+}
+
+/**
+ * Installe le module cible d'une graine (`ctx.seedInstance`, voir seeding.ts) quand il manque : depuis le catalogue, SANS lui créer d'instance par défaut
+ * (c'est l'instance semée qui fournira le service), avec ses propres dépendances s'il est activé. Il n'est activé que si le module semeur l'est.
+ * Renvoie le journal de la cascade (à défaire en bloc si la migration échoue ; ses marques « installé automatiquement » s'écrivent à la réussite).
+ */
+export async function installSeedTarget(id: string, forModule: string, enable: boolean): Promise<{ ok: true; journal: Journal } | { ok: false; error: string; detail?: string }> {
+  const r = await installFromCatalogue(id, { dependencies: false });
+  if (!r.ok) return { ok: false, error: r.error, detail: r.detail };
+  const journal = newJournal(forModule);
+  journal.undo.push(() => purgeModule(id));
+  journal.auto.push({ id, module: true, instances: [] });
+  journal.provided.push(id);
+  try {
+    if (enable) {
+      const mod = await getModule(id);
+      if (!mod) throw new Error("modules.error.load");
+      const deps = await satisfyRequirements(mod.manifest, depOps(), journal, [forModule, id]);
+      if (!deps.ok) throw new Error(`modules.error.requires:${deps.missing.map((x) => x.service).join(",")}`);
+      await prisma.module.update({ where: { id }, data: { enabled: true } });
+    }
+    return { ok: true, journal };
+  } catch (error) {
+    await unwind(journal);
+    return { ok: false, error: String((error as Error)?.message ?? error) };
   }
 }
 

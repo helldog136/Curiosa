@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 const S = await import("@/core/seo");
 
-test("robots : les robots IA sont bloqués par défaut, jamais un moteur de recherche ; désactivable", () => {
+test("robots : l'ancienne forme (un booléen) bloque les deux familles, jamais un moteur de recherche ; désactivable", () => {
   const on = S.robotsRules(true);
   assert.deepEqual(on[0], { userAgent: "*", allow: "/", disallow: ["/admin", "/api", "/m/"] });
   for (const bot of ["GPTBot", "ClaudeBot", "CCBot", "Google-Extended"]) assert.ok(on.some((r) => r.userAgent === bot && r.disallow === "/"), bot);
