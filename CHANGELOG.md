@@ -10,14 +10,15 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Nouveautés
 
-- **Une commande dit si un module est conforme.** Quiconque écrit son propre module lance `npm run module:check -- <dossier>` et obtient un rapport en mots simples : pour chaque exigence « réussi » ou « échec » avec ce qui ne va pas, pourquoi c'est demandé et comment corriger. Les exigences obligatoires conditionnent l'entrée au catalogue ; les conseils sont de simples avertissements.
-- **Un rapport lisible par une IA.** Avec `--json`, un assistant qui code le module peut lire le rapport et corriger jusqu'à ce que tout soit au vert.
+- **Une commande dit si un module est conforme.** Quiconque écrit son propre module obtient un rapport en mots simples : pour chaque exigence, « réussi » ou « échec » avec ce qui ne va pas, pourquoi, et comment corriger. Les exigences obligatoires conditionnent l'entrée au catalogue ; les conseils sont des avertissements.
+- **Un rapport lisible par une IA.** Un assistant qui code le module peut lire le rapport et corriger jusqu'à ce que tout soit au vert.
 - **Un module modèle à copier**, avec son fichier de test : il réussit déjà toutes les exigences.
 
 ### Pour les développeurs
 
-- Nouveau dossier `testsupport/` (point d'entrée `testsupport/index.mjs` : `checkModule`, `registerConformanceTests`, `fakeCtx`, `fakeFetch`, `startLocalServer`), documentation `docs/TESTSUPPORT.md` générée depuis les exigences. Le faux contexte `fakeCtx` et les vérifications communes y déménagent (les fichiers de `tests/helpers` restent comme passerelles) ; `fakeCtx` gagne `visit`, `permissions` (refuse ce qui n'est pas déclaré), `rows`, `dumpStore()` et `calls.writes`.
-- `testsupport/extras-wiring/` : les fichiers à poser dans `curiosa-extras` pour contrôler chaque module du dépôt.
+- Lancer : `npm run module:check -- <dossier> [--json]`. Nouveau dossier `testsupport/` (point d'entrée `index.mjs` : `checkModule`, `registerConformanceTests`, `fakeCtx`, `fakeFetch`), page `docs/TESTSUPPORT.md` générée depuis les exigences.
+- `fakeCtx` et les vérifications communes y déménagent (`tests/helpers` garde des passerelles). `fakeCtx` gagne `permissions`, `rows`, `visit` et `dumpStore()`.
+- `testsupport/extras-wiring/` : fichiers à poser dans `curiosa-extras` pour contrôler chaque module.
 
 ## 0.1.22
 
