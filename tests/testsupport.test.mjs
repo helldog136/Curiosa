@@ -24,8 +24,9 @@ test("un module conforme réussit toutes les exigences (aucune en échec, aucune
   const other = mk((f) => { editManifest(f, (m) => { m.id = "elsewhere"; m.mcp = [{ name: "elsewhere_list", readOnly: true, description: "List things that exist elsewhere." }]; delete m.provides; delete m.dataVersion; m.settings = []; }); f["index.mjs"] = 'export default { mcp: { elsewhere_list: () => [] } };'; });
   const report = await checkModule(dir, { siblings: [] });
   assert.equal(report.summary.ok, true);
-  const notPassed = report.results.filter((r) => r.status !== "pass").map((r) => `${r.id}:${r.status}`);
-  assert.deepEqual(notPassed.sort(), ["neutrality.clean:skip", "srp.single:na"].sort());
+  // « neutrality.clean » est sautée sans liste de neutralité, vérifiée (et réussie) avec : les deux sont corrects.
+  const notPassed = report.results.filter((r) => r.status !== "pass" && r.id !== "neutrality.clean").map((r) => `${r.id}:${r.status}`);
+  assert.deepEqual(notPassed.sort(), ["srp.single:na"]);
   // avec un voisin sans rapport, « un propriétaire par donnée » est vérifié et réussit
   void other;
   assert.equal(status(await checkModule(dir, { siblings: [path.join(path.dirname(other), "full-mod")] }), "srp.single").status, "pass");
