@@ -24,6 +24,8 @@ model User {
   advanced     Boolean  @default(false)
   // Augmente pour couper toutes les sessions ouvertes de cet utilisateur (« déconnecter tous les appareils », changement de mot de passe…).
   sessionVersion Int    @default(0)
+  // Vrai quand le propriétaire a fixé un mot de passe temporaire : la prochaine connexion réussie (mot de passe, double vérification ou clé d'accès) ne mène qu'à « Choisissez votre mot de passe ».
+  mustChangePassword Boolean @default(false)
   // Double vérification (code à usage unique d'une application) : secret actif, secret en cours d'activation, date d'activation, dernier code accepté (jamais deux fois le même).
   totpSecret    String?
   totpPending   String?

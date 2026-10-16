@@ -4,7 +4,7 @@
  */
 export const AUDIT_ACTIONS = [
   "login", "login.recovery", "login.passkey", "login.locked", "setup.completed",
-  "user.create", "user.delete", "user.role", "user.password", "user.unlock", "user.sessions.revoke",
+  "user.create", "user.delete", "user.role", "user.password", "user.password.reset", "user.password.chosen", "user.unlock", "user.sessions.revoke",
   "user.2fa.enable", "user.2fa.disable", "user.2fa.reset", "user.2fa.codes", "user.passkey.add", "user.passkey.remove",
   "security.2fa.require", "security.2fa.optional",
   "entry.create", "entry.update", "entry.delete", "entry.deleteTranslation",

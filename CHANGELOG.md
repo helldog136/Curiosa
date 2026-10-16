@@ -30,6 +30,9 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Un bandeau de cookies qui monte du bas de l'écran remplace le bouton « Me prévenir des nouveautés ».** Il explique à quoi servent les cookies : la langue (nécessaire) et, si le visiteur accepte, la date de sa dernière visite. Il propose « Accepter les cookies » ou « Non merci », puis ne revient plus.
 - **Un lien « Cookies » dans le pied de page permet de retirer son accord.** La page de confidentialité offre le même contrôle. Retirer son accord efface la date retenue.
 
+- **Le propriétaire peut définir un mot de passe temporaire pour un membre de l'équipe.** Dans *Utilisateurs*, bloc « Actions sensibles » : le site propose un mot de passe solide, montré une seule fois avec un bouton « Copier » (ou vous en choisissez un). La personne est déconnectée de tous ses appareils.
+- **À sa prochaine connexion, la personne choisit son propre mot de passe**, quel que soit le moyen de connexion, et n'accède à rien d'autre avant. La double vérification et les clés d'accès restent en place. Si l'e-mail du site est réglé, elle est prévenue par courrier (sans le mot de passe).
+
 ### Améliorations
 
 - Le bandeau s'adapte au mobile (pleine largeur, boutons larges) et aux thèmes clair et sombre, se ferme avec la touche Échap, et respecte le réglage « réduire les animations ».
@@ -37,6 +40,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Pour les développeurs
 
+- Mot de passe temporaire : colonne `User.mustChangePassword` (migration `20261015130000_must_change_password`), règles dans `core/auth/teamPassword.ts`, règle d'accès unique `core/auth/access.ts` (`accessGate`) ; `allowForced` est réservé à `/admin/choose-password`. Les jetons MCP appartiennent au site : non touchés.
 - Logique pure dans `core/cookieTray.ts` (affichage selon réglage et cookies, cookies écrits par chaque action) ; composant `components/site/CookieTray.tsx` décidé côté serveur dans le layout du site. Le refus est retenu par le cookie `curiosa_cookies` (30 jours ; session pour Échap). `NewsToggle` est supprimé.
 
 ## 0.1.22

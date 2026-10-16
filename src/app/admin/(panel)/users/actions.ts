@@ -7,6 +7,8 @@ import { prisma } from "@/core/db";
 import { unlockEmail } from "@/core/auth/lockout";
 import { revokeSessions } from "@/core/auth/sessions";
 import { disableTwoFactor } from "@/core/auth/twoFactor";
+import { resetMemberPassword } from "@/core/auth/teamPassword";
+import { passwordProblem } from "@/core/auth/passwordPolicy";
 import { getSetting, setSetting } from "@/core/settings";
 import { audit } from "@/core/permissions";
 import type { ActionState } from "@/components/admin/ActionForm";
@@ -18,7 +20,7 @@ export async function createUser(_prev: ActionState, formData: FormData): Promis
   const password = String(formData.get("password") ?? "");
   const role = String(formData.get("role"));
   if (!name || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { error: t("error.generic") };
-  if (password.length < 10) return { error: t("setup.error.password") };
+  if (passwordProblem(password)) return { error: t("setup.error.password") };
   // Seul le propriétaire crée des admins ; un admin ne crée que des éditeurs.
   if (role !== "editor" && !(role === "admin" && user.role === "owner")) return { error: t("error.denied") };
   if (await prisma.user.findUnique({ where: { email } })) return { error: t("users.exists") };
@@ -92,4 +94,26 @@ export async function setRequireTwoFactor(_prev: ActionState, formData: FormData
   }
   revalidatePath("/admin/users");
   return { ok: t("action.saved") };
+}
+
+/** Ce que la boîte « mot de passe temporaire » reçoit. `password` n'est renvoyé que dans le mode « généré », cette seule fois : ni l'adresse, ni un cookie, ni la page ne le retiennent. */
+export type TemporaryPasswordState = { error?: string; password?: string; mailed?: boolean; name?: string; chosen?: boolean };
+
+/**
+ * Le propriétaire fixe un mot de passe temporaire à un membre de l'équipe (généré par le site, ou choisi par lui). Les règles sont dans `core/auth/teamPassword.ts` ;
+ * le rôle est vérifié ici (`adminCtx("owner")`) ET relu en base là-bas. Les arguments arrivent dans le corps de la requête, jamais dans l'adresse.
+ */
+export async function setTemporaryPassword(id: string, mode: string, password?: string): Promise<TemporaryPasswordState> {
+  const { user, t } = await adminCtx("owner");
+  const custom = mode === "custom";
+  const r = await resetMemberPassword({ actorId: user.id, targetId: String(id ?? ""), mode: custom ? "custom" : "generate", password: custom ? String(password ?? "") : undefined });
+  if (!r.ok) {
+    const error = r.reason === "weak" ? t("users.temp.weak")
+      : r.reason === "limited" ? t("users.temp.limited")
+      : r.reason === "missing" ? t("users.temp.failed")
+      : t("users.temp.denied");
+    return { error };
+  }
+  revalidatePath("/admin/users");
+  return { name: r.name, mailed: r.mailed, ...(r.password ? { password: r.password } : { chosen: true }) };
 }

@@ -14,6 +14,7 @@ import { qrSvg } from "@/core/services/qr";
 import { getSetting } from "@/core/settings";
 import { revokeSessions } from "@/core/auth/sessions";
 import { audit } from "@/core/permissions";
+import { passwordProblem } from "@/core/auth/passwordPolicy";
 import type { ActionState } from "@/components/admin/ActionForm";
 
 export async function updateProfile(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -32,7 +33,7 @@ export async function changePassword(_prev: ActionState, formData: FormData): Pr
   const next = String(formData.get("next") ?? "");
   const row = await prisma.user.findUnique({ where: { id: user.id } });
   if (!row || !(await bcrypt.compare(current, row.passwordHash))) return { error: t("account.wrongPassword") };
-  if (next.length < 10) return { error: t("setup.error.password") };
+  if (passwordProblem(next)) return { error: t("setup.error.password") };
   await prisma.user.update({ where: { id: user.id }, data: { passwordHash: await bcrypt.hash(next, 12) } });
   await audit(user.email, "user.password");
   // Un nouveau mot de passe coupe toutes les sessions ouvertes (la vôtre aussi : on se reconnecte avec le nouveau).

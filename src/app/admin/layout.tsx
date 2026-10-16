@@ -23,7 +23,7 @@ export async function generateMetadata(): Promise<Metadata> {
 const CSS = adminThemeCss();
 
 export default async function AdminRootLayout({ children }: { children: React.ReactNode }) {
-  const user = await currentUser();
+  const user = await currentUser({ allowForced: true }); // seulement pour la langue de la page ; l'accès, lui, est décidé par chaque page et chaque action
   const { locale } = await getAdminTranslator(user?.locale);
   const theme = parseAdminTheme((await cookies()).get(ADMIN_THEME_COOKIE)?.value);
   return (
