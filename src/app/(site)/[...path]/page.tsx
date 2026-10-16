@@ -17,6 +17,7 @@ import { Blocks } from "@/components/site/Blocks";
 import { CopyCode } from "@/components/site/CopyCode";
 import { EntryIcon } from "@/components/site/EntryIcon";
 import { EntryList } from "@/components/site/EntryList";
+import { CoverImage } from "@/components/site/CoverImage";
 import { Markdown } from "@/components/site/Markdown";
 
 export const dynamic = "force-dynamic";
@@ -216,10 +217,7 @@ async function EntryPage({
       {entry.isFallback && (
         <p className="rounded-lg border border-line bg-surface p-3 text-sm text-muted">{t("site.fallbackNotice", { lang: entry.locale.toUpperCase() })}</p>
       )}
-      {entry.cover && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={entry.cover} alt="" className="aspect-video w-full rounded-xl object-cover" />
-      )}
+      {entry.cover && <CoverImage src={entry.cover} variant="article" />}
       <header className="space-y-2">
         <h1 className="flex items-center gap-3 text-3xl font-bold"><EntryIcon icon={entry.icon} className="h-7 w-7" />{entry.title}</h1>
         {instance.display !== "links" && entry.publishedAt && (

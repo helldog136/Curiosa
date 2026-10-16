@@ -44,7 +44,7 @@ export function render() {
     "",
     "Notes:",
     "",
-    "- Packages under **LGPL-3.0-or-later** (the prebuilt `libvips` binaries used by the image optimizer, `@img/sharp-libvips-*`) are used as separate, dynamically loaded libraries and are not modified. Their license texts and source locations are those of the `@img/sharp-libvips-*` packages.",
+    "- Packages under **LGPL-3.0-or-later** (the prebuilt `libvips` binaries used by the image cropper, `@img/sharp-libvips-*`) are used as separate, dynamically loaded libraries and are not modified. Their license texts and source locations are those of the `@img/sharp-libvips-*` packages.",
     "- `caniuse-lite` (browser compatibility data, used by the build) is licensed CC-BY-4.0: data by Alexis Deveria and contributors, https://github.com/browserslist/caniuse-lite.",
     "- The default font used to render PNG images comes with Next.js (Geist, SIL Open Font License 1.1).",
     "",

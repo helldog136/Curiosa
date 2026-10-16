@@ -98,9 +98,16 @@ la langue courante, ou la valeur par défaut.
 | `text`, `textarea`, `url` | texte court, long, adresse |
 | `number`, `boolean`, `select` | nombre, case à cocher, liste (`options`) |
 | `color` | couleur `#RRGGBB` ; avec `"default": "theme:accent"` elle **suit le thème du site** tant que l'administrateur n'en choisit pas |
-| `image` | téléversement ou adresse |
+| `image` | téléversement ou adresse ; l'administrateur peut **recadrer** les images téléversées (voir « Images recadrées » plus bas) |
 | `video` | téléversement d'une vidéo MP4 ou WebM (50 Mo au plus), **réservée aux fichiers du site** (`/uploads/…`) ; vérifiez la valeur avant de l'utiliser, comme le fait le module « Bandeau d'accueil » |
 | `secret` | jamais réaffiché après enregistrement (clé d'API, code…) |
+
+**Images recadrées.** Un réglage `image` (ou un champ `image` d'un formulaire d'admin, ou la couverture d'une entrée) se recadre depuis l'admin (bouton « Recadrer » : ratio, zoom, position) **sans que votre module ait quoi que ce soit à faire**. L'original n'est jamais modifié ; la valeur reste **une simple chaîne** :
+
+- `/uploads/<id>.png` : l'image telle quelle (c'est aussi toute valeur enregistrée avant ce système) ;
+- `/uploads/<id>.png?c=1.7778_1.25_0.5_0.5_ffffff` : l'original + son cadrage (`ratio_zoom_x_y_remplissage`).
+
+**Le contrat** : mettez la valeur **telle quelle** dans un `src` (`<img src>`, `background-image`, bloc `image`, `og:image`…). Le serveur répond alors avec la **version cadrée** (WebP, 1 600 px au plus), fabriquée à la demande et gardée en cache ; si elle ne peut pas l'être, il répond avec l'original, donc l'image s'affiche toujours. Ne **découpez pas** la valeur, ne retirez pas le `?c=…` (ce serait perdre le cadrage de l'administrateur) et ne la comparez pas à une expression `^/uploads/[0-9a-f-]{36}\.png$` : acceptez un éventuel `?c=…`. Si vous **validez** la valeur, utilisez le même motif que le cœur (`UPLOADED_RASTER` de `core/imageCrop.ts`, ou `ctx.api.site()` pour les logos). Pour **réserver la place** avant le chargement, le ratio d'un cadrage est le premier nombre de `c` (`1.7778` = 16:9) ; `o` veut dire « le ratio de l'image d'origine » (inconnu d'avance). Ne supposez plus 16:9 : une image peut être carrée, verticale, panoramique. Pour une image de partage (Open Graph), le cœur sait déjà en fabriquer une 1,91:1 (`&s=1` ajouté à la valeur) ; vous n'avez rien à faire si vous passez par `socialMeta`. Les images distantes (https), les GIF et les SVG ne se cadrent pas : leur valeur ne change jamais.
 
 Attributs : `translatable: true` (une valeur par langue du site), `advanced: true` (masqué en admin simplifié — **donnez toujours une valeur par défaut**),
 `optional: true` (réglage facultatif : vide, il ne met pas l'extension « À configurer » — sans cela, un texte, une adresse, un lien ou un secret vide et sans valeur par défaut est signalé à l'administrateur comme « à remplir », avec son libellé), `group: "appearance"` (rangé sous « Apparence de ce module »). Les jetons de thème permis pour `theme:` sont `accent`, `accentFg`, `bg`, `surface`, `fg`, `muted`, `line`.

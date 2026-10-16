@@ -9,6 +9,8 @@
  * Ce fichier est PUR (aucun accès à la base) : les réglages sont lus dans seoSettings.ts.
  */
 
+import { shareImage } from "./imageCrop";
+
 /**
  * Robots d'ENTRAÎNEMENT / de collecte pour modèles. Liste à REVOIR régulièrement (dernière relecture : octobre 2026) :
  * de nouveaux robots apparaissent, d'autres changent de rôle. En cas de doute sur un robot, il va dans cette famille
@@ -164,7 +166,8 @@ export function languageAlternates(site: string, locales: readonly string[], loc
 
 /** Open Graph + carte Twitter COHÉRENTS (mêmes titre, description, image, adresse). */
 export function socialMeta(m: { siteName: string; title: string; description?: string; image?: string | null; url: string; type?: "website" | "article"; locale?: string }) {
-  const images = m.image ? [m.image] : undefined;
+  // Image cadrée : le cadrage de la personne s'il convient aux réseaux sociaux, sinon une version 1,91:1 fabriquée (voir shareImage).
+  const images = m.image ? [shareImage(m.image)] : undefined;
   return {
     openGraph: { siteName: m.siteName, title: m.title, description: m.description, images, url: m.url, type: m.type ?? "website", ...(m.locale ? { locale: m.locale } : {}) },
     twitter: { card: images ? ("summary_large_image" as const) : ("summary" as const), title: m.title, description: m.description, images },

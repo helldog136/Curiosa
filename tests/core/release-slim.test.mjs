@@ -22,14 +22,15 @@ test("archive allégée : ce que le serveur de production n'utilise jamais n'est
   assert.match(smoke, /3000/, "le test de fumée vérifie que les icônes fonctionnent sans leurs SVG");
 });
 
-test("le serveur de production n'a besoin ni du compilateur ni de TypeScript ni de sharp : configuration en JavaScript, images non optimisées, types en dépendances de développement", () => {
+test("le serveur de production n'a besoin ni du compilateur ni de TypeScript : configuration en JavaScript, images non optimisées par Next, types en dépendances de développement ; sharp, lui, est une dépendance déclarée (recadrage des images)", () => {
   assert.ok(fs.existsSync("next.config.mjs") && !fs.existsSync("next.config.ts"));
   const cfg = fs.readFileSync("next.config.mjs", "utf8");
   assert.match(cfg, /images: \{ unoptimized: true \}/);
   assert.match(pack, /"next\.config\.mjs"/);
   assert.ok(!fs.readFileSync("package.json", "utf8").includes("\"@types/qrcode\"") || pkg.devDependencies["@types/qrcode"], "@types/qrcode est un outil de développement");
   assert.ok(!Object.keys(pkg.dependencies).some((d) => d.startsWith("@types/")), "aucun paquet de types en dépendance de production");
-  // le code n'emploie ni sharp ni next/image (sinon l'exclusion casserait le site)
+  assert.ok(pkg.dependencies.sharp, "sharp est déclaré : le recadrage des images en dépend, l'archive le livre");
+  // le code n'emploie ni next/image ni TypeScript à l'exécution (sinon l'exclusion casserait le site) ; sharp n'est chargé que par core/imageDerive.ts, à la demande
   const walk = (d) => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(`${d}/${e.name}`) : [`${d}/${e.name}`]));
-  for (const f of walk("src").filter((x) => /\.(ts|tsx)$/.test(x))) assert.ok(!/from "sharp"|next\/image|from "typescript"/.test(fs.readFileSync(f, "utf8")), `${f} emploie un paquet que l'archive n'embarque pas`);
+  for (const f of walk("src").filter((x) => /\.(ts|tsx)$/.test(x))) assert.ok(!/next\/image|from "typescript"/.test(fs.readFileSync(f, "utf8")) && (f.endsWith("imageDerive.ts") || !/sharp/.test(fs.readFileSync(f, "utf8").replace(/\/\/.*|\/\*[\s\S]*?\*\//g, ""))), `${f} emploie un paquet que l'archive n'embarque pas`);
 });

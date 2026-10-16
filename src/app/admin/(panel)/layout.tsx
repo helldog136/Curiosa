@@ -17,6 +17,8 @@ import { getUpdateCheck, readVersion } from "@/core/updates/service";
 import { peekModulesReport } from "@/core/modules/updateStatus";
 import { MobileMenu } from "@/components/admin/MobileMenu";
 import { ui } from "@/components/admin/ui";
+import { CropLabelsProvider } from "@/components/admin/CropLabels";
+import { CROP_LABEL_KEYS } from "@/components/admin/cropLabelKeys";
 import { cookies } from "next/headers";
 import { ADMIN_THEMES, ADMIN_THEME_COOKIE, parseAdminTheme } from "@/core/adminTheme";
 import { setAdminMode, setAdminTheme } from "./mode/actions";
@@ -133,7 +135,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
         </form>
       </MobileMenu>
       <main className="min-w-0 flex-1 p-6 md:p-10">
-        <div className="mx-auto max-w-4xl">{children}</div>
+        <div className="mx-auto max-w-4xl"><CropLabelsProvider advanced={advanced} labels={Object.fromEntries(CROP_LABEL_KEYS.map((k) => [k, t(`crop.${k}`)]))}>{children}</CropLabelsProvider></div>
       </main>
       </div>
       {/* Tout en bas de la page, pour tous les rôles et dans les deux modes : crédit exigé par la licence, et numéro de version à donner pour un signalement ou une mise à jour. */}

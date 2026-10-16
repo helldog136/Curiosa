@@ -1,4 +1,5 @@
 import { isHexColor, luminance } from "./color";
+import { UPLOADED_RASTER } from "./imageCrop";
 
 /**
  * JEU DE LOGOS d'un site. Une identité visuelle a rarement un seul logo : le propriétaire envoie ce qu'il a, le site fait au mieux avec ce qu'il a reçu.
@@ -18,7 +19,7 @@ export const EMPTY_LOGOS: LogoSet = { wide: null, square: null, wideDark: null, 
 export const isDarkBackground = (background: unknown): boolean => isHexColor(background) && luminance(background) <= 0.4;
 
 /** Une image de logo valable : un fichier envoyé sur le site, ou une adresse https. */
-export const isLogoUrl = (v: unknown): v is string => typeof v === "string" && (/^\/uploads\/[0-9a-f-]{36}\.(png|jpe?g|webp|gif|svg)$/.test(v) || /^https:\/\/[^\s"'()<>\\]+$/.test(v));
+export const isLogoUrl = (v: unknown): v is string => typeof v === "string" && ((/^\/uploads\/[0-9a-f-]{36}\.svg$/.test(v) || UPLOADED_RASTER.test(v)) || /^https:\/\/[^\s"'()<>\\]+$/.test(v));
 
 /** `a` d'abord ; sinon l'autre version (mieux qu'aucun logo). */
 const either = (a: string | null, b: string | null) => a || b || null;
