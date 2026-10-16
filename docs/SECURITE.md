@@ -98,6 +98,16 @@ Une session dure **14 jours au plus**. Elle se coupe aussi à tout moment :
 - **changer son mot de passe** coupe toutes les sessions ouvertes et demande de se reconnecter ;
 - le propriétaire peut **couper les sessions** de quelqu'un depuis *Utilisateurs*.
 
+### Mot de passe temporaire (propriétaire seulement)
+
+Dans *Utilisateurs → Actions sensibles → Définir un mot de passe temporaire*, le propriétaire peut remplacer le mot de passe d'un administrateur ou d'un éditeur (jamais le sien, qui se change dans *Mon compte*, ni celui d'un autre propriétaire). Le rôle est vérifié par le serveur, pas seulement par l'interface.
+
+- Par défaut le site **génère** un mot de passe de 16 caractères lisibles (sans `0/O` ni `1/l/I`), affiché **une seule fois** avec un bouton *Copier* ; le propriétaire peut aussi en choisir un (10 caractères au moins). Le mot de passe n'est ni enregistré en clair, ni écrit dans le journal d'audit, ni envoyé par e-mail, ni placé dans l'adresse ou un cookie.
+- Toutes les sessions ouvertes de la personne sont coupées. Le journal note *qui*, *pour qui* et *quand* (`user.password.reset`). Si l'e-mail du site est réglé, la personne reçoit un courrier (sans le mot de passe) ; sinon, rien n'est envoyé et le propriétaire la prévient lui-même. L'action est limitée en débit (10 par quart d'heure, 5 par heure pour une même personne).
+- **La prochaine connexion réussie, quel que soit le moyen** (mot de passe, mot de passe + code, clé d'accès), mène uniquement à la page « Choisissez votre mot de passe » : aucune page, action ni route d'administration ne s'ouvre avant (seule la déconnexion reste possible). Le nouveau mot de passe doit faire 10 caractères au moins et différer du temporaire ; ensuite le drapeau est levé, les *autres* sessions sont coupées, la session en cours continue (journal : `user.password.chosen`).
+- La double vérification et les clés d'accès **restent en place** : réinitialiser le mot de passe ne les retire pas (c'est une autre action).
+- Les **jetons des assistants IA (MCP)** appartiennent au site, pas à la session de la personne : ils restent valables et ne sont pas touchés. Si un compte est compromis, révoquez aussi les jetons concernés dans *Assistants IA*.
+
 ## Dépannage en SSH (propriétaire du serveur seulement)
 
 Si le propriétaire est bloqué (trop d'essais, mot de passe perdu), la commande de secours se lance **sur le serveur**, depuis le dossier de l'application, avec l'utilisateur du service :

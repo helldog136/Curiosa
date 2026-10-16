@@ -7,7 +7,9 @@ import { Callout, DangerZone, PageHeader, Panel } from "@/components/admin/Page"
 import { ui } from "@/components/admin/ui";
 import { isEmailLocked, formatUntil } from "@/core/auth/lockout";
 import { getSetting } from "@/core/settings";
-import { createUser, deleteUser, resetUserTwoFactor, revokeUserSessions, setRequireTwoFactor, setUserRole, unlockUser } from "./actions";
+import { MIN_PASSWORD_LENGTH } from "@/core/auth/passwordPolicy";
+import { TemporaryPasswordButton } from "@/components/admin/TemporaryPasswordButton";
+import { createUser, deleteUser, resetUserTwoFactor, revokeUserSessions, setRequireTwoFactor, setTemporaryPassword, setUserRole, unlockUser } from "./actions";
 
 /** L'équipe : qui est là et ce qu'elle peut faire, puis ajouter quelqu'un, puis la sécurité de toute l'équipe. */
 export default async function UsersPage() {
@@ -17,6 +19,12 @@ export default async function UsersPage() {
   const required = (await getSetting<boolean>("security.require2fa")) === true;
   const locks = new Map(await Promise.all(users.map(async (u) => [u.id, await isEmailLocked(u.email)] as const)));
   const roles = isOwner ? ["admin", "editor"] : ["editor"];
+  const tempLabels = {
+    open: t("users.temp.open"), title: t("users.temp.title"), generate: t("users.temp.generate"), generateHelp: t("users.temp.generateHelp"), custom: t("users.temp.custom"),
+    customLabel: t("users.temp.customLabel"), customHelp: t("users.temp.customHelp", { n: MIN_PASSWORD_LENGTH }), warning: t("users.temp.warning"), apply: t("users.temp.apply"), cancel: t("floating.discard"), working: t("users.temp.working"),
+    doneTitle: t("users.temp.doneTitle"), shownOnce: t("users.temp.shownOnce"), handOver: t("users.temp.handOver"), copy: t("users.temp.copy"), copied: t("users.temp.copied"),
+    mailed: t("users.temp.mailed"), noMail: t("users.temp.noMail"), savedCustom: t("users.temp.savedCustom"), close: t("users.temp.close"),
+  };
   return (
     <div className="space-y-8">
       <PageHeader title={t("nav.users")} intro={t("users.intro")} />
@@ -29,7 +37,9 @@ export default async function UsersPage() {
             const lock = locks.get(u.id);
             const canDelete = u.role !== "owner" && !me && (isOwner || u.role === "editor");
             const canReset = isOwner && !me;
-            const hasDanger = canDelete || canReset;
+            // Mot de passe temporaire : propriétaire seulement, jamais sur soi-même (Mon compte) ni sur un autre propriétaire. Le serveur le revérifie.
+            const canTempPassword = isOwner && !me && u.role !== "owner";
+            const hasDanger = canDelete || canReset || canTempPassword;
             return (
               <li key={u.id} className="space-y-3 py-4 first:pt-0 last:pb-0" data-testid="user-row">
                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -40,6 +50,7 @@ export default async function UsersPage() {
                     <p className="break-all text-sm text-muted">{u.email}</p>
                     <p className="mt-1.5 flex flex-wrap gap-1.5">
                       {isOwner && u.role !== "owner" ? null : <span className={ui.chip}>{t(`role.${u.role}`)}</span>}
+                      {u.mustChangePassword && <span className={ui.chipWarn} data-testid="user-must-change">{t("users.mustChange")}</span>}
                       {secured && <span className={ui.chipOk} data-testid="user-2fa" title={t("users.twofa")}>🔐 {t("users.secured")}</span>}
                     </p>
                   </div>
@@ -62,6 +73,9 @@ export default async function UsersPage() {
                 )}
                 {hasDanger && (
                   <DangerZone title={t("users.moreActions")}>
+                    {canTempPassword && (
+                      <TemporaryPasswordButton memberName={`${u.name} — ${u.email}`} action={setTemporaryPassword.bind(null, u.id)} labels={tempLabels} />
+                    )}
                     {canReset && secured && <form action={resetUserTwoFactor.bind(null, u.id)}><ConfirmButton message={t("users.twofaResetConfirm")}>{t("users.twofaReset")}</ConfirmButton></form>}
                     {canReset && <form action={revokeUserSessions.bind(null, u.id)}><ConfirmButton message={t("users.revokeConfirm")}>{t("users.revoke")}</ConfirmButton></form>}
                     {canDelete && <form action={deleteUser.bind(null, u.id)}><ConfirmButton message={t("users.deleteConfirm", { name: u.name })}>{t("users.deleteAccount")}</ConfirmButton></form>}

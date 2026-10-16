@@ -28,7 +28,8 @@ test("branchements : le numéro est dans le jeton, relu à chaque page d'admin, 
   const auth = fs.readFileSync("src/auth.ts", "utf8");
   assert.match(auth, /token\.sv = user\.sessionVersion/);
   assert.match(auth, /maxAge: 14 \* 24 \* 60 \* 60/);
-  assert.match(fs.readFileSync("src/core/permissions.ts", "utf8"), /sessionIsCurrent\(session\?\.user\?\.sv, user\.sessionVersion\)/);
+  assert.match(fs.readFileSync("src/core/auth/access.ts", "utf8"), /sessionIsCurrent\(tokenVersion, user\.sessionVersion\)/);
+  assert.match(fs.readFileSync("src/core/permissions.ts", "utf8"), /loadAdminUser\(session\?\.user\?\.id, session\?\.user\?\.sv\)/);
   const account = fs.readFileSync("src/app/admin/(panel)/account/actions.ts", "utf8");
   assert.match(account, /revokeSessions\(user\.id\);\s*await signOut\(\{ redirectTo: "\/admin\/login\?changed=1"/, "mot de passe changé : sessions coupées, reconnexion demandée");
   assert.match(account, /export async function signOutEverywhere/);

@@ -137,7 +137,7 @@ test("branchements : une clé d'accès vaut les deux facteurs, billet signé pou
   const account = fs.readFileSync("src/app/admin/(panel)/account/actions.ts", "utf8");
   assert.match(account, /startPasskeyRegistration[\s\S]*verifyPassword/);
   assert.match(account, /removeMyPasskey[\s\S]*verifyPassword/);
-  const perms = fs.readFileSync("src/core/permissions.ts", "utf8");
+  const perms = fs.readFileSync("src/core/auth/access.ts", "utf8");
   assert.match(perms, /twoFactor = totp \|\| passkeys > 0/);
   const lib = fs.readFileSync("src/core/auth/passkeys.ts", "utf8");
   assert.match(lib, /from "@simplewebauthn\/server"/);

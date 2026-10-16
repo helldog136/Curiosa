@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ changed?: string }> }) {
   if ((await countUsers()) === 0) redirect("/admin/setup");
-  if (await currentUser()) redirect("/admin");
+  if (await currentUser({ allowForced: true })) redirect("/admin"); // connecté, même avec un mot de passe temporaire à remplacer : /admin sait où l'envoyer
   const { t } = await getAdminTranslator();
   const { changed } = await searchParams;
   return (
