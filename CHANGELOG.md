@@ -7,6 +7,29 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.1.25
+
+### Nouveautés
+
+- **Vous pouvez recadrer vos images.** Sous chaque image téléversée (couverture, logos, blocs d'accueil…), un bouton « Recadrer » ouvre un éditeur : on glisse, on zoome et on dézoome (aussi en pinçant), on choisit le format (16:9, 4:3, 1:1, 9:16, Libre…).
+- **L'image n'est plus obligée d'être en 16:9.** Le site affiche l'image au format que vous avez choisi, sans la déformer.
+- **Votre image d'origine n'est jamais modifiée.** Vous pouvez rouvrir l'éditeur plus tard et retrouver exactement votre cadrage, ou le retirer d'un clic.
+- **Quand vous dézoomez, la zone vide est remplie** avec la couleur de votre choix (blanc, noir, couleur de l'image ou transparent).
+
+### Améliorations
+
+- Une image très haute ou très large ne prend plus tout l'écran d'un téléphone : sa hauteur est limitée.
+- Le partage sur les réseaux sociaux reste soigné : si votre format est trop étroit ou trop haut pour eux, le site prépare tout seul une version adaptée (1,91:1) autour du même point.
+- Le flux RSS annonce la bonne image cadrée.
+- Si l'image est trop petite pour le cadre choisi, l'éditeur vous prévient (« risque d'être floue »).
+- Les photos tournées par le téléphone sont redressées, et la position GPS est retirée des images recadrées.
+
+### Pour les développeurs
+
+- Valeur d'un champ image : toujours une chaîne. `/uploads/x.png` (inchangé) ou `/uploads/x.png?c=ratio_zoom_x_y_remplissage`. Mettez-la telle quelle dans un `src` : le serveur répond avec la version cadrée (WebP, mise en cache), ou l'original si elle ne peut pas être fabriquée. Aucun module n'a besoin de changer ; contrat décrit dans `docs/CREATE-A-MODULE.md`.
+- Aucune migration. Nouveau : `core/imageCrop.ts` (calcul pur, partagé navigateur/serveur), `core/imageDerive.ts` (traitement avec `sharp`, limites de taille et de pixels, cache dans `data/cache/crops`).
+- `sharp` devient une dépendance déclarée et est de nouveau livré dans l'archive (environ 20 Mo de plus).
+
 ## 0.1.24
 
 ### Nouveautés

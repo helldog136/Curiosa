@@ -25,7 +25,7 @@ const freePort = () => new Promise((resolve) => { const s = net.createServer().l
 
 // ── 1. contenu ──
 // Ce que l'archive n'embarque volontairement pas (voir NOT_SHIPPED dans release-pack.mjs) : absent, et le site tourne quand même (vérifié plus bas).
-for (const gone of ["node_modules/@img", "node_modules/typescript", "node_modules/simple-icons/icons", "node_modules/@next/swc-linux-x64-gnu", "node_modules/@next/swc-linux-x64-musl", "node_modules/next/next-swc-fallback"]) check(!fs.existsSync(path.join(app, gone)), `l'archive n'embarque pas « ${gone} »`);
+for (const gone of ["node_modules/@img/sharp-wasm32", "node_modules/typescript", "node_modules/simple-icons/icons", "node_modules/@next/swc-linux-x64-gnu", "node_modules/@next/swc-linux-x64-musl", "node_modules/next/next-swc-fallback"]) check(!fs.existsSync(path.join(app, gone)), `l'archive n'embarque pas « ${gone} »`);
 for (const dir of ["node_modules/@prisma/client/runtime", "node_modules/prisma", "node_modules/@prisma/engines"]) {
   const left = fs.readdirSync(path.join(app, dir)).filter((f) => /wasm|^libquery_engine/.test(f));
   check(left.length === 0, `l'archive n'embarque pas les variantes inutiles de « ${dir} »`);
@@ -35,6 +35,11 @@ check(fs.existsSync(path.join(app, "next.config.mjs")) && !fs.existsSync(path.jo
 {
   const n = execFileSync(process.execPath, ["-e", "const s=require('simple-icons');console.log(Object.values(s).filter((v)=>v&&v.slug&&v.path).length)"], { cwd: app, encoding: "utf8" }).trim();
   check(Number(n) > 3000, `les icônes des réseaux sociaux fonctionnent sans leurs SVG (${n} icônes)`);
+}
+{
+  // Le recadrage des images (core/imageDerive.ts) a besoin de sharp : il doit démarrer depuis l'archive, avec son moteur natif.
+  const n = execFileSync(process.execPath, ["-e", "require('sharp')({create:{width:4,height:4,channels:3,background:'#fff'}}).webp().toBuffer().then((b)=>console.log(b.length))"], { cwd: app, encoding: "utf8" }).trim();
+  check(Number(n) > 0, `sharp fonctionne depuis l'archive (le recadrage des images en dépend)`);
 }
 for (const old of ["modules-community", "modules-examples", "src", "extras", "examples", "modules", "catalogue"]) check(!fs.existsSync(path.join(app, old)), `l'archive ne contient pas « ${old} » (Curiosa s'installe seul)`);
 
