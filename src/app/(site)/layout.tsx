@@ -11,6 +11,7 @@ import { getVisitorLocale, getVisitorTranslator, LOCALE_HEADER, PATH_HEADER } fr
 import { runSlot } from "@/core/modules/runtime";
 import { getSiteConfig, themeExtraOf } from "@/core/settings";
 import { siteUrl } from "@/core/config";
+import { feedPath } from "@/core/feeds";
 import { jsonLd, languageAlternates, pageUrl, sameAsList, siteJsonLd, socialMeta } from "@/core/seo";
 import { getSiteEntity } from "@/core/seoSettings";
 import { loadSocialLinks } from "@/core/social";
@@ -79,7 +80,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
     <html lang={locale} dir={RTL_LOCALES.has(locale) ? "rtl" : "ltr"} data-accent2={two ? "1" : undefined} data-surface={hasChosenSurface(localized) ? "1" : undefined}>
       <head>
         <style dangerouslySetInnerHTML={{ __html: css }} />
-        <link rel="alternate" type="application/rss+xml" title={localized.name} href={`/feed.xml?lang=${locale}`} />
+        <link rel="alternate" type="application/rss+xml" title={localized.name} href={`${siteUrl}${feedPath(locale)}`} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(siteJsonLd({ url: siteUrl, name: localized.name, tagline: localized.tagline, logo: pickLogo(localized.logos, "any", isDarkBackground(localized.background)), locale, entity, sameAs: profiles, homeUrl: pageUrl(siteUrl, locale, config.defaultLocale, "/").replace(/\/$/, "") || siteUrl })) }} />
         <HeadTags blocks={headBlocks} />
       </head>
