@@ -250,7 +250,9 @@ exports: {
 ```
 
 `feed.item` est le sujet **du cœur** pour le flux RSS (`/feed.xml`) : tout module qui le fournit y apparaît. `topics` sont des **rubriques partagées** : si deux modules publient sur
-`announcement`, un lecteur abonné à `announcement` reçoit les deux. Ne publiez que ce qui est **public** (jamais un message en attente de modération). Vous pouvez aussi définir
+`announcement`, un lecteur abonné à `announcement` reçoit les deux. Ne publiez que ce qui est **public** (jamais un message en attente de modération). Le cœur écarte lui-même les éléments dont `publishedAt` est dans le futur, ceux sans adresse valide (chemin du site ou http(s)) et les identifiants en double ; il ne peut pas connaître vos règles de modération, c'est à vous de ne renvoyer que du public.
+
+Vous n'avez **rien à fournir** pour un module à contenu (blog, pages, sponsoring…) : ses entrées publiées, non expirées et datées d'avant maintenant alimentent le flux par `core.entry`, sauf si l'instance n'est pas « proposée au public ». Les flux sont : `/feed.xml?lang=fr` (tout), `/feed.xml?topics=a,b` (rubriques), `/feed/<clé-d'instance>.xml` (une instance), `/feed/topics.json` (catalogue). Au plus 30 éléments, du plus récent au plus ancien ; ETag et Last-Modified permettent aux lecteurs un 304. Le propriétaire retrouve ces adresses dans l'admin, bloc « Flux RSS » de la page *Visibilité dans les réponses des IA* ; l'icône du pied de page apparaît dès qu'une instance à contenu ou un module `feed.item` existe (et se masque dans ce bloc). Vous pouvez aussi définir
 **votre propre sujet** (`guestbook.message`, format `{ id, name, text, publishedAt }`) : voir `exports` dans l'exemple.
 
 **Consommer** (module.json puis index.mjs) :

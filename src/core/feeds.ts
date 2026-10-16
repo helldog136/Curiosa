@@ -270,15 +270,15 @@ export async function feedOverview(locale: string): Promise<FeedOverview> {
     const entries = !!mod.manifest.content && instance.exposed && instance.basePath !== null;
     const items = !!mod.manifest.provides?.some((p) => p.topic === FEED_ITEM_TOPIC);
     if (!entries && !items) return [];
-    const count = all.filter((i) => i.topics[0] === `@${instance.key}`).length;
+    const count = Math.min(FEED_DEFAULT_ITEMS, all.filter((i) => i.topics[0] === `@${instance.key}`).length);
     return [{ key: instance.key, name: pickName(instance, lang, config.defaultLocale), module: mod.manifest.id, kind: entries ? ("entries" as const) : ("items" as const), url: `${siteUrl}/feed/${instance.key}.xml?lang=${lang}`, count }];
   });
   const names = (ids: string[]) => ids.map((k) => sources.find((s) => s.key === k)?.name ?? k);
   return {
     url: `${siteUrl}${feedPath(lang)}`,
-    count: all.length,
+    count: Math.min(all.length, FEED_DEFAULT_ITEMS), // ce que contient réellement /feed.xml (30 au plus)
     latest: all.slice(0, 5),
     sources: sources.sort((a, b) => a.key.localeCompare(b.key)),
-    topics: topics.filter((t) => t.kind === "topic").map((t) => ({ ...t, url: `${siteUrl}/feed.xml?lang=${lang}&topics=${t.id}`, names: names(t.instances) })),
+    topics: topics.filter((t) => t.kind === "topic").map((t) => ({ ...t, count: Math.min(FEED_DEFAULT_ITEMS, t.count), url: `${siteUrl}/feed.xml?lang=${lang}&topics=${t.id}`, names: names(t.instances) })),
   };
 }

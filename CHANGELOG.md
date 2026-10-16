@@ -6,6 +6,23 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
+## Prochaine version (non publiée)
+
+### Nouveautés
+
+- **Une petite icône RSS apparaît dans le pied de page.** Vos visiteurs peuvent suivre vos nouveautés dans leur application de lecture, sans réseau social. Elle s'affiche quand le site publie quelque chose (blog, pages, vidéos…) et se masque d'une case à cocher.
+- **Un bloc « Flux RSS » dans l'admin (page *Visibilité dans les réponses des IA*).** Il explique à quoi sert un flux, donne l'adresse à copier, le nombre d'éléments et les 5 derniers publiés. En mode avancé : un flux par fonctionnalité et par rubrique, d'où vient chaque élément, et les options des adresses.
+
+### Améliorations
+
+- Le flux est contrôlé : jamais de brouillon, de publication planifiée, d'entrée expirée ni de vidéo annoncée pour plus tard. Les 30 éléments les plus récents sortent toujours, même si une collection est affichée dans un autre ordre.
+- Un article sans résumé est présenté par un court extrait de son texte ; sa couverture est jointe. Un même élément n'apparaît jamais deux fois. Le lien de découverte du flux est une adresse complète.
+- Les lecteurs RSS redemandent le flux sans coût : il indique maintenant s'il a changé ou non.
+
+### Pour les développeurs
+
+- `core/feeds.ts` : `rssResponse` (ETag, 304), `excerpt`, `hasFeedSource`, `feedOverview` ; limite après tri ; `feed.item` futurs ou en double écartés. Réglage `feed.showLink`. Le blog alimente le flux par `core.entry`, sans `feed.item`.
+
 ## 0.1.23
 
 ### Nouveautés
