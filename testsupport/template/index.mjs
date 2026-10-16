@@ -4,7 +4,7 @@
 /** Échappe le texte avant de le mettre dans du HTML (le bloc `html` est brut). */
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
-export default {
+const definition = {
   sections: {
     // Une section de la page d'accueil (permission « sections » + déclarée dans module.json).
     welcome(ctx) {
@@ -17,3 +17,5 @@ export default {
     my_module_message: (ctx) => ({ message: ctx.setting("message") || ctx.t("fallback") }),
   },
 };
+
+export default definition;

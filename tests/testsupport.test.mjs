@@ -194,6 +194,18 @@ test("l'adaptateur node:test : un test par exigence ; obligatoire en échec = le
   assert.equal(t.skipped.length >= 0, true);
 });
 
+test("`known` : un défaut connu n'arrête pas la suite, et l'exception périmée fait échouer", async () => {
+  const registered = [];
+  const fake = (name, fn) => registered.push({ name, fn });
+  registerConformanceTests(mk(FAULTS["manifest.version"]), { test: fake, siblings: [], known: { "manifest.version": "à corriger bientôt", "manifest.file": "exception périmée" } });
+  const t = { todo: [], todoCalls: 0, diagnostic() {}, skip() {}, };
+  t.todo = () => { t.todoCalls++; };
+  const find = (id) => registered.find((x) => x.name.includes(` ${id} `));
+  await find("manifest.version").fn(t);
+  assert.equal(t.todoCalls, 1);
+  await assert.rejects(() => find("manifest.file").fn(t), /retirez l'exception/);
+});
+
 // ── Aides publiques ─────────────────────────────────────────────────────────────────────────────────────────────────
 test("fakeCtx avec `permissions` refuse ce qui n'est pas déclaré et le note ; sans l'option, tout est permis", async () => {
   const ctx = fakeCtx({ permissions: ["sections"] });

@@ -15,7 +15,7 @@ const API_USE = [
   { permission: "topics", re: /\bapi\s*\??\.\s*topics\b|\{[^}]*\btopics\b[^}]*\}\s*=\s*[\w.]*\bapi\b/, label: "les sujets d'échange (ctx.api.topics)" },
 ];
 
-export default [
+const requirements = [
   {
     id: "def.loads", level: "mandatory", group: "code",
     title: "Le code se charge sans erreur",
@@ -188,3 +188,4 @@ export default [
     },
   },
 ];
+export default requirements;

@@ -3,7 +3,6 @@
 // Rien n'est exécuté tant qu'une exigence n'en a pas besoin ; le résultat est calculé une fois par module (`observe(m)`).
 import { format } from "node:util";
 import { fakeCtx } from "./fakeCtx.mjs";
-import { settingsDefaults } from "./builtinChecks.mjs";
 import { watchNetwork } from "./loader.mjs";
 
 // ── Données hostiles ────────────────────────────────────────────────────────────────────────────────────────────────

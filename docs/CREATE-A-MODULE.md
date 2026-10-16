@@ -12,7 +12,7 @@ commentaires dans `index.mjs` (`curiosa-extras/examples/guestbook/index.mjs`). L
 [10. Sujets et RSS](#10-échanger-avec-les-autres-modules-sujets-et-flux-rss) · [11. Admin](#11-panneau-et-actions-dadmin) ·
 [12. MCP](#12-actions-mcp-pour-les-assistants) · [13. Sauvegarde](#13-sauvegarde-lisible) · [14. Thème et langues](#14-thème-et-langues) ·
 [15. Overlays, hooks, slots, filtres](#15-overlays-crochets-emplacements-filtres) · [16. Zéro code](#16-modules-à-contenu-zéro-code) ·
-[17. Tester](#17-tester-son-module) · [18. Versions et catalogue](#18-versions-et-publication) · [19. Sécurité](#19-règles-de-sécurité) · [20. Vie privée et licence](#20-vie-privée-cookies-et-licence) ·
+[17. Tester](#17-tester-son-module) (le kit `module:check`) · [18. Versions et catalogue](#18-versions-et-publication) · [19. Sécurité](#19-règles-de-sécurité) · [20. Vie privée et licence](#20-vie-privée-cookies-et-licence) ·
 [Checklist](#checklist-avant-de-publier)
 
 ## 1. Les idées à connaître
@@ -491,19 +491,37 @@ Le serveur journalise aussi les erreurs d'exécution de votre module (un module 
 
 Pour un module **du dépôt `curiosa-extras`** (comme l'exemple), il suffit de proposer son dossier dans `examples/` (ou `modules/`) de ce dépôt et de l'ajouter à son `catalogue/index.json` : il apparaît dans le Catalogue.
 
-### Tests unitaires, sans serveur
+### Suis-je conforme ? Lancez une commande
 
-Votre code ne dépend que de `ctx` : on le teste avec un faux `ctx`. Copiez [`tests/helpers/fakeCtx.mjs`](../tests/helpers/fakeCtx.mjs) (stockage en mémoire, e-mail enregistré dans `ctx.calls.mail`, thème, `t()`, réglages…).
+Le cœur fournit une suite de vérifications prête à l'emploi, le **kit de test** (`testsupport/`, détaillé dans [TESTSUPPORT.md](TESTSUPPORT.md)). Elle répond à la question « mon module respecte-t-il les exigences ? » sans serveur, sans réseau et sans base de données. Depuis le dossier du cœur :
+
+```
+npm run module:check -- /chemin/vers/votre-module
+```
+
+**Lisez le rapport de haut en bas : tout ce qui est ❌ est à corriger.** Pour chaque ❌, il vous dit *ce qui ne va pas*, *pourquoi c'est exigé* et *comment corriger*, avec un lien vers la fiche de l'exigence. Corrigez, relancez la même commande, recommencez jusqu'à ce que tout soit ✅. Deux niveaux :
+
+- **obligatoire** (❌) : la condition pour être proposé dans le catalogue ; la commande répond alors avec un code d'erreur ;
+- **conseil** (⚠️) : un avertissement, utile mais non bloquant.
+
+Si vous faites coder le module par une IA (Claude…), donnez-lui la même commande avec `--json` : `npm run module:check -- <dossier> --json`. Le rapport est lisible par une machine (chaque échec porte `problems` et `fix`), et l'IA corrige jusqu'à ce que `summary.ok` vaille `true`. Pour partir de zéro, copiez le modèle [`testsupport/template/`](../testsupport/template) : un module minimal qui réussit déjà tout.
+
+### Vos propres tests, sans serveur
+
+La suite de conformité vérifie ce que **tout** module doit respecter ; elle ne connaît pas ce que fait **le vôtre**. Pour cela, votre code ne dépend que de `ctx` : on le teste avec un faux `ctx`, [`fakeCtx`](../testsupport/fakeCtx.mjs) (stockage en mémoire, e-mail enregistré dans `ctx.calls.mail`, thème, `t()`, réglages…). Copiez [`testsupport/template/my-module.test.mjs`](../testsupport/template/my-module.test.mjs) : il appelle d'abord la suite de conformité (une exigence = un test nommé), puis montre trois tests spécifiques.
 
 ```js
 import test from "node:test";
 import assert from "node:assert/strict";
-import { fakeCtx } from "./fakeCtx.mjs";
-import def from "../index.mjs";
+import { registerConformanceTests, fakeCtx, loadModuleDir } from "<dossier du cœur>/testsupport/index.mjs";
 
-test("la bannière affiche le texte réglé", () => {
+registerConformanceTests(new URL(".", import.meta.url).pathname, { test }); // tout module doit réussir ceci
+
+const { definition: def } = await loadModuleDir(new URL(".", import.meta.url).pathname);
+
+test("la bannière affiche le texte réglé", async () => {
   const ctx = fakeCtx({ settings: { text: "Hi!" } });
-  assert.deepEqual(def.slots["layout.banner"](ctx), [{ type: "banner", text: "Hi!" }]);
+  assert.deepEqual(await def.slots["layout.banner"](ctx), [{ type: "banner", text: "Hi!" }]);
 });
 
 test("signer conserve le message en attente et prévient le propriétaire", async () => {
@@ -516,10 +534,7 @@ test("signer conserve le message en attente et prévient le propriétaire", asyn
 });
 ```
 
-Lancez : `node --test`. Dans `curiosa-extras`, les tests des modules vont plus loin (ils valident aussi le manifeste avec `parseManifest`, la parité des langues, les permissions, le XSS…) : prenez
-`tests/guestbook.test.mjs` du dépôt `curiosa-extras` pour modèle et lancez
-`CURIOSA_DIR=../Curiosa npm test` (les tests de `curiosa-extras` passent par le chargeur de test du cœur).
-Testez au minimum : le manifeste est valide, chaque section/action/sujet déclaré est implémenté, un visiteur malveillant ne peut rien injecter, un échec d'e-mail ne perd rien.
+Lancez : `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test mon-module.test.mjs`. Pour tester un module qui appelle un service sur Internet sans réseau, le kit offre `fakeFetch` (faux `fetch`) et `startLocalServer` (un petit serveur local) ; avec l'option `permissions`, `fakeCtx` refuse tout ce que votre module n'a pas déclaré. Dans le dépôt `curiosa-extras`, un seul fichier appelle la suite sur chaque dossier de `modules/` et `examples/`.
 
 ## 18. Versions et publication
 
@@ -590,7 +605,7 @@ Le cœur reprend ce texte tel quel, sous le nom de l'instance. Un module qui ne 
 - [ ] Les messages de visiteurs sont modérés (ou le contraire est un choix explicite de l'administrateur) ; le flux RSS et les sujets n'exposent que le public.
 - [ ] Les routes publiques ont limiteur de débit, piège à robots, plafond ; l'e-mail est **après** la conservation et ne fait jamais échouer la requête.
 - [ ] Aucun secret, ni donnée privée, ni identifiant réel dans le code, les exemples ou les journaux ; exemples neutres (`example.org`, « Demo »).
-- [ ] Le module a des tests (manifeste, parité des langues, comportement, XSS) et ils passent.
+- [ ] `npm run module:check -- <dossier>` ne montre aucun ❌ (le kit vérifie le manifeste, les langues, les droits, l'échappement, les routes, le MCP, les tâches, la vie privée…) ; le module a ses propres tests de comportement et ils passent.
 - [ ] Si la forme de mes données a changé : `dataVersion` augmenté et migration écrite et testée sur des données de l'ancienne version.
 - [ ] Si le module collecte des données de visiteurs : champ `privacy` renseigné (en **et** fr) ; aucun cookie, stockage navigateur ni service tiers non essentiel sans consentement.
 - [ ] `license` choisie dans `module.json` (elle n'a pas à être celle du framework).

@@ -1,6 +1,5 @@
 // Exigences sur le fichier module.json et la compatibilité avec le cœur.
-import path from "node:path";
-import { allSettings, compareVersions, missingLangs, stripComments, texts } from "./util.mjs";
+import { allSettings, compareVersions, missingLangs, stripComments } from "./util.mjs";
 
 const MAX_BYTES = 10 * 1024 * 1024; // même plafond que l'installateur du cœur
 
@@ -19,7 +18,7 @@ export const FEATURES = [
   { since: "0.1.10", label: "la permission « rawg » (jaquettes de jeux)", test: (m, man) => (man.permissions ?? []).includes("rawg") || /\bapi\s*\??\.\s*rawg\b/.test(stripComments(m.code)) },
 ];
 
-export default [
+const requirements = [
   {
     id: "manifest.file", level: "mandatory", group: "manifest",
     title: "Le dossier du module est complet",
@@ -129,5 +128,5 @@ export default [
     },
   },
 ];
+export default requirements;
 
-void path; void texts;

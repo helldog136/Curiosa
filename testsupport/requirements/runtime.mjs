@@ -1,7 +1,7 @@
 // Exigences vérifiées EN FAISANT TOURNER le module (sondes) : sorties sûres, routes, outils MCP, tâches, données, vie privée, un module = une chose.
 import { findSrpViolations } from "../builtinChecks.mjs";
 import { fakeCtx } from "../fakeCtx.mjs";
-import { makeCtx, observe, argsFromSchema, HOSTILE } from "../probes.mjs";
+import { makeCtx, observe } from "../probes.mjs";
 import { stripComments, walkValue, whereOf } from "./util.mjs";
 
 const KNOWN_BLOCKS = ["markdown", "html", "banner", "links", "entries", "hero", "panel", "embed", "form", "table", "copy", "downloads", "gridEditor", "head", "heading", "swatches", "adminForm"];
@@ -66,7 +66,7 @@ function linkIssues(o) {
 
 const ok2xx = (s) => s >= 200 && s < 300;
 
-export default [
+const requirements = [
   {
     id: "html.escaped", level: "mandatory", group: "security",
     title: "Les textes venus de l'extérieur sont échappés dans les pages",
@@ -487,5 +487,5 @@ export default [
     },
   },
 ];
+export default requirements;
 
-void HOSTILE; void argsFromSchema;

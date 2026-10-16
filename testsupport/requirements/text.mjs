@@ -4,7 +4,7 @@ import path from "node:path";
 import { localeProblems, settingsProblems } from "../builtinChecks.mjs";
 import { observe, CANARY } from "../probes.mjs";
 import { CORE_DIR } from "../core.mjs";
-import { allSettings, missingLangs, stripComments, texts, walkValue, whereOf } from "./util.mjs";
+import { allSettings, missingLangs, stripComments, texts, whereOf } from "./util.mjs";
 
 const SAYS_OPTIONAL = /facultatif|optionnel|\boptional\b/i;
 /** Mots techniques interdits dans ce que lit une personne non technicienne (mode simple de l'administration). Réunit les listes des tests des modules. */
@@ -21,7 +21,7 @@ function visibleTexts(man) {
   return out;
 }
 
-export default [
+const requirements = [
   {
     id: "i18n.manifest", level: "mandatory", group: "i18n",
     title: "Les textes de module.json existent en français et en anglais",
@@ -235,5 +235,5 @@ export default [
     },
   },
 ];
+export default requirements;
 
-void walkValue;

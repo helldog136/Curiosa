@@ -55,6 +55,8 @@ export function fakeCtx(opts = {}) {
     calls.denied.push(permission);
     throw new Error(`permission « ${permission} » non déclarée dans module.json (permissions)`);
   };
+  // Un membre protégé par une permission : lisible (ou refusé), et remplaçable par un test (`ctx.api.store = autreStockage`) comme un champ ordinaire.
+  const guarded = (permission, make) => { let replaced; let made; return { enumerable: true, configurable: true, get: () => (replaced !== undefined ? replaced : need(permission, (made ??= make()))), set: (v) => { replaced = v; } }; };
   const migrationApi = !migration ? {} : {
     seedInstance: async (target, request) => {
       calls.seeds.push([target, request]);
@@ -106,9 +108,9 @@ export function fakeCtx(opts = {}) {
       entries: { list: async (o) => { calls.entries.push(o); return entries; } },
     }, {
       // Ces trois capacités demandent une permission : sans elle, le simple fait d'y toucher échoue (voir l'option `permissions`).
-      store: { enumerable: true, get: () => need("storage", store) },
-      mail: { enumerable: true, get: () => need("mail", { configured: async () => mailConfigured, send: async (m) => { calls.mail.push(m); return typeof mailResult === "function" ? mailResult(m) : mailResult; } }) },
-      topics: { enumerable: true, get: () => need("topics", { collect: async (topic, o) => {
+      store: guarded("storage", () => store),
+      mail: guarded("mail", () => ({ configured: async () => mailConfigured, send: async (m) => { calls.mail.push(m); return typeof mailResult === "function" ? mailResult(m) : mailResult; } })),
+      topics: guarded("topics", () => ({ collect: async (topic, o) => {
         calls.topics.push([topic, o]);
         if (o?.from !== undefined || o?.to !== undefined) {
           const ms = (v) => (v === undefined || v === null ? undefined : v instanceof Date ? v.getTime() : /^\d{4}-\d{2}-\d{2}([T ]\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?)?$/.test(String(v)) ? Date.parse(String(v)) : NaN);
@@ -118,7 +120,7 @@ export function fakeCtx(opts = {}) {
         const source = topics[topic] ?? [];
         const all = typeof source === "function" ? await source(o) : source;
         return o?.limit ? all.slice(0, o.limit) : all;
-      } }) },
+      } })),
     }),
   };
 }

@@ -12,8 +12,7 @@ import path from "node:path";
 import { test as nodeTest } from "node:test";
 import { AssertionError } from "node:assert";
 import { loadModuleDir, readModuleLight } from "./loader.mjs";
-import { GROUPS, LEVELS, REQUIREMENTS, docLink } from "./requirements/index.mjs";
-import { formatMatrix, formatText } from "./report.mjs";
+import { LEVELS, REQUIREMENTS, docLink } from "./requirements/index.mjs";
 
 export { fakeCtx } from "./fakeCtx.mjs";
 export { fakeFetch, withFakeFetch, blockNetwork, startLocalServer } from "./fakeNet.mjs";
@@ -85,7 +84,9 @@ export async function checkModule(dir, opts = {}) {
  *   registerConformanceTests(new URL("..", import.meta.url).pathname, { test });
  *
  * @param {string} dir dossier du module
- * @param {{ test?: Function, siblings?: string[], only?: string[], prefix?: string }} [opts]
+ * @param {{ test?: Function, siblings?: string[], only?: string[], prefix?: string, known?: Record<string, string> }} [opts]
+ *   `known` : { identifiant: raison } — exceptions EXPLIQUÉES et temporaires pour un défaut déjà connu : l'échec n'arrête pas le test (il s'affiche « à corriger »),
+ *   et le jour où l'exigence réussit, le test échoue pour demander de retirer l'exception (elle ne doit pas survivre à la correction).
  */
 export function registerConformanceTests(dir, opts = {}) {
   const test = opts.test ?? nodeTest;
@@ -97,7 +98,9 @@ export function registerConformanceTests(dir, opts = {}) {
     test(`${prefix} ${r.id} (${LEVELS[r.level]}) — ${r.title}`, async (t) => {
       const result = (await reportOnce()).results.find((x) => x.id === r.id);
       if (result.status === "na" || result.status === "skip") { t?.skip?.(result.note); return; }
-      if (result.status === "pass") return;
+      const reason = opts.known?.[r.id];
+      if (result.status === "pass") { if (reason) throw new AssertionError({ message: `${r.id} réussit maintenant : retirez l'exception connue (« ${reason} »)` }); return; }
+      if (reason) { t?.todo?.(reason); t?.diagnostic?.(`défaut connu : ${reason} — ${result.problems.join(" ; ")}`); return; }
       const lines = [...result.problems.map((p) => `• ${p}`), `Pourquoi : ${result.why}`, `Comment corriger : ${result.fix}`, `En savoir plus : ${result.doc}`].join("\n");
       if (result.level === "advice") { t?.diagnostic?.(`conseil non suivi — ${result.problems.join(" ; ")}`); return; }
       throw new AssertionError({ message: `${r.title}\n${lines}`, actual: result.problems, expected: [] });
