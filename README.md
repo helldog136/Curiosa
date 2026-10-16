@@ -279,6 +279,7 @@ C'est un module complet : une bannière en haut de chaque page, dont le texte se
 | chercher un champ, une clé, un type de bloc | [docs/MODULES.md](docs/MODULES.md) (référence exhaustive) |
 | lire un vrai module | [`examples/guestbook`](https://github.com/helldog136/curiosa-extras/tree/master/examples/guestbook), [`examples/announcement-banner`](https://github.com/helldog136/curiosa-extras/tree/master/examples/announcement-banner) |
 | comprendre comment le cœur et les modules se partagent le travail | [docs/PLATFORM.md](docs/PLATFORM.md) et [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
+| savoir si mon module est conforme (une commande, un rapport simple) | [docs/TESTSUPPORT.md](docs/TESTSUPPORT.md) : `npm run module:check -- <dossier>` |
 | être listé dans le Catalogue | [catalogue/README.md](catalogue/README.md) |
 
 Un assistant IA peut écrire un module à partir de ces documents : donnez-lui `docs/CREATE-A-MODULE.md` et la liste de ce que vous voulez.
@@ -291,6 +292,7 @@ Un assistant IA peut écrire un module à partir de ces documents : donnez-lui `
 | [docs/AGENT-INSTALL.md](docs/AGENT-INSTALL.md) | installation menée par un assistant IA |
 | [docs/CREATE-A-MODULE.md](docs/CREATE-A-MODULE.md) | créer un module, pas à pas |
 | [docs/MODULES.md](docs/MODULES.md) | référence complète des modules |
+| [docs/TESTSUPPORT.md](docs/TESTSUPPORT.md) | le kit de test des modules : les exigences une par une, la commande `module:check` |
 | [docs/PLATFORM.md](docs/PLATFORM.md), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | le cœur, ses services, les choix de conception |
 | [docs/BACKUP.md](docs/BACKUP.md) | sauvegarde chiffrée, lisible sans le framework |
 | [docs/BACKGROUND.md](docs/BACKGROUND.md) | décrire le fond de page |
