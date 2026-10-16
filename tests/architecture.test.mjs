@@ -30,7 +30,7 @@ test("les services du cœur sont génériques : chacun n'importe que ce qu'il a 
     // Le mécanisme MCP ne connaît ni les modules, ni le contenu, ni les instances.
     "src/core/services/mcp": ["@/core/db", "@/core/settings", "@/core/modules/types"],
     // Les sujets connaissent les modules (c'est leur objet) ; le sujet du cœur vient du moteur de contenu.
-    "src/core/services/topics.ts": ["@/core/content/topics", "@/core/instances", "@/core/settings", "@/core/modules/context", "@/core/modules/registry", "@/core/modules/types"],
+    "src/core/services/topics.ts": ["@/core/content/topics", "@/core/instances", "@/core/settings", "@/core/modules/budget", "@/core/modules/context", "@/core/modules/registry", "@/core/modules/types"],
   };
   for (const [target, allowed] of Object.entries(rules)) {
     const files = fs.statSync(target).isDirectory() ? code(target) : [target];

@@ -7,6 +7,23 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.1.26
+
+### Améliorations
+
+- **Une section qui ne répond pas ne bloque plus votre page d'accueil.** Si une partie de la page (un lecteur vidéo, un planning, un compteur…) met trop de temps, le site l'ignore au bout de 8 secondes et affiche tout le reste. Le journal du site dit laquelle.
+- **Le journal vous prévient avant que ça bloque.** Une section qui met plus de 3 secondes est signalée comme « lente », une seule fois, avec le nom du module concerné.
+- **Un module resté bloqué se remet en marche tout seul.** Après trois blocages de suite, le site recharge ce module (au plus une fois par heure). Vos réglages et vos données ne sont pas touchés.
+- **Un module en panne ne ralentit plus les autres.** Les boutons de l'en-tête, le flux RSS et les pieds de page interrogent chaque module en même temps, et un module bloqué est simplement laissé de côté.
+- **Les jaquettes de jeux ne peuvent plus figer une page.** Si le service de jaquettes ne répond pas, le site s'en passe au lieu d'attendre sans fin.
+- **Les images recadrées ne peuvent plus se bloquer entre elles.** Une image trop longue à préparer est abandonnée et l'image d'origine s'affiche.
+
+### Pour les développeurs
+
+- Borne de temps sur le code de module qui fabrique une page publique (`core/modules/budget.ts`) : 8 s pour une section, un emplacement, un filtre, une page, un overlay ; 6 s pour un service ou un sujet appelé pendant la page. Aucune limite pour l'admin, les tâches et les routes `/m/…`. Variable facultative `CURIOSA_SECTION_TIMEOUT_MS`, détails dans `docs/CREATE-A-MODULE.md` et `docs/PLATFORM.md`.
+- Une exception d'un module est journalisée comme avant ; un dépassement de délai ne l'est qu'une fois par épisode (nouveau : `stallTracker.ts`). Les emplacements et les fournisseurs de sujets sont maintenant interrogés en parallèle (l'ordre des résultats est inchangé).
+- Pour les services : un fournisseur qui ne répond pas dans le délai donne `{ ok: false, reason: "failed" }` / `error: "failed"`, sans journal de plus. Aucune migration.
+
 ## 0.1.25
 
 ### Nouveautés

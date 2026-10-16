@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { buildTheme, themeCss } from "@/core/color";
+import { boxed, STALLED } from "@/core/modules/budget";
 import { buildContext } from "@/core/modules/context";
 import { getActiveInstances } from "@/core/modules/registry";
 import { getSiteConfig, themeExtraOf } from "@/core/settings";
@@ -16,7 +17,11 @@ async function render(key: string, query: Record<string, string | undefined>) {
   const lang = query.lang && config.locales.includes(query.lang) ? query.lang : config.defaultLocale;
   const params = new URLSearchParams(Object.entries(query).flatMap(([k, v]) => (v === undefined ? [] : [[k, v]])));
   try {
-    return await active.mod.def.overlay(await buildContext(active.mod, active.instance, lang), { query: params });
+    const overlay = active.mod.def.overlay;
+    const ctx = await buildContext(active.mod, active.instance, lang);
+    // Un overlay qui ne répond pas dans le temps imparti n'est pas affiché (404) : la page ne reste pas ouverte indéfiniment (voir core/modules/budget.ts).
+    const result = await boxed({ kind: "overlay", moduleId: active.mod.manifest.id, instanceKey: key, name: "overlay" }, () => overlay(ctx, { query: params }));
+    return result === STALLED ? null : result;
   } catch (error) {
     console.error(`[modules] overlay ${key} failed:`, error);
     return null;

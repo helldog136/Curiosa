@@ -78,6 +78,29 @@ sont dans le service (`mcp/access.ts`, `mcp/server.ts`) : aucun fournisseur ne p
 
 `ctx.api.services.available(service)`, `.call(service, method, args)` et `.callAll(service, method, args)` (module `requires` le service, un autre l'`offers`) : le cœur ne connaît que des **noms** de services. `call` s'adresse au maître (service classique) ou à la première instance (service `each`) ; `callAll` interroge toutes les instances d'un service `each` (`offers: [{ service, each: true }]`, une réponse par instance, une panne n'en gêne pas une autre). Voir [MODULES.md › Dépendances](MODULES.md).
 
+## Le temps imparti au code des modules (une page ne reste jamais bloquée)
+
+Règle du cœur : **une section ou un module qui se bloque ne peut jamais bloquer toute une page publique, et le journal nomme le fautif.** Tout le code de module qui fabrique un morceau de page publique passe par `core/modules/budget.ts` :
+
+| Ce que le module fabrique | Délai | Si le délai est dépassé |
+|---|---|---|
+| une **section d'accueil**, un **emplacement** (`slots`), le **filtre** de texte, la **page** du module, la **pastille de nouveauté**, un **overlay** | **8 s** | l'élément est omis (page de module et overlay : 404 sobre) ; la page se termine normalement |
+| un **service** d'un autre module (`ctx.api.services.call` / `callAll`) ou un **sujet** collecté (`ctx.api.topics.collect`), appelé PENDANT une page publique | **6 s** (un quart de moins que la section qui le contient) | l'appel rend `{ ok: false, reason: "failed" }` (`callAll` : `error: "failed"`) ; la section peut afficher son repli. C'est le **fournisseur** qui est nommé dans le journal |
+| les boutons de l'en-tête (`social.link`), le flux RSS (`feed.item`) : le cœur collecte lui-même | **8 s** par fournisseur | ce fournisseur est ignoré, les autres comptent |
+
+**Ce qui n'est PAS limité** : l'administration, les tâches planifiées (5 minutes), les routes `/m/<instance>/…`, MCP. Un service appelé hors d'une page publique peut durer.
+**Ce qui n'est pas masqué** : une exception levée par un module est journalisée comme avant (`[modules] … failed on section …`), le délai n'y change rien.
+
+Le journal (`journalctl`) : **une ligne par épisode**, jamais une par visite.
+- `[modules] La section « Nouveautés » du module exemple (instance exemple) n'a pas répondu en 8 s ; elle est ignorée pour cette page.` (rappel au plus toutes les heures si cela dure) ;
+- `… est lente : 3,4 s pour répondre (seuil : 3 s) ; passé 8 s, elle est ignorée pour cette page.` (au plus une fois par heure et par élément : le coupable est nommé AVANT qu'il ne bloque) ;
+- `… répond de nouveau.` à la fin de l'épisode.
+
+Tant qu'un élément est bloqué, les visites suivantes ne l'attendent plus (il est omis aussitôt) ; une seule visite à la fois le retente, après une pause de 16 s. Sans cela chaque visiteur attendrait 8 s et chaque visite laisserait une attente de plus en mémoire.
+**Réinitialisation automatique** : un même élément qui dépasse le délai **3 épisodes de suite** (une tentative qui échoue = un épisode) fait **recharger le code du module** (même mécanisme que « Réinstaller » : `forgetModule` + `bumpImportStamp`), au plus **une fois par heure et par module**. Instances, réglages, données et entrées ne sont pas touchés ; seul l'état gardé en mémoire par le module (caches, promesses « en cours ») repart de zéro. Ligne : `[modules] Le module X est resté sans réponse 3 fois de suite : il est réinitialisé (…)`.
+
+Pour les développeurs : variable d'environnement facultative `CURIOSA_SECTION_TIMEOUT_MS` (100 à 120000, 8000 par défaut ; le seuil « lent », l'appel interne et la pause en découlent). La créatrice n'a rien à régler. Fichiers : `core/deadline.ts` (course contre l'horloge), `core/modules/budget.ts` (la borne, le périmètre « page publique »), `stallTracker.ts` (une ligne par épisode, pause, réinitialisation ; pure, testée avec une horloge factice), `stallMessages.ts` (les phrases).
+
 ## Ce que le cœur lit pour les modules (hors services)
 
 `ctx.api.site()`, `ctx.api.brand()`, `ctx.api.instances.list()`, `ctx.api.entries.list()` : lecture seule, pour que les modules
