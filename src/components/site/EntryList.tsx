@@ -4,6 +4,7 @@ import { makeTranslator } from "@/core/i18n/dictionary";
 import { safeHref } from "@/core/url";
 import { CopyCode } from "./CopyCode";
 import { EntryIcon } from "./EntryIcon";
+import { CoverImage } from "./CoverImage";
 
 type Props = {
   entries: EntryView[];
@@ -82,10 +83,7 @@ export function EntryList({ entries, collection, locale, defaultLocale }: Props)
             lang={e.locale}
             data-card="" className={`flex flex-col overflow-hidden rounded-xl border border-line bg-surface ${e.expired ? "opacity-60" : ""}`}
           >
-            {e.cover && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={e.cover} alt="" loading="lazy" className="aspect-video w-full object-cover" />
-            )}
+            {e.cover && <CoverImage src={e.cover} variant="card" />}
             <div className="flex flex-1 flex-col gap-2 p-5">
               <h3 className="flex items-center gap-2 text-lg font-semibold">
                 <EntryIcon icon={e.icon} />

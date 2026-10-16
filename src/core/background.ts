@@ -16,6 +16,7 @@
 import { GLOW_BOUNDS, normalizeTuning, spotGradients, type GlowTuning } from "./glow";
 import type { Theme } from "./color";
 import { sanitizeSvg } from "./svg";
+import { UPLOADED_RASTER_SOURCE } from "./imageCrop";
 
 export const MAX_LAYERS = 6;
 export const MAX_JSON_BYTES = 8_000;
@@ -35,7 +36,7 @@ export type Layer =
 const TOKENS = ["accent", "bg", "fg", "muted", "surface", "line", "accent2"] as const;
 const SIDES: Side[] = ["full", "left", "right", "top", "bottom"];
 const POSITIONS = ["center", "top", "bottom", "left", "right", "top left", "top right", "bottom left", "bottom right"];
-const IMAGE_RE = /^(\/uploads\/[0-9a-f-]{36}\.(png|jpg|webp|gif)|https:\/\/[^\s"'()\\<>]{1,300})$/;
+const IMAGE_RE = new RegExp(`^(${UPLOADED_RASTER_SOURCE}|https://[^\\s"'()\\\\<>]{1,300})$`);
 
 export const isBackgroundImage = (v: unknown): v is string => typeof v === "string" && IMAGE_RE.test(v);
 

@@ -5,6 +5,7 @@ import { pickName } from "@/core/instances";
 import { getActiveInstances } from "@/core/modules/registry";
 import type { TopicField } from "@/core/modules/types";
 import { collectForCore } from "@/core/services/topics";
+import { derivedMime } from "@/core/imageCrop";
 import { withLocale } from "@/core/links";
 import { getSiteConfig } from "@/core/settings";
 import { isSafeExternalUrl } from "@/core/url";
@@ -52,7 +53,8 @@ export function renderRss(feed: Feed): string {
   const items = feed.items
     .map((i) => {
       const categories = i.topics?.filter((t) => !t.startsWith("@")).map((t) => `<category>${escapeXml(t)}</category>`).join("") ?? "";
-      const type = i.image ? IMAGE_TYPES[(i.image.split(/[?#]/)[0]!.split(".").pop() ?? "").toLowerCase()] : undefined;
+      // Image cadrée : le serveur la fournit en WebP quelle que soit l'extension de l'original.
+      const type = i.image ? derivedMime(i.image) ?? IMAGE_TYPES[(i.image.split(/[?#]/)[0]!.split(".").pop() ?? "").toLowerCase()] : undefined;
       return (
         `<item><title>${escapeXml(i.title)}</title><link>${escapeXml(i.link)}</link><guid isPermaLink="false">${escapeXml(i.id)}</guid>` +
         (i.publishedAt ? `<pubDate>${i.publishedAt.toUTCString()}</pubDate>` : "") +

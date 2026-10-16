@@ -1,4 +1,5 @@
 import type { Block } from "./blocks";
+import { UPLOADED_RASTER_SOURCE } from "./imageCrop";
 
 /**
  * BLOCS DE PAGE D'ACCUEIL (fonction du cœur). Un bloc est un morceau de page fabriqué directement dans Page d'accueil → Ajouter un bloc, sans module :
@@ -31,7 +32,7 @@ export type BlockDef = {
 
 export const BG_POSITIONS = ["center", "top", "bottom", "left", "right", "top-left", "top-right", "bottom-left", "bottom-right"] as const;
 const MAX_ITEMS = 24;
-const IMAGE_RE = /^(\/uploads\/[0-9a-f-]{36}\.(png|jpe?g|webp|gif)|https:\/\/[^\s"'()<>\\]+)$/;
+const IMAGE_RE = new RegExp(`^(${UPLOADED_RASTER_SOURCE}|https://[^\\s"'()<>\\\\]+)$`);
 const VIDEO_RE = /^\/uploads\/[0-9a-f-]{36}\.(mp4|webm)$/;
 const LINK_RE = /^(\/(?!\/)|https?:\/\/|mailto:)/;
 

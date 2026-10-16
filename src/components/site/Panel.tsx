@@ -1,5 +1,6 @@
 import type { Block } from "@/core/blocks";
 import { isExternalHref } from "@/core/url";
+import { UPLOADED_RASTER_SOURCE } from "@/core/imageCrop";
 import { safeHref } from "@/core/url";
 import { Markdown } from "./Markdown";
 import { PanelTabs } from "./PanelTabs";
@@ -9,7 +10,7 @@ type PanelBlock = Extract<Block, { type: "panel" }>;
 type VideoLabels = { play: string; pause: string; soundOn: string; soundOff: string };
 
 /** Une image de bloc : un fichier du site, ou une adresse https ; le reste est ignoré. */
-const IMAGE_RE = /^(\/uploads\/[0-9a-f-]{36}\.(png|jpe?g|webp|gif)|https:\/\/[^\s"'()<>\\]+)$/;
+const IMAGE_RE = new RegExp(`^(${UPLOADED_RASTER_SOURCE}|https://[^\\s"'()<>\\\\]+)$`);
 export const safeImage = (v: unknown): string | undefined => (typeof v === "string" && IMAGE_RE.test(v) ? v : undefined);
 const POSITIONS: Record<string, string> = { center: "center", left: "left center", right: "right center", top: "center top", bottom: "center bottom", "top-left": "left top", "top-right": "right top", "bottom-left": "left bottom", "bottom-right": "right bottom" };
 const SIZES: Record<string, string> = { cover: "cover", contain: "contain", auto: "auto" };

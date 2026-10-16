@@ -3,11 +3,11 @@
 /** @type {import("next").NextConfig} */
 const nextConfig = {
   poweredByHeader: false,
-  // Aucune image n'est optimisée par Next (le site n'utilise pas next/image) : pas besoin de `sharp` (≈ 46 Mo) dans l'installation.
+  // Next n'optimise aucune image (le site n'utilise pas next/image). `sharp` est pourtant présent : c'est le recadrage des images (core/imageDerive.ts) qui l'emploie.
   images: { unoptimized: true },
   // Les modules installés vivent dans data/modules et sont chargés à l'exécution :
   // ils ne doivent jamais être analysés ni embarqués par le bundler.
-  serverExternalPackages: ["@prisma/client", "bcryptjs"],
+  serverExternalPackages: ["@prisma/client", "bcryptjs", "sharp"],
   async headers() {
     return [
       {
