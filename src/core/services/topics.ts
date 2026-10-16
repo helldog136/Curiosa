@@ -1,6 +1,7 @@
 import { coreEntryAdapter } from "@/core/content/topics";
 import { pickName } from "@/core/instances";
 import { getSetting, getSiteConfig, setSetting } from "@/core/settings";
+import { boxedInner, STALLED } from "@/core/modules/budget";
 import { buildContext } from "@/core/modules/context";
 import { getActiveInstances, type ActiveInstance } from "@/core/modules/registry";
 import type { ConsumeDecl, TopicField, TopicItem } from "@/core/modules/types";
@@ -82,13 +83,19 @@ export function conform(item: Record<string, unknown>, schema: TopicField[]): Re
   return out;
 }
 
-async function fromProvider(provider: ActiveInstance, topic: string, locale: string, limit: number, tags: string[], window: TopicWindow = {}): Promise<Record<string, unknown>[]> {
+/**
+ * Les éléments d'UN fournisseur. Un fournisseur de module a un temps imparti (voir budget.ts) quand la collecte sert une page publique : sans réponse il est
+ * ignoré (liste vide) et le journal le nomme une fois. `always` : l'appelant est lui-même la page publique (en-tête, flux), pas une section de module.
+ */
+async function fromProvider(provider: ActiveInstance, topic: string, locale: string, limit: number, tags: string[], window: TopicWindow = {}, always = false): Promise<Record<string, unknown>[]> {
   const query = { locale, limit, tags, ...window };   // `from` / `to` n'existent que si le consommateur les a demandés
   const adapter = adapterOf(topic);
   if (adapter) return adapter.fetch(provider, query);
   const { instance, mod } = provider;
-  const items = await mod.def.exports![topic]!(await buildContext(mod, instance, locale), query);
-  return Array.isArray(items) ? items : [];
+  const ctx = await buildContext(mod, instance, locale);
+  const exported = mod.def.exports![topic]!;
+  const items = await boxedInner({ kind: "topic", moduleId: mod.manifest.id, instanceKey: instance.key, name: topic }, () => exported(ctx, query), { always });
+  return items !== STALLED && Array.isArray(items) ? items : [];
 }
 
 /** Collecte, pour une instance consommatrice, les éléments de ses sources, validés selon son format. */
@@ -106,20 +113,26 @@ export async function collect(
   const sources = await getSources(consumer.instance.id, topic);
   const config = await getSiteConfig();
 
+  // Tous les fournisseurs en même temps (l'ordre des éléments reste celui des fournisseurs) : un fournisseur lent ne retarde pas les suivants, et
+  // chacun a son propre temps imparti (voir fromProvider) au lieu de se partager celui de la page.
+  const providers = (await providersOf(topic)).filter((p) => !sources.instances || sources.instances.includes(p.instance.key));
+  const lists = await Promise.all(providers.map((provider) => itemsOf(provider, topic, schema, opts.locale, limit, sources.tags, config.defaultLocale, window, false)));
+  return lists.flat().slice(0, limit);
+}
+
+/** Les éléments valides d'UN fournisseur, déjà étiquetés de leur source. Une erreur du fournisseur est journalisée et donne une liste vide : elle n'empêche pas la collecte. */
+async function itemsOf(provider: ActiveInstance, topic: string, schema: TopicField[], locale: string, limit: number, tags: string[], defaultLocale: string, window: TopicWindow, always: boolean): Promise<TopicItem[]> {
   const out: TopicItem[] = [];
-  for (const provider of await providersOf(topic)) {
-    if (sources.instances && !sources.instances.includes(provider.instance.key)) continue;
-    try {
-      for (const raw of await fromProvider(provider, topic, opts.locale, limit, sources.tags, window)) {
-        const item = conform(raw, schema);
-        if (!item) continue;
-        out.push({ ...item, source: { instance: provider.instance.key, module: provider.mod.manifest.id, name: pickName(provider.instance, opts.locale, config.defaultLocale) } });
-      }
-    } catch (error) {
-      console.error(`[modules] provider ${provider.instance.key} failed for topic ${topic}:`, error);
+  try {
+    for (const raw of await fromProvider(provider, topic, locale, limit, tags, window, always)) {
+      const item = conform(raw, schema);
+      if (!item) continue;
+      out.push({ ...item, source: { instance: provider.instance.key, module: provider.mod.manifest.id, name: pickName(provider.instance, locale, defaultLocale) } });
     }
+  } catch (error) {
+    console.error(`[modules] provider ${provider.instance.key} failed for topic ${topic}:`, error);
   }
-  return out.slice(0, limit);
+  return out;
 }
 
 
@@ -147,17 +160,6 @@ export async function collectForCore(
   const limit = Math.min(200, Math.max(1, opts.limit ?? 50));
   const config = await getSiteConfig();
   const providers = (await providersOf(topic)).filter((p) => !opts.instance || p.instance.key === opts.instance).sort((a, b) => a.instance.key.localeCompare(b.instance.key));
-  const out: TopicItem[] = [];
-  for (const provider of providers) {
-    try {
-      for (const raw of await fromProvider(provider, topic, opts.locale, limit, [])) {
-        const item = conform(raw, schema);
-        if (!item) continue;
-        out.push({ ...item, source: { instance: provider.instance.key, module: provider.mod.manifest.id, name: pickName(provider.instance, opts.locale, config.defaultLocale) } });
-      }
-    } catch (error) {
-      console.error(`[modules] provider ${provider.instance.key} failed for topic ${topic}:`, error);
-    }
-  }
-  return out;
+  const lists = await Promise.all(providers.map((provider) => itemsOf(provider, topic, schema, opts.locale, limit, [], config.defaultLocale, {}, true)));
+  return lists.flat();
 }

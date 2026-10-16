@@ -1,4 +1,5 @@
 import { prisma } from "@/core/db";
+import { TIMED_OUT, withDeadline } from "@/core/deadline";
 import { deleteSetting, getSetting, setSetting } from "@/core/settings";
 
 /**
@@ -31,6 +32,14 @@ const NONE_TTL = 3_600_000;
 const MAX_CACHE = 500;
 const MAX_PARALLEL = 2;
 const MAX_TITLE = 100;
+/**
+ * Bornes de TEMPS, quoi qu'il arrive (une attente qui ne se termine jamais, ici, figerait chaque page qui affiche une jaquette) :
+ * la requête entière (réponse et lecture du corps) ; l'attente d'une des 2 places ; la demande entière d'une jaquette, base de données comprise.
+ */
+const LIMITS = { requestMs: TIMEOUT_MS + 2_000, queueMs: 10_000, coverMs: 15_000 };
+let limits = { ...LIMITS };
+/** Pour les tests : raccourcit les bornes. Sans argument, remet les vraies. */
+export function setRawgLimits(l?: Partial<typeof LIMITS>): void { limits = { ...LIMITS, ...l }; }
 /** On ne réécrit l'état de la clé que s'il change, ou s'il date de plus de ça. */
 const STATE_REFRESH = 10 * 60_000;
 
@@ -129,8 +138,15 @@ export function clearRawgCache(): void { cache.clear(); inflight.clear(); }
 let running = 0;
 const waiting: (() => void)[] = [];
 async function limited<T>(job: () => Promise<T>): Promise<T> {
-  if (running >= MAX_PARALLEL) await new Promise<void>((resolve) => waiting.push(resolve)); // la place nous est passée telle quelle
-  else running++;
+  if (running >= MAX_PARALLEL) {
+    let mine!: () => void;
+    const got = await withDeadline(() => new Promise<void>((resolve) => { mine = resolve; waiting.push(resolve); }), limits.queueMs); // la place nous est passée telle quelle
+    if (got === TIMED_OUT) {
+      const at = waiting.indexOf(mine);
+      if (at >= 0) { waiting.splice(at, 1); throw new Error("rawg: no free slot in time"); }   // personne ne nous a passé de place : on renonce
+      // sinon la place venait de nous être passée : on la prend
+    }
+  } else running++;
   try { return await job(); } finally {
     const next = waiting.shift();
     if (next) next(); else running--;
@@ -153,10 +169,18 @@ type Outcome = { kind: "found"; url: string } | { kind: "none" } | { kind: "refu
 async function query(key: string, search: string): Promise<Outcome> {
   const url = `${ENDPOINT}?${new URLSearchParams({ key, search, page_size: "1", search_precise: "true" })}`;
   try {
-    const res = await limited(() => doFetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS), headers: { accept: "application/json" } }));
-    if (res.status === 401 || res.status === 403) return { kind: "refused" };
-    if (!res.ok) return { kind: "unreachable" };
-    const body = (await res.json()) as { results?: { background_image?: unknown }[] };
+    // La place est gardée pendant la requête ET la lecture de la réponse, et la requête entière a une borne dure même si `fetch` ignorait son signal d'abandon.
+    const got = await limited(async () => {
+      const done = await withDeadline(async () => {
+        const res = await doFetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS), headers: { accept: "application/json" } });
+        return { status: res.status, ok: res.ok, body: res.status === 401 || res.status === 403 || !res.ok ? null : ((await res.json()) as { results?: { background_image?: unknown }[] }) };
+      }, limits.requestMs);
+      if (done === TIMED_OUT) throw new Error("rawg: request timed out");
+      return done;
+    });
+    if (got.status === 401 || got.status === 403) return { kind: "refused" };
+    if (!got.ok) return { kind: "unreachable" };
+    const body = got.body;
     const first = Array.isArray(body?.results) ? body.results[0] : undefined;
     const image = httpsUrl(first?.background_image);
     return image ? { kind: "found", url: image } : { kind: "none" };
@@ -179,7 +203,7 @@ export async function rawgCover(title: string): Promise<RawgCover> {
     const hit = cache.get(id);
     if (hit && hit.until > Date.now()) return { ...hit.value };
     const pending = inflight.get(id);
-    if (pending) return { ...(await pending) };
+    if (pending) return await shared(pending);
 
     const job = (async (): Promise<RawgCover> => {
       const outcome = await query(key, search);
@@ -194,10 +218,17 @@ export async function rawgCover(title: string): Promise<RawgCover> {
       return { status: outcome.kind, url: null };
     })();
     inflight.set(id, job);
-    try { return { ...(await job) }; } finally { inflight.delete(id); }
+    // Même si `job` ne se terminait jamais (base de données figée…), la demande rend la main à temps ET l'entrée « en cours » est retirée : la demande suivante repart de zéro.
+    try { return await shared(job); } finally { if (inflight.get(id) === job) inflight.delete(id); }
   } catch {
     return { status: "unreachable", url: null };
   }
+}
+
+/** Attend une demande en cours (la sienne ou celle d'un autre), au plus `coverMs`. */
+async function shared(job: Promise<RawgCover>): Promise<RawgCover> {
+  const done = await withDeadline(() => job, limits.coverMs);
+  return done === TIMED_OUT ? { status: "unreachable", url: null } : { ...done };
 }
 
 /** Bouton « Tester la clé » : interroge RAWG avec la clé enregistrée et mémorise le résultat. Ne lève jamais. */

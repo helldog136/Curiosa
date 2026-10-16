@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { DATA_DIR, UPLOADS_DIR } from "@/core/config";
+import { TIMED_OUT, withDeadline } from "@/core/deadline";
 import { cropGeometry, type Crop } from "@/core/imageCrop";
 import { MAX_UPLOAD_BYTES, sniffImage } from "@/core/services/uploads";
 
@@ -19,6 +20,14 @@ export const CROP_CACHE_DIR = path.join(DATA_DIR, "cache", "crops");
 export const MAX_INPUT_PIXELS = 40_000_000;
 const MAX_PARALLEL = 2;
 const MAX_WAITING = 24;
+/** Une fabrication qui dépasse ce temps est abandonnée : sa place est rendue, sinon quelques images bloquées suffiraient à en bloquer tout le site (« occupé »). */
+let jobMs = 45_000;
+/** Pour les tests. */
+export function setDeriveTimeout(ms?: number): void { jobMs = ms ?? 45_000; }
+const bounded = async (work: () => Promise<DeriveResult>): Promise<DeriveResult> => {
+  const done = await withDeadline(work, jobMs);
+  return done === TIMED_OUT ? { ok: false, reason: "failed" } : done;
+};
 const CACHE_MAX_FILES = 3000;
 const CACHE_MAX_BYTES = 300 * 1024 * 1024;
 
@@ -94,7 +103,7 @@ export async function deriveImage(name: string, crop: Crop, share = false): Prom
   const sharp = await loadEngine();
   if (!sharp) return { ok: false, reason: "engine" };
 
-  const made = await slot(async (): Promise<DeriveResult> => {
+  const made = await slot(() => bounded(async (): Promise<DeriveResult> => {
     try {
       const input = () => sharp(buf, { limitInputPixels: MAX_INPUT_PIXELS, failOn: "error", animated: false });
       // Lecture de l'en-tête seulement (aucun décodage) : la limite de pixels est vérifiée juste après, pour répondre « trop grande » plutôt qu'« échec ».
@@ -128,6 +137,6 @@ export async function deriveImage(name: string, crop: Crop, share = false): Prom
     } catch {
       return { ok: false, reason: "failed" };
     }
-  });
+  }));
   return made === "busy" ? { ok: false, reason: "busy" } : made;
 }

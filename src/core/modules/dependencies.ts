@@ -1,5 +1,6 @@
 import { prisma } from "../db";
 import { normalizeNeeds, offerIsEach, offerVersionOf, satisfiesVersion } from "./serviceVersions";
+import { boxedInner, isStalled, ModuleStalled, STALLED } from "./budget";
 import { buildContext } from "./context";
 import { pickName } from "../instances";
 import { deleteSetting, getSetting, setSetting } from "../settings";
@@ -167,7 +168,19 @@ async function providersFor(consumer: Pick<ActiveInstance, "mod">, service: stri
 }
 
 const hasMethod = (p: ActiveInstance, service: string, method: string) => typeof p.mod.def.services?.[service]?.[method] === "function";
-const runOn = async (p: ActiveInstance, service: string, method: string, args: unknown, locale?: string) => p.mod.def.services?.[service]?.[method]?.(await buildContext(p.mod, p.instance, locale), args);
+/**
+ * Exécute la méthode d'un service chez un fournisseur. Pour une page publique, le fournisseur a un temps imparti (voir budget.ts) : sans réponse, `ModuleStalled`
+ * est levée (le journal a déjà nommé le fournisseur une fois ; les appelants la traitent comme un échec, sans rien écrire de plus).
+ */
+const runOn = async (p: ActiveInstance, service: string, method: string, args: unknown, locale?: string) => {
+  const fn = p.mod.def.services?.[service]?.[method];
+  if (!fn) return undefined;
+  const ctx = await buildContext(p.mod, p.instance, locale);
+  const unit = { kind: "service" as const, moduleId: p.mod.manifest.id, instanceKey: p.instance.key, name: `${service}.${method}` };
+  const value = await boxedInner(unit, () => fn(ctx, args));
+  if (value === STALLED) throw new ModuleStalled(unit);
+  return value;
+};
 
 /**
  * Appel d'un service au nom d'une instance consommatrice. Service classique : le maître répond, les répliques reçoivent aussi les écritures.
@@ -185,7 +198,7 @@ async function dispatch(consumer: Pick<ActiveInstance, "mod" | "instance">, serv
   try {
     value = await runOn(master, service, method, args, locale);
   } catch (error) {
-    console.error(`[modules] service ${service}.${method} failed:`, (error as Error)?.message);
+    if (!isStalled(error)) console.error(`[modules] service ${service}.${method} failed:`, (error as Error)?.message);
     return { outcome: { ok: false, reason: "failed" }, master };
   }
   // Répliques : seulement pour les méthodes qui écrivent (celles que le fournisseur n'a pas déclarées en lecture seule), jamais bloquant.
@@ -193,7 +206,7 @@ async function dispatch(consumer: Pick<ActiveInstance, "mod" | "instance">, serv
   if (!readOnly.has(method)) {
     await Promise.allSettled(replicas.map(async (r) => {
       if (!hasMethod(r, service, method)) return;
-      try { await runOn(r, service, method, args, locale); } catch (error) { console.error(`[modules] replica ${r.instance.key} of ${service}.${method} failed:`, (error as Error)?.message); }
+      try { await runOn(r, service, method, args, locale); } catch (error) { if (!isStalled(error)) console.error(`[modules] replica ${r.instance.key} of ${service}.${method} failed:`, (error as Error)?.message); }
     }));
   }
   return { outcome: { ok: true, value }, master };
@@ -225,7 +238,7 @@ export async function callServiceAll(consumer: Pick<ActiveInstance, "mod" | "ins
     try {
       return { ...label(p), ok: true, value: await runOn(p, service, method, args, locale) };
     } catch (error) {
-      console.error(`[modules] service ${service}.${method} failed on ${p.instance.key}:`, (error as Error)?.message);
+      if (!isStalled(error)) console.error(`[modules] service ${service}.${method} failed on ${p.instance.key}:`, (error as Error)?.message);
       return { ...label(p), ok: false, error: "failed" };
     }
   }));

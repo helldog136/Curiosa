@@ -459,6 +459,18 @@ export default { filters: { entryBody: (body, ctx) => body.replaceAll(":wave:", 
 Permission : `filters`. Le filtre s'applique en chaîne avec ceux des autres modules. **Lecture du site** : `ctx.api.site()` (nom, accroche, logo), `ctx.api.brand()` (identité visuelle complète),
 `ctx.api.instances.list()`, `ctx.api.entries.list()` (entrées publiées d'un module à contenu), `ctx.api.siteUrl`, et `ctx.api.qr(texte)` (QR code en SVG) et `ctx.api.png({ width, height, tree })` (image PNG à partir d'une arborescence de boîtes : voir la route `image` du module *planning*), `ctx.api.seo.jsonLd(données)` (données structurées pour `layout.head`, voir la section suivante).
 
+### Le temps que le site vous laisse (8 secondes)
+
+Le site refuse qu'un module bloque une page entière. Quand votre code fabrique un morceau de page publique, il a **8 secondes** : une **section**, un **emplacement**, un **filtre**, votre **page**, la pastille de nouveauté, un **overlay**. Passé ce délai, votre morceau est **omis** (votre page : 404 sobre) et le journal dit, une fois : « La section « … » du module … (instance …) n'a pas répondu en 8 s ; elle est ignorée pour cette page. » Dès **3 secondes**, il écrit aussi « est lente », pour que vous soyez prévenu avant. Un morceau qui échoue 3 fois de suite fait **recharger votre module** (une fois par heure au plus ; vos données ne bougent pas).
+
+Pour ne pas être ignoré :
+- **Bornez chaque attente.** Un `fetch` s'écrit `fetch(url, { signal: AbortSignal.timeout(5000) })`, jamais sans. Lisez le corps (`res.json()`) sous le même signal.
+- **Ne partagez jamais une promesse sans la nettoyer.** Si vous gardez une demande « en cours » dans une `Map` pour que deux visiteurs la partagent, retirez-la dans un `finally` ET donnez-lui un délai : une entrée dont la promesse ne se termine jamais bloque tous les visiteurs suivants jusqu'au redémarrage.
+- **Pas de boucle d'appels en série sans plafond** : 15 appels de 5 s l'un après l'autre font 75 s. Faites-les en parallèle, mettez le résultat en cache, ou limitez leur nombre.
+- **Les appels de service et de sujet** (`ctx.api.services.call`, `callAll`, `ctx.api.topics.collect`) faits pendant la page ont **6 secondes** : au-delà, vous recevez `{ ok: false, reason: "failed" }` (ou `error: "failed"` dans `callAll`). Gérez ce cas en affichant un repli (ou rien), comme pour `unavailable`.
+- Les tâches planifiées, les routes `/m/…` et l'administration ne sont pas concernées par ce délai.
+- Pour essayer en local avec un délai plus court : `CURIOSA_SECTION_TIMEOUT_MS=1000`.
+
 ### Données structurées (JSON-LD) : être compris par les moteurs et les IA
 
 Un module qui publie quelque chose de précis (un article, un événement, une vidéo…) peut le décrire aux moteurs de recherche et aux assistants IA avec des **données structurées** schema.org. Le cœur en met déjà sur chaque page (le site, son éditeur, ses profils, le fil d'Ariane) ; vous ajoutez les vôtres par l'emplacement `layout.head`, avec `ctx.api.seo.jsonLd(…)` :
