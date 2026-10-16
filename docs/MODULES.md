@@ -1,6 +1,7 @@
 # Référence des modules
 
 > **Première fois ?** Lisez d'abord le tutoriel pas à pas : [CREATE-A-MODULE.md](CREATE-A-MODULE.md).
+> Pour savoir si votre module respecte tout cela, lancez `npm run module:check -- <dossier>` : le kit de test du cœur ([TESTSUPPORT.md](TESTSUPPORT.md)) vérifie les exigences une par une, en langage simple.
 > Cette page en est la **référence exhaustive** : chaque champ du manifeste, chaque clé du code, chaque bloc, chaque
 > service. L'exemple complet et fonctionnel, qui utilise toutes les capacités, est
 > `examples/guestbook` (`curiosa-extras/examples/guestbook`) (un livre d'or modéré) ; le plus petit module utile est

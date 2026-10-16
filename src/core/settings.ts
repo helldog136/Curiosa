@@ -100,8 +100,10 @@ export type SiteConfig = {
   bg: { preset: BackgroundPreset; custom: string; image: string | null; svg: { markup: string; fit: "cover" | "contain" | "tile"; align: "left" | "center" | "right"; tile: number } };
   /** Compter les visites, anonymement (voir core/stats.ts). */
   statsEnabled: boolean;
-  /** Proposer aux visiteurs le bouton « Me prévenir des nouveautés » (pastilles de nouveautés, avec leur accord : voir core/visit.ts). */
+  /** Proposer aux visiteurs le bandeau de cookies « Accepter les cookies » (pastilles de nouveautés, avec leur accord : voir core/visit.ts et core/cookieTray.ts). */
   newsToggle: boolean;
+  /** Montrer l'icône du flux RSS dans le pied de page (par défaut oui ; elle n'apparaît de toute façon que si le site a de quoi alimenter un flux : voir core/feeds.ts). */
+  feedLink: boolean;
   nav: NavItem[];
   /** Mise en page de l'en-tête et ses éléments facultatifs (voir core/header.ts). */
   header: HeaderConfig;
@@ -159,6 +161,7 @@ export const getSiteConfig = cache(async (locale?: string): Promise<SiteConfig> 
     },
     statsEnabled: (await getSetting<boolean>("stats.enabled")) !== false,
     newsToggle: (await getSetting<boolean>("news.toggle")) === true,
+    feedLink: (await getSetting<boolean>("feed.showLink")) !== false,
     nav: (await getSetting<NavItem[]>("nav.custom")) ?? [],
     header: {
       layout: isHeaderLayout(all["header.layout"]?.[""]) ? (all["header.layout"]![""] as HeaderLayout) : "classic",

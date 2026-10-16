@@ -229,3 +229,133 @@ test("rubriques : un flux filtré rappelle ses rubriques ; rubriques toutes inco
   assert.equal((await F.buildFeed({ locale: "en", topics: [] })).items.length, 1);
   assert.equal((await F.buildFeed({ locale: "en", instance: "actus", topics: ["promo"] })).items.length, 1);
 });
+
+/* ───────────── Contenu exposé : seul le public sort ───────────── */
+
+test("flux : brouillon, publication planifiée dans le futur et entrée expirée n'apparaissent jamais", async () => {
+  const a = await blog("Actus");
+  await publish(a.id, "Public", "2026-01-01");
+  await createEntry(db.prisma, { instanceId: a.id, locale: "en", title: "Brouillon" });
+  await publish(a.id, "Planifié", "2999-01-01");
+  await publish(a.id, "Périmé", "2026-01-02", { expiresAt: new Date("2026-01-03") });
+  const items = await F.collectFeedItems({ locale: "en" });
+  assert.deepEqual(items.map((i) => i.title), ["Public"]);
+  // Même avec une horloge avancée dans le futur, le « planifié » ne devient public que lorsque la base le dit publié ET daté : la requête filtre déjà.
+  const xml = F.renderRss(await F.buildFeed({ locale: "en" }));
+  assert.ok(!xml.includes("Brouillon") && !xml.includes("Planifié") && !xml.includes("Périmé"));
+});
+
+test("flux : la limite s'applique APRÈS le tri par date, même si l'instance est triée autrement (du plus ancien au plus récent)", async () => {
+  const a = await blog("Actus");
+  await setSetting(`instance.${a.id}.__sort`, "oldest"); // l'instance affiche du plus ancien au plus récent : le flux, non
+  for (let i = 0; i < 6; i++) await publish(a.id, `Z${i}`, `2026-01-0${i + 1}`);
+  await publish(a.id, "A-ancien", "2025-01-01");
+  const items = await F.collectFeedItems({ locale: "en", limit: 3 });
+  assert.deepEqual(items.map((i) => i.title), ["Z5", "Z4", "Z3"], "les trois plus récents, pas les trois plus anciens");
+});
+
+test("flux : borne du nombre d'éléments (100 au plus, 1 au moins)", async () => {
+  const a = await blog("Actus");
+  for (let i = 0; i < 3; i++) await publish(a.id, `N${i}`, `2026-01-0${i + 1}`);
+  assert.equal((await F.collectFeedItems({ locale: "en", limit: 100000 })).length, 3);
+  assert.equal((await F.collectFeedItems({ locale: "en", limit: 0 })).length, 1);
+  assert.equal(F.FEED_MAX_ITEMS, 100);
+});
+
+test("flux : sans résumé, un court extrait du texte ; la couverture devient une adresse absolue", async () => {
+  const a = await blog("Actus");
+  const e = await publish(a.id, "Avec texte", "2026-01-01", { body: "# Titre\n\nUn **beau** [lien](https://x.test) et ![img](/a.png) <b>html</b>.", cover: "/uploads/c.png" });
+  const [item] = await F.collectFeedItems({ locale: "en" });
+  assert.equal(item.summary, "Titre Un beau lien et html .");
+  assert.match(item.image, /^http.*\/uploads\/c\.png$/);
+  assert.ok(e);
+  assert.equal(F.excerpt("x".repeat(500)).length <= 281, true);
+  assert.ok(F.excerpt("mot ".repeat(200)).endsWith("…"));
+});
+
+test("flux : un module ne peut pas annoncer le futur ni répéter un identifiant", async () => {
+  await agenda([
+    { id: "a", title: "Passé", url: "/p", publishedAt: "2026-01-01T00:00:00Z" },
+    { id: "b", title: "Futur", url: "/f", publishedAt: "2999-01-01T00:00:00Z" },
+    { id: "a", title: "Doublon", url: "/d", publishedAt: "2026-01-02T00:00:00Z" },
+    { id: "c", title: "Protocole", url: "//autre.example/x" },
+  ]);
+  assert.deepEqual((await F.collectFeedItems({ locale: "en" })).map((i) => i.title), ["Passé"]);
+});
+
+test("rendu : titre piégé (]]>, balises, guillemets) échappé, le XML reste bien formé ; rubriques en <category> ; image en <enclosure>", () => {
+  const xml = F.renderRss({ title: "T", link: "https://x.test", description: "d", language: "fr", self: "https://x.test/feed.xml?lang=fr", items: [
+    { id: "g", title: "a ]]> <img src=x onerror=alert(1)> \"q\" 'r' &amp;", link: "https://x.test/a?x=1&y=2", summary: "<![CDATA[ x ]]>", publishedAt: new Date("2026-01-02T03:04:05Z"), topics: ["@blog", "annonce"], image: "https://x.test/c.png?v=1&w=2" },
+  ] });
+  assert.ok(!xml.includes("<img") && !xml.includes("<![CDATA[") && !xml.includes("]]>"));
+  assert.ok(xml.includes("<category>annonce</category>") && !xml.includes("<category>@blog"));
+  assert.ok(xml.includes('<enclosure url="https://x.test/c.png?v=1&amp;w=2" length="0" type="image/png"/>'));
+  assert.ok(xml.includes("<atom:link href=\"https://x.test/feed.xml?lang=fr\" rel=\"self\""));
+  assert.match(xml, /<pubDate>Fri, 02 Jan 2026 03:04:05 GMT<\/pubDate>/);
+});
+
+test("réponse HTTP : ETag stable, Last-Modified, cache ; 304 si rien n'a changé ; flux vide propre", async () => {
+  const a = await blog("Actus");
+  await publish(a.id, "Un", "2026-01-01");
+  const feed = await F.buildFeed({ locale: "en" });
+  const first = F.rssResponse(new Request("https://x.test/feed.xml"), feed);
+  assert.equal(first.status, 200);
+  assert.match(first.headers.get("content-type"), /^application\/rss\+xml; charset=utf-8$/);
+  assert.equal(first.headers.get("cache-control"), "public, max-age=300");
+  assert.equal(first.headers.get("last-modified"), "Thu, 01 Jan 2026 00:00:00 GMT");
+  const etag = first.headers.get("etag");
+  assert.equal(F.rssResponse(new Request("https://x.test/feed.xml"), feed).headers.get("etag"), etag, "stable d'un appel à l'autre");
+  assert.equal(F.rssResponse(new Request("https://x.test/feed.xml", { headers: { "if-none-match": etag } }), feed).status, 304);
+  assert.equal(F.rssResponse(new Request("https://x.test/feed.xml", { headers: { "if-none-match": `W/${etag}` } }), feed).status, 304);
+  assert.equal(F.rssResponse(new Request("https://x.test/feed.xml", { headers: { "if-none-match": '"autre"' } }), feed).status, 200);
+  assert.equal(F.rssResponse(new Request("https://x.test/feed.xml", { headers: { "if-modified-since": "Fri, 02 Jan 2026 00:00:00 GMT" } }), feed).status, 304);
+  assert.equal(F.rssResponse(new Request("https://x.test/feed.xml", { headers: { "if-modified-since": "Wed, 31 Dec 2025 00:00:00 GMT" } }), feed).status, 200);
+  const empty = F.rssResponse(new Request("https://x.test/feed.xml"), { title: "T", link: "l", description: "d", language: "en", self: "s", items: [] });
+  assert.equal(empty.status, 200);
+  assert.equal(empty.headers.get("last-modified"), null);
+  assert.ok(!(await empty.text()).includes("<item>"));
+});
+
+/* ───────────── Icône du pied de page et bloc d'admin ───────────── */
+
+test("source de flux : vrai seulement s'il y a une instance à contenu publique ou un module feed.item", async () => {
+  assert.equal(await F.hasFeedSource(), false);
+  const a = await blog("Actus");
+  assert.equal(await F.hasFeedSource(), true, "avant même le premier article");
+  await db.prisma.moduleInstance.update({ where: { id: a.id }, data: { exposed: false } });
+  assert.equal(await F.hasFeedSource(), false);
+  await agenda([]);
+  assert.equal(await F.hasFeedSource(), true, "un module qui fournit feed.item suffit");
+});
+
+test("réglage « icône du flux » : visible par défaut, masquable", async () => {
+  const { getSiteConfig } = await import("@/core/settings");
+  assert.equal((await getSiteConfig()).feedLink, true);
+  await setSetting("feed.showLink", false);
+  assert.equal((await getSiteConfig()).feedLink, false);
+  await setSetting("feed.showLink", true);
+  assert.equal((await getSiteConfig()).feedLink, true);
+});
+
+test("aperçu admin : adresse, compteur, 5 derniers, sources et rubriques", async () => {
+  const a = await blog("Actus", { en: "News" });
+  for (let i = 0; i < 7; i++) await publish(a.id, `P${i}`, `2026-01-0${i + 1}`, { tags: i < 2 ? ["annonce"] : [] });
+  await createEntry(db.prisma, { instanceId: a.id, locale: "en", title: "Brouillon" });
+  const o = await F.feedOverview("en");
+  assert.match(o.url, /\/feed\.xml\?lang=en$/);
+  assert.equal(o.count, 7);
+  assert.deepEqual(o.latest.map((i) => i.title), ["P6", "P5", "P4", "P3", "P2"]);
+  assert.deepEqual(o.sources.map((s) => [s.key, s.name, s.kind, s.count]), [["actus", "News", "entries", 7]]);
+  assert.deepEqual(o.topics.map((t) => [t.id, t.count, t.names]), [["annonce", 2, ["News"]]]);
+  assert.match(o.topics[0].url, /topics=annonce$/);
+  assert.equal(F.feedPath("fr"), "/feed.xml?lang=fr");
+});
+
+test("pied de page : l'icône RSS est liée au réglage et à la présence d'une source, avec nom accessible", async () => {
+  const fs = await import("node:fs");
+  const footer = fs.readFileSync("src/components/site/Footer.tsx", "utf8");
+  assert.match(footer, /config\.feedLink && \(await hasFeedSource\(\)\)/);
+  assert.match(footer, /aria-label=\{t\("feed\.link"\)\}/);
+  assert.match(footer, /href=\{feedPath\(locale\)\}/);
+  assert.match(footer, /aria-hidden="true"/);
+});

@@ -1,8 +1,11 @@
+import { createHash } from "node:crypto";
 import { siteUrl } from "@/core/config";
 import { entryPath, listEntries } from "@/core/content/entries";
+import { pickName } from "@/core/instances";
 import { getActiveInstances } from "@/core/modules/registry";
 import type { TopicField } from "@/core/modules/types";
 import { collectForCore } from "@/core/services/topics";
+import { withLocale } from "@/core/links";
 import { getSiteConfig } from "@/core/settings";
 import { isSafeExternalUrl } from "@/core/url";
 
@@ -26,7 +29,8 @@ export const FEED_ITEM_SCHEMA: TopicField[] = [
   { key: "topics", type: "string[]" },
 ];
 
-export type FeedItem = { id: string; title: string; link: string; summary: string; publishedAt: Date | null; topics: string[] };
+/** `image` : adresse ABSOLUE de l'image de l'élément (la couverture d'une entrée), le cas échéant. */
+export type FeedItem = { id: string; title: string; link: string; summary: string; publishedAt: Date | null; topics: string[]; image?: string | null };
 /**
  * Une rubrique qu'on peut suivre. `annonce` : rubrique PARTAGÉE, alimentée par tous les modules qui la publient
  * (étiquettes d'entrées comprises) ; `@blog` : tout ce qu'une instance publie (le `@` est réservé au cœur).
@@ -39,16 +43,24 @@ const escapeXml = (s: string) =>
     .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, "") // caractères interdits en XML 1.0
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
 
+/** Type MIME d'une image d'après son extension (le flux ne donne que les formats courants). */
+const IMAGE_TYPES: Record<string, string> = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", gif: "image/gif", webp: "image/webp", avif: "image/avif", svg: "image/svg+xml" };
+
 /** Écrit le flux. Pure : aucune horloge, aucun accès à la base. */
 export function renderRss(feed: Feed): string {
-  const newest = feed.items.reduce<Date | null>((m, i) => (i.publishedAt && (!m || i.publishedAt > m) ? i.publishedAt : m), null);
+  const newest = newestDate(feed.items);
   const items = feed.items
-    .map(
-      (i) =>
+    .map((i) => {
+      const categories = i.topics?.filter((t) => !t.startsWith("@")).map((t) => `<category>${escapeXml(t)}</category>`).join("") ?? "";
+      const type = i.image ? IMAGE_TYPES[(i.image.split(/[?#]/)[0]!.split(".").pop() ?? "").toLowerCase()] : undefined;
+      return (
         `<item><title>${escapeXml(i.title)}</title><link>${escapeXml(i.link)}</link><guid isPermaLink="false">${escapeXml(i.id)}</guid>` +
         (i.publishedAt ? `<pubDate>${i.publishedAt.toUTCString()}</pubDate>` : "") +
-        `<description>${escapeXml(i.summary)}</description></item>`,
-    )
+        `<description>${escapeXml(i.summary)}</description>${categories}` +
+        (i.image && type ? `<enclosure url="${escapeXml(i.image)}" length="0" type="${type}"/>` : "") +
+        `</item>`
+      );
+    })
     .join("");
   return (
     `<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel>` +
@@ -57,6 +69,44 @@ export function renderRss(feed: Feed): string {
     (newest ? `<lastBuildDate>${newest.toUTCString()}</lastBuildDate>` : "") +
     `${items}</channel></rss>`
   );
+}
+
+/** Date de l'élément le plus récent (null si aucun n'est daté). */
+export function newestDate(items: Pick<FeedItem, "publishedAt">[]): Date | null {
+  return items.reduce<Date | null>((m, i) => (i.publishedAt && (!m || i.publishedAt > m) ? i.publishedAt : m), null);
+}
+
+/**
+ * Réponse HTTP d'un flux : type, ETag (empreinte du contenu), Last-Modified (élément le plus récent) et cache de 5 minutes.
+ * Un lecteur qui renvoie `If-None-Match` ou `If-Modified-Since` reçoit un 304 vide tant que rien n'a changé : le flux coûte presque rien à interroger souvent.
+ */
+export function rssResponse(request: Request, feed: Feed): Response {
+  const xml = renderRss(feed);
+  const etag = `"${createHash("sha1").update(xml).digest("base64url")}"`;
+  const newest = newestDate(feed.items);
+  const headers = new Headers({ "content-type": "application/rss+xml; charset=utf-8", "cache-control": "public, max-age=300", etag });
+  if (newest) headers.set("last-modified", newest.toUTCString());
+  const match = request.headers.get("if-none-match");
+  const since = request.headers.get("if-modified-since");
+  const sinceMs = since ? Date.parse(since) : NaN;
+  const notModified = match ? match.split(",").some((v) => v.trim().replace(/^W\//, "") === etag) : newest !== null && !Number.isNaN(sinceMs) && newest.getTime() <= sinceMs;
+  return notModified ? new Response(null, { status: 304, headers }) : new Response(xml, { headers });
+}
+
+/** Court extrait en texte brut d'un contenu Markdown (sans les symboles de mise en forme), coupé proprement. */
+export function excerpt(markdown: string, max = 280): string {
+  const text = markdown
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/^\s{0,3}(?:#{1,6}|>|[-*+]|\d+\.)\s+/gm, "")
+    .replace(/[*_`~]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (text.length <= max) return text;
+  const cut = text.slice(0, max);
+  return `${cut.slice(0, Math.max(cut.lastIndexOf(" "), max * 0.6))}…`;
 }
 
 /** Ordre stable : plus récent d'abord, puis adresse (jamais l'ordre d'arrivée). */
@@ -76,39 +126,57 @@ export function parseTopics(raw: string | null | undefined): string[] {
 
 const absolute = (href: string) => (href.startsWith("/") ? `${siteUrl}${href}` : href);
 
-/** Rassemble les éléments du flux. `instance` limite à une instance (clé) ; absent = tout le site. */
-export async function collectFeedItems(opts: { locale: string; instance?: string; topics?: string[]; limit?: number }): Promise<FeedItem[]> {
-  const limit = Math.min(100, Math.max(1, opts.limit ?? 30));
+/** Nombre d'éléments qu'un flux ne dépasse jamais (et valeur par défaut : 30). */
+export const FEED_MAX_ITEMS = 100;
+export const FEED_DEFAULT_ITEMS = 30;
+
+const absoluteImage = (src: string | null) => (src && (src.startsWith("/") && !src.startsWith("//") ? `${siteUrl}${src}` : /^https?:\/\//i.test(src) ? src : null)) || null;
+const isHttp = (u: string) => /^https?:\/\//i.test(u) && isSafeExternalUrl(u);
+
+/**
+ * Rassemble les éléments du flux. `instance` limite à une instance (clé) ; absent = tout le site.
+ * Seul ce qui est PUBLIC sort : entrées publiées dont la date est atteinte (ni brouillon, ni planifié, ni expiré), instances proposées au public,
+ * éléments de modules dont la date n'est pas dans le futur. `now` n'existe que pour les tests.
+ */
+export async function collectFeedItems(opts: { locale: string; instance?: string; topics?: string[]; limit?: number; now?: Date }): Promise<FeedItem[]> {
+  const limit = Math.min(FEED_MAX_ITEMS, Math.max(1, opts.limit ?? FEED_DEFAULT_ITEMS));
+  const now = opts.now ?? new Date();
   const config = await getSiteConfig();
   const items: FeedItem[] = [];
 
   for (const { instance, mod } of await getActiveInstances()) {
     if (!mod.manifest.content || !instance.exposed || instance.basePath === null) continue;
     if (opts.instance && instance.key !== opts.instance) continue;
-    for (const e of await listEntries({ instance, locale: opts.locale, limit })) {
-      if (e.expired) continue;
-      const external = instance.clickAction === "external" && isSafeExternalUrl(e.url);
+    // Pas de limite ici : le tri propre à l'instance (par titre, à la main…) n'est pas celui du flux (du plus récent au plus ancien), un « 30 premiers » coupé avant le tri écarterait des nouveautés.
+    for (const e of await listEntries({ instance, locale: opts.locale })) {
+      if (e.expired || (e.publishedAt && e.publishedAt > now)) continue;
+      const external = instance.clickAction === "external" && isHttp(e.url ?? "");
       const link = external ? e.url! : `${siteUrl}${entryPath(e, config.defaultLocale)}`;
-      items.push({ id: `entry:${e.id}`, title: e.title, link, summary: e.summary, publishedAt: e.publishedAt, topics: topicsOf(instance.key, e.tags) });
+      items.push({ id: `entry:${e.id}`, title: e.title, link, summary: e.summary || excerpt(e.body), publishedAt: e.publishedAt, topics: topicsOf(instance.key, e.tags), image: absoluteImage(e.cover) });
     }
   }
 
   for (const i of await collectForCore(FEED_ITEM_TOPIC, FEED_ITEM_SCHEMA, { locale: opts.locale, limit, instance: opts.instance })) {
     const url = String(i.url);
-    if (!url.startsWith("/") && !isSafeExternalUrl(url)) continue;
+    if (!(url.startsWith("/") && !url.startsWith("//")) && !isHttp(url)) continue;
     const date = typeof i.publishedAt === "string" ? new Date(i.publishedAt) : null;
+    const publishedAt = date && !Number.isNaN(date.getTime()) ? date : null;
+    if (publishedAt && publishedAt > now) continue; // annoncé pour plus tard : pas encore public
     items.push({
       id: String(i.id ?? `${i.source.instance}:${url}`),
       title: String(i.title),
       link: absolute(url),
       summary: String(i.summary ?? ""),
-      publishedAt: date && !Number.isNaN(date.getTime()) ? date : null,
+      publishedAt,
       topics: topicsOf(i.source.instance, Array.isArray(i.topics) ? i.topics.map(String) : []),
     });
   }
+  // Un même identifiant ne sort qu'une fois (deux modules, ou un module qui se répète : le lecteur verrait un doublon).
+  const seen = new Set<string>();
+  const unique = items.filter((i) => !seen.has(i.id) && !!seen.add(i.id));
   // Filtre par rubriques (OU) : « annonce » rassemble tous les modules qui la publient, « @blog » tout ce que le blog publie.
   const wanted = new Set(opts.topics ?? []);
-  const kept = wanted.size ? items.filter((i) => i.topics.some((t) => wanted.has(t))) : items;
+  const kept = wanted.size ? unique.filter((i) => i.topics.some((t) => wanted.has(t))) : unique;
   return sortItems(kept).slice(0, limit);
 }
 
@@ -158,10 +226,59 @@ export async function buildFeed(opts: { locale?: string; instance?: string; topi
   const lang = `lang=${locale}${topics.length ? `&topics=${topics.join(",")}` : ""}`;
   return {
     title,
-    link: siteUrl,
+    link: `${siteUrl}${withLocale("/", locale, config.defaultLocale).replace(/^\/$/, "")}`,
     description: localized.tagline || localized.name,
     language: locale,
     self: opts.instance ? `${siteUrl}/feed/${opts.instance}.xml?${lang}` : `${siteUrl}/feed.xml?${lang}`,
     items: await collectFeedItems({ locale, instance: opts.instance, topics, limit: opts.limit }),
+  };
+}
+
+/**
+ * Le site a-t-il, EN PRINCIPE, de quoi alimenter un flux ? Oui s'il a une instance à contenu proposée au public avec des pages,
+ * ou un module qui fournit `feed.item`. Réponse rapide (aucune lecture des contenus), utilisée sur chaque page pour décider d'afficher l'icône du pied de page.
+ * Un flux sans aucun élément reste possible (on vient d'installer le blog) : l'icône n'attend pas le premier article.
+ */
+export async function hasFeedSource(): Promise<boolean> {
+  return (await getActiveInstances()).some(
+    ({ instance, mod }) => (!!mod.manifest.content && instance.exposed && instance.basePath !== null) || !!mod.manifest.provides?.some((p) => p.topic === FEED_ITEM_TOPIC),
+  );
+}
+
+/** Adresse du flux principal dans une langue (relative au domaine public : `/feed.xml?lang=fr`). */
+export const feedPath = (locale: string) => `/feed.xml?lang=${encodeURIComponent(locale)}`;
+
+export type FeedOverview = {
+  /** Adresse absolue du flux principal, dans la langue demandée. */
+  url: string;
+  count: number;
+  latest: FeedItem[];
+  /** Une ligne par instance qui alimente le flux : d'où vient chaque contenu. */
+  sources: { key: string; name: string; module: string; kind: "entries" | "items"; url: string; count: number }[];
+  /** Rubriques partagées (hors `@instance`) avec leur adresse. */
+  topics: (FeedTopic & { url: string; names: string[] })[];
+};
+
+/** Ce que le propriétaire voit dans l'admin : l'adresse, le nombre d'éléments, les 5 derniers, les sources et les rubriques. */
+export async function feedOverview(locale: string): Promise<FeedOverview> {
+  const config = await getSiteConfig();
+  const lang = config.locales.includes(locale) ? locale : config.defaultLocale;
+  const all = await collectFeedItems({ locale: lang, limit: FEED_MAX_ITEMS });
+  const topics = await listFeedTopics(lang);
+  const active = await getActiveInstances();
+  const sources = active.flatMap(({ instance, mod }) => {
+    const entries = !!mod.manifest.content && instance.exposed && instance.basePath !== null;
+    const items = !!mod.manifest.provides?.some((p) => p.topic === FEED_ITEM_TOPIC);
+    if (!entries && !items) return [];
+    const count = Math.min(FEED_DEFAULT_ITEMS, all.filter((i) => i.topics[0] === `@${instance.key}`).length);
+    return [{ key: instance.key, name: pickName(instance, lang, config.defaultLocale), module: mod.manifest.id, kind: entries ? ("entries" as const) : ("items" as const), url: `${siteUrl}/feed/${instance.key}.xml?lang=${lang}`, count }];
+  });
+  const names = (ids: string[]) => ids.map((k) => sources.find((s) => s.key === k)?.name ?? k);
+  return {
+    url: `${siteUrl}${feedPath(lang)}`,
+    count: Math.min(all.length, FEED_DEFAULT_ITEMS), // ce que contient réellement /feed.xml (30 au plus)
+    latest: all.slice(0, 5),
+    sources: sources.sort((a, b) => a.key.localeCompare(b.key)),
+    topics: topics.filter((t) => t.kind === "topic").map((t) => ({ ...t, count: Math.min(FEED_DEFAULT_ITEMS, t.count), url: `${siteUrl}/feed.xml?lang=${lang}&topics=${t.id}`, names: names(t.instances) })),
   };
 }

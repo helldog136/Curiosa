@@ -22,7 +22,7 @@ export function buildPrivacyPolicy({ siteName, contactEmail, statsEnabled, newsT
   const out: string[] = [t("privacy.intro", { name: siteName }), ""];
   out.push(`## ${t("privacy.who")}`, "", contactEmail ? t("privacy.whoContact", { name: siteName, email: contactEmail }) : t("privacy.whoNoContact", { name: siteName }), "");
   out.push(`## ${t("privacy.cookies")}`, "", `- ${t("privacy.cookies.locale")}`);
-  if (newsToggle) out.push(`- ${t("privacy.cookies.news")}`);
+  if (newsToggle) out.push(`- ${t("privacy.cookies.news")}`, `- ${t("privacy.cookies.choice")}`);
   out.push(`- ${t("privacy.cookies.none")}`, "");
   out.push(`## ${t("privacy.stats")}`, "", statsEnabled ? t("privacy.stats.on") : t("privacy.stats.off"), "");
   if (features.length > 0) {

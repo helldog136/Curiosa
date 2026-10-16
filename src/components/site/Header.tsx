@@ -11,7 +11,6 @@ import { EntryIcon } from "./EntryIcon";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { MenuToggle } from "./MenuToggle";
 import { NavDropdown } from "./NavDropdown";
-import { NewsToggle } from "./NewsToggle";
 
 type Link = { label: string; href: string };
 type Item = Link & { news: boolean; children?: Link[] };
@@ -77,8 +76,7 @@ export async function Header({ config, locale }: { config: SiteConfig; locale: s
   const buttonEl = config.header.button && (
     <a href={local(config.header.button.href)} data-testid="header-button" data-btn="primary" className="rounded-full border-2 border-accent px-4 py-1.5 text-sm font-semibold text-accent transition-colors hover:bg-accent hover:text-accent-fg">{config.header.button.label}</a>
   );
-  const bell = config.newsToggle && <NewsToggle labels={{ on: t("site.newsOn"), off: t("site.newsOff"), title: t("site.newsHelp") }} />;
-  const lang = <>{bell}<LanguageSwitcher locales={config.locales} current={locale} defaultLocale={config.defaultLocale} /></>;
+  const lang = <LanguageSwitcher locales={config.locales} current={locale} defaultLocale={config.defaultLocale} />;
   const shell = "mx-auto max-w-5xl px-4 py-4";
 
   let body: React.ReactNode;

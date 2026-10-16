@@ -70,7 +70,7 @@ export async function recover(args, { prisma, bcrypt, out = console.log }) {
     const user = await owner(target);
     if (!user) return 1;
     const password = crypto.randomBytes(12).toString("base64url");
-    await prisma.user.update({ where: { id: user.id }, data: { passwordHash: await bcrypt.hash(password, 12), sessionVersion: { increment: 1 } } });
+    await prisma.user.update({ where: { id: user.id }, data: { passwordHash: await bcrypt.hash(password, 12), mustChangePassword: false, sessionVersion: { increment: 1 } } });
     await prisma.authLock.deleteMany({ where: { key: `email:${user.email}` } });
     await note("recovery.password", user.email);
     out(`Nouveau mot de passe de ${user.email} (affiché une seule fois, changez-le dès la connexion) :\n\n  ${password}\n`);

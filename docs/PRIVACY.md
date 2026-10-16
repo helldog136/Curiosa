@@ -8,7 +8,7 @@ La règle européenne (directive ePrivacy, RGPD) exige l'accord du visiteur avan
 
 ## La page « Politique de confidentialité » est fournie par le cœur
 
-Chaque site Curiosa a une page `/privacy`, liée en permanence dans le pied de page. Le cœur l'écrit lui-même d'après ce que **votre** site fait vraiment : cookies, statistiques activées ou non, bouton « nouveautés », et ce que déclare chaque module actif (champ `privacy` de son manifeste, par exemple le formulaire de contact).
+Chaque site Curiosa a une page `/privacy`, liée en permanence dans le pied de page. Le cœur l'écrit lui-même d'après ce que **votre** site fait vraiment : cookies, statistiques activées ou non, bandeau de cookies (« nouveautés »), et ce que déclare chaque module actif (champ `privacy` de son manifeste, par exemple le formulaire de contact).
 
 - Le texte obligatoire **ne peut pas être modifié ni retiré** : il suit le fonctionnement réel du site, il ne peut donc pas être faux.
 - Vous pouvez **ajouter** vos propres informations (responsable du traitement, durée de conservation, comment exercer ses droits…) dans Réglages → Confidentialité : elles s'affichent à la fin, par langue.
@@ -19,8 +19,11 @@ Chaque site Curiosa a une page `/privacy`, liée en permanence dans le pied de p
 | Quoi | Quand | Durée | Pourquoi c'est sans consentement |
 |---|---|---|---|
 | `curiosa_locale` | quand le visiteur choisit une langue | 1 an | c'est son choix de langue, nécessaire pour la lui montrer |
-| `curiosa_news` | quand le visiteur clique sur « Me prévenir des nouveautés » (bouton facultatif, à activer dans Réglages → Confidentialité) | 1 an | c'est le choix explicite du visiteur, et rien d'autre n'est déposé tant qu'il n'a pas cliqué |
-| `curiosa_seen` et `curiosa_since` | seulement si `curiosa_news` existe | 1 an / la session | le visiteur a demandé cette fonction ; elles ne contiennent qu'une date (sa dernière visite). Le second clic sur le bouton les efface |
+| `curiosa_news` | quand le visiteur clique sur « Accepter les cookies » dans le bandeau qui monte du bas de l'écran (facultatif, à activer dans Réglages → Confidentialité) | 1 an | c'est le choix explicite du visiteur, et rien d'autre n'est déposé tant qu'il n'a pas accepté |
+| `curiosa_seen` et `curiosa_since` | seulement si `curiosa_news` existe | 1 an / la session | le visiteur a donné son accord ; elles ne contiennent qu'une date (sa dernière visite). « Retirer mon accord » les efface |
+| `curiosa_cookies` | quand le visiteur répond « Non merci » (30 jours), ou ferme le bandeau avec Échap (le temps de la session) | 30 jours / la session | simple souvenir de la réponse (« no » ou « later ») pour ne pas redemander à chaque page ; il n'identifie personne |
+
+Le bandeau n'existe que si le réglage est actif. Il s'affiche tant que le visiteur n'a pas répondu, puis plus du tout ; un lien « Cookies » dans le pied de page (et un contrôle sur `/privacy`) le rouvre pour **retirer l'accord**. Refuser est aussi simple qu'accepter. Réglage désactivé : ni bandeau ni lien, car rien de facultatif n'est déposé.
 
 Rien d'autre côté visiteur : pas de cookie publicitaire, pas d'identifiant, pas de service tiers (polices, statistiques, vidéos intégrées…).
 
@@ -44,7 +47,7 @@ L'équipe du site, elle, reçoit un cookie de **session** à la connexion à l'a
 
 - que le site compte ses visites de façon anonyme, sans cookie, sans conserver l'adresse IP, et que c'est désactivable ;
 - que la langue choisie est mémorisée dans un cookie ;
-- si le bouton « Me prévenir des nouveautés » est activé : qu'il mémorise la date de la dernière visite dans le navigateur, à la demande du visiteur seulement, effaçable par un second clic ;
+- si le bandeau de cookies est activé : qu'il mémorise la date de la dernière visite dans le navigateur, avec l'accord du visiteur seulement, retirable à tout moment (lien « Cookies » du pied de page) ;
 - les données que **vos** modules collectent (par exemple le formulaire de contact : nom, e-mail, message ; combien de temps vous les gardez ; comment on demande leur suppression) ;
 - un moyen de vous contacter.
 

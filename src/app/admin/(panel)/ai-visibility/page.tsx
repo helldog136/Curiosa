@@ -2,7 +2,7 @@ import robots from "@/app/robots";
 import sitemap from "@/app/sitemap";
 import { adminCtx } from "@/core/admin";
 import { computeChecks, todoCount, type VisibilityProbes } from "@/core/aiVisibility";
-import { collectFeedItems } from "@/core/feeds";
+import { collectFeedItems, feedOverview, hasFeedSource } from "@/core/feeds";
 import { localeName } from "@/core/i18n/locales";
 import { buildLlmsTxt } from "@/core/llms";
 import { getAiBlocking, getSiteEntity, isLlmsTxtEnabled } from "@/core/seoSettings";
@@ -10,6 +10,7 @@ import { providersOf } from "@/core/services/topics";
 import { getSettingByLocale } from "@/core/settings";
 import { loadSocialLinks, SOCIAL_TOPIC } from "@/core/social";
 import { ui } from "@/components/admin/ui";
+import { RssCard } from "./RssCard";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +20,7 @@ async function probe<T>(fn: () => Promise<T>): Promise<T | null> {
 }
 
 export default async function AiVisibilityPage() {
-  const { t, config } = await adminCtx("admin");
+  const { t, config, advanced, locale } = await adminCtx("admin");
   const ai = await getAiBlocking();
   const llmsEnabled = await isLlmsTxtEnabled();
   const names = await getSettingByLocale("site.name");
@@ -78,6 +79,7 @@ export default async function AiVisibilityPage() {
         })}
       </ul>
       <p className={ui.help}>{t("ai.note")}</p>
+      <RssCard overview={await feedOverview(config.defaultLocale)} hasSource={await hasFeedSource()} linkEnabled={config.feedLink} advanced={advanced} t={t} locale={locale} />
     </div>
   );
 }
