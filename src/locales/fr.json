@@ -1263,6 +1263,8 @@
   "entries.created": "Entrée créée. Vous pouvez continuer à la modifier ici.",
   "entries.dangerTitle": "Supprimer",
   "entries.dangerHelp": "La suppression est définitive. Pour simplement la retirer du site, choisissez plutôt « Brouillon » ci-dessus.",
+  "entries.panel.failed": "Cette section n'a pas pu s'afficher. Le reste de la fiche fonctionne normalement ; rechargez la page, et si cela continue, dites-le à la personne qui s'occupe du site (le module qui ajoute cette section est en cause).",
+  "entries.panel.gone": "Cette section n'est plus disponible pour cette fiche (le module a peut-être été désactivé ou la fiche supprimée). Rechargez la page.",
   "entries.deleteConfirm": "Supprimer définitivement « {title} » ? Cette action est irréversible.",
   "entries.deleteVersionConfirm": "Supprimer cette version linguistique ? Les autres langues ne bougent pas. Cette action est irréversible.",
   "sources.addModule": "Ajouter un module",

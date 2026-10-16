@@ -302,6 +302,26 @@ Une action renvoie `{ ok }` (message vert), `{ error }` (message rouge) et/ou `{
 (champs `text`, `textarea`, `email`, `url`, `number`, `date`, `select`, `hidden`, `image`) poste sur une action ; les `adminForm` ne s'affichent jamais sur le site public. Permission : `admin`.
 Voir `adminPanel` et `adminActions` dans l'exemple (modifier un message : `?edit=<id>` ouvre un `adminForm`).
 
+### Ajouter une section à la fiche d'un autre module (`entryPanels`)
+
+Votre module peut aussi ajouter **une section à la fiche d'une entrée d'un autre module** — par exemple une commande de chat dans la fiche d'un sponsor — sans que ce module le sache. Vous déclarez la section
+dans `module.json` (`"entryPanels": [{ "id": "ma-section", "for": { "topic": "un.sujet" }, "title": { "en": "…", "fr": "…" } }]` : `for` désigne les entrées par un sujet que leur module fournit, ou à défaut par `module`)
+et vous la décrivez dans le code :
+
+```js
+export default {
+  entryPanels: {
+    "ma-section": {
+      render: async (ctx, entry) => [{ type: "adminForm", action: "save", submitLabel: "Save", fields: [{ name: "note", label: "Note" }] }],  // entry.id = la clé de VOS données
+      actions: { save: async (ctx, entry, values) => ({ ok: "Saved." }) },    // enregistre sans recharger la page
+    },
+  },
+};
+```
+
+La donnée reste chez vous ; la section n'apparaît que si votre module est installé et actif et que l'entrée correspond ; elle s'enregistre sans quitter la page (aucune redirection). Droits : ceux d'un éditeur d'entrée.
+Permission : `admin`. Le détail est dans [MODULES.md](MODULES.md) (« Ajouter une section à l'éditeur d'un autre module »).
+
 ## 12. Actions MCP pour les assistants
 
 Le cœur héberge un serveur MCP : un assistant IA (avec un **jeton** créé par le propriétaire) peut appeler les actions que vos modules déclarent. Rien n'est codé en dur dans le cœur.

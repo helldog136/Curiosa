@@ -9,6 +9,7 @@ import { ConfirmButton } from "@/components/admin/ConfirmButton";
 import { getRefOptions } from "@/core/services/topics";
 import { ui } from "@/components/admin/ui";
 import { EntryForm } from "../EntryForm";
+import { EntryPanels } from "@/components/admin/EntryPanels";
 import { deleteEntry, deleteTranslation } from "../actions";
 
 const day = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : "");
@@ -17,7 +18,7 @@ const CHIP = { draft: ui.chipWarn, scheduled: ui.chip, expired: ui.chipWarn, pub
 export default async function EditEntryPage({ params, searchParams }: {
   params: Promise<{ id: string }>; searchParams: Promise<{ c?: string; locale?: string; created?: string }>;
 }) {
-  const { t, locale: adminLocale, config, advanced } = await adminCtx("editor");
+  const { t, locale: adminLocale, config, advanced, user } = await adminCtx("editor");
   const { id } = await params;
   const { c, locale: requested, created } = await searchParams;
   const entry = await prisma.entry.findUnique({ where: { id }, include: { translations: true } });
@@ -59,6 +60,8 @@ export default async function EditEntryPage({ params, searchParams }: {
           translations: entry.translations.map((tr) => ({ locale: tr.locale, slug: tr.slug, title: tr.title, summary: tr.summary, body: tr.body })),
         }}
       />
+      {/* Sections ajoutées par d'autres modules (hors du formulaire ci-dessus : chacune s'enregistre seule, sans quitter la page). */}
+      <EntryPanels entryId={entry.id} locale={adminLocale} defaultLocale={config.defaultLocale} view={{ advanced, role: user.role }} t={t} />
       {/* Zone à part, loin de « Enregistrer » : on n'y arrive jamais par hasard, et chaque bouton demande confirmation. */}
       <section aria-label={t("entries.dangerTitle")} className="mt-10 space-y-3 rounded-2xl border border-red-500/30 p-5">
         <h2 className="text-[15px] font-semibold text-red-700">{t("entries.dangerTitle")}</h2>

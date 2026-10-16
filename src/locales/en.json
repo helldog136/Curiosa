@@ -1263,6 +1263,8 @@
   "entries.created": "Entry created. You can keep editing it here.",
   "entries.dangerTitle": "Delete",
   "entries.dangerHelp": "Deleting is permanent. To simply take it off the site, choose “Draft” above instead.",
+  "entries.panel.failed": "This section could not be displayed. The rest of the page works normally; reload the page, and if it keeps happening, tell whoever looks after the site (the module that adds this section is at fault).",
+  "entries.panel.gone": "This section is no longer available for this page (the module may have been turned off or the page deleted). Reload the page.",
   "entries.deleteConfirm": "Permanently delete “{title}”? This cannot be undone.",
   "entries.deleteVersionConfirm": "Delete this language version? The other languages are untouched. This cannot be undone.",
   "sources.addModule": "Add a module",

@@ -7,6 +7,25 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## Prochaine version (non publiée)
+
+### Nouveautés
+
+- **Une extension peut ajouter une section dans la fiche d'un élément d'une autre extension.** Par exemple, la commande de chat Twitch d'un sponsor se règle directement dans la fiche de ce sponsor. La section n'apparaît que si l'extension qui l'ajoute est installée ; sans elle, la fiche ne change pas.
+- **Ces sections s'enregistrent sans recharger la page.** Vous restez où vous étiez, le message « Enregistré » s'affiche juste sous le bouton, et la section peut se replier ou s'ouvrir comme vous voulez. Les personnes qui peuvent modifier la fiche peuvent aussi les remplir.
+
+### Améliorations
+
+- Un bouton de ligne dans l'administration d'une extension affiche maintenant le résultat (une erreur dit quoi faire, une réussite est confirmée) au lieu de rester muet.
+
+### Pour les développeurs
+
+- Nouveau point d'extension générique : `entryPanels` dans `module.json` (`{ id, for: { topic } ou { module }, title, help? }`) et dans le code (`entryPanels.<id>.render(ctx, entry, { advanced, role })` + `actions.<nom>(ctx, entry, values)`). Une section qui rend `[]` est masquée.
+- Décision pure dans `core/modules/entryPanels.ts`, lecture et exécution dans `entryPanelsLoad.ts`. Action serveur `runEntryPanelAction` : rôle éditeur, aucune redirection, `revalidatePath` de la fiche.
+- Rendu par `components/admin/EntryPanels.tsx` : `<details open>` hors du formulaire de l'entrée, ancre `#panel-<instance>-<id>`.
+- `ctx.api.instances.list` renvoie aussi `id` et `adminPath` (`/admin/instances/<id>`), pour lier vers les réglages d'une instance d'un autre module.
+- La conformité (`testsupport/`) contrôle `entryPanels` : déclaré = implémenté, boutons vers des actions de la section, rendu avec une fausse fiche (données piégées comprises), permission `admin`. `docs/TESTSUPPORT.md` régénéré.
+
 ## 0.1.23
 
 ### Nouveautés

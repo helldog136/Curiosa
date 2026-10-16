@@ -34,7 +34,13 @@ function pickRandom<T>(items: T[], n: number): T[] {
   return pool.slice(0, Math.max(1, n));
 }
 
-export async function Blocks({ blocks, locale, adminInstanceId }: { blocks: Block[]; locale: string; adminInstanceId?: string }) {
+/**
+ * `adminInstanceId` : blocs du panneau d'admin d'une instance (formulaires et boutons actifs). `adminEntry` : blocs d'une section ajoutée à l'éditeur d'une entrée —
+ * les formulaires et boutons passent par les actions de la section (voir core/modules/entryPanels.ts) ; l'éditeur de grille n'y existe pas.
+ */
+export async function Blocks({ blocks, locale, adminInstanceId: panelInstanceId, adminEntry }: { blocks: Block[]; locale: string; adminInstanceId?: string; adminEntry?: { instanceId: string; panelId: string; entryId: string } }) {
+  const adminInstanceId = adminEntry?.instanceId ?? panelInstanceId;
+  const entryScope = adminEntry ? { panelId: adminEntry.panelId, entryId: adminEntry.entryId } : undefined;
   const config = await getSiteConfig();
   const out: React.ReactNode[] = [];
   for (const [i, block] of blocks.entries()) {
@@ -180,10 +186,10 @@ export async function Blocks({ blocks, locale, adminInstanceId }: { blocks: Bloc
         break;
       case "adminForm":
         // Les formulaires d'admin n'existent que dans le panneau d'admin (jamais sur le site public).
-        if (adminInstanceId) out.push(<AdminBlockForm key={i} instanceId={adminInstanceId} block={block} />);
+        if (adminInstanceId) out.push(<AdminBlockForm key={i} instanceId={adminInstanceId} block={block} entry={entryScope} />);
         break;
       case "gridEditor":
-        if (adminInstanceId) out.push(<GridEditor key={i} instanceId={adminInstanceId} block={block} floating={floatingLabels(makeTranslator(locale))} />);
+        if (adminInstanceId && !entryScope) out.push(<GridEditor key={i} instanceId={adminInstanceId} block={block} floating={floatingLabels(makeTranslator(locale))} />);
         break;
       case "table":
         out.push(
@@ -201,10 +207,10 @@ export async function Blocks({ blocks, locale, adminInstanceId }: { blocks: Bloc
                     {row.map((cell, c) => <td key={c} className="whitespace-pre-wrap px-3 py-2">{cell}</td>)}
                     {adminInstanceId && block.rowActions && (
                       <td className="whitespace-nowrap px-3 py-2">
-                        <div className="flex gap-2">
+                        <div className="flex items-start gap-2">
                           {block.rowActions.map((a) => (
                             <RowActionButton key={a.label} instanceId={adminInstanceId} label={a.label} action={a.action}
-                              href={a.href?.replace("{id}", encodeURIComponent(block.rowIds?.[r] ?? ""))} id={block.rowIds?.[r]} confirm={a.confirm} danger={a.danger} />
+                              href={a.href?.replace("{id}", encodeURIComponent(block.rowIds?.[r] ?? ""))} id={block.rowIds?.[r]} confirm={a.confirm} danger={a.danger} entry={entryScope} />
                           ))}
                         </div>
                       </td>

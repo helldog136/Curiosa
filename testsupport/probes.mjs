@@ -157,7 +157,7 @@ export function makeCtx(m, scenario) {
     site: { name: hostile ? HOSTILE : "Site", tagline: hostile ? HOSTILE : "Tagline", logo: "/uploads/logo.png" },
     brand: { name: hostile ? HOSTILE : "Site", tagline: hostile ? HOSTILE : "", about: hostile ? HOSTILE : "", logo: "/uploads/logo.png", logos: [], contactEmail: "owner@example.org", colors: [], font: { key: "sans", name: "Sans-serif", stack: "sans-serif" }, defaultLocale: "fr", locales: ["fr", "en"] },
     permissions: scenario.permissions ?? manifest.permissions ?? [],
-    instances: [{ key: "other", module: "other", basePath: "other", name: hostile ? HOSTILE : "Other" }],
+    instances: [{ id: "i-other", key: "other", module: "other", basePath: "other", name: hostile ? HOSTILE : "Other", adminPath: "/admin/instances/i-other" }],
     theme: { ...THEME, fontKey: "sans", font: "sans-serif" },
     lastVisit: new Date("2026-01-01T00:00:00Z"),
   });
@@ -189,7 +189,10 @@ export async function runScenario(m, scenario) {
     }
   };
   const forms = [];
+  const entryForms = [];
   const noteForms = (v) => { if (v) forms.push(...collectForms(v)); };
+  // La fiche (fausse) dont on « édite » l'entrée quand le module ajoute une section à l'éditeur d'un autre module.
+  const entryTarget = { id: "e0", title: hostile ? HOSTILE : "Demo 0", slug: "demo-0", path: "/other/demo-0", instance: "other", published: true };
   const run = async () => {
     const hostileText = hostile ? HOSTILE : "Demo";
     for (const decl of manifest.sections ?? []) if (typeof def.sections?.[decl.id] === "function") noteForms(await record("section", decl.id, () => def.sections[decl.id](ctx, optionsFor(decl, mode))));
@@ -210,6 +213,12 @@ export async function runScenario(m, scenario) {
       noteForms(panel);
       if (hostile) noteForms(await record("adminPanel", "?hostile", () => def.adminPanel(ctx, { query: { id: HOSTILE, tab: HOSTILE, edit: HOSTILE, q: HOSTILE } })));
     }
+    for (const decl of manifest.entryPanels ?? []) {
+      const panel = def.entryPanels?.[decl.id];
+      if (!panel || typeof panel.render !== "function") continue;
+      const blocks = await record("entryPanel", decl.id, () => panel.render(ctx, entryTarget, { advanced: mode === "filled", role: mode === "filled" ? "admin" : "editor" }));
+      if (blocks) entryForms.push(...collectForms(blocks).map((f) => ({ ...f, panel: decl.id })));
+    }
     if (def.backup && typeof def.backup.readable === "function") await record("backup", "readable", () => def.backup.readable(ctx));
     if (!scenario.skipActions) {
       for (const [name, fn] of Object.entries(def.mcp ?? {})) {
@@ -225,6 +234,15 @@ export async function runScenario(m, scenario) {
         if (typeof fn !== "function") continue;
         const names = adminFieldNames.length ? adminFieldNames : [...new Set([...m.code.matchAll(/\bvalues(?:\.([A-Za-z_]\w*)|\[\s*["']([\w-]+)["']\s*\])/g)].map((x) => x[1] ?? x[2]))];
         await record("adminAction", name, () => fn(ctx, Object.fromEntries((names.length ? names : ["id", "name"]).map((n) => [n, hostile ? HOSTILE : n === "id" ? "r1" : "demo"]))));
+      }
+    }
+    if (!scenario.skipActions) {
+      for (const [id, panel] of Object.entries(def.entryPanels ?? {})) {
+        const names = [...new Set(entryForms.filter((f) => f.panel === id).flatMap((f) => f.fields.map((x) => x.name)))];
+        for (const [name, fn] of Object.entries(panel?.actions ?? {})) {
+          if (typeof fn !== "function") continue;
+          await record("entryPanelAction", `${id}.${name}`, () => fn(ctx, entryTarget, Object.fromEntries((names.length ? names : ["id", "name"]).map((n) => [n, hostile ? HOSTILE : n === "id" ? "r1" : "demo"]))));
+        }
       }
     }
     if (!scenario.skipRoutes) await runRoutes();
@@ -275,7 +293,7 @@ export async function runScenario(m, scenario) {
 
   const obs = await captured(run).catch((error) => ({ value: undefined, lines: [], network: [], fatal: String(error?.message ?? error) }));
   return {
-    scenario, outputs, forms, console: obs.lines, network: obs.network, fatal: obs.fatal,
+    scenario, outputs, forms, entryForms, console: obs.lines, network: obs.network, fatal: obs.fatal,
     denied: [...new Set(ctx.calls.denied)], writes: ctx.calls.writes, mail: ctx.calls.mail, store: ctx.dumpStore(), calls: ctx.calls,
   };
 }

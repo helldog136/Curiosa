@@ -148,6 +148,7 @@ Validé à l'installation et au chargement (zod, `src/core/modules/manifest.ts`)
 | `sections` | Morceaux plaçables sur la page d'accueil (voir ci-dessous). 20 au plus. |
 | `offers` / `requires` | **Dépendances** : services que le module offre aux autres / dont il a besoin (voir « dépendances entre modules »). 10 au plus chacun. |
 | `consumes` / `provides` | Sujets que le module digère / expose (voir « sujets »). 10 au plus chacun. |
+| `entryPanels` | **Sections ajoutées à l'éditeur d'entrée d'un autre module** (voir « Ajouter une section à l'éditeur d'un autre module »). 5 au plus : `{ "id", "for": { "topic" } ou { "module" }, "title", "help"? }`. |
 | `mcp` | Actions proposées à l'API MCP (voir « API MCP »). 60 au plus. |
 | `content` | Module à contenu : le cœur fournit l'éditeur d'entrées et les pages (voir ci-dessous). |
 | `onboarding` | Comment le module participe à la première installation (voir ci-dessous). |
@@ -187,7 +188,7 @@ fidèlement (le test de l'exemple vérifie qu'elles correspondent au code), elle
 | `topics` | le module fournit (`exports`) ou consomme (`ctx.api.topics.collect`) des sujets |
 | `overlay` | le code définit `overlay` (source navigateur OBS) |
 | `mcp` | le module déclare des actions `mcp` |
-| `admin` | le code définit `adminPanel` / `adminActions` |
+| `admin` | le code définit `adminPanel` / `adminActions` / `entryPanels` |
 | `mail` | le module appelle `ctx.api.mail.send` |
 | `rawg` | le module appelle `ctx.api.rawg.cover` (jaquettes de jeux, voir « Jaquettes de jeux (RAWG) ») |
 
@@ -363,6 +364,7 @@ export default {
   filters:  { entryBody: (body, ctx) => body.replaceAll(":wave:", "👋") },
   adminPanel:   async (ctx, { query }) => [{ type: "heading", text: "…" }],
   adminActions: { save: async (ctx, values) => ({ ok: "Enregistré." }) },
+  entryPanels:  { "ma-section": { render: async (ctx, entry) => [/* blocs */], actions: { save: async (ctx, entry, values) => ({ ok: "Enregistré." }) } } },
   mcp:      { my_action: async (ctx, args, actor) => ({ done: true }) },
   migrations: { 2: async (ctx) => { /* données v1 → v2 */ } },
   backup:   { readable: async (ctx) => [{ path: "data.csv", content: "…" }] },
@@ -388,6 +390,8 @@ un slot en échec disparaît, une section en échec donne `[]`, une page en éch
 | `filters.entryBody` | on rend le corps d'une entrée | `body` (markdown), `SlotContext` | le corps transformé (texte) |
 | `adminPanel` | on ouvre la page d'admin de l'instance | `ctx`, `{ query }` | blocs |
 | `adminActions.<nom>` | un bloc `adminForm` ou un bouton de ligne | `ctx`, `values` (texte) | `{ ok?, error?, redirect? }` (`grid?` pour une `generateAction` de `gridEditor`) |
+| `entryPanels.<id>.render` | on ouvre l'éditeur d'une entrée d'un module visé (déclaré dans `entryPanels` du manifeste) | `ctx` (de CETTE instance), `entry` (`EntryPanelTarget`), `{ advanced, role }` (mode avancé de la personne ; son rôle `owner`, `admin` ou `editor`) | blocs ; `[]` masque la section |
+| `entryPanels.<id>.actions.<nom>` | un bloc `adminForm` ou un bouton de ligne de la section | `ctx`, `entry`, `values` (texte) | `{ ok?, error? }` (`redirect` est ignoré) |
 | `mcp.<action>` | un assistant appelle l'action | `ctx`, `args` validés, `actor` | une valeur JSON |
 | `migrations.<N>` | après une mise à jour du module ou une restauration, pour chaque instance dont les données sont en retard | `ctx` | rien (lever une erreur annule tout) |
 | `backup.readable` | on exporte une sauvegarde | `ctx` | liste de `{ path, content }` |
@@ -680,7 +684,7 @@ Deux familles : les **services** du cœur (génériques, voir [PLATFORM.md](PLAT
 | `ctx.api.rawg.cover(title)` | service | jaquette d'un jeu : `{ status, url }` avec `status` = `found` (`url` en https), `none` (aucun résultat), `no-key` (pas de clé), `refused` (RAWG refuse la clé), `unreachable` (RAWG injoignable) ; permission `rawg`, voir « Jaquettes de jeux (RAWG) » |
 | `ctx.api.site(locale?)` | lecture | `{ name, tagline, logo }` du site |
 | `ctx.api.brand(locale?)` | lecture | identité visuelle complète (`ModuleBrand`, ci-dessous) |
-| `ctx.api.instances.list({ module?, locale? })` | lecture | `[{ key, module, basePath, name }]` des instances actives |
+| `ctx.api.instances.list({ module?, locale? })` | lecture | `[{ id, key, module, basePath, name, adminPath }]` des instances actives ; `adminPath` (`/admin/instances/<id>`) est la page de réglages de l'instance : de quoi y renvoyer l'administrateur par un lien (`href`) |
 | `ctx.api.entries.list({ instance?, locale?, limit? })` | lecture | entrées publiées (`EntrySummary`) ; par défaut celles de l'instance courante |
 | `ctx.api.siteUrl` | lecture | adresse publique du site, sans `/` final |
 | `ctx.api.seo.jsonLd(données)` | service | prépare des données structurées (JSON-LD) pour le slot `layout.head` : renvoie la balise `{ tag: "script", jsonLd }` à mettre dans un bloc `head`, ou `null` si la donnée est inutilisable (pas de `@type`, trop volumineuse). Le cœur ajoute `@context`, borne la taille (texte 5 000 caractères, 100 éléments par liste, 8 niveaux, 20 000 caractères au total) et échappe `</script>`. Voir « Données structurées » dans [CREATE-A-MODULE.md](CREATE-A-MODULE.md). |
@@ -874,6 +878,63 @@ export default {
   Une exception donne un message d'erreur générique (détail dans les journaux).
 - Chaque action est consignée dans le journal d'audit (`module.<clé>.<action>`), sans son contenu.
 - `ctx.locale` est la langue de l'administrateur ; `ctx.api.store` offre `add`, `get`, `update`, `list`, `remove`, `count`.
+
+## Ajouter une section à l'éditeur d'un autre module
+
+Un module peut ajouter **une section de réglages à la fiche d'une entrée d'un autre module** (une commande de chat dans la fiche d'un sponsor, une publication sociale dans la fiche d'un article…).
+Le principe : la donnée reste chez le module qui ajoute la section (clé = `entry.id`), et le module hôte **ne sait rien** de la section. Le cœur ne l'affiche que si le module qui la fournit est installé ET
+actif (au moins une instance en marche) et que l'entrée correspond ; sans lui, la fiche reste exactement ce qu'elle était. Rien n'est jamais requis du module hôte.
+
+Dans `module.json` (permission `admin`) :
+
+```json
+"entryPanels": [
+  { "id": "chat-command",
+    "for": { "topic": "sponsor.card" },
+    "title": { "en": "Chat command for this partner", "fr": "Commande de chat de ce partenaire" },
+    "help": { "en": "…", "fr": "…" } }
+]
+```
+
+`for` désigne les entrées concernées SANS nommer de module quand c'est possible : `{ "topic": "sponsor.card" }` vise les entrées de toute instance dont le module **fournit** ce sujet (`provides`) ;
+`{ "module": "sponsors" }` vise un module précis (à éviter : c'est une dépendance). Exactement l'un des deux. `title` est le titre de la section (et `help` une phrase d'aide). Si le module fournisseur a
+plusieurs instances, chacune montre sa section, suivie de son nom.
+
+Dans le code :
+
+```js
+export default {
+  entryPanels: {
+    "chat-command": {
+      // `entry` : { id, title, slug, path, instance, published } — relu en base par le cœur, jamais envoyé par le navigateur.
+      async render(ctx, entry, { advanced, role }) {   // advanced : options de technicien ; role : un « editor » n'ouvre pas les pages d'admin des modules (pas de lien vers elles) ; [] masque la section
+        const saved = (await ctx.api.store.list("commands")).find((r) => r.data.entryId === entry.id)?.data;
+        return [
+          { type: "adminForm", action: "save", submitLabel: ctx.t("save"), fields: [
+            { name: "enabled", kind: "checkbox", label: ctx.t("enable"), value: saved?.enabled ? "on" : "" },
+            { name: "text", kind: "textarea", label: ctx.t("text"), value: saved?.text ?? "" },
+          ] },
+        ];
+      },
+      actions: {
+        async save(ctx, entry, values) {          // `values` : texte seulement ; validez-les
+          // … enregistrer sous la clé entry.id (c'est la donnée de VOTRE module) …
+          return { ok: ctx.t("saved") };            // ou { error: "…quoi faire…" }
+        },
+      },
+    },
+  },
+};
+```
+
+- **Blocs** : ceux du panneau d'admin (`adminForm`, `table` avec `rowActions`, `markdown`, `banner`, `heading`, `links`…), sauf `gridEditor`. Une `action` de bloc désigne une clé de `actions` **de la section**.
+- **Aucun rechargement** : une action ne redirige jamais (`redirect` est ignoré). Le cœur la lance, rafraîchit la section et affiche `ok` / `error` dans la section : la position de défilement, le texte en cours de saisie
+  de l'éditeur et l'état ouvert ou fermé des sections ne bougent pas. La section est un bloc repliable (ouvert d'office) avec ses propres boutons ; elle s'enregistre seule, indépendamment du bouton « Enregistrer » de la fiche.
+- **Droits** : les mêmes que pour modifier l'entrée (éditeur et plus), contrairement au panneau d'admin d'une instance (administrateurs). Le cœur relit l'entrée et vérifie que la section s'applique bien à elle avant
+  d'appeler votre action ; la protection contre les requêtes forgées est celle de toutes les actions d'admin. Chaque action est consignée dans le journal d'audit (`module.<clé>.entry.<id>.<action>`), sans son contenu.
+- **Rien à montrer, pas de section** : si `render` renvoie `[]` (l'entrée n'est pas concernée finalement, une condition manque…), la section n'apparaît pas. **Pas de fiche, pas de section** : elle n'apparaît que sur une entrée existante (pas pendant la création). Une exception dans `render` n'affiche qu'un message d'erreur à la place de la section.
+- **Orphelins** : si l'entrée est supprimée, votre donnée ne l'est pas ; nettoyez-la vous-même (une tâche `tasks` qui compare avec `ctx.api.entries.list`).
+- **Test** : la vérification de conformité (`npm run module:check`) appelle `render` et les actions avec une fausse fiche (`{ id: "e0", title, slug: "demo-0", path, instance, published: true }`), y compris avec des données piégées, et contrôle que chaque bouton vise une action de la section.
 
 ## API MCP : exposer des actions aux assistants
 

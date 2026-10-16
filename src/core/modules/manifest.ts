@@ -112,6 +112,16 @@ export const manifestSchema = z.object({
    */
   offers: z.array(z.object({ service: topicId, label: localized.optional(), /** Version de l'interface du service (entier ≥ 1, défaut 1) : à augmenter quand le service gagne une capacité. */ version: serviceVersion.optional(), /** Méthodes qui ne font que lire : elles ne sont pas répliquées sur les fournisseurs secondaires. */ readOnly: z.array(z.string().regex(/^[a-zA-Z][a-zA-Z0-9_]{0,40}$/)).max(20).optional(), /** « Chaque instance de ce module répond pour elle-même » (ex. une chaîne par instance) : pas de maître à choisir, `ctx.api.services.callAll` les interroge toutes. Défaut : false. */ each: z.boolean().optional() })).max(10).optional(),
   requires: z.array(z.object({ service: topicId, label: localized.optional(), /** Version minimale du service exigée (entier ≥ 1, défaut 1). */ min: serviceVersion.optional() })).max(10).optional(),
+  /**
+   * SECTIONS AJOUTÉES À L'ÉDITEUR D'ENTRÉE D'UN AUTRE MODULE (voir entryPanels.ts). `for` désigne les entrées concernées SANS nommer un module précis : un sujet
+   * (`topic` : toute instance dont le module le fournit via `provides`) ou, à défaut, un module (`module`). La section n'apparaît que si ce module est installé et actif.
+   */
+  entryPanels: z.array(z.object({
+    id: z.string().regex(/^[a-z][a-z0-9-]{0,30}$/),
+    for: z.object({ topic: topicId.optional(), module: z.string().regex(/^[a-z][a-z0-9-]{1,39}$/).optional() }).refine((f) => Number(!!f.topic) + Number(!!f.module) === 1, "for needs exactly one of topic or module"),
+    title: localized,
+    help: localized.optional(),
+  })).max(5).optional(),
   mcp: z.array(z.object({ name: z.string().regex(/^[a-z][a-z0-9_]{1,39}$/), description: z.string().max(1000), readOnly: z.boolean().optional(), default: z.boolean().optional(), destructive: z.boolean().optional(), input: jsonSchemaLite.optional() }).refine((a) => !a.destructive || a.default !== true, "a destructive action cannot be enabled by default").refine((a) => !(a.readOnly && a.destructive), "a read-only action cannot be destructive")).max(60).optional(),
   content: content.optional(),
   page: z.boolean().optional(),

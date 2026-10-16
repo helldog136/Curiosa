@@ -47,6 +47,6 @@ export function walkValue(value, visit, path = "") {
 
 /** Phrase courte pour dire où est apparu un résultat de sonde : « la section « recent » ». */
 export function whereOf(o) {
-  const names = { section: "la section", slot: "l'emplacement", page: "la page", overlay: "l'overlay", export: "le partage", adminPanel: "le panneau d'administration", mcp: "l'action MCP", adminAction: "l'action d'administration", route: "la route", backup: "la sauvegarde lisible", news: "le témoin de nouveauté", adminBadge: "la pastille d'administration" };
+  const names = { section: "la section", slot: "l'emplacement", page: "la page", overlay: "l'overlay", export: "le partage", adminPanel: "le panneau d'administration", entryPanel: "la section de l'éditeur d'entrée", entryPanelAction: "l'action de la section d'éditeur", mcp: "l'action MCP", adminAction: "l'action d'administration", route: "la route", backup: "la sauvegarde lisible", news: "le témoin de nouveauté", adminBadge: "la pastille d'administration" };
   return `${names[o.kind] ?? o.kind}${o.name ? ` « ${o.name} »` : ""}`;
 }
