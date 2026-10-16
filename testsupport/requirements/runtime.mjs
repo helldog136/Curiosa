@@ -121,7 +121,7 @@ const requirements = [
       for (const run of obs.plain) for (const o of run.outputs) {
         if (!o.ok) continue;
         const v = o.value;
-        if (["section", "slot", "adminPanel"].includes(o.kind)) blocksIn(v, o);
+        if (["section", "slot", "adminPanel", "entryPanel"].includes(o.kind)) blocksIn(v, o);
         else if (o.kind === "page") { if (v !== null && v !== undefined) { if (typeof v !== "object" || Array.isArray(v)) out.push(`${whereOf(o)} doit renvoyer { blocks: [...] } ou rien`); else blocksIn(v.blocks, { ...o }); } }
         else if (o.kind === "overlay") { if (!v || typeof v.html !== "string") out.push(`${whereOf(o)} doit renvoyer { html: "…" }`); }
         else if (o.kind === "export") { if (!Array.isArray(v) || v.some((x) => !x || typeof x !== "object")) out.push(`${whereOf(o)} doit renvoyer une liste d'objets`); }
@@ -144,7 +144,7 @@ const requirements = [
       const out = [];
       for (const [name, run] of Object.entries(obs.runs)) {
         if (name === "protection") continue;
-        for (const o of run.outputs) if (!o.ok && o.kind !== "mcp" && o.kind !== "adminAction") out.push(`${whereOf(o)}${o.label ? ` (${o.label})` : ""} a échoué (${name === "hostile" || name === "hostileUrl" ? "données piégées" : name === "defaults" ? "réglages par défaut" : "réglages remplis"}) : ${o.error.slice(0, 140)}`);
+        for (const o of run.outputs) if (!o.ok && o.kind !== "mcp" && o.kind !== "adminAction" && o.kind !== "entryPanelAction") out.push(`${whereOf(o)}${o.label ? ` (${o.label})` : ""} a échoué (${name === "hostile" || name === "hostileUrl" ? "données piégées" : name === "defaults" ? "réglages par défaut" : "réglages remplis"}) : ${o.error.slice(0, 140)}`);
         if (run.fatal) out.push(`la sonde s'est arrêtée : ${run.fatal}`);
       }
       return [...new Set(out)].slice(0, 12);

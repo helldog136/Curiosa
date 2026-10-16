@@ -214,7 +214,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 
 **Ce que module.json annonce est ce que le code fait** — niveau : **obligatoire**
 
-- **Ce qui est vérifié.** Chaque section, action MCP, service offert, sujet partagé, page et overlay déclarés existent dans le code — et inversement. Les emplacements (slots) ont un nom connu, les formulaires pointent vers une route ou une action qui existe, et les services ou sujets appelés sont déclarés.
+- **Ce qui est vérifié.** Chaque section, section d'éditeur d'entrée, action MCP, service offert, sujet partagé, page et overlay déclarés existent dans le code — et inversement. Les emplacements (slots) ont un nom connu, les formulaires pointent vers une route ou une action qui existe (dans une section d'éditeur : une action de cette section), et les services ou sujets appelés sont déclarés.
 - **Pourquoi.** Le cœur ne connaît le module que par son manifeste. Une section annoncée mais absente s'affiche vide ; un code jamais annoncé n'est jamais appelé ; un service non déclaré est refusé à l'appel.
 - **Comment corriger.** Ajoutez ce qui manque d'un côté ou de l'autre : le message dit si c'est le manifeste (module.json) ou le code (index.mjs) qui est en retard.
 

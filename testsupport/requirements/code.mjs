@@ -36,13 +36,21 @@ const requirements = [
         }
       }
       for (const k of ["page", "overlay", "news", "adminBadge", "adminPanel"]) if (d[k] !== undefined && !FN(d[k])) out.push(`« ${k} » doit être une fonction`);
+      if (d.entryPanels !== undefined) {
+        if (!d.entryPanels || typeof d.entryPanels !== "object" || Array.isArray(d.entryPanels)) out.push("« entryPanels » doit être un objet");
+        else for (const [k, v] of Object.entries(d.entryPanels)) {
+          if (!v || typeof v !== "object" || !FN(v.render)) { out.push(`la section d'éditeur « ${k} » doit avoir une fonction « render »`); continue; }
+          if (v.actions !== undefined && (!v.actions || typeof v.actions !== "object")) out.push(`entryPanels.${k}.actions doit être un objet`);
+          else for (const [a, f] of Object.entries(v.actions ?? {})) if (!FN(f)) out.push(`entryPanels.${k}.actions.${a} doit être une fonction`);
+        }
+      }
       return out;
     },
   },
   {
     id: "def.matches", level: "mandatory", group: "code",
     title: "Ce que module.json annonce est ce que le code fait",
-    what: "Chaque section, action MCP, service offert, sujet partagé, page et overlay déclarés existent dans le code — et inversement. Les emplacements (slots) ont un nom connu, les formulaires pointent vers une route ou une action qui existe, et les services ou sujets appelés sont déclarés.",
+    what: "Chaque section, section d'éditeur d'entrée, action MCP, service offert, sujet partagé, page et overlay déclarés existent dans le code — et inversement. Les emplacements (slots) ont un nom connu, les formulaires pointent vers une route ou une action qui existe (dans une section d'éditeur : une action de cette section), et les services ou sujets appelés sont déclarés.",
     why: "Le cœur ne connaît le module que par son manifeste. Une section annoncée mais absente s'affiche vide ; un code jamais annoncé n'est jamais appelé ; un service non déclaré est refusé à l'appel.",
     fix: "Ajoutez ce qui manque d'un côté ou de l'autre : le message dit si c'est le manifeste (module.json) ou le code (index.mjs) qui est en retard.",
     async run(m) {
@@ -57,6 +65,10 @@ const requirements = [
         if (section && implicit.has(section[1])) continue; // fournie par le cœur pour les modules à contenu
         out.push(p);
       }
+      // sections ajoutées à l'éditeur d'entrée d'un autre module : ce que module.json annonce = ce que le code fournit, et chaque bouton vise une action de la section
+      const panelDecl = new Set((man.entryPanels ?? []).map((p) => p.id));
+      for (const id of panelDecl) if (!FN(d.entryPanels?.[id]?.render)) out.push(`la section d'éditeur « ${id} » est annoncée dans module.json (entryPanels) mais le code n'a pas de « entryPanels["${id}"].render »`);
+      for (const id of Object.keys(d.entryPanels ?? {})) if (!panelDecl.has(id)) out.push(`le code définit la section d'éditeur « ${id} » (entryPanels) mais module.json ne l'annonce pas (entryPanels)`);
       const offers = new Map((man.offers ?? []).map((o) => [o.service, o]));
       for (const service of offers.keys()) if (!d.services?.[service]) out.push(`le service « ${service} » est offert dans module.json mais n'existe pas dans le code (services)`);
       for (const service of Object.keys(d.services ?? {})) if (!offers.has(service)) out.push(`le service « ${service} » existe dans le code mais n'est pas déclaré dans module.json (offers)`);
@@ -88,6 +100,12 @@ const requirements = [
           const route = f.action.split(/[?#]/)[0].split("/").filter(Boolean).pop(); // « <clé d'instance>/<route> »
           if (route && !FN(d.routes?.[route])) out.push(`un formulaire public envoie vers la route « ${route} » qui n'existe pas (routes)`);
         }
+      }
+      for (const run of Object.values(obs.runs)) for (const f of run.entryForms ?? []) {
+        const key = `e:${f.panel}:${f.action}`;
+        if (seen.has(key) || !f.action) continue;
+        seen.add(key);
+        if (!FN(d.entryPanels?.[f.panel]?.actions?.[f.action])) out.push(`la section d'éditeur « ${f.panel} » a un formulaire ou un bouton vers l'action « ${f.action} » qui n'existe pas (entryPanels.${f.panel}.actions)`);
       }
       return out;
     },

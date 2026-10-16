@@ -99,6 +99,12 @@ export type SeedResult = { created: boolean; instanceKey: string };
 
 export type ProvideDecl = { topic: string; label?: LocalizedString };
 
+/**
+ * Une section que ce module ajoute à l'éditeur d'entrée d'un AUTRE module. `for` : les entrées concernées, par sujet (`topic`, recommandé : toute instance dont le module
+ * le fournit via `provides`) ou par module (`module`). Le module hôte ne sait rien de cette section ; elle n'apparaît que si ce module est installé et actif.
+ */
+export type EntryPanelDecl = { id: string; for: { topic?: string; module?: string }; title: LocalizedString; help?: LocalizedString };
+
 export type ModuleManifest = {
   apiVersion: number;
   id: string;
@@ -137,6 +143,8 @@ export type ModuleManifest = {
   seeds?: SeedDecl[];
   /** Groupes de réglages facultatifs (un bouton « Ajouter… » les ouvre). */
   optionalGroups?: OptionalGroupDecl[];
+  /** Sections ajoutées à l'éditeur d'entrée d'un autre module (`entryPanels` dans le code). */
+  entryPanels?: EntryPanelDecl[];
   /** Actions proposées à l'API MCP du cœur (désactivable). */
   mcp?: McpDecl[];
   /** Ce qui se passe si l'utilisateur choisit ce module pendant l'assistant de première installation. Le cœur n'a aucune connaissance d'un module en particulier : tout est déclaré ici. */
@@ -210,7 +218,8 @@ export type ModuleApi = {
   /** Identité visuelle (nom, présentation, logo, palette, police) : exactement ce que le site utilise. */
   brand(locale?: string): Promise<ModuleBrand>;
   instances: {
-    list(opts?: { locale?: string; module?: string }): Promise<{ key: string; module: string; basePath: string | null; name: string }[]>;
+    /** `id` et `adminPath` (« /admin/instances/<id> ») : pour renvoyer l'administrateur vers les réglages d'une instance d'un autre module. */
+    list(opts?: { locale?: string; module?: string }): Promise<{ id: string; key: string; module: string; basePath: string | null; name: string; adminPath: string }[]>;
   };
   /** Données structurées (schema.org) pour les moteurs de recherche et les assistants IA. */
   seo: {
@@ -358,6 +367,12 @@ export type ModuleDefinition = {
   adminPanel?: (ctx: ModuleContext, request: { query: Record<string, string> }) => Block[] | Promise<Block[]>;
   /** Actions déclenchées par les blocs `adminForm` et les boutons de ligne des `table` du panneau d'admin. */
   adminActions?: Record<string, AdminActionHandler>;
+  /**
+   * Sections ajoutées à l'éditeur d'entrée d'un autre module, par `id` (déclarées dans `entryPanels` du manifeste). `render` renvoie les blocs de la section pour CETTE entrée ;
+   * `actions` : ce que ses blocs `adminForm` et boutons de ligne déclenchent (enregistrées sans quitter la page). Mêmes rôles que l'éditeur d'entrée (éditeur et plus).
+   * Les données restent chez le module qui fournit la section (sa clé : `entry.id`) ; le module hôte n'en sait rien.
+   */
+  entryPanels?: Record<string, EntryPanel>;
   /** Implémentation des actions MCP déclarées dans `mcp` du manifeste. */
   mcp?: Record<string, McpHandler>;
   /**
@@ -388,6 +403,30 @@ export type ModuleDefinition = {
     onInstanceCreate?(ctx: ModuleContext): void | Promise<void>;
     onInstanceDelete?(ctx: ModuleContext): void | Promise<void>;
   };
+};
+
+/** L'entrée dont on édite la fiche, telle que le cœur la décrit à un module qui ajoute une section à l'éditeur (jamais lue du navigateur : le cœur la relit à chaque appel). */
+export type EntryPanelTarget = {
+  id: string;
+  title: string;
+  slug: string;
+  /** Adresse publique de l'entrée (« /sponsors/mon-sponsor »). */
+  path: string;
+  /** Clé de l'instance qui contient l'entrée. */
+  instance: string;
+  /** L'entrée est-elle publiée ? (brouillon, programmée ou expirée : non) */
+  published: boolean;
+};
+/** Qui regarde la fiche : mode avancé et rôle (« owner », « admin » ou « editor »). */
+export type EntryPanelView = { advanced: boolean; role: "owner" | "admin" | "editor" };
+export type EntryPanelActionHandler = (ctx: ModuleContext, entry: EntryPanelTarget, values: Record<string, string>) => AdminActionResult | Promise<AdminActionResult>;
+export type EntryPanel = {
+  /**
+   * `view.advanced` : la personne a choisi le mode avancé (options de technicien seulement dans ce cas). `view.role` : son rôle (un éditeur n'ouvre pas les pages d'administration
+   * des modules : ne lui proposez pas de lien vers elles). Rendre `[]` masque la section.
+   */
+  render(ctx: ModuleContext, entry: EntryPanelTarget, view: EntryPanelView): Block[] | Promise<Block[]>;
+  actions?: Record<string, EntryPanelActionHandler>;
 };
 
 export type ModuleTask = {
