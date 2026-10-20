@@ -27,6 +27,8 @@ test("les services du cœur sont génériques : chacun n'importe que ce qu'il a 
     "src/core/services/store.ts": ["@/core/db"],
     "src/core/services/uploads.ts": ["@/core/config"],
     "src/core/services/index.ts": [],
+    // Le client réseau ne connaît rien du cœur (ni modules, ni réglages, ni base) : il est aussi chargé seul par le kit de test.
+    "src/core/services/net.ts": [],
     // Le mécanisme MCP ne connaît ni les modules, ni le contenu, ni les instances.
     "src/core/services/mcp": ["@/core/db", "@/core/settings", "@/core/modules/types"],
     // Les sujets connaissent les modules (c'est leur objet) ; le sujet du cœur vient du moteur de contenu.
@@ -164,4 +166,18 @@ test("routes : jamais de « catch-all optionnel » [[...x]] sous un segment qui 
     if (["page.tsx", "page.ts", "page.js"].some((p) => fs.existsSync([...owner, p].join("/")))) bad.push(file);
   }
   assert.deepEqual(bad, [], "utilisez [...x] (catch-all obligatoire) : l'adresse du segment est déjà couverte par page.tsx ou default.tsx");
+});
+
+test("rôles (0.2.0) : aucune comparaison directe du rôle d'une personne hors de access.ts et auth.ts (utiliser can(), isOwner(), hasRole() ou levelOf())", () => {
+  // `user.role`, `me.role`, `actor.role`, `target.role`, `by.role`, `u.role`… lus comme propriété (pas dans une chaîne ni une clé de traduction).
+  const RE = /(?<![\w."'`-])(user|me|actor|target|by|u|owner|row|member|viewer|account)\??\.role\b(?!s)/;
+  // Le rôle porté par la session (JWT) ne décide jamais : seul auth.ts l'écrit.
+  const JWT = /session\??\.user\??\.role\b|token\.role\b/;
+  const allowed = new Set(["src/core/auth/access.ts", "src/auth.ts"]);
+  const offenders = [];
+  for (const file of [...code("src/core"), ...code("src/app"), ...code("src/components")]) {
+    if (allowed.has(file)) continue;
+    read(file).split("\n").forEach((line, i) => { if (RE.test(line) || JWT.test(line)) offenders.push(`${file}:${i + 1}: ${line.trim().slice(0, 120)}`); });
+  }
+  assert.deepEqual(offenders, [], `\n${offenders.join("\n")}`);
 });

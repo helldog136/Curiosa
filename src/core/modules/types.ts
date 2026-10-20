@@ -1,15 +1,52 @@
 import type { Theme } from "../color";
 import type { Block, Slot } from "../blocks";
+import type { StorePage, StoreRecord } from "../services/store";
+import type { NetHealthItem, NetRequest, NetResult } from "../services/net";
 
 // Les modules typent leurs blocs avec ce ré-export : ils n'importent rien d'autre du cœur.
 export type { Block, Slot };
+export type { NetHealthItem, NetRequest, NetResult };
 
 export type LocalizedString = string | Record<string, string>;
+
+/**
+ * Source des options d'un réglage `choice` (cœur 0.2.0) :
+ *   - `providers` : les instances actives qui offrent `service` (déclaré dans `requires`), version ≥ `min` ; la valeur stockée est l'id d'INSTANCE (jamais sa clé) ;
+ *   - `service` : les éléments rendus par les méthodes `list` / `get` (et `create`, facultative) du service `service` du module propriétaire de la donnée.
+ */
+export type ChoiceSource =
+  | { kind: "providers"; service: string; min?: number }
+  | { kind: "service"; service: string; list: string; get: string; create?: string };
+/** Ce que désigne un réglage (règle de kit « un réglage qui désigne un existant n'est jamais du texte libre ») ; `external` : un profil hors du site (pseudo, identifiant de chaîne…). */
+export type RefersTo = "category" | "contact" | "organisation" | "channel" | "connector" | "instance"
+  | "module" | "calendar" | "game" | "page" | "user" | "role" | "theme" | "external";
+/** Un élément proposé par `list` (source `service`) : `id` stable, `label` lisible, `aliases` (autres noms reconnus par `fromText`), `hint` (précision affichée en petit). */
+export type ChoiceItem = { id: string; label: string; aliases?: string[]; hint?: string };
+/**
+ * Résolution d'un réglage `choice` à l'exécution (`ctx.resolveChoice`) :
+ *   chosen      la valeur enregistrée existe (ou a été fusionnée : on suit le nouvel id) ;
+ *   only        rien d'enregistré et exactement UNE option : on l'utilise sans l'écrire (une 2e option fera réapparaître le sélecteur) ;
+ *   none        rien d'enregistré, aucune option ;  ambiguous  rien d'enregistré, plusieurs options ;
+ *   missing     l'élément enregistré n'existe plus ; s'il reste UNE seule option, `id` / `label` la donnent (le module peut l'utiliser) ;
+ *   unverified  le fournisseur n'a pas répondu à temps (ou l'instance choisie est momentanément à l'écart) : ne rien décider.
+ */
+export type ChoiceResolution =
+  | { status: "chosen" | "only"; id: string; label: string }
+  | { status: "missing"; id?: string; label?: string }
+  | { status: "none" | "ambiguous" | "unverified" };
 
 export type SettingField = {
   key: string;
   label: LocalizedString;
-  type: "text" | "textarea" | "url" | "link" | "number" | "boolean" | "select" | "color" | "secret" | "image" | "video";
+  type: "text" | "textarea" | "url" | "link" | "number" | "boolean" | "select" | "color" | "secret" | "image" | "video" | "choice";
+  /** Obligatoire pour `choice` : d'où viennent les options. */
+  source?: ChoiceSource;
+  /** `choice` de source `service` avec `create` : propose « Créer « X » » (le module propriétaire crée, avec SES droits). Défaut false. */
+  allowCreate?: boolean;
+  /** `choice` qui remplace un ancien réglage texte (même clé) : une valeur texte égale à UNE étiquette (ou alias) est remplacée par son id. */
+  fromText?: boolean;
+  /** Ce que désigne ce réglage (voir `RefersTo`). */
+  refersTo?: RefersTo;
   help?: LocalizedString;
   /** Valeur par défaut. Pour `text` / `textarea` : `"site:name"` (nom du site) ou `"site:tagline"` (accroche), dans la langue du champ. */
   default?: string | number | boolean;
@@ -141,6 +178,12 @@ export type ModuleManifest = {
   settings: SettingField[];
   /** Modules dans lesquels une migration de données de ce module peut semer UNE instance (`ctx.seedInstance`). Le module cible doit offrir un service que celui-ci `requires`. */
   seeds?: SeedDecl[];
+  /** (0.2.0) Plus petite version des données que ce module sait encore convertir (≤ `dataVersion`) : en dessous, l'instance est mise à l'écart. */
+  dataFloor?: number;
+  /** (0.2.0) Réglages d'une version précédente, repris par le module (`ctx.legacy`) : jamais affichés. `secret` : jamais hors de la mémoire. */
+  legacySettings?: { key: string; secret?: boolean }[];
+  /** (0.2.0) Collections du stockage d'une version précédente, vidées par le module après reprise (comptées par le rapport d'entretien). */
+  legacyCollections?: string[];
   /** Groupes de réglages facultatifs (un bouton « Ajouter… » les ouvre). */
   optionalGroups?: OptionalGroupDecl[];
   /** Sections ajoutées à l'éditeur d'entrée d'un autre module (`entryPanels` dans le code). */
@@ -208,6 +251,11 @@ export type ModuleApi = {
      * Les fournisseurs les reçoivent en `Date` dans `exports`, et peuvent les ignorer.
      */
     collect(topic: string, opts?: { limit?: number; from?: Date | string; to?: Date | string }): Promise<TopicItem[]>;
+    /**
+     * Comme `collect`, page par page : `limit` (200 au plus par page) et `cursor` (celui du `next` précédent, opaque, à ne pas fabriquer).
+     * `next: null` = fini. Seul `core.entry` est vraiment lu par curseur ; les autres sujets n'ont qu'une page. Un curseur illisible lève une erreur.
+     */
+    collectPage(topic: string, opts?: { limit?: number; cursor?: string; from?: Date | string; to?: Date | string }): Promise<{ items: TopicItem[]; next: string | null }>;
   };
   siteUrl: string;
   entries: {
@@ -250,15 +298,39 @@ export type ModuleApi = {
     /** Jaquette du jeu `title` : `found` (url https), `none` (aucun résultat), `no-key`, `refused` (RAWG refuse la clé), `unreachable`. */
     cover(title: string): Promise<{ status: "found" | "none" | "no-key" | "refused" | "unreachable"; url: string | null }>;
   };
-  /** Stockage privé de l'instance (messages reçus, compteurs…). */
+  /**
+   * Client réseau NEUTRE et BORNÉ du cœur (aucune permission à déclarer). À préférer à `fetch` pour toute API externe : délai dur (8 s par défaut,
+   * 20 s au plus ; dans une page publique, jamais plus que le temps restant de la page), https seulement, pause automatique après un 429 ou un quota
+   * épuisé (les demandes suivantes reçoivent `rate` / `quota` SANS appel réseau jusqu'à `retryAt`), disjoncteur par hôte, déduplication des GET
+   * identiques en cours (`shared: true`), file bornée (au-delà : `busy` immédiatement), une seule reprise au plus. Ne lève jamais.
+   * Une réponse HTTP reçue donne `ok: true` avec son `status` (à vous de le juger), avec `json` si le corps est du JSON lisible, sinon `text`.
+   */
+  net: {
+    request(req: NetRequest): Promise<NetResult>;
+    /** État des hôtes contactés depuis le démarrage : `ok`, `slow`, `rate` / `quota` (jusqu'à `retryAt`), `down`. */
+    health(): Promise<NetHealthItem[]>;
+    /** Temps restant (ms) de la page publique en cours, ou null hors page publique (tâche, route, administration). */
+    budgetMs(): number | null;
+  };
+  /**
+   * Stockage privé de l'instance (messages reçus, compteurs…). Plafonds : `list` 100 par défaut, 10 000 au plus (au-delà, utilisez `page`) ;
+   * `page` / `listByKey` 100 par défaut, 1 000 au plus ; `addMany` 5 000 lignes au plus par appel ; `key` 200 caractères au plus.
+   */
   store: {
-    add(collection: string, data: Record<string, unknown>): Promise<string>;
-    get(id: string): Promise<{ id: string; createdAt: Date; data: Record<string, unknown> } | null>;
-    update(id: string, data: Record<string, unknown>): Promise<boolean>;
-    list(
-      collection: string,
-      opts?: { limit?: number },
-    ): Promise<{ id: string; createdAt: Date; data: Record<string, unknown> }[]>;
+    add(collection: string, data: Record<string, unknown>, opts?: { key?: string | null }): Promise<string>;
+    get(id: string): Promise<StoreRecord | null>;
+    /** `key` absent = inchangée ; `key: null` l'efface. */
+    update(id: string, data: Record<string, unknown>, opts?: { key?: string | null }): Promise<boolean>;
+    list(collection: string, opts?: { limit?: number }): Promise<StoreRecord[]>;
+    /** Lecture par pages (curseur opaque `(createdAt, id)` : ni doublon ni trou, même si des lignes arrivent entre deux pages). `next` = null à la dernière page. */
+    page(collection: string, opts?: { limit?: number; cursor?: string | null; order?: "desc" | "asc"; key?: string }): Promise<StorePage>;
+    /** L'enregistrement le plus ancien portant cette clé (la clé n'est pas unique). */
+    getByKey(collection: string, key: string): Promise<StoreRecord | null>;
+    listByKey(collection: string, key: string, opts?: { limit?: number; cursor?: string | null }): Promise<StorePage>;
+    /** Ajoute jusqu'à 5 000 lignes en une transaction (tout ou rien) ; renvoie les identifiants dans l'ordre. */
+    addMany(collection: string, rows: { data: Record<string, unknown>; key?: string | null }[]): Promise<string[]>;
+    /** Compteur propre à l'instance, augmenté par le cœur quand ses données sont remplacées de l'extérieur (restauration, annulation de migration, reprise de données gardées). Sert à invalider un index gardé en mémoire. */
+    generation(): Promise<number>;
     remove(id: string): Promise<void>;
     count(collection: string): Promise<number>;
   };
@@ -266,8 +338,18 @@ export type ModuleApi = {
   services: {
     /** Y a-t-il un fournisseur actif de ce service ? */
     available(service: string): Promise<boolean>;
-    /** Appelle `method` du service sur le fournisseur qui répond (le maître ; pour un service `each`, la première instance par ordre de création). Le service doit être déclaré dans `requires` du manifeste. */
-    call(service: string, method: string, args?: unknown): Promise<{ ok: true; value: unknown } | { ok: false; reason: "undeclared" | "unavailable" | "no_method" | "failed" }>;
+    /**
+     * Les fournisseurs de ce service que ce module peut appeler (déclarés dans `requires`, facultatifs compris, version ≥ `min`), par ordre de création, 50 au plus.
+     * `id` : identifiant STABLE de l'instance (à passer à `call(…, { provider })`) ; `name` : libellé lisible ; `master` : celui que `call` vise sans `provider`.
+     * Service non déclaré ou sans fournisseur : `[]`. Cœur 0.2.0 (absent avant : tester `typeof ctx.api.services.providers === "function"`).
+     */
+    providers(service: string): Promise<{ id: string; key: string; name: string; module: string; version: number; each: boolean; master: boolean }[]>;
+    /**
+     * Appelle `method` du service sur le fournisseur qui répond (le maître ; pour un service `each`, la première instance par ordre de création). Le service doit être déclaré dans `requires` du manifeste.
+     * `opts.provider` (cœur 0.2.0, `minCore: "0.2.0"` obligatoire) : l'`id` d'une instance de `providers(service)` ; seule elle répond (sans réplique, sauf si c'est le maître).
+     * Fournisseur disparu, mis à l'écart ou étranger : `{ ok: false, reason: "unavailable" }`.
+     */
+    call(service: string, method: string, args?: unknown, opts?: { provider?: string }): Promise<{ ok: true; value: unknown } | { ok: false; reason: "undeclared" | "unavailable" | "no_method" | "failed" }>;
     /**
      * Appelle `method` sur TOUTES les instances actives d'un service offert avec `each: true` (chaque instance répond pour elle-même : plusieurs chaînes,
      * plusieurs comptes…), par ordre de création. Une entrée par instance ; `instance` = sa clé, `name` = son surnom lisible. Un fournisseur qui échoue
@@ -300,6 +382,12 @@ export type ModuleContext = {
    * langues). Refusé tant qu'aucun `seedInstance` n'a abouti dans cette migration ; si la migration échoue, le réglage est remis comme avant.
    */
   clearSetting?(key: string): Promise<void>;
+  /**
+   * (0.2.0) Réglages hérités déclarés dans `legacySettings` du manifeste, pour CETTE instance : `keys()` les liste, `get` lit une valeur (null si absente ou vide),
+   * `clear` l'efface (dans toutes les langues) une fois la reprise confirmée. Une clé non déclarée lève une erreur. Une valeur lue ne doit transiter qu'en mémoire :
+   * jamais dans un journal, un message d'erreur, une réponse de service ni un bloc. Absent sur un cœur plus ancien.
+   */
+  legacy?: { keys(): string[]; get(key: string): Promise<string | number | boolean | null>; clear(key: string): Promise<void> };
   /** Le thème réglé dans l'admin (couleurs dérivées, police) : exactement ce que le site utilise. Pour que l'apparence d'un module suive le site. */
   theme: Theme;
   /**
@@ -310,6 +398,18 @@ export type ModuleContext = {
   /** Traduction depuis locales/<langue>.json du module (repli : langue par défaut puis clé). */
   t(key: string, vars?: Record<string, string | number>): string;
   api: ModuleApi;
+  /**
+   * (0.2.0) La personne qui regarde l'administration a-t-elle ce droit du module (identifiant LOCAL : « email.view », préfixé « <module>: » par le cœur) ?
+   * Vrai seulement dans un contexte d'administration d'un humain (`adminPanel`, `adminActions`, `entryPanels`) ; toujours faux ailleurs (page publique,
+   * route, overlay OBS, tâche, service, MCP). Absent sur un cœur plus ancien : traitez l'absence comme un refus.
+   */
+  can?(rightId: string): boolean;
+  /**
+   * (0.2.0) Résout un réglage `choice` de cette instance (voir `ChoiceResolution`). Ne lève jamais ; borné (3 s). Pour un `choice` de source `providers` :
+   * `ctx.api.services.call(service, méthode, args, { provider: r.id })` quand le statut est `chosen` ou `only` (ou `missing` avec un `id`).
+   * Absent sur un cœur plus ancien (qui refuse d'ailleurs un manifeste avec `choice` : `minCore: "0.2.0"`).
+   */
+  resolveChoice?(key: string): Promise<ChoiceResolution>;
 };
 
 export type SlotContext = ModuleContext & {
@@ -366,7 +466,20 @@ export type ModuleDefinition = {
   /** Contenu du panneau d'admin de l'instance, sous ses réglages. `query` = paramètres de l'URL d'admin. */
   adminPanel?: (ctx: ModuleContext, request: { query: Record<string, string> }) => Block[] | Promise<Block[]>;
   /** Actions déclenchées par les blocs `adminForm` et les boutons de ligne des `table` du panneau d'admin. */
-  adminActions?: Record<string, AdminActionHandler>;
+  /**
+   * Forme fonction : réservée aux administrateurs (comme avant). Forme objet (0.2.0) : `{ right: "phone.edit", run }` : le cœur vérifie `<module>:open`
+   * ET ce droit (préfixé par le cœur) AVANT d'appeler `run` ; une personne d'un rôle personnalisé qui a ces droits peut alors l'exécuter.
+   */
+  adminActions?: Record<string, AdminActionHandler | AdminActionSpec>;
+  /**
+   * (0.2.0) Téléchargements d'ADMINISTRATION (un export de fiches, un journal…), par nom ; un bloc `{ type: "download", name }` du panneau d'admin les propose.
+   * Le fichier est produit PAR MORCEAUX par `generate` (un générateur asynchrone : jamais construit en entier en mémoire ; lisez le stockage par `store.page`)
+   * et servi par une route du CŒUR, réservée aux personnes connectées qui ont le droit (`right` : identifiant local d'un droit déclaré dans `rights` ;
+   * absent = administrateurs) et notée au journal d'audit. N'exposez JAMAIS un export privé par `routes` : ces routes sont publiques.
+   * Limites du cœur : 512 Mo et 10 minutes au plus, 2 téléchargements en même temps par personne ; un générateur qui ne produit plus rien pendant 60 s est coupé.
+   * `params` : les valeurs du bloc, renvoyées par le navigateur : à valider comme toute entrée. Un cœur plus ancien ignore cette clé (exigez `minCore` 0.2.0).
+   */
+  adminDownloads?: Record<string, AdminDownloadSpec>;
   /**
    * Sections ajoutées à l'éditeur d'entrée d'un autre module, par `id` (déclarées dans `entryPanels` du manifeste). `render` renvoie les blocs de la section pour CETTE entrée ;
    * `actions` : ce que ses blocs `adminForm` et boutons de ligne déclenchent (enregistrées sans quitter la page). Mêmes rôles que l'éditeur d'entrée (éditeur et plus).
@@ -417,7 +530,7 @@ export type EntryPanelTarget = {
   /** L'entrée est-elle publiée ? (brouillon, programmée ou expirée : non) */
   published: boolean;
 };
-/** Qui regarde la fiche : mode avancé et rôle (« owner », « admin » ou « editor »). */
+/** Qui regarde la fiche : mode avancé et rôle (« owner », « admin » ou « editor » ; une personne d'un rôle personnalisé qui modifie les contenus vaut « editor »). Pour un droit précis, utilisez `ctx.can`. */
 export type EntryPanelView = { advanced: boolean; role: "owner" | "admin" | "editor" };
 export type EntryPanelActionHandler = (ctx: ModuleContext, entry: EntryPanelTarget, values: Record<string, string>) => AdminActionResult | Promise<AdminActionResult>;
 export type EntryPanel = {
@@ -464,6 +577,19 @@ export type McpHandler = (ctx: ModuleContext, args: Record<string, unknown>, act
 /** `grid` : réponse d'une action de génération du bloc `gridEditor` (`generateAction`) — un tracé proposé, jamais enregistré par le cœur. */
 export type AdminActionResult = { ok?: string; error?: string; redirect?: string; grid?: { width: number; height: number; cells: string } };
 export type AdminActionHandler = (ctx: ModuleContext, values: Record<string, string>) => AdminActionResult | Promise<AdminActionResult>;
+/** Action d'admin protégée par un droit du module (identifiant local, ou « <ce module>:<id> » ; le droit d'un autre module est toujours refusé). */
+export type AdminActionSpec = { right: string; run: AdminActionHandler };
+
+/** Un téléchargement d'administration (voir `ModuleDefinition.adminDownloads`). */
+export type AdminDownloadSpec = {
+  /** Droit du module (identifiant local, ou « <ce module>:<id> ») ; absent = administrateurs. Le droit d'un autre module est toujours refusé. */
+  right?: string;
+  /** Nom du fichier proposé (le cœur l'assainit et force l'extension du type). */
+  filename(ctx: ModuleContext, params: Record<string, string>): string;
+  contentType: "text/csv" | "application/json" | "text/plain";
+  /** Le contenu, morceau par morceau (texte UTF-8). */
+  generate(ctx: ModuleContext, params: Record<string, string>): AsyncIterable<string>;
+};
 
 /** Aide de typage : `export default defineModule({...})`. */
 export function defineModule(def: ModuleDefinition): ModuleDefinition {

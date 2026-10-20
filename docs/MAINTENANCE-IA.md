@@ -75,6 +75,7 @@ Tu es branchée à un site Curiosa par un jeton « Maintenance ». Ton rôle : s
 | Outil | Niveau | Rôle |
 |---|---|---|
 | `maintenance_status`, `_health`, `_modules`, `_updates`, `_diagnose`, `_audit` | 1 (lecture) | voir ci-dessus |
+| `maintenance_legacy` | 1 | ce qui reste à mettre à niveau après une mise à jour depuis une version plus vieille (lignes de modules héritées, éléments éteints, instances en retard ou mises de côté, reprises pas faites, réglages masqués encore remplis, réglages inconnus) : des nombres et des noms, jamais une valeur |
 | `maintenance_request_status {requestId}` | 1 | état d'une de **tes** demandes (`pending_approval`, `running`, `done`, `failed`, `denied`, `expired`) et son résultat |
 | `maintenance_check_updates` | 2 | revérifie les versions (vide les caches) |
 | `maintenance_backup_run` | 2 | copie de la base sur le serveur (illisible depuis l'API) |

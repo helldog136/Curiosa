@@ -1,3 +1,4 @@
+import { makeNetClient } from "./fakeNet.mjs";
 /**
  * FAUX CONTEXTE DE MODULE — API publique du kit de test (testsupport/). Voir docs/TESTSUPPORT.md.
  *
@@ -15,12 +16,23 @@
  *   `ctx.calls.topics` garde chaque appel `[topic, opts]`. Comme le vrai cœur, une plage invalide (`from` > `to`, date illisible) LÈVE une erreur — seulement si `from` ou `to` est passé.
  * - `migration: true` : ctx d'une migration de données. Ajoute `ctx.seedInstance(cible, demande)` (enregistre dans `ctx.calls.seeds` ; résultat réglable par `seedResult`, objet ou fonction `(cible, demande) => résultat`,
  *   défaut `{ created: true, instanceKey: <surnom en minuscules> }`) et `ctx.clearSetting(clé)` (enregistre dans `ctx.calls.cleared` ; `ctx.setting(clé)` renvoie alors undefined). Sans cette option, ni l'un ni l'autre n'existe.
+ * - `legacy: { clé: valeur }` (cœur 0.2.0) : réglages hérités déclarés dans `legacySettings`. Ajoute `ctx.legacy` : `keys()`, `get(clé)` (valeur, ou null si vide/absente),
+ *   `clear(clé)` (enregistre dans `ctx.calls.legacyCleared` ; `get` renvoie alors null). Une clé absente de l'objet est NON DÉCLARÉE : `get`/`clear` lèvent, comme le vrai cœur.
+ *   Sans cette option, `ctx.legacy` n'existe pas (cœur plus ancien).
  * - `ctx.api.qr(text)` renvoie un SVG factice contenant le texte ; `ctx.api.brand()` / `site()` valeurs réglables
  * - `ctx.api.mail` : `configured` (option `mailConfigured`, défaut true) et `send` qui enregistre dans `ctx.calls.mail` (résultat réglable via `mailResult`)
  * - `ctx.api.rawg` : `configured` (option `rawgConfigured`, défaut true) et `cover(title)` qui enregistre dans `ctx.calls.rawg` (résultat réglable via `rawgCover`)
  * - `ctx.api.services` : `services` = { nom: { méthode: (args) => valeur } } ; absent → `unavailable`
  * - `ctx.api.services.callAll(nom, méthode, args)` : `serviceInstances` = { nom: [{ instance, name?, methods: { méthode: (args) => valeur } }] } → une entrée par instance (un fournisseur qui lève
  *   donne `{ ok: false, error: "failed" }`) ; sans `serviceInstances[nom]`, UNE entrée tirée de `services[nom]` (comme un service non-each) ; service inconnu → []
+ * - `ctx.api.net` : le VRAI client réseau du cœur (pauses 429, quota, disjoncteur, file bornée, délais…), avec un état neuf par fakeCtx et branché sur
+ *   `globalThis.fetch` : combinez-le avec `withFakeFetch` / `fakeFetch` et `netReplies` (testsupport/fakeNet.mjs). Chaque demande est notée dans `ctx.calls.net`
+ *   (`{ url, method }`) et chaque ligne de journal dans `ctx.calls.netLog`. Options : `netLimits` (bornes raccourcies ; par défaut l'attente avant la reprise
+ *   est réduite à quelques ms), `netBudgetMs` (temps restant d'une page publique simulé ; défaut null = hors page), `net` (remplace tout `ctx.api.net`).
+ * - `ctx.api.services.providers(nom)` : une entrée par élément de `serviceInstances[nom]` (`id` = « id-<instance> », la première est `master`) ; sinon UNE entrée tirée de
+ *   `services[nom]` ; service inconnu → []. `call(nom, méthode, args, { provider: id })` appelle cette instance-là (inconnue → `{ ok: false, reason: "unavailable" }`).
+ * - `ctx.resolveChoice(clé)` (réglage « choice », cœur 0.2.0) : `choices` = { clé: résolution } (par ex. `{ status: "chosen", id: "id-x", label: "X" }`, ou une fonction
+ *   `() => résolution`) ; clé absente → `{ status: "none" }`. Chaque appel est noté dans `ctx.calls.choices`.
  * - `ctx.dumpStore()` : tout le contenu du stockage `[{ id, collection, data }]`, pour les assertions
  * - `ctx.calls` enregistre les appels utiles aux assertions (`calls.writes` : chaque écriture du stockage `{ op, collection }`)
  * - `ctx.visit` : `{ lastVisit }` (option `lastVisit`, défaut : le 1er janvier 1970 = visiteur inconnu)
@@ -34,17 +46,36 @@ export function fakeCtx(opts = {}) {
     moduleId = "fake", key = "fake", name = "Fake", basePath = "fake", locale = "en", defaultLocale = "en", locales = ["en"],
     settings = {}, messages = {}, topics = {}, entries = [], instances = [],
     brand = { name: "Site", tagline: "", about: "", logo: null, contactEmail: "", colors: [], font: { key: "sans", name: "Sans-serif", stack: "sans-serif" }, defaultLocale, locales },
-    migration = false, seedResult, rows: seedRows = {}, permissions, lastVisit = new Date(0), site = { name: "Site", tagline: "", logo: null }, theme = { accent: "#e8a23b", accentFg: "#111111", bg: "#121214", surface: "#1b1b1d", fg: "#f4f4f5", muted: "#a1a1a3", line: "#2e2e30", fontKey: "sans", font: "sans-serif" }, services = {}, serviceInstances = {}, mailConfigured = true, mailResult = { ok: true }, rawgConfigured = true, rawgCover = { status: "found", url: "https://media.example.test/cover.jpg" }, siteUrl = "https://example.test",
+    migration = false, seedResult, legacy, rows: seedRows = {}, permissions, lastVisit = new Date(0), site = { name: "Site", tagline: "", logo: null }, theme = { accent: "#e8a23b", accentFg: "#111111", bg: "#121214", surface: "#1b1b1d", fg: "#f4f4f5", muted: "#a1a1a3", line: "#2e2e30", fontKey: "sans", font: "sans-serif" }, services = {}, serviceInstances = {}, mailConfigured = true, mailResult = { ok: true }, rawgConfigured = true, rawgCover = { status: "found", url: "https://media.example.test/cover.jpg" }, siteUrl = "https://example.test",
+    net: netOverride, netLimits, netBudgetMs = null, choices = {},
   } = opts;
   const rows = new Map();
   let seq = 0;
-  const calls = { topics: [], qr: [], entries: [], mail: [], png: [], services: [], rawg: [], seeds: [], cleared: [], writes: [], denied: [] };
+  const calls = { topics: [], qr: [], entries: [], mail: [], png: [], services: [], rawg: [], seeds: [], cleared: [], legacyCleared: [], writes: [], denied: [], net: [], netLog: [], choices: [] };
+  let netClient;
+  const client = () => (netClient ??= makeNetClient({ limits: { retryMinMs: 1, retryMaxMs: 5, ...netLimits }, log: (line) => calls.netLog.push(line) }));
+  const net = netOverride ?? {
+    async request(req) {
+      calls.net.push({ url: req?.url, method: req?.method ?? "GET" });
+      return (await client()).request(req, { module: moduleId, budgetMs: netBudgetMs });
+    },
+    async health() { return (await client()).health(); },
+    budgetMs: () => netBudgetMs,
+  };
   const cleared = new Set();
   const store = {
     async add(collection, data) { calls.writes.push({ op: "add", collection }); const id = `r${++seq}`; rows.set(id, { id, collection, createdAt: new Date(Date.now() + seq), data: structuredClone(data) }); return id; },
     async get(id) { const r = rows.get(id); return r ? { id: r.id, createdAt: r.createdAt, data: structuredClone(r.data) } : null; },
     async update(id, data) { if (!rows.has(id)) return false; calls.writes.push({ op: "update", collection: rows.get(id).collection }); rows.get(id).data = structuredClone(data); return true; },
     async list(collection, o) { return [...rows.values()].filter((r) => r.collection === collection).sort((a, b) => b.createdAt - a.createdAt).slice(0, o?.limit ?? 100).map((r) => ({ id: r.id, createdAt: r.createdAt, data: structuredClone(r.data) })); },
+    // Lecture par pages (curseur factice = position) : de quoi essayer un générateur de téléchargement qui lit « par pages » (adminDownloads).
+    async page(collection, o) {
+      const asc = o?.order === "asc";
+      const all = [...rows.values()].filter((r) => r.collection === collection).sort((a, b) => (asc ? 1 : -1) * (a.createdAt - b.createdAt));
+      const start = Math.max(0, Number(o?.cursor ?? 0) || 0);
+      const limit = Math.min(Math.max(1, o?.limit ?? 100), 1000);
+      return { items: all.slice(start, start + limit).map((r) => ({ id: r.id, createdAt: r.createdAt, data: structuredClone(r.data) })), next: start + limit < all.length ? String(start + limit) : null };
+    },
     async remove(id) { calls.writes.push({ op: "remove", collection: rows.get(id)?.collection }); rows.delete(id); },
     async count(collection) { return [...rows.values()].filter((r) => r.collection === collection).length; },
   };
@@ -65,12 +96,27 @@ export function fakeCtx(opts = {}) {
     },
     clearSetting: async (k) => { calls.cleared.push(k); cleared.add(k); },
   };
+  const legacyValues = legacy && typeof legacy === "object" ? { ...legacy } : null;
+  const legacyCheck = (k) => { if (!legacyValues || !Object.hasOwn(legacyValues, k)) throw Object.assign(new Error(`"${k}" is not declared in legacySettings`), { code: "undeclared" }); };
+  const legacyApi = !legacyValues ? {} : {
+    legacy: {
+      keys: () => Object.keys(legacyValues),
+      get: async (k) => { legacyCheck(k); const v = legacyValues[k]; return v === undefined || v === null || (typeof v === "string" && v.trim() === "") ? null : v; },
+      clear: async (k) => { legacyCheck(k); calls.legacyCleared.push(k); legacyValues[k] = null; },
+    },
+  };
   return {
     ...migrationApi,
+    ...legacyApi,
     moduleId,
     instance: { id: `id-${key}`, key, basePath, name },
     locale, defaultLocale, locales,
     setting: (k) => (cleared.has(k) ? undefined : settings[k]),
+    async resolveChoice(k) {
+      calls.choices.push(k);
+      const r = choices[k];
+      return structuredClone(typeof r === "function" ? await r() : r ?? { status: "none" });
+    },
     theme,
     visit: { lastVisit },
     t: (k, vars) => { let s = messages[k] ?? k; for (const [n, v] of Object.entries(vars ?? {})) s = s.replaceAll(`{${n}}`, String(v)); return s; },
@@ -84,8 +130,20 @@ export function fakeCtx(opts = {}) {
       png: async (spec) => { calls.png.push(spec); return new Response(new Uint8Array([0x89, 0x50, 0x4e, 0x47]), { headers: { "content-type": "image/png" } }); },
       services: {
         available: async (name) => name in services,
-        call: async (name, method, args) => {
+        providers: async (name) => {
+          const list = serviceInstances[name] ?? (services[name] ? [{ instance: `${name}-provider`, name, methods: services[name] }] : []);
+          return list.slice(0, 50).map((p, i) => ({ id: `id-${p.instance}`, key: p.instance, name: p.name ?? p.instance, module: p.module ?? "provider", version: p.version ?? 1, each: !!serviceInstances[name], master: i === 0 }));
+        },
+        call: async (name, method, args, opts) => {
           calls.services.push([name, method, args]);
+          if (opts?.provider !== undefined) {
+            const list = serviceInstances[name] ?? (services[name] ? [{ instance: `${name}-provider`, methods: services[name] }] : []);
+            const target = list.find((p) => `id-${p.instance}` === opts.provider);
+            if (!target) return { ok: false, reason: "unavailable" };
+            const pick = target.methods?.[method];
+            if (typeof pick !== "function") return { ok: false, reason: "no_method" };
+            try { return { ok: true, value: await pick(args) }; } catch { return { ok: false, reason: "failed" }; }
+          }
           const fn = services[name]?.[method];
           if (!services[name]) return { ok: false, reason: "unavailable" };
           if (typeof fn !== "function") return { ok: false, reason: "no_method" };
@@ -102,6 +160,7 @@ export function fakeCtx(opts = {}) {
         },
       },
       rawg: { configured: async () => (!allowed || allowed.has("rawg")) && rawgConfigured, cover: async (title) => { calls.rawg.push(title); if (allowed && !allowed.has("rawg")) return { status: "no-key", url: null }; return typeof rawgCover === "function" ? rawgCover(title) : rawgCover; } },
+      net,
       site: async () => site,
       brand: async () => brand,
       instances: { list: async () => instances },
@@ -110,7 +169,16 @@ export function fakeCtx(opts = {}) {
       // Ces trois capacités demandent une permission : sans elle, le simple fait d'y toucher échoue (voir l'option `permissions`).
       store: guarded("storage", () => store),
       mail: guarded("mail", () => ({ configured: async () => mailConfigured, send: async (m) => { calls.mail.push(m); return typeof mailResult === "function" ? mailResult(m) : mailResult; } })),
-      topics: guarded("topics", () => ({ collect: async (topic, o) => {
+      topics: guarded("topics", () => ({
+        // Une seule page (`next: null`), comme un sujet fourni par un module ; le curseur factice « n » reprend à partir du n-ième élément.
+        collectPage: async (topic, o) => {
+          calls.topics.push([topic, o]);
+          const source = topics[topic] ?? [];
+          const all = typeof source === "function" ? await source(o) : source;
+          const from = Number(o?.cursor ?? 0) || 0, size = o?.limit ?? 50;
+          return { items: all.slice(from, from + size), next: from + size < all.length ? String(from + size) : null };
+        },
+        collect: async (topic, o) => {
         calls.topics.push([topic, o]);
         if (o?.from !== undefined || o?.to !== undefined) {
           const ms = (v) => (v === undefined || v === null ? undefined : v instanceof Date ? v.getTime() : /^\d{4}-\d{2}-\d{2}([T ]\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?)?$/.test(String(v)) ? Date.parse(String(v)) : NaN);

@@ -1,14 +1,21 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
 import type { AdminField, Block } from "@/core/blocks";
 import { ImageField } from "./ImageField";
+import { FileField } from "./FileField";
 import { ui } from "./ui";
 import { Checkbox } from "./Field";
 import { askConfirm } from "./confirmDialog";
 import { runModuleAdminAction } from "@/app/admin/(panel)/instances/module-actions";
 import { runEntryPanelAction } from "@/app/admin/(panel)/entries/panel-actions";
 import type { ActionState } from "./ActionForm";
+
+/** Textes du champ fichier ({max} : taille en Mo à remplacer). */
+export type FileLabels = { tooBig: string; sending: string; failed: string; done: string };
+const MAX_FILE = 5 * 1024 * 1024;
+const mbOf = (bytes: number) => String(Math.round((bytes / 1048576) * 10) / 10).replace(/\.0$/, "");
 
 /** Section ajoutée à l'éditeur d'une entrée : les actions passent par `runEntryPanelAction` (droits d'éditeur, aucune redirection) au lieu des actions du panneau d'une instance. */
 export type EntryScope = { panelId: string; entryId: string };
@@ -23,6 +30,7 @@ function Field({ f }: { f: AdminField }) {
   if (f.kind === "image") return <ImageField name={f.name} label={f.label} defaultValue={f.value} uploadLabel="↑" />;
   // Case à cocher : `value` « on », « 1 » ou « true » = cochée ; décochée, le champ est absent des `values` reçus par le module.
   if (f.kind === "checkbox") return <Checkbox label={f.label} name={f.name} value="on" defaultChecked={["on", "1", "true"].includes(f.value ?? "")} help={f.help} required={f.required} />;
+  if (f.kind === "file") return <FileField f={f} />;
   const common = { id: `f_${f.name}`, name: f.name, required: f.required, defaultValue: f.value ?? "", className: ui.input };
   return (
     <div>
@@ -39,7 +47,72 @@ function Field({ f }: { f: AdminField }) {
   );
 }
 
-export function AdminBlockForm({ instanceId, block, entry }: { instanceId: string; block: FormBlock; entry?: EntryScope }) {
+/**
+ * Formulaire qui contient un champ fichier : envoyé à la route du cœur `/api/admin/modules/<instance>/action/<action>` (les actions serveur de Next sont plafonnées
+ * à 1 Mo). La taille est vérifiée ICI pour éviter un envoi inutile ; le cœur la revérifie (5 Mo au plus par fichier, texte UTF-8 seulement).
+ */
+function FileBlockForm({ instanceId, block, labels }: { instanceId: string; block: FormBlock; labels: FileLabels }) {
+  const router = useRouter();
+  const [state, setState] = useState<ActionState>(null);
+  const [pending, setPending] = useState(false);
+  const fileFields = block.fields.filter((f) => f.kind === "file");
+  async function onSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const data = new FormData(form);
+    for (const f of fileFields) {
+      const max = Math.min(MAX_FILE, f.maxBytes && f.maxBytes > 0 ? f.maxBytes : MAX_FILE);
+      const file = data.get(f.name);
+      if (file instanceof File && file.size > max) { setState({ error: labels.tooBig.replace("{max}", mbOf(max)) }); return; }
+      data.set(`$max_${f.name}`, String(max));
+      if (f.accept) data.set(`$accept_${f.name}`, f.accept.slice(0, 200));
+    }
+    setPending(true);
+    setState({ ok: labels.sending });
+    const abort = new AbortController();
+    const timer = window.setTimeout(() => abort.abort(), 150_000);
+    try {
+      const res = await fetch(`/api/admin/modules/${encodeURIComponent(instanceId)}/action/${encodeURIComponent(block.action)}`, { method: "POST", body: data, signal: abort.signal, headers: { accept: "application/json" }, credentials: "same-origin" });
+      const json = (await res.json().catch(() => null)) as { ok?: string; error?: string; redirect?: string } | null;
+      if (json?.error) setState({ error: json.error });
+      else if (!res.ok) setState({ error: labels.failed });
+      else {
+        setState({ ok: json?.ok || labels.done });
+        if (json?.redirect) router.push(json.redirect); else router.refresh();
+      }
+    } catch {
+      setState({ error: labels.failed });
+    } finally {
+      window.clearTimeout(timer);
+      setPending(false);
+    }
+  }
+  return (
+    <form onSubmit={onSubmit} className={`${ui.card} space-y-4`}>
+      {block.title && <h3 className="text-lg font-semibold">{block.title}</h3>}
+      {block.fields.filter((f) => f.kind === "hidden").map((f) => <Field key={f.name} f={f} />)}
+      <div className="grid gap-4 sm:grid-cols-2">
+        {block.fields.filter((f) => f.kind !== "hidden").map((f) => (
+          <div key={f.name} className={f.kind === "textarea" || f.kind === "image" || f.kind === "file" ? "sm:col-span-2" : ""}><Field f={f} /></div>
+        ))}
+      </div>
+      {state?.error && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm text-red-700">{state.error}</p>}
+      {state?.ok && <p role="status" className="rounded-lg border border-emerald-500/50 bg-emerald-500/10 p-3 text-sm text-emerald-700">{state.ok}</p>}
+      <div className="flex items-center gap-3">
+        <button type="submit" disabled={pending} className={ui.btnPrimary}>{block.submitLabel}</button>
+        {block.cancelHref && <a href={block.cancelHref} className={ui.btn}>↩</a>}
+      </div>
+    </form>
+  );
+}
+
+export function AdminBlockForm({ instanceId, block, entry, fileLabels }: { instanceId: string; block: FormBlock; entry?: EntryScope; fileLabels?: FileLabels }) {
+  // Un champ fichier n'existe que dans le panneau d'une instance (route dédiée) ; dans l'éditeur d'une entrée il est écarté.
+  if (!entry && fileLabels && block.fields.some((f) => f.kind === "file")) return <FileBlockForm instanceId={instanceId} block={block} labels={fileLabels} />;
+  return <ActionBlockForm instanceId={instanceId} block={entry ? { ...block, fields: block.fields.filter((f) => f.kind !== "file") } : block} entry={entry} />;
+}
+
+function ActionBlockForm({ instanceId, block, entry }: { instanceId: string; block: FormBlock; entry?: EntryScope }) {
   const [state, action, pending] = useActionState(runner(instanceId, block.action, entry), null);
   return (
     <form action={action} className={`${ui.card} space-y-4`}>

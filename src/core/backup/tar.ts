@@ -1,4 +1,10 @@
+import { promisify } from "node:util";
 import zlib from "node:zlib";
+import { runAsync, runSync, type Steps } from "./steps";
+
+const gzip = promisify(zlib.gzip);
+const gunzip = promisify(zlib.gunzip);
+const GZIP_OPTIONS = { level: 9 } as const;
 
 /**
  * Archive tar.gz (format ustar) écrite et lue sans dépendance : n'importe quel outil standard (`tar xzf`) la lit.
@@ -45,8 +51,7 @@ function header(path: string, size: number, mtime: number): Buffer {
   return buf;
 }
 
-/** Écrit les fichiers dans une archive tar.gz. `mtime` (secondes) fixé : mêmes fichiers → mêmes octets. */
-export function createTarGz(files: TarFile[], mtime = 0): Buffer {
+function* buildTar(files: TarFile[], mtime: number): Steps<Buffer> {
   const parts: Buffer[] = [];
   const seen = new Set<string>();
   for (const f of files) {
@@ -56,18 +61,26 @@ export function createTarGz(files: TarFile[], mtime = 0): Buffer {
     parts.push(header(f.path, f.content.length, mtime), f.content);
     const pad = (BLOCK - (f.content.length % BLOCK)) % BLOCK;
     if (pad) parts.push(Buffer.alloc(pad));
+    yield;
   }
   parts.push(Buffer.alloc(BLOCK * 2));
+  return Buffer.concat(parts);
+}
+
+/** Écrit les fichiers dans une archive tar.gz. `mtime` (secondes) fixé : mêmes fichiers → mêmes octets. */
+export function createTarGz(files: TarFile[], mtime = 0): Buffer {
   // gzip : en-tête sans horodatage (mtime=0 par défaut dans zlib) → sortie reproductible.
-  return zlib.gzipSync(Buffer.concat(parts), { level: 9 });
+  return zlib.gzipSync(runSync(buildTar(files, mtime)), GZIP_OPTIONS);
+}
+
+/** Même archive, octet pour octet, sans bloquer la boucle d'événements : le gzip tourne dans le pool de threads de Node. */
+export async function createTarGzAsync(files: TarFile[], mtime = 0): Promise<Buffer> {
+  return gzip(await runAsync(buildTar(files, mtime)), GZIP_OPTIONS);
 }
 
 export type ReadLimits = { maxBytes?: number; maxFiles?: number };
 
-/** Lit une archive tar.gz. Refuse les chemins dangereux, les liens, et les archives démesurées (bombe de décompression). */
-export function readTarGz(archive: Buffer, limits: ReadLimits = {}): TarFile[] {
-  const { maxBytes = 1024 * 1024 * 1024, maxFiles = 200_000 } = limits;
-  const tar = zlib.gunzipSync(archive, { maxOutputLength: maxBytes });
+function* parseTar(tar: Buffer, maxBytes: number, maxFiles: number): Steps<TarFile[]> {
   const out: TarFile[] = [];
   let offset = 0;
   let total = 0;
@@ -96,6 +109,21 @@ export function readTarGz(archive: Buffer, limits: ReadLimits = {}): TarFile[] {
       throw new Error(`type d'entrée non pris en charge dans l'archive : ${type}`); // liens, périphériques…
     }
     offset += Math.ceil(size / BLOCK) * BLOCK;
+    yield;
   }
   return out;
+}
+
+const limitsOf = (limits: ReadLimits) => ({ maxBytes: limits.maxBytes ?? 1024 * 1024 * 1024, maxFiles: limits.maxFiles ?? 200_000 });
+
+/** Lit une archive tar.gz. Refuse les chemins dangereux, les liens, et les archives démesurées (bombe de décompression). */
+export function readTarGz(archive: Buffer, limits: ReadLimits = {}): TarFile[] {
+  const { maxBytes, maxFiles } = limitsOf(limits);
+  return runSync(parseTar(zlib.gunzipSync(archive, { maxOutputLength: maxBytes }), maxBytes, maxFiles));
+}
+
+/** Même lecture, sans bloquer la boucle d'événements (décompression dans le pool de threads, analyse par petits morceaux). */
+export async function readTarGzAsync(archive: Buffer, limits: ReadLimits = {}): Promise<TarFile[]> {
+  const { maxBytes, maxFiles } = limitsOf(limits);
+  return runAsync(parseTar(await gunzip(archive, { maxOutputLength: maxBytes }), maxBytes, maxFiles));
 }

@@ -1,5 +1,6 @@
 import { prisma } from "@/core/db";
-import { safetyCopy } from "@/core/backup/files";
+import { hasRecentBulkCopy, safetyCopy } from "@/core/backup/files";
+import { bumpGenerations, readGenerations } from "@/core/services/store";
 import { getInstanceById } from "@/core/instances";
 import { deleteSetting, setSetting, getSetting } from "@/core/settings";
 import { buildContext } from "./context";
@@ -33,10 +34,22 @@ export async function dataVersionOf(instanceId: string): Promise<number> {
   return Number.isInteger(v) && v >= 1 ? v : 1;
 }
 
-/** Statut d'une instance : « failed » / « newer » → elle est mise à l'écart ; null → saine. */
-export async function dataStatusOf(instanceId: string): Promise<{ status: "failed" | "newer"; error?: string } | null> {
-  const raw = await getSetting<{ status?: string; error?: string }>(statusKey(instanceId));
-  return raw?.status === "failed" || raw?.status === "newer" ? { status: raw.status, error: raw.error } : null;
+/**
+ * Statut d'une instance : « failed » / « newer » → elle est mise à l'écart ; null → saine. `error` vaut « floor » (données plus anciennes que le plancher
+ * du module, `floor` et `from` disent lesquelles) ou « timeout » (conversion trop longue au démarrage, voir legacySweep.ts) ; sinon le message de l'échec.
+ */
+export async function dataStatusOf(instanceId: string): Promise<{ status: "failed" | "newer"; error?: string; floor?: number; from?: number } | null> {
+  const raw = await getSetting<{ status?: string; error?: string; floor?: number; from?: number }>(statusKey(instanceId));
+  if (raw?.status !== "failed" && raw?.status !== "newer") return null;
+  return { status: raw.status, error: raw.error, ...(Number.isInteger(raw.floor) ? { floor: raw.floor } : {}), ...(Number.isInteger(raw.from) ? { from: raw.from } : {}) };
+}
+
+/** Plancher des données d'un module (`dataFloor`, 0.2.0) : en dessous, il ne sait plus convertir. Absent = 1 (tout est convertible). */
+export const floorVersion = (mod: Pick<LoadedModule, "manifest">) => mod.manifest.dataFloor ?? 1;
+
+/** Met une instance à l'écart parce que sa conversion a dépassé le temps du démarrage (elle peut encore se terminer seule : la migration efface alors ce statut). */
+export async function markMigrationTimeout(instanceId: string): Promise<void> {
+  await setSetting(statusKey(instanceId), { status: "failed", error: "timeout" });
 }
 
 /** Une instance neuve naît à la version courante des données de son module (aucune migration à lui appliquer). */
@@ -58,9 +71,18 @@ export async function migrateInstance(mod: LoadedModule, instance: InstanceView)
     await deleteSetting(statusKey(instance.id));
     return out("none");
   }
+  // Plancher (0.2.0) : des données plus anciennes que ce que le module sait encore convertir ne sont JAMAIS déclarées « à jour » en sautant les étapes
+  // absentes (la boucle ci-dessous avance le numéro sans rien faire là où il n'y a pas de migration). L'instance est mise à l'écart, rien n'est touché.
+  const floor = floorVersion(mod);
+  if (from < floor) {
+    await setSetting(statusKey(instance.id), { status: "failed", error: "floor", floor, from });
+    return out("failed", `floor: data v${from} is older than the oldest version this module converts (v${floor})`);
+  }
 
   // État d'avant, pour pouvoir tout remettre si une migration échoue.
-  safetyCopy("pre-migration");
+  // Pas de copie « pre-migration » juste après la copie d'une mise à jour groupée : elle couvre déjà cet état.
+  if (!hasRecentBulkCopy()) safetyCopy("pre-migration");
+  const generationBefore = await readGenerations([instance.id]);
   const records = await prisma.moduleRecord.findMany({ where: { instanceId: instance.id } });
   const settings = await prisma.setting.findMany({ where: { key: { startsWith: `instance.${instance.id}.` } } });
   let reached = from;
@@ -85,6 +107,8 @@ export async function migrateInstance(mod: LoadedModule, instance: InstanceView)
       prisma.moduleRecord.createMany({ data: records }),
       prisma.setting.createMany({ data: settings }),
     ]);
+    // Les données ont été remises d'un bloc : tout index gardé en mémoire par le module est périmé.
+    await bumpGenerations([instance.id], generationBefore).catch(() => {});
     await setSetting(statusKey(instance.id), { status: "failed", error: message });
     return out("failed", message, from);
   }

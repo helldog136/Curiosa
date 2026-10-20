@@ -50,3 +50,30 @@ export function whereOf(o) {
   const names = { section: "la section", slot: "l'emplacement", page: "la page", overlay: "l'overlay", export: "le partage", adminPanel: "le panneau d'administration", entryPanel: "la section de l'éditeur d'entrée", entryPanelAction: "l'action de la section d'éditeur", mcp: "l'action MCP", adminAction: "l'action d'administration", route: "la route", backup: "la sauvegarde lisible", news: "le témoin de nouveauté", adminBadge: "la pastille d'administration" };
   return `${names[o.kind] ?? o.kind}${o.name ? ` « ${o.name} »` : ""}`;
 }
+
+/**
+ * Niveau des règles « réseau » (net.bounded, net.429) : leur niveau CIBLE est « obligatoire », mais le cœur 0.2.0 les livre en « conseil » (décision 7 du
+ * propriétaire) ; elles passent en obligatoire au tag de modules « Contacts 2.0 ». Changer cette seule ligne suffit alors.
+ */
+export const NET_RULES_LEVEL = "advice";
+
+/**
+ * Niveau des règles « choix parmi » (settings.refersToChoice, settings.textNamesExisting) : même calendrier que les règles réseau (conseil dans le cœur 0.2.0,
+ * décision 7 ; obligatoire au tag « Contacts 2.0 » pour settings.refersToChoice). Changer cette seule ligne suffit alors.
+ */
+export const CHOICE_RULES_LEVEL = "advice";
+
+/** Texte entre la parenthèse ouvrante d'indice `open` et sa fermante (parenthèses, crochets, accolades et chaînes simples équilibrés), borné à 4 000 caractères. */
+export function balancedArgs(code, open) {
+  let depth = 0;
+  let quote = null;
+  const end = Math.min(code.length, open + 4000);
+  for (let i = open; i < end; i++) {
+    const c = code[i];
+    if (quote) { if (c === "\\") i++; else if (c === quote) quote = null; continue; }
+    if (c === '"' || c === "'" || c === "`") { quote = c; continue; }
+    if (c === "(" || c === "[" || c === "{") depth++;
+    else if (c === ")" || c === "]" || c === "}") { depth--; if (depth === 0) return { args: code.slice(open + 1, i), close: i }; }
+  }
+  return { args: code.slice(open + 1, end), close: end };
+}

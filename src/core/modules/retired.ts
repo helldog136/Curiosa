@@ -1,7 +1,9 @@
 import { prisma } from "../db";
+import { forgetAllChoices } from "./choiceCache";
 import { RESERVED_PATHS } from "../config";
 import { isKnownLocale } from "../i18n/locales";
 import { pickKnownColumns } from "../backup/schema";
+import { bumpGenerations } from "../services/store";
 import { migrateModuleInstances, type MigrationOutcome } from "./dataMigrations";
 import { getModule } from "./registry";
 import { localized } from "./types";
@@ -23,6 +25,10 @@ const toLine = (r: { id: string; moduleId: string; key: string; label: string; m
 
 /** Range une instance (tout ce qu'elle possède) puis l'ôte du site, en une seule opération : tout ou rien. Rien n'est supprimé du bloc rangé. */
 export async function retireInstance(id: string, reason: RetiredReason): Promise<RetiredLine | null> {
+  try { return await retireInstanceRow(id, reason); } finally { forgetAllChoices(); }
+}
+
+async function retireInstanceRow(id: string, reason: RetiredReason): Promise<RetiredLine | null> {
   const inst = await prisma.moduleInstance.findUnique({ where: { id }, include: { translations: true } });
   if (!inst) return null;
   const [entries, settings, records, moduleRow, mod] = await Promise.all([
@@ -114,6 +120,8 @@ export async function restoreInstance(id: string): Promise<RestoreOutcome> {
     for (const r of payload.records) await tx.moduleRecord.create({ data: pickKnownColumns("records", reviveDates("record", r)) as never });
     await tx.retiredInstance.delete({ where: { id } });
   }, { timeout: 120_000, maxWait: 10_000 });
+  // Le stockage revient de l'extérieur (données gardées) : la génération augmente à partir de celle gardée avec les réglages.
+  await bumpGenerations([id]).catch((e) => console.error("[retired] store generation bump failed:", (e as Error)?.message));
   return { ok: true, id, key: plan.key, changed: plan.changed };
 }
 

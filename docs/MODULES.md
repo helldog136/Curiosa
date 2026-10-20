@@ -146,7 +146,7 @@ Validé à l'installation et au chargement (zod, `src/core/modules/manifest.ts`)
 | `settings` | Réglages **par instance** ; l'admin génère le formulaire (voir ci-dessous). 60 au plus. |
 | `optionalGroups` | Groupes de réglages **facultatifs** derrière un bouton « Ajouter… » (voir « Groupes facultatifs »). 6 au plus. |
 | `sections` | Morceaux plaçables sur la page d'accueil (voir ci-dessous). 20 au plus. |
-| `offers` / `requires` | **Dépendances** : services que le module offre aux autres / dont il a besoin (voir « dépendances entre modules »). 10 au plus chacun. |
+| `offers` / `requires` | **Dépendances** : services que le module offre aux autres / dont il a besoin (voir « dépendances entre modules »). 10 au plus chacun. `requires[].optional: true` (cœur 0.2.0) : besoin **facultatif**, le module fonctionne sans. |
 | `consumes` / `provides` | Sujets que le module digère / expose (voir « sujets »). 10 au plus chacun. |
 | `entryPanels` | **Sections ajoutées à l'éditeur d'entrée d'un autre module** (voir « Ajouter une section à l'éditeur d'un autre module »). 5 au plus : `{ "id", "for": { "topic" } ou { "module" }, "title", "help"? }`. |
 | `mcp` | Actions proposées à l'API MCP (voir « API MCP »). 60 au plus. |
@@ -154,8 +154,12 @@ Validé à l'installation et au chargement (zod, `src/core/modules/manifest.ts`)
 | `onboarding` | Comment le module participe à la première installation (voir ci-dessous). |
 | `seeds` | **Graines** : modules dans lesquels une migration de données de ce module pourra créer UNE instance (`{ "module": "<id>", "reason": { "fr": "…", "en": "…" } }`, 3 au plus). Exige que le module cible soit relié à celui-ci : il offre un service que ce module `requires`, ou il fournit un sujet que ce module `consumes` (lien souple, sans dépendance). Voir « `migrations` › Semer une instance ». |
 | `dataVersion` | Version de la **structure de vos données** (entier ≥ 1, défaut 1). À augmenter quand elle change, avec la migration correspondante (`migrations`). |
+| `dataFloor` | (cœur 0.2.0) Plus petite version des données que **cette** version sait encore convertir (entier, ≤ `dataVersion`, défaut 1). Une instance plus ancienne est mise de côté (« passez d'abord par une version intermédiaire ») au lieu d'être déclarée à jour. Voir « Réglages hérités et plancher ». |
+| `legacySettings` | (cœur 0.2.0) Réglages qu'une version précédente affichait et que le module reprend lui-même : `[{ "key": "clientSecret", "secret": true }]`, 20 au plus, jamais aussi dans `settings`. **Jamais affichés**, lus par `ctx.legacy`. Voir « Réglages hérités et plancher ». |
+| `legacyCollections` | (cœur 0.2.0) Collections du stockage qu'une version précédente remplissait et que le module vide après reprise (10 au plus) : comptées par la page *Entretien*, jamais lues par le cœur. |
 | `defaultEnabled` | Sans effet pour un module installé depuis le catalogue ou un dépôt : sans effet non plus sur l'état : un module installé est toujours actif (l'assistant de première installation n'installe que ceux que l'on coche). |
 | `permissions` | Les capacités utilisées (voir ci-dessous). |
+| `rights` | (cœur 0.2.0) **Droits** du module, proposés dans les rôles de la page Équipe (voir « Droits (`rights`) »). 20 au plus. |
 
 ### Version minimale du cœur (`minCore`)
 
@@ -192,6 +196,27 @@ fidèlement (le test de l'exemple vérifie qu'elles correspondent au code), elle
 | `mail` | le module appelle `ctx.api.mail.send` |
 | `rawg` | le module appelle `ctx.api.rawg.cover` (jaquettes de jeux, voir « Jaquettes de jeux (RAWG) ») |
 
+### Droits (`rights`)
+
+Cœur **0.2.0** (déclarez `"minCore": "0.2.0"` si votre code en dépend). Le propriétaire crée des rôles (« Modérateur »…) et coche, module par module,
+ce que chacun permet ; un module dit ici quels droits il propose :
+
+```json
+"rights": [
+  { "id": "email.view", "label": { "fr": "voir les e-mails et téléphones", "en": "see e-mails and phone numbers" },
+    "help": { "fr": "…", "en": "…" }, "sensitive": true, "default": { "admin": true, "editor": false } }
+]
+```
+
+- `id` : identifiant **local** (1 à 3 segments en minuscules : `email.view`, `targets.edit`). Le cœur le préfixe toujours par l'identifiant du module
+  (`<module>:email.view`) : un module ne peut **jamais** déclarer ni tester le droit d'un autre. Un `:` dans `id` est refusé.
+- `open` est **implicite** (ne le déclarez pas) : `<module>:open` ouvre la page d'administration du module. Tout administrateur l'a ; un éditeur non (comme avant).
+- `label` (obligatoire), `help` : en mots simples, ils s'affichent à côté de la case à cocher. `sensitive` : marqué « sensible ».
+- `default` : ce que reçoivent les rôles prédéfinis. Administrateur : oui, sauf `"admin": false`. Éditeur : non, sauf `"editor": true`.
+- Lire un droit : `ctx.can("email.view")` (voir « Le contexte `ctx` »), ou protéger une action : `adminActions: { save: { right: "phone.edit", run } }`
+  (le cœur vérifie `<module>:open` ET `<module>:phone.edit` **avant** d'appeler `run`).
+- Un cœur plus ancien ignore cette clé et n'a pas `ctx.can` : traitez son absence comme un refus.
+
 ### Réglages (`settings`)
 
 Chaque réglage est un objet (`SettingField`) :
@@ -208,9 +233,40 @@ Chaque réglage est un objet (`SettingField`) :
 | `advanced` | `true` : réglage technique, masqué dans la version simplifiée de l'admin ; **sa valeur par défaut s'applique** — donnez-en toujours une. |
 | `optional` | `true` : réglage facultatif. Vide, il ne met pas l'extension « À configurer » ; sans cela, un texte, une adresse, un lien ou un secret vide et sans valeur par défaut est signalé à l'administrateur comme « à remplir » (avec son libellé). |
 | `group` | `"appearance"` : réglage d'apparence, regroupé sous « Apparence de ce module ». |
+| `source` | Pour `choice` (obligatoire) : d'où viennent les options. Voir « Réglage `choice` » ci-dessous. |
+| `allowCreate` | Pour `choice` de source `service` avec `create` : propose « Créer « X » » (jamais pour un rôle, un connecteur, un module, une instance ou un compte). |
+| `fromText` | Pour `choice` qui remplace un réglage texte de même clé : une valeur texte égale à l'étiquette d'UNE option est remplacée par son identifiant. |
+| `refersTo` | Ce que désigne le réglage : `category`, `contact`, `organisation`, `channel`, `connector`, `instance`, `module`, `calendar`, `game`, `page`, `user`, `role`, `theme`, ou `external` (un profil hors du site). Un cœur ancien ignore la clé ; le kit de test s'en sert (règles `settings.refersToChoice`, `settings.textNamesExisting`). |
 
 Types : `text`, `textarea`, `url` (adresse http ou https), `link` (une page du site comme `/contact`, une adresse `https://…` ou `mailto:…` ; contrôlé dans le navigateur et par le serveur), `number`, `boolean`, `select`, `color`, `image` (envoi de fichier ou URL), `video` (envoi d'une vidéo MP4 ou WebM de 50 Mo au plus, réservée aux fichiers du site : `/uploads/…`), `secret`
-(jamais réaffiché une fois enregistré ; ne l'écrivez jamais dans un journal).
+(jamais réaffiché une fois enregistré ; ne l'écrivez jamais dans un journal), `choice` (« choix parmi », cœur 0.2.0 : voir ci-dessous).
+
+#### Réglage `choice` (« choix parmi », cœur 0.2.0)
+
+Un réglage qui **désigne un élément qui existe déjà** (une chaîne, une catégorie, un agenda…) n'est jamais du texte libre : c'est un `choice`. La personne cherche et choisit dans une liste ; le module reçoit un **identifiant stable** (jamais un nom, jamais une clé renommable).
+
+```json
+{ "key": "channel", "type": "choice", "label": { "fr": "Chaîne", "en": "Channel" },
+  "source": { "kind": "providers", "service": "demo.channel" }, "fromText": true, "optional": true }
+{ "key": "category", "type": "choice", "label": { "fr": "Catégorie", "en": "Category" }, "refersTo": "category",
+  "source": { "kind": "service", "service": "demo.book", "list": "categories", "get": "getCategories", "create": "createCategory" }, "allowCreate": true }
+```
+
+- **Sources** (le `service` doit figurer dans `requires`) :
+  - `providers` : les instances actives qui offrent ce service (`ctx.api.services.providers`), version ≥ `min`. Valeur stockée : l'**id d'instance**.
+  - `service` : le module **propriétaire** de la donnée offre trois méthodes, appelées au nom de votre instance :
+    `list({ q?, cursor?, limit? })` → `{ items: [{ id, label, aliases?, hint? }], next }` (`q` ≤ 100 caractères, `limit` ≤ 50, défaut 20 ; un `next` de plus de 500 caractères est ignoré) ;
+    `get({ ids })` (≤ 50) → `{ items: [{ id, label }], moved?: { ancien: nouveau }, missing: [...] }` ;
+    `create({ label })` (facultative, ≤ 100 caractères) → `{ ok: true, id, label }` ou `{ ok: false, error: "duplicate" | "invalid" | "denied", id? }`. `create` est appelée **dans le contexte de la personne connectée** : vérifiez votre droit avec `ctx.can(…)` et refusez (`denied`) sinon ; un `duplicate` qui donne l'`id` de l'existant le fait sélectionner.
+- **Pas de défaut, pas de traduction** (refusés par le manifeste), pas dans les options d'une section.
+- **Lire la valeur** : `ctx.setting("clé")` renvoie la valeur brute ; `await ctx.resolveChoice("clé")` la résout (3 s au plus, ne lève jamais) :
+  `chosen` (choisi ; une fusion `moved` est suivie), `only` (rien de choisi et **une seule** option : utilisez son `id` ; il n'est **jamais écrit**, pour qu'une deuxième option fasse réapparaître le sélecteur), `none` (aucune option), `ambiguous` (plusieurs, rien de choisi), `missing` (l'élément a disparu ; s'il ne reste qu'une option, `id` et `label` la donnent et vous pouvez l'utiliser), `unverified` (le fournisseur n'a pas répondu : ne décidez rien).
+  Pour une source `providers` : `ctx.api.services.call(service, méthode, args, { provider: r.id })`.
+- **Dans l'admin** : 0 option → le champ est masqué et une bannière dit quoi faire (source `providers` : bloc `suggestInstall` ; source `service` : « créez-en d'abord un dans … », et « Créer » si `allowCreate`) ; 1 option → champ masqué (« Utilise : … » en mode avancé) ; 2 ou plus → recherche paginée au clavier. Un élément disparu met l'instance « à configurer », sauf s'il ne reste qu'une option.
+- **Enregistrement** : le navigateur n'envoie qu'un identifiant ; le cœur le revérifie auprès du fournisseur (3 s par champ, 5 s en tout). Au délai dépassé, **rien n'est enregistré** (« Impossible de vérifier ce choix, réessayez »). Même règle pour un `choice` semé par `ctx.seedInstance`.
+- **`fromText`** : passer un réglage `text` en `choice` garde la même clé. Si la valeur enregistrée n'est pas un identifiant connu et égale **exactement** (sans casse, espaces réduits) l'étiquette ou un alias d'**une seule** option, le cœur la remplace par l'identifiant (à l'ouverture de l'admin de l'instance et au balayage de démarrage ; audit `setting.fromText`). Sinon l'admin affiche « Valeur à confirmer ». Pour une source `providers`, la clé technique de l'instance sert d'alias.
+- **Kit de test** : `fakeCtx({ choices: { clé: { status: "chosen", id, label } } })` ; règles `settings.refersToChoice` et `settings.textNamesExisting` (conseils en 0.2.0).
+- Exige `"minCore": "0.2.0"` : un cœur plus ancien refuse le manifeste.
 
 - **Valeurs** : `ctx.setting` renvoie ce que l'admin a saisi, **sans garantie de type** (un nombre peut arriver en texte, une
   adresse peut être n'importe quoi) : convertissez, bornez et validez avant d'utiliser. Un réglage inconnu du manifeste vaut `undefined`.
@@ -335,7 +391,15 @@ entrées portent un code (codes promo…), `random` (un code au hasard, `small`)
 
 Avec `content`, le cœur fournit gratuitement l'éditeur d'entrées (multilingue, brouillons, dates, image), les pages publiques (liste +
 entrée), le sitemap, le flux RSS, les liens `/go/…`, la section d'accueil `latest`, le sujet `core.entry` et quatre actions MCP
-(`list_entries`, `get_entry`, `create_draft`, `update_draft`). Un module « galerie », « FAQ » ou « événements » peut n'être qu'un `module.json`.
+(`list_entries`, `get_entry`, `create_draft`, `update_draft`). Les listes publiques sont **paginées** (voir « Pagination du contenu » ci-dessous). Un module « galerie », « FAQ » ou « événements » peut n'être qu'un `module.json`.
+
+### Pagination du contenu
+
+- **Page publique d'une collection** : 12 entrées par page (50 pour une liste de liens en pastilles), adresse `?page=N` (jamais `/page/N`, qui entrerait en conflit avec une entrée dont l'adresse serait « page »). Sous 12 entrées rien ne change : aucune navigation n'apparaît. `?page=1` et toute valeur invalide (`0`, `abc`, `-2`, `2.5`, répétée) renvoient vers l'adresse sans paramètre ; une page au-delà de la dernière répond 404. Chaque page a sa propre adresse `canonical`, son titre (« … (page 2) ») et ses liens `rel=prev` / `rel=next` ; les langues alternatives (`hreflang`) ne sont déclarées que sur la première page. Une liste = une langue (même repli de langue qu'avant).
+- **Tri** : par date ou à la main, la pagination est faite par la base (un `count`, puis `skip/take` sur les entrées non expirées, puis sur les expirées, qui passent à la fin) ; le tri par titre se fait en mémoire, borné à 5 000 entrées (au-delà, la liste retombe sur « plus récent d'abord » et l'administration l'indique).
+- **Administration** (`/admin/entries?c=<clé>&page=N&q=…&state=all|published|draft|scheduled|expired`) : 50 par page, recherche (100 caractères au plus) dans le titre et l'adresse de chaque traduction. SQLite ne distingue pas la casse que pour A–Z : la recherche essaie donc aussi la saisie en minuscules, en majuscules et avec majuscule initiale ; les accents restent significatifs.
+- **Flux RSS** : les 50 dernières entrées de chaque instance (triées par date par la base, quel que soit le tri de l'instance), fusionnées, puis les 50 plus récentes.
+- **Plan du site** : une seule page `sitemap.xml`, tant qu'il y a au plus 50 000 adresses. Au-delà, il garde les pages fixes puis les entrées les plus récentes, une erreur est écrite une seule fois dans le journal et la page *Visibilité dans les réponses des IA* affiche un bandeau. Pas de plan en plusieurs fichiers dans cette version.
 
 ### Première installation (`onboarding`)
 
@@ -457,7 +521,66 @@ filtres de toutes les instances actives s'appliquent en chaîne. `ctx.entry` ind
 
 ### `adminPanel`, `adminActions` : administration
 
-Voir « Panneau d'admin riche ».
+Voir « Panneau d'admin riche ». Deux formes pour une action :
+
+- **fonction** `(ctx, values) => …` : réservée aux administrateurs (comportement d'avant la 0.2.0, inchangé) ;
+- **objet** `{ right: "phone.edit", run: (ctx, values) => … }` (cœur 0.2.0) : le cœur vérifie `<module>:open` et `<module>:phone.edit` pour la personne
+  connectée (relue en base à chaque requête) **avant** d'appeler `run`. Une personne d'un rôle personnalisé qui a ces deux droits peut l'exécuter ;
+  le droit d'un autre module (`"autre:x"`) est toujours refusé. Le module ne fait jamais lui-même le contrôle d'accès, mais il peut adapter ce qu'il
+  montre avec `ctx.can`.
+
+### `adminDownloads` : un fichier à télécharger depuis l'administration
+
+(Cœur 0.2.0, `minCore` 0.2.0 : un cœur plus ancien ignore la clé et le bloc `download`.) Un export (fiches, journal…) contient souvent des **données personnelles** : il ne passe
+**jamais** par `routes` (les routes `/m/…` sont publiques et ne connaissent aucune personne connectée). Il se déclare dans `adminDownloads`, et c'est le cœur qui le sert :
+
+```js
+export default {
+  adminDownloads: {
+    contacts: {
+      right: "contacts.export",              // droit déclaré dans `rights` de module.json ; absent = administrateurs
+      contentType: "text/csv",               // ou "application/json", "text/plain"
+      filename: (ctx, params) => "contacts", // le cœur nettoie le nom et ajoute .csv
+      async *generate(ctx, params) {         // générateur asynchrone : du texte, morceau par morceau
+        yield "nom,courriel\n";
+        let cursor = null;
+        do {
+          const page = await ctx.api.store.page("contacts", { limit: 1000, cursor });
+          for (const r of page.items) yield `${cell(r.data.name)},${cell(r.data.email)}\n`;
+          cursor = page.next;
+        } while (cursor);
+      },
+    },
+  },
+  async adminPanel() {
+    return [{ type: "download", name: "contacts", label: "Télécharger les contacts (CSV)" }];
+  },
+};
+```
+
+- **Bloc** `{ type: "download", name, label, params? }` (panneau d'admin seulement) : un petit formulaire POST. Le bouton n'est montré qu'aux personnes qui ont le droit de télécharger (même décision que la route) ; les autres ne le voient pas. `params` (20 valeurs de 1 000 caractères au plus) revient dans `generate(ctx, params)` ; il vient du navigateur, **validez-le** comme toute entrée.
+- **Qui peut** : `<module>:open` ET `right` (préfixe imposé par le cœur ; le droit d'un autre module est refusé) ; sans `right`, les administrateurs. La personne est relue en base à chaque requête. `ctx.can` y est vrai comme dans `adminActions`.
+- **Jamais construit en entier** : lisez le stockage par `store.page` (1 000 lignes) et faites des `yield` ligne par ligne. Le cœur tire le générateur à la demande du navigateur.
+- **Limites du cœur** : 512 Mo et 10 minutes au plus ; un générateur qui reste muet 60 s est coupé ; 2 téléchargements en même temps par personne (4 pour tout le site, puis « réessayez » avec un message clair) ; si le navigateur coupe, le générateur est fermé (`finally` exécuté). Un flux coupé arrive **en erreur** (le navigateur affiche « échec », jamais un fichier tronqué qui aurait l'air complet).
+- **En-têtes** : `Content-Disposition: attachment` (nom assaini : pas de chemin, de guillemet ni de retour à la ligne, extension toujours celle du type), `X-Content-Type-Options: nosniff`, `Cache-Control: no-store`, CSP `sandbox`. Pas de GET : un lien ne déclenche jamais un export.
+- **Audit** : `module.<clé>.download.<nom>` au début, `module.<clé>.download.<nom>.end` à la fin avec le nombre d'octets et la cause (`done`, `client`, `bytes`, `time`, `idle`, `error`).
+- **Tableurs** : une cellule texte qui commence par `=`, `+`, `-` ou `@` est lue comme une formule par un tableur ; préfixez-la d'une apostrophe (le kit ne le vérifie pas encore).
+- **Kit de test** : l'exigence `downloads.bounded` (conseil) vérifie que le générateur finit, produit du texte et que le droit est déclaré.
+
+### Champ fichier (`kind: "file"`) dans un `adminForm`
+
+(Cœur 0.2.0.) `{ name: "list", label: "Fichier CSV", kind: "file", accept: ".csv,.txt", maxBytes: 1048576, required: true }`. Le formulaire est envoyé à une **route dédiée du cœur**
+(`POST /api/admin/modules/<instance>/action/<action>`) et non à une action serveur : celles de Next sont plafonnées à 1 Mo, et le cœur ne relève pas cette limite pour tout le site.
+
+- **Mêmes gardes que les `adminActions`** (même site, connecté, `<module>:open` + droit de l'action), vérifiées **avant** de lire le fichier.
+- **Taille** : 5 Mo au plus par fichier (`maxBytes` ne peut que l'abaisser), 2 fichiers par envoi. La lecture est comptée et coupée : un envoi énorme n'est jamais lu en entier. Message : « Fichier trop gros (5 Mo au plus) ».
+- **Type** : du texte seulement (`.csv`, `.tsv`, `.txt`, `.json`, `.vcf`, `.ics`, `.md`, ou un type MIME `text/*`) ; `accept` restreint encore. Pas d'octet nul, **UTF-8 strict** (un octet invalide est refusé, jamais remplacé), BOM retiré. Pas de fichier binaire en v2.
+- **Ce que reçoit le module** : le contenu en **texte** dans `values[name]` (jusqu'à 5 Mo ; `""` si aucun fichier n'a été choisi), avec les autres champs. Le nom du fichier envoyé n'est pas transmis.
+- **Pas dans l'éditeur d'entrée** (`entryPanels`) : le champ y est écarté.
+- Un cœur plus ancien rend un simple champ fichier mais l'envoie à une action serveur qui ignore les fichiers : `values[name]` reste vide. D'où `minCore` 0.2.0.
+
+La page d'administration d'un module s'ouvre avec `<module>:open`. Une personne qui n'est pas administratrice n'y voit que le panneau du module
+(`adminPanel`) : ni réglages, ni retrait.
 
 ### `mcp` : actions pour les assistants
 
@@ -495,7 +618,7 @@ Le cœur retient la version des données **de chaque instance** (absente = 1) et
 chaque instance en retard les migrations manquantes, **dans l'ordre** (si l'utilisateur a sauté des versions, le cœur rejoue chaque étiquette intermédiaire `vX.Y.Z` avec son propre code, l'une après l'autre, puis installe la dernière ; s'il y a un échec il s'arrête sur la version fautive) (une version sans fonction avance simplement le numéro). Une instance **créée** après coup
 naît directement à la version courante. Garanties :
 
-- une **copie de la base** est gardée avant (`data/backups/pre-migration-*.db`) ;
+- une **copie de la base** est gardée avant (`data/backups/pre-migration-*.db`), sauf si une copie de lot (`pre-bulk-update`, prise avant une mise à jour groupée) date de moins d'une heure ;
 - si une migration **lève une erreur**, l'instance est **remise exactement dans son état d'avant** (stockage et réglages, rien à moitié converti), **mise à l'écart** (elle ne
   tourne pas) et l'admin affiche l'erreur avec un bouton « Réessayer » ; les autres instances ne sont pas touchées. Publiez une version corrigée : la mise à jour relance la migration ;
 - des données **plus récentes** que votre code (sauvegarde restaurée dans un module plus ancien) sont aussi mises à l'écart, jamais modifiées.
@@ -549,6 +672,26 @@ migrations: {
   « Réessayer » plus tard.
 - Pour tester un module : `fakeCtx({ migration: true, settings: {...} })` ajoute `ctx.seedInstance` et `ctx.clearSetting` factices (appels enregistrés dans `ctx.calls.seeds` et `ctx.calls.cleared`, résultat réglable par `seedResult`).
 
+#### Réglages hérités et plancher (`legacySettings`, `ctx.legacy`, `dataFloor`) — cœur 0.2.0
+
+Quand un réglage change de propriétaire (par exemple un identifiant d'API repris par un module « connecteur »), ne le laissez pas dans `settings` avec un libellé « (ancien réglage) » :
+déplacez sa clé dans `legacySettings`. Le cœur ne l'affiche plus nulle part (ni en mode avancé), mais la valeur reste lisible par **votre** module :
+
+```js
+const secret = await ctx.legacy?.get("clientSecret");   // null si vide ou absent ; ctx.legacy absent sur un cœur plus ancien
+if (secret) {
+  const r = await ctx.api.services.call("x.api", "adopt", { clientSecret: secret });
+  if (r.ok && r.value.ready) await ctx.legacy.clear("clientSecret");   // effacer APRÈS la confirmation
+}
+```
+
+- `ctx.legacy.keys()` liste vos clés déclarées ; `get(clé)` rend une chaîne, un nombre, un booléen ou `null` ; `clear(clé)` efface la valeur (toutes langues) et laisse une ligne d'audit `module.legacy.clear` (la clé, jamais la valeur). Une clé non déclarée lève une erreur (code `undeclared`).
+- Disponible dans tous les contextes serveur de l'instance (migration, tâche, panneau d'admin, service). Une valeur `secret` ne sort jamais de la mémoire : ni journal, ni message d'erreur, ni réponse de service, ni bloc.
+- Au démarrage, le cœur efface seul les valeurs **vides** de ces réglages (et des réglages que plus rien ne déclare) ; une valeur remplie n'est jamais effacée par le cœur. La page *Entretien* compte celles qui restent.
+- `dataFloor` : si votre migration v3 suppose des données déjà en v2, déclarez `"dataFloor": 2`. Une instance en v1 n'est alors **pas** étiquetée « à jour » (le cœur saute sinon en silence les versions sans migration) : elle est mise de côté (`error: "floor"`) avec un message clair. Ne **baissez jamais** `dataVersion` d'une version à l'autre : les instances déjà converties seraient mises de côté (« plus récentes que le module »).
+- Un test du cœur (`tests/core/legacy-labels.test.mjs`, copie dans le dépôt de modules) refuse « ancien », « ancienne », « legacy », « reprise automatiquement », « anciennes versions » (et l'anglais) dans un libellé ou une aide visible, et vérifie que chaque clé de `settings` est lue par le code du module.
+- Pour tester : `fakeCtx({ legacy: { clientSecret: "x" } })` ajoute `ctx.legacy` (effacements notés dans `ctx.calls.legacyCleared`).
+
 Écrivez des migrations **idempotentes** quand c'est possible (elles peuvent être rejouées après un échec) et **testez-les** sur des données réelles de l'ancienne version.
 Ne supprimez jamais une migration déjà publiée : un site peut sauter plusieurs versions d'un coup.
 
@@ -587,11 +730,13 @@ Exemple court : *Contacts* offre `contact.store` et possède le carnet ; *Parten
 - **Rien à moitié** : si un maillon échoue (clone impossible, dépôt qui ne sert pas le module annoncé, service absent du manifeste réel, cycle, profondeur), tout ce que la cascade avait fait est **défait** (modules installés, activés, instances créées, fichiers) et le message dit **quel module** a échoué et **pourquoi**. L'index peut se tromper : c'est le manifeste réellement téléchargé qui tranche, et le candidat suivant est essayé.
 - **Deux fournisseurs déjà actifs** : rien n'est choisi ni installé ; le mécanisme maître/répliques ci-dessous décide.
 - **Installé automatiquement** : un module (ou une instance) apporté par la cascade est noté dans le réglage cœur `modules.auto` (`{ "<id>": { "for": ["<consommateurs>"], "module": true, "instances": ["<id d'instance>"], "at": … } }` ; sans migration de base, sauvegardé avec les réglages). La page du module dit *« Installé automatiquement pour : … »*, et quand plus aucun module **actif** n'en dépend, un **nettoyage est proposé** (page du module, et encadré dans Modules › Installés). **Jamais de suppression automatique** : le propriétaire confirme, et si le module porte des données ou des réglages saisis, l'avertissement est affiché et une case « je comprends » est exigée. « Le garder » retire la marque.
-- **Mises à jour** : après `updateModule` (et « Tout mettre à jour »), si la nouvelle version **ajoute** un `requires` ou en relève le `min`, le fournisseur disponible est installé d'office (mêmes règles) ; sinon la mise à jour **réussit quand même**, le module dégrade comme avant (jamais de plantage), et l'administrateur est **averti** (bilan de la mise à jour, page du module : *« Il manque : … »*, avec un bouton pour mettre en place ce qui manque). Une alerte ne bloque jamais les autres mises à jour de la liste.
+- **Mises à jour (cœur 0.2.0) : les `requires` d'abord, les migrations ensuite.** Ordre de `updateModule` : (1) la nouvelle version est récupérée et validée (cœur compris), sans rien migrer ; (2) ses fichiers remplacent les anciens ; (3) ses `requires` **durs** sont satisfaits : fournisseur du catalogue officiel installé avec son instance, ou fournisseur installé **trop ancien mis à jour** si le catalogue propose la version voulue (une mise à jour de fournisseur réussie n'est jamais défaite : elle est valide seule) ; (4) s'il manque quelque chose, **tout est défait** : le module reste dans son ancienne version, ses données intactes, et l'erreur `modules.error.requires` dit quoi (*« Il manque : … »*) ; (5) sinon seulement, les migrations de données tournent (un échec met l'instance à l'écart avec « Réessayer », les fournisseurs restent). Tout cela dans un seul journal d'annulation. **Versions sautées** : l'étape 3 est rejouée avant les migrations de **chaque** version intermédiaire, avec son manifeste ; si un besoin manque en cours de route, le module s'arrête sur la dernière version dont les données ont été migrées (jamais un code plus ancien que ses données). Exception : un besoin que la migration elle-même couvrira en **semant** une instance (`seeds`) est vérifié après elle, et seulement signalé s'il manque encore. **« Tout mettre à jour »** passe les **fournisseurs avant leurs consommateurs** (besoins lus dans l'index du catalogue, version visée ; à égalité par identifiant ; un cycle garde l'ordre d'origine) ; un module refusé n'empêche jamais les autres. Un module dont la migration appelle un service déclare `minCore: "0.2.0"` (un cœur 0.1.x migre avant d'installer les fournisseurs).
+- **Besoin facultatif** (`"requires": [{ "service": "…", "optional": true }]`, cœur 0.2.0 ; un cœur plus ancien ignore la clé et le traite comme dur) : il n'empêche ni l'installation ni l'activation, n'est **jamais installé d'office**, n'apparaît jamais dans *« Il manque »* et ne retient pas son fournisseur (le désinstaller est permis : votre module doit alors dégrader proprement). L'appel reste permis s'il existe un fournisseur (sinon `unavailable`). L'aperçu d'installation l'affiche sous *« Fonctionne mieux avec… (facultatif) »*. Pour proposer l'installation au propriétaire, renvoyez un bloc `suggestInstall` (voir « Blocs »).
 - **Restauration** ([BACKUP.md](BACKUP.md)) : les modules sont réinstallés dans l'ordre des dépendances (fournisseurs d'abord), puis les `requires` de chaque module actif restauré sont vérifiés ; un fournisseur absent de la sauvegarde mais disponible est installé avec son instance par défaut. Sinon le consommateur est restauré avec ses données, l'état « activé » de la sauvegarde est respecté, et l'aperçu comme le bilan disent *« il manque : … »*.
 - **Désinstaller** un module que d'autres modules installés requièrent (parce que lui seul fournit le service, dans la version voulue) est refusé en nommant ces modules (leurs noms, pas leurs identifiants), ce qu'ils perdraient, et ce qu'il faut faire (*« retirez d'abord … »*).
 - **Interface** : le Catalogue (liste et fiche) annonce *« Installe aussi : Contacts »* **avant** d'installer — ce qui sera installé, activé ou déjà en place ✔ — pour un module du catalogue qui déclare ses services. Le bouton **Installer** fait tout en une action. La page d'un module montre *« A besoin de »* et *« Utilisé par »* en noms lisibles (identifiants techniques et versions en mode avancé).
 - `ctx.api.services.call` n'accepte que les services déclarés dans `requires` (sinon `undeclared`), prend le premier fournisseur actif de version suffisante (par clé d'instance), ne lève jamais : à vous de gérer `unavailable` (par exemple après une restauration) en dégradant proprement.
+- **Choisir le fournisseur (cœur 0.2.0)** : `ctx.api.services.providers(service)` → `[{ id, key, name, module, version, each, master }]` (50 au plus, par ordre de création) : les instances que **votre** module peut appeler (service déclaré dans `requires`, version ≥ `min`). `id` est l'identifiant **stable** de l'instance, `name` son libellé lisible, `master` vaut vrai pour celle que `call` viserait sans option. Service non déclaré ou sans fournisseur : `[]`. Puis `ctx.api.services.call(service, method, args, { provider: id })` : seule cette instance répond (sans réplique, sauf si c'est le maître). Un `id` qui n'est plus dans `providers` (instance supprimée, mise à l'écart, trop ancienne, ou d'un autre service) donne `{ ok: false, reason: "unavailable" }` : dites-le à l'utilisateur (« La source choisie n'existe plus : choisissez-en une autre »). Sans `provider`, la règle reste la même : maître pour un service classique, **première instance par ordre de création** pour un service `each`. Un module qui passe `provider` déclare `minCore: "0.2.0"` (un cœur plus ancien ignorerait l'option et appellerait une autre instance) ; pour détecter `providers` : `typeof ctx.api.services.providers === "function"`.
 - **Plusieurs fournisseurs du même service** (un doublon, ou un changement de fournisseur) : dès qu'un deuxième module qui offre le service est activé (ou qu'une de ses instances est créée), l'admin est invité (page *Modules* → *Services offerts par plusieurs modules*) à choisir un **maître** — il reçoit les appels et c'est sa réponse que voit l'appelant — et des **répliques**, qui reçoivent aussi les appels qui **écrivent**, au mieux (la panne d'une réplique ne fait jamais échouer l'appel ; celle du maître, si). Le fournisseur peut déclarer ses méthodes de lecture dans `offers` (`"readOnly": ["count"]`) : elles ne sont jamais répliquées. Tant que rien n'est choisi, le premier fournisseur (par clé d'instance) est le maître, sans réplique ; un choix périmé (maître retiré) retombe sur le premier. **Une réplique reçoit les appels futurs** : les données déjà reçues par l'ancien fournisseur ne sont pas copiées (aucun conflit à fusionner, mais un historique réparti : pour une bascule propre, mettez le nouveau en maître, gardez l'ancien en réplique le temps voulu, puis retirez-le).
 - **Un service où chaque instance parle de SA propre chose : `each`** (voir aussi « Quand choisir quoi » ci-dessous). Deux chaînes Twitch offrent toutes deux `twitch.live` : chacune répond pour sa chaîne, il n'y a donc **aucun maître à choisir**. Le fournisseur le déclare : `"offers": [{ "service": "twitch.live", "each": true }]` (booléen facultatif, défaut `false` ; cohérent avec `version` : `{ "service": "twitch.live", "version": 2, "each": true }`). Pour un service `each` : (1) la page *Services offerts par plusieurs modules* n'en parle plus (ni « À choisir », ni pastille Maître, ni graphe) ; (2) une exigence `requires` est satisfaite dès qu'**une** instance active du service existe ; (3) `ctx.api.services.call` garde son comportement et renvoie la réponse de la **première instance active par ordre de création** (jamais un « maître », aucune réplique) ; (4) `ctx.api.services.callAll` les interroge **toutes**. Si, parmi les fournisseurs actifs, un seul ne déclare pas `each`, le service reste classique (maître/répliques) : le choix le plus prudent pour une donnée partagée.
 - **`ctx.api.services.callAll(service, method, args)`** → `Promise<Array<{ instance, name?, ok: true, value } | { instance, name?, ok: false, error }>>`. Une entrée par instance **active**, dans l'ordre de création (`instance` = clé de l'instance, `name` = son surnom ou nom lisible). Mêmes règles que `call` (service déclaré dans `requires`, version suffisante, la méthode s'exécute avec le contexte de l'instance fournisseuse). Un fournisseur qui lève, ou qui n'a pas la méthode, donne `{ ok: false, error: "failed" | "no_method" }` : le message du fournisseur n'est jamais transmis (il pourrait contenir un secret, il n'est que journalisé) et les autres entrées ne sont pas touchées. Service **non-each** : **une seule** entrée, la réponse du maître (comme `call`). Service non déclaré dans `requires`, inconnu ou sans fournisseur actif : `[]`. Ne lève jamais.
@@ -600,7 +745,7 @@ Exemple court : *Contacts* offre `contact.store` et possède le carnet ; *Parten
 
 #### Dire ses services dans l'index du catalogue
 
-Pour qu'un module d'un dépôt reconnu puisse être choisi comme fournisseur (ou annonce ses besoins) **avant d'être téléchargé**, son entrée de `catalogue/index.json` peut porter, en plus de ses champs habituels, deux listes facultatives : `"offers": ["contact.store"]` et `"requires": ["contact.store"]` — chaque élément est un nom de service, ou un objet `{ "service": "contact.store", "version": 2 }` (offres ; `"each": true` possible, voir plus haut : `{ "service": "twitch.live", "each": true }`) / `{ "service": "contact.store", "min": 2 }` (besoins). Valeurs validées (noms de services, entiers ≥ 1, 10 au plus, doublons écartés) ; un cœur plus ancien ignore ces clés. À ne pas confondre avec `"requires": { "core": "0.1.10" }` (version minimale du cœur, un objet) : le cœur distingue les deux par la forme. Ces listes ne servent qu'à **choisir et annoncer** ; à l'installation c'est le `module.json` réel qui fait foi. Un module dont l'entrée n'annonce rien n'a rien à ajouter : son manifeste est lu à l'installation.
+Pour qu'un module d'un dépôt reconnu puisse être choisi comme fournisseur (ou annonce ses besoins) **avant d'être téléchargé**, son entrée de `catalogue/index.json` peut porter, en plus de ses champs habituels, deux listes facultatives : `"offers": ["contact.store"]` et `"requires": ["contact.store"]` — chaque élément est un nom de service, ou un objet `{ "service": "contact.store", "version": 2 }` (offres ; `"each": true` possible, voir plus haut : `{ "service": "twitch.live", "each": true }`) / `{ "service": "contact.store", "min": 2 }` (besoins). Valeurs validées (noms de services, entiers ≥ 1, 10 au plus, doublons écartés) ; un cœur plus ancien ignore ces clés. À ne pas confondre avec `"requires": { "core": "0.1.10" }` (version minimale du cœur, un objet) : le cœur distingue les deux par la forme. Un besoin peut porter `"optional": true` (`{ "service": "contact.store", "optional": true }`) : il faut le recopier dans l'index (le script qui génère l'index du dépôt de modules doit le transporter), sans quoi un cœur 0.2.0 le prendrait pour un besoin dur. Ces listes ne servent qu'à **choisir et annoncer** ; à l'installation c'est le `module.json` réel qui fait foi. Un module dont l'entrée n'annonce rien n'a rien à ajouter : son manifeste est lu à l'installation.
 
 #### Vérifier le principe dans un dépôt de modules
 
@@ -662,6 +807,11 @@ Chaque fonction du module reçoit un `ctx` (`ModuleContext`) ; les slots reçoiv
 | `ctx.page` | (slots `page.*` et `entry.*`) `{ key, basePath }` de l'instance dont on affiche la page |
 | `ctx.entry` | (slots `entry.*`) `{ id, title, slug }` de l'entrée affichée |
 | `ctx.api` | tout ce que le cœur met à disposition (ci-dessous) |
+| `ctx.legacy` | (cœur 0.2.0) réglages hérités de **cette** instance déclarés dans `legacySettings` : `keys()`, `get(clé)`, `clear(clé)` (voir « Réglages hérités et plancher »). Absent sur un cœur plus ancien. |
+| `ctx.can("droit")` | (cœur 0.2.0) la personne qui regarde l'administration a-t-elle ce droit du module (identifiant **local**, voir « Droits (`rights`) ») ? Vrai seulement dans `adminPanel`, `adminActions` et `entryPanels` ; **toujours faux** ailleurs (page publique, route, overlay, tâche, service, MCP). Absent sur un cœur plus ancien : traitez l'absence comme un refus. |
+
+| `ctx.can("droit")` | (cœur 0.2.0) la personne qui regarde l'administration a-t-elle ce droit du module (identifiant **local**, voir « Droits (`rights`) ») ? Vrai seulement dans `adminPanel`, `adminActions`, `entryPanels` et le `create` d'un réglage `choice` (appelé pour la personne connectée) ; **toujours faux** ailleurs (page publique, route, overlay, tâche, service, MCP). Absent sur un cœur plus ancien : traitez l'absence comme un refus. |
+| `ctx.resolveChoice("clé")` | (cœur 0.2.0) résout un réglage `choice` : `{ status: "chosen" \| "only", id, label }`, `{ status: "missing", id?, label? }`, ou `none` / `ambiguous` / `unverified`. Borné à 3 s, ne lève jamais, n'écrit rien. Voir « Réglage `choice` ». |
 
 ### `ctx.api`
 
@@ -669,24 +819,34 @@ Deux familles : les **services** du cœur (génériques, voir [PLATFORM.md](PLAT
 
 | Appel | Famille | Rôle |
 |---|---|---|
-| `ctx.api.services.call(service, méthode, args)` / `.available(service)` | dépendance | Appelle un service offert par un autre module (déclaré dans `requires`) ; renvoie `{ ok: true, value }` ou `{ ok: false, reason }` (`undeclared`, `unavailable`, `no_method`, `failed`), ne lève jamais. |
+| `ctx.api.services.call(service, méthode, args, { provider? })` / `.available(service)` | dépendance | Appelle un service offert par un autre module (déclaré dans `requires`) ; renvoie `{ ok: true, value }` ou `{ ok: false, reason }` (`undeclared`, `unavailable`, `no_method`, `failed`), ne lève jamais. `provider` (cœur 0.2.0) : l'`id` d'une instance de `providers(service)`. |
+| `ctx.api.services.providers(service)` | dépendance | (cœur 0.2.0) Les fournisseurs que ce module peut appeler : `[{ id, key, name, module, version, each, master }]`, par ordre de création, 50 au plus ; `[]` si le service n'est pas déclaré. |
 | `ctx.api.qr(texte)` | service | QR code en SVG (fond transparent) pour un texte ou une URL |
 | `ctx.api.png({ width, height, tree })` | service | Image PNG (une `Response`) à partir d'une arborescence de boîtes `{ type: "div"\|"span"\|"p"\|"b"\|"img", props: { style, children, src } }` (flexbox, styles en ligne, 16 à 2000 px). Une `img` n'accepte qu'un chemin du site ou une adresse https publique. Exemple : l'image de la semaine du module *planning* (`/m/<clé>/image`). |
-| `ctx.api.store.add(collection, data)` | service | ajoute un document JSON, renvoie son `id` |
-| `ctx.api.store.get(id)` | service | `{ id, createdAt, data }` ou `null` (aussi `null` pour un document d'une autre instance) |
-| `ctx.api.store.update(id, data)` | service | **remplace** le document ; renvoie `false` s'il n'existe pas. Pour modifier un champ, relisez, fusionnez, réécrivez. |
-| `ctx.api.store.list(collection, { limit? })` | service | les plus récents d'abord ; 100 par défaut |
+| `ctx.api.store.add(collection, data, { key? })` | service | ajoute un document JSON, renvoie son `id` ; `key` : clé facultative (200 caractères au plus, non unique) pour le retrouver sans parcourir la collection |
+| `ctx.api.store.get(id)` | service | `{ id, createdAt, data, key }` ou `null` (aussi `null` pour un document d'une autre instance) |
+| `ctx.api.store.update(id, data, { key? })` | service | **remplace** le document ; renvoie `false` s'il n'existe pas. `key` absente = inchangée, `key: null` l'efface. Pour modifier un champ, relisez, fusionnez, réécrivez. |
+| `ctx.api.store.list(collection, { limit? })` | service | les plus récents d'abord ; 100 par défaut, **10 000 au plus** (au-delà : `page`) |
+| `ctx.api.store.page(collection, { limit?, cursor?, order?, key? })` | service | `{ items, next }` : lecture par pages (100 par défaut, **1 000 au plus**), `order` `"desc"` (défaut) ou `"asc"`. Passez `next` comme `cursor` à l'appel suivant ; `next` vaut `null` à la dernière page. Le curseur est opaque ; un curseur illisible donne une page vide. |
+| `ctx.api.store.getByKey(collection, key)` | service | l'enregistrement le plus ancien portant cette clé, ou `null` (index : pas de parcours de la collection) |
+| `ctx.api.store.listByKey(collection, key, { limit?, cursor? })` | service | la liste paginée (`{ items, next }`, comme `page`) de ceux qui portent cette clé, du plus récent au plus ancien |
+| `ctx.api.store.addMany(collection, [{ data, key? }])` | service | jusqu'à 5 000 lignes d'un coup (tranches de 500, **une transaction** : tout ou rien) ; renvoie les `id` dans l'ordre |
+| `ctx.api.store.generation()` | service | entier propre à l'instance, **augmenté par le cœur** quand ses données sont remplacées de l'extérieur (restauration d'une sauvegarde, annulation d'une migration, reprise de données gardées). Vos propres écritures ne le changent pas. Comparez-le à la valeur notée quand vous avez construit un index en mémoire : s'il a changé, reconstruisez. |
 | `ctx.api.store.remove(id)` | service | supprime (sans erreur si absent) |
 | `ctx.api.store.count(collection)` | service | nombre de documents |
 | `ctx.api.topics.collect(sujet, { limit? })` | service | éléments des sources auxquelles l'instance est abonnée (le sujet doit figurer dans `consumes`, sinon erreur) |
+| `ctx.api.topics.collectPage(sujet, { limit?, cursor? })` | service | comme `collect`, page par page : `{ items, next }` (200 au plus par page ; `cursor` = le `next` précédent, opaque ; `next: null` = fini). Seul `core.entry` est lu par curseur (du plus récent au plus ancien, expirées écartées) ; un sujet fourni par un module n'a qu'une page. Curseur illisible : erreur. |
 | `ctx.api.mail.configured()` | service | un serveur d'e-mail est-il réglé ? |
 | `ctx.api.mail.send({ to, subject, text, replyTo? })` | service | e-mail au nom du site (permission `mail`, voir « Envoyer un e-mail ») |
 | `ctx.api.rawg.configured()` | service | une clé RAWG est-elle réglée par le propriétaire ? (permission `rawg` ; `false` sans elle) |
 | `ctx.api.rawg.cover(title)` | service | jaquette d'un jeu : `{ status, url }` avec `status` = `found` (`url` en https), `none` (aucun résultat), `no-key` (pas de clé), `refused` (RAWG refuse la clé), `unreachable` (RAWG injoignable) ; permission `rawg`, voir « Jaquettes de jeux (RAWG) » |
+| `ctx.api.net.request({ url, method?, headers?, body?, timeoutMs?, maxBytes?, dedupe?, retry?, priority?, bucket? })` | service | appel réseau **neutre et borné** vers une API externe (https seulement, aucune permission) : `{ ok: true, status, headers, json?, text?, shared }` ou `{ ok: false, error, status?, retryAt? }` ; ne lève jamais. Voir « Appeler une API externe : `ctx.api.net` » |
+| `ctx.api.net.health()` | service | état des hôtes contactés depuis le démarrage : `[{ host, state: "ok" \| "slow" \| "rate" \| "quota" \| "down", since, retryAt? }]` |
+| `ctx.api.net.budgetMs()` | service | temps restant (ms) de la page publique en cours, ou `null` hors page publique |
 | `ctx.api.site(locale?)` | lecture | `{ name, tagline, logo }` du site |
 | `ctx.api.brand(locale?)` | lecture | identité visuelle complète (`ModuleBrand`, ci-dessous) |
 | `ctx.api.instances.list({ module?, locale? })` | lecture | `[{ id, key, module, basePath, name, adminPath }]` des instances actives ; `adminPath` (`/admin/instances/<id>`) est la page de réglages de l'instance : de quoi y renvoyer l'administrateur par un lien (`href`) |
-| `ctx.api.entries.list({ instance?, locale?, limit? })` | lecture | entrées publiées (`EntrySummary`) ; par défaut celles de l'instance courante |
+| `ctx.api.entries.list({ instance?, locale?, limit? })` | lecture | entrées publiées (`EntrySummary`) ; par défaut celles de l'instance courante ; **200 au plus** (sans `limit`, ou au-delà : 200), dans l'ordre de la liste publique (non expirées d'abord, puis expirées) ; pour tout lire, passez par `ctx.api.topics.collectPage` |
 | `ctx.api.siteUrl` | lecture | adresse publique du site, sans `/` final |
 | `ctx.api.seo.jsonLd(données)` | service | prépare des données structurées (JSON-LD) pour le slot `layout.head` : renvoie la balise `{ tag: "script", jsonLd }` à mettre dans un bloc `head`, ou `null` si la donnée est inutilisable (pas de `@type`, trop volumineuse). Le cœur ajoute `@context`, borne la taille (texte 5 000 caractères, 100 éléments par liste, 8 niveaux, 20 000 caractères au total) et échappe `</script>`. Voir « Données structurées » dans [CREATE-A-MODULE.md](CREATE-A-MODULE.md). |
 
@@ -709,6 +869,7 @@ Un module renvoie des **blocs déclaratifs** ; le cœur se charge du rendu, des 
 | `html` | `html` — **brut**, sous la responsabilité du module : échappez tout ce qui vient d'un visiteur |
 | `heading` | `text` |
 | `swatches` | `items: [{ name, hex, role? }]` — pastilles de couleur avec code copiable |
+| `netHealth` | `items: [{ host, label, lastGoodAt? }]` — **panneau d'admin seulement** : santé des services externes appelés par `ctx.api.net`, une phrase simple par service écrite par le cœur en FR/EN (« répond normalement », « répond lentement depuis 10:42 ; les données affichées datent de 10:30 », « trop de demandes, pause jusqu'à 11:00 », « quota du jour épuisé, reprise à 09:00 », « ne répond pas ») et, en cas de souci, « Un service externe ne répond pas : le site affiche les dernières données connues ». `label` : nom lisible du service (le cœur n'en connaît aucun) ; `lastGoodAt` : date ISO des données affichées |
 | `downloads` | `items: [{ src, label, detail? }]` — images à télécharger, avec aperçu |
 | `copy` | `text`, `label?` — texte à copier d'un clic |
 | `hero` | `title`, `text?`, `image?`, `eyebrow?`, `button?` (`label`, `href`), `video?` (fichier envoyé sur le site), `videoPoster?`, `videoSound?` |
@@ -722,6 +883,7 @@ Un module renvoie des **blocs déclaratifs** ; le cœur se charge du rendu, des 
 | `adminForm` | `action`, `fields`, `submitLabel`, `title?`, `cancelHref?` — panneau d'admin uniquement |
 | `gridEditor` | éditeur de **grille** (panneau d'admin uniquement) : `action`, `width`, `height`, `cells` (un caractère par case, ligne après ligne), `palette` (`[{ value, label, color }]`, une `value` = un caractère), `submitLabel`, `title?`, `minSize?`, `maxSize?`, `cancelHref?`, `labels?` (`width`, `height`, `fillAll`, `border`, `reset`, `hint`, `generateError`), et, en option, `generateAction` + `generateLabel` (bouton « générer ») et `autoLabel` + `autoNotice` + `autoActive?` (mode « automatique »). L'utilisateur choisit un pinceau et peint à la souris ou au doigt, redimensionne, et enregistre : l'action reçoit `width`, `height` et `cells` en texte (à valider !). Les options sont décrites sous le tableau. Exemple : le tracé du module *maze-overlay*. |
 | `head` | `tags`: `meta` / `link` / `script` (uniquement dans `layout.head`) |
+| `suggestInstall` | `service`, `min?`, `reason` — **panneau d'admin uniquement** (cœur 0.2.0 ; ignoré ailleurs et par un cœur plus ancien). « Il vous manque un module qui `reason` » : le cœur cherche lui-même dans le catalogue les modules qui offrent `service` (version ≥ `min`) — officiels d'abord, puis ceux de l'index supplémentaire avec l'avertissement « non vérifié par le catalogue officiel » et une case à cocher. Le **propriétaire** voit la liste (nom, description), un bouton *Installer* (le module et son instance) et *Ne plus proposer* ; les autres lisent *« Demandez au propriétaire du site d'installer un module qui … »*. Rien n'est affiché si un fournisseur actif existe, ou si le propriétaire a dit *Ne plus proposer* (mémorisé par instance et par service, jusqu'à *Afficher de nouveau les suggestions* sur la page de l'instance). Le catalogue est lu 2 s au plus ; au-delà, « Catalogue injoignable, réessayez plus tard ». Rien n'est jamais installé sans ce clic : `ctx.api` n'offre aucune installation (ni service, ni tâche, ni migration, ni MCP). `reason` : une fin de phrase en mots simples, dans la langue du panneau (« affiche vos prochains lives »). Audit : `module.install.suggested`. |
 
 **`gridEditor` : génération et mode automatique (optionnels, un module qui ne les passe pas se comporte comme avant).** Aucun de ces boutons n'enregistre quoi que ce soit : tout reste dans l'éditeur jusqu'à « Enregistrer » (la barre flottante d'enregistrement et l'avertissement en quittant la page s'appliquent), et « Annuler les modifications » revient exactement à l'état chargé (grille et mode).
 
@@ -868,7 +1030,7 @@ export default {
 };
 ```
 
-- **Champs** d'un `adminForm` : `text`, `textarea`, `email`, `url`, `number`, `date`, `select` (`options`), `image`, `hidden`, `checkbox`. Les blocs
+- **Champs** d'un `adminForm` : `text`, `textarea`, `email`, `url`, `number`, `date`, `select` (`options`), `image`, `hidden`, `checkbox`, `file` (voir « Champ fichier »). Les blocs
   `adminForm` ne s'affichent que dans l'admin (jamais sur le site public).
 - **Boutons de ligne** d'une `table` (`rowActions`, admin seulement) : `{ label, action?, href?, confirm?, danger? }`. `action` exécute une
   `adminAction` en lui envoyant `values.id` (pris dans `rowIds`, même ordre que `rows`) ; `href` navigue (`{id}` est remplacé par l'identifiant) ;
@@ -878,7 +1040,7 @@ export default {
   (`"?edit=abc"` y ajoute des paramètres, lus par `adminPanel` dans `query`) ; `"/admin/…"` va ailleurs dans l'admin ; toute autre cible est ignorée.
   Une exception donne un message d'erreur générique (détail dans les journaux).
 - Chaque action est consignée dans le journal d'audit (`module.<clé>.<action>`), sans son contenu.
-- `ctx.locale` est la langue de l'administrateur ; `ctx.api.store` offre `add`, `get`, `update`, `list`, `remove`, `count`.
+- `ctx.locale` est la langue de l'administrateur ; `ctx.api.store` offre `add`, `get`, `update`, `list`, `page`, `getByKey`, `listByKey`, `addMany`, `generation`, `remove`, `count`.
 
 ## Ajouter une section à l'éditeur d'un autre module
 
@@ -963,7 +1125,7 @@ export default { mcp: {
 ```
 
 - Chaque action devient l'outil `<clé de l'instance>__<action>` (autant d'outils que d'instances).
-- **Toute instance à contenu** reçoit aussi `list_entries`, `get_entry`, `create_draft` et `update_draft`.
+- **Toute instance à contenu** reçoit aussi `list_entries`, `get_entry`, `create_draft` et `update_draft`. `list_entries` rend 30 entrées par défaut, 100 au plus (`limit`), de la plus récemment créée à la plus ancienne ; l'argument `cursor` reprend après la dernière entrée lue. Tant qu'il ne reste rien après et qu'aucun `cursor` n'est passé, la réponse est le simple tableau d'avant ; sinon c'est `{ items, next }` (`next: null` sur la dernière page). Le curseur est opaque : on le renvoie tel quel.
 - **Schéma des arguments** (`input`) : un objet plat. `type` doit valoir `"object"` ; `properties` : chaque propriété a un `type`
   (`string`, `number`, `integer`, `boolean`, `array`) et, selon le cas, `description`, `enum` (texte), `maxLength` (texte, 20 000 au plus),
   `minimum` / `maximum` (nombres), `items` (`{ "type": "string" }`, pour `array` : 100 textes courts au plus) ; `required` : liste des
@@ -1040,6 +1202,29 @@ Garde-fous du cœur : texte brut uniquement (20 000 caractères au plus), objet 
 chaque envoi consigné dans le journal d'audit (sans contenu).
 
 
+## Appeler une API externe : `ctx.api.net`
+
+Un service externe finit toujours par tomber, ralentir ou demander une pause. `ctx.api.net.request(…)` est le client réseau **du cœur**, partagé par tous les modules : préférez-le à `fetch`. Il ne demande **aucune permission** et ne connaît **aucun fournisseur**.
+
+```js
+const r = await ctx.api.net.request({ url: "https://api.example.org/v1/items?page=1", headers: { authorization: `Bearer ${ctx.setting("apiKey")}` } });
+if (r.ok && r.status === 200 && r.json) { /* mettre en cache avec la date */ }
+else { /* r.error : timeout | network | rate | quota | circuit | busy | too_large | invalid — afficher les dernières données connues */ }
+```
+
+- **Ne lève jamais.** Toute réponse HTTP reçue donne `ok: true` avec son `status` (à vous de juger un 404) ; `json` si le corps est du JSON lisible, sinon `text` (un JSON tronqué arrive en `text`). Les redirections ne sont pas suivies (`status` 3xx, en-tête `location`).
+- **Délai dur** : `timeoutMs` (8 000 par défaut, 20 000 au plus), file d'attente et lecture du corps comprises. Dans une page publique, jamais plus que le temps restant de la page (`ctx.api.net.budgetMs()`), moins une petite marge pour afficher votre repli. Corps limité à `maxBytes` (2 Mo par défaut, 10 Mo au plus).
+- **Trop de demandes** : un 429 (ou un 503 avec `Retry-After`) met le **seau** en pause jusqu'à `retryAt`, lu dans `Retry-After`, puis `RateLimit-Reset` / `X-RateLimit-Reset`, `X-RateLimit-Reset-After`, enfin `retry_after` dans le corps JSON (60 s à défaut, 1 h au plus). Pendant la pause, chaque demande reçoit `{ ok: false, error: "rate", retryAt }` **sans appel réseau**. Une réponse normale avec `RateLimit-Remaining: 0` déclenche la même pause, préventive. Le seau est `bucket` (une même application chez un fournisseur, partagée par plusieurs modules ; haché, jamais journalisé), sinon l'hôte.
+- **Quota du jour** : un 403 dont le JSON porte `error.errors[].reason` = `quotaExceeded` ou `dailyLimitExceeded` donne `quota`, sans aucun appel avant minuit, heure du Pacifique (`retryAt`).
+- **Disjoncteur par hôte**, partagé par tout le site : 5 échecs (délai, réseau, 5xx) en 60 s l'ouvrent 30 s (`circuit`), puis un seul essai ; s'il échoue, la pause double, jusqu'à 5 min.
+- **Déduplication** : des GET identiques en cours (même adresse, mêmes en-têtes) partagent un seul appel (`shared: true` pour les suivants ; chacun reçoit sa propre copie). `dedupe: false` pour s'en passer.
+- **File bornée** : 4 appels simultanés par hôte, 16 admis par hôte, 32 pour tout le site ; au-delà, `busy` **tout de suite** (jamais d'attente). `priority: "interactive"` passe devant `background` (défaut).
+- **Une seule reprise** au plus (`retry`, 1 par défaut pour GET/HEAD ; jamais pour les autres méthodes), après une erreur réseau ou un 502/503/504 sans `Retry-After`, après 200 à 800 ms au hasard, et seulement s'il reste 1 s de délai. Jamais après un 429 ou un quota.
+- **Journal** : une ligne `[net] <module> <hôte> <méthode> <chemin> <statut|erreur> <ms>ms`, sans en-têtes, sans paramètres de requête, sans corps ; un segment de chemin qui ressemble à un jeton est masqué. Un refus sans réseau n'est écrit qu'une fois par minute.
+- **Santé** : `ctx.api.net.health()`, et le bloc d'admin `netHealth` (voir « Blocs ») pour la montrer à l'administrateur en mots simples.
+
+Un cœur plus ancien n'a pas `ctx.api.net` : exigez `"minCore": "0.2.0"`, ou prévoyez un repli (`ctx.api.net ? … : fetch(url, { signal: AbortSignal.timeout(8000) })`). Le kit de test vérifie les appels réseau (règles `net.bounded`, `net.429`, `net.fallback`, `net.noIdleTimer`, voir [TESTSUPPORT.md](TESTSUPPORT.md)) ; dans vos tests, `fakeCtx()` fournit le vrai client, à combiner avec `withFakeFetch` et `netReplies` (`rateLimited`, `quotaExceeded`, `silence`, `truncatedJson`, `slow`, `down`).
+
 ## Jaquettes de jeux (RAWG)
 
 Un module qui déclare la permission `rawg` peut demander la jaquette d'un jeu : `const cover = await ctx.api.rawg.cover("Hades")`. La **clé d'API RAWG se règle une seule fois**, par le propriétaire, dans *Réglages › Services externes* (comme le serveur d'e-mail) : un module ne demande **jamais** la clé à l'utilisateur, n'a pas de réglage « clé RAWG », et ne la voit jamais. Si un ancien module en avait une, le cœur la reprend une fois au démarrage quand le réglage du cœur est vide.
@@ -1105,6 +1290,7 @@ Il n'y a que **deux états** : *installé* (actif : page, menu, tâches, outils 
 - **Retirer une seule instance** suit le même choix. En « garder », `hooks.onInstanceDelete` n'est **pas** appelé (rien n'est détruit) ; en « effacer », il l'est. Le propriétaire qui retire la *seule* instance de son module retire le module.
 - **Dépendances.** Retirer un module dont un autre module installé a besoin est refusé. Le nettoyage proposé des modules « installés automatiquement » (plus personne n'en dépend) offre le même choix. Si une cascade échoue après avoir retrouvé des données gardées, elles sont rangées de nouveau, jamais effacées.
 - **MCP de maintenance.** `maintenance_module_uninstall` prend `keepData` (défaut **vrai**, non destructif) ; `keepData: false` efface. Comme tout outil destructif, il reste soumis à la validation humaine.
+- **Balayage de conversion au démarrage (0.2.0).** À chaque démarrage, avant de servir la moindre page, le cœur range les « éteints » (ci-dessous), fait passer au catalogue les modules copiés par les toutes premières versions quand la dernière copie reçue du catalogue les connaît à la même version (sans réseau), lance les conversions de données en attente (une instance à la fois), puis note `core.legacyCleared`. Borné à 20 secondes ; ce qui n'est pas fini reprend au démarrage suivant. Tant que le marqueur manque, l'administration affiche un avertissement (le site public n'est pas touché) et la page *Entretien* (`/admin/maintenance/legacy`, outil MCP `maintenance_legacy`) dit ce qui reste. Code : `src/core/modules/legacySweep.ts`, `legacyReport.ts`.
 - **Migration des « éteints » (temporaire, retrait en 0.3.0).** Un site d'avant la 0.1.20 peut avoir des modules ou instances « éteints » : au premier démarrage (et après la restauration d'une ancienne sauvegarde), un module éteint est désinstallé et une instance éteinte retirée, **données gardées** (`src/core/modules/legacyOff.ts`). Les colonnes `enabled` restent dans la base pour cette seule lecture.
 
 ## Installer, publier, catalogue
@@ -1116,6 +1302,7 @@ Il n'y a que **deux états** : *installé* (actif : page, menu, tâches, outils 
 **Installer** (propriétaire seulement). Admin → **Catalogue** :
 
 - **Le catalogue** : dépôts git listés dans l'index du dépôt `curiosa-extras` (voir ci-dessous), chacun avec sa version épinglée par étiquette : celui qui publie l'index se porte garant des dépôts qu'il liste. C'est la seule source de vérité, lue sur le réseau : le cœur n'embarque aucun module ni copie de la liste. Le catalogue connaît par défaut UN seul dépôt (`curiosa-extras`) ; d'autres se configurent (`CURIOSA_CATALOGUE_REPO`, `MODULES_INDEX_URL`, *Mes dépôts de modules*).
+- **Origine d'une entrée** (cœur 0.2.0) : `official` (le dépôt du catalogue, ou sa dernière copie reçue) ou `extra` (l'index supplémentaire `MODULES_INDEX_URL`). Un module `extra` est marqué *« non vérifié par le catalogue officiel »* ; il n'est **jamais installé d'office** (ni comme fournisseur d'un autre, ni par une graine, ni mis à jour par la cascade : le manque est signalé avec la raison « extra ») et ne s'installe que par le propriétaire, après avoir lu l'avertissement et coché la case. À service égal, l'officiel passe toujours avant.
 - **Mes dépôts de modules** (mode avancé) : vous publiez vos modules dans UN dépôt git (un dossier par module, chacun avec son `module.json`, jusqu'à trois niveaux de profondeur ; ou un seul module à la racine). Le propriétaire du site ajoute l'adresse du dépôt dans Catalogue → *Mes dépôts de modules* ; Curiosa lit les manifestes (sans rien exécuter) et liste les modules, qui s'installent un par un avec la même confirmation que ci-dessous. Chaque module se met à jour depuis son dossier de ce dépôt, et seulement quand ce dossier change. Dix dépôts au plus.
 - **Installer un dépôt personnel (non vérifié)** : n'importe quelle adresse de dépôt, avec un avertissement et une case « je comprends » à cocher :
 

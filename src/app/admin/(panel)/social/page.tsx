@@ -1,4 +1,5 @@
 import { adminCtx } from "@/core/admin";
+import { isOwner as ownerCheck } from "@/core/auth/access";
 import { getCatalogue } from "@/core/modules/catalogue";
 import { getInstanceLabeler } from "@/core/modules/labels";
 import { localized } from "@/core/modules/types";
@@ -20,7 +21,7 @@ export default async function SocialPage({ searchParams }: { searchParams: Promi
   const market = (await getCatalogue().catch(() => [])).filter((e) => e.compatible && e.provides?.includes(SOCIAL_TOPIC));
   const counts = new Map<string, number>();
   for (const row of await prisma.moduleInstance.groupBy({ by: ["moduleId"], _count: true })) counts.set(row.moduleId, row._count);
-  const isOwner = user.role === "owner";
+  const isOwner = ownerCheck(user);
 
   return (
     <div className="space-y-8">

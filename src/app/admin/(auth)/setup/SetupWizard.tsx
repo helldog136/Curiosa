@@ -4,6 +4,7 @@ import { useActionState, useRef, useState } from "react";
 import { ui } from "@/components/admin/ui";
 import { RestorePanel } from "@/components/admin/RestorePanel";
 import { completeSetup } from "./actions";
+import { progressPercent, stepNumber } from "./progress";
 
 type Props = {
   strings: Record<string, Record<string, string>>;
@@ -67,9 +68,9 @@ export function SetupWizard({ strings, uiLocales, locales, presets, needsToken, 
 
   return (
     <div className="mx-auto max-w-xl px-4 py-10 sm:py-16">
-      <div className="mb-6 flex items-center gap-3" aria-label={`${t("setup.step")} ${step + 1} / ${visibleSteps.length}`}>
-        <div className="h-2 flex-1 overflow-hidden rounded-full bg-line"><div className="h-full rounded-full bg-accent transition-all" style={{ width: `${((step + 1) / visibleSteps.length) * 100}%` }} /></div>
-        <span className="text-sm text-muted">{step + 1} / {visibleSteps.length}</span>
+      <div className="mb-6 flex items-center gap-3" role="progressbar" aria-valuenow={progressPercent(step, isLast)} aria-valuemin={0} aria-valuemax={100} aria-label={`${t("setup.step")} ${stepNumber(step)}`}>
+        <div className="h-2 flex-1 overflow-hidden rounded-full bg-line"><div className="h-full rounded-full bg-accent transition-all" style={{ width: `${progressPercent(step, isLast)}%` }} /></div>
+        <span className="text-sm text-muted" data-testid="setup-step">{t("setup.step")} {stepNumber(step)}</span>
       </div>
       <div className={`${ui.card} !p-6 sm:!p-9`}>
       <form ref={formRef} action={action} className="space-y-6">

@@ -7,6 +7,76 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.2.0
+
+### Améliorations
+
+- **Les listes d'articles se découpent en pages de 12.** Un lien « Page précédente » et un lien « Page suivante » apparaissent dès qu'il y a plus de 12 articles ; en dessous, rien ne change. Les moteurs de recherche voient chaque page.
+- **La liste des entrées de l'administration se découpe en pages de 50 et se filtre.** Vous pouvez chercher un mot du titre et ne garder que les brouillons, les publiés, les programmés ou les expirés.
+- **Le flux RSS donne les 50 derniers articles** au lieu de 30.
+- **Un plan du site trop gros ne bloque plus les moteurs de recherche.** Au-delà de 50 000 adresses, seules les plus récentes y figurent, et la page *Visibilité dans les réponses des IA* vous le dit.
+- **Une copie de sécurité est prise avant de mettre à jour plusieurs modules d'un coup.** Une seule copie est gardée pour ménager le disque ; si la place manque, rien n'est mis à jour et la page vous le dit.
+- **Les sauvegardes de très gros carnets sont bien plus rapides.** Avec 50 000 fiches, la sauvegarde passe d'une trentaine de secondes à quelques secondes.
+- **Les modules lisent leurs données page par page et retrouvent une fiche par sa clé sans tout parcourir.** Les gros carnets restent fluides.
+- **Quand un service externe tombe ou demande une pause, le site reste rapide.** Les modules peuvent passer par un client réseau commun qui attend au plus quelques secondes, fait une vraie pause quand un service dit « trop de demandes » et cesse d'insister auprès d'un service en panne.
+- **Un nouvel encadré « Services externes » peut s'afficher dans le panneau d'un module.** Il dit en mots simples si chaque service répond normalement, lentement, s'il est en pause et jusqu'à quelle heure, ou s'il ne répond plus (le site affiche alors les dernières données connues).
+- **Des rôles sur mesure pour votre équipe.** Dans *Équipe → Rôles*, le propriétaire crée un rôle (par exemple « Modérateur ») et coche ce qu'il permet, fonctionnalité par fonctionnalité. Une personne peut cumuler plusieurs rôles, et sa fiche dit en phrases simples ce qu'elle peut faire.
+- **Rien ne change pour les propriétaires, administrateurs et éditeurs actuels.** Ils gardent exactement les mêmes accès ; un droit retiré s'applique tout de suite, sans devoir se reconnecter.
+- **Les actions réservées au propriétaire le restent.** L'équipe, les rôles, les sauvegardes, les mises à jour et la sécurité ne peuvent jamais être donnés dans un rôle.
+- **Mettre un module à jour ne laisse plus ses données en route.** Le site installe ou met d'abord à jour les modules dont il a besoin, puis seulement convertit ses données. S'il manque quelque chose, rien ne change : le module garde sa version et vos données, et la page dit quoi faire.
+- **« Tout mettre à jour » commence par les modules dont les autres ont besoin.** Un module qui ne peut pas être mis à jour n'empêche plus les autres de l'être.
+- **Un module peut fonctionner « mieux avec » un autre, sans l'exiger.** Ce module-là n'est jamais installé tout seul, et vous pouvez le retirer quand vous voulez.
+- **Un module peut vous proposer d'installer ce qui lui manque.** Seul le propriétaire du site voit le bouton « Installer » ; « Ne plus proposer » est retenu jusqu'à ce que vous demandiez de revoir les suggestions.
+- **Les modules d'une liste ajoutée en plus du catalogue officiel sont signalés « non vérifiés ».** Ils ne s'installent jamais tout seuls : vous devez lire l'avertissement et cocher une case.
+- **Au démarrage, le site met à niveau tout seul les données des versions précédentes.** Cela prend au plus 20 secondes et ne passe pas par Internet ; si ce n'est pas fini, il reprend au démarrage suivant. Votre site public reste en ligne pendant ce temps.
+- **Une nouvelle page *Entretien* dit ce qui reste à mettre à niveau.** Un bandeau dans l'administration vous y mène tant que ce n'est pas terminé, avec un bouton « Relancer ». Aucune valeur de réglage n'y est affichée.
+- **Une instance dont les données sont trop en retard n'est plus déclarée « à jour » par erreur.** Elle est mise de côté, et sa page dit quelle étape installer d'abord.
+- **Un module peut proposer un fichier à télécharger depuis l'administration.** Un export de fiches, par exemple. Il faut le droit prévu par le module, chaque téléchargement est noté dans le journal d'audit, et il est coupé s'il dépasse 512 Mo ou 10 minutes.
+- **Un module peut vous demander un fichier texte (CSV, par exemple) de 5 Mo au plus.** Si le fichier est trop gros, n'est pas du texte ou n'est pas en UTF-8, un message vous dit quoi faire. Le reste de l'administration garde sa limite habituelle.
+- **Choisir dans une liste au lieu de taper un nom.** Quand un module vous demande une chaîne, une catégorie ou un autre élément qui existe déjà, il peut vous proposer une liste où chercher et choisir. Renommer l'élément ne casse plus rien.
+- **Rien à choisir quand il n'y a qu'une possibilité.** Avec une seule option, le champ disparaît et le site l'utilise ; il revient dès qu'une deuxième option existe. Sans aucune option, le module vous dit quoi installer ou créer d'abord.
+- **Un élément choisi puis supprimé est signalé.** S'il ne reste qu'une possibilité, elle est utilisée et la page vous le dit ; sinon, le module passe « à configurer » avec le champ à corriger.
+- **Les noms déjà tapés sont repris tout seuls.** Si un ancien réglage contenait exactement le nom d'un élément de la liste, il est remplacé par cet élément ; sinon la page vous demande de confirmer.
+- **L'accueil et les modules ne chargent plus tous les articles.** Seuls ceux qu'il faut sont lus : une page d'accueil avec un bloc d'articles reste rapide avec des dizaines de milliers d'articles. Le rendu est le même qu'avant sur un petit site.
+- **Exporter ou restaurer une sauvegarde ne fige plus le site.** Même avec 20 000 fiches, une visite n'attend jamais plus d'une fraction de seconde. Le format des sauvegardes ne change pas : une ancienne sauvegarde se restaure toujours.
+- **Un module qui ne se charge pas n'inonde plus le journal.** Sa pile d'erreur est écrite une fois, puis une ligne de compte toutes les 10 minutes.
+- **La page *Entretien* dit quoi faire d'un module que le catalogue ne propose plus.** Vous le retirez (en gardant ou non ses données) ou vous le gardez tel quel. Le message en haut est toujours d'accord avec la liste, et le bandeau n'y est plus répété.
+- **Choisir dans une liste vide où l'on peut créer :** la phrase « Rien à choisir… » disparaît dès qu'un élément est créé, sans recharger la page.
+- **L'assistant d'installation n'affiche plus un total d'étapes qui change** (« 3 / 4 » puis « 4 / 5 ») : il dit « Étape 3 ».
+- **Textes plus justes :** « 1 personne » / « 2 personnes » (et en anglais « 1 person » / « 2 people ») au lieu de « personne(s) » ; moins de jargon dans la page *Entretien* ; le bouton « Télécharger » d'un panneau n'apparaît plus pour une personne qui n'en a pas le droit.
+
+### Pour les développeurs
+
+- **Pagination du contenu** : `listEntriesPage`, `latestEntries`, adresses `?page=N` (404 hors plage, redirection si invalide), `ctx.api.topics.collectPage` avec curseur opaque pour `core.entry`, argument `cursor` pour l'outil MCP `list_entries` (réponse `{ items, next }` seulement s'il y a une suite).
+- `ctx.api.store` : `page` (curseur `(createdAt, id)`, `order`, `key`), `getByKey`, `listByKey`, `addMany` (5 000 lignes au plus, tranches de 500, une transaction) et `generation()` (augmenté par la restauration, l'annulation d'une migration et la reprise de données gardées). Colonne facultative `key` (migration additive `module_record_key`). `list` plafonné à 10 000, `page` à 1 000 (docs/PLATFORM.md).
+- Sauvegarde : `key` exportée et restaurée (une sauvegarde sans `key` donne `null`), `FORMAT_VERSION` inchangé ; export des enregistrements lu par pages, copie quadratique corrigée ; copie `pre-bulk-update-<date>-<ts>.db` (`VACUUM INTO`, une seule gardée, hors rotation), qui fait sauter les copies `pre-migration` pendant 1 h.
+- `ctx.api.net` (`src/core/services/net.ts`, contrat 7 de `docs/V2-CONTRACTS.md`) : `request` ne lève jamais ; délai dur borné par le budget de page (`remainingBudgetMs()`), pauses 429 / quota 403 sans réseau, disjoncteur par hôte, GET dédupliqués, file 4/16/32 avec `busy` immédiat, une reprise avec jitter, journal `[net]` sans secret. Aussi `health()` et `budgetMs()`. Aucune nouvelle permission.
+- Bloc d'admin `netHealth` (`core/netHealthText.ts`, textes `net.health.*`) : une phrase FR/EN par hôte, d'après l'état réel du client partagé.
+- Kit de test : règles `net.bounded`, `net.429` (sonde 429 `Retry-After: 120`, second passage à 0 appel), `net.fallback` (trou noir, rendu en moins de 3 s) et `net.noIdleTimer`, en conseil dans cette version (`NET_RULES_LEVEL`) ; `fakeCtx().api.net` est le vrai client ; `fakeFetch` accepte `"*"` et respecte `signal` ; `netReplies` (429, quota, silence, JSON tronqué, lent, coupé) et `makeNetClient`.
+- Rôles et droits : tables `Role` et `UserRole` (ajout seulement), rôles prédéfinis créés au démarrage, `User.role` conservé et recalculé (`none` = rôles personnalisés seulement). `can()`, `isOwner()`, `adminCtx("member" | { right })` dans `src/core/auth/access.ts`.
+- Modules : `rights` dans `module.json` (préfixe `<module>:` imposé par le cœur), `ctx.can()` (vrai seulement dans l'administration), `adminActions` de forme `{ right, run }` vérifiée avant `run`. Exige `minCore` 0.2.0.
+- Sauvegarde : `data/roles.json` et `data/user-roles.json` (facultatifs, `FORMAT_VERSION` inchangé) ; une sauvegarde plus ancienne recrée les rôles prédéfinis. Suite de sécurité : `tests/core/roles-security.test.mjs`.
+- `updateModule` : fichiers → `requires` durs du NOUVEAU manifeste (`settleBeforeMigrations`, un journal) → migrations ; besoin impossible → tout défait, `modules.error.requires` + `missing`. Fournisseur trop ancien : candidat `{ from: "update" }`, mis à jour (jamais défait). Versions sautées : idem avant chaque version intermédiaire.
+- `orderForUpdate` (bulkUpdate.ts) : « Tout mettre à jour » range les fournisseurs avant leurs consommateurs (index du catalogue, égalité par identifiant, cycle dans l'ordre d'origine).
+- `requires[].optional` : hors de `requirementGaps`, du plan, de la cascade, de `dependentsOf` et de `lossesIfStopped` ; gardé par `sanitizeServiceList` et `normalizeNeeds`. À recopier aussi par le script qui génère l'index du dépôt de modules.
+- `ctx.api.services.providers(service)` et `call(service, method, args, { provider })` : instance choisie, revalidée côté serveur, sans réplique sauf le maître ; fournisseur disparu → `unavailable`. `minCore: "0.2.0"` pour s'en servir.
+- `CatalogueEntry.origin` (`official` | `extra`) : l'extra passe après l'officiel, n'est jamais installé par la cascade (raison `extra`) et exige `installFromCatalogue(id, { confirmExtra: true })`.
+- Bloc `suggestInstall { service, min?, reason }` (panneau d'admin) ; réglage `suggest.dismissed.<instance>.<service>` ; audit `module.install.suggested`. Code : `core/modules/suggestInstall.ts`. Tests : `deps-order-v2.test.mjs`, `suggest-install.test.mjs`.
+- Balayage du démarrage (`legacySweep.ts`, contrat 10), attendu par `register()` : éteints rangés, lignes `bundled`/`builtin` converties sans réseau si sûr, migrations en attente une à une, valeurs vides héritées effacées, puis `core.legacyCleared`. 20 s, reprenable, journal sans valeur. Rien n'est retiré (code, colonne `enabled`).
+- Manifeste : `legacySettings: [{ key, secret? }]` (≤ 20, jamais dans `settings`, jamais affichés), `legacyCollections` (≤ 10, comptées par le rapport), `dataFloor` (≤ `dataVersion`). `ctx.legacy.keys/get/clear` (clé déclarée seulement ; audit `module.legacy.clear` sans valeur). `fakeCtx({ legacy })`. Exige `minCore` 0.2.0.
+- `migrateInstance` : données sous `dataFloor` → `failed` / `floor` (rien ne bouge) ; migration qui dépasse le délai du démarrage → `failed` / `timeout`. Rapport d'héritage en lecture seule (`legacyReport.ts`) : page `/admin/maintenance/legacy` (propriétaire, « Relancer ») et outil MCP `maintenance_legacy` (niveau 1). Bandeau d'avertissement dans l'admin si le marqueur manque (bloquant en phase 3).
+- `tests/core/legacy-labels.test.mjs` : parcourt le dépôt de modules s'il est présent (`CURIOSA_EXTRAS_DIR`, sinon `/home/user/curiosa-extras`) et refuse « ancien », « legacy », « reprise automatiquement »… dans un libellé visible ; vérifie que chaque clé de `settings` est lue par le code du module.
+- `adminDownloads` (contrat 8) : `POST /api/admin/modules/[instance]/download/[name]`, flux tiré d'un générateur asynchrone (1 Mo au plus par morceau), droit `<module>:open` + `right`, audit `module.<clé>.download.<nom>` puis `….end`, bloc `download`. Limites : 512 Mo, 10 min, 60 s de silence, 2 par personne et 4 au total. Code : `core/modules/adminTransfer*.ts`.
+- Champ `kind: "file"` (`accept`, `maxBytes` ≤ 5 Mo) : formulaire envoyé à `POST /api/admin/modules/[instance]/action/[action]` (la limite de 1 Mo des actions serveur n'est pas relevée), lecture comptée et coupée, UTF-8 strict, BOM retiré, texte transmis dans `values[nom]`. Un cœur plus ancien ignore `adminDownloads` et le bloc `download` ; il rend un champ fichier qu'il n'envoie pas : exiger `minCore` 0.2.0.
+- Kit de test : exigence `downloads.bounded` (conseil) ; `fakeCtx().api.store.page`. Tests : `tests/core/admin-transfer.test.mjs`.
+- Réglage `choice` (contrat 1) : `source` `providers` (`service`, `min?`) ou `service` (`list`, `get`, `create?`), service déclaré dans `requires` ; `allowCreate`, `fromText`, `refersTo`. Un cœur plus ancien refuse `type: "choice"` : `minCore: "0.2.0"`.
+- `ctx.resolveChoice(clé)` : `chosen`, `only`, `none`, `ambiguous`, `missing` (avec `id` s'il reste un seul remplaçant) ou `unverified`. Borné à 3 s, cache de 15 s ; l'unique option n'est jamais écrite.
+- Validation asynchrone bornée (`validateChoice` : 3 s par champ, 5 s par formulaire, refus au délai) dans `saveInstanceSettings` et `ctx.seedInstance`. Actions `searchChoice` et `createChoice`, même garde que les réglages.
+- `create` reçoit `ctx.can` pour la personne connectée (`callService(…, { viewer })`, interne au cœur) ; audit `module.<instance>.choice.create`. Code : `core/modules/choice.ts`, `choiceValues.ts`, `components/admin/ChoicePicker.tsx`.
+- `fromText` : conversion à l'ouverture de l'admin et `sweepFromText({ budgetMs })` pour le balayage de démarrage ; audit `setting.fromText`.
+- Kit de test : règles `settings.refersToChoice` et `settings.textNamesExisting` en conseil (`CHOICE_RULES_LEVEL`), `fakeCtx({ choices })`. Tests : `choice.test.mjs`.
+
+
 ## 0.1.28
 
 ### Améliorations

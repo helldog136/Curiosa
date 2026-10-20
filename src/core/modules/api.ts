@@ -2,17 +2,19 @@ import { isDarkBackground, pickLogo } from "../logos";
 import { getBrand } from "@/core/brand";
 import { siteUrl } from "@/core/config";
 import { moduleJsonLd } from "@/core/seo";
-import { entryPath, listEntries } from "@/core/content/entries";
+import { entryPath, listEntries, MAX_LIST_LIMIT } from "@/core/content/entries";
 import { getInstanceByKey, listInstances, pickName, type InstanceView } from "@/core/instances";
 import { isMailConfigured, sendMail } from "@/core/services/mail";
+import { sharedNet } from "@/core/services/net";
 import { qrSvg } from "@/core/services/qr";
 import { isRawgConfigured, rawgCover } from "@/core/services/rawg";
 import { renderPng, type PngSpec } from "@/core/services/render";
 import { createStore } from "@/core/services/store";
-import { collect } from "@/core/services/topics";
+import { collect, collectPage } from "@/core/services/topics";
 import { getSiteConfig } from "@/core/settings";
-import { callService, callServiceAll, serviceAvailable } from "./dependencies";
-import { getActiveInstances } from "./registry";
+import { remainingBudgetMs } from "./budget";
+import { callService, callServiceAll, providersOf, serviceAvailable } from "./dependencies";
+import { getActiveInstances, getModule, type ActiveInstance } from "./registry";
 import type { ModuleApi } from "./types";
 
 /**
@@ -26,7 +28,8 @@ import type { ModuleApi } from "./types";
  *     mail    envoi d'e-mails au nom du site (SMTP réglé dans l'admin)
  *     rawg    jaquettes de jeux (clé RAWG réglée une fois dans l'admin ; permission « rawg »)
  *     topics  échange d'informations typées entre modules
- *     services  appel du service d'un autre module (`call` : maître ; `callAll` : toutes les instances d'un service `each`)
+ *     net     client réseau neutre et borné (délai, pauses 429, quota, disjoncteur, file bornée, santé) ; aucun fournisseur connu du cœur
+ *     services  appel du service d'un autre module (`call` : maître, ou l'instance `provider` choisie ; `providers` : qui l'offre ; `callAll` : toutes les instances d'un service `each`)
  *     (MCP : pas d'appel côté module ; un module déclare ses actions `mcp`, le cœur les expose)
  *
  *   LECTURE DU SITE (en lecture seule, pour que les modules s'articulent avec le reste)
@@ -34,8 +37,21 @@ import type { ModuleApi } from "./types";
  *
  * Voir docs/PLATFORM.md.
  */
+/** Marge laissée à la section pour afficher son repli quand un appel réseau épuise le temps de la page. */
+const NET_PAGE_MARGIN_MS = 500;
+
 export function makeApi(instance: InstanceView, locale: string, permissions: readonly string[] = []): ModuleApi {
   const rawgAllowed = permissions.includes("rawg");
+  /**
+   * L'instance appelante, pour un appel de service. Une instance mise à l'écart (migration échouée) ne tourne pas, SAUF pendant sa propre
+   * migration (« Réessayer ») : elle doit alors pouvoir appeler les services dont elle dépend, d'où le repli sur son module chargé.
+   */
+  const consumer = async (): Promise<Pick<ActiveInstance, "mod" | "instance"> | null> => {
+    const live = (await getActiveInstances()).find((a) => a.instance.id === instance.id);
+    if (live) return live;
+    const mod = await getModule(instance.moduleId).catch(() => null);
+    return mod ? { mod, instance } : null;
+  };
   return {
     siteUrl,
 
@@ -46,13 +62,18 @@ export function makeApi(instance: InstanceView, locale: string, permissions: rea
     png: (spec) => renderPng(spec as PngSpec, siteUrl),
     services: {
       available: serviceAvailable,
-      async call(service, method, args) {
-        const consumer = (await getActiveInstances()).find((a) => a.instance.id === instance.id);
-        return consumer ? callService(consumer, service, method, args, locale) : { ok: false, reason: "unavailable" };
+      async providers(service) {
+        const me = await consumer();
+        return me ? providersOf(me, service, locale) : [];
+      },
+      async call(service, method, args, opts) {
+        const me = await consumer();
+        const provider = opts && typeof opts === "object" && opts.provider !== undefined ? String(opts.provider) : undefined;
+        return me ? callService(me, service, method, args, locale, { provider }) : { ok: false, reason: "unavailable" };
       },
       async callAll(service, method, args) {
-        const consumer = (await getActiveInstances()).find((a) => a.instance.id === instance.id);
-        return consumer ? callServiceAll(consumer, service, method, args, locale) : [];
+        const me = await consumer();
+        return me ? callServiceAll(me, service, method, args, locale) : [];
       },
     },
     store: createStore(instance.id),
@@ -62,10 +83,23 @@ export function makeApi(instance: InstanceView, locale: string, permissions: rea
       configured: async () => rawgAllowed && (await isRawgConfigured()),
       cover: async (title) => (rawgAllowed ? rawgCover(title) : { status: "no-key", url: null }),
     },
+    net: {
+      // Dans une page publique : le délai ne dépasse pas le temps restant de la page, moins une marge pour que le module affiche son repli.
+      request: (req) => {
+        const left = remainingBudgetMs();
+        return sharedNet().request(req, { module: instance.moduleId, budgetMs: left === null ? null : left - NET_PAGE_MARGIN_MS });
+      },
+      health: async () => sharedNet().health(),
+      budgetMs: remainingBudgetMs,
+    },
     topics: {
       async collect(topic, opts) {
         const consumer = (await getActiveInstances()).find((a) => a.instance.id === instance.id);
         return consumer ? collect(consumer, topic, { limit: opts?.limit, from: opts?.from, to: opts?.to, locale }) : [];
+      },
+      async collectPage(topic, opts) {
+        const consumer = (await getActiveInstances()).find((a) => a.instance.id === instance.id);
+        return consumer ? collectPage(consumer, topic, { limit: opts?.limit, cursor: opts?.cursor, from: opts?.from, to: opts?.to, locale }) : { items: [], next: null };
       },
     },
 
@@ -88,7 +122,7 @@ export function makeApi(instance: InstanceView, locale: string, permissions: rea
         const config = await getSiteConfig();
         const target = key ? await getInstanceByKey(key) : instance;
         if (!target) return [];
-        const views = await listEntries({ instance: target, locale: loc ?? config.defaultLocale, limit });
+        const views = await listEntries({ instance: target, locale: loc ?? config.defaultLocale, limit: Number.isFinite(limit) && limit! > 0 ? limit : MAX_LIST_LIMIT }); // borné (200 au plus)
         return views.map((e) => ({
           id: e.id, slug: e.slug, cover: e.cover, icon: e.icon, tags: e.tags, fields: e.fields,
           title: e.title, summary: e.summary, body: e.body, url: e.url, code: e.code,

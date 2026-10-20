@@ -44,7 +44,7 @@ test("confidentialité : page publique, lien permanent en pied de page, chemin r
   assert.match(read("src/components/site/Footer.tsx"), /data-testid="privacy-link"/);
   assert.ok(!/privacyLink|showPrivacy/.test(read("src/core/settings.ts")), "aucun réglage ne permet de retirer le lien");
   assert.match(read("src/core/config.ts"), /"privacy"/);
-  assert.match(read("src/app/sitemap.ts"), /\/privacy/);
+  assert.match(read("src/core/sitemap.ts"), /\/privacy/);
   const page = read("src/app/(site)/privacy/page.tsx");
   assert.match(page, /buildPrivacyPolicy/);
   assert.match(page, /mod\.manifest\.privacy/, "ce que déclarent les modules actifs");

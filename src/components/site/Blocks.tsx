@@ -4,24 +4,31 @@ import type { Block } from "@/core/blocks";
 import { jsonLd, moduleJsonLd } from "@/core/seo";
 import { getInstanceByKey } from "@/core/instances";
 import { withLocale } from "@/core/links";
-import { listEntries } from "@/core/content/entries";
+import { listEntries, MAX_PER_PAGE } from "@/core/content/entries";
 import { isSafeExternalUrl, safeHref } from "@/core/url";
 import { getSiteConfig } from "@/core/settings";
 import { makeTranslator } from "@/core/i18n/dictionary";
+import { describeNetHealth } from "@/core/netHealthText";
 import { EntryList } from "./EntryList";
 import { Markdown } from "./Markdown";
 import { ModuleForm } from "./ModuleForm";
 import { CopyCode } from "./CopyCode";
 import { CopyText } from "./CopyText";
-import { AdminBlockForm, RowActionButton } from "../admin/AdminBlocks";
+import { AdminBlockForm, RowActionButton, type FileLabels } from "../admin/AdminBlocks";
+import { ui } from "../admin/ui";
 import { GridEditor } from "../admin/GridEditor";
 import { floatingLabels } from "../admin/floating";
+import { mayShowDownload } from "@/core/modules/downloadAccess";
+import { SuggestInstall } from "../admin/SuggestInstall";
 
 const TONES = {
   info: "bg-accent text-accent-fg",
   success: "bg-success text-success-fg",
   warning: "bg-warning text-warning-fg",
 };
+
+/** Pastille de couleur de chaque état d'un service externe (bloc « netHealth »). */
+const NET_DOT = { ok: "bg-success", slow: "bg-warning", rate: "bg-warning", quota: "bg-warning", down: "bg-danger", unknown: "bg-line" } as const;
 
 /** Rend les blocs renvoyés par les modules. Les blocs "head" sont traités à part (voir HeadTags). */
 /** `n` éléments au hasard, sans répétition. */
@@ -154,7 +161,9 @@ export async function Blocks({ blocks, locale, adminInstanceId: panelInstanceId,
       case "entries": {
         const instance = await getInstanceByKey(block.instance);
         if (!instance) break;
-        let entries = await listEntries({ instance, locale, limit: block.pick === "random" ? undefined : block.limit });
+        // Toujours borné : la base trie et tronque (jamais toutes les entrées). Tirage au hasard : parmi les 100 premières, non expirées.
+        const wanted = block.limit && block.limit > 0 ? block.limit : MAX_PER_PAGE;
+        let entries = await listEntries({ instance, locale, limit: block.pick === "random" ? 100 : wanted });
         if (block.pick === "random") entries = pickRandom(entries.filter((e) => !e.expired), block.limit ?? 1);
         if (block.link && entries.length === 0) break;
         const seeAll = block.link && instance.basePath ? withLocale(`/${instance.basePath}`, locale, config.defaultLocale) : null;
@@ -186,7 +195,25 @@ export async function Blocks({ blocks, locale, adminInstanceId: panelInstanceId,
         break;
       case "adminForm":
         // Les formulaires d'admin n'existent que dans le panneau d'admin (jamais sur le site public).
-        if (adminInstanceId) out.push(<AdminBlockForm key={i} instanceId={adminInstanceId} block={block} entry={entryScope} />);
+        if (adminInstanceId) {
+          // Textes du champ fichier (envoi par la route du cœur, pas par une action serveur) : seulement si le formulaire en a un.
+          const t = makeTranslator(locale);
+          const fileLabels: FileLabels | undefined = block.fields.some((f) => f.kind === "file")
+            ? { tooBig: t("transfer.file.tooLarge"), sending: t("transfer.sending"), failed: t("transfer.failed"), done: t("transfer.done") }
+            : undefined;
+          out.push(<AdminBlockForm key={i} instanceId={adminInstanceId} block={block} entry={entryScope} fileLabels={fileLabels} />);
+        }
+        break;
+      case "download":
+        // Téléchargement d'administration : un petit formulaire POST (le navigateur envoie alors l'en-tête Origin, que la route du cœur contrôle). Jamais sur le site public.
+        if (panelInstanceId && !entryScope && /^[A-Za-z0-9_-]{1,64}$/.test(block.name) && (await mayShowDownload(panelInstanceId, block.name))) {
+          out.push(
+            <form key={i} method="post" action={`/api/admin/modules/${encodeURIComponent(panelInstanceId)}/download/${encodeURIComponent(block.name)}`} className="flex">
+              {Object.entries(block.params ?? {}).slice(0, 20).map(([k, v]) => <input key={k} type="hidden" name={k} value={String(v).slice(0, 1000)} />)}
+              <button type="submit" className={ui.btn}>{block.label}</button>
+            </form>,
+          );
+        }
         break;
       case "gridEditor":
         if (adminInstanceId && !entryScope) out.push(<GridEditor key={i} instanceId={adminInstanceId} block={block} floating={floatingLabels(makeTranslator(locale))} />);
@@ -221,6 +248,36 @@ export async function Blocks({ blocks, locale, adminInstanceId: panelInstanceId,
             </table>
           </div>,
         );
+        break;
+      case "netHealth": {
+        // Santé des services externes : panneau d'admin uniquement (jamais sur le site public : l'état des fournisseurs ne regarde pas les visiteurs).
+        if (!adminInstanceId) break;
+        const view = describeNetHealth(block.items, locale);
+        if (view.lines.length === 0) break;
+        out.push(
+          <section key={i} data-card="" className="space-y-3 rounded-xl border border-line bg-surface p-4" aria-label={view.title}>
+            <h3 className="text-sm font-semibold">{view.title}</h3>
+            {view.summary && (
+              <div className="rounded-lg border border-warning p-3 text-sm" role="status">
+                <p className="font-medium">{view.summary}</p>
+                {view.hint && <p className="mt-1 text-muted">{view.hint}</p>}
+              </div>
+            )}
+            <ul className="space-y-2">
+              {view.lines.map((l) => (
+                <li key={`${l.host}-${l.label}`} className="flex items-start gap-2 text-sm">
+                  <span aria-hidden="true" className={`mt-1.5 inline-block h-2 w-2 shrink-0 rounded-full ${NET_DOT[l.state]}`} />
+                  <span className="min-w-0 break-words">{l.text}</span>
+                </li>
+              ))}
+            </ul>
+          </section>,
+        );
+        break;
+      }
+      case "suggestInstall":
+        // Panneau d'admin d'une instance seulement (jamais sur le site public, ni dans une section de l'éditeur d'entrée).
+        if (panelInstanceId && !entryScope) out.push(<SuggestInstall key={i} instanceId={panelInstanceId} service={block.service} min={block.min} reason={block.reason} locale={locale} />);
         break;
       case "head":
         break;

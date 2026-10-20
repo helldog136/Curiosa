@@ -79,6 +79,13 @@ Il n'y a **volontairement pas** d'outil de restauration : elle remplace tout le 
 
 Remettre le code d'un module à neuf (*Modules › le module › Maintenance*) exécute du code côté serveur : l'action est réservée au **propriétaire**, avec confirmation dans la page. Elle ne reprend que la source du module (le dépôt du catalogue ou le dépôt git déjà connu, mêmes règles d'hôtes que l'installation), **n'accorde jamais de nouvelle permission** (refus, il faut passer par la mise à jour), met l'ancien dossier de côté et le rétablit au moindre échec, et est inscrite au journal (`module.reinstall`, sans adresse ni secret).
 
+## Installer d'office : seulement l'officiel, seulement ce qui est exigé
+
+- **Origine** : une entrée du catalogue vaut `official` (dépôt du catalogue ou sa dernière copie reçue) ou `extra` (index supplémentaire `MODULES_INDEX_URL`). Une entrée `extra` n'est **jamais** installée ni mise à jour d'office (cascade de dépendances, graine, restauration d'un fournisseur manquant) : le manque est signalé (raison « extra »). Elle ne s'installe que par le propriétaire, après l'avertissement « non vérifié par le catalogue officiel » et une case cochée (`confirmExtra`, revérifié côté serveur). À service égal, l'officiel passe toujours avant. Seule exception : restaurer une sauvegarde remet un module `extra` que le propriétaire avait déjà installé (il confirme la restauration).
+- **Besoin facultatif** (`requires[].optional`) : jamais installé d'office, ne retient pas son fournisseur.
+- **Bloc `suggestInstall`** : seul un clic du **propriétaire** installe (action serveur `installSuggested`, rôle propriétaire exigé, puis revérifiés : l'instance existe, son module déclare le service dans `requires`, l'entrée du catalogue offre bien ce service en version suffisante, est compatible, et une entrée `extra` porte la case cochée). Un administrateur ou un rédacteur lit seulement « Demandez au propriétaire… ». `ctx.api` n'expose aucune installation : ni un service, ni une tâche, ni une migration, ni le MCP ne peuvent en déclencher. Audit : `module.install.suggested` (module, service, origine ; jamais de secret). La lecture du catalogue pendant le rendu est bornée à 2 s.
+- **Mise à jour** : aucune migration de données tant qu'un `requires` dur de la nouvelle version manque ; sinon tout est défait (fichiers, ligne du module, modules apportés par la cascade) et les données restent intactes.
+
 ## Module qui sème une instance (modèle de menace)
 
 Pendant la migration de données d'un module, il peut demander au cœur de créer une instance d'**un autre** module avec des réglages initiaux (`ctx.seedInstance`, voir [MODULES.md](MODULES.md#migrations--faire-évoluer-ses-données)). Un module ne peut toujours ni lire ni écrire les réglages ou les instances d'un autre ; ce que le cœur autorise est étroit :
@@ -90,6 +97,14 @@ Pendant la migration de données d'un module, il peut demander au cœur de crée
 - *Effacer les réglages d'autrui* : `ctx.clearSetting` ne touche que les réglages **déclarés par le module lui-même**, pour **sa propre** instance, et seulement après un semis abouti ; tout revient si la migration échoue.
 - *Échec à mi-chemin* : l'instance créée, la marque et le module cible installé pour l'occasion sont retirés ; l'instance semeuse est remise à l'écart (« Réessayer ») ; le journal ne garde rien d'un semis défait.
 - *Traces* : `module.seed` (semeur → cible : clé de l'instance créée), jamais de valeur. Limite connue : un secret semé est stocké comme tous les réglages de l'instance (dans la base, donc dans ses sauvegardes chiffrées) ; un module cible malveillant pourrait le lire, comme n'importe quelle instance de lui — c'est pourquoi on ne sème que chez un module dont on dépend et que l'administrateur a choisi d'installer.
+
+## Réglages hérités et balayage du démarrage (0.2.0)
+
+- Un réglage déclaré dans `legacySettings` n'est **jamais affiché** (ni en mode simple, ni en mode avancé : il n'est pas dans `settings`). Seul le module de l'instance le lit, par `ctx.legacy.get` ; la valeur reste en mémoire.
+- `ctx.legacy.clear` n'efface que **sa** clé déclarée ; l'audit (`module.legacy.clear`) dit le module et la clé, jamais la valeur. Une clé non déclarée lève une erreur sans valeur.
+- Le rapport d'héritage (page *Entretien*, propriétaire seulement ; outil MCP `maintenance_legacy`, lecture) donne des nombres et des noms de clés, **jamais** une valeur, même masquée. Le journal du balayage (`[legacy]`) ne contient que des nombres.
+- Le balayage du démarrage n'utilise pas le réseau et ne dure pas plus de 20 secondes : il ne peut ni bloquer le site, ni être déclenché par un visiteur. « Relancer » est réservé au propriétaire.
+- Une sauvegarde chiffrée contient ces valeurs (comme tous les réglages) pour pouvoir les restaurer ; le résumé lisible de la sauvegarde ne cite aucun réglage d'instance.
 
 ## Sessions
 
@@ -107,6 +122,65 @@ Dans *Utilisateurs → Actions sensibles → Définir un mot de passe temporaire
 - **La prochaine connexion réussie, quel que soit le moyen** (mot de passe, mot de passe + code, clé d'accès), mène uniquement à la page « Choisissez votre mot de passe » : aucune page, action ni route d'administration ne s'ouvre avant (seule la déconnexion reste possible). Le nouveau mot de passe doit faire 10 caractères au moins et différer du temporaire ; ensuite le drapeau est levé, les *autres* sessions sont coupées, la session en cours continue (journal : `user.password.chosen`).
 - La double vérification et les clés d'accès **restent en place** : réinitialiser le mot de passe ne les retire pas (c'est une autre action).
 - Les **jetons des assistants IA (MCP)** appartiennent au site, pas à la session de la personne : ils restent valables et ne sont pas touchés. Si un compte est compromis, révoquez aussi les jetons concernés dans *Assistants IA*.
+
+## Rôles et droits (0.2.0)
+
+Une personne a **un ou plusieurs rôles** ; elle peut faire tout ce que l'un d'eux permet (union des droits).
+
+- **Rôles prédéfinis**, non modifiables : *Propriétaire* (tout ; une seule personne, intouchable), *Administrateur* (tout sauf ce qui est réservé au propriétaire),
+  *Éditeur* (écrire, modifier et publier les contenus). Ils sont créés au démarrage (`src/core/auth/roles.ts`, idempotent) ; chaque personne reçoit celui de son niveau.
+- **Rôles personnalisés** (*Équipe → Rôles*, **propriétaire seulement**) : un nom, une phrase, des cases à cocher par module en mots simples
+  (« Contacts : voir les e-mails »). Sur la fiche d'une personne, des **puces cumulables** (Éditeur + Modérateur) et l'aperçu « Ce que cette personne peut faire ».
+- **Droits** : ceux du cœur (`core:entries.edit`, `core:entries.publish`) et ceux des modules, toujours **préfixés par le cœur** (`<module>:<droit>`) : un module ne peut
+  ni déclarer ni tester le droit d'un autre. `<module>:open` ouvre la page d'un module (administrateurs : oui ; éditeurs : non, comme avant).
+- **Jamais proposés** dans un rôle (et refusés par le serveur s'ils arrivent dans un formulaire forgé) : `core:team`, `core:roles`, `core:backup`, `core:updates`,
+  `core:modules.install`, `core:mcp.tokens`, `core:security`. Ces pages restent celles du propriétaire.
+
+**Ce que vérifie le serveur** (testé par `tests/core/roles-security.test.mjs`) :
+
+- La personne est **relue en base à chaque requête** : un droit retiré est refusé dès la requête suivante, sans reconnexion. Le jeton de session garde un champ `role`
+  (compatibilité) mais **ne décide de rien**.
+- **Anti-élévation** : seul le propriétaire (relu en base) crée, modifie ou supprime un rôle et choisit les rôles des autres ; un rôle ne contient que des droits connus que
+  son créateur possède ; le rôle *Propriétaire* ne s'affecte jamais ; un identifiant de rôle forgé ou inconnu est refusé (rien n'est écrit en partie).
+- **Anti-verrouillage** : une personne garde au moins un rôle ; un rôle en usage ne se supprime qu'en choisissant le rôle que recevront ses membres (la base le refuse
+  aussi : `onDelete: Restrict`) ; le propriétaire est intouchable.
+- **Ordre inchangé** : connecté → mot de passe temporaire → rôle ou droit → double vérification. Un mot de passe temporaire bloque tout, quels que soient les rôles.
+- `ctx.can` d'un module ne répond « oui » que dans l'administration (panneau du module, ses actions, sections de l'éditeur d'entrée) ; il répond toujours « non »
+  dans une page publique, une route, un overlay, une tâche, un service ou le MCP.
+- **Journal d'audit** : `role.create`, `role.update`, `role.delete`, `user.roles`, et `access.denied` (au plus une ligne par personne et par droit toutes les 10 minutes).
+- Une personne connectée qui n'a **aucun** accès utile (par exemple un rôle personnalisé sans droit) arrive sur une page « Pas encore d'accès », hors du menu.
+
+**Niveau historique `User.role`** : il est conservé et recalculé à chaque changement : le plus haut rôle prédéfini de la personne, sinon **« none »**
+(elle n'a que des rôles personnalisés). Il reste la source du niveau : un changement fait par un ancien cœur est respecté au retour, jamais une élévation.
+
+**Retour à la 0.1.28** (après une mise à jour annulée) : les tables `Role` et `UserRole` sont ignorées. Un compte « none » est **refusé partout** par l'ancien cœur
+(son rang vaut 0) : il est **bloqué, jamais élevé**, jusqu'au retour en 0.2.0 ou jusqu'à ce que le propriétaire lui redonne le rôle Éditeur ou Administrateur.
+Les propriétaires, administrateurs et éditeurs ne voient aucune différence.
+
+## Exports et envois de fichiers de l'administration (0.2.0)
+
+**Un export contient des données personnelles** (noms, courriels, messages) : il demande donc **un droit** et **laisse une trace**.
+
+- **Téléchargement** (`adminDownloads`, `POST /api/admin/modules/[instance]/download/[nom]`) : jamais par une route de module (`/m/…` est public). Ordre des gardes : même site (en-tête `Origin`),
+  connecté, mot de passe temporaire / double vérification, `<module>:open` ET le droit déclaré (relus en base à cette requête ; un module ne peut exiger que ses propres droits), puis seulement le corps.
+  Pas de GET : un lien ou une image sur un autre site ne peut pas déclencher un export. Un refus est noté (`access.denied`).
+- **Audit** : `module.<clé>.download.<nom>` au début et `….end` à la fin (octets et cause : `done`, `client`, `bytes`, `time`, `idle`, `error`), sans le contenu.
+- **En-têtes** : `Content-Disposition: attachment`, nom de fichier assaini (pas de chemin, de guillemet, de retour à la ligne ni de caractère d'inversion du sens d'écriture ; extension imposée par le type, donc jamais `.exe` ni `.html`),
+  `X-Content-Type-Options: nosniff`, `Cache-Control: no-store`, `Content-Security-Policy: default-src 'none'; sandbox`.
+- **Bornes** : 512 Mo, 10 minutes, 60 s de silence du générateur, 2 téléchargements simultanés par personne et 4 pour le site. Le flux est tiré à la demande (un client lent ne fait pas grossir la mémoire),
+  coupé en erreur à la limite, et fermé si le navigateur coupe. Une erreur du module n'est jamais montrée à la personne (journal serveur seulement).
+- **Fichier envoyé par un formulaire** (`kind: "file"`, `POST /api/admin/modules/[instance]/action/[action]`) : mêmes gardes que les `adminActions` avant toute lecture ; corps compté et coupé (5 Mo par fichier,
+  2 fichiers), jamais lu en entier au-delà ; texte UTF-8 strict sans octet nul ; la limite de 1 Mo des actions serveur n'est **pas** relevée pour le reste du site.
+  Les indications `$max_…` et `$accept_…` du formulaire ne peuvent que restreindre.
+- **Tableurs** : un export CSV dont une cellule commence par `=`, `+`, `-` ou `@` peut exécuter une formule à l'ouverture. Le module doit préfixer ces cellules d'une apostrophe.
+- Tests : `tests/core/admin-transfer.test.mjs` (autre origine, sans droit, non connecté, nom hostile, gros fichier, flux interrompu, générateur muet, téléchargements simultanés).
+
+## Réglage « choix parmi » (`choice`, 0.2.0) : modèle de menace
+
+- **Identifiant forgé** : le navigateur n'envoie qu'un identifiant ; le serveur revérifie à chaque enregistrement qu'il est une option ACTUELLE (instance qui offre le service et que le module peut appeler, ou élément rendu par `get` du module propriétaire). Une clé d'instance (renommable) n'est jamais acceptée comme identifiant.
+- **Fournisseur lent ou muet** : chaque vérification a un délai dur (3 s par champ, 5 s par formulaire). Au-delà, l'enregistrement est **refusé** : une valeur non vérifiée n'est jamais stockée. La lecture répond « non vérifié » et ne remplace rien en silence.
+- **Création à la volée** : seulement si le réglage déclare `allowCreate`, jamais pour un rôle, un connecteur, un module, une instance ou un compte. Le cœur appelle `create` du module **propriétaire de la donnée**, pour la personne connectée (même garde que l'enregistrement des réglages) : ce module vérifie SON droit avec `ctx.can` (préfixé par le cœur, un module ne peut pas tester le droit d'un autre) et refuse sinon. Hors administration, `ctx.can` vaut toujours « non ». Audit : `module.<instance>.choice.create`.
+- **Conversion de texte** (`fromText`) : remplacée seulement sur une correspondance exacte et unique ; l'audit `setting.fromText` ne recopie jamais la valeur.
 
 ## Dépannage en SSH (propriétaire du serveur seulement)
 

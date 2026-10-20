@@ -166,6 +166,11 @@ export type ReinstallOptions = {
   catalogueOnly?: boolean;
   /** Appelé juste après l'échange des fichiers, avant la base (tests : simule un échec en cours d'échange). */
   afterSwap?: () => Promise<void> | void;
+  /**
+   * Appelé après l'échange des fichiers et de la base, AVANT les migrations (mise à jour : satisfaire les `requires` de la nouvelle version).
+   * Une erreur levée ici défait l'échange (ancien code et ancienne ligne remis) ; son `code` devient l'erreur renvoyée, son `detail` la précision.
+   */
+  beforeMigrate?: (manifest: ParsedManifest) => Promise<void>;
 };
 
 const fail = (id: string, error: string, extra: { detail?: string; needsCore?: string; rolledBack?: boolean } = {}): ReinstallResult => ({ ok: false, id, error, rolledBack: false, ...extra });
@@ -243,6 +248,7 @@ export async function reinstallModule(id: string, opts: ReinstallOptions = {}): 
     dbChanged = true;
     bumpImportStamp(id);
     forgetModule(id);
+    await opts.beforeMigrate?.(manifest);
     const migrations = await migrateModuleInstances(id);
     swapped = false;
 
@@ -261,7 +267,8 @@ export async function reinstallModule(id: string, opts: ReinstallOptions = {}): 
     forgetModule(id);
     console.error("[modules] reinstall failed:", (error as Error)?.message);
     if (error instanceof CoreTooOld) return fail(id, "modules.error.core", { detail: error.needs, needsCore: error.needs, rolledBack });
-    return fail(id, (error as { code?: string })?.code ?? "modules.error.clone", { rolledBack });
+    const detail = (error as { detail?: unknown })?.detail;
+    return fail(id, (error as { code?: string })?.code ?? "modules.error.clone", { rolledBack, ...(typeof detail === "string" ? { detail } : {}) });
   } finally {
     source?.cleanup();
     fs.rmSync(backup, { recursive: true, force: true });

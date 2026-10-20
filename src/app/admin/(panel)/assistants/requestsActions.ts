@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { adminCtx } from "@/core/admin";
+import { isOwner } from "@/core/auth/access";
 import { approveRequest, denyRequestBy } from "@/core/maintenance/actions";
 import { setApprovalMode, setNotifyMode, type ApprovalMode } from "@/core/maintenance/settings";
 import { audit } from "@/core/permissions";
@@ -13,7 +14,7 @@ import { accessHref, assistantsTabHref, ASSISTANTS_HREF } from "@/core/services/
 /** Le propriétaire approuve : la demande s'exécute (une seule fois), avec les mêmes vérifications que si l'IA l'avait faite directement. */
 export async function approveRequestAction(id: string): Promise<void> {
   const { user } = await adminCtx("owner");
-  const result = await approveRequest(String(id), { email: user.email, role: user.role });
+  const result = await approveRequest(String(id), { email: user.email, owner: isOwner(user) });
   revalidatePath(ASSISTANTS_HREF);
   revalidatePath("/admin", "layout");
   if (!result.ok && (result.reason === "busy" || result.reason === "expired" || result.reason === "not-pending" || result.reason === "unknown" || result.reason === "forbidden")) redirect(assistantsTabHref("requests", { notice: result.reason }));
@@ -21,7 +22,7 @@ export async function approveRequestAction(id: string): Promise<void> {
 
 export async function denyRequestAction(id: string): Promise<void> {
   const { user } = await adminCtx("owner");
-  const result = await denyRequestBy(String(id), { email: user.email, role: user.role });
+  const result = await denyRequestBy(String(id), { email: user.email, owner: isOwner(user) });
   revalidatePath(ASSISTANTS_HREF);
   revalidatePath("/admin", "layout");
   if (!result.ok && result.reason) redirect(assistantsTabHref("requests", { notice: result.reason }));

@@ -4,18 +4,19 @@
  */
 export const AUDIT_ACTIONS = [
   "login", "login.recovery", "login.passkey", "login.locked", "setup.completed",
-  "user.create", "user.delete", "user.role", "user.password", "user.password.reset", "user.password.chosen", "user.unlock", "user.sessions.revoke",
+  "user.create", "user.delete", "user.role", "user.roles", "role.create", "role.update", "role.delete", "access.denied", "user.password", "user.password.reset", "user.password.chosen", "user.unlock", "user.sessions.revoke",
   "user.2fa.enable", "user.2fa.disable", "user.2fa.reset", "user.2fa.codes", "user.passkey.add", "user.passkey.remove",
   "security.2fa.require", "security.2fa.optional",
   "entry.create", "entry.update", "entry.delete", "entry.deleteTranslation",
   "home.update", "navigation.update", "settings.update", "settings.mail", "settings.rawg", "settings.rawg.import", "redirect.create", "redirect.delete", "redirect.toggle",
-  "module.install", "module.install.custom", "module.update", "module.uninstall", "module.install.auto", "module.uninstall.auto", "module.keep.auto", "module.seed", "module.enable", "module.disable", "module.uninstall.keep", "module.uninstall.erase", "module.restore", "module.legacy.off", "module.source.add", "module.source.remove",
+  "module.install", "module.install.custom", "module.update", "module.uninstall", "module.install.auto", "module.install.suggested", "module.uninstall.auto", "module.keep.auto", "module.seed", "module.enable", "module.disable", "module.uninstall.keep", "module.uninstall.erase", "module.restore", "module.legacy.off", "module.legacy.convert", "module.legacy.clear", "core.legacy.sweep", "module.source.add", "module.source.remove",
   "instance.create", "instance.delete", "instance.retire", "instance.restore", "instance.legacy.off", "retired.erase", "instance.update", "instance.settings", "instance.sources", "service.routing",
   "backup.create", "backup.restore",
   "update.start", "update.auto.on", "update.auto.off", "update.channel.rc", "update.channel.stable",
   "mcp.enable", "mcp.disable", "mcp.token.create", "mcp.token.revoke", "mcp.token.url.on", "mcp.token.url.off", "mcp.grant.on", "mcp.grant.off", "mcp.grants.defaults", "mcp.grants.none",
   "mcp.maintenance.request", "mcp.maintenance.approve", "mcp.maintenance.deny", "mcp.maintenance.mode", "mcp.maintenance.notify",
   "mail.sent",
+  "setting.fromText",
 ] as const;
 
 const KNOWN = new Set<string>(AUDIT_ACTIONS);

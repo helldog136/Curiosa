@@ -1,9 +1,12 @@
 import { signOut } from "@/auth";
+import { wordmark } from "@/components/brand/wordmark";
 import { adminCtx } from "@/core/admin";
 import { adminBugReportUrl } from "@/core/bugReport";
 import { CREDIT_URL } from "@/core/credit";
 import { BugReportLink } from "@/components/admin/BugReportLink";
 import { maintenanceSummary } from "@/core/maintenance/summary";
+import { legacyConversionPending } from "@/core/modules/legacyReport";
+import { LegacyBanner } from "@/components/admin/LegacyBanner";
 import { NavLink } from "@/components/admin/NavLink";
 import { NavGroup } from "@/components/admin/NavGroup";
 import { NAV_STATE_COOKIE, buildMenuLayout, extensionsBadge, parseNavState } from "@/core/modules/menuPlacement";
@@ -11,7 +14,8 @@ import { EXTENSIONS_HREF } from "@/core/modules/extensionsLinks";
 import { loadInstanceStatuses } from "@/core/modules/integrations";
 import { shortLabel } from "@/core/modules/missingSettings";
 import { getAdminNav } from "@/core/modules/adminNav";
-import { administrationEntries, type AdminEntry } from "@/core/modules/adminMenu";
+import { administrationEntries, navItemVisible, type AdminEntry } from "@/core/modules/adminMenu";
+import { can, hasRole, isOwner } from "@/core/auth/access";
 import { ASSISTANTS_HREF } from "@/core/services/mcp/assistantsLinks";
 import { getUpdateCheck, readVersion } from "@/core/updates/service";
 import { peekModulesReport } from "@/core/modules/updateStatus";
@@ -26,14 +30,19 @@ import { setAdminMode, setAdminTheme } from "./mode/actions";
 export const dynamic = "force-dynamic";
 
 export default async function PanelLayout({ children }: { children: React.ReactNode }) {
-  const { user, t, locale, config, advanced } = await adminCtx("editor");
-  const nav = await getAdminNav(locale, config.defaultLocale);
+  // Tout accès suffit pour entrer (un rôle personnalisé peut n'ouvrir qu'un module) ; chaque page vérifie ensuite son propre palier ou droit.
+  const { user, t, locale, config, advanced } = await adminCtx("member");
+  // Le menu ne montre que ce que cette personne peut ouvrir (droit relu en base à chaque requête).
+  const nav = (await getAdminNav(locale, config.defaultLocale)).filter((m) => navItemVisible(m, (right) => can(user, right)));
+  const editor = hasRole(user, "editor");
   const theme = parseAdminTheme((await cookies()).get(ADMIN_THEME_COOKIE)?.value);
-  const canManage = user.role !== "editor";
-  const updateAvailable = user.role === "owner" && (await getUpdateCheck().catch(() => null))?.available === true;
+  const canManage = hasRole(user, "admin");
+  const updateAvailable = isOwner(user) && (await getUpdateCheck().catch(() => null))?.available === true;
   // Modules en retard : jamais d'attente du réseau ici (menu de toutes les pages) ; la vérification se fait en arrière-plan et reste en mémoire quelques minutes.
-  const modulesBehind = user.role === "owner" ? (peekModulesReport()?.outdated.length ?? 0) : 0;
-  const aiWaiting = user.role === "owner" ? (await maintenanceSummary().catch(() => null))?.total ?? 0 : 0;
+  const modulesBehind = isOwner(user) ? (peekModulesReport()?.outdated.length ?? 0) : 0;
+  const aiWaiting = isOwner(user) ? (await maintenanceSummary().catch(() => null))?.total ?? 0 : 0;
+  // Garde du démarrage (0.2.0) : un AVERTISSEMENT seulement si la mise à niveau des données n'est pas terminée (le site public reste servi ; bloquant en phase 3).
+  const legacyPending = canManage ? await legacyConversionPending() : false;
   const bugUrl = await adminBugReportUrl(t);
   const menu = buildMenuLayout(nav);
   const navState = parseNavState((await cookies()).get(NAV_STATE_COOKIE)?.value);
@@ -51,7 +60,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   const unpinnedPages = nav.filter((m) => !menu.content.includes(m) && !menu.community.items.includes(m)).flatMap((m) => [`/admin/instances/${m.id}`, ...(m.content ? [`/admin/entries?c=${m.key}`] : [])]);
 
   // Administration : quelles entrées pour ce rôle et ce mode (adminMenu.ts), puis leur lien. Assistants IA : un seul lien, en mode simple comme avancé.
-  const adminEntries = administrationEntries({ role: user.role, advanced });
+  const adminEntries = administrationEntries({ role: user.level, advanced });
   const adminLinks: Record<AdminEntry, React.ReactNode> = {
     extensions: <NavLink key="extensions" href={EXTENSIONS_HREF} also={["/admin/modules", ...unpinnedPages]} badge={extensions.count} badgeLabel={extensionsLabel}>{t("nav.extensions")}</NavLink>,
     assistants: <NavLink key="assistants" href={ASSISTANTS_HREF} badge={aiWaiting} badgeLabel={t("nav.badge.ai")}>{t("nav.assistants")}</NavLink>,
@@ -95,7 +104,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
           {canManage && <NavLink href="/admin/settings">{advanced ? t("nav.settings") : t("nav.settings.simple")}</NavLink>}
           {canManage && <NavLink href="/admin/social">{t("nav.social")}</NavLink>}
           {canManage && <NavLink href="/admin/ai-visibility">{t("nav.aiVisibility")}</NavLink>}
-          <NavLink href="/admin/redirects">{advanced ? t("nav.redirects") : t("nav.redirects.simple")}</NavLink>
+          {editor && <NavLink href="/admin/redirects">{advanced ? t("nav.redirects") : t("nav.redirects.simple")}</NavLink>}
 
           {adminEntries.length > 0 && (
             <>
@@ -130,17 +139,21 @@ export default async function PanelLayout({ children }: { children: React.ReactN
           }}
           className="mt-6 px-3"
         >
-          <p className="mb-2 truncate text-xs text-muted">{user.name} · {user.role}</p>
+          <p className="mb-2 truncate text-xs text-muted">{user.name} · {user.level === "none" ? t("role.custom") : user.level}</p>
           <button className={ui.btn}>{t("nav.logout")}</button>
         </form>
       </MobileMenu>
       <main className="min-w-0 flex-1 p-6 md:p-10">
-        <div className="mx-auto max-w-4xl"><CropLabelsProvider advanced={advanced} labels={Object.fromEntries(CROP_LABEL_KEYS.map((k) => [k, t(`crop.${k}`)]))}>{children}</CropLabelsProvider></div>
+        <div className="mx-auto max-w-4xl">
+          {legacyPending && (
+            <LegacyBanner title={t("legacy.banner.title")} text={t("legacy.banner.text")} link={isOwner(user) ? t("legacy.banner.link") : null} ownerNote={isOwner(user) ? null : t("legacy.banner.owner")} />
+          )}
+          <CropLabelsProvider advanced={advanced} labels={Object.fromEntries(CROP_LABEL_KEYS.map((k) => [k, t(`crop.${k}`)]))}>{children}</CropLabelsProvider></div>
       </main>
       </div>
       {/* Tout en bas de la page, pour tous les rôles et dans les deux modes : crédit exigé par la licence, et numéro de version à donner pour un signalement ou une mise à jour. */}
       <footer className="border-t border-line px-4 py-3 text-center text-xs text-muted" data-testid="app-version">
-        {t("site.poweredBy")} <a href={CREDIT_URL} target="_blank" rel="noopener" className="underline underline-offset-2 hover:text-fg">Curiosa</a> v{readVersion()}
+        {t("site.poweredBy")} <a href={CREDIT_URL} target="_blank" rel="noopener" className={`${wordmark.className} text-[1.15em] underline underline-offset-2 hover:text-fg`}>Curiosa</a> v{readVersion()}
       </footer>
     </div>
   );

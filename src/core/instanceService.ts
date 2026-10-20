@@ -9,6 +9,7 @@ import { listInstances, toInstanceView } from "./instances";
 import { localized } from "./modules/types";
 import { keyFromNickname } from "./instanceLabel";
 import { retireInstance } from "./modules/retired";
+import { forgetAllChoices } from "./modules/choiceCache";
 
 type Db = PrismaClient | Prisma.TransactionClient;
 
@@ -59,6 +60,10 @@ export type NewInstance = {
 
 /** Crée une instance d'un module avec les réglages de contenu par défaut de celui-ci. */
 export async function createInstance(db: Db, input: NewInstance) {
+  try { return await createInstanceRow(db, input); } finally { forgetAllChoices(); }
+}
+
+async function createInstanceRow(db: Db, input: NewInstance) {
   const { manifest } = input;
   const content = manifest.content;
   const count = await db.moduleInstance.count();
@@ -137,6 +142,10 @@ export async function removeInstance(id: string, opts: { keepData: boolean }): P
 }
 
 export async function deleteInstance(id: string): Promise<void> {
+  try { await deleteInstanceRow(id); } finally { forgetAllChoices(); }
+}
+
+async function deleteInstanceRow(id: string): Promise<void> {
   const row = await prisma.moduleInstance.findUnique({ where: { id }, include: { translations: true } });
   if (!row) return;
   const mod = await getModule(row.moduleId);

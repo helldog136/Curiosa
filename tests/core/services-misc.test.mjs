@@ -53,7 +53,7 @@ test("catalogue des services : chaque service documenté, fichier existant, noms
 });
 
 test("rôles : propriétaire > administrateur > éditeur, visiteur sans droit", () => {
-  const u = (role) => ({ id: "1", email: "a@b.c", name: "A", role, locale: null, advanced: false });
+  const u = (level) => ({ id: "1", email: "a@b.c", name: "A", level, roles: [level], rights: new Set(), locale: null, advanced: false });
   assert.equal(hasRole(u("owner"), "admin"), true);
   assert.equal(hasRole(u("admin"), "owner"), false);
   assert.equal(hasRole(u("admin"), "editor"), true);
@@ -61,6 +61,7 @@ test("rôles : propriétaire > administrateur > éditeur, visiteur sans droit", 
   assert.equal(hasRole(u("editor"), "editor"), true);
   assert.equal(hasRole(null, "editor"), false);
   assert.equal(hasRole(u("hacker"), "editor"), false, "rôle inconnu = aucun droit");
+  assert.equal(hasRole(u("none"), "editor"), false, "« none » (rôles personnalisés seulement) = aucun palier");
 });
 
 test("catalogue de modules : désactivé sans URL ou hors https, filtre les éléments invalides, cache 5 minutes", async () => {

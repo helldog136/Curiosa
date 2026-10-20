@@ -308,7 +308,7 @@ test("Extensions : trois onglets (Installées, Ajouter, Mises à jour), l'onglet
   assert.match(tabs, /peekModulesReport\(\)\?\.outdated\.length/, "compteur sans réseau");
   assert.match(tabs, /isOwner \? t\("hub\.tab\.updates"\) : undefined/, "réservé au propriétaire");
   const updates = read(`${PANEL}/extensions/updates/page.tsx`);
-  assert.match(updates, /user\.role !== "owner"\) redirect\(EXTENSIONS_HREF\)/);
+  assert.match(updates, /!isOwner\(user\)\) redirect\(EXTENSIONS_HREF\)/);
   assert.match(updates, /<ModulesUpdatesSection/);
   assert.match(updates, /href="\/admin\/updates"/, "les mises à jour du cœur gardent leur page");
   assert.match(read(`${PANEL}/extensions/page.tsx`), /current="installed"/);
@@ -386,7 +386,7 @@ test("menu Administration : Assistants IA est UNE entrée, visible du propriéta
     assert.equal(administrationEntries({ role: "owner", advanced }).filter((e) => e === "assistants").length, 1, "jamais deux entrées d'assistants");
   }
   const layout = read(`${PANEL}/layout.tsx`);
-  assert.match(layout, /administrationEntries\(\{ role: user\.role, advanced \}\)/);
+  assert.match(layout, /administrationEntries\(\{ role: user\.level, advanced \}\)/);
   assert.match(layout, /<NavLink key="assistants" href=\{ASSISTANTS_HREF\} badge=\{aiWaiting\} badgeLabel=\{t\("nav\.badge\.ai"\)\}>\{t\("nav\.assistants"\)\}<\/NavLink>/, "la pastille = demandes d'IA en attente");
   assert.match(layout, /\{adminEntries\.length > 0 && \(/, "la rubrique disparaît quand elle est vide");
 });

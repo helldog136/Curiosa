@@ -69,7 +69,7 @@ test("l'action serveur d'une section : rôle éditeur comme l'éditeur d'entrée
   assert.match(load, /prisma\.entry\.findUnique/, "l'entrée vient de la base, pas du navigateur");
   assert.match(load, /blocks\.length > 0/, "une section qui rend [] est masquée");
   assert.match(load, /info\.target, view\)/, "le mode avancé et le rôle sont transmis à la section");
-  assert.match(read("src/app/admin/(panel)/entries/[id]/page.tsx"), /view=\{\{ advanced, role: user\.role \}\}/);
+  assert.match(read("src/app/admin/(panel)/entries/[id]/page.tsx"), /view=\{\{ advanced, role: panelRole\(user\) \}\} viewer=\{user\}/, "palier (jamais « none ») et personne connectée (pour ctx.can)");
 });
 
 test("le point d'extension est neutre : aucun module cité, la décision pure n'importe que des types", () => {
@@ -115,6 +115,7 @@ const PANEL = `
 const withPanel = (f, { code = PANEL, declare = true, admin = true } = {}) => {
   editManifest(f, (m) => {
     if (admin) m.permissions.push("admin");
+    else m.permissions = m.permissions.filter((x) => x !== "admin");
     if (declare) m.entryPanels = [{ id: "chat-command", for: { topic: "sponsor.card" }, title: { en: "Chat command", fr: "Commande de chat" } }];
   });
   f["index.mjs"] = f["index.mjs"].replace("export default {", `export default {${code}`);

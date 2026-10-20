@@ -3,7 +3,9 @@ import { makeTranslator } from "@/core/i18n/dictionary";
 import { pickName, type InstanceView } from "@/core/instances";
 import { currentVisit } from "@/core/visit";
 import { getSetting, getSettingByLocale, getSiteConfig, themeExtraOf } from "@/core/settings";
+import { can, type AdminUser } from "@/core/auth/access";
 import { makeApi } from "./api";
+import { makeLegacy } from "./legacySettings";
 import type { LoadedModule } from "./registry";
 import { followsSite, resolveDefault } from "./settingValues";
 import type { ModuleContext } from "./types";
@@ -53,5 +55,26 @@ export async function buildContext(mod: LoadedModule, instance: InstanceView, lo
       return text;
     },
     api: makeApi(instance, loc, mod.manifest.permissions),
+    // Réglages hérités (0.2.0) : seulement les clés déclarées dans `legacySettings`, pour cette instance.
+    legacy: makeLegacy(mod.manifest, instance.id),
+    // Refus par défaut : seul un contexte d'administration d'un humain (voir `forViewer`) répond autre chose que « non ».
+    can: () => false,
+    // Réglage « choix parmi » (0.2.0) : résolu à la demande, borné, jamais écrit ici (voir choice.ts).
+    async resolveChoice(key: string) {
+      const field = mod.manifest.settings.find((f) => f.key === key);
+      if (!field || field.type !== "choice") return { status: "none" as const };
+      const { resolveChoiceFor } = await import("./choice");
+      return resolveChoiceFor({ mod, instance }, field, values[key], { locale: loc });
+    },
   };
+}
+
+/**
+ * Le même contexte, pour une personne qui regarde l'administration (`adminPanel`, `adminActions`, `entryPanels`) : `ctx.can("email.view")` vérifie
+ * « <ce module>:email.view » pour elle (relue en base à cette requête). Le préfixe est imposé : un module ne teste jamais le droit d'un autre.
+ */
+export function forViewer<T extends ModuleContext>(ctx: T, viewer: AdminUser | null): T {
+  const prefix = `${ctx.moduleId}:`;
+  ctx.can = (rightId: string) => typeof rightId === "string" && rightId !== "" && !rightId.includes(":") && can(viewer, prefix + rightId);
+  return ctx;
 }

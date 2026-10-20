@@ -10,6 +10,8 @@ const STUBBED = new Map([
   ["next/headers", "next-headers.mjs"],
   ["next/navigation", "next-navigation.mjs"],
   ["next/cache", "next-cache.mjs"],
+  // La session (next-auth) : choisie par le test (stubs/auth.mjs).
+  ["@/auth", "auth.mjs"],
 ]);
 
 const EXTENSIONS = ["", ".ts", ".tsx", ".js", ".mjs", ".json", "/index.ts", "/index.tsx", "/index.js"];

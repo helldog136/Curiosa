@@ -7,6 +7,10 @@ import { settingFieldId } from "@/core/modules/missingSettings";
 import { LINK_PATTERN, resolveDefault } from "@/core/modules/settingValues";
 import { localized, type OptionalGroupDecl, type SettingField } from "@/core/modules/types";
 import { ImageField } from "./ImageField";
+import { ChoicePicker } from "./ChoicePicker";
+import type { PickerStrings } from "./choicePickerModel";
+import { SuggestInstall } from "./SuggestInstall";
+import type { ChoiceView } from "@/core/modules/choice";
 import { OptionalGroup } from "./OptionalGroup";
 import { Checkbox, Select, TextArea, TextField } from "./Field";
 import { ui } from "./ui";
@@ -18,7 +22,7 @@ type Site = { name: string; tagline: string };
  * quand le site n'a qu'une langue, sinon une ligne par langue) et groupes facultatifs. Composant serveur : les champs sont rendus
  * ici, seuls les groupes facultatifs (OptionalGroup) ont besoin du navigateur.
  */
-export function ModuleSettings({ t, locale, defaultLocale, locales, fields, allFields, groups, stored, siteByLocale, theme, missing }: {
+export function ModuleSettings({ t, locale, defaultLocale, locales, fields, allFields, groups, stored, siteByLocale, theme, missing, instanceId = "", choices = {}, advanced = false }: {
   t: Translator;
   /** Langue de l'admin (pour les libellés du manifeste). */
   locale: string;
@@ -34,6 +38,10 @@ export function ModuleSettings({ t, locale, defaultLocale, locales, fields, allF
   theme: Record<string, string>;
   /** Clés des réglages à remplir qui manquent (voir `missingSettings`) : marqués « à remplir ». */
   missing: ReadonlySet<string>;
+  /** Réglages « choix parmi » : l'instance (pour la recherche) et ce que chacun montre (voir `choiceAdminView`). */
+  instanceId?: string;
+  choices?: Record<string, ChoiceView>;
+  advanced?: boolean;
 }) {
   const L = (v: Parameters<typeof localized>[0]) => localized(v, locale, defaultLocale);
   const site = (l: string): Site => siteByLocale[l] ?? siteByLocale[defaultLocale] ?? { name: "", tagline: "" };
@@ -87,9 +95,60 @@ export function ModuleSettings({ t, locale, defaultLocale, locales, fields, allF
 
   const mark = (label: string, required: boolean) => (required ? `${label} *` : label);
 
+  const pickerStrings: PickerStrings = {
+    search: t("choice.search"), placeholder: t("choice.searchPlaceholder"), current: t("choice.current"), noneChosen: t("choice.noneChosen"), clear: t("choice.clear"),
+    more: t("choice.more"), loading: t("choice.loading"), resultsNone: t("choice.results.none"), resultsOne: t("choice.results.one"), resultsMany: t("choice.results.many"),
+    resultsMore: t("choice.results.more"), create: t("choice.create"), created: t("choice.created"), selected: t("choice.selected"), cleared: t("choice.cleared"),
+    unreachable: t("choice.error.unreachable"),
+  };
+
+  /** Un réglage « choix parmi » : sélecteur (2 options ou plus), sinon une ligne d'état ou une bannière actionnable. Jamais traduisible. */
+  const choiceNode = (f: SettingField, label: string) => {
+    const view = choices[f.key];
+    const id = settingFieldId(f.key);
+    const help = f.help ? L(f.help) : undefined;
+    const flag = missing.has(f.key) ? t("missing.field") : undefined;
+    const box = (children: React.ReactNode, tone: "info" | "warn" = "info") => (
+      <div id={id} className="space-y-2">
+        <p className={ui.label}>{label}{flag && <span className={`${ui.chipWarn} ml-2 align-middle`}><span aria-hidden>✎</span>{flag}</span>}</p>
+        <div role="status" className={`space-y-2 rounded-xl border p-3 text-sm ${tone === "warn" ? "border-amber-500/50 bg-amber-500/10" : "border-line bg-bg"}`}>{children}</div>
+      </div>
+    );
+    if (!view) return null;
+    switch (view.mode) {
+      case "only": return advanced ? <p id={id} className="text-sm text-muted">{label} · {t("choice.only", { label: view.label })}</p> : null;
+      case "fallback": return box(<p>{t("choice.fallback", { label: view.label })}</p>, "warn");
+      case "unverified": return box(<p>{t("choice.unverified")}</p>, "warn");
+      case "none": {
+        if (view.kind === "providers") {
+          return box(<>
+            <p>{t("choice.none")}</p>
+            <SuggestInstall instanceId={instanceId} service={view.service} min={view.min} reason={t("choice.suggestReason", { what: L(f.label) })} locale={locale} />
+          </>, flag ? "warn" : "info");
+        }
+        // « … créez-en d'abord un dans <lien vers l'instance qui gère ces éléments>. »
+        const [before, after = ""] = t("choice.noneService", { owner: "\u0000" }).split("\u0000");
+        const text = view.owner
+          ? <p>{before}<a href={view.owner.href} className="font-medium underline">{view.owner.name}</a>{after}</p>
+          : <p>{t("choice.noneServiceNoOwner")}</p>;
+        if (!view.canCreate) return box(text, flag ? "warn" : "info");
+        return <ChoicePicker instanceId={instanceId} fieldKey={f.key} name={id} label={label} help={help} flag={flag} initialValue="" initialLabel={null} emptyNote={text} canCreate optional={f.optional} strings={pickerStrings} />;
+      }
+      case "select": {
+        const notice = view.state === "missing" ? { tone: "warn" as const, text: t("choice.missing") }
+          : view.state === "pending" ? { tone: "warn" as const, text: t("choice.pending", { text: view.text ?? "" }) }
+          : view.state === "converted" ? { tone: "ok" as const, text: t("choice.converted", { label: view.label ?? "" }) }
+          : undefined;
+        return <ChoicePicker instanceId={instanceId} fieldKey={f.key} name={id} label={label} help={help} flag={flag} initialValue={view.value} initialLabel={view.label}
+          notice={notice} canCreate={view.canCreate} optional={f.optional} strings={pickerStrings} />;
+      }
+    }
+  };
+
   const field = (f: SettingField) => {
     const label = mark(L(f.label), requiredKeys.has(f.key));
     const required = requiredKeys.has(f.key);
+    if (f.type === "choice") return choiceNode(f, label);
     if (!f.translatable) {
       return control(f, settingFieldId(f.key), f.type === "secret" ? Boolean(stored[f.key]?.[""]) || undefined : stored[f.key]?.[""], label, { required, flag: missing.has(f.key) ? t("missing.field") : undefined });
     }
@@ -121,7 +180,9 @@ export function ModuleSettings({ t, locale, defaultLocale, locales, fields, allF
     );
   };
 
-  const slots = layoutFields(fields, groups);
+  // Un « choix parmi » à une seule option est masqué (en mode simple) : le cœur l'utilise sans rien demander.
+  const shown = fields.filter((f) => !(f.type === "choice" && choices[f.key]?.mode === "only" && !advanced));
+  const slots = layoutFields(shown, groups);
   const inAppearance = (s: Slot) => (s.kind === "field" ? s.field : s.fields[0])?.group === "appearance";
   const sections = [
     { id: "options", title: t("instances.s.options"), slots: slots.filter((s) => !inAppearance(s)) },

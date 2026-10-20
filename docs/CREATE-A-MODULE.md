@@ -164,7 +164,7 @@ export default {
 ```
 
 `segments` est ce qui suit le chemin de l'instance (en minuscules). Il n'y a pas de `?paramètre` : faites passer la pagination par le chemin
-(`/guestbook/page/2`), comme le fait l'exemple. Le résultat : `title`, `description`, `blocks`, `notFound`. Permission : `pages`.
+(`/guestbook/page/2`), comme le fait l'exemple. (Les listes d'entrées du cœur, elles, utilisent `?page=N` ; ne reprenez pas ce schéma pour une page de module.) Le résultat : `title`, `description`, `blocks`, `notFound`. Permission : `pages`.
 
 Les **blocs** les plus utiles (liste complète dans la référence, « Blocs ») : `markdown` (sans HTML brut), `html` (brut — **vous échappez**), `heading`, `banner`, `links`,
 `hero`, `panel`, `entries`, `embed`, `form`, `table`, `copy`, `swatches`, `downloads`, `head`, `adminForm`. Pour afficher du texte de visiteur avec une mise en forme, le plus sûr est un
@@ -228,6 +228,8 @@ const result = await ctx.api.mail.send({ to: "owner", subject: "New message", te
 `send` **ne lève jamais** ; `ctx.api.mail.configured()` dit si un serveur est réglé. **Règle d'or** : l'e-mail est un plus. **Conservez d'abord** (`store.add`), **prévenez ensuite**, et ne faites
 jamais échouer la requête si l'e-mail échoue — c'est exactement l'ordre de `routes.sign` dans l'exemple. Permission : `mail`.
 
+**Appeler une API externe.** Préférez `await ctx.api.net.request({ url: "https://api.example.org/v1/items" })` à `fetch` : le cœur fixe un délai (8 s, ou le temps restant de la page), fait une pause après un « 429 trop de demandes » ou un quota épuisé (sans rappeler le service d'ici là), coupe un hôte en panne (disjoncteur), regroupe les appels identiques et refuse tout de suite quand la file est pleine. L'appel ne lève jamais : testez `r.ok`, puis `r.status` et `r.json`. En cas d'échec, affichez les dernières données connues avec leur date. `api.net.health()` donne l'état des services, et le bloc d'admin `netHealth` l'explique à l'administrateur. Voir « Appeler une API externe » dans [MODULES.md](MODULES.md).
+
 **Jaquettes de jeux.** `await ctx.api.rawg.cover("Hades")` renvoie `{ status, url }` (`found`, `none`, `no-key`, `refused`, `unreachable`) et ne lève jamais ; `api.rawg.configured()` dit si une clé est réglée.
 La clé RAWG se règle une fois par le propriétaire (*Réglages › Services externes*) : ne la demandez jamais dans les réglages de votre module. Permission : `rawg`. Détails : [MODULES.md](MODULES.md#jaquettes-de-jeux-rawg).
 
@@ -259,7 +261,7 @@ exports: {
 `feed.item` est le sujet **du cœur** pour le flux RSS (`/feed.xml`) : tout module qui le fournit y apparaît. `topics` sont des **rubriques partagées** : si deux modules publient sur
 `announcement`, un lecteur abonné à `announcement` reçoit les deux. Ne publiez que ce qui est **public** (jamais un message en attente de modération). Le cœur écarte lui-même les éléments dont `publishedAt` est dans le futur, ceux sans adresse valide (chemin du site ou http(s)) et les identifiants en double ; il ne peut pas connaître vos règles de modération, c'est à vous de ne renvoyer que du public.
 
-Vous n'avez **rien à fournir** pour un module à contenu (blog, pages, sponsoring…) : ses entrées publiées, non expirées et datées d'avant maintenant alimentent le flux par `core.entry`, sauf si l'instance n'est pas « proposée au public ». Les flux sont : `/feed.xml?lang=fr` (tout), `/feed.xml?topics=a,b` (rubriques), `/feed/<clé-d'instance>.xml` (une instance), `/feed/topics.json` (catalogue). Au plus 30 éléments, du plus récent au plus ancien ; ETag et Last-Modified permettent aux lecteurs un 304. Le propriétaire retrouve ces adresses dans l'admin, bloc « Flux RSS » de la page *Visibilité dans les réponses des IA* ; l'icône du pied de page apparaît dès qu'une instance à contenu ou un module `feed.item` existe (et se masque dans ce bloc). Vous pouvez aussi définir
+Vous n'avez **rien à fournir** pour un module à contenu (blog, pages, sponsoring…) : ses entrées publiées, non expirées et datées d'avant maintenant alimentent le flux par `core.entry`, sauf si l'instance n'est pas « proposée au public ». Les flux sont : `/feed.xml?lang=fr` (tout), `/feed.xml?topics=a,b` (rubriques), `/feed/<clé-d'instance>.xml` (une instance), `/feed/topics.json` (catalogue). Au plus 50 éléments, du plus récent au plus ancien ; ETag et Last-Modified permettent aux lecteurs un 304. Le propriétaire retrouve ces adresses dans l'admin, bloc « Flux RSS » de la page *Visibilité dans les réponses des IA* ; l'icône du pied de page apparaît dès qu'une instance à contenu ou un module `feed.item` existe (et se masque dans ce bloc). Vous pouvez aussi définir
 **votre propre sujet** (`guestbook.message`, format `{ id, name, text, publishedAt }`) : voir `exports` dans l'exemple.
 
 **Consommer** (module.json puis index.mjs) :
@@ -308,6 +310,13 @@ export default {
 Une action renvoie `{ ok }` (message vert), `{ error }` (message rouge) et/ou `{ redirect: "?" }` (retour à la page de l'instance ; `"?edit=…"` ajoute des paramètres). Un bloc `adminForm`
 (champs `text`, `textarea`, `email`, `url`, `number`, `date`, `select`, `hidden`, `image`) poste sur une action ; les `adminForm` ne s'affichent jamais sur le site public. Permission : `admin`.
 Voir `adminPanel` et `adminActions` dans l'exemple (modifier un message : `?edit=<id>` ouvre un `adminForm`).
+
+### Un export à télécharger, un fichier à envoyer (`adminDownloads`, champ `file`)
+
+(Cœur 0.2.0, `minCore` 0.2.0.) Un export contient des données personnelles : ne le mettez **jamais** dans une route (les routes sont publiques). Déclarez-le dans `adminDownloads` avec un générateur
+qui lit le stockage par pages et produit le texte ligne par ligne, puis ajoutez un bloc `{ type: "download", name: "contacts", label: "Télécharger (CSV)" }` : le cœur vérifie le droit (`right`, déclaré dans `rights`), l'écrit
+dans le journal d'audit et borne la taille et la durée. À l'inverse, un champ `kind: "file"` dans un `adminForm` laisse choisir un fichier texte (CSV…) de 5 Mo au plus ; l'action le reçoit en texte dans `values`.
+Détails et limites dans [MODULES.md](MODULES.md) (« `adminDownloads` »).
 
 ### Ajouter une section à la fiche d'un autre module (`entryPanels`)
 

@@ -39,14 +39,29 @@ Catalogue source : `src/core/services/index.ts`.
 | Service | Fichier | Côté module | Rôle |
 |---|---|---|---|
 | `qr` | `services/qr.ts` | `ctx.api.qr(texte)` | QR code en SVG, fond transparent. Aucune dépendance côté module. |
-| `store` | `services/store.ts` | `ctx.api.store` | Stockage privé par instance (collections de documents JSON) ; une instance ne voit jamais celui d'une autre. |
+| `store` | `services/store.ts` | `ctx.api.store` | Stockage privé par instance (collections de documents JSON) ; une instance ne voit jamais celui d'une autre. Lecture paginée par curseur, clé facultative indexée, `addMany`, compteur de `generation` (détails ci-dessous). |
 | `topics` | `services/topics.ts` | `ctx.api.topics.collect(sujet)` | Échange d'informations typées entre modules : un consommateur déclare ce qu'il digère, des fournisseurs l'exposent, l'admin règle les abonnements, le cœur valide. |
 | `rawg` | `services/rawg.ts` | `ctx.api.rawg.configured()` / `ctx.api.rawg.cover(title)` (permission `rawg`) | Jaquettes de jeux. La clé d'API RAWG est un réglage du cœur (*Réglages › Services externes*, secret, sauvegardé, jamais transmis aux modules). `cover` renvoie `{ status: "found" \| "none" \| "no-key" \| "refused" \| "unreachable", url }`, jamais d'exception ; https seulement, 5 s, cache (24 h / 1 h), 2 requêtes simultanées au plus, dernier état de la clé mémorisé. |
 | `mail` | `services/mail.ts` | `ctx.api.mail.send({ to, subject, text })` (permission `mail`) | Envoi d'e-mails au nom du site. Le SMTP est réglé dans *Réglages* (jamais visible des modules). Expéditeur fixé par le cœur, un seul destinataire (`"owner"` = contact du site, ou une adresse), texte brut, débit limité (10/h par instance, 40/h au total), audit sans contenu, jamais d'exception : `{ ok, reason }`. |
 | `png` | `services/render.ts` | `ctx.api.png({ width, height, tree })` | Rend une image PNG depuis une arborescence de boîtes (Satori via `next/og`), sans navigateur. Dimensions et taille de l'arbre bornées ; une image distante n'est chargée que depuis un chemin du site ou une adresse https vers un nom d'hôte public. |
+| `net` | `services/net.ts` | `ctx.api.net.request({ url, … })`, `ctx.api.net.health()`, `ctx.api.net.budgetMs()` (aucune permission) | Client réseau **neutre et borné**, un seul pour tout le processus (sur `globalThis`) : délai dur (8 s par défaut, 20 s au plus, file et corps compris ; dans une page publique, borné par le temps restant de la page, `budget.ts` → `remainingBudgetMs()`), https seulement ; pause du seau (`bucket` haché, sinon l'hôte) après un 429 ou un 503 avec `Retry-After` (`Retry-After`, `RateLimit-Reset`, `X-RateLimit-Reset-After`, `retry_after` du corps ; 60 s à défaut, 1 h au plus) et après `RateLimit-Remaining: 0` ; quota journalier (403 `quotaExceeded`/`dailyLimitExceeded`) jusqu'à minuit heure du Pacifique ; disjoncteur par hôte (5 échecs en 60 s → 30 s, un seul essai, durée doublée jusqu'à 5 min) ; déduplication des GET en cours (promesse partagée, expirée avec le délai) ; file bornée (4 simultanés et 16 admis par hôte, 32 au total, refus `busy` immédiat) ; une seule reprise (GET/HEAD, 200–800 ms au hasard, s'il reste 1 s) ; journal `[net]` sans en-têtes, requête ni corps ; états en mémoire (500 entrées par table) ; santé par hôte (`ok`, `slow`, `rate`, `quota`, `down`) affichée par le bloc d'admin `netHealth` (`core/netHealthText.ts`). Ne connaît aucun fournisseur, n'importe rien du cœur. |
 | `mcp` | `services/mcp/` | *rien à appeler* : le module déclare `mcp` dans son manifeste | Serveur MCP : jetons hachés, plafond lecture/écriture, **accès action par action modifiables en direct**, validation des arguments, limitation de débit, audit, interrupteur. |
 | `scheduler` | `services/scheduler.ts` | *rien à appeler* : le module déclare `tasks` | Tâches planifiées : un passage par minute, pour chaque instance active ; jamais deux fois la même en parallèle, erreurs isolées, dernier résultat mémorisé (`instance.<id>.__task.<nom>`). |
 | `uploads` | `services/uploads.ts` | réglage de type `image`, champ `image` des formulaires d'admin | Envoi d'images (signature vérifiée, SVG refusé, taille bornée) et recadrage non destructif : la valeur d'un champ image est l'original + son cadrage (`/uploads/x.png?c=…`), la version cadrée est fabriquée par le serveur (`core/imageDerive.ts`, `sharp`) et mise en cache. Voir CREATE-A-MODULE.md. |
+
+### Stockage : curseur, clé, `addMany`, génération
+
+- **Curseur** : base64url de `"<createdAt ISO>|<id>"`, tri `(createdAt, id)` dans le sens demandé. L'`id` départage les enregistrements de même `createdAt` (un `addMany` donne le même `createdAt` à toutes ses lignes) : un parcours complet n'a ni doublon ni trou, même si des lignes arrivent ou partent entre deux pages. Un curseur illisible donne `{ items: [], next: null }`, jamais une exception.
+- **Plafonds durs** : `list` 100 par défaut et **10 000 au plus** (avertissement journalisé une fois par instance au-delà ; les appels existants avec `limit` 1000 ou 5000 restent valides) ; `page` et `listByKey` 100 par défaut et **1 000 au plus** ; `addMany` **5 000 lignes** au plus par appel ; `key` **200 caractères** au plus.
+- **`key`** : colonne facultative, non unique, indexée `(instanceId, collection, key)`. L'unicité est l'affaire du module. Les lectures par clé imposent cet index (`INDEXED BY`) : sans statistiques, SQLite préférerait l'index de date et parcourrait toute la collection (mesuré : 20 ms contre moins de 1 ms par appel à 50 000 lignes).
+- **`addMany`** : validé et sérialisé avant d'écrire, puis écrit par tranches de 500 dans une seule transaction ; identifiants croissants dans l'ordre des lignes.
+- **`generation()`** : réglage `instance.<id>.__storeGeneration` (absent = 0). Le cœur le passe à `max(avant, actuel) + 1` après une restauration de sauvegarde (toutes les instances), une migration de données annulée et une reprise de données gardées (`retired.ts`) ; il ne recule jamais. Les écritures du module ne le changent pas.
+- **Migration de schéma** : additive (`ADD COLUMN` + `CREATE INDEX`), aucune suppression.
+
+### Copie de sécurité avant une mise à jour groupée
+
+`updateModules` (page *Mises à jour*, MCP `maintenance`) prend UNE copie `data/backups/pre-bulk-update-<AAAA-MM-JJ>-<ts>.db` avant le premier module (`backup/files.ts › bulkUpdateCopy`) :
+`VACUUM INTO` (copie cohérente, la base reste utilisable), repli sur la copie du fichier ; 1,2 × la taille de la base de libre exigée (l'ancienne copie, remplacée, compte comme récupérable), sinon rien n'est mis à jour (`modules.error.noSpace`) ; **une seule copie gardée** (l'ancienne n'est retirée qu'une fois la nouvelle écrite), hors de la rotation de `safetyCopy` ; pendant 1 h, les copies `pre-migration` sont sautées.
 
 Un service **ne dépend pas** d'une fonctionnalité. Les imports autorisés de chacun sont listés dans le test d'architecture
 (par exemple le mécanisme MCP n'importe que la base, les réglages et les *types* de modules).
@@ -76,7 +91,9 @@ sont dans le service (`mcp/access.ts`, `mcp/server.ts`) : aucun fournisseur ne p
 
 ## Appeler le service d'un autre module
 
-`ctx.api.services.available(service)`, `.call(service, method, args)` et `.callAll(service, method, args)` (module `requires` le service, un autre l'`offers`) : le cœur ne connaît que des **noms** de services. `call` s'adresse au maître (service classique) ou à la première instance (service `each`) ; `callAll` interroge toutes les instances d'un service `each` (`offers: [{ service, each: true }]`, une réponse par instance, une panne n'en gêne pas une autre). Voir [MODULES.md › Dépendances](MODULES.md).
+`ctx.api.services.available(service)`, `.providers(service)`, `.call(service, method, args, { provider? })` et `.callAll(service, method, args)` (module `requires` le service, un autre l'`offers`) : le cœur ne connaît que des **noms** de services. `call` s'adresse au maître (service classique) ou à la première instance (service `each`), ou à l'instance `provider` choisie parmi `providers` (cœur 0.2.0 ; un fournisseur disparu → `unavailable`) ; `callAll` interroge toutes les instances d'un service `each` (`offers: [{ service, each: true }]`, une réponse par instance, une panne n'en gêne pas une autre). Un besoin `optional` n'est jamais installé d'office et ne retient pas son fournisseur. Le bloc `suggestInstall` propose au propriétaire d'installer un module qui offre un service (jamais d'office). Voir [MODULES.md › Dépendances](MODULES.md).
+
+Réglage `choice` (« choix parmi », 0.2.0, `src/core/modules/choice.ts`) : le cœur interroge les fournisseurs AU NOM de l'instance qui a le réglage (`providers`, ou `list` / `get` / `create` du service du module propriétaire de la donnée), toujours avec un délai dur (3 s par champ, 5 s par formulaire ; refus au délai), et garde les résolutions 15 s. `ctx.resolveChoice` n'écrit rien ; l'unique option n'est jamais enregistrée. La création à la volée passe `viewer` à `callService` (interne au cœur, jamais exposé aux modules) : le fournisseur reçoit `ctx.can` pour la personne connectée. `sweepFromText({ budgetMs })` convertit les anciennes valeurs texte (`fromText`) pour le balayage de démarrage.
 
 ## Le temps imparti au code des modules (une page ne reste jamais bloquée)
 
@@ -86,6 +103,7 @@ Règle du cœur : **une section ou un module qui se bloque ne peut jamais bloque
 |---|---|---|
 | une **section d'accueil**, un **emplacement** (`slots`), le **filtre** de texte, la **page** du module, la **pastille de nouveauté**, un **overlay** | **8 s** | l'élément est omis (page de module et overlay : 404 sobre) ; la page se termine normalement |
 | un **service** d'un autre module (`ctx.api.services.call` / `callAll`) ou un **sujet** collecté (`ctx.api.topics.collect`), appelé PENDANT une page publique | **6 s** (un quart de moins que la section qui le contient) | l'appel rend `{ ok: false, reason: "failed" }` (`callAll` : `error: "failed"`) ; la section peut afficher son repli. C'est le **fournisseur** qui est nommé dans le journal |
+| un **appel réseau** du module par `ctx.api.net.request`, PENDANT une page publique | le délai demandé (8 s par défaut), **jamais plus que le temps restant de la page** moins 0,5 s (`remainingBudgetMs()`) | l'appel rend `{ ok: false, error: "timeout" }` ; s'il ne reste rien, sans même appeler le réseau. Le module affiche les dernières données connues |
 | les boutons de l'en-tête (`social.link`), le flux RSS (`feed.item`) : le cœur collecte lui-même | **8 s** par fournisseur | ce fournisseur est ignoré, les autres comptent |
 
 **Ce qui n'est PAS limité** : l'administration, les tâches planifiées (5 minutes), les routes `/m/<instance>/…`, MCP. Un service appelé hors d'une page publique peut durer.
@@ -111,6 +129,27 @@ rôle, traduits), police. C'est **la même source** (`src/core/brand.ts`, même 
 l'administrateur règle dans *Réglages* (Identité, Apparence) est stocké une seule fois dans le cœur. Un module qui *montre* l'identité
 (le **kit presse**) ne la copie ni ne la stocke : il la lit. Changer le thème du site change donc le kit presse, sans rien refaire.
 
+## Rôles et droits : une fonctionnalité du cœur (0.2.0)
+
+Ce n'est pas un service : les modules n'y écrivent rien. Le cœur tient les rôles (`Role`, `UserRole`, `src/core/auth/roles.ts`), le catalogue des droits
+(`src/core/auth/rights.ts` : droits `core:` et droits déclarés par les modules dans `rights`, préfixés `<module>:` par le cœur) et la règle d'accès
+(`src/core/auth/access.ts` : `can()`, `isOwner()`, `accessGate`). Un module lit seulement `ctx.can("<droit local>")` dans l'administration, et peut protéger une
+`adminAction` par `{ right, run }` (décision : `src/core/modules/adminActionAccess.ts`). Voir [MODULES.md](MODULES.md) (« Droits ») et [SECURITE.md](SECURITE.md).
+
+## Balayage de conversion au démarrage : une fonctionnalité du cœur (0.2.0)
+
+Ce n'est pas un service : aucun module ne l'appelle. `register()` (`src/instrumentation.ts`) attend `runLegacySweep()` (`src/core/modules/legacySweep.ts`) avant que
+Next serve une requête : éteints rangés, lignes de modules héritées converties sans réseau quand c'est sûr, migrations de données en attente (une instance à la fois),
+valeurs vides des réglages hérités effacées, puis marqueur `core.legacyCleared`. Délai dur de 20 s, aucune attente réseau, idempotent et reprenable. Le rapport
+(`legacyReport.ts`) est en lecture seule : page d'admin *Entretien* et outil MCP `maintenance_legacy`. Une ligne héritée (`bundled` / `builtin`) que la dernière copie du catalogue ne propose plus est dite « absente » : le propriétaire la retire (données gardées ou effacées) ou la « garde telle quelle » (`legacyDismiss.ts`, réglage `core.legacyDismissed`, 50 au plus) ; une ligne gardée ne retient plus le marqueur `core.legacyCleared`, qui peut donc être posé quand le seul reste est un module retiré ou gardé par le propriétaire. `legacyStatus()` donne le message unique de la page (jamais « terminée » avec des éléments à faire) ; le bandeau de l'admin (`LegacyBanner`) se cache sur cette page. Les réglages hérités d'un module (`legacySettings`)
+passent par `ctx.legacy` (`legacySettings.ts`) : jamais affichés, jamais journalisés. Voir [MODULES.md](MODULES.md) (« Réglages hérités et plancher »).
+
+## Téléchargements et fichiers de l'administration : une fonctionnalité du cœur (0.2.0)
+
+Ce n'est pas un service : un module déclare `adminDownloads` (un générateur de texte) ou un champ `kind: "file"`, et le cœur fait le reste. Deux routes authentifiées sous
+`/api/admin/modules/[instance]/` (`download/[name]` et `action/[action]`, code dans `src/core/modules/adminTransfer.ts` et `adminTransferHandlers.ts`) appliquent le droit, l'audit, les limites
+(512 Mo, 10 min, 5 Mo par fichier) et les en-têtes sûrs. Les routes de modules `/m/…` restent publiques : rien de privé n'y passe. Voir [MODULES.md](MODULES.md) et [SECURITE.md](SECURITE.md).
+
 ## Sauvegarde et catalogue : des fonctionnalités du cœur
 
 - **Sauvegarde** (`core/backup/`, [BACKUP.md](BACKUP.md)) : un fichier chiffré (format OpenSSL, mot de passe choisi à chaque sauvegarde)
@@ -124,7 +163,7 @@ l'administrateur règle dans *Réglages* (Identité, Apparence) est stocké une 
 `/feed.xml` (tout le site) et `/feed/<instance>.xml` (une instance), `?lang=` pour la langue. Le cœur (`core/feeds.ts`) lit les données
 des modules sans les connaître : le sujet `core.entry` (entrées publiées de toute instance à contenu qui propose ses entrées) et le
 sujet `feed.item` (tout module peut en fournir : `provides: [{ "topic": "feed.item" }]` et `exports["feed.item"]` renvoyant
-`{ title, url, summary?, publishedAt?, id? }`). Le résultat est **déterministe** : tri par date décroissante puis par adresse, date de
+`{ title, url, summary?, publishedAt?, id? }`). Chaque instance apporte ses **50 dernières entrées** (`latestEntries`, triées par date par la base : jamais de lecture complète) et le flux garde les 50 plus récentes de l'ensemble. Le résultat est **déterministe** : tri par date décroissante puis par adresse, date de
 construction = élément le plus récent (jamais l'heure courante), adresses `javascript:` écartées. Les pages du site annoncent le flux
 dans `<head>` ; aucun module n'est nécessaire.
 
@@ -155,6 +194,7 @@ Voir aussi [GEO.md](GEO.md) (être cité par les IA, expliqué pour le propriét
   **Règle de compatibilité** (`resolveAiBlocking`) : un réglage propre à une famille (`seo.blockAiTraining`, `seo.blockAiAnswers`), s'il est enregistré, l'emporte ; sinon l'ancien réglage unique `seo.blockAiBots`, **s'il a été enregistré**, s'applique aux deux familles (vrai : les deux bloquées ; faux : aucune) ; sinon (jamais touché) : entraînement bloqué, réponse autorisée. Enregistrer le formulaire des réglages écrit les deux nouveaux choix et retire l'ancien. Seuls les vrais booléens comptent.
 - **`/llms.txt`** (`seo.llmsTxt`, activé par défaut) : titre, citation, puis des sections de liens (Pages, Dernières publications, Ailleurs, Optional), par langue (`/llms.txt` = langue principale, `/<langue>/llms.txt` pour les autres). Construit uniquement à partir de données publiques : réglages d'identité, pages et entrées publiées, éléments du sujet `feed.item`, liens `social.link` ; jamais d'e-mail ni de brouillon. 40 Ko, 120 liens au plus ; mis en cache 5 minutes. Code : `src/core/llms.ts`.
 - **Données structurées** : chaque page porte un JSON-LD (`Organization` ou `Person` selon le réglage *Ce site est celui d'…*, `WebSite`, `sameAs` = liens `social.link` en https, dédoublonnés, 10 au plus) ; les pages à chemin ajoutent un `BreadcrumbList`. Un module ajoute les siennes par le slot `layout.head` avec `ctx.api.seo.jsonLd(…)` (voir [CREATE-A-MODULE.md](CREATE-A-MODULE.md)).
+- **Plan du site** (`src/core/sitemap.ts`) : un seul fichier jusqu'à 50 000 adresses ; au-delà, pages fixes + entrées les plus récentes, erreur journalisée une fois, bandeau dans la page d'admin ci-dessous. Pas de `generateSitemaps` en v2.
 - **Métadonnées** : `canonical`, `hreflang` (dont `x-default`), Open Graph et carte Twitter cohérents, `lastmod` du plan du site quand une date de publication existe, flux RSS annoncé, `lang` de la page.
 - **Page d'admin « Visibilité dans les réponses des IA »** (`/admin/ai-visibility`, `src/core/aiVisibility.ts`) : une liste de contrôles « fait / à faire » avec un bouton *Corriger* ; elle appelle en interne les fonctions de `robots.txt`, du plan du site et de `llms.txt` (aucun réseau) et n'affiche aucune note chiffrée.
 
@@ -177,3 +217,14 @@ Voir aussi [GEO.md](GEO.md) (être cité par les IA, expliqué pour le propriét
 
 Écrire un module (voir [MODULES.md](MODULES.md)). Si une fonctionnalité semble réclamer une modification du cœur, c'est souvent qu'il
 manque un *service* générique : on ajoute le service, pas la fonctionnalité.
+
+## Travail long sans bloquer le serveur : une règle du cœur (0.2.0)
+
+Ce n'est pas un service. Le serveur ne fait qu'une chose à la fois dans son fil principal : tout calcul long y retarde TOUTES les requêtes. Règles : (1) le chiffrement d'une
+sauvegarde (PBKDF2 600 000 itérations) et la compression (gzip niveau 9) passent par les versions asynchrones de Node (pool de threads) : `encryptBackupAsync`,
+`decryptBackupAsync` (`src/core/backup/crypto.ts`), `createTarGzAsync`, `readTarGzAsync` (`tar.ts`), `openBackupAsync`, `parseBackupAsync` (`restore.ts`) ; les versions synchrones
+restent pour les outils et les tests, avec les mêmes octets ; (2) le travail restant est découpé en petites étapes (`src/core/backup/steps.ts` : `runAsync` rend la main à la boucle
+d'événements toutes les 8 ms) ; (3) les lectures d'entrées avec `limit` (accueil, `ctx.api.entries.list`, sujet `core.entry`) sont triées et tronquées par la base (`listEntries`, 200 au
+plus, `MAX_LIST_LIMIT`) ; (4) un module en erreur de chargement n'écrit sa pile qu'une fois par module et par raison, puis un compteur toutes les 10 minutes
+(`src/core/modules/loadLog.ts`, sans minuteur). `tests/core/backup-async.test.mjs` mesure qu'un minuteur de 10 ms n'est jamais retardé de plus de 200 ms pendant l'export et la
+restauration de 20 000 enregistrements.

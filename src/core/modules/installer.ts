@@ -7,7 +7,8 @@ import { prisma } from "../db";
 import { MODULES_DIR } from "../config";
 import { parseManifest, type ParsedManifest } from "./manifest";
 import { forgetModule, getModule, moduleDir, readGitManifest } from "./registry";
-import { catalogueUnreachable, findCatalogueEntry, getCatalogue } from "./catalogue";
+import { catalogueUnreachable, findCatalogueEntry, getCatalogue, type CatalogueEntry } from "./catalogue";
+import { hardNeeds, offerVersionOf, satisfiesVersion } from "./serviceVersions";
 import { checkBundledRow, convertToCatalogue } from "./bundledUpdate";
 import { dependentsOf } from "./dependencies";
 import { eraseRetired, restoreModuleInstances, retireModuleInstances } from "./retired";
@@ -300,7 +301,7 @@ async function checkSubdirUpdate(row: Module): Promise<ModuleUpdateCheck> {
   } finally { f.cleanup(); }
 }
 
-async function updateSubdirModule(row: Module): Promise<InstallResult> {
+async function updateSubdirModule(row: Module, chain: string[]): Promise<InstallResult> {
   const id = row.id;
   const { ref, fromCatalogue } = await subdirTarget(row);
   if (!fromCatalogue && isCommitRef(row.ref)) return { ok: false, error: "modules.error.pinned" };
@@ -308,7 +309,10 @@ async function updateSubdirModule(row: Module): Promise<InstallResult> {
   const backup = `${target}.previous-${process.pid}`;
   let fetched: Fetched | null = null;
   let swapped = false;
+  let rowChanged = false;
+  let pending: Journal | null = null;
   try {
+    // 1. Récupérer et valider la nouvelle version (cœur compris), sans rien migrer.
     fetched = await fetchSubdirSource(row.repoUrl!, ref, row.subdir!);
     if (fetched.tree === row.tree) return { ok: false, error: "modules.error.uptodate" };
     const manifest = fetched.manifest;
@@ -316,18 +320,31 @@ async function updateSubdirModule(row: Module): Promise<InstallResult> {
     if (manifest.main && !fs.existsSync(path.join(fetched.root, manifest.main))) throw Object.assign(new Error("main"), { code: "modules.error.nomain" });
     if (dirSize(fetched.root) > MAX_MODULE_BYTES) throw Object.assign(new Error("size"), { code: "modules.error.size" });
     assertCore(requirementOf(manifest));
-    // On met l'ancienne version de côté pendant l'échange : au moindre échec, elle revient telle quelle.
+    // 2. Échanger les fichiers : l'ancienne version est mise de côté et revient telle quelle au moindre échec (jusqu'aux migrations).
     fs.rmSync(backup, { recursive: true, force: true });
     fs.renameSync(target, backup);
     swapped = true;
     copyModuleFiles(fetched.root, target);
     await prisma.module.update({ where: { id }, data: { commit: fetched.commit, tree: fetched.tree, version: manifest.version, ref: ref ?? row.ref } });
+    rowChanged = true;
+    forgetModule(id);
+    // 3. Les `requires` durs de la NOUVELLE version, avant toute migration (même journal d'annulation).
+    const settled = await settleBeforeMigrations(manifest, chain);
+    if (!settled.ok) throw new RequirementsMissing(settled.missing);
+    pending = settled.journal;
+    // 5. Migrer. Un échec met l'instance à l'écart (« Réessayer ») : les fournisseurs restent (journal validé), « Réessayer » en a besoin.
+    const migrations = await migrateModuleInstances(id);
     swapped = false;
-    forgetModule(id);
-    return { ok: true, id, migrations: await migrateModuleInstances(id) };
+    rowChanged = false;
+    pending = null;
+    const after = await afterMigrations(id, settled);
+    return { ok: true, id, migrations, ...(after.provided.length ? { provided: after.provided } : {}), ...(after.missing ? { missing: after.missing } : {}) };
   } catch (error) {
+    if (pending) await unwind(pending);   // panne exceptionnelle pendant les migrations (elles ne lèvent pas d'ordinaire) : tout est défait
     if (swapped) { fs.rmSync(target, { recursive: true, force: true }); fs.renameSync(backup, target); }
+    if (rowChanged) await prisma.module.update({ where: { id }, data: { commit: row.commit, tree: row.tree, version: row.version, ref: row.ref } }).catch(() => {});
     forgetModule(id);
+    if (error instanceof RequirementsMissing) return requirementsRefusal(error.missing);
     if (error instanceof CoreTooOld) return coreRefusal(error);
     console.error("[modules] update failed:", (error as Error)?.message);
     return { ok: false, error: (error as { code?: string })?.code ?? "modules.error.clone" };
@@ -397,24 +414,38 @@ async function checkGitUpdate(row: Module): Promise<{ check: ModuleUpdateCheck; 
  * Met un module à jour SANS toucher à ses données : seuls les fichiers du module changent ; ses instances, réglages et données
  * (stockage, entrées) restent tels quels. Épinglé sur une étiquette, il passe à la plus haute version stable. Si la nouvelle version est
  * invalide (manifeste illisible, autre identifiant, API incompatible, trop volumineuse), l'ancienne est rétablie : le module ne casse jamais.
+ *
+ * ORDRE (contrat 3) : fichiers de la nouvelle version → ses `requires` durs satisfaits (fournisseurs installés ou mis à jour, dans un journal
+ * d'annulation) → migrations des données. Un besoin impossible à satisfaire : tout est défait, le module reste dans son ancienne version, ses
+ * données intactes (`modules.error.requires` + `missing`). Une migration qui échoue met l'instance à l'écart avec « Réessayer » ; les fournisseurs restent.
  */
 export async function updateModule(id: string): Promise<InstallResult> {
-  const result = await updateModuleFiles(id);
-  return result.ok ? { ...result, ...(await settleDependencies(id)) } : result;
+  return updateModuleWithin(id, [id]);
 }
 
-async function updateModuleFiles(id: string): Promise<InstallResult> {
+/** `chain` : chaîne des modules en cours de mise à jour ou d'installation (un fournisseur mis à jour par la cascade ne peut pas redemander l'un d'eux). */
+async function updateModuleWithin(id: string, chain: string[]): Promise<InstallResult> {
   const row = await prisma.module.findUnique({ where: { id } });
   if (row?.source === "bundled") {
     // Compatibilité sites anciens, à retirer en 0.3.0 : le catalogue est la source, jamais une copie locale.
     const entry = await findCatalogueEntry(id);
-    if (entry) return convertToCatalogue(row, entry);   // voir bundledUpdate.ts
+    if (entry) {
+      const r = await convertToCatalogue(row, entry, (manifest) => settleBeforeMigrations(manifest, chain));   // voir bundledUpdate.ts
+      if (!r.ok) return r;
+      const late = await settleDependencies(id);   // besoins couverts par un semis : vérifiés après les migrations (voir afterMigrations)
+      const provided = [...new Set([...(r.provided ?? []), ...(late.provided ?? [])])];
+      return { ...r, ...(provided.length ? { provided } : {}), ...(late.missing?.length ? { missing: late.missing } : {}) };
+    }
     return { ok: false, error: (await catalogueUnreachable()) ? "modules.error.catalogue" : "modules.error.unknownSource" };
   }
   if (!row || row.source !== "git" || !row.repoUrl) return { ok: false, error: "modules.error.notfound" };
-  if (row.subdir) return updateSubdirModule(row);
+  if (row.subdir) return updateSubdirModule(row, chain);
   const dir = moduleDir(id);
   let previous: string | null = null;
+  /** Dernière version dont les données ont déjà été migrées (versions sautées) : en cas d'échec, on y revient, jamais plus loin en arrière. */
+  let reached: { commit: string; version: string; ref: string } | null = null;
+  const provided: string[] = [];
+  let pending: Journal | null = null;
   try {
     previous = await git(["rev-parse", "HEAD"], dir);
     let newRef = row.ref;
@@ -428,15 +459,16 @@ async function updateModuleFiles(id: string): Promise<InstallResult> {
     } else {
       fetchRef = row.ref ?? "HEAD";
     }
-    // Le cœur est-il assez récent pour la version visée ? On le lit AVANT de toucher au dossier du module (ni retour en arrière, ni migration à défaire).
+    // 1. Le cœur est-il assez récent pour la version visée ? On le lit AVANT de toucher au dossier du module (ni retour en arrière, ni migration à défaire).
     await git(["fetch", "--depth", "1", "origin", fetchRef], dir);
     const incoming = await git(["show", "FETCH_HEAD:module.json"], dir).then((t) => parseManifest(JSON.parse(t))).catch(() => null);   // illisible : le contrôle habituel plus bas s'en charge
     if (incoming?.ok) assertCore(requirementOf(incoming.manifest));
-    // Versions sautées : on rejoue leurs migrations de données, dans l'ordre, avec LEUR code, avant de passer à la dernière.
+    // Versions sautées : chacune à son tour, ses `requires` puis SES migrations, avec SON code, avant de passer à la dernière.
     if (isStableTag(row.ref) && newRef !== row.ref) {
-      const replay = await replaySkippedReleases(id, dir, row.repoUrl, row.ref, newRef as string);
+      const replay = await replaySkippedReleases(id, dir, row.repoUrl, row.ref, newRef as string, chain, (step) => { reached = step.reached; provided.push(...step.provided); });
       if (replay) return replay;
     }
+    // 2. Échanger les fichiers (annulation : `git reset` vers la version d'avant).
     await git(["fetch", "--depth", "1", "origin", fetchRef], dir);
     await git(["reset", "--hard", "FETCH_HEAD"], dir);
     const commit = await git(["rev-parse", "HEAD"], dir);
@@ -446,12 +478,26 @@ async function updateModuleFiles(id: string): Promise<InstallResult> {
     if (dirSize(dir) > MAX_MODULE_BYTES) throw Object.assign(new Error("size"), { code: "modules.error.size" });
     await prisma.module.update({ where: { id }, data: { commit, version: manifest.version, ref: newRef } });
     forgetModule(id);
-    // Les données des instances suivent la nouvelle version du module (voir dataMigrations.ts) ; en cas d'échec, l'instance est remise à l'écart.
-    return { ok: true, id, migrations: await migrateModuleInstances(id) };
+    // 3. Les `requires` durs de la nouvelle version (journal défait en entier s'il manque quelque chose).
+    const settled = await settleBeforeMigrations(manifest, chain);
+    if (!settled.ok) throw new RequirementsMissing(settled.missing);
+    pending = settled.journal;
+    // 5. Les données des instances suivent la nouvelle version du module (voir dataMigrations.ts) ; en cas d'échec, l'instance est remise à l'écart.
+    const migrations = await migrateModuleInstances(id);
+    pending = null;
+    const after = await afterMigrations(id, settled);
+    provided.push(...after.provided);
+    return { ok: true, id, migrations, ...(provided.length ? { provided: [...new Set(provided)] } : {}), ...(after.missing ? { missing: after.missing } : {}) };
   } catch (error) {
-    // Retour à la version précédente : un module en place ne doit pas rester à moitié mis à jour.
-    if (previous) await git(["reset", "--hard", previous], dir).catch(() => {});
+    // Retour en arrière : à la version d'avant, ou à la dernière version intermédiaire dont les données ont été migrées (jamais du code plus ancien que les données).
+    if (pending) await unwind(pending);   // panne exceptionnelle pendant les migrations (elles ne lèvent pas d'ordinaire) : la cascade est défaite aussi
+    const back = reached as { commit: string; version: string; ref: string } | null;
+    if (previous || back) {
+      await git(["reset", "--hard", back?.commit ?? previous!], dir).catch(() => {});
+      await prisma.module.update({ where: { id }, data: back ?? { commit: row.commit, version: row.version, ref: row.ref } }).catch(() => {});
+    }
     forgetModule(id);
+    if (error instanceof RequirementsMissing) return requirementsRefusal(error.missing);
     if (error instanceof CoreTooOld) return coreRefusal(error);
     console.error("[modules] update failed:", (error as Error)?.message);
     return { ok: false, error: (error as { code?: string })?.code ?? "modules.error.clone" };
@@ -460,12 +506,13 @@ async function updateModuleFiles(id: string): Promise<InstallResult> {
 
 /**
  * Mise à jour 1.2 → 1.6 alors que 1.3, 1.4 et 1.5 existent : chaque version intermédiaire change peut-être le modèle de données. On extrait
- * donc chacune à son tour, on exécute SES migrations (jusqu'à sa propre `dataVersion`), puis on passe à la suivante ; la dernière version
- * trouve des données déjà au bon format. Les versions sans changement de données n'ont rien à déclarer.
- * Si une étape échoue, la mise à jour s'arrête sur cette version (données remises comme avant l'étape, instance mise à l'écart, « Réessayer »
- * possible) et on renvoie le résultat ; sinon `null` et la mise à jour continue vers la cible.
+ * donc chacune à son tour, on satisfait SES `requires` durs, on exécute SES migrations (jusqu'à sa propre `dataVersion`), puis on passe à la suivante ;
+ * la dernière version trouve des données déjà au bon format. Les versions sans changement de données n'ont rien à déclarer.
+ * Si une migration échoue, la mise à jour s'arrête sur cette version (données remises comme avant l'étape, instance mise à l'écart, « Réessayer »
+ * possible) et on renvoie le résultat ; si un besoin manque, l'erreur est levée (l'appelant revient à la dernière version migrée) ; sinon `null`.
  */
-async function replaySkippedReleases(id: string, dir: string, repoUrl: string, from: string, to: string): Promise<InstallResult | null> {
+async function replaySkippedReleases(id: string, dir: string, repoUrl: string, from: string, to: string, chain: string[],
+  onStep: (step: { reached: { commit: string; version: string; ref: string }; provided: string[] }) => void): Promise<InstallResult | null> {
   const between = (await remoteTags(repoUrl)).filter((t) => compareVersions(t, from) > 0 && compareVersions(t, to) < 0);
   for (const tag of between) {
     await git(["fetch", "--depth", "1", "origin", `refs/tags/${tag}`], dir);
@@ -476,10 +523,66 @@ async function replaySkippedReleases(id: string, dir: string, repoUrl: string, f
     const commit = await git(["rev-parse", "HEAD"], dir);
     await prisma.module.update({ where: { id }, data: { commit, version: manifest.version, ref: tag } });
     forgetModule(id);
+    const settled = await settleBeforeMigrations(manifest, chain);
+    if (!settled.ok) throw new RequirementsMissing(settled.missing);
     const migrations = await migrateModuleInstances(id, { skipNewer: true });
+    const after = await afterMigrations(id, settled);
+    onStep({ reached: { commit, version: manifest.version, ref: tag }, provided: after.provided });
     if (migrations.some((m) => m.status === "failed" || m.status === "newer")) return { ok: true, id, migrations };
   }
   return null;
+}
+
+/** Services exigés (durs) qu'offre une cible de `seeds` du module (installée, sinon annoncée par le catalogue). */
+async function seededServices(manifest: ParsedManifest): Promise<Set<string>> {
+  const out = new Set<string>();
+  if (!manifest.seeds?.length) return out;
+  const catalogue = await getCatalogue().catch((): CatalogueEntry[] => []);
+  for (const seed of manifest.seeds) {
+    const offers = (await getModule(seed.module).catch(() => null))?.manifest.offers ?? catalogue.find((e) => e.id === seed.module)?.offers;
+    for (const n of hardNeeds(manifest.requires)) if (satisfiesVersion(offerVersionOf(offers, n.service), n.min)) out.add(n.service);
+  }
+  return out;
+}
+
+/**
+ * Après les migrations : valide le journal (les fournisseurs restent, « Réessayer » en a besoin), puis, si des besoins couverts par un semis
+ * avaient été mis de côté, les vérifie maintenant (la migration n'a peut-être rien semé) : comme avant la 0.2.0, ce qui manque est seulement signalé.
+ */
+async function afterMigrations(id: string, settled: { journal: Journal; deferred?: true }): Promise<{ provided: string[]; missing?: Missing[] }> {
+  await commitJournal(settled.journal);
+  const provided = [...settled.journal.provided];
+  if (!settled.deferred) return { provided };
+  const late = await settleDependencies(id);
+  return { provided: [...provided, ...(late.provided ?? [])], ...(late.missing?.length ? { missing: late.missing } : {}) };
+}
+
+/** Un besoin dur de la nouvelle version ne peut pas être satisfait : la mise à jour est défaite (voir updateModule). */
+class RequirementsMissing extends Error {
+  readonly missing: Missing[];
+  constructor(missing: Missing[]) { super("requirements missing"); this.missing = missing; }
+}
+
+/**
+ * Étape 3 d'une mise à jour : satisfaire les `requires` DURS de `manifest` (installer ou mettre à jour les fournisseurs du catalogue officiel, leur
+ * instance par défaut), AVANT toute migration. Échec : le journal est déjà défait et `missing` dit quoi. Réussite : le journal est à valider
+ * (`commitJournal`) une fois les migrations faites.
+ */
+export async function settleBeforeMigrations(manifest: ParsedManifest, chain: string[] = [manifest.id]): Promise<{ ok: true; journal: Journal; deferred?: true } | { ok: false; missing: Missing[] }> {
+  const journal = newJournal(manifest.id);
+  try {
+    // Un besoin que la migration elle-même couvrira en SEMANT une instance (`seeds`, voir seeding.ts) attend la fin des migrations :
+    // lui créer une instance par défaut avant ferait un doublon de l'instance semée.
+    const deferred = await seededServices(manifest);
+    const now = deferred.size ? { ...manifest, requires: manifest.requires?.filter((r) => !deferred.has(r.service)) } : manifest;
+    const r = await satisfyRequirements(now, depOps(), journal, chain.includes(manifest.id) ? chain : [...chain, manifest.id]);
+    if (r.ok) return { ok: true, journal, ...(deferred.size ? { deferred: true as const } : {}) };
+    await unwind(journal);
+    return { ok: false, missing: r.missing };
+  } catch (error) {
+    await unwind(journal);
+    throw error;
+  }
 }
 
 /* ───────────── Dépendances : gestes prêtés à dependencyInstaller.ts ───────────── */
@@ -487,7 +590,8 @@ async function replaySkippedReleases(id: string, dir: string, repoUrl: string, f
 /** Refus « il manque quelque chose » : `detail` garde la liste des services (lisible tel quel), `missing` le détail pour l'interface. */
 export const requirementsRefusal = (missing: Missing[]): InstallResult => ({ ok: false, error: "modules.error.requires", detail: missing.map((x) => x.service).join(", "), missing });
 
-const depOps = (): DepOps => ({
+/** `update: false` : ne jamais mettre à jour un fournisseur trop ancien (restauration : l'état sauvegardé est respecté). */
+const depOps = (opts: { update?: boolean } = {}): DepOps => ({
   catalogue: () => getCatalogue(),
   installEntry: async (entry) => {
     // Ses données gardées (s'il y en a) reviennent avec son instance par défaut (voir ensureDefaultInstance), pas ici : le journal sait les défaire.
@@ -495,6 +599,14 @@ const depOps = (): DepOps => ({
     return r.ok ? { ok: true } : { ok: false, error: r.error, detail: r.detail };
   },
   purge: purgeModule,
+  ...(opts.update === false ? {} : {
+    update: async (id: string, chain: string[]) => {
+      const r = await updateModuleWithin(id, chain);
+      if (!r.ok) return { ok: false as const, error: r.error, detail: r.detail };
+      if (r.migrations?.some((m) => m.status === "failed" || m.status === "newer")) return { ok: false as const, error: "modules.error.migration" };
+      return { ok: true as const };
+    },
+  }),
 });
 
 /** « Mettre en place ce qui manque » : les fournisseurs des services dont le module a besoin sont installés d'office (avec leur instance) ; au moindre échec tout est défait. */
@@ -523,7 +635,7 @@ export async function settleDependencies(id: string): Promise<{ provided?: strin
     const row = await prisma.module.findUnique({ where: { id } });
     const mod = row ? await getModule(id) : null;
     if (!mod?.manifest.requires?.length) return {};
-    const r = await satisfyRequirements(mod.manifest, depOps());
+    const r = await satisfyRequirements(mod.manifest, depOps({ update: false }));
     if (!r.ok) { await unwind(r.journal); return { missing: r.missing }; }
     await commitJournal(r.journal);
     return r.journal.provided.length ? { provided: r.journal.provided } : {};
@@ -588,13 +700,20 @@ export async function purgeModule(id: string): Promise<void> {
   fs.rmSync(moduleDir(id), { recursive: true, force: true });
 }
 
-/** Installe un module du catalogue (catalogue) par son identifiant. Le dépôt reconnu doit servir ce module-là. */
-export async function installFromCatalogue(id: string, opts: { dependencies?: boolean; restoreKept?: boolean } = {}): Promise<InstallResult> {
+/**
+ * Installe un module du catalogue (catalogue) par son identifiant. Le dépôt reconnu doit servir ce module-là.
+ * Une entrée de l'index supplémentaire (`origin: "extra"`) exige `confirmExtra: true`, passé SEULEMENT par une action du propriétaire après
+ * l'avertissement « Ce module n'est pas vérifié par le catalogue officiel » : jamais par une cascade, une graine, une tâche ou le MCP.
+ */
+export async function installFromCatalogue(id: string, opts: { dependencies?: boolean; restoreKept?: boolean; confirmExtra?: boolean } = {}): Promise<InstallResult> {
   const entry = await findCatalogueEntry(id);
   if (!entry) return { ok: false, error: "modules.error.notfound" };
   if (!entry.compatible) return { ok: false, error: "modules.error.incompatible" };
   // L'index dit déjà quel cœur il faut : on refuse AVANT de télécharger quoi que ce soit.
   if (entry.needsNewerCore) return { ok: false, error: "modules.error.core", detail: entry.needsNewerCore, needsCore: entry.needsNewerCore };
+  if (entry.origin === "extra" && opts.confirmExtra !== true) return { ok: false, error: "modules.error.extraConfirm" };
   const fragment = entry.ref || entry.subdir ? `#${entry.ref ?? ""}${entry.subdir ? `:${entry.subdir}` : ""}` : "";
-  return installModule(`${entry.repo}${fragment}`, { expectId: id, ...opts });
+  const { confirmExtra: _confirmed, ...rest } = opts;
+  void _confirmed;
+  return installModule(`${entry.repo}${fragment}`, { expectId: id, ...rest });
 }

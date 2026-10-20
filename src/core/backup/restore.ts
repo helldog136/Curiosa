@@ -9,19 +9,24 @@ import { installFromCatalogue, installModule, type InstallResult } from "@/core/
 import { getCatalogue } from "@/core/modules/catalogue";
 import { resetModuleRegistry } from "@/core/modules/registry";
 import { audit } from "@/core/permissions";
+import { levelOf } from "@/core/auth/access";
+import { syncSystemAssignments } from "@/core/auth/roles";
+import { isSystemKey } from "@/core/auth/rights";
 import { UPLOAD_NAME_RE } from "@/core/services/uploads";
-import { decryptBackup } from "./crypto";
+import { decryptBackup, decryptBackupAsync } from "./crypto";
+import { runAsync, runSync, sha256Steps, tick, type Steps } from "./steps";
 import { applyUpgrades, currentSchemaVersion, isNewerSchema, pickKnownColumns } from "./schema";
 import { safetyCopy } from "./files";
-import { DATA_FILES, FORMAT, FORMAT_VERSION, LEGACY_FORMATS, sha256, type BackupManifest, type BackupModule } from "./format";
-import { readTarGz } from "./tar";
+import { bumpGenerations, readGenerations } from "@/core/services/store";
+import { DATA_FILES, FORMAT, FORMAT_VERSION, LEGACY_FORMATS, type BackupManifest, type BackupModule } from "./format";
+import { readTarGz, readTarGzAsync, type TarFile } from "./tar";
 import { linksFor, orderByDependencies, previewMissing, settleRestored, type DependencyIssue } from "./restoreDeps";
 import type { Missing } from "@/core/modules/dependencyInstaller";
 
 type Row = Record<string, unknown>;
 export type ParsedBackup = {
   manifest: BackupManifest;
-  data: { users: Row[]; settings: Row[]; modules: BackupModule[]; instances: Row[]; instanceTranslations: Row[]; entries: Row[]; entryTranslations: Row[]; redirects: Row[]; records: Row[]; /** Données gardées de modules retirés (absent des sauvegardes d'avant la 0.1.20). */ retired?: Row[] };
+  data: { users: Row[]; settings: Row[]; modules: BackupModule[]; instances: Row[]; instanceTranslations: Row[]; entries: Row[]; entryTranslations: Row[]; redirects: Row[]; records: Row[]; /** Données gardées de modules retirés (absent des sauvegardes d'avant la 0.1.20). */ retired?: Row[]; /** Rôles et affectations (absents avant la 0.2.0 : recréés depuis `User.role`). */ roles?: Row[]; userRoles?: Row[] };
   uploads: { name: string; content: Buffer }[];
 };
 export type ParseError = "not-a-backup" | "wrong-password" | "corrupt" | "tampered" | "newer-format" | "newer-schema" | "no-owner";
@@ -31,6 +36,8 @@ export async function checkSchema(manifest: BackupManifest): Promise<"ok" | "new
   return isNewerSchema(manifest.schemaVersion, await currentSchemaVersion()) ? "newer-schema" : "ok";
 }
 
+type Parsed = { ok: true; backup: ParsedBackup } | { ok: false; error: ParseError };
+
 /** Déchiffre puis valide une sauvegarde : format, version, empreintes de TOUS les fichiers, présence d'un propriétaire. */
 export function openBackup(file: Buffer, password: string, iterations?: number): { ok: true; backup: ParsedBackup; plain: Buffer } | { ok: false; error: ParseError } {
   const dec = decryptBackup(file, password, iterations);
@@ -39,9 +46,28 @@ export function openBackup(file: Buffer, password: string, iterations?: number):
   return parsed.ok ? { ok: true, backup: parsed.backup, plain: dec.plain } : parsed;
 }
 
-export function parseBackup(plain: Buffer): { ok: true; backup: ParsedBackup } | { ok: false; error: ParseError } {
-  let files;
-  try { files = new Map(readTarGz(plain).map((f) => [f.path, f.content])); } catch { return { ok: false, error: "corrupt" }; }
+/** Même chose sans jamais bloquer la boucle d'événements (dérivation de clé et décompression hors du fil principal, analyse par petits morceaux). */
+export async function openBackupAsync(file: Buffer, password: string, iterations?: number): Promise<{ ok: true; backup: ParsedBackup; plain: Buffer } | { ok: false; error: ParseError }> {
+  const dec = await decryptBackupAsync(file, password, iterations);
+  if (!dec.ok) return dec;
+  const parsed = await parseBackupAsync(dec.plain);
+  return parsed.ok ? { ok: true, backup: parsed.backup, plain: dec.plain } : parsed;
+}
+
+export function parseBackup(plain: Buffer): Parsed {
+  let tar: TarFile[];
+  try { tar = readTarGz(plain); } catch { return { ok: false, error: "corrupt" }; }
+  return runSync(checkFiles(tar));
+}
+
+export async function parseBackupAsync(plain: Buffer): Promise<Parsed> {
+  let tar: TarFile[];
+  try { tar = await readTarGzAsync(plain); } catch { return { ok: false, error: "corrupt" }; }
+  return runAsync(checkFiles(tar));
+}
+
+function* checkFiles(tar: TarFile[]): Steps<Parsed> {
+  const files = new Map(tar.map((f) => [f.path, f.content]));
   let manifest: BackupManifest;
   try { manifest = JSON.parse(files.get("backup.json")?.toString("utf8") ?? ""); } catch { return { ok: false, error: "not-a-backup" }; }
   if ((manifest?.format !== FORMAT && !LEGACY_FORMATS.includes(String(manifest?.format))) || !Array.isArray(manifest.files) || !Array.isArray(manifest.modules)) return { ok: false, error: "not-a-backup" };
@@ -51,26 +77,31 @@ export function parseBackup(plain: Buffer): { ok: true; backup: ParsedBackup } |
   const listed = new Set(manifest.files.map((f) => f.path));
   for (const f of manifest.files) {
     const content = files.get(f.path);
-    if (!content || sha256(content) !== f.sha256) return { ok: false, error: "tampered" };
+    if (!content || (yield* sha256Steps(content)) !== f.sha256) return { ok: false, error: "tampered" };
   }
   for (const p of files.keys()) if (p !== "backup.json" && p !== "README.txt" && !listed.has(p)) return { ok: false, error: "tampered" };
 
   const list = (p: string): Row[] | null => {
     try { const v = JSON.parse(files.get(p)?.toString("utf8") ?? ""); return Array.isArray(v) ? v : null; } catch { return null; }
   };
-  const data = {
-    users: list(DATA_FILES.users), settings: list(DATA_FILES.settings), instances: list(DATA_FILES.instances), instanceTranslations: list(DATA_FILES.instanceTranslations),
-    entries: list(DATA_FILES.entries), entryTranslations: list(DATA_FILES.entryTranslations), redirects: list(DATA_FILES.redirects), records: list(DATA_FILES.records),
-  };
+  const data: Record<string, Row[] | null> = {};
+  for (const [name, file] of [["users", DATA_FILES.users], ["settings", DATA_FILES.settings], ["instances", DATA_FILES.instances], ["instanceTranslations", DATA_FILES.instanceTranslations], ["entries", DATA_FILES.entries], ["entryTranslations", DATA_FILES.entryTranslations], ["redirects", DATA_FILES.redirects], ["records", DATA_FILES.records]] as const) {
+    data[name] = list(file);
+    yield; // une lecture JSON à la fois : la boucle d'événements respire entre deux fichiers
+  }
   if (Object.values(data).some((v) => v === null)) return { ok: false, error: "corrupt" };
   // Facultatif : une sauvegarde d'avant la 0.1.20 n'a pas ce fichier (= aucune donnée gardée) ; présent mais illisible = sauvegarde abîmée.
   const retired = files.has(DATA_FILES.retired) ? list(DATA_FILES.retired) : [];
   if (retired === null) return { ok: false, error: "corrupt" };
+  // Rôles (0.2.0), facultatifs de la même façon : absents = sauvegarde plus ancienne, rôles prédéfinis recréés à la restauration.
+  const roles = files.has(DATA_FILES.roles) ? list(DATA_FILES.roles) : [];
+  const userRoles = files.has(DATA_FILES.userRoles) ? list(DATA_FILES.userRoles) : [];
+  if (roles === null || userRoles === null) return { ok: false, error: "corrupt" };
   const modules = manifest.modules;
-  const d = data as Record<keyof typeof data, Row[]>;
-  if (!d.users.some((u) => u.role === "owner" && typeof u.email === "string" && typeof u.passwordHash === "string")) return { ok: false, error: "no-owner" };
+  const d = data as Record<"users" | "settings" | "instances" | "instanceTranslations" | "entries" | "entryTranslations" | "redirects" | "records", Row[]>;
+  if (!d.users.some((u) => levelOf(u) === "owner" && typeof u.email === "string" && typeof u.passwordHash === "string")) return { ok: false, error: "no-owner" };
   const uploads = [...files.entries()].filter(([p]) => p.startsWith("uploads/") && UPLOAD_NAME_RE.test(p.slice(8))).map(([p, content]) => ({ name: p.slice(8), content }));
-  return { ok: true, backup: { manifest, data: { ...d, modules, retired }, uploads } };
+  return { ok: true, backup: { manifest, data: { ...d, modules, retired, roles, userRoles }, uploads } };
 }
 
 /* ───────────── Plan : que va-t-il se passer pour chaque module ? ───────────── */
@@ -119,9 +150,28 @@ export type RestoreReport = { ok: false; error: "newer-schema"; modules: ModuleO
 
 type Installers = { fromCatalogue: (id: string) => Promise<InstallResult>; fromRepo: (url: string) => Promise<InstallResult> };
 // Sans cascade ici : l'ordre et la vérification des dépendances se font pour toute la sauvegarde (restoreDeps.ts).
-const realInstallers: Installers = { fromCatalogue: (id) => installFromCatalogue(id, { dependencies: false, restoreKept: false }), fromRepo: (url) => installModule(url, { dependencies: false, restoreKept: false }) };
+// `confirmExtra` : restaurer remet un module que le propriétaire avait déjà installé (et il confirme la restauration) ; ce n'est pas une installation d'office.
+const realInstallers: Installers = { fromCatalogue: (id) => installFromCatalogue(id, { dependencies: false, restoreKept: false, confirmExtra: true }), fromRepo: (url) => installModule(url, { dependencies: false, restoreKept: false }) };
 
 const MODEL_BY_FILE = { users: "User", settings: "Setting", instances: "ModuleInstance", instanceTranslations: "InstanceTranslation", entries: "Entry", entryTranslations: "EntryTranslation", redirects: "Redirect", records: "ModuleRecord" } as const;
+
+function rightsList(v: unknown): string[] {
+  if (typeof v === "string") { try { v = JSON.parse(v); } catch { return []; } }
+  return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string").slice(0, 500) : [];
+}
+
+/** Rôles d'une sauvegarde : colonnes connues, dates relues, droits en texte JSON, `system` recalculé d'après la clé (jamais cru sur parole). */
+function restorableRoles(rows: Row[]): Row[] {
+  const seen = new Set<string>();
+  const out: Row[] = [];
+  for (const raw of rows) {
+    const r = reviveDates("Role", pickKnownColumns("roles", raw));
+    if (typeof r.id !== "string" || typeof r.key !== "string" || typeof r.name !== "string" || seen.has(r.key) || seen.has(`id:${r.id}`)) continue;
+    seen.add(r.key); seen.add(`id:${r.id}`);
+    out.push({ ...r, system: isSystemKey(r.key), rights: isSystemKey(r.key) ? "[]" : JSON.stringify(rightsList(r.rights)) });
+  }
+  return out;
+}
 
 /** Les colonnes DateTime d'un modèle, lues dans le schéma : le JSON de la sauvegarde les porte en texte ISO. */
 function reviveDates(model: string, row: Row): Row {
@@ -129,6 +179,19 @@ function reviveDates(model: string, row: Row): Row {
   const out: Row = { ...row };
   for (const f of fields) if (f.type === "DateTime" && typeof out[f.name] === "string") out[f.name] = new Date(out[f.name] as string);
   return out;
+}
+
+const SLICE_ROWS = 2000;
+/** `structuredClone` de la sauvegarde lue, mais tableau par tableau et par tranches : la boucle d'événements respire entre deux tranches. */
+async function cloneInSlices(data: ParsedBackup["data"]): Promise<ParsedBackup["data"]> {
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (!Array.isArray(value)) { out[key] = structuredClone(value); continue; }
+    const rows: unknown[] = [];
+    for (let i = 0; i < value.length; i += SLICE_ROWS) { rows.push(...structuredClone(value.slice(i, i + SLICE_ROWS))); await tick(); }
+    out[key] = rows;
+  }
+  return out as ParsedBackup["data"];
 }
 
 const chunks = <T,>(list: T[], n = 200) => Array.from({ length: Math.ceil(list.length / n) }, (_, i) => list.slice(i * n, (i + 1) * n));
@@ -159,13 +222,21 @@ export async function applyRestore(backup: ParsedBackup, opts: { confirmCustom: 
   if ((await checkSchema(backup.manifest)) === "newer-schema") return { ok: false, error: "newer-schema", modules: [] };
   const copy = safetyCopy("pre-restore", opts.dataDir);
   // Sauvegarde d'un schéma plus ancien : transformations explicites, puis seules les colonnes encore connues (les nouvelles prennent leur défaut).
-  const d = structuredClone(backup.data);
+  // (Copie et tri des colonnes par tranches de 2 000 lignes, en laissant respirer la boucle d'événements : 20 000 fiches ne figent pas le site.)
+  const d = await cloneInSlices(backup.data);
   applyUpgrades(d, backup.manifest.schemaVersion);
-  for (const key of ["users", "instances", "instanceTranslations", "entries", "entryTranslations", "redirects", "records"] as const) d[key] = d[key].map((r) => pickKnownColumns(key, r));
+  for (const key of ["users", "instances", "instanceTranslations", "entries", "entryTranslations", "redirects", "records"] as const) {
+    const rows: Row[] = [];
+    for (let i = 0; i < d[key].length; i += SLICE_ROWS) { rows.push(...d[key].slice(i, i + SLICE_ROWS).map((r) => pickKnownColumns(key, r))); await tick(); }
+    d[key] = rows;
+  }
+  // Compteurs de génération du stockage d'AVANT : la restauration remet ceux de la sauvegarde, mais un compteur ne recule jamais.
+  const generationsBefore = await readGenerations().catch(() => new Map<string, number>());
   try {
     await prisma.$transaction(async (tx) => {
       await tx.moduleRecord.deleteMany(); await tx.entryTranslation.deleteMany(); await tx.entry.deleteMany();
       await tx.instanceTranslation.deleteMany(); await tx.moduleInstance.deleteMany(); await tx.redirect.deleteMany();
+      await tx.userRole.deleteMany(); await tx.role.deleteMany();
       await tx.setting.deleteMany(); await tx.user.deleteMany(); await tx.retiredInstance.deleteMany();
 
       for (const c of chunks(d.users)) await tx.user.createMany({ data: c.map((r) => reviveDates(MODEL_BY_FILE.users, r)) as never });
@@ -176,6 +247,13 @@ export async function applyRestore(backup: ParsedBackup, opts: { confirmCustom: 
       for (const c of chunks(d.entryTranslations)) await tx.entryTranslation.createMany({ data: c.map((r) => reviveDates(MODEL_BY_FILE.entryTranslations, r)) as never });
       for (const c of chunks(d.redirects)) await tx.redirect.createMany({ data: c.map((r) => reviveDates(MODEL_BY_FILE.redirects, r)) as never });
       for (const c of chunks(d.records)) await tx.moduleRecord.createMany({ data: c.map((r) => ({ ...reviveDates(MODEL_BY_FILE.records, r), data: JSON.stringify(r.data) })) as never });
+      // Rôles : un rôle n'est « prédéfini » que par sa clé (owner, admin, editor) ; une affectation vers une personne ou un rôle absent est ignorée.
+      const roles = restorableRoles(d.roles ?? []);
+      for (const c of chunks(roles)) await tx.role.createMany({ data: c as never });
+      const userIds = new Set(d.users.map((u) => String(u.id)));
+      const roleIds = new Set(roles.map((r) => String(r.id)));
+      const links = (d.userRoles ?? []).filter((r) => userIds.has(String(r.userId)) && roleIds.has(String(r.roleId))).map((r) => ({ userId: String(r.userId), roleId: String(r.roleId) }));
+      for (const c of chunks([...new Map(links.map((l) => [`${l.userId}|${l.roleId}`, l])).values()])) await tx.userRole.createMany({ data: c });
       for (const c of chunks(d.retired ?? [])) await tx.retiredInstance.createMany({ data: c.map((r) => ({ ...reviveDates("RetiredInstance", pickKnownColumns("retired", r)), payload: JSON.stringify(r.payload) })) as never });
 
       // Modules : un module « éteint » dans une sauvegarde d'avant la 0.1.20 garde ce drapeau le temps que la migration ci-dessous le désinstalle (données gardées).
@@ -190,12 +268,18 @@ export async function applyRestore(backup: ParsedBackup, opts: { confirmCustom: 
     return { ok: false, error: "failed", modules: outcomes };
   }
 
+  // Toutes les instances restaurées (et celles qui existaient avant) ont un stockage remplacé de l'extérieur : leur génération augmente.
+  await bumpGenerations([...new Set([...d.instances.map((r) => String(r.id)), ...generationsBefore.keys()])], generationsBefore)
+    .catch((e) => console.error("[backup] store generation bump failed:", (e as Error)?.message));
+
   // Images : on remplace celles du site par celles de la sauvegarde.
   fs.mkdirSync(UPLOADS_DIR, { recursive: true });
   for (const f of fs.readdirSync(UPLOADS_DIR)) if (UPLOAD_NAME_RE.test(f)) fs.rmSync(path.join(UPLOADS_DIR, f), { force: true });
   for (const u of backup.uploads) fs.writeFileSync(path.join(UPLOADS_DIR, u.name), u.content);
 
   resetModuleRegistry();
+  // Rôles prédéfinis présents et affectations alignées sur `User.role` (sauvegarde d'avant la 0.2.0 : c'est ce qui crée toute l'affectation).
+  await syncSystemAssignments().catch((e) => console.error("[backup] roles sync failed:", (e as Error)?.message));
   // TEMPORAIRE (retrait en 0.3.0) : une sauvegarde d'un site d'avant la 0.1.20 peut contenir des modules ou instances « éteints » ; ils deviennent « désinstallés, données gardées ».
   await retireLegacyOff().catch((e) => console.error("[backup] legacy off migration failed:", (e as Error)?.message));
   // Les données restaurées peuvent être celles d'une ancienne version d'un module, réinstallée plus récente : on les met à niveau.

@@ -29,6 +29,8 @@ export type TopicAdapter = {
   schema: TopicField[];
   providers(): Promise<ActiveInstance[]>;
   fetch(provider: ActiveInstance, query: { locale: string; limit: number; tags: string[]; from?: Date; to?: Date }): Promise<Record<string, unknown>[]>;
+  /** Lecture par curseur opaque d'UN fournisseur (`next: null` = fini). Absent : le sujet n'est lu qu'en une page. */
+  fetchPage?(provider: ActiveInstance, query: { locale: string; limit: number; tags: string[]; cursor?: string }): Promise<{ items: Record<string, unknown>[]; next: string | null }>;
 };
 
 /** Liste explicite des sujets du cœur. */
@@ -118,6 +120,72 @@ export async function collect(
   const providers = (await providersOf(topic)).filter((p) => !sources.instances || sources.instances.includes(p.instance.key));
   const lists = await Promise.all(providers.map((provider) => itemsOf(provider, topic, schema, opts.locale, limit, sources.tags, config.defaultLocale, window, false)));
   return lists.flat().slice(0, limit);
+}
+
+/** Curseur d'une collecte paginée : le fournisseur où l'on en est (sa clé) et le curseur propre à ce fournisseur. */
+const encodePageCursor = (instance: string, inner: string | null) => Buffer.from(JSON.stringify([instance, inner]), "utf8").toString("base64url");
+function decodePageCursor(raw: string): { instance: string; inner: string | null } {
+  try {
+    const v = JSON.parse(Buffer.from(raw.slice(0, 600), "base64url").toString("utf8"));
+    if (Array.isArray(v) && typeof v[0] === "string" && (v[1] === null || typeof v[1] === "string")) return { instance: v[0], inner: v[1] };
+  } catch { /* illisible : erreur ci-dessous */ }
+  throw new Error("topics.collectPage: invalid cursor");
+}
+
+/**
+ * Comme `collect`, mais PAGE PAR PAGE avec un curseur opaque : `{ items, next }`, `next: null` à la fin (la dernière page peut être vide).
+ * Au plus 200 éléments par page. Seuls les sujets du cœur (`core.entry`) se lisent vraiment par curseur ; un sujet fourni par un module n'a qu'une page
+ * (`next: null`), avec les mêmes éléments que `collect`. Un curseur illisible LÈVE une erreur. L'ordre de `core.entry` ici est celui de la date de parution
+ * (plus récent d'abord) dans chaque fournisseur, fournisseurs pris l'un après l'autre.
+ */
+export async function collectPage(
+  consumer: ActiveInstance,
+  topic: string,
+  opts: { limit?: number; locale: string; cursor?: string | null } & TopicWindowInput,
+): Promise<{ items: TopicItem[]; next: string | null }> {
+  const adapter = adapterOf(topic);
+  if (!adapter?.fetchPage) {
+    if (opts.cursor) return { items: [], next: null };
+    return { items: await collect(consumer, topic, opts), next: null };
+  }
+  const decl = consumer.mod.manifest.consumes?.find((c) => c.topic === topic);
+  if (!decl) throw new Error(`module "${consumer.mod.manifest.id}" does not declare consuming "${topic}"`);
+  const limit = Math.min(200, Math.max(1, opts.limit ?? 50));
+  parseTopicWindow(opts);   // même contrôle de plage que `collect`
+  const sources = await getSources(consumer.instance.id, topic);
+  const config = await getSiteConfig();
+  const providers = (await providersOf(topic)).filter((p) => !sources.instances || sources.instances.includes(p.instance.key)).sort((a, b) => a.instance.key.localeCompare(b.instance.key));
+  let index = 0;
+  let inner: string | null = null;
+  if (opts.cursor) {
+    const c = decodePageCursor(opts.cursor);
+    index = providers.findIndex((p) => p.instance.key === c.instance);
+    if (index < 0) throw new Error("topics.collectPage: invalid cursor");
+    inner = c.inner;
+  }
+  const items: TopicItem[] = [];
+  for (; index < providers.length; index++) {
+    const provider = providers[index]!;
+    let page: { items: Record<string, unknown>[]; next: string | null };
+    try {
+      page = await adapter.fetchPage(provider, { locale: opts.locale, limit: limit - items.length, tags: sources.tags, cursor: inner ?? undefined });
+    } catch (error) {
+      if (inner) throw error;   // curseur refusé par le fournisseur : on le dit
+      console.error(`[modules] provider ${provider.instance.key} failed for topic ${topic}:`, error);
+      page = { items: [], next: null };
+    }
+    for (const raw of page.items) {
+      const item = conform(raw, adapter.schema);
+      if (item) items.push({ ...item, source: { instance: provider.instance.key, module: provider.mod.manifest.id, name: pickName(provider.instance, opts.locale, config.defaultLocale) } });
+    }
+    if (page.next) return { items, next: encodePageCursor(provider.instance.key, page.next) };
+    inner = null;
+    if (items.length >= limit) {
+      const following = providers[index + 1];
+      return { items, next: following ? encodePageCursor(following.instance.key, null) : null };
+    }
+  }
+  return { items, next: null };
 }
 
 /** Les éléments valides d'UN fournisseur, déjà étiquetés de leur source. Une erreur du fournisseur est journalisée et donne une liste vide : elle n'empêche pas la collecte. */

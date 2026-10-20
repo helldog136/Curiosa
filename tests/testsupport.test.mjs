@@ -58,6 +58,8 @@ const FAULTS = {
   "i18n.unused": (f) => { for (const l of ["en", "fr"]) { const d = JSON.parse(f[`locales/${l}.json`]); d.leftover = "unused"; f[`locales/${l}.json`] = JSON.stringify(d); } },
   "settings.sane": (f) => editManifest(f, (m) => { m.settings.push({ ...m.settings[0] }); }),
   "settings.optional": (f) => editManifest(f, (m) => { m.settings.push({ key: "extra", type: "text", label: { en: "Extra (optional)", fr: "Extra (facultatif)" } }); }),
+  "settings.refersToChoice": (f) => editManifest(f, (m) => { m.settings.push({ key: "cat", type: "text", optional: true, refersTo: "category", label: { en: "Category", fr: "Catégorie" } }); }),
+  "settings.textNamesExisting": (f) => editManifest(f, (m) => { m.settings.push({ key: "chan", type: "text", optional: true, label: { en: "Channel", fr: "Chaîne" }, help: { en: "Type the channel name.", fr: "Saisissez le nom de la chaîne." } }); }),
   "settings.advanced": (f) => editManifest(f, (m) => { m.settings.push({ key: "delay", type: "number", advanced: true, label: { en: "Delay", fr: "Délai" } }); }),
   "secrets.hidden": (f) => REPLACE(f, 'async latest(ctx) {', 'async latest(ctx) {\n      if (ctx.setting("apiKey")) return [{ type: "markdown", text: "key: " + ctx.setting("apiKey") }];'),
   "wording.simple": (f) => editManifest(f, (m) => { m.description.en = "Stores messages as JSON for visitors."; }),
@@ -80,7 +82,12 @@ const FAULTS = {
   "mcp.described": (f) => editManifest(f, (m) => { m.mcp[0].description = "List."; }),
   "tasks.valid": (f) => REPLACE(f, "everyMinutes: 5", "everyMinutes: 0"),
   "tasks.idempotent": (f) => REPLACE(f, 'if (known) await ctx.api.store.update(known.id, { at: 1 });\n        else await ctx.api.store.add("state", { at: 1 });', 'await ctx.api.store.add("state", { at: Date.now() });'),
-  "tasks.failure": (f) => REPLACE(f, 'try { await fetch("https://example.org/feed"); } catch { /* service indisponible : on réessaiera */ }', 'await fetch("https://example.org/feed");'),
+  "tasks.failure": (f) => REPLACE(f, "if (!feed.ok) { /* service indisponible : on réessaiera */ }", 'if (!feed.ok) throw new Error("feed down");'),
+  "net.bounded": (f) => append(f, "index.mjs", 'export const ping = () => fetch("https://example.org/ping");'),
+  "net.noIdleTimer": (f) => append(f, "index.mjs", "export const loop = () => setInterval(() => {}, 60000);"),
+  "net.429": (f) => REPLACE(f, 'const feed = await ctx.api.net.request({ url: "https://example.org/feed" });', 'const feed = await fetch("https://example.org/feed", { signal: AbortSignal.timeout(2000) }).catch(() => ({ ok: false }));'),
+  "net.fallback": (f) => REPLACE(f, "const [last] = await rows(ctx);", 'await fetch("https://example.org/live", { signal: AbortSignal.timeout(10000) }).catch(() => null);\n      const [last] = await rows(ctx);'),
+  "downloads.bounded": (f) => REPLACE(f, 'yield "name,text\\n";', 'for (let i = 0; i < 1e9; i++) yield "x".repeat(1000);'),
   "data.version": (f) => REPLACE(f, "migrations: { 2: async () => {} }", "migrations: { 2: async () => {}, 7: async () => {} }"),
   "data.migrations": (f) => REPLACE(f, "migrations: { 2: async () => {} }", "migrations: { 2: async (ctx) => { await ctx.api.store.list(\"nothing\").then((r) => r[0].data); } }"),
   "privacy.declared": (f) => editManifest(f, (m) => { delete m.privacy; }),
@@ -268,4 +275,33 @@ test("le modèle d'auteur (testsupport/template) réussit toutes les exigences o
   assert.equal(rep.summary.ok, true, JSON.stringify(rep.results.filter((r) => r.status === "fail")));
   const r = spawnSync(process.execPath, ["--disable-warning=MODULE_TYPELESS_PACKAGE_JSON", "--test", "testsupport/template/my-module.test.mjs"], { encoding: "utf8", env: cleanEnv });
   assert.equal(r.status, 0, r.stdout + r.stderr);
+});
+
+test("downloads.bounded : un droit non déclaré dans module.json, un type inconnu et un générateur qui lève une erreur sont signalés", async () => {
+  const rep = await checkModule(mk((f) => {
+    REPLACE(f, 'right: "export",', 'right: "nowhere",');
+    REPLACE(f, 'contentType: "text/csv",', 'contentType: "text/html",');
+    REPLACE(f, 'yield "name,text\\n";', 'throw new Error("boom");');
+  }), { siblings: [] });
+  const res = status(rep, "downloads.bounded");
+  assert.equal(res.status, "fail");
+  assert.match(res.problems.join("\n"), /nowhere/);
+  assert.match(res.problems.join("\n"), /text\/html/);
+  assert.match(res.problems.join("\n"), /échoue/);
+});
+
+test("adminActions à droit ({ right, run }, cœur 0.2.0) : le kit les accepte (def.loads) ET les exécute dans la sonde (redirection vers l'extérieur signalée)", async () => {
+  const withRight = (run) => mk((f) => { f["index.mjs"] = f["index.mjs"].replace("export default {", `export default {\n  adminActions: { exporter: { right: "export", run: ${run} } },`); });
+  const accepted = withRight("async () => ({ redirect: '/admin' })");
+  const r1 = await checkModule(accepted, { siblings: [] });
+  assert.equal(status(r1, "def.loads").status, "pass", "la forme { right, run } n'est plus refusée");
+  assert.notEqual(status(r1, "routes.redirect").status, "fail");
+  const evil = withRight("async () => ({ redirect: 'https://evil.example/phish' })");
+  const r2 = await checkModule(evil, { siblings: [] });
+  assert.equal(status(r2, "def.loads").status, "pass");
+  assert.equal(status(r2, "routes.redirect").status, "fail", "la sonde exécute l'action à droit et voit sa redirection");
+  assert.match(JSON.stringify(status(r2, "routes.redirect")), /exporter/);
+  // Une valeur qui n'est ni une fonction ni { run } reste refusée.
+  const bad = mk((f) => { f["index.mjs"] = f["index.mjs"].replace("export default {", "export default {\n  adminActions: { cassee: { right: 'export' } },"); });
+  assert.equal(status(await checkModule(bad, { siblings: [] }), "def.loads").status, "fail");
 });

@@ -2,6 +2,7 @@ import type { McpTool, McpToolProvider } from "@/core/services/mcp/types";
 import { McpToolError, validateArgs } from "@/core/services/mcp/validate";
 import { callLevel3, runLevel2, type Level2Tool } from "./actions";
 import { auditTrail, diagnose, health, modules, status, updates } from "./inspect";
+import { legacyReportForAssistant } from "@/core/modules/legacyReport";
 import { redactDeep } from "./redact";
 import { getRequest, type Level3Action } from "./requests";
 
@@ -56,6 +57,7 @@ const DEFS: Def[] = [
       return { requestId: r.id, action: r.action, status: r.status === "pending" ? "pending_approval" : r.status, plan: r.plan, createdAt: new Date(r.createdAt).toISOString(), expiresAt: new Date(r.expiresAt).toISOString(), ...(r.result ? { result: r.result } : {}) };
     },
   },
+  { name: "legacy", level: 1, title: "Data upgrade report", description: "What is left to upgrade after an update from an earlier version of the site: old module rows, switched-off items, instances whose data is behind or set aside, takeovers not done, hidden settings still filled in, unknown settings. Read-only; counts and names only, never a setting value.", input: NONE, run: () => legacyReportForAssistant() },
 
   { name: "check_updates", level: 2, title: "Check for updates again", description: "Clears the version caches and checks the core and the modules again (the admin's \"Check again\" button).", input: NONE, run: level2("check_updates") },
   { name: "backup_run", level: 2, title: "Back up the database", description: "Makes a copy of the database on the server (the 5 most recent are kept). Do it before any update. The copy cannot be read or downloaded through this API.", input: NONE, run: level2("backup_run") },

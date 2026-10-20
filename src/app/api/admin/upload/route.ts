@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
-import { currentUser } from "@/core/permissions";
+import { currentUser, isMember } from "@/core/permissions";
 import { looksLikeSvg, saveSvgUpload } from "@/core/logoUpload";
 import { MAX_VIDEO_BYTES, saveUpload } from "@/core/services/uploads";
 
 export async function POST(request: Request) {
-  if (!(await currentUser())) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  const user = await currentUser();
+  if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  // Connecté mais sans aucun accès à l'administration (aucun rôle utile) : pas d'envoi de fichier.
+  if (!isMember(user)) return NextResponse.json({ error: "forbidden" }, { status: 403 });
   const form = await request.formData();
   const file = form.get("file");
   if (!(file instanceof File) || file.size > MAX_VIDEO_BYTES) return NextResponse.json({ error: "invalid" }, { status: 400 });

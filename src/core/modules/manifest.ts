@@ -4,13 +4,22 @@ import { COLOR_TOKENS } from "../color";
 import { groupIssues } from "./groups";
 import { siteDefaultRef } from "./settingValues";
 import { PLATFORM_PATTERN } from "./platform";
+import { MAX_MODULE_RIGHTS, OPEN, RIGHT_ID_RE } from "../auth/rights";
+import { SERVICE_RE } from "./serviceVersions";
+import { NO_CREATE_REFERS, REFERS_TO } from "./choiceValues";
 
 const localized = z.union([z.string().max(500), z.record(z.string(), z.string().max(500))]);
+const methodName = z.string().regex(/^[a-zA-Z][a-zA-Z0-9_]{0,40}$/);
+/** Source des options d'un réglage `choice` (cœur 0.2.0 ; un cœur plus ancien refuse `type: "choice"` : d'où `minCore: "0.2.0"`). */
+const choiceSource = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("providers"), service: z.string().regex(SERVICE_RE), min: z.number().int().min(1).max(1000).optional() }),
+  z.object({ kind: z.literal("service"), service: z.string().regex(SERVICE_RE), list: methodName, get: methodName, create: methodName.optional() }),
+]);
 
 export const settingField = z.object({
   key: z.string().regex(/^[a-zA-Z][a-zA-Z0-9_]{0,40}$/),
   label: localized,
-  type: z.enum(["text", "textarea", "url", "link", "number", "boolean", "select", "color", "secret", "image", "video"]),
+  type: z.enum(["text", "textarea", "url", "link", "number", "boolean", "select", "color", "secret", "image", "video", "choice"]),
   help: localized.optional(),
   default: z.union([z.string(), z.number(), z.boolean()]).optional(),
   options: z.array(z.object({ value: z.string(), label: localized })).max(50).optional(),
@@ -20,7 +29,27 @@ export const settingField = z.object({
   optional: z.boolean().optional(),
   /** « appearance » : réglage d'apparence du module (couleurs, textures…), regroupé à part dans l'admin. */
   group: z.enum(["appearance"]).optional(),
+  /** `choice` (0.2.0) : d'où viennent les options (obligatoire pour ce type, interdit ailleurs). */
+  source: choiceSource.optional(),
+  /** `choice` de source `service` avec `create` : création à la volée par le module propriétaire de la donnée. */
+  allowCreate: z.boolean().optional(),
+  /** `choice` qui remplace un ancien réglage texte de même clé. */
+  fromText: z.boolean().optional(),
+  /** Ce que désigne le réglage (règle de kit) ; un cœur ancien ignore la clé. */
+  refersTo: z.enum(REFERS_TO).optional(),
 }).superRefine((f, ctx) => {
+  // Réglage « choix parmi » : une source, ni défaut ni traduction (la valeur est un identifiant), création seulement par le service propriétaire.
+  if (f.type === "choice") {
+    if (!f.source) ctx.addIssue({ code: "custom", message: "a choice setting needs a source ({ kind: \"providers\" | \"service\", … })" });
+    if (f.default !== undefined) ctx.addIssue({ code: "custom", message: "a choice setting cannot have a default (with a single option, the core uses it without storing it)" });
+    if (f.translatable) ctx.addIssue({ code: "custom", message: "a choice setting cannot be translatable" });
+    if (f.allowCreate) {
+      if (f.source?.kind !== "service" || !f.source.create) ctx.addIssue({ code: "custom", message: "allowCreate needs a source of kind \"service\" with a create method" });
+      if (f.refersTo && (NO_CREATE_REFERS as readonly string[]).includes(f.refersTo)) ctx.addIssue({ code: "custom", message: `allowCreate is not allowed for a setting that refers to a ${f.refersTo}` });
+    }
+  } else {
+    for (const k of ["source", "allowCreate", "fromText"] as const) if (f[k] !== undefined) ctx.addIssue({ code: "custom", message: `${k} is only for a choice setting` });
+  }
   // Une couleur peut suivre le thème du site : default "theme:<jeton>". Rien d'autre n'est permis comme référence.
   if (typeof f.default === "string" && f.default.startsWith("theme:")) {
     if (f.type !== "color") ctx.addIssue({ code: "custom", message: "only a color setting can default to a theme token" });
@@ -111,7 +140,7 @@ export const manifestSchema = z.object({
    * automatiquement). On dépend d'un service, jamais d'un module précis : n'importe quel module qui l'offre convient.
    */
   offers: z.array(z.object({ service: topicId, label: localized.optional(), /** Version de l'interface du service (entier ≥ 1, défaut 1) : à augmenter quand le service gagne une capacité. */ version: serviceVersion.optional(), /** Méthodes qui ne font que lire : elles ne sont pas répliquées sur les fournisseurs secondaires. */ readOnly: z.array(z.string().regex(/^[a-zA-Z][a-zA-Z0-9_]{0,40}$/)).max(20).optional(), /** « Chaque instance de ce module répond pour elle-même » (ex. une chaîne par instance) : pas de maître à choisir, `ctx.api.services.callAll` les interroge toutes. Défaut : false. */ each: z.boolean().optional() })).max(10).optional(),
-  requires: z.array(z.object({ service: topicId, label: localized.optional(), /** Version minimale du service exigée (entier ≥ 1, défaut 1). */ min: serviceVersion.optional() })).max(10).optional(),
+  requires: z.array(z.object({ service: topicId, label: localized.optional(), /** Version minimale du service exigée (entier ≥ 1, défaut 1). */ min: serviceVersion.optional(), /** Besoin FACULTATIF (cœur 0.2.0) : le module fonctionne sans, en mieux avec ; jamais installé d'office, n'empêche ni l'installation ni la désinstallation du fournisseur. Un cœur ancien ignore la clé (besoin dur). */ optional: z.boolean().optional() })).max(10).optional(),
   /**
    * SECTIONS AJOUTÉES À L'ÉDITEUR D'ENTRÉE D'UN AUTRE MODULE (voir entryPanels.ts). `for` désigne les entrées concernées SANS nommer un module précis : un sujet
    * (`topic` : toute instance dont le module le fournit via `provides`) ou, à défaut, un module (`module`). La section n'apparaît que si ce module est installé et actif.
@@ -151,6 +180,18 @@ export const manifestSchema = z.object({
   seeds: z.array(z.object({ module: z.string().regex(/^[a-z][a-z0-9-]{1,39}$/), reason: localized })).max(3).optional(),
   /** Version de la STRUCTURE des données du module (stockage, réglages). À augmenter quand elle change : voir `migrations`. */
   dataVersion: z.number().int().min(1).max(10000).optional(),
+  /**
+   * (0.2.0) Plus petite version des données que cette version du module sait encore convertir. Une instance plus ancienne est mise à l'écart
+   * (« passez d'abord par une version intermédiaire ») au lieu d'être déclarée à jour. ≤ dataVersion. Un cœur ancien ignore la clé.
+   */
+  dataFloor: z.number().int().min(1).max(10000).optional(),
+  /**
+   * (0.2.0) Réglages qu'une version précédente déclarait et que le module reprend lui-même (`ctx.legacy`). JAMAIS affichés, même en mode avancé ;
+   * `secret` : la valeur ne doit jamais sortir de la mémoire. Une clé ici n'est pas dans `settings`. Un cœur ancien ignore la clé.
+   */
+  legacySettings: z.array(z.object({ key: z.string().regex(/^[a-zA-Z][a-zA-Z0-9_]{0,40}$/), secret: z.boolean().optional() })).max(20).optional(),
+  /** (0.2.0) Collections du stockage qu'une version précédente remplissait et que le module vide après reprise : comptées par le rapport d'entretien, jamais lues par le cœur. */
+  legacyCollections: z.array(z.string().regex(/^[a-zA-Z][a-zA-Z0-9_.-]{0,60}$/)).max(10).optional(),
   onboarding: z
     .object({
       home: z.object({ section: z.string(), count: z.number().int().min(1).max(50).optional() }).optional(),
@@ -160,13 +201,40 @@ export const manifestSchema = z.object({
     .optional(),
   defaultEnabled: z.boolean().optional(),
   permissions: z.array(z.enum(["slots", "routes", "storage", "filters", "sections", "pages", "topics", "overlay", "mcp", "admin", "mail", "rawg"])).default([]),
+  /**
+   * Droits du module (0.2.0), proposés dans les rôles de la page Équipe. Identifiant LOCAL (« email.view ») : le cœur le préfixe par l'identifiant du module
+   * (« <module>:email.view »), un module ne peut donc pas déclarer le droit d'un autre. `open` (ouvrir la page d'admin du module) est implicite.
+   * `default` : ce que reçoivent les rôles prédéfinis (administrateur : oui sauf `admin: false` ; éditeur : non sauf `editor: true`). Un cœur ancien ignore cette clé.
+   */
+  rights: z.array(z.object({
+    id: z.string().regex(RIGHT_ID_RE, "right id must be lowercase segments like email.view (no colon: the core adds the module prefix)").refine((id) => id !== OPEN, "open is implicit: do not declare it"),
+    label: localized,
+    help: localized.optional(),
+    sensitive: z.boolean().optional(),
+    default: z.object({ admin: z.boolean().optional(), editor: z.boolean().optional() }).optional(),
+  })).max(MAX_MODULE_RIGHTS).optional(),
 }).superRefine((m, ctx) => {
+  if (new Set((m.rights ?? []).map((r) => r.id)).size < (m.rights ?? []).length) ctx.addIssue({ code: "custom", path: ["rights"], message: "duplicate right id" });
   for (const [i, seed] of (m.seeds ?? []).entries()) {
     if (seed.module === m.id) ctx.addIssue({ code: "custom", path: ["seeds", i, "module"], message: "a module cannot seed itself" });
     if (!m.requires?.length && !m.consumes.length) ctx.addIssue({ code: "custom", path: ["seeds", i, "module"], message: "seeds needs a matching `requires` or `consumes` (the target must offer a service this module requires, or provide a topic this module consumes)" });
   }
   if (new Set((m.seeds ?? []).map((x) => x.module)).size < (m.seeds ?? []).length) ctx.addIssue({ code: "custom", path: ["seeds"], message: "duplicate seed target" });
   for (const message of groupIssues(m.optionalGroups ?? [], m.settings)) ctx.addIssue({ code: "custom", path: ["optionalGroups"], message });
+  // Héritage (0.2.0) : une clé reprise n'est pas un réglage affiché ; plancher ≤ version des données.
+  const declared = new Set(m.settings.map((f) => f.key));
+  const legacy = m.legacySettings ?? [];
+  for (const [i, l] of legacy.entries()) if (declared.has(l.key)) ctx.addIssue({ code: "custom", path: ["legacySettings", i, "key"], message: `"${l.key}" is both a setting and a legacy setting` });
+  if (new Set(legacy.map((l) => l.key)).size < legacy.length) ctx.addIssue({ code: "custom", path: ["legacySettings"], message: "duplicate legacy setting" });
+  if (m.dataFloor !== undefined && m.dataFloor > (m.dataVersion ?? 1)) ctx.addIssue({ code: "custom", path: ["dataFloor"], message: "dataFloor must be ≤ dataVersion" });
+  // Un `choice` interroge le service AU NOM de l'instance : le service doit être déclaré dans `requires` (sinon le cœur ne peut pas l'appeler).
+  const required = new Set((m.requires ?? []).map((r) => r.service));
+  for (const [i, f] of m.settings.entries()) {
+    if (f.type === "choice" && f.source && !required.has(f.source.service)) ctx.addIssue({ code: "custom", path: ["settings", i, "source", "service"], message: `the choice source "${f.source.service}" must be declared in requires` });
+  }
+  for (const [i, sec] of m.sections.entries()) {
+    for (const [j, o] of (sec.options ?? []).entries()) if (o.type === "choice") ctx.addIssue({ code: "custom", path: ["sections", i, "options", j, "type"], message: "a choice is only for instance settings, not for section options" });
+  }
 });
 
 export type ParsedManifest = z.infer<typeof manifestSchema>;

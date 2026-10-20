@@ -11,6 +11,8 @@ import { resetMemberPassword } from "@/core/auth/teamPassword";
 import { passwordProblem } from "@/core/auth/passwordPolicy";
 import { getSetting, setSetting } from "@/core/settings";
 import { audit } from "@/core/permissions";
+import { isOwner, levelOf } from "@/core/auth/access";
+import { assignInitialRole, createRole, deleteRole, setUserRoles, updateRole, type RoleFailure } from "@/core/auth/roles";
 import type { ActionState } from "@/components/admin/ActionForm";
 
 export async function createUser(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -21,31 +23,63 @@ export async function createUser(_prev: ActionState, formData: FormData): Promis
   const role = String(formData.get("role"));
   if (!name || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { error: t("error.generic") };
   if (passwordProblem(password)) return { error: t("setup.error.password") };
-  // Seul le propriétaire crée des admins ; un admin ne crée que des éditeurs.
-  if (role !== "editor" && !(role === "admin" && user.role === "owner")) return { error: t("error.denied") };
+  // Seul le propriétaire crée des admins ; un admin ne crée que des éditeurs (jamais un propriétaire, jamais « none » : un rôle personnalisé s'affecte ensuite).
+  if (role !== "editor" && !(role === "admin" && isOwner(user))) return { error: t("error.denied") };
   if (await prisma.user.findUnique({ where: { email } })) return { error: t("users.exists") };
-  await prisma.user.create({ data: { email, name, role, passwordHash: await bcrypt.hash(password, 12) } });
+  const created = await prisma.user.create({ data: { email, name, role, passwordHash: await bcrypt.hash(password, 12) } });
+  await assignInitialRole(created.id);
   await audit(user.email, "user.create", email);
   revalidatePath("/admin/users");
   return { ok: t("action.saved") };
 }
 
-export async function setUserRole(id: string, formData: FormData): Promise<void> {
-  const { user } = await adminCtx("owner");
-  const role = String(formData.get("role"));
-  if (!["admin", "editor"].includes(role)) return;
-  const target = await prisma.user.findUnique({ where: { id } });
-  if (!target || target.role === "owner") return;
-  await prisma.user.update({ where: { id }, data: { role } });
-  await audit(user.email, "user.role", `${target.email}:${role}`);
+/**
+ * Les rôles d'une personne (puces cumulables). Propriétaire seulement ; toutes les règles (propriétaire intouchable, au moins un rôle, `owner` jamais affecté,
+ * identifiant forgé refusé) sont dans `core/auth/roles.ts`, qui relit l'acteur en base : seul l'identifiant de la cible vient de la page.
+ */
+export async function setUserRolesAction(id: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
+  const { user, t } = await adminCtx("owner");
+  const r = await setUserRoles(user.id, String(id ?? ""), formData.getAll("roleId").map(String));
+  if (!r.ok) return { error: t(roleError(r.reason)) };
   revalidatePath("/admin/users");
+  return { ok: t("action.saved") };
+}
+
+const roleError = (reason: RoleFailure): string => `roles.error.${reason}`;
+const rightsOf = (formData: FormData) => formData.getAll("right").map(String);
+
+/** Nouveau rôle personnalisé (propriétaire seulement ; droits revérifiés côté serveur : aucun droit réservé, inconnu, ou que le propriétaire n'a pas). */
+export async function createRoleAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const { user, t } = await adminCtx("owner");
+  const r = await createRole(user.id, { name: formData.get("name"), description: formData.get("description"), rights: rightsOf(formData) });
+  if (!r.ok) return { error: t(roleError(r.reason)) };
+  revalidatePath("/admin/users");
+  return { ok: t("roles.created") };
+}
+
+export async function updateRoleAction(id: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
+  const { user, t } = await adminCtx("owner");
+  const r = await updateRole(user.id, String(id ?? ""), { name: formData.get("name"), description: formData.get("description"), rights: rightsOf(formData) });
+  if (!r.ok) return { error: t(roleError(r.reason)) };
+  revalidatePath("/admin/users");
+  return { ok: t("action.saved") };
+}
+
+/** Supprime un rôle personnalisé ; s'il est en usage, ses membres reçoivent le rôle choisi (`replacement`). */
+export async function deleteRoleAction(id: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
+  const { user, t } = await adminCtx("owner");
+  const r = await deleteRole(user.id, String(id ?? ""), String(formData.get("replacement") ?? "") || null);
+  if (!r.ok) return { error: t(roleError(r.reason)) };
+  revalidatePath("/admin/users");
+  return { ok: t("roles.deleted") };
 }
 
 export async function deleteUser(id: string): Promise<void> {
   const { user } = await adminCtx("admin");
   const target = await prisma.user.findUnique({ where: { id } });
-  if (!target || target.role === "owner" || target.id === user.id) return;
-  if (target.role === "admin" && user.role !== "owner") return;
+  if (!target || levelOf(target) === "owner" || target.id === user.id) return;
+  // Un administrateur ne supprime qu'un éditeur (comme avant) ; un compte d'un autre niveau ou à rôle personnalisé : le propriétaire seulement.
+  if (!isOwner(user) && levelOf(target) !== "editor") return;
   await prisma.user.delete({ where: { id } });
   await audit(user.email, "user.delete", target.email);
   revalidatePath("/admin/users");

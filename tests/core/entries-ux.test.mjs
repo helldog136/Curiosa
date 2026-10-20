@@ -32,7 +32,7 @@ test("éditeur d'entrée : titre, infos propres, texte, image, publication, puis
 test("liste d'entrées : état vide avec action, même ordre que le site, état en puce", () => {
   const l = read(`${dir}/page.tsx`);
   assert.match(l, /entries\.createFirst/);
-  assert.match(l, /orderBy\(sort\)/);
+  assert.match(read("src/core/content/adminList.ts"), /orderBy\(sort\)/);   // l'ordre vient de la requête paginée, la même que celle du site
   assert.match(l, /entryState\(e\)/);
 });
 

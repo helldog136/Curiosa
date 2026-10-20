@@ -29,7 +29,9 @@ export type RecognizedItem = {
   /** Services que le module offre, annoncés par l'index (`"offers": ["contact.store"]`, ou `{ service, version }`) : permet de le choisir comme fournisseur SANS le télécharger. Facultatif, relu à l'installation. */
   offers?: { service: string; version?: number; each?: true }[];
   /** Services dont le module a besoin (`"requires": ["contact.store"]`, ou `{ service, min }` ; une liste, à ne pas confondre avec `requires: { core }`). Forme interne gardée dans la copie locale : `needs`. */
-  needs?: { service: string; min?: number }[];
+  needs?: { service: string; min?: number; optional?: true }[];
+  /** « official » : listé par le dépôt du catalogue (ou sa dernière copie reçue) ; « extra » : ajouté par MODULES_INDEX_URL, jamais installé d'office (voir dependencyPlan.ts). */
+  catalogueOrigin?: "official" | "extra";
 };
 
 /** D'où vient la liste affichée : le dépôt du catalogue (à jour), ou la dernière copie reçue de lui ; « none » = catalogue injoignable et jamais reçu (liste vide, jamais une copie locale). */
@@ -118,6 +120,16 @@ function readPersisted(): { items: RecognizedItem[]; suggested: string[]; fetche
   } catch { return null; }
 }
 
+/**
+ * La dernière copie reçue de l'index, SANS réseau (balayage de conversion au démarrage, legacySweep.ts). Seulement si elle vient du dépôt du catalogue
+ * configuré aujourd'hui (une copie d'un autre dépôt ne dit rien de celui-ci) ; sinon liste vide. Ne lève jamais.
+ */
+export function readRecognizedCacheOffline(): RecognizedItem[] {
+  const kept = readPersisted();
+  if (!kept || !kept.origin || kept.origin !== resolveIndexRepo()) return [];
+  return kept.items.filter((c) => c.catalogueOrigin !== "extra");
+}
+
 /** Un catalogue injoignable n'est retenu que quelques secondes : « réessayez » doit pouvoir réussir sans attendre un quart d'heure. */
 const FAILED_TTL = 20_000;
 let memo: { at: number; key: string; result: RecognizedResult } | null = null;
@@ -158,11 +170,12 @@ export async function getRecognizedDetailed(opts: RecognizedOptions = {}): Promi
     if (kept && kept.items.length + (kept.fetchedAt ? 1 : 0) > 0) base = { items: kept.items, source: "cache", fetchedAt: kept.fetchedAt, origin: kept.origin, suggested: kept.suggested };
   }
 
-  const items = [...base.items];
+  // Le dépôt du catalogue (ou sa dernière copie reçue, qui ne contient que lui) : « official ». L'index supplémentaire : « extra ».
+  const items: RecognizedItem[] = base.items.map((i) => ({ ...i, catalogueOrigin: "official" as const }));
   if (extraUrl?.startsWith("https://")) {
     try {
       const res = await fetchImpl(extraUrl, { signal: AbortSignal.timeout(5000), cache: "no-store" });
-      if (res.ok) for (const e of sanitizeEntries(await res.json())) if (!items.some((i) => i.id === e.id)) items.push(e);
+      if (res.ok) for (const e of sanitizeEntries(await res.json())) if (!items.some((i) => i.id === e.id)) items.push({ ...e, catalogueOrigin: "extra" });
     } catch { /* index supplémentaire injoignable : on garde le reste */ }
   }
   const result = { ...base, items: items.slice(0, 300) };

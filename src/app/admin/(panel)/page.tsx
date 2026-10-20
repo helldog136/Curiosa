@@ -1,4 +1,6 @@
 import { adminCtx } from "@/core/admin";
+import { can, hasRole, isOwner } from "@/core/auth/access";
+import { navItemVisible } from "@/core/modules/adminMenu";
 import { prisma } from "@/core/db";
 import { getAdminNav } from "@/core/modules/adminNav";
 import { ui } from "@/components/admin/ui";
@@ -13,8 +15,9 @@ import { EXTENSIONS_HREF } from "@/core/modules/extensionsLinks";
 import { assistantsTabHref } from "@/core/services/mcp/assistantsLinks";
 
 export default async function Dashboard({ searchParams }: { searchParams: Promise<{ denied?: string; welcome?: string; modules?: string }> }) {
-  const { t, locale, config, advanced, user } = await adminCtx("editor");
-  const nav = await getAdminNav(config.defaultLocale, config.defaultLocale);
+  // Tout accès suffit (le menu y renvoie) ; ne montre que ce que cette personne peut ouvrir.
+  const { t, locale, config, advanced, user } = await adminCtx("member");
+  const nav = (await getAdminNav(config.defaultLocale, config.defaultLocale)).filter((m) => navItemVisible(m, (right) => can(user, right)));
   const firstContent = nav.find((i) => i.content && !i.error);
   const { denied, welcome, modules: setupModulesState } = await searchParams;
   const [drafts, published, redirects, collections, modules] = await Promise.all([
@@ -26,10 +29,10 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   ]);
   const todo = nav.filter((i) => i.badge > 0);
   // Extensions à configurer : chacune dit ce qu'il reste à renseigner (réservé à qui règle les extensions).
-  const statuses = user.role !== "editor" ? await loadInstanceStatuses(locale, config.defaultLocale).catch(() => null) : null;
+  const statuses = hasRole(user, "admin") ? await loadInstanceStatuses(locale, config.defaultLocale).catch(() => null) : null;
   const toSetUp = nav.flatMap((i) => { const s = statuses?.get(i.id); return s?.state === "setup" ? [{ item: i, summary: summarizeMissing(s.missing) }] : []; });
-  const updateAvailable = user.role === "owner" && (await getUpdateCheck().catch(() => null))?.available === true;
-  const ai = user.role === "owner" ? await maintenanceSummary().catch(() => null) : null;
+  const updateAvailable = isOwner(user) && (await getUpdateCheck().catch(() => null))?.available === true;
+  const ai = isOwner(user) ? await maintenanceSummary().catch(() => null) : null;
   const stats = (await statsEnabled()) ? await statsSummary() : null;
   const peak = Math.max(1, ...(stats?.days.map((d) => d.visitors) ?? [1]));
   const stat = (label: string, value: number, href: string) => (
@@ -69,7 +72,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
           </ul>
         </section>
       )}
-      {!advanced && (
+      {!advanced && hasRole(user, "editor") && (
         <section aria-label={t("dashboard.start")} className="space-y-3">
           <h2 className="text-lg font-semibold">{t("dashboard.start")}</h2>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -90,7 +93,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
                 <p className="text-lg font-semibold">{t("dashboard.shortcuts")}</p>
                 <p className="mt-1 text-sm leading-5 text-muted">{t("dashboard.shortcutsHelp")}</p>
             </a>
-            {user.role !== "editor" && (
+            {hasRole(user, "admin") && (
               <a href={EXTENSIONS_HREF} className={`${ui.card} block transition hover:-translate-y-0.5 hover:border-accent`}>
                 <span className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-accent/10 text-2xl" aria-hidden>🧩</span>
                 <p className="text-lg font-semibold">{t("dashboard.addFeature")}</p>

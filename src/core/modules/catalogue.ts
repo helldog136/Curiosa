@@ -1,5 +1,5 @@
 import { MODULE_API_VERSION } from "../config";
-import { getRecognizedDetailed, type RecognizedItem, type RecognizedResult } from "./recognized";
+import { getRecognizedDetailed, readRecognizedCacheOffline, type RecognizedItem, type RecognizedResult } from "./recognized";
 import { incompatWithThisCore, type CoreRequirement } from "./compat";
 import type { LocalizedString } from "./types";
 import { normalizeNeeds, normalizeOffers, type ServiceNeed, type ServiceOffer } from "./serviceVersions";
@@ -39,6 +39,12 @@ export type CatalogueEntry = {
   /** Services offerts / exigés (index du catalogue) : lus SANS installer, pour dire ce que l'installation apportera. */
   offers?: ServiceOffer[];
   needs?: ServiceNeed[];
+  /**
+   * D'où vient l'entrée : « official » = dépôt du catalogue (ou sa dernière copie reçue) ; « extra » = index supplémentaire (MODULES_INDEX_URL).
+   * Un module « extra » n'est JAMAIS installé d'office (cascade, suggestion) : seulement proposé, avec un avertissement, sur un clic du propriétaire.
+   * À ne pas confondre avec `moduleOrigin()` (module installé : catalogue ou dépôt personnel) ni `RecognizedResult.origin` (adresse du dépôt du catalogue).
+   */
+  origin: "official" | "extra";
 };
 
 /** Entrée du catalogue pour un dépôt reconnu. */
@@ -46,10 +52,11 @@ function recognizedEntry(c: RecognizedItem, suggested: Set<string>): CatalogueEn
   const offers = normalizeOffers(c.offers);
   const needs = normalizeNeeds(c.needs);
   return {
-    id: c.id, name: c.name, description: c.description, version: c.version, icon: c.icon, author: c.author, suggested: suggested.has(c.id),
+    id: c.id, name: c.name, description: c.description, version: c.version, icon: c.icon, author: c.author, suggested: c.catalogueOrigin !== "extra" && suggested.has(c.id),
     kind: "recognized", provides: c.provides, repo: c.repo, ref: c.ref, subdir: c.subdir, compatible: c.apiVersion === undefined || c.apiVersion === MODULE_API_VERSION,
     requires: c.requires, needsNewerCore: incompatWithThisCore(c.requires)?.needs,
     offers: offers?.length ? offers : undefined, needs: needs?.length ? needs : undefined,
+    origin: c.catalogueOrigin === "extra" ? "extra" : "official",
   };
 }
 
@@ -60,6 +67,11 @@ export async function getCatalogue(opts: { fetchImpl?: typeof fetch } = {}): Pro
   const { items, suggested } = await getRecognizedDetailed({ fetchImpl: opts.fetchImpl });
   const ids = new Set(suggested);
   return items.map((c) => recognizedEntry(c, ids));
+}
+
+/** Le catalogue tel que la dernière copie reçue le décrit, sans aucun réseau (balayage de conversion au démarrage). Vide sans copie. */
+export function getCachedCatalogue(): CatalogueEntry[] {
+  return readRecognizedCacheOffline().map((c) => recognizedEntry(c, new Set()));
 }
 
 /** Le catalogue est-il injoignable (ni dépôt, ni dernière copie reçue) ? Alors « liste vide » veut dire « réessayez », pas « rien à proposer ». */

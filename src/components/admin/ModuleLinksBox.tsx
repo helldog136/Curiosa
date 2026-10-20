@@ -43,8 +43,9 @@ export function ModuleLinksBox({ id, name, view, t, names, advanced, isOwner }: 
               <ul className="mt-2 space-y-1.5 text-sm" data-testid="module-needs">
                 {view.needs.map((n) => (
                   <li key={n.service} className="flex flex-wrap items-center gap-x-2">
-                    <span aria-hidden>{n.ok ? "✔" : "⚠"}</span>
+                    <span aria-hidden>{n.ok ? "✔" : n.optional ? "○" : "⚠"}</span>
                     <span className="font-medium">{n.label}</span>
+                    {n.optional && <span className="text-xs text-muted">{t("deps.links.optional")}</span>}
                     <span className="text-muted">
                       {n.providers.length ? t("deps.links.providedBy", { names: n.providers.map((p) => p.active ? p.name : `${p.name} (${t("deps.links.off")})`).join(", ") }) : t("deps.links.noProvider")}
                     </span>

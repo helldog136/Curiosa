@@ -95,7 +95,7 @@ export function openSeedSession(mod: LoadedModule, owner: InstanceView): SeedSes
     if (manifest.instances === "single" && siblings.length) throw new SeedError("single", `"${targetId}" accepts a single instance and already has one`);
 
     const config = await getSiteConfig();
-    const settings = checkSettings(manifest, request.settings, config.locales);
+    const settings = await checkChoices(targetMod, checkSettings(manifest, request.settings, config.locales));
     const nicknames = siblings.map((s) => s.nickname).filter((n): n is string => !!n);
     const nickname = uniqueNickname(request.nickname, nicknames);
     const names = checkNames(request.names, config.locales) ?? defaultNames(manifest, config.locales, nickname);
@@ -201,6 +201,28 @@ function checkSettings(manifest: LoadedModule["manifest"], given: SeedRequest["s
       if (!checked.ok) throw new SeedError("invalid-setting", `seedInstance: invalid value for "${key}" (${checked.reason})`);   // jamais la valeur : ce peut être un secret
       out.push({ key, locale, value: checked.value });
     }
+  }
+  return out;
+}
+
+/**
+ * Un réglage « choix parmi » semé est validé comme à l'admin : l'id doit être une option ACTUELLE (revérifiée auprès du fournisseur, 3 s par champ,
+ * 5 s en tout ; délai dépassé = refus). L'unique option n'est pas écrite (elle reste résolue à l'exécution).
+ */
+async function checkChoices(target: LoadedModule, settings: Stored[]): Promise<Stored[]> {
+  const fields = settings.map((s) => ({ s, field: target.manifest.settings.find((f) => f.key === s.key) }));
+  const entries = fields.filter((x) => x.field?.type === "choice");
+  if (!entries.length) return settings;
+  const { validateChoices } = await import("./choice");
+  // L'instance n'existe pas encore : le fournisseur est interrogé au nom du module cible (seul son manifeste compte pour `requires`).
+  const pseudo = { id: "", key: `seed:${target.manifest.id}`, moduleId: target.manifest.id } as InstanceView;
+  const checks = await validateChoices({ mod: target, instance: pseudo }, entries.map((x) => ({ field: x.field!, raw: String(x.s.value) })));
+  const out: Stored[] = [];
+  for (const { s, field } of fields) {
+    if (field?.type !== "choice") { out.push(s); continue; }
+    const check = checks.get(s.key);
+    if (!check?.ok) throw new SeedError("invalid-setting", `seedInstance: "${s.key}" is not a current choice (${check?.reason ?? "invalid"})`);
+    if (check.store !== null) out.push({ ...s, value: check.store });
   }
   return out;
 }

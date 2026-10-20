@@ -20,7 +20,8 @@ export const manifest = () => ({
   page: true,
   basePath: "full",
   dataVersion: 2,
-  permissions: ["sections", "routes", "storage", "pages", "topics", "mcp"],
+  permissions: ["sections", "routes", "storage", "pages", "topics", "mcp", "admin"],
+  rights: [{ id: "export", label: { en: "Export the messages", fr: "Exporter les messages" }, help: { en: "Download all messages as a file.", fr: "Télécharger tous les messages dans un fichier." }, sensitive: true, default: { admin: true, editor: false } }],
   privacy: { en: "Your name and message are shown publicly. To have them removed, write to the site's contact.", fr: "Votre nom et votre message sont affichés publiquement. Pour les faire retirer, écrivez au contact du site." },
   provides: [{ topic: "full.item", label: { en: "Messages", fr: "Messages" } }],
   settings: [
@@ -94,7 +95,8 @@ export default {
     tick: {
       everyMinutes: 5,
       async run(ctx) {
-        try { await fetch("https://example.org/feed"); } catch { /* service indisponible : on réessaiera */ }
+        const feed = await ctx.api.net.request({ url: "https://example.org/feed" }); // borné, pause après un 429 ; ne lève jamais
+        if (!feed.ok) { /* service indisponible : on réessaiera */ }
         const known = (await ctx.api.store.list("state", { limit: 5 }))[0];
         if (known) await ctx.api.store.update(known.id, { at: 1 });
         else await ctx.api.store.add("state", { at: 1 });
@@ -102,6 +104,22 @@ export default {
     },
   },
   migrations: { 2: async () => {} },
+  adminDownloads: {
+    messages: {
+      right: "export",
+      contentType: "text/csv",
+      filename: () => "messages",
+      async *generate(ctx) {
+        yield "name,text\\n";
+        let cursor = null;
+        do {
+          const page = await ctx.api.store.page("messages", { limit: 1000, cursor });
+          for (const r of page.items) yield JSON.stringify(String(r.data.name ?? "")) + "," + JSON.stringify(String(r.data.text ?? "")) + "\\n";
+          cursor = page.next;
+        } while (cursor);
+      },
+    },
+  },
 };
 `;
 

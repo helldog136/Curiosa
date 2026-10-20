@@ -62,9 +62,10 @@ Tout s'importe depuis `testsupport/index.mjs` (stable) :
 |---|---|
 | `checkModule(dir, opts)` | Lance toutes les exigences sur un dossier et renvoie le rapport (celui de `--json`). `opts.siblings` : dossiers des autres modules ; `opts.only` : identifiants à lancer. Ne lève jamais pour un module fautif. |
 | `registerConformanceTests(dir, { test, siblings, only, prefix })` | Adaptateur node:test : une exigence = un test nommé. |
-| `fakeCtx(options)` | Faux contexte de module (réglages, stockage en mémoire, e-mail enregistré, sujets, services…). Option `permissions` : le contexte refuse ce qui n'est pas déclaré. `ctx.calls` garde les appels, `ctx.dumpStore()` le contenu du stockage. Voir l'en-tête de `testsupport/fakeCtx.mjs`. |
+| `fakeCtx(options)` | Faux contexte de module (réglages, stockage en mémoire, e-mail enregistré, sujets, services…). Option `permissions` : le contexte refuse ce qui n'est pas déclaré. `ctx.api.net` est le vrai client réseau du cœur (état neuf par contexte ; options `netLimits`, `netBudgetMs`), branché sur `globalThis.fetch`. `ctx.calls` garde les appels, `ctx.dumpStore()` le contenu du stockage. Voir l'en-tête de `testsupport/fakeCtx.mjs`. |
 | `loadModuleDir(dir)` | Charge un dossier de module comme le cœur (manifeste, code, textes), sans jamais lever. |
-| `fakeFetch(routes)`, `withFakeFetch(routes, fn)`, `blockNetwork(fn)` | Faux `fetch` pour tester un module qui appelle un service, sans réseau. |
+| `fakeFetch(routes)`, `withFakeFetch(routes, fn)`, `blockNetwork(fn)` | Faux `fetch` pour tester un module qui appelle un service, sans réseau. La clé `"*"` répond à toutes les adresses ; le `signal` d'annulation est respecté. |
+| `netReplies`, `makeNetClient(options)` | Pannes prêtes à l'emploi pour `fakeFetch` : `rateLimited(120)` (429 + Retry-After), `rateLimitedBody(s)`, `rateLimitedReset(époque)`, `quotaExceeded()` (403), `silence()` (jamais de réponse), `truncatedJson()`, `slow(ms, réponse)`, `down()`, `status(code)`. `makeNetClient` : le vrai client `ctx.api.net`, état neuf. |
 | `startLocalServer(handler)` | Petit serveur HTTP local (127.0.0.1) pour tester un module qui parle à une adresse ; rien ne sort de la machine. |
 | `settingsDefaults`, `assertValidManifest`, `assertLocalesParity`, `findSrpViolations`… | Les vérifications unitaires que la suite réutilise (source unique). |
 | `REQUIREMENTS`, `GROUPS`, `formatText`, `formatMatrix` | La liste des exigences et la mise en forme du rapport. |
@@ -101,6 +102,8 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 | [`settings.sane`](#settingssane) | obligatoire | Les réglages sont bien formés |
 | [`settings.optional`](#settingsoptional) | obligatoire | Un réglage « facultatif » le déclare |
 | [`settings.advanced`](#settingsadvanced) | obligatoire | Les réglages « advanced » ont une valeur par défaut |
+| [`settings.refersToChoice`](#settingsreferstochoice) | conseil | Un réglage qui désigne un élément existant est un « choix parmi » |
+| [`settings.textNamesExisting`](#settingstextnamesexisting) | conseil | On ne fait pas taper le nom d'un élément qui existe déjà |
 | [`secrets.hidden`](#secretshidden) | obligatoire | Les secrets ne s'affichent ni ne se journalisent jamais |
 | [`html.escaped`](#htmlescaped) | obligatoire | Les textes venus de l'extérieur sont échappés dans les pages |
 | [`links.safe`](#linkssafe) | obligatoire | Les liens venus de l'extérieur sont vérifiés |
@@ -118,6 +121,11 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 | [`tasks.valid`](#tasksvalid) | obligatoire | Les tâches planifiées sont bien déclarées |
 | [`tasks.idempotent`](#tasksidempotent) | obligatoire | Lancer une tâche deux fois de suite ne duplique rien |
 | [`tasks.failure`](#tasksfailure) | conseil | Une tâche supporte un service indisponible |
+| [`net.bounded`](#netbounded) | conseil | Chaque appel réseau a un délai |
+| [`net.noIdleTimer`](#netnoidletimer) | conseil | Aucune boucle réseau qui tourne sans personne |
+| [`net.429`](#net429) | conseil | Après « trop de demandes » (429), le module fait une pause |
+| [`net.fallback`](#netfallback) | conseil | En cas de panne d'un service externe, la page s'affiche quand même |
+| [`downloads.bounded`](#downloadsbounded) | conseil | Les téléchargements d'administration sont bornés |
 | [`data.version`](#dataversion) | obligatoire | dataVersion et migrations sont cohérentes |
 | [`data.migrations`](#datamigrations) | conseil | Les migrations se déroulent sans erreur |
 | [`privacy.declared`](#privacydeclared) | obligatoire | Un module qui collecte des données le déclare (privacy) |
@@ -130,7 +138,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 | [`readme.plain`](#readmeplain) | conseil | Le README est écrit en langage de tous les jours |
 | [`neutrality.clean`](#neutralityclean) | conseil | Aucune donnée personnelle ni propre à un site dans le module |
 
-36 exigences obligatoires et 14 conseils.
+36 exigences obligatoires et 21 conseils.
 
 ### Le fichier module.json
 
@@ -320,6 +328,22 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 - **Pourquoi.** Les réglages avancés sont cachés en mode simple : la personne ne les voit jamais, c'est donc le défaut qui s'applique. Sans défaut, le module démarre sur du vide.
 - **Comment corriger.** Ajoutez "default" au réglage cité, ou retirez "advanced": true s'il doit être rempli par la personne.
 
+#### `settings.refersToChoice`
+
+**Un réglage qui désigne un élément existant est un « choix parmi »** — niveau : **conseil**
+
+- **Ce qui est vérifié.** Un réglage qui déclare « refersTo » (une catégorie, une chaîne, une page, un agenda…) autre que « external » est de type « choice » : la personne choisit dans une liste, elle ne tape pas un nom. Conseil dans le cœur 0.2.0 ; deviendra obligatoire.
+- **Pourquoi.** Un nom tapé à la main casse dès que l'élément est renommé, ne voit pas qu'il a été supprimé, et laisse passer les fautes de frappe. Un « choix parmi » garde un identifiant stable, se cache quand il n'y a qu'une option et signale un élément disparu.
+- **Comment corriger.** Passez le réglage en « type »: « choice » avec une « source » (« providers » pour une instance qui offre un service, « service » pour un élément d'un autre module), « fromText »: true pour reprendre les valeurs déjà tapées, et « minCore »: « 0.2.0 ». Pour un profil sur une autre plateforme, écrivez « refersTo »: « external ».
+
+#### `settings.textNamesExisting`
+
+**On ne fait pas taper le nom d'un élément qui existe déjà** — niveau : **conseil**
+
+- **Ce qui est vérifié.** Un réglage texte dont l'aide demande de « saisir le nom de… » (« type the name of… », « type the channel name ») un élément du site déclare « refersTo » ; s'il désigne un élément du site, c'est un « choice ». Les profils externes (« profile », « channelId », et « channel » dans un module de type « social ») ne sont pas concernés ; « refersTo »: « external » fait taire la règle.
+- **Pourquoi.** La personne doit retrouver et recopier un nom exact, qui casse au premier renommage. Une liste où l'on choisit est plus simple, et le module reçoit un identifiant qui ne change jamais.
+- **Comment corriger.** Remplacez le réglage par un « choice » (même clé, « fromText »: true pour convertir les valeurs déjà saisies, « minCore »: « 0.2.0 »). Si c'est un profil sur une autre plateforme (un pseudo, une adresse), ajoutez « refersTo »: « external ».
+
 #### `secrets.hidden`
 
 **Les secrets ne s'affichent ni ne se journalisent jamais** — niveau : **obligatoire**
@@ -464,7 +488,49 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 - **Pourquoi.** Le cœur isole les erreurs, mais une tâche qui lève une exception perd son travail en cours et affiche une erreur dans l'administration à chaque panne passagère.
 - **Comment corriger.** Entourez l'appel réseau d'un try/catch : en cas d'échec, gardez les anciennes données et terminez normalement.
 
+### Les appels réseau
+
+#### `net.bounded`
+
+**Chaque appel réseau a un délai** — niveau : **conseil**
+
+- **Ce qui est vérifié.** Aucun « fetch( » sans délai : soit l'appel passe par ctx.api.net.request (délai, pauses et disjoncteur fournis par le cœur), soit il porte un « signal » (par exemple AbortSignal.timeout(8000)). Conseil dans le cœur 0.2.0 ; deviendra obligatoire.
+- **Pourquoi.** Un appel sans délai vers un service qui ne répond plus attend pour toujours : la page, la tâche ou l'action qui l'attend reste figée, et les appels suivants s'empilent jusqu'à faire tomber le site entier.
+- **Comment corriger.** Remplacez « await fetch(url) » par « await ctx.api.net.request({ url }) » (il ne lève jamais : testez « r.ok »), ou au minimum ajoutez « { signal: AbortSignal.timeout(8000) } » à l'appel.
+
+#### `net.noIdleTimer`
+
+**Aucune boucle réseau qui tourne sans personne** — niveau : **conseil**
+
+- **Ce qui est vérifié.** Le code ne lance pas de minuteur répétitif (setInterval) : un travail régulier est une tâche planifiée déclarée (« tasks »), et un appel réseau ne part que quand quelqu'un en a besoin (une page, une action, une tâche).
+- **Pourquoi.** Un setInterval tourne même quand personne ne regarde, n'est jamais arrêté à la désactivation du module, se multiplie à chaque rechargement du code, et appelle des services externes pour rien : quotas consommés, pannes aggravées.
+- **Comment corriger.** Déclarez une tâche planifiée (tasks: { refresh: { everyMinutes: 15, run } }) : le cœur la lance une fois par instance active, sans chevauchement. Ou bien calculez à la demande et gardez le résultat en cache daté.
+
+#### `net.429`
+
+**Après « trop de demandes » (429), le module fait une pause** — niveau : **conseil**
+
+- **Ce qui est vérifié.** Sonde : toutes les adresses répondent 429 avec « Retry-After: 120 ». On fait tourner deux fois les tâches planifiées et les routes du module ; au second passage, il ne doit partir AUCUN appel réseau. Conseil dans le cœur 0.2.0 ; deviendra obligatoire.
+- **Pourquoi.** Un service qui répond 429 demande une pause. L'ignorer prolonge le blocage, peut faire bannir la clé ou l'adresse du site, et gaspille le temps des pages. ctx.api.net s'en charge seul : jusqu'à la reprise, il répond « rate » sans appeler le réseau.
+- **Comment corriger.** Passez par ctx.api.net.request (la pause est automatique, partagée par tout le site). Sinon, notez « Retry-After » (en secondes ou en date) dans votre stockage et ne rappelez pas avant cette heure.
+
+#### `net.fallback`
+
+**En cas de panne d'un service externe, la page s'affiche quand même** — niveau : **conseil**
+
+- **Ce qui est vérifié.** Sonde « trou noir » : le réseau ne répond jamais. Chaque section, emplacement et page du module doit rendre la main en moins de 3 s, sans erreur (avec les dernières données connues et leur date, ou un message simple).
+- **Pourquoi.** Un service externe finit toujours par tomber. Si la page attend sa réponse, elle se fige pour tous les visiteurs ; le cœur coupe alors la section, et le visiteur ne voit rien du tout.
+- **Comment corriger.** Dans une page, ne lancez pas d'appel réseau long : affichez ce que la tâche planifiée a mis en cache (avec « mis à jour à 10 h 30 »), ou passez par ctx.api.net.request, dont le délai suit le temps restant de la page, et affichez un repli si « r.ok » est faux.
+
 ### Les données
+
+#### `downloads.bounded`
+
+**Les téléchargements d'administration sont bornés** — niveau : **conseil**
+
+- **Ce qui est vérifié.** Chaque téléchargement déclaré dans adminDownloads a un nom de fichier, un type connu, un droit déclaré dans module.json (si « right » est donné), et son générateur FINIT : avec des données d'essai, il produit moins de 20 Mo, en moins de 5 secondes, et n'envoie que du texte.
+- **Pourquoi.** Un export contient souvent des données personnelles : il est servi par le cœur (droit, journal d'audit), mais c'est le module qui le produit. Un générateur qui ne s'arrête pas, ou qui construit tout en mémoire, bloque le site ; le cœur le coupe à 512 Mo ou 10 minutes, et l'administratrice n'obtient alors qu'un fichier en échec.
+- **Comment corriger.** Lisez le stockage par pages (ctx.api.store.page, 1 000 lignes) dans une boucle qui s'arrête à la dernière page, produisez le texte ligne par ligne avec « yield », et déclarez le droit dans « rights » de module.json.
 
 #### `data.version`
 

@@ -38,6 +38,8 @@ readable/           VOS DONNÉES MISES EN FORME POUR UN HUMAIN — commencez ici
   modules/<instance>/ les données de chaque module (JSON ; CSV et autres fichiers que le module fournit)
 data/               les mêmes données, brutes, en JSON : c'est ce que la restauration relit
                     (dont retired-instances.json : les données GARDÉES de modules ou d'instances retirés, inertes ; absent des sauvegardes d'avant la 0.1.20)
+                    (dont roles.json et user-roles.json : les rôles et qui les a ; absents avant la 0.2.0 : la restauration recrée alors les rôles
+                     prédéfinis et donne à chacun celui de son niveau `role` dans users.json)
 uploads/            images et fichiers envoyés
 ```
 
@@ -50,6 +52,7 @@ Tout est du **texte** (JSON, Markdown, CSV), sauf les images. Pour vérifier l'i
 2. Clé (32 octets) et vecteur (16 octets) = `PBKDF2-HMAC-SHA256(mot de passe UTF-8, sel, 600000 itérations)` → 48 octets, découpés dans cet ordre
    (c'est exactement ce que fait `openssl enc -pbkdf2`).
 3. Contenu déchiffré = archive `tar.gz` (ustar), chemins relatifs UTF-8, sans `..`.
+   (Le serveur écrit et lit cette archive sans bloquer ses autres requêtes ; le format, lui, n'a pas changé : une sauvegarde faite avant se restaure, et celle d'aujourd'hui se lit avec `openssl`.)
 4. `backup.json` : `{ format: "curiosa-backup", formatVersion: 1, createdAt, frameworkVersion, site, counts, modules[], files[{path, sha256, bytes}] }`.
 
 ## Restaurer
@@ -62,6 +65,8 @@ Tout est du **texte** (JSON, Markdown, CSV), sauf les images. Pour vérifier l'i
   (dépôt non vérifié) n'est réinstallé que si vous le **confirmez, module par module** ; sinon ses données sont gardées mais le module reste à réinstaller.
 - La restauration **remplace** les données actuelles, en une seule transaction : tout ou rien. Une copie de la base actuelle est gardée dans
   `data/backups/pre-restore-*.db` (les 5 dernières).
+- Les enregistrements de modules portent leur **clé** (`key`, facultative). Une sauvegarde plus ancienne, sans clé, se restaure telle quelle (clé vide). Le compteur de génération du stockage de chaque instance augmente (les modules reconstruisent leurs index en mémoire).
+- Avant une **mise à jour groupée de modules**, une copie unique `data/backups/pre-bulk-update-<date>-<ts>.db` est prise (une seule gardée, jamais effacée par la rotation des autres copies).
 - Les identifiants sont conservés : les sessions, les liens entre entrées, redirections et données de modules restent valides.
 - Les modules installés ici mais absents de la sauvegarde restent installés (sans leurs instances).
 - **Dépendances entre modules** ([MODULES.md › Dépendances](MODULES.md)) : les modules sont réinstallés **dans l'ordre des dépendances** (fournisseurs d'abord), puis les besoins de chaque module **actif** restauré sont vérifiés. Un fournisseur absent de la sauvegarde mais disponible (livré, catalogue) est installé avec son instance par défaut ; le bilan le mentionne. Si aucun n'est disponible, le module est restauré **avec ses données**, dans l'état « activé » de la sauvegarde, et l'**aperçu comme le bilan** disent « il manque : … » : la restauration n'est jamais interrompue et aucune donnée n'est perdue.

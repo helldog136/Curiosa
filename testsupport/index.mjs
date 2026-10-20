@@ -15,7 +15,7 @@ import { loadModuleDir, readModuleLight } from "./loader.mjs";
 import { LEVELS, REQUIREMENTS, docLink } from "./requirements/index.mjs";
 
 export { fakeCtx } from "./fakeCtx.mjs";
-export { fakeFetch, withFakeFetch, blockNetwork, startLocalServer } from "./fakeNet.mjs";
+export { fakeFetch, withFakeFetch, blockNetwork, startLocalServer, netReplies, makeNetClient } from "./fakeNet.mjs";
 export { loadModuleDir, readModuleLight, watchNetwork } from "./loader.mjs";
 export { GROUPS, LEVELS, REQUIREMENTS, docLink } from "./requirements/index.mjs";
 export { formatText, formatMatrix } from "./report.mjs";

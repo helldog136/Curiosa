@@ -9,11 +9,12 @@ import { localized } from "@/core/modules/types";
 import { UPLOAD_NAME_RE } from "@/core/services/uploads";
 import { getSiteConfig } from "@/core/settings";
 import { readVersion } from "@/core/updates/service";
-import { encryptBackup } from "./crypto";
-import { backupFilename, DATA_FILES, FORMAT, FORMAT_VERSION, fileOf, jsonFile, sha256, type BackupManifest, type BackupModule } from "./format";
+import { encryptBackupAsync } from "./crypto";
+import { runAsync, sha256Steps, tick, type Steps } from "./steps";
+import { backupFilename, DATA_FILES, FORMAT, FORMAT_VERSION, fileOf, jsonFile, type BackupManifest, type BackupModule } from "./format";
 import { readmeText } from "./readme";
 import { currentSchemaVersion } from "./schema";
-import { createTarGz, isSafeArchivePath, type TarFile } from "./tar";
+import { createTarGzAsync, isSafeArchivePath, type TarFile } from "./tar";
 
 /** Réglages qui n'ont aucun sens après une restauration (état de la dernière vérification de version). */
 const VOLATILE_SETTINGS = new Set(["updates.latest", "updates.checkedAt", "updates.error"]);
@@ -46,7 +47,7 @@ export type BackupResult = { buffer: Buffer; filename: string; manifest: BackupM
 export async function createBackup(password: string, opts: { now?: Date; iterations?: number } = {}): Promise<BackupResult> {
   const now = opts.now ?? new Date();
   const config = await getSiteConfig();
-  const [users, settings, moduleRows, instances, instanceTranslations, entries, entryTranslations, redirects, records, retired] = await Promise.all([
+  const [users, settings, moduleRows, instances, instanceTranslations, entries, entryTranslations, redirects, retired, roles, userRoles] = await Promise.all([
     prisma.user.findMany({ orderBy: { createdAt: "asc" } }),
     prisma.setting.findMany({ orderBy: [{ key: "asc" }, { locale: "asc" }] }),
     listModuleRows(),
@@ -55,10 +56,13 @@ export async function createBackup(password: string, opts: { now?: Date; iterati
     prisma.entry.findMany({ orderBy: { createdAt: "asc" } }),
     prisma.entryTranslation.findMany({ orderBy: [{ entryId: "asc" }, { locale: "asc" }] }),
     prisma.redirect.findMany({ orderBy: { path: "asc" } }),
-    prisma.moduleRecord.findMany({ orderBy: { createdAt: "asc" } }),
     prisma.retiredInstance.findMany({ orderBy: [{ retiredAt: "asc" }, { id: "asc" }] }),
+    prisma.role.findMany({ orderBy: [{ createdAt: "asc" }, { id: "asc" }] }),
+    prisma.userRole.findMany({ orderBy: [{ userId: "asc" }, { roleId: "asc" }] }),
   ]);
 
+  const keyOf = new Map(instances.map((i) => [i.id, i.key]));
+  const records = await readRecords(keyOf);
   const market = await getCatalogue().catch(() => []);
   const modules: BackupModule[] = [];
   for (const row of moduleRows) {
@@ -78,29 +82,28 @@ export async function createBackup(password: string, opts: { now?: Date; iterati
     jsonFile(DATA_FILES.entries, entries),
     jsonFile(DATA_FILES.entryTranslations, entryTranslations),
     jsonFile(DATA_FILES.redirects, redirects),
-    jsonFile(DATA_FILES.records, records.map((r) => ({ ...r, data: safeParse(r.data) }))),
+    fileOf(DATA_FILES.records, records.raw),
     // Données gardées de modules ou d'instances retirés : la sauvegarde reste complète (le bloc est écrit en JSON lisible, pas en texte échappé).
     jsonFile(DATA_FILES.retired, retired.map((r) => ({ ...r, payload: safeParse(r.payload) }))),
+    // Rôles (droits en liste JSON lisible) et affectations.
+    jsonFile(DATA_FILES.roles, roles.map((r) => ({ ...r, rights: safeParse(r.rights) }))),
+    jsonFile(DATA_FILES.userRoles, userRoles),
   ];
 
   // ── Copie lisible ───────────────────────────────────────────────────────────
-  const keyOf = new Map(instances.map((i) => [i.id, i.key]));
   const viewByKey = new Map((await getActiveInstances()).map((a) => [a.instance.key, a]));
   const entryById = new Map(entries.map((e) => [e.id, e]));
+  let n = 0;
   for (const t of entryTranslations) {
+    if (++n % 200 === 0) await tick(); // la boucle d'événements respire (des milliers d'entrées)
     const e = entryById.get(t.entryId);
     const key = keyOf.get(t.instanceId);
     if (!e || !key) continue;
     files.push(fileOf(`readable/${safeSegment(key)}/${safeSegment(t.slug)}.${safeSegment(t.locale)}.md`, entryMarkdown(e, t)));
   }
-  const byCollection = new Map<string, typeof records>();
-  for (const r of records) {
-    const key = keyOf.get(r.instanceId) ?? "unknown";
-    byCollection.set(`${key}\u0000${r.collection}`, [...(byCollection.get(`${key}\u0000${r.collection}`) ?? []), r]);
-  }
-  for (const [id, rows] of byCollection) {
+  for (const [id, content] of records.readable) {
     const [key, collection] = id.split("\u0000");
-    files.push(jsonFile(`readable/modules/${safeSegment(key!)}/records-${safeSegment(collection!)}.json`, rows.map((r) => ({ id: r.id, createdAt: r.createdAt, ...(typeof safeParse(r.data) === "object" ? (safeParse(r.data) as object) : { value: safeParse(r.data) }) }))));
+    files.push(fileOf(`readable/modules/${safeSegment(key!)}/records-${safeSegment(collection!)}.json`, content));
   }
   for (const [key, { instance, mod }] of viewByKey) {
     const hook = mod.def.backup?.readable;
@@ -129,9 +132,9 @@ export async function createBackup(password: string, opts: { now?: Date; iterati
   // ── Images et fichiers envoyés ──────────────────────────────────────────────
   let uploadCount = 0;
   try {
-    for (const name of fs.readdirSync(UPLOADS_DIR)) {
+    for (const name of await fs.promises.readdir(UPLOADS_DIR)) {
       if (!UPLOAD_NAME_RE.test(name)) continue;
-      files.push(fileOf(`uploads/${name}`, fs.readFileSync(path.join(UPLOADS_DIR, name))));
+      files.push(fileOf(`uploads/${name}`, await fs.promises.readFile(path.join(UPLOADS_DIR, name))));
       uploadCount++;
     }
   } catch { /* pas encore d'envois */ }
@@ -139,17 +142,68 @@ export async function createBackup(password: string, opts: { now?: Date; iterati
   const manifest: BackupManifest = {
     format: FORMAT, formatVersion: FORMAT_VERSION, createdAt: now.toISOString(), frameworkVersion: readVersion(), schemaVersion: await currentSchemaVersion(),
     site: { name: config.name, defaultLocale: config.defaultLocale, locales: config.locales },
-    counts: { users: users.length, instances: instances.length, entries: entries.length, translations: entryTranslations.length, records: records.length, retired: retired.length, redirects: redirects.length, modules: modules.length, uploads: uploadCount },
+    counts: { users: users.length, instances: instances.length, entries: entries.length, translations: entryTranslations.length, records: records.count, retired: retired.length, redirects: redirects.length, modules: modules.length, uploads: uploadCount },
     modules,
-    files: files.map((f) => ({ path: f.path, sha256: sha256(f.content), bytes: f.content.length })),
+    files: await runAsync(fingerprints(files)),
   };
   const archive: TarFile[] = [
     fileOf("README.txt", readmeText({ siteName: config.name, createdAt: manifest.createdAt, frameworkVersion: manifest.frameworkVersion })),
     jsonFile("backup.json", manifest),
     ...files,
   ];
-  const plain = createTarGz(archive, Math.floor(now.getTime() / 1000));
-  return { buffer: encryptBackup(plain, password, opts.iterations), filename: backupFilename(config.name, now), manifest, plain };
+  const plain = await createTarGzAsync(archive, Math.floor(now.getTime() / 1000));
+  return { buffer: await encryptBackupAsync(plain, password, opts.iterations), filename: backupFilename(config.name, now), manifest, plain };
+}
+
+/** Empreinte de chaque fichier, par petits morceaux (cède la main à la boucle d'événements). */
+function* fingerprints(files: TarFile[]): Steps<BackupManifest["files"]> {
+  const out: BackupManifest["files"] = [];
+  for (const f of files) out.push({ path: f.path, sha256: yield* sha256Steps(f.content), bytes: f.content.length });
+  return out;
+}
+
+/** Même mise en forme que `JSON.stringify(liste, null, 2)`, à partir d'éléments déjà sérialisés (retrait de 2 espaces). */
+function jsonArray(items: string[]): string {
+  return items.length ? `[\n${items.join(",\n")}\n]\n` : "[]\n";
+}
+const indent = (json: string) => "  " + json.replace(/\n/g, "\n  ");
+
+const RECORD_PAGE = 1000;
+
+/**
+ * Les enregistrements des modules, lus PAR PAGES (clé de tri (createdAt, id)) : on ne garde en mémoire que le texte final de chaque ligne, jamais la liste
+ * complète des lignes de la base en plus. Chaque ligne n'est lue (JSON.parse) qu'une fois ; chaque collection reçoit ses lignes par `push` (pas de recopie).
+ */
+async function readRecords(keyOf: Map<string, string>): Promise<{ raw: string; readable: Map<string, string>; count: number }> {
+  const rawParts: string[] = [];
+  const parts = new Map<string, string[]>();
+  let count = 0;
+  let after: { createdAt: Date; id: string } | null = null;
+  for (;;) {
+    const page: Awaited<ReturnType<typeof prisma.moduleRecord.findMany>> = await prisma.moduleRecord.findMany({
+      where: after ? { OR: [{ createdAt: { gt: after.createdAt } }, { createdAt: after.createdAt, id: { gt: after.id } }] } : undefined,
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }], take: RECORD_PAGE,
+    });
+    for (const r of page) {
+      const data = safeParse(r.data);
+      rawParts.push(indent(JSON.stringify({ ...r, data }, null, 2)));
+      const id = `${keyOf.get(r.instanceId) ?? "unknown"}\u0000${r.collection}`;
+      let list = parts.get(id);
+      if (!list) parts.set(id, (list = []));
+      list.push(indent(JSON.stringify({ id: r.id, createdAt: r.createdAt, ...(typeof data === "object" ? (data as object) : { value: data }) }, null, 2)));
+    }
+    count += page.length;
+    await tick();
+    if (page.length < RECORD_PAGE) break;
+    const last = page[page.length - 1]!;
+    after = { createdAt: last.createdAt, id: last.id };
+  }
+  // Une seule chaîne par fichier, tout de suite : les milliers de petits morceaux ne restent pas en mémoire pendant le reste de la sauvegarde.
+  const readable = new Map<string, string>();
+  for (const [id, list] of parts) { readable.set(id, jsonArray(list)); list.length = 0; }
+  const raw = jsonArray(rawParts);
+  rawParts.length = 0;
+  return { raw, readable, count };
 }
 
 function safeParse(raw: string): unknown {

@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import { prisma } from "@/core/db";
-import { currentUser } from "@/core/permissions";
+import { currentUser, isOwner } from "@/core/permissions";
 
 /**
  * Les routes de sauvegarde sont des routes HTTP « nues » (pas des actions serveur) : Next.js n'y ajoute aucune protection
@@ -19,7 +19,7 @@ export async function guardOwner(request: Request): Promise<Response | null> {
   if (!isSameOrigin(request.headers)) return Response.json({ ok: false, error: "forbidden" }, { status: 403 });
   const user = await currentUser();
   if (!user) return Response.json({ ok: false, error: "unauthorized" }, { status: 401 });
-  if (user.role !== "owner") return Response.json({ ok: false, error: "forbidden" }, { status: 403 });
+  if (!isOwner(user)) return Response.json({ ok: false, error: "forbidden" }, { status: 403 });
   return null;
 }
 
