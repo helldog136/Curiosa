@@ -4,7 +4,7 @@ import { fakeCtx } from "../fakeCtx.mjs";
 import { makeCtx, observe } from "../probes.mjs";
 import { NET_RULES_LEVEL, stripComments, walkValue, whereOf } from "./util.mjs";
 
-const KNOWN_BLOCKS = ["markdown", "html", "banner", "links", "entries", "hero", "panel", "embed", "form", "table", "copy", "downloads", "gridEditor", "head", "heading", "swatches", "adminForm", "netHealth"];
+const KNOWN_BLOCKS = ["markdown", "html", "banner", "links", "entries", "hero", "panel", "embed", "form", "table", "copy", "downloads", "gridEditor", "head", "heading", "swatches", "adminForm", "netHealth", "suggestInstall"];
 export { KNOWN_BLOCKS };
 
 // ── Lecture des sorties ─────────────────────────────────────────────────────────────────────────────────────────────

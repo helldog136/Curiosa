@@ -298,8 +298,18 @@ export type ModuleApi = {
   services: {
     /** Y a-t-il un fournisseur actif de ce service ? */
     available(service: string): Promise<boolean>;
-    /** Appelle `method` du service sur le fournisseur qui répond (le maître ; pour un service `each`, la première instance par ordre de création). Le service doit être déclaré dans `requires` du manifeste. */
-    call(service: string, method: string, args?: unknown): Promise<{ ok: true; value: unknown } | { ok: false; reason: "undeclared" | "unavailable" | "no_method" | "failed" }>;
+    /**
+     * Les fournisseurs de ce service que ce module peut appeler (déclarés dans `requires`, facultatifs compris, version ≥ `min`), par ordre de création, 50 au plus.
+     * `id` : identifiant STABLE de l'instance (à passer à `call(…, { provider })`) ; `name` : libellé lisible ; `master` : celui que `call` vise sans `provider`.
+     * Service non déclaré ou sans fournisseur : `[]`. Cœur 0.2.0 (absent avant : tester `typeof ctx.api.services.providers === "function"`).
+     */
+    providers(service: string): Promise<{ id: string; key: string; name: string; module: string; version: number; each: boolean; master: boolean }[]>;
+    /**
+     * Appelle `method` du service sur le fournisseur qui répond (le maître ; pour un service `each`, la première instance par ordre de création). Le service doit être déclaré dans `requires` du manifeste.
+     * `opts.provider` (cœur 0.2.0, `minCore: "0.2.0"` obligatoire) : l'`id` d'une instance de `providers(service)` ; seule elle répond (sans réplique, sauf si c'est le maître).
+     * Fournisseur disparu, mis à l'écart ou étranger : `{ ok: false, reason: "unavailable" }`.
+     */
+    call(service: string, method: string, args?: unknown, opts?: { provider?: string }): Promise<{ ok: true; value: unknown } | { ok: false; reason: "undeclared" | "unavailable" | "no_method" | "failed" }>;
     /**
      * Appelle `method` sur TOUTES les instances actives d'un service offert avec `each: true` (chaque instance répond pour elle-même : plusieurs chaînes,
      * plusieurs comptes…), par ordre de création. Une entrée par instance ; `instance` = sa clé, `name` = son surnom lisible. Un fournisseur qui échoue

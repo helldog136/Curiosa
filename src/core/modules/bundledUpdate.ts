@@ -2,6 +2,8 @@ import type { Module } from "@prisma/client";
 import { classify, compareVersions } from "../updates/versions";
 import type { CatalogueEntry } from "./catalogue";
 import type { ModuleUpdateCheck, InstallResult } from "./installer";
+import type { Journal, Missing } from "./dependencyInstaller";
+import type { ParsedManifest } from "./manifest";
 
 /**
  * COMPATIBILITÉ SITES ANCIENS, À RETIRER EN 0.3.0. Les anciennes versions du cœur embarquaient des modules et les copiaient sur le serveur (ligne `source: bundled`) ;
@@ -22,13 +24,31 @@ export function checkBundledRow(row: Pick<Module, "version">, entry: CatalogueEn
 /** Texte du journal d'audit d'une conversion : identifiant, versions, sources avant → après (jamais d'adresse de dépôt). */
 export const conversionAuditTarget = (id: string, from: string, to: string) => `${id} ${from} -> ${to} (bundled -> catalogue)`;
 
-/** Convertit une ligne `bundled` vers la version du catalogue (échange sûr, voir reinstall.ts). Pas de version plus récente : rien à faire. */
-export async function convertToCatalogue(row: Module, entry: CatalogueEntry): Promise<InstallResult> {
+/** Satisfait les `requires` durs d'un manifeste avant ses migrations (voir installer.ts, `settleBeforeMigrations`). */
+export type Settle = (manifest: ParsedManifest) => Promise<{ ok: true; journal: Journal } | { ok: false; missing: Missing[] }>;
+
+/**
+ * Convertit une ligne `bundled` vers la version du catalogue (échange sûr, voir reinstall.ts). Pas de version plus récente : rien à faire.
+ * `settle` : les `requires` de la nouvelle version sont satisfaits APRÈS l'échange et AVANT les migrations ; s'il manque quelque chose, l'échange est défait.
+ */
+export async function convertToCatalogue(row: Module, entry: CatalogueEntry, settle?: Settle): Promise<InstallResult> {
   if (!entry.compatible) return { ok: false, error: "modules.error.incompatible" };
   if (entry.needsNewerCore) return { ok: false, error: "modules.error.core", detail: entry.needsNewerCore, needsCore: entry.needsNewerCore };
   if (!entry.version || compareVersions(entry.version, row.version) <= 0) return { ok: false, error: "modules.error.uptodate" };
   const { reinstallModule } = await import("./reinstall");   // import tardif : reinstall.ts dépend de ce fichier-ci par installer.ts
-  const r = await reinstallModule(row.id, { catalogueOnly: true });
-  if (!r.ok) return { ok: false, error: r.error, ...(r.detail ? { detail: r.detail } : {}), ...(r.needsCore ? { needsCore: r.needsCore } : {}) };
-  return { ok: true, id: row.id, migrations: r.migrations, auditTarget: conversionAuditTarget(row.id, row.version, r.after.version) };
+  let journal: Journal | null = null;
+  let missing: Missing[] | null = null;
+  const r = await reinstallModule(row.id, {
+    catalogueOnly: true,
+    beforeMigrate: settle && (async (manifest) => {
+      const s = await settle(manifest);
+      if (!s.ok) { missing = s.missing; throw Object.assign(new Error("requires"), { code: "modules.error.requires", detail: s.missing.map((m) => m.service).join(", ") }); }
+      journal = s.journal;
+    }),
+  });
+  if (!r.ok && journal) { const { unwind } = await import("./dependencyInstaller"); await unwind(journal); }   // échange défait après la mise en place : on défait aussi la cascade
+  if (!r.ok) return { ok: false, error: r.error, ...(r.detail ? { detail: r.detail } : {}), ...(r.needsCore ? { needsCore: r.needsCore } : {}), ...(missing ? { missing } : {}) };
+  const done = journal as Journal | null;
+  if (done) await (await import("./dependencyInstaller")).commitJournal(done);
+  return { ok: true, id: row.id, migrations: r.migrations, auditTarget: conversionAuditTarget(row.id, row.version, r.after.version), ...(done?.provided.length ? { provided: done.provided } : {}) };
 }

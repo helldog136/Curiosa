@@ -77,7 +77,7 @@ export async function updateModulesAction(ids?: string[]): Promise<ModulesBilan>
   const readable = summary.warnings?.length || summary.provided?.length ? await buildNames(locale, config.defaultLocale) : null;
   return {
     updated: summary.updated.map(name),
-    failed: summary.failed.map((f) => ({ name: name(f.id), reason: t(f.error), migration: f.migration })),
+    failed: summary.failed.map((f) => ({ name: name(f.id), reason: t(f.error, { services: f.detail ?? "", modules: f.detail ?? "" }), migration: f.migration })),
     skipped: summary.skipped.map(name),
     stoppedOn: summary.stoppedOn ? name(summary.stoppedOn) : null,
     ...(readable && summary.warnings?.length ? { warnings: summary.warnings.map((w) => ({ name: name(w.id), list: describeMissingList(w.missing, t, readable).join(" ") })) } : {}),

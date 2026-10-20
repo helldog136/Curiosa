@@ -137,20 +137,24 @@ test("versions : un fournisseur trop ancien ne satisfait pas ; message dédié ;
   assert.deepEqual(await Dep.requirementGaps((await R.getModule("cons")).manifest), []);
 });
 
-test("versions : un module installé en version 1 est mis à jour en version 2 → le consommateur peut s'activer ; appel de service filtré par version", async () => {
+test("versions : un consommateur qui exige la version 2 d'un service : mise à jour refusée tant que personne ne l'offre, puis le fournisseur est mis à jour AVANT lui", async () => {
   bundled("prov", { offers: [{ service: SVC }] });
   bundled("cons", { requires: [{ service: SVC }] });
   assert.equal((await I.installFromCatalogue("cons")).ok, true);
   await createInstance(db.prisma, { manifest: (await R.getModule("cons")).manifest, names: { fr: "c" } });
   assert.equal((await Dep.callService(await active("cons"), SVC, "add", {})).ok, true, "min par défaut 1");
-  // le consommateur monte son exigence (mise à jour) sans que le fournisseur suive : appel indisponible, manque signalé
+  // le consommateur monte son exigence sans que le catalogue propose mieux : la mise à jour est refusée, rien ne change
   bundled("cons", { version: "1.1.0", requires: [{ service: SVC, min: 2 }] });
-  await I.updateModule("cons");
-  const gaps = await Dep.requirementGaps((await R.getModule("cons")).manifest);
-  assert.deepEqual(gaps.map((g) => [g.reason, g.min, g.have]), [["old", 2, 1]]);
-  assert.deepEqual(await Dep.callService(await active("cons"), SVC, "add", {}), { ok: false, reason: "unavailable" });
+  const refused = await quiet(() => I.updateModule("cons"));
+  assert.deepEqual([refused.ok, refused.error], [false, "modules.error.requires"]);
+  assert.deepEqual(refused.missing.map((m) => [m.reason, m.min, m.have]), [["old", 2, 1]]);
+  assert.equal((await row("cons")).version, "1.0.0", "ancienne version gardée");
+  assert.equal((await Dep.callService(await active("cons"), SVC, "add", {})).ok, true, "le module fonctionne toujours");
+  // le catalogue propose le fournisseur en version 2 : la mise à jour du consommateur met d'abord le fournisseur à jour
   bundled("prov", { version: "1.1.0", offers: [{ service: SVC, version: 2 }] });
-  await I.updateModule("prov");
+  const ok = await I.updateModule("cons");
+  assert.deepEqual([ok.ok, ok.provided], [true, ["prov"]]);
+  assert.deepEqual([(await row("prov")).version, (await row("cons")).version], ["1.1.0", "1.1.0"]);
   assert.deepEqual(await Dep.requirementGaps((await R.getModule("cons")).manifest), []);
   assert.equal((await Dep.callService(await active("cons"), SVC, "add", {})).ok, true);
 });
@@ -431,32 +435,35 @@ test("mise à jour qui ajoute un requires : le fournisseur disponible est instal
   assert.deepEqual((await Auto.readAuto()).prov.for, ["gcons"]);
 });
 
-test("mise à jour qui ajoute un requires IMPOSSIBLE à satisfaire : la mise à jour réussit, l'admin est averti, le module dégrade sans planter", async () => {
+test("mise à jour qui ajoute un requires IMPOSSIBLE à satisfaire : refusée proprement, ancienne version et données intactes, le module tourne toujours", async () => {
   const repo = gitModule("gcons");
   await I.installModule(repo.url);
+  const inst = await createInstance(db.prisma, { manifest: (await R.getModule("gcons")).manifest, names: { fr: "g" } });
+  await db.prisma.moduleRecord.create({ data: { instanceId: inst.id, collection: "notes", data: JSON.stringify({ n: 1 }) } });
   publish(repo, "gcons", "1.1.0", { requires: [{ service: SVC }] });
-  const r = await I.updateModule("gcons");
-  assert.equal(r.ok, true);
-  assert.equal((await row("gcons")).version, "1.1.0");
+  const r = await quiet(() => I.updateModule("gcons"));
+  assert.deepEqual([r.ok, r.error], [false, "modules.error.requires"]);
   assert.deepEqual(r.missing.map((m) => [m.service, m.reason]), [[SVC, "none"]]);
-  assert.equal((await row("gcons")).enabled, true, "toujours actif (comme avant : muet mais jamais désactivé)");
-  const links = await View.viewModuleLinks("gcons", await View.buildNames("fr", "fr"));
-  assert.equal(links.gaps.length, 1, "la page du module dit « Il manque »");
-  assert.deepEqual([...(await View.missingByModule()).keys()], ["gcons"]);
+  assert.equal((await row("gcons")).version, "1.0.0", "ancienne version gardée");
+  assert.equal(JSON.parse(fs.readFileSync(path.join(db.dir, "modules", "gcons", "module.json"), "utf8")).version, "1.0.0", "fichiers remis");
+  assert.deepEqual((await db.prisma.moduleRecord.findMany({ where: { instanceId: inst.id } })).map((x) => JSON.parse(x.data)), [{ n: 1 }], "données intactes");
+  assert.equal((await row("gcons")).enabled, true, "toujours actif");
+  assert.deepEqual(await allModules(), ["gcons"], "rien d'installé à moitié");
 });
 
-test("« Tout mettre à jour » : l'avertissement figure au bilan et ne bloque pas les autres mises à jour", async () => {
+test("« Tout mettre à jour » : un module dont le besoin est introuvable échoue seul, les autres passent", async () => {
   bundled("prov", { offers: [{ service: SVC }] });
   const a = gitModule("g-a"); const b = gitModule("g-b"); const c = gitModule("g-c");
-  for (const [repo, id] of [[a, "g-a"], [b, "g-b"], [c, "g-c"]]) { await I.installModule(repo.url);}
+  for (const [repo] of [[a], [b], [c]]) { await I.installModule(repo.url);}
   publish(a, "g-a", "1.1.0", { requires: [{ service: "introuvable.service" }] });   // impossible
   publish(b, "g-b", "1.1.0", { requires: [{ service: SVC }] });                      // possible
   publish(c, "g-c", "1.1.0");                                                         // simple
-  const s = await Upd.updateModules(["g-a", "g-b", "g-c"]);
-  assert.deepEqual(s.updated, ["g-a", "g-b", "g-c"]);
-  assert.deepEqual(s.failed, []);
-  assert.deepEqual(s.warnings.map((w) => [w.id, w.missing[0].service]), [["g-a", "introuvable.service"]]);
+  const s = await quiet(() => Upd.updateModules(["g-a", "g-b", "g-c"]));
+  assert.deepEqual(s.updated, ["g-b", "g-c"]);
+  assert.deepEqual(s.failed, [{ id: "g-a", error: "modules.error.requires", migration: false, detail: "introuvable.service" }]);
+  assert.equal(s.stoppedOn, null, "ce n'est pas une panne de migration : les suivants sont faits");
   assert.deepEqual(s.provided, ["prov"]);
+  assert.equal((await row("g-a")).version, "1.0.0");
 });
 
 test("bilan en bloc : un résultat avec 'missing' est un avertissement, pas un échec (fonction pure)", async () => {

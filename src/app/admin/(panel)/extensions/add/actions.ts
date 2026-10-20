@@ -53,6 +53,21 @@ export async function installModuleAction(id: string): Promise<{ ok: true; /** C
   return { ok: true, restored: result.restored?.length ?? 0 };
 }
 
+/**
+ * Module de l'index supplémentaire (non vérifié par le catalogue officiel) : propriétaire seulement, et seulement après avoir coché qu'il a lu l'avertissement.
+ * Jamais d'office : c'est le seul chemin qui passe `confirmExtra`.
+ */
+export async function installExtraAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const { user, t, locale, config } = await adminCtx("owner");
+  if (formData.get("trust") !== "on") return { error: t("catalogue.trustRequired") };
+  const id = String(formData.get("id") ?? "");
+  const result = await installFromCatalogue(id, { confirmExtra: true });
+  if (!result.ok) return { error: result.missing?.length ? describeMissingList(result.missing, t, await buildNames(locale, config.defaultLocale)).join(" ") : t(result.error, { services: result.detail ?? "", modules: result.detail ?? "" }) };
+  for (const provided of result.provided ?? []) await audit(user.email, "module.install.auto", provided);
+  await audit(user.email, "module.install", id);
+  redirect(await afterInstall(id, result.restored, locale, config.defaultLocale, user.email));
+}
+
 /** Dépôt git personnel : jamais vérifié. L'installation exige que l'utilisateur ait coché qu'il l'a compris. */
 export async function installCustomAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const { user, t, locale, config } = await adminCtx("owner");

@@ -115,7 +115,14 @@ export type Block =
    * jusqu'à 11 h 00 », « Quota du jour épuisé, reprise à 9 h 00 », « … ne répond pas ; le site affiche les dernières données connues ».
    * `label` : nom lisible donné par le module (le cœur ne connaît aucun fournisseur) ; `lastGoodAt` (ISO 8601) : date des données affichées.
    */
-  | { type: "netHealth"; items: { host: string; label: string; lastGoodAt?: string }[] };
+  | { type: "netHealth"; items: { host: string; label: string; lastGoodAt?: string }[] }
+  /**
+   * Suggestion d'installation (cœur 0.2.0, panneau d'admin d'une instance SEULEMENT, ignoré ailleurs) : « il manque un module qui offre `service` ».
+   * Le cœur cherche lui-même dans le catalogue qui l'offre (version ≥ `min`) ; le propriétaire installe d'un clic ou dit « Ne plus proposer » ;
+   * les autres lisent « Demandez au propriétaire du site d'installer un module qui <reason> ». Rien n'est montré si un fournisseur actif existe.
+   * `reason` : fin de phrase, mots simples (« affiche vos prochains lives »). Un cœur plus ancien ignore ce bloc.
+   */
+  | { type: "suggestInstall"; service: string; min?: number; reason: string };
 
 /**
  * Emplacements où un module peut ajouter des blocs. La page d'accueil n'en a

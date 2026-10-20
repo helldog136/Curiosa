@@ -18,6 +18,7 @@ export function describeMissing(m: MissingService & { chain?: string[]; detail?:
     case "old": return t("deps.missing.old", { name, min: m.min, have: m.have ?? 1 });
     case "cycle": return t("deps.missing.cycle", { name, chain: (m.chain ?? []).map(names.module).join(" → ") });
     case "depth": return t("deps.missing.depth", { name });
+    case "extra": return t("deps.missing.extra", { name, module: names.module(m.module ?? m.service) });
     case "failed": return t("deps.missing.failed", { name, module: names.module(m.module ?? m.service), reason: m.error ? t(m.error, { services: m.detail ?? "", modules: m.detail ?? "" }) : t("error.generic") });
     default: return t("deps.missing.none", { name });
   }
@@ -27,7 +28,7 @@ export function describeMissing(m: MissingService & { chain?: string[]; detail?:
 export const describeMissingList = (list: (MissingService & { chain?: string[]; detail?: string })[], t: Translate, names: Names): string[] => list.map((m) => describeMissing(m, t, names));
 
 /* Transport dans l'adresse d'une redirection (le refus d'une action arrive sur la page par ?missing=…). Relu avec méfiance : c'est une entrée d'URL. */
-const REASONS = new Set(["none", "old", "cycle", "depth", "failed"]);
+const REASONS = new Set(["none", "old", "cycle", "depth", "failed", "extra"]);
 const ID_RE = /^[a-z][a-z0-9.-]{0,60}$/;
 
 export function encodeMissing(list: MissingService[] | undefined): string | undefined {
