@@ -231,7 +231,8 @@ export async function runScenario(m, scenario) {
         void value;
       }
       const adminFieldNames = [...new Set(forms.flatMap((f) => f.fields.map((x) => x.name)))];
-      for (const [name, fn] of Object.entries(def.adminActions ?? {})) {
+      for (const [name, entry] of Object.entries(def.adminActions ?? {})) {
+        const fn = typeof entry === "function" ? entry : entry?.run; // forme { right, run } (cœur 0.2.0)
         if (typeof fn !== "function") continue;
         const names = adminFieldNames.length ? adminFieldNames : [...new Set([...m.code.matchAll(/\bvalues(?:\.([A-Za-z_]\w*)|\[\s*["']([\w-]+)["']\s*\])/g)].map((x) => x[1] ?? x[2]))];
         await record("adminAction", name, () => fn(ctx, Object.fromEntries((names.length ? names : ["id", "name"]).map((n) => [n, hostile ? HOSTILE : n === "id" ? "r1" : "demo"]))));

@@ -2,7 +2,7 @@ import { isDarkBackground, pickLogo } from "../logos";
 import { getBrand } from "@/core/brand";
 import { siteUrl } from "@/core/config";
 import { moduleJsonLd } from "@/core/seo";
-import { entryPath, listEntries } from "@/core/content/entries";
+import { entryPath, listEntries, MAX_LIST_LIMIT } from "@/core/content/entries";
 import { getInstanceByKey, listInstances, pickName, type InstanceView } from "@/core/instances";
 import { isMailConfigured, sendMail } from "@/core/services/mail";
 import { sharedNet } from "@/core/services/net";
@@ -122,7 +122,7 @@ export function makeApi(instance: InstanceView, locale: string, permissions: rea
         const config = await getSiteConfig();
         const target = key ? await getInstanceByKey(key) : instance;
         if (!target) return [];
-        const views = await listEntries({ instance: target, locale: loc ?? config.defaultLocale, limit });
+        const views = await listEntries({ instance: target, locale: loc ?? config.defaultLocale, limit: Number.isFinite(limit) && limit! > 0 ? limit : MAX_LIST_LIMIT }); // borné (200 au plus)
         return views.map((e) => ({
           id: e.id, slug: e.slug, cover: e.cover, icon: e.icon, tags: e.tags, fields: e.fields,
           title: e.title, summary: e.summary, body: e.body, url: e.url, code: e.code,

@@ -4,7 +4,7 @@ import type { Block } from "@/core/blocks";
 import { jsonLd, moduleJsonLd } from "@/core/seo";
 import { getInstanceByKey } from "@/core/instances";
 import { withLocale } from "@/core/links";
-import { listEntries } from "@/core/content/entries";
+import { listEntries, MAX_PER_PAGE } from "@/core/content/entries";
 import { isSafeExternalUrl, safeHref } from "@/core/url";
 import { getSiteConfig } from "@/core/settings";
 import { makeTranslator } from "@/core/i18n/dictionary";
@@ -160,7 +160,9 @@ export async function Blocks({ blocks, locale, adminInstanceId: panelInstanceId,
       case "entries": {
         const instance = await getInstanceByKey(block.instance);
         if (!instance) break;
-        let entries = await listEntries({ instance, locale, limit: block.pick === "random" ? undefined : block.limit });
+        // Toujours borné : la base trie et tronque (jamais toutes les entrées). Tirage au hasard : parmi les 100 premières, non expirées.
+        const wanted = block.limit && block.limit > 0 ? block.limit : MAX_PER_PAGE;
+        let entries = await listEntries({ instance, locale, limit: block.pick === "random" ? 100 : wanted });
         if (block.pick === "random") entries = pickRandom(entries.filter((e) => !e.expired), block.limit ?? 1);
         if (block.link && entries.length === 0) break;
         const seeAll = block.link && instance.basePath ? withLocale(`/${instance.basePath}`, locale, config.defaultLocale) : null;

@@ -102,6 +102,9 @@ function toView(
 
 const publishedWhere = () => ({ status: "published", publishedAt: { lte: new Date() } });
 
+/** Plafond d'une lecture avec `limit` (blocs d'accueil, API des modules, sujets d'échange) : jamais plus de lignes que cela. */
+export const MAX_LIST_LIMIT = 200;
+
 export async function listEntries(opts: {
   instance: string | InstanceView;
   locale: string;
@@ -112,7 +115,17 @@ export async function listEntries(opts: {
     typeof opts.instance === "string" ? await getInstanceByKey(opts.instance) : opts.instance;
   if (!instance) return [];
   const { defaultLocale } = await getSiteConfig();
-  const sort = effectiveSort(await getSetting(sortSettingKey(instance.id)), instance.display);
+  let sort = effectiveSort(await getSetting(sortSettingKey(instance.id)), instance.display);
+  // Avec une limite, la base trie et tronque : jamais de lecture complète (mêmes entrées, même ordre que la lecture complète).
+  if (opts.limit && opts.limit > 0) {
+    const take = Math.min(MAX_LIST_LIMIT, Math.trunc(opts.limit));
+    const start = Math.max(0, Math.trunc(opts.offset ?? 0));
+    const base: Prisma.EntryWhereInput = { instanceId: instance.id, ...publishedWhere(), ...languageWhere(instance, opts.locale) };
+    if (sort !== "title" || (await prisma.entry.count({ where: base })) > TITLE_SORT_MAX) {
+      if (sort === "title") sort = "newest";
+      return sliceEntries(instance, opts.locale, defaultLocale, base, sort, start, take);
+    }
+  }
   const rows = await prisma.entry.findMany({
     where: { instanceId: instance.id, ...publishedWhere() },
     include: { translations: true },
@@ -158,6 +171,24 @@ export const languageWhere = (instance: Pick<InstanceView, "fallbackToDefault">,
 });
 const freshWhere = (now: Date): Prisma.EntryWhereInput => ({ OR: [{ expiresAt: null }, { expiresAt: { gte: now } }] });
 const staleWhere = (now: Date): Prisma.EntryWhereInput => ({ expiresAt: { lt: now } });
+
+/** Tranche [start, start+take[ de la liste (non expirées d'abord, expirées ensuite), triée et tronquée par la base. */
+async function sliceEntries(instance: InstanceView, locale: string, defaultLocale: string, base: Prisma.EntryWhereInput, sort: Parameters<typeof orderBy>[0], start: number, take: number): Promise<EntryView[]> {
+  const now = new Date();
+  const freshAll: Prisma.EntryWhereInput = { AND: [base, freshWhere(now)] };
+  const order = [...orderBy(sort), { id: "desc" as const }];
+  const fresh = await prisma.entry.count({ where: freshAll });
+  const rows: EntryWithTr[] = [];
+  const takeFresh = Math.max(0, Math.min(take, fresh - start));
+  if (takeFresh > 0) rows.push(...(await prisma.entry.findMany({ where: freshAll, include: { translations: true }, orderBy: order, skip: start, take: takeFresh })));
+  if (take - takeFresh > 0) rows.push(...(await prisma.entry.findMany({ where: { AND: [base, staleWhere(now)] }, include: { translations: true }, orderBy: order, skip: Math.max(0, start - fresh), take: take - takeFresh })));
+  const views: EntryView[] = [];
+  for (const row of rows) {
+    const picked = pickTranslation(row, instance, locale, defaultLocale);
+    if (picked) views.push(toView(row, instance, picked));
+  }
+  return views;
+}
 
 /**
  * Une page de la liste publique. Tri par date / à la main : la pagination est faite par la base (un `count`, puis `skip/take` sur les entrées non
