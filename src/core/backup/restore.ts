@@ -9,6 +9,9 @@ import { installFromCatalogue, installModule, type InstallResult } from "@/core/
 import { getCatalogue } from "@/core/modules/catalogue";
 import { resetModuleRegistry } from "@/core/modules/registry";
 import { audit } from "@/core/permissions";
+import { levelOf } from "@/core/auth/access";
+import { syncSystemAssignments } from "@/core/auth/roles";
+import { isSystemKey } from "@/core/auth/rights";
 import { UPLOAD_NAME_RE } from "@/core/services/uploads";
 import { decryptBackup } from "./crypto";
 import { applyUpgrades, currentSchemaVersion, isNewerSchema, pickKnownColumns } from "./schema";
@@ -21,7 +24,7 @@ import type { Missing } from "@/core/modules/dependencyInstaller";
 type Row = Record<string, unknown>;
 export type ParsedBackup = {
   manifest: BackupManifest;
-  data: { users: Row[]; settings: Row[]; modules: BackupModule[]; instances: Row[]; instanceTranslations: Row[]; entries: Row[]; entryTranslations: Row[]; redirects: Row[]; records: Row[]; /** Données gardées de modules retirés (absent des sauvegardes d'avant la 0.1.20). */ retired?: Row[] };
+  data: { users: Row[]; settings: Row[]; modules: BackupModule[]; instances: Row[]; instanceTranslations: Row[]; entries: Row[]; entryTranslations: Row[]; redirects: Row[]; records: Row[]; /** Données gardées de modules retirés (absent des sauvegardes d'avant la 0.1.20). */ retired?: Row[]; /** Rôles et affectations (absents avant la 0.2.0 : recréés depuis `User.role`). */ roles?: Row[]; userRoles?: Row[] };
   uploads: { name: string; content: Buffer }[];
 };
 export type ParseError = "not-a-backup" | "wrong-password" | "corrupt" | "tampered" | "newer-format" | "newer-schema" | "no-owner";
@@ -66,11 +69,15 @@ export function parseBackup(plain: Buffer): { ok: true; backup: ParsedBackup } |
   // Facultatif : une sauvegarde d'avant la 0.1.20 n'a pas ce fichier (= aucune donnée gardée) ; présent mais illisible = sauvegarde abîmée.
   const retired = files.has(DATA_FILES.retired) ? list(DATA_FILES.retired) : [];
   if (retired === null) return { ok: false, error: "corrupt" };
+  // Rôles (0.2.0), facultatifs de la même façon : absents = sauvegarde plus ancienne, rôles prédéfinis recréés à la restauration.
+  const roles = files.has(DATA_FILES.roles) ? list(DATA_FILES.roles) : [];
+  const userRoles = files.has(DATA_FILES.userRoles) ? list(DATA_FILES.userRoles) : [];
+  if (roles === null || userRoles === null) return { ok: false, error: "corrupt" };
   const modules = manifest.modules;
   const d = data as Record<keyof typeof data, Row[]>;
-  if (!d.users.some((u) => u.role === "owner" && typeof u.email === "string" && typeof u.passwordHash === "string")) return { ok: false, error: "no-owner" };
+  if (!d.users.some((u) => levelOf(u) === "owner" && typeof u.email === "string" && typeof u.passwordHash === "string")) return { ok: false, error: "no-owner" };
   const uploads = [...files.entries()].filter(([p]) => p.startsWith("uploads/") && UPLOAD_NAME_RE.test(p.slice(8))).map(([p, content]) => ({ name: p.slice(8), content }));
-  return { ok: true, backup: { manifest, data: { ...d, modules, retired }, uploads } };
+  return { ok: true, backup: { manifest, data: { ...d, modules, retired, roles, userRoles }, uploads } };
 }
 
 /* ───────────── Plan : que va-t-il se passer pour chaque module ? ───────────── */
@@ -123,6 +130,24 @@ const realInstallers: Installers = { fromCatalogue: (id) => installFromCatalogue
 
 const MODEL_BY_FILE = { users: "User", settings: "Setting", instances: "ModuleInstance", instanceTranslations: "InstanceTranslation", entries: "Entry", entryTranslations: "EntryTranslation", redirects: "Redirect", records: "ModuleRecord" } as const;
 
+function rightsList(v: unknown): string[] {
+  if (typeof v === "string") { try { v = JSON.parse(v); } catch { return []; } }
+  return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string").slice(0, 500) : [];
+}
+
+/** Rôles d'une sauvegarde : colonnes connues, dates relues, droits en texte JSON, `system` recalculé d'après la clé (jamais cru sur parole). */
+function restorableRoles(rows: Row[]): Row[] {
+  const seen = new Set<string>();
+  const out: Row[] = [];
+  for (const raw of rows) {
+    const r = reviveDates("Role", pickKnownColumns("roles", raw));
+    if (typeof r.id !== "string" || typeof r.key !== "string" || typeof r.name !== "string" || seen.has(r.key) || seen.has(`id:${r.id}`)) continue;
+    seen.add(r.key); seen.add(`id:${r.id}`);
+    out.push({ ...r, system: isSystemKey(r.key), rights: isSystemKey(r.key) ? "[]" : JSON.stringify(rightsList(r.rights)) });
+  }
+  return out;
+}
+
 /** Les colonnes DateTime d'un modèle, lues dans le schéma : le JSON de la sauvegarde les porte en texte ISO. */
 function reviveDates(model: string, row: Row): Row {
   const fields = Prisma.dmmf.datamodel.models.find((m) => m.name === model)?.fields ?? [];
@@ -166,6 +191,7 @@ export async function applyRestore(backup: ParsedBackup, opts: { confirmCustom: 
     await prisma.$transaction(async (tx) => {
       await tx.moduleRecord.deleteMany(); await tx.entryTranslation.deleteMany(); await tx.entry.deleteMany();
       await tx.instanceTranslation.deleteMany(); await tx.moduleInstance.deleteMany(); await tx.redirect.deleteMany();
+      await tx.userRole.deleteMany(); await tx.role.deleteMany();
       await tx.setting.deleteMany(); await tx.user.deleteMany(); await tx.retiredInstance.deleteMany();
 
       for (const c of chunks(d.users)) await tx.user.createMany({ data: c.map((r) => reviveDates(MODEL_BY_FILE.users, r)) as never });
@@ -176,6 +202,13 @@ export async function applyRestore(backup: ParsedBackup, opts: { confirmCustom: 
       for (const c of chunks(d.entryTranslations)) await tx.entryTranslation.createMany({ data: c.map((r) => reviveDates(MODEL_BY_FILE.entryTranslations, r)) as never });
       for (const c of chunks(d.redirects)) await tx.redirect.createMany({ data: c.map((r) => reviveDates(MODEL_BY_FILE.redirects, r)) as never });
       for (const c of chunks(d.records)) await tx.moduleRecord.createMany({ data: c.map((r) => ({ ...reviveDates(MODEL_BY_FILE.records, r), data: JSON.stringify(r.data) })) as never });
+      // Rôles : un rôle n'est « prédéfini » que par sa clé (owner, admin, editor) ; une affectation vers une personne ou un rôle absent est ignorée.
+      const roles = restorableRoles(d.roles ?? []);
+      for (const c of chunks(roles)) await tx.role.createMany({ data: c as never });
+      const userIds = new Set(d.users.map((u) => String(u.id)));
+      const roleIds = new Set(roles.map((r) => String(r.id)));
+      const links = (d.userRoles ?? []).filter((r) => userIds.has(String(r.userId)) && roleIds.has(String(r.roleId))).map((r) => ({ userId: String(r.userId), roleId: String(r.roleId) }));
+      for (const c of chunks([...new Map(links.map((l) => [`${l.userId}|${l.roleId}`, l])).values()])) await tx.userRole.createMany({ data: c });
       for (const c of chunks(d.retired ?? [])) await tx.retiredInstance.createMany({ data: c.map((r) => ({ ...reviveDates("RetiredInstance", pickKnownColumns("retired", r)), payload: JSON.stringify(r.payload) })) as never });
 
       // Modules : un module « éteint » dans une sauvegarde d'avant la 0.1.20 garde ce drapeau le temps que la migration ci-dessous le désinstalle (données gardées).
@@ -196,6 +229,8 @@ export async function applyRestore(backup: ParsedBackup, opts: { confirmCustom: 
   for (const u of backup.uploads) fs.writeFileSync(path.join(UPLOADS_DIR, u.name), u.content);
 
   resetModuleRegistry();
+  // Rôles prédéfinis présents et affectations alignées sur `User.role` (sauvegarde d'avant la 0.2.0 : c'est ce qui crée toute l'affectation).
+  await syncSystemAssignments().catch((e) => console.error("[backup] roles sync failed:", (e as Error)?.message));
   // TEMPORAIRE (retrait en 0.3.0) : une sauvegarde d'un site d'avant la 0.1.20 peut contenir des modules ou instances « éteints » ; ils deviennent « désinstallés, données gardées ».
   await retireLegacyOff().catch((e) => console.error("[backup] legacy off migration failed:", (e as Error)?.message));
   // Les données restaurées peuvent être celles d'une ancienne version d'un module, réinstallée plus récente : on les met à niveau.

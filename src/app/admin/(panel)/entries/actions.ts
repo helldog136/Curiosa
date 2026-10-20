@@ -5,7 +5,7 @@ import { adminCtx } from "@/core/admin";
 import { getInstanceById } from "@/core/instances";
 import { prisma } from "@/core/db";
 import { uniqueSlug } from "@/core/content/entries";
-import { audit } from "@/core/permissions";
+import { audit, can } from "@/core/permissions";
 import { slugify } from "@/core/slug";
 import { isSafeExternalUrl } from "@/core/url";
 import type { ActionState } from "@/components/admin/ActionForm";
@@ -42,6 +42,10 @@ export async function saveEntry(_prev: ActionState, formData: FormData): Promise
     return d && !Number.isNaN(d.getTime()) ? d : null;
   };
   const status = formData.get("status") === "published" ? "published" : "draft";
+  // Publier (ou toucher un contenu déjà publié) demande `core:entries.publish` : éditeurs, administrateurs et propriétaire l'ont (comme avant) ;
+  // un rôle personnalisé peut ne donner que l'écriture de brouillons.
+  const mayPublish = can(user, "core:entries.publish");
+  if (status === "published" && !mayPublish) return { error: t("entries.error.publish") };
 
   const fields: Record<string, unknown> = {};
   for (const f of collection.fieldSchema) {
@@ -82,6 +86,7 @@ export async function saveEntry(_prev: ActionState, formData: FormData): Promise
   if (id) {
     const entry = await prisma.entry.findUnique({ where: { id } });
     if (!entry || entry.instanceId !== collection.id) return { error: t("error.generic") };
+    if (entry.status === "published" && !mayPublish) return { error: t("entries.error.publish") };
     // La date de publication saisie prime ; sinon on garde l'existante, ou on pose "maintenant" à la première publication.
     const publishedAt = (adv ? date("publishedAt") : null) ?? entry.publishedAt ?? (status === "published" ? new Date() : null);
     await prisma.entry.update({ where: { id }, data: { ...shared, publishedAt } });
@@ -118,6 +123,7 @@ export async function deleteEntry(entryId: string): Promise<void> {
   const { user } = await adminCtx("editor");
   const entry = await prisma.entry.findUnique({ where: { id: entryId }, include: { instance: true } });
   if (!entry) return;
+  if (entry.status === "published" && !can(user, "core:entries.publish")) return; // retirer un contenu publié = droit de publier
   await prisma.entry.delete({ where: { id: entryId } });
   await audit(user.email, "entry.delete", entryId);
   redirect(`/admin/entries?c=${entry.instance.key}`);

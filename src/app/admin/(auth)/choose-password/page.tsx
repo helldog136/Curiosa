@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 /** Seule page accessible tant que le mot de passe est temporaire : la personne y choisit le sien (ou se déconnecte). Rien d'autre de l'admin ne s'ouvre avant. */
 export default async function ChoosePasswordPage() {
-  const { t, user } = await adminCtx("editor", { allowForced: true, allowUnenrolled: true });
+  const { t, user } = await adminCtx("member", { allowForced: true, allowUnenrolled: true });
   if (!user.mustChangePassword) redirect("/admin");
   return (
     <main className="mx-auto mt-12 max-w-sm space-y-6 px-4 pb-12 sm:mt-24" data-testid="choose-password">

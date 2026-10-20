@@ -18,7 +18,7 @@ import { passwordProblem } from "@/core/auth/passwordPolicy";
 import type { ActionState } from "@/components/admin/ActionForm";
 
 export async function updateProfile(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  const { user, t } = await adminCtx("editor", { allowUnenrolled: true });
+  const { user, t } = await adminCtx("member", { allowUnenrolled: true });
   const name = String(formData.get("name") ?? "").trim();
   const locale = String(formData.get("locale") ?? "");
   if (!name || (locale && !isKnownLocale(locale))) return { error: t("error.generic") };
@@ -28,7 +28,7 @@ export async function updateProfile(_prev: ActionState, formData: FormData): Pro
 }
 
 export async function changePassword(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  const { user, t } = await adminCtx("editor", { allowUnenrolled: true });
+  const { user, t } = await adminCtx("member", { allowUnenrolled: true });
   const current = String(formData.get("current") ?? "");
   const next = String(formData.get("next") ?? "");
   const row = await prisma.user.findUnique({ where: { id: user.id } });
@@ -44,7 +44,7 @@ export async function changePassword(_prev: ActionState, formData: FormData): Pr
 
 /** « Déconnecter tous mes appareils » : coupe toutes mes sessions ouvertes, celle-ci comprise. */
 export async function signOutEverywhere(): Promise<void> {
-  const { user } = await adminCtx("editor");
+  const { user } = await adminCtx("member");
   await revokeSessions(user.id);
   await audit(user.email, "user.sessions.revoke");
   await signOut({ redirectTo: "/admin/login" });
@@ -56,7 +56,7 @@ export type TwoFactorResult = { error?: string; qr?: string; secret?: string; co
 
 /** Commence l'activation : une clé neuve, montrée en QR code (et en texte pour la saisir à la main). */
 export async function startTwoFactor(): Promise<TwoFactorResult> {
-  const { user, t, config } = await adminCtx("editor", { allowUnenrolled: true });
+  const { user, t, config } = await adminCtx("member", { allowUnenrolled: true });
   const started = await beginEnroll(user.id, config.name || "Curiosa");
   if (!started) return { error: t("error.generic") };
   return { qr: await qrSvg(started.uri), secret: started.secret };
@@ -64,7 +64,7 @@ export async function startTwoFactor(): Promise<TwoFactorResult> {
 
 /** Le code saisi confirme que l'application est bien réglée : activé, et les codes de secours sont donnés (une seule fois). */
 export async function confirmTwoFactor(code: string): Promise<TwoFactorResult> {
-  const { user, t } = await adminCtx("editor", { allowUnenrolled: true });
+  const { user, t } = await adminCtx("member", { allowUnenrolled: true });
   const r = await confirmEnroll(user.id, String(code ?? ""));
   if (!r.ok) return { error: t("account.twofa.wrongCode") };
   await audit(user.email, "user.2fa.enable");
@@ -74,7 +74,7 @@ export async function confirmTwoFactor(code: string): Promise<TwoFactorResult> {
 
 /** Désactiver demande le mot de passe ET un code : une session laissée ouverte ne suffit pas. Impossible si le propriétaire l'exige de tous. */
 export async function disableMyTwoFactor(password: string, code: string): Promise<TwoFactorResult> {
-  const { user, t } = await adminCtx("editor", { allowUnenrolled: true });
+  const { user, t } = await adminCtx("member", { allowUnenrolled: true });
   // Exigé par le propriétaire : on peut changer de facteur, pas rester sans (il faut au moins une clé d'accès pour désactiver le code).
   if ((await getSetting<boolean>("security.require2fa")) === true && (await countPasskeys(user.id)) === 0) return { error: t("account.twofa.required") };
   const ok = await verifyPassword(user.email, String(password ?? ""));
@@ -88,7 +88,7 @@ export async function disableMyTwoFactor(password: string, code: string): Promis
 
 /** De nouveaux codes de secours remplacent tous les anciens (mot de passe demandé). */
 export async function regenerateMyRecoveryCodes(password: string): Promise<TwoFactorResult> {
-  const { user, t } = await adminCtx("editor", { allowUnenrolled: true });
+  const { user, t } = await adminCtx("member", { allowUnenrolled: true });
   if (!(await verifyPassword(user.email, String(password ?? "")))) return { error: t("account.wrongPassword") };
   const codes = await regenerateRecoveryCodes(user.id);
   if (!codes) return { error: t("error.generic") };
@@ -102,7 +102,7 @@ export type PasskeyResult = { error?: string; options?: Record<string, unknown>;
 
 /** Ajouter une clé : le mot de passe est redemandé (une session laissée ouverte ne suffit pas). */
 export async function startPasskeyRegistration(password: string): Promise<PasskeyResult> {
-  const { user, t } = await adminCtx("editor", { allowUnenrolled: true });
+  const { user, t } = await adminCtx("member", { allowUnenrolled: true });
   if (!(await verifyPassword(user.email, String(password ?? "")))) return { error: t("account.wrongPassword") };
   const started = await startRegistration(user.id, await currentRelying());
   if ("error" in started) return { error: started.error === "max" ? t("account.passkeys.max") : t("error.generic") };
@@ -110,7 +110,7 @@ export async function startPasskeyRegistration(password: string): Promise<Passke
 }
 
 export async function finishPasskeyRegistration(challengeId: string, response: Record<string, unknown>, name: string): Promise<PasskeyResult> {
-  const { user, t } = await adminCtx("editor", { allowUnenrolled: true });
+  const { user, t } = await adminCtx("member", { allowUnenrolled: true });
   const done = await finishRegistration(user.id, String(challengeId ?? ""), response as never, String(name ?? ""), await currentRelying());
   if (!done.ok) return { error: t("account.passkeys.failed") };
   await audit(user.email, "user.passkey.add");
@@ -119,7 +119,7 @@ export async function finishPasskeyRegistration(challengeId: string, response: R
 }
 
 export async function renameMyPasskey(id: string, name: string): Promise<PasskeyResult> {
-  const { user, t } = await adminCtx("editor", { allowUnenrolled: true });
+  const { user, t } = await adminCtx("member", { allowUnenrolled: true });
   if (!(await renamePasskey(user.id, String(id ?? ""), String(name ?? "")))) return { error: t("error.generic") };
   revalidatePath("/admin/account");
   return { ok: true };
@@ -127,7 +127,7 @@ export async function renameMyPasskey(id: string, name: string): Promise<Passkey
 
 /** Retirer une clé : mot de passe demandé ; impossible de retirer la dernière si le propriétaire exige la double vérification et qu'on n'a pas le code. */
 export async function removeMyPasskey(id: string, password: string): Promise<PasskeyResult> {
-  const { user, t } = await adminCtx("editor", { allowUnenrolled: true });
+  const { user, t } = await adminCtx("member", { allowUnenrolled: true });
   if (!(await verifyPassword(user.email, String(password ?? "")))) return { error: t("account.wrongPassword") };
   const enforced = (await getSetting<boolean>("security.require2fa")) === true;
   if (enforced && !user.totp && (await countPasskeys(user.id)) <= 1) return { error: t("account.twofa.required") };

@@ -108,6 +108,40 @@ Dans *Utilisateurs → Actions sensibles → Définir un mot de passe temporaire
 - La double vérification et les clés d'accès **restent en place** : réinitialiser le mot de passe ne les retire pas (c'est une autre action).
 - Les **jetons des assistants IA (MCP)** appartiennent au site, pas à la session de la personne : ils restent valables et ne sont pas touchés. Si un compte est compromis, révoquez aussi les jetons concernés dans *Assistants IA*.
 
+## Rôles et droits (0.2.0)
+
+Une personne a **un ou plusieurs rôles** ; elle peut faire tout ce que l'un d'eux permet (union des droits).
+
+- **Rôles prédéfinis**, non modifiables : *Propriétaire* (tout ; une seule personne, intouchable), *Administrateur* (tout sauf ce qui est réservé au propriétaire),
+  *Éditeur* (écrire, modifier et publier les contenus). Ils sont créés au démarrage (`src/core/auth/roles.ts`, idempotent) ; chaque personne reçoit celui de son niveau.
+- **Rôles personnalisés** (*Équipe → Rôles*, **propriétaire seulement**) : un nom, une phrase, des cases à cocher par module en mots simples
+  (« Contacts : voir les e-mails »). Sur la fiche d'une personne, des **puces cumulables** (Éditeur + Modérateur) et l'aperçu « Ce que cette personne peut faire ».
+- **Droits** : ceux du cœur (`core:entries.edit`, `core:entries.publish`) et ceux des modules, toujours **préfixés par le cœur** (`<module>:<droit>`) : un module ne peut
+  ni déclarer ni tester le droit d'un autre. `<module>:open` ouvre la page d'un module (administrateurs : oui ; éditeurs : non, comme avant).
+- **Jamais proposés** dans un rôle (et refusés par le serveur s'ils arrivent dans un formulaire forgé) : `core:team`, `core:roles`, `core:backup`, `core:updates`,
+  `core:modules.install`, `core:mcp.tokens`, `core:security`. Ces pages restent celles du propriétaire.
+
+**Ce que vérifie le serveur** (testé par `tests/core/roles-security.test.mjs`) :
+
+- La personne est **relue en base à chaque requête** : un droit retiré est refusé dès la requête suivante, sans reconnexion. Le jeton de session garde un champ `role`
+  (compatibilité) mais **ne décide de rien**.
+- **Anti-élévation** : seul le propriétaire (relu en base) crée, modifie ou supprime un rôle et choisit les rôles des autres ; un rôle ne contient que des droits connus que
+  son créateur possède ; le rôle *Propriétaire* ne s'affecte jamais ; un identifiant de rôle forgé ou inconnu est refusé (rien n'est écrit en partie).
+- **Anti-verrouillage** : une personne garde au moins un rôle ; un rôle en usage ne se supprime qu'en choisissant le rôle que recevront ses membres (la base le refuse
+  aussi : `onDelete: Restrict`) ; le propriétaire est intouchable.
+- **Ordre inchangé** : connecté → mot de passe temporaire → rôle ou droit → double vérification. Un mot de passe temporaire bloque tout, quels que soient les rôles.
+- `ctx.can` d'un module ne répond « oui » que dans l'administration (panneau du module, ses actions, sections de l'éditeur d'entrée) ; il répond toujours « non »
+  dans une page publique, une route, un overlay, une tâche, un service ou le MCP.
+- **Journal d'audit** : `role.create`, `role.update`, `role.delete`, `user.roles`, et `access.denied` (au plus une ligne par personne et par droit toutes les 10 minutes).
+- Une personne connectée qui n'a **aucun** accès utile (par exemple un rôle personnalisé sans droit) arrive sur une page « Pas encore d'accès », hors du menu.
+
+**Niveau historique `User.role`** : il est conservé et recalculé à chaque changement : le plus haut rôle prédéfini de la personne, sinon **« none »**
+(elle n'a que des rôles personnalisés). Il reste la source du niveau : un changement fait par un ancien cœur est respecté au retour, jamais une élévation.
+
+**Retour à la 0.1.28** (après une mise à jour annulée) : les tables `Role` et `UserRole` sont ignorées. Un compte « none » est **refusé partout** par l'ancien cœur
+(son rang vaut 0) : il est **bloqué, jamais élevé**, jusqu'au retour en 0.2.0 ou jusqu'à ce que le propriétaire lui redonne le rôle Éditeur ou Administrateur.
+Les propriétaires, administrateurs et éditeurs ne voient aucune différence.
+
 ## Dépannage en SSH (propriétaire du serveur seulement)
 
 Si le propriétaire est bloqué (trop d'essais, mot de passe perdu), la commande de secours se lance **sur le serveur**, depuis le dossier de l'application, avec l'utilisateur du service :

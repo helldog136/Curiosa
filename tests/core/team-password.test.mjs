@@ -182,7 +182,7 @@ test("branchements : actions et routes d'admin fermées aux sessions forcées, d
   const out = [];
   const walk = (d) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const p = `${d}/${e.name}`; if (e.isDirectory()) walk(p); else if (/\.(ts|tsx)$/.test(e.name) && /allowForced/.test(read(p))) out.push(p); } };
   walk("src");
-  assert.deepEqual(out.sort(), ["src/app/admin/(auth)/choose-password/actions.ts", "src/app/admin/(auth)/choose-password/page.tsx", "src/app/admin/(auth)/login/page.tsx", "src/app/admin/layout.tsx", "src/core/admin.ts", "src/core/auth/access.ts", "src/core/permissions.ts"]);
+  assert.deepEqual(out.sort(), ["src/app/admin/(auth)/choose-password/actions.ts", "src/app/admin/(auth)/choose-password/page.tsx", "src/app/admin/(auth)/login/page.tsx", "src/app/admin/(auth)/no-access/page.tsx", "src/app/admin/layout.tsx", "src/core/admin.ts", "src/core/auth/access.ts", "src/core/permissions.ts"]);
   for (const f of ["src/app/api/admin/upload/route.ts", "src/app/api/admin/backup/route.ts", "src/app/api/admin/backup/restore/apply/route.ts", "src/app/admin/bug-report/route.ts", "src/core/backup/guard.ts"]) assert.doesNotMatch(read(f), /allowForced/, f);
   // Déconnexion toujours possible depuis la page de choix.
   assert.match(read("src/app/admin/(auth)/choose-password/actions.ts"), /export async function signOutForced[\s\S]*signOut\(/);

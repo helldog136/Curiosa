@@ -82,7 +82,7 @@ async function maintenanceToken(grant = [], name = "Ma maintenance") {
   const token = await T.createToken(name, "write", "owner@example.org", { grants: { [A.MAINTENANCE_PROFILE]: true, ...Object.fromEntries(grant.map((g) => [`maintenance_${g}`, true])) } });
   return { token, id: await T.findTokenId(token) };
 }
-const owner = { email: "owner@example.org", role: "owner" };
+const owner = { email: "owner@example.org", owner: true };
 const auditRows = (action) => db.prisma.auditLog.findMany({ where: { action: { startsWith: action } }, orderBy: { createdAt: "asc" } });
 
 // ── Catalogue et défauts ────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -454,9 +454,9 @@ test("expiration : après 24 h la demande est « expired » et ne s'exécute jam
 test("réservé au propriétaire : un administrateur ou un éditeur ne peut ni approuver ni refuser", async () => {
   const { token } = await maintenanceToken(["core_update"]);
   const { value } = await call(token, "maintenance_core_update");
-  for (const role of ["admin", "editor", ""]) {
-    assert.equal((await M.approveRequest(value.requestId, { email: "x@example.org", role })).reason, "forbidden");
-    assert.equal((await M.denyRequestBy(value.requestId, { email: "x@example.org", role })).reason, "forbidden");
+  for (const owner of [false, undefined, "true", 1]) {
+    assert.equal((await M.approveRequest(value.requestId, { email: "x@example.org", owner })).reason, "forbidden");
+    assert.equal((await M.denyRequestBy(value.requestId, { email: "x@example.org", owner })).reason, "forbidden");
   }
   assert.equal(calls.core.length, 0);
   assert.equal((await Q.getRequest(value.requestId)).status, "pending");

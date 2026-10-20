@@ -38,6 +38,8 @@ readable/           VOS DONNÉES MISES EN FORME POUR UN HUMAIN — commencez ici
   modules/<instance>/ les données de chaque module (JSON ; CSV et autres fichiers que le module fournit)
 data/               les mêmes données, brutes, en JSON : c'est ce que la restauration relit
                     (dont retired-instances.json : les données GARDÉES de modules ou d'instances retirés, inertes ; absent des sauvegardes d'avant la 0.1.20)
+                    (dont roles.json et user-roles.json : les rôles et qui les a ; absents avant la 0.2.0 : la restauration recrée alors les rôles
+                     prédéfinis et donne à chacun celui de son niveau `role` dans users.json)
 uploads/            images et fichiers envoyés
 ```
 

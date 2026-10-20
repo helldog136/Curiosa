@@ -11,7 +11,8 @@ datasource db {
 }
 
 // ─── Comptes ──────────────────────────────────────────────────────────────
-// role : owner | admin | editor (String : SQLite n'a pas d'enum natif).
+// role : owner | admin | editor | none (String : SQLite n'a pas d'enum natif). Depuis la 0.2.0, c'est le NIVEAU historique, recalculé par le cœur
+// à partir des rôles de la personne (le plus haut rôle prédéfini, sinon « none ») : voir src/core/auth/roles.ts. Un ancien cœur le lit encore.
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
@@ -38,6 +39,33 @@ model User {
   trustedIps TrustedIp[]
   recoveryCodes RecoveryCode[]
   passkeys      Passkey[]
+  roles         UserRole[]
+}
+
+// ─── Rôles et droits (0.2.0) ────────────────────────────────────────────────
+// Trois rôles prédéfinis (owner, admin, editor : system = true, créés au démarrage, non modifiables) et des rôles personnalisés (« r-<slug> »).
+// rights : liste JSON de droits (« core:entries.edit », « <module>:<droit> ») ; vide pour les rôles prédéfinis, dont les droits sont calculés.
+model Role {
+  id          String     @id @default(cuid())
+  key         String     @unique
+  name        String
+  description String     @default("")
+  system      Boolean    @default(false)
+  rights      String     @default("[]")
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  users       UserRole[]
+}
+
+// Une personne a un ou plusieurs rôles ; ses droits sont l'union de leurs droits. Un rôle en usage ne se supprime pas sans réaffectation (Restrict).
+model UserRole {
+  userId String
+  roleId String
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role @relation(fields: [roleId], references: [id], onDelete: Restrict)
+
+  @@id([userId, roleId])
+  @@index([roleId])
 }
 
 // ─── Connexion : blocages progressifs ──────────────────────────────────────

@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { adminCtx } from "@/core/admin";
+import { panelRole } from "@/core/auth/access";
 import { getInstanceById } from "@/core/instances";
 import { prisma } from "@/core/db";
 import { parseTags } from "@/core/content/entries";
@@ -61,7 +62,7 @@ export default async function EditEntryPage({ params, searchParams }: {
         }}
       />
       {/* Sections ajoutées par d'autres modules (hors du formulaire ci-dessus : chacune s'enregistre seule, sans quitter la page). */}
-      <EntryPanels entryId={entry.id} locale={adminLocale} defaultLocale={config.defaultLocale} view={{ advanced, role: user.role }} t={t} />
+      <EntryPanels entryId={entry.id} locale={adminLocale} defaultLocale={config.defaultLocale} view={{ advanced, role: panelRole(user) }} viewer={user} t={t} />
       {/* Zone à part, loin de « Enregistrer » : on n'y arrive jamais par hasard, et chaque bouton demande confirmation. */}
       <section aria-label={t("entries.dangerTitle")} className="mt-10 space-y-3 rounded-2xl border border-red-500/30 p-5">
         <h2 className="text-[15px] font-semibold text-red-700">{t("entries.dangerTitle")}</h2>

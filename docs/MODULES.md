@@ -156,6 +156,7 @@ Validé à l'installation et au chargement (zod, `src/core/modules/manifest.ts`)
 | `dataVersion` | Version de la **structure de vos données** (entier ≥ 1, défaut 1). À augmenter quand elle change, avec la migration correspondante (`migrations`). |
 | `defaultEnabled` | Sans effet pour un module installé depuis le catalogue ou un dépôt : sans effet non plus sur l'état : un module installé est toujours actif (l'assistant de première installation n'installe que ceux que l'on coche). |
 | `permissions` | Les capacités utilisées (voir ci-dessous). |
+| `rights` | (cœur 0.2.0) **Droits** du module, proposés dans les rôles de la page Équipe (voir « Droits (`rights`) »). 20 au plus. |
 
 ### Version minimale du cœur (`minCore`)
 
@@ -191,6 +192,27 @@ fidèlement (le test de l'exemple vérifie qu'elles correspondent au code), elle
 | `admin` | le code définit `adminPanel` / `adminActions` / `entryPanels` |
 | `mail` | le module appelle `ctx.api.mail.send` |
 | `rawg` | le module appelle `ctx.api.rawg.cover` (jaquettes de jeux, voir « Jaquettes de jeux (RAWG) ») |
+
+### Droits (`rights`)
+
+Cœur **0.2.0** (déclarez `"minCore": "0.2.0"` si votre code en dépend). Le propriétaire crée des rôles (« Modérateur »…) et coche, module par module,
+ce que chacun permet ; un module dit ici quels droits il propose :
+
+```json
+"rights": [
+  { "id": "email.view", "label": { "fr": "voir les e-mails et téléphones", "en": "see e-mails and phone numbers" },
+    "help": { "fr": "…", "en": "…" }, "sensitive": true, "default": { "admin": true, "editor": false } }
+]
+```
+
+- `id` : identifiant **local** (1 à 3 segments en minuscules : `email.view`, `targets.edit`). Le cœur le préfixe toujours par l'identifiant du module
+  (`<module>:email.view`) : un module ne peut **jamais** déclarer ni tester le droit d'un autre. Un `:` dans `id` est refusé.
+- `open` est **implicite** (ne le déclarez pas) : `<module>:open` ouvre la page d'administration du module. Tout administrateur l'a ; un éditeur non (comme avant).
+- `label` (obligatoire), `help` : en mots simples, ils s'affichent à côté de la case à cocher. `sensitive` : marqué « sensible ».
+- `default` : ce que reçoivent les rôles prédéfinis. Administrateur : oui, sauf `"admin": false`. Éditeur : non, sauf `"editor": true`.
+- Lire un droit : `ctx.can("email.view")` (voir « Le contexte `ctx` »), ou protéger une action : `adminActions: { save: { right: "phone.edit", run } }`
+  (le cœur vérifie `<module>:open` ET `<module>:phone.edit` **avant** d'appeler `run`).
+- Un cœur plus ancien ignore cette clé et n'a pas `ctx.can` : traitez son absence comme un refus.
 
 ### Réglages (`settings`)
 
@@ -457,7 +479,16 @@ filtres de toutes les instances actives s'appliquent en chaîne. `ctx.entry` ind
 
 ### `adminPanel`, `adminActions` : administration
 
-Voir « Panneau d'admin riche ».
+Voir « Panneau d'admin riche ». Deux formes pour une action :
+
+- **fonction** `(ctx, values) => …` : réservée aux administrateurs (comportement d'avant la 0.2.0, inchangé) ;
+- **objet** `{ right: "phone.edit", run: (ctx, values) => … }` (cœur 0.2.0) : le cœur vérifie `<module>:open` et `<module>:phone.edit` pour la personne
+  connectée (relue en base à chaque requête) **avant** d'appeler `run`. Une personne d'un rôle personnalisé qui a ces deux droits peut l'exécuter ;
+  le droit d'un autre module (`"autre:x"`) est toujours refusé. Le module ne fait jamais lui-même le contrôle d'accès, mais il peut adapter ce qu'il
+  montre avec `ctx.can`.
+
+La page d'administration d'un module s'ouvre avec `<module>:open`. Une personne qui n'est pas administratrice n'y voit que le panneau du module
+(`adminPanel`) : ni réglages, ni retrait.
 
 ### `mcp` : actions pour les assistants
 
@@ -662,6 +693,7 @@ Chaque fonction du module reçoit un `ctx` (`ModuleContext`) ; les slots reçoiv
 | `ctx.page` | (slots `page.*` et `entry.*`) `{ key, basePath }` de l'instance dont on affiche la page |
 | `ctx.entry` | (slots `entry.*`) `{ id, title, slug }` de l'entrée affichée |
 | `ctx.api` | tout ce que le cœur met à disposition (ci-dessous) |
+| `ctx.can("droit")` | (cœur 0.2.0) la personne qui regarde l'administration a-t-elle ce droit du module (identifiant **local**, voir « Droits (`rights`) ») ? Vrai seulement dans `adminPanel`, `adminActions` et `entryPanels` ; **toujours faux** ailleurs (page publique, route, overlay, tâche, service, MCP). Absent sur un cœur plus ancien : traitez l'absence comme un refus. |
 
 ### `ctx.api`
 

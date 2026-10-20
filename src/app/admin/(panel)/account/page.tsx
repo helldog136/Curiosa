@@ -14,7 +14,7 @@ import { getSetting } from "@/core/settings";
 import { changePassword, confirmTwoFactor, disableMyTwoFactor, finishPasskeyRegistration, regenerateMyRecoveryCodes, removeMyPasskey, renameMyPasskey, signOutEverywhere, startPasskeyRegistration, startTwoFactor, updateProfile } from "./actions";
 
 export default async function AccountPage({ searchParams }: { searchParams: Promise<{ need2fa?: string }> }) {
-  const { t, user, config } = await adminCtx("editor", { allowUnenrolled: true });
+  const { t, user, config } = await adminCtx("member", { allowUnenrolled: true });
   const { need2fa } = await searchParams;
   const enforced = (await getSetting<boolean>("security.require2fa")) === true;
   const remaining = user.totp ? await remainingRecoveryCodes(user.id) : 0;

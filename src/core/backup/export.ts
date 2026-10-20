@@ -46,7 +46,7 @@ export type BackupResult = { buffer: Buffer; filename: string; manifest: BackupM
 export async function createBackup(password: string, opts: { now?: Date; iterations?: number } = {}): Promise<BackupResult> {
   const now = opts.now ?? new Date();
   const config = await getSiteConfig();
-  const [users, settings, moduleRows, instances, instanceTranslations, entries, entryTranslations, redirects, records, retired] = await Promise.all([
+  const [users, settings, moduleRows, instances, instanceTranslations, entries, entryTranslations, redirects, records, retired, roles, userRoles] = await Promise.all([
     prisma.user.findMany({ orderBy: { createdAt: "asc" } }),
     prisma.setting.findMany({ orderBy: [{ key: "asc" }, { locale: "asc" }] }),
     listModuleRows(),
@@ -57,6 +57,8 @@ export async function createBackup(password: string, opts: { now?: Date; iterati
     prisma.redirect.findMany({ orderBy: { path: "asc" } }),
     prisma.moduleRecord.findMany({ orderBy: { createdAt: "asc" } }),
     prisma.retiredInstance.findMany({ orderBy: [{ retiredAt: "asc" }, { id: "asc" }] }),
+    prisma.role.findMany({ orderBy: [{ createdAt: "asc" }, { id: "asc" }] }),
+    prisma.userRole.findMany({ orderBy: [{ userId: "asc" }, { roleId: "asc" }] }),
   ]);
 
   const market = await getCatalogue().catch(() => []);
@@ -81,6 +83,9 @@ export async function createBackup(password: string, opts: { now?: Date; iterati
     jsonFile(DATA_FILES.records, records.map((r) => ({ ...r, data: safeParse(r.data) }))),
     // Données gardées de modules ou d'instances retirés : la sauvegarde reste complète (le bloc est écrit en JSON lisible, pas en texte échappé).
     jsonFile(DATA_FILES.retired, retired.map((r) => ({ ...r, payload: safeParse(r.payload) }))),
+    // Rôles (droits en liste JSON lisible) et affectations.
+    jsonFile(DATA_FILES.roles, roles.map((r) => ({ ...r, rights: safeParse(r.rights) }))),
+    jsonFile(DATA_FILES.userRoles, userRoles),
   ];
 
   // ── Copie lisible ───────────────────────────────────────────────────────────

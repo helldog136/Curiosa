@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { adminCtx } from "@/core/admin";
+import { hasRole } from "@/core/auth/access";
 import { getInstanceByKey } from "@/core/instances";
 import { prisma } from "@/core/db";
 import { getSetting } from "@/core/settings";
@@ -26,7 +27,7 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
   const entries = sort === "title" ? sortByTitle(view.map((v) => ({ ...v, title: v.main?.title ?? "", featured: v.e.featured })), config.defaultLocale) : view;
   const fmt = new Intl.DateTimeFormat(locale, { dateStyle: "medium" });
   const newHref = `/admin/entries/new?c=${collection.key}`;
-  const canConfigure = user.role !== "editor";
+  const canConfigure = hasRole(user, "admin");
   const name = (await getInstanceLabeler(locale, config.defaultLocale)).label(collection);
 
   return (

@@ -4,6 +4,7 @@ import { makeTranslator } from "../i18n/dictionary";
 import { sendMail } from "../services/mail";
 import { getSiteConfig } from "../settings";
 import { generateTemporaryPassword, passwordProblem } from "./passwordPolicy";
+import { levelOf } from "./access";
 
 /**
  * MOT DE PASSE TEMPORAIRE FIXÉ PAR LE PROPRIÉTAIRE. Ce module porte toute la règle ; les actions serveur ne font que l'appeler.
@@ -48,11 +49,11 @@ async function notify(target: { email: string; name: string; locale: string | nu
 export async function resetMemberPassword(input: { actorId: string; targetId: string; mode: "generate" | "custom"; password?: string; now?: number }): Promise<ResetResult> {
   const now = input.now ?? Date.now();
   const actor = await prisma.user.findUnique({ where: { id: String(input.actorId ?? "") }, select: { id: true, email: true, role: true } });
-  if (!actor || actor.role !== "owner") return { ok: false, reason: "denied" };
+  if (!actor || levelOf(actor) !== "owner") return { ok: false, reason: "denied" };
   const target = await prisma.user.findUnique({ where: { id: String(input.targetId ?? "") } });
   if (!target) return { ok: false, reason: "missing" };
   if (target.id === actor.id) return { ok: false, reason: "self" };
-  if (target.role === "owner") return { ok: false, reason: "owner" };
+  if (levelOf(target) === "owner") return { ok: false, reason: "owner" };
   const custom = input.mode === "custom";
   if (custom && passwordProblem(String(input.password ?? ""))) return { ok: false, reason: "weak" };
   if (!allow(actor.id, target.id, now)) return { ok: false, reason: "limited" };

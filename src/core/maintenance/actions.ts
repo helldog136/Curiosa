@@ -260,12 +260,13 @@ export async function callLevel3(action: Level3Action, args: Params, actor: { na
 
 /* ───────────── Décision humaine ───────────── */
 
-export type Decider = { email: string; role: string };
+/** Qui décide : `owner` vient de `isOwner(user)` (personne relue en base), jamais d'un formulaire. */
+export type Decider = { email: string; owner: boolean };
 export type DecisionResult = { ok: boolean; message: string; reason?: "forbidden" | "unknown" | "not-pending" | "expired" | "busy" | "failed" };
 
 /** Le propriétaire approuve : la demande est exécutée UNE fois, avec les mêmes fonctions que l'admin et les mêmes vérifications. */
 export async function approveRequest(id: string, by: Decider): Promise<DecisionResult> {
-  if (by.role !== "owner") return { ok: false, reason: "forbidden", message: "Only the owner can approve a request." };
+  if (by?.owner !== true) return { ok: false, reason: "forbidden", message: "Only the owner can approve a request." };
   const claim = await claimRequest(id, deps.now());
   if (!claim.ok) return { ok: false, reason: claim.reason, message: `Request ${claim.reason === "expired" ? "expired" : claim.reason === "unknown" ? "not found" : "already answered"}.` };
   const r = claim.request;
@@ -277,7 +278,7 @@ export async function approveRequest(id: string, by: Decider): Promise<DecisionR
 }
 
 export async function denyRequestBy(id: string, by: Decider): Promise<DecisionResult> {
-  if (by.role !== "owner") return { ok: false, reason: "forbidden", message: "Only the owner can refuse a request." };
+  if (by?.owner !== true) return { ok: false, reason: "forbidden", message: "Only the owner can refuse a request." };
   const r = await denyRequest(id, deps.now());
   if (!r.ok) return { ok: false, reason: r.reason, message: `Request ${r.reason === "expired" ? "expired" : r.reason === "unknown" ? "not found" : "already answered"}.` };
   await prisma.auditLog.create({ data: { actor: by.email, action: "mcp.maintenance.deny", target: redactSecrets(`${r.request.id} ${r.request.action}`, 200) } }).catch(() => {});

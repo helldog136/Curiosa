@@ -25,7 +25,8 @@ test("gridEditor : un tracé généré invalide est refusé (taille, longueur, c
 
 test("gridEditor : l'action de génération passe par une action serveur réservée aux administrateurs, ne persiste rien et valide la réponse", () => {
   const fn = actions.slice(actions.indexOf("export async function runModuleGridGenerate"));
-  assert.match(fn, /adminCtx\("admin"\)/, "mêmes contrôles d'accès que runModuleAdminAction");
+  assert.match(fn, /adminCtx\("member"\)[\s\S]*allowedHandler\(user, active, action\)/, "mêmes contrôles d'accès que runModuleAdminAction (forme fonction : administrateurs ; forme objet : son droit)");
+  assert.match(actions, /decideAdminAction\(user, active\.mod\.manifest\.id, active\.mod\.def\.adminActions, action\)/, "forme fonction : administrateurs ; forme objet : son droit (core/modules/adminActionAccess.ts)");
   assert.match(fn, /adminActions\?\.\[action\]/, "uniquement les actions déclarées par le module");
   assert.match(fn, /parseGeneratedGrid\(result\.grid\)/, "réponse invalide refusée");
   assert.ok(!/revalidatePath|redirect\(|audit\(/.test(fn), "génération = lecture : rien n'est persisté ni redirigé");
