@@ -5,12 +5,14 @@ import { moduleJsonLd } from "@/core/seo";
 import { entryPath, listEntries } from "@/core/content/entries";
 import { getInstanceByKey, listInstances, pickName, type InstanceView } from "@/core/instances";
 import { isMailConfigured, sendMail } from "@/core/services/mail";
+import { sharedNet } from "@/core/services/net";
 import { qrSvg } from "@/core/services/qr";
 import { isRawgConfigured, rawgCover } from "@/core/services/rawg";
 import { renderPng, type PngSpec } from "@/core/services/render";
 import { createStore } from "@/core/services/store";
 import { collect } from "@/core/services/topics";
 import { getSiteConfig } from "@/core/settings";
+import { remainingBudgetMs } from "./budget";
 import { callService, callServiceAll, serviceAvailable } from "./dependencies";
 import { getActiveInstances } from "./registry";
 import type { ModuleApi } from "./types";
@@ -26,6 +28,7 @@ import type { ModuleApi } from "./types";
  *     mail    envoi d'e-mails au nom du site (SMTP réglé dans l'admin)
  *     rawg    jaquettes de jeux (clé RAWG réglée une fois dans l'admin ; permission « rawg »)
  *     topics  échange d'informations typées entre modules
+ *     net     client réseau neutre et borné (délai, pauses 429, quota, disjoncteur, file bornée, santé) ; aucun fournisseur connu du cœur
  *     services  appel du service d'un autre module (`call` : maître ; `callAll` : toutes les instances d'un service `each`)
  *     (MCP : pas d'appel côté module ; un module déclare ses actions `mcp`, le cœur les expose)
  *
@@ -34,6 +37,9 @@ import type { ModuleApi } from "./types";
  *
  * Voir docs/PLATFORM.md.
  */
+/** Marge laissée à la section pour afficher son repli quand un appel réseau épuise le temps de la page. */
+const NET_PAGE_MARGIN_MS = 500;
+
 export function makeApi(instance: InstanceView, locale: string, permissions: readonly string[] = []): ModuleApi {
   const rawgAllowed = permissions.includes("rawg");
   return {
@@ -61,6 +67,15 @@ export function makeApi(instance: InstanceView, locale: string, permissions: rea
     rawg: {
       configured: async () => rawgAllowed && (await isRawgConfigured()),
       cover: async (title) => (rawgAllowed ? rawgCover(title) : { status: "no-key", url: null }),
+    },
+    net: {
+      // Dans une page publique : le délai ne dépasse pas le temps restant de la page, moins une marge pour que le module affiche son repli.
+      request: (req) => {
+        const left = remainingBudgetMs();
+        return sharedNet().request(req, { module: instance.moduleId, budgetMs: left === null ? null : left - NET_PAGE_MARGIN_MS });
+      },
+      health: async () => sharedNet().health(),
+      budgetMs: remainingBudgetMs,
     },
     topics: {
       async collect(topic, opts) {

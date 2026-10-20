@@ -108,7 +108,14 @@ export type Block =
   | { type: "downloads"; items: { src: string; label: string; detail?: string }[] }
   /** Texte à copier d'un clic (description courte, formule de présentation…). */
   | { type: "copy"; label?: string; text: string }
-  | { type: "head"; tags: HeadTag[] };
+  | { type: "head"; tags: HeadTag[] }
+  /**
+   * Santé des services externes (panneau d'admin uniquement ; ignoré sur le site public). Pour chaque hôte appelé via `ctx.api.net`, le cœur écrit une
+   * phrase simple en FR/EN d'après son état réel : « Service répond normalement », « … répond lentement depuis 10 h 42 », « Trop de demandes : pause
+   * jusqu'à 11 h 00 », « Quota du jour épuisé, reprise à 9 h 00 », « … ne répond pas ; le site affiche les dernières données connues ».
+   * `label` : nom lisible donné par le module (le cœur ne connaît aucun fournisseur) ; `lastGoodAt` (ISO 8601) : date des données affichées.
+   */
+  | { type: "netHealth"; items: { host: string; label: string; lastGoodAt?: string }[] };
 
 /**
  * Emplacements où un module peut ajouter des blocs. La page d'accueil n'en a

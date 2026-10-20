@@ -1,3 +1,4 @@
+import { makeNetClient } from "./fakeNet.mjs";
 /**
  * FAUX CONTEXTE DE MODULE — API publique du kit de test (testsupport/). Voir docs/TESTSUPPORT.md.
  *
@@ -21,6 +22,10 @@
  * - `ctx.api.services` : `services` = { nom: { méthode: (args) => valeur } } ; absent → `unavailable`
  * - `ctx.api.services.callAll(nom, méthode, args)` : `serviceInstances` = { nom: [{ instance, name?, methods: { méthode: (args) => valeur } }] } → une entrée par instance (un fournisseur qui lève
  *   donne `{ ok: false, error: "failed" }`) ; sans `serviceInstances[nom]`, UNE entrée tirée de `services[nom]` (comme un service non-each) ; service inconnu → []
+ * - `ctx.api.net` : le VRAI client réseau du cœur (pauses 429, quota, disjoncteur, file bornée, délais…), avec un état neuf par fakeCtx et branché sur
+ *   `globalThis.fetch` : combinez-le avec `withFakeFetch` / `fakeFetch` et `netReplies` (testsupport/fakeNet.mjs). Chaque demande est notée dans `ctx.calls.net`
+ *   (`{ url, method }`) et chaque ligne de journal dans `ctx.calls.netLog`. Options : `netLimits` (bornes raccourcies ; par défaut l'attente avant la reprise
+ *   est réduite à quelques ms), `netBudgetMs` (temps restant d'une page publique simulé ; défaut null = hors page), `net` (remplace tout `ctx.api.net`).
  * - `ctx.dumpStore()` : tout le contenu du stockage `[{ id, collection, data }]`, pour les assertions
  * - `ctx.calls` enregistre les appels utiles aux assertions (`calls.writes` : chaque écriture du stockage `{ op, collection }`)
  * - `ctx.visit` : `{ lastVisit }` (option `lastVisit`, défaut : le 1er janvier 1970 = visiteur inconnu)
@@ -35,10 +40,21 @@ export function fakeCtx(opts = {}) {
     settings = {}, messages = {}, topics = {}, entries = [], instances = [],
     brand = { name: "Site", tagline: "", about: "", logo: null, contactEmail: "", colors: [], font: { key: "sans", name: "Sans-serif", stack: "sans-serif" }, defaultLocale, locales },
     migration = false, seedResult, rows: seedRows = {}, permissions, lastVisit = new Date(0), site = { name: "Site", tagline: "", logo: null }, theme = { accent: "#e8a23b", accentFg: "#111111", bg: "#121214", surface: "#1b1b1d", fg: "#f4f4f5", muted: "#a1a1a3", line: "#2e2e30", fontKey: "sans", font: "sans-serif" }, services = {}, serviceInstances = {}, mailConfigured = true, mailResult = { ok: true }, rawgConfigured = true, rawgCover = { status: "found", url: "https://media.example.test/cover.jpg" }, siteUrl = "https://example.test",
+    net: netOverride, netLimits, netBudgetMs = null,
   } = opts;
   const rows = new Map();
   let seq = 0;
-  const calls = { topics: [], qr: [], entries: [], mail: [], png: [], services: [], rawg: [], seeds: [], cleared: [], writes: [], denied: [] };
+  const calls = { topics: [], qr: [], entries: [], mail: [], png: [], services: [], rawg: [], seeds: [], cleared: [], writes: [], denied: [], net: [], netLog: [] };
+  let netClient;
+  const client = () => (netClient ??= makeNetClient({ limits: { retryMinMs: 1, retryMaxMs: 5, ...netLimits }, log: (line) => calls.netLog.push(line) }));
+  const net = netOverride ?? {
+    async request(req) {
+      calls.net.push({ url: req?.url, method: req?.method ?? "GET" });
+      return (await client()).request(req, { module: moduleId, budgetMs: netBudgetMs });
+    },
+    async health() { return (await client()).health(); },
+    budgetMs: () => netBudgetMs,
+  };
   const cleared = new Set();
   const store = {
     async add(collection, data) { calls.writes.push({ op: "add", collection }); const id = `r${++seq}`; rows.set(id, { id, collection, createdAt: new Date(Date.now() + seq), data: structuredClone(data) }); return id; },
@@ -102,6 +118,7 @@ export function fakeCtx(opts = {}) {
         },
       },
       rawg: { configured: async () => (!allowed || allowed.has("rawg")) && rawgConfigured, cover: async (title) => { calls.rawg.push(title); if (allowed && !allowed.has("rawg")) return { status: "no-key", url: null }; return typeof rawgCover === "function" ? rawgCover(title) : rawgCover; } },
+      net,
       site: async () => site,
       brand: async () => brand,
       instances: { list: async () => instances },

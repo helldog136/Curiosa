@@ -683,6 +683,9 @@ Deux familles : les **services** du cœur (génériques, voir [PLATFORM.md](PLAT
 | `ctx.api.mail.send({ to, subject, text, replyTo? })` | service | e-mail au nom du site (permission `mail`, voir « Envoyer un e-mail ») |
 | `ctx.api.rawg.configured()` | service | une clé RAWG est-elle réglée par le propriétaire ? (permission `rawg` ; `false` sans elle) |
 | `ctx.api.rawg.cover(title)` | service | jaquette d'un jeu : `{ status, url }` avec `status` = `found` (`url` en https), `none` (aucun résultat), `no-key` (pas de clé), `refused` (RAWG refuse la clé), `unreachable` (RAWG injoignable) ; permission `rawg`, voir « Jaquettes de jeux (RAWG) » |
+| `ctx.api.net.request({ url, method?, headers?, body?, timeoutMs?, maxBytes?, dedupe?, retry?, priority?, bucket? })` | service | appel réseau **neutre et borné** vers une API externe (https seulement, aucune permission) : `{ ok: true, status, headers, json?, text?, shared }` ou `{ ok: false, error, status?, retryAt? }` ; ne lève jamais. Voir « Appeler une API externe : `ctx.api.net` » |
+| `ctx.api.net.health()` | service | état des hôtes contactés depuis le démarrage : `[{ host, state: "ok" \| "slow" \| "rate" \| "quota" \| "down", since, retryAt? }]` |
+| `ctx.api.net.budgetMs()` | service | temps restant (ms) de la page publique en cours, ou `null` hors page publique |
 | `ctx.api.site(locale?)` | lecture | `{ name, tagline, logo }` du site |
 | `ctx.api.brand(locale?)` | lecture | identité visuelle complète (`ModuleBrand`, ci-dessous) |
 | `ctx.api.instances.list({ module?, locale? })` | lecture | `[{ id, key, module, basePath, name, adminPath }]` des instances actives ; `adminPath` (`/admin/instances/<id>`) est la page de réglages de l'instance : de quoi y renvoyer l'administrateur par un lien (`href`) |
@@ -709,6 +712,7 @@ Un module renvoie des **blocs déclaratifs** ; le cœur se charge du rendu, des 
 | `html` | `html` — **brut**, sous la responsabilité du module : échappez tout ce qui vient d'un visiteur |
 | `heading` | `text` |
 | `swatches` | `items: [{ name, hex, role? }]` — pastilles de couleur avec code copiable |
+| `netHealth` | `items: [{ host, label, lastGoodAt? }]` — **panneau d'admin seulement** : santé des services externes appelés par `ctx.api.net`, une phrase simple par service écrite par le cœur en FR/EN (« répond normalement », « répond lentement depuis 10:42 ; les données affichées datent de 10:30 », « trop de demandes, pause jusqu'à 11:00 », « quota du jour épuisé, reprise à 09:00 », « ne répond pas ») et, en cas de souci, « Un service externe ne répond pas : le site affiche les dernières données connues ». `label` : nom lisible du service (le cœur n'en connaît aucun) ; `lastGoodAt` : date ISO des données affichées |
 | `downloads` | `items: [{ src, label, detail? }]` — images à télécharger, avec aperçu |
 | `copy` | `text`, `label?` — texte à copier d'un clic |
 | `hero` | `title`, `text?`, `image?`, `eyebrow?`, `button?` (`label`, `href`), `video?` (fichier envoyé sur le site), `videoPoster?`, `videoSound?` |
@@ -1039,6 +1043,29 @@ Garde-fous du cœur : texte brut uniquement (20 000 caractères au plus), objet 
 `replyTo` doit être une adresse valide, 10 envois par heure et par instance et 40 par heure pour tout le site (`rate_limited` au-delà),
 chaque envoi consigné dans le journal d'audit (sans contenu).
 
+
+## Appeler une API externe : `ctx.api.net`
+
+Un service externe finit toujours par tomber, ralentir ou demander une pause. `ctx.api.net.request(…)` est le client réseau **du cœur**, partagé par tous les modules : préférez-le à `fetch`. Il ne demande **aucune permission** et ne connaît **aucun fournisseur**.
+
+```js
+const r = await ctx.api.net.request({ url: "https://api.example.org/v1/items?page=1", headers: { authorization: `Bearer ${ctx.setting("apiKey")}` } });
+if (r.ok && r.status === 200 && r.json) { /* mettre en cache avec la date */ }
+else { /* r.error : timeout | network | rate | quota | circuit | busy | too_large | invalid — afficher les dernières données connues */ }
+```
+
+- **Ne lève jamais.** Toute réponse HTTP reçue donne `ok: true` avec son `status` (à vous de juger un 404) ; `json` si le corps est du JSON lisible, sinon `text` (un JSON tronqué arrive en `text`). Les redirections ne sont pas suivies (`status` 3xx, en-tête `location`).
+- **Délai dur** : `timeoutMs` (8 000 par défaut, 20 000 au plus), file d'attente et lecture du corps comprises. Dans une page publique, jamais plus que le temps restant de la page (`ctx.api.net.budgetMs()`), moins une petite marge pour afficher votre repli. Corps limité à `maxBytes` (2 Mo par défaut, 10 Mo au plus).
+- **Trop de demandes** : un 429 (ou un 503 avec `Retry-After`) met le **seau** en pause jusqu'à `retryAt`, lu dans `Retry-After`, puis `RateLimit-Reset` / `X-RateLimit-Reset`, `X-RateLimit-Reset-After`, enfin `retry_after` dans le corps JSON (60 s à défaut, 1 h au plus). Pendant la pause, chaque demande reçoit `{ ok: false, error: "rate", retryAt }` **sans appel réseau**. Une réponse normale avec `RateLimit-Remaining: 0` déclenche la même pause, préventive. Le seau est `bucket` (une même application chez un fournisseur, partagée par plusieurs modules ; haché, jamais journalisé), sinon l'hôte.
+- **Quota du jour** : un 403 dont le JSON porte `error.errors[].reason` = `quotaExceeded` ou `dailyLimitExceeded` donne `quota`, sans aucun appel avant minuit, heure du Pacifique (`retryAt`).
+- **Disjoncteur par hôte**, partagé par tout le site : 5 échecs (délai, réseau, 5xx) en 60 s l'ouvrent 30 s (`circuit`), puis un seul essai ; s'il échoue, la pause double, jusqu'à 5 min.
+- **Déduplication** : des GET identiques en cours (même adresse, mêmes en-têtes) partagent un seul appel (`shared: true` pour les suivants ; chacun reçoit sa propre copie). `dedupe: false` pour s'en passer.
+- **File bornée** : 4 appels simultanés par hôte, 16 admis par hôte, 32 pour tout le site ; au-delà, `busy` **tout de suite** (jamais d'attente). `priority: "interactive"` passe devant `background` (défaut).
+- **Une seule reprise** au plus (`retry`, 1 par défaut pour GET/HEAD ; jamais pour les autres méthodes), après une erreur réseau ou un 502/503/504 sans `Retry-After`, après 200 à 800 ms au hasard, et seulement s'il reste 1 s de délai. Jamais après un 429 ou un quota.
+- **Journal** : une ligne `[net] <module> <hôte> <méthode> <chemin> <statut|erreur> <ms>ms`, sans en-têtes, sans paramètres de requête, sans corps ; un segment de chemin qui ressemble à un jeton est masqué. Un refus sans réseau n'est écrit qu'une fois par minute.
+- **Santé** : `ctx.api.net.health()`, et le bloc d'admin `netHealth` (voir « Blocs ») pour la montrer à l'administrateur en mots simples.
+
+Un cœur plus ancien n'a pas `ctx.api.net` : exigez `"minCore": "0.2.0"`, ou prévoyez un repli (`ctx.api.net ? … : fetch(url, { signal: AbortSignal.timeout(8000) })`). Le kit de test vérifie les appels réseau (règles `net.bounded`, `net.429`, `net.fallback`, `net.noIdleTimer`, voir [TESTSUPPORT.md](TESTSUPPORT.md)) ; dans vos tests, `fakeCtx()` fournit le vrai client, à combiner avec `withFakeFetch` et `netReplies` (`rateLimited`, `quotaExceeded`, `silence`, `truncatedJson`, `slow`, `down`).
 
 ## Jaquettes de jeux (RAWG)
 

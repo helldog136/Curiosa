@@ -91,6 +91,14 @@ function remainingMs(): number | null {
   const s = runtime().scope.getStore();
   return s ? s.deadline - Date.now() : null;
 }
+/**
+ * Temps qu'il reste à la page publique en cours (ms), ou null hors page publique. Exposé aux modules par `ctx.api.net.budgetMs()`, et utilisé par
+ * `ctx.api.net.request` : dans une page publique, le délai d'un appel réseau ne dépasse jamais ce qu'il reste à la page (moins une marge pour afficher le repli).
+ */
+export function remainingBudgetMs(): number | null {
+  const left = remainingMs();
+  return left === null ? null : Math.max(0, left);
+}
 export const inPublicPage = (): boolean => runtime().scope.getStore() !== undefined;
 
 /**

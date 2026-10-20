@@ -2,7 +2,7 @@
 import path from "node:path";
 import { permissionsFromDefinition, definitionProblems } from "../builtinChecks.mjs";
 import { observe } from "../probes.mjs";
-import { stripComments } from "./util.mjs";
+import { NET_RULES_LEVEL, balancedArgs, stripComments } from "./util.mjs";
 
 const FN = (v) => typeof v === "function";
 const strip = (m) => stripComments(m.code);
@@ -203,6 +203,46 @@ const requirements = [
     run(m) {
       if (!m.loadErrors.length && !m.manifest?.main) return { na: "module sans code" };
       return m.network.map((n) => `au chargement, le code a tenté : ${n}`);
+    },
+  },
+  {
+    id: "net.bounded", level: NET_RULES_LEVEL, group: "network",
+    title: "Chaque appel réseau a un délai",
+    what: "Aucun « fetch( » sans délai : soit l'appel passe par ctx.api.net.request (délai, pauses et disjoncteur fournis par le cœur), soit il porte un « signal » (par exemple AbortSignal.timeout(8000)). Conseil dans le cœur 0.2.0 ; deviendra obligatoire.",
+    why: "Un appel sans délai vers un service qui ne répond plus attend pour toujours : la page, la tâche ou l'action qui l'attend reste figée, et les appels suivants s'empilent jusqu'à faire tomber le site entier.",
+    fix: "Remplacez « await fetch(url) » par « await ctx.api.net.request({ url }) » (il ne lève jamais : testez « r.ok »), ou au minimum ajoutez « { signal: AbortSignal.timeout(8000) } » à l'appel.",
+    run(m) {
+      const out = [];
+      for (const s of m.sources) {
+        const code = stripComments(s.text);
+        for (const x of code.matchAll(/(?<![\w$])(?:globalThis\s*\.\s*|window\s*\.\s*|self\s*\.\s*)?fetch\s*\(/g)) {
+          const before = code.slice(Math.max(0, x.index - 20), x.index);
+          if (/(?:function\s*\*?\s*|\.\s*)$/.test(before) && !/(?:globalThis|window|self)\s*\.\s*$/.test(before)) continue; // définition, ou méthode d'un autre objet (ctx.api.fetch…)
+          const { args, close } = balancedArgs(code, x.index + x[0].length - 1);
+          if (/^\s*\{/.test(code.slice(close + 1, close + 40)) || /^\s*=>/.test(code.slice(close + 1, close + 10))) continue; // fetch(url) { … } : une méthode qu'on définit
+          if (/\bsignal\b|AbortSignal\s*\.\s*(?:timeout|any)/.test(args)) continue;
+          // options passées par une variable (fetch(url, init)) : un « signal » préparé juste avant suffit
+          if (/,\s*[\w$.]+\s*$|,\s*\{\s*\.\.\./.test(args) && /\bsignal\b|AbortSignal\s*\.\s*timeout/.test(code.slice(Math.max(0, x.index - 1500), x.index))) continue;
+          const line = code.slice(0, x.index).split("\n").length;
+          out.push(`${s.file}:${line} : fetch(${args.replace(/\s+/g, " ").trim().slice(0, 60)}) n'a pas de délai (ni ctx.api.net, ni signal)`);
+        }
+      }
+      return out;
+    },
+  },
+  {
+    id: "net.noIdleTimer", level: "advice", group: "network",
+    title: "Aucune boucle réseau qui tourne sans personne",
+    what: "Le code ne lance pas de minuteur répétitif (setInterval) : un travail régulier est une tâche planifiée déclarée (« tasks »), et un appel réseau ne part que quand quelqu'un en a besoin (une page, une action, une tâche).",
+    why: "Un setInterval tourne même quand personne ne regarde, n'est jamais arrêté à la désactivation du module, se multiplie à chaque rechargement du code, et appelle des services externes pour rien : quotas consommés, pannes aggravées.",
+    fix: "Déclarez une tâche planifiée (tasks: { refresh: { everyMinutes: 15, run } }) : le cœur la lance une fois par instance active, sans chevauchement. Ou bien calculez à la demande et gardez le résultat en cache daté.",
+    run(m) {
+      const out = [];
+      for (const s of m.sources) {
+        const code = stripComments(s.text);
+        for (const x of code.matchAll(/(?<![\w$.])setInterval\s*\(/g)) out.push(`${s.file}:${code.slice(0, x.index).split("\n").length} : setInterval(…) tourne sans consommateur`);
+      }
+      return out;
     },
   },
 ];

@@ -160,6 +160,7 @@ export function makeCtx(m, scenario) {
     instances: [{ id: "i-other", key: "other", module: "other", basePath: "other", name: hostile ? HOSTILE : "Other", adminPath: "/admin/instances/i-other" }],
     theme: { ...THEME, fontKey: "sans", font: "sans-serif" },
     lastVisit: new Date("2026-01-01T00:00:00Z"),
+    netBudgetMs: scenario.netBudgetMs ?? null,
   });
 }
 

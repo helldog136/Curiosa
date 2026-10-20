@@ -228,6 +228,8 @@ const result = await ctx.api.mail.send({ to: "owner", subject: "New message", te
 `send` **ne lève jamais** ; `ctx.api.mail.configured()` dit si un serveur est réglé. **Règle d'or** : l'e-mail est un plus. **Conservez d'abord** (`store.add`), **prévenez ensuite**, et ne faites
 jamais échouer la requête si l'e-mail échoue — c'est exactement l'ordre de `routes.sign` dans l'exemple. Permission : `mail`.
 
+**Appeler une API externe.** Préférez `await ctx.api.net.request({ url: "https://api.example.org/v1/items" })` à `fetch` : le cœur fixe un délai (8 s, ou le temps restant de la page), fait une pause après un « 429 trop de demandes » ou un quota épuisé (sans rappeler le service d'ici là), coupe un hôte en panne (disjoncteur), regroupe les appels identiques et refuse tout de suite quand la file est pleine. L'appel ne lève jamais : testez `r.ok`, puis `r.status` et `r.json`. En cas d'échec, affichez les dernières données connues avec leur date. `api.net.health()` donne l'état des services, et le bloc d'admin `netHealth` l'explique à l'administrateur. Voir « Appeler une API externe » dans [MODULES.md](MODULES.md).
+
 **Jaquettes de jeux.** `await ctx.api.rawg.cover("Hades")` renvoie `{ status, url }` (`found`, `none`, `no-key`, `refused`, `unreachable`) et ne lève jamais ; `api.rawg.configured()` dit si une clé est réglée.
 La clé RAWG se règle une fois par le propriétaire (*Réglages › Services externes*) : ne la demandez jamais dans les réglages de votre module. Permission : `rawg`. Détails : [MODULES.md](MODULES.md#jaquettes-de-jeux-rawg).
 
