@@ -1,5 +1,5 @@
 import robots from "@/app/robots";
-import sitemap from "@/app/sitemap";
+import { buildSitemap } from "@/core/sitemap";
 import { adminCtx } from "@/core/admin";
 import { computeChecks, todoCount, type VisibilityProbes } from "@/core/aiVisibility";
 import { collectFeedItems, feedOverview, hasFeedSource } from "@/core/feeds";
@@ -29,9 +29,10 @@ export default async function AiVisibilityPage() {
 
   // Appels internes aux vraies fonctions qui servent /robots.txt, /sitemap.xml et /llms.txt : ce que voient les robots, sans réseau.
   const robotsFile = await probe(() => robots());
+  const plan = await probe(() => buildSitemap());
   const probes: VisibilityProbes = {
     robots: !!robotsFile && Array.isArray(robotsFile.rules) && robotsFile.rules.length > 0,
-    sitemapUrls: (await probe(() => sitemap()))?.length ?? null,
+    sitemapUrls: plan?.urls.length ?? null,
     llms: llmsEnabled ? await probe(async () => ({ bytes: Buffer.byteLength(await buildLlmsTxt(config.defaultLocale)) })) : null,
   };
   const checks = computeChecks(
@@ -57,6 +58,11 @@ export default async function AiVisibilityPage() {
       <p className={`${ui.card} text-[15px] font-medium`} data-testid="ai-summary" role="status">
         {todo === 0 ? t("ai.summary.done") : t("ai.summary.todo", { n: todo })}
       </p>
+      {plan?.truncated && (
+        <p className={`${ui.card} border-amber-500/40 text-[15px]`} role="status" data-testid="sitemap-truncated">
+          {t("ai.sitemapTruncated", { total: plan.total, max: plan.urls.length })}
+        </p>
+      )}
       <ul className="space-y-3" data-testid="ai-checks">
         {checks.map((c) => {
           const vars = { ...c.vars, kind: c.vars?.kind ? t(`settings.entity.${c.vars.kind}`) : "" };

@@ -208,6 +208,11 @@ export type ModuleApi = {
      * Les fournisseurs les reçoivent en `Date` dans `exports`, et peuvent les ignorer.
      */
     collect(topic: string, opts?: { limit?: number; from?: Date | string; to?: Date | string }): Promise<TopicItem[]>;
+    /**
+     * Comme `collect`, page par page : `limit` (200 au plus par page) et `cursor` (celui du `next` précédent, opaque, à ne pas fabriquer).
+     * `next: null` = fini. Seul `core.entry` est vraiment lu par curseur ; les autres sujets n'ont qu'une page. Un curseur illisible lève une erreur.
+     */
+    collectPage(topic: string, opts?: { limit?: number; cursor?: string; from?: Date | string; to?: Date | string }): Promise<{ items: TopicItem[]; next: string | null }>;
   };
   siteUrl: string;
   entries: {

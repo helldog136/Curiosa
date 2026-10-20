@@ -335,7 +335,15 @@ entrées portent un code (codes promo…), `random` (un code au hasard, `small`)
 
 Avec `content`, le cœur fournit gratuitement l'éditeur d'entrées (multilingue, brouillons, dates, image), les pages publiques (liste +
 entrée), le sitemap, le flux RSS, les liens `/go/…`, la section d'accueil `latest`, le sujet `core.entry` et quatre actions MCP
-(`list_entries`, `get_entry`, `create_draft`, `update_draft`). Un module « galerie », « FAQ » ou « événements » peut n'être qu'un `module.json`.
+(`list_entries`, `get_entry`, `create_draft`, `update_draft`). Les listes publiques sont **paginées** (voir « Pagination du contenu » ci-dessous). Un module « galerie », « FAQ » ou « événements » peut n'être qu'un `module.json`.
+
+### Pagination du contenu
+
+- **Page publique d'une collection** : 12 entrées par page (50 pour une liste de liens en pastilles), adresse `?page=N` (jamais `/page/N`, qui entrerait en conflit avec une entrée dont l'adresse serait « page »). Sous 12 entrées rien ne change : aucune navigation n'apparaît. `?page=1` et toute valeur invalide (`0`, `abc`, `-2`, `2.5`, répétée) renvoient vers l'adresse sans paramètre ; une page au-delà de la dernière répond 404. Chaque page a sa propre adresse `canonical`, son titre (« … (page 2) ») et ses liens `rel=prev` / `rel=next` ; les langues alternatives (`hreflang`) ne sont déclarées que sur la première page. Une liste = une langue (même repli de langue qu'avant).
+- **Tri** : par date ou à la main, la pagination est faite par la base (un `count`, puis `skip/take` sur les entrées non expirées, puis sur les expirées, qui passent à la fin) ; le tri par titre se fait en mémoire, borné à 5 000 entrées (au-delà, la liste retombe sur « plus récent d'abord » et l'administration l'indique).
+- **Administration** (`/admin/entries?c=<clé>&page=N&q=…&state=all|published|draft|scheduled|expired`) : 50 par page, recherche (100 caractères au plus) dans le titre et l'adresse de chaque traduction. SQLite ne distingue pas la casse que pour A–Z : la recherche essaie donc aussi la saisie en minuscules, en majuscules et avec majuscule initiale ; les accents restent significatifs.
+- **Flux RSS** : les 50 dernières entrées de chaque instance (triées par date par la base, quel que soit le tri de l'instance), fusionnées, puis les 50 plus récentes.
+- **Plan du site** : une seule page `sitemap.xml`, tant qu'il y a au plus 50 000 adresses. Au-delà, il garde les pages fixes puis les entrées les plus récentes, une erreur est écrite une seule fois dans le journal et la page *Visibilité dans les réponses des IA* affiche un bandeau. Pas de plan en plusieurs fichiers dans cette version.
 
 ### Première installation (`onboarding`)
 
@@ -679,6 +687,7 @@ Deux familles : les **services** du cœur (génériques, voir [PLATFORM.md](PLAT
 | `ctx.api.store.remove(id)` | service | supprime (sans erreur si absent) |
 | `ctx.api.store.count(collection)` | service | nombre de documents |
 | `ctx.api.topics.collect(sujet, { limit? })` | service | éléments des sources auxquelles l'instance est abonnée (le sujet doit figurer dans `consumes`, sinon erreur) |
+| `ctx.api.topics.collectPage(sujet, { limit?, cursor? })` | service | comme `collect`, page par page : `{ items, next }` (200 au plus par page ; `cursor` = le `next` précédent, opaque ; `next: null` = fini). Seul `core.entry` est lu par curseur (du plus récent au plus ancien, expirées écartées) ; un sujet fourni par un module n'a qu'une page. Curseur illisible : erreur. |
 | `ctx.api.mail.configured()` | service | un serveur d'e-mail est-il réglé ? |
 | `ctx.api.mail.send({ to, subject, text, replyTo? })` | service | e-mail au nom du site (permission `mail`, voir « Envoyer un e-mail ») |
 | `ctx.api.rawg.configured()` | service | une clé RAWG est-elle réglée par le propriétaire ? (permission `rawg` ; `false` sans elle) |
@@ -963,7 +972,7 @@ export default { mcp: {
 ```
 
 - Chaque action devient l'outil `<clé de l'instance>__<action>` (autant d'outils que d'instances).
-- **Toute instance à contenu** reçoit aussi `list_entries`, `get_entry`, `create_draft` et `update_draft`.
+- **Toute instance à contenu** reçoit aussi `list_entries`, `get_entry`, `create_draft` et `update_draft`. `list_entries` rend 30 entrées par défaut, 100 au plus (`limit`), de la plus récemment créée à la plus ancienne ; l'argument `cursor` reprend après la dernière entrée lue. Tant qu'il ne reste rien après et qu'aucun `cursor` n'est passé, la réponse est le simple tableau d'avant ; sinon c'est `{ items, next }` (`next: null` sur la dernière page). Le curseur est opaque : on le renvoie tel quel.
 - **Schéma des arguments** (`input`) : un objet plat. `type` doit valoir `"object"` ; `properties` : chaque propriété a un `type`
   (`string`, `number`, `integer`, `boolean`, `array`) et, selon le cas, `description`, `enum` (texte), `maxLength` (texte, 20 000 au plus),
   `minimum` / `maximum` (nombres), `items` (`{ "type": "string" }`, pour `array` : 100 textes courts au plus) ; `required` : liste des

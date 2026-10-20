@@ -110,7 +110,16 @@ export function fakeCtx(opts = {}) {
       // Ces trois capacités demandent une permission : sans elle, le simple fait d'y toucher échoue (voir l'option `permissions`).
       store: guarded("storage", () => store),
       mail: guarded("mail", () => ({ configured: async () => mailConfigured, send: async (m) => { calls.mail.push(m); return typeof mailResult === "function" ? mailResult(m) : mailResult; } })),
-      topics: guarded("topics", () => ({ collect: async (topic, o) => {
+      topics: guarded("topics", () => ({
+        // Une seule page (`next: null`), comme un sujet fourni par un module ; le curseur factice « n » reprend à partir du n-ième élément.
+        collectPage: async (topic, o) => {
+          calls.topics.push([topic, o]);
+          const source = topics[topic] ?? [];
+          const all = typeof source === "function" ? await source(o) : source;
+          const from = Number(o?.cursor ?? 0) || 0, size = o?.limit ?? 50;
+          return { items: all.slice(from, from + size), next: from + size < all.length ? String(from + size) : null };
+        },
+        collect: async (topic, o) => {
         calls.topics.push([topic, o]);
         if (o?.from !== undefined || o?.to !== undefined) {
           const ms = (v) => (v === undefined || v === null ? undefined : v instanceof Date ? v.getTime() : /^\d{4}-\d{2}-\d{2}([T ]\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?)?$/.test(String(v)) ? Date.parse(String(v)) : NaN);

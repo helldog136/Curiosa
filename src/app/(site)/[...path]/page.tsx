@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
+import { cache } from "react";
 import { notFound, permanentRedirect, redirect } from "next/navigation";
 import { pickDescription, pickName, type InstanceView } from "@/core/instances";
 import { getActiveInstances, type ActiveInstance } from "@/core/modules/registry";
 import { RESERVED_PATHS, siteUrl } from "@/core/config";
 import { pickLogo } from "@/core/logos";
 import { breadcrumbDocument, jsonLd, languageAlternates, pageUrl, socialMeta, type BreadcrumbItem } from "@/core/seo";
-import { entryPath, findEntryBySlug, listEntries, type EntryView } from "@/core/content/entries";
+import { entryPath, findEntryBySlug, listEntriesPage, MAX_PER_PAGE, PER_PAGE, type EntryView } from "@/core/content/entries";
+import { pageHref, parsePageParam } from "@/core/content/pagination";
 import { makeTranslator } from "@/core/i18n/dictionary";
 import { getVisitorLocale } from "@/core/i18n/request";
 import { resolveRedirect } from "@/core/redirects";
@@ -17,12 +19,18 @@ import { Blocks } from "@/components/site/Blocks";
 import { CopyCode } from "@/components/site/CopyCode";
 import { EntryIcon } from "@/components/site/EntryIcon";
 import { EntryList } from "@/components/site/EntryList";
+import { Pagination } from "@/components/site/Pagination";
 import { CoverImage } from "@/components/site/CoverImage";
 import { Markdown } from "@/components/site/Markdown";
 
 export const dynamic = "force-dynamic";
 
-type Props = { params: Promise<{ path: string[] }> };
+type Props = { params: Promise<{ path: string[] }>; searchParams: Promise<{ [key: string]: string | string[] | undefined }> };
+
+/** Une liste de liens (pastilles) tient 50 par page ; les autres listes, 12. */
+const perPageFor = (instance: Pick<InstanceView, "display">) => (instance.display === "links" ? MAX_PER_PAGE : PER_PAGE);
+/** Une page de la liste, lue une seule fois par requête (la métadonnée et la page la demandent toutes les deux). */
+const loadListPage = cache(async (instance: InstanceView, locale: string, page: number) => listEntriesPage({ instance, locale, page, perPage: perPageFor(instance) }));
 
 type Resolved =
   | { kind: "list"; active: ActiveInstance }
@@ -67,16 +75,17 @@ function prefixed(path: string, locale: string, defaultLocale: string): string {
 }
 
 /** Adresse canonique, partage (Open Graph + Twitter) et titre d'une page, tous cohérents entre eux. */
-function pageMeta(opts: { siteName: string; title: string; description?: string; image?: string | null; canonical: string; locale: string; type?: "website" | "article"; languages?: Record<string, string> }): Metadata {
+function pageMeta(opts: { siteName: string; title: string; description?: string; image?: string | null; canonical: string; locale: string; type?: "website" | "article"; languages?: Record<string, string>; pagination?: { previous?: string; next?: string } }): Metadata {
   return {
     title: opts.title,
     description: opts.description || undefined,
     alternates: { canonical: opts.canonical, ...(opts.languages ? { languages: opts.languages } : {}) },
+    ...(opts.pagination && (opts.pagination.previous || opts.pagination.next) ? { pagination: opts.pagination } : {}),
     ...socialMeta({ siteName: opts.siteName, title: opts.title, description: opts.description || undefined, image: opts.image, url: opts.canonical, type: opts.type, locale: opts.locale }),
   };
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
   const { path } = await params;
   const resolved = await resolve(path);
   const locale = await getVisitorLocale();
@@ -87,7 +96,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (resolved.kind === "list") {
     const { instance } = resolved.active;
     const alt = all("/" + path.join("/"));
-    return pageMeta({ siteName: config.name, title: pickName(instance, locale, site.defaultLocale), description: pickDescription(instance, locale, site.defaultLocale), image: share, canonical: alt.canonical, languages: alt.languages, locale });
+    const param = parsePageParam((await searchParams).page);
+    const pageNo = param.kind === "page" ? param.page : 1;
+    const data = await loadListPage(instance, locale, pageNo);
+    if (pageNo > data.pages) return {};
+    const name = pickName(instance, locale, site.defaultLocale);
+    // Chaque page a sa propre adresse canonique, son titre, ses liens précédent / suivant ; les langues alternatives (hreflang) ne sont déclarées que sur la première page.
+    const here = (n: number) => pageHref(alt.canonical, n);
+    return pageMeta({
+      siteName: config.name,
+      title: pageNo > 1 ? makeTranslator(locale)("site.pagination.metaTitle", { title: name, n: pageNo }) : name,
+      description: pickDescription(instance, locale, site.defaultLocale), image: share,
+      canonical: here(pageNo), languages: pageNo === 1 ? alt.languages : undefined, locale,
+      pagination: { previous: pageNo > 1 ? here(pageNo - 1) : undefined, next: pageNo < data.pages ? here(pageNo + 1) : undefined },
+    });
   }
   if (resolved.kind === "module") {
     const page = await runPage(resolved.active.instance.key, resolved.segments, locale);
@@ -119,7 +141,7 @@ function BreadcrumbLd({ items }: { items: BreadcrumbItem[] }) {
   return doc ? <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(doc) }} /> : null;
 }
 
-export default async function CatchAllPage({ params }: Props) {
+export default async function CatchAllPage({ params, searchParams }: Props) {
   const { path } = await params;
   const resolved = await resolve(path);
   const locale = await getVisitorLocale();
@@ -160,7 +182,14 @@ export default async function CatchAllPage({ params }: Props) {
 
     case "list": {
       const { instance } = resolved.active;
-      const entries = await listEntries({ instance, locale });
+      // `?page=N` : la première page n'a pas de paramètre (`page=1` et toute valeur invalide y renvoient) ; une page au-delà de la dernière n'existe pas.
+      const listPath = prefixed("/" + path.join("/"), locale, config.defaultLocale);
+      const param = parsePageParam((await searchParams).page);
+      if (param.kind === "invalid") redirect(listPath);
+      const pageNo = param.kind === "page" ? param.page : 1;
+      const data = await loadListPage(instance, locale, pageNo);
+      if (pageNo > data.pages) notFound();
+      const entries = data.items;
       const description = pickDescription(instance, locale, config.defaultLocale);
       const page = { key: instance.key, basePath: instance.basePath };
       const [top, bottom] = await Promise.all([runSlot("page.top", locale, { page }), runSlot("page.bottom", locale, { page })]);
@@ -173,6 +202,7 @@ export default async function CatchAllPage({ params }: Props) {
           </header>
           <Blocks blocks={top} locale={locale} />
           <EntryList entries={entries} collection={instance} locale={locale} defaultLocale={config.defaultLocale} />
+          <Pagination page={pageNo} pages={data.pages} base={listPath} t={t} />
           <Blocks blocks={bottom} locale={locale} />
         </div>
       );

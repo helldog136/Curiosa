@@ -332,7 +332,7 @@ test("visibilité : chaque contrôle passe à « à faire » quand son état est
 
 test("visibilité : la page appelle les vraies fonctions de robots.txt, du plan du site et de llms.txt, sans réseau ; chaque texte existe en fr et en", () => {
   const page = read("src/app/admin/(panel)/ai-visibility/page.tsx");
-  assert.match(page, /robots\(\)/); assert.match(page, /sitemap\(\)/); assert.match(page, /buildLlmsTxt\(/);
+  assert.match(page, /robots\(\)/); assert.match(page, /buildSitemap\(\)/); assert.match(page, /buildLlmsTxt\(/);
   assert.ok(!/fetch\(/.test(page), "aucun appel réseau");
   const fr = JSON.parse(read("src/locales/fr.json")), en = JSON.parse(read("src/locales/en.json"));
   const checks = V.computeChecks(GOOD, PROBES);

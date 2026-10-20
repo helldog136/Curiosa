@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/core/db";
 import { parseTags, uniqueSlug } from "@/core/content/entries";
 import { createEntry } from "@/core/content/service";
@@ -19,6 +20,13 @@ import type { JsonSchemaLite } from "@/core/modules/types";
  * ni suppression : un module peut en proposer (actions `destructive`, désactivées par défaut) ; ici, seuls les
  * brouillons sont modifiables.
  */
+/** Curseur opaque de `list_entries` : (date de création, identifiant) de la dernière entrée rendue. */
+const encodeCreatedCursor = (e: { createdAt: Date; id: string }) => Buffer.from(`${e.createdAt.getTime()}|${e.id}`, "utf8").toString("base64url");
+function decodeCreatedCursor(raw: string): { createdAt: Date; id: string } | null {
+  const m = /^(\d{1,15})\|([\w-]{1,64})$/.exec(Buffer.from(raw, "base64url").toString("utf8"));
+  return m ? { createdAt: new Date(Number(m[1])), id: m[2]! } : null;
+}
+
 const str = (max = 2000) => ({ type: "string" as const, maxLength: max });
 
 export const contentToolProvider: McpToolProvider = {
@@ -35,25 +43,32 @@ export const contentToolProvider: McpToolProvider = {
       const add = (name: string, t: Pick<McpTool, "description" | "readOnly" | "input" | "call"> & { default?: boolean }) =>
         tools.push({ name: `${instance.key}__${name}`, title: `${label}: ${name}`, source: instance.key, instanceId: instance.id, default: t.default ?? true, destructive: false, ...t });
 
-      const listSchema: JsonSchemaLite = { type: "object", properties: { status: { type: "string", enum: ["published", "draft", "all"] }, locale: { type: "string", enum: locales }, limit: { type: "integer", minimum: 1, maximum: 100 } } };
+      const listSchema: JsonSchemaLite = { type: "object", properties: { status: { type: "string", enum: ["published", "draft", "all"] }, locale: { type: "string", enum: locales }, limit: { type: "integer", minimum: 1, maximum: 100 }, cursor: str(200) } };
       add("list_entries", {
-        description: `[${label}] List entries (id, title, status, summary, link, code, tags). Default: published only.`,
+        description: `[${label}] List entries (id, title, status, summary, link, code, tags), newest first. Default: published only, 30 per call (100 at most). With no "cursor" and nothing left, the answer is the plain list; when more remain (or when a "cursor" was given) it is { items, next }: pass "next" as "cursor" to read the following page; next is null on the last page.`,
         readOnly: true,
         input: listSchema,
         call: async (raw) => {
           const a = validateArgs(listSchema, raw);
           const locale = (a.locale as string) ?? config.defaultLocale;
           const status = (a.status as string) ?? "published";
-          const rows = await prisma.entry.findMany({
-            where: { instanceId: instance.id, ...(status === "all" ? {} : { status }) },
-            include: { translations: true },
-            orderBy: { createdAt: "desc" },
-            take: (a.limit as number) ?? 30,
-          });
-          return rows.map((e) => {
+          const take = (a.limit as number) ?? 30;
+          const after = a.cursor ? decodeCreatedCursor(a.cursor as string) : null;
+          if (a.cursor && !after) throw new McpToolError("invalid cursor: pass the \"next\" value of the previous answer, unchanged");
+          const where: Prisma.EntryWhereInput = {
+            instanceId: instance.id,
+            ...(status === "all" ? {} : { status }),
+            ...(after ? { OR: [{ createdAt: { lt: after.createdAt } }, { createdAt: after.createdAt, id: { lt: after.id } }] } : {}),
+          };
+          const found = await prisma.entry.findMany({ where, include: { translations: true }, orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: take + 1 });
+          const rows = found.slice(0, take);
+          const items = rows.map((e) => {
             const tr = e.translations.find((x) => x.locale === locale) ?? e.translations[0];
             return { id: e.id, status: e.status, title: tr?.title, locale: tr?.locale, languages: e.translations.map((x) => x.locale), summary: tr?.summary || undefined, url: e.url ?? undefined, code: e.code ?? undefined, tags: parseTags(e.tags), publishedAt: e.publishedAt?.toISOString() };
           });
+          const next = found.length > take ? encodeCreatedCursor(rows[rows.length - 1]!) : null;
+          // Forme d'avant (un tableau) tant qu'il n'y a ni curseur ni page suivante ; sinon { items, next }.
+          return next || a.cursor ? { items, next } : items;
         },
       });
 

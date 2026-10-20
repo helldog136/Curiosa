@@ -9,7 +9,7 @@ import { qrSvg } from "@/core/services/qr";
 import { isRawgConfigured, rawgCover } from "@/core/services/rawg";
 import { renderPng, type PngSpec } from "@/core/services/render";
 import { createStore } from "@/core/services/store";
-import { collect } from "@/core/services/topics";
+import { collect, collectPage } from "@/core/services/topics";
 import { getSiteConfig } from "@/core/settings";
 import { callService, callServiceAll, serviceAvailable } from "./dependencies";
 import { getActiveInstances } from "./registry";
@@ -66,6 +66,10 @@ export function makeApi(instance: InstanceView, locale: string, permissions: rea
       async collect(topic, opts) {
         const consumer = (await getActiveInstances()).find((a) => a.instance.id === instance.id);
         return consumer ? collect(consumer, topic, { limit: opts?.limit, from: opts?.from, to: opts?.to, locale }) : [];
+      },
+      async collectPage(topic, opts) {
+        const consumer = (await getActiveInstances()).find((a) => a.instance.id === instance.id);
+        return consumer ? collectPage(consumer, topic, { limit: opts?.limit, cursor: opts?.cursor, from: opts?.from, to: opts?.to, locale }) : { items: [], next: null };
       },
     },
 

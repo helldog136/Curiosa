@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { siteUrl } from "@/core/config";
-import { entryPath, listEntries } from "@/core/content/entries";
+import { entryPath, latestEntries } from "@/core/content/entries";
 import { pickName } from "@/core/instances";
 import { getActiveInstances } from "@/core/modules/registry";
 import type { TopicField } from "@/core/modules/types";
@@ -128,9 +128,9 @@ export function parseTopics(raw: string | null | undefined): string[] {
 
 const absolute = (href: string) => (href.startsWith("/") ? `${siteUrl}${href}` : href);
 
-/** Nombre d'éléments qu'un flux ne dépasse jamais (et valeur par défaut : 30). */
+/** Nombre d'éléments qu'un flux ne dépasse jamais (et valeur par défaut : 50). */
 export const FEED_MAX_ITEMS = 100;
-export const FEED_DEFAULT_ITEMS = 30;
+export const FEED_DEFAULT_ITEMS = 50;
 
 const absoluteImage = (src: string | null) => (src && (src.startsWith("/") && !src.startsWith("//") ? `${siteUrl}${src}` : /^https?:\/\//i.test(src) ? src : null)) || null;
 const isHttp = (u: string) => /^https?:\/\//i.test(u) && isSafeExternalUrl(u);
@@ -149,8 +149,9 @@ export async function collectFeedItems(opts: { locale: string; instance?: string
   for (const { instance, mod } of await getActiveInstances()) {
     if (!mod.manifest.content || !instance.exposed || instance.basePath === null) continue;
     if (opts.instance && instance.key !== opts.instance) continue;
-    // Pas de limite ici : le tri propre à l'instance (par titre, à la main…) n'est pas celui du flux (du plus récent au plus ancien), un « 30 premiers » coupé avant le tri écarterait des nouveautés.
-    for (const e of await listEntries({ instance, locale: opts.locale })) {
+    // Les `limit` plus récentes de CETTE instance, triées par date par la base (jamais par le tri propre à l'instance : par titre, à la main…), sans lecture complète.
+    // Fusionnées avec les autres instances, elles donnent bien les `limit` dernières du site ; le tri final garde les plus récentes.
+    for (const e of await latestEntries({ instance, locale: opts.locale, limit })) {
       if (e.expired || (e.publishedAt && e.publishedAt > now)) continue;
       const external = instance.clickAction === "external" && isHttp(e.url ?? "");
       const link = external ? e.url! : `${siteUrl}${entryPath(e, config.defaultLocale)}`;
@@ -278,7 +279,7 @@ export async function feedOverview(locale: string): Promise<FeedOverview> {
   const names = (ids: string[]) => ids.map((k) => sources.find((s) => s.key === k)?.name ?? k);
   return {
     url: `${siteUrl}${feedPath(lang)}`,
-    count: Math.min(all.length, FEED_DEFAULT_ITEMS), // ce que contient réellement /feed.xml (30 au plus)
+    count: Math.min(all.length, FEED_DEFAULT_ITEMS), // ce que contient réellement /feed.xml (50 au plus)
     latest: all.slice(0, 5),
     sources: sources.sort((a, b) => a.key.localeCompare(b.key)),
     topics: topics.filter((t) => t.kind === "topic").map((t) => ({ ...t, count: Math.min(FEED_DEFAULT_ITEMS, t.count), url: `${siteUrl}/feed.xml?lang=${lang}&topics=${t.id}`, names: names(t.instances) })),
