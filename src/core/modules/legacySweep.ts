@@ -11,6 +11,7 @@ import { getCachedCatalogue } from "./catalogue";
 import { dataStatusOf, dataVersionOf, markMigrationTimeout, migrateInstance, targetVersion, type MigrationOutcome } from "./dataMigrations";
 import { parseRepoUrl } from "./installer";
 import { retireLegacyOff } from "./legacyOff";
+import { sweepFromText } from "./choice";
 import { isEmptyStored } from "./legacySettings";
 import { LEGACY_MARKER, legacyReport, readLegacyMarker, type LegacyReport } from "./legacyReport";
 import { forgetModule, getModule, moduleDir, readGitManifest, resetModuleRegistry } from "./registry";
@@ -189,6 +190,8 @@ export async function runLegacySweep(opts: SweepOptions = {}): Promise<SweepResu
     // 4. Valeurs vides.
     if (!timedOut && left() > 0) counts.emptied = await sweepEmptyValues();
     else timedOut = true;
+    // 4 bis. Anciennes valeurs texte d'un réglage « choix » : remplacées par l'identifiant quand une seule option porte exactement ce nom (borné, jamais bloquant).
+    if (!timedOut && left() > 0) await sweepFromText({ budgetMs: left() }).catch(() => undefined);
     // 5. Marqueur.
     const report = await legacyReport();
     const marker = await readLegacyMarker();
