@@ -794,6 +794,8 @@
   "migration.newer": "Les données de cette instance sont plus récentes que le code du module installé (sauvegarde restaurée dans un module plus ancien ?). Mettez le module à jour, puis réessayez.",
   "migration.retry": "Réessayer la migration",
   "modules.error.migration": "Module mis à jour, mais la migration des données d'au moins une instance a échoué : elle est remise dans son état d'avant et mise à l'écart. Ouvrez-la pour réessayer.",
+  "modules.error.noSpace": "Pas assez de place pour une copie de sécurité de la base : rien n'a été mis à jour. Libérez de l'espace sur le serveur, puis réessayez.",
+  "modules.error.copyFailed": "La copie de sécurité de la base a échoué : rien n'a été mis à jour. Réessayez ; si cela continue, vérifiez l'espace du serveur.",
   "backup.migrated": "Données de modules mises à niveau",
   "backup.migrationFailed": "Migration à refaire",
   "tasks.title": "Tâches planifiées",

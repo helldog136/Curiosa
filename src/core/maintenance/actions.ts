@@ -60,6 +60,7 @@ const REASONS: Record<string, string> = {
   "modules.error.pinned": "it is pinned to a fixed commit", "modules.error.reinstallBusy": "an update or reinstall is already running", "modules.error.reinstallNoSource": "it was installed by hand: there is no source to reinstall from",
   "modules.error.reinstallPerms": "the new version asks for new permissions: only a human can accept that", "modules.error.migration": "its data conversion failed", "modules.error.requires": "it lacks a module it needs",
   "modules.error.nomanifest": "the new version has no valid description file", "modules.error.size": "the new version is too large", "modules.error.unknownSource": "its source is unknown", "modules.error.incompatible": "it is not compatible with this version",
+  "modules.error.noSpace": "not enough disk space for a safety copy of the database (nothing was updated)", "modules.error.copyFailed": "the safety copy of the database failed (nothing was updated)",
   "error.generic": "the action failed",
 };
 const reason = (code: string | undefined) => (code && REASONS[code]) || (code && /^[\w.-]{1,60}$/.test(code) ? `failed (${code})` : "the action failed");

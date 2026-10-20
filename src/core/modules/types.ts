@@ -1,5 +1,6 @@
 import type { Theme } from "../color";
 import type { Block, Slot } from "../blocks";
+import type { StorePage, StoreRecord } from "../services/store";
 
 // Les modules typent leurs blocs avec ce ré-export : ils n'importent rien d'autre du cœur.
 export type { Block, Slot };
@@ -255,15 +256,25 @@ export type ModuleApi = {
     /** Jaquette du jeu `title` : `found` (url https), `none` (aucun résultat), `no-key`, `refused` (RAWG refuse la clé), `unreachable`. */
     cover(title: string): Promise<{ status: "found" | "none" | "no-key" | "refused" | "unreachable"; url: string | null }>;
   };
-  /** Stockage privé de l'instance (messages reçus, compteurs…). */
+  /**
+   * Stockage privé de l'instance (messages reçus, compteurs…). Plafonds : `list` 100 par défaut, 10 000 au plus (au-delà, utilisez `page`) ;
+   * `page` / `listByKey` 100 par défaut, 1 000 au plus ; `addMany` 5 000 lignes au plus par appel ; `key` 200 caractères au plus.
+   */
   store: {
-    add(collection: string, data: Record<string, unknown>): Promise<string>;
-    get(id: string): Promise<{ id: string; createdAt: Date; data: Record<string, unknown> } | null>;
-    update(id: string, data: Record<string, unknown>): Promise<boolean>;
-    list(
-      collection: string,
-      opts?: { limit?: number },
-    ): Promise<{ id: string; createdAt: Date; data: Record<string, unknown> }[]>;
+    add(collection: string, data: Record<string, unknown>, opts?: { key?: string | null }): Promise<string>;
+    get(id: string): Promise<StoreRecord | null>;
+    /** `key` absent = inchangée ; `key: null` l'efface. */
+    update(id: string, data: Record<string, unknown>, opts?: { key?: string | null }): Promise<boolean>;
+    list(collection: string, opts?: { limit?: number }): Promise<StoreRecord[]>;
+    /** Lecture par pages (curseur opaque `(createdAt, id)` : ni doublon ni trou, même si des lignes arrivent entre deux pages). `next` = null à la dernière page. */
+    page(collection: string, opts?: { limit?: number; cursor?: string | null; order?: "desc" | "asc"; key?: string }): Promise<StorePage>;
+    /** L'enregistrement le plus ancien portant cette clé (la clé n'est pas unique). */
+    getByKey(collection: string, key: string): Promise<StoreRecord | null>;
+    listByKey(collection: string, key: string, opts?: { limit?: number; cursor?: string | null }): Promise<StorePage>;
+    /** Ajoute jusqu'à 5 000 lignes en une transaction (tout ou rien) ; renvoie les identifiants dans l'ordre. */
+    addMany(collection: string, rows: { data: Record<string, unknown>; key?: string | null }[]): Promise<string[]>;
+    /** Compteur propre à l'instance, augmenté par le cœur quand ses données sont remplacées de l'extérieur (restauration, annulation de migration, reprise de données gardées). Sert à invalider un index gardé en mémoire. */
+    generation(): Promise<number>;
     remove(id: string): Promise<void>;
     count(collection: string): Promise<number>;
   };

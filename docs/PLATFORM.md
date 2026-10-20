@@ -39,7 +39,7 @@ Catalogue source : `src/core/services/index.ts`.
 | Service | Fichier | Côté module | Rôle |
 |---|---|---|---|
 | `qr` | `services/qr.ts` | `ctx.api.qr(texte)` | QR code en SVG, fond transparent. Aucune dépendance côté module. |
-| `store` | `services/store.ts` | `ctx.api.store` | Stockage privé par instance (collections de documents JSON) ; une instance ne voit jamais celui d'une autre. |
+| `store` | `services/store.ts` | `ctx.api.store` | Stockage privé par instance (collections de documents JSON) ; une instance ne voit jamais celui d'une autre. Lecture paginée par curseur, clé facultative indexée, `addMany`, compteur de `generation` (détails ci-dessous). |
 | `topics` | `services/topics.ts` | `ctx.api.topics.collect(sujet)` | Échange d'informations typées entre modules : un consommateur déclare ce qu'il digère, des fournisseurs l'exposent, l'admin règle les abonnements, le cœur valide. |
 | `rawg` | `services/rawg.ts` | `ctx.api.rawg.configured()` / `ctx.api.rawg.cover(title)` (permission `rawg`) | Jaquettes de jeux. La clé d'API RAWG est un réglage du cœur (*Réglages › Services externes*, secret, sauvegardé, jamais transmis aux modules). `cover` renvoie `{ status: "found" \| "none" \| "no-key" \| "refused" \| "unreachable", url }`, jamais d'exception ; https seulement, 5 s, cache (24 h / 1 h), 2 requêtes simultanées au plus, dernier état de la clé mémorisé. |
 | `mail` | `services/mail.ts` | `ctx.api.mail.send({ to, subject, text })` (permission `mail`) | Envoi d'e-mails au nom du site. Le SMTP est réglé dans *Réglages* (jamais visible des modules). Expéditeur fixé par le cœur, un seul destinataire (`"owner"` = contact du site, ou une adresse), texte brut, débit limité (10/h par instance, 40/h au total), audit sans contenu, jamais d'exception : `{ ok, reason }`. |
@@ -47,6 +47,20 @@ Catalogue source : `src/core/services/index.ts`.
 | `mcp` | `services/mcp/` | *rien à appeler* : le module déclare `mcp` dans son manifeste | Serveur MCP : jetons hachés, plafond lecture/écriture, **accès action par action modifiables en direct**, validation des arguments, limitation de débit, audit, interrupteur. |
 | `scheduler` | `services/scheduler.ts` | *rien à appeler* : le module déclare `tasks` | Tâches planifiées : un passage par minute, pour chaque instance active ; jamais deux fois la même en parallèle, erreurs isolées, dernier résultat mémorisé (`instance.<id>.__task.<nom>`). |
 | `uploads` | `services/uploads.ts` | réglage de type `image`, champ `image` des formulaires d'admin | Envoi d'images (signature vérifiée, SVG refusé, taille bornée) et recadrage non destructif : la valeur d'un champ image est l'original + son cadrage (`/uploads/x.png?c=…`), la version cadrée est fabriquée par le serveur (`core/imageDerive.ts`, `sharp`) et mise en cache. Voir CREATE-A-MODULE.md. |
+
+### Stockage : curseur, clé, `addMany`, génération
+
+- **Curseur** : base64url de `"<createdAt ISO>|<id>"`, tri `(createdAt, id)` dans le sens demandé. L'`id` départage les enregistrements de même `createdAt` (un `addMany` donne le même `createdAt` à toutes ses lignes) : un parcours complet n'a ni doublon ni trou, même si des lignes arrivent ou partent entre deux pages. Un curseur illisible donne `{ items: [], next: null }`, jamais une exception.
+- **Plafonds durs** : `list` 100 par défaut et **10 000 au plus** (avertissement journalisé une fois par instance au-delà ; les appels existants avec `limit` 1000 ou 5000 restent valides) ; `page` et `listByKey` 100 par défaut et **1 000 au plus** ; `addMany` **5 000 lignes** au plus par appel ; `key` **200 caractères** au plus.
+- **`key`** : colonne facultative, non unique, indexée `(instanceId, collection, key)`. L'unicité est l'affaire du module. Les lectures par clé imposent cet index (`INDEXED BY`) : sans statistiques, SQLite préférerait l'index de date et parcourrait toute la collection (mesuré : 20 ms contre moins de 1 ms par appel à 50 000 lignes).
+- **`addMany`** : validé et sérialisé avant d'écrire, puis écrit par tranches de 500 dans une seule transaction ; identifiants croissants dans l'ordre des lignes.
+- **`generation()`** : réglage `instance.<id>.__storeGeneration` (absent = 0). Le cœur le passe à `max(avant, actuel) + 1` après une restauration de sauvegarde (toutes les instances), une migration de données annulée et une reprise de données gardées (`retired.ts`) ; il ne recule jamais. Les écritures du module ne le changent pas.
+- **Migration de schéma** : additive (`ADD COLUMN` + `CREATE INDEX`), aucune suppression.
+
+### Copie de sécurité avant une mise à jour groupée
+
+`updateModules` (page *Mises à jour*, MCP `maintenance`) prend UNE copie `data/backups/pre-bulk-update-<AAAA-MM-JJ>-<ts>.db` avant le premier module (`backup/files.ts › bulkUpdateCopy`) :
+`VACUUM INTO` (copie cohérente, la base reste utilisable), repli sur la copie du fichier ; 1,2 × la taille de la base de libre exigée (l'ancienne copie, remplacée, compte comme récupérable), sinon rien n'est mis à jour (`modules.error.noSpace`) ; **une seule copie gardée** (l'ancienne n'est retirée qu'une fois la nouvelle écrite), hors de la rotation de `safetyCopy` ; pendant 1 h, les copies `pre-migration` sont sautées.
 
 Un service **ne dépend pas** d'une fonctionnalité. Les imports autorisés de chacun sont listés dans le test d'architecture
 (par exemple le mécanisme MCP n'importe que la base, les réglages et les *types* de modules).

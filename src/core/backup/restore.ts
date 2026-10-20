@@ -13,6 +13,7 @@ import { UPLOAD_NAME_RE } from "@/core/services/uploads";
 import { decryptBackup } from "./crypto";
 import { applyUpgrades, currentSchemaVersion, isNewerSchema, pickKnownColumns } from "./schema";
 import { safetyCopy } from "./files";
+import { bumpGenerations, readGenerations } from "@/core/services/store";
 import { DATA_FILES, FORMAT, FORMAT_VERSION, LEGACY_FORMATS, sha256, type BackupManifest, type BackupModule } from "./format";
 import { readTarGz } from "./tar";
 import { linksFor, orderByDependencies, previewMissing, settleRestored, type DependencyIssue } from "./restoreDeps";
@@ -162,6 +163,8 @@ export async function applyRestore(backup: ParsedBackup, opts: { confirmCustom: 
   const d = structuredClone(backup.data);
   applyUpgrades(d, backup.manifest.schemaVersion);
   for (const key of ["users", "instances", "instanceTranslations", "entries", "entryTranslations", "redirects", "records"] as const) d[key] = d[key].map((r) => pickKnownColumns(key, r));
+  // Compteurs de génération du stockage d'AVANT : la restauration remet ceux de la sauvegarde, mais un compteur ne recule jamais.
+  const generationsBefore = await readGenerations().catch(() => new Map<string, number>());
   try {
     await prisma.$transaction(async (tx) => {
       await tx.moduleRecord.deleteMany(); await tx.entryTranslation.deleteMany(); await tx.entry.deleteMany();
@@ -189,6 +192,10 @@ export async function applyRestore(backup: ParsedBackup, opts: { confirmCustom: 
     console.error("[backup] restore failed:", (error as Error)?.message);
     return { ok: false, error: "failed", modules: outcomes };
   }
+
+  // Toutes les instances restaurées (et celles qui existaient avant) ont un stockage remplacé de l'extérieur : leur génération augmente.
+  await bumpGenerations([...new Set([...d.instances.map((r) => String(r.id)), ...generationsBefore.keys()])], generationsBefore)
+    .catch((e) => console.error("[backup] store generation bump failed:", (e as Error)?.message));
 
   // Images : on remplace celles du site par celles de la sauvegarde.
   fs.mkdirSync(UPLOADS_DIR, { recursive: true });

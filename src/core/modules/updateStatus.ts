@@ -1,4 +1,5 @@
 import { prisma } from "@/core/db";
+import { bulkUpdateCopy } from "@/core/backup/files";
 import { listModuleRows, loadModule } from "./registry";
 import { localized } from "./types";
 import { checkForUpdateDetailed, updateModule } from "./installer";
@@ -25,6 +26,11 @@ export const peekModulesReport = () => cache.peek();
 
 /** Met à jour ces modules un par un (voir updateSequentially) puis retire du rapport ceux qui ont réussi. */
 export async function updateModules(ids: string[], onEach?: (id: string, ok: boolean, result: Awaited<ReturnType<typeof updateModule>>) => Promise<void>): Promise<Summary> {
+  // UNE copie de la base avant le premier module (jamais une par module). Pas de place ou copie impossible : on ne touche à rien.
+  if (ids.length) {
+    const copy = await bulkUpdateCopy().catch((): { ok: false; error: "failed" } => ({ ok: false, error: "failed" }));
+    if (!copy.ok) return { updated: [], failed: ids.map((id) => ({ id, error: copy.error === "no-space" ? "modules.error.noSpace" : "modules.error.copyFailed", migration: false })), skipped: [], stoppedOn: null };
+  }
   const summary = await updateSequentially(ids, async (id) => {
     const r = await updateModule(id);
     await onEach?.(id, r.ok, r);

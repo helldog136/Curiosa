@@ -794,6 +794,8 @@
   "migration.newer": "This instance's data is newer than the installed module's code (backup restored into an older module?). Update the module, then retry.",
   "migration.retry": "Retry the migration",
   "modules.error.migration": "Module updated, but the data migration of at least one instance failed: it was put back to its previous state and set aside. Open it to retry.",
+  "modules.error.noSpace": "Not enough space for a safety copy of the database: nothing was updated. Free some space on the server, then try again.",
+  "modules.error.copyFailed": "The safety copy of the database failed: nothing was updated. Try again; if it keeps failing, check the server's disk space.",
   "backup.migrated": "Module data upgraded",
   "backup.migrationFailed": "Migration to redo",
   "tasks.title": "Scheduled tasks",
