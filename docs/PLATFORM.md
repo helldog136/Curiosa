@@ -141,7 +141,7 @@ Ce n'est pas un service : les modules n'y écrivent rien. Le cœur tient les rô
 Ce n'est pas un service : aucun module ne l'appelle. `register()` (`src/instrumentation.ts`) attend `runLegacySweep()` (`src/core/modules/legacySweep.ts`) avant que
 Next serve une requête : éteints rangés, lignes de modules héritées converties sans réseau quand c'est sûr, migrations de données en attente (une instance à la fois),
 valeurs vides des réglages hérités effacées, puis marqueur `core.legacyCleared`. Délai dur de 20 s, aucune attente réseau, idempotent et reprenable. Le rapport
-(`legacyReport.ts`) est en lecture seule : page d'admin *Entretien* et outil MCP `maintenance_legacy`. Les réglages hérités d'un module (`legacySettings`)
+(`legacyReport.ts`) est en lecture seule : page d'admin *Entretien* et outil MCP `maintenance_legacy`. Une ligne héritée (`bundled` / `builtin`) que la dernière copie du catalogue ne propose plus est dite « absente » : le propriétaire la retire (données gardées ou effacées) ou la « garde telle quelle » (`legacyDismiss.ts`, réglage `core.legacyDismissed`, 50 au plus) ; une ligne gardée ne retient plus le marqueur `core.legacyCleared`, qui peut donc être posé quand le seul reste est un module retiré ou gardé par le propriétaire. `legacyStatus()` donne le message unique de la page (jamais « terminée » avec des éléments à faire) ; le bandeau de l'admin (`LegacyBanner`) se cache sur cette page. Les réglages hérités d'un module (`legacySettings`)
 passent par `ctx.legacy` (`legacySettings.ts`) : jamais affichés, jamais journalisés. Voir [MODULES.md](MODULES.md) (« Réglages hérités et plancher »).
 
 ## Téléchargements et fichiers de l'administration : une fonctionnalité du cœur (0.2.0)
@@ -217,3 +217,14 @@ Voir aussi [GEO.md](GEO.md) (être cité par les IA, expliqué pour le propriét
 
 Écrire un module (voir [MODULES.md](MODULES.md)). Si une fonctionnalité semble réclamer une modification du cœur, c'est souvent qu'il
 manque un *service* générique : on ajoute le service, pas la fonctionnalité.
+
+## Travail long sans bloquer le serveur : une règle du cœur (0.2.0)
+
+Ce n'est pas un service. Le serveur ne fait qu'une chose à la fois dans son fil principal : tout calcul long y retarde TOUTES les requêtes. Règles : (1) le chiffrement d'une
+sauvegarde (PBKDF2 600 000 itérations) et la compression (gzip niveau 9) passent par les versions asynchrones de Node (pool de threads) : `encryptBackupAsync`,
+`decryptBackupAsync` (`src/core/backup/crypto.ts`), `createTarGzAsync`, `readTarGzAsync` (`tar.ts`), `openBackupAsync`, `parseBackupAsync` (`restore.ts`) ; les versions synchrones
+restent pour les outils et les tests, avec les mêmes octets ; (2) le travail restant est découpé en petites étapes (`src/core/backup/steps.ts` : `runAsync` rend la main à la boucle
+d'événements toutes les 8 ms) ; (3) les lectures d'entrées avec `limit` (accueil, `ctx.api.entries.list`, sujet `core.entry`) sont triées et tronquées par la base (`listEntries`, 200 au
+plus, `MAX_LIST_LIMIT`) ; (4) un module en erreur de chargement n'écrit sa pile qu'une fois par module et par raison, puis un compteur toutes les 10 minutes
+(`src/core/modules/loadLog.ts`, sans minuteur). `tests/core/backup-async.test.mjs` mesure qu'un minuteur de 10 ms n'est jamais retardé de plus de 200 ms pendant l'export et la
+restauration de 20 000 enregistrements.

@@ -289,3 +289,19 @@ test("downloads.bounded : un droit non déclaré dans module.json, un type incon
   assert.match(res.problems.join("\n"), /text\/html/);
   assert.match(res.problems.join("\n"), /échoue/);
 });
+
+test("adminActions à droit ({ right, run }, cœur 0.2.0) : le kit les accepte (def.loads) ET les exécute dans la sonde (redirection vers l'extérieur signalée)", async () => {
+  const withRight = (run) => mk((f) => { f["index.mjs"] = f["index.mjs"].replace("export default {", `export default {\n  adminActions: { exporter: { right: "export", run: ${run} } },`); });
+  const accepted = withRight("async () => ({ redirect: '/admin' })");
+  const r1 = await checkModule(accepted, { siblings: [] });
+  assert.equal(status(r1, "def.loads").status, "pass", "la forme { right, run } n'est plus refusée");
+  assert.notEqual(status(r1, "routes.redirect").status, "fail");
+  const evil = withRight("async () => ({ redirect: 'https://evil.example/phish' })");
+  const r2 = await checkModule(evil, { siblings: [] });
+  assert.equal(status(r2, "def.loads").status, "pass");
+  assert.equal(status(r2, "routes.redirect").status, "fail", "la sonde exécute l'action à droit et voit sa redirection");
+  assert.match(JSON.stringify(status(r2, "routes.redirect")), /exporter/);
+  // Une valeur qui n'est ni une fonction ni { run } reste refusée.
+  const bad = mk((f) => { f["index.mjs"] = f["index.mjs"].replace("export default {", "export default {\n  adminActions: { cassee: { right: 'export' } },"); });
+  assert.equal(status(await checkModule(bad, { siblings: [] }), "def.loads").status, "fail");
+});

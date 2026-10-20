@@ -37,6 +37,13 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Rien à choisir quand il n'y a qu'une possibilité.** Avec une seule option, le champ disparaît et le site l'utilise ; il revient dès qu'une deuxième option existe. Sans aucune option, le module vous dit quoi installer ou créer d'abord.
 - **Un élément choisi puis supprimé est signalé.** S'il ne reste qu'une possibilité, elle est utilisée et la page vous le dit ; sinon, le module passe « à configurer » avec le champ à corriger.
 - **Les noms déjà tapés sont repris tout seuls.** Si un ancien réglage contenait exactement le nom d'un élément de la liste, il est remplacé par cet élément ; sinon la page vous demande de confirmer.
+- **L'accueil et les modules ne chargent plus tous les articles.** Seuls ceux qu'il faut sont lus : une page d'accueil avec un bloc d'articles reste rapide avec des dizaines de milliers d'articles. Le rendu est le même qu'avant sur un petit site.
+- **Exporter ou restaurer une sauvegarde ne fige plus le site.** Même avec 20 000 fiches, une visite n'attend jamais plus d'une fraction de seconde. Le format des sauvegardes ne change pas : une ancienne sauvegarde se restaure toujours.
+- **Un module qui ne se charge pas n'inonde plus le journal.** Sa pile d'erreur est écrite une fois, puis une ligne de compte toutes les 10 minutes.
+- **La page *Entretien* dit quoi faire d'un module que le catalogue ne propose plus.** Vous le retirez (en gardant ou non ses données) ou vous le gardez tel quel. Le message en haut est toujours d'accord avec la liste, et le bandeau n'y est plus répété.
+- **Choisir dans une liste vide où l'on peut créer :** la phrase « Rien à choisir… » disparaît dès qu'un élément est créé, sans recharger la page.
+- **L'assistant d'installation n'affiche plus un total d'étapes qui change** (« 3 / 4 » puis « 4 / 5 ») : il dit « Étape 3 ».
+- **Textes plus justes :** « 1 personne » / « 2 personnes » (et en anglais « 1 person » / « 2 people ») au lieu de « personne(s) » ; moins de jargon dans la page *Entretien* ; le bouton « Télécharger » d'un panneau n'apparaît plus pour une personne qui n'en a pas le droit.
 
 ### Pour les développeurs
 

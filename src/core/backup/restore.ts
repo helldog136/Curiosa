@@ -14,11 +14,11 @@ import { syncSystemAssignments } from "@/core/auth/roles";
 import { isSystemKey } from "@/core/auth/rights";
 import { UPLOAD_NAME_RE } from "@/core/services/uploads";
 import { decryptBackup, decryptBackupAsync } from "./crypto";
-import { runAsync, runSync, sha256Steps, type Steps } from "./steps";
+import { runAsync, runSync, sha256Steps, tick, type Steps } from "./steps";
 import { applyUpgrades, currentSchemaVersion, isNewerSchema, pickKnownColumns } from "./schema";
 import { safetyCopy } from "./files";
 import { bumpGenerations, readGenerations } from "@/core/services/store";
-import { DATA_FILES, FORMAT, FORMAT_VERSION, LEGACY_FORMATS, sha256, type BackupManifest, type BackupModule } from "./format";
+import { DATA_FILES, FORMAT, FORMAT_VERSION, LEGACY_FORMATS, type BackupManifest, type BackupModule } from "./format";
 import { readTarGz, readTarGzAsync, type TarFile } from "./tar";
 import { linksFor, orderByDependencies, previewMissing, settleRestored, type DependencyIssue } from "./restoreDeps";
 import type { Missing } from "@/core/modules/dependencyInstaller";
@@ -181,6 +181,19 @@ function reviveDates(model: string, row: Row): Row {
   return out;
 }
 
+const SLICE_ROWS = 2000;
+/** `structuredClone` de la sauvegarde lue, mais tableau par tableau et par tranches : la boucle d'événements respire entre deux tranches. */
+async function cloneInSlices(data: ParsedBackup["data"]): Promise<ParsedBackup["data"]> {
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (!Array.isArray(value)) { out[key] = structuredClone(value); continue; }
+    const rows: unknown[] = [];
+    for (let i = 0; i < value.length; i += SLICE_ROWS) { rows.push(...structuredClone(value.slice(i, i + SLICE_ROWS))); await tick(); }
+    out[key] = rows;
+  }
+  return out as ParsedBackup["data"];
+}
+
 const chunks = <T,>(list: T[], n = 200) => Array.from({ length: Math.ceil(list.length / n) }, (_, i) => list.slice(i * n, (i + 1) * n));
 
 /**
@@ -209,9 +222,14 @@ export async function applyRestore(backup: ParsedBackup, opts: { confirmCustom: 
   if ((await checkSchema(backup.manifest)) === "newer-schema") return { ok: false, error: "newer-schema", modules: [] };
   const copy = safetyCopy("pre-restore", opts.dataDir);
   // Sauvegarde d'un schéma plus ancien : transformations explicites, puis seules les colonnes encore connues (les nouvelles prennent leur défaut).
-  const d = structuredClone(backup.data);
+  // (Copie et tri des colonnes par tranches de 2 000 lignes, en laissant respirer la boucle d'événements : 20 000 fiches ne figent pas le site.)
+  const d = await cloneInSlices(backup.data);
   applyUpgrades(d, backup.manifest.schemaVersion);
-  for (const key of ["users", "instances", "instanceTranslations", "entries", "entryTranslations", "redirects", "records"] as const) d[key] = d[key].map((r) => pickKnownColumns(key, r));
+  for (const key of ["users", "instances", "instanceTranslations", "entries", "entryTranslations", "redirects", "records"] as const) {
+    const rows: Row[] = [];
+    for (let i = 0; i < d[key].length; i += SLICE_ROWS) { rows.push(...d[key].slice(i, i + SLICE_ROWS).map((r) => pickKnownColumns(key, r))); await tick(); }
+    d[key] = rows;
+  }
   // Compteurs de génération du stockage d'AVANT : la restauration remet ceux de la sauvegarde, mais un compteur ne recule jamais.
   const generationsBefore = await readGenerations().catch(() => new Map<string, number>());
   try {

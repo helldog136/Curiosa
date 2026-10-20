@@ -52,6 +52,7 @@ Tout est du **texte** (JSON, Markdown, CSV), sauf les images. Pour vérifier l'i
 2. Clé (32 octets) et vecteur (16 octets) = `PBKDF2-HMAC-SHA256(mot de passe UTF-8, sel, 600000 itérations)` → 48 octets, découpés dans cet ordre
    (c'est exactement ce que fait `openssl enc -pbkdf2`).
 3. Contenu déchiffré = archive `tar.gz` (ustar), chemins relatifs UTF-8, sans `..`.
+   (Le serveur écrit et lit cette archive sans bloquer ses autres requêtes ; le format, lui, n'a pas changé : une sauvegarde faite avant se restaure, et celle d'aujourd'hui se lit avec `openssl`.)
 4. `backup.json` : `{ format: "curiosa-backup", formatVersion: 1, createdAt, frameworkVersion, site, counts, modules[], files[{path, sha256, bytes}] }`.
 
 ## Restaurer

@@ -43,9 +43,20 @@ export function applyUpgrades(data: BackupData, backupSchema: string | undefined
 const MODEL_BY_KEY: Record<string, string> = { users: "User", instances: "ModuleInstance", instanceTranslations: "InstanceTranslation", entries: "Entry", entryTranslations: "EntryTranslation", redirects: "Redirect", records: "ModuleRecord", retired: "RetiredInstance", roles: "Role", userRoles: "UserRole" };
 
 /** Ne garde que les colonnes que le schéma actuel connaît : une sauvegarde plus ancienne peut en avoir que cette version a retirées. */
-export function pickKnownColumns(key: keyof typeof MODEL_BY_KEY | string, row: Row): Row {
-  const model = Prisma.dmmf.datamodel.models.find((m) => m.name === MODEL_BY_KEY[key]);
-  if (!model) return row;
+const knownCache = new Map<string, Set<string>>();
+/** Colonnes d'un modèle (gardées en mémoire : on ne refait pas la liste pour chacune des milliers de lignes d'une restauration). */
+function knownColumns(modelName: string): Set<string> | null {
+  const hit = knownCache.get(modelName);
+  if (hit) return hit;
+  const model = Prisma.dmmf.datamodel.models.find((m) => m.name === modelName);
+  if (!model) return null;
   const known = new Set(model.fields.filter((f) => f.kind === "scalar" || f.kind === "enum").map((f) => f.name));
+  knownCache.set(modelName, known);
+  return known;
+}
+
+export function pickKnownColumns(key: keyof typeof MODEL_BY_KEY | string, row: Row): Row {
+  const known = knownColumns(MODEL_BY_KEY[key] as string);
+  if (!known) return row;
   return Object.fromEntries(Object.entries(row).filter(([k]) => known.has(k)));
 }

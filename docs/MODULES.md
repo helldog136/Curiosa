@@ -558,7 +558,7 @@ export default {
 };
 ```
 
-- **Bloc** `{ type: "download", name, label, params? }` (panneau d'admin seulement) : un petit formulaire POST. `params` (20 valeurs de 1 000 caractères au plus) revient dans `generate(ctx, params)` ; il vient du navigateur, **validez-le** comme toute entrée.
+- **Bloc** `{ type: "download", name, label, params? }` (panneau d'admin seulement) : un petit formulaire POST. Le bouton n'est montré qu'aux personnes qui ont le droit de télécharger (même décision que la route) ; les autres ne le voient pas. `params` (20 valeurs de 1 000 caractères au plus) revient dans `generate(ctx, params)` ; il vient du navigateur, **validez-le** comme toute entrée.
 - **Qui peut** : `<module>:open` ET `right` (préfixe imposé par le cœur ; le droit d'un autre module est refusé) ; sans `right`, les administrateurs. La personne est relue en base à chaque requête. `ctx.can` y est vrai comme dans `adminActions`.
 - **Jamais construit en entier** : lisez le stockage par `store.page` (1 000 lignes) et faites des `yield` ligne par ligne. Le cœur tire le générateur à la demande du navigateur.
 - **Limites du cœur** : 512 Mo et 10 minutes au plus ; un générateur qui reste muet 60 s est coupé ; 2 téléchargements en même temps par personne (4 pour tout le site, puis « réessayez » avec un message clair) ; si le navigateur coupe, le générateur est fermé (`finally` exécuté). Un flux coupé arrive **en erreur** (le navigateur affiche « échec », jamais un fichier tronqué qui aurait l'air complet).
@@ -846,7 +846,7 @@ Deux familles : les **services** du cœur (génériques, voir [PLATFORM.md](PLAT
 | `ctx.api.site(locale?)` | lecture | `{ name, tagline, logo }` du site |
 | `ctx.api.brand(locale?)` | lecture | identité visuelle complète (`ModuleBrand`, ci-dessous) |
 | `ctx.api.instances.list({ module?, locale? })` | lecture | `[{ id, key, module, basePath, name, adminPath }]` des instances actives ; `adminPath` (`/admin/instances/<id>`) est la page de réglages de l'instance : de quoi y renvoyer l'administrateur par un lien (`href`) |
-| `ctx.api.entries.list({ instance?, locale?, limit? })` | lecture | entrées publiées (`EntrySummary`) ; par défaut celles de l'instance courante |
+| `ctx.api.entries.list({ instance?, locale?, limit? })` | lecture | entrées publiées (`EntrySummary`) ; par défaut celles de l'instance courante ; **200 au plus** (sans `limit`, ou au-delà : 200), dans l'ordre de la liste publique (non expirées d'abord, puis expirées) ; pour tout lire, passez par `ctx.api.topics.collectPage` |
 | `ctx.api.siteUrl` | lecture | adresse publique du site, sans `/` final |
 | `ctx.api.seo.jsonLd(données)` | service | prépare des données structurées (JSON-LD) pour le slot `layout.head` : renvoie la balise `{ tag: "script", jsonLd }` à mettre dans un bloc `head`, ou `null` si la donnée est inutilisable (pas de `@type`, trop volumineuse). Le cœur ajoute `@context`, borne la taille (texte 5 000 caractères, 100 éléments par liste, 8 niveaux, 20 000 caractères au total) et échappe `</script>`. Voir « Données structurées » dans [CREATE-A-MODULE.md](CREATE-A-MODULE.md). |
 
