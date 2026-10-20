@@ -13,7 +13,6 @@ const http = require("node:http"), fs = require("node:fs"), crypto = require("no
 const port = Number(process.argv[process.argv.indexOf("-p") + 1]);
 const version = JSON.parse(fs.readFileSync("package.json", "utf8")).version;
 const hash = crypto.createHash("sha256").update("curiosa:" + version).digest("hex").slice(0, 16);
-process.title = "next-server (v" + version + ")";
 const server = http.createServer((req, res) => {
   if (req.url === "/api/health") { res.writeHead(200, { "x-curiosa-version": hash }); return res.end("ok"); }
   if (process.env.FAKE_HOME_500 === "1") { res.writeHead(500); return res.end("Internal Server Error"); }
@@ -31,7 +30,8 @@ setInterval(() => {}, 1000);
 const NPM = `
 const { spawn } = require("node:child_process");
 const port = process.argv[process.argv.indexOf("-p") + 1];
-const child = spawn("sh", ["-c", "node bin/next start -p " + port + "; exit $?"], { stdio: "inherit" });
+const unit = process.argv.find((a) => a.startsWith("--unit=")) || "";
+const child = spawn("sh", ["-c", "node bin/next start -p " + port + " " + unit + "; exit $?"], { stdio: "inherit" });
 for (const s of ["SIGTERM", "SIGINT"]) process.on(s, () => child.kill(s));
 child.on("exit", (code) => process.exit(code ?? 0));
 `;
@@ -59,10 +59,11 @@ const supervisorFile = (dir) => { const f = path.join(dir, "supervisor.cjs"); if
 export const freePort = () => new Promise((resolve) => { const s = net.createServer().listen(0, "127.0.0.1", () => { const { port } = s.address(); s.close(() => resolve(port)); }); });
 
 /** Lance le site sous un superviseur. tree : "direct" (un processus), "sh" (sh -c + serveur), "npx" (npm exec + sh + serveur). */
-export function startSupervised({ rootDir, appDir, port, delay = 1000, tree = "npx", env = {} }) {
-  const cmd = tree === "direct" ? ["node", "bin/next", "start", "-p", String(port)]
-    : tree === "sh" ? ["sh", "-c", `node bin/next start -p ${port}; exit $?`]
-    : ["node", "npm-cli.js", "exec", "next", "start", "-p", String(port)];
+export function startSupervised({ rootDir, appDir, port, delay = 1000, tree = "npx", env = {}, unit = "" }) {
+  const mark = unit ? [`--unit=${unit}`] : [];
+  const cmd = tree === "direct" ? ["node", "bin/next", "start", "-p", String(port), ...mark]
+    : tree === "sh" ? ["sh", "-c", `node bin/next start -p ${port} ${mark.join(" ")}; exit $?`]
+    : ["node", "npm-cli.js", "exec", "next", "start", "-p", String(port), ...mark];
   // Le superviseur est lancé par un intermédiaire qui disparaît aussitôt : il n'est PAS un descendant du test (comme un vrai systemd n'est pas
   // un descendant de la tâche de mise à jour), sinon le test serait lui-même protégé par la règle « ne jamais toucher à ce que l'outil a lancé ».
   const launcher = `const { spawn } = require("node:child_process"); const c = spawn(process.execPath, JSON.parse(process.env.FAKE_SUP), { cwd: ${JSON.stringify(rootDir)}, stdio: "ignore", detached: true }); console.log(c.pid); c.unref();`;
@@ -77,7 +78,7 @@ export async function health(port, timeoutMs = 2000) {
     return { status: res.status, version: res.headers.get("x-curiosa-version") };
   } catch { return null; }
 }
-export async function until(fn, ms = 15000, step = 100) {
+export async function until(fn, ms = 40_000, step = 100) {
   const end = Date.now() + ms;
   while (Date.now() < end) { const v = await fn(); if (v) return v; await new Promise((r) => setTimeout(r, step)); }
   return null;

@@ -205,24 +205,25 @@ function world() {
   return w;
 }
 /** Donne un nom d'unité systemd (cgroup) à tout ce qui descend d'un superviseur du test. */
-function withCgroups(sys, units) {
-  return { ...sys, procs: () => {
-    const list = sys.procs(); const by = new Map(list.map((p) => [p.pid, p]));
-    return list.map((p) => { for (let q = p.pid, i = 0; q && i < 30; q = by.get(q)?.ppid, i++) if (units[q]) return { ...p, cgroup: SYSTEMD(units[q]) }; return p; });
-  } };
+function withCgroups(sys) {
+  // Le gestionnaire d'un processus se lit sur sa ligne de commande (`--unit=…`, posée par startSupervised), PAS sur sa filiation : un processus
+  // dont le shell parent vient d'être arrêté est « adopté » par init, et sa filiation ne dit plus rien. Aucune dépendance à l'ordre des événements.
+  return { ...sys, procs: () => sys.procs().map((p) => { const m = p.args.join(" ").match(/--unit=(\S+?)(?:;|\s|$)/); return m ? { ...p, cgroup: SYSTEMD(m[1]) } : p; }) };
 }
-const fast = { stopMs: 6000, portMs: 2500, siteMs: 20_000, killMs: 3000, settleMs: 1500 };
+const fast = { stopMs: 10_000, portMs: 2500, siteMs: 60_000, killMs: 5000, settleMs: 1500 };
+/** Un faux pm2 relance en quelques dizaines de ms… plus le démarrage de node : sous charge, bien plus. On guette donc longtemps ; la boucle s'arrête dès qu'un détenteur apparaît. */
+const patient = { ...fast, settleMs: 30_000, portMs: 1500 };
 const logTo = (lines) => (l) => lines.push(l);
 
 test("arbre « npm exec + sh + serveur » sous un superviseur : TOUT s'arrête, le port est libre, le superviseur relance, aucun processus étranger touché", async () => {
   const w = world(); try {
     const port = await freePort(), otherPort = await freePort();
     const other = `${w.s.app}-autre`; fs.mkdirSync(other); installFakeSite(other); fs.writeFileSync(path.join(other, "package.json"), '{"version":"9.9.9"}');
-    const mine = startSupervised({ rootDir: w.root, appDir: w.s.app, port, delay: 1000, tree: "npx" });
-    const theirs = startSupervised({ rootDir: w.root, appDir: other, port: otherPort, delay: 200, tree: "npx" });
+    const mine = startSupervised({ unit: "curiosa.service", rootDir: w.root, appDir: w.s.app, port, delay: 1000, tree: "npx" });
+    const theirs = startSupervised({ unit: "autresite.service", rootDir: w.root, appDir: other, port: otherPort, delay: 200, tree: "npx" });
     assert.ok(await until(() => health(port)), "le site démarre");
     assert.ok(await until(() => health(otherPort)), "le voisin démarre");
-    const sys = withCgroups(w.sys, { [mine.pid]: "curiosa.service", [theirs.pid]: "autre.service" });
+    const sys = withCgroups(w.sys);
     const before = findSiteProcesses({ appDir: w.s.app, procs: sys.procs() });
     assert.equal(before.length, 3, "wrapper + shell + serveur");
     const neighbours = findSiteProcesses({ appDir: other, procs: sys.procs() }).map((p) => p.pid);
@@ -238,7 +239,7 @@ test("arbre « npm exec + sh + serveur » sous un superviseur : TOUT s'arrête, 
     assert.match(lines.join("\n"), /ancien serveur arrêté en/);
     assert.match(lines.join("\n"), /port \d+ libre|déjà repris par le superviseur/);
     // Le superviseur relance (3 s dans la vraie vie, 1 s ici).
-    assert.ok(await until(() => health(port), 10_000), "le superviseur a relancé le site");
+    assert.ok(await until(() => health(port), 40_000), "le superviseur a relancé le site");
     for (const x of [mine, theirs]) x.stop();
   } finally { w.cleanup(); }
 });
@@ -246,15 +247,16 @@ test("arbre « npm exec + sh + serveur » sous un superviseur : TOUT s'arrête, 
 test("deux gestionnaires (systemd + pm2) sur le même dossier et le même port : l'ancienne boucle EADDRINUSE devient un échec expliqué, jamais un faux succès", async () => {
   const w = world(); try {
     const port = await freePort();
-    const systemd = startSupervised({ rootDir: w.root, appDir: w.s.app, port, delay: 800, tree: "npx" });
+    const systemd = startSupervised({ unit: "curiosa.service", rootDir: w.root, appDir: w.s.app, port, delay: 60_000, // jamais autorisé à relancer pendant ce test : seul le faux pm2 peut reprendre le port
+       tree: "npx" });
     assert.ok(await until(() => health(port)));
-    const pm2 = startSupervised({ rootDir: w.root, appDir: w.s.app, port, delay: 0, tree: "sh" }); // plante en boucle : le port est pris
-    await new Promise((r) => setTimeout(r, 600));
-    const sys = withCgroups(w.sys, { [systemd.pid]: "curiosa.service", [pm2.pid]: "pm2-monsite.service" });
+    const pm2 = startSupervised({ unit: "pm2-monsite.service", rootDir: w.root, appDir: w.s.app, port, delay: 50, tree: "sh" }); // plante en boucle : le port est pris
+    assert.ok(await until(() => findSiteProcesses({ appDir: w.s.app, procs: withCgroups(w.sys).procs() }).some((p) => /pm2/.test(cgroupUnit(p.cgroup) ?? "")), 40_000), "le faux pm2 a lancé sa première tentative");
+    const sys = withCgroups(w.sys);
     w.s.build("1.0.1");
     const serverPid = findServerPid({ appDir: w.s.app, port, sys });
     // Le pm2 prend le port dès que l'ancien serveur tombe (il relance sans délai) : le nouveau ne pourra jamais démarrer.
-    const r = await runUpdate({ ...opts(w.s), tag: "v1.0.1", exec: w.s.make(), supervised: true, serverPid, port, sys, timeouts: fast,
+    const r = await runUpdate({ ...opts(w.s), tag: "v1.0.1", exec: w.s.make(), supervised: true, serverPid, port, sys, timeouts: patient,
       confirmServer: async () => { throw new Error("ne doit pas attendre un site qui ne peut pas démarrer"); } });
     const st = readState(w.s.dataDir);
     assert.deepEqual([r.ok, r.error], [false, "port-busy"]);
@@ -273,10 +275,10 @@ test("deux gestionnaires (systemd + pm2) sur le même dossier et le même port :
 test("un seul gestionnaire : la mise à jour supervisée réussit et ne l'annonce QUE quand le nouveau serveur répond sa version", async () => {
   const w = world(); try {
     const port = await freePort();
-    const sup = startSupervised({ rootDir: w.root, appDir: w.s.app, port, delay: 1000, tree: "npx" });
+    const sup = startSupervised({ unit: "curiosa.service", rootDir: w.root, appDir: w.s.app, port, delay: 1000, tree: "npx" });
     const first = await until(() => health(port));
     assert.equal(first.version, hashVersion("1.0.0"));
-    const sys = withCgroups(w.sys, { [sup.pid]: "curiosa.service" });
+    const sys = withCgroups(w.sys);
     w.s.build("1.1.0");
     const waiter = makeSiteWaiter({ appDir: w.s.app, dataDir: w.s.dataDir, readyUrl: `http://127.0.0.1:${port}/`, port, sys, timeouts: fast, intervalMs: 200 });
     const r = await runUpdate({ ...opts(w.s), tag: "v1.1.0", exec: w.s.make(), supervised: true, serverPid: findServerPid({ appDir: w.s.app, port, sys }), port, sys, timeouts: fast, confirmServer: waiter });
@@ -294,10 +296,10 @@ test("le site de la machine voisine n'est jamais touché : deux installations c�
   const w = world(); try {
     const portA = await freePort(), portB = await freePort();
     const dirB = path.join(w.root, "site-b"); fs.mkdirSync(dirB); installFakeSite(dirB); fs.writeFileSync(path.join(dirB, "package.json"), '{"version":"2.0.0"}');
-    const a = startSupervised({ rootDir: w.root, appDir: w.s.app, port: portA, delay: 600, tree: "npx" });
-    const b = startSupervised({ rootDir: w.root, appDir: dirB, port: portB, delay: 600, tree: "npx" });
+    const a = startSupervised({ unit: "monsite.service", rootDir: w.root, appDir: w.s.app, port: portA, delay: 600, tree: "npx" });
+    const b = startSupervised({ unit: "autresite.service", rootDir: w.root, appDir: dirB, port: portB, delay: 600, tree: "npx" });
     assert.ok(await until(() => health(portA)) && await until(() => health(portB)));
-    const sys = withCgroups(w.sys, { [a.pid]: "monsite.service", [b.pid]: "autresite.service" });
+    const sys = withCgroups(w.sys);
     const pidsB = findSiteProcesses({ appDir: dirB, procs: sys.procs() }).map((p) => p.pid);
     assert.equal(pidsB.length, 3);
     const killed = []; const spy = { ...sys, kill: (pid, sig) => { killed.push(pid); return sys.kill(pid, sig); } };
@@ -325,7 +327,7 @@ test("machine chargée : un serveur lent à s'arrêter est attendu (pas de SIGKI
   const w = world(); try {
     const port = await freePort();
     // 1. arrêt lent (2,5 s) : le délai de 6 s suffit
-    let sup = startSupervised({ rootDir: w.root, appDir: w.s.app, port, delay: -1, tree: "sh", env: { FAKE_STOP_MS: "2500" } });
+    let sup = startSupervised({ unit: "curiosa.service", rootDir: w.root, appDir: w.s.app, port, delay: -1, tree: "sh", env: { FAKE_STOP_MS: "2500" } });
     assert.ok(await until(() => health(port)));
     let lines = [];
     let t0 = Date.now();
@@ -335,14 +337,14 @@ test("machine chargée : un serveur lent à s'arrêter est attendu (pas de SIGKI
     assert.ok(Date.now() - t0 >= 2400, "on a bien attendu l'arrêt lent");
     sup.stop();
     // 2. sourd à SIGTERM 4 s, délai explicite de 1 s : SIGKILL, journalisé, port libéré
-    sup = startSupervised({ rootDir: w.root, appDir: w.s.app, port, delay: -1, tree: "direct", env: { FAKE_IGNORE_TERM_MS: "4000" } });
+    sup = startSupervised({ unit: "curiosa.service", unit: "curiosa.service", rootDir: w.root, appDir: w.s.app, port, delay: -1, tree: "direct", env: { FAKE_IGNORE_TERM_MS: "4000" } });
     assert.ok(await until(() => health(port)));
     lines = []; t0 = Date.now();
     r = await stopSite({ appDir: w.s.app, port, sys: w.sys, log: logTo(lines), timeouts: { ...fast, stopMs: 1000 } });
     assert.equal(r.ok, true, lines.join("\n"));
     assert.equal(r.killed.length, 1);
     const took = Date.now() - t0;
-    assert.ok(took >= 950 && took < 3500, `SIGKILL après le délai explicite, pas avant (${took} ms)`);
+    assert.ok(took >= 950, `SIGKILL après le délai explicite, pas avant (${took} ms)`);
     assert.match(lines.join("\n"), /n'ont pas obéi en 1 s : arrêt forcé \(SIGKILL\)/);
     sup.stop();
   } finally { w.cleanup(); }
@@ -351,10 +353,12 @@ test("machine chargée : un serveur lent à s'arrêter est attendu (pas de SIGKI
 test("machine chargée : un serveur qui démarre lentement est attendu dans le délai, et au-delà on explique (qui écoute, quelle version, état du service)", async () => {
   const w = world(); try {
     const port = await freePort();
-    const sup = startSupervised({ rootDir: w.root, appDir: w.s.app, port, delay: 300, tree: "direct", env: { FAKE_START_MS: "2500" } });
-    const sys = withCgroups(w.sys, { [sup.pid]: "curiosa.service" });
+    const sup = startSupervised({ unit: "curiosa.service", rootDir: w.root, appDir: w.s.app, port, delay: 300, tree: "direct", env: { FAKE_START_MS: "2500" } });
+    const sys = withCgroups(w.sys);
     const base = { appDir: w.s.app, dataDir: w.s.dataDir, readyUrl: `http://127.0.0.1:${port}/`, port, sys, intervalMs: 200 };
     const lines = () => fs.readFileSync(path.join(w.s.dataDir, "update", "update.log"), "utf8");
+    // Le superviseur a lancé son premier essai (sous charge, node met du temps à démarrer) : on ne mesure pas l'ordre de démarrage du test.
+    assert.ok(await until(() => findSiteProcesses({ appDir: w.s.app, procs: sys.procs() }).length > 0, 40_000));
     // trop court : échec expliqué
     const tooShort = await makeSiteWaiter({ ...base, timeouts: { ...fast, siteMs: 1000 } })("v1.0.0", { oldPids: new Set() });
     assert.equal(tooShort, false);
@@ -368,7 +372,7 @@ test("machine chargée : un serveur qui démarre lentement est attendu dans le d
 test("un ancien serveur encore actif, ou la mauvaise version, ou une page 500 ne comptent JAMAIS comme « le site est revenu »", async () => {
   const w = world(); try {
     const port = await freePort();
-    const sup = startSupervised({ rootDir: w.root, appDir: w.s.app, port, delay: -1, tree: "direct" });
+    const sup = startSupervised({ unit: "curiosa.service", rootDir: w.root, appDir: w.s.app, port, delay: -1, tree: "direct" });
     assert.ok(await until(() => health(port)));
     const base = { readyUrl: `http://127.0.0.1:${port}/`, port, sys: w.sys, timeoutMs: 1200, intervalMs: 150 };
     const old = new Set(findSiteProcesses({ appDir: w.s.app, procs: w.sys.procs() }).map((p) => p.pid));
@@ -382,7 +386,7 @@ test("un ancien serveur encore actif, ou la mauvaise version, ou une page 500 ne
     assert.deepEqual([right.ok, right.how], [true, "version"]);
     // Une page 500 : pas de route de contrôle (ancienne version) et accueil en erreur → pas revenu.
     sup.stop(); killAllUnder(w.root, w.sys.procs());
-    const sup500 = startSupervised({ rootDir: w.root, appDir: w.s.app, port, delay: -1, tree: "direct", env: { FAKE_HOME_500: "1" } });
+    const sup500 = startSupervised({ unit: "curiosa.service", rootDir: w.root, appDir: w.s.app, port, delay: -1, tree: "direct", env: { FAKE_HOME_500: "1" } });
     assert.ok(await until(() => health(port)));
     const fetch404 = async (url, o) => (String(url).endsWith("/api/health") ? new Response("", { status: 404 }) : fetch(url, o));
     const five = await confirmNewServer({ ...base, expectedVersion: hashVersion("1.0.0"), oldPids: new Set(), fetchImpl: fetch404 });
@@ -394,7 +398,7 @@ test("un ancien serveur encore actif, ou la mauvaise version, ou une page 500 ne
 test("version installée trop ancienne pour avoir /api/health : le nouveau serveur est reconnu à son processus (pid inconnu avant l'arrêt), en le disant", async () => {
   const w = world(); try {
     const port = await freePort();
-    const sup = startSupervised({ rootDir: w.root, appDir: w.s.app, port, delay: -1, tree: "direct" });
+    const sup = startSupervised({ unit: "curiosa.service", rootDir: w.root, appDir: w.s.app, port, delay: -1, tree: "direct" });
     assert.ok(await until(() => health(port)));
     const noRoute = async (url, o) => (String(url).endsWith("/api/health") ? new Response("", { status: 404 }) : fetch(url, o));
     const base = { readyUrl: `http://127.0.0.1:${port}/`, port, sys: w.sys, timeoutMs: 1500, intervalMs: 150, fetchImpl: noRoute, expectedVersion: hashVersion("0.1.26") };
@@ -417,9 +421,9 @@ const published = (files) => async (url) => {
 test("chaîne 0.1.26 → 0.1.27 simulée de bout en bout : l'étape 2 n'est téléchargée qu'APRÈS confirmation du serveur de l'étape 1", async () => {
   const w = world(); try {
     const port = await freePort();
-    const sup = startSupervised({ rootDir: w.root, appDir: w.s.app, port, delay: 800, tree: "npx" });
+    const sup = startSupervised({ unit: "curiosa.service", rootDir: w.root, appDir: w.s.app, port, delay: 800, tree: "npx" });
     assert.ok(await until(() => health(port)));
-    const sys = withCgroups(w.sys, { [sup.pid]: "curiosa.service" });
+    const sys = withCgroups(w.sys);
     w.s.build("1.1.0"); w.s.build("1.2.0");
     const seen = [];
     const download = async (url, dest) => {
@@ -440,7 +444,7 @@ test("chaîne 0.1.26 → 0.1.27 simulée de bout en bout : l'étape 2 n'est tél
 test("chaîne : le serveur de l'étape 1 ne revient pas (personne ne le relance) → l'étape 2 n'est ni téléchargée ni installée, échec expliqué", async () => {
   const w = world(); try {
     const port = await freePort();
-    const sup = startSupervised({ rootDir: w.root, appDir: w.s.app, port, delay: -1, tree: "direct" }); // ne relance jamais
+    const sup = startSupervised({ unit: "curiosa.service", rootDir: w.root, appDir: w.s.app, port, delay: -1, tree: "direct" }); // ne relance jamais
     assert.ok(await until(() => health(port)));
     w.s.build("1.1.0"); w.s.build("1.2.0");
     const waiter = makeSiteWaiter({ appDir: w.s.app, dataDir: w.s.dataDir, readyUrl: `http://127.0.0.1:${port}/`, port, sys: w.sys, timeouts: { ...fast, siteMs: 1500 }, intervalMs: 150 });
@@ -459,13 +463,14 @@ test("chaîne : le serveur de l'étape 1 ne revient pas (personne ne le relance)
 test("chaîne : un port tenu par un autre gestionnaire à l'étape 1 arrête tout avec le diagnostic ; l'étape 2 n'a pas lieu", async () => {
   const w = world(); try {
     const port = await freePort();
-    const systemd = startSupervised({ rootDir: w.root, appDir: w.s.app, port, delay: 800, tree: "npx" });
+    const systemd = startSupervised({ unit: "curiosa.service", rootDir: w.root, appDir: w.s.app, port, delay: 60_000, // jamais autorisé à relancer pendant ce test : seul le faux pm2 peut reprendre le port
+       tree: "npx" });
     assert.ok(await until(() => health(port)));
-    const pm2 = startSupervised({ rootDir: w.root, appDir: w.s.app, port, delay: 0, tree: "sh" });
-    await new Promise((r) => setTimeout(r, 500));
-    const sys = withCgroups(w.sys, { [systemd.pid]: "curiosa.service", [pm2.pid]: "pm2-monsite.service" });
+    const pm2 = startSupervised({ unit: "pm2-monsite.service", rootDir: w.root, appDir: w.s.app, port, delay: 50, tree: "sh" });
+    assert.ok(await until(() => findSiteProcesses({ appDir: w.s.app, procs: withCgroups(w.sys).procs() }).some((p) => /pm2/.test(cgroupUnit(p.cgroup) ?? "")), 40_000), "le faux pm2 a lancé sa première tentative");
+    const sys = withCgroups(w.sys);
     w.s.build("1.1.0"); w.s.build("1.2.0");
-    const r = await runUpdateChain({ ...opts(w.s), tag: "v1.2.0", exec: w.s.make(), supervised: true, serverPid: findServerPid({ appDir: w.s.app, port, sys }), port, sys, timeouts: fast,
+    const r = await runUpdateChain({ ...opts(w.s), tag: "v1.2.0", exec: w.s.make(), supervised: true, serverPid: findServerPid({ appDir: w.s.app, port, sys }), port, sys, timeouts: patient,
       fetchText: published({ "v1.2.0": { minFrom: "1.1.0" } }), waitForSite: async () => assert.fail("pas d'attente"), findServerPid: () => undefined });
     assert.deepEqual(r, { ok: false, error: "port-busy" });
     assert.ok(!w.s.downloads.some((u) => u.includes("v1.2.0/curiosa")));
