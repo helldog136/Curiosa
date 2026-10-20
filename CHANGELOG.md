@@ -7,6 +7,18 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## Prochaine version (non publiée)
+
+### Améliorations
+
+- **Un module peut confier une partie de son travail à un autre sans en dépendre.** Le site installe toujours tout seul le module qui prend le relais et lui recopie vos réglages. Mais le premier continue de fonctionner sans lui, et le site ne vous propose pas de supprimer le second.
+
+### Pour les développeurs
+
+- `seeds` est accepté avec un `consumes` seul : la cible doit offrir un service que le module `requires` (comme avant) ou fournir un sujet qu'il `consumes` (lien souple, cible non marquée « installée automatiquement »).
+- Code : `manifest.ts`, `seeding.ts` (`linkOf`), `installer.ts` (`installSeedTarget(…, { auto })`). Docs : `MODULES.md`, `SECURITE.md`, `CREATE-A-MODULE.md`. Test : `seed-by-topic.test.mjs`.
+- `docs/MODULES.md` : le sujet `planning.slot` est fourni par les agendas de streams (lu par le Planning et le bot) ; `calendar.event` reste décrit comme sujet générique réservé.
+
 ## 0.1.26
 
 ### Améliorations

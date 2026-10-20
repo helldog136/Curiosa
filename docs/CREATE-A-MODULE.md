@@ -374,7 +374,7 @@ une copie de la base avant, et si l'une échoue **remet l'instance dans son éta
 l'ancienne version. Si l'utilisateur **saute des versions** (1.2 → 1.6), le framework récupère chaque étiquette intermédiaire (1.3, 1.4, 1.5) et exécute la migration **de cette version, avec son code**, avant de passer à la suivante : votre dernière version n'a donc pas besoin de garder les anciennes migrations. Pour que cela marche, publiez chaque version sous une étiquette `vX.Y.Z` et ne supprimez pas les étiquettes.
 
 **Reprendre vos réglages dans un autre module.** Si, dans la nouvelle version, un module dont vous dépendez prend en charge une donnée que vous gardiez vous-même (une adresse de calendrier, une clé), déclarez-le dans `seeds`
-(avec le `requires` correspondant) et, dans votre migration, appelez `ctx.seedInstance(cible, { nickname, settings, seedKey })` puis `ctx.clearSetting(clé)` : le cœur crée l'instance **une seule fois**, sans jamais écraser
+(avec le `requires` correspondant, ou le `consumes` du sujet que la cible fournit si votre module doit marcher sans elle) et, dans votre migration, appelez `ctx.seedInstance(cible, { nickname, settings, seedKey })` puis `ctx.clearSetting(clé)` : le cœur crée l'instance **une seule fois**, sans jamais écraser
 l'existante, défait tout si la migration échoue, et n'écrit jamais les valeurs dans le journal. Détails et séquence d'installation de la cible : [MODULES.md › `migrations`](MODULES.md). Les sujets, eux, acceptent une période
 (`collect(sujet, { from, to })`) et le type `datetime` : voir « sujets ».
 

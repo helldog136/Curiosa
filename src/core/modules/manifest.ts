@@ -145,7 +145,8 @@ export const manifestSchema = z.object({
     .optional(),
   /**
    * GRAINES : modules dans lesquels une MIGRATION DE DONNÉES de ce module pourra créer UNE instance (`ctx.seedInstance`), une seule fois, avec des réglages initiaux.
-   * Déclaration explicite (affichée à l'administrateur) ; le cœur exige en plus que le module cible offre un service que celui-ci `requires`. Voir seeding.ts.
+   * Déclaration explicite (affichée à l'administrateur) ; le cœur exige en plus que le module cible soit relié à celui-ci : il offre un service que celui-ci `requires`, ou il fournit
+   * un sujet que celui-ci `consumes` (lien souple : aucune dépendance, le module semeur fonctionne sans la cible). Voir seeding.ts.
    */
   seeds: z.array(z.object({ module: z.string().regex(/^[a-z][a-z0-9-]{1,39}$/), reason: localized })).max(3).optional(),
   /** Version de la STRUCTURE des données du module (stockage, réglages). À augmenter quand elle change : voir `migrations`. */
@@ -162,7 +163,7 @@ export const manifestSchema = z.object({
 }).superRefine((m, ctx) => {
   for (const [i, seed] of (m.seeds ?? []).entries()) {
     if (seed.module === m.id) ctx.addIssue({ code: "custom", path: ["seeds", i, "module"], message: "a module cannot seed itself" });
-    if (!m.requires?.length) ctx.addIssue({ code: "custom", path: ["seeds", i, "module"], message: "seeds needs a matching `requires` (the target must offer a service this module requires)" });
+    if (!m.requires?.length && !m.consumes.length) ctx.addIssue({ code: "custom", path: ["seeds", i, "module"], message: "seeds needs a matching `requires` or `consumes` (the target must offer a service this module requires, or provide a topic this module consumes)" });
   }
   if (new Set((m.seeds ?? []).map((x) => x.module)).size < (m.seeds ?? []).length) ctx.addIssue({ code: "custom", path: ["seeds"], message: "duplicate seed target" });
   for (const message of groupIssues(m.optionalGroups ?? [], m.settings)) ctx.addIssue({ code: "custom", path: ["optionalGroups"], message });
