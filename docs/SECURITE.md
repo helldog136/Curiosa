@@ -157,6 +157,24 @@ Une personne a **un ou plusieurs rôles** ; elle peut faire tout ce que l'un d'e
 (son rang vaut 0) : il est **bloqué, jamais élevé**, jusqu'au retour en 0.2.0 ou jusqu'à ce que le propriétaire lui redonne le rôle Éditeur ou Administrateur.
 Les propriétaires, administrateurs et éditeurs ne voient aucune différence.
 
+## Exports et envois de fichiers de l'administration (0.2.0)
+
+**Un export contient des données personnelles** (noms, courriels, messages) : il demande donc **un droit** et **laisse une trace**.
+
+- **Téléchargement** (`adminDownloads`, `POST /api/admin/modules/[instance]/download/[nom]`) : jamais par une route de module (`/m/…` est public). Ordre des gardes : même site (en-tête `Origin`),
+  connecté, mot de passe temporaire / double vérification, `<module>:open` ET le droit déclaré (relus en base à cette requête ; un module ne peut exiger que ses propres droits), puis seulement le corps.
+  Pas de GET : un lien ou une image sur un autre site ne peut pas déclencher un export. Un refus est noté (`access.denied`).
+- **Audit** : `module.<clé>.download.<nom>` au début et `….end` à la fin (octets et cause : `done`, `client`, `bytes`, `time`, `idle`, `error`), sans le contenu.
+- **En-têtes** : `Content-Disposition: attachment`, nom de fichier assaini (pas de chemin, de guillemet, de retour à la ligne ni de caractère d'inversion du sens d'écriture ; extension imposée par le type, donc jamais `.exe` ni `.html`),
+  `X-Content-Type-Options: nosniff`, `Cache-Control: no-store`, `Content-Security-Policy: default-src 'none'; sandbox`.
+- **Bornes** : 512 Mo, 10 minutes, 60 s de silence du générateur, 2 téléchargements simultanés par personne et 4 pour le site. Le flux est tiré à la demande (un client lent ne fait pas grossir la mémoire),
+  coupé en erreur à la limite, et fermé si le navigateur coupe. Une erreur du module n'est jamais montrée à la personne (journal serveur seulement).
+- **Fichier envoyé par un formulaire** (`kind: "file"`, `POST /api/admin/modules/[instance]/action/[action]`) : mêmes gardes que les `adminActions` avant toute lecture ; corps compté et coupé (5 Mo par fichier,
+  2 fichiers), jamais lu en entier au-delà ; texte UTF-8 strict sans octet nul ; la limite de 1 Mo des actions serveur n'est **pas** relevée pour le reste du site.
+  Les indications `$max_…` et `$accept_…` du formulaire ne peuvent que restreindre.
+- **Tableurs** : un export CSV dont une cellule commence par `=`, `+`, `-` ou `@` peut exécuter une formule à l'ouverture. Le module doit préfixer ces cellules d'une apostrophe.
+- Tests : `tests/core/admin-transfer.test.mjs` (autre origine, sans droit, non connecté, nom hostile, gros fichier, flux interrompu, générateur muet, téléchargements simultanés).
+
 ## Dépannage en SSH (propriétaire du serveur seulement)
 
 Si le propriétaire est bloqué (trop d'essais, mot de passe perdu), la commande de secours se lance **sur le serveur**, depuis le dossier de l'application, avec l'utilisateur du service :

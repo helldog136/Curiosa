@@ -142,6 +142,12 @@ valeurs vides des réglages hérités effacées, puis marqueur `core.legacyClear
 (`legacyReport.ts`) est en lecture seule : page d'admin *Entretien* et outil MCP `maintenance_legacy`. Les réglages hérités d'un module (`legacySettings`)
 passent par `ctx.legacy` (`legacySettings.ts`) : jamais affichés, jamais journalisés. Voir [MODULES.md](MODULES.md) (« Réglages hérités et plancher »).
 
+## Téléchargements et fichiers de l'administration : une fonctionnalité du cœur (0.2.0)
+
+Ce n'est pas un service : un module déclare `adminDownloads` (un générateur de texte) ou un champ `kind: "file"`, et le cœur fait le reste. Deux routes authentifiées sous
+`/api/admin/modules/[instance]/` (`download/[name]` et `action/[action]`, code dans `src/core/modules/adminTransfer.ts` et `adminTransferHandlers.ts`) appliquent le droit, l'audit, les limites
+(512 Mo, 10 min, 5 Mo par fichier) et les en-têtes sûrs. Les routes de modules `/m/…` restent publiques : rien de privé n'y passe. Voir [MODULES.md](MODULES.md) et [SECURITE.md](SECURITE.md).
+
 ## Sauvegarde et catalogue : des fonctionnalités du cœur
 
 - **Sauvegarde** (`core/backup/`, [BACKUP.md](BACKUP.md)) : un fichier chiffré (format OpenSSL, mot de passe choisi à chaque sauvegarde)

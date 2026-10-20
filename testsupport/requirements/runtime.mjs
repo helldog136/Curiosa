@@ -4,7 +4,7 @@ import { fakeCtx } from "../fakeCtx.mjs";
 import { makeCtx, observe } from "../probes.mjs";
 import { NET_RULES_LEVEL, stripComments, walkValue, whereOf } from "./util.mjs";
 
-const KNOWN_BLOCKS = ["markdown", "html", "banner", "links", "entries", "hero", "panel", "embed", "form", "table", "copy", "downloads", "gridEditor", "head", "heading", "swatches", "adminForm", "netHealth", "suggestInstall"];
+const KNOWN_BLOCKS = ["markdown", "html", "banner", "links", "entries", "hero", "panel", "embed", "form", "table", "copy", "downloads", "gridEditor", "head", "heading", "swatches", "adminForm", "netHealth", "suggestInstall", "download"];
 export { KNOWN_BLOCKS };
 
 // ── Lecture des sorties ─────────────────────────────────────────────────────────────────────────────────────────────
@@ -403,6 +403,52 @@ const requirements = [
         const saved = { log: console.log, warn: console.warn, error: console.error };
         console.log = console.warn = console.error = () => {};
         try { await watchNetwork(() => Promise.race([task.run(ctx), new Promise((_, rej) => setTimeout(() => rej(new Error("trop long")), 8000).unref())])); } catch (e) { out.push(`la tâche « ${name} » s'interrompt quand le réseau est coupé : ${String(e?.message ?? e).slice(0, 100)}`); } finally { Object.assign(console, saved); }
+      }
+      return out;
+    },
+  },
+  {
+    id: "downloads.bounded", level: "advice", group: "data",
+    title: "Les téléchargements d'administration sont bornés",
+    what: "Chaque téléchargement déclaré dans adminDownloads a un nom de fichier, un type connu, un droit déclaré dans module.json (si « right » est donné), et son générateur FINIT : avec des données d'essai, il produit moins de 20 Mo, en moins de 5 secondes, et n'envoie que du texte.",
+    why: "Un export contient souvent des données personnelles : il est servi par le cœur (droit, journal d'audit), mais c'est le module qui le produit. Un générateur qui ne s'arrête pas, ou qui construit tout en mémoire, bloque le site ; le cœur le coupe à 512 Mo ou 10 minutes, et l'administratrice n'obtient alors qu'un fichier en échec.",
+    fix: "Lisez le stockage par pages (ctx.api.store.page, 1 000 lignes) dans une boucle qui s'arrête à la dernière page, produisez le texte ligne par ligne avec « yield », et déclarez le droit dans « rights » de module.json.",
+    async run(m) {
+      const dl = m.definition?.adminDownloads;
+      if (!dl || typeof dl !== "object" || !Object.keys(dl).length) return { na: "le module n'a pas de téléchargements d'administration" };
+      if (!m.parsed?.ok) return { skip: "module.json invalide" };
+      const out = [];
+      const declared = new Set((m.manifest.rights ?? []).map((r) => r?.id));
+      for (const [name, spec] of Object.entries(dl)) {
+        const at = `le téléchargement « ${name} »`;
+        if (!spec || typeof spec.generate !== "function") { out.push(`${at} n'a pas de fonction « generate »`); continue; }
+        if (typeof spec.filename !== "function") out.push(`${at} n'a pas de fonction « filename »`);
+        if (!["text/csv", "application/json", "text/plain"].includes(spec.contentType)) out.push(`${at} a un type « ${spec.contentType} » : text/csv, application/json ou text/plain seulement`);
+        if (spec.right !== undefined) {
+          const local = String(spec.right).startsWith(`${m.manifest.id}:`) ? String(spec.right).slice(m.manifest.id.length + 1) : String(spec.right);
+          if (local !== "open" && !declared.has(local)) out.push(`${at} demande le droit « ${spec.right} » qui n'est pas déclaré dans « rights » de module.json`);
+        }
+        const ctx = makeCtx(m, { mode: "filled", locale: "fr" });
+        const saved = { log: console.log, warn: console.warn, error: console.error };
+        console.log = console.warn = console.error = () => {};
+        try {
+          const deadline = Date.now() + 5000;
+          const it = spec.generate(ctx, {})?.[Symbol.asyncIterator]?.();
+          if (!it) { out.push(`${at} : « generate » doit renvoyer un générateur asynchrone (async function* …)`); continue; }
+          let chars = 0;
+          for (;;) {
+            const left = deadline - Date.now();
+            if (left <= 0) { out.push(`${at} ne s'arrête pas : plus de 5 secondes avec des données d'essai`); void it.return?.(); break; }
+            const step = await Promise.race([it.next(), new Promise((r) => setTimeout(() => r("late"), left))]);
+            if (step === "late") { out.push(`${at} ne s'arrête pas : plus de 5 secondes avec des données d'essai`); void it.return?.(); break; }
+            if (step.done) break;
+            if (typeof step.value !== "string") { out.push(`${at} produit autre chose que du texte`); void it.return?.(); break; }
+            chars += step.value.length;
+            if (chars > 20_000_000) { out.push(`${at} produit plus de 20 Mo avec des données d'essai : il doit s'arrêter à la dernière page`); void it.return?.(); break; }
+          }
+        } catch (e) {
+          out.push(`${at} échoue avec des données d'essai : ${String(e?.message ?? e).slice(0, 100)}`);
+        } finally { Object.assign(console, saved); }
       }
       return out;
     },

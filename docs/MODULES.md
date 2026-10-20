@@ -498,6 +498,56 @@ Voir « Panneau d'admin riche ». Deux formes pour une action :
   le droit d'un autre module (`"autre:x"`) est toujours refusé. Le module ne fait jamais lui-même le contrôle d'accès, mais il peut adapter ce qu'il
   montre avec `ctx.can`.
 
+### `adminDownloads` : un fichier à télécharger depuis l'administration
+
+(Cœur 0.2.0, `minCore` 0.2.0 : un cœur plus ancien ignore la clé et le bloc `download`.) Un export (fiches, journal…) contient souvent des **données personnelles** : il ne passe
+**jamais** par `routes` (les routes `/m/…` sont publiques et ne connaissent aucune personne connectée). Il se déclare dans `adminDownloads`, et c'est le cœur qui le sert :
+
+```js
+export default {
+  adminDownloads: {
+    contacts: {
+      right: "contacts.export",              // droit déclaré dans `rights` de module.json ; absent = administrateurs
+      contentType: "text/csv",               // ou "application/json", "text/plain"
+      filename: (ctx, params) => "contacts", // le cœur nettoie le nom et ajoute .csv
+      async *generate(ctx, params) {         // générateur asynchrone : du texte, morceau par morceau
+        yield "nom,courriel\n";
+        let cursor = null;
+        do {
+          const page = await ctx.api.store.page("contacts", { limit: 1000, cursor });
+          for (const r of page.items) yield `${cell(r.data.name)},${cell(r.data.email)}\n`;
+          cursor = page.next;
+        } while (cursor);
+      },
+    },
+  },
+  async adminPanel() {
+    return [{ type: "download", name: "contacts", label: "Télécharger les contacts (CSV)" }];
+  },
+};
+```
+
+- **Bloc** `{ type: "download", name, label, params? }` (panneau d'admin seulement) : un petit formulaire POST. `params` (20 valeurs de 1 000 caractères au plus) revient dans `generate(ctx, params)` ; il vient du navigateur, **validez-le** comme toute entrée.
+- **Qui peut** : `<module>:open` ET `right` (préfixe imposé par le cœur ; le droit d'un autre module est refusé) ; sans `right`, les administrateurs. La personne est relue en base à chaque requête. `ctx.can` y est vrai comme dans `adminActions`.
+- **Jamais construit en entier** : lisez le stockage par `store.page` (1 000 lignes) et faites des `yield` ligne par ligne. Le cœur tire le générateur à la demande du navigateur.
+- **Limites du cœur** : 512 Mo et 10 minutes au plus ; un générateur qui reste muet 60 s est coupé ; 2 téléchargements en même temps par personne (4 pour tout le site, puis « réessayez » avec un message clair) ; si le navigateur coupe, le générateur est fermé (`finally` exécuté). Un flux coupé arrive **en erreur** (le navigateur affiche « échec », jamais un fichier tronqué qui aurait l'air complet).
+- **En-têtes** : `Content-Disposition: attachment` (nom assaini : pas de chemin, de guillemet ni de retour à la ligne, extension toujours celle du type), `X-Content-Type-Options: nosniff`, `Cache-Control: no-store`, CSP `sandbox`. Pas de GET : un lien ne déclenche jamais un export.
+- **Audit** : `module.<clé>.download.<nom>` au début, `module.<clé>.download.<nom>.end` à la fin avec le nombre d'octets et la cause (`done`, `client`, `bytes`, `time`, `idle`, `error`).
+- **Tableurs** : une cellule texte qui commence par `=`, `+`, `-` ou `@` est lue comme une formule par un tableur ; préfixez-la d'une apostrophe (le kit ne le vérifie pas encore).
+- **Kit de test** : l'exigence `downloads.bounded` (conseil) vérifie que le générateur finit, produit du texte et que le droit est déclaré.
+
+### Champ fichier (`kind: "file"`) dans un `adminForm`
+
+(Cœur 0.2.0.) `{ name: "list", label: "Fichier CSV", kind: "file", accept: ".csv,.txt", maxBytes: 1048576, required: true }`. Le formulaire est envoyé à une **route dédiée du cœur**
+(`POST /api/admin/modules/<instance>/action/<action>`) et non à une action serveur : celles de Next sont plafonnées à 1 Mo, et le cœur ne relève pas cette limite pour tout le site.
+
+- **Mêmes gardes que les `adminActions`** (même site, connecté, `<module>:open` + droit de l'action), vérifiées **avant** de lire le fichier.
+- **Taille** : 5 Mo au plus par fichier (`maxBytes` ne peut que l'abaisser), 2 fichiers par envoi. La lecture est comptée et coupée : un envoi énorme n'est jamais lu en entier. Message : « Fichier trop gros (5 Mo au plus) ».
+- **Type** : du texte seulement (`.csv`, `.tsv`, `.txt`, `.json`, `.vcf`, `.ics`, `.md`, ou un type MIME `text/*`) ; `accept` restreint encore. Pas d'octet nul, **UTF-8 strict** (un octet invalide est refusé, jamais remplacé), BOM retiré. Pas de fichier binaire en v2.
+- **Ce que reçoit le module** : le contenu en **texte** dans `values[name]` (jusqu'à 5 Mo ; `""` si aucun fichier n'a été choisi), avec les autres champs. Le nom du fichier envoyé n'est pas transmis.
+- **Pas dans l'éditeur d'entrée** (`entryPanels`) : le champ y est écarté.
+- Un cœur plus ancien rend un simple champ fichier mais l'envoie à une action serveur qui ignore les fichiers : `values[name]` reste vide. D'où `minCore` 0.2.0.
+
 La page d'administration d'un module s'ouvre avec `<module>:open`. Une personne qui n'est pas administratrice n'y voit que le panneau du module
 (`adminPanel`) : ni réglages, ni retrait.
 
@@ -946,7 +996,7 @@ export default {
 };
 ```
 
-- **Champs** d'un `adminForm` : `text`, `textarea`, `email`, `url`, `number`, `date`, `select` (`options`), `image`, `hidden`, `checkbox`. Les blocs
+- **Champs** d'un `adminForm` : `text`, `textarea`, `email`, `url`, `number`, `date`, `select` (`options`), `image`, `hidden`, `checkbox`, `file` (voir « Champ fichier »). Les blocs
   `adminForm` ne s'affichent que dans l'admin (jamais sur le site public).
 - **Boutons de ligne** d'une `table` (`rowActions`, admin seulement) : `{ label, action?, href?, confirm?, danger? }`. `action` exécute une
   `adminAction` en lui envoyant `values.id` (pris dans `rowIds`, même ordre que `rows`) ; `href` navigue (`{id}` est remplacé par l'identifiant) ;

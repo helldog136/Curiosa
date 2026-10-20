@@ -66,6 +66,14 @@ export function fakeCtx(opts = {}) {
     async get(id) { const r = rows.get(id); return r ? { id: r.id, createdAt: r.createdAt, data: structuredClone(r.data) } : null; },
     async update(id, data) { if (!rows.has(id)) return false; calls.writes.push({ op: "update", collection: rows.get(id).collection }); rows.get(id).data = structuredClone(data); return true; },
     async list(collection, o) { return [...rows.values()].filter((r) => r.collection === collection).sort((a, b) => b.createdAt - a.createdAt).slice(0, o?.limit ?? 100).map((r) => ({ id: r.id, createdAt: r.createdAt, data: structuredClone(r.data) })); },
+    // Lecture par pages (curseur factice = position) : de quoi essayer un générateur de téléchargement qui lit « par pages » (adminDownloads).
+    async page(collection, o) {
+      const asc = o?.order === "asc";
+      const all = [...rows.values()].filter((r) => r.collection === collection).sort((a, b) => (asc ? 1 : -1) * (a.createdAt - b.createdAt));
+      const start = Math.max(0, Number(o?.cursor ?? 0) || 0);
+      const limit = Math.min(Math.max(1, o?.limit ?? 100), 1000);
+      return { items: all.slice(start, start + limit).map((r) => ({ id: r.id, createdAt: r.createdAt, data: structuredClone(r.data) })), next: start + limit < all.length ? String(start + limit) : null };
+    },
     async remove(id) { calls.writes.push({ op: "remove", collection: rows.get(id)?.collection }); rows.delete(id); },
     async count(collection) { return [...rows.values()].filter((r) => r.collection === collection).length; },
   };

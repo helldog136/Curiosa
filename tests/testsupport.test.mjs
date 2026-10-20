@@ -85,6 +85,7 @@ const FAULTS = {
   "net.noIdleTimer": (f) => append(f, "index.mjs", "export const loop = () => setInterval(() => {}, 60000);"),
   "net.429": (f) => REPLACE(f, 'const feed = await ctx.api.net.request({ url: "https://example.org/feed" });', 'const feed = await fetch("https://example.org/feed", { signal: AbortSignal.timeout(2000) }).catch(() => ({ ok: false }));'),
   "net.fallback": (f) => REPLACE(f, "const [last] = await rows(ctx);", 'await fetch("https://example.org/live", { signal: AbortSignal.timeout(10000) }).catch(() => null);\n      const [last] = await rows(ctx);'),
+  "downloads.bounded": (f) => REPLACE(f, 'yield "name,text\\n";', 'for (let i = 0; i < 1e9; i++) yield "x".repeat(1000);'),
   "data.version": (f) => REPLACE(f, "migrations: { 2: async () => {} }", "migrations: { 2: async () => {}, 7: async () => {} }"),
   "data.migrations": (f) => REPLACE(f, "migrations: { 2: async () => {} }", "migrations: { 2: async (ctx) => { await ctx.api.store.list(\"nothing\").then((r) => r[0].data); } }"),
   "privacy.declared": (f) => editManifest(f, (m) => { delete m.privacy; }),
@@ -272,4 +273,17 @@ test("le modèle d'auteur (testsupport/template) réussit toutes les exigences o
   assert.equal(rep.summary.ok, true, JSON.stringify(rep.results.filter((r) => r.status === "fail")));
   const r = spawnSync(process.execPath, ["--disable-warning=MODULE_TYPELESS_PACKAGE_JSON", "--test", "testsupport/template/my-module.test.mjs"], { encoding: "utf8", env: cleanEnv });
   assert.equal(r.status, 0, r.stdout + r.stderr);
+});
+
+test("downloads.bounded : un droit non déclaré dans module.json, un type inconnu et un générateur qui lève une erreur sont signalés", async () => {
+  const rep = await checkModule(mk((f) => {
+    REPLACE(f, 'right: "export",', 'right: "nowhere",');
+    REPLACE(f, 'contentType: "text/csv",', 'contentType: "text/html",');
+    REPLACE(f, 'yield "name,text\\n";', 'throw new Error("boom");');
+  }), { siblings: [] });
+  const res = status(rep, "downloads.bounded");
+  assert.equal(res.status, "fail");
+  assert.match(res.problems.join("\n"), /nowhere/);
+  assert.match(res.problems.join("\n"), /text\/html/);
+  assert.match(res.problems.join("\n"), /échoue/);
 });

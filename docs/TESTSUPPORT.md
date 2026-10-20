@@ -123,6 +123,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 | [`net.noIdleTimer`](#netnoidletimer) | conseil | Aucune boucle réseau qui tourne sans personne |
 | [`net.429`](#net429) | conseil | Après « trop de demandes » (429), le module fait une pause |
 | [`net.fallback`](#netfallback) | conseil | En cas de panne d'un service externe, la page s'affiche quand même |
+| [`downloads.bounded`](#downloadsbounded) | conseil | Les téléchargements d'administration sont bornés |
 | [`data.version`](#dataversion) | obligatoire | dataVersion et migrations sont cohérentes |
 | [`data.migrations`](#datamigrations) | conseil | Les migrations se déroulent sans erreur |
 | [`privacy.declared`](#privacydeclared) | obligatoire | Un module qui collecte des données le déclare (privacy) |
@@ -135,7 +136,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 | [`readme.plain`](#readmeplain) | conseil | Le README est écrit en langage de tous les jours |
 | [`neutrality.clean`](#neutralityclean) | conseil | Aucune donnée personnelle ni propre à un site dans le module |
 
-36 exigences obligatoires et 18 conseils.
+36 exigences obligatoires et 19 conseils.
 
 ### Le fichier module.json
 
@@ -504,6 +505,14 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 - **Comment corriger.** Dans une page, ne lancez pas d'appel réseau long : affichez ce que la tâche planifiée a mis en cache (avec « mis à jour à 10 h 30 »), ou passez par ctx.api.net.request, dont le délai suit le temps restant de la page, et affichez un repli si « r.ok » est faux.
 
 ### Les données
+
+#### `downloads.bounded`
+
+**Les téléchargements d'administration sont bornés** — niveau : **conseil**
+
+- **Ce qui est vérifié.** Chaque téléchargement déclaré dans adminDownloads a un nom de fichier, un type connu, un droit déclaré dans module.json (si « right » est donné), et son générateur FINIT : avec des données d'essai, il produit moins de 20 Mo, en moins de 5 secondes, et n'envoie que du texte.
+- **Pourquoi.** Un export contient souvent des données personnelles : il est servi par le cœur (droit, journal d'audit), mais c'est le module qui le produit. Un générateur qui ne s'arrête pas, ou qui construit tout en mémoire, bloque le site ; le cœur le coupe à 512 Mo ou 10 minutes, et l'administratrice n'obtient alors qu'un fichier en échec.
+- **Comment corriger.** Lisez le stockage par pages (ctx.api.store.page, 1 000 lignes) dans une boucle qui s'arrête à la dernière page, produisez le texte ligne par ligne avec « yield », et déclarez le droit dans « rights » de module.json.
 
 #### `data.version`
 

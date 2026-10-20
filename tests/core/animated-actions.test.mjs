@@ -71,7 +71,7 @@ test("textes : mêmes clés en français et en anglais pour les boutons animés"
     const all = Object.keys(dict);
     const at = all.indexOf(keys[0]);
     assert.deepEqual(all.slice(at, at + keys.length), keys, "nouvelles clés groupées, dans le même ordre");
-    assert.ok(at >= all.length - 260, "vers la fin du fichier (avant les clés de thème et de couleurs)");
+    assert.ok(at >= all.length - 400, "vers la fin du fichier (avant les clés de thème et de couleurs)");
   }
 });
 

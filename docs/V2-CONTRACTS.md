@@ -626,7 +626,7 @@ kind?: /* … */ | "file"; accept?: string; maxBytes?: number;   // ≤ 5 242 88
 
 ### d. Compatibilité
 
-Un cœur ancien ignore `adminDownloads`. `kind: "file"` est une valeur d'énumération TypeScript seulement : le manifeste ne la porte pas, mais un cœur ancien rendrait un champ inconnu [à vérifier]. D'où `minCore 0.2.0`.
+Un cœur ancien ignore `adminDownloads`. `kind: "file"` est une valeur d'énumération TypeScript seulement : le manifeste ne la porte pas, mais un cœur ancien rendrait un champ inconnu. **Vérifié (lot G)** : l'ancien rendu fait `<input type={f.kind ?? "text"}>`, donc un `<input type="file">` natif, posté à une action serveur qui ne garde que les valeurs texte (`typeof v === "string"`) : le fichier est ignoré, `values[name]` reste absent, sans erreur ni risque. D'où `minCore 0.2.0`. Écarts de mise en œuvre : le résultat d'un fichier est du texte seulement (comme écrit ci-dessus) ; la règle de kit `csv.formulaEscape` n'est pas livrée (seule `downloads.bounded` l'est).
 
 ### e. Fichiers
 

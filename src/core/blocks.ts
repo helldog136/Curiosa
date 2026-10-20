@@ -12,7 +12,13 @@ export type HeadTag =
 export type AdminField = {
   name: string;
   label: string;
-  kind?: "text" | "textarea" | "email" | "url" | "number" | "date" | "select" | "hidden" | "image" | "checkbox";
+  kind?: "text" | "textarea" | "email" | "url" | "number" | "date" | "select" | "hidden" | "image" | "checkbox"
+    /** (cœur 0.2.0) Fichier TEXTE (UTF-8) de 5 Mo au plus, lu par le cœur et transmis à l'action en texte dans `values[name]`. Un cœur plus ancien l'ignore (exigez `minCore` 0.2.0). */
+    | "file";
+  /** `kind: "file"` : types acceptés (comme l'attribut HTML `accept`, par exemple « .csv,.txt »). Le cœur n'accepte de toute façon que du texte (csv, tsv, txt, json, vcf). */
+  accept?: string;
+  /** `kind: "file"` : taille maximale en octets (5 242 880 au plus, valeur par défaut). */
+  maxBytes?: number;
   value?: string;
   required?: boolean;
   help?: string;
@@ -106,6 +112,11 @@ export type Block =
   | { type: "swatches"; items: { name: string; hex: string; role?: string }[] }
   /** Fichiers (images) proposés au téléchargement, avec aperçu. */
   | { type: "downloads"; items: { src: string; label: string; detail?: string }[] }
+  /**
+   * (cœur 0.2.0, panneau d'admin SEULEMENT, ignoré ailleurs) Bouton qui télécharge un fichier produit par `adminDownloads.<name>` du module. Le droit, l'audit et les
+   * limites sont ceux du cœur ; `params` est transmis au module (valeurs courtes en texte, à valider). Un cœur plus ancien ignore ce bloc.
+   */
+  | { type: "download"; name: string; label: string; params?: Record<string, string> }
   /** Texte à copier d'un clic (description courte, formule de présentation…). */
   | { type: "copy"; label?: string; text: string }
   | { type: "head"; tags: HeadTag[] }

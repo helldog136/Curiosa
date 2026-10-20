@@ -115,6 +115,7 @@ const PANEL = `
 const withPanel = (f, { code = PANEL, declare = true, admin = true } = {}) => {
   editManifest(f, (m) => {
     if (admin) m.permissions.push("admin");
+    else m.permissions = m.permissions.filter((x) => x !== "admin");
     if (declare) m.entryPanels = [{ id: "chat-command", for: { topic: "sponsor.card" }, title: { en: "Chat command", fr: "Commande de chat" } }];
   });
   f["index.mjs"] = f["index.mjs"].replace("export default {", `export default {${code}`);

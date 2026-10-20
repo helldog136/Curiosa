@@ -432,6 +432,15 @@ export type ModuleDefinition = {
    */
   adminActions?: Record<string, AdminActionHandler | AdminActionSpec>;
   /**
+   * (0.2.0) Téléchargements d'ADMINISTRATION (un export de fiches, un journal…), par nom ; un bloc `{ type: "download", name }` du panneau d'admin les propose.
+   * Le fichier est produit PAR MORCEAUX par `generate` (un générateur asynchrone : jamais construit en entier en mémoire ; lisez le stockage par `store.page`)
+   * et servi par une route du CŒUR, réservée aux personnes connectées qui ont le droit (`right` : identifiant local d'un droit déclaré dans `rights` ;
+   * absent = administrateurs) et notée au journal d'audit. N'exposez JAMAIS un export privé par `routes` : ces routes sont publiques.
+   * Limites du cœur : 512 Mo et 10 minutes au plus, 2 téléchargements en même temps par personne ; un générateur qui ne produit plus rien pendant 60 s est coupé.
+   * `params` : les valeurs du bloc, renvoyées par le navigateur : à valider comme toute entrée. Un cœur plus ancien ignore cette clé (exigez `minCore` 0.2.0).
+   */
+  adminDownloads?: Record<string, AdminDownloadSpec>;
+  /**
    * Sections ajoutées à l'éditeur d'entrée d'un autre module, par `id` (déclarées dans `entryPanels` du manifeste). `render` renvoie les blocs de la section pour CETTE entrée ;
    * `actions` : ce que ses blocs `adminForm` et boutons de ligne déclenchent (enregistrées sans quitter la page). Mêmes rôles que l'éditeur d'entrée (éditeur et plus).
    * Les données restent chez le module qui fournit la section (sa clé : `entry.id`) ; le module hôte n'en sait rien.
@@ -530,6 +539,17 @@ export type AdminActionResult = { ok?: string; error?: string; redirect?: string
 export type AdminActionHandler = (ctx: ModuleContext, values: Record<string, string>) => AdminActionResult | Promise<AdminActionResult>;
 /** Action d'admin protégée par un droit du module (identifiant local, ou « <ce module>:<id> » ; le droit d'un autre module est toujours refusé). */
 export type AdminActionSpec = { right: string; run: AdminActionHandler };
+
+/** Un téléchargement d'administration (voir `ModuleDefinition.adminDownloads`). */
+export type AdminDownloadSpec = {
+  /** Droit du module (identifiant local, ou « <ce module>:<id> ») ; absent = administrateurs. Le droit d'un autre module est toujours refusé. */
+  right?: string;
+  /** Nom du fichier proposé (le cœur l'assainit et force l'extension du type). */
+  filename(ctx: ModuleContext, params: Record<string, string>): string;
+  contentType: "text/csv" | "application/json" | "text/plain";
+  /** Le contenu, morceau par morceau (texte UTF-8). */
+  generate(ctx: ModuleContext, params: Record<string, string>): AsyncIterable<string>;
+};
 
 /** Aide de typage : `export default defineModule({...})`. */
 export function defineModule(def: ModuleDefinition): ModuleDefinition {
