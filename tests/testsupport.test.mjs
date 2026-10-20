@@ -58,6 +58,8 @@ const FAULTS = {
   "i18n.unused": (f) => { for (const l of ["en", "fr"]) { const d = JSON.parse(f[`locales/${l}.json`]); d.leftover = "unused"; f[`locales/${l}.json`] = JSON.stringify(d); } },
   "settings.sane": (f) => editManifest(f, (m) => { m.settings.push({ ...m.settings[0] }); }),
   "settings.optional": (f) => editManifest(f, (m) => { m.settings.push({ key: "extra", type: "text", label: { en: "Extra (optional)", fr: "Extra (facultatif)" } }); }),
+  "settings.refersToChoice": (f) => editManifest(f, (m) => { m.settings.push({ key: "cat", type: "text", optional: true, refersTo: "category", label: { en: "Category", fr: "Catégorie" } }); }),
+  "settings.textNamesExisting": (f) => editManifest(f, (m) => { m.settings.push({ key: "chan", type: "text", optional: true, label: { en: "Channel", fr: "Chaîne" }, help: { en: "Type the channel name.", fr: "Saisissez le nom de la chaîne." } }); }),
   "settings.advanced": (f) => editManifest(f, (m) => { m.settings.push({ key: "delay", type: "number", advanced: true, label: { en: "Delay", fr: "Délai" } }); }),
   "secrets.hidden": (f) => REPLACE(f, 'async latest(ctx) {', 'async latest(ctx) {\n      if (ctx.setting("apiKey")) return [{ type: "markdown", text: "key: " + ctx.setting("apiKey") }];'),
   "wording.simple": (f) => editManifest(f, (m) => { m.description.en = "Stores messages as JSON for visitors."; }),

@@ -1,7 +1,8 @@
 import { prisma } from "../db";
 import { hardNeeds, normalizeNeeds, offerIsEach, offerVersionOf, satisfiesVersion } from "./serviceVersions";
 import { boxedInner, isStalled, ModuleStalled, STALLED } from "./budget";
-import { buildContext } from "./context";
+import { buildContext, forViewer } from "./context";
+import type { AdminUser } from "../auth/access";
 import { pickName } from "../instances";
 import { deleteSetting, getSetting, setSetting } from "../settings";
 import { getActiveInstances, getModule, listModuleRows, type ActiveInstance } from "./registry";
@@ -172,10 +173,12 @@ const hasMethod = (p: ActiveInstance, service: string, method: string) => typeof
  * Exécute la méthode d'un service chez un fournisseur. Pour une page publique, le fournisseur a un temps imparti (voir budget.ts) : sans réponse, `ModuleStalled`
  * est levée (le journal a déjà nommé le fournisseur une fois ; les appelants la traitent comme un échec, sans rien écrire de plus).
  */
-const runOn = async (p: ActiveInstance, service: string, method: string, args: unknown, locale?: string) => {
+const runOn = async (p: ActiveInstance, service: string, method: string, args: unknown, locale?: string, viewer?: AdminUser | null) => {
   const fn = p.mod.def.services?.[service]?.[method];
   if (!fn) return undefined;
-  const ctx = await buildContext(p.mod, p.instance, locale);
+  // `viewer` : appel fait pour une personne de l'administration (création à la volée d'un `choice`) : `ctx.can` du fournisseur vérifie SES droits à elle.
+  const base = await buildContext(p.mod, p.instance, locale);
+  const ctx = viewer !== undefined ? forViewer(base, viewer) : base;
   const unit = { kind: "service" as const, moduleId: p.mod.manifest.id, instanceKey: p.instance.key, name: `${service}.${method}` };
   const value = await boxedInner(unit, () => fn(ctx, args));
   if (value === STALLED) throw new ModuleStalled(unit);
@@ -195,7 +198,7 @@ async function defaultTarget(found: ActiveInstance[], service: string): Promise<
  * `provider` (identifiant d'INSTANCE, revalidé ici) : appel explicite. La cible doit être l'un des fournisseurs de `providersOf` (sinon « unavailable » :
  * instance supprimée, mise à l'écart, version trop ancienne, ou fournisseur étranger). Le maître visé garde ses répliques ; tout autre fournisseur répond SEUL.
  */
-async function dispatch(consumer: Pick<ActiveInstance, "mod" | "instance">, service: string, method: string, args: unknown, locale?: string, provider?: string): Promise<{ outcome: Outcome; master?: ActiveInstance }> {
+async function dispatch(consumer: Pick<ActiveInstance, "mod" | "instance">, service: string, method: string, args: unknown, locale?: string, provider?: string, viewer?: AdminUser | null): Promise<{ outcome: Outcome; master?: ActiveInstance }> {
   const found = await providersFor(consumer, service);
   if (found === null) return { outcome: { ok: false, reason: "undeclared" } };
   if (found.length === 0) return { outcome: { ok: false, reason: "unavailable" } };
@@ -211,7 +214,7 @@ async function dispatch(consumer: Pick<ActiveInstance, "mod" | "instance">, serv
   if (!hasMethod(master, service, method)) return { outcome: { ok: false, reason: "no_method" }, master };
   let value: unknown;
   try {
-    value = await runOn(master, service, method, args, locale);
+    value = await runOn(master, service, method, args, locale, viewer);
   } catch (error) {
     if (!isStalled(error)) console.error(`[modules] service ${service}.${method} failed:`, (error as Error)?.message);
     return { outcome: { ok: false, reason: "failed" }, master };
@@ -221,14 +224,15 @@ async function dispatch(consumer: Pick<ActiveInstance, "mod" | "instance">, serv
   if (!readOnly.has(method)) {
     await Promise.allSettled(replicas.map(async (r) => {
       if (!hasMethod(r, service, method)) return;
-      try { await runOn(r, service, method, args, locale); } catch (error) { if (!isStalled(error)) console.error(`[modules] replica ${r.instance.key} of ${service}.${method} failed:`, (error as Error)?.message); }
+      try { await runOn(r, service, method, args, locale, viewer); } catch (error) { if (!isStalled(error)) console.error(`[modules] replica ${r.instance.key} of ${service}.${method} failed:`, (error as Error)?.message); }
     }));
   }
   return { outcome: { ok: true, value }, master };
 }
 
-export async function callService(consumer: Pick<ActiveInstance, "mod" | "instance">, service: string, method: string, args: unknown, locale?: string, opts: { provider?: string } = {}): Promise<Outcome> {
-  return (await dispatch(consumer, service, method, args, locale, opts.provider)).outcome;
+/** `opts.viewer` (cœur seulement, jamais exposé aux modules) : la personne de l'administration pour qui l'appel est fait ; le fournisseur reçoit alors `ctx.can` pour elle. */
+export async function callService(consumer: Pick<ActiveInstance, "mod" | "instance">, service: string, method: string, args: unknown, locale?: string, opts: { provider?: string; viewer?: AdminUser | null } = {}): Promise<Outcome> {
+  return (await dispatch(consumer, service, method, args, locale, opts.provider, opts.viewer)).outcome;
 }
 
 /** Une entrée de `ctx.api.services.providers` : `id` = identifiant STABLE de l'instance (à passer à `call(…, { provider })`), `name` = libellé lisible. */

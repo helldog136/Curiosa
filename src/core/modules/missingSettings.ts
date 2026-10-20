@@ -3,8 +3,12 @@
 /** Ce que la règle lit d'un réglage du manifeste. */
 export type FillField = { key: string; type: string; default?: unknown; translatable?: boolean; advanced?: boolean; optional?: boolean };
 
-/** Types de réglages qu'on « remplit » (clé, adresse, identifiant…) : les cases, listes, nombres et couleurs ont toujours une valeur. */
-const FILLABLE = ["secret", "text", "url", "link"];
+/**
+ * Types de réglages qu'on « remplit » (clé, adresse, identifiant…) : les cases, listes, nombres et couleurs ont toujours une valeur.
+ * `choice` (0.2.0) : la règle reste pure ; l'appelant passe pour lui une valeur « remplie » quand il est choisi, n'a qu'une option ou a un remplaçant
+ * unique (voir `fillStored` / `viewCountsAsFilled`), et rien sinon (aucune option, plusieurs sans choix, élément disparu).
+ */
+const FILLABLE = ["secret", "text", "url", "link", "choice"];
 
 /**
  * Les réglages à remplir qui manquent : champ vide, sans valeur par défaut, ni technique (« avancé »), ni déclaré facultatif (`optional`),

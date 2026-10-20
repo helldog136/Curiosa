@@ -175,6 +175,13 @@ Les propriétaires, administrateurs et éditeurs ne voient aucune différence.
 - **Tableurs** : un export CSV dont une cellule commence par `=`, `+`, `-` ou `@` peut exécuter une formule à l'ouverture. Le module doit préfixer ces cellules d'une apostrophe.
 - Tests : `tests/core/admin-transfer.test.mjs` (autre origine, sans droit, non connecté, nom hostile, gros fichier, flux interrompu, générateur muet, téléchargements simultanés).
 
+## Réglage « choix parmi » (`choice`, 0.2.0) : modèle de menace
+
+- **Identifiant forgé** : le navigateur n'envoie qu'un identifiant ; le serveur revérifie à chaque enregistrement qu'il est une option ACTUELLE (instance qui offre le service et que le module peut appeler, ou élément rendu par `get` du module propriétaire). Une clé d'instance (renommable) n'est jamais acceptée comme identifiant.
+- **Fournisseur lent ou muet** : chaque vérification a un délai dur (3 s par champ, 5 s par formulaire). Au-delà, l'enregistrement est **refusé** : une valeur non vérifiée n'est jamais stockée. La lecture répond « non vérifié » et ne remplace rien en silence.
+- **Création à la volée** : seulement si le réglage déclare `allowCreate`, jamais pour un rôle, un connecteur, un module, une instance ou un compte. Le cœur appelle `create` du module **propriétaire de la donnée**, pour la personne connectée (même garde que l'enregistrement des réglages) : ce module vérifie SON droit avec `ctx.can` (préfixé par le cœur, un module ne peut pas tester le droit d'un autre) et refuse sinon. Hors administration, `ctx.can` vaut toujours « non ». Audit : `module.<instance>.choice.create`.
+- **Conversion de texte** (`fromText`) : remplacée seulement sur une correspondance exacte et unique ; l'audit `setting.fromText` ne recopie jamais la valeur.
+
 ## Dépannage en SSH (propriétaire du serveur seulement)
 
 Si le propriétaire est bloqué (trop d'essais, mot de passe perdu), la commande de secours se lance **sur le serveur**, depuis le dossier de l'application, avec l'utilisateur du service :

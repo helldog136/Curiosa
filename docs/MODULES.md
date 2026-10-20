@@ -233,9 +233,40 @@ Chaque réglage est un objet (`SettingField`) :
 | `advanced` | `true` : réglage technique, masqué dans la version simplifiée de l'admin ; **sa valeur par défaut s'applique** — donnez-en toujours une. |
 | `optional` | `true` : réglage facultatif. Vide, il ne met pas l'extension « À configurer » ; sans cela, un texte, une adresse, un lien ou un secret vide et sans valeur par défaut est signalé à l'administrateur comme « à remplir » (avec son libellé). |
 | `group` | `"appearance"` : réglage d'apparence, regroupé sous « Apparence de ce module ». |
+| `source` | Pour `choice` (obligatoire) : d'où viennent les options. Voir « Réglage `choice` » ci-dessous. |
+| `allowCreate` | Pour `choice` de source `service` avec `create` : propose « Créer « X » » (jamais pour un rôle, un connecteur, un module, une instance ou un compte). |
+| `fromText` | Pour `choice` qui remplace un réglage texte de même clé : une valeur texte égale à l'étiquette d'UNE option est remplacée par son identifiant. |
+| `refersTo` | Ce que désigne le réglage : `category`, `contact`, `organisation`, `channel`, `connector`, `instance`, `module`, `calendar`, `game`, `page`, `user`, `role`, `theme`, ou `external` (un profil hors du site). Un cœur ancien ignore la clé ; le kit de test s'en sert (règles `settings.refersToChoice`, `settings.textNamesExisting`). |
 
 Types : `text`, `textarea`, `url` (adresse http ou https), `link` (une page du site comme `/contact`, une adresse `https://…` ou `mailto:…` ; contrôlé dans le navigateur et par le serveur), `number`, `boolean`, `select`, `color`, `image` (envoi de fichier ou URL), `video` (envoi d'une vidéo MP4 ou WebM de 50 Mo au plus, réservée aux fichiers du site : `/uploads/…`), `secret`
-(jamais réaffiché une fois enregistré ; ne l'écrivez jamais dans un journal).
+(jamais réaffiché une fois enregistré ; ne l'écrivez jamais dans un journal), `choice` (« choix parmi », cœur 0.2.0 : voir ci-dessous).
+
+#### Réglage `choice` (« choix parmi », cœur 0.2.0)
+
+Un réglage qui **désigne un élément qui existe déjà** (une chaîne, une catégorie, un agenda…) n'est jamais du texte libre : c'est un `choice`. La personne cherche et choisit dans une liste ; le module reçoit un **identifiant stable** (jamais un nom, jamais une clé renommable).
+
+```json
+{ "key": "channel", "type": "choice", "label": { "fr": "Chaîne", "en": "Channel" },
+  "source": { "kind": "providers", "service": "demo.channel" }, "fromText": true, "optional": true }
+{ "key": "category", "type": "choice", "label": { "fr": "Catégorie", "en": "Category" }, "refersTo": "category",
+  "source": { "kind": "service", "service": "demo.book", "list": "categories", "get": "getCategories", "create": "createCategory" }, "allowCreate": true }
+```
+
+- **Sources** (le `service` doit figurer dans `requires`) :
+  - `providers` : les instances actives qui offrent ce service (`ctx.api.services.providers`), version ≥ `min`. Valeur stockée : l'**id d'instance**.
+  - `service` : le module **propriétaire** de la donnée offre trois méthodes, appelées au nom de votre instance :
+    `list({ q?, cursor?, limit? })` → `{ items: [{ id, label, aliases?, hint? }], next }` (`q` ≤ 100 caractères, `limit` ≤ 50, défaut 20 ; un `next` de plus de 500 caractères est ignoré) ;
+    `get({ ids })` (≤ 50) → `{ items: [{ id, label }], moved?: { ancien: nouveau }, missing: [...] }` ;
+    `create({ label })` (facultative, ≤ 100 caractères) → `{ ok: true, id, label }` ou `{ ok: false, error: "duplicate" | "invalid" | "denied", id? }`. `create` est appelée **dans le contexte de la personne connectée** : vérifiez votre droit avec `ctx.can(…)` et refusez (`denied`) sinon ; un `duplicate` qui donne l'`id` de l'existant le fait sélectionner.
+- **Pas de défaut, pas de traduction** (refusés par le manifeste), pas dans les options d'une section.
+- **Lire la valeur** : `ctx.setting("clé")` renvoie la valeur brute ; `await ctx.resolveChoice("clé")` la résout (3 s au plus, ne lève jamais) :
+  `chosen` (choisi ; une fusion `moved` est suivie), `only` (rien de choisi et **une seule** option : utilisez son `id` ; il n'est **jamais écrit**, pour qu'une deuxième option fasse réapparaître le sélecteur), `none` (aucune option), `ambiguous` (plusieurs, rien de choisi), `missing` (l'élément a disparu ; s'il ne reste qu'une option, `id` et `label` la donnent et vous pouvez l'utiliser), `unverified` (le fournisseur n'a pas répondu : ne décidez rien).
+  Pour une source `providers` : `ctx.api.services.call(service, méthode, args, { provider: r.id })`.
+- **Dans l'admin** : 0 option → le champ est masqué et une bannière dit quoi faire (source `providers` : bloc `suggestInstall` ; source `service` : « créez-en d'abord un dans … », et « Créer » si `allowCreate`) ; 1 option → champ masqué (« Utilise : … » en mode avancé) ; 2 ou plus → recherche paginée au clavier. Un élément disparu met l'instance « à configurer », sauf s'il ne reste qu'une option.
+- **Enregistrement** : le navigateur n'envoie qu'un identifiant ; le cœur le revérifie auprès du fournisseur (3 s par champ, 5 s en tout). Au délai dépassé, **rien n'est enregistré** (« Impossible de vérifier ce choix, réessayez »). Même règle pour un `choice` semé par `ctx.seedInstance`.
+- **`fromText`** : passer un réglage `text` en `choice` garde la même clé. Si la valeur enregistrée n'est pas un identifiant connu et égale **exactement** (sans casse, espaces réduits) l'étiquette ou un alias d'**une seule** option, le cœur la remplace par l'identifiant (à l'ouverture de l'admin de l'instance et au balayage de démarrage ; audit `setting.fromText`). Sinon l'admin affiche « Valeur à confirmer ». Pour une source `providers`, la clé technique de l'instance sert d'alias.
+- **Kit de test** : `fakeCtx({ choices: { clé: { status: "chosen", id, label } } })` ; règles `settings.refersToChoice` et `settings.textNamesExisting` (conseils en 0.2.0).
+- Exige `"minCore": "0.2.0"` : un cœur plus ancien refuse le manifeste.
 
 - **Valeurs** : `ctx.setting` renvoie ce que l'admin a saisi, **sans garantie de type** (un nombre peut arriver en texte, une
   adresse peut être n'importe quoi) : convertissez, bornez et validez avant d'utiliser. Un réglage inconnu du manifeste vaut `undefined`.
@@ -778,6 +809,9 @@ Chaque fonction du module reçoit un `ctx` (`ModuleContext`) ; les slots reçoiv
 | `ctx.api` | tout ce que le cœur met à disposition (ci-dessous) |
 | `ctx.legacy` | (cœur 0.2.0) réglages hérités de **cette** instance déclarés dans `legacySettings` : `keys()`, `get(clé)`, `clear(clé)` (voir « Réglages hérités et plancher »). Absent sur un cœur plus ancien. |
 | `ctx.can("droit")` | (cœur 0.2.0) la personne qui regarde l'administration a-t-elle ce droit du module (identifiant **local**, voir « Droits (`rights`) ») ? Vrai seulement dans `adminPanel`, `adminActions` et `entryPanels` ; **toujours faux** ailleurs (page publique, route, overlay, tâche, service, MCP). Absent sur un cœur plus ancien : traitez l'absence comme un refus. |
+
+| `ctx.can("droit")` | (cœur 0.2.0) la personne qui regarde l'administration a-t-elle ce droit du module (identifiant **local**, voir « Droits (`rights`) ») ? Vrai seulement dans `adminPanel`, `adminActions`, `entryPanels` et le `create` d'un réglage `choice` (appelé pour la personne connectée) ; **toujours faux** ailleurs (page publique, route, overlay, tâche, service, MCP). Absent sur un cœur plus ancien : traitez l'absence comme un refus. |
+| `ctx.resolveChoice("clé")` | (cœur 0.2.0) résout un réglage `choice` : `{ status: "chosen" \| "only", id, label }`, `{ status: "missing", id?, label? }`, ou `none` / `ambiguous` / `unverified`. Borné à 3 s, ne lève jamais, n'écrit rien. Voir « Réglage `choice` ». |
 
 ### `ctx.api`
 

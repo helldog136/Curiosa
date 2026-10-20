@@ -16,6 +16,7 @@ export const AUDIT_ACTIONS = [
   "mcp.enable", "mcp.disable", "mcp.token.create", "mcp.token.revoke", "mcp.token.url.on", "mcp.token.url.off", "mcp.grant.on", "mcp.grant.off", "mcp.grants.defaults", "mcp.grants.none",
   "mcp.maintenance.request", "mcp.maintenance.approve", "mcp.maintenance.deny", "mcp.maintenance.mode", "mcp.maintenance.notify",
   "mail.sent",
+  "setting.fromText",
 ] as const;
 
 const KNOWN = new Set<string>(AUDIT_ACTIONS);
