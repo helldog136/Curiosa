@@ -503,3 +503,19 @@ test("kit : « refersTo » non externe exige un choice ; un texte qui fait taper
   assert.deepEqual(await ctx.resolveChoice("other"), { status: "none" });
   assert.deepEqual(ctx.calls.choices, ["chan", "other"]);
 });
+
+test("choix sans option mais avec création : la bannière « rien à choisir » disparaît dès qu'un élément est créé ou choisi, sans rechargement, et ne laisse aucune marge vide", async () => {
+  const M = await import("@/components/admin/choicePickerModel");
+  assert.equal(M.showEmptyNote({ hasNote: true, created: false, value: "", found: 0 }), true, "au départ : visible");
+  assert.equal(M.showEmptyNote({ hasNote: true, created: true, value: "", found: 0 }), false, "élément créé, puis valeur retirée : plus de bannière");
+  assert.equal(M.showEmptyNote({ hasNote: true, created: false, value: "c1", found: 0 }), false);
+  assert.equal(M.showEmptyNote({ hasNote: true, created: false, value: "", found: 2 }), false, "la recherche trouve des éléments : ce n'est plus vrai");
+  assert.equal(M.showEmptyNote({ hasNote: false, created: false, value: "", found: 0 }), false, "pas de bannière à montrer");
+  // Branché dans le composant : état « créé » posé après la création, et la bannière est dans le sélecteur (pas dans un conteneur à part qui garderait sa marge).
+  const picker = fs.readFileSync("src/components/admin/ChoicePicker.tsx", "utf8");
+  assert.match(picker, /setCreated\(true\)/);
+  assert.match(picker, /showEmptyNote\(\{ hasNote: emptyNote !== undefined, created, value, found: items\.length \}\)/);
+  const settings = fs.readFileSync("src/components/admin/ModuleSettings.tsx", "utf8");
+  assert.match(settings, /emptyNote=\{text\}/);
+  assert.doesNotMatch(settings, /<div className="space-y-2">\s*\{text\}/, "plus de conteneur qui garde sa marge une fois la bannière retirée");
+});

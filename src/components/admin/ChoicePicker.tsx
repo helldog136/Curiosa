@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { createChoice, searchChoice } from "@/app/admin/(panel)/instances/choiceActions";
-import { announce, fill, keyIntent, mergePage, optionCount, optionDomId, showCreate, type PickerItem, type PickerStrings } from "./choicePickerModel";
+import { announce, fill, keyIntent, mergePage, optionCount, optionDomId, showCreate, showEmptyNote, type PickerItem, type PickerStrings } from "./choicePickerModel";
 import { ui } from "./ui";
 
 const DEBOUNCE_MS = 250;
@@ -13,11 +13,13 @@ const DEBOUNCE_MS = 250;
  * La valeur envoyée est l'IDENTIFIANT seulement (champ caché) ; le serveur la revérifie à l'enregistrement. `name__choice=1` dit « le champ était montré ».
  * « Créer « X » » (si le réglage le permet) demande au module propriétaire de la donnée de créer l'élément, avec les droits de la personne connectée.
  */
-export function ChoicePicker({ instanceId, fieldKey, name, label, help, flag, initialValue, initialLabel, notice, canCreate, optional, strings }: {
+export function ChoicePicker({ instanceId, fieldKey, name, label, help, flag, initialValue, initialLabel, notice, emptyNote, canCreate, optional, strings }: {
   instanceId: string; fieldKey: string; name: string; label: string; help?: string; flag?: string;
   initialValue: string; initialLabel: string | null;
   /** Message d'état venu du serveur (élément disparu, valeur à confirmer, texte reconnu). */
   notice?: { tone: "warn" | "ok"; text: string };
+  /** Bannière « rien à choisir » (aucune option, création permise) : affichée seulement tant que rien n'existe. */
+  emptyNote?: React.ReactNode;
   canCreate: boolean; optional?: boolean; strings: PickerStrings;
 }) {
   const base = useId().replace(/:/g, "");
@@ -32,6 +34,7 @@ export function ChoicePicker({ instanceId, fieldKey, name, label, help, flag, in
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [live, setLive] = useState("");
+  const [created, setCreated] = useState(false);
   const seq = useRef(0);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const input = useRef<HTMLInputElement>(null);
@@ -82,7 +85,7 @@ export function ChoicePicker({ instanceId, fieldKey, name, label, help, flag, in
       const r = await createChoice(instanceId, fieldKey, text);
       if (mine !== seq.current) return;
       if (!r.ok) { setError(r.error); setLive(r.error); return; }
-      setValue(r.id); setCurrent(r.label); setOpen(false); setActive(-1); setQ("");
+      setValue(r.id); setCurrent(r.label); setOpen(false); setActive(-1); setQ(""); setCreated(true);
       setLive(fill(r.existing ? strings.selected : strings.created, { label: r.label }));
     } catch {
       if (mine === seq.current) { setError(strings.unreachable); setLive(strings.unreachable); }
@@ -110,6 +113,7 @@ export function ChoicePicker({ instanceId, fieldKey, name, label, help, flag, in
   const helpId = `${base}-help`;
   return (
     <div className="space-y-2" data-choice={fieldKey}>
+      {showEmptyNote({ hasNote: emptyNote !== undefined, created, value, found: items.length }) && <div data-testid="choice-empty-note">{emptyNote}</div>}
       <input type="hidden" name={name} value={value} />
       <input type="hidden" name={`${name}__choice`} value="1" />
       <label htmlFor={`${base}-q`} className={ui.label}>

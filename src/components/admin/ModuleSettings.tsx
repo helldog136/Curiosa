@@ -132,12 +132,7 @@ export function ModuleSettings({ t, locale, defaultLocale, locales, fields, allF
           ? <p>{before}<a href={view.owner.href} className="font-medium underline">{view.owner.name}</a>{after}</p>
           : <p>{t("choice.noneServiceNoOwner")}</p>;
         if (!view.canCreate) return box(text, flag ? "warn" : "info");
-        return (
-          <div className="space-y-2">
-            {text}
-            <ChoicePicker instanceId={instanceId} fieldKey={f.key} name={id} label={label} help={help} flag={flag} initialValue="" initialLabel={null} canCreate optional={f.optional} strings={pickerStrings} />
-          </div>
-        );
+        return <ChoicePicker instanceId={instanceId} fieldKey={f.key} name={id} label={label} help={help} flag={flag} initialValue="" initialLabel={null} emptyNote={text} canCreate optional={f.optional} strings={pickerStrings} />;
       }
       case "select": {
         const notice = view.state === "missing" ? { tone: "warn" as const, text: t("choice.missing") }
