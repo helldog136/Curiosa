@@ -9,6 +9,7 @@ import { parseManifest, type ParsedManifest } from "./manifest";
 import { listInstances, type InstanceView } from "../instances";
 import { getSetting } from "../settings";
 import type { ModuleDefinition, SectionDecl } from "./types";
+import { forgetLoadFailures, reportLoadFailure } from "./loadLog";
 
 export type LoadedModule = {
   row: Module;
@@ -90,9 +91,10 @@ export async function loadModule(row: Module): Promise<LoadedModule | null> {
     }
     const loaded: LoadedModule = { row, manifest, def, locales: readLocales(moduleDir(row.id)) };
     loadedCache.set(cacheKey, loaded);
+    forgetLoadFailures(row.id);
     return loaded;
   } catch (error) {
-    console.error(`[modules] cannot load "${row.id}":`, error);
+    reportLoadFailure(row.id, error);
     return null;
   }
 }
