@@ -1,4 +1,5 @@
 import { prisma } from "../db";
+import { forgetAllChoices } from "./choiceCache";
 import { RESERVED_PATHS } from "../config";
 import { isKnownLocale } from "../i18n/locales";
 import { pickKnownColumns } from "../backup/schema";
@@ -24,6 +25,10 @@ const toLine = (r: { id: string; moduleId: string; key: string; label: string; m
 
 /** Range une instance (tout ce qu'elle possède) puis l'ôte du site, en une seule opération : tout ou rien. Rien n'est supprimé du bloc rangé. */
 export async function retireInstance(id: string, reason: RetiredReason): Promise<RetiredLine | null> {
+  try { return await retireInstanceRow(id, reason); } finally { forgetAllChoices(); }
+}
+
+async function retireInstanceRow(id: string, reason: RetiredReason): Promise<RetiredLine | null> {
   const inst = await prisma.moduleInstance.findUnique({ where: { id }, include: { translations: true } });
   if (!inst) return null;
   const [entries, settings, records, moduleRow, mod] = await Promise.all([

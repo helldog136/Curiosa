@@ -183,8 +183,7 @@ test("providers : 0 option → none ; 1 → only, JAMAIS écrit ; une 2e fait r�
   assert.equal(view0.mode, "none");
   assert.equal(view0.kind, "providers");
 
-  const a = await newInstance("chan", "Alpha");
-  C.forgetChoices();
+  const a = await newInstance("chan", "Alpha");   // créer un fournisseur oublie tout seul les résolutions gardées (pas de forgetChoices à la main)
   const only = await C.resolveChoiceFor(consumer, chanField, "");
   assert.deepEqual(only, { status: "only", id: a.id, label: "Alpha" });
   assert.equal((await C.choiceAdminView(consumer, chanField)).mode, "only");
