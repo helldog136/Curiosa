@@ -136,7 +136,8 @@ test("installation : chaque variable CURIOSA_* lue par le code est documentée (
 
 test("mises à jour : le redémarrage n'est jamais supposé — sans commande ni superviseur, le serveur n'est pas coupé", () => {
   const lib = read("scripts/update-lib.mjs");
-  assert.ok(lib.includes("supervised && serverPid"), "arrêt du serveur seulement s'il est supervisé");
+  assert.ok(/else if \(supervised\) \{[\s\S]*stopSite\(/.test(lib), "arrêt du site seulement s'il est supervisé");
+  assert.ok(!/process\.kill\(serverPid/.test(lib), "plus d'arrêt d'UN seul pid : tout le site est arrêté (scripts/update-proc.mjs)");
   assert.ok(lib.includes('restart: "needed"') || lib.includes('save({ restart: "needed" })'));
 });
 

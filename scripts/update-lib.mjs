@@ -7,6 +7,7 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { cgroupUnit, confirmNewServer, diagnosePort, explainBlocker, explainNotBack, findSiteProcesses, resolveSitePort, stopSite, systemProc, timeouts as computeTimeouts } from "./update-proc.mjs";
 
 export const TAG_RE = /^v?\d+\.\d+\.\d+(-rc\.\d+)?$/; // stable ou release candidate (le choix du canal se fait côté admin)
 export const REPO_RE = /^[A-Za-z0-9._-]{1,100}\/[A-Za-z0-9._-]{1,100}$/;
@@ -113,8 +114,13 @@ async function sha256(file) {
  * @param {string} [o.platform]
  * @param {string} [o.databaseUrl]
  * @param {string} [o.restartCommand]    commande de redémarrage choisie par l'exploitant
- * @param {number} [o.serverPid]         processus à arrêter si l'installation est supervisée
+ * @param {number} [o.serverPid]         serveur qui a lancé la mise à jour (indice : le site entier est arrêté, voir stopSite)
  * @param {boolean} [o.supervised]
+ * @param {string[]} [o.warnings]       avertissements préventifs à inscrire au journal (voir detectHosting)
+ * @param {number} [o.port]              port du site (défaut : voir resolveSitePort)
+ * @param {object} [o.sys]               accès au système (processus, port, signaux) — injectable pour les tests, voir update-proc.mjs
+ * @param {object} [o.timeouts]          délais d'attente (voir timeouts() : CURIOSA_STOP_SECONDS, CURIOSA_PORT_SECONDS, CURIOSA_SITE_SECONDS)
+ * @param {(tag:string, info:object)=>Promise<boolean>} [o.confirmServer]  attend que le NOUVEAU serveur réponde (dernière étape) ; sans lui, rien n'est attendu
  * @param {() => number} [o.now]
  * @param {{index:number,total:number,steps:string[]}} [o.chain]  étape d'une mise à jour en plusieurs versions (voir runUpdateChain)
  * @param {boolean} [o.last]     faux : une étape suit, le statut reste « en cours » après celle-ci
@@ -122,6 +128,9 @@ async function sha256(file) {
  */
 export async function runUpdate(o) {
   const { appDir, dataDir, tag, exec, download, databaseUrl, platform = platformId(), restartCommand, serverPid, supervised = false, now = Date.now } = o;
+  const sys = o.sys ?? systemProc();
+  const tm = o.timeouts ?? computeTimeouts(process.env, sys.load?.() ?? 0);
+  let restartInfo = { oldPids: new Set() };
   const dir = path.join(dataDir, "update");
   fs.mkdirSync(dir, { recursive: true });
   const logFile = path.join(dir, "update.log");
@@ -141,6 +150,7 @@ export async function runUpdate(o) {
   if (!o.resume && previous.status === "running" && now() - (previous.startedAt ?? 0) < STALE_LOCK_MS) return { ok: false, error: "already-running" };
   if (!TAG_RE.test(String(tag))) { save({ status: "failed", error: "invalid-tag", finishedAt: now() }); return { ok: false, error: "invalid-tag" }; }
   log(`=== mise à jour vers ${tag} ===`);
+  for (const w of o.warnings ?? []) log(w);
   save({});
   const fail = async (error, extra = {}) => { log(`✘ ${error}`); save({ status: "failed", error, finishedAt: now(), ...extra }); return { ok: false, error }; };
 
@@ -227,49 +237,86 @@ export async function runUpdate(o) {
     cleanup();
     if (rollbackOk) fs.rmSync(previousDir, { recursive: true, force: true });
     // La base restaurée n'est pas celle que le serveur en cours tient ouverte : il doit redémarrer pour la relire.
-    await restart(moved.length > 0 && migrated && !!dbBackup);
-    return fail(reason, { rolledBack: moved.length > 0 && rollbackOk });
+    const restarted = await restart(moved.length > 0 && migrated && !!dbBackup);
+    return fail(reason, { rolledBack: moved.length > 0 && rollbackOk, ...(restarted?.blocked ? { diagnostic: restarted.blocked } : {}) });
   }
 
   // 4. nettoyage et redémarrage
   cleanup();
   fs.rmSync(previousDir, { recursive: true, force: true });
   log(`✔ ${tag} installée`);
-  await restart(true);
+  const stopped = await restart(true);
+  if (stopped?.blocked) {
+    // La nouvelle version est installée mais ne peut pas démarrer : on le dit, avec ce qui bloque. Jamais de faux succès.
+    return fail("port-busy", { diagnostic: stopped.blocked, restart: "blocked" });
+  }
+  if (o.last !== false && o.confirmServer && state.restart !== "needed") {
+    save({ step: "waiting" });
+    if (!(await o.confirmServer(tag, restartInfo))) return fail("site-not-back", { restart: state.restart });
+  }
   if (o.last === false) save({ step: "between" }); // l'étape suivante reprend le même état « en cours »
   else save({ status: "success", step: "done", finishedAt: now() });
-  return { ok: true };
+  // Non énumérable : le résultat reste `{ ok: true }` pour qui le compare ; la chaîne lit `restartInfo` pour attendre le bon serveur.
+  return Object.defineProperty({ ok: true }, "restartInfo", { value: restartInfo, enumerable: false });
 
   async function restart(wanted) {
-    if (!wanted) return;
+    if (!wanted) return null;
+    const snapshot = () => new Set(findSiteProcesses({ appDir, procs: sys.procs() }).map((p) => p.pid));
+    const port = o.port ?? resolveSitePort({ sys, serverPid });
     if (restartCommand) {
-      try { save({ restart: "command" }); await exec("sh", ["-c", restartCommand], { cwd: appDir }); log("redémarrage demandé (commande de l'exploitant)"); }
+      try { restartInfo = { oldPids: snapshot() }; save({ step: "restarting", restart: "command", expectedVersion: tag.replace(/^v/, ""), updaterPid: process.pid }); await exec("sh", ["-c", restartCommand], { cwd: appDir }); log("redémarrage demandé (commande de l'exploitant)"); }
       catch (e) { save({ restart: "needed" }); log(`✘ commande de redémarrage en échec : ${e?.message}`); }
-    } else if (supervised && serverPid) {
-      try { process.kill(serverPid, "SIGTERM"); save({ restart: "signal" }); log("serveur arrêté : le superviseur le relance"); }
-      catch (e) { save({ restart: "needed" }); log(`arrêt du serveur impossible : ${e?.message}`); }
+    } else if (supervised) {
+      // Le site entier (npm, sh, next-server…) est arrêté, puis on vérifie que le port est libre : le superviseur relance ensuite le nouveau.
+      save({ step: "restarting", restart: "signal", expectedVersion: tag.replace(/^v/, ""), updaterPid: process.pid });
+      const r = await stopSite({ appDir, port, sys, log, timeouts: tm, serverPid, hintPid: serverPid });
+      restartInfo = { oldPids: new Set(r.oldPids), referenceCgroup: r.referenceCgroup };
+      if (!r.ok) return { blocked: { ...r.diagnostic, message: explainBlocker(r.diagnostic, { serviceUnit: cgroupUnit(sys.procs().find((p) => p.pid === serverPid)?.cgroup) }) } };
+      log("serveur arrêté : le superviseur le relance");
     } else {
       save({ restart: "needed" });
       log("redémarrage manuel nécessaire (aucune commande de redémarrage configurée)");
     }
+    return null;
   }
 }
 
-/** Le serveur répond-il (de nouveau) ? Attend d'abord qu'il s'arrête (l'ancien peut répondre encore un instant), puis qu'il revienne. */
-export async function waitForSite(url, { timeoutMs = 5 * 60_000, intervalMs = 2000, fetchImpl = fetch } = {}) {
-  const up = async () => { try { return (await fetchImpl(url, { redirect: "manual", signal: AbortSignal.timeout(10_000) })).status < 500; } catch { return false; } };
-  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  const limit = Date.now() + timeoutMs;
-  for (let i = 0; i < 10 && (await up()); i++) await sleep(intervalMs);
-  while (Date.now() < limit) { if (await up()) return true; await sleep(intervalMs); }
-  return false;
+/**
+ * Fabrique la fonction qui attend le NOUVEAU serveur (voir confirmNewServer) et écrit dans le journal, en mots simples, ce qu'elle voit.
+ * La version attendue est l'en-tête `x-curiosa-version` de /api/health (empreinte de la version, voir hashVersion).
+ * @returns {(tag:string, info?:{oldPids?:Set<number>}) => Promise<boolean>}
+ */
+export function makeSiteWaiter({ appDir, dataDir, readyUrl, port, sys = systemProc(), timeouts: tm, fetchImpl = fetch, now = Date.now, intervalMs }) {
+  const logFile = path.join(dataDir, "update", "update.log");
+  const log = (line) => { try { fs.mkdirSync(path.dirname(logFile), { recursive: true }); fs.appendFileSync(logFile, `[${new Date(now()).toISOString()}] ${line}\n`); } catch { /* journal indisponible */ } };
+  return async (tag, info = {}) => {
+    const version = String(tag).replace(/^v/, "");
+    const limits = tm ?? computeTimeouts(process.env, sys.load?.() ?? 0);
+    log(`attente du site sur la version ${version} (jusqu'à ${Math.round(limits.siteMs / 1000)} s)…`);
+    const r = await confirmNewServer({ readyUrl, expectedVersion: hashVersion(version), port, oldPids: info.oldPids ?? new Set(), sys, fetchImpl, timeoutMs: limits.siteMs, intervalMs, log });
+    if (r.ok) {
+      // Le site répond sur la bonne version ; mais s'il est tenu par un AUTRE gestionnaire que le nôtre, la prochaine mise à jour se heurtera au même problème.
+      try {
+        const d = diagnosePort({ appDir, port, procs: sys.procs(), holders: sys.holders(port), oldPids: info.oldPids ?? new Set(), referenceCgroup: info.referenceCgroup ?? null });
+        if (d?.code === "other-manager") log(`⚠ ${explainBlocker(d)}`);
+      } catch { /* diagnostic facultatif */ }
+      log(`✔ le nouveau site répond (${{ version: "version confirmée par le site", process: "nouveau processus sur le port", unverified: "version non vérifiable" }[r.how]})`); return true; }
+    const procs = sys.procs();
+    log(`✘ le nouveau site n'est pas revenu : ${explainNotBack({ port, last: r, appDir, procs, referenceCgroup: info.referenceCgroup ?? null, expectedVersion: hashVersion(version) })}`);
+    return false;
+  };
+}
+
+/** Empreinte de version échangée avec /api/health (voir next.config.mjs) : on ne publie pas le numéro de version brut, seulement de quoi le comparer. */
+export function hashVersion(version) {
+  return crypto.createHash("sha256").update(`curiosa:${String(version).replace(/^v/, "")}`).digest("hex").slice(0, 16);
 }
 
 /**
  * Mise à jour vers `o.tag` en passant, si nécessaire, par les versions intermédiaires qu'elle exige (planUpdate) : chacune est téléchargée,
  * installée, puis le serveur redémarre et se relance AVANT l'étape suivante — c'est ce premier démarrage qui convertit les données d'avant.
  * Sans redémarrage automatique, on s'arrête après l'étape et le prochain « Installer » reprend (le chemin est recalculé depuis la nouvelle version).
- * Mêmes options que runUpdate, plus : `fetchText`, `waitForSite()` (booléen), `findServerPid()` (serveur actuel, pour un redémarrage supervisé).
+ * Mêmes options que runUpdate, plus : `fetchText`, `waitForSite(tag, info)` (booléen : le serveur de cette version répond-il ?), `findServerPid()` (serveur actuel, pour un redémarrage supervisé).
  */
 export async function runUpdateChain(o) {
   const { appDir, dataDir, tag, fetchText, waitForSite: wait, findServerPid, now = Date.now } = o;
@@ -288,7 +335,7 @@ export async function runUpdateChain(o) {
   }
   for (let i = 0; i < steps.length; i++) {
     const last = i === steps.length - 1;
-    const r = await runUpdate({ ...o, tag: steps[i], last, resume: i > 0, chain: steps.length > 1 ? { index: i + 1, total: steps.length, steps } : null,
+    const r = await runUpdate({ ...o, warnings: i === 0 ? o.warnings : [], tag: steps[i], last, resume: i > 0, chain: steps.length > 1 ? { index: i + 1, total: steps.length, steps } : null,
       // Après la première étape, le serveur n'est plus celui qui a lancé la mise à jour : on retrouve le nouveau.
       serverPid: i > 0 ? findServerPid?.() : o.serverPid });
     if (!r.ok || last) return r;
@@ -298,7 +345,7 @@ export async function runUpdateChain(o) {
       fs.writeFileSync(file, JSON.stringify({ ...st, status: "success", step: "done", target: steps[i], remaining: steps.slice(i + 1), finishedAt: now() }, null, 2));
       return { ok: true, partial: true, remaining: steps.slice(i + 1) };
     }
-    if (!(await wait())) {
+    if (!(await wait(steps[i], r.restartInfo))) {
       fs.writeFileSync(file, JSON.stringify({ ...st, status: "failed", error: "site-not-back", finishedAt: now() }, null, 2));
       return { ok: false, error: "site-not-back" };
     }

@@ -5,7 +5,8 @@ import path from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { promisify } from "node:util";
-import { runUpdateChain, waitForSite } from "./update-lib.mjs";
+import { makeSiteWaiter, runUpdateChain } from "./update-lib.mjs";
+import { detectHosting, explainHosting, findServerPid, resolveSitePort, systemProc, timeouts } from "./update-proc.mjs";
 
 const run = promisify(execFile);
 const appDir = process.cwd();
@@ -31,32 +32,35 @@ async function fetchText(url) {
   return (await res.text()).slice(0, 10_000);
 }
 
-/** Serveur en cours d'exécution pour cette installation (Linux) : le processus « next » dont le dossier courant est le nôtre. */
-function findServerPid() {
-  try {
-    for (const name of fs.readdirSync("/proc").filter((n) => /^\d+$/.test(n))) {
-      const pid = Number(name);
-      if (pid === process.pid || pid === process.ppid) continue;
-      try {
-        if (fs.realpathSync(`/proc/${name}/cwd`) !== fs.realpathSync(appDir)) continue;
-        if (/next/.test(fs.readFileSync(`/proc/${name}/cmdline`, "utf8"))) return pid;
-      } catch { /* processus disparu ou inaccessible */ }
-    }
-  } catch { /* pas de /proc */ }
-  return undefined;
+const sys = systemProc();
+const serverPid = Number(process.env.CURIOSA_SERVER_PID) || undefined;
+// Le port RÉEL du site (PORT, adresse de contrôle, ou port sur lequel le serveur écoute) : jamais un 3000 supposé quand deux sites partagent la machine.
+const port = resolveSitePort({ env: process.env, sys, serverPid });
+const readyUrl = process.env.CURIOSA_READY_URL || `http://127.0.0.1:${port}/`;
+const tm = timeouts(process.env, sys.load());
+const dataDir = path.resolve(process.env.DATA_DIR || path.join(appDir, "data"));
+const supervised = process.env.CURIOSA_SUPERVISED === "1";
+const waiter = makeSiteWaiter({ appDir, dataDir, readyUrl, port, sys, timeouts: tm });
+const warnings = supervised ? detectHosting({ appDir, port, procs: sys.procs(), selfPid: process.pid, serverPid }).map(explainHosting) : [];
+
+// Sous `KillMode=control-group`, systemd arrête aussi cette tâche quand l'ancien serveur s'arrête : on le note et on s'efface. Le nouveau serveur
+// constate lui-même, à son démarrage, qu'il tourne sur la bonne version (voir reconcileInterruptedUpdate dans src/core/updates/service.ts).
+for (const signal of ["SIGTERM", "SIGHUP"]) {
+  process.on(signal, () => {
+    try { fs.appendFileSync(path.join(dataDir, "update", "update.log"), `[${new Date().toISOString()}] la tâche de mise à jour a été arrêtée avec le service (${signal}) : le nouveau serveur vérifiera lui-même sa version au démarrage\n`); } catch { /* journal indisponible */ }
+    process.exit(0);
+  });
 }
 
 const result = await runUpdateChain({
-  fetchText, findServerPid,
-  waitForSite: () => waitForSite(process.env.CURIOSA_READY_URL || `http://127.0.0.1:${process.env.PORT || 3000}/`),
-  appDir,
-  dataDir: path.resolve(process.env.DATA_DIR || path.join(appDir, "data")),
+  fetchText, findServerPid: () => findServerPid({ appDir, port, sys }),
+  waitForSite: waiter, confirmServer: waiter, sys, port, timeouts: tm, warnings,
+  appDir, dataDir,
   tag: process.argv[2],
   databaseUrl: process.env.DATABASE_URL,
   repo: process.env.CURIOSA_UPDATE_REPO || undefined,
   restartCommand: process.env.CURIOSA_RESTART_COMMAND || undefined,
-  supervised: process.env.CURIOSA_SUPERVISED === "1",
-  serverPid: Number(process.env.CURIOSA_SERVER_PID) || undefined,
+  supervised, serverPid,
   download,
   exec: (cmd, args, opts = {}) => run(cmd, args, { cwd: opts.cwd, env: { ...process.env, ...(opts.env ?? {}) }, maxBuffer: 20 * 1024 * 1024, timeout: 30 * 60_000 }),
 });

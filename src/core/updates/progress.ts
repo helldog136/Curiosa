@@ -4,7 +4,7 @@
  */
 
 /** Étapes techniques d'une version, dans l'ordre, avec la part du travail déjà faite quand elles commencent. */
-const STEP_SHARE: Record<string, number> = { starting: 0, backup: 0.1, download: 0.35, verify: 0.6, swap: 0.8, between: 1, done: 1 };
+const STEP_SHARE: Record<string, number> = { starting: 0, backup: 0.1, download: 0.35, verify: 0.6, swap: 0.8, restarting: 0.9, waiting: 0.95, between: 1, done: 1 };
 
 export type UpdateStateLike = {
   status: "idle" | "running" | "success" | "failed";
@@ -46,7 +46,7 @@ export function describeProgress(state: UpdateStateLike): Progress {
 /** Raison d'un échec, en clé de traduction courante : le détail technique (étape qui a planté) reste pour le mode avancé. */
 export function failureKey(error: string | null | undefined): { key: string; step: string | null } {
   const e = error ?? "";
-  if (e === "checksum-mismatch" || e === "bad-archive" || e === "plan-failed") return { key: `updates.failure.${e}`, step: null };
+  if (e === "checksum-mismatch" || e === "bad-archive" || e === "plan-failed" || e === "port-busy" || e === "site-not-back" || e === "wrong-version") return { key: `updates.failure.${e}`, step: null };
   const m = /^step-failed:(.+)$/.exec(e);
   return { key: "updates.failure.step", step: m?.[1] ?? null };
 }

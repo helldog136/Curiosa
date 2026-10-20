@@ -24,8 +24,8 @@ développement ne se met pas à jour depuis l'admin (c'est à vous de faire `git
 
 ## Démarrage automatique
 
-L'unité systemd est donnée dans le [README](../README.md#installer) (un exemple figure aussi dans [`deploy/curiosa.service`](../deploy/curiosa.service)). Avec pm2 : `pm2 start "npx next start -p 3000" --name curiosa`
-(et `CURIOSA_SUPERVISED=1` dans son environnement). Avec Docker : voir le `Dockerfile` et `docker-compose.yml`.
+L'unité systemd est donnée dans le [README](../README.md#installer) (un exemple figure aussi dans [`deploy/curiosa.service`](../deploy/curiosa.service)). Avec pm2 : `pm2 start node_modules/next/dist/bin/next --name curiosa -- start -p 3000`
+(et `CURIOSA_SUPERVISED=1` dans son environnement). **Un seul gestionnaire par site : systemd OU pm2, jamais les deux** : ils se disputeraient le port et relanceraient chacun l'ancienne version. Évitez aussi `npx next start` dans l'unité (trois processus : `npm exec` → `sh` → `next-server`) ; `ExecStart=/usr/bin/node node_modules/next/dist/bin/next start -p 3000` n'en fait qu'un. Avec Docker : voir le `Dockerfile` et `docker-compose.yml`.
 
 ## Mises à jour depuis l'admin
 
@@ -63,7 +63,14 @@ Le nouveau code n'est utilisé qu'après un redémarrage du serveur. Dites au fr
 | `CURIOSA_RESTART_COMMAND` | Commande lancée après une mise à jour réussie (ex. `sudo systemctl restart curiosa`, `pm2 restart curiosa`). Prioritaire. |
 | `CURIOSA_READY_URL` | Adresse locale où le site répond (défaut `http://127.0.0.1:$PORT/`). Utilisée seulement par les mises à jour en plusieurs étapes, pour attendre que le site soit revenu avant l'étape suivante. |
 | `CURIOSA_SUPERVISED=1` | Le serveur s'arrête simplement après la mise à jour et son superviseur (systemd `Restart=always`, pm2, Docker `restart:`) le relance. |
+| `CURIOSA_STOP_SECONDS` | Secondes d'attente de l'arrêt du site après le signal, avant de le forcer en dernier recours (défaut 30). |
+| `CURIOSA_PORT_SECONDS` | Secondes d'attente de la libération du port (défaut 20). |
+| `CURIOSA_SITE_SECONDS` | Secondes d'attente du retour du site sur la nouvelle version (défaut 300). |
 | *(aucune des deux)* | Rien n'est coupé : la page vous demande de redémarrer à la main. |
+
+Sur une machine très chargée (un serveur de jeu qui occupe plusieurs cœurs), les trois délais par défaut sont multipliés automatiquement (jusqu'à ×3) ; une valeur écrite dans `.env` est respectée telle quelle. Gardez `TimeoutStopSec` de l'unité plus grand que `CURIOSA_STOP_SECONDS`.
+
+**Ce que fait la mise à jour supervisée.** Elle arrête **tout** le site (les trois processus `npm exec` → `sh` → `next-server` si votre unité utilise npx, et tout autre processus lancé dans le dossier du site), jamais un processus d'un autre dossier. Elle attend la libération du port (celui de `PORT`, de `CURIOSA_READY_URL` ou celui sur lequel le serveur écoute vraiment), n'envoie un arrêt forcé qu'après le délai ci-dessus, puis laisse le superviseur relancer. Ensuite elle attend que ce soit **le nouveau** serveur qui réponde (route interne `/api/health`, qui ne renvoie qu'une empreinte de version) avant de déclarer le succès — et, pour une mise à jour en plusieurs versions, avant de passer à la suivante. Si le port est tenu par autre chose (un second gestionnaire, un autre site, un autre programme), elle ne tue rien : elle écrit dans *Détails techniques* ce qui bloque et que faire. Avant l'installation, la page *Mises à jour* signale un second gestionnaire pour ce site ou une unité lancée par npx.
 
 Une commande avec `sudo` suppose une règle `sudoers` limitée à cette seule commande pour l'utilisateur du site.
 
@@ -81,6 +88,26 @@ Comme il n'y a ni compilation ni réinstallation de dépendances, la mise à jou
 - Pour suivre un autre dépôt de releases (un fork) : `CURIOSA_UPDATE_REPO=<propriétaire>/<dépôt>`.
 
 Le script peut aussi être lancé à la main (`node scripts/update.mjs v1.2.3`), avec les mêmes sauvegardes et le même retour arrière.
+
+### La mise à jour s'arrête sur une erreur 500 / EADDRINUSE
+
+Signes : la page *Mises à jour* indique un échec « port occupé » ou « le site n'est pas revenu », le site affiche *Internal Server Error*, ou le journal du service répète `Error: listen EADDRINUSE: address already in use :::3000`. La nouvelle version est **déjà installée** ; il reste à libérer le port. Quatre commandes de lecture (elles ne modifient rien) :
+
+```bash
+sudo ss -ltnp | grep :3000          # qui écoute sur le port (remplacez 3000 par le port de votre site)
+sudo systemctl status curiosa       # l'état du service (remplacez curiosa par le nom de votre unité)
+pm2 list                            # un pm2 gère-t-il aussi ce site ? (à lancer avec l'utilisateur qui a lancé pm2, ou en root)
+sudo journalctl -u curiosa -n 60 --no-pager   # les dernières lignes du service
+```
+
+Causes fréquentes et remède :
+
+- **Deux gestionnaires pour le même site** (systemd ET pm2) : gardez-en un seul. Arrêtez pm2 (`pm2 stop <nom> && pm2 delete <nom> && pm2 save`, puis `pm2 unstartup` si pm2 démarre au boot) ; ou désactivez l'unité (`sudo systemctl disable --now <unité>`) si vous préférez pm2. Puis `sudo systemctl restart curiosa`.
+- **Un autre site de la même machine sur le même port** : chaque site a son dossier **et** son port (`-p 3001` dans l'unité du second). Corrigez l'unité, `sudo systemctl daemon-reload`, puis relancez-la.
+- **L'unité utilise `npx`** : remplacez la ligne `ExecStart` par `/usr/bin/node node_modules/next/dist/bin/next start -p 3000` (voir [`deploy/curiosa.service`](../deploy/curiosa.service)), puis `sudo systemctl daemon-reload && sudo systemctl restart curiosa`.
+- **Une machine très chargée** : si la mise à jour dit que le site n'est pas revenu à temps alors qu'il finit par démarrer, augmentez `CURIOSA_SITE_SECONDS` (et `CURIOSA_STOP_SECONDS`) dans `.env`.
+
+Le journal complet est dans *Détails techniques* de la page *Mises à jour* ; il nomme le processus (numéro, programme, unité systemd) qui tient le port.
 
 ## Publier une release (mainteneurs)
 

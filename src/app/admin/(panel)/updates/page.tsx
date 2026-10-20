@@ -1,4 +1,5 @@
 import { adminCtx } from "@/core/admin";
+import { inspectHosting } from "@/core/updates/hosting";
 import { checkForUpdate, getInstallInfo, getUpdateCheck, isAutoUpdateEnabled, readUpdateLog, readUpdateState } from "@/core/updates/service";
 import { describeProgress, failureKey, hasRemaining } from "@/core/updates/progress";
 import { ActionForm } from "@/components/admin/ActionForm";
@@ -35,6 +36,8 @@ export default async function UpdatesPage() {
   let check = await getUpdateCheck();
   if (check.checkedAt === null && info.canUpdate) check = await checkForUpdate();
   const state = readUpdateState();
+  // Avant d'installer : un second gestionnaire pour CE site, ou une unité lancée par npx (lecture de /proc, jamais bloquant).
+  const hosting = info.canUpdate && state.status !== "running" ? await inspectHosting({ supervised: info.restart === "supervised" }) : [];
   const running = state.status === "running";
   const auto = await isAutoUpdateEnabled();
   const log = readUpdateLog();
@@ -109,8 +112,24 @@ export default async function UpdatesPage() {
       {info.canUpdate && !running && failed && fail && (
         <Panel tone="danger" title={`❌ ${t("updates.failedTitle")}`} testid="update-failed">
           <p className="text-sm leading-6">{t(fail.key)}{state.rolledBack ? ` ${t("updates.rolledBack")}` : ""}</p>
+          {state.diagnostic && (
+            <Callout tone="warn" testid="update-diagnostic">
+              <p className="font-semibold">{t("updates.diagnostic.title")}</p>
+              <p className="mt-1">{t(`updates.diag.${state.diagnostic.code}`, { port: state.diagnostic.port ?? "", who: state.diagnostic.manager === "pm2" ? `pm2${state.diagnostic.unit ? `, ${state.diagnostic.unit}` : ""}` : state.diagnostic.unit ?? "?", cwd: state.diagnostic.cwd ?? "?" })}</p>
+              <p className="mt-1 text-muted">{t("updates.diag.help")}</p>
+            </Callout>
+          )}
           {advanced && state.error && <p className="font-mono text-xs text-muted">{state.error}</p>}
         </Panel>
+      )}
+
+      {hosting.length > 0 && (
+        <Callout tone="warn" testid="update-hosting">
+          <p className="font-semibold">⚠️ {t("updates.hosting.title")}</p>
+          <ul className="mt-1 list-disc space-y-1 pl-5">
+            {hosting.map((w) => <li key={`${w.code}-${w.unit ?? w.pid}`}>{t(`updates.hosting.${w.code}`, { who: w.manager === "pm2" ? `pm2${w.unit ? `, ${w.unit}` : ""}` : w.unit ?? "?" })}</li>)}
+          </ul>
+        </Callout>
       )}
 
       {info.canUpdate && !running && partial && (

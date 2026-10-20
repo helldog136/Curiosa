@@ -46,8 +46,21 @@ export async function status() {
       ...(state.step ? { step: redactSecrets(state.step, 60) } : {}),
       ...(state.error ? { error: redactSecrets(state.error, 200) } : {}),
       ...(state.rolledBack ? { rolledBack: true } : {}),
+      ...(state.diagnostic ? { blocker: describeBlocker(state.diagnostic) } : {}),
     },
   };
+}
+
+/** Ce qui empêche le nouveau serveur de démarrer, en anglais pour l'assistant ; la phrase française complète est dans le journal de la mise à jour. */
+export function describeBlocker(d: NonNullable<ReturnType<typeof readUpdateState>["diagnostic"]>): string {
+  const who = d.manager === "pm2" ? `pm2${d.unit ? ` (${d.unit})` : ""}` : d.unit ?? "another service";
+  const pid = d.pid ? `, process ${d.pid}` : "";
+  const text = d.code === "other-manager" ? `Port ${d.port} is held by another process manager (${who}${pid}) that restarts the site before the new version. The owner must stop it (pm2 stop / systemctl disable --now), then restart the service. The new version is already installed.`
+    : d.code === "other-site" ? `Port ${d.port} is held by another site on this server (${d.cwd}${pid}). The owner must change the port of one site, then restart the service.`
+    : d.code === "other-program" ? `Port ${d.port} is held by another program on this server${pid}. The owner must stop it or change the site's port, then restart the service.`
+    : d.code === "stuck" ? `The old server${pid} does not stop and still holds port ${d.port}. The owner must restart the service.`
+    : `Port ${d.port} is held by a process that could not be inspected (probably another user). The owner must find it with "ss -ltnp", stop it, then restart the service.`;
+  return redactSecrets(text, 400);
 }
 
 type DbCheck = { ok: boolean; sizeBytes: number | null; detail?: string };
@@ -87,7 +100,7 @@ export async function lastBackup(): Promise<{ at: string | null; recent: boolean
 export async function recentErrors(): Promise<{ source: string; message: string }[]> {
   const out: { source: string; message: string }[] = [];
   const state = readUpdateState(dataDir());
-  if (state.status === "failed") out.push({ source: "update", message: redactSecrets(`The last core update failed${state.step ? ` at step "${state.step}"` : ""}${state.error ? ` (${state.error})` : ""}${state.rolledBack ? "; the previous version was restored" : ""}.`, 300) });
+  if (state.status === "failed") out.push({ source: "update", message: redactSecrets(`The last core update failed${state.step ? ` at step "${state.step}"` : ""}${state.error ? ` (${state.error})` : ""}${state.rolledBack ? "; the previous version was restored" : ""}.${state.diagnostic ? ` ${describeBlocker(state.diagnostic)}` : ""}`, 600) });
   for (const line of tailLines(readUpdateLog(60, dataDir()), { lines: 10, maxLine: 300, filter: /(error|fail|erreur|échec|✘|rollback)/i })) out.push({ source: "update-log", message: line });
   for (const i of await instancesInError()) out.push({ source: `instance:${i.key}`, message: redactSecrets(`Set aside (${i.status})${i.error ? `: ${i.error}` : ""}`, 300) });
   return out.slice(0, 25);
@@ -204,7 +217,7 @@ export async function diagnose() {
   else if (!h.lastBackup.recent) add({ severity: "warning", problem: `The last backup is old (${h.lastBackup.at.slice(0, 10)}).`, probableCause: "backups are manual", proposedAction: "Make a fresh copy of the database before any update.", tool: "maintenance_backup_run", needsHuman: false });
   if (h.updateRunning) add({ severity: "info", problem: "A core update is running.", probableCause: "an update was started recently", proposedAction: "Wait a few minutes, then call maintenance_status again. Do not start anything else meanwhile.", tool: "maintenance_status", needsHuman: false });
   const state = readUpdateState(dataDir());
-  if (state.status === "failed") add({ severity: "critical", problem: "The last core update failed.", probableCause: redactSecrets(state.error ?? "unknown", 120), proposedAction: "Read the recent errors with maintenance_health, then tell the owner. Do not retry blindly.", tool: "maintenance_health", needsHuman: true });
+  if (state.status === "failed") add({ severity: "critical", problem: state.diagnostic ? "The last core update installed the new version but the site could not restart: its port is busy." : "The last core update failed.", probableCause: state.diagnostic ? describeBlocker(state.diagnostic) : redactSecrets(state.error ?? "unknown", 120), proposedAction: "Read the recent errors with maintenance_health, then tell the owner. Do not retry blindly.", tool: "maintenance_health", needsHuman: true });
 
   for (const m of mods.modules) {
     if (!m.loadable) add({ severity: "critical", problem: `Module "${m.id}" cannot be loaded.`, probableCause: "its files are damaged or incompatible with this version", proposedAction: "Reinstall it: code is renewed, data and settings are kept.", tool: "maintenance_module_reinstall", needsHuman: false });

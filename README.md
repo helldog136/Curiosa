@@ -142,9 +142,12 @@ User=curiosa
 WorkingDirectory=/var/www/curiosa
 EnvironmentFile=/var/www/curiosa/.env
 Environment=NODE_ENV=production
-ExecStart=$(command -v npx) next start -p 3000
+Environment=CURIOSA_SUPERVISED=1
+ExecStart=$(command -v node) node_modules/next/dist/bin/next start -p 3000
 Restart=always
 RestartSec=3
+KillMode=control-group
+TimeoutStopSec=60
 
 [Install]
 WantedBy=multi-user.target
@@ -152,6 +155,8 @@ EOF
 sudo systemctl daemon-reload && sudo systemctl enable --now curiosa
 sleep 6; curl -s -o /dev/null -w "HTTP %{http_code}\n" http://localhost:3000/admin/setup
 ```
+
+**Un seul gestionnaire par site** : systemd OU pm2, jamais les deux (ils se disputeraient le port à chaque mise à jour). Le démarrage se fait sans `npx` (un seul processus, arrêt fiable). Plusieurs sites sur la même machine : une unité, un dossier et un port par site. En cas de doute après une mise à jour : [dépannage](docs/INSTALL.md#la-mise-à-jour-sarrête-sur-une-erreur-500--eaddrinuse).
 
 Le résultat attendu est `HTTP 200`. Si le port 3000 est déjà pris par un autre service (`sudo ss -ltnp | grep ':3000 '`), changez `-p 3000` dans l'unité (et le port dans la configuration du proxy). En cas d'erreur : `sudo journalctl -u curiosa -n 60 --no-pager`.
 

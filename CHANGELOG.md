@@ -7,6 +7,24 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.1.28
+
+### Améliorations
+
+- **La mise à jour arrête tout le site avant de le relancer et vous dit clairement ce qui bloque (par exemple un second gestionnaire).** Si quelque chose d'autre occupe son port, la page *Mises à jour* l'explique en mots simples, dit quoi arrêter, et rappelle que la nouvelle version est déjà installée.
+- **La mise à jour ne dit « terminé » que lorsque le nouveau site répond vraiment.** Un ancien site resté en route, ou une page d'erreur, n'est plus pris pour un succès ; une mise à jour en plusieurs versions n'installe la suivante qu'une fois la précédente confirmée.
+- **Avant d'installer, la page signale les réglages risqués.** Par exemple un deuxième gestionnaire qui lance le même site, ou un service démarré d'une façon qui rend l'arrêt moins fiable. Cela n'empêche jamais la mise à jour : la page dit simplement quoi faire.
+- **Plusieurs sites sur le même serveur ne se gênent plus.** La mise à jour d'un site ne touche jamais un autre site, ni un autre programme du serveur, même sur une machine très occupée (les délais d'attente s'adaptent à la charge).
+
+### Pour les développeurs
+
+- `scripts/update-proc.mjs` (nouveau, sans dépendance) : lecture de `/proc`, `findSiteProcesses` (dossier courant exactement égal, enfants d'abord), `stopSite` (SIGTERM, attente bornée, SIGKILL en dernier recours, port vérifié), `diagnosePort`, `detectHosting`, `resolveSitePort`, `confirmNewServer`, `timeouts`. Tout passe par un objet `sys` injectable.
+- `update-lib.mjs` : `restart()` supervisé = `stopSite` ; nouvel échec `port-busy` (état `diagnostic`) ; `site-not-back` ; `makeSiteWaiter` remplace `waitForSite` ; `confirmServer` attend le nouveau serveur à la dernière étape ; l'étape suivante d'une chaîne n'est lancée qu'après confirmation.
+- Route `/api/health` (200, sans donnée) dont l'en-tête `X-Curiosa-Version` est l'empreinte de la version, posée au build par `next.config.mjs`. Les versions installées plus anciennes (sans la route) sont reconnues à leur processus.
+- `reconcileInterruptedUpdate` (appelé par `instrumentation.ts`) conclut au démarrage une mise à jour dont la tâche a été arrêtée avec le service (`KillMode=control-group`).
+- Délais réglables : `CURIOSA_STOP_SECONDS` (30), `CURIOSA_PORT_SECONDS` (20), `CURIOSA_SITE_SECONDS` (300), multipliés jusqu'à ×3 si la charge par cœur dépasse 1. `maintenance_status` expose `update.blocker`.
+- `deploy/curiosa.service` sans `npx` (`node node_modules/next/dist/bin/next start`), `KillMode=control-group`, `TimeoutStopSec=60` ; docs : INSTALL (dépannage EADDRINUSE), README, AGENT-INSTALL, MAINTENANCE-IA. Tests : `update-safe-restart.test.mjs` (vrais processus, faux superviseurs), bancs `tests/helpers/update-harness.mjs` et `fake-site.mjs`.
+
 ## 0.1.27
 
 ### Améliorations
