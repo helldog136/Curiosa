@@ -342,6 +342,12 @@ export type ModuleContext = {
   /** Traduction depuis locales/<langue>.json du module (repli : langue par défaut puis clé). */
   t(key: string, vars?: Record<string, string | number>): string;
   api: ModuleApi;
+  /**
+   * (0.2.0) La personne qui regarde l'administration a-t-elle ce droit du module (identifiant LOCAL : « email.view », préfixé « <module>: » par le cœur) ?
+   * Vrai seulement dans un contexte d'administration d'un humain (`adminPanel`, `adminActions`, `entryPanels`) ; toujours faux ailleurs (page publique,
+   * route, overlay OBS, tâche, service, MCP). Absent sur un cœur plus ancien : traitez l'absence comme un refus.
+   */
+  can?(rightId: string): boolean;
 };
 
 export type SlotContext = ModuleContext & {
@@ -398,7 +404,11 @@ export type ModuleDefinition = {
   /** Contenu du panneau d'admin de l'instance, sous ses réglages. `query` = paramètres de l'URL d'admin. */
   adminPanel?: (ctx: ModuleContext, request: { query: Record<string, string> }) => Block[] | Promise<Block[]>;
   /** Actions déclenchées par les blocs `adminForm` et les boutons de ligne des `table` du panneau d'admin. */
-  adminActions?: Record<string, AdminActionHandler>;
+  /**
+   * Forme fonction : réservée aux administrateurs (comme avant). Forme objet (0.2.0) : `{ right: "phone.edit", run }` : le cœur vérifie `<module>:open`
+   * ET ce droit (préfixé par le cœur) AVANT d'appeler `run` ; une personne d'un rôle personnalisé qui a ces droits peut alors l'exécuter.
+   */
+  adminActions?: Record<string, AdminActionHandler | AdminActionSpec>;
   /**
    * Sections ajoutées à l'éditeur d'entrée d'un autre module, par `id` (déclarées dans `entryPanels` du manifeste). `render` renvoie les blocs de la section pour CETTE entrée ;
    * `actions` : ce que ses blocs `adminForm` et boutons de ligne déclenchent (enregistrées sans quitter la page). Mêmes rôles que l'éditeur d'entrée (éditeur et plus).
@@ -449,7 +459,7 @@ export type EntryPanelTarget = {
   /** L'entrée est-elle publiée ? (brouillon, programmée ou expirée : non) */
   published: boolean;
 };
-/** Qui regarde la fiche : mode avancé et rôle (« owner », « admin » ou « editor »). */
+/** Qui regarde la fiche : mode avancé et rôle (« owner », « admin » ou « editor » ; une personne d'un rôle personnalisé qui modifie les contenus vaut « editor »). Pour un droit précis, utilisez `ctx.can`. */
 export type EntryPanelView = { advanced: boolean; role: "owner" | "admin" | "editor" };
 export type EntryPanelActionHandler = (ctx: ModuleContext, entry: EntryPanelTarget, values: Record<string, string>) => AdminActionResult | Promise<AdminActionResult>;
 export type EntryPanel = {
@@ -496,6 +506,8 @@ export type McpHandler = (ctx: ModuleContext, args: Record<string, unknown>, act
 /** `grid` : réponse d'une action de génération du bloc `gridEditor` (`generateAction`) — un tracé proposé, jamais enregistré par le cœur. */
 export type AdminActionResult = { ok?: string; error?: string; redirect?: string; grid?: { width: number; height: number; cells: string } };
 export type AdminActionHandler = (ctx: ModuleContext, values: Record<string, string>) => AdminActionResult | Promise<AdminActionResult>;
+/** Action d'admin protégée par un droit du module (identifiant local, ou « <ce module>:<id> » ; le droit d'un autre module est toujours refusé). */
+export type AdminActionSpec = { right: string; run: AdminActionHandler };
 
 /** Aide de typage : `export default defineModule({...})`. */
 export function defineModule(def: ModuleDefinition): ModuleDefinition {

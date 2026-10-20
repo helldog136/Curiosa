@@ -1,9 +1,11 @@
 import { floatingLabels } from "@/components/admin/floating";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { can, deniedPath, hasRole, isOwner } from "@/core/auth/access";
+import { auditDenied } from "@/core/permissions";
 import { adminCtx } from "@/core/admin";
 import { DISPLAYS, FEATURES, getInstanceById } from "@/core/instances";
 import { localeName } from "@/core/i18n/locales";
-import { buildContext, instanceSettingKey } from "@/core/modules/context";
+import { buildContext, forViewer, instanceSettingKey } from "@/core/modules/context";
 import { hasPage } from "@/core/modules/manifest";
 import { overlayUrl } from "@/core/modules/overlayUrl";
 import { defaultPlacement, placementSettingKey, placementsFor, resolvePlacement } from "@/core/modules/menuPlacement";
@@ -42,23 +44,30 @@ const PLACE_LABEL = { menu: "placement.pin", integrations: "placement.park", ove
  * `query` : les paramètres d'adresse (le panneau d'un module peut en lire).
  */
 export async function InstanceView({ id, query: sp }: { id: string; query: Record<string, string | string[] | undefined> }) {
-  const { t, locale, config, user, advanced } = await adminCtx("admin");
+  // Entrée : tout accès ; puis le droit d'ouvrir CE module (`<module>:open` : tout administrateur l'a, comme avant ; un éditeur non).
+  const { t, locale, config, user, advanced } = await adminCtx("member");
   const instance = await getInstanceById(id);
   const mod = instance ? await getModule(instance.moduleId) : null;
   if (!instance || !mod) notFound();
+  if (!can(user, `${mod.manifest.id}:open`)) {
+    await auditDenied(user, `${mod.manifest.id}:open`);
+    redirect(deniedPath(user));
+  }
+  // Réglages, retrait, données gardées : administrateurs (comme avant). Un rôle personnalisé qui ouvre le module ne voit que son panneau.
+  const manage = hasRole(user, "admin");
   const L = (v: Parameters<typeof localized>[0]) => localized(v, locale, config.defaultLocale);
   const content = mod.manifest.content;
   const labeler = await getInstanceLabeler(locale, config.defaultLocale);
   const showNickname = labeler.hasSiblings(instance.moduleId);
   const moduleName = L(mod.manifest.name);
   // Le propriétaire qui retire la SEULE instance de son module retire le module lui-même ; sinon, seulement cette instance (le module reste installé).
-  const scope = removalScope({ isOwner: user.role === "owner", otherInstances: labeler.siblingsOf(instance).length });
+  const scope = removalScope({ isOwner: isOwner(user), otherInstances: labeler.siblingsOf(instance).length });
 
   let panel: Awaited<ReturnType<NonNullable<typeof mod.def.adminPanel>>> = [];
   if (mod.def.adminPanel) {
     try {
       const query = Object.fromEntries(Object.entries(sp).flatMap(([k, v]) => (typeof v === "string" ? [[k, v]] : [])));
-      panel = await mod.def.adminPanel(await buildContext(mod, instance, locale), { query });
+      panel = await mod.def.adminPanel(forViewer(await buildContext(mod, instance, locale), user), { query });
     } catch (error) {
       console.error(`[modules] ${instance.key} adminPanel failed:`, error);
     }
@@ -227,27 +236,27 @@ export async function InstanceView({ id, query: sp }: { id: string; query: Recor
   return (
     <div className="space-y-8">
       <div className="space-y-3">
-        <InstanceTabs t={t} id={instance.id} keyName={instance.key} name={labeler.label(instance)} icon={mod.manifest.icon ?? "🧩"} active="settings" content={!!content} canConfigure={user.role !== "editor"} />
+        <InstanceTabs t={t} id={instance.id} keyName={instance.key} name={labeler.label(instance)} icon={mod.manifest.icon ?? "🧩"} active="settings" content={!!content} canConfigure={manage} />
         {(advanced || labeler.label(instance) !== L(mod.manifest.name)) && (
           <p className="text-sm text-muted">
             {L(mod.manifest.name)}{advanced && <> · {t(`type.${effectiveType(mod.manifest)}`)} · v{mod.manifest.version} · {t("instances.technicalId")} <span className="font-mono">{instance.key}</span></>}
           </p>
         )}
         <p className="max-w-[70ch]">{L(mod.manifest.description)}</p>
-        <MissingBox title={t("missing.title")} items={missingItems} />
+        {manage && <MissingBox title={t("missing.title")} items={missingItems} />}
         {mod.def.overlay && (
           <p className="rounded-lg border border-line bg-surface p-3 text-sm">
             {t("instances.overlayUrl")}: <code className="break-all font-mono">{overlayUrl(siteUrl, instance.key)}</code>
           </p>
         )}
-        {dataStatus && (
+        {manage && dataStatus && (
           <div role="alert" className="space-y-2 rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm">
             <p>{t(dataStatus.status === "newer" ? "migration.newer" : "migration.failed")}</p>
             {dataStatus.error && <p className="font-mono text-xs">{dataStatus.error}</p>}
             <form action={retryMigrationAction.bind(null, instance.id)}><button className={ui.btn}>{t("migration.retry")}</button></form>
           </div>
         )}
-        {advanced && taskRows.length > 0 && (
+        {manage && advanced && taskRows.length > 0 && (
           <div className={`${ui.card} space-y-1 text-sm`}>
             <p className="font-medium">{t("tasks.title")}</p>
             <ul className="space-y-0.5">
@@ -263,6 +272,8 @@ export async function InstanceView({ id, query: sp }: { id: string; query: Recor
       </div>
 
       {/* Version simple : ce que la fonctionnalité montre d'abord (ses éléments), puis ses réglages repliés. Version avancée : tout, dans l'ordre. */}
+      {!manage && panelNode}
+      {manage && <>
       {!advanced && panel.length > 0 && panelNode}
       {!advanced && panel.length > 0 ? (
         <details className={ui.card} open={toFill}>
@@ -281,6 +292,7 @@ export async function InstanceView({ id, query: sp }: { id: string; query: Recor
         <RemoveSection t={t} title={t("remove.title")} intro={t(advanced ? "remove.introInstance" : "remove.introInstanceSimple", { name: labeler.label(instance) })} name={labeler.label(instance)}
           keep={deleteInstanceAction.bind(null, instance.id, true)} erase={deleteInstanceAction.bind(null, instance.id, false)} />
       )}
+      </>}
     </div>
   );
 }

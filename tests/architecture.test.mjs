@@ -167,3 +167,17 @@ test("routes : jamais de « catch-all optionnel » [[...x]] sous un segment qui 
   }
   assert.deepEqual(bad, [], "utilisez [...x] (catch-all obligatoire) : l'adresse du segment est déjà couverte par page.tsx ou default.tsx");
 });
+
+test("rôles (0.2.0) : aucune comparaison directe du rôle d'une personne hors de access.ts et auth.ts (utiliser can(), isOwner(), hasRole() ou levelOf())", () => {
+  // `user.role`, `me.role`, `actor.role`, `target.role`, `by.role`, `u.role`… lus comme propriété (pas dans une chaîne ni une clé de traduction).
+  const RE = /(?<![\w."'`-])(user|me|actor|target|by|u|owner|row|member|viewer|account)\??\.role\b(?!s)/;
+  // Le rôle porté par la session (JWT) ne décide jamais : seul auth.ts l'écrit.
+  const JWT = /session\??\.user\??\.role\b|token\.role\b/;
+  const allowed = new Set(["src/core/auth/access.ts", "src/auth.ts"]);
+  const offenders = [];
+  for (const file of [...code("src/core"), ...code("src/app"), ...code("src/components")]) {
+    if (allowed.has(file)) continue;
+    read(file).split("\n").forEach((line, i) => { if (RE.test(line) || JWT.test(line)) offenders.push(`${file}:${i + 1}: ${line.trim().slice(0, 120)}`); });
+  }
+  assert.deepEqual(offenders, [], `\n${offenders.join("\n")}`);
+});

@@ -3,6 +3,7 @@ import { makeTranslator } from "@/core/i18n/dictionary";
 import { pickName, type InstanceView } from "@/core/instances";
 import { currentVisit } from "@/core/visit";
 import { getSetting, getSettingByLocale, getSiteConfig, themeExtraOf } from "@/core/settings";
+import { can, type AdminUser } from "@/core/auth/access";
 import { makeApi } from "./api";
 import type { LoadedModule } from "./registry";
 import { followsSite, resolveDefault } from "./settingValues";
@@ -53,5 +54,17 @@ export async function buildContext(mod: LoadedModule, instance: InstanceView, lo
       return text;
     },
     api: makeApi(instance, loc, mod.manifest.permissions),
+    // Refus par défaut : seul un contexte d'administration d'un humain (voir `forViewer`) répond autre chose que « non ».
+    can: () => false,
   };
+}
+
+/**
+ * Le même contexte, pour une personne qui regarde l'administration (`adminPanel`, `adminActions`, `entryPanels`) : `ctx.can("email.view")` vérifie
+ * « <ce module>:email.view » pour elle (relue en base à cette requête). Le préfixe est imposé : un module ne teste jamais le droit d'un autre.
+ */
+export function forViewer<T extends ModuleContext>(ctx: T, viewer: AdminUser | null): T {
+  const prefix = `${ctx.moduleId}:`;
+  ctx.can = (rightId: string) => typeof rightId === "string" && rightId !== "" && !rightId.includes(":") && can(viewer, prefix + rightId);
+  return ctx;
 }

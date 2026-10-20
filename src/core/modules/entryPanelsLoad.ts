@@ -3,7 +3,8 @@ import { entryPath } from "@/core/content/entries";
 import { entryState } from "@/core/content/state";
 import { getInstanceById, type InstanceView } from "@/core/instances";
 import { getSiteConfig } from "@/core/settings";
-import { buildContext } from "./context";
+import { buildContext, forViewer } from "./context";
+import type { AdminUser } from "@/core/auth/access";
 import { getInstanceLabeler } from "./labels";
 import { getActiveInstances, getModule, type ActiveInstance } from "./registry";
 import { panelsFor, type HostModule } from "./entryPanels";
@@ -42,7 +43,7 @@ export type LoadedPanel = {
 };
 
 /** Les sections de l'éditeur pour une entrée existante. Une erreur dans le code d'une section n'empêche ni les autres ni l'éditeur de s'afficher. */
-export async function loadEntryPanels(entryId: string, locale: string, defaultLocale: string, view: EntryPanelView = { advanced: false, role: "editor" }): Promise<LoadedPanel[]> {
+export async function loadEntryPanels(entryId: string, locale: string, defaultLocale: string, view: EntryPanelView = { advanced: false, role: "editor" }, viewer: AdminUser | null = null): Promise<LoadedPanel[]> {
   const info = await resolveEntry(entryId);
   if (!info) return [];
   const matches = panelsFor(info.hostModule, providersOf(await getActiveInstances()));
@@ -58,7 +59,7 @@ export async function loadEntryPanels(entryId: string, locale: string, defaultLo
       help: m.decl.help ? localized(m.decl.help, locale, defaultLocale) : "",
     };
     try {
-      const blocks = await m.panel.render(await buildContext(mod, instance, locale), info.target, view);
+      const blocks = await m.panel.render(forViewer(await buildContext(mod, instance, locale), viewer), info.target, view);
       // Rien à montrer pour cette fiche (le module le décide) : pas de section vide.
       if (Array.isArray(blocks) && blocks.length > 0) out.push({ ...base, blocks, failed: false });
     } catch (error) {

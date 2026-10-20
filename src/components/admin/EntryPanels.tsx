@@ -3,14 +3,16 @@ import type { Translator } from "@/core/i18n/dictionary";
 import { panelAnchor } from "@/core/modules/entryPanels";
 import { loadEntryPanels } from "@/core/modules/entryPanelsLoad";
 import type { EntryPanelView } from "@/core/modules/types";
+import type { AdminUser } from "@/core/auth/access";
 import { ui } from "./ui";
 
 /**
  * Les sections que d'autres modules ajoutent à l'éditeur d'une entrée (voir core/modules/entryPanels.ts). Chacune est un bloc repliable, ouvert d'office, avec son propre
  * bouton : elle s'enregistre sans recharger la page (la position de défilement et les sections ouvertes ou fermées ne bougent pas). À placer HORS du formulaire de l'entrée.
  */
-export async function EntryPanels({ entryId, locale, defaultLocale, view, t }: { entryId: string; locale: string; defaultLocale: string; view: EntryPanelView; t: Translator }) {
-  const panels = await loadEntryPanels(entryId, locale, defaultLocale, view);
+/** `viewer` : la personne connectée (pour `ctx.can` des sections ; absent = aucun droit de module). */
+export async function EntryPanels({ entryId, locale, defaultLocale, view, viewer, t }: { entryId: string; locale: string; defaultLocale: string; view: EntryPanelView; viewer?: AdminUser | null; t: Translator }) {
+  const panels = await loadEntryPanels(entryId, locale, defaultLocale, view, viewer ?? null);
   if (!panels.length) return null;
   return (
     <div className="space-y-6">

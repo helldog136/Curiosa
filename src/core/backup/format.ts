@@ -27,6 +27,9 @@ export const DATA_FILES = {
   records: "data/module-records.json",
   /** Données gardées d'instances retirées (voir modules/retired.ts). Absent des sauvegardes d'avant la 0.1.20 : lu comme « aucune ». */
   retired: "data/retired-instances.json",
+  /** Rôles et affectations (0.2.0). Absents d'une sauvegarde plus ancienne : la restauration recrée les rôles prédéfinis et l'affectation depuis `User.role`. */
+  roles: "data/roles.json",
+  userRoles: "data/user-roles.json",
 } as const;
 
 export type BackupModule = {

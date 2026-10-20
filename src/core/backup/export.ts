@@ -46,7 +46,7 @@ export type BackupResult = { buffer: Buffer; filename: string; manifest: BackupM
 export async function createBackup(password: string, opts: { now?: Date; iterations?: number } = {}): Promise<BackupResult> {
   const now = opts.now ?? new Date();
   const config = await getSiteConfig();
-  const [users, settings, moduleRows, instances, instanceTranslations, entries, entryTranslations, redirects, retired] = await Promise.all([
+  const [users, settings, moduleRows, instances, instanceTranslations, entries, entryTranslations, redirects, retired, roles, userRoles] = await Promise.all([
     prisma.user.findMany({ orderBy: { createdAt: "asc" } }),
     prisma.setting.findMany({ orderBy: [{ key: "asc" }, { locale: "asc" }] }),
     listModuleRows(),
@@ -56,6 +56,8 @@ export async function createBackup(password: string, opts: { now?: Date; iterati
     prisma.entryTranslation.findMany({ orderBy: [{ entryId: "asc" }, { locale: "asc" }] }),
     prisma.redirect.findMany({ orderBy: { path: "asc" } }),
     prisma.retiredInstance.findMany({ orderBy: [{ retiredAt: "asc" }, { id: "asc" }] }),
+    prisma.role.findMany({ orderBy: [{ createdAt: "asc" }, { id: "asc" }] }),
+    prisma.userRole.findMany({ orderBy: [{ userId: "asc" }, { roleId: "asc" }] }),
   ]);
 
   const keyOf = new Map(instances.map((i) => [i.id, i.key]));
@@ -82,6 +84,9 @@ export async function createBackup(password: string, opts: { now?: Date; iterati
     fileOf(DATA_FILES.records, records.raw),
     // Données gardées de modules ou d'instances retirés : la sauvegarde reste complète (le bloc est écrit en JSON lisible, pas en texte échappé).
     jsonFile(DATA_FILES.retired, retired.map((r) => ({ ...r, payload: safeParse(r.payload) }))),
+    // Rôles (droits en liste JSON lisible) et affectations.
+    jsonFile(DATA_FILES.roles, roles.map((r) => ({ ...r, rights: safeParse(r.rights) }))),
+    jsonFile(DATA_FILES.userRoles, userRoles),
   ];
 
   // ── Copie lisible ───────────────────────────────────────────────────────────

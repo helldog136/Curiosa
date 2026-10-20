@@ -13,7 +13,7 @@ import type { ActionState } from "@/components/admin/ActionForm";
  * La personne est déjà authentifiée : le mot de passe temporaire n'est pas redemandé. Le mot de passe n'est ni journalisé ni renvoyé.
  */
 export async function choosePassword(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  const { user, t } = await adminCtx("editor", { allowForced: true, allowUnenrolled: true });
+  const { user, t } = await adminCtx("member", { allowForced: true, allowUnenrolled: true });
   // Déjà fait (autre onglet, lien direct) : rien à choisir, on va au tableau de bord.
   if (!user.mustChangePassword) redirect("/admin");
   const r = await chooseOwnPassword(user.id, String(formData.get("next") ?? ""), String(formData.get("confirm") ?? ""));

@@ -127,6 +127,13 @@ rôle, traduits), police. C'est **la même source** (`src/core/brand.ts`, même 
 l'administrateur règle dans *Réglages* (Identité, Apparence) est stocké une seule fois dans le cœur. Un module qui *montre* l'identité
 (le **kit presse**) ne la copie ni ne la stocke : il la lit. Changer le thème du site change donc le kit presse, sans rien refaire.
 
+## Rôles et droits : une fonctionnalité du cœur (0.2.0)
+
+Ce n'est pas un service : les modules n'y écrivent rien. Le cœur tient les rôles (`Role`, `UserRole`, `src/core/auth/roles.ts`), le catalogue des droits
+(`src/core/auth/rights.ts` : droits `core:` et droits déclarés par les modules dans `rights`, préfixés `<module>:` par le cœur) et la règle d'accès
+(`src/core/auth/access.ts` : `can()`, `isOwner()`, `accessGate`). Un module lit seulement `ctx.can("<droit local>")` dans l'administration, et peut protéger une
+`adminAction` par `{ right, run }` (décision : `src/core/modules/adminActionAccess.ts`). Voir [MODULES.md](MODULES.md) (« Droits ») et [SECURITE.md](SECURITE.md).
+
 ## Sauvegarde et catalogue : des fonctionnalités du cœur
 
 - **Sauvegarde** (`core/backup/`, [BACKUP.md](BACKUP.md)) : un fichier chiffré (format OpenSSL, mot de passe choisi à chaque sauvegarde)

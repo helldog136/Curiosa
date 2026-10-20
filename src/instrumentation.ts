@@ -9,6 +9,9 @@ export async function register() {
   } catch (error) {
     console.error("[modules] legacy off migration failed:", (error as Error)?.message);
   }
+  // Rôles (0.2.0) : les trois rôles prédéfinis existent et chaque personne a celui de son niveau (`User.role`). Idempotent, ne lève jamais.
+  const { initRoles } = await import("@/core/auth/roles");
+  await initRoles();
   // Une mise à jour interrompue pendant le redémarrage (la tâche a été arrêtée avec l'ancien serveur) est conclue ici, sur la version qui tourne vraiment.
   try {
     const { reconcileInterruptedUpdate } = await import("@/core/updates/service");

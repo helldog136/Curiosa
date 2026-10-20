@@ -4,6 +4,7 @@ import { COLOR_TOKENS } from "../color";
 import { groupIssues } from "./groups";
 import { siteDefaultRef } from "./settingValues";
 import { PLATFORM_PATTERN } from "./platform";
+import { MAX_MODULE_RIGHTS, OPEN, RIGHT_ID_RE } from "../auth/rights";
 
 const localized = z.union([z.string().max(500), z.record(z.string(), z.string().max(500))]);
 
@@ -160,7 +161,20 @@ export const manifestSchema = z.object({
     .optional(),
   defaultEnabled: z.boolean().optional(),
   permissions: z.array(z.enum(["slots", "routes", "storage", "filters", "sections", "pages", "topics", "overlay", "mcp", "admin", "mail", "rawg"])).default([]),
+  /**
+   * Droits du module (0.2.0), proposés dans les rôles de la page Équipe. Identifiant LOCAL (« email.view ») : le cœur le préfixe par l'identifiant du module
+   * (« <module>:email.view »), un module ne peut donc pas déclarer le droit d'un autre. `open` (ouvrir la page d'admin du module) est implicite.
+   * `default` : ce que reçoivent les rôles prédéfinis (administrateur : oui sauf `admin: false` ; éditeur : non sauf `editor: true`). Un cœur ancien ignore cette clé.
+   */
+  rights: z.array(z.object({
+    id: z.string().regex(RIGHT_ID_RE, "right id must be lowercase segments like email.view (no colon: the core adds the module prefix)").refine((id) => id !== OPEN, "open is implicit: do not declare it"),
+    label: localized,
+    help: localized.optional(),
+    sensitive: z.boolean().optional(),
+    default: z.object({ admin: z.boolean().optional(), editor: z.boolean().optional() }).optional(),
+  })).max(MAX_MODULE_RIGHTS).optional(),
 }).superRefine((m, ctx) => {
+  if (new Set((m.rights ?? []).map((r) => r.id)).size < (m.rights ?? []).length) ctx.addIssue({ code: "custom", path: ["rights"], message: "duplicate right id" });
   for (const [i, seed] of (m.seeds ?? []).entries()) {
     if (seed.module === m.id) ctx.addIssue({ code: "custom", path: ["seeds", i, "module"], message: "a module cannot seed itself" });
     if (!m.requires?.length && !m.consumes.length) ctx.addIssue({ code: "custom", path: ["seeds", i, "module"], message: "seeds needs a matching `requires` or `consumes` (the target must offer a service this module requires, or provide a topic this module consumes)" });

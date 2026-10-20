@@ -5,7 +5,7 @@ import { setAdminMode } from "./actions";
 
 /** Choisir sa façon de gérer le site : l'essentiel (simple) ou tous les réglages techniques (avancé). Propre à chaque personne, rien n'est perdu en changeant. */
 export default async function ModePage() {
-  const { t, advanced } = await adminCtx("editor");
+  const { t, advanced } = await adminCtx("member");
   const choice = (isAdvanced: boolean) => {
     const current = advanced === isAdvanced;
     const prefix = isAdvanced ? "mode.page.advanced" : "mode.page.simple";

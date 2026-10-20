@@ -1,4 +1,5 @@
 import { adminCtx } from "@/core/admin";
+import { isOwner as ownerCheck } from "@/core/auth/access";
 import { getCatalogue, getCatalogueSource } from "@/core/modules/catalogue";
 import { getCoreVersion } from "@/core/modules/compat";
 import { listModuleRows } from "@/core/modules/registry";
@@ -26,7 +27,7 @@ const fold = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").t
 export default async function CataloguePage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const { t, locale, config, user, advanced } = await adminCtx("admin");
   const { error } = await searchParams;
-  const isOwner = user.role === "owner";
+  const isOwner = ownerCheck(user);
   const entries = await getCatalogue();
   const source = await getCatalogueSource();
   const installed = new Set((await listModuleRows()).map((r) => r.id));

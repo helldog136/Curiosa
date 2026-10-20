@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { adminCtx } from "@/core/admin";
-import { buildContext } from "@/core/modules/context";
+import { buildContext, forViewer } from "@/core/modules/context";
 import { panelValues } from "@/core/modules/entryPanels";
 import { resolvePanelAction } from "@/core/modules/entryPanelsLoad";
 import { audit } from "@/core/permissions";
@@ -20,7 +20,7 @@ export async function runEntryPanelAction(instanceId: string, panelId: string, e
   if (!found || typeof handler !== "function") return { error: t("entries.panel.gone") };
   let result;
   try {
-    result = await handler(await buildContext(found.active.mod, found.active.instance, locale), found.target, panelValues(formData));
+    result = await handler(forViewer(await buildContext(found.active.mod, found.active.instance, locale), user), found.target, panelValues(formData));
   } catch (error) {
     console.error(`[modules] ${found.active.instance.key} entryPanels.${panelId}.${action} failed:`, error);
     return { error: t("error.generic") };

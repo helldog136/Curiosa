@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { adminCtx } from "@/core/admin";
+import { hasRole } from "@/core/auth/access";
 import { getInstanceByKey } from "@/core/instances";
 import { localeName } from "@/core/i18n/locales";
 import { getActiveInstances } from "@/core/modules/registry";
@@ -30,7 +31,7 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
   const base = `/admin/entries?${new URLSearchParams({ c: collection.key, ...(q ? { q } : {}), ...(state !== "all" ? { state } : {}) }).toString()}`;
   const fmt = new Intl.DateTimeFormat(locale, { dateStyle: "medium" });
   const newHref = `/admin/entries/new?c=${collection.key}`;
-  const canConfigure = user.role !== "editor";
+  const canConfigure = hasRole(user, "admin");
   const name = (await getInstanceLabeler(locale, config.defaultLocale)).label(collection);
 
   return (
