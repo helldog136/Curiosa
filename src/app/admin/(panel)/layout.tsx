@@ -5,6 +5,7 @@ import { adminBugReportUrl } from "@/core/bugReport";
 import { CREDIT_URL } from "@/core/credit";
 import { BugReportLink } from "@/components/admin/BugReportLink";
 import { maintenanceSummary } from "@/core/maintenance/summary";
+import { legacyConversionPending } from "@/core/modules/legacyReport";
 import { NavLink } from "@/components/admin/NavLink";
 import { NavGroup } from "@/components/admin/NavGroup";
 import { NAV_STATE_COOKIE, buildMenuLayout, extensionsBadge, parseNavState } from "@/core/modules/menuPlacement";
@@ -39,6 +40,8 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   // Modules en retard : jamais d'attente du réseau ici (menu de toutes les pages) ; la vérification se fait en arrière-plan et reste en mémoire quelques minutes.
   const modulesBehind = isOwner(user) ? (peekModulesReport()?.outdated.length ?? 0) : 0;
   const aiWaiting = isOwner(user) ? (await maintenanceSummary().catch(() => null))?.total ?? 0 : 0;
+  // Garde du démarrage (0.2.0) : un AVERTISSEMENT seulement si la mise à niveau des données n'est pas terminée (le site public reste servi ; bloquant en phase 3).
+  const legacyPending = canManage ? await legacyConversionPending() : false;
   const bugUrl = await adminBugReportUrl(t);
   const menu = buildMenuLayout(nav);
   const navState = parseNavState((await cookies()).get(NAV_STATE_COOKIE)?.value);
@@ -140,7 +143,15 @@ export default async function PanelLayout({ children }: { children: React.ReactN
         </form>
       </MobileMenu>
       <main className="min-w-0 flex-1 p-6 md:p-10">
-        <div className="mx-auto max-w-4xl"><CropLabelsProvider advanced={advanced} labels={Object.fromEntries(CROP_LABEL_KEYS.map((k) => [k, t(`crop.${k}`)]))}>{children}</CropLabelsProvider></div>
+        <div className="mx-auto max-w-4xl">
+          {legacyPending && (
+            <div role="status" data-testid="legacy-banner" className="mb-6 rounded-xl border border-amber-500/50 bg-amber-500/10 p-3.5 text-sm leading-6">
+              <p className="font-medium">{t("legacy.banner.title")}</p>
+              <p>{t("legacy.banner.text")}</p>
+              {isOwner(user) ? <a href="/admin/maintenance/legacy" className="font-medium text-accent underline">{t("legacy.banner.link")}</a> : <p className="text-muted">{t("legacy.banner.owner")}</p>}
+            </div>
+          )}
+          <CropLabelsProvider advanced={advanced} labels={Object.fromEntries(CROP_LABEL_KEYS.map((k) => [k, t(`crop.${k}`)]))}>{children}</CropLabelsProvider></div>
       </main>
       </div>
       {/* Tout en bas de la page, pour tous les rôles et dans les deux modes : crédit exigé par la licence, et numéro de version à donner pour un signalement ou une mise à jour. */}

@@ -16,6 +16,9 @@ import { makeNetClient } from "./fakeNet.mjs";
  *   `ctx.calls.topics` garde chaque appel `[topic, opts]`. Comme le vrai cœur, une plage invalide (`from` > `to`, date illisible) LÈVE une erreur — seulement si `from` ou `to` est passé.
  * - `migration: true` : ctx d'une migration de données. Ajoute `ctx.seedInstance(cible, demande)` (enregistre dans `ctx.calls.seeds` ; résultat réglable par `seedResult`, objet ou fonction `(cible, demande) => résultat`,
  *   défaut `{ created: true, instanceKey: <surnom en minuscules> }`) et `ctx.clearSetting(clé)` (enregistre dans `ctx.calls.cleared` ; `ctx.setting(clé)` renvoie alors undefined). Sans cette option, ni l'un ni l'autre n'existe.
+ * - `legacy: { clé: valeur }` (cœur 0.2.0) : réglages hérités déclarés dans `legacySettings`. Ajoute `ctx.legacy` : `keys()`, `get(clé)` (valeur, ou null si vide/absente),
+ *   `clear(clé)` (enregistre dans `ctx.calls.legacyCleared` ; `get` renvoie alors null). Une clé absente de l'objet est NON DÉCLARÉE : `get`/`clear` lèvent, comme le vrai cœur.
+ *   Sans cette option, `ctx.legacy` n'existe pas (cœur plus ancien).
  * - `ctx.api.qr(text)` renvoie un SVG factice contenant le texte ; `ctx.api.brand()` / `site()` valeurs réglables
  * - `ctx.api.mail` : `configured` (option `mailConfigured`, défaut true) et `send` qui enregistre dans `ctx.calls.mail` (résultat réglable via `mailResult`)
  * - `ctx.api.rawg` : `configured` (option `rawgConfigured`, défaut true) et `cover(title)` qui enregistre dans `ctx.calls.rawg` (résultat réglable via `rawgCover`)
@@ -41,12 +44,12 @@ export function fakeCtx(opts = {}) {
     moduleId = "fake", key = "fake", name = "Fake", basePath = "fake", locale = "en", defaultLocale = "en", locales = ["en"],
     settings = {}, messages = {}, topics = {}, entries = [], instances = [],
     brand = { name: "Site", tagline: "", about: "", logo: null, contactEmail: "", colors: [], font: { key: "sans", name: "Sans-serif", stack: "sans-serif" }, defaultLocale, locales },
-    migration = false, seedResult, rows: seedRows = {}, permissions, lastVisit = new Date(0), site = { name: "Site", tagline: "", logo: null }, theme = { accent: "#e8a23b", accentFg: "#111111", bg: "#121214", surface: "#1b1b1d", fg: "#f4f4f5", muted: "#a1a1a3", line: "#2e2e30", fontKey: "sans", font: "sans-serif" }, services = {}, serviceInstances = {}, mailConfigured = true, mailResult = { ok: true }, rawgConfigured = true, rawgCover = { status: "found", url: "https://media.example.test/cover.jpg" }, siteUrl = "https://example.test",
+    migration = false, seedResult, legacy, rows: seedRows = {}, permissions, lastVisit = new Date(0), site = { name: "Site", tagline: "", logo: null }, theme = { accent: "#e8a23b", accentFg: "#111111", bg: "#121214", surface: "#1b1b1d", fg: "#f4f4f5", muted: "#a1a1a3", line: "#2e2e30", fontKey: "sans", font: "sans-serif" }, services = {}, serviceInstances = {}, mailConfigured = true, mailResult = { ok: true }, rawgConfigured = true, rawgCover = { status: "found", url: "https://media.example.test/cover.jpg" }, siteUrl = "https://example.test",
     net: netOverride, netLimits, netBudgetMs = null,
   } = opts;
   const rows = new Map();
   let seq = 0;
-  const calls = { topics: [], qr: [], entries: [], mail: [], png: [], services: [], rawg: [], seeds: [], cleared: [], writes: [], denied: [], net: [], netLog: [] };
+  const calls = { topics: [], qr: [], entries: [], mail: [], png: [], services: [], rawg: [], seeds: [], cleared: [], legacyCleared: [], writes: [], denied: [], net: [], netLog: [] };
   let netClient;
   const client = () => (netClient ??= makeNetClient({ limits: { retryMinMs: 1, retryMaxMs: 5, ...netLimits }, log: (line) => calls.netLog.push(line) }));
   const net = netOverride ?? {
@@ -83,8 +86,18 @@ export function fakeCtx(opts = {}) {
     },
     clearSetting: async (k) => { calls.cleared.push(k); cleared.add(k); },
   };
+  const legacyValues = legacy && typeof legacy === "object" ? { ...legacy } : null;
+  const legacyCheck = (k) => { if (!legacyValues || !Object.hasOwn(legacyValues, k)) throw Object.assign(new Error(`"${k}" is not declared in legacySettings`), { code: "undeclared" }); };
+  const legacyApi = !legacyValues ? {} : {
+    legacy: {
+      keys: () => Object.keys(legacyValues),
+      get: async (k) => { legacyCheck(k); const v = legacyValues[k]; return v === undefined || v === null || (typeof v === "string" && v.trim() === "") ? null : v; },
+      clear: async (k) => { legacyCheck(k); calls.legacyCleared.push(k); legacyValues[k] = null; },
+    },
+  };
   return {
     ...migrationApi,
+    ...legacyApi,
     moduleId,
     instance: { id: `id-${key}`, key, basePath, name },
     locale, defaultLocale, locales,

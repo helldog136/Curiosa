@@ -144,6 +144,12 @@ export type ModuleManifest = {
   settings: SettingField[];
   /** Modules dans lesquels une migration de données de ce module peut semer UNE instance (`ctx.seedInstance`). Le module cible doit offrir un service que celui-ci `requires`. */
   seeds?: SeedDecl[];
+  /** (0.2.0) Plus petite version des données que ce module sait encore convertir (≤ `dataVersion`) : en dessous, l'instance est mise à l'écart. */
+  dataFloor?: number;
+  /** (0.2.0) Réglages d'une version précédente, repris par le module (`ctx.legacy`) : jamais affichés. `secret` : jamais hors de la mémoire. */
+  legacySettings?: { key: string; secret?: boolean }[];
+  /** (0.2.0) Collections du stockage d'une version précédente, vidées par le module après reprise (comptées par le rapport d'entretien). */
+  legacyCollections?: string[];
   /** Groupes de réglages facultatifs (un bouton « Ajouter… » les ouvre). */
   optionalGroups?: OptionalGroupDecl[];
   /** Sections ajoutées à l'éditeur d'entrée d'un autre module (`entryPanels` dans le code). */
@@ -342,6 +348,12 @@ export type ModuleContext = {
    * langues). Refusé tant qu'aucun `seedInstance` n'a abouti dans cette migration ; si la migration échoue, le réglage est remis comme avant.
    */
   clearSetting?(key: string): Promise<void>;
+  /**
+   * (0.2.0) Réglages hérités déclarés dans `legacySettings` du manifeste, pour CETTE instance : `keys()` les liste, `get` lit une valeur (null si absente ou vide),
+   * `clear` l'efface (dans toutes les langues) une fois la reprise confirmée. Une clé non déclarée lève une erreur. Une valeur lue ne doit transiter qu'en mémoire :
+   * jamais dans un journal, un message d'erreur, une réponse de service ni un bloc. Absent sur un cœur plus ancien.
+   */
+  legacy?: { keys(): string[]; get(key: string): Promise<string | number | boolean | null>; clear(key: string): Promise<void> };
   /** Le thème réglé dans l'admin (couleurs dérivées, police) : exactement ce que le site utilise. Pour que l'apparence d'un module suive le site. */
   theme: Theme;
   /**

@@ -98,6 +98,14 @@ Pendant la migration de données d'un module, il peut demander au cœur de crée
 - *Échec à mi-chemin* : l'instance créée, la marque et le module cible installé pour l'occasion sont retirés ; l'instance semeuse est remise à l'écart (« Réessayer ») ; le journal ne garde rien d'un semis défait.
 - *Traces* : `module.seed` (semeur → cible : clé de l'instance créée), jamais de valeur. Limite connue : un secret semé est stocké comme tous les réglages de l'instance (dans la base, donc dans ses sauvegardes chiffrées) ; un module cible malveillant pourrait le lire, comme n'importe quelle instance de lui — c'est pourquoi on ne sème que chez un module dont on dépend et que l'administrateur a choisi d'installer.
 
+## Réglages hérités et balayage du démarrage (0.2.0)
+
+- Un réglage déclaré dans `legacySettings` n'est **jamais affiché** (ni en mode simple, ni en mode avancé : il n'est pas dans `settings`). Seul le module de l'instance le lit, par `ctx.legacy.get` ; la valeur reste en mémoire.
+- `ctx.legacy.clear` n'efface que **sa** clé déclarée ; l'audit (`module.legacy.clear`) dit le module et la clé, jamais la valeur. Une clé non déclarée lève une erreur sans valeur.
+- Le rapport d'héritage (page *Entretien*, propriétaire seulement ; outil MCP `maintenance_legacy`, lecture) donne des nombres et des noms de clés, **jamais** une valeur, même masquée. Le journal du balayage (`[legacy]`) ne contient que des nombres.
+- Le balayage du démarrage n'utilise pas le réseau et ne dure pas plus de 20 secondes : il ne peut ni bloquer le site, ni être déclenché par un visiteur. « Relancer » est réservé au propriétaire.
+- Une sauvegarde chiffrée contient ces valeurs (comme tous les réglages) pour pouvoir les restaurer ; le résumé lisible de la sauvegarde ne cite aucun réglage d'instance.
+
 ## Sessions
 
 Une session dure **14 jours au plus**. Elle se coupe aussi à tout moment :

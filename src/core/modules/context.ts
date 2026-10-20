@@ -5,6 +5,7 @@ import { currentVisit } from "@/core/visit";
 import { getSetting, getSettingByLocale, getSiteConfig, themeExtraOf } from "@/core/settings";
 import { can, type AdminUser } from "@/core/auth/access";
 import { makeApi } from "./api";
+import { makeLegacy } from "./legacySettings";
 import type { LoadedModule } from "./registry";
 import { followsSite, resolveDefault } from "./settingValues";
 import type { ModuleContext } from "./types";
@@ -54,6 +55,8 @@ export async function buildContext(mod: LoadedModule, instance: InstanceView, lo
       return text;
     },
     api: makeApi(instance, loc, mod.manifest.permissions),
+    // Réglages hérités (0.2.0) : seulement les clés déclarées dans `legacySettings`, pour cette instance.
+    legacy: makeLegacy(mod.manifest, instance.id),
     // Refus par défaut : seul un contexte d'administration d'un humain (voir `forViewer`) répond autre chose que « non ».
     can: () => false,
   };

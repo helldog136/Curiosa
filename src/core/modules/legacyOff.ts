@@ -12,7 +12,7 @@ import { retireInstance, retireModuleInstances } from "./retired";
  *   - module éteint            → désinstallé ; toutes ses instances sont rangées avec leurs réglages et leurs contenus ;
  *   - instance éteinte (module allumé) → retirée, ses données rangées.
  * Un test (tests/core/temporary-code.test.mjs) échoue dès la 0.3.0 tant que ces fichiers existent :
- *   - src/core/modules/legacyOff.ts (ce fichier), son appel dans src/instrumentation.ts et dans src/core/backup/restore.ts (applyRestore) ;
+ *   - src/core/modules/legacyOff.ts (ce fichier), son appel dans le balayage du démarrage (src/core/modules/legacySweep.ts, appelé par src/instrumentation.ts) et dans src/core/backup/restore.ts (applyRestore) ;
  *   - les tests « migration des éteints » de tests/modules-mgmt/module-lifecycle.test.mjs ;
  *   - les colonnes `Module.enabled` et `ModuleInstance.enabled` de prisma/schema.prisma (nouvelle migration qui les retire) et le champ `enabled` de BackupModule (backup/format.ts).
  * Idempotent : sans module ni instance éteints, il ne fait rien.

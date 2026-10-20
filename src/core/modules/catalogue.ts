@@ -1,5 +1,5 @@
 import { MODULE_API_VERSION } from "../config";
-import { getRecognizedDetailed, type RecognizedItem, type RecognizedResult } from "./recognized";
+import { getRecognizedDetailed, readRecognizedCacheOffline, type RecognizedItem, type RecognizedResult } from "./recognized";
 import { incompatWithThisCore, type CoreRequirement } from "./compat";
 import type { LocalizedString } from "./types";
 import { normalizeNeeds, normalizeOffers, type ServiceNeed, type ServiceOffer } from "./serviceVersions";
@@ -67,6 +67,11 @@ export async function getCatalogue(opts: { fetchImpl?: typeof fetch } = {}): Pro
   const { items, suggested } = await getRecognizedDetailed({ fetchImpl: opts.fetchImpl });
   const ids = new Set(suggested);
   return items.map((c) => recognizedEntry(c, ids));
+}
+
+/** Le catalogue tel que la dernière copie reçue le décrit, sans aucun réseau (balayage de conversion au démarrage). Vide sans copie. */
+export function getCachedCatalogue(): CatalogueEntry[] {
+  return readRecognizedCacheOffline().map((c) => recognizedEntry(c, new Set()));
 }
 
 /** Le catalogue est-il injoignable (ni dépôt, ni dernière copie reçue) ? Alors « liste vide » veut dire « réessayez », pas « rien à proposer ». */

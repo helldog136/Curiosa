@@ -1,13 +1,15 @@
 // Exécuté une fois au démarrage du serveur Node (pas dans le navigateur ni à l'edge).
 export async function register() {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
-  // TEMPORAIRE (retrait en 0.3.0) : AVANT toute tâche planifiée, ce qui était « éteint » avant la 0.1.20 devient « désinstallé, données gardées » (ne lève jamais).
+  // Balayage de conversion (0.2.0, src/core/modules/legacySweep.ts), AVANT toute tâche planifiée : ce qui était « éteint » avant la 0.1.20 devient
+  // « désinstallé, données gardées » (retireLegacyOff, à retirer en phase 3), les lignes de modules héritées sont converties sans réseau, les migrations
+  // de données en attente tournent, puis le marqueur `core.legacyCleared` est posé. Borné à 20 s (Next attend `register` avant de servir) ; ne lève jamais.
+  // Inachevé : le site public est servi normalement, l'admin l'explique, et le démarrage suivant reprend.
   try {
-    const { retireLegacyOff } = await import("@/core/modules/legacyOff");
-    const done = await retireLegacyOff();
-    if (done.modules.length || done.instances.length) console.log(`[modules] switched-off items set aside with their data kept: modules ${done.modules.join(", ") || "none"}; instances ${done.instances.length}`);
+    const { runLegacySweep } = await import("@/core/modules/legacySweep");
+    await runLegacySweep();
   } catch (error) {
-    console.error("[modules] legacy off migration failed:", (error as Error)?.message);
+    console.error("[legacy] startup conversion failed:", (error as Error)?.name);
   }
   // Rôles (0.2.0) : les trois rôles prédéfinis existent et chaque personne a celui de son niveau (`User.role`). Idempotent, ne lève jamais.
   const { initRoles } = await import("@/core/auth/roles");

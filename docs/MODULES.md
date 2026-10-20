@@ -154,6 +154,9 @@ Validé à l'installation et au chargement (zod, `src/core/modules/manifest.ts`)
 | `onboarding` | Comment le module participe à la première installation (voir ci-dessous). |
 | `seeds` | **Graines** : modules dans lesquels une migration de données de ce module pourra créer UNE instance (`{ "module": "<id>", "reason": { "fr": "…", "en": "…" } }`, 3 au plus). Exige que le module cible soit relié à celui-ci : il offre un service que ce module `requires`, ou il fournit un sujet que ce module `consumes` (lien souple, sans dépendance). Voir « `migrations` › Semer une instance ». |
 | `dataVersion` | Version de la **structure de vos données** (entier ≥ 1, défaut 1). À augmenter quand elle change, avec la migration correspondante (`migrations`). |
+| `dataFloor` | (cœur 0.2.0) Plus petite version des données que **cette** version sait encore convertir (entier, ≤ `dataVersion`, défaut 1). Une instance plus ancienne est mise de côté (« passez d'abord par une version intermédiaire ») au lieu d'être déclarée à jour. Voir « Réglages hérités et plancher ». |
+| `legacySettings` | (cœur 0.2.0) Réglages qu'une version précédente affichait et que le module reprend lui-même : `[{ "key": "clientSecret", "secret": true }]`, 20 au plus, jamais aussi dans `settings`. **Jamais affichés**, lus par `ctx.legacy`. Voir « Réglages hérités et plancher ». |
+| `legacyCollections` | (cœur 0.2.0) Collections du stockage qu'une version précédente remplissait et que le module vide après reprise (10 au plus) : comptées par la page *Entretien*, jamais lues par le cœur. |
 | `defaultEnabled` | Sans effet pour un module installé depuis le catalogue ou un dépôt : sans effet non plus sur l'état : un module installé est toujours actif (l'assistant de première installation n'installe que ceux que l'on coche). |
 | `permissions` | Les capacités utilisées (voir ci-dessous). |
 | `rights` | (cœur 0.2.0) **Droits** du module, proposés dans les rôles de la page Équipe (voir « Droits (`rights`) »). 20 au plus. |
@@ -588,6 +591,26 @@ migrations: {
   « Réessayer » plus tard.
 - Pour tester un module : `fakeCtx({ migration: true, settings: {...} })` ajoute `ctx.seedInstance` et `ctx.clearSetting` factices (appels enregistrés dans `ctx.calls.seeds` et `ctx.calls.cleared`, résultat réglable par `seedResult`).
 
+#### Réglages hérités et plancher (`legacySettings`, `ctx.legacy`, `dataFloor`) — cœur 0.2.0
+
+Quand un réglage change de propriétaire (par exemple un identifiant d'API repris par un module « connecteur »), ne le laissez pas dans `settings` avec un libellé « (ancien réglage) » :
+déplacez sa clé dans `legacySettings`. Le cœur ne l'affiche plus nulle part (ni en mode avancé), mais la valeur reste lisible par **votre** module :
+
+```js
+const secret = await ctx.legacy?.get("clientSecret");   // null si vide ou absent ; ctx.legacy absent sur un cœur plus ancien
+if (secret) {
+  const r = await ctx.api.services.call("x.api", "adopt", { clientSecret: secret });
+  if (r.ok && r.value.ready) await ctx.legacy.clear("clientSecret");   // effacer APRÈS la confirmation
+}
+```
+
+- `ctx.legacy.keys()` liste vos clés déclarées ; `get(clé)` rend une chaîne, un nombre, un booléen ou `null` ; `clear(clé)` efface la valeur (toutes langues) et laisse une ligne d'audit `module.legacy.clear` (la clé, jamais la valeur). Une clé non déclarée lève une erreur (code `undeclared`).
+- Disponible dans tous les contextes serveur de l'instance (migration, tâche, panneau d'admin, service). Une valeur `secret` ne sort jamais de la mémoire : ni journal, ni message d'erreur, ni réponse de service, ni bloc.
+- Au démarrage, le cœur efface seul les valeurs **vides** de ces réglages (et des réglages que plus rien ne déclare) ; une valeur remplie n'est jamais effacée par le cœur. La page *Entretien* compte celles qui restent.
+- `dataFloor` : si votre migration v3 suppose des données déjà en v2, déclarez `"dataFloor": 2`. Une instance en v1 n'est alors **pas** étiquetée « à jour » (le cœur saute sinon en silence les versions sans migration) : elle est mise de côté (`error: "floor"`) avec un message clair. Ne **baissez jamais** `dataVersion` d'une version à l'autre : les instances déjà converties seraient mises de côté (« plus récentes que le module »).
+- Un test du cœur (`tests/core/legacy-labels.test.mjs`, copie dans le dépôt de modules) refuse « ancien », « ancienne », « legacy », « reprise automatiquement », « anciennes versions » (et l'anglais) dans un libellé ou une aide visible, et vérifie que chaque clé de `settings` est lue par le code du module.
+- Pour tester : `fakeCtx({ legacy: { clientSecret: "x" } })` ajoute `ctx.legacy` (effacements notés dans `ctx.calls.legacyCleared`).
+
 Écrivez des migrations **idempotentes** quand c'est possible (elles peuvent être rejouées après un échec) et **testez-les** sur des données réelles de l'ancienne version.
 Ne supprimez jamais une migration déjà publiée : un site peut sauter plusieurs versions d'un coup.
 
@@ -703,6 +726,7 @@ Chaque fonction du module reçoit un `ctx` (`ModuleContext`) ; les slots reçoiv
 | `ctx.page` | (slots `page.*` et `entry.*`) `{ key, basePath }` de l'instance dont on affiche la page |
 | `ctx.entry` | (slots `entry.*`) `{ id, title, slug }` de l'entrée affichée |
 | `ctx.api` | tout ce que le cœur met à disposition (ci-dessous) |
+| `ctx.legacy` | (cœur 0.2.0) réglages hérités de **cette** instance déclarés dans `legacySettings` : `keys()`, `get(clé)`, `clear(clé)` (voir « Réglages hérités et plancher »). Absent sur un cœur plus ancien. |
 | `ctx.can("droit")` | (cœur 0.2.0) la personne qui regarde l'administration a-t-elle ce droit du module (identifiant **local**, voir « Droits (`rights`) ») ? Vrai seulement dans `adminPanel`, `adminActions` et `entryPanels` ; **toujours faux** ailleurs (page publique, route, overlay, tâche, service, MCP). Absent sur un cœur plus ancien : traitez l'absence comme un refus. |
 
 ### `ctx.api`
@@ -1182,6 +1206,7 @@ Il n'y a que **deux états** : *installé* (actif : page, menu, tâches, outils 
 - **Retirer une seule instance** suit le même choix. En « garder », `hooks.onInstanceDelete` n'est **pas** appelé (rien n'est détruit) ; en « effacer », il l'est. Le propriétaire qui retire la *seule* instance de son module retire le module.
 - **Dépendances.** Retirer un module dont un autre module installé a besoin est refusé. Le nettoyage proposé des modules « installés automatiquement » (plus personne n'en dépend) offre le même choix. Si une cascade échoue après avoir retrouvé des données gardées, elles sont rangées de nouveau, jamais effacées.
 - **MCP de maintenance.** `maintenance_module_uninstall` prend `keepData` (défaut **vrai**, non destructif) ; `keepData: false` efface. Comme tout outil destructif, il reste soumis à la validation humaine.
+- **Balayage de conversion au démarrage (0.2.0).** À chaque démarrage, avant de servir la moindre page, le cœur range les « éteints » (ci-dessous), fait passer au catalogue les modules copiés par les toutes premières versions quand la dernière copie reçue du catalogue les connaît à la même version (sans réseau), lance les conversions de données en attente (une instance à la fois), puis note `core.legacyCleared`. Borné à 20 secondes ; ce qui n'est pas fini reprend au démarrage suivant. Tant que le marqueur manque, l'administration affiche un avertissement (le site public n'est pas touché) et la page *Entretien* (`/admin/maintenance/legacy`, outil MCP `maintenance_legacy`) dit ce qui reste. Code : `src/core/modules/legacySweep.ts`, `legacyReport.ts`.
 - **Migration des « éteints » (temporaire, retrait en 0.3.0).** Un site d'avant la 0.1.20 peut avoir des modules ou instances « éteints » : au premier démarrage (et après la restauration d'une ancienne sauvegarde), un module éteint est désinstallé et une instance éteinte retirée, **données gardées** (`src/core/modules/legacyOff.ts`). Les colonnes `enabled` restent dans la base pour cette seule lecture.
 
 ## Installer, publier, catalogue

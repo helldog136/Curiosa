@@ -120,6 +120,16 @@ function readPersisted(): { items: RecognizedItem[]; suggested: string[]; fetche
   } catch { return null; }
 }
 
+/**
+ * La dernière copie reçue de l'index, SANS réseau (balayage de conversion au démarrage, legacySweep.ts). Seulement si elle vient du dépôt du catalogue
+ * configuré aujourd'hui (une copie d'un autre dépôt ne dit rien de celui-ci) ; sinon liste vide. Ne lève jamais.
+ */
+export function readRecognizedCacheOffline(): RecognizedItem[] {
+  const kept = readPersisted();
+  if (!kept || !kept.origin || kept.origin !== resolveIndexRepo()) return [];
+  return kept.items.filter((c) => c.catalogueOrigin !== "extra");
+}
+
 /** Un catalogue injoignable n'est retenu que quelques secondes : « réessayez » doit pouvoir réussir sans attendre un quart d'heure. */
 const FAILED_TTL = 20_000;
 let memo: { at: number; key: string; result: RecognizedResult } | null = null;

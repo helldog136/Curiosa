@@ -252,8 +252,8 @@ export async function InstanceView({ id, query: sp }: { id: string; query: Recor
         )}
         {manage && dataStatus && (
           <div role="alert" className="space-y-2 rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm">
-            <p>{t(dataStatus.status === "newer" ? "migration.newer" : "migration.failed")}</p>
-            {dataStatus.error && <p className="font-mono text-xs">{dataStatus.error}</p>}
+            <p>{dataStatus.error === "floor" ? t("migration.floor", { from: dataStatus.from ?? "?", floor: dataStatus.floor ?? "?" }) : dataStatus.error === "timeout" ? t("migration.timeout") : t(dataStatus.status === "newer" ? "migration.newer" : "migration.failed")}</p>
+            {dataStatus.error && dataStatus.error !== "floor" && dataStatus.error !== "timeout" && <p className="font-mono text-xs">{dataStatus.error}</p>}
             <form action={retryMigrationAction.bind(null, instance.id)}><button className={ui.btn}>{t("migration.retry")}</button></form>
           </div>
         )}

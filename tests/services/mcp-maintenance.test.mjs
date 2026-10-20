@@ -87,10 +87,10 @@ const auditRows = (action) => db.prisma.auditLog.findMany({ where: { action: { s
 
 // ── Catalogue et défauts ────────────────────────────────────────────────────────────────────────────────────────────────────
 
-test("catalogue : les 15 outils (niveaux 1, 2 et 3) avec les bonnes annotations ; aucun n'est actif par défaut ; un destructeur n'est jamais actif d'office", async () => {
+test("catalogue : les 16 outils (niveaux 1, 2 et 3) avec les bonnes annotations ; aucun n'est actif par défaut ; un destructeur n'est jamais actif d'office", async () => {
   const tools = await LIST();
   assert.deepEqual(tools.map((t) => t.name), [
-    "maintenance_status", "maintenance_health", "maintenance_modules", "maintenance_updates", "maintenance_diagnose", "maintenance_audit", "maintenance_request_status",
+    "maintenance_status", "maintenance_health", "maintenance_modules", "maintenance_updates", "maintenance_diagnose", "maintenance_audit", "maintenance_request_status", "maintenance_legacy",
     "maintenance_check_updates", "maintenance_backup_run", "maintenance_module_reinstall", "maintenance_module_restart",
     "maintenance_module_update", "maintenance_modules_update_all", "maintenance_core_update", "maintenance_module_uninstall",
   ]);
@@ -109,7 +109,7 @@ test("accès : un jeton ordinaire ne voit AUCUN outil de maintenance ; le profil
   const plain = await T.createToken("Brouillons", "write", "o");
   assert.deepEqual((await listed(plain)).filter((n) => n.startsWith("maintenance_")), []);
   const { token } = await maintenanceToken();
-  assert.deepEqual(await listed(token), ["maintenance_status", "maintenance_health", "maintenance_modules", "maintenance_updates", "maintenance_diagnose", "maintenance_audit", "maintenance_request_status"]);
+  assert.deepEqual(await listed(token), ["maintenance_status", "maintenance_health", "maintenance_modules", "maintenance_updates", "maintenance_diagnose", "maintenance_audit", "maintenance_request_status", "maintenance_legacy"]);
 });
 
 test("accès : le niveau 2 et le niveau 3 s'accordent un à un ; un jeton en lecture seule n'en reçoit aucun, même accordé", async () => {

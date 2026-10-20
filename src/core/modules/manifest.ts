@@ -152,6 +152,18 @@ export const manifestSchema = z.object({
   seeds: z.array(z.object({ module: z.string().regex(/^[a-z][a-z0-9-]{1,39}$/), reason: localized })).max(3).optional(),
   /** Version de la STRUCTURE des données du module (stockage, réglages). À augmenter quand elle change : voir `migrations`. */
   dataVersion: z.number().int().min(1).max(10000).optional(),
+  /**
+   * (0.2.0) Plus petite version des données que cette version du module sait encore convertir. Une instance plus ancienne est mise à l'écart
+   * (« passez d'abord par une version intermédiaire ») au lieu d'être déclarée à jour. ≤ dataVersion. Un cœur ancien ignore la clé.
+   */
+  dataFloor: z.number().int().min(1).max(10000).optional(),
+  /**
+   * (0.2.0) Réglages qu'une version précédente déclarait et que le module reprend lui-même (`ctx.legacy`). JAMAIS affichés, même en mode avancé ;
+   * `secret` : la valeur ne doit jamais sortir de la mémoire. Une clé ici n'est pas dans `settings`. Un cœur ancien ignore la clé.
+   */
+  legacySettings: z.array(z.object({ key: z.string().regex(/^[a-zA-Z][a-zA-Z0-9_]{0,40}$/), secret: z.boolean().optional() })).max(20).optional(),
+  /** (0.2.0) Collections du stockage qu'une version précédente remplissait et que le module vide après reprise : comptées par le rapport d'entretien, jamais lues par le cœur. */
+  legacyCollections: z.array(z.string().regex(/^[a-zA-Z][a-zA-Z0-9_.-]{0,60}$/)).max(10).optional(),
   onboarding: z
     .object({
       home: z.object({ section: z.string(), count: z.number().int().min(1).max(50).optional() }).optional(),
@@ -181,6 +193,12 @@ export const manifestSchema = z.object({
   }
   if (new Set((m.seeds ?? []).map((x) => x.module)).size < (m.seeds ?? []).length) ctx.addIssue({ code: "custom", path: ["seeds"], message: "duplicate seed target" });
   for (const message of groupIssues(m.optionalGroups ?? [], m.settings)) ctx.addIssue({ code: "custom", path: ["optionalGroups"], message });
+  // Héritage (0.2.0) : une clé reprise n'est pas un réglage affiché ; plancher ≤ version des données.
+  const declared = new Set(m.settings.map((f) => f.key));
+  const legacy = m.legacySettings ?? [];
+  for (const [i, l] of legacy.entries()) if (declared.has(l.key)) ctx.addIssue({ code: "custom", path: ["legacySettings", i, "key"], message: `"${l.key}" is both a setting and a legacy setting` });
+  if (new Set(legacy.map((l) => l.key)).size < legacy.length) ctx.addIssue({ code: "custom", path: ["legacySettings"], message: "duplicate legacy setting" });
+  if (m.dataFloor !== undefined && m.dataFloor > (m.dataVersion ?? 1)) ctx.addIssue({ code: "custom", path: ["dataFloor"], message: "dataFloor must be ≤ dataVersion" });
 });
 
 export type ParsedManifest = z.infer<typeof manifestSchema>;

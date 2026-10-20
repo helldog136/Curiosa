@@ -320,7 +320,8 @@ test("code temporaire : la migration des éteints est signalée dans son fichier
   const file = fs.readFileSync("src/core/modules/legacyOff.ts", "utf8");
   assert.match(file, /TEMPORAIRE — À SUPPRIMER APRÈS LA /);
   assert.match(file, /0\.3\.0/);
-  assert.match(fs.readFileSync("src/instrumentation.ts", "utf8"), /retireLegacyOff/);
+  assert.match(fs.readFileSync("src/instrumentation.ts", "utf8"), /runLegacySweep/);
+  assert.match(fs.readFileSync("src/core/modules/legacySweep.ts", "utf8"), /await retireLegacyOff\(\)/, "le balayage du démarrage appelle la migration des éteints");
   assert.match(fs.readFileSync("tests/core/temporary-code.test.mjs", "utf8"), /legacyOff\.ts/);
 });
 

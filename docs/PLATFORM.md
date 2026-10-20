@@ -134,6 +134,14 @@ Ce n'est pas un service : les modules n'y écrivent rien. Le cœur tient les rô
 (`src/core/auth/access.ts` : `can()`, `isOwner()`, `accessGate`). Un module lit seulement `ctx.can("<droit local>")` dans l'administration, et peut protéger une
 `adminAction` par `{ right, run }` (décision : `src/core/modules/adminActionAccess.ts`). Voir [MODULES.md](MODULES.md) (« Droits ») et [SECURITE.md](SECURITE.md).
 
+## Balayage de conversion au démarrage : une fonctionnalité du cœur (0.2.0)
+
+Ce n'est pas un service : aucun module ne l'appelle. `register()` (`src/instrumentation.ts`) attend `runLegacySweep()` (`src/core/modules/legacySweep.ts`) avant que
+Next serve une requête : éteints rangés, lignes de modules héritées converties sans réseau quand c'est sûr, migrations de données en attente (une instance à la fois),
+valeurs vides des réglages hérités effacées, puis marqueur `core.legacyCleared`. Délai dur de 20 s, aucune attente réseau, idempotent et reprenable. Le rapport
+(`legacyReport.ts`) est en lecture seule : page d'admin *Entretien* et outil MCP `maintenance_legacy`. Les réglages hérités d'un module (`legacySettings`)
+passent par `ctx.legacy` (`legacySettings.ts`) : jamais affichés, jamais journalisés. Voir [MODULES.md](MODULES.md) (« Réglages hérités et plancher »).
+
 ## Sauvegarde et catalogue : des fonctionnalités du cœur
 
 - **Sauvegarde** (`core/backup/`, [BACKUP.md](BACKUP.md)) : un fichier chiffré (format OpenSSL, mot de passe choisi à chaque sauvegarde)
