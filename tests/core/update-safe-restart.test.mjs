@@ -19,26 +19,26 @@ import { freePort, health, installFakeSite, killAllUnder, startSupervised, until
 
 const SYSTEMD = (unit) => `0::/system.slice/${unit}\n`;
 const P = (pid, ppid, cwd, args, cgroup = SYSTEMD("curiosa.service")) => ({ pid, ppid, state: "S", cwd, args, cgroup });
-const SITE = "/var/www/helldog136";
+const SITE = "/var/www/monsite";
 /** L'incident : unité npx (3 processus) + pm2 (npm start → sh → next-server) sur le même dossier, plus des voisins qui n'ont rien à voir. */
 const incident = () => [
   P(1, 0, "/", ["/sbin/init"], "0::/init.scope\n"),
   P(100, 1, SITE, ["npm exec next start -p 3000"]),
   P(101, 100, SITE, ["sh", "-c", "next start -p 3000"]),
   P(102, 101, SITE, ["next-server (v16.3.8)"]),
-  P(200, 1, "/root/.pm2", ["PM2 v5.4.2: God Daemon (/root/.pm2)"], SYSTEMD("pm2-helldog136.service")),
-  P(201, 200, SITE, ["npm", "start"], SYSTEMD("pm2-helldog136.service")),
-  P(202, 201, SITE, ["sh", "-c", "next start"], SYSTEMD("pm2-helldog136.service")),
-  P(300, 1, "/var/www/rosaliax", ["next-server (v16.3.8)"], SYSTEMD("rosaliax.service")),
-  P(301, 1, "/var/www/helldog136-autre", ["next-server (v16.3.8)"], SYSTEMD("autre.service")),
-  P(400, 1, "/opt/fivem", ["/opt/fivem/FXServer", "+exec", "server.cfg"], SYSTEMD("fivem.service")),
+  P(200, 1, "/root/.pm2", ["PM2 v5.4.2: God Daemon (/root/.pm2)"], SYSTEMD("pm2-monsite.service")),
+  P(201, 200, SITE, ["npm", "start"], SYSTEMD("pm2-monsite.service")),
+  P(202, 201, SITE, ["sh", "-c", "next start"], SYSTEMD("pm2-monsite.service")),
+  P(300, 1, "/var/www/autresite", ["next-server (v16.3.8)"], SYSTEMD("autresite.service")),
+  P(301, 1, "/var/www/monsite-autre", ["next-server (v16.3.8)"], SYSTEMD("autre.service")),
+  P(400, 1, "/opt/jeu", ["/opt/jeu/serveur-de-jeu", "+exec", "server.cfg"], SYSTEMD("jeu.service")),
   P(500, 1, SITE, ["node", "scripts/update.mjs", "v0.1.27"]),
   P(600, 1, null, ["next-server (v16.3.8)"], null),
 ];
 
 test("reconnaître le site : next, next-server, npm exec next, npm start, sh -c next — jamais l'outil de mise à mise à jour ni un build", () => {
   for (const ok of [["next-server (v16.3.8)"], ["npm exec next start -p 3000"], ["sh", "-c", "next start -p 3000"], ["node", "node_modules/next/dist/bin/next", "start"], ["/usr/bin/npx", "next", "start"], ["npm", "start"], ["npm", "run", "start"], ["node", "/usr/lib/node_modules/npm/bin/npm-cli.js", "start"]]) assert.equal(isSiteCommand(ok), true, ok.join(" "));
-  for (const no of [[], ["node", "scripts/update.mjs", "v1.2.3"], ["npm", "run", "build"], ["node", "node_modules/next/dist/bin/next", "build"], ["bash"], ["/opt/fivem/FXServer"], ["sh", "-c", "tar -xzf x.tgz"], ["vim", "notes.txt"]]) assert.equal(isSiteCommand(no), false, no.join(" "));
+  for (const no of [[], ["node", "scripts/update.mjs", "v1.2.3"], ["npm", "run", "build"], ["node", "node_modules/next/dist/bin/next", "build"], ["bash"], ["/opt/jeu/serveur-de-jeu"], ["sh", "-c", "tar -xzf x.tgz"], ["vim", "notes.txt"]]) assert.equal(isSiteCommand(no), false, no.join(" "));
 });
 
 test("arrêt : TOUS les processus du site (wrapper, shell, serveur, ET le second gestionnaire), enfants d'abord ; aucun processus étranger", () => {
@@ -74,7 +74,7 @@ test("findServerPid : le serveur (pas son enveloppe), de préférence celui qui 
 
 test("cgroup : l'unité systemd est lue en cgroup v2 comme v1 ; illisible → null", () => {
   assert.equal(cgroupUnit("0::/system.slice/curiosa.service\n"), "curiosa.service");
-  assert.equal(cgroupUnit("12:pids:/system.slice/pm2-helldog136.service\n1:name=systemd:/system.slice/pm2-helldog136.service\n0::/system.slice/pm2-helldog136.service/sub"), "pm2-helldog136.service");
+  assert.equal(cgroupUnit("12:pids:/system.slice/pm2-monsite.service\n1:name=systemd:/system.slice/pm2-monsite.service\n0::/system.slice/pm2-monsite.service/sub"), "pm2-monsite.service");
   assert.equal(cgroupUnit("0::/user.slice/user-1000.slice/session-3.scope\n"), "session-3.scope");
   assert.equal(cgroupUnit("0::/\n"), null);
   assert.equal(cgroupUnit(null), null);
@@ -125,19 +125,19 @@ test("port du site : adresse de contrôle, puis PORT, puis le port réel du serv
 test("détection préventive : second gestionnaire du MÊME site (dossier ou port) et unité npx ; jamais d'alarme pour un voisin sans rapport", () => {
   const warn = (procs, over = {}) => detectHosting({ appDir: SITE, port: 3000, procs, selfPid: 500, serverPid: 102, ...over });
   const w = warn(incident());
-  assert.deepEqual(w.map((x) => [x.code, x.manager ?? null, x.unit ?? null]), [["npx", null, null], ["second-manager", "pm2", "pm2-helldog136.service"]]);
+  assert.deepEqual(w.map((x) => [x.code, x.manager ?? null, x.unit ?? null]), [["npx", null, null], ["second-manager", "pm2", "pm2-monsite.service"]]);
   // L'unité est propre (direct, sans npx) et seule : rien à dire — malgré un autre site, un pm2 sans rapport et un serveur de jeu.
   const clean = [
     P(1, 0, "/", ["init"], "0::/init.scope\n"), P(102, 1, SITE, ["next-server (v16.3.8)"]),
     P(200, 1, "/root/.pm2", ["PM2 v5 God Daemon"], SYSTEMD("pm2-bob.service")), P(201, 200, "/home/bob/app", ["npm", "start"], SYSTEMD("pm2-bob.service")), P(202, 201, "/home/bob/app", ["next-server (v16.3.8)"], SYSTEMD("pm2-bob.service")),
-    P(300, 1, "/var/www/rosaliax", ["next", "start", "-p", "3001"], SYSTEMD("rosaliax.service")), P(400, 1, "/opt/fivem", ["FXServer"], SYSTEMD("fivem.service")),
+    P(300, 1, "/var/www/autresite", ["next", "start", "-p", "3001"], SYSTEMD("autresite.service")), P(400, 1, "/opt/jeu", ["FXServer"], SYSTEMD("jeu.service")),
   ];
   assert.deepEqual(warn(clean), []);
   // Même port, autre dossier, autre gestionnaire (une application pm2 configurée sur ce port) : signalé.
   const samePort = [...clean, P(210, 200, "/home/bob/autre", ["sh", "-c", "next start -p 3000"], SYSTEMD("pm2-bob.service"))];
   assert.deepEqual(warn(samePort).map((x) => [x.code, x.manager]), [["second-manager", "pm2"]]);
-  // Le second site (rosaliax) sur SON port : jamais signalé quand c'est lui qu'on met à jour non plus.
-  assert.deepEqual(warn(clean, { appDir: "/var/www/rosaliax", port: 3001, serverPid: 300 }), []);
+  // Le second site (autresite) sur SON port : jamais signalé quand c'est lui qu'on met à jour non plus.
+  assert.deepEqual(warn(clean, { appDir: "/var/www/autresite", port: 3001, serverPid: 300 }), []);
   // Cgroups illisibles (autre utilisateur) : aucune conclusion hâtive.
   assert.deepEqual(warn([P(102, 1, SITE, ["next-server"], null), P(150, 1, SITE, ["npm", "start"], null)]).filter((x) => x.code === "second-manager"), []);
   assert.match(explainHosting(w[1]), /un seul gestionnaire par site/i);
@@ -161,9 +161,9 @@ test("diagnostic du port : qui tient le port, en mots simples et en français, a
   const procs = incident();
   const diag = (holderPids, over = {}) => diagnosePort({ appDir: SITE, port: 3000, procs, holders: { listening: true, pids: holderPids }, oldPids: new Set([100, 101, 102]), referenceCgroup: SYSTEMD("curiosa.service"), ...over });
   const pm2 = diag([202]);
-  assert.deepEqual([pm2.code, pm2.manager, pm2.unit, pm2.pid], ["other-manager", "pm2", "pm2-helldog136.service", 202]);
+  assert.deepEqual([pm2.code, pm2.manager, pm2.unit, pm2.pid], ["other-manager", "pm2", "pm2-monsite.service", 202]);
   assert.equal(explainBlocker(pm2, { serviceUnit: "curiosa.service" }),
-    "Le port 3000 est tenu par un autre gestionnaire : pm2 (pm2-helldog136.service) (processus 202 : sh -c next start). Il redémarre le site avant le nouveau : arrêtez-le (`pm2 list` puis `pm2 stop <nom>`, et `pm2 delete <nom>` puis `pm2 save` pour qu'il ne revienne pas), puis relancez le service (`sudo systemctl restart curiosa`). La nouvelle version est déjà installée.");
+    "Le port 3000 est tenu par un autre gestionnaire : pm2 (pm2-monsite.service) (processus 202 : sh -c next start). Il redémarre le site avant le nouveau : arrêtez-le (`pm2 list` puis `pm2 stop <nom>`, et `pm2 delete <nom>` puis `pm2 save` pour qu'il ne revienne pas), puis relancez le service (`sudo systemctl restart curiosa`). La nouvelle version est déjà installée.");
   assert.equal(diag([102]).code, "stuck", "l'ancien serveur qui ne part pas");
   assert.equal(diag([]).code, "unknown-owner");
   assert.equal(diag([], { holders: { listening: false, pids: [] } }), null, "port libre : rien à dire");
@@ -174,13 +174,13 @@ test("diagnostic du port : qui tient le port, en mots simples et en français, a
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-other-"));
   try {
     fs.writeFileSync(path.join(dir, "release.json"), "{}");
-    const other = diagnosePort({ appDir: SITE, port: 3001, procs: [P(300, 1, dir, ["next-server (v16.3.8)"], SYSTEMD("rosaliax.service"))], holders: { listening: true, pids: [300] }, oldPids: new Set(), referenceCgroup: SYSTEMD("curiosa.service") });
+    const other = diagnosePort({ appDir: SITE, port: 3001, procs: [P(300, 1, dir, ["next-server (v16.3.8)"], SYSTEMD("autresite.service"))], holders: { listening: true, pids: [300] }, oldPids: new Set(), referenceCgroup: SYSTEMD("curiosa.service") });
     assert.equal(other.code, "other-site");
     assert.match(explainBlocker(other), new RegExp(`^Le port 3001 est tenu par un autre site de ce serveur : ${dir.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} \\(processus 300`));
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
   const game = diag([400]);
   assert.equal(game.code, "other-program");
-  assert.match(explainBlocker(game), /autre programme de ce serveur \(dossier \/opt\/fivem\)/);
+  assert.match(explainBlocker(game), /autre programme de ce serveur \(dossier \/opt\/jeu\)/);
   assert.match(explainBlocker({ code: "unknown-owner", port: 3000 }), /ss -ltnp \| grep :3000/);
 });
 
@@ -250,7 +250,7 @@ test("deux gestionnaires (systemd + pm2) sur le même dossier et le même port :
     assert.ok(await until(() => health(port)));
     const pm2 = startSupervised({ rootDir: w.root, appDir: w.s.app, port, delay: 0, tree: "sh" }); // plante en boucle : le port est pris
     await new Promise((r) => setTimeout(r, 600));
-    const sys = withCgroups(w.sys, { [systemd.pid]: "curiosa.service", [pm2.pid]: "pm2-helldog136.service" });
+    const sys = withCgroups(w.sys, { [systemd.pid]: "curiosa.service", [pm2.pid]: "pm2-monsite.service" });
     w.s.build("1.0.1");
     const serverPid = findServerPid({ appDir: w.s.app, port, sys });
     // Le pm2 prend le port dès que l'ancien serveur tombe (il relance sans délai) : le nouveau ne pourra jamais démarrer.
@@ -259,8 +259,8 @@ test("deux gestionnaires (systemd + pm2) sur le même dossier et le même port :
     const st = readState(w.s.dataDir);
     assert.deepEqual([r.ok, r.error], [false, "port-busy"]);
     assert.deepEqual([st.status, st.error, st.restart], ["failed", "port-busy", "blocked"]);
-    assert.deepEqual([st.diagnostic.code, st.diagnostic.manager, st.diagnostic.unit, st.diagnostic.port], ["other-manager", "pm2", "pm2-helldog136.service", port]);
-    assert.match(st.diagnostic.message, new RegExp(`^Le port ${port} est tenu par un autre gestionnaire : pm2 \\(pm2-helldog136\\.service\\)`));
+    assert.deepEqual([st.diagnostic.code, st.diagnostic.manager, st.diagnostic.unit, st.diagnostic.port], ["other-manager", "pm2", "pm2-monsite.service", port]);
+    assert.match(st.diagnostic.message, new RegExp(`^Le port ${port} est tenu par un autre gestionnaire : pm2 \\(pm2-monsite\\.service\\)`));
     const log = fs.readFileSync(path.join(w.s.dataDir, "update", "update.log"), "utf8");
     assert.match(log, /✘ Le port \d+ est tenu par un autre gestionnaire/);
     assert.match(log, /arrêtez-le \(`pm2 list`/);
@@ -297,7 +297,7 @@ test("le site de la machine voisine n'est jamais touché : deux installations c�
     const a = startSupervised({ rootDir: w.root, appDir: w.s.app, port: portA, delay: 600, tree: "npx" });
     const b = startSupervised({ rootDir: w.root, appDir: dirB, port: portB, delay: 600, tree: "npx" });
     assert.ok(await until(() => health(portA)) && await until(() => health(portB)));
-    const sys = withCgroups(w.sys, { [a.pid]: "helldog136.service", [b.pid]: "rosaliax.service" });
+    const sys = withCgroups(w.sys, { [a.pid]: "monsite.service", [b.pid]: "autresite.service" });
     const pidsB = findSiteProcesses({ appDir: dirB, procs: sys.procs() }).map((p) => p.pid);
     assert.equal(pidsB.length, 3);
     const killed = []; const spy = { ...sys, kill: (pid, sig) => { killed.push(pid); return sys.kill(pid, sig); } };
@@ -463,7 +463,7 @@ test("chaîne : un port tenu par un autre gestionnaire à l'étape 1 arrête tou
     assert.ok(await until(() => health(port)));
     const pm2 = startSupervised({ rootDir: w.root, appDir: w.s.app, port, delay: 0, tree: "sh" });
     await new Promise((r) => setTimeout(r, 500));
-    const sys = withCgroups(w.sys, { [systemd.pid]: "curiosa.service", [pm2.pid]: "pm2-helldog136.service" });
+    const sys = withCgroups(w.sys, { [systemd.pid]: "curiosa.service", [pm2.pid]: "pm2-monsite.service" });
     w.s.build("1.1.0"); w.s.build("1.2.0");
     const r = await runUpdateChain({ ...opts(w.s), tag: "v1.2.0", exec: w.s.make(), supervised: true, serverPid: findServerPid({ appDir: w.s.app, port, sys }), port, sys, timeouts: fast,
       fetchText: published({ "v1.2.0": { minFrom: "1.1.0" } }), waitForSite: async () => assert.fail("pas d'attente"), findServerPid: () => undefined });
