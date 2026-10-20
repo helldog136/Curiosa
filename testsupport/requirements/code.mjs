@@ -32,6 +32,7 @@ const requirements = [
         for (const [k, v] of Object.entries(g)) {
           if (group === "tasks") { if (!v || !FN(v.run)) out.push(`la tâche « ${k} » doit avoir une fonction « run »`); }
           else if (group === "services") { for (const [meth, f] of Object.entries(v ?? {})) if (!FN(f)) out.push(`la méthode « ${meth} » du service « ${k} » doit être une fonction`); }
+          else if (group === "adminActions" && v && FN(v.run)) continue; // forme { right, run } (cœur 0.2.0)
           else if (!FN(v)) out.push(`${group}.${k} doit être une fonction`);
         }
       }
