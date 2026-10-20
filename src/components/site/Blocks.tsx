@@ -14,7 +14,8 @@ import { Markdown } from "./Markdown";
 import { ModuleForm } from "./ModuleForm";
 import { CopyCode } from "./CopyCode";
 import { CopyText } from "./CopyText";
-import { AdminBlockForm, RowActionButton } from "../admin/AdminBlocks";
+import { AdminBlockForm, RowActionButton, type FileLabels } from "../admin/AdminBlocks";
+import { ui } from "../admin/ui";
 import { GridEditor } from "../admin/GridEditor";
 import { floatingLabels } from "../admin/floating";
 import { SuggestInstall } from "../admin/SuggestInstall";
@@ -191,7 +192,25 @@ export async function Blocks({ blocks, locale, adminInstanceId: panelInstanceId,
         break;
       case "adminForm":
         // Les formulaires d'admin n'existent que dans le panneau d'admin (jamais sur le site public).
-        if (adminInstanceId) out.push(<AdminBlockForm key={i} instanceId={adminInstanceId} block={block} entry={entryScope} />);
+        if (adminInstanceId) {
+          // Textes du champ fichier (envoi par la route du cœur, pas par une action serveur) : seulement si le formulaire en a un.
+          const t = makeTranslator(locale);
+          const fileLabels: FileLabels | undefined = block.fields.some((f) => f.kind === "file")
+            ? { tooBig: t("transfer.file.tooLarge"), sending: t("transfer.sending"), failed: t("transfer.failed"), done: t("transfer.done") }
+            : undefined;
+          out.push(<AdminBlockForm key={i} instanceId={adminInstanceId} block={block} entry={entryScope} fileLabels={fileLabels} />);
+        }
+        break;
+      case "download":
+        // Téléchargement d'administration : un petit formulaire POST (le navigateur envoie alors l'en-tête Origin, que la route du cœur contrôle). Jamais sur le site public.
+        if (panelInstanceId && !entryScope && /^[A-Za-z0-9_-]{1,64}$/.test(block.name)) {
+          out.push(
+            <form key={i} method="post" action={`/api/admin/modules/${encodeURIComponent(panelInstanceId)}/download/${encodeURIComponent(block.name)}`} className="flex">
+              {Object.entries(block.params ?? {}).slice(0, 20).map(([k, v]) => <input key={k} type="hidden" name={k} value={String(v).slice(0, 1000)} />)}
+              <button type="submit" className={ui.btn}>{block.label}</button>
+            </form>,
+          );
+        }
         break;
       case "gridEditor":
         if (adminInstanceId && !entryScope) out.push(<GridEditor key={i} instanceId={adminInstanceId} block={block} floating={floatingLabels(makeTranslator(locale))} />);

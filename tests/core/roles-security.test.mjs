@@ -409,7 +409,7 @@ test("ctx.can est faux hors administration : route publique, MCP, tâche planifi
   const users = [];
   const walk = (d) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const p = `${d}/${e.name}`; if (e.isDirectory()) walk(p); else if (/\.(ts|tsx)$/.test(e.name) && /forViewer\(/.test(read(p))) users.push(p); } };
   walk("src");
-  assert.deepEqual(users.sort(), [`${PANEL}/entries/panel-actions.ts`, `${PANEL}/instances/[id]/InstanceView.tsx`, `${PANEL}/instances/module-actions.ts`, "src/core/modules/entryPanelsLoad.ts"]);
+  assert.deepEqual(users.sort(), [`${PANEL}/entries/panel-actions.ts`, `${PANEL}/instances/[id]/InstanceView.tsx`, `${PANEL}/instances/module-actions.ts`, "src/core/modules/adminTransferDeps.ts", "src/core/modules/entryPanelsLoad.ts"]);
 });
 
 test("mot de passe temporaire : prioritaire sur tout droit, tout palier et tout rôle personnalisé", async () => {

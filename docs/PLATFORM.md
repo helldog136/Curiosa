@@ -134,6 +134,12 @@ Ce n'est pas un service : les modules n'y écrivent rien. Le cœur tient les rô
 (`src/core/auth/access.ts` : `can()`, `isOwner()`, `accessGate`). Un module lit seulement `ctx.can("<droit local>")` dans l'administration, et peut protéger une
 `adminAction` par `{ right, run }` (décision : `src/core/modules/adminActionAccess.ts`). Voir [MODULES.md](MODULES.md) (« Droits ») et [SECURITE.md](SECURITE.md).
 
+## Téléchargements et fichiers de l'administration : une fonctionnalité du cœur (0.2.0)
+
+Ce n'est pas un service : un module déclare `adminDownloads` (un générateur de texte) ou un champ `kind: "file"`, et le cœur fait le reste. Deux routes authentifiées sous
+`/api/admin/modules/[instance]/` (`download/[name]` et `action/[action]`, code dans `src/core/modules/adminTransfer.ts` et `adminTransferHandlers.ts`) appliquent le droit, l'audit, les limites
+(512 Mo, 10 min, 5 Mo par fichier) et les en-têtes sûrs. Les routes de modules `/m/…` restent publiques : rien de privé n'y passe. Voir [MODULES.md](MODULES.md) et [SECURITE.md](SECURITE.md).
+
 ## Sauvegarde et catalogue : des fonctionnalités du cœur
 
 - **Sauvegarde** (`core/backup/`, [BACKUP.md](BACKUP.md)) : un fichier chiffré (format OpenSSL, mot de passe choisi à chaque sauvegarde)

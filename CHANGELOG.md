@@ -28,6 +28,8 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Un module peut fonctionner « mieux avec » un autre, sans l'exiger.** Ce module-là n'est jamais installé tout seul, et vous pouvez le retirer quand vous voulez.
 - **Un module peut vous proposer d'installer ce qui lui manque.** Seul le propriétaire du site voit le bouton « Installer » ; « Ne plus proposer » est retenu jusqu'à ce que vous demandiez de revoir les suggestions.
 - **Les modules d'une liste ajoutée en plus du catalogue officiel sont signalés « non vérifiés ».** Ils ne s'installent jamais tout seuls : vous devez lire l'avertissement et cocher une case.
+- **Un module peut proposer un fichier à télécharger depuis l'administration.** Un export de fiches, par exemple. Il faut le droit prévu par le module, chaque téléchargement est noté dans le journal d'audit, et il est coupé s'il dépasse 512 Mo ou 10 minutes.
+- **Un module peut vous demander un fichier texte (CSV, par exemple) de 5 Mo au plus.** Si le fichier est trop gros, n'est pas du texte ou n'est pas en UTF-8, un message vous dit quoi faire. Le reste de l'administration garde sa limite habituelle.
 
 ### Pour les développeurs
 
@@ -46,6 +48,9 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - `ctx.api.services.providers(service)` et `call(service, method, args, { provider })` : instance choisie, revalidée côté serveur, sans réplique sauf le maître ; fournisseur disparu → `unavailable`. `minCore: "0.2.0"` pour s'en servir.
 - `CatalogueEntry.origin` (`official` | `extra`) : l'extra passe après l'officiel, n'est jamais installé par la cascade (raison `extra`) et exige `installFromCatalogue(id, { confirmExtra: true })`.
 - Bloc `suggestInstall { service, min?, reason }` (panneau d'admin) ; réglage `suggest.dismissed.<instance>.<service>` ; audit `module.install.suggested`. Code : `core/modules/suggestInstall.ts`. Tests : `deps-order-v2.test.mjs`, `suggest-install.test.mjs`.
+- `adminDownloads` (contrat 8) : `POST /api/admin/modules/[instance]/download/[name]`, flux tiré d'un générateur asynchrone (1 Mo au plus par morceau), droit `<module>:open` + `right`, audit `module.<clé>.download.<nom>` puis `….end`, bloc `download`. Limites : 512 Mo, 10 min, 60 s de silence, 2 par personne et 4 au total. Code : `core/modules/adminTransfer*.ts`.
+- Champ `kind: "file"` (`accept`, `maxBytes` ≤ 5 Mo) : formulaire envoyé à `POST /api/admin/modules/[instance]/action/[action]` (la limite de 1 Mo des actions serveur n'est pas relevée), lecture comptée et coupée, UTF-8 strict, BOM retiré, texte transmis dans `values[nom]`. Un cœur plus ancien ignore `adminDownloads` et le bloc `download` ; il rend un champ fichier qu'il n'envoie pas : exiger `minCore` 0.2.0.
+- Kit de test : exigence `downloads.bounded` (conseil) ; `fakeCtx().api.store.page`. Tests : `tests/core/admin-transfer.test.mjs`.
 
 ## 0.1.28
 

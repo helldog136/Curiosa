@@ -311,6 +311,13 @@ Une action renvoie `{ ok }` (message vert), `{ error }` (message rouge) et/ou `{
 (champs `text`, `textarea`, `email`, `url`, `number`, `date`, `select`, `hidden`, `image`) poste sur une action ; les `adminForm` ne s'affichent jamais sur le site public. Permission : `admin`.
 Voir `adminPanel` et `adminActions` dans l'exemple (modifier un message : `?edit=<id>` ouvre un `adminForm`).
 
+### Un export à télécharger, un fichier à envoyer (`adminDownloads`, champ `file`)
+
+(Cœur 0.2.0, `minCore` 0.2.0.) Un export contient des données personnelles : ne le mettez **jamais** dans une route (les routes sont publiques). Déclarez-le dans `adminDownloads` avec un générateur
+qui lit le stockage par pages et produit le texte ligne par ligne, puis ajoutez un bloc `{ type: "download", name: "contacts", label: "Télécharger (CSV)" }` : le cœur vérifie le droit (`right`, déclaré dans `rights`), l'écrit
+dans le journal d'audit et borne la taille et la durée. À l'inverse, un champ `kind: "file"` dans un `adminForm` laisse choisir un fichier texte (CSV…) de 5 Mo au plus ; l'action le reçoit en texte dans `values`.
+Détails et limites dans [MODULES.md](MODULES.md) (« `adminDownloads` »).
+
 ### Ajouter une section à la fiche d'un autre module (`entryPanels`)
 
 Votre module peut aussi ajouter **une section à la fiche d'une entrée d'un autre module** — par exemple une commande de chat dans la fiche d'un sponsor — sans que ce module le sache. Vous déclarez la section

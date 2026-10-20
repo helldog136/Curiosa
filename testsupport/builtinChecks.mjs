@@ -43,7 +43,7 @@ export function permissionsFromDefinition(definition) {
   if (definition.page) need.push(["pages", "le code définit une page publique"]);
   if (Object.keys(definition.mcp ?? {}).length) need.push(["mcp", "le code implémente des actions MCP"]);
   if (definition.filters) need.push(["filters", "le code définit des filtres"]);
-  if (definition.adminPanel || Object.keys(definition.adminActions ?? {}).length || Object.keys(definition.entryPanels ?? {}).length) need.push(["admin", "le code définit un panneau, des actions d'administration ou des sections d'éditeur d'entrée"]);
+  if (definition.adminPanel || Object.keys(definition.adminActions ?? {}).length || Object.keys(definition.adminDownloads ?? {}).length || Object.keys(definition.entryPanels ?? {}).length) need.push(["admin", "le code définit un panneau, des actions ou des téléchargements d'administration ou des sections d'éditeur d'entrée"]);
   return need.map(([permission, why]) => ({ permission, why }));
 }
 
