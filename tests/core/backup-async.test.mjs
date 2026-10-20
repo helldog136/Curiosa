@@ -52,10 +52,10 @@ test("chiffrement : synchrone et asynchrone se lisent l'un l'autre ; mauvais mot
 });
 
 test("compatibilité : une archive fabriquée par l'ANCIEN code (fixture) se lit, et ce que l'on écrit se lit avec openssl (format inchangé)", async () => {
-  const enc = fs.readFileSync(path.join(FIX, "ancien-code.tar.gz.enc"));
+  const enc = fs.readFileSync(path.join(FIX, "ancien-code.chiffre.bin"));
   const dec = await C.decryptBackupAsync(enc, "mot-de-passe-de-reference");
   assert.equal(dec.ok, true);
-  assert.ok(dec.plain.equals(fs.readFileSync(path.join(FIX, "ancien-code.tar.gz"))));
+  assert.ok(dec.plain.equals(fs.readFileSync(path.join(FIX, "ancien-code.plain.tar.gz"))));
   const files = await T.readTarGzAsync(dec.plain);
   assert.deepEqual(files.map((f) => f.path), ["README.txt", "readable/a/é-1.md", "data/big.json"]);
   assert.equal(JSON.parse(files[2].content.toString()).length, 300);
