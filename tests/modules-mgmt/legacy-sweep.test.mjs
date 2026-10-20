@@ -339,7 +339,8 @@ test("rapport à zéro sur une base propre ; reprises pas faites et collections 
 test("garde : marqueur absent → avertissement dans l'admin seulement ; le site public ne dépend pas du marqueur", () => {
   const layout = fs.readFileSync("src/app/admin/(panel)/layout.tsx", "utf8");
   assert.match(layout, /legacyConversionPending\(\)/);
-  assert.match(layout, /data-testid="legacy-banner"/);
+  assert.match(layout, /<LegacyBanner /);
+  assert.match(fs.readFileSync("src/components/admin/LegacyBanner.tsx", "utf8"), /data-testid="legacy-banner"/);
   const walk = (d) => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)]));
   const pub = walk("src/app").filter((f) => !f.includes(`${path.sep}admin${path.sep}`) && /\.(ts|tsx)$/.test(f));
   for (const f of pub) assert.doesNotMatch(fs.readFileSync(f, "utf8"), /legacyCleared|legacyConversionPending|legacyReport/, `${f} : le site public ne doit pas dépendre de la conversion`);
@@ -359,4 +360,78 @@ test("kit de test : fakeCtx({ legacy }) imite ctx.legacy (clé non déclarée re
   await ctx.legacy.clear("clientSecret");
   assert.deepEqual(ctx.calls.legacyCleared, ["clientSecret"]);
   assert.equal(await ctx.legacy.get("clientSecret"), null);
+});
+
+/* ───────────── D4 : un module hérité que le catalogue ne propose plus ───────────── */
+
+test("module hérité absent du catalogue : état « absent » (jamais « convertible ») ; sans copie du catalogue : « unknown »", async () => {
+  await module("vieux", { version: "0.1.0" }, "export default {};", { source: "builtin", repoUrl: null });
+  await module("agenda", { version: "2.0.0" }, "export default {};", { source: "bundled", repoUrl: null });
+  assert.deepEqual((await Rp.legacyReport()).sourceRows.map((r) => [r.id, r.state]), [["agenda", "unknown"], ["vieux", "unknown"]], "pas de catalogue reçu : on ne suppose rien");
+  cachedCatalogue([{ id: "agenda", repo: "https://github.com/exemple/modules", ref: "v5.0.0", subdir: "modules/agenda", version: "2.1.0", apiVersion: 2 }]);
+  assert.deepEqual((await Rp.legacyReport()).sourceRows.map((r) => [r.id, r.state]), [["agenda", "convertible"], ["vieux", "absent"]]);
+});
+
+test("« garder tel quel » : un module absent du catalogue ne retient plus la mise à niveau ; le marqueur est posé ; s'il revient au catalogue, il retient de nouveau", async () => {
+  const { dismissLegacyRow, undoDismissLegacyRow, readDismissed } = await import("@/core/modules/legacyDismiss");
+  await module("vieux", { version: "0.1.0" }, "export default {};", { source: "builtin", repoUrl: null });
+  await module("agenda", { version: "2.0.0" }, "export default {};", { source: "bundled", repoUrl: null });
+  cachedCatalogue([{ id: "agenda", repo: "https://github.com/exemple/modules", ref: "v5.0.0", subdir: "modules/agenda", version: "2.1.0", apiVersion: 2 }]);
+  await S.runLegacySweep(silent);
+  assert.equal(await marker(), null);
+  await dismissLegacyRow("vieux");
+  await dismissLegacyRow("agenda");   // convertible : la mise à jour le règle, « garder » n'y change rien
+  let r = await Rp.legacyReport();
+  assert.deepEqual(r.sourceRows.map((x) => x.id), ["agenda"]);
+  assert.deepEqual(r.keptRows, [{ id: "vieux", version: "0.1.0" }]);
+  assert.equal(r.totals.keptRows, 1);
+  assert.equal(r.converted, false, "agenda retient encore");
+  assert.equal(Rp.legacyStatus(r), "pending");
+  await prisma.module.delete({ where: { id: "agenda" } });   // le propriétaire l'a retiré
+  r = await Rp.legacyReport();
+  assert.equal(r.converted, true);
+  assert.equal(r.clean, false, "gardé tel quel : pas « rien à signaler »");
+  assert.equal(Rp.legacyStatus(r), "almost", "plus rien ne retient, marqueur pas encore posé");
+  const done = await S.runLegacySweep(silent);
+  assert.equal(done.done, true);
+  assert.notEqual(await marker(), null);
+  assert.equal(Rp.legacyStatus(await Rp.legacyReport()), "done");
+  assert.equal((await Rp.legacyReportForAssistant()).oldModulesKeptAsTheyAre.length, 1);
+  // Le catalogue reprend le module : il redevient à convertir, le marqueur tombe au balayage suivant.
+  cachedCatalogue([{ id: "vieux", repo: "https://github.com/exemple/modules", ref: "v5.0.0", subdir: "modules/vieux", version: "0.2.0", apiVersion: 2 }]);
+  r = await Rp.legacyReport();
+  assert.deepEqual(r.sourceRows.map((x) => [x.id, x.state]), [["vieux", "convertible"]]);
+  assert.equal(Rp.legacyStatus(r), "again", "marqueur posé mais un élément est revenu : jamais « terminée »");
+  await S.runLegacySweep(silent);
+  assert.equal(await marker(), null);
+  // Annuler le choix.
+  cachedCatalogue([{ id: "autre", repo: "https://github.com/exemple/modules", ref: "v5.0.0", subdir: "modules/autre", version: "1.0.0", apiVersion: 2 }]);
+  assert.equal((await Rp.legacyReport()).keptRows.length, 1);
+  await undoDismissLegacyRow("vieux");
+  assert.deepEqual(await readDismissed(), ["agenda"]);
+  assert.equal((await Rp.legacyReport()).totals.sourceRows, 1);
+});
+
+test("module retiré par l'administrateur (données gardées) : la ligne disparaît, le marqueur peut être posé", async () => {
+  const { uninstallModule } = await import("@/core/modules/installer");
+  await module("vieux", { version: "0.1.0" }, "export default {};", { source: "builtin", repoUrl: null });
+  cachedCatalogue([{ id: "autre", repo: "https://github.com/exemple/modules", ref: "v5.0.0", subdir: "modules/autre", version: "1.0.0", apiVersion: 2 }]);
+  assert.equal((await S.runLegacySweep(silent)).done, false);
+  assert.equal((await uninstallModule("vieux", { keepData: true })).ok, true);
+  assert.equal((await S.runLegacySweep(silent)).done, true);
+});
+
+test("page Entretien : un seul message, jamais « terminée » avec des éléments à faire ; le bandeau de l'admin est caché sur cette page ; actions réservées au propriétaire", () => {
+  for (const [marker, converted, expected] of [[{ at: "x" }, true, "done"], [{ at: "x" }, false, "again"], [null, true, "almost"], [null, false, "pending"]]) assert.equal(Rp.legacyStatus({ marker, converted }), expected);
+  const banner = fs.readFileSync("src/components/admin/LegacyBanner.tsx", "utf8");
+  assert.match(banner, /usePathname/);
+  assert.match(banner, /pathname === LEGACY_PAGE/);
+  const actions = fs.readFileSync("src/app/admin/(panel)/maintenance/legacy/actions.ts", "utf8");
+  for (const fn of ["keepLegacyRowAction", "undoKeepLegacyRowAction", "removeLegacyRowAction"]) assert.match(actions, new RegExp(`export async function ${fn}[^]*?adminCtx\\("owner"\\)`), fn);
+  const page = fs.readFileSync("src/app/admin/(panel)/maintenance/legacy/page.tsx", "utf8");
+  assert.match(page, /legacyStatus\(r\)/);
+  assert.match(page, /RemoveChoices/);
+  const fr = JSON.parse(fs.readFileSync("src/locales/fr.json", "utf8")), en = JSON.parse(fs.readFileSync("src/locales/en.json", "utf8"));
+  for (const k of Object.keys(fr).filter((x) => x.startsWith("legacy.") || x.startsWith("audit.action.core.legacy"))) assert.ok(en[k], `${k} sans anglais`);
+  for (const k of ["legacy.row.seedsMissing", "legacy.row.collections"]) for (const bad of [/reprise/i, /takeover/i]) { assert.doesNotMatch(fr[k], bad); assert.doesNotMatch(en[k], bad); }
 });

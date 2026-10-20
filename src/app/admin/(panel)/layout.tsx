@@ -6,6 +6,7 @@ import { CREDIT_URL } from "@/core/credit";
 import { BugReportLink } from "@/components/admin/BugReportLink";
 import { maintenanceSummary } from "@/core/maintenance/summary";
 import { legacyConversionPending } from "@/core/modules/legacyReport";
+import { LegacyBanner } from "@/components/admin/LegacyBanner";
 import { NavLink } from "@/components/admin/NavLink";
 import { NavGroup } from "@/components/admin/NavGroup";
 import { NAV_STATE_COOKIE, buildMenuLayout, extensionsBadge, parseNavState } from "@/core/modules/menuPlacement";
@@ -145,11 +146,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
       <main className="min-w-0 flex-1 p-6 md:p-10">
         <div className="mx-auto max-w-4xl">
           {legacyPending && (
-            <div role="status" data-testid="legacy-banner" className="mb-6 rounded-xl border border-amber-500/50 bg-amber-500/10 p-3.5 text-sm leading-6">
-              <p className="font-medium">{t("legacy.banner.title")}</p>
-              <p>{t("legacy.banner.text")}</p>
-              {isOwner(user) ? <a href="/admin/maintenance/legacy" className="font-medium text-accent underline">{t("legacy.banner.link")}</a> : <p className="text-muted">{t("legacy.banner.owner")}</p>}
-            </div>
+            <LegacyBanner title={t("legacy.banner.title")} text={t("legacy.banner.text")} link={isOwner(user) ? t("legacy.banner.link") : null} ownerNote={isOwner(user) ? null : t("legacy.banner.owner")} />
           )}
           <CropLabelsProvider advanced={advanced} labels={Object.fromEntries(CROP_LABEL_KEYS.map((k) => [k, t(`crop.${k}`)]))}>{children}</CropLabelsProvider></div>
       </main>

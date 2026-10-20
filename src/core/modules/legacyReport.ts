@@ -1,4 +1,6 @@
 import { prisma } from "@/core/db";
+import { getCachedCatalogue } from "./catalogue";
+import { readDismissed } from "./legacyDismiss";
 import { readGitManifest } from "./registry";
 import { isEmptyStored } from "./legacySettings";
 import type { ParsedManifest } from "./manifest";
@@ -20,9 +22,18 @@ export type LegacyMarker = { version: string; at: string; counts: Record<string,
 const LIST_MAX = 50;
 
 export type InstanceItem = { key: string; module: string; from: number; to: number };
+/**
+ * Où en est une ligne héritée ? « convertible » : le catalogue (dernière copie reçue) propose ce module, la mise à jour le fera passer au catalogue ;
+ * « absent » : le catalogue ne le propose plus, il ne passera jamais seul (l'administrateur choisit : le retirer, ou le garder tel quel) ;
+ * « unknown » : on n'a pas (ou plus) de copie du catalogue, on ne suppose rien.
+ */
+export type SourceRowState = "convertible" | "absent" | "unknown";
 export type LegacyReport = {
   marker: LegacyMarker | null;
-  sourceRows: { id: string; source: string; version: string }[];
+  /** Lignes héritées qui retiennent encore la mise à niveau (celles que l'administrateur a choisi de garder tel quel n'y sont plus : voir `keptRows`). */
+  sourceRows: { id: string; source: string; version: string; state: SourceRowState }[];
+  /** Modules hérités que l'administrateur a choisi de garder tels quels (absents du catalogue) : ils ne retiennent pas la mise à niveau. */
+  keptRows: { id: string; version: string }[];
   switchedOff: { modules: string[]; instances: string[] };
   behind: InstanceItem[];
   failed: (InstanceItem & { reason: "floor" | "timeout" | "error"; floor?: number })[];
@@ -32,12 +43,21 @@ export type LegacyReport = {
   legacyValues: { key: string; module: string; settings: string[] }[];
   orphans: { key: string; module: string; settings: string[] }[];
   /** Totaux exacts (les listes ci-dessus sont bornées). */
-  totals: { sourceRows: number; switchedOffModules: number; switchedOffInstances: number; behind: number; failed: number; newer: number; seedsMissing: number; collections: number; legacyValues: number; orphans: number };
+  totals: { sourceRows: number; keptRows: number; switchedOffModules: number; switchedOffInstances: number; behind: number; failed: number; newer: number; seedsMissing: number; collections: number; legacyValues: number; orphans: number };
   /** Rien ne retient la conversion : aucune ligne héritée, rien d'éteint, aucune instance en retard ou mise à l'écart faute de conversion. */
   converted: boolean;
   /** Rien du tout à signaler (rapport « à zéro »). */
   clean: boolean;
 };
+
+/**
+ * Le message unique de la page Entretien, toujours d'accord avec la liste : « done » (marqueur posé ET plus rien ne retient la mise à niveau),
+ * « again » (marqueur posé mais des éléments sont revenus), « almost » (plus rien ne retient, marqueur pas encore posé), « pending » (il reste des éléments).
+ */
+export function legacyStatus(r: Pick<LegacyReport, "marker" | "converted">): "done" | "again" | "almost" | "pending" {
+  if (r.marker) return r.converted ? "done" : "again";
+  return r.converted ? "almost" : "pending";
+}
 
 const cap = <T>(list: T[]): T[] => list.slice(0, LIST_MAX);
 
@@ -83,7 +103,13 @@ export async function legacyReport(): Promise<LegacyReport> {
     byInstance.set(id, m);
   }
 
-  const sourceRows = rows.filter((r) => r.source === "bundled" || r.source === "builtin").map((r) => ({ id: r.id, source: r.source, version: r.version }));
+  const market = getCachedCatalogue();
+  const dismissed = await readDismissed();
+  const stateOf = (id: string): SourceRowState => (market.length === 0 ? "unknown" : market.some((e) => e.id === id) ? "convertible" : "absent");
+  const heritage = rows.filter((r) => r.source === "bundled" || r.source === "builtin").map((r) => ({ id: r.id, source: r.source, version: r.version, state: stateOf(r.id) }));
+  // Garder tel quel n'est possible que pour un module que le catalogue ne propose plus : si le catalogue le reprend, il redevient à convertir.
+  const keptRows = heritage.filter((r) => r.state === "absent" && dismissed.includes(r.id)).map((r) => ({ id: r.id, version: r.version }));
+  const sourceRows = heritage.filter((r) => !keptRows.some((k) => k.id === r.id));
   const offModules = rows.filter((r) => !r.enabled).map((r) => r.id);
   const offInstances = instances.filter((i) => !i.enabled).map((i) => i.key);
   const behind: LegacyReport["behind"] = [], failed: LegacyReport["failed"] = [], newer: LegacyReport["newer"] = [];
@@ -124,14 +150,14 @@ export async function legacyReport(): Promise<LegacyReport> {
   }
 
   const totals = {
-    sourceRows: sourceRows.length, switchedOffModules: offModules.length, switchedOffInstances: offInstances.length,
+    sourceRows: sourceRows.length, keptRows: keptRows.length, switchedOffModules: offModules.length, switchedOffInstances: offInstances.length,
     behind: behind.length, failed: failed.length, newer: newer.length, seedsMissing: seedsMissing.length,
     collections: collections.length, legacyValues: legacyValues.length, orphans: orphans.length,
   };
   const converted = !totals.sourceRows && !totals.switchedOffModules && !totals.switchedOffInstances && !totals.behind && !totals.failed;
   return {
     marker: await readLegacyMarker(),
-    sourceRows: cap(sourceRows), switchedOff: { modules: cap(offModules), instances: cap(offInstances) },
+    sourceRows: cap(sourceRows), keptRows: cap(keptRows), switchedOff: { modules: cap(offModules), instances: cap(offInstances) },
     behind: cap(behind), failed: cap(failed), newer: cap(newer), seedsMissing: cap(seedsMissing), collections: cap(collections),
     legacyValues: cap(legacyValues), orphans: cap(orphans),
     totals, converted, clean: converted && Object.values(totals).every((n) => n === 0),
@@ -146,6 +172,7 @@ export async function legacyReportForAssistant() {
     ...(r.marker ? { finishedAt: r.marker.at, finishedBy: r.marker.version } : { note: "The startup conversion of data from older versions has not finished yet. The public site works normally. It is retried at every start; the owner can also start it again from the admin page /admin/maintenance/legacy." }),
     totals: r.totals,
     oldModuleRows: r.sourceRows,
+    oldModulesKeptAsTheyAre: r.keptRows,
     switchedOff: r.switchedOff,
     instancesBehind: r.behind,
     instancesSetAside: r.failed,
