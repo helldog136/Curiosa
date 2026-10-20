@@ -37,7 +37,6 @@ import { removalScope } from "@/core/modules/removal";
 import { deleteInstanceAction, retryMigrationAction, saveInstance, saveInstanceSettings, saveSources } from "../actions";
 import { EXTENSIONS_ADD_HREF } from "@/core/modules/extensionsLinks";
 import { SuggestNotices } from "@/components/admin/SuggestInstall";
-import { hasRole } from "@/core/permissions";
 
 const PLACE_LABEL = { menu: "placement.pin", integrations: "placement.park", overlays: "placement.parkOverlays" } as const;
 
@@ -258,7 +257,7 @@ export async function InstanceView({ id, query: sp }: { id: string; query: Recor
             <form action={retryMigrationAction.bind(null, instance.id)}><button className={ui.btn}>{t("migration.retry")}</button></form>
           </div>
         )}
-        <SuggestNotices instanceId={instance.id} query={sp} t={t} isOwner={hasRole(user, "owner")} />
+        <SuggestNotices instanceId={instance.id} query={sp} t={t} isOwner={isOwner(user)} />
         {manage && advanced && taskRows.length > 0 && (
           <div className={`${ui.card} space-y-1 text-sm`}>
             <p className="font-medium">{t("tasks.title")}</p>

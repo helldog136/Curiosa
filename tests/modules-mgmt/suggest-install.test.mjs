@@ -21,8 +21,8 @@ beforeEach(async () => {
 after(() => { cat.close(); return db.close(); });
 
 const SVC = "demo.agenda";
-const OWNER = { id: "u1", email: "owner@example.test", role: "owner" };
-const ADMIN = { id: "u2", email: "admin@example.test", role: "admin" };
+const OWNER = { id: "u1", email: "owner@example.test", role: "owner", level: "owner", roles: [], rights: new Set() };
+const ADMIN = { id: "u2", email: "admin@example.test", role: "admin", level: "admin", roles: [], rights: new Set() };
 const pub = (id, manifest = {}, { listed = true } = {}) => cat.add(id, { manifest, listed, entry: { ...(manifest.offers ? { offers: manifest.offers } : {}), ...(manifest.requires ? { requires: manifest.requires } : {}) } });
 const entry = (id, over = {}) => ({ id, name: id, description: "d", kind: "recognized", compatible: true, origin: "official", offers: [{ service: SVC, version: 1 }], ...over });
 
