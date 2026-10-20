@@ -1,4 +1,5 @@
 import { signOut } from "@/auth";
+import { wordmark } from "@/components/brand/wordmark";
 import { adminCtx } from "@/core/admin";
 import { adminBugReportUrl } from "@/core/bugReport";
 import { CREDIT_URL } from "@/core/credit";
@@ -140,7 +141,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
       </div>
       {/* Tout en bas de la page, pour tous les rôles et dans les deux modes : crédit exigé par la licence, et numéro de version à donner pour un signalement ou une mise à jour. */}
       <footer className="border-t border-line px-4 py-3 text-center text-xs text-muted" data-testid="app-version">
-        {t("site.poweredBy")} <a href={CREDIT_URL} target="_blank" rel="noopener" className="underline underline-offset-2 hover:text-fg">Curiosa</a> v{readVersion()}
+        {t("site.poweredBy")} <a href={CREDIT_URL} target="_blank" rel="noopener" className={`${wordmark.className} text-[1.15em] underline underline-offset-2 hover:text-fg`}>Curiosa</a> v{readVersion()}
       </footer>
     </div>
   );
