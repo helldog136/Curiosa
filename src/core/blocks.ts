@@ -108,7 +108,14 @@ export type Block =
   | { type: "downloads"; items: { src: string; label: string; detail?: string }[] }
   /** Texte à copier d'un clic (description courte, formule de présentation…). */
   | { type: "copy"; label?: string; text: string }
-  | { type: "head"; tags: HeadTag[] };
+  | { type: "head"; tags: HeadTag[] }
+  /**
+   * Suggestion d'installation (cœur 0.2.0, panneau d'admin d'une instance SEULEMENT, ignoré ailleurs) : « il manque un module qui offre `service` ».
+   * Le cœur cherche lui-même dans le catalogue qui l'offre (version ≥ `min`) ; le propriétaire installe d'un clic ou dit « Ne plus proposer » ;
+   * les autres lisent « Demandez au propriétaire du site d'installer un module qui <reason> ». Rien n'est montré si un fournisseur actif existe.
+   * `reason` : fin de phrase, mots simples (« affiche vos prochains lives »). Un cœur plus ancien ignore ce bloc.
+   */
+  | { type: "suggestInstall"; service: string; min?: number; reason: string };
 
 /**
  * Emplacements où un module peut ajouter des blocs. La page d'accueil n'en a

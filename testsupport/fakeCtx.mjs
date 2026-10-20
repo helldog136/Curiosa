@@ -21,6 +21,8 @@
  * - `ctx.api.services` : `services` = { nom: { méthode: (args) => valeur } } ; absent → `unavailable`
  * - `ctx.api.services.callAll(nom, méthode, args)` : `serviceInstances` = { nom: [{ instance, name?, methods: { méthode: (args) => valeur } }] } → une entrée par instance (un fournisseur qui lève
  *   donne `{ ok: false, error: "failed" }`) ; sans `serviceInstances[nom]`, UNE entrée tirée de `services[nom]` (comme un service non-each) ; service inconnu → []
+ * - `ctx.api.services.providers(nom)` : une entrée par élément de `serviceInstances[nom]` (`id` = « id-<instance> », la première est `master`) ; sinon UNE entrée tirée de
+ *   `services[nom]` ; service inconnu → []. `call(nom, méthode, args, { provider: id })` appelle cette instance-là (inconnue → `{ ok: false, reason: "unavailable" }`).
  * - `ctx.dumpStore()` : tout le contenu du stockage `[{ id, collection, data }]`, pour les assertions
  * - `ctx.calls` enregistre les appels utiles aux assertions (`calls.writes` : chaque écriture du stockage `{ op, collection }`)
  * - `ctx.visit` : `{ lastVisit }` (option `lastVisit`, défaut : le 1er janvier 1970 = visiteur inconnu)
@@ -84,8 +86,20 @@ export function fakeCtx(opts = {}) {
       png: async (spec) => { calls.png.push(spec); return new Response(new Uint8Array([0x89, 0x50, 0x4e, 0x47]), { headers: { "content-type": "image/png" } }); },
       services: {
         available: async (name) => name in services,
-        call: async (name, method, args) => {
+        providers: async (name) => {
+          const list = serviceInstances[name] ?? (services[name] ? [{ instance: `${name}-provider`, name, methods: services[name] }] : []);
+          return list.slice(0, 50).map((p, i) => ({ id: `id-${p.instance}`, key: p.instance, name: p.name ?? p.instance, module: p.module ?? "provider", version: p.version ?? 1, each: !!serviceInstances[name], master: i === 0 }));
+        },
+        call: async (name, method, args, opts) => {
           calls.services.push([name, method, args]);
+          if (opts?.provider !== undefined) {
+            const list = serviceInstances[name] ?? (services[name] ? [{ instance: `${name}-provider`, methods: services[name] }] : []);
+            const target = list.find((p) => `id-${p.instance}` === opts.provider);
+            if (!target) return { ok: false, reason: "unavailable" };
+            const pick = target.methods?.[method];
+            if (typeof pick !== "function") return { ok: false, reason: "no_method" };
+            try { return { ok: true, value: await pick(args) }; } catch { return { ok: false, reason: "failed" }; }
+          }
           const fn = services[name]?.[method];
           if (!services[name]) return { ok: false, reason: "unavailable" };
           if (typeof fn !== "function") return { ok: false, reason: "no_method" };

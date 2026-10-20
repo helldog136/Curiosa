@@ -119,7 +119,8 @@ export type RestoreReport = { ok: false; error: "newer-schema"; modules: ModuleO
 
 type Installers = { fromCatalogue: (id: string) => Promise<InstallResult>; fromRepo: (url: string) => Promise<InstallResult> };
 // Sans cascade ici : l'ordre et la vérification des dépendances se font pour toute la sauvegarde (restoreDeps.ts).
-const realInstallers: Installers = { fromCatalogue: (id) => installFromCatalogue(id, { dependencies: false, restoreKept: false }), fromRepo: (url) => installModule(url, { dependencies: false, restoreKept: false }) };
+// `confirmExtra` : restaurer remet un module que le propriétaire avait déjà installé (et il confirme la restauration) ; ce n'est pas une installation d'office.
+const realInstallers: Installers = { fromCatalogue: (id) => installFromCatalogue(id, { dependencies: false, restoreKept: false, confirmExtra: true }), fromRepo: (url) => installModule(url, { dependencies: false, restoreKept: false }) };
 
 const MODEL_BY_FILE = { users: "User", settings: "Setting", instances: "ModuleInstance", instanceTranslations: "InstanceTranslation", entries: "Entry", entryTranslations: "EntryTranslation", redirects: "Redirect", records: "ModuleRecord" } as const;
 

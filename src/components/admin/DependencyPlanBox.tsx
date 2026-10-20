@@ -9,18 +9,22 @@ import { ui } from "./ui";
  * Toujours visible dès que le module dépend d'un autre. `compact` (cartes du catalogue) : la phrase seule ; sinon le détail ligne par ligne.
  */
 export function DependencyPlanBox({ view, t, names, compact = false, advanced = false }: { view: PlanView; t: Translator; names: Names; compact?: boolean; advanced?: boolean }) {
-  if (!view.lines.length && !view.problems.length) return null;
+  const optional = view.optional ?? [];
+  if (!view.lines.length && !view.problems.length && !optional.length) return null;
   const by = (action: string) => view.lines.filter((l) => l.action === action).map((l) => l.name);
   const installs = by("install");
   const setups = by("setup");
   const present = by("present");
+  const updates = by("update");
   const headline = [
     installs.length ? t("deps.plan.alsoInstall", { names: installs.join(", ") }) : "",
     setups.length ? t("deps.plan.alsoSetup", { names: setups.join(", ") }) : "",
-    !installs.length && !setups.length && present.length ? t("deps.plan.alreadyThere", { names: present.join(", ") }) : "",
+    updates.length ? t("deps.plan.alsoUpdate", { names: updates.join(", ") }) : "",
+    !installs.length && !setups.length && !updates.length && present.length ? t("deps.plan.alreadyThere", { names: present.join(", ") }) : "",
   ].filter(Boolean);
 
   if (compact) {
+    if (!headline.length && !view.problems.length) return null;   // seulement du facultatif : rien à annoncer sur une carte
     return (
       <p className="flex items-start gap-2 text-sm leading-5" data-testid="deps-plan-compact">
         <span aria-hidden>🔗</span>
@@ -44,6 +48,15 @@ export function DependencyPlanBox({ view, t, names, compact = false, advanced = 
             </li>
           ))}
         </ul>
+      )}
+      {optional.length > 0 && (
+        <div data-testid="deps-plan-optional">
+          <p className="text-sm font-medium">{t("deps.plan.optionalTitle")}</p>
+          <ul className="mt-1 space-y-1 text-sm">
+            {optional.map((o) => <li key={o.service} className="flex items-start gap-2"><span aria-hidden>{o.present ? "✔" : "○"}</span><span>{o.label}{o.present ? ` — ${t("deps.plan.line.present")}` : ""}</span></li>)}
+          </ul>
+          <p className="mt-1 text-xs text-muted">{t("deps.plan.optionalHelp")}</p>
+        </div>
       )}
       {view.problems.length > 0 && (
         <Callout tone="warn" role="alert">

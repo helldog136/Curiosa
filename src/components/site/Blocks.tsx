@@ -16,6 +16,7 @@ import { CopyText } from "./CopyText";
 import { AdminBlockForm, RowActionButton } from "../admin/AdminBlocks";
 import { GridEditor } from "../admin/GridEditor";
 import { floatingLabels } from "../admin/floating";
+import { SuggestInstall } from "../admin/SuggestInstall";
 
 const TONES = {
   info: "bg-accent text-accent-fg",
@@ -221,6 +222,10 @@ export async function Blocks({ blocks, locale, adminInstanceId: panelInstanceId,
             </table>
           </div>,
         );
+        break;
+      case "suggestInstall":
+        // Panneau d'admin d'une instance seulement (jamais sur le site public, ni dans une section de l'éditeur d'entrée).
+        if (panelInstanceId && !entryScope) out.push(<SuggestInstall key={i} instanceId={panelInstanceId} service={block.service} min={block.min} reason={block.reason} locale={locale} />);
         break;
       case "head":
         break;

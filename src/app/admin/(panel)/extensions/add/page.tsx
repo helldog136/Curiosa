@@ -78,7 +78,7 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
                 {keptIds.has(e.id) && <p className="rounded-xl bg-accent/10 px-3 py-2 text-sm" data-testid={`kept-card-${e.id}`}>🗂 {t("kept.cardNote", { name: L(e.name) })}</p>}
                 {plans.get(e.id) && <DependencyPlanBox view={plans.get(e.id)!} t={t} names={names} compact />}
                 <div className="mt-auto flex flex-wrap items-center justify-between gap-3">
-                  <span className="flex flex-wrap items-center gap-2"><span className={ui.chipOk}>✔ {t("catalogue.verified")}</span>{e.suggested && <span className={ui.chipOk}>⭐ {t("catalogue.suggested")}</span>}</span>
+                  <span className="flex flex-wrap items-center gap-2">{e.origin === "extra" ? <span className={ui.chipWarn}>⚠ {t("catalogue.origin.extra")}</span> : <span className={ui.chipOk}>✔ {t("catalogue.verified")}</span>}{e.suggested && <span className={ui.chipOk}>⭐ {t("catalogue.suggested")}</span>}</span>
                   {installed.has(e.id) ? (
                     <a href={EXTENSIONS_HREF} className="text-sm font-medium text-accent hover:underline">{t("catalogue.installed")}</a>
                   ) : !e.compatible ? (

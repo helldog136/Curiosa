@@ -1,5 +1,5 @@
 import { prisma } from "../db";
-import { normalizeNeeds, offerIsEach, offerVersionOf, satisfiesVersion } from "./serviceVersions";
+import { hardNeeds, normalizeNeeds, offerIsEach, offerVersionOf, satisfiesVersion } from "./serviceVersions";
 import { boxedInner, isStalled, ModuleStalled, STALLED } from "./budget";
 import { buildContext } from "./context";
 import { pickName } from "../instances";
@@ -50,10 +50,10 @@ export type Gap = {
 
 /**
  * Ce qui manque à un module pour fonctionner : pour chaque service exigé, une INSTANCE active d'un module actif qui l'offre, dans une version ≥ `min`.
- * Un module actif sans instance, ou en version trop ancienne, ne compte pas.
+ * Un module actif sans instance, ou en version trop ancienne, ne compte pas. Un besoin FACULTATIF (`optional`) ne manque jamais.
  */
 export async function requirementGaps(manifest: ParsedManifest): Promise<Gap[]> {
-  const needs = normalizeNeeds(manifest.requires);
+  const needs = hardNeeds(manifest.requires);
   if (!needs.length) return [];
   const live = await liveProviders(manifest.id);
   const gaps: Gap[] = [];
@@ -69,7 +69,7 @@ export async function unmetRequirements(manifest: ParsedManifest): Promise<strin
   return (await requirementGaps(manifest)).map((g) => g.service);
 }
 
-/** Modules actifs qui cesseraient de fonctionner si `moduleId` s'arrêtait : ils exigent un service que lui seul fournit (version comprise). */
+/** Modules actifs qui cesseraient de fonctionner si `moduleId` s'arrêtait : ils exigent un service que lui seul fournit (version comprise). Un besoin facultatif ne retient pas le fournisseur. */
 export async function dependentsOf(moduleId: string): Promise<string[]> {
   const mine = await getModule(moduleId);
   if (!mine) return [];
@@ -80,7 +80,7 @@ export async function dependentsOf(moduleId: string): Promise<string[]> {
     if (row.id === moduleId) continue;
     const m = await getModule(row.id);
     if (!m) continue;
-    const lost = normalizeNeeds(m.manifest.requires).filter((n) => mineOffers.has(n.service) && !satisfiesVersion(bestVersion(others.filter((o) => o.manifest.id !== row.id), n.service), n.min));
+    const lost = hardNeeds(m.manifest.requires).filter((n) => mineOffers.has(n.service) && !satisfiesVersion(bestVersion(others.filter((o) => o.manifest.id !== row.id), n.service), n.min));
     if (lost.length) out.push(row.id);
   }
   return out;
@@ -95,7 +95,7 @@ export async function lossesIfStopped(moduleId: string): Promise<{ module: strin
   const out: { module: string; services: string[] }[] = [];
   for (const id of await dependentsOf(moduleId)) {
     const m = await getModule(id);
-    const lost = normalizeNeeds(m?.manifest.requires).filter((n) => mineOffers.has(n.service) && !satisfiesVersion(bestVersion(others.filter((o) => o.manifest.id !== id), n.service), n.min)).map((n) => n.service);
+    const lost = hardNeeds(m?.manifest.requires).filter((n) => mineOffers.has(n.service) && !satisfiesVersion(bestVersion(others.filter((o) => o.manifest.id !== id), n.service), n.min)).map((n) => n.service);
     out.push({ module: id, services: lost });
   }
   return out;
@@ -160,7 +160,7 @@ export async function duplicateServices(): Promise<{ service: string; providers:
 
 type Outcome = { ok: true; value: unknown } | { ok: false; reason: "undeclared" | "unavailable" | "no_method" | "failed" };
 
-/** Fournisseurs que ce consommateur peut appeler : déclarés dans son `requires`, dans une version suffisante (hors son propre module). */
+/** Fournisseurs que ce consommateur peut appeler : déclarés dans son `requires` (facultatif compris), dans une version suffisante (hors son propre module). */
 async function providersFor(consumer: Pick<ActiveInstance, "mod">, service: string): Promise<ActiveInstance[] | null> {
   if (!requiresOf(consumer.mod.manifest).includes(service)) return null;
   const min = normalizeNeeds(consumer.mod.manifest.requires).find((n) => n.service === service)?.min ?? 1;
@@ -182,17 +182,32 @@ const runOn = async (p: ActiveInstance, service: string, method: string, args: u
   return value;
 };
 
+/** Qui répond par défaut (sans `provider`) : service `each` → la première instance par ordre de création ; sinon le maître et ses répliques. */
+async function defaultTarget(found: ActiveInstance[], service: string): Promise<{ master: ActiveInstance; replicas: ActiveInstance[] }> {
+  if (isEachService(found, service)) return { master: (await byCreation(found))[0]!, replicas: [] };
+  const { master, replicas } = resolveRouting(found, await getRouting(service));
+  return { master, replicas };
+}
+
 /**
  * Appel d'un service au nom d'une instance consommatrice. Service classique : le maître répond, les répliques reçoivent aussi les écritures.
  * Service `each` : la PREMIÈRE instance active (par ordre de création) répond, sans réplique (pour `callAll`, voir plus bas). Ne lève jamais.
+ * `provider` (identifiant d'INSTANCE, revalidé ici) : appel explicite. La cible doit être l'un des fournisseurs de `providersOf` (sinon « unavailable » :
+ * instance supprimée, mise à l'écart, version trop ancienne, ou fournisseur étranger). Le maître visé garde ses répliques ; tout autre fournisseur répond SEUL.
  */
-async function dispatch(consumer: Pick<ActiveInstance, "mod" | "instance">, service: string, method: string, args: unknown, locale?: string): Promise<{ outcome: Outcome; master?: ActiveInstance }> {
+async function dispatch(consumer: Pick<ActiveInstance, "mod" | "instance">, service: string, method: string, args: unknown, locale?: string, provider?: string): Promise<{ outcome: Outcome; master?: ActiveInstance }> {
   const found = await providersFor(consumer, service);
   if (found === null) return { outcome: { ok: false, reason: "undeclared" } };
   if (found.length === 0) return { outcome: { ok: false, reason: "unavailable" } };
-  const each = isEachService(found, service);
-  const providers = each ? await byCreation(found) : found;
-  const { master, replicas } = each ? { master: providers[0]!, replicas: [] as ActiveInstance[] } : resolveRouting(providers, await getRouting(service));
+  let { master, replicas } = await defaultTarget(found, service);
+  if (provider !== undefined) {
+    const target = typeof provider === "string" ? found.find((p) => p.instance.id === provider) : undefined;
+    if (!target) {
+      console.error(`[modules] service ${service}: the requested provider is gone or not allowed for ${consumer.instance.key}`);
+      return { outcome: { ok: false, reason: "unavailable" } };
+    }
+    if (target !== master) { master = target; replicas = []; }
+  }
   if (!hasMethod(master, service, method)) return { outcome: { ok: false, reason: "no_method" }, master };
   let value: unknown;
   try {
@@ -212,8 +227,31 @@ async function dispatch(consumer: Pick<ActiveInstance, "mod" | "instance">, serv
   return { outcome: { ok: true, value }, master };
 }
 
-export async function callService(consumer: Pick<ActiveInstance, "mod" | "instance">, service: string, method: string, args: unknown, locale?: string): Promise<Outcome> {
-  return (await dispatch(consumer, service, method, args, locale)).outcome;
+export async function callService(consumer: Pick<ActiveInstance, "mod" | "instance">, service: string, method: string, args: unknown, locale?: string, opts: { provider?: string } = {}): Promise<Outcome> {
+  return (await dispatch(consumer, service, method, args, locale, opts.provider)).outcome;
+}
+
+/** Une entrée de `ctx.api.services.providers` : `id` = identifiant STABLE de l'instance (à passer à `call(…, { provider })`), `name` = libellé lisible. */
+export type ProviderView = { id: string; key: string; name: string; module: string; version: number; each: boolean; master: boolean };
+export const MAX_PROVIDERS = 50;
+
+/**
+ * Les fournisseurs que CE consommateur peut appeler (déclarés dans son `requires`, version ≥ `min`), par ordre de création, 50 au plus.
+ * `master` : celui que `call` viserait sans `provider`. Service non déclaré ou sans fournisseur : `[]`. Lecture seule, ne lève jamais.
+ */
+export async function providersOf(consumer: Pick<ActiveInstance, "mod" | "instance">, service: string, locale?: string): Promise<ProviderView[]> {
+  try {
+    const found = await providersFor(consumer, service);
+    if (!found?.length) return [];
+    const { master } = await defaultTarget(found, service);
+    return (await byCreation(found)).slice(0, MAX_PROVIDERS).map((p) => ({
+      id: p.instance.id, key: p.instance.key, name: p.instance.nickname || pickName(p.instance, locale ?? "", locale ?? ""),
+      module: p.mod.manifest.id, version: offerVersionOf(p.mod.manifest.offers, service) ?? 1, each: offerIsEach(p.mod.manifest.offers, service), master: p === master,
+    }));
+  } catch (error) {
+    console.error(`[modules] providers of ${service} failed:`, (error as Error)?.message);
+    return [];
+  }
 }
 
 /** Réponse d'UNE instance à `callAll`. `error` est un code court (« failed », « no_method »), jamais le message du fournisseur (il pourrait contenir un secret ; il est seulement journalisé). */

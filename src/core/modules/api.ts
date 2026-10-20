@@ -11,8 +11,8 @@ import { renderPng, type PngSpec } from "@/core/services/render";
 import { createStore } from "@/core/services/store";
 import { collect } from "@/core/services/topics";
 import { getSiteConfig } from "@/core/settings";
-import { callService, callServiceAll, serviceAvailable } from "./dependencies";
-import { getActiveInstances } from "./registry";
+import { callService, callServiceAll, providersOf, serviceAvailable } from "./dependencies";
+import { getActiveInstances, getModule, type ActiveInstance } from "./registry";
 import type { ModuleApi } from "./types";
 
 /**
@@ -26,7 +26,7 @@ import type { ModuleApi } from "./types";
  *     mail    envoi d'e-mails au nom du site (SMTP réglé dans l'admin)
  *     rawg    jaquettes de jeux (clé RAWG réglée une fois dans l'admin ; permission « rawg »)
  *     topics  échange d'informations typées entre modules
- *     services  appel du service d'un autre module (`call` : maître ; `callAll` : toutes les instances d'un service `each`)
+ *     services  appel du service d'un autre module (`call` : maître, ou l'instance `provider` choisie ; `providers` : qui l'offre ; `callAll` : toutes les instances d'un service `each`)
  *     (MCP : pas d'appel côté module ; un module déclare ses actions `mcp`, le cœur les expose)
  *
  *   LECTURE DU SITE (en lecture seule, pour que les modules s'articulent avec le reste)
@@ -36,6 +36,16 @@ import type { ModuleApi } from "./types";
  */
 export function makeApi(instance: InstanceView, locale: string, permissions: readonly string[] = []): ModuleApi {
   const rawgAllowed = permissions.includes("rawg");
+  /**
+   * L'instance appelante, pour un appel de service. Une instance mise à l'écart (migration échouée) ne tourne pas, SAUF pendant sa propre
+   * migration (« Réessayer ») : elle doit alors pouvoir appeler les services dont elle dépend, d'où le repli sur son module chargé.
+   */
+  const consumer = async (): Promise<Pick<ActiveInstance, "mod" | "instance"> | null> => {
+    const live = (await getActiveInstances()).find((a) => a.instance.id === instance.id);
+    if (live) return live;
+    const mod = await getModule(instance.moduleId).catch(() => null);
+    return mod ? { mod, instance } : null;
+  };
   return {
     siteUrl,
 
@@ -46,13 +56,18 @@ export function makeApi(instance: InstanceView, locale: string, permissions: rea
     png: (spec) => renderPng(spec as PngSpec, siteUrl),
     services: {
       available: serviceAvailable,
-      async call(service, method, args) {
-        const consumer = (await getActiveInstances()).find((a) => a.instance.id === instance.id);
-        return consumer ? callService(consumer, service, method, args, locale) : { ok: false, reason: "unavailable" };
+      async providers(service) {
+        const me = await consumer();
+        return me ? providersOf(me, service, locale) : [];
+      },
+      async call(service, method, args, opts) {
+        const me = await consumer();
+        const provider = opts && typeof opts === "object" && opts.provider !== undefined ? String(opts.provider) : undefined;
+        return me ? callService(me, service, method, args, locale, { provider }) : { ok: false, reason: "unavailable" };
       },
       async callAll(service, method, args) {
-        const consumer = (await getActiveInstances()).find((a) => a.instance.id === instance.id);
-        return consumer ? callServiceAll(consumer, service, method, args, locale) : [];
+        const me = await consumer();
+        return me ? callServiceAll(me, service, method, args, locale) : [];
       },
     },
     store: createStore(instance.id),

@@ -3,7 +3,10 @@ import { listModuleRows, loadModule } from "./registry";
 import { localized } from "./types";
 import { checkForUpdateDetailed, updateModule } from "./installer";
 import { clearRecognizedCache } from "./recognized";
-import { collectReport, createReportCache, updateSequentially, type ModulesReport, type Summary } from "./bulkUpdate";
+import { collectReport, createReportCache, orderForUpdate, updateSequentially, type ModulesReport, type Summary, type UpdateLinks } from "./bulkUpdate";
+import { getCatalogue, type CatalogueEntry } from "./catalogue";
+import { getModule } from "./registry";
+import { normalizeNeeds, normalizeOffers } from "./serviceVersions";
 
 /** Modules qui ont une source où chercher une mise à jour : un dépôt, ou le catalogue pour une ligne `bundled` d'un ancien site (compatibilité, à retirer en 0.3.0). */
 async function sourcedModules() {
@@ -23,10 +26,26 @@ export async function getModulesReport(force = false): Promise<ModulesReport> {
 /** Sans attendre le réseau (menu d'admin) : le dernier rapport connu, et une vérification en arrière-plan s'il est périmé. */
 export const peekModulesReport = () => cache.peek();
 
-/** Met à jour ces modules un par un (voir updateSequentially) puis retire du rapport ceux qui ont réussi. */
+/** Offres et besoins de la version visée : l'entrée du catalogue (version proposée), à défaut le manifeste installé. */
+async function updateLinks(ids: string[]): Promise<UpdateLinks[]> {
+  const market = await getCatalogue().catch((): CatalogueEntry[] => []);
+  const out: UpdateLinks[] = [];
+  for (const id of ids) {
+    const entry = market.find((e) => e.id === id);
+    const mod = await getModule(id).catch(() => null);
+    out.push({ id, offers: entry?.offers ?? normalizeOffers(mod?.manifest.offers), needs: entry?.needs ?? normalizeNeeds(mod?.manifest.requires) });
+  }
+  return out;
+}
+
+/** Met à jour ces modules un par un, fournisseurs avant consommateurs (voir orderForUpdate, updateSequentially), puis retire du rapport ceux qui ont réussi. */
 export async function updateModules(ids: string[], onEach?: (id: string, ok: boolean, result: Awaited<ReturnType<typeof updateModule>>) => Promise<void>): Promise<Summary> {
-  const summary = await updateSequentially(ids, async (id) => {
+  const ordered = orderForUpdate(await updateLinks(ids));
+  const cascaded = new Set<string>();   // fournisseurs déjà mis à jour par la cascade d'un module précédent (cycle) : « déjà à jour » n'est pas un échec
+  const summary = await updateSequentially(ordered, async (id) => {
     const r = await updateModule(id);
+    if (r.ok) for (const p of r.provided ?? []) cascaded.add(p);
+    if (!r.ok && r.error === "modules.error.uptodate" && cascaded.has(id)) return { ok: true };
     await onEach?.(id, r.ok, r);
     return r;
   });

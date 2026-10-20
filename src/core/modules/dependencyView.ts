@@ -34,22 +34,34 @@ export async function buildNames(locale: string, defaultLocale: string, catalogu
 }
 
 export type PlanLine = { id: string; name: string; icon: string; action: PlanStep["action"]; /** Libellés des services qu'il apporte. */ services: string[] };
-export type PlanView = { lines: PlanLine[]; problems: (PlanProblem & { text?: never })[]; /** Quelque chose sera installé ou activé en plus. */ adds: boolean };
+export type PlanView = {
+  lines: PlanLine[]; problems: (PlanProblem & { text?: never })[]; /** Quelque chose sera installé ou activé en plus. */ adds: boolean;
+  /** « Fonctionne mieux avec… (facultatif) » : besoins facultatifs, jamais installés d'office ; `present` : un fournisseur actif existe déjà. */
+  optional?: { service: string; label: string; present: boolean }[];
+};
 
 /** Ce que l'installation de ce module apportera aussi, avant de la lancer. `needs` : manifeste réel si on l'a lu, sinon ce que l'index annonce. */
 export async function viewPlan(rootId: string, needs: ServiceNeed[], names: Names, catalogue?: CatalogueEntry[]): Promise<PlanView> {
   if (!needs.length) return { lines: [], problems: [], adds: false };
+  const soft = needs.filter((n) => n.optional);
+  const optional = soft.length ? await optionalView(rootId, soft, names) : undefined;
+  if (soft.length === needs.length) return { lines: [], problems: [], adds: false, optional };
   const market = catalogue ?? (await getCatalogue().catch((): CatalogueEntry[] => []));
   const plan: DependencyPlan = await planDependencies(rootId, needs, { catalogue: market });
   const iconOf = async (id: string) => (await getModule(id).catch(() => null))?.manifest.icon ?? market.find((e) => e.id === id)?.icon ?? "🧩";
   const lines: PlanLine[] = [];
   for (const s of plan.steps) lines.push({ id: s.id, name: names.module(s.id), icon: await iconOf(s.id), action: s.action, services: s.services.map(names.service) });
-  return { lines, problems: plan.problems, adds: plan.steps.some((s) => s.action !== "present") };
+  return { lines, problems: plan.problems, adds: plan.steps.some((s) => s.action !== "present"), ...(optional ? { optional } : {}) };
+}
+
+async function optionalView(rootId: string, soft: ServiceNeed[], names: Names): Promise<NonNullable<PlanView["optional"]>> {
+  const live = await liveProviders(rootId);
+  return soft.map((n) => ({ service: n.service, label: names.service(n.service), present: live.some((p) => satisfiesVersion(offerVersionOf(p.manifest.offers, n.service), n.min)) }));
 }
 
 /* ───────────── Page d'un module ───────────── */
 
-export type NeedView = { service: string; label: string; min: number; ok: boolean; /** Modules qui le fournissent (actifs d'abord). */ providers: { id: string; name: string; active: boolean }[]; gap?: Gap };
+export type NeedView = { service: string; label: string; min: number; ok: boolean; /** Besoin facultatif : le module fonctionne sans (jamais « Il manque »). */ optional?: true; /** Modules qui le fournissent (actifs d'abord). */ providers: { id: string; name: string; active: boolean }[]; gap?: Gap };
 export type UsedByView = { id: string; name: string; services: string[] };
 export type ModuleLinksView = {
   needs: NeedView[];
@@ -79,7 +91,7 @@ export async function viewModuleLinks(moduleId: string, names: Names): Promise<M
     }
     providers.sort((a, b) => Number(b.active) - Number(a.active) || a.id.localeCompare(b.id));
     const gap = gaps.find((g) => g.service === n.service);
-    needs.push({ service: n.service, label: names.service(n.service), min: n.min, ok: !gap, providers, gap });
+    needs.push({ service: n.service, label: names.service(n.service), min: n.min, ok: n.optional ? providers.some((p) => p.active) : !gap, providers, gap, ...(n.optional ? { optional: true as const } : {}) });
   }
   const usedBy: UsedByView[] = [];
   const offered = new Set((mod?.manifest.offers ?? []).map((o) => o.service));

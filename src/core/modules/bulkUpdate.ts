@@ -17,10 +17,10 @@ export type ModulesReport = {
 
 /** Ce qui manque à un module mis à jour (service, version voulue, version disponible, cause) : voir dependencyInstaller.ts. */
 export type MissingService = { service: string; min: number; have: number | null; reason: string; module?: string; error?: string };
-export type UpdateResult = { ok: true; migrations?: { status: string }[]; /** Mise à jour réussie, mais il manque de quoi faire fonctionner le module. */ missing?: MissingService[]; /** Fournisseurs installés d'office pour la nouvelle version. */ provided?: string[] } | { ok: false; error: string; needsCore?: string };
+export type UpdateResult = { ok: true; migrations?: { status: string }[]; /** Mise à jour réussie, mais il manque de quoi faire fonctionner le module. */ missing?: MissingService[]; /** Fournisseurs installés d'office pour la nouvelle version. */ provided?: string[] } | { ok: false; error: string; needsCore?: string; /** Précision lisible (ex. les services qui manquent). */ detail?: string };
 /** Erreur renvoyée par le cœur quand un module demande un cœur plus récent (voir compat.ts) : ce n'est pas un échec, la mise à jour est SAUTÉE. */
 export const CORE_TOO_OLD = "modules.error.core";
-export type Failure = { id: string; /** Clé de traduction de la raison. */ error: string; migration: boolean };
+export type Failure = { id: string; /** Clé de traduction de la raison. */ error: string; migration: boolean; /** Précision (services qui manquent…), pour la phrase traduite. */ detail?: string };
 export type Summary = {
   updated: string[];
   failed: Failure[];
@@ -59,6 +59,32 @@ export async function collectReport(modules: SourcedModule[], check: (id: string
   return report;
 }
 
+/** Offres et besoins de la version VISÉE d'un module (entrée du catalogue, à défaut le manifeste installé). Forme de serviceVersions.ts, recopiée ici pour rester sans import. */
+export type UpdateLinks = { id: string; offers: { service: string; version: number }[]; needs: { service: string; min: number; optional?: true }[] };
+
+/**
+ * Ordre d'une mise à jour groupée : les FOURNISSEURS passent avant leurs consommateurs (un consommateur migre ses données une fois ses services à jour).
+ * À égalité, par identifiant ; les modules pris dans un cycle gardent leur ordre d'origine, après les autres. Pur ; chaque identifiant une seule fois.
+ */
+export function orderForUpdate(items: UpdateLinks[]): string[] {
+  const unique = items.filter((it, i) => items.findIndex((o) => o.id === it.id) === i);
+  const provides = (p: UpdateLinks, need: { service: string; min: number }) => p.offers.some((o) => o.service === need.service && o.version >= need.min);
+  // Arête p → c : c a besoin (dur ou facultatif) d'un service que p offre dans la version voulue.
+  const before = new Map(unique.map((c) => [c.id, new Set(unique.filter((p) => p.id !== c.id && c.needs.some((n) => provides(p, n))).map((p) => p.id))]));
+  const out: string[] = [];
+  const left = new Set(unique.map((u) => u.id));
+  for (;;) {
+    const ready = [...left].filter((id) => [...before.get(id)!].every((p) => !left.has(p))).sort();
+    if (!ready.length) break;
+    const next = ready[0]!;
+    out.push(next);
+    left.delete(next);
+  }
+  // Cycle : ce qui reste, dans l'ordre d'origine.
+  for (const u of unique) if (left.has(u.id)) out.push(u.id);
+  return out;
+}
+
 /** Une migration de données qui a échoué (ou qui vient d'une version plus récente) : la mise à jour du module est faite, mais ses données ne suivent pas. */
 export const hasMigrationProblem = (r: { migrations?: { status: string }[] }) => !!r.migrations?.some((m) => m.status === "failed" || m.status === "newer");
 
@@ -73,7 +99,7 @@ export async function updateSequentially(ids: string[], update: (id: string) => 
     let result: UpdateResult;
     try { result = await update(id); } catch { result = { ok: false, error: "error.generic" }; }
     if (!result.ok && result.error === CORE_TOO_OLD) { (summary.incompatible ??= []).push({ id, core: result.needsCore ?? "" }); continue; }
-    if (!result.ok) { summary.failed.push({ id, error: result.error, migration: false }); continue; }
+    if (!result.ok) { summary.failed.push({ id, error: result.error, migration: false, ...(result.detail ? { detail: result.detail } : {}) }); continue; }
     if (hasMigrationProblem(result)) {
       summary.failed.push({ id, error: "modules.error.migration", migration: true });
       summary.stoppedOn = id;

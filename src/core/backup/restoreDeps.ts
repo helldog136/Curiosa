@@ -61,6 +61,7 @@ export async function previewMissing(modules: { id: string; enabled: boolean; st
     if (!m.enabled || m.status === "custom") continue;   // un dépôt personnel n'est lu qu'une fois confirmé : on ne devine pas
     const missing: Missing[] = [];
     for (const need of links.get(m.id)?.needs ?? []) {
+      if (need.optional) continue;   // facultatif : jamais un manque
       const inBackup = live.some((o) => o.id !== m.id && satisfiesVersion(offerVersionOf(links.get(o.id)?.offers, need.service), need.min));
       if (inBackup || rankCandidates(need, installed, market, new Set([m.id])).length) continue;
       missing.push({ service: need.service, min: need.min, have: null, reason: "none" });

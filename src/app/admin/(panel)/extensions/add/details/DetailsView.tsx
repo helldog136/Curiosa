@@ -17,7 +17,7 @@ import { ui } from "@/components/admin/ui";
 import { Markdown } from "@/components/site/Markdown";
 import { InstallButton } from "@/components/admin/InstallButton";
 import { EXTENSIONS_ADD_HREF, EXTENSIONS_HREF } from "@/core/modules/extensionsLinks";
-import { installCustomAction } from "../actions";
+import { installCustomAction, installExtraAction } from "../actions";
 
 /**
  * Avant d'installer : le README du module et ce qu'il demande (permissions, services), lus sans l'installer.
@@ -70,7 +70,7 @@ export async function DetailsView({ id, repo, embedded = false }: { id?: string;
         <div className="min-w-0">
           <h1 className={ui.pageTitle}>{name}</h1>
           <p className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted">
-            {entry ? <span className={ui.chipOk}>✔ {t("catalogue.verified")}</span> : <span className={ui.chipWarn}>⚠ {t("catalogue.origin.custom")}</span>}
+            {entry && entry.origin !== "extra" ? <span className={ui.chipOk}>✔ {t("catalogue.verified")}</span> : entry ? <span className={ui.chipWarn}>⚠ {t("catalogue.origin.extra")}</span> : <span className={ui.chipWarn}>⚠ {t("catalogue.origin.custom")}</span>}
             {advanced && (entry?.version ?? m?.version) && <span>v{entry?.version ?? m?.version}</span>}
             {m?.author && <span>{t("catalogue.by", { author: m.author })}</span>}
             {m?.license && advanced && <span>· {m.license}</span>}
@@ -121,7 +121,15 @@ export async function DetailsView({ id, repo, embedded = false }: { id?: string;
               : !entry.compatible ? <p className="text-sm text-muted">{t("catalogue.incompatible")}</p>
               : entry.needsNewerCore ? <p className="text-sm text-muted">{t("modules.core.badge", { version: entry.needsNewerCore, current: getCoreVersion() })}</p>
               : (
-                embedded
+                entry.origin === "extra" ? (
+                  <>
+                    <p className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm" data-testid="extra-warning">{t("catalogue.extraWarning")}</p>
+                    <ActionForm action={installExtraAction} submitLabel={t("catalogue.install")}>
+                      <input type="hidden" name="id" value={entry.id} />
+                      <Checkbox name="trust" label={t("catalogue.trust")} required />
+                    </ActionForm>
+                  </>
+                ) : embedded
                   ? <p className="text-sm text-muted">{t("catalogue.installNote")}</p>
                   : (
                     <div className="flex flex-wrap items-center gap-4">
@@ -141,7 +149,7 @@ export async function DetailsView({ id, repo, embedded = false }: { id?: string;
           ) : null}
         </section>
       )}
-      {embedded && canInstall && entry && (
+      {embedded && canInstall && entry && entry.origin !== "extra" && (
         <div className="pointer-events-none sticky bottom-0 -mx-4 -mb-8 flex justify-center bg-gradient-to-t from-surface via-surface/90 to-transparent px-4 pb-6 pt-8 sm:-mx-8 sm:px-8" data-testid="floating-install">
           <div className="pointer-events-auto"><InstallButton id={entry.id} name={name} labels={installLabels} /></div>
         </div>
