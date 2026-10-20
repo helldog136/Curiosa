@@ -9,11 +9,12 @@ import { localized } from "@/core/modules/types";
 import { UPLOAD_NAME_RE } from "@/core/services/uploads";
 import { getSiteConfig } from "@/core/settings";
 import { readVersion } from "@/core/updates/service";
-import { encryptBackup } from "./crypto";
-import { backupFilename, DATA_FILES, FORMAT, FORMAT_VERSION, fileOf, jsonFile, sha256, type BackupManifest, type BackupModule } from "./format";
+import { encryptBackupAsync } from "./crypto";
+import { runAsync, sha256Steps, tick, type Steps } from "./steps";
+import { backupFilename, DATA_FILES, FORMAT, FORMAT_VERSION, fileOf, jsonFile, type BackupManifest, type BackupModule } from "./format";
 import { readmeText } from "./readme";
 import { currentSchemaVersion } from "./schema";
-import { createTarGz, isSafeArchivePath, type TarFile } from "./tar";
+import { createTarGzAsync, isSafeArchivePath, type TarFile } from "./tar";
 
 /** Réglages qui n'ont aucun sens après une restauration (état de la dernière vérification de version). */
 const VOLATILE_SETTINGS = new Set(["updates.latest", "updates.checkedAt", "updates.error"]);
@@ -92,7 +93,9 @@ export async function createBackup(password: string, opts: { now?: Date; iterati
   // ── Copie lisible ───────────────────────────────────────────────────────────
   const viewByKey = new Map((await getActiveInstances()).map((a) => [a.instance.key, a]));
   const entryById = new Map(entries.map((e) => [e.id, e]));
+  let n = 0;
   for (const t of entryTranslations) {
+    if (++n % 200 === 0) await tick(); // la boucle d'événements respire (des milliers d'entrées)
     const e = entryById.get(t.entryId);
     const key = keyOf.get(t.instanceId);
     if (!e || !key) continue;
@@ -129,9 +132,9 @@ export async function createBackup(password: string, opts: { now?: Date; iterati
   // ── Images et fichiers envoyés ──────────────────────────────────────────────
   let uploadCount = 0;
   try {
-    for (const name of fs.readdirSync(UPLOADS_DIR)) {
+    for (const name of await fs.promises.readdir(UPLOADS_DIR)) {
       if (!UPLOAD_NAME_RE.test(name)) continue;
-      files.push(fileOf(`uploads/${name}`, fs.readFileSync(path.join(UPLOADS_DIR, name))));
+      files.push(fileOf(`uploads/${name}`, await fs.promises.readFile(path.join(UPLOADS_DIR, name))));
       uploadCount++;
     }
   } catch { /* pas encore d'envois */ }
@@ -141,15 +144,22 @@ export async function createBackup(password: string, opts: { now?: Date; iterati
     site: { name: config.name, defaultLocale: config.defaultLocale, locales: config.locales },
     counts: { users: users.length, instances: instances.length, entries: entries.length, translations: entryTranslations.length, records: records.count, retired: retired.length, redirects: redirects.length, modules: modules.length, uploads: uploadCount },
     modules,
-    files: files.map((f) => ({ path: f.path, sha256: sha256(f.content), bytes: f.content.length })),
+    files: await runAsync(fingerprints(files)),
   };
   const archive: TarFile[] = [
     fileOf("README.txt", readmeText({ siteName: config.name, createdAt: manifest.createdAt, frameworkVersion: manifest.frameworkVersion })),
     jsonFile("backup.json", manifest),
     ...files,
   ];
-  const plain = createTarGz(archive, Math.floor(now.getTime() / 1000));
-  return { buffer: encryptBackup(plain, password, opts.iterations), filename: backupFilename(config.name, now), manifest, plain };
+  const plain = await createTarGzAsync(archive, Math.floor(now.getTime() / 1000));
+  return { buffer: await encryptBackupAsync(plain, password, opts.iterations), filename: backupFilename(config.name, now), manifest, plain };
+}
+
+/** Empreinte de chaque fichier, par petits morceaux (cède la main à la boucle d'événements). */
+function* fingerprints(files: TarFile[]): Steps<BackupManifest["files"]> {
+  const out: BackupManifest["files"] = [];
+  for (const f of files) out.push({ path: f.path, sha256: yield* sha256Steps(f.content), bytes: f.content.length });
+  return out;
 }
 
 /** Même mise en forme que `JSON.stringify(liste, null, 2)`, à partir d'éléments déjà sérialisés (retrait de 2 espaces). */
@@ -183,6 +193,7 @@ async function readRecords(keyOf: Map<string, string>): Promise<{ raw: string; r
       list.push(indent(JSON.stringify({ id: r.id, createdAt: r.createdAt, ...(typeof data === "object" ? (data as object) : { value: data }) }, null, 2)));
     }
     count += page.length;
+    await tick();
     if (page.length < RECORD_PAGE) break;
     const last = page[page.length - 1]!;
     after = { createdAt: last.createdAt, id: last.id };

@@ -13,12 +13,13 @@ import { levelOf } from "@/core/auth/access";
 import { syncSystemAssignments } from "@/core/auth/roles";
 import { isSystemKey } from "@/core/auth/rights";
 import { UPLOAD_NAME_RE } from "@/core/services/uploads";
-import { decryptBackup } from "./crypto";
+import { decryptBackup, decryptBackupAsync } from "./crypto";
+import { runAsync, runSync, sha256Steps, type Steps } from "./steps";
 import { applyUpgrades, currentSchemaVersion, isNewerSchema, pickKnownColumns } from "./schema";
 import { safetyCopy } from "./files";
 import { bumpGenerations, readGenerations } from "@/core/services/store";
 import { DATA_FILES, FORMAT, FORMAT_VERSION, LEGACY_FORMATS, sha256, type BackupManifest, type BackupModule } from "./format";
-import { readTarGz } from "./tar";
+import { readTarGz, readTarGzAsync, type TarFile } from "./tar";
 import { linksFor, orderByDependencies, previewMissing, settleRestored, type DependencyIssue } from "./restoreDeps";
 import type { Missing } from "@/core/modules/dependencyInstaller";
 
@@ -35,6 +36,8 @@ export async function checkSchema(manifest: BackupManifest): Promise<"ok" | "new
   return isNewerSchema(manifest.schemaVersion, await currentSchemaVersion()) ? "newer-schema" : "ok";
 }
 
+type Parsed = { ok: true; backup: ParsedBackup } | { ok: false; error: ParseError };
+
 /** Déchiffre puis valide une sauvegarde : format, version, empreintes de TOUS les fichiers, présence d'un propriétaire. */
 export function openBackup(file: Buffer, password: string, iterations?: number): { ok: true; backup: ParsedBackup; plain: Buffer } | { ok: false; error: ParseError } {
   const dec = decryptBackup(file, password, iterations);
@@ -43,9 +46,28 @@ export function openBackup(file: Buffer, password: string, iterations?: number):
   return parsed.ok ? { ok: true, backup: parsed.backup, plain: dec.plain } : parsed;
 }
 
-export function parseBackup(plain: Buffer): { ok: true; backup: ParsedBackup } | { ok: false; error: ParseError } {
-  let files;
-  try { files = new Map(readTarGz(plain).map((f) => [f.path, f.content])); } catch { return { ok: false, error: "corrupt" }; }
+/** Même chose sans jamais bloquer la boucle d'événements (dérivation de clé et décompression hors du fil principal, analyse par petits morceaux). */
+export async function openBackupAsync(file: Buffer, password: string, iterations?: number): Promise<{ ok: true; backup: ParsedBackup; plain: Buffer } | { ok: false; error: ParseError }> {
+  const dec = await decryptBackupAsync(file, password, iterations);
+  if (!dec.ok) return dec;
+  const parsed = await parseBackupAsync(dec.plain);
+  return parsed.ok ? { ok: true, backup: parsed.backup, plain: dec.plain } : parsed;
+}
+
+export function parseBackup(plain: Buffer): Parsed {
+  let tar: TarFile[];
+  try { tar = readTarGz(plain); } catch { return { ok: false, error: "corrupt" }; }
+  return runSync(checkFiles(tar));
+}
+
+export async function parseBackupAsync(plain: Buffer): Promise<Parsed> {
+  let tar: TarFile[];
+  try { tar = await readTarGzAsync(plain); } catch { return { ok: false, error: "corrupt" }; }
+  return runAsync(checkFiles(tar));
+}
+
+function* checkFiles(tar: TarFile[]): Steps<Parsed> {
+  const files = new Map(tar.map((f) => [f.path, f.content]));
   let manifest: BackupManifest;
   try { manifest = JSON.parse(files.get("backup.json")?.toString("utf8") ?? ""); } catch { return { ok: false, error: "not-a-backup" }; }
   if ((manifest?.format !== FORMAT && !LEGACY_FORMATS.includes(String(manifest?.format))) || !Array.isArray(manifest.files) || !Array.isArray(manifest.modules)) return { ok: false, error: "not-a-backup" };
@@ -55,17 +77,18 @@ export function parseBackup(plain: Buffer): { ok: true; backup: ParsedBackup } |
   const listed = new Set(manifest.files.map((f) => f.path));
   for (const f of manifest.files) {
     const content = files.get(f.path);
-    if (!content || sha256(content) !== f.sha256) return { ok: false, error: "tampered" };
+    if (!content || (yield* sha256Steps(content)) !== f.sha256) return { ok: false, error: "tampered" };
   }
   for (const p of files.keys()) if (p !== "backup.json" && p !== "README.txt" && !listed.has(p)) return { ok: false, error: "tampered" };
 
   const list = (p: string): Row[] | null => {
     try { const v = JSON.parse(files.get(p)?.toString("utf8") ?? ""); return Array.isArray(v) ? v : null; } catch { return null; }
   };
-  const data = {
-    users: list(DATA_FILES.users), settings: list(DATA_FILES.settings), instances: list(DATA_FILES.instances), instanceTranslations: list(DATA_FILES.instanceTranslations),
-    entries: list(DATA_FILES.entries), entryTranslations: list(DATA_FILES.entryTranslations), redirects: list(DATA_FILES.redirects), records: list(DATA_FILES.records),
-  };
+  const data: Record<string, Row[] | null> = {};
+  for (const [name, file] of [["users", DATA_FILES.users], ["settings", DATA_FILES.settings], ["instances", DATA_FILES.instances], ["instanceTranslations", DATA_FILES.instanceTranslations], ["entries", DATA_FILES.entries], ["entryTranslations", DATA_FILES.entryTranslations], ["redirects", DATA_FILES.redirects], ["records", DATA_FILES.records]] as const) {
+    data[name] = list(file);
+    yield; // une lecture JSON à la fois : la boucle d'événements respire entre deux fichiers
+  }
   if (Object.values(data).some((v) => v === null)) return { ok: false, error: "corrupt" };
   // Facultatif : une sauvegarde d'avant la 0.1.20 n'a pas ce fichier (= aucune donnée gardée) ; présent mais illisible = sauvegarde abîmée.
   const retired = files.has(DATA_FILES.retired) ? list(DATA_FILES.retired) : [];
@@ -75,7 +98,7 @@ export function parseBackup(plain: Buffer): { ok: true; backup: ParsedBackup } |
   const userRoles = files.has(DATA_FILES.userRoles) ? list(DATA_FILES.userRoles) : [];
   if (roles === null || userRoles === null) return { ok: false, error: "corrupt" };
   const modules = manifest.modules;
-  const d = data as Record<keyof typeof data, Row[]>;
+  const d = data as Record<"users" | "settings" | "instances" | "instanceTranslations" | "entries" | "entryTranslations" | "redirects" | "records", Row[]>;
   if (!d.users.some((u) => levelOf(u) === "owner" && typeof u.email === "string" && typeof u.passwordHash === "string")) return { ok: false, error: "no-owner" };
   const uploads = [...files.entries()].filter(([p]) => p.startsWith("uploads/") && UPLOAD_NAME_RE.test(p.slice(8))).map(([p, content]) => ({ name: p.slice(8), content }));
   return { ok: true, backup: { manifest, data: { ...d, modules, retired, roles, userRoles }, uploads } };

@@ -2,7 +2,7 @@ import { dropStash, stash, unstash } from "./files";
 import { MAX_UPLOAD } from "./guard";
 import { buildNames } from "@/core/modules/dependencyView";
 import { getSiteConfig } from "@/core/settings";
-import { applyRestore, checkSchema, openBackup, parseBackup, planModules } from "./restore";
+import { applyRestore, checkSchema, openBackupAsync, parseBackupAsync, planModules } from "./restore";
 
 /**
  * Les deux étapes d'une restauration, communes à l'admin (propriétaire connecté) et à l'assistant de première installation
@@ -25,7 +25,7 @@ export async function previewHandler(request: Request, guard: Guard): Promise<Re
   const password = String(form?.get("password") ?? "");
   if (!(file instanceof File) || file.size === 0) return Response.json({ ok: false, error: "no-file" }, { status: 400 });
   if (file.size > MAX_UPLOAD) return Response.json({ ok: false, error: "too-large" }, { status: 413 });
-  const opened = openBackup(Buffer.from(await file.arrayBuffer()), password);
+  const opened = await openBackupAsync(Buffer.from(await file.arrayBuffer()), password);
   if (!opened.ok) return Response.json({ ok: false, error: opened.error }, { status: 400 });
   const { manifest } = opened.backup;
   if ((await checkSchema(manifest)) === "newer-schema") return Response.json({ ok: false, error: "newer-schema" }, { status: 400 });
@@ -50,7 +50,7 @@ export async function applyHandler(request: Request, guard: Guard, actor: () => 
   const body = (await request.json().catch(() => null)) as { token?: string; confirm?: unknown } | null;
   const plain = unstash(String(body?.token ?? ""));
   if (!plain) return Response.json({ ok: false, error: "expired" }, { status: 410 });
-  const parsed = parseBackup(plain);
+  const parsed = await parseBackupAsync(plain);
   if (!parsed.ok) return Response.json({ ok: false, error: parsed.error }, { status: 400 });
   const confirm = Array.isArray(body?.confirm) ? body.confirm.filter((x): x is string => typeof x === "string").slice(0, 200) : [];
   const report = await applyRestore(parsed.backup, { confirmCustom: confirm, actor: await actor() });
