@@ -4,9 +4,16 @@ import path from "node:path";
 import { localeProblems, settingsProblems } from "../builtinChecks.mjs";
 import { observe, CANARY } from "../probes.mjs";
 import { CORE_DIR } from "../core.mjs";
-import { allSettings, missingLangs, stripComments, texts, whereOf } from "./util.mjs";
+import { allSettings, CHOICE_RULES_LEVEL, missingLangs, stripComments, texts, whereOf } from "./util.mjs";
 
 const SAYS_OPTIONAL = /facultatif|optionnel|\boptional\b/i;
+/**
+ * Un texte d'aide qui demande de TAPER LE NOM d'une chose qui existe déjà (« saisissez le nom de la chaîne », « type the channel name », « tapez ici la chaîne
+ * (identifiant) d'une autre instance »). Heuristique de la règle settings.textNamesExisting.
+ */
+export const NAMES_EXISTING = /\b(?:saisissez|tapez|indiquez|écrivez|entrez)\s+(?:ici\s+)?(?:le|la|l['’])\s*(?:nom|identifiant|pseudo|chaîne|catégorie|page|agenda)\b|\b(?:type|enter|write)\s+(?:here\s+)?the\s+(?:exact\s+)?(?:name\s+of\b|[\w-]+\s+(?:\()?(?:name|login)\b|(?:channel|category|page|calendar)\b)/i;
+/** Clés de profils EXTERNES (un pseudo sur une autre plateforme n'existe pas sur le site) : jamais signalées par settings.textNamesExisting. */
+const EXTERNAL_KEYS = ["profile", "channelId"];
 /** Mots techniques interdits dans ce que lit une personne non technicienne (mode simple de l'administration). Réunit les listes des tests des modules. */
 export const JARGON = /\b(sujets?|m[ée]triques?|collecteurs?|collector|topics?|metrics?|api|json|sch[ée]mas?|endpoint|payload|jetons?|tokens?|oauth|scope|quota|http|mcp|ctx|prisma|overlay\.item|feed\.item)\b/i;
 /** Un texte sans ses adresses d'exemple (« https://monnom.bandcamp.com » n'est pas du jargon). */
@@ -136,6 +143,34 @@ const requirements = [
     run(m) {
       if (!m.manifest) return { skip: "module.json illisible" };
       return allSettings(m.manifest).filter((s) => s.advanced && s.default === undefined && ["number", "select", "color", "boolean"].includes(s.type) && !s.optional).map((s) => `${s.where} est avancé mais n'a pas de valeur par défaut`);
+    },
+  },
+  {
+    id: "settings.refersToChoice", level: CHOICE_RULES_LEVEL, group: "settings",
+    title: "Un réglage qui désigne un élément existant est un « choix parmi »",
+    what: "Un réglage qui déclare « refersTo » (une catégorie, une chaîne, une page, un agenda…) autre que « external » est de type « choice » : la personne choisit dans une liste, elle ne tape pas un nom. Conseil dans le cœur 0.2.0 ; deviendra obligatoire.",
+    why: "Un nom tapé à la main casse dès que l'élément est renommé, ne voit pas qu'il a été supprimé, et laisse passer les fautes de frappe. Un « choix parmi » garde un identifiant stable, se cache quand il n'y a qu'une option et signale un élément disparu.",
+    fix: "Passez le réglage en « type »: « choice » avec une « source » (« providers » pour une instance qui offre un service, « service » pour un élément d'un autre module), « fromText »: true pour reprendre les valeurs déjà tapées, et « minCore »: « 0.2.0 ». Pour un profil sur une autre plateforme, écrivez « refersTo »: « external ».",
+    run(m) {
+      if (!m.manifest) return { skip: "module.json illisible" };
+      const named = allSettings(m.manifest).filter((s) => s.refersTo !== undefined);
+      return named.filter((s) => s.refersTo !== "external" && s.type !== "choice").map((s) => `${s.where} désigne un élément existant (refersTo « ${s.refersTo} ») mais est de type « ${s.type} » : utilisez « choice »`);
+    },
+  },
+  {
+    id: "settings.textNamesExisting", level: CHOICE_RULES_LEVEL, group: "settings",
+    title: "On ne fait pas taper le nom d'un élément qui existe déjà",
+    what: "Un réglage texte dont l'aide demande de « saisir le nom de… » (« type the name of… », « type the channel name ») un élément du site déclare « refersTo » ; s'il désigne un élément du site, c'est un « choice ». Les profils externes (« profile », « channelId », et « channel » dans un module de type « social ») ne sont pas concernés ; « refersTo »: « external » fait taire la règle.",
+    why: "La personne doit retrouver et recopier un nom exact, qui casse au premier renommage. Une liste où l'on choisit est plus simple, et le module reçoit un identifiant qui ne change jamais.",
+    fix: "Remplacez le réglage par un « choice » (même clé, « fromText »: true pour convertir les valeurs déjà saisies, « minCore »: « 0.2.0 »). Si c'est un profil sur une autre plateforme (un pseudo, une adresse), ajoutez « refersTo »: « external ».",
+    run(m) {
+      if (!m.manifest) return { skip: "module.json illisible" };
+      const social = m.manifest.type === "social";
+      return allSettings(m.manifest)
+        .filter((s) => (s.type === "text" || s.type === "textarea") && s.refersTo === undefined)
+        .filter((s) => !EXTERNAL_KEYS.includes(s.key) && !(social && s.key === "channel"))
+        .filter((s) => [...texts(s.label), ...texts(s.help)].some((x) => NAMES_EXISTING.test(x)))
+        .map((s) => `${s.where} fait taper le nom d'un élément existant : un « choice » (ou « refersTo »: « external » pour un profil externe)`);
     },
   },
   {

@@ -37,6 +37,8 @@ import { removalScope } from "@/core/modules/removal";
 import { deleteInstanceAction, retryMigrationAction, saveInstance, saveInstanceSettings, saveSources } from "../actions";
 import { EXTENSIONS_ADD_HREF } from "@/core/modules/extensionsLinks";
 import { SuggestNotices } from "@/components/admin/SuggestInstall";
+import { choiceAdminView, isChoiceField, viewCountsAsFilled, type ChoiceView } from "@/core/modules/choice";
+import { FILLED_MARK } from "@/core/modules/choiceValues";
 
 const PLACE_LABEL = { menu: "placement.pin", integrations: "placement.park", overlays: "placement.parkOverlays" } as const;
 
@@ -74,8 +76,16 @@ export async function InstanceView({ id, query: sp }: { id: string; query: Recor
     }
   }
 
+  // Réglages « choix parmi » : ce que chacun montre (la conversion d'une valeur texte `fromText` se fait ici, à l'ouverture, au nom de la personne).
+  const choices: Record<string, ChoiceView> = {};
+  if (manage) {
+    for (const f of mod.manifest.settings) if (isChoiceField(f)) choices[f.key] = await choiceAdminView({ mod, instance }, f, { locale, actor: user.email });
+  }
   const stored: Record<string, Record<string, unknown>> = {};
   for (const f of mod.manifest.settings) stored[f.key] = await getSettingByLocale(instanceSettingKey(id, f.key));
+  // Pour « à configurer » : un choix compte comme rempli s'il est choisi, unique, remplacé, ou non vérifiable alors qu'une valeur existe (voir viewCountsAsFilled).
+  const fillable: Record<string, Record<string, unknown>> = { ...stored };
+  for (const [key, view] of Object.entries(choices)) fillable[key] = viewCountsAsFilled(view) ? { "": FILLED_MARK } : {};
 
   const mcpOn = (await getSetting<boolean>(mcpInstanceKey(instance.id))) !== false;
   const sort = effectiveSort(await getSetting(sortSettingKey(instance.id)), instance.display);
@@ -89,7 +99,7 @@ export async function InstanceView({ id, query: sp }: { id: string; query: Recor
 
   // Un réglage à remplir (clé, adresse, identifiant… encore vide, sans valeur par défaut) : on ouvre les réglages d'office plutôt que de les cacher.
   const grouped = new Set((mod.manifest.optionalGroups ?? []).flatMap((g) => g.fields));
-  const missingFields = missingSettings(mod.manifest.settings, grouped, stored);
+  const missingFields = missingSettings(mod.manifest.settings, grouped, fillable);
   const toFill = missingFields.length > 0;
   const missingItems = missingLinks(missingFields, (key) => L(mod.manifest.settings.find((f) => f.key === key)?.label ?? key));
   const placement = resolvePlacement(mod.manifest, await getSetting(placementSettingKey(id)));
@@ -227,7 +237,8 @@ export async function InstanceView({ id, query: sp }: { id: string; query: Recor
           <input type="hidden" name="id" value={id} />
           {advanced && <input type="hidden" name="__adv" value="1" />}
           <ModuleSettings t={t} locale={locale} defaultLocale={config.defaultLocale} locales={config.locales} fields={visibleSettings} allFields={mod.manifest.settings}
-            groups={mod.manifest.optionalGroups ?? []} stored={stored} siteByLocale={siteByLocale} theme={theme} missing={new Set(missingFields.map((f) => f.key))} />
+            groups={mod.manifest.optionalGroups ?? []} stored={stored} siteByLocale={siteByLocale} theme={theme} missing={new Set(missingFields.map((f) => f.key))}
+            instanceId={instance.id} choices={choices} advanced={advanced} />
         </ActionForm>
       )}
 

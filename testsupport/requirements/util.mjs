@@ -57,6 +57,12 @@ export function whereOf(o) {
  */
 export const NET_RULES_LEVEL = "advice";
 
+/**
+ * Niveau des règles « choix parmi » (settings.refersToChoice, settings.textNamesExisting) : même calendrier que les règles réseau (conseil dans le cœur 0.2.0,
+ * décision 7 ; obligatoire au tag « Contacts 2.0 » pour settings.refersToChoice). Changer cette seule ligne suffit alors.
+ */
+export const CHOICE_RULES_LEVEL = "advice";
+
 /** Texte entre la parenthèse ouvrante d'indice `open` et sa fermante (parenthèses, crochets, accolades et chaînes simples équilibrés), borné à 4 000 caractères. */
 export function balancedArgs(code, open) {
   let depth = 0;

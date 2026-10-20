@@ -9,10 +9,44 @@ export type { NetHealthItem, NetRequest, NetResult };
 
 export type LocalizedString = string | Record<string, string>;
 
+/**
+ * Source des options d'un réglage `choice` (cœur 0.2.0) :
+ *   - `providers` : les instances actives qui offrent `service` (déclaré dans `requires`), version ≥ `min` ; la valeur stockée est l'id d'INSTANCE (jamais sa clé) ;
+ *   - `service` : les éléments rendus par les méthodes `list` / `get` (et `create`, facultative) du service `service` du module propriétaire de la donnée.
+ */
+export type ChoiceSource =
+  | { kind: "providers"; service: string; min?: number }
+  | { kind: "service"; service: string; list: string; get: string; create?: string };
+/** Ce que désigne un réglage (règle de kit « un réglage qui désigne un existant n'est jamais du texte libre ») ; `external` : un profil hors du site (pseudo, identifiant de chaîne…). */
+export type RefersTo = "category" | "contact" | "organisation" | "channel" | "connector" | "instance"
+  | "module" | "calendar" | "game" | "page" | "user" | "role" | "theme" | "external";
+/** Un élément proposé par `list` (source `service`) : `id` stable, `label` lisible, `aliases` (autres noms reconnus par `fromText`), `hint` (précision affichée en petit). */
+export type ChoiceItem = { id: string; label: string; aliases?: string[]; hint?: string };
+/**
+ * Résolution d'un réglage `choice` à l'exécution (`ctx.resolveChoice`) :
+ *   chosen      la valeur enregistrée existe (ou a été fusionnée : on suit le nouvel id) ;
+ *   only        rien d'enregistré et exactement UNE option : on l'utilise sans l'écrire (une 2e option fera réapparaître le sélecteur) ;
+ *   none        rien d'enregistré, aucune option ;  ambiguous  rien d'enregistré, plusieurs options ;
+ *   missing     l'élément enregistré n'existe plus ; s'il reste UNE seule option, `id` / `label` la donnent (le module peut l'utiliser) ;
+ *   unverified  le fournisseur n'a pas répondu à temps (ou l'instance choisie est momentanément à l'écart) : ne rien décider.
+ */
+export type ChoiceResolution =
+  | { status: "chosen" | "only"; id: string; label: string }
+  | { status: "missing"; id?: string; label?: string }
+  | { status: "none" | "ambiguous" | "unverified" };
+
 export type SettingField = {
   key: string;
   label: LocalizedString;
-  type: "text" | "textarea" | "url" | "link" | "number" | "boolean" | "select" | "color" | "secret" | "image" | "video";
+  type: "text" | "textarea" | "url" | "link" | "number" | "boolean" | "select" | "color" | "secret" | "image" | "video" | "choice";
+  /** Obligatoire pour `choice` : d'où viennent les options. */
+  source?: ChoiceSource;
+  /** `choice` de source `service` avec `create` : propose « Créer « X » » (le module propriétaire crée, avec SES droits). Défaut false. */
+  allowCreate?: boolean;
+  /** `choice` qui remplace un ancien réglage texte (même clé) : une valeur texte égale à UNE étiquette (ou alias) est remplacée par son id. */
+  fromText?: boolean;
+  /** Ce que désigne ce réglage (voir `RefersTo`). */
+  refersTo?: RefersTo;
   help?: LocalizedString;
   /** Valeur par défaut. Pour `text` / `textarea` : `"site:name"` (nom du site) ou `"site:tagline"` (accroche), dans la langue du champ. */
   default?: string | number | boolean;
@@ -358,6 +392,12 @@ export type ModuleContext = {
    * route, overlay OBS, tâche, service, MCP). Absent sur un cœur plus ancien : traitez l'absence comme un refus.
    */
   can?(rightId: string): boolean;
+  /**
+   * (0.2.0) Résout un réglage `choice` de cette instance (voir `ChoiceResolution`). Ne lève jamais ; borné (3 s). Pour un `choice` de source `providers` :
+   * `ctx.api.services.call(service, méthode, args, { provider: r.id })` quand le statut est `chosen` ou `only` (ou `missing` avec un `id`).
+   * Absent sur un cœur plus ancien (qui refuse d'ailleurs un manifeste avec `choice` : `minCore: "0.2.0"`).
+   */
+  resolveChoice?(key: string): Promise<ChoiceResolution>;
 };
 
 export type SlotContext = ModuleContext & {

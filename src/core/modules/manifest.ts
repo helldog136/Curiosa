@@ -5,13 +5,21 @@ import { groupIssues } from "./groups";
 import { siteDefaultRef } from "./settingValues";
 import { PLATFORM_PATTERN } from "./platform";
 import { MAX_MODULE_RIGHTS, OPEN, RIGHT_ID_RE } from "../auth/rights";
+import { SERVICE_RE } from "./serviceVersions";
+import { NO_CREATE_REFERS, REFERS_TO } from "./choiceValues";
 
 const localized = z.union([z.string().max(500), z.record(z.string(), z.string().max(500))]);
+const methodName = z.string().regex(/^[a-zA-Z][a-zA-Z0-9_]{0,40}$/);
+/** Source des options d'un réglage `choice` (cœur 0.2.0 ; un cœur plus ancien refuse `type: "choice"` : d'où `minCore: "0.2.0"`). */
+const choiceSource = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("providers"), service: z.string().regex(SERVICE_RE), min: z.number().int().min(1).max(1000).optional() }),
+  z.object({ kind: z.literal("service"), service: z.string().regex(SERVICE_RE), list: methodName, get: methodName, create: methodName.optional() }),
+]);
 
 export const settingField = z.object({
   key: z.string().regex(/^[a-zA-Z][a-zA-Z0-9_]{0,40}$/),
   label: localized,
-  type: z.enum(["text", "textarea", "url", "link", "number", "boolean", "select", "color", "secret", "image", "video"]),
+  type: z.enum(["text", "textarea", "url", "link", "number", "boolean", "select", "color", "secret", "image", "video", "choice"]),
   help: localized.optional(),
   default: z.union([z.string(), z.number(), z.boolean()]).optional(),
   options: z.array(z.object({ value: z.string(), label: localized })).max(50).optional(),
@@ -21,7 +29,27 @@ export const settingField = z.object({
   optional: z.boolean().optional(),
   /** « appearance » : réglage d'apparence du module (couleurs, textures…), regroupé à part dans l'admin. */
   group: z.enum(["appearance"]).optional(),
+  /** `choice` (0.2.0) : d'où viennent les options (obligatoire pour ce type, interdit ailleurs). */
+  source: choiceSource.optional(),
+  /** `choice` de source `service` avec `create` : création à la volée par le module propriétaire de la donnée. */
+  allowCreate: z.boolean().optional(),
+  /** `choice` qui remplace un ancien réglage texte de même clé. */
+  fromText: z.boolean().optional(),
+  /** Ce que désigne le réglage (règle de kit) ; un cœur ancien ignore la clé. */
+  refersTo: z.enum(REFERS_TO).optional(),
 }).superRefine((f, ctx) => {
+  // Réglage « choix parmi » : une source, ni défaut ni traduction (la valeur est un identifiant), création seulement par le service propriétaire.
+  if (f.type === "choice") {
+    if (!f.source) ctx.addIssue({ code: "custom", message: "a choice setting needs a source ({ kind: \"providers\" | \"service\", … })" });
+    if (f.default !== undefined) ctx.addIssue({ code: "custom", message: "a choice setting cannot have a default (with a single option, the core uses it without storing it)" });
+    if (f.translatable) ctx.addIssue({ code: "custom", message: "a choice setting cannot be translatable" });
+    if (f.allowCreate) {
+      if (f.source?.kind !== "service" || !f.source.create) ctx.addIssue({ code: "custom", message: "allowCreate needs a source of kind \"service\" with a create method" });
+      if (f.refersTo && (NO_CREATE_REFERS as readonly string[]).includes(f.refersTo)) ctx.addIssue({ code: "custom", message: `allowCreate is not allowed for a setting that refers to a ${f.refersTo}` });
+    }
+  } else {
+    for (const k of ["source", "allowCreate", "fromText"] as const) if (f[k] !== undefined) ctx.addIssue({ code: "custom", message: `${k} is only for a choice setting` });
+  }
   // Une couleur peut suivre le thème du site : default "theme:<jeton>". Rien d'autre n'est permis comme référence.
   if (typeof f.default === "string" && f.default.startsWith("theme:")) {
     if (f.type !== "color") ctx.addIssue({ code: "custom", message: "only a color setting can default to a theme token" });
@@ -181,6 +209,14 @@ export const manifestSchema = z.object({
   }
   if (new Set((m.seeds ?? []).map((x) => x.module)).size < (m.seeds ?? []).length) ctx.addIssue({ code: "custom", path: ["seeds"], message: "duplicate seed target" });
   for (const message of groupIssues(m.optionalGroups ?? [], m.settings)) ctx.addIssue({ code: "custom", path: ["optionalGroups"], message });
+  // Un `choice` interroge le service AU NOM de l'instance : le service doit être déclaré dans `requires` (sinon le cœur ne peut pas l'appeler).
+  const required = new Set((m.requires ?? []).map((r) => r.service));
+  for (const [i, f] of m.settings.entries()) {
+    if (f.type === "choice" && f.source && !required.has(f.source.service)) ctx.addIssue({ code: "custom", path: ["settings", i, "source", "service"], message: `the choice source "${f.source.service}" must be declared in requires` });
+  }
+  for (const [i, sec] of m.sections.entries()) {
+    for (const [j, o] of (sec.options ?? []).entries()) if (o.type === "choice") ctx.addIssue({ code: "custom", path: ["sections", i, "options", j, "type"], message: "a choice is only for instance settings, not for section options" });
+  }
 });
 
 export type ParsedManifest = z.infer<typeof manifestSchema>;

@@ -409,7 +409,13 @@ test("ctx.can est faux hors administration : route publique, MCP, tâche planifi
   const users = [];
   const walk = (d) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const p = `${d}/${e.name}`; if (e.isDirectory()) walk(p); else if (/\.(ts|tsx)$/.test(e.name) && /forViewer\(/.test(read(p))) users.push(p); } };
   walk("src");
-  assert.deepEqual(users.sort(), [`${PANEL}/entries/panel-actions.ts`, `${PANEL}/instances/[id]/InstanceView.tsx`, `${PANEL}/instances/module-actions.ts`, "src/core/modules/entryPanelsLoad.ts"]);
+  // dependencies.ts : le `create` d'un réglage `choice` (contrats 1 et 6), appelé pour la personne connectée ; seul choice.ts lui passe `viewer`.
+  assert.deepEqual(users.sort(), [`${PANEL}/entries/panel-actions.ts`, `${PANEL}/instances/[id]/InstanceView.tsx`, `${PANEL}/instances/module-actions.ts`, "src/core/modules/dependencies.ts", "src/core/modules/entryPanelsLoad.ts"]);
+  const viewers = [];
+  const walk2 = (d) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const p = `${d}/${e.name}`; if (e.isDirectory()) walk2(p); else if (/\.(ts|tsx)$/.test(e.name) && /callService\([^;]*\{\s*viewer\b/.test(read(p))) viewers.push(p); } };
+  walk2("src");
+  assert.deepEqual(viewers, ["src/core/modules/choice.ts"], "seule la création d'un choix passe la personne connectée au fournisseur");
+  assert.ok(!/viewer/.test(read("src/core/modules/api.ts")), "un module ne peut jamais passer `viewer` (ctx.api.services.call ne le transmet pas)");
 });
 
 test("mot de passe temporaire : prioritaire sur tout droit, tout palier et tout rôle personnalisé", async () => {

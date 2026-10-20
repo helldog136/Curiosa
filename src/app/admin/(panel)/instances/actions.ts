@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { adminCtx } from "@/core/admin";
 import { prisma } from "@/core/db";
-import { DISPLAYS, FEATURES } from "@/core/instances";
+import { DISPLAYS, FEATURES, getInstanceById } from "@/core/instances";
 import { removeInstance, validateBasePath } from "@/core/instanceService";
 import { noticeFor, removalNoticeHref } from "@/core/modules/removal";
 import { checkNickname } from "@/core/instanceLabel";
@@ -17,6 +17,7 @@ import { groupFlagName, judgeGroup } from "@/core/modules/groups";
 import { checkFieldInput, resolveDefault, shouldStore } from "@/core/modules/settingValues";
 import { localized } from "@/core/modules/types";
 import { getModule } from "@/core/modules/registry";
+import { forgetChoices, validateChoices, type ChoiceField } from "@/core/modules/choice";
 import { getSources, providersOf, setSources } from "@/core/services/topics";
 import { audit } from "@/core/permissions";
 import { deleteSetting, getSettingByLocale, getSiteConfig, setSetting } from "@/core/settings";
@@ -148,9 +149,22 @@ export async function saveInstanceSettings(_prev: ActionState, formData: FormDat
     }
   }
 
+  /** Réglages « choix parmi » à revérifier auprès de leur fournisseur (asynchrone, borné) avant toute écriture. */
+  const choices: { field: ChoiceField; raw: string; key: string }[] = [];
   for (const field of mod.manifest.settings) {
     if (field.advanced && !adv) continue; // réglage technique non montré : on garde sa valeur
     if (cleared.has(field.key)) continue; // groupe retiré : déjà effacé
+    if (field.type === "choice") {
+      // Masqué (aucune ou une seule option, fournisseur muet) : rien n'est envoyé, la valeur est gardée. Inchangé : gardé sans revérifier.
+      if (formData.get(`s__${field.key}__choice`) !== "1") continue;
+      const key = instanceSettingKey(id, field.key);
+      const raw = String(formData.get(`s__${field.key}`) ?? "").trim();
+      const current = (await getSettingByLocale(key))[""];
+      if (raw === (typeof current === "string" ? current.trim() : "")) continue;
+      if (raw === "") ops.push({ key, locale: "", del: true });
+      else choices.push({ field, raw, key });
+      continue;
+    }
     const locales = field.translatable ? config.locales : [""];
     for (const locale of locales) {
       const name = field.translatable ? `s__${field.key}__${locale}` : `s__${field.key}`;
@@ -174,10 +188,23 @@ export async function saveInstanceSettings(_prev: ActionState, formData: FormDat
       op(checked.value);
     }
   }
+  // Le navigateur n'envoie qu'un identifiant : on revérifie qu'il est une option actuelle (3 s par champ, 5 s en tout). Délai dépassé : on n'enregistre RIEN.
+  if (choices.length) {
+    const view = await getInstanceById(id);
+    if (!view) return { error: t("error.generic") };
+    const checks = await validateChoices({ mod, instance: view }, choices.map((c) => ({ field: c.field, raw: c.raw })), { locale: config.defaultLocale });
+    for (const c of choices) {
+      const check = checks.get(c.field.key);
+      if (!check?.ok) return { error: t(check?.reason === "timeout" ? "choice.error.verify" : "choice.error.unknown", { field: L(mod.manifest.settings.find((f) => f.key === c.field.key)?.label) }) };
+      // L'unique option n'est jamais écrite : elle reste résolue à l'exécution (une deuxième option fera réapparaître le sélecteur).
+      ops.push(check.store === null ? { key: c.key, locale: "", del: true } : { key: c.key, locale: "", value: check.store });
+    }
+  }
   for (const o of ops) {
     if (o.del) await deleteSetting(o.key, o.locale);
     else await setSetting(o.key, o.value, o.locale);
   }
+  forgetChoices(id);
   await audit(user.email, "instance.settings", instance.key);
   revalidatePath("/", "layout");
   return { ok: t("action.saved") };

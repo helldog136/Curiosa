@@ -28,6 +28,8 @@ import { makeNetClient } from "./fakeNet.mjs";
  *   est réduite à quelques ms), `netBudgetMs` (temps restant d'une page publique simulé ; défaut null = hors page), `net` (remplace tout `ctx.api.net`).
  * - `ctx.api.services.providers(nom)` : une entrée par élément de `serviceInstances[nom]` (`id` = « id-<instance> », la première est `master`) ; sinon UNE entrée tirée de
  *   `services[nom]` ; service inconnu → []. `call(nom, méthode, args, { provider: id })` appelle cette instance-là (inconnue → `{ ok: false, reason: "unavailable" }`).
+ * - `ctx.resolveChoice(clé)` (réglage « choice », cœur 0.2.0) : `choices` = { clé: résolution } (par ex. `{ status: "chosen", id: "id-x", label: "X" }`, ou une fonction
+ *   `() => résolution`) ; clé absente → `{ status: "none" }`. Chaque appel est noté dans `ctx.calls.choices`.
  * - `ctx.dumpStore()` : tout le contenu du stockage `[{ id, collection, data }]`, pour les assertions
  * - `ctx.calls` enregistre les appels utiles aux assertions (`calls.writes` : chaque écriture du stockage `{ op, collection }`)
  * - `ctx.visit` : `{ lastVisit }` (option `lastVisit`, défaut : le 1er janvier 1970 = visiteur inconnu)
@@ -42,11 +44,11 @@ export function fakeCtx(opts = {}) {
     settings = {}, messages = {}, topics = {}, entries = [], instances = [],
     brand = { name: "Site", tagline: "", about: "", logo: null, contactEmail: "", colors: [], font: { key: "sans", name: "Sans-serif", stack: "sans-serif" }, defaultLocale, locales },
     migration = false, seedResult, rows: seedRows = {}, permissions, lastVisit = new Date(0), site = { name: "Site", tagline: "", logo: null }, theme = { accent: "#e8a23b", accentFg: "#111111", bg: "#121214", surface: "#1b1b1d", fg: "#f4f4f5", muted: "#a1a1a3", line: "#2e2e30", fontKey: "sans", font: "sans-serif" }, services = {}, serviceInstances = {}, mailConfigured = true, mailResult = { ok: true }, rawgConfigured = true, rawgCover = { status: "found", url: "https://media.example.test/cover.jpg" }, siteUrl = "https://example.test",
-    net: netOverride, netLimits, netBudgetMs = null,
+    net: netOverride, netLimits, netBudgetMs = null, choices = {},
   } = opts;
   const rows = new Map();
   let seq = 0;
-  const calls = { topics: [], qr: [], entries: [], mail: [], png: [], services: [], rawg: [], seeds: [], cleared: [], writes: [], denied: [], net: [], netLog: [] };
+  const calls = { topics: [], qr: [], entries: [], mail: [], png: [], services: [], rawg: [], seeds: [], cleared: [], writes: [], denied: [], net: [], netLog: [], choices: [] };
   let netClient;
   const client = () => (netClient ??= makeNetClient({ limits: { retryMinMs: 1, retryMaxMs: 5, ...netLimits }, log: (line) => calls.netLog.push(line) }));
   const net = netOverride ?? {
@@ -89,6 +91,11 @@ export function fakeCtx(opts = {}) {
     instance: { id: `id-${key}`, key, basePath, name },
     locale, defaultLocale, locales,
     setting: (k) => (cleared.has(k) ? undefined : settings[k]),
+    async resolveChoice(k) {
+      calls.choices.push(k);
+      const r = choices[k];
+      return structuredClone(typeof r === "function" ? await r() : r ?? { status: "none" });
+    },
     theme,
     visit: { lastVisit },
     t: (k, vars) => { let s = messages[k] ?? k; for (const [n, v] of Object.entries(vars ?? {})) s = s.replaceAll(`{${n}}`, String(v)); return s; },

@@ -56,6 +56,13 @@ export async function buildContext(mod: LoadedModule, instance: InstanceView, lo
     api: makeApi(instance, loc, mod.manifest.permissions),
     // Refus par défaut : seul un contexte d'administration d'un humain (voir `forViewer`) répond autre chose que « non ».
     can: () => false,
+    // Réglage « choix parmi » (0.2.0) : résolu à la demande, borné, jamais écrit ici (voir choice.ts).
+    async resolveChoice(key: string) {
+      const field = mod.manifest.settings.find((f) => f.key === key);
+      if (!field || field.type !== "choice") return { status: "none" as const };
+      const { resolveChoiceFor } = await import("./choice");
+      return resolveChoiceFor({ mod, instance }, field, values[key], { locale: loc });
+    },
   };
 }
 

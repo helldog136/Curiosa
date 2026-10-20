@@ -149,6 +149,13 @@ Une personne a **un ou plusieurs rôles** ; elle peut faire tout ce que l'un d'e
 (son rang vaut 0) : il est **bloqué, jamais élevé**, jusqu'au retour en 0.2.0 ou jusqu'à ce que le propriétaire lui redonne le rôle Éditeur ou Administrateur.
 Les propriétaires, administrateurs et éditeurs ne voient aucune différence.
 
+## Réglage « choix parmi » (`choice`, 0.2.0) : modèle de menace
+
+- **Identifiant forgé** : le navigateur n'envoie qu'un identifiant ; le serveur revérifie à chaque enregistrement qu'il est une option ACTUELLE (instance qui offre le service et que le module peut appeler, ou élément rendu par `get` du module propriétaire). Une clé d'instance (renommable) n'est jamais acceptée comme identifiant.
+- **Fournisseur lent ou muet** : chaque vérification a un délai dur (3 s par champ, 5 s par formulaire). Au-delà, l'enregistrement est **refusé** : une valeur non vérifiée n'est jamais stockée. La lecture répond « non vérifié » et ne remplace rien en silence.
+- **Création à la volée** : seulement si le réglage déclare `allowCreate`, jamais pour un rôle, un connecteur, un module, une instance ou un compte. Le cœur appelle `create` du module **propriétaire de la donnée**, pour la personne connectée (même garde que l'enregistrement des réglages) : ce module vérifie SON droit avec `ctx.can` (préfixé par le cœur, un module ne peut pas tester le droit d'un autre) et refuse sinon. Hors administration, `ctx.can` vaut toujours « non ». Audit : `module.<instance>.choice.create`.
+- **Conversion de texte** (`fromText`) : remplacée seulement sur une correspondance exacte et unique ; l'audit `setting.fromText` ne recopie jamais la valeur.
+
 ## Dépannage en SSH (propriétaire du serveur seulement)
 
 Si le propriétaire est bloqué (trop d'essais, mot de passe perdu), la commande de secours se lance **sur le serveur**, depuis le dossier de l'application, avec l'utilisateur du service :

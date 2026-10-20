@@ -9,6 +9,7 @@ const MAX_BYTES = 10 * 1024 * 1024; // même plafond que l'installateur du cœur
  * Les fonctions d'avant la 0.1.10 ne sont pas listées : aucun site à jour n'a un cœur aussi ancien, une exigence là-dessus ne ferait que du bruit.
  */
 export const FEATURES = [
+  { since: "0.2.0", label: "un réglage « choice » (choix parmi) ou ctx.resolveChoice", test: (m, man) => allSettings(man).some((s) => s.type === "choice") || /\bresolveChoice\b/.test(stripComments(m.code)) },
   { since: "0.1.22", label: "un réglage « optional » (facultatif)", test: (m, man) => allSettings(man).some((s) => s.optional !== undefined) },
   { since: "0.1.16", label: "des « seeds » / ctx.seedInstance (créer une instance depuis une migration)", test: (m, man) => (man.seeds ?? []).length > 0 || /\bseedInstance\b/.test(stripComments(m.code)) },
   { since: "0.1.16", label: "un champ « datetime » dans un sujet consommé", test: (m, man) => (man.consumes ?? []).some((c) => (c.schema ?? []).some((f) => f.type === "datetime")) },
