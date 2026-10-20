@@ -152,7 +152,7 @@ Validé à l'installation et au chargement (zod, `src/core/modules/manifest.ts`)
 | `mcp` | Actions proposées à l'API MCP (voir « API MCP »). 60 au plus. |
 | `content` | Module à contenu : le cœur fournit l'éditeur d'entrées et les pages (voir ci-dessous). |
 | `onboarding` | Comment le module participe à la première installation (voir ci-dessous). |
-| `seeds` | **Graines** : modules dans lesquels une migration de données de ce module pourra créer UNE instance (`{ "module": "<id>", "reason": { "fr": "…", "en": "…" } }`, 3 au plus). Exige un `requires` et que le module cible offre un service requis (voir « `migrations` › Semer une instance »). |
+| `seeds` | **Graines** : modules dans lesquels une migration de données de ce module pourra créer UNE instance (`{ "module": "<id>", "reason": { "fr": "…", "en": "…" } }`, 3 au plus). Exige que le module cible soit relié à celui-ci : il offre un service que ce module `requires`, ou il fournit un sujet que ce module `consumes` (lien souple, sans dépendance). Voir « `migrations` › Semer une instance ». |
 | `dataVersion` | Version de la **structure de vos données** (entier ≥ 1, défaut 1). À augmenter quand elle change, avec la migration correspondante (`migrations`). |
 | `defaultEnabled` | Sans effet pour un module installé depuis le catalogue ou un dépôt : sans effet non plus sur l'état : un module installé est toujours actif (l'assistant de première installation n'installe que ceux que l'on coche). |
 | `permissions` | Les capacités utilisées (voir ci-dessous). |
@@ -507,7 +507,7 @@ module, une seule fois, avec des réglages initiaux** (secrets compris), puis **
 dans des limites qu'il contrôle.
 
 ```jsonc
-// module.json : déclaration explicite (l'administrateur la voit), + le service dont vous dépendez
+// module.json : déclaration explicite (l'administrateur la voit), + le lien avec la cible : un service dont vous dépendez...
 "requires": [{ "service": "calendar.source" }],
 "seeds": [{ "module": "calendar-provider", "reason": { "fr": "Reprendre votre adresse iCal", "en": "Carry over your iCal address" } }],
 "dataVersion": 2
@@ -530,6 +530,7 @@ migrations: {
 ```
 
 - **`ctx.seedInstance(cible, { nickname, names?, settings, seedKey })`** n'existe que **pendant une migration de données** (`undefined` ailleurs). Renvoie `{ created, instanceKey }`. Le module `cible` doit figurer dans votre `seeds`,
+- **Deux liens possibles, au choix de l'auteur.** *Dépendance* (`requires`) : votre module ne marche pas sans la cible, le cœur la garde en place et la marque « installée automatiquement ». *Lien souple* (`consumes`, sans `requires`) : votre module marche sans la cible (il lit un sujet que n'importe quel module peut fournir) ; la migration l'installe quand même pour reprendre l'ancien réglage, mais elle n'est **pas** marquée « installée automatiquement » (aucun nettoyage ne la proposera : elle porte désormais l'adresse). Exemple : un planning qui affiche les streams de n'importe quel agenda (`"consumes": [{ "topic": "planning.slot" }]`, `"seeds": [{ "module": "calendar-ical" }]`).
   **et** offrir un service que vous `requires` (version comprise) : on ne sème que chez un fournisseur dont on dépend. Sinon : erreur, la migration échoue.
 - **Les réglages** (`settings`) sont validés par le manifeste du **module cible**, avec les **mêmes règles que le formulaire d'admin** (type du champ : adresse `http(s)`, nombre, choix dans `options`, couleur…) ; une clé inconnue ou une valeur invalide
   refuse tout, **sans que la valeur apparaisse dans l'erreur** (ce peut être un secret). Un réglage traduisible accepte un texte (toutes les langues du site) ou `{ langue: texte }`. Un texte vide n'enregistre rien. Les secrets sont stockés comme ceux de l'admin.
@@ -759,9 +760,9 @@ Sujets connus (tous fournis par des modules du catalogue, ou par le cœur) :
 | `guestbook.message` | `guestbook` (exemple) | message validé d'un livre d'or (`id`, `name`, `text`, `publishedAt`) |
 | `sponsor.card` | `sponsors` | carte de sponsor (nom, code, logo, lien) |
 | `partnership.partner` | `partnerships` | fiche de partenaire (nom, logo) |
-| `planning.slot` | `planning` | créneau de stream |
+| `planning.slot` | tout module « agenda de streams » | un stream (`id`, `title`, `start`, `end?`, `allDay?`, `day?`, `games?`, `status?`, `timezone?`) consommé par `planning` et par le bot Twitch ; reçoit une période `from` / `to` |
+| `calendar.event` | tout module « calendrier » (réservé) | un évènement d'agenda quelconque (`id`, `title`, `start`, `end?`, `allDay?`, `description?`, `location?`, `url?`, `status?`, `category?`, `color?`, `sourceLabel?`), pour les lecteurs qui ne parlent pas de streams ; reçoit une période `from` / `to`. Les streams, eux, passent par `planning.slot` |
 | `social.stat` | tout module « réseau social » | les chiffres d'un compte (`id`, `metric` : `followers` / `paying` / `content` / `views`, `value`, `asOf`, `error?`) collectés par `community-stats` |
-| `calendar.event` | tout module « calendrier » | un évènement d'agenda (`id`, `title`, `start`, `end?`, `allDay?`, `description?`, `location?`, `url?`, `status?`, `category?`, `color?`, `sourceLabel?`) consommé par `planning` ; reçoit une période `from` / `to` |
 | `maze.poster` | tout module (`youtube-channel`, `twitch-channel`…) | affiche pour le labyrinthe |
 | `stream.live` | `twitch-channel` | live en cours (`id`, `title`, `url`, `startedAt`, `game`) ; vide hors ligne |
 
@@ -1231,11 +1232,11 @@ Des modules communautaires qui coopèrent aussi uniquement par sujets (aucun ne 
 
 ### Planning
 
-`planning` (`curiosa-extras/modules/planning`) lit un calendrier au format iCal (l'« adresse secrète » de
-Google Agenda) et affiche les prochains streams : section d'accueil, page `/planning`, sujet `planning.slot`
-et action MCP `planning_upcoming` (lecture seule). Il comprend les répétitions (`RRULE`, `EXDATE`),
-les exceptions et les fuseaux horaires. L'adresse du calendrier est un réglage secret, n'accepte que
-du https public (aucune adresse interne, redirections revérifiées) et n'est jamais réaffichée.
+`planning` (`curiosa-extras/modules/planning`) **affiche** les prochains streams : section d'accueil, page `/planning`, image de la semaine et action MCP `planning_upcoming` (lecture seule), avec l'apparence
+choisie (liste, alternance, semaine, timeline, affiches…). Il ne lit aucun agenda : ses streams viennent du sujet `planning.slot`, que fournissent des modules « agenda de streams » (`calendar-ical` lit un Google Agenda
+ou tout flux iCal — répétitions, exceptions, fuseaux ; `calendar-manual` garde des streams saisis à la main), sans que le Planning sache lesquels. Le bot Twitch lit le même sujet : un agenda suffit, le Planning n'est pas
+nécessaire. Aucun des deux n'en dépend : sans agenda, le Planning montre « pas de stream planifié ». L'adresse d'un agenda iCal est un réglage secret, n'accepte que du https public (aucune adresse interne, redirections
+revérifiées) et n'est jamais réaffichée. Un Planning d'avant la 2.0.0 gardait lui-même cette adresse : sa migration la reprend dans une instance de `calendar-ical` (`seeds`, lien souple par le sujet).
 
 ## Tests
 

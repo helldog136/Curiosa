@@ -538,12 +538,12 @@ export async function settleDependencies(id: string): Promise<{ provided?: strin
  * (c'est l'instance semée qui fournira le service), avec ses propres dépendances.
  * Renvoie le journal de la cascade (à défaire en bloc si la migration échoue ; ses marques « installé automatiquement » s'écrivent à la réussite).
  */
-export async function installSeedTarget(id: string, forModule: string): Promise<{ ok: true; journal: Journal } | { ok: false; error: string; detail?: string }> {
+export async function installSeedTarget(id: string, forModule: string, opts: { auto?: boolean } = {}): Promise<{ ok: true; journal: Journal } | { ok: false; error: string; detail?: string }> {
   const r = await installFromCatalogue(id, { dependencies: false, restoreKept: false });
   if (!r.ok) return { ok: false, error: r.error, detail: r.detail };
   const journal = newJournal(forModule);
   journal.undo.push(() => purgeModule(id));
-  journal.auto.push({ id, module: true, instances: [] });
+  if (opts.auto !== false) journal.auto.push({ id, module: true, instances: [] });   // `auto: false` : lien souple (sujet), pas une dépendance — voir seeding.ts
   journal.provided.push(id);
   try {
     const mod = await getModule(id);

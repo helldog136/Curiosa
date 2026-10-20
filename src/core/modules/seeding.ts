@@ -19,7 +19,8 @@ import type { ModuleContext, SeedRequest, SeedResult } from "./types";
  *
  * Un module ne peut toujours ni lire ni écrire les réglages ou les instances d'un autre. Ce qui lui est permis ici est étroit, et le cœur le contrôle :
  *   1. le module cible est DÉCLARÉ dans `seeds` du manifeste (l'administrateur le voit) ;
- *   2. le module cible offre un service que ce module `requires` : on ne sème que chez un fournisseur dont on dépend ;
+ *   2. le module cible est RELIÉ à ce module : il offre un service que ce module `requires` (dépendance), ou il fournit un sujet que ce module `consumes` (lien souple, sans dépendance :
+ *      un Planning qui affiche les streams de n'importe quel agenda peut ainsi reprendre l'adresse qu'il gardait dans un agenda, sans exiger d'agenda pour fonctionner) ;
  *   3. l'instance est créée par le cœur, avec les MÊMES validations que l'admin (réglages contrôlés par le manifeste cible), jamais en écrasant une instance ;
  *   4. une graine (`seedKey`) ne sème qu'UNE fois : la marque vit dans les réglages de l'instance semeuse, hors de portée du module ;
  *   5. rien n'est définitif avant la fin de la migration : si elle échoue, l'instance créée (et le module cible, s'il a été installé pour l'occasion) sont retirés ;
@@ -79,13 +80,15 @@ export function openSeedSession(mod: LoadedModule, owner: InstanceView): SeedSes
     let targetMod = target.installed;
     if (!targetMod) {
       const { installSeedTarget } = await import("./installer");
-      const r = await installSeedTarget(targetId, mod.manifest.id);
+      // « Installé automatiquement pour … » n'a de sens que pour une dépendance (`requires`) : sans elle, rien ne dit « plus personne n'en dépend » et le nettoyage proposerait de retirer
+      // l'agenda qui porte l'adresse reprise. Un lien souple (sujet) laisse donc le module cible installé comme s'il l'avait été à la main.
+      const r = await installSeedTarget(targetId, mod.manifest.id, { auto: target.link === "service" });
       if (!r.ok) throw new SeedError("target-unavailable", `cannot install "${targetId}": ${r.error}`);
       journals.push(r.journal);
       undo.push(() => unwind(r.journal));
       targetMod = await getModule(targetId);
       if (!targetMod) throw new SeedError("target-unavailable", `"${targetId}" did not load after install`);
-      assertOffers(mod, targetMod.manifest);   // l'index annonçait, le manifeste réel tranche
+      assertLinked(mod, targetMod.manifest);   // l'index annonçait, le manifeste réel tranche
     }
     const manifest = targetMod.manifest;
     const siblings = await prisma.moduleInstance.findMany({ where: { moduleId: targetId } });
@@ -144,23 +147,32 @@ export function openSeedSession(mod: LoadedModule, owner: InstanceView): SeedSes
   };
 }
 
-/** Le module cible offre-t-il un service que le module semeur `requires` ? */
-function offersWhatIsNeeded(owner: LoadedModule, offers: { service: string; version?: number }[] | undefined): boolean {
-  const o = normalizeOffers(offers);
-  return normalizeNeeds(owner.manifest.requires).some((need) => satisfiesVersion(offerVersionOf(o, need.service), need.min));
+type Link = "service" | "topic";
+type Linkable = { offers?: { service: string; version?: number }[]; provides?: ({ topic: string } | string)[] };
+
+/** Comment le module cible est-il relié au module semeur ? « service » : il offre ce que le semeur `requires` ; « topic » : il fournit un sujet que le semeur `consumes` ; null : pas relié. */
+function linkOf(owner: LoadedModule, target: Linkable): Link | null {
+  const o = normalizeOffers(target.offers);
+  if (normalizeNeeds(owner.manifest.requires).some((need) => satisfiesVersion(offerVersionOf(o, need.service), need.min))) return "service";
+  const topics = new Set((target.provides ?? []).map((p) => (typeof p === "string" ? p : p.topic)));
+  if ((owner.manifest.consumes ?? []).some((c) => topics.has(c.topic))) return "topic";
+  return null;
 }
-function assertOffers(owner: LoadedModule, targetManifest: { offers?: { service: string; version?: number }[] }): void {
-  if (!offersWhatIsNeeded(owner, targetManifest.offers)) throw new SeedError("not-a-dependency", `"${owner.manifest.id}" does not require any service this module offers`);
+function assertLinked(owner: LoadedModule, target: Linkable): Link {
+  const link = linkOf(owner, target);
+  if (!link) throw new SeedError("not-a-dependency", `"${owner.manifest.id}" does not require any service this module offers, and consumes no topic it provides`);
+  return link;
 }
 
-/** Le module cible, installé ou (à défaut) annoncé par le catalogue : il doit offrir un service dont dépend le module semeur. */
-async function resolveTarget(owner: LoadedModule, targetId: string): Promise<{ installed: LoadedModule | null }> {
+/** Le module cible, installé ou (à défaut) annoncé par le catalogue : il doit être relié au module semeur (service requis ou sujet consommé). */
+async function resolveTarget(owner: LoadedModule, targetId: string): Promise<{ installed: LoadedModule | null; link: Link }> {
   const installed = await getModule(targetId);
-  if (installed) { assertOffers(owner, installed.manifest); return { installed }; }
+  if (installed) return { installed, link: assertLinked(owner, installed.manifest) };
   const entry = (await getCatalogue().catch(() => [])).find((e) => e.id === targetId);
   if (!entry || !entry.compatible || entry.needsNewerCore) throw new SeedError("target-unavailable", `"${targetId}" is not installed and not available in the catalogue`);
-  if (!offersWhatIsNeeded(owner, entry.offers)) throw new SeedError("not-a-dependency", `"${owner.manifest.id}" does not require any service "${targetId}" offers`);
-  return { installed: null };
+  const link = linkOf(owner, entry);
+  if (!link) throw new SeedError("not-a-dependency", `"${owner.manifest.id}" does not require any service "${targetId}" offers, and consumes no topic it provides`);
+  return { installed: null, link };
 }
 
 type Stored = { key: string; locale: string; value: unknown };
