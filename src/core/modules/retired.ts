@@ -2,6 +2,7 @@ import { prisma } from "../db";
 import { RESERVED_PATHS } from "../config";
 import { isKnownLocale } from "../i18n/locales";
 import { pickKnownColumns } from "../backup/schema";
+import { bumpGenerations } from "../services/store";
 import { migrateModuleInstances, type MigrationOutcome } from "./dataMigrations";
 import { getModule } from "./registry";
 import { localized } from "./types";
@@ -114,6 +115,8 @@ export async function restoreInstance(id: string): Promise<RestoreOutcome> {
     for (const r of payload.records) await tx.moduleRecord.create({ data: pickKnownColumns("records", reviveDates("record", r)) as never });
     await tx.retiredInstance.delete({ where: { id } });
   }, { timeout: 120_000, maxWait: 10_000 });
+  // Le stockage revient de l'extérieur (données gardées) : la génération augmente à partir de celle gardée avec les réglages.
+  await bumpGenerations([id]).catch((e) => console.error("[retired] store generation bump failed:", (e as Error)?.message));
   return { ok: true, id, key: plan.key, changed: plan.changed };
 }
 

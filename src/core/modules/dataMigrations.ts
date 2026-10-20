@@ -1,5 +1,6 @@
 import { prisma } from "@/core/db";
-import { safetyCopy } from "@/core/backup/files";
+import { hasRecentBulkCopy, safetyCopy } from "@/core/backup/files";
+import { bumpGenerations, readGenerations } from "@/core/services/store";
 import { getInstanceById } from "@/core/instances";
 import { deleteSetting, setSetting, getSetting } from "@/core/settings";
 import { buildContext } from "./context";
@@ -60,7 +61,9 @@ export async function migrateInstance(mod: LoadedModule, instance: InstanceView)
   }
 
   // État d'avant, pour pouvoir tout remettre si une migration échoue.
-  safetyCopy("pre-migration");
+  // Pas de copie « pre-migration » juste après la copie d'une mise à jour groupée : elle couvre déjà cet état.
+  if (!hasRecentBulkCopy()) safetyCopy("pre-migration");
+  const generationBefore = await readGenerations([instance.id]);
   const records = await prisma.moduleRecord.findMany({ where: { instanceId: instance.id } });
   const settings = await prisma.setting.findMany({ where: { key: { startsWith: `instance.${instance.id}.` } } });
   let reached = from;
@@ -85,6 +88,8 @@ export async function migrateInstance(mod: LoadedModule, instance: InstanceView)
       prisma.moduleRecord.createMany({ data: records }),
       prisma.setting.createMany({ data: settings }),
     ]);
+    // Les données ont été remises d'un bloc : tout index gardé en mémoire par le module est périmé.
+    await bumpGenerations([instance.id], generationBefore).catch(() => {});
     await setSetting(statusKey(instance.id), { status: "failed", error: message });
     return out("failed", message, from);
   }

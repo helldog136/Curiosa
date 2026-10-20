@@ -55,7 +55,8 @@ async function richInstance(moduleId, nickname = "Journal") {
 const snapshot = async (instanceId) => {
   const inst = await prisma.moduleInstance.findUnique({ where: { id: instanceId }, include: { translations: { orderBy: { locale: "asc" } } } });
   const entries = await prisma.entry.findMany({ where: { instanceId }, include: { translations: { orderBy: { locale: "asc" } } }, orderBy: { createdAt: "asc" } });
-  const settings = await prisma.setting.findMany({ where: { key: { startsWith: `instance.${instanceId}.` } }, orderBy: [{ key: "asc" }, { locale: "asc" }] });
+  // Le compteur de génération du stockage change par construction quand les données reviennent de l'extérieur : il n'est pas « à l'identique ».
+  const settings = (await prisma.setting.findMany({ where: { key: { startsWith: `instance.${instanceId}.` } }, orderBy: [{ key: "asc" }, { locale: "asc" }] })).filter((s) => !s.key.endsWith(".__storeGeneration"));
   const records = await prisma.moduleRecord.findMany({ where: { instanceId }, orderBy: { id: "asc" } });
   return JSON.parse(JSON.stringify({ inst, entries, settings, records }));
 };

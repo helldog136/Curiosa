@@ -62,6 +62,8 @@ Tout est du **texte** (JSON, Markdown, CSV), sauf les images. Pour vérifier l'i
   (dépôt non vérifié) n'est réinstallé que si vous le **confirmez, module par module** ; sinon ses données sont gardées mais le module reste à réinstaller.
 - La restauration **remplace** les données actuelles, en une seule transaction : tout ou rien. Une copie de la base actuelle est gardée dans
   `data/backups/pre-restore-*.db` (les 5 dernières).
+- Les enregistrements de modules portent leur **clé** (`key`, facultative). Une sauvegarde plus ancienne, sans clé, se restaure telle quelle (clé vide). Le compteur de génération du stockage de chaque instance augmente (les modules reconstruisent leurs index en mémoire).
+- Avant une **mise à jour groupée de modules**, une copie unique `data/backups/pre-bulk-update-<date>-<ts>.db` est prise (une seule gardée, jamais effacée par la rotation des autres copies).
 - Les identifiants sont conservés : les sessions, les liens entre entrées, redirections et données de modules restent valides.
 - Les modules installés ici mais absents de la sauvegarde restent installés (sans leurs instances).
 - **Dépendances entre modules** ([MODULES.md › Dépendances](MODULES.md)) : les modules sont réinstallés **dans l'ordre des dépendances** (fournisseurs d'abord), puis les besoins de chaque module **actif** restauré sont vérifiés. Un fournisseur absent de la sauvegarde mais disponible (livré, catalogue) est installé avec son instance par défaut ; le bilan le mentionne. Si aucun n'est disponible, le module est restauré **avec ses données**, dans l'état « activé » de la sauvegarde, et l'**aperçu comme le bilan** disent « il manque : … » : la restauration n'est jamais interrompue et aucune donnée n'est perdue.

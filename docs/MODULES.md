@@ -495,7 +495,7 @@ Le cœur retient la version des données **de chaque instance** (absente = 1) et
 chaque instance en retard les migrations manquantes, **dans l'ordre** (si l'utilisateur a sauté des versions, le cœur rejoue chaque étiquette intermédiaire `vX.Y.Z` avec son propre code, l'une après l'autre, puis installe la dernière ; s'il y a un échec il s'arrête sur la version fautive) (une version sans fonction avance simplement le numéro). Une instance **créée** après coup
 naît directement à la version courante. Garanties :
 
-- une **copie de la base** est gardée avant (`data/backups/pre-migration-*.db`) ;
+- une **copie de la base** est gardée avant (`data/backups/pre-migration-*.db`), sauf si une copie de lot (`pre-bulk-update`, prise avant une mise à jour groupée) date de moins d'une heure ;
 - si une migration **lève une erreur**, l'instance est **remise exactement dans son état d'avant** (stockage et réglages, rien à moitié converti), **mise à l'écart** (elle ne
   tourne pas) et l'admin affiche l'erreur avec un bouton « Réessayer » ; les autres instances ne sont pas touchées. Publiez une version corrigée : la mise à jour relance la migration ;
 - des données **plus récentes** que votre code (sauvegarde restaurée dans un module plus ancien) sont aussi mises à l'écart, jamais modifiées.
@@ -672,10 +672,15 @@ Deux familles : les **services** du cœur (génériques, voir [PLATFORM.md](PLAT
 | `ctx.api.services.call(service, méthode, args)` / `.available(service)` | dépendance | Appelle un service offert par un autre module (déclaré dans `requires`) ; renvoie `{ ok: true, value }` ou `{ ok: false, reason }` (`undeclared`, `unavailable`, `no_method`, `failed`), ne lève jamais. |
 | `ctx.api.qr(texte)` | service | QR code en SVG (fond transparent) pour un texte ou une URL |
 | `ctx.api.png({ width, height, tree })` | service | Image PNG (une `Response`) à partir d'une arborescence de boîtes `{ type: "div"\|"span"\|"p"\|"b"\|"img", props: { style, children, src } }` (flexbox, styles en ligne, 16 à 2000 px). Une `img` n'accepte qu'un chemin du site ou une adresse https publique. Exemple : l'image de la semaine du module *planning* (`/m/<clé>/image`). |
-| `ctx.api.store.add(collection, data)` | service | ajoute un document JSON, renvoie son `id` |
-| `ctx.api.store.get(id)` | service | `{ id, createdAt, data }` ou `null` (aussi `null` pour un document d'une autre instance) |
-| `ctx.api.store.update(id, data)` | service | **remplace** le document ; renvoie `false` s'il n'existe pas. Pour modifier un champ, relisez, fusionnez, réécrivez. |
-| `ctx.api.store.list(collection, { limit? })` | service | les plus récents d'abord ; 100 par défaut |
+| `ctx.api.store.add(collection, data, { key? })` | service | ajoute un document JSON, renvoie son `id` ; `key` : clé facultative (200 caractères au plus, non unique) pour le retrouver sans parcourir la collection |
+| `ctx.api.store.get(id)` | service | `{ id, createdAt, data, key }` ou `null` (aussi `null` pour un document d'une autre instance) |
+| `ctx.api.store.update(id, data, { key? })` | service | **remplace** le document ; renvoie `false` s'il n'existe pas. `key` absente = inchangée, `key: null` l'efface. Pour modifier un champ, relisez, fusionnez, réécrivez. |
+| `ctx.api.store.list(collection, { limit? })` | service | les plus récents d'abord ; 100 par défaut, **10 000 au plus** (au-delà : `page`) |
+| `ctx.api.store.page(collection, { limit?, cursor?, order?, key? })` | service | `{ items, next }` : lecture par pages (100 par défaut, **1 000 au plus**), `order` `"desc"` (défaut) ou `"asc"`. Passez `next` comme `cursor` à l'appel suivant ; `next` vaut `null` à la dernière page. Le curseur est opaque ; un curseur illisible donne une page vide. |
+| `ctx.api.store.getByKey(collection, key)` | service | l'enregistrement le plus ancien portant cette clé, ou `null` (index : pas de parcours de la collection) |
+| `ctx.api.store.listByKey(collection, key, { limit?, cursor? })` | service | la liste paginée (`{ items, next }`, comme `page`) de ceux qui portent cette clé, du plus récent au plus ancien |
+| `ctx.api.store.addMany(collection, [{ data, key? }])` | service | jusqu'à 5 000 lignes d'un coup (tranches de 500, **une transaction** : tout ou rien) ; renvoie les `id` dans l'ordre |
+| `ctx.api.store.generation()` | service | entier propre à l'instance, **augmenté par le cœur** quand ses données sont remplacées de l'extérieur (restauration d'une sauvegarde, annulation d'une migration, reprise de données gardées). Vos propres écritures ne le changent pas. Comparez-le à la valeur notée quand vous avez construit un index en mémoire : s'il a changé, reconstruisez. |
 | `ctx.api.store.remove(id)` | service | supprime (sans erreur si absent) |
 | `ctx.api.store.count(collection)` | service | nombre de documents |
 | `ctx.api.topics.collect(sujet, { limit? })` | service | éléments des sources auxquelles l'instance est abonnée (le sujet doit figurer dans `consumes`, sinon erreur) |
@@ -878,7 +883,7 @@ export default {
   (`"?edit=abc"` y ajoute des paramètres, lus par `adminPanel` dans `query`) ; `"/admin/…"` va ailleurs dans l'admin ; toute autre cible est ignorée.
   Une exception donne un message d'erreur générique (détail dans les journaux).
 - Chaque action est consignée dans le journal d'audit (`module.<clé>.<action>`), sans son contenu.
-- `ctx.locale` est la langue de l'administrateur ; `ctx.api.store` offre `add`, `get`, `update`, `list`, `remove`, `count`.
+- `ctx.locale` est la langue de l'administrateur ; `ctx.api.store` offre `add`, `get`, `update`, `list`, `page`, `getByKey`, `listByKey`, `addMany`, `generation`, `remove`, `count`.
 
 ## Ajouter une section à l'éditeur d'un autre module
 

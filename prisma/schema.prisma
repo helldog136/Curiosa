@@ -260,8 +260,11 @@ model ModuleRecord {
   collection String
   data       String // JSON
   createdAt  DateTime @default(now())
+  // Clé facultative (200 caractères au plus, non unique) : retrouver un enregistrement sans parcourir la collection. L'unicité est l'affaire du module.
+  key        String?
 
   @@index([instanceId, collection, createdAt])
+  @@index([instanceId, collection, key])
 }
 
 // Données MISES DE CÔTÉ d'une instance retirée en « gardant mes données » (désinstallation d'un module, ou suppression d'une instance). Une ligne = une instance,
