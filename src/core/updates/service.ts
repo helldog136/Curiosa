@@ -121,8 +121,41 @@ export async function findLatestStable(opts: { appDir?: string; fetchJson?: Json
   return tag ? { tag, notes: releaseNotes(releases, tag) } : null;
 }
 
-export function readUpdateState(dataDir = DATA_DIR): { status: "idle" | "running" | "success" | "failed"; target?: string; from?: string; step?: string; chain?: { index: number; total: number; steps: string[] } | null; remaining?: string[]; error?: string | null; rolledBack?: boolean; restart?: string; startedAt?: number; finishedAt?: number | null } {
+/** Ce qui empêche le nouveau serveur de démarrer (voir scripts/update-proc.mjs, diagnosePort) : code, port, et le message en français déjà rédigé. */
+export type UpdateDiagnostic = { code: string; port?: number; pid?: number; unit?: string | null; manager?: string; cwd?: string | null; command?: string; message?: string };
+export type UpdateState = { status: "idle" | "running" | "success" | "failed"; target?: string; from?: string; step?: string; chain?: { index: number; total: number; steps: string[] } | null; remaining?: string[]; error?: string | null; rolledBack?: boolean; restart?: string; startedAt?: number; finishedAt?: number | null; diagnostic?: UpdateDiagnostic | null; expectedVersion?: string; updaterPid?: number };
+export function readUpdateState(dataDir = DATA_DIR): UpdateState {
   try { return JSON.parse(fs.readFileSync(path.join(dataDir, "update", "state.json"), "utf8")); } catch { return { status: "idle" }; }
+}
+
+/**
+ * Au démarrage du serveur : une mise à jour interrompue PENDANT le redémarrage est conclue ici. Sous systemd (KillMode=control-group), la tâche de
+ * mise à jour est arrêtée en même temps que l'ancien serveur et ne peut plus constater son propre succès : c'est le nouveau serveur qui le fait,
+ * honnêtement — succès seulement si la version qui tourne est celle attendue. Une tâche encore vivante garde la main (rien n'est touché).
+ * Renvoie ce qui a été conclu, ou null.
+ */
+export function reconcileInterruptedUpdate(opts: { dataDir?: string; version?: string; now?: () => number; alive?: (pid: number) => boolean } = {}): "success" | "partial" | "failed" | null {
+  const { dataDir = DATA_DIR, version = readVersion(), now = Date.now } = opts;
+  const alive = opts.alive ?? ((pid: number) => { try { process.kill(pid, 0); return true; } catch (e) { return (e as NodeJS.ErrnoException)?.code === "EPERM"; } });
+  const state = readUpdateState(dataDir);
+  if (state.status !== "running" || (state.step !== "restarting" && state.step !== "waiting") || !state.expectedVersion) return null;
+  if (state.updaterPid && state.updaterPid !== process.pid && alive(state.updaterPid)) return null;
+  const dir = path.join(dataDir, "update");
+  const log = (line: string) => { try { fs.appendFileSync(path.join(dir, "update.log"), `[${new Date(now()).toISOString()}] ${line}
+`); } catch { /* journal indisponible */ } };
+  const write = (patch: Record<string, unknown>) => fs.writeFileSync(path.join(dir, "state.json"), JSON.stringify({ ...state, ...patch, finishedAt: now() }, null, 2));
+  try {
+    if (version !== state.expectedVersion) {
+      log(`✘ le site a redémarré sur la version ${version} au lieu de ${state.expectedVersion}`);
+      write({ status: "failed", error: "wrong-version" });
+      return "failed";
+    }
+    log(`✔ le site a redémarré sur la version ${version} (constaté par le nouveau serveur au démarrage)`);
+    const more = state.chain && state.chain.index < state.chain.total ? state.chain.steps.slice(state.chain.index) : [];
+    if (more.length) { write({ status: "success", step: "done", target: state.chain!.steps[state.chain!.index - 1], remaining: more }); return "partial"; }
+    write({ status: "success", step: "done" });
+    return "success";
+  } catch { return null; }
 }
 
 /** Fin du journal de la dernière mise à jour. */

@@ -299,9 +299,15 @@ test("sauvegardes : on garde les 5 dernières seulement", async () => {
 test("redémarrage supervisé : le serveur est arrêté par signal pour que le superviseur le relance", async () => {
   const s = setup(); try {
     s.build("1.0.1");
-    const child = (await import("node:child_process")).spawn(process.execPath, ["-e", "setInterval(()=>{},1000)"]);
-    const exited = new Promise((res) => child.on("exit", (code, signal) => res(signal)));
-    await runUpdate({ ...opts(s), tag: "v1.0.1", exec: s.make(), supervised: true, serverPid: child.pid });
+    // Le serveur est un processus du dossier du site (seuls ceux-là sont arrêtés), lancé par un intermédiaire qui disparaît : comme en vrai,
+    // il n'est pas un descendant de la tâche de mise à jour. Le port est un port libre du test.
+    const pid = Number(execFileSync("sh", ["-c", `${process.execPath} -e "process.title='next-server (v1)';setInterval(()=>{},1000)" >/dev/null 2>&1 & echo $!`], { cwd: s.app, encoding: "utf8" }).trim());
+    const alive = () => { try { return !/^Z/.test(fs.readFileSync(`/proc/${pid}/stat`, "utf8").split(") ")[1]); } catch { return false; } };
+    await new Promise((r) => setTimeout(r, 400));
+    assert.ok(alive());
+    const child = { pid };
+    const exited = new Promise((res) => { const t = setInterval(() => { if (!alive()) { clearInterval(t); res("SIGTERM"); } }, 50); });
+    await runUpdate({ ...opts(s), tag: "v1.0.1", exec: s.make(), supervised: true, serverPid: child.pid, port: 39999 });
     assert.equal(await exited, "SIGTERM");
     assert.equal(readState(s.dataDir).restart, "signal");
   } finally { s.cleanup(); }

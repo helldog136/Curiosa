@@ -9,6 +9,14 @@ export async function register() {
   } catch (error) {
     console.error("[modules] legacy off migration failed:", (error as Error)?.message);
   }
+  // Une mise à jour interrompue pendant le redémarrage (la tâche a été arrêtée avec l'ancien serveur) est conclue ici, sur la version qui tourne vraiment.
+  try {
+    const { reconcileInterruptedUpdate } = await import("@/core/updates/service");
+    const done = reconcileInterruptedUpdate();
+    if (done) console.log(`[updates] interrupted update concluded at startup: ${done}`);
+  } catch (error) {
+    console.error("[updates] reconcile failed:", (error as Error)?.message);
+  }
   const { startUpdateScheduler } = await import("@/core/updates/scheduler");
   startUpdateScheduler();
   const { startTaskScheduler } = await import("@/core/services/scheduler");

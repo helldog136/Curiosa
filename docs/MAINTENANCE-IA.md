@@ -104,6 +104,10 @@ Si le propriétaire a choisi l'**exécution directe** pour ton jeton, l'outil ag
 - Une mise à jour **majeure** (`level: "major"`) : explique ce qui change avant de la demander.
 - Jamais de mot de passe, de jeton, de contenu de sauvegarde : tu n'en reçois pas, n'en demande pas.
 
+### Quand une mise à jour du cœur s'arrête sur « port occupé »
+
+`maintenance_status` (champ `update.blocker`) et `maintenance_diagnose` disent, en anglais, ce qui tient le port du site : un second gestionnaire (pm2 ou une autre unité systemd), un autre site de la machine, un autre programme, ou l'ancien serveur qui ne s'arrête pas. La nouvelle version est déjà installée. **Ne relancez pas la mise à jour en boucle et n'essayez pas d'arrêter ce gestionnaire vous-même** : transmettez le message au propriétaire. Le remède est toujours de la configuration du serveur, de son ressort : un seul gestionnaire par site (systemd OU pm2, pas les deux), un port par site, et un démarrage sans `npx` (voir *Dépannage* dans [INSTALL.md](INSTALL.md#la-mise-à-jour-sarrête-sur-une-erreur-500--eaddrinuse)). Le texte complet, en français, est dans le journal de la mise à jour.
+
 ### Ne jamais viser une version d'essai
 
 Le cœur n'exécute **jamais** de mise à jour vers une version candidate (`X.Y.Z-rc.N`) ni vers un instantané (`dev-…`) demandée par une IA, et jamais de retour en arrière : `maintenance_core_update` ne vise que la plus haute version **stable**, et refuse (message clair) s'il n'y a rien de plus récent. C'est vrai quel que soit le canal du site. Un module n'est mis à jour que s'il suit des étiquettes stables `vX.Y.Z` ; un module sur une branche ou un commit fixe, ou dont la cible est une préversion, est refusé. Si le propriétaire veut une version d'essai, il la choisit lui-même dans l'admin.

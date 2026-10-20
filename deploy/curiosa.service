@@ -1,8 +1,15 @@
 # Exemple d'unité systemd — à copier dans /etc/systemd/system/curiosa.service, puis :
 #   sudo systemctl daemon-reload && sudo systemctl enable --now curiosa
 #
-# Adaptez User, WorkingDirectory et le chemin de node. Le point important pour les mises à jour depuis l'admin :
-# `Restart=always` + CURIOSA_SUPERVISED=1 → après une mise à jour, le serveur s'arrête et systemd le relance sur la nouvelle version.
+# Adaptez User, WorkingDirectory, le chemin de node (`command -v node`) et le port (-p). Les points importants pour les mises à jour depuis l'admin :
+#  - `Restart=always` + CURIOSA_SUPERVISED=1 : après une mise à jour, la tâche arrête TOUT le site et systemd le relance sur la nouvelle version ;
+#  - ExecStart SANS npx : `npx next start` fait trois processus (npm exec → sh → next-server), l'arrêt est moins fiable ; ici, un seul processus ;
+#  - KillMode=control-group (c'est le défaut, écrit ici pour que ce soit clair) : à l'arrêt, systemd termine tout ce que l'unité a lancé ;
+#  - TimeoutStopSec : le temps laissé au site pour s'arrêter proprement avant que systemd ne le force. Gardez-le plus grand que
+#    CURIOSA_STOP_SECONDS (30 s par défaut), sinon systemd forcera l'arrêt avant la mise à jour ;
+#  - UN SEUL GESTIONNAIRE PAR SITE : systemd OU pm2, jamais les deux. Deux gestionnaires se disputent le port (erreur EADDRINUSE, « Internal Server
+#    Error ») et relancent chacun l'ancienne version. Si vous avez utilisé pm2 avant : `pm2 stop <nom> && pm2 delete <nom> && pm2 save`, puis `pm2 unstartup`.
+# Plusieurs sites sur une machine : une unité par site, chacune avec son dossier (WorkingDirectory) ET son port (-p), jamais le même.
 [Unit]
 Description=Site (Curiosa)
 After=network.target
@@ -14,9 +21,11 @@ WorkingDirectory=/srv/curiosa
 EnvironmentFile=/srv/curiosa/.env
 Environment=NODE_ENV=production
 Environment=CURIOSA_SUPERVISED=1
-ExecStart=/usr/bin/npx next start -p 3000
+ExecStart=/usr/bin/node node_modules/next/dist/bin/next start -p 3000
 Restart=always
 RestartSec=3
+KillMode=control-group
+TimeoutStopSec=60
 
 [Install]
 WantedBy=multi-user.target

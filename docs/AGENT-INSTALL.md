@@ -75,7 +75,7 @@ Suivre le [README](../README.md#installer), étapes 1 à 6, en remplaçant `/var
 - **Vérification d'intégrité** : `sha256sum -c` doit afficher `OK`. Sinon : stop, ne rien déplier.
 - **`.env`** : l'écrire avec `sed`/`printf` comme indiqué, ne jamais l'afficher. `SITE_URL` en `https://…` (pas de `/` final).
 - **Migration** : `npx prisma migrate deploy` doit finir par « All migrations have been successfully applied ».
-- **Unité systemd** : `ExecStart` utilise le chemin absolu de `npx` (`$(command -v npx)`). Après création : `daemon-reload`, `enable --now`, puis le test `curl` doit répondre `HTTP 200`.
+- **Unité systemd** : `ExecStart` utilise le chemin absolu de `node` et lance Next directement (`$(command -v node) node_modules/next/dist/bin/next start -p <port>`), jamais `npx` (trois processus, arrêt peu fiable). Un seul gestionnaire par site : si pm2 gère déjà ce dossier, l'arrêter d'abord (`pm2 stop`, `pm2 delete`, `pm2 save`). Après création : `daemon-reload`, `enable --now`, puis le test `curl` doit répondre `HTTP 200`.
 - **Proxy** : ajouter un bloc pour le domaine ; **sauvegarder l'ancien**, **`nginx -t` avant `reload`**, et vérifier ensuite `curl -s -o /dev/null -w "%{http_code}" https://<domaine>/admin/setup`.
 - Attention aux **liens automatiques** : un terminal ou un chat peut transformer `www.example.org` en `[www.example.org](https://…)` à la copie ; si une configuration contient des crochets, c'est un artefact à nettoyer.
 
