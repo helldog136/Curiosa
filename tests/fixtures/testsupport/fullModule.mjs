@@ -94,7 +94,8 @@ export default {
     tick: {
       everyMinutes: 5,
       async run(ctx) {
-        try { await fetch("https://example.org/feed"); } catch { /* service indisponible : on réessaiera */ }
+        const feed = await ctx.api.net.request({ url: "https://example.org/feed" }); // borné, pause après un 429 ; ne lève jamais
+        if (!feed.ok) { /* service indisponible : on réessaiera */ }
         const known = (await ctx.api.store.list("state", { limit: 5 }))[0];
         if (known) await ctx.api.store.update(known.id, { at: 1 });
         else await ctx.api.store.add("state", { at: 1 });

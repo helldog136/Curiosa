@@ -8,6 +8,7 @@ import { listEntries } from "@/core/content/entries";
 import { isSafeExternalUrl, safeHref } from "@/core/url";
 import { getSiteConfig } from "@/core/settings";
 import { makeTranslator } from "@/core/i18n/dictionary";
+import { describeNetHealth } from "@/core/netHealthText";
 import { EntryList } from "./EntryList";
 import { Markdown } from "./Markdown";
 import { ModuleForm } from "./ModuleForm";
@@ -22,6 +23,9 @@ const TONES = {
   success: "bg-success text-success-fg",
   warning: "bg-warning text-warning-fg",
 };
+
+/** Pastille de couleur de chaque état d'un service externe (bloc « netHealth »). */
+const NET_DOT = { ok: "bg-success", slow: "bg-warning", rate: "bg-warning", quota: "bg-warning", down: "bg-danger", unknown: "bg-line" } as const;
 
 /** Rend les blocs renvoyés par les modules. Les blocs "head" sont traités à part (voir HeadTags). */
 /** `n` éléments au hasard, sans répétition. */
@@ -222,6 +226,32 @@ export async function Blocks({ blocks, locale, adminInstanceId: panelInstanceId,
           </div>,
         );
         break;
+      case "netHealth": {
+        // Santé des services externes : panneau d'admin uniquement (jamais sur le site public : l'état des fournisseurs ne regarde pas les visiteurs).
+        if (!adminInstanceId) break;
+        const view = describeNetHealth(block.items, locale);
+        if (view.lines.length === 0) break;
+        out.push(
+          <section key={i} data-card="" className="space-y-3 rounded-xl border border-line bg-surface p-4" aria-label={view.title}>
+            <h3 className="text-sm font-semibold">{view.title}</h3>
+            {view.summary && (
+              <div className="rounded-lg border border-warning p-3 text-sm" role="status">
+                <p className="font-medium">{view.summary}</p>
+                {view.hint && <p className="mt-1 text-muted">{view.hint}</p>}
+              </div>
+            )}
+            <ul className="space-y-2">
+              {view.lines.map((l) => (
+                <li key={`${l.host}-${l.label}`} className="flex items-start gap-2 text-sm">
+                  <span aria-hidden="true" className={`mt-1.5 inline-block h-2 w-2 shrink-0 rounded-full ${NET_DOT[l.state]}`} />
+                  <span className="min-w-0 break-words">{l.text}</span>
+                </li>
+              ))}
+            </ul>
+          </section>,
+        );
+        break;
+      }
       case "head":
         break;
     }

@@ -1,9 +1,11 @@
 import type { Theme } from "../color";
 import type { Block, Slot } from "../blocks";
 import type { StorePage, StoreRecord } from "../services/store";
+import type { NetHealthItem, NetRequest, NetResult } from "../services/net";
 
 // Les modules typent leurs blocs avec ce ré-export : ils n'importent rien d'autre du cœur.
 export type { Block, Slot };
+export type { NetHealthItem, NetRequest, NetResult };
 
 export type LocalizedString = string | Record<string, string>;
 
@@ -255,6 +257,20 @@ export type ModuleApi = {
     configured(): Promise<boolean>;
     /** Jaquette du jeu `title` : `found` (url https), `none` (aucun résultat), `no-key`, `refused` (RAWG refuse la clé), `unreachable`. */
     cover(title: string): Promise<{ status: "found" | "none" | "no-key" | "refused" | "unreachable"; url: string | null }>;
+  };
+  /**
+   * Client réseau NEUTRE et BORNÉ du cœur (aucune permission à déclarer). À préférer à `fetch` pour toute API externe : délai dur (8 s par défaut,
+   * 20 s au plus ; dans une page publique, jamais plus que le temps restant de la page), https seulement, pause automatique après un 429 ou un quota
+   * épuisé (les demandes suivantes reçoivent `rate` / `quota` SANS appel réseau jusqu'à `retryAt`), disjoncteur par hôte, déduplication des GET
+   * identiques en cours (`shared: true`), file bornée (au-delà : `busy` immédiatement), une seule reprise au plus. Ne lève jamais.
+   * Une réponse HTTP reçue donne `ok: true` avec son `status` (à vous de le juger), avec `json` si le corps est du JSON lisible, sinon `text`.
+   */
+  net: {
+    request(req: NetRequest): Promise<NetResult>;
+    /** État des hôtes contactés depuis le démarrage : `ok`, `slow`, `rate` / `quota` (jusqu'à `retryAt`), `down`. */
+    health(): Promise<NetHealthItem[]>;
+    /** Temps restant (ms) de la page publique en cours, ou null hors page publique (tâche, route, administration). */
+    budgetMs(): number | null;
   };
   /**
    * Stockage privé de l'instance (messages reçus, compteurs…). Plafonds : `list` 100 par défaut, 10 000 au plus (au-delà, utilisez `page`) ;

@@ -2,9 +2,9 @@
 import { findSrpViolations } from "../builtinChecks.mjs";
 import { fakeCtx } from "../fakeCtx.mjs";
 import { makeCtx, observe } from "../probes.mjs";
-import { stripComments, walkValue, whereOf } from "./util.mjs";
+import { NET_RULES_LEVEL, stripComments, walkValue, whereOf } from "./util.mjs";
 
-const KNOWN_BLOCKS = ["markdown", "html", "banner", "links", "entries", "hero", "panel", "embed", "form", "table", "copy", "downloads", "gridEditor", "head", "heading", "swatches", "adminForm"];
+const KNOWN_BLOCKS = ["markdown", "html", "banner", "links", "entries", "hero", "panel", "embed", "form", "table", "copy", "downloads", "gridEditor", "head", "heading", "swatches", "adminForm", "netHealth"];
 export { KNOWN_BLOCKS };
 
 // ── Lecture des sorties ─────────────────────────────────────────────────────────────────────────────────────────────
@@ -65,6 +65,35 @@ function linkIssues(o) {
 }
 
 const ok2xx = (s) => s >= 200 && s < 300;
+
+// ── Sondes réseau ───────────────────────────────────────────────────────────────────────────────────────────────────
+// Le minuteur n'est PAS « unref » : face à un trou noir (réseau qui ne répond jamais), c'est lui qui garantit la fin de la sonde ; il est effacé dès la réponse.
+const bounded = (p, ms, label) => {
+  let timer;
+  const limit = new Promise((_, rej) => { timer = setTimeout(() => rej(new Error(`${label} : plus de ${ms / 1000} s`)), ms); });
+  return Promise.race([Promise.resolve().then(() => p), limit]).finally(() => clearTimeout(timer));
+};
+/** Fait tourner `fn` avec un faux réseau (`routes` pour fakeFetch) ; tout autre accès (http, tcp, dns) reste refusé ; console muette. */
+async function withProbeNetwork(routes, fn) {
+  const { watchNetwork } = await import("../loader.mjs");
+  const { fakeFetch } = await import("../fakeNet.mjs");
+  const f = fakeFetch(routes);
+  const saved = { log: console.log, info: console.info, warn: console.warn, error: console.error };
+  console.log = console.info = console.warn = console.error = () => {};
+  try {
+    const { value, attempts } = await watchNetwork(async () => { globalThis.fetch = f; return fn(f); });
+    return { value, attempts, calls: f.calls };
+  } finally { Object.assign(console, saved); }
+}
+/** Une passe « tâches puis routes GET » du module, chaque appel borné ; les erreurs sont avalées (on ne juge ici que le réseau). */
+async function tasksAndRoutes(m, ctx) {
+  const def = m.definition ?? {};
+  for (const [name, task] of Object.entries(def.tasks ?? {})) if (typeof task?.run === "function") await bounded(task.run(ctx), 8000, `tâche ${name}`).catch(() => {});
+  for (const [route, fn] of Object.entries(def.routes ?? {})) {
+    if (typeof fn !== "function") continue;
+    await bounded((async () => { const r = await fn(new Request(`https://example.test/m/probe/${route}`, { method: "GET", headers: { "x-forwarded-for": "203.0.113.77" } }), ctx); try { await r?.body?.cancel?.(); } catch { /* fermé */ } })(), 8000, `route ${route}`).catch(() => {});
+  }
+}
 
 const requirements = [
   {
@@ -484,6 +513,60 @@ const requirements = [
     run(m) {
       const hit = [...stripComments(m.code).matchAll(/instances\s*\.\s*list\s*\(\s*\{[^}]*\bmodule\s*:\s*["']([^"']+)["']/g)].map((x) => x[1]);
       return [...new Set(hit)].map((id) => `le code cherche les instances du module « ${id} » par son nom`);
+    },
+  },
+  {
+    id: "net.429", level: NET_RULES_LEVEL, group: "network",
+    title: "Après « trop de demandes » (429), le module fait une pause",
+    what: "Sonde : toutes les adresses répondent 429 avec « Retry-After: 120 ». On fait tourner deux fois les tâches planifiées et les routes du module ; au second passage, il ne doit partir AUCUN appel réseau. Conseil dans le cœur 0.2.0 ; deviendra obligatoire.",
+    why: "Un service qui répond 429 demande une pause. L'ignorer prolonge le blocage, peut faire bannir la clé ou l'adresse du site, et gaspille le temps des pages. ctx.api.net s'en charge seul : jusqu'à la reprise, il répond « rate » sans appeler le réseau.",
+    fix: "Passez par ctx.api.net.request (la pause est automatique, partagée par tout le site). Sinon, notez « Retry-After » (en secondes ou en date) dans votre stockage et ne rappelez pas avant cette heure.",
+    async run(m) {
+      const def = m.definition ?? {};
+      if (!Object.keys(def.tasks ?? {}).length && !Object.keys(def.routes ?? {}).length) return { na: "le module n'a ni tâche planifiée ni route" };
+      if (!m.parsed?.ok) return { skip: "module.json invalide" };
+      const { netReplies } = await import("../fakeNet.mjs");
+      const ctx = makeCtx(m, { mode: "filled", locale: "fr" });
+      const { value } = await withProbeNetwork({ "*": netReplies.rateLimited(120) }, async (f) => {
+        await tasksAndRoutes(m, ctx);
+        const first = f.calls.length;
+        await tasksAndRoutes(m, ctx);
+        return { first, again: f.calls.slice(first).map((c) => c.url) };
+      });
+      if (value.first === 0) return { na: "aucun appel réseau observé (réglages remplis, tâches et routes)" };
+      if (!value.again.length) return [];
+      return [`au second passage, ${value.again.length} appel(s) réseau sont repartis malgré « 429 Retry-After: 120 » (par exemple ${String(value.again[0]).split("?")[0].slice(0, 80)})`];
+    },
+  },
+  {
+    id: "net.fallback", level: "advice", group: "network",
+    title: "En cas de panne d'un service externe, la page s'affiche quand même",
+    what: "Sonde « trou noir » : le réseau ne répond jamais. Chaque section, emplacement et page du module doit rendre la main en moins de 3 s, sans erreur (avec les dernières données connues et leur date, ou un message simple).",
+    why: "Un service externe finit toujours par tomber. Si la page attend sa réponse, elle se fige pour tous les visiteurs ; le cœur coupe alors la section, et le visiteur ne voit rien du tout.",
+    fix: "Dans une page, ne lancez pas d'appel réseau long : affichez ce que la tâche planifiée a mis en cache (avec « mis à jour à 10 h 30 »), ou passez par ctx.api.net.request, dont le délai suit le temps restant de la page, et affichez un repli si « r.ok » est faux.",
+    async run(m) {
+      const def = m.definition ?? {};
+      const manifest = m.parsed?.ok ? m.parsed.manifest : null;
+      if (!manifest) return { skip: "module.json invalide" };
+      const parts = [
+        ...(manifest.sections ?? []).filter((d) => typeof def.sections?.[d.id] === "function").map((d) => [`la section « ${d.id} »`, (ctx) => def.sections[d.id](ctx, {})]),
+        ...Object.entries(def.slots ?? {}).filter(([, fn]) => typeof fn === "function").map(([slot, fn]) => [`l'emplacement « ${slot} »`, (ctx) => fn({ ...ctx, page: { key: "probe", basePath: "probe" }, entry: { id: "e0", title: "Demo", slug: "demo-0" } })]),
+        ...(typeof def.page === "function" ? [["la page", (ctx) => def.page(ctx, { segments: [] })]] : []),
+      ];
+      if (!parts.length) return { na: "le module n'affiche rien sur le site public" };
+      const { netReplies } = await import("../fakeNet.mjs");
+      const out = [];
+      await withProbeNetwork({ "*": netReplies.silence() }, async () => {
+        for (const [label, run] of parts) {
+          // la page publique simulée laisse 2,5 s au module : ctx.api.net s'y plie seul
+          const ctx = makeCtx(m, { mode: "filled", locale: "fr", netBudgetMs: 2500 });
+          try { await bounded(run(ctx), 3000, label); } catch (e) {
+            const msg = String(e?.message ?? e);
+            out.push(/plus de 3 s/.test(msg) ? `${label} attend le réseau sans fin (plus de 3 s alors que le service ne répond pas)` : `${label} échoue quand le service ne répond pas : ${msg.slice(0, 100)}`);
+          }
+        }
+      });
+      return out;
     },
   },
 ];

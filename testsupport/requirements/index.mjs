@@ -16,6 +16,7 @@ export const GROUPS = {
   routes: "Les routes (formulaires et envois)",
   mcp: "Les actions pour les assistants IA (MCP)",
   tasks: "Les tâches planifiées",
+  network: "Les appels réseau",
   data: "Les données",
   privacy: "La vie privée",
   srp: "Un module, une seule chose",

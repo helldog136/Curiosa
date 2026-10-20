@@ -27,6 +27,8 @@ test("les services du cœur sont génériques : chacun n'importe que ce qu'il a 
     "src/core/services/store.ts": ["@/core/db"],
     "src/core/services/uploads.ts": ["@/core/config"],
     "src/core/services/index.ts": [],
+    // Le client réseau ne connaît rien du cœur (ni modules, ni réglages, ni base) : il est aussi chargé seul par le kit de test.
+    "src/core/services/net.ts": [],
     // Le mécanisme MCP ne connaît ni les modules, ni le contenu, ni les instances.
     "src/core/services/mcp": ["@/core/db", "@/core/settings", "@/core/modules/types"],
     // Les sujets connaissent les modules (c'est leur objet) ; le sujet du cœur vient du moteur de contenu.
