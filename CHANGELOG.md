@@ -56,16 +56,13 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - `ctx.api.services.providers(service)` et `call(service, method, args, { provider })` : instance choisie, revalidée côté serveur, sans réplique sauf le maître ; fournisseur disparu → `unavailable`. `minCore: "0.2.0"` pour s'en servir.
 - `CatalogueEntry.origin` (`official` | `extra`) : l'extra passe après l'officiel, n'est jamais installé par la cascade (raison `extra`) et exige `installFromCatalogue(id, { confirmExtra: true })`.
 - Bloc `suggestInstall { service, min?, reason }` (panneau d'admin) ; réglage `suggest.dismissed.<instance>.<service>` ; audit `module.install.suggested`. Code : `core/modules/suggestInstall.ts`. Tests : `deps-order-v2.test.mjs`, `suggest-install.test.mjs`.
-<<<<<<< HEAD
 - Balayage du démarrage (`legacySweep.ts`, contrat 10), attendu par `register()` : éteints rangés, lignes `bundled`/`builtin` converties sans réseau si sûr, migrations en attente une à une, valeurs vides héritées effacées, puis `core.legacyCleared`. 20 s, reprenable, journal sans valeur. Rien n'est retiré (code, colonne `enabled`).
 - Manifeste : `legacySettings: [{ key, secret? }]` (≤ 20, jamais dans `settings`, jamais affichés), `legacyCollections` (≤ 10, comptées par le rapport), `dataFloor` (≤ `dataVersion`). `ctx.legacy.keys/get/clear` (clé déclarée seulement ; audit `module.legacy.clear` sans valeur). `fakeCtx({ legacy })`. Exige `minCore` 0.2.0.
 - `migrateInstance` : données sous `dataFloor` → `failed` / `floor` (rien ne bouge) ; migration qui dépasse le délai du démarrage → `failed` / `timeout`. Rapport d'héritage en lecture seule (`legacyReport.ts`) : page `/admin/maintenance/legacy` (propriétaire, « Relancer ») et outil MCP `maintenance_legacy` (niveau 1). Bandeau d'avertissement dans l'admin si le marqueur manque (bloquant en phase 3).
 - `tests/core/legacy-labels.test.mjs` : parcourt le dépôt de modules s'il est présent (`CURIOSA_EXTRAS_DIR`, sinon `/home/user/curiosa-extras`) et refuse « ancien », « legacy », « reprise automatiquement »… dans un libellé visible ; vérifie que chaque clé de `settings` est lue par le code du module.
-=======
 - `adminDownloads` (contrat 8) : `POST /api/admin/modules/[instance]/download/[name]`, flux tiré d'un générateur asynchrone (1 Mo au plus par morceau), droit `<module>:open` + `right`, audit `module.<clé>.download.<nom>` puis `….end`, bloc `download`. Limites : 512 Mo, 10 min, 60 s de silence, 2 par personne et 4 au total. Code : `core/modules/adminTransfer*.ts`.
 - Champ `kind: "file"` (`accept`, `maxBytes` ≤ 5 Mo) : formulaire envoyé à `POST /api/admin/modules/[instance]/action/[action]` (la limite de 1 Mo des actions serveur n'est pas relevée), lecture comptée et coupée, UTF-8 strict, BOM retiré, texte transmis dans `values[nom]`. Un cœur plus ancien ignore `adminDownloads` et le bloc `download` ; il rend un champ fichier qu'il n'envoie pas : exiger `minCore` 0.2.0.
 - Kit de test : exigence `downloads.bounded` (conseil) ; `fakeCtx().api.store.page`. Tests : `tests/core/admin-transfer.test.mjs`.
->>>>>>> origin/v2/g-files
 
 ## 0.1.28
 
