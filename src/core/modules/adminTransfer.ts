@@ -89,6 +89,12 @@ export function decideDownload(user: AdminUser | null, moduleId: string, downloa
   return { denied: right ?? `module:${moduleId}:download.${name}` };
 }
 
+/** Faut-il MONTRER le bouton « Télécharger » à cette personne ? Oui seulement si la route le lui permettrait (même décision). */
+export function canShowDownload(user: AdminUser | null, moduleId: string, downloads: ModuleDefinition["adminDownloads"], name: string): boolean {
+  const decision = decideDownload(user, moduleId, downloads, name);
+  return !!decision && "spec" in decision;
+}
+
 // ── Téléchargements simultanés ────────────────────────────────────────────────────────────────────────────────────────
 
 const g = globalThis as unknown as { __curiosaDownloads?: { byUser: Map<string, number>; total: number } };

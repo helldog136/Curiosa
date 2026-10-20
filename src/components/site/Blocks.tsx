@@ -18,6 +18,7 @@ import { AdminBlockForm, RowActionButton, type FileLabels } from "../admin/Admin
 import { ui } from "../admin/ui";
 import { GridEditor } from "../admin/GridEditor";
 import { floatingLabels } from "../admin/floating";
+import { mayShowDownload } from "@/core/modules/downloadAccess";
 import { SuggestInstall } from "../admin/SuggestInstall";
 
 const TONES = {
@@ -205,7 +206,7 @@ export async function Blocks({ blocks, locale, adminInstanceId: panelInstanceId,
         break;
       case "download":
         // Téléchargement d'administration : un petit formulaire POST (le navigateur envoie alors l'en-tête Origin, que la route du cœur contrôle). Jamais sur le site public.
-        if (panelInstanceId && !entryScope && /^[A-Za-z0-9_-]{1,64}$/.test(block.name)) {
+        if (panelInstanceId && !entryScope && /^[A-Za-z0-9_-]{1,64}$/.test(block.name) && (await mayShowDownload(panelInstanceId, block.name))) {
           out.push(
             <form key={i} method="post" action={`/api/admin/modules/${encodeURIComponent(panelInstanceId)}/download/${encodeURIComponent(block.name)}`} className="flex">
               {Object.entries(block.params ?? {}).slice(0, 20).map(([k, v]) => <input key={k} type="hidden" name={k} value={String(v).slice(0, 1000)} />)}
