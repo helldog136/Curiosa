@@ -7,10 +7,11 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
-## Prochaine version (non publiée)
+## 0.2.4
 
 ### Améliorations
 
+- **Sur le tableau de bord, « Voir » (l'activité de votre IA) ouvre l'historique** de ce qu'elle a fait, et non plus la liste des demandes à valider, quand elle n'attend aucun accord de votre part.
 - **Un module peut créer pour vous ce qu'un autre module garde.** Par exemple, la liste de raid crée sa catégorie dans Contacts quand vous cliquez sur un bouton. Cela ne marche que sur un clic de votre part, et si vous avez le droit.
 
 ### Pour les développeurs
