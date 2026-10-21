@@ -1,10 +1,11 @@
 "use client";
 
-import { useActionState, useEffect, useState, useTransition } from "react";
+import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { loginAction, passkeyLoginFinish, passkeyLoginStart } from "@/app/admin/(auth)/login/actions";
 import { passkeysSupported, getPasskeyAssertion } from "./webauthn";
 import { ui } from "./ui";
 import { PendingButton } from "./PendingButton";
+import { clearSecrets, submitKeepingValues } from "./keepValues";
 
 type Labels = { email: string; password: string; submit: string; code: string; codeHelp: string; codeSubmit: string; back: string; passkey: string; passkeyOr: string; passkeyCancelled: string };
 
@@ -16,6 +17,14 @@ export function LoginForm({ labels }: { labels: Labels }) {
   const [passkeyError, setPasskeyError] = useState("");
   const [busy, startPasskey] = useTransition();
   useEffect(() => { setSupported(passkeysSupported()); }, []);
+  // Après un refus, l'e-mail reste (pour le corriger) mais ni le mot de passe ni le code à usage unique ne restent affichés.
+  const formRef = useRef<HTMLFormElement>(null);
+  useEffect(() => {
+    if (!state) return;
+    clearSecrets(formRef.current);
+    const code = formRef.current?.elements.namedItem("code");
+    if (code instanceof HTMLInputElement) code.value = "";
+  }, [state]);
   // Connexion sans mot de passe : l'appareil demande l'empreinte, le visage ou le code ; aucun e-mail à saisir.
   const signInWithPasskey = () => startPasskey(async () => {
     setPasskeyError("");
@@ -27,7 +36,7 @@ export function LoginForm({ labels }: { labels: Labels }) {
     if (result?.error) setPasskeyError(result.error);
   });
   return (
-    <form action={action} className="space-y-4">
+    <form ref={formRef} onSubmit={submitKeepingValues(action)} className="space-y-4">
       {codeStep ? (
         <>
           <input type="hidden" name="token" value={state!.token} />

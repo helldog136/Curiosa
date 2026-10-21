@@ -76,7 +76,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
     <div className="flex min-h-screen flex-col">
       <div className="flex flex-1 flex-col md:flex-row">
       <MobileMenu menuLabel={t("nav.menu")} brand={<a href="/admin" className="flex flex-col px-3 leading-tight"><span className="text-lg font-bold">{config.name}</span><span className="text-xs text-muted">{t("nav.adminTagline")}</span></a>}>
-        <nav aria-label="Admin">
+        <nav aria-label={t("nav.adminLabel")}>
           <div className="mt-4"><NavLink href="/admin" exact>{t("nav.dashboard")}</NavLink></div>
           {menu.content.length > 0 && (
             <div>

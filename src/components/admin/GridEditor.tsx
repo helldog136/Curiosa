@@ -63,7 +63,7 @@ export function GridEditor({ instanceId, block, floating }: { instanceId: string
     <ActionForm action={runModuleAdminAction.bind(null, instanceId, block.action)} floating={floating} hideSubmit submitLabel={block.submitLabel} className={`${ui.card} space-y-4 [&>div[aria-hidden]]:hidden`}>
       {block.title && <h3 className="text-lg font-semibold">{block.title}</h3>}
       <p className="text-sm text-muted">{L.hint}</p>
-      <div className="flex flex-wrap items-center gap-2" role="radiogroup" aria-label="brush">
+      <div className="flex flex-wrap items-center gap-2" role="radiogroup" aria-label={L.hint}>
         {block.palette.map((p) => (
           <button key={p.value} type="button" role="radio" aria-checked={brush === p.value} onClick={() => setBrush(p.value)}
             className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm ${brush === p.value ? "border-accent ring-2 ring-accent" : "border-line"}`}>
@@ -86,7 +86,7 @@ export function GridEditor({ instanceId, block, floating }: { instanceId: string
       )}
       {genError && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm text-red-700">{genError}</p>}
       {auto && block.autoNotice && <p role="status" data-testid="grid-auto-notice" className="rounded-lg border border-accent/60 bg-accent/10 p-3 text-sm">{block.autoNotice}</p>}
-      <div ref={gridRef} role="application" aria-label={block.title ?? "grid"} data-auto={auto ? "true" : undefined} className={`touch-none select-none overflow-hidden rounded-lg border border-line ${auto ? "opacity-30 grayscale" : ""}`}
+      <div ref={gridRef} role="application" aria-label={block.title ?? L.hint} data-auto={auto ? "true" : undefined} className={`touch-none select-none overflow-hidden rounded-lg border border-line ${auto ? "opacity-30 grayscale" : ""}`}
         style={{ width: "100%", maxWidth: w * cell, display: "grid", gridTemplateColumns: `repeat(${w}, minmax(0, 1fr))`, cursor: "crosshair" }}
         onPointerDown={(e) => { painting.current = true; paintAt(e.clientX, e.clientY); try { (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId); } catch { /* le doigt est déjà suivi par le navigateur */ } }}
         onPointerMove={(e) => { if (painting.current) paintAt(e.clientX, e.clientY); }}

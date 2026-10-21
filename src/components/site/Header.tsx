@@ -56,7 +56,7 @@ export async function Header({ config, locale }: { config: SiteConfig; locale: s
   );
 
   const menu = (
-    <nav aria-label="Main" className="flex flex-wrap gap-x-5 gap-y-1 text-sm">
+    <nav aria-label={t("site.nav.main")} className="flex flex-wrap gap-x-5 gap-y-1 text-sm">
       {items.map((item) =>
         item.children ? <NavDropdown key={item.label} label={item.label} items={item.children} /> : (
           <a key={`${item.href}-${item.label}`} href={item.href} className={linkCls}>{item.label}{item.news && dot}</a>

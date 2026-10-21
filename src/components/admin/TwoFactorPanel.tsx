@@ -46,7 +46,7 @@ export function TwoFactorPanel({ enabled, remaining, enforced, needed, labels, s
       {mode === "enroll" && (
         <div className="space-y-3">
           <p className="text-sm">{labels.scan}</p>
-          {setup.qr && <div className="w-48 rounded-xl bg-white p-2" aria-label="QR code" dangerouslySetInnerHTML={{ __html: setup.qr }} />}
+          {setup.qr && <div className="w-48 rounded-xl bg-white p-2" aria-label={labels.scan} dangerouslySetInnerHTML={{ __html: setup.qr }} />}
           <p className="text-sm">{labels.key} <code className="select-all break-all rounded bg-line px-1.5 py-0.5 font-mono text-xs" data-testid="twofa-secret">{setup.secret}</code></p>
           <label className="block text-sm"><span className={ui.label}>{labels.confirm}</span>
             <input value={code} onChange={(e) => setCode(e.target.value)} inputMode="numeric" autoComplete="one-time-code" maxLength={8} className={`${ui.input} max-w-40 tracking-widest`} data-testid="twofa-code" />

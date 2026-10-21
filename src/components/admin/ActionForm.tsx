@@ -10,6 +10,7 @@ import { ui } from "./ui";
 import { PendingButton } from "./PendingButton";
 import { OperationProgress } from "./OperationProgress";
 import { useProgressText } from "./ProgressLabels";
+import { clearSecrets } from "./keepValues";
 import { useTrackedRun } from "./useTrackedRun";
 
 /** `error` : erreur GÉNÉRALE (bandeau). `errors` : erreurs PAR CHAMP, affichées sous chaque champ (voir FieldErrors.tsx) ; une action peut renvoyer l'une, l'autre ou les deux. */
@@ -92,10 +93,10 @@ export function ActionForm({ action, children, submitLabel, className = "space-y
     startTransition(() => formAction(data));
   }
   useEffect(() => {
-    if (!state?.ok || !ref.current) return;
-    if (reset) ref.current.reset();
-    // Un mot de passe saisi ne reste jamais affiché après l'envoi (même quand les autres champs gardent leur valeur).
-    else ref.current.querySelectorAll<HTMLInputElement>("input[type=password]").forEach((i) => { i.value = ""; });
+    if (!state || !ref.current) return;
+    if (state.ok && reset) ref.current.reset();
+    // Un mot de passe saisi ne reste jamais affiché après l'envoi, réussi ou refusé (les autres champs gardent leur valeur : après une erreur on corrige, on ne retape pas tout).
+    else clearSecrets(ref.current);
   }, [reset, state]);
 
   // ── Barre flottante ────────────────────────────────────────────────────────────────────────────────────────────────

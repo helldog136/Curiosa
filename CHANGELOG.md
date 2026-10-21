@@ -7,6 +7,20 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## Prochaine version (non publiée)
+
+### Améliorations
+
+- **Ce que vous avez tapé reste en place quand une erreur s'affiche.** Dans les formulaires des modules, la connexion et l'installation, une adresse refusée ne vide plus les champs : vous corrigez seulement ce qui est signalé. Les mots de passe ne restent jamais affichés.
+- **Les tableaux des modules ne font plus glisser toute la page sur téléphone.** Un tableau plus large que l'écran défile désormais seul, sans entraîner la page entière de côté.
+- **Plus de texte français dans l'interface anglaise.** L'exemple d'adresse du champ image et quelques libellés d'accessibilité (navigation, pagination du journal, code QR…) suivent maintenant la langue choisie.
+
+### Pour les développeurs
+
+- Les conteneurs défilants de tableau (`overflow-x-auto`) sont `relative` : le texte `sr-only` (position absolue) des boutons de ligne ne déborde plus du conteneur. Le tableau des redirections défile lui aussi.
+- Nouveau `components/admin/keepValues.ts` : `submitKeepingValues(action)` envoie un formulaire à une action `useActionState` sans passer par `<form action>` (React 19 remet sinon les champs non contrôlés à zéro après l'action, erreur comprise), et `clearSecrets` vide les champs mot de passe. `ActionForm` les vide aussi après une erreur.
+- Textes en dur : clés `crop.urlPlaceholder`, `nav.adminLabel`, `audit.pagination`, `site.nav.main`, `site.nav.language` (FR+EN). Le test `tests/core/admin-finishing.test.mjs` échoue si un `placeholder`, `aria-label`, `title` ou `alt` en phrase est écrit en dur dans un composant ou une page.
+
 ## 0.2.2
 
 ### Améliorations
