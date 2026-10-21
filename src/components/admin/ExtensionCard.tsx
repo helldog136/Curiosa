@@ -7,6 +7,7 @@ import { CopyText } from "@/components/site/CopyText";
 import { InstanceState } from "./InstanceState";
 import { RowMenu } from "./RowMenu";
 import { ui } from "./ui";
+import { PendingButton } from "./PendingButton";
 
 const ITEM = "flex min-h-11 w-full items-center gap-2 px-3 text-left text-sm hover:bg-accent/10 hover:text-accent";
 
@@ -78,7 +79,7 @@ export function ExtensionCard({ t, m, advanced }: { t: Translator; m: InstalledM
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {m.loaded && m.count === 0 && m.kept === 0
-            ? <form action={addInstance.bind(null, m.id)}><button className={ui.btnPrimary}>{t("modules.setUp")}</button></form>
+            ? <form action={addInstance.bind(null, m.id)}><PendingButton variant="primary" pendingLabel={t("progress.creating")}>{t("modules.setUp")}</PendingButton></form>
             : <Link href={settingsHref} scroll={false} aria-label={`${t("integrations.settings")} — ${m.name}`} data-testid={`settings-${m.id}`} className={`${ui.btn} !px-3`}>{t("integrations.settings")}</Link>}
           {hasMenu && (
             <RowMenu label={t("extensions.menu", { name: m.name })}>

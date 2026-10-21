@@ -14,6 +14,7 @@ export const GROUPS = {
   settings: "Les réglages",
   security: "Sécurité et forme des pages",
   routes: "Les routes (formulaires et envois)",
+  forms: "Les formulaires d'administration",
   mcp: "Les actions pour les assistants IA (MCP)",
   tasks: "Les tâches planifiées",
   network: "Les appels réseau",

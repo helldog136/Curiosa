@@ -219,6 +219,7 @@ export async function runUpdate(o) {
     }
     log(`${paths.length} éléments remplacés`);
     migrated = true;
+    save({ step: "migrate" });
     await run("migrate", "npx", ["prisma", "migrate", "deploy"]);
   } catch (e) {
     const reason = e?.code === "checksum-mismatch" || e?.code === "bad-archive" ? e.code : `step-failed:${state.step}`;

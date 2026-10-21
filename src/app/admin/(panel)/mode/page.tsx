@@ -2,6 +2,7 @@ import { adminCtx } from "@/core/admin";
 import { PageHeader } from "@/components/admin/Page";
 import { ui } from "@/components/admin/ui";
 import { setAdminMode } from "./actions";
+import { PendingButton } from "@/components/admin/PendingButton";
 
 /** Choisir sa façon de gérer le site : l'essentiel (simple) ou tous les réglages techniques (avancé). Propre à chaque personne, rien n'est perdu en changeant. */
 export default async function ModePage() {
@@ -23,7 +24,7 @@ export default async function ModePage() {
         </ul>
         {!current && (
           <form action={setAdminMode.bind(null, isAdvanced)} className="mt-auto">
-            <button className={ui.btnPrimary}>{isAdvanced ? t("mode.switchToAdvanced") : t("mode.switchToSimple")}</button>
+            <PendingButton variant="primary">{isAdvanced ? t("mode.switchToAdvanced") : t("mode.switchToSimple")}</PendingButton>
           </form>
         )}
       </section>

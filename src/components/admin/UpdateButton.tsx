@@ -14,7 +14,7 @@ type Labels = { idle: string; working: string; done: string; failed: string };
 export function UpdateButton({ running, confirm, labels }: { running: boolean; confirm: string; labels: Labels }) {
   const router = useRouter();
   return (
-    <AnimatedActionButton look="hero" icon="⬆" progress="continuous" testid="update-button" confirm={confirm} running={running} labels={labels}
+    <AnimatedActionButton look="hero" icon="⬆" testid="update-button" confirm={confirm} running={running} labels={labels}
       run={async () => { const r = await applyUpdate(); return r?.error ? { ok: false, error: r.error } : { ok: true }; }}
       onDone={async () => { await sleep(AFTER_UPDATE_MS); router.refresh(); }} />
   );

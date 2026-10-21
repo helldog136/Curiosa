@@ -5,7 +5,7 @@ import { adminCtx } from "@/core/admin";
 import { prisma } from "@/core/db";
 import { audit } from "@/core/permissions";
 import { normalizeRedirectPath, validateRedirectPath } from "@/core/redirects";
-import { isSafeExternalUrl } from "@/core/url";
+import { isSafeExternalUrl, normalizeLinkInput } from "@/core/url";
 import type { ActionState } from "@/components/admin/ActionForm";
 
 export async function createRedirect(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -22,7 +22,8 @@ export async function createRedirect(_prev: ActionState, formData: FormData): Pr
     if (!entry?.url) return { error: t("redirects.error.entry") };
     targetUrl = targetUrl || entry.url;
   }
-  if (!isSafeExternalUrl(targetUrl)) return { error: t("error.badUrl") };
+  targetUrl = normalizeLinkInput(targetUrl);
+  if (!isSafeExternalUrl(targetUrl)) return { errors: { targetUrl: t("error.badLink") } };
 
   await prisma.redirect.create({ data: { path, targetUrl, entryId, permanent: formData.get("permanent") === "on" } });
   await audit(user.email, "redirect.create", path);

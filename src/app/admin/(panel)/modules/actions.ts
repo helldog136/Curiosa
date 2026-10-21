@@ -17,6 +17,7 @@ import { EXTENSIONS_ADD_HREF, EXTENSIONS_HREF } from "@/core/modules/extensionsL
 import { listRetired, eraseRetired, restoreInstance } from "@/core/modules/retired";
 import { noticeFor, removalNoticeHref } from "@/core/modules/removal";
 import { localized } from "@/core/modules/types";
+import { opIdOf, trackOperation } from "@/core/operations/run";
 
 // Installer ou mettre à jour du code exécuté côté serveur est réservé au propriétaire.
 
@@ -68,11 +69,17 @@ export async function checkUpdateAction(id: string): Promise<ModuleActionResult>
   return { ok: true, href: modulePage(id, params.toString()) };
 }
 
-export async function updateModuleAction(id: string): Promise<ModuleActionResult> {
+export async function updateModuleAction(id: string, opId?: string): Promise<ModuleActionResult> {
   const { user } = await adminCtx("owner");
-  const result = await updateModule(id);
-  await audit(user.email, "module.update", result.ok && result.auditTarget ? result.auditTarget : id);
-  revalidatePath("/", "layout");
+  // Suivi d'opération (étapes : téléchargement, vérification, dépendances, données, activation) ; un second lancement rejoint le premier.
+  const run = await trackOperation(user, { kind: "module-update", key: `module-update:${String(id).slice(0, 60)}`, opId: opIdOf(opId) }, async () => {
+    const done = await updateModule(id);
+    await audit(user.email, "module.update", done.ok && done.auditTarget ? done.auditTarget : id);
+    revalidatePath("/", "layout");
+    return done;
+  }, (r) => ({ ok: r.ok, error: r.ok ? undefined : r.error }));
+  if (run.busy) return { ok: false, href: modulePage(id, `error=${encodeURIComponent("progress.busy")}`) };
+  const result = run.result;
   if (!result.ok) return { ok: false, href: modulePage(id, refusal(result)) };   // « Il manque : … » (requires de la nouvelle version) dit quoi
   if (result.migrations?.some((m) => m.status === "failed" || m.status === "newer")) return { ok: false, href: modulePage(id, "error=modules.error.migration") };
   return { ok: true, href: modulePage(id) };

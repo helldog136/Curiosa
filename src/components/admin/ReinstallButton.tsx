@@ -15,10 +15,10 @@ export function ReinstallButton({ id, labels, canCompare }: { id: string; labels
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-start gap-3">
-        <AnimatedActionButton look="secondary" progress="continuous" icon="🛠" testid={`module-reinstall-${id}`} confirm={labels.confirm}
+        <AnimatedActionButton look="secondary" icon="🛠" testid={`module-reinstall-${id}`} confirm={labels.confirm} track="module-reinstall" trackKey={`module-reinstall:${id}`}
           labels={{ idle: labels.button, working: labels.working, done: labels.done, failed: labels.failed }}
-          run={async () => {
-            const r = await reinstallModuleAction(id);
+          run={async (opId) => {
+            const r = await reinstallModuleAction(id, opId);
             setReport(r);
             setCompared(null);
             return { ok: r.ok, error: r.ok ? undefined : r.lines.join(" ") };
@@ -26,7 +26,7 @@ export function ReinstallButton({ id, labels, canCompare }: { id: string; labels
           onDone={() => router.refresh()}
           onFail={() => router.refresh()} />
         {canCompare && (
-          <AnimatedActionButton look="secondary" progress="fill" icon="🔍" testid={`module-compare-${id}`}
+          <AnimatedActionButton look="secondary" icon="🔍" testid={`module-compare-${id}`}
             labels={{ idle: labels.compare, working: labels.comparing, done: labels.compared, failed: labels.compareFailed }}
             run={async () => {
               const r = await compareSourceAction(id);

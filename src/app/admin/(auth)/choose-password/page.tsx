@@ -2,9 +2,9 @@ import { redirect } from "next/navigation";
 import { adminCtx } from "@/core/admin";
 import { ActionForm } from "@/components/admin/ActionForm";
 import { TextField } from "@/components/admin/Field";
-import { ui } from "@/components/admin/ui";
 import { MIN_PASSWORD_LENGTH } from "@/core/auth/passwordPolicy";
 import { choosePassword, signOutForced } from "./actions";
+import { PendingButton } from "@/components/admin/PendingButton";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +24,7 @@ export default async function ChoosePasswordPage() {
       </ActionForm>
       <form action={signOutForced} className="border-t border-line pt-4">
         <p className="mb-2 text-xs text-muted">{t("choosePassword.signedInAs", { email: user.email })}</p>
-        <button className={ui.btn}>{t("nav.logout")}</button>
+        <PendingButton pendingLabel={t("progress.signingOut")}>{t("nav.logout")}</PendingButton>
       </form>
     </main>
   );

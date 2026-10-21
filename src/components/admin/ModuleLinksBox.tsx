@@ -5,6 +5,7 @@ import { Callout } from "./Page";
 import { ui } from "./ui";
 import { cleanupAutoModuleAction, keepAutoModuleAction, repairModuleAction } from "@/app/admin/(panel)/modules/actions";
 import { RemoveChoices } from "./RemoveSection";
+import { PendingButton } from "./PendingButton";
 
 /**
  * Sur la page d'un module : « A besoin de » (et qui le fournit), « Utilisé par », « Installé automatiquement pour », ce qui manque (avec le bouton
@@ -20,7 +21,7 @@ export function ModuleLinksBox({ id, name, view, t, names, advanced, isOwner }: 
           <p className="font-medium" data-testid="module-missing">{t("deps.missing.block", { list: "" }).replace(/\s*$/, "")}</p>
           <ul className="mt-1 list-disc space-y-1 pl-5">{view.gaps.map((g) => <li key={g.service}>{describeMissing(g, t, names)}</li>)}</ul>
           <p className="mt-2 text-sm text-muted">{t("deps.missing.help")}</p>
-          {isOwner && <form action={repairModuleAction.bind(null, id)} className="mt-3"><button className={ui.btnPrimary}>{t("deps.repair")}</button></form>}
+          {isOwner && <form action={repairModuleAction.bind(null, id)} className="mt-3"><PendingButton variant="primary" pendingLabel={t("progress.repairing")}>{t("deps.repair")}</PendingButton></form>}
         </Callout>
       )}
       {view.cleanup && isOwner && (
@@ -30,7 +31,7 @@ export function ModuleLinksBox({ id, name, view, t, names, advanced, isOwner }: 
           {view.cleanup.hasData && <p className="mt-1 text-sm text-muted">{t("deps.cleanup.data")}</p>}
           <div className="mt-3 space-y-3">
             <RemoveChoices t={t} name={name} keep={cleanupAutoModuleAction.bind(null, id, true)} erase={cleanupAutoModuleAction.bind(null, id, false)} />
-            <form action={keepAutoModuleAction.bind(null, id)}><button className={ui.btn}>{t("deps.cleanup.keep")}</button></form>
+            <form action={keepAutoModuleAction.bind(null, id)}><PendingButton>{t("deps.cleanup.keep")}</PendingButton></form>
           </div>
         </Callout>
       )}

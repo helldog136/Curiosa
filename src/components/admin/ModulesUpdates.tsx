@@ -15,6 +15,8 @@ type Labels = {
   /** Avec {name} : confirmation d'un seul module (changement majeur). */
   confirmMajor: string;
   incomplete: string;
+  /** Une autre mise à jour est déjà en cours. */
+  busy: string;
   updatedLine: string;   // {n} {names}
   failedLine: string;    // {name} {reason}
   stoppedLine: string;   // {name}
@@ -32,9 +34,10 @@ export function ModulesUpdates({ rows, labels }: { rows: ModuleUpdateRow[]; labe
   const router = useRouter();
   const [bilan, setBilan] = useState<ModulesBilan | null>(null);
   // Les boutons passent par le même chemin : le serveur met à jour, le bilan s'affiche, la liste se rafraîchit.
-  const go = (ids?: string[]) => async () => {
+  const go = (ids?: string[]) => async (opId: string) => {
     try {
-      const b = await updateModulesAction(ids);
+      const b = await updateModulesAction(ids, opId);
+      if (b.busy) return { ok: false, error: labels.busy };
       setBilan(b);
       return b.failed.length === 0 ? { ok: true } : { ok: false, error: labels.incomplete };
     } catch {
@@ -59,13 +62,13 @@ export function ModulesUpdates({ rows, labels }: { rows: ModuleUpdateRow[]; labe
                 </div>
                 {r.needsCore
                   ? <p className="text-sm text-muted" data-testid={`modules-needs-core-${r.id}`}>{fill(labels.needsCore, { version: r.needsCore })}</p>
-                  : <AnimatedActionButton look="secondary" progress="continuous" icon="⬆" testid={`modules-update-${r.id}`} labels={labels.one}
+                  : <AnimatedActionButton look="secondary" icon="⬆" testid={`modules-update-${r.id}`} labels={labels.one} track="module-update" trackKey={`modules-update:${r.id}`}
                       confirm={r.major ? fill(labels.confirmMajor, { name: r.name }) : undefined} run={go([r.id])} {...after} />}
               </li>
             ))}
           </ul>
           <div className="flex justify-center sm:justify-start">
-            <AnimatedActionButton look="primary" progress="continuous" icon="⬆" testid="modules-update-all" labels={labels.all}
+            <AnimatedActionButton look="primary" icon="⬆" testid="modules-update-all" labels={labels.all} track="modules-update" trackKey="modules-update:all"
               confirm={fill(labels.confirmAll, { n: rows.length })} run={go()} {...after} />
           </div>
         </>

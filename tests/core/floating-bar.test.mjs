@@ -10,7 +10,7 @@ test("barre flottante : n'apparaît que s'il y a des modifications, avec Enregis
   assert.match(form, /const visible = !!floating && \(dirty \|\| recent !== null\)/);
   assert.match(form, /fixed left-1\/2 z-40[\s\S]*-translate-x-1\/2/);
   assert.match(form, /!hideSubmit && !floating/, "pas de bouton Enregistrer en double dans la page : la barre flottante suffit");
-  assert.match(form, /type="submit" disabled=\{pending\}/, "Enregistrer = le même envoi que le bouton de la page");
+  assert.match(form, /<PendingButton pending=\{pending\}/, "Enregistrer = le même envoi que le bouton de la page");
   assert.match(form, /window\.confirm\(floating\.discardConfirm\)[\s\S]*window\.location\.reload\(\)/, "Annuler demande confirmation puis recharge");
   assert.match(form, /<div aria-hidden="true" className="h-12" \/>/, "de la place sous le dernier champ : la barre ne cache pas le contenu en fin de page");
 });

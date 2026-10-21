@@ -1036,7 +1036,7 @@ export default {
   `adminAction` en lui envoyant `values.id` (pris dans `rowIds`, même ordre que `rows`) ; `href` navigue (`{id}` est remplacé par l'identifiant) ;
   `confirm` demande confirmation ; `danger` colore le bouton en rouge.
 - **Valeurs** : `adminActions.<nom>(ctx, values)` reçoit les champs du formulaire **en texte** (20 000 caractères au plus par champ) ; **validez-les**.
-- **Résultat** (`AdminActionResult`) : `ok` (message vert), `error` (message rouge), `redirect` — par exemple `{ ok: "Enregistré." }`. `redirect: "?"` reste sur la page de l'instance
+- **Résultat** (`AdminActionResult`) : `ok` (message vert), `error` (bandeau rouge, pour une erreur qui ne concerne AUCUN champ), `errors` (erreurs PAR CHAMP : `{ monChamp: "Écrivez une adresse complète, par exemple https://www.monsite.be/contact." }` ; chaque message s'affiche juste sous son champ, le champ prend un contour rouge, reçoit le focus et la page défile jusqu'à lui ; l'erreur disparaît quand la personne corrige le champ ; un cœur plus ancien qui ne connaît que `error` affiche simplement le bandeau, donc ajouter `errors` est sans risque), `redirect` — par exemple `{ ok: "Enregistré." }`. `redirect: "?"` reste sur la page de l'instance
   (`"?edit=abc"` y ajoute des paramètres, lus par `adminPanel` dans `query`) ; `"/admin/…"` va ailleurs dans l'admin ; toute autre cible est ignorée.
   Une exception donne un message d'erreur générique (détail dans les journaux).
 - Chaque action est consignée dans le journal d'audit (`module.<clé>.<action>`), sans son contenu.

@@ -4,7 +4,7 @@
  */
 
 /** Étapes techniques d'une version, dans l'ordre, avec la part du travail déjà faite quand elles commencent. */
-const STEP_SHARE: Record<string, number> = { starting: 0, backup: 0.1, download: 0.35, verify: 0.6, swap: 0.8, restarting: 0.9, waiting: 0.95, between: 1, done: 1 };
+const STEP_SHARE: Record<string, number> = { starting: 0, backup: 0.1, download: 0.35, verify: 0.6, swap: 0.8, migrate: 0.85, restarting: 0.9, waiting: 0.95, between: 1, done: 1 };
 
 export type UpdateStateLike = {
   status: "idle" | "running" | "success" | "failed";

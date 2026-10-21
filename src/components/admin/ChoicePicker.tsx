@@ -4,6 +4,8 @@ import { useEffect, useId, useRef, useState } from "react";
 import { createChoice, searchChoice } from "@/app/admin/(panel)/instances/choiceActions";
 import { announce, fill, keyIntent, mergePage, optionCount, optionDomId, showCreate, showEmptyNote, type PickerItem, type PickerStrings } from "./choicePickerModel";
 import { ui } from "./ui";
+import { Spinner } from "./ActionKit";
+import { useProgressText } from "./ProgressLabels";
 
 const DEBOUNCE_MS = 250;
 
@@ -35,6 +37,9 @@ export function ChoicePicker({ instanceId, fieldKey, name, label, help, flag, in
   const [error, setError] = useState<string | null>(null);
   const [live, setLive] = useState("");
   const [created, setCreated] = useState(false);
+  /** « Créer » est en cours : l'option montre qu'elle travaille et ne se déclenche pas une seconde fois. */
+  const [creating, setCreating] = useState(false);
+  const p = useProgressText();
   const seq = useRef(0);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const input = useRef<HTMLInputElement>(null);
@@ -78,9 +83,10 @@ export function ChoicePicker({ instanceId, fieldKey, name, label, help, flag, in
   }
 
   async function doCreate() {
+    if (creating) return;
     const text = q.trim();
     const mine = ++seq.current;
-    setLoading(true); setError(null);
+    setLoading(true); setError(null); setCreating(true); setLive(p("creating"));
     try {
       const r = await createChoice(instanceId, fieldKey, text);
       if (mine !== seq.current) return;
@@ -90,6 +96,7 @@ export function ChoicePicker({ instanceId, fieldKey, name, label, help, flag, in
     } catch {
       if (mine === seq.current) { setError(strings.unreachable); setLive(strings.unreachable); }
     } finally {
+      setCreating(false);
       if (mine === seq.current) setLoading(false);
     }
   }
@@ -149,9 +156,9 @@ export function ChoicePicker({ instanceId, fieldKey, name, label, help, flag, in
           ))}
           {create && (
             <li id={optionDomId(base, items.length)} role="option" aria-selected={false}
-              onMouseDown={(e) => e.preventDefault()} onClick={() => void doCreate()}
-              className={`cursor-pointer rounded-lg px-3 py-2.5 text-[15px] font-medium text-accent ${active === items.length ? "bg-accent/15" : "hover:bg-accent/10"}`}>
-              <span aria-hidden>＋ </span>{fill(strings.create, { label: q.trim() })}
+              onMouseDown={(e) => e.preventDefault()} onClick={() => void doCreate()} aria-busy={creating || undefined} data-creating={creating ? "true" : undefined}
+              className={`flex min-h-11 items-center gap-2 rounded-lg px-3 py-2.5 text-[15px] font-medium text-accent ${creating ? "pointer-events-none opacity-80" : "cursor-pointer"} ${active === items.length ? "bg-accent/15" : "hover:bg-accent/10"}`}>
+              {creating ? <Spinner /> : <span aria-hidden>＋</span>}{creating ? p("creating") : fill(strings.create, { label: q.trim() })}
             </li>
           )}
         </ul>

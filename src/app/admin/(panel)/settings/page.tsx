@@ -305,7 +305,7 @@ export default async function SettingsPage() {
             </div>
           </ActionForm>
           {mail && (
-            <ActionForm action={sendTestMail} submitLabel={t("settings.mailTest")} className="space-y-3">{null}</ActionForm>
+            <ActionForm action={sendTestMail} submitLabel={t("settings.mailTest")} pendingLabel={t("progress.sending")} className="space-y-3">{null}</ActionForm>
           )}
         </section>
       )}
@@ -331,7 +331,7 @@ export default async function SettingsPage() {
               {rawgOn && <Checkbox name="rawgClear" label={t("settings.rawgClear")} />}
             </ActionForm>
             <div className="space-y-2">
-              <ActionForm action={testRawgKey} submitLabel={t("settings.rawgTest")} className="space-y-3">{null}</ActionForm>
+              <ActionForm action={testRawgKey} submitLabel={t("settings.rawgTest")} pendingLabel={t("progress.checking")} className="space-y-3">{null}</ActionForm>
               <p className={ui.help}>{t("settings.rawgTestHelp")}</p>
             </div>
           </div>

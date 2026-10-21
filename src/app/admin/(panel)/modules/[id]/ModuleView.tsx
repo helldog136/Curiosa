@@ -21,6 +21,7 @@ import { decodeMissing, describeMissingList } from "@/core/modules/dependencyMes
 import { ModuleLinksBox } from "@/components/admin/ModuleLinksBox";
 import { addInstance, uninstallModuleAction } from "../actions";
 import { EXTENSIONS_HREF } from "@/core/modules/extensionsLinks";
+import { PendingButton } from "@/components/admin/PendingButton";
 
 export type ModuleQuery = { update?: string; error?: string; detail?: string; missing?: string; op?: string; module?: string; to?: string; level?: string };
 
@@ -121,7 +122,7 @@ export async function ModuleView({ id, query, embedded = false }: { id: string; 
                   </label>
                 </>
               )}
-              <button className={ui.btn}>+ {advanced ? (hasPage(mod.manifest) || mod.manifest.content ? t("instances.add") : t("instances.addPlain")) : t("instances.addSimple", { name: L(mod.manifest.name) })}</button>
+              <PendingButton pendingLabel={t("progress.creating")}>+ {advanced ? (hasPage(mod.manifest) || mod.manifest.content ? t("instances.add") : t("instances.addPlain")) : t("instances.addSimple", { name: L(mod.manifest.name) })}</PendingButton>
             </form>
           )}
         </section>

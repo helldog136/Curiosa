@@ -3,8 +3,10 @@ import { currentUser, hasRole } from "@/core/permissions";
 import { getSiteConfig } from "@/core/settings";
 import { localized } from "@/core/modules/types";
 import { dismissedServices, suggestionView } from "@/core/modules/suggestInstall";
-import { dismissSuggestionAction, installSuggested, resetSuggestionsAction } from "@/app/admin/(panel)/instances/suggestActions";
+import { dismissSuggestionAction, resetSuggestionsAction } from "@/app/admin/(panel)/instances/suggestActions";
 import { ui } from "./ui";
+import { PendingButton } from "./PendingButton";
+import { SuggestInstallForm } from "./SuggestInstallForm";
 
 /**
  * Bloc « suggestInstall » d'un panneau d'admin : propriétaire → liste des modules du catalogue qui offrent le service (officiels d'abord, « extra » avec
@@ -32,21 +34,14 @@ export async function SuggestInstall({ instanceId, service, min, reason, locale 
             <li key={c.id} className="rounded-xl border border-line bg-bg p-3">
               <p className="flex flex-wrap items-center gap-2 font-medium"><span aria-hidden>{c.icon ?? "🧩"}</span>{L(c.name)}{c.origin === "extra" && <span className={ui.chipWarn}>⚠ {t("catalogue.origin.extra")}</span>}</p>
               <p className="mt-1 text-sm text-muted">{L(c.description)}</p>
-              <form action={installSuggested.bind(null, instanceId, service, c.id)} className="mt-2 space-y-2">
-                {c.origin === "extra" && (
-                  <>
-                    <p className="text-sm">{t("suggest.extraWarning")}</p>
-                    <label className="flex items-start gap-2 text-sm"><input type="checkbox" name="confirm" required className="mt-1" />{t("catalogue.trust")}</label>
-                  </>
-                )}
-                <button className={ui.btnPrimary}>{t("suggest.install")}</button>
-              </form>
+              <SuggestInstallForm instanceId={instanceId} service={service} moduleId={c.id} extra={c.origin === "extra"}
+                labels={{ install: t("suggest.install"), installing: t("catalogue.installing"), done: t("catalogue.installDone"), failed: t("catalogue.installFailed"), extraWarning: t("suggest.extraWarning"), trust: t("catalogue.trust") }} />
             </li>
           ))}
         </ul>
       )}
       <form action={dismissSuggestionAction.bind(null, instanceId, service)}>
-        <button className="text-sm text-muted underline-offset-2 hover:underline">{t("suggest.dismiss")}</button>
+        <PendingButton variant="link" pendingLabel={t("progress.working")}>{t("suggest.dismiss")}</PendingButton>
       </form>
     </section>
   );
@@ -64,7 +59,7 @@ export async function SuggestNotices({ instanceId, query, t, isOwner }: { instan
       {error && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3">{t(error, { services: "", modules: "" })}</p>}
       {dismissed.length > 0 && (
         <form action={resetSuggestionsAction.bind(null, instanceId)}>
-          <button className="text-muted underline-offset-2 hover:underline">{t("suggest.reset")}</button>
+          <PendingButton variant="link" pendingLabel={t("progress.working")}>{t("suggest.reset")}</PendingButton>
         </form>
       )}
     </div>

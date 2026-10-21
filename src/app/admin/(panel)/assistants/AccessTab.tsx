@@ -13,6 +13,7 @@ import { McpTokenCreator, type CreatorLabels } from "@/components/admin/McpToken
 import { Callout, EmptyState, Panel } from "@/components/admin/Page";
 import { ui } from "@/components/admin/ui";
 import { createTokenAction, revokeTokenAction, setMcpEnabled } from "./actions";
+import { PendingButton } from "@/components/admin/PendingButton";
 
 /** Les textes du formulaire de création : mêmes champs, mais des mots de tous les jours en mode simple. */
 function creatorLabels(t: Translator, advanced: boolean): CreatorLabels {
@@ -59,7 +60,7 @@ export async function AccessTab({ t, locale, advanced, profile }: { t: Translato
         <Callout tone="warn" testid="assistants-off">
           <span className="flex flex-wrap items-center justify-between gap-3">
             <span><strong>{t("assistants.off.title")}</strong> {t("assistants.off.help")}</span>
-            <form action={setMcpEnabled.bind(null, true)}><button className={ui.btnPrimary}>{t("assistants.off.resume")}</button></form>
+            <form action={setMcpEnabled.bind(null, true)}><PendingButton variant="primary">{t("assistants.off.resume")}</PendingButton></form>
           </span>
         </Callout>
       )}
@@ -141,7 +142,7 @@ export async function AccessTab({ t, locale, advanced, profile }: { t: Translato
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="flex items-center gap-2 font-medium"><span className={enabled ? ui.chipOk : ui.chipWarn}>{t(enabled ? "assistants.master.onChip" : "assistants.master.offChip")}</span>{t(enabled ? "assistants.master.on" : "assistants.master.off")}</p>
           <form action={setMcpEnabled.bind(null, !enabled)}>
-            {enabled ? <ConfirmButton message={t("assistants.master.confirm")}>{t("assistants.master.suspend")}</ConfirmButton> : <button className={ui.btnPrimary}>{t("assistants.off.resume")}</button>}
+            {enabled ? <ConfirmButton message={t("assistants.master.confirm")}>{t("assistants.master.suspend")}</ConfirmButton> : <PendingButton variant="primary">{t("assistants.off.resume")}</PendingButton>}
           </form>
         </div>
       </Panel>

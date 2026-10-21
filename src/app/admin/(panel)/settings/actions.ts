@@ -13,6 +13,7 @@ import { isGlowLevel, normalizeTuning } from "@/core/glow";
 import { isKnownLocale } from "@/core/i18n/locales";
 import { isSiteEntity } from "@/core/seo";
 import { audit } from "@/core/permissions";
+import { normalizeLinkInput } from "@/core/url";
 import { deleteSetting, setSetting } from "@/core/settings";
 import type { ActionState } from "@/components/admin/ActionForm";
 
@@ -39,7 +40,7 @@ export async function saveSettings(_prev: ActionState, formData: FormData): Prom
   const logoValues: Record<string, string> = {};
   for (const [field, key] of [["logo", "square"], ["logoWide", "wide"], ["logoDark", "squareDark"], ["logoWideDark", "wideDark"], ["favicon", "favicon"], ["logoShare", "share"]] as const) {
     const v = String(formData.get(field) ?? "").trim();
-    if (v && !(v.startsWith("/uploads/") || /^https:\/\//.test(v))) return { error: t("error.badUrl") };
+    if (v && !(v.startsWith("/uploads/") || /^https:\/\//.test(v))) return { errors: { [field]: t("error.badImage") } };
     logoValues[key] = v;
   }
 
@@ -81,8 +82,8 @@ export async function saveSettings(_prev: ActionState, formData: FormData): Prom
   if ((await providersOf(SOCIAL_TOPIC)).length > 0) await setSetting("header.socials", formData.get("headerSocials") === "on");
   for (const [field, key] of [["headerSecondaryHref", "header.secondaryHref"], ["headerButtonHref", "header.buttonHref"]] as const) {
     if (!(formData.has(field))) continue;
-    const href = String(formData.get(field) ?? "").trim();
-    if (href && !headerLink("x", href)) return { error: t("error.badUrl") };
+    const href = normalizeLinkInput(String(formData.get(field) ?? ""));
+    if (href && !headerLink("x", href)) return { errors: { [field]: t("error.badLink") } };
     if (href) await setSetting(key, href);
     else await deleteSetting(key);
   }
@@ -92,7 +93,7 @@ export async function saveSettings(_prev: ActionState, formData: FormData): Prom
   // Fond de page : préréglage (tous modes), description personnalisée (avancé), image de fond. Une description invalide n'enregistre rien.
   const bgPreset = String(formData.get("bgPreset") ?? "none");
   const bgImage = String(formData.get("bgImage") ?? "").trim();
-  if (bgImage && !isBackgroundImage(bgImage)) return { error: t("error.badUrl") };
+  if (bgImage && !isBackgroundImage(bgImage)) return { errors: { bgImage: t("error.badImage") } };
   const bgCustom = adv ? String(formData.get("bgCustom") ?? "").trim() : null;
   if (bgCustom) {
     const parsed = parseBackground(bgCustom);

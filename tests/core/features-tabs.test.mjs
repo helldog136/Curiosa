@@ -57,6 +57,6 @@ test("menu : « Modules » n'est plus en haut ni en surbrillance ; le catalogue 
   assert.match(view, /sticky bottom-0/);
   const button = read("src/components/admin/InstallButton.tsx");
   assert.match(read("src/components/admin/animatedAction.ts"), /MIN_MS = 900/, "animation d'au moins une demi-seconde, même si l'installation est instantanée");
-  assert.match(button, /installModuleAction\(id\)/);
+  assert.match(button, /installModuleAction\(id, opId\)/);
   assert.match(read("src/components/admin/animatedAction.ts"), /Promise\.all\(\[run\(\), sleep\(minMs\)\]\)/);
 });

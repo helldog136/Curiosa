@@ -16,11 +16,11 @@ export function askConfirm(message: string, opts: { /** Texte du bouton qui vali
     row.className = "flex flex-wrap justify-end gap-3";
     const cancel = document.createElement("button");
     cancel.type = "button";
-    cancel.className = "rounded-full border border-line px-5 py-2 text-sm font-medium";
+    cancel.className = "min-h-11 rounded-full border border-line px-5 py-2 text-sm font-medium";
     cancel.textContent = fr ? "Annuler" : "Cancel";
     const ok = document.createElement("button");
     ok.type = "button";
-    ok.className = `rounded-full px-5 py-2 text-sm font-semibold ${opts.danger ? "bg-red-600 text-white" : "bg-accent text-accent-fg"}`;
+    ok.className = `min-h-11 rounded-full px-5 py-2 text-sm font-semibold ${opts.danger ? "bg-red-600 text-white" : "bg-accent text-accent-fg"}`;
     ok.textContent = opts.confirmLabel ?? (fr ? "Continuer" : "Continue");
     let answer = false;
     cancel.onclick = () => dialog.close();

@@ -114,6 +114,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 | [`routes.redirect`](#routesredirect) | obligatoire | Aucune redirection vers un site extérieur |
 | [`routes.errors`](#routeserrors) | obligatoire | Les réponses d'erreur ne révèlent rien d'interne |
 | [`routes.protected`](#routesprotected) | obligatoire | Une route publique qui écrit est protégée contre les abus |
+| [`forms.fieldErrors`](#formsfielderrors) | conseil | Une erreur de champ s'affiche sous son champ |
 | [`mcp.name`](#mcpname) | obligatoire | Les noms d'outils MCP restent assez courts |
 | [`mcp.safety`](#mcpsafety) | obligatoire | Les outils MCP déclarent honnêtement ce qu'ils font |
 | [`mcp.readOnly`](#mcpreadonly) | obligatoire | Une action « lecture seule » ne modifie rien |
@@ -138,7 +139,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 | [`readme.plain`](#readmeplain) | conseil | Le README est écrit en langage de tous les jours |
 | [`neutrality.clean`](#neutralityclean) | conseil | Aucune donnée personnelle ni propre à un site dans le module |
 
-36 exigences obligatoires et 21 conseils.
+36 exigences obligatoires et 22 conseils.
 
 ### Le fichier module.json
 
@@ -427,6 +428,16 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 - **Ce qui est vérifié.** Quarante envois valides, à la suite, depuis le même visiteur, ne sont pas tous acceptés : la route a un limiteur de débit, un plafond de stockage, un code d'accès ou une modération qui la protège.
 - **Pourquoi.** Une route ouverte à tous qui écrit sans limite permet à un robot de remplir le stockage du site en quelques minutes.
 - **Comment corriger.** Ajoutez un limiteur de débit par visiteur (voir limited() dans l'exemple guestbook : N envois par heure), un plafond du nombre d'éléments stockés (réponse 503 au-delà), et un champ piège pour les robots.
+
+### Les formulaires d'administration
+
+#### `forms.fieldErrors`
+
+**Une erreur de champ s'affiche sous son champ** — niveau : **conseil**
+
+- **Ce qui est vérifié.** Une action d'administration qui refuse une valeur saisie dit QUEL champ pose problème (`errors: { champ: "message" }`) au lieu d'un seul `error` général.
+- **Pourquoi.** Un message général s'affiche loin du champ, parfois hors de l'écran sur un téléphone : la personne ne voit pas ce qu'il faut corriger. Avec `errors`, le message apparaît juste sous le champ, qui prend le focus.
+- **Comment corriger.** Renvoyez `{ errors: { adresse: "Écrivez une adresse complète, par exemple https://www.monsite.be/contact." } }` (nom du champ → message, avec un exemple). Gardez `error` pour ce qui ne concerne aucun champ.
 
 ### Les actions pour les assistants IA (MCP)
 

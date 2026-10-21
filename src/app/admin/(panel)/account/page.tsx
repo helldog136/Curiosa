@@ -4,7 +4,6 @@ import { UI_LOCALES } from "@/core/i18n/dictionary";
 import { ActionForm } from "@/components/admin/ActionForm";
 import { Select, TextField } from "@/components/admin/Field";
 import { Callout, DangerZone, PageHeader, Panel } from "@/components/admin/Page";
-import { ui } from "@/components/admin/ui";
 import { ConfirmButton } from "@/components/admin/ConfirmButton";
 import { PasskeysPanel } from "@/components/admin/PasskeysPanel";
 import { TwoFactorPanel } from "@/components/admin/TwoFactorPanel";

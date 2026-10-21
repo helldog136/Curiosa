@@ -22,6 +22,7 @@ import { DATA_FILES, FORMAT, FORMAT_VERSION, LEGACY_FORMATS, type BackupManifest
 import { readTarGz, readTarGzAsync, type TarFile } from "./tar";
 import { linksFor, orderByDependencies, previewMissing, settleRestored, type DependencyIssue } from "./restoreDeps";
 import type { Missing } from "@/core/modules/dependencyInstaller";
+import { opStep } from "../operations/tracker";
 
 type Row = Record<string, unknown>;
 export type ParsedBackup = {
@@ -202,6 +203,7 @@ const chunks = <T,>(list: T[], n = 200) => Array.from({ length: Math.ceil(list.l
  * Une copie de la base actuelle est gardée avant. Les modules présents ici mais absents de la sauvegarde restent installés.
  */
 export async function applyRestore(backup: ParsedBackup, opts: { confirmCustom: string[]; actor: string; installers?: Installers; dataDir?: string }): Promise<RestoreReport> {
+  opStep("modules");
   const installers = opts.installers ?? realInstallers;
   const confirmed = new Set(opts.confirmCustom);
   const planned = await planModulesBase(backup.data.modules);
@@ -220,6 +222,7 @@ export async function applyRestore(backup: ParsedBackup, opts: { confirmCustom: 
   }
 
   if ((await checkSchema(backup.manifest)) === "newer-schema") return { ok: false, error: "newer-schema", modules: [] };
+  opStep("safety");
   const copy = safetyCopy("pre-restore", opts.dataDir);
   // Sauvegarde d'un schéma plus ancien : transformations explicites, puis seules les colonnes encore connues (les nouvelles prennent leur défaut).
   // (Copie et tri des colonnes par tranches de 2 000 lignes, en laissant respirer la boucle d'événements : 20 000 fiches ne figent pas le site.)
@@ -232,6 +235,7 @@ export async function applyRestore(backup: ParsedBackup, opts: { confirmCustom: 
   }
   // Compteurs de génération du stockage d'AVANT : la restauration remet ceux de la sauvegarde, mais un compteur ne recule jamais.
   const generationsBefore = await readGenerations().catch(() => new Map<string, number>());
+  opStep("replace");
   try {
     await prisma.$transaction(async (tx) => {
       await tx.moduleRecord.deleteMany(); await tx.entryTranslation.deleteMany(); await tx.entry.deleteMany();
@@ -273,11 +277,13 @@ export async function applyRestore(backup: ParsedBackup, opts: { confirmCustom: 
     .catch((e) => console.error("[backup] store generation bump failed:", (e as Error)?.message));
 
   // Images : on remplace celles du site par celles de la sauvegarde.
+  opStep("files");
   fs.mkdirSync(UPLOADS_DIR, { recursive: true });
   for (const f of fs.readdirSync(UPLOADS_DIR)) if (UPLOAD_NAME_RE.test(f)) fs.rmSync(path.join(UPLOADS_DIR, f), { force: true });
   for (const u of backup.uploads) fs.writeFileSync(path.join(UPLOADS_DIR, u.name), u.content);
 
   resetModuleRegistry();
+  opStep("finish");
   // Rôles prédéfinis présents et affectations alignées sur `User.role` (sauvegarde d'avant la 0.2.0 : c'est ce qui crée toute l'affectation).
   await syncSystemAssignments().catch((e) => console.error("[backup] roles sync failed:", (e as Error)?.message));
   // TEMPORAIRE (retrait en 0.3.0) : une sauvegarde d'un site d'avant la 0.1.20 peut contenir des modules ou instances « éteints » ; ils deviennent « désinstallés, données gardées ».

@@ -15,6 +15,7 @@ import { backupFilename, DATA_FILES, FORMAT, FORMAT_VERSION, fileOf, jsonFile, t
 import { readmeText } from "./readme";
 import { currentSchemaVersion } from "./schema";
 import { createTarGzAsync, isSafeArchivePath, type TarFile } from "./tar";
+import { opStep } from "../operations/tracker";
 
 /** Réglages qui n'ont aucun sens après une restauration (état de la dernière vérification de version). */
 const VOLATILE_SETTINGS = new Set(["updates.latest", "updates.checkedAt", "updates.error"]);
@@ -45,6 +46,7 @@ export type BackupResult = { buffer: Buffer; filename: string; manifest: BackupM
  * tous les modules installés (leur stockage, leurs réglages, leurs fichiers lisibles). Chiffrée par le mot de passe donné.
  */
 export async function createBackup(password: string, opts: { now?: Date; iterations?: number } = {}): Promise<BackupResult> {
+  opStep("collect");
   const now = opts.now ?? new Date();
   const config = await getSiteConfig();
   const [users, settings, moduleRows, instances, instanceTranslations, entries, entryTranslations, redirects, retired, roles, userRoles] = await Promise.all([
@@ -91,6 +93,7 @@ export async function createBackup(password: string, opts: { now?: Date; iterati
   ];
 
   // ── Copie lisible ───────────────────────────────────────────────────────────
+  opStep("readable");
   const viewByKey = new Map((await getActiveInstances()).map((a) => [a.instance.key, a]));
   const entryById = new Map(entries.map((e) => [e.id, e]));
   let n = 0;
@@ -130,6 +133,7 @@ export async function createBackup(password: string, opts: { now?: Date; iterati
   ].join("\n")));
 
   // ── Images et fichiers envoyés ──────────────────────────────────────────────
+  opStep("files");
   let uploadCount = 0;
   try {
     for (const name of await fs.promises.readdir(UPLOADS_DIR)) {
@@ -139,6 +143,7 @@ export async function createBackup(password: string, opts: { now?: Date; iterati
     }
   } catch { /* pas encore d'envois */ }
 
+  opStep("seal");
   const manifest: BackupManifest = {
     format: FORMAT, formatVersion: FORMAT_VERSION, createdAt: now.toISOString(), frameworkVersion: readVersion(), schemaVersion: await currentSchemaVersion(),
     site: { name: config.name, defaultLocale: config.defaultLocale, locales: config.locales },

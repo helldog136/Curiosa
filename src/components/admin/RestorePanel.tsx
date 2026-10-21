@@ -1,6 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { AnimatedActionButton } from "./AnimatedActionButton";
+import { PendingButton } from "./PendingButton";
+import { useProgressText } from "./ProgressLabels";
 import { ui } from "./ui";
 
 type Plan = { id: string; name: string; version: string; status: "installed" | "catalogue" | "custom" | "unavailable"; repoUrl: string | null; ref: string | null; needsConfirmation: boolean; /** Module actif dont un fournisseur manque : services en clair. */ missingLabels?: string[] };
@@ -18,6 +21,7 @@ export function RestorePanel({ labels, previewUrl = "/api/admin/backup/restore",
   const [setupToken, setSetupToken] = useState("");
   const headers = (extra: Record<string, string> = {}) => ({ ...extra, ...(needsToken ? { "x-setup-token": setupToken } : {}) });
   const L = (k: string) => labels[k] ?? k;
+  const p = useProgressText();
 
   async function check(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -31,16 +35,17 @@ export function RestorePanel({ labels, previewUrl = "/api/admin/backup/restore",
     setBusy(false);
   }
 
-  async function apply() {
-    if (!preview || !window.confirm(L("confirmReplace"))) return;
+  /** Restaure (l'aperçu a déjà été vérifié). Suivi d'opération côté serveur : modules → copie de sécurité → données → images → fin. */
+  async function apply(opId: string): Promise<{ ok: boolean; error?: string }> {
+    if (!preview) return { ok: false };
     setBusy(true); setError(null);
     try {
-      const res = await fetch(applyUrl, { method: "POST", headers: headers({ "content-type": "application/json" }), body: JSON.stringify({ token: preview.token, confirm: [...accepted] }) });
+      const res = await fetch(applyUrl, { method: "POST", headers: headers({ "content-type": "application/json" }), body: JSON.stringify({ token: preview.token, confirm: [...accepted], op: opId }) });
       const json = await res.json();
-      if (json.ok === false && json.error && !json.modules) setError(L(`error.${json.error}`));
-      else { setReport(json); setPreview(null); }
-    } catch { setError(L("error.network")); }
-    setBusy(false);
+      if (json.ok === false && json.error && !json.modules) { const message = json.error === "busy" ? p("busy") : L(`error.${json.error}`); setError(message); setBusy(false); return { ok: false, error: message }; }
+      setReport(json); setPreview(null); setBusy(false);
+      return { ok: json.ok !== false };
+    } catch { const message = L("error.network"); setError(message); setBusy(false); return { ok: false, error: message }; }
   }
 
   if (report) {
@@ -75,7 +80,7 @@ export function RestorePanel({ labels, previewUrl = "/api/admin/backup/restore",
           <label className="block text-sm"><span className={ui.label}>{L("file")}</span><input name="file" type="file" required className={ui.input} /></label>
           {needsToken && <label className="block text-sm"><span className={ui.label}>{L("setupToken")}</span><input type="password" required value={setupToken} onChange={(e) => setSetupToken(e.target.value)} autoComplete="off" className={ui.input} /></label>}
           <label className="block text-sm"><span className={ui.label}>{L("password")}</span><input name="password" type="password" required autoComplete="off" className={ui.input} /></label>
-          <button className={ui.btn} disabled={busy}>{L("check")}</button>
+          <PendingButton pending={busy} pendingLabel={p("checking")}>{L("check")}</PendingButton>
         </form>
       )}
       {error && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm">{error}</p>}
@@ -100,9 +105,10 @@ export function RestorePanel({ labels, previewUrl = "/api/admin/backup/restore",
               </li>
             ))}
           </ul>
-          <div className="flex gap-3">
-            <button onClick={apply} disabled={busy} className={ui.btnDanger}>{L("apply")}</button>
-            <button onClick={() => { setPreview(null); setError(null); }} disabled={busy} className={ui.btn}>{L("cancel")}</button>
+          <div className="flex flex-wrap items-start gap-3">
+            <AnimatedActionButton look="danger" icon="♻" track={needsToken ? undefined : "restore"} testid="restore-apply" className="items-start" confirm={L("confirmReplace")}
+              labels={{ idle: L("apply"), working: p("restoring"), done: p("done"), failed: L("error.failed") }} run={apply} />
+            <button onClick={() => { setPreview(null); setError(null); }} disabled={busy} className={`${ui.btn} min-h-11`}>{L("cancel")}</button>
           </div>
         </div>
       )}

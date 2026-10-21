@@ -84,6 +84,7 @@ const FAULTS = {
   "tasks.idempotent": (f) => REPLACE(f, 'if (known) await ctx.api.store.update(known.id, { at: 1 });\n        else await ctx.api.store.add("state", { at: 1 });', 'await ctx.api.store.add("state", { at: Date.now() });'),
   "tasks.failure": (f) => REPLACE(f, "if (!feed.ok) { /* service indisponible : on réessaiera */ }", 'if (!feed.ok) throw new Error("feed down");'),
   "net.bounded": (f) => append(f, "index.mjs", 'export const ping = () => fetch("https://example.org/ping");'),
+  "forms.fieldErrors": (f) => REPLACE(f, "export default {\n  sections: {", 'export default {\n  adminActions: { save: async (ctx, values) => { if (!values.site) return { error: "Adresse invalide." }; return { ok: "ok" }; } },\n  sections: {'),
   "net.noIdleTimer": (f) => append(f, "index.mjs", "export const loop = () => setInterval(() => {}, 60000);"),
   "net.429": (f) => REPLACE(f, 'const feed = await ctx.api.net.request({ url: "https://example.org/feed" });', 'const feed = await fetch("https://example.org/feed", { signal: AbortSignal.timeout(2000) }).catch(() => ({ ok: false }));'),
   "net.fallback": (f) => REPLACE(f, "const [last] = await rows(ctx);", 'await fetch("https://example.org/live", { signal: AbortSignal.timeout(10000) }).catch(() => null);\n      const [last] = await rows(ctx);'),

@@ -2,6 +2,7 @@ import { dropStash, stash, unstash } from "./files";
 import { MAX_UPLOAD } from "./guard";
 import { buildNames } from "@/core/modules/dependencyView";
 import { getSiteConfig } from "@/core/settings";
+import { opIdOf, trackOperation } from "@/core/operations/run";
 import { applyRestore, checkSchema, openBackupAsync, parseBackupAsync, planModules } from "./restore";
 
 /**
@@ -53,7 +54,12 @@ export async function applyHandler(request: Request, guard: Guard, actor: () => 
   const parsed = await parseBackupAsync(plain);
   if (!parsed.ok) return Response.json({ ok: false, error: parsed.error }, { status: 400 });
   const confirm = Array.isArray(body?.confirm) ? body.confirm.filter((x): x is string => typeof x === "string").slice(0, 200) : [];
-  const report = await applyRestore(parsed.backup, { confirmCustom: confirm, actor: await actor() });
+  const who = await actor();
+  // Suivi d'opération (modules → copie de sécurité → remplacement des données → images → fin). Un second envoi rejoint la restauration en cours.
+  const run = await trackOperation({ email: who }, { kind: "restore", key: "restore", opId: opIdOf((body as { op?: unknown } | null)?.op) },
+    () => applyRestore(parsed.backup, { confirmCustom: confirm, actor: who }), (r) => ({ ok: r.ok, error: r.ok ? undefined : r.error }));
+  if (run.busy) return Response.json({ ok: false, error: "busy" }, { status: 409 });
+  const report = run.result;
   dropStash(String(body?.token));
   if (report.ok && (report.dependencies.length || report.provided.length)) {
     const names = await readableNames();

@@ -46,7 +46,7 @@ test("menus déroulants : un groupe range des pages et des liens (un seul niveau
   assert.ok(!/addGroup[^\n]*kind: "group"[^\n]*items: \[\{ uid[^\n]*kind: "group"/.test(editor), "pas de groupe dans un groupe");
   assert.match(actions, /entry\?\.k === "group"/);
   assert.match(actions, /if \(children\.length === 0\) continue/, "un groupe vide est ignoré");
-  assert.match(actions, /Object\.keys\(label\)\.length === 0\) return \{ error: t\("navigation\.error\.label"\) \}/, "un groupe sans nom est refusé");
+  assert.match(actions, /Object\.keys\(label\)\.length === 0\) return \{ errors: \{ \[`items\.\$\{index\}\.label`\]: t\("navigation\.error\.label"\) \} \}/, "un groupe sans nom est refusé");
   assert.match(actions, /items\.push\(\{ href: "", label, children \}\)/);
   const dropdown = read("src/components/site/NavDropdown.tsx");
   assert.match(dropdown, /aria-expanded=\{open\}/);

@@ -16,6 +16,7 @@ import {
   BodyTooLarge, claimDownloadSlot, contentDisposition, decideDownload, DOWNLOAD_LIMITS, FILE_META, FORM_OVERHEAD_BYTES, MAX_FILE_BYTES, MAX_PARAMS_BYTES,
   readBodyBounded, readTextFile, sanitizeFilename, streamGenerator, type DownloadEnd, type DownloadLimits,
 } from "./adminTransfer";
+import { sanitizeFieldErrors } from "@/core/fieldErrors";
 import type { AdminActionResult, ModuleContext, ModuleDefinition } from "./types";
 
 export type ResolvedInstance = { key: string; moduleId: string; def: ModuleDefinition; ctx(user: AdminUser): Promise<ModuleContext> };
@@ -210,5 +211,5 @@ export async function actionHandler(request: Request, p: { instance: string; act
   }
   await deps.audit(user.email, `module.${mod.key}.${p.action}`, totalBytes ? `${totalBytes} bytes` : "");
   deps.refresh?.();
-  return Response.json({ ok: result?.ok, error: result?.error, redirect: safeRedirect(p.instance, result?.redirect) }, { headers: NO_STORE });
+  return Response.json({ ok: result?.ok, error: result?.error, errors: sanitizeFieldErrors(result?.errors), redirect: safeRedirect(p.instance, result?.redirect) }, { headers: NO_STORE });
 }

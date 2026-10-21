@@ -125,7 +125,7 @@ export async function DetailsView({ id, repo, embedded = false }: { id?: string;
                 entry.origin === "extra" ? (
                   <>
                     <p className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm" data-testid="extra-warning">{t("catalogue.extraWarning")}</p>
-                    <ActionForm action={installExtraAction} submitLabel={t("catalogue.install")}>
+                    <ActionForm action={installExtraAction} submitLabel={t("catalogue.install")} pendingLabel={t("catalogue.installing")} track="install">
                       <input type="hidden" name="id" value={entry.id} />
                       <Checkbox name="trust" label={t("catalogue.trust")} required />
                     </ActionForm>
@@ -142,7 +142,7 @@ export async function DetailsView({ id, repo, embedded = false }: { id?: string;
           ) : custom ? (
             <>
               <p className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm">{t("catalogue.customWarning")}</p>
-              <ActionForm action={installCustomAction} submitLabel={t("catalogue.install")}>
+              <ActionForm action={installCustomAction} submitLabel={t("catalogue.install")} pendingLabel={t("catalogue.installing")} track="install">
                 <input type="hidden" name="repo" value={`${custom.url}${custom.ref || custom.subdir ? `#${custom.ref ?? ""}${custom.subdir ? `:${custom.subdir}` : ""}` : ""}`} />
                 <Checkbox name="trust" label={t("catalogue.trust")} required />
               </ActionForm>

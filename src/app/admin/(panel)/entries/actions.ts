@@ -7,7 +7,7 @@ import { prisma } from "@/core/db";
 import { uniqueSlug } from "@/core/content/entries";
 import { audit, can } from "@/core/permissions";
 import { slugify } from "@/core/slug";
-import { isSafeExternalUrl } from "@/core/url";
+import { isSafeExternalUrl, normalizeLinkInput } from "@/core/url";
 import type { ActionState } from "@/components/admin/ActionForm";
 
 const opt = (v: FormDataEntryValue | null) => {
@@ -27,11 +27,11 @@ export async function saveEntry(_prev: ActionState, formData: FormData): Promise
   const title = String(formData.get("title") ?? "").trim();
   if (!title) return { error: t("error.titleRequired") };
 
-  const url = opt(formData.get("url"));
-  if (url && !isSafeExternalUrl(url)) return { error: t("error.badUrl") };
+  const url = opt(formData.get("url")) ? normalizeLinkInput(opt(formData.get("url"))) : null;
+  if (url && !isSafeExternalUrl(url)) return { errors: { url: t("error.badLink") } };
   const cover = opt(formData.get("cover"));
   if (cover && !(cover.startsWith("/uploads/") || cover.startsWith("https://") || cover.startsWith("http://"))) {
-    return { error: t("error.badUrl") };
+    return { errors: { cover: t("error.badImage") } };
   }
   const icon = opt(formData.get("icon"))?.slice(0, 40) ?? null;
   const code = opt(formData.get("code"))?.slice(0, 200) ?? null;

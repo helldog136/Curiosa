@@ -1,6 +1,8 @@
 "use client";
 
-import { useActionState, useState, type FormEvent } from "react";
+import { useActionState, useRef, useState, type FormEvent } from "react";
+import { useFieldErrorsDom } from "./FieldErrors";
+import { PendingButton } from "./PendingButton";
 import { useRouter } from "next/navigation";
 import type { AdminField, Block } from "@/core/blocks";
 import { ImageField } from "./ImageField";
@@ -55,6 +57,8 @@ function FileBlockForm({ instanceId, block, labels }: { instanceId: string; bloc
   const router = useRouter();
   const [state, setState] = useState<ActionState>(null);
   const [pending, setPending] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
+  useFieldErrorsDom(formRef, state?.errors, state);
   const fileFields = block.fields.filter((f) => f.kind === "file");
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -63,7 +67,7 @@ function FileBlockForm({ instanceId, block, labels }: { instanceId: string; bloc
     for (const f of fileFields) {
       const max = Math.min(MAX_FILE, f.maxBytes && f.maxBytes > 0 ? f.maxBytes : MAX_FILE);
       const file = data.get(f.name);
-      if (file instanceof File && file.size > max) { setState({ error: labels.tooBig.replace("{max}", mbOf(max)) }); return; }
+      if (file instanceof File && file.size > max) { setState({ errors: { [f.name]: labels.tooBig.replace("{max}", mbOf(max)) } }); return; }
       data.set(`$max_${f.name}`, String(max));
       if (f.accept) data.set(`$accept_${f.name}`, f.accept.slice(0, 200));
     }
@@ -73,8 +77,8 @@ function FileBlockForm({ instanceId, block, labels }: { instanceId: string; bloc
     const timer = window.setTimeout(() => abort.abort(), 150_000);
     try {
       const res = await fetch(`/api/admin/modules/${encodeURIComponent(instanceId)}/action/${encodeURIComponent(block.action)}`, { method: "POST", body: data, signal: abort.signal, headers: { accept: "application/json" }, credentials: "same-origin" });
-      const json = (await res.json().catch(() => null)) as { ok?: string; error?: string; redirect?: string } | null;
-      if (json?.error) setState({ error: json.error });
+      const json = (await res.json().catch(() => null)) as { ok?: string; error?: string; errors?: Record<string, string>; redirect?: string } | null;
+      if (json?.error || json?.errors) setState({ error: json.error, errors: json.errors });
       else if (!res.ok) setState({ error: labels.failed });
       else {
         setState({ ok: json?.ok || labels.done });
@@ -88,7 +92,7 @@ function FileBlockForm({ instanceId, block, labels }: { instanceId: string; bloc
     }
   }
   return (
-    <form onSubmit={onSubmit} className={`${ui.card} space-y-4`}>
+    <form ref={formRef} onSubmit={onSubmit} className={`${ui.card} space-y-4`}>
       {block.title && <h3 className="text-lg font-semibold">{block.title}</h3>}
       {block.fields.filter((f) => f.kind === "hidden").map((f) => <Field key={f.name} f={f} />)}
       <div className="grid gap-4 sm:grid-cols-2">
@@ -99,7 +103,7 @@ function FileBlockForm({ instanceId, block, labels }: { instanceId: string; bloc
       {state?.error && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm text-red-700">{state.error}</p>}
       {state?.ok && <p role="status" className="rounded-lg border border-emerald-500/50 bg-emerald-500/10 p-3 text-sm text-emerald-700">{state.ok}</p>}
       <div className="flex items-center gap-3">
-        <button type="submit" disabled={pending} className={ui.btnPrimary}>{block.submitLabel}</button>
+        <PendingButton pending={pending} variant="primary">{block.submitLabel}</PendingButton>
         {block.cancelHref && <a href={block.cancelHref} className={ui.btn}>↩</a>}
       </div>
     </form>
@@ -114,8 +118,10 @@ export function AdminBlockForm({ instanceId, block, entry, fileLabels }: { insta
 
 function ActionBlockForm({ instanceId, block, entry }: { instanceId: string; block: FormBlock; entry?: EntryScope }) {
   const [state, action, pending] = useActionState(runner(instanceId, block.action, entry), null);
+  const formRef = useRef<HTMLFormElement>(null);
+  useFieldErrorsDom(formRef, state?.errors, state);
   return (
-    <form action={action} className={`${ui.card} space-y-4`}>
+    <form ref={formRef} action={action} className={`${ui.card} space-y-4`}>
       {block.title && <h3 className="text-lg font-semibold">{block.title}</h3>}
       {block.fields.filter((f) => f.kind === "hidden").map((f) => <Field key={f.name} f={f} />)}
       <div className="grid gap-4 sm:grid-cols-2">
@@ -126,7 +132,7 @@ function ActionBlockForm({ instanceId, block, entry }: { instanceId: string; blo
       {state?.error && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm text-red-700">{state.error}</p>}
       {state?.ok && <p role="status" className="rounded-lg border border-emerald-500/50 bg-emerald-500/10 p-3 text-sm text-emerald-700">{state.ok}</p>}
       <div className="flex items-center gap-3">
-        <button type="submit" disabled={pending} className={ui.btnPrimary}>{block.submitLabel}</button>
+        <PendingButton pending={pending} variant="primary">{block.submitLabel}</PendingButton>
         {block.cancelHref && <a href={block.cancelHref} className={ui.btn}>↩</a>}
       </div>
     </form>
@@ -141,14 +147,14 @@ export function RowActionButton({ instanceId, label, action, href, id, confirm: 
   return (
     <form action={formAction}>
       <input type="hidden" name="id" value={id ?? ""} />
-      <button disabled={pending} className={danger ? ui.btnDanger : ui.btn}
+      <PendingButton pending={pending} variant={danger ? "danger" : "btn"}
         onClick={async (e) => {
           if (!confirmText) return;
           // Boîte dans la page (jamais window.confirm : le navigateur la supprime en silence quand l'onglet n'est pas au premier plan).
           const form = e.currentTarget.form;
           e.preventDefault();
           if (await askConfirm(confirmText)) form?.requestSubmit();
-        }}>{label}</button>
+        }}>{label}</PendingButton>
       {/* Le résultat d'un bouton de ligne ne se perd pas : une erreur dit quoi faire, une réussite le confirme. */}
       {state?.error && <p role="alert" className="mt-1 max-w-64 whitespace-normal text-xs text-red-700">{state.error}</p>}
       {state?.ok && <p role="status" className="mt-1 max-w-64 whitespace-normal text-xs text-emerald-700">{state.ok}</p>}
