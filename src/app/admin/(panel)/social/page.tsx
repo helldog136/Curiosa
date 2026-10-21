@@ -9,6 +9,7 @@ import { prisma } from "@/core/db";
 import { EntryIcon } from "@/components/site/EntryIcon";
 import { ui } from "@/components/admin/ui";
 import { addNetwork } from "./actions";
+import { PendingButton } from "@/components/admin/PendingButton";
 
 export const dynamic = "force-dynamic";
 
@@ -76,7 +77,7 @@ export default async function SocialPage({ searchParams }: { searchParams: Promi
                     <form action={addNetwork.bind(null, e.id)} className="flex flex-wrap items-center gap-2">
                       <p className="min-w-0 flex-1 font-medium">{e.icon} {name}</p>
                       {(counts.get(e.id) ?? 0) > 0 && <input name="nickname" required placeholder={t("social.nickname")} aria-label={t("social.nickname")} className={`${ui.input} max-w-48`} />}
-                      <button type="submit" className={ui.btn}>+ {t("social.addButton")}</button>
+                      <PendingButton>+ {t("social.addButton")}</PendingButton>
                     </form>
                   ) : (
                     <>

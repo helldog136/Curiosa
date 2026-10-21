@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { signOut } from "@/auth";
 import { currentUser, isMember } from "@/core/permissions";
 import { getAdminTranslator } from "@/core/i18n/request";
-import { ui } from "@/components/admin/ui";
+import { PendingButton } from "@/components/admin/PendingButton";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +29,7 @@ export default async function NoAccessPage() {
         className="border-t border-line pt-4"
       >
         <p className="mb-2 text-xs text-muted">{t("choosePassword.signedInAs", { email: user.email })}</p>
-        <button className={ui.btn}>{t("nav.logout")}</button>
+        <PendingButton pendingLabel={t("progress.signingOut")}>{t("nav.logout")}</PendingButton>
       </form>
     </main>
   );

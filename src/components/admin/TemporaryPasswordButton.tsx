@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { ui } from "./ui";
+import { PendingButton } from "./PendingButton";
 
 export type TemporaryPasswordResult = { error?: string; password?: string; mailed?: boolean; name?: string; chosen?: boolean };
 
@@ -97,7 +98,7 @@ export function TemporaryPasswordButton({ memberName, action, labels }: { member
             {error && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm text-red-700" data-testid="temp-password-error">{error}</p>}
             <div className="flex flex-wrap justify-end gap-3">
               <button type="button" className={ui.btn} onClick={hide} disabled={busy}>{labels.cancel}</button>
-              <button type="submit" className={ui.btnPrimary} disabled={busy} data-testid="temp-password-apply">{busy ? labels.working : labels.apply}</button>
+              <PendingButton variant="primary" pending={busy} pendingLabel={labels.working} testid="temp-password-apply">{labels.apply}</PendingButton>
             </div>
           </form>
         )}

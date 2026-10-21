@@ -7,6 +7,7 @@ import { ConfirmButton } from "@/components/admin/ConfirmButton";
 import { ui } from "@/components/admin/ui";
 import { siteUrl } from "@/core/config";
 import { createRedirect, deleteRedirect, toggleRedirect } from "./actions";
+import { PendingButton } from "@/components/admin/PendingButton";
 
 export default async function RedirectsPage() {
   const { t, advanced } = await adminCtx("editor");
@@ -50,7 +51,7 @@ export default async function RedirectsPage() {
                 </td>
                 {advanced && <td className={ui.td}>{r.hits}</td>}
                 <td className={`${ui.td} flex gap-2`}>
-                  <form action={toggleRedirect.bind(null, r.id)}><button className={ui.btn}>{r.active ? t("action.disable") : t("action.enable")}</button></form>
+                  <form action={toggleRedirect.bind(null, r.id)}><PendingButton>{r.active ? t("action.disable") : t("action.enable")}</PendingButton></form>
                   <form action={deleteRedirect.bind(null, r.id)}><ConfirmButton message={t("confirm.delete")}>{t("action.delete")}</ConfirmButton></form>
                 </td>
               </tr>
@@ -61,7 +62,7 @@ export default async function RedirectsPage() {
 
       <section className={`${ui.card} space-y-4`}>
         <h2 className="text-lg font-semibold">{advanced ? t("redirects.add") : t("redirects.add.simple")}</h2>
-        <ActionForm action={createRedirect} submitLabel={t("redirects.addButton")} reset>
+        <ActionForm action={createRedirect} submitLabel={t("redirects.addButton")} pendingLabel={t("progress.creating")} reset>
           <div className="grid gap-4 sm:grid-cols-2">
             <TextField name="path" label={t("redirects.path")} placeholder="twitch" required help={t("redirects.pathHelp", { site })} />
             <TextField name="targetUrl" type="url" label={t("redirects.target")} placeholder="https://" help={t("redirects.targetHelp")} />

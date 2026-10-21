@@ -48,7 +48,7 @@ test("gridEditor : mode automatique — enregistre `auto` à la place de la gril
 
 test("gridEditor : rétrocompatible — boutons et message seulement si le module déclare les options ; enregistrement par la barre flottante commune", () => {
   assert.match(editor, /\(block\.generateAction \|\| block\.autoLabel\) &&/);
-  assert.match(editor, /block\.generateAction && <button/);
+  assert.match(editor, /block\.generateAction && <PendingButton/);
   assert.match(editor, /block\.autoLabel && <button/);
   assert.match(editor, /auto && block\.autoNotice &&/);
   assert.match(editor, /<ActionForm action=\{runModuleAdminAction\.bind\(null, instanceId, block\.action\)\} floating=\{floating\} hideSubmit/);

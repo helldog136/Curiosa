@@ -17,6 +17,7 @@ import { parseStoredRights } from "@/core/auth/rights";
 import { listRoles } from "@/core/auth/roles";
 import { createUser, deleteUser, resetUserTwoFactor, revokeUserSessions, setRequireTwoFactor, setTemporaryPassword, setUserRolesAction, unlockUser } from "./actions";
 import { RolesPanel } from "./RolesPanel";
+import { PendingButton } from "@/components/admin/PendingButton";
 
 /**
  * L'équipe : qui est là et ce qu'elle peut faire, puis ajouter quelqu'un, puis la sécurité de toute l'équipe. Le propriétaire a aussi l'onglet « Rôles »
@@ -104,7 +105,7 @@ export default async function UsersPage() {
                   <Callout tone="warn" testid="user-locked">
                     <span className="flex flex-wrap items-center gap-3">
                       {t("users.locked", { time: formatUntil(lock, locale) })}
-                      {isOwner && <form action={unlockUser.bind(null, u.id)}><button className={ui.btn}>{t("users.unlock")}</button></form>}
+                      {isOwner && <form action={unlockUser.bind(null, u.id)}><PendingButton>{t("users.unlock")}</PendingButton></form>}
                     </span>
                   </Callout>
                 )}
@@ -125,7 +126,7 @@ export default async function UsersPage() {
       </Panel>
 
       <Panel title={t("users.add")} help={t("users.addHelp")}>
-        <ActionForm action={createUser} submitLabel={t("users.addButton")} reset>
+        <ActionForm action={createUser} submitLabel={t("users.addButton")} pendingLabel={t("progress.creating")} reset>
           <div className="grid gap-4 sm:grid-cols-2">
             <TextField name="name" label={t("field.name")} required />
             <TextField name="email" type="email" label={t("field.email")} required />

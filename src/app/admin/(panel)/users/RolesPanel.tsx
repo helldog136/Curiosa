@@ -76,7 +76,7 @@ export function RolesPanel({ roles, catalogue, t, locale, defaultLocale }: Props
                       {field(`role-${r.id}-description`, "description", t("roles.description"), { value: r.description, help: t("roles.descriptionHelp") })}
                       {rightsFields(r.rights)}
                     </ActionForm>
-                    <ActionForm action={deleteRoleAction.bind(null, r.id)} submitLabel={t("roles.delete")} confirm={t("roles.deleteConfirm", { name: r.name })} className="space-y-3 border-t border-line pt-4">
+                    <ActionForm action={deleteRoleAction.bind(null, r.id)} submitLabel={t("roles.delete")} pendingLabel={t("progress.deleting")} confirm={t("roles.deleteConfirm", { name: r.name })} className="space-y-3 border-t border-line pt-4">
                       {r.users > 0 ? (
                         <Select name="replacement" label={t("roles.replacement", { n: r.users })} help={t("roles.replacementHelp")}
                           options={roles.filter((x) => x.id !== r.id && x.key !== "owner").map((x) => ({ value: x.id, label: name(x) }))} />
@@ -92,7 +92,7 @@ export function RolesPanel({ roles, catalogue, t, locale, defaultLocale }: Props
       </Panel>
 
       <Panel title={t("roles.new")} help={t("roles.newHelp")}>
-        <ActionForm action={createRoleAction} submitLabel={t("roles.create")} reset className="space-y-4">
+        <ActionForm action={createRoleAction} submitLabel={t("roles.create")} pendingLabel={t("progress.creating")} reset className="space-y-4">
           {field("role-new-name", "name", t("roles.name"), { required: true, placeholder: t("roles.namePlaceholder") })}
           {field("role-new-description", "description", t("roles.description"), { help: t("roles.descriptionHelp") })}
           {rightsFields([])}

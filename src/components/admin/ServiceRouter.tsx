@@ -2,6 +2,7 @@
 
 import { useId, useRef, useState } from "react";
 import { ui } from "./ui";
+import { PendingButton } from "./PendingButton";
 
 export type RouterNode = { key: string; name: string; icon: string; sub?: string };
 export type RouterLabels = {
@@ -165,7 +166,7 @@ export function ServiceRouter({ service, consumers, providers, master: initialMa
           </fieldset>
         </div>
       </details>
-      <button className={ui.btnPrimary}>{labels.save}</button>
+      <PendingButton variant="primary">{labels.save}</PendingButton>
     </form>
   );
 }

@@ -14,8 +14,8 @@ export function ModuleUpdateButton({ id, kind, labels }: { id: string; kind: "ch
   // L'action dit où aller ensuite (page du module, avec le résultat ou l'erreur) ; on y va après l'animation.
   const target = useRef(`/admin/modules/${id}`);
   return (
-    <AnimatedActionButton look="secondary" progress={kind === "update" ? "continuous" : "fill"} icon={kind === "update" ? "⬆" : "🔍"} testid={`module-${kind}-${id}`} labels={labels}
-      run={async () => { const r = await (kind === "update" ? updateModuleAction(id) : checkUpdateAction(id)); target.current = r.href; return { ok: r.ok }; }}
+    <AnimatedActionButton look="secondary" track={kind === "update" ? "module-update" : undefined} trackKey={`module-update:${id}`} icon={kind === "update" ? "⬆" : "🔍"} testid={`module-${kind}-${id}`} labels={labels}
+      run={async (opId) => { const r = await (kind === "update" ? updateModuleAction(id, opId) : checkUpdateAction(id)); target.current = r.href; return { ok: r.ok }; }}
       onDone={() => { router.push(target.current); router.refresh(); }}
       onFail={async () => { await sleep(1200); router.push(target.current); router.refresh(); }} />
   );

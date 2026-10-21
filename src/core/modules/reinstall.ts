@@ -5,6 +5,7 @@ import type { Module } from "@prisma/client";
 import { prisma } from "../db";
 import { MODULES_DIR } from "../config";
 import { readUpdateState } from "../updates/service";
+import { opStep } from "../operations/tracker";
 import { catalogueUnreachable, findCatalogueEntry } from "./catalogue";
 import { incompatWithThisCore, requirementOf } from "./compat";
 import { migrateModuleInstances, type MigrationOutcome } from "./dataMigrations";
@@ -191,6 +192,7 @@ export async function reinstallModule(id: string, opts: ReinstallOptions = {}): 
   let viaCatalogue: { row: Module; version?: string } | null = null;
   try {
     // 1. La source : le dépôt git du module ; pour une ligne `bundled`, le catalogue (jamais une copie locale).
+    opStep("download");
     if (kind === "bundled") {
       viaCatalogue = await catalogueSource(row);
       if (!viaCatalogue) return fail(id, (await catalogueUnreachable()) ? "modules.error.catalogue" : "modules.error.unknownSource");
@@ -203,6 +205,7 @@ export async function reinstallModule(id: string, opts: ReinstallOptions = {}): 
     }
 
     // 2. Contrôles, AVANT de toucher à quoi que ce soit.
+    opStep("verify");
     const manifest = readManifestAt(source.root);
     if (!manifest) return fail(id, "modules.error.nomanifest");
     if (manifest.id !== id) return fail(id, "modules.error.idmismatch");
@@ -238,6 +241,7 @@ export async function reinstallModule(id: string, opts: ReinstallOptions = {}): 
     }
 
     // 4. Échange : l'ancien dossier est mis de côté, et revient tel quel au moindre échec.
+    opStep("activate");
     fs.rmSync(backup, { recursive: true, force: true });
     if (fs.existsSync(target)) fs.renameSync(target, backup);
     swapped = true;

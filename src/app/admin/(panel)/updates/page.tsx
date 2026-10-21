@@ -4,7 +4,8 @@ import { checkForUpdate, getInstallInfo, getUpdateCheck, isAutoUpdateEnabled, re
 import { describeProgress, failureKey, hasRemaining } from "@/core/updates/progress";
 import { ActionForm } from "@/components/admin/ActionForm";
 import { UpdateButton } from "@/components/admin/UpdateButton";
-import { AutoRefresh } from "@/components/admin/AutoRefresh";
+import { CoreUpdateProgress } from "@/components/admin/CoreUpdateProgress";
+import { coreUpdateSnapshot } from "@/core/operations/coreUpdate";
 import { Markdown } from "@/components/site/Markdown";
 import { Checkbox } from "@/components/admin/Field";
 import { Callout, PageHeader, Panel } from "@/components/admin/Page";
@@ -68,7 +69,6 @@ export default async function UpdatesPage() {
 
   return (
     <div className="space-y-8">
-      <AutoRefresh active={running} />
       <PageHeader title={t("nav.updates")} intro={t("updates.intro")} />
 
       {!info.canUpdate && (
@@ -84,15 +84,7 @@ export default async function UpdatesPage() {
             <h2 className="text-lg font-semibold">⏳ {t("updates.runningTitle", { version: state.target ?? "" })}</h2>
             <p className="mt-1 text-sm text-muted">{t("updates.runningHelp")}</p>
           </div>
-          <div>
-            <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-2 text-sm">
-              <span className="font-medium">{progress.total > 1 ? t("updates.versionOf", { index: progress.index, total: progress.total }) : t("updates.installing")}</span>
-              <span className="text-muted">{progress.stepKey ? t(progress.stepKey) : ""}</span>
-            </div>
-            <div className="h-3 overflow-hidden rounded-full bg-line" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress.percent}>
-              <div className="h-full rounded-full bg-accent transition-all duration-700" style={{ width: `${Math.max(4, progress.percent)}%` }} />
-            </div>
-          </div>
+          <CoreUpdateProgress initial={coreUpdateSnapshot(state)} unitTemplate={t("updates.versionOf", { index: "{index}", total: "{total}" })} />
           {progress.chain.length > 0 && (
             <ol className="space-y-1.5 text-sm" data-testid="update-chain">
               {progress.chain.map((c) => (
@@ -190,7 +182,7 @@ export default async function UpdatesPage() {
 
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
             <p className="text-sm text-muted">{t("updates.checkedAt")} {when(check.checkedAt)}</p>
-            <ActionForm action={checkNow} submitLabel={t("updates.check")} secondary className="space-y-2">{null}</ActionForm>
+            <ActionForm action={checkNow} submitLabel={t("updates.check")} pendingLabel={t("progress.checking")} secondary className="space-y-2">{null}</ActionForm>
           </div>
         </section>
       )}

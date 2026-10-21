@@ -20,12 +20,12 @@ import { ASSISTANTS_HREF } from "@/core/services/mcp/assistantsLinks";
 import { getUpdateCheck, readVersion } from "@/core/updates/service";
 import { peekModulesReport } from "@/core/modules/updateStatus";
 import { MobileMenu } from "@/components/admin/MobileMenu";
-import { ui } from "@/components/admin/ui";
 import { CropLabelsProvider } from "@/components/admin/CropLabels";
 import { CROP_LABEL_KEYS } from "@/components/admin/cropLabelKeys";
 import { cookies } from "next/headers";
 import { ADMIN_THEMES, ADMIN_THEME_COOKIE, parseAdminTheme } from "@/core/adminTheme";
 import { setAdminMode, setAdminTheme } from "./mode/actions";
+import { PendingButton } from "@/components/admin/PendingButton";
 
 export const dynamic = "force-dynamic";
 
@@ -119,7 +119,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
         </nav>
         <form action={setAdminMode.bind(null, !advanced)} className="mt-4 px-3">
           <p className="mb-1 text-xs text-muted"><a href="/admin/mode" className="hover:text-accent hover:underline">{advanced ? t("mode.advanced") : t("mode.simple")}</a></p>
-          <button className={ui.btn} title={t("mode.help")}>{advanced ? t("mode.switchToSimple") : t("mode.switchToAdvanced")}</button>
+          <PendingButton title={t("mode.help")}>{advanced ? t("mode.switchToSimple") : t("mode.switchToAdvanced")}</PendingButton>
         </form>
         <div className="mt-4 px-3" role="group" aria-label={t("theme.admin")}>
           <p className="mb-1 text-xs text-muted">{t("theme.admin")}</p>
@@ -140,7 +140,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
           className="mt-6 px-3"
         >
           <p className="mb-2 truncate text-xs text-muted">{user.name} · {user.level === "none" ? t("role.custom") : user.level}</p>
-          <button className={ui.btn}>{t("nav.logout")}</button>
+          <PendingButton pendingLabel={t("progress.signingOut")}>{t("nav.logout")}</PendingButton>
         </form>
       </MobileMenu>
       <main className="min-w-0 flex-1 p-6 md:p-10">

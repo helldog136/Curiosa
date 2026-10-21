@@ -19,6 +19,7 @@ import { buildNames, viewPlan, type PlanView } from "@/core/modules/dependencyVi
 import { DependencyPlanBox } from "@/components/admin/DependencyPlanBox";
 import { EXTENSIONS_HREF } from "@/core/modules/extensionsLinks";
 import { addSourceAction, refreshCatalogueAction, refreshSourcesAction, removeSourceAction } from "./actions";
+import { PendingButton } from "@/components/admin/PendingButton";
 
 export const dynamic = "force-dynamic";
 
@@ -55,7 +56,7 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
             {source.source === "cache" && t("catalogue.source.cache", { date: new Date(source.fetchedAt ?? 0).toLocaleString(locale) })}
             {source.source === "none" && t("catalogue.source.unreachable")}
           </span>
-          {isOwner && <form action={refreshCatalogueAction}><button className="underline">{t("catalogue.refresh")}</button></form>}
+          {isOwner && <form action={refreshCatalogueAction}><PendingButton variant="link" pendingLabel={t("progress.checking")} className="underline">{t("catalogue.refresh")}</PendingButton></form>}
         </div>
       )}
       {error && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm">{error.startsWith("modules.error.") ? t(error) : t("error.generic")}</p>}
@@ -125,7 +126,7 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
       {unreachable && (
         <div role="alert" data-testid="catalogue-unreachable" className="flex flex-wrap items-center gap-3 rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
           <span>{t("catalogue.unreachable")}</span>
-          {isOwner && <form action={refreshCatalogueAction}><button className="underline">{t("catalogue.refresh")}</button></form>}
+          {isOwner && <form action={refreshCatalogueAction}><PendingButton variant="link" pendingLabel={t("progress.checking")} className="underline">{t("catalogue.refresh")}</PendingButton></form>}
         </div>
       )}
       {entries.length === 0 && !unreachable && <p className="text-muted">{t("catalogue.empty")}</p>}
@@ -156,10 +157,10 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
                 )}
             </div>
           ))}
-          <ActionForm action={addSourceAction} submitLabel={t("catalogue.sources.add")}>
+          <ActionForm action={addSourceAction} submitLabel={t("catalogue.sources.add")} pendingLabel={t("progress.checking")}>
             <TextField name="repo" type="url" label={t("modules.repoUrl")} placeholder="https://github.com/jeanmi/mes-modules-curiosa" required help={t("modules.repoHelp")} />
           </ActionForm>
-          {sources.length > 0 && <form action={refreshSourcesAction}><button className="text-xs underline">{t("catalogue.sources.refresh")}</button></form>}
+          {sources.length > 0 && <form action={refreshSourcesAction}><PendingButton variant="link" pendingLabel={t("progress.checking")} className="!text-xs underline">{t("catalogue.sources.refresh")}</PendingButton></form>}
         </section>
       )}
 

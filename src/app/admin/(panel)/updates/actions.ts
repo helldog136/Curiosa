@@ -8,6 +8,7 @@ import { getModulesReport, moduleNames, updateModules } from "@/core/modules/upd
 import { buildNames } from "@/core/modules/dependencyView";
 import { describeMissingList } from "@/core/modules/dependencyMessages";
 import type { ActionState } from "@/components/admin/ActionForm";
+import { opIdOf, trackOperation } from "@/core/operations/run";
 import { EXTENSIONS_HREF, EXTENSIONS_UPDATES_HREF } from "@/core/modules/extensionsLinks";
 
 /** Réservé au propriétaire : une mise à jour change le code qui tourne sur le serveur. */
@@ -61,18 +62,23 @@ export async function recheckModules(): Promise<ActionState> {
 }
 
 /** Bilan d'une mise à jour de modules, déjà en clair (noms et raisons traduits) pour l'afficher tel quel. */
-export type ModulesBilan = { updated: string[]; failed: { name: string; reason: string; migration: boolean }[]; skipped: string[]; stoppedOn: string | null; /** Sautés sans échec : le module demande un cœur plus récent (`core`). */ incompatible?: { name: string; core: string }[]; /** Mis à jour, mais il manque encore un module pour fonctionner (texte déjà en clair). */ warnings?: { name: string; list: string }[]; /** Modules installés d'office pour eux. */ provided?: string[] };
+export type ModulesBilan = { /** Rien n'a été lancé : une autre mise à jour est déjà en cours et trop longue à attendre. */ busy?: boolean; updated: string[]; failed: { name: string; reason: string; migration: boolean }[]; skipped: string[]; stoppedOn: string | null; /** Sautés sans échec : le module demande un cœur plus récent (`core`). */ incompatible?: { name: string; core: string }[]; /** Mis à jour, mais il manque encore un module pour fonctionner (texte déjà en clair). */ warnings?: { name: string; list: string }[]; /** Modules installés d'office pour eux. */ provided?: string[] };
 
 /**
  * Met à jour des modules (ceux demandés, sinon tous ceux qui sont en retard) un par un. Réservé au propriétaire : c'est du code qui tourne sur le serveur.
  * Chaque mise à jour est inscrite au journal (« module.update »), réussie ou non, comme sur la page des modules.
  */
-export async function updateModulesAction(ids?: string[]): Promise<ModulesBilan> {
+export async function updateModulesAction(ids?: string[], opId?: string): Promise<ModulesBilan> {
   const { user, t, locale, config } = await adminCtx("owner");
-  const todo = ids?.length ? ids.filter((id) => typeof id === "string") : (await getModulesReport(true)).outdated.map((o) => o.id);
-  const summary = await updateModules(todo, async (id, _ok, result) => { await audit(user.email, "module.update", result.ok && result.auditTarget ? result.auditTarget : id); });
-  revalidatePath("/", "layout");
+  const todo = ids?.length ? ids.filter((id) => typeof id === "string").slice(0, 200) : (await getModulesReport(true)).outdated.map((o) => o.id);
   const names = await moduleNames(locale, config.defaultLocale);
+  // Suivi d'opération : « module N sur M » avec le nom du module en cours. Un second lancement (autre onglet, double clic) rejoint celui-ci et en rend le bilan.
+  const run = await trackOperation(user, { kind: ids?.length === 1 ? "module-update" : "modules-update", key: ids?.length ? `modules-update:${[...todo].sort().join(",").slice(0, 300)}` : "modules-update:all", opId: opIdOf(opId), unitTotal: todo.length },
+    () => updateModules(todo, async (id, _ok, result) => { await audit(user.email, "module.update", result.ok && result.auditTarget ? result.auditTarget : id); }, (id) => names.get(id) ?? id),
+    (s) => ({ ok: s.failed.length === 0, error: s.failed.length ? "modules-failed" : undefined }));
+  if (run.busy) return { updated: [], failed: [], skipped: [], stoppedOn: null, busy: true };
+  const summary = run.result;
+  revalidatePath("/", "layout");
   const name = (id: string) => names.get(id) ?? id;
   const readable = summary.warnings?.length || summary.provided?.length ? await buildNames(locale, config.defaultLocale) : null;
   return {

@@ -9,6 +9,7 @@ import { audit, auditDenied, type AdminUser } from "@/core/permissions";
 import { decideAdminAction } from "@/core/modules/adminActionAccess";
 import type { AdminActionHandler } from "@/core/modules/types";
 import type { ActionState } from "@/components/admin/ActionForm";
+import { sanitizeFieldErrors } from "@/core/fieldErrors";
 import { parseGeneratedGrid, type GridData } from "@/core/gridEditor";
 
 /** Le gestionnaire d'une `adminAction` SI cette personne peut l'exécuter (voir `decideAdminAction`), sinon null (refus noté au journal) ; `undefined` : pas d'action de ce nom. */
@@ -48,7 +49,7 @@ export async function runModuleAdminAction(instanceId: string, action: string, _
     const to = result.redirect.startsWith("?") ? `/admin/instances/${instanceId}${result.redirect === "?" ? "" : result.redirect}` : result.redirect;
     if (to.startsWith("/admin/") && !to.startsWith("//")) redirect(to);
   }
-  return { ok: result.ok, error: result.error };
+  return { ok: result.ok, error: result.error, errors: sanitizeFieldErrors(result.errors) };
 }
 
 /**

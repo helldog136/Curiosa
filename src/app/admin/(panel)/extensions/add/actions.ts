@@ -14,6 +14,7 @@ import { removalNoticeHref } from "@/core/modules/removal";
 import { getModule } from "@/core/modules/registry";
 import { localized } from "@/core/modules/types";
 import type { ActionState } from "@/components/admin/ActionForm";
+import { opIdOf, trackOperation } from "@/core/operations/run";
 
 // Installer du code exécuté côté serveur est réservé au propriétaire.
 
@@ -35,9 +36,12 @@ export async function installFromCatalogueAction(id: string): Promise<void> {
 }
 
 /** Installation depuis la fiche d'un module : sans redirection, pour que le bouton montre le téléchargement avant de passer à la page des modules. */
-export async function installModuleAction(id: string): Promise<{ ok: true; /** Combien d'éléments gardés d'une désinstallation précédente sont revenus. */ restored: number } | { ok: false; error: string }> {
+export async function installModuleAction(id: string, opId?: string): Promise<{ ok: true; /** Combien d'éléments gardés d'une désinstallation précédente sont revenus. */ restored: number } | { ok: false; error: string }> {
   const { user, t, locale, config } = await adminCtx("owner");
-  const result = await installFromCatalogue(id);
+  // Suivi d'opération (téléchargement → vérification → dépendances → activation → vos réglages). Un second clic rejoint l'installation en cours.
+  const run = await trackOperation(user, { kind: "install", key: `install:${String(id).slice(0, 60)}`, opId: opIdOf(opId) }, () => installFromCatalogue(id), (r) => ({ ok: r.ok, error: r.ok ? undefined : r.error }));
+  if (run.busy) return { ok: false, error: t("progress.busy") };
+  const result = run.result;
   if (!result.ok) {
     // Un fournisseur qui n'a pas pu être mis en place : on dit lequel et pourquoi (le bouton affiche ce message).
     if (result.missing?.length) {
@@ -61,7 +65,9 @@ export async function installExtraAction(_prev: ActionState, formData: FormData)
   const { user, t, locale, config } = await adminCtx("owner");
   if (formData.get("trust") !== "on") return { error: t("catalogue.trustRequired") };
   const id = String(formData.get("id") ?? "");
-  const result = await installFromCatalogue(id, { confirmExtra: true });
+  const run = await trackOperation(user, { kind: "install", key: `install:${id.slice(0, 60)}`, opId: opIdOf(formData.get("_op")) }, () => installFromCatalogue(id, { confirmExtra: true }), (r) => ({ ok: r.ok, error: r.ok ? undefined : r.error }));
+  if (run.busy) return { error: t("progress.busy") };
+  const result = run.result;
   if (!result.ok) return { error: result.missing?.length ? describeMissingList(result.missing, t, await buildNames(locale, config.defaultLocale)).join(" ") : t(result.error, { services: result.detail ?? "", modules: result.detail ?? "" }) };
   for (const provided of result.provided ?? []) await audit(user.email, "module.install.auto", provided);
   await audit(user.email, "module.install", id);
@@ -72,7 +78,10 @@ export async function installExtraAction(_prev: ActionState, formData: FormData)
 export async function installCustomAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const { user, t, locale, config } = await adminCtx("owner");
   if (formData.get("trust") !== "on") return { error: t("catalogue.trustRequired") };
-  const result = await installModule(String(formData.get("repo") ?? ""));
+  const repo = String(formData.get("repo") ?? "");
+  const run = await trackOperation(user, { kind: "install", key: `install-custom:${repo.slice(0, 200)}`, opId: opIdOf(formData.get("_op")) }, () => installModule(repo), (r) => ({ ok: r.ok, error: r.ok ? undefined : r.error }));
+  if (run.busy) return { error: t("progress.busy") };
+  const result = run.result;
   if (!result.ok) return { error: result.missing?.length ? describeMissingList(result.missing, t, await buildNames(locale, config.defaultLocale)).join(" ") : t(result.error) };
   for (const provided of result.provided ?? []) await audit(user.email, "module.install.auto", provided);
   await audit(user.email, "module.install.custom", result.id);

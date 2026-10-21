@@ -6,6 +6,7 @@ import { EXTENSIONS_UPDATES_HREF } from "@/core/modules/extensionsLinks";
 import { RemoveChoices } from "@/components/admin/RemoveSection";
 import { ConfirmButton } from "@/components/admin/ConfirmButton";
 import { keepLegacyRowAction, removeLegacyRowAction, rerunLegacySweep, undoKeepLegacyRowAction } from "./actions";
+import { PendingButton } from "@/components/admin/PendingButton";
 
 export const dynamic = "force-dynamic";
 
@@ -64,7 +65,7 @@ export default async function LegacyPage({ searchParams }: { searchParams: Promi
             {r.keptRows.map((m) => (
               <li key={m.id} className="flex flex-wrap items-center justify-between gap-3 py-2">
                 <span className="break-all font-mono text-sm">{m.id} {m.version}</span>
-                <form action={undoKeepLegacyRowAction.bind(null, m.id)}><button className="text-sm text-accent underline">{t("legacy.kept.undo")}</button></form>
+                <form action={undoKeepLegacyRowAction.bind(null, m.id)}><PendingButton variant="link" className="!text-accent underline">{t("legacy.kept.undo")}</PendingButton></form>
               </li>
             ))}
           </ul>
@@ -93,7 +94,7 @@ export default async function LegacyPage({ searchParams }: { searchParams: Promi
         </ul>
       </Panel>
       <Panel title={t("legacy.rerun")} help={t("legacy.rerun.help")}>
-        <ActionForm action={rerunLegacySweep} submitLabel={t("legacy.rerun.button")} secondary className="space-y-2">{null}</ActionForm>
+        <ActionForm action={rerunLegacySweep} submitLabel={t("legacy.rerun.button")} pendingLabel={t("progress.checking")} secondary className="space-y-2">{null}</ActionForm>
       </Panel>
     </div>
   );

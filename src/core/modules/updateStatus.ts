@@ -8,6 +8,7 @@ import { collectReport, createReportCache, orderForUpdate, updateSequentially, t
 import { getCatalogue, type CatalogueEntry } from "./catalogue";
 import { getModule } from "./registry";
 import { normalizeNeeds, normalizeOffers } from "./serviceVersions";
+import { opUnit } from "../operations/tracker";
 
 /** Modules qui ont une source où chercher une mise à jour : un dépôt, ou le catalogue pour une ligne `bundled` d'un ancien site (compatibilité, à retirer en 0.3.0). */
 async function sourcedModules() {
@@ -40,7 +41,7 @@ async function updateLinks(ids: string[]): Promise<UpdateLinks[]> {
 }
 
 /** Met à jour ces modules un par un, fournisseurs avant consommateurs (voir orderForUpdate, updateSequentially), puis retire du rapport ceux qui ont réussi. */
-export async function updateModules(ids: string[], onEach?: (id: string, ok: boolean, result: Awaited<ReturnType<typeof updateModule>>) => Promise<void>): Promise<Summary> {
+export async function updateModules(ids: string[], onEach?: (id: string, ok: boolean, result: Awaited<ReturnType<typeof updateModule>>) => Promise<void>, nameOf: (id: string) => string = (id) => id): Promise<Summary> {
   // UNE copie de la base avant le premier module (jamais une par module). Pas de place ou copie impossible : on ne touche à rien.
   if (ids.length) {
     const copy = await bulkUpdateCopy().catch((): { ok: false; error: "failed" } => ({ ok: false, error: "failed" }));
@@ -48,7 +49,9 @@ export async function updateModules(ids: string[], onEach?: (id: string, ok: boo
   }
   const ordered = orderForUpdate(await updateLinks(ids));
   const cascaded = new Set<string>();   // fournisseurs déjà mis à jour par la cascade d'un module précédent (cycle) : « déjà à jour » n'est pas un échec
+  let position = 0;
   const summary = await updateSequentially(ordered, async (id) => {
+    opUnit(++position, ordered.length, nameOf(id));   // « module 2 sur 5 » pour le suivi d'opération (sans effet hors d'une opération suivie)
     const r = await updateModule(id);
     if (r.ok) for (const p of r.provided ?? []) cascaded.add(p);
     if (!r.ok && r.error === "modules.error.uptodate" && cascaded.has(id)) return { ok: true };

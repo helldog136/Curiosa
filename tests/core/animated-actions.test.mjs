@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { DONE_MS, MIN_MS, fillStyle, isBusy, runAtLeast, shownPhase } from "@/components/admin/animatedAction";
+import { DONE_MS, MIN_MS, isBusy, runAtLeast, shownPhase } from "@/components/admin/animatedAction";
 import fr from "@/locales/fr.json" with { type: "json" };
 import en from "@/locales/en.json" with { type: "json" };
 
@@ -19,8 +19,6 @@ test("boutons animés : durée minimale 0,9 s, occupé pendant l'action ou quand
   assert.equal(shownPhase("idle", true), "working");
   assert.equal(shownPhase("done", true), "done");
   assert.equal(shownPhase("idle"), "idle");
-  assert.deepEqual(fillStyle("idle"), { width: "0%", transitionDuration: "0ms" });
-  assert.deepEqual(fillStyle("working"), { width: "100%", transitionDuration: "900ms" });
 });
 
 test("boutons animés : runAtLeast attend au moins la durée minimale et absorbe les exceptions", async () => {
@@ -32,8 +30,10 @@ test("boutons animés : runAtLeast attend au moins la durée minimale et absorbe
 
 test("boutons animés : un composant commun sert l'installation, la mise à jour du site et celles des modules", () => {
   for (const f of ["InstallButton", "UpdateButton", "ModuleUpdateButton"]) assert.match(read(`src/components/admin/${f}.tsx`), /AnimatedActionButton/, f);
-  assert.match(button, /motion-safe:animate-bounce/, "la flèche ne rebondit pas si l'animation est réduite");
+  assert.match(read("src/components/admin/ActionKit.tsx"), /motion-safe:animate-spin/, "le rouet ne tourne pas si l'animation est réduite");
   assert.match(button, /aria-live="polite"/);
+  assert.match(button, /aria-busy=\{working\}/);
+  assert.match(button, /LabelStack/, "largeur stable : tous les libellés superposés");
   assert.match(button, /askConfirm\(confirmMessage\)/, "la confirmation passe par la boîte dans la page (la boîte native est supprimée en silence hors premier plan)");
   assert.match(read("src/app/globals.css"), /prefers-reduced-motion: reduce[\s\S]*animation: none !important/);
   assert.match(read("src/app/globals.css"), /\.curiosa-indeterminate/);
@@ -47,7 +47,7 @@ test("mise à jour du site : le bouton animé remplace le formulaire, confirmati
   const comp = read("src/components/admin/UpdateButton.tsx");
   assert.match(comp, /applyUpdate\(\)/);
   assert.match(comp, /running=\{running\}/);
-  assert.match(comp, /progress="continuous"/);
+  assert.ok(!/progress="continuous"/.test(comp), "plus de faux remplissage : la mise à jour du site a sa vraie barre (CoreUpdateProgress)");
 });
 
 test("modules : chercher / mettre à jour passent par le bouton animé ; les actions ne redirigent plus mais disent où aller", () => {
@@ -75,10 +75,10 @@ test("textes : mêmes clés en français et en anglais pour les boutons animés"
   }
 });
 
-test("mise à jour du site : 2 s d'attente avant de relire la page (le serveur redémarre), et le suivi automatique ne relit que si le serveur répond", () => {
+test("mise à jour du site : 2 s d'attente avant de relire la page (le serveur redémarre), et le suivi ne relit que si le serveur répond", () => {
   assert.match(read("src/components/admin/animatedAction.ts"), /AFTER_UPDATE_MS = 2000/);
   assert.match(read("src/components/admin/UpdateButton.tsx"), /sleep\(AFTER_UPDATE_MS\)/);
-  const auto = read("src/components/admin/AutoRefresh.tsx");
-  assert.match(auto, /status >= 500/);
-  assert.match(auto, /catch \{ return; \}/);
+  const core = read("src/components/admin/CoreUpdateProgress.tsx");
+  assert.match(core, /waitForSite/, "attente du redémarrage, bornée");
+  assert.match(core, /visibilityState/, "en pause quand l'onglet est caché");
 });

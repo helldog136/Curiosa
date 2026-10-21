@@ -1,11 +1,18 @@
 "use client";
 
-import { startTransition, useActionState, useEffect, useId, useRef, useState, useSyncExternalStore, type FormEvent } from "react";
+import { startTransition, useActionState, useCallback, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore, type FormEvent } from "react";
+import type { FieldErrorMap } from "@/core/fieldErrors";
+import { FieldErrorsProvider, useFieldErrorsDom } from "./FieldErrors";
 import type { FloatingLabels } from "./floating";
 import { askConfirm } from "./confirmDialog";
 import { ui } from "./ui";
+import { PendingButton } from "./PendingButton";
+import { OperationProgress } from "./OperationProgress";
+import { useProgressText } from "./ProgressLabels";
+import { useTrackedRun } from "./useTrackedRun";
 
-export type ActionState = { ok?: string; error?: string } | null;
+/** `error` : erreur GÉNÉRALE (bandeau). `errors` : erreurs PAR CHAMP, affichées sous chaque champ (voir FieldErrors.tsx) ; une action peut renvoyer l'une, l'autre ou les deux. */
+export type ActionState = { ok?: string; error?: string; errors?: FieldErrorMap } | null;
 
 type Props = {
   action: (prev: ActionState, formData: FormData) => Promise<ActionState>;
@@ -27,6 +34,10 @@ type Props = {
    * descendre dans une longue page de réglages. Pour les formulaires qui MODIFIENT quelque chose (réglages, menu, accueil, entrée), pas pour ceux qui créent.
    */
   floating?: FloatingLabels;
+  /** Texte du bouton pendant l'envoi (« Création… ») ; à défaut « Enregistrement… » (barre flottante) ou « Je m'en occupe… ». */
+  pendingLabel?: string;
+  /** Type d'opération suivie (`install`, `restore`…) : une barre d'étapes RÉELLE s'affiche pendant l'envoi (l'action lit l'identifiant dans le champ `_op`). */
+  track?: string;
 };
 
 /** Formulaires dont la barre est affichée en ce moment, dans l'ordre d'apparition : plusieurs barres se superposent sans se recouvrir. */
@@ -52,9 +63,22 @@ function snapshot(form: HTMLFormElement): string {
 }
 
 /** Formulaire branché sur une action serveur, avec retour d'erreur / succès. */
-export function ActionForm({ action, children, submitLabel, className = "space-y-4", hideSubmit, secondary, confirm: confirmMessage, reset = false, submitTabs, floating }: Props) {
+export function ActionForm({ action, children, submitLabel, className = "space-y-4", hideSubmit, secondary, confirm: confirmMessage, reset = false, submitTabs, floating, pendingLabel, track }: Props) {
   const [state, formAction, pending] = useActionState(action, null);
+  const p = useProgressText();
+  const tracker = useTrackedRun();
+  const { end: endTracking } = tracker;
+  useEffect(() => { if (!pending) endTracking(); }, [pending, endTracking]);
+  const busyLabel = pendingLabel ?? (floating ? p("saving") : p("working"));
   const ref = useRef<HTMLFormElement>(null);
+  // Erreurs par champ : les champs nommés sont marqués par useFieldErrorsDom, ceux des éditeurs répétables le sont par l'éditeur (contexte) ; corriger un champ efface son erreur.
+  const [cleared, setCleared] = useState<{ for: unknown; keys: string[] }>({ for: null, keys: [] });
+  const clearedKeys = cleared.for === state ? cleared.keys : null;
+  const fieldErrors = useMemo<FieldErrorMap>(() => Object.fromEntries(Object.entries(state?.errors ?? {}).filter(([k]) => !clearedKeys?.includes(k))), [state, clearedKeys]);
+  const clearField = useCallback((path: string) => setCleared((c) => ({ for: state, keys: [...(c.for === state ? c.keys : []), path] })), [state]);
+  // Valeur du contexte stable : l'éditeur (menu, grille…) ne se redessine que si une erreur change, pas à chaque rendu du formulaire.
+  const fieldErrorsValue = useMemo(() => ({ errors: fieldErrors, clear: clearField }), [fieldErrors, clearField]);
+  useFieldErrorsDom(ref, state?.errors, state);
   // On n'utilise pas `<form action>` : React remettrait alors tous les champs à leur ancienne valeur après l'envoi (les listes et cases
   // reviendraient à ce qui était affiché avant l'enregistrement). On envoie nous-mêmes, et on ne vide que si `reset` le demande.
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
@@ -63,6 +87,7 @@ export function ActionForm({ action, children, submitLabel, className = "space-y
     const submitter = (e.nativeEvent as SubmitEvent).submitter ?? undefined;
     if (confirmMessage && !(await askConfirm(confirmMessage))) return;
     const data = new FormData(form, submitter as HTMLElement | undefined);
+    if (track) data.set("_op", tracker.begin());
     startTransition(() => formAction(data));
   }
   useEffect(() => {
@@ -106,7 +131,7 @@ export function ActionForm({ action, children, submitLabel, className = "space-y
     const expire = window.setTimeout(() => setSeen(state), 4000);
     return () => { window.clearTimeout(recheck); window.clearTimeout(expire); };
   }, [floating, state]);
-  const recent: "ok" | "error" | null = state && state !== seen ? (state.ok ? "ok" : state.error ? "error" : null) : null;
+  const recent: "ok" | "error" | null = state && state !== seen ? (state.ok ? "ok" : state.error || state.errors ? "error" : null) : null;
   const visible = !!floating && (dirty || recent !== null);
   useEffect(() => { show(id, visible, ref.current, dirty); }, [id, visible, dirty]);
   const anyDirty = slot === 0 && [...registry.values()].some((r) => r.dirty);
@@ -114,14 +139,13 @@ export function ActionForm({ action, children, submitLabel, className = "space-y
 
   return (
     <form ref={ref} onSubmit={onSubmit} className={className}>
-      {children}
+      <FieldErrorsProvider value={fieldErrorsValue}>{children}</FieldErrorsProvider>
       {state?.error && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm text-red-700">{state.error}</p>}
       {state?.ok && <p role="status" className="rounded-lg border border-emerald-500/50 bg-emerald-500/10 p-3 text-sm text-emerald-700">{state.ok}</p>}
       {!hideSubmit && !floating && (
         <div data-tab={submitTabs}>
-          <button type="submit" disabled={pending} className={secondary ? ui.btn : ui.btnPrimary}>
-            {submitLabel}
-          </button>
+          <PendingButton pending={pending} pendingLabel={busyLabel} variant={secondary ? "btn" : "primary"}>{submitLabel}</PendingButton>
+          {track && pending && <OperationProgress kind={track} snap={tracker.snap} lost={tracker.lost} unreachable={tracker.unreachable} className="mt-3 max-w-sm" />}
         </div>
       )}
       {floating && <div aria-hidden="true" className="h-12" />}
@@ -131,13 +155,13 @@ export function ActionForm({ action, children, submitLabel, className = "space-y
           {dirty || anyDirty ? (
             <>
               <span className="hidden text-sm text-muted sm:inline">{floating.dirty}</span>
-              <button type="button" className={ui.btn} onClick={() => { if (window.confirm(floating.discardConfirm)) { leaving.current = true; window.location.reload(); } }}>{floating.discard}</button>
-              <button type="button" onClick={saveAll} disabled={pending} className={ui.btnPrimary}>{submitLabel}</button>
+              <button type="button" className={`${ui.btn} min-h-11`} disabled={pending} onClick={() => { if (window.confirm(floating.discardConfirm)) { leaving.current = true; window.location.reload(); } }}>{floating.discard}</button>
+              <PendingButton type="button" onClick={saveAll} pending={pending} pendingLabel={busyLabel} variant="primary">{submitLabel}</PendingButton>
             </>
           ) : recent === "ok" ? (
             <span role="status" className="text-sm font-medium text-emerald-700">✓ {floating.saved}</span>
           ) : (
-            <span role="alert" className="text-sm font-medium text-red-700">{state?.error}</span>
+            <span role="alert" className="text-sm font-medium text-red-700">{state?.error ?? p("fixFields")}</span>
           )}
         </div>
       )}

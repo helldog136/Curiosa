@@ -5,6 +5,8 @@ import { RATIOS, joinImageRef, splitImageRef, type Crop } from "@/core/imageCrop
 import { useCropLabels } from "./CropLabels";
 import { ImageCropper } from "./ImageCropper";
 import { ui } from "./ui";
+import { Spinner } from "./ActionKit";
+import { useProgressText } from "./ProgressLabels";
 
 const CROPPABLE = /^\/uploads\/[0-9a-f-]{36}\.(png|jpe?g|webp)$/;
 
@@ -19,6 +21,7 @@ export function ImageField({ name, label, defaultValue, uploadLabel, kind = "ima
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const c = useCropLabels();
+  const p = useProgressText();
   const ref = splitImageRef(value);
   const croppable = kind === "image" && CROPPABLE.test(ref.path);
   const change = (v: string) => { setValue(v); onValue?.(v); };
@@ -34,9 +37,9 @@ export function ImageField({ name, label, defaultValue, uploadLabel, kind = "ima
       const res = await fetch("/api/admin/upload", { method: "POST", body });
       const json = (await res.json()) as { url?: string; detail?: string };
       if (res.ok && json.url) change(json.url);
-      else setError(json.detail ?? "!");
+      else setError(json.detail ?? p("uploadFailed"));
     } catch {
-      setError("!");
+      setError(p("uploadFailed"));
     } finally {
       setBusy(false);
     }
@@ -49,9 +52,9 @@ export function ImageField({ name, label, defaultValue, uploadLabel, kind = "ima
         {/* La valeur envoyée (champ caché) = adresse + cadrage ; la personne ne voit et ne modifie que l'adresse. */}
         <input type="hidden" name={name} value={value} />
         <input id={name} required={required} value={ref.path} onChange={(e) => change(e.target.value)} placeholder={kind === "video" ? "/uploads/…" : "https://… ou /uploads/…"} className={`${ui.input} min-w-0 flex-1`} />
-        <label className={`${ui.btn} cursor-pointer`}>
-          {busy ? "…" : uploadLabel}
-          <input type="file" accept={kind === "video" ? "video/mp4,video/webm" : `image/png,image/jpeg,image/webp,image/gif${svg ? ",image/svg+xml" : ""}`} className="hidden" onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} />
+        <label className={`${ui.btn} min-h-11 ${busy ? "pointer-events-none cursor-progress" : "cursor-pointer"}`} aria-busy={busy || undefined}>
+          {busy ? <><Spinner />{p("sending")}</> : uploadLabel}
+          <input type="file" disabled={busy} accept={kind === "video" ? "video/mp4,video/webm" : `image/png,image/jpeg,image/webp,image/gif${svg ? ",image/svg+xml" : ""}`} className="hidden" onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} />
         </label>
       </div>
       {croppable && (

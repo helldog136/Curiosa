@@ -12,6 +12,7 @@ import { Callout, EmptyState, Panel } from "@/components/admin/Page";
 import { ui } from "@/components/admin/ui";
 import { approveRequestAction, denyRequestAction, saveNotifyAction, setApprovalAction } from "./requestsActions";
 import { describeRequest } from "./requestsShared";
+import { PendingButton } from "@/components/admin/PendingButton";
 
 /**
  * Onglet « Demandes à valider » : ce que vos IA veulent faire et qui attend votre accord, puis les réglages de cette validation
@@ -76,7 +77,7 @@ export async function RequestsTab({ t, locale, defaultLocale, notice }: { t: Tra
                     <form action={setApprovalAction.bind(null, k.row.id, "human")} className={`rounded-xl border p-3 text-sm ${mode === "human" ? "border-accent bg-accent/5" : "border-line"}`}>
                       <p className="font-medium">{mode === "human" && "● "}{t("aim.approval.human")}</p>
                       <p className="mt-1 text-muted">{t("aim.approval.humanHelp")}</p>
-                      {mode !== "human" && <button className={`${ui.btn} mt-2`}>{t("aim.approval.save")}</button>}
+                      {mode !== "human" && <PendingButton className="mt-2" pendingLabel={t("progress.saving")}>{t("aim.approval.save")}</PendingButton>}
                     </form>
                     <form action={setApprovalAction.bind(null, k.row.id, "direct")} className={`rounded-xl border p-3 text-sm ${mode === "direct" ? "border-red-500/60 bg-red-500/5" : "border-line"}`}>
                       <p className="font-medium">{mode === "direct" && "● "}{t("aim.approval.direct")}</p>
@@ -100,7 +101,7 @@ export async function RequestsTab({ t, locale, defaultLocale, notice }: { t: Tra
             </label>
           ))}
           {notify === "email" && !mailOk && <Callout tone="warn">{t("aim.notify.mailMissing")}</Callout>}
-          <button className={ui.btn}>{t("aim.notify.save")}</button>
+          <PendingButton pendingLabel={t("progress.saving")}>{t("aim.notify.save")}</PendingButton>
         </form>
       </Panel>
     </div>

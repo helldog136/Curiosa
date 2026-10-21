@@ -21,12 +21,6 @@ export function shownPhase(phase: Phase, external = false): Phase {
   return external && (phase === "idle" || phase === "error") ? "working" : phase;
 }
 
-/** Barre de remplissage : vide au repos, pleine (en `MIN_MS`) pendant et après l'action. Le mode continu est dessiné en CSS. */
-export function fillStyle(phase: Phase): { width: string; transitionDuration: string } {
-  const full = phase === "working" || phase === "done";
-  return { width: full ? "100%" : "0%", transitionDuration: `${full ? MIN_MS : 0}ms` };
-}
-
 /**
  * Lance `run` et ne rend la main qu'au bout de MIN_MS au moins. Renvoie le résultat, ou `null` si l'action a échoué par exception.
  */
@@ -39,3 +33,8 @@ export async function runAtLeast<T>(run: () => Promise<T>, minMs = MIN_MS): Prom
     return null;
   }
 }
+
+/** Un bouton « en cours » n'apparaît dans son état occupé qu'après ce délai : une action instantanée ne fait pas clignoter le bouton (il est déjà inactif, donc pas de double clic). */
+export const SHOW_BUSY_AFTER_MS = 120;
+/** Combien de temps « Terminé » reste affiché dans un bouton de formulaire après la fin de l'action. */
+export const DONE_FLASH_MS = 1500;

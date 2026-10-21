@@ -7,6 +7,8 @@ import { RTL_LOCALES } from "@/core/i18n/locales";
 import { currentUser } from "@/core/permissions";
 import { faviconUrl } from "@/core/favicon";
 import { getSiteConfig } from "@/core/settings";
+import { ProgressLabelsProvider } from "@/components/admin/ProgressLabels";
+import { PROGRESS_LABEL_KEYS } from "@/components/admin/progressLabelKeys";
 import "../globals.css";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -24,14 +26,14 @@ const CSS = adminThemeCss();
 
 export default async function AdminRootLayout({ children }: { children: React.ReactNode }) {
   const user = await currentUser({ allowForced: true }); // seulement pour la langue de la page ; l'accès, lui, est décidé par chaque page et chaque action
-  const { locale } = await getAdminTranslator(user?.locale);
+  const { locale, t } = await getAdminTranslator(user?.locale);
   const theme = parseAdminTheme((await cookies()).get(ADMIN_THEME_COOKIE)?.value);
   return (
     <html lang={locale} dir={RTL_LOCALES.has(locale) ? "rtl" : "ltr"} data-admin-theme={theme}>
       <head>
         <style dangerouslySetInnerHTML={{ __html: CSS }} />
       </head>
-      <body className="min-h-screen bg-bg text-fg antialiased">{children}</body>
+      <body className="min-h-screen bg-bg text-fg antialiased"><ProgressLabelsProvider labels={Object.fromEntries(PROGRESS_LABEL_KEYS.map((k) => [k, t(`progress.${k}`)]).filter(([k, v]) => v !== `progress.${k}`))}>{children}</ProgressLabelsProvider></body>
     </html>
   );
 }

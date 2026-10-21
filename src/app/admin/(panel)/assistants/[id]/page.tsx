@@ -19,6 +19,7 @@ import { Callout, DangerZone } from "@/components/admin/Page";
 import { ui } from "@/components/admin/ui";
 import { resetGrantsAction, revokeTokenAction, setGrantAction, setUrlAccessAction } from "../actions";
 import { setApprovalAction } from "../requestsActions";
+import { PendingButton } from "@/components/admin/PendingButton";
 
 export const dynamic = "force-dynamic";
 
@@ -67,7 +68,7 @@ export default async function AccessPage({ params }: { params: Promise<{ id: str
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="flex flex-wrap items-center gap-2 text-lg font-semibold">{t("mcp.url.title")} <span className={urlOn ? ui.chipWarn : ui.chip}>{urlOn ? t("mcp.url.stateOn") : t("mcp.url.stateOff")}</span></h2>
             <form action={setUrlAccessAction.bind(null, id, !urlOn)}>
-              {urlOn ? <button className={ui.btn}>{t("mcp.url.disable")}</button> : <ConfirmButton danger={false} message={t(advanced ? "mcp.url.enableConfirm" : "assistants.url.enableConfirm")}>{t("mcp.url.enable")}</ConfirmButton>}
+              {urlOn ? <PendingButton>{t("mcp.url.disable")}</PendingButton> : <ConfirmButton danger={false} message={t(advanced ? "mcp.url.enableConfirm" : "assistants.url.enableConfirm")}>{t("mcp.url.enable")}</ConfirmButton>}
             </form>
           </div>
           <p className="text-sm leading-6 text-muted">{advanced ? t("mcp.url.help", { siteUrl }) : t("assistants.url.help")}</p>
@@ -89,8 +90,8 @@ export default async function AccessPage({ params }: { params: Promise<{ id: str
               </h2>
               {source !== "core" && !revoked && (
                 <div className="flex flex-wrap gap-2">
-                  <form action={resetGrantsAction.bind(null, id, source, "defaults")}><button className={ui.btn}>{t("mcp.resetDefaults")}</button></form>
-                  <form action={resetGrantsAction.bind(null, id, source, "none")}><button className={ui.btn}>{t("mcp.disableAll")}</button></form>
+                  <form action={resetGrantsAction.bind(null, id, source, "defaults")}><PendingButton>{t("mcp.resetDefaults")}</PendingButton></form>
+                  <form action={resetGrantsAction.bind(null, id, source, "none")}><PendingButton>{t("mcp.disableAll")}</PendingButton></form>
                 </div>
               )}
             </div>
@@ -102,7 +103,7 @@ export default async function AccessPage({ params }: { params: Promise<{ id: str
                   <form action={setApprovalAction.bind(null, id, approval === "human" ? "direct" : "human")}>
                     {approval === "human"
                       ? <ConfirmButton message={t("aim.approval.directConfirm", { token: row.name })}>{t("aim.approval.direct")}</ConfirmButton>
-                      : <button className={ui.btn}>{t("aim.approval.human")}</button>}
+                      : <PendingButton>{t("aim.approval.human")}</PendingButton>}
                   </form>
                 )}
                 {advanced && token.grants[MAINTENANCE_PROFILE] === true && <p className="text-muted">{t("mcp.profile.maintenance")}</p>}
@@ -153,7 +154,7 @@ export default async function AccessPage({ params }: { params: Promise<{ id: str
 
       {!revoked && advanced && (
         <form action={resetGrantsAction.bind(null, id, null, "defaults")} className="border-t border-line pt-4">
-          <button className={ui.btn}>{t("mcp.resetAll")}</button>
+          <PendingButton>{t("mcp.resetAll")}</PendingButton>
         </form>
       )}
 

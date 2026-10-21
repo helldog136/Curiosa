@@ -1,8 +1,8 @@
 import { adminCtx } from "@/core/admin";
 import { MIN_PASSWORD_LENGTH } from "@/core/backup/crypto";
+import { BackupForm } from "@/components/admin/BackupForm";
 import { RestorePanel } from "@/components/admin/RestorePanel";
 import { Callout, PageHeader, Panel } from "@/components/admin/Page";
-import { ui } from "@/components/admin/ui";
 
 export const dynamic = "force-dynamic";
 
@@ -20,13 +20,7 @@ export default async function BackupPage() {
 
       <Panel title={t("backup.createTitle")} help={t("backup.createHelp")}>
         <Callout tone="warn">{t("backup.passwordWarning", { n: MIN_PASSWORD_LENGTH })}</Callout>
-        <form method="post" action="/api/admin/backup" className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="block text-sm"><span className={ui.label}>{t("backup.password")}</span><input name="password" type="password" required minLength={MIN_PASSWORD_LENGTH} autoComplete="new-password" className={ui.input} /></label>
-            <label className="block text-sm"><span className={ui.label}>{t("backup.passwordConfirm")}</span><input name="confirm" type="password" required minLength={MIN_PASSWORD_LENGTH} autoComplete="new-password" className={ui.input} /></label>
-          </div>
-          <button className={ui.btnPrimary}>{t("backup.createButton")}</button>
-        </form>
+        <BackupForm minLength={MIN_PASSWORD_LENGTH} labels={Object.fromEntries(["password", "passwordConfirm", "createButton", "working", "downloaded", "failed", "error.mismatch", "error.too-short", "error.busy", "error.forbidden", "error.unauthorized", "error.network"].map((k) => [k, t(`backup.${k}`)]))} />
         {advanced && (
           <details className="text-sm">
             <summary className="cursor-pointer">{t("backup.readWithout")}</summary>

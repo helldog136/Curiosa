@@ -39,6 +39,7 @@ import { EXTENSIONS_ADD_HREF } from "@/core/modules/extensionsLinks";
 import { SuggestNotices } from "@/components/admin/SuggestInstall";
 import { choiceAdminView, isChoiceField, viewCountsAsFilled, type ChoiceView } from "@/core/modules/choice";
 import { FILLED_MARK } from "@/core/modules/choiceValues";
+import { PendingButton } from "@/components/admin/PendingButton";
 
 const PLACE_LABEL = { menu: "placement.pin", integrations: "placement.park", overlays: "placement.parkOverlays" } as const;
 
@@ -265,7 +266,7 @@ export async function InstanceView({ id, query: sp }: { id: string; query: Recor
           <div role="alert" className="space-y-2 rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm">
             <p>{dataStatus.error === "floor" ? t("migration.floor", { from: dataStatus.from ?? "?", floor: dataStatus.floor ?? "?" }) : dataStatus.error === "timeout" ? t("migration.timeout") : t(dataStatus.status === "newer" ? "migration.newer" : "migration.failed")}</p>
             {dataStatus.error && dataStatus.error !== "floor" && dataStatus.error !== "timeout" && <p className="font-mono text-xs">{dataStatus.error}</p>}
-            <form action={retryMigrationAction.bind(null, instance.id)}><button className={ui.btn}>{t("migration.retry")}</button></form>
+            <form action={retryMigrationAction.bind(null, instance.id)}><PendingButton pendingLabel={t("progress.retrying")}>{t("migration.retry")}</PendingButton></form>
           </div>
         )}
         <SuggestNotices instanceId={instance.id} query={sp} t={t} isOwner={isOwner(user)} />

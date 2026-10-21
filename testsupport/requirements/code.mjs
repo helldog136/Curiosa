@@ -246,5 +246,24 @@ const requirements = [
       return out;
     },
   },
+  {
+    id: "forms.fieldErrors", level: "advice", group: "forms",
+    title: "Une erreur de champ s'affiche sous son champ",
+    what: "Une action d'administration qui refuse une valeur saisie dit QUEL champ pose problème (`errors: { champ: \"message\" }`) au lieu d'un seul `error` général.",
+    why: "Un message général s'affiche loin du champ, parfois hors de l'écran sur un téléphone : la personne ne voit pas ce qu'il faut corriger. Avec `errors`, le message apparaît juste sous le champ, qui prend le focus.",
+    fix: "Renvoyez `{ errors: { adresse: \"Écrivez une adresse complète, par exemple https://www.monsite.be/contact.\" } }` (nom du champ → message, avec un exemple). Gardez `error` pour ce qui ne concerne aucun champ.",
+    run(m) {
+      const actions = m.definition?.adminActions;
+      const out = [];
+      if (!actions || typeof actions !== "object") return out;
+      for (const s of m.sources) {
+        const code = stripComments(s.text);
+        if (!/\breturn\s*\{[^}]*\berror\s*:/.test(code)) continue;
+        if (/\berrors\s*:/.test(code)) continue;
+        out.push(`${s.file} : renvoie \`error\` mais jamais \`errors\` : une valeur refusée devrait s'afficher sous son champ`);
+      }
+      return out;
+    },
+  },
 ];
 export default requirements;

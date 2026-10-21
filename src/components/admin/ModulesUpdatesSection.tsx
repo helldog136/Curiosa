@@ -32,7 +32,7 @@ export function ModulesUpdatesSection({ t, data, when, highlight = false }: { t:
       <ModulesUpdates rows={rows} labels={{
         all: { idle: t("updates.modules.all"), working: t("modules.updating"), done: t("modules.updated"), failed: t("modules.updateFailed") },
         one: { idle: t("modules.update"), working: t("modules.updating"), done: t("modules.updated"), failed: t("modules.updateFailed") },
-        confirmAll: t("updates.modules.confirmAll"), confirmMajor: t("updates.modules.confirmMajor"), incomplete: t("updates.modules.incomplete"),
+        confirmAll: t("updates.modules.confirmAll"), confirmMajor: t("updates.modules.confirmMajor"), incomplete: t("updates.modules.incomplete"), busy: t("progress.busy"),
         updatedLine: t("updates.modules.updatedLine"), failedLine: t("updates.modules.failedLine"), stoppedLine: t("updates.modules.stoppedLine"), skippedLine: t("updates.modules.skippedLine"), incompatLine: t("updates.modules.incompatLine"), needsCore: t("modules.core.needs"), missingLine: t("updates.modules.missingLine"), providedLine: t("updates.modules.providedLine"),
       }} />
       {report.unchecked.length > 0 && (
@@ -42,7 +42,7 @@ export function ModulesUpdatesSection({ t, data, when, highlight = false }: { t:
       )}
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
         <p className="text-sm text-muted">{t("updates.checkedAt")} {when}</p>
-        <ActionForm action={recheckModules} submitLabel={t("updates.modules.recheck")} secondary className="space-y-2">{null}</ActionForm>
+        <ActionForm action={recheckModules} submitLabel={t("updates.modules.recheck")} pendingLabel={t("progress.checking")} secondary className="space-y-2">{null}</ActionForm>
       </div>
     </section>
   );

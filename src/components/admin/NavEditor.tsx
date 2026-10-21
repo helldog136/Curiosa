@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ui } from "./ui";
+import { FieldErrorText, errorOf, useFieldErrorsContext } from "./FieldErrors";
 
 export type NavPage = { id: string; title: string; href: string };
 export type NavLocale = { code: string; name: string };
@@ -35,6 +36,7 @@ const leafPayload = (i: NavLeaf) => (i.kind === "page" ? { k: "page", id: i.id }
  */
 export function NavEditor({ pages, locales, initial, labels }: { pages: NavPage[]; locales: NavLocale[]; initial: NavItem[]; labels: Labels }) {
   const [items, setItems] = useState<NavItem[]>(initial);
+  const fieldErrors = useFieldErrorsContext();
   /** Où ajoute-t-on une page : « root » (le menu) ou l'identifiant d'un groupe ; null = personne. */
   const [picking, setPicking] = useState<string | null>(null);
   const byId = new Map(pages.map((p) => [p.id, p]));
@@ -61,11 +63,14 @@ export function NavEditor({ pages, locales, initial, labels }: { pages: NavPage[
   );
 
   /** Libellé : un seul champ « Libellé » si le site n'a qu'une langue ; sinon un champ par langue, regroupés sous un même titre. */
-  const labelFields = (title: string, value: Record<string, string>, onChange: (next: Record<string, string>) => void) =>
-    locales.length <= 1 ? (
+  const labelFields = (title: string, value: Record<string, string>, onChange: (next: Record<string, string>) => void, path: string) => {
+    const err = errorOf(fieldErrors, `${path}.label`);
+    const first = locales[0]?.code ?? "";
+    return locales.length <= 1 ? (
       <label className="block text-sm">
         <span className={ui.label}>{title}</span>
-        <input value={value[locales[0]?.code ?? ""] ?? ""} onChange={(e) => onChange({ ...value, [locales[0]?.code ?? ""]: e.target.value })} className={ui.input} />
+        <input value={value[locales[0]?.code ?? ""] ?? ""} onChange={(e) => onChange({ ...value, [locales[0]?.code ?? ""]: e.target.value })} {...err.props} className={`${ui.input} ${err.className}`} />
+        <FieldErrorText id={err.id} message={err.message} />
       </label>
     ) : (
       <fieldset className="space-y-2">
@@ -74,14 +79,18 @@ export function NavEditor({ pages, locales, initial, labels }: { pages: NavPage[
           {locales.map((l) => (
             <label key={l.code} className="block text-sm">
               <span className="mb-1 block text-xs text-muted">{l.name}</span>
-              <input value={value[l.code] ?? ""} onChange={(e) => onChange({ ...value, [l.code]: e.target.value })} className={ui.input} />
+              <input value={value[l.code] ?? ""} onChange={(e) => onChange({ ...value, [l.code]: e.target.value })} {...(l.code === first ? err.props : {})} className={`${ui.input} ${l.code === first ? err.className : ""}`} />
             </label>
           ))}
         </div>
+        <FieldErrorText id={err.id} message={err.message} />
       </fieldset>
     );
+  };
 
-  const leafBody = (item: NavLeaf) => {
+  const leafBody = (item: NavLeaf, path: string) => {
+    const hrefPath = `${path}.href`;
+    const hrefError = errorOf(fieldErrors, hrefPath);
     if (item.kind === "page") {
       const page = byId.get(item.id);
       if (!page) return null;
@@ -96,10 +105,11 @@ export function NavEditor({ pages, locales, initial, labels }: { pages: NavPage[
     return (
       <>
         <p className="text-xs font-medium uppercase tracking-wide text-muted">{labels.link}</p>
-        {labelFields(labels.label, item.label, (label) => setItems((a) => patchLink(a, item.uid, { label })))}
+        {labelFields(labels.label, item.label, (label) => setItems((a) => patchLink(a, item.uid, { label })), path)}
         <label className="block text-sm">
           <span className={ui.label}>{labels.href}</span>
-          <input value={item.href} onChange={(e) => setItems((a) => patchLink(a, item.uid, { href: e.target.value }))} placeholder={labels.hrefPlaceholder} className={ui.input} />
+          <input value={item.href} onChange={(e) => setItems((a) => patchLink(a, item.uid, { href: e.target.value }))} placeholder={labels.hrefPlaceholder} id={`${hrefPath}-href`} {...hrefError.props} className={`${ui.input} ${hrefError.className}`} />
+          <FieldErrorText id={hrefError.id} message={hrefError.message} />
           <span className={`${ui.help} mt-1 block`}>{labels.hrefHelp}</span>
         </label>
       </>
@@ -145,11 +155,11 @@ export function NavEditor({ pages, locales, initial, labels }: { pages: NavPage[
             return (
               <li key={item.uid} className={`${ui.card} space-y-3 border-accent/40`} data-testid="nav-group">
                 <p className="text-xs font-medium uppercase tracking-wide text-muted">▾ {labels.group}</p>
-                {labelFields(labels.groupName, item.label, (label) => patchGroup(item.uid, (g) => ({ ...g, label })))}
+                {labelFields(labels.groupName, item.label, (label) => patchGroup(item.uid, (g) => ({ ...g, label })), `items.${i}`)}
                 <ol className="space-y-3 border-l-2 border-line pl-4">
                   {item.items.length === 0 && <li className={ui.help}>{labels.groupEmpty}</li>}
                   {item.items.map((child, j) => {
-                    const body = leafBody(child);
+                    const body = leafBody(child, `items.${i}.items.${j}`);
                     if (!body) return null;
                     return (
                       <li key={child.uid} className="space-y-3 rounded-xl border border-line bg-bg p-3">
@@ -164,7 +174,7 @@ export function NavEditor({ pages, locales, initial, labels }: { pages: NavPage[
               </li>
             );
           }
-          const body = leafBody(item);
+          const body = leafBody(item, `items.${i}`);
           if (!body) return null;
           return (
             <li key={item.uid} className={`${ui.card} space-y-3`}>

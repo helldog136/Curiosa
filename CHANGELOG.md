@@ -7,6 +7,22 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.2.1
+
+### Améliorations
+
+- **Chaque bouton qui travaille le montre tout de suite.** Il se grise et un rouet tourne, avec « Installation… » ou « Enregistrement… » : plus de double clic par erreur. Il affiche ensuite « Terminé », ou un message qui dit quoi faire.
+- **De vraies barres de progression, en mots simples.** Installation, « Tout mettre à jour » (« Module 2 sur 5 : Agenda »), sauvegarde, restauration et mise à jour du site : une barre montre où on en est. Sans étapes connues, elle défile doucement, sans faux pourcentage.
+- **Vous pouvez fermer l'onglet : le travail continue.** Si vous rechargez la page, la barre reprend. Un second clic retrouve le travail en cours au lieu d'en lancer un deuxième.
+- **La mise à jour du site explique le redémarrage.** La page dit « Le site redémarre… », attend son retour quelques minutes au plus, puis vous prévient. Si cela dure trop, elle dit quoi faire.
+- **La sauvegarde se télécharge sans quitter la page**, avec sa barre et un message clair si les deux mots de passe diffèrent.
+- **Une erreur s'affiche toujours juste sous le champ concerné.** Le champ devient rouge, la page défile jusqu'à lui, et le message disparaît dès que vous corrigez. Il dit quoi faire, avec un exemple.
+- **Le menu comprend les adresses écrites à la main.** « www.monsite.be/contact » devient une adresse complète toute seule, « /contact » désigne une page de votre site. C'est pareil pour les redirections, les fiches et l'en-tête.
+
+### Pour les développeurs
+
+- Une action d'administration peut renvoyer `errors: { champ: "message" }` pour afficher chaque erreur sous son champ ; l'ancien `error` seul continue de fonctionner. Un nouveau conseil du kit de contrôle (`forms.fieldErrors`) le rappelle.
+
 ## 0.2.0
 
 ### Améliorations

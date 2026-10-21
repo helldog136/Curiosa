@@ -7,6 +7,7 @@ import { panelValues } from "@/core/modules/entryPanels";
 import { resolvePanelAction } from "@/core/modules/entryPanelsLoad";
 import { audit } from "@/core/permissions";
 import type { ActionState } from "@/components/admin/ActionForm";
+import { sanitizeFieldErrors } from "@/core/fieldErrors";
 
 /**
  * Exécute une action d'une section qu'un module ajoute à l'éditeur d'une entrée (formulaire ou bouton de ligne de la section).
@@ -27,5 +28,5 @@ export async function runEntryPanelAction(instanceId: string, panelId: string, e
   }
   await audit(user.email, `module.${found.active.instance.key}.entry.${panelId}.${action}`);
   if (!result?.error) revalidatePath(`/admin/entries/${entryId}`);
-  return { ok: result?.ok, error: result?.error };
+  return { ok: result?.ok, error: result?.error, errors: sanitizeFieldErrors(result?.errors) };
 }

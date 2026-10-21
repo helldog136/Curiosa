@@ -17,6 +17,7 @@ import { forgetAuto } from "./autoInstalled";
 import { migrateModuleInstances, type MigrationOutcome } from "./dataMigrations";
 import { incompatWithThisCore, requirementOf, type CoreRequirement } from "./compat";
 import { classify, compareVersions, pickLatestTag, TAG_RE, type UpdateLevel } from "../updates/versions";
+import { opStep } from "../operations/tracker";
 
 const run = promisify(execFile);
 
@@ -162,6 +163,7 @@ export async function installModule(input: string, opts: {
   const checkout = path.join(tmp, "repo");
   let deps: Journal | null = null;
   try {
+    opStep("download");
     if (ref && isCommitRef(ref)) {
       // Épinglé sur un commit : `clone --branch` n'accepte qu'une branche ou une étiquette. On récupère ce commit précis
       // (récupération superficielle si le serveur l'autorise, sinon tout l'historique), puis on s'y place.
@@ -173,6 +175,7 @@ export async function installModule(input: string, opts: {
       await git(["clone", "--depth", "1", "--single-branch", ...(ref ? ["--branch", ref] : []), "--", url, checkout]);
     }
     const commit = await git(["rev-parse", "HEAD"], checkout);
+    opStep("verify");
 
     // Module dans un dossier d'un dépôt qui en regroupe plusieurs : seul ce dossier est lu, copié et installé.
     const root = subdir ? path.join(checkout, subdir) : checkout;
@@ -194,11 +197,13 @@ export async function installModule(input: string, opts: {
 
     // Les fournisseurs d'abord : si l'un d'eux ne peut pas être installé, rien n'est laissé (ni lui, ni ce module).
     if (opts.dependencies !== false && m.requires?.length) {
+      opStep("deps");
       const r = await satisfyRequirements(m, depOps());
       deps = r.journal;
       if (!r.ok) { await unwind(deps); deps = null; return requirementsRefusal(r.missing); }
     }
 
+    opStep("activate");
     let tree: string | null = null;
     if (subdir) {
       tree = await git(["rev-parse", `HEAD:${subdir}`], checkout);
@@ -210,6 +215,7 @@ export async function installModule(input: string, opts: {
       data: { id: m.id, source: "git", repoUrl: url, ref: ref ?? null, commit, subdir: subdir ?? null, tree, version: m.version, enabled: true },
     });
     if (deps) await commitJournal(deps);
+    opStep("data");
     const kept = opts.restoreKept === false ? null : await restoreModuleInstances(m.id);
     return {
       ok: true, id: m.id, ...(deps?.provided.length ? { provided: deps.provided } : {}),
@@ -313,7 +319,9 @@ async function updateSubdirModule(row: Module, chain: string[]): Promise<Install
   let pending: Journal | null = null;
   try {
     // 1. Récupérer et valider la nouvelle version (cœur compris), sans rien migrer.
+    opStep("download");
     fetched = await fetchSubdirSource(row.repoUrl!, ref, row.subdir!);
+    opStep("verify");
     if (fetched.tree === row.tree) return { ok: false, error: "modules.error.uptodate" };
     const manifest = fetched.manifest;
     if (!manifest || manifest.id !== id) throw Object.assign(new Error("manifest"), { code: "modules.error.nomanifest" });
@@ -329,14 +337,17 @@ async function updateSubdirModule(row: Module, chain: string[]): Promise<Install
     rowChanged = true;
     forgetModule(id);
     // 3. Les `requires` durs de la NOUVELLE version, avant toute migration (même journal d'annulation).
+    opStep("deps");
     const settled = await settleBeforeMigrations(manifest, chain);
     if (!settled.ok) throw new RequirementsMissing(settled.missing);
     pending = settled.journal;
     // 5. Migrer. Un échec met l'instance à l'écart (« Réessayer ») : les fournisseurs restent (journal validé), « Réessayer » en a besoin.
+    opStep("data");
     const migrations = await migrateModuleInstances(id);
     swapped = false;
     rowChanged = false;
     pending = null;
+    opStep("activate");
     const after = await afterMigrations(id, settled);
     return { ok: true, id, migrations, ...(after.provided.length ? { provided: after.provided } : {}), ...(after.missing ? { missing: after.missing } : {}) };
   } catch (error) {
@@ -460,7 +471,9 @@ async function updateModuleWithin(id: string, chain: string[]): Promise<InstallR
       fetchRef = row.ref ?? "HEAD";
     }
     // 1. Le cœur est-il assez récent pour la version visée ? On le lit AVANT de toucher au dossier du module (ni retour en arrière, ni migration à défaire).
+    opStep("download");
     await git(["fetch", "--depth", "1", "origin", fetchRef], dir);
+    opStep("verify");
     const incoming = await git(["show", "FETCH_HEAD:module.json"], dir).then((t) => parseManifest(JSON.parse(t))).catch(() => null);   // illisible : le contrôle habituel plus bas s'en charge
     if (incoming?.ok) assertCore(requirementOf(incoming.manifest));
     // Versions sautées : chacune à son tour, ses `requires` puis SES migrations, avec SON code, avant de passer à la dernière.
@@ -479,12 +492,15 @@ async function updateModuleWithin(id: string, chain: string[]): Promise<InstallR
     await prisma.module.update({ where: { id }, data: { commit, version: manifest.version, ref: newRef } });
     forgetModule(id);
     // 3. Les `requires` durs de la nouvelle version (journal défait en entier s'il manque quelque chose).
+    opStep("deps");
     const settled = await settleBeforeMigrations(manifest, chain);
     if (!settled.ok) throw new RequirementsMissing(settled.missing);
     pending = settled.journal;
     // 5. Les données des instances suivent la nouvelle version du module (voir dataMigrations.ts) ; en cas d'échec, l'instance est remise à l'écart.
+    opStep("data");
     const migrations = await migrateModuleInstances(id);
     pending = null;
+    opStep("activate");
     const after = await afterMigrations(id, settled);
     provided.push(...after.provided);
     return { ok: true, id, migrations, ...(provided.length ? { provided: [...new Set(provided)] } : {}), ...(after.missing ? { missing: after.missing } : {}) };
