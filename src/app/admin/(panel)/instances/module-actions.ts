@@ -37,7 +37,8 @@ export async function runModuleAdminAction(instanceId: string, action: string, _
 
   let result;
   try {
-    result = await handler(forViewer(await buildContext(active.mod, active.instance, locale), user), values);
+    // `carryRights` : les appels `asCaller` de CETTE action portent les droits de la personne qui l'a déclenchée (et d'elle seule).
+    result = await handler(forViewer(await buildContext(active.mod, active.instance, locale), user, { carryRights: true }), values);
   } catch (error) {
     console.error(`[modules] ${active.instance.key} adminAction ${action} failed:`, error);
     return { error: t("error.generic") };

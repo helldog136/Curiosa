@@ -4,7 +4,7 @@ import { pickName, type InstanceView } from "@/core/instances";
 import { currentVisit } from "@/core/visit";
 import { getSetting, getSettingByLocale, getSiteConfig, themeExtraOf } from "@/core/settings";
 import { can, type AdminUser } from "@/core/auth/access";
-import { makeApi } from "./api";
+import { makeApi, type CallerRef } from "./api";
 import { makeLegacy } from "./legacySettings";
 import type { LoadedModule } from "./registry";
 import { followsSite, resolveDefault } from "./settingValues";
@@ -13,6 +13,9 @@ import type { ModuleContext } from "./types";
 export function instanceSettingKey(instanceId: string, key: string): string {
   return `instance.${instanceId}.${key}`;
 }
+
+/** Qui, parmi les contextes construits, porte les droits d'une personne pour `asCaller` (rempli par `forViewer` avec l option carryRights seulement). */
+const CALLERS = new WeakMap<object, CallerRef>();
 
 /** Contexte d'exécution d'un module pour une instance donnée. */
 export async function buildContext(mod: LoadedModule, instance: InstanceView, locale?: string, lastVisit?: Date): Promise<ModuleContext> {
@@ -39,7 +42,8 @@ export async function buildContext(mod: LoadedModule, instance: InstanceView, lo
 
   const dict = (code: string) => mod.locales[code] ?? {};
   const ui = makeTranslator(loc);
-  return {
+  const caller: CallerRef = { person: null };
+  const ctx: ModuleContext = {
     moduleId: mod.manifest.id,
     instance: { id: instance.id, key: instance.key, basePath: instance.basePath, name: pickName(instance, loc, config.defaultLocale) },
     locale: loc,
@@ -54,7 +58,7 @@ export async function buildContext(mod: LoadedModule, instance: InstanceView, lo
       for (const [name, value] of Object.entries(vars ?? {})) text = text.replaceAll(`{${name}}`, String(value));
       return text;
     },
-    api: makeApi(instance, loc, mod.manifest.permissions),
+    api: makeApi(instance, loc, mod.manifest.permissions, caller),
     // Réglages hérités (0.2.0) : seulement les clés déclarées dans `legacySettings`, pour cette instance.
     legacy: makeLegacy(mod.manifest, instance.id),
     // Refus par défaut : seul un contexte d'administration d'un humain (voir `forViewer`) répond autre chose que « non ».
@@ -67,13 +71,18 @@ export async function buildContext(mod: LoadedModule, instance: InstanceView, lo
       return resolveChoiceFor({ mod, instance }, field, values[key], { locale: loc });
     },
   };
+  CALLERS.set(ctx, caller);
+  return ctx;
 }
 
 /**
  * Le même contexte, pour une personne qui regarde l'administration (`adminPanel`, `adminActions`, `entryPanels`) : `ctx.can("email.view")` vérifie
  * « <ce module>:email.view » pour elle (relue en base à cette requête). Le préfixe est imposé : un module ne teste jamais le droit d'un autre.
  */
-export function forViewer<T extends ModuleContext>(ctx: T, viewer: AdminUser | null): T {
+export function forViewer<T extends ModuleContext>(ctx: T, viewer: AdminUser | null, opts: { carryRights?: boolean } = {}): T {
+  // `carryRights` : SEULEMENT pour l'exécution d'une `adminAction` par la personne qui l'a déclenchée (jamais un panneau, jamais un service).
+  // Les appels `ctx.api.services.call(…, { asCaller: true })` de cette action portent alors ses droits jusqu'au fournisseur (voir dependencies.ts).
+  if (opts.carryRights === true) { const c = CALLERS.get(ctx); if (c) c.person = viewer; }
   const prefix = `${ctx.moduleId}:`;
   ctx.can = (rightId: string) => typeof rightId === "string" && rightId !== "" && !rightId.includes(":") && can(viewer, prefix + rightId);
   return ctx;

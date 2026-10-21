@@ -415,7 +415,7 @@ adminActions?: Record<string, AdminActionHandler | { right: string; run: AdminAc
   - Délégables : `core:entries.edit`, `core:entries.publish`.
   - Réservés au propriétaire (jamais proposés dans un rôle personnalisé) : `core:team`, `core:roles`, `core:backup`, `core:updates`, `core:modules.install`, `core:mcp.tokens`, `core:security`.
 - **Droits de modules** : préfixés `<moduleId>:` par le cœur (un module ne peut déclarer un droit pour un autre). Le droit implicite `<moduleId>:open` ouvre la page d'admin du module.
-- **`ctx.can(id)`** n'existe que dans les contextes d'admin d'un humain : `adminPanel`, `adminActions`, `entryPanels`, et le `create` d'un `choice` (contrat 1). Il vaut `false` (refus par défaut) dans une page publique, une route, une tâche, un service hors admin ou le MCP. Le cœur relit l'utilisateur en base à chaque requête (`access.ts:15-26`).
+- **`ctx.can(id)`** n'existe que dans les contextes d'admin d'un humain : `adminPanel`, `adminActions`, `entryPanels`, le `create` d'un `choice` (contrat 1) et, depuis 0.2.4, une méthode listée dans `offers[].callerRights` appelée avec `{ asCaller: true }` depuis une `adminAction`. Il vaut `false` (refus par défaut) dans une page publique, une route, une tâche, un service hors admin ou le MCP. Le cœur relit l'utilisateur en base à chaque requête (`access.ts:15-26`).
 - **`adminActions`** :
   - forme fonction : exigence actuelle inchangée (`adminCtx("admin")`, `module-actions.ts:17,48`) ;
   - forme objet : `<module>:open` + `right`, vérifiés par le cœur **avant** d'appeler `run`.
@@ -840,7 +840,7 @@ Compatible avec Partnerships (`min 1`). La v2 est un sur-ensemble.
 ### 11.5 Règles transverses
 
 - **Photo** : calculée **seulement** à l'ouverture d'une fiche ou sur « Actualiser » (interaction humaine), jamais par balayage ni par tâche. Ordre : photo manuelle, puis compte à la plus grosse communauté (abonnés en cache daté), sinon Twitch, puis YouTube, puis Bluesky. Bluesky passe par `ctx.api.net`. Contacts est propriétaire de la photo ; Raid ne lit plus `GET users` pour les avatars.
-- **Catégorie « Cible de raid »** : créée par Raid à sa première ouverture, sur un bouton du propriétaire (action à droit), via `createCategory`. Le nom est dans la langue par défaut, puis devient une donnée de l'utilisateur. Raid stocke seulement l'id (`choice`, source `contact.book` / `categories`). En cas de catégorie supprimée, le comportement `missing` du contrat 1 s'applique.
+- **Catégorie « Cible de raid »** : créée par Raid à sa première utilisation de l'ajout rapide ou de « Ranger mes chaînes » (clic de la personne, action d'administration), via `createCategory` appelé avec `{ asCaller: true }` (cœur 0.2.4 : le fournisseur liste `createCategory` dans `offers[].callerRights` et vérifie `categories.create`; voir MODULES.md « asCaller »). Avant 0.2.4, ou sans le droit : le `choice` du réglage « Liste de raid ». Le nom est dans la langue par défaut, puis devient une donnée de l'utilisateur. Raid stocke seulement l'id (`choice`, source `contact.book` / `categories`). En cas de catégorie supprimée, le comportement `missing` du contrat 1 s'applique.
 
 ---
 

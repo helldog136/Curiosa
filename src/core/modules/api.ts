@@ -1,4 +1,5 @@
 import { isDarkBackground, pickLogo } from "../logos";
+import type { AdminUser } from "../auth/access";
 import { getBrand } from "@/core/brand";
 import { siteUrl } from "@/core/config";
 import { moduleJsonLd } from "@/core/seo";
@@ -40,7 +41,10 @@ import type { ModuleApi } from "./types";
 /** Marge laissée à la section pour afficher son repli quand un appel réseau épuise le temps de la page. */
 const NET_PAGE_MARGIN_MS = 500;
 
-export function makeApi(instance: InstanceView, locale: string, permissions: readonly string[] = []): ModuleApi {
+/** La personne dont l'action d'administration s'exécute, quand le cœur accepte qu'elle porte ses droits (voir context.ts) ; `null` partout ailleurs. */
+export type CallerRef = { person: AdminUser | null };
+
+export function makeApi(instance: InstanceView, locale: string, permissions: readonly string[] = [], caller?: CallerRef): ModuleApi {
   const rawgAllowed = permissions.includes("rawg");
   /**
    * L'instance appelante, pour un appel de service. Une instance mise à l'écart (migration échouée) ne tourne pas, SAUF pendant sa propre
@@ -69,7 +73,8 @@ export function makeApi(instance: InstanceView, locale: string, permissions: rea
       async call(service, method, args, opts) {
         const me = await consumer();
         const provider = opts && typeof opts === "object" && opts.provider !== undefined ? String(opts.provider) : undefined;
-        return me ? callService(me, service, method, args, locale, { provider }) : { ok: false, reason: "unavailable" };
+        const asCaller = opts && typeof opts === "object" && opts.asCaller === true ? caller?.person ?? null : null;
+        return me ? callService(me, service, method, args, locale, { provider, caller: asCaller }) : { ok: false, reason: "unavailable" };
       },
       async callAll(service, method, args) {
         const me = await consumer();

@@ -7,6 +7,17 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## Prochaine version (non publiée)
+
+### Améliorations
+
+- **Un module peut créer pour vous ce qu'un autre module garde.** Par exemple, la liste de raid crée sa catégorie dans Contacts quand vous cliquez sur un bouton. Cela ne marche que sur un clic de votre part, et si vous avez le droit.
+
+### Pour les développeurs
+
+- Nouveau `ctx.api.services.call(…, { asCaller: true })` : le fournisseur reçoit `ctx.can` pour la personne qui a déclenché l'`adminAction`, si la méthode est listée dans son `offers[].callerRights`. Ignoré partout ailleurs (panneau, route, tâche, MCP). Voir docs/MODULES.md et docs/SECURITE.md.
+- `forViewer(…, { carryRights: true })` est réservé à l'exécution d'une `adminAction` ; audit `module.<instance>.asCaller`.
+
 ## 0.2.3
 
 ### Améliorations

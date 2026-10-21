@@ -284,7 +284,7 @@ test("manifeste : la permission « rawg » est acceptée par le schéma ; une in
   const ok = parseManifest({ ...base, permissions: ["rawg"] });
   assert.equal(ok.ok, true, JSON.stringify(ok));
   assert.equal(parseManifest({ ...base, permissions: ["rawgg"] }).ok, false);
-  assert.match(fs.readFileSync("src/core/modules/context.ts", "utf8"), /makeApi\(instance, loc, mod\.manifest\.permissions\)/);
+  assert.match(fs.readFileSync("src/core/modules/context.ts", "utf8"), /makeApi\(instance, loc, mod\.manifest\.permissions, caller\)/);
 });
 
 // ── Réglages : actions d'admin réservées au propriétaire ─────────────────────────────────────────────────────────────

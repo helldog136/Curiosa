@@ -15,7 +15,7 @@ export const realTransferDeps: TransferDeps = {
     return {
       key: active.instance.key, moduleId: active.mod.manifest.id, def: active.mod.def,
       // Le contexte d'une personne qui regarde l'administration : `ctx.can` vérifie les droits de CETTE personne (relue en base à cette requête).
-      ctx: async (user) => forViewer(await buildContext(active.mod, active.instance, await resolveAdminLocale(user.locale)), user),
+      ctx: async (user) => forViewer(await buildContext(active.mod, active.instance, await resolveAdminLocale(user.locale)), user, { carryRights: true }),
     };
   },
   audit,
