@@ -145,6 +145,7 @@ Validé à l'installation et au chargement (zod, `src/core/modules/manifest.ts`)
 | `basePath` | Chemin public proposé à la création d'une instance à page (défaut : la clé de l'instance). Lettres minuscules, chiffres, tirets. |
 | `settings` | Réglages **par instance** ; l'admin génère le formulaire (voir ci-dessous). 60 au plus. |
 | `optionalGroups` | Groupes de réglages **facultatifs** derrière un bouton « Ajouter… » (voir « Groupes facultatifs »). 6 au plus. |
+| `tabs` | (cœur 0.2.2) **Onglets** de la page d'admin d'une instance : en ajouter, en renommer, en retirer (voir « Onglets de la page d'admin (`tabs`) »). Facultatif : sans rien déclarer, le module a les quatre onglets du cœur. 8 entrées au plus. |
 | `sections` | Morceaux plaçables sur la page d'accueil (voir ci-dessous). 20 au plus. |
 | `offers` / `requires` | **Dépendances** : services que le module offre aux autres / dont il a besoin (voir « dépendances entre modules »). 10 au plus chacun. `requires[].optional: true` (cœur 0.2.0) : besoin **facultatif**, le module fonctionne sans. |
 | `consumes` / `provides` | Sujets que le module digère / expose (voir « sujets »). 10 au plus chacun. |
@@ -237,6 +238,7 @@ Chaque réglage est un objet (`SettingField`) :
 | `allowCreate` | Pour `choice` de source `service` avec `create` : propose « Créer « X » » (jamais pour un rôle, un connecteur, un module, une instance ou un compte). |
 | `fromText` | Pour `choice` qui remplace un réglage texte de même clé : une valeur texte égale à l'étiquette d'UNE option est remplacée par son identifiant. |
 | `refersTo` | Ce que désigne le réglage : `category`, `contact`, `organisation`, `channel`, `connector`, `instance`, `module`, `calendar`, `game`, `page`, `user`, `role`, `theme`, ou `external` (un profil hors du site). Un cœur ancien ignore la clé ; le kit de test s'en sert (règles `settings.refersToChoice`, `settings.textNamesExisting`). |
+| `tab` | (cœur 0.2.2) Onglet de la page d'admin où s'affiche le réglage : `settings` (défaut, onglet « Réglages »), `sources`, `general` ou l'`id` d'un onglet déclaré dans `tabs`. Tous les réglages d'un groupe facultatif sont dans le même onglet. Un cœur ancien ignore la clé ; déclarez `"minCore": "0.2.2"`. |
 
 Types : `text`, `textarea`, `url` (adresse http ou https), `link` (une page du site comme `/contact`, une adresse `https://…` ou `mailto:…` ; contrôlé dans le navigateur et par le serveur), `number`, `boolean`, `select`, `color`, `image` (envoi de fichier ou URL), `video` (envoi d'une vidéo MP4 ou WebM de 50 Mo au plus, réservée aux fichiers du site : `/uploads/…`), `secret`
 (jamais réaffiché une fois enregistré ; ne l'écrivez jamais dans un journal), `choice` (« choix parmi », cœur 0.2.0 : voir ci-dessous).
@@ -308,6 +310,57 @@ Tant qu'aucun champ du groupe n'a de valeur, l'admin ne montre que le bouton. Ou
 « Retirer » ; on ne peut pas enregistrer tant que les champs `required` ne sont pas remplis (navigateur **et** serveur). « Retirer »
 supprime toutes les valeurs du groupe à l'enregistrement : `ctx.setting` renvoie alors les défauts. Le manifeste est refusé si un champ
 est inconnu, si `required` n'est pas inclus dans `fields`, si un champ est dans deux groupes ou s'il y a plus de 6 groupes.
+
+### Onglets de la page d'admin (`tabs`) — cœur 0.2.2
+
+La page d'une instance (`/admin/instances/<id>`, et la même fenêtre ouverte depuis Extensions) est rangée en **onglets**, pour **tous** les modules,
+sans rien déclarer. Le cœur classe tout seul :
+
+| Onglet (`id`) | Ce qu'il contient |
+|---|---|
+| **Utiliser** (`use`) | Le panneau propre du module (`adminPanel`) et, pour un overlay, l'adresse à coller dans OBS. C'est ce qu'on ouvre souvent : il s'affiche **en premier**. |
+| **Réglages** (`settings`) | Les réglages `settings` (options, apparence ; les réglages `advanced` n'apparaissent qu'en mode avancé, **repliés** sous « Options avancées »). Sans panneau, c'est l'onglet ouvert à l'arrivée. |
+| **Sources** (`sources`) | « D'où viennent les informations » : les sujets consommés (`consumes`), en mode avancé. |
+| **Général** (`general`) | Nom, description, menu, accès des assistants IA (MCP), langues, tâches ; puis, en bas et à part, la **zone sensible** (données gardées, retirer, tout effacer : chaque bouton demande une confirmation en clair). |
+
+Règles du cœur, identiques partout :
+
+- **Un onglet vide n'est pas affiché** (pas d'« Utiliser » sans panneau, pas de « Sources » sans `consumes`). Un panneau qui renvoie `[]` compte comme vide :
+  l'onglet disparaît tant que le panneau n'a rien à montrer. Avec un seul onglet, la rangée n'est pas affichée.
+- **Onglet ouvert à l'arrivée** : celui de l'adresse (`?tab=<id>`, lien partageable, le bouton Retour revient à l'onglet d'avant) ; sinon l'onglet du premier
+  réglage **à remplir** (le module ne fonctionne pas sans) ; sinon le premier onglet affiché. Rien n'est retenu dans un cookie.
+- **Un seul bouton « Enregistrer »**, collant en bas, pour tous les onglets ; un point sur l'onglet modifié ; rien n'est perdu en changeant d'onglet ;
+  avertissement avant de quitter la page avec des modifications non enregistrées.
+- **Erreur dans un onglet caché** : la page bascule sur cet onglet (point rouge), le message s'affiche **sous le champ** et le champ prend le focus. Renvoyez
+  donc vos erreurs par champ (`errors: { champ: "message" }`, voir « Panneau d'admin riche ») plutôt qu'un `error` général.
+- **Droits inchangés** : une personne qui peut seulement ouvrir le module (`<module>:open`, rôle personnalisé) ne voit que l'onglet « Utiliser » ; les autres
+  onglets restent réservés aux administrateurs, et le retrait du module (dernière instance) au propriétaire.
+- **Mobile** : la rangée d'onglets défile horizontalement et reste collée en haut de l'écran ; l'onglet actif est toujours visible. Au clavier : flèches
+  gauche/droite, Début, Fin (motif WAI-ARIA « tabs »).
+
+Le manifeste peut **ajuster** ce classement (tout est facultatif, additif ; un cœur plus ancien ignore ces clés : déclarez `"minCore": "0.2.2"`) :
+
+```jsonc
+"tabs": [
+  { "id": "use", "label": { "fr": "Fabriquer la vidéo", "en": "Make the video" } },   // renommer un onglet par défaut
+  { "id": "look", "label": { "fr": "Apparence", "en": "Look" } },                       // AJOUTER un onglet (après Réglages)
+  { "id": "sources", "hidden": true }                                                    // RETIRER un onglet par défaut
+],
+"settings": [
+  { "key": "color", "type": "color", "tab": "look", "label": { "fr": "Couleur", "en": "Colour" } },
+  { "key": "tags", "type": "text", "tab": "sources", "label": { "fr": "Étiquettes", "en": "Tags" } }
+]
+```
+
+| Clé d'une entrée | Rôle |
+|---|---|
+| `id` | `use`, `settings`, `sources` ou `general` pour agir sur un onglet du cœur ; sinon l'identifiant d'un onglet **ajouté** (minuscules, chiffres, tirets, 2 à 24 caractères ; il apparaît dans l'adresse `?tab=`). |
+| `label` | Nom affiché (`{ "fr": "…", "en": "…" }`, 40 caractères au plus ; court : le kit conseille 20). Obligatoire pour un onglet ajouté ; pour `use`, `settings`, `sources` : renomme l'onglet (le premier prend volontiers le vrai nom de ce qu'on y fait : « Fabriquer la vidéo », « Ma liste »). `general` ne se renomme pas. |
+| `hidden` | `true` : **retire** un onglet du cœur. Rien n'est perdu : son contenu rejoint un autre onglet — `use` (le panneau) et `sources` vont dans **Réglages** (en haut / en bas), `settings` va dans **Général**. `general` ne se retire jamais. Exemple : un connecteur dont le panneau n'est qu'un état de connexion le range ainsi à côté de sa clé. |
+
+Un onglet **ajouté** ne contient que les réglages qui le visent (`"tab": "<id>"`) ; il est refusé s'il n'en a aucun. 4 onglets ajoutés au plus (le kit
+**conseille** 3 au plus : règle `tabs.reasonable`, avec des noms courts en français et en anglais). L'action d'enregistrement du cœur n'écrit que les réglages
+de l'onglet envoyé : un réglage d'un autre onglet garde sa valeur.
 
 ### Sections d'accueil (`sections`)
 
@@ -521,7 +574,8 @@ filtres de toutes les instances actives s'appliquent en chaîne. `ctx.entry` ind
 
 ### `adminPanel`, `adminActions` : administration
 
-Voir « Panneau d'admin riche ». Deux formes pour une action :
+Le panneau s'affiche dans l'onglet **Utiliser** de la page de l'instance, ouvert en premier (voir « Onglets de la page d'admin »). `query.tab` contient l'onglet
+demandé dans l'adresse : ignorez-le. Voir « Panneau d'admin riche ». Deux formes pour une action :
 
 - **fonction** `(ctx, values) => …` : réservée aux administrateurs (comportement d'avant la 0.2.0, inchangé) ;
 - **objet** `{ right: "phone.edit", run: (ctx, values) => … }` (cœur 0.2.0) : le cœur vérifie `<module>:open` et `<module>:phone.edit` pour la personne

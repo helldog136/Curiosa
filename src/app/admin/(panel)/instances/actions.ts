@@ -25,6 +25,7 @@ import { mcpInstanceKey } from "@/core/modules/mcpProvider";
 import { isSort, sortSettingKey } from "@/core/content/sort";
 import type { ActionState } from "@/components/admin/ActionForm";
 import { EXTENSIONS_HREF } from "@/core/modules/extensionsLinks";
+import { planTabs, settingTab } from "@/core/modules/tabs";
 
 function parseFieldSchema(raw: string) {
   const out: { key: string; label: string; type: "text" | "url" | "number" | "boolean" | "ref"; topic?: string }[] = [];
@@ -54,7 +55,7 @@ export async function saveInstance(_prev: ActionState, formData: FormData): Prom
   if (formData.get("nickname") !== null) {
     const others = (await prisma.moduleInstance.findMany({ where: { moduleId: existing.moduleId, NOT: { id } } })).map((o) => o.nickname).filter((n): n is string => !!n);
     const res = checkNickname(String(formData.get("nickname")), others);
-    if (!res.ok) return { error: t(`instances.error.nickname.${res.reason}`) };
+    if (!res.ok) return { errors: { nickname: t(`instances.error.nickname.${res.reason}`) } };
     data.nickname = res.value;
   }
   // Épingler au menu / ranger dans Intégrations : un choix différent de ce qui était affiché est mémorisé ; revenir à la règle par défaut l'efface.
@@ -74,7 +75,7 @@ export async function saveInstance(_prev: ActionState, formData: FormData): Prom
   if (adv && hasPage(mod.manifest)) {
     const basePath = String(formData.get("basePath") ?? "").trim().toLowerCase();
     const error = await validateBasePath(basePath, id);
-    if (error) return { error: t(error) };
+    if (error) return { errors: { basePath: t(error) } };
     data.basePath = basePath;
   }
 
@@ -96,7 +97,7 @@ export async function saveInstance(_prev: ActionState, formData: FormData): Prom
     const name = String(formData.get(`name_${locale}`) ?? "").trim();
     const description = String(formData.get(`description_${locale}`) ?? "").trim();
     if (!name) {
-      if (locale === config.defaultLocale) return { error: t("instances.error.name") };
+      if (locale === config.defaultLocale) return { errors: { [`name_${locale}`]: t("instances.error.name") } };
       await prisma.instanceTranslation.deleteMany({ where: { instanceId: id, locale } });
       continue;
     }
@@ -122,6 +123,11 @@ export async function saveInstanceSettings(_prev: ActionState, formData: FormDat
   if (!instance || !mod) return { error: t("error.generic") };
 
   const adv = formData.get("__adv") === "1";
+  // Page en onglets (0.2.2) : chaque onglet envoie SES réglages (`__tab`) ; seuls ceux-là sont lus, les autres gardent leur valeur. Sans `__tab` : tous, comme avant.
+  const tab = formData.get("__tab");
+  const plan = planTabs(mod.manifest.tabs);
+  const inForm = (f: { tab?: string }) => typeof tab !== "string" || settingTab(plan, f) === tab;
+  const fields = mod.manifest.settings.filter(inForm);
   const L = (v: Parameters<typeof localized>[0]) => localized(v, config.defaultLocale, config.defaultLocale);
   const siteByLocale = Object.fromEntries(await Promise.all(config.locales.map(async (l) => { const c = await getSiteConfig(l); return [l, { name: c.name, tagline: c.tagline }] as const; })));
   /** Opérations à appliquer : on contrôle TOUT avant d'écrire quoi que ce soit (une erreur n'enregistre rien). */
@@ -130,6 +136,8 @@ export async function saveInstanceSettings(_prev: ActionState, formData: FormDat
   // Groupes facultatifs : « Retirer » efface tout le groupe ; ouvert, il faut que les champs obligatoires soient remplis.
   const cleared = new Set<string>();
   for (const group of mod.manifest.optionalGroups ?? []) {
+    // Un groupe est entièrement dans un onglet (règle du manifeste) : on ne juge que ceux de cet onglet.
+    if (!group.fields.some((k) => fields.some((f) => f.key === k))) continue;
     const filled: Record<string, boolean> = {};
     for (const key of group.fields) {
       const f = mod.manifest.settings.find((x) => x.key === key);
@@ -142,7 +150,10 @@ export async function saveInstanceSettings(_prev: ActionState, formData: FormDat
     const verdict = judgeGroup(group, formData.get(groupFlagName(group.id)) as string | null, filled);
     if (verdict.action === "error") {
       const names = verdict.missing.map((k) => L(mod.manifest.settings.find((x) => x.key === k)?.label)).join(", ");
-      return { error: t("instances.error.groupRequired", { group: L(group.label), fields: names }) };
+      const message = t("instances.error.groupRequired", { group: L(group.label), fields: names });
+      // Sous chaque champ manquant (nom du champ dans le formulaire) ; le message dit aussi lesquels.
+      const errors = Object.fromEntries(verdict.missing.map((k) => { const f = mod.manifest.settings.find((x) => x.key === k); return [f?.translatable ? `s__${k}__${config.defaultLocale}` : `s__${k}`, message]; }));
+      return { errors };
     }
     if (verdict.action === "clear") {
       for (const key of group.fields) { cleared.add(key); ops.push({ key: instanceSettingKey(id, key), del: true }); }
@@ -151,7 +162,7 @@ export async function saveInstanceSettings(_prev: ActionState, formData: FormDat
 
   /** Réglages « choix parmi » à revérifier auprès de leur fournisseur (asynchrone, borné) avant toute écriture. */
   const choices: { field: ChoiceField; raw: string; key: string }[] = [];
-  for (const field of mod.manifest.settings) {
+  for (const field of fields) {
     if (field.advanced && !adv) continue; // réglage technique non montré : on garde sa valeur
     if (cleared.has(field.key)) continue; // groupe retiré : déjà effacé
     if (field.type === "choice") {
@@ -175,7 +186,7 @@ export async function saveInstanceSettings(_prev: ActionState, formData: FormDat
       const raw = String(formData.get(name) ?? "").trim();
       // Couleur qui suit le thème du site : on ne garde aucune valeur propre, le thème s'applique en direct.
       if (field.type === "color" && themeRef(field.default) && formData.get(`${name}__theme`) === "on") { del(); continue; }
-      if (field.type === "color" && raw !== "" && !isHexColor(raw)) return { error: t("error.generic") };
+      if (field.type === "color" && raw !== "" && !isHexColor(raw)) return { errors: { [name]: t("error.generic") } };
       // Un secret laissé vide est conservé tel quel.
       if (field.type === "secret" && raw === "") continue;
       // Vide, ou identique au défaut qui suit le site (nom, accroche) : rien n'est enregistré, le champ continue de suivre le site.
@@ -183,7 +194,8 @@ export async function saveInstanceSettings(_prev: ActionState, formData: FormDat
       const checked = checkFieldInput(field, raw);
       if (!checked.ok) {
         const { reason } = checked;
-        return { error: reason === "link" ? t("instances.error.link", { field: L(field.label) }) : reason === "video" || reason === "image" || reason === "url" ? t("error.badUrl") : t("error.generic") };
+        // Sous le champ fautif (et l'onglet qui le contient s'ouvre de lui-même s'il était caché).
+        return { errors: { [name]: reason === "link" ? t("instances.error.link", { field: L(field.label) }) : reason === "video" || reason === "image" || reason === "url" ? t("error.badUrl") : t("error.generic") } };
       }
       op(checked.value);
     }
@@ -195,7 +207,7 @@ export async function saveInstanceSettings(_prev: ActionState, formData: FormDat
     const checks = await validateChoices({ mod, instance: view }, choices.map((c) => ({ field: c.field, raw: c.raw })), { locale: config.defaultLocale });
     for (const c of choices) {
       const check = checks.get(c.field.key);
-      if (!check?.ok) return { error: t(check?.reason === "timeout" ? "choice.error.verify" : "choice.error.unknown", { field: L(mod.manifest.settings.find((f) => f.key === c.field.key)?.label) }) };
+      if (!check?.ok) return { errors: { [`s__${c.field.key}`]: t(check?.reason === "timeout" ? "choice.error.verify" : "choice.error.unknown", { field: L(mod.manifest.settings.find((f) => f.key === c.field.key)?.label) }) } };
       // L'unique option n'est jamais écrite : elle reste résolue à l'exécution (une deuxième option fera réapparaître le sélecteur).
       ops.push(check.store === null ? { key: c.key, locale: "", del: true } : { key: c.key, locale: "", value: check.store });
     }

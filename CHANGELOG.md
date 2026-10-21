@@ -18,10 +18,14 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **La sauvegarde se télécharge sans quitter la page**, avec sa barre et un message clair si les deux mots de passe diffèrent.
 - **Une erreur s'affiche toujours juste sous le champ concerné.** Le champ devient rouge, la page défile jusqu'à lui, et le message disparaît dès que vous corrigez. Il dit quoi faire, avec un exemple.
 - **Le menu comprend les adresses écrites à la main.** « www.monsite.be/contact » devient une adresse complète toute seule, « /contact » désigne une page de votre site. C'est pareil pour les redirections, les fiches et l'en-tête.
+- **La page de chaque module est rangée en onglets.** « Utiliser » s'ouvre en premier avec ce que vous faites souvent, sans faire défiler toute la configuration. Viennent ensuite « Réglages », « Sources » et « Général » ; un onglet vide n'apparaît pas.
+- **Un seul bouton « Enregistrer » pour tous les onglets.** Un point montre l'onglet modifié, rien n'est perdu en changeant d'onglet, et la page vous prévient si vous partez sans enregistrer. Si un champ est à corriger dans un autre onglet, la page y va toute seule.
+- **Retirer ou effacer un module se fait dans « Général », dans une zone sensible à part,** jamais à côté de ce que vous utilisez tous les jours.
 
 ### Pour les développeurs
 
 - Une action d'administration peut renvoyer `errors: { champ: "message" }` pour afficher chaque erreur sous son champ ; l'ancien `error` seul continue de fonctionner. Un nouveau conseil du kit de contrôle (`forms.fieldErrors`) le rappelle.
+- Pages de module en onglets : un module peut ranger un réglage dans un onglet (`settings[].tab`) et ajouter, renommer ou retirer un onglet (`tabs`) ; sinon le cœur classe tout seul. Ces clés demandent `minCore: "0.2.2"` (un cœur plus ancien les ignore), voir docs/MODULES.md ; nouveau conseil du kit `tabs.reasonable`.
 
 ## 0.2.0
 

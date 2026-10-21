@@ -100,6 +100,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 | [`i18n.keys`](#i18nkeys) | obligatoire | Toutes les clés de traduction utilisées existent |
 | [`i18n.unused`](#i18nunused) | conseil | Pas de traduction inutilisée |
 | [`settings.sane`](#settingssane) | obligatoire | Les réglages sont bien formés |
+| [`tabs.reasonable`](#tabsreasonable) | conseil | Les onglets ajoutés restent peu nombreux et bien nommés |
 | [`settings.optional`](#settingsoptional) | obligatoire | Un réglage « facultatif » le déclare |
 | [`settings.advanced`](#settingsadvanced) | obligatoire | Les réglages « advanced » ont une valeur par défaut |
 | [`settings.refersToChoice`](#settingsreferstochoice) | conseil | Un réglage qui désigne un élément existant est un « choix parmi » |
@@ -139,7 +140,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 | [`readme.plain`](#readmeplain) | conseil | Le README est écrit en langage de tous les jours |
 | [`neutrality.clean`](#neutralityclean) | conseil | Aucune donnée personnelle ni propre à un site dans le module |
 
-36 exigences obligatoires et 22 conseils.
+36 exigences obligatoires et 23 conseils.
 
 ### Le fichier module.json
 
@@ -312,6 +313,14 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 - **Ce qui est vérifié.** Chaque réglage a une clé unique, un libellé en français et en anglais ; une liste a des options et un défaut qui en fait partie ; un secret n'a jamais de valeur par défaut ; le défaut a le bon type (nombre pour un nombre, couleur #RRGGBB pour une couleur…).
 - **Pourquoi.** Ce sont les champs que l'administrateur remplit. Un défaut hors liste ou d'un mauvais type donne un formulaire cassé ou un module qui démarre sur une valeur absurde ; un secret avec un défaut serait publié avec le code.
 - **Comment corriger.** Corrigez le réglage cité dans module.json.
+
+#### `tabs.reasonable`
+
+**Les onglets ajoutés restent peu nombreux et bien nommés** — niveau : **conseil**
+
+- **Ce qui est vérifié.** Si le module déclare « tabs » (cœur 0.2.2) : au plus 3 onglets ajoutés en plus des quatre onglets du cœur (Utiliser, Réglages, Sources, Général), et chaque nom d'onglet (ajouté ou renommé) est court (20 caractères au plus) et existe en français ET en anglais.
+- **Pourquoi.** Sur un téléphone, la rangée d'onglets défile : au-delà de six ou sept onglets, ou avec des noms longs, on ne voit plus où l'on est et on cherche le bon onglet. Un nom dans une seule langue laisse la moitié des administrateurs devant un mot qu'ils ne lisent pas.
+- **Comment corriger.** Regroupez les réglages proches dans un même onglet (« tab » d'un réglage), raccourcissez les noms (« Vidéo », « Ma liste », « Créneaux ») et donnez « label »: { « fr »: « … », « en »: « … » }.
 
 #### `settings.optional`
 

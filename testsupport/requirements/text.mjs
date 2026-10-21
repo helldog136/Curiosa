@@ -6,6 +6,10 @@ import { observe, CANARY } from "../probes.mjs";
 import { CORE_DIR } from "../core.mjs";
 import { allSettings, CHOICE_RULES_LEVEL, missingLangs, stripComments, texts, whereOf } from "./util.mjs";
 
+/** Onglets de la page d'admin (cœur 0.2.2, voir src/core/modules/tabs.ts) : ceux du cœur, et ce que le kit CONSEILLE en plus. */
+const BUILTIN_TAB_IDS = ["use", "settings", "sources", "general"];
+const MAX_ADDED_TABS = 3;
+const TAB_NAME_MAX = 20;
 const SAYS_OPTIONAL = /facultatif|optionnel|\boptional\b/i;
 /**
  * Un texte d'aide qui demande de TAPER LE NOM d'une chose qui existe déjà (« saisissez le nom de la chaîne », « type the channel name », « tapez ici la chaîne
@@ -119,6 +123,28 @@ const requirements = [
         if (s.type === "number" && typeof d !== "number") out.push(`${s.where} : le défaut d'un nombre doit être un nombre`);
         if (s.type === "boolean" && typeof d !== "boolean") out.push(`${s.where} : le défaut d'une case à cocher doit être vrai ou faux`);
         if (s.type === "color" && typeof d === "string" && !/^#[0-9a-fA-F]{6}$/.test(d) && !d.startsWith("theme:")) out.push(`${s.where} : le défaut d'une couleur doit être #RRGGBB (ou « theme:accent »)`);
+      }
+      return out;
+    },
+  },
+  {
+    id: "tabs.reasonable", level: "advice", group: "settings",
+    title: "Les onglets ajoutés restent peu nombreux et bien nommés",
+    what: `Si le module déclare « tabs » (cœur 0.2.2) : au plus ${MAX_ADDED_TABS} onglets ajoutés en plus des quatre onglets du cœur (Utiliser, Réglages, Sources, Général), et chaque nom d'onglet (ajouté ou renommé) est court (${TAB_NAME_MAX} caractères au plus) et existe en français ET en anglais.`,
+    why: "Sur un téléphone, la rangée d'onglets défile : au-delà de six ou sept onglets, ou avec des noms longs, on ne voit plus où l'on est et on cherche le bon onglet. Un nom dans une seule langue laisse la moitié des administrateurs devant un mot qu'ils ne lisent pas.",
+    fix: "Regroupez les réglages proches dans un même onglet (« tab » d'un réglage), raccourcissez les noms (« Vidéo », « Ma liste », « Créneaux ») et donnez « label »: { « fr »: « … », « en »: « … » }.",
+    run(m) {
+      if (!m.manifest) return { skip: "module.json illisible" };
+      const tabs = Array.isArray(m.manifest.tabs) ? m.manifest.tabs : [];
+      if (!tabs.length) return []; // les onglets du cœur : raisonnables par construction
+      const out = [];
+      const added = tabs.filter((t) => t && !BUILTIN_TAB_IDS.includes(t.id));
+      if (added.length > MAX_ADDED_TABS) out.push(`${added.length} onglets ajoutés (${added.map((t) => t.id).join(", ")}) : ${MAX_ADDED_TABS} au plus, regroupez des réglages`);
+      for (const t of tabs) {
+        if (!t || t.label === undefined) continue;
+        if (typeof t.label === "string") { out.push(`onglet « ${t.id} » : le nom n'existe que dans une langue (donnez { "fr": …, "en": … })`); continue; }
+        for (const l of missingLangs(t.label)) out.push(`onglet « ${t.id} » : le nom n'a pas de version ${l === "fr" ? "française" : "anglaise"}`);
+        for (const [l, v] of Object.entries(t.label)) if (typeof v === "string" && v.trim().length > TAB_NAME_MAX) out.push(`onglet « ${t.id} » : le nom ${l} « ${v} » est long (${v.trim().length} caractères, ${TAB_NAME_MAX} au plus conseillés)`);
       }
       return out;
     },

@@ -1,8 +1,10 @@
 "use client";
 
+import { reveal } from "./reveal";
+
 /**
  * Encadré « Il reste à renseigner : » en haut des réglages d'une extension : un lien par champ à remplir. Un clic amène au champ (défilement doux, ou
- * immédiat si l'animation est réduite), le met en évidence quelques secondes et y place le curseur. Si le champ est dans une zone repliée, elle s'ouvre.
+ * immédiat si l'animation est réduite), le met en évidence quelques secondes et y place le curseur. Si le champ est dans une zone repliée ou un onglet caché, il est d'abord affiché.
  * Sans JavaScript, le lien reste une ancre ordinaire vers le champ.
  */
 export function MissingBox({ title, items }: { title: string; items: { key: string; label: string; id: string }[] }) {
@@ -11,8 +13,8 @@ export function MissingBox({ title, items }: { title: string; items: { key: stri
     const input = document.getElementById(id);
     if (!input) return;
     e.preventDefault();
-    const fold = input.closest("details");
-    if (fold && !fold.open) fold.open = true;
+    // Dans un onglet caché ou une zone repliée : on l'affiche d'abord.
+    reveal(input);
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     input.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "center" });
     input.focus({ preventScroll: true });

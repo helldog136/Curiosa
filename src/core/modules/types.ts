@@ -2,6 +2,7 @@ import type { Theme } from "../color";
 import type { Block, Slot } from "../blocks";
 import type { StorePage, StoreRecord } from "../services/store";
 import type { NetHealthItem, NetRequest, NetResult } from "../services/net";
+import type { TabDecl } from "./tabs";
 
 // Les modules typent leurs blocs avec ce ré-export : ils n'importent rien d'autre du cœur.
 export type { Block, Slot };
@@ -59,6 +60,8 @@ export type SettingField = {
   optional?: boolean;
   /** « appearance » : réglage d'apparence, regroupé à part dans l'admin. Une couleur peut avoir pour défaut `"theme:accent"` (ou accent2, bg, fg, surface, muted, line, accentFg) : elle suit alors le thème du site. */
   group?: "appearance";
+  /** (0.2.2) Onglet de la page d'admin : « settings » (défaut), « sources », « general » ou l'id d'un onglet déclaré dans `tabs` (voir tabs.ts). */
+  tab?: string;
 };
 
 /**
@@ -186,6 +189,8 @@ export type ModuleManifest = {
   legacyCollections?: string[];
   /** Groupes de réglages facultatifs (un bouton « Ajouter… » les ouvre). */
   optionalGroups?: OptionalGroupDecl[];
+  /** (0.2.2) Onglets de la page d'admin : ajout, nouveau nom ou retrait d'un onglet par défaut (voir tabs.ts). Absent : Utiliser · Réglages · Sources · Général. */
+  tabs?: TabDecl[];
   /** Sections ajoutées à l'éditeur d'entrée d'un autre module (`entryPanels` dans le code). */
   entryPanels?: EntryPanelDecl[];
   /** Actions proposées à l'API MCP du cœur (désactivable). */

@@ -1,5 +1,6 @@
 "use client";
 
+import { createPortal } from "react-dom";
 import { startTransition, useActionState, useCallback, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore, type FormEvent } from "react";
 import type { FieldErrorMap } from "@/core/fieldErrors";
 import { FieldErrorsProvider, useFieldErrorsDom } from "./FieldErrors";
@@ -138,7 +139,8 @@ export function ActionForm({ action, children, submitLabel, className = "space-y
   const saveAll = () => { for (const r of [...registry.values()]) if (r.dirty) r.form.requestSubmit(); };
 
   return (
-    <form ref={ref} onSubmit={onSubmit} className={className}>
+    // `data-dirty` : lu par les onglets de la page (point sur l'onglet modifié, avertissement avant de quitter par un lien).
+    <form ref={ref} onSubmit={onSubmit} className={className} data-dirty={floating && dirty ? "1" : undefined}>
       <FieldErrorsProvider value={fieldErrorsValue}>{children}</FieldErrorsProvider>
       {state?.error && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm text-red-700">{state.error}</p>}
       {state?.ok && <p role="status" className="rounded-lg border border-emerald-500/50 bg-emerald-500/10 p-3 text-sm text-emerald-700">{state.ok}</p>}
@@ -149,9 +151,10 @@ export function ActionForm({ action, children, submitLabel, className = "space-y
         </div>
       )}
       {floating && <div aria-hidden="true" className="h-12" />}
-      {floating && visible && slot <= 0 && (
+      {/* La barre est rendue à la racine de la page : un formulaire peut se trouver dans un onglet masqué (page en onglets), sa barre reste visible. */}
+      {floating && visible && slot <= 0 && typeof document !== "undefined" && createPortal(
         <div role="region" aria-label={floating.dirty} data-testid="floating-bar" style={{ bottom: "1.25rem" }}
-          className="fixed left-1/2 z-40 flex w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-3 rounded-2xl border border-line bg-surface/95 px-4 py-2.5 shadow-lg backdrop-blur">
+          className="fixed left-1/2 z-[60] flex w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-3 rounded-2xl border border-line bg-surface/95 px-4 py-2.5 shadow-lg backdrop-blur">
           {dirty || anyDirty ? (
             <>
               <span className="hidden text-sm text-muted sm:inline">{floating.dirty}</span>
@@ -163,7 +166,8 @@ export function ActionForm({ action, children, submitLabel, className = "space-y
           ) : (
             <span role="alert" className="text-sm font-medium text-red-700">{state?.error ?? p("fixFields")}</span>
           )}
-        </div>
+        </div>,
+        document.body,
       )}
     </form>
   );
