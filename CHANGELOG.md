@@ -7,7 +7,7 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
-## Prochaine version (non publiée)
+## 0.2.3
 
 ### Améliorations
 
@@ -20,6 +20,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - Les conteneurs défilants de tableau (`overflow-x-auto`) sont `relative` : le texte `sr-only` (position absolue) des boutons de ligne ne déborde plus du conteneur. Le tableau des redirections défile lui aussi.
 - Nouveau `components/admin/keepValues.ts` : `submitKeepingValues(action)` envoie un formulaire à une action `useActionState` sans passer par `<form action>` (React 19 remet sinon les champs non contrôlés à zéro après l'action, erreur comprise), et `clearSecrets` vide les champs mot de passe. `ActionForm` les vide aussi après une erreur.
 - Textes en dur : clés `crop.urlPlaceholder`, `nav.adminLabel`, `audit.pagination`, `site.nav.main`, `site.nav.language` (FR+EN). Le test `tests/core/admin-finishing.test.mjs` échoue si un `placeholder`, `aria-label`, `title` ou `alt` en phrase est écrit en dur dans un composant ou une page.
+- Kit de contrôle : la règle `srp.single` n'exige plus un seul fournisseur pour un service offert avec `each: true` (plusieurs fournisseurs voulus, comme `privacy.subject`).
 
 ## 0.2.2
 
