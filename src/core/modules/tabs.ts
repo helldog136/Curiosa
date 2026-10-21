@@ -7,7 +7,10 @@ import type { LocalizedString } from "./types";
  * · Général (nom, description, menu, accès IA, langues, puis la zone sensible). Un onglet sans contenu n'est pas affiché.
  * Le manifeste peut, sans rien casser (un cœur plus ancien ignore ces clés) :
  *  - rattacher un réglage à un onglet : `settings[].tab` (« settings », « sources », « general » ou l'id d'un onglet ajouté) ;
- *  - AJOUTER des onglets : `tabs: [{ id, label }]` (rangés après Réglages) ; ils ne contiennent que les réglages qui les visent ;
+ *  - placer un BLOC du panneau (`adminPanel`) dans un autre onglet que Utiliser : `{ type: "markdown", text, tab: "look" }` (cœur 0.2.5) ; les blocs d'un
+ *    onglet s'affichent AU-DESSUS de ses réglages (l'explication ou l'aperçu avant l'option qu'ils illustrent) ; sans `tab` : Utiliser, comme avant ;
+ *  - AJOUTER des onglets : `tabs: [{ id, label }]` (rangés après Réglages) ; ils contiennent les réglages qui les visent et/ou des blocs du panneau
+ *    (`panel: true` : onglet fait seulement de blocs, sans réglage) ;
  *  - RENOMMER un onglet par défaut : `tabs: [{ id: "use", label: { fr: "Fabriquer la vidéo", en: "Make the video" } }]` (pas « general ») ;
  *  - RETIRER un onglet par défaut : `tabs: [{ id: "use", hidden: true }]`. Rien n'est perdu : son contenu rejoint un autre onglet
  *    (Utiliser et Sources → en tête / en bas de Réglages ; Réglages → Général). « general » ne se retire jamais (il porte la zone sensible).
@@ -29,7 +32,7 @@ export const SETTING_TABS: readonly BuiltinTab[] = ["settings", "sources", "gene
 /** Où va le contenu d'un onglet par défaut retiré. */
 const MERGE_INTO: Record<Exclude<BuiltinTab, "general">, BuiltinTab> = { use: "settings", sources: "settings", settings: "general" };
 
-export type TabDecl = { id: string; label?: LocalizedString; hidden?: boolean };
+export type TabDecl = { id: string; label?: LocalizedString; hidden?: boolean; /** (0.2.5) Onglet ajouté qui reçoit des blocs du panneau (`PanelBlock.tab`), même sans réglage. */ panel?: boolean };
 
 export const isBuiltinTab = (id: string): id is BuiltinTab => (BUILTIN_TABS as readonly string[]).includes(id);
 
@@ -45,6 +48,7 @@ export function tabIssues(tabs: readonly TabDecl[] | undefined, settings: readon
     if (isBuiltinTab(t.id)) {
       if (t.id === "general" && (t.hidden || t.label !== undefined)) issues.push(`the "general" tab cannot be hidden or renamed (it holds the removal zone)`);
       if (t.hidden && t.label !== undefined) issues.push(`tab "${t.id}": a hidden tab has no label`);
+      if (t.panel !== undefined) issues.push(`tab "${t.id}": "panel" is only for an added tab (a default tab can already receive panel blocks)`);
     } else {
       custom++;
       if (t.hidden) issues.push(`tab "${t.id}": only a default tab (use, settings, sources) can be hidden`);
@@ -59,7 +63,8 @@ export function tabIssues(tabs: readonly TabDecl[] | undefined, settings: readon
     if (!(SETTING_TABS as readonly string[]).includes(s.tab) && !customIds.has(s.tab)) issues.push(`setting "${s.key}": unknown tab "${s.tab}" (use settings, sources, general or a tab declared in tabs)`);
     used.add(s.tab);
   }
-  for (const id of customIds) if (!used.has(id)) issues.push(`tab "${id}" has no setting (add "tab": "${id}" to the settings it should show)`);
+  const panelOnly = new Set(list.filter((t) => t.panel === true).map((t) => t.id));
+  for (const id of customIds) if (!used.has(id) && !panelOnly.has(id)) issues.push(`tab "${id}" has no setting (add "tab": "${id}" to the settings it should show, or "panel": true if it only holds panel blocks)`);
   // Un groupe facultatif s'affiche d'un seul bloc : tous ses réglages dans le même onglet.
   const areaOf = new Map(settings.map((s) => [s.key, s.tab ?? "settings"]));
   for (const g of groups) if (new Set(g.fields.map((k) => areaOf.get(k) ?? "settings")).size > 1) issues.push(`group "${g.id}": all its settings must be in the same tab`);
@@ -72,6 +77,8 @@ export type TabPlan = {
   order: PlannedTab[];
   /** Onglet où s'affiche une zone (« use », « settings », « sources », « general » ou un onglet ajouté), après les retraits. */
   target: (area: string) => string;
+  /** Cette zone est-elle un onglet connu (par défaut ou ajouté et non retiré) ? */
+  knows: (area: string) => boolean;
 };
 
 /** Le plan d'onglets d'un module, d'après sa déclaration (absente = les quatre onglets par défaut). */
@@ -89,11 +96,19 @@ export function planTabs(tabs: readonly TabDecl[] | undefined): TabPlan {
     for (let i = 0; i < 4 && hidden(id); i++) id = MERGE_INTO[id as Exclude<BuiltinTab, "general">];
     return id;
   };
-  return { order, target };
+  const knows = (area: string): boolean => isBuiltinTab(area) || customIds.has(area);
+  return { order, target, knows };
 }
 
 /** Zone d'un réglage (avant les retraits) : son `tab`, sinon Réglages. */
 export const settingArea = (field: { tab?: string }): string => field.tab ?? "settings";
+
+/**
+ * (0.2.5) Onglet où s'affiche un bloc du panneau d'admin : son `tab` s'il est connu, sinon Utiliser (comme avant). `manage` faux (une personne qui ne peut
+ * qu'ouvrir le module et ne voit que l'onglet Utiliser) : tout reste dans Utiliser, rien ne se perd.
+ */
+export const panelTab = (plan: TabPlan, block: { tab?: string }, manage = true): string =>
+  plan.target(manage && block.tab !== undefined && plan.knows(block.tab) ? block.tab : "use");
 
 /** Onglet où s'affiche (et s'enregistre) un réglage. */
 export const settingTab = (plan: TabPlan, field: { tab?: string }): string => plan.target(settingArea(field));

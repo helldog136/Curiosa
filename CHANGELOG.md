@@ -7,6 +7,18 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.2.5
+
+### Améliorations
+
+- **Un module peut ranger ses explications et ses aperçus dans le bon onglet.** Une galerie ou une explication peut s'afficher dans l'onglet du réglage qu'elle illustre, juste au-dessus de lui. Un onglet vide reste caché.
+
+### Pour les développeurs
+
+- Un bloc de `adminPanel` accepte une clé facultative `tab` (type `PanelBlock`) : `settings`, `sources`, `general` ou l'id d'un onglet ajouté. Sans `tab`, le bloc reste dans « Utiliser ». Les blocs d'un onglet passent AU-DESSUS de ses réglages.
+- Un onglet ajouté peut déclarer `"panel": true` : il n'a alors besoin d'aucun réglage (il reste caché tant qu'aucun bloc ne l'atteint). Un cœur plus ancien ignore `tab` : déclarez `minCore` (règle `compat.minCore` du kit, fonction `0.2.5`).
+- Nouveaux `panelTab` et `TabPlan.knows` (`src/core/modules/tabs.ts`) ; voir docs/MODULES.md, « Onglets de la page d'admin ».
+
 ## 0.2.4
 
 ### Améliorations

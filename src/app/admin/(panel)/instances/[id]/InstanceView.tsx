@@ -41,7 +41,7 @@ import { choiceAdminView, isChoiceField, viewCountsAsFilled, type ChoiceView } f
 import { FILLED_MARK } from "@/core/modules/choiceValues";
 import { PendingButton } from "@/components/admin/PendingButton";
 import { PageTabs, TabPanel } from "@/components/admin/PageTabs";
-import { initialTab, planTabs, settingArea, settingTab, visibleTabs } from "@/core/modules/tabs";
+import { initialTab, panelTab, planTabs, settingArea, settingTab, visibleTabs } from "@/core/modules/tabs";
 
 const PLACE_LABEL = { menu: "placement.pin", integrations: "placement.park", overlays: "placement.parkOverlays" } as const;
 
@@ -70,7 +70,7 @@ export async function InstanceView({ id, query: sp, inModal = false }: { id: str
   // Le propriétaire qui retire la SEULE instance de son module retire le module lui-même ; sinon, seulement cette instance (le module reste installé).
   const scope = removalScope({ isOwner: isOwner(user), otherInstances: labeler.siblingsOf(instance).length });
 
-  let panel: Awaited<ReturnType<NonNullable<typeof mod.def.adminPanel>>> = [];
+  let panel: Awaited<ReturnType<NonNullable<typeof mod.def.adminPanel>>> = []; // blocs d'un panneau : chacun peut viser un onglet (`tab`, 0.2.5)
   if (mod.def.adminPanel) {
     try {
       const query = Object.fromEntries(Object.entries(sp).flatMap(([k, v]) => (typeof v === "string" ? [[k, v]] : [])));
@@ -119,7 +119,8 @@ export async function InstanceView({ id, query: sp, inModal = false }: { id: str
     </p>
   ) : null;
   const filled = new Set<string>();
-  if (panel.length > 0 || overlayNode) filled.add("use");
+  if (overlayNode) filled.add("use");
+  for (const b of panel) filled.add(panelTab(plan, b, manage)); // un bloc vise son onglet (`tab`) ; sans `tab` : Utiliser
   if (manage) {
     for (const f of shownSettings) filled.add(settingArea(f));
     if (showSources) filled.add("sources");
@@ -131,7 +132,11 @@ export async function InstanceView({ id, query: sp, inModal = false }: { id: str
   const toFillTab = manage && missingFields[0] ? settingTab(plan, missingFields[0]) : null;
   const firstTab = initialTab(visible, { requested, toFill: toFillTab }) ?? "general";
 
-  const panelNode = <Blocks blocks={panel} locale={locale} adminInstanceId={instance.id} />;
+  /** Les blocs du panneau qui s'affichent dans l'onglet `tab` (dans l'ordre du panneau), au-dessus du reste de l'onglet. */
+  const panelFor = (tab: string) => {
+    const mine = panel.filter((b) => panelTab(plan, b, manage) === tab);
+    return mine.length > 0 ? <Blocks blocks={mine} locale={locale} adminInstanceId={instance.id} /> : null;
+  };
 
   /** Les réglages du module affichés dans l'onglet `tab` : un formulaire par onglet (il n'enregistre que les siens), la barre « Enregistrer » les enregistre tous. */
   const settingsForm = (tab: string) => {
@@ -313,7 +318,7 @@ export async function InstanceView({ id, query: sp, inModal = false }: { id: str
     return (
       <>
         {here("use") && overlayNode}
-        {here("use") && panel.length > 0 && panelNode}
+        {panelFor(tab)}
         {manage && sourcesFirst && here("sources") && sourcesForm}
         {manage && settingsForm(tab)}
         {manage && !sourcesFirst && here("sources") && sourcesForm}

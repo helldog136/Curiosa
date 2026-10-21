@@ -358,9 +358,27 @@ Le manifeste peut **ajuster** ce classement (tout est facultatif, additif ; un c
 | `label` | Nom affiché (`{ "fr": "…", "en": "…" }`, 40 caractères au plus ; court : le kit conseille 20). Obligatoire pour un onglet ajouté ; pour `use`, `settings`, `sources` : renomme l'onglet (le premier prend volontiers le vrai nom de ce qu'on y fait : « Fabriquer la vidéo », « Ma liste »). `general` ne se renomme pas. |
 | `hidden` | `true` : **retire** un onglet du cœur. Rien n'est perdu : son contenu rejoint un autre onglet — `use` (le panneau) et `sources` vont dans **Réglages** (en haut / en bas), `settings` va dans **Général**. `general` ne se retire jamais. Exemple : un connecteur dont le panneau n'est qu'un état de connexion le range ainsi à côté de sa clé. |
 
-Un onglet **ajouté** ne contient que les réglages qui le visent (`"tab": "<id>"`) ; il est refusé s'il n'en a aucun. 4 onglets ajoutés au plus (le kit
+Un onglet **ajouté** contient les réglages qui le visent (`"tab": "<id>"`) et/ou des blocs du panneau (voir ci-dessous) ; il est refusé s'il n'a ni réglage ni `"panel": true`. 4 onglets ajoutés au plus (le kit
 **conseille** 3 au plus : règle `tabs.reasonable`, avec des noms courts en français et en anglais). L'action d'enregistrement du cœur n'écrit que les réglages
 de l'onglet envoyé : un réglage d'un autre onglet garde sa valeur.
+
+#### Placer un bloc du panneau dans un onglet (cœur 0.2.5)
+
+Par défaut tous les blocs de `adminPanel` vont dans **Utiliser**. Un bloc peut viser un autre onglet avec la clé facultative `tab` (type `PanelBlock`) :
+
+```js
+adminPanel: (ctx) => [
+  { type: "table", columns: ["Jour", "Heure"], rows: [...] },                                   // sans tab : Utiliser, comme avant
+  { type: "markdown", text: "Choisissez l'apparence dans la liste ci-dessous.", tab: "look" },  // dans l'onglet « look », au-dessus de ses réglages
+]
+```
+
+- `tab` : `settings`, `sources`, `general` ou l'id d'un onglet **ajouté**. `use`, absent ou id inconnu : Utiliser (un bloc n'est jamais perdu). Si l'onglet visé est retiré (`hidden`), le bloc suit le contenu de cet onglet.
+- **Ordre** : dans un onglet, les blocs viennent **au-dessus** de ses réglages (l'explication ou l'aperçu se lit avant l'option qu'il illustre), dans l'ordre où le panneau les renvoie. Dans Utiliser : l'adresse OBS d'un overlay, puis les blocs.
+- Un onglet ajouté qui ne reçoit que des blocs déclare `"panel": true` (sans cela il est refusé faute de réglage) ; comme tout onglet, il n'est pas affiché tant qu'aucun bloc ne l'atteint.
+- **Droits** : une personne qui peut seulement ouvrir le module (pas administrateur) ne voit que Utiliser : tous les blocs y restent, quel que soit leur `tab`.
+- **Compatibilité** : un cœur plus ancien ignore `tab` (le bloc reste dans Utiliser) et refuse `"panel"` : déclarez `"minCore": "0.2.5"` ; la règle `compat.minCore` du kit l'exige.
+- Gardez la cohérence : un texte du bloc qui renvoie à un réglage dit « dans l'onglet X », jamais « ci-dessus » ou « plus bas » (l'ordre des onglets n'est pas celui d'une page).
 
 ### Sections d'accueil (`sections`)
 

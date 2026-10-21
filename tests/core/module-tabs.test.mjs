@@ -202,6 +202,54 @@ test("page de l'instance : droits inchangés (open, administrateurs, propriétai
   for (const fn of ["saveInstance", "saveInstanceSettings", "saveSources"]) assert.match(actions, new RegExp(`export async function ${fn}\\(_prev: ActionState, formData: FormData\\): Promise<ActionState> \\{\\n  const \\{ user, t(, config)? \\} = await adminCtx\\("admin"\\);`), fn);
 });
 
+/* ───────────── blocs du panneau placés dans un onglet (0.2.5) ───────────── */
+
+test("bloc du panneau : sans tab → Utiliser ; tab connu → son onglet ; tab inconnu → Utiliser ; sans droit d'administrer → tout reste dans Utiliser", () => {
+  const plan = T.planTabs([{ id: "look", label: { fr: "Apparence", en: "Look" } }]);
+  assert.equal(T.panelTab(plan, {}), "use", "sans tab : comme avant");
+  assert.equal(T.panelTab(plan, { tab: "use" }), "use");
+  assert.equal(T.panelTab(plan, { tab: "look" }), "look");
+  assert.equal(T.panelTab(plan, { tab: "settings" }), "settings");
+  assert.equal(T.panelTab(plan, { tab: "general" }), "general");
+  assert.equal(T.panelTab(plan, { tab: "nowhere" }), "use", "id inconnu : jamais perdu, Utiliser");
+  assert.equal(T.panelTab(plan, { tab: "look" }, false), "use", "une personne qui ne peut qu'ouvrir le module ne perd aucun bloc");
+  // Onglet retiré : le bloc suit le contenu de l'onglet retiré.
+  const noSources = T.planTabs([{ id: "sources", hidden: true }]);
+  assert.equal(T.panelTab(noSources, { tab: "sources" }), "settings");
+  // Un onglet qui ne contient QUE des blocs est affiché ; sans bloc, il ne l'est pas.
+  const only = T.planTabs([{ id: "help", label: { fr: "Aide", en: "Help" }, panel: true }]);
+  assert.deepEqual(ids(T.visibleTabs(only, ["use", "settings", T.panelTab(only, { tab: "help" })])), ["use", "settings", "help"]);
+  assert.deepEqual(ids(T.visibleTabs(only, ["use", "settings"])), ["use", "settings"], "onglet vide : pas affiché");
+});
+
+test("manifeste : un onglet ajouté peut n'avoir que des blocs (panel: true) ; panel refusé sur un onglet du cœur ; sans panel ni réglage, toujours refusé", () => {
+  const ok = parse({ tabs: [{ id: "help", label: { fr: "Aide", en: "Help" }, panel: true }] });
+  assert.equal(ok.ok, true, ok.error);
+  assert.equal(ok.manifest.tabs[0].panel, true);
+  assert.equal(parse({ tabs: [{ id: "use", panel: true }] }).ok, false);
+  assert.match(parse({ tabs: [{ id: "use", panel: true }] }).error, /only for an added tab/);
+  assert.match(parse({ tabs: [{ id: "help", label: "Aide" }] }).error, /has no setting/);
+  assert.equal(parse({ tabs: [{ id: "help", label: "Aide", panel: false }] }).ok, false, "panel: seulement true");
+});
+
+test("kit : placer un bloc dans un onglet demande minCore 0.2.5", () => {
+  const f = FEATURES.find((x) => x.since === "0.2.5");
+  assert.ok(f);
+  assert.equal(f.test({ code: 'return [{ type: "markdown", text: "x", tab: "look" }];' }, { tabs: [{ id: "look" }] }), true);
+  assert.equal(f.test({ code: "return [{ type: 'banner', text: 'x', tab: 'settings' }];" }, {}), true);
+  assert.equal(f.test({ code: "// tab: \"general\"\nreturn [];" }, {}), false, "un commentaire ne compte pas");
+  assert.equal(f.test({ code: 'return [{ type: "markdown", text: "x", tab: "autre" }];' }, {}), false, "un onglet inconnu du module n'est pas le nôtre");
+  assert.equal(f.test({ code: "" }, { tabs: [{ id: "help", label: "A", panel: true }] }), true);
+  assert.equal(f.test({ code: "return [];" }, {}), false);
+});
+
+test("page de l'instance : les blocs d'un onglet s'affichent au-dessus de ses réglages, et comptent pour qu'un onglet ne soit pas vide", () => {
+  const v = read(VIEW);
+  assert.match(v, /for \(const b of panel\) filled\.add\(panelTab\(plan, b, manage\)\)/);
+  assert.match(v, /\{panelFor\(tab\)\}\n\s+\{manage && sourcesFirst && here\("sources"\) && sourcesForm\}\n\s+\{manage && settingsForm\(tab\)\}/, "blocs, puis sources/réglages/général");
+  assert.match(read("src/core/blocks.ts"), /export type PanelBlock = Block & \{ tab\?: string \}/);
+});
+
 /* ───────────── enregistrement par onglet ───────────── */
 
 let inst;
