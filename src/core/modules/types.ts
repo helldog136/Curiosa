@@ -353,8 +353,11 @@ export type ModuleApi = {
      * Appelle `method` du service sur le fournisseur qui répond (le maître ; pour un service `each`, la première instance par ordre de création). Le service doit être déclaré dans `requires` du manifeste.
      * `opts.provider` (cœur 0.2.0, `minCore: "0.2.0"` obligatoire) : l'`id` d'une instance de `providers(service)` ; seule elle répond (sans réplique, sauf si c'est le maître).
      * Fournisseur disparu, mis à l'écart ou étranger : `{ ok: false, reason: "unavailable" }`.
+     * `opts.asCaller` (cœur 0.2.4, `minCore: "0.2.4"` pour compter dessus) : le fournisseur reçoit `ctx.can` pour LA PERSONNE qui vient de cliquer, et décide de SON droit. Ne marche que (1) dans une `adminAction`
+     * (jamais dans un panneau, une route, une tâche, un service ou le MCP : `ctx.can` y reste faux), (2) pour une méthode que le fournisseur a listée dans `offers[].callerRights`, (3) pour une personne qui a ce droit.
+     * Sinon : appel ordinaire, donc le fournisseur répond « denied ». Chaque appel qui porte ses droits est consigné au journal d'audit.
      */
-    call(service: string, method: string, args?: unknown, opts?: { provider?: string }): Promise<{ ok: true; value: unknown } | { ok: false; reason: "undeclared" | "unavailable" | "no_method" | "failed" }>;
+    call(service: string, method: string, args?: unknown, opts?: { provider?: string; asCaller?: boolean }): Promise<{ ok: true; value: unknown } | { ok: false; reason: "undeclared" | "unavailable" | "no_method" | "failed" }>;
     /**
      * Appelle `method` sur TOUTES les instances actives d'un service offert avec `each: true` (chaque instance répond pour elle-même : plusieurs chaînes,
      * plusieurs comptes…), par ordre de création. Une entrée par instance ; `instance` = sa clé, `name` = son surnom lisible. Un fournisseur qui échoue

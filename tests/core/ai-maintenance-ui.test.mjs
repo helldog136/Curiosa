@@ -95,6 +95,8 @@ test("admin : la page et ses actions sont réservées au propriétaire ; menu, t
   assert.equal((actions.match(/adminCtx\("owner"\)/g) ?? []).length, 4, "approuver, refuser, validation par jeton, avertissements");
   assert.match(read(`${PANEL}/layout.tsx`), /<NavLink key="assistants" href=\{ASSISTANTS_HREF\}/);
   assert.match(read(`${PANEL}/page.tsx`), /data-testid="ai-maintenance-notice"|testid="ai-maintenance-notice"/);
+  // « Voir » mène aux demandes seulement s'il y en a à valider ; sinon à l'historique de ce que l'IA a fait
+  assert.match(read(`${PANEL}/page.tsx`), /assistantsTabHref\(ai\.pending > 0 \? "requests" : "history"\)/);
   assert.match(read(`${PANEL}/assistants/actions.ts`), /MAINTENANCE_PROFILE/);
   const creator = read("src/components/admin/McpTokenCreator.tsx");
   assert.match(creator, /name="profile"/);

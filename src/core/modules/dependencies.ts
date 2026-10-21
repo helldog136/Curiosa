@@ -198,7 +198,7 @@ async function defaultTarget(found: ActiveInstance[], service: string): Promise<
  * `provider` (identifiant d'INSTANCE, revalidé ici) : appel explicite. La cible doit être l'un des fournisseurs de `providersOf` (sinon « unavailable » :
  * instance supprimée, mise à l'écart, version trop ancienne, ou fournisseur étranger). Le maître visé garde ses répliques ; tout autre fournisseur répond SEUL.
  */
-async function dispatch(consumer: Pick<ActiveInstance, "mod" | "instance">, service: string, method: string, args: unknown, locale?: string, provider?: string, viewer?: AdminUser | null): Promise<{ outcome: Outcome; master?: ActiveInstance }> {
+async function dispatch(consumer: Pick<ActiveInstance, "mod" | "instance">, service: string, method: string, args: unknown, locale?: string, provider?: string, viewer?: AdminUser | null, caller?: AdminUser | null): Promise<{ outcome: Outcome; master?: ActiveInstance }> {
   const found = await providersFor(consumer, service);
   if (found === null) return { outcome: { ok: false, reason: "undeclared" } };
   if (found.length === 0) return { outcome: { ok: false, reason: "unavailable" } };
@@ -212,6 +212,13 @@ async function dispatch(consumer: Pick<ActiveInstance, "mod" | "instance">, serv
     if (target !== master) { master = target; replicas = []; }
   }
   if (!hasMethod(master, service, method)) return { outcome: { ok: false, reason: "no_method" }, master };
+  // Les droits de la personne qui a cliqué (`asCaller`) : seulement si le FOURNISSEUR a listé cette méthode dans `callerRights`, et pour une personne
+  // (`caller` n'est rempli que par l'exécution d'une adminAction, voir context.ts). Le fournisseur vérifie ensuite SON droit avec `ctx.can`. Consigné.
+  if (caller && viewer === undefined && callerMethodsOf(master, service).includes(method)) {
+    viewer = caller;
+    const { audit } = await import("../permissions");
+    await audit(caller.email, `module.${consumer.instance.key}.asCaller`, `${service}.${method}`);
+  }
   let value: unknown;
   try {
     value = await runOn(master, service, method, args, locale, viewer);
@@ -231,9 +238,12 @@ async function dispatch(consumer: Pick<ActiveInstance, "mod" | "instance">, serv
 }
 
 /** `opts.viewer` (cœur seulement, jamais exposé aux modules) : la personne de l'administration pour qui l'appel est fait ; le fournisseur reçoit alors `ctx.can` pour elle. */
-export async function callService(consumer: Pick<ActiveInstance, "mod" | "instance">, service: string, method: string, args: unknown, locale?: string, opts: { provider?: string; viewer?: AdminUser | null } = {}): Promise<Outcome> {
-  return (await dispatch(consumer, service, method, args, locale, opts.provider, opts.viewer)).outcome;
+export async function callService(consumer: Pick<ActiveInstance, "mod" | "instance">, service: string, method: string, args: unknown, locale?: string, opts: { provider?: string; viewer?: AdminUser | null; caller?: AdminUser | null } = {}): Promise<Outcome> {
+  return (await dispatch(consumer, service, method, args, locale, opts.provider, opts.viewer, opts.caller)).outcome;
 }
+
+/** Les méthodes que ce fournisseur accepte d'appeler avec les droits de la personne connectée (`offers[].callerRights`). */
+const callerMethodsOf = (p: ActiveInstance, service: string): string[] => (p.mod.manifest.offers ?? []).find((o) => o.service === service)?.callerRights ?? [];
 
 /** Une entrée de `ctx.api.services.providers` : `id` = identifiant STABLE de l'instance (à passer à `call(…, { provider })`), `name` = libellé lisible. */
 export type ProviderView = { id: string; key: string; name: string; module: string; version: number; each: boolean; master: boolean };

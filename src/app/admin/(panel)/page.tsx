@@ -54,7 +54,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         <Callout tone={ai.pending > 0 ? "warn" : "info"} role="status" testid="ai-maintenance-notice">
           <span className="flex flex-wrap items-center justify-between gap-3">
             <span>🤖 {ai.pending > 0 ? t("dashboard.ai.pending", { n: ai.pending }) : t("dashboard.ai.done", { n: ai.doneSinceVisit })}</span>
-            <a href={assistantsTabHref("requests")} className={ui.btn}>{t("dashboard.ai.open")}</a>
+            <a href={assistantsTabHref(ai.pending > 0 ? "requests" : "history")} className={ui.btn}>{t("dashboard.ai.open")}</a>
           </span>
         </Callout>
       )}
