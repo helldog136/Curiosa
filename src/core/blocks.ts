@@ -25,6 +25,13 @@ export type AdminField = {
   options?: { value: string; label: string }[];
 };
 
+/**
+ * (cœur 0.2.5) Un bloc du panneau d'admin (`adminPanel`) peut dire dans quel ONGLET de la page de l'instance il s'affiche : `tab` = « settings », « sources »,
+ * « general » ou l'id d'un onglet ajouté (`tabs` du manifeste). Sans `tab` (ou `tab: "use"`, ou id inconnu) : l'onglet Utiliser, comme avant. Un cœur plus
+ * ancien ignore la clé : le bloc reste dans Utiliser (déclarez `minCore`). Voir core/modules/tabs.ts.
+ */
+export type PanelBlock = Block & { tab?: string };
+
 export type Block =
   | { type: "markdown"; text: string }
   /** HTML brut : le module est un code de confiance (voir docs/MODULES.md). */

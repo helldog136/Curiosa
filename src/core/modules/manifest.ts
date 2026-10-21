@@ -174,7 +174,7 @@ export const manifestSchema = z.object({
    * Une entrée AJOUTE un onglet (`{ id, label }`), RENOMME un onglet par défaut (`{ id: "use", label }`) ou en RETIRE un (`{ id: "use", hidden: true }` : son contenu
    * rejoint un autre onglet, rien n'est perdu). Un cœur ancien ignore la clé : déclarez `minCore: "0.2.2"`.
    */
-  tabs: z.array(z.object({ id: z.string().regex(TAB_ID_RE), label: tabLabel.optional(), hidden: z.literal(true).optional() }).strict()).max(MAX_TAB_ENTRIES).optional(),
+  tabs: z.array(z.object({ id: z.string().regex(TAB_ID_RE), label: tabLabel.optional(), hidden: z.literal(true).optional(), panel: z.literal(true).optional() }).strict()).max(MAX_TAB_ENTRIES).optional(),
   /** Réglages facultatifs regroupés derrière un bouton « Ajouter… » (voir `groupIssues` pour les règles). */
   optionalGroups: z
     .array(z.object({

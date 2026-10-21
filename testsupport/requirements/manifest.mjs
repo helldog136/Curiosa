@@ -9,6 +9,15 @@ const MAX_BYTES = 10 * 1024 * 1024; // même plafond que l'installateur du cœur
  * Les fonctions d'avant la 0.1.10 ne sont pas listées : aucun site à jour n'a un cœur aussi ancien, une exigence là-dessus ne ferait que du bruit.
  */
 export const FEATURES = [
+  {
+    since: "0.2.5", label: "un bloc du panneau placé dans un onglet (« tab » sur un bloc de adminPanel, ou « panel » sur un onglet)",
+    test: (m, man) => {
+      if ((man.tabs ?? []).some((t) => t && t.panel !== undefined)) return true;
+      // Un cœur plus ancien ignore la clé : le bloc resterait dans Utiliser. On cherche « tab: "<onglet>" » (onglets du cœur ou déclarés) dans le code.
+      const ids = ["settings", "sources", "general", ...(man.tabs ?? []).map((t) => t && t.id).filter(Boolean)];
+      return new RegExp(`\\btab\\s*:\\s*["'\`](?:${ids.map((i) => String(i).replace(/[^\w-]/g, "")).join("|")})["'\`]`).test(stripComments(m.code));
+    },
+  },
   { since: "0.2.2", label: "des onglets (« tabs », ou « tab » sur un réglage)", test: (m, man) => (man.tabs ?? []).length > 0 || (man.settings ?? []).some((s) => s.tab !== undefined) },
   { since: "0.2.0", label: "un réglage « choice » (choix parmi) ou ctx.resolveChoice", test: (m, man) => allSettings(man).some((s) => s.type === "choice") || /\bresolveChoice\b/.test(stripComments(m.code)) },
   { since: "0.1.22", label: "un réglage « optional » (facultatif)", test: (m, man) => allSettings(man).some((s) => s.optional !== undefined) },

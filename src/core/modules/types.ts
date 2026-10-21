@@ -1,5 +1,5 @@
 import type { Theme } from "../color";
-import type { Block, Slot } from "../blocks";
+import type { Block, PanelBlock, Slot } from "../blocks";
 import type { StorePage, StoreRecord } from "../services/store";
 import type { NetHealthItem, NetRequest, NetResult } from "../services/net";
 import type { TabDecl } from "./tabs";
@@ -471,8 +471,11 @@ export type ModuleDefinition = {
   routes?: Record<string, RouteHandler>;
   /** Transforme le corps markdown d'une entrée avant son rendu (ex. shortcodes). */
   filters?: { entryBody?: (body: string, ctx: SlotContext) => string | Promise<string> };
-  /** Contenu du panneau d'admin de l'instance, sous ses réglages. `query` = paramètres de l'URL d'admin. */
-  adminPanel?: (ctx: ModuleContext, request: { query: Record<string, string> }) => Block[] | Promise<Block[]>;
+  /**
+   * Contenu du panneau d'admin de l'instance : onglet « Utiliser » par défaut. `query` = paramètres de l'URL d'admin.
+   * (0.2.5) Un bloc peut viser un autre onglet avec `tab` (voir `PanelBlock`) : il s'affiche AU-DESSUS des réglages de cet onglet.
+   */
+  adminPanel?: (ctx: ModuleContext, request: { query: Record<string, string> }) => PanelBlock[] | Promise<PanelBlock[]>;
   /** Actions déclenchées par les blocs `adminForm` et les boutons de ligne des `table` du panneau d'admin. */
   /**
    * Forme fonction : réservée aux administrateurs (comme avant). Forme objet (0.2.0) : `{ right: "phone.edit", run }` : le cœur vérifie `<module>:open`
