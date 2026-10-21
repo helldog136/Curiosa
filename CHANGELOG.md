@@ -7,6 +7,22 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## Prochaine version (non publiée)
+
+### Améliorations
+
+- **Chaque bouton qui travaille le montre tout de suite.** Dès que vous cliquez sur « Installer », « Mettre à jour », « Réinstaller », « Enregistrer », « Supprimer »… le bouton se grise, un petit rouet tourne et le texte devient « Installation… » ou « Enregistrement… ». Vous ne pouvez plus cliquer deux fois par erreur, et le bouton ne change pas de taille. Quand c'est fini, il affiche « Terminé ». Si ça ne marche pas, un message dit quoi faire et le bouton redevient normal.
+- **De vraies barres de progression, dans des mots simples.** Pour une installation (« Je télécharge… », « Je vérifie que tout est compatible… », « Je reprends vos réglages… »), pour « Tout mettre à jour » (« Module 2 sur 5 : Agenda »), pour la sauvegarde, la restauration et la mise à jour du site, une barre montre où on en est. Si le site ne connaît pas les étapes, la barre défile doucement sans jamais afficher un faux pourcentage.
+- **Vous pouvez fermer l'onglet : le travail continue.** Si vous rechargez la page pendant une installation ou une mise à jour, la barre reprend là où elle en était. Si vous cliquez une seconde fois, ou depuis un autre onglet, vous retrouvez le travail en cours au lieu d'en lancer un deuxième.
+- **La mise à jour du site explique le redémarrage.** Pendant que le site redémarre, la page dit « Le site redémarre… », attend qu'il revienne (au plus quelques minutes) et vous le dit. Si cela dure trop, elle vous explique quoi faire.
+- **La sauvegarde se télécharge sans quitter la page**, avec sa barre, et un message clair si les deux mots de passe ne sont pas identiques.
+- **Une erreur s'affiche toujours juste sous le champ concerné.** Le champ prend un contour rouge, la page défile jusqu'à lui, et le message disparaît dès que vous le corrigez. Le message dit quoi faire, avec un exemple. Un bandeau en haut n'apparaît que pour les problèmes qui ne concernent aucun champ. Les modules peuvent faire de même (`errors`).
+- **Le menu comprend les adresses écrites à la main.** `www.monsite.be/contact` et `monsite.be/contact` deviennent `https://…` toutes seules, `/contact` désigne une page de votre site, les espaces autour sont retirés. L'erreur n'apparaît que si l'adresse reste incompréhensible. C'est pareil pour les redirections, les liens d'une fiche et les boutons de l'en-tête.
+
+### Pour les créateurs de modules
+
+- Une action d'administration peut renvoyer `errors: { champ: "message" }` pour afficher chaque erreur sous son champ (l'ancien `error` seul continue de fonctionner). Un nouveau conseil du kit de contrôle (`forms.fieldErrors`) le rappelle.
+
 ## 0.2.0
 
 ### Améliorations

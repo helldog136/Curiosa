@@ -68,14 +68,12 @@ export function PendingButton({ children, variant = "btn", pendingLabel, doneLab
   const working = pendingLabel ?? p("working");
   const showDone = flash && !pending;
   const shown = busy ? 1 : showDone ? 2 : 0;
-  const labels = [children, working, ...(doneLabel ? [doneLabel] : [])];
+  const labels = [children, <><Spinner />{working}</>, ...(doneLabel ? [<><span aria-hidden="true">✓</span>{doneLabel}</>] : [])];
   return (
     <>
       <button type={type} disabled={disabled || pending} aria-busy={pending ? true : undefined} aria-label={ariaLabel} title={title} onClick={onClick}
         data-testid={testid} data-pending={pending ? "true" : "false"} data-phase={busy ? "working" : showDone ? "done" : "idle"}
         className={`${VARIANTS[variant]} ${disabled && !pending ? "opacity-60" : ""} ${className}`}>
-        {busy && <Spinner />}
-        {showDone && <span aria-hidden="true">✓</span>}
         <LabelStack labels={labels} shown={shown} />
       </button>
       <span role="status" aria-live="polite" className="sr-only">{busy ? working : showDone ? doneLabel : ""}</span>

@@ -84,7 +84,7 @@ export default async function UpdatesPage() {
             <h2 className="text-lg font-semibold">⏳ {t("updates.runningTitle", { version: state.target ?? "" })}</h2>
             <p className="mt-1 text-sm text-muted">{t("updates.runningHelp")}</p>
           </div>
-          <CoreUpdateProgress initial={coreUpdateSnapshot(state)} unitText={(u) => t("updates.versionOf", { index: u.index, total: u.total })} />
+          <CoreUpdateProgress initial={coreUpdateSnapshot(state)} unitTemplate={t("updates.versionOf", { index: "{index}", total: "{total}" })} />
           {progress.chain.length > 0 && (
             <ol className="space-y-1.5 text-sm" data-testid="update-chain">
               {progress.chain.map((c) => (

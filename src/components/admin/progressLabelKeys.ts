@@ -3,7 +3,7 @@
  * et les passe à `ProgressLabelsProvider`. Les étapes sont `progress.step.<étape>` ou, pour un texte propre à un type d'opération, `progress.step.<type>.<étape>`.
  */
 export const PROGRESS_LABEL_KEYS = [
-  "working", "saving", "creating", "checking", "sending", "deleting", "restoring", "fixFields", "done", "busy", "starting", "preparing", "unit", "unitNamed", "stepCount", "percent", "aria", "lost", "failedAdopted", "network",
+  "working", "saving", "creating", "checking", "sending", "deleting", "restoring", "fixFields", "uploadFailed", "done", "busy", "starting", "preparing", "unit", "unitNamed", "stepCount", "percent", "aria", "lost", "failedAdopted", "network",
   "restarting", "restartingHelp", "restartTimeout", "back", "backDone", "wait",
   "step.download", "step.verify", "step.deps", "step.activate", "step.data",
   "step.install.data", "step.module-update.data", "step.modules-update.data", "step.module-reinstall.activate",

@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useActionState, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore, type FormEvent } from "react";
+import { startTransition, useActionState, useCallback, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore, type FormEvent } from "react";
 import type { FieldErrorMap } from "@/core/fieldErrors";
 import { FieldErrorsProvider, useFieldErrorsDom } from "./FieldErrors";
 import type { FloatingLabels } from "./floating";
@@ -75,7 +75,9 @@ export function ActionForm({ action, children, submitLabel, className = "space-y
   const [cleared, setCleared] = useState<{ for: unknown; keys: string[] }>({ for: null, keys: [] });
   const clearedKeys = cleared.for === state ? cleared.keys : null;
   const fieldErrors = useMemo<FieldErrorMap>(() => Object.fromEntries(Object.entries(state?.errors ?? {}).filter(([k]) => !clearedKeys?.includes(k))), [state, clearedKeys]);
-  const clearField = (path: string) => setCleared((c) => ({ for: state, keys: [...(c.for === state ? c.keys : []), path] }));
+  const clearField = useCallback((path: string) => setCleared((c) => ({ for: state, keys: [...(c.for === state ? c.keys : []), path] })), [state]);
+  // Valeur du contexte stable : l'éditeur (menu, grille…) ne se redessine que si une erreur change, pas à chaque rendu du formulaire.
+  const fieldErrorsValue = useMemo(() => ({ errors: fieldErrors, clear: clearField }), [fieldErrors, clearField]);
   useFieldErrorsDom(ref, state?.errors, state);
   // On n'utilise pas `<form action>` : React remettrait alors tous les champs à leur ancienne valeur après l'envoi (les listes et cases
   // reviendraient à ce qui était affiché avant l'enregistrement). On envoie nous-mêmes, et on ne vide que si `reset` le demande.
@@ -137,7 +139,7 @@ export function ActionForm({ action, children, submitLabel, className = "space-y
 
   return (
     <form ref={ref} onSubmit={onSubmit} className={className}>
-      <FieldErrorsProvider value={{ errors: fieldErrors, clear: clearField }}>{children}</FieldErrorsProvider>
+      <FieldErrorsProvider value={fieldErrorsValue}>{children}</FieldErrorsProvider>
       {state?.error && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm text-red-700">{state.error}</p>}
       {state?.ok && <p role="status" className="rounded-lg border border-emerald-500/50 bg-emerald-500/10 p-3 text-sm text-emerald-700">{state.ok}</p>}
       {!hideSubmit && !floating && (

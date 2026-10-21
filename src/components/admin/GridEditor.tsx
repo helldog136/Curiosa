@@ -7,6 +7,7 @@ import { parseGeneratedGrid } from "@/core/gridEditor";
 import { ActionForm } from "./ActionForm";
 import type { FloatingLabels } from "./floating";
 import { ui } from "./ui";
+import { PendingButton } from "./PendingButton";
 
 type GridBlock = Extract<Block, { type: "gridEditor" }>;
 const MAX_PIXELS = 640;
@@ -79,7 +80,7 @@ export function GridEditor({ instanceId, block, floating }: { instanceId: string
       </div>
       {(block.generateAction || block.autoLabel) && (
         <div className="flex flex-wrap items-center gap-3 text-sm">
-          {block.generateAction && <button type="button" disabled={generating} className={ui.btn} onClick={generate}>{block.generateLabel ?? "Generate"}</button>}
+          {block.generateAction && <PendingButton type="button" pending={generating} onClick={generate}>{block.generateLabel ?? "Generate"}</PendingButton>}
           {block.autoLabel && <button type="button" aria-pressed={auto} className={ui.btn} onClick={() => { setAuto(true); setGenError(null); }}>{block.autoLabel}</button>}
         </div>
       )}

@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { ui } from "./ui";
 import { createPasskey, passkeysSupported } from "./webauthn";
+import { PendingButton } from "./PendingButton";
 
 type Item = { id: string; name: string; createdAt: string; lastUsedAt: string | null };
 type R = { error?: string; options?: Record<string, unknown>; challengeId?: string; ok?: boolean };
@@ -70,7 +71,7 @@ export function PasskeysPanel({ items, labels, start, finish, remove, rename }: 
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder={labels.name} aria-label={labels.name} maxLength={60} className={`${ui.input} max-w-xs`} data-testid="passkey-name" />
           <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" autoComplete="current-password" placeholder={labels.password} aria-label={labels.password} className={`${ui.input} max-w-xs`} data-testid="passkey-password" />
           <div className="flex gap-3">
-            <button type="button" className={ui.btnPrimary} disabled={pending || !password} onClick={add} data-testid="passkey-add-confirm">{labels.add}</button>
+            <PendingButton type="button" variant="primary" pending={pending} disabled={!password} onClick={add} data-testid="passkey-add-confirm">{labels.add}</PendingButton>
             <button type="button" className={ui.btn} onClick={reset}>{labels.cancel}</button>
           </div>
         </div>
@@ -80,7 +81,7 @@ export function PasskeysPanel({ items, labels, start, finish, remove, rename }: 
           <p className="text-sm text-muted">{labels.removeHelp}</p>
           <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" autoComplete="current-password" placeholder={labels.password} aria-label={labels.password} className={`${ui.input} max-w-xs`} />
           <div className="flex gap-3">
-            <button type="button" className={ui.btnDanger} disabled={pending || !password} onClick={() => drop(mode.remove)}>{labels.remove}</button>
+            <PendingButton type="button" variant="danger" pending={pending} disabled={!password} onClick={() => drop(mode.remove)}>{labels.remove}</PendingButton>
             <button type="button" className={ui.btn} onClick={reset}>{labels.cancel}</button>
           </div>
         </div>

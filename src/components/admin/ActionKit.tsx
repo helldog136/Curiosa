@@ -18,7 +18,7 @@ export function LabelStack({ labels, shown }: { labels: React.ReactNode[]; shown
   return (
     <span className="inline-grid">
       {labels.map((text, i) => (
-        <span key={i} aria-hidden={i === shown ? undefined : true} className={`col-start-1 row-start-1 text-center ${i === shown ? "" : "invisible"}`}>{text}</span>
+        <span key={i} aria-hidden={i === shown ? undefined : true} className={`col-start-1 row-start-1 inline-flex items-center justify-center gap-2 text-center ${i === shown ? "" : "invisible"}`}>{text}</span>
       ))}
     </span>
   );

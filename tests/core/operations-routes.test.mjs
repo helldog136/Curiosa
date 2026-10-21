@@ -111,7 +111,8 @@ test("architecture : plus d'erreur de champ affichée en bas — les actions d'a
   }
   const form = read("src/components/admin/ActionForm.tsx");
   assert.match(form, /useFieldErrorsDom\(ref, state\?\.errors, state\)/);
-  assert.match(form, /<FieldErrorsProvider/);
+  assert.match(form, /<FieldErrorsProvider value=\{fieldErrorsValue\}>/);
+  assert.match(form, /const fieldErrorsValue = useMemo\(/, "valeur du contexte STABLE : sinon l'éditeur se redessine à chaque rendu du formulaire et la première lettre tapée après « Ajouter un lien » se perdait (constaté sur le site compilé)");
   const errors = read("src/components/admin/FieldErrors.tsx");
   assert.match(errors, /aria-invalid/);
   assert.match(errors, /aria-describedby/);

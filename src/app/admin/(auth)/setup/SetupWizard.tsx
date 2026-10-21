@@ -5,6 +5,7 @@ import { ui } from "@/components/admin/ui";
 import { RestorePanel } from "@/components/admin/RestorePanel";
 import { completeSetup } from "./actions";
 import { progressPercent, stepNumber } from "./progress";
+import { PendingButton } from "@/components/admin/PendingButton";
 
 type Props = {
   strings: Record<string, Record<string, string>>;
@@ -187,7 +188,7 @@ export function SetupWizard({ strings, uiLocales, locales, presets, needsToken, 
         <div className="flex items-center justify-between gap-3 pt-2">
           <button type="button" className={ui.btn} disabled={step === 0} onClick={() => setStep((s) => s - 1)}>{t("setup.back")}</button>
           {isLast ? (
-            <button type="submit" disabled={pending} className={`${ui.btnPrimary} !px-7 !py-3 !text-base`}>{t("setup.finish")}</button>
+            <PendingButton variant="primary" pending={pending} className="!px-7 !py-3 !text-base">{t("setup.finish")}</PendingButton>
           ) : (
             <button type="button" className={`${ui.btnPrimary} !px-7 !py-3 !text-base`} onClick={next}>{t("setup.next")} →</button>
           )}

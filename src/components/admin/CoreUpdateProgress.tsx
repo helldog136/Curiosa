@@ -14,7 +14,7 @@ type Phase = "running" | "restarting" | "timeout" | "done";
  * les lectures échouent : la barre bascule alors vers « le site redémarre… » et attend, avec une borne, que le site réponde de nouveau (`/api/health`) avant de
  * relire l'état et de rafraîchir la page. Rien ne tourne en arrière-plan : la lecture se met en pause quand l'onglet est caché et s'arrête à la fin.
  */
-export function CoreUpdateProgress({ initial, unitText }: { initial: OpSnapshotLike | null; unitText?: (u: { index: number; total: number; name: string }) => string }) {
+export function CoreUpdateProgress({ initial, unitTemplate }: { initial: OpSnapshotLike | null; unitTemplate?: string }) {
   const router = useRouter();
   const p = useProgressText();
   const [snap, setSnap] = useState<OpSnapshotLike | null>(initial);
@@ -70,7 +70,7 @@ export function CoreUpdateProgress({ initial, unitText }: { initial: OpSnapshotL
   }
   return (
     <div className="space-y-2" data-testid="core-progress" data-phase={phase}>
-      <OperationProgress kind="core-update" core snap={snap} unreachable={phase === "restarting"} unitText={unitText} />
+      <OperationProgress kind="core-update" core snap={snap} unreachable={phase === "restarting"} unitTemplate={unitTemplate} />
     </div>
   );
 }

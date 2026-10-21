@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { ui } from "./ui";
+import { PendingButton } from "./PendingButton";
 
 type Result = { error?: string; qr?: string; secret?: string; codes?: string[]; remaining?: number };
 type Labels = Record<"title" | "help" | "enable" | "scan" | "key" | "confirm" | "confirmButton" | "codesTitle" | "codesHelp" | "codesDone" | "enabled" | "remaining" | "disable" | "disableHelp" | "password" | "code" | "regen" | "regenHelp" | "required" | "need" | "cancel" | "print", string>;
@@ -39,7 +40,7 @@ export function TwoFactorPanel({ enabled, remaining, enforced, needed, labels, s
       {error && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm">{error}</p>}
 
       {mode === "idle" && !isOn && (
-        <button type="button" className={ui.btnPrimary} disabled={pending} onClick={() => run(async () => { const r = await start(); settle(r, () => { setSetup(r); setCode(""); setMode("enroll"); }); })}>{labels.enable}</button>
+        <PendingButton type="button" variant="primary" pending={pending} onClick={() => run(async () => { const r = await start(); settle(r, () => { setSetup(r); setCode(""); setMode("enroll"); }); })}>{labels.enable}</PendingButton>
       )}
 
       {mode === "enroll" && (
@@ -51,7 +52,7 @@ export function TwoFactorPanel({ enabled, remaining, enforced, needed, labels, s
             <input value={code} onChange={(e) => setCode(e.target.value)} inputMode="numeric" autoComplete="one-time-code" maxLength={8} className={`${ui.input} max-w-40 tracking-widest`} data-testid="twofa-code" />
           </label>
           <div className="flex gap-3">
-            <button type="button" className={ui.btnPrimary} disabled={pending || code.trim().length < 6} onClick={() => run(async () => { const r = await confirm(code); settle(r, () => { setCodes(r.codes ?? []); setLeft(r.remaining ?? 0); setIsOn(true); setMode("codes"); }); })}>{labels.confirmButton}</button>
+            <PendingButton type="button" variant="primary" pending={pending} disabled={code.trim().length < 6} onClick={() => run(async () => { const r = await confirm(code); settle(r, () => { setCodes(r.codes ?? []); setLeft(r.remaining ?? 0); setIsOn(true); setMode("codes"); }); })}>{labels.confirmButton}</PendingButton>
             <button type="button" className={ui.btn} onClick={() => { setMode("idle"); setError(""); }}>{labels.cancel}</button>
           </div>
         </div>
@@ -84,7 +85,7 @@ export function TwoFactorPanel({ enabled, remaining, enforced, needed, labels, s
           <p className="text-sm text-muted">{labels.regenHelp}</p>
           <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" autoComplete="current-password" placeholder={labels.password} aria-label={labels.password} className={`${ui.input} max-w-xs`} />
           <div className="flex gap-3">
-            <button type="button" className={ui.btnPrimary} disabled={pending || !password} onClick={() => run(async () => { const r = await regenerate(password); settle(r, () => { setCodes(r.codes ?? []); setLeft(r.remaining ?? 0); setMode("codes"); }); })}>{labels.regen}</button>
+            <PendingButton type="button" variant="primary" pending={pending} disabled={!password} onClick={() => run(async () => { const r = await regenerate(password); settle(r, () => { setCodes(r.codes ?? []); setLeft(r.remaining ?? 0); setMode("codes"); }); })}>{labels.regen}</PendingButton>
             <button type="button" className={ui.btn} onClick={() => { setMode("idle"); setError(""); }}>{labels.cancel}</button>
           </div>
         </div>
@@ -96,7 +97,7 @@ export function TwoFactorPanel({ enabled, remaining, enforced, needed, labels, s
           <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" autoComplete="current-password" placeholder={labels.password} aria-label={labels.password} className={`${ui.input} max-w-xs`} />
           <input value={code} onChange={(e) => setCode(e.target.value)} placeholder={labels.code} aria-label={labels.code} autoComplete="one-time-code" className={`${ui.input} max-w-xs`} />
           <div className="flex gap-3">
-            <button type="button" className={ui.btnDanger} disabled={pending || !password || !code} onClick={() => run(async () => { const r = await disable(password, code); settle(r, () => { setIsOn(false); setMode("idle"); }); })}>{labels.disable}</button>
+            <PendingButton type="button" variant="danger" pending={pending} disabled={!password || !code} onClick={() => run(async () => { const r = await disable(password, code); settle(r, () => { setIsOn(false); setMode("idle"); }); })}>{labels.disable}</PendingButton>
             <button type="button" className={ui.btn} onClick={() => { setMode("idle"); setError(""); }}>{labels.cancel}</button>
           </div>
         </div>

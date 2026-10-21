@@ -96,10 +96,10 @@ export function AnimatedActionButton({ run, beforeRun, onDone, onFail, labels, i
     <div className={`flex flex-col items-center gap-2 ${className}`}>
       <button type="button" onClick={click} disabled={busy} data-phase={shown} data-testid={testid} aria-busy={working}
         className={`relative inline-flex items-center justify-center gap-2 overflow-hidden disabled:cursor-progress disabled:opacity-100 ${LOOKS[look]}`}>
-        {working && !track && <span aria-hidden="true" data-testid="action-bar" className={`curiosa-indeterminate absolute inset-y-0 left-0 w-2/5 ${SWEEP[look]}`} />}
+        {phase === "working" && !track && <span aria-hidden="true" data-testid="action-bar" className={`curiosa-indeterminate absolute inset-y-0 left-0 w-2/5 ${SWEEP[look]}`} />}
         <span className="relative flex items-center gap-2">
-          {shown === "done" ? <span aria-hidden="true">✓</span> : working ? <Spinner /> : <span aria-hidden="true">{icon}</span>}
-          <LabelStack labels={[labels.idle, labels.working, labels.done]} shown={shown === "done" ? 2 : working ? 1 : 0} />
+          <LabelStack shown={shown === "done" ? 2 : working ? 1 : 0}
+            labels={[<><span aria-hidden="true">{icon}</span>{labels.idle}</>, <><Spinner />{labels.working}</>, <><span aria-hidden="true">✓</span>{labels.done}</>]} />
         </span>
       </button>
       <span role="status" aria-live="polite" className="sr-only">{working ? labels.working : shown === "done" ? labels.done : ""}</span>

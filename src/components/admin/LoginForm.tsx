@@ -4,6 +4,7 @@ import { useActionState, useEffect, useState, useTransition } from "react";
 import { loginAction, passkeyLoginFinish, passkeyLoginStart } from "@/app/admin/(auth)/login/actions";
 import { passkeysSupported, getPasskeyAssertion } from "./webauthn";
 import { ui } from "./ui";
+import { PendingButton } from "./PendingButton";
 
 type Labels = { email: string; password: string; submit: string; code: string; codeHelp: string; codeSubmit: string; back: string; passkey: string; passkeyOr: string; passkeyCancelled: string };
 
@@ -50,7 +51,7 @@ export function LoginForm({ labels }: { labels: Labels }) {
       )}
       {state?.error && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm">{state.error}</p>}
       <div className="flex items-center gap-3">
-        <button className={ui.btnPrimary} disabled={pending}>{codeStep ? labels.codeSubmit : labels.submit}</button>
+        <PendingButton variant="primary" pending={pending}>{codeStep ? labels.codeSubmit : labels.submit}</PendingButton>
         {codeStep && <button type="button" className={ui.btn} onClick={() => window.location.reload()}>{labels.back}</button>}
       </div>
       {supported && !codeStep && (

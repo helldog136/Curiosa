@@ -13,8 +13,8 @@ type Props = {
   unreachable?: boolean;
   /** Étapes de la mise à jour du site (textes `step.core.*`). */
   core?: boolean;
-  /** Texte de la ligne « élément n sur m » quand il ne s'agit pas de modules (par exemple « Version 2 sur 3 »). */
-  unitText?: (u: { index: number; total: number; name: string }) => string;
+  /** Texte de la ligne « élément n sur m » quand il ne s'agit pas de modules, avec {index} et {total} (par exemple « Version {index} sur {total} »). Une chaîne, pas une fonction : elle passe d'un composant serveur à un composant client. */
+  unitTemplate?: string;
   className?: string;
 };
 
@@ -22,13 +22,13 @@ type Props = {
  * Barre de progression d'une opération. Honnête : la part « faite » ne compte que des étapes terminées ; l'étape en cours est un segment qui pulse (on ne sait pas
  * combien elle durera) ; sans étapes connues (ou suivi perdu), la barre est indéterminée. Jamais un pourcentage inventé.
  */
-export function OperationProgress({ kind, snap, lost = false, unreachable = false, core = false, unitText, className = "" }: Props) {
+export function OperationProgress({ kind, snap, lost = false, unreachable = false, core = false, unitTemplate, className = "" }: Props) {
   const p = useProgressText();
   const stepText = useStepText();
   const v = viewOf(snap);
   const known = !lost && !unreachable && v.percent !== null;
   const step = stepText(kind, v.stepId, core) ?? (v.preparing ? p("preparing") : p("starting"));
-  const unit = v.unit ? (unitText ? unitText(v.unit) : v.unit.name ? p("unitNamed", { index: v.unit.index, total: v.unit.total, name: v.unit.name }) : p("unit", { index: v.unit.index, total: v.unit.total })) : null;
+  const unit = v.unit ? (unitTemplate ? unitTemplate.replace("{index}", String(v.unit.index)).replace("{total}", String(v.unit.total)) : v.unit.name ? p("unitNamed", { index: v.unit.index, total: v.unit.total, name: v.unit.name }) : p("unit", { index: v.unit.index, total: v.unit.total })) : null;
   const count = !v.unit && v.stepNumber > 0 && v.stepTotal > 1 ? p("stepCount", { n: v.stepNumber, total: v.stepTotal }) : null;
   // Largeur d'une étape dans la barre (le segment qui pulse), au moins 6 % pour rester visible.
   const unitsTotal = v.unit?.total ?? 1;

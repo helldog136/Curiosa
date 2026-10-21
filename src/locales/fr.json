@@ -2145,6 +2145,7 @@
   "backup.error.busy": "Une sauvegarde est déjà en cours. Patientez un instant, puis réessayez.",
   "error.badLink": "Écrivez une adresse complète, par exemple https://www.monsite.be/contact, ou le chemin d'une page de votre site, par exemple /contact.",
   "error.badImage": "Choisissez une image envoyée depuis cette page, ou écrivez une adresse complète qui commence par https://, par exemple https://www.monsite.be/image.png.",
+  "progress.uploadFailed": "L'envoi n'a pas marché. Vérifiez votre connexion, puis choisissez le fichier de nouveau.",
   "theme.custom": "Personnalisé",
   "theme.rosaliax": "Rosaliax",
   "theme.arcade": "Arcade",

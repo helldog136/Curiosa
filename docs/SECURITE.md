@@ -197,3 +197,10 @@ node scripts/auth-recover.mjs reset-2fa vous@exemple.org        # retire la doub
 ```
 
 Elle ne touche **jamais** au compte d'une autre personne que le propriétaire (les autres comptes se gèrent depuis *Utilisateurs*), lit le même `.env` que le service, ne demande aucune installation de plus, et note chaque action dans le journal d'audit (acteur « ssh »).
+
+## Suivi des opérations longues (0.2.1)
+
+- La route `GET /api/admin/operations/<id>` est en lecture seule. Le suivi d'une personne n'est lisible que par elle ou par un propriétaire ; un suivi inconnu, oublié ou interdit donne la même réponse (404), pour ne rien révéler. `core-update` (mise à jour du site) est réservé au propriétaire.
+- Le suivi ne contient jamais de secret, de jeton ni de chemin disque : étapes nommées, numéros, nom lisible d'un module, texte d'erreur nettoyé (`safeText`). Il est en mémoire du processus, borné (40 opérations, 10 minutes après la fin, 2 heures au plus pour une opération « en cours ») et sans minuteur de fond.
+- Les droits des actions ne changent pas : le contrôle (`adminCtx("owner")`, `guardOwner`…) passe AVANT le suivi. Un second lancement avec la même clé rejoint l'opération en cours ; la clé d'une sauvegarde contient une empreinte salée du mot de passe, pour que personne ne reçoive le fichier chiffré d'un autre.
+- L'identifiant d'une opération est choisi par le navigateur, mais le serveur le valide (16 à 64 caractères sûrs), refuse un identifiant déjà pris par quelqu'un d'autre et lie toujours l'opération à la personne authentifiée.

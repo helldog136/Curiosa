@@ -2145,6 +2145,7 @@
   "backup.error.busy": "A backup is already running. Wait a moment, then try again.",
   "error.badLink": "Write a full address, for example https://www.mysite.com/contact, or the path of a page on your site, for example /contact.",
   "error.badImage": "Pick an image uploaded from this page, or write a full address that starts with https://, for example https://www.mysite.com/image.png.",
+  "progress.uploadFailed": "The upload did not work. Check your connection, then choose the file again.",
   "theme.custom": "Custom",
   "theme.rosaliax": "Rosaliax",
   "theme.arcade": "Arcade",

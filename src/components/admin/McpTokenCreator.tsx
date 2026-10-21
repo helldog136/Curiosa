@@ -6,6 +6,7 @@ import { Callout } from "./Page";
 import { CopyBlock } from "./CopyBlock";
 import { McpConnectGuide, type GuideTexts } from "./McpConnectGuide";
 import { ui } from "./ui";
+import { PendingButton } from "./PendingButton";
 
 export type CreatorLabels = {
   name: string; nameHelp: string; submit: string; afterCreate: string;
@@ -141,7 +142,7 @@ export function McpTokenCreator({ action, baseUrl, labels, guide, advanced, defa
           </fieldset>
         )}
         {state?.error && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm text-red-700">{state.error}</p>}
-        <button type="submit" disabled={pending} className={ui.btnPrimary}>{labels.submit}</button>
+        <PendingButton variant="primary" pending={pending}>{labels.submit}</PendingButton>
       </form>
       <Callout tone="info">{labels.afterCreate}</Callout>
     </div>
