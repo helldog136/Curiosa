@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useRef, useState, type FormEvent } from "react";
+import { useActionState, useEffect, useRef, useState, type FormEvent } from "react";
+import { clearSecrets, submitKeepingValues } from "./keepValues";
 import { useFieldErrorsDom } from "./FieldErrors";
 import { PendingButton } from "./PendingButton";
 import { useRouter } from "next/navigation";
@@ -9,6 +10,7 @@ import { ImageField } from "./ImageField";
 import { FileField } from "./FileField";
 import { ui } from "./ui";
 import { Checkbox } from "./Field";
+import { useCropLabels } from "./CropLabels";
 import { askConfirm } from "./confirmDialog";
 import { runModuleAdminAction } from "@/app/admin/(panel)/instances/module-actions";
 import { runEntryPanelAction } from "@/app/admin/(panel)/entries/panel-actions";
@@ -55,6 +57,7 @@ function Field({ f }: { f: AdminField }) {
  */
 function FileBlockForm({ instanceId, block, labels }: { instanceId: string; block: FormBlock; labels: FileLabels }) {
   const router = useRouter();
+  const c = useCropLabels();
   const [state, setState] = useState<ActionState>(null);
   const [pending, setPending] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
@@ -104,7 +107,7 @@ function FileBlockForm({ instanceId, block, labels }: { instanceId: string; bloc
       {state?.ok && <p role="status" className="rounded-lg border border-emerald-500/50 bg-emerald-500/10 p-3 text-sm text-emerald-700">{state.ok}</p>}
       <div className="flex items-center gap-3">
         <PendingButton pending={pending} variant="primary">{block.submitLabel}</PendingButton>
-        {block.cancelHref && <a href={block.cancelHref} className={ui.btn}>↩</a>}
+        {block.cancelHref && <a href={block.cancelHref} className={ui.btn} aria-label={c("cancel")}>↩</a>}
       </div>
     </form>
   );
@@ -119,9 +122,15 @@ export function AdminBlockForm({ instanceId, block, entry, fileLabels }: { insta
 function ActionBlockForm({ instanceId, block, entry }: { instanceId: string; block: FormBlock; entry?: EntryScope }) {
   const [state, action, pending] = useActionState(runner(instanceId, block.action, entry), null);
   const formRef = useRef<HTMLFormElement>(null);
+  const c = useCropLabels();
   useFieldErrorsDom(formRef, state?.errors, state);
+  // Une erreur garde ce qui a été tapé (pour le corriger). Un formulaire qui CRÉE quelque chose se vide après un succès ; un formulaire de modification (lien « annuler ») garde ses valeurs.
+  useEffect(() => {
+    if (!state?.ok || !formRef.current) return;
+    if (block.cancelHref) clearSecrets(formRef.current); else formRef.current.reset();
+  }, [state, block.cancelHref]);
   return (
-    <form ref={formRef} action={action} className={`${ui.card} space-y-4`}>
+    <form ref={formRef} onSubmit={submitKeepingValues(action)} className={`${ui.card} space-y-4`}>
       {block.title && <h3 className="text-lg font-semibold">{block.title}</h3>}
       {block.fields.filter((f) => f.kind === "hidden").map((f) => <Field key={f.name} f={f} />)}
       <div className="grid gap-4 sm:grid-cols-2">
@@ -133,7 +142,7 @@ function ActionBlockForm({ instanceId, block, entry }: { instanceId: string; blo
       {state?.ok && <p role="status" className="rounded-lg border border-emerald-500/50 bg-emerald-500/10 p-3 text-sm text-emerald-700">{state.ok}</p>}
       <div className="flex items-center gap-3">
         <PendingButton pending={pending} variant="primary">{block.submitLabel}</PendingButton>
-        {block.cancelHref && <a href={block.cancelHref} className={ui.btn}>↩</a>}
+        {block.cancelHref && <a href={block.cancelHref} className={ui.btn} aria-label={c("cancel")}>↩</a>}
       </div>
     </form>
   );
@@ -145,7 +154,7 @@ export function RowActionButton({ instanceId, label, action, href, id, confirm: 
   const [state, formAction, pending] = useActionState(runner(instanceId, action ?? "", entry), null);
   if (href) return <a href={href} className={ui.btn}>{label}</a>;
   return (
-    <form action={formAction}>
+    <form onSubmit={submitKeepingValues(formAction)}>
       <input type="hidden" name="id" value={id ?? ""} />
       <PendingButton pending={pending} variant={danger ? "danger" : "btn"}
         onClick={async (e) => {

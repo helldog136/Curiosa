@@ -7,6 +7,7 @@ import { CopyBlock } from "./CopyBlock";
 import { McpConnectGuide, type GuideTexts } from "./McpConnectGuide";
 import { ui } from "./ui";
 import { PendingButton } from "./PendingButton";
+import { submitKeepingValues } from "./keepValues";
 
 export type CreatorLabels = {
   name: string; nameHelp: string; submit: string; afterCreate: string;
@@ -62,7 +63,7 @@ export function McpTokenCreator({ action, baseUrl, labels, guide, advanced, defa
         </div>
       )}
       {/* `key` : le formulaire est vidé après chaque création. */}
-      <form action={run} key={created?.token ?? "new"} className="space-y-4">
+      <form onSubmit={submitKeepingValues(run)} key={created?.token ?? "new"} className="space-y-4">
         <div>
           <label className={ui.label} htmlFor="mcp-profile">{labels.profile.label}</label>
           <select id="mcp-profile" name="profile" value={profile} onChange={(e) => setProfile(e.target.value === "maintenance" ? "maintenance" : "standard")} className={ui.input}>

@@ -220,7 +220,7 @@ export async function Blocks({ blocks, locale, adminInstanceId: panelInstanceId,
         break;
       case "table":
         out.push(
-          <div key={i} className="overflow-x-auto">
+          <div key={i} className="relative overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead className="text-muted">
                 <tr>

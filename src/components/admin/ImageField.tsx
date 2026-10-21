@@ -51,7 +51,7 @@ export function ImageField({ name, label, defaultValue, uploadLabel, kind = "ima
       <div className="flex flex-wrap items-center gap-3">
         {/* La valeur envoyée (champ caché) = adresse + cadrage ; la personne ne voit et ne modifie que l'adresse. */}
         <input type="hidden" name={name} value={value} />
-        <input id={name} required={required} value={ref.path} onChange={(e) => change(e.target.value)} placeholder={kind === "video" ? "/uploads/…" : "https://… ou /uploads/…"} className={`${ui.input} min-w-0 flex-1`} />
+        <input id={name} required={required} value={ref.path} onChange={(e) => change(e.target.value)} placeholder={kind === "video" ? "/uploads/…" : c("urlPlaceholder")} className={`${ui.input} min-w-0 flex-1`} />
         <label className={`${ui.btn} min-h-11 ${busy ? "pointer-events-none cursor-progress" : "cursor-pointer"}`} aria-busy={busy || undefined}>
           {busy ? <><Spinner />{p("sending")}</> : uploadLabel}
           <input type="file" disabled={busy} accept={kind === "video" ? "video/mp4,video/webm" : `image/png,image/jpeg,image/webp,image/gif${svg ? ",image/svg+xml" : ""}`} className="hidden" onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} />

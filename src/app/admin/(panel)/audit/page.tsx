@@ -26,7 +26,7 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
       ) : (
         <>
           <p className="text-sm text-muted">{t("audit.count", { n: total })}</p>
-          <div className="overflow-x-auto">
+          <div className="relative overflow-x-auto">
             <table className="w-full">
               <thead><tr><th className={ui.th}>{t("audit.when")}</th><th className={ui.th}>{t("audit.who")}</th><th className={ui.th}>{t("audit.what")}</th><th className={ui.th}>{t("audit.target")}</th></tr></thead>
               <tbody>
@@ -50,7 +50,7 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
         </>
       )}
       {pages > 1 && (
-        <nav className="flex items-center gap-3 text-sm" aria-label="Pagination">
+        <nav className="flex items-center gap-3 text-sm" aria-label={t("audit.pagination")}>
           {page > 1 && <a className={ui.btn} href={href(page - 1)}>←</a>}
           <span>{page} / {pages}</span>
           {page < pages && <a className={ui.btn} href={href(page + 1)}>→</a>}

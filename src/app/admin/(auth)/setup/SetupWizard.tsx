@@ -1,11 +1,12 @@
 "use client";
 
-import { useActionState, useRef, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { ui } from "@/components/admin/ui";
 import { RestorePanel } from "@/components/admin/RestorePanel";
 import { completeSetup } from "./actions";
 import { progressPercent, stepNumber } from "./progress";
 import { PendingButton } from "@/components/admin/PendingButton";
+import { clearSecrets, submitKeepingValues } from "@/components/admin/keepValues";
 
 type Props = {
   strings: Record<string, Record<string, string>>;
@@ -28,6 +29,8 @@ export function SetupWizard({ strings, uiLocales, locales, presets, needsToken, 
   const [linkRows, setLinkRows] = useState([0]);
   const formRef = useRef<HTMLFormElement>(null);
   const [state, action, pending] = useActionState(completeSetup, null);
+  // Une erreur garde tout ce qui a été saisi, sauf le mot de passe et le code d'installation (champs secrets).
+  useEffect(() => { if (state) clearSecrets(formRef.current); }, [state]);
 
   const ui18n = strings[uiLocales.includes(lang) ? lang : "en"] ?? {};
   // L'assistant parle à la personne par son prénom dès qu'elle l'a donné.
@@ -74,7 +77,7 @@ export function SetupWizard({ strings, uiLocales, locales, presets, needsToken, 
         <span className="text-sm text-muted" data-testid="setup-step">{t("setup.step")} {stepNumber(step)}</span>
       </div>
       <div className={`${ui.card} !p-6 sm:!p-9`}>
-      <form ref={formRef} action={action} className="space-y-6">
+      <form ref={formRef} onSubmit={submitKeepingValues(action)} className="space-y-6">
         <input type="hidden" name="uiLang" value={lang} />
 
         <div {...section("welcome")}>

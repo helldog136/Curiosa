@@ -32,7 +32,7 @@ const components: Components = {
     <pre className="mt-4 overflow-x-auto rounded-xl border border-line bg-surface p-4 text-sm leading-6 [&>code]:bg-transparent [&>code]:p-0 [&>code]:text-[1em]">{children}</pre>
   ),
   // Tableaux (GFM) : défilement horizontal sur petit écran, lignes fines.
-  table: ({ children }) => <div className="mt-4 overflow-x-auto rounded-xl border border-line"><table className="w-full min-w-max text-left text-sm">{children}</table></div>,
+  table: ({ children }) => <div className="relative mt-4 overflow-x-auto rounded-xl border border-line"><table className="w-full min-w-max text-left text-sm">{children}</table></div>,
   thead: ({ children }) => <thead className="bg-surface text-muted">{children}</thead>,
   th: ({ children }) => <th className="px-3 py-2 font-medium">{children}</th>,
   td: ({ children }) => <td className="border-t border-line px-3 py-2 align-top">{children}</td>,

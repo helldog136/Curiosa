@@ -39,7 +39,7 @@ export default async function RedirectsPage() {
           <p className="text-muted">{t("redirects.examples")}</p>
         </div>
       ) : (
-        <table className="w-full">
+        <div className="relative overflow-x-auto"><table className="w-full">
           <thead><tr><th className={ui.th}>{t("redirects.path")}</th><th className={ui.th}>{t("redirects.target")}</th>{advanced && <th className={ui.th}>{t("redirects.hits")}</th>}<th className={ui.th} /></tr></thead>
           <tbody>
             {redirects.map((r) => (
@@ -57,7 +57,7 @@ export default async function RedirectsPage() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       )}
 
       <section className={`${ui.card} space-y-4`}>

@@ -107,7 +107,7 @@ export const settingsDefaults = (manifest) =>
 /**
  * SRP (une responsabilité par module, un propriétaire par donnée ou capacité) — vérification PURE sur un ensemble de manifestes (objets module.json
  * déjà lus, ou passés par parseManifest). Détecte les violations évidentes, sans rien lire ailleurs :
- *   service  un même service `offers` par plusieurs modules, sauf substitution voulue (`opts.substitutes` : liste explicite des services dont
+ *   service  un même service `offers` par plusieurs modules, sauf offre `each` (plusieurs fournisseurs voulus) ou substitution voulue (`opts.substitutes` : liste explicite des services dont
  *            plusieurs fournisseurs sont voulus, le mécanisme maître/répliques du cœur s'en charge) ;
  *   mcp      une action MCP du même nom (`mcp[].name`) dans deux modules (sauf `opts.mcp`, liste de noms voulus) ;
  *   secret   un réglage secret de même clé (`type: "secret"`) dans deux modules qui ne sont PAS fournisseur/consommateur l'un de l'autre
@@ -121,6 +121,8 @@ export function findSrpViolations(manifests, opts = {}) {
   const allowedSecrets = new Set(opts.secrets ?? []);
   const list = (manifests ?? []).filter((m) => m && typeof m.id === "string");
   const offered = (m) => new Set((m.offers ?? []).map((o) => o.service));
+  // un service offert « each » est voulu à plusieurs fournisseurs (le cœur l'appelle chez chacun) : pas de propriétaire unique à exiger
+  const ownedOffer = (m) => new Set((m.offers ?? []).filter((o) => !o.each).map((o) => o.service));
   const needed = (m) => new Set((m.requires ?? []).map((r) => r.service));
   const related = (a, b) => [...needed(a)].some((s) => offered(b).has(s)) || [...needed(b)].some((s) => offered(a).has(s));
   const group = (pick) => {
@@ -129,7 +131,7 @@ export function findSrpViolations(manifests, opts = {}) {
     return by;
   };
   const out = [];
-  for (const [service, mods] of group((m) => [...offered(m)])) {
+  for (const [service, mods] of group((m) => [...ownedOffer(m)])) {
     if (mods.length > 1 && !substitutes.has(service)) out.push({ rule: "service", key: service, modules: mods.map((m) => m.id).sort(), message: `le service « ${service} » est offert par plusieurs modules (${mods.map((m) => m.id).sort().join(", ")}) : un seul propriétaire, ou déclarez la substitution voulue` });
   }
   for (const [name, mods] of group((m) => (m.mcp ?? []).map((a) => a.name))) {
