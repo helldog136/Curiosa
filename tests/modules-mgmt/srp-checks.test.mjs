@@ -44,3 +44,10 @@ test("SRP : le même secret dans deux modules sans lien de service est signalé 
   const three = [...free, m("c", { settings: [secret(key)] , requires: [{ service: "s.x" }] }), m("d", { offers: [{ service: "s.x" }], settings: [secret(key)] })];
   assert.deepEqual(findSrpViolations(three)[0].modules, ["a", "b", "c", "d"], "c et d sont liés entre eux, mais pas à a ni à b");
 });
+
+test("SRP : un service offert « each » par plusieurs modules est voulu (le cœur l'appelle chez chacun) ; mélangé avec une offre sans « each », il est signalé", () => {
+  const each = (id) => m(id, { offers: [{ service: "privacy.subject", each: true }] });
+  assert.deepEqual(findSrpViolations([each("a"), each("b"), each("c")]), []);
+  const mixed = [each("a"), m("b", { offers: [{ service: "privacy.subject" }] }), m("c", { offers: [{ service: "privacy.subject" }] })];
+  assert.deepEqual(findSrpViolations(mixed).map((x) => [x.key, x.modules]), [["privacy.subject", ["b", "c"]]]);
+});
