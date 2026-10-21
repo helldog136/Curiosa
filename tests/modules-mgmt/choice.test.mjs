@@ -385,7 +385,7 @@ test("enregistrement : id revérifié ; unique option non écrite ; champ masqu�
 
   assert.ok((await saveInstanceSettings(null, form({ s__cat: "c2", s__cat__choice: "1" }))).ok);
   assert.equal(await stored("cat"), "c2");
-  assert.equal((await saveInstanceSettings(null, form({ s__cat: "forged", s__cat__choice: "1" }))).error !== undefined, true, "un id forgé est refusé");
+  assert.ok((await saveInstanceSettings(null, form({ s__cat: "forged", s__cat__choice: "1" }))).errors?.s__cat, "un id forgé est refusé (message sous le champ)");
   assert.equal(await stored("cat"), "c2");
   assert.ok((await saveInstanceSettings(null, form({ s__cat: "zzz" }))).ok, "champ non montré (pas de marque __choice) : gardé");
   assert.equal(await stored("cat"), "c2");
@@ -393,7 +393,7 @@ test("enregistrement : id revérifié ; unique option non écrite ; champ masqu�
   globalThis.__cats.hang = true;
   const t0 = Date.now();
   const r = await quiet(() => saveInstanceSettings(null, form({ s__cat: "c1", s__cat__choice: "1" })));
-  assert.match(r.error, /vérifier/);
+  assert.match(r.errors?.s__cat ?? "", /vérifier/);
   assert.ok(Date.now() - t0 < 9000, "refus dans la borne de 5 s");
   assert.equal(await stored("cat"), "c2", "rien n'a été écrit");
   assert.ok((await saveInstanceSettings(null, form({ s__cat: "c2", s__cat__choice: "1" }))).ok, "valeur inchangée : gardée sans interroger le fournisseur");

@@ -245,3 +245,14 @@ Toute action de l'administration qui prend du temps montre qu'elle travaille ; c
 **Boutons** (`src/components/admin/`) : `PendingButton` (bouton d'un formulaire, `useFormStatus`), `AnimatedActionButton` (action lancée par un clic, avec `track` pour la barre), `ConfirmButton`, `ActionForm` (`pendingLabel`, `track`) : inactif dès le clic, état « en cours » après 120 ms (rouet, `aria-busy`, `aria-live="polite"`), largeur stable, cible de 44 px, « Terminé » à la fin, immobile sous `prefers-reduced-motion`. Les textes sont `progress.*` (français et anglais), donnés par `ProgressLabelsProvider`.
 
 **Erreurs par champ** : une action renvoie `errors: { champ: "message" }` (clés `items.2.href` pour une ligne d'un éditeur répétable). `FieldErrors.tsx` place chaque message sous son champ (contour rouge, `aria-invalid`, `aria-describedby`), défile et donne le focus au premier, et l'efface dès que le champ change. `error` reste le bandeau des erreurs qui ne concernent aucun champ. `normalizeLinkInput` (`src/core/url.ts`) comprend les adresses écrites à la main avant de les valider.
+
+## Pages de module en onglets : une fonctionnalité du cœur (0.2.2)
+
+Ce n'est pas un service : aucun module ne l'appelle. La page d'une instance (`InstanceView.tsx`, en page entière ou dans la fenêtre d'Extensions) est rangée en onglets
+**Utiliser · Réglages · [onglets du module] · Sources · Général**, pour tous les modules. Le classement est une logique pure (`src/core/modules/tabs.ts` : `planTabs`,
+`settingTab`, `visibleTabs`, `initialTab`, `tabIssues`) partagée par le manifeste (`tabs`, `settings[].tab`, validés par `manifest.ts`), la page et l'action
+`saveInstanceSettings` (champ `__tab` : n'écrit que les réglages de cet onglet). Côté navigateur, `PageTabs.tsx` (motif WAI-ARIA, `?tab=` dans l'adresse, rangée collée
+et défilante sur mobile) lit l'état des formulaires (`data-dirty` posé par `ActionForm`, `aria-invalid` posé par `FieldErrors`) pour le point « modifié » / « erreur »
+et la bascule vers un onglet caché en erreur ; `reveal.ts` permet à un lien (« Il reste à renseigner ») d'ouvrir l'onglet d'un champ. La barre « Enregistrer »
+collante reste celle d'`ActionForm` : une seule pour toute la page. Droits inchangés : un rôle qui n'a que `<module>:open` ne voit que l'onglet Utiliser.
+Voir [MODULES.md](MODULES.md) (« Onglets de la page d'admin »).

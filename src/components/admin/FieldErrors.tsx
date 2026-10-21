@@ -45,6 +45,9 @@ export function FieldErrorText({ id, message }: { id: string; message: string | 
 export function focusFirstError(form: HTMLElement | null): void {
   const first = form?.querySelector<HTMLElement>('[aria-invalid="true"]');
   if (!first) return;
+  // Dans une zone repliée (options avancées…) : on l'ouvre, sinon le champ ne peut ni s'afficher ni recevoir le focus.
+  const fold = first.closest("details");
+  if (fold && !fold.open) fold.open = true;
   const calm = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
   first.scrollIntoView({ block: "center", behavior: calm ? "auto" : "smooth" });
   first.focus({ preventScroll: true });
@@ -58,7 +61,9 @@ export function useFieldErrorsDom(form: RefObject<HTMLElement | null>, errors: F
     const undo: (() => void)[] = [];
     for (const [key, message] of Object.entries(errors)) {
       const found = (root as HTMLFormElement).elements?.namedItem?.(key) ?? root.querySelector(`[name="${CSS.escape(key)}"]`);
-      const el = found instanceof RadioNodeList ? (found[0] as HTMLElement | undefined) : (found as HTMLElement | null);
+      let el = found instanceof RadioNodeList ? (found[0] as HTMLElement | undefined) : (found as HTMLElement | null);
+      // Valeur portée par un champ caché (image, choix parmi…) : le message va sous la saisie visible du même réglage.
+      if (el && (el as HTMLInputElement).type === "hidden") el = el.closest("[data-setting], [data-choice]")?.querySelector<HTMLElement>('input:not([type="hidden"]), textarea, select') ?? null;
       if (!el || (el as HTMLInputElement).type === "hidden") continue;
       const id = `err-${key.replace(/[^A-Za-z0-9_-]/g, "_")}`;
       const p = document.createElement("p");

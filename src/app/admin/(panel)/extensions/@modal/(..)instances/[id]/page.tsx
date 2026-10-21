@@ -11,5 +11,5 @@ export default async function InstanceSettingsModal({ params, searchParams }: { 
   const { t } = await adminCtx("admin");
   // Une action qui retire cette instance se rend de nouveau ici avant de rediriger : pas de fenêtre (et surtout pas de 404) pour une instance qui n'existe plus.
   if (!(await getInstanceById(id))) return null;
-  return <RouteModal testid="settings-modal" label={t("settings.modalLabel")} closeLabel={t("modal.close")}><InstanceView id={id} query={await searchParams} /></RouteModal>;
+  return <RouteModal testid="settings-modal" label={t("settings.modalLabel")} closeLabel={t("modal.close")}><InstanceView id={id} query={await searchParams} inModal /></RouteModal>;
 }

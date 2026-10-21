@@ -22,7 +22,7 @@ type Site = { name: string; tagline: string };
  * quand le site n'a qu'une langue, sinon une ligne par langue) et groupes facultatifs. Composant serveur : les champs sont rendus
  * ici, seuls les groupes facultatifs (OptionalGroup) ont besoin du navigateur.
  */
-export function ModuleSettings({ t, locale, defaultLocale, locales, fields, allFields, groups, stored, siteByLocale, theme, missing, instanceId = "", choices = {}, advanced = false }: {
+export function ModuleSettings({ t, locale, defaultLocale, locales, fields, allFields, groups, stored, siteByLocale, theme, missing, instanceId = "", choices = {}, advanced = false, tabbed = false }: {
   t: Translator;
   /** Langue de l'admin (pour les libellés du manifeste). */
   locale: string;
@@ -42,6 +42,8 @@ export function ModuleSettings({ t, locale, defaultLocale, locales, fields, allF
   instanceId?: string;
   choices?: Record<string, ChoiceView>;
   advanced?: boolean;
+  /** Dans un onglet (page en onglets, 0.2.2) : un bloc seul n'a pas besoin de titre visible. */
+  tabbed?: boolean;
 }) {
   const L = (v: Parameters<typeof localized>[0]) => localized(v, locale, defaultLocale);
   const site = (l: string): Site => siteByLocale[l] ?? siteByLocale[defaultLocale] ?? { name: "", tagline: "" };
@@ -184,18 +186,39 @@ export function ModuleSettings({ t, locale, defaultLocale, locales, fields, allF
   const shown = fields.filter((f) => !(f.type === "choice" && choices[f.key]?.mode === "only" && !advanced));
   const slots = layoutFields(shown, groups);
   const inAppearance = (s: Slot) => (s.kind === "field" ? s.field : s.fields[0])?.group === "appearance";
+  // Réglages techniques (mode avancé seulement) : à part, repliés, en bas — ils ne gênent pas les réglages de tous les jours.
+  const isAdvanced = (s: Slot) => s.kind === "field" && s.field.advanced === true;
   const sections = [
-    { id: "options", title: t("instances.s.options"), slots: slots.filter((s) => !inAppearance(s)) },
-    { id: "appearance", title: t("instances.s.appearance"), slots: slots.filter(inAppearance) },
+    { id: "options", title: t("instances.s.options"), slots: slots.filter((s) => !inAppearance(s) && !isAdvanced(s)) },
+    { id: "appearance", title: t("instances.s.appearance"), slots: slots.filter((s) => inAppearance(s) && !isAdvanced(s)) },
   ];
+  const technical = slots.filter(isAdvanced);
+  const hasEveryday = sections.some((s) => s.slots.length > 0);
+  // Un seul bloc : pas de titre visible (l'onglet le nomme déjà).
+  const titled = sections.filter((s) => s.slots.length > 0).length + (technical.length > 0 ? 1 : 0) > 1 || !tabbed;
   return (
     <>
       {sections.map((s) => s.slots.length > 0 && (
         <section key={s.id} className="space-y-3" data-section={s.id}>
-          <h2 className="text-lg font-semibold">{s.title}</h2>
+          {titled ? <h2 className="text-lg font-semibold">{s.title}</h2> : <h2 className="sr-only">{s.title}</h2>}
           <div className={`${ui.card} grid grid-cols-1 items-start gap-x-8 gap-y-5 min-[1100px]:grid-cols-2`}>{s.slots.map(slotNode)}</div>
         </section>
       ))}
+      {/* Seuls réglages de l'onglet : affichés tels quels (replier le seul contenu d'un onglet ne servirait à rien). */}
+      {technical.length > 0 && !hasEveryday && (
+        <section className="space-y-3" data-section="advanced">
+          {titled ? <h2 className="text-lg font-semibold">{t("instances.s.advanced")}</h2> : <h2 className="sr-only">{t("instances.s.advanced")}</h2>}
+          <div className={`${ui.card} grid grid-cols-1 items-start gap-x-8 gap-y-5 min-[1100px]:grid-cols-2`}>{technical.map(slotNode)}</div>
+        </section>
+      )}
+      {technical.length > 0 && hasEveryday && (
+        <details className={`${ui.card} group`} data-section="advanced">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 text-lg font-semibold [&::-webkit-details-marker]:hidden">
+            <span aria-hidden className="inline-block text-sm text-muted transition-transform group-open:rotate-90">▶</span>{t("instances.s.advanced")}
+          </summary>
+          <div className="mt-5 grid grid-cols-1 items-start gap-x-8 gap-y-5 min-[1100px]:grid-cols-2">{technical.map(slotNode)}</div>
+        </details>
+      )}
     </>
   );
 }

@@ -7,6 +7,18 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.2.2
+
+### Améliorations
+
+- **La page de chaque module est rangée en onglets.** « Utiliser » s'ouvre en premier avec ce que vous faites souvent, sans faire défiler toute la configuration. Viennent ensuite « Réglages », « Sources » et « Général » ; un onglet vide n'apparaît pas.
+- **Un seul bouton « Enregistrer » pour tous les onglets.** Un point montre l'onglet modifié, rien n'est perdu en changeant d'onglet, et la page vous prévient si vous partez sans enregistrer. Si un champ est à corriger dans un autre onglet, la page y va toute seule.
+- **Retirer ou effacer un module se fait dans « Général », dans une zone sensible à part,** jamais à côté de ce que vous utilisez tous les jours.
+
+### Pour les développeurs
+
+- Pages de module en onglets : un module peut ranger un réglage dans un onglet (`settings[].tab`) et ajouter, renommer ou retirer un onglet (`tabs`) ; sinon le cœur classe tout seul. Ces clés demandent `minCore: "0.2.2"` (un cœur plus ancien les ignore), voir docs/MODULES.md ; nouveau conseil du kit `tabs.reasonable`.
+
 ## 0.2.1
 
 ### Améliorations

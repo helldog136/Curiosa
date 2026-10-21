@@ -7,6 +7,7 @@ import { PLATFORM_PATTERN } from "./platform";
 import { MAX_MODULE_RIGHTS, OPEN, RIGHT_ID_RE } from "../auth/rights";
 import { SERVICE_RE } from "./serviceVersions";
 import { NO_CREATE_REFERS, REFERS_TO } from "./choiceValues";
+import { MAX_TAB_ENTRIES, TAB_ID_RE, TAB_LABEL_MAX, tabIssues } from "./tabs";
 
 const localized = z.union([z.string().max(500), z.record(z.string(), z.string().max(500))]);
 const methodName = z.string().regex(/^[a-zA-Z][a-zA-Z0-9_]{0,40}$/);
@@ -37,6 +38,8 @@ export const settingField = z.object({
   fromText: z.boolean().optional(),
   /** Ce que désigne le réglage (règle de kit) ; un cœur ancien ignore la clé. */
   refersTo: z.enum(REFERS_TO).optional(),
+  /** (0.2.2) Onglet de la page d'admin où s'affiche ce réglage : « settings » (défaut), « sources », « general » ou l'id d'un onglet de `tabs`. Un cœur ancien ignore la clé. */
+  tab: z.string().regex(TAB_ID_RE).optional(),
 }).superRefine((f, ctx) => {
   // Réglage « choix parmi » : une source, ni défaut ni traduction (la valeur est un identifiant), création seulement par le service propriétaire.
   if (f.type === "choice") {
@@ -103,6 +106,12 @@ const content = z.object({
   showInNav: z.boolean().optional(),
 });
 
+/** Nom d'onglet : court (limite dure ; le kit conseille moins), en français ET en anglais de préférence. */
+const tabLabel = z.union([
+  z.string().trim().min(1).max(TAB_LABEL_MAX),
+  z.record(z.string().regex(/^[a-z]{2}(-[A-Za-z]{2,4})?$/), z.string().trim().min(1).max(TAB_LABEL_MAX)).refine((r) => { const n = Object.keys(r).length; return n >= 1 && n <= 12; }, "a tab label needs 1 to 12 languages"),
+]);
+
 export const manifestSchema = z.object({
   apiVersion: z.number().int(),
   id: z.string().regex(/^[a-z][a-z0-9-]{1,39}$/),
@@ -160,6 +169,12 @@ export const manifestSchema = z.object({
     .max(20)
     .default([]),
   settings: z.array(settingField).max(60).default([]),
+  /**
+   * (0.2.2) Onglets de la page d'admin d'une instance (voir core/modules/tabs.ts). Absent : les quatre onglets par défaut (Utiliser · Réglages · Sources · Général).
+   * Une entrée AJOUTE un onglet (`{ id, label }`), RENOMME un onglet par défaut (`{ id: "use", label }`) ou en RETIRE un (`{ id: "use", hidden: true }` : son contenu
+   * rejoint un autre onglet, rien n'est perdu). Un cœur ancien ignore la clé : déclarez `minCore: "0.2.2"`.
+   */
+  tabs: z.array(z.object({ id: z.string().regex(TAB_ID_RE), label: tabLabel.optional(), hidden: z.literal(true).optional() }).strict()).max(MAX_TAB_ENTRIES).optional(),
   /** Réglages facultatifs regroupés derrière un bouton « Ajouter… » (voir `groupIssues` pour les règles). */
   optionalGroups: z
     .array(z.object({
@@ -232,7 +247,9 @@ export const manifestSchema = z.object({
   for (const [i, f] of m.settings.entries()) {
     if (f.type === "choice" && f.source && !required.has(f.source.service)) ctx.addIssue({ code: "custom", path: ["settings", i, "source", "service"], message: `the choice source "${f.source.service}" must be declared in requires` });
   }
+  for (const message of tabIssues(m.tabs, m.settings, m.optionalGroups ?? [])) ctx.addIssue({ code: "custom", path: ["tabs"], message });
   for (const [i, sec] of m.sections.entries()) {
+    for (const [j, o] of (sec.options ?? []).entries()) if (o.tab !== undefined) ctx.addIssue({ code: "custom", path: ["sections", i, "options", j, "tab"], message: "tab is only for instance settings, not for section options" });
     for (const [j, o] of (sec.options ?? []).entries()) if (o.type === "choice") ctx.addIssue({ code: "custom", path: ["sections", i, "options", j, "type"], message: "a choice is only for instance settings, not for section options" });
   }
 });
