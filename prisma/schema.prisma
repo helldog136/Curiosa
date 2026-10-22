@@ -256,9 +256,29 @@ model Redirect {
   entryId   String?
   permanent Boolean  @default(false)
   active    Boolean  @default(true)
+  // Total des passages (tous les jours confondus). Les passages jour par jour sont dans RedirectDay.
   hits      Int      @default(0)
+  // Date de fin (instant exact ; null = sans fin). Une fois passée, la redirection répond 410 avec une page aimable.
+  expiresAt DateTime?
+  // Message de la page « lien terminé » (vide = le message habituel du site).
+  endMessage String  @default("")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  days RedirectDay[]
+}
+
+// Passages par jour d'une redirection (statistiques sans cookie, sans adresse IP, sans provenance : un simple nombre par jour).
+// `day` = jour AAAA-MM-JJ dans le fuseau du site. Gardé 120 jours ; au-delà, la ligne disparaît (le total est dans Redirect.hits).
+model RedirectDay {
+  redirectId String
+  day        String
+  hits       Int      @default(0)
+
+  redirect Redirect @relation(fields: [redirectId], references: [id], onDelete: Cascade)
+
+  @@id([redirectId, day])
+  @@index([day])
 }
 
 // ─── Modules ──────────────────────────────────────────────────────────────

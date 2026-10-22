@@ -9,7 +9,7 @@ export const manifest = () => ({
   id: "full-mod",
   name: { en: "Full module", fr: "Module complet" },
   version: "1.0.0",
-  minCore: "0.1.22",
+  minCore: "0.2.6",
   description: { en: "Collects short messages from visitors and shows them on a page.", fr: "Recueille de courts messages de visiteurs et les affiche sur une page." },
   author: "Test author",
   license: "MIT",
@@ -57,6 +57,7 @@ export default {
     const list = await rows(ctx);
     return {
       title: ctx.setting("title") || ctx.t("title"),
+      scripts: ["ui.js"],
       blocks: [
         { type: "form", action: ctx.instance.key + "/sign", fields: [{ name: "name", label: ctx.t("name"), required: true }, { name: "text", label: ctx.t("text"), kind: "textarea", required: true }], submitLabel: ctx.t("send"), successText: ctx.t("thanks") },
         { type: "html", html: list.map((r) => "<p>" + esc(r.name) + ": " + esc(r.text) + "</p>").join("") || esc(ctx.t("empty")) },
@@ -68,7 +69,7 @@ export default {
   routes: {
     async sign(request, ctx) {
       if (request.method !== "POST") return new Response("Method not allowed", { status: 405 });
-      const ip = request.headers.get("x-forwarded-for") || "local";
+      const ip = ctx.api.visitor.fingerprint(request, "sign");
       const now = Date.now();
       const recent = (hits.get(ctx.instance.key + ip) ?? []).filter((t) => now - t < 3600000);
       recent.push(now);
@@ -128,6 +129,7 @@ export const files = () => ({
   "index.mjs": INDEX,
   "locales/en.json": JSON.stringify({ title: "Messages", empty: "No message yet.", name: "Your name", text: "Your message", send: "Send", thanks: "Thank you!", site: "Website" }, null, 2),
   "locales/fr.json": JSON.stringify({ title: "Messages", empty: "Aucun message pour l'instant.", name: "Votre nom", text: "Votre message", send: "Envoyer", thanks: "Merci !", site: "Site" }, null, 2),
+  "scripts/ui.js": "document.documentElement.dataset.ui = '1';\n",
   "README.md": "# Module complet\n\nRecueille de courts messages de visiteurs et les affiche sur une page. Réglages : le titre de la page, une clé d'accès (facultatif) et l'adresse de votre site (facultatif). Limites : un message de 500 caractères au plus, cinq envois par heure et par visiteur.\n",
 });
 

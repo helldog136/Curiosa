@@ -36,6 +36,10 @@ L'équipe du site, elle, reçoit un cookie de **session** à la connexion à l'a
 - Ne sont pas comptés : les robots, les visiteurs qui envoient « Do Not Track » ou « Global Privacy Control », et l'équipe connectée à l'admin.
 - Elles se coupent dans Réglages → Confidentialité.
 
+## Les liens courts
+
+Un lien court (`/twitch`) ne dépose aucun cookie. Chaque passage ajoute 1 au compteur du lien pour le jour en cours (heure du site) et à son total : rien d'autre n'est gardé, ni adresse IP, ni navigateur, ni provenance, ni identifiant de visiteur. Les robots, les aperçus de messagerie et les personnes connectées à l'administration ne sont pas comptés. Le détail par jour est gardé 120 jours. Détails : [PLATFORM.md](PLATFORM.md), « Liens courts ».
+
 ## Les robots IA et le fichier llms.txt
 
 - Les **robots de réponse** des assistants IA (ceux qui lisent une page pour répondre à une question) sont autorisés par défaut ; les robots d'**entraînement** sont bloqués par défaut. Les deux se règlent dans Réglages › Confidentialité (voir [GEO.md](GEO.md)).

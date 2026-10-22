@@ -12,6 +12,7 @@ const API_USE = [
   { permission: "storage", re: /\bapi\s*\??\.\s*store\b|\{[^}]*\bstore\b[^}]*\}\s*=\s*[\w.]*\bapi\b/, label: "le stockage (ctx.api.store)" },
   { permission: "mail", re: /\bapi\s*\??\.\s*mail\b|\{[^}]*\bmail\b[^}]*\}\s*=\s*[\w.]*\bapi\b/, label: "l'envoi d'e-mails (ctx.api.mail)" },
   { permission: "rawg", re: /\bapi\s*\??\.\s*rawg\b|\{[^}]*\brawg\b[^}]*\}\s*=\s*[\w.]*\bapi\b/, label: "les jaquettes de jeux (ctx.api.rawg)" },
+  { permission: "privacy", re: /\bapi\s*\??\.\s*privacy\b|\{[^}]*\bprivacy\b[^}]*\}\s*=\s*[\w.]*\bapi\b/, label: "les déclarations de vie privée des modules (ctx.api.privacy)" },
   { permission: "topics", re: /\bapi\s*\??\.\s*topics\b|\{[^}]*\btopics\b[^}]*\}\s*=\s*[\w.]*\bapi\b/, label: "les sujets d'échange (ctx.api.topics)" },
 ];
 
@@ -51,7 +52,7 @@ const requirements = [
   {
     id: "def.matches", level: "mandatory", group: "code",
     title: "Ce que module.json annonce est ce que le code fait",
-    what: "Chaque section, section d'éditeur d'entrée, action MCP, service offert, sujet partagé, page et overlay déclarés existent dans le code — et inversement. Les emplacements (slots) ont un nom connu, les formulaires pointent vers une route ou une action qui existe (dans une section d'éditeur : une action de cette section), et les services ou sujets appelés sont déclarés.",
+    what: "Chaque section, section d'éditeur d'entrée, action MCP, service offert, sujet partagé, page et overlay déclarés existent dans le code — et inversement. Les emplacements (slots) ont un nom connu, les formulaires pointent vers une route ou une action qui existe (une action d'administration peut être une fonction OU un objet « { right, run } » ; dans une section d'éditeur : une action de cette section), et les services ou sujets appelés sont déclarés.",
     why: "Le cœur ne connaît le module que par son manifeste. Une section annoncée mais absente s'affiche vide ; un code jamais annoncé n'est jamais appelé ; un service non déclaré est refusé à l'appel.",
     fix: "Ajoutez ce qui manque d'un côté ou de l'autre : le message dit si c'est le manifeste (module.json) ou le code (index.mjs) qui est en retard.",
     async run(m) {
@@ -96,7 +97,7 @@ const requirements = [
         const key = `${f.admin ? "a" : "p"}:${f.action}`;
         if (seen.has(key) || !f.action) continue;
         seen.add(key);
-        if (f.admin) { if (!FN(d.adminActions?.[f.action])) out.push(`le panneau d'administration a un formulaire ou un bouton vers l'action « ${f.action} » qui n'existe pas (adminActions)`); }
+        if (f.admin) { if (!(FN(d.adminActions?.[f.action]) || FN(d.adminActions?.[f.action]?.run))) /* forme { right, run } comprise (cœur 0.2.0) */ out.push(`le panneau d'administration a un formulaire ou un bouton vers l'action « ${f.action} » qui n'existe pas (adminActions)`); }
         else {
           const route = f.action.split(/[?#]/)[0].split("/").filter(Boolean).pop(); // « <clé d'instance>/<route> »
           if (route && !FN(d.routes?.[route])) out.push(`un formulaire public envoie vers la route « ${route} » qui n'existe pas (routes)`);

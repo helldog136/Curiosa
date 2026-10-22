@@ -2,6 +2,7 @@ import type { McpTool, McpToolProvider } from "@/core/services/mcp/types";
 import { McpToolError, validateArgs } from "@/core/services/mcp/validate";
 import { callLevel3, runLevel2, type Level2Tool } from "./actions";
 import { auditTrail, diagnose, health, modules, status, updates } from "./inspect";
+import { contentCheckView } from "./content/service";
 import { legacyReportForAssistant } from "@/core/modules/legacyReport";
 import { redactDeep } from "./redact";
 import { getRequest, type Level3Action } from "./requests";
@@ -27,7 +28,8 @@ type Def = {
   run: (args: Record<string, unknown>, actor: { name: string; tokenId?: string }) => Promise<unknown>;
 };
 
-const level2 = (name: Level2Tool): Def["run"] => (args, actor) => runLevel2(name, validateArgs(name === "module_restart" ? INSTANCE_ARG : name === "module_reinstall" ? MODULE_ARG : NONE, args), actor);
+const CONTINUE_ARG = { type: "object", properties: { continue: { type: "boolean", description: "true: go on with the check that is already started (visits the next outside links). Default false: start a new check." } } } as const;
+const level2 = (name: Level2Tool): Def["run"] => (args, actor) => runLevel2(name, validateArgs(name === "module_restart" ? INSTANCE_ARG : name === "module_reinstall" ? MODULE_ARG : name === "content_check_run" ? CONTINUE_ARG : NONE, args), actor);
 const INSTANCE_ARG = { type: "object", properties: { instance: { type: "string", maxLength: 64, description: "Instance key, as listed by maintenance_modules." } }, required: ["instance"] } as const;
 const UNINSTALL_ARG = {
   type: "object",
@@ -58,11 +60,13 @@ const DEFS: Def[] = [
     },
   },
   { name: "legacy", level: 1, title: "Data upgrade report", description: "What is left to upgrade after an update from an earlier version of the site: old module rows, switched-off items, instances whose data is behind or set aside, takeovers not done, hidden settings still filled in, unknown settings. Read-only; counts and names only, never a setting value.", input: NONE, run: () => legacyReportForAssistant() },
+  { name: "content_check", level: 1, title: "Content check result", description: "The result of the last check of the site's content (images without text, titles, descriptions for search engines, missing translations, menu entries and links that lead nowhere, outside links). READ-ONLY: it shows the last result and contacts no site. Each remark has an importance (important / advised / info), a short sentence, why it matters and, where there is one, the admin screen that fixes it. Never a score.", input: NONE, run: () => contentCheckView() },
 
   { name: "check_updates", level: 2, title: "Check for updates again", description: "Clears the version caches and checks the core and the modules again (the admin's \"Check again\" button).", input: NONE, run: level2("check_updates") },
   { name: "backup_run", level: 2, title: "Back up the database", description: "Makes a copy of the database on the server (the 5 most recent are kept). Do it before any update. The copy cannot be read or downloaded through this API.", input: NONE, run: level2("backup_run") },
   { name: "module_reinstall", level: 2, title: "Reinstall a module", description: "The admin's maintenance button: the module's code is renewed from its source; its data, settings and instances are kept.", input: MODULE_ARG, run: level2("module_reinstall") },
   { name: "module_restart", level: 2, title: "Bring a module instance back", description: "Retries an instance that was set aside after a failed data conversion, so that it runs again.", input: INSTANCE_ARG, run: level2("module_restart") },
+  { name: "content_check_run", level: 2, title: "Check the content now", description: "Runs a check of the site's content (same as the admin's \"Check now\" button): reads the pages, the menu and the settings, then visits some outside links, politely (at most 200 links per check, 25 per website, never two visits in a row to the same website, internal addresses refused). Changes nothing on the site. A check of many links is done in steps: call again with continue: true until it says finished, then read the result with maintenance_content_check. Only run it when asked or when the content check is out of date.", input: CONTINUE_ARG, run: level2("content_check_run") },
 
   { name: "module_update", level: 3, title: "Update a module", description: "Updates one module to its latest STABLE version (never a pre-release). By default this only creates a request that the owner approves; then poll request_status.", input: MODULE_ARG, run: level3("module_update") },
   { name: "modules_update_all", level: 3, title: "Update all modules", description: "Updates every module that has a STABLE update, one by one. By default this only creates a request that the owner approves; then poll request_status.", input: NONE, run: level3("modules_update_all") },

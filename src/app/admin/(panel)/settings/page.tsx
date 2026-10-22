@@ -3,6 +3,7 @@ import { SOCIAL_TOPIC } from "@/core/social";
 import { floatingLabels } from "@/components/admin/floating";
 import { adminCtx } from "@/core/admin";
 import { getSettingByLocale, getSetting } from "@/core/settings";
+import { systemTimezone, TIMEZONE_SETTING } from "@/core/siteTime";
 import { KNOWN_LOCALES, localeName } from "@/core/i18n/locales";
 import { UI_LOCALES } from "@/core/i18n/dictionary";
 import { ActionForm } from "@/components/admin/ActionForm";
@@ -56,6 +57,7 @@ export default async function SettingsPage() {
   const values: Record<string, Record<string, unknown>> = {};
   for (const key of TRANSLATABLE) values[key] = await getSettingByLocale(key);
   const logo = await getSetting<string>("site.logo");
+  const timezoneSaved = String((await getSetting<string>(TIMEZONE_SETTING)) ?? "");
   const ai = await getAiBlocking();
   const llmsTxt = await isLlmsTxtEnabled();
   const entity = await getSiteEntity();
@@ -106,6 +108,7 @@ export default async function SettingsPage() {
             <div className={`${ui.card} space-y-4`}>
               <h3 className="font-semibold">{t("settings.contactCard")}</h3>
               <TextField name="contactEmail" type="email" label={t("settings.contactEmail")} help={t("settings.contactEmailHelp")} defaultValue={config.contactEmail} />
+              <TextField name="timezone" label={t("settings.timezone")} help={t("settings.timezoneHelp", { zone: systemTimezone() })} defaultValue={timezoneSaved} placeholder="Europe/Brussels" autoComplete="off" />
               {config.locales.map((l) => (
                 <TextField key={l} name={`footer.text__${l}`} label={`${t("settings.footerText")}${config.locales.length > 1 ? ` — ${localeName(l)}` : ""}`} defaultValue={String(values["footer.text"]?.[l] ?? "")} />
               ))}

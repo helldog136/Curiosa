@@ -7,7 +7,7 @@ const { getSetting, setSetting, deleteSetting, getSettingByLocale, getSiteConfig
 const { getBrand } = await import("@/core/brand");
 const { createInstance, deleteInstance, validateBasePath, freeKey, defaultNames, KEY_RE, instanceCount } = await import("@/core/instanceService");
 const { listInstances, getInstanceByKey, toInstanceView, pickName, pickDescription } = await import("@/core/instances");
-const { normalizeRedirectPath, validateRedirectPath, resolveRedirect } = await import("@/core/redirects");
+const { normalizeRedirectPath, validateRedirectPath, resolveRedirect, flushRedirectHits } = await import("@/core/redirects");
 const { createEntry } = await import("@/core/content/service");
 const E = await import("@/core/content/entries");
 const { FIXTURE_MODULES: BUILTIN_MODULES } = await import("../helpers/fixtureModules.mjs");
@@ -207,7 +207,7 @@ test("redirections : cible, compteur de clics, inactive, lien d'entrée priorita
   assert.deepEqual(await resolveRedirect("yt"), { url: "https://youtube.com/x", permanent: true });
   assert.equal(await resolveRedirect("off"), null);
   assert.equal(await resolveRedirect("inconnu"), null);
-  await new Promise((r) => setTimeout(r, 30));
+  await flushRedirectHits();
   assert.equal((await db.prisma.redirect.findUnique({ where: { path: "yt" } })).hits, 1);
   const i = await newInstance();
   const e = await createEntry(db.prisma, { instanceId: i.id, locale: "fr", title: "Lien", url: "https://nouveau.example/x" });

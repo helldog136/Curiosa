@@ -12,6 +12,8 @@ import { noticeFor, removalNoticeHref } from "@/core/modules/removal";
 import { checkNickname } from "@/core/instanceLabel";
 import { instanceSettingKey } from "@/core/modules/context";
 import { hasPage } from "@/core/modules/manifest";
+import { menuEligible } from "@/core/modules/menuEligibility";
+import { setInstanceInMenu } from "@/core/menuStore";
 import { defaultPlacement, parsePlacement, placementSettingKey, placementsFor } from "@/core/modules/menuPlacement";
 import { groupFlagName, judgeGroup } from "@/core/modules/groups";
 import { checkFieldInput, resolveDefault, shouldStore } from "@/core/modules/settingValues";
@@ -64,10 +66,17 @@ export async function saveInstance(_prev: ActionState, formData: FormData): Prom
     if (placement === defaultPlacement(mod.manifest)) await deleteSetting(placementSettingKey(id));
     else await setSetting(placementSettingKey(id), placement);
   }
-  if (hasPage(mod.manifest)) data.showInNav = formData.get("showInNav") === "on";
+  // « Afficher dans le menu de mon site » : la case ajoute la page à la fin du menu ou la retire. Le menu (page « Menu du site ») est la seule source de vérité ;
+  // la colonne `showInNav` n'est plus lue par le site, on la tient à jour pour qu'un retour à une version plus ancienne garde le même menu.
+  if (menuEligible(mod.manifest) && formData.get("nav_was") !== null) {
+    const want = formData.get("showInNav") === "on";
+    if (want !== (formData.get("nav_was") === "1")) {
+      if (!(await setInstanceInMenu(id, want))) return { errors: { showInNav: t("navigation.totalFull") } };
+      data.showInNav = want;
+    }
+  }
 
   if (adv) await setSetting(mcpInstanceKey(id), formData.get("mcp") === "on");
-  if (adv) data.navOrder = Math.trunc(Number(formData.get("navOrder"))) || 0;
 
   // Ordre d'affichage des entrées : proposé dans les deux modes pour les modules à contenu.
   if (mod.manifest.content && isSort(formData.get("sort"))) await setSetting(sortSettingKey(id), String(formData.get("sort")));

@@ -25,16 +25,28 @@ export type PlacementManifest = {
   offers?: readonly unknown[];
   requires?: readonly unknown[];
   permissions?: readonly string[];
+  /** Page publique du module (`"page": true`) et blocs proposés pour l'accueil : un module qui en a n'est pas un simple overlay. */
+  page?: boolean;
+  sections?: readonly unknown[];
 };
 
-/** Un module de type « overlay », ou qui déclare la permission « overlay » : une source navigateur pour OBS. */
-export function isOverlayManifest(m: Pick<PlacementManifest, "type" | "permissions">): boolean {
+/** Le module PEUT servir une source navigateur pour OBS (type « overlay » ou permission « overlay ») : son rangement « Overlays » est alors permis. */
+export function canServeOverlay(m: Pick<PlacementManifest, "type" | "permissions">): boolean {
   return m.type === "overlay" || (m.permissions ?? []).includes("overlay");
 }
 
 /**
+ * Un SIMPLE overlay : de type « overlay », ou avec la permission « overlay » et rien d'autre à montrer sur le site (ni `page`, ni `sections`).
+ * Un module qui a une page ou des sections d'accueil et sert AUSSI un overlay (0.2.6) est un module comme les autres : il suit la règle de sa catégorie.
+ */
+export function isOverlayManifest(m: Pick<PlacementManifest, "type" | "permissions" | "page" | "sections">): boolean {
+  return m.type === "overlay" || ((m.permissions ?? []).includes("overlay") && m.page !== true && (m.sections?.length ?? 0) === 0);
+}
+
+/**
  * RÈGLE PAR DÉFAUT, déterministe, lue dans le manifeste seul :
- * 0. type « overlay » ou permission « overlay » : famille à part → Overlays (ni menu de travail ni Intégrations) ;
+ * 0. type « overlay » ou permission « overlay » SANS page ni sections : famille à part → Overlays (ni menu de travail ni Intégrations) ;
+ *    avec une page ou des sections (0.2.6), la permission « overlay » n'y change rien : on continue avec les règles suivantes ;
  * 1. catégorie « social » ou « integration » : se règle une fois → Intégrations ;
  * 2. module à contenu : on y écrit → menu, SAUF une simple liste de liens qui s'ouvrent ailleurs (affichage « links » + clic externe : vos réseaux, vos chaînes), qui se règle une fois → Intégrations ;
  * 3. les autres (widget, outil…) : des données à gérer (actions MCP, service offert ou service de stockage requis) → menu ; sinon rien à entretenir → Intégrations.
@@ -55,11 +67,14 @@ export function defaultPlacement(m: PlacementManifest): Placement {
  */
 export function resolvePlacement(m: PlacementManifest, pinned: unknown): Placement {
   const chosen = parsePlacement(pinned);
-  return chosen && (chosen !== "overlays" || isOverlayManifest(m)) ? chosen : defaultPlacement(m);
+  return chosen && (chosen !== "overlays" || canServeOverlay(m)) ? chosen : defaultPlacement(m);
 }
 
-/** Les rangements possibles d'une instance de ce module : épinglée, ou seulement dans Extensions (« overlays » pour un overlay, « integrations » pour le reste). */
-export const placementsFor = (m: PlacementManifest): Placement[] => (isOverlayManifest(m) ? ["menu", "overlays"] : ["menu", "integrations"]);
+/**
+ * Les rangements possibles d'une instance de ce module : épinglée, ou seulement dans Extensions (« overlays » pour un simple overlay, « integrations » pour le reste).
+ * Un module qui a une page ou des sections ET sert un overlay peut choisir les deux.
+ */
+export const placementsFor = (m: PlacementManifest): Placement[] => (isOverlayManifest(m) ? ["menu", "overlays"] : canServeOverlay(m) ? ["menu", "integrations", "overlays"] : ["menu", "integrations"]);
 
 /** Le rangement « seulement dans Extensions » qui correspond à ce module (celui que choisit « Retirer du menu »). */
 export const unpinnedPlacementFor = (m: PlacementManifest): Placement => (isOverlayManifest(m) ? "overlays" : "integrations");

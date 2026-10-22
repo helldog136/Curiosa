@@ -7,6 +7,52 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.2.6
+
+### Améliorations
+
+- **Les pages en anglais s'affichent enfin en anglais.** Quand le site est proposé en plusieurs langues, une adresse comme /en/privacy restait dans la langue principale. Elle suit maintenant la langue de l'adresse ; une langue que vous n'avez pas activée n'existe pas (page introuvable) au lieu d'afficher la mauvaise langue.
+- **Le compteur de visites est plus juste.** Un visiteur ne peut plus se faire compter plusieurs fois en changeant l'adresse qu'il annonce.
+- **Une extension qui a sa propre page ou ses blocs d'accueil n'est plus rangée d'office avec les overlays.** Elle se range comme les autres dans Extensions. Rien ne bouge sur votre site actuel.
+- **Un rôle que vous créez peut recevoir le droit de modifier dans une extension.** Plusieurs extensions devaient jusqu'ici réserver ces boutons aux administrateurs.
+- **Vos raccourcis deviennent de vrais liens courts avec QR code.** Collez une adresse : le site propose un nom lisible, crée le lien et affiche son QR code, « Copier » et « Tester ». Changez la destination quand vous voulez, sans réimprimer.
+- **Une date de fin, si vous le souhaitez.** Ensuite, les visiteurs voient une page aimable aux couleurs de votre site, avec votre message. Un clic sur « Réactiver » remet le lien en marche.
+- **Combien de personnes ont cliqué** : aujourd'hui, 7 jours, 30 jours, total, avec un petit graphique. Rien de personnel n'est gardé, et les robots et vos propres essais ne comptent pas.
+- **La liste se retrouve facilement** : recherche, 50 liens par page, export en tableur, désactivation sans rien perdre et suppression expliquée clairement.
+- **Votre assistant IA peut s'en occuper** si vous l'y autorisez. Créer, modifier et supprimer ne sont jamais autorisés d'office.
+- Nouveau réglage avancé « Fuseau horaire du site » : les dates de fin le suivent, heure d'été comprise.
+- **Vous choisissez ce qui est dans le menu de votre site.** Plus rien n'y entre tout seul : une page, un article ou une extension apparaît dans le menu seulement quand vous l'y mettez. Pour un site existant, le menu reste exactement le même après la mise à jour.
+- **Chercher et ajouter une page au menu, en tapant.** « Ajouter au menu » cherche dans toutes les pages possibles (pages du site, pages des extensions, articles, raccourcis de liens), sans tenir compte des accents ni des majuscules. Ce qui est déjà dans le menu est marqué.
+- **Des sous-menus.** Un élément du menu peut en contenir d'autres, sur deux niveaux. On réorganise avec des boutons (« Monter », « Mettre dans … », « Sortir de … »), au clavier comme au doigt, et chaque nom se règle dans chaque langue.
+- **« Pages qui ne sont pas dans le menu ».** La page du menu liste les pages qui existent mais que vos visiteurs ne voient pas dans le menu, avec un bouton « Ajouter ». Une extension peut vous en suggérer une, sans jamais l'imposer.
+- **Un menu plus agréable sur téléphone et au clavier.** Les sous-menus s'ouvrent au toucher (un premier toucher ouvre, un second suit le lien), à la souris et au clavier. Sur petit écran, le menu tient dans un panneau, et tous les liens restent visibles sans JavaScript.
+- **La case « Afficher dans le menu de mon site »** de chaque extension ajoute ou retire sa page du menu. L'ordre se règle dans la page « Menu du site ».
+- **Nouvelle page « Santé de mon site ».** En un clic, elle regarde si votre site est en bon état : images sans description, pages sans résumé pour Google, traductions oubliées, menu ou liens qui ne mènent plus nulle part. Elle répond « Tout va bien » ou « Quelques petites choses à regarder », sans note ni alarme.
+- **Chaque remarque dit pourquoi elle compte, et vous mène au bon écran.** « Corriger » ouvre l'endroit où régler la chose ; « Ignorer » masque ce qui ne vous concerne pas, et « Tout réafficher » le ramène. Les 5 dernières vérifications sont gardées, et la page dit aussi ce qu'elle n'a pas pu regarder.
+- **Les liens vers d'autres sites sont vérifiés poliment, et seulement quand vous le demandez.** Un seul à la fois, sans jamais revenir deux fois de suite sur le même site, avec une barre de progression. Rien ne tourne en arrière-plan, et aucune adresse interne n'est jamais visitée.
+- **Votre assistant IA peut lire le résultat, ou lancer une vérification si vous l'y autorisez.** Il le voit comme une simple information dans son rapport, jamais comme une panne. Une ligne discrète apparaît aussi sur votre tableau de bord quand il y a quelque chose à regarder.
+
+### Pour les développeurs
+
+- Kit : `def.matches` reconnaît une action d'administration `{ right, run }` (comme la forme fonction). Le droit est contrôlé avant `run` (`decideAdminAction`, `can`), et testé pour un rôle personnalisé.
+- Nouveau `PageResult.scripts` (cœur 0.2.6) : 3 noms de fichiers du dossier `scripts/` du module, 32 Ko chacun, servis par le cœur sur `/m/<clé>/page-script/<nom>` en `defer` avec `integrity` SHA-256, seulement sur cette page. Aucun script en ligne ni nonce (le site n'envoie pas de CSP globale). Kit : `page.scripts`.
+- Nouveau `ctx.api.privacy.declarations()` (permission `privacy`, cœur 0.2.6) : les déclarations `privacy` des modules actifs, par langue, avec `declares` ; 100 modules et 10 instances au plus, texte seulement. Sans la permission : liste vide.
+- Nouveau `ctx.api.visitor.fingerprint(request, scope?)` (cœur 0.2.6, sans permission) : HMAC du visiteur (adresse de confiance `clientIp`, règle de SECURITE.md) avec un sel en mémoire renouvelé chaque jour, cloisonné par module et portée. Kit : `routes.visitorIp` signale la lecture directe de `X-Forwarded-For`. `/api/hit` suit la même règle.
+- Rangement : `isOverlayManifest` ne vaut plus pour la permission `overlay` avec `page` ou `sections` (`canServeOverlay` garde la capacité). Au premier démarrage, `freezeOverlayPlacements` écrit une fois « overlays » pour les instances existantes sans choix (marqueur `core.placementFrozen`).
+- Correctif `src/proxy.ts` : Next relance le proxy sur l'adresse réécrite, ce qui effaçait `x-curiosa-locale`. Un en-tête de preuve secret (`x-curiosa-lp`, par processus) le conserve ; un visiteur ne peut pas le forger. Test : `tests/core/locale-routing.test.mjs`.
+- Kit : `FEATURES` 0.2.6 (scripts de page, permission `privacy`, `ctx.api.visitor`), exigences `page.scripts` et `routes.visitorIp` (non applicable avant un cœur 0.2.6), fakeCtx `visitor` et `privacy`.
+- Migration additive `20261022090000_redirections_2` : `Redirect.expiresAt`, `Redirect.endMessage`, table `RedirectDay`. `Redirect.hits` reste le total.
+- `resolveRedirect(path, visit)` renvoie la destination, `{ gone }` ou `null`. Réponse 410 : `redirectGate.ts` et `proxy.ts`, page `/api/redirect-gone`. Nouveaux fichiers `core/redirect*.ts`, `core/siteTime.ts` ; voir docs/PLATFORM.md (« Liens courts »).
+- Outils MCP `redirects_list`, `redirects_stats`, `redirects_create`, `redirects_update`, `redirects_delete`. Un lien désactivé répond comme un lien inexistant ; `mailto:` n'est plus accepté pour une nouvelle redirection.
+- Le menu public est le réglage `nav.menu` (`{ version: 1, items }`, éléments `system | instance | entry | redirect | link | group`, jusqu'à 8 sous-éléments, 40 au total). Il remplace la lecture de `ModuleInstance.showInNav` et de `nav.custom` par l'en-tête ; les deux restent en base, intacts. Voir docs/PLATFORM.md, « Menu du site ».
+- Migration `ensureMenuMigrated` (idempotente) au démarrage et avant toute création d'instance : elle fige l'ancien menu. Les références sont relues à l'affichage (`resolvePublicMenu`) ; une page supprimée ou dépubliée disparaît du menu sans erreur.
+- Nouvelle clé de manifeste `suggestInMenu` (et `content.showInNav`, désormais une simple suggestion). `menuEligible` / `suggestsMenu` (`src/core/modules/menuEligibility.ts`) sont la règle unique, partagée avec le rangement `overlay` du menu d'administration. Le menu n'est pas exposé en MCP.
+- `NavDropdown` est remplacé par `SiteNav` ; `listMenuPages` et le champ d'instance `navOrder` du formulaire disparaissent.
+- Nouveau dossier `src/core/maintenance/content/` (scan, probe, net, run, store, view, service, fix) : lecture directe de la base par paquets de 200 (5 000 entrées au plus). Résultats gardés dans la table `Setting` (`maintenance.content.*`) : aucune migration. Voir docs/SANTE-DU-SITE.md.
+- Gardes de sortie complétées dans `src/core/url.ts` : `hostProblem` et `addressIsPrivate` (partagées avec `isPublicHost`). `content/net.ts` résout le nom UNE fois puis connecte à l'adresse vérifiée (`lookup` épinglé, fail closed) : pas de rebinding. Client dédié `createContentNet` (429, disjoncteur et délais du service net).
+- Outils MCP `maintenance_content_check` (niveau 1, lecture seule) et `maintenance_content_check_run` (niveau 2, `continue: true` pour la suite) ; `maintenance_diagnose` ajoute des remarques `info` seulement ; audit `content.check`. Opération suivie `content-check` (étape `links`, `opUnit` lien par lien).
+- Admin : `/admin/maintenance/content` (administrateur ou propriétaire, mode simple compris) et entrée de menu `health` dans `administrationEntries`. Hors lot : vérification planifiée facultative (idée notée dans docs/SANTE-DU-SITE.md).
+
 ## 0.2.5
 
 ### Améliorations

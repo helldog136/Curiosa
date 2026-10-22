@@ -91,6 +91,7 @@ export type ContentConfig = {
   fallbackToDefault?: boolean;
   /** Chemin public proposé à la création d'une instance. */
   basePath?: string;
+  /** Suggère que la page de l'instance figure au menu du site. C'est une SUGGESTION (le cœur ne l'ajoute jamais d'office) : voir `suggestInMenu`. */
   showInNav?: boolean;
 };
 
@@ -169,6 +170,8 @@ export type ModuleManifest = {
   content?: ContentConfig;
   /** Une instance de ce module a une page publique (montée sur un chemin). Défaut : oui si `content`. */
   page?: boolean;
+  /** Suggère que la page de l'instance figure au menu du site (jamais imposé : la personne décide). Défaut : `content.showInNav`, sinon non. */
+  suggestInMenu?: boolean;
   /** Chemin public proposé à la création d'une instance d'un module à page (défaut : la clé de l'instance). */
   basePath?: string;
   /** Morceaux que les instances proposent à la page d'accueil. */
@@ -207,7 +210,7 @@ export type ModuleManifest = {
   /** Modules activés dès le départ (défaut : oui). */
   defaultEnabled?: boolean;
   /** Déclaratif et informatif : affiché à l'administrateur avant activation. */
-  permissions: ("slots" | "routes" | "storage" | "filters" | "sections" | "pages" | "topics" | "overlay" | "mcp" | "admin" | "mail" | "rawg")[];
+  permissions: ("slots" | "routes" | "storage" | "filters" | "sections" | "pages" | "topics" | "overlay" | "mcp" | "admin" | "mail" | "rawg" | "privacy")[];
 };
 
 export type EntrySummary = {
@@ -247,6 +250,22 @@ export type ModuleBrand = {
   locales: string[];
 };
 
+/** Résultat de `ctx.api.privacy.declarations()` : un élément par module actif (100 au plus, triés par identifiant). */
+export type PrivacyDeclarations = {
+  modules: {
+    module: string;
+    name: string;
+    /** Les instances actives de ce module (10 au plus). */
+    instances: { key: string; name: string }[];
+    /** Vrai si le module déclare quelque chose (`text` n'est alors pas vide). */
+    declares: boolean;
+    /** La déclaration par langue (500 caractères au plus par langue, 20 langues au plus) ; vide si rien n'est déclaré. */
+    text: Record<string, string>;
+  }[];
+  /** Vrai s'il y avait plus de 100 modules actifs. */
+  truncated: boolean;
+};
+
 export type ModuleApi = {
   topics: {
     /**
@@ -273,6 +292,26 @@ export type ModuleApi = {
   instances: {
     /** `id` et `adminPath` (« /admin/instances/<id> ») : pour renvoyer l'administrateur vers les réglages d'une instance d'un autre module. */
     list(opts?: { locale?: string; module?: string }): Promise<{ id: string; key: string; module: string; basePath: string | null; name: string; adminPath: string }[]>;
+  };
+  /**
+   * Ce que les modules actifs déclarent collecter (`privacy` de leur manifeste), en lecture seule (cœur 0.2.6 ; permission « privacy »).
+   * Sans la permission : `{ modules: [], truncated: false }`. Ne lève jamais. Texte et noms seulement, jamais un réglage ni une donnée.
+   */
+  privacy: {
+    declarations(): Promise<PrivacyDeclarations>;
+  };
+  /**
+   * Le visiteur d'une requête, SANS jamais voir son adresse (cœur 0.2.6, aucune permission). À utiliser pour une limite de débit au lieu de lire
+   * `X-Forwarded-For` (dont le début est inventé par le visiteur).
+   */
+  visitor: {
+    /**
+     * Une empreinte courte (22 caractères) du visiteur de `request` (la requête d'une `route`, ou ses `Headers`) : HMAC avec un sel au hasard en mémoire,
+     * renouvelé chaque jour ; propre à votre module et à `scope` (64 caractères au plus, par exemple le nom de la limite). Le cœur lit l'adresse selon la règle
+     * de docs/SECURITE.md (l'entrée ajoutée par SON proxy, pas la première ; IPv6 par réseau /64). Gardez les compteurs en mémoire bornée et jamais l'adresse.
+     * Derrière aucun proxy, tous les visiteurs ont la même empreinte (« local »).
+     */
+    fingerprint(request: Request | Headers, scope?: string): string;
   };
   /** Données structurées (schema.org) pour les moteurs de recherche et les assistants IA. */
   seo: {
@@ -440,6 +479,11 @@ export type PageResult = {
   blocks: Block[];
   /** Affiche la page d'erreur 404. */
   notFound?: boolean;
+  /**
+   * Scripts de CETTE page seulement (cœur 0.2.6) : noms de fichiers du dossier `scripts/` du module (`"faq.js"`), 3 au plus, 32 Ko chacun. Le cœur les sert lui-même,
+   * en `defer`, avec une empreinte d'intégrité, jamais en ligne. Un nom invalide ou un fichier absent est ignoré.
+   */
+  scripts?: string[];
 };
 
 /** Un fichier texte ajouté à la sauvegarde ; `path` est relatif au dossier de l'instance (`modules/<instance>/<path>`). */

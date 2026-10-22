@@ -16,6 +16,8 @@ Après **5 mots de passe faux de suite**, la connexion est bloquée **1 heure**.
 
 L'adresse du visiteur est lue dans l'en-tête `X-Forwarded-For`, **à la fin** : c'est l'entrée que **votre proxy** ajoute (voir la configuration nginx du [README](../README.md#installer)). Le début de l'en-tête vient du visiteur et peut être inventé, il est ignoré. Si plusieurs proxys se suivent devant le site, indiquez leur nombre avec `CURIOSA_TRUSTED_PROXIES` (1 par défaut). Une adresse IPv6 compte pour tout son réseau /64.
 
+Cette règle est la **seule** : le comptage des visites (`/api/hit`) la suit depuis la 0.2.6, et les modules n'ont pas à la réimplémenter. Ils demandent `ctx.api.visitor.fingerprint(request, portée)` : une empreinte salée (HMAC-SHA-256, sel au hasard gardé en mémoire seulement, renouvelé chaque jour, propre au module et à la portée) qui ne permet pas de retrouver l'adresse. Le cœur ne garde rien par visiteur. Un module qui lit lui-même `X-Forwarded-For` prendrait la première entrée, que le visiteur écrit.
+
 ## Double vérification (code à usage unique)
 
 Chacun peut l'activer dans **Mon compte → Double vérification** : on scanne un QR code avec une application d'authentification (Google Authenticator, Authy, 1Password…), puis on confirme avec le code affiché. Ensuite, la connexion se fait en deux temps : mot de passe, puis code à 6 chiffres.
@@ -60,7 +62,7 @@ Le serveur MCP du cœur propose des outils de **maintenance** (`maintenance_…`
 | Niveau | Permet | Défaut | Borne |
 |---|---|---|---|
 | 1 : lecture | état, santé, modules, mises à jour, diagnostic, audit | actif **seulement** pour un jeton « Maintenance » (désactivé pour tout autre jeton) | lecture seule ; sorties masquées et bornées |
-| 2 : sans risque | revérifier, copie de la base sur le serveur, réinstaller un module (données gardées), relancer une instance | désactivé | accordé action par action ; verrou ; 12 actions par heure et par jeton |
+| 2 : sans risque | revérifier, copie de la base sur le serveur, réinstaller un module (données gardées), relancer une instance, vérifier le contenu du site (visites de liens bornées) | désactivé | accordé action par action ; verrou ; 12 actions par heure et par jeton |
 | 3 : à risque (`destructive`) | mises à jour du cœur et des modules, désinstallation | désactivé, **jamais** `default: true` | **validation humaine par défaut** ; versions stables seulement ; revérification à l'exécution |
 
 Il n'y a **volontairement pas** d'outil de restauration : elle remplace tout le site et demande le mot de passe de la sauvegarde. Jamais exposés : secrets, mots de passe, jetons, variables d'environnement, contenu des sauvegardes, réglages de sécurité, utilisateurs, gestion des jetons, fichiers arbitraires, commandes arbitraires. Un jeton « Maintenance » n'a **que** ces outils : les actions des modules y sont désactivées par défaut, y compris celles qu'un module ajouterait plus tard (`access.ts`, `MAINTENANCE_PROFILE`).
@@ -74,6 +76,16 @@ Il n'y a **volontairement pas** d'outil de restauration : elle remplace tout le 
 - *Fuite par les sorties* : tout texte venu d'ailleurs (journaux, erreurs, adresses de dépôt, notes de version, détails d'audit) passe par un masquage de secrets (jetons `vit_…`, clés, mots de passe, adresses avec jeton, longues suites opaques) et des bornes de taille. Il n'y a pas de lecture libre des journaux du serveur : seulement la fin du journal de mise à jour, filtrée, et les erreurs des instances.
 - *Fausse sécurité* : toute action de niveau 2 ou 3 est inscrite au journal d'audit (`mcp.maintenance.<outil>` : nom du jeton, paramètres sans secret, résultat) ; les décisions humaines aussi (`approve`, `deny`). Les adresses e-mail des humains ne sont jamais données à l'IA.
 - *Avertissement* : le propriétaire est averti dans l'admin (pastille, tableau de bord) et, s'il le choisit, par le service e-mail du cœur, sans secret dans le message.
+
+## Contrôle du contenu : visites de liens sortants
+
+Le cœur visite lui-même des adresses venues du contenu (liens d'un texte, du menu, des raccourcis) : c'est une porte d'entrée classique pour sonder le réseau interne (SSRF). Les réponses, dans `src/core/maintenance/content/` et `src/core/url.ts` :
+
+- *Adresse interne ou piégée* : refusée **avant toute résolution** (`hostProblem`) : autre schéma, identifiants, port ≠ 443, adresse numérique sous toute écriture, noms `localhost` / `.local` / `.lan` / `.internal` / sans point. Idem à **chaque redirection** (5 au plus, une boucle est coupée).
+- *Nom qui mène à une adresse privée, et rebinding* : le nom est résolu **une fois** ; une seule adresse privée, locale ou réservée (`addressIsPrivate`) refuse tout le nom. La connexion est ouverte avec un `lookup` qui ne rend que les adresses vérifiées : pas de seconde résolution, un nom non vérifié n'est jamais contacté (fail closed). Le certificat reste celui du nom.
+- *Marteler un site* : 200 liens par vérification, 25 par site, jamais deux visites de suite sur le même site, 250 ms entre visites, HEAD puis GET de 2 Ko, délai de 6 s par demande, et un site qui répond « trop de demandes » n'est plus contacté. Le disjoncteur du client réseau du cœur s'applique.
+- *Visites non voulues* : jamais en arrière-plan ni planifiées ; un clic d'administrateur (ou l'outil `maintenance_content_check_run`, niveau 2, accordé jeton par jeton) ; un seul passage à la fois.
+- *Fuite* : le rapport ne garde ni paramètres, ni fragments, ni identifiants d'adresse ; les outils de l'assistant IA ne donnent que le **nom** du site visité, sans secret. Le lien « Corriger » est choisi dans une liste fermée d'écrans d'administration (aucune redirection ouverte, même si le rapport gardé était modifié).
 
 ## Réinstaller un module (propriétaire seulement)
 
@@ -183,6 +195,20 @@ Les propriétaires, administrateurs et éditeurs ne voient aucune différence.
 - **Droits de l'appelant (`asCaller`, 0.2.4) : modèle de menace.** Un service ne reçoit les droits de la personne connectée que pour **une action d'administration que cette personne vient de déclencher**, jamais pour une route publique, un overlay, une tâche de fond, un autre service, un panneau (le simple affichage d'une page n'écrit rien) ni un outil MCP : ces contextes n'ont aucune personne, `ctx.can` y reste faux et l'option est ignorée sans erreur. Il faut en plus (a) que le **consommateur** le demande à l'appel (`{ asCaller: true }` : rien n'est porté par défaut), (b) que le **fournisseur** ait listé la méthode dans `offers[].callerRights` (le propriétaire de la donnée choisit les rares écritures qui acceptent ce mode ; une lecture sensible comme un e-mail ou un export n'y est pas), et (c) que la personne ait réellement le droit **du fournisseur** (préfixé par le cœur, relu en base à cette requête ; le droit d'un autre module ne vaut rien ; un rôle sans le droit reçoit « denied »). Le fournisseur reste seul juge (`ctx.can`) et valide ses arguments comme pour tout appel. La personne n'est retenue que dans le contexte de **cette** exécution d'action (jamais partagée, jamais gardée entre deux requêtes). Un module malveillant ne peut donc faire, par une action que vous déclenchez, que ce que vous pourriez faire vous-même dans le module propriétaire ET que ce propriétaire a ouvert à ce mode. Audit : `module.<instance>.asCaller`, cible `service.méthode`.
 - **Conversion de texte** (`fromText`) : remplacée seulement sur une correspondance exacte et unique ; l'audit `setting.fromText` ne recopie jamais la valeur.
 
+## Scripts de page des modules (0.2.6)
+
+Le site n'envoie aucune politique `Content-Security-Policy` globale (seulement `nosniff`, `Referrer-Policy`, `Permissions-Policy`, `X-Frame-Options`) ; les scripts en ligne du cœur (données structurées JSON-LD) ne sont pas exécutables. Un module qui veut un script sur SA page (`PageResult.scripts`) n'écrit donc jamais de script en ligne : il nomme un fichier de son dossier `scripts/`, que le cœur sert lui-même sur la même origine (`/m/<clé>/page-script/<nom>`), en `defer` et avec une empreinte d'intégrité SHA-256. Cela reste valable le jour où le cœur ajoutera `script-src 'self'` sans `'unsafe-inline'` et sans nonce. Bornes : 3 scripts par page, 32 Ko, fichier ordinaire du dossier `scripts/` (pas de lien symbolique, pas de `..`), réponse `404` si l'instance n'est pas active ou n'a pas de page.
+
+## Liens courts : pas de redirection ouverte, pas de fuite (0.2.6)
+
+- **Destination** : seulement `http(s)` (`mailto:`, `javascript:`, `data:`, `file:` refusés), sans nom ni mot de passe dans l'adresse, 2 000 caractères au plus, jamais vers un autre lien court du site (boucle). Elle est **saisie par la personne connectée** : aucun paramètre de la requête d'un visiteur n'entre dans la réponse, donc aucune redirection ouverte. Elle est revérifiée à chaque passage. Le cœur ne visite jamais la destination (aucune requête sortante, donc pas de SSRF).
+- **Noms** : `a-z`, `0-9`, `-`, `_` et `/`, jamais un chemin réservé (`admin`, `api`, `m`, `go`, `uploads`…), une langue ni le chemin d'une instance.
+- **Aucune fuite d'existence** : un lien désactivé et un lien inexistant donnent la même réponse (404, même page, même repli). Seul un lien dont la date de fin est passée répond 410, **sans destination** ni autre information que son message ; la route `api/redirect-gone` répond 404 à tout lien qui n'est pas actif et terminé. 
+- **Vie privée** : un nombre par lien et par jour ; ni cookie, ni adresse IP, ni provenance, ni navigateur gardés (le texte « agent » sert à écarter les robots, il n'est ni lu plus loin ni conservé). Voir [PRIVACY.md](PRIVACY.md).
+- **Bornes** : aucune lecture ni écriture non bornée (2 000 liens, pages de 50, 500 compteurs en attente, paquets de 200, porte du proxy limitée à 1,5 s), aucun minuteur de fond, une panne de base ne bloque jamais une redirection.
+- **QR et export** : routes réservées à l'équipe connectée (401 sinon, 403 sans accès), `Cache-Control: private, no-store`, SVG avec `Content-Security-Policy: default-src 'none'`, texte alternatif échappé, CSV neutralisé contre les formules.
+- **Assistants IA** : `redirects_list` et `redirects_stats` sont des lectures ; `redirects_create`, `redirects_update` (écriture) et `redirects_delete` (destructif) ne sont **jamais accordés d'office**, un jeton en lecture ne peut pas les recevoir, et chaque écriture est consignée (`mcp:<jeton> redirect.create|update|delete`).
+
 ## Dépannage en SSH (propriétaire du serveur seulement)
 
 Si le propriétaire est bloqué (trop d'essais, mot de passe perdu), la commande de secours se lance **sur le serveur**, depuis le dossier de l'application, avec l'utilisateur du service :
@@ -205,3 +231,9 @@ Elle ne touche **jamais** au compte d'une autre personne que le propriétaire (l
 - Le suivi ne contient jamais de secret, de jeton ni de chemin disque : étapes nommées, numéros, nom lisible d'un module, texte d'erreur nettoyé (`safeText`). Il est en mémoire du processus, borné (40 opérations, 10 minutes après la fin, 2 heures au plus pour une opération « en cours ») et sans minuteur de fond.
 - Les droits des actions ne changent pas : le contrôle (`adminCtx("owner")`, `guardOwner`…) passe AVANT le suivi. Un second lancement avec la même clé rejoint l'opération en cours ; la clé d'une sauvegarde contient une empreinte salée du mot de passe, pour que personne ne reçoive le fichier chiffré d'un autre.
 - L'identifiant d'une opération est choisi par le navigateur, mais le serveur le valide (16 à 64 caractères sûrs), refuse un identifiant déjà pris par quelqu'un d'autre et lie toujours l'opération à la personne authentifiée.
+
+## Menu du site (prochaine version)
+
+- Le navigateur n'est jamais cru sur parole : à l'enregistrement du menu, chaque référence (page du cœur, instance, entrée, raccourci) est vérifiée en base ; un lien libre est normalisé puis validé (`/chemin` ou `http(s)://`, `mailto:` ; `javascript:` et `//hôte` non résolu sont refusés). L'adresse est **revalidée à chaque affichage** (`safeHref`, `isSafeExternalUrl`) : un réglage altéré en base n'atteint pas le visiteur.
+- La recherche du sélecteur est réservée à l'administration (`adminCtx("admin")`), bornée (requête de 80 caractères, 12 résultats, 1 500 lignes regardées au plus, paquets de 250, repère de reprise validé par expression régulière) et ne journalise que le nom d'une erreur. Elle ne fait aucune requête sortante.
+- Un raccourci de lien au menu mène à `/<chemin>` sur le site ; sa cible externe n'est atteinte que par la redirection du cœur (aucune redirection ouverte).

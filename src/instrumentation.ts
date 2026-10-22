@@ -11,6 +11,17 @@ export async function register() {
   } catch (error) {
     console.error("[legacy] startup conversion failed:", (error as Error)?.name);
   }
+  // Rangement dans Extensions (0.2.6) : les instances existantes gardent leur place malgré la nouvelle règle (une fois ; ne lève jamais).
+  const { freezeOverlayPlacements } = await import("@/core/modules/placementFreeze");
+  await freezeOverlayPlacements();
+  // Menu du site : l'état actuel du menu (instances « dans le menu » puis ancien réglage `nav.custom`) est figé dans `nav.menu`, une fois. Un site existant montre
+  // exactement le même menu après la mise à jour ; ensuite seules les décisions de la personne le changent. Idempotent (rien n'est écrit s'il existe déjà), ne lève jamais.
+  try {
+    const { ensureMenuMigrated } = await import("@/core/menuStore");
+    if (await ensureMenuMigrated()) console.log("[menu] current menu frozen into nav.menu");
+  } catch (error) {
+    console.error("[menu] migration failed:", (error as Error)?.name);
+  }
   // Rôles (0.2.0) : les trois rôles prédéfinis existent et chaque personne a celui de son niveau (`User.role`). Idempotent, ne lève jamais.
   const { initRoles } = await import("@/core/auth/roles");
   await initRoles();

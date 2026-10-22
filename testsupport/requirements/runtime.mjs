@@ -1,8 +1,10 @@
 // Exigences vérifiées EN FAISANT TOURNER le module (sondes) : sorties sûres, routes, outils MCP, tâches, données, vie privée, un module = une chose.
+import fs from "node:fs";
+import path from "node:path";
 import { findSrpViolations } from "../builtinChecks.mjs";
 import { fakeCtx } from "../fakeCtx.mjs";
 import { makeCtx, observe } from "../probes.mjs";
-import { NET_RULES_LEVEL, stripComments, walkValue, whereOf } from "./util.mjs";
+import { NET_RULES_LEVEL, compareVersions, stripComments, walkValue, whereOf } from "./util.mjs";
 
 const KNOWN_BLOCKS = ["markdown", "html", "banner", "links", "entries", "hero", "panel", "embed", "form", "table", "copy", "downloads", "gridEditor", "head", "heading", "swatches", "adminForm", "netHealth", "suggestInstall", "download"];
 export { KNOWN_BLOCKS };
@@ -613,6 +615,50 @@ const requirements = [
         }
       });
       return out;
+    },
+  },
+  {
+    id: "page.scripts", level: "advice", group: "code",
+    title: "Les scripts de page sont de vrais fichiers du dossier scripts/",
+    what: "Si la page renvoie « scripts » (cœur 0.2.6), ce sont au plus 3 noms de fichiers (lettres minuscules, chiffres, « . », « - » ou « _ », qui finissent par .js) qui existent dans le dossier « scripts/ » du module et pèsent 32 Ko au plus.",
+    why: "Le cœur sert lui-même ces fichiers, uniquement sur la page concernée, avec une empreinte d'intégrité. Un nom invalide ou un fichier absent est ignoré sans bruit : la page s'affiche, mais sans son script.",
+    fix: "Mettez le script dans scripts/mon-script.js (dossier du module) et renvoyez « scripts: [\"mon-script.js\"] » avec la page. N'écrivez pas de script en ligne et n'en chargez pas depuis un autre site.",
+    async run(m) {
+      if (!m.parsed?.ok) return { skip: "module.json invalide" };
+      if (typeof m.definition?.page !== "function") return { na: "le module n'a pas de page publique" };
+      const obs = await observe(m);
+      const out = [];
+      let seen = false;
+      for (const run of Object.values(obs.runs)) for (const o of run.outputs) {
+        if (o.kind !== "page" || !o.ok || o.value?.scripts === undefined) continue;
+        seen = true;
+        const list = o.value.scripts;
+        if (!Array.isArray(list)) { out.push("« scripts » doit être une liste de noms de fichiers"); continue; }
+        if (list.length > 3) out.push("« scripts » : 3 fichiers au plus par page (les suivants sont ignorés)");
+        for (const name of list) {
+          if (typeof name !== "string" || !/^[a-z0-9][a-z0-9._-]{0,62}\.js$/.test(name)) { out.push(`le nom de script « ${String(name).slice(0, 40)} » n'est pas permis (minuscules, chiffres, . - _ ; fini par .js)`); continue; }
+          const file = path.join(m.dir, "scripts", name);
+          let st = null;
+          try { st = fs.lstatSync(file); } catch { /* absent */ }
+          if (!st || !st.isFile()) out.push(`le script « ${name} » n'existe pas dans le dossier scripts/ du module`);
+          else if (st.size > 32 * 1024) out.push(`le script « ${name} » pèse plus de 32 Ko`);
+        }
+      }
+      if (!seen) return { na: "la page ne déclare aucun script" };
+      return [...new Set(out)];
+    },
+  },
+  {
+    id: "routes.visitorIp", level: "advice", group: "routes",
+    title: "L'adresse du visiteur n'est pas lue dans les en-têtes",
+    what: "Le code ne lit pas lui-même X-Forwarded-For, X-Real-IP ou un en-tête d'adresse du même genre : pour une limite de débit, il demande ctx.api.visitor.fingerprint(request) (cœur 0.2.6). Vérifié seulement quand le cœur qui teste fournit cette fonction.",
+    why: "Le début de X-Forwarded-For est écrit par le visiteur : le lire permet de contourner la limite en changeant d'adresse inventée à chaque envoi. Le cœur, lui, prend l'entrée ajoutée par SON proxy, la seule de confiance, et ne rend qu'une empreinte salée, jamais l'adresse.",
+    fix: "Remplacez la lecture de l'en-tête par « const who = ctx.api.visitor.fingerprint(request, \"envoi\") » et comptez par « who ». Déclarez « minCore »: « 0.2.6 ». Ne gardez jamais l'adresse elle-même.",
+    run(m) {
+      if (!Object.keys(m.definition?.routes ?? {}).length) return { na: "le module n'a pas de routes" };
+      if (compareVersions(m.core?.version ?? "0.0.0", "0.2.6") < 0) return { na: `ce cœur (${m.core?.version}) ne fournit pas encore ctx.api.visitor.fingerprint` };
+      const hit = /["'`](x-forwarded-for|x-real-ip|cf-connecting-ip|true-client-ip|forwarded)["'`]/i.exec(stripComments(m.code));
+      return hit ? [`le code lit l'en-tête « ${hit[1]} » : utilisez ctx.api.visitor.fingerprint(request) à la place`] : [];
     },
   },
 ];

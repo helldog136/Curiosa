@@ -93,6 +93,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 | [`code.imports`](#codeimports) | obligatoire | Le module ne dépend de rien d'autre que de ctx |
 | [`code.noDanger`](#codenodanger) | obligatoire | Pas de code dangereux |
 | [`load.noNetwork`](#loadnonetwork) | obligatoire | Aucun accès au réseau au chargement |
+| [`page.scripts`](#pagescripts) | conseil | Les scripts de page sont de vrais fichiers du dossier scripts/ |
 | [`perm.declared`](#permdeclared) | obligatoire | Chaque capacité utilisée est déclarée dans « permissions » |
 | [`perm.minimal`](#permminimal) | conseil | Aucune permission inutile n'est demandée |
 | [`i18n.manifest`](#i18nmanifest) | obligatoire | Les textes de module.json existent en français et en anglais |
@@ -115,6 +116,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 | [`routes.redirect`](#routesredirect) | obligatoire | Aucune redirection vers un site extérieur |
 | [`routes.errors`](#routeserrors) | obligatoire | Les réponses d'erreur ne révèlent rien d'interne |
 | [`routes.protected`](#routesprotected) | obligatoire | Une route publique qui écrit est protégée contre les abus |
+| [`routes.visitorIp`](#routesvisitorip) | conseil | L'adresse du visiteur n'est pas lue dans les en-têtes |
 | [`forms.fieldErrors`](#formsfielderrors) | conseil | Une erreur de champ s'affiche sous son champ |
 | [`mcp.name`](#mcpname) | obligatoire | Les noms d'outils MCP restent assez courts |
 | [`mcp.safety`](#mcpsafety) | obligatoire | Les outils MCP déclarent honnêtement ce qu'ils font |
@@ -140,7 +142,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 | [`readme.plain`](#readmeplain) | conseil | Le README est écrit en langage de tous les jours |
 | [`neutrality.clean`](#neutralityclean) | conseil | Aucune donnée personnelle ni propre à un site dans le module |
 
-36 exigences obligatoires et 23 conseils.
+36 exigences obligatoires et 25 conseils.
 
 ### Le fichier module.json
 
@@ -224,7 +226,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 
 **Ce que module.json annonce est ce que le code fait** — niveau : **obligatoire**
 
-- **Ce qui est vérifié.** Chaque section, section d'éditeur d'entrée, action MCP, service offert, sujet partagé, page et overlay déclarés existent dans le code — et inversement. Les emplacements (slots) ont un nom connu, les formulaires pointent vers une route ou une action qui existe (dans une section d'éditeur : une action de cette section), et les services ou sujets appelés sont déclarés.
+- **Ce qui est vérifié.** Chaque section, section d'éditeur d'entrée, action MCP, service offert, sujet partagé, page et overlay déclarés existent dans le code — et inversement. Les emplacements (slots) ont un nom connu, les formulaires pointent vers une route ou une action qui existe (une action d'administration peut être une fonction OU un objet « { right, run } » ; dans une section d'éditeur : une action de cette section), et les services ou sujets appelés sont déclarés.
 - **Pourquoi.** Le cœur ne connaît le module que par son manifeste. Une section annoncée mais absente s'affiche vide ; un code jamais annoncé n'est jamais appelé ; un service non déclaré est refusé à l'appel.
 - **Comment corriger.** Ajoutez ce qui manque d'un côté ou de l'autre : le message dit si c'est le manifeste (module.json) ou le code (index.mjs) qui est en retard.
 
@@ -251,6 +253,14 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 - **Ce qui est vérifié.** Charger le fichier principal ne déclenche aucune requête réseau (fetch, http, connexion, résolution de nom).
 - **Pourquoi.** Le cœur charge tous les modules au démarrage du site, y compris quand Internet ne répond pas. Un module qui appelle un service dès son chargement ralentit ou bloque le démarrage de tout le site.
 - **Comment corriger.** Déplacez l'appel réseau dans une fonction (section, route, tâche planifiée) : il ne part alors qu'à la demande, jamais à l'import.
+
+#### `page.scripts`
+
+**Les scripts de page sont de vrais fichiers du dossier scripts/** — niveau : **conseil**
+
+- **Ce qui est vérifié.** Si la page renvoie « scripts » (cœur 0.2.6), ce sont au plus 3 noms de fichiers (lettres minuscules, chiffres, « . », « - » ou « _ », qui finissent par .js) qui existent dans le dossier « scripts/ » du module et pèsent 32 Ko au plus.
+- **Pourquoi.** Le cœur sert lui-même ces fichiers, uniquement sur la page concernée, avec une empreinte d'intégrité. Un nom invalide ou un fichier absent est ignoré sans bruit : la page s'affiche, mais sans son script.
+- **Comment corriger.** Mettez le script dans scripts/mon-script.js (dossier du module) et renvoyez « scripts: ["mon-script.js"] » avec la page. N'écrivez pas de script en ligne et n'en chargez pas depuis un autre site.
 
 ### Les droits demandés
 
@@ -437,6 +447,14 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 - **Ce qui est vérifié.** Quarante envois valides, à la suite, depuis le même visiteur, ne sont pas tous acceptés : la route a un limiteur de débit, un plafond de stockage, un code d'accès ou une modération qui la protège.
 - **Pourquoi.** Une route ouverte à tous qui écrit sans limite permet à un robot de remplir le stockage du site en quelques minutes.
 - **Comment corriger.** Ajoutez un limiteur de débit par visiteur (voir limited() dans l'exemple guestbook : N envois par heure), un plafond du nombre d'éléments stockés (réponse 503 au-delà), et un champ piège pour les robots.
+
+#### `routes.visitorIp`
+
+**L'adresse du visiteur n'est pas lue dans les en-têtes** — niveau : **conseil**
+
+- **Ce qui est vérifié.** Le code ne lit pas lui-même X-Forwarded-For, X-Real-IP ou un en-tête d'adresse du même genre : pour une limite de débit, il demande ctx.api.visitor.fingerprint(request) (cœur 0.2.6). Vérifié seulement quand le cœur qui teste fournit cette fonction.
+- **Pourquoi.** Le début de X-Forwarded-For est écrit par le visiteur : le lire permet de contourner la limite en changeant d'adresse inventée à chaque envoi. Le cœur, lui, prend l'entrée ajoutée par SON proxy, la seule de confiance, et ne rend qu'une empreinte salée, jamais l'adresse.
+- **Comment corriger.** Remplacez la lecture de l'en-tête par « const who = ctx.api.visitor.fingerprint(request, "envoi") » et comptez par « who ». Déclarez « minCore »: « 0.2.6 ». Ne gardez jamais l'adresse elle-même.
 
 ### Les formulaires d'administration
 

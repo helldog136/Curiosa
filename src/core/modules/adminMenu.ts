@@ -1,11 +1,12 @@
 import type { Level } from "../auth/rights";
 
 /** Les entrées de la rubrique « Administration » du menu, dans l'ordre d'affichage. */
-export type AdminEntry = "extensions" | "assistants" | "users" | "backup" | "updates" | "audit";
+export type AdminEntry = "extensions" | "assistants" | "users" | "health" | "backup" | "updates" | "audit";
 
 /**
  * Quelles entrées d'« Administration » voit cette personne ? Logique pure, testée.
  * - Assistants IA : propriétaire seulement, en mode simple comme en mode avancé (c'est la page qu'une créatrice non technique utilise pour brancher une IA) ;
+ * - Santé de mon site (contrôle du contenu) : administrateur et propriétaire, en mode simple comme avancé ;
  * - Journal d'audit : propriétaire, mode avancé seulement.
  */
 export function administrationEntries({ role, advanced }: { role: Level; advanced: boolean }): AdminEntry[] {
@@ -15,7 +16,7 @@ export function administrationEntries({ role, advanced }: { role: Level; advance
   const out: AdminEntry[] = [];
   if (manage) out.push("extensions");
   if (owner) out.push("assistants");
-  if (manage) out.push("users");
+  if (manage) out.push("users", "health");
   if (owner) out.push("backup", "updates");
   if (owner && advanced) out.push("audit");
   return out;

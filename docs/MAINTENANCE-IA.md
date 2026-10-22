@@ -23,8 +23,8 @@ Une IA ne peut agir sur votre site que par un **jeton** : c'est son mot de passe
 
 | Niveau | Quoi | Par défaut |
 |---|---|---|
-| **1. Regarder et diagnostiquer** | version du site, place sur le disque, état de la base, date de la dernière sauvegarde, fonctionnalités en erreur, mises à jour disponibles, un rapport « ce qui ne va pas et quoi faire », les dernières actions de maintenance | **Activé** pour un jeton Maintenance. Rien n'est modifié. |
-| **2. Actions sans risque** | revérifier les mises à jour, faire une copie de sécurité de la base sur le serveur, remettre à neuf le code d'une fonctionnalité (vos données sont gardées), remettre en marche une fonctionnalité mise à l'écart | **Désactivé.** Vous l'autorisez, action par action, sur la page du jeton. |
+| **1. Regarder et diagnostiquer** | version du site, place sur le disque, état de la base, date de la dernière sauvegarde, fonctionnalités en erreur, mises à jour disponibles, le dernier résultat de la vérification du contenu (images sans texte, traductions, liens…), un rapport « ce qui ne va pas et quoi faire », les dernières actions de maintenance | **Activé** pour un jeton Maintenance. Rien n'est modifié. |
+| **2. Actions sans risque** | lancer une vérification du contenu du site (voir [SANTE-DU-SITE.md](SANTE-DU-SITE.md)), revérifier les mises à jour, faire une copie de sécurité de la base sur le serveur, remettre à neuf le code d'une fonctionnalité (vos données sont gardées), remettre en marche une fonctionnalité mise à l'écart | **Désactivé.** Vous l'autorisez, action par action, sur la page du jeton. |
 | **3. Actions à risque** | mettre une fonctionnalité à jour, mettre toutes les fonctionnalités à jour, mettre Curiosa à jour, désinstaller une fonctionnalité | **Désactivé**, et même autorisé, l'IA ne fait que **demander** (voir plus bas). |
 
 ### Ce que l'IA ne peut jamais faire
@@ -76,11 +76,13 @@ Tu es branchée à un site Curiosa par un jeton « Maintenance ». Ton rôle : s
 |---|---|---|
 | `maintenance_status`, `_health`, `_modules`, `_updates`, `_diagnose`, `_audit` | 1 (lecture) | voir ci-dessus |
 | `maintenance_legacy` | 1 | ce qui reste à mettre à niveau après une mise à jour depuis une version plus vieille (lignes de modules héritées, éléments éteints, instances en retard ou mises de côté, reprises pas faites, réglages masqués encore remplis, réglages inconnus) : des nombres et des noms, jamais une valeur |
+| `maintenance_content_check` | 1 | le dernier résultat de la **vérification du contenu** du site (images sans texte, titres, descriptions, traductions, menu, liens) : importance, phrase, pourquoi, exemples, chemin d'administration qui corrige, ce qui n'a pas été regardé. **Ne contacte aucun site**, ne modifie rien, jamais de note. Voir [SANTE-DU-SITE.md](SANTE-DU-SITE.md) |
 | `maintenance_request_status {requestId}` | 1 | état d'une de **tes** demandes (`pending_approval`, `running`, `done`, `failed`, `denied`, `expired`) et son résultat |
 | `maintenance_check_updates` | 2 | revérifie les versions (vide les caches) |
 | `maintenance_backup_run` | 2 | copie de la base sur le serveur (illisible depuis l'API) |
 | `maintenance_module_reinstall {module}` | 2 | code remis à neuf, données et réglages conservés |
 | `maintenance_module_restart {instance}` | 2 | remet en marche une instance mise à l'écart après un échec de conversion de données |
+| `maintenance_content_check_run {continue?}` | 2 | lance une vérification du contenu (comme le bouton « Vérifier maintenant ») : lit le site puis visite poliment **un paquet** de liens vers d'autres sites (200 au plus par vérification, 25 par site, jamais deux visites de suite sur le même site, adresses internes refusées). Rien n'est modifié sur le site. Rappelle avec `continue: true` tant que `finished` est faux, puis lis `maintenance_content_check`. Ne la lance que sur demande ou si le résultat est ancien |
 | `maintenance_module_update {module}` | 3 | met un module à jour (étiquettes stables seulement) |
 | `maintenance_modules_update_all` | 3 | met à jour tous les modules éligibles, un par un |
 | `maintenance_core_update` | 3 | met Curiosa à jour vers la **plus haute version stable**, si elle est plus récente |

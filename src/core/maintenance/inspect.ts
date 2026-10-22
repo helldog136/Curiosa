@@ -10,6 +10,7 @@ import { sourceKind } from "@/core/modules/reinstall";
 import { getInstallInfo, getUpdateChannel, readUpdateLog, readUpdateState, readVersion } from "@/core/updates/service";
 import { compareVersions } from "@/core/updates/versions";
 import { deps } from "./deps";
+import { contentSummary } from "./content/service";
 import { publicRepo, redactSecrets, tailLines } from "./redact";
 
 /**
@@ -230,6 +231,17 @@ export async function diagnose() {
   for (const u of up.modules.filter((x) => !x.aiCanUpdate)) add({ severity: "info", problem: `Module "${u.id}" has an update (${u.current} to ${u.target}) that you cannot apply: ${u.reason}.`, probableCause: "safety rule", proposedAction: u.needsCore ? "Update the core first." : "Tell the owner; only they can do it from Admin > Updates.", tool: u.needsCore ? "maintenance_core_update" : null, needsHuman: !u.needsCore });
   if (up.unchecked.length) add({ severity: "info", problem: `Updates could not be checked for: ${up.unchecked.join(", ")}.`, probableCause: "network or repository unreachable", proposedAction: "Check again later.", tool: "maintenance_check_updates", needsHuman: false });
 
+  // Contrôle du contenu : toujours en « info », jamais en alarme (une image sans texte n'est pas une panne). Lecture du petit résumé gardé, aucun site contacté.
+  const content = await contentSummary();
+  if (content && content.finished && content.counts.important + content.counts.advised > 0) {
+    const c = content.counts;
+    add({
+      severity: "info", problem: `The last content check (${content.at.slice(0, 10)}) found things worth a look: ${c.important} important, ${c.advised} advised, ${c.info} for information.`,
+      probableCause: "images without text, titles or descriptions missing, translations missing, menu entries or links that lead nowhere",
+      proposedAction: "Read the details with maintenance_content_check and tell the owner in simple words; they fix each remark from Admin > Site health (nothing here is urgent).", tool: "maintenance_content_check", needsHuman: true,
+    });
+  }
+
   const rank = { critical: 0, warning: 1, info: 2 } as const;
   problems.sort((a, b) => rank[a.severity] - rank[b.severity]);
   const worst = problems[0]?.severity;
@@ -240,7 +252,7 @@ export async function diagnose() {
   };
 }
 
-const AUDIT_ACTIONS = ["mcp.maintenance.", "update.start", "update.auto", "update.channel", "module.update", "module.reinstall", "module.uninstall", "module.install", "module.enable", "module.disable", "backup.create", "backup.restore"];
+const AUDIT_ACTIONS = ["mcp.maintenance.", "content.check", "update.start", "update.auto", "update.channel", "module.update", "module.reinstall", "module.uninstall", "module.install", "module.enable", "module.disable", "backup.create", "backup.restore"];
 
 /** Dernières actions de maintenance, faites par l'IA ou par un humain. L'adresse e-mail d'un humain n'est jamais donnée ; aucun secret. */
 export async function auditTrail(limit = 20) {

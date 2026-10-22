@@ -1,19 +1,15 @@
-import { pickName } from "@/core/instances";
 import { loadSocialLinks } from "@/core/social";
 import { makeTranslator } from "@/core/i18n/dictionary";
 import { isDarkBackground, pickLogo } from "@/core/logos";
-import { getActiveInstances } from "@/core/modules/registry";
 import { withLocale } from "@/core/links";
-import { instanceHasNews, runSlot } from "@/core/modules/runtime";
+import { resolvePublicMenu } from "@/core/menuResolve";
+import { runSlot } from "@/core/modules/runtime";
 import type { SiteConfig } from "@/core/settings";
 import { safeHref } from "@/core/url";
 import { EntryIcon } from "./EntryIcon";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { MenuToggle } from "./MenuToggle";
-import { NavDropdown } from "./NavDropdown";
-
-type Link = { label: string; href: string };
-type Item = Link & { news: boolean; children?: Link[] };
+import { SiteNav, type NavItem } from "./SiteNav";
 
 export async function Header({ config, locale }: { config: SiteConfig; locale: string }) {
   const t = makeTranslator(locale);
@@ -21,28 +17,21 @@ export async function Header({ config, locale }: { config: SiteConfig; locale: s
   const wide = pickLogo(config.logos, "wide", dark);
   const icon = pickLogo(config.logos, "icon", dark);
   const local = (path: string) => withLocale(safeHref(path), locale, config.defaultLocale);
-  const pick = (label: Record<string, string>, fallback: string) => label[locale] ?? label[config.defaultLocale] ?? Object.values(label)[0] ?? fallback;
 
-  const mounted = (await getActiveInstances()).filter((a) => a.instance.showInNav && a.instance.basePath);
-  const fresh = await Promise.all(mounted.map((a) => instanceHasNews(a, locale)));
+  // Le menu que la personne a composé (pages, extensions, contenus, raccourcis, liens, sous-menus), dans la langue du visiteur ; puis les liens que des modules ajoutent
+  // eux-mêmes par l'emplacement « nav.items ». Aucune page n'entre au menu sans que la personne l'ait décidé (voir core/menu.ts).
+  const composed = await resolvePublicMenu(locale, config.defaultLocale);
   const moduleNav = await runSlot("nav.items", locale);
   const socials = config.header.socials ? await loadSocialLinks(locale) : [];
 
-  const items: Item[] = [
-    ...mounted.map(({ instance: c }, i) => ({ label: pickName(c, locale, config.defaultLocale), href: withLocale(`/${c.basePath}`, locale, config.defaultLocale), news: fresh[i] === true })),
-    ...config.nav.map((n) => ({
-      label: pick(n.label, n.href),
-      href: n.children ? "" : local(n.href),
-      news: false,
-      children: n.children?.map((c) => ({ label: pick(c.label, c.href), href: local(c.href) })),
-    })),
+  const items: NavItem[] = [
+    ...composed,
     ...moduleNav.flatMap((b) => (b.type === "links" ? b.items.map((i) => ({ label: i.label, href: safeHref(i.href), news: false })) : [])),
   ];
 
   const dot = (
     <span data-testid="news-dot" role="img" aria-label={t("site.news")} title={t("site.news")} className="ml-1.5 inline-block h-2 w-2 rounded-full bg-accent align-middle" />
   );
-  const linkCls = "inline-block py-1.5 text-muted hover:text-fg";
 
   const brand = (
     <a href={withLocale("/", locale, config.defaultLocale)} className="flex items-center gap-3 text-lg font-semibold" aria-label={config.name}>
@@ -55,15 +44,7 @@ export async function Header({ config, locale }: { config: SiteConfig; locale: s
     </a>
   );
 
-  const menu = (
-    <nav aria-label={t("site.nav.main")} className="flex flex-wrap gap-x-5 gap-y-1 text-sm">
-      {items.map((item) =>
-        item.children ? <NavDropdown key={item.label} label={item.label} items={item.children} /> : (
-          <a key={`${item.href}-${item.label}`} href={item.href} className={linkCls}>{item.label}{item.news && dot}</a>
-        ),
-      )}
-    </nav>
-  );
+  const menu = <SiteNav items={items} strings={{ main: t("site.nav.main"), menu: t("site.menu"), submenu: t("site.nav.submenu", { name: "{name}" }), news: t("site.news") }} />;
 
   const socialsEl = socials.length > 0 && (
     <ul aria-label={t("site.socials")} className="flex items-center gap-3" data-testid="header-socials">
@@ -107,10 +88,12 @@ export async function Header({ config, locale }: { config: SiteConfig; locale: s
               <ul className="space-y-1 text-sm">
                 {items.map((item) => (
                   <li key={`${item.href}-${item.label}`}>
-                    {item.children ? (
-                      <><p className="px-2 pt-2 text-xs font-semibold uppercase tracking-wide text-muted">{item.label}</p>
-                        <ul>{item.children.map((c) => <li key={c.href + c.label}><a href={c.href} className="block rounded-lg px-2 py-2 hover:bg-accent/10">{c.label}</a></li>)}</ul></>
-                    ) : <a href={item.href} className="block rounded-lg px-2 py-2 hover:bg-accent/10">{item.label}{item.news && dot}</a>}
+                    {item.href
+                      ? <a href={item.href} className="flex min-h-11 items-center rounded-lg px-2 py-2 hover:bg-accent/10">{item.label}{item.news && dot}</a>
+                      : <p className="px-2 pt-2 text-xs font-semibold uppercase tracking-wide text-muted">{item.label}</p>}
+                    {item.children && (
+                      <ul className="pl-3">{item.children.map((c) => <li key={c.href + c.label}><a href={c.href} className="flex min-h-11 items-center rounded-lg px-2 py-2 hover:bg-accent/10">{c.label}{c.news && dot}</a></li>)}</ul>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -128,5 +111,5 @@ export async function Header({ config, locale }: { config: SiteConfig; locale: s
         </div>
       );
   }
-  return <header className="border-b border-line" data-header-layout={config.header.layout}>{body}</header>;
+  return <header className="relative border-b border-line" data-header-layout={config.header.layout}>{body}</header>;
 }
