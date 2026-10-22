@@ -76,7 +76,7 @@ Le service MCP sait *servir* des outils, pas *d'où ils viennent*. Il reçoit un
 | Fournisseur | Fichier | Apporte |
 |---|---|---|
 | `site` | `platform.ts` | `site_info` : s'orienter sur le site |
-| `maintenance` | `core/maintenance/tools.ts` | les outils `maintenance_…` du cœur (diagnostic, sauvegarde, mises à jour, contrôle du contenu `maintenance_content_check[_run]`) : voir [MAINTENANCE-IA.md](MAINTENANCE-IA.md) et [SANTE-DU-SITE.md](SANTE-DU-SITE.md) ; désactivés pour un jeton ordinaire, niveau 3 `destructive` avec validation humaine |
+| `maintenance` | `core/maintenance/tools.ts` | les outils `maintenance_…` du cœur (diagnostic, sauvegarde, mises à jour, contrôle du contenu `maintenance_content_check[_run]`, catalogue des modules `maintenance_catalog_list/get`, installation `maintenance_module_install`, réglages `maintenance_module_settings/configure[_advanced]` : `catalog.ts`, `install.ts`, `moduleSettings.ts`) : voir [MAINTENANCE-IA.md](MAINTENANCE-IA.md) et [SANTE-DU-SITE.md](SANTE-DU-SITE.md) ; désactivés pour un jeton ordinaire, niveau 3 `destructive` avec validation humaine |
 | `modules` | `core/modules/mcpProvider.ts` | les actions déclarées par les modules (`mcp` du manifeste + du code) |
 | `content` | `core/content/mcp.ts` | actions éditoriales (lister, lire, brouillons) de toute instance à contenu |
 | `redirects` | `core/redirectMcp.ts` | `redirects_list`, `redirects_stats` (lecture, accordés d'office) ; `redirects_create`, `redirects_update` (écriture, **jamais accordés d'office**) ; `redirects_delete` (`destructive`, jamais d'office). Mêmes règles que l'écran (voir « Liens courts ») |

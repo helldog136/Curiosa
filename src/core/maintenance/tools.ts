@@ -1,6 +1,9 @@
+import type { JsonSchemaLite } from "@/core/modules/types";
 import type { McpTool, McpToolProvider } from "@/core/services/mcp/types";
 import { McpToolError, validateArgs } from "@/core/services/mcp/validate";
-import { callLevel3, runLevel2, type Level2Tool } from "./actions";
+import { callLevel3, runConfigure, runLevel2, type Level2Tool } from "./actions";
+import { CATALOG_GET_INPUT, CATALOG_LIST_INPUT, catalogGet, catalogList } from "./catalog";
+import { CONFIGURE_INPUT, SETTINGS_INPUT, readSettings } from "./moduleSettings";
 import { auditTrail, diagnose, health, modules, status, updates } from "./inspect";
 import { contentCheckView } from "./content/service";
 import { legacyReportForAssistant } from "@/core/modules/legacyReport";
@@ -24,7 +27,10 @@ const NONE = { type: "object" } as const;
 const MODULE_ARG = { type: "object", properties: { module: { type: "string", maxLength: 64, description: "Module identifier, as listed by maintenance_modules." } }, required: ["module"] } as const;
 
 type Def = {
-  name: string; level: 1 | 2 | 3; title: string; description: string; input: McpTool["input"];
+  name: string; level: 1 | 2 | 3;
+  /** Lecture seule malgré un niveau 2 (les réglages d'une instance : leurs valeurs ne se lisent que si le propriétaire l'a accordé). Défaut : niveau 1 seulement. */
+  readOnly?: boolean;
+  title: string; description: string; input: McpTool["input"];
   run: (args: Record<string, unknown>, actor: { name: string; tokenId?: string }) => Promise<unknown>;
 };
 
@@ -39,7 +45,15 @@ const UNINSTALL_ARG = {
   },
   required: ["module"],
 } as const;
-const level3 = (name: Level3Action): Def["run"] => (args, actor) => callLevel3(name, validateArgs(name === "core_update" || name === "modules_update_all" ? NONE : name === "module_uninstall" ? UNINSTALL_ARG : MODULE_ARG, args), actor);
+const INSTALL_ARG: JsonSchemaLite = {
+  type: "object",
+  properties: {
+    module: { type: "string", maxLength: 40, description: "Module identifier from maintenance_catalog_list (for example blog)." },
+    instanceKey: { type: "string", maxLength: 31, description: "Optional, only for a module that allows several instances: the key of its first instance (lowercase letters, digits and dashes, for example blog-news). Default: derived from the module identifier." },
+  },
+  required: ["module"],
+};
+const level3 = (name: Level3Action): Def["run"] => (args, actor) => callLevel3(name, validateArgs(name === "core_update" || name === "modules_update_all" ? NONE : name === "module_uninstall" ? UNINSTALL_ARG : name === "module_install" ? INSTALL_ARG : MODULE_ARG, args), actor);
 
 const DEFS: Def[] = [
   { name: "status", level: 1, title: "Site status", description: "Core version and update channel, Node version, uptime, number of modules, state of the update in progress. Start here.", input: NONE, run: () => status() },
@@ -60,6 +74,16 @@ const DEFS: Def[] = [
     },
   },
   { name: "legacy", level: 1, title: "Data upgrade report", description: "What is left to upgrade after an update from an earlier version of the site: old module rows, switched-off items, instances whose data is behind or set aside, takeovers not done, hidden settings still filled in, unknown settings. Read-only; counts and names only, never a setting value.", input: NONE, run: () => legacyReportForAssistant() },
+  {
+    name: "catalog_list", level: 1, title: "Modules available to install",
+    description: "Lists the modules of the official catalogue that this site does NOT have yet (or all of them with include=all, the installed ones marked). Use it to guide the owner: search with a few short words (French or English, try several), then read the sheet of the best candidates with maintenance_catalog_get. Each item says what the module is for, whether it is verified, whether it can be installed on this site (and if not, why in plain words), the services it needs or offers. Paged (50 at most, use nextOffset). Read-only; reads the same catalogue as the admin (cached 15 minutes). If the catalogue cannot be reached the answer says so (available: false): try again later.",
+    input: CATALOG_LIST_INPUT, run: (args) => catalogList(args),
+  },
+  {
+    name: "catalog_get", level: 1, title: "Sheet of a catalogue module",
+    description: "The full sheet of one module, in plain words, to help the owner choose: what it is for, what visitors see, what personal data it collects (the author's declaration), what permissions it asks for, the modules it needs (required) and the ones that make it work better (optional) with what each brings, whether it fits this site's Curiosa version, whether it is already installed, which settings to plan (never a value, never a secret) and which modules go well with it. Read-only. To install it, use maintenance_module_install (the owner approves).",
+    input: CATALOG_GET_INPUT, run: (args) => catalogGet(args),
+  },
   { name: "content_check", level: 1, title: "Content check result", description: "The result of the last check of the site's content (images without text, titles, descriptions for search engines, missing translations, menu entries and links that lead nowhere, outside links). READ-ONLY: it shows the last result and contacts no site. Each remark has an importance (important / advised / info), a short sentence, why it matters and, where there is one, the admin screen that fixes it. Never a score.", input: NONE, run: () => contentCheckView() },
 
   { name: "check_updates", level: 2, title: "Check for updates again", description: "Clears the version caches and checks the core and the modules again (the admin's \"Check again\" button).", input: NONE, run: level2("check_updates") },
@@ -68,6 +92,27 @@ const DEFS: Def[] = [
   { name: "module_restart", level: 2, title: "Bring a module instance back", description: "Retries an instance that was set aside after a failed data conversion, so that it runs again.", input: INSTANCE_ARG, run: level2("module_restart") },
   { name: "content_check_run", level: 2, title: "Check the content now", description: "Runs a check of the site's content (same as the admin's \"Check now\" button): reads the pages, the menu and the settings, then visits some outside links, politely (at most 200 links per check, 25 per website, never two visits in a row to the same website, internal addresses refused). Changes nothing on the site. A check of many links is done in steps: call again with continue: true until it says finished, then read the result with maintenance_content_check. Only run it when asked or when the content check is out of date.", input: CONTINUE_ARG, run: level2("content_check_run") },
 
+  {
+    name: "module_settings", level: 2, readOnly: true, title: "Settings of a module instance",
+    description: "The settings of one instance (key from maintenance_modules): label, help, type, current value, what values are allowed with an example, whether it needs a value and which tool can change it. A SECRET setting never shows its value, only isSet true/false and where the owner types it in the admin. Addresses are shown without their private part. Read-only, but values can be personal, so the owner grants it separately.",
+    input: SETTINGS_INPUT, run: (args) => readSettings(args),
+  },
+  {
+    name: "module_configure", level: 2, title: "Change settings of a module",
+    description: "Changes up to 20 settings of one instance in one call (instance key + changes {settingKey: value}). Same checks as the admin form (types, allowed choices, optional groups); everything is checked first and if one value is wrong NOTHING is saved and all problems are listed in simple words with an example. An empty value puts a setting back to its default. It never sets or reads a SECRET setting (tell the owner to type it in the admin, the path is in the answer), never touches roles, rights, names, menu or public path, and cannot change ADVANCED settings (that needs maintenance_module_configure_advanced). Every change is audited (old and new value, never a secret).",
+    input: CONFIGURE_INPUT as unknown as McpTool["input"], run: (args, actor) => runConfigure(false, args, actor),
+  },
+  {
+    name: "module_configure_advanced", level: 2, title: "Change settings of a module, advanced included",
+    description: "Exactly maintenance_module_configure, and it also allows the ADVANCED (technical) settings of the module. The owner grants this tool separately, only to an AI they trust with technical settings. Secret settings stay forbidden.",
+    input: CONFIGURE_INPUT as unknown as McpTool["input"], run: (args, actor) => runConfigure(true, args, actor),
+  },
+
+  {
+    name: "module_install", level: 3, title: "Install a catalogue module",
+    description: "Asks to install a module of the official catalogue (id from maintenance_catalog_list). It NEVER installs by itself: it creates a request that the owner approves in Admin > AI assistants, whatever the token's approval setting is; then poll maintenance_request_status. Checked before asking: the module exists and is verified, fits this Curiosa version, is not installed yet, and every module it requires can be put in place (they are listed in the request, the owner sees them, nothing comes in secretly). After approval the first instance is created with default settings; then use maintenance_module_settings and maintenance_module_configure. Optional instanceKey for a module that allows several instances.",
+    input: INSTALL_ARG, run: level3("module_install"),
+  },
   { name: "module_update", level: 3, title: "Update a module", description: "Updates one module to its latest STABLE version (never a pre-release). By default this only creates a request that the owner approves; then poll request_status.", input: MODULE_ARG, run: level3("module_update") },
   { name: "modules_update_all", level: 3, title: "Update all modules", description: "Updates every module that has a STABLE update, one by one. By default this only creates a request that the owner approves; then poll request_status.", input: NONE, run: level3("modules_update_all") },
   { name: "core_update", level: 3, title: "Update the core", description: "Updates Curiosa to the highest STABLE release, only if it is newer (never a release candidate or snapshot, never a downgrade). By default this only creates a request that the owner approves; then poll request_status. Make a backup first.", input: NONE, run: level3("core_update") },
@@ -75,7 +120,7 @@ const DEFS: Def[] = [
 ];
 
 /** Catalogue statique (nom, niveau, droits) : sert à l'admin, aux tests et à la documentation. */
-export const MAINTENANCE_TOOLS = DEFS.map((d) => ({ name: `maintenance_${d.name}`, level: d.level, readOnly: d.level === 1, destructive: d.level === 3 }));
+export const MAINTENANCE_TOOLS = DEFS.map((d) => ({ name: `maintenance_${d.name}`, level: d.level, readOnly: d.readOnly ?? d.level === 1, destructive: d.level === 3 }));
 export const isMaintenanceTool = (name: string) => name.startsWith("maintenance_");
 
 export const maintenanceToolProvider: McpToolProvider = {
@@ -85,7 +130,7 @@ export const maintenanceToolProvider: McpToolProvider = {
       name: `maintenance_${d.name}`,
       title: d.title,
       description: `[Maintenance, level ${d.level}] ${d.description}`,
-      readOnly: d.level === 1,
+      readOnly: d.readOnly ?? d.level === 1,
       // Aucune de ces actions n'est active par défaut pour un jeton ordinaire ; le profil « Maintenance » accorde le niveau 1 (lecture) et rien d'autre.
       default: false,
       profileDefault: d.level === 1,

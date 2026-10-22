@@ -2,7 +2,9 @@ import fs from "node:fs";
 import { DATA_DIR } from "@/core/config";
 import { safetyCopy } from "@/core/backup/files";
 import type { ModulesReport, Summary } from "@/core/modules/bulkUpdate";
-import { checkForUpdateDetailed, uninstallModule, type ModuleUpdateCheck, type InstallResult } from "@/core/modules/installer";
+import { checkForUpdateDetailed, installFromCatalogue, uninstallModule, type ModuleUpdateCheck, type InstallResult } from "@/core/modules/installer";
+import { getCatalogue, getCatalogueSource, type CatalogueEntry } from "@/core/modules/catalogue";
+import { getModulePreview, type ModulePreview } from "@/core/modules/readme";
 import { retryInstanceMigration, type MigrationOutcome } from "@/core/modules/dataMigrations";
 import { reinstallModule, type ReinstallResult } from "@/core/modules/reinstall";
 import { getModulesReport, updateModules } from "@/core/modules/updateStatus";
@@ -36,6 +38,17 @@ export type MaintenanceDeps = {
   mail(subject: string, text: string): Promise<MailResult>;
   /** Place libre et totale du disque des données, en octets ; null si inconnue. */
   disk(): { freeBytes: number; totalBytes: number } | null;
+  /**
+   * Le catalogue des modules : le MÊME chemin et le MÊME cache (15 min) que la page « Ajouter » de l'admin (adresse du dépôt, hôtes permis, copie de la
+   * dernière réception). `source: "none"` = injoignable et jamais reçu.
+   */
+  catalogue(): Promise<{ entries: CatalogueEntry[]; source: "repository" | "cache" | "none"; fetchedAt: number | null }>;
+  /** Le module.json d'un module du catalogue, lu SANS l'installer (clone superficiel, 10 min de cache, comme la fiche de l'admin). Lève si le dépôt est refusé ou injoignable. */
+  preview(entry: Pick<CatalogueEntry, "repo" | "ref" | "subdir">): Promise<ModulePreview | null>;
+  /** Installe un module du catalogue (jamais d'une source non vérifiée : `confirmExtra` n'est jamais passé), avec les fournisseurs qui lui manquent. */
+  installFromCatalogue(id: string): Promise<InstallResult>;
+  /** Borne dure (ms) des lectures réseau du catalogue : au-delà, la réponse dit « injoignable pour l'instant ». */
+  catalogTimeoutMs: number;
 };
 
 const STABLE_CACHE_MS = 10 * 60_000;
@@ -48,6 +61,15 @@ export const realDeps = (): MaintenanceDeps => ({
   updateModules: (ids) => updateModules(ids),
   reinstall: (id) => reinstallModule(id),
   uninstall: (id, opts) => uninstallModule(id, opts),
+  async catalogue() {
+    const [entries, source] = await Promise.all([getCatalogue(), getCatalogueSource()]);
+    return { entries, source: source.source, fetchedAt: source.fetchedAt };
+  },
+  async preview(entry) {
+    return entry.repo ? getModulePreview({ kind: "repo", url: entry.repo, ref: entry.ref, subdir: entry.subdir }) : null;
+  },
+  installFromCatalogue: (id) => installFromCatalogue(id),
+  catalogTimeoutMs: 20_000,
   retryInstance: (instanceId) => retryInstanceMigration(instanceId),
   async latestStable(force = false) {
     if (!force && stableCache && Date.now() - stableCache.at < STABLE_CACHE_MS) return stableCache.value;

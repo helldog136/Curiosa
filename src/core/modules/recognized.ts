@@ -7,6 +7,7 @@ import { DATA_DIR } from "../config";
 import { isSubdir, parseRepoUrl } from "./installer";
 import { sanitizeRequires, type CoreRequirement } from "./compat";
 import { sanitizeServiceList } from "./serviceVersions";
+import { PLATFORM_PATTERN } from "./platform";
 
 export type RecognizedItem = {
   id: string;
@@ -22,6 +23,8 @@ export type RecognizedItem = {
   icon?: string;
   /** Version de l'API des modules que le module vise ; différente de celle du framework → affiché comme incompatible. */
   apiVersion?: number;
+  /** Plateforme concernée (« twitch », « discord »…), annoncée par l'index quand il la donne : sert à chercher et à regrouper, jamais à décider. */
+  platform?: string;
   /** Sujets fournis par le module (annoncés par l'index, relus à l'installation). */
   provides?: string[];
   /** Cœur minimal annoncé par l'index (`"requires": { "core": "0.1.10" }`) : permet de savoir SANS télécharger si le module convient. Absent = aucune exigence. Un cœur plus ancien ignore ce champ. */
@@ -62,6 +65,7 @@ export function sanitizeEntries(json: unknown): RecognizedItem[] {
       subdir: isSubdir(i.subdir) ? i.subdir : undefined,
       version: str(i.version, 40), author: str(i.author, 120), icon: str(i.icon, 8),
       apiVersion: Number.isInteger(i.apiVersion) ? i.apiVersion : undefined,
+      platform: typeof i.platform === "string" && PLATFORM_PATTERN.test(i.platform) ? i.platform : undefined,
       provides: Array.isArray(i.provides) ? i.provides.filter((x: unknown): x is string => typeof x === "string" && /^[a-z][a-z0-9.-]{0,40}$/.test(x)).slice(0, 20) : undefined,
       requires: sanitizeRequires(i.requires),
       offers: sanitizeServiceList(i.offers, "version"),

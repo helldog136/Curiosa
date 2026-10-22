@@ -28,6 +28,8 @@ export type CatalogueEntry = {
   ref?: string;
   /** Dossier du module dans `repo` quand ce dépôt en regroupe plusieurs. */
   subdir?: string;
+  /** Plateforme concernée (index du catalogue, facultatif). */
+  platform?: string;
   /** Sujets que le module fournit (ex. `social.link`) : le cœur s'en sert pour proposer les réseaux sociaux. */
   provides?: string[];
   /** Ce module vise-t-il l'API de modules de CE framework ? Sinon il est listé mais non installable. */
@@ -53,7 +55,7 @@ function recognizedEntry(c: RecognizedItem, suggested: Set<string>): CatalogueEn
   const needs = normalizeNeeds(c.needs);
   return {
     id: c.id, name: c.name, description: c.description, version: c.version, icon: c.icon, author: c.author, suggested: c.catalogueOrigin !== "extra" && suggested.has(c.id),
-    kind: "recognized", provides: c.provides, repo: c.repo, ref: c.ref, subdir: c.subdir, compatible: c.apiVersion === undefined || c.apiVersion === MODULE_API_VERSION,
+    kind: "recognized", provides: c.provides, platform: c.platform, repo: c.repo, ref: c.ref, subdir: c.subdir, compatible: c.apiVersion === undefined || c.apiVersion === MODULE_API_VERSION,
     requires: c.requires, needsNewerCore: incompatWithThisCore(c.requires)?.needs,
     offers: offers?.length ? offers : undefined, needs: needs?.length ? needs : undefined,
     origin: c.catalogueOrigin === "extra" ? "extra" : "official",
