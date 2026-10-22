@@ -15,6 +15,7 @@ import { collect, collectPage } from "@/core/services/topics";
 import { getSiteConfig } from "@/core/settings";
 import { remainingBudgetMs } from "./budget";
 import { callService, callServiceAll, providersOf, serviceAvailable } from "./dependencies";
+import { privacyDeclarations } from "./privacyDeclarations";
 import { getActiveInstances, getModule, type ActiveInstance } from "./registry";
 import type { ModuleApi } from "./types";
 
@@ -46,6 +47,7 @@ export type CallerRef = { person: AdminUser | null };
 
 export function makeApi(instance: InstanceView, locale: string, permissions: readonly string[] = [], caller?: CallerRef): ModuleApi {
   const rawgAllowed = permissions.includes("rawg");
+  const privacyAllowed = permissions.includes("privacy");
   /**
    * L'instance appelante, pour un appel de service. Une instance mise à l'écart (migration échouée) ne tourne pas, SAUF pendant sa propre
    * migration (« Réessayer ») : elle doit alors pouvoir appeler les services dont elle dépend, d'où le repli sur son module chargé.
@@ -58,6 +60,15 @@ export function makeApi(instance: InstanceView, locale: string, permissions: rea
   };
   return {
     siteUrl,
+
+    // Lecture seule des déclarations `privacy` des modules actifs ; sans la permission « privacy » : rien (jamais d'erreur).
+    privacy: {
+      declarations: async () => {
+        if (!privacyAllowed) return { modules: [], truncated: false };
+        const config = await getSiteConfig();
+        return privacyDeclarations(await getActiveInstances(), locale, config.defaultLocale);
+      },
+    },
 
     seo: { jsonLd: (data) => { const ld = moduleJsonLd(data); return ld ? { tag: "script", jsonLd: ld } : null; } },
 

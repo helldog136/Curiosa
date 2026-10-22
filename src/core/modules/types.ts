@@ -207,7 +207,7 @@ export type ModuleManifest = {
   /** Modules activés dès le départ (défaut : oui). */
   defaultEnabled?: boolean;
   /** Déclaratif et informatif : affiché à l'administrateur avant activation. */
-  permissions: ("slots" | "routes" | "storage" | "filters" | "sections" | "pages" | "topics" | "overlay" | "mcp" | "admin" | "mail" | "rawg")[];
+  permissions: ("slots" | "routes" | "storage" | "filters" | "sections" | "pages" | "topics" | "overlay" | "mcp" | "admin" | "mail" | "rawg" | "privacy")[];
 };
 
 export type EntrySummary = {
@@ -247,6 +247,22 @@ export type ModuleBrand = {
   locales: string[];
 };
 
+/** Résultat de `ctx.api.privacy.declarations()` : un élément par module actif (100 au plus, triés par identifiant). */
+export type PrivacyDeclarations = {
+  modules: {
+    module: string;
+    name: string;
+    /** Les instances actives de ce module (10 au plus). */
+    instances: { key: string; name: string }[];
+    /** Vrai si le module déclare quelque chose (`text` n'est alors pas vide). */
+    declares: boolean;
+    /** La déclaration par langue (500 caractères au plus par langue, 20 langues au plus) ; vide si rien n'est déclaré. */
+    text: Record<string, string>;
+  }[];
+  /** Vrai s'il y avait plus de 100 modules actifs. */
+  truncated: boolean;
+};
+
 export type ModuleApi = {
   topics: {
     /**
@@ -273,6 +289,13 @@ export type ModuleApi = {
   instances: {
     /** `id` et `adminPath` (« /admin/instances/<id> ») : pour renvoyer l'administrateur vers les réglages d'une instance d'un autre module. */
     list(opts?: { locale?: string; module?: string }): Promise<{ id: string; key: string; module: string; basePath: string | null; name: string; adminPath: string }[]>;
+  };
+  /**
+   * Ce que les modules actifs déclarent collecter (`privacy` de leur manifeste), en lecture seule (cœur 0.2.6 ; permission « privacy »).
+   * Sans la permission : `{ modules: [], truncated: false }`. Ne lève jamais. Texte et noms seulement, jamais un réglage ni une donnée.
+   */
+  privacy: {
+    declarations(): Promise<PrivacyDeclarations>;
   };
   /** Données structurées (schema.org) pour les moteurs de recherche et les assistants IA. */
   seo: {

@@ -331,3 +331,19 @@ test("page.scripts : un script présent dans scripts/ réussit ; il faut minCore
   assert.equal(feat.status, "fail", "scripts de page : cœur 0.2.6 requis");
   assert.match(feat.problems.join("\n"), /0\.2\.6/);
 });
+
+test("permission « privacy » (cœur 0.2.6) : l'utiliser sans la déclarer est signalé ; le faux contexte la refuse sans permission et rend la liste réglable avec", async () => {
+  const use = (permissions) => mk((f) => {
+    REPLACE(f, "const [last] = await rows(ctx);", "const [last] = await rows(ctx); await ctx.api.privacy.declarations();");
+    editManifest(f, (m) => { m.permissions = [...new Set([...m.permissions, ...permissions])]; });
+  });
+  const without = await checkModule(use([]), { siblings: [] });
+  assert.match((status(without, "perm.declared").problems ?? []).join("\n"), /privacy/);
+  assert.match((status(without, "compat.minCore").problems ?? []).join("\n"), /0\.2\.6/);
+  const withIt = await checkModule(use(["privacy"]), { siblings: [] });
+  assert.equal(status(withIt, "perm.declared").status, "pass");
+  const denied = fakeCtx({ permissions: ["storage"], privacyDeclarations: { modules: [{ module: "a" }], truncated: false } });
+  assert.deepEqual(await denied.api.privacy.declarations(), { modules: [], truncated: false });
+  const allowed = fakeCtx({ permissions: ["privacy"], privacyDeclarations: { modules: [{ module: "a" }], truncated: false } });
+  assert.equal((await allowed.api.privacy.declarations()).modules.length, 1);
+});

@@ -121,7 +121,7 @@ Validé à l'installation et au chargement (zod, `src/core/modules/manifest.ts`)
   "platform": "twitch",                  // facultatif : plateforme concernée (regroupement à l'écran)
   "instances": "multiple",               // ou "single"
   "page": true, "basePath": "guestbook", // l'instance a une page publique, sur ce chemin proposé
-  "permissions": ["slots", "sections", "routes", "storage", "filters", "pages", "topics", "overlay", "mcp", "admin", "mail", "rawg"],
+  "permissions": ["slots", "sections", "routes", "storage", "filters", "pages", "topics", "overlay", "mcp", "admin", "mail", "rawg", "privacy"],
   "settings": [ /* … */ ], "sections": [ /* … */ ], "consumes": [ /* … */ ], "provides": [ /* … */ ], "mcp": [ /* … */ ],
   "content": { /* … */ }, "onboarding": { /* … */ }, "defaultEnabled": true
 }
@@ -196,6 +196,7 @@ fidèlement (le test de l'exemple vérifie qu'elles correspondent au code), elle
 | `admin` | le code définit `adminPanel` / `adminActions` / `entryPanels` |
 | `mail` | le module appelle `ctx.api.mail.send` |
 | `rawg` | le module appelle `ctx.api.rawg.cover` (jaquettes de jeux, voir « Jaquettes de jeux (RAWG) ») |
+| `privacy` | (cœur 0.2.6) le module appelle `ctx.api.privacy.declarations()` (lire ce que les autres modules déclarent récolter) |
 
 ### Droits (`rights`)
 
@@ -939,6 +940,7 @@ Deux familles : les **services** du cœur (génériques, voir [PLATFORM.md](PLAT
 | `ctx.api.instances.list({ module?, locale? })` | lecture | `[{ id, key, module, basePath, name, adminPath }]` des instances actives ; `adminPath` (`/admin/instances/<id>`) est la page de réglages de l'instance : de quoi y renvoyer l'administrateur par un lien (`href`) |
 | `ctx.api.entries.list({ instance?, locale?, limit? })` | lecture | entrées publiées (`EntrySummary`) ; par défaut celles de l'instance courante ; **200 au plus** (sans `limit`, ou au-delà : 200), dans l'ordre de la liste publique (non expirées d'abord, puis expirées) ; pour tout lire, passez par `ctx.api.topics.collectPage` |
 | `ctx.api.siteUrl` | lecture | adresse publique du site, sans `/` final |
+| `ctx.api.privacy.declarations()` | lecture | (cœur 0.2.6, permission `privacy` ; sans elle : rien) les déclarations `privacy` des modules **actifs** : `{ modules: [{ module, name, instances: [{ key, name }], declares, text: { langue: texte } }], truncated }`. Un élément par module (100 au plus, triés par identifiant ; `truncated` si davantage ; 10 instances par module). `declares` : vrai si le module déclare quelque chose ; `text` : sa déclaration par langue (un texte simple vaut pour la langue par défaut ; 500 caractères et 20 langues au plus). Texte et noms seulement : jamais un réglage, un secret ni une donnée. Pour qu'un module « Mentions légales » reprenne la liste au lieu de la recopier à la main. |
 | `ctx.api.seo.jsonLd(données)` | service | prépare des données structurées (JSON-LD) pour le slot `layout.head` : renvoie la balise `{ tag: "script", jsonLd }` à mettre dans un bloc `head`, ou `null` si la donnée est inutilisable (pas de `@type`, trop volumineuse). Le cœur ajoute `@context`, borne la taille (texte 5 000 caractères, 100 éléments par liste, 8 niveaux, 20 000 caractères au total) et échappe `</script>`. Voir « Données structurées » dans [CREATE-A-MODULE.md](CREATE-A-MODULE.md). |
 
 **Stockage** : privé à l'instance (une instance ne voit jamais celui d'une autre), en collections libres de documents JSON, sans
