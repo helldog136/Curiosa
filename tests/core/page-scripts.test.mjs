@@ -21,7 +21,7 @@ fs.symlinkSync(path.join(base, "secret.js"), path.join(base, "scripts", "link.js
 
 test("un script déclaré donne une adresse du cœur, une empreinte SRI sha256 et une version dans l'adresse", () => {
   const [t] = pageScriptTags("monsite", "faq", ["a.js"], base);
-  assert.match(t.src, /^\/m\/faq\/_script\/a\.js\?v=[A-Za-z0-9]{12}$/);
+  assert.match(t.src, /^\/m\/faq\/page-script\/a\.js\?v=[A-Za-z0-9]{12}$/);
   assert.match(t.integrity, /^sha256-[A-Za-z0-9+/]{43}=$/);
   assert.equal(t.src.split("?v=")[1], scriptVersion(t.integrity));
 });

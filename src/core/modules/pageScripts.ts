@@ -52,7 +52,7 @@ export function pageScriptTags(moduleId: string, instanceKey: string, scripts: u
   for (const name of new Set(scripts.slice(0, 20))) {
     if (out.length >= MAX_PAGE_SCRIPTS) break;
     const file = readModuleScript(moduleId, name as string, baseDir);
-    if (file) out.push({ src: `/m/${encodeURIComponent(instanceKey)}/_script/${name}?v=${scriptVersion(file.integrity)}`, integrity: file.integrity });
+    if (file) out.push({ src: `/m/${encodeURIComponent(instanceKey)}/page-script/${name}?v=${scriptVersion(file.integrity)}`, integrity: file.integrity });
   }
   return out;
 }

@@ -7,6 +7,25 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## Prochaine version (non publiée)
+
+### Améliorations
+
+- **Les pages en anglais s'affichent enfin en anglais.** Quand le site est proposé en plusieurs langues, une adresse comme /en/privacy restait dans la langue principale. Elle suit maintenant la langue de l'adresse ; une langue que vous n'avez pas activée n'existe pas (page introuvable) au lieu d'afficher la mauvaise langue.
+- **Le compteur de visites est plus juste.** Un visiteur ne peut plus se faire compter plusieurs fois en changeant l'adresse qu'il annonce.
+- **Une extension qui a sa propre page ou ses blocs d'accueil n'est plus rangée d'office avec les overlays.** Elle se range comme les autres dans Extensions. Rien ne bouge sur votre site actuel.
+- **Un rôle que vous créez peut recevoir le droit de modifier dans une extension.** Plusieurs extensions devaient jusqu'ici réserver ces boutons aux administrateurs.
+
+### Pour les développeurs
+
+- Kit : `def.matches` reconnaît une action d'administration `{ right, run }` (comme la forme fonction). Le droit est contrôlé avant `run` (`decideAdminAction`, `can`), et testé pour un rôle personnalisé.
+- Nouveau `PageResult.scripts` (cœur 0.2.6) : 3 noms de fichiers du dossier `scripts/` du module, 32 Ko chacun, servis par le cœur sur `/m/<clé>/page-script/<nom>` en `defer` avec `integrity` SHA-256, seulement sur cette page. Aucun script en ligne ni nonce (le site n'envoie pas de CSP globale). Kit : `page.scripts`.
+- Nouveau `ctx.api.privacy.declarations()` (permission `privacy`, cœur 0.2.6) : les déclarations `privacy` des modules actifs, par langue, avec `declares` ; 100 modules et 10 instances au plus, texte seulement. Sans la permission : liste vide.
+- Nouveau `ctx.api.visitor.fingerprint(request, scope?)` (cœur 0.2.6, sans permission) : HMAC du visiteur (adresse de confiance `clientIp`, règle de SECURITE.md) avec un sel en mémoire renouvelé chaque jour, cloisonné par module et portée. Kit : `routes.visitorIp` signale la lecture directe de `X-Forwarded-For`. `/api/hit` suit la même règle.
+- Rangement : `isOverlayManifest` ne vaut plus pour la permission `overlay` avec `page` ou `sections` (`canServeOverlay` garde la capacité). Au premier démarrage, `freezeOverlayPlacements` écrit une fois « overlays » pour les instances existantes sans choix (marqueur `core.placementFrozen`).
+- Correctif `src/proxy.ts` : Next relance le proxy sur l'adresse réécrite, ce qui effaçait `x-curiosa-locale`. Un en-tête de preuve secret (`x-curiosa-lp`, par processus) le conserve ; un visiteur ne peut pas le forger. Test : `tests/core/locale-routing.test.mjs`.
+- Kit : `FEATURES` 0.2.6 (scripts de page, permission `privacy`, `ctx.api.visitor`), exigences `page.scripts` et `routes.visitorIp` (non applicable avant un cœur 0.2.6), fakeCtx `visitor` et `privacy`.
+
 ## 0.2.5
 
 ### Améliorations

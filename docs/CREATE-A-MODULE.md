@@ -230,6 +230,10 @@ jamais échouer la requête si l'e-mail échoue — c'est exactement l'ordre de 
 
 **Appeler une API externe.** Préférez `await ctx.api.net.request({ url: "https://api.example.org/v1/items" })` à `fetch` : le cœur fixe un délai (8 s, ou le temps restant de la page), fait une pause après un « 429 trop de demandes » ou un quota épuisé (sans rappeler le service d'ici là), coupe un hôte en panne (disjoncteur), regroupe les appels identiques et refuse tout de suite quand la file est pleine. L'appel ne lève jamais : testez `r.ok`, puis `r.status` et `r.json`. En cas d'échec, affichez les dernières données connues avec leur date. `api.net.health()` donne l'état des services, et le bloc d'admin `netHealth` l'explique à l'administrateur. Voir « Appeler une API externe » dans [MODULES.md](MODULES.md).
 
+**Limiter les envois par visiteur.** Ne lisez jamais `X-Forwarded-For` vous-même (son début est écrit par le visiteur) : `const who = ctx.api.visitor.fingerprint(request, "envoi")` donne une empreinte salée et non réversible du visiteur (jamais son adresse), à compter dans une table bornée. Cœur 0.2.6 (`minCore`), aucune permission. Détails : [MODULES.md](MODULES.md).
+
+**Reprendre ce que les autres modules déclarent récolter.** `await ctx.api.privacy.declarations()` renvoie, par module actif, sa déclaration `privacy` par langue (permission `privacy`, cœur 0.2.6) : utile à un module « Mentions légales » pour ne pas recopier la liste à la main. Un script pour votre seule page : `scripts: ["mon-script.js"]` dans le résultat de `page()` (fichier du dossier `scripts/`). Détails : [MODULES.md](MODULES.md).
+
 **Jaquettes de jeux.** `await ctx.api.rawg.cover("Hades")` renvoie `{ status, url }` (`found`, `none`, `no-key`, `refused`, `unreachable`) et ne lève jamais ; `api.rawg.configured()` dit si une clé est réglée.
 La clé RAWG se règle une fois par le propriétaire (*Réglages › Services externes*) : ne la demandez jamais dans les réglages de votre module. Permission : `rawg`. Détails : [MODULES.md](MODULES.md#jaquettes-de-jeux-rawg).
 

@@ -579,10 +579,11 @@ async page(ctx) { return { title: "FAQ", blocks: [...], scripts: ["faq.js"] }; }
 ```
 
 - **Fichiers du module** : le nom désigne `scripts/<nom>` dans le dossier du module (minuscules, chiffres, `.` `-` `_`, fini par `.js`). Pas de script en ligne, pas d'adresse extérieure. Un nom invalide, un fichier absent, plus gros que 32 Ko ou qui est un lien symbolique est **ignoré** (la page s'affiche sans lui).
-- **Servi par le cœur** : `<script src="/m/<clé>/_script/<nom>?v=<empreinte>" defer integrity="sha256-…">` placé en bas de la page, **uniquement sur cette page** (pas sur les pages d'erreur ni sur les autres). Même origine : compatible avec une politique `script-src 'self'` sans `'unsafe-inline'`, aucun nonce à gérer. Le chemin `_script` est réservé dans `/m/<clé>/` (une route de module de ce nom ne serait pas atteinte).
+- **Servi par le cœur** : `<script src="/m/<clé>/page-script/<nom>?v=<empreinte>" defer integrity="sha256-…">` placé en bas de la page, **uniquement sur cette page** (pas sur les pages d'erreur ni sur les autres). Même origine : compatible avec une politique `script-src 'self'` sans `'unsafe-inline'`, aucun nonce à gérer. Le chemin `page-script` est réservé dans `/m/<clé>/` (une route de module de ce nom ne serait pas atteinte).
 - **Cache** : l'adresse porte l'empreinte du contenu ; servi `immutable` seulement si cette empreinte est la bonne, `no-cache` sinon. Un fichier modifié change d'adresse.
 - **Limites** : 3 scripts par page, 32 Ko chacun, 64 fichiers gardés en mémoire (puis le plus ancien est oublié).
 - **Kit de test** : l'exigence `page.scripts` (conseil) ; déclarez `minCore` : `0.2.6` (un cœur plus ancien ignore la clé : la page s'afficherait sans son script).
+- Le script s'exécute avant que la page soit « réveillée » : travaillez sur des éléments de votre contenu, jamais sur les attributs de `<html>` ou `<body>` (ils sont remis à zéro).
 - Ce n'est pas une porte ouverte : le script s'exécute dans la page avec les droits du visiteur, comme tout script. Écrivez-le défensivement (rien d'`eval`, rien de personnel).
 
 ### `overlay` : source navigateur OBS

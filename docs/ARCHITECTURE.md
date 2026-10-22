@@ -114,6 +114,14 @@ Trois notions indépendantes :
 | Langues **proposées aux visiteurs** | Réglages | Préfixe `/en`, `/nl`… posé par `src/proxy.ts` qui réécrit vers la route sans préfixe et transmet la langue par en-tête (jamais cru s'il vient du client). Une langue non activée donne un 404. |
 | Langue de l'**admin** | Réglage du site + compte de chaque utilisateur | Texte de l'interface depuis `src/locales/<code>.json`, repli sur l'anglais. |
 
+**Comment la langue d'une page `/en/…` est décidée** (tout est dans `src/proxy.ts`, `src/core/i18n/request.ts` et la mise en page du site) :
+
+1. le proxy voit `/en/privacy`, réécrit vers `/privacy`, pose l'en-tête `x-curiosa-locale: en` et un en-tête de **preuve** secret (`x-curiosa-lp`, tiré au hasard par processus) ;
+2. Next relance le proxy sur l'adresse réécrite (`/privacy`) : ce second passage **conserve** la langue si (et seulement si) la preuve est la bonne. Avant la 0.2.6, il l'effaçait : toutes les pages `/en/…` sortaient dans la langue par défaut (`<html lang="fr">` sur un site français), même avec l'anglais activé ;
+3. la mise en page du site ne sert la langue de l'URL que si elle est **activée** (réglage `i18n.enabled`) ; sinon, 404. La langue de l'administration (`i18n.adminDefault`) n'y change rien.
+
+**Activer l'anglais sur un site de test** : *Réglages › Langues* (« Proposer le site dans d'autres langues »). Sur une base jetable sans interface : réglages `i18n.default` = `"fr"` et `i18n.enabled` = `["fr","en"]` (JSON, langue vide). Sans `i18n.enabled`, seule la langue par défaut existe et `/en/…` répond 404 (jamais du français sous une adresse anglaise). Le test `tests/core/locale-routing.test.mjs` verrouille les trois points.
+
 Contenu : chaque entrée n'exige qu'**une** traduction. Dans l'éditeur, les autres langues
 s'ajoutent via un bouton. Un visiteur dans une langue sans version voit la langue par
 défaut (désactivable par instance) avec un bandeau. Changer de langue conserve la page :

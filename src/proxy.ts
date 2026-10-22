@@ -5,6 +5,13 @@ import { NEWS_COOKIE, planVisit, SEEN_COOKIE, SINCE_COOKIE, SINCE_HEADER } from 
 const LOCALE_HEADER = "x-curiosa-locale";
 const PATH_HEADER = "x-curiosa-path";
 const COOKIE = "curiosa_locale";
+/**
+ * Preuve que l'en-tête de langue vient de CE proxy et non du visiteur. Next relance le proxy sur l'adresse réécrite (/en/privacy → /privacy) : sans preuve,
+ * ce second passage effaçait la langue posée par le premier (toutes les pages /en/… sortaient dans la langue par défaut). Secret tiré au hasard, propre à
+ * ce processus, jamais envoyé au visiteur : un visiteur ne peut donc ni l'inventer ni imposer une langue en forgeant l'en-tête.
+ */
+const PROOF_HEADER = "x-curiosa-lp";
+const PROOF = `${crypto.randomUUID()}${crypto.randomUUID()}`;
 
 /**
  * Langue du visiteur dans l'URL : /en/blog → on réécrit vers /blog et on
@@ -15,8 +22,11 @@ const COOKIE = "curiosa_locale";
 export function proxy(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
   const headers = new Headers(request.headers);
-  // Jamais de confiance dans ces en-têtes s'ils viennent du client.
+  // Jamais de confiance dans ces en-têtes s'ils viennent du client, SAUF la langue que ce même proxy vient de poser au premier passage (preuve secrète).
+  const carried = request.headers.get(LOCALE_HEADER);
+  const carriedLocale = carried && request.headers.get(PROOF_HEADER) === PROOF && isKnownLocale(carried) ? carried : null;
   headers.delete(LOCALE_HEADER);
+  headers.delete(PROOF_HEADER);
   headers.delete(PATH_HEADER);
   headers.delete(SINCE_HEADER);
   // Dernière visite : date retenue pour cette visite, transmise aux pages ; les cookies ne contiennent que des dates.
@@ -48,6 +58,7 @@ export function proxy(request: NextRequest) {
     const locale = match[1]!;
     const rest = match[2] || "/";
     headers.set(LOCALE_HEADER, locale);
+    headers.set(PROOF_HEADER, PROOF);
     headers.set(PATH_HEADER, rest);
     const url = request.nextUrl.clone();
     url.pathname = rest;
@@ -56,6 +67,11 @@ export function proxy(request: NextRequest) {
     return stamp(res);
   }
 
+  // Second passage sur l'adresse réécrite : la langue du premier passage est conservée.
+  if (carriedLocale) {
+    headers.set(LOCALE_HEADER, carriedLocale);
+    headers.set(PROOF_HEADER, PROOF);
+  }
   headers.set(PATH_HEADER, pathname);
   return stamp(NextResponse.next({ request: { headers } }));
 }
