@@ -75,7 +75,7 @@ avec leurs réglages (générés depuis `settings`), leurs abonnements (voir « 
 
 Une instance est **épinglée au menu** (placement `menu`) ou **seulement dans Extensions** (placements `integrations` et `overlays`, noms conservés pour ne pas perdre les choix déjà faits). Le cœur décide du choix par défaut, **sans rien demander au module**, à partir de son manifeste seul, dans cet ordre :
 
-1. type `overlay` **ou** permission `overlay` → **seulement dans Extensions** (placement `overlays`) ;
+1. type `overlay` **ou** permission `overlay` **sans `page` ni `sections`** → **seulement dans Extensions** (placement `overlays`). Un module qui a une page (`"page": true`) ou des sections d'accueil ET la permission `overlay` (cœur 0.2.6) n'est pas un simple overlay : il passe aux règles suivantes (il garde son adresse OBS dans Extensions, et peut toujours être rangé dans Overlays par choix). Les sites déjà en service ne bougent pas : au premier démarrage du cœur 0.2.6, chaque instance concernée qui n'avait pas de choix reçoit, une fois, le rangement « overlays » qu'elle avait ; seules les instances créées ensuite suivent la nouvelle règle ;
 2. type `social` ou `integration` → **seulement dans Extensions** (`integrations`) ;
 3. module à `content` → **épinglée**, sauf une simple liste de liens qui s'ouvrent ailleurs (`content.display: "links"` avec `clickAction: "external"`) → **seulement dans Extensions** ;
 4. les autres (`widget`, `utility`, type inconnu ou absent) : s'ils ont des données à gérer, c'est-à-dire des actions `mcp`, un service `offers` ou un service `requires` → **épinglée** ; sinon → **seulement dans Extensions**.
