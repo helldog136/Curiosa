@@ -170,5 +170,5 @@ test("documentation : le menu du site, ses plafonds, la migration et la suggesti
   for (const w of ["nav.menu", "8 éléments par sous-menu, 40 au total", "ensureMenuMigrated", "suggestInMenu", "Pages qui ne sont pas dans le menu", "menuEligibility", "n'est \\*\\*pas\\*\\* exposé aux assistants"]) assert.match(platform, new RegExp(w), w);
   assert.match(read("docs/MODULES.md"), /\| `suggestInMenu` \|/);
   assert.match(read("docs/SECURITE.md"), /## Menu du site/);
-  assert.match(read("CHANGELOG.md"), /## Prochaine version \(non publiée\)[\s\S]*### Améliorations[\s\S]*### Pour les développeurs[\s\S]*## 0\.2\.5/);
+  assert.match(read("CHANGELOG.md"), /## 0\.2\.6[\s\S]*### Améliorations[\s\S]*### Pour les développeurs[\s\S]*## 0\.2\.5/);
 });

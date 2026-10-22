@@ -290,7 +290,9 @@ test("règle du cœur : une instance entre au menu si elle a une page et n'est p
   assert.equal(E.menuEligible({ content, permissions: [] }), true);
   assert.equal(E.menuEligible({ content, type: "overlay", permissions: [] }), false, "overlay : pas de page publique");
   assert.equal(E.menuEligible({ page: true, type: "overlay", permissions: [] }), false);
-  assert.equal(E.menuEligible({ page: true, permissions: ["overlay"] }), false, "permission overlay : source OBS");
+  // 0.2.6 : la permission « overlay » seule ne fait plus d'un module avec page une source OBS (le type « overlay », lui, reste sans page publique).
+  assert.equal(E.menuEligible({ page: true, permissions: ["overlay"] }), true, "page + permission overlay : un module comme les autres");
+  assert.equal(E.menuEligible({ content, permissions: ["overlay"] }), false, "permission overlay sans page ni section : simple source OBS");
   assert.equal(E.menuEligible({ permissions: [] }), false, "ni page ni contenu");
   assert.equal(E.menuEligible({ page: false, content, permissions: [] }), false);
   // Suggestion : suggestInMenu, sinon content.showInNav, sinon non.
