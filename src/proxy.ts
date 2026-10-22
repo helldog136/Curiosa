@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { isKnownLocale } from "@/core/i18n/locales";
 import { NEWS_COOKIE, planVisit, SEEN_COOKIE, SINCE_COOKIE, SINCE_HEADER } from "@/core/visit";
+import { TIMED_OUT, withDeadline } from "@/core/deadline";
+import { isRedirectEnded } from "@/core/redirectGate";
 
 const LOCALE_HEADER = "x-curiosa-locale";
 const PATH_HEADER = "x-curiosa-path";
@@ -13,13 +15,32 @@ const COOKIE = "curiosa_locale";
 const PROOF_HEADER = "x-curiosa-lp";
 const PROOF = `${crypto.randomUUID()}${crypto.randomUUID()}`;
 
+/** Forme d'un chemin de lien court (le même que dans core/redirects.ts) : seuls ces chemins sont comparés à la porte des liens terminés. */
+const SHORT_PATH = /^[a-z0-9][a-z0-9_-]*(\/[a-z0-9][a-z0-9_-]*)*$/;
+/** Temps maximal accordé à la porte des liens terminés : au-delà, la page se sert normalement (jamais d'attente sans borne). */
+const GATE_MAX_MS = 1500;
+
+/** Le lien court de ce chemin a-t-il passé sa date de fin ? Alors on détourne vers la page « lien terminé », qui répond 410 (une page de Next ne sait répondre qu'en 200 ou 404). */
+async function endedRewrite(request: NextRequest, path: string, headers: Headers): Promise<NextResponse | null> {
+  if (request.method !== "GET" && request.method !== "HEAD") return null;
+  let short: string;
+  try { short = decodeURIComponent(path).replace(/^\/+|\/+$/g, "").toLowerCase(); } catch { return null; }
+  if (short.length === 0 || short.length > 80 || !SHORT_PATH.test(short)) return null;
+  const ended = await withDeadline(() => isRedirectEnded(short), GATE_MAX_MS).catch(() => false);
+  if (ended === TIMED_OUT || !ended) return null;
+  const url = request.nextUrl.clone();
+  url.pathname = "/api/redirect-gone";
+  url.search = `?p=${encodeURIComponent(short)}`;
+  return NextResponse.rewrite(url, { request: { headers } });
+}
+
 /**
  * Langue du visiteur dans l'URL : /en/blog → on réécrit vers /blog et on
  * transmet "en" aux pages via un en-tête. La langue par défaut n'a pas de
- * préfixe. Quelles langues sont *activées* se vérifie côté serveur (le proxy
- * n'a pas besoin d'accéder à la base).
+ * préfixe. Quelles langues sont *activées* se vérifie côté serveur. Seule exception à « pas de base ici » : la porte des liens terminés
+ * (core/redirectGate.ts), une petite carte en mémoire relue au plus toutes les 30 secondes.
  */
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
   const headers = new Headers(request.headers);
   // Jamais de confiance dans ces en-têtes s'ils viennent du client, SAUF la langue que ce même proxy vient de poser au premier passage (preuve secrète).
@@ -60,6 +81,8 @@ export function proxy(request: NextRequest) {
     headers.set(LOCALE_HEADER, locale);
     headers.set(PROOF_HEADER, PROOF);
     headers.set(PATH_HEADER, rest);
+    const gone = await endedRewrite(request, rest, headers);
+    if (gone) return stamp(gone);
     const url = request.nextUrl.clone();
     url.pathname = rest;
     const res = NextResponse.rewrite(url, { request: { headers } });
@@ -73,6 +96,8 @@ export function proxy(request: NextRequest) {
     headers.set(PROOF_HEADER, PROOF);
   }
   headers.set(PATH_HEADER, pathname);
+  const gone = await endedRewrite(request, pathname, headers);
+  if (gone) return stamp(gone);
   return stamp(NextResponse.next({ request: { headers } }));
 }
 

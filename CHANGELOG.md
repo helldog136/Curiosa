@@ -15,6 +15,12 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Le compteur de visites est plus juste.** Un visiteur ne peut plus se faire compter plusieurs fois en changeant l'adresse qu'il annonce.
 - **Une extension qui a sa propre page ou ses blocs d'accueil n'est plus rangée d'office avec les overlays.** Elle se range comme les autres dans Extensions. Rien ne bouge sur votre site actuel.
 - **Un rôle que vous créez peut recevoir le droit de modifier dans une extension.** Plusieurs extensions devaient jusqu'ici réserver ces boutons aux administrateurs.
+- **Vos raccourcis deviennent de vrais liens courts avec QR code.** Collez une adresse : le site propose un nom lisible, crée le lien et affiche son QR code, « Copier » et « Tester ». Changez la destination quand vous voulez, sans réimprimer.
+- **Une date de fin, si vous le souhaitez.** Ensuite, les visiteurs voient une page aimable aux couleurs de votre site, avec votre message. Un clic sur « Réactiver » remet le lien en marche.
+- **Combien de personnes ont cliqué** : aujourd'hui, 7 jours, 30 jours, total, avec un petit graphique. Rien de personnel n'est gardé, et les robots et vos propres essais ne comptent pas.
+- **La liste se retrouve facilement** : recherche, 50 liens par page, export en tableur, désactivation sans rien perdre et suppression expliquée clairement.
+- **Votre assistant IA peut s'en occuper** si vous l'y autorisez. Créer, modifier et supprimer ne sont jamais autorisés d'office.
+- Nouveau réglage avancé « Fuseau horaire du site » : les dates de fin le suivent, heure d'été comprise.
 
 ### Pour les développeurs
 
@@ -25,6 +31,9 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - Rangement : `isOverlayManifest` ne vaut plus pour la permission `overlay` avec `page` ou `sections` (`canServeOverlay` garde la capacité). Au premier démarrage, `freezeOverlayPlacements` écrit une fois « overlays » pour les instances existantes sans choix (marqueur `core.placementFrozen`).
 - Correctif `src/proxy.ts` : Next relance le proxy sur l'adresse réécrite, ce qui effaçait `x-curiosa-locale`. Un en-tête de preuve secret (`x-curiosa-lp`, par processus) le conserve ; un visiteur ne peut pas le forger. Test : `tests/core/locale-routing.test.mjs`.
 - Kit : `FEATURES` 0.2.6 (scripts de page, permission `privacy`, `ctx.api.visitor`), exigences `page.scripts` et `routes.visitorIp` (non applicable avant un cœur 0.2.6), fakeCtx `visitor` et `privacy`.
+- Migration additive `20261022090000_redirections_2` : `Redirect.expiresAt`, `Redirect.endMessage`, table `RedirectDay`. `Redirect.hits` reste le total.
+- `resolveRedirect(path, visit)` renvoie la destination, `{ gone }` ou `null`. Réponse 410 : `redirectGate.ts` et `proxy.ts`, page `/api/redirect-gone`. Nouveaux fichiers `core/redirect*.ts`, `core/siteTime.ts` ; voir docs/PLATFORM.md (« Liens courts »).
+- Outils MCP `redirects_list`, `redirects_stats`, `redirects_create`, `redirects_update`, `redirects_delete`. Un lien désactivé répond comme un lien inexistant ; `mailto:` n'est plus accepté pour une nouvelle redirection.
 
 ## 0.2.5
 

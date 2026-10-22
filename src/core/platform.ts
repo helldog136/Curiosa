@@ -11,6 +11,7 @@
  */
 import { contentToolProvider } from "@/core/content/mcp";
 import { maintenanceToolProvider } from "@/core/maintenance/tools";
+import { redirectsToolProvider } from "@/core/redirectMcp";
 import { getInstanceLabeler } from "@/core/modules/labels";
 import { mcpInstanceKey, moduleActionProvider } from "@/core/modules/mcpProvider";
 import { getActiveInstances } from "@/core/modules/registry";
@@ -51,7 +52,7 @@ const siteToolProvider: McpToolProvider = {
 };
 
 /** Les fournisseurs d'outils MCP de ce site, dans l'ordre. */
-export const mcpProviders: McpToolProvider[] = [siteToolProvider, maintenanceToolProvider, moduleActionProvider, contentToolProvider];
+export const mcpProviders: McpToolProvider[] = [siteToolProvider, maintenanceToolProvider, redirectsToolProvider, moduleActionProvider, contentToolProvider];
 
 /**
  * Catalogue complet pour l'admin : tous les outils, y compris ceux d'une instance qui s'est retirée du MCP

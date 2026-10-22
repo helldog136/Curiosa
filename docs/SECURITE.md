@@ -189,6 +189,16 @@ Les propriétaires, administrateurs et éditeurs ne voient aucune différence.
 
 Le site n'envoie aucune politique `Content-Security-Policy` globale (seulement `nosniff`, `Referrer-Policy`, `Permissions-Policy`, `X-Frame-Options`) ; les scripts en ligne du cœur (données structurées JSON-LD) ne sont pas exécutables. Un module qui veut un script sur SA page (`PageResult.scripts`) n'écrit donc jamais de script en ligne : il nomme un fichier de son dossier `scripts/`, que le cœur sert lui-même sur la même origine (`/m/<clé>/page-script/<nom>`), en `defer` et avec une empreinte d'intégrité SHA-256. Cela reste valable le jour où le cœur ajoutera `script-src 'self'` sans `'unsafe-inline'` et sans nonce. Bornes : 3 scripts par page, 32 Ko, fichier ordinaire du dossier `scripts/` (pas de lien symbolique, pas de `..`), réponse `404` si l'instance n'est pas active ou n'a pas de page.
 
+## Liens courts : pas de redirection ouverte, pas de fuite (0.2.6)
+
+- **Destination** : seulement `http(s)` (`mailto:`, `javascript:`, `data:`, `file:` refusés), sans nom ni mot de passe dans l'adresse, 2 000 caractères au plus, jamais vers un autre lien court du site (boucle). Elle est **saisie par la personne connectée** : aucun paramètre de la requête d'un visiteur n'entre dans la réponse, donc aucune redirection ouverte. Elle est revérifiée à chaque passage. Le cœur ne visite jamais la destination (aucune requête sortante, donc pas de SSRF).
+- **Noms** : `a-z`, `0-9`, `-`, `_` et `/`, jamais un chemin réservé (`admin`, `api`, `m`, `go`, `uploads`…), une langue ni le chemin d'une instance.
+- **Aucune fuite d'existence** : un lien désactivé et un lien inexistant donnent la même réponse (404, même page, même repli). Seul un lien dont la date de fin est passée répond 410, **sans destination** ni autre information que son message ; la route `api/redirect-gone` répond 404 à tout lien qui n'est pas actif et terminé. 
+- **Vie privée** : un nombre par lien et par jour ; ni cookie, ni adresse IP, ni provenance, ni navigateur gardés (le texte « agent » sert à écarter les robots, il n'est ni lu plus loin ni conservé). Voir [PRIVACY.md](PRIVACY.md).
+- **Bornes** : aucune lecture ni écriture non bornée (2 000 liens, pages de 50, 500 compteurs en attente, paquets de 200, porte du proxy limitée à 1,5 s), aucun minuteur de fond, une panne de base ne bloque jamais une redirection.
+- **QR et export** : routes réservées à l'équipe connectée (401 sinon, 403 sans accès), `Cache-Control: private, no-store`, SVG avec `Content-Security-Policy: default-src 'none'`, texte alternatif échappé, CSV neutralisé contre les formules.
+- **Assistants IA** : `redirects_list` et `redirects_stats` sont des lectures ; `redirects_create`, `redirects_update` (écriture) et `redirects_delete` (destructif) ne sont **jamais accordés d'office**, un jeton en lecture ne peut pas les recevoir, et chaque écriture est consignée (`mcp:<jeton> redirect.create|update|delete`).
+
 ## Dépannage en SSH (propriétaire du serveur seulement)
 
 Si le propriétaire est bloqué (trop d'essais, mot de passe perdu), la commande de secours se lance **sur le serveur**, depuis le dossier de l'application, avec l'utilisateur du service :
