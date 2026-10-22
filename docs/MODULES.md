@@ -142,6 +142,7 @@ Validé à l'installation et au chargement (zod, `src/core/modules/manifest.ts`)
 | `type` | Catégorie (voir ci-dessus). Défaut : `content` si `content` est déclaré, sinon `widget`. |
 | `instances` | `"multiple"` (défaut) ou `"single"`. |
 | `page` | L'instance a une page publique. Défaut : oui si `content` (sauf type `overlay`). Le code la fournit avec `page()`. |
+| `suggestInMenu` | (prochaine version du cœur) « Je suggère que la page de l'instance soit dans le menu du site. » **Une suggestion, jamais un ordre** : le cœur n'ajoute plus aucune page au menu tout seul (voir « Menu du site » dans [PLATFORM.md](PLATFORM.md)) ; une page suggérée apparaît en premier, avec la mention « Suggérée par l'extension », dans la liste « Pages qui ne sont pas dans le menu ». Défaut : la valeur de `content.showInNav`, sinon non. Sans effet pour un overlay (pas de page publique). Un cœur ancien ignore la clé. |
 | `basePath` | Chemin public proposé à la création d'une instance à page (défaut : la clé de l'instance). Lettres minuscules, chiffres, tirets. |
 | `settings` | Réglages **par instance** ; l'admin génère le formulaire (voir ci-dessous). 60 au plus. |
 | `optionalGroups` | Groupes de réglages **facultatifs** derrière un bouton « Ajouter… » (voir « Groupes facultatifs »). 6 au plus. |
@@ -458,7 +459,7 @@ entrées portent un code (codes promo…), `random` (un code au hasard, `small`)
 | `allowGoLinks` | Active les liens courts `/go/<instance>/<entrée>`. |
 | `fallbackToDefault` | Retomber sur la langue par défaut quand une entrée n'est pas traduite. |
 | `basePath` | Chemin public proposé à la création d'une instance. |
-| `showInNav` | Ajoute l'instance au menu du site. |
+| `showInNav` | **Suggère** que la page de l'instance soit au menu du site (même effet que `suggestInMenu`, qui l'emporte s'il est déclaré). Depuis cette version le cœur n'ajoute plus rien au menu sans la décision de la personne. |
 
 Avec `content`, le cœur fournit gratuitement l'éditeur d'entrées (multilingue, brouillons, dates, image), les pages publiques (liste +
 entrée), le sitemap, le flux RSS, les liens `/go/…`, la section d'accueil `latest`, le sujet `core.entry` et quatre actions MCP

@@ -7,6 +7,24 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## Prochaine version (non publiée)
+
+### Améliorations
+
+- **Vous choisissez ce qui est dans le menu de votre site.** Plus rien n'y entre tout seul : une page, un article ou une extension apparaît dans le menu seulement quand vous l'y mettez. Pour un site existant, le menu reste exactement le même après la mise à jour.
+- **Chercher et ajouter une page au menu, en tapant.** « Ajouter au menu » cherche dans toutes les pages possibles (pages du site, pages des extensions, articles, raccourcis de liens), sans tenir compte des accents ni des majuscules. Ce qui est déjà dans le menu est marqué.
+- **Des sous-menus.** Un élément du menu peut en contenir d'autres, sur deux niveaux. On réorganise avec des boutons (« Monter », « Mettre dans … », « Sortir de … »), au clavier comme au doigt, et chaque nom se règle dans chaque langue.
+- **« Pages qui ne sont pas dans le menu ».** La page du menu liste les pages qui existent mais que vos visiteurs ne voient pas dans le menu, avec un bouton « Ajouter ». Une extension peut vous en suggérer une, sans jamais l'imposer.
+- **Un menu plus agréable sur téléphone et au clavier.** Les sous-menus s'ouvrent au toucher (un premier toucher ouvre, un second suit le lien), à la souris et au clavier. Sur petit écran, le menu tient dans un panneau, et tous les liens restent visibles sans JavaScript.
+- **La case « Afficher dans le menu de mon site »** de chaque extension ajoute ou retire sa page du menu. L'ordre se règle dans la page « Menu du site ».
+
+### Pour les développeurs
+
+- Le menu public est le réglage `nav.menu` (`{ version: 1, items }`, éléments `system | instance | entry | redirect | link | group`, jusqu'à 8 sous-éléments, 40 au total). Il remplace la lecture de `ModuleInstance.showInNav` et de `nav.custom` par l'en-tête ; les deux restent en base, intacts. Voir docs/PLATFORM.md, « Menu du site ».
+- Migration `ensureMenuMigrated` (idempotente) au démarrage et avant toute création d'instance : elle fige l'ancien menu. Les références sont relues à l'affichage (`resolvePublicMenu`) ; une page supprimée ou dépubliée disparaît du menu sans erreur.
+- Nouvelle clé de manifeste `suggestInMenu` (et `content.showInNav`, désormais une simple suggestion). `menuEligible` / `suggestsMenu` (`src/core/modules/menuEligibility.ts`) sont la règle unique, partagée avec le rangement `overlay` du menu d'administration. Le menu n'est pas exposé en MCP.
+- `NavDropdown` est remplacé par `SiteNav` ; `listMenuPages` et le champ d'instance `navOrder` du formulaire disparaissent.
+
 ## 0.2.5
 
 ### Améliorations

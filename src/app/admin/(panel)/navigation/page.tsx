@@ -2,25 +2,45 @@ import { floatingLabels } from "@/components/admin/floating";
 import { adminCtx } from "@/core/admin";
 import { localeName } from "@/core/i18n/locales";
 import { ActionForm } from "@/components/admin/ActionForm";
-import { NavEditor, type NavItem, type NavLeaf } from "@/components/admin/NavEditor";
+import { NavEditor, type ENode } from "@/components/admin/NavEditor";
 import { ui } from "@/components/admin/ui";
+import { MENU_MAX_CHILDREN, MENU_MAX_TOTAL, refKey, type MenuNode } from "@/core/menu";
+import { describeMenuRefs, pagesNotInMenu } from "@/core/menuCatalog";
+import { ensureMenuMigrated, loadMenu } from "@/core/menuStore";
 import { saveNavigation } from "./actions";
-import { listMenuPages } from "./pages";
 
 export const dynamic = "force-dynamic";
 
+/** Les clés de texte de l'éditeur (navigation.<clé>) : envoyées telles quelles au navigateur, qui n'a pas le dictionnaire. */
+const STRINGS = [
+  "empty", "add", "addLink", "addGroup", "pickPage", "cancel", "up", "down", "remove", "into", "out", "group", "groupName", "groupEmpty", "href", "hrefHelp", "hrefPlaceholder", "label",
+  "rename", "renameHelp", "searchLabel", "searchHelp", "searchPlaceholder", "loading", "unreachable", "more", "noResults", "results", "inMenu", "addOne", "suggested",
+  "group.system", "group.instance", "group.entry", "group.redirect", "kind.system", "kind.instance", "kind.entry", "kind.redirect", "kind.link", "kind.group",
+  "tree", "missing", "notInMenu", "notInMenuHelp", "notInMenuNone", "totalFull",
+  "moved", "movedInto", "movedOut", "added", "removed", "blocked.group", "blocked.hasChildren", "blocked.full", "limits",
+] as const;
+
 export default async function NavigationPage() {
-  const { t, config, advanced } = await adminCtx("admin");
-  const pages = await listMenuPages(config.defaultLocale);
-  const byHref = new Map(pages.map((p) => [p.href, p]));
-  // Le menu actuel, dans son ordre : une entrée qui correspond à une page du site est une « page », les autres sont des liens libres.
-  const asLeaf = (n: { href: string; label: Record<string, string> }, uid: string): NavLeaf => {
-    const page = byHref.get(n.href);
-    return page ? { uid, kind: "page", id: page.id } : { uid, kind: "link", href: n.href, label: n.label };
+  const { t, locale, config, advanced } = await adminCtx("admin");
+  // Fige l'ancien menu si ce n'est pas déjà fait (idempotent) : ce que l'on modifie ici est ce que voient les visiteurs.
+  await ensureMenuMigrated();
+  const { items } = await loadMenu();
+  const ctx = { t, locale, defaultLocale: config.defaultLocale };
+  const [info, notIn] = await Promise.all([describeMenuRefs(items, ctx), pagesNotInMenu(items, ctx)]);
+
+  let n = 0;
+  const toEditor = (m: MenuNode): ENode => {
+    const key = refKey(m);
+    const d = key ? info[key] : undefined;
+    return {
+      uid: `s${n++}`, kind: m.kind, ref: m.ref, href: m.href, label: m.label ?? {},
+      title: d?.title, sub: d?.sub, missing: d?.missing === true,
+      ...(m.children ? { children: m.children.map(toEditor) } : {}),
+    };
   };
-  const initial: NavItem[] = config.nav.map((n, i) =>
-    n.children ? { uid: `s${i}`, kind: "group", label: n.label, items: n.children.map((c, j) => asLeaf(c, `s${i}-${j}`)) } : asLeaf(n, `s${i}`),
-  );
+  const initial = items.map(toEditor);
+
+  const strings = Object.fromEntries(STRINGS.map((k) => [k, t(`navigation.${k}`)]));
   return (
     <div className="space-y-6">
       <div>
@@ -29,14 +49,12 @@ export default async function NavigationPage() {
       </div>
       <ActionForm action={saveNavigation} floating={floatingLabels(t)} submitLabel={t("action.save")}>
         <NavEditor
-          pages={pages}
           locales={config.locales.map((l) => ({ code: l, name: localeName(l) }))}
           initial={initial}
-          labels={{
-            empty: t("navigation.empty"), addPage: t("navigation.addPage"), addLink: t("navigation.addLink"), addGroup: t("navigation.addGroup"), group: t("navigation.group"), groupName: t("navigation.groupName"), groupEmpty: t("navigation.groupEmpty"), pickPage: t("navigation.pickPage"),
-            noMorePages: t("navigation.noMorePages"), cancel: t("navigation.cancel"), up: t("navigation.up"), down: t("navigation.down"), remove: t("navigation.remove"),
-            page: t("navigation.page"), link: t("navigation.link"), href: t("navigation.href"), hrefHelp: t("navigation.hrefHelp"), hrefPlaceholder: t("navigation.hrefPlaceholder"), label: t("navigation.label"),
-          }}
+          notInMenu={notIn}
+          advanced={advanced}
+          limits={{ total: MENU_MAX_TOTAL, children: MENU_MAX_CHILDREN }}
+          strings={strings}
         />
       </ActionForm>
     </div>

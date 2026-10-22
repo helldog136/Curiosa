@@ -91,6 +91,7 @@ export type ContentConfig = {
   fallbackToDefault?: boolean;
   /** Chemin public proposé à la création d'une instance. */
   basePath?: string;
+  /** Suggère que la page de l'instance figure au menu du site. C'est une SUGGESTION (le cœur ne l'ajoute jamais d'office) : voir `suggestInMenu`. */
   showInNav?: boolean;
 };
 
@@ -169,6 +170,8 @@ export type ModuleManifest = {
   content?: ContentConfig;
   /** Une instance de ce module a une page publique (montée sur un chemin). Défaut : oui si `content`. */
   page?: boolean;
+  /** Suggère que la page de l'instance figure au menu du site (jamais imposé : la personne décide). Défaut : `content.showInNav`, sinon non. */
+  suggestInMenu?: boolean;
   /** Chemin public proposé à la création d'une instance d'un module à page (défaut : la clé de l'instance). */
   basePath?: string;
   /** Morceaux que les instances proposent à la page d'accueil. */

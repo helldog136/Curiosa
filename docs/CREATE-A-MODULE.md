@@ -524,7 +524,7 @@ les pages publiques, le sitemap, le flux RSS et la section d'accueil « dernièr
 ```
 
 `display` : `cards`, `list`, `links`, `codes` ; `clickAction` : `detail` ou `external` ; `features` : `cover`, `icon`, `summary`, `body`, `url`, `code`, `expiresAt`, `featured`, `tags` ; `fieldSchema` ajoute des champs
-personnalisés. Les entrées alimentent le sujet `core.entry` : n'importe quel overlay ou module peut les lire sans une ligne de code. Voir la référence : « Module à contenu ».
+personnalisés. Les entrées alimentent le sujet `core.entry` : n'importe quel overlay ou module peut les lire sans une ligne de code. `showInNav` (ou `suggestInMenu` pour un module sans `content`) **suggère** que la page soit au menu du site : la personne décide, le cœur n'ajoute rien tout seul. Voir la référence : « Module à contenu ».
 
 ## 17. Tester son module
 

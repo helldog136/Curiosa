@@ -205,3 +205,9 @@ Elle ne touche **jamais** au compte d'une autre personne que le propriétaire (l
 - Le suivi ne contient jamais de secret, de jeton ni de chemin disque : étapes nommées, numéros, nom lisible d'un module, texte d'erreur nettoyé (`safeText`). Il est en mémoire du processus, borné (40 opérations, 10 minutes après la fin, 2 heures au plus pour une opération « en cours ») et sans minuteur de fond.
 - Les droits des actions ne changent pas : le contrôle (`adminCtx("owner")`, `guardOwner`…) passe AVANT le suivi. Un second lancement avec la même clé rejoint l'opération en cours ; la clé d'une sauvegarde contient une empreinte salée du mot de passe, pour que personne ne reçoive le fichier chiffré d'un autre.
 - L'identifiant d'une opération est choisi par le navigateur, mais le serveur le valide (16 à 64 caractères sûrs), refuse un identifiant déjà pris par quelqu'un d'autre et lie toujours l'opération à la personne authentifiée.
+
+## Menu du site (prochaine version)
+
+- Le navigateur n'est jamais cru sur parole : à l'enregistrement du menu, chaque référence (page du cœur, instance, entrée, raccourci) est vérifiée en base ; un lien libre est normalisé puis validé (`/chemin` ou `http(s)://`, `mailto:` ; `javascript:` et `//hôte` non résolu sont refusés). L'adresse est **revalidée à chaque affichage** (`safeHref`, `isSafeExternalUrl`) : un réglage altéré en base n'atteint pas le visiteur.
+- La recherche du sélecteur est réservée à l'administration (`adminCtx("admin")`), bornée (requête de 80 caractères, 12 résultats, 1 500 lignes regardées au plus, paquets de 250, repère de reprise validé par expression régulière) et ne journalise que le nom d'une erreur. Elle ne fait aucune requête sortante.
+- Un raccourci de lien au menu mène à `/<chemin>` sur le site ; sa cible externe n'est atteinte que par la redirection du cœur (aucune redirection ouverte).

@@ -1,75 +1,131 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ui } from "./ui";
 import { FieldErrorText, errorOf, useFieldErrorsContext } from "./FieldErrors";
+import { NavPicker } from "./NavPicker";
+import { MENU_MAX_TOTAL, alreadyInMenu, type MenuKind } from "@/core/menu";
+import { appendNode, indentNode, locate, moveNode, movesFor, outdentNode, patchNode, removeNode, totalOf, type TreeNode } from "@/core/menuTree";
+import type { CatalogItem } from "@/core/menuCatalog";
 
-export type NavPage = { id: string; title: string; href: string };
 export type NavLocale = { code: string; name: string };
-export type NavLeaf =
-  | { uid: string; kind: "page"; id: string }
-  | { uid: string; kind: "link"; href: string; label: Record<string, string> };
-export type NavItem = NavLeaf | { uid: string; kind: "group"; label: Record<string, string>; items: NavLeaf[] };
-type Labels = {
-  empty: string; addPage: string; addLink: string; addGroup: string; pickPage: string; noMorePages: string; cancel: string;
-  up: string; down: string; remove: string; page: string; link: string; group: string; groupName: string; groupEmpty: string; href: string; hrefHelp: string; hrefPlaceholder: string; label: string;
+export type EditorBase = {
+  kind: MenuKind;
+  ref?: string;
+  /** Lien libre : l'adresse. */
+  href?: string;
+  /** Lien libre et sous-menu : le nom (obligatoire). Autres : le nom choisi pour le menu, vide = le nom d'origine. */
+  label: Record<string, string>;
+  /** Ce que l'élément désigne aujourd'hui (nom d'origine et adresse) ; `missing` : n'existe plus. */
+  title?: string;
+  sub?: string;
+  missing?: boolean;
 };
+export type ENode = TreeNode<EditorBase>;
+type Strings = Record<string, string>;
 
 let counter = 0;
 const uid = () => `n${Date.now().toString(36)}${counter++}`;
+const fmt = (s: string, vars: Record<string, string | number>) => s.replace(/\{(\w+)\}/g, (_, k: string) => String(vars[k] ?? ""));
+const NODE_ERROR = /^items\.\d+$/;
 
-function swap<T>(list: T[], i: number, d: -1 | 1): T[] {
-  const j = i + d;
-  if (j < 0 || j >= list.length) return list;
-  const n = [...list];
-  [n[i], n[j]] = [n[j]!, n[i]!];
-  return n;
-}
-
-const leafPayload = (i: NavLeaf) => (i.kind === "page" ? { k: "page", id: i.id } : { k: "link", href: i.href, label: i.label });
+/** Ce que reçoit le serveur : un seul JSON `items`, dans l'ordre affiché. Les noms d'origine (title, sub) ne partent pas : le serveur les relit en base. */
+const payloadOf = (n: ENode): Record<string, unknown> => ({
+  k: n.kind,
+  ...(n.ref ? { ref: n.ref } : {}),
+  ...(n.kind === "link" ? { href: n.href ?? "" } : {}),
+  ...(Object.keys(n.label).length ? { label: n.label } : {}),
+  ...(n.children?.length ? { items: n.children.map(payloadOf) } : {}),
+});
 
 /**
- * Éditeur du menu : UNE liste ordonnée où pages du site, liens libres et GROUPES (menus déroulants qui rangent des pages et des liens, un seul niveau)
- * se mélangent. On réordonne avec des flèches, on retire avec le bouton rouge en bas de chaque élément.
- * Le champ envoyé est un seul JSON `items`, dans l'ordre affiché :
- * [{ k: "page", id } | { k: "link", href, label } | { k: "group", label, items: [page | link] }].
+ * Éditeur du menu du site : UN arbre à deux niveaux (un élément peut contenir des éléments, pas davantage). On réorganise avec des boutons — Monter, Descendre,
+ * « Mettre dans le sous-menu du dessus », « Sortir du sous-menu », Retirer — qui marchent au clavier comme au doigt ; l'action est annoncée aux lecteurs
+ * d'écran et le focus reste sur l'élément déplacé. Les pages se choisissent dans « Ajouter au menu » (recherche) ou dans « Pages qui ne sont pas dans le menu ».
+ * (Le glisser-déposer n'existe pas : les boutons font tout.)
  */
-export function NavEditor({ pages, locales, initial, labels }: { pages: NavPage[]; locales: NavLocale[]; initial: NavItem[]; labels: Labels }) {
-  const [items, setItems] = useState<NavItem[]>(initial);
+export function NavEditor({ locales, initial, notInMenu, advanced, limits, strings }: {
+  locales: NavLocale[]; initial: ENode[]; notInMenu: CatalogItem[]; advanced: boolean; limits: { total: number; children: number }; strings: Strings;
+}) {
+  const [tree, setTree] = useState<ENode[]>(initial);
+  const [picking, setPicking] = useState(false);
+  const [live, setLive] = useState("");
   const fieldErrors = useFieldErrorsContext();
-  /** Où ajoute-t-on une page : « root » (le menu) ou l'identifiant d'un groupe ; null = personne. */
-  const [picking, setPicking] = useState<string | null>(null);
-  const byId = new Map(pages.map((p) => [p.id, p]));
-  const used = new Set(items.flatMap((i) => (i.kind === "page" ? [i.id] : i.kind === "group" ? i.items.flatMap((c) => (c.kind === "page" ? [c.id] : [])) : [])));
-  const available = pages.filter((p) => !used.has(p.id));
+  const root = useRef<HTMLDivElement>(null);
+  const focusReq = useRef<{ uid: string | null; prefer: string[] } | null>(null);
+  const addButton = useRef<HTMLButtonElement>(null);
+  const first = locales[0]?.code ?? "";
+  const full = totalOf(tree) >= Math.min(limits.total, MENU_MAX_TOTAL);
 
-  const payload = JSON.stringify(items.map((i) => (i.kind === "group" ? { k: "group", label: i.label, items: i.items.map(leafPayload) } : leafPayload(i))));
+  const nameOf = (n: ENode) => n.label[first] || Object.values(n.label)[0] || n.title || n.href || strings[`kind.${n.kind}`] || "";
+  const payload = JSON.stringify(tree.map(payloadOf));
+  const notInList = notInMenu.filter((i) => !alreadyInMenu(i, tree));
+  const inTree = (i: CatalogItem) => alreadyInMenu(i, tree);
 
-  const patchLink = (list: NavItem[], id: string, p: Partial<Extract<NavLeaf, { kind: "link" }>>): NavItem[] =>
-    list.map((x) => (x.uid === id && x.kind === "link" ? { ...x, ...p } : x.kind === "group" ? { ...x, items: x.items.map((c) => (c.uid === id && c.kind === "link" ? { ...c, ...p } : c)) } : x));
-  const patchGroup = (id: string, fn: (g: Extract<NavItem, { kind: "group" }>) => Extract<NavItem, { kind: "group" }>) =>
-    setItems((a) => a.map((x) => (x.uid === id && x.kind === "group" ? fn(x) : x)));
-  const addLeaf = (target: string, leaf: NavLeaf) => setItems((a) => (target === "root" ? [...a, leaf] : a.map((x) => (x.uid === target && x.kind === "group" ? { ...x, items: [...x.items, leaf] } : x))));
+  /** Après chaque changement : le focus revient sur le bouton qu'on vient d'utiliser (ou son voisin s'il est devenu inutilisable), sinon sur l'élément. */
+  useEffect(() => {
+    const req = focusReq.current;
+    if (!req) return;
+    focusReq.current = null;
+    const scope = req.uid ? root.current?.querySelector<HTMLElement>(`[data-uid="${CSS.escape(req.uid)}"]`) : null;
+    for (const action of req.prefer) {
+      const btn = scope?.querySelector<HTMLElement>(`:scope > [data-controls] [data-action="${action}"]:not(:disabled)`);
+      if (btn) { btn.focus(); return; }
+    }
+    (scope ?? root.current?.querySelector<HTMLElement>("[data-focus-fallback]"))?.focus();
+  }, [tree]);
 
-  /** Pied de carte : déplacer à gauche, retirer à l'autre bout, séparés des champs par un filet. Boutons avec un texte visible. */
-  const controls = (i: number, count: number, onMove: (d: -1 | 1) => void, onRemove: () => void) => (
-    <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3">
-      <div className="flex items-center gap-2">
-        <button type="button" className={`${ui.btn} !px-3`} onClick={() => onMove(-1)} disabled={i === 0} aria-label={labels.up}>↑ {labels.up}</button>
-        <button type="button" className={`${ui.btn} !px-3`} onClick={() => onMove(1)} disabled={i === count - 1} aria-label={labels.down}>↓ {labels.down}</button>
-      </div>
-      <button type="button" className={`${ui.btnDanger} !px-3`} onClick={onRemove} aria-label={labels.remove}>{labels.remove}</button>
-    </div>
-  );
+  // Une erreur qui concerne un élément entier (sous-menu trop plein) : on y amène la page, comme pour une erreur de champ.
+  const errorKey = Object.keys(fieldErrors.errors).find((k) => NODE_ERROR.test(k));
+  useEffect(() => {
+    if (!errorKey) return;
+    const el = root.current?.querySelector<HTMLElement>(`[data-path="${CSS.escape(errorKey)}"]`);
+    const calm = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    el?.scrollIntoView({ block: "center", behavior: calm ? "auto" : "smooth" });
+    el?.focus({ preventScroll: true });
+  }, [errorKey]);
 
-  /** Libellé : un seul champ « Libellé » si le site n'a qu'une langue ; sinon un champ par langue, regroupés sous un même titre. */
-  const labelFields = (title: string, value: Record<string, string>, onChange: (next: Record<string, string>) => void, path: string) => {
+  const change = (next: ENode[], message: string, uidToFocus: string | null, prefer: string[]) => {
+    for (const k of Object.keys(fieldErrors.errors)) if (NODE_ERROR.test(k)) fieldErrors.clear(k);
+    focusReq.current = { uid: uidToFocus, prefer };
+    setTree(next);
+    setLive(message);
+  };
+  const place = (next: ENode[], id: string) => { const at = locate(next, id)!; return { n: at.index + 1, total: at.list.length }; };
+  const nodeOf = (id: string) => { const at = locate(tree, id)!; return at.list[at.index]!; };
+
+  const move = (id: string, dir: -1 | 1) => {
+    const next = moveNode(tree, id, dir);
+    change(next, fmt(strings.moved ?? "", { name: nameOf(nodeOf(id)), ...place(next, id) }), id, dir === -1 ? ["up", "down"] : ["down", "up"]);
+  };
+  const into = (id: string) => {
+    const m = movesFor(tree, id);
+    if (!m?.into.ok) return;
+    const at = locate(tree, id)!;
+    change(indentNode(tree, id), fmt(strings.movedInto ?? "", { name: nameOf(at.list[at.index]!), parent: nameOf(at.list[at.index - 1]!) }), id, ["out", "up", "down"]);
+  };
+  const out = (id: string) => {
+    change(outdentNode(tree, id), fmt(strings.movedOut ?? "", { name: nameOf(nodeOf(id)) }), id, ["into", "up", "down"]);
+  };
+  const remove = (id: string) => {
+    change(removeNode(tree, id), fmt(strings.removed ?? "", { name: nameOf(nodeOf(id)) }), null, []);
+  };
+  const add = (node: ENode, name: string, focus = false) => {
+    if (full) return;
+    if (focus) focusReq.current = { uid: node.uid, prefer: [] };
+    setTree((t) => appendNode(t, node));
+    setLive(fmt(strings.added ?? "", { name }));
+  };
+  const addCatalog = (i: CatalogItem) => add({ uid: uid(), kind: i.kind, ref: i.ref, label: {}, title: i.title, sub: i.sub }, i.title);
+  const addFromList = (i: CatalogItem) => { addCatalog(i); queueMicrotask(() => root.current?.querySelector<HTMLElement>("[data-not-in-menu-title]")?.focus()); };
+
+  /** Libellé : un seul champ si le site n'a qu'une langue ; sinon un champ par langue, regroupés sous un même titre. */
+  const labelFields = (title: string, value: Record<string, string>, onChange: (next: Record<string, string>) => void, path: string, placeholder?: string) => {
     const err = errorOf(fieldErrors, `${path}.label`);
-    const first = locales[0]?.code ?? "";
     return locales.length <= 1 ? (
       <label className="block text-sm">
         <span className={ui.label}>{title}</span>
-        <input value={value[locales[0]?.code ?? ""] ?? ""} onChange={(e) => onChange({ ...value, [locales[0]?.code ?? ""]: e.target.value })} {...err.props} className={`${ui.input} ${err.className}`} />
+        <input value={value[first] ?? ""} placeholder={placeholder} onChange={(e) => onChange({ ...value, [first]: e.target.value })} {...err.props} className={`${ui.input} ${err.className}`} />
         <FieldErrorText id={err.id} message={err.message} />
       </label>
     ) : (
@@ -79,7 +135,7 @@ export function NavEditor({ pages, locales, initial, labels }: { pages: NavPage[
           {locales.map((l) => (
             <label key={l.code} className="block text-sm">
               <span className="mb-1 block text-xs text-muted">{l.name}</span>
-              <input value={value[l.code] ?? ""} onChange={(e) => onChange({ ...value, [l.code]: e.target.value })} {...(l.code === first ? err.props : {})} className={`${ui.input} ${l.code === first ? err.className : ""}`} />
+              <input value={value[l.code] ?? ""} placeholder={placeholder} onChange={(e) => onChange({ ...value, [l.code]: e.target.value })} {...(l.code === first ? err.props : {})} className={`${ui.input} ${l.code === first ? err.className : ""}`} />
             </label>
           ))}
         </div>
@@ -88,103 +144,134 @@ export function NavEditor({ pages, locales, initial, labels }: { pages: NavPage[
     );
   };
 
-  const leafBody = (item: NavLeaf, path: string) => {
-    const hrefPath = `${path}.href`;
-    const hrefError = errorOf(fieldErrors, hrefPath);
-    if (item.kind === "page") {
-      const page = byId.get(item.id);
-      if (!page) return null;
+  const body = (node: ENode, path: string) => {
+    const patch = (p: Partial<EditorBase>) => setTree((t) => patchNode(t, node.uid, p));
+    if (node.kind === "link") {
+      const hrefPath = `${path}.href`;
+      const hrefError = errorOf(fieldErrors, hrefPath);
       return (
-        <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-muted">{labels.page}</p>
-          <p className="font-semibold leading-tight">{page.title}</p>
-          <p className="text-sm text-muted">{page.href}</p>
-        </div>
+        <>
+          {labelFields(strings.label ?? "", node.label, (label) => patch({ label }), path)}
+          <label className="block text-sm">
+            <span className={ui.label}>{strings.href}</span>
+            <input value={node.href ?? ""} onChange={(e) => patch({ href: e.target.value })} placeholder={strings.hrefPlaceholder} id={`${hrefPath}-href`} {...hrefError.props} className={`${ui.input} ${hrefError.className}`} />
+            <FieldErrorText id={hrefError.id} message={hrefError.message} />
+            <span className={`${ui.help} mt-1 block`}>{strings.hrefHelp}</span>
+          </label>
+        </>
       );
     }
+    if (node.kind === "group") return labelFields(strings.groupName ?? "", node.label, (label) => patch({ label }), path);
+    if (node.missing) return <p className="text-sm font-medium text-amber-700" role="note">{strings.missing}</p>;
     return (
-      <>
-        <p className="text-xs font-medium uppercase tracking-wide text-muted">{labels.link}</p>
-        {labelFields(labels.label, item.label, (label) => setItems((a) => patchLink(a, item.uid, { label })), path)}
-        <label className="block text-sm">
-          <span className={ui.label}>{labels.href}</span>
-          <input value={item.href} onChange={(e) => setItems((a) => patchLink(a, item.uid, { href: e.target.value }))} placeholder={labels.hrefPlaceholder} id={`${hrefPath}-href`} {...hrefError.props} className={`${ui.input} ${hrefError.className}`} />
-          <FieldErrorText id={hrefError.id} message={hrefError.message} />
-          <span className={`${ui.help} mt-1 block`}>{labels.hrefHelp}</span>
-        </label>
-      </>
+      <details open={Object.keys(node.label).length > 0} className="text-sm">
+        <summary className="inline-flex min-h-11 cursor-pointer items-center font-medium text-accent">{strings.rename}</summary>
+        <div className="space-y-2 pt-2">
+          {labelFields(strings.label ?? "", node.label, (label) => patch({ label }), path, node.title)}
+          <p className={ui.help}>{strings.renameHelp}</p>
+        </div>
+      </details>
     );
   };
 
-  const picker = (target: string) => (
-    <div className={`${ui.card} space-y-3`}>
-      <p className="font-semibold">{labels.pickPage}</p>
-      {available.length === 0 ? <p className={ui.help}>{labels.noMorePages}</p> : (
-        <ul className="grid gap-2 sm:grid-cols-2">
-          {available.map((p) => (
-            <li key={p.id}>
-              <button type="button" onClick={() => { addLeaf(target, { uid: uid(), kind: "page", id: p.id }); setPicking(null); }}
-                className="flex w-full flex-col rounded-xl border border-line bg-bg px-3 py-2.5 text-left transition-colors hover:border-accent">
-                <span className="text-sm font-medium leading-tight">{p.title}</span>
-                <span className="truncate text-xs text-muted">{p.href}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-      <button type="button" className={ui.btn} onClick={() => setPicking(null)}>{labels.cancel}</button>
-    </div>
-  );
-
-  const adders = (target: string) =>
-    picking === target ? picker(target) : (
-      <div className={`grid gap-3 ${target === "root" ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
-        <button type="button" className={`${ui.btn} !border-dashed !py-3`} onClick={() => setPicking(target)}>＋ {labels.addPage}</button>
-        <button type="button" className={`${ui.btn} !border-dashed !py-3`} onClick={() => addLeaf(target, { uid: uid(), kind: "link", href: "", label: {} })}>＋ {labels.addLink}</button>
-        {target === "root" && <button type="button" className={`${ui.btn} !border-dashed !py-3`} onClick={() => setItems((a) => [...a, { uid: uid(), kind: "group", label: {}, items: [] }])}>＋ {labels.addGroup}</button>}
+  const controls = (node: ENode) => {
+    const m = movesFor(tree, node.uid)!;
+    const at = locate(tree, node.uid)!;
+    const prev = at.parent ? null : at.list[at.index - 1];
+    const blocked = !at.parent && !m.into.ok && m.into.why !== "first" ? strings[`blocked.${m.into.why}`] : null;
+    return (
+      <div data-controls className="space-y-2 border-t border-line pt-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <button type="button" data-action="up" className={`${ui.btn} min-h-11 !px-3`} onClick={() => move(node.uid, -1)} disabled={!m.up}>↑ {strings.up}</button>
+          <button type="button" data-action="down" className={`${ui.btn} min-h-11 !px-3`} onClick={() => move(node.uid, 1)} disabled={!m.down}>↓ {strings.down}</button>
+          {!at.parent && prev && (
+            <button type="button" data-action="into" className={`${ui.btn} min-h-11 !px-3`} onClick={() => into(node.uid)} disabled={!m.into.ok}>→ {fmt(strings.into ?? "", { name: nameOf(prev) })}</button>
+          )}
+          {at.parent && (
+            <button type="button" data-action="out" className={`${ui.btn} min-h-11 !px-3`} onClick={() => out(node.uid)}>← {fmt(strings.out ?? "", { name: nameOf(at.parent) })}</button>
+          )}
+          <button type="button" data-action="remove" className={`${ui.btnDanger} min-h-11 !px-3 sm:ml-auto`} onClick={() => remove(node.uid)}>{strings.remove}</button>
+        </div>
+        {blocked && <p className={ui.help}>{fmt(blocked, { max: limits.children })}</p>}
       </div>
     );
+  };
+
+  const header = (node: ENode, path: string) => {
+    const err = errorOf(fieldErrors, path);
+    return (
+      <div className="min-w-0">
+        <p className="text-xs font-medium uppercase tracking-wide text-muted">{strings[`kind.${node.kind}`]}</p>
+        {node.kind !== "link" && node.kind !== "group" && <p className="break-words font-semibold leading-tight">{node.title || strings.missing}</p>}
+        {node.sub && <p className="break-all text-sm text-muted">{node.sub}{advanced && node.ref ? ` · ${node.ref}` : ""}</p>}
+        <FieldErrorText id={err.id} message={err.message} />
+      </div>
+    );
+  };
+
+  const nodeCard = (node: ENode, path: string, nested: boolean) => {
+    const parent = !nested && (node.children?.length || node.kind === "group");
+    return (
+      <li key={node.uid} data-uid={node.uid} data-path={path} tabIndex={-1} data-testid={parent ? "nav-group" : undefined}
+        className={nested ? "space-y-3 rounded-xl border border-line bg-bg p-3 outline-none" : `${ui.card} space-y-3 outline-none ${parent ? "border-accent/40" : ""}`}>
+        {header(node, path)}
+        {body(node, path)}
+        {parent ? (
+          <div className="space-y-2">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted">▾ {strings.group}</p>
+            <ol className="space-y-3 border-l-2 border-line pl-3 sm:pl-4">
+              {(node.children ?? []).map((c, j) => nodeCard(c, `${path}.items.${j}`, true))}
+              {!node.children?.length && <li className={ui.help}>{strings.groupEmpty}</li>}
+            </ol>
+          </div>
+        ) : null}
+        {controls(node)}
+      </li>
+    );
+  };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6" ref={root}>
       <input type="hidden" name="items" value={payload} />
-      {items.length === 0 && <p className={`${ui.card} text-center text-muted`}>{labels.empty}</p>}
-      <ol className="space-y-3">
-        {items.map((item, i) => {
-          if (item.kind === "group") {
-            return (
-              <li key={item.uid} className={`${ui.card} space-y-3 border-accent/40`} data-testid="nav-group">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted">▾ {labels.group}</p>
-                {labelFields(labels.groupName, item.label, (label) => patchGroup(item.uid, (g) => ({ ...g, label })), `items.${i}`)}
-                <ol className="space-y-3 border-l-2 border-line pl-4">
-                  {item.items.length === 0 && <li className={ui.help}>{labels.groupEmpty}</li>}
-                  {item.items.map((child, j) => {
-                    const body = leafBody(child, `items.${i}.items.${j}`);
-                    if (!body) return null;
-                    return (
-                      <li key={child.uid} className="space-y-3 rounded-xl border border-line bg-bg p-3">
-                        {body}
-                        {controls(j, item.items.length, (d) => patchGroup(item.uid, (g) => ({ ...g, items: swap(g.items, j, d) })), () => patchGroup(item.uid, (g) => ({ ...g, items: g.items.filter((c) => c.uid !== child.uid) })))}
-                      </li>
-                    );
-                  })}
-                </ol>
-                {adders(item.uid)}
-                {controls(i, items.length, (d) => setItems((a) => swap(a, i, d)), () => setItems((a) => a.filter((x) => x.uid !== item.uid)))}
+      <p role="status" aria-live="polite" className="sr-only">{live}</p>
+      <p className="text-sm text-muted">{fmt(strings.limits ?? "", { total: limits.total, children: limits.children })}</p>
+
+      <section aria-labelledby="nav-not-in-menu" className={`${ui.card} space-y-3`}>
+        <h2 id="nav-not-in-menu" data-not-in-menu-title tabIndex={-1} className="text-lg font-semibold outline-none">{strings.notInMenu}</h2>
+        <p className={ui.help}>{strings.notInMenuHelp}</p>
+        {notInList.length === 0 ? <p className="text-sm text-muted">{strings.notInMenuNone}</p> : (
+          <ul className="grid gap-2 sm:grid-cols-2">
+            {notInList.map((it) => (
+              <li key={`${it.kind}:${it.ref}`} className="flex items-center justify-between gap-3 rounded-xl border border-line bg-bg px-3 py-2">
+                <span className="min-w-0">
+                  <span className="block break-words text-sm font-medium leading-tight">{it.title}</span>
+                  <span className="block break-all text-xs text-muted">{it.sub}</span>
+                  {it.suggested && <span className={`${ui.chip} mt-1`}>{strings.suggested}</span>}
+                </span>
+                <button type="button" className={`${ui.btn} min-h-11 shrink-0`} disabled={full} aria-label={`${strings.addOne} : ${it.title}`} onClick={() => addFromList(it)}>{strings.addOne}</button>
               </li>
-            );
-          }
-          const body = leafBody(item, `items.${i}`);
-          if (!body) return null;
-          return (
-            <li key={item.uid} className={`${ui.card} space-y-3`}>
-              {body}
-              {controls(i, items.length, (d) => setItems((a) => swap(a, i, d)), () => setItems((a) => a.filter((x) => x.uid !== item.uid)))}
-            </li>
-          );
-        })}
-      </ol>
-      {adders("root")}
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section aria-label={strings.tree} className="space-y-4">
+        <div data-focus-fallback tabIndex={-1} className="outline-none">
+          {tree.length === 0 && <p className={`${ui.card} text-center text-muted`}>{strings.empty}</p>}
+        </div>
+        <ol className="space-y-3">{tree.map((n, i) => nodeCard(n, `items.${i}`, false))}</ol>
+
+        {picking ? (
+          <NavPicker strings={strings} inMenu={inTree} full={full} onAdd={addCatalog} onClose={() => { setPicking(false); queueMicrotask(() => addButton.current?.focus()); }} />
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-3">
+            <button ref={addButton} type="button" className={`${ui.btn} min-h-11 !border-dashed !py-3`} disabled={full} onClick={() => setPicking(true)}>＋ {strings.add}</button>
+            <button type="button" className={`${ui.btn} min-h-11 !border-dashed !py-3`} disabled={full} onClick={() => add({ uid: uid(), kind: "link", href: "", label: {} }, strings["kind.link"] ?? "", true)}>＋ {strings.addLink}</button>
+            <button type="button" className={`${ui.btn} min-h-11 !border-dashed !py-3`} disabled={full} onClick={() => add({ uid: uid(), kind: "group", label: {} }, strings["kind.group"] ?? "", true)}>＋ {strings.addGroup}</button>
+          </div>
+        )}
+        {full && <p className="text-sm font-medium text-amber-700">{strings.totalFull}</p>}
+      </section>
     </div>
   );
 }

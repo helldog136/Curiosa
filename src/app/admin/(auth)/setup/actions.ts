@@ -83,6 +83,8 @@ export async function completeSetup(_prev: ActionState, formData: FormData): Pro
           manifest,
           names: defaultNames(manifest, locales),
           descriptions: Object.fromEntries(locales.map((l) => [l, localizedText(manifest.description, l)])),
+          // Le menu de départ du site : les pages que leur module suggère d'y mettre (ensuite, plus rien n'y entre sans la décision de la personne).
+          menu: "suggested",
         });
         created.push({ manifest, instance });
         createdIds.push(instance.id);
