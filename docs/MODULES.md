@@ -563,9 +563,26 @@ Montée sur le chemin (`basePath`) de l'instance. `segments` = ce qui suit ce ch
 | `description` | Description (méta) |
 | `blocks` | Contenu |
 | `notFound` | `true` : affiche la page d'erreur 404 (ou renvoyer `null`) |
+| `scripts` | (cœur 0.2.6) Scripts de **cette page seulement** : 3 noms de fichiers au plus du dossier `scripts/` du module (`["faq.js"]`), 32 Ko chacun. Voir ci-dessous. |
 
 Les slots `page.top` et `page.bottom` entourent le contenu. Une instance n'a de page que si son chemin public est défini
 (`ctx.instance.basePath` n'est pas `null` ; `""` = racine du site).
+
+#### Un script pour une seule page (`scripts`, cœur 0.2.6)
+
+Avant, un script ne pouvait être chargé que par le slot `layout.head`, donc sur **toutes** les pages du site. Pour un petit script de confort qui ne sert qu'à la page du module :
+
+```js
+// scripts/faq.js dans le dossier du module
+async page(ctx) { return { title: "FAQ", blocks: [...], scripts: ["faq.js"] }; }
+```
+
+- **Fichiers du module** : le nom désigne `scripts/<nom>` dans le dossier du module (minuscules, chiffres, `.` `-` `_`, fini par `.js`). Pas de script en ligne, pas d'adresse extérieure. Un nom invalide, un fichier absent, plus gros que 32 Ko ou qui est un lien symbolique est **ignoré** (la page s'affiche sans lui).
+- **Servi par le cœur** : `<script src="/m/<clé>/_script/<nom>?v=<empreinte>" defer integrity="sha256-…">` placé en bas de la page, **uniquement sur cette page** (pas sur les pages d'erreur ni sur les autres). Même origine : compatible avec une politique `script-src 'self'` sans `'unsafe-inline'`, aucun nonce à gérer. Le chemin `_script` est réservé dans `/m/<clé>/` (une route de module de ce nom ne serait pas atteinte).
+- **Cache** : l'adresse porte l'empreinte du contenu ; servi `immutable` seulement si cette empreinte est la bonne, `no-cache` sinon. Un fichier modifié change d'adresse.
+- **Limites** : 3 scripts par page, 32 Ko chacun, 64 fichiers gardés en mémoire (puis le plus ancien est oublié).
+- **Kit de test** : l'exigence `page.scripts` (conseil) ; déclarez `minCore` : `0.2.6` (un cœur plus ancien ignore la clé : la page s'afficherait sans son script).
+- Ce n'est pas une porte ouverte : le script s'exécute dans la page avec les droits du visiteur, comme tout script. Écrivez-le défensivement (rien d'`eval`, rien de personnel).
 
 ### `overlay` : source navigateur OBS
 

@@ -93,6 +93,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 | [`code.imports`](#codeimports) | obligatoire | Le module ne dépend de rien d'autre que de ctx |
 | [`code.noDanger`](#codenodanger) | obligatoire | Pas de code dangereux |
 | [`load.noNetwork`](#loadnonetwork) | obligatoire | Aucun accès au réseau au chargement |
+| [`page.scripts`](#pagescripts) | conseil | Les scripts de page sont de vrais fichiers du dossier scripts/ |
 | [`perm.declared`](#permdeclared) | obligatoire | Chaque capacité utilisée est déclarée dans « permissions » |
 | [`perm.minimal`](#permminimal) | conseil | Aucune permission inutile n'est demandée |
 | [`i18n.manifest`](#i18nmanifest) | obligatoire | Les textes de module.json existent en français et en anglais |
@@ -140,7 +141,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 | [`readme.plain`](#readmeplain) | conseil | Le README est écrit en langage de tous les jours |
 | [`neutrality.clean`](#neutralityclean) | conseil | Aucune donnée personnelle ni propre à un site dans le module |
 
-36 exigences obligatoires et 23 conseils.
+36 exigences obligatoires et 24 conseils.
 
 ### Le fichier module.json
 
@@ -251,6 +252,14 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 - **Ce qui est vérifié.** Charger le fichier principal ne déclenche aucune requête réseau (fetch, http, connexion, résolution de nom).
 - **Pourquoi.** Le cœur charge tous les modules au démarrage du site, y compris quand Internet ne répond pas. Un module qui appelle un service dès son chargement ralentit ou bloque le démarrage de tout le site.
 - **Comment corriger.** Déplacez l'appel réseau dans une fonction (section, route, tâche planifiée) : il ne part alors qu'à la demande, jamais à l'import.
+
+#### `page.scripts`
+
+**Les scripts de page sont de vrais fichiers du dossier scripts/** — niveau : **conseil**
+
+- **Ce qui est vérifié.** Si la page renvoie « scripts » (cœur 0.2.6), ce sont au plus 3 noms de fichiers (lettres minuscules, chiffres, « . », « - » ou « _ », qui finissent par .js) qui existent dans le dossier « scripts/ » du module et pèsent 32 Ko au plus.
+- **Pourquoi.** Le cœur sert lui-même ces fichiers, uniquement sur la page concernée, avec une empreinte d'intégrité. Un nom invalide ou un fichier absent est ignoré sans bruit : la page s'affiche, mais sans son script.
+- **Comment corriger.** Mettez le script dans scripts/mon-script.js (dossier du module) et renvoyez « scripts: ["mon-script.js"] » avec la page. N'écrivez pas de script en ligne et n'en chargez pas depuis un autre site.
 
 ### Les droits demandés
 

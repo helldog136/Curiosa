@@ -1,4 +1,6 @@
 // Exigences vérifiées EN FAISANT TOURNER le module (sondes) : sorties sûres, routes, outils MCP, tâches, données, vie privée, un module = une chose.
+import fs from "node:fs";
+import path from "node:path";
 import { findSrpViolations } from "../builtinChecks.mjs";
 import { fakeCtx } from "../fakeCtx.mjs";
 import { makeCtx, observe } from "../probes.mjs";
@@ -613,6 +615,37 @@ const requirements = [
         }
       });
       return out;
+    },
+  },
+  {
+    id: "page.scripts", level: "advice", group: "code",
+    title: "Les scripts de page sont de vrais fichiers du dossier scripts/",
+    what: "Si la page renvoie « scripts » (cœur 0.2.6), ce sont au plus 3 noms de fichiers (lettres minuscules, chiffres, « . », « - » ou « _ », qui finissent par .js) qui existent dans le dossier « scripts/ » du module et pèsent 32 Ko au plus.",
+    why: "Le cœur sert lui-même ces fichiers, uniquement sur la page concernée, avec une empreinte d'intégrité. Un nom invalide ou un fichier absent est ignoré sans bruit : la page s'affiche, mais sans son script.",
+    fix: "Mettez le script dans scripts/mon-script.js (dossier du module) et renvoyez « scripts: [\"mon-script.js\"] » avec la page. N'écrivez pas de script en ligne et n'en chargez pas depuis un autre site.",
+    async run(m) {
+      if (!m.parsed?.ok) return { skip: "module.json invalide" };
+      if (typeof m.definition?.page !== "function") return { na: "le module n'a pas de page publique" };
+      const obs = await observe(m);
+      const out = [];
+      let seen = false;
+      for (const run of Object.values(obs.runs)) for (const o of run.outputs) {
+        if (o.kind !== "page" || !o.ok || o.value?.scripts === undefined) continue;
+        seen = true;
+        const list = o.value.scripts;
+        if (!Array.isArray(list)) { out.push("« scripts » doit être une liste de noms de fichiers"); continue; }
+        if (list.length > 3) out.push("« scripts » : 3 fichiers au plus par page (les suivants sont ignorés)");
+        for (const name of list) {
+          if (typeof name !== "string" || !/^[a-z0-9][a-z0-9._-]{0,62}\.js$/.test(name)) { out.push(`le nom de script « ${String(name).slice(0, 40)} » n'est pas permis (minuscules, chiffres, . - _ ; fini par .js)`); continue; }
+          const file = path.join(m.dir, "scripts", name);
+          let st = null;
+          try { st = fs.lstatSync(file); } catch { /* absent */ }
+          if (!st || !st.isFile()) out.push(`le script « ${name} » n'existe pas dans le dossier scripts/ du module`);
+          else if (st.size > 32 * 1024) out.push(`le script « ${name} » pèse plus de 32 Ko`);
+        }
+      }
+      if (!seen) return { na: "la page ne déclare aucun script" };
+      return [...new Set(out)];
     },
   },
 ];

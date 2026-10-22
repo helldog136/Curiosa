@@ -26,7 +26,7 @@ test("un module conforme réussit toutes les exigences (aucune en échec, aucune
   assert.equal(report.summary.ok, true);
   // « neutrality.clean » est sautée sans liste de neutralité, vérifiée (et réussie) avec : les deux sont corrects.
   const notPassed = report.results.filter((r) => r.status !== "pass" && r.id !== "neutrality.clean").map((r) => `${r.id}:${r.status}`);
-  assert.deepEqual(notPassed.sort(), ["srp.single:na"]);
+  assert.deepEqual(notPassed.sort(), ["page.scripts:na", "srp.single:na"]);
   // avec un voisin sans rapport, « un propriétaire par donnée » est vérifié et réussit
   void other;
   assert.equal(status(await checkModule(dir, { siblings: [path.join(path.dirname(other), "full-mod")] }), "srp.single").status, "pass");
@@ -94,6 +94,7 @@ const FAULTS = {
   "data.migrations": (f) => REPLACE(f, "migrations: { 2: async () => {} }", "migrations: { 2: async (ctx) => { await ctx.api.store.list(\"nothing\").then((r) => r[0].data); } }"),
   "privacy.declared": (f) => editManifest(f, (m) => { delete m.privacy; }),
   "privacy.thirdParty": (f) => { f["index.mjs"] = f["index.mjs"]; editManifest(f, (m) => { delete m.privacy; }); },
+  "page.scripts": (f) => REPLACE(f, "title: ctx.setting(\"title\") || ctx.t(\"title\"),", "title: ctx.setting(\"title\") || ctx.t(\"title\"), scripts: [\"missing.js\", \"Bad Name.js\"],"),
   "srp.single": null, // voir plus bas : demande un voisin
   "srp.coupling": (f) => append(f, "index.mjs", 'export const peek = (ctx) => ctx.api.instances.list({ module: "contacts" });'),
 };
@@ -317,4 +318,16 @@ test("def.matches : un formulaire d'administration vers une action { right, run 
   assert.deepEqual(problems(await checkModule(panel("save", "{ save: async () => ({ ok: 'ok' }) }"), { siblings: [] })), [], "forme fonction");
   assert.equal(problems(await checkModule(panel("ghost", "{ save: { right: 'export', run: async () => ({ ok: 'ok' }) } }"), { siblings: [] })).length, 1, "action absente");
   assert.equal(problems(await checkModule(panel("save", "{ save: { right: 'export' } }"), { siblings: [] })).length, 1, "sans run");
+});
+
+test("page.scripts : un script présent dans scripts/ réussit ; il faut minCore 0.2.6 (compat.minCore) et la fonction est reconnue", async () => {
+  const dir = mk((f) => {
+    REPLACE(f, "title: ctx.setting(\"title\") || ctx.t(\"title\"),", "title: ctx.setting(\"title\") || ctx.t(\"title\"), scripts: [\"ui.js\"],");
+    f["scripts/ui.js"] = "document.documentElement.dataset.ui = '1';\n";
+  });
+  const rep = await checkModule(dir, { siblings: [] });
+  assert.equal(status(rep, "page.scripts").status, "pass", JSON.stringify(status(rep, "page.scripts")));
+  const feat = status(rep, "compat.minCore");
+  assert.equal(feat.status, "fail", "scripts de page : cœur 0.2.6 requis");
+  assert.match(feat.problems.join("\n"), /0\.2\.6/);
 });

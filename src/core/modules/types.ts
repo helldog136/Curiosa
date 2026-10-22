@@ -440,6 +440,11 @@ export type PageResult = {
   blocks: Block[];
   /** Affiche la page d'erreur 404. */
   notFound?: boolean;
+  /**
+   * Scripts de CETTE page seulement (cœur 0.2.6) : noms de fichiers du dossier `scripts/` du module (`"faq.js"`), 3 au plus, 32 Ko chacun. Le cœur les sert lui-même,
+   * en `defer`, avec une empreinte d'intégrité, jamais en ligne. Un nom invalide ou un fichier absent est ignoré.
+   */
+  scripts?: string[];
 };
 
 /** Un fichier texte ajouté à la sauvegarde ; `path` est relatif au dossier de l'instance (`modules/<instance>/<path>`). */
