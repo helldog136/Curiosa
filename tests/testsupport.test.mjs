@@ -26,7 +26,7 @@ test("un module conforme réussit toutes les exigences (aucune en échec, aucune
   assert.equal(report.summary.ok, true);
   // « neutrality.clean » est sautée sans liste de neutralité, vérifiée (et réussie) avec : les deux sont corrects.
   const notPassed = report.results.filter((r) => r.status !== "pass" && r.id !== "neutrality.clean").map((r) => `${r.id}:${r.status}`);
-  assert.deepEqual(notPassed.sort(), ["page.scripts:na", "routes.visitorIp:na", "srp.single:na"]);
+  assert.deepEqual(notPassed.sort(), ["srp.single:na"]);
   // avec un voisin sans rapport, « un propriétaire par donnée » est vérifié et réussit
   void other;
   assert.equal(status(await checkModule(dir, { siblings: [path.join(path.dirname(other), "full-mod")] }), "srp.single").status, "pass");
@@ -94,7 +94,7 @@ const FAULTS = {
   "data.migrations": (f) => REPLACE(f, "migrations: { 2: async () => {} }", "migrations: { 2: async (ctx) => { await ctx.api.store.list(\"nothing\").then((r) => r[0].data); } }"),
   "privacy.declared": (f) => editManifest(f, (m) => { delete m.privacy; }),
   "privacy.thirdParty": (f) => { f["index.mjs"] = f["index.mjs"]; editManifest(f, (m) => { delete m.privacy; }); },
-  "page.scripts": (f) => REPLACE(f, "title: ctx.setting(\"title\") || ctx.t(\"title\"),", "title: ctx.setting(\"title\") || ctx.t(\"title\"), scripts: [\"missing.js\", \"Bad Name.js\"],"),
+  "page.scripts": (f) => REPLACE(f, 'scripts: ["ui.js"]', 'scripts: ["missing.js", "Bad Name.js"]'),
   "routes.visitorIp": null, // vérifié à part : demande un cœur 0.2.6 (voir plus bas)
   "srp.single": null, // voir plus bas : demande un voisin
   "srp.coupling": (f) => append(f, "index.mjs", 'export const peek = (ctx) => ctx.api.instances.list({ module: "contacts" });'),
@@ -329,9 +329,8 @@ test("def.matches : un formulaire d'administration vers une action { right, run 
 });
 
 test("page.scripts : un script présent dans scripts/ réussit ; il faut minCore 0.2.6 (compat.minCore) et la fonction est reconnue", async () => {
-  const dir = mk((f) => {
-    REPLACE(f, "title: ctx.setting(\"title\") || ctx.t(\"title\"),", "title: ctx.setting(\"title\") || ctx.t(\"title\"), scripts: [\"ui.js\"],");
-    f["scripts/ui.js"] = "document.documentElement.dataset.ui = '1';\n";
+  const dir = mk((f) => { // la fixture déclare déjà scripts: ["ui.js"] (et le fichier)
+    editManifest(f, (m) => { m.minCore = "0.2.5"; }); // la fixture déclare 0.2.6 : on la ramène avant pour prouver l'exigence
   });
   const rep = await checkModule(dir, { siblings: [] });
   assert.equal(status(rep, "page.scripts").status, "pass", JSON.stringify(status(rep, "page.scripts")));
@@ -343,7 +342,7 @@ test("page.scripts : un script présent dans scripts/ réussit ; il faut minCore
 test("permission « privacy » (cœur 0.2.6) : l'utiliser sans la déclarer est signalé ; le faux contexte la refuse sans permission et rend la liste réglable avec", async () => {
   const use = (permissions) => mk((f) => {
     REPLACE(f, "const [last] = await rows(ctx);", "const [last] = await rows(ctx); await ctx.api.privacy.declarations();");
-    editManifest(f, (m) => { m.permissions = [...new Set([...m.permissions, ...permissions])]; });
+    editManifest(f, (m) => { m.permissions = [...new Set([...m.permissions, ...permissions])]; m.minCore = "0.2.5"; });
   });
   const without = await checkModule(use([]), { siblings: [] });
   assert.match((status(without, "perm.declared").problems ?? []).join("\n"), /privacy/);
@@ -362,7 +361,7 @@ test("routes.visitorIp : sans lecture d'en-tête d'adresse rien à signaler ; c�
   assert.deepEqual(await r.run(ok), []);
   assert.ok((await r.run({ ...ok, core: { version: "0.2.5" } })).na, "cœur trop ancien");
   assert.equal((await r.run({ ...ok, code: "const h = req.headers.get('X-Real-IP');" })).length, 1);
-  const dir = mk((f) => { REPLACE(f, 'const ip = request.headers.get("x-forwarded-for") || "local";', 'const ip = ctx.api.visitor.fingerprint(request, "sign");'); });
+  const dir = mk((f) => { editManifest(f, (m) => { m.minCore = "0.2.5"; }); });
   assert.match((status(await checkModule(dir, { siblings: [] }), "compat.minCore").problems ?? []).join("\n"), /0\.2\.6/);
   const ctx = fakeCtx({ moduleId: "monsite" });
   const req = (xff) => new Request("https://example.test/", { headers: { "x-forwarded-for": xff } });
