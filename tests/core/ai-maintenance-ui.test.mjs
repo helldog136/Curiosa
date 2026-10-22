@@ -141,7 +141,7 @@ test("i18n : toutes les clés de traduction citées par les écrans de la mainte
 });
 
 test("journal d'audit : les actions de maintenance ont un libellé en clair (fr/en)", () => {
-  for (const a of ["mcp.maintenance.request", "mcp.maintenance.approve", "mcp.maintenance.deny", "mcp.maintenance.mode", "mcp.maintenance.notify"]) {
+  for (const a of ["mcp.maintenance.request", "mcp.maintenance.approve", "mcp.maintenance.deny", "mcp.maintenance.mode", "mcp.maintenance.notify", "mcp.maintenance.module_install", "mcp.maintenance.module_configure", "mcp.maintenance.module_configure_advanced"]) {
     assert.ok(AUDIT_ACTIONS.includes(a));
     assert.ok(fr[auditLabelKey(a)] && en[auditLabelKey(a)], a);
   }

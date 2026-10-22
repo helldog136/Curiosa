@@ -7,6 +7,19 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## Prochaine version (non publiée)
+
+### Améliorations
+
+- **Votre assistant IA peut vous guider dans le choix des extensions.** Demandez-lui « de quoi ai-je besoin pour mes commandes ? » : il cherche dans le catalogue ce que vous n'avez pas encore et vous explique son choix en mots simples (usage, ce que verront vos visiteurs, données récoltées). Il ne fait que regarder.
+- **Il peut demander à installer une extension, puis la régler avec vous.** L'installation attend toujours votre accord dans « Assistants IA », avec la liste de ce qui viendrait avec, même si vous laissez cet assistant agir seul pour le reste. Les réglages passent par les mêmes vérifications que l'admin.
+- **Vos mots de passe et clés restent à vous.** Un réglage secret n'est jamais lu ni écrit par l'assistant : il vous dit où le saisir. Les réglages techniques demandent une autorisation à part, et chaque changement est noté dans le journal.
+
+### Pour les développeurs
+
+- Outils MCP du cœur : `maintenance_catalog_list` et `_get` (niveau 1, même cache que la page *Ajouter*, attente bornée à 20 s) ; `maintenance_module_settings`, `_configure` et `_configure_advanced` (niveau 2, ce dernier accordé à part) ; `maintenance_module_install` (niveau 3, toujours par demande validée). Code : `src/core/maintenance/` (`catalog.ts`, `install.ts`, `moduleSettings.ts`).
+- L'index du catalogue peut annoncer `platform` (`CatalogueEntry.platform`). `MaintenanceDeps` gagne `catalogue`, `preview`, `installFromCatalogue`, `catalogTimeoutMs`. Le `Plan` d'une demande gagne `adds`, `name`, `instanceKey`, `permissions`.
+
 ## 0.2.6
 
 ### Améliorations

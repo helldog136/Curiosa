@@ -18,7 +18,7 @@ export const REQUEST_TTL_MS = 24 * 60 * 60_000;
 const KEEP = 50;
 const KEY = "maintenance.requests";
 
-export const LEVEL3_ACTIONS = ["module_update", "modules_update_all", "core_update", "module_uninstall"] as const;
+export const LEVEL3_ACTIONS = ["module_update", "modules_update_all", "core_update", "module_uninstall", "module_install"] as const;
 export type Level3Action = (typeof LEVEL3_ACTIONS)[number];
 
 export type Plan = {
@@ -30,6 +30,14 @@ export type Plan = {
   keepData?: boolean;
   /** Plusieurs modules (tout mettre à jour) : identifiant, version actuelle, version visée. */
   modules?: { id: string; from: string; to: string }[];
+  /** Installation : les modules qui viendront AVEC celui-ci (fournisseurs que le module exige), montrés à la propriétaire ; jamais installés en cachette. `to` = la version installée. */
+  adds?: { id: string; action: "install" | "setup" | "update"; name?: string }[];
+  /** Installation : le nom lisible du module (il n'est pas encore installé : l'admin ne peut pas le retrouver autrement). */
+  name?: string;
+  /** Installation : clé choisie pour la première instance (sinon dérivée de l'identifiant du module). */
+  instanceKey?: string;
+  /** Installation : les permissions que demande le module (pour que la propriétaire sache ce qu'elle accorde). */
+  permissions?: string[];
 };
 export type RequestStatus = "pending" | "running" | "done" | "failed" | "denied" | "expired";
 export type MaintenanceRequest = {

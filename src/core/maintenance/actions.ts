@@ -12,6 +12,8 @@ import { redactSecrets } from "./redact";
 import { claimRequest, createRequest, denyRequest, finishRequest, reopenRequest, type Level3Action, type Plan } from "./requests";
 import { getApprovalMode } from "./settings";
 import { runContentCheck } from "./content/service";
+import { executeInstall, prepareInstall, samePlan } from "./install";
+import { applyConfigure, parseConfigureArgs } from "./moduleSettings";
 
 /**
  * ACTIONS de maintenance : niveau 2 (sans risque : revérifier, sauvegarder, réinstaller, relancer) et niveau 3 (à risque : mises à jour, désinstallation).
@@ -27,7 +29,7 @@ import { runContentCheck } from "./content/service";
  */
 export type Outcome = { ok: boolean; message: string; details?: unknown; /** L'opération n'a pas commencé (verrou pris) : rien n'a été fait. */ busy?: boolean };
 export type Level2Tool = "check_updates" | "backup_run" | "module_reinstall" | "module_restart" | "content_check_run";
-export type Params = { module?: string; instance?: string; /** Contrôle du contenu : reprendre la vérification commencée au lieu d'en commencer une. */ continue?: boolean; /** Désinstallation : garder (défaut) ou effacer les données. */ keepData?: boolean };
+export type Params = { module?: string; instance?: string; /** Installation : clé facultative de la première instance. */ instanceKey?: string; /** Contrôle du contenu : reprendre la vérification commencée au lieu d'en commencer une. */ continue?: boolean; /** Désinstallation : garder (défaut) ou effacer les données. */ keepData?: boolean };
 
 /* ───────────── Verrou et cadence ───────────── */
 
@@ -62,6 +64,7 @@ const REASONS: Record<string, string> = {
   "modules.error.reinstallPerms": "the new version asks for new permissions: only a human can accept that", "modules.error.migration": "its data conversion failed", "modules.error.requires": "it lacks a module it needs",
   "modules.error.nomanifest": "the new version has no valid description file", "modules.error.size": "the new version is too large", "modules.error.unknownSource": "its source is unknown", "modules.error.incompatible": "it is not compatible with this version",
   "modules.error.noSpace": "not enough disk space for a safety copy of the database (nothing was updated)", "modules.error.copyFailed": "the safety copy of the database failed (nothing was updated)",
+  "modules.error.exists": "it is already installed", "modules.error.nomain": "its main file is missing", "modules.error.idmismatch": "the repository serves another module than announced",
   "error.generic": "the action failed",
 };
 const reason = (code: string | undefined) => (code && REASONS[code]) || (code && /^[\w.-]{1,60}$/.test(code) ? `failed (${code})` : "the action failed");
@@ -149,6 +152,35 @@ export async function runLevel2(tool: Level2Tool, args: Params, actor: { name: s
   return outcome;
 }
 
+/**
+ * Réglages d'une instance (niveau 2) : `module_configure`, ou `module_configure_advanced` (même code ; ce second outil est celui que le propriétaire accorde
+ * EN PLUS pour les réglages « avancés »). Cadence, verrou, audit (ancien → nouveau, jamais un secret) et avertissement comme toute action de niveau 2.
+ */
+export async function runConfigure(advanced: boolean, rawArgs: Record<string, unknown>, actor: { name: string; tokenId?: string }): Promise<unknown> {
+  const input = parseConfigureArgs(rawArgs);
+  const tool = advanced ? "module_configure_advanced" : "module_configure";
+  takeSlot(actor.tokenId);
+  let reply: Record<string, unknown> = {};
+  let params = input.instance;
+  const outcome = await withLock(tool, async () => {
+    try {
+      const r = await applyConfigure(input, advanced);
+      reply = r.reply; params = r.auditParams;
+      return r.outcome;
+    } catch (error) {
+      if (error instanceof McpToolError) return { ok: false, message: error.message } as Outcome;
+      console.error(`[maintenance] ${tool} failed:`, (error as Error)?.message);
+      return { ok: false, message: "The action failed unexpectedly. Check maintenance_health." } as Outcome;
+    }
+  });
+  if (outcome.busy) throw new McpToolError(outcome.message);
+  await record(actor.name, tool, params, outcome, "level2");
+  if (outcome.ok) await notifyOwner({ kind: "executed", tokenName: actor.name, actionKey: tool, detail: params, ok: true });
+  // Une erreur de l'appel (instance inconnue…) est dite telle quelle ; un refus de valeurs revient avec la liste de tous les problèmes.
+  if (!Object.keys(reply).length) throw new McpToolError(outcome.message);
+  return reply;
+}
+
 /* ───────────── Niveau 3 : préparation (lecture seule, ne change rien) ───────────── */
 
 export async function prepare(action: Level3Action, args: Params): Promise<Plan> {
@@ -166,6 +198,8 @@ export async function prepare(action: Level3Action, args: Params): Promise<Plan>
     if (compareVersions(tag, current) <= 0) refuse(`Nothing to do: the site is on ${current} and the highest stable release is ${tag.replace(/^v/, "")}. Release candidates and snapshots are never installed by an AI, and the core is never downgraded.`);
     return { from: current, to: tag.replace(/^v/, ""), level: classify(current, tag) ?? undefined };
   }
+
+  if (action === "module_install") return prepareInstall({ module: args.module, instanceKey: args.instanceKey });
 
   if (action === "module_update" || action === "module_uninstall") {
     const id = moduleId(args.module);
@@ -203,13 +237,18 @@ export async function prepare(action: Level3Action, args: Params): Promise<Plan>
 async function execute(action: Level3Action, plan: Plan, actorLabel: string): Promise<Outcome> {
   // Les conditions sont relues maintenant : la demande a pu attendre des heures.
   let fresh: Plan;
-  try { fresh = await prepare(action, { module: plan.module, keepData: plan.keepData }); } catch (error) {
+  try { fresh = await prepare(action, { module: plan.module, keepData: plan.keepData, instanceKey: plan.instanceKey }); } catch (error) {
     if (error instanceof McpToolError) return { ok: false, message: `Not done: ${error.message}` };
     throw error;
   }
   if (action === "core_update" && fresh.to !== plan.to) return { ok: false, message: `Not done: the highest stable release changed since the request (was ${plan.to}, now ${fresh.to}). Ask again.` };
   if (action === "module_update" && fresh.to !== plan.to) return { ok: false, message: `Not done: the available version of "${plan.module}" changed since the request (was ${plan.to}, now ${fresh.to}). Ask again.` };
 
+  if (action === "module_install") {
+    // Le plan relu doit être celui qui a été demandé : même version, mêmes fournisseurs (la propriétaire a approuvé CETTE liste, pas une autre).
+    if (!samePlan(plan, fresh)) return { ok: false, message: `Not done: what the installation of "${plan.module}" would do changed since the request (version, or the modules that come with it). Ask again.` };
+    return executeInstall(plan, actorLabel);
+  }
   if (action === "core_update") {
     const started = await deps.startCoreUpdate(`v${plan.to}`, actorLabel);
     return started.ok ? { ok: true, message: `Update to ${plan.to} started in the background; the site will restart. Check maintenance_status in a few minutes.` } : { ok: false, message: `Update not started: ${started.error === "running" ? "an update is already running" : started.error === "not-newer" ? "no newer stable release" : started.error === "unsupported" ? "this installation cannot be updated from the admin" : "invalid version"}.` };
@@ -232,7 +271,7 @@ async function execute(action: Level3Action, plan: Plan, actorLabel: string): Pr
   return { ok: s.failed.length === 0 && !s.stoppedOn && s.updated.length > 0, message: parts.join("; ") || "Nothing was updated.", details: { updated: s.updated } };
 }
 
-const paramsText = (plan: Plan) => (plan.module ? (plan.keepData === undefined ? plan.module : `${plan.module}${plan.keepData ? " keepData" : " erase"}`) : null) ?? (plan.modules ? plan.modules.map((m) => `${m.id} ${m.from}>${m.to}`).join(", ") : plan.to ? `${plan.from}>${plan.to}` : "");
+const paramsText = (plan: Plan) => (plan.adds ? `${plan.module} ${plan.to}${plan.instanceKey ? ` key=${plan.instanceKey}` : ""}${plan.adds.length ? ` + ${plan.adds.map((a) => a.id).join(", ")}` : ""}` : plan.module ? (plan.keepData === undefined ? plan.module : `${plan.module}${plan.keepData ? " keepData" : " erase"}`) : null) ?? (plan.modules ? plan.modules.map((m) => `${m.id} ${m.from}>${m.to}`).join(", ") : plan.to ? `${plan.from}>${plan.to}` : "");
 
 /** Verrou + audit + avertissement autour d'une exécution de niveau 3. */
 async function runGuarded(action: Level3Action, plan: Plan, who: { tokenName: string; tokenId?: string; via: "direct" | "approved" }): Promise<Outcome> {
@@ -255,7 +294,9 @@ async function runGuarded(action: Level3Action, plan: Plan, who: { tokenName: st
 export async function callLevel3(action: Level3Action, args: Params, actor: { name: string; tokenId?: string }): Promise<unknown> {
   takeSlot(actor.tokenId);
   const plan = await prepare(action, args);
-  if ((await getApprovalMode(actor.tokenId)) === "direct") {
+  // Installer du code sur le site n'est JAMAIS exécuté sans l'accord de la propriétaire, même pour un jeton en « exécution directe » : le réglage vaut pour
+  // les mises à jour et désinstallations, et rien dans le modèle ne dit quel module est « sans danger ».
+  if (action !== "module_install" && (await getApprovalMode(actor.tokenId)) === "direct") {
     const outcome = await runGuarded(action, plan, { tokenName: actor.name, tokenId: actor.tokenId, via: "direct" });
     if (outcome.busy) throw new McpToolError(outcome.message);
     return { status: outcome.ok ? "done" : "failed", message: outcome.message };
