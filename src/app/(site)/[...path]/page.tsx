@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { cache } from "react";
+import { headers } from "next/headers";
 import { notFound, permanentRedirect, redirect } from "next/navigation";
 import { pickDescription, pickName, type InstanceView } from "@/core/instances";
 import { getActiveInstances, type ActiveInstance } from "@/core/modules/registry";
@@ -11,6 +12,7 @@ import { pageHref, parsePageParam } from "@/core/content/pagination";
 import { makeTranslator } from "@/core/i18n/dictionary";
 import { getVisitorLocale } from "@/core/i18n/request";
 import { resolveRedirect } from "@/core/redirects";
+import { isPrefetchRequest } from "@/core/redirectStats";
 import { filterEntryBody, runPage, runSlot } from "@/core/modules/runtime";
 import { getSiteConfig } from "@/core/settings";
 import { prisma } from "@/core/db";
@@ -63,7 +65,8 @@ async function resolve(segments: string[]): Promise<Resolved> {
   const byBase = mounted.find((a) => a.instance.basePath && a.instance.basePath === first);
   if (byBase) return serve(byBase, segs.slice(1), false);
 
-  if (await prisma.redirect.findUnique({ where: { path: segs.join("/") }, select: { id: true } })) {
+  // Un lien court désactivé se comporte exactement comme un lien qui n'existe pas (même réponse, même repli) : seuls les actifs réclament le chemin.
+  if (await prisma.redirect.findFirst({ where: { path: segs.join("/"), active: true }, select: { id: true } })) {
     return { kind: "redirect", path: segs.join("/") };
   }
   const root = mounted.find((a) => a.instance.basePath === "");
@@ -151,8 +154,11 @@ export default async function CatchAllPage({ params, searchParams }: Props) {
 
   switch (resolved.kind) {
     case "redirect": {
-      const target = await resolveRedirect(resolved.path);
-      if (!target) notFound();
+      const h = await headers();
+      const target = await resolveRedirect(resolved.path, { userAgent: h.get("user-agent"), prefetch: isPrefetchRequest((n) => h.get(n)), team: /(^|;\s*)(__Secure-)?authjs\.session-token=/.test(h.get("cookie") ?? "") });
+      // Date de fin passée : le proxy a normalement déjà répondu 410 (page « lien terminé »). On n'arrive ici que dans la minute qui suit un changement
+      // de date : jamais la destination, la page « introuvable » sert de repli.
+      if (!target || "gone" in target) notFound();
       return target.permanent ? permanentRedirect(target.url) : redirect(target.url);
     }
 

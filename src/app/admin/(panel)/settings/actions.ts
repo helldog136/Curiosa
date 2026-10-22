@@ -15,6 +15,7 @@ import { isSiteEntity } from "@/core/seo";
 import { audit } from "@/core/permissions";
 import { normalizeLinkInput } from "@/core/url";
 import { deleteSetting, setSetting } from "@/core/settings";
+import { isTimezone, TIMEZONE_SETTING } from "@/core/siteTime";
 import type { ActionState } from "@/components/admin/ActionForm";
 
 const TRANSLATABLE = ["site.name", "site.tagline", "site.about", "footer.text", "header.secondaryLabel", "header.buttonLabel", "privacy.extra"];
@@ -43,6 +44,10 @@ export async function saveSettings(_prev: ActionState, formData: FormData): Prom
     if (v && !(v.startsWith("/uploads/") || /^https:\/\//.test(v))) return { errors: { [field]: t("error.badImage") } };
     logoValues[key] = v;
   }
+
+  // Fuseau horaire du site (avancé) : vide = celui du serveur ; sinon un nom connu (« Europe/Brussels »), rien n'est enregistré à tort.
+  const timezone = adv ? String(formData.get("timezone") ?? "").trim() : null;
+  if (timezone && !isTimezone(timezone)) return { errors: { timezone: t("settings.timezoneError") } };
 
   await setSetting("i18n.default", defaultLocale);
   await setSetting("i18n.enabled", locales);
@@ -90,6 +95,8 @@ export async function saveSettings(_prev: ActionState, formData: FormData): Prom
   await setSetting("stats.enabled", formData.get("statsEnabled") === "on");
   await setSetting("news.toggle", formData.get("newsToggle") === "on");
   if (adv) await setSetting("site.contactEmail", String(formData.get("contactEmail") ?? "").trim());
+  if (timezone) await setSetting(TIMEZONE_SETTING, timezone);
+  else if (timezone !== null) await deleteSetting(TIMEZONE_SETTING);
   // Fond de page : préréglage (tous modes), description personnalisée (avancé), image de fond. Une description invalide n'enregistre rien.
   const bgPreset = String(formData.get("bgPreset") ?? "none");
   const bgImage = String(formData.get("bgImage") ?? "").trim();

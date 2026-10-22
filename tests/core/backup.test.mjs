@@ -44,7 +44,7 @@ async function seed() {
   const e1 = await createEntry(db.prisma, { instanceId: blog.id, locale: "fr", title: "Premier article", body: "Texte avec accents é à ü\n\n- liste", summary: "Résumé", status: "published", tags: ["promo", "news"], authorId: owner.id, url: "https://exemple.org/x", code: "CODE10" });
   await db.prisma.entryTranslation.create({ data: { entryId: e1.id, instanceId: blog.id, locale: "en", slug: "first-article", title: "First article", summary: "", body: "English body" } });
   await createEntry(db.prisma, { instanceId: blog.id, locale: "fr", title: "Brouillon" });
-  await db.prisma.redirect.create({ data: { path: "twitch", targetUrl: "https://twitch.tv/x", permanent: true, hits: 7 } });
+  await db.prisma.redirect.create({ data: { path: "twitch", targetUrl: "https://twitch.tv/x", permanent: true, hits: 7, expiresAt: new Date("2030-05-04T22:00:00Z"), endMessage: "Merci" } });
   await db.prisma.moduleRecord.create({ data: { instanceId: blog.id, collection: "messages", data: JSON.stringify({ name: "Alice", message: "Salut é" }) } });
   fs.mkdirSync(UPLOADS_DIR, { recursive: true });
   fs.writeFileSync(path.join(UPLOADS_DIR, UPLOAD), PNG);
@@ -150,7 +150,10 @@ test("restauration : aller-retour complet — mêmes utilisateurs, réglages, in
   assert.deepEqual(JSON.parse(JSON.stringify(await db.prisma.setting.findMany({ orderBy: [{ key: "asc" }, { locale: "asc" }] }))).filter((s) => s.key !== "updates.latest" && !s.key.endsWith(".__storeGeneration")), JSON.parse(JSON.stringify(before.settings)).filter((s) => s.key !== "updates.latest" && !s.key.endsWith(".__storeGeneration")));
   assert.equal((await db.prisma.moduleInstance.findUnique({ where: { id: blog.id } })).key, "actus");
   assert.equal(await (await import("@/core/services/rawg")).getRawgKey(), "cle-rawg-factice-0001", "la clé RAWG du cœur survit à la restauration");
-  assert.equal((await db.prisma.redirect.findUnique({ where: { path: "twitch" } })).hits, 7);
+  const restoredRedirect = await db.prisma.redirect.findUnique({ where: { path: "twitch" } });
+  assert.equal(restoredRedirect.hits, 7);
+  assert.equal(restoredRedirect.expiresAt.toISOString(), "2030-05-04T22:00:00.000Z", "date de fin sauvegardée et restaurée");
+  assert.equal(restoredRedirect.endMessage, "Merci");
   assert.deepEqual(JSON.parse((await db.prisma.moduleRecord.findFirst()).data), { name: "Alice", message: "Salut é" });
   assert.deepEqual(fs.readFileSync(path.join(UPLOADS_DIR, UPLOAD)), PNG);
   assert.equal((await db.prisma.entry.findFirst({ where: { id: e1.id } })).authorId, owner.id, "l'auteur est relié au compte restauré");

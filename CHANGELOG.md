@@ -7,6 +7,23 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## Prochaine version (non publiée)
+
+### Améliorations
+
+- **Vos raccourcis deviennent de vrais liens courts avec QR code.** Collez une adresse : le site propose un nom lisible, crée le lien et affiche son QR code, « Copier » et « Tester ». Changez la destination quand vous voulez, sans réimprimer.
+- **Une date de fin, si vous le souhaitez.** Ensuite, les visiteurs voient une page aimable aux couleurs de votre site, avec votre message. Un clic sur « Réactiver » remet le lien en marche.
+- **Combien de personnes ont cliqué** : aujourd'hui, 7 jours, 30 jours, total, avec un petit graphique. Rien de personnel n'est gardé, et les robots et vos propres essais ne comptent pas.
+- **La liste se retrouve facilement** : recherche, 50 liens par page, export en tableur, désactivation sans rien perdre et suppression expliquée clairement.
+- **Votre assistant IA peut s'en occuper** si vous l'y autorisez. Créer, modifier et supprimer ne sont jamais autorisés d'office.
+- Nouveau réglage avancé « Fuseau horaire du site » : les dates de fin le suivent, heure d'été comprise.
+
+### Pour les développeurs
+
+- Migration additive `20261022090000_redirections_2` : `Redirect.expiresAt`, `Redirect.endMessage`, table `RedirectDay`. `Redirect.hits` reste le total.
+- `resolveRedirect(path, visit)` renvoie la destination, `{ gone }` ou `null`. Réponse 410 : `redirectGate.ts` et `proxy.ts`, page `/api/redirect-gone`. Nouveaux fichiers `core/redirect*.ts`, `core/siteTime.ts` ; voir docs/PLATFORM.md (« Liens courts »).
+- Outils MCP `redirects_list`, `redirects_stats`, `redirects_create`, `redirects_update`, `redirects_delete`. Un lien désactivé répond comme un lien inexistant ; `mailto:` n'est plus accepté pour une nouvelle redirection.
+
 ## 0.2.5
 
 ### Améliorations
