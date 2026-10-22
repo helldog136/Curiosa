@@ -87,11 +87,11 @@ const auditRows = (action) => db.prisma.auditLog.findMany({ where: { action: { s
 
 // ── Catalogue et défauts ────────────────────────────────────────────────────────────────────────────────────────────────────
 
-test("catalogue : les 16 outils (niveaux 1, 2 et 3) avec les bonnes annotations ; aucun n'est actif par défaut ; un destructeur n'est jamais actif d'office", async () => {
+test("catalogue : les 18 outils (niveaux 1, 2 et 3) avec les bonnes annotations ; aucun n'est actif par défaut ; un destructeur n'est jamais actif d'office", async () => {
   const tools = await LIST();
   assert.deepEqual(tools.map((t) => t.name), [
-    "maintenance_status", "maintenance_health", "maintenance_modules", "maintenance_updates", "maintenance_diagnose", "maintenance_audit", "maintenance_request_status", "maintenance_legacy",
-    "maintenance_check_updates", "maintenance_backup_run", "maintenance_module_reinstall", "maintenance_module_restart",
+    "maintenance_status", "maintenance_health", "maintenance_modules", "maintenance_updates", "maintenance_diagnose", "maintenance_audit", "maintenance_request_status", "maintenance_legacy", "maintenance_content_check",
+    "maintenance_check_updates", "maintenance_backup_run", "maintenance_module_reinstall", "maintenance_module_restart", "maintenance_content_check_run",
     "maintenance_module_update", "maintenance_modules_update_all", "maintenance_core_update", "maintenance_module_uninstall",
   ]);
   for (const t of tools) {
@@ -109,7 +109,7 @@ test("accès : un jeton ordinaire ne voit AUCUN outil de maintenance ; le profil
   const plain = await T.createToken("Brouillons", "write", "o");
   assert.deepEqual((await listed(plain)).filter((n) => n.startsWith("maintenance_")), []);
   const { token } = await maintenanceToken();
-  assert.deepEqual(await listed(token), ["maintenance_status", "maintenance_health", "maintenance_modules", "maintenance_updates", "maintenance_diagnose", "maintenance_audit", "maintenance_request_status", "maintenance_legacy"]);
+  assert.deepEqual(await listed(token), ["maintenance_status", "maintenance_health", "maintenance_modules", "maintenance_updates", "maintenance_diagnose", "maintenance_audit", "maintenance_request_status", "maintenance_legacy", "maintenance_content_check"]);
 });
 
 test("accès : le niveau 2 et le niveau 3 s'accordent un à un ; un jeton en lecture seule n'en reçoit aucun, même accordé", async () => {
@@ -758,4 +758,145 @@ test("serveur MCP : l'outil de maintenance consigne lui-même son audit (pas de 
   assert.ok(!JSON.stringify(r).includes("hunter2") && !JSON.stringify(r).includes("/srv"));
   assert.equal((await db.prisma.auditLog.findMany({ where: { action: "mcp.maintenance_backup_run" } })).length, 0);
   assert.equal((await auditRows("mcp.maintenance.backup_run")).length, 1);
+});
+
+// ── Contrôle du contenu (maintenance_content_check / maintenance_content_check_run) ────────────────────────────────────────
+
+const { setContentCheckDeps } = await import("@/core/maintenance/content/run");
+const contentService = await import("@/core/maintenance/content/service");
+const contentStore = await import("@/core/maintenance/content/store");
+const { createInstance } = await import("@/core/instanceService");
+const { createEntry } = await import("@/core/content/service");
+const { FIXTURE_MODULES } = await import("../helpers/fixtureModules.mjs");
+const { makeNet, publicDns, clock } = await import("../helpers/content-check-kit.mjs");
+
+async function siteWith(body, { title = "Page", summary = "" } = {}) {
+  await setSetting("i18n.default", "fr");
+  await setSetting("i18n.enabled", ["fr"]);
+  await db.fixture("pages");
+  const manifest = FIXTURE_MODULES.find((m) => m.manifest.id === "pages").manifest;
+  const inst = (await db.prisma.moduleInstance.findFirst({ where: { moduleId: "pages" } })) ?? (await createInstance(db.prisma, { manifest, basePath: "", names: { fr: "Pages" } }));
+  const e = await createEntry(db.prisma, { instanceId: inst.id, locale: "fr", status: "published", title, summary, body });
+  await db.prisma.entry.update({ where: { id: e.id }, data: { publishedAt: new Date(Date.now() - 1000) } });
+}
+/** Un faux site distant et une horloge simulée pour les vérifications lancées par un assistant. */
+function fakeWeb(routes) {
+  const c = clock();
+  const net = makeNet(routes);
+  setContentCheckDeps({ now: c.now, sleep: c.sleep, net: { client: net.client, pins: net.pins }, resolve: publicDns });
+  return net;
+}
+test.afterEach(() => setContentCheckDeps(null));
+
+test("content_check (niveau 1) : jamais vérifié → le dit ; lecture seule ; ne contacte aucun site", async () => {
+  const { token } = await maintenanceToken();
+  const net = fakeWeb({ "*": { status: 200 } });
+  const { value } = await call(token, "maintenance_content_check");
+  assert.deepEqual([value.checked, value.verdict, value.issues], [false, "none", []]);
+  assert.match(value.note, /never been checked/);
+  assert.equal(net.calls.length, 0);
+  assert.deepEqual(await contentStore.readReport(), null, "rien n'a été créé en lisant");
+});
+
+test("content_check_run (niveau 2) : désactivé par défaut, accordé un à un ; lance la vérification, rien n'est modifié sur le site, audité", async () => {
+  await siteWith("![](https://img.example.org/a.png) [mort](https://mort.example.net/x) [vivant](https://vivant.example.net/y) lien /blog/disparu", { title: "Accueil" });
+  const read = (await maintenanceToken()).token;
+  const refused = await call(read, "maintenance_content_check_run");
+  assert.ok(refused.error, "un jeton qui n'a que le niveau 1 ne peut pas lancer");
+  const { token } = await maintenanceToken(["content_check_run"], "Claude");
+  const net = fakeWeb({ "https://mort.example.net/x": { status: 404 }, "https://img.example.org/a.png": { status: 200 }, "*": { status: 200 } });
+  const before = await db.prisma.entry.count();
+  const run = await call(token, "maintenance_content_check_run");
+  assert.equal(run.value.ok, true);
+  assert.equal(run.value.details.finished, true);
+  assert.equal(net.calls.length, 4, "image, lien vivant : HEAD ; lien mort : HEAD puis GET (404 doublement confirmé)");
+  assert.equal(await db.prisma.entry.count(), before);
+  assert.equal(JSON.stringify(run.value).includes("img.example.org"), false, "la réponse de l'action ne cite aucune adresse");
+  const rows = await auditRows("mcp.maintenance.content_check_run");
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].actor, "mcp:Claude");
+  assert.match(rows[0].target, /^ok/);
+});
+
+test("content_check : le dernier résultat — importance, phrase, pourquoi, exemples, ce qui n'a pas été regardé ; jamais de note ; pour un lien externe seulement le NOM DU SITE, sans secret", async () => {
+  await siteWith("![](/uploads/55555555-5555-5555-5555-555555555555.png) [mort](https://mort.example.net/dossier/doc?token=SECRETVALUE&k=1) [ici](/blog/disparu)", { title: "Accueil" });
+  const { token } = await maintenanceToken(["content_check_run"]);
+  fakeWeb({ "*": { status: 404 } });
+  await call(token, "maintenance_content_check_run");
+  const { value } = await call(token, "maintenance_content_check");
+  assert.equal(value.checked, true);
+  assert.equal(value.verdict, "look");
+  assert.equal(value.finished, true);
+  const byId = Object.fromEntries(value.issues.map((i) => [i.id, i]));
+  assert.equal(byId.link_gone.importance, "important");
+  assert.equal(byId.link_gone.examples[0].site, "mort.example.net");
+  assert.equal(byId.internal.importance, "important");
+  assert.ok(byId.summary && byId.home);
+  for (const i of value.issues) assert.ok(i.summary && i.why && ["important", "advised", "info"].includes(i.importance), i.id);
+  assert.ok(Array.isArray(value.notChecked) && value.notChecked.length >= 2);
+  const raw = JSON.stringify(value);
+  assert.ok(!/SECRETVALUE|token=|\/dossier\/doc/.test(raw), "aucun paramètre ni chemin d'adresse externe");
+  assert.ok(!raw.includes(db.dir), "pas de chemin du serveur");
+  assert.ok(!/score|grade|\d+\s*\/\s*100|%/.test(raw), "jamais de note");
+  assert.equal(value.history.length, 1);
+  // Les remarques masquées par le propriétaire ne sont pas répétées à l'IA.
+  const g = (await contentStore.readReport()).groups.find((x) => x.id === "summary");
+  await (await import("@/core/maintenance/content/run")).ignoreItem(g.items[0].k);
+  assert.ok(!(await call(token, "maintenance_content_check")).value.issues.some((i) => i.id === "summary"));
+});
+
+test("content_check_run : « continue » reprend la vérification commencée ; un argument inconnu ou mal typé est refusé ; une vérification en cours n'est pas doublée", async () => {
+  await siteWith(Array.from({ length: 130 }, (_, i) => `[l](https://s${i}.example.net/p)`).join(" "), { title: "Beaucoup", summary: "r" });
+  const { token } = await maintenanceToken(["content_check_run"]);
+  const net = fakeWeb({ "*": { status: 200 } });
+  const bad = await call(token, "maintenance_content_check_run", { continue: "oui" });
+  assert.ok(bad.error);
+  const first = await call(token, "maintenance_content_check_run");
+  assert.equal(first.value.details.finished, false, "130 liens : le premier paquet n'est pas tout");
+  assert.match(first.value.message, /continue: true/);
+  const done = first.value.details.linksVisited;
+  assert.ok(done > 0 && done < 130);
+  const mid = (await call(token, "maintenance_content_check")).value;
+  assert.deepEqual([mid.finished, mid.progress.done], [false, done]);
+  const second = await call(token, "maintenance_content_check_run", { continue: true });
+  assert.equal(second.value.details.finished, true);
+  assert.equal(net.calls.length, 130, "chaque lien visité une seule fois");
+  assert.match((await auditRows("mcp.maintenance.content_check_run"))[1].target, /\[continue\]/);
+});
+
+test("diagnose : les remarques du contenu y figurent en « info » seulement — jamais en alarme —, et rien ne change pour un site sans remarque", async () => {
+  latest = { tag: "v0.1.14", notes: "" };
+  await db.prisma.auditLog.create({ data: { actor: "owner@example.org", action: "backup.create", target: "" } });
+  const { token } = await maintenanceToken(["content_check_run"]);
+  assert.equal((await call(token, "maintenance_diagnose")).value.verdict, "healthy", "jamais vérifié : aucun bruit");
+  await siteWith("[mort](https://mort.example.net/x)", { title: "Accueil" });
+  fakeWeb({ "*": { status: 404 } });
+  await call(token, "maintenance_content_check_run");
+  const { value } = await call(token, "maintenance_diagnose");
+  const p = value.problems.find((x) => x.tool === "maintenance_content_check");
+  assert.ok(p, "le diagnostic renvoie vers l'outil de lecture");
+  assert.equal(p.severity, "info");
+  assert.equal(p.needsHuman, true);
+  assert.equal(value.verdict, "healthy, with updates or notes", "jamais « needs attention »");
+  assert.ok(value.problems.every((x) => x.severity === "info"));
+});
+
+test("audit : les vérifications du contenu faites depuis l'admin (content.check) apparaissent dans l'audit de la maintenance", async () => {
+  await db.prisma.auditLog.create({ data: { actor: "emma@example.org", action: "content.check", target: "done · 3/3 links · important 1, advised 0, info 0" } });
+  const { token } = await maintenanceToken();
+  const { value } = await call(token, "maintenance_audit");
+  const row = value.find((r) => r.action === "content.check");
+  assert.ok(row);
+  assert.equal(row.by, "human");
+  assert.ok(!JSON.stringify(row).includes("emma"));
+});
+
+test("pastille sobre du tableau de bord : seulement s'il y a du conseillé ou de l'important, jamais pendant une vérification en cours", async () => {
+  assert.equal(await contentService.contentBadge(), null);
+  await contentStore.writeSummary({ at: "2026-10-22T10:00:00.000Z", finished: true, counts: { important: 0, advised: 0, info: 4 }, progress: null, groups: [] });
+  assert.equal(await contentService.contentBadge(), null, "pour info seulement : rien à afficher");
+  await contentStore.writeSummary({ at: "2026-10-22T10:00:00.000Z", finished: true, counts: { important: 0, advised: 2, info: 0 }, progress: null, groups: [] });
+  assert.deepEqual(await contentService.contentBadge(), { look: true, at: "2026-10-22T10:00:00.000Z" });
+  await contentStore.writeSummary({ at: "2026-10-22T10:00:00.000Z", finished: false, counts: { important: 3, advised: 0, info: 0 }, progress: { done: 1, total: 9 }, groups: [] });
+  assert.equal(await contentService.contentBadge(), null);
 });

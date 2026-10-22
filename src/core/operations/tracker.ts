@@ -13,7 +13,7 @@ import crypto from "node:crypto";
  *  - L'état est rangé sur `globalThis` : les actions serveur et les routes de Next.js n'ont pas toujours le même exemplaire de ce module.
  */
 
-export type OpKind = "core-update" | "install" | "module-update" | "modules-update" | "module-reinstall" | "backup" | "restore";
+export type OpKind = "core-update" | "install" | "module-update" | "modules-update" | "module-reinstall" | "backup" | "restore" | "content-check";
 export type OpState = "running" | "done" | "failed";
 
 /** Étapes annoncées par type d'opération (identifiants ; le texte en mots simples est `progress.step.<id>`). `null` = étapes inconnues : barre indéterminée. */
@@ -26,6 +26,8 @@ export const OP_STEPS: Record<OpKind, readonly string[] | null> = {
   "module-reinstall": ["download", "verify", "activate"],
   backup: ["collect", "readable", "files", "seal"],
   restore: ["modules", "safety", "replace", "files", "finish"],
+  /** Contrôle du contenu : la lecture du site est rapide ; le travail long est la visite des liens, suivie lien par lien (`opUnit`). */
+  "content-check": ["links"],
 };
 
 export const MAX_OPS = 40;

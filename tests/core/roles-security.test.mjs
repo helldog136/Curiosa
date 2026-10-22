@@ -128,8 +128,8 @@ test("non-régression : la page d'un module (réglages et panneau) et ses action
 
 test("non-régression : menu d'administration identique par palier ; un éditeur ne voit plus les liens qui le refusaient (pages de modules)", async () => {
   const { administrationEntries, navItemVisible } = await import("@/core/modules/adminMenu");
-  assert.deepEqual(administrationEntries({ role: "owner", advanced: true }), ["extensions", "assistants", "users", "backup", "updates", "audit"]);
-  assert.deepEqual(administrationEntries({ role: "admin", advanced: true }), ["extensions", "users"]);
+  assert.deepEqual(administrationEntries({ role: "owner", advanced: true }), ["extensions", "assistants", "users", "health", "backup", "updates", "audit"]);
+  assert.deepEqual(administrationEntries({ role: "admin", advanced: true }), ["extensions", "users", "health"]);
   assert.deepEqual(administrationEntries({ role: "editor", advanced: true }), []);
   assert.deepEqual(administrationEntries({ role: "none", advanced: true }), []);
   const editor = await load(T.editor);
