@@ -15,6 +15,7 @@ export const AUDIT_ACTIONS = [
   "update.start", "update.auto.on", "update.auto.off", "update.channel.rc", "update.channel.stable",
   "mcp.enable", "mcp.disable", "mcp.token.create", "mcp.token.revoke", "mcp.token.url.on", "mcp.token.url.off", "mcp.grant.on", "mcp.grant.off", "mcp.grants.defaults", "mcp.grants.none",
   "mcp.maintenance.request", "mcp.maintenance.approve", "mcp.maintenance.deny", "mcp.maintenance.mode", "mcp.maintenance.notify",
+  "content.check",
   "mail.sent",
   "setting.fromText",
 ] as const;

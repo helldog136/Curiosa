@@ -60,7 +60,7 @@ Le serveur MCP du cœur propose des outils de **maintenance** (`maintenance_…`
 | Niveau | Permet | Défaut | Borne |
 |---|---|---|---|
 | 1 : lecture | état, santé, modules, mises à jour, diagnostic, audit | actif **seulement** pour un jeton « Maintenance » (désactivé pour tout autre jeton) | lecture seule ; sorties masquées et bornées |
-| 2 : sans risque | revérifier, copie de la base sur le serveur, réinstaller un module (données gardées), relancer une instance | désactivé | accordé action par action ; verrou ; 12 actions par heure et par jeton |
+| 2 : sans risque | revérifier, copie de la base sur le serveur, réinstaller un module (données gardées), relancer une instance, vérifier le contenu du site (visites de liens bornées) | désactivé | accordé action par action ; verrou ; 12 actions par heure et par jeton |
 | 3 : à risque (`destructive`) | mises à jour du cœur et des modules, désinstallation | désactivé, **jamais** `default: true` | **validation humaine par défaut** ; versions stables seulement ; revérification à l'exécution |
 
 Il n'y a **volontairement pas** d'outil de restauration : elle remplace tout le site et demande le mot de passe de la sauvegarde. Jamais exposés : secrets, mots de passe, jetons, variables d'environnement, contenu des sauvegardes, réglages de sécurité, utilisateurs, gestion des jetons, fichiers arbitraires, commandes arbitraires. Un jeton « Maintenance » n'a **que** ces outils : les actions des modules y sont désactivées par défaut, y compris celles qu'un module ajouterait plus tard (`access.ts`, `MAINTENANCE_PROFILE`).
@@ -74,6 +74,16 @@ Il n'y a **volontairement pas** d'outil de restauration : elle remplace tout le 
 - *Fuite par les sorties* : tout texte venu d'ailleurs (journaux, erreurs, adresses de dépôt, notes de version, détails d'audit) passe par un masquage de secrets (jetons `vit_…`, clés, mots de passe, adresses avec jeton, longues suites opaques) et des bornes de taille. Il n'y a pas de lecture libre des journaux du serveur : seulement la fin du journal de mise à jour, filtrée, et les erreurs des instances.
 - *Fausse sécurité* : toute action de niveau 2 ou 3 est inscrite au journal d'audit (`mcp.maintenance.<outil>` : nom du jeton, paramètres sans secret, résultat) ; les décisions humaines aussi (`approve`, `deny`). Les adresses e-mail des humains ne sont jamais données à l'IA.
 - *Avertissement* : le propriétaire est averti dans l'admin (pastille, tableau de bord) et, s'il le choisit, par le service e-mail du cœur, sans secret dans le message.
+
+## Contrôle du contenu : visites de liens sortants
+
+Le cœur visite lui-même des adresses venues du contenu (liens d'un texte, du menu, des raccourcis) : c'est une porte d'entrée classique pour sonder le réseau interne (SSRF). Les réponses, dans `src/core/maintenance/content/` et `src/core/url.ts` :
+
+- *Adresse interne ou piégée* : refusée **avant toute résolution** (`hostProblem`) : autre schéma, identifiants, port ≠ 443, adresse numérique sous toute écriture, noms `localhost` / `.local` / `.lan` / `.internal` / sans point. Idem à **chaque redirection** (5 au plus, une boucle est coupée).
+- *Nom qui mène à une adresse privée, et rebinding* : le nom est résolu **une fois** ; une seule adresse privée, locale ou réservée (`addressIsPrivate`) refuse tout le nom. La connexion est ouverte avec un `lookup` qui ne rend que les adresses vérifiées : pas de seconde résolution, un nom non vérifié n'est jamais contacté (fail closed). Le certificat reste celui du nom.
+- *Marteler un site* : 200 liens par vérification, 25 par site, jamais deux visites de suite sur le même site, 250 ms entre visites, HEAD puis GET de 2 Ko, délai de 6 s par demande, et un site qui répond « trop de demandes » n'est plus contacté. Le disjoncteur du client réseau du cœur s'applique.
+- *Visites non voulues* : jamais en arrière-plan ni planifiées ; un clic d'administrateur (ou l'outil `maintenance_content_check_run`, niveau 2, accordé jeton par jeton) ; un seul passage à la fois.
+- *Fuite* : le rapport ne garde ni paramètres, ni fragments, ni identifiants d'adresse ; les outils de l'assistant IA ne donnent que le **nom** du site visité, sans secret. Le lien « Corriger » est choisi dans une liste fermée d'écrans d'administration (aucune redirection ouverte, même si le rapport gardé était modifié).
 
 ## Réinstaller un module (propriétaire seulement)
 

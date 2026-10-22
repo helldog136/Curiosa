@@ -7,6 +7,22 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## Prochaine version (non publiée)
+
+### Améliorations
+
+- **Nouvelle page « Santé de mon site ».** En un clic, elle regarde si votre site est en bon état : images sans description, pages sans résumé pour Google, traductions oubliées, menu ou liens qui ne mènent plus nulle part. Elle répond « Tout va bien » ou « Quelques petites choses à regarder », sans note ni alarme.
+- **Chaque remarque dit pourquoi elle compte, et vous mène au bon écran.** « Corriger » ouvre l'endroit où régler la chose ; « Ignorer » masque ce qui ne vous concerne pas, et « Tout réafficher » le ramène. Les 5 dernières vérifications sont gardées, et la page dit aussi ce qu'elle n'a pas pu regarder.
+- **Les liens vers d'autres sites sont vérifiés poliment, et seulement quand vous le demandez.** Un seul à la fois, sans jamais revenir deux fois de suite sur le même site, avec une barre de progression. Rien ne tourne en arrière-plan, et aucune adresse interne n'est jamais visitée.
+- **Votre assistant IA peut lire le résultat, ou lancer une vérification si vous l'y autorisez.** Il le voit comme une simple information dans son rapport, jamais comme une panne. Une ligne discrète apparaît aussi sur votre tableau de bord quand il y a quelque chose à regarder.
+
+### Pour les développeurs
+
+- Nouveau dossier `src/core/maintenance/content/` (scan, probe, net, run, store, view, service, fix) : lecture directe de la base par paquets de 200 (5 000 entrées au plus). Résultats gardés dans la table `Setting` (`maintenance.content.*`) : aucune migration. Voir docs/SANTE-DU-SITE.md.
+- Gardes de sortie complétées dans `src/core/url.ts` : `hostProblem` et `addressIsPrivate` (partagées avec `isPublicHost`). `content/net.ts` résout le nom UNE fois puis connecte à l'adresse vérifiée (`lookup` épinglé, fail closed) : pas de rebinding. Client dédié `createContentNet` (429, disjoncteur et délais du service net).
+- Outils MCP `maintenance_content_check` (niveau 1, lecture seule) et `maintenance_content_check_run` (niveau 2, `continue: true` pour la suite) ; `maintenance_diagnose` ajoute des remarques `info` seulement ; audit `content.check`. Opération suivie `content-check` (étape `links`, `opUnit` lien par lien).
+- Admin : `/admin/maintenance/content` (administrateur ou propriétaire, mode simple compris) et entrée de menu `health` dans `administrationEntries`. Hors lot : vérification planifiée facultative (idée notée dans docs/SANTE-DU-SITE.md).
+
 ## 0.2.5
 
 ### Améliorations

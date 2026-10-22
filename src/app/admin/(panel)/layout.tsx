@@ -65,6 +65,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
     extensions: <NavLink key="extensions" href={EXTENSIONS_HREF} also={["/admin/modules", ...unpinnedPages]} badge={extensions.count} badgeLabel={extensionsLabel}>{t("nav.extensions")}</NavLink>,
     assistants: <NavLink key="assistants" href={ASSISTANTS_HREF} badge={aiWaiting} badgeLabel={t("nav.badge.ai")}>{t("nav.assistants")}</NavLink>,
     users: <NavLink key="users" href="/admin/users">{t("nav.users")}</NavLink>,
+    health: <NavLink key="health" href="/admin/maintenance/content">{t("nav.health")}</NavLink>,
     backup: <NavLink key="backup" href="/admin/backup">{t("nav.backup")}</NavLink>,
     updates: <NavLink key="updates" href="/admin/updates" badge={updateAvailable ? 1 : 0} badgeLabel={t("nav.badge.update")}>{t("nav.updates")}</NavLink>,
     audit: <NavLink key="audit" href="/admin/audit">{t("nav.audit")}</NavLink>,

@@ -74,7 +74,7 @@ Le service MCP sait *servir* des outils, pas *d'où ils viennent*. Il reçoit un
 | Fournisseur | Fichier | Apporte |
 |---|---|---|
 | `site` | `platform.ts` | `site_info` : s'orienter sur le site |
-| `maintenance` | `core/maintenance/tools.ts` | les outils `maintenance_…` du cœur (diagnostic, sauvegarde, mises à jour) : voir [MAINTENANCE-IA.md](MAINTENANCE-IA.md) ; désactivés pour un jeton ordinaire, niveau 3 `destructive` avec validation humaine |
+| `maintenance` | `core/maintenance/tools.ts` | les outils `maintenance_…` du cœur (diagnostic, sauvegarde, mises à jour, contrôle du contenu `maintenance_content_check[_run]`) : voir [MAINTENANCE-IA.md](MAINTENANCE-IA.md) et [SANTE-DU-SITE.md](SANTE-DU-SITE.md) ; désactivés pour un jeton ordinaire, niveau 3 `destructive` avec validation humaine |
 | `modules` | `core/modules/mcpProvider.ts` | les actions déclarées par les modules (`mcp` du manifeste + du code) |
 | `content` | `core/content/mcp.ts` | actions éditoriales (lister, lire, brouillons) de toute instance à contenu |
 
@@ -197,6 +197,10 @@ Voir aussi [GEO.md](GEO.md) (être cité par les IA, expliqué pour le propriét
 - **Plan du site** (`src/core/sitemap.ts`) : un seul fichier jusqu'à 50 000 adresses ; au-delà, pages fixes + entrées les plus récentes, erreur journalisée une fois, bandeau dans la page d'admin ci-dessous. Pas de `generateSitemaps` en v2.
 - **Métadonnées** : `canonical`, `hreflang` (dont `x-default`), Open Graph et carte Twitter cohérents, `lastmod` du plan du site quand une date de publication existe, flux RSS annoncé, `lang` de la page.
 - **Page d'admin « Visibilité dans les réponses des IA »** (`/admin/ai-visibility`, `src/core/aiVisibility.ts`) : une liste de contrôles « fait / à faire » avec un bouton *Corriger* ; elle appelle en interne les fonctions de `robots.txt`, du plan du site et de `llms.txt` (aucun réseau) et n'affiche aucune note chiffrée.
+
+## Contrôle du contenu (Santé de mon site) : une fonctionnalité du cœur
+
+Extension de l'Entretien du cœur, pas un module : `src/core/maintenance/content/` lit la base **directement** (par paquets, 5 000 entrées au plus) et alimente la page d'administration *Santé de mon site*, `maintenance_diagnose` (en `info` seulement), l'audit, une ligne sobre du tableau de bord et les outils `maintenance_content_check[_run]`. Les visites de liens externes ne partent qu'à la demande, par paquets suivis par `OperationProgress`, avec les gardes `hostProblem` / `addressIsPrivate` de `core/url.ts` et une connexion qui ne va qu'aux adresses vérifiées (`content/net.ts`). Voir [SANTE-DU-SITE.md](SANTE-DU-SITE.md).
 
 ## Ce que le cœur ne fait pas
 

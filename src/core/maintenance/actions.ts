@@ -11,6 +11,7 @@ import { notifyOwner } from "./notify";
 import { redactSecrets } from "./redact";
 import { claimRequest, createRequest, denyRequest, finishRequest, reopenRequest, type Level3Action, type Plan } from "./requests";
 import { getApprovalMode } from "./settings";
+import { runContentCheck } from "./content/service";
 
 /**
  * ACTIONS de maintenance : niveau 2 (sans risque : revérifier, sauvegarder, réinstaller, relancer) et niveau 3 (à risque : mises à jour, désinstallation).
@@ -25,8 +26,8 @@ import { getApprovalMode } from "./settings";
  * Les messages renvoyés à l'IA sont en anglais, courts, masqués et jamais techniques.
  */
 export type Outcome = { ok: boolean; message: string; details?: unknown; /** L'opération n'a pas commencé (verrou pris) : rien n'a été fait. */ busy?: boolean };
-export type Level2Tool = "check_updates" | "backup_run" | "module_reinstall" | "module_restart";
-export type Params = { module?: string; instance?: string; /** Désinstallation : garder (défaut) ou effacer les données. */ keepData?: boolean };
+export type Level2Tool = "check_updates" | "backup_run" | "module_reinstall" | "module_restart" | "content_check_run";
+export type Params = { module?: string; instance?: string; /** Contrôle du contenu : reprendre la vérification commencée au lieu d'en commencer une. */ continue?: boolean; /** Désinstallation : garder (défaut) ou effacer les données. */ keepData?: boolean };
 
 /* ───────────── Verrou et cadence ───────────── */
 
@@ -109,6 +110,16 @@ async function doRestart(key: string): Promise<Outcome> {
   return out.status === "ok" ? { ok: true, message: `Instance "${key}" is running again (data converted from v${out.from} to v${out.to}).` } : { ok: false, message: `Instance "${key}" is still set aside (${out.status}). Reinstall its module or tell the owner.` };
 }
 
+/**
+ * Contrôle du contenu (niveau 2) : lit le site puis visite UN paquet de liens externes (voir content/run.ts pour tous les garde-fous : 200 liens, 25 par site, jamais deux visites de suite
+ * sur le même site, adresses internes refusées…). Rien n'est modifié sur le site ; le résultat se lit avec `maintenance_content_check`.
+ */
+async function doContentCheck(resume: boolean): Promise<Outcome> {
+  const r = await runContentCheck({ resume });
+  if (r.busy) return { ok: false, busy: true, message: r.message };
+  return { ok: r.ok, message: r.message, details: { finished: r.finished ?? false, ...(r.progress ? { linksVisited: r.progress.done, linksToVisit: r.progress.total } : {}), ...(r.counts ? { counts: r.counts } : {}) } };
+}
+
 /** Exécute une action de niveau 2 (droit déjà vérifié par le serveur MCP). */
 export async function runLevel2(tool: Level2Tool, args: Params, actor: { name: string; tokenId?: string }): Promise<Outcome> {
   const id = tool === "module_reinstall" ? moduleId(args.module) : undefined;
@@ -123,6 +134,7 @@ export async function runLevel2(tool: Level2Tool, args: Params, actor: { name: s
         return { ok: true, message: "Caches cleared and versions checked again.", details: { moduleUpdates: report.outdated.length, notChecked: report.unchecked } } as Outcome;
       }
       if (tool === "backup_run") return await doBackup();
+      if (tool === "content_check_run") return await doContentCheck(args.continue === true);
       if (tool === "module_reinstall") return await doReinstall(id!);
       return await doRestart(key!);
     } catch (error) {
@@ -131,8 +143,9 @@ export async function runLevel2(tool: Level2Tool, args: Params, actor: { name: s
     }
   });
   if (outcome.busy) return outcome;
-  await record(actor.name, tool, id ?? key ?? "", outcome, "level2");
-  await notifyOwner({ kind: "executed", tokenName: actor.name, actionKey: tool, detail: id ?? key ?? "", ok: outcome.ok });
+  const param = id ?? key ?? (tool === "content_check_run" && args.continue === true ? "continue" : "");
+  await record(actor.name, tool, param, outcome, "level2");
+  await notifyOwner({ kind: "executed", tokenName: actor.name, actionKey: tool, detail: param, ok: outcome.ok });
   return outcome;
 }
 

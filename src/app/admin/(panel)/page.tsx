@@ -11,6 +11,7 @@ import { Callout, PageHeader } from "@/components/admin/Page";
 import { getUpdateCheck } from "@/core/updates/service";
 import { statsEnabled, statsSummary } from "@/core/stats";
 import { maintenanceSummary } from "@/core/maintenance/summary";
+import { contentBadge } from "@/core/maintenance/content/service";
 import { EXTENSIONS_HREF } from "@/core/modules/extensionsLinks";
 import { assistantsTabHref } from "@/core/services/mcp/assistantsLinks";
 
@@ -33,6 +34,8 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   const toSetUp = nav.flatMap((i) => { const s = statuses?.get(i.id); return s?.state === "setup" ? [{ item: i, summary: summarizeMissing(s.missing) }] : []; });
   const updateAvailable = isOwner(user) && (await getUpdateCheck().catch(() => null))?.available === true;
   const ai = isOwner(user) ? await maintenanceSummary().catch(() => null) : null;
+  // Santé de mon site : une seule ligne sobre, seulement s'il y a quelque chose de conseillé ou d'important à regarder (jamais d'alarme ni de note).
+  const contentLook = hasRole(user, "admin") ? await contentBadge().catch(() => null) : null;
   const stats = (await statsEnabled()) ? await statsSummary() : null;
   const peak = Math.max(1, ...(stats?.days.map((d) => d.visitors) ?? [1]));
   const stat = (label: string, value: number, href: string) => (
@@ -55,6 +58,14 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
           <span className="flex flex-wrap items-center justify-between gap-3">
             <span>🤖 {ai.pending > 0 ? t("dashboard.ai.pending", { n: ai.pending }) : t("dashboard.ai.done", { n: ai.doneSinceVisit })}</span>
             <a href={assistantsTabHref(ai.pending > 0 ? "requests" : "history")} className={ui.btn}>{t("dashboard.ai.open")}</a>
+          </span>
+        </Callout>
+      )}
+      {contentLook && (
+        <Callout tone="info" role="status" testid="content-health-notice">
+          <span className="flex flex-wrap items-center justify-between gap-3">
+            <span>🩺 {t("dashboard.contentLook")}</span>
+            <a href="/admin/maintenance/content" className={ui.btn}>{t("dashboard.contentOpen")}</a>
           </span>
         </Callout>
       )}
