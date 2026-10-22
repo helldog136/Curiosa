@@ -297,6 +297,19 @@ export type ModuleApi = {
   privacy: {
     declarations(): Promise<PrivacyDeclarations>;
   };
+  /**
+   * Le visiteur d'une requête, SANS jamais voir son adresse (cœur 0.2.6, aucune permission). À utiliser pour une limite de débit au lieu de lire
+   * `X-Forwarded-For` (dont le début est inventé par le visiteur).
+   */
+  visitor: {
+    /**
+     * Une empreinte courte (22 caractères) du visiteur de `request` (la requête d'une `route`, ou ses `Headers`) : HMAC avec un sel au hasard en mémoire,
+     * renouvelé chaque jour ; propre à votre module et à `scope` (64 caractères au plus, par exemple le nom de la limite). Le cœur lit l'adresse selon la règle
+     * de docs/SECURITE.md (l'entrée ajoutée par SON proxy, pas la première ; IPv6 par réseau /64). Gardez les compteurs en mémoire bornée et jamais l'adresse.
+     * Derrière aucun proxy, tous les visiteurs ont la même empreinte (« local »).
+     */
+    fingerprint(request: Request | Headers, scope?: string): string;
+  };
   /** Données structurées (schema.org) pour les moteurs de recherche et les assistants IA. */
   seo: {
     /**

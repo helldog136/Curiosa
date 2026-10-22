@@ -15,6 +15,7 @@ import { collect, collectPage } from "@/core/services/topics";
 import { getSiteConfig } from "@/core/settings";
 import { remainingBudgetMs } from "./budget";
 import { callService, callServiceAll, providersOf, serviceAvailable } from "./dependencies";
+import { visitorFingerprint } from "./visitorFingerprint";
 import { privacyDeclarations } from "./privacyDeclarations";
 import { getActiveInstances, getModule, type ActiveInstance } from "./registry";
 import type { ModuleApi } from "./types";
@@ -69,6 +70,9 @@ export function makeApi(instance: InstanceView, locale: string, permissions: rea
         return privacyDeclarations(await getActiveInstances(), locale, config.defaultLocale);
       },
     },
+
+    // Empreinte salée, non réversible et cloisonnée du visiteur d'une requête (limites de débit) : jamais l'adresse, jamais la première entrée de X-Forwarded-For.
+    visitor: { fingerprint: (request, scope) => visitorFingerprint(instance.moduleId, request, scope) },
 
     seo: { jsonLd: (data) => { const ld = moduleJsonLd(data); return ld ? { tag: "script", jsonLd: ld } : null; } },
 

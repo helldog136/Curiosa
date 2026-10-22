@@ -9,6 +9,7 @@ const MAX_BYTES = 10 * 1024 * 1024; // même plafond que l'installateur du cœur
  * Les fonctions d'avant la 0.1.10 ne sont pas listées : aucun site à jour n'a un cœur aussi ancien, une exigence là-dessus ne ferait que du bruit.
  */
 export const FEATURES = [
+  { since: "0.2.6", label: "ctx.api.visitor.fingerprint (empreinte du visiteur)", test: (m) => /\bapi\s*\??\.\s*visitor\b/.test(stripComments(m.code)) },
   { since: "0.2.6", label: "la permission « privacy » (ctx.api.privacy.declarations)", test: (m, man) => (man.permissions ?? []).includes("privacy") || /\bapi\s*\??\.\s*privacy\b/.test(stripComments(m.code)) },
   { since: "0.2.6", label: "un script rattaché à la page (« scripts » dans le résultat de page())", test: (m) => /\bscripts\s*:\s*\[/.test(stripComments(m.code)) && typeof m.definition?.page === "function" },
   {

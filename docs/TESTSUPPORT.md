@@ -116,6 +116,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 | [`routes.redirect`](#routesredirect) | obligatoire | Aucune redirection vers un site extérieur |
 | [`routes.errors`](#routeserrors) | obligatoire | Les réponses d'erreur ne révèlent rien d'interne |
 | [`routes.protected`](#routesprotected) | obligatoire | Une route publique qui écrit est protégée contre les abus |
+| [`routes.visitorIp`](#routesvisitorip) | conseil | L'adresse du visiteur n'est pas lue dans les en-têtes |
 | [`forms.fieldErrors`](#formsfielderrors) | conseil | Une erreur de champ s'affiche sous son champ |
 | [`mcp.name`](#mcpname) | obligatoire | Les noms d'outils MCP restent assez courts |
 | [`mcp.safety`](#mcpsafety) | obligatoire | Les outils MCP déclarent honnêtement ce qu'ils font |
@@ -141,7 +142,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 | [`readme.plain`](#readmeplain) | conseil | Le README est écrit en langage de tous les jours |
 | [`neutrality.clean`](#neutralityclean) | conseil | Aucune donnée personnelle ni propre à un site dans le module |
 
-36 exigences obligatoires et 24 conseils.
+36 exigences obligatoires et 25 conseils.
 
 ### Le fichier module.json
 
@@ -446,6 +447,14 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 - **Ce qui est vérifié.** Quarante envois valides, à la suite, depuis le même visiteur, ne sont pas tous acceptés : la route a un limiteur de débit, un plafond de stockage, un code d'accès ou une modération qui la protège.
 - **Pourquoi.** Une route ouverte à tous qui écrit sans limite permet à un robot de remplir le stockage du site en quelques minutes.
 - **Comment corriger.** Ajoutez un limiteur de débit par visiteur (voir limited() dans l'exemple guestbook : N envois par heure), un plafond du nombre d'éléments stockés (réponse 503 au-delà), et un champ piège pour les robots.
+
+#### `routes.visitorIp`
+
+**L'adresse du visiteur n'est pas lue dans les en-têtes** — niveau : **conseil**
+
+- **Ce qui est vérifié.** Le code ne lit pas lui-même X-Forwarded-For, X-Real-IP ou un en-tête d'adresse du même genre : pour une limite de débit, il demande ctx.api.visitor.fingerprint(request) (cœur 0.2.6). Vérifié seulement quand le cœur qui teste fournit cette fonction.
+- **Pourquoi.** Le début de X-Forwarded-For est écrit par le visiteur : le lire permet de contourner la limite en changeant d'adresse inventée à chaque envoi. Le cœur, lui, prend l'entrée ajoutée par SON proxy, la seule de confiance, et ne rend qu'une empreinte salée, jamais l'adresse.
+- **Comment corriger.** Remplacez la lecture de l'en-tête par « const who = ctx.api.visitor.fingerprint(request, "envoi") » et comptez par « who ». Déclarez « minCore »: « 0.2.6 ». Ne gardez jamais l'adresse elle-même.
 
 ### Les formulaires d'administration
 

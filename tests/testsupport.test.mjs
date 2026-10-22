@@ -26,7 +26,7 @@ test("un module conforme réussit toutes les exigences (aucune en échec, aucune
   assert.equal(report.summary.ok, true);
   // « neutrality.clean » est sautée sans liste de neutralité, vérifiée (et réussie) avec : les deux sont corrects.
   const notPassed = report.results.filter((r) => r.status !== "pass" && r.id !== "neutrality.clean").map((r) => `${r.id}:${r.status}`);
-  assert.deepEqual(notPassed.sort(), ["page.scripts:na", "srp.single:na"]);
+  assert.deepEqual(notPassed.sort(), ["page.scripts:na", "routes.visitorIp:na", "srp.single:na"]);
   // avec un voisin sans rapport, « un propriétaire par donnée » est vérifié et réussit
   void other;
   assert.equal(status(await checkModule(dir, { siblings: [path.join(path.dirname(other), "full-mod")] }), "srp.single").status, "pass");
@@ -95,6 +95,7 @@ const FAULTS = {
   "privacy.declared": (f) => editManifest(f, (m) => { delete m.privacy; }),
   "privacy.thirdParty": (f) => { f["index.mjs"] = f["index.mjs"]; editManifest(f, (m) => { delete m.privacy; }); },
   "page.scripts": (f) => REPLACE(f, "title: ctx.setting(\"title\") || ctx.t(\"title\"),", "title: ctx.setting(\"title\") || ctx.t(\"title\"), scripts: [\"missing.js\", \"Bad Name.js\"],"),
+  "routes.visitorIp": null, // vérifié à part : demande un cœur 0.2.6 (voir plus bas)
   "srp.single": null, // voir plus bas : demande un voisin
   "srp.coupling": (f) => append(f, "index.mjs", 'export const peek = (ctx) => ctx.api.instances.list({ module: "contacts" });'),
 };
@@ -111,6 +112,13 @@ for (const r of REQUIREMENTS) {
       fs.writeFileSync(path.join(rivalDir, "module.json"), JSON.stringify(man));
       const rep = await checkModule(dir, { siblings: [rivalDir] });
       assert.equal(status(rep, "srp.single").status, "fail", JSON.stringify(status(rep, "srp.single")));
+      return;
+    }
+    if (r.id === "routes.visitorIp") {
+      const m = { definition: { routes: { sign() {} } }, core: { version: "0.2.6" }, code: 'export default { routes: { sign: (request) => request.headers.get("x-forwarded-for").split(",")[0] } };' };
+      const res = await r.run(m);
+      assert.equal(res.length, 1);
+      assert.match(res[0], /x-forwarded-for/i);
       return;
     }
     const edit = FAULTS[r.id];
@@ -346,4 +354,18 @@ test("permission « privacy » (cœur 0.2.6) : l'utiliser sans la déclarer est 
   assert.deepEqual(await denied.api.privacy.declarations(), { modules: [], truncated: false });
   const allowed = fakeCtx({ permissions: ["privacy"], privacyDeclarations: { modules: [{ module: "a" }], truncated: false } });
   assert.equal((await allowed.api.privacy.declarations()).modules.length, 1);
+});
+
+test("routes.visitorIp : sans lecture d'en-tête d'adresse rien à signaler ; cœur plus ancien que 0.2.6 : non applicable ; la fonction est reconnue (minCore)", async () => {
+  const r = REQUIREMENTS.find((x) => x.id === "routes.visitorIp");
+  const ok = { definition: { routes: { sign() {} } }, core: { version: "0.2.6" }, code: "export default { routes: { sign: (request, ctx) => ctx.api.visitor.fingerprint(request, 'sign') } };" };
+  assert.deepEqual(await r.run(ok), []);
+  assert.ok((await r.run({ ...ok, core: { version: "0.2.5" } })).na, "cœur trop ancien");
+  assert.equal((await r.run({ ...ok, code: "const h = req.headers.get('X-Real-IP');" })).length, 1);
+  const dir = mk((f) => { REPLACE(f, 'const ip = request.headers.get("x-forwarded-for") || "local";', 'const ip = ctx.api.visitor.fingerprint(request, "sign");'); });
+  assert.match((status(await checkModule(dir, { siblings: [] }), "compat.minCore").problems ?? []).join("\n"), /0\.2\.6/);
+  const ctx = fakeCtx({ moduleId: "monsite" });
+  const req = (xff) => new Request("https://example.test/", { headers: { "x-forwarded-for": xff } });
+  assert.equal(ctx.api.visitor.fingerprint(req("1.1.1.1, 9.9.9.9"), "a"), ctx.api.visitor.fingerprint(req("2.2.2.2, 9.9.9.9"), "a"));
+  assert.notEqual(ctx.api.visitor.fingerprint(req("9.9.9.9"), "a"), ctx.api.visitor.fingerprint(req("9.9.9.9"), "b"));
 });

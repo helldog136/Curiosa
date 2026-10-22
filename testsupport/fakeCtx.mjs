@@ -1,4 +1,6 @@
 import { makeNetClient } from "./fakeNet.mjs";
+import { createHash } from "node:crypto";
+
 /**
  * FAUX CONTEXTE DE MODULE — API publique du kit de test (testsupport/). Voir docs/TESTSUPPORT.md.
  *
@@ -22,6 +24,7 @@ import { makeNetClient } from "./fakeNet.mjs";
  * - `ctx.api.qr(text)` renvoie un SVG factice contenant le texte ; `ctx.api.brand()` / `site()` valeurs réglables
  * - `ctx.api.mail` : `configured` (option `mailConfigured`, défaut true) et `send` qui enregistre dans `ctx.calls.mail` (résultat réglable via `mailResult`)
  * - `ctx.api.rawg` : `configured` (option `rawgConfigured`, défaut true) et `cover(title)` qui enregistre dans `ctx.calls.rawg` (résultat réglable via `rawgCover`)
+ * - `ctx.api.visitor.fingerprint(request, scope?)` (cœur 0.2.6) : même règle que le cœur (DERNIÈRE entrée de `X-Forwarded-For`, sinon `X-Real-IP`, sinon « local »), empreinte de 22 caractères avec un sel fixe de test (jamais l'adresse) ; propre à `scope` et au module
  * - `ctx.api.privacy.declarations()` (permission « privacy », cœur 0.2.6) : renvoie `privacyDeclarations` (option ; défaut `{ modules: [], truncated: false }`) ; sans la permission déclarée : `{ modules: [], truncated: false }`
  * - `ctx.api.services` : `services` = { nom: { méthode: (args) => valeur } } ; absent → `unavailable`
  * - `ctx.api.services.callAll(nom, méthode, args)` : `serviceInstances` = { nom: [{ instance, name?, methods: { méthode: (args) => valeur } }] } → une entrée par instance (un fournisseur qui lève
@@ -158,6 +161,15 @@ export function fakeCtx(opts = {}) {
             if (typeof fn !== "function") return { instance: p.instance, name: p.name, ok: false, error: "no_method" };
             try { return { instance: p.instance, name: p.name, ok: true, value: await fn(args) }; } catch { return { instance: p.instance, name: p.name, ok: false, error: "failed" }; }
           }));
+        },
+      },
+      visitor: {
+        fingerprint: (request, scope) => {
+          const h = request?.headers ?? request;
+          const get = (n) => (typeof h?.get === "function" ? h.get(n) : null);
+          const chain = String(get("x-forwarded-for") ?? "").split(",").map((v) => v.trim()).filter(Boolean);
+          const ip = chain.length ? chain[chain.length - 1] : String(get("x-real-ip") ?? "").trim() || "local";
+          return createHash("sha256").update(`fake-salt\n${moduleId}\n${String(scope ?? "").slice(0, 64)}\n${ip}`).digest("base64url").slice(0, 22);
         },
       },
       privacy: { declarations: async () => ((!allowed || allowed.has("privacy")) ? structuredClone(privacyDeclarations) : { modules: [], truncated: false }) },
