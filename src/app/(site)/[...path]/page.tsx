@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { cache } from "react";
 import { notFound, permanentRedirect, redirect } from "next/navigation";
 import { pickDescription, pickName, type InstanceView } from "@/core/instances";
+import { pageScriptTags } from "@/core/modules/pageScripts";
 import { getActiveInstances, type ActiveInstance } from "@/core/modules/registry";
 import { RESERVED_PATHS, siteUrl } from "@/core/config";
 import { pickLogo } from "@/core/logos";
@@ -176,6 +177,7 @@ export default async function CatchAllPage({ params, searchParams }: Props) {
           <Blocks blocks={top} locale={locale} />
           <Blocks blocks={page.blocks} locale={locale} />
           <Blocks blocks={bottom} locale={locale} />
+          {pageScriptTags(resolved.active.mod.manifest.id, resolved.active.instance.key, page.scripts).map((s) => <script key={s.src} src={s.src} integrity={s.integrity} defer />)}
         </div>
       );
     }

@@ -75,7 +75,7 @@ avec leurs réglages (générés depuis `settings`), leurs abonnements (voir « 
 
 Une instance est **épinglée au menu** (placement `menu`) ou **seulement dans Extensions** (placements `integrations` et `overlays`, noms conservés pour ne pas perdre les choix déjà faits). Le cœur décide du choix par défaut, **sans rien demander au module**, à partir de son manifeste seul, dans cet ordre :
 
-1. type `overlay` **ou** permission `overlay` → **seulement dans Extensions** (placement `overlays`) ;
+1. type `overlay` **ou** permission `overlay` **sans `page` ni `sections`** → **seulement dans Extensions** (placement `overlays`). Un module qui a une page (`"page": true`) ou des sections d'accueil ET la permission `overlay` (cœur 0.2.6) n'est pas un simple overlay : il passe aux règles suivantes (il garde son adresse OBS dans Extensions, et peut toujours être rangé dans Overlays par choix). Les sites déjà en service ne bougent pas : au premier démarrage du cœur 0.2.6, chaque instance concernée qui n'avait pas de choix reçoit, une fois, le rangement « overlays » qu'elle avait ; seules les instances créées ensuite suivent la nouvelle règle ;
 2. type `social` ou `integration` → **seulement dans Extensions** (`integrations`) ;
 3. module à `content` → **épinglée**, sauf une simple liste de liens qui s'ouvrent ailleurs (`content.display: "links"` avec `clickAction: "external"`) → **seulement dans Extensions** ;
 4. les autres (`widget`, `utility`, type inconnu ou absent) : s'ils ont des données à gérer, c'est-à-dire des actions `mcp`, un service `offers` ou un service `requires` → **épinglée** ; sinon → **seulement dans Extensions**.
@@ -121,7 +121,7 @@ Validé à l'installation et au chargement (zod, `src/core/modules/manifest.ts`)
   "platform": "twitch",                  // facultatif : plateforme concernée (regroupement à l'écran)
   "instances": "multiple",               // ou "single"
   "page": true, "basePath": "guestbook", // l'instance a une page publique, sur ce chemin proposé
-  "permissions": ["slots", "sections", "routes", "storage", "filters", "pages", "topics", "overlay", "mcp", "admin", "mail", "rawg"],
+  "permissions": ["slots", "sections", "routes", "storage", "filters", "pages", "topics", "overlay", "mcp", "admin", "mail", "rawg", "privacy"],
   "settings": [ /* … */ ], "sections": [ /* … */ ], "consumes": [ /* … */ ], "provides": [ /* … */ ], "mcp": [ /* … */ ],
   "content": { /* … */ }, "onboarding": { /* … */ }, "defaultEnabled": true
 }
@@ -196,6 +196,7 @@ fidèlement (le test de l'exemple vérifie qu'elles correspondent au code), elle
 | `admin` | le code définit `adminPanel` / `adminActions` / `entryPanels` |
 | `mail` | le module appelle `ctx.api.mail.send` |
 | `rawg` | le module appelle `ctx.api.rawg.cover` (jaquettes de jeux, voir « Jaquettes de jeux (RAWG) ») |
+| `privacy` | (cœur 0.2.6) le module appelle `ctx.api.privacy.declarations()` (lire ce que les autres modules déclarent récolter) |
 
 ### Droits (`rights`)
 
@@ -563,9 +564,27 @@ Montée sur le chemin (`basePath`) de l'instance. `segments` = ce qui suit ce ch
 | `description` | Description (méta) |
 | `blocks` | Contenu |
 | `notFound` | `true` : affiche la page d'erreur 404 (ou renvoyer `null`) |
+| `scripts` | (cœur 0.2.6) Scripts de **cette page seulement** : 3 noms de fichiers au plus du dossier `scripts/` du module (`["faq.js"]`), 32 Ko chacun. Voir ci-dessous. |
 
 Les slots `page.top` et `page.bottom` entourent le contenu. Une instance n'a de page que si son chemin public est défini
 (`ctx.instance.basePath` n'est pas `null` ; `""` = racine du site).
+
+#### Un script pour une seule page (`scripts`, cœur 0.2.6)
+
+Avant, un script ne pouvait être chargé que par le slot `layout.head`, donc sur **toutes** les pages du site. Pour un petit script de confort qui ne sert qu'à la page du module :
+
+```js
+// scripts/faq.js dans le dossier du module
+async page(ctx) { return { title: "FAQ", blocks: [...], scripts: ["faq.js"] }; }
+```
+
+- **Fichiers du module** : le nom désigne `scripts/<nom>` dans le dossier du module (minuscules, chiffres, `.` `-` `_`, fini par `.js`). Pas de script en ligne, pas d'adresse extérieure. Un nom invalide, un fichier absent, plus gros que 32 Ko ou qui est un lien symbolique est **ignoré** (la page s'affiche sans lui).
+- **Servi par le cœur** : `<script src="/m/<clé>/page-script/<nom>?v=<empreinte>" defer integrity="sha256-…">` placé en bas de la page, **uniquement sur cette page** (pas sur les pages d'erreur ni sur les autres). Même origine : compatible avec une politique `script-src 'self'` sans `'unsafe-inline'`, aucun nonce à gérer. Le chemin `page-script` est réservé dans `/m/<clé>/` (une route de module de ce nom ne serait pas atteinte).
+- **Cache** : l'adresse porte l'empreinte du contenu ; servi `immutable` seulement si cette empreinte est la bonne, `no-cache` sinon. Un fichier modifié change d'adresse.
+- **Limites** : 3 scripts par page, 32 Ko chacun, 64 fichiers gardés en mémoire (puis le plus ancien est oublié).
+- **Kit de test** : l'exigence `page.scripts` (conseil) ; déclarez `minCore` : `0.2.6` (un cœur plus ancien ignore la clé : la page s'afficherait sans son script).
+- Le script s'exécute avant que la page soit « réveillée » : travaillez sur des éléments de votre contenu, jamais sur les attributs de `<html>` ou `<body>` (ils sont remis à zéro).
+- Ce n'est pas une porte ouverte : le script s'exécute dans la page avec les droits du visiteur, comme tout script. Écrivez-le défensivement (rien d'`eval`, rien de personnel).
 
 ### `overlay` : source navigateur OBS
 
@@ -600,6 +619,7 @@ demandé dans l'adresse : ignorez-le. Voir « Panneau d'admin riche ». Deux for
   connectée (relue en base à chaque requête) **avant** d'appeler `run`. Une personne d'un rôle personnalisé qui a ces deux droits peut l'exécuter ;
   le droit d'un autre module (`"autre:x"`) est toujours refusé. Le module ne fait jamais lui-même le contrôle d'accès, mais il peut adapter ce qu'il
   montre avec `ctx.can`.
+- Le kit de test (`def.loads`, `def.matches`, sonde d'exécution) reconnaît les deux formes partout : un formulaire ou un bouton `adminForm` qui vise une action `{ right, run }` est valide, et la sonde exécute son `run`. Déclarez le droit dans `rights` de module.json pour qu'un rôle personnalisé puisse le recevoir.
 
 ### `adminDownloads` : un fichier à télécharger depuis l'administration
 
@@ -921,6 +941,8 @@ Deux familles : les **services** du cœur (génériques, voir [PLATFORM.md](PLAT
 | `ctx.api.instances.list({ module?, locale? })` | lecture | `[{ id, key, module, basePath, name, adminPath }]` des instances actives ; `adminPath` (`/admin/instances/<id>`) est la page de réglages de l'instance : de quoi y renvoyer l'administrateur par un lien (`href`) |
 | `ctx.api.entries.list({ instance?, locale?, limit? })` | lecture | entrées publiées (`EntrySummary`) ; par défaut celles de l'instance courante ; **200 au plus** (sans `limit`, ou au-delà : 200), dans l'ordre de la liste publique (non expirées d'abord, puis expirées) ; pour tout lire, passez par `ctx.api.topics.collectPage` |
 | `ctx.api.siteUrl` | lecture | adresse publique du site, sans `/` final |
+| `ctx.api.visitor.fingerprint(request, scope?)` | service | (cœur 0.2.6, aucune permission) une **empreinte** de 22 caractères du visiteur de la requête (celle d'une `route`, ou ses `Headers`), pour une limite de débit : `const who = ctx.api.visitor.fingerprint(request, "envoi")`. **À utiliser à la place de la lecture de `X-Forwarded-For`**, dont le début est écrit par le visiteur (un robot change d'adresse inventée à chaque envoi et passe sous la limite). Le cœur prend l'entrée ajoutée par SON proxy (règle de [SECURITE.md](SECURITE.md#derrière-un-reverse-proxy) ; IPv6 par réseau /64) et rend un HMAC avec un sel au hasard, gardé en mémoire, renouvelé chaque jour, propre à votre module et à `scope` : non réversible, jamais l'adresse. Le cœur ne garde rien par visiteur ; bornez vos propres compteurs (par exemple 5 000 empreintes, les plus anciennes oubliées) et ne gardez que l'empreinte. Sans proxy devant le site, tous les visiteurs ont la même empreinte. Le kit signale (conseil `routes.visitorIp`) la lecture directe de ces en-têtes. |
+| `ctx.api.privacy.declarations()` | lecture | (cœur 0.2.6, permission `privacy` ; sans elle : rien) les déclarations `privacy` des modules **actifs** : `{ modules: [{ module, name, instances: [{ key, name }], declares, text: { langue: texte } }], truncated }`. Un élément par module (100 au plus, triés par identifiant ; `truncated` si davantage ; 10 instances par module). `declares` : vrai si le module déclare quelque chose ; `text` : sa déclaration par langue (un texte simple vaut pour la langue par défaut ; 500 caractères et 20 langues au plus). Texte et noms seulement : jamais un réglage, un secret ni une donnée. Pour qu'un module « Mentions légales » reprenne la liste au lieu de la recopier à la main. |
 | `ctx.api.seo.jsonLd(données)` | service | prépare des données structurées (JSON-LD) pour le slot `layout.head` : renvoie la balise `{ tag: "script", jsonLd }` à mettre dans un bloc `head`, ou `null` si la donnée est inutilisable (pas de `@type`, trop volumineuse). Le cœur ajoute `@context`, borne la taille (texte 5 000 caractères, 100 éléments par liste, 8 niveaux, 20 000 caractères au total) et échappe `</script>`. Voir « Données structurées » dans [CREATE-A-MODULE.md](CREATE-A-MODULE.md). |
 
 **Stockage** : privé à l'instance (une instance ne voit jamais celui d'une autre), en collections libres de documents JSON, sans

@@ -11,6 +11,9 @@ export async function register() {
   } catch (error) {
     console.error("[legacy] startup conversion failed:", (error as Error)?.name);
   }
+  // Rangement dans Extensions (0.2.6) : les instances existantes gardent leur place malgré la nouvelle règle (une fois ; ne lève jamais).
+  const { freezeOverlayPlacements } = await import("@/core/modules/placementFreeze");
+  await freezeOverlayPlacements();
   // Rôles (0.2.0) : les trois rôles prédéfinis existent et chaque personne a celui de son niveau (`User.role`). Idempotent, ne lève jamais.
   const { initRoles } = await import("@/core/auth/roles");
   await initRoles();

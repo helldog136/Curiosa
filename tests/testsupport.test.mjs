@@ -26,7 +26,7 @@ test("un module conforme réussit toutes les exigences (aucune en échec, aucune
   assert.equal(report.summary.ok, true);
   // « neutrality.clean » est sautée sans liste de neutralité, vérifiée (et réussie) avec : les deux sont corrects.
   const notPassed = report.results.filter((r) => r.status !== "pass" && r.id !== "neutrality.clean").map((r) => `${r.id}:${r.status}`);
-  assert.deepEqual(notPassed.sort(), ["srp.single:na"]);
+  assert.deepEqual(notPassed.sort(), ["page.scripts:na", "routes.visitorIp:na", "srp.single:na"]);
   // avec un voisin sans rapport, « un propriétaire par donnée » est vérifié et réussit
   void other;
   assert.equal(status(await checkModule(dir, { siblings: [path.join(path.dirname(other), "full-mod")] }), "srp.single").status, "pass");
@@ -94,6 +94,8 @@ const FAULTS = {
   "data.migrations": (f) => REPLACE(f, "migrations: { 2: async () => {} }", "migrations: { 2: async (ctx) => { await ctx.api.store.list(\"nothing\").then((r) => r[0].data); } }"),
   "privacy.declared": (f) => editManifest(f, (m) => { delete m.privacy; }),
   "privacy.thirdParty": (f) => { f["index.mjs"] = f["index.mjs"]; editManifest(f, (m) => { delete m.privacy; }); },
+  "page.scripts": (f) => REPLACE(f, "title: ctx.setting(\"title\") || ctx.t(\"title\"),", "title: ctx.setting(\"title\") || ctx.t(\"title\"), scripts: [\"missing.js\", \"Bad Name.js\"],"),
+  "routes.visitorIp": null, // vérifié à part : demande un cœur 0.2.6 (voir plus bas)
   "srp.single": null, // voir plus bas : demande un voisin
   "srp.coupling": (f) => append(f, "index.mjs", 'export const peek = (ctx) => ctx.api.instances.list({ module: "contacts" });'),
 };
@@ -110,6 +112,13 @@ for (const r of REQUIREMENTS) {
       fs.writeFileSync(path.join(rivalDir, "module.json"), JSON.stringify(man));
       const rep = await checkModule(dir, { siblings: [rivalDir] });
       assert.equal(status(rep, "srp.single").status, "fail", JSON.stringify(status(rep, "srp.single")));
+      return;
+    }
+    if (r.id === "routes.visitorIp") {
+      const m = { definition: { routes: { sign() {} } }, core: { version: "0.2.6" }, code: 'export default { routes: { sign: (request) => request.headers.get("x-forwarded-for").split(",")[0] } };' };
+      const res = await r.run(m);
+      assert.equal(res.length, 1);
+      assert.match(res[0], /x-forwarded-for/i);
       return;
     }
     const edit = FAULTS[r.id];
@@ -306,4 +315,57 @@ test("adminActions à droit ({ right, run }, cœur 0.2.0) : le kit les accepte (
   // Une valeur qui n'est ni une fonction ni { run } reste refusée.
   const bad = mk((f) => { f["index.mjs"] = f["index.mjs"].replace("export default {", "export default {\n  adminActions: { cassee: { right: 'export' } },"); });
   assert.equal(status(await checkModule(bad, { siblings: [] }), "def.loads").status, "fail");
+});
+
+test("def.matches : un formulaire d'administration vers une action { right, run } est reconnu (comme vers une fonction) ; vers une action absente, refusé", async () => {
+  const panel = (action, actions) => mk((f) => {
+    f["index.mjs"] = f["index.mjs"].replace("export default {", `export default {\n  async adminPanel() { return [{ type: "adminForm", action: ${JSON.stringify(action)}, submitLabel: "Ok", fields: [{ name: "note", label: "Note" }] }]; },\n  adminActions: ${actions},`);
+  });
+  const problems = (r) => (status(r, "def.matches").problems ?? []).filter((p) => /administration/.test(p));
+  assert.deepEqual(problems(await checkModule(panel("save", "{ save: { right: 'export', run: async () => ({ ok: 'ok' }) } }"), { siblings: [] })), [], "forme { right, run }");
+  assert.deepEqual(problems(await checkModule(panel("save", "{ save: async () => ({ ok: 'ok' }) }"), { siblings: [] })), [], "forme fonction");
+  assert.equal(problems(await checkModule(panel("ghost", "{ save: { right: 'export', run: async () => ({ ok: 'ok' }) } }"), { siblings: [] })).length, 1, "action absente");
+  assert.equal(problems(await checkModule(panel("save", "{ save: { right: 'export' } }"), { siblings: [] })).length, 1, "sans run");
+});
+
+test("page.scripts : un script présent dans scripts/ réussit ; il faut minCore 0.2.6 (compat.minCore) et la fonction est reconnue", async () => {
+  const dir = mk((f) => {
+    REPLACE(f, "title: ctx.setting(\"title\") || ctx.t(\"title\"),", "title: ctx.setting(\"title\") || ctx.t(\"title\"), scripts: [\"ui.js\"],");
+    f["scripts/ui.js"] = "document.documentElement.dataset.ui = '1';\n";
+  });
+  const rep = await checkModule(dir, { siblings: [] });
+  assert.equal(status(rep, "page.scripts").status, "pass", JSON.stringify(status(rep, "page.scripts")));
+  const feat = status(rep, "compat.minCore");
+  assert.equal(feat.status, "fail", "scripts de page : cœur 0.2.6 requis");
+  assert.match(feat.problems.join("\n"), /0\.2\.6/);
+});
+
+test("permission « privacy » (cœur 0.2.6) : l'utiliser sans la déclarer est signalé ; le faux contexte la refuse sans permission et rend la liste réglable avec", async () => {
+  const use = (permissions) => mk((f) => {
+    REPLACE(f, "const [last] = await rows(ctx);", "const [last] = await rows(ctx); await ctx.api.privacy.declarations();");
+    editManifest(f, (m) => { m.permissions = [...new Set([...m.permissions, ...permissions])]; });
+  });
+  const without = await checkModule(use([]), { siblings: [] });
+  assert.match((status(without, "perm.declared").problems ?? []).join("\n"), /privacy/);
+  assert.match((status(without, "compat.minCore").problems ?? []).join("\n"), /0\.2\.6/);
+  const withIt = await checkModule(use(["privacy"]), { siblings: [] });
+  assert.equal(status(withIt, "perm.declared").status, "pass");
+  const denied = fakeCtx({ permissions: ["storage"], privacyDeclarations: { modules: [{ module: "a" }], truncated: false } });
+  assert.deepEqual(await denied.api.privacy.declarations(), { modules: [], truncated: false });
+  const allowed = fakeCtx({ permissions: ["privacy"], privacyDeclarations: { modules: [{ module: "a" }], truncated: false } });
+  assert.equal((await allowed.api.privacy.declarations()).modules.length, 1);
+});
+
+test("routes.visitorIp : sans lecture d'en-tête d'adresse rien à signaler ; cœur plus ancien que 0.2.6 : non applicable ; la fonction est reconnue (minCore)", async () => {
+  const r = REQUIREMENTS.find((x) => x.id === "routes.visitorIp");
+  const ok = { definition: { routes: { sign() {} } }, core: { version: "0.2.6" }, code: "export default { routes: { sign: (request, ctx) => ctx.api.visitor.fingerprint(request, 'sign') } };" };
+  assert.deepEqual(await r.run(ok), []);
+  assert.ok((await r.run({ ...ok, core: { version: "0.2.5" } })).na, "cœur trop ancien");
+  assert.equal((await r.run({ ...ok, code: "const h = req.headers.get('X-Real-IP');" })).length, 1);
+  const dir = mk((f) => { REPLACE(f, 'const ip = request.headers.get("x-forwarded-for") || "local";', 'const ip = ctx.api.visitor.fingerprint(request, "sign");'); });
+  assert.match((status(await checkModule(dir, { siblings: [] }), "compat.minCore").problems ?? []).join("\n"), /0\.2\.6/);
+  const ctx = fakeCtx({ moduleId: "monsite" });
+  const req = (xff) => new Request("https://example.test/", { headers: { "x-forwarded-for": xff } });
+  assert.equal(ctx.api.visitor.fingerprint(req("1.1.1.1, 9.9.9.9"), "a"), ctx.api.visitor.fingerprint(req("2.2.2.2, 9.9.9.9"), "a"));
+  assert.notEqual(ctx.api.visitor.fingerprint(req("9.9.9.9"), "a"), ctx.api.visitor.fingerprint(req("9.9.9.9"), "b"));
 });

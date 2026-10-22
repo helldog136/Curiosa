@@ -1,5 +1,6 @@
 import { recordVisit } from "@/core/stats";
 import { siteUrl } from "@/core/config";
+import { clientIp } from "@/core/auth/clientIp";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,8 @@ export async function POST(request: Request): Promise<Response> {
     const cookie = request.headers.get("cookie") ?? "";
     // Les personnes connectées à l'admin (l'équipe du site) ne sont pas des visiteurs.
     if (/(^|;\s*)(__Secure-)?authjs\.session-token=/.test(cookie)) return none;
-    const ip = (request.headers.get("x-forwarded-for") ?? "").split(",")[0]?.trim() || request.headers.get("x-real-ip") || "?";
+    // L'entrée ajoutée par NOTRE proxy (docs/SECURITE.md), pas la première de l'en-tête, que le visiteur peut inventer pour se compter plusieurs fois.
+    const ip = clientIp((name) => request.headers.get(name));
     await recordVisit({
       path: body.p, referrer: body.r, ip, userAgent: request.headers.get("user-agent") ?? "",
       doNotTrack: request.headers.get("dnt") === "1" || request.headers.get("sec-gpc") === "1", ownHost: new URL(siteUrl).host,
