@@ -233,9 +233,11 @@ export async function applyConfigure(input: ConfigureArgs, advanced: boolean): P
     if (f.type === "secret") { fail(f, key, t("aim.cfg.secret", { field: name(f, key), path: whereInAdmin(c, f) })); continue; }
     if (f.advanced && !advanced) { fail(f, key, t("aim.cfg.advanced", { field: name(f, key) })); continue; }
     const isMap = !!raw && typeof raw === "object";
-    if (f.translatable && !isMap) { fail(f, key, t("aim.cfg.translatable", { field: name(f, key), example: `{"${c.locales[0] ?? "fr"}": "…", "${c.locales[1] ?? c.locales[0] ?? "en"}": "…"}` })); continue; }
+    // Un site à une seule langue : un réglage traduisible n'a qu'un champ dans l'admin, une valeur simple suffit. À plusieurs langues : une valeur par langue.
+    const single = f.translatable && !isMap && c.locales.length === 1;
+    if (f.translatable && !isMap && !single) { fail(f, key, t("aim.cfg.translatable", { field: name(f, key), example: `{${c.locales.slice(0, 2).map((l) => `"${l}": "…"`).join(", ")}}` })); continue; }
     if (!f.translatable && isMap) { fail(f, key, t("aim.cfg.notTranslatable", { field: name(f, key) })); continue; }
-    const perLocale: [string, unknown][] = f.translatable ? Object.entries(raw as Record<string, unknown>) : [["", raw]];
+    const perLocale: [string, unknown][] = single ? [[c.locales[0]!, raw]] : f.translatable ? Object.entries(raw as Record<string, unknown>) : [["", raw]];
     for (const [locale, value] of perLocale) {
       if (locale !== "" && !c.locales.includes(locale)) { fail(f, key, t("aim.cfg.language", { field: name(f, key), lang: clean(locale, 12), langs: c.locales.join(", ") })); continue; }
       const op = parseValue(c, f, locale, value, site[locale || c.locale] ?? { name: "", tagline: "" });

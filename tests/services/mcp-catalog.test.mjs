@@ -542,3 +542,13 @@ test("module_configure : ne touche ni aux droits, ni aux rôles, ni au nom ou au
   assert.equal(await db.prisma.role.count(), roles);
   assert.equal(await db.prisma.setting.count({ where: { key: { startsWith: `instance.${before.id}.__` } } }), 0, "aucun réglage interne de l'instance (menu, accès IA, placement) n'a été posé");
 });
+
+test("module_configure : sur un site à UNE seule langue, un réglage traduisible accepte une valeur simple", async () => {
+  const key = await installAtelier();
+  const inst = await db.prisma.moduleInstance.findFirst({ where: { key } });
+  await setSetting("i18n.enabled", ["fr"]);
+  const { token } = await maintenanceToken(["module_configure"]);
+  const r = (await call(token, "maintenance_module_configure", { instance: key, changes: { intro: "Bonjour" } })).value;
+  assert.equal(r.status, "saved");
+  assert.equal((await getSettingByLocale(`instance.${inst.id}.intro`)).fr, "Bonjour");
+});
