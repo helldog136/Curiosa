@@ -15,7 +15,7 @@ const fmt = (s: string, name: string) => s.replace("{name}", name);
  *  - un sous-menu s'ouvre avec le BOUTON flèche à côté du parent (ou le parent lui-même quand il n'a pas de page) : Entrée / Espace, ou ↓ sur le parent ;
  *    ↑ ↓ Début Fin se déplacent dans le sous-menu, Échap le ferme et rend le focus au bouton, Tab hors du menu le ferme ;
  *  - au toucher, un PREMIER toucher sur un parent qui a une page ouvre son sous-menu, un SECOND suit le lien ; à la souris, le survol ouvre (CSS pur) et le clic suit ;
- *  - sur petit écran, tout le menu tient dans un panneau (bouton « Menu ») et les sous-menus s'y déplient à la suite.
+ *  - sur petit écran, tout le menu tient dans un panneau sous l'en-tête, sur toute sa largeur (bouton « Menu »), et les sous-menus s'y déplient à la suite.
  * `aria-expanded` dit l'état aux lecteurs d'écran. Aucun minuteur ; le mouvement réduit supprime la rotation de la flèche. Le focus clavier est visible (style global).
  */
 export function SiteNav({ items, strings }: { items: NavItem[]; strings: NavStrings }) {
@@ -93,7 +93,7 @@ export function SiteNav({ items, strings }: { items: NavItem[]; strings: NavStri
         className="inline-flex min-h-11 items-center gap-2 rounded-full border border-line px-4 py-2 font-medium hover:border-accent sm:hidden">
         <span aria-hidden="true">{panel ? "✕" : "☰"}</span> {strings.menu}
       </button>
-      <ul id={`${base}-list`} data-nav-list="" className={`${panel ? "flex" : "hidden"} mt-2 flex-col gap-y-1 sm:mt-0 sm:flex sm:flex-row sm:flex-wrap sm:gap-x-5`}>
+      <ul id={`${base}-list`} data-nav-list="" className={`${panel ? "flex" : "hidden"} flex-col gap-y-1 max-sm:absolute max-sm:inset-x-0 max-sm:top-full max-sm:z-40 max-sm:max-h-[calc(100vh-5rem)] max-sm:overflow-y-auto max-sm:border-b max-sm:border-line max-sm:bg-surface max-sm:px-4 max-sm:py-3 max-sm:shadow-lg sm:flex sm:flex-row sm:flex-wrap sm:gap-x-5`}>
         {items.map((item, i) => {
           const kids = item.children ?? [];
           if (kids.length === 0) {

@@ -111,5 +111,5 @@ export async function Header({ config, locale }: { config: SiteConfig; locale: s
         </div>
       );
   }
-  return <header className="border-b border-line" data-header-layout={config.header.layout}>{body}</header>;
+  return <header className="relative border-b border-line" data-header-layout={config.header.layout}>{body}</header>;
 }
