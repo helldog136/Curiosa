@@ -87,7 +87,7 @@ test("menu : une adresse sans https:// est comprise et enregistrée complète", 
   as(U.admin);
   const r = await saveNavigation(null, form([link("www.monsite.be/contact"), link("monsite.be/a"), link(" /contact ")]));
   assert.ok(r.ok, JSON.stringify(r));
-  const saved = await getSetting("nav.custom");
+  const saved = (await getSetting("nav.menu")).items;
   assert.deepEqual(saved.map((i) => i.href), ["https://www.monsite.be/contact", "https://monsite.be/a", "/contact"]);
 });
 

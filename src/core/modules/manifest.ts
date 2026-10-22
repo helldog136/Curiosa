@@ -163,6 +163,8 @@ export const manifestSchema = z.object({
   mcp: z.array(z.object({ name: z.string().regex(/^[a-z][a-z0-9_]{1,39}$/), description: z.string().max(1000), readOnly: z.boolean().optional(), default: z.boolean().optional(), destructive: z.boolean().optional(), input: jsonSchemaLite.optional() }).refine((a) => !a.destructive || a.default !== true, "a destructive action cannot be enabled by default").refine((a) => !(a.readOnly && a.destructive), "a read-only action cannot be destructive")).max(60).optional(),
   content: content.optional(),
   page: z.boolean().optional(),
+  /** (prochaine version) « Je suggère d'être au menu du site » : la page de l'instance est proposée à la personne dans « Pages qui ne sont pas dans le menu », jamais ajoutée d'office. Défaut : `content.showInNav`, sinon non. Un cœur ancien ignore la clé. */
+  suggestInMenu: z.boolean().optional(),
   basePath: z.string().regex(/^[a-z0-9-]*$/).optional(),
   sections: z
     .array(z.object({ id: z.string().regex(/^[a-z][a-z0-9-]{0,30}$/), label: localized, options: z.array(settingField).max(10).optional(), size: z.enum(["small", "medium", "large", "full"]).optional() }))

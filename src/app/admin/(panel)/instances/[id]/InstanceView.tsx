@@ -7,6 +7,8 @@ import { DISPLAYS, FEATURES, getInstanceById } from "@/core/instances";
 import { localeName } from "@/core/i18n/locales";
 import { buildContext, forViewer, instanceSettingKey } from "@/core/modules/context";
 import { hasPage } from "@/core/modules/manifest";
+import { menuEligible, suggestsMenu } from "@/core/modules/menuEligibility";
+import { isInstanceInMenu } from "@/core/menuStore";
 import { overlayUrl } from "@/core/modules/overlayUrl";
 import { defaultPlacement, placementSettingKey, placementsFor, resolvePlacement } from "@/core/modules/menuPlacement";
 import { missingLinks, missingSettings } from "@/core/modules/missingSettings";
@@ -66,6 +68,7 @@ export async function InstanceView({ id, query: sp, inModal = false }: { id: str
   const content = mod.manifest.content;
   const labeler = await getInstanceLabeler(locale, config.defaultLocale);
   const showNickname = labeler.hasSiblings(instance.moduleId);
+  const inMenu = await isInstanceInMenu(instance.id);
   const moduleName = L(mod.manifest.name);
   // Le propriétaire qui retire la SEULE instance de son module retire le module lui-même ; sinon, seulement cette instance (le module reste installé).
   const scope = removalScope({ isOwner: isOwner(user), otherInstances: labeler.siblingsOf(instance).length });
@@ -224,9 +227,10 @@ export async function InstanceView({ id, query: sp, inModal = false }: { id: str
             </>
           )}
 
-          {hasPage(mod.manifest) && (
+          {menuEligible(mod.manifest) && !!instance.basePath && (
             <div className="flex flex-wrap gap-x-8 gap-y-2 min-[1100px]:col-span-2">
-              <Checkbox name="showInNav" label={t("instances.showInNav")} defaultChecked={instance.showInNav} />
+              <input type="hidden" name="nav_was" value={inMenu ? "1" : "0"} />
+              <Checkbox name="showInNav" label={t("instances.showInNav")} defaultChecked={inMenu} help={`${t("instances.showInNavHelp")}${!inMenu && suggestsMenu(mod.manifest) ? ` ${t("instances.suggestsNav")}` : ""}`} />
             </div>
           )}
           {/* Où la retrouver : dans le menu, ou rangée dans la page Intégrations (réglée une fois). Le choix l'emporte sur la règle par défaut. */}
@@ -246,7 +250,6 @@ export async function InstanceView({ id, query: sp, inModal = false }: { id: str
           {hasPage(mod.manifest) && advanced && (
             <div className="grid gap-4 sm:grid-cols-2 min-[1100px]:col-span-2">
               <TextField name="basePath" label={t("instances.basePath")} help={t("instances.basePathHelp")} defaultValue={instance.basePath ?? ""} />
-              <TextField name="navOrder" type="number" label={t("instances.navOrder")} defaultValue={instance.navOrder} />
             </div>
           )}
         </div>

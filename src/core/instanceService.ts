@@ -10,6 +10,8 @@ import { localized } from "./modules/types";
 import { keyFromNickname } from "./instanceLabel";
 import { retireInstance } from "./modules/retired";
 import { forgetAllChoices } from "./modules/choiceCache";
+import { ensureMenuMigrated, setInstanceInMenu } from "./menuStore";
+import { suggestsMenu } from "./modules/menuEligibility";
 
 type Db = PrismaClient | Prisma.TransactionClient;
 
@@ -56,6 +58,8 @@ export type NewInstance = {
   basePath?: string | null;
   names: Record<string, string>;
   descriptions?: Record<string, string>;
+  /** "suggested" : à la CRÉATION DU SITE seulement (assistant de départ), une page que son module suggère d'être au menu y entre. Absent = l'instance n'entre jamais au menu toute seule. */
+  menu?: "suggested";
 };
 
 /** Crée une instance d'un module avec les réglages de contenu par défaut de celui-ci. */
@@ -69,6 +73,8 @@ async function createInstanceRow(db: Db, input: NewInstance) {
   const count = await db.moduleInstance.count();
   const key = input.key ?? (await freeKey(db, keyFromNickname(manifest.id, input.nickname)));
   const mounted = hasPage(manifest);
+  // Le menu du site est figé AVANT d'ajouter l'instance : un module installé après la mise à jour n'entre jamais au menu tout seul (voir menuStore.ts).
+  await ensureMenuMigrated(db);
   let basePath: string | null = null;
   if (mounted) {
     basePath = input.basePath === undefined ? (content?.basePath ?? manifest.basePath ?? key) : input.basePath;
@@ -98,6 +104,7 @@ async function createInstanceRow(db: Db, input: NewInstance) {
       },
     },
   });
+  if (input.menu === "suggested" && created.basePath && suggestsMenu(manifest)) await setInstanceInMenu(created.id, true, db);
   // Une instance neuve naît à la version courante des données de son module : aucune migration à lui appliquer.
   if ((manifest.dataVersion ?? 1) > 1) {
     await db.setting.upsert({ where: { key_locale: { key: `instance.${created.id}.__dataVersion`, locale: "" } }, create: { key: `instance.${created.id}.__dataVersion`, locale: "", value: JSON.stringify(manifest.dataVersion) }, update: { value: JSON.stringify(manifest.dataVersion) } });
