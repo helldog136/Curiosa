@@ -307,3 +307,14 @@ test("adminActions à droit ({ right, run }, cœur 0.2.0) : le kit les accepte (
   const bad = mk((f) => { f["index.mjs"] = f["index.mjs"].replace("export default {", "export default {\n  adminActions: { cassee: { right: 'export' } },"); });
   assert.equal(status(await checkModule(bad, { siblings: [] }), "def.loads").status, "fail");
 });
+
+test("def.matches : un formulaire d'administration vers une action { right, run } est reconnu (comme vers une fonction) ; vers une action absente, refusé", async () => {
+  const panel = (action, actions) => mk((f) => {
+    f["index.mjs"] = f["index.mjs"].replace("export default {", `export default {\n  async adminPanel() { return [{ type: "adminForm", action: ${JSON.stringify(action)}, submitLabel: "Ok", fields: [{ name: "note", label: "Note" }] }]; },\n  adminActions: ${actions},`);
+  });
+  const problems = (r) => (status(r, "def.matches").problems ?? []).filter((p) => /administration/.test(p));
+  assert.deepEqual(problems(await checkModule(panel("save", "{ save: { right: 'export', run: async () => ({ ok: 'ok' }) } }"), { siblings: [] })), [], "forme { right, run }");
+  assert.deepEqual(problems(await checkModule(panel("save", "{ save: async () => ({ ok: 'ok' }) }"), { siblings: [] })), [], "forme fonction");
+  assert.equal(problems(await checkModule(panel("ghost", "{ save: { right: 'export', run: async () => ({ ok: 'ok' }) } }"), { siblings: [] })).length, 1, "action absente");
+  assert.equal(problems(await checkModule(panel("save", "{ save: { right: 'export' } }"), { siblings: [] })).length, 1, "sans run");
+});

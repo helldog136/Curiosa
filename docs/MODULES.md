@@ -600,6 +600,7 @@ demandé dans l'adresse : ignorez-le. Voir « Panneau d'admin riche ». Deux for
   connectée (relue en base à chaque requête) **avant** d'appeler `run`. Une personne d'un rôle personnalisé qui a ces deux droits peut l'exécuter ;
   le droit d'un autre module (`"autre:x"`) est toujours refusé. Le module ne fait jamais lui-même le contrôle d'accès, mais il peut adapter ce qu'il
   montre avec `ctx.can`.
+- Le kit de test (`def.loads`, `def.matches`, sonde d'exécution) reconnaît les deux formes partout : un formulaire ou un bouton `adminForm` qui vise une action `{ right, run }` est valide, et la sonde exécute son `run`. Déclarez le droit dans `rights` de module.json pour qu'un rôle personnalisé puisse le recevoir.
 
 ### `adminDownloads` : un fichier à télécharger depuis l'administration
 
