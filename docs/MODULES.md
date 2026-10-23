@@ -1023,6 +1023,9 @@ Sujets connus (tous fournis par des modules du catalogue, ou par le cœur) :
 | `social.stat` | tout module « réseau social » | les chiffres d'un compte (`id`, `metric` : `followers` / `paying` / `content` / `views`, `value`, `asOf`, `error?`) collectés par `community-stats` |
 | `maze.poster` | tout module (`youtube-channel`, `twitch-channel`…) | affiche pour le labyrinthe |
 | `stream.live` | `twitch-channel` | live en cours (`id`, `title`, `url`, `startedAt`, `game`) ; vide hors ligne |
+| `ha.result` | `home-assistant` | ce qui est arrivé à un ordre confié à Home Assistant (`ref`, `id`, `status` : `done` / `failed` / `ignored` / `expired` / `refused`, `code`, `at`) ; consommé par le bot Twitch et Actions du live YouTube pour valider, rembourser ou afficher l'issue |
+| `ha.state` | `home-assistant` | l'état du pont avec Home Assistant, un seul élément (`enabled`, `live`, `paired`, `lastSeenAt?`) ; consommé par le bot Twitch pour mettre ses récompenses en pause ou les réactiver |
+| `live.event` | `youtube-live-actions` | les dons et adhésions vus dans le chat d'un direct, en mémoire seulement (15 minutes, 50 au plus) : `id`, `platform`, `kind` (`superchat`, `supersticker`, `member`, `gift`), `who`, `at`, et selon le cas `amount` (toujours avec `currency`), `count`, `text` ; consommé par l'Overlay alertes (OBS) pour les afficher à l'écran |
 
 ```jsonc
 // module.json du CONSOMMATEUR (un overlay)
