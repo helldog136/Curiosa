@@ -7,6 +7,25 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## Prochaine version (non publiée)
+
+### Améliorations
+
+- **Quand le site se trompe de jaquette, vous pouvez le voir et le corriger.** Il compare le titre avec plusieurs jeux de RAWG et prend le plus proche. S'il hésite, il le note dans *Réglages › Services externes › Jaquettes à vérifier*.
+- **Un écran « Quel est le bon jeu ? ».** Cliquez sur « Corriger » : jusqu'à 6 jeux sont proposés avec jaquette, année et plateformes. Un clic sur le bon suffit, ou « Aucune jaquette ».
+- **« Ce choix est bon » valide le jeu trouvé** et retire le titre de la liste. Vos choix sont utilisés partout tout de suite et gardés dans vos sauvegardes. « Oublier » rend le choix au site.
+- **Votre assistant IA peut vous aider**, si vous l'y autorisez : lire la liste (accordé d'office) et enregistrer la bonne jaquette (jamais accordé d'office).
+- Rien ne change pour les titres qui n'ont jamais posé de problème.
+
+### Pour les développeurs
+
+- `ctx.api.rawg.cover(titre)` : champs **facultatifs** `name`, `id` et `ambiguous` avec `found`. RAWG donne 8 résultats au plus, comparés au titre (`services/rawgMatch.ts`, sans dépendance). `ambiguous` : meilleur score < 0,92, ou un second à 0,04 ou moins avec une autre image. `status` et `url` ne changent pas.
+- Nouvelle méthode `ctx.api.rawg.candidates(titre)` (permission `rawg`) : `{ status, candidates: [{ id, name, year, platforms, url }] }`, 6 au plus. `"minCore": "0.2.10"` ; kit de test à jour (`FEATURES`, `fakeCtx({ rawgCandidates })`).
+- Stockage sans migration : réglage JSON `rawg.fixes` (1000 corrections, sauvegardé) et journal `rawg.toCheck` (100 titres, purge à la lecture, hors sauvegarde). Image acceptée seulement en `https://media.rawg.io/media/…` (le chemin est gardé) ; aucune requête vers une adresse donnée par une personne.
+- Écran `/admin/settings/rawg-covers` (administrateurs ; `?titre=` ouvre un titre : lien stable pour les extensions). Logique commune écran et MCP : `core/rawgAdmin.ts` (30 lectures et 60 écritures par minute).
+- Outils MCP `rawg_covers_to_check` (lecture) et `rawg_cover_set` (écriture, jamais d'office) ; audit `rawg.fix`, `rawg.fix.forget`, `rawg.fix.forgetAll`.
+- Documentation : MODULES, PLATFORM, SECURITE, MAINTENANCE-IA, BACKUP, TESTSUPPORT.
+
 ## 0.2.9
 
 ### Améliorations

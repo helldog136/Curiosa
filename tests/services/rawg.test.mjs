@@ -137,11 +137,12 @@ test("cache : trouvé ~24 h, aucun résultat ~1 h, insensible à la casse ; deux
   assert.equal(calls.length, 4, "« aucun résultat » expire après 1 h");
 
   let release;
-  handler = async () => { await new Promise((r) => { release = r; }); return found(); };
+  handler = async () => { await new Promise((r) => { release = r; }); return reply(200, { results: [{ name: "Même", background_image: COVER }] }); };
   const [a, b] = [R.rawgCover("Même"), R.rawgCover("même")];
   await until(() => typeof release === "function");
   release();
-  assert.deepEqual(await Promise.all([a, b]), [{ status: "found", url: COVER }, { status: "found", url: COVER }]);
+  const same = { status: "found", url: COVER, name: "Même", ambiguous: false };
+  assert.deepEqual(await Promise.all([a, b]), [same, same]);
   assert.equal(calls.length, 5, "une seule requête pour deux demandes identiques");
 });
 
@@ -264,8 +265,8 @@ test("module : avec la permission rawg, ctx.api.rawg marche et ne renvoie jamais
   const api = makeApi(fakeInstance, "fr", ["storage", "rawg"]);
   assert.equal(await api.rawg.configured(), true);
   const r = await api.rawg.cover("Hades");
-  assert.deepEqual(r, { status: "found", url: COVER });
-  assert.deepEqual(Object.keys(api.rawg).sort(), ["configured", "cover"], "aucune méthode qui donne la clé");
+  assert.deepEqual(r, { status: "found", url: COVER, name: "Hades", ambiguous: false });
+  assert.deepEqual(Object.keys(api.rawg).sort(), ["candidates", "configured", "cover"], "aucune méthode qui donne la clé");
   assert.ok(!JSON.stringify(r).includes(KEY));
 });
 

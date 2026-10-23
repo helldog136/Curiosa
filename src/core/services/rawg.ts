@@ -1,6 +1,8 @@
 import { prisma } from "@/core/db";
 import { TIMED_OUT, withDeadline } from "@/core/deadline";
 import { deleteSetting, getSetting, setSetting } from "@/core/settings";
+import { fixFor, noteDoubtful, onFixesChanged, rawgImagePath, rawgImageUrl, type Fix } from "./rawgFixes";
+import { isAmbiguous, rank } from "./rawgMatch";
 
 /**
  * SERVICE « RAWG » (jaquettes de jeux) — offert aux modules par le cœur (`ctx.api.rawg`).
@@ -12,9 +14,17 @@ import { deleteSetting, getSetting, setSetting } from "@/core/settings";
  *  - au plus 2 requêtes simultanées pour tout le site ;
  *  - dernier état de la clé (ok / refusée / injoignable + date) gardé dans les réglages, donc dans la sauvegarde ;
  *  - jamais d'exception, jamais la clé dans une valeur renvoyée, un journal ou une erreur.
+ *
+ * Choix du jeu (cœur 0.2.10) : RAWG renvoie jusqu'à 8 résultats ; le cœur compare chacun au titre demandé (rawgMatch.ts) et prend le plus ressemblant, pas
+ * forcément le premier. Quand le meilleur n'est pas un titre quasi identique, ou qu'un autre est presque aussi bon, la réponse porte `ambiguous: true` et le titre
+ * entre dans la liste « Jaquettes à vérifier » (rawgFixes.ts) où la propriétaire choisit le bon jeu. Son choix est une CORRECTION mémorisée, appliquée AVANT le cache.
  */
 export type RawgStatus = "found" | "none" | "no-key" | "refused" | "unreachable";
-export type RawgCover = { status: RawgStatus; url: string | null };
+/** `name`, `id`, `ambiguous` sont facultatifs et seulement présents avec `found` : un module qui ne lit que `status` et `url` n'est pas touché. */
+export type RawgCover = { status: RawgStatus; url: string | null; name?: string; id?: number; ambiguous?: boolean };
+/** Un jeu proposé pour un titre (jaquette présente, adresse https). */
+export type RawgCandidate = { id: number; name: string; year: number | null; platforms: string[]; url: string };
+export type RawgCandidates = { status: RawgStatus; candidates: RawgCandidate[] };
 export type RawgKeyState = "ok" | "refused" | "unreachable";
 export type RawgCheck = "ok" | "refused" | "unreachable" | "no-key";
 
@@ -32,6 +42,10 @@ const NONE_TTL = 3_600_000;
 const MAX_CACHE = 500;
 const MAX_PARALLEL = 2;
 const MAX_TITLE = 100;
+/** Résultats demandés à RAWG et lus (borne dure : jamais plus, quoi que réponde le serveur) ; candidats rendus à un module ou à l'écran de correction. */
+const PAGE_SIZE = 8;
+export const MAX_CANDIDATES = 6;
+const MAX_PLATFORMS = 3;
 /**
  * Bornes de TEMPS, quoi qu'il arrive (une attente qui ne se termine jamais, ici, figerait chaque page qui affiche une jaquette) :
  * la requête entière (réponse et lecture du corps) ; l'attente d'une des 2 places ; la demande entière d'une jaquette, base de données comprise.
@@ -130,10 +144,14 @@ export async function importRawgKeyFromModules(): Promise<"imported" | "done" | 
 }
 
 // ── Cache et concurrence (partagés par tous les modules) ─────────────────────────────────────────────────────────────
-type Cached = { value: RawgCover; until: number };
+/** Ce que RAWG a répondu pour une recherche (jusqu'à 8 jeux, image absente = null). */
+type Raw = { id: number; name: string; year: number | null; platforms: string[]; image: string | null };
+type Cached = { list: Raw[]; until: number };
 const cache = new Map<string, Cached>();
-const inflight = new Map<string, Promise<RawgCover>>();
+const inflight = new Map<string, Promise<Looked>>();
 export function clearRawgCache(): void { cache.clear(); inflight.clear(); }
+// Une correction qui change vide le cache : les listes de candidats reflètent toujours le choix le plus récent.
+onFixesChanged(clearRawgCache);
 
 let running = 0;
 const waiting: (() => void)[] = [];
@@ -154,8 +172,8 @@ async function limited<T>(job: () => Promise<T>): Promise<T> {
 }
 
 /** Titre nettoyé : sans caractères de contrôle, espaces réduits, longueur bornée. */
-export function cleanTitle(title: unknown): string {
-  return String(title ?? "").replace(/[\u0000-\u001f\u007f\u2028\u2029]+/g, " ").replace(/\s+/g, " ").trim().slice(0, MAX_TITLE).trim();
+export function cleanTitle(title: unknown, max = MAX_TITLE): string {
+  return String(title ?? "").slice(0, max * 4).replace(/[\u0000-\u001f\u007f\u2028\u2029]+/g, " ").replace(/\s+/g, " ").trim().slice(0, max).trim();
 }
 
 function httpsUrl(value: unknown): string | null {
@@ -163,27 +181,38 @@ function httpsUrl(value: unknown): string | null {
   try { const u = new URL(value); return u.protocol === "https:" ? u.toString() : null; } catch { return null; }
 }
 
-type Outcome = { kind: "found"; url: string } | { kind: "none" } | { kind: "refused" } | { kind: "unreachable" };
+const shortText = (v: unknown, max: number): string => (typeof v === "string" ? v.replace(/[\u0000-\u001f\u007f\u2028\u2029]+/g, " ").replace(/\s+/g, " ").trim().slice(0, max) : "");
+
+/** Un résultat de RAWG, lu avec méfiance (types, longueurs). Un résultat sans nom ni numéro reste utilisable comme avant (id 0 = inconnu). */
+function parseResult(r: unknown): Raw | null {
+  if (!r || typeof r !== "object") return null;
+  const o = r as { id?: unknown; name?: unknown; released?: unknown; platforms?: unknown; background_image?: unknown };
+  const year = typeof o.released === "string" && /^\d{4}-\d{2}-\d{2}$/.test(o.released) ? Number(o.released.slice(0, 4)) : null;
+  const platforms = Array.isArray(o.platforms)
+    ? o.platforms.slice(0, 12).map((p) => shortText((p as { platform?: { name?: unknown } } | null)?.platform?.name, 40)).filter(Boolean).slice(0, MAX_PLATFORMS)
+    : [];
+  return { id: typeof o.id === "number" && Number.isSafeInteger(o.id) && o.id > 0 ? o.id : 0, name: shortText(o.name, 150), year, platforms, image: httpsUrl(o.background_image) };
+}
+
+type Outcome = { kind: "ok"; list: Raw[] } | { kind: "refused" } | { kind: "unreachable" };
 
 /** Une requête RAWG (sans cache). Ne lève jamais ; la clé n'apparaît dans aucun résultat ni message. */
 async function query(key: string, search: string): Promise<Outcome> {
-  const url = `${ENDPOINT}?${new URLSearchParams({ key, search, page_size: "1", search_precise: "true" })}`;
+  const url = `${ENDPOINT}?${new URLSearchParams({ key, search, page_size: String(PAGE_SIZE), search_precise: "true" })}`;
   try {
     // La place est gardée pendant la requête ET la lecture de la réponse, et la requête entière a une borne dure même si `fetch` ignorait son signal d'abandon.
     const got = await limited(async () => {
       const done = await withDeadline(async () => {
         const res = await doFetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS), headers: { accept: "application/json" } });
-        return { status: res.status, ok: res.ok, body: res.status === 401 || res.status === 403 || !res.ok ? null : ((await res.json()) as { results?: { background_image?: unknown }[] }) };
+        return { status: res.status, ok: res.ok, body: res.status === 401 || res.status === 403 || !res.ok ? null : ((await res.json()) as { results?: unknown[] }) };
       }, limits.requestMs);
       if (done === TIMED_OUT) throw new Error("rawg: request timed out");
       return done;
     });
     if (got.status === 401 || got.status === 403) return { kind: "refused" };
     if (!got.ok) return { kind: "unreachable" };
-    const body = got.body;
-    const first = Array.isArray(body?.results) ? body.results[0] : undefined;
-    const image = httpsUrl(first?.background_image);
-    return image ? { kind: "found", url: image } : { kind: "none" };
+    const results = Array.isArray(got.body?.results) ? got.body.results.slice(0, PAGE_SIZE) : [];
+    return { kind: "ok", list: results.map(parseResult).filter((r): r is Raw => r !== null) };
   } catch (error) {
     // Seulement le type de l'erreur : un message de réseau pourrait contenir l'adresse demandée, donc la clé.
     console.error("[rawg] request failed:", (error as Error)?.name);
@@ -191,44 +220,98 @@ async function query(key: string, search: string): Promise<Outcome> {
   }
 }
 
-/** Jaquette d'un jeu. Ne lève jamais. */
+/** `fresh` : la réponse vient d'être demandée à RAWG (et non relue du cache). */
+type Looked = { kind: "ok"; list: Raw[]; fresh: boolean } | { kind: "refused" } | { kind: "unreachable" };
+
+/** Les résultats de RAWG pour cette recherche : cache (trouvé ~24 h, « aucun résultat » ~1 h), demande partagée, état de la clé mémorisé. Ne lève jamais. */
+async function lookup(key: string, search: string): Promise<Looked> {
+  const id = search.toLowerCase();
+  const hit = cache.get(id);
+  if (hit && hit.until > Date.now()) return { kind: "ok", list: hit.list, fresh: false };
+  const pending = inflight.get(id);
+  if (pending) return await sharedLook(pending);
+
+  const job = (async (): Promise<Looked> => {
+    const outcome = await query(key, search);
+    if (outcome.kind === "ok") {
+      await rememberState("ok");
+      if (cache.size >= MAX_CACHE) cache.delete(cache.keys().next().value as string);
+      cache.set(id, { list: outcome.list, until: Date.now() + (outcome.list.some((r) => r.image) ? FOUND_TTL : NONE_TTL) });
+      return { kind: "ok", list: outcome.list, fresh: true };
+    }
+    await rememberState(outcome.kind);
+    return outcome;
+  })();
+  inflight.set(id, job);
+  // Même si `job` ne se terminait jamais (base de données figée…), la demande rend la main à temps ET l'entrée « en cours » est retirée : la demande suivante repart de zéro.
+  try { return await sharedLook(job); } finally { if (inflight.get(id) === job) inflight.delete(id); }
+}
+
+/** Attend une demande en cours (la sienne ou celle d'un autre), au plus `coverMs`. */
+async function sharedLook(job: Promise<Looked>): Promise<Looked> {
+  const done = await withDeadline(() => job, limits.coverMs);
+  return done === TIMED_OUT ? { kind: "unreachable" } : done;
+}
+
+/** La réponse « jaquette » qui correspond à une correction mémorisée. */
+function coverOfFix(fix: Fix): RawgCover {
+  if (fix.kind === "none" || !fix.img) return { status: "none", url: null };
+  return { status: "found", url: rawgImageUrl(fix.img), ...(fix.name ? { name: fix.name } : {}), ...(fix.rawgId ? { id: fix.rawgId } : {}), ambiguous: false };
+}
+
+/** Jaquette d'un jeu. Ne lève jamais. La correction de la propriétaire (s'il y en a une) passe AVANT le cache et avant RAWG. */
 export async function rawgCover(title: string): Promise<RawgCover> {
   try {
-    const search = cleanTitle(title);
+    // Le titre complet (120 caractères au plus) sert à retrouver une correction ; RAWG n'en reçoit que les 100 premiers.
+    const asked = cleanTitle(title, 120);
+    const search = asked.slice(0, MAX_TITLE).trim();
     const key = await getRawgKey();
     if (!key) return { status: "no-key", url: null };
     if (!search) return { status: "none", url: null };
 
-    const id = search.toLowerCase();
-    const hit = cache.get(id);
-    if (hit && hit.until > Date.now()) return { ...hit.value };
-    const pending = inflight.get(id);
-    if (pending) return await shared(pending);
+    const fix = await fixFor(asked);
+    if (fix) return coverOfFix(fix);
 
-    const job = (async (): Promise<RawgCover> => {
-      const outcome = await query(key, search);
-      if (outcome.kind === "found" || outcome.kind === "none") {
-        await rememberState("ok");
-        const value: RawgCover = outcome.kind === "found" ? { status: "found", url: outcome.url } : { status: "none", url: null };
-        if (cache.size >= MAX_CACHE) cache.delete(cache.keys().next().value as string);
-        cache.set(id, { value, until: Date.now() + (outcome.kind === "found" ? FOUND_TTL : NONE_TTL) });
-        return value;
-      }
-      await rememberState(outcome.kind);
-      return { status: outcome.kind, url: null };
-    })();
-    inflight.set(id, job);
-    // Même si `job` ne se terminait jamais (base de données figée…), la demande rend la main à temps ET l'entrée « en cours » est retirée : la demande suivante repart de zéro.
-    try { return await shared(job); } finally { if (inflight.get(id) === job) inflight.delete(id); }
+    const looked = await lookup(key, search);
+    if (looked.kind !== "ok") return { status: looked.kind, url: null };
+    const ranked = rank(search, looked.list);
+    const best = ranked[0];
+    if (!best || !best.image) return { status: "none", url: null };
+    // Sans nom, rien à comparer : `ambiguous` est alors absent (inconnu), et le titre n'entre pas dans la liste.
+    const ambiguous = best.name ? isAmbiguous(ranked) : undefined;
+    // Un titre douteux entre dans « Jaquettes à vérifier », seulement quand RAWG vient d'être interrogé (jamais à chaque lecture du cache) ; une même entrée est mise à jour, pas doublée.
+    if (ambiguous && looked.fresh) void noteDoubtful({ title: asked, name: best.name, rawgId: best.id || undefined, url: best.image, candidates: ranked.length });
+    return { status: "found", url: best.image, ...(best.name ? { name: best.name } : {}), ...(best.id ? { id: best.id } : {}), ...(ambiguous !== undefined ? { ambiguous } : {}) };
   } catch {
     return { status: "unreachable", url: null };
   }
 }
 
-/** Attend une demande en cours (la sienne ou celle d'un autre), au plus `coverMs`. */
-async function shared(job: Promise<RawgCover>): Promise<RawgCover> {
-  const done = await withDeadline(() => job, limits.coverMs);
-  return done === TIMED_OUT ? { status: "unreachable", url: null } : { ...done };
+/**
+ * Les jeux que RAWG propose pour ce titre (6 au plus, jaquette obligatoire, du plus ressemblant au moins ressemblant). `search` : une autre recherche
+ * (l'écran de correction laisse la propriétaire taper le vrai nom) ; ce texte n'est qu'un mot de recherche envoyé à l'API RAWG, jamais une adresse.
+ * Ne lève jamais ; même cache, même limite de 2 requêtes et mêmes délais que `rawgCover`.
+ */
+export async function rawgCandidates(title: string, search?: string): Promise<RawgCandidates> {
+  try {
+    const asked = cleanTitle(title);
+    const words = cleanTitle(search) || asked;
+    const key = await getRawgKey();
+    if (!key) return { status: "no-key", candidates: [] };
+    if (!words) return { status: "none", candidates: [] };
+    const looked = await lookup(key, words);
+    if (looked.kind !== "ok") return { status: looked.kind, candidates: [] };
+    const out: RawgCandidate[] = [];
+    for (const c of rank(words, looked.list)) {
+      // Seules les images de RAWG (media.rawg.io) sont proposées : l'écran n'affiche, et le cœur ne garde, rien d'autre.
+      if (!c.image || !rawgImagePath(c.image) || !c.id || !c.name || out.some((o) => o.id === c.id)) continue;
+      out.push({ id: c.id, name: c.name, year: c.year, platforms: c.platforms, url: c.image });
+      if (out.length >= MAX_CANDIDATES) break;
+    }
+    return { status: out.length ? "found" : "none", candidates: out };
+  } catch {
+    return { status: "unreachable", candidates: [] };
+  }
 }
 
 /** Bouton « Tester la clé » : interroge RAWG avec la clé enregistrée et mémorise le résultat. Ne lève jamais. */
@@ -237,7 +320,7 @@ export async function checkRawgKey(): Promise<RawgCheck> {
     const key = await getRawgKey();
     if (!key) return "no-key";
     const outcome = await query(key, "portal");
-    const state: RawgKeyState = outcome.kind === "found" || outcome.kind === "none" ? "ok" : outcome.kind;
+    const state: RawgKeyState = outcome.kind === "ok" ? "ok" : outcome.kind;
     await rememberState(state, true);
     return state;
   } catch {
