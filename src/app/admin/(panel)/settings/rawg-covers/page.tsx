@@ -119,7 +119,7 @@ function Todo({ d, t, date }: { d: Doubtful; t: T; date: (iso: string) => string
       </div>
       <div className="flex flex-col gap-2 sm:w-48 sm:shrink-0">
         <Link href={fixHref} className={`${ui.btnPrimary} min-h-11`}>{t("rawgfix.fix")}</Link>
-        <ActionForm action={confirmAction} submitLabel={t("rawgfix.good")} pendingLabel={t("progress.saving")} secondary className="space-y-2">
+        <ActionForm action={confirmAction} submitLabel={t("rawgfix.good")} pendingLabel={t("progress.saving")} secondary className="space-y-2 [&_button]:w-full">
           <input type="hidden" name="title" value={d.title} />
         </ActionForm>
       </div>
@@ -141,7 +141,7 @@ function Kept({ f, k, t, date }: { f: Fix; k: string; t: T; date: (iso: string) 
       </div>
       <div className="flex flex-col gap-2 sm:w-40 sm:shrink-0">
         <Link href={`${RAWG_FIX_PATH}?titre=${encodeURIComponent(f.title)}`} className={`${ui.btn} min-h-11`}>{t("rawgfix.change")}</Link>
-        <ActionForm action={forgetAction} submitLabel={t("rawgfix.forget")} pendingLabel={t("progress.deleting")} secondary className="space-y-2">
+        <ActionForm action={forgetAction} submitLabel={t("rawgfix.forget")} pendingLabel={t("progress.deleting")} secondary className="space-y-2 [&_button]:w-full">
           <input type="hidden" name="key" value={k} />
         </ActionForm>
       </div>
@@ -200,7 +200,7 @@ async function FixScreen({ title, q, qTooLong, userId, advanced, configured, t }
                   </div>
                 </div>
                 <div className="sm:w-44 sm:shrink-0">
-                  <ActionForm action={chooseGameAction} submitLabel={t("rawgfix.choose")} pendingLabel={t("progress.saving")} className="space-y-2">
+                  <ActionForm action={chooseGameAction} submitLabel={t("rawgfix.choose")} pendingLabel={t("progress.saving")} className="space-y-2 [&_button]:w-full">
                     <input type="hidden" name="title" value={title} />
                     <input type="hidden" name="rawgId" value={c.id} />
                     <input type="hidden" name="q" value={q.trim()} />
