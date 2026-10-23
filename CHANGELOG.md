@@ -7,6 +7,16 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.2.8
+
+### Améliorations
+
+- **Rien ne change pour vous.** Cette version ne fait que compléter la documentation : les échanges entre extensions du pont Home Assistant et des alertes du live y sont maintenant décrits.
+
+### Pour les développeurs
+
+- `docs/MODULES.md`, tableau « Sujets connus » : ajout de `ha.result`, `ha.state` et `live.event`. Les extensions qui les publient peuvent retirer leur exception `NOT_YET_DOCUMENTED`.
+
 ## 0.2.7
 
 ### Améliorations
