@@ -7,6 +7,18 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.2.9
+
+### Améliorations
+
+- **Une faille de sécurité critique du moteur du site est corrigée : mettez à jour dès que possible.** Cette version ne change rien d'autre à l'apparence ni au fonctionnement de votre site.
+
+### Pour les développeurs
+
+- Next 16.3.8 → 16.4.1 (`eslint-config-next` aligné) : la plus petite version corrigée de la lignée 16 ; 16.4.2 existe mais n'est pas nécessaire.
+- Avis corrigés (16.0.0 à 16.4.0) : GHSA-2464-fhr4-w9xw (critique, exécution de code à distance via l'optimisation d'images avec des SVG), GHSA-673q-mjm6-r5xr (critique, exécution de code à distance via `use cache` et des tableaux typés), GHSA-p3m5-59mp-jv5r (haute, déni de service sur les actions serveur).
+- Affecté dans Curiosa : l'optimisation d'images est désactivée et `use cache` n'est pas utilisé ; seules les actions serveur de l'admin sont concernées par le déni de service. Dans le verrou, seuls `next`, `@next/*` et `sharp` 0.35.5 bougent.
+
 ## 0.2.8
 
 ### Améliorations
