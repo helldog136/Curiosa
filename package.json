@@ -1,6 +1,6 @@
 {
   "name": "curiosa",
-  "version": "0.2.9",
+  "version": "0.2.10",
   "private": true,
   "license": "SEE LICENSE IN LICENSE",
   "author": "Helldog136 (https://helldog136.be)",
@@ -39,7 +39,7 @@
     "remark-gfm": "^4.0.1",
     "sharp": "^0.35.4",
     "simple-icons": "^16.29.0",
-    "zod": "^4.1.0"
+    "zod": "^4.6.6"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "4.3.3",

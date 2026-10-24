@@ -234,7 +234,7 @@ jamais échouer la requête si l'e-mail échoue — c'est exactement l'ordre de 
 
 **Reprendre ce que les autres modules déclarent récolter.** `await ctx.api.privacy.declarations()` renvoie, par module actif, sa déclaration `privacy` par langue (permission `privacy`, cœur 0.2.6) : utile à un module « Mentions légales » pour ne pas recopier la liste à la main. Un script pour votre seule page : `scripts: ["mon-script.js"]` dans le résultat de `page()` (fichier du dossier `scripts/`). Détails : [MODULES.md](MODULES.md).
 
-**Jaquettes de jeux.** `await ctx.api.rawg.cover("Hades")` renvoie `{ status, url }` (`found`, `none`, `no-key`, `refused`, `unreachable`) et ne lève jamais ; `api.rawg.configured()` dit si une clé est réglée.
+**Jaquettes de jeux.** `await ctx.api.rawg.cover("Hades")` renvoie `{ status, url }` (`found`, `none`, `no-key`, `refused`, `unreachable`, plus `name`, `id` et `ambiguous` facultatifs depuis le cœur 0.2.10) et ne lève jamais ; `ctx.api.rawg.candidates("Hades")` donne les jeux proposés (6 au plus) ; `api.rawg.configured()` dit si une clé est réglée.
 La clé RAWG se règle une fois par le propriétaire (*Réglages › Services externes*) : ne la demandez jamais dans les réglages de votre module. Permission : `rawg`. Détails : [MODULES.md](MODULES.md#jaquettes-de-jeux-rawg).
 
 ## 10. Échanger avec les autres modules : sujets et flux RSS

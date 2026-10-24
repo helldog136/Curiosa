@@ -211,6 +211,15 @@ Le site n'envoie aucune politique `Content-Security-Policy` globale (seulement `
 - **QR et export** : routes réservées à l'équipe connectée (401 sinon, 403 sans accès), `Cache-Control: private, no-store`, SVG avec `Content-Security-Policy: default-src 'none'`, texte alternatif échappé, CSV neutralisé contre les formules.
 - **Assistants IA** : `redirects_list` et `redirects_stats` sont des lectures ; `redirects_create`, `redirects_update` (écriture) et `redirects_delete` (destructif) ne sont **jamais accordés d'office**, un jeton en lecture ne peut pas les recevoir, et chaque écriture est consignée (`mcp:<jeton> redirect.create|update|delete`).
 
+## Jaquettes de jeux : corrections de la propriétaire (0.2.10)
+
+- **Aucune requête vers une adresse donnée par une personne** : le cœur n'interroge que l'API RAWG (`api.rawg.io`), comme avant. Le jeu se choisit par son **numéro** parmi les propositions que RAWG vient de donner ; l'image enregistrée est celle de cette réponse, jamais une adresse envoyée par le navigateur ou un assistant. Le texte « Chercher un autre nom » n'est qu'un mot de recherche (nettoyé, 100 caractères).
+- **Images** : une image (choisie parmi les jeux ou, en mode avancé, collée) doit être exactement `https://media.rawg.io/media/….(png|jpg|jpeg|webp)` : https, cet hôte seulement, ni port, ni identifiant, ni paramètre, ni `..`, ni `%`, ni sous-domaine ; l'adresse doit être sous sa forme canonique. Le cœur ne la télécharge pas et ne suit aucune redirection : il garde le **chemin** (l'hôte est écrit par le cœur à la lecture). Une correction abîmée ou piégée dans une sauvegarde est ignorée à la lecture (mêmes règles).
+- **Affichage** : les titres et noms sont du texte (jamais du HTML) ; `?titre=` est validé côté serveur et échappé.
+- **Droits** : l'écran et ses actions exigent un administrateur (`adminCtx("admin")` en tête de chaque action serveur) ; cadence limitée par personne (30 lectures et 60 écritures par minute) ; 1000 corrections au plus, titres de 120 caractères au plus, journal de 100 titres purgé à la lecture, sans minuteur de fond.
+- **Assistants IA** : `rawg_covers_to_check` est une lecture ; `rawg_cover_set` (écriture) n'est **jamais accordé d'office**, un jeton en lecture ne peut pas le recevoir, la cadence est limitée par jeton, et chaque écriture est consignée (`mcp:<jeton> rawg.fix` ou `rawg.fix.forget`).
+- **Vie privée** : la clé RAWG n'est affichée ni journalisée nulle part ; aucune donnée de visiteur n'entre dans ces réglages (des titres de jeux et des numéros RAWG).
+
 ## Dépannage en SSH (propriétaire du serveur seulement)
 
 Si le propriétaire est bloqué (trop d'essais, mot de passe perdu), la commande de secours se lance **sur le serveur**, depuis le dossier de l'application, avec l'utilisateur du service :

@@ -339,8 +339,17 @@ export type ModuleApi = {
   rawg: {
     /** Une clé RAWG est-elle réglée (et ce module a-t-il la permission) ? */
     configured(): Promise<boolean>;
-    /** Jaquette du jeu `title` : `found` (url https), `none` (aucun résultat), `no-key`, `refused` (RAWG refuse la clé), `unreachable`. */
-    cover(title: string): Promise<{ status: "found" | "none" | "no-key" | "refused" | "unreachable"; url: string | null }>;
+    /**
+     * Jaquette du jeu `title` : `found` (url https), `none` (aucun résultat, ou « aucune jaquette » choisi par la propriétaire), `no-key`, `refused` (RAWG refuse la clé), `unreachable`.
+     * Champs facultatifs (cœur 0.2.10, avec `found` seulement) : `name` (le jeu trouvé), `id` (son numéro RAWG), `ambiguous` (vrai si le titre est douteux : la propriétaire peut
+     * le corriger dans l'admin). Une correction de la propriétaire est appliquée avant tout le reste.
+     */
+    cover(title: string): Promise<{ status: "found" | "none" | "no-key" | "refused" | "unreachable"; url: string | null; name?: string; id?: number; ambiguous?: boolean }>;
+    /**
+     * Les jeux que RAWG propose pour `title` (cœur 0.2.10) : 6 au plus, jaquette présente, du plus ressemblant au moins ressemblant. Pour afficher « Ce n'est pas le bon jeu ? »
+     * (la correction se fait dans l'admin). Mêmes statuts que `cover`, mêmes garanties : ne lève jamais.
+     */
+    candidates(title: string): Promise<{ status: "found" | "none" | "no-key" | "refused" | "unreachable"; candidates: { id: number; name: string; year: number | null; platforms: string[]; url: string }[] }>;
   };
   /**
    * Client réseau NEUTRE et BORNÉ du cœur (aucune permission à déclarer). À préférer à `fetch` pour toute API externe : délai dur (8 s par défaut,

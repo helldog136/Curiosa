@@ -18,7 +18,7 @@ import { createTarGzAsync, isSafeArchivePath, type TarFile } from "./tar";
 import { opStep } from "../operations/tracker";
 
 /** Réglages qui n'ont aucun sens après une restauration (état de la dernière vérification de version). */
-const VOLATILE_SETTINGS = new Set(["updates.latest", "updates.checkedAt", "updates.error"]);
+const VOLATILE_SETTINGS = new Set(["updates.latest", "updates.checkedAt", "updates.error", "rawg.toCheck"]); // journaux et caches : ils se reconstituent tout seuls
 const MAX_MODULE_FILE = 5 * 1024 * 1024;
 const MAX_MODULE_FILES = 50;
 const safeSegment = (s: string) => s.replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^[-.]+|[-.]+$/g, "").slice(0, 80) || "x";

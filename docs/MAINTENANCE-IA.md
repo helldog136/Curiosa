@@ -123,6 +123,17 @@ Avec la validation humaine (le défaut), un outil de niveau 3 renvoie `{"status"
 
 Si le propriétaire a choisi l'**exécution directe** pour ton jeton, l'outil agit tout de suite et répond `done` ou `failed`. Cela ne change rien à ta prudence.
 
+### Jaquettes de jeux douteuses (0.2.10)
+
+Deux outils du cœur, hors du préfixe `maintenance_` (ce sont des outils de contenu, pas de maintenance) :
+
+| Outil | Niveau | Rôle |
+|---|---|---|
+| `rawg_covers_to_check {title?, search?}` | 1 (lecture, accordé d'office) | les titres de jeux dont la jaquette est douteuse (100 au plus, le plus récent d'abord) : titre demandé, jeu trouvé, numéro RAWG, adresse de la jaquette, nombre de jeux possibles, date. Avec `title`, ajoute jusqu'à 6 jeux candidats (`rawgId`, nom, année, plateformes, jaquette) ; `search` essaie d'autres mots chez RAWG |
+| `rawg_cover_set {title, rawgId \| none \| imageUrl \| forget, search?}` | écriture, **jamais accordé d'office** | enregistre la bonne jaquette d'un titre pour tout le site : `rawgId` (un des candidats), `none: true` (aucune jaquette), `imageUrl` (une image `https://media.rawg.io/media/…` uniquement) ou `forget: true` (retire la correction) |
+
+Marche à suivre : `rawg_covers_to_check` ; pour un titre, `rawg_covers_to_check {title}` ; **dites à la propriétaire quel jeu vous proposez et pourquoi** (la jaquette est visible par les visiteurs), puis `rawg_cover_set` seulement si elle est d'accord et si cet outil vous est accordé. Sinon, indiquez-lui l'écran : *Réglages › Services externes › Jaquettes à vérifier*. Une erreur dit en anglais quoi corriger (jeu absent des propositions, image refusée, 1000 corrections atteintes, trop de demandes). Aucune clé n'est jamais montrée.
+
 ### Quand demander à l'humain
 
 - Dès que `maintenance_diagnose` indique `needsHuman: true` (disque presque plein, base abîmée, dépendance manquante, mise à jour qui a échoué, module sur une branche ou un commit fixe…).

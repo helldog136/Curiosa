@@ -28,6 +28,9 @@ const BG_EXAMPLE = JSON.stringify([
 import { saveMail, sendTestMail } from "./mail-actions";
 import { saveRawg, testRawgKey } from "./rawg-actions";
 import { getRawgState, isRawgConfigured } from "@/core/services/rawg";
+import { readToCheck } from "@/core/services/rawgFixes";
+import { RAWG_FIX_PATH } from "@/core/rawgAdmin";
+import Link from "next/link";
 
 const TRANSLATABLE = ["site.name", "site.tagline", "site.about", "footer.text", "header.secondaryLabel", "header.buttonLabel", "privacy.extra"] as const;
 
@@ -54,6 +57,7 @@ export default async function SettingsPage() {
   const isOwner = hasRole(user, "owner");
   const rawgOn = isOwner && (await isRawgConfigured());
   const rawgState = isOwner ? await getRawgState() : null;
+  const rawgTodo = rawgOn ? (await readToCheck()).length : 0;
   const values: Record<string, Record<string, unknown>> = {};
   for (const key of TRANSLATABLE) values[key] = await getSettingByLocale(key);
   const logo = await getSetting<string>("site.logo");
@@ -338,6 +342,16 @@ export default async function SettingsPage() {
               <p className={ui.help}>{t("settings.rawgTestHelp")}</p>
             </div>
           </div>
+          {rawgOn && (
+            <div className={`${ui.card} space-y-4`} data-testid="rawg-covers-card">
+              <div>
+                <h3 className="font-semibold">{t("rawgfix.title")}</h3>
+                <p className={ui.help}>{t("rawgfix.cardHelp")}</p>
+              </div>
+              <p><span className={rawgTodo ? ui.chipWarn : ui.chipOk} data-testid="rawg-todo-count">{rawgTodo ? t(rawgTodo === 1 ? "rawgfix.cardCount.one" : "rawgfix.cardCount", { count: rawgTodo }) : t("rawgfix.cardNone")}</span></p>
+              <Link href={RAWG_FIX_PATH} className={`${rawgTodo ? ui.btnPrimary : ui.btn} min-h-11`}>{t("rawgfix.cardOpen")}</Link>
+            </div>
+          )}
         </section>
       )}
       </Tabs>

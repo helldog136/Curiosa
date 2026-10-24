@@ -36,7 +36,7 @@ export function FieldErrorText({ id, message }: { id: string; message: string | 
   if (!message) return null;
   return (
     <p id={id} data-field-error="" className="mt-1.5 flex items-start gap-1.5 text-sm font-medium text-red-700">
-      <span aria-hidden="true">{ICON}</span><span>{message}</span>
+      <span aria-hidden="true">{ICON}</span><span className="min-w-0 [overflow-wrap:anywhere]">{message}</span>
     </p>
   );
 }
@@ -70,7 +70,7 @@ export function useFieldErrorsDom(form: RefObject<HTMLElement | null>, errors: F
       p.id = id; p.setAttribute("data-field-error", "");
       p.className = "mt-1.5 flex items-start gap-1.5 text-sm font-medium text-red-700";
       const icon = document.createElement("span"); icon.setAttribute("aria-hidden", "true"); icon.textContent = ICON;
-      const text = document.createElement("span"); text.textContent = message;
+      const text = document.createElement("span"); text.className = "min-w-0 [overflow-wrap:anywhere]"; text.textContent = message;
       p.append(icon, text);
       el.after(p);
       const before = el.getAttribute("aria-describedby");
