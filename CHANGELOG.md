@@ -16,6 +16,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **« Ce choix est bon » valide le jeu trouvé** et retire le titre de la liste. Vos choix sont utilisés partout tout de suite et gardés dans vos sauvegardes. « Oublier » rend le choix au site.
 - **Votre assistant IA peut vous aider**, si vous l'y autorisez : lire la liste (accordé d'office) et enregistrer la bonne jaquette (jamais accordé d'office).
 - Rien ne change pour les titres qui n'ont jamais posé de problème.
+- **Une faille de sécurité du composant qui vérifie les formulaires et les réglages est corrigée.** Rien ne change dans l'usage de votre site.
 
 ### Pour les développeurs
 
@@ -25,6 +26,8 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - Écran `/admin/settings/rawg-covers` (administrateurs ; `?titre=` ouvre un titre : lien stable pour les extensions). Logique commune écran et MCP : `core/rawgAdmin.ts` (30 lectures et 60 écritures par minute).
 - Outils MCP `rawg_covers_to_check` (lecture) et `rawg_cover_set` (écriture, jamais d'office) ; audit `rawg.fix`, `rawg.fix.forget`, `rawg.fix.forgetAll`.
 - Documentation : MODULES, PLATFORM, SECURITE, MAINTENANCE-IA, BACKUP, TESTSUPPORT.
+- zod 4.6.5 → 4.6.6 (`^4.6.6`), la plus petite version corrigée (4.6.7 ne change que le numéro). Avis GHSA-mrhx-c7xc-m3w5 (haute, CWE-770) : un tableau, un `Map` ou un `Set` énorme épuisait la mémoire avant d'être refusé pour dépassement de `.max()`.
+- Affecté dans Curiosa : zod est une dépendance directe, utilisée seulement par `parseManifest` (`module.json`). Aucun visiteur n'y accède ; seul le dépôt d'un module hostile, installé ou actualisé par l'administrateur, pourrait en abuser.
 
 ## 0.2.9
 
