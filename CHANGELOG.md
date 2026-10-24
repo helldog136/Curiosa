@@ -7,6 +7,19 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.2.11
+
+### Améliorations
+
+- **Un module Carte peut désormais proposer « Près de moi ».** Après un clic du visiteur, son navigateur lui demande s'il accepte de partager sa position ; sans clic ni accord, rien n'est demandé. La caméra et le micro restent fermés.
+- **Les modules qui ont des lieux peuvent les montrer sur une carte, et la mascotte peut annoncer une nouveauté.** Par exemple les évènements, l'annuaire ou le jeu du jour. Rien n'apparaît sans que le module concerné le prévoie, et jamais l'adresse d'une personne sans son accord.
+- Rien d'autre ne change pour votre site.
+
+### Pour les développeurs
+
+- `next.config.mjs` : `Permissions-Policy: camera=(), microphone=(), geolocation=(self)` (avant : `geolocation=()`, qui faisait refuser la position par le navigateur même après un clic). `(self)` seulement : aucun tiers, aucun joker. Test : `tests/core/permissions-policy.test.mjs`.
+- `docs/SECURITE.md` décrit l'en-tête ; `docs/MODULES.md`, « Sujets connus » : nouveaux sujets `map.place` (`id`, `title`, `lat`, `lng`, `kind`, `url?`, `at?`, `note?` ; coordonnées bornées, jamais d'adresse personnelle sans consentement) et `mascot.hint` (`id`, `text`, `url?`).
+
 ## 0.2.10
 
 ### Améliorations
