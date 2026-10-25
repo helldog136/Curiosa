@@ -542,7 +542,13 @@ async function updateModuleWithin(id: string, chain: string[]): Promise<InstallR
       targetVersion = incoming.manifest.version;
       // Contrôle de chargement dans un processus tout neuf, AVANT de toucher au dossier du module : le nouveau code est posé à part et essayé là.
       const staged = await stageFetchHead(dir);
-      try { await preflightOrThrow(staged.root, incoming.manifest); } finally { staged.cleanup(); }
+      try {
+        // Les mêmes contrôles simples que plus bas, dans le même ordre, pour que l'erreur dite soit la plus précise (fichier principal absent, trop gros…) et non « ne se charge pas ».
+        if (incoming.manifest.id !== id) throw Object.assign(new Error("manifest"), { code: "modules.error.nomanifest" });
+        if (incoming.manifest.main && !fs.existsSync(path.join(staged.root, incoming.manifest.main))) throw Object.assign(new Error("main"), { code: "modules.error.nomain" });
+        if (dirSize(staged.root) > MAX_MODULE_BYTES) throw Object.assign(new Error("size"), { code: "modules.error.size" });
+        await preflightOrThrow(staged.root, incoming.manifest);
+      } finally { staged.cleanup(); }
     }
     // Versions sautées : chacune à son tour, ses `requires` puis SES migrations, avec SON code, avant de passer à la dernière.
     if (isStableTag(row.ref) && newRef !== row.ref) {

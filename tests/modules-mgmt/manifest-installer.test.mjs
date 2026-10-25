@@ -210,7 +210,11 @@ test("désinstallation : supprime fichiers, instances, réglages et données du 
 
 test("registre : un module cassé est ignoré sans casser les autres", async () => {
   await db.fixture("blog");
-  await installModule(makeRepo({ "module.json": base({ id: "casse", main: "index.mjs" }), "index.mjs": "throw new Error('boum');" }).url);
+  // Un module qui ne se charge pas n'est plus installé (contrôle de chargement) : il casse APRÈS coup (fichier abîmé sur le disque).
+  assert.equal((await installModule(makeRepo({ "module.json": base({ id: "casse", main: "index.mjs" }), "index.mjs": "throw new Error('boum');" }).url)).error, "modules.error.loadCheck");
+  assert.equal((await installModule(makeRepo({ "module.json": base({ id: "casse", main: "index.mjs" }), "index.mjs": "export default {};" }).url)).ok, true);
+  fs.writeFileSync(path.join(R.moduleDir("casse"), "index.mjs"), "throw new Error('boum');");
+  R.forgetModule("casse");
   await db.prisma.module.update({ where: { id: "casse" }, data: { enabled: true } });
   const log = console.error; console.error = () => {};
   try {

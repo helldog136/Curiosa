@@ -159,7 +159,7 @@ export type ReinstallResult =
     changed: boolean;
     before: Snapshot; after: Snapshot;
     migrations: MigrationOutcome[];
-    /** Des fichiers secondaires du module (pas le fichier principal) ont changé : Node peut en garder l'ancienne copie en mémoire jusqu'au redémarrage du site. */
+    /** Toujours faux depuis le cœur 0.2.13 (champ gardé pour compatibilité) : les fichiers secondaires sont rechargés avec le fichier principal, depuis une copie neuve (snapshot.ts). */
     restartAdvised: boolean;
     /** Remarque (jamais un refus) : voir staticImports.ts. */
     warnings?: LoadWarning[];
@@ -272,10 +272,10 @@ export async function reinstallModule(id: string, opts: ReinstallOptions = {}): 
     const migrations = await migrateModuleInstances(id);
     swapped = false;
 
-    const mainOf = manifest.main;
     await clearBlockedUpdate(id);
     const warning = staticImportsWarning(target);
-    const restartAdvised = !!oldFp && Object.keys({ ...oldFp.files, ...newFp.files }).some((f) => /\.(m?js|cjs)$/.test(f) && f !== mainOf && oldFp.files[f] !== newFp.files[f]);
+    // Plus jamais « redémarrez le site » pour des fichiers secondaires : chaque chargement part d'une copie neuve de tout le dossier (snapshot.ts). Le champ reste (compatibilité).
+    const restartAdvised = false;
     return { ok: true, id, changed: true, before, after, migrations, restartAdvised, ...(warning ? { warnings: [warning] } : {}) };
   } catch (error) {
     let rolledBack = false;
