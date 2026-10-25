@@ -66,6 +66,7 @@ function valid(value: unknown, type: TopicField["type"]): boolean {
     case "boolean": return typeof value === "boolean";
     case "string[]": return Array.isArray(value) && value.every((v) => typeof v === "string");
     case "datetime": return isIsoDatetime(value);
+    case "any": return true;
   }
 }
 

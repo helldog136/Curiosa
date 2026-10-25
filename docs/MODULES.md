@@ -1367,6 +1367,16 @@ Pour vos tests : `fakeCtx({ rawgCover, rawgCandidates })` (objets ou fonctions `
 
 Le cœur ne connaît aucun réseau : il demande à **tous** les modules actifs qui fournissent `social.link` leur bouton et l'affiche dans l'en-tête. Un réseau est donc un module (`"type": "social"`, `"instances": "multiple"` pour en ajouter un par compte) : `"provides": [{ "topic": "social.link" }]` et `exports["social.link"] = (ctx) => [{ label, url, icon? }]`. `label` et `url` sont obligatoires (`url` : adresse https externe ; les autres sont écartées), `icon` est un identifiant d'icône (`twitch`, `youtube`…) ou un emoji. Le cœur garde 10 boutons au plus, sans doublon, dans l'ordre des instances. Renvoyez une liste vide tant que le module n'est pas réglé.
 
+**Rendu du lien (facultatif, par bouton).** Un bouton peut aussi déclarer `rel`, `referrerPolicy` et `target`. Le cœur garde la maîtrise du rendu : il vérifie chaque valeur dans une **liste fermée**, ignore ce qui n'y est pas (le bouton reste affiché, avec le défaut sûr) et n'écrit jamais d'autre attribut.
+
+| Champ | Valeurs acceptées | Défaut |
+|---|---|---|
+| `rel` | texte séparé par des espaces ou liste : `noopener`, `noreferrer`, `nofollow`, `sponsored`, `ugc` (casse ignorée, doublons retirés) ; `noopener` est **toujours** ajouté | `noopener noreferrer` |
+| `referrerPolicy` | `no-referrer`, `no-referrer-when-downgrade`, `origin`, `origin-when-cross-origin`, `same-origin`, `strict-origin`, `strict-origin-when-cross-origin` (`unsafe-url` est refusée : elle transmet l'adresse complète de la page) | aucun attribut |
+| `target` | `_blank` ou `_self` | `_blank` |
+
+Un `rel` déclaré **remplace** le défaut (ne demandez pas `noreferrer` si vous voulez que la destination voie d'où vient le visiteur). Une `referrerPolicy` choisie **sans** `rel` remplace `noreferrer` par `noopener` seul, car `noreferrer` annulerait la politique. Une adresse `javascript:` (ou toute adresse qui n'est pas http(s)/mailto) reste écartée quels que soient ces champs. Un bouton qui ne déclare rien est rendu exactement comme avant (`rel="noopener noreferrer" target="_blank"`, sans `referrerpolicy`).
+
 Le flux RSS est une fonctionnalité du cœur (`/feed.xml`). Les modules à contenu y sont déjà. Un autre module y ajoute ses éléments en fournissant le sujet `feed.item` : `"provides": [{ "topic": "feed.item" }]` et `exports["feed.item"] = (ctx, { locale, limit }) => [{ title, url, summary?, publishedAt?, id?, topics? }]`. `title` et `url` sont obligatoires (`url` : chemin du site `/…` ou adresse http(s) ; les autres schémas sont écartés), `publishedAt` est une date ISO **en texte**. `topics` : les rubriques **partagées** sur lesquelles publier (`["announcement", "concert"]`). Elles sont communes à tous les modules : si le blog et votre agenda publient tous deux sur `announcement`, un lecteur abonné à `announcement` reçoit les deux. Le cœur ajoute lui-même `@<instance>` ; un module ne peut pas le déclarer. Ne mettez que des éléments **publics** (jamais un message en attente de modération) : le flux est lisible par tous. Le cœur échappe le XML : donnez du texte brut.
 
 ## Overlay (type `overlay`)

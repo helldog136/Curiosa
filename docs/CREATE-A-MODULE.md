@@ -283,6 +283,10 @@ Le sujet du cœur `core.entry` donne les entrées publiées de tout module à co
 pour un exemple de consommateur, lisez `sponsor-ticker` (`curiosa-extras/modules/sponsor-ticker`). Formats de champs : `string`, `url`, `number`, `boolean`, `string[]`.
 Nommez vos sujets `domaine.objet` en anglais. Permission : `topics`. Voir la référence : « sujets ».
 
+### Un bouton de réseau social : choisir `rel`, `referrerPolicy`, `target`
+
+Un module qui fournit `social.link` renvoie `[{ label, url, icon? }]` et peut ajouter, par bouton, `rel` (`"nofollow sponsored"` ou une liste), `referrerPolicy` (`"strict-origin-when-cross-origin"`…) et `target` (`"_self"` ou `"_blank"`). Le cœur ne retient que les valeurs de listes fermées (voir [MODULES.md](MODULES.md#réseaux-sociaux)) : une valeur inconnue est ignorée et le bouton garde `noopener noreferrer` + `_blank`. Rien d'autre n'est copié dans le HTML. Testez avec `fakeCtx` que votre export renvoie ces champs, et sur un site jetable que le HTML de l'en-tête est celui attendu.
+
 ## 11. Panneau et actions d'admin
 
 Sous les réglages de chaque instance, votre module peut afficher son propre panneau : tableau, boutons, formulaires — toujours réservé aux administrateurs (le cœur vérifie).
