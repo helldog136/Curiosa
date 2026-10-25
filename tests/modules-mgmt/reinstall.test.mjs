@@ -130,10 +130,14 @@ test("cache d'imports : le nouveau code sert tout de suite, sans redémarrage (m
   assert.equal((await R.getModule("cachemod")).def.marker, "nouveau", "sans ce compteur Node resservirait l'ancien code en mémoire");
 });
 
-test("restartAdvised : un fichier secondaire modifié demande un redémarrage, pas le fichier principal", async () => {
-  await legacyFolder("planning", { files: { "index.mjs": code("a"), "lib.mjs": "export const v = 0;\n" } });
-  await publish({ marker: "a", files: { "lib.mjs": "export const v = 1;\n" } });
-  assert.equal((await X.reinstallModule("planning")).restartAdvised, true);
+test("un fichier secondaire modifié est rechargé avec le reste : plus aucun redémarrage conseillé (cœur 0.2.13)", async () => {
+  const withLib = (marker) => `import { v } from "./lib.mjs";\nexport default { marker: ${JSON.stringify(marker)}, v };\n`;   // import STATIQUE : le cas qui exigeait un redémarrage
+  await legacyFolder("planning", { files: { "index.mjs": withLib("a"), "lib.mjs": "export const v = 0;\n" } });
+  assert.equal((await R.getModule("planning")).def.v, 0);
+  await publish({ marker: "a", files: { "index.mjs": withLib("a"), "lib.mjs": "export const v = 1;\n" } });
+  const r = await X.reinstallModule("planning");
+  assert.equal(r.restartAdvised, false);
+  assert.equal((await R.getModule("planning")).def.v, 1, "le voisin importé statiquement est celui de la source, sans redémarrage");
   tamper();
   assert.equal((await X.reinstallModule("planning")).restartAdvised, false);
 });

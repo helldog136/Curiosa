@@ -3,6 +3,7 @@ import { forgetAllChoices } from "./choiceCache";
 import { RESERVED_PATHS } from "../config";
 import { isKnownLocale } from "../i18n/locales";
 import { pickKnownColumns } from "../backup/schema";
+import { eraseOwnedFiles } from "../services/files";
 import { bumpGenerations } from "../services/store";
 import { migrateModuleInstances, type MigrationOutcome } from "./dataMigrations";
 import { getModule } from "./registry";
@@ -156,8 +157,12 @@ export async function listRetired(moduleId?: string): Promise<RetiredLine[]> {
   return rows.map(toLine);
 }
 
-/** « Tout effacer » pour des données déjà rangées : un module (toutes ses instances) ou une seule instance. Irréversible. */
+/** « Tout effacer » pour des données déjà rangées (leurs fichiers revendiqués aussi) : un module (toutes ses instances) ou une seule instance. Irréversible. */
 export async function eraseRetired(target: { moduleId: string } | { id: string }): Promise<number> {
-  const r = await prisma.retiredInstance.deleteMany({ where: "id" in target ? { id: target.id } : { moduleId: target.moduleId } });
+  const where = "id" in target ? { id: target.id } : { moduleId: target.moduleId };
+  const ids = (await prisma.retiredInstance.findMany({ where, select: { id: true } })).map((r) => r.id);
+  const r = await prisma.retiredInstance.deleteMany({ where });
+  // Les fichiers que ces instances avaient revendiqués (ctx.api.files) partent avec leurs données : sinon ils resteraient sans propriétaire ni moyen de les retirer.
+  for (const id of ids) await eraseOwnedFiles({ instanceId: id }, "system");
   return r.count;
 }

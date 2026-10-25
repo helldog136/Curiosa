@@ -49,7 +49,7 @@ export async function createBackup(password: string, opts: { now?: Date; iterati
   opStep("collect");
   const now = opts.now ?? new Date();
   const config = await getSiteConfig();
-  const [users, settings, moduleRows, instances, instanceTranslations, entries, entryTranslations, redirects, retired, roles, userRoles] = await Promise.all([
+  const [users, settings, moduleRows, instances, instanceTranslations, entries, entryTranslations, redirects, retired, roles, userRoles, uploadFiles] = await Promise.all([
     prisma.user.findMany({ orderBy: { createdAt: "asc" } }),
     prisma.setting.findMany({ orderBy: [{ key: "asc" }, { locale: "asc" }] }),
     listModuleRows(),
@@ -61,6 +61,8 @@ export async function createBackup(password: string, opts: { now?: Date; iterati
     prisma.retiredInstance.findMany({ orderBy: [{ retiredAt: "asc" }, { id: "asc" }] }),
     prisma.role.findMany({ orderBy: [{ createdAt: "asc" }, { id: "asc" }] }),
     prisma.userRole.findMany({ orderBy: [{ userId: "asc" }, { roleId: "asc" }] }),
+    // Seulement les fichiers revendiqués par un module (propriétaire connu) : les envois « en attente » expirent seuls.
+    prisma.uploadFile.findMany({ where: { ownerInstance: { not: null } }, orderBy: { name: "asc" } }),
   ]);
 
   const keyOf = new Map(instances.map((i) => [i.id, i.key]));
@@ -90,6 +92,8 @@ export async function createBackup(password: string, opts: { now?: Date; iterati
     // Rôles (droits en liste JSON lisible) et affectations.
     jsonFile(DATA_FILES.roles, roles.map((r) => ({ ...r, rights: safeParse(r.rights) }))),
     jsonFile(DATA_FILES.userRoles, userRoles),
+    // Qui possède quel fichier envoyé (modules à permission « files ») : la restauration remet le propriétaire avec le fichier.
+    jsonFile(DATA_FILES.uploadFiles, uploadFiles),
   ];
 
   // ── Copie lisible ───────────────────────────────────────────────────────────

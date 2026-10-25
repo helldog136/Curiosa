@@ -6,11 +6,15 @@ import type { Module } from "@prisma/client";
 import { prisma } from "../db";
 import { MODULES_DIR } from "../config";
 import { parseManifest, type ParsedManifest } from "./manifest";
-import { forgetModule, getModule, moduleDir, readGitManifest } from "./registry";
+import { forgetModule, getModule, moduleDir, readGitManifest, verifyModuleLoad } from "./registry";
+import { LoadCheckFailed, preflightModule } from "./loadCheck";
+import { clearBlockedUpdate, noteBlockedUpdate as noteBlocked } from "./blockedUpdate";
+import { staticImportsWarning } from "./staticImports";
 import { catalogueUnreachable, findCatalogueEntry, getCatalogue, type CatalogueEntry } from "./catalogue";
 import { hardNeeds, offerVersionOf, satisfiesVersion } from "./serviceVersions";
 import { checkBundledRow, convertToCatalogue } from "./bundledUpdate";
 import { dependentsOf } from "./dependencies";
+import { eraseOwnedFiles } from "../services/files";
 import { eraseRetired, restoreModuleInstances, retireModuleInstances } from "./retired";
 import { commitJournal, newJournal, satisfyRequirements, unwind, type DepOps, type Journal, type Missing } from "./dependencyInstaller";
 import { forgetAuto } from "./autoInstalled";
@@ -24,6 +28,9 @@ const run = promisify(execFile);
 const MAX_MODULE_BYTES = 10 * 1024 * 1024;
 const DEFAULT_HOSTS = "github.com,gitlab.com,codeberg.org,bitbucket.org";
 
+/** Remarque sur un module qui s'installe : ses fichiers voisins sont importés de façon statique (fragile hors du cœur 0.2.13+, voir staticImports.ts). */
+export type LoadWarning = { code: "staticImports"; files: string[] };
+
 export type InstallResult = {
   ok: true; id: string; migrations?: MigrationOutcome[];
   /** Ligne du journal d'audit quand la mise à jour a changé la SOURCE du module (module de base converti en module du catalogue). */
@@ -36,7 +43,9 @@ export type InstallResult = {
   kept?: number;
   /** Mise à jour réussie, mais il manque encore de quoi faire fonctionner le module : à dire à l'administrateur. */
   missing?: Missing[];
-} | { ok: false; error: string; /** Détail structuré de ce qui manque (service, version, cause) quand l'erreur est « modules.error.requires ». */ missing?: Missing[]; /** Précision lisible (ex. les services manquants). */ detail?: string; /** Erreur « modules.error.core » : version du cœur que le module demande (voir compat.ts). */ needsCore?: string };
+  /** Réussite avec une remarque (jamais un refus) : voir staticImports.ts. */
+  warnings?: LoadWarning[];
+} | { ok: false; error: string; /** Erreur « modules.error.loadCheck » : raison courte (anglais, sans chemin) pour le journal et l'assistant ; JAMAIS à montrer telle quelle à la propriétaire. */ loadError?: string; /** Le contrôle de chargement a refusé la nouvelle version ET l'ancienne a été remise : le module tourne comme avant. */ rolledBack?: boolean; /** Détail structuré de ce qui manque (service, version, cause) quand l'erreur est « modules.error.requires ». */ missing?: Missing[]; /** Précision lisible (ex. les services manquants). */ detail?: string; /** Erreur « modules.error.core » : version du cœur que le module demande (voir compat.ts). */ needsCore?: string };
 
 /** Le module demande un cœur plus récent que celui-ci : on refuse d'entrer ou de monter de version (jamais de désactiver un module déjà là). */
 export class CoreTooOld extends Error {
@@ -44,6 +53,8 @@ export class CoreTooOld extends Error {
   constructor(needs: string) { super("core too old"); this.needs = needs; }
 }
 const coreRefusal = (e: CoreTooOld): InstallResult => ({ ok: false, error: "modules.error.core", detail: e.needs, needsCore: e.needs });
+/** Le contrôle de chargement (loadCheck.ts) a refusé le code. `rolledBack` : une ancienne version était en place et a été remise. */
+const loadCheckRefusal = (e: LoadCheckFailed, rolledBack: boolean): InstallResult => ({ ok: false, error: "modules.error.loadCheck", loadError: e.reason, rolledBack });
 /** Lève CoreTooOld si CE cœur ne satisfait pas l'exigence. */
 function assertCore(requires: CoreRequirement | undefined): void {
   const inc = incompatWithThisCore(requires);
@@ -105,8 +116,8 @@ function gitArgs(args: string[]): string[] {
   ];
 }
 
-export async function git(args: string[], cwd?: string): Promise<string> {
-  const { stdout } = await run("git", gitArgs(args), { cwd, timeout: 90_000, env: GIT_ENV, maxBuffer: 1024 * 1024 });
+export async function git(args: string[], cwd?: string, env?: Record<string, string>): Promise<string> {
+  const { stdout } = await run("git", gitArgs(args), { cwd, timeout: 90_000, env: env ? { ...GIT_ENV, ...env } : GIT_ENV, maxBuffer: 1024 * 1024 });
   return stdout.trim();
 }
 
@@ -146,6 +157,39 @@ export function copyModuleFiles(from: string, target: string): void {
 }
 
 /**
+ * Pose le contenu de `FETCH_HEAD` (dépôt du module déjà récupéré dans `dir`) dans un dossier temporaire, SANS toucher au dossier du module, à son index ni à sa branche :
+ * c'est là que le contrôle de chargement essaie le nouveau code avant tout échange. `cleanup` efface le dossier temporaire.
+ */
+async function stageFetchHead(dir: string): Promise<{ root: string; cleanup: () => void }> {
+  fs.mkdirSync(MODULES_DIR, { recursive: true });
+  const tmp = fs.mkdtempSync(path.join(MODULES_DIR, ".incoming-stage-"));
+  const root = path.join(tmp, "tree");
+  const cleanup = () => fs.rmSync(tmp, { recursive: true, force: true });
+  try {
+    fs.mkdirSync(root);
+    const env = { GIT_INDEX_FILE: path.join(tmp, "index") };
+    await git(["read-tree", "FETCH_HEAD"], dir, env);
+    await git(["checkout-index", "-a", "-f", `--prefix=${root}/`], dir, env);
+    return { root, cleanup };
+  } catch (error) {
+    cleanup();
+    throw error;
+  }
+}
+
+/** Contrôle de chargement dans un processus tout neuf (loadCheck.ts) du code posé dans `root`. Lève LoadCheckFailed. */
+async function preflightOrThrow(root: string, manifest: ParsedManifest): Promise<void> {
+  const r = await preflightModule(root, manifest);
+  if (!r.ok) throw new LoadCheckFailed(r.reason);
+}
+
+/** Contrôle de chargement dans le processus du site, depuis une copie neuve, de la version décrite par `row` (fichiers déjà posés, ligne pas encore changée). Lève LoadCheckFailed. */
+async function verifyOrThrow(row: { id: string; version: string; commit: string | null }): Promise<void> {
+  const r = await verifyModuleLoad(row);
+  if (!r.ok) throw new LoadCheckFailed(r.reason);
+}
+
+/**
  * Installe un module depuis un dépôt git. « Installé » = « actif » : il n'y a pas d'état intermédiaire, c'est pourquoi l'accord de l'administrateur se donne AVANT
  * (case « je fais confiance » pour un dépôt personnel, fiche du catalogue). Si les données d'une désinstallation précédente avaient été gardées, elles reviennent.
  */
@@ -162,6 +206,7 @@ export async function installModule(input: string, opts: {
   const tmp = fs.mkdtempSync(path.join(MODULES_DIR, ".incoming-"));
   const checkout = path.join(tmp, "repo");
   let deps: Journal | null = null;
+  let candidate: { id: string; version: string } | null = null;
   try {
     opStep("download");
     if (ref && isCommitRef(ref)) {
@@ -185,6 +230,7 @@ export async function installModule(input: string, opts: {
     const manifest = parseManifest(JSON.parse(fs.readFileSync(manifestPath, "utf8")));
     if (!manifest.ok) return { ok: false, error: manifest.error };
     const m = manifest.manifest;
+    candidate = { id: m.id, version: m.version };
     // Un dépôt reconnu ne peut pas servir un autre module que celui annoncé.
     if (opts.expectId && m.id !== opts.expectId) return { ok: false, error: "modules.error.idmismatch" };
     assertCore(requirementOf(m));
@@ -194,6 +240,9 @@ export async function installModule(input: string, opts: {
 
     const existing = await prisma.module.findUnique({ where: { id: m.id } });
     if (existing) return { ok: false, error: "modules.error.exists" };
+
+    // Contrôle de chargement AVANT de rien installer (ni module, ni fournisseurs) : un code qui ne se charge pas n'entre pas.
+    await preflightOrThrow(root, m);
 
     // Les fournisseurs d'abord : si l'un d'eux ne peut pas être installé, rien n'est laissé (ni lui, ni ce module).
     if (opts.dependencies !== false && m.requires?.length) {
@@ -214,16 +263,21 @@ export async function installModule(input: string, opts: {
     await prisma.module.create({
       data: { id: m.id, source: "git", repoUrl: url, ref: ref ?? null, commit, subdir: subdir ?? null, tree, version: m.version, enabled: true },
     });
+    // Et dans le processus du site, depuis une copie neuve : c'est ce que le site exécutera. Échec : rien n'est laissé (ni module, ni fournisseurs).
+    const verdict = await verifyModuleLoad({ id: m.id, version: m.version, commit });
+    if (!verdict.ok) { await purgeModule(m.id); throw new LoadCheckFailed(verdict.reason); }
     if (deps) await commitJournal(deps);
     opStep("data");
     const kept = opts.restoreKept === false ? null : await restoreModuleInstances(m.id);
+    const warning = staticImportsWarning(moduleDir(m.id));
     return {
-      ok: true, id: m.id, ...(deps?.provided.length ? { provided: deps.provided } : {}),
+      ok: true, id: m.id, ...(warning ? { warnings: [warning] } : {}), ...(deps?.provided.length ? { provided: deps.provided } : {}),
       ...(kept?.restored.length ? { restored: kept.restored.map((r) => r.key) } : {}), ...(kept?.migrations.length ? { migrations: kept.migrations } : {}),
     };
   } catch (error) {
     if (deps) await unwind(deps);
     if (error instanceof CoreTooOld) return coreRefusal(error);
+    if (error instanceof LoadCheckFailed) { await noteBlocked(candidate?.id ?? "?", "", candidate?.version ?? "?", error, "install"); return loadCheckRefusal(error, false); }
     console.error("[modules] install failed:", error);
     return { ok: false, error: "modules.error.clone" };
   } finally {
@@ -328,14 +382,19 @@ async function updateSubdirModule(row: Module, chain: string[]): Promise<Install
     if (manifest.main && !fs.existsSync(path.join(fetched.root, manifest.main))) throw Object.assign(new Error("main"), { code: "modules.error.nomain" });
     if (dirSize(fetched.root) > MAX_MODULE_BYTES) throw Object.assign(new Error("size"), { code: "modules.error.size" });
     assertCore(requirementOf(manifest));
+    // Contrôle de chargement dans un processus tout neuf, AVANT de toucher à quoi que ce soit : un code qui ne se charge pas n'est pas échangé.
+    await preflightOrThrow(fetched.root, manifest);
     // 2. Échanger les fichiers : l'ancienne version est mise de côté et revient telle quelle au moindre échec (jusqu'aux migrations).
     fs.rmSync(backup, { recursive: true, force: true });
     fs.renameSync(target, backup);
     swapped = true;
     copyModuleFiles(fetched.root, target);
+    // Puis dans le processus du site, depuis une copie neuve, AVANT de basculer la ligne en base : la version d'avant sert jusque-là.
+    const next = { id, version: manifest.version, commit: fetched.commit };
+    await verifyOrThrow(next);
     await prisma.module.update({ where: { id }, data: { commit: fetched.commit, tree: fetched.tree, version: manifest.version, ref: ref ?? row.ref } });
     rowChanged = true;
-    forgetModule(id);
+    forgetModule(id, next);
     // 3. Les `requires` durs de la NOUVELLE version, avant toute migration (même journal d'annulation).
     opStep("deps");
     const settled = await settleBeforeMigrations(manifest, chain);
@@ -349,7 +408,9 @@ async function updateSubdirModule(row: Module, chain: string[]): Promise<Install
     pending = null;
     opStep("activate");
     const after = await afterMigrations(id, settled);
-    return { ok: true, id, migrations, ...(after.provided.length ? { provided: after.provided } : {}), ...(after.missing ? { missing: after.missing } : {}) };
+    await clearBlockedUpdate(id);
+    const warning = staticImportsWarning(target);
+    return { ok: true, id, migrations, ...(warning ? { warnings: [warning] } : {}), ...(after.provided.length ? { provided: after.provided } : {}), ...(after.missing ? { missing: after.missing } : {}) };
   } catch (error) {
     if (pending) await unwind(pending);   // panne exceptionnelle pendant les migrations (elles ne lèvent pas d'ordinaire) : tout est défait
     if (swapped) { fs.rmSync(target, { recursive: true, force: true }); fs.renameSync(backup, target); }
@@ -357,6 +418,7 @@ async function updateSubdirModule(row: Module, chain: string[]): Promise<Install
     forgetModule(id);
     if (error instanceof RequirementsMissing) return requirementsRefusal(error.missing);
     if (error instanceof CoreTooOld) return coreRefusal(error);
+    if (error instanceof LoadCheckFailed) { await noteBlocked(id, row.version, fetched?.manifest?.version ?? "?", error, "update"); return loadCheckRefusal(error, true); }
     console.error("[modules] update failed:", (error as Error)?.message);
     return { ok: false, error: (error as { code?: string })?.code ?? "modules.error.clone" };
   } finally {
@@ -457,6 +519,7 @@ async function updateModuleWithin(id: string, chain: string[]): Promise<InstallR
   let reached: { commit: string; version: string; ref: string } | null = null;
   const provided: string[] = [];
   let pending: Journal | null = null;
+  let targetVersion = "?";
   try {
     previous = await git(["rev-parse", "HEAD"], dir);
     let newRef = row.ref;
@@ -475,7 +538,19 @@ async function updateModuleWithin(id: string, chain: string[]): Promise<InstallR
     await git(["fetch", "--depth", "1", "origin", fetchRef], dir);
     opStep("verify");
     const incoming = await git(["show", "FETCH_HEAD:module.json"], dir).then((t) => parseManifest(JSON.parse(t))).catch(() => null);   // illisible : le contrôle habituel plus bas s'en charge
-    if (incoming?.ok) assertCore(requirementOf(incoming.manifest));
+    if (incoming?.ok) {
+      assertCore(requirementOf(incoming.manifest));
+      targetVersion = incoming.manifest.version;
+      // Contrôle de chargement dans un processus tout neuf, AVANT de toucher au dossier du module : le nouveau code est posé à part et essayé là.
+      const staged = await stageFetchHead(dir);
+      try {
+        // Les mêmes contrôles simples que plus bas, dans le même ordre, pour que l'erreur dite soit la plus précise (fichier principal absent, trop gros…) et non « ne se charge pas ».
+        if (incoming.manifest.id !== id) throw Object.assign(new Error("manifest"), { code: "modules.error.nomanifest" });
+        if (incoming.manifest.main && !fs.existsSync(path.join(staged.root, incoming.manifest.main))) throw Object.assign(new Error("main"), { code: "modules.error.nomain" });
+        if (dirSize(staged.root) > MAX_MODULE_BYTES) throw Object.assign(new Error("size"), { code: "modules.error.size" });
+        await preflightOrThrow(staged.root, incoming.manifest);
+      } finally { staged.cleanup(); }
+    }
     // Versions sautées : chacune à son tour, ses `requires` puis SES migrations, avec SON code, avant de passer à la dernière.
     if (isStableTag(row.ref) && newRef !== row.ref) {
       const replay = await replaySkippedReleases(id, dir, row.repoUrl, row.ref, newRef as string, chain, (step) => { reached = step.reached; provided.push(...step.provided); });
@@ -489,8 +564,12 @@ async function updateModuleWithin(id: string, chain: string[]): Promise<InstallR
     if (!manifest || manifest.id !== id) throw Object.assign(new Error("manifest"), { code: "modules.error.nomanifest" });
     if (manifest.main && !fs.existsSync(path.join(dir, manifest.main))) throw Object.assign(new Error("main"), { code: "modules.error.nomain" });
     if (dirSize(dir) > MAX_MODULE_BYTES) throw Object.assign(new Error("size"), { code: "modules.error.size" });
+    targetVersion = manifest.version;
+    // Puis dans le processus du site, depuis une copie neuve, AVANT de basculer la ligne en base : la version d'avant sert jusque-là.
+    const next = { id, version: manifest.version, commit };
+    await verifyOrThrow(next);
     await prisma.module.update({ where: { id }, data: { commit, version: manifest.version, ref: newRef } });
-    forgetModule(id);
+    forgetModule(id, next);
     // 3. Les `requires` durs de la nouvelle version (journal défait en entier s'il manque quelque chose).
     opStep("deps");
     const settled = await settleBeforeMigrations(manifest, chain);
@@ -503,7 +582,9 @@ async function updateModuleWithin(id: string, chain: string[]): Promise<InstallR
     opStep("activate");
     const after = await afterMigrations(id, settled);
     provided.push(...after.provided);
-    return { ok: true, id, migrations, ...(provided.length ? { provided: [...new Set(provided)] } : {}), ...(after.missing ? { missing: after.missing } : {}) };
+    await clearBlockedUpdate(id);
+    const warning = staticImportsWarning(dir);
+    return { ok: true, id, migrations, ...(warning ? { warnings: [warning] } : {}), ...(provided.length ? { provided: [...new Set(provided)] } : {}), ...(after.missing ? { missing: after.missing } : {}) };
   } catch (error) {
     // Retour en arrière : à la version d'avant, ou à la dernière version intermédiaire dont les données ont été migrées (jamais du code plus ancien que les données).
     if (pending) await unwind(pending);   // panne exceptionnelle pendant les migrations (elles ne lèvent pas d'ordinaire) : la cascade est défaite aussi
@@ -515,6 +596,7 @@ async function updateModuleWithin(id: string, chain: string[]): Promise<InstallR
     forgetModule(id);
     if (error instanceof RequirementsMissing) return requirementsRefusal(error.missing);
     if (error instanceof CoreTooOld) return coreRefusal(error);
+    if (error instanceof LoadCheckFailed) { await noteBlocked(id, row.version, targetVersion, error, "update"); return loadCheckRefusal(error, true); }
     console.error("[modules] update failed:", (error as Error)?.message);
     return { ok: false, error: (error as { code?: string })?.code ?? "modules.error.clone" };
   }
@@ -698,7 +780,11 @@ export async function uninstallModule(id: string, opts: { keepData: boolean }): 
   if (dependents.length) return { ok: false, error: "modules.error.requiredBy", detail: dependents.join(", ") };
   let kept = 0;
   if (opts.keepData) kept = (await retireModuleInstances(id, "uninstall")).length;
-  else await eraseRetired({ moduleId: id });
+  else {
+    await eraseRetired({ moduleId: id });
+    // « Tout effacer » : les fichiers que le module avait revendiqués (ctx.api.files) partent aussi. En gardant les données, ils restent (le registre suit l'instance rangée).
+    await eraseOwnedFiles({ moduleId: id }, "system");
+  }
   await purgeModule(id);
   await forgetAuto(id);
   return { ok: true, id, ...(opts.keepData ? { kept } : {}) };
@@ -713,6 +799,7 @@ export async function purgeModule(id: string): Promise<void> {
   await prisma.moduleInstance.deleteMany({ where: { moduleId: id } });
   await prisma.module.delete({ where: { id } });
   forgetModule(id);
+  await clearBlockedUpdate(id);
   fs.rmSync(moduleDir(id), { recursive: true, force: true });
 }
 

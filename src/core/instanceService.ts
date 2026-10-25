@@ -9,6 +9,7 @@ import { listInstances, toInstanceView } from "./instances";
 import { localized } from "./modules/types";
 import { keyFromNickname } from "./instanceLabel";
 import { retireInstance } from "./modules/retired";
+import { eraseOwnedFiles } from "./services/files";
 import { forgetAllChoices } from "./modules/choiceCache";
 import { ensureMenuMigrated, setInstanceInMenu } from "./menuStore";
 import { suggestsMenu } from "./modules/menuEligibility";
@@ -166,6 +167,8 @@ async function deleteInstanceRow(id: string): Promise<void> {
   await prisma.setting.deleteMany({ where: { key: { startsWith: `instance.${id}.` } } });
   await prisma.moduleRecord.deleteMany({ where: { instanceId: id } });
   await prisma.moduleInstance.delete({ where: { id } });
+  // Suppression définitive : les fichiers que l'instance avait revendiqués (ctx.api.files) partent aussi (ils n'ont plus d'autre propriétaire).
+  await eraseOwnedFiles({ instanceId: id }, "system");
   // Les réglages de l'accueil qui pointaient sur cette instance sont nettoyés à la lecture (voir getHomeSections).
 }
 

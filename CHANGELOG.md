@@ -7,6 +7,27 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.2.13
+
+### Améliorations
+
+- **Supprimer vraiment les fichiers envoyés par un module.** Un module qui le demande peut garder les fichiers que vous envoyez, puis les supprimer pour de bon du serveur (plus sur le disque, ni dans les sauvegardes suivantes). Il ne touche jamais aux fichiers d'un autre ni à ceux que vous n'avez pas envoyés par lui à l'instant.
+- **Retirer un module.** « Retirer et garder mes données » garde aussi les fichiers qu'il avait envoyés ; « Retirer et tout effacer » les supprime avec le reste.
+- **Nouvelle permission « Garder et supprimer les fichiers que vous envoyez via ce module »**, affichée avant l'installation.
+- **Une mise à jour de module ne peut plus laisser un module « impossible à charger ».** Avant de mettre en place une nouvelle version, votre site l'essaie à part. Si elle ne fonctionne pas, il garde la version qui marchait : vos pages, vos réglages et vos données ne bougent pas.
+- **Vous êtes prévenue en clair quand une version est refusée** (message, avis sur la page du module, et votre assistant IA le sait).
+- **Plus besoin de redémarrer le site après avoir réinstallé ou mis à jour un module.**
+- **Un module qui ajoute une icône de réseau peut choisir comment le lien s'ouvre et ce que le site de destination apprend d'où vient le visiteur**, dans une liste de choix sûrs. Un choix invalide est ignoré ; les liens existants ne changent pas.
+- Rien d'autre ne change pour votre site.
+
+### Pour les développeurs
+
+- Permission `files` et `ctx.api.files` (`claim`, `remove`, `owns`, `usage`) ; `minCore: "0.2.13"`. Revendication limitée à la personne qui vient d'envoyer le fichier (30 min, action d'administration) ; propriétaire = instance ; suppression de l'original et des dérivés ; plafond par module (4 Go, 20 000 fichiers) ; audit `file.claim`, `file.remove`, `file.erase`.
+- Table `UploadFile` (migration additive `20261025120000_upload_files`), sauvegardée dans `data/upload-files.json` ; dérivés nommés `<uuid>-<empreinte>`. Kit de test : `fakeCtx` offre `ctx.api.files` ; `FEATURES` connaît la fonction (`minCore` 0.2.13).
+- `snapshot.ts` : chaque chargement part d'une copie neuve (`<DATA_DIR>/modules-run/<pid>/<module>/<n>`, 4 générations), donc plus de cache d'imports des fichiers voisins. `loadCheck.ts` : contrôle de chargement avant bascule (processus Node neuf puis site), retour automatique, erreur `modules.error.loadCheck`.
+- Refus d'une mise à jour : audit `module.update.blocked`, mémoire `module.<id>.__blockedUpdate`, maintenance (`lastRefusedUpdate`, `staticNeighbourImports`, `alreadyRefused`). `staticImports.ts` détecte les imports statiques de fichiers voisins ; conseil de conformité `code.neighbourImports`.
+- `social.link` accepte `rel`, `referrerPolicy` (sauf `unsafe-url`) et `target` ; `SocialLink` expose `rel`, `referrerPolicy`, `target`. Type de champ interne `any` pour les sujets du cœur.
+
 ## 0.2.12
 
 ### Améliorations

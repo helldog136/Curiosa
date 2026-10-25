@@ -72,3 +72,50 @@ test("réseaux : l'en-tête lit les réseaux auprès du cœur (plus aucune liste
   assert.match(settings, /socialCount > 0/);
   assert.match(fs.readFileSync("src/app/admin/(panel)/settings/actions.ts", "utf8"), /providersOf\(SOCIAL_TOPIC\)\)\.length > 0\) await setSetting\("header\.socials"/);
 });
+
+let n = 0;
+const one = async (spec) => {
+  await db.reset(); n++;
+  const id = "lien" + n;
+  await add(id, network(id, { items: `[{ label: "L", url: "https://l.example/a", icon: "link"${spec ? ", " + spec : ""} }]` }));
+  const [l] = await S.loadSocialLinks("en");
+  return l;
+};
+
+test("réseaux : sans demande du module, rien ne change — noopener noreferrer, _blank, pas de politique de référent", async () => {
+  const l = await one("");
+  assert.deepEqual([l.rel, l.referrerPolicy, l.target], ["noopener noreferrer", null, "_blank"]);
+});
+
+test("réseaux : un module peut demander rel, referrerPolicy et target (listes fermées) ; noopener est toujours ajouté, ordre fixe, sans doublon", async () => {
+  const l = await one(`rel: "UGC  sponsored nofollow nofollow", referrerPolicy: "Origin", target: "_self"`);
+  assert.deepEqual([l.rel, l.referrerPolicy, l.target], ["noopener nofollow sponsored ugc", "origin", "_self"]);
+  const m = await one(`rel: ["noopener", "noreferrer"], target: " _BLANK "`);
+  assert.deepEqual([m.rel, m.target], ["noopener noreferrer", "_blank"]);
+});
+
+test("réseaux : valeurs invalides ignorées (défauts sûrs), l'élément reste affiché ; aucun attribut libre ni injection", async () => {
+  const l = await one(`rel: "external me", referrerPolicy: "unsafe-url", target: "_top"`);
+  assert.deepEqual([l.rel, l.referrerPolicy, l.target], ["noopener noreferrer", null, "_blank"]);
+  const bad = await one(`rel: 42, referrerPolicy: { a: 1 }, target: ["_self"], onclick: "alert(1)", style: "x", download: "y"`);
+  assert.deepEqual([bad.rel, bad.referrerPolicy, bad.target], ["noopener noreferrer", null, "_blank"]);
+  assert.deepEqual(Object.keys(bad).sort(), ["href", "icon", "instance", "label", "module", "referrerPolicy", "rel", "target"]);
+  const quote = await one(`rel: 'noopener" onmouseover="x', referrerPolicy: 'origin" x="'`);
+  assert.deepEqual([quote.rel, quote.referrerPolicy], ["noopener noreferrer", null]);
+});
+
+test("réseaux : une politique de référent choisie sans rel remplace noreferrer (qui l'annulerait) ; avec un rel explicite, le rel du module gagne", async () => {
+  const a = await one(`referrerPolicy: "strict-origin-when-cross-origin"`);
+  assert.deepEqual([a.rel, a.referrerPolicy], ["noopener", "strict-origin-when-cross-origin"]);
+});
+
+test("réseaux : javascript: reste refusé même avec des attributs valides", async () => {
+  await add("lienjs", network("lienjs", { items: `[{ label: "JS", url: "javascript:alert(1)", rel: "nofollow", target: "_self" }]` }));
+  assert.deepEqual(await S.loadSocialLinks("en"), []);
+});
+
+test("réseaux : l'en-tête écrit les attributs calculés par le cœur (plus de rel/target figés)", async () => {
+  const fs = await import("node:fs");
+  const header = fs.readFileSync("src/components/site/Header.tsx", "utf8");
+  assert.match(header, /rel=\{s\.rel\} referrerPolicy=\{s\.referrerPolicy \?\? undefined\} target=\{s\.target\}/);
+});

@@ -27,7 +27,7 @@ import { opStep } from "../operations/tracker";
 type Row = Record<string, unknown>;
 export type ParsedBackup = {
   manifest: BackupManifest;
-  data: { users: Row[]; settings: Row[]; modules: BackupModule[]; instances: Row[]; instanceTranslations: Row[]; entries: Row[]; entryTranslations: Row[]; redirects: Row[]; records: Row[]; /** Données gardées de modules retirés (absent des sauvegardes d'avant la 0.1.20). */ retired?: Row[]; /** Rôles et affectations (absents avant la 0.2.0 : recréés depuis `User.role`). */ roles?: Row[]; userRoles?: Row[] };
+  data: { users: Row[]; settings: Row[]; modules: BackupModule[]; instances: Row[]; instanceTranslations: Row[]; entries: Row[]; entryTranslations: Row[]; redirects: Row[]; records: Row[]; /** Données gardées de modules retirés (absent des sauvegardes d'avant la 0.1.20). */ retired?: Row[]; /** Rôles et affectations (absents avant la 0.2.0 : recréés depuis `User.role`). */ roles?: Row[]; userRoles?: Row[]; /** Propriétaires des fichiers revendiqués (0.2.13 ; absent avant : aucun). */ uploadFiles?: Row[] };
   uploads: { name: string; content: Buffer }[];
 };
 export type ParseError = "not-a-backup" | "wrong-password" | "corrupt" | "tampered" | "newer-format" | "newer-schema" | "no-owner";
@@ -98,11 +98,14 @@ function* checkFiles(tar: TarFile[]): Steps<Parsed> {
   const roles = files.has(DATA_FILES.roles) ? list(DATA_FILES.roles) : [];
   const userRoles = files.has(DATA_FILES.userRoles) ? list(DATA_FILES.userRoles) : [];
   if (roles === null || userRoles === null) return { ok: false, error: "corrupt" };
+  // Propriétaires des fichiers revendiqués (0.2.13), facultatifs : absents = aucun fichier n'a de propriétaire.
+  const uploadFiles = files.has(DATA_FILES.uploadFiles) ? list(DATA_FILES.uploadFiles) : [];
+  if (uploadFiles === null) return { ok: false, error: "corrupt" };
   const modules = manifest.modules;
   const d = data as Record<"users" | "settings" | "instances" | "instanceTranslations" | "entries" | "entryTranslations" | "redirects" | "records", Row[]>;
   if (!d.users.some((u) => levelOf(u) === "owner" && typeof u.email === "string" && typeof u.passwordHash === "string")) return { ok: false, error: "no-owner" };
   const uploads = [...files.entries()].filter(([p]) => p.startsWith("uploads/") && UPLOAD_NAME_RE.test(p.slice(8))).map(([p, content]) => ({ name: p.slice(8), content }));
-  return { ok: true, backup: { manifest, data: { ...d, modules, retired, roles, userRoles }, uploads } };
+  return { ok: true, backup: { manifest, data: { ...d, modules, retired, roles, userRoles, uploadFiles }, uploads } };
 }
 
 /* ───────────── Plan : que va-t-il se passer pour chaque module ? ───────────── */
@@ -241,7 +244,7 @@ export async function applyRestore(backup: ParsedBackup, opts: { confirmCustom: 
       await tx.moduleRecord.deleteMany(); await tx.entryTranslation.deleteMany(); await tx.entry.deleteMany();
       await tx.instanceTranslation.deleteMany(); await tx.moduleInstance.deleteMany(); await tx.redirect.deleteMany();
       await tx.userRole.deleteMany(); await tx.role.deleteMany();
-      await tx.setting.deleteMany(); await tx.user.deleteMany(); await tx.retiredInstance.deleteMany();
+      await tx.setting.deleteMany(); await tx.user.deleteMany(); await tx.retiredInstance.deleteMany(); await tx.uploadFile.deleteMany();
 
       for (const c of chunks(d.users)) await tx.user.createMany({ data: c.map((r) => reviveDates(MODEL_BY_FILE.users, r)) as never });
       for (const c of chunks(d.settings)) await tx.setting.createMany({ data: c.map((r) => ({ key: String(r.key), locale: String(r.locale ?? ""), value: JSON.stringify(r.value) })) });
@@ -259,6 +262,14 @@ export async function applyRestore(backup: ParsedBackup, opts: { confirmCustom: 
       const links = (d.userRoles ?? []).filter((r) => userIds.has(String(r.userId)) && roleIds.has(String(r.roleId))).map((r) => ({ userId: String(r.userId), roleId: String(r.roleId) }));
       for (const c of chunks([...new Map(links.map((l) => [`${l.userId}|${l.roleId}`, l])).values()])) await tx.userRole.createMany({ data: c });
       for (const c of chunks(d.retired ?? [])) await tx.retiredInstance.createMany({ data: c.map((r) => ({ ...reviveDates("RetiredInstance", pickKnownColumns("retired", r)), payload: JSON.stringify(r.payload) })) as never });
+
+      // Propriétaires des fichiers revendiqués : seulement pour les fichiers que cette sauvegarde contient (sinon la ligne n'aurait rien à désigner).
+      const inBackup = new Set(backup.uploads.map((u) => u.name));
+      const owned = (d.uploadFiles ?? []).filter((r) => typeof r.name === "string" && inBackup.has(r.name) && typeof r.ownerInstance === "string" && typeof r.ownerModule === "string");
+      for (const c of chunks(owned)) await tx.uploadFile.createMany({ data: c.map((r) => ({
+        name: String(r.name), uploaderId: typeof r.uploaderId === "string" ? r.uploaderId : null, bytes: Number.isFinite(Number(r.bytes)) ? Math.max(0, Math.trunc(Number(r.bytes))) : 0,
+        createdAt: new Date(String(r.createdAt)), ownerModule: String(r.ownerModule), ownerInstance: String(r.ownerInstance), claimedAt: typeof r.claimedAt === "string" ? new Date(r.claimedAt) : null,
+      })).map((r) => (Number.isNaN(r.createdAt.getTime()) ? { ...r, createdAt: new Date() } : r)) });
 
       // Modules : un module « éteint » dans une sauvegarde d'avant la 0.1.20 garde ce drapeau le temps que la migration ci-dessous le désinstalle (données gardées).
       for (const m of d.modules) {

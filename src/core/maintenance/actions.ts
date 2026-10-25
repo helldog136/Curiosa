@@ -65,6 +65,7 @@ const REASONS: Record<string, string> = {
   "modules.error.nomanifest": "the new version has no valid description file", "modules.error.size": "the new version is too large", "modules.error.unknownSource": "its source is unknown", "modules.error.incompatible": "it is not compatible with this version",
   "modules.error.noSpace": "not enough disk space for a safety copy of the database (nothing was updated)", "modules.error.copyFailed": "the safety copy of the database failed (nothing was updated)",
   "modules.error.exists": "it is already installed", "modules.error.nomain": "its main file is missing", "modules.error.idmismatch": "the repository serves another module than announced",
+  "modules.error.loadCheck": "the new code does not load on this site, so it was refused before being put in place (the previous version stays in service and nothing changed; maintenance_diagnose gives the reason)",
   "error.generic": "the action failed",
 };
 const reason = (code: string | undefined) => (code && REASONS[code]) || (code && /^[\w.-]{1,60}$/.test(code) ? `failed (${code})` : "the action failed");
@@ -99,7 +100,7 @@ async function doBackup(): Promise<Outcome> {
 
 async function doReinstall(id: string): Promise<Outcome> {
   const r = await deps.reinstall(id);
-  if (!r.ok) return { ok: false, message: `Reinstall of "${id}" failed: ${reason(r.error)}${r.rolledBack ? " (the previous code was put back)" : ""}.` };
+  if (!r.ok) return { ok: false, message: `Reinstall of "${id}" failed: ${reason(r.error)}${r.rolledBack ? " (the previous code was put back)" : ""}.${r.loadError ? ` Cause: ${redactSecrets(r.loadError, 200)}.` : ""}` };
   const bad = r.migrations.some((x) => x.status === "failed" || x.status === "newer");
   return { ok: !bad, message: `${r.changed ? `Code of "${id}" renewed (${r.before.version} to ${r.after.version}); data, settings and instances are untouched.` : `"${id}" was already identical to its source; nothing changed.`}${bad ? " A data conversion failed: check maintenance_modules." : ""}${r.restartAdvised ? " A restart of the site may be needed for secondary files." : ""}`, details: { changed: r.changed } };
 }

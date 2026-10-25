@@ -11,6 +11,7 @@ import { qrSvg } from "@/core/services/qr";
 import { isRawgConfigured, rawgCandidates, rawgCover } from "@/core/services/rawg";
 import { renderPng, type PngSpec } from "@/core/services/render";
 import { createStore } from "@/core/services/store";
+import { claimFile, filesUsage, FILES_QUOTA_BYTES, FILES_QUOTA_COUNT, ownsFile, removeFile, type FileOwner } from "@/core/services/files";
 import { collect, collectPage } from "@/core/services/topics";
 import { getSiteConfig } from "@/core/settings";
 import { remainingBudgetMs } from "./budget";
@@ -29,6 +30,7 @@ import type { ModuleApi } from "./types";
  *     png     rendu d'une image PNG à partir d'une arborescence de boîtes
  *     store   stockage privé de l'instance
  *     mail    envoi d'e-mails au nom du site (SMTP réglé dans l'admin)
+ *     files   fichiers que le module revendique et supprime (permission « files », cœur 0.2.13 ; services/files.ts)
  *     rawg    jaquettes de jeux et jeux candidats (clé RAWG réglée une fois dans l'admin ; permission « rawg »)
  *     topics  échange d'informations typées entre modules
  *     net     client réseau neutre et borné (délai, pauses 429, quota, disjoncteur, file bornée, santé) ; aucun fournisseur connu du cœur
@@ -49,6 +51,8 @@ export type CallerRef = { person: AdminUser | null };
 export function makeApi(instance: InstanceView, locale: string, permissions: readonly string[] = [], caller?: CallerRef): ModuleApi {
   const rawgAllowed = permissions.includes("rawg");
   const privacyAllowed = permissions.includes("privacy");
+  const filesAllowed = permissions.includes("files");
+  const fileOwner: FileOwner = { moduleId: instance.moduleId, instanceId: instance.id, instanceKey: instance.key };
   /**
    * L'instance appelante, pour un appel de service. Une instance mise à l'écart (migration échouée) ne tourne pas, SAUF pendant sa propre
    * migration (« Réessayer ») : elle doit alors pouvoir appeler les services dont elle dépend, d'où le repli sur son module chargé.
@@ -97,6 +101,22 @@ export function makeApi(instance: InstanceView, locale: string, permissions: rea
       },
     },
     store: createStore(instance.id),
+    // Sans la permission « files » : rien n'est revendiqué ni supprimé (jamais d'erreur levée). La revendication exige la personne de l'action d'administration en cours (caller).
+    files: {
+      claim: async (url) => {
+        if (!filesAllowed) return { ok: false, reason: "no-permission" };
+        try { return await claimFile(fileOwner, caller?.person ? { id: caller.person.id, email: caller.person.email } : null, url); } catch { return { ok: false, reason: "unknown" }; }
+      },
+      remove: async (url) => {
+        if (!filesAllowed) return { ok: false, reason: "no-permission" };
+        try { return await removeFile(fileOwner, caller?.person?.email ?? `module:${instance.key}`, url); } catch { return { ok: false, reason: "failed" }; }
+      },
+      owns: async (url) => { try { return filesAllowed && (await ownsFile(fileOwner, url)); } catch { return false; } },
+      usage: async () => {
+        if (!filesAllowed) return { files: 0, bytes: 0, limitFiles: 0, limitBytes: 0 };
+        try { return await filesUsage(instance.moduleId); } catch { return { files: 0, bytes: 0, limitFiles: FILES_QUOTA_COUNT, limitBytes: FILES_QUOTA_BYTES }; }
+      },
+    },
     mail: { configured: isMailConfigured, send: (message) => sendMail(message, instance.key) },
     // Sans la permission « rawg » : comme s'il n'y avait pas de clé (le module ne peut ni l'utiliser ni la deviner).
     rawg: {

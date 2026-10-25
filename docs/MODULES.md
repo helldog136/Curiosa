@@ -11,7 +11,7 @@
 Sommaire : [anatomie](#anatomie-dun-module) · [manifeste `module.json`](#le-manifeste-modulejson) · [code `index.mjs`](#le-code-indexmjs) ·
 [contexte `ctx`](#le-contexte-ctx) · [blocs](#blocs) · [sujets](#échanger-des-informations-entre-modules-les-sujets) ·
 [admin](#panneau-dadmin-riche-formulaires-et-boutons-pilotés-par-le-module) · [MCP](#api-mcp-exposer-des-actions-aux-assistants) ·
-[thème](#thème-du-site-et-apparence-dun-module) · [e-mail](#envoyer-un-e-mail) · [jaquettes RAWG](#jaquettes-de-jeux-rawg) · [RSS](#alimenter-le-flux-rss) ·
+[thème](#thème-du-site-et-apparence-dun-module) · [e-mail](#envoyer-un-e-mail) · [jaquettes RAWG](#jaquettes-de-jeux-rawg) · [fichiers envoyés](#fichiers-envoyés-garder-et-supprimer-ctxapifiles) · [RSS](#alimenter-le-flux-rss) ·
 [overlay](#overlay-type-overlay) · [sauvegarde](#sauvegarde-lisible-sans-le-framework) · [installer et publier](#installer-publier-catalogue) ·
 [sécurité](#sécurité-à-lire-avant-dinstaller)
 
@@ -121,7 +121,7 @@ Validé à l'installation et au chargement (zod, `src/core/modules/manifest.ts`)
   "platform": "twitch",                  // facultatif : plateforme concernée (regroupement à l'écran)
   "instances": "multiple",               // ou "single"
   "page": true, "basePath": "guestbook", // l'instance a une page publique, sur ce chemin proposé
-  "permissions": ["slots", "sections", "routes", "storage", "filters", "pages", "topics", "overlay", "mcp", "admin", "mail", "rawg", "privacy", "visitor.geolocation"],
+  "permissions": ["slots", "sections", "routes", "storage", "filters", "pages", "topics", "overlay", "mcp", "admin", "mail", "rawg", "privacy", "visitor.geolocation", "files"],
   "settings": [ /* … */ ], "sections": [ /* … */ ], "consumes": [ /* … */ ], "provides": [ /* … */ ], "mcp": [ /* … */ ],
   "content": { /* … */ }, "onboarding": { /* … */ }, "defaultEnabled": true
 }
@@ -199,6 +199,7 @@ fidèlement (le test de l'exemple vérifie qu'elles correspondent au code), elle
 | `mail` | le module appelle `ctx.api.mail.send` |
 | `rawg` | le module appelle `ctx.api.rawg.cover` (jaquettes de jeux, voir « Jaquettes de jeux (RAWG) ») |
 | `privacy` | (cœur 0.2.6) le module appelle `ctx.api.privacy.declarations()` (lire ce que les autres modules déclarent récolter) |
+| `files` | (cœur 0.2.13, déclarez `"minCore": "0.2.13"`) le module appelle `ctx.api.files` : il garde (revendique) les fichiers que la personne envoie par l'administration et peut les supprimer. Voir « Fichiers envoyés : garder et supprimer ». Texte montré à l'administrateur : « Garder et supprimer les fichiers que vous envoyez via ce module ». |
 | `visitor.geolocation` | (cœur 0.2.12, déclarez `"minCore": "0.2.12"`) le code de la page appelle `navigator.geolocation` (« Près de moi »). **Seule permission qui change vraiment ce que le navigateur autorise** : voir ci-dessous |
 
 #### Permission `visitor.geolocation` (cœur 0.2.12)
@@ -691,9 +692,39 @@ Quand un module se comporte comme une ancienne version alors que son numéro est
 
 « Réinstaller ce module » remet le **code** à neuf depuis la source : la référence que suit la mise à jour (celle du catalogue s'il en vient, sinon la sienne), même à numéro et à empreinte identiques. Une ligne `bundled` (ancien site) est **convertie** en module du catalogue si le catalogue est joignable et la liste ; sinon erreur claire (« Le catalogue n'est pas joignable, réessayez »), jamais de copie locale (voir « Un module installé et le catalogue »). Un module installé à la main n'a pas de source : refus. La réinstallation **conserve tout le reste** : instances, réglages, données, état activé/désactivé, rangement et épinglage, placements d'accueil, droits MCP. Elle remet la version de la **source actuelle** du module.
 
-Garde-fous : refus si le module est inconnu, si une mise à jour du site est en cours, si le manifeste porte un autre `id`, un `main` absent, plus de 10 Mo ou un `minCore` plus récent que le cœur, et si la source demande de **nouvelles permissions** (jamais accordées en silence : passer par « Mettre à jour »). L'ancien dossier est mis de côté pendant l'échange (`.previous-<pid>`) et revient tel quel au moindre échec. Si la `dataVersion` change, les migrations de données sont rejouées comme après une mise à jour. Action de journal : `module.reinstall` (identifiant, versions et empreintes, jamais d'adresse ni de réglage). Idempotente : sur un code déjà identique, « Code identique : rien n'a changé ».
+Garde-fous : refus si le module est inconnu, si une mise à jour du site est en cours, si le manifeste porte un autre `id`, un `main` absent, plus de 10 Mo ou un `minCore` plus récent que le cœur, et si la source demande de **nouvelles permissions** (jamais accordées en silence : passer par « Mettre à jour »). L'ancien dossier est mis de côté pendant l'échange (`.previous-<pid>`) et revient tel quel au moindre échec, y compris si le nouveau code ne se charge pas (voir « Mise à jour sûre »). Si la `dataVersion` change, les migrations de données sont rejouées comme après une mise à jour. Action de journal : `module.reinstall` (identifiant, versions et empreintes, jamais d'adresse ni de réglage). Idempotente : sur un code déjà identique, « Code identique : rien n'a changé ».
 
-**Cache d'imports.** Node garde en mémoire un `import()` déjà fait pour une même adresse. Le cœur importe le fichier principal avec `?v=<commit ou version>` ; la réinstallation y ajoute un **compteur de rechargement** (`.r<n>`), si bien que le nouveau code du fichier principal sert tout de suite. Limite : les fichiers que ce fichier importe en chemin relatif (`./lib.mjs`) ne portent pas ce paramètre ; s'ils ont changé, le bilan demande de **redémarrer le site**.
+**Cache d'imports.** Voir la section suivante : depuis le cœur 0.2.13, un module est toujours rechargé depuis une copie neuve de tout son dossier ; la réinstallation ne demande plus jamais de redémarrer le site (le champ `restartAdvised` du bilan reste, toujours faux).
+
+### Mise à jour sûre : chargement à chaud et contrôle de chargement (cœur 0.2.13)
+
+**L'incident qui l'a motivée.** Le cœur rechargeait le code d'un module en important son fichier d'entrée avec `?v=<commit ou version>`. Mais Node garde en mémoire, sans jamais pouvoir l'oublier, chaque fichier déjà importé, et une adresse `?v=` ne vaut que pour LE fichier qu'on importe : un fichier voisin importé statiquement (`import { x } from "./source.mjs"`) restait à l'ancienne version. Après une mise à jour (module 1.16.0 de l'époque), le nouveau fichier d'entrée ne s'accordait plus avec l'ancien voisin : « The requested module './source.mjs' does not provide an export named … », le module devenait *impossible à charger*, et seul un redémarrage du processus (mise à jour du cœur) le réparait. Le test `tests/modules-mgmt/hot-reload.test.mjs` reproduit exactement cela (module de test à 2 fichiers, mis à jour dans le même processus) ; il échoue sur le cœur 0.2.12.
+
+**1. Une copie neuve à chaque chargement (`src/core/modules/snapshot.ts`).** Node ne permet pas d'invalider un graphe d'imports. Le cœur ne demande donc plus à Node d'oublier : à chaque chargement d'un module (installation, mise à jour, réinstallation, restauration, réinitialisation d'un module bloqué, redémarrage du site), il copie le dossier du module dans `<DATA_DIR>/modules-run/<pid>/<module>/<n>` et importe le fichier principal DEPUIS CETTE COPIE. Tous les fichiers du module — voisins importés statiquement, dynamiquement, voisins de voisins, sous-dossiers — ont alors des adresses que Node n'a jamais vues : aucune ancienne copie ne peut se mêler à la nouvelle. **Aucune règle nouvelle pour les auteurs de modules** : `import … from "./x.mjs"` fonctionne. L'adresse du fichier principal garde son `?v=…` (le motif `const q = new URL(import.meta.url).search` des modules reste valable). Le dossier d'installation (`<DATA_DIR>/modules/<id>`) reste LA référence : sauvegarde, scripts de page, droits et manifeste continuent de le lire. Hygiène : un dossier par processus, effacé au premier usage ; les dossiers de processus disparus sont nettoyés ; les **4 dernières générations** de chaque module sont gardées (l'ancien code peut avoir une requête en cours qui importerait encore un fichier tardivement), les autres sont supprimées.
+
+**2. Le contrôle de chargement, AVANT de basculer (`src/core/modules/loadCheck.ts`).** Avant d'installer, de mettre à jour ou de réinstaller un module, le cœur vérifie que le nouveau code SE CHARGE, en deux temps :
+
+1. *dans un processus Node tout neuf* (15 s au plus) qui importe le fichier principal avec tous ses imports. Ce processus ne reçoit ni la base, ni les secrets, ni l'environnement du site (seulement `PATH`) et ne vit que le temps du contrôle. S'il ne peut pas être lancé, le contrôle est « non fait » et ne bloque pas (le second temps reste) ;
+2. *dans le processus du site*, depuis une copie neuve : c'est ce que le site exécutera vraiment.
+
+Sont vérifiés : le fichier principal existe et s'importe (syntaxe, voisins, exports demandés), il exporte par défaut un objet, et chaque morceau (`sections`, `slots`, `routes`, `exports`, `adminActions`, `adminDownloads`, `mcp`, `tasks`, `services`, `migrations`, `page`, `overlay`, `news`, `adminBadge`, `adminPanel`, `entryPanels`) a la forme que le cœur attend (même règle que l'exigence `def.loads` de la suite de conformité). Un module à contenu, sans fichier principal, n'a rien à importer. Les contrôles simples habituels (manifeste, `main` absent, taille, `minCore`) passent avant, pour que l'erreur dite soit la plus précise.
+
+**3. Échec : retour automatique, rien n'a changé.**
+
+| Opération | Quand le contrôle a lieu | En cas d'échec |
+|---|---|---|
+| Installation | dans le dossier récupéré, avant d'installer le module et ses fournisseurs ; puis dans le site, juste après la création | rien n'est installé (ni module, ni fournisseurs, ni dossier) |
+| Mise à jour (dépôt, étiquette) | le nouveau code est posé à part (sans toucher au dossier ni à la branche du module) et essayé ; puis, après l'échange des fichiers et AVANT de changer la ligne en base | l'ancienne version est remise (`git reset` vers le commit d'avant), la ligne en base n'a pas bougé, les migrations de données n'ont pas commencé |
+| Mise à jour (dossier d'un dépôt de modules) | dans le dossier récupéré ; puis après l'échange, avant la ligne en base | l'ancien dossier, gardé à côté (`.previous-<pid>`) jusqu'à la validation, revient tel quel |
+| Réinstallation, conversion d'une ligne `bundled` | dans la source récupérée ; puis après l'échange, avant la ligne en base | l'ancien dossier revient tel quel |
+
+Le site continue de servir l'ancienne version pendant tout le contrôle : la ligne en base ne change qu'après sa réussite. L'erreur est `modules.error.loadCheck` (résultat `loadError` : raison courte en anglais, sans chemin du serveur ; `rolledBack: true`). Ce que voit la propriétaire, en mots simples : « Cette version du module ne se charge pas sur ce site : elle n'a donc pas été mise en place. Si le module était déjà installé, la version qui fonctionnait est restée en service et vos données n'ont pas bougé. Prévenez l'auteur du module : une version corrigée règlera le problème. » La page du module garde un avis (tant que la prochaine mise à jour n'a pas réussi) : « La mise à jour vers la version X a été refusée le … ». La raison technique n'est jamais affichée à la propriétaire.
+
+**Mémoire et journal.** Un refus écrit : une ligne au journal du serveur (`[modules] update of "x" 1.1.0 refused, previous version kept: …`, jamais une pile) ; une ligne d'audit `module.update.blocked` (acteur `system`) ; et, sauf pour une installation (rien n'est resté), un réglage `module.<id>.__blockedUpdate` (`src/core/modules/blockedUpdate.ts`) que lisent l'admin (avis ci-dessus) et la maintenance par assistant (`maintenance_modules` : `lastRefusedUpdate` ; `maintenance_updates` : `alreadyRefused` et `aiCanUpdate: false` pour CETTE version ; `maintenance_diagnose` : un problème « refusée … ne se charge pas », avec « n'essaie pas de nouveau cette version »). Il est effacé par la prochaine mise à jour ou réinstallation réussie et par la désinstallation.
+
+**4. Imports statiques de voisins : signalés, jamais refusés.** À l'installation, à la mise à jour et à la réinstallation, le cœur lit (sans exécuter) les fichiers `.mjs` du module et, s'il y trouve des `import … from "./x.mjs"` ou `export … from "./x.mjs"`, l'ajoute au résultat (`warnings: [{ code: "staticImports", files }]`) ; `maintenance_modules` les liste (`staticNeighbourImports`). Sur ce cœur ils ne posent aucun problème ; ils restent fragiles sur un cœur d'avant la 0.2.13 (et même avec la bonne pratique : un voisin importé avec `?v=` qui importe lui-même un autre voisin de façon statique retrouve, lui, une ancienne copie). La suite de conformité en fait le conseil `code.neighbourImports` (voir `docs/TESTSUPPORT.md`) : pour qu'un module reste sûr partout, importez les voisins avec `const q = new URL(import.meta.url).search; const { x } = await import(new URL(`./source.mjs${q}`, import.meta.url).href);`.
+
+**Ce que cela ne garantit pas.** (a) Le contrôle prouve que le code *se charge* et a la bonne forme ; pas qu'il fonctionne (une erreur dans une route, une section ou une migration ne se voit qu'à l'usage). (b) Chaque rechargement laisse l'ancien code en mémoire jusqu'au redémarrage du processus (Node ne décharge jamais un module) : la mémoire croît de la taille du code des anciennes versions ; les mises à jour sont rares et la réinitialisation d'un module bloqué est limitée à une par heure et par module. L'état gardé *en mémoire* par l'ancien code (caches, promesses, minuteurs qu'il aurait lancés malgré la règle) ne disparaît pas. (c) Le processus de contrôle exécute le code du module (comme le fera le site) : ce n'est pas un bac à sable ; un module malveillant n'est pas arrêté par ce contrôle (voir « Sécurité : à lire avant d'installer »). (d) Un module déjà installé qui ne se charge plus (fichiers abîmés sur le disque) n'est pas réparé : le site l'ignore et `maintenance_diagnose` propose la réinstallation.
 
 ### `migrations` : faire évoluer ses données
 
@@ -938,6 +969,9 @@ Deux familles : les **services** du cœur (génériques, voir [PLATFORM.md](PLAT
 | `ctx.api.topics.collectPage(sujet, { limit?, cursor? })` | service | comme `collect`, page par page : `{ items, next }` (200 au plus par page ; `cursor` = le `next` précédent, opaque ; `next: null` = fini). Seul `core.entry` est lu par curseur (du plus récent au plus ancien, expirées écartées) ; un sujet fourni par un module n'a qu'une page. Curseur illisible : erreur. |
 | `ctx.api.mail.configured()` | service | un serveur d'e-mail est-il réglé ? |
 | `ctx.api.mail.send({ to, subject, text, replyTo? })` | service | e-mail au nom du site (permission `mail`, voir « Envoyer un e-mail ») |
+| `ctx.api.files.claim(url)` | service | (cœur 0.2.13, permission `files`) revendique un fichier `/uploads/…` que la personne connectée vient d'envoyer ; voir « Fichiers envoyés : garder et supprimer » |
+| `ctx.api.files.remove(url)` | service | (cœur 0.2.13, permission `files`) supprime un fichier que CETTE instance a revendiqué (original et dérivés) ; idempotent |
+| `ctx.api.files.owns(url)` / `ctx.api.files.usage()` | service | (cœur 0.2.13, permission `files`) ce fichier est-il à cette instance ? / espace pris et plafonds du module |
 | `ctx.api.rawg.configured()` | service | une clé RAWG est-elle réglée par le propriétaire ? (permission `rawg` ; `false` sans elle) |
 | `ctx.api.rawg.cover(title)` | service | jaquette d'un jeu : `{ status, url, name?, id?, ambiguous? }` avec `status` = `found` (`url` en https), `none` (aucun résultat, ou « aucune jaquette » choisi par la propriétaire), `no-key` (pas de clé), `refused` (RAWG refuse la clé), `unreachable` (RAWG injoignable) ; `name`, `id` et `ambiguous` sont **facultatifs** (cœur 0.2.10) ; permission `rawg`, voir « Jaquettes de jeux (RAWG) » |
 | `ctx.api.rawg.candidates(title)` | service | cœur 0.2.10 : les jeux que RAWG propose pour ce titre, `{ status, candidates: [{ id, name, year, platforms, url }] }` (6 au plus, jaquette obligatoire) ; même permission `rawg`, mêmes statuts, ne lève jamais |
@@ -1078,7 +1112,7 @@ const items = await ctx.api.topics.collect("overlay.item", { limit: 20 }); // [{
 - **Pull à la consommation** : rien n'est copié ni synchronisé ; le consommateur lit l'état courant
   à chaque appel. Un overlay rafraîchit ses données depuis sa propre route (`routes.items`), ce qui
   garde le cœur sans état. Un push (SSE) pourra s'ajouter plus tard sans changer ce contrat.
-- Formats de champs : `string`, `url` (http(s) ou chemin `/…`), `number`, `boolean`, `string[]`, `datetime` (chaîne ISO 8601 : `2026-10-14`, `2026-10-14T20:30`, `2026-10-14T20:30:00Z` ou avec décalage `+02:00` ;
+- Formats de champs : `string`, `url` (http(s) ou chemin `/…`), `number`, `boolean`, `string[]`, `any` (réservé aux sujets du cœur, refusé dans un manifeste : la valeur passe telle quelle, le cœur la vérifie et l'ignore si elle ne convient pas), `datetime` (chaîne ISO 8601 : `2026-10-14`, `2026-10-14T20:30`, `2026-10-14T20:30:00Z` ou avec décalage `+02:00` ;
   la date et l'heure doivent exister — le 30 février est refusé ; sans décalage, l'heure est lue en UTC). Un élément dont un champ est invalide est **écarté seul** : les autres éléments du même
   fournisseur, et les autres fournisseurs, sont servis. Un élément qui n'est pas un objet (`null`, texte…) est écarté de même ; un fournisseur qui ne renvoie pas un tableau ne donne rien.
   Les types d'avant sont inchangés : un manifeste qui n'emploie pas `datetime` marche aussi sur un ancien cœur (un module qui l'emploie doit déclarer `minCore`).
@@ -1333,6 +1367,56 @@ else { /* r.error : timeout | network | rate | quota | circuit | busy | too_larg
 
 Un cœur plus ancien n'a pas `ctx.api.net` : exigez `"minCore": "0.2.0"`, ou prévoyez un repli (`ctx.api.net ? … : fetch(url, { signal: AbortSignal.timeout(8000) })`). Le kit de test vérifie les appels réseau (règles `net.bounded`, `net.429`, `net.fallback`, `net.noIdleTimer`, voir [TESTSUPPORT.md](TESTSUPPORT.md)) ; dans vos tests, `fakeCtx()` fournit le vrai client, à combiner avec `withFakeFetch` et `netReplies` (`rateLimited`, `quotaExceeded`, `silence`, `truncatedJson`, `slow`, `down`).
 
+## Fichiers envoyés : garder et supprimer (`ctx.api.files`)
+
+Une image ou une vidéo envoyée par l'administration (`/api/admin/upload`, champs « image » des formulaires) devient un fichier `/uploads/<identifiant>.<extension>`. Il appartient au **cœur** : un module qui retire une photo de ses données la *masque*, mais le fichier reste sur le disque et dans les sauvegardes. Avec la permission **`files`** (cœur 0.2.13, `"minCore": "0.2.13"`), un module peut **garder** (revendiquer) les fichiers qu'on lui envoie, puis les **supprimer** pour de bon. Texte montré à l'administrateur avant l'installation : « Garder et supprimer les fichiers que vous envoyez via ce module ».
+
+```js
+// Dans une action d'administration (adminActions) : la personne vient d'envoyer la photo, le formulaire donne son adresse.
+async savePhoto(ctx, values) {
+  const claim = await ctx.api.files.claim(values.photo);          // « /uploads/<uuid>.jpg », avec ou sans cadrage « ?c=… »
+  if (!claim.ok) return { error: ctx.t(`photo.${claim.reason}`) }; // voir les motifs ci-dessous
+  await ctx.api.store.add("photos", { url: claim.url });
+  return { ok: true };
+},
+async deletePhoto(ctx, { id }) {
+  const row = await ctx.api.store.get(id);
+  await ctx.api.store.remove(id);
+  if (row) await ctx.api.files.remove(row.data.url);              // original + versions cadrées en cache ; déjà supprimé = sans effet
+  return { ok: true };
+},
+```
+
+**Revendiquer** (`claim(url)`) : réussit seulement si **toutes** ces conditions sont vraies (sinon `{ ok: false, reason }`, rien n'est changé) :
+
+| `reason` | veut dire |
+|---|---|
+| `no-permission` | le module n'a pas déclaré `files` |
+| `no-person` | pas d'action d'administration en cours (page publique, route, tâche, MCP) : seule la personne qui vient de cliquer peut confier un fichier |
+| `invalid` | pas une adresse d'envoi du cœur (`/uploads/<uuid>.<ext>`, ou le nom seul) : tout autre chemin, `..`, adresse externe… est refusé |
+| `unknown` | le cœur n'a pas reçu ce fichier récemment (ancien envoi d'avant la 0.2.13, logo, couverture d'un autre écran, adresse inventée) |
+| `not-uploader` | le fichier a été envoyé par quelqu'un d'autre |
+| `expired` | plus de 30 minutes se sont écoulées depuis l'envoi |
+| `missing` | le fichier n'est plus sur le disque |
+| `taken` | un autre module (ou une autre instance) l'a déjà revendiqué |
+| `quota` | le plafond du module est atteint : 4 Go et 20 000 fichiers au total, toutes ses instances ensemble |
+
+Le succès rend `{ ok: true, url, bytes, already }` (`already: true` si cette instance l'avait déjà : redemander est sans danger). La revendication est atomique : si deux modules la demandent ensemble, un seul l'obtient.
+
+**Supprimer** (`remove(url)`) : seul le propriétaire (l'**instance** qui a revendiqué) supprime. Efface l'original, toutes ses versions cadrées en cache, puis son enregistrement. Idempotent : un fichier déjà supprimé, jamais revendiqué ou inconnu donne `{ ok: true, removed: false }`. Le fichier d'un autre : `{ ok: false, reason: "not-yours" }`. Si le disque refuse (`failed`), l'enregistrement reste et on peut réessayer. Aucune suppression hors de `/uploads` n'est possible : seuls les noms `<uuid>.<ext>` sont acceptés et le chemin est recalculé par le cœur.
+
+**Lire** : `owns(url)` (ce fichier est-il à cette instance ?) pour ne proposer « supprimer aussi le fichier » que lorsque c'est possible ; `usage()` → `{ files, bytes, limitFiles, limitBytes }` pour le module entier. Aucune de ces fonctions ne lève d'exception.
+
+À savoir :
+- **Les anciens fichiers** (envoyés avant la 0.2.13) n'ont pas de propriétaire : ils ne sont pas revendiquables et ne peuvent donc pas être supprimés par un module. Seuls les nouveaux envois le sont.
+- **Journal d'audit** : chaque revendication (`file.claim`), suppression (`file.remove`) et effacement avec les données (`file.erase`) est consignée (nom du fichier et instance, jamais le contenu).
+- **Sauvegardes** : le propriétaire de chaque fichier revendiqué est dans la sauvegarde (`data/upload-files.json`) avec le fichier. Restaurer une sauvegarde ramène le fichier **avec** les données du module qui le désignent : une suppression faite depuis n'est pas rejouée (c'est une photographie du site à un instant). Supprimer ne casse jamais la restauration.
+- **Retirer le module ou l'instance** : « Retirer et garder mes données » **garde aussi les fichiers** (ils reviennent à la réinstallation). « Retirer et tout effacer », la suppression définitive d'une instance et « Effacer » des données gardées **suppriment aussi** les fichiers que le module avait revendiqués ; l'écran de confirmation le dit.
+- **Pas de minuteur** : les envois jamais revendiqués sont simplement oubliés du registre à la lecture, après la fenêtre de 30 minutes ; leur fichier reste au cœur comme avant.
+- Le propriétaire est l'**instance**, comme pour le stockage (`ctx.api.store`) : deux instances d'un même module ne se suppriment pas leurs fichiers, mais partagent le plafond du module.
+
+Pour vos tests : `fakeCtx({ permissions: ["files"], uploads: [url, { url, by, ageMs, bytes, owner }], person, filesQuota })` applique les mêmes règles et les mêmes motifs de refus que le cœur ; `ctx.calls.files` garde les appels, `ctx.dumpFiles()` les fichiers encore présents (pour constater qu'un fichier a disparu). Voir [TESTSUPPORT.md](TESTSUPPORT.md).
+
 ## Jaquettes de jeux (RAWG)
 
 Un module qui déclare la permission `rawg` peut demander la jaquette d'un jeu : `const cover = await ctx.api.rawg.cover("Hades")`. La **clé d'API RAWG se règle une seule fois**, par le propriétaire, dans *Réglages › Services externes* (comme le serveur d'e-mail) : un module ne demande **jamais** la clé à l'utilisateur, n'a pas de réglage « clé RAWG », et ne la voit jamais. Si un ancien module en avait une, le cœur la reprend une fois au démarrage quand le réglage du cœur est vide.
@@ -1366,6 +1450,16 @@ Pour vos tests : `fakeCtx({ rawgCover, rawgCandidates })` (objets ou fonctions `
 ### Réseaux sociaux
 
 Le cœur ne connaît aucun réseau : il demande à **tous** les modules actifs qui fournissent `social.link` leur bouton et l'affiche dans l'en-tête. Un réseau est donc un module (`"type": "social"`, `"instances": "multiple"` pour en ajouter un par compte) : `"provides": [{ "topic": "social.link" }]` et `exports["social.link"] = (ctx) => [{ label, url, icon? }]`. `label` et `url` sont obligatoires (`url` : adresse https externe ; les autres sont écartées), `icon` est un identifiant d'icône (`twitch`, `youtube`…) ou un emoji. Le cœur garde 10 boutons au plus, sans doublon, dans l'ordre des instances. Renvoyez une liste vide tant que le module n'est pas réglé.
+
+**Rendu du lien (facultatif, par bouton).** Un bouton peut aussi déclarer `rel`, `referrerPolicy` et `target`. Le cœur garde la maîtrise du rendu : il vérifie chaque valeur dans une **liste fermée**, ignore ce qui n'y est pas (le bouton reste affiché, avec le défaut sûr) et n'écrit jamais d'autre attribut.
+
+| Champ | Valeurs acceptées | Défaut |
+|---|---|---|
+| `rel` | texte séparé par des espaces ou liste : `noopener`, `noreferrer`, `nofollow`, `sponsored`, `ugc` (casse ignorée, doublons retirés) ; `noopener` est **toujours** ajouté | `noopener noreferrer` |
+| `referrerPolicy` | `no-referrer`, `no-referrer-when-downgrade`, `origin`, `origin-when-cross-origin`, `same-origin`, `strict-origin`, `strict-origin-when-cross-origin` (`unsafe-url` est refusée : elle transmet l'adresse complète de la page) | aucun attribut |
+| `target` | `_blank` ou `_self` | `_blank` |
+
+Un `rel` déclaré **remplace** le défaut (ne demandez pas `noreferrer` si vous voulez que la destination voie d'où vient le visiteur). Une `referrerPolicy` choisie **sans** `rel` remplace `noreferrer` par `noopener` seul, car `noreferrer` annulerait la politique. Une adresse `javascript:` (ou toute adresse qui n'est pas http(s)/mailto) reste écartée quels que soient ces champs. Un bouton qui ne déclare rien est rendu exactement comme avant (`rel="noopener noreferrer" target="_blank"`, sans `referrerpolicy`).
 
 Le flux RSS est une fonctionnalité du cœur (`/feed.xml`). Les modules à contenu y sont déjà. Un autre module y ajoute ses éléments en fournissant le sujet `feed.item` : `"provides": [{ "topic": "feed.item" }]` et `exports["feed.item"] = (ctx, { locale, limit }) => [{ title, url, summary?, publishedAt?, id?, topics? }]`. `title` et `url` sont obligatoires (`url` : chemin du site `/…` ou adresse http(s) ; les autres schémas sont écartés), `publishedAt` est une date ISO **en texte**. `topics` : les rubriques **partagées** sur lesquelles publier (`["announcement", "concert"]`). Elles sont communes à tous les modules : si le blog et votre agenda publient tous deux sur `announcement`, un lecteur abonné à `announcement` reçoit les deux. Le cœur ajoute lui-même `@<instance>` ; un module ne peut pas le déclarer. Ne mettez que des éléments **publics** (jamais un message en attente de modération) : le flux est lisible par tous. Le cœur échappe le XML : donnez du texte brut.
 
@@ -1453,8 +1547,8 @@ tels quels. Le sens de « mise à jour » dépend de l'installation :
 | une **branche**, ou rien | le dernier commit de la branche |
 | le catalogue (ligne `bundled` d'un ancien site — compatibilité, à retirer en 0.3.0) | la version du catalogue : la mise à jour la **convertit** en module du catalogue (voir ci-dessous) |
 
-Si la nouvelle version est **invalide** (manifeste illisible, autre identifiant, API incompatible, fichier principal absent, trop volumineuse), l'ancienne est
-rétablie automatiquement : un module ne reste jamais à moitié mis à jour.
+Si la nouvelle version est **invalide** (manifeste illisible, autre identifiant, API incompatible, fichier principal absent, trop volumineuse) **ou ne se charge pas**
+(contrôle de chargement : voir « Mise à jour sûre »), l'ancienne est rétablie automatiquement : un module ne reste jamais à moitié mis à jour.
 
 **Développer en local** : avec `CURIOSA_ALLOW_LOCAL_MODULES=1` dans l'environnement du serveur, une adresse `file:///chemin/absolu/vers/depot`
 est acceptée par « Installer un dépôt personnel ». Le dépôt doit avoir au moins un commit ; pour voir une modification, validez-la

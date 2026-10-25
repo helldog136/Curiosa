@@ -93,6 +93,10 @@ Le cœur visite lui-même des adresses venues du contenu (liens d'un texte, du m
 
 Remettre le code d'un module à neuf (*Modules › le module › Maintenance*) exécute du code côté serveur : l'action est réservée au **propriétaire**, avec confirmation dans la page. Elle ne reprend que la source du module (le dépôt du catalogue ou le dépôt git déjà connu, mêmes règles d'hôtes que l'installation), **n'accorde jamais de nouvelle permission** (refus, il faut passer par la mise à jour), met l'ancien dossier de côté et le rétablit au moindre échec, et est inscrite au journal (`module.reinstall`, sans adresse ni secret).
 
+### Contrôle de chargement avant de basculer (0.2.13)
+
+Installer, mettre à jour ou réinstaller un module commence par **essayer de charger son nouveau code** (`src/core/modules/loadCheck.ts`) : d'abord dans un processus Node à part, puis dans le site depuis une copie neuve. Un code qui ne se charge pas est refusé et l'ancienne version reste (ou rien n'est installé) ; la raison est journalisée (une ligne, jamais de pile), inscrite à l'audit (`module.update.blocked`, acteur `system`) et gardée pour la propriétaire et l'assistant. Ce que cela protège : un module qui, mis à jour, devient « impossible à charger » ne prive plus le site de son ancienne version. Ce que cela **ne protège pas** : le processus de contrôle **exécute** le code du module (comme le fera le site) avec les droits du serveur ; il n'a ni la base, ni les secrets, ni l'environnement du site (seulement `PATH`), mais ce n'est **pas un bac à sable** (il peut écrire sur le disque, ouvrir le réseau). La confiance se décide avant, par le catalogue vérifié ou la case « je fais confiance » (voir `docs/MODULES.md`, « Sécurité : à lire avant d'installer »). Les copies de chargement (`<DATA_DIR>/modules-run/<pid>/…`) ne contiennent que les fichiers du module (jamais `.git`) et sont effacées au redémarrage.
+
 ## Installer d'office : seulement l'officiel, seulement ce qui est exigé
 
 - **Origine** : une entrée du catalogue vaut `official` (dépôt du catalogue ou sa dernière copie reçue) ou `extra` (index supplémentaire `MODULES_INDEX_URL`). Une entrée `extra` n'est **jamais** installée ni mise à jour d'office (cascade de dépendances, graine, restauration d'un fournisseur manquant) : le manque est signalé (raison « extra »). Elle ne s'installe que par le propriétaire, après l'avertissement « non vérifié par le catalogue officiel » et une case cochée (`confirmExtra`, revérifié côté serveur). À service égal, l'officiel passe toujours avant. Seule exception : restaurer une sauvegarde remet un module `extra` que le propriétaire avait déjà installé (il confirme la restauration).
@@ -219,6 +223,18 @@ Le site n'envoie aucune politique `Content-Security-Policy` globale (seulement `
 - **Droits** : l'écran et ses actions exigent un administrateur (`adminCtx("admin")` en tête de chaque action serveur) ; cadence limitée par personne (30 lectures et 60 écritures par minute) ; 1000 corrections au plus, titres de 120 caractères au plus, journal de 100 titres purgé à la lecture, sans minuteur de fond.
 - **Assistants IA** : `rawg_covers_to_check` est une lecture ; `rawg_cover_set` (écriture) n'est **jamais accordé d'office**, un jeton en lecture ne peut pas le recevoir, la cadence est limitée par jeton, et chaque écriture est consignée (`mcp:<jeton> rawg.fix` ou `rawg.fix.forget`).
 - **Vie privée** : la clé RAWG n'est affichée ni journalisée nulle part ; aucune donnée de visiteur n'entre dans ces réglages (des titres de jeux et des numéros RAWG).
+
+## Fichiers envoyés : revendiquer et supprimer (0.2.13)
+
+Permission de module `files` (`ctx.api.files`). Modèle de menace : un module ne doit jamais pouvoir effacer un fichier qui n'est pas le sien (logo, image d'une entrée, fichier d'un autre module), ni sortir du dossier des envois.
+
+- **Un fichier est au cœur tant qu'une personne n'a pas décidé autrement.** La route `/api/admin/upload` note chaque envoi (personne, heure, taille) ; la **revendication** exige : la permission `files`, une action d'administration en cours (jamais une page publique, une route, une tâche ni le MCP), que ce soit **la même personne** qui ait envoyé le fichier, moins de 30 minutes après l'envoi, un fichier sans propriétaire, présent sur le disque, et le plafond du module respecté (4 Go, 20 000 fichiers). Elle est atomique (une seule instance gagne).
+- **Pas de rattrapage.** Un fichier sans ligne au registre (envoyé avant la 0.2.13, logo SVG, fichier écrit par le cœur lui-même) n'est **jamais** revendiquable : aucun module ne peut s'approprier un fichier existant.
+- **Supprimer** : seule l'instance propriétaire. Le nom doit passer `UPLOAD_NAME_RE` (`<uuid>.<ext>`) ; le chemin est recalculé à partir du nom (jamais d'un texte reçu), donc ni `..`, ni encodage, ni autre dossier. Les dérivés en cache sont retrouvés par le préfixe du nom (`<uuid>-…`), dans leur seul dossier. L'ordre disque → dérivés → registre fait qu'un échec laisse un état réessayable.
+- **Journal d'audit** : `file.claim`, `file.remove`, `file.erase`, sans contenu. **Sauvegarde** : le propriétaire des fichiers revendiqués est sauvegardé et restauré avec eux.
+- **Retrait d'un module** : garder les données garde les fichiers ; « tout effacer » les supprime avec les données (jamais sans que l'administrateur l'ait choisi, et la confirmation le dit).
+- **Pas de minuteur de fond** : le registre est nettoyé à la lecture (envois jamais revendiqués, après la fenêtre de 30 minutes) ; le fichier d'un envoi non revendiqué n'est jamais supprimé.
+- **Limite connue** : la personne qui a envoyé un fichier pour un autre usage (couverture d'une entrée…) puis le confie à un module dans les 30 minutes autorise ce module à le supprimer ; c'est son choix explicite, et ce module est celui qu'elle vient d'utiliser.
 
 ## Dépannage en SSH (propriétaire du serveur seulement)
 

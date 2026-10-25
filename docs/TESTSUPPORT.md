@@ -62,7 +62,7 @@ Tout s'importe depuis `testsupport/index.mjs` (stable) :
 |---|---|
 | `checkModule(dir, opts)` | Lance toutes les exigences sur un dossier et renvoie le rapport (celui de `--json`). `opts.siblings` : dossiers des autres modules ; `opts.only` : identifiants à lancer. Ne lève jamais pour un module fautif. |
 | `registerConformanceTests(dir, { test, siblings, only, prefix })` | Adaptateur node:test : une exigence = un test nommé. |
-| `fakeCtx(options)` | Faux contexte de module (réglages, stockage en mémoire, e-mail enregistré, sujets, services…). Option `permissions` : le contexte refuse ce qui n'est pas déclaré. `ctx.api.rawg` : `cover` et `candidates` (options `rawgCover`, `rawgCandidates` ; appels dans `ctx.calls.rawg` et `ctx.calls.rawgCandidates`). `ctx.api.net` est le vrai client réseau du cœur (état neuf par contexte ; options `netLimits`, `netBudgetMs`), branché sur `globalThis.fetch`. `ctx.calls` garde les appels, `ctx.dumpStore()` le contenu du stockage. Voir l'en-tête de `testsupport/fakeCtx.mjs`. |
+| `fakeCtx(options)` | Faux contexte de module (réglages, stockage en mémoire, e-mail enregistré, sujets, services…). Option `permissions` : le contexte refuse ce qui n'est pas déclaré. `ctx.api.files` (cœur 0.2.13) : mêmes règles et mêmes refus que le cœur, options `uploads`, `person`, `filesQuota`, appels dans `ctx.calls.files`, `ctx.dumpFiles()` pour constater qu'un fichier a disparu. `ctx.api.rawg` : `cover` et `candidates` (options `rawgCover`, `rawgCandidates` ; appels dans `ctx.calls.rawg` et `ctx.calls.rawgCandidates`). `ctx.api.net` est le vrai client réseau du cœur (état neuf par contexte ; options `netLimits`, `netBudgetMs`), branché sur `globalThis.fetch`. `ctx.calls` garde les appels, `ctx.dumpStore()` le contenu du stockage. Voir l'en-tête de `testsupport/fakeCtx.mjs`. |
 | `loadModuleDir(dir)` | Charge un dossier de module comme le cœur (manifeste, code, textes), sans jamais lever. |
 | `fakeFetch(routes)`, `withFakeFetch(routes, fn)`, `blockNetwork(fn)` | Faux `fetch` pour tester un module qui appelle un service, sans réseau. La clé `"*"` répond à toutes les adresses ; le `signal` d'annulation est respecté. |
 | `netReplies`, `makeNetClient(options)` | Pannes prêtes à l'emploi pour `fakeFetch` : `rateLimited(120)` (429 + Retry-After), `rateLimitedBody(s)`, `rateLimitedReset(époque)`, `quotaExceeded()` (403), `silence()` (jamais de réponse), `truncatedJson()`, `slow(ms, réponse)`, `down()`, `status(code)`. `makeNetClient` : le vrai client `ctx.api.net`, état neuf. |
@@ -91,6 +91,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 | [`def.loads`](#defloads) | obligatoire | Le code se charge sans erreur |
 | [`def.matches`](#defmatches) | obligatoire | Ce que module.json annonce est ce que le code fait |
 | [`code.imports`](#codeimports) | obligatoire | Le module ne dépend de rien d'autre que de ctx |
+| [`code.neighbourImports`](#codeneighbourimports) | conseil | Les fichiers voisins sont importés avec la version du fichier principal |
 | [`code.noDanger`](#codenodanger) | obligatoire | Pas de code dangereux |
 | [`load.noNetwork`](#loadnonetwork) | obligatoire | Aucun accès au réseau au chargement |
 | [`page.scripts`](#pagescripts) | conseil | Les scripts de page sont de vrais fichiers du dossier scripts/ |
@@ -142,7 +143,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 | [`readme.plain`](#readmeplain) | conseil | Le README est écrit en langage de tous les jours |
 | [`neutrality.clean`](#neutralityclean) | conseil | Aucune donnée personnelle ni propre à un site dans le module |
 
-36 exigences obligatoires et 25 conseils.
+36 exigences obligatoires et 26 conseils.
 
 ### Le fichier module.json
 
@@ -238,6 +239,14 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 - **Pourquoi.** Un module est un simple dossier chargé tel quel : pas de « npm install », pas de compilation. Tout ce dont il a besoin lui est donné par ctx. Une dépendance cachée casserait l'installation sur un autre site.
 - **Comment corriger.** Remplacez l'import par ce que ctx.api offre (stockage, e-mail, QR…), ou recopiez le petit morceau de code dans votre dossier. Gardez les fichiers du module dans son dossier.
 
+#### `code.neighbourImports`
+
+**Les fichiers voisins sont importés avec la version du fichier principal** — niveau : **conseil**
+
+- **Ce qui est vérifié.** Aucun fichier du module ne contient d'import statique d'un fichier voisin (`import { x } from "./source.mjs"`, `export … from "./y.mjs"`) : un voisin s'importe avec `await import(new URL("./source.mjs" + q, import.meta.url).href)`, où `const q = new URL(import.meta.url).search;`. Seuls les fichiers `.mjs` (le code du serveur) sont concernés : les `.js` sont des fichiers du navigateur. Détection par lecture du texte, sans exécuter le code.
+- **Pourquoi.** Node garde en mémoire chaque fichier déjà importé. Sur un cœur d'avant la 0.2.13, après une mise à jour du module dans le même processus, le fichier principal était rechargé mais pas ses voisins importés statiquement : l'ancien voisin ne s'accordait plus avec le nouveau fichier principal et le module devenait « impossible à charger » jusqu'au redémarrage du site (incident réel, cœur 0.2.12). Depuis la 0.2.13 le cœur charge chaque version depuis une copie neuve et ce défaut n'existe plus ; ce conseil garde le module sûr sur un site resté sur un cœur plus ancien.
+- **Comment corriger.** Remplacez `import { a } from "./source.mjs"` par `const q = new URL(import.meta.url).search; const { a } = await import(new URL(`./source.mjs${q}`, import.meta.url).href);` en tête du fichier principal (modèle : le module « live-status » du dépôt curiosa-extras), et dans chaque fichier voisin qui en importe un autre.
+
 #### `code.noDanger`
 
 **Pas de code dangereux** — niveau : **obligatoire**
@@ -268,7 +277,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 
 **Chaque capacité utilisée est déclarée dans « permissions »** — niveau : **obligatoire**
 
-- **Ce qui est vérifié.** Le code n'utilise le stockage, l'e-mail, les sujets d'échange, les jaquettes de jeux, la position du visiteur, les routes, pages, emplacements, sections, overlay, filtres, actions MCP ou l'administration que si la permission correspondante est dans module.json. Le test l'a vérifié en lisant le code et en le faisant tourner avec un contexte qui refuse ce qui n'est pas déclaré.
+- **Ce qui est vérifié.** Le code n'utilise le stockage, l'e-mail, les sujets d'échange, les jaquettes de jeux, les fichiers envoyés (ctx.api.files), la position du visiteur, les routes, pages, emplacements, sections, overlay, filtres, actions MCP ou l'administration que si la permission correspondante est dans module.json. Le test l'a vérifié en lisant le code et en le faisant tourner avec un contexte qui refuse ce qui n'est pas déclaré.
 - **Pourquoi.** Les permissions sont montrées à l'administrateur avant l'installation : c'est ce qui lui permet de dire oui en connaissance de cause. Un module qui en utilise plus qu'il n'en annonce trompe cette confiance.
 - **Comment corriger.** Ajoutez la permission citée au tableau « permissions » de module.json — ou retirez du code ce qui l'utilise si ce n'est pas voulu.
 

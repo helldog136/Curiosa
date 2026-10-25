@@ -49,6 +49,7 @@ const FAULTS = {
   "def.matches": (f) => editManifest(f, (m) => { m.sections.push({ id: "ghost", label: { en: "Ghost", fr: "Fantôme" } }); }),
   "perm.declared": (f) => editManifest(f, (m) => { m.permissions = m.permissions.filter((p) => p !== "storage"); }),
   "perm.minimal": (f) => editManifest(f, (m) => { m.permissions.push("filters"); }),
+  "code.neighbourImports": (f) => { f["helper.mjs"] = "export const x = 1;\n"; f["index.mjs"] = `import { x } from "./helper.mjs";\n${f["index.mjs"]}\nexport const y = x;\n`; },
   "code.imports": (f) => { f["index.mjs"] = `import pad from "left-pad";\n${f["index.mjs"]}`; },
   "code.noDanger": (f) => append(f, "index.mjs", "export const run = (s) => eval(s);"),
   "load.noNetwork": (f) => { f["index.mjs"] = `fetch("https://example.org/boot").catch(() => {});\n${f["index.mjs"]}`; },
@@ -382,4 +383,51 @@ test("routes.visitorIp : sans lecture d'en-tête d'adresse rien à signaler ; c�
   const req = (xff) => new Request("https://example.test/", { headers: { "x-forwarded-for": xff } });
   assert.equal(ctx.api.visitor.fingerprint(req("1.1.1.1, 9.9.9.9"), "a"), ctx.api.visitor.fingerprint(req("2.2.2.2, 9.9.9.9"), "a"));
   assert.notEqual(ctx.api.visitor.fingerprint(req("9.9.9.9"), "a"), ctx.api.visitor.fingerprint(req("9.9.9.9"), "b"));
+});
+
+test("permission « files » (cœur 0.2.13) : l'utiliser sans la déclarer est signalé (permission et minCore) ; déclarée et minCore 0.2.13, tout passe ; une permission déclarée mais inutile est un conseil", async () => {
+  const use = (permissions, minCore) => mk((f) => {
+    REPLACE(f, "const [last] = await rows(ctx);", "const [last] = await rows(ctx); await ctx.api.files.claim('/uploads/x');");
+    editManifest(f, (m) => { m.permissions = [...new Set([...m.permissions, ...permissions])]; if (minCore) m.minCore = minCore; });
+  });
+  const without = await checkModule(use([]), { siblings: [] });
+  assert.match((status(without, "perm.declared").problems ?? []).join("\n"), /files/);
+  assert.match((status(without, "compat.minCore").problems ?? []).join("\n"), /0\.2\.13/);
+  const withIt = await checkModule(use(["files"], "0.2.13"), { siblings: [] });
+  assert.equal(status(withIt, "perm.declared").status, "pass");
+  assert.equal(status(withIt, "compat.minCore").status, "pass");
+  const unused = await checkModule(mk((f) => { editManifest(f, (m) => { m.permissions = [...new Set([...m.permissions, "files"])]; m.minCore = "0.2.13"; }); }), { siblings: [] });
+  assert.match((status(unused, "perm.minimal").problems ?? []).join("\n"), /files/);
+});
+
+test("fakeCtx : ctx.api.files suit les règles du cœur (revendiquer, supprimer, propriétaire, expiration, quota, permission) et permet de constater qu'un fichier a disparu", async () => {
+  const id = (n) => `/uploads/00000000-0000-4000-8000-00000000000${n}.png`;
+  const ctx = fakeCtx({
+    permissions: ["files"], filesQuota: { bytes: 2500, files: 10 },
+    uploads: [id(1), { url: id(2), bytes: 1000 }, { url: id(3), by: "u2" }, { url: id(4), ageMs: 31 * 60_000 }, { url: id(5), owner: "other-instance" }, { url: id(6), bytes: 2000 }],
+  });
+  assert.deepEqual(await ctx.api.files.claim(id(1)), { ok: true, url: id(1), bytes: 1000, already: false });
+  assert.equal((await ctx.api.files.claim(id(1))).already, true, "idempotent");
+  assert.equal((await ctx.api.files.claim(`${id(2)}?c=1,1,0.5,0.5,ffffff`)).ok, true);
+  assert.equal((await ctx.api.files.claim(id(3))).reason, "not-uploader");
+  assert.equal((await ctx.api.files.claim(id(4))).reason, "expired");
+  assert.equal((await ctx.api.files.claim(id(5))).reason, "taken");
+  assert.equal((await ctx.api.files.claim(id(6))).reason, "quota");
+  assert.equal((await ctx.api.files.claim("/uploads/../etc/passwd")).reason, "invalid");
+  assert.equal((await ctx.api.files.claim(id(7))).reason, "unknown");
+  assert.deepEqual(await ctx.api.files.usage(), { files: 2, bytes: 2000, limitFiles: 10, limitBytes: 2500 });
+  assert.equal(await ctx.api.files.owns(id(1)), true); assert.equal(await ctx.api.files.owns(id(5)), false);
+  assert.equal((await ctx.api.files.remove(id(5))).reason, "not-yours");
+  assert.deepEqual(await ctx.api.files.remove(id(1)), { ok: true, removed: true });
+  assert.deepEqual(await ctx.api.files.remove(id(1)), { ok: true, removed: false }, "idempotent");
+  assert.equal(ctx.dumpFiles().some((f) => f.url === id(1)), false, "disparu");
+  assert.equal(ctx.dumpFiles().find((f) => f.url === id(5)).owner, "other-instance", "le fichier d'un autre est resté");
+  assert.ok(ctx.calls.files.length >= 10);
+  // Hors action d'administration : pas de personne.
+  assert.equal((await fakeCtx({ permissions: ["files"], person: null, uploads: [id(1)] }).api.files.claim(id(1))).reason, "no-person");
+  // Sans la permission : refus, noté dans calls.denied (le contrôle perm.declared s'en sert).
+  const no = fakeCtx({ permissions: ["storage"], uploads: [id(1)] });
+  assert.equal((await no.api.files.claim(id(1))).reason, "no-permission");
+  assert.deepEqual(no.calls.denied, ["files"]);
+  assert.deepEqual(await no.api.files.usage(), { files: 0, bytes: 0, limitFiles: 0, limitBytes: 0 });
 });
