@@ -392,3 +392,23 @@ model VisitSeen {
 
   @@id([day, hash, kind, key])
 }
+
+// Registre des fichiers envoyés par /api/admin/upload (0.2.13). Une ligne par envoi : « en attente » (ownerInstance vide) pendant la courte fenêtre où la personne
+// qui l'a envoyé peut le faire REVENDIQUER par un module (permission « files »), puis « revendiqué » (ownerInstance rempli) : seule cette instance peut alors le
+// supprimer, original et dérivés compris. Une ligne en attente expirée ne change rien au fichier (il reste au cœur, comme avant) : elle est simplement oubliée, à la lecture.
+// Les fichiers envoyés avant la 0.2.13 n'ont pas de ligne : aucun module ne peut les revendiquer.
+model UploadFile {
+  // Nom sur le disque (<uuid>.<ext>), validé par UPLOAD_NAME_RE.
+  name          String    @id
+  // Qui l'a envoyé (identifiant d'utilisateur ; pas de lien : la personne peut disparaître sans toucher au registre).
+  uploaderId    String?
+  bytes         Int       @default(0)
+  createdAt     DateTime  @default(now())
+  ownerModule   String?
+  ownerInstance String?
+  claimedAt     DateTime?
+
+  @@index([ownerInstance])
+  @@index([ownerModule])
+  @@index([createdAt])
+}

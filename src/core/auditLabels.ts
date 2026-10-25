@@ -17,7 +17,7 @@ export const AUDIT_ACTIONS = [
   "mcp.maintenance.request", "mcp.maintenance.approve", "mcp.maintenance.deny", "mcp.maintenance.mode", "mcp.maintenance.notify",
   "mcp.maintenance.module_install", "mcp.maintenance.module_configure", "mcp.maintenance.module_configure_advanced",
   "content.check",
-  "mail.sent",
+  "mail.sent", "file.claim", "file.remove", "file.erase",
   "setting.fromText",
 ] as const;
 

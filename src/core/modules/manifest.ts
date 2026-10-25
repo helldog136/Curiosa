@@ -219,7 +219,7 @@ export const manifestSchema = z.object({
     })
     .optional(),
   defaultEnabled: z.boolean().optional(),
-  permissions: z.array(z.enum(["slots", "routes", "storage", "filters", "sections", "pages", "topics", "overlay", "mcp", "admin", "mail", "rawg", "privacy", "visitor.geolocation"])).default([]),
+  permissions: z.array(z.enum(["slots", "routes", "storage", "filters", "sections", "pages", "topics", "overlay", "mcp", "admin", "mail", "rawg", "privacy", "visitor.geolocation", "files"])).default([]),
   /**
    * Droits du module (0.2.0), proposés dans les rôles de la page Équipe. Identifiant LOCAL (« email.view ») : le cœur le préfixe par l'identifiant du module
    * (« <module>:email.view »), un module ne peut donc pas déclarer le droit d'un autre. `open` (ouvrir la page d'admin du module) est implicite.

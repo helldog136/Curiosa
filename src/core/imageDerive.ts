@@ -4,7 +4,7 @@ import path from "node:path";
 import { DATA_DIR, UPLOADS_DIR } from "@/core/config";
 import { TIMED_OUT, withDeadline } from "@/core/deadline";
 import { cropGeometry, type Crop } from "@/core/imageCrop";
-import { MAX_UPLOAD_BYTES, sniffImage } from "@/core/services/uploads";
+import { MAX_UPLOAD_BYTES, sniffImage, UPLOAD_NAME_RE } from "@/core/services/uploads";
 
 /**
  * Fabrication (côté serveur) de la version cadrée d'une image envoyée. L'original n'est jamais touché ; le résultat est gardé dans
@@ -60,10 +60,31 @@ async function slot<T>(job: () => Promise<T>): Promise<T | "busy"> {
   }
 }
 
+/** Début commun des dérivés d'un envoi (son nom sans extension, un UUID) : de quoi retrouver et supprimer tous ses dérivés (voir `removeDerived`). */
+const derivedPrefix = (name: string) => `${name.replace(/\.[^.]+$/, "")}-`;
+
 export const cacheName = (name: string, crop: Crop, share: boolean) => {
-  const key = crypto.createHash("sha256").update(JSON.stringify([1, name, crop.ratio, crop.zoom, crop.x, crop.y, crop.fill, share])).digest("hex").slice(0, 40);
-  return `${key}.${share ? "jpg" : "webp"}`;
+  const key = crypto.createHash("sha256").update(JSON.stringify([1, name, crop.ratio, crop.zoom, crop.x, crop.y, crop.fill, share])).digest("hex").slice(0, 32);
+  return `${derivedPrefix(name)}${key}.${share ? "jpg" : "webp"}`;
 };
+
+/**
+ * Supprime tous les dérivés en cache de l'envoi `name` (et ses fabrications inachevées). Le cache est facultatif : une absence n'est pas une erreur.
+ * Sûr : le nom doit être un nom d'envoi valide (UUID), le préfixe en est tiré, et seuls les fichiers de CROP_CACHE_DIR qui le portent sont touchés.
+ * Renvoie le nombre de fichiers supprimés.
+ */
+export async function removeDerived(name: string): Promise<number> {
+  if (!UPLOAD_NAME_RE.test(name)) return 0;
+  const prefix = derivedPrefix(name);
+  let removed = 0;
+  let list: string[];
+  try { list = await fs.readdir(CROP_CACHE_DIR); } catch { return 0; }
+  for (const n of list) {
+    if (!n.startsWith(prefix)) continue;
+    try { await fs.rm(path.join(CROP_CACHE_DIR, n), { force: true }); removed++; } catch { /* le cache est facultatif */ }
+  }
+  return removed;
+}
 
 let lastPrune = 0;
 /** Garde le cache raisonnable : au plus CACHE_MAX_FILES fichiers / CACHE_MAX_BYTES octets, les plus anciens partent d'abord. */

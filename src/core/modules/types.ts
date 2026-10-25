@@ -212,7 +212,7 @@ export type ModuleManifest = {
   /** Modules activés dès le départ (défaut : oui). */
   defaultEnabled?: boolean;
   /** Déclaratif et informatif : affiché à l'administrateur avant activation. */
-  permissions: ("slots" | "routes" | "storage" | "filters" | "sections" | "pages" | "topics" | "overlay" | "mcp" | "admin" | "mail" | "rawg" | "privacy" | "visitor.geolocation")[];
+  permissions: ("slots" | "routes" | "storage" | "filters" | "sections" | "pages" | "topics" | "overlay" | "mcp" | "admin" | "mail" | "rawg" | "privacy" | "visitor.geolocation" | "files")[];
 };
 
 export type EntrySummary = {
@@ -336,6 +336,29 @@ export type ModuleApi = {
     configured(): Promise<boolean>;
     /** `to` : « owner » (le contact du site) ou une adresse. Texte brut ; l'expéditeur est celui du site. */
     send(message: { to: "owner" | string; subject: string; text: string; replyTo?: string }): Promise<{ ok: true } | { ok: false; reason: "not_configured" | "no_recipient" | "invalid" | "rate_limited" | "failed" }>;
+  };
+  /**
+   * Fichiers que ce module garde et supprime (cœur 0.2.13 ; permission « files », `minCore: "0.2.13"`). Un fichier envoyé par /api/admin/upload appartient au cœur, sauf si
+   * ce module le REVENDIQUE : seul ce propriétaire peut alors le supprimer (original et dérivés en cache). Aucune de ces fonctions ne lève ; sans la permission, elles
+   * répondent `no-permission` (usage : zéros). Les fichiers envoyés avant la 0.2.13 ne sont pas revendiquables.
+   * Les adresses sont celles que le cœur a rendues à l'envoi (`/uploads/<uuid>.<ext>`), avec ou sans cadrage (`?c=…`) ; tout autre texte est refusé (`invalid`).
+   */
+  files: {
+    /**
+     * Revendique un fichier qu'une personne vient d'envoyer. À appeler dans une `adminAction`, par la personne qui l'a envoyé, dans les 30 minutes (sinon `no-person`,
+     * `not-uploader` ou `expired`). Jamais le fichier d'un autre module ni un fichier déjà revendiqué par un autre (`taken`) ; `unknown` : pas un envoi récent du cœur ;
+     * `missing` : plus sur le disque ; `quota` : plafond du module atteint (1 Go ou 20 000 fichiers). Idempotent : redemander un fichier déjà à soi réussit (`already: true`).
+     */
+    claim(url: string): Promise<{ ok: true; url: string; bytes: number; already: boolean } | { ok: false; reason: "no-permission" | "no-person" | "invalid" | "unknown" | "not-uploader" | "expired" | "missing" | "taken" | "quota" }>;
+    /**
+     * Supprime un fichier revendiqué par cette instance : l'original sur le disque, ses dérivés en cache, puis son enregistrement (le journal d'audit en garde la trace).
+     * Idempotent : un fichier déjà supprimé, jamais revendiqué ou inconnu donne `{ ok: true, removed: false }`. Le fichier d'une autre instance ou d'un autre module : `not-yours`.
+     */
+    remove(url: string): Promise<{ ok: true; removed: boolean } | { ok: false; reason: "no-permission" | "invalid" | "not-yours" | "failed" }>;
+    /** Ce fichier est-il revendiqué par cette instance ? (Pour proposer « supprimer aussi le fichier » seulement quand c'est possible.) */
+    owns(url: string): Promise<boolean>;
+    /** Espace pris par les fichiers revendiqués par ce module (toutes ses instances) et plafonds. Sans la permission : zéros. */
+    usage(): Promise<{ files: number; bytes: number; limitFiles: number; limitBytes: number }>;
   };
   /** Jaquettes de jeux (RAWG), avec la clé réglée une fois par le propriétaire (nécessite la permission « rawg »). Ne lève jamais ; la clé n'est jamais transmise. */
   rawg: {

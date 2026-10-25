@@ -11,6 +11,7 @@ import { catalogueUnreachable, findCatalogueEntry, getCatalogue, type CatalogueE
 import { hardNeeds, offerVersionOf, satisfiesVersion } from "./serviceVersions";
 import { checkBundledRow, convertToCatalogue } from "./bundledUpdate";
 import { dependentsOf } from "./dependencies";
+import { eraseOwnedFiles } from "../services/files";
 import { eraseRetired, restoreModuleInstances, retireModuleInstances } from "./retired";
 import { commitJournal, newJournal, satisfyRequirements, unwind, type DepOps, type Journal, type Missing } from "./dependencyInstaller";
 import { forgetAuto } from "./autoInstalled";
@@ -698,7 +699,11 @@ export async function uninstallModule(id: string, opts: { keepData: boolean }): 
   if (dependents.length) return { ok: false, error: "modules.error.requiredBy", detail: dependents.join(", ") };
   let kept = 0;
   if (opts.keepData) kept = (await retireModuleInstances(id, "uninstall")).length;
-  else await eraseRetired({ moduleId: id });
+  else {
+    await eraseRetired({ moduleId: id });
+    // « Tout effacer » : les fichiers que le module avait revendiqués (ctx.api.files) partent aussi. En gardant les données, ils restent (le registre suit l'instance rangée).
+    await eraseOwnedFiles({ moduleId: id }, "system");
+  }
   await purgeModule(id);
   await forgetAuto(id);
   return { ok: true, id, ...(opts.keepData ? { kept } : {}) };
