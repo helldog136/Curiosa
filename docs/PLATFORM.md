@@ -220,6 +220,10 @@ Voir aussi [GEO.md](GEO.md) (être cité par les IA, expliqué pour le propriét
 
 Extension de l'Entretien du cœur, pas un module : `src/core/maintenance/content/` lit la base **directement** (par paquets, 5 000 entrées au plus) et alimente la page d'administration *Santé de mon site*, `maintenance_diagnose` (en `info` seulement), l'audit, une ligne sobre du tableau de bord et les outils `maintenance_content_check[_run]`. Les visites de liens externes ne partent qu'à la demande, par paquets suivis par `OperationProgress`, avec les gardes `hostProblem` / `addressIsPrivate` de `core/url.ts` et une connexion qui ne va qu'aux adresses vérifiées (`content/net.ts`). Voir [SANTE-DU-SITE.md](SANTE-DU-SITE.md).
 
+## Liens des réseaux sociaux : `rel`, `referrerPolicy`, `target` (0.2.13)
+
+Le cœur construit lui-même chaque lien d'icône de l'en-tête (`loadSocialLinks`, `src/core/social.ts` ; rendu dans `Header.tsx`). Un module qui fournit `social.link` peut déclarer par bouton `rel`, `referrerPolicy` et `target` ; le cœur les nettoie (`cleanSocialRel`, `cleanSocialReferrerPolicy`, `cleanSocialTarget`) contre des listes fermées et renvoie toujours `rel`, `referrerPolicy` (ou `null`) et `target` valides. Une valeur invalide est ignorée sans écarter le bouton (défaut : `noopener noreferrer`, pas de `referrerpolicy`, `_blank`) ; aucun autre attribut d'un module n'atteint le HTML et le filtre d'adresse (`isSafeExternalUrl`) s'applique d'abord. Pour cela le schéma du sujet accepte un type interne `any` (sujets du cœur uniquement, absent du manifeste) : la valeur passe telle quelle, le consommateur la vérifie. Détail du contrat : [MODULES.md](MODULES.md#réseaux-sociaux).
+
 ## Ce que le cœur ne fait pas
 
 - Il ne cite **aucun module par son identifiant**. L'assistant de première installation propose les modules que suggère

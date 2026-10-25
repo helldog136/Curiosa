@@ -112,8 +112,11 @@ export type SectionDecl = {
 export const MODULE_TYPES = ["content", "social", "overlay", "widget", "integration", "utility"] as const;
 export type ModuleType = (typeof MODULE_TYPES)[number];
 
-/** Champ d'un sujet : le consommateur déclare ce qu'il sait digérer. */
-export type TopicField = { key: string; type: "string" | "url" | "number" | "boolean" | "string[]" | "datetime"; required?: boolean };
+/**
+ * Champ d'un sujet : le consommateur déclare ce qu'il sait digérer. `any` (sujets du cœur seulement, absent du manifeste) laisse passer la valeur
+ * telle quelle : le consommateur la vérifie lui-même et ignore ce qui ne va pas, sans écarter l'élément entier.
+ */
+export type TopicField = { key: string; type: "string" | "url" | "number" | "boolean" | "string[]" | "datetime" | "any"; required?: boolean };
 
 /** Information qu'un module sait recevoir. Il en publie le format ; les autres modules s'y conforment. */
 export type ConsumeDecl = {
