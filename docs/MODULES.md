@@ -1078,7 +1078,7 @@ const items = await ctx.api.topics.collect("overlay.item", { limit: 20 }); // [{
 - **Pull à la consommation** : rien n'est copié ni synchronisé ; le consommateur lit l'état courant
   à chaque appel. Un overlay rafraîchit ses données depuis sa propre route (`routes.items`), ce qui
   garde le cœur sans état. Un push (SSE) pourra s'ajouter plus tard sans changer ce contrat.
-- Formats de champs : `string`, `url` (http(s) ou chemin `/…`), `number`, `boolean`, `string[]`, `datetime` (chaîne ISO 8601 : `2026-10-14`, `2026-10-14T20:30`, `2026-10-14T20:30:00Z` ou avec décalage `+02:00` ;
+- Formats de champs : `string`, `url` (http(s) ou chemin `/…`), `number`, `boolean`, `string[]`, `any` (réservé aux sujets du cœur, refusé dans un manifeste : la valeur passe telle quelle, le cœur la vérifie et l'ignore si elle ne convient pas), `datetime` (chaîne ISO 8601 : `2026-10-14`, `2026-10-14T20:30`, `2026-10-14T20:30:00Z` ou avec décalage `+02:00` ;
   la date et l'heure doivent exister — le 30 février est refusé ; sans décalage, l'heure est lue en UTC). Un élément dont un champ est invalide est **écarté seul** : les autres éléments du même
   fournisseur, et les autres fournisseurs, sont servis. Un élément qui n'est pas un objet (`null`, texte…) est écarté de même ; un fournisseur qui ne renvoie pas un tableau ne donne rien.
   Les types d'avant sont inchangés : un manifeste qui n'emploie pas `datetime` marche aussi sur un ancien cœur (un module qui l'emploie doit déclarer `minCore`).
