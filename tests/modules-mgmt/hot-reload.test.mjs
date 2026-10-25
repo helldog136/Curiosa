@@ -336,7 +336,7 @@ test("staticNeighbourImports : parcourt le dossier (sous-dossiers compris), igno
   try {
     for (const [n, c] of Object.entries({
       "index.mjs": 'import { a } from "./lib/a.mjs";\n', "lib/a.mjs": "export const a = 1;\n", "lib/b.mjs": 'export * from "./a.mjs";\n',
-      "scripts/ui.js": 'import "./autre.js";\n', "node_modules/p/i.mjs": 'import "./x.mjs";\n', "propre.mjs": 'const m = await import("./lib/a.mjs");\n',
+      "scripts/ui.js": 'import "./autre.js";\n', "web/main.js": 'import "./engine.js";\n', "node_modules/p/i.mjs": 'import "./x.mjs";\n', "propre.mjs": 'const m = await import("./lib/a.mjs");\n',
     })) { fs.mkdirSync(path.dirname(path.join(dir, n)), { recursive: true }); fs.writeFileSync(path.join(dir, n), c); }
     assert.deepEqual(N.staticNeighbourImports(dir), [{ file: "index.mjs", specifier: "./lib/a.mjs" }, { file: "lib/b.mjs", specifier: "./a.mjs" }]);
     assert.deepEqual(N.staticImportsWarning(dir), { code: "staticImports", files: ["index.mjs", "lib/b.mjs"] });

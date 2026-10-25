@@ -76,7 +76,7 @@ export async function ModuleView({ id, query, embedded = false }: { id: string; 
       </header>
 
       {refusalText && <Callout tone="danger" role="alert"><span data-testid="module-error">{refusalText}</span></Callout>}
-      {blocked && blocked.to !== row.version && <Callout tone="warn" role="status"><span data-testid="module-blocked">{t("modules.blockedNotice", { version: blocked.to, date: blocked.at.slice(0, 10), current: row.version })}</span></Callout>}
+      {blocked && blocked.to !== row.version && <Callout tone="warn" role="status"><span data-testid="module-blocked">{t("modules.blockedNotice", { version: blocked.to, date: new Date(blocked.at).toLocaleDateString(locale, { dateStyle: "long" }), current: row.version })}</span></Callout>}
       {update && <Callout role="status">{update === "yes" ? (to ? t("modules.updateAvailableTo", { module: name, version: to }) : t("modules.updateAvailable")) : t("modules.upToDate")}</Callout>}
       {update === "yes" && level === "major" && <Callout tone="warn" role="alert">{t("modules.updateMajor")}</Callout>}
 

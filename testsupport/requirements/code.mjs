@@ -183,7 +183,7 @@ const requirements = [
   {
     id: "code.neighbourImports", level: "advice", group: "code",
     title: "Les fichiers voisins sont importés avec la version du fichier principal",
-    what: "Aucun fichier du module ne contient d'import statique d'un fichier voisin (`import { x } from \"./source.mjs\"`, `export … from \"./y.mjs\"`) : un voisin s'importe avec `await import(new URL(\"./source.mjs\" + q, import.meta.url).href)`, où `const q = new URL(import.meta.url).search;`. Les scripts du navigateur (dossier `scripts/`) ne sont pas concernés. Détection par lecture du texte, sans exécuter le code.",
+    what: "Aucun fichier du module ne contient d'import statique d'un fichier voisin (`import { x } from \"./source.mjs\"`, `export … from \"./y.mjs\"`) : un voisin s'importe avec `await import(new URL(\"./source.mjs\" + q, import.meta.url).href)`, où `const q = new URL(import.meta.url).search;`. Seuls les fichiers `.mjs` (le code du serveur) sont concernés : les `.js` sont des fichiers du navigateur. Détection par lecture du texte, sans exécuter le code.",
     why: "Node garde en mémoire chaque fichier déjà importé. Sur un cœur d'avant la 0.2.13, après une mise à jour du module dans le même processus, le fichier principal était rechargé mais pas ses voisins importés statiquement : l'ancien voisin ne s'accordait plus avec le nouveau fichier principal et le module devenait « impossible à charger » jusqu'au redémarrage du site (incident réel, cœur 0.2.12). Depuis la 0.2.13 le cœur charge chaque version depuis une copie neuve et ce défaut n'existe plus ; ce conseil garde le module sûr sur un site resté sur un cœur plus ancien.",
     fix: "Remplacez `import { a } from \"./source.mjs\"` par `const q = new URL(import.meta.url).search; const { a } = await import(new URL(`./source.mjs${q}`, import.meta.url).href);` en tête du fichier principal (modèle : le module « live-status » du dépôt curiosa-extras), et dans chaque fichier voisin qui en importe un autre.",
     run(m) {
@@ -191,7 +191,7 @@ const requirements = [
       // début de ligne, import/export, éventuellement une liste de noms puis from, puis une adresse relative entre guillemets (l'import dynamique `import("./x")` n'est pas concerné)
       const re = /^[ \t]*(?:import|export)\s*(?:[^'"`;()]*?\bfrom\s*)?(["'])(\.{1,2}\/[^"'\n]+)\1/gm;
       for (const s of m.sources) {
-        if (/^scripts\//.test(s.file)) continue;
+        if (!/\.mjs$/.test(s.file) || /^scripts\//.test(s.file)) continue;
         for (const x of stripComments(s.text).matchAll(re)) out.push(`${s.file} importe son voisin « ${x[2]} » de façon statique`);
       }
       return out;

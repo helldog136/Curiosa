@@ -6,13 +6,13 @@ import path from "node:path";
  * à chaud rendait un module « impossible à charger » (Node gardait l'ancienne copie du voisin). Depuis le cœur 0.2.13 le cœur charge chaque version depuis une copie neuve
  * (voir snapshot.ts) : ces modules fonctionnent. Mais sur un cœur plus ancien, ou si le module est essayé hors du cœur, ils restent fragiles : on le SIGNALE (jamais un refus).
  *
- * Détection par lecture du texte (pas d'exécution) : approximative mais prudente. Bornée : 200 fichiers, 512 Ko chacun. Le dossier `scripts/` (scripts du navigateur) et `node_modules` sont ignorés.
+ * Détection par lecture du texte (pas d'exécution) : approximative mais prudente. Bornée : 200 fichiers, 512 Ko chacun. Seuls les fichiers `.mjs` sont lus (les `.js` sont des fichiers du navigateur) ; `scripts/` et `node_modules` sont ignorés.
  */
 export type NeighbourImport = { file: string; specifier: string };
 
 const MAX_FILES = 200;
 const MAX_BYTES = 512 * 1024;
-const CODE = /\.(mjs|js)$/;
+const CODE = /\.mjs$/;   // le code du serveur est en .mjs ; les .js sont des fichiers du navigateur (scripts/, web/…)
 const SKIP = new Set([".git", "node_modules"]);
 
 /** Enlève les commentaires (// et /* *​/) sans toucher à « https://… » dans un texte. */
