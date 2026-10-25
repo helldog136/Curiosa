@@ -3,6 +3,7 @@ import { isKnownLocale } from "@/core/i18n/locales";
 import { NEWS_COOKIE, planVisit, SEEN_COOKIE, SINCE_COOKIE, SINCE_HEADER } from "@/core/visit";
 import { TIMED_OUT, withDeadline } from "@/core/deadline";
 import { isRedirectEnded } from "@/core/redirectGate";
+import { geolocationOpen, policyValue } from "@/core/permissionsPolicy";
 
 const LOCALE_HEADER = "x-curiosa-locale";
 const PATH_HEADER = "x-curiosa-path";
@@ -19,6 +20,8 @@ const PROOF = `${crypto.randomUUID()}${crypto.randomUUID()}`;
 const SHORT_PATH = /^[a-z0-9][a-z0-9_-]*(\/[a-z0-9][a-z0-9_-]*)*$/;
 /** Temps maximal accordé à la porte des liens terminés : au-delà, la page se sert normalement (jamais d'attente sans borne). */
 const GATE_MAX_MS = 1500;
+/** Temps maximal accordé à la lecture de « un module a-t-il besoin de la position ? » : au-delà (ou au moindre doute), l'en-tête reste FERMÉ. */
+const POLICY_MAX_MS = 500;
 
 /** Le lien court de ce chemin a-t-il passé sa date de fin ? Alors on détourne vers la page « lien terminé », qui répond 410 (une page de Next ne sait répondre qu'en 200 ou 404). */
 async function endedRewrite(request: NextRequest, path: string, headers: Headers): Promise<NextResponse | null> {
@@ -55,7 +58,10 @@ export async function proxy(request: NextRequest) {
   const optedIn = request.cookies.get(NEWS_COOKIE)?.value === "1";
   const visit = planVisit(optedIn ? { seen: request.cookies.get(SEEN_COOKIE)?.value, since: request.cookies.get(SINCE_COOKIE)?.value } : {});
   headers.set(SINCE_HEADER, optedIn ? String(visit.since.getTime()) : "0");
+  // Position du visiteur : permise (au site seul) uniquement si un module installé la demande ; sinon la valeur fermée de next.config.mjs reste. Cache en mémoire (core/permissionsPolicy.ts).
+  const policy = policyValue((await withDeadline(() => geolocationOpen(), POLICY_MAX_MS).catch(() => false)) === true);
   const stamp = <T extends NextResponse>(res: T): T => {
+    res.headers.set("Permissions-Policy", policy);
     if (!optedIn) {
       for (const name of [SEEN_COOKIE, SINCE_COOKIE]) if (request.cookies.has(name)) res.cookies.set(name, "", { path: "/", maxAge: 0 });
       return res;

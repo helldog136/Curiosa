@@ -1,4 +1,5 @@
 import { siteUrl } from "@/core/config";
+import { hasPublicPage } from "./modules/publicPage";
 import { collectFeedItems } from "@/core/feeds";
 import { getActiveInstances } from "@/core/modules/registry";
 import { makeTranslator } from "@/core/i18n/dictionary";
@@ -65,7 +66,7 @@ export async function buildLlmsTxt(locale: string): Promise<string> {
   const at = (path: string) => pageUrl(siteUrl, loc, base.defaultLocale, path);
 
   const pages: LlmsLink[] = [{ title: t("llms.home"), url: at("/") }];
-  for (const { instance } of (await getActiveInstances()).filter((a) => a.instance.basePath)) {
+  for (const { instance } of (await getActiveInstances()).filter((a) => hasPublicPage(a) && !!a.instance.basePath)) {
     pages.push({ title: pickName(instance, loc, base.defaultLocale), url: at(`/${instance.basePath}`), description: pickDescription(instance, loc, base.defaultLocale) });
   }
 

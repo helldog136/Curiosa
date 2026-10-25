@@ -1,4 +1,5 @@
 import { getActiveInstances } from "@/core/modules/registry";
+import { hasPublicPage } from "@/core/modules/publicPage";
 import { readModuleScript, scriptVersion } from "@/core/modules/pageScripts";
 
 export const dynamic = "force-dynamic";
@@ -9,7 +10,7 @@ type Params = { params: Promise<{ instance: string; name: string }> };
 export async function GET(request: Request, { params }: Params): Promise<Response> {
   const { instance: key, name } = await params;
   const active = (await getActiveInstances()).find((a) => a.instance.key === key);
-  const file = active && active.mod.def.page ? readModuleScript(active.mod.manifest.id, name) : null;
+  const file = active && hasPublicPage(active) && active.mod.def.page ? readModuleScript(active.mod.manifest.id, name) : null;
   if (!file) return new Response("Not found", { status: 404 });
   return new Response(new Uint8Array(file.body), {
     headers: {

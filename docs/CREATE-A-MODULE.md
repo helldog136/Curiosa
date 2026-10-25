@@ -73,7 +73,7 @@ Les champs importants : `apiVersion` (toujours `2` aujourd'hui : le contrat avec
 `version` (`x.y.z`), `main` (le fichier de code ; sans lui, module « sans code »), `instances` (`"multiple"` ou `"single"`), `permissions` (ce que vous utilisez). Si votre module a besoin d'une fonction récente du cœur, ajoutez `"minCore": "0.1.10"` (la version minimale du cœur, trois nombres) : un site plus ancien refusera de l'installer ou de monter de version, avec un message qui lui dit de se mettre à jour d'abord. Si votre module concerne une plateforme (Twitch, Discord, YouTube…), ajoutez `"platform": "twitch"` (minuscules, chiffres et tirets) : l'admin regroupe sous la même plateforme les modules qui la partagent. Purement visuel, facultatif. Un module de type `overlay` (ou avec la permission `overlay` et sans `page` ni `sections`) est rangé dans la page Overlays, avec son adresse OBS ; s'il a une page ou des sections, il est rangé comme les autres modules (cœur 0.2.6). Détails : [`MODULES.md`](MODULES.md).
 
 Les **permissions** sont déclaratives : elles disent à l'administrateur ce que fait le module. Une par capacité utilisée : `slots`, `sections`, `pages`,
-`routes`, `storage`, `filters`, `topics`, `overlay`, `mcp`, `admin`, `mail`, `rawg`, `privacy` (lire les déclarations de vie privée des autres modules, cœur 0.2.6). Le cœur ne bloque pas une capacité non déclarée — déclarez-les fidèlement.
+`routes`, `storage`, `filters`, `topics`, `overlay`, `mcp`, `admin`, `mail`, `rawg`, `privacy` (lire les déclarations de vie privée des autres modules, cœur 0.2.6), `visitor.geolocation` (demander la position du visiteur après un clic, cœur 0.2.12). Le cœur ne bloque pas une capacité non déclarée — déclarez-les fidèlement. **Seule exception : `visitor.geolocation`.** Le site ferme la position du visiteur (`Permissions-Policy: geolocation=()`) tant qu'aucun module installé ne la déclare ; sans elle, `navigator.geolocation` est refusé par le navigateur. Si votre module la déclare, ajoutez `"minCore": "0.2.12"` et n'appelez la position qu'après un clic. Détails : [MODULES.md](MODULES.md).
 
 L'exemple minimal « de production » est `announcement-banner` (`curiosa-extras/examples/announcement-banner`) ; essayez le vôtre tout de suite :
 [section 17](#17-tester-son-module). Toutes les clés possibles de `index.mjs` sont des **clés optionnelles** de l'objet exporté :
@@ -151,7 +151,7 @@ Exemple : sections `latest` et `recent` du guestbook.
 ## 6. Une page publique
 
 Un module peut avoir une page à lui, montée sur un chemin (`/guestbook`). Dans le manifeste : `"page": true` et `"basePath": "guestbook"` (le chemin proposé
-à la création de l'instance). Dans le code, la fonction `page` :
+à la création de l'instance). **Page facultative** (cœur 0.2.12, `"minCore": "0.2.12"`) : ajoutez un réglage `boolean` (par exemple `publicPage`, `default: false`) et `"pageSetting": "publicPage"`. Tant que la case est décochée, la page répond 404 et n'apparaît ni dans le plan du site, ni dans `llms.txt`, ni dans le menu : n'écrivez pas ce test vous-même. Dans le code, la fonction `page` :
 
 ```js
 export default {

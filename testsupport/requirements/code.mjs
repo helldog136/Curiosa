@@ -13,6 +13,7 @@ const API_USE = [
   { permission: "mail", re: /\bapi\s*\??\.\s*mail\b|\{[^}]*\bmail\b[^}]*\}\s*=\s*[\w.]*\bapi\b/, label: "l'envoi d'e-mails (ctx.api.mail)" },
   { permission: "rawg", re: /\bapi\s*\??\.\s*rawg\b|\{[^}]*\brawg\b[^}]*\}\s*=\s*[\w.]*\bapi\b/, label: "les jaquettes de jeux (ctx.api.rawg)" },
   { permission: "privacy", re: /\bapi\s*\??\.\s*privacy\b|\{[^}]*\bprivacy\b[^}]*\}\s*=\s*[\w.]*\bapi\b/, label: "les déclarations de vie privée des modules (ctx.api.privacy)" },
+  { permission: "visitor.geolocation", re: /\bnavigator\s*\??\.\s*geolocation\b|\bgeolocation\s*\??\.\s*(?:getCurrentPosition|watchPosition)\b/, label: "la position du visiteur (navigator.geolocation)" },
   { permission: "topics", re: /\bapi\s*\??\.\s*topics\b|\{[^}]*\btopics\b[^}]*\}\s*=\s*[\w.]*\bapi\b/, label: "les sujets d'échange (ctx.api.topics)" },
 ];
 
@@ -115,7 +116,7 @@ const requirements = [
   {
     id: "perm.declared", level: "mandatory", group: "permissions",
     title: "Chaque capacité utilisée est déclarée dans « permissions »",
-    what: "Le code n'utilise le stockage, l'e-mail, les sujets d'échange, les jaquettes de jeux, les routes, pages, emplacements, sections, overlay, filtres, actions MCP ou l'administration que si la permission correspondante est dans module.json. Le test l'a vérifié en lisant le code et en le faisant tourner avec un contexte qui refuse ce qui n'est pas déclaré.",
+    what: "Le code n'utilise le stockage, l'e-mail, les sujets d'échange, les jaquettes de jeux, la position du visiteur, les routes, pages, emplacements, sections, overlay, filtres, actions MCP ou l'administration que si la permission correspondante est dans module.json. Le test l'a vérifié en lisant le code et en le faisant tourner avec un contexte qui refuse ce qui n'est pas déclaré.",
     why: "Les permissions sont montrées à l'administrateur avant l'installation : c'est ce qui lui permet de dire oui en connaissance de cause. Un module qui en utilise plus qu'il n'en annonce trompe cette confiance.",
     fix: "Ajoutez la permission citée au tableau « permissions » de module.json — ou retirez du code ce qui l'utilise si ce n'est pas voulu.",
     async run(m) {

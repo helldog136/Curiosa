@@ -355,6 +355,21 @@ test("permission « privacy » (cœur 0.2.6) : l'utiliser sans la déclarer est 
   assert.equal((await allowed.api.privacy.declarations()).modules.length, 1);
 });
 
+test("permission « visitor.geolocation » (cœur 0.2.12) : l'utiliser sans la déclarer est signalé ; déclarée mais inutilisée, c'est un conseil ; elle exige minCore 0.2.12", async () => {
+  const use = (permissions, withCode = true) => mk((f) => {
+    if (withCode) REPLACE(f, "const [last] = await rows(ctx);", "const [last] = await rows(ctx); const here = globalThis.navigator?.geolocation; navigator.geolocation.getCurrentPosition(() => {});");
+    editManifest(f, (m) => { m.permissions = [...new Set([...m.permissions, ...permissions])]; m.minCore = "0.2.11"; });
+  });
+  const without = await checkModule(use([]), { siblings: [] });
+  assert.match((status(without, "perm.declared").problems ?? []).join("\n"), /visitor\.geolocation/);
+  const withIt = await checkModule(use(["visitor.geolocation"]), { siblings: [] });
+  assert.equal(status(withIt, "perm.declared").status, "pass", JSON.stringify(status(withIt, "perm.declared")));
+  assert.equal(status(withIt, "manifest.valid").status, "pass");
+  assert.match((status(withIt, "compat.minCore").problems ?? []).join("\n"), /0\.2\.12/);
+  const unused = await checkModule(use(["visitor.geolocation"], false), { siblings: [] });
+  assert.match(JSON.stringify(status(unused, "perm.minimal")), /visitor\.geolocation/);
+});
+
 test("routes.visitorIp : sans lecture d'en-tête d'adresse rien à signaler ; cœur plus ancien que 0.2.6 : non applicable ; la fonction est reconnue (minCore)", async () => {
   const r = REQUIREMENTS.find((x) => x.id === "routes.visitorIp");
   const ok = { definition: { routes: { sign() {} } }, core: { version: "0.2.6" }, code: "export default { routes: { sign: (request, ctx) => ctx.api.visitor.fingerprint(request, 'sign') } };" };

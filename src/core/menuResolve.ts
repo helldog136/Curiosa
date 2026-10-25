@@ -1,4 +1,5 @@
 import { prisma } from "./db";
+import { hasPublicPage } from "./modules/publicPage";
 import { pickName } from "./instances";
 import { withLocale } from "./links";
 import { getSetting } from "./settings";
@@ -63,7 +64,7 @@ export async function resolvePublicMenu(locale: string, defaultLocale: string): 
 
   const active = new Map((await getActiveInstances()).map((a) => [a.instance.id, a]));
   const news = new Map<string, boolean>();
-  await Promise.all(ids("instance").map(async (id) => { const a = active.get(id); if (a?.instance.basePath) news.set(id, await instanceHasNews(a, locale)); }));
+  await Promise.all(ids("instance").map(async (id) => { const a = active.get(id); if (a && hasPublicPage(a) && a.instance.basePath) news.set(id, await instanceHasNews(a, locale)); }));
 
   const entryIds = ids("entry");
   const entries = entryIds.length
@@ -92,13 +93,13 @@ export async function resolvePublicMenu(locale: string, defaultLocale: string): 
     }
     if (n.kind === "instance") {
       const a = active.get(n.ref);
-      if (!a || !a.instance.basePath) return null;
+      if (!a || !hasPublicPage(a) || !a.instance.basePath) return null;
       return { labels: { [locale]: pickName(a.instance, locale, defaultLocale) }, href: withLocale(`/${a.instance.basePath}`, locale, defaultLocale), news: news.get(n.ref) === true };
     }
     if (n.kind === "entry") {
       const e = entryById.get(n.ref);
       const inst = e ? instanceById.get(e.instanceId) : undefined;
-      if (!e || !inst || inst.basePath === null || !active.has(inst.id)) return null;
+      if (!e || !inst || inst.basePath === null || !active.has(inst.id) || !hasPublicPage(active.get(inst.id)!)) return null;
       const tr = e.translations.find((x) => x.locale === locale) ?? (inst.fallbackToDefault ? e.translations.find((x) => x.locale === defaultLocale) ?? e.translations[0] : undefined);
       if (!tr) return null;
       return { labels: { [locale]: tr.title }, href: withLocale(`${inst.basePath ? `/${inst.basePath}` : ""}/${tr.slug}`, locale, defaultLocale) };

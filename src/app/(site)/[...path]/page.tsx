@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { hasPublicPage } from "@/core/modules/publicPage";
 import { cache } from "react";
 import { headers } from "next/headers";
 import { notFound, permanentRedirect, redirect } from "next/navigation";
@@ -54,7 +55,7 @@ async function resolve(segments: string[]): Promise<Resolved> {
   if (first === "go" && segs.length === 3) return { kind: "go", instanceKey: segs[1]!, slug: segs[2]! };
   if (RESERVED_PATHS.has(first)) return { kind: "none" };
 
-  const mounted = (await getActiveInstances()).filter((a) => a.instance.basePath !== null);
+  const mounted = (await getActiveInstances()).filter(hasPublicPage);
   const serve = (active: ActiveInstance, rest: string[], root: boolean): Resolved => {
     if (active.mod.def.page) return { kind: "module", active, segments: rest };
     if (!active.mod.manifest.content) return { kind: "none" };

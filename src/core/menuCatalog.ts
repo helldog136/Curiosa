@@ -1,4 +1,5 @@
 import { prisma } from "./db";
+import { hasPublicPage } from "./modules/publicPage";
 import { pickName } from "./instances";
 import type { Translator } from "./i18n/dictionary";
 import { SYSTEM_PAGES, alreadyInMenu, matchesQuery, refKey, scanMatches, type MenuNode } from "./menu";
@@ -37,7 +38,7 @@ type Ctx = { t: Translator; locale: string; defaultLocale: string };
 
 /** Les instances qui ont une page propre au menu public (chemin non vide), dans l'ordre du site. */
 async function pageInstances() {
-  return (await getActiveInstances()).filter((a) => !!a.instance.basePath && menuEligible(a.mod.manifest));
+  return (await getActiveInstances()).filter((a) => hasPublicPage(a) && !!a.instance.basePath && menuEligible(a.mod.manifest));
 }
 
 export async function searchCatalog(group: CatalogGroup, rawQuery: string, rawCursor: unknown, ctx: Ctx): Promise<CatalogPage> {
@@ -140,7 +141,7 @@ export async function describeMenuRefs(items: readonly MenuNode[], ctx: Ctx): Pr
   const out: Record<string, NodeInfo> = {};
   const gone = (n: MenuNode) => { out[refKey(n)!] = { title: "", sub: "", missing: true }; };
 
-  const active = new Map((await getActiveInstances()).map((a) => [a.instance.id, a.instance]));
+  const active = new Map((await getActiveInstances()).filter(hasPublicPage).map((a) => [a.instance.id, a.instance]));
   const entryIds = ids("entry");
   const entries = entryIds.length
     ? await prisma.entry.findMany({ where: { id: { in: entryIds }, status: "published" }, include: { translations: true }, take: entryIds.length })

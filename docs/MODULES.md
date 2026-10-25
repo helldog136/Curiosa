@@ -121,7 +121,7 @@ Validé à l'installation et au chargement (zod, `src/core/modules/manifest.ts`)
   "platform": "twitch",                  // facultatif : plateforme concernée (regroupement à l'écran)
   "instances": "multiple",               // ou "single"
   "page": true, "basePath": "guestbook", // l'instance a une page publique, sur ce chemin proposé
-  "permissions": ["slots", "sections", "routes", "storage", "filters", "pages", "topics", "overlay", "mcp", "admin", "mail", "rawg", "privacy"],
+  "permissions": ["slots", "sections", "routes", "storage", "filters", "pages", "topics", "overlay", "mcp", "admin", "mail", "rawg", "privacy", "visitor.geolocation"],
   "settings": [ /* … */ ], "sections": [ /* … */ ], "consumes": [ /* … */ ], "provides": [ /* … */ ], "mcp": [ /* … */ ],
   "content": { /* … */ }, "onboarding": { /* … */ }, "defaultEnabled": true
 }
@@ -136,6 +136,7 @@ Validé à l'installation et au chargement (zod, `src/core/modules/manifest.ts`)
 | `name`, `description` | Texte ou `{ langue: texte }` (500 caractères au plus). Langue absente : langue par défaut du site, puis `en`. |
 | `version` | `x.y.z`. Sert à détecter les mises à jour (comparée à la version du catalogue). |
 | `author`, `license`, `homepage` | Informatifs (`homepage` : URL valide). |
+| `pageSetting` | (cœur 0.2.12, `"minCore": "0.2.12"`) Facultatif : clé d'un réglage **booléen** du module (case à cocher) qui allume ou éteint la page publique de l'instance. Tant qu'il est faux (ou jamais enregistré et sans `default: true`), la page n'existe pour personne : 404 sur l'adresse et sur son `page-script`, et rien dans le plan du site, `llms.txt`, le menu ni l'éditeur de menu. Refusé si la clé n'est pas celle d'un réglage booléen du module, ou si le module n'a pas de page. Sans le champ : rien ne change. L'administration de l'instance dit si la page est allumée. Règle unique : `hasPublicPage` (`src/core/modules/publicPage.ts`). |
 | `privacy` | Facultatif : ce que le module collecte comme données personnelles, pourquoi et comment les faire effacer (texte simple, traduisible comme `description`). **Un module qui collecte des données de visiteurs doit le déclarer** : le cœur reprend ce texte tel quel, sous le nom de l'instance, dans la page « Politique de confidentialité » du site (`/privacy`, lien permanent du pied de page). Un module qui ne collecte rien n'a rien à écrire. |
 | `icon` | Emoji affiché dans l'admin. |
 | `main` | Fichier ES module du code, relatif à la racine. Absent : module « sans code » (réglages, contenu). |
@@ -198,6 +199,11 @@ fidèlement (le test de l'exemple vérifie qu'elles correspondent au code), elle
 | `mail` | le module appelle `ctx.api.mail.send` |
 | `rawg` | le module appelle `ctx.api.rawg.cover` (jaquettes de jeux, voir « Jaquettes de jeux (RAWG) ») |
 | `privacy` | (cœur 0.2.6) le module appelle `ctx.api.privacy.declarations()` (lire ce que les autres modules déclarent récolter) |
+| `visitor.geolocation` | (cœur 0.2.12, déclarez `"minCore": "0.2.12"`) le code de la page appelle `navigator.geolocation` (« Près de moi »). **Seule permission qui change vraiment ce que le navigateur autorise** : voir ci-dessous |
+
+#### Permission `visitor.geolocation` (cœur 0.2.12)
+
+Le site envoie `Permissions-Policy: camera=(), microphone=(), geolocation=()` : la position du visiteur est **fermée**. Elle n'est permise (`geolocation=(self)`, les pages du site seulement, jamais un tiers ni un joker) que si **au moins un module installé déclare `"visitor.geolocation"`** dans `permissions`. Installer, mettre à jour, réinstaller ou désinstaller un module recalcule l'en-tête ; le cœur le garde en mémoire (30 s au plus de retard) et le **ferme au moindre doute**. Sans la déclaration, le navigateur refuse l'appel même après un clic : un module qui s'en sert doit donc la déclarer, et rien d'autre. L'administrateur lit « Demander la position du visiteur, seulement après un clic de sa part » avant d'installer. Le droit ne vaut que pour les pages publiques du site (pas l'administration, ni les routes `/m/…`). Le module ne l'appelle qu'**après un clic**, ne garde rien et n'envoie rien. Un module qui ne déclare rien ne change rien : l'en-tête reste fermé. La déclaration est reconnue à partir de la 0.2.12 ; un cœur plus ancien refuse le module (permission inconnue), d'où `minCore`.
 
 ### Droits (`rights`)
 

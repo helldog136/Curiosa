@@ -20,6 +20,7 @@ import { getSetting, getSettingByLocale, getSiteConfig, themeExtraOf } from "@/c
 import { effectiveSort, SORTS, sortSettingKey } from "@/core/content/sort";
 import { mcpInstanceKey } from "@/core/modules/mcpProvider";
 import { getInstanceLabeler } from "@/core/modules/labels";
+import { pageIsOn, pageSettingStorageKey } from "@/core/modules/publicPage";
 import { Blocks } from "@/components/site/Blocks";
 import { siteUrl } from "@/core/config";
 import { effectiveType } from "@/core/modules/manifest";
@@ -67,6 +68,10 @@ export async function InstanceView({ id, query: sp, inModal = false }: { id: str
   const L = (v: Parameters<typeof localized>[0]) => localized(v, locale, config.defaultLocale);
   const content = mod.manifest.content;
   const labeler = await getInstanceLabeler(locale, config.defaultLocale);
+  // Page facultative (`pageSetting`) : l'adresse n'existe pour les visiteurs que si la case du réglage est cochée.
+  const pageKey = hasPage(mod.manifest) ? mod.manifest.pageSetting : undefined;
+  const pageLabel = pageKey ? L(mod.manifest.settings.find((f) => f.key === pageKey)?.label ?? pageKey) : "";
+  const pageOn = pageKey ? pageIsOn(mod.manifest, await getSetting(pageSettingStorageKey(instance.id, pageKey))) : true;
   const showNickname = labeler.hasSiblings(instance.moduleId);
   const inMenu = await isInstanceInMenu(instance.id);
   const moduleName = L(mod.manifest.name);
@@ -246,6 +251,9 @@ export async function InstanceView({ id, query: sp, inModal = false }: { id: str
           )}
           {hasPage(mod.manifest) && !advanced && (
             <p className="text-sm text-muted min-[1100px]:col-span-2">{t("instances.address")} : <code className="font-mono">/{instance.basePath}</code></p>
+          )}
+          {pageKey && (
+            <p className="text-sm text-muted min-[1100px]:col-span-2" data-testid="page-setting-hint">{t(pageOn ? "instances.pageOn" : "instances.pageOff", { setting: pageLabel })}</p>
           )}
           {hasPage(mod.manifest) && advanced && (
             <div className="grid gap-4 sm:grid-cols-2 min-[1100px]:col-span-2">
