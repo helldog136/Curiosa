@@ -84,7 +84,7 @@ Tu es branchée à un site Curiosa par un jeton « Maintenance ». Ton rôle : s
 | `maintenance_request_status {requestId}` | 1 | état d'une de **tes** demandes (`pending_approval`, `running`, `done`, `failed`, `denied`, `expired`) et son résultat |
 | `maintenance_check_updates` | 2 | revérifie les versions (vide les caches) |
 | `maintenance_backup_run` | 2 | copie de la base sur le serveur (illisible depuis l'API) |
-| `maintenance_module_reinstall {module}` | 2 | code remis à neuf, données et réglages conservés |
+| `maintenance_module_reinstall {module}` | 2 | code remis à neuf, données et réglages conservés (refusé, ancien code gardé, si le nouveau code ne se charge pas) |
 | `maintenance_module_restart {instance}` | 2 | remet en marche une instance mise à l'écart après un échec de conversion de données |
 | `maintenance_content_check_run {continue?}` | 2 | lance une vérification du contenu (comme le bouton « Vérifier maintenant ») : lit le site puis visite poliment **un paquet** de liens vers d'autres sites (200 au plus par vérification, 25 par site, jamais deux visites de suite sur le même site, adresses internes refusées). Rien n'est modifié sur le site. Rappelle avec `continue: true` tant que `finished` est faux, puis lis `maintenance_content_check`. Ne la lance que sur demande ou si le résultat est ancien |
 | `maintenance_module_settings {instance, tab?}` | 2 (lecture seule) | les réglages d'une instance : libellé, aide, type, valeur actuelle, valeurs permises avec un exemple, « à remplir », outil qui peut le changer. Un réglage **secret** n'a jamais sa valeur : seulement `isSet` et où la personne le saisit. Les adresses sont montrées sans leur partie privée. Niveau 2 (et non 1) parce que les valeurs peuvent être personnelles : le propriétaire l'accorde en connaissance de cause |
@@ -112,6 +112,16 @@ Emma n'est pas technicienne : elle te dit « de quoi j'aurais besoin pour mes co
 ### Installer un module : ce que le cœur vérifie
 
 `maintenance_module_install` ne fait **jamais** l'installation lui-même : il crée une demande, **même si** le propriétaire a choisi l'exécution directe pour ton jeton (ce choix vaut pour les mises à jour et les désinstallations ; rien dans le modèle ne dit quel module est « sans danger », donc l'installation attend toujours un humain). Avant de déranger la propriétaire, il vérifie : le module est dans le catalogue officiel (jamais un dépôt donné par toi, jamais l'index supplémentaire non vérifié), il vise cette génération de Curiosa, la version de Curiosa du site suffit (`minCore`), il n'est **pas déjà installé** (sinon utilise `maintenance_module_update`), et chaque module qu'il exige peut être mis en place : ils sont **dans la demande**, avec leurs noms, et rien ne vient en cachette. Au moment d'approuver, le cœur relit tout : si la version ou la liste a changé depuis la demande, rien n'est fait et tu dois redemander. L'installation passe par la même fonction que l'admin (étiquette épinglée du catalogue, identifiant relu, annulation en bloc au moindre échec) puis crée la première instance (`instanceKey` facultatif, pour un module qui accepte plusieurs instances : mêmes règles que l'admin, clé libre). Elle ne fait pas de copie de sécurité avant : l'installation de l'admin n'en fait pas non plus (elle ajoute, ne remplace rien).
+
+### Une mise à jour refusée parce que le module ne se charge pas (0.2.13)
+
+Avant d'installer, de mettre à jour ou de réinstaller un module, le cœur **essaie de charger le nouveau code** (dans un processus à part, puis dans le site). S'il ne se charge pas, l'opération est **refusée avant d'avoir rien changé** : l'ancienne version reste en service, ses données et réglages n'ont pas bougé. Ce que tu vois :
+
+- la réponse d'une action (`maintenance_module_update`, `maintenance_modules_update_all`, `maintenance_module_reinstall`, `maintenance_module_install`) dit « the new code does not load on this site, so it was refused before being put in place (the previous version stays in service and nothing changed) » ; une réinstallation ou une installation ajoute `Cause: …` (raison courte, sans chemin) ;
+- `maintenance_modules` ajoute au module `lastRefusedUpdate` (`stayedOn`, `refusedVersion`, `at`, `cause`) ; `maintenance_updates` marque cette version `aiCanUpdate: false` avec `alreadyRefused` ; `maintenance_diagnose` ajoute un problème `warning` avec `needsHuman: true` et `tool: null` ;
+- le journal d'audit (`maintenance_audit`) a une ligne `module.update.blocked`, acteur `system`.
+
+**Que faire.** Rien n'est cassé : dis à la propriétaire, en mots simples, que la mise à jour a été refusée pour la protéger et que **l'auteur du module doit publier une version corrigée** ; ne réessaie **pas** la même version (elle échouera de la même façon). `maintenance_check_updates` fait réapparaître l'offre dès qu'une autre version est publiée. La mémoire du refus s'efface à la prochaine mise à jour réussie. `maintenance_modules` liste aussi `staticNeighbourImports` (fichiers qui importent un voisin de façon statique) : c'est une remarque pour l'auteur, sans effet sur ce site.
 
 ### Actions à risque : demande, puis attente
 

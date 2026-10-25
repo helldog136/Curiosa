@@ -5,7 +5,9 @@ import { classify, isPrerelease } from "@/core/updates/versions";
 import { listInstances } from "@/core/instances";
 import { dataStatusOf } from "@/core/modules/dataMigrations";
 import { requirementGaps } from "@/core/modules/dependencies";
-import { listModuleRows, loadModule } from "@/core/modules/registry";
+import { listModuleRows, loadModule, moduleDir } from "@/core/modules/registry";
+import { readBlockedUpdate, type BlockedUpdate } from "@/core/modules/blockedUpdate";
+import { staticImportsWarning } from "@/core/modules/staticImports";
 import { sourceKind } from "@/core/modules/reinstall";
 import { getInstallInfo, getUpdateChannel, readUpdateLog, readUpdateState, readVersion } from "@/core/updates/service";
 import { compareVersions } from "@/core/updates/versions";
@@ -134,7 +136,14 @@ export type ModuleLine = {
   instances: { key: string; error?: string }[];
   missingDependencies: { service: string; neededVersion: number; availableVersion: number | null }[];
   update: { available: boolean; target?: string; level?: string; needsCore?: string; followsStableTag: boolean };
+  /** Une mise à jour de ce module a été refusée par le contrôle de chargement : l'ancienne version tourne toujours (blockedUpdate.ts). */
+  lastRefusedUpdate?: { at: string; stayedOn: string; refusedVersion: string; cause: string };
+  /** Fichiers qui importent un voisin de façon statique (fragile sur un cœur avant 0.2.13 ; sans effet ici : chaque chargement part d'une copie neuve). */
+  staticNeighbourImports?: string[];
 };
+
+const refused = (b: BlockedUpdate | null, row: { version: string }): ModuleLine["lastRefusedUpdate"] =>
+  b && b.to !== row.version ? { at: b.at, stayedOn: row.version, refusedVersion: b.to, cause: redactSecrets(b.reason, 200) } : undefined;
 
 const isStableTagRef = (ref: string | null | undefined) => !!ref && /^v?\d+\.\d+\.\d+$/.test(ref);
 
@@ -150,7 +159,10 @@ export async function modules(): Promise<{ modules: ModuleLine[]; truncated: boo
     const mine = instances.filter((i) => i.moduleId === row.id);
     const lineInstances: ModuleLine["instances"] = [];
     for (const i of mine) { const s = await dataStatusOf(i.id); lineInstances.push({ key: i.key, ...(s ? { error: `${s.status}${s.error ? `: ${redactSecrets(s.error, 160)}` : ""}` } : {}) }); }
+    const lastRefused = refused(await readBlockedUpdate(row.id), row);
+    const neighbours = staticImportsWarning(moduleDir(row.id));
     lines.push({
+      ...(lastRefused ? { lastRefusedUpdate: lastRefused } : {}), ...(neighbours ? { staticNeighbourImports: neighbours.files } : {}),
       id: row.id, version: row.version, source: sourceKind(row), repository: publicRepo(row.repoUrl), ref: row.ref ? redactSecrets(row.ref, 60) : null,
       loadable: !!mod, instances: lineInstances,
       missingDependencies: gaps.map((g) => ({ service: g.service, neededVersion: g.min, availableVersion: g.have })),
@@ -162,7 +174,7 @@ export async function modules(): Promise<{ modules: ModuleLine[]; truncated: boo
 
 export type UpdatesView = {
   core: { current: string; channel: string; canUpdateFromAdmin: boolean; latestStable: string | null; available: boolean; level?: string; notes?: string; note?: string };
-  modules: { id: string; current: string; target: string; level?: string; needsCore?: string; aiCanUpdate: boolean; reason?: string }[];
+  modules: { id: string; current: string; target: string; level?: string; needsCore?: string; aiCanUpdate: boolean; reason?: string; /** Cette version précise a déjà été essayée et refusée (elle ne se charge pas). */ alreadyRefused?: { at: string; cause: string } }[];
   unchecked: string[];
   checkedAt: string | null;
 };
@@ -192,12 +204,18 @@ export async function updates(): Promise<UpdatesView> {
 
   const rows = new Map((await listModuleRows()).map((r) => [r.id, r]));
   const report = await deps.modulesReport(false).catch(() => null);
+  const blocked = new Map<string, BlockedUpdate>();
+  for (const o of report?.outdated ?? []) { const b = await readBlockedUpdate(o.id); if (b) blocked.set(o.id, b); }
   return {
     core,
     modules: (report?.outdated ?? []).map((o) => {
       const row = rows.get(o.id);
-      const reason = moduleUpdateRefusal({ ref: row?.ref, source: row?.source ?? "git", target: o.target, needsCore: o.needsCore });
-      return { id: o.id, current: o.current, target: o.target, ...(o.level ? { level: o.level } : {}), ...(o.needsCore ? { needsCore: o.needsCore } : {}), aiCanUpdate: !reason, ...(reason ? { reason } : {}) };
+      const base = moduleUpdateRefusal({ ref: row?.ref, source: row?.source ?? "git", target: o.target, needsCore: o.needsCore });
+      // Cette version précise a déjà été refusée (elle ne se charge pas) : la réessayer ne sert à rien tant que l'auteur n'en a pas publié une autre.
+      const again = blocked.get(o.id);
+      const alreadyRefused = again && again.to === o.target ? { at: again.at, cause: redactSecrets(again.reason, 200) } : undefined;
+      const reason = base ?? (alreadyRefused ? `version ${o.target} was already tried on ${alreadyRefused.at.slice(0, 10)} and refused because it does not load on this site (${alreadyRefused.cause}): wait for a fixed version` : undefined);
+      return { id: o.id, current: o.current, target: o.target, ...(o.level ? { level: o.level } : {}), ...(o.needsCore ? { needsCore: o.needsCore } : {}), aiCanUpdate: !reason, ...(reason ? { reason } : {}), ...(alreadyRefused ? { alreadyRefused } : {}) };
     }),
     unchecked: report?.unchecked ?? [],
     checkedAt: report ? new Date(report.checkedAt).toISOString() : null,
@@ -223,6 +241,7 @@ export async function diagnose() {
   for (const m of mods.modules) {
     if (!m.loadable) add({ severity: "critical", problem: `Module "${m.id}" cannot be loaded.`, probableCause: "its files are damaged or incompatible with this version", proposedAction: "Reinstall it: code is renewed, data and settings are kept.", tool: "maintenance_module_reinstall", needsHuman: false });
     for (const i of m.instances) if (i.error) add({ severity: "critical", problem: `Instance "${i.key}" (module "${m.id}") was set aside: ${i.error}`, probableCause: "a data conversion failed after an update", proposedAction: "Try to bring it back; if it fails again, reinstall the module or tell the owner.", tool: "maintenance_module_restart", needsHuman: false });
+    if (m.lastRefusedUpdate) add({ severity: "warning", problem: `The update of module "${m.id}" to ${m.lastRefusedUpdate.refusedVersion} was refused on ${m.lastRefusedUpdate.at.slice(0, 10)}: the new code does not load on this site.`, probableCause: `a fault in the module's new version (${m.lastRefusedUpdate.cause})`, proposedAction: `Nothing is broken: the module still runs ${m.lastRefusedUpdate.stayedOn}, as before, and its data did not change. Tell the owner in simple words that the update was refused for their safety and that the module's author must publish a fixed version. Do not try this version again.`, tool: null, needsHuman: true });
     if (m.missingDependencies.length) add({ severity: "warning", problem: `Module "${m.id}" lacks what it needs: ${m.missingDependencies.map((d) => d.service).join(", ")}.`, probableCause: "the module providing that service is not installed, or has nothing set up yet", proposedAction: "Tell the owner to install the missing module, or set it up, in Admin > Extensions.", tool: null, needsHuman: true });
   }
   if (up.core.available) add({ severity: up.core.level === "major" ? "warning" : "info", problem: `A new stable core version is available (${up.core.current} to ${up.core.latestStable}, ${up.core.level}).`, probableCause: "a release was published", proposedAction: "Make a backup, then ask for the core update (the owner approves it unless they chose direct execution).", tool: "maintenance_core_update", needsHuman: false });

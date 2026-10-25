@@ -12,6 +12,8 @@ import type { ModuleDefinition, SectionDecl } from "./types";
 import { forgetLoadFailures, reportLoadFailure } from "./loadLog";
 import { invalidatePermissionsPolicy } from "../permissionsPolicy";
 import { pageIsOn, pageSettingStorageKey } from "./publicPage";
+import { discardSnapshot, pruneSnapshots, snapshotModule } from "./snapshot";
+import { cleanReason, describeShape, shapeProblems } from "./loadCheck";
 
 export type LoadedModule = {
   row: Module;
@@ -75,34 +77,86 @@ function readLocales(dir: string): Record<string, Record<string, string>> {
   return out;
 }
 
-export async function loadModule(row: Module): Promise<LoadedModule | null> {
-  const cacheKey = `${row.id}@${row.version}@${row.commit ?? ""}`;
-  const hit = loadedCache.get(cacheKey);
-  if (hit) return { ...hit, row };
-
-  try {
-    const manifest = readGitManifest(row.id);
-    if (!manifest) throw new Error("invalid or missing module.json");
-    let def: ModuleDefinition = {};
-    if (manifest.main) {
-      const file = path.join(moduleDir(row.id), manifest.main);
-      const mod = (await runtimeImport(`${pathToFileURL(file).href}?v=${importVersionKey(row.id, row)}`)) as {
+/** Charge le code d'un module depuis une COPIE NEUVE de son dossier (voir snapshot.ts) : tous ses fichiers, voisins compris, ont des adresses que Node n'a jamais vues. Lève en cas d'échec. */
+async function importModule(row: Module): Promise<LoadedModule & { hasDefault: boolean }> {
+  const manifest = readGitManifest(row.id);
+  if (!manifest) throw new Error("invalid or missing module.json");
+  let def: ModuleDefinition = {};
+  let hasDefault = false;
+  if (manifest.main) {
+    const copy = snapshotModule(row.id, moduleDir(row.id));
+    try {
+      const mod = (await runtimeImport(`${pathToFileURL(path.join(copy, manifest.main)).href}?v=${importVersionKey(row.id, row)}`)) as {
         default?: ModuleDefinition;
       };
+      hasDefault = mod.default !== undefined && mod.default !== null;
       def = mod.default ?? {};
+      pruneSnapshots(row.id);
+    } catch (error) {
+      discardSnapshot(copy);
+      throw error;
     }
-    const loaded: LoadedModule = { row, manifest, def, locales: readLocales(moduleDir(row.id)) };
-    loadedCache.set(cacheKey, loaded);
-    forgetLoadFailures(row.id);
-    return loaded;
+  }
+  return { row, manifest, def, locales: readLocales(moduleDir(row.id)), hasDefault };
+}
+
+const cacheKeyOf = (row: Pick<Module, "id" | "version" | "commit">) => `${row.id}@${row.version}@${row.commit ?? ""}`;
+
+// Chargements en cours : deux requêtes qui arrivent ensemble sur un module froid partagent UN chargement (sinon deux copies, deux exécutions du code de tête).
+const pendingHolder = globalThis as unknown as { curiosaModulePending?: Map<string, Promise<LoadedModule | null>> };
+const pending = (pendingHolder.curiosaModulePending ??= new Map());
+
+export async function loadModule(row: Module): Promise<LoadedModule | null> {
+  const cacheKey = cacheKeyOf(row);
+  const hit = loadedCache.get(cacheKey);
+  if (hit) return { ...hit, row };
+  const running = pending.get(cacheKey);
+  if (running) { const done = await running; return done ? { ...done, row } : null; }
+
+  const work = (async (): Promise<LoadedModule | null> => {
+    try {
+      const { hasDefault: _d, ...loaded } = await importModule(row);
+      void _d;
+      loadedCache.set(cacheKey, loaded);
+      forgetLoadFailures(row.id);
+      return loaded;
+    } catch (error) {
+      reportLoadFailure(row.id, error);
+      return null;
+    } finally {
+      pending.delete(cacheKey);
+    }
+  })();
+  pending.set(cacheKey, work);
+  return work;
+}
+
+/**
+ * CONTRÔLE DE CHARGEMENT dans le processus du site (voir loadCheck.ts) : charge CETTE version depuis une copie neuve, même si une autre copie est en mémoire, et vérifie la forme de ce
+ * qu'elle exporte. À appeler APRÈS avoir posé les fichiers et AVANT de basculer la ligne en base. Réussite : le module chargé est gardé en mémoire sous la clé de cette version
+ * (voir `forgetModule` et son argument `keep`). Échec : rien n'est gardé, la raison (courte, sans chemin) est renvoyée. Ne lève jamais.
+ */
+export async function verifyModuleLoad(row: Pick<Module, "id" | "version" | "commit">): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const key = cacheKeyOf(row);
+  loadedCache.delete(key);
+  try {
+    const { hasDefault, ...loaded } = await importModule(row as Module);
+    if (loaded.manifest.main) {
+      if (!hasDefault) return { ok: false, reason: "the main file has no default export (export default { … })" };
+      const problems = shapeProblems(describeShape(loaded.def));
+      if (problems.length) return { ok: false, reason: problems.slice(0, 3).join("; ") };
+    }
+    loadedCache.set(key, loaded);
+    return { ok: true };
   } catch (error) {
-    reportLoadFailure(row.id, error);
-    return null;
+    return { ok: false, reason: cleanReason(error) };
   }
 }
 
-export function forgetModule(id: string): void {
-  for (const key of loadedCache.keys()) if (key.startsWith(`${id}@`)) loadedCache.delete(key);
+/** Oublie le module chargé. `keep` : le module qu'on vient de vérifier et de basculer, à garder en mémoire. */
+export function forgetModule(id: string, keep?: Pick<Module, "id" | "version" | "commit">): void {
+  const kept = keep ? cacheKeyOf(keep) : null;
+  for (const key of loadedCache.keys()) if (key.startsWith(`${id}@`) && key !== kept) loadedCache.delete(key);
   invalidatePermissionsPolicy(); // installé, mis à jour, réinstallé ou désinstallé : l'en-tête Permissions-Policy est recalculé (core/permissionsPolicy.ts)
 }
 

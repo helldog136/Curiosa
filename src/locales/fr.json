@@ -145,6 +145,8 @@
   "modules.error.exists": "Un module avec cet identifiant est déjà installé.",
   "modules.error.notfound": "Module introuvable.",
   "modules.error.load": "Le module n'a pas pu être chargé.",
+  "modules.error.loadCheck": "Cette version du module ne se charge pas sur ce site : elle n'a donc pas été mise en place. Si le module était déjà installé, la version qui fonctionnait est restée en service et vos données n'ont pas bougé. Prévenez l'auteur du module : une version corrigée règlera le problème.",
+  "modules.blockedNotice": "La mise à jour vers la version {version} a été refusée le {date} : elle ne se chargeait pas sur ce site. La version {current} est restée en service et fonctionne comme avant. Il faut attendre une version corrigée du module.",
   "users.role": "Rôle",
   "users.add": "Ajouter un utilisateur",
   "users.passwordHelp": "10 caractères minimum.",

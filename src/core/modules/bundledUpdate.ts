@@ -47,8 +47,8 @@ export async function convertToCatalogue(row: Module, entry: CatalogueEntry, set
     }),
   });
   if (!r.ok && journal) { const { unwind } = await import("./dependencyInstaller"); await unwind(journal); }   // échange défait après la mise en place : on défait aussi la cascade
-  if (!r.ok) return { ok: false, error: r.error, ...(r.detail ? { detail: r.detail } : {}), ...(r.needsCore ? { needsCore: r.needsCore } : {}), ...(missing ? { missing } : {}) };
+  if (!r.ok) return { ok: false, error: r.error, ...(r.detail ? { detail: r.detail } : {}), ...(r.needsCore ? { needsCore: r.needsCore } : {}), ...(r.loadError ? { loadError: r.loadError, rolledBack: true } : {}), ...(missing ? { missing } : {}) };
   const done = journal as Journal | null;
   if (done) await (await import("./dependencyInstaller")).commitJournal(done);
-  return { ok: true, id: row.id, migrations: r.migrations, auditTarget: conversionAuditTarget(row.id, row.version, r.after.version), ...(done?.provided.length ? { provided: done.provided } : {}) };
+  return { ok: true, id: row.id, migrations: r.migrations, auditTarget: conversionAuditTarget(row.id, row.version, r.after.version), ...(r.warnings ? { warnings: r.warnings } : {}), ...(done?.provided.length ? { provided: done.provided } : {}) };
 }

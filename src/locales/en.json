@@ -145,6 +145,8 @@
   "modules.error.exists": "A module with this id is already installed.",
   "modules.error.notfound": "Module not found.",
   "modules.error.load": "The module could not be loaded.",
+  "modules.error.loadCheck": "This version of the module does not load on this site, so it was not put in place. If the module was already installed, the version that worked stayed in service and your data did not change. Tell the module's author: a fixed version will solve it.",
+  "modules.blockedNotice": "The update to version {version} was refused on {date}: it did not load on this site. Version {current} stayed in service and works as before. Wait for a fixed version of the module.",
   "users.role": "Role",
   "users.add": "Add a user",
   "users.passwordHelp": "At least 10 characters.",
