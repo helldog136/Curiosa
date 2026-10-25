@@ -1004,6 +1004,7 @@
   "perm.admin": "Adds a management area to this dashboard",
   "perm.mail": "Can send you emails",
   "perm.privacy": "Can read what your other features say about the personal data they collect",
+  "perm.visitor.geolocation": "Ask for the visitor's location, only after they click",
   "catalogue.by": "by {author}",
   "catalogue.asks.friendly": "What this feature will do on your site",
   "catalogue.needs": "Works with: {what}",

@@ -10,6 +10,7 @@ import { listInstances, type InstanceView } from "../instances";
 import { getSetting } from "../settings";
 import type { ModuleDefinition, SectionDecl } from "./types";
 import { forgetLoadFailures, reportLoadFailure } from "./loadLog";
+import { invalidatePermissionsPolicy } from "../permissionsPolicy";
 
 export type LoadedModule = {
   row: Module;
@@ -101,6 +102,7 @@ export async function loadModule(row: Module): Promise<LoadedModule | null> {
 
 export function forgetModule(id: string): void {
   for (const key of loadedCache.keys()) if (key.startsWith(`${id}@`)) loadedCache.delete(key);
+  invalidatePermissionsPolicy(); // installé, mis à jour, réinstallé ou désinstallé : l'en-tête Permissions-Policy est recalculé (core/permissionsPolicy.ts)
 }
 
 export async function listModuleRows(): Promise<Module[]> {
@@ -164,4 +166,5 @@ export function sectionsOf(manifest: ParsedManifest): SectionDecl[] {
 /** Oublie les modules chargés et les migrations de mise à jour (après une restauration, par exemple). */
 export function resetModuleRegistry(): void {
   loadedCache.clear();
+  invalidatePermissionsPolicy();
 }

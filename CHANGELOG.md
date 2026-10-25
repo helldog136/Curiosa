@@ -7,6 +7,21 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.2.12
+
+### Améliorations
+
+- **La position d'un visiteur ne peut être demandée que si un module de votre site en a besoin.** Sans un tel module, votre site referme ce droit, comme avant la 0.2.11. Rien à régler : c'est automatique, et la caméra et le micro restent toujours fermés.
+- **L'écran qui détaille un module annonce ce droit.** Vous lisez « Demander la position du visiteur, seulement après un clic de sa part » avant d'installer. Si vous retirez le module, le droit se referme tout seul.
+- Rien d'autre ne change pour votre site.
+
+### Pour les développeurs
+
+- Nouvelle permission de module `visitor.geolocation` (module.json, `permissions`). `Permissions-Policy` vaut `camera=(), microphone=(), geolocation=()` ; le proxy passe `geolocation` à `(self)` sur les pages publiques seulement si un module installé la déclare. Jamais de tiers ni de joker.
+- Un module qui la déclare doit mettre `"minCore": "0.2.12"` : un cœur plus ancien refuse l'inconnue. Les modules sans déclaration gardent l'en-tête fermé.
+- `src/core/permissionsPolicy.ts` : réponse gardée en mémoire (30 s), recalculée à l'installation, la mise à jour, la réinstallation et la désinstallation ; fermée au moindre doute (base ou fichier illisible, délai de 500 ms dépassé, module.json invalide).
+- Testsupport : `perm.declared` et `perm.minimal` comprennent la permission (`navigator.geolocation`), `minCore` exigé. Test : `tests/core/permissions-policy.test.mjs`. Docs : MODULES.md, SECURITE.md, CREATE-A-MODULE.md.
+
 ## 0.2.11
 
 ### Améliorations

@@ -1004,6 +1004,7 @@
   "perm.admin": "Ajoute un espace de gestion dans cette administration",
   "perm.mail": "Peut vous envoyer des e-mails",
   "perm.privacy": "Peut lire ce que vos autres fonctions disent des données personnelles qu'elles récoltent",
+  "perm.visitor.geolocation": "Demander la position du visiteur, seulement après un clic de sa part",
   "catalogue.by": "par {author}",
   "catalogue.asks.friendly": "Ce que cette fonctionnalité fera sur votre site",
   "catalogue.needs": "Fonctionne avec : {what}",

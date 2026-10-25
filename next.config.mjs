@@ -22,7 +22,9 @@ const nextConfig = {
         headers: [
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(self)" },
+          // FERMÉ par défaut, partout (admin, API, fichiers). Le proxy (src/proxy.ts, core/permissionsPolicy.ts) ne passe `geolocation` à `(self)` que sur les pages
+          // publiques et seulement si un module installé déclare la permission « visitor.geolocation ». Caméra et micro : fermés sans condition.
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
           { key: "X-Frame-Options", value: "SAMEORIGIN" },
         ],
       },

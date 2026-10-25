@@ -268,7 +268,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 
 **Chaque capacité utilisée est déclarée dans « permissions »** — niveau : **obligatoire**
 
-- **Ce qui est vérifié.** Le code n'utilise le stockage, l'e-mail, les sujets d'échange, les jaquettes de jeux, les routes, pages, emplacements, sections, overlay, filtres, actions MCP ou l'administration que si la permission correspondante est dans module.json. Le test l'a vérifié en lisant le code et en le faisant tourner avec un contexte qui refuse ce qui n'est pas déclaré.
+- **Ce qui est vérifié.** Le code n'utilise le stockage, l'e-mail, les sujets d'échange, les jaquettes de jeux, la position du visiteur, les routes, pages, emplacements, sections, overlay, filtres, actions MCP ou l'administration que si la permission correspondante est dans module.json. Le test l'a vérifié en lisant le code et en le faisant tourner avec un contexte qui refuse ce qui n'est pas déclaré.
 - **Pourquoi.** Les permissions sont montrées à l'administrateur avant l'installation : c'est ce qui lui permet de dire oui en connaissance de cause. Un module qui en utilise plus qu'il n'en annonce trompe cette confiance.
 - **Comment corriger.** Ajoutez la permission citée au tableau « permissions » de module.json — ou retirez du code ce qui l'utilise si ce n'est pas voulu.
 
