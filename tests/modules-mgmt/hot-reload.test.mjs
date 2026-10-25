@@ -93,6 +93,7 @@ test("copies de chargement : un dossier neuf par chargement, jamais de .git ni n
     fs.mkdirSync(path.join(S.runRoot(dataDir), "999999999", "old"), { recursive: true });
     const dirs = [];
     for (let i = 0; i < 6; i++) dirs.push(S.snapshotModule("demo", src, dataDir));
+    S.pruneSnapshots("demo", dataDir);
     assert.equal(new Set(dirs).size, 6, "chaque chargement a SON dossier");
     assert.deepEqual(fs.readdirSync(path.join(src, "..", "src")).sort(), [".git", "a.mjs", "node_modules"]);
     assert.deepEqual(fs.readdirSync(dirs[5]), ["a.mjs"], "ni .git ni node_modules dans la copie");
@@ -100,6 +101,23 @@ test("copies de chargement : un dossier neuf par chargement, jamais de .git ni n
     assert.equal(fs.existsSync(path.join(S.runRoot(dataDir), "999999999")), false, "le dossier d'un processus disparu est nettoyé");
     assert.equal(path.basename(path.dirname(path.dirname(dirs[0]))), String(process.pid));
   } finally { fs.rmSync(dataDir, { recursive: true, force: true }); S.resetSnapshotsForTests(dataDir); }
+});
+
+test("deux requêtes simultanées sur un module froid partagent UN chargement (une seule copie, le code de tête n'est exécuté qu'une fois)", async () => {
+  globalThis.__reloadLoads = 0;
+  put({ "module.json": manifest("1.0.0"), "index.mjs": "globalThis.__reloadLoads++;\nexport default { marker: 'ok' };\n" });
+  const [a, b, c] = await Promise.all([R.loadModule(row("1.0.0", "z")), R.loadModule(row("1.0.0", "z")), R.loadModule(row("1.0.0", "z"))]);
+  assert.deepEqual([a?.def.marker, b?.def.marker, c?.def.marker], ["ok", "ok", "ok"]);
+  assert.equal(globalThis.__reloadLoads, 1);
+  delete globalThis.__reloadLoads;
+});
+
+test("un module cassé, ré-essayé à chaque requête, ne laisse pas une copie par requête", async () => {
+  put(files("1.0.0", { index: "export default {" }));
+  const copies = () => { const root = path.join(S.runRoot(db.dir), String(process.pid), "demo"); return fs.existsSync(root) ? fs.readdirSync(root).length : 0; };
+  const before = copies();
+  for (let i = 0; i < 6; i++) assert.equal(await quiet(() => R.loadModule(row("1.0.0", "cassé"))), null);
+  assert.equal(copies(), before, "chaque essai raté efface sa copie");
 });
 
 /* ───────────── 2. Contrôle de chargement ───────────── */

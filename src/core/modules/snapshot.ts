@@ -53,12 +53,27 @@ export function snapshotModule(id: string, source: string, dataDir: string = DAT
   const dest = path.join(parent, String(n));
   fs.mkdirSync(parent, { recursive: true });
   fs.cpSync(source, dest, { recursive: true, filter: (src) => !SKIP.has(path.basename(src)) });
-  // Les générations anciennes ne servent plus (les modules déjà importés restent en mémoire : seuls leurs imports tardifs liraient le disque).
-  for (const old of fs.readdirSync(parent)) if (Number(old) <= n - KEEP_GENERATIONS) fs.rmSync(path.join(parent, old), { recursive: true, force: true });
   return dest;
 }
 
 /** Tests : oublie l'état d'un dossier de données (un « redémarrage »). */
 export function resetSnapshotsForTests(dataDir: string = DATA_DIR): void {
   states.delete(runRoot(dataDir));
+}
+
+/**
+ * Garde les 4 dernières copies de ce module et supprime les plus anciennes. À appeler APRÈS un chargement réussi (jamais après un échec : un module cassé,
+ * ré-essayé à chaque requête, chasserait sinon les copies du code qui fonctionne). Les modules déjà importés restent en mémoire : seuls leurs imports tardifs liraient le disque.
+ */
+export function pruneSnapshots(id: string, dataDir: string = DATA_DIR): void {
+  const parent = path.join(prepare(runRoot(dataDir)).root, id);
+  try {
+    const all = fs.readdirSync(parent).map(Number).filter(Number.isInteger).sort((a, b) => a - b);
+    for (const n of all.slice(0, Math.max(0, all.length - KEEP_GENERATIONS))) fs.rmSync(path.join(parent, String(n)), { recursive: true, force: true });
+  } catch { /* dossier absent : rien à nettoyer */ }
+}
+
+/** Efface une copie dont le chargement a échoué (un module cassé est ré-essayé à chaque requête : il ne doit pas laisser une copie par requête). */
+export function discardSnapshot(dir: string): void {
+  fs.rmSync(dir, { recursive: true, force: true });
 }

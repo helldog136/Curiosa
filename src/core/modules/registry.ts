@@ -12,7 +12,7 @@ import type { ModuleDefinition, SectionDecl } from "./types";
 import { forgetLoadFailures, reportLoadFailure } from "./loadLog";
 import { invalidatePermissionsPolicy } from "../permissionsPolicy";
 import { pageIsOn, pageSettingStorageKey } from "./publicPage";
-import { snapshotModule } from "./snapshot";
+import { discardSnapshot, pruneSnapshots, snapshotModule } from "./snapshot";
 import { cleanReason, describeShape, shapeProblems } from "./loadCheck";
 
 export type LoadedModule = {
@@ -84,33 +84,51 @@ async function importModule(row: Module): Promise<LoadedModule & { hasDefault: b
   let def: ModuleDefinition = {};
   let hasDefault = false;
   if (manifest.main) {
-    const file = path.join(snapshotModule(row.id, moduleDir(row.id)), manifest.main);
-    const mod = (await runtimeImport(`${pathToFileURL(file).href}?v=${importVersionKey(row.id, row)}`)) as {
-      default?: ModuleDefinition;
-    };
-    hasDefault = mod.default !== undefined && mod.default !== null;
-    def = mod.default ?? {};
+    const copy = snapshotModule(row.id, moduleDir(row.id));
+    try {
+      const mod = (await runtimeImport(`${pathToFileURL(path.join(copy, manifest.main)).href}?v=${importVersionKey(row.id, row)}`)) as {
+        default?: ModuleDefinition;
+      };
+      hasDefault = mod.default !== undefined && mod.default !== null;
+      def = mod.default ?? {};
+      pruneSnapshots(row.id);
+    } catch (error) {
+      discardSnapshot(copy);
+      throw error;
+    }
   }
   return { row, manifest, def, locales: readLocales(moduleDir(row.id)), hasDefault };
 }
 
 const cacheKeyOf = (row: Pick<Module, "id" | "version" | "commit">) => `${row.id}@${row.version}@${row.commit ?? ""}`;
 
+// Chargements en cours : deux requêtes qui arrivent ensemble sur un module froid partagent UN chargement (sinon deux copies, deux exécutions du code de tête).
+const pendingHolder = globalThis as unknown as { curiosaModulePending?: Map<string, Promise<LoadedModule | null>> };
+const pending = (pendingHolder.curiosaModulePending ??= new Map());
+
 export async function loadModule(row: Module): Promise<LoadedModule | null> {
   const cacheKey = cacheKeyOf(row);
   const hit = loadedCache.get(cacheKey);
   if (hit) return { ...hit, row };
+  const running = pending.get(cacheKey);
+  if (running) { const done = await running; return done ? { ...done, row } : null; }
 
-  try {
-    const { hasDefault: _d, ...loaded } = await importModule(row);
-    void _d;
-    loadedCache.set(cacheKey, loaded);
-    forgetLoadFailures(row.id);
-    return loaded;
-  } catch (error) {
-    reportLoadFailure(row.id, error);
-    return null;
-  }
+  const work = (async (): Promise<LoadedModule | null> => {
+    try {
+      const { hasDefault: _d, ...loaded } = await importModule(row);
+      void _d;
+      loadedCache.set(cacheKey, loaded);
+      forgetLoadFailures(row.id);
+      return loaded;
+    } catch (error) {
+      reportLoadFailure(row.id, error);
+      return null;
+    } finally {
+      pending.delete(cacheKey);
+    }
+  })();
+  pending.set(cacheKey, work);
+  return work;
 }
 
 /**
