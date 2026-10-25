@@ -38,6 +38,7 @@ readable/           VOS DONNÉES MISES EN FORME POUR UN HUMAIN — commencez ici
   modules/<instance>/ les données de chaque module (JSON ; CSV et autres fichiers que le module fournit)
 data/               les mêmes données, brutes, en JSON : c'est ce que la restauration relit
                     (dont retired-instances.json : les données GARDÉES de modules ou d'instances retirés, inertes ; absent des sauvegardes d'avant la 0.1.20)
+                    (dont upload-files.json : qui possède quel fichier envoyé, pour les modules qui peuvent les supprimer, 0.2.13 ; absent avant : aucun fichier n'a de propriétaire)
                     (dont roles.json et user-roles.json : les rôles et qui les a ; absents avant la 0.2.0 : la restauration recrée alors les rôles
                      prédéfinis et donne à chacun celui de son niveau `role` dans users.json)
 uploads/            images et fichiers envoyés
@@ -75,6 +76,8 @@ Tout est du **texte** (JSON, Markdown, CSV), sauf les images. Pour vérifier l'i
 « J'ai déjà une sauvegarde : la restaurer »** : même procédure (fichier, mot de passe, aperçu, confirmation des modules personnels), sans créer
 de compte provisoire. Si `SETUP_TOKEN` est défini, le même jeton est demandé. Ce chemin n'existe que **tant qu'aucun compte n'existe** :
 un site en service ne peut se restaurer que depuis l'admin, par son propriétaire. Reconnectez-vous ensuite avec un compte de la sauvegarde.
+
+- **Fichiers supprimés par un module** (permission `files`, 0.2.13) : une sauvegarde est une photographie. Restaurer remet les fichiers qu'elle contient (supprimés depuis ou non) avec leur propriétaire et les données des modules de la même date : tout reste cohérent, la suppression ne casse jamais une restauration. Un fichier supprimé après la sauvegarde n'est plus dans les sauvegardes suivantes ; les anciennes sauvegardes le gardent tant que vous les gardez.
 
 ## Bon à savoir
 

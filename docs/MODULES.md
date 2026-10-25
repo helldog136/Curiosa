@@ -11,7 +11,7 @@
 Sommaire : [anatomie](#anatomie-dun-module) · [manifeste `module.json`](#le-manifeste-modulejson) · [code `index.mjs`](#le-code-indexmjs) ·
 [contexte `ctx`](#le-contexte-ctx) · [blocs](#blocs) · [sujets](#échanger-des-informations-entre-modules-les-sujets) ·
 [admin](#panneau-dadmin-riche-formulaires-et-boutons-pilotés-par-le-module) · [MCP](#api-mcp-exposer-des-actions-aux-assistants) ·
-[thème](#thème-du-site-et-apparence-dun-module) · [e-mail](#envoyer-un-e-mail) · [jaquettes RAWG](#jaquettes-de-jeux-rawg) · [RSS](#alimenter-le-flux-rss) ·
+[thème](#thème-du-site-et-apparence-dun-module) · [e-mail](#envoyer-un-e-mail) · [jaquettes RAWG](#jaquettes-de-jeux-rawg) · [fichiers envoyés](#fichiers-envoyés-garder-et-supprimer-ctxapifiles) · [RSS](#alimenter-le-flux-rss) ·
 [overlay](#overlay-type-overlay) · [sauvegarde](#sauvegarde-lisible-sans-le-framework) · [installer et publier](#installer-publier-catalogue) ·
 [sécurité](#sécurité-à-lire-avant-dinstaller)
 
@@ -121,7 +121,7 @@ Validé à l'installation et au chargement (zod, `src/core/modules/manifest.ts`)
   "platform": "twitch",                  // facultatif : plateforme concernée (regroupement à l'écran)
   "instances": "multiple",               // ou "single"
   "page": true, "basePath": "guestbook", // l'instance a une page publique, sur ce chemin proposé
-  "permissions": ["slots", "sections", "routes", "storage", "filters", "pages", "topics", "overlay", "mcp", "admin", "mail", "rawg", "privacy", "visitor.geolocation"],
+  "permissions": ["slots", "sections", "routes", "storage", "filters", "pages", "topics", "overlay", "mcp", "admin", "mail", "rawg", "privacy", "visitor.geolocation", "files"],
   "settings": [ /* … */ ], "sections": [ /* … */ ], "consumes": [ /* … */ ], "provides": [ /* … */ ], "mcp": [ /* … */ ],
   "content": { /* … */ }, "onboarding": { /* … */ }, "defaultEnabled": true
 }
@@ -199,6 +199,7 @@ fidèlement (le test de l'exemple vérifie qu'elles correspondent au code), elle
 | `mail` | le module appelle `ctx.api.mail.send` |
 | `rawg` | le module appelle `ctx.api.rawg.cover` (jaquettes de jeux, voir « Jaquettes de jeux (RAWG) ») |
 | `privacy` | (cœur 0.2.6) le module appelle `ctx.api.privacy.declarations()` (lire ce que les autres modules déclarent récolter) |
+| `files` | (cœur 0.2.13, déclarez `"minCore": "0.2.13"`) le module appelle `ctx.api.files` : il garde (revendique) les fichiers que la personne envoie par l'administration et peut les supprimer. Voir « Fichiers envoyés : garder et supprimer ». Texte montré à l'administrateur : « Garder et supprimer les fichiers que vous envoyez via ce module ». |
 | `visitor.geolocation` | (cœur 0.2.12, déclarez `"minCore": "0.2.12"`) le code de la page appelle `navigator.geolocation` (« Près de moi »). **Seule permission qui change vraiment ce que le navigateur autorise** : voir ci-dessous |
 
 #### Permission `visitor.geolocation` (cœur 0.2.12)
@@ -938,6 +939,9 @@ Deux familles : les **services** du cœur (génériques, voir [PLATFORM.md](PLAT
 | `ctx.api.topics.collectPage(sujet, { limit?, cursor? })` | service | comme `collect`, page par page : `{ items, next }` (200 au plus par page ; `cursor` = le `next` précédent, opaque ; `next: null` = fini). Seul `core.entry` est lu par curseur (du plus récent au plus ancien, expirées écartées) ; un sujet fourni par un module n'a qu'une page. Curseur illisible : erreur. |
 | `ctx.api.mail.configured()` | service | un serveur d'e-mail est-il réglé ? |
 | `ctx.api.mail.send({ to, subject, text, replyTo? })` | service | e-mail au nom du site (permission `mail`, voir « Envoyer un e-mail ») |
+| `ctx.api.files.claim(url)` | service | (cœur 0.2.13, permission `files`) revendique un fichier `/uploads/…` que la personne connectée vient d'envoyer ; voir « Fichiers envoyés : garder et supprimer » |
+| `ctx.api.files.remove(url)` | service | (cœur 0.2.13, permission `files`) supprime un fichier que CETTE instance a revendiqué (original et dérivés) ; idempotent |
+| `ctx.api.files.owns(url)` / `ctx.api.files.usage()` | service | (cœur 0.2.13, permission `files`) ce fichier est-il à cette instance ? / espace pris et plafonds du module |
 | `ctx.api.rawg.configured()` | service | une clé RAWG est-elle réglée par le propriétaire ? (permission `rawg` ; `false` sans elle) |
 | `ctx.api.rawg.cover(title)` | service | jaquette d'un jeu : `{ status, url, name?, id?, ambiguous? }` avec `status` = `found` (`url` en https), `none` (aucun résultat, ou « aucune jaquette » choisi par la propriétaire), `no-key` (pas de clé), `refused` (RAWG refuse la clé), `unreachable` (RAWG injoignable) ; `name`, `id` et `ambiguous` sont **facultatifs** (cœur 0.2.10) ; permission `rawg`, voir « Jaquettes de jeux (RAWG) » |
 | `ctx.api.rawg.candidates(title)` | service | cœur 0.2.10 : les jeux que RAWG propose pour ce titre, `{ status, candidates: [{ id, name, year, platforms, url }] }` (6 au plus, jaquette obligatoire) ; même permission `rawg`, mêmes statuts, ne lève jamais |
@@ -1332,6 +1336,56 @@ else { /* r.error : timeout | network | rate | quota | circuit | busy | too_larg
 - **Santé** : `ctx.api.net.health()`, et le bloc d'admin `netHealth` (voir « Blocs ») pour la montrer à l'administrateur en mots simples.
 
 Un cœur plus ancien n'a pas `ctx.api.net` : exigez `"minCore": "0.2.0"`, ou prévoyez un repli (`ctx.api.net ? … : fetch(url, { signal: AbortSignal.timeout(8000) })`). Le kit de test vérifie les appels réseau (règles `net.bounded`, `net.429`, `net.fallback`, `net.noIdleTimer`, voir [TESTSUPPORT.md](TESTSUPPORT.md)) ; dans vos tests, `fakeCtx()` fournit le vrai client, à combiner avec `withFakeFetch` et `netReplies` (`rateLimited`, `quotaExceeded`, `silence`, `truncatedJson`, `slow`, `down`).
+
+## Fichiers envoyés : garder et supprimer (`ctx.api.files`)
+
+Une image ou une vidéo envoyée par l'administration (`/api/admin/upload`, champs « image » des formulaires) devient un fichier `/uploads/<identifiant>.<extension>`. Il appartient au **cœur** : un module qui retire une photo de ses données la *masque*, mais le fichier reste sur le disque et dans les sauvegardes. Avec la permission **`files`** (cœur 0.2.13, `"minCore": "0.2.13"`), un module peut **garder** (revendiquer) les fichiers qu'on lui envoie, puis les **supprimer** pour de bon. Texte montré à l'administrateur avant l'installation : « Garder et supprimer les fichiers que vous envoyez via ce module ».
+
+```js
+// Dans une action d'administration (adminActions) : la personne vient d'envoyer la photo, le formulaire donne son adresse.
+async savePhoto(ctx, values) {
+  const claim = await ctx.api.files.claim(values.photo);          // « /uploads/<uuid>.jpg », avec ou sans cadrage « ?c=… »
+  if (!claim.ok) return { error: ctx.t(`photo.${claim.reason}`) }; // voir les motifs ci-dessous
+  await ctx.api.store.add("photos", { url: claim.url });
+  return { ok: true };
+},
+async deletePhoto(ctx, { id }) {
+  const row = await ctx.api.store.get(id);
+  await ctx.api.store.remove(id);
+  if (row) await ctx.api.files.remove(row.data.url);              // original + versions cadrées en cache ; déjà supprimé = sans effet
+  return { ok: true };
+},
+```
+
+**Revendiquer** (`claim(url)`) : réussit seulement si **toutes** ces conditions sont vraies (sinon `{ ok: false, reason }`, rien n'est changé) :
+
+| `reason` | veut dire |
+|---|---|
+| `no-permission` | le module n'a pas déclaré `files` |
+| `no-person` | pas d'action d'administration en cours (page publique, route, tâche, MCP) : seule la personne qui vient de cliquer peut confier un fichier |
+| `invalid` | pas une adresse d'envoi du cœur (`/uploads/<uuid>.<ext>`, ou le nom seul) : tout autre chemin, `..`, adresse externe… est refusé |
+| `unknown` | le cœur n'a pas reçu ce fichier récemment (ancien envoi d'avant la 0.2.13, logo, couverture d'un autre écran, adresse inventée) |
+| `not-uploader` | le fichier a été envoyé par quelqu'un d'autre |
+| `expired` | plus de 30 minutes se sont écoulées depuis l'envoi |
+| `missing` | le fichier n'est plus sur le disque |
+| `taken` | un autre module (ou une autre instance) l'a déjà revendiqué |
+| `quota` | le plafond du module est atteint : 1 Go et 20 000 fichiers au total, toutes ses instances ensemble |
+
+Le succès rend `{ ok: true, url, bytes, already }` (`already: true` si cette instance l'avait déjà : redemander est sans danger). La revendication est atomique : si deux modules la demandent ensemble, un seul l'obtient.
+
+**Supprimer** (`remove(url)`) : seul le propriétaire (l'**instance** qui a revendiqué) supprime. Efface l'original, toutes ses versions cadrées en cache, puis son enregistrement. Idempotent : un fichier déjà supprimé, jamais revendiqué ou inconnu donne `{ ok: true, removed: false }`. Le fichier d'un autre : `{ ok: false, reason: "not-yours" }`. Si le disque refuse (`failed`), l'enregistrement reste et on peut réessayer. Aucune suppression hors de `/uploads` n'est possible : seuls les noms `<uuid>.<ext>` sont acceptés et le chemin est recalculé par le cœur.
+
+**Lire** : `owns(url)` (ce fichier est-il à cette instance ?) pour ne proposer « supprimer aussi le fichier » que lorsque c'est possible ; `usage()` → `{ files, bytes, limitFiles, limitBytes }` pour le module entier. Aucune de ces fonctions ne lève d'exception.
+
+À savoir :
+- **Les anciens fichiers** (envoyés avant la 0.2.13) n'ont pas de propriétaire : ils ne sont pas revendiquables et ne peuvent donc pas être supprimés par un module. Seuls les nouveaux envois le sont.
+- **Journal d'audit** : chaque revendication (`file.claim`), suppression (`file.remove`) et effacement avec les données (`file.erase`) est consignée (nom du fichier et instance, jamais le contenu).
+- **Sauvegardes** : le propriétaire de chaque fichier revendiqué est dans la sauvegarde (`data/upload-files.json`) avec le fichier. Restaurer une sauvegarde ramène le fichier **avec** les données du module qui le désignent : une suppression faite depuis n'est pas rejouée (c'est une photographie du site à un instant). Supprimer ne casse jamais la restauration.
+- **Retirer le module ou l'instance** : « Retirer et garder mes données » **garde aussi les fichiers** (ils reviennent à la réinstallation). « Retirer et tout effacer », la suppression définitive d'une instance et « Effacer » des données gardées **suppriment aussi** les fichiers que le module avait revendiqués ; l'écran de confirmation le dit.
+- **Pas de minuteur** : les envois jamais revendiqués sont simplement oubliés du registre à la lecture, après la fenêtre de 30 minutes ; leur fichier reste au cœur comme avant.
+- Le propriétaire est l'**instance**, comme pour le stockage (`ctx.api.store`) : deux instances d'un même module ne se suppriment pas leurs fichiers, mais partagent le plafond du module.
+
+Pour vos tests : `fakeCtx({ permissions: ["files"], uploads: [url, { url, by, ageMs, bytes, owner }], person, filesQuota })` applique les mêmes règles et les mêmes motifs de refus que le cœur ; `ctx.calls.files` garde les appels, `ctx.dumpFiles()` les fichiers encore présents (pour constater qu'un fichier a disparu). Voir [TESTSUPPORT.md](TESTSUPPORT.md).
 
 ## Jaquettes de jeux (RAWG)
 
