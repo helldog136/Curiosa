@@ -472,6 +472,8 @@
   "editor.list": "List",
   "editor.heading": "Heading",
   "editor.quote": "Quote",
+  "instances.pageOn": "This page is visible: it disappears from the site as soon as you untick \"{setting}\" in the settings.",
+  "instances.pageOff": "This page is off: the address does not respond and appears nowhere. Tick \"{setting}\" in the settings to turn it on.",
   "instances.address": "Page address",
   "instances.addSimple": "Add: {name}",
   "redirects.introSimple": "A shortcut is a short address on your site that sends visitors somewhere else. For example, \"{site}/twitch\" can lead to your Twitch channel: easy to say out loud, to put in a bio or on a poster with its QR code. If your link ever changes you only update it here, with no reprinting.",

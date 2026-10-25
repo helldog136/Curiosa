@@ -11,6 +11,7 @@ import { getSetting } from "../settings";
 import type { ModuleDefinition, SectionDecl } from "./types";
 import { forgetLoadFailures, reportLoadFailure } from "./loadLog";
 import { invalidatePermissionsPolicy } from "../permissionsPolicy";
+import { pageIsOn, pageSettingStorageKey } from "./publicPage";
 
 export type LoadedModule = {
   row: Module;
@@ -121,7 +122,8 @@ export async function getModule(id: string): Promise<LoadedModule | null> {
   return row ? loadModule(row) : null;
 }
 
-export type ActiveInstance = { instance: InstanceView; mod: LoadedModule };
+/** `pageOn` : faux si le module a un `pageSetting` éteint (absent = allumé). Ne lire que par `hasPublicPage` (publicPage.ts). */
+export type ActiveInstance = { instance: InstanceView; mod: LoadedModule; pageOn?: boolean };
 
 /** Instances dont le module est installé et chargeable : ce que le site exécute réellement. */
 export const getActiveInstances = cache(async (): Promise<ActiveInstance[]> => {
@@ -131,7 +133,11 @@ export const getActiveInstances = cache(async (): Promise<ActiveInstance[]> => {
     return mod ? [{ instance, mod }] : [];
   });
   // Une instance dont la migration de données a échoué (ou dont les données sont plus récentes que le code du module) ne tourne pas.
-  const sane = await Promise.all(all.map(async (a) => ((await getSetting<{ status?: string }>(`instance.${a.instance.id}.__dataStatus`))?.status ? null : a)));
+  const sane = await Promise.all(all.map(async (a): Promise<ActiveInstance | null> => {
+    if ((await getSetting<{ status?: string }>(`instance.${a.instance.id}.__dataStatus`))?.status) return null;
+    const key = a.mod.manifest.pageSetting;
+    return key ? { ...a, pageOn: pageIsOn(a.mod.manifest, await getSetting(pageSettingStorageKey(a.instance.id, key))) } : a;
+  }));
   return sane.filter((a): a is ActiveInstance => a !== null);
 });
 

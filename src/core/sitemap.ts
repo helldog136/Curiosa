@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { hasPublicPage } from "./modules/publicPage";
 import { siteUrl } from "@/core/config";
 import { getActiveInstances } from "@/core/modules/registry";
 import { entryPath, listEntries } from "@/core/content/entries";
@@ -42,7 +43,7 @@ export async function buildSitemap(max = SITEMAP_MAX_URLS): Promise<SitemapResul
   const fixed: Url[] = config.locales.map((l) => everywhere(l, "/"));
   for (const l of config.locales) fixed.push(everywhere(l, "/privacy"));
   const entryUrls: Url[] = [];
-  for (const { instance: collection, mod } of (await getActiveInstances()).filter((a) => a.instance.basePath !== null)) {
+  for (const { instance: collection, mod } of (await getActiveInstances()).filter(hasPublicPage)) {
     for (const locale of config.locales) {
       if (collection.basePath) fixed.push(everywhere(locale, `/${collection.basePath}`));
       if (!mod.manifest.content || collection.clickAction === "external") continue;

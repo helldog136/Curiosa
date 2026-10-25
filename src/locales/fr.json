@@ -472,6 +472,8 @@
   "editor.list": "Liste",
   "editor.heading": "Titre",
   "editor.quote": "Citation",
+  "instances.pageOn": "Cette page est visible : elle disparaît du site dès que vous décochez « {setting} » dans les réglages.",
+  "instances.pageOff": "Cette page est éteinte : l'adresse ne répond pas et n'apparaît nulle part. Cochez « {setting} » dans les réglages pour l'allumer.",
   "instances.address": "Adresse de la page",
   "instances.addSimple": "Ajouter : {name}",
   "redirects.introSimple": "Un raccourci est une adresse courte de votre site qui envoie vos visiteurs ailleurs. Par exemple, « {site}/twitch » mène à votre chaîne Twitch : pratique à dire à voix haute, à mettre dans une bio ou sur une affiche grâce à son QR code. Si votre lien change un jour, vous ne le modifiez qu'ici, sans réimprimer.",

@@ -166,6 +166,8 @@ export const manifestSchema = z.object({
   /** (prochaine version) « Je suggère d'être au menu du site » : la page de l'instance est proposée à la personne dans « Pages qui ne sont pas dans le menu », jamais ajoutée d'office. Défaut : `content.showInNav`, sinon non. Un cœur ancien ignore la clé. */
   suggestInMenu: z.boolean().optional(),
   basePath: z.string().regex(/^[a-z0-9-]*$/).optional(),
+  /** (0.2.12) Clé d'un réglage BOOLÉEN du module : tant qu'il est faux, la page de l'instance est éteinte (404) et absente du plan du site, de llms.txt et du menu. Un cœur ancien ignore la clé : `minCore: "0.2.12"`. */
+  pageSetting: z.string().regex(/^[a-zA-Z][a-zA-Z0-9_]{0,40}$/).optional(),
   sections: z
     .array(z.object({ id: z.string().regex(/^[a-z][a-z0-9-]{0,30}$/), label: localized, options: z.array(settingField).max(10).optional(), size: z.enum(["small", "medium", "large", "full"]).optional() }))
     .max(20)
@@ -231,6 +233,12 @@ export const manifestSchema = z.object({
     default: z.object({ admin: z.boolean().optional(), editor: z.boolean().optional() }).optional(),
   })).max(MAX_MODULE_RIGHTS).optional(),
 }).superRefine((m, ctx) => {
+  if (m.pageSetting !== undefined) {
+    const field = m.settings.find((f) => f.key === m.pageSetting);
+    if (!field) ctx.addIssue({ code: "custom", path: ["pageSetting"], message: `pageSetting "${m.pageSetting}" must be the key of a setting of this module` });
+    else if (field.type !== "boolean") ctx.addIssue({ code: "custom", path: ["pageSetting"], message: `pageSetting "${m.pageSetting}" must be a boolean setting (checkbox)` });
+    if (!hasPage(m)) ctx.addIssue({ code: "custom", path: ["pageSetting"], message: "pageSetting needs a module with a public page (page: true)" });
+  }
   if (new Set((m.rights ?? []).map((r) => r.id)).size < (m.rights ?? []).length) ctx.addIssue({ code: "custom", path: ["rights"], message: "duplicate right id" });
   for (const [i, seed] of (m.seeds ?? []).entries()) {
     if (seed.module === m.id) ctx.addIssue({ code: "custom", path: ["seeds", i, "module"], message: "a module cannot seed itself" });

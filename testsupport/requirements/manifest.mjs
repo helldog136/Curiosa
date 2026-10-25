@@ -9,6 +9,7 @@ const MAX_BYTES = 10 * 1024 * 1024; // même plafond que l'installateur du cœur
  * Les fonctions d'avant la 0.1.10 ne sont pas listées : aucun site à jour n'a un cœur aussi ancien, une exigence là-dessus ne ferait que du bruit.
  */
 export const FEATURES = [
+  { since: "0.2.12", label: "« pageSetting » (page facultative, allumée par un réglage booléen)", test: (m, man) => man.pageSetting !== undefined },
   { since: "0.2.12", label: "la permission « visitor.geolocation » (demander la position du visiteur)", test: (m, man) => (man.permissions ?? []).includes("visitor.geolocation") },
   { since: "0.2.10", label: "ctx.api.rawg.candidates (jeux proposés pour un titre)", test: (m) => /\bapi\s*\??\.\s*rawg\s*\??\.\s*candidates\b/.test(stripComments(m.code)) },
   { since: "0.2.6", label: "ctx.api.visitor.fingerprint (empreinte du visiteur)", test: (m) => /\bapi\s*\??\.\s*visitor\b/.test(stripComments(m.code)) },

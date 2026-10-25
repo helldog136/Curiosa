@@ -174,6 +174,8 @@ export type ModuleManifest = {
   suggestInMenu?: boolean;
   /** Chemin public proposé à la création d'une instance d'un module à page (défaut : la clé de l'instance). */
   basePath?: string;
+  /** (0.2.12) Clé d'un réglage booléen : tant qu'il est faux, la page de l'instance est éteinte et n'apparaît nulle part (voir modules/publicPage.ts). */
+  pageSetting?: string;
   /** Morceaux que les instances proposent à la page d'accueil. */
   sections: SectionDecl[];
   /** Informations que ce module digère (ses instances s'abonnent à des sources dans l'admin). */

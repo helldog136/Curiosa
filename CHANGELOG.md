@@ -13,10 +13,12 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 - **La position d'un visiteur ne peut être demandée que si un module de votre site en a besoin.** Sans un tel module, votre site referme ce droit, comme avant la 0.2.11. Rien à régler : c'est automatique, et la caméra et le micro restent toujours fermés.
 - **L'écran qui détaille un module annonce ce droit.** Vous lisez « Demander la position du visiteur, seulement après un clic de sa part » avant d'installer. Si vous retirez le module, le droit se referme tout seul.
+- **Une page facultative d'un module n'apparaît nulle part tant qu'elle n'est pas activée.** Éteinte, elle ne figure ni dans le plan du site, ni dans la liste destinée aux assistants IA, ni dans le menu, et son adresse ne répond pas. Dans l'administration du module, une ligne vous dit si la page est allumée.
 - Rien d'autre ne change pour votre site.
 
 ### Pour les développeurs
 
+- Champ de module.json `pageSetting: "<clé d'un réglage booléen>"` (module à page ; `minCore: "0.2.12"`). Réglage faux (ou sans valeur ni défaut) : l'instance compte comme sans page, via la seule règle `hasPublicPage` (plan du site, llms.txt, menu, chemin, `page-script`). Test : `tests/core/page-setting.test.mjs`.
 - Nouvelle permission de module `visitor.geolocation` (module.json, `permissions`). `Permissions-Policy` vaut `camera=(), microphone=(), geolocation=()` ; le proxy passe `geolocation` à `(self)` sur les pages publiques seulement si un module installé la déclare. Jamais de tiers ni de joker.
 - Un module qui la déclare doit mettre `"minCore": "0.2.12"` : un cœur plus ancien refuse l'inconnue. Les modules sans déclaration gardent l'en-tête fermé.
 - `src/core/permissionsPolicy.ts` : réponse gardée en mémoire (30 s), recalculée à l'installation, la mise à jour, la réinstallation et la désinstallation ; fermée au moindre doute (base ou fichier illisible, délai de 500 ms dépassé, module.json invalide).

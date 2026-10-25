@@ -151,7 +151,7 @@ Exemple : sections `latest` et `recent` du guestbook.
 ## 6. Une page publique
 
 Un module peut avoir une page à lui, montée sur un chemin (`/guestbook`). Dans le manifeste : `"page": true` et `"basePath": "guestbook"` (le chemin proposé
-à la création de l'instance). Dans le code, la fonction `page` :
+à la création de l'instance). **Page facultative** (cœur 0.2.12, `"minCore": "0.2.12"`) : ajoutez un réglage `boolean` (par exemple `publicPage`, `default: false`) et `"pageSetting": "publicPage"`. Tant que la case est décochée, la page répond 404 et n'apparaît ni dans le plan du site, ni dans `llms.txt`, ni dans le menu : n'écrivez pas ce test vous-même. Dans le code, la fonction `page` :
 
 ```js
 export default {
