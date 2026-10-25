@@ -49,7 +49,7 @@ export async function Header({ config, locale }: { config: SiteConfig; locale: s
   const socialsEl = socials.length > 0 && (
     <ul aria-label={t("site.socials")} className="flex items-center gap-3" data-testid="header-socials">
       {socials.map((s) => (
-        <li key={s.href}><a href={s.href} rel="noopener noreferrer" target="_blank" aria-label={s.label} title={s.label} className="inline-flex text-muted hover:text-fg"><EntryIcon icon={s.icon} className="h-5 w-5" /></a></li>
+        <li key={s.href}><a href={s.href} rel={s.rel} referrerPolicy={s.referrerPolicy ?? undefined} target={s.target} aria-label={s.label} title={s.label} className="inline-flex text-muted hover:text-fg"><EntryIcon icon={s.icon} className="h-5 w-5" /></a></li>
       ))}
     </ul>
   );
