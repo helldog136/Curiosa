@@ -95,8 +95,8 @@ export async function claimFile(owner: FileOwner, person: FilePerson | null, ref
   if (!person) return { ok: false, reason: "no-person" };
   const name = uploadNameOf(ref);
   if (!name) return { ok: false, reason: "invalid" };
-  void prunePending(now);
   const row = await prisma.uploadFile.findUnique({ where: { name } });
+  void prunePending(); // après la lecture : un envoi expiré répond « expired » avant d'être oublié
   if (!row) return { ok: false, reason: "unknown" };
   if (row.ownerInstance === owner.instanceId) return { ok: true, url: `/uploads/${name}`, bytes: row.bytes, already: true };
   if (row.ownerInstance !== null) return { ok: false, reason: "taken" };
