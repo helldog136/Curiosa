@@ -12,6 +12,8 @@ import type { ModuleDefinition, SectionDecl } from "./types";
 import { forgetLoadFailures, reportLoadFailure } from "./loadLog";
 import { invalidatePermissionsPolicy } from "../permissionsPolicy";
 import { pageIsOn, pageSettingStorageKey } from "./publicPage";
+import { snapshotModule } from "./snapshot";
+import { cleanReason, describeShape, shapeProblems } from "./loadCheck";
 
 export type LoadedModule = {
   row: Module;
@@ -75,23 +77,30 @@ function readLocales(dir: string): Record<string, Record<string, string>> {
   return out;
 }
 
+/** Charge le code d'un module depuis une COPIE NEUVE de son dossier (voir snapshot.ts) : tous ses fichiers, voisins compris, ont des adresses que Node n'a jamais vues. Lève en cas d'échec. */
+async function importModule(row: Module): Promise<LoadedModule> {
+  const manifest = readGitManifest(row.id);
+  if (!manifest) throw new Error("invalid or missing module.json");
+  let def: ModuleDefinition = {};
+  if (manifest.main) {
+    const file = path.join(snapshotModule(row.id, moduleDir(row.id)), manifest.main);
+    const mod = (await runtimeImport(`${pathToFileURL(file).href}?v=${importVersionKey(row.id, row)}`)) as {
+      default?: ModuleDefinition;
+    };
+    def = mod.default ?? {};
+  }
+  return { row, manifest, def, locales: readLocales(moduleDir(row.id)) };
+}
+
+const cacheKeyOf = (row: Pick<Module, "id" | "version" | "commit">) => `${row.id}@${row.version}@${row.commit ?? ""}`;
+
 export async function loadModule(row: Module): Promise<LoadedModule | null> {
-  const cacheKey = `${row.id}@${row.version}@${row.commit ?? ""}`;
+  const cacheKey = cacheKeyOf(row);
   const hit = loadedCache.get(cacheKey);
   if (hit) return { ...hit, row };
 
   try {
-    const manifest = readGitManifest(row.id);
-    if (!manifest) throw new Error("invalid or missing module.json");
-    let def: ModuleDefinition = {};
-    if (manifest.main) {
-      const file = path.join(moduleDir(row.id), manifest.main);
-      const mod = (await runtimeImport(`${pathToFileURL(file).href}?v=${importVersionKey(row.id, row)}`)) as {
-        default?: ModuleDefinition;
-      };
-      def = mod.default ?? {};
-    }
-    const loaded: LoadedModule = { row, manifest, def, locales: readLocales(moduleDir(row.id)) };
+    const loaded = await importModule(row);
     loadedCache.set(cacheKey, loaded);
     forgetLoadFailures(row.id);
     return loaded;
@@ -101,8 +110,31 @@ export async function loadModule(row: Module): Promise<LoadedModule | null> {
   }
 }
 
-export function forgetModule(id: string): void {
-  for (const key of loadedCache.keys()) if (key.startsWith(`${id}@`)) loadedCache.delete(key);
+/**
+ * CONTRÔLE DE CHARGEMENT dans le processus du site (voir loadCheck.ts) : charge CETTE version depuis une copie neuve, même si une autre copie est en mémoire, et vérifie la forme de ce
+ * qu'elle exporte. À appeler APRÈS avoir posé les fichiers et AVANT de basculer la ligne en base. Réussite : le module chargé est gardé en mémoire sous la clé de cette version
+ * (voir `forgetModule` et son argument `keep`). Échec : rien n'est gardé, la raison (courte, sans chemin) est renvoyée. Ne lève jamais.
+ */
+export async function verifyModuleLoad(row: Pick<Module, "id" | "version" | "commit">): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const key = cacheKeyOf(row);
+  loadedCache.delete(key);
+  try {
+    const loaded = await importModule(row as Module);
+    if (loaded.manifest.main) {
+      const problems = shapeProblems(describeShape(loaded.def));
+      if (problems.length) return { ok: false, reason: problems.slice(0, 3).join("; ") };
+    }
+    loadedCache.set(key, loaded);
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, reason: cleanReason(error) };
+  }
+}
+
+/** Oublie le module chargé. `keep` : le module qu'on vient de vérifier et de basculer, à garder en mémoire. */
+export function forgetModule(id: string, keep?: Pick<Module, "id" | "version" | "commit">): void {
+  const kept = keep ? cacheKeyOf(keep) : null;
+  for (const key of loadedCache.keys()) if (key.startsWith(`${id}@`) && key !== kept) loadedCache.delete(key);
   invalidatePermissionsPolicy(); // installé, mis à jour, réinstallé ou désinstallé : l'en-tête Permissions-Policy est recalculé (core/permissionsPolicy.ts)
 }
 
