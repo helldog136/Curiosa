@@ -12,6 +12,7 @@ import { Callout } from "@/components/admin/Page";
 import { KeptData } from "@/components/admin/KeptData";
 import { RemoveSection } from "@/components/admin/RemoveSection";
 import { listRetired } from "@/core/modules/retired";
+import { readBlockedUpdate } from "@/core/modules/blockedUpdate";
 import { ui } from "@/components/admin/ui";
 import { ModuleUpdateButton } from "@/components/admin/ModuleUpdateButton";
 import { ModuleMaintenance } from "@/components/admin/ModuleMaintenance";
@@ -43,6 +44,8 @@ export async function ModuleView({ id, query, embedded = false }: { id: string; 
   const behind = isOwner ? peekModulesReport()?.outdated.find((o) => o.id === row.id) : undefined;   // sans réseau
   const canAdd = !!mod && (mod.manifest.instances === "multiple" || mine.length === 0);
   const kept = await listRetired(row.id);
+  // Une mise à jour refusée par le contrôle de chargement (blockedUpdate.ts) : la version d'avant tourne ; on le dit même après le rechargement de la page.
+  const blocked = isOwner && !error ? await readBlockedUpdate(row.id) : null;
   const name = mod ? L(mod.manifest.name) : row.id;
   const names = await buildNames(locale, config.defaultLocale);
   const links = await viewModuleLinks(row.id, names);
@@ -73,6 +76,7 @@ export async function ModuleView({ id, query, embedded = false }: { id: string; 
       </header>
 
       {refusalText && <Callout tone="danger" role="alert"><span data-testid="module-error">{refusalText}</span></Callout>}
+      {blocked && blocked.to !== row.version && <Callout tone="warn" role="status"><span data-testid="module-blocked">{t("modules.blockedNotice", { version: blocked.to, date: blocked.at.slice(0, 10), current: row.version })}</span></Callout>}
       {update && <Callout role="status">{update === "yes" ? (to ? t("modules.updateAvailableTo", { module: name, version: to }) : t("modules.updateAvailable")) : t("modules.upToDate")}</Callout>}
       {update === "yes" && level === "major" && <Callout tone="warn" role="alert">{t("modules.updateMajor")}</Callout>}
 

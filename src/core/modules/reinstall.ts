@@ -11,7 +11,11 @@ import { incompatWithThisCore, requirementOf } from "./compat";
 import { migrateModuleInstances, type MigrationOutcome } from "./dataMigrations";
 import { CoreTooOld, dirSize, git, isCommitRef, isInside, copyModuleFiles, subdirTarget } from "./installer";
 import { parseManifest, type ParsedManifest } from "./manifest";
-import { bumpImportStamp, forgetModule, moduleDir, readGitManifest } from "./registry";
+import { bumpImportStamp, forgetModule, moduleDir, readGitManifest, verifyModuleLoad } from "./registry";
+import { LoadCheckFailed, preflightModule } from "./loadCheck";
+import { clearBlockedUpdate, noteBlockedUpdate } from "./blockedUpdate";
+import { staticImportsWarning } from "./staticImports";
+import type { LoadWarning } from "./installer";
 
 /**
  * RÉINSTALLATION D'UN MODULE (maintenance). Remet le CODE d'un module installé à neuf depuis sa source, même si le numéro de version est identique
@@ -157,8 +161,10 @@ export type ReinstallResult =
     migrations: MigrationOutcome[];
     /** Des fichiers secondaires du module (pas le fichier principal) ont changé : Node peut en garder l'ancienne copie en mémoire jusqu'au redémarrage du site. */
     restartAdvised: boolean;
+    /** Remarque (jamais un refus) : voir staticImports.ts. */
+    warnings?: LoadWarning[];
   }
-  | { ok: false; id: string; error: string; detail?: string; needsCore?: string; /** L'échange avait commencé : l'ancien code a été remis tel quel. */ rolledBack: boolean };
+  | { ok: false; id: string; error: string; detail?: string; needsCore?: string; /** Erreur « modules.error.loadCheck » : raison courte (anglais, sans chemin) pour le journal et l'assistant. */ loadError?: string; /** L'échange avait commencé : l'ancien code a été remis tel quel. */ rolledBack: boolean };
 
 export type ReinstallOptions = {
   /** Dossier de l'état des mises à jour du site (tests). */
@@ -174,7 +180,7 @@ export type ReinstallOptions = {
   beforeMigrate?: (manifest: ParsedManifest) => Promise<void>;
 };
 
-const fail = (id: string, error: string, extra: { detail?: string; needsCore?: string; rolledBack?: boolean } = {}): ReinstallResult => ({ ok: false, id, error, rolledBack: false, ...extra });
+const fail = (id: string, error: string, extra: { detail?: string; needsCore?: string; rolledBack?: boolean; loadError?: string } = {}): ReinstallResult => ({ ok: false, id, error, rolledBack: false, ...extra });
 
 export async function reinstallModule(id: string, opts: ReinstallOptions = {}): Promise<ReinstallResult> {
   const row = await prisma.module.findUnique({ where: { id } });
@@ -190,6 +196,7 @@ export async function reinstallModule(id: string, opts: ReinstallOptions = {}): 
   let swapped = false;
   let dbChanged = false;
   let viaCatalogue: { row: Module; version?: string } | null = null;
+  let targetVersion = "?";
   try {
     // 1. La source : le dépôt git du module ; pour une ligne `bundled`, le catalogue (jamais une copie locale).
     opStep("download");
@@ -209,6 +216,7 @@ export async function reinstallModule(id: string, opts: ReinstallOptions = {}): 
     const manifest = readManifestAt(source.root);
     if (!manifest) return fail(id, "modules.error.nomanifest");
     if (manifest.id !== id) return fail(id, "modules.error.idmismatch");
+    targetVersion = manifest.version;
     if (manifest.main && !fs.existsSync(path.join(source.root, manifest.main))) return fail(id, "modules.error.nomain");
     if (dirSize(source.root) > MAX_MODULE_BYTES) return fail(id, "modules.error.size");
     const inc = incompatWithThisCore(requirementOf(manifest));
@@ -240,6 +248,10 @@ export async function reinstallModule(id: string, opts: ReinstallOptions = {}): 
       return { ok: true, id, changed: false, before, after: { ...after, commit: source.commit ?? row.commit }, migrations: [], restartAdvised: false };
     }
 
+    // Contrôle de chargement dans un processus tout neuf, AVANT de toucher au dossier installé : un code qui ne se charge pas n'est pas échangé.
+    const pre = await preflightModule(source.root, manifest);
+    if (!pre.ok) { await noteBlockedUpdate(id, row.version, manifest.version, { reason: pre.reason }, "reinstall"); return fail(id, "modules.error.loadCheck", { loadError: pre.reason, rolledBack: true }); }
+
     // 4. Échange : l'ancien dossier est mis de côté, et revient tel quel au moindre échec.
     opStep("activate");
     fs.rmSync(backup, { recursive: true, force: true });
@@ -248,17 +260,23 @@ export async function reinstallModule(id: string, opts: ReinstallOptions = {}): 
     if (source.wholeDir) fs.renameSync(source.wholeDir, target);   // module à la racine d'un dépôt : le dossier garde son .git
     else copyModuleFiles(source.root, target);
     await opts.afterSwap?.();
+    // Puis dans le processus du site, depuis une copie neuve, AVANT de basculer la ligne en base.
+    const next = { id, version: manifest.version, commit: (data as { commit?: string | null }).commit ?? row.commit };
+    const verdict = await verifyModuleLoad(next);
+    if (!verdict.ok) throw new LoadCheckFailed(verdict.reason);
     await prisma.module.update({ where: { id }, data });
     dbChanged = true;
     bumpImportStamp(id);
-    forgetModule(id);
+    forgetModule(id, next);
     await opts.beforeMigrate?.(manifest);
     const migrations = await migrateModuleInstances(id);
     swapped = false;
 
     const mainOf = manifest.main;
+    await clearBlockedUpdate(id);
+    const warning = staticImportsWarning(target);
     const restartAdvised = !!oldFp && Object.keys({ ...oldFp.files, ...newFp.files }).some((f) => /\.(m?js|cjs)$/.test(f) && f !== mainOf && oldFp.files[f] !== newFp.files[f]);
-    return { ok: true, id, changed: true, before, after, migrations, restartAdvised };
+    return { ok: true, id, changed: true, before, after, migrations, restartAdvised, ...(warning ? { warnings: [warning] } : {}) };
   } catch (error) {
     let rolledBack = false;
     if (swapped) {
@@ -271,6 +289,7 @@ export async function reinstallModule(id: string, opts: ReinstallOptions = {}): 
     forgetModule(id);
     console.error("[modules] reinstall failed:", (error as Error)?.message);
     if (error instanceof CoreTooOld) return fail(id, "modules.error.core", { detail: error.needs, needsCore: error.needs, rolledBack });
+    if (error instanceof LoadCheckFailed) { await noteBlockedUpdate(id, row.version, targetVersion, error, "reinstall"); return fail(id, "modules.error.loadCheck", { loadError: error.reason, rolledBack }); }
     const detail = (error as { detail?: unknown })?.detail;
     return fail(id, (error as { code?: string })?.code ?? "modules.error.clone", { rolledBack, ...(typeof detail === "string" ? { detail } : {}) });
   } finally {

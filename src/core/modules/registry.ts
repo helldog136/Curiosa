@@ -78,18 +78,20 @@ function readLocales(dir: string): Record<string, Record<string, string>> {
 }
 
 /** Charge le code d'un module depuis une COPIE NEUVE de son dossier (voir snapshot.ts) : tous ses fichiers, voisins compris, ont des adresses que Node n'a jamais vues. Lève en cas d'échec. */
-async function importModule(row: Module): Promise<LoadedModule> {
+async function importModule(row: Module): Promise<LoadedModule & { hasDefault: boolean }> {
   const manifest = readGitManifest(row.id);
   if (!manifest) throw new Error("invalid or missing module.json");
   let def: ModuleDefinition = {};
+  let hasDefault = false;
   if (manifest.main) {
     const file = path.join(snapshotModule(row.id, moduleDir(row.id)), manifest.main);
     const mod = (await runtimeImport(`${pathToFileURL(file).href}?v=${importVersionKey(row.id, row)}`)) as {
       default?: ModuleDefinition;
     };
+    hasDefault = mod.default !== undefined && mod.default !== null;
     def = mod.default ?? {};
   }
-  return { row, manifest, def, locales: readLocales(moduleDir(row.id)) };
+  return { row, manifest, def, locales: readLocales(moduleDir(row.id)), hasDefault };
 }
 
 const cacheKeyOf = (row: Pick<Module, "id" | "version" | "commit">) => `${row.id}@${row.version}@${row.commit ?? ""}`;
@@ -100,7 +102,8 @@ export async function loadModule(row: Module): Promise<LoadedModule | null> {
   if (hit) return { ...hit, row };
 
   try {
-    const loaded = await importModule(row);
+    const { hasDefault: _d, ...loaded } = await importModule(row);
+    void _d;
     loadedCache.set(cacheKey, loaded);
     forgetLoadFailures(row.id);
     return loaded;
@@ -119,8 +122,9 @@ export async function verifyModuleLoad(row: Pick<Module, "id" | "version" | "com
   const key = cacheKeyOf(row);
   loadedCache.delete(key);
   try {
-    const loaded = await importModule(row as Module);
+    const { hasDefault, ...loaded } = await importModule(row as Module);
     if (loaded.manifest.main) {
+      if (!hasDefault) return { ok: false, reason: "the main file has no default export (export default { … })" };
       const problems = shapeProblems(describeShape(loaded.def));
       if (problems.length) return { ok: false, reason: problems.slice(0, 3).join("; ") };
     }

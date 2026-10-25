@@ -97,6 +97,7 @@ const INSTALL_REASONS: Record<string, string> = {
   "modules.error.requires": "a module it needs could not be put in place", "modules.error.nomanifest": "it has no valid description file", "modules.error.size": "it is too large",
   "modules.error.clone": "it could not be downloaded", "modules.error.catalogue": "the module catalogue is unreachable", "modules.error.notfound": "it is not in the catalogue",
   "modules.error.incompatible": "it is not compatible with this version", "modules.error.core": "it needs a newer Curiosa",
+  "modules.error.loadCheck": "its code does not load on this site, so it was refused before being installed",
 };
 
 export async function executeInstall(plan: Plan, actorLabel: string): Promise<Outcome> {
@@ -104,7 +105,7 @@ export async function executeInstall(plan: Plan, actorLabel: string): Promise<Ou
   const result = await deps.installFromCatalogue(id);
   if (!result.ok) {
     const why = INSTALL_REASONS[result.error] ?? "the installation failed";
-    const detail = result.missing?.length ? ` Missing: ${result.missing.map((m) => `${m.service} (${m.reason})`).join(", ")}.` : result.detail ? ` (${redactSecrets(result.detail, 80)})` : "";
+    const detail = result.missing?.length ? ` Missing: ${result.missing.map((m) => `${m.service} (${m.reason})`).join(", ")}.` : result.loadError ? ` Cause: ${redactSecrets(result.loadError, 200)}.` : result.detail ? ` (${redactSecrets(result.detail, 80)})` : "";
     return { ok: false, message: `Install of "${id}" failed: ${why}.${detail} Nothing was left half installed.` };
   }
   const audit = (action: string, target: string) => prisma.auditLog.create({ data: { actor: actorLabel, action, target } }).catch(() => {});

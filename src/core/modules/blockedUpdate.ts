@@ -35,3 +35,9 @@ export async function recordBlockedUpdate(id: string, info: Omit<BlockedUpdate, 
   const what = info.kind === "install" ? "install refused" : info.kind === "reinstall" ? "reinstall refused" : "update refused";
   await prisma.auditLog.create({ data: { actor: "system", action: "module.update.blocked", target: `${id} ${info.from || "-"} -> ${info.to} (${what}: load check failed, previous version kept) ${info.reason}`.slice(0, 480) } }).catch(() => {});
 }
+
+/** Journal (une ligne, jamais une pile) + mémoire + audit d'une version refusée. */
+export async function noteBlockedUpdate(id: string, from: string, to: string, error: { reason: string }, kind: BlockedUpdate["kind"]): Promise<void> {
+  console.error(`[modules] ${kind} of "${id}" ${to} refused, previous version kept: ${error.reason}`);
+  await recordBlockedUpdate(id, { from, to, kind, reason: error.reason });
+}
