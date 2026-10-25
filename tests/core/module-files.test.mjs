@@ -120,7 +120,7 @@ test("les envois en attente expirés sont oubliés à la lecture (sans minuteur)
 test("quota par module : l'espace est compté sur toutes ses instances ; au-delà, refus ; supprimer rend la place", async () => {
   const filler = await upload();
   await F.claimFile(gallery, A, filler);
-  await db.prisma.uploadFile.update({ where: { name: filler }, data: { bytes: F.FILES_QUOTA_BYTES - 50 } });
+  await db.prisma.$executeRawUnsafe(`UPDATE "UploadFile" SET bytes = ${F.FILES_QUOTA_BYTES - 50} WHERE name = '${filler}'`); // au-delà des 2 Go d'un Int de Prisma : pas par update()
   assert.deepEqual(await F.filesUsage("gallery"), { files: 1, bytes: F.FILES_QUOTA_BYTES - 50, limitFiles: F.FILES_QUOTA_COUNT, limitBytes: F.FILES_QUOTA_BYTES });
   const big = await upload(); fs.writeFileSync(path.join(UPLOADS_DIR, big), Buffer.alloc(100));
   assert.deepEqual(await F.claimFile(gallery2, A, big), { ok: false, reason: "quota" }, "une autre instance du même module partage le plafond");

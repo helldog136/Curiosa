@@ -31,7 +31,7 @@ import { createHash } from "node:crypto";
  * - `ctx.api.files` (permission « files », cœur 0.2.13) : `claim(url)`, `remove(url)`, `owns(url)`, `usage()` avec les MÊMES règles et les mêmes codes de refus que le cœur.
  *   `uploads` = les fichiers que le cœur « vient de recevoir » : `[url | { url, bytes?, by?, ageMs?, owner? }]` (`bytes` 1000 par défaut, `by` = identifiant de la personne qui l'a envoyé, `ageMs` son âge,
  *   `owner` = une AUTRE instance qui l'a déjà revendiqué). `person` = la personne dont l'action d'administration s'exécute (défaut `{ id: "u1", email: "admin@example.test" }` ; `null` = pas d'action
- *   d'administration : une page, une route, une tâche → `claim` répond `no-person`) ; `by` vaut « u1 » par défaut. `filesQuota` = `{ bytes, files }` (défaut 1 Go / 20 000). Sans la permission
+ *   d'administration : une page, une route, une tâche → `claim` répond `no-person`) ; `by` vaut « u1 » par défaut. `filesQuota` = `{ bytes, files }` (défaut 4 Go / 20 000). Sans la permission
  *   « files » (option `permissions`) : `claim`/`remove` répondent `no-permission` et `ctx.calls.denied` le note. `ctx.calls.files` garde chaque appel `{ op, url, result }` ;
  *   `ctx.dumpFiles()` donne les fichiers encore là `[{ url, bytes, owner }]` (`owner` : « me », une autre instance, ou null), de quoi vérifier qu'un fichier a bien disparu.
  * - `ctx.api.services` : `services` = { nom: { méthode: (args) => valeur } } ; absent → `unavailable`
@@ -104,7 +104,7 @@ export function fakeCtx(opts = {}) {
   // ── Fichiers (ctx.api.files, cœur 0.2.13) : mêmes règles que services/files.ts, en mémoire. ──
   const UPLOAD_NAME = /^[0-9a-f-]{36}\.(png|jpg|webp|gif|mp4|webm|svg)$/;
   const CLAIM_WINDOW_MS = 30 * 60_000;
-  const limitBytes = filesQuota.bytes ?? 1024 * 1024 * 1024, limitFiles = filesQuota.files ?? 20_000;
+  const limitBytes = filesQuota.bytes ?? 4 * 1024 * 1024 * 1024, limitFiles = filesQuota.files ?? 20_000;
   const fileRows = new Map();
   for (const u of uploads) {
     const o = typeof u === "string" ? { url: u } : u;

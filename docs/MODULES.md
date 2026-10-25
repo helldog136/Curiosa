@@ -1369,7 +1369,7 @@ async deletePhoto(ctx, { id }) {
 | `expired` | plus de 30 minutes se sont écoulées depuis l'envoi |
 | `missing` | le fichier n'est plus sur le disque |
 | `taken` | un autre module (ou une autre instance) l'a déjà revendiqué |
-| `quota` | le plafond du module est atteint : 1 Go et 20 000 fichiers au total, toutes ses instances ensemble |
+| `quota` | le plafond du module est atteint : 4 Go et 20 000 fichiers au total, toutes ses instances ensemble |
 
 Le succès rend `{ ok: true, url, bytes, already }` (`already: true` si cette instance l'avait déjà : redemander est sans danger). La revendication est atomique : si deux modules la demandent ensemble, un seul l'obtient.
 

@@ -22,7 +22,7 @@ import { UPLOAD_NAME_RE } from "@/core/services/uploads";
 /** Temps laissé, après l'envoi, pour revendiquer un fichier. */
 export const CLAIM_WINDOW_MS = 30 * 60_000;
 /** Plafonds par module (toutes ses instances) : octets et nombre de fichiers revendiqués. */
-export const FILES_QUOTA_BYTES = 1024 * 1024 * 1024;
+export const FILES_QUOTA_BYTES = 4 * 1024 * 1024 * 1024;
 export const FILES_QUOTA_COUNT = 20_000;
 /** Nettoyage des envois en attente expirés : au plus une fois par minute et par processus, 1000 lignes par passage. */
 const PRUNE_EVERY_MS = 60_000;

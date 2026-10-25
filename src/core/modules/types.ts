@@ -347,7 +347,7 @@ export type ModuleApi = {
     /**
      * Revendique un fichier qu'une personne vient d'envoyer. À appeler dans une `adminAction`, par la personne qui l'a envoyé, dans les 30 minutes (sinon `no-person`,
      * `not-uploader` ou `expired`). Jamais le fichier d'un autre module ni un fichier déjà revendiqué par un autre (`taken`) ; `unknown` : pas un envoi récent du cœur ;
-     * `missing` : plus sur le disque ; `quota` : plafond du module atteint (1 Go ou 20 000 fichiers). Idempotent : redemander un fichier déjà à soi réussit (`already: true`).
+     * `missing` : plus sur le disque ; `quota` : plafond du module atteint (4 Go ou 20 000 fichiers). Idempotent : redemander un fichier déjà à soi réussit (`already: true`).
      */
     claim(url: string): Promise<{ ok: true; url: string; bytes: number; already: boolean } | { ok: false; reason: "no-permission" | "no-person" | "invalid" | "unknown" | "not-uploader" | "expired" | "missing" | "taken" | "quota" }>;
     /**
