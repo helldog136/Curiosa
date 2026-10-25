@@ -28,6 +28,12 @@ import { createHash } from "node:crypto";
  *   (défaut `{ status: "none", candidates: [] }` ; un candidat est `{ id, name, year, platforms, url }`, 6 au plus dans le vrai cœur)
  * - `ctx.api.visitor.fingerprint(request, scope?)` (cœur 0.2.6) : même règle que le cœur (DERNIÈRE entrée de `X-Forwarded-For`, sinon `X-Real-IP`, sinon « local »), empreinte de 22 caractères avec un sel fixe de test (jamais l'adresse) ; propre à `scope` et au module
  * - `ctx.api.privacy.declarations()` (permission « privacy », cœur 0.2.6) : renvoie `privacyDeclarations` (option ; défaut `{ modules: [], truncated: false }`) ; sans la permission déclarée : `{ modules: [], truncated: false }`
+ * - `ctx.api.files` (permission « files », cœur 0.2.13) : `claim(url)`, `remove(url)`, `owns(url)`, `usage()` avec les MÊMES règles et les mêmes codes de refus que le cœur.
+ *   `uploads` = les fichiers que le cœur « vient de recevoir » : `[url | { url, bytes?, by?, ageMs?, owner? }]` (`bytes` 1000 par défaut, `by` = identifiant de la personne qui l'a envoyé, `ageMs` son âge,
+ *   `owner` = une AUTRE instance qui l'a déjà revendiqué). `person` = la personne dont l'action d'administration s'exécute (défaut `{ id: "u1", email: "admin@example.test" }` ; `null` = pas d'action
+ *   d'administration : une page, une route, une tâche → `claim` répond `no-person`) ; `by` vaut « u1 » par défaut. `filesQuota` = `{ bytes, files }` (défaut 4 Go / 20 000). Sans la permission
+ *   « files » (option `permissions`) : `claim`/`remove` répondent `no-permission` et `ctx.calls.denied` le note. `ctx.calls.files` garde chaque appel `{ op, url, result }` ;
+ *   `ctx.dumpFiles()` donne les fichiers encore là `[{ url, bytes, owner }]` (`owner` : « me », une autre instance, ou null), de quoi vérifier qu'un fichier a bien disparu.
  * - `ctx.api.services` : `services` = { nom: { méthode: (args) => valeur } } ; absent → `unavailable`
  * - `ctx.api.services.callAll(nom, méthode, args)` : `serviceInstances` = { nom: [{ instance, name?, methods: { méthode: (args) => valeur } }] } → une entrée par instance (un fournisseur qui lève
  *   donne `{ ok: false, error: "failed" }`) ; sans `serviceInstances[nom]`, UNE entrée tirée de `services[nom]` (comme un service non-each) ; service inconnu → []
@@ -54,10 +60,11 @@ export function fakeCtx(opts = {}) {
     brand = { name: "Site", tagline: "", about: "", logo: null, contactEmail: "", colors: [], font: { key: "sans", name: "Sans-serif", stack: "sans-serif" }, defaultLocale, locales },
     migration = false, seedResult, legacy, rows: seedRows = {}, permissions, lastVisit = new Date(0), site = { name: "Site", tagline: "", logo: null }, theme = { accent: "#e8a23b", accentFg: "#111111", bg: "#121214", surface: "#1b1b1d", fg: "#f4f4f5", muted: "#a1a1a3", line: "#2e2e30", fontKey: "sans", font: "sans-serif" }, services = {}, serviceInstances = {}, mailConfigured = true, mailResult = { ok: true }, privacyDeclarations = { modules: [], truncated: false }, rawgConfigured = true, rawgCover = { status: "found", url: "https://media.example.test/cover.jpg" }, rawgCandidates = { status: "none", candidates: [] }, siteUrl = "https://example.test",
     net: netOverride, netLimits, netBudgetMs = null, choices = {},
+    uploads = [], person = { id: "u1", email: "admin@example.test" }, filesQuota = {},
   } = opts;
   const rows = new Map();
   let seq = 0;
-  const calls = { topics: [], qr: [], entries: [], mail: [], png: [], services: [], rawg: [], rawgCandidates: [], seeds: [], cleared: [], legacyCleared: [], writes: [], denied: [], net: [], netLog: [], choices: [] };
+  const calls = { topics: [], qr: [], entries: [], mail: [], png: [], services: [], rawg: [], rawgCandidates: [], files: [], seeds: [], cleared: [], legacyCleared: [], writes: [], denied: [], net: [], netLog: [], choices: [] };
   let netClient;
   const client = () => (netClient ??= makeNetClient({ limits: { retryMinMs: 1, retryMaxMs: 5, ...netLimits }, log: (line) => calls.netLog.push(line) }));
   const net = netOverride ?? {
@@ -94,6 +101,59 @@ export function fakeCtx(opts = {}) {
   };
   // Un membre protégé par une permission : lisible (ou refusé), et remplaçable par un test (`ctx.api.store = autreStockage`) comme un champ ordinaire.
   const guarded = (permission, make) => { let replaced; let made; return { enumerable: true, configurable: true, get: () => (replaced !== undefined ? replaced : need(permission, (made ??= make()))), set: (v) => { replaced = v; } }; };
+  // ── Fichiers (ctx.api.files, cœur 0.2.13) : mêmes règles que services/files.ts, en mémoire. ──
+  const UPLOAD_NAME = /^[0-9a-f-]{36}\.(png|jpg|webp|gif|mp4|webm|svg)$/;
+  const CLAIM_WINDOW_MS = 30 * 60_000;
+  const limitBytes = filesQuota.bytes ?? 4 * 1024 * 1024 * 1024, limitFiles = filesQuota.files ?? 20_000;
+  const fileRows = new Map();
+  for (const u of uploads) {
+    const o = typeof u === "string" ? { url: u } : u;
+    const name = /^(?:\/uploads\/)?([^/\\?#%]+)/.exec(String(o.url))?.[1] ?? String(o.url);
+    fileRows.set(name, { bytes: o.bytes ?? 1000, by: o.by ?? "u1", ageMs: o.ageMs ?? 0, owner: o.owner ?? null });
+  }
+  const fileName = (ref) => {
+    if (typeof ref !== "string" || ref.length > 400) return null;
+    const name = /^(?:\/uploads\/)?([^/\\?#%]+)(?:[?#][^\\]*)?$/.exec(ref)?.[1];
+    return name && UPLOAD_NAME.test(name) ? name : null;
+  };
+  const mine = (r) => r.owner === "me";
+  const filesApi = {
+    claim: async (url) => {
+      const done = (result) => { calls.files.push({ op: "claim", url, result }); return result; };
+      if (allowed && !allowed.has("files")) { calls.denied.push("files"); return done({ ok: false, reason: "no-permission" }); }
+      if (!person) return done({ ok: false, reason: "no-person" });
+      const name = fileName(url);
+      if (!name) return done({ ok: false, reason: "invalid" });
+      const r = fileRows.get(name);
+      if (!r) return done({ ok: false, reason: "unknown" });
+      if (mine(r)) return done({ ok: true, url: `/uploads/${name}`, bytes: r.bytes, already: true });
+      if (r.owner !== null) return done({ ok: false, reason: "taken" });
+      if (r.by !== person.id) return done({ ok: false, reason: "not-uploader" });
+      if (r.ageMs > CLAIM_WINDOW_MS) return done({ ok: false, reason: "expired" });
+      const own = [...fileRows.values()].filter(mine);
+      if (own.length + 1 > limitFiles || own.reduce((t, x) => t + x.bytes, 0) + r.bytes > limitBytes) return done({ ok: false, reason: "quota" });
+      r.owner = "me";
+      return done({ ok: true, url: `/uploads/${name}`, bytes: r.bytes, already: false });
+    },
+    remove: async (url) => {
+      const done = (result) => { calls.files.push({ op: "remove", url, result }); return result; };
+      if (allowed && !allowed.has("files")) { calls.denied.push("files"); return done({ ok: false, reason: "no-permission" }); }
+      const name = fileName(url);
+      if (!name) return done({ ok: false, reason: "invalid" });
+      const r = fileRows.get(name);
+      if (!r) return done({ ok: true, removed: false });
+      if (!mine(r)) return done({ ok: false, reason: "not-yours" });
+      fileRows.delete(name);
+      return done({ ok: true, removed: true });
+    },
+    owns: async (url) => { const n = fileName(url); return (!allowed || allowed.has("files")) && !!n && !!fileRows.get(n) && mine(fileRows.get(n)); },
+    usage: async () => {
+      if (allowed && !allowed.has("files")) return { files: 0, bytes: 0, limitFiles: 0, limitBytes: 0 };
+      const own = [...fileRows.values()].filter(mine);
+      return { files: own.length, bytes: own.reduce((t, x) => t + x.bytes, 0), limitFiles, limitBytes };
+    },
+  };
+
   const migrationApi = !migration ? {} : {
     seedInstance: async (target, request) => {
       calls.seeds.push([target, request]);
@@ -129,6 +189,8 @@ export function fakeCtx(opts = {}) {
     calls,
     /** Tout ce que le module a rangé dans son stockage : [{ id, collection, data }] (sans passer par la permission « storage »). */
     dumpStore: () => [...rows.values()].map((r) => ({ id: r.id, collection: r.collection, data: structuredClone(r.data) })),
+    /** Les fichiers encore présents (ctx.api.files) : [{ url, bytes, owner }], owner = « me » (revendiqué par ce module), une autre instance, ou null. */
+    dumpFiles: () => [...fileRows].map(([name, r]) => ({ url: `/uploads/${name}`, bytes: r.bytes, owner: r.owner })),
     api: Object.defineProperties({
       siteUrl,
       seo: { jsonLd: (data) => (data && typeof data["@type"] === "string" ? { tag: "script", jsonLd: { "@context": "https://schema.org", ...data } } : null) },
@@ -174,6 +236,7 @@ export function fakeCtx(opts = {}) {
           return createHash("sha256").update(`fake-salt\n${moduleId}\n${String(scope ?? "").slice(0, 64)}\n${ip}`).digest("base64url").slice(0, 22);
         },
       },
+      files: filesApi,
       privacy: { declarations: async () => ((!allowed || allowed.has("privacy")) ? structuredClone(privacyDeclarations) : { modules: [], truncated: false }) },
       rawg: { configured: async () => (!allowed || allowed.has("rawg")) && rawgConfigured, cover: async (title) => { calls.rawg.push(title); if (allowed && !allowed.has("rawg")) return { status: "no-key", url: null }; return typeof rawgCover === "function" ? rawgCover(title) : rawgCover; }, candidates: async (title) => { calls.rawgCandidates.push(title); if (allowed && !allowed.has("rawg")) return { status: "no-key", candidates: [] }; return typeof rawgCandidates === "function" ? rawgCandidates(title) : rawgCandidates; } },
       net,

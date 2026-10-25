@@ -220,6 +220,18 @@ Le site n'envoie aucune politique `Content-Security-Policy` globale (seulement `
 - **Assistants IA** : `rawg_covers_to_check` est une lecture ; `rawg_cover_set` (écriture) n'est **jamais accordé d'office**, un jeton en lecture ne peut pas le recevoir, la cadence est limitée par jeton, et chaque écriture est consignée (`mcp:<jeton> rawg.fix` ou `rawg.fix.forget`).
 - **Vie privée** : la clé RAWG n'est affichée ni journalisée nulle part ; aucune donnée de visiteur n'entre dans ces réglages (des titres de jeux et des numéros RAWG).
 
+## Fichiers envoyés : revendiquer et supprimer (0.2.13)
+
+Permission de module `files` (`ctx.api.files`). Modèle de menace : un module ne doit jamais pouvoir effacer un fichier qui n'est pas le sien (logo, image d'une entrée, fichier d'un autre module), ni sortir du dossier des envois.
+
+- **Un fichier est au cœur tant qu'une personne n'a pas décidé autrement.** La route `/api/admin/upload` note chaque envoi (personne, heure, taille) ; la **revendication** exige : la permission `files`, une action d'administration en cours (jamais une page publique, une route, une tâche ni le MCP), que ce soit **la même personne** qui ait envoyé le fichier, moins de 30 minutes après l'envoi, un fichier sans propriétaire, présent sur le disque, et le plafond du module respecté (4 Go, 20 000 fichiers). Elle est atomique (une seule instance gagne).
+- **Pas de rattrapage.** Un fichier sans ligne au registre (envoyé avant la 0.2.13, logo SVG, fichier écrit par le cœur lui-même) n'est **jamais** revendiquable : aucun module ne peut s'approprier un fichier existant.
+- **Supprimer** : seule l'instance propriétaire. Le nom doit passer `UPLOAD_NAME_RE` (`<uuid>.<ext>`) ; le chemin est recalculé à partir du nom (jamais d'un texte reçu), donc ni `..`, ni encodage, ni autre dossier. Les dérivés en cache sont retrouvés par le préfixe du nom (`<uuid>-…`), dans leur seul dossier. L'ordre disque → dérivés → registre fait qu'un échec laisse un état réessayable.
+- **Journal d'audit** : `file.claim`, `file.remove`, `file.erase`, sans contenu. **Sauvegarde** : le propriétaire des fichiers revendiqués est sauvegardé et restauré avec eux.
+- **Retrait d'un module** : garder les données garde les fichiers ; « tout effacer » les supprime avec les données (jamais sans que l'administrateur l'ait choisi, et la confirmation le dit).
+- **Pas de minuteur de fond** : le registre est nettoyé à la lecture (envois jamais revendiqués, après la fenêtre de 30 minutes) ; le fichier d'un envoi non revendiqué n'est jamais supprimé.
+- **Limite connue** : la personne qui a envoyé un fichier pour un autre usage (couverture d'une entrée…) puis le confie à un module dans les 30 minutes autorise ce module à le supprimer ; c'est son choix explicite, et ce module est celui qu'elle vient d'utiliser.
+
 ## Dépannage en SSH (propriétaire du serveur seulement)
 
 Si le propriétaire est bloqué (trop d'essais, mot de passe perdu), la commande de secours se lance **sur le serveur**, depuis le dossier de l'application, avec l'utilisateur du service :

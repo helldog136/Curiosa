@@ -30,6 +30,8 @@ export const DATA_FILES = {
   /** Rôles et affectations (0.2.0). Absents d'une sauvegarde plus ancienne : la restauration recrée les rôles prédéfinis et l'affectation depuis `User.role`. */
   roles: "data/roles.json",
   userRoles: "data/user-roles.json",
+  /** Propriétaire des fichiers revendiqués par des modules (0.2.13, voir services/files.ts). Absent d'une sauvegarde plus ancienne : aucun fichier n'a de propriétaire (ils restent au cœur). */
+  uploadFiles: "data/upload-files.json",
 } as const;
 
 export type BackupModule = {
