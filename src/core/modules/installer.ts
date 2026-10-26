@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import { noteRawgModulesChanged } from "@/core/services/rawgNote";
 import fs from "node:fs";
 import path from "node:path";
 import { promisify } from "node:util";
@@ -500,7 +501,7 @@ export async function updateModule(id: string): Promise<InstallResult> {
 
 /** Une installation ou une mise à jour vient de réussir : la cale de compatibilité RAWG prépare, au mieux et sans attendre, la reprise de l'ancien service (à retirer en 0.3.0). */
 function noteModulesChanged(): void {
-  void import("@/core/services/rawgBridge").then((m) => m.noteModulesChanged()).catch(() => {});
+  noteRawgModulesChanged();
 }
 
 /** `chain` : chaîne des modules en cours de mise à jour ou d'installation (un fournisseur mis à jour par la cascade ne peut pas redemander l'un d'eux). */

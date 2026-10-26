@@ -199,7 +199,7 @@ async function installProvider(st: Handover, force: boolean): Promise<boolean> {
 }
 
 /** Après une installation ou une mise à jour de module : la reprise se prépare (au mieux, sans attendre, sans jamais faire échouer l'opération). */
-export function noteModulesChanged(): void {
+export function noteModulesChanged(): Promise<unknown> {
   forgetBridgeDecision();
-  void ensureRawgHandover({ install: true, force: true }).catch(() => {});
+  return ensureRawgHandover({ install: true, force: true }).catch(() => {});
 }

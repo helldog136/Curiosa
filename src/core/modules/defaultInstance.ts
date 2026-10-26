@@ -13,7 +13,19 @@ import { restoreModuleInstances, retireInstance } from "./retired";
  */
 export type EnsureOutcome = { kind: "present" } | { kind: "created"; instanceId: string } | { kind: "restored"; instanceIds: string[] };
 
-export async function ensureDefaultInstance(moduleId: string): Promise<EnsureOutcome | null> {
+/** Une seule demande à la fois par module : « compter puis créer » ne supporte pas deux appels simultanés (installation en arrière-plan de la reprise RAWG + cascade de dépendance, par exemple) : le second verrait « aucune instance » et échouerait sur la clé déjà prise. */
+const inFlight = new Map<string, Promise<unknown>>();
+
+export function ensureDefaultInstance(moduleId: string): Promise<EnsureOutcome | null> {
+  const previous = inFlight.get(moduleId) ?? Promise.resolve();
+  const run = previous.catch(() => {}).then(() => ensureOnce(moduleId));
+  const tail = run.catch(() => {});
+  inFlight.set(moduleId, tail);
+  void tail.then(() => { if (inFlight.get(moduleId) === tail) inFlight.delete(moduleId); });
+  return run;
+}
+
+async function ensureOnce(moduleId: string): Promise<EnsureOutcome | null> {
   const mod = await getModule(moduleId);
   if (!mod) return null;
   if ((await prisma.moduleInstance.count({ where: { moduleId } })) > 0) return { kind: "present" };

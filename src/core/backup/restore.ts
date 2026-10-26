@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { noteRawgModulesChanged } from "@/core/services/rawgNote";
 import path from "node:path";
 import { Prisma } from "@prisma/client";
 import { UPLOADS_DIR } from "@/core/config";
@@ -306,6 +307,6 @@ export async function applyRestore(backup: ParsedBackup, opts: { confirmCustom: 
   const settled = await settleRestored(active).catch(() => ({ issues: [] as DependencyIssue[], provided: [] as string[] }));
   await audit(opts.actor, "backup.restore", backup.manifest.createdAt);
   // Cale RAWG (à retirer en 0.3.0, voir services/rawgBridge.ts) : une sauvegarde d'avant la reprise rend les réglages d'avant ; le module « Jaquettes de jeux » est (ré)installé et repris, au mieux, sans attendre.
-  void import("@/core/services/rawgBridge").then((m) => m.noteModulesChanged()).catch(() => {});
+  noteRawgModulesChanged();
   return { ok: true, modules: outcomes, migrations, dependencies: settled.issues, provided: settled.provided, safetyCopy: copy, counts: { users: d.users.length, entries: d.entries.length, instances: d.instances.length, records: d.records.length, retired: (d.retired ?? []).length, uploads: backup.uploads.length } };
 }

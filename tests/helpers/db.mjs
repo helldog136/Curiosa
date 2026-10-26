@@ -64,6 +64,7 @@ export async function useTestDb() {
     },
     /** Vide toutes les tables (entre deux tests). Les migrations de mise à jour repassent à la demande. */
     async reset() {
+      await settleBackground();
       for (const t of tables) await prisma.$executeRawUnsafe(`DELETE FROM "${t}"`);
       globalThis.curiosaBuiltinsSynced = false; globalThis.curiosaBuiltinsSyncing = null;
       globalThis.curiosaModuleCache?.clear?.();
@@ -71,8 +72,14 @@ export async function useTestDb() {
       fs.rmSync(path.join(dir, "modules"), { recursive: true, force: true });
     },
     async close() {
+      await settleBackground();
       await prisma.$disconnect();
       fs.rmSync(dir, { recursive: true, force: true });
     },
   };
+}
+
+/** Les reprises lancées en arrière-plan (cale RAWG, après une installation, une mise à jour ou une restauration) doivent être finies avant de vider la base ou de la fermer, et avant de comparer des réglages. */
+export async function settleBackground() {
+  try { await (await import("@/core/services/rawgNote")).rawgNoteIdle(); } catch { /* le cœur testé n'a pas (encore) cette cale */ }
 }
