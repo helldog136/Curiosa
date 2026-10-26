@@ -385,8 +385,8 @@ phase_plan() {
     fi
     printf '%s' "$TAG" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$' || fail "Numéro de version inattendu : « $TAG »." "indiquez une version du type v0.2.13."
     FILE="curiosa-$TAG-linux-x64.tar.gz"
-    local code; code=$(curl -s -o /dev/null -m 25 -L -I -w '%{http_code}' "$GITHUB_WEB/$REPO/releases/download/$TAG/$FILE.sha256" 2>/dev/null || true)
-    [ "$code" = 200 ] || fail "La release $TAG n'a pas de fichier pour Linux x64 ($FILE, réponse $code)." "regardez la page « Releases » : une release sans archive ne peut pas s'installer ; choisissez une autre version avec --tag, ou attendez."
+    local code; code=$(curl -s -o /dev/null -m 25 -L -r 0-0 -w '%{http_code}' "$GITHUB_WEB/$REPO/releases/download/$TAG/$FILE.sha256" 2>/dev/null || true)
+    case "$code" in 200|206) ;; *) fail "La release $TAG n'a pas de fichier pour Linux x64 ($FILE, réponse $code)." "regardez la page « Releases » : une release sans archive ne peut pas s'installer ; choisissez une autre version avec --tag, ou attendez." ;; esac
     ok "Release à installer : $TAG (la dernière version stable)."
   fi
   RELEASE_OK=1
