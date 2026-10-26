@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 
-const { matchPalette, THEME_PRESETS, CUSTOM_PALETTE } = await import("@/core/palettes");
+const { matchPalette, THEME_PRESETS, CUSTOM_PALETTE, PALETTE_ALIASES, resolvePaletteId } = await import("@/core/palettes");
 
 const ORIGINAL = ["night", "ocean", "forest", "rose", "violet", "daylight", "paper"];
 const byId = (id) => THEME_PRESETS.find((p) => p.id === id);
@@ -11,7 +11,7 @@ const full = (p, over = {}) => { const q = { ...p, ...over }; return matchPalett
 test("14 palettes complètes, ids distincts, couleurs en minuscules, les 7 d'origine en tête", () => {
   assert.equal(THEME_PRESETS.length, 15);
   assert.deepEqual(THEME_PRESETS.slice(0, 7).map((p) => p.id), ORIGINAL);
-  assert.deepEqual(THEME_PRESETS.slice(7).map((p) => p.id), ["rosaliax", "arcade", "vinyl", "workshop", "stadium", "solidarity", "boutique", "lagoon"]);
+  assert.deepEqual(THEME_PRESETS.slice(7).map((p) => p.id), ["ember", "arcade", "vinyl", "workshop", "stadium", "solidarity", "boutique", "lagoon"]);
   assert.equal(new Set(THEME_PRESETS.map((p) => p.id)).size, 15);
   assert.equal(new Set(THEME_PRESETS.map((p) => p.background + p.accent)).size, 15, "chaque couple fond/accent est unique");
   for (const p of THEME_PRESETS) {
@@ -24,7 +24,7 @@ test("valeurs exactes du rapport : fond, accent et accent 2 des palettes", () =>
   const expected = { night: ["#121214", "#e8a23b", "#7aa2ff"], ocean: ["#0b1220", "#38bdf8", "#fb7185"], forest: ["#0f1a14", "#4ade80", "#facc15"], rose: ["#1a0f14", "#f472b6", "#22d3ee"],
     violet: ["#14111f", "#a78bfa", "#f0abfc"], daylight: ["#fafafa", "#2563eb", "#7c3aed"], paper: ["#f5f0e6", "#c2410c", "#0f766e"], arcade: ["#0d0221", "#ff2a6d", "#05d9e8"],
     vinyl: ["#181414", "#f43f5e", "#fbbf24"], workshop: ["#1c1917", "#e07a5f", "#81b29a"], stadium: ["#f3f6fb", "#c2410c", "#1d4ed8"], solidarity: ["#fbf8f3", "#15803d", "#0369a1"],
-    rosaliax: ["#0b1716", "#e8782f", "#5fd3cc"], boutique: ["#fff7f5", "#be185d", "#6d28d9"], lagoon: ["#effcf8", "#0f766e", "#be185d"] };
+    ember: ["#0b1716", "#e8782f", "#5fd3cc"], boutique: ["#fff7f5", "#be185d", "#6d28d9"], lagoon: ["#effcf8", "#0f766e", "#be185d"] };
   for (const [id, [background, accent, accent2]] of Object.entries(expected)) assert.deepEqual([byId(id).background, byId(id).accent, byId(id).accent2], [background, accent, accent2], id);
   assert.deepEqual([byId("night").surface, byId("night").text], ["#1d1d21", "#f4f4f5"]);
   assert.deepEqual([byId("lagoon").surface, byId("lagoon").text], ["#ffffff", "#12302a"]);
@@ -108,4 +108,30 @@ test("composant : tuile Personnalisé, états accessibles, noms de champs, coule
     const dict = JSON.parse(fs.readFileSync(`src/locales/${l}.json`, "utf8"));
     for (const id of [...THEME_PRESETS.map((p) => p.id), "custom"]) assert.ok(dict[`theme.${id}`], `${l} theme.${id}`);
   }
+});
+
+test("ancien identifiant « rosaliax » : lu comme alias de « ember » (mêmes couleurs), jamais affiché, jamais écrit", () => {
+  assert.deepEqual(PALETTE_ALIASES, { rosaliax: "ember" });
+  for (const old of ["rosaliax", "Rosaliax", " ROSALIAX "]) assert.equal(resolvePaletteId(old), "ember", old);
+  assert.equal(resolvePaletteId("ember"), "ember");
+  assert.equal(resolvePaletteId("lagoon"), "lagoon");
+  assert.equal(resolvePaletteId(CUSTOM_PALETTE), CUSTOM_PALETTE);
+  for (const bad of ["", "inconnue", "__proto__", "constructor", null, undefined, 3, {}]) assert.equal(resolvePaletteId(bad), null, String(bad));
+  assert.ok(!THEME_PRESETS.some((p) => p.id in PALETTE_ALIASES), "un alias n'est jamais un identifiant de palette");
+  assert.ok(Object.values(PALETTE_ALIASES).every((id) => THEME_PRESETS.some((p) => p.id === id)), "chaque alias mène à une palette qui existe");
+});
+
+test("la palette renommée garde EXACTEMENT ses cinq couleurs (un site qui les a enregistrées s'affiche à l'identique)", () => {
+  const p = byId("ember");
+  assert.deepEqual([p.mode, p.background, p.surface, p.text, p.accent, p.accent2], ["dark", "#0b1716", "#122321", "#e9f3f1", "#e8782f", "#5fd3cc"]);
+  assert.equal(matchPalette("#0b1716", "#e8782f", "#5fd3cc", "#122321", "#e9f3f1"), "ember");
+});
+
+test("noms de la palette dans les deux langues, sans nom propre ; l'ancienne clé de traduction n'existe plus", () => {
+  const fr = JSON.parse(fs.readFileSync(new URL("../../src/locales/fr.json", import.meta.url), "utf8"));
+  const en = JSON.parse(fs.readFileSync(new URL("../../src/locales/en.json", import.meta.url), "utf8"));
+  assert.equal(fr["theme.ember"], "Sarcelle et braise");
+  assert.equal(en["theme.ember"], "Teal and ember");
+  for (const d of [fr, en]) assert.ok(!("theme.rosaliax" in d));
+  for (const p of THEME_PRESETS) for (const d of [fr, en]) assert.ok(d[`theme.${p.id}`], `theme.${p.id}`);
 });
