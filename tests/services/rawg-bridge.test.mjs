@@ -154,6 +154,19 @@ test("catalogue qui n'a pas encore le module : les tentatives ordinaires sont es
   assert.ok((await B.handoverState()).installedAt);
 });
 
+test("module installé SANS instance (sauvegarde d'avant la reprise restaurée) alors que le site utilise RAWG : il reçoit son instance et la reprise se fait ; une reprise déjà faite ne recrée rien", async () => {
+  await legacyFixture();
+  await publish();
+  assert.equal((await I.installFromCatalogue("game-covers")).ok, true);
+  assert.equal(await db.prisma.moduleInstance.count({ where: { moduleId: "game-covers" } }), 0);
+  assert.equal(await B.ensureRawgHandover({ install: true, force: true }), "done");
+  assert.equal(await db.prisma.moduleInstance.count({ where: { moduleId: "game-covers" } }), 1);
+  // La personne retire ensuite l'instance : la reprise est faite, rien n'est recréé.
+  await db.prisma.moduleInstance.deleteMany({ where: { moduleId: "game-covers" } });
+  assert.equal(await B.ensureRawgHandover({ install: true, force: true }), "done");
+  assert.equal(await db.prisma.moduleInstance.count({ where: { moduleId: "game-covers" } }), 0);
+});
+
 test("module installé à la main AVANT la reprise : la première demande d'un ancien module la fait (jamais avant d'avoir fini)", async () => {
   await legacyFixture();
   await publish();

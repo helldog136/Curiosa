@@ -169,19 +169,21 @@ async function run(opts: { install?: boolean; force?: boolean }): Promise<Handov
 
 /** Installe le module officiel (avec son instance), une seule fois par site. `force` : un événement explicite (démarrage, installation ou mise à jour de module) passe outre l'espacement. Ne lève jamais ; rien n'est fait sans entrée « officielle » compatible dans le catalogue. */
 async function installProvider(st: Handover, force: boolean): Promise<boolean> {
-  if (!force && Date.now() - lastInstallTry < RETRY_MS) return false;
-  lastInstallTry = Date.now();
   try {
     const { getModule } = await import("@/core/modules/registry");
-    const { findCatalogueEntry } = await import("@/core/modules/catalogue");
-    const { installFromCatalogue } = await import("@/core/modules/installer");
     const { ensureDefaultInstance } = await import("@/core/modules/defaultInstance");
     if (await getModule(COVERS_MODULE)) {
-      // Installé (par la personne, ou par nous plus tôt) : on ne lui crée une instance que si c'est nous qui l'avons installé.
-      if (st.installedAt) await ensureDefaultInstance(COVERS_MODULE);
+      // Installé mais sans instance (une sauvegarde d'avant la reprise vient d'être restaurée, par exemple) alors que le site utilisait RAWG et que la reprise n'est pas faite :
+      // il reçoit son instance, sinon il ne fournirait rien. Une reprise déjà faite n'arrive jamais ici : une instance retirée ensuite par la personne n'est pas recréée.
+      await ensureDefaultInstance(COVERS_MODULE);
       return true;
     }
     if (st.installedAt) return false;   // installé par nous, puis retiré par la personne : on ne le remet pas
+    // Le reste passe par le réseau (catalogue, téléchargement) : tentatives espacées, sauf événement explicite.
+    if (!force && Date.now() - lastInstallTry < RETRY_MS) return false;
+    lastInstallTry = Date.now();
+    const { findCatalogueEntry } = await import("@/core/modules/catalogue");
+    const { installFromCatalogue } = await import("@/core/modules/installer");
     const entry = await findCatalogueEntry(COVERS_MODULE);
     if (!entry || entry.origin !== "official" || !entry.compatible || entry.needsNewerCore || !entry.offers?.some((o) => o.service === COVERS_SERVICE)) return false;
     const installed = await installFromCatalogue(COVERS_MODULE);
