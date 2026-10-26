@@ -77,7 +77,7 @@ Une commande avec `sudo` suppose une règle `sudoers` limitée à cette seule co
 ### Pendant l'installation
 
 Comme il n'y a ni compilation ni réinstallation de dépendances, la mise à jour est rapide (de l'ordre de la minute, le temps de télécharger
-~250 Mo) et la coupure se limite au redémarrage. Choisissez de préférence un moment calme, ou désactivez la mise à jour automatique pour décider vous-même.
+~150 Mo) et la coupure se limite au redémarrage. Choisissez de préférence un moment calme, ou désactivez la mise à jour automatique pour décider vous-même.
 
 ### Conditions
 

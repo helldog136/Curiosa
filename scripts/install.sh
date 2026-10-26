@@ -219,6 +219,7 @@ phase_detect() {
   esac
   OS_ID="inconnu"; OS_LIKE=""; OS_NAME="Linux"
   local osr; osr="${CURIOSA_OS_RELEASE:-/etc/os-release}"
+  # shellcheck disable=SC1090  # le fichier os-release est lu tel quel (variable de test CURIOSA_OS_RELEASE comprise)
   if [ -r "$osr" ]; then OS_ID=$(. "$osr"; printf '%s' "${ID:-inconnu}"); OS_LIKE=$(. "$osr"; printf '%s' "${ID_LIKE:-}"); OS_NAME=$(. "$osr"; printf '%s' "${PRETTY_NAME:-Linux}"); fi
   APT=0
   case " $OS_ID $OS_LIKE " in *" debian "*|*" ubuntu "*) APT=1 ;; esac
@@ -373,7 +374,6 @@ phase_ask() {
 # ─── Phase C : version à installer + plan + accords ─────────────────────────────────────────────────────────────────
 phase_plan() {
   STEP="recherche de la release"
-  RELEASE_OK=0
   if [ "$RESUME" -eq 1 ] && [ -f "$(rp "$DIR")/release.json" ]; then
     TAG=$(sed -n 's/.*"version": *"\([^"]*\)".*/v\1/p' "$(rp "$DIR")/release.json" | head -n1)
     ok "Release déjà dépliée dans $DIR ($TAG)."
@@ -389,7 +389,6 @@ phase_plan() {
     case "$code" in 200|206) ;; *) fail "La release $TAG n'a pas de fichier pour Linux x64 ($FILE, réponse $code)." "regardez la page « Releases » : une release sans archive ne peut pas s'installer ; choisissez une autre version avec --tag, ou attendez." ;; esac
     ok "Release à installer : $TAG (la dernière version stable)."
   fi
-  RELEASE_OK=1
 
   title "Ce que je vais faire"
   [ "${#MISSING_PKGS[@]}" -gt 0 ] && info "- installer les outils manquants : ${MISSING_PKGS[*]}"
@@ -448,7 +447,7 @@ download_release() {
   mkdir -p "$parent"
   STAGING="$parent/.curiosa-staging-$SITE"
   rm -rf -- "$STAGING"; mkdir -p "$STAGING/unpack"
-  info "Téléchargement de $TAG (environ 250 Mo, quelques minutes selon la connexion)…"
+  info "Téléchargement de $TAG (environ 150 Mo, quelques minutes selon la connexion)…"
   curl -fL --retry 3 -m 1200 -o "$STAGING/$FILE" "$GITHUB_WEB/$REPO/releases/download/$TAG/$FILE" 2>>"${LOG:-/dev/null}" || fail "Le téléchargement de l'archive a échoué." "vérifiez l'accès à Internet et l'espace disque, puis relancez la même commande (rien n'est installé)."
   curl -fsSL -m 60 -o "$STAGING/$FILE.sha256" "$GITHUB_WEB/$REPO/releases/download/$TAG/$FILE.sha256" || fail "Le téléchargement du fichier d'empreinte (.sha256) a échoué." "relancez la même commande ; rien n'est installé."
   local want got; want=$(awk '{print tolower($1)}' "$STAGING/$FILE.sha256" | head -n1); got=$(sha256sum "$STAGING/$FILE" | awk '{print $1}')
@@ -589,7 +588,7 @@ server {
 EOF
 }
 domain_known_elsewhere() { # le domaine est-il déjà géré dans $1 (fichiers autres que le nôtre) ?
-  local found; found=$(grep -rlE "(server_name|ServerName|ServerAlias)[^;#]*[[:space:]]$DOMAIN([[:space:];]|\$)|^$DOMAIN[[:space:],{]" "$@" 2>/dev/null | grep -v "/$SITE\.conf\$" | grep -v "/$SITE\.caddy\$" | grep -v '\.avant-' | head -n1 || true)
+  local found; found=$(grep -rlE "(server_name|ServerName|ServerAlias)[^;#]*[[:space:]]$DOMAIN([[:space:];]|\$)|^${DOMAIN}[[:space:],{]" "$@" 2>/dev/null | grep -v "/$SITE\.conf\$" | grep -v "/$SITE\.caddy\$" | grep -v '\.avant-' | head -n1 || true)
   [ -n "$found" ] && { printf '%s' "$found"; return 0; }; return 1
 }
 manual_proxy_note() { PROXY_MANUAL="$1"; warn "$1"; }
