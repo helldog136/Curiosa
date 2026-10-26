@@ -1,14 +1,14 @@
 // Aucun libellé visible d'un module ne parle d'« ancien réglage » (contrat 10, 0.2.0) : ce qui sert à une reprise va dans `legacySettings`,
 // jamais affiché. Et chaque réglage déclaré est lu par le code du module (sinon c'est un champ mort à retirer ou à passer en `legacySettings`).
-// Le test parcourt le dépôt de modules s'il est présent (CURIOSA_EXTRAS_DIR, sinon /home/user/curiosa-extras) ; absent, il est ignoré proprement.
+// Le test parcourt le dépôt de modules s'il est présent (CURIOSA_EXTRAS_DIR, sinon ../curiosa-extras à côté du cœur) ; absent, il est ignoré proprement.
 // Une copie de ce test vit dans le dépôt de modules.
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import { findExtrasDir } from "../helpers/extras.mjs";
 
-const candidates = [process.env.CURIOSA_EXTRAS_DIR, "/home/user/curiosa-extras"].filter(Boolean);
-const root = candidates.find((d) => fs.existsSync(path.join(d, "modules")));
+const root = findExtrasDir();
 const skip = root ? false : "dépôt de modules absent (CURIOSA_EXTRAS_DIR) : rien à vérifier";
 
 /** Mots interdits dans un libellé ou une aide visible (français et anglais). Mot entier : « anciens chiffres » (pluriel, au sens « plus vieux ») reste permis. */
