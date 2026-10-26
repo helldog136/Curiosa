@@ -5,9 +5,9 @@ import test, { after, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { useTestDb } from "../helpers/db.mjs";
+import { useTestDb as openTestDb } from "../helpers/db.mjs";
 
-const db = await useTestDb();
+const db = await openTestDb();
 const { prisma } = db;
 const { parseManifest } = await import("@/core/modules/manifest");
 const { cleanSitemapPaths, matchModuleRoute, pageRobots, SLUG_RE } = await import("@/core/modules/pageMeta");

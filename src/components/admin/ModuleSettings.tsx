@@ -69,7 +69,7 @@ export function ModuleSettings({ t, locale, defaultLocale, locales, fields, allF
       case "multichoice": {
         const min = f.minChoices ?? 0;
         const max = f.maxChoices ?? 0;
-        const hint = min > 0 && max > 0 ? t("instances.multi.range", { min, max }) : max > 0 && max < (f.options ?? []).length ? t("instances.multi.max", { max }) : min > 0 ? t("instances.multi.min", { min }) : undefined;
+        const hint = min > 0 && max > 0 && min === max ? t("instances.multi.exact", { n: max }) : min > 0 && max > 0 ? t("instances.multi.range", { min, max }) : max > 0 && max < (f.options ?? []).length ? t("instances.multi.max", { n: max }) : min > 0 ? t("instances.multi.min", { n: min }) : undefined;
         return <CheckboxGroup key={name} name={name} label={label} help={help} hint={hint} flag={opts.flag} options={(f.options ?? []).map((o) => ({ value: o.value, label: L(o.label) }))} checked={readMulti(f, value)} />;
       }
       case "secret":
