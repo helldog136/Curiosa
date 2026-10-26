@@ -732,6 +732,7 @@ final_page() {
     say "  - Les ports 80 et 443 doivent être ouverts chez votre hébergeur (pare-feu / « security group » de son tableau de bord)."
     say "  - Puis testez :  curl -I https://$DOMAIN/admin/setup"
   fi
+  if [ "$PUBLIC_OK" -eq 1 ] && [ -n "${CERT_HINT:-}" ]; then say ""; say "  Certificat HTTPS (nginx/Apache ne l'obtiennent pas seuls) :  $CERT_HINT"; fi
   say ""
   say "Utile : état du service  sudo systemctl status $SITE   ·   journal  sudo journalctl -u $SITE -n 40 --no-pager"
   say "Les mises à jour se font ensuite depuis l'administration du site (page « Mises à jour »)."
