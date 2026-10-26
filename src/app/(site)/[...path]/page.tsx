@@ -5,6 +5,7 @@ import { headers } from "next/headers";
 import { notFound, permanentRedirect, redirect } from "next/navigation";
 import { pickDescription, pickName, type InstanceView } from "@/core/instances";
 import { pageScriptTags } from "@/core/modules/pageScripts";
+import { pageRobots } from "@/core/modules/pageMeta";
 import { getActiveInstances, type ActiveInstance } from "@/core/modules/registry";
 import { RESERVED_PATHS, siteUrl } from "@/core/config";
 import { pickLogo } from "@/core/logos";
@@ -80,11 +81,13 @@ function prefixed(path: string, locale: string, defaultLocale: string): string {
 }
 
 /** Adresse canonique, partage (Open Graph + Twitter) et titre d'une page, tous cohérents entre eux. */
-function pageMeta(opts: { siteName: string; title: string; description?: string; image?: string | null; canonical: string; locale: string; type?: "website" | "article"; languages?: Record<string, string>; pagination?: { previous?: string; next?: string } }): Metadata {
+function pageMeta(opts: { siteName: string; title: string; description?: string; image?: string | null; canonical: string; locale: string; type?: "website" | "article"; languages?: Record<string, string>; pagination?: { previous?: string; next?: string }; noindex?: boolean }): Metadata {
   return {
     title: opts.title,
     description: opts.description || undefined,
     alternates: { canonical: opts.canonical, ...(opts.languages ? { languages: opts.languages } : {}) },
+    // (0.3.0) Page qui s'est déclarée « noindex » : c'est le cœur qui pose la balise, avec ses propres valeurs (jamais un texte du module).
+    ...(opts.noindex ? { robots: { index: false, follow: false } } : {}),
     ...(opts.pagination && (opts.pagination.previous || opts.pagination.next) ? { pagination: opts.pagination } : {}),
     ...socialMeta({ siteName: opts.siteName, title: opts.title, description: opts.description || undefined, image: opts.image, url: opts.canonical, type: opts.type, locale: opts.locale }),
   };
@@ -121,7 +124,7 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
     // Titre et description fournis par le module ; la même page existe dans les autres langues (même chemin).
     if (!page) return {};
     const alt = all("/" + path.join("/"));
-    return pageMeta({ siteName: config.name, title: page.title || config.name, description: page.description, image: share, canonical: alt.canonical, languages: alt.languages, locale });
+    return pageMeta({ siteName: config.name, title: page.title || config.name, description: page.description, image: share, canonical: alt.canonical, languages: alt.languages, locale, noindex: pageRobots(page.robots) === "noindex" });
   }
   if (resolved.kind === "entry") {
     const found = await findEntryBySlug(resolved.active.instance, locale, resolved.slug);

@@ -67,3 +67,34 @@ export function Select({ label, name, options, defaultValue, help }: {
     </div>
   );
 }
+
+/**
+ * Plusieurs choix parmi une liste (réglage `multichoice`, 0.3.0) : de vraies cases à cocher du navigateur, aucun JavaScript. Chaque ligne est une cible tactile
+ * d'au moins 44 px (toute la ligne se coche) ; le groupe est un `fieldset` nommé par sa légende, relié à son aide et à son éventuelle erreur (l'erreur s'affiche
+ * juste dessous, voir FieldErrors). Une case décochée n'envoie rien : le marqueur `<name>__multi` dit au serveur que le champ était à l'écran.
+ */
+export function CheckboxGroup({ label, name, options, checked, help, hint, flag }: {
+  label: string; name: string; options: { value: string; label: string }[]; checked: readonly string[]; help?: string; hint?: string; flag?: string;
+}) {
+  const note = [help, hint].filter(Boolean).join(" ");
+  return (
+    <fieldset id={`${name}__group`} name={`${name}__group`} tabIndex={-1} data-multichoice="" aria-describedby={note ? `${name}__note` : undefined} className="min-w-0 rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+      <legend className={`${ui.label} max-w-full`}>
+        {label}
+        {flag && <span data-testid="field-flag" className={`${ui.chipWarn} ml-2 align-middle`}><span aria-hidden>✎</span>{flag}</span>}
+      </legend>
+      <input type="hidden" name={`${name}__multi`} value="1" />
+      <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-bg">
+        {options.map((o) => (
+          <li key={o.value}>
+            <label className="flex min-h-11 cursor-pointer items-center gap-3 px-3 py-2 text-[15px] transition-colors hover:bg-surface">
+              <input type="checkbox" name={name} value={o.value} defaultChecked={checked.includes(o.value)} className="h-5 w-5 shrink-0 accent-[var(--v-accent)]" />
+              <span className="min-w-0 [overflow-wrap:anywhere]">{o.label}</span>
+            </label>
+          </li>
+        ))}
+      </ul>
+      {note && <p id={`${name}__note`} className={ui.help}>{note}</p>}
+    </fieldset>
+  );
+}

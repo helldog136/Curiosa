@@ -37,6 +37,7 @@ export function groupIssues(groups: readonly OptionalGroupDecl[], settings: read
 export function hasValue(field: Pick<SettingField, "type" | "default">, value: unknown): boolean {
   if (value === undefined || value === null) return false;
   if (field.type === "boolean") return value !== (field.default === true);
+  if (field.type === "multichoice") return Array.isArray(value) && value.length > 0;   // (0.3.0)
   return value !== "";
 }
 

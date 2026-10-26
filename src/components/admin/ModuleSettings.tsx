@@ -4,7 +4,7 @@ import { themeRef } from "@/core/color";
 import { groupHasValue, layoutFields, type Slot } from "@/core/modules/groups";
 import { fieldSpan, SPAN_CLASS } from "@/core/modules/settingsLayout";
 import { settingFieldId } from "@/core/modules/missingSettings";
-import { LINK_PATTERN, resolveDefault } from "@/core/modules/settingValues";
+import { LINK_PATTERN, readMulti, resolveDefault } from "@/core/modules/settingValues";
 import { localized, type OptionalGroupDecl, type SettingField } from "@/core/modules/types";
 import { ImageField } from "./ImageField";
 import { ChoicePicker } from "./ChoicePicker";
@@ -12,7 +12,7 @@ import type { PickerStrings } from "./choicePickerModel";
 import { SuggestInstall } from "./SuggestInstall";
 import type { ChoiceView } from "@/core/modules/choice";
 import { OptionalGroup } from "./OptionalGroup";
-import { Checkbox, Select, TextArea, TextField } from "./Field";
+import { Checkbox, CheckboxGroup, Select, TextArea, TextField } from "./Field";
 import { ui } from "./ui";
 
 type Site = { name: string; tagline: string };
@@ -66,6 +66,12 @@ export function ModuleSettings({ t, locale, defaultLocale, locales, fields, allF
         return <TextArea key={name} {...common} rows={opts.inline ? 3 : 4} defaultValue={str} />;
       case "select":
         return <Select key={name} name={name} label={label} help={help} defaultValue={str} options={(f.options ?? []).map((o) => ({ value: o.value, label: L(o.label) }))} />;
+      case "multichoice": {
+        const min = f.minChoices ?? 0;
+        const max = f.maxChoices ?? 0;
+        const hint = min > 0 && max > 0 ? t("instances.multi.range", { min, max }) : max > 0 && max < (f.options ?? []).length ? t("instances.multi.max", { max }) : min > 0 ? t("instances.multi.min", { min }) : undefined;
+        return <CheckboxGroup key={name} name={name} label={label} help={help} hint={hint} flag={opts.flag} options={(f.options ?? []).map((o) => ({ value: o.value, label: L(o.label) }))} checked={readMulti(f, value)} />;
+      }
       case "secret":
         return <TextField key={name} {...common} type="password" placeholder={value ? "••••••••" : ""} autoComplete="new-password" required={required && !value} />;
       case "number":

@@ -16,7 +16,7 @@ import { menuEligible } from "@/core/modules/menuEligibility";
 import { setInstanceInMenu } from "@/core/menuStore";
 import { defaultPlacement, parsePlacement, placementSettingKey, placementsFor } from "@/core/modules/menuPlacement";
 import { groupFlagName, judgeGroup } from "@/core/modules/groups";
-import { checkFieldInput, resolveDefault, shouldStore } from "@/core/modules/settingValues";
+import { checkFieldInput, checkMultiInput, resolveDefault, shouldStore } from "@/core/modules/settingValues";
 import { localized } from "@/core/modules/types";
 import { getModule } from "@/core/modules/registry";
 import { forgetChoices, validateChoices, type ChoiceField } from "@/core/modules/choice";
@@ -183,6 +183,18 @@ export async function saveInstanceSettings(_prev: ActionState, formData: FormDat
       if (raw === (typeof current === "string" ? current.trim() : "")) continue;
       if (raw === "") ops.push({ key, locale: "", del: true });
       else choices.push({ field, raw, key });
+      continue;
+    }
+    // Plusieurs choix (0.3.0) : des cases à cocher ; le marqueur `__multi` dit que le champ était à l'écran (une liste vide n'envoie rien d'autre).
+    if (field.type === "multichoice") {
+      if (formData.get(`s__${field.key}__multi`) !== "1") continue;
+      const checked = checkMultiInput(field, formData.getAll(`s__${field.key}`).map(String));
+      if (!checked.ok) {
+        const n = checked.reason === "multichoiceMin" ? field.minChoices ?? 0 : field.maxChoices ?? (field.options ?? []).length;
+        const message = checked.reason === "multichoice" ? t("instances.error.multiUnknown", { field: L(field.label) }) : t(checked.reason === "multichoiceMin" ? "instances.error.multiMin" : "instances.error.multiMax", { field: L(field.label), n });
+        return { errors: { [`s__${field.key}__group`]: message } };
+      }
+      ops.push({ key: instanceSettingKey(id, field.key), locale: "", value: checked.value });
       continue;
     }
     const locales = field.translatable ? config.locales : [""];

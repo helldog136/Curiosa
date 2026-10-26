@@ -31,18 +31,20 @@ function resolveDefault(field) {
 export function settingValue(field, mode) {
   const d = resolveDefault(field);
   if (field.type === "secret") return mode === "defaults" ? undefined : CANARY;
-  if (mode === "defaults") return d;
+  if (mode === "defaults") return field.type === "multichoice" ? (field.defaultValues ?? []) : d;
   const urlish = field.type === "url" || field.type === "link" || field.type === "image" || field.type === "video";
   if (mode === "hostile") {
     if (field.type === "text" || field.type === "textarea" || urlish) return HOSTILE;
     if (field.type === "color") return `#fff" onmouseover=PROBEATTR x="`;
     if (field.type === "select") return d ?? field.options?.[0]?.value;
+    if (field.type === "multichoice") return field.defaultValues ?? [];
     return d;
   }
   if (mode === "hostileUrl") return urlish ? HOSTILE_URL : settingValue(field, "filled");
   // filled : une valeur plausible pour chaque réglage
   if (d !== undefined && field.type !== "text" && field.type !== "textarea") return d;
   switch (field.type) {
+    case "multichoice": return field.defaultValues?.length ? field.defaultValues : (field.options ?? []).slice(0, Math.max(1, field.minChoices ?? 1)).map((o) => o.value);
     case "text": case "textarea": return d !== undefined && d !== "" ? d : "Demo text";
     case "url": case "link": return d ?? "https://example.org/demo";
     case "number": return d ?? 3;
@@ -253,13 +255,16 @@ export async function runScenario(m, scenario) {
   async function runRoutes() {
     for (const [route, fn] of Object.entries(def.routes ?? {})) {
       if (typeof fn !== "function") continue;
-      const url = `https://example.test/m/probe/${route}`;
+      // (cœur 0.3.0) Une route « …/:slug » reçoit un segment libre : le kit l'appelle avec un segment plausible, passé aussi dans ctx.params.slug.
+      const dynamic = route === ":slug" || route.endsWith("/:slug");
+      const url = `https://example.test/m/probe/${dynamic ? route.slice(0, -5) + "demo-slug" : route}`;
+      const rctx = dynamic ? Object.assign(Object.create(ctx), { params: Object.freeze({ slug: "demo-slug" }) }) : ctx;   // (le contexte factice a déjà `params: {}`)
       const names = fieldNames(m, route, forms);
       const fill = (v) => Object.fromEntries(names.map((n) => [n, v]));
       const call = async (label, init, qs = "") => {
         const before = { writes: ctx.calls.writes.length, mail: ctx.calls.mail.length, bytes: JSON.stringify(ctx.dumpStore()).length };
         const headers = { "x-forwarded-for": init.ip ?? nextIp(), origin: "https://example.test", ...(init.headers ?? {}) };
-        const out = await record("route", `${label} ${route}`, async () => readResponse(await fn(new Request(url + qs, { method: init.method, body: init.body, headers }), ctx)));
+        const out = await record("route", `${label} ${route}`, async () => readResponse(await fn(new Request(url + qs, { method: init.method, body: init.body, headers }), rctx)));
         const last = outputs[outputs.length - 1];
         last.route = route; last.label = label; last.method = init.method ?? "GET";
         last.stored = JSON.stringify(ctx.dumpStore()).length - before.bytes;
