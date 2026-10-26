@@ -1048,27 +1048,32 @@ par des personnes différentes se retrouvent sur les mêmes noms ; rien ne l'imp
 mais deux modules ne partagent un sujet ou une rubrique que s'ils s'écrivent pareil. Les **libellés** montrés aux humains,
 eux, sont traduits comme le reste.
 
-Sujets connus (tous fournis par des modules du catalogue, ou par le cœur) :
+**Le registre des sujets n'est pas ici.** Le cœur ne documente que les trois sujets **qu'il lit lui-même** ; tous les autres
+sujets (`planning.slot`, `map.place`, `ha.state`…) sont une affaire entre modules et se déclarent dans le registre du dépôt qui
+les publie : pour le catalogue officiel, `docs/TOPICS.md` du dépôt `curiosa-extras`. Publier un nouveau sujet entre modules ne
+demande donc **jamais** une nouvelle version du cœur. Un dépôt tiers de modules tient son propre registre (voir
+`docs/CREATE-A-MODULE.md`, « Le registre des sujets de votre dépôt »).
+
+Sujets lus par le cœur :
 
 | Sujet | Fourni par | Rôle |
 |---|---|---|
 | `core.entry` | le cœur | entrées publiées de toute instance à contenu |
 | `feed.item` | tout module | éléments proposés au flux RSS (voir plus bas) |
-| `social.link` | tout module « réseau social » | le bouton d'un réseau (`label`, `url`, `icon`) que le cœur affiche dans l'en-tête (voir « Réseaux sociaux ») |
-| `overlay.item` | tout module | éléments simples (titre, texte, image, lien) pour les overlays |
-| `guestbook.message` | `guestbook` (exemple) | message validé d'un livre d'or (`id`, `name`, `text`, `publishedAt`) |
-| `sponsor.card` | `sponsors` | carte de sponsor (nom, code, logo, lien) |
-| `partnership.partner` | `partnerships` | fiche de partenaire (nom, logo) |
-| `planning.slot` | tout module « agenda de streams » | un stream (`id`, `title`, `start`, `end?`, `allDay?`, `day?`, `games?`, `status?`, `timezone?`) consommé par `planning` et par le bot Twitch ; reçoit une période `from` / `to` |
-| `calendar.event` | tout module « calendrier » (réservé) | un évènement d'agenda quelconque (`id`, `title`, `start`, `end?`, `allDay?`, `description?`, `location?`, `url?`, `status?`, `category?`, `color?`, `sourceLabel?`), pour les lecteurs qui ne parlent pas de streams ; reçoit une période `from` / `to`. Les streams, eux, passent par `planning.slot` |
-| `social.stat` | tout module « réseau social » | les chiffres d'un compte (`id`, `metric` : `followers` / `paying` / `content` / `views`, `value`, `asOf`, `error?`) collectés par `community-stats` |
-| `maze.poster` | tout module (`youtube-channel`, `twitch-channel`…) | affiche pour le labyrinthe |
-| `stream.live` | `twitch-channel` | live en cours (`id`, `title`, `url`, `startedAt`, `game`) ; vide hors ligne |
-| `ha.result` | `home-assistant` | ce qui est arrivé à un ordre confié à Home Assistant (`ref`, `id`, `status` : `done` / `failed` / `ignored` / `expired` / `refused`, `code`, `at`) ; consommé par le bot Twitch et Actions du live YouTube pour valider, rembourser ou afficher l'issue |
-| `ha.state` | `home-assistant` | l'état du pont avec Home Assistant, un seul élément (`enabled`, `live`, `paired`, `lastSeenAt?`) ; consommé par le bot Twitch pour mettre ses récompenses en pause ou les réactiver |
-| `live.event` | `youtube-live-actions` | les dons et adhésions vus dans le chat d'un direct, en mémoire seulement (15 minutes, 50 au plus) : `id`, `platform`, `kind` (`superchat`, `supersticker`, `member`, `gift`), `who`, `at`, et selon le cas `amount` (toujours avec `currency`), `count`, `text` ; consommé par l'Overlay alertes (OBS) pour les afficher à l'écran |
-| `map.place` | `events`, `directory` (tout module qui a des lieux) | un lieu pour la carte (`id`, `title`, `lat`, `lng`, `kind`, `url?`, `at?`, `note?`) ; consommé par `map`, qui reçoit 200 éléments au plus. `lat` entre -90 et 90, `lng` entre -180 et 180, jamais le point (0, 0), 5 décimales suffisent ; `kind` (`event`, `member`…) peut rejoindre un type de la carte ; `at` : date ISO d'un évènement. **Jamais d'adresse personnelle sans consentement** : un lieu public ou la ville arrondie d'une personne qui a dit oui, rien par défaut. La carte montre les données telles que reçues et n'écrit jamais chez la source |
-| `mascot.hint` | tout module qui a une nouveauté à annoncer (le jeu du jour…) | une phrase que la mascotte peut dire (`id`, `text`, `url?`) ; consommé par `mascot`, 10 au plus. `id` change quand l'état change (« à jouer », « déjà joué »), pour que la mascotte ne répète pas ; `text` court (140 caractères), sans balise ; `url` d'une page du site. Un module qui n'a rien à dire ne publie rien |
+| `social.link` | tout module « réseau social » | le bouton d'un réseau (`label`, `url`, `icon`, et facultativement `rel`, `referrerPolicy`, `target`) que le cœur affiche dans l'en-tête (voir « Réseaux sociaux ») |
+
+**Règle d'évolution d'un sujet lu par le cœur.** Le cœur décide, à partir de ces valeurs, de ce que le navigateur reçoit (adresse,
+attributs d'un lien…) : il possède donc le schéma et les listes de valeurs permises. Pour qu'un module récent ne casse pas un cœur
+plus ancien, et inversement :
+
+- un champ nouveau est toujours **facultatif** et **additif** : on n'en retire pas, on n'en renomme pas, on ne change pas le sens
+  d'un champ existant (un champ renommé est un nouveau champ, l'ancien reste lu) ;
+- chaque valeur a une **liste fermée** (par exemple les mots permis de `rel`) : une valeur hors liste est ignorée, le défaut sûr
+  s'applique, l'élément reste affiché ;
+- **un champ = sa version** : la documentation dit à partir de quelle version du cœur chaque champ est lu, et un module qui en
+  dépend déclare `minCore` ; sans lui, sur un cœur plus ancien, le champ est simplement ignoré (le cœur nettoie les champs
+  inconnus) ;
+- on regroupe les champs probables au moment où l'on touche au sujet, pour ne pas publier une version du cœur par attribut.
 
 ```jsonc
 // module.json du CONSOMMATEUR (un overlay)
