@@ -76,7 +76,7 @@ export function fakeCtx(opts = {}) {
     budgetMs: () => netBudgetMs,
   };
   const cleared = new Set();
-  const view = (r) => ({ id: r.id, createdAt: r.createdAt, data: structuredClone(r.data), key: r.key ?? null });
+  const view = (r) => ({ id: r.id, createdAt: r.createdAt, data: structuredClone(r.data), ...(r.key ? { key: r.key } : {}) });   // `key` seulement quand une clé a été donnée (les tests d'avant comparent les lignes telles quelles)
   const keyOf = (o) => (typeof o?.key === "string" && o.key ? o.key.slice(0, 200) : null);
   const store = {
     async add(collection, data, o) { calls.writes.push({ op: "add", collection }); const id = `r${++seq}`; rows.set(id, { id, collection, createdAt: new Date(Date.now() + seq), data: structuredClone(data), key: keyOf(o) }); return id; },
