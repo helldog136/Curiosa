@@ -13,15 +13,15 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 - **Installer Curiosa en deux commandes.** Un script pose trois questions (nom du site, domaine, utilisateur dédié), prépare le serveur après votre accord, met en place le HTTPS sans toucher à vos autres sites et peut reprendre là où il s'est arrêté.
 - **Un guide pour choisir son serveur et régler son domaine**, et Docker présenté comme un moyen d'essayer Curiosa chez soi.
-- **La palette « Rosaliax » devient « Sarcelle et braise ».** Ce sont exactement les mêmes couleurs : rien à faire, votre site ne change pas et vos anciennes sauvegardes se restaurent normalement.
-- **Les jaquettes de jeux deviennent un module, « Jaquettes de jeux ».** Il s'installe tout seul sur les sites qui les utilisaient, avec leur clé et leurs corrections (copiées, jamais effacées ; si vous le retirez, l'ancien réglage reprend). Les liens « Ce n'est pas le bon jeu ? » et les outils de l'assistant IA restent identiques.
+- **Une palette de couleurs change de nom et devient « Sarcelle et braise ».** Ce sont exactement les mêmes couleurs : rien à faire, votre site ne change pas et vos anciennes sauvegardes se restaurent normalement.
+- **Les jaquettes de jeux deviennent un module, « Jaquettes de jeux ».** Il s'installe tout seul sur les sites qui les utilisaient, avec leur clé et leurs corrections (copiées, jamais effacées ; retiré, l'ancien réglage reprend). Les liens « Ce n'est pas le bon jeu ? » et les outils de l'assistant IA restent identiques.
 - **Les modules peuvent proposer plusieurs choix par cases à cocher** (faciles à toucher sur téléphone, utilisables au clavier), choisir où leur carte se range dans l'administration, et mieux gérer leurs pages : page non référencée par les moteurs de recherche, adresses ajoutées au plan du site, liens courts.
 - Rien d'autre ne change pour votre site.
 
 ### Pour les développeurs
 
 - `scripts/install.sh` (3 questions, reprise, HTTPS sans toucher aux autres sites), publié seul avec chaque release ; test en racine fictive (`tests/core/install-script.test.mjs`). Docs : README, AGENT-INSTALL.
-- Palette `ember` (« Sarcelle et braise ») ; l'ancien identifiant `rosaliax` reste un alias (`resolvePaletteId`). Le registre des sujets quitte le cœur (docs/TOPICS.md de curiosa-extras) : le cœur ne documente que `core.entry`, `feed.item`, `social.link`. Tests sans chemin en dur (`CURIOSA_EXTRAS_DIR`, `CURIOSA_CATALOGUE_INDEX`).
+- Palette `ember` (« Sarcelle et braise ») ; l'ancien identifiant reste un alias (`resolvePaletteId`). Le registre des sujets quitte le cœur (docs/TOPICS.md de curiosa-extras) : le cœur ne documente que `core.entry`, `feed.item`, `social.link`. Tests sans chemin en dur (`CURIOSA_EXTRAS_DIR`, `CURIOSA_CATALOGUE_INDEX`).
 - Pages (`minCore: "0.2.14"`) : `PageResult.robots: "noindex"`, `PageResult.sitemap` (+ `sitemapFromPage: true`), route `go/:slug` reçue dans `ctx.params.slug`, clé de manifeste `family`, réglage `multichoice` (`defaultValues`, `minChoices`, `maxChoices`). Kit de test : `fakeCtx` accepte `params`, 5 entrées `since: "0.2.14"` dans `FEATURES`.
 - RAWG : cale `src/core/services/rawgBridge.ts` (retrait prévu en 0.3.0) vers le service `game.cover` du module `game-covers`. Reprise idempotente (`adopt`, marqueur, audit `rawg.handover`), aussi après restauration d'une sauvegarde. Kit de test : faux stockage à clés d'index.
 
