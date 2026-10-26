@@ -14,7 +14,7 @@ Après **5 mots de passe faux de suite**, la connexion est bloquée **1 heure**.
 
 ### Derrière un reverse proxy
 
-L'adresse du visiteur est lue dans l'en-tête `X-Forwarded-For`, **à la fin** : c'est l'entrée que **votre proxy** ajoute (voir la configuration nginx du [README](../README.md#installer)). Le début de l'en-tête vient du visiteur et peut être inventé, il est ignoré. Si plusieurs proxys se suivent devant le site, indiquez leur nombre avec `CURIOSA_TRUSTED_PROXIES` (1 par défaut). Une adresse IPv6 compte pour tout son réseau /64.
+L'adresse du visiteur est lue dans l'en-tête `X-Forwarded-For`, **à la fin** : c'est l'entrée que **votre proxy** ajoute (voir la configuration nginx du [README](../README.md#installation-manuelle-avancé)). Le début de l'en-tête vient du visiteur et peut être inventé, il est ignoré. Si plusieurs proxys se suivent devant le site, indiquez leur nombre avec `CURIOSA_TRUSTED_PROXIES` (1 par défaut). Une adresse IPv6 compte pour tout son réseau /64.
 
 Cette règle est la **seule** : le comptage des visites (`/api/hit`) la suit depuis la 0.2.6, et les modules n'ont pas à la réimplémenter. Ils demandent `ctx.api.visitor.fingerprint(request, portée)` : une empreinte salée (HMAC-SHA-256, sel au hasard gardé en mémoire seulement, renouvelé chaque jour, propre au module et à la portée) qui ne permet pas de retrouver l'adresse. Le cœur ne garde rien par visiteur. Un module qui lit lui-même `X-Forwarded-For` prendrait la première entrée, que le visiteur écrit.
 

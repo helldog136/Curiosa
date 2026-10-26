@@ -62,11 +62,7 @@ Le texte juridique complet est dans [`LICENSE`](LICENSE). Un auteur de module pe
 
 ## Démarrer
 
-Trois façons de l'installer, de la plus simple à la plus technique :
-
-1. **Se faire aider par une IA** : donnez [docs/AGENT-INSTALL.md](docs/AGENT-INSTALL.md) à un assistant (dans Claude Code, le skill `install-curiosa` fait tout pas à pas). Il vous posera les questions utiles (nom du site, domaine…) et vérifiera chaque étape.
-2. **Installer sur un serveur Linux** : environ 15 minutes en suivant le guide ci-dessous, copier-coller de commandes à l'appui.
-3. **Essayer chez soi avec Docker** : une seule commande, voir plus bas.
+Le chemin le plus simple : **un serveur, un nom de domaine, deux commandes** (voir [Installer](#installer)). Une IA peut vous guider du choix du serveur jusqu'au site en ligne : donnez-lui [docs/AGENT-INSTALL.md](docs/AGENT-INSTALL.md) (dans Claude Code, le skill `install-curiosa` fait tout pas à pas). Les installations à la main et sous Docker existent, pour les plus techniques.
 
 Un site existant sous **Grav CMS** ? Il peut être converti : [docs/IMPORT-GRAV.md](docs/IMPORT-GRAV.md).
 
@@ -74,10 +70,27 @@ Un site existant sous **Grav CMS** ? Il peut être converti : [docs/IMPORT-GRAV.
 
 ## Installer
 
-> **Vous êtes (ou vous utilisez) un assistant IA ?** Un guide pensé pour être exécuté par un agent, avec ses vérifications et ses points de décision, est dans
+> **Vous êtes (ou vous utilisez) un assistant IA ?** Le guide pensé pour être exécuté par un agent (choisir le serveur, le DNS, puis le script, avec ses vérifications et ses erreurs fréquentes) est dans
 > [docs/AGENT-INSTALL.md](docs/AGENT-INSTALL.md). Dans Claude Code, le skill `install-curiosa` (dossier `.claude/skills/`) le suit pas à pas.
 
-### Sur un serveur Linux (recommandé)
+### Le chemin facile
+
+**Il vous faut :** un petit serveur Linux (Ubuntu ou Debian, processeur **x86_64 / amd64**, 1 à 2 Go de mémoire) et un **nom de domaine** dont l'enregistrement `A` pointe vers lui. Pas encore de serveur ? [Le guide explique comment le choisir](docs/AGENT-INSTALL.md#choisir-et-préparer-son-serveur), se connecter et régler le domaine.
+
+Connecté au serveur, deux commandes (la première télécharge le script, que vous pouvez relire avant de lancer la seconde) :
+
+```bash
+curl -fsSL https://github.com/helldog136/Curiosa/releases/latest/download/install.sh -o install.sh
+sudo bash install.sh
+```
+
+Le script pose **trois questions** (nom du site, nom de domaine, utilisateur dédié), vérifie le serveur, installe ce qui manque avec votre accord, met le site en HTTPS sans toucher à vos autres sites, puis affiche **l'adresse à ouvrir** et la commande pour lire le code d'installation. Il peut être relancé sans risque s'il s'arrête en route. Pour voir ce qu'il ferait sans rien modifier : `sudo bash install.sh --dry-run`. Toutes les options : `bash install.sh --help`.
+
+Ensuite, ouvrez `https://votre-domaine/admin/setup` et suivez l'assistant.
+
+### Installation manuelle (avancé)
+
+Pour comprendre ce que fait le script, ou si votre serveur n'est pas un Ubuntu/Debian avec systemd : les mêmes étapes, à la main.
 
 Rien n'est compilé chez vous : on installe une **release** déjà compilée (publiée sur la page *Releases* du dépôt), puis les mises à jour se font depuis l'admin.
 
@@ -116,15 +129,14 @@ La ligne `sha256sum -c` doit afficher `OK` ; sinon rien n'est installé. Si `TAG
 
 ```bash
 cp .env.example .env
-TOKEN=$(openssl rand -hex 16)
+TOKEN=$(openssl rand -hex 16)   # le code d'installation (ne l'affichez pas, ne le partagez pas)
 sed -i 's|^SITE_URL=.*|SITE_URL="https://example.org"|' .env
 printf '\nSETUP_TOKEN="%s"\nCURIOSA_SUPERVISED=1\n' "$TOKEN" >> .env
 mkdir -p data && npx prisma migrate deploy
-echo "Code d'installation : $TOKEN"
 ```
 
 - `SITE_URL` : l'adresse publique du site (sitemap, flux RSS, partages).
-- `SETUP_TOKEN` : empêche un inconnu de réclamer un site tout neuf exposé sur Internet ; l'assistant de première installation le demandera. Notez le code affiché.
+- `SETUP_TOKEN` : empêche un inconnu de réclamer un site tout neuf exposé sur Internet ; l'assistant de première installation le demandera. Pour le relire sur le serveur : `grep '^SETUP_TOKEN' .env`.
 - `CURIOSA_SUPERVISED=1` : indique que le serveur est relancé automatiquement par son superviseur (étape suivante). C'est ce qui permet les mises à jour depuis l'admin.
 - La base de données est un seul fichier SQLite (`data/curiosa.db`) ; aucun autre service à installer.
 
@@ -198,7 +210,9 @@ Le détail (variables d'environnement, canal des *release candidates*, publicati
 
 **Venir d'un autre site ?** Un site **Grav CMS** peut être converti en sauvegarde Curiosa : voir [docs/IMPORT-GRAV.md](docs/IMPORT-GRAV.md).
 
-### Avec Docker
+### Avec Docker (pour essayer chez soi, pas pour publier)
+
+Docker n'est **pas** le chemin pour mettre un site en ligne : l'image se **construit sur votre machine** (long, plusieurs Go de téléchargement et de compilation), aucune image prête à l'emploi n'est publiée, il n'y a **pas de HTTPS** (il faudrait ajouter un proxy à côté) et la mise à jour depuis l'admin n'y fonctionne pas (on reconstruit l'image). Il reste utile pour **essayer** Curiosa sur son ordinateur :
 
 ```bash
 docker compose up -d --build
@@ -206,7 +220,7 @@ docker compose up -d --build
 
 Puis ouvrir http://localhost:3000 : l'assistant de première installation démarre.
 Les données (base SQLite, images envoyées, modules installés) vivent dans le volume `curiosa_data`.
-Avec Docker on met à jour en remplaçant l'image : `docker compose build --pull && docker compose up -d`.
+Pour mettre à jour : `docker compose build --pull && docker compose up -d`.
 
 Site exposé sur Internet avant d'être configuré ? Définissez `SETUP_TOKEN` : l'assistant l'exigera, et personne d'autre ne pourra réclamer le site.
 
