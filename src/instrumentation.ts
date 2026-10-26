@@ -43,5 +43,5 @@ export async function register() {
   // Cale RAWG (à retirer en 0.3.0, voir services/rawgBridge.ts) : un site qui utilisait RAWG voit le module « Jaquettes de jeux » installé et repris tout seul. Sans attendre
   // (le démarrage n'attend ni le catalogue ni le réseau), sans jamais lever.
   const { ensureRawgHandover } = await import("@/core/services/rawgBridge");
-  void ensureRawgHandover({ install: true }).catch(() => {});
+  void ensureRawgHandover({ install: true, force: true }).catch(() => {});
 }

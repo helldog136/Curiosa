@@ -136,14 +136,15 @@ let running: Promise<HandoverResult> | null = null;
  * Prépare puis fait la reprise. `install` : installer le module du catalogue officiel s'il manque (une seule fois par site, tentatives espacées de 10 minutes). Idempotente :
  * rejouée, elle ne fait rien de plus ; ne lève jamais. « nothing » : le site n'utilisait pas RAWG ; « waiting » : pas de module (encore) ; « failed » : le module a refusé.
  */
-export function ensureRawgHandover(opts: { install?: boolean } = {}): Promise<HandoverResult> {
-  if (running) return running;
+export function ensureRawgHandover(opts: { install?: boolean; force?: boolean } = {}): Promise<HandoverResult> {
+  // Une tentative est en cours : une demande ordinaire la rejoint ; un événement explicite (`force`) attend qu'elle finisse, puis passe à son tour (elle a pu ignorer l'installation).
+  if (running) return opts.force ? running.then(() => ensureRawgHandover(opts)) : running;
   const job = run(opts).catch((error): HandoverResult => { console.error("[rawg] handover failed:", (error as Error)?.name); return "failed"; }).finally(() => { running = null; });
   running = job;
   return job;
 }
 
-async function run(opts: { install?: boolean }): Promise<HandoverResult> {
+async function run(opts: { install?: boolean; force?: boolean }): Promise<HandoverResult> {
   const st = await handoverState();
   if (st.doneAt) return "done";
   const legacy = await legacyData();
@@ -151,7 +152,7 @@ async function run(opts: { install?: boolean }): Promise<HandoverResult> {
 
   let provider = await providerInstance(COVERS_SERVICE, COVERS_MODULE);
   if (!provider && opts.install) {
-    await installProvider(st);
+    await installProvider(st, opts.force === true);
     provider = await providerInstance(COVERS_SERVICE, COVERS_MODULE);
   }
   if (!provider) return "waiting";
@@ -166,9 +167,9 @@ async function run(opts: { install?: boolean }): Promise<HandoverResult> {
   return "done";
 }
 
-/** Installe le module officiel (avec son instance), une seule fois par site. Ne lève jamais ; rien n'est fait sans entrée « officielle » compatible dans le catalogue. */
-async function installProvider(st: Handover): Promise<boolean> {
-  if (Date.now() - lastInstallTry < RETRY_MS) return false;
+/** Installe le module officiel (avec son instance), une seule fois par site. `force` : un événement explicite (démarrage, installation ou mise à jour de module) passe outre l'espacement. Ne lève jamais ; rien n'est fait sans entrée « officielle » compatible dans le catalogue. */
+async function installProvider(st: Handover, force: boolean): Promise<boolean> {
+  if (!force && Date.now() - lastInstallTry < RETRY_MS) return false;
   lastInstallTry = Date.now();
   try {
     const { getModule } = await import("@/core/modules/registry");
@@ -198,5 +199,5 @@ async function installProvider(st: Handover): Promise<boolean> {
 /** Après une installation ou une mise à jour de module : la reprise se prépare (au mieux, sans attendre, sans jamais faire échouer l'opération). */
 export function noteModulesChanged(): void {
   forgetBridgeDecision();
-  void ensureRawgHandover({ install: true }).catch(() => {});
+  void ensureRawgHandover({ install: true, force: true }).catch(() => {});
 }

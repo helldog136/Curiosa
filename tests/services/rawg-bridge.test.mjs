@@ -144,6 +144,16 @@ test("rejouée, la reprise ne fait rien de plus (une seule copie) ; le repère s
   assert.equal((await I.installFromCatalogue("game-covers")).ok, true);
 });
 
+test("catalogue qui n'a pas encore le module : les tentatives ordinaires sont espacées, mais un démarrage ou une mise à jour de module (« force ») réessaie tout de suite", async () => {
+  await legacyFixture();
+  assert.equal(await quiet(() => B.ensureRawgHandover({ install: true })), "waiting", "le catalogue n'a pas encore le module");
+  await publish();
+  assert.equal(await B.ensureRawgHandover({ install: true }), "waiting", "tentative ordinaire : espacée de 10 minutes");
+  assert.equal(await Reg.getModule("game-covers"), null);
+  assert.equal(await B.ensureRawgHandover({ install: true, force: true }), "done", "événement explicite : on réessaie, le module est installé et repris");
+  assert.ok((await B.handoverState()).installedAt);
+});
+
 test("module installé à la main AVANT la reprise : la première demande d'un ancien module la fait (jamais avant d'avoir fini)", async () => {
   await legacyFixture();
   await publish();
