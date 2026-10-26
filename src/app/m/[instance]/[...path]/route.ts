@@ -19,7 +19,7 @@ async function handle(request: Request, { params }: Params): Promise<Response> {
   }
 
   const active = (await getActiveInstances()).find((a) => a.instance.key === key);
-  // (0.3.0) La route de ce nom exact d'abord (comme toujours) ; sinon une route `…/:slug` dont le dernier segment passe le motif strict (voir pageMeta.ts).
+  // (0.2.14) La route de ce nom exact d'abord (comme toujours) ; sinon une route `…/:slug` dont le dernier segment passe le motif strict (voir pageMeta.ts).
   const route = active ? matchModuleRoute(active.mod.def.routes, path) : null;
   if (!active || !route) return new Response("Not found", { status: 404 });
 

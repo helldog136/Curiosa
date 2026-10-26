@@ -92,7 +92,7 @@ tout le reste → **Ma communauté** (contacts, partenariats, statistiques de la
 selon la catégorie : *Relations* (`utility`), *Pages interactives* (`widget`) et *Autres* (toute autre catégorie, ou aucune), repliés par défaut. Le dernier choix est mémorisé dans un cookie (`curiosa_nav_groups`, lu côté serveur : pas de clignotement)
 et la page ouverte déplie toujours son groupe. La pastille d'une instance (`adminBadge`) reste sur son lien et le total d'un groupe plié s'affiche sur son titre.
 
-**Choisir soi-même : `family` (cœur 0.3.0, `"minCore": "0.3.0"`).** Quand la déduction ne convient pas (un outil de contenu sans `content` dans son manifeste, rangé « Communauté » faute de mieux), le module le dit : `"family": "content" | "community" | "connections" | "overlays"`. La clé **prime** sur la règle ci-dessus, pour le rangement (menu ou seulement dans Extensions), la rubrique du menu (`content` ou `community` ; avec `connections` ou `overlays`, la règle habituelle choisit la rubrique) et la famille d'Extensions. `content` et `community` : épinglée au menu ; `connections` : seulement dans Extensions ; `overlays` : permis **seulement** à un module qui peut servir une source navigateur (type ou permission `overlay`), sinon la clé est ignorée. Toute autre valeur est refusée à l'installation (validation du manifeste). **Sans la clé, la règle est strictement celle d'avant** (vérifié sur tout le catalogue) ; le choix de la personne (« Épingler au menu » / « Retirer du menu ») l'emporte toujours. Attention : un module qui **ajoute** `family` dans une mise à jour change le rangement par défaut de ses instances qui n'ont jamais été épinglées ou retirées à la main ; c'est le but, mais ne le faites pas à la légère.
+**Choisir soi-même : `family` (cœur 0.2.14, `"minCore": "0.2.14"`).** Quand la déduction ne convient pas (un outil de contenu sans `content` dans son manifeste, rangé « Communauté » faute de mieux), le module le dit : `"family": "content" | "community" | "connections" | "overlays"`. La clé **prime** sur la règle ci-dessus, pour le rangement (menu ou seulement dans Extensions), la rubrique du menu (`content` ou `community` ; avec `connections` ou `overlays`, la règle habituelle choisit la rubrique) et la famille d'Extensions. `content` et `community` : épinglée au menu ; `connections` : seulement dans Extensions ; `overlays` : permis **seulement** à un module qui peut servir une source navigateur (type ou permission `overlay`), sinon la clé est ignorée. Toute autre valeur est refusée à l'installation (validation du manifeste). **Sans la clé, la règle est strictement celle d'avant** (vérifié sur tout le catalogue) ; le choix de la personne (« Épingler au menu » / « Retirer du menu ») l'emporte toujours. Attention : un module qui **ajoute** `family` dans une mise à jour change le rangement par défaut de ses instances qui n'ont jamais été épinglées ou retirées à la main ; c'est le but, mais ne le faites pas à la légère.
 
 **Pastille d'Extensions.** L'entrée Extensions cumule les modules en retard (propriétaire), les instances à régler (état *À configurer* ou *Erreur*) et les pastilles des instances qui ne sont pas épinglées : rien ne se cache parce qu'une extension n'est pas dans le menu.
 
@@ -139,8 +139,8 @@ Validé à l'installation et au chargement (zod, `src/core/modules/manifest.ts`)
 | `version` | `x.y.z`. Sert à détecter les mises à jour (comparée à la version du catalogue). |
 | `author`, `license`, `homepage` | Informatifs (`homepage` : URL valide). |
 | `pageSetting` | (cœur 0.2.12, `"minCore": "0.2.12"`) Facultatif : clé d'un réglage **booléen** du module (case à cocher) qui allume ou éteint la page publique de l'instance. Tant qu'il est faux (ou jamais enregistré et sans `default: true`), la page n'existe pour personne : 404 sur l'adresse et sur son `page-script`, et rien dans le plan du site, `llms.txt`, le menu ni l'éditeur de menu. Refusé si la clé n'est pas celle d'un réglage booléen du module, ou si le module n'a pas de page. Sans le champ : rien ne change. L'administration de l'instance dit si la page est allumée. Règle unique : `hasPublicPage` (`src/core/modules/publicPage.ts`). |
-| `sitemapFromPage` | (cœur 0.3.0, `"minCore": "0.3.0"`) Facultatif : `true` si `page()` liste, dans `PageResult.sitemap`, des chemins de sa page à ajouter au plan du site et à `llms.txt` (ou se déclare `robots: "noindex"` pour toute l'instance). **Seul** un module qui le demande est lu pour cela : le cœur appelle alors `page(ctx, { segments: [], for: "sitemap" })` (pour la langue par défaut), au plus une fois par minute et par instance. Sans la clé, `page()` n'est jamais appelée pour le plan du site : rien ne change. Refusé sans page publique. |
-| `family` | (cœur 0.3.0, `"minCore": "0.3.0"`) Facultatif : `"content"`, `"community"`, `"connections"` ou `"overlays"` : le rangement dans l'administration, qui **prime** sur la déduction du cœur (voir « Rangement dans le menu »). Sans la clé : la règle habituelle, inchangée. |
+| `sitemapFromPage` | (cœur 0.2.14, `"minCore": "0.2.14"`) Facultatif : `true` si `page()` liste, dans `PageResult.sitemap`, des chemins de sa page à ajouter au plan du site et à `llms.txt` (ou se déclare `robots: "noindex"` pour toute l'instance). **Seul** un module qui le demande est lu pour cela : le cœur appelle alors `page(ctx, { segments: [], for: "sitemap" })` (pour la langue par défaut), au plus une fois par minute et par instance. Sans la clé, `page()` n'est jamais appelée pour le plan du site : rien ne change. Refusé sans page publique. |
+| `family` | (cœur 0.2.14, `"minCore": "0.2.14"`) Facultatif : `"content"`, `"community"`, `"connections"` ou `"overlays"` : le rangement dans l'administration, qui **prime** sur la déduction du cœur (voir « Rangement dans le menu »). Sans la clé : la règle habituelle, inchangée. |
 | `privacy` | Facultatif : ce que le module collecte comme données personnelles, pourquoi et comment les faire effacer (texte simple, traduisible comme `description`). **Un module qui collecte des données de visiteurs doit le déclarer** : le cœur reprend ce texte tel quel, sous le nom de l'instance, dans la page « Politique de confidentialité » du site (`/privacy`, lien permanent du pied de page). Un module qui ne collecte rien n'a rien à écrire. |
 | `icon` | Emoji affiché dans l'admin. |
 | `main` | Fichier ES module du code, relatif à la racine. Absent : module « sans code » (réglages, contenu). |
@@ -243,7 +243,7 @@ Chaque réglage est un objet (`SettingField`) :
 | `help` | Aide sous le champ. |
 | `default` | Valeur par défaut (texte, nombre ou booléen). `ctx.setting` la renvoie tant que rien n'est réglé, et l'admin **pré-remplit** le champ avec elle. Pour `text` / `textarea` : `"site:name"` (nom du site) ou `"site:tagline"` (accroche), dans la langue du champ (voir ci-dessous). |
 | `options` | Pour `select` et `multichoice` : `[{ "value": "info", "label": { "en": "…" } }]` (50 au plus ; pour `multichoice`, 2 au moins, valeurs faites de lettres, chiffres, `.`, `-`, `_`, 60 caractères au plus, sans doublon). |
-| `defaultValues`, `minChoices`, `maxChoices` | Pour `multichoice` (cœur 0.3.0) : les cases cochées au départ (parmi `options`), le nombre minimal et maximal de cases cochées (défaut : 0 et toutes les options). Refusés pour un autre type. |
+| `defaultValues`, `minChoices`, `maxChoices` | Pour `multichoice` (cœur 0.2.14) : les cases cochées au départ (parmi `options`), le nombre minimal et maximal de cases cochées (défaut : 0 et toutes les options). Refusés pour un autre type. |
 | `translatable` | `true` : une valeur par langue du site (sinon une seule valeur globale). `ctx.setting` renvoie celle de la langue courante. |
 | `advanced` | `true` : réglage technique, masqué dans la version simplifiée de l'admin ; **sa valeur par défaut s'applique** — donnez-en toujours une. |
 | `optional` | `true` : réglage facultatif. Vide, il ne met pas l'extension « À configurer » ; sans cela, un texte, une adresse, un lien ou un secret vide et sans valeur par défaut est signalé à l'administrateur comme « à remplir » (avec son libellé). |
@@ -255,7 +255,7 @@ Chaque réglage est un objet (`SettingField`) :
 | `tab` | (cœur 0.2.2) Onglet de la page d'admin où s'affiche le réglage : `settings` (défaut, onglet « Réglages »), `sources`, `general` ou l'`id` d'un onglet déclaré dans `tabs`. Tous les réglages d'un groupe facultatif sont dans le même onglet. Un cœur ancien ignore la clé ; déclarez `"minCore": "0.2.2"`. |
 
 Types : `text`, `textarea`, `url` (adresse http ou https), `link` (une page du site comme `/contact`, une adresse `https://…` ou `mailto:…` ; contrôlé dans le navigateur et par le serveur), `number`, `boolean`, `select`, `color`, `image` (envoi de fichier ou URL), `video` (envoi d'une vidéo MP4 ou WebM de 50 Mo au plus, réservée aux fichiers du site : `/uploads/…`), `secret`
-(jamais réaffiché une fois enregistré ; ne l'écrivez jamais dans un journal), `choice` (« choix parmi », cœur 0.2.0 : voir ci-dessous), `multichoice` (« plusieurs choix », cœur 0.3.0 : voir « Réglage `multichoice` »).
+(jamais réaffiché une fois enregistré ; ne l'écrivez jamais dans un journal), `choice` (« choix parmi », cœur 0.2.0 : voir ci-dessous), `multichoice` (« plusieurs choix », cœur 0.2.14 : voir « Réglage `multichoice` »).
 
 #### Réglage `choice` (« choix parmi », cœur 0.2.0)
 
@@ -300,9 +300,9 @@ Un réglage qui **désigne un élément qui existe déjà** (une chaîne, une ca
   ce qu'une personne sans connaissances web comprend (un nom, une couleur, une image, un nombre). Les réglages avancés déjà
   enregistrés ne sont jamais effacés quand quelqu'un édite en version simple.
 
-### Réglage `multichoice` (« plusieurs choix », cœur 0.3.0)
+### Réglage `multichoice` (« plusieurs choix », cœur 0.2.14)
 
-Une liste de valeurs choisies par **cases à cocher** parmi des options que le module déclare (les sujets d'une lettre d'information, les jours d'ouverture, les réseaux à afficher…). `"minCore": "0.3.0"` : un cœur plus ancien refuse le manifeste.
+Une liste de valeurs choisies par **cases à cocher** parmi des options que le module déclare (les sujets d'une lettre d'information, les jours d'ouverture, les réseaux à afficher…). `"minCore": "0.2.14"` : un cœur plus ancien refuse le manifeste.
 
 ```json
 { "key": "topics", "type": "multichoice", "label": { "en": "Topics to show", "fr": "Sujets à afficher" },
@@ -315,7 +315,7 @@ Une liste de valeurs choisies par **cases à cocher** parmi des options que le m
 - **Validation** (une seule règle, `checkMultiInput`, pour l'administration, l'assistant IA et les graines de migration) : chaque valeur est une option actuelle, les doublons sont fusionnés, `minChoices` ≤ nombre ≤ `maxChoices`. Le cœur écrit la liste dans l'ordre des options : deux enregistrements identiques donnent la même valeur.
 - **Assistant IA** : `maintenance_module_settings` montre les options, les bornes et le départ ; `maintenance_module_configure` accepte une liste (`{"topics": ["news", "events"]}`) ou `null` pour revenir au départ.
 - **Sauvegarde** : la liste est un réglage comme les autres (restaurée telle quelle).
-- **Limites** : jamais traduisible, jamais dans les options d'une section d'accueil, pas de `default` (utilisez `defaultValues`). Le kit de test (exigence `compat.minCore`) demande `minCore` 0.3.0.
+- **Limites** : jamais traduisible, jamais dans les options d'une section d'accueil, pas de `default` (utilisez `defaultValues`). Le kit de test (exigence `compat.minCore`) demande `minCore` 0.2.14.
 
 ### Groupes facultatifs (`optionalGroups`)
 
@@ -595,13 +595,13 @@ Montée sur le chemin (`basePath`) de l'instance. `segments` = ce qui suit ce ch
 | `blocks` | Contenu |
 | `notFound` | `true` : affiche la page d'erreur 404 (ou renvoyer `null`) |
 | `scripts` | (cœur 0.2.6) Scripts de **cette page seulement** : 3 noms de fichiers au plus du dossier `scripts/` du module (`["faq.js"]`), 32 Ko chacun. Voir ci-dessous. |
-| `robots` | (cœur 0.3.0) `"noindex"` : le cœur pose lui-même `<meta name="robots" content="noindex, nofollow">` sur **cette** page (avertissement, attente, confirmation…). Toute autre valeur est ignorée : un module ne peut que **réduire** l'exposition de sa page, il n'écrit jamais un en-tête. |
-| `sitemap` | (cœur 0.3.0) Chemins de l'instance à ajouter au plan du site et à `llms.txt`, **lus sur la page de l'instance** (`segments` vide) d'un module qui déclare `"sitemapFromPage": true`. Voir « Métadonnées de page » ci-dessous. |
+| `robots` | (cœur 0.2.14) `"noindex"` : le cœur pose lui-même `<meta name="robots" content="noindex, nofollow">` sur **cette** page (avertissement, attente, confirmation…). Toute autre valeur est ignorée : un module ne peut que **réduire** l'exposition de sa page, il n'écrit jamais un en-tête. |
+| `sitemap` | (cœur 0.2.14) Chemins de l'instance à ajouter au plan du site et à `llms.txt`, **lus sur la page de l'instance** (`segments` vide) d'un module qui déclare `"sitemapFromPage": true`. Voir « Métadonnées de page » ci-dessous. |
 
 Les slots `page.top` et `page.bottom` entourent le contenu. Une instance n'a de page que si son chemin public est défini
 (`ctx.instance.basePath` n'est pas `null` ; `""` = racine du site).
 
-#### Métadonnées de page : `robots` et `sitemap` (cœur 0.3.0, `"minCore": "0.3.0"`)
+#### Métadonnées de page : `robots` et `sitemap` (cœur 0.2.14, `"minCore": "0.2.14"`)
 
 ```js
 // module.json : "sitemapFromPage": true
@@ -648,7 +648,7 @@ Le cœur ne garde que les champs du schéma du consommateur et écarte les élé
 ### `routes` : endpoints HTTP
 
 `routes.<nom>(request, ctx)` est servie sur `/m/<clé de l'instance>/<nom>` pour **GET et POST** (un nom peut contenir `/`).
-**Dernier segment libre (cœur 0.3.0, `"minCore": "0.3.0"`).** Une clé qui finit par `:slug` (`"go/:slug"`, ou `":slug"` seul) répond aussi à `/m/<clé>/go/<segment>`, où `<segment>` passe le motif strict `[A-Za-z0-9_-]{1,80}` : le cœur le vérifie (hors motif : 404, avant d'appeler le module) et le donne dans **`ctx.params.slug`**. Un seul segment libre, toujours le dernier ; la route de nom **exact** l'emporte toujours (`go` reste `go`) ; `ctx.params` vaut `{}` pour les autres routes. Le segment reste une entrée d'un visiteur : validez-le comme toute entrée (par exemple en cherchant la fiche dans votre stockage, jamais en construisant une adresse ou une requête avec). Kit de test : le kit appelle la route avec un segment plausible ; `fakeCtx({ params: { slug: "abc" } })` pour la tester vous-même.
+**Dernier segment libre (cœur 0.2.14, `"minCore": "0.2.14"`).** Une clé qui finit par `:slug` (`"go/:slug"`, ou `":slug"` seul) répond aussi à `/m/<clé>/go/<segment>`, où `<segment>` passe le motif strict `[A-Za-z0-9_-]{1,80}` : le cœur le vérifie (hors motif : 404, avant d'appeler le module) et le donne dans **`ctx.params.slug`**. Un seul segment libre, toujours le dernier ; la route de nom **exact** l'emporte toujours (`go` reste `go`) ; `ctx.params` vaut `{}` pour les autres routes. Le segment reste une entrée d'un visiteur : validez-le comme toute entrée (par exemple en cherchant la fiche dans votre stockage, jamais en construisant une adresse ou une requête avec). Kit de test : le kit appelle la route avec un segment plausible ; `fakeCtx({ params: { slug: "abc" } })` pour la tester vous-même.
 `?lang=fr` choisit la langue du contexte. Le cœur refuse les écritures venues d'un autre site (en-tête `Origin` différent de l'hôte : 403) :
 vous n'avez pas à gérer le CSRF, mais **vous restez responsable de la validation des données, de l'anti-abus (limiteur de débit, piège à
 robots) et de la méthode** (répondre 405 aux méthodes que vous n'attendez pas). Le bloc `form` poste en `fetch` en `multipart/form-data`,

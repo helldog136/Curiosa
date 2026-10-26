@@ -42,7 +42,7 @@ export function shouldStore(field: Pick<SettingField, "default">, raw: string, r
   return !(followsSite(field) && raw === String(resolved ?? ""));
 }
 
-/** Valeur d'une case d'un réglage `multichoice` (0.3.0) : stockée telle quelle dans une liste, lisible par l'assistant et sûre dans un formulaire. */
+/** Valeur d'une case d'un réglage `multichoice` (0.2.14) : stockée telle quelle dans une liste, lisible par l'assistant et sûre dans un formulaire. */
 export const MULTI_VALUE_RE = /^[A-Za-z0-9_.-]{1,60}$/;
 
 export type MultiCheck = { ok: true; value: string[] } | { ok: false; reason: "multichoice" | "multichoiceMin" | "multichoiceMax" };

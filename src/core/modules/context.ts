@@ -35,7 +35,7 @@ export async function buildContext(mod: LoadedModule, instance: InstanceView, lo
       continue;
     }
     const stored = await getSetting(instanceSettingKey(instance.id, field.key), loc);
-    // (0.3.0) Plusieurs choix : toujours une liste, ramenée aux options actuelles du module (jamais une valeur inconnue).
+    // (0.2.14) Plusieurs choix : toujours une liste, ramenée aux options actuelles du module (jamais une valeur inconnue).
     if (field.type === "multichoice") { values[field.key] = readMulti(field, stored); continue; }
     // Une couleur vide (ou jamais réglée) suit le thème du site quand son défaut est « theme:<jeton> ».
     const token = field.type === "color" ? themeRef(field.default) : null;

@@ -76,7 +76,7 @@ export async function buildLlmsTxt(locale: string): Promise<string> {
   const pages: LlmsLink[] = [{ title: t("llms.home"), url: at("/") }];
   for (const active of (await getActiveInstances()).filter((a) => hasPublicPage(a) && !!a.instance.basePath)) {
     const { instance } = active;
-    // (0.3.0) Un module qui le demande (`sitemapFromPage`) peut se déclarer « noindex » ou ajouter des chemins de sa page ; les autres : aucune différence.
+    // (0.2.14) Un module qui le demande (`sitemapFromPage`) peut se déclarer « noindex » ou ajouter des chemins de sa page ; les autres : aucune différence.
     const declared = await pageDeclarations(active, base.defaultLocale);
     if (declared.noindex) continue;
     pages.push({ title: pickName(instance, loc, base.defaultLocale), url: at(`/${instance.basePath}`), description: pickDescription(instance, loc, base.defaultLocale) });

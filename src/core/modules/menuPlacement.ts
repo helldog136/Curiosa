@@ -28,7 +28,7 @@ export type PlacementManifest = {
   /** Page publique du module (`"page": true`) et blocs proposés pour l'accueil : un module qui en a n'est pas un simple overlay. */
   page?: boolean;
   sections?: readonly unknown[];
-  /** (0.3.0) Rangement DÉCLARÉ par le module (`family` du manifeste) : il prime sur la déduction ci-dessous. Absent ou inapplicable : la règle habituelle, inchangée. */
+  /** (0.2.14) Rangement DÉCLARÉ par le module (`family` du manifeste) : il prime sur la déduction ci-dessous. Absent ou inapplicable : la règle habituelle, inchangée. */
   family?: string;
 };
 
@@ -67,7 +67,7 @@ export function isOverlayManifest(m: Pick<PlacementManifest, "type" | "permissio
  */
 export function defaultPlacement(m: PlacementManifest): Placement {
   const declared = declaredFamily(m);
-  if (declared) return declared === "overlays" ? "overlays" : declared === "connections" ? "integrations" : "menu";   // (0.3.0) le module le dit : sa déclaration prime
+  if (declared) return declared === "overlays" ? "overlays" : declared === "connections" ? "integrations" : "menu";   // (0.2.14) le module le dit : sa déclaration prime
   if (isOverlayManifest(m)) return "overlays";
   const type = m.type ?? (m.content ? "content" : "widget");
   if (type === "social" || type === "integration") return "integrations";
@@ -107,7 +107,7 @@ export type MenuSectionId = (typeof MENU_SECTIONS)[number];
  */
 export function defaultSection(m: Pick<PlacementManifest, "type" | "content" | "family" | "permissions">): MenuSectionId {
   const declared = declaredFamily(m);
-  if (declared === "content" || declared === "community") return declared;   // (0.3.0) déclaré par le module ; « connections » et « overlays » : la règle habituelle
+  if (declared === "content" || declared === "community") return declared;   // (0.2.14) déclaré par le module ; « connections » et « overlays » : la règle habituelle
   return m.content || m.type === "content" ? "content" : "community";
 }
 

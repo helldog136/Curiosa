@@ -76,7 +76,7 @@ type Shown = string | number | boolean | null;
 function show(field: Pick<SettingField, "type">, value: unknown): Shown {
   if (value === undefined || value === null || value === "") return null;
   if (typeof value === "number" || typeof value === "boolean") return value;
-  if (Array.isArray(value)) return clean(value.filter((v): v is string => typeof v === "string").join(", "), 300);   // plusieurs choix (0.3.0)
+  if (Array.isArray(value)) return clean(value.filter((v): v is string => typeof v === "string").join(", "), 300);   // plusieurs choix (0.2.14)
   if (typeof value !== "string") return clean(JSON.stringify(value) ?? "", 80);
   return field.type === "url" || field.type === "link" || field.type === "image" || field.type === "video" ? safeUrl(value) : clean(value, 300);
 }
@@ -207,7 +207,7 @@ export function parseConfigureArgs(args: Record<string, unknown>): ConfigureArgs
   for (const [k, v] of entries) {
     if (!/^[a-zA-Z][a-zA-Z0-9_]{0,40}$/.test(k)) throw new McpToolError(`"${clean(k, 40)}" is not a setting key (see maintenance_module_settings)`);
     const scalar = (x: unknown) => x === null || typeof x === "string" || typeof x === "number" || typeof x === "boolean";
-    const list = Array.isArray(v) && v.length <= 50 && v.every((x) => typeof x === "string" && x.length <= 100);   // plusieurs choix (0.3.0)
+    const list = Array.isArray(v) && v.length <= 50 && v.every((x) => typeof x === "string" && x.length <= 100);   // plusieurs choix (0.2.14)
     const ok = scalar(v) || list || (!!v && typeof v === "object" && !Array.isArray(v) && Object.keys(v).length <= 12 && Object.values(v as object).every(scalar));
     if (!ok) throw new McpToolError(`the value of "${k}" must be a text, a number, true/false, null, or one text per language such as {"fr": "…", "en": "…"}`);
   }
@@ -226,7 +226,7 @@ export async function applyConfigure(input: ConfigureArgs, advanced: boolean): P
   const problems: Problem[] = [];
   const ops: Op[] = [];
   const fields = new Map(c.mod.manifest.settings.map((f) => [f.key, f]));
-  // Une LISTE n'est permise que pour un réglage « plusieurs choix » : pour tout autre (ou inconnu), même refus d'appel qu'avant la 0.3.0.
+  // Une LISTE n'est permise que pour un réglage « plusieurs choix » : pour tout autre (ou inconnu), même refus d'appel qu'avant la 0.2.14.
   for (const [k, v] of Object.entries(input.changes)) if (Array.isArray(v) && fields.get(k)?.type !== "multichoice") throw new McpToolError(`the value of "${clean(k, 40)}" must be a text, a number, true/false, null, or one text per language such as {"fr": "…", "en": "…"}`);
   const site = Object.fromEntries(await Promise.all(c.locales.map(async (l) => { const cfg = await getSiteConfig(l); return [l, { name: cfg.name, tagline: cfg.tagline }] as const; })));
   const fail = (f: SettingField | null, key: string, problem: string, example?: string) => problems.push({ setting: key, ...(f ? { label: c.L(f.label) } : {}), problem, ...(example ? { example } : {}) });

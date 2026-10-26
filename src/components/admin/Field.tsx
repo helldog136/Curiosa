@@ -69,7 +69,7 @@ export function Select({ label, name, options, defaultValue, help }: {
 }
 
 /**
- * Plusieurs choix parmi une liste (réglage `multichoice`, 0.3.0) : de vraies cases à cocher du navigateur, aucun JavaScript. Chaque ligne est une cible tactile
+ * Plusieurs choix parmi une liste (réglage `multichoice`, 0.2.14) : de vraies cases à cocher du navigateur, aucun JavaScript. Chaque ligne est une cible tactile
  * d'au moins 44 px (toute la ligne se coche) ; le groupe est un `fieldset` nommé par sa légende, relié à son aide et à son éventuelle erreur (l'erreur s'affiche
  * juste dessous, voir FieldErrors). Une case décochée n'envoie rien : le marqueur `<name>__multi` dit au serveur que le champ était à l'écran.
  */

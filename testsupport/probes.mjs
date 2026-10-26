@@ -255,7 +255,7 @@ export async function runScenario(m, scenario) {
   async function runRoutes() {
     for (const [route, fn] of Object.entries(def.routes ?? {})) {
       if (typeof fn !== "function") continue;
-      // (cœur 0.3.0) Une route « …/:slug » reçoit un segment libre : le kit l'appelle avec un segment plausible, passé aussi dans ctx.params.slug.
+      // (cœur 0.2.14) Une route « …/:slug » reçoit un segment libre : le kit l'appelle avec un segment plausible, passé aussi dans ctx.params.slug.
       const dynamic = route === ":slug" || route.endsWith("/:slug");
       const url = `https://example.test/m/probe/${dynamic ? route.slice(0, -5) + "demo-slug" : route}`;
       const rctx = dynamic ? Object.assign(Object.create(ctx), { params: Object.freeze({ slug: "demo-slug" }) }) : ctx;   // (le contexte factice a déjà `params: {}`)

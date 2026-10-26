@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { useTestDb as openTestDb } from "../helpers/db.mjs";
 import { makeRepo } from "../helpers/repo.mjs";
 
-// Réglage « plusieurs choix » (`multichoice`, cœur 0.3.0) : manifeste, validation commune, lecture par le module (ctx.setting), enregistrement par l'administration
+// Réglage « plusieurs choix » (`multichoice`, cœur 0.2.14) : manifeste, validation commune, lecture par le module (ctx.setting), enregistrement par l'administration
 // (cases à cocher, erreur sous le champ, rien d'écrit en cas d'erreur), rendu (cibles tactiles, aucun JavaScript), assistant, graine, sauvegarde et restauration.
 // Un réglage qui n'est pas multichoice se comporte exactement comme avant (les autres tests de réglages le prouvent ; ici : types voisins inchangés).
 const db = await openTestDb();
@@ -193,7 +193,7 @@ test("assistant : lecture (options, bornes, départ), écriture d'une liste vali
   assert.doesNotThrow(() => parseConfigureArgs({ instance: inst.key, changes: { topics: ["news", "events"] } }));
   assert.throws(() => parseConfigureArgs({ instance: inst.key, changes: { topics: [1, 2] } }), /must be a text/);
   assert.throws(() => parseConfigureArgs({ instance: inst.key, changes: { topics: Array(60).fill("news") } }), /must be a text/);
-  // Une liste pour un réglage qui n'est pas « plusieurs choix » : le même refus d'appel qu'avant la 0.3.0 (rien n'est lu ni écrit).
+  // Une liste pour un réglage qui n'est pas « plusieurs choix » : le même refus d'appel qu'avant la 0.2.14 (rien n'est lu ni écrit).
   await assert.rejects(applyConfigure({ instance: inst.key, changes: { mode: ["a"] } }, false), /must be a text, a number/);
   await assert.rejects(applyConfigure({ instance: inst.key, changes: { nope: ["a"] } }, false), /must be a text, a number/);
 

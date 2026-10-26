@@ -1,4 +1,4 @@
-// Métadonnées de page et routes à segment libre (cœur 0.3.0) : `robots: "noindex"`, `sitemap` (+ `sitemapFromPage`), route `…/:slug`.
+// Métadonnées de page et routes à segment libre (cœur 0.2.14) : `robots: "noindex"`, `sitemap` (+ `sitemapFromPage`), route `…/:slug`.
 // Règle de confiance : un module ne choisit jamais un en-tête ; il ne peut que réduire l'exposition, ses chemins sont bornés et restent SOUS l'adresse de son instance,
 // et un module existant (sans `sitemapFromPage`) n'est jamais appelé par le plan du site : rien ne change pour lui.
 import test, { after, beforeEach } from "node:test";

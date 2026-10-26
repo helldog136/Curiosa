@@ -185,7 +185,7 @@ export async function saveInstanceSettings(_prev: ActionState, formData: FormDat
       else choices.push({ field, raw, key });
       continue;
     }
-    // Plusieurs choix (0.3.0) : des cases à cocher ; le marqueur `__multi` dit que le champ était à l'écran (une liste vide n'envoie rien d'autre).
+    // Plusieurs choix (0.2.14) : des cases à cocher ; le marqueur `__multi` dit que le champ était à l'écran (une liste vide n'envoie rien d'autre).
     if (field.type === "multichoice") {
       if (formData.get(`s__${field.key}__multi`) !== "1") continue;
       const checked = checkMultiInput(field, formData.getAll(`s__${field.key}`).map(String));

@@ -46,7 +46,7 @@ export async function buildSitemap(max = SITEMAP_MAX_URLS): Promise<SitemapResul
   const entryUrls: Url[] = [];
   for (const active of (await getActiveInstances()).filter(hasPublicPage)) {
     const { instance: collection, mod } = active;
-    // (0.3.0) Seul un module qui le demande (`sitemapFromPage`) est lu ici ; les autres : aucune différence.
+    // (0.2.14) Seul un module qui le demande (`sitemapFromPage`) est lu ici ; les autres : aucune différence.
     const declared = await pageDeclarations(active, config.defaultLocale);
     for (const locale of config.locales) {
       if (collection.basePath && !declared.noindex) fixed.push(everywhere(locale, `/${collection.basePath}`));

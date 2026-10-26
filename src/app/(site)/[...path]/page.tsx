@@ -86,7 +86,7 @@ function pageMeta(opts: { siteName: string; title: string; description?: string;
     title: opts.title,
     description: opts.description || undefined,
     alternates: { canonical: opts.canonical, ...(opts.languages ? { languages: opts.languages } : {}) },
-    // (0.3.0) Page qui s'est déclarée « noindex » : c'est le cœur qui pose la balise, avec ses propres valeurs (jamais un texte du module).
+    // (0.2.14) Page qui s'est déclarée « noindex » : c'est le cœur qui pose la balise, avec ses propres valeurs (jamais un texte du module).
     ...(opts.noindex ? { robots: { index: false, follow: false } } : {}),
     ...(opts.pagination && (opts.pagination.previous || opts.pagination.next) ? { pagination: opts.pagination } : {}),
     ...socialMeta({ siteName: opts.siteName, title: opts.title, description: opts.description || undefined, image: opts.image, url: opts.canonical, type: opts.type, locale: opts.locale }),

@@ -1,4 +1,4 @@
-// Clé « family » du manifeste (cœur 0.3.0) : le module range lui-même sa carte (Contenu, Communauté, Réseaux et connexions, Overlays). Sans la clé, la déduction du cœur est
+// Clé « family » du manifeste (cœur 0.2.14) : le module range lui-même sa carte (Contenu, Communauté, Réseaux et connexions, Overlays). Sans la clé, la déduction du cœur est
 // STRICTEMENT la même qu'avant : preuve sur tout le catalogue de modules (copie de la règle de la 0.2.13 ci-dessous, comparée module par module).
 import test from "node:test";
 import assert from "node:assert/strict";

@@ -24,7 +24,7 @@ export const settingField = z.object({
   help: localized.optional(),
   default: z.union([z.string(), z.number(), z.boolean()]).optional(),
   options: z.array(z.object({ value: z.string(), label: localized })).max(50).optional(),
-  /** (0.3.0) `multichoice` : valeurs cochées au départ, nombre minimal / maximal de cases cochées. Un cœur ancien refuse `type: "multichoice"` (d'où `minCore: "0.3.0"`). */
+  /** (0.2.14) `multichoice` : valeurs cochées au départ, nombre minimal / maximal de cases cochées. Un cœur ancien refuse `type: "multichoice"` (d'où `minCore: "0.2.14"`). */
   defaultValues: z.array(z.string().regex(MULTI_VALUE_RE)).max(50).optional(),
   minChoices: z.number().int().min(0).max(50).optional(),
   maxChoices: z.number().int().min(1).max(50).optional(),
@@ -57,7 +57,7 @@ export const settingField = z.object({
   } else {
     for (const k of ["source", "allowCreate", "fromText"] as const) if (f[k] !== undefined) ctx.addIssue({ code: "custom", message: `${k} is only for a choice setting` });
   }
-  // Réglage « plusieurs choix » (0.3.0) : des cases à cocher parmi des options fixes ; rien de plus que ce que le formulaire sait valider (pas de défaut texte, pas de traduction).
+  // Réglage « plusieurs choix » (0.2.14) : des cases à cocher parmi des options fixes ; rien de plus que ce que le formulaire sait valider (pas de défaut texte, pas de traduction).
   if (f.type === "multichoice") {
     const values = (f.options ?? []).map((o) => o.value);
     if (values.length < 2) ctx.addIssue({ code: "custom", message: "a multichoice setting needs at least 2 options (for a single yes/no, use a boolean setting)" });
@@ -190,9 +190,9 @@ export const manifestSchema = z.object({
   basePath: z.string().regex(/^[a-z0-9-]*$/).optional(),
   /** (0.2.12) Clé d'un réglage BOOLÉEN du module : tant qu'il est faux, la page de l'instance est éteinte (404) et absente du plan du site, de llms.txt et du menu. Un cœur ancien ignore la clé : `minCore: "0.2.12"`. */
   pageSetting: z.string().regex(/^[a-zA-Z][a-zA-Z0-9_]{0,40}$/).optional(),
-  /** (0.3.0) Le module liste des chemins de sa page dans `PageResult.sitemap` : le cœur lit alors la page de l'instance pour le plan du site et llms.txt. Sans cette clé, le cœur ne lit JAMAIS la page pour cela. Un cœur ancien ignore la clé. */
+  /** (0.2.14) Le module liste des chemins de sa page dans `PageResult.sitemap` : le cœur lit alors la page de l'instance pour le plan du site et llms.txt. Sans cette clé, le cœur ne lit JAMAIS la page pour cela. Un cœur ancien ignore la clé. */
   sitemapFromPage: z.boolean().optional(),
-  /** (0.3.0) Rangement dans l'administration : « content » (Contenu), « community » (Communauté), « connections » (Réseaux et connexions) ou « overlays » (permis seulement à un module qui sert une source navigateur). Prime sur la déduction du cœur ; absent = la règle habituelle. Un cœur ancien ignore la clé : `minCore: "0.3.0"`. */
+  /** (0.2.14) Rangement dans l'administration : « content » (Contenu), « community » (Communauté), « connections » (Réseaux et connexions) ou « overlays » (permis seulement à un module qui sert une source navigateur). Prime sur la déduction du cœur ; absent = la règle habituelle. Un cœur ancien ignore la clé : `minCore: "0.2.14"`. */
   family: z.enum(["content", "community", "connections", "overlays"]).optional(),
   sections: z
     .array(z.object({ id: z.string().regex(/^[a-z][a-z0-9-]{0,30}$/), label: localized, options: z.array(settingField).max(10).optional(), size: z.enum(["small", "medium", "large", "full"]).optional() }))

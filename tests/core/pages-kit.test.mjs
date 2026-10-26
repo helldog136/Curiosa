@@ -1,4 +1,4 @@
-// Kit de conformité et fausse ctx (cœur 0.3.0) : les fonctions nouvelles (multichoice, family, sitemapFromPage, robots/sitemap, route « :slug ») demandent minCore 0.3.0,
+// Kit de conformité et fausse ctx (cœur 0.2.14) : les fonctions nouvelles (multichoice, family, sitemapFromPage, robots/sitemap, route « :slug ») demandent minCore 0.2.14,
 // et un module qui s'en sert réussit le kit (le kit appelle la route « :slug » avec un segment plausible, passé dans ctx.params.slug).
 import test, { after } from "node:test";
 import assert from "node:assert/strict";
@@ -11,9 +11,9 @@ const mk = (edit) => { const d = makeModule(edit); made.push(d); return d; };
 after(() => { for (const d of made) dispose(d); });
 const status = (report, id) => report.results.find((r) => r.id === id);
 
-const NEW = FEATURES.filter((f) => f.since === "0.3.0");
+const NEW = FEATURES.filter((f) => f.since === "0.2.14");
 
-test("kit : cinq fonctions du cœur 0.3.0 sont déclarées, et chacune se reconnaît dans un module", () => {
+test("kit : cinq fonctions du cœur 0.2.14 sont déclarées, et chacune se reconnaît dans un module", () => {
   assert.equal(NEW.length, 5);
   const by = (word) => NEW.find((f) => f.label.includes(word));
   const code = (s) => ({ code: s, definition: {} });
@@ -34,7 +34,7 @@ test("kit : cinq fonctions du cœur 0.3.0 sont déclarées, et chacune se reconn
   assert.equal(by(":slug").test({ code: "", definition: { routes: { go: () => {} } } }, {}), false);
 });
 
-test("un module qui les utilise sans minCore 0.3.0 échoue compat.minCore (une ligne par fonction) ; avec minCore 0.3.0 il réussit", async () => {
+test("un module qui les utilise sans minCore 0.2.14 échoue compat.minCore (une ligne par fonction) ; avec minCore 0.2.14 il réussit", async () => {
   const edit = (minCore) => (f) => {
     editManifest(f, (m) => {
       m.minCore = minCore; m.family = "content"; m.sitemapFromPage = true;
@@ -49,7 +49,7 @@ test("un module qui les utilise sans minCore 0.3.0 échoue compat.minCore (une l
   const r = status(old, "compat.minCore");
   assert.equal(r.status, "fail");
   assert.equal(r.problems?.length ?? r.details?.length ?? r.messages?.length, 5, JSON.stringify(r).slice(0, 600));
-  const fresh = await checkModule(mk(edit("0.3.0")), { siblings: [] });
+  const fresh = await checkModule(mk(edit("0.2.14")), { siblings: [] });
   assert.equal(status(fresh, "compat.minCore").status, "pass");
   const bad = fresh.results.filter((x) => x.status === "fail" && x.id !== "compat.minCoreKnown").map((x) => `${x.id}: ${JSON.stringify(x.problems ?? x.details ?? x.messages)}`);
   assert.deepEqual(bad, [], "(hors « minCore plus récent que ce cœur », vrai tant que la version du cœur n'est pas montée) le kit valide le manifeste (family, sitemapFromPage, multichoice) et fait tourner la route « :slug »");

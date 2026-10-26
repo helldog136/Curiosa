@@ -4,7 +4,7 @@ import { runPage } from "./runtime";
 import type { ActiveInstance } from "./registry";
 
 /**
- * Ce qu'une page de module DÉCLARE pour le plan du site et llms.txt (cœur 0.3.0) : « noindex » et chemins supplémentaires, lus sur la page de l'instance.
+ * Ce qu'une page de module DÉCLARE pour le plan du site et llms.txt (cœur 0.2.14) : « noindex » et chemins supplémentaires, lus sur la page de l'instance.
  *
  * Sûreté : le cœur n'exécute `page()` pour cela QUE si le module le demande (`sitemapFromPage` dans module.json). Un module existant n'est donc jamais appelé
  * par le plan du site : rien ne change pour lui (pas de visite comptée, pas de coût). La réponse est gardée 60 secondes (un robot qui lit le plan

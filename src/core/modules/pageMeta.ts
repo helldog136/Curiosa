@@ -1,7 +1,7 @@
 import { RESERVED_PATHS } from "../config";
 
 /**
- * MÉTADONNÉES DE PAGE ET ROUTES À SEGMENT LIBRE (cœur 0.3.0). Fonctions pures (ni base ni Next), lues par la page publique, le plan du site, llms.txt et la route `/m/…`.
+ * MÉTADONNÉES DE PAGE ET ROUTES À SEGMENT LIBRE (cœur 0.2.14). Fonctions pures (ni base ni Next), lues par la page publique, le plan du site, llms.txt et la route `/m/…`.
  *
  * Frontière de confiance : un module ne choisit JAMAIS un en-tête ni une directive. Il peut seulement
  *   - demander `robots: "noindex"` (le cœur pose lui-même la balise ; la demande ne peut que RÉDUIRE l'exposition de la page) ;
@@ -54,7 +54,7 @@ export const SLUG_SUFFIX = ":slug";
 export type RouteMatch<H> = { handler: H; params: { slug?: string } };
 
 /**
- * Quelle route répond à ce chemin ? D'abord la route de ce nom exact, EXACTEMENT comme avant la 0.3.0 (une route existante n'est jamais détournée). Sinon, une
+ * Quelle route répond à ce chemin ? D'abord la route de ce nom exact, EXACTEMENT comme avant la 0.2.14 (une route existante n'est jamais détournée). Sinon, une
  * route déclarée `"<préfixe>/:slug"` (ou `":slug"` seul) dont le préfixe est celui du chemin et dont le DERNIER segment passe `SLUG_RE`. Rien d'autre : un seul
  * segment libre, toujours le dernier ; une valeur hors motif donne « introuvable ».
  */
