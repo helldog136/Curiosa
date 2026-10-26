@@ -9,6 +9,11 @@ const MAX_BYTES = 10 * 1024 * 1024; // même plafond que l'installateur du cœur
  * Les fonctions d'avant la 0.1.10 ne sont pas listées : aucun site à jour n'a un cœur aussi ancien, une exigence là-dessus ne ferait que du bruit.
  */
 export const FEATURES = [
+  { since: "0.2.14", label: "un réglage « multichoice » (plusieurs choix par cases à cocher)", test: (m, man) => allSettings(man).some((s) => s.type === "multichoice") },
+  { since: "0.2.14", label: "« family » dans module.json (rangement choisi par le module)", test: (m, man) => man.family !== undefined },
+  { since: "0.2.14", label: "« sitemapFromPage » dans module.json (chemins de la page ajoutés au plan du site)", test: (m, man) => man.sitemapFromPage !== undefined },
+  { since: "0.2.14", label: "« robots: \"noindex\" » ou « sitemap » dans le résultat de page()", test: (m) => typeof m.definition?.page === "function" && /\b(robots\s*:\s*["']noindex["']|sitemap\s*:\s*[\[A-Za-z])/.test(stripComments(m.code)) },
+  { since: "0.2.14", label: "une route à segment libre (« :slug » dans routes, ctx.params.slug)", test: (m) => Object.keys(m.definition?.routes ?? {}).some((k) => k === ":slug" || k.endsWith("/:slug")) || /\bparams\s*\??\.\s*slug\b/.test(stripComments(m.code)) },
   { since: "0.2.13", label: "la permission « files » (ctx.api.files : revendiquer et supprimer les fichiers envoyés)", test: (m, man) => (man.permissions ?? []).includes("files") || /\bapi\s*\??\.\s*files\b/.test(stripComments(m.code)) },
   { since: "0.2.12", label: "« pageSetting » (page facultative, allumée par un réglage booléen)", test: (m, man) => man.pageSetting !== undefined },
   { since: "0.2.12", label: "la permission « visitor.geolocation » (demander la position du visiteur)", test: (m, man) => (man.permissions ?? []).includes("visitor.geolocation") },
@@ -33,7 +38,7 @@ export const FEATURES = [
   { since: "0.1.16", label: "une période (from/to) demandée à ctx.api.topics.collect", test: (m) => /\bcollect\s*\([^)]*\{[^}]*\b(from|to)\b/.test(stripComments(m.code)) },
   { since: "0.1.16", label: "ctx.api.seo.jsonLd (données structurées)", test: (m) => /\bseo\s*\.\s*jsonLd\b/.test(stripComments(m.code)) },
   { since: "0.1.14", label: "un service « each » / ctx.api.services.callAll", test: (m, man) => (man.offers ?? []).some((o) => o.each) || /\bcallAll\b/.test(stripComments(m.code)) },
-  { since: "0.1.10", label: "la permission « rawg » (jaquettes de jeux)", test: (m, man) => (man.permissions ?? []).includes("rawg") || /\bapi\s*\??\.\s*rawg\b/.test(stripComments(m.code)) },
+  { since: "0.1.10", label: "la permission « rawg » (jaquettes de jeux)", test: (m, man) => (man.permissions ?? []).includes("rawg") || /\bapi\s*\??\.\s*rawg\b(?!\.io\b)/.test(stripComments(m.code)) },
 ];
 
 const requirements = [

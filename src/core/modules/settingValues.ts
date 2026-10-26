@@ -42,6 +42,38 @@ export function shouldStore(field: Pick<SettingField, "default">, raw: string, r
   return !(followsSite(field) && raw === String(resolved ?? ""));
 }
 
+/** Valeur d'une case d'un réglage `multichoice` (0.2.14) : stockée telle quelle dans une liste, lisible par l'assistant et sûre dans un formulaire. */
+export const MULTI_VALUE_RE = /^[A-Za-z0-9_.-]{1,60}$/;
+
+export type MultiCheck = { ok: true; value: string[] } | { ok: false; reason: "multichoice" | "multichoiceMin" | "multichoiceMax" };
+type MultiField = Pick<SettingField, "options" | "minChoices" | "maxChoices">;
+
+/**
+ * Valide les cases cochées d'un réglage `multichoice` : LA règle commune à l'admin, à l'assistant et à une migration (`seedInstance`). `raw` : n'importe quoi ;
+ * il faut une liste de textes, chacun une option actuelle (les doublons sont fusionnés), au moins `minChoices` et au plus `maxChoices` (défaut : toutes les options).
+ * La valeur rendue suit l'ORDRE DES OPTIONS du module, pas celui des clics : deux enregistrements identiques donnent la même valeur.
+ */
+export function checkMultiInput(field: MultiField, raw: unknown): MultiCheck {
+  const options = (field.options ?? []).map((o) => o.value);
+  if (!Array.isArray(raw) || raw.length > options.length * 4 + 50 || raw.some((v) => typeof v !== "string")) return { ok: false, reason: "multichoice" };
+  const chosen = new Set((raw as string[]).map((v) => v.trim()));
+  if ([...chosen].some((v) => !options.includes(v))) return { ok: false, reason: "multichoice" };
+  const value = options.filter((v) => chosen.has(v));
+  if (value.length > (field.maxChoices ?? options.length)) return { ok: false, reason: "multichoiceMax" };
+  if (value.length < (field.minChoices ?? 0)) return { ok: false, reason: "multichoiceMin" };
+  return { ok: true, value };
+}
+
+/** Ce qu'un module lit de son réglage `multichoice` : la valeur enregistrée ramenée aux options ACTUELLES (une option retirée par une mise à jour disparaît), sinon les cases du départ. */
+export function readMulti(field: Pick<SettingField, "options" | "defaultValues" | "maxChoices">, stored: unknown): string[] {
+  const options = (field.options ?? []).map((o) => o.value);
+  const start = (field.defaultValues ?? []).filter((v) => options.includes(v));
+  if (stored === undefined) return start;
+  if (!Array.isArray(stored)) return start;
+  const chosen = new Set(stored.filter((v): v is string => typeof v === "string"));
+  return options.filter((v) => chosen.has(v)).slice(0, field.maxChoices ?? options.length);
+}
+
 export type FieldCheck = { ok: true; value: unknown } | { ok: false; reason: "color" | "number" | "select" | "video" | "image" | "url" | "link" };
 
 /**

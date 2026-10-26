@@ -50,4 +50,6 @@ fs.writeFileSync(`${file}.sha256`, `${hash}  ${path.basename(file)}\n`);
 const upgrade = JSON.parse(fs.readFileSync("upgrade.json", "utf8"));
 if (!/^\d+\.\d+\.\d+$/.test(String(upgrade.minFrom ?? "0.0.0"))) throw new Error("upgrade.json : minFrom doit être une version X.Y.Z");
 fs.copyFileSync("upgrade.json", path.join(outDir, "upgrade.json"));
+// Le script d'installation est aussi publié SEUL à côté de l'archive : on le télécharge (et on peut le relire) avant que l'archive existe sur le serveur — .../releases/latest/download/install.sh
+fs.copyFileSync("scripts/install.sh", path.join(outDir, "install.sh"));
 console.log(`${file}\n${hash}  ${(fs.statSync(file).size / 1048576).toFixed(0)} Mo`);

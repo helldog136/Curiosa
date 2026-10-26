@@ -4,12 +4,16 @@ import { McpToolError, validateArgs } from "@/core/services/mcp/validate";
 import { auditFix, candidatesFor, checkTitle, chooseGame, chooseImage, chooseNone, fixSummary, forget, type FixError } from "./rawgAdmin";
 import { readToCheck } from "./services/rawgFixes";
 import { titleKey } from "./services/rawgMatch";
+import { bridgedTool, delegate } from "./services/rawgBridge";
 
 /**
  * OUTILS MCP DES JAQUETTES DE JEUX : lister les titres douteux (lecture) et corriger la jaquette d'un titre (écriture, jamais accordée d'office).
  * Mêmes règles que l'écran d'administration (rawgAdmin.ts) : le jeu se choisit par son numéro RAWG parmi les propositions de RAWG, une image donnée à la main doit être
  * une adresse `https://media.rawg.io/media/…`, 1000 corrections au plus, cadence limitée par jeton. Aucune clé RAWG, jamais, dans une réponse.
  * Les noms d'outils font moins de 64 caractères ; les messages sont en anglais, courts et lisibles par l'agent.
+ *
+ * CALE DE COMPATIBILITÉ (à retirer en 0.3.0, voir services/rawgBridge.ts) : ces deux outils appartiennent maintenant au module « Jaquettes de jeux » (mêmes noms, mêmes réponses, sous
+ * le nom `<clé de l'instance>__<outil>`). Tant que le module est là, les noms historiques ci-dessous (ceux que les jetons ont déjà reçus) relaient vers lui ; sinon l'ancien code répond.
  */
 const WHY: Record<FixError, string> = {
   title: "title: give the game title as asked by the module (1 to 120 characters).",
@@ -47,11 +51,17 @@ export const rawgToolProvider: McpToolProvider = {
         forget: { type: "boolean", description: "true: forget the saved correction of this title (the automatic choice comes back)." },
       },
     };
+    const moved = (await delegate()) !== null;
+    const where = moved ? "in the Game covers module (Admin > Extensions)" : "in Admin > Settings > External services";
+    const relay = (name: string, schema: JsonSchemaLite, legacy: McpTool["call"]): McpTool["call"] => async (raw, actor) => {
+      const out = await bridgedTool(name, validateArgs(schema, raw), actor);
+      return out.done ? out.value : legacy(raw, actor);
+    };
     const tools: McpTool[] = [
       {
         ...base, name: "rawg_covers_to_check", title: "Game covers to check", readOnly: true, default: true, input: listSchema,
-        description: "Lists the game titles whose cover is doubtful (the game RAWG gave is not an almost identical title, or two games looked as good), the 100 most recent first. Each has: title (as asked by a module), foundGame, rawgId, coverUrl, candidates (how many games RAWG proposed) and checkedAt. Pass \"title\" to also get up to 6 candidate games to choose from (rawgId, name, year, platforms, coverUrl); it asks RAWG once. The owner fixes titles in Admin > Settings > External services; with the right to, you can use rawg_cover_set. No key is ever shown.",
-        call: async (raw, actor) => {
+        description: `Lists the game titles whose cover is doubtful (the game RAWG gave is not an almost identical title, or two games looked as good), the 100 most recent first. Each has: title (as asked by a module), foundGame, rawgId, coverUrl, candidates (how many games RAWG proposed) and checkedAt. Pass "title" to also get up to 6 candidate games to choose from (rawgId, name, year, platforms, coverUrl); it asks RAWG once. The owner fixes titles ${where}; with the right to, you can use rawg_cover_set. No key is ever shown.`,
+        call: relay("rawg_covers_to_check", listSchema, async (raw, actor) => {
           const a = validateArgs(listSchema, raw);
           const items = (await readToCheck()).map((d) => ({ title: d.title, foundGame: d.name, rawgId: d.rawgId ?? null, coverUrl: `https://media.rawg.io${d.img}`, candidates: d.candidates, checkedAt: d.at }));
           if (a.title === undefined) return { items, total: items.length };
@@ -60,12 +70,12 @@ export const rawgToolProvider: McpToolProvider = {
           const found = await candidatesFor(`mcp:${actor.tokenId ?? actor.name}`, title, a.search as string | undefined);
           if (found.status === "rate") throw new McpToolError(WHY.rate);
           return { items, total: items.length, title, status: found.status, candidates: found.candidates.map((c) => ({ rawgId: c.id, name: c.name, year: c.year, platforms: c.platforms, coverUrl: c.url })) };
-        },
+        }),
       },
       {
         ...base, name: "rawg_cover_set", title: "Fix the cover of a game", readOnly: false, default: false, audited: true, input: setSchema,
         description: "Saves the right cover for one game title, for the whole site (modules get it at once). Pass \"title\" and exactly ONE of: rawgId (the right game, chosen among the candidates of rawg_covers_to_check), none=true (no cover for this title), imageUrl (an https://media.rawg.io/media/... picture), forget=true (remove the saved correction). The cover comes from RAWG's own answer; no other address is ever used. At most 1000 corrections are kept. Changes the pictures visitors see: ask the owner before using it.",
-        call: async (raw, actor) => {
+        call: relay("rawg_cover_set", setSchema, async (raw, actor) => {
           const a = validateArgs(setSchema, raw);
           const who = `mcp:${actor.tokenId ?? actor.name}`;
           const modes = [a.rawgId !== undefined, a.none === true, a.imageUrl !== undefined, a.forget === true].filter(Boolean).length;
@@ -83,7 +93,7 @@ export const rawgToolProvider: McpToolProvider = {
           if (!out.ok) throw new McpToolError(WHY[out.error]);
           await auditFix(`mcp:${actor.name}`, "rawg.fix", fixSummary(out.fix));
           return { saved: true, title: out.fix.title, choice: out.fix.kind, game: out.fix.name ?? null, coverUrl: out.fix.img ? `https://media.rawg.io${out.fix.img}` : null };
-        },
+        }),
       },
     ];
     return tools;

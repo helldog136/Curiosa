@@ -166,6 +166,25 @@ export default {
 `segments` est ce qui suit le chemin de l'instance (en minuscules). Il n'y a pas de `?paramètre` : faites passer la pagination par le chemin
 (`/guestbook/page/2`), comme le fait l'exemple. (Les listes d'entrées du cœur, elles, utilisent `?page=N` ; ne reprenez pas ce schéma pour une page de module.) Le résultat : `title`, `description`, `blocks`, `notFound`. Permission : `pages`.
 
+**Page d'attente, mentions : ne pas être indexée, être dans le plan du site (cœur 0.2.14, `"minCore": "0.2.14"`).** Une page qui n'a rien à faire dans un moteur de recherche (avertissement avant un lien, confirmation…) répond `robots: "noindex"` : le cœur pose lui-même la balise. Une page qui a des sous-pages (`/legal/cookies`) les liste dans `sitemap` (chemins complets, sous l'adresse de l'instance, 50 au plus) et déclare `"sitemapFromPage": true` dans `module.json` : le plan du site et `llms.txt` les reprennent. Un seul segment variable pour une route, par exemple un lien `/m/<clé>/go/<nom>` : la clé `"go/:slug"` dans `routes`, le segment arrive dans `ctx.params.slug` (déjà limité à lettres, chiffres, `-` et `_`).
+
+```js
+export default {
+  async page(ctx, { segments, for: purpose }) {
+    const base = "/" + ctx.instance.basePath;                     // "/legal"
+    if (segments[0] === "merci") return { title: "Merci", blocks: [], robots: "noindex" };
+    if (segments.length) return { notFound: true, blocks: [] };
+    return { title: "Mentions", blocks: [], sitemap: [base + "/cookies", base + "/conditions"] };   // purpose === "sitemap" : le cœur prépare le plan du site
+  },
+  routes: {
+    async "go/:slug"(request, ctx) {
+      const row = (await ctx.api.store.list("links", { limit: 200 })).find((r) => r.data.slug === ctx.params.slug);   // jamais d'adresse construite avec le segment
+      return row && /^https:\/\//.test(String(row.data.url)) ? Response.redirect(String(row.data.url), 302) : new Response("Not found", { status: 404 });
+    },
+  },
+};
+```
+
 Les **blocs** les plus utiles (liste complète dans la référence, « Blocs ») : `markdown` (sans HTML brut), `html` (brut — **vous échappez**), `heading`, `banner`, `links`,
 `hero`, `panel`, `entries`, `embed`, `form`, `table`, `copy`, `swatches`, `downloads`, `head`, `adminForm`. Pour afficher du texte de visiteur avec une mise en forme, le plus sûr est un
 bloc `html` dont vous échappez chaque valeur (`esc()` dans l'exemple) ; **jamais** de texte de visiteur dans un bloc `markdown` (les liens et images Markdown fonctionnent).
@@ -236,8 +255,8 @@ jamais échouer la requête si l'e-mail échoue — c'est exactement l'ordre de 
 
 **Supprimer vraiment un fichier envoyé.** Retirer une photo de vos données ne la supprime pas du disque : le fichier appartient au cœur. Déclarez la permission `files` (`"minCore": "0.2.13"`), puis dans l'action d'administration qui enregistre la photo : `const c = await ctx.api.files.claim(values.photo)` (échoue avec un motif : `expired`, `taken`, `not-uploader`, `quota`…), et quand on la retire : `await ctx.api.files.remove(url)` (original et versions cadrées ; sans effet si déjà supprimé). Seuls les fichiers que votre instance a revendiqués se suppriment. Détails, motifs et garanties : [MODULES.md](MODULES.md#fichiers-envoyés-garder-et-supprimer-ctxapifiles). Test : `fakeCtx({ permissions: ["files"], uploads: [url] })`.
 
-**Jaquettes de jeux.** `await ctx.api.rawg.cover("Hades")` renvoie `{ status, url }` (`found`, `none`, `no-key`, `refused`, `unreachable`, plus `name`, `id` et `ambiguous` facultatifs depuis le cœur 0.2.10) et ne lève jamais ; `ctx.api.rawg.candidates("Hades")` donne les jeux proposés (6 au plus) ; `api.rawg.configured()` dit si une clé est réglée.
-La clé RAWG se règle une fois par le propriétaire (*Réglages › Services externes*) : ne la demandez jamais dans les réglages de votre module. Permission : `rawg`. Détails : [MODULES.md](MODULES.md#jaquettes-de-jeux-rawg).
+**Jaquettes de jeux.** Déclarez `"requires": [{ "service": "game.cover", "optional": true }]` et appelez `await ctx.api.services.call("game.cover", "cover", { title: "Hades" })` : le module officiel « Jaquettes de jeux » détient la clé et répond (voir [MODULES.md](MODULES.md#jaquettes-de-jeux-rawg)). L'ancienne interface `ctx.api.rawg` (permission `rawg`) reste acceptée jusqu'en 0.3.0 : `await ctx.api.rawg.cover("Hades")` renvoie `{ status, url }` (`found`, `none`, `no-key`, `refused`, `unreachable`, plus `name`, `id` et `ambiguous` facultatifs depuis le cœur 0.2.10) et ne lève jamais ; `ctx.api.rawg.candidates("Hades")` donne les jeux proposés (6 au plus) ; `api.rawg.configured()` dit si une clé est réglée.
+La clé RAWG se règle une fois par le propriétaire (dans le module « Jaquettes de jeux ») : ne la demandez jamais dans les réglages de votre module. Permission : `rawg`. Détails : [MODULES.md](MODULES.md#jaquettes-de-jeux-rawg).
 
 ## 10. Échanger avec les autres modules : sujets et flux RSS
 
@@ -284,6 +303,14 @@ const items = await ctx.api.topics.collect("overlay.item", { limit: 20 });   // 
 Le sujet du cœur `core.entry` donne les entrées publiées de tout module à contenu (blog, liens…) : pas besoin de `schema`. Le guestbook ne **consomme** rien (un livre d'or n'a pas besoin des données des autres) ;
 pour un exemple de consommateur, lisez `sponsor-ticker` (`curiosa-extras/modules/sponsor-ticker`). Formats de champs : `string`, `url`, `number`, `boolean`, `string[]`.
 Nommez vos sujets `domaine.objet` en anglais. Permission : `topics`. Voir la référence : « sujets ».
+
+### Le registre des sujets de votre dépôt
+
+Le cœur ne tient **aucun registre** des sujets échangés entre modules : il ne documente que les trois qu'il lit lui-même (`core.entry`, `social.link`, `feed.item`). Chaque dépôt de modules tient donc le sien : le catalogue officiel dans `docs/TOPICS.md` de `curiosa-extras`, un dépôt tiers dans le même fichier de son propre dépôt.
+
+- Format : un tableau Markdown, **une ligne par sujet** : `` `sujet` | fournisseurs | consommateurs | champs | depuis `` (les champs facultatifs suivis de `?`, les valeurs fermées et les bornes entre parenthèses).
+- Un test de votre dépôt lit ce fichier et échoue si un module utilise un sujet absent (modèle : `tests/repo-rules.test.mjs` de `curiosa-extras`, test « sujets »). Rien ne passe par le cœur : créer un sujet ne demande pas de nouvelle version du cœur.
+- Si vous fournissez un sujet que le cœur lit (`social.link`, `feed.item`), suivez la règle d'évolution de `docs/MODULES.md` : champs nouveaux facultatifs, listes fermées, un champ = sa version.
 
 ### Un bouton de réseau social : choisir `rel`, `referrerPolicy`, `target`
 

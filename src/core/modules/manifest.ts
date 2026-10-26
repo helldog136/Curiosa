@@ -2,7 +2,7 @@ import { z } from "zod";
 import { MODULE_API_VERSION } from "../config";
 import { COLOR_TOKENS } from "../color";
 import { groupIssues } from "./groups";
-import { siteDefaultRef } from "./settingValues";
+import { MULTI_VALUE_RE, siteDefaultRef } from "./settingValues";
 import { PLATFORM_PATTERN } from "./platform";
 import { MAX_MODULE_RIGHTS, OPEN, RIGHT_ID_RE } from "../auth/rights";
 import { SERVICE_RE } from "./serviceVersions";
@@ -20,10 +20,14 @@ const choiceSource = z.discriminatedUnion("kind", [
 export const settingField = z.object({
   key: z.string().regex(/^[a-zA-Z][a-zA-Z0-9_]{0,40}$/),
   label: localized,
-  type: z.enum(["text", "textarea", "url", "link", "number", "boolean", "select", "color", "secret", "image", "video", "choice"]),
+  type: z.enum(["text", "textarea", "url", "link", "number", "boolean", "select", "color", "secret", "image", "video", "choice", "multichoice"]),
   help: localized.optional(),
   default: z.union([z.string(), z.number(), z.boolean()]).optional(),
   options: z.array(z.object({ value: z.string(), label: localized })).max(50).optional(),
+  /** (0.2.14) `multichoice` : valeurs cochées au départ, nombre minimal / maximal de cases cochées. Un cœur ancien refuse `type: "multichoice"` (d'où `minCore: "0.2.14"`). */
+  defaultValues: z.array(z.string().regex(MULTI_VALUE_RE)).max(50).optional(),
+  minChoices: z.number().int().min(0).max(50).optional(),
+  maxChoices: z.number().int().min(1).max(50).optional(),
   translatable: z.boolean().optional(),
   advanced: z.boolean().optional(),
   /** Réglage facultatif : le laisser vide ne met pas l'extension « à configurer » (sinon, un texte, une adresse ou un secret vide sans valeur par défaut est à remplir). */
@@ -52,6 +56,24 @@ export const settingField = z.object({
     }
   } else {
     for (const k of ["source", "allowCreate", "fromText"] as const) if (f[k] !== undefined) ctx.addIssue({ code: "custom", message: `${k} is only for a choice setting` });
+  }
+  // Réglage « plusieurs choix » (0.2.14) : des cases à cocher parmi des options fixes ; rien de plus que ce que le formulaire sait valider (pas de défaut texte, pas de traduction).
+  if (f.type === "multichoice") {
+    const values = (f.options ?? []).map((o) => o.value);
+    if (values.length < 2) ctx.addIssue({ code: "custom", message: "a multichoice setting needs at least 2 options (for a single yes/no, use a boolean setting)" });
+    if (values.some((v) => !MULTI_VALUE_RE.test(v))) ctx.addIssue({ code: "custom", message: "multichoice option values may only contain letters, digits, dots, dashes and underscores (60 characters at most)" });
+    if (new Set(values).size < values.length) ctx.addIssue({ code: "custom", message: "multichoice option values must be unique" });
+    if (f.default !== undefined) ctx.addIssue({ code: "custom", message: "a multichoice setting has no `default`: use `defaultValues` (the boxes ticked at the start)" });
+    if (f.translatable) ctx.addIssue({ code: "custom", message: "a multichoice setting cannot be translatable" });
+    const max = f.maxChoices ?? values.length;
+    if (f.maxChoices !== undefined && f.maxChoices > values.length) ctx.addIssue({ code: "custom", message: "maxChoices cannot exceed the number of options" });
+    if ((f.minChoices ?? 0) > max) ctx.addIssue({ code: "custom", message: "minChoices cannot exceed maxChoices" });
+    const start = f.defaultValues ?? [];
+    if (start.some((v) => !values.includes(v))) ctx.addIssue({ code: "custom", message: "defaultValues must be values of the options" });
+    if (new Set(start).size < start.length) ctx.addIssue({ code: "custom", message: "defaultValues has a duplicate" });
+    if (start.length > max) ctx.addIssue({ code: "custom", message: "defaultValues has more values than maxChoices" });
+  } else {
+    for (const k of ["defaultValues", "minChoices", "maxChoices"] as const) if (f[k] !== undefined) ctx.addIssue({ code: "custom", message: `${k} is only for a multichoice setting` });
   }
   // Une couleur peut suivre le thème du site : default "theme:<jeton>". Rien d'autre n'est permis comme référence.
   if (typeof f.default === "string" && f.default.startsWith("theme:")) {
@@ -168,6 +190,10 @@ export const manifestSchema = z.object({
   basePath: z.string().regex(/^[a-z0-9-]*$/).optional(),
   /** (0.2.12) Clé d'un réglage BOOLÉEN du module : tant qu'il est faux, la page de l'instance est éteinte (404) et absente du plan du site, de llms.txt et du menu. Un cœur ancien ignore la clé : `minCore: "0.2.12"`. */
   pageSetting: z.string().regex(/^[a-zA-Z][a-zA-Z0-9_]{0,40}$/).optional(),
+  /** (0.2.14) Le module liste des chemins de sa page dans `PageResult.sitemap` : le cœur lit alors la page de l'instance pour le plan du site et llms.txt. Sans cette clé, le cœur ne lit JAMAIS la page pour cela. Un cœur ancien ignore la clé. */
+  sitemapFromPage: z.boolean().optional(),
+  /** (0.2.14) Rangement dans l'administration : « content » (Contenu), « community » (Communauté), « connections » (Réseaux et connexions) ou « overlays » (permis seulement à un module qui sert une source navigateur). Prime sur la déduction du cœur ; absent = la règle habituelle. Un cœur ancien ignore la clé : `minCore: "0.2.14"`. */
+  family: z.enum(["content", "community", "connections", "overlays"]).optional(),
   sections: z
     .array(z.object({ id: z.string().regex(/^[a-z][a-z0-9-]{0,30}$/), label: localized, options: z.array(settingField).max(10).optional(), size: z.enum(["small", "medium", "large", "full"]).optional() }))
     .max(20)
@@ -239,6 +265,7 @@ export const manifestSchema = z.object({
     else if (field.type !== "boolean") ctx.addIssue({ code: "custom", path: ["pageSetting"], message: `pageSetting "${m.pageSetting}" must be a boolean setting (checkbox)` });
     if (!hasPage(m)) ctx.addIssue({ code: "custom", path: ["pageSetting"], message: "pageSetting needs a module with a public page (page: true)" });
   }
+  if (m.sitemapFromPage && !hasPage(m)) ctx.addIssue({ code: "custom", path: ["sitemapFromPage"], message: "sitemapFromPage needs a module with a public page (page: true)" });
   if (new Set((m.rights ?? []).map((r) => r.id)).size < (m.rights ?? []).length) ctx.addIssue({ code: "custom", path: ["rights"], message: "duplicate right id" });
   for (const [i, seed] of (m.seeds ?? []).entries()) {
     if (seed.module === m.id) ctx.addIssue({ code: "custom", path: ["seeds", i, "module"], message: "a module cannot seed itself" });
@@ -260,7 +287,7 @@ export const manifestSchema = z.object({
   for (const message of tabIssues(m.tabs, m.settings, m.optionalGroups ?? [])) ctx.addIssue({ code: "custom", path: ["tabs"], message });
   for (const [i, sec] of m.sections.entries()) {
     for (const [j, o] of (sec.options ?? []).entries()) if (o.tab !== undefined) ctx.addIssue({ code: "custom", path: ["sections", i, "options", j, "tab"], message: "tab is only for instance settings, not for section options" });
-    for (const [j, o] of (sec.options ?? []).entries()) if (o.type === "choice") ctx.addIssue({ code: "custom", path: ["sections", i, "options", j, "type"], message: "a choice is only for instance settings, not for section options" });
+    for (const [j, o] of (sec.options ?? []).entries()) if ((o.type === "choice" || o.type === "multichoice")) ctx.addIssue({ code: "custom", path: ["sections", i, "options", j, "type"], message: `a ${o.type} is only for instance settings, not for section options` });
   }
 });
 

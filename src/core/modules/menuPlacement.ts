@@ -28,7 +28,21 @@ export type PlacementManifest = {
   /** Page publique du module (`"page": true`) et blocs proposés pour l'accueil : un module qui en a n'est pas un simple overlay. */
   page?: boolean;
   sections?: readonly unknown[];
+  /** (0.2.14) Rangement DÉCLARÉ par le module (`family` du manifeste) : il prime sur la déduction ci-dessous. Absent ou inapplicable : la règle habituelle, inchangée. */
+  family?: string;
 };
+
+/**
+ * La famille déclarée par le module (`family`), si elle s'applique : « overlays » n'est permis qu'à un module qui PEUT servir une source navigateur
+ * (sinon la clé est ignorée, comme le choix d'un rangement « Overlays » sur autre chose). Une valeur inconnue est ignorée ici par prudence (le manifeste la refuse déjà à l'installation).
+ */
+export function declaredFamily(m: Pick<PlacementManifest, "family" | "type" | "permissions">): "content" | "community" | "connections" | "overlays" | null {
+  switch (m.family) {
+    case "content": case "community": case "connections": return m.family;
+    case "overlays": return canServeOverlay(m) ? "overlays" : null;
+    default: return null;
+  }
+}
 
 /** Le module PEUT servir une source navigateur pour OBS (type « overlay » ou permission « overlay ») : son rangement « Overlays » est alors permis. */
 export function canServeOverlay(m: Pick<PlacementManifest, "type" | "permissions">): boolean {
@@ -52,6 +66,8 @@ export function isOverlayManifest(m: Pick<PlacementManifest, "type" | "permissio
  * 3. les autres (widget, outil…) : des données à gérer (actions MCP, service offert ou service de stockage requis) → menu ; sinon rien à entretenir → Intégrations.
  */
 export function defaultPlacement(m: PlacementManifest): Placement {
+  const declared = declaredFamily(m);
+  if (declared) return declared === "overlays" ? "overlays" : declared === "connections" ? "integrations" : "menu";   // (0.2.14) le module le dit : sa déclaration prime
   if (isOverlayManifest(m)) return "overlays";
   const type = m.type ?? (m.content ? "content" : "widget");
   if (type === "social" || type === "integration") return "integrations";
@@ -89,7 +105,9 @@ export type MenuSectionId = (typeof MENU_SECTIONS)[number];
  * Rubrique par défaut d'un module, déduite de son manifeste (aucun champ en plus à renseigner) : un module à contenu (blog, pages, sponsoring…)
  * ou de catégorie « content » → « Mon contenu » ; tout le reste (outils de relation, pages animées, widgets) → « Ma communauté ».
  */
-export function defaultSection(m: Pick<PlacementManifest, "type" | "content">): MenuSectionId {
+export function defaultSection(m: Pick<PlacementManifest, "type" | "content" | "family" | "permissions">): MenuSectionId {
+  const declared = declaredFamily(m);
+  if (declared === "content" || declared === "community") return declared;   // (0.2.14) déclaré par le module ; « connections » et « overlays » : la règle habituelle
   return m.content || m.type === "content" ? "content" : "community";
 }
 

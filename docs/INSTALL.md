@@ -11,7 +11,7 @@ dépend d'un site en particulier : tout ce qui vous est propre (nom, textes, mod
 
 ## Installation
 
-La procédure pas à pas (utilisateur dédié, téléchargement vérifié, `.env`, service systemd, HTTPS avec nginx ou Caddy, premier écran) est dans le [README](../README.md#installer) ; le guide destiné à un agent IA, avec ses vérifications et ses erreurs fréquentes, dans [AGENT-INSTALL.md](AGENT-INSTALL.md).
+**Le chemin facile** est le script `scripts/install.sh` (trois questions, une commande ; publié aussi seul à côté de chaque release : `…/releases/latest/download/install.sh`) : voir le [README](../README.md#installer). Il crée l'utilisateur dédié, installe la release vérifiée, écrit `.env`, crée le service et ajoute le site au serveur web. Sans lui, la procédure pas à pas (utilisateur dédié, téléchargement vérifié, `.env`, service systemd, HTTPS avec nginx ou Caddy, premier écran) est dans le [README](../README.md#installation-manuelle-avancé) ; le guide destiné à un agent IA, avec ses vérifications et ses erreurs fréquentes, dans [AGENT-INSTALL.md](AGENT-INSTALL.md).
 Points à retenir :
 
 - **Curiosa s'installe seul ; ses modules s'installent depuis le catalogue** (dépôt `curiosa-extras` par défaut) : l'archive ne contient aucun module. L'assistant de première installation propose les modules suggérés par le catalogue ; si le catalogue est injoignable à ce moment, le site se crée quand même, sans module, et on les ajoute plus tard depuis *Modules › Catalogue* ;
@@ -24,8 +24,8 @@ développement ne se met pas à jour depuis l'admin (c'est à vous de faire `git
 
 ## Démarrage automatique
 
-L'unité systemd est donnée dans le [README](../README.md#installer) (un exemple figure aussi dans [`deploy/curiosa.service`](../deploy/curiosa.service)). Avec pm2 : `pm2 start node_modules/next/dist/bin/next --name curiosa -- start -p 3000`
-(et `CURIOSA_SUPERVISED=1` dans son environnement). **Un seul gestionnaire par site : systemd OU pm2, jamais les deux** : ils se disputeraient le port et relanceraient chacun l'ancienne version. Évitez aussi `npx next start` dans l'unité (trois processus : `npm exec` → `sh` → `next-server`) ; `ExecStart=/usr/bin/node node_modules/next/dist/bin/next start -p 3000` n'en fait qu'un. Avec Docker : voir le `Dockerfile` et `docker-compose.yml`.
+L'unité systemd (écrite par le script, ou donnée dans le [README](../README.md#installation-manuelle-avancé)) (un exemple figure aussi dans [`deploy/curiosa.service`](../deploy/curiosa.service)). Avec pm2 : `pm2 start node_modules/next/dist/bin/next --name curiosa -- start -p 3000`
+(et `CURIOSA_SUPERVISED=1` dans son environnement). **Un seul gestionnaire par site : systemd OU pm2, jamais les deux** : ils se disputeraient le port et relanceraient chacun l'ancienne version. Évitez aussi `npx next start` dans l'unité (trois processus : `npm exec` → `sh` → `next-server`) ; `ExecStart=/usr/bin/node node_modules/next/dist/bin/next start -p 3000` n'en fait qu'un. Docker sert à essayer chez soi, pas à publier un site (voir le [README](../README.md#avec-docker-pour-essayer-chez-soi-pas-pour-publier)).
 
 ## Mises à jour depuis l'admin
 
@@ -77,7 +77,7 @@ Une commande avec `sudo` suppose une règle `sudoers` limitée à cette seule co
 ### Pendant l'installation
 
 Comme il n'y a ni compilation ni réinstallation de dépendances, la mise à jour est rapide (de l'ordre de la minute, le temps de télécharger
-~250 Mo) et la coupure se limite au redémarrage. Choisissez de préférence un moment calme, ou désactivez la mise à jour automatique pour décider vous-même.
+~150 Mo) et la coupure se limite au redémarrage. Choisissez de préférence un moment calme, ou désactivez la mise à jour automatique pour décider vous-même.
 
 ### Conditions
 

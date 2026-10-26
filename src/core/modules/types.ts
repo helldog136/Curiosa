@@ -39,7 +39,7 @@ export type ChoiceResolution =
 export type SettingField = {
   key: string;
   label: LocalizedString;
-  type: "text" | "textarea" | "url" | "link" | "number" | "boolean" | "select" | "color" | "secret" | "image" | "video" | "choice";
+  type: "text" | "textarea" | "url" | "link" | "number" | "boolean" | "select" | "color" | "secret" | "image" | "video" | "choice" | "multichoice";
   /** Obligatoire pour `choice` : d'où viennent les options. */
   source?: ChoiceSource;
   /** `choice` de source `service` avec `create` : propose « Créer « X » » (le module propriétaire crée, avec SES droits). Défaut false. */
@@ -52,6 +52,11 @@ export type SettingField = {
   /** Valeur par défaut. Pour `text` / `textarea` : `"site:name"` (nom du site) ou `"site:tagline"` (accroche), dans la langue du champ. */
   default?: string | number | boolean;
   options?: { value: string; label: LocalizedString }[];
+  /** (0.2.14) `multichoice` : valeurs cochées au départ (parmi `options`). Jamais `default` pour ce type. */
+  defaultValues?: string[];
+  /** (0.2.14) `multichoice` : nombre minimal / maximal de cases cochées (le cœur refuse l'enregistrement sinon, sous le champ). Défaut : 0 et toutes les options. */
+  minChoices?: number;
+  maxChoices?: number;
   /** Une valeur par langue du site (sinon une seule valeur globale). */
   translatable?: boolean;
   /** Réglage technique : masqué dans la version simplifiée de l'admin (sa valeur par défaut s'applique). */
@@ -179,6 +184,10 @@ export type ModuleManifest = {
   basePath?: string;
   /** (0.2.12) Clé d'un réglage booléen : tant qu'il est faux, la page de l'instance est éteinte et n'apparaît nulle part (voir modules/publicPage.ts). */
   pageSetting?: string;
+  /** (0.2.14) Le module liste des chemins de sa page dans `PageResult.sitemap` : le cœur lit alors la page de l'instance pour bâtir le plan du site et llms.txt (jamais autrement). */
+  sitemapFromPage?: boolean;
+  /** (0.2.14) Rangement dans l'administration, déclaré par le module : prime sur la déduction du cœur (voir menuPlacement.ts). Absent = la règle habituelle. */
+  family?: "content" | "community" | "connections" | "overlays";
   /** Morceaux que les instances proposent à la page d'accueil. */
   sections: SectionDecl[];
   /** Informations que ce module digère (ses instances s'abonnent à des sources dans l'admin). */
@@ -450,6 +459,8 @@ export type ModuleContext = {
   instance: { id: string; key: string; basePath: string | null; name: string };
   /** Langue du visiteur (ou de l'admin, dans le panneau d'admin). */
   locale: string;
+  /** (0.2.14) Dans une route `":slug"` : `{ slug }`, déjà vérifié (`[A-Za-z0-9_-]{1,80}`). `{}` ailleurs. Absent sur un cœur plus ancien. */
+  params?: Readonly<{ slug?: string }>;
   defaultLocale: string;
   locales: string[];
   /** Réglage de l'instance, résolu pour la langue courante, avec sa valeur par défaut. */
@@ -521,6 +532,17 @@ export type PageResult = {
    * en `defer`, avec une empreinte d'intégrité, jamais en ligne. Un nom invalide ou un fichier absent est ignoré.
    */
   scripts?: string[];
+  /**
+   * (0.2.14) `"noindex"` : le cœur pose lui-même `<meta name="robots" content="noindex, nofollow">` sur CETTE page (page d'avertissement, d'attente, de confirmation…). Toute autre valeur
+   * est ignorée : un module ne peut que RÉDUIRE l'exposition de sa page, jamais écrire un en-tête ni une directive. Un cœur plus ancien ignore la clé (`minCore: "0.2.14"`).
+   */
+  robots?: "noindex";
+  /**
+   * (0.2.14) Chemins de CETTE instance à ajouter au plan du site (`/sitemap.xml`) et à `llms.txt`, lus sur la page de l'instance (segments vides) seulement pour un module qui
+   * déclare `"sitemapFromPage": true` dans module.json. Chemins complets du site, sous l'adresse de l'instance (`/${ctx.instance.basePath}/mentions`) : 50 au plus, 5 niveaux au plus,
+   * segments `[A-Za-z0-9_-]{1,80}`. Les autres sont écartés sans bruit. Les règles de `hasPublicPage` s'appliquent (page éteinte : rien n'est listé).
+   */
+  sitemap?: string[];
 };
 
 /** Un fichier texte ajouté à la sauvegarde ; `path` est relatif au dossier de l'instance (`modules/<instance>/<path>`). */
@@ -543,13 +565,14 @@ export type ModuleDefinition = {
    */
   adminBadge?: (ctx: ModuleContext) => number | Promise<number>;
   /** Page publique de l'instance, montée sur son chemin. `segments` = ce qui suit le chemin. Absent = rendu par défaut du cœur (liste + entrées) pour les modules à contenu. */
-  page?: (ctx: ModuleContext, request: { segments: string[] }) => PageResult | null | Promise<PageResult | null>;
+  page?: (ctx: ModuleContext, request: { segments: string[]; /** (0.2.14) `"sitemap"` : le cœur lit la page pour le plan du site (module qui déclare `sitemapFromPage`) : ne comptez pas une visite. */ for?: "sitemap" }) => PageResult | null | Promise<PageResult | null>;
   /** Overlay : rendu de la page /overlays/<clé de l'instance> (modules de type "overlay"). */
   overlay?: (ctx: ModuleContext, request: { query: URLSearchParams }) => OverlayResult | Promise<OverlayResult>;
   /** Informations exposées aux consommateurs, par sujet déclaré dans `provides`. Exécuté pour chaque instance fournisseuse. */
   exports?: Record<string, (ctx: ModuleContext, query: TopicQuery) => Record<string, unknown>[] | Promise<Record<string, unknown>[]>>;
   /** Routes exposées sous /m/<clé d'instance>/<route> (GET et POST). */
   routes?: Record<string, RouteHandler>;
+  // (0.2.14) Une clé qui finit par `:slug` (`"go/:slug"`, ou `":slug"`) accepte EN PLUS un dernier segment libre `[A-Za-z0-9_-]{1,80}`, reçu dans `ctx.params.slug`. La route de nom exact l'emporte toujours.
   /** Transforme le corps markdown d'une entrée avant son rendu (ex. shortcodes). */
   filters?: { entryBody?: (body: string, ctx: SlotContext) => string | Promise<string> };
   /**

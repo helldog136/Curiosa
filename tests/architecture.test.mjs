@@ -6,6 +6,22 @@ import fs from "node:fs";
 import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { parseNeutralityRules, findViolations, loadNeutralityText } from "./helpers/neutrality.mjs";
+import { catalogueIds } from "./helpers/extras.mjs";
+
+/**
+ * Identifiants de modules que le cœur ne doit jamais connaître : TOUS ceux du catalogue (curiosa-extras/catalogue/index.json) quand le dépôt
+ * des modules est présent (CURIOSA_EXTRAS_DIR, ou à côté du cœur ; CURIOSA_CATALOGUE_INDEX pour un autre fichier). Sans catalogue (intégration
+ * continue du cœur seul), on garde un petit garde-fou de départ et le test le dit, au lieu d'une liste qui vieillit sans que personne la tienne.
+ */
+const FALLBACK_MODULE_IDS = ["blog", "links", "codes", "pages", "hero", "partnerships", "sponsors", "maze-overlay"];
+/** Exceptions EXPLIQUÉES (audit B2) : la reprise unique de l'ancienne clé RAWG (rawg.ts) cite deux modules ; la cale vers le module « Jaquettes de jeux » (rawgBridge.ts) cite ce module, qu'elle installe et à qui elle confie la clé. Elles disparaissent avec le service RAWG (retrait en 0.3.0). Une entrée = un fichier + les identifiants tolérés. */
+const KNOWN_CITATIONS = { "src/core/services/rawg.ts": ["game-suggestions", "planning"], "src/core/services/rawgBridge.ts": ["game-covers"] };
+function moduleIdsKnownToNobody(t) {
+  const fromCatalogue = catalogueIds();
+  if (fromCatalogue) return fromCatalogue;
+  t.diagnostic("catalogue des modules absent (CURIOSA_EXTRAS_DIR / CURIOSA_CATALOGUE_INDEX) : garde-fou réduit, identifiants du catalogue NON vérifiés");
+  return FALLBACK_MODULE_IDS;
+}
 
 const read = (p) => fs.readFileSync(p, "utf8");
 const walk = (dir) =>
@@ -45,16 +61,19 @@ test("les services du cœur sont génériques : chacun n'importe que ce qu'il a 
   }
 });
 
-test("aucun service du cœur ne cite un module en particulier", () => {
-  const ids = ["blog", "links", "codes", "pages", "hero", "partnerships", "sponsors", "maze-overlay"];
+test("aucun service du cœur ne cite un module en particulier", (t) => {
+  const ids = moduleIdsKnownToNobody(t);
   for (const file of code("src/core/services")) {
-    for (const id of new Set(ids)) assert.ok(!new RegExp(`["'\`]${id}["'\`]`).test(read(file)), `${file} cite le module « ${id} »`);
+    for (const id of new Set(ids)) {
+      if (KNOWN_CITATIONS[file]?.includes(id)) continue;
+      assert.ok(!new RegExp(`["'\`]${id}["'\`]`).test(read(file)), `${file} cite le module « ${id} »`);
+    }
   }
 });
 
-test("le cœur ne contient aucun module et n'en connaît aucun par son identifiant (s'il en dépendait, ce ne serait pas un module)", () => {
+test("le cœur ne contient aucun module et n'en connaît aucun par son identifiant (s'il en dépendait, ce ne serait pas un module)", (t) => {
   for (const dir of ["src/modules-builtin", "modules-community", "modules-examples"]) assert.ok(!fs.existsSync(dir), `${dir} : les modules vivent dans curiosa-extras`);
-  const ids = ["blog", "links", "codes", "pages", "hero", "collection", "contact-form", "live-status", "ticker-overlay", "partnerships", "sponsors", "sponsor-ticker", "maze-overlay", "discord-announcer", "youtube-channel", "twitch-channel", "alerts-overlay", "game-suggestions", "contacts"];
+  const ids = moduleIdsKnownToNobody(t);
   for (const file of [...code("src/core"), ...code("src/app"), ...code("src/components")]) {
     const text = read(file);
     for (const id of ids) {

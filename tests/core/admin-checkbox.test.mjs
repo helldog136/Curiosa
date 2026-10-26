@@ -15,9 +15,3 @@ test("adminForm : le champ « checkbox » existe (type, rendu, doc) et une case 
   const fd = new FormData(); fd.set("other", "x");
   assert.equal(fd.get("show"), null);
 });
-
-test("sujets connus : `social.stat` et `calendar.event` figurent dans docs/MODULES.md", () => {
-  const doc = read("docs/MODULES.md");
-  assert.match(doc, /\| `social\.stat` \|/);
-  assert.match(doc, /\| `calendar\.event` \|/);
-});

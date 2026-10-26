@@ -62,7 +62,7 @@ test("archive : le gabarit de packaging ne contient aucun module, et l'archive r
   put("prisma/schema.prisma"); put("prisma/migrations/a/migration.sql"); put(".env.example"); put("LICENSE"); put("THIRD-PARTY-NOTICES.md");
   put(".next/BUILD_ID"); put("node_modules/next/package.json"); put("scripts/update.mjs");
   for (const e of ["debian-openssl-1.1.x", "debian-openssl-3.0.x"]) put(`node_modules/.prisma/client/libquery_engine-${e}.so.node`);
-  put("extras/modules/blog/module.json"); put("extras/catalogue/index.json"); put("extras/SOURCE.json"); put("examples/guestbook/module.json"); put("catalogue/index.json"); put("modules/blog/module.json");
+  put("scripts/install.sh"); put("extras/modules/blog/module.json"); put("extras/catalogue/index.json"); put("extras/SOURCE.json"); put("examples/guestbook/module.json"); put("catalogue/index.json"); put("modules/blog/module.json");
   execFileSync(process.execPath, [path.join(root, "scripts/release-pack.mjs"), "9.9.9", out], { cwd: tree, env: { ...process.env, GITHUB_REPOSITORY: "o/curiosa" }, stdio: "pipe" });
   const archive = fs.readdirSync(out).find((f) => f.endsWith(".tar.gz"));
   const listing = execFileSync("tar", ["-tzf", path.join(out, archive)], { encoding: "utf8" }).split("\n").filter(Boolean);

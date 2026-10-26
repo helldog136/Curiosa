@@ -11,7 +11,7 @@ export const THEME_PRESETS = [
   { id: "violet", mode: "dark", background: "#14111f", surface: "#1e1a2e", text: "#f1eefb", accent: "#a78bfa", accent2: "#f0abfc" },
   { id: "daylight", mode: "light", background: "#fafafa", surface: "#ffffff", text: "#18181b", accent: "#2563eb", accent2: "#7c3aed" },
   { id: "paper", mode: "light", background: "#f5f0e6", surface: "#fffaf0", text: "#2b2118", accent: "#c2410c", accent2: "#0f766e" },
-  { id: "rosaliax", mode: "dark", background: "#0b1716", surface: "#122321", text: "#e9f3f1", accent: "#e8782f", accent2: "#5fd3cc" },
+  { id: "ember", mode: "dark", background: "#0b1716", surface: "#122321", text: "#e9f3f1", accent: "#e8782f", accent2: "#5fd3cc" },
   { id: "arcade", mode: "dark", background: "#0d0221", surface: "#1a0b38", text: "#f5ecff", accent: "#ff2a6d", accent2: "#05d9e8" },
   { id: "vinyl", mode: "dark", background: "#181414", surface: "#241d1d", text: "#f5efe9", accent: "#f43f5e", accent2: "#fbbf24" },
   { id: "workshop", mode: "dark", background: "#1c1917", surface: "#29241f", text: "#f5f0e8", accent: "#e07a5f", accent2: "#81b29a" },
@@ -22,6 +22,22 @@ export const THEME_PRESETS = [
 ] as const;
 
 export type ThemePreset = (typeof THEME_PRESETS)[number];
+
+/**
+ * Anciens identifiants de palettes, toujours LUS. « rosaliax » est devenue « ember » (« Sarcelle et braise ») : mêmes cinq couleurs.
+ * Le site n'enregistre jamais l'identifiant d'une palette, seulement ses couleurs (`theme.background`, `theme.accent`, `theme.accent2`,
+ * `theme.surface`, `theme.text`) : un site, une sauvegarde ou un aperçu d'avant s'affichent donc à l'identique, sans migration de données.
+ * Tout code qui lirait un identifiant venu de l'extérieur (réglage, import, outil) passe par `resolvePaletteId`.
+ */
+export const PALETTE_ALIASES: Readonly<Record<string, string>> = { rosaliax: "ember" };
+
+/** Identifiant canonique d'une palette (ancien nom accepté, casse ignorée), « custom » pour la palette personnalisée, null si inconnu. */
+export function resolvePaletteId(id: unknown): PaletteId | null {
+  if (typeof id !== "string") return null;
+  const key = id.trim().toLowerCase();
+  const canonical = Object.hasOwn(PALETTE_ALIASES, key) ? PALETTE_ALIASES[key]! : key;
+  return canonical === CUSTOM_PALETTE || THEME_PRESETS.some((p) => p.id === canonical) ? (canonical as PaletteId) : null;
+}
 
 /** Les sept palettes qui existaient avant les cinq couleurs : un site qui n'a que leur fond et leur accent (sans rien d'autre) les reconnaît toujours. */
 const ORIGINAL_PRESETS: readonly string[] = ["night", "ocean", "forest", "rose", "violet", "daylight", "paper"];

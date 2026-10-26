@@ -1,5 +1,5 @@
 // Familles de la liste « Installées » d'Extensions : Contenu, Communauté, Réseaux et connexions, Overlays. Logique pure (ni base ni React), testée telle quelle.
-import { isOverlayManifest, type PlacementManifest } from "./menuPlacement";
+import { declaredFamily, isOverlayManifest, type PlacementManifest } from "./menuPlacement";
 import { platformOf } from "./platform";
 
 export const EXTENSION_FAMILIES = ["content", "community", "connections", "overlays"] as const;
@@ -9,12 +9,15 @@ export const parseFamily = (v: unknown): ExtensionFamily | null => ((EXTENSION_F
 
 /**
  * Famille d'un module, déduite de son manifeste seul :
+ * 0. (0.2.14) `family` déclarée dans le manifeste : elle l'emporte ;
  * 1. overlay (type ou permission) → Overlays ;
  * 2. catégorie « social » ou « integration », plateforme déclarée, ou simple liste de liens vers l'extérieur → Réseaux et connexions (ce qui se règle une fois) ;
  * 3. module à contenu → Contenu ;
  * 4. le reste (outils de relation, pages animées…) → Communauté.
  */
 export function extensionFamily(m: PlacementManifest & { platform?: unknown }): ExtensionFamily {
+  const declared = declaredFamily(m);
+  if (declared) return declared;   // (0.2.14) `family` du manifeste : le module range lui-même sa carte ; sans clé, la déduction ci-dessous
   if (isOverlayManifest(m)) return "overlays";
   if (m.type === "social" || m.type === "integration" || platformOf(m)) return "connections";
   if (m.content) return m.content.display === "links" && m.content.clickAction === "external" ? "connections" : "content";

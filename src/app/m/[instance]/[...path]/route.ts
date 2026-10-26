@@ -1,4 +1,5 @@
 import { buildContext } from "@/core/modules/context";
+import { matchModuleRoute } from "@/core/modules/pageMeta";
 import { getActiveInstances } from "@/core/modules/registry";
 import { getSiteConfig } from "@/core/settings";
 
@@ -18,14 +19,17 @@ async function handle(request: Request, { params }: Params): Promise<Response> {
   }
 
   const active = (await getActiveInstances()).find((a) => a.instance.key === key);
-  const handler = active?.mod.def.routes?.[path.join("/")];
-  if (!active || !handler) return new Response("Not found", { status: 404 });
+  // (0.2.14) La route de ce nom exact d'abord (comme toujours) ; sinon une route `…/:slug` dont le dernier segment passe le motif strict (voir pageMeta.ts).
+  const route = active ? matchModuleRoute(active.mod.def.routes, path) : null;
+  if (!active || !route) return new Response("Not found", { status: 404 });
 
   try {
     // ?lang=xx choisit la langue du contenu servi (JSON d'un overlay, par exemple).
     const config = await getSiteConfig();
     const lang = new URL(request.url).searchParams.get("lang") ?? "";
-    return await handler(request, await buildContext(active.mod, active.instance, config.locales.includes(lang) ? lang : undefined));
+    const ctx = await buildContext(active.mod, active.instance, config.locales.includes(lang) ? lang : undefined);
+    ctx.params = Object.freeze({ ...route.params });
+    return await route.handler(request, ctx);
   } catch (error) {
     console.error(`[modules] ${key} route "${path.join("/")}" failed:`, error);
     return new Response("Module error", { status: 500 });

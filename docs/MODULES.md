@@ -92,6 +92,8 @@ tout le reste → **Ma communauté** (contacts, partenariats, statistiques de la
 selon la catégorie : *Relations* (`utility`), *Pages interactives* (`widget`) et *Autres* (toute autre catégorie, ou aucune), repliés par défaut. Le dernier choix est mémorisé dans un cookie (`curiosa_nav_groups`, lu côté serveur : pas de clignotement)
 et la page ouverte déplie toujours son groupe. La pastille d'une instance (`adminBadge`) reste sur son lien et le total d'un groupe plié s'affiche sur son titre.
 
+**Choisir soi-même : `family` (cœur 0.2.14, `"minCore": "0.2.14"`).** Quand la déduction ne convient pas (un outil de contenu sans `content` dans son manifeste, rangé « Communauté » faute de mieux), le module le dit : `"family": "content" | "community" | "connections" | "overlays"`. La clé **prime** sur la règle ci-dessus, pour le rangement (menu ou seulement dans Extensions), la rubrique du menu (`content` ou `community` ; avec `connections` ou `overlays`, la règle habituelle choisit la rubrique) et la famille d'Extensions. `content` et `community` : épinglée au menu ; `connections` : seulement dans Extensions ; `overlays` : permis **seulement** à un module qui peut servir une source navigateur (type ou permission `overlay`), sinon la clé est ignorée. Toute autre valeur est refusée à l'installation (validation du manifeste). **Sans la clé, la règle est strictement celle d'avant** (vérifié sur tout le catalogue) ; le choix de la personne (« Épingler au menu » / « Retirer du menu ») l'emporte toujours. Attention : un module qui **ajoute** `family` dans une mise à jour change le rangement par défaut de ses instances qui n'ont jamais été épinglées ou retirées à la main ; c'est le but, mais ne le faites pas à la légère.
+
 **Pastille d'Extensions.** L'entrée Extensions cumule les modules en retard (propriétaire), les instances à régler (état *À configurer* ou *Erreur*) et les pastilles des instances qui ne sont pas épinglées : rien ne se cache parce qu'une extension n'est pas dans le menu.
 
 **Familles (Extensions > Installées).** Chaque module est rangé dans une famille, déduite elle aussi du manifeste seul (`extensionFamily`) : **Overlays** (type ou permission `overlay`) ; **Réseaux et connexions** (type `social` ou `integration`, `platform` déclarée,
@@ -137,6 +139,8 @@ Validé à l'installation et au chargement (zod, `src/core/modules/manifest.ts`)
 | `version` | `x.y.z`. Sert à détecter les mises à jour (comparée à la version du catalogue). |
 | `author`, `license`, `homepage` | Informatifs (`homepage` : URL valide). |
 | `pageSetting` | (cœur 0.2.12, `"minCore": "0.2.12"`) Facultatif : clé d'un réglage **booléen** du module (case à cocher) qui allume ou éteint la page publique de l'instance. Tant qu'il est faux (ou jamais enregistré et sans `default: true`), la page n'existe pour personne : 404 sur l'adresse et sur son `page-script`, et rien dans le plan du site, `llms.txt`, le menu ni l'éditeur de menu. Refusé si la clé n'est pas celle d'un réglage booléen du module, ou si le module n'a pas de page. Sans le champ : rien ne change. L'administration de l'instance dit si la page est allumée. Règle unique : `hasPublicPage` (`src/core/modules/publicPage.ts`). |
+| `sitemapFromPage` | (cœur 0.2.14, `"minCore": "0.2.14"`) Facultatif : `true` si `page()` liste, dans `PageResult.sitemap`, des chemins de sa page à ajouter au plan du site et à `llms.txt` (ou se déclare `robots: "noindex"` pour toute l'instance). **Seul** un module qui le demande est lu pour cela : le cœur appelle alors `page(ctx, { segments: [], for: "sitemap" })` (pour la langue par défaut), au plus une fois par minute et par instance. Sans la clé, `page()` n'est jamais appelée pour le plan du site : rien ne change. Refusé sans page publique. |
+| `family` | (cœur 0.2.14, `"minCore": "0.2.14"`) Facultatif : `"content"`, `"community"`, `"connections"` ou `"overlays"` : le rangement dans l'administration, qui **prime** sur la déduction du cœur (voir « Rangement dans le menu »). Sans la clé : la règle habituelle, inchangée. |
 | `privacy` | Facultatif : ce que le module collecte comme données personnelles, pourquoi et comment les faire effacer (texte simple, traduisible comme `description`). **Un module qui collecte des données de visiteurs doit le déclarer** : le cœur reprend ce texte tel quel, sous le nom de l'instance, dans la page « Politique de confidentialité » du site (`/privacy`, lien permanent du pied de page). Un module qui ne collecte rien n'a rien à écrire. |
 | `icon` | Emoji affiché dans l'admin. |
 | `main` | Fichier ES module du code, relatif à la racine. Absent : module « sans code » (réglages, contenu). |
@@ -238,7 +242,8 @@ Chaque réglage est un objet (`SettingField`) :
 | `type` | L'un des types ci-dessous. |
 | `help` | Aide sous le champ. |
 | `default` | Valeur par défaut (texte, nombre ou booléen). `ctx.setting` la renvoie tant que rien n'est réglé, et l'admin **pré-remplit** le champ avec elle. Pour `text` / `textarea` : `"site:name"` (nom du site) ou `"site:tagline"` (accroche), dans la langue du champ (voir ci-dessous). |
-| `options` | Pour `select` : `[{ "value": "info", "label": { "en": "…" } }]` (50 au plus). |
+| `options` | Pour `select` et `multichoice` : `[{ "value": "info", "label": { "en": "…" } }]` (50 au plus ; pour `multichoice`, 2 au moins, valeurs faites de lettres, chiffres, `.`, `-`, `_`, 60 caractères au plus, sans doublon). |
+| `defaultValues`, `minChoices`, `maxChoices` | Pour `multichoice` (cœur 0.2.14) : les cases cochées au départ (parmi `options`), le nombre minimal et maximal de cases cochées (défaut : 0 et toutes les options). Refusés pour un autre type. |
 | `translatable` | `true` : une valeur par langue du site (sinon une seule valeur globale). `ctx.setting` renvoie celle de la langue courante. |
 | `advanced` | `true` : réglage technique, masqué dans la version simplifiée de l'admin ; **sa valeur par défaut s'applique** — donnez-en toujours une. |
 | `optional` | `true` : réglage facultatif. Vide, il ne met pas l'extension « À configurer » ; sans cela, un texte, une adresse, un lien ou un secret vide et sans valeur par défaut est signalé à l'administrateur comme « à remplir » (avec son libellé). |
@@ -250,7 +255,7 @@ Chaque réglage est un objet (`SettingField`) :
 | `tab` | (cœur 0.2.2) Onglet de la page d'admin où s'affiche le réglage : `settings` (défaut, onglet « Réglages »), `sources`, `general` ou l'`id` d'un onglet déclaré dans `tabs`. Tous les réglages d'un groupe facultatif sont dans le même onglet. Un cœur ancien ignore la clé ; déclarez `"minCore": "0.2.2"`. |
 
 Types : `text`, `textarea`, `url` (adresse http ou https), `link` (une page du site comme `/contact`, une adresse `https://…` ou `mailto:…` ; contrôlé dans le navigateur et par le serveur), `number`, `boolean`, `select`, `color`, `image` (envoi de fichier ou URL), `video` (envoi d'une vidéo MP4 ou WebM de 50 Mo au plus, réservée aux fichiers du site : `/uploads/…`), `secret`
-(jamais réaffiché une fois enregistré ; ne l'écrivez jamais dans un journal), `choice` (« choix parmi », cœur 0.2.0 : voir ci-dessous).
+(jamais réaffiché une fois enregistré ; ne l'écrivez jamais dans un journal), `choice` (« choix parmi », cœur 0.2.0 : voir ci-dessous), `multichoice` (« plusieurs choix », cœur 0.2.14 : voir « Réglage `multichoice` »).
 
 #### Réglage `choice` (« choix parmi », cœur 0.2.0)
 
@@ -294,6 +299,23 @@ Un réglage qui **désigne un élément qui existe déjà** (une chaîne, une ca
 - **Simple et avancé.** L'admin existe en deux versions (bascule dans la barre latérale). Gardez dans la version simple l'essentiel :
   ce qu'une personne sans connaissances web comprend (un nom, une couleur, une image, un nombre). Les réglages avancés déjà
   enregistrés ne sont jamais effacés quand quelqu'un édite en version simple.
+
+### Réglage `multichoice` (« plusieurs choix », cœur 0.2.14)
+
+Une liste de valeurs choisies par **cases à cocher** parmi des options que le module déclare (les sujets d'une lettre d'information, les jours d'ouverture, les réseaux à afficher…). `"minCore": "0.2.14"` : un cœur plus ancien refuse le manifeste.
+
+```json
+{ "key": "topics", "type": "multichoice", "label": { "en": "Topics to show", "fr": "Sujets à afficher" },
+  "options": [{ "value": "news", "label": { "en": "News", "fr": "Actualités" } }, { "value": "events", "label": { "en": "Events", "fr": "Événements" } }],
+  "defaultValues": ["news"], "minChoices": 1, "maxChoices": 2 }
+```
+
+- **Ce que lit le module** : `ctx.setting("topics")` est **toujours une liste** de valeurs (jamais `undefined`), dans l'ordre des `options`, ramenée aux options **actuelles** du module (une option retirée par une mise à jour disparaît de la liste sans erreur). Jamais enregistré : `defaultValues` (sinon `[]`). Tout décocher (si `minChoices` le permet) est une vraie valeur : la liste vide, pas un retour au départ.
+- **Ce que voit la personne** : un groupe de vraies cases à cocher, une par ligne, chaque ligne est une cible tactile d'au moins 44 px, lisible au clavier et au lecteur d'écran (légende, aide, bornes annoncées). Le module ne fournit **aucun JavaScript** à l'administration. Une erreur (une case qui n'existe plus, trop ou pas assez de cases) s'affiche **sous le groupe**, rien n'est enregistré.
+- **Validation** (une seule règle, `checkMultiInput`, pour l'administration, l'assistant IA et les graines de migration) : chaque valeur est une option actuelle, les doublons sont fusionnés, `minChoices` ≤ nombre ≤ `maxChoices`. Le cœur écrit la liste dans l'ordre des options : deux enregistrements identiques donnent la même valeur.
+- **Assistant IA** : `maintenance_module_settings` montre les options, les bornes et le départ ; `maintenance_module_configure` accepte une liste (`{"topics": ["news", "events"]}`) ou `null` pour revenir au départ.
+- **Sauvegarde** : la liste est un réglage comme les autres (restaurée telle quelle).
+- **Limites** : jamais traduisible, jamais dans les options d'une section d'accueil, pas de `default` (utilisez `defaultValues`). Le kit de test (exigence `compat.minCore`) demande `minCore` 0.2.14.
 
 ### Groupes facultatifs (`optionalGroups`)
 
@@ -573,9 +595,28 @@ Montée sur le chemin (`basePath`) de l'instance. `segments` = ce qui suit ce ch
 | `blocks` | Contenu |
 | `notFound` | `true` : affiche la page d'erreur 404 (ou renvoyer `null`) |
 | `scripts` | (cœur 0.2.6) Scripts de **cette page seulement** : 3 noms de fichiers au plus du dossier `scripts/` du module (`["faq.js"]`), 32 Ko chacun. Voir ci-dessous. |
+| `robots` | (cœur 0.2.14) `"noindex"` : le cœur pose lui-même `<meta name="robots" content="noindex, nofollow">` sur **cette** page (avertissement, attente, confirmation…). Toute autre valeur est ignorée : un module ne peut que **réduire** l'exposition de sa page, il n'écrit jamais un en-tête. |
+| `sitemap` | (cœur 0.2.14) Chemins de l'instance à ajouter au plan du site et à `llms.txt`, **lus sur la page de l'instance** (`segments` vide) d'un module qui déclare `"sitemapFromPage": true`. Voir « Métadonnées de page » ci-dessous. |
 
 Les slots `page.top` et `page.bottom` entourent le contenu. Une instance n'a de page que si son chemin public est défini
 (`ctx.instance.basePath` n'est pas `null` ; `""` = racine du site).
+
+#### Métadonnées de page : `robots` et `sitemap` (cœur 0.2.14, `"minCore": "0.2.14"`)
+
+```js
+// module.json : "sitemapFromPage": true
+async page(ctx, { segments, for: purpose }) {
+  const base = "/" + ctx.instance.basePath;
+  if (segments[0] === "confirm") return { title: "…", blocks: [...], robots: "noindex" };   // une page d'attente n'a rien à faire dans un moteur de recherche
+  if (purpose !== "sitemap") countThisVisit(ctx);                                          // le cœur lit aussi la page pour le plan du site : ne comptez pas cela
+  return { title: "Mentions", blocks: [...], sitemap: [base + "/cookies", base + "/terms"] };
+}
+```
+
+- **`robots: "noindex"`** : la page porte la balise `noindex, nofollow` posée par le cœur ; si c'est la page de l'instance elle-même (et que le module déclare `sitemapFromPage`), l'instance **et ses chemins déclarés** quittent aussi le plan du site et `llms.txt`. Il n'existe pas d'autre valeur, ni d'en-tête libre.
+- **`sitemap`** : chemins **complets du site**, sous l'adresse de l'instance (`"/" + ctx.instance.basePath + "/cookies"` ; pour une instance montée à la racine, tout chemin qui ne commence pas par un nom réservé du cœur). 50 au plus, 5 niveaux au plus sous l'adresse de l'instance, segments `[A-Za-z0-9_-]{1,80}` (passés en minuscules, comme le cœur les sert), dédoublonnés. Tout ce qui ne respecte pas cela (autre préfixe, `?x=y`, `#`, `..`, adresse complète, n'importe quel autre type) est **écarté sans bruit**. Les règles de `hasPublicPage` s'appliquent : page éteinte (`pageSetting`) ou sans adresse = rien n'est listé. Le cœur ne vérifie pas que la page existe : ne déclarez que des chemins que `page()` sait servir.
+- **Coût et prudence** : le module n'est lu pour cela que s'il déclare `sitemapFromPage` ; la lecture se fait au plus **une fois par minute et par instance**, avec `for: "sitemap"` dans la requête (ne comptez pas de visite, ne notez rien). Dans `llms.txt`, chaque chemin est titré d'après son dernier segment (`cookie-policy` → « Cookie policy »).
+- **Sans ces clés, rien ne change** : un module qui ne les utilise pas n'est jamais appelé par le plan du site.
 
 #### Un script pour une seule page (`scripts`, cœur 0.2.6)
 
@@ -607,6 +648,7 @@ Le cœur ne garde que les champs du schéma du consommateur et écarte les élé
 ### `routes` : endpoints HTTP
 
 `routes.<nom>(request, ctx)` est servie sur `/m/<clé de l'instance>/<nom>` pour **GET et POST** (un nom peut contenir `/`).
+**Dernier segment libre (cœur 0.2.14, `"minCore": "0.2.14"`).** Une clé qui finit par `:slug` (`"go/:slug"`, ou `":slug"` seul) répond aussi à `/m/<clé>/go/<segment>`, où `<segment>` passe le motif strict `[A-Za-z0-9_-]{1,80}` : le cœur le vérifie (hors motif : 404, avant d'appeler le module) et le donne dans **`ctx.params.slug`**. Un seul segment libre, toujours le dernier ; la route de nom **exact** l'emporte toujours (`go` reste `go`) ; `ctx.params` vaut `{}` pour les autres routes. Le segment reste une entrée d'un visiteur : validez-le comme toute entrée (par exemple en cherchant la fiche dans votre stockage, jamais en construisant une adresse ou une requête avec). Kit de test : le kit appelle la route avec un segment plausible ; `fakeCtx({ params: { slug: "abc" } })` pour la tester vous-même.
 `?lang=fr` choisit la langue du contexte. Le cœur refuse les écritures venues d'un autre site (en-tête `Origin` différent de l'hôte : 403) :
 vous n'avez pas à gérer le CSRF, mais **vous restez responsable de la validation des données, de l'anti-abus (limiteur de débit, piège à
 robots) et de la méthode** (répondre 405 aux méthodes que vous n'attendez pas). Le bloc `form` poste en `fetch` en `multipart/form-data`,
@@ -972,7 +1014,7 @@ Deux familles : les **services** du cœur (génériques, voir [PLATFORM.md](PLAT
 | `ctx.api.files.claim(url)` | service | (cœur 0.2.13, permission `files`) revendique un fichier `/uploads/…` que la personne connectée vient d'envoyer ; voir « Fichiers envoyés : garder et supprimer » |
 | `ctx.api.files.remove(url)` | service | (cœur 0.2.13, permission `files`) supprime un fichier que CETTE instance a revendiqué (original et dérivés) ; idempotent |
 | `ctx.api.files.owns(url)` / `ctx.api.files.usage()` | service | (cœur 0.2.13, permission `files`) ce fichier est-il à cette instance ? / espace pris et plafonds du module |
-| `ctx.api.rawg.configured()` | service | une clé RAWG est-elle réglée par le propriétaire ? (permission `rawg` ; `false` sans elle) |
+| `ctx.api.rawg.configured()` | service | (cale de compatibilité, à retirer en 0.3.0 : préférez le service `game.cover`, voir « Jaquettes de jeux (RAWG) ») une clé RAWG est-elle réglée par le propriétaire ? (permission `rawg` ; `false` sans elle) |
 | `ctx.api.rawg.cover(title)` | service | jaquette d'un jeu : `{ status, url, name?, id?, ambiguous? }` avec `status` = `found` (`url` en https), `none` (aucun résultat, ou « aucune jaquette » choisi par la propriétaire), `no-key` (pas de clé), `refused` (RAWG refuse la clé), `unreachable` (RAWG injoignable) ; `name`, `id` et `ambiguous` sont **facultatifs** (cœur 0.2.10) ; permission `rawg`, voir « Jaquettes de jeux (RAWG) » |
 | `ctx.api.rawg.candidates(title)` | service | cœur 0.2.10 : les jeux que RAWG propose pour ce titre, `{ status, candidates: [{ id, name, year, platforms, url }] }` (6 au plus, jaquette obligatoire) ; même permission `rawg`, mêmes statuts, ne lève jamais |
 | `ctx.api.net.request({ url, method?, headers?, body?, timeoutMs?, maxBytes?, dedupe?, retry?, priority?, bucket? })` | service | appel réseau **neutre et borné** vers une API externe (https seulement, aucune permission) : `{ ok: true, status, headers, json?, text?, shared }` ou `{ ok: false, error, status?, retryAt? }` ; ne lève jamais. Voir « Appeler une API externe : `ctx.api.net` » |
@@ -1048,27 +1090,32 @@ par des personnes différentes se retrouvent sur les mêmes noms ; rien ne l'imp
 mais deux modules ne partagent un sujet ou une rubrique que s'ils s'écrivent pareil. Les **libellés** montrés aux humains,
 eux, sont traduits comme le reste.
 
-Sujets connus (tous fournis par des modules du catalogue, ou par le cœur) :
+**Le registre des sujets n'est pas ici.** Le cœur ne documente que les trois sujets **qu'il lit lui-même** ; tous les autres
+sujets (`planning.slot`, `map.place`, `ha.state`…) sont une affaire entre modules et se déclarent dans le registre du dépôt qui
+les publie : pour le catalogue officiel, `docs/TOPICS.md` du dépôt `curiosa-extras`. Publier un nouveau sujet entre modules ne
+demande donc **jamais** une nouvelle version du cœur. Un dépôt tiers de modules tient son propre registre (voir
+`docs/CREATE-A-MODULE.md`, « Le registre des sujets de votre dépôt »).
+
+Sujets lus par le cœur :
 
 | Sujet | Fourni par | Rôle |
 |---|---|---|
 | `core.entry` | le cœur | entrées publiées de toute instance à contenu |
 | `feed.item` | tout module | éléments proposés au flux RSS (voir plus bas) |
-| `social.link` | tout module « réseau social » | le bouton d'un réseau (`label`, `url`, `icon`) que le cœur affiche dans l'en-tête (voir « Réseaux sociaux ») |
-| `overlay.item` | tout module | éléments simples (titre, texte, image, lien) pour les overlays |
-| `guestbook.message` | `guestbook` (exemple) | message validé d'un livre d'or (`id`, `name`, `text`, `publishedAt`) |
-| `sponsor.card` | `sponsors` | carte de sponsor (nom, code, logo, lien) |
-| `partnership.partner` | `partnerships` | fiche de partenaire (nom, logo) |
-| `planning.slot` | tout module « agenda de streams » | un stream (`id`, `title`, `start`, `end?`, `allDay?`, `day?`, `games?`, `status?`, `timezone?`) consommé par `planning` et par le bot Twitch ; reçoit une période `from` / `to` |
-| `calendar.event` | tout module « calendrier » (réservé) | un évènement d'agenda quelconque (`id`, `title`, `start`, `end?`, `allDay?`, `description?`, `location?`, `url?`, `status?`, `category?`, `color?`, `sourceLabel?`), pour les lecteurs qui ne parlent pas de streams ; reçoit une période `from` / `to`. Les streams, eux, passent par `planning.slot` |
-| `social.stat` | tout module « réseau social » | les chiffres d'un compte (`id`, `metric` : `followers` / `paying` / `content` / `views`, `value`, `asOf`, `error?`) collectés par `community-stats` |
-| `maze.poster` | tout module (`youtube-channel`, `twitch-channel`…) | affiche pour le labyrinthe |
-| `stream.live` | `twitch-channel` | live en cours (`id`, `title`, `url`, `startedAt`, `game`) ; vide hors ligne |
-| `ha.result` | `home-assistant` | ce qui est arrivé à un ordre confié à Home Assistant (`ref`, `id`, `status` : `done` / `failed` / `ignored` / `expired` / `refused`, `code`, `at`) ; consommé par le bot Twitch et Actions du live YouTube pour valider, rembourser ou afficher l'issue |
-| `ha.state` | `home-assistant` | l'état du pont avec Home Assistant, un seul élément (`enabled`, `live`, `paired`, `lastSeenAt?`) ; consommé par le bot Twitch pour mettre ses récompenses en pause ou les réactiver |
-| `live.event` | `youtube-live-actions` | les dons et adhésions vus dans le chat d'un direct, en mémoire seulement (15 minutes, 50 au plus) : `id`, `platform`, `kind` (`superchat`, `supersticker`, `member`, `gift`), `who`, `at`, et selon le cas `amount` (toujours avec `currency`), `count`, `text` ; consommé par l'Overlay alertes (OBS) pour les afficher à l'écran |
-| `map.place` | `events`, `directory` (tout module qui a des lieux) | un lieu pour la carte (`id`, `title`, `lat`, `lng`, `kind`, `url?`, `at?`, `note?`) ; consommé par `map`, qui reçoit 200 éléments au plus. `lat` entre -90 et 90, `lng` entre -180 et 180, jamais le point (0, 0), 5 décimales suffisent ; `kind` (`event`, `member`…) peut rejoindre un type de la carte ; `at` : date ISO d'un évènement. **Jamais d'adresse personnelle sans consentement** : un lieu public ou la ville arrondie d'une personne qui a dit oui, rien par défaut. La carte montre les données telles que reçues et n'écrit jamais chez la source |
-| `mascot.hint` | tout module qui a une nouveauté à annoncer (le jeu du jour…) | une phrase que la mascotte peut dire (`id`, `text`, `url?`) ; consommé par `mascot`, 10 au plus. `id` change quand l'état change (« à jouer », « déjà joué »), pour que la mascotte ne répète pas ; `text` court (140 caractères), sans balise ; `url` d'une page du site. Un module qui n'a rien à dire ne publie rien |
+| `social.link` | tout module « réseau social » | le bouton d'un réseau (`label`, `url`, `icon`, et facultativement `rel`, `referrerPolicy`, `target`) que le cœur affiche dans l'en-tête (voir « Réseaux sociaux ») |
+
+**Règle d'évolution d'un sujet lu par le cœur.** Le cœur décide, à partir de ces valeurs, de ce que le navigateur reçoit (adresse,
+attributs d'un lien…) : il possède donc le schéma et les listes de valeurs permises. Pour qu'un module récent ne casse pas un cœur
+plus ancien, et inversement :
+
+- un champ nouveau est toujours **facultatif** et **additif** : on n'en retire pas, on n'en renomme pas, on ne change pas le sens
+  d'un champ existant (un champ renommé est un nouveau champ, l'ancien reste lu) ;
+- chaque valeur a une **liste fermée** (par exemple les mots permis de `rel`) : une valeur hors liste est ignorée, le défaut sûr
+  s'applique, l'élément reste affiché ;
+- **un champ = sa version** : la documentation dit à partir de quelle version du cœur chaque champ est lu, et un module qui en
+  dépend déclare `minCore` ; sans lui, sur un cœur plus ancien, le champ est simplement ignoré (le cœur nettoie les champs
+  inconnus) ;
+- on regroupe les champs probables au moment où l'on touche au sujet, pour ne pas publier une version du cœur par attribut.
 
 ```jsonc
 // module.json du CONSOMMATEUR (un overlay)
@@ -1419,7 +1466,34 @@ Pour vos tests : `fakeCtx({ permissions: ["files"], uploads: [url, { url, by, ag
 
 ## Jaquettes de jeux (RAWG)
 
-Un module qui déclare la permission `rawg` peut demander la jaquette d'un jeu : `const cover = await ctx.api.rawg.cover("Hades")`. La **clé d'API RAWG se règle une seule fois**, par le propriétaire, dans *Réglages › Services externes* (comme le serveur d'e-mail) : un module ne demande **jamais** la clé à l'utilisateur, n'a pas de réglage « clé RAWG », et ne la voit jamais. Si un ancien module en avait une, le cœur la reprend une fois au démarrage quand le réglage du cœur est vide.
+**Le service de jaquettes est un module, plus une fonction du cœur.** Le module officiel **« Jaquettes de jeux »** (`game-covers`, dépôt des modules) détient la clé RAWG, cherche les jaquettes, garde les corrections « Quel est le bon jeu ? » de la propriétaire et offre le service **`game.cover`** (version 1). Un module qui veut des jaquettes le déclare comme besoin **facultatif** et l'appelle :
+
+```jsonc
+// module.json
+"requires": [{ "service": "game.cover", "optional": true }]
+```
+```js
+// Le service rend la même réponse que ci-dessous : { status, url, name?, id?, ambiguous? } ; jamais la clé.
+const r = await ctx.api.services.call("game.cover", "cover", { title: "Hades" });
+const cover = r.ok ? r.value : { status: "no-key", url: null };   // sans le module : pas de jaquette, le jeu s'affiche sans image
+```
+
+| Méthode de `game.cover` | Rôle |
+|---|---|
+| `status()` | `{ ready, configured, source, state }` : une clé est-elle réglée, et quel est le dernier état (`ok`, `refused`, `unreachable`) ; sans appel réseau |
+| `cover({ title })` | la jaquette du jeu : `{ status: "found" \| "none" \| "no-key" \| "refused" \| "unreachable", url, name?, id?, ambiguous? }` |
+| `candidates({ title, search? })` | les jeux proposés (6 au plus), pour **montrer** les choix |
+| `fix({ title, rawgId \| none \| forget })` | écrit une correction ; appel avec `{ asCaller: true }` depuis une action d'administration d'une personne qui a le droit « choisir le bon jeu » |
+| `adopt({ key?, fixes?, todo? })` | reprise des données de l'ancien service du cœur (voir ci-dessous) ; ne remplace jamais, ne rend jamais une valeur |
+
+**Cale de compatibilité (à retirer en 0.3.0).** Pour que les sites et les modules d'avant continuent de marcher sans qu'on y touche, le cœur garde l'ancien service et `ctx.api.rawg` (permission `rawg`, toujours acceptée) :
+- **Module installé** : `ctx.api.rawg.cover/candidates/configured`, l'écran `/admin/settings/rawg-covers` (les liens « Ce n'est pas le bon jeu ? » déjà publiés) et les outils d'assistant `rawg_covers_to_check` / `rawg_cover_set` sont **relayés** vers lui (l'écran redirige, `?titre=` conservé). Les anciens modules n'ont rien à changer.
+- **Module absent** : l'ancien service du cœur répond comme avant, avec sa clé et ses corrections. Mettre le cœur à jour seul ne change rien pour personne.
+- **Reprise automatique** : un site qui utilisait RAWG (une clé ou des corrections dans les réglages du cœur) voit le module installé tout seul (catalogue officiel, avec son instance), au démarrage ou après une installation ou une mise à jour de module, puis la clé, les corrections et la liste « à vérifier » lui sont **copiées une fois** (`adopt`). C'est une copie : le cœur ne supprime rien dans cette version, donc désinstaller le module rend la main à l'ancien service (retour arrière). Une seule installation automatique par site ; si la personne retire ensuite le module, il n'est pas remis. La clé ne traverse que la mémoire, et seulement vers le module `game-covers` ; le repère `rawg.handover` (réglage) dit où on en est, sans aucune valeur. Journal : `module.install.auto`, `rawg.handover`.
+
+Le reste de cette section décrit l'interface historique `ctx.api.rawg`, qui reste valable tant que la cale existe.
+
+Un module qui déclare la permission `rawg` peut demander la jaquette d'un jeu : `const cover = await ctx.api.rawg.cover("Hades")`. La **clé d'API RAWG se règle une seule fois**, par le propriétaire, dans le module « Jaquettes de jeux » (avant la reprise : *Réglages › Services externes*) : un module ne demande **jamais** la clé à l'utilisateur, n'a pas de réglage « clé RAWG », et ne la voit jamais. Si un ancien module en avait une, le cœur la reprend une fois au démarrage quand le réglage du cœur est vide.
 
 `cover(title)` ne lève jamais et renvoie `{ status, url }` : `found` (`url` = adresse https de l'image du jeu qui ressemble le plus au titre demandé), `none` (RAWG ne connaît pas ce titre, ou la propriétaire a choisi « Aucune jaquette »), `no-key` (le propriétaire n'a pas saisi de clé, ou le module n'a pas la permission), `refused` (RAWG refuse la clé : à ne pas confondre avec « aucun résultat »), `unreachable` (RAWG ne répond pas). `url` vaut `null` sauf pour `found`. `ctx.api.rawg.configured()` dit si une clé est réglée. La jaquette est un plus : affichez le jeu sans image dans tous les autres cas, et gardez l'adresse trouvée plutôt que de la redemander.
 
@@ -1439,11 +1513,11 @@ Un titre douteux entre dans la liste **Jaquettes à vérifier** (*Réglages › 
 
 `ctx.api.rawg.candidates(title)` (permission `rawg`, jamais d'exception) renvoie `{ status, candidates }` : `status` comme pour `cover`, `candidates` = **6 jeux au plus**, du plus ressemblant au moins ressemblant, chacun `{ id, name, year, platforms, url }` (`year` ou `null`, 3 plateformes au plus, `url` = jaquette sur `https://media.rawg.io`). Elle sert à **montrer** les choix ; le choix lui-même se fait dans l'admin.
 
-**Lien stable vers l'écran de correction** : `/admin/settings/rawg-covers?titre=<titre>` (le titre encodé, par exemple `encodeURIComponent("Playrooms")`). Il est réservé aux administrateurs : une personne sans ce droit est renvoyée comme pour toute page d'admin. Le titre est lu et validé côté serveur (1 à 120 caractères, au moins une lettre ou un chiffre ; sinon l'écran dit que le titre n'est pas valable) et n'est jamais écrit sans échappement. Un module qui affiche une jaquette dont `ambiguous` est vrai (ou qui veut toujours l'offrir) peut écrire « Ce n'est pas le bon jeu ? » avec ce lien, dans l'espace d'administration du module seulement (jamais sur une page publique). Pour que le titre soit celui que la propriétaire verra, passez **le même titre** à `cover` et au lien.
+**Lien stable vers l'écran de correction** (redirigé vers l'écran du module « Jaquettes de jeux » quand il est là) : `/admin/settings/rawg-covers?titre=<titre>` (le titre encodé, par exemple `encodeURIComponent("Playrooms")`). Il est réservé aux administrateurs : une personne sans ce droit est renvoyée comme pour toute page d'admin. Le titre est lu et validé côté serveur (1 à 120 caractères, au moins une lettre ou un chiffre ; sinon l'écran dit que le titre n'est pas valable) et n'est jamais écrit sans échappement. Un module qui affiche une jaquette dont `ambiguous` est vrai (ou qui veut toujours l'offrir) peut écrire « Ce n'est pas le bon jeu ? » avec ce lien, dans l'espace d'administration du module seulement (jamais sur une page publique). Pour que le titre soit celui que la propriétaire verra, passez **le même titre** à `cover` et au lien.
 
 Pas de lien ni de méthode pour écrire une correction depuis un module : le cœur est l'unique propriétaire de la donnée « jaquette d'un jeu ». Les outils d'un assistant IA (`rawg_covers_to_check`, `rawg_cover_set`) sont décrits dans [MAINTENANCE-IA.md](MAINTENANCE-IA.md).
 
-Pour vos tests : `fakeCtx({ rawgCover, rawgCandidates })` (objets ou fonctions `(titre) => résultat`) ; `ctx.calls.rawgCandidates` garde les titres demandés. Exigez `"minCore": "0.2.10"` si vous appelez `candidates` ou lisez `ambiguous`.
+Pour vos tests : `fakeCtx({ services: { "game.cover": { cover: async ({ title }) => ({ status: "found", url: "https://media.example.test/c.jpg" }) } } })` pour le service ; l'ancienne interface se simule avec `fakeCtx({ rawgCover, rawgCandidates })` (objets ou fonctions `(titre) => résultat`) ; `ctx.calls.rawgCandidates` garde les titres demandés. Exigez `"minCore": "0.2.10"` si vous appelez `candidates` ou lisez `ambiguous`.
 
 ## Alimenter le flux RSS
 
