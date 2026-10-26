@@ -7,7 +7,7 @@ import { can, type AdminUser } from "@/core/auth/access";
 import { makeApi, type CallerRef } from "./api";
 import { makeLegacy } from "./legacySettings";
 import type { LoadedModule } from "./registry";
-import { followsSite, resolveDefault } from "./settingValues";
+import { followsSite, readMulti, resolveDefault } from "./settingValues";
 import type { ModuleContext } from "./types";
 
 export function instanceSettingKey(instanceId: string, key: string): string {
@@ -35,6 +35,8 @@ export async function buildContext(mod: LoadedModule, instance: InstanceView, lo
       continue;
     }
     const stored = await getSetting(instanceSettingKey(instance.id, field.key), loc);
+    // (0.3.0) Plusieurs choix : toujours une liste, ramenée aux options actuelles du module (jamais une valeur inconnue).
+    if (field.type === "multichoice") { values[field.key] = readMulti(field, stored); continue; }
     // Une couleur vide (ou jamais réglée) suit le thème du site quand son défaut est « theme:<jeton> ».
     const token = field.type === "color" ? themeRef(field.default) : null;
     values[field.key] = token ? (typeof stored === "string" && stored !== "" ? stored : theme[token]) : (stored ?? field.default);

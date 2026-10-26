@@ -6,7 +6,7 @@ import { forgetChoices, isChoiceField, listChoiceOptions, validateChoices, type 
 import { missingSettings } from "@/core/modules/missingSettings";
 import { hasValue } from "@/core/modules/groups";
 import { getModule, type LoadedModule } from "@/core/modules/registry";
-import { checkFieldInput, followsSite, resolveDefault, shouldStore, siteDefaultRef } from "@/core/modules/settingValues";
+import { checkFieldInput, checkMultiInput, followsSite, resolveDefault, shouldStore, siteDefaultRef } from "@/core/modules/settingValues";
 import { planTabs, settingTab } from "@/core/modules/tabs";
 import { localized, type JsonSchemaLite, type SettingField } from "@/core/modules/types";
 import { McpToolError, validateArgs } from "@/core/services/mcp/validate";
@@ -49,7 +49,7 @@ export const CONFIGURE_INPUT = {
     instance: { type: "string", maxLength: 31, description: "Instance key, as listed by maintenance_modules (for example blog)." },
     changes: {
       type: "object",
-      description: `The settings to change, as {"settingKey": value}, ${MAX_CHANGES} at most; keys come from maintenance_module_settings. Value: text for text/url/link/color/select/choice, a number for number, true/false for a checkbox. An empty text or null puts the setting back to its default. A setting that exists in every language of the site takes one value per language: {"fr": "…", "en": "…"}. Everything is checked first; if one value is wrong nothing is saved and every problem is listed. Secret settings are refused: the owner types them in the admin.`,
+      description: `The settings to change, as {"settingKey": value}, ${MAX_CHANGES} at most; keys come from maintenance_module_settings. Value: text for text/url/link/color/select/choice, a number for number, true/false for a checkbox, a list of texts such as [\"a\", \"b\"] for a multiple-choice setting (null puts it back to its default). An empty text or null puts the setting back to its default. A setting that exists in every language of the site takes one value per language: {"fr": "…", "en": "…"}. Everything is checked first; if one value is wrong nothing is saved and every problem is listed. Secret settings are refused: the owner types them in the admin.`,
       additionalProperties: true,
     },
   },
@@ -76,6 +76,7 @@ type Shown = string | number | boolean | null;
 function show(field: Pick<SettingField, "type">, value: unknown): Shown {
   if (value === undefined || value === null || value === "") return null;
   if (typeof value === "number" || typeof value === "boolean") return value;
+  if (Array.isArray(value)) return clean(value.filter((v): v is string => typeof v === "string").join(", "), 300);   // plusieurs choix (0.3.0)
   if (typeof value !== "string") return clean(JSON.stringify(value) ?? "", 80);
   return field.type === "url" || field.type === "link" || field.type === "image" || field.type === "video" ? safeUrl(value) : clean(value, 300);
 }
@@ -102,7 +103,7 @@ function whereInAdmin(c: Ctx, field: SettingField): string {
   return `${c.t("nav.extensions")} › ${c.L(c.mod.manifest.name)} › ${tabName}`;
 }
 
-const EXAMPLE: Record<string, string> = { number: "12", color: "#ff8800", url: "https://example.org/page", link: "/contact  ·  https://example.org  ·  mailto:me@example.org", image: "https://example.org/picture.jpg", video: "/uploads/… (a video uploaded in the admin)", text: "…", textarea: "…", boolean: "true", select: "…", choice: "…" };
+const EXAMPLE: Record<string, string> = { number: "12", color: "#ff8800", url: "https://example.org/page", link: "/contact  ·  https://example.org  ·  mailto:me@example.org", image: "https://example.org/picture.jpg", video: "/uploads/… (a video uploaded in the admin)", text: "…", textarea: "…", boolean: "true", select: "…", choice: "…", multichoice: "[\"a\", \"b\"]" };
 
 function allowedText(field: SettingField, c: Ctx): string {
   switch (field.type) {
@@ -115,6 +116,7 @@ function allowedText(field: SettingField, c: Ctx): string {
     case "image": return "an https:// address or a file already uploaded in the admin (/uploads/…)";
     case "video": return "a video already uploaded in the admin (/uploads/….mp4 or .webm): an AI cannot upload files";
     case "choice": return "the id of one of the listed options";
+    case "multichoice": return `a list of values taken from: ${(field.options ?? []).slice(0, 20).map((o) => o.value).join(", ")}${field.minChoices ? `; at least ${field.minChoices}` : ""}${field.maxChoices ? `; at most ${field.maxChoices}` : ""}. [] ticks nothing`;
     case "secret": return "never set by an AI";
     default: return `text, ${MAX_TEXT} characters at most${c ? "" : ""}`;
   }
@@ -155,8 +157,8 @@ export async function readSettings(args: Record<string, unknown>) {
       out.push({ ...base, isSet: filled, editableByAi: false, howToSet: `Only the owner can type it, in the admin: ${whereInAdmin(c, f)}` });
       continue;
     }
-    const dflt = followsSite(f) ? `(follows the site's ${siteDefaultRef(f.default) === "tagline" ? "tagline" : "name"})` : typeof f.default === "string" && f.default.startsWith("theme:") ? "(follows the site's colors)" : f.default;
-    const resolvedDefault = f.default === undefined ? null : followsSite(f) ? clean(String(resolveDefault(f, site[c.locale] ?? { name: "", tagline: "" }) ?? ""), 120) : show(f, dflt);
+    const dflt = followsSite(f) ? `(follows the site's ${siteDefaultRef(f.default) === "tagline" ? "tagline" : "name"})` : typeof f.default === "string" && f.default.startsWith("theme:") ? "(follows the site's colors)" : f.type === "multichoice" ? f.defaultValues : f.default;
+    const resolvedDefault = f.type === "multichoice" ? (f.defaultValues?.length ? show(f, f.defaultValues) : null) : f.default === undefined ? null : followsSite(f) ? clean(String(resolveDefault(f, site[c.locale] ?? { name: "", tagline: "" }) ?? ""), 120) : show(f, dflt);
     let options: { id: string; label: string }[] | undefined;
     let moreOptions = false;
     if (f.type === "choice" && isChoiceField(f)) {
@@ -169,7 +171,7 @@ export async function readSettings(args: Record<string, unknown>) {
       usingDefault: !filled,
       ...(resolvedDefault !== null ? { default: resolvedDefault } : {}),
       allowed: allowedText(f, c),
-      ...(f.type === "select" ? { options: (f.options ?? []).slice(0, 20).map((o) => ({ value: o.value, label: c.L(o.label) })) } : {}),
+      ...(f.type === "select" || f.type === "multichoice" ? { options: (f.options ?? []).slice(0, 20).map((o) => ({ value: o.value, label: c.L(o.label) })) } : {}),
       ...(options ? { options, moreOptions } : {}),
       example: EXAMPLE[f.type] ?? "…",
       editableWith: f.advanced ? "maintenance_module_configure_advanced" : "maintenance_module_configure",
@@ -205,7 +207,8 @@ export function parseConfigureArgs(args: Record<string, unknown>): ConfigureArgs
   for (const [k, v] of entries) {
     if (!/^[a-zA-Z][a-zA-Z0-9_]{0,40}$/.test(k)) throw new McpToolError(`"${clean(k, 40)}" is not a setting key (see maintenance_module_settings)`);
     const scalar = (x: unknown) => x === null || typeof x === "string" || typeof x === "number" || typeof x === "boolean";
-    const ok = scalar(v) || (!!v && typeof v === "object" && !Array.isArray(v) && Object.keys(v).length <= 12 && Object.values(v as object).every(scalar));
+    const list = Array.isArray(v) && v.length <= 50 && v.every((x) => typeof x === "string" && x.length <= 100);   // plusieurs choix (0.3.0)
+    const ok = scalar(v) || list || (!!v && typeof v === "object" && !Array.isArray(v) && Object.keys(v).length <= 12 && Object.values(v as object).every(scalar));
     if (!ok) throw new McpToolError(`the value of "${k}" must be a text, a number, true/false, null, or one text per language such as {"fr": "…", "en": "…"}`);
   }
   return { instance, changes: changes as Record<string, unknown> };
@@ -223,6 +226,8 @@ export async function applyConfigure(input: ConfigureArgs, advanced: boolean): P
   const problems: Problem[] = [];
   const ops: Op[] = [];
   const fields = new Map(c.mod.manifest.settings.map((f) => [f.key, f]));
+  // Une LISTE n'est permise que pour un réglage « plusieurs choix » : pour tout autre (ou inconnu), même refus d'appel qu'avant la 0.3.0.
+  for (const [k, v] of Object.entries(input.changes)) if (Array.isArray(v) && fields.get(k)?.type !== "multichoice") throw new McpToolError(`the value of "${clean(k, 40)}" must be a text, a number, true/false, null, or one text per language such as {"fr": "…", "en": "…"}`);
   const site = Object.fromEntries(await Promise.all(c.locales.map(async (l) => { const cfg = await getSiteConfig(l); return [l, { name: cfg.name, tagline: cfg.tagline }] as const; })));
   const fail = (f: SettingField | null, key: string, problem: string, example?: string) => problems.push({ setting: key, ...(f ? { label: c.L(f.label) } : {}), problem, ...(example ? { example } : {}) });
   const name = (f: SettingField | null, key: string) => (f ? c.L(f.label) : key);
@@ -232,7 +237,7 @@ export async function applyConfigure(input: ConfigureArgs, advanced: boolean): P
     if (!f) { fail(null, key, t("aim.cfg.unknown", { field: clean(key, 40), list: [...fields.keys()].slice(0, 15).join(", ") })); continue; }
     if (f.type === "secret") { fail(f, key, t("aim.cfg.secret", { field: name(f, key), path: whereInAdmin(c, f) })); continue; }
     if (f.advanced && !advanced) { fail(f, key, t("aim.cfg.advanced", { field: name(f, key) })); continue; }
-    const isMap = !!raw && typeof raw === "object";
+    const isMap = !!raw && typeof raw === "object" && !Array.isArray(raw);
     // Un site à une seule langue : un réglage traduisible n'a qu'un champ dans l'admin, une valeur simple suffit. À plusieurs langues : une valeur par langue.
     const single = f.translatable && !isMap && c.locales.length === 1;
     if (f.translatable && !isMap && !single) { fail(f, key, t("aim.cfg.translatable", { field: name(f, key), example: `{${c.locales.slice(0, 2).map((l) => `"${l}": "…"`).join(", ")}}` })); continue; }
@@ -294,7 +299,7 @@ export async function applyConfigure(input: ConfigureArgs, advanced: boolean): P
   for (const o of ops) {
     const current = (await getSettingByLocale(instanceSettingKey(c.inst.id, o.key)))[o.locale];
     const next = o.del ? undefined : o.value;
-    const same = (current === undefined || current === "") ? next === undefined : current === next;
+    const same = (current === undefined || current === "") ? next === undefined : Array.isArray(next) || Array.isArray(current) ? JSON.stringify(current) === JSON.stringify(next) : current === next;
     if (same) { if (!unchanged.includes(o.key)) unchanged.push(o.key); continue; }
     changed.push({ setting: o.key, label: c.L(o.field.label), ...(o.locale ? { language: o.locale } : {}), from: show(o.field, current), to: show(o.field, next) });
     writes.push(o);
@@ -331,6 +336,12 @@ function parseValue(c: Ctx, f: SettingField, locale: string, value: unknown, sit
   // Vider : le réglage revient à sa valeur par défaut (comme un champ laissé vide dans l'admin).
   if (value === null || value === "") return { ...base, del: true };
   if (f.type === "boolean") return typeof value === "boolean" ? { ...base, del: false, value } : bad("boolean", "true");
+  if (f.type === "multichoice") {
+    const checked = checkMultiInput(f, value);
+    if (checked.ok) return { ...base, del: false, value: checked.value };
+    return bad(checked.reason, EXAMPLE.multichoice!, { options: (f.options ?? []).slice(0, 20).map((o) => o.value).join(", "), n: checked.reason === "multichoiceMin" ? f.minChoices ?? 0 : f.maxChoices ?? (f.options ?? []).length });
+  }
+  if (Array.isArray(value)) return bad("text", EXAMPLE[f.type] ?? "…");
   if (typeof value === "boolean") return bad("text", EXAMPLE[f.type] ?? "…");
   if (f.type === "number") {
     const n = typeof value === "number" ? value : typeof value === "string" && value.trim() !== "" ? Number(value.trim()) : NaN;

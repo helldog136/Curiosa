@@ -166,6 +166,25 @@ export default {
 `segments` est ce qui suit le chemin de l'instance (en minuscules). Il n'y a pas de `?paramètre` : faites passer la pagination par le chemin
 (`/guestbook/page/2`), comme le fait l'exemple. (Les listes d'entrées du cœur, elles, utilisent `?page=N` ; ne reprenez pas ce schéma pour une page de module.) Le résultat : `title`, `description`, `blocks`, `notFound`. Permission : `pages`.
 
+**Page d'attente, mentions : ne pas être indexée, être dans le plan du site (cœur 0.3.0, `"minCore": "0.3.0"`).** Une page qui n'a rien à faire dans un moteur de recherche (avertissement avant un lien, confirmation…) répond `robots: "noindex"` : le cœur pose lui-même la balise. Une page qui a des sous-pages (`/legal/cookies`) les liste dans `sitemap` (chemins complets, sous l'adresse de l'instance, 50 au plus) et déclare `"sitemapFromPage": true` dans `module.json` : le plan du site et `llms.txt` les reprennent. Un seul segment variable pour une route, par exemple un lien `/m/<clé>/go/<nom>` : la clé `"go/:slug"` dans `routes`, le segment arrive dans `ctx.params.slug` (déjà limité à lettres, chiffres, `-` et `_`).
+
+```js
+export default {
+  async page(ctx, { segments, for: purpose }) {
+    const base = "/" + ctx.instance.basePath;                     // "/legal"
+    if (segments[0] === "merci") return { title: "Merci", blocks: [], robots: "noindex" };
+    if (segments.length) return { notFound: true, blocks: [] };
+    return { title: "Mentions", blocks: [], sitemap: [base + "/cookies", base + "/conditions"] };   // purpose === "sitemap" : le cœur prépare le plan du site
+  },
+  routes: {
+    async "go/:slug"(request, ctx) {
+      const row = (await ctx.api.store.list("links", { limit: 200 })).find((r) => r.data.slug === ctx.params.slug);   // jamais d'adresse construite avec le segment
+      return row && /^https:\/\//.test(String(row.data.url)) ? Response.redirect(String(row.data.url), 302) : new Response("Not found", { status: 404 });
+    },
+  },
+};
+```
+
 Les **blocs** les plus utiles (liste complète dans la référence, « Blocs ») : `markdown` (sans HTML brut), `html` (brut — **vous échappez**), `heading`, `banner`, `links`,
 `hero`, `panel`, `entries`, `embed`, `form`, `table`, `copy`, `swatches`, `downloads`, `head`, `adminForm`. Pour afficher du texte de visiteur avec une mise en forme, le plus sûr est un
 bloc `html` dont vous échappez chaque valeur (`esc()` dans l'exemple) ; **jamais** de texte de visiteur dans un bloc `markdown` (les liens et images Markdown fonctionnent).

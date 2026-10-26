@@ -7,6 +7,7 @@ import { pageUrl } from "@/core/seo";
 import { loadSocialLinks } from "@/core/social";
 import { getSiteConfig } from "@/core/settings";
 import { pickDescription, pickName } from "@/core/instances";
+import { pageDeclarations } from "@/core/modules/pageDeclarations";
 
 /**
  * /llms.txt — une présentation du site en texte simple, pensée pour les assistants IA (standard « llms.txt » :
@@ -34,6 +35,13 @@ export function plain(text: string, max: number): string {
 }
 const label = (s: string) => plain(s, 120).replace(/[[\]]/g, "") || "—";
 const safeUrl = (u: string) => u.replace(/[\s()<>]/g, (c) => encodeURIComponent(c));
+
+/** Titre d'un chemin déclaré par un module (« /legal/cookie-policy » → « Cookie policy ») : le cœur ne connaît que l'adresse. */
+export function pathTitle(path: string): string {
+  const last = path.split("/").filter(Boolean).pop() ?? path;
+  const words = last.replace(/[-_]+/g, " ").trim();
+  return words ? words[0]!.toUpperCase() + words.slice(1) : path;
+}
 
 /** Écrit le fichier. Pure et déterministe ; ne dépasse jamais `LLMS_MAX_BYTES` (les dernières sections sont coupées). */
 export function renderLlmsTxt(doc: LlmsDoc): string {
@@ -66,8 +74,13 @@ export async function buildLlmsTxt(locale: string): Promise<string> {
   const at = (path: string) => pageUrl(siteUrl, loc, base.defaultLocale, path);
 
   const pages: LlmsLink[] = [{ title: t("llms.home"), url: at("/") }];
-  for (const { instance } of (await getActiveInstances()).filter((a) => hasPublicPage(a) && !!a.instance.basePath)) {
+  for (const active of (await getActiveInstances()).filter((a) => hasPublicPage(a) && !!a.instance.basePath)) {
+    const { instance } = active;
+    // (0.3.0) Un module qui le demande (`sitemapFromPage`) peut se déclarer « noindex » ou ajouter des chemins de sa page ; les autres : aucune différence.
+    const declared = await pageDeclarations(active, base.defaultLocale);
+    if (declared.noindex) continue;
     pages.push({ title: pickName(instance, loc, base.defaultLocale), url: at(`/${instance.basePath}`), description: pickDescription(instance, loc, base.defaultLocale) });
+    for (const path of declared.paths) pages.push({ title: pathTitle(path), url: at(path), description: pickName(instance, loc, base.defaultLocale) });
   }
 
   const items = await collectFeedItems({ locale: loc, limit: 40 });

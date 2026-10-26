@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 import { hasPublicPage } from "./modules/publicPage";
 import { siteUrl } from "@/core/config";
 import { getActiveInstances } from "@/core/modules/registry";
+import { pageDeclarations } from "@/core/modules/pageDeclarations";
 import { entryPath, listEntries } from "@/core/content/entries";
 import { languageAlternates, pageUrl } from "@/core/seo";
 import { getSiteConfig } from "@/core/settings";
@@ -43,9 +44,13 @@ export async function buildSitemap(max = SITEMAP_MAX_URLS): Promise<SitemapResul
   const fixed: Url[] = config.locales.map((l) => everywhere(l, "/"));
   for (const l of config.locales) fixed.push(everywhere(l, "/privacy"));
   const entryUrls: Url[] = [];
-  for (const { instance: collection, mod } of (await getActiveInstances()).filter(hasPublicPage)) {
+  for (const active of (await getActiveInstances()).filter(hasPublicPage)) {
+    const { instance: collection, mod } = active;
+    // (0.3.0) Seul un module qui le demande (`sitemapFromPage`) est lu ici ; les autres : aucune différence.
+    const declared = await pageDeclarations(active, config.defaultLocale);
     for (const locale of config.locales) {
-      if (collection.basePath) fixed.push(everywhere(locale, `/${collection.basePath}`));
+      if (collection.basePath && !declared.noindex) fixed.push(everywhere(locale, `/${collection.basePath}`));
+      if (!declared.noindex) for (const path of declared.paths) fixed.push(everywhere(locale, path));
       if (!mod.manifest.content || collection.clickAction === "external") continue;
       for (const entry of await listEntries({ instance: collection, locale })) {
         if (entry.locale !== locale) continue; // pas de doublon pour les repli de langue

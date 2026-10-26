@@ -10,7 +10,7 @@ import { commitJournal, unwind, type Journal } from "./dependencyInstaller";
 import { instanceSettingKey } from "./context";
 import { getModule, type LoadedModule } from "./registry";
 import { normalizeNeeds, normalizeOffers, offerVersionOf, satisfiesVersion } from "./serviceVersions";
-import { checkFieldInput } from "./settingValues";
+import { checkFieldInput, checkMultiInput } from "./settingValues";
 import type { ModuleContext, SeedRequest, SeedResult } from "./types";
 
 /**
@@ -192,6 +192,12 @@ function checkSettings(manifest: LoadedModule["manifest"], given: SeedRequest["s
       if (field.type === "boolean") {
         if (typeof value !== "boolean") throw new SeedError("invalid-setting", `seedInstance: "${key}" must be a boolean`);
         out.push({ key, locale, value });
+        continue;
+      }
+      if (field.type === "multichoice") {
+        const checked = checkMultiInput(field, value);
+        if (!checked.ok) throw new SeedError("invalid-setting", `seedInstance: invalid value for "${key}" (${checked.reason})`);
+        out.push({ key, locale, value: checked.value });
         continue;
       }
       if (typeof value !== "string" && typeof value !== "number") throw new SeedError("invalid-setting", `seedInstance: "${key}" must be text or a number`);

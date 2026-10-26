@@ -96,13 +96,13 @@ export async function runSection(
 }
 
 /** Page publique d'un module qui définit la sienne (sinon le cœur affiche liste + entrées). */
-export async function runPage(instanceKey: string, segments: string[], locale: string): Promise<PageResult | null | undefined> {
+export async function runPage(instanceKey: string, segments: string[], locale: string, purpose?: "sitemap"): Promise<PageResult | null | undefined> {
   const active = (await getActiveInstances()).find((a) => a.instance.key === instanceKey);
   if (!active?.mod.def.page) return undefined;
   try {
     const ctx = await buildContext(active.mod, active.instance, locale);
     const page = active.mod.def.page;
-    const result = await boxed({ kind: "page", moduleId: active.mod.manifest.id, instanceKey: instanceKey, name: "page" }, () => page(ctx, { segments }));
+    const result = await boxed({ kind: "page", moduleId: active.mod.manifest.id, instanceKey: instanceKey, name: "page" }, () => page(ctx, purpose ? { segments, for: purpose } : { segments }));
     return result === STALLED ? { notFound: true, blocks: [] } : result;   // sans réponse : comme une page en erreur (404 sobre), jamais une page qui n'en finit pas
   } catch (error) {
     console.error(`[modules] ${instanceKey} failed rendering its page:`, error);

@@ -10,6 +10,7 @@ import { createHash } from "node:crypto";
  *   await def.sections.upcoming(ctx, { count: 3 });
  *
  * - `ctx.setting(k)` lit `settings` (valeur absente → undefined, comme le vrai contexte sans défaut)
+ * - `ctx.params` (cœur 0.3.0) : option `params` (par ex. `{ slug: "abc" }` pour tester une route « go/:slug »), `{}` par défaut
  * - `ctx.theme` : le thème du site (option `theme`)
  * - `ctx.t(k, vars)` lit `messages` (clé → texte, variables {x} remplacées) ; clé inconnue → la clé
  * - `ctx.api.store` : stockage en mémoire, isolé par appel de fakeCtx (mêmes méthodes que le vrai)
@@ -177,6 +178,7 @@ export function fakeCtx(opts = {}) {
     moduleId,
     instance: { id: `id-${key}`, key, basePath, name },
     locale, defaultLocale, locales,
+    params: Object.freeze({ ...(opts.params ?? {}) }),   // cœur 0.3.0 : `{ slug }` dans une route « …/:slug », `{}` ailleurs
     setting: (k) => (cleared.has(k) ? undefined : settings[k]),
     async resolveChoice(k) {
       calls.choices.push(k);
