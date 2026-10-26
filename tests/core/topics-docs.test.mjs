@@ -25,3 +25,7 @@ test("CREATE-A-MODULE.md explique comment un dépôt tiers tient son registre de
   assert.match(tutorial, /### Le registre des sujets de votre dépôt/);
   assert.match(tutorial, /docs\/TOPICS\.md/);
 });
+
+test("les sujets entre modules (social.stat, calendar.event…) ne sont plus dans la documentation du cœur : ils sont dans le registre du dépôt des modules", () => {
+  for (const topic of ["social.stat", "calendar.event", "planning.slot", "map.place", "ha.state", "mascot.hint"]) assert.ok(!new RegExp(`^\\| \`${topic.replace(".", "\\.")}\` \\|`, "m").test(reference), `${topic} n'a pas sa ligne dans MODULES.md du cœur`);
+});
