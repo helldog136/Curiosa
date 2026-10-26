@@ -493,7 +493,14 @@ async function checkGitUpdate(row: Module): Promise<{ check: ModuleUpdateCheck; 
  * données intactes (`modules.error.requires` + `missing`). Une migration qui échoue met l'instance à l'écart avec « Réessayer » ; les fournisseurs restent.
  */
 export async function updateModule(id: string): Promise<InstallResult> {
-  return updateModuleWithin(id, [id]);
+  const result = await updateModuleWithin(id, [id]);
+  if (result.ok) noteModulesChanged();
+  return result;
+}
+
+/** Une installation ou une mise à jour vient de réussir : la cale de compatibilité RAWG prépare, au mieux et sans attendre, la reprise de l'ancien service (à retirer en 0.3.0). */
+function noteModulesChanged(): void {
+  void import("@/core/services/rawgBridge").then((m) => m.noteModulesChanged()).catch(() => {});
 }
 
 /** `chain` : chaîne des modules en cours de mise à jour ou d'installation (un fournisseur mis à jour par la cascade ne peut pas redemander l'un d'eux). */
@@ -818,5 +825,7 @@ export async function installFromCatalogue(id: string, opts: { dependencies?: bo
   const fragment = entry.ref || entry.subdir ? `#${entry.ref ?? ""}${entry.subdir ? `:${entry.subdir}` : ""}` : "";
   const { confirmExtra: _confirmed, ...rest } = opts;
   void _confirmed;
-  return installModule(`${entry.repo}${fragment}`, { expectId: id, ...rest });
+  const result = await installModule(`${entry.repo}${fragment}`, { expectId: id, ...rest });
+  if (result.ok) noteModulesChanged();
+  return result;
 }

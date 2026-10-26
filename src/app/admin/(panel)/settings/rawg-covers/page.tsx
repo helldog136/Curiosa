@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { adminCtx } from "@/core/admin";
 import { ActionForm } from "@/components/admin/ActionForm";
 import { TextField } from "@/components/admin/Field";
@@ -6,6 +7,7 @@ import { RawgSearch } from "@/components/admin/RawgSearch";
 import { ui } from "@/components/admin/ui";
 import { candidatesFor, checkTitle, RAWG_FIX_PATH } from "@/core/rawgAdmin";
 import { isRawgConfigured } from "@/core/services/rawg";
+import { delegate } from "@/core/services/rawgBridge";
 import { fixFor, listFixes, rawgImageUrl, readToCheck, type Doubtful, type Fix } from "@/core/services/rawgFixes";
 import { titleKey } from "@/core/services/rawgMatch";
 import { chooseGameAction, chooseImageAction, chooseNoneAction, confirmAction, forgetAction, forgetAllAction } from "./actions";
@@ -27,6 +29,17 @@ function Cover({ url, size = "h-24 w-[4.5rem]" }: { url: string | null; size?: s
 export default async function RawgCoversPage({ searchParams }: { searchParams: Promise<Params> }) {
   const { t, advanced, locale, user } = await adminCtx("admin");
   const sp = await searchParams;
+  // Cale de compatibilité (à retirer en 0.3.0, voir services/rawgBridge.ts) : cet écran est maintenant celui du module « Jaquettes de jeux ». L'adresse reste valable (liens publiés
+  // par les modules, favoris) et conduit au même écran, sur le même titre.
+  const moved = await delegate();
+  if (moved) {
+    const keep = new URLSearchParams();
+    const titre = one(sp.titre).slice(0, 400), q = one(sp.q).slice(0, 400), saved = one(sp.saved);
+    if (titre) keep.set("titre", titre);
+    if (q && titre) keep.set("q", q);
+    if (["game", "none", "confirm", "forgot"].includes(saved)) keep.set("saved", saved);
+    redirect(`${moved.adminPath}${keep.size ? `?${keep}` : ""}`);
+  }
   const configured = await isRawgConfigured();
   const saved = SAVED.has(one(sp.saved)) ? one(sp.saved) : "";
   const asked = one(sp.titre);
