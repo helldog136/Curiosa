@@ -34,7 +34,7 @@ export type PlacementManifest = {
 
 /**
  * La famille déclarée par le module (`family`), si elle s'applique : « overlays » n'est permis qu'à un module qui PEUT servir une source navigateur
- * (sinon la clé est ignorée, comme le choix d'un rangement « Overlays » sur autre chose). Une valeur inconnue est ignorée aussi (cœur plus récent, module plus ancien).
+ * (sinon la clé est ignorée, comme le choix d'un rangement « Overlays » sur autre chose). Une valeur inconnue est ignorée ici par prudence (le manifeste la refuse déjà à l'installation).
  */
 export function declaredFamily(m: Pick<PlacementManifest, "family" | "type" | "permissions">): "content" | "community" | "connections" | "overlays" | null {
   switch (m.family) {

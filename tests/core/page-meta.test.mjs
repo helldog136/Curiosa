@@ -186,3 +186,14 @@ test("route à segment libre : l'ancienne règle (route exacte seulement) est in
   await setup();
   assert.equal((await call("GET", "ping/extra")).status, 404);
 });
+
+test("rechargement à chaud d'un module existant (sans sitemapFromPage) : nouvelle copie chargée, mêmes routes, même plan du site, mêmes réponses", async () => {
+  await setup({ sitemapFromPage: false });
+  const observe = async () => ({ urls: await urls(), llms: await buildLlmsTxt("fr"), exact: await (await call("GET", "go")).text(), ping: await (await call("GET", "ping")).text(), slug: (await call("GET", "go/abc")).status });
+  const before = await observe();
+  assert.equal(before.slug, 200, "la route « go/:slug » de ce module de test répond avant comme après");
+  await prisma.module.update({ where: { id: "legal" }, data: { version: "1.0.1" } });
+  resetModuleRegistry();
+  assert.deepEqual(await observe(), before);
+  assert.equal(globalThis.__pageCalls ?? 0, 0, "page() n'a toujours pas été appelée par le plan du site");
+});
