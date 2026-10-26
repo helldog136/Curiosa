@@ -26,6 +26,7 @@ export const HANDOVER_SETTING = "rawg.handover";
 const RETRY_MS = 10 * 60_000;
 const DECISION_MS = 5_000;
 const ADOPT_WAIT_MS = 4_000;
+let lastInstallTry = 0;
 
 export type Handover = { installedAt?: string; doneAt?: string; key?: boolean; fixes?: number; todo?: number };
 export async function handoverState(): Promise<Handover> {
@@ -45,6 +46,8 @@ async function legacyData(): Promise<{ key: string; fixes: Record<string, Fix>; 
 export type Delegate = { adminPath: string };
 let decided: { at: number; value: Delegate | null } | null = null;
 export function forgetBridgeDecision(): void { decided = null; }
+/** Pour les tests : oublie aussi l'espacement des tentatives d'installation. */
+export function resetBridge(): void { decided = null; lastInstallTry = 0; }
 
 /**
  * La cale doit-elle relayer vers le module ? Oui s'il y a un fournisseur de `game.cover` ET que la reprise est faite (ou qu'il n'y a rien à reprendre). Si le module est là mais la
@@ -128,7 +131,6 @@ export async function bridgedTool(name: string, args: Record<string, unknown>, a
 // ── Installer et reprendre ────────────────────────────────────────────────────────────────────────────────────────────────
 export type HandoverResult = "nothing" | "done" | "waiting" | "failed";
 let running: Promise<HandoverResult> | null = null;
-let lastInstallTry = 0;
 
 /**
  * Prépare puis fait la reprise. `install` : installer le module du catalogue officiel s'il manque (une seule fois par site, tentatives espacées de 10 minutes). Idempotente :
@@ -158,7 +160,7 @@ async function run(opts: { install?: boolean }): Promise<HandoverResult> {
   const v = r.ok && r.value && typeof r.value === "object" ? (r.value as Record<string, unknown>) : null;
   // Réussi seulement si le module tient bien la clé (quand il y en avait une) : sinon on réessaiera.
   if (!v || v.ok !== true || (legacy.key && v.keyHeld !== true)) return "failed";
-  await setSetting(HANDOVER_SETTING, { ...st, doneAt: new Date().toISOString(), key: v.keyHeld === true, fixes: Number(v.fixes) || 0, todo: Number(v.todo) || 0 } satisfies Handover);
+  await setSetting(HANDOVER_SETTING, { ...(await handoverState()), doneAt: new Date().toISOString(), key: v.keyHeld === true, fixes: Number(v.fixes) || 0, todo: Number(v.todo) || 0 } satisfies Handover);
   await audit("core", "rawg.handover", COVERS_MODULE);   // jamais une valeur
   forgetBridgeDecision();
   return "done";

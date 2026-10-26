@@ -217,6 +217,11 @@ Le site n'envoie aucune politique `Content-Security-Policy` globale (seulement `
 
 ## Jaquettes de jeux : corrections de la propriétaire (0.2.10)
 
+Les jaquettes sont maintenant servies par le module officiel « Jaquettes de jeux » (même règles, appliquées par le module : mêmes bornes, mêmes contrôles d'image, client réseau du cœur, droit `fix` pour écrire depuis un autre module). Ce que fait le cœur pour la transition (`services/rawgBridge.ts`, à retirer en 0.3.0) :
+- **La clé ne va qu'au module officiel `game-covers`**, en mémoire, une seule fois (`adopt`) ; un autre module qui offrirait `game.cover` reçoit des titres de jeux, jamais la clé (le cœur filtre par identifiant). Ni affichée, ni journalisée, ni dans le repère `rawg.handover`.
+- **Installation automatique bornée** : uniquement l'entrée du catalogue **officiel** (jamais « extra »), compatible, qui offre bien `game.cover` ; une fois par site ; tentatives espacées de 10 minutes ; journal `module.install.auto`.
+- **Copie, pas déplacement** : rien n'est effacé du cœur dans cette version (retour arrière possible) ; la clé reste donc aussi dans les réglages du cœur et dans leur sauvegarde, comme avant, jusqu'à 0.3.0.
+
 - **Aucune requête vers une adresse donnée par une personne** : le cœur n'interroge que l'API RAWG (`api.rawg.io`), comme avant. Le jeu se choisit par son **numéro** parmi les propositions que RAWG vient de donner ; l'image enregistrée est celle de cette réponse, jamais une adresse envoyée par le navigateur ou un assistant. Le texte « Chercher un autre nom » n'est qu'un mot de recherche (nettoyé, 100 caractères).
 - **Images** : une image (choisie parmi les jeux ou, en mode avancé, collée) doit être exactement `https://media.rawg.io/media/….(png|jpg|jpeg|webp)` : https, cet hôte seulement, ni port, ni identifiant, ni paramètre, ni `..`, ni `%`, ni sous-domaine ; l'adresse doit être sous sa forme canonique. Le cœur ne la télécharge pas et ne suit aucune redirection : il garde le **chemin** (l'hôte est écrit par le cœur à la lecture). Une correction abîmée ou piégée dans une sauvegarde est ignorée à la lecture (mêmes règles).
 - **Affichage** : les titres et noms sont du texte (jamais du HTML) ; `?titre=` est validé côté serveur et échappé.
