@@ -285,6 +285,14 @@ Le sujet du cœur `core.entry` donne les entrées publiées de tout module à co
 pour un exemple de consommateur, lisez `sponsor-ticker` (`curiosa-extras/modules/sponsor-ticker`). Formats de champs : `string`, `url`, `number`, `boolean`, `string[]`.
 Nommez vos sujets `domaine.objet` en anglais. Permission : `topics`. Voir la référence : « sujets ».
 
+### Le registre des sujets de votre dépôt
+
+Le cœur ne tient **aucun registre** des sujets échangés entre modules : il ne documente que les trois qu'il lit lui-même (`core.entry`, `social.link`, `feed.item`). Chaque dépôt de modules tient donc le sien : le catalogue officiel dans `docs/TOPICS.md` de `curiosa-extras`, un dépôt tiers dans le même fichier de son propre dépôt.
+
+- Format : un tableau Markdown, **une ligne par sujet** : `` `sujet` | fournisseurs | consommateurs | champs | depuis `` (les champs facultatifs suivis de `?`, les valeurs fermées et les bornes entre parenthèses).
+- Un test de votre dépôt lit ce fichier et échoue si un module utilise un sujet absent (modèle : `tests/repo-rules.test.mjs` de `curiosa-extras`, test « sujets »). Rien ne passe par le cœur : créer un sujet ne demande pas de nouvelle version du cœur.
+- Si vous fournissez un sujet que le cœur lit (`social.link`, `feed.item`), suivez la règle d'évolution de `docs/MODULES.md` : champs nouveaux facultatifs, listes fermées, un champ = sa version.
+
 ### Un bouton de réseau social : choisir `rel`, `referrerPolicy`, `target`
 
 Un module qui fournit `social.link` renvoie `[{ label, url, icon? }]` et peut ajouter, par bouton, `rel` (`"nofollow sponsored"` ou une liste), `referrerPolicy` (`"strict-origin-when-cross-origin"`…) et `target` (`"_self"` ou `"_blank"`). Le cœur ne retient que les valeurs de listes fermées (voir [MODULES.md](MODULES.md#réseaux-sociaux)) : une valeur inconnue est ignorée et le bouton garde `noopener noreferrer` + `_blank`. Rien d'autre n'est copié dans le HTML. Testez avec `fakeCtx` que votre export renvoie ces champs, et sur un site jetable que le HTML de l'en-tête est celui attendu.
