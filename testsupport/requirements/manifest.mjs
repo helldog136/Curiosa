@@ -38,7 +38,7 @@ export const FEATURES = [
   { since: "0.1.16", label: "une période (from/to) demandée à ctx.api.topics.collect", test: (m) => /\bcollect\s*\([^)]*\{[^}]*\b(from|to)\b/.test(stripComments(m.code)) },
   { since: "0.1.16", label: "ctx.api.seo.jsonLd (données structurées)", test: (m) => /\bseo\s*\.\s*jsonLd\b/.test(stripComments(m.code)) },
   { since: "0.1.14", label: "un service « each » / ctx.api.services.callAll", test: (m, man) => (man.offers ?? []).some((o) => o.each) || /\bcallAll\b/.test(stripComments(m.code)) },
-  { since: "0.1.10", label: "la permission « rawg » (jaquettes de jeux)", test: (m, man) => (man.permissions ?? []).includes("rawg") || /\bapi\s*\??\.\s*rawg\b/.test(stripComments(m.code)) },
+  { since: "0.1.10", label: "la permission « rawg » (jaquettes de jeux)", test: (m, man) => (man.permissions ?? []).includes("rawg") || /\bapi\s*\??\.\s*rawg\b(?!\.io\b)/.test(stripComments(m.code)) },
 ];
 
 const requirements = [

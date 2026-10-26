@@ -242,6 +242,30 @@ export async function callService(consumer: Pick<ActiveInstance, "mod" | "instan
   return (await dispatch(consumer, service, method, args, locale, opts.provider, opts.viewer, opts.caller)).outcome;
 }
 
+/**
+ * CŒUR SEULEMENT (jamais exposé aux modules) : appelle une méthode d'un service chez son fournisseur actif, sans consommateur déclaré. Sert à la cale de compatibilité
+ * `ctx.api.rawg` (services/rawgBridge.ts), qui relaie les anciens modules vers le service `game.cover`. `moduleId` : n'accepter que ce module-là (la reprise de la clé n'est
+ * confiée qu'à lui). Même règle que `callService` pour le choix du fournisseur (maître, ou première instance d'un service `each`) ; ne lève jamais.
+ */
+export async function callProvider(service: string, method: string, args: unknown, opts: { moduleId?: string; locale?: string } = {}): Promise<Outcome> {
+  const found = (await providerInstances(service)).filter((p) => !opts.moduleId || p.mod.manifest.id === opts.moduleId);
+  if (found.length === 0) return { ok: false, reason: "unavailable" };
+  const { master } = await defaultTarget(found, service);
+  if (!hasMethod(master, service, method)) return { ok: false, reason: "no_method" };
+  try {
+    return { ok: true, value: await runOn(master, service, method, args, opts.locale) };
+  } catch (error) {
+    if (!isStalled(error)) console.error(`[modules] service ${service}.${method} failed:`, (error as Error)?.message);
+    return { ok: false, reason: "failed" };
+  }
+}
+
+/** L'instance qui répondrait à un appel de `callProvider` (pour trouver son écran d'administration), ou null. */
+export async function providerInstance(service: string, moduleId?: string): Promise<ActiveInstance | null> {
+  const found = (await providerInstances(service)).filter((p) => !moduleId || p.mod.manifest.id === moduleId);
+  return found.length ? (await defaultTarget(found, service)).master : null;
+}
+
 /** Les méthodes que ce fournisseur accepte d'appeler avec les droits de la personne connectée (`offers[].callerRights`). */
 const callerMethodsOf = (p: ActiveInstance, service: string): string[] => (p.mod.manifest.offers ?? []).find((o) => o.service === service)?.callerRights ?? [];
 

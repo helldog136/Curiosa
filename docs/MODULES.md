@@ -1014,7 +1014,7 @@ Deux familles : les **services** du cœur (génériques, voir [PLATFORM.md](PLAT
 | `ctx.api.files.claim(url)` | service | (cœur 0.2.13, permission `files`) revendique un fichier `/uploads/…` que la personne connectée vient d'envoyer ; voir « Fichiers envoyés : garder et supprimer » |
 | `ctx.api.files.remove(url)` | service | (cœur 0.2.13, permission `files`) supprime un fichier que CETTE instance a revendiqué (original et dérivés) ; idempotent |
 | `ctx.api.files.owns(url)` / `ctx.api.files.usage()` | service | (cœur 0.2.13, permission `files`) ce fichier est-il à cette instance ? / espace pris et plafonds du module |
-| `ctx.api.rawg.configured()` | service | une clé RAWG est-elle réglée par le propriétaire ? (permission `rawg` ; `false` sans elle) |
+| `ctx.api.rawg.configured()` | service | (cale de compatibilité, à retirer en 0.3.0 : préférez le service `game.cover`, voir « Jaquettes de jeux (RAWG) ») une clé RAWG est-elle réglée par le propriétaire ? (permission `rawg` ; `false` sans elle) |
 | `ctx.api.rawg.cover(title)` | service | jaquette d'un jeu : `{ status, url, name?, id?, ambiguous? }` avec `status` = `found` (`url` en https), `none` (aucun résultat, ou « aucune jaquette » choisi par la propriétaire), `no-key` (pas de clé), `refused` (RAWG refuse la clé), `unreachable` (RAWG injoignable) ; `name`, `id` et `ambiguous` sont **facultatifs** (cœur 0.2.10) ; permission `rawg`, voir « Jaquettes de jeux (RAWG) » |
 | `ctx.api.rawg.candidates(title)` | service | cœur 0.2.10 : les jeux que RAWG propose pour ce titre, `{ status, candidates: [{ id, name, year, platforms, url }] }` (6 au plus, jaquette obligatoire) ; même permission `rawg`, mêmes statuts, ne lève jamais |
 | `ctx.api.net.request({ url, method?, headers?, body?, timeoutMs?, maxBytes?, dedupe?, retry?, priority?, bucket? })` | service | appel réseau **neutre et borné** vers une API externe (https seulement, aucune permission) : `{ ok: true, status, headers, json?, text?, shared }` ou `{ ok: false, error, status?, retryAt? }` ; ne lève jamais. Voir « Appeler une API externe : `ctx.api.net` » |
@@ -1466,7 +1466,34 @@ Pour vos tests : `fakeCtx({ permissions: ["files"], uploads: [url, { url, by, ag
 
 ## Jaquettes de jeux (RAWG)
 
-Un module qui déclare la permission `rawg` peut demander la jaquette d'un jeu : `const cover = await ctx.api.rawg.cover("Hades")`. La **clé d'API RAWG se règle une seule fois**, par le propriétaire, dans *Réglages › Services externes* (comme le serveur d'e-mail) : un module ne demande **jamais** la clé à l'utilisateur, n'a pas de réglage « clé RAWG », et ne la voit jamais. Si un ancien module en avait une, le cœur la reprend une fois au démarrage quand le réglage du cœur est vide.
+**Le service de jaquettes est un module, plus une fonction du cœur.** Le module officiel **« Jaquettes de jeux »** (`game-covers`, dépôt des modules) détient la clé RAWG, cherche les jaquettes, garde les corrections « Quel est le bon jeu ? » de la propriétaire et offre le service **`game.cover`** (version 1). Un module qui veut des jaquettes le déclare comme besoin **facultatif** et l'appelle :
+
+```jsonc
+// module.json
+"requires": [{ "service": "game.cover", "optional": true }]
+```
+```js
+// Le service rend la même réponse que ci-dessous : { status, url, name?, id?, ambiguous? } ; jamais la clé.
+const r = await ctx.api.services.call("game.cover", "cover", { title: "Hades" });
+const cover = r.ok ? r.value : { status: "no-key", url: null };   // sans le module : pas de jaquette, le jeu s'affiche sans image
+```
+
+| Méthode de `game.cover` | Rôle |
+|---|---|
+| `status()` | `{ ready, configured, source, state }` : une clé est-elle réglée, et quel est le dernier état (`ok`, `refused`, `unreachable`) ; sans appel réseau |
+| `cover({ title })` | la jaquette du jeu : `{ status: "found" \| "none" \| "no-key" \| "refused" \| "unreachable", url, name?, id?, ambiguous? }` |
+| `candidates({ title, search? })` | les jeux proposés (6 au plus), pour **montrer** les choix |
+| `fix({ title, rawgId \| none \| forget })` | écrit une correction ; appel avec `{ asCaller: true }` depuis une action d'administration d'une personne qui a le droit « choisir le bon jeu » |
+| `adopt({ key?, fixes?, todo? })` | reprise des données de l'ancien service du cœur (voir ci-dessous) ; ne remplace jamais, ne rend jamais une valeur |
+
+**Cale de compatibilité (à retirer en 0.3.0).** Pour que les sites et les modules d'avant continuent de marcher sans qu'on y touche, le cœur garde l'ancien service et `ctx.api.rawg` (permission `rawg`, toujours acceptée) :
+- **Module installé** : `ctx.api.rawg.cover/candidates/configured`, l'écran `/admin/settings/rawg-covers` (les liens « Ce n'est pas le bon jeu ? » déjà publiés) et les outils d'assistant `rawg_covers_to_check` / `rawg_cover_set` sont **relayés** vers lui (l'écran redirige, `?titre=` conservé). Les anciens modules n'ont rien à changer.
+- **Module absent** : l'ancien service du cœur répond comme avant, avec sa clé et ses corrections. Mettre le cœur à jour seul ne change rien pour personne.
+- **Reprise automatique** : un site qui utilisait RAWG (une clé ou des corrections dans les réglages du cœur) voit le module installé tout seul (catalogue officiel, avec son instance), au démarrage ou après une installation ou une mise à jour de module, puis la clé, les corrections et la liste « à vérifier » lui sont **copiées une fois** (`adopt`). C'est une copie : le cœur ne supprime rien dans cette version, donc désinstaller le module rend la main à l'ancien service (retour arrière). Une seule installation automatique par site ; si la personne retire ensuite le module, il n'est pas remis. La clé ne traverse que la mémoire, et seulement vers le module `game-covers` ; le repère `rawg.handover` (réglage) dit où on en est, sans aucune valeur. Journal : `module.install.auto`, `rawg.handover`.
+
+Le reste de cette section décrit l'interface historique `ctx.api.rawg`, qui reste valable tant que la cale existe.
+
+Un module qui déclare la permission `rawg` peut demander la jaquette d'un jeu : `const cover = await ctx.api.rawg.cover("Hades")`. La **clé d'API RAWG se règle une seule fois**, par le propriétaire, dans le module « Jaquettes de jeux » (avant la reprise : *Réglages › Services externes*) : un module ne demande **jamais** la clé à l'utilisateur, n'a pas de réglage « clé RAWG », et ne la voit jamais. Si un ancien module en avait une, le cœur la reprend une fois au démarrage quand le réglage du cœur est vide.
 
 `cover(title)` ne lève jamais et renvoie `{ status, url }` : `found` (`url` = adresse https de l'image du jeu qui ressemble le plus au titre demandé), `none` (RAWG ne connaît pas ce titre, ou la propriétaire a choisi « Aucune jaquette »), `no-key` (le propriétaire n'a pas saisi de clé, ou le module n'a pas la permission), `refused` (RAWG refuse la clé : à ne pas confondre avec « aucun résultat »), `unreachable` (RAWG ne répond pas). `url` vaut `null` sauf pour `found`. `ctx.api.rawg.configured()` dit si une clé est réglée. La jaquette est un plus : affichez le jeu sans image dans tous les autres cas, et gardez l'adresse trouvée plutôt que de la redemander.
 
@@ -1486,11 +1513,11 @@ Un titre douteux entre dans la liste **Jaquettes à vérifier** (*Réglages › 
 
 `ctx.api.rawg.candidates(title)` (permission `rawg`, jamais d'exception) renvoie `{ status, candidates }` : `status` comme pour `cover`, `candidates` = **6 jeux au plus**, du plus ressemblant au moins ressemblant, chacun `{ id, name, year, platforms, url }` (`year` ou `null`, 3 plateformes au plus, `url` = jaquette sur `https://media.rawg.io`). Elle sert à **montrer** les choix ; le choix lui-même se fait dans l'admin.
 
-**Lien stable vers l'écran de correction** : `/admin/settings/rawg-covers?titre=<titre>` (le titre encodé, par exemple `encodeURIComponent("Playrooms")`). Il est réservé aux administrateurs : une personne sans ce droit est renvoyée comme pour toute page d'admin. Le titre est lu et validé côté serveur (1 à 120 caractères, au moins une lettre ou un chiffre ; sinon l'écran dit que le titre n'est pas valable) et n'est jamais écrit sans échappement. Un module qui affiche une jaquette dont `ambiguous` est vrai (ou qui veut toujours l'offrir) peut écrire « Ce n'est pas le bon jeu ? » avec ce lien, dans l'espace d'administration du module seulement (jamais sur une page publique). Pour que le titre soit celui que la propriétaire verra, passez **le même titre** à `cover` et au lien.
+**Lien stable vers l'écran de correction** (redirigé vers l'écran du module « Jaquettes de jeux » quand il est là) : `/admin/settings/rawg-covers?titre=<titre>` (le titre encodé, par exemple `encodeURIComponent("Playrooms")`). Il est réservé aux administrateurs : une personne sans ce droit est renvoyée comme pour toute page d'admin. Le titre est lu et validé côté serveur (1 à 120 caractères, au moins une lettre ou un chiffre ; sinon l'écran dit que le titre n'est pas valable) et n'est jamais écrit sans échappement. Un module qui affiche une jaquette dont `ambiguous` est vrai (ou qui veut toujours l'offrir) peut écrire « Ce n'est pas le bon jeu ? » avec ce lien, dans l'espace d'administration du module seulement (jamais sur une page publique). Pour que le titre soit celui que la propriétaire verra, passez **le même titre** à `cover` et au lien.
 
 Pas de lien ni de méthode pour écrire une correction depuis un module : le cœur est l'unique propriétaire de la donnée « jaquette d'un jeu ». Les outils d'un assistant IA (`rawg_covers_to_check`, `rawg_cover_set`) sont décrits dans [MAINTENANCE-IA.md](MAINTENANCE-IA.md).
 
-Pour vos tests : `fakeCtx({ rawgCover, rawgCandidates })` (objets ou fonctions `(titre) => résultat`) ; `ctx.calls.rawgCandidates` garde les titres demandés. Exigez `"minCore": "0.2.10"` si vous appelez `candidates` ou lisez `ambiguous`.
+Pour vos tests : `fakeCtx({ services: { "game.cover": { cover: async ({ title }) => ({ status: "found", url: "https://media.example.test/c.jpg" }) } } })` pour le service ; l'ancienne interface se simule avec `fakeCtx({ rawgCover, rawgCandidates })` (objets ou fonctions `(titre) => résultat`) ; `ctx.calls.rawgCandidates` garde les titres demandés. Exigez `"minCore": "0.2.10"` si vous appelez `candidates` ou lisez `ambiguous`.
 
 ## Alimenter le flux RSS
 

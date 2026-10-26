@@ -11,7 +11,7 @@ const strip = (m) => stripComments(m.code);
 const API_USE = [
   { permission: "storage", re: /\bapi\s*\??\.\s*store\b|\{[^}]*\bstore\b[^}]*\}\s*=\s*[\w.]*\bapi\b/, label: "le stockage (ctx.api.store)" },
   { permission: "mail", re: /\bapi\s*\??\.\s*mail\b|\{[^}]*\bmail\b[^}]*\}\s*=\s*[\w.]*\bapi\b/, label: "l'envoi d'e-mails (ctx.api.mail)" },
-  { permission: "rawg", re: /\bapi\s*\??\.\s*rawg\b|\{[^}]*\brawg\b[^}]*\}\s*=\s*[\w.]*\bapi\b/, label: "les jaquettes de jeux (ctx.api.rawg)" },
+  { permission: "rawg", re: /\bapi\s*\??\.\s*rawg\b(?!\.io\b)|\{[^}]*\brawg\b[^}]*\}\s*=\s*[\w.]*\bapi\b/, label: "les jaquettes de jeux (ctx.api.rawg)" },
   { permission: "privacy", re: /\bapi\s*\??\.\s*privacy\b|\{[^}]*\bprivacy\b[^}]*\}\s*=\s*[\w.]*\bapi\b/, label: "les déclarations de vie privée des modules (ctx.api.privacy)" },
   { permission: "files", re: /\bapi\s*\??\.\s*files\b|\{[^}]*\bfiles\b[^}]*\}\s*=\s*[\w.]*\bapi\b/, label: "les fichiers envoyés à garder et à supprimer (ctx.api.files)" },
   { permission: "visitor.geolocation", re: /\bnavigator\s*\??\.\s*geolocation\b|\bgeolocation\s*\??\.\s*(?:getCurrentPosition|watchPosition)\b/, label: "la position du visiteur (navigator.geolocation)" },

@@ -9,6 +9,7 @@ import { isMailConfigured, sendMail } from "@/core/services/mail";
 import { sharedNet } from "@/core/services/net";
 import { qrSvg } from "@/core/services/qr";
 import { isRawgConfigured, rawgCandidates, rawgCover } from "@/core/services/rawg";
+import { bridgedCandidates, bridgedConfigured, bridgedCover } from "@/core/services/rawgBridge";
 import { renderPng, type PngSpec } from "@/core/services/render";
 import { createStore } from "@/core/services/store";
 import { claimFile, filesUsage, FILES_QUOTA_BYTES, FILES_QUOTA_COUNT, ownsFile, removeFile, type FileOwner } from "@/core/services/files";
@@ -31,7 +32,7 @@ import type { ModuleApi } from "./types";
  *     store   stockage privé de l'instance
  *     mail    envoi d'e-mails au nom du site (SMTP réglé dans l'admin)
  *     files   fichiers que le module revendique et supprime (permission « files », cœur 0.2.13 ; services/files.ts)
- *     rawg    jaquettes de jeux et jeux candidats (clé RAWG réglée une fois dans l'admin ; permission « rawg »)
+ *     rawg    (cale de compatibilité, à retirer en 0.3.0) jaquettes de jeux et jeux candidats, relayées vers le service `game.cover` du module « Jaquettes de jeux » ; permission « rawg »
  *     topics  échange d'informations typées entre modules
  *     net     client réseau neutre et borné (délai, pauses 429, quota, disjoncteur, file bornée, santé) ; aucun fournisseur connu du cœur
  *     services  appel du service d'un autre module (`call` : maître, ou l'instance `provider` choisie ; `providers` : qui l'offre ; `callAll` : toutes les instances d'un service `each`)
@@ -118,11 +119,12 @@ export function makeApi(instance: InstanceView, locale: string, permissions: rea
       },
     },
     mail: { configured: isMailConfigured, send: (message) => sendMail(message, instance.key) },
-    // Sans la permission « rawg » : comme s'il n'y avait pas de clé (le module ne peut ni l'utiliser ni la deviner).
+    // CALE DE COMPATIBILITÉ, à retirer en 0.3.0 (voir services/rawgBridge.ts). Les jaquettes sont le service `game.cover` du module « Jaquettes de jeux » : tant qu'il est là, les anciens
+    // modules (permission « rawg ») sont relayés vers lui ; sans lui, l'ancien service du cœur répond comme avant. Sans la permission « rawg » : comme s'il n'y avait pas de clé.
     rawg: {
-      configured: async () => rawgAllowed && (await isRawgConfigured()),
-      cover: async (title) => (rawgAllowed ? rawgCover(title) : { status: "no-key", url: null }),
-      candidates: async (title) => (rawgAllowed ? rawgCandidates(title) : { status: "no-key", candidates: [] }),
+      configured: async () => rawgAllowed && ((await bridgedConfigured()) ?? (await isRawgConfigured())),
+      cover: async (title) => (rawgAllowed ? ((await bridgedCover(title)) ?? (await rawgCover(title))) : { status: "no-key", url: null }),
+      candidates: async (title) => (rawgAllowed ? ((await bridgedCandidates(title)) ?? (await rawgCandidates(title))) : { status: "no-key", candidates: [] }),
     },
     net: {
       // Dans une page publique : le délai ne dépasse pas le temps restant de la page, moins une marge pour que le module affiche son repli.

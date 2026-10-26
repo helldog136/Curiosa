@@ -8,7 +8,7 @@ export const AUDIT_ACTIONS = [
   "user.2fa.enable", "user.2fa.disable", "user.2fa.reset", "user.2fa.codes", "user.passkey.add", "user.passkey.remove",
   "security.2fa.require", "security.2fa.optional",
   "entry.create", "entry.update", "entry.delete", "entry.deleteTranslation",
-  "home.update", "navigation.update", "settings.update", "settings.mail", "settings.rawg", "settings.rawg.import", "rawg.fix", "rawg.fix.forget", "rawg.fix.forgetAll", "redirect.create", "redirect.update", "redirect.reactivate", "redirect.delete", "redirect.toggle",
+  "home.update", "navigation.update", "settings.update", "settings.mail", "settings.rawg", "settings.rawg.import", "rawg.handover", "rawg.fix", "rawg.fix.forget", "rawg.fix.forgetAll", "redirect.create", "redirect.update", "redirect.reactivate", "redirect.delete", "redirect.toggle",
   "module.install", "module.install.custom", "module.update", "module.uninstall", "module.install.auto", "module.install.suggested", "module.uninstall.auto", "module.keep.auto", "module.seed", "module.enable", "module.disable", "module.uninstall.keep", "module.uninstall.erase", "module.restore", "module.legacy.off", "module.legacy.convert", "module.legacy.clear", "core.legacy.sweep", "module.source.add", "module.source.remove",
   "instance.create", "instance.delete", "instance.retire", "instance.restore", "instance.legacy.off", "retired.erase", "instance.update", "instance.settings", "instance.sources", "service.routing",
   "backup.create", "backup.restore",

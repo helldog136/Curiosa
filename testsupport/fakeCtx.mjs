@@ -77,23 +77,31 @@ export function fakeCtx(opts = {}) {
     budgetMs: () => netBudgetMs,
   };
   const cleared = new Set();
+  const view = (r) => ({ id: r.id, createdAt: r.createdAt, data: structuredClone(r.data), ...(r.key ? { key: r.key } : {}) });   // `key` seulement quand une clé a été donnée (les tests d'avant comparent les lignes telles quelles)
+  const keyOf = (o) => (typeof o?.key === "string" && o.key ? o.key.slice(0, 200) : null);
   const store = {
-    async add(collection, data) { calls.writes.push({ op: "add", collection }); const id = `r${++seq}`; rows.set(id, { id, collection, createdAt: new Date(Date.now() + seq), data: structuredClone(data) }); return id; },
-    async get(id) { const r = rows.get(id); return r ? { id: r.id, createdAt: r.createdAt, data: structuredClone(r.data) } : null; },
-    async update(id, data) { if (!rows.has(id)) return false; calls.writes.push({ op: "update", collection: rows.get(id).collection }); rows.get(id).data = structuredClone(data); return true; },
-    async list(collection, o) { return [...rows.values()].filter((r) => r.collection === collection).sort((a, b) => b.createdAt - a.createdAt).slice(0, o?.limit ?? 100).map((r) => ({ id: r.id, createdAt: r.createdAt, data: structuredClone(r.data) })); },
-    // Lecture par pages (curseur factice = position) : de quoi essayer un générateur de téléchargement qui lit « par pages » (adminDownloads).
+    async add(collection, data, o) { calls.writes.push({ op: "add", collection }); const id = `r${++seq}`; rows.set(id, { id, collection, createdAt: new Date(Date.now() + seq), data: structuredClone(data), key: keyOf(o) }); return id; },
+    async get(id) { const r = rows.get(id); return r ? view(r) : null; },
+    // `key` absente = inchangée ; `key: null` l'efface (comme le vrai stockage).
+    async update(id, data, o) { if (!rows.has(id)) return false; calls.writes.push({ op: "update", collection: rows.get(id).collection }); const r = rows.get(id); r.data = structuredClone(data); if (o && "key" in o && o.key !== undefined) r.key = keyOf(o); return true; },
+    async list(collection, o) { return [...rows.values()].filter((r) => r.collection === collection).sort((a, b) => b.createdAt - a.createdAt).slice(0, o?.limit ?? 100).map(view); },
+    // Lecture par pages (curseur factice = position) : de quoi essayer un générateur de téléchargement qui lit « par pages » (adminDownloads). `key` : seulement les lignes qui portent cette clé.
     async page(collection, o) {
       const asc = o?.order === "asc";
-      const all = [...rows.values()].filter((r) => r.collection === collection).sort((a, b) => (asc ? 1 : -1) * (a.createdAt - b.createdAt));
+      const all = [...rows.values()].filter((r) => r.collection === collection && (o?.key === undefined || r.key === o.key)).sort((a, b) => (asc ? 1 : -1) * (a.createdAt - b.createdAt));
       const start = Math.max(0, Number(o?.cursor ?? 0) || 0);
       const limit = Math.min(Math.max(1, o?.limit ?? 100), 1000);
-      return { items: all.slice(start, start + limit).map((r) => ({ id: r.id, createdAt: r.createdAt, data: structuredClone(r.data) })), next: start + limit < all.length ? String(start + limit) : null };
+      return { items: all.slice(start, start + limit).map(view), next: start + limit < all.length ? String(start + limit) : null };
     },
+    // Index par clé (cœur 0.2.x) : la plus ancienne ligne qui porte la clé, ou la liste paginée de celles qui la portent.
+    async getByKey(collection, key) { return [...rows.values()].filter((r) => r.collection === collection && r.key === key).sort((a, b) => a.createdAt - b.createdAt).map(view)[0] ?? null; },
+    async listByKey(collection, key, o) { return store.page(collection, { ...o, key }); },
+    async addMany(collection, list) { const ids = []; for (const r of list) ids.push(await store.add(collection, r.data, { key: r.key })); return ids; },
+    async generation() { return 0; },
     async remove(id) { calls.writes.push({ op: "remove", collection: rows.get(id)?.collection }); rows.delete(id); },
     async count(collection) { return [...rows.values()].filter((r) => r.collection === collection).length; },
   };
-  for (const [collection, list] of Object.entries(seedRows)) for (const data of list) { const id = `r${++seq}`; rows.set(id, { id, collection, createdAt: new Date(Date.now() + seq), data: structuredClone(data) }); }
+  for (const [collection, list] of Object.entries(seedRows)) for (const data of list) { const id = `r${++seq}`; rows.set(id, { id, collection, createdAt: new Date(Date.now() + seq), data: structuredClone(data), key: null }); }
   const allowed = permissions ? new Set(permissions) : null;
   const need = (permission, value) => {
     if (!allowed || allowed.has(permission)) return value;

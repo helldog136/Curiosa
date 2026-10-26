@@ -28,6 +28,7 @@ const BG_EXAMPLE = JSON.stringify([
 import { saveMail, sendTestMail } from "./mail-actions";
 import { saveRawg, testRawgKey } from "./rawg-actions";
 import { getRawgState, isRawgConfigured } from "@/core/services/rawg";
+import { delegate } from "@/core/services/rawgBridge";
 import { readToCheck } from "@/core/services/rawgFixes";
 import { RAWG_FIX_PATH } from "@/core/rawgAdmin";
 import Link from "next/link";
@@ -55,7 +56,9 @@ export default async function SettingsPage() {
   const socialCount = (await providersOf(SOCIAL_TOPIC)).length;
   const mail = await getMailConfig();
   const isOwner = hasRole(user, "owner");
-  const rawgOn = isOwner && (await isRawgConfigured());
+  // Cale de compatibilité (à retirer en 0.3.0, voir services/rawgBridge.ts) : tant que le module « Jaquettes de jeux » est là, la clé et les corrections se règlent chez lui.
+  const rawgMoved = isOwner ? await delegate() : null;
+  const rawgOn = isOwner && !rawgMoved && (await isRawgConfigured());
   const rawgState = isOwner ? await getRawgState() : null;
   const rawgTodo = rawgOn ? (await readToCheck()).length : 0;
   const values: Record<string, Record<string, unknown>> = {};
@@ -319,7 +322,16 @@ export default async function SettingsPage() {
       {isOwner && (
         <section data-tab="services" className="space-y-5">
           <p className={ui.help}>{t("settings.servicesHelp")}</p>
-          <div className={`${ui.card} space-y-4`} data-testid="rawg-card">
+          {rawgMoved && (
+            <div className={`${ui.card} space-y-4`} data-testid="rawg-moved-card">
+              <div>
+                <h3 className="font-semibold">{t("settings.rawgTitle")}</h3>
+                <p className={ui.help}>{t("settings.rawgMoved")}</p>
+              </div>
+              <Link href={rawgMoved.adminPath} className={`${ui.btnPrimary} min-h-11`}>{t("settings.rawgMovedOpen")}</Link>
+            </div>
+          )}
+          {!rawgMoved && <div className={`${ui.card} space-y-4`} data-testid="rawg-card">
             <div>
               <h3 className="font-semibold">{t("settings.rawgTitle")}</h3>
               <p className={ui.help}>{t("settings.rawgHelp")}</p>
@@ -341,7 +353,7 @@ export default async function SettingsPage() {
               <ActionForm action={testRawgKey} submitLabel={t("settings.rawgTest")} pendingLabel={t("progress.checking")} className="space-y-3">{null}</ActionForm>
               <p className={ui.help}>{t("settings.rawgTestHelp")}</p>
             </div>
-          </div>
+          </div>}
           {rawgOn && (
             <div className={`${ui.card} space-y-4`} data-testid="rawg-covers-card">
               <div>
