@@ -34,7 +34,7 @@ fs.rmSync(cand, { recursive: true, force: true });
 const run = (args) => spawnSync("node", args, { cwd: copy, stdio: "inherit", env: { ...process.env, NODE_OPTIONS: "", VISUAL_ALLOW_IN_REPO: "" } });
 const c = run([path.join(copy, "scripts/visual/capture.mjs"), cand, "--profiles", "night", "--widths", widths, "--only", only]);
 if (c.status !== 0) { console.error("la capture de la copie a échoué"); process.exit(2); }
-const r = run([path.join(copy, "scripts/visual/compare.mjs"), baseline, cand, "--only", "/" + only.split("/").pop()]);
+const r = run([path.join(copy, "scripts/visual/compare.mjs"), baseline, cand, "--only", widths.split(",").map((w) => `night/fr/${w}/${only.split("/").pop()}.png`).join(",")]);
 fs.rmSync(copy, { recursive: true, force: true });
 if (r.status === 1) { console.log("SENSIBILITÉ : OK — l'écart d'un pixel a été détecté."); process.exit(0); }
 console.error(`SENSIBILITÉ : ÉCHEC — la comparaison a répondu ${r.status} (attendu : 1)`);

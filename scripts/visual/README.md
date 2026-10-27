@@ -20,6 +20,9 @@ npm run visual:capture -- /dev/shm/visual-baseline-master
 git checkout ma-branche && npm run build
 npm run visual:capture -- /dev/shm/visual-candidate
 
+# 3 bis. (facultatif) Preuve que le harnais voit un pixel : voir « Preuves de fiabilité »
+npm run visual:sensitivity -- /dev/shm/visual-baseline-master
+
 # 4. Comparaison : code de sortie 0 = identique (0 pixel), 1 = écarts
 npm run visual:compare -- /dev/shm/visual-baseline-master /dev/shm/visual-candidate
 ```
@@ -44,6 +47,7 @@ Le rapport est écrit dans `<candidate>/compare/` : `rapport.txt`, `rapport.html
 | Réseau | Le serveur ne sort jamais : `fetch`, `http(s).request`, `net.connect` vers autre chose que la boucle locale sont refusés (journal `net-blocked.log` du dossier d'exécution). Le navigateur ne charge rien d'extérieur : toute image tierce (jaquettes, miniatures, tuiles de carte) est remplacée par une illustration locale identique à chaque fois, le reste est coupé. |
 | Contenu | Un instantané unique (`visual:prepare`) : base SQLite + `DATA_DIR` (modules, images). Chaque profil démarre sur une **copie** de l'instantané ; les modules d'images sont fabriqués à l'amorçage (dégradés), jamais versionnés. |
 | Animations, curseur | `prefers-reduced-motion: reduce`, CSS qui coupe animations / transitions / curseur / barres de défilement, `animations: "disabled"` et `caret: "hide"` de Playwright. |
+| Photos réduites | Chromium choisit le filtre de réduction d'une image (plus ou moins fin) selon l'ordre de décodage : le grain d'une même photo variait de quelques niveaux d'une capture à l'autre. Le harnais impose `image-rendering: pixelated` (plus proche voisin) à toutes les images des deux captures, utilise des photos de démonstration en PNG, retire le chargement paresseux et ouvre **une fenêtre de navigateur par capture**. Une régression de mise en page ou de cadrage (`object-fit`) reste visible ; seule la finesse du lissage des photos n'est pas jugée. |
 | Polices, images | Attente de `document.fonts.ready`, défilement de toute la page (images paresseuses), décodage des images ; la capture n'est acceptée que si **deux captures successives sont identiques** (jusqu'à 5 essais ; sinon la capture est marquée `stable: false` dans le manifeste). Les polices système sont empreintes (`fc-list`) dans le manifeste. |
 | Visiteur | Cookie de choix « Non merci » posé d'avance (sauf pour les captures du bandeau de cookies), langue du navigateur et fuseau fixes (UTC), `deviceScaleFactor` 1. |
 
@@ -79,11 +83,17 @@ Le manifeste (`manifest.json` de chaque capture) liste les pages découvertes, l
 
 ## Durée et ressources
 
-- `visual:prepare` : une dizaine de secondes (installation des 70 modules + contenu).
-- `visual:capture` complet : voir le chiffre mesuré en fin de ce fichier ; démarre **un seul serveur à la fois** (≈ 400 Mo) et **un seul Chromium** (3 onglets en parallèle, `--jobs N`). Ne lancez pas deux captures en même temps (ports et mémoire) ni un `next build` en parallèle.
-- Place disque : voir la taille mesurée plus bas ; `/dev/shm` (16 Go ici) suffit pour une référence et une candidate.
+- `visual:prepare` : ≈ 6 secondes (installation des 70 modules + contenu).
+- `visual:capture` complet : **1 168 captures en ≈ 28 à 30 minutes** (machine à 4 cœurs, partagée) ; un seul serveur à la fois (≈ 0,2 Go) et **un seul Chromium** (3 fenêtres en parallèle, `--jobs N` ; ≈ 1,5 Go de mémoire résidente cumulée au pic). Ne lancez pas deux captures en même temps (ports et mémoire) ni un `next build` en parallèle.
+- Place disque : ≈ 400 Mo par capture complète (PNG pleine page, jamais versionnés) ; l'instantané pèse ≈ 36 Mo. `/dev/shm` (16 Go ici) suffit largement pour une référence et une candidate (et même pour dix).
 - Options utiles : `--profiles night,daylight`, `--widths 390,1280`, `--only blog` (filtre sur `profil/langue/page`), `--entries N` (fiches par module), `--jobs N`.
 - Arrêt : toujours par PID (`node scripts/visual/site.mjs down <profil>`) ; `capture` le fait lui-même, même en cas d'échec.
+
+## Preuves de fiabilité (référence : master `a409ebb`, modules `064d56f`)
+
+- **Déterminisme** : deux captures complètes successives du même code (1 168 images chacune) → **1 168 identiques, 0 pixel de différence** (rapport : `determinisme-rapport.txt` dans le dossier de la référence). Un instantané **reconstruit** (`visual:prepare` dans un autre dossier) donne aussi les mêmes pixels (64 captures vérifiées).
+- **Sensibilité** : `npm run visual:sensitivity -- <référence>` fabrique une copie jetable du cœur construit, y ajoute une règle CSS d'**un seul pixel** (`main{padding-top:calc(2.5rem + 1px)}`), la capture et la compare à la référence : l'écart est détecté (hauteur de page +1 px, contenu décalé, ≈ 640 000 pixels signalés par capture) et le script répond « SENSIBILITÉ : OK ».
+- Historique des bruits trouvés puis supprimés **à la source** : décodage JPEG des photos réduites, chargement paresseux des images, compte à rebours qui avance avec `performance.now()`, premier chargement à froid du serveur (5xx), onglets simultanés d'un même contexte, bouton recouvert selon la largeur.
 
 ## Ajouter une page ou un état
 
@@ -97,4 +107,5 @@ Le manifeste (`manifest.json` de chaque capture) liste les pages découvertes, l
 - Le harnais prouve l'identité du rendu **dans ce navigateur, avec ces polices système** : à refaire sur une autre machine (`manifest.fonts` et `manifest.browser` le disent).
 - Il ne voit pas ce qui n'est pas capturé (voir les exclusions) ni les interactions non scriptées.
 - Un contenu qui dépend d'un service externe n'est vu que dans son état « injoignable ».
+- Les captures « mise en page de l'en-tête » (`layout-*`) montrent le menu fermé ; le menu ouvert de la variante `minimal` à partir de 768 px n'est pas capturé.
 - Un changement du **site de démonstration** (seed, profils, liste d'états) invalide toutes les références existantes.
