@@ -13,7 +13,7 @@ Les scripts sont dans `docs/ideas/skins-s2-run/` (copie de ceux du scratchpad) :
 Reprise : `git clone … /dev/shm/skins-s2 && git checkout feat/skins-s2`, copier `scripts/visual` dans un dossier `harness-s2`, puis `ref.sh`, `cand.sh s2 731256a`, `cand.sh s3 <dernier commit>`.
 
 ## Reste à faire (mettre à jour à chaque jalon)
-- [ ] référence v0.3.1 (profils : night, daylight, custom, layout-centered, layout-minimal, layout-tworows)
+- [x] référence v0.3.1 prête (1168 captures, fichier READY)
 - [ ] S2 : comparaison 0 pixel (commit 731256a)
 - [ ] S3 : comparaison 0 pixel (dernier commit)
 - [ ] tests unitaires `npm test` x2, tsc, eslint comparé à la base
