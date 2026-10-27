@@ -15,10 +15,10 @@ const ICONS = {
 export function ModeSwitch({ t }: { t: Translator }) {
   const options = [["auto", t("site.mode.auto")], ["light", t("site.mode.light")], ["dark", t("site.mode.dark")]] as const;
   return (
-    <div data-skin-part="mode-switch" role="group" aria-label={t("site.mode.group")} hidden className="inline-flex items-center gap-0.5 rounded-full border border-line p-0.5">
+    <div data-skin-part="mode-switch" role="group" aria-label={t("site.mode.group")} hidden className="inline-flex items-center gap-0.5 rounded-chip border-token border-line p-0.5">
       {options.map(([value, label]) => (
         <button key={value} type="button" data-skin-part="mode-option" data-mode-value={value} aria-pressed={value === "auto"} title={label}
-          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full text-muted hover:text-fg aria-pressed:bg-accent aria-pressed:text-accent-fg">
+          className="inline-flex min-h-target min-w-target items-center justify-center rounded-button text-muted hover:text-fg aria-pressed:bg-accent aria-pressed:text-accent-fg">
           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" className="h-5 w-5">{ICONS[value]}</svg>
           <span className="sr-only">{label}</span>
         </button>

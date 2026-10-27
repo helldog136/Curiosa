@@ -25,7 +25,7 @@ export async function LanguageSwitcher({ locales, current, defaultLocale }: { lo
             lang={code}
             title={localeName(code)}
             aria-current={code === current ? "true" : undefined}
-            className={`rounded px-2 py-1 uppercase ${code === current ? "bg-accent text-accent-fg" : "text-muted hover:text-fg"}`}
+            className={`rounded-sm px-2 py-1 uppercase ${code === current ? "bg-accent text-accent-fg" : "text-muted hover:text-fg"}`}
           >
             {code}
           </a>

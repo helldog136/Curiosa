@@ -38,12 +38,12 @@ export default async function PrivacyPage() {
   const modeSwitch = (await resolveLook(config)).appearance.modeSwitch;
   const text = buildPrivacyPolicy({ siteName: config.name, contactEmail: config.contactEmail, statsEnabled: config.statsEnabled, newsToggle: config.newsToggle, modeSwitch, features, extra, t });
   return (
-    <article className="mx-auto max-w-3xl space-y-4 py-6">
+    <article className="mx-auto max-w-[var(--sk-prose-width-wide,48rem)] space-y-4 py-6">
       <h1 data-skin-part="heading" data-level="1" className="text-3xl font-bold tracking-tight">{t("privacy.title")}</h1>
       <Markdown text={text} />
       {config.newsToggle && (
-        <p id="cookies" data-testid="privacy-cookie-control" data-skin-part="notice" data-tone="info" className="scroll-mt-24 rounded-xl border border-line p-4 text-sm">
-          <CookieSettingsLink label={t("cookies.manage")} href="#cookies" part="link" className="font-semibold text-accent underline underline-offset-2" />
+        <p id="cookies" data-testid="privacy-cookie-control" data-skin-part="notice" data-tone="info" className="scroll-mt-24 rounded-card border-token border-line p-4 text-sm">
+          <CookieSettingsLink label={t("cookies.manage")} href="#cookies" part="link" className="font-semibold text-link underline underline-offset-2" />
         </p>
       )}
     </article>

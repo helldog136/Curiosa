@@ -7,7 +7,7 @@ export type NavItem = NavLinkItem & { children?: NavLinkItem[] };
 export type NavStrings = { main: string; menu: string; submenu: string; news: string };
 
 /** Lien du menu (premier niveau). À partir de 40 rem la hauteur minimale tactile tombe : règle `[data-nav-top]` de la feuille du cœur (globals.css), pas une classe. */
-const LINK = "inline-flex min-h-11 items-center py-1.5 text-muted hover:text-fg";
+const LINK = "inline-flex min-h-target items-center py-1.5 text-muted hover:text-fg";
 const fmt = (s: string, name: string) => s.replace("{name}", name);
 
 /**
@@ -93,7 +93,7 @@ export function SiteNav({ items, strings }: { items: NavItem[]; strings: NavStri
       {/* Le bouton « Menu » n'existe qu'au-dessous de 40 rem et la liste y devient un panneau : ces règles responsives sont dans la feuille du cœur (globals.css), sur les pièces
           `menu-toggle`, `nav-list` et `submenu` et leur attribut `data-open` : un skin les réécrit, le comportement (JS) reste celui du cœur. */}
       <button type="button" data-panel-button="" data-skin-part="menu-toggle" aria-expanded={panel} aria-controls={`${base}-list`} onClick={() => { setPanel((p) => !p); setOpen(null); }}
-        className="inline-flex min-h-11 items-center gap-2 rounded-full border border-line px-4 py-2 font-medium hover:border-accent">
+        className="inline-flex min-h-target items-center gap-2 rounded-button border-token border-line px-4 py-2 font-medium hover:border-accent">
         <span aria-hidden="true">{panel ? "✕" : "☰"}</span> {strings.menu}
       </button>
       <ul id={`${base}-list`} data-nav-list="" data-skin-part="nav-list" data-open={panel ? "true" : "false"}>
@@ -118,7 +118,7 @@ export function SiteNav({ items, strings }: { items: NavItem[]; strings: NavStri
                       {item.label}{item.news && dot}
                     </a>
                     <button type="button" data-trigger={i} aria-expanded={isOpen} aria-controls={subId} aria-label={fmt(strings.submenu, item.label)} onClick={toggle} data-skin-part="submenu-toggle"
-                      className="inline-flex h-11 w-9 items-center justify-center rounded-lg text-muted hover:text-fg">
+                      className="inline-flex h-target w-9 items-center justify-center rounded-lg text-muted hover:text-fg">
                       {chevron(isOpen)}
                     </button>
                   </>
@@ -131,7 +131,7 @@ export function SiteNav({ items, strings }: { items: NavItem[]; strings: NavStri
               <ul id={subId} data-sub={i} data-skin-part="submenu" data-open={isOpen ? "true" : "false"} className="pl-3">
                 {kids.map((c) => (
                   <li key={`${c.href}-${c.label}`}>
-                    <a href={c.href} data-skin-part="nav-link" className="flex min-h-11 items-center py-1.5 text-muted hover:text-fg">{c.label}{c.news && dot}</a>
+                    <a href={c.href} data-skin-part="nav-link" className="flex min-h-target items-center py-1.5 text-muted hover:text-fg">{c.label}{c.news && dot}</a>
                   </li>
                 ))}
               </ul>

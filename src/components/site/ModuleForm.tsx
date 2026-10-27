@@ -30,9 +30,9 @@ export function ModuleForm({ action, fields, submitLabel, successText }: Props) 
     }
   }
 
-  if (state === "done") return <p role="status" data-skin-part="notice" data-tone="success" className="rounded-lg border border-line bg-surface p-4">{message ?? successText}</p>;
+  if (state === "done") return <p role="status" data-skin-part="notice" data-tone="success" className="rounded-card border-token border-line bg-surface p-4">{message ?? successText}</p>;
 
-  const input = "w-full rounded-lg border border-line bg-bg px-3 py-2";
+  const input = "w-full rounded-field border-token border-line bg-bg px-3 py-2";
   return (
     <form onSubmit={submit} className="space-y-3">
       {fields.map((f) => (
@@ -51,7 +51,7 @@ export function ModuleForm({ action, fields, submitLabel, successText }: Props) 
         type="submit"
         data-skin-part="button"
         disabled={state === "sending"}
-        className="rounded-full bg-accent px-5 py-2 text-sm font-medium text-accent-fg disabled:opacity-60"
+        className="rounded-button bg-accent px-5 py-2 text-sm font-medium text-accent-fg disabled:opacity-60"
       >
         {submitLabel}
       </button>

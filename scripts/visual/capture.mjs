@@ -107,12 +107,24 @@ const ctxs_close = [];
 let browser;
 function addTask(t) { if (!only || only.split(",").some((o) => `${t.profile}/${t.locale}/${t.id}`.includes(o))) tasks.push(t); }
 
+let relaunching = null;
+async function relaunchBrowser() {
+  if (!relaunching) relaunching = (async () => { try { await browser.close().catch(() => {}); } catch {} browser = await chromium.launch({ executablePath: chromiumPath(), args: CHROMIUM_ARGS }); console.log("  (navigateur relancé)"); })().finally(() => { relaunching = null; });
+  await relaunching;
+}
 const TASK_MS = Number(process.env.VISUAL_TASK_TIMEOUT_MS || 90000);
 const withTimeout = (p, ms, what) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error(`délai dépassé (${ms} ms) : ${what}`)), ms))]);
 async function runTask(ctxFor, t, port) {
   const label = `${t.profile}/${t.locale}/${t.width}/${t.id}${t.state ? "~" + t.state.id : ""}`;
   const t0 = Date.now(); if (process.env.VISUAL_VERBOSE) console.log(`  > ${label}`);
-  try { await withTimeout(runTaskInner(ctxFor, t, port), TASK_MS, label); if (process.env.VISUAL_VERBOSE) console.log(`  < ${label} ${Date.now() - t0} ms`); }
+  try {
+    // Le navigateur peut être tué par le système (mémoire saturée) : on le relance et on refait la capture (3 essais) plutôt que de perdre toute la série.
+    for (let attempt = 1; ; attempt++) {
+      try { await withTimeout(runTaskInner(ctxFor, t, port), TASK_MS, label); break; }
+      catch (e) { if (attempt >= 3 || !/has been closed|Target closed|browser has disconnected|crash/i.test(String(e.message))) throw e; await relaunchBrowser(); }
+    }
+    if (process.env.VISUAL_VERBOSE) console.log(`  < ${label} ${Date.now() - t0} ms`);
+  }
   catch (e) { manifest.shots.push({ file: null, profile: t.profile, locale: t.locale, width: t.width, page: t.path, id: t.id, state: t.state?.id ?? null, status: 0, error: String(e.message).slice(0, 300) }); console.log(`  ÉCHEC ${label} : ${e.message}`); }
 }
 async function runTaskInner(ctxFor, t, port) {
@@ -146,6 +158,7 @@ async function runTaskInner(ctxFor, t, port) {
       manifest.__more = (manifest.__more ?? 0) + 1;
     }
   } catch (e) {
+    if (/has been closed|Target closed|browser has disconnected/i.test(String(e.message))) throw e; // navigateur perdu : runTask le relance et recommence
     manifest.shots.push({ file: null, profile: t.profile, locale: t.locale, width: t.width, page: t.path, id: t.id, state: t.state?.id ?? null, status, error: String(e.message).slice(0, 300) });
   } finally {
     await Promise.race([tab.close().catch(() => {}), new Promise((r) => setTimeout(r, 5000))]);

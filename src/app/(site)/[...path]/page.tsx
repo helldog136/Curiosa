@@ -254,10 +254,10 @@ async function EntryPage({
   const customFields = instance.fieldSchema.filter((f) => f.type !== "ref" && entry.fields[f.key] !== undefined && entry.fields[f.key] !== "");
 
   return (
-    <article lang={entry.locale} className="mx-auto max-w-3xl space-y-6">
+    <article lang={entry.locale} className="mx-auto max-w-[var(--sk-prose-width-wide,48rem)] space-y-6">
       <BreadcrumbLd items={crumbs} />
       {entry.isFallback && (
-        <p data-skin-part="notice" data-tone="info" className="rounded-lg border border-line bg-surface p-3 text-sm text-muted">{t("site.fallbackNotice", { lang: entry.locale.toUpperCase() })}</p>
+        <p data-skin-part="notice" data-tone="info" className="rounded-card border-token border-line bg-surface p-3 text-sm text-muted">{t("site.fallbackNotice", { lang: entry.locale.toUpperCase() })}</p>
       )}
       {entry.cover && <CoverImage src={entry.cover} variant="article" />}
       <header className="space-y-2">
@@ -274,7 +274,7 @@ async function EntryPage({
         <div className="flex flex-wrap items-center gap-4">
           {entry.code && <CopyCode code={entry.code} copyLabel={t("site.copy")} copiedLabel={t("site.copied")} />}
           {isSafeExternalUrl(entry.url) && (
-            <a href={entry.url} target="_blank" rel="noopener noreferrer" data-skin-part="button" className="rounded-full bg-accent px-5 py-2 text-sm font-medium text-accent-fg">
+            <a href={entry.url} target="_blank" rel="noopener noreferrer" data-skin-part="button" className="rounded-button bg-accent px-5 py-2 text-sm font-medium text-accent-fg">
               {t("site.visit")}
             </a>
           )}

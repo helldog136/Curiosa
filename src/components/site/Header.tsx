@@ -63,7 +63,7 @@ export async function Header({ config, locale, appearance }: { config: SiteConfi
   );
   const secondaryEl = config.header.secondary && <a href={local(config.header.secondary.href)} data-skin-part="link" className="text-sm text-muted hover:text-fg">{config.header.secondary.label}</a>;
   const buttonEl = config.header.button && (
-    <a href={local(config.header.button.href)} data-testid="header-button" data-skin-part="button" data-btn="primary" className="rounded-full border-2 border-accent px-4 py-1.5 text-sm font-semibold text-accent transition-colors hover:bg-accent hover:text-accent-fg">{config.header.button.label}</a>
+    <a href={local(config.header.button.href)} data-testid="header-button" data-skin-part="button" data-btn="primary" className="rounded-button border-token-strong border-accent px-4 py-1.5 text-sm font-semibold text-accent transition-colors hover:bg-accent hover:text-accent-fg">{config.header.button.label}</a>
   );
   const lang = <LanguageSwitcher locales={config.locales} current={locale} defaultLocale={config.defaultLocale} />;
   const modeEl = modeSwitch ? <ModeSwitch t={t} /> : null;
@@ -103,15 +103,15 @@ export async function Header({ config, locale, appearance }: { config: SiteConfi
                 {items.map((item) => (
                   <li key={`${item.href}-${item.label}`}>
                     {item.href
-                      ? <a href={item.href} data-skin-part="nav-link" className="flex min-h-11 items-center rounded-lg px-2 py-2 hover:bg-accent/10">{item.label}{item.news && dot}</a>
+                      ? <a href={item.href} data-skin-part="nav-link" className="flex min-h-target items-center rounded-lg px-2 py-2 hover:bg-accent/10">{item.label}{item.news && dot}</a>
                       : <p data-skin-part="eyebrow" className="px-2 pt-2 text-xs font-semibold uppercase tracking-wide text-muted">{item.label}</p>}
                     {item.children && (
-                      <ul data-skin-part="submenu" data-open="true" className="pl-3">{item.children.map((c) => <li key={c.href + c.label}><a href={c.href} data-skin-part="nav-link" className="flex min-h-11 items-center rounded-lg px-2 py-2 hover:bg-accent/10">{c.label}{c.news && dot}</a></li>)}</ul>
+                      <ul data-skin-part="submenu" data-open="true" className="pl-3">{item.children.map((c) => <li key={c.href + c.label}><a href={c.href} data-skin-part="nav-link" className="flex min-h-target items-center rounded-lg px-2 py-2 hover:bg-accent/10">{c.label}{c.news && dot}</a></li>)}</ul>
                     )}
                   </li>
                 ))}
               </ul>
-              {(secondaryEl || socialsEl || buttonEl) && <div data-skin-region="tools" className="flex flex-wrap items-center gap-x-4 gap-y-3 border-t border-line pt-3">{secondaryEl}{socialsEl}{buttonEl}</div>}
+              {(secondaryEl || socialsEl || buttonEl) && <div data-skin-region="tools" className="flex flex-wrap items-center gap-x-4 gap-y-3 border-t-token border-line pt-3">{secondaryEl}{socialsEl}{buttonEl}</div>}
             </MenuToggle>
           </div>
         </>
@@ -131,5 +131,5 @@ export async function Header({ config, locale, appearance }: { config: SiteConfi
     centered: "flex flex-col items-center gap-3 text-center",
     minimal: "flex items-center justify-between gap-4",
   };
-  return <header data-skin-region="header" className={`relative border-b border-line ${shell} ${frame[config.header.layout] ?? "flex flex-wrap items-center justify-between gap-4"}`} data-header-layout={config.header.layout}>{body}</header>;
+  return <header data-skin-region="header" className={`relative border-b-token border-line ${shell} ${frame[config.header.layout] ?? "flex flex-wrap items-center justify-between gap-4"}`} data-header-layout={config.header.layout}>{body}</header>;
 }

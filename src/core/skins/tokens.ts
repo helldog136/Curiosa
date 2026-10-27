@@ -68,6 +68,9 @@ export const TOKEN_DEFS: readonly TokenDef[] = [
   t("--sk-color-focus", "color", "color", "var(--v-accent)", "anneau de focus"),
   t("--sk-color-link", "color", "color", "var(--v-accent)", "liens dans le texte"),
   t("--sk-color-veil", "color", "color", "rgb(0 0 0 / .55)", "voile sur image (blocs « panneau »)"),
+  t("--sk-color-scrim", "color", "color", "#000000", "base des voiles translucides sur image ou vidéo (boutons, légende)"),
+  t("--sk-color-on-veil", "color", "color", "#ffffff", "texte et filets posés sur un voile ou une vidéo"),
+  t("--sk-color-veil-ink", "color", "color", "#000000", "texte d'un bouton rempli de la couleur « sur voile » (survol)"),
   t("--sk-color-selection", "color", "color", null, "sélection de texte (facultatif : le navigateur choisit)"),
   t("--sk-color-heading", "color", "color", null, "titres (facultatif : si défini, contrôlé à 3:1)"),
 
@@ -88,6 +91,8 @@ export const TOKEN_DEFS: readonly TokenDef[] = [
   t("--sk-tracking-widest", "typography", "tracking", ".1em", "interlettrage le plus large"),
   t("--sk-heading-transform", "typography", "text-transform", "none", "casse des titres"),
   t("--sk-eyebrow-transform", "typography", "text-transform", "uppercase", "casse de la petite ligne au-dessus d'un titre"),
+  t("--sk-text-tray", "typography", "text-size", "13px", "texte du bandeau de cookies (petit écran)"),
+  t("--sk-text-tray-title", "typography", "text-size", "15px", "titre du bandeau de cookies (petit écran)"),
 
   // ── Espaces et largeurs
   t("--sk-space", "space", "length", ".25rem", "unité d'espacement (--spacing de Tailwind)"),
@@ -108,6 +113,7 @@ export const TOKEN_DEFS: readonly TokenDef[] = [
   t("--sk-radius-field", "radius", "length", "var(--sk-radius-lg)", "rayon des champs"),
   t("--sk-radius-chip", "radius", "length", "var(--sk-radius-full)", "rayon des pastilles"),
   t("--sk-radius-media", "radius", "length", "var(--sk-radius-lg)", "rayon des images"),
+  t("--sk-radius-avatar", "radius", "length", "var(--sk-radius-full)", "rayon des logos et portraits ronds"),
 
   // ── Bordures
   t("--sk-border-width", "border", "length", "1px", "épaisseur des bordures"),
@@ -118,6 +124,7 @@ export const TOKEN_DEFS: readonly TokenDef[] = [
   t("--sk-shadow-card", "shadow", "shadow", "none", "ombre des cartes"),
   t("--sk-shadow-raised", "shadow", "shadow", "0 10px 15px -3px #0000001a, 0 4px 6px -4px #0000001a", "ombre d'un élément surélevé"),
   t("--sk-shadow-pop", "shadow", "shadow", "var(--sk-shadow-raised)", "ombre des sous-menus et du menu sobre"),
+  t("--sk-shadow-tray", "shadow", "shadow", "0 -8px 30px #0000002e", "ombre du bandeau de cookies"),
   t("--sk-glow", "shadow", "shadow", "none", "lueur appliquée aux pièces qui l'acceptent"),
 
   // ── Mouvement et cibles

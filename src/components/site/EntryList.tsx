@@ -43,7 +43,7 @@ export function EntryList({ entries, collection, locale, defaultLocale }: Props)
                 lang={e.locale}
                 data-skin-part="chip"
                 {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-                data-chip="" className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-4 py-2 text-sm transition-colors hover:border-accent hover:text-accent"
+                data-chip="" className="inline-flex items-center gap-2 rounded-chip border-token border-line bg-surface px-4 py-2 text-sm transition-colors hover:border-accent hover:text-accent"
               >
                 <EntryIcon icon={e.icon} />
                 {e.title}
@@ -57,7 +57,7 @@ export function EntryList({ entries, collection, locale, defaultLocale }: Props)
 
   if (collection.display === "list") {
     return (
-      <ul data-skin-part="list" data-kind="list" className="divide-y divide-line border-y border-line">
+      <ul data-skin-part="list" data-kind="list" className="divide-y divide-line border-y-token border-line">
         {entries.map((e) => {
           const { href, external } = entryHref(e, collection, defaultLocale);
           return (
@@ -74,7 +74,7 @@ export function EntryList({ entries, collection, locale, defaultLocale }: Props)
   }
 
   return (
-    <ul data-skin-part="list" data-kind="cards" className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,15rem),1fr))] gap-5">
+    <ul data-skin-part="list" data-kind="cards" className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,var(--sk-cards-min,15rem)),1fr))] gap-[var(--sk-grid-gap,1.25rem)]">
       {entries.map((e) => {
         const { href, external } = entryHref(e, collection, defaultLocale);
         const isCode = collection.display === "codes";
@@ -82,7 +82,7 @@ export function EntryList({ entries, collection, locale, defaultLocale }: Props)
           <li
             key={e.id}
             lang={e.locale}
-            data-card="" data-skin-part="card" className={`flex flex-col overflow-hidden rounded-xl border border-line bg-surface ${e.expired ? "opacity-60" : ""}`}
+            data-card="" data-skin-part="card" className={`flex flex-col overflow-hidden rounded-card border-token border-line bg-surface ${e.expired ? "opacity-60" : ""}`}
           >
             {e.cover && <CoverImage src={e.cover} variant="card" />}
             <div className="flex flex-1 flex-col gap-2 p-5">
@@ -97,7 +97,7 @@ export function EntryList({ entries, collection, locale, defaultLocale }: Props)
                 {isCode && e.code && (
                   <CopyCode code={e.code} copyLabel={t("site.copy")} copiedLabel={t("site.copied")} />
                 )}
-                {e.expired && <span data-skin-part="badge" className="rounded bg-line px-2 py-0.5">{t("site.expired")}</span>}
+                {e.expired && <span data-skin-part="badge" className="rounded-sm bg-line px-2 py-0.5">{t("site.expired")}</span>}
                 {!isCode && <time>{formatDate(e.publishedAt, locale)}</time>}
                 {e.isFallback && <span data-skin-part="badge" className="uppercase">{e.locale}</span>}
               </div>

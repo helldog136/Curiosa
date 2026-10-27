@@ -93,10 +93,21 @@ function dualSheet(id: string, light: ComposedMode, dark: ComposedMode, c: Compo
   return out.join("");
 }
 
+/**
+ * Jetons facultatifs que basic ne définit pas : tant qu'ils ne sont pas définis, rien ne change ; défini par un skin, le jeton est APPLIQUÉ par le cœur
+ * (sélection de texte, couleur des titres), sans que la feuille du skin ait à écrire la règle. Placé avant la feuille du skin : elle garde le dernier mot.
+ */
+function optionalTokenRules(id: string, c: Composed): string {
+  const defined = (name: string) => c.modes.some((m) => m.tokens[name] !== undefined);
+  const sel = `:root[data-skin="${id}"]`;
+  return (defined("--sk-color-selection") ? `${sel} ::selection{background-color:var(--sk-color-selection)}` : "")
+    + (defined("--sk-color-heading") ? `${sel} [data-skin-part="heading"]{color:var(--sk-color-heading)}` : "");
+}
+
 /** La feuille complète : jetons, halo et fond, puis la feuille de style du skin. */
 export function renderSheet(c: Composed, decor: Decor = {}): string {
   const id = c.skinId;
   const [first, second] = c.modes;
   const tokens = c.modes.length === 2 ? dualSheet(id, first!.mode === "light" ? first! : second!, first!.mode === "light" ? second! : first!, c, decor) : monoSheet(id, first!, c, decor);
-  return tokens + (c.css ?? "");
+  return tokens + optionalTokenRules(id, c) + (c.css ?? "");
 }

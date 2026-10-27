@@ -6,7 +6,7 @@ const components: Components = {
   a: ({ href, children }) => {
     const external = !!href && isExternalHref(href);
     return (
-      <a href={href} data-skin-part="link" className="text-accent underline-offset-2 hover:underline"
+      <a href={href} data-skin-part="link" className="text-link underline-offset-2 hover:underline"
         {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}>
         {children}
       </a>
@@ -15,31 +15,31 @@ const components: Components = {
   h1: ({ children }) => <h2 data-skin-part="heading" data-level="2" className="mt-8 text-2xl font-semibold">{children}</h2>,
   h2: ({ children }) => <h2 data-skin-part="heading" data-level="2" className="mt-8 text-2xl font-semibold">{children}</h2>,
   h3: ({ children }) => <h3 data-skin-part="heading" data-level="3" className="mt-6 text-xl font-semibold">{children}</h3>,
-  p: ({ children }) => <p className="mt-4 leading-7">{children}</p>,
+  p: ({ children }) => <p className="mt-4 leading-[var(--sk-leading-body,1.75rem)]">{children}</p>,
   ul: ({ children }) => <ul className="mt-4 list-disc space-y-1 pl-6">{children}</ul>,
   ol: ({ children }) => <ol className="mt-4 list-decimal space-y-1 pl-6">{children}</ol>,
   blockquote: ({ children }) => <blockquote data-skin-part="quote" className="mt-4 rounded-r-lg border-l-4 border-accent/60 bg-surface/60 py-1 pl-4 pr-3 text-muted">{children}</blockquote>,
   h4: ({ children }) => <h4 data-skin-part="heading" data-level="4" className="mt-5 text-lg font-semibold">{children}</h4>,
   h5: ({ children }) => <h5 data-skin-part="heading" data-level="5" className="mt-4 font-semibold">{children}</h5>,
   h6: ({ children }) => <h6 data-skin-part="heading" data-level="6" className="mt-4 text-sm font-semibold uppercase tracking-wide text-muted">{children}</h6>,
-  li: ({ children }) => <li className="leading-7 marker:text-muted">{children}</li>,
+  li: ({ children }) => <li className="leading-[var(--sk-leading-body,1.75rem)] marker:text-muted">{children}</li>,
   hr: () => <hr data-skin-part="divider" className="my-8 border-line" />,
   strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
   del: ({ children }) => <del className="text-muted">{children}</del>,
-  code: ({ children }) => <code data-skin-part="code" className="rounded bg-surface px-1.5 py-0.5 font-mono text-[0.9em]">{children}</code>,
+  code: ({ children }) => <code data-skin-part="code" className="rounded-sm bg-surface px-1.5 py-0.5 font-mono text-[0.9em]">{children}</code>,
   // Blocs de code : fond sombre lisible, défilement horizontal plutôt que de déborder (l'inline `code` ci-dessus y perd son style).
   pre: ({ children }) => (
-    <pre data-skin-part="code-block" className="mt-4 overflow-x-auto rounded-xl border border-line bg-surface p-4 text-sm leading-6 [&>code]:bg-transparent [&>code]:p-0 [&>code]:text-[1em]">{children}</pre>
+    <pre data-skin-part="code-block" className="mt-4 overflow-x-auto rounded-card border-token border-line bg-surface p-4 text-sm leading-6 [&>code]:bg-transparent [&>code]:p-0 [&>code]:text-[1em]">{children}</pre>
   ),
   // Tableaux (GFM) : défilement horizontal sur petit écran, lignes fines.
-  table: ({ children }) => <div className="relative mt-4 overflow-x-auto rounded-xl border border-line"><table data-skin-part="table" className="w-full min-w-max text-left text-sm">{children}</table></div>,
+  table: ({ children }) => <div className="relative mt-4 overflow-x-auto rounded-card border-token border-line"><table data-skin-part="table" className="w-full min-w-max text-left text-sm">{children}</table></div>,
   thead: ({ children }) => <thead data-skin-part="table-head" className="bg-surface text-muted">{children}</thead>,
   th: ({ children }) => <th data-skin-part="table-cell" className="px-3 py-2 font-medium">{children}</th>,
   tr: ({ children }) => <tr data-skin-part="table-row">{children}</tr>,
-  td: ({ children }) => <td data-skin-part="table-cell" className="border-t border-line px-3 py-2 align-top">{children}</td>,
+  td: ({ children }) => <td data-skin-part="table-cell" className="border-t-token border-line px-3 py-2 align-top">{children}</td>,
   img: ({ src, alt }) => (
     // eslint-disable-next-line @next/next/no-img-element
-    <img src={typeof src === "string" ? src : undefined} alt={alt ?? ""} loading="lazy" data-skin-part="image" className="mt-4 max-w-full rounded-lg" />
+    <img src={typeof src === "string" ? src : undefined} alt={alt ?? ""} loading="lazy" data-skin-part="image" className="mt-4 max-w-full rounded-media" />
   ),
 };
 
@@ -47,7 +47,7 @@ const components: Components = {
 const untrustedComponents: Components = {
   ...components,
   a: ({ href, children }) => (href && /^https?:\/\//i.test(href)
-    ? <a href={href} target="_blank" rel="noopener noreferrer nofollow" className="text-accent underline-offset-2 hover:underline">{children}</a>
+    ? <a href={href} target="_blank" rel="noopener noreferrer nofollow" className="text-link underline-offset-2 hover:underline">{children}</a>
     : <span>{children}</span>),
   img: ({ alt }) => <span className="text-muted">[{alt || "image"}]</span>,
 };

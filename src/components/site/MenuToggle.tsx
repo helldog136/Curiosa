@@ -16,10 +16,10 @@ export function MenuToggle({ label, children }: { label: string; children: React
   return (
     <div ref={root} className="relative">
       <button type="button" data-skin-part="menu-toggle" aria-expanded={open} aria-controls="site-menu" onClick={() => setOpen((o) => !o)}
-        className="inline-flex items-center gap-2 rounded-full border border-line px-4 py-2 text-sm font-medium hover:border-accent">
+        className="inline-flex items-center gap-2 rounded-button border-token border-line px-4 py-2 text-sm font-medium hover:border-accent">
         <span aria-hidden="true">{open ? "✕" : "☰"}</span> {label}
       </button>
-      {open && <nav id="site-menu" data-testid="site-menu" data-skin-region="nav" aria-label={label} className="absolute right-0 top-full z-40 mt-2 w-72 max-w-[calc(100vw-2rem)] space-y-4 rounded-2xl border border-line bg-surface p-4 shadow-lg">{children}</nav>}
+      {open && <nav id="site-menu" data-testid="site-menu" data-skin-region="nav" aria-label={label} className="absolute right-0 top-full z-40 mt-2 w-72 max-w-[calc(100vw-2rem)] space-y-4 rounded-panel border-token border-line bg-surface p-4 shadow-pop">{children}</nav>}
     </div>
   );
 }

@@ -32,7 +32,7 @@ export function PanelTabs({ tabs, side }: { tabs: PanelTab[]; side?: React.React
         <div className="space-y-3">{active?.content}</div>
         {active?.image ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={active.image} alt="" loading="lazy" data-skin-part="image" className="max-h-72 rounded-2xl object-cover" />
+          <img src={active.image} alt="" loading="lazy" data-skin-part="image" className="max-h-72 rounded-panel object-cover" />
         ) : side ? <div className="mx-auto w-64 sm:w-72">{side}</div> : null}
       </div>
     </div>

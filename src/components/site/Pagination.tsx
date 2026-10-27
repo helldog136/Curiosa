@@ -11,7 +11,7 @@ type Props = {
   label?: string;
 };
 
-const link = "inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border border-line bg-surface px-4 text-sm transition-colors hover:border-accent hover:text-accent";
+const link = "inline-flex min-h-target min-w-target items-center justify-center rounded-button border-token border-line bg-surface px-4 text-sm transition-colors hover:border-accent hover:text-accent";
 
 /**
  * Navigation entre les pages d'une liste. N'affiche RIEN pour une seule page. Une vraie navigation (`<nav>` étiquetée), des liens ordinaires
@@ -24,7 +24,7 @@ export function Pagination({ page, pages, base, t, label }: Props) {
       {page > 1 ? (
         <a href={pageHref(base, page - 1)} rel="prev" data-skin-part="pagination-link" className={link}><span aria-hidden="true">←&nbsp;</span>{t("site.pagination.previous")}</a>
       ) : (
-        <span className="min-h-11 min-w-11" aria-hidden="true" />
+        <span className="min-h-target min-w-target" aria-hidden="true" />
       )}
       <ol className="order-last flex w-full flex-wrap items-center justify-center gap-2 sm:order-none sm:w-auto">
         {pageWindow(page, pages).map((n, i) =>
@@ -48,7 +48,7 @@ export function Pagination({ page, pages, base, t, label }: Props) {
       {page < pages ? (
         <a href={pageHref(base, page + 1)} rel="next" data-skin-part="pagination-link" className={link}>{t("site.pagination.next")}<span aria-hidden="true">&nbsp;→</span></a>
       ) : (
-        <span className="min-h-11 min-w-11" aria-hidden="true" />
+        <span className="min-h-target min-w-target" aria-hidden="true" />
       )}
     </nav>
   );
