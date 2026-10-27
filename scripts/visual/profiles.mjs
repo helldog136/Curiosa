@@ -21,4 +21,15 @@ export const PROFILES = {
   "layout-minimal": { scope: "sample", settings: { "header.layout": "minimal" } },
   "layout-tworows": { scope: "sample", settings: { "header.layout": "twoRows", "header.secondaryHref": "/privacy", "header.buttonHref": "/", "@fr:header.secondaryLabel": "Confidentialité", "@en:header.secondaryLabel": "Privacy", "@fr:header.buttonLabel": "Accueil", "@en:header.buttonLabel": "Home" } },
 };
+
+// Profil FACULTATIF « skin-test » : un skin installé À LA MAIN (dossier hors dépôt) pour montrer qu'une mise en page change sans toucher au contenu. Absent par défaut :
+// la liste des profils d'une capture ordinaire (et donc ses ports) ne change pas. Variables : VISUAL_SKIN_DIR (dossier du skin : skin.json, tokens.json, skin.css…),
+// VISUAL_SKIN_ID (son id, = nom du dossier de son manifeste) et VISUAL_SKIN_VERSION (par défaut 1.0.0). Il est copié dans DATA_DIR/skins/<id>/<version>/ de l'exécution.
+if (process.env.VISUAL_SKIN_DIR && process.env.VISUAL_SKIN_ID) {
+  const id = process.env.VISUAL_SKIN_ID, version = process.env.VISUAL_SKIN_VERSION || "1.0.0";
+  PROFILES["skin-test"] = {
+    scope: "sample", skinDir: process.env.VISUAL_SKIN_DIR, skinId: id, skinVersion: version,
+    settings: { "skin.active": id, "skin.installed": [{ id, version, repo: "", ref: "", subdir: "", source: "personal", installedAt: "2026-06-15T00:00:00.000Z" }] },
+  };
+}
 export const PROFILE_ORDER = Object.keys(PROFILES);

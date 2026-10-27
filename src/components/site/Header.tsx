@@ -42,86 +42,94 @@ export async function Header({ config, locale, appearance }: { config: SiteConfi
   ];
 
   const dot = (
-    <span data-testid="news-dot" role="img" aria-label={t("site.news")} title={t("site.news")} className="ml-1.5 inline-block h-2 w-2 rounded-full bg-accent align-middle" />
+    <span data-testid="news-dot" data-skin-part="news-dot" role="img" aria-label={t("site.news")} title={t("site.news")} className="ml-1.5 inline-block h-2 w-2 rounded-full bg-accent align-middle" />
   );
 
   const brand = (
-    <a href={withLocale("/", locale, config.defaultLocale)} className="flex items-center gap-3 text-lg font-semibold" aria-label={config.name}>
+    <a href={withLocale("/", locale, config.defaultLocale)} data-skin-part="brand" className="flex items-center gap-3 text-lg font-semibold" aria-label={config.name}>
       <BrandLogos name={config.name} wide={wide} icon={icon} wideVariants={wideBoth} iconVariants={iconBoth} />
-      {(!wide || icon) && <span className={wide ? "sm:hidden" : ""}>{config.name}</span>}
+      {(!wide || icon) && <span data-brand-name="" data-with-wide={wide ? "" : undefined}>{config.name}</span>}
     </a>
   );
 
   const menu = <SiteNav items={items} strings={{ main: t("site.nav.main"), menu: t("site.menu"), submenu: t("site.nav.submenu", { name: "{name}" }), news: t("site.news") }} />;
 
   const socialsEl = socials.length > 0 && (
-    <ul aria-label={t("site.socials")} className="flex items-center gap-3" data-testid="header-socials">
+    <ul aria-label={t("site.socials")} className="flex items-center gap-3" data-testid="header-socials" data-skin-part="socials">
       {socials.map((s) => (
-        <li key={s.href}><a href={s.href} rel={s.rel} referrerPolicy={s.referrerPolicy ?? undefined} target={s.target} aria-label={s.label} title={s.label} className="inline-flex text-muted hover:text-fg"><EntryIcon icon={s.icon} className="h-5 w-5" /></a></li>
+        <li key={s.href}><a href={s.href} data-skin-part="link" rel={s.rel} referrerPolicy={s.referrerPolicy ?? undefined} target={s.target} aria-label={s.label} title={s.label} className="inline-flex text-muted hover:text-fg"><EntryIcon icon={s.icon} className="h-5 w-5" /></a></li>
       ))}
     </ul>
   );
-  const secondaryEl = config.header.secondary && <a href={local(config.header.secondary.href)} className="text-sm text-muted hover:text-fg">{config.header.secondary.label}</a>;
+  const secondaryEl = config.header.secondary && <a href={local(config.header.secondary.href)} data-skin-part="link" className="text-sm text-muted hover:text-fg">{config.header.secondary.label}</a>;
   const buttonEl = config.header.button && (
-    <a href={local(config.header.button.href)} data-testid="header-button" data-btn="primary" className="rounded-full border-2 border-accent px-4 py-1.5 text-sm font-semibold text-accent transition-colors hover:bg-accent hover:text-accent-fg">{config.header.button.label}</a>
+    <a href={local(config.header.button.href)} data-testid="header-button" data-skin-part="button" data-btn="primary" className="rounded-full border-2 border-accent px-4 py-1.5 text-sm font-semibold text-accent transition-colors hover:bg-accent hover:text-accent-fg">{config.header.button.label}</a>
   );
   const lang = <LanguageSwitcher locales={config.locales} current={locale} defaultLocale={config.defaultLocale} />;
   const modeEl = modeSwitch ? <ModeSwitch t={t} /> : null;
   // Langues et bascule ensemble quand la mise en page les place dans une rangée à deux éléments.
-  const langTools = modeEl ? <div className="flex items-center gap-3">{lang}{modeEl}</div> : lang;
-  const shell = "mx-auto max-w-5xl px-4 py-4";
+  // Régions de l'en-tête (docs/SKINS.md §9.1) : `tools` regroupe le lien secondaire, les réseaux, le bouton, la langue et la bascule ; `contents` = le groupe ne
+  // fabrique aucune boîte (ses éléments restent dans la rangée du parent, comme avant les régions) tant qu'un skin ne lui donne pas une mise en page.
+  const langTools = <div data-skin-region="tools" className={modeEl ? "flex items-center gap-3" : "contents"}>{lang}{modeEl}</div>;
+  // La largeur et les marges latérales du contenu viennent des jetons `--sk-page-*` (globals.css) : l'en-tête est lui-même le conteneur centré.
+  const shell = "py-4";
 
   let body: React.ReactNode;
   switch (config.header.layout) {
     case "twoRows":
       body = (
-        <div className={`${shell} space-y-3`}>
-          <div className="flex flex-wrap items-center justify-between gap-4">{brand}<div className="flex flex-wrap items-center gap-x-5 gap-y-2">{secondaryEl}{socialsEl}{buttonEl}</div></div>
-          <div className="flex flex-wrap items-center justify-between gap-4">{menu}{langTools}</div>
-        </div>
+        <>
+          <div data-skin-part="header-group" className="flex flex-wrap items-center justify-between gap-4">{brand}<div data-skin-region="tools" className="flex flex-wrap items-center gap-x-5 gap-y-2">{secondaryEl}{socialsEl}{buttonEl}</div></div>
+          <div data-skin-part="header-group" className="flex flex-wrap items-center justify-between gap-4">{menu}{langTools}</div>
+        </>
       );
       break;
     case "centered":
       body = (
-        <div className={`${shell} flex flex-col items-center gap-3 text-center`}>
+        <>
           {brand}{menu}
-          <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">{secondaryEl}{socialsEl}{buttonEl}{lang}{modeEl}</div>
-        </div>
+          <div data-skin-region="tools" className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">{secondaryEl}{socialsEl}{buttonEl}{lang}{modeEl}</div>
+        </>
       );
       break;
     case "minimal":
       body = (
-        <div className={`${shell} flex items-center justify-between gap-4`}>
+        <>
           {brand}
-          <div className="flex items-center gap-3">
-            {lang}
-            {modeEl}
+          <div data-skin-part="header-group" className="flex items-center gap-3">
+            <div data-skin-region="tools" className="contents">{lang}{modeEl}</div>
             <MenuToggle label={t("site.menu")}>
-              <ul className="space-y-1 text-sm">
+              <ul data-skin-part="nav-list" data-open="true" className="space-y-1 text-sm">
                 {items.map((item) => (
                   <li key={`${item.href}-${item.label}`}>
                     {item.href
-                      ? <a href={item.href} className="flex min-h-11 items-center rounded-lg px-2 py-2 hover:bg-accent/10">{item.label}{item.news && dot}</a>
-                      : <p className="px-2 pt-2 text-xs font-semibold uppercase tracking-wide text-muted">{item.label}</p>}
+                      ? <a href={item.href} data-skin-part="nav-link" className="flex min-h-11 items-center rounded-lg px-2 py-2 hover:bg-accent/10">{item.label}{item.news && dot}</a>
+                      : <p data-skin-part="eyebrow" className="px-2 pt-2 text-xs font-semibold uppercase tracking-wide text-muted">{item.label}</p>}
                     {item.children && (
-                      <ul className="pl-3">{item.children.map((c) => <li key={c.href + c.label}><a href={c.href} className="flex min-h-11 items-center rounded-lg px-2 py-2 hover:bg-accent/10">{c.label}{c.news && dot}</a></li>)}</ul>
+                      <ul data-skin-part="submenu" data-open="true" className="pl-3">{item.children.map((c) => <li key={c.href + c.label}><a href={c.href} data-skin-part="nav-link" className="flex min-h-11 items-center rounded-lg px-2 py-2 hover:bg-accent/10">{c.label}{c.news && dot}</a></li>)}</ul>
                     )}
                   </li>
                 ))}
               </ul>
-              {(secondaryEl || socialsEl || buttonEl) && <div className="flex flex-wrap items-center gap-x-4 gap-y-3 border-t border-line pt-3">{secondaryEl}{socialsEl}{buttonEl}</div>}
+              {(secondaryEl || socialsEl || buttonEl) && <div data-skin-region="tools" className="flex flex-wrap items-center gap-x-4 gap-y-3 border-t border-line pt-3">{secondaryEl}{socialsEl}{buttonEl}</div>}
             </MenuToggle>
           </div>
-        </div>
+        </>
       );
       break;
     default:
       body = (
-        <div className={`${shell} flex flex-wrap items-center justify-between gap-4`}>
+        <>
           {brand}
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-2">{menu}{secondaryEl}{socialsEl}{buttonEl}{lang}{modeEl}</div>
-        </div>
+          <div data-skin-part="header-group" className="flex flex-wrap items-center gap-x-6 gap-y-2">{menu}<div data-skin-region="tools" className="contents">{secondaryEl}{socialsEl}{buttonEl}{lang}{modeEl}</div></div>
+        </>
       );
   }
-  return <header className="relative border-b border-line" data-header-layout={config.header.layout}>{body}</header>;
+  // Mise en page propre à chaque variante (classes ci-dessous) ; le conteneur, ses marges et sa largeur sont ceux de l'en-tête lui-même (jetons `--sk-page-*`).
+  const frame: Record<string, string> = {
+    twoRows: "space-y-3",
+    centered: "flex flex-col items-center gap-3 text-center",
+    minimal: "flex items-center justify-between gap-4",
+  };
+  return <header data-skin-region="header" className={`relative border-b border-line ${shell} ${frame[config.header.layout] ?? "flex flex-wrap items-center justify-between gap-4"}`} data-header-layout={config.header.layout}>{body}</header>;
 }

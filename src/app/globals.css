@@ -95,6 +95,50 @@
   }
 }
 
+/* ── DOM stable : coquille, régions, menu (docs/SKINS.md §9) ─────────────────────────────────────────────────────────────────────────────────────────
+   Le site public rend le MÊME DOM sous tous les skins : régions `data-skin-region`, pièces `data-skin-part`. Les règles ci-dessous sont celles de BASIC : elles reproduisent
+   exactement l'apparence d'avant les skins (coquille en simple bloc, mêmes largeurs, même menu). Elles sont volontairement de faible spécificité et ne sont pas rangées
+   en `@layer` : une feuille de skin (préfixée `:root[data-skin="…"]`) les remplace sans effort ; elles passent elles-mêmes devant les utilitaires (rangés en `@layer`).
+   L'ordre du DOM est l'ordre de lecture et de tabulation : bannière, en-tête (marque, menu, outils), contenu, pied. */
+[data-skin-region="shell"] { display: block; grid-template-columns: var(--sk-shell-columns, minmax(0, 1fr)); grid-template-areas: var(--sk-shell-areas, "banner" "header" "main" "footer"); }
+[data-skin-region="banner"] { grid-area: banner; min-width: 0; }
+[data-skin-region="header"] { grid-area: header; min-width: 0; }
+[data-skin-region="main"] { grid-area: main; min-width: 0; padding-block: var(--sk-page-pad-y, 2.5rem); }
+[data-skin-region="footer"] { grid-area: footer; min-width: 0; }
+/* L'en-tête et le pied sont eux-mêmes le conteneur centré : marges de la page, ou davantage quand la page est plus large que le contenu. */
+[data-skin-region="header"], [data-skin-region="footer"] { padding-inline: max(var(--sk-page-pad-x, 1rem), calc((100% - var(--sk-page-width, 64rem)) / 2 + var(--sk-page-pad-x, 1rem))); }
+[data-skin-region="content"] { margin-inline: auto; max-width: var(--sk-page-width, 64rem); padding-inline: var(--sk-page-pad-x, 1rem); }
+
+/* Menu principal (SiteNav) : au-dessous de 40 rem la liste devient un panneau sous l'en-tête et le bouton « Menu » l'ouvre (`data-open`, posé par le script du cœur) ;
+   à partir de 40 rem la liste est une rangée et les sous-menus sont des listes déroulantes. Le comportement (ouverture, clavier, Échap) reste celui du cœur. */
+[data-site-nav] [data-skin-part="nav-list"] { display: flex; flex-direction: column; row-gap: var(--sk-space, 0.25rem); }
+[data-site-nav] [data-skin-part="submenu"] { display: none; }
+[data-site-nav] [data-skin-part="submenu"][data-open="true"] { display: block; }
+@media (width < 40rem) {
+  [data-site-nav] [data-skin-part="nav-list"] { position: absolute; inset-inline: 0; top: 100%; z-index: 40; max-height: calc(100vh - 5rem); overflow-y: auto; border-bottom: 1px solid var(--v-line); background-color: var(--v-surface); padding-inline: calc(var(--sk-space, 0.25rem) * 4); padding-block: calc(var(--sk-space, 0.25rem) * 3); box-shadow: var(--sk-shadow-pop, var(--sk-shadow-raised, 0 10px 15px -3px #0000001a, 0 4px 6px -4px #0000001a)); }
+  [data-site-nav] [data-skin-part="nav-list"][data-open="false"] { display: none; }
+}
+@media (width >= 40rem) {
+  [data-site-nav] [data-skin-part="menu-toggle"] { display: none; }
+  [data-site-nav] [data-skin-part="nav-list"] { flex-direction: row; flex-wrap: wrap; column-gap: calc(var(--sk-space, 0.25rem) * 5); }
+  [data-site-nav] [data-nav-top] { min-height: 0; }
+  [data-site-nav] [data-skin-part="submenu-toggle"] { height: calc(var(--sk-space, 0.25rem) * 8); width: calc(var(--sk-space, 0.25rem) * 6); }
+  [data-site-nav] [data-skin-part="submenu"] { position: absolute; left: 0; top: 100%; z-index: 40; min-width: calc(var(--sk-space, 0.25rem) * 48); overflow: hidden; border-radius: var(--sk-radius-xl, 0.75rem); border: 1px solid var(--v-line); background-color: var(--v-surface); padding-block: var(--sk-space, 0.25rem); padding-left: 0; box-shadow: var(--sk-shadow-pop, var(--sk-shadow-raised, 0 10px 15px -3px #0000001a, 0 4px 6px -4px #0000001a)); }
+  [data-site-nav] [data-skin-part="submenu"] [data-skin-part="nav-link"] { padding-inline: calc(var(--sk-space, 0.25rem) * 4); color: var(--v-fg); }
+  @media (hover: hover) {
+    [data-site-nav] [data-row]:hover [data-skin-part="submenu"] { display: block; }
+    [data-site-nav] [data-skin-part="submenu"] [data-skin-part="nav-link"]:hover { background-color: var(--v-accent); color: var(--v-accent-fg); }
+  }
+}
+
+/* Marque : sur petit écran l'icône remplace le logo horizontal (quand les deux existent) et le nom écrit n'apparaît que s'il n'y a pas de logo horizontal. */
+[data-skin-part="brand"] img[data-logo="wide"][data-paired] { display: none; }
+@media (width >= 40rem) {
+  [data-skin-part="brand"] img[data-logo="wide"][data-paired] { display: block; }
+  [data-skin-part="brand"] img[data-logo="icon"][data-paired] { display: none; }
+  [data-skin-part="brand"] [data-brand-name][data-with-wide] { display: none; }
+}
+
 /* Logo à deux variantes (clair / sombre), rendues en deux <img data-for> quand le site propose la bascule du visiteur (docs/SKINS.md §3.8) : le cœur montre
    la bonne selon le mode effectif (choix du visiteur, sinon appareil) ; un skin n'y touche pas. Sans <img data-for>, rien ne s'applique. */
 :root[data-mode="light"] img[data-for="dark"], :root[data-mode="dark"] img[data-for="light"] { display: none; }

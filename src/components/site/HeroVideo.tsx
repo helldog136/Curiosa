@@ -33,22 +33,22 @@ export function HeroVideo({ src, poster, sound, title, text, logo, eyebrow, butt
 
   const btn = "rounded-full bg-black/50 px-3 py-1.5 text-sm text-white backdrop-blur transition hover:bg-black/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white";
   return (
-    <section data-testid="hero-video" className="relative isolate flex min-h-[70vh] items-center justify-center overflow-hidden rounded-2xl text-center text-white">
+    <section data-testid="hero-video" data-skin-part="hero" data-variant="video" className="relative isolate flex min-h-[70vh] items-center justify-center overflow-hidden rounded-2xl text-center text-white">
       <video ref={ref} src={src} poster={poster} muted={muted} loop playsInline preload="metadata" aria-hidden="true" className="absolute inset-0 -z-10 h-full w-full object-cover" />
       <div className="absolute inset-0 -z-10 bg-black/45" aria-hidden="true" />
       <div className="space-y-4 px-6 py-16">
         {logo && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={logo} alt="" className="mx-auto h-24 w-24 rounded-full object-cover" />
+          <img src={logo} alt="" data-skin-part="avatar" className="mx-auto h-24 w-24 rounded-full object-cover" />
         )}
-        {eyebrow && <p className="text-lg font-semibold drop-shadow">{eyebrow}</p>}
-        {title && <h1 className="text-4xl font-bold tracking-tight drop-shadow sm:text-6xl">{title}</h1>}
-        {text && <p className="mx-auto max-w-2xl text-lg drop-shadow">{text}</p>}
-        {button?.label && /^(\/(?!\/)|https?:\/\/|mailto:)/.test(button.href) && <a href={button.href} className="inline-block rounded-full border-2 border-white px-6 py-3 font-semibold transition-colors hover:bg-white hover:text-black">{button.label}</a>}
+        {eyebrow && <p data-skin-part="eyebrow" className="text-lg font-semibold drop-shadow">{eyebrow}</p>}
+        {title && <h1 data-skin-part="heading" data-level="1" className="text-4xl font-bold tracking-tight drop-shadow sm:text-6xl">{title}</h1>}
+        {text && <p data-skin-part="lead" className="mx-auto max-w-2xl text-lg drop-shadow">{text}</p>}
+        {button?.label && /^(\/(?!\/)|https?:\/\/|mailto:)/.test(button.href) && <a href={button.href} data-skin-part="button" className="inline-block rounded-full border-2 border-white px-6 py-3 font-semibold transition-colors hover:bg-white hover:text-black">{button.label}</a>}
       </div>
       <div className="absolute bottom-3 right-3 flex gap-2">
-        <button type="button" className={btn} aria-pressed={playing} onClick={() => setWanted(!playing)}>{playing ? `⏸ ${labels.pause}` : `▶ ${labels.play}`}</button>
-        {sound && <button type="button" className={btn} aria-pressed={!muted} onClick={() => { const v = ref.current; if (!v) return; v.muted = !muted; setMuted(!muted); if (muted) { setWanted(true); v.play().catch(() => {}); } }}>{muted ? `🔇 ${labels.soundOn}` : `🔊 ${labels.soundOff}`}</button>}
+        <button type="button" data-skin-part="button" className={btn} aria-pressed={playing} onClick={() => setWanted(!playing)}>{playing ? `⏸ ${labels.pause}` : `▶ ${labels.play}`}</button>
+        {sound && <button type="button" data-skin-part="button" className={btn} aria-pressed={!muted} onClick={() => { const v = ref.current; if (!v) return; v.muted = !muted; setMuted(!muted); if (muted) { setWanted(true); v.play().catch(() => {}); } }}>{muted ? `🔇 ${labels.soundOn}` : `🔊 ${labels.soundOff}`}</button>}
       </div>
     </section>
   );

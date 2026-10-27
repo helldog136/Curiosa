@@ -24,12 +24,13 @@ export const REGIONS = ["backdrop", "tray", "shell", "banner", "header", "nav", 
 /** Pièces communes du DOM stable (§9.2). Ajouter une pièce est additif ; en retirer une est cassant (`skinContract`). */
 export const PARTS = [
   "card", "button", "chip", "badge", "news-dot",
-  "field", "input", "textarea", "select", "label", "field-error",
+  "field", "input", "textarea", "label", "field-error",
   "list", "list-item", "table", "table-head", "table-row", "table-cell",
   "heading", "eyebrow", "lead", "prose", "quote", "code", "code-block", "copy-code",
   "image", "media", "avatar", "cover", "divider", "link", "notice", "panel", "hero", "stat",
   "tabs", "tab", "pagination", "pagination-link", "mode-switch", "mode-option",
-  "brand", "menu-toggle", "nav-list", "nav-link", "submenu", "lang-switcher", "socials",
+  "brand", "menu-toggle", "nav-list", "nav-link", "submenu", "submenu-toggle", "header-group", "lang-switcher", "socials",
+  "entries", "module-html",
   "home-flow", "home-cell", "cookie-tray", "footer-text", "footer-link", "credit", "skip-link",
 ] as const;
 
@@ -235,8 +236,8 @@ export const GENERIC_FONT_FAMILIES: readonly string[] = [
 /** Pièces et régions listées au §9.3 (documentaire : la règle appliquée est « tout sauf le décor »). */
 export const NON_HIDEABLE: readonly string[] = [
   "brand", "nav-link", "nav-list", "submenu", "tools", "lang-switcher", "heading", "prose", "link", "button", "field", "input", "textarea",
-  "select", "label", "field-error", "card", "list-item", "image", "media", "cover", "avatar", "notice", "stat", "tab", "pagination",
-  "pagination-link", "cookie-tray", "footer-link", "credit", "skip-link", "mode-switch", "mode-option",
+  "label", "field-error", "card", "list-item", "image", "media", "cover", "avatar", "notice", "stat", "tab", "pagination",
+  "pagination-link", "cookie-tray", "footer-link", "credit", "skip-link", "mode-switch", "mode-option", "submenu-toggle", "header-group", "entries", "module-html",
 ];
 
 // ---------------------------------------------------------------------------------------------------------------------

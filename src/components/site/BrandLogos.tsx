@@ -7,16 +7,19 @@
 export type LogoVariants = [light: string, dark: string];
 
 export function BrandLogos({ name, wide, icon, wideVariants, iconVariants }: { name: string; wide: string | null; icon: string | null; wideVariants: LogoVariants | null; iconVariants: LogoVariants | null }) {
-  const wideClass = `${icon ? "hidden sm:block" : ""} h-9 w-auto max-w-[14rem] object-contain`;
-  const iconClass = `${wide ? "sm:hidden" : ""} h-9 w-9 object-contain`;
+  // Sur petit écran l'icône remplace le logo horizontal (quand les deux existent) : règles `data-logo` / `data-paired` de la feuille du cœur (globals.css).
+  const wideClass = "h-9 w-auto max-w-[14rem] object-contain";
+  const iconClass = "h-9 w-9 object-contain";
+  const wideAttrs = { "data-logo": "wide", "data-paired": icon ? "" : undefined };
+  const iconAttrs = { "data-logo": "icon", "data-paired": wide ? "" : undefined };
   return (
     <>
       {wide && (wideVariants
-        ? (["light", "dark"] as const).map((m, i) => <img key={m} src={wideVariants[i]} data-for={m} alt={name} className={wideClass} />)
-        : <img src={wide} alt={name} className={wideClass} />)}
+        ? (["light", "dark"] as const).map((m, i) => <img key={m} src={wideVariants[i]} data-for={m} {...wideAttrs} alt={name} className={wideClass} />)
+        : <img src={wide} {...wideAttrs} alt={name} className={wideClass} />)}
       {icon && (iconVariants
-        ? (["light", "dark"] as const).map((m, i) => <img key={m} src={iconVariants[i]} data-for={m} alt="" className={iconClass} />)
-        : <img src={icon} alt="" className={iconClass} />)}
+        ? (["light", "dark"] as const).map((m, i) => <img key={m} src={iconVariants[i]} data-for={m} {...iconAttrs} alt="" className={iconClass} />)
+        : <img src={icon} {...iconAttrs} alt="" className={iconClass} />)}
     </>
   );
 }

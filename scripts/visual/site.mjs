@@ -79,6 +79,8 @@ async function up(profile, portArg) {
   fs.rmSync(dir, { recursive: true, force: true });
   fs.mkdirSync(dir, { recursive: true });
   fs.cpSync(`${SNAPSHOT_DIR}/data`, `${dir}/data`, { recursive: true });
+  const skinProfile = PROFILES[profile];
+  if (skinProfile.skinDir) fs.cpSync(skinProfile.skinDir, `${dir}/data/skins/${skinProfile.skinId}/${skinProfile.skinVersion}`, { recursive: true });
   const port = Number(portArg || portOf(profile));
   if (port < PORT_BASE || port > PORT_MAX) throw new Error(`port ${port} hors de la plage ${PORT_BASE}-${PORT_MAX}`);
   const dbFile = `${dir}/data/curiosa.db`;

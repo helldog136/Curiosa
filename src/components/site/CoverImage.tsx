@@ -11,6 +11,6 @@ export function CoverImage({ src, variant }: { src: string; variant: "article" |
   const ratio = refRatio(src);
   const dims = ratio ? { width: 1600, height: Math.max(1, Math.round(1600 / ratio)) } : {};
   return variant === "article"
-    ? <img src={src} alt="" {...dims} className="mx-auto h-auto max-h-[min(32rem,75vh)] w-auto max-w-full rounded-xl object-contain" data-cover="article" />
-    : <img src={src} alt="" loading="lazy" {...dims} className="h-auto max-h-72 w-full object-cover" data-cover="card" />;
+    ? <img src={src} alt="" {...dims} className="mx-auto h-auto max-h-[min(32rem,75vh)] w-auto max-w-full rounded-xl object-contain" data-cover="article" data-skin-part="cover" />
+    : <img src={src} alt="" loading="lazy" {...dims} className="h-auto max-h-72 w-full object-cover" data-cover="card" data-skin-part="cover" />;
 }

@@ -21,12 +21,12 @@ function Collage({ images }: { images: string[] }) {
   if (!a) return null;
   const card = "absolute overflow-hidden rounded-2xl border-4 border-bg object-cover shadow-lg";
   /* eslint-disable @next/next/no-img-element */
-  if (!b) return <div className="flex justify-center"><img src={a} alt="" loading="lazy" className="max-h-96 rounded-2xl object-cover shadow-lg" /></div>;
+  if (!b) return <div className="flex justify-center"><img src={a} alt="" loading="lazy" data-skin-part="image" className="max-h-96 rounded-2xl object-cover shadow-lg" /></div>;
   return (
-    <div className="relative mx-auto aspect-[4/5] w-full max-w-md" data-testid="collage">
-      <img src={a} alt="" loading="lazy" className={`${card} left-0 top-0 h-[55%] w-[52%]`} />
-      <img src={b} alt="" loading="lazy" className={`${card} bottom-0 left-[18%] z-10 h-[58%] w-[56%]`} />
-      {c && <img src={c} alt="" loading="lazy" className={`${card} right-0 top-[30%] h-[42%] w-[44%]`} />}
+    <div className="relative mx-auto aspect-[4/5] w-full max-w-md" data-testid="collage" data-skin-part="media">
+      <img src={a} alt="" loading="lazy" data-skin-part="image" className={`${card} left-0 top-0 h-[55%] w-[52%]`} />
+      <img src={b} alt="" loading="lazy" data-skin-part="image" className={`${card} bottom-0 left-[18%] z-10 h-[58%] w-[56%]`} />
+      {c && <img src={c} alt="" loading="lazy" data-skin-part="image" className={`${card} right-0 top-[30%] h-[42%] w-[44%]`} />}
     </div>
   );
   /* eslint-enable @next/next/no-img-element */
@@ -44,7 +44,7 @@ function Button({ button, on }: { button?: { label: string; href: string }; on?:
   if (!button?.label) return null;
   const href = safeHref(button.href);
   return (
-    <a href={href} data-btn={on ? undefined : "primary"} {...(isExternalHref(href) ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+    <a href={href} data-skin-part="button" data-btn={on ? undefined : "primary"} {...(isExternalHref(href) ? { target: "_blank", rel: "noopener noreferrer" } : {})}
       className={`inline-block rounded-full border-2 px-6 py-3 font-semibold transition-colors ${BUTTON_STYLES[on ?? "page"]}`}>
       {button.label}
     </a>
@@ -66,10 +66,10 @@ export function Panel({ block, labels }: { block: PanelBlock; labels: VideoLabel
   const on: ButtonOn | undefined = veil === "dark" ? "veil" : block.tone === "accent" ? "accent" : undefined;
   const dark = on !== undefined;
   const tone = block.tone === "accent" ? (on === "veil" ? "bg-accent" : "bg-accent text-accent-fg") : block.tone === "surface" ? "bg-surface" : "";
-  const heading = block.title ? <h2 data-marker={!dark ? "" : undefined} className={`text-3xl font-bold tracking-tight sm:text-4xl ${!dark ? "text-accent" : ""}`}>{block.title}</h2> : null;
+  const heading = block.title ? <h2 data-skin-part="heading" data-level="2" data-marker={!dark ? "" : undefined} className={`text-3xl font-bold tracking-tight sm:text-4xl ${!dark ? "text-accent" : ""}`}>{block.title}</h2> : null;
   const head = (
     <>
-      {block.eyebrow && <p className="text-sm font-semibold uppercase tracking-wide">{block.eyebrow}</p>}
+      {block.eyebrow && <p data-skin-part="eyebrow" className="text-sm font-semibold uppercase tracking-wide">{block.eyebrow}</p>}
       {heading}
       {block.text && <Markdown text={block.text} />}
     </>
@@ -80,16 +80,16 @@ export function Panel({ block, labels }: { block: PanelBlock; labels: VideoLabel
     const tabs = block.items.map((it) => ({
       label: it.title,
       image: safeImage(it.image),
-      content: (<>{it.heading && <h3 className="text-xl font-semibold">{it.heading}</h3>}{it.text && <Markdown text={it.text} />}</>),
+      content: (<>{it.heading && <h3 data-skin-part="heading" data-level="3" className="text-xl font-semibold">{it.heading}</h3>}{it.text && <Markdown text={it.text} />}</>),
     }));
     body = <div className="space-y-6"><div className="max-w-3xl space-y-3">{head}</div><PanelTabs tabs={tabs} side={<Collage images={images} />} /></div>;
   } else if (block.kind === "stats" && block.items?.length) {
     body = (
       <div className="space-y-8">
         <div className="mx-auto max-w-3xl space-y-3 text-center">{head}</div>
-        <ul className="flex flex-wrap justify-center gap-x-14 gap-y-8 text-center">
+        <ul data-skin-part="list" data-kind="figures" className="flex flex-wrap justify-center gap-x-14 gap-y-8 text-center">
           {block.items.map((it, i) => (
-            <li key={i} className="min-w-40 max-w-xs flex-1 basis-40"><p data-stat={dark ? undefined : ""} className="text-balance text-4xl font-extrabold tracking-tight sm:text-5xl">{it.title}</p>{it.heading && <p className={`mx-auto mt-2 max-w-[22ch] text-balance text-sm ${on === "accent" ? "" : "opacity-80"}`}>{it.heading}</p>}</li>
+            <li key={i} data-skin-part="list-item" className="min-w-40 max-w-xs flex-1 basis-40"><p data-stat={dark ? undefined : ""} data-skin-part="stat" className="text-balance text-4xl font-extrabold tracking-tight sm:text-5xl">{it.title}</p>{it.heading && <p className={`mx-auto mt-2 max-w-[22ch] text-balance text-sm ${on === "accent" ? "" : "opacity-80"}`}>{it.heading}</p>}</li>
           ))}
         </ul>
       </div>
@@ -107,7 +107,7 @@ export function Panel({ block, labels }: { block: PanelBlock; labels: VideoLabel
   }
 
   return (
-    <section data-testid="panel" data-kind={block.kind} data-on={on} className={`relative isolate overflow-hidden rounded-2xl px-6 py-10 sm:px-10 ${tone} ${veil === "dark" ? "text-white" : ""}`}
+    <section data-testid="panel" data-skin-part="panel" data-kind={block.kind} data-on={on} className={`relative isolate overflow-hidden rounded-2xl px-6 py-10 sm:px-10 ${tone} ${veil === "dark" ? "text-white" : ""}`}
       style={bg ? { backgroundImage: `url("${bg}")`, backgroundSize: SIZES[block.bg?.size ?? "cover"] ?? "cover", backgroundPosition: POSITIONS[block.bg?.position ?? "center"] ?? "center", backgroundRepeat: "no-repeat" } : undefined}>
       {veil && veil !== "none" && <div aria-hidden="true" className={`absolute inset-0 -z-10 ${veil === "dark" ? "bg-black/55" : "bg-bg/70"}`} />}
       {body}

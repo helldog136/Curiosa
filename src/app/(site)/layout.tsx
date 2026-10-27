@@ -87,18 +87,21 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(siteJsonLd({ url: siteUrl, name: localized.name, tagline: localized.tagline, logo: pickLogo(localized.logos, "any", look.appearance.dark), locale, entity, sameAs: profiles, homeUrl: pageUrl(siteUrl, locale, config.defaultLocale, "/").replace(/\/$/, "") || siteUrl })) }} />
         <HeadTags blocks={headBlocks} />
       </head>
-      <body className="min-h-screen bg-bg text-fg antialiased">
-        {layers.length > 0 && <div className="cbg" aria-hidden="true">{layers.map((_, i) => <i key={i} />)}</div>}
-        <a href="#content" className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:bg-accent focus:px-3 focus:py-1 focus:text-accent-fg">
+      <body className="min-h-screen bg-bg text-fg antialiased" data-skin-root="">
+        {layers.length > 0 && <div className="cbg" aria-hidden="true" data-skin-region="backdrop">{layers.map((_, i) => <i key={i} />)}</div>}
+        <a href="#content" data-skin-part="skip-link" className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:bg-accent focus:px-3 focus:py-1 focus:text-accent-fg">
           {t("site.skip")}
         </a>
         {tray.enabled && <CookieTray labels={trayLabels} privacyHref={`${withLocale("/privacy", locale, config.defaultLocale)}#cookies`} initialOpen={tray.showTray} />}
-        <Blocks blocks={bannerBlocks} locale={locale} />
-        <Header config={headerConfig} locale={locale} appearance={look.appearance} />
-        <main id="content" className="mx-auto max-w-5xl px-4 py-10">
-          {children}
-        </main>
-        <Footer config={localized} locale={locale} />
+        {/* Coquille : le DOM est le même pour tous les skins (docs/SKINS.md §9) ; l'ordre ci-dessous est l'ordre de lecture et de tabulation. Basic : un simple bloc. */}
+        <div data-skin-region="shell">
+          <div data-skin-region="banner"><Blocks blocks={bannerBlocks} locale={locale} /></div>
+          <Header config={headerConfig} locale={locale} appearance={look.appearance} />
+          <main id="content" data-skin-region="main">
+            <div data-skin-region="content">{children}</div>
+          </main>
+          <Footer config={localized} locale={locale} />
+        </div>
         {config.statsEnabled && <VisitBeacon />}
       </body>
     </html>

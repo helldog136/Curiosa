@@ -20,9 +20,9 @@ const link = "inline-flex min-h-11 min-w-11 items-center justify-center rounded-
 export function Pagination({ page, pages, base, t, label }: Props) {
   if (pages <= 1) return null;
   return (
-    <nav aria-label={label ?? t("site.pagination.label")} data-pagination="" className="flex flex-wrap items-center justify-between gap-3">
+    <nav aria-label={label ?? t("site.pagination.label")} data-pagination="" data-skin-part="pagination" className="flex flex-wrap items-center justify-between gap-3">
       {page > 1 ? (
-        <a href={pageHref(base, page - 1)} rel="prev" className={link}><span aria-hidden="true">←&nbsp;</span>{t("site.pagination.previous")}</a>
+        <a href={pageHref(base, page - 1)} rel="prev" data-skin-part="pagination-link" className={link}><span aria-hidden="true">←&nbsp;</span>{t("site.pagination.previous")}</a>
       ) : (
         <span className="min-h-11 min-w-11" aria-hidden="true" />
       )}
@@ -34,6 +34,7 @@ export function Pagination({ page, pages, base, t, label }: Props) {
             <li key={n}>
               <a
                 href={pageHref(base, n)}
+                data-skin-part="pagination-link"
                 {...(n === page ? { "aria-current": "page" as const } : {})}
                 aria-label={n === page ? t("site.pagination.current", { n, pages }) : t("site.pagination.goTo", { n })}
                 className={`${link} ${n === page ? "border-accent font-semibold text-accent" : ""}`}
@@ -45,7 +46,7 @@ export function Pagination({ page, pages, base, t, label }: Props) {
         )}
       </ol>
       {page < pages ? (
-        <a href={pageHref(base, page + 1)} rel="next" className={link}>{t("site.pagination.next")}<span aria-hidden="true">&nbsp;→</span></a>
+        <a href={pageHref(base, page + 1)} rel="next" data-skin-part="pagination-link" className={link}>{t("site.pagination.next")}<span aria-hidden="true">&nbsp;→</span></a>
       ) : (
         <span className="min-h-11 min-w-11" aria-hidden="true" />
       )}

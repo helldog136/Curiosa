@@ -6,7 +6,8 @@ export type NavLinkItem = { label: string; href: string; news: boolean };
 export type NavItem = NavLinkItem & { children?: NavLinkItem[] };
 export type NavStrings = { main: string; menu: string; submenu: string; news: string };
 
-const LINK = "inline-flex min-h-11 items-center py-1.5 text-muted hover:text-fg sm:min-h-0";
+/** Lien du menu (premier niveau). À partir de 40 rem la hauteur minimale tactile tombe : règle `[data-nav-top]` de la feuille du cœur (globals.css), pas une classe. */
+const LINK = "inline-flex min-h-11 items-center py-1.5 text-muted hover:text-fg";
 const fmt = (s: string, name: string) => s.replace("{name}", name);
 
 /**
@@ -73,7 +74,7 @@ export function SiteNav({ items, strings }: { items: NavItem[]; strings: NavStri
   }
 
   const dot = (
-    <span data-testid="news-dot" role="img" aria-label={strings.news} title={strings.news} className="ml-1.5 inline-block h-2 w-2 rounded-full bg-accent align-middle" />
+    <span data-testid="news-dot" data-skin-part="news-dot" role="img" aria-label={strings.news} title={strings.news} className="ml-1.5 inline-block h-2 w-2 rounded-full bg-accent align-middle" />
   );
   const chevron = (isOpen: boolean) => (
     <svg viewBox="0 0 12 12" aria-hidden="true" className={`h-3 w-3 transition-transform motion-reduce:transition-none ${isOpen ? "rotate-180" : ""}`}>
@@ -82,54 +83,55 @@ export function SiteNav({ items, strings }: { items: NavItem[]; strings: NavStri
   );
 
   return (
-    <nav ref={root} aria-label={strings.main} data-site-nav="" className="text-sm"
+    <nav ref={root} aria-label={strings.main} data-site-nav="" data-skin-region="nav" className="text-sm"
       onKeyDown={onKeyDown} onPointerDown={(e) => { pointer.current = e.pointerType; }}
       onBlur={(e) => { const to = e.relatedTarget as Node | null; if (to && !e.currentTarget.contains(to)) setOpen(null); }}>
       <noscript>
         {/* Sans JavaScript : tout le menu et tous les sous-menus sont visibles, à la suite ; les boutons (inutiles) disparaissent. */}
         <style>{`[data-site-nav] ul[data-nav-list]{display:flex!important;flex-wrap:wrap;gap:.25rem 1.25rem}[data-site-nav] ul[data-sub]{display:block!important;position:static!important;border:0!important;box-shadow:none!important;background:none!important;padding:0 0 0 .75rem!important}[data-site-nav] button{display:none!important}`}</style>
       </noscript>
-      <button type="button" data-panel-button="" aria-expanded={panel} aria-controls={`${base}-list`} onClick={() => { setPanel((p) => !p); setOpen(null); }}
-        className="inline-flex min-h-11 items-center gap-2 rounded-full border border-line px-4 py-2 font-medium hover:border-accent sm:hidden">
+      {/* Le bouton « Menu » n'existe qu'au-dessous de 40 rem et la liste y devient un panneau : ces règles responsives sont dans la feuille du cœur (globals.css), sur les pièces
+          `menu-toggle`, `nav-list` et `submenu` et leur attribut `data-open` : un skin les réécrit, le comportement (JS) reste celui du cœur. */}
+      <button type="button" data-panel-button="" data-skin-part="menu-toggle" aria-expanded={panel} aria-controls={`${base}-list`} onClick={() => { setPanel((p) => !p); setOpen(null); }}
+        className="inline-flex min-h-11 items-center gap-2 rounded-full border border-line px-4 py-2 font-medium hover:border-accent">
         <span aria-hidden="true">{panel ? "✕" : "☰"}</span> {strings.menu}
       </button>
-      <ul id={`${base}-list`} data-nav-list="" className={`${panel ? "flex" : "hidden"} flex-col gap-y-1 max-sm:absolute max-sm:inset-x-0 max-sm:top-full max-sm:z-40 max-sm:max-h-[calc(100vh-5rem)] max-sm:overflow-y-auto max-sm:border-b max-sm:border-line max-sm:bg-surface max-sm:px-4 max-sm:py-3 max-sm:shadow-lg sm:flex sm:flex-row sm:flex-wrap sm:gap-x-5`}>
+      <ul id={`${base}-list`} data-nav-list="" data-skin-part="nav-list" data-open={panel ? "true" : "false"}>
         {items.map((item, i) => {
           const kids = item.children ?? [];
           if (kids.length === 0) {
-            return <li key={`${item.href}-${item.label}`}><a href={item.href} className={LINK}>{item.label}{item.news && dot}</a></li>;
+            return <li key={`${item.href}-${item.label}`}><a href={item.href} data-skin-part="nav-link" data-nav-top="" className={LINK}>{item.label}{item.news && dot}</a></li>;
           }
           const isOpen = open === i;
           const subId = `${base}-sub-${i}`;
           const toggle = () => setOpen((o) => (o === i ? null : i));
           return (
-            <li key={`${i}-${item.label}`} data-row={i} className="group/sub relative">
+            <li key={`${i}-${item.label}`} data-row={i} className="relative">
               <div className="flex items-center gap-1">
                 {item.href ? (
                   <>
-                    <a href={item.href} data-link={i} className={LINK}
+                    <a href={item.href} data-link={i} data-skin-part="nav-link" data-nav-top="" className={LINK}
                       onClick={(e) => {
                         // Au toucher (ou au stylet), un premier toucher ouvre le sous-menu ; le second suit le lien. Un clic au clavier (detail 0) ou à la souris suit toujours.
                         if (e.detail > 0 && pointer.current !== "mouse" && pointer.current !== "" && !isOpen) { e.preventDefault(); setOpen(i); }
                       }}>
                       {item.label}{item.news && dot}
                     </a>
-                    <button type="button" data-trigger={i} aria-expanded={isOpen} aria-controls={subId} aria-label={fmt(strings.submenu, item.label)} onClick={toggle}
-                      className="inline-flex h-11 w-9 items-center justify-center rounded-lg text-muted hover:text-fg sm:h-8 sm:w-6">
+                    <button type="button" data-trigger={i} aria-expanded={isOpen} aria-controls={subId} aria-label={fmt(strings.submenu, item.label)} onClick={toggle} data-skin-part="submenu-toggle"
+                      className="inline-flex h-11 w-9 items-center justify-center rounded-lg text-muted hover:text-fg">
                       {chevron(isOpen)}
                     </button>
                   </>
                 ) : (
-                  <button type="button" data-trigger={i} aria-expanded={isOpen} aria-controls={subId} onClick={toggle} className={`${LINK} gap-1`}>
+                  <button type="button" data-trigger={i} aria-expanded={isOpen} aria-controls={subId} onClick={toggle} data-skin-part="nav-link" data-nav-top="" className={`${LINK} gap-1`}>
                     {item.label}{chevron(isOpen)}
                   </button>
                 )}
               </div>
-              <ul id={subId} data-sub={i}
-                className={`${isOpen ? "block" : "hidden"} pl-3 sm:absolute sm:left-0 sm:top-full sm:z-40 sm:min-w-48 sm:overflow-hidden sm:rounded-xl sm:border sm:border-line sm:bg-surface sm:py-1 sm:pl-0 sm:shadow-lg sm:group-hover/sub:block`}>
+              <ul id={subId} data-sub={i} data-skin-part="submenu" data-open={isOpen ? "true" : "false"} className="pl-3">
                 {kids.map((c) => (
                   <li key={`${c.href}-${c.label}`}>
-                    <a href={c.href} className="flex min-h-11 items-center py-1.5 text-muted hover:text-fg sm:px-4 sm:text-fg sm:hover:bg-accent sm:hover:text-accent-fg">{c.label}{c.news && dot}</a>
+                    <a href={c.href} data-skin-part="nav-link" className="flex min-h-11 items-center py-1.5 text-muted hover:text-fg">{c.label}{c.news && dot}</a>
                   </li>
                 ))}
               </ul>
