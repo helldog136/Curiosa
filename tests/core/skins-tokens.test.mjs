@@ -6,7 +6,6 @@ import fs from "node:fs";
 const T = await import("@/core/skins/tokens");
 const { BASIC } = await import("@/core/skins/basic");
 const C = await import("@/core/color");
-const { parseColor } = await import("@/core/skins/colorParse");
 const { VAR_NAME_RE } = await import("@/core/skins/allowlist");
 
 const read = (p) => fs.readFileSync(p, "utf8");

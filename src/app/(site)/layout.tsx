@@ -80,6 +80,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
     <html lang={locale} dir={RTL_LOCALES.has(locale) ? "rtl" : "ltr"} data-skin={look.composed.skinId} data-accent2={look.composed.hasAccent2 ? "1" : undefined} data-surface={look.composed.hasChosenSurface ? "1" : undefined}>
       <head>
         {/* Bascule clair / sombre du visiteur : script du cœur, même origine, BLOQUANT (ni defer ni async) pour poser data-mode avant le premier rendu ; seulement si le skin a les deux modes. */}
+        {/* eslint-disable-next-line @next/next/no-sync-scripts -- voulu : le script doit être bloquant pour que le mode soit posé avant le premier rendu (docs/SKINS.md §3.8) */}
         {look.modeScriptUrl && <script src={look.modeScriptUrl} />}
         <style dangerouslySetInnerHTML={{ __html: css }} />
         <link rel="alternate" type="application/rss+xml" title={localized.name} href={`${siteUrl}${feedPath(locale)}`} />
