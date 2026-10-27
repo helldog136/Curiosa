@@ -1,0 +1,212 @@
+/**
+ * Messages des contrôles de skins, en MOTS SIMPLES, français et anglais en parité exacte.
+ *
+ * Chaque problème porte :
+ *  - `code` : identifiant technique STABLE (pour les auteurs, le kit `skin:check`, les tests) ;
+ *  - `message` : ce qu'on dit à la personne (Emma : créatrice non technique), sans jargon ;
+ *  - `hint` : comment corriger, pour l'auteur du skin (peut citer une propriété ou un sélecteur).
+ * Les `{variables}` sont remplacées ; les nombres décimaux suivent la langue (« 4,5 » / « 4.5 »).
+ */
+
+export type Locale = "fr" | "en";
+export type Text = { fr: string; en: string };
+export type Param = string | number | Text;
+export type Params = Record<string, Param>;
+export type Severity = "error" | "warning";
+
+export type SkinIssue = {
+  code: string;
+  severity: Severity;
+  message: Text;
+  hint: Text;
+  line?: number;
+  column?: number;
+};
+
+type Entry = { sev: Severity; fr: string; en: string; hintFr: string; hintEn: string };
+
+/** Catalogue : `code → [gravité, message FR, message EN, aide FR, aide EN]`. */
+const T: Record<string, [Severity, string, string, string, string]> = {
+  // ---- feuille entière
+  "internal-error": ["error", "Le contrôle du skin a rencontré un problème inattendu. Le skin n'a pas été appliqué.", "Checking the skin hit an unexpected problem. The skin was not applied.", "Signalez ce cas : il ne devrait pas arriver.", "Please report this case: it should not happen."],
+  "css-not-text": ["error", "La feuille de style du skin n'est pas un texte.", "The skin's style sheet is not text.", "Le fichier de style doit être un fichier texte CSS.", "The style file must be a plain CSS text file."],
+  "bad-skin-id": ["error", "Le nom du skin n'est pas valable.", "The skin's name is not valid.", "L'id doit faire 2 à 41 caractères : lettres minuscules, chiffres et tirets, en commençant par une lettre. `basic` est réservé.", "The id must be 2 to 41 characters: lowercase letters, digits and dashes, starting with a letter. `basic` is reserved."],
+  "bad-asset-base": ["error", "L'adresse des fichiers du skin n'est pas valable.", "The address of the skin's files is not valid.", "Attendu : `/skins/<id>/<version>/`.", "Expected: `/skins/<id>/<version>/`."],
+  "sheet-too-large": ["error", "La feuille de style du skin est trop lourde ({size} Ko ; au plus {max} Ko). Rien n'a été appliqué.", "The skin's style sheet is too big ({size} KB; at most {max} KB). Nothing was applied.", "Réduisez la feuille : retirez les règles répétées, utilisez des variables.", "Make the sheet smaller: remove repeated rules and use variables."],
+  "invalid-character": ["error", "La feuille de style du skin contient un caractère invisible qui n'est pas permis.", "The skin's style sheet contains an invisible character that is not allowed.", "Retirez les caractères de contrôle (octet nul, etc.) du fichier.", "Remove control characters (null byte, etc.) from the file."],
+  "css-syntax": ["error", "La feuille de style du skin est mal écrite (vers la ligne {line}). Curiosa ne peut pas la lire.", "The skin's style sheet is not written correctly (around line {line}). Curiosa cannot read it.", "Vérifiez les accolades `{ }`, les guillemets et les points-virgules autour de cette ligne.", "Check the braces `{ }`, the quotes and the semicolons around this line."],
+  "too-many-issues": ["warning", "Il y a plus de {max} problèmes : les suivants ne sont pas listés.", "There are more than {max} problems: the following ones are not listed.", "Corrigez les premiers et relancez le contrôle.", "Fix the first ones and run the check again."],
+  "too-many-rules": ["error", "Le skin a trop de règles de style (plus de {max}). Rien n'a été appliqué.", "The skin has too many style rules (more than {max}). Nothing was applied.", "Regroupez les règles qui se ressemblent (sélecteurs séparés par des virgules).", "Group similar rules together (selectors separated by commas)."],
+  "too-many-declarations": ["error", "Le skin a trop de réglages de style (plus de {max}). Rien n'a été appliqué.", "The skin has too many style settings (more than {max}). Nothing was applied.", "Utilisez des variables `--sk-…` pour les valeurs répétées.", "Use `--sk-…` variables for repeated values."],
+  "too-many-declarations-rule": ["error", "Une règle du skin a trop de réglages (plus de {max}).", "One rule of the skin has too many settings (more than {max}).", "Découpez la règle en plusieurs.", "Split the rule into several."],
+  "too-many-keyframes": ["error", "Le skin a trop d'animations (plus de {max}). Rien n'a été appliqué.", "The skin has too many animations (more than {max}). Nothing was applied.", "Gardez les animations les plus utiles.", "Keep only the most useful animations."],
+  "too-many-font-faces": ["error", "Le skin déclare trop de polices (plus de {max}). Rien n'a été appliqué.", "The skin declares too many fonts (more than {max}). Nothing was applied.", "Quatre polices au plus.", "Four fonts at most."],
+  "declaration-outside-rule": ["error", "Un réglage de style est posé hors d'une règle.", "A style setting is placed outside of a rule.", "Écrivez `sélecteur { propriété: valeur; }`.", "Write `selector { property: value; }`."],
+  "nested-rule-forbidden": ["error", "Une règle est écrite à l'intérieur d'une autre. Ce n'est pas permis.", "A rule is written inside another one. This is not allowed.", "Sortez la règle imbriquée : écrivez des règles à plat.", "Move the nested rule out: write flat rules."],
+  // ---- at-règles
+  "import-forbidden": ["error", "Le skin essaie de charger une autre feuille de style depuis l'extérieur. Ce n'est pas permis, pour protéger vos visiteurs.", "The skin tries to load another style sheet from outside. This is not allowed, to protect your visitors.", "`@import` est interdit : mettez tout dans `skin.css`.", "`@import` is forbidden: put everything in `skin.css`."],
+  "at-rule-forbidden": ["error", "Le skin utilise une instruction de style non permise ({name}).", "The skin uses a style instruction that is not allowed ({name}).", "Seuls `@media`, `@supports`, `@container`, `@keyframes` et `@font-face` sont permis.", "Only `@media`, `@supports`, `@container`, `@keyframes` and `@font-face` are allowed."],
+  "at-rule-syntax": ["error", "Une instruction de style du skin est mal écrite ({name}).", "A style instruction of the skin is not written correctly ({name}).", "Vérifiez les accolades de ce bloc.", "Check the braces of this block."],
+  "at-rule-too-deep": ["error", "Des conditions de style sont imbriquées sur trop de niveaux (plus de {max}).", "Style conditions are nested too deeply (more than {max} levels).", "Mettez les conditions à plat.", "Flatten the conditions."],
+  "media-syntax": ["error", "Une condition d'écran du skin est mal écrite.", "A screen condition of the skin is not written correctly.", "Exemple permis : `@media (min-width: 40rem) and (prefers-color-scheme: dark)`.", "Allowed example: `@media (min-width: 40rem) and (prefers-color-scheme: dark)`."],
+  "media-feature-not-allowed": ["error", "Une condition d'écran du skin n'est pas permise ({name}).", "A screen condition of the skin is not allowed ({name}).", "Permis : largeur, hauteur, `prefers-color-scheme`, `prefers-reduced-motion`, `prefers-contrast`, `hover`, `pointer`, `orientation`.", "Allowed: width, height, `prefers-color-scheme`, `prefers-reduced-motion`, `prefers-contrast`, `hover`, `pointer`, `orientation`."],
+  "media-length-bad": ["error", "Une taille de condition d'écran est mal écrite ({what}).", "A size in a screen condition is not written correctly ({what}).", "Utilisez `px`, `em` ou `rem`, par exemple `40rem`.", "Use `px`, `em` or `rem`, for example `40rem`."],
+  "media-length-range": ["error", "Une taille de condition d'écran est hors limites ({what}). Elle doit être entre {min} et {max} em.", "A size in a screen condition is out of range ({what}). It must be between {min} and {max} em.", "Choisissez une taille entre 20 et 160 em (320 à 2560 px).", "Choose a size between 20 and 160 em (320 to 2560 px)."],
+  "media-too-many": ["error", "Une condition contient trop d'éléments (plus de {max}).", "A condition contains too many parts (more than {max}).", "Simplifiez la condition.", "Simplify the condition."],
+  "supports-syntax": ["error", "Un test `@supports` est mal écrit.", "An `@supports` test is not written correctly.", "Seule la forme `(propriété: valeur)` est permise.", "Only the `(property: value)` form is allowed."],
+  "supports-property": ["error", "Un test `@supports` porte sur une propriété non permise ({name}).", "An `@supports` test uses a property that is not allowed ({name}).", "Testez seulement des propriétés de la liste permise.", "Only test properties from the allowed list."],
+  "supports-value": ["error", "Un test `@supports` a une valeur non permise ({name}).", "An `@supports` test has a value that is not allowed ({name}).", "Utilisez une valeur permise pour cette propriété.", "Use an allowed value for this property."],
+  "keyframes-name-bad": ["error", "Le nom d'une animation n'est pas valable ({name}).", "The name of an animation is not valid ({name}).", "Lettres minuscules, chiffres, tirets ; pas un mot réservé (`none`, `infinite`…).", "Lowercase letters, digits, dashes; not a reserved word (`none`, `infinite`…)."],
+  "keyframes-needs-motion-query": ["error", "Une animation du skin n'est pas protégée pour les personnes qui préfèrent moins de mouvement.", "An animation of the skin is not protected for people who prefer less motion.", "Placez `@keyframes` dans `@media (prefers-reduced-motion: no-preference) { … }`.", "Put `@keyframes` inside `@media (prefers-reduced-motion: no-preference) { … }`."],
+  "keyframes-content": ["error", "Une étape d'animation est mal écrite.", "An animation step is not written correctly.", "Étapes permises : `from`, `to` ou un pourcentage (`50%`).", "Allowed steps: `from`, `to` or a percentage (`50%`)."],
+  "keyframes-too-long": ["error", "Une animation a trop d'étapes (plus de {max}).", "An animation has too many steps (more than {max}).", "Gardez moins d'étapes.", "Keep fewer steps."],
+  "keyframe-property": ["error", "Une animation change un réglage qui n'est pas permis dans une animation ({prop}).", "An animation changes a setting that is not allowed in animations ({prop}).", "Animez seulement couleurs, fond, ombres, `opacity`, `transform`, `filter`.", "Only animate colors, background, shadows, `opacity`, `transform`, `filter`."],
+  "font-face-nested": ["error", "Une police est déclarée au mauvais endroit.", "A font is declared in the wrong place.", "Écrivez `@font-face` tout en haut de la feuille, pas dans une condition.", "Write `@font-face` at the top level of the sheet, not inside a condition."],
+  "font-face-descriptor": ["error", "Une déclaration de police du skin n'est pas permise ({name}).", "A font declaration of the skin is not allowed ({name}).", "Permis : `font-family`, `src` (fichiers `url(skin:fonts/….woff2)`), `font-weight`, `font-style`, `unicode-range`.", "Allowed: `font-family`, `src` (`url(skin:fonts/….woff2)` files), `font-weight`, `font-style`, `unicode-range`."],
+  "font-face-incomplete": ["error", "Une police du skin est incomplète : il manque son nom ou son fichier.", "A font of the skin is incomplete: its name or its file is missing.", "Il faut `font-family` et `src: url(skin:fonts/….woff2)`.", "Both `font-family` and `src: url(skin:fonts/….woff2)` are needed."],
+  "font-family-undeclared": ["error", "Le skin utilise une police qu'il ne déclare pas dans sa liste de fichiers ({name}).", "The skin uses a font that it does not list among its files ({name}).", "Ajoutez la police dans `assets` de `skin.json` avec sa licence.", "Add the font to `assets` in `skin.json` with its licence."],
+  "font-name-bad": ["error", "Un nom de police contient des caractères non permis.", "A font name contains characters that are not allowed.", "Lettres, chiffres, espaces, tirets seulement.", "Letters, digits, spaces and dashes only."],
+  "local-font-forbidden": ["error", "Le skin essaie d'utiliser une police installée sur l'appareil du visiteur. Ce n'est pas permis dans une police embarquée.", "The skin tries to use a font installed on the visitor's device. This is not allowed in an embedded font.", "`src: local(…)` est interdit : utilisez un fichier `.woff2` du skin.", "`src: local(…)` is forbidden: use a `.woff2` file from the skin."],
+  // ---- sélecteurs
+  "selector-syntax": ["error", "Une règle du skin cible les éléments d'une manière non comprise.", "A rule of the skin targets elements in a way that is not understood.", "Écrivez par exemple `[data-skin-part=\"card\"]:hover` ou `[data-skin-region=\"main\"] a`.", "Write for example `[data-skin-part=\"card\"]:hover` or `[data-skin-region=\"main\"] a`."],
+  "selector-too-long": ["error", "Une règle cible les éléments d'une manière trop longue (plus de {max} caractères).", "A rule targets elements in a way that is too long (more than {max} characters).", "Raccourcissez le sélecteur.", "Shorten the selector."],
+  "selector-list-too-long": ["error", "Une règle cible trop de choses à la fois (plus de {max}).", "A rule targets too many things at once (more than {max}).", "Découpez en plusieurs règles.", "Split into several rules."],
+  "selector-too-deep": ["error", "Une règle cible des éléments trop imbriqués (plus de {max} niveaux).", "A rule targets elements nested too deeply (more than {max} levels).", "Simplifiez : ciblez directement la pièce.", "Simplify: target the part directly."],
+  "selector-too-nested": ["error", "Une règle utilise des conditions `:not()`, `:is()`, `:where()` ou `:has()` trop imbriquées (plus de {max}).", "A rule uses `:not()`, `:is()`, `:where()` or `:has()` conditions nested too deeply (more than {max}).", "Un seul niveau suffit presque toujours.", "One level is almost always enough."],
+  "has-too-deep": ["error", "Une condition `:has()` est trop compliquée.", "A `:has()` condition is too complicated.", "`:has()` accepte au plus deux éléments et ne s'imbrique pas.", "`:has()` accepts two elements at most and cannot be nested."],
+  "class-selector": ["error", "Le skin cible une classe (un nom interne du site). Ces noms peuvent changer : ce n'est pas permis.", "The skin targets a class (an internal name of the site). These names can change: this is not allowed.", "Ciblez `[data-skin-part=\"…\"]` ou `[data-skin-region=\"…\"]` à la place.", "Target `[data-skin-part=\"…\"]` or `[data-skin-region=\"…\"]` instead."],
+  "id-selector": ["error", "Le skin cible un identifiant interne du site. Ce n'est pas permis.", "The skin targets an internal identifier of the site. This is not allowed.", "Ciblez une région ou une pièce (`data-skin-region`, `data-skin-part`).", "Target a region or a part (`data-skin-region`, `data-skin-part`)."],
+  "universal-selector": ["error", "Le skin cible « tout » le site d'un coup (`*`). Ce n'est pas permis.", "The skin targets “everything” on the site at once (`*`). This is not allowed.", "Ciblez des régions et des pièces précises.", "Target specific regions and parts."],
+  "nesting-selector": ["error", "Le skin utilise l'écriture imbriquée (`&`). Ce n'est pas permis.", "The skin uses nested writing (`&`). This is not allowed.", "Écrivez des règles à plat.", "Write flat rules."],
+  "namespace-selector": ["error", "Le skin utilise une écriture de sélecteur non permise (`|`).", "The skin uses a selector syntax that is not allowed (`|`).", "Retirez le `|` du sélecteur.", "Remove the `|` from the selector."],
+  "global-selector": ["error", "Le skin cible toute la page ({name}). Ce n'est pas permis : un skin ne peut styler que des régions et des pièces.", "The skin targets the whole page ({name}). This is not allowed: a skin can only style regions and parts.", "Remplacez par `[data-skin-region=\"shell\"]` ou une autre région.", "Replace with `[data-skin-region=\"shell\"]` or another region."],
+  "root-selector": ["error", "Le skin cible la racine de la page (`:root`). Ce n'est pas permis : ses couleurs et tailles se règlent dans `tokens.json`.", "The skin targets the root of the page (`:root`). This is not allowed: its colors and sizes are set in `tokens.json`.", "Déplacez les variables dans `tokens.json`, ou ciblez une pièce.", "Move the variables to `tokens.json`, or target a part."],
+  "wrong-scope": ["error", "Le skin essaie de styler un autre skin ou de sortir de sa zone. Ce n'est pas permis.", "The skin tries to style another skin or to leave its own area. This is not allowed.", "N'écrivez pas `[data-skin]` : Curiosa ajoute lui-même la portée du skin.", "Do not write `[data-skin]`: Curiosa adds the skin's scope itself."],
+  "element-not-allowed": ["error", "Le skin cible un élément non permis ({name}).", "The skin targets an element that is not allowed ({name}).", "Éléments permis : a, p, h1-h6, ul, ol, li, img, table…, button, input, etc., seulement DANS une région ou une pièce.", "Allowed elements: a, p, h1-h6, ul, ol, li, img, table…, button, input, etc., only INSIDE a region or a part."],
+  "attribute-not-allowed": ["error", "Le skin cible un repère interne non permis ({name}).", "The skin targets an internal marker that is not allowed ({name}).", "Repères permis : `data-skin-region`, `data-skin-part` et quelques états (`aria-current`, `data-open`…).", "Allowed markers: `data-skin-region`, `data-skin-part` and a few states (`aria-current`, `data-open`…)."],
+  "attribute-operator": ["error", "Un repère est comparé d'une façon non permise ({name}).", "A marker is compared in a way that is not allowed ({name}).", "Utilisez `[nom=\"valeur\"]` (ou `~=` pour `rel`, `|=` pour `lang`).", "Use `[name=\"value\"]` (or `~=` for `rel`, `|=` for `lang`)."],
+  "attribute-value": ["error", "La valeur d'un repère n'est pas permise ({name}=\"{value}\").", "The value of a marker is not allowed ({name}=\"{value}\").", "Utilisez une valeur courte en minuscules (lettres, chiffres, tirets).", "Use a short lowercase value (letters, digits, dashes)."],
+  "pseudo-class-not-allowed": ["error", "Le skin utilise un état non permis (`:{name}`).", "The skin uses a state that is not allowed (`:{name}`).", "États permis : hover, focus, focus-visible, focus-within, active, disabled, checked, first-child, last-child, only-child, nth-child, nth-of-type, empty, not, is, where, has.", "Allowed states: hover, focus, focus-visible, focus-within, active, disabled, checked, first-child, last-child, only-child, nth-child, nth-of-type, empty, not, is, where, has."],
+  "pseudo-element-not-allowed": ["error", "Le skin utilise une partie d'élément non permise (`::{name}`).", "The skin uses an element part that is not allowed (`::{name}`).", "Permis : before, after, marker, placeholder, selection, first-letter, first-line.", "Allowed: before, after, marker, placeholder, selection, first-letter, first-line."],
+  "pseudo-element-position": ["error", "Une partie d'élément (`::before`…) n'est pas à la bonne place dans la règle.", "An element part (`::before`…) is not in the right place in the rule.", "`::before` et `::after` vont à la toute fin du sélecteur.", "`::before` and `::after` go at the very end of the selector."],
+  "nth-bad": ["error", "Une position `:nth-child()` est mal écrite.", "An `:nth-child()` position is not written correctly.", "Écrivez `odd`, `even`, `3` ou `2n+1`.", "Write `odd`, `even`, `3` or `2n+1`."],
+  "selector-needs-anchor": ["error", "Une règle ne commence pas par une région ou une pièce du site : elle pourrait toucher n'importe quoi.", "A rule does not start with a region or a part of the site: it could touch anything.", "Commencez par `[data-skin-region=\"…\"]` ou `[data-skin-part=\"…\"]`.", "Start with `[data-skin-region=\"…\"]` or `[data-skin-part=\"…\"]`."],
+  "unknown-region": ["error", "Le skin cible une région qui n'existe pas ({name}).", "The skin targets a region that does not exist ({name}).", "Régions : backdrop, tray, shell, banner, header, nav, tools, main, content, footer.", "Regions: backdrop, tray, shell, banner, header, nav, tools, main, content, footer."],
+  "unknown-part": ["error", "Le skin cible une pièce qui n'existe pas ({name}).", "The skin targets a part that does not exist ({name}).", "Voir la liste des pièces dans docs/SKINS.md §9.2 (ou `module.piece` pour un module installé).", "See the list of parts in docs/SKINS.md §9.2 (or `module.part` for an installed module)."],
+  // ---- propriétés et valeurs
+  "property-not-allowed": ["error", "Le skin utilise un réglage non permis ({name}).", "The skin uses a setting that is not allowed ({name}).", "Voir la liste des propriétés permises dans docs/SKINS.md §6.3.", "See the list of allowed properties in docs/SKINS.md §6.3."],
+  "hiding-property": ["error", "Le skin essaie de cacher des éléments ({prop}). Un skin ne peut rien cacher : il change seulement l'apparence.", "The skin tries to hide elements ({prop}). A skin cannot hide anything: it only changes the look.", "Retirez ce réglage.", "Remove this setting."],
+  "custom-property-name": ["error", "Le skin crée une variable dont le nom n'est pas permis ({name}).", "The skin creates a variable whose name is not allowed ({name}).", "Les noms doivent commencer par `--sk-` ou `--v-` (minuscules).", "Names must start with `--sk-` or `--v-` (lowercase)."],
+  "important-forbidden": ["error", "Le skin force un réglage avec `!important`. Ce n'est pas permis.", "The skin forces a setting with `!important`. This is not allowed.", "Retirez `!important` ; augmentez la précision du sélecteur si besoin.", "Remove `!important`; make the selector more specific if needed."],
+  "value-empty": ["error", "Un réglage du skin n'a pas de valeur ({prop}).", "A setting of the skin has no value ({prop}).", "Écrivez une valeur après les deux-points.", "Write a value after the colon."],
+  "value-too-long": ["error", "Une valeur du skin est trop longue ({prop}).", "A value of the skin is too long ({prop}).", "Au plus 300 caractères pour une variable, 500 pour un réglage.", "300 characters at most for a variable, 500 for a setting."],
+  "value-too-nested": ["error", "Une valeur du skin est trop compliquée ({prop}).", "A value of the skin is too complicated ({prop}).", "Réduisez les parenthèses imbriquées.", "Reduce the nested parentheses."],
+  "value-syntax": ["error", "Une valeur du skin est mal écrite ({prop}).", "A value of the skin is not written correctly ({prop}).", "Vérifiez les guillemets, les parenthèses et les nombres.", "Check the quotes, the parentheses and the numbers."],
+  "non-ascii-char": ["error", "Une valeur ou un sélecteur du skin contient un caractère spécial non permis.", "A value or a selector of the skin contains a special character that is not allowed.", "Utilisez des lettres simples (a-z), ou des échappements dans `content`.", "Use plain letters (a-z), or escapes in `content`."],
+  "escape-sequence": ["error", "Le skin utilise une écriture déguisée (`\\…`) pour écrire un mot. Ce n'est pas permis.", "The skin uses a disguised writing (`\\…`) to spell a word. This is not allowed.", "Écrivez les mots normalement ; les échappements ne sont permis que dans `content`.", "Write words normally; escapes are only allowed in `content`."],
+  "char-forbidden": ["error", "Une valeur du skin contient un signe non permis ({char}).", "A value of the skin contains a sign that is not allowed ({char}).", "Retirez ce signe.", "Remove this sign."],
+  "url-bad": ["error", "Une adresse `url(…)` du skin est mal écrite.", "A `url(…)` address of the skin is not written correctly.", "Écrivez `url(skin:images/fichier.png)`.", "Write `url(skin:images/file.png)`."],
+  "unit-unknown": ["error", "Une valeur du skin utilise une unité inconnue.", "A value of the skin uses an unknown unit.", "Unités permises : px, rem, em, %, vw, vh, s, ms, deg…", "Allowed units: px, rem, em, %, vw, vh, s, ms, deg…"],
+  "color-bad": ["error", "Une couleur du skin est mal écrite.", "A color of the skin is not written correctly.", "Écrivez `#rgb`, `#rrggbb`, `rgb()`, `hsl()` ou `oklch()`.", "Write `#rgb`, `#rrggbb`, `rgb()`, `hsl()` or `oklch()`."],
+  "function-not-allowed": ["error", "Le skin utilise une fonction non permise ({name}).", "The skin uses a function that is not allowed ({name}).", "Voir la liste des fonctions permises dans docs/SKINS.md §6.3.", "See the list of allowed functions in docs/SKINS.md §6.3."],
+  "attr-forbidden": ["error", "Le skin essaie de lire un texte de la page pour l'afficher ailleurs (`attr()`). Ce n'est pas permis.", "The skin tries to read some text of the page to show it elsewhere (`attr()`). This is not allowed.", "Retirez `attr()`.", "Remove `attr()`."],
+  "expression-forbidden": ["error", "Le skin essaie d'exécuter du code (`expression`). Ce n'est pas permis.", "The skin tries to run code (`expression`). This is not allowed.", "Retirez-le : un skin est de la donnée, pas du code.", "Remove it: a skin is data, not code."],
+  "image-function-forbidden": ["error", "Le skin essaie de charger une image d'une façon non permise ({name}).", "The skin tries to load an image in a way that is not allowed ({name}).", "Utilisez seulement `url(skin:images/…)` ou des dégradés.", "Only use `url(skin:images/…)` or gradients."],
+  "counter-forbidden": ["error", "Le skin essaie d'écrire des numéros ou des textes avec un compteur. Ce n'est pas permis.", "The skin tries to write numbers or text with a counter. This is not allowed.", "Retirez `counter()`.", "Remove `counter()`."],
+  "var-name-not-allowed": ["error", "Le skin lit une variable dont le nom n'est pas permis ({name}).", "The skin reads a variable whose name is not allowed ({name}).", "Seules les variables `--v-…` et `--sk-…` sont lisibles.", "Only `--v-…` and `--sk-…` variables can be read."],
+  "env-not-allowed": ["error", "Le skin lit une information de l'appareil non permise ({name}).", "The skin reads device information that is not allowed ({name}).", "Seules `safe-area-inset-top/right/bottom/left` sont permises.", "Only `safe-area-inset-top/right/bottom/left` are allowed."],
+  "url-external": ["error", "Le skin essaie de charger quelque chose depuis un autre site ou un texte intégré. Ce n'est pas permis, pour protéger la vie privée de vos visiteurs.", "The skin tries to load something from another site or an embedded text. This is not allowed, to protect your visitors' privacy.", "Mettez le fichier dans le dossier du skin et écrivez `url(skin:images/fichier.png)`.", "Put the file in the skin's folder and write `url(skin:images/file.png)`."],
+  "url-not-allowed-here": ["error", "Le skin met une adresse `url(…)` là où ce n'est pas permis ({prop}).", "The skin puts a `url(…)` address where it is not allowed ({prop}).", "Les images ne se mettent que dans `background`, `background-image` ou `mask-image`.", "Images can only go in `background`, `background-image` or `mask-image`."],
+  "url-path-bad": ["error", "Le chemin d'un fichier du skin n'est pas permis ({path}).", "The path of a skin file is not allowed ({path}).", "Écrivez `skin:images/nom.png` (ou `skin:fonts/nom.woff2`) : minuscules, sans `..`.", "Write `skin:images/name.png` (or `skin:fonts/name.woff2`): lowercase, no `..`."],
+  "asset-not-declared": ["error", "Le skin utilise un fichier qu'il ne déclare pas ({path}).", "The skin uses a file that it does not declare ({path}).", "Ajoutez le fichier et sa licence dans `assets` de `skin.json`.", "Add the file and its licence to `assets` in `skin.json`."],
+  "string-not-allowed": ["error", "Le skin met un texte entre guillemets là où ce n'est pas permis ({prop}).", "The skin puts quoted text where it is not allowed ({prop}).", "Les textes entre guillemets ne vont que dans `font-family`, `content` (ponctuation) et quelques cas précis.", "Quoted text only goes in `font-family`, `content` (punctuation) and a few specific cases."],
+  "content-not-allowed": ["error", "Le skin essaie d'ajouter du texte à la page. Un skin ne peut ajouter que de petits ornements sans lettre ni chiffre.", "The skin tries to add text to the page. A skin can only add small ornaments without letters or digits.", "Dans `content`, mettez seulement `\"\"` ou 1 à 3 signes de ponctuation (`\"·\"`, `\"—\"`).", "In `content`, only put `\"\"` or 1 to 3 punctuation signs (`\"·\"`, `\"—\"`)."],
+  "content-too-long": ["error", "Un ornement ajouté par le skin est trop long (plus de {max} signes).", "An ornament added by the skin is too long (more than {max} signs).", "Gardez 1 à 3 signes.", "Keep 1 to 3 signs."],
+  "content-selector": ["error", "Le skin ajoute un ornement ailleurs que sur `::before` ou `::after`.", "The skin adds an ornament somewhere other than `::before` or `::after`.", "`content` n'est permis que sur `::before` et `::after`.", "`content` is only allowed on `::before` and `::after`."],
+  "value-not-allowed": ["error", "Le skin met une valeur non permise pour {prop} ({value}).", "The skin uses a value that is not allowed for {prop} ({value}).", "Voir les valeurs permises dans docs/SKINS.md §6.3.", "See the allowed values in docs/SKINS.md §6.3."],
+  "hide-forbidden": ["error", "Le skin essaie de cacher un élément qui porte du contenu ou une action. Un skin ne peut cacher que du décor.", "The skin tries to hide an element that carries content or an action. A skin can only hide decoration.", "Retirez `display: none` (permis seulement sur `backdrop`, `divider`, `::before`/`::after`, `menu-toggle`, et un menu fermé `[data-open=\"false\"]`).", "Remove `display: none` (only allowed on `backdrop`, `divider`, `::before`/`::after`, `menu-toggle`, and a closed menu `[data-open=\"false\"]`)."],
+  "menu-toggle-hidden": ["warning", "Le skin cache le bouton « Menu ». C'est permis seulement si la liste des liens du menu reste toujours visible.", "The skin hides the “Menu” button. This is only allowed if the list of menu links is always visible.", "Le kit de test vérifie dans le navigateur que tous les liens du menu sont visibles.", "The test kit checks in the browser that all menu links are visible."],
+  "opacity-too-low": ["error", "Le skin rend un élément trop transparent (il faut au moins {min}).", "The skin makes an element too transparent (at least {min} is needed).", "Gardez `opacity` à 0.6 ou plus ; en dessous, seulement sur du décor.", "Keep `opacity` at 0.6 or more; lower only on decoration."],
+  "font-size-too-small": ["error", "Le skin rend un texte trop petit pour être lu.", "The skin makes a text too small to read.", "Gardez au moins `0.6875rem` (11 px).", "Keep at least `0.6875rem` (11 px)."],
+  "line-height-too-small": ["error", "Le skin serre trop les lignes d'un texte : les lignes se chevauchent.", "The skin packs the lines of a text too tightly: the lines overlap.", "Gardez au moins `0.8` (idéalement 1.4 pour le texte courant).", "Keep at least `0.8` (ideally 1.4 for body text)."],
+  "spacing-too-large": ["error", "Le skin écarte ou rapproche trop les lettres ou les mots ({prop}).", "The skin spreads or squeezes the letters or words too much ({prop}).", "Gardez moins de 8 px (0.5em).", "Keep under 8 px (0.5em)."],
+  "text-indent-bad": ["error", "Le skin décale la première ligne d'un texte hors de sa place.", "The skin shifts the first line of a text out of its place.", "`text-indent` entre -0.5em et 8rem.", "`text-indent` between -0.5em and 8rem."],
+  "box-collapsed": ["error", "Le skin écrase un élément à presque rien ({prop}).", "The skin squashes an element to almost nothing ({prop}).", "Gardez au moins `0.25rem` (4 px) de large et de haut.", "Keep at least `0.25rem` (4 px) wide and high."],
+  "margin-too-negative": ["error", "Le skin tire un élément trop loin de sa place (marge négative).", "The skin pulls an element too far from its place (negative margin).", "Gardez les marges négatives au-dessus de -4rem.", "Keep negative margins above -4rem."],
+  "text-transparent": ["error", "Le skin rend un texte invisible (couleur transparente).", "The skin makes a text invisible (transparent color).", "Utilisez une vraie couleur de texte.", "Use a real text color."],
+  "offset-out-of-range": ["error", "Le skin pousse un élément hors de l'écran (position).", "The skin pushes an element off the screen (position).", "Les décalages (`top`, `left`, `inset`…) restent entre -1rem et 60rem, et entre 0 et 100 %.", "Offsets (`top`, `left`, `inset`…) stay between -1rem and 60rem, and between 0 and 100%."],
+  "z-index-range": ["error", "Le skin met un élément trop haut dans la pile (z-index au plus {max}).", "The skin puts an element too high in the stack (z-index at most {max}).", "Les menus du cœur sont au-dessus de 30.", "The core's menus are above 30."],
+  "order-range": ["error", "Le skin change trop l'ordre d'un élément (au plus {max}).", "The skin changes the order of an element too much (at most {max}).", "`order` entre -10 et 10.", "`order` between -10 and 10."],
+  "float-not-none": ["error", "Le skin fait flotter un élément. Ce n'est pas permis.", "The skin makes an element float. This is not allowed.", "Utilisez `display: flex` ou `grid`.", "Use `display: flex` or `grid`."],
+  "position-fixed-forbidden": ["error", "Le skin fixe un élément à l'écran, ce qui n'est permis que pour l'en-tête et le menu.", "The skin pins an element to the screen, which is only allowed for the header and the menu.", "`position: fixed` seulement sur `[data-skin-region=\"header\"]` ou `\"nav\"`.", "`position: fixed` only on `[data-skin-region=\"header\"]` or `\"nav\"`."],
+  "transform-not-allowed": ["error", "Le skin déforme un élément d'une façon non permise ({name}).", "The skin distorts an element in a way that is not allowed ({name}).", "Permis : translate, rotate, scale (petites valeurs).", "Allowed: translate, rotate, scale (small values)."],
+  "transform-too-large": ["error", "Le skin déplace, tourne ou agrandit trop un élément.", "The skin moves, rotates or enlarges an element too much.", "Déplacement au plus 4rem, rotation 5° au plus, échelle entre 0.9 et 1.1 (le décor est libre).", "Move 4rem at most, rotate 5° at most, scale between 0.9 and 1.1 (decoration is free)."],
+  "filter-not-allowed": ["error", "Le skin utilise un effet visuel non permis ({name}).", "The skin uses a visual effect that is not allowed ({name}).", "Permis : blur, brightness, contrast, drop-shadow, grayscale, hue-rotate, invert, opacity, saturate, sepia.", "Allowed: blur, brightness, contrast, drop-shadow, grayscale, hue-rotate, invert, opacity, saturate, sepia."],
+  "filter-too-strong": ["error", "Le skin applique un effet trop fort ({name} au plus {max}).", "The skin applies an effect that is too strong ({name} at most {max}).", "Le flou d'arrière-plan va jusqu'à 24px ; sur un contenu, le flou va jusqu'à 2px.", "Background blur goes up to 24px; on content, blur goes up to 2px."],
+  "blend-mode-content": ["error", "Le skin mélange les couleurs d'un contenu avec ce qu'il y a derrière, ce qui peut le rendre invisible.", "The skin blends a content's colors with what is behind it, which can make it invisible.", "`mix-blend-mode` seulement sur du décor (`::before`, `::after`, `backdrop`).", "`mix-blend-mode` only on decoration (`::before`, `::after`, `backdrop`)."],
+  "pointer-events-content": ["error", "Le skin empêche de cliquer ou de sélectionner un contenu ({prop}).", "The skin prevents clicking or selecting some content ({prop}).", "Seulement sur du décor.", "Only on decoration."],
+  "mask-needs-decor": ["error", "Le skin découpe un contenu avec un masque, ce qui peut le cacher.", "The skin cuts a content with a mask, which can hide it.", "`mask-image` seulement sur du décor.", "`mask-image` only on decoration."],
+  "clip-path-bad": ["error", "Le skin découpe un élément avec une forme non permise.", "The skin cuts an element with a shape that is not allowed.", "Permis : `inset(0 round …)`, `circle(50%)`, `ellipse(50% 50%)`.", "Allowed: `inset(0 round …)`, `circle(50%)`, `ellipse(50% 50%)`."],
+  "clip-path-subject": ["error", "Le skin découpe un élément qui ne peut pas l'être.", "The skin cuts an element that cannot be cut.", "`clip-path` seulement sur card, panel, button, image, avatar, badge.", "`clip-path` only on card, panel, button, image, avatar, badge."],
+  "fixed-background-limit": ["error", "Le skin fixe trop de fonds à l'écran (au plus {max}).", "The skin pins too many backgrounds to the screen (at most {max}).", "Réduisez les `background-attachment: fixed`.", "Reduce the `background-attachment: fixed` uses."],
+  "transition-too-long": ["error", "Le skin a une transition trop lente (au plus {max} ms).", "The skin has a transition that is too slow (at most {max} ms).", "Descendez à 600ms ou moins.", "Go down to 600ms or less."],
+  "animation-needs-motion-query": ["error", "Le skin lance une animation sans la protéger pour les personnes qui préfèrent moins de mouvement.", "The skin starts an animation without protecting people who prefer less motion.", "Mettez les réglages `animation` dans `@media (prefers-reduced-motion: no-preference) { … }`.", "Put `animation` settings inside `@media (prefers-reduced-motion: no-preference) { … }`."],
+  "animation-too-long": ["error", "Le skin a une animation trop longue (au plus {max} s).", "The skin has an animation that is too long (at most {max} s).", "Raccourcissez-la.", "Make it shorter."],
+  "animation-iterations": ["error", "Le skin répète une animation trop de fois (au plus {max}, ou en boucle pour du décor lent).", "The skin repeats an animation too many times (at most {max}, or looping for slow decoration).", "Utilisez au plus 3 répétitions ou `infinite` avec un tour de 0,34 s ou plus.", "Use at most 3 repeats or `infinite` with a turn of 0.34 s or more."],
+  "animation-too-fast": ["error", "Le skin a une animation en boucle qui clignote trop vite.", "The skin has a looping animation that flashes too fast.", "Un tour d'animation en boucle dure au moins 0,34 s (moins de 3 éclats par seconde).", "A looping animation turn lasts at least 0.34 s (fewer than 3 flashes per second)."],
+  "animation-name-unknown": ["error", "Le skin lance une animation qui n'existe pas ({name}).", "The skin starts an animation that does not exist ({name}).", "Déclarez-la avec `@keyframes` dans la même feuille.", "Declare it with `@keyframes` in the same sheet."],
+  "smooth-scroll-needs-motion-query": ["error", "Le skin active le défilement doux sans protéger les personnes qui préfèrent moins de mouvement.", "The skin turns on smooth scrolling without protecting people who prefer less motion.", "Mettez-le dans `@media (prefers-reduced-motion: no-preference)`.", "Put it inside `@media (prefers-reduced-motion: no-preference)`."],
+  "var-cycle": ["error", "Deux variables du skin se renvoient l'une à l'autre en boucle ({name}).", "Two variables of the skin point to each other in a loop ({name}).", "Cassez la boucle : une variable ne doit pas dépendre d'elle-même.", "Break the loop: a variable must not depend on itself."],
+  "var-expansion-too-large": ["error", "Une variable du skin devient démesurée quand on suit toutes ses références ({name}).", "A variable of the skin becomes enormous when all its references are followed ({name}).", "Simplifiez les chaînes de variables.", "Simplify the chains of variables."],
+  "focus-indicator-missing": ["error", "Le skin enlève le cadre qui montre où l'on se trouve au clavier, sans le remplacer.", "The skin removes the frame that shows where you are when using the keyboard, without replacing it.", "Ajoutez une règle `:focus-visible` avec `outline`, `box-shadow` ou `border-color`.", "Add a `:focus-visible` rule with `outline`, `box-shadow` or `border-color`."],
+};
+
+const CATALOG: Readonly<Record<string, Entry>> = Object.fromEntries(
+  Object.entries(T).map(([code, [sev, fr, en, hintFr, hintEn]]) => [code, { sev, fr, en, hintFr, hintEn }]),
+);
+
+export const ISSUE_CODES: readonly string[] = Object.keys(CATALOG);
+
+/** Entrée brute du catalogue (pour les tests de parité). */
+export function catalogEntry(code: string): Readonly<Entry> | undefined {
+  return CATALOG[code];
+}
+
+/** Nombre → texte selon la langue. Entier : tel quel ; décimal : une décimale (arrondie vers le bas pour ne pas flatter un rapport de contraste). */
+export function formatNumber(n: number, locale: Locale): string {
+  if (!Number.isFinite(n)) return "?";
+  if (Number.isInteger(n)) return String(n);
+  const floored = Math.floor(n * 10 + 1e-9) / 10;
+  const s = floored.toFixed(1);
+  return locale === "fr" ? s.replace(".", ",") : s;
+}
+
+/** Nettoie un texte venu d'un auteur avant de l'afficher : ASCII imprimable, 60 caractères au plus. */
+function safe(value: string): string {
+  return value.replace(/[^\x20-\x7e]/g, "?").replace(/[{}]/g, "?").slice(0, 60);
+}
+
+export function fillTemplate(template: string, params: Params, locale: Locale): string {
+  return template.replace(/\{([a-zA-Z0-9]+)\}/g, (_m, key: string) => {
+    const v = params[key];
+    if (v === undefined) return "?";
+    if (typeof v === "number") return formatNumber(v, locale);
+    if (typeof v === "string") return safe(v);
+    return v[locale];
+  });
+}
+
+export function makeText(fr: string, en: string, params: Params): Text {
+  return { fr: fillTemplate(fr, params, "fr"), en: fillTemplate(en, params, "en") };
+}
+
+/** Construit un problème à partir de son code. Un code inconnu retombe sur « problème inattendu » en gardant le code. */
+export function makeIssue(code: string, params: Params = {}, severity?: Severity): SkinIssue {
+  const e = CATALOG[code] ?? CATALOG["internal-error"]!;
+  return { code, severity: severity ?? e.sev, message: makeText(e.fr, e.en, params), hint: makeText(e.hintFr, e.hintEn, params) };
+}
+
+/** Texte d'un problème dans une langue (langue inconnue : l'anglais). */
+export function issueText(issue: Pick<SkinIssue, "message">, locale: string): string {
+  return locale === "fr" ? issue.message.fr : issue.message.en;
+}
