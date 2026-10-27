@@ -135,7 +135,7 @@ const T: Record<string, [Severity, string, string, string, string]> = {
   "margin-too-negative": ["error", "Le skin tire un élément trop loin de sa place (marge négative).", "The skin pulls an element too far from its place (negative margin).", "Gardez les marges négatives au-dessus de -4rem.", "Keep negative margins above -4rem."],
   "text-transparent": ["error", "Le skin rend un texte invisible (couleur transparente).", "The skin makes a text invisible (transparent color).", "Utilisez une vraie couleur de texte.", "Use a real text color."],
   "offset-out-of-range": ["error", "Le skin pousse un élément hors de l'écran (position).", "The skin pushes an element off the screen (position).", "Les décalages (`top`, `left`, `inset`…) restent entre -1rem et 60rem, et entre 0 et 100 %.", "Offsets (`top`, `left`, `inset`…) stay between -1rem and 60rem, and between 0 and 100%."],
-  "z-index-range": ["error", "Le skin met un élément trop haut dans la pile (z-index au plus {max}).", "The skin puts an element too high in the stack (z-index at most {max}).", "Les menus du cœur sont au-dessus de 30.", "The core's menus are above 30."],
+  "z-index-range": ["error", "Le skin met un élément trop en avant des autres (z-index au plus {max}).", "The skin puts an element too far in front of the others (z-index at most {max}).", "Les menus du cœur passent devant tout ce qui dépasse 30.", "The core's menus show in front of anything above 30."],
   "order-range": ["error", "Le skin change trop l'ordre d'un élément (au plus {max}).", "The skin changes the order of an element too much (at most {max}).", "`order` entre -10 et 10.", "`order` between -10 and 10."],
   "float-not-none": ["error", "Le skin fait flotter un élément. Ce n'est pas permis.", "The skin makes an element float. This is not allowed.", "Utilisez `display: flex` ou `grid`.", "Use `display: flex` or `grid`."],
   "position-fixed-forbidden": ["error", "Le skin fixe un élément à l'écran, ce qui n'est permis que pour l'en-tête et le menu.", "The skin pins an element to the screen, which is only allowed for the header and the menu.", "`position: fixed` seulement sur `[data-skin-region=\"header\"]` ou `\"nav\"`.", "`position: fixed` only on `[data-skin-region=\"header\"]` or `\"nav\"`."],
@@ -161,6 +161,7 @@ const T: Record<string, [Severity, string, string, string, string]> = {
   "focus-indicator-missing": ["error", "Le skin enlève le cadre qui montre où l'on se trouve au clavier, sans le remplacer.", "The skin removes the frame that shows where you are when using the keyboard, without replacing it.", "Ajoutez une règle `:focus-visible` avec `outline`, `box-shadow` ou `border-color`.", "Add a `:focus-visible` rule with `outline`, `box-shadow` or `border-color`."],
   // ---- lisibilité (contrôle WCAG, docs/SKINS.md §7)
   "read-token-missing": ["error", "Il manque une couleur indispensable au skin ({token}).", "A color that the skin needs is missing ({token}).", "Chaque mode déclaré doit définir `--v-bg`, `--v-surface`, `--v-fg` et `--v-accent`.", "Each declared mode must define `--v-bg`, `--v-surface`, `--v-fg` and `--v-accent`."],
+  "read-internal-error": ["error", "Le contrôle de lisibilité a rencontré un problème inattendu : on ne peut pas dire que le skin est lisible.", "The readability check hit an unexpected problem: we cannot say that the skin is readable.", "Signalez ce cas : il ne devrait pas arriver.", "Please report this case: it should not happen."],
   "read-color-unreadable": ["error", "Une couleur du skin n'est pas comprise, on ne peut pas vérifier qu'elle est lisible ({token}).", "A color of the skin is not understood, so we cannot check that it is readable ({token}).", "Écrivez une couleur simple : `#rrggbb`, `rgb()`, `hsl()` ou `oklch()`.", "Write a plain color: `#rrggbb`, `rgb()`, `hsl()` or `oklch()`."],
   "read-low-1": ["error", "En mode {mode}, le texte serait difficile à lire sur le fond de la page (rapport {ratio} ; il faut au moins {min}).", "In {mode} mode, the text would be hard to read on the page background (ratio {ratio}; at least {min} is needed).", "", ""],
   "read-low-2": ["error", "En mode {mode}, le texte serait difficile à lire sur les cartes et les panneaux (rapport {ratio} ; il faut au moins {min}).", "In {mode} mode, the text would be hard to read on cards and panels (ratio {ratio}; at least {min} is needed).", "", ""],
@@ -215,9 +216,9 @@ export function formatNumber(n: number, locale: Locale): string {
   return locale === "fr" ? s.replace(".", ",") : s;
 }
 
-/** Nettoie un texte venu d'un auteur avant de l'afficher : ASCII imprimable, 60 caractères au plus. */
+/** Nettoie un texte venu d'un auteur avant de l'afficher : ASCII imprimable sans `< > & { }`, 60 caractères au plus. */
 function safe(value: string): string {
-  return value.replace(/[^\x20-\x7e]/g, "?").replace(/[{}]/g, "?").slice(0, 60);
+  return value.replace(/[^\x20-\x7e]/g, "?").replace(/[{}<>&]/g, "?").slice(0, 60);
 }
 
 export function fillTemplate(template: string, params: Params, locale: Locale): string {

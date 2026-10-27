@@ -5,7 +5,7 @@
  */
 import {
   ALLOWED_FUNCTIONS, ALLOWED_PROPERTIES, ANIMATION_KEYWORDS, ASSET_BASE_RE, BOUNDS, CLIP_PATH_PARTS, CONTENT_MAX_CHARS, CSS_WIDE_KEYWORDS,
-  CURSOR_VALUES, DISPLAY_VALUES, FONT_PATH_RE, FORBIDDEN_FUNCTION_CODES, HIDING_PROPERTIES, IMAGE_PATH_RE, IMAGE_URL_PROPERTIES,
+  CURSOR_VALUES, DISPLAY_VALUES, FORBIDDEN_FUNCTION_CODES, HIDING_PROPERTIES, IMAGE_PATH_RE, IMAGE_URL_PROPERTIES,
   OVERFLOW_VALUES, POSITION_VALUES, SAFE_AREA_ENV, STRING_PROPERTIES, TINY_FONT_SIZE_KEYWORDS, VAR_NAME_RE, type SkinLimits,
 } from "./allowlist";
 import { parseColor } from "./colorParse";
@@ -175,12 +175,115 @@ function substitute(toks: readonly Tok[], i: number, sub: readonly Tok[]): Tok[]
   return [...toks.slice(0, i), ...sub, ...toks.slice(end + 1)];
 }
 
-type Check = { prop: string; toks: readonly Tok[]; ctx: DeclContext; report: Report; meta: { infinite: boolean; durationsMs: number[] }; rename?: (t: Tok[]) => void };
+/** Valeur littérale d'une expression de calcul : nombre sans unité, pourcentage ou longueur en px (rem/em = 16 px). */
+type Q = { v: number; u: "px" | "pct" | "num" };
+
+/** Évalue `calc()/min()/max()/clamp()` quand tous les termes sont littéraux ; `null` sinon (variables, unités relatives…). */
+function evalMath(toks: readonly Tok[], depth = 0): Q | null {
+  let i = 0;
+  const peek = () => {
+    while (i < toks.length && toks[i]!.k === "ws") i++;
+    return toks[i];
+  };
+  const add = (a: Q, b: Q, sign: number): Q | null => (a.u === b.u ? { v: a.v + sign * b.v, u: a.u } : null);
+  const atom = (): Q | null => {
+    const t = peek();
+    if (!t || depth > 6) return null;
+    i++;
+    if (t.k === "num") return { v: t.n, u: "num" };
+    if (t.k === "dim") {
+      if (t.unit === "%") return { v: t.n, u: "pct" };
+      const p = px(t);
+      return p === null ? null : { v: p, u: "px" };
+    }
+    if (t.k === "fn") {
+      // sous-expression : lit jusqu'à la parenthèse fermante correspondante
+      let d = 1;
+      const start = i;
+      while (i < toks.length && d > 0) {
+        const x = toks[i++]!;
+        if (x.k === "fn") d++;
+        else if (x.k === "close") d--;
+      }
+      if (d !== 0) return null;
+      const inner = toks.slice(start, i - 1);
+      if (t.v === "" || t.v === "calc") return evalMath(inner, depth + 1);
+      if (t.v === "min" || t.v === "max" || t.v === "clamp") {
+        const args = splitCommas(inner).map((a) => evalMath(a, depth + 1));
+        if (args.some((a) => a === null) || args.length === 0) return null;
+        const list = args as Q[];
+        if (list.some((a) => a.u !== list[0]!.u)) return null;
+        const vs = list.map((a) => a.v);
+        if (t.v === "clamp") return vs.length === 3 ? { v: Math.min(Math.max(vs[1]!, vs[0]!), vs[2]!), u: list[0]!.u } : null;
+        return { v: t.v === "min" ? Math.min(...vs) : Math.max(...vs), u: list[0]!.u };
+      }
+      return null;
+    }
+    return null;
+  };
+  const term = (): Q | null => {
+    let a = atom();
+    for (;;) {
+      const t = peek();
+      if (a === null || !t || (t.k !== "op" && t.k !== "slash") || (t.k === "op" && t.v !== "*")) return a;
+      i++;
+      const b = atom();
+      if (b === null) return null;
+      if (t.k === "slash") a = b.u === "num" && b.v !== 0 ? { v: a.v / b.v, u: a.u } : null;
+      else a = a.u === "num" ? { v: a.v * b.v, u: b.u } : b.u === "num" ? { v: a.v * b.v, u: a.u } : null;
+    }
+  };
+  let acc = term();
+  for (;;) {
+    const t = peek();
+    if (acc === null) return null;
+    if (!t) return Number.isFinite(acc.v) ? acc : null;
+    if (t.k !== "op" || t.v === "*") return null;
+    i++;
+    const b = term();
+    if (b === null) return null;
+    acc = add(acc, b, t.v === "+" ? 1 : -1);
+  }
+}
+
+/** Remplace chaque `calc()/min()/max()/clamp()` entièrement littéral par sa valeur, pour que les bornes (`calc(0px)` = zéro) s'y appliquent. */
+function foldMath(toks: readonly Tok[]): Tok[] {
+  const out: Tok[] = [];
+  for (let i = 0; i < toks.length; i++) {
+    const t = toks[i]!;
+    if (t.k === "fn" && ["calc", "min", "max", "clamp"].includes(t.v)) {
+      let d = 0;
+      let end = -1;
+      for (let j = i; j < toks.length; j++) {
+        const x = toks[j]!;
+        if (x.k === "fn") d++;
+        else if (x.k === "close" && --d === 0) {
+          end = j;
+          break;
+        }
+      }
+      if (end > 0) {
+        const q = evalMath(toks.slice(i, end + 1));
+        if (q) {
+          const raw = String(Math.round(q.v * 1000) / 1000);
+          out.push(q.u === "num" ? { k: "num", n: q.v, raw } : { k: "dim", n: q.v, unit: q.u === "pct" ? "%" : "px", raw: raw + (q.u === "pct" ? "%" : "px") });
+          i = end;
+          continue;
+        }
+      }
+    }
+    out.push(t);
+  }
+  return out;
+}
+
+type Check = { prop: string; toks: readonly Tok[]; ctx: DeclContext; report: Report; meta: { infinite: boolean; durationsMs: number[] } };
 
 const decorOnly = (ctx: DeclContext) => ctx.subjects.length > 0 && ctx.subjects.every((s) => s.decor);
 const strictness = (ctx: DeclContext) => ctx.where !== "supports" && !decorOnly(ctx);
 
-function checkProperty({ prop, toks, ctx, report, meta }: Check): void {
+function checkProperty({ prop, toks: original, ctx, report, meta }: Check): void {
+  const toks = foldMath(original);
   const strict = strictness(ctx);
   const decor = decorOnly(ctx);
   const m = meaningful(toks);
@@ -266,7 +369,7 @@ function checkProperty({ prop, toks, ctx, report, meta }: Check): void {
       return;
     }
     case "font-size": {
-      checkFontSize(m, report);
+      checkFontSize(topLevel(toks).filter((t) => t.k !== "ws"), report);
       return;
     }
     case "font": {
@@ -283,18 +386,18 @@ function checkProperty({ prop, toks, ctx, report, meta }: Check): void {
       return;
     }
     case "line-height": {
-      checkLineHeight(m, report);
+      checkLineHeight(topLevel(toks).filter((t) => t.k !== "ws"), report);
       return;
     }
     case "letter-spacing": case "word-spacing": {
-      for (const t of m) {
+      for (const t of topLevel(toks)) {
         const v = px(t);
         if (v !== null && Math.abs(v) > BOUNDS.maxLetterSpacingPx) report("spacing-too-large", { prop });
       }
       return;
     }
     case "text-indent": {
-      for (const t of m) {
+      for (const t of topLevel(toks)) {
         const v = px(t);
         if (v !== null && (v < BOUNDS.minTextIndentEm * 16 || v > BOUNDS.maxTextIndentRem * 16)) report("text-indent-bad");
       }
@@ -529,8 +632,6 @@ function checkAnimation(prop: string, toks: readonly Tok[], ctx: DeclContext, re
   }
 }
 
-export type TokenCheck = { value: string; refs: string[]; infinite: boolean; durationsMs: number[] } | null;
-
 /**
  * Vérifie une déclaration. Rend la propriété et la valeur RÉÉCRITES, ou `null` si la déclaration est refusée
  * (les raisons ont été signalées par `report`).
@@ -587,7 +688,11 @@ export function checkDeclaration(propRaw: string, valueRaw: string, important: b
 
   for (let i = 0; i < tokens.length; i++) {
     const t = tokens[i]!;
-    if (t.k === "fn" && t.v !== "") {
+    if (t.k === "ident" && t.v.startsWith("--")) {
+      // un nom de variable n'a sa place que comme premier argument de var()
+      const before = tokens.slice(0, i).filter((x) => x.k !== "ws").pop();
+      if (!before || before.k !== "fn" || before.v !== "var") fail("value-syntax");
+    } else if (t.k === "fn" && t.v !== "") {
       if (t.v === "var") {
         if (isContent) {
           fail("content-not-allowed");
@@ -621,7 +726,7 @@ export function checkDeclaration(propRaw: string, valueRaw: string, important: b
       }
     } else if (t.k === "str") {
       if (!stringsOk) fail("string-not-allowed");
-      else if (isContent) checkContentString(t.v, prop, ctx, fail);
+      else if (isContent) checkContentString(t.v, prop, fail);
       else if (prop === "grid-template-areas" || prop === "grid-template" || prop === "grid") {
         if (!/^[A-Za-z0-9 ._-]{1,100}$/.test(t.v)) fail("string-not-allowed");
       } else if (prop === "font-feature-settings") {
@@ -680,7 +785,7 @@ export function urlOut(path: string, ctx: Pick<DeclContext, "assetBase">): strin
   return `url(${path})`;
 }
 
-function checkContentString(text: string, prop: string, ctx: DeclContext, fail: Report) {
+function checkContentString(text: string, prop: string, fail: Report) {
   const chars = [...text];
   if (prop === "quotes") {
     if (chars.length > CONTENT_MAX_CHARS) fail("content-not-allowed");
@@ -693,7 +798,5 @@ function checkContentString(text: string, prop: string, ctx: DeclContext, fail: 
     fail("content-not-allowed");
     return;
   }
-  void ctx;
 }
 
-export const _internal = { px, splitCommas, topLevel };

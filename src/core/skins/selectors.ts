@@ -114,7 +114,7 @@ class Parser {
     let any = false;
     for (;;) {
       const c = this.peek();
-      if (c === undefined) break;
+      if (c === undefined || isSpace(c)) break;
       if (out.pseudoElement !== null && (c === "[" || c === ":" || /[A-Za-z]/.test(c))) this.fail("pseudo-element-position");
       if (c === "*") this.fail("universal-selector");
       if (c === ".") this.fail("class-selector");

@@ -439,3 +439,20 @@ test("retouches : jamais d'exception, jamais de modification des entrées", () =
   assert.doesNotThrow(() => R.probableIllegibility(colors, "dark"));
   for (const bad of [null, undefined, 5, "x", [], { background: 5 }, { background: "#fff", text: {} }]) assert.doesNotThrow(() => R.probableIllegibility(bad, "light"));
 });
+
+test("pannes internes : le contrôle échoue toujours du côté prudent", () => {
+  const boom = new Proxy({}, { get() { throw new Error("boom"); }, ownKeys() { throw new Error("boom"); } });
+  const issues = R.checkReadability(boom, "light");
+  assert.deepEqual(issues.map((i) => [i.code, i.severity]), [["read-internal-error", "error"]]);
+  const c = R.correctReadability(boom, "light");
+  assert.equal(c.suspended, true);
+  assert.deepEqual(R.probableIllegibility({ get background() { throw new Error("boom"); } }, null), [], "l'avertissement de retouche n'est qu'un conseil");
+});
+
+test("index : l'API publique est exportée", async () => {
+  const api = await import("@/core/skins/index");
+  for (const name of ["sanitizeSkinCss", "sanitizeTokenValue", "checkReadability", "correctReadability", "probableIllegibility", "parseColor", "contrastRatio", "READABILITY_PAIRS", "DEFAULT_LIMITS", "REGIONS", "PARTS", "makeIssue", "ISSUE_CODES"]) {
+    assert.ok(api[name] !== undefined, name);
+  }
+  assert.equal(typeof api.sanitizeSkinCss, "function");
+});

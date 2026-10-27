@@ -130,7 +130,7 @@ export function tokenizeValue(src: string, opts: { maxLength: number; maxTokens:
     if (code < 32 || code > 126) return { error: "non-ascii-char", at: i, char: c };
     if (c === "\\") return { error: "escape-sequence", at: i };
     if (isDigit(c) || (c === "." && isDigit(src[i + 1] ?? "")) || ((c === "-" || c === "+") && (isDigit(src[i + 1] ?? "") || (src[i + 1] === "." && isDigit(src[i + 2] ?? ""))))) {
-      const m = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+(?![A-Za-z0-9_-]))?/.exec(src.slice(i, i + 40));
+      const m = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?/.exec(src.slice(i, i + 40));
       if (!m) return { error: "number-bad", at: i };
       const raw = m[0];
       const value = Number(raw);

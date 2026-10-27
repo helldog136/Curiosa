@@ -233,7 +233,8 @@ export function checkReadability(tokens: Tokens, mode: Mode, options: Readabilit
     if (exempt) return [];
     return evaluate(tokens !== null && typeof tokens === "object" ? tokens : {}, mode, options ?? {});
   } catch {
-    return [];
+    // en cas de doute, on ne dit jamais « lisible »
+    return [plainIssue("read-internal-error", mode, "")];
   }
 }
 
@@ -349,11 +350,12 @@ function hexOf(c: Rgba | null, fallback: string): string {
  * noir/blanc jusqu'au seuil ; (3) jeton de pièce de module remis à sa valeur par défaut ; (4) sinon `suspended`.
  */
 export function correctReadability(tokens: Tokens, mode: Mode, options: ReadabilityOptions = {}): Correction {
-  if (tokens === null || typeof tokens !== "object") tokens = {};
-  options ??= {};
-  const original: Record<string, string> = { ...tokens };
-  const unchanged: Correction = { tokens: original, changes: [], suspended: false, remaining: [], notice: null };
+  let original: Record<string, string> = {};
   try {
+    if (tokens === null || typeof tokens !== "object") tokens = {};
+    options ??= {};
+    original = { ...tokens };
+    const unchanged: Correction = { tokens: original, changes: [], suspended: false, remaining: [], notice: null };
     if (options.exempt ?? options.skinId === "basic") return unchanged;
     const work: Record<string, string> = { ...tokens };
     const changes: CorrectionChange[] = [];

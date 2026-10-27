@@ -15,7 +15,6 @@ export class AtRuleError extends Error {
 }
 
 const LEN = /^(\d+(?:\.\d+)?)(px|em|rem)$/;
-const RANGE_OPS = ["<=", ">=", "<", ">", "="] as const;
 
 /** Retire les commentaires (équivalent d'une espace) et compacte les espaces. */
 function clean(prelude: string): string {

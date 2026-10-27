@@ -333,3 +333,72 @@ test("messages : chaque problème a un code, un message FR et EN, une aide", () 
     assert.ok(["error", "warning"].includes(i.severity));
   }
 });
+
+test("pannes internes : l'assainisseur échoue toujours du côté prudent (sortie vide, erreur)", () => {
+  const css = '[data-skin-part="card"]{color:red}';
+  const r = sanitizeSkinCss(css, { get skinId() { throw new Error("boom"); } });
+  assert.deepEqual([r.ok, r.css, r.issues.map((i) => i.code)], [false, "", ["internal-error"]]);
+  const t = sanitizeTokenValue("--sk-x", "1px", { get skinId() { throw new Error("boom"); } });
+  assert.deepEqual([t.ok, t.issues.map((i) => i.code)], [false, ["internal-error"]]);
+  assert.equal(sanitizeTokenValue("--sk-x", "1px", { skinId: ID, assetBase: "pas-valide" }).ok, true, "base invalide ignorée pour un jeton sans url");
+});
+
+test("@font-face : variantes d'écriture acceptées et refusées", () => {
+  const face = (body) => `@font-face{${body}}`;
+  const opts = { assets: ["fonts/a.woff2", "fonts/b.woff2"], fontFamilies: ["X"] };
+  assert.equal(run(face('font-family:X;src:url(skin:fonts/a.woff2),url(skin:fonts/b.woff2) format(woff2);font-weight:bold;font-style:oblique;unicode-range:U+0000-00FF,U+0131'), opts).ok, true);
+  assert.equal(run(face('font-family:"X";src:url(skin:fonts/a.woff2);font-weight:400 700 900'), opts).ok, false, "trois graisses");
+  assert.equal(run(face('font-family:"X";src:url(skin:fonts/a.woff2);font-weight:2000'), opts).ok, false);
+  assert.equal(run(face('font-family:"X";src:url(skin:fonts/a.woff2);font-style:fancy'), opts).ok, false);
+  assert.equal(run(face('font-family:"X";src:url(skin:fonts/a.woff2) format("woff")'), opts).ok, false);
+  assert.equal(run(face('font-family:"X" "Y";src:url(skin:fonts/a.woff2)'), opts).ok, false);
+  assert.equal(run(face('font-family:"X<";src:url(skin:fonts/a.woff2)'), opts).ok, false);
+  assert.equal(run(face('font-family:"X";src:url(skin:fonts/a.woff2'), opts).ok, false);
+  assert.equal(run('@font-face;', opts).ok, false);
+  assert.equal(run(face('font-family:"X";src:url(skin:fonts/a.woff2)\n/* c */'), opts).ok, true);
+});
+
+test("@keyframes : variantes", () => {
+  const m = (inner) => `@media (prefers-reduced-motion: no-preference){${inner}}`;
+  assert.equal(run(m("@keyframes a{from,to{opacity:1}}")).ok, true);
+  assert.equal(run(m("@keyframes a{0%,50.5%{opacity:1}100%{opacity:.8}}")).ok, true);
+  assert.equal(run(m("@keyframes a{from{opacity:1}to{opacity:1}}[data-skin-part=\"card\"]{animation:a 1s ease-in-out 2 alternate both paused}")).ok, true);
+  assert.equal(run(m("@keyframes a;")).ok, false);
+  assert.equal(run(m("@keyframes sk-plain-light-a{from{opacity:1}}")).ok, true, "déjà préfixé : conservé");
+  assert.equal(run(m("@keyframes a{from{opacity:1}}@keyframes a{to{opacity:1}}")).ok, true, "deux blocs du même nom : acceptés");
+  assert.equal(run(m("@keyframes a{from{}}")).ok, true, "image vide ignorée");
+});
+
+test("media : combinaisons et limites de grammaire", () => {
+  const ok = (c) => assert.equal(run(`${c}{[data-skin-part="card"]{color:red}}`).ok, true, c);
+  const ko = (c) => assert.equal(run(`${c}{[data-skin-part="card"]{color:red}}`).ok, false, c);
+  ok("@media (max-width: 48rem)"); ok("@media (min-height: 30em) and (max-height: 90em)"); ok("@media (orientation: landscape)"); ok("@media (prefers-contrast: more)"); ok("@media (any-hover: none)");
+  ok("@media (min-width: 640px)"); ok("@media (320px <= width < 40rem)"); ok("@media (width > 40rem) and (height < 60rem)"); ok("@media all"); ok("@media screen");
+  ok("@container (inline-size > 30em)"); ok("@container side (min-width: 10rem) and (max-height: 50em)");
+  ko("@media (min-width)"); ko("@media (min-width: 40)"); ko("@media (min-width: 40rem) or (max-width: 20rem)"); ko("@media only screen"); ko("@media (width >= )"); ko("@media ((min-width: 40rem))");
+  ko("@media (min-width: 40rem) and"); ko("@media (min-width: 40rem) and (min-width: 41rem) and (min-width: 42rem) and (min-width: 43rem) and (min-width: 44rem)"); ko("@media (min-width: 40rem"); ko("@media min-width: 40rem)");
+  ko("@container name"); ko("@container (min-width: 1px)"); ko("@container (min-width: 20rem) and (min-width: 21rem) and (min-width: 22rem) and (min-width: 23rem)");
+  ko("@supports (color: red) or"); ko("@supports (color: red) (color: blue)"); ko("@supports color: red"); ko("@supports (color red)");
+  ko("@supports (color: red) and (color: blue) and (color: green) and (color: pink) and (color: gold)");
+});
+
+test("sélecteurs : formes d'écriture acceptées et refusées", () => {
+  const ok = (s) => assert.equal(run(`${s}{color:red}`).ok, true, s);
+  const ko = (s) => assert.equal(run(`${s}{color:red}`).ok, false, s);
+  ok('[data-skin-part=card]'); ok("[ data-skin-part = 'card' ]"); ok('[DATA-SKIN-PART="card"]'); ok('BUTTON[data-skin-part="button"]'); ok('[data-skin-part="card"] >[data-skin-part="chip"]');
+  ok('[data-skin-part="card"]\n\t>\n\t[data-skin-part="chip"]'); ok('[data-skin-part="card"]:HOVER'); ok('[data-skin-part="card"]::BEFORE'); ok('[data-skin-part="list-item"]:nth-child( 2N + 1 )'); ok('[data-skin-part="list-item"]:nth-child(-n+3)');
+  ok('[data-skin-part="card"]:has(+ [data-skin-part="chip"])'); ok('[data-skin-part="card"]:not(:hover, :focus)'); ok('[data-skin-part="card"]:is(a, button):hover');
+  ko('[data-skin-part=card'); ko('[data-skin-part="card]'); ko('[data-skin-part="card"'); ko('[data-skin-part="card"]:'); ko('[data-skin-part="card"]::'); ko('[data-skin-part="card"]:hover(1)'); ko('[data-skin-part="card"]:not'); ko('[data-skin-part="card"]:not('); ko('[data-skin-part="card"]:not()');
+  ko('[data-skin-part="card"]:nth-child()'); ko('[data-skin-part="card"]:nth-child(1000000)'); ko('[data-skin-part="card"]:hover:is(:hover:is(:hover:is(:hover)))'); ko('[data-skin-part="card"] , , a'); ko('[data-skin-part="card"]:has(a b c)');
+  ko('[data-skin-part="card"]:has(:has(a))'); ko('[data-skin-part="card"]:not(a::before)'); ko('[=card]'); ko('[data-skin-part~="card"]'); ko('[data-skin-part="card"]:first-child::before:hover');
+});
+
+test("valeurs : unités, nombres et jetons limites", () => {
+  const ok = (p, v) => assert.equal(run(`[data-skin-part="card"]{${p}:${v}}`).ok, true, `${p}:${v}`);
+  const ko = (p, v) => assert.equal(run(`[data-skin-part="card"]{${p}:${v}}`).ok, false, `${p}:${v}`);
+  ok("margin", "-1.5rem"); ok("margin", "+.5rem"); ok("margin", "1e1px"); ok("width", "100svh"); ok("padding", "1ch 2ex"); ok("gap", "0"); ok("flex", "1 1 0%"); ok("font-size", "calc(1rem + 2px)"); ok("line-height", "1.5"); ok("width", "50%");
+  ok("color", "#FfF"); ok("transform", "translate(-50%, -50%)"); ok("transform", "rotate(0.01turn)"); ok("transform", "scale(1.05) translateX(2rem)"); ok("transition", "all 1ms"); ok("grid-template-areas", '"a b" "c d"'); ok("font-feature-settings", '"liga" 1, "kern" 0');
+  ok("top", "50%"); ok("inset", "0 0 auto 0"); ok("opacity", "60%"); ok("z-index", "30"); ok("order", "-10"); ok("text-indent", "-0.5em"); ok("letter-spacing", "-0.05em"); ok("height", "4px"); ok("margin", "-4rem");
+  ko("margin", "1foo"); ko("margin", "1e"); ko("margin", "--1px"); ko("color", "#12"); ko("width", "3px 4px (5"); ko("transform", "scale(1.2)"); ko("transform", "rotate(0.02turn)"); ko("font-size", "10.9px"); ko("height", "3px"); ko("text-indent", "-0.6em"); ko("top", "-17px");
+  ko("grid-template-areas", '"a;b"'); ko("font-feature-settings", '"ligature"'); ko("margin", "-4.1rem"); ko("opacity", "59%"); ko("line-height", "0.79"); ko("line-height", "7px");
+});
