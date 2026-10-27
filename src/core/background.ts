@@ -198,8 +198,15 @@ function layerCss(l: Layer, theme: Theme, accent: string): string {
 /** Feuille de style du fond (éléments `.cbg > i`, un par couche) — chaîne vide s'il n'y a aucune couche. */
 export function backgroundCss(layers: Layer[], theme: Theme): string {
   if (layers.length === 0) return "";
-  const rules = layers.map((l, i) => `.cbg>i:nth-child(${i + 1}){${layerCss(l, theme, theme.accent)}}`);
-  return `.cbg{position:fixed;inset:0;z-index:-1;pointer-events:none;overflow:hidden}.cbg>i{position:absolute;inset:0;display:block}${rules.join("")}`;
+  return BACKGROUND_BASE_CSS + backgroundRules(layers, theme);
+}
+
+/** Partie fixe de la feuille du fond (la même pour tous les thèmes). */
+export const BACKGROUND_BASE_CSS = ".cbg{position:fixed;inset:0;z-index:-1;pointer-events:none;overflow:hidden}.cbg>i{position:absolute;inset:0;display:block}";
+
+/** Les règles de couleur de chaque couche, éventuellement sous un préfixe de portée (un skin à deux modes : une série par mode). */
+export function backgroundRules(layers: Layer[], theme: Theme, scope = ""): string {
+  return layers.map((l, i) => `${scope}.cbg>i:nth-child(${i + 1}){${layerCss(l, theme, theme.accent)}}`).join("");
 }
 
 /* ───────────── préréglages (adaptés au thème : ils utilisent les jetons accent/bg) ───────────── */

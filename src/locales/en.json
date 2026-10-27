@@ -2534,5 +2534,10 @@
   "settings.colorInvalid": "Enter a color in #rrggbb format.",
   "settings.contrast.text": "Text is hard to read on this background (contrast {ratio}:1, at least 4.5:1 recommended).",
   "settings.contrast.accent": "The accent barely stands out from the background (contrast {ratio}:1, at least 3:1 recommended).",
-  "settings.contrast.accent2": "The secondary color barely stands out from the background (contrast {ratio}:1, at least 3:1 recommended)."
+  "settings.contrast.accent2": "The secondary color barely stands out from the background (contrast {ratio}:1, at least 3:1 recommended).",
+  "site.mode.group": "Appearance",
+  "site.mode.auto": "Automatic",
+  "site.mode.light": "Light",
+  "site.mode.dark": "Dark",
+  "privacy.cookies.mode": "**Light or dark**: when the site offers both looks and you pick one with the switch in the header, that choice is kept in your browser only (local storage \"curiosa-mode\"). It is not a cookie: it is never sent to the site or to anyone, and it only serves to show the pages the way you asked. Without a choice from you, the site follows your device setting."
 }

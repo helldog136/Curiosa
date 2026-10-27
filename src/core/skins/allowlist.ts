@@ -76,6 +76,13 @@ export const STATE_ATTRIBUTES: Readonly<Record<string, { ops: readonly string[];
   lang: { ops: ["", "=", "|="], value: /^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8}){0,3}$/ },
 };
 
+/**
+ * Choix clair/sombre du visiteur (docs/SKINS.md §3.8, décision Q-B) : `[data-mode="light"]` / `[data-mode="dark"]` est permis EN TÊTE de sélecteur seulement
+ * (seul, ou après le préfixe `:root[data-skin="<id>"]`) ; il est réécrit à côté de `data-skin` sur la même racine. Nulle part ailleurs.
+ */
+export const MODE_ATTRIBUTE = "data-mode";
+export const MODE_QUALIFIER_VALUES: readonly string[] = ["light", "dark"];
+
 /** Pseudo-classes simples. */
 export const PSEUDO_CLASSES: readonly string[] = [
   "hover", "focus", "focus-visible", "focus-within", "active", "disabled", "checked",

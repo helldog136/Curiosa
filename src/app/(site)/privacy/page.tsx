@@ -9,6 +9,7 @@ import { getSetting, getSiteConfig } from "@/core/settings";
 import { siteUrl } from "@/core/config";
 import { pickLogo } from "@/core/logos";
 import { languageAlternates, socialMeta } from "@/core/seo";
+import { resolveLook } from "@/core/skins/render";
 import { Markdown } from "@/components/site/Markdown";
 import { CookieSettingsLink } from "@/components/site/CookieTray";
 
@@ -33,7 +34,9 @@ export default async function PrivacyPage() {
     return declared ? [{ name: pickName(instance, locale, config.defaultLocale), text: localized(declared, locale, config.defaultLocale) }] : [];
   });
   const extra = (await getSetting<string>("privacy.extra", locale)) ?? (await getSetting<string>("privacy.extra", config.defaultLocale)) ?? "";
-  const text = buildPrivacyPolicy({ siteName: config.name, contactEmail: config.contactEmail, statsEnabled: config.statsEnabled, newsToggle: config.newsToggle, features, extra, t });
+  // Le choix clair/sombre du visiteur n'existe (et n'est donc déclaré) que si le skin du site fournit les deux apparences.
+  const modeSwitch = (await resolveLook(config)).appearance.modeSwitch;
+  const text = buildPrivacyPolicy({ siteName: config.name, contactEmail: config.contactEmail, statsEnabled: config.statsEnabled, newsToggle: config.newsToggle, modeSwitch, features, extra, t });
   return (
     <article className="mx-auto max-w-3xl space-y-4 py-6">
       <h1 className="text-3xl font-bold tracking-tight">{t("privacy.title")}</h1>

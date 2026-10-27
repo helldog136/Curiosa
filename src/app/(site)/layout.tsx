@@ -1,15 +1,13 @@
-import { isDarkBackground, pickLogo } from "@/core/logos";
+import { pickLogo } from "@/core/logos";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { cookies, headers } from "next/headers";
-import { buildTheme, gradientTextOn, hasAccent2, hasChosenSurface, themeCss } from "@/core/color";
-import { glowCss } from "@/core/glow";
 import { faviconUrl } from "@/core/favicon";
-import { backgroundCss, effectiveLayers } from "@/core/background";
+import { resolveLook } from "@/core/skins/render";
 import { RTL_LOCALES } from "@/core/i18n/locales";
 import { getVisitorLocale, getVisitorTranslator, LOCALE_HEADER, PATH_HEADER } from "@/core/i18n/request";
 import { runSlot } from "@/core/modules/runtime";
-import { getSiteConfig, themeExtraOf } from "@/core/settings";
+import { getSiteConfig } from "@/core/settings";
 import { siteUrl } from "@/core/config";
 import { feedPath } from "@/core/feeds";
 import { jsonLd, languageAlternates, pageUrl, sameAsList, siteJsonLd, socialMeta } from "@/core/seo";
@@ -62,10 +60,12 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
   const locale = await getVisitorLocale();
   const localized = await getSiteConfig(locale);
   const t = await getVisitorTranslator();
-  const theme = buildTheme(localized.background, localized.accent, localized.font, themeExtraOf(localized));
-  const layers = effectiveLayers(localized.bg.preset, localized.bg.custom, localized.bg.image, localized.bg.svg);
-  const two = hasAccent2(localized);
-  const css = themeCss(theme) + (two ? `[data-accent2]{--c-grad-fg:${gradientTextOn(localized.accent, localized.accent2)}}` : "") + glowCss(localized.glow.level, localized.glow.custom, localized.accent) + backgroundCss(layers, theme);
+  // L'apparence : basic < pièces des modules < skin actif (`skin.active`, absent = basic) < retouches de la personne (core/skins/render.ts). Sans skin choisi,
+  // la feuille est celle d'avant les skins (mêmes valeurs) ; elle ne touche jamais l'administration.
+  const look = await resolveLook(localized);
+  const css = look.sheet;
+  const layers = look.layers;
+  const headerConfig = look.headerLayout === localized.header.layout ? localized : { ...localized, header: { ...localized.header, layout: look.headerLayout } };
 
   const profiles = sameAsList((await loadSocialLinks(locale)).map((s) => s.href));
   const entity = await getSiteEntity();
@@ -77,11 +77,13 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
   const trayLabels = Object.fromEntries(TRAY_TEXT_KEYS.map((k) => [k, t(`cookies.${k}`)])) as TrayLabels;
 
   return (
-    <html lang={locale} dir={RTL_LOCALES.has(locale) ? "rtl" : "ltr"} data-accent2={two ? "1" : undefined} data-surface={hasChosenSurface(localized) ? "1" : undefined}>
+    <html lang={locale} dir={RTL_LOCALES.has(locale) ? "rtl" : "ltr"} data-skin={look.composed.skinId} data-accent2={look.composed.hasAccent2 ? "1" : undefined} data-surface={look.composed.hasChosenSurface ? "1" : undefined}>
       <head>
+        {/* Bascule clair / sombre du visiteur : script du cœur, même origine, BLOQUANT (ni defer ni async) pour poser data-mode avant le premier rendu ; seulement si le skin a les deux modes. */}
+        {look.modeScriptUrl && <script src={look.modeScriptUrl} />}
         <style dangerouslySetInnerHTML={{ __html: css }} />
         <link rel="alternate" type="application/rss+xml" title={localized.name} href={`${siteUrl}${feedPath(locale)}`} />
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(siteJsonLd({ url: siteUrl, name: localized.name, tagline: localized.tagline, logo: pickLogo(localized.logos, "any", isDarkBackground(localized.background)), locale, entity, sameAs: profiles, homeUrl: pageUrl(siteUrl, locale, config.defaultLocale, "/").replace(/\/$/, "") || siteUrl })) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(siteJsonLd({ url: siteUrl, name: localized.name, tagline: localized.tagline, logo: pickLogo(localized.logos, "any", look.appearance.dark), locale, entity, sameAs: profiles, homeUrl: pageUrl(siteUrl, locale, config.defaultLocale, "/").replace(/\/$/, "") || siteUrl })) }} />
         <HeadTags blocks={headBlocks} />
       </head>
       <body className="min-h-screen bg-bg text-fg antialiased">
@@ -91,7 +93,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
         </a>
         {tray.enabled && <CookieTray labels={trayLabels} privacyHref={`${withLocale("/privacy", locale, config.defaultLocale)}#cookies`} initialOpen={tray.showTray} />}
         <Blocks blocks={bannerBlocks} locale={locale} />
-        <Header config={localized} locale={locale} />
+        <Header config={headerConfig} locale={locale} appearance={look.appearance} />
         <main id="content" className="mx-auto max-w-5xl px-4 py-10">
           {children}
         </main>

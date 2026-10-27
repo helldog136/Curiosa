@@ -2534,5 +2534,10 @@
   "settings.colorInvalid": "Écrivez une couleur au format #rrggbb.",
   "settings.contrast.text": "Le texte est peu lisible sur ce fond (contraste {ratio}:1, au moins 4,5:1 conseillé).",
   "settings.contrast.accent": "L'accent se distingue mal du fond (contraste {ratio}:1, au moins 3:1 conseillé).",
-  "settings.contrast.accent2": "La couleur secondaire se distingue mal du fond (contraste {ratio}:1, au moins 3:1 conseillé)."
+  "settings.contrast.accent2": "La couleur secondaire se distingue mal du fond (contraste {ratio}:1, au moins 3:1 conseillé).",
+  "site.mode.group": "Apparence",
+  "site.mode.auto": "Automatique",
+  "site.mode.light": "Clair",
+  "site.mode.dark": "Sombre",
+  "privacy.cookies.mode": "**Clair ou sombre** : quand le site propose les deux apparences et que vous en choisissez une avec le sélecteur de l'en-tête, ce choix est gardé dans votre navigateur seulement (stockage local « curiosa-mode »). Ce n'est pas un cookie : il n'est jamais envoyé au site ni à personne, et il ne sert qu'à vous afficher les pages comme vous l'avez demandé. Sans choix de votre part, le site suit le réglage de votre appareil."
 }

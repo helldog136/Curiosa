@@ -9,13 +9,24 @@ import { safeHref } from "@/core/url";
 import { EntryIcon } from "./EntryIcon";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { MenuToggle } from "./MenuToggle";
+import { ModeSwitch } from "./ModeSwitch";
 import { SiteNav, type NavItem } from "./SiteNav";
 
-export async function Header({ config, locale }: { config: SiteConfig; locale: string }) {
+/**
+ * `appearance` vient de la composition des skins (core/skins/render.ts) : `dark` = le fond effectif est sombre (choix du logo) ; `modeSwitch` = le skin fournit
+ * les deux modes, donc la bascule clair/sombre existe et les logos à deux variantes se rendent en deux `<img data-for>` (le CSS du cœur montre la bonne).
+ * Sans cela (sites existants, basic), l'en-tête est rendu comme avant.
+ */
+export async function Header({ config, locale, appearance }: { config: SiteConfig; locale: string; appearance?: { dark: boolean; modeSwitch: boolean } }) {
   const t = makeTranslator(locale);
-  const dark = isDarkBackground(config.background);
+  const dark = appearance ? appearance.dark : isDarkBackground(config.background);
+  const modeSwitch = appearance?.modeSwitch === true;
   const wide = pickLogo(config.logos, "wide", dark);
   const icon = pickLogo(config.logos, "icon", dark);
+  // Deux variantes d'un même logo (clair + sombre) et une bascule : les deux images sont rendues, une seule est visible (règles du cœur, globals.css).
+  const variants = (light: string | null, darkOne: string | null): [string, string] | null => (modeSwitch && light && darkOne ? [light, darkOne] : null);
+  const wideBoth = variants(config.logos.wide, config.logos.wideDark);
+  const iconBoth = variants(config.logos.square, config.logos.squareDark);
   const local = (path: string) => withLocale(safeHref(path), locale, config.defaultLocale);
 
   // Le menu que la personne a composé (pages, extensions, contenus, raccourcis, liens, sous-menus), dans la langue du visiteur ; puis les liens que des modules ajoutent
@@ -37,8 +48,12 @@ export async function Header({ config, locale }: { config: SiteConfig; locale: s
     <a href={withLocale("/", locale, config.defaultLocale)} className="flex items-center gap-3 text-lg font-semibold" aria-label={config.name}>
       {/* Le logo horizontal contient déjà le nom ; sans lui, l'icône (ou rien) et le nom écrit. Sur petit écran : l'icône si on en a une. */}
       {/* eslint-disable @next/next/no-img-element */}
-      {wide && <img src={wide} alt={config.name} className={`${icon ? "hidden sm:block" : ""} h-9 w-auto max-w-[14rem] object-contain`} />}
-      {icon && <img src={icon} alt="" className={`${wide ? "sm:hidden" : ""} h-9 w-9 object-contain`} />}
+      {wide && (wideBoth
+        ? (["light", "dark"] as const).map((m, i) => <img key={m} src={wideBoth[i]} data-for={m} alt={config.name} className={`${icon ? "hidden sm:block" : ""} h-9 w-auto max-w-[14rem] object-contain`} />)
+        : <img src={wide} alt={config.name} className={`${icon ? "hidden sm:block" : ""} h-9 w-auto max-w-[14rem] object-contain`} />)}
+      {icon && (iconBoth
+        ? (["light", "dark"] as const).map((m, i) => <img key={m} src={iconBoth[i]} data-for={m} alt="" className={`${wide ? "sm:hidden" : ""} h-9 w-9 object-contain`} />)
+        : <img src={icon} alt="" className={`${wide ? "sm:hidden" : ""} h-9 w-9 object-contain`} />)}
       {/* eslint-enable @next/next/no-img-element */}
       {(!wide || icon) && <span className={wide ? "sm:hidden" : ""}>{config.name}</span>}
     </a>
@@ -58,6 +73,9 @@ export async function Header({ config, locale }: { config: SiteConfig; locale: s
     <a href={local(config.header.button.href)} data-testid="header-button" data-btn="primary" className="rounded-full border-2 border-accent px-4 py-1.5 text-sm font-semibold text-accent transition-colors hover:bg-accent hover:text-accent-fg">{config.header.button.label}</a>
   );
   const lang = <LanguageSwitcher locales={config.locales} current={locale} defaultLocale={config.defaultLocale} />;
+  const modeEl = modeSwitch ? <ModeSwitch t={t} /> : null;
+  // Langues et bascule ensemble quand la mise en page les place dans une rangée à deux éléments.
+  const langTools = modeEl ? <div className="flex items-center gap-3">{lang}{modeEl}</div> : lang;
   const shell = "mx-auto max-w-5xl px-4 py-4";
 
   let body: React.ReactNode;
@@ -66,7 +84,7 @@ export async function Header({ config, locale }: { config: SiteConfig; locale: s
       body = (
         <div className={`${shell} space-y-3`}>
           <div className="flex flex-wrap items-center justify-between gap-4">{brand}<div className="flex flex-wrap items-center gap-x-5 gap-y-2">{secondaryEl}{socialsEl}{buttonEl}</div></div>
-          <div className="flex flex-wrap items-center justify-between gap-4">{menu}{lang}</div>
+          <div className="flex flex-wrap items-center justify-between gap-4">{menu}{langTools}</div>
         </div>
       );
       break;
@@ -74,7 +92,7 @@ export async function Header({ config, locale }: { config: SiteConfig; locale: s
       body = (
         <div className={`${shell} flex flex-col items-center gap-3 text-center`}>
           {brand}{menu}
-          <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">{secondaryEl}{socialsEl}{buttonEl}{lang}</div>
+          <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">{secondaryEl}{socialsEl}{buttonEl}{lang}{modeEl}</div>
         </div>
       );
       break;
@@ -84,6 +102,7 @@ export async function Header({ config, locale }: { config: SiteConfig; locale: s
           {brand}
           <div className="flex items-center gap-3">
             {lang}
+            {modeEl}
             <MenuToggle label={t("site.menu")}>
               <ul className="space-y-1 text-sm">
                 {items.map((item) => (
@@ -107,7 +126,7 @@ export async function Header({ config, locale }: { config: SiteConfig; locale: s
       body = (
         <div className={`${shell} flex flex-wrap items-center justify-between gap-4`}>
           {brand}
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-2">{menu}{secondaryEl}{socialsEl}{buttonEl}{lang}</div>
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2">{menu}{secondaryEl}{socialsEl}{buttonEl}{lang}{modeEl}</div>
         </div>
       );
   }

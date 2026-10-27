@@ -5,7 +5,7 @@
  * puis réécrit à partir de cette structure sous la forme `:root[data-skin="<id>"] <sélecteur>`.
  */
 import {
-  CONTENT_ELEMENTS, DECOR_PARTS, DECOR_PSEUDO_ELEMENTS, DECOR_REGIONS, GLOBAL_ELEMENTS, LEGACY_PSEUDO_ELEMENTS, LOGICAL_PSEUDO_CLASSES,
+  CONTENT_ELEMENTS, DECOR_PARTS, DECOR_PSEUDO_ELEMENTS, DECOR_REGIONS, GLOBAL_ELEMENTS, LEGACY_PSEUDO_ELEMENTS, LOGICAL_PSEUDO_CLASSES, MODE_ATTRIBUTE, MODE_QUALIFIER_VALUES,
   MODULE_PART_RE, NTH_PSEUDO_CLASSES, PARTS, PSEUDO_CLASSES, PSEUDO_ELEMENTS, REGIONS, STATE_ATTRIBUTES, type SkinLimits,
 } from "./allowlist";
 
@@ -13,7 +13,13 @@ export type Attr = { name: string; op: "" | "=" | "~=" | "|="; value: string };
 export type Pseudo = { name: string; arg?: Complex[] | string };
 export type Compound = { type: string | null; attrs: Attr[]; pseudos: Pseudo[]; pseudoElement: string | null };
 export type Combinator = " " | ">" | "+" | "~";
-export type Complex = { lead: Combinator | null; compounds: Compound[]; combinators: Combinator[] };
+export type Complex = {
+  lead: Combinator | null;
+  compounds: Compound[];
+  combinators: Combinator[];
+  /** Choix clair/sombre du visiteur visé (`[data-mode="light"|"dark"]` en tête, docs/SKINS.md §3.8) : posé sur la même racine que `data-skin`. */
+  mode?: "light" | "dark";
+};
 
 export class SelectorError extends Error {
   readonly code: string;
@@ -310,23 +316,37 @@ export function validateAndRewrite(list: Complex[], ctx: SelectorContext): { sel
   for (const x of list) {
     validateComplex(x, ctx, false);
     if (!isAnchored(x.compounds[0]!)) throw new SelectorError("selector-needs-anchor");
-    selectors.push(`:root[data-skin="${ctx.skinId}"] ${serializeComplex(x)}`);
+    selectors.push(`:root[data-skin="${ctx.skinId}"]${x.mode ? `[data-mode="${x.mode}"]` : ""} ${serializeComplex(x)}`);
     subjects.push(analyzeSubject(x));
   }
   return { selectors, subjects };
 }
 
-/** Retire le préfixe d'auteur exact `:root[data-skin="<id>"]` (suivi d'un espace ou de `>`) : il est ensuite remis par `validateAndRewrite`, jamais doublé. */
+/**
+ * Retire le préfixe d'auteur exact `:root[data-skin="<id>"]` (suivi d'un espace ou de `>`) : il est ensuite remis par `validateAndRewrite`, jamais doublé.
+ * Reconnaît aussi, en TÊTE seulement, le choix du visiteur : `[data-mode="light"]` / `[data-mode="dark"]` seul, ou ajouté au préfixe
+ * (`:root[data-skin="<id>"][data-mode="dark"]`). Le qualificatif est retenu dans `mode` et remis à côté de `data-skin` (même élément racine).
+ * Ailleurs dans le sélecteur, `data-mode` reste refusé (attribut non permis).
+ */
 export function stripAuthorScope(list: Complex[], skinId: string): Complex[] {
+  const modeOf = (a: Attr): "light" | "dark" | null => (a.name === MODE_ATTRIBUTE && a.op === "=" && MODE_QUALIFIER_VALUES.includes(a.value) ? (a.value as "light" | "dark") : null);
   return list.map((x) => {
     const head = x.compounds[0]!;
-    const hasRoot = head.pseudos.length === 1 && head.pseudos[0]!.name === "root" && !head.pseudos[0]!.arg;
-    const attr = head.attrs.length === 1 ? head.attrs[0]! : null;
-    const exact = hasRoot && head.type === null && head.pseudoElement === null && attr && attr.name === "data-skin" && attr.op === "=" && attr.value === skinId;
-    if (!exact || x.compounds.length < 2 || x.lead) return x;
+    if (x.compounds.length < 2 || x.lead || head.type !== null || head.pseudoElement !== null) return x;
     const comb = x.combinators[0]!;
     if (comb !== " " && comb !== ">") return x;
-    return { lead: null, compounds: x.compounds.slice(1), combinators: x.combinators.slice(1) };
+    const rest = { lead: null, compounds: x.compounds.slice(1), combinators: x.combinators.slice(1) } as Complex;
+    // `[data-mode="dark"]` seul
+    if (head.pseudos.length === 0 && head.attrs.length === 1 && modeOf(head.attrs[0]!)) return { ...rest, mode: modeOf(head.attrs[0]!)! };
+    // `:root[data-skin="<id>"]` éventuellement suivi de `[data-mode="…"]`
+    const hasRoot = head.pseudos.length === 1 && head.pseudos[0]!.name === "root" && !head.pseudos[0]!.arg;
+    if (!hasRoot) return x;
+    const skinAttr = head.attrs.find((a) => a.name === "data-skin");
+    const others = head.attrs.filter((a) => a !== skinAttr);
+    if (!skinAttr || skinAttr.op !== "=" || skinAttr.value !== skinId) return x;
+    if (others.length === 0) return rest;
+    if (others.length === 1 && modeOf(others[0]!)) return { ...rest, mode: modeOf(others[0]!)! };
+    return x;
   });
 }
 
