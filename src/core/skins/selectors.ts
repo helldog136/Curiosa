@@ -148,7 +148,7 @@ class Parser {
     if (this.peek() === "\\") this.fail("escape-sequence");
     const name = this.ident().toLowerCase();
     if (!name) this.fail("selector-syntax");
-    if (this.peek() === "|") this.fail("namespace-selector");
+    if (this.peek() === "|" && this.peek(1) !== "=") this.fail("namespace-selector");
     this.ws();
     let op: Attr["op"] = "";
     if (this.peek() === "]") {

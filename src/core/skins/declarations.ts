@@ -270,10 +270,14 @@ function checkProperty({ prop, toks, ctx, report, meta }: Check): void {
       return;
     }
     case "font": {
-      const dims = m.filter((t) => t.k === "dim");
-      const first = dims[0];
-      if (first) checkFontSize([first], report);
+      // taille = le jeton qui précède « / », sinon la première dimension ; un `0` nu n'est jamais une graisse
       const slash = m.findIndex((t) => t.k === "slash");
+      const sizes: Tok[] = [];
+      if (slash > 0) sizes.push(m[slash - 1]!);
+      const dim = m.find((t) => t.k === "dim");
+      if (dim) sizes.push(dim);
+      for (const t of m) if (t.k === "num" && t.n === 0) sizes.push(t);
+      checkFontSize(sizes, report);
       const lh = slash >= 0 ? m[slash + 1] : undefined;
       if (lh) checkLineHeight([lh], report);
       return;
@@ -590,7 +594,9 @@ export function checkDeclaration(propRaw: string, valueRaw: string, important: b
           continue;
         }
         const name = varName(tokens, i);
+        const after = tokens.slice(i + 1).filter((x) => x.k !== "ws")[1];
         if (!name || !VAR_NAME_RE.test(name)) fail("var-name-not-allowed", { name: (name ?? "").slice(0, 40) });
+        else if (!after || (after.k !== "comma" && after.k !== "close")) fail("value-syntax");
         else refs.push(name);
       } else if (t.v === "env") {
         const name = varName(tokens, i);
@@ -624,6 +630,8 @@ export function checkDeclaration(propRaw: string, valueRaw: string, important: b
     } else if (t.k === "ident" && isContent) {
       const v = t.v.toLowerCase();
       if (!(v === "none" || v === "normal" || v === "auto" || WIDE.has(v))) fail("content-not-allowed");
+    } else if ((t.k === "lbr" || t.k === "rbr") && !(prop.startsWith("grid") || isCustom)) {
+      fail("value-syntax");
     } else if (t.k === "num" || t.k === "dim" || t.k === "hash" || t.k === "comma" || t.k === "slash" || t.k === "op") {
       if (isContent) fail("content-not-allowed");
     }
@@ -633,7 +641,7 @@ export function checkDeclaration(propRaw: string, valueRaw: string, important: b
     const m = meaningful(tokens);
     const isNone = m.length === 1 && m[0]!.k === "ident";
     if (prop === "content" && !subjOk && !(isNone && ["none", "normal"].includes((m[0] as Extract<Tok, { k: "ident" }>).v.toLowerCase())) && ctx.where === "rule") fail("content-selector");
-    if (m.length > 1) fail("content-not-allowed");
+    if (m.length > (prop === "quotes" ? 4 : 1)) fail("content-not-allowed");
   }
   if (failed) return null;
 
@@ -681,7 +689,7 @@ function checkContentString(text: string, prop: string, ctx: DeclContext, fail: 
     return;
   }
   for (const ch of chars) {
-    if (ch === " " || /^[\p{P}\p{S}]$/u.test(ch)) continue;
+    if (ch !== "\uFFFD" && (ch === " " || /^[\p{P}\p{S}]$/u.test(ch))) continue;
     fail("content-not-allowed");
     return;
   }

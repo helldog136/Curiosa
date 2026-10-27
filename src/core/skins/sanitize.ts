@@ -361,6 +361,10 @@ function processRule(node: Rule, state: State, motionOk: boolean): Out | null {
     }
     count++;
     state.declarations++;
+    if (hackPrefix(child)) {
+      reporter(state, child)("property-not-allowed", { name: `${/[*_]/.exec(child.raws.before ?? "")![0]}${(child as Declaration).prop}` });
+      continue;
+    }
     if (state.declarations > limits.maxDeclarations) fatal(state, child, "too-many-declarations", { max: limits.maxDeclarations });
     if (count > limits.maxDeclarationsPerRule) {
       if (count === limits.maxDeclarationsPerRule + 1) reporter(state, child)("too-many-declarations-rule", { max: limits.maxDeclarationsPerRule });
@@ -377,6 +381,11 @@ function processRule(node: Rule, state: State, motionOk: boolean): Out | null {
   }
   if (infinite && durations.some((ms) => ms < BOUNDS.minLoopMs)) report("animation-too-fast");
   return decls.length ? { type: "rule", selectors, decls } : null;
+}
+
+/** PostCSS range les « hacks » `*prop` et `_prop` (anciens navigateurs) dans `raws.before` : un navigateur moderne ignore ces déclarations, on les refuse. */
+function hackPrefix(node: ChildNode): boolean {
+  return /[*_]/.test(node.raws.before ?? "");
 }
 
 function trackFocus(prop: string, value: string, line: number | undefined, focusSubject: boolean, state: State) {
@@ -437,6 +446,10 @@ function processKeyframes(node: AtRule, state: State, depth: number, motionOk: b
       }
       state.declarations++;
       if (state.declarations > state.limits.maxDeclarations) fatal(state, d, "too-many-declarations", { max: state.limits.maxDeclarations });
+      if (hackPrefix(d)) {
+        reporter(state, d)("property-not-allowed", { name: d.prop });
+        continue;
+      }
       const r = checkDeclaration(d.prop, d.value, d.important === true, ctx, reporter(state, d));
       if (r) decls.push({ prop: r.prop, value: r.value, line: d.source?.start?.line });
     }
@@ -557,10 +570,11 @@ function processFontFace(node: AtRule, state: State, depth: number): Out | null 
 // Variables : cycles et développement démesuré
 
 function finishVariables(state: State) {
-  const byName = new Map<string, { refs: Set<string>; length: number; entries: State["customDecls"] }>();
+  // refs : variable appelée → nombre d'appels (le développement compte chaque appel)
+  const byName = new Map<string, { refs: Map<string, number>; length: number; entries: State["customDecls"] }>();
   for (const c of state.customDecls) {
-    const e = byName.get(c.name) ?? { refs: new Set<string>(), length: 0, entries: [] };
-    for (const r of c.refs) e.refs.add(r);
+    const e = byName.get(c.name) ?? { refs: new Map<string, number>(), length: 0, entries: [] };
+    for (const r of c.refs) e.refs.set(r, (e.refs.get(r) ?? 0) + 1);
     e.length = Math.max(e.length, c.length);
     e.entries.push(c);
     byName.set(c.name, e);
@@ -571,7 +585,7 @@ function finishVariables(state: State) {
   const bad = new Set<string>();
   for (const start of byName.keys()) {
     if (color.get(start)) continue;
-    const stack: { name: string; iter: Iterator<string> }[] = [{ name: start, iter: byName.get(start)!.refs.values() }];
+    const stack: { name: string; iter: Iterator<string> }[] = [{ name: start, iter: byName.get(start)!.refs.keys() }];
     color.set(start, 1);
     const path: string[] = [start];
     while (stack.length) {
@@ -580,7 +594,7 @@ function finishVariables(state: State) {
       if (next.done) {
         const e = byName.get(top.name)!;
         let total = e.length;
-        for (const r of e.refs) total += byName.has(r) ? (bad.has(r) ? 0 : (size.get(r) ?? 0)) : 0;
+        for (const [r, n] of e.refs) total += byName.has(r) ? (bad.has(r) ? 0 : (size.get(r) ?? 0) * n) : 0;
         size.set(top.name, Math.min(total, 1e9));
         if (total > state.limits.maxVarExpansion) bad.add(top.name);
         color.set(top.name, 2);
@@ -598,7 +612,7 @@ function finishVariables(state: State) {
       } else if (c === 0) {
         color.set(r, 1);
         path.push(r);
-        stack.push({ name: r, iter: byName.get(r)!.refs.values() });
+        stack.push({ name: r, iter: byName.get(r)!.refs.keys() });
       }
     }
   }
@@ -618,15 +632,15 @@ function finishVariables(state: State) {
   // les règles devenues vides disparaissent au rendu
 }
 
-function reaches(from: string, to: string, graph: Map<string, { refs: Set<string> }>): boolean {
+function reaches(from: string, to: string, graph: Map<string, { refs: Map<string, number> }>): boolean {
   const seen = new Set<string>();
-  const stack = [...(graph.get(from)?.refs ?? [])];
+  const stack = [...(graph.get(from)?.refs.keys() ?? [])];
   while (stack.length) {
     const n = stack.pop()!;
     if (n === to) return true;
     if (seen.has(n) || !graph.has(n)) continue;
     seen.add(n);
-    for (const r of graph.get(n)!.refs) stack.push(r);
+    for (const r of graph.get(n)!.refs.keys()) stack.push(r);
   }
   return false;
 }
