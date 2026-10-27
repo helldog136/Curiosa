@@ -9,7 +9,7 @@ Document de travail qui fonde `docs/SKINS.md`. Chiffres relevés par lecture du 
 - `globals.css` est importé par **deux** layouts : `src/app/(site)/layout.tsx` et `src/app/admin/layout.tsx`. L'administration partage donc le même Tailwind et se distingue par `adminThemeCss()` (`src/core/adminTheme.ts`, variables `--v-*` claires/sombres, indépendant du site). Conséquence de conception : toute liaison `@theme inline` vers des jetons doit avoir **un repli égal à la valeur actuelle**, pour que l'administration ne change pas.
 - **Les overlays OBS** (`src/app/overlays/`) n'importent ni Tailwind ni `globals.css` : `<html>` transparent, `themeCss(theme)` + le CSS du module. Les pages autonomes de modules (stream-story, platform-links, audience/remote, twitch-raid dock, …) ont leur propre `<!doctype html>` : 8 occurrences dans `curiosa-extras/modules`.
 - **Aucun en-tête CSP** (`docs/SECURITE.md`) : un `<style>` en ligne n'est pas bloqué, aucune règle `font-src`/`img-src` à adapter. Si un CSP est ajouté un jour, il faudra `font-src 'self'` et `img-src 'self'` (les polices et images des skins sont servies par le site).
-- **Un seul mode** : il n'y a pas de `prefers-color-scheme` dans le site public. Clair ou sombre = luminance du fond choisi (`isDarkBackground`, seuil 0,4 ; `buildPalette` dérive tout). Le logo est choisi côté serveur (`pickLogo(…, dark)`). Un skin à deux modes oblige donc à (a) émettre les jetons des deux modes sous `prefers-color-scheme` et (b) passer le choix du logo en `<picture>`.
+- **Un seul mode** : il n'y a pas de `prefers-color-scheme` dans le site public. Clair ou sombre = luminance du fond choisi (`isDarkBackground`, seuil 0,4 ; `buildPalette` dérive tout). Le logo est choisi côté serveur (`pickLogo(…, dark)`). Un skin à deux modes oblige donc à (a) émettre les jetons des deux modes sous `prefers-color-scheme` et (b) rendre les deux variantes du logo et laisser le CSS du cœur choisir selon le mode effectif.
 
 ## 2. Réglages d'apparence existants (`theme.*`)
 
@@ -87,7 +87,7 @@ carte (`data-card`, `.ev-card`, `.gal-*`, `.cpl-card`, `.dr-*`, `.vl-*`), bouton
 1. Les rayons, tailles, espacements, ombres des composants du cœur et des modules ne sont pas des variables (corrigé par la liaison `@theme inline` et la conversion des modules).
 2. Pas de conteneur de page : impossible d'agencer en colonne latérale ou en grille (corrigé par la région `shell`).
 3. Menu mobile fait de classes JSX, pas de CSS stylable (corrigé : règles déplacées dans la feuille du cœur).
-4. Un seul mode, logo choisi côté serveur (corrigé : deux modes + `<picture>`).
+4. Un seul mode, logo choisi côté serveur (corrigé : deux modes + bascule du visiteur + variantes de logo gérées par le cœur).
 5. CSS des modules en ligne et sans `@layer` : un skin doit gagner par la spécificité (prefix `:root[data-skin="…"]`, `(0,2,0)` plancher).
 6. Les 140 couleurs en dur de 8 modules ne suivent aucun skin.
 
