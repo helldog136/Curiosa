@@ -15,7 +15,7 @@ export const SNAPSHOT_DIR = `${ROOT}/snapshot`;
 
 /** Plage de ports réservée au harnais. Un profil de thème = un serveur = un port. */
 export const PORT_BASE = Number(process.env.VISUAL_PORT_BASE || 3480);
-export const PORT_MAX = 3489;
+export const PORT_MAX = PORT_BASE + 9; // dix ports à partir de la base (VISUAL_PORT_BASE)
 
 /** Horloge figée (UTC) : un lundi à midi, au milieu de la semaine du planning de démonstration. */
 export const FIXED_NOW = "2026-06-15T10:00:00.000Z";
