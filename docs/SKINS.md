@@ -1,6 +1,6 @@
 # Les skins de Curiosa : le contrat
 
-> Statut : **conception, avec le lot S1 implémenté** : les jetons (`src/core/skins/tokens.ts`), le skin `basic` embarqué (`src/core/skins/basic/`), la composition (`compose.ts`, `sheet.ts`, `render.ts`), les retouches des deux modes (`retouch.ts`) et la bascule clair/sombre du visiteur (`modeScript.ts`, `src/components/site/ModeSwitch.tsx`) sont dans le cœur ; l'assainisseur et la lisibilité (lot S6) aussi. Pas encore faits : DOM stable et régions (S2), composants par les jetons (S3), pièces des modules (S4, l'interface est prête : `moduleParts.ts`), installation depuis un dépôt (S5), page Apparence (S7), kit et banc d'essai (S8). Cœur de référence : v0.3.0 ; modules de référence : `curiosa-extras` v1.22.0. Les constats chiffrés qui fondent les choix sont dans `docs/ideas/skins-exploration.md`, le découpage en lots dans `docs/ideas/skins-effort.md`.
+> Statut : **conception, avec les lots S1, S2 et S3 implémentés** : les jetons (`src/core/skins/tokens.ts`), le skin `basic` embarqué (`src/core/skins/basic/`), la composition (`compose.ts`, `sheet.ts`, `render.ts`), les retouches des deux modes (`retouch.ts`) et la bascule clair/sombre du visiteur (`modeScript.ts`, `src/components/site/ModeSwitch.tsx`) sont dans le cœur ; l'assainisseur et la lisibilité (lot S6) aussi. Le DOM stable (régions, pièces, coquille, menu dans la feuille du cœur : S2) et les composants du site public par les jetons (S3) le sont aussi (§20). Pas encore faits : pièces des modules (S4, l'interface est prête : `moduleParts.ts`), installation depuis un dépôt (S5), page Apparence (S7), kit et banc d'essai (S8). Cœur de référence : v0.3.0 ; modules de référence : `curiosa-extras` v1.22.0. Les constats chiffrés qui fondent les choix sont dans `docs/ideas/skins-exploration.md`, le découpage en lots dans `docs/ideas/skins-effort.md`.
 >
 > Les noms techniques (jetons, attributs, clés JSON, fichiers) sont en anglais comme dans le reste du dépôt ; le texte est en français. Aucun nom de site réel n'apparaît ici ni ne doit apparaître dans un skin, un test ou un texte par défaut.
 
@@ -690,15 +690,17 @@ Aujourd'hui le cœur impose en dur dans `src/app/(site)/layout.tsx` : l'ordre ba
   <div data-skin-region="shell">                                         <!-- NOUVEAU : conteneur de grille, display:block dans basic -->
     <div data-skin-region="banner"> … </div>                             <!-- blocs du slot layout.banner -->
     <header data-skin-region="header" data-header-layout="classic">
-      <div data-skin-part="brand"> logo / nom </div>
-      <nav data-skin-region="nav" data-site-nav>
-        <button data-skin-part="menu-toggle"> … </button>
-        <ul data-skin-part="nav-list" data-open="false"> <li><a data-skin-part="nav-link"> … <ul data-skin-part="submenu"> … </ul></li></ul>
-      </nav>
-      <div data-skin-region="tools"> secondary, socials, bouton, langue, <div data-skin-part="mode-switch" role="group" hidden>…</div> </div>
+      <a data-skin-part="brand"> logo / nom </a>                         <!-- l'en-tête est lui-même le conteneur centré (jetons --sk-page-*) -->
+      <div data-skin-part="header-group">                                <!-- groupe d'en-tête : display:contents possible (variantes : §20.2) -->
+        <nav data-skin-region="nav" data-site-nav>
+          <button data-skin-part="menu-toggle"> … </button>
+          <ul data-skin-part="nav-list" data-open="false"> <li><a data-skin-part="nav-link"> … <button data-skin-part="submenu-toggle"> <ul data-skin-part="submenu" data-open="false"> … </ul></li></ul>
+        </nav>
+        <div data-skin-region="tools"> secondary, socials, bouton, langue, <div data-skin-part="mode-switch" role="group" hidden>…</div> </div>
+      </div>
     </header>
     <main id="content" data-skin-region="main">
-      <div data-skin-region="content"> … blocs de la page … </div>       <!-- l'actuel <div class="space-y-6"> de Blocks -->
+      <div data-skin-region="content"> … la page (titre, blocs, liste, fiche…) … </div>  <!-- largeur et marges latérales : --sk-page-width / --sk-page-pad-x -->
     </main>
     <footer data-skin-region="footer"> … </footer>
   </div>
@@ -711,14 +713,16 @@ Aujourd'hui le cœur impose en dur dans `src/app/(site)/layout.tsx` : l'ordre ba
 | `tray` | bandeau de cookies, `position: fixed` (comportement du cœur) | ne peut pas être masqué |
 | `shell` | conteneur de mise en page | `display`, `grid-template-columns: var(--sk-shell-columns)`, `grid-template-areas: var(--sk-shell-areas)` ; **basic : `display:block`** |
 | `banner` | bandeau(x) de module (`layout.banner`) | zone `banner` |
-| `header` | marque, menu, outils | zone `header` ; peut devenir colonne latérale (largeur `--sk-header-width`) |
+| `header` | marque, menu, outils ; **lui-même le conteneur centré** (`padding-inline` lu dans `--sk-page-width` / `--sk-page-pad-x`), `width: var(--sk-header-width, auto)` | zone `header` ; peut devenir colonne latérale |
 | `nav` | navigation principale | peut être verticale |
-| `tools` | lien secondaire, réseaux, bouton, sélecteur de langue, **bascule clair/sombre** (si le skin a les deux modes, §3.8) | |
-| `main` | contenu | zone `main` ; `max-width: var(--sk-page-width)`, `padding: var(--sk-page-pad-y) var(--sk-page-pad-x)` |
-| `content` | pile des blocs | `display:flex; flex-direction:column; gap: var(--sk-stack-gap)` dans basic ; un skin peut passer en `grid` à plusieurs colonnes |
-| `footer` | pied (blocs `layout.footer`, texte, confidentialité, crédit) | zone `footer` |
+| `tools` | lien secondaire, réseaux, bouton, sélecteur de langue, **bascule clair/sombre** (si le skin a les deux modes, §3.8) ; `display:contents` ou rangée selon la variante d'en-tête (§20.2) | |
+| `main` | zone de contenu (`<main id="content">`, cible du lien d'évitement) | zone `main` ; `padding-block: var(--sk-page-pad-y)` |
+| `content` | la page elle-même (titre, blocs, liste, fiche), dans `main` | colonne centrée : `max-width: var(--sk-page-width)`, `padding-inline: var(--sk-page-pad-x)` ; un skin peut en faire une grille |
+| `footer` | pied (blocs `layout.footer`, texte, confidentialité, crédit) ; lui aussi le conteneur centré | zone `footer` |
 
 **Pas de région `aside` en V1** : une colonne latérale se fait en plaçant `header` (marque + menu + outils) dans une colonne de la grille de `shell`. Ajouter une barre latérale de contenu supposerait un emplacement de contenu, que seul le cœur peut définir (§16).
+
+> **Réalisé au lot S2** : §20.2 donne l'écart exact entre ce schéma et le DOM livré.
 
 Contraintes de rendu du cœur, pour que ces régions soient pilotables : (1) les classes responsives du menu (`max-sm:absolute …`, `sm:hidden`) sont **déplacées dans la feuille du cœur** sous forme de règles sur `nav-list` / `menu-toggle` / `submenu` (avec `@media (min-width: 40rem)`), pour qu'un skin les ré-exprime ; l'ouverture/fermeture reste du JS du cœur et s'exprime par `data-open="true|false"` et `aria-expanded` (plus par ajout de classes `hidden`/`flex`) ; (2) `main` ne porte plus `mx-auto max-w-5xl px-4 py-10` mais lit les jetons ; (3) les variantes d'en-tête (`classic`, `twoRows`, `centered`, `minimal`) gardent leur balisage mais portent les mêmes régions/pièces ; (4) l'ordre DOM reste celui d'aujourd'hui (bannière, en-tête, contenu, pied), qui est l'ordre de lecture logique.
 
@@ -733,7 +737,7 @@ Contraintes de rendu du cœur, pour que ces régions soient pilotables : (1) les
 | `chip` | liens-pastilles (`links`, `EntryList` en pastilles) | `data-chip` |
 | `badge` | petites étiquettes (« expiré », langue, pastille de nouveauté) | |
 | `news-dot` | pastille « nouveau » du menu | `data-testid="news-dot"` |
-| `field`, `input`, `textarea`, `select`, `label`, `field-error` | formulaires (`ModuleForm`, recherche) | |
+| `field`, `input`, `textarea`, `label`, `field-error` | formulaires (`ModuleForm`) ; pas de pièce `select` : le site public n'a aucun menu déroulant de formulaire | |
 | `list`, `list-item` | `EntryList` en liste, `links` | |
 | `table`, `table-head`, `table-row`, `table-cell` | bloc `table`, tables Markdown | |
 | `heading` (`data-level="1…6"`), `eyebrow`, `lead` | titres de page, petite ligne, chapeau | `data-marker` |
@@ -750,7 +754,8 @@ Contraintes de rendu du cœur, pour que ces régions soient pilotables : (1) les
 | `tabs`, `tab` | `PanelTabs` | `role="tab"` |
 | `pagination`, `pagination-link` | `Pagination` | `data-pagination` |
 | `mode-switch` (`data-state`), `mode-option` (`aria-pressed`) | bascule clair / sombre (§3.8) | |
-| `brand`, `menu-toggle`, `nav-list`, `nav-link`, `submenu`, `lang-switcher`, `socials` | en-tête | `data-site-nav`, `data-testid="header-socials"` |
+| `brand`, `menu-toggle`, `nav-list`, `nav-link`, `submenu`, `submenu-toggle`, `header-group`, `lang-switcher`, `socials` | en-tête | `data-site-nav`, `data-testid="header-socials"` |
+| `entries`, `module-html` | bloc « entrées » ; HTML écrit par un module (un skin n'agit que sur la boîte, pas sur ses classes) | |
 | `home-flow`, `home-cell` (`data-size="small\|medium\|large\|full"`) | accueil fluide (`vh-flow`, `vh-cell`) | classes `vh-*` |
 | `cookie-tray` | bandeau de cookies | `.cookie-tray` |
 | `footer-text`, `footer-link`, `credit` | pied | `data-testid="credit"`, `"privacy-link"` |
