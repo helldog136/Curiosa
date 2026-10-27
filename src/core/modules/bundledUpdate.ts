@@ -6,7 +6,7 @@ import type { Journal, Missing } from "./dependencyInstaller";
 import type { ParsedManifest } from "./manifest";
 
 /**
- * COMPATIBILITÉ SITES ANCIENS, À RETIRER EN 0.3.0. Les anciennes versions du cœur embarquaient des modules et les copiaient sur le serveur (ligne `source: bundled`) ;
+ * COMPATIBILITÉ SITES ANCIENS, À RETIRER EN PHASE 3. Les anciennes versions du cœur embarquaient des modules et les copiaient sur le serveur (ligne `source: bundled`) ;
  * le cœur n'en embarque plus aucun. Une telle ligne continue de fonctionner (son dossier est déjà sur le disque) et le catalogue (dépôt de modules, version épinglée)
  * est désormais sa seule source : dès qu'il propose une version plus récente, la mise à jour CONVERTIT le module en module du catalogue (source git épinglée),
  * sans toucher à ses instances, réglages, données, état activé, placements ni droits (voir reinstall.ts : échange avec sauvegarde et retour arrière complet).

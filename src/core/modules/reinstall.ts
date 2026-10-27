@@ -23,7 +23,7 @@ import type { LoadWarning } from "./installer";
  * données, état activé/désactivé, rangement, placements d'accueil, droits MCP (rien de cela n'est touché : seule la ligne `Module` et son dossier le sont).
  *
  * Sources : dépôt git (en sous-dossier ou à la racine : même référence que la mise à jour, voir `subdirTarget`) ; le catalogue pour une ligne `bundled` d'un ancien site
- * (compatibilité, à retirer en 0.3.0 : réinstaller la CONVERTIT en module du catalogue, version épinglée, sans AUCUN repli local : catalogue injoignable → erreur claire) ; sinon refus. « Réinstaller = remettre la version actuellement proposée par la source du module », jamais plus.
+ * (compatibilité, à retirer en phase 3 d'entretien : réinstaller la CONVERTIT en module du catalogue, version épinglée, sans AUCUN repli local : catalogue injoignable → erreur claire) ; sinon refus. « Réinstaller = remettre la version actuellement proposée par la source du module », jamais plus.
  * Sécurité : l'ancien dossier est mis de côté pendant l'échange (`.previous-<pid>`) et revient tel quel au moindre échec ; jamais de nouvelle permission accordée en silence.
  */
 
@@ -87,7 +87,7 @@ async function fetchGitSource(row: Module): Promise<Source> {
   }
 }
 
-/** Ligne `bundled` d'un ancien site (compatibilité, à retirer en 0.3.0) que le catalogue liste : la ligne telle qu'elle serait une fois convertie (dépôt, étiquette épinglée, dossier). Sinon null. */
+/** Ligne `bundled` d'un ancien site (compatibilité, à retirer en phase 3 d'entretien) que le catalogue liste : la ligne telle qu'elle serait une fois convertie (dépôt, étiquette épinglée, dossier). Sinon null. */
 async function catalogueSource(row: Module): Promise<{ row: Module; version?: string } | null> {
   if (row.source !== "bundled") return null;
   const entry = await findCatalogueEntry(row.id).catch(() => undefined);

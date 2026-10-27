@@ -445,7 +445,7 @@ async function latestRemoteTag(repoUrl: string): Promise<string | null> {
  *   - épinglé sur une ÉTIQUETTE (`#v1.2.0`, le cas recommandé) : la plus haute version stable du dépôt ;
  *   - épinglé sur un commit : jamais (c'est le but) ;
  *   - sur une branche (ou la branche par défaut) : le dernier commit de cette branche ;
- *   - ligne `bundled` d'un ancien site (compatibilité, à retirer en 0.3.0) : la version du catalogue (qui la convertit en module du catalogue).
+ *   - ligne `bundled` d'un ancien site (compatibilité, à retirer en phase 3 d'entretien) : la version du catalogue (qui la convertit en module du catalogue).
  */
 export async function checkForUpdate(id: string): Promise<ModuleUpdateCheck> {
   return (await checkForUpdateDetailed(id)).check;
@@ -508,7 +508,7 @@ function noteModulesChanged(): void {
 async function updateModuleWithin(id: string, chain: string[]): Promise<InstallResult> {
   const row = await prisma.module.findUnique({ where: { id } });
   if (row?.source === "bundled") {
-    // Compatibilité sites anciens, à retirer en 0.3.0 : le catalogue est la source, jamais une copie locale.
+    // Compatibilité sites anciens, à retirer en phase 3 d'entretien : le catalogue est la source, jamais une copie locale.
     const entry = await findCatalogueEntry(id);
     if (entry) {
       const r = await convertToCatalogue(row, entry, (manifest) => settleBeforeMigrations(manifest, chain));   // voir bundledUpdate.ts

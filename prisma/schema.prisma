@@ -155,7 +155,7 @@ model ModuleInstance {
   nickname String?
   // Chemin public où l'instance est montée ("" = racine du site, NULL = pas de page).
   basePath String? @unique
-  // HÉRITAGE (à retirer en 0.3.0) : une instance n'est plus « éteinte » (on la supprime, en gardant ou non ses données), voir Module.enabled.
+  // HÉRITAGE (à retirer en phase 3 d'entretien) : une instance n'est plus « éteinte » (on la supprime, en gardant ou non ses données), voir Module.enabled.
   enabled  Boolean @default(true)
   showInNav Boolean @default(true)
   navOrder  Int     @default(0)
@@ -294,7 +294,7 @@ model Module {
   // Empreinte git du contenu de ce dossier : une mise à jour n'est proposée que si CE module a changé, pas le dépôt entier.
   tree        String?
   version     String
-  // HÉRITAGE (à retirer en 0.3.0) : l'état « installé mais éteint » n'existe plus, un module installé est toujours actif. La colonne reste pour qu'un site
+  // HÉRITAGE (à retirer en phase 3 d'entretien) : l'état « installé mais éteint » n'existe plus, un module installé est toujours actif. La colonne reste pour qu'un site
   // d'avant la 0.1.20 puisse être lu une dernière fois (src/core/modules/legacyOff.ts) et, si l'on revient en arrière, retrouve des modules allumés.
   enabled     Boolean  @default(true)
   installedAt DateTime @default(now())

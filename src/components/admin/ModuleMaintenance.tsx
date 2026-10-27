@@ -11,7 +11,7 @@ export async function ModuleMaintenance({ row, name, advanced, t }: { row: Modul
   if (!d) return null;
   const from = d.repoUrl ? { url: d.repoUrl, ref: d.ref, subdir: d.subdir } : d.catalogue ? { url: d.catalogue.repoUrl, ref: d.catalogue.ref, subdir: d.catalogue.subdir } : null;
   const repo = from ? `${from.url}${from.ref || from.subdir ? `#${from.ref ?? ""}${from.subdir ? `:${from.subdir}` : ""}` : ""}` : "";
-  // Compatibilité sites anciens, à retirer en 0.3.0 : une ligne `bundled` que le catalogue ne liste plus a une « source inconnue » (elle reste installée telle quelle).
+  // Compatibilité sites anciens, à retirer en phase 3 d'entretien : une ligne `bundled` que le catalogue ne liste plus a une « source inconnue » (elle reste installée telle quelle).
   const source = d.kind === "bundled" && !d.catalogue ? t("maintenance.source.unknown") : (d.kind === "git" || d.catalogue) ? t("maintenance.source.git", { repo }) : t("maintenance.source.none");
   const c = d.comparison;
   return (

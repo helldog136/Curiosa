@@ -126,12 +126,12 @@ test("aucune lecture locale de modules dans le cœur : plus de listBundled, BUND
   const files = walk("src").filter((f) => /\.(ts|tsx)$/.test(f));
   const banned = /\b(listBundled|BUNDLED|appRoot|installBundled|copyBundled|provisionBundled|provisionModule\b.*offline|readBundledManifest|bundledManifests|suggestedModuleIds|readSnapshot|CURIOSA_EXTRAS_DIR|CURIOSA_CATALOGUE_RUNTIME|extras\/(modules|examples|catalogue)|"snapshot")\b|"examples"|"extras"/;
   for (const f of files) assert.ok(!banned.test(stripComments(read(f))), `${f} lit encore un dossier de modules local`);
-  // `bundled` ne subsiste que comme lignes d'anciens sites, chaque fichier le disant (« à retirer en 0.3.0 »).
+  // `bundled` ne subsiste que comme lignes d'anciens sites, chaque fichier le disant (« à retirer en phase 3 d'entretien »).
   for (const f of files) {
     if (!/["`]bundled["`]|source: "bundled"|kind: "bundled"/.test(stripComments(read(f)))) continue;
-    assert.match(read(f), /0\.3\.0/, `${f} : « bundled » doit être marqué « compatibilité sites anciens, à retirer en 0.3.0 »`);
+    assert.match(read(f), /phase 3/i, `${f} : « bundled » doit être marqué « compatibilité sites anciens, à retirer en phase 3 d'entretien »`);
   }
-  assert.match(read("src/core/modules/bundledUpdate.ts"), /COMPATIBILIT[ÉE] SITES ANCIENS, À RETIRER EN 0\.3\.0/);
+  assert.match(read("src/core/modules/bundledUpdate.ts"), /COMPATIBILIT[ÉE] SITES ANCIENS, À RETIRER EN PHASE 3/);
 });
 
 test("neutralité : le cœur ne connaît aucun identifiant de module (ni suggéré, ni installé d'office)", () => {

@@ -90,7 +90,7 @@ export async function findCatalogueEntry(id: string, opts: { fetchImpl?: typeof 
 export function moduleOrigin(row: { id: string; source: string; repoUrl: string | null; subdir?: string | null }, market: CatalogueEntry[]): "catalogue" | "custom" {
   const entry = market.find((e) => e.id === row.id);
   if (!entry) return "custom";
-  if (row.source === "bundled") return "catalogue";   // compatibilité sites anciens, à retirer en 0.3.0 : ligne `bundled` d'un module que le catalogue liste
+  if (row.source === "bundled") return "catalogue";   // compatibilité sites anciens, à retirer en phase 3 d'entretien : ligne `bundled` d'un module que le catalogue liste
   const norm = (u: string | null | undefined) => (u ?? "").replace(/\.git$/, "").replace(/\/$/, "").toLowerCase();
   return norm(entry.repo) === norm(row.repoUrl) && (entry.subdir ?? null) === (row.subdir ?? null) ? "catalogue" : "custom";
 }
