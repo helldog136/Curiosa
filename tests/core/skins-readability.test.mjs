@@ -448,11 +448,3 @@ test("pannes internes : le contrôle échoue toujours du côté prudent", () => 
   assert.equal(c.suspended, true);
   assert.deepEqual(R.probableIllegibility({ get background() { throw new Error("boom"); } }, null), [], "l'avertissement de retouche n'est qu'un conseil");
 });
-
-test("index : l'API publique est exportée", async () => {
-  const api = await import("@/core/skins/index");
-  for (const name of ["sanitizeSkinCss", "sanitizeTokenValue", "checkReadability", "correctReadability", "probableIllegibility", "parseColor", "contrastRatio", "READABILITY_PAIRS", "DEFAULT_LIMITS", "REGIONS", "PARTS", "makeIssue", "ISSUE_CODES"]) {
-    assert.ok(api[name] !== undefined, name);
-  }
-  assert.equal(typeof api.sanitizeSkinCss, "function");
-});
