@@ -111,8 +111,8 @@ export function validateSkinFolder(dir: string, options: ValidateOptions): SkinV
 function run(dir: string, opts: ValidateOptions): SkinValidation {
   const issues: SkinIssue[] = [];
   const add = (code: string, params: Params = {}) => { issues.push(makeIssue(code, params)); };
-  let known: SkinManifest | undefined;
-  const fail = (): SkinValidation => ({ ok: false, issues: unique(issues), manifest: known, css: "", readability: [], files: [], installFiles: [], fingerprint: "", totalBytes: 0 });
+  const known: { manifest?: SkinManifest } = {};
+  const fail = (): SkinValidation => ({ ok: false, issues: unique(issues), manifest: known.manifest, css: "", readability: [], files: [], installFiles: [], fingerprint: "", totalBytes: 0 });
 
   // ---- 1. Le dossier : aucun lien symbolique, un seul niveau, des noms simples, des plafonds.
   let manifestPresent = false;
@@ -132,7 +132,7 @@ function run(dir: string, opts: ValidateOptions): SkinValidation {
   if (!parsed.ok) { issues.push(...parsed.issues); return fail(); }
   issues.push(...parsed.warnings);
   const m = parsed.manifest;
-  known = m;
+  known.manifest = m;
 
   if (m.id === BASIC_ID || !SKIN_ID_RE.test(m.id)) add("bad-skin-id");
   if (opts.folderName && opts.folderName !== m.id) add("manifest-id-folder", { id: m.id });
