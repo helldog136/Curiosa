@@ -28,4 +28,6 @@ export const RESERVED_PATHS = new Set([
   "favicon.ico",
   // Page de confidentialité du cœur (obligatoire, voir core/privacy.ts)
   "privacy",
+  // Fichiers des skins (script de bascule clair/sombre, polices et images des skins : docs/SKINS.md)
+  "skins",
 ]);

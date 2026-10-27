@@ -51,7 +51,7 @@ export const TOKEN_DEFS: readonly TokenDef[] = [
   // ── Couleurs (les `--v-*` existants gardent leur nom et leur rôle : contrat public des modules). Leurs valeurs de basic sont celles de buildPalette(fond, accent par défaut).
   t("--v-bg", "color", "color", "#121214", "fond de page"),
   t("--v-surface", "color", "color", "#202022", "fond des cartes et panneaux"),
-  t("--v-fg", "color", "color", "#f4f4f5", "texte"),
+  t("--v-fg", "color", "color", "#f4f4f5", "couleur du texte"),
   t("--v-accent", "color", "color", "#e8a23b", "couleur de marque, liens, boutons"),
   t("--v-accent2", "color", "color", "var(--v-accent)", "accent secondaire (= l'accent si non choisi)"),
   t("--v-muted", "color", "color", "#9e9ea0", "texte secondaire"),
@@ -177,6 +177,8 @@ const PROP_OVERRIDE: Record<string, string> = {
   "--sk-border-width": "border-width", "--sk-border-width-strong": "border-width", "--sk-focus-width": "outline-width", "--sk-focus-offset": "outline-offset",
   "--sk-vh-small-basis": "flex-basis", "--sk-vh-medium-basis": "flex-basis", "--sk-vh-large-basis": "flex-basis", "--sk-space": "gap",
   "--sk-glow": "box-shadow",
+  // fonds, filets et voile : une couleur de FOND (la translucidité y est permise, le texte posé dessus est contrôlé par la lisibilité)
+  "--v-bg": "background-color", "--v-surface": "background-color", "--v-line": "border-color", "--sk-color-veil": "background-color", "--sk-color-selection": "background-color",
 };
 
 const LENGTH_FUNCS = new Set(["calc", "min", "max", "clamp", "var"]);

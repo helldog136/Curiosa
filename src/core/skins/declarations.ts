@@ -682,7 +682,7 @@ export function checkDeclaration(propRaw: string, valueRaw: string, important: b
     return null;
   }
   const refs: string[] = [];
-  const stringsOk = isCustom ? /^--(v-font|sk-font-[a-z0-9-]+)$/.test(prop) : (STRING_PROPERTIES as readonly string[]).includes(prop);
+  const stringsOk = isCustom ? /^--(v-font|sk-font-[a-z0-9-]+|sk-shell-areas)$/.test(prop) : (STRING_PROPERTIES as readonly string[]).includes(prop);
   const urlOk = isCustom || (IMAGE_URL_PROPERTIES as readonly string[]).includes(prop);
   const isContent = prop === "content" || prop === "quotes";
 
@@ -727,7 +727,7 @@ export function checkDeclaration(propRaw: string, valueRaw: string, important: b
     } else if (t.k === "str") {
       if (!stringsOk) fail("string-not-allowed");
       else if (isContent) checkContentString(t.v, prop, fail);
-      else if (prop === "grid-template-areas" || prop === "grid-template" || prop === "grid") {
+      else if (prop === "grid-template-areas" || prop === "grid-template" || prop === "grid" || prop === "--sk-shell-areas") {
         if (!/^[A-Za-z0-9 ._-]{1,100}$/.test(t.v)) fail("string-not-allowed");
       } else if (prop === "font-feature-settings") {
         if (!/^[A-Za-z0-9]{4}$/.test(t.v)) fail("string-not-allowed");

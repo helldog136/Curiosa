@@ -140,8 +140,9 @@ function composeMode(args: {
   for (const [name, value] of Object.entries(merged)) {
     if (!/^var\(/.test(value.trim()) || !TOKEN_BY_NAME.has(name)) continue;
     const lit = literalOf(name, tokens);
-    if (lit === null || lit === value) continue;
-    if (!validateTokenValue(name, lit, { skinId: skin.id, extra }).ok) {
+    if (lit === value) continue;
+    // une référence qui ne mène à aucune valeur, ou dont la valeur finale ne passe pas les bornes : repli sur basic
+    if (lit === null || !validateTokenValue(name, lit, { skinId: skin.id, extra }).ok) {
       issues.push(makeIssue("value-syntax", { prop: name.slice(0, 40) }, "warning"));
       const fallback = basicLayer[name];
       if (fallback !== undefined) tokens[name] = fallback;

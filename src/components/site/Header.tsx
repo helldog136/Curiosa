@@ -6,6 +6,7 @@ import { resolvePublicMenu } from "@/core/menuResolve";
 import { runSlot } from "@/core/modules/runtime";
 import type { SiteConfig } from "@/core/settings";
 import { safeHref } from "@/core/url";
+import { BrandLogos, type LogoVariants } from "./BrandLogos";
 import { EntryIcon } from "./EntryIcon";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { MenuToggle } from "./MenuToggle";
@@ -24,7 +25,7 @@ export async function Header({ config, locale, appearance }: { config: SiteConfi
   const wide = pickLogo(config.logos, "wide", dark);
   const icon = pickLogo(config.logos, "icon", dark);
   // Deux variantes d'un même logo (clair + sombre) et une bascule : les deux images sont rendues, une seule est visible (règles du cœur, globals.css).
-  const variants = (light: string | null, darkOne: string | null): [string, string] | null => (modeSwitch && light && darkOne ? [light, darkOne] : null);
+  const variants = (light: string | null, darkOne: string | null): LogoVariants | null => (modeSwitch && light && darkOne ? [light, darkOne] : null);
   const wideBoth = variants(config.logos.wide, config.logos.wideDark);
   const iconBoth = variants(config.logos.square, config.logos.squareDark);
   const local = (path: string) => withLocale(safeHref(path), locale, config.defaultLocale);
@@ -46,15 +47,7 @@ export async function Header({ config, locale, appearance }: { config: SiteConfi
 
   const brand = (
     <a href={withLocale("/", locale, config.defaultLocale)} className="flex items-center gap-3 text-lg font-semibold" aria-label={config.name}>
-      {/* Le logo horizontal contient déjà le nom ; sans lui, l'icône (ou rien) et le nom écrit. Sur petit écran : l'icône si on en a une. */}
-      {/* eslint-disable @next/next/no-img-element */}
-      {wide && (wideBoth
-        ? (["light", "dark"] as const).map((m, i) => <img key={m} src={wideBoth[i]} data-for={m} alt={config.name} className={`${icon ? "hidden sm:block" : ""} h-9 w-auto max-w-[14rem] object-contain`} />)
-        : <img src={wide} alt={config.name} className={`${icon ? "hidden sm:block" : ""} h-9 w-auto max-w-[14rem] object-contain`} />)}
-      {icon && (iconBoth
-        ? (["light", "dark"] as const).map((m, i) => <img key={m} src={iconBoth[i]} data-for={m} alt="" className={`${wide ? "sm:hidden" : ""} h-9 w-9 object-contain`} />)
-        : <img src={icon} alt="" className={`${wide ? "sm:hidden" : ""} h-9 w-9 object-contain`} />)}
-      {/* eslint-enable @next/next/no-img-element */}
+      <BrandLogos name={config.name} wide={wide} icon={icon} wideVariants={wideBoth} iconVariants={iconBoth} />
       {(!wide || icon) && <span className={wide ? "sm:hidden" : ""}>{config.name}</span>}
     </a>
   );

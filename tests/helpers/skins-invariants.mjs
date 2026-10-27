@@ -15,7 +15,7 @@ export function assertSafeOutput(assert, css, id, context = "") {
   const scan = css.replace(/"(?:\\[0-9a-f]+ |[A-Za-z0-9 _.,-])*"/g, '""').replace(/url\("\/skins\/[^"]*"\)/g, "url()");
   for (const re of FORBIDDEN_TEXT) assert.ok(!re.test(scan), `motif interdit ${re} dans la sortie${where}: ${css.slice(0, 300)}`);
   const root = postcss.parse(css);
-  const prefix = `:root[data-skin="${id}"] `;
+  const rootSel = `:root[data-skin="${id}"]`;
   root.walk((node) => {
     if (node.type === "atrule") {
       assert.ok(AT_RULES.has(node.name), `at-règle interdite @${node.name}${where}`);
@@ -28,7 +28,10 @@ export function assertSafeOutput(assert, css, id, context = "") {
       }
       const parts = node.selector.split(/,(?=:root\[data-skin=)/);
       for (const part of parts) {
-        assert.ok(part.startsWith(prefix), `sélecteur sans préfixe : ${part}${where}`);
+        // le préfixe de portée, éventuellement suivi du choix du visiteur ([data-mode="light"|"dark"], docs/SKINS.md §3.8) sur la même racine
+        const m = new RegExp(`^${rootSel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(\\[data-mode="(?:light|dark)"\\])? `).exec(part);
+        assert.ok(m, `sélecteur sans préfixe : ${part}${where}`);
+        const prefix = m[0];
         const body = part.slice(prefix.length).replace(/"[^"]*"/g, '""').replace(/\|=/g, "=");
         assert.ok(!/[.#*&|\\]/.test(body), `classe, id ou joker dans ${part}${where}`);
         assert.ok(/\[data-skin-(region|part)=/.test(body), `aucune ancre dans ${part}${where}`);
