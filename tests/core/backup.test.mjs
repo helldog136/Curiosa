@@ -150,7 +150,7 @@ test("restauration : aller-retour complet — mêmes utilisateurs, réglages, in
   assert.deepEqual(JSON.parse(JSON.stringify(after)), JSON.parse(JSON.stringify(before.entry)), "entrée, traductions, dates, identifiants identiques");
   assert.deepEqual(JSON.parse(JSON.stringify(await db.prisma.setting.findMany({ orderBy: [{ key: "asc" }, { locale: "asc" }] }))).filter((s) => s.key !== "updates.latest" && s.key !== "rawg.keyImported" && !s.key.endsWith(".__storeGeneration")), JSON.parse(JSON.stringify(before.settings)).filter((s) => s.key !== "updates.latest" && !s.key.endsWith(".__storeGeneration")));
   assert.equal((await db.prisma.moduleInstance.findUnique({ where: { id: blog.id } })).key, "actus");
-  assert.equal(await (await import("@/core/services/rawg")).getRawgKey(), "cle-rawg-factice-0001", "la clé RAWG du cœur survit à la restauration");
+  assert.equal(await getSetting("rawg.key"), "cle-rawg-factice-0001", "la clé RAWG du cœur survit à la restauration (elle n'est jamais effacée)");
   const restoredRedirect = await db.prisma.redirect.findUnique({ where: { path: "twitch" } });
   assert.equal(restoredRedirect.hits, 7);
   assert.equal(restoredRedirect.expiresAt.toISOString(), "2030-05-04T22:00:00.000Z", "date de fin sauvegardée et restaurée");

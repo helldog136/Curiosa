@@ -14,8 +14,8 @@ import { catalogueIds } from "./helpers/extras.mjs";
  * continue du cœur seul), on garde un petit garde-fou de départ et le test le dit, au lieu d'une liste qui vieillit sans que personne la tienne.
  */
 const FALLBACK_MODULE_IDS = ["blog", "links", "codes", "pages", "hero", "partnerships", "sponsors", "maze-overlay"];
-/** Exceptions EXPLIQUÉES (audit B2) : la reprise unique de l'ancienne clé RAWG (rawg.ts) cite deux modules ; la cale vers le module « Jaquettes de jeux » (rawgBridge.ts) cite ce module, qu'elle installe et à qui elle confie la clé. Elles disparaissent avec le service RAWG (retrait en 0.3.0). Une entrée = un fichier + les identifiants tolérés. */
-const KNOWN_CITATIONS = { "src/core/services/rawg.ts": ["game-suggestions", "planning"], "src/core/services/rawgBridge.ts": ["game-covers"] };
+/** Exceptions EXPLIQUÉES (audit B2) : la reprise finale RAWG (services/rawgHandover.ts) cite le module « Jaquettes de jeux » (qu'elle installe et à qui elle confie la clé et les corrections que le cœur garde encore) et les deux modules qui rangeaient autrefois la clé dans leurs réglages (lecture seule, 0.1.x). Elle disparaît avec la dernière donnée RAWG du cœur (purge optionnelle prévue plus tard). Une entrée = un fichier + les identifiants tolérés. */
+const KNOWN_CITATIONS = { "src/core/services/rawgHandover.ts": ["game-covers", "game-suggestions", "planning"] };
 function moduleIdsKnownToNobody(t) {
   const fromCatalogue = catalogueIds();
   if (fromCatalogue) return fromCatalogue;

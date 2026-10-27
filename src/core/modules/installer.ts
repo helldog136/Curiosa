@@ -499,7 +499,7 @@ export async function updateModule(id: string): Promise<InstallResult> {
   return result;
 }
 
-/** Une installation ou une mise à jour vient de réussir : la cale de compatibilité RAWG prépare, au mieux et sans attendre, la reprise de l'ancien service (à retirer en 0.3.0). */
+/** Une installation ou une mise à jour vient de réussir : la reprise finale RAWG se prépare, au mieux et sans attendre (services/rawgHandover.ts). */
 function noteModulesChanged(): void {
   noteRawgModulesChanged();
 }

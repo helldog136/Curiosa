@@ -306,7 +306,7 @@ export async function applyRestore(backup: ParsedBackup, opts: { confirmCustom: 
   const active = d.modules.filter((m) => m.enabled !== false && !["skipped", "failed", "unavailable"].includes(outcomes.find((o) => o.id === m.id)?.outcome ?? "")).map((m) => m.id);
   const settled = await settleRestored(active).catch(() => ({ issues: [] as DependencyIssue[], provided: [] as string[] }));
   await audit(opts.actor, "backup.restore", backup.manifest.createdAt);
-  // Cale RAWG (à retirer en 0.3.0, voir services/rawgBridge.ts) : une sauvegarde d'avant la reprise rend les réglages d'avant ; le module « Jaquettes de jeux » est (ré)installé et repris, au mieux, sans attendre.
+  // Reprise finale RAWG (services/rawgHandover.ts) : une sauvegarde d'avant la reprise rend les réglages d'avant ; le module « Jaquettes de jeux » est (ré)installé et repris, au mieux, sans attendre.
   noteRawgModulesChanged();
   return { ok: true, modules: outcomes, migrations, dependencies: settled.issues, provided: settled.provided, safetyCopy: copy, counts: { users: d.users.length, entries: d.entries.length, instances: d.instances.length, records: d.records.length, retired: (d.retired ?? []).length, uploads: backup.uploads.length } };
 }

@@ -26,11 +26,10 @@ const BG_EXAMPLE = JSON.stringify([
   { type: "grid", color: "fg", gap: 48, opacity: 6, side: "top", span: 80 },
 ], null, 2);
 import { saveMail, sendTestMail } from "./mail-actions";
-import { saveRawg, testRawgKey } from "./rawg-actions";
-import { getRawgState, isRawgConfigured } from "@/core/services/rawg";
-import { delegate } from "@/core/services/rawgBridge";
-import { readToCheck } from "@/core/services/rawgFixes";
-import { RAWG_FIX_PATH } from "@/core/rawgAdmin";
+import { retryRawgHandover } from "./rawg-actions";
+import { providerInstance } from "@/core/modules/dependencies";
+import { COVERS_MODULE, COVERS_SERVICE, ensureRawgHandover, handoverPending } from "@/core/services/rawgHandover";
+import { trackRawgJob } from "@/core/services/rawgNote";
 import Link from "next/link";
 
 const TRANSLATABLE = ["site.name", "site.tagline", "site.about", "footer.text", "header.secondaryLabel", "header.buttonLabel", "privacy.extra"] as const;
@@ -56,11 +55,11 @@ export default async function SettingsPage() {
   const socialCount = (await providersOf(SOCIAL_TOPIC)).length;
   const mail = await getMailConfig();
   const isOwner = hasRole(user, "owner");
-  // Cale de compatibilité (à retirer en 0.3.0, voir services/rawgBridge.ts) : tant que le module « Jaquettes de jeux » est là, la clé et les corrections se règlent chez lui.
-  const rawgMoved = isOwner ? await delegate() : null;
-  const rawgOn = isOwner && !rawgMoved && (await isRawgConfigured());
-  const rawgState = isOwner ? await getRawgState() : null;
-  const rawgTodo = rawgOn ? (await readToCheck()).length : 0;
+  // Jaquettes de jeux (voir services/rawgHandover.ts) : la clé et les corrections se règlent dans le module « Jaquettes de jeux ». Si le cœur garde encore celles de l'ancien service
+  // (reprise pas faite : catalogue injoignable…), la reprise est retentée ici (espacée, en arrière-plan) et la carte l'explique.
+  const rawgModule = isOwner ? await providerInstance(COVERS_SERVICE, COVERS_MODULE) : null;
+  const rawgPending = isOwner && (await handoverPending());
+  if (rawgPending) trackRawgJob(ensureRawgHandover({ install: true }));
   const values: Record<string, Record<string, unknown>> = {};
   for (const key of TRANSLATABLE) values[key] = await getSettingByLocale(key);
   const logo = await getSetting<string>("site.logo");
@@ -72,7 +71,7 @@ export default async function SettingsPage() {
   return (
     <div className="space-y-6">
       <header><h1 className={ui.pageTitle}>{advanced ? t("nav.settings") : t("nav.settings.simple")}</h1>{!advanced && <p className={ui.pageIntro}>{t("settings.intro.simple")}</p>}</header>
-      <Tabs tabs={[{ id: "site", label: t("settings.identity") }, { id: "languages", label: t("settings.languages") }, { id: "appearance", label: t("settings.appearance") }, { id: "privacy", label: t("settings.privacy") }, ...(hasRole(user, "owner") ? [{ id: "mail", label: t("settings.mail") }, { id: "services", label: t("settings.services") }] : [])]}>
+      <Tabs tabs={[{ id: "site", label: t("settings.identity") }, { id: "languages", label: t("settings.languages") }, { id: "appearance", label: t("settings.appearance") }, { id: "privacy", label: t("settings.privacy") }, ...(hasRole(user, "owner") ? [{ id: "mail", label: t("settings.mail") }, ...(rawgModule || rawgPending ? [{ id: "services", label: t("settings.services") }] : [])] : [])]}>
       <div data-tab="site languages appearance privacy">
       <ActionForm action={saveSettings} floating={floatingLabels(t)} submitLabel={t("action.save")} className="space-y-8" submitTabs="site languages appearance privacy">
         {advanced && <input type="hidden" name="__adv" value="1" />}
@@ -319,49 +318,26 @@ export default async function SettingsPage() {
           )}
         </section>
       )}
-      {isOwner && (
+      {isOwner && (rawgModule || rawgPending) && (
         <section data-tab="services" className="space-y-5">
           <p className={ui.help}>{t("settings.servicesHelp")}</p>
-          {rawgMoved && (
+          {rawgModule && (
             <div className={`${ui.card} space-y-4`} data-testid="rawg-moved-card">
               <div>
                 <h3 className="font-semibold">{t("settings.rawgTitle")}</h3>
                 <p className={ui.help}>{t("settings.rawgMoved")}</p>
               </div>
-              <Link href={rawgMoved.adminPath} className={`${ui.btnPrimary} min-h-11`}>{t("settings.rawgMovedOpen")}</Link>
+              <Link href={`/admin/instances/${rawgModule.instance.id}`} className={`${ui.btnPrimary} min-h-11`}>{t("settings.rawgMovedOpen")}</Link>
             </div>
           )}
-          {!rawgMoved && <div className={`${ui.card} space-y-4`} data-testid="rawg-card">
-            <div>
-              <h3 className="font-semibold">{t("settings.rawgTitle")}</h3>
-              <p className={ui.help}>{t("settings.rawgHelp")}</p>
-              <a href="https://rawg.io/apidocs" target="_blank" rel="noopener noreferrer" className="inline-block text-sm font-medium text-accent hover:underline">{t("settings.rawgLink")} ↗</a>
-            </div>
-            <p><span className={rawgOn ? ui.chipOk : ui.chipWarn}>{rawgOn ? t("settings.rawgStatusOn") : t("settings.rawgStatusOff")}</span></p>
-            {rawgOn && (
-              <p className={ui.help} data-testid="rawg-last">
-                {rawgState
-                  ? t("settings.rawgLast", { date: new Date(rawgState.at).toLocaleString(locale), state: t(`settings.rawgState.${rawgState.state}`) })
-                  : t("settings.rawgNever")}
-              </p>
-            )}
-            <ActionForm action={saveRawg} submitLabel={t("settings.rawgSave")} className="space-y-4">
-              <TextField name="rawgKey" type="password" label={t("settings.rawgKey")} help={t("settings.rawgKeyHelp")} autoComplete="new-password" />
-              {rawgOn && <Checkbox name="rawgClear" label={t("settings.rawgClear")} />}
-            </ActionForm>
-            <div className="space-y-2">
-              <ActionForm action={testRawgKey} submitLabel={t("settings.rawgTest")} pendingLabel={t("progress.checking")} className="space-y-3">{null}</ActionForm>
-              <p className={ui.help}>{t("settings.rawgTestHelp")}</p>
-            </div>
-          </div>}
-          {rawgOn && (
-            <div className={`${ui.card} space-y-4`} data-testid="rawg-covers-card">
+          {!rawgModule && rawgPending && (
+            <div className={`${ui.card} space-y-4`} data-testid="rawg-pending-card">
               <div>
-                <h3 className="font-semibold">{t("rawgfix.title")}</h3>
-                <p className={ui.help}>{t("rawgfix.cardHelp")}</p>
+                <h3 className="font-semibold">{t("settings.rawgTitle")}</h3>
+                <p className={ui.help}>{t("settings.rawgPending")}</p>
               </div>
-              <p><span className={rawgTodo ? ui.chipWarn : ui.chipOk} data-testid="rawg-todo-count">{rawgTodo ? t(rawgTodo === 1 ? "rawgfix.cardCount.one" : "rawgfix.cardCount", { count: rawgTodo }) : t("rawgfix.cardNone")}</span></p>
-              <Link href={RAWG_FIX_PATH} className={`${rawgTodo ? ui.btnPrimary : ui.btn} min-h-11`}>{t("rawgfix.cardOpen")}</Link>
+              <ActionForm action={retryRawgHandover} submitLabel={t("settings.rawgRetry")} pendingLabel={t("progress.checking")} className="space-y-3">{null}</ActionForm>
+              <Link href={`/admin/extensions/add/details?id=${COVERS_MODULE}`} className={`${ui.btn} min-h-11`}>{t("settings.rawgOpenCatalogue")}</Link>
             </div>
           )}
         </section>
