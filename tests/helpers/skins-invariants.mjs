@@ -3,7 +3,7 @@
 import postcss from "postcss";
 
 const AT_RULES = new Set(["media", "supports", "container", "keyframes", "font-face"]);
-const FORBIDDEN_TEXT = [/@import/i, /expression\s*\(/i, /javascript:/i, /data:/i, /vbscript:/i, /behavior/i, /-moz-binding/i, /!\s*important/i, /<\s*\/?\s*(style|script)/i, /<[\/!a-z]/i, /\\/, /\u0000/, /\bhttps?:/i, /\/\//];
+const FORBIDDEN_TEXT = [/@import/i, /expression\s*\(/i, /javascript:/i, /data:/i, /vbscript:/i, /(?<![a-z-])behavior(?![a-z-])/i, /-moz-binding/i, /!\s*important/i, /<\s*\/?\s*(style|script)/i, /<[\/!a-z]/i, /\\/, /\u0000/, /\bhttps?:/i, /\/\//];
 const SAFE_PROP = /^(--(sk|v)-[a-z0-9-]+|-?[a-z][a-z-]*)$/;
 const URL_OK = /^url\((?:skin:(?:images|fonts)\/[a-z0-9._-]+|"\/skins\/[a-z0-9-]+\/[0-9A-Za-z.+-]+\/(?:images|fonts)\/[a-z0-9._-]+")\)$/;
 
