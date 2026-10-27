@@ -80,6 +80,7 @@ const helpers = {
     if (typeof fn !== "function") throw new Error(`${id} : pas d'action ${action} (${Object.keys(mod.def.adminActions ?? {}).join(", ")})`);
     const r = await fn(ctx, values);
     if (r?.error) throw new Error(`${id}.${action} : ${r.error}`);
+    if (r?.errors && Object.keys(r.errors).length) throw new Error(`${id}.${action} : ${JSON.stringify(r.errors)}`);
     return r;
   },
   /** Le module (définition chargée) et un contexte d'administration complet, pour les amorçages qui parlent directement au stockage. */
@@ -105,11 +106,14 @@ const helpers = {
     return e;
   },
   home: [],
+  /** Données partagées entre amorçages (identifiants de catégories de contacts, etc.). */
+  shared: {},
 };
 
 // Amorçages propres à chaque module : seed/modules/<id>.mjs (export par défaut : async (h) => {}).
 const done = [];
-for (const id of ids) {
+const FIRST = ["contacts", "game-covers", "calendar-manual", "game-suggestions"];
+for (const id of [...FIRST.filter((x) => ids.includes(x)), ...ids.filter((x) => !FIRST.includes(x))]) {
   const f = path.join(HERE, "modules", `${id}.mjs`);
   if (!fs.existsSync(f) || (process.env.VISUAL_ONLY && !process.env.VISUAL_ONLY.split(",").includes(id))) continue;
   const fn = (await import(pathToFileURL(f).href)).default;

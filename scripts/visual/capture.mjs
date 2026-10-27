@@ -9,7 +9,7 @@ import crypto from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { CORE_DIR, WIDTHS, VIEWPORT_HEIGHT, FIXED_NOW, LOCALES, SNAPSHOT_DIR, PORT_BASE } from "./config.mjs";
 import { PROFILES, PROFILE_ORDER } from "./profiles.mjs";
-import { discover, selectPages, pageId, STATES, FORM_ERRORS } from "./pages.mjs";
+import { discover, crawl, selectPages, pageId, STATES, FORM_ERRORS } from "./pages.mjs";
 import { loadPlaywright, chromiumPath, CHROMIUM_ARGS } from "./lib/playwright.mjs";
 import { sh } from "./lib/proc.mjs";
 import { fileURLToPath } from "node:url";
@@ -133,7 +133,7 @@ for (const profile of profiles) {
   execFileSync("node", [SITE, "up", profile], { stdio: "inherit", env: { ...process.env, NODE_OPTIONS: "" } });
   try {
     const base = `http://127.0.0.1:${port}`;
-    if (!found) { found = await discover(base); manifest.discovered = { count: found.length, paths: found.map((f) => f.path) }; }
+    if (!found) { found = await crawl(base, await discover(base)); manifest.discovered = { count: found.length, paths: found.map((f) => f.path) }; }
     tasks.length = 0;
     const scope = PROFILES[profile].scope;
     const locales = scope === "all" && profile === "night" ? LOCALES : [LOCALES[0]];

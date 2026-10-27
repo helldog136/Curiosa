@@ -58,3 +58,19 @@ export const STATES = [
 
 /** Formulaires à envoyer VIDES pour voir leurs erreurs sous les champs : { chemin FR, sélecteur du bouton d'envoi }. Ajouter une ligne pour une nouvelle page. */
 export const FORM_ERRORS = [];
+
+const SKIP = /^\/(admin|api|m|go|uploads|overlays|feed|_next|icon|favicon|robots|sitemap|llms)/;
+/** Complète la découverte : liens internes d'une page de liste (fiches d'événements, d'albums, de sondages, de questions…), sans les chercher dans le plan du site. */
+export async function crawl(base, found, { perGroup = 3 } = {}) {
+  const have = new Set(found.map((p) => p.path));
+  const extra = [];
+  for (const p of found.filter((x) => x.locale === LOCALES[0] && x.depth === 1 && x.bare !== "/privacy")) {
+    let html = "";
+    try { html = await (await fetch(base + p.path)).text(); } catch { continue; }
+    const root = p.bare.split("/")[1];
+    const links = [...new Set([...html.matchAll(/<a [^>]*href="(\/[^"#?]*)"/g)].map((m) => m[1].replace(/\/+$/, "")))]
+      .filter((h) => h && !SKIP.test(h) && !have.has(h) && h.startsWith(`/${root}/`) && h.split("/").length === 3);
+    for (const h of links.slice(0, perGroup)) { have.add(h); extra.push({ path: h, locale: LOCALES[0], bare: h, depth: 2, crawled: true }); }
+  }
+  return [...found, ...extra];
+}
