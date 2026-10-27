@@ -315,3 +315,11 @@ test("catalogue : une entrée « extra » ou incompatible n'est jamais installé
   assert.equal(await quiet(() => H.ensureRawgHandover({ install: true })), "waiting");
   assert.equal(await Reg.getModule("game-covers"), null);
 });
+
+test("« Réessayer maintenant » relit le catalogue : une copie de secours en mémoire (catalogue d'avant le module) ne bloque pas la reprise", async () => {
+  await legacyFixture();
+  assert.equal(await quiet(() => H.ensureRawgHandover({ install: true, force: true })), "waiting");   // le catalogue (copie en mémoire) n'a pas le module
+  await publish();
+  Rec.clearRecognizedCache();   // ce que fait l'action du bouton
+  assert.equal(await H.ensureRawgHandover({ install: true, force: true }), "done");
+});
