@@ -294,6 +294,7 @@ C'est un module complet : une bannière en haut de chaque page, dont le texte se
 
 | Pour… | Lire |
 |---|---|
+| publier **mon propre module** dans mon dépôt, sans rien demander à personne (30 minutes) | [docs/PUBLIER-SON-MODULE.md](docs/PUBLIER-SON-MODULE.md) |
 | apprendre pas à pas, avec un module d'exemple complet (un livre d'or modéré) | [docs/CREATE-A-MODULE.md](docs/CREATE-A-MODULE.md) |
 | chercher un champ, une clé, un type de bloc | [docs/MODULES.md](docs/MODULES.md) (référence exhaustive) |
 | lire un vrai module | [`examples/guestbook`](https://github.com/helldog136/curiosa-extras/tree/master/examples/guestbook), [`examples/announcement-banner`](https://github.com/helldog136/curiosa-extras/tree/master/examples/announcement-banner) |
@@ -309,6 +310,7 @@ Un assistant IA peut écrire un module à partir de ces documents : donnez-lui `
 |---|---|
 | [docs/INSTALL.md](docs/INSTALL.md) | installer, mettre à jour, publier une release, logos, en-tête et menu, statistiques |
 | [docs/AGENT-INSTALL.md](docs/AGENT-INSTALL.md) | installation menée par un assistant IA |
+| [docs/PUBLIER-SON-MODULE.md](docs/PUBLIER-SON-MODULE.md) | publier son propre module dans son dépôt : structure, tests, étiquettes, installation par l'utilisateur |
 | [docs/CREATE-A-MODULE.md](docs/CREATE-A-MODULE.md) | créer un module, pas à pas |
 | [docs/MODULES.md](docs/MODULES.md) | référence complète des modules |
 | [docs/TESTSUPPORT.md](docs/TESTSUPPORT.md) | le kit de test des modules : les exigences une par une, la commande `module:check` |
