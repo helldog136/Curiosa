@@ -14,7 +14,7 @@ import { getSetting, setSetting } from "@/core/settings";
  *   2. REPRENDRE UNE FOIS. Tant que le repère `rawg.handover` (jamais une valeur : des dates et des nombres) ne dit pas « fait » ET qu'il reste des données à reprendre, le module est
  *      installé s'il manque (catalogue officiel, avec son instance), puis `adopt` lui confie la clé, les corrections et le journal. `adopt` ne remplace jamais ce que le module a déjà,
  *      donc rejouer (ou reprendre un site dont la reprise avait déjà eu lieu sans repère) ne change rien. Le repère n'est posé que si le module confirme tenir la clé.
- *   3. QUAND ? Au démarrage, après une installation, une mise à jour de module ou une restauration, quand le propriétaire ouvre Réglages › Services externes, et à la première demande
+ *   3. QUAND ? Au démarrage, après une installation, une mise à jour de module ou une restauration, quand le propriétaire ouvre Réglages › Jaquettes de jeux, et à la première demande
  *      d'un ancien module (`ctx.api.rawg`). Les tentatives réseau (catalogue, installation) sont espacées de 10 minutes, sauf événement explicite. AUCUN minuteur de fond : un site dont
  *      le catalogue est injoignable garde ses données et réessaie au prochain de ces moments. Une seule installation automatique par site : si le propriétaire désinstalle ensuite le
  *      module, il n'est pas remis.

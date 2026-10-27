@@ -97,6 +97,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 | [`page.scripts`](#pagescripts) | conseil | Les scripts de page sont de vrais fichiers du dossier scripts/ |
 | [`perm.declared`](#permdeclared) | obligatoire | Chaque capacité utilisée est déclarée dans « permissions » |
 | [`perm.minimal`](#permminimal) | conseil | Aucune permission inutile n'est demandée |
+| [`perm.rawgDeprecated`](#permrawgdeprecated) | conseil | Les jaquettes de jeux passent par le service « game.cover », pas par ctx.api.rawg |
 | [`i18n.manifest`](#i18nmanifest) | obligatoire | Les textes de module.json existent en français et en anglais |
 | [`i18n.parity`](#i18nparity) | obligatoire | Les fichiers de langue fr et en sont alignés |
 | [`i18n.keys`](#i18nkeys) | obligatoire | Toutes les clés de traduction utilisées existent |
@@ -143,7 +144,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 | [`readme.plain`](#readmeplain) | conseil | Le README est écrit en langage de tous les jours |
 | [`neutrality.clean`](#neutralityclean) | conseil | Aucune donnée personnelle ni propre à un site dans le module |
 
-36 exigences obligatoires et 26 conseils.
+36 exigences obligatoires et 27 conseils.
 
 ### Le fichier module.json
 
@@ -288,6 +289,14 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 - **Ce qui est vérifié.** Chaque permission déclarée correspond à quelque chose que le code fait vraiment.
 - **Pourquoi.** Moins un module demande, plus il est facile à accepter pour l'administrateur (principe du moindre privilège). Une permission en trop fait hésiter pour rien.
 - **Comment corriger.** Retirez de « permissions » celles que le message cite comme inutilisées.
+
+#### `perm.rawgDeprecated`
+
+**Les jaquettes de jeux passent par le service « game.cover », pas par ctx.api.rawg** — niveau : **conseil**
+
+- **Ce qui est vérifié.** Le module ne déclare pas la permission « rawg » et n'appelle pas ctx.api.rawg : cette interface est dépréciée depuis le cœur 0.3.0 (simple relais, sans repli, vers le module « Jaquettes de jeux »).
+- **Pourquoi.** Le cœur n'a plus aucun service RAWG : la clé et les corrections appartiennent au module « Jaquettes de jeux ». Un module qui passe encore par ctx.api.rawg continue de fonctionner (jamais d'erreur), mais seulement si ce module est installé, et la permission sera retirée un jour.
+- **Comment corriger.** Déclarez `"requires": [{ "service": "game.cover", "optional": true }]`, appelez `await ctx.api.services.call("game.cover", "cover", { title })` (réponse { ok, value } avec le même { status, url, name?, id?, ambiguous? }), puis retirez la permission « rawg » et l'appel à ctx.api.rawg. Voir « Jaquettes de jeux » dans docs/CREATE-A-MODULE.md.
 
 ### Les langues
 

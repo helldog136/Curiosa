@@ -22,7 +22,7 @@ const { installModule } = await import("@/core/modules/installer");
 const R = await import("@/core/modules/registry");
 const { createInstance } = await import("@/core/instanceService");
 const { createEntry } = await import("@/core/content/service");
-const { setSetting } = await import("@/core/settings");
+const { setSetting, getSetting } = await import("@/core/settings");
 const { UPLOADS_DIR, DATA_DIR } = await import("@/core/config");
 const { FIXTURE_MODULES: BUILTIN_MODULES } = await import("../helpers/fixtureModules.mjs");
 

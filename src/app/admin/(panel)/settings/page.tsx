@@ -51,7 +51,7 @@ function LayerRow({ n, title, note, children }: { n: number; title: string; note
 }
 
 export default async function SettingsPage() {
-  const { t, config, advanced, user, locale } = await adminCtx("admin");
+  const { t, config, advanced, user } = await adminCtx("admin");
   const socialCount = (await providersOf(SOCIAL_TOPIC)).length;
   const mail = await getMailConfig();
   const isOwner = hasRole(user, "owner");

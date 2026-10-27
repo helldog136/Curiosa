@@ -5,7 +5,7 @@ données — pas le code du framework :
 
 | Inclus | Pas inclus |
 |---|---|
-| utilisateurs (mots de passe **hachés**), réglages (secrets compris : mot de passe e-mail, adresses privées…) ; la clé RAWG et vos corrections de jaquettes sont dans les données du module « Jaquettes de jeux » (et, jusqu'en 0.3.0, encore dans les réglages du cœur : une sauvegarde d'avant la reprise se restaure et le module la reprend toute seule) | jetons d'API (à recréer) |
+| utilisateurs (mots de passe **hachés**), réglages (secrets compris : mot de passe e-mail, adresses privées…) ; la clé RAWG et vos corrections de jaquettes sont dans les données du module « Jaquettes de jeux » (et, par prudence, encore dans les réglages du cœur, que la 0.3.0 n'efface jamais : une sauvegarde d'avant la reprise se restaure et le module la reprend toute seule, sans rien perdre) | jetons d'API (à recréer) |
 | instances de modules, entrées (toutes langues, brouillons compris), redirections | journal d'audit, liste « Jaquettes à vérifier » (elle se remplit seule) |
 | données de **chaque module installé** (leur stockage, leurs réglages) | le code du framework et des modules (réinstallé depuis le catalogue) |
 | images et fichiers envoyés | |
