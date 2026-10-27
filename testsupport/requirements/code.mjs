@@ -157,6 +157,21 @@ const requirements = [
     },
   },
   {
+    id: "perm.rawgDeprecated", level: "advice", group: "permissions",
+    title: "Les jaquettes de jeux passent par le service « game.cover », pas par ctx.api.rawg",
+    what: "Le module ne déclare pas la permission « rawg » et n'appelle pas ctx.api.rawg : cette interface est dépréciée depuis le cœur 0.3.0 (simple relais, sans repli, vers le module « Jaquettes de jeux »).",
+    why: "Le cœur n'a plus aucun service RAWG : la clé et les corrections appartiennent au module « Jaquettes de jeux ». Un module qui passe encore par ctx.api.rawg continue de fonctionner (jamais d'erreur), mais seulement si ce module est installé, et la permission sera retirée un jour.",
+    fix: "Déclarez `\"requires\": [{ \"service\": \"game.cover\", \"optional\": true }]`, appelez `await ctx.api.services.call(\"game.cover\", \"cover\", { title })` (réponse { ok, value } avec le même { status, url, name?, id?, ambiguous? }), puis retirez la permission « rawg » et l'appel à ctx.api.rawg. Voir « Jaquettes de jeux » dans docs/CREATE-A-MODULE.md.",
+    run(m) {
+      if (!m.parsed?.ok) return { skip: "module.json invalide" };
+      const rawg = API_USE.find((u) => u.permission === "rawg");
+      const out = [];
+      if ((m.parsed.manifest.permissions ?? []).includes("rawg")) out.push("la permission « rawg » est dépréciée depuis le cœur 0.3.0");
+      if (rawg.re.test(strip(m))) out.push("le code appelle ctx.api.rawg, dépréciée depuis le cœur 0.3.0");
+      return out;
+    },
+  },
+  {
     id: "code.imports", level: "mandatory", group: "code",
     title: "Le module ne dépend de rien d'autre que de ctx",
     what: "Le code n'importe rien du cœur (« @/… », « src/… »), aucun paquet à installer (npm), aucun fichier hors de son dossier. Seuls sont permis les modules intégrés de Node (« node:… ») et les fichiers du dossier du module.",

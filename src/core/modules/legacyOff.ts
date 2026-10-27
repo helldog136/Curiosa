@@ -6,12 +6,12 @@ import { resetModuleRegistry } from "./registry";
 import { retireInstance, retireModuleInstances } from "./retired";
 
 /**
- * ⚠️ TEMPORAIRE — À SUPPRIMER APRÈS LA 0.2.x (retrait en 0.3.0). Avant la 0.1.20, un module ou une instance pouvait être « installé(e) mais éteint(e) ». Cet état
+ * ⚠️ TEMPORAIRE — À SUPPRIMER APRÈS LA 0.2.x (retrait en phase 3 d'entretien). Avant la 0.1.20, un module ou une instance pouvait être « installé(e) mais éteint(e) ». Cet état
  * n'existe plus : il n'y a que « installé » et « pas installé ». Au premier démarrage qui suit la mise à jour (et après la restauration d'une sauvegarde plus ancienne),
  * tout ce qui était éteint devient « désinstallé, données gardées » — rien n'est perdu, la réinstallation du module le retrouve tel quel :
  *   - module éteint            → désinstallé ; toutes ses instances sont rangées avec leurs réglages et leurs contenus ;
  *   - instance éteinte (module allumé) → retirée, ses données rangées.
- * Un test (tests/core/temporary-code.test.mjs) échoue dès la 0.3.0 tant que ces fichiers existent :
+ * Un test (tests/core/temporary-code.test.mjs) échoue passé `removeAfter` tant que ces fichiers existent :
  *   - src/core/modules/legacyOff.ts (ce fichier), son appel dans le balayage du démarrage (src/core/modules/legacySweep.ts, appelé par src/instrumentation.ts) et dans src/core/backup/restore.ts (applyRestore) ;
  *   - les tests « migration des éteints » de tests/modules-mgmt/module-lifecycle.test.mjs ;
  *   - les colonnes `Module.enabled` et `ModuleInstance.enabled` de prisma/schema.prisma (nouvelle migration qui les retire) et le champ `enabled` de BackupModule (backup/format.ts).

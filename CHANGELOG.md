@@ -7,6 +7,21 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.3.0
+
+### Améliorations
+
+- **Les jaquettes de jeux ne dépendent plus du cœur.** Votre clé RAWG et vos corrections « Quel est le bon jeu ? » sont confiées au module « Jaquettes de jeux », installé tout seul si besoin. Rien à refaire, et rien n'est effacé.
+- **Vos liens et votre assistant IA ne changent pas.** Les liens « Ce n'est pas le bon jeu ? » déjà publiés mènent au même écran, et les outils de l'assistant gardent leurs noms.
+- **Si le catalogue est injoignable pendant la mise à jour, rien n'est perdu, mais les jaquettes manquent.** Elles reviennent dès que le module « Jaquettes de jeux » est installé : la reprise se refait au prochain démarrage, ou tout de suite avec « Réessayer maintenant » dans Réglages › Jaquettes de jeux.
+- Rien d'autre ne change pour votre site.
+
+### Pour les développeurs
+
+- Changement de minorité : `ctx.api.rawg` et la permission `rawg` sont dépréciées (acceptées, jamais d'erreur), simple relais vers `game.cover`, `no-key` sans le module. L'écran de corrections du cœur est remplacé par celui du module. Conseil `perm.rawgDeprecated` dans le kit de test.
+- RAWG : `services/rawg*.ts`, `rawgAdmin.ts`, `rawgBridge.ts` et la carte « Clé RAWG » sont supprimés. Restent `services/rawgHandover.ts` (reprise finale idempotente, lecture seule de `rawg.key`/`rawg.fixes`/`rawg.toCheck`, jamais purgés) et `services/rawgRelay.ts`. Tests : `rawg-handover`, `rawg-consumers`.
+- `/admin/settings/rawg-covers` redirige vers le module ; `rawg_covers_to_check` et `rawg_cover_set` sont des alias lus dans le manifeste du module. Le retrait du code `bundled` et des colonnes `enabled` est reporté à une phase 3 d'entretien (`removeAfter: "0.3.99"`).
+
 ## 0.2.14
 
 ### Améliorations

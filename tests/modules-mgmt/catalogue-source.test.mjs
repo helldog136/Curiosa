@@ -7,7 +7,7 @@ import { makeRepo } from "../helpers/repo.mjs";
 import { createCatalogue } from "../helpers/catalogue.mjs";
 
 // Le catalogue (dépôt de modules, version épinglée) est la SEULE source de tout module installé. Les « anciennes lignes » `bundled` sont celles d'un site créé avec une
-// ancienne version du cœur (compatibilité, à retirer en 0.3.0) : leur dossier est déjà sur le disque, le catalogue est leur source, jamais un repli local.
+// ancienne version du cœur (compatibilité, à retirer en phase 3 d'entretien) : leur dossier est déjà sur le disque, le catalogue est leur source, jamais un repli local.
 // Aucun réseau : les dépôts https du catalogue sont redirigés vers des dépôts git locaux.
 const db = await useTestDb();
 const GITCONF = process.env.GIT_CONFIG_GLOBAL;
