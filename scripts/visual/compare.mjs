@@ -25,7 +25,7 @@ const mB = JSON.parse(fs.readFileSync(path.join(B, "manifest.json"), "utf8"));
 const mapOf = (m) => new Map(m.shots.filter((s) => s.file).map((s) => [s.file, s]));
 const ma = mapOf(mA), mb = mapOf(mB);
 const warnings = [];
-if (mA.snapshot?.dbSha256 !== mB.snapshot?.dbSha256) warnings.push(`empreintes d'instantané différentes (${mA.snapshot?.dbSha256?.slice(0, 10)} / ${mB.snapshot?.dbSha256?.slice(0, 10)}) : un instantané reconstruit par `visual:prepare` a d'autres horodatages (les pixels, eux, sont les mêmes : vérifié) ; si des écarts apparaissent, refaites les DEUX captures avec le même instantané`);
+if (mA.snapshot?.dbSha256 !== mB.snapshot?.dbSha256) warnings.push(`empreintes d'instantané différentes (${mA.snapshot?.dbSha256?.slice(0, 10)} / ${mB.snapshot?.dbSha256?.slice(0, 10)}) : un instantané reconstruit par visual:prepare a d'autres horodatages (les pixels, eux, sont les mêmes : vérifié) ; si des écarts apparaissent, refaites les DEUX captures avec le même instantané`);
 if (mA.snapshot?.extrasCommit !== mB.snapshot?.extrasCommit) warnings.push(`modules différents (${mA.snapshot?.extrasCommit?.slice(0, 8)} / ${mB.snapshot?.extrasCommit?.slice(0, 8)})`);
 if (mA.fonts !== mB.fonts) warnings.push("polices système différentes entre les deux captures : écarts de texte probables");
 if (mA.browser !== mB.browser) warnings.push(`Chromium différent (${mA.browser} / ${mB.browser})`);
