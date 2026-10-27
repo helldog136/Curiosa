@@ -120,7 +120,7 @@ function planModes(skin: SkinDefinition, ret: Retouches): { modes: Mode[]; retou
 /** Les jetons effectifs d'un mode. */
 function composeMode(args: {
   mode: Mode; skin: SkinDefinition; basic: SkinDefinition; retouch: ColorRetouch; font?: "sans" | "serif" | "mono"; issues: SkinIssue[];
-  extra: ReadonlyMap<string, TokenType>; moduleDefaults: Layer; optionLayer: Layer; modulePairs: readonly ModulePairDecl[];
+  extra: ReadonlyMap<string, TokenType>; moduleDefaults: Layer; moduleBase: Layer; optionLayer: Layer; modulePairs: readonly ModulePairDecl[];
 }): ComposedMode {
   const { mode, skin, basic, retouch: R, issues, extra } = args;
   const isBasic = skin.id === basic.id;
@@ -156,7 +156,7 @@ function composeMode(args: {
   let suspended = false;
   let finalTokens = tokens;
   if (!isBasic) {
-    const c = correctReadability(tokens, mode, { skinId: skin.id, modulePairs: args.modulePairs.map((p) => ({ fg: p.fg, bg: p.bg, defaults: { fg: args.moduleDefaults[p.fg], bg: args.moduleDefaults[p.bg] } })) });
+    const c = correctReadability(tokens, mode, { skinId: skin.id, modulePairs: args.modulePairs.map((p) => ({ fg: p.fg, bg: p.bg, defaults: { fg: args.moduleBase[p.fg], bg: args.moduleBase[p.bg] } })) });
     changes = c.changes;
     notice = c.notice;
     if (c.suspended) {
@@ -269,7 +269,7 @@ function compose(input: ComposeInput, issues: SkinIssue[], forceBasic = false): 
   const plan = planModes(skin, ret);
   const modes = plan.modes.map((mode) =>
     composeMode({
-      mode, skin, basic, retouch: plan.retouch[mode] ?? {}, font: ret.font, issues, extra, moduleDefaults: moduleLayer, optionLayer, modulePairs: input.modulePairs ?? [],
+      mode, skin, basic, retouch: plan.retouch[mode] ?? {}, font: ret.font, issues, extra, moduleDefaults: moduleLayer, moduleBase: moduleDefaults, optionLayer, modulePairs: input.modulePairs ?? [],
     }),
   );
   const hasAcc2 = modes.some((m) => {

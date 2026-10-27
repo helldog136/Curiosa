@@ -12,6 +12,7 @@ import { isHeaderLayout } from "../header";
 import { SKINS_DIR } from "./paths";
 import { SKIN_ID_RE } from "./allowlist";
 import { makeIssue, type SkinIssue } from "./messages";
+import { partsSignature } from "./moduleSkin";
 import { sanitizeSkinCss } from "./sanitize";
 import type { Mode, SkinDefaults, SkinDefinition, SkinOption, SkinTokensFile } from "./types";
 
@@ -85,7 +86,7 @@ function defaultsOf(v: unknown): SkinDefaults {
 }
 
 /** Lit un dossier de skin. `null` si ce n'est pas un skin utilisable (le cœur applique alors basic). Ne lève jamais. */
-export function readSkinFolder(dir: string, expectedId: string, version: string): LoadedSkin | null {
+export function readSkinFolder(dir: string, expectedId: string, version: string, moduleParts?: Readonly<Record<string, readonly string[]>>): LoadedSkin | null {
   try {
     if (!SKIN_ID_RE.test(expectedId) || expectedId === "basic" || !VERSION_RE.test(version)) return null;
     const manifestText = readLimited(path.join(dir, "skin.json"), MAX_JSON_BYTES);
@@ -107,6 +108,7 @@ export function readSkinFolder(dir: string, expectedId: string, version: string)
       assetBase: `/skins/${expectedId}/${version}/`,
       assets: assets.map((a) => String(a.file)),
       fontFamilies: assets.flatMap((a) => (typeof a.family === "string" ? [a.family] : [])),
+      moduleParts, // les pièces des modules installés : une règle qui vise la pièce d'un module absent est retirée au rendu (sans toucher au skin installé)
     });
     const issues: SkinIssue[] = [...clean.issues];
     if (cssText === null) issues.push(makeIssue("css-not-text", {}));
@@ -152,14 +154,14 @@ function stampOf(dir: string): string {
 }
 
 /** Le skin installé `<id>` en version `<version>` (null s'il manque ou s'il est inutilisable). Les appels répétés ne relisent rien tant que les fichiers ne changent pas. */
-export function loadInstalledSkin(id: string, version: string, root: string = SKINS_DIR): LoadedSkin | null {
+export function loadInstalledSkin(id: string, version: string, root: string = SKINS_DIR, moduleParts?: Readonly<Record<string, readonly string[]>>): LoadedSkin | null {
   if (!SKIN_ID_RE.test(id) || !VERSION_RE.test(version)) return null;
   const dir = path.join(root, id, version);
   const key = dir;
-  const stamp = stampOf(dir);
+  const stamp = `${stampOf(dir)}#${moduleParts ? partsSignature(moduleParts) || "none" : "any"}`;
   const hit = CACHE.get(key);
   if (hit && hit.stamp === stamp) return hit.loaded;
-  const loaded = stamp === "absent" ? null : readSkinFolder(dir, id, version);
+  const loaded = stamp.startsWith("absent#") ? null : readSkinFolder(dir, id, version, moduleParts);
   CACHE.delete(key);
   CACHE.set(key, { stamp, loaded });
   while (CACHE.size > MAX_ENTRIES) CACHE.delete(CACHE.keys().next().value as string);

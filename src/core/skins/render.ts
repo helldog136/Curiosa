@@ -34,12 +34,12 @@ export type SkinLook = {
 type Installed = { id: string; version: string };
 
 /** Le skin actif (`skin.active`, absent = basic) tel qu'il est installé ; basic si absent, introuvable ou inutilisable. */
-export async function activeSkin(): Promise<{ skin: SkinDefinition; serial: string }> {
+export async function activeSkin(moduleParts?: Readonly<Record<string, readonly string[]>>): Promise<{ skin: SkinDefinition; serial: string }> {
   const id = await getSetting<string>("skin.active");
   if (typeof id !== "string" || id === "" || id === BASIC.id) return { skin: BASIC, serial: "basic" };
   const installed = (await getSetting<Installed[]>("skin.installed")) ?? [];
   const entry = Array.isArray(installed) ? installed.find((e) => e && e.id === id && typeof e.version === "string") : undefined;
-  const loaded = entry ? loadInstalledSkin(entry.id, entry.version) : null;
+  const loaded = entry ? loadInstalledSkin(entry.id, entry.version, undefined, moduleParts) : null;
   if (!loaded) return { skin: BASIC, serial: "basic" };
   return { skin: loaded.skin, serial: serialOf(loaded) };
 }
@@ -63,14 +63,14 @@ export function invalidateSkinCache(): void {
 
 /** Le rendu du skin pour la configuration localisée du site. */
 export async function resolveLook(localized: SiteConfig): Promise<SkinLook> {
-  const { skin, serial } = await activeSkin();
+  const moduleLayer = await getModuleSkinLayer();
+  const { skin, serial } = await activeSkin(moduleLayer.byModule);
   const isBasic = skin === BASIC;
   const raw = new Map<string, unknown>();
   for (const key of RETOUCH_KEYS) raw.set(key, await getSetting(key));
   const retouches = retouchesFrom((k) => raw.get(k));
   const optionsSetting = await getSetting<Record<string, string>>("skin.options");
   const options = optionsSetting && typeof optionsSetting === "object" && !Array.isArray(optionsSetting) ? optionsSetting : {};
-  const moduleLayer = await getModuleSkinLayer();
 
   // halo, fond, en-tête : la valeur de la personne, sinon le départ du skin, sinon l'absence (comportement d'avant les skins)
   const glowRaw = await getSetting("theme.glow");
