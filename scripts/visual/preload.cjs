@@ -34,10 +34,10 @@ const realRandomBytes = crypto.randomBytes;
 crypto.randomBytes = function (n, cb) { const b = bytes(n); if (cb) { process.nextTick(cb, null, b); return; } return b; };
 crypto.randomUUID = () => { const b = bytes(16); b[6] = (b[6] & 0x0f) | 0x40; b[8] = (b[8] & 0x3f) | 0x80; const h = b.toString("hex"); return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`; };
 crypto.randomInt = function (a, b, cb) { if (typeof b !== "number") { cb = b; b = a; a = 0; } const v = a + Math.floor(rng() * (b - a)); if (cb) { process.nextTick(cb, null, v); return; } return v; };
-crypto.getRandomValues = function (arr) { const b = bytes(arr.byteLength); new Uint8Array(arr.buffer, arr.byteOffset, arr.byteLength).set(b); return arr; };
-crypto.randomFillSync = function (arr) { crypto.getRandomValues(arr); return arr; };
-try { Object.defineProperty(globalThis.crypto, "randomUUID", { value: crypto.randomUUID, configurable: true }); } catch {}
-try { Object.defineProperty(globalThis.crypto, "getRandomValues", { value: (a) => crypto.getRandomValues(a), configurable: true }); } catch {}
+const fill = function (arr) { const b = bytes(arr.byteLength); new Uint8Array(arr.buffer, arr.byteOffset, arr.byteLength).set(b); return arr; };
+crypto.randomFillSync = fill;
+try { Object.defineProperty(globalThis.crypto, "getRandomValues", { value: fill, configurable: true, writable: true }); } catch {}
+try { Object.defineProperty(globalThis.crypto, "randomUUID", { value: crypto.randomUUID, configurable: true, writable: true }); } catch {}
 void realRandomBytes;
 
 // Une requête HTTP entrante ouvre son propre contexte de hasard : graine = SEED + méthode + adresse.
