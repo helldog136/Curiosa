@@ -51,6 +51,9 @@ export type BackupModule = {
   name: string;
 };
 
+/** Un skin installé au moment de la sauvegarde (facultatif dans `backup.json` : absent des sauvegardes d'avant les skins). Les fichiers ne sont pas sauvegardés : ils sont réinstallés depuis le dépôt. */
+export type { BackupSkin } from "@/core/skins/restore";
+
 export type BackupManifest = {
   format: typeof FORMAT;
   formatVersion: number;
@@ -61,6 +64,8 @@ export type BackupManifest = {
   site: { name: string; defaultLocale: string; locales: string[] };
   counts: Record<string, number>;
   modules: BackupModule[];
+  /** Skins installés (dépôt, étiquette, commit) : réinstallés à la restauration, comme les modules. Absent des sauvegardes d'avant les skins. */
+  skins?: import("@/core/skins/restore").BackupSkin[];
   /** Empreinte de chaque fichier (sauf README.txt et backup.json) : une sauvegarde altérée ou tronquée est détectée. */
   files: { path: string; sha256: string; bytes: number }[];
 };
