@@ -140,8 +140,7 @@ export async function readSkinCatalogue(opts: CatalogueOptions): Promise<Catalog
   }
   if (base.source === "none") {
     const kept = readPersisted(opts.coreVersion);
-    // Une copie reçue d'un AUTRE dépôt ne dit rien de celui-ci.
-    if (kept && kept.fetchedAt && (!kept.origin || kept.origin === repo)) base = { entries: kept.entries, source: "cache", fetchedAt: kept.fetchedAt, origin: kept.origin, unreachable: false };
+    if (kept && kept.fetchedAt) base = { entries: kept.entries, source: "cache", fetchedAt: kept.fetchedAt, origin: kept.origin, unreachable: false };
   }
   const entries: SkinCatalogueEntry[] = base.entries.map((e) => ({ ...e, origin: "official" as const }));
   if (extraUrl?.startsWith("https://")) {

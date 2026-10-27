@@ -73,6 +73,17 @@ const OWN_LICENSE_RE = /^LICENSE(\.md|\.txt)?$/;
 const SUBDIRS = ["fonts", "images", "previews", "LICENSES"] as const;
 const MAX_TOKENS = 400;
 
+/**
+ * Jetons dont la valeur a une NATURE connue : elle est aussi contrôlée comme la propriété CSS correspondante, avec les mêmes minimums que la feuille
+ * (taille de texte, interligne…). Un jeton hors de cette liste n'a que le contrôle général de valeur (`sanitizeTokenValue`) ; le vocabulaire complet est
+ * celui du lot « jetons » (docs/SKINS.md §4.2).
+ */
+const TOKEN_PROPERTY: readonly [RegExp, string][] = [
+  [/^--sk-text-/, "font-size"], [/^--sk-leading-/, "line-height"], [/^--sk-weight-/, "font-weight"], [/^--sk-tracking-/, "letter-spacing"],
+  [/^--sk-radius-/, "border-radius"], [/^--sk-border-width/, "border-width"], [/^--sk-shadow-/, "box-shadow"], [/^--sk-glow$/, "box-shadow"],
+  [/^--sk-space$/, "padding"], [/^--sk-(page-width|prose-width)/, "max-width"], [/^--sk-duration$/, "transition-duration"],
+];
+
 const kb = (n: number) => Math.ceil(n / 1024);
 const sha = (b: Buffer | string) => crypto.createHash("sha256").update(b).digest("hex");
 
@@ -104,6 +115,9 @@ function run(dir: string, opts: ValidateOptions): SkinValidation {
   const fail = (): SkinValidation => ({ ok: false, issues: unique(issues), manifest: known, css: "", readability: [], files: [], installFiles: [], fingerprint: "", totalBytes: 0 });
 
   // ---- 1. Le dossier : aucun lien symbolique, un seul niveau, des noms simples, des plafonds.
+  let manifestPresent = false;
+  try { manifestPresent = fs.lstatSync(path.join(dir, "skin.json")).isFile(); } catch { /* absent */ }
+  if (!manifestPresent) { add("manifest-missing"); return fail(); }
   const found = scan(dir, add);
   if (!found) return fail();
   const byRel = new Map(found.map((f) => [f.rel, f]));
@@ -243,7 +257,9 @@ function run(dir: string, opts: ValidateOptions): SkinValidation {
     totalBytes += b.length;
   }
   const fingerprint = fingerprintOf(files);
-  return { ok: !hasErrors(issues), issues: unique(issues), manifest: m, css, tokens, readability, files, installFiles, fingerprint, totalBytes };
+  const ok = !hasErrors(issues);
+  // Un skin refusé n'a rien à installer.
+  return { ok, issues: unique(issues), manifest: m, css, tokens, readability, files, installFiles: ok ? installFiles : [], fingerprint, totalBytes };
 }
 
 /** Un même message n'est dit qu'une fois (la même couleur illisible sur deux fonds, par exemple). */
@@ -313,7 +329,7 @@ function readTokens(bytes: Buffer, m: SkinManifest, so: { skinId: string; assetB
       if (prefix && !k.startsWith(prefix)) { add("tokens-module-name", { name: k }); continue; }
       const r = sanitizeTokenValue(k, v, so);
       issues.push(...r.issues);
-      if (r.ok) target[k] = r.value;
+      if (r.ok && typedCheck(k, r.value, so.skinId, issues)) target[k] = r.value;
     }
     return target;
   };
@@ -333,6 +349,17 @@ function readTokens(bytes: Buffer, m: SkinManifest, so: { skinId: string; assetB
   for (const o of m.options ?? []) for (const v of o.values) for (const [k, val] of Object.entries(v.tokens)) {
     const r = sanitizeTokenValue(k, val, so);
     issues.push(...r.issues);
+    if (r.ok) typedCheck(k, r.value, so.skinId, issues);
   }
   return out;
+}
+
+/** Contrôle la valeur d'un jeton de nature connue comme la propriété CSS correspondante (une règle de démonstration passée à l'assainisseur). Vrai si elle passe. */
+function typedCheck(name: string, value: string, skinId: string, issues: SkinIssue[]): boolean {
+  const prop = TOKEN_PROPERTY.find(([re]) => re.test(name))?.[1];
+  if (!prop || /[;{}]/.test(value)) return true;
+  const r = sanitizeSkinCss(`[data-skin-region="main"] { ${prop}: ${value}; }`, { skinId });
+  if (r.ok) return true;
+  for (const i of r.issues) if (i.severity === "error") issues.push({ ...i, line: undefined, column: undefined });
+  return false;
 }
