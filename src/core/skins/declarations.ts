@@ -764,8 +764,11 @@ export function checkDeclaration(propRaw: string, valueRaw: string, important: b
         const name = varName(tokens, i);
         if (!name) continue;
         tried++;
+        // une variable n'est pas réécrite : un nom d'animation qu'elle contient doit déjà être le nom final `sk-<id>-<nom>`
+        const finalNames = new Map([...ctx.keyframes].filter(([k, v]) => k === v));
+        const variantCtx: DeclContext = { ...ctx, keyframes: finalNames };
         for (const cand of candidates(name, ctx.defs, ctx)) {
-          checkProperty({ prop, toks: substitute(tokens, i, cand), ctx, report: fail, meta: { infinite: false, durationsMs: [] } });
+          checkProperty({ prop, toks: substitute(tokens, i, cand), ctx: variantCtx, report: fail, meta: { infinite: false, durationsMs: [] } });
         }
       }
       if (failed) return null;

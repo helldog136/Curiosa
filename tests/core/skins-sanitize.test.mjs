@@ -402,3 +402,11 @@ test("valeurs : unités, nombres et jetons limites", () => {
   ko("margin", "1foo"); ko("margin", "1e"); ko("margin", "--1px"); ko("color", "#12"); ko("width", "3px 4px (5"); ko("transform", "scale(1.2)"); ko("transform", "rotate(0.02turn)"); ko("font-size", "10.9px"); ko("height", "3px"); ko("text-indent", "-0.6em"); ko("top", "-17px");
   ko("grid-template-areas", '"a;b"'); ko("font-feature-settings", '"ligature"'); ko("margin", "-4.1rem"); ko("opacity", "59%"); ko("line-height", "0.79"); ko("line-height", "7px");
 });
+
+test("animation par variable : le nom doit être le nom final de la feuille, jamais une animation du cœur", () => {
+  const m = (inner) => `@media (prefers-reduced-motion: no-preference){@keyframes pulse{from{opacity:1}}${inner}}`;
+  assert.equal(run(m('[data-skin-part="card"]{--sk-a:pulse 1s;animation:var(--sk-a)}')).ok, false, "nom court : la variable n'est pas réécrite");
+  assert.equal(run(m('[data-skin-part="card"]{--sk-a:sk-plain-light-pulse 1s;animation:var(--sk-a)}')).ok, true);
+  assert.equal(run(m('[data-skin-part="card"]{--sk-a:spin 1s;animation:var(--sk-a)}')).ok, false, "animation de Tailwind");
+  assert.equal(run(m('[data-skin-part="card"]{--sk-n:ping;animation-name:var(--sk-n)}')).ok, false);
+});
