@@ -93,13 +93,18 @@ export function parseRepoUrl(input: string): { ok: true; repo: ParsedRepo } | { 
     if (process.env.CURIOSA_ALLOW_LOCAL_MODULES !== "1") return { ok: false, error: "modules.error.local" };
     return { ok: true, repo: { url: url.href, ref, ...(subdir ? { subdir } : {}) } };
   }
-  if (url.protocol !== "https:" || url.username || url.password || url.search) {
-    return { ok: false, error: "modules.error.url" };
-  }
+  // Une erreur par cause, pour que le message dise quoi changer (avec un exemple) : voir modules.error.url* dans les textes.
+  if (url.protocol === "http:") return { ok: false, error: "modules.error.urlHttp" };
+  if (url.protocol !== "https:") return { ok: false, error: "modules.error.url" };
+  if (url.username || url.password) return { ok: false, error: "modules.error.urlCreds" };
+  if (url.search) return { ok: false, error: "modules.error.urlQuery" };
   const allowed = (process.env.MODULES_ALLOWED_HOSTS || DEFAULT_HOSTS).split(",").map((h) => h.trim().toLowerCase());
-  if (!allowed.includes("*") && !allowed.includes(url.hostname.toLowerCase())) {
-    return { ok: false, error: "modules.error.host" };
+  const host = url.hostname.toLowerCase();
+  if (!allowed.includes("*") && !allowed.includes(host)) {
+    return { ok: false, error: host.startsWith("www.") && allowed.includes(host.slice(4)) ? "modules.error.urlWww" : "modules.error.host" };
   }
+  // L'adresse d'une PAGE du dépôt (…/tree/master/dossier, …/blob/…) copiée depuis le navigateur n'est pas celle du dépôt.
+  if (/^\/[\w.-]+\/[\w.-]+\/(tree|blob|commit|commits|releases|issues|pull|pulls|archive|wiki|actions|-)(\/|$)/.test(url.pathname)) return { ok: false, error: "modules.error.urlPage" };
   if (!/^\/[\w.-]+(\/[\w.-]+){1,3}(\.git)?\/?$/.test(url.pathname)) return { ok: false, error: "modules.error.url" };
   url.hash = "";
   return { ok: true, repo: { url: url.href.replace(/\/$/, ""), ref, ...(subdir ? { subdir } : {}) } };

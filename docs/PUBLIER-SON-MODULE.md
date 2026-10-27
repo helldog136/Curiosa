@@ -44,7 +44,7 @@ mon-module/
 └── .github/workflows/ci.yml   tests automatiques à chaque envoi (modèle plus bas)
 ```
 
-Plusieurs modules dans un même dépôt : **un dossier chacun**, chacun avec son `module.json` (jusqu'à trois niveaux). L'utilisateur ajoute alors l'adresse du dépôt dans *Mes dépôts de modules* et installe ceux qu'il veut (voir [section 7](#7-comment-lutilisateur-linstalle)). Au-delà de **60 modules** dans un dépôt, la liste est coupée sans message : restez en dessous.
+Plusieurs modules dans un même dépôt : **un dossier chacun**, chacun avec son `module.json` (jusqu'à trois niveaux). L'utilisateur ajoute alors l'adresse du dépôt dans *Mes dépôts de modules* et installe ceux qu'il veut (voir [section 7](#7-comment-lutilisateur-linstalle)). Au-delà de **200 modules** dans un dépôt, la liste est coupée (avec un message qui l'indique).
 
 ## 3. Le `module.json` minimal, commenté
 
@@ -162,14 +162,14 @@ L'administrateur d'un site n'accepte que les dépôts `https://` des hôtes de `
 
 Avant d'installer, l'admin affiche, **sans rien exécuter** : le nom, l'icône, la version, l'auteur et la licence ; le bandeau « ⚠ dépôt personnel non vérifié » ; la liste, en mots simples, de ce que le module fera (déduite de vos `permissions`) ; **votre `README.md`** (Markdown sans HTML brut, **aucune image distante chargée**, liens relatifs inertes) ; l'avertissement « Un module est du code qui s'exécute sur votre serveur avec les mêmes droits que le site… » ; et la case à cocher **« Je comprends que ce code n'est pas vérifié et qu'il s'exécutera sur mon serveur. »** Sans la case, le bouton « Installer sur mon site » ne part pas. Le module s'installe **actif**, puis on crée une instance (« Mettre en place »).
 
-À savoir pour écrire votre README : ni votre déclaration `privacy`, ni les adresses de services que vous contactez, ni la `description` du manifeste (pour un dépôt personnel) ne sont montrées à ce moment-là. **Écrivez-les dans le README.**
+La fiche montre aussi la `description` de votre manifeste et votre déclaration `privacy` (« Ce que le module dit faire des données de vos visiteurs »). Elle ne montre **pas** les adresses des services que votre code contacte (le manifeste n'a pas de champ pour cela) : **écrivez-les dans le README.** Si l'adresse collée est celle d'un dépôt sans `module.json` à la racine, la fiche le dit et ne propose pas d'installer.
 
 ### Texte prêt à coller dans votre README (pour vos utilisateurs)
 
 ```markdown
 ## Installer sur votre site Curiosa
 
-1. Dans l'administration de votre site, passez en **mode avancé** (menu de gauche, « Afficher les réglages avancés »), puis ouvrez **Extensions → Catalogue**.
+1. Dans l'administration de votre site, ouvrez le menu de gauche et cliquez sur **« Afficher les réglages avancés »** (l'installation depuis une adresse n'existe que là), puis ouvrez **Extensions → Catalogue**.
 2. Ouvrez **Installer un dépôt personnel (non vérifié)**, collez cette adresse et cliquez sur **Voir le README avant d'installer** :
    `https://github.com/<vous>/<depot>#v1.0.0`
 3. Lisez ce que le module demande, cochez la case « Je comprends… », cliquez sur **Installer sur mon site**, puis sur **Mettre en place** et remplissez les réglages.
@@ -180,9 +180,9 @@ Pour le mettre à jour plus tard : **Extensions → Vitrine → Chercher une mis
 ## 7. Comment l'utilisateur l'installe
 
 - **Un seul module à la racine** (le cas courant) : **Extensions → Catalogue → Installer un dépôt personnel (non vérifié)**, adresse `https://github.com/<vous>/<depot>#v1.0.0`. **Ces deux options n'existent qu'en mode avancé** : en mode simple, elles sont cachées.
-- **Plusieurs modules dans un dépôt** : **Mes dépôts de modules** (mode avancé aussi) avec `https://github.com/<vous>/<depot>` : Curiosa lit les manifestes, liste les modules (3 niveaux de dossiers, 60 modules au plus, 10 dépôts au plus par site) et chacun s'installe avec la même confirmation. Pour un seul d'entre eux : `https://github.com/<vous>/<depot>#v1.0.0:dossier/du-module`.
+- **Plusieurs modules dans un dépôt** : **Mes dépôts de modules** (mode avancé aussi) avec `https://github.com/<vous>/<depot>` : Curiosa lit les manifestes, liste les modules (3 niveaux de dossiers, 200 modules au plus, 10 dépôts au plus par site) et chacun s'installe avec la même confirmation. Pour un seul d'entre eux : `https://github.com/<vous>/<depot>#v1.0.0:dossier/du-module`.
 - **Avec un assistant IA** : l'assistant (jeton MCP) **ne peut pas** installer un dépôt personnel : `maintenance_module_install` ne connaît que le catalogue officiel, jamais une adresse donnée par l'IA. L'installation reste un geste de la personne propriétaire dans l'admin ; l'assistant peut ensuite lire et régler ses réglages et, selon ce que la propriétaire a autorisé pour son jeton, demander sa mise à jour ([MAINTENANCE-IA.md](MAINTENANCE-IA.md)).
-- Formes d'adresse acceptées : avec ou sans `.git` ou `/` final, majuscules dans le nom du compte ou du dépôt, `#v1.2.0`, `#branche`, `#commit`, `#v1.2.0:dossier`, `#:dossier`. Refusées : `http://`, `www.`, identifiants dans l'adresse, `?paramètres`, l'adresse d'une page du dépôt (`…/tree/master/…`), `git@…`, un hôte hors liste.
+- Formes d'adresse acceptées : avec ou sans `.git` ou `/` final, majuscules dans le nom du compte ou du dépôt, `#v1.2.0`, `#branche`, `#commit`, `#v1.2.0:dossier`, `#:dossier`. Refusées, **avec un message qui dit quoi changer et donne un exemple** : `http://`, `www.`, identifiants dans l'adresse, `?paramètres`, l'adresse d'une page du dépôt (`…/tree/master/…`), `git@…`, un hôte hors liste, un nom de version ou de dossier invalide.
 
 ## Vie privée
 
