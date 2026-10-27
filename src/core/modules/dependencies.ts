@@ -244,7 +244,7 @@ export async function callService(consumer: Pick<ActiveInstance, "mod" | "instan
 
 /**
  * CŒUR SEULEMENT (jamais exposé aux modules) : appelle une méthode d'un service chez son fournisseur actif, sans consommateur déclaré. Sert à la cale de compatibilité
- * `ctx.api.rawg` (services/rawgBridge.ts), qui relaie les anciens modules vers le service `game.cover`. `moduleId` : n'accepter que ce module-là (la reprise de la clé n'est
+ * `ctx.api.rawg` (services/rawgRelay.ts), qui relaie les anciens modules vers le service `game.cover`, et à la reprise finale RAWG (services/rawgHandover.ts). `moduleId` : n'accepter que ce module-là (la reprise de la clé n'est
  * confiée qu'à lui). Même règle que `callService` pour le choix du fournisseur (maître, ou première instance d'un service `each`) ; ne lève jamais.
  */
 export async function callProvider(service: string, method: string, args: unknown, opts: { moduleId?: string; locale?: string } = {}): Promise<Outcome> {

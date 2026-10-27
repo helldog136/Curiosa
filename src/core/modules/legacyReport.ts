@@ -14,7 +14,7 @@ import type { ParsedManifest } from "./manifest";
  *   - collections `legacyCollections` non vides ;
  *   - valeurs présentes dans des `legacySettings` (le NOM de la clé seulement, jamais la valeur, même masquée) ;
  *   - réglages orphelins : clé ni déclarée, ni `legacySettings`, ni `__*` (signalés, jamais supprimés en 0.2.0).
- * Les lignes `bundled` / `builtin` : compatibilité sites anciens, à retirer en phase 3 (0.3.0 au plus tard) avec le code qui les convertit.
+ * Les lignes `bundled` / `builtin` : compatibilité sites anciens, à retirer en phase 3 (version à fixer) avec le code qui les convertit.
  * Le cœur ne lit les manifestes que sur le disque (aucun code de module n'est exécuté ici). Listes bornées (LIST_MAX), totaux exacts.
  */
 export const LEGACY_MARKER = "core.legacyCleared";

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { useTestDb } from "../helpers/db.mjs";
 import { createCatalogue } from "../helpers/catalogue.mjs";
 
-// Deux demandes d'instance par défaut en même temps pour un même module (installation par la cale RAWG en arrière-plan + cascade de dépendance) :
+// Deux demandes d'instance par défaut en même temps pour un même module (installation par la reprise finale RAWG en arrière-plan + cascade de dépendance) :
 // une seule instance est créée, les autres voient « présente ». Avant : « Unique constraint failed on the fields: (key) ».
 const db = await useTestDb();
 const cat = createCatalogue();

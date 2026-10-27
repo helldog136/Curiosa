@@ -372,7 +372,10 @@ export type ModuleApi = {
     /** Espace pris par les fichiers revendiqués par ce module (toutes ses instances) et plafonds. Sans la permission : zéros. */
     usage(): Promise<{ files: number; bytes: number; limitFiles: number; limitBytes: number }>;
   };
-  /** Jaquettes de jeux (RAWG), avec la clé réglée une fois par le propriétaire (nécessite la permission « rawg »). Ne lève jamais ; la clé n'est jamais transmise. */
+  /**
+   * DÉPRÉCIÉ depuis la 0.3.0 : préférez le service `game.cover` (`ctx.api.services.call("game.cover", "cover", { title })`, besoin facultatif). Simple relais vers le module « Jaquettes de jeux »
+   * pour les modules d'avant (nécessite la permission « rawg »), sans repli : sans le module, `no-key`. Ne lève jamais ; la clé n'est jamais transmise.
+   */
   rawg: {
     /** Une clé RAWG est-elle réglée (et ce module a-t-il la permission) ? */
     configured(): Promise<boolean>;

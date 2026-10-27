@@ -298,7 +298,7 @@ export async function applyRestore(backup: ParsedBackup, opts: { confirmCustom: 
   opStep("finish");
   // Rôles prédéfinis présents et affectations alignées sur `User.role` (sauvegarde d'avant la 0.2.0 : c'est ce qui crée toute l'affectation).
   await syncSystemAssignments().catch((e) => console.error("[backup] roles sync failed:", (e as Error)?.message));
-  // TEMPORAIRE (retrait en 0.3.0) : une sauvegarde d'un site d'avant la 0.1.20 peut contenir des modules ou instances « éteints » ; ils deviennent « désinstallés, données gardées ».
+  // TEMPORAIRE (retrait en phase 3 d'entretien) : une sauvegarde d'un site d'avant la 0.1.20 peut contenir des modules ou instances « éteints » ; ils deviennent « désinstallés, données gardées ».
   await retireLegacyOff().catch((e) => console.error("[backup] legacy off migration failed:", (e as Error)?.message));
   // Les données restaurées peuvent être celles d'une ancienne version d'un module, réinstallée plus récente : on les met à niveau.
   const migrations = (await migrateAllInstances().catch(() => [])).filter((m) => m.status !== "none");
@@ -306,7 +306,7 @@ export async function applyRestore(backup: ParsedBackup, opts: { confirmCustom: 
   const active = d.modules.filter((m) => m.enabled !== false && !["skipped", "failed", "unavailable"].includes(outcomes.find((o) => o.id === m.id)?.outcome ?? "")).map((m) => m.id);
   const settled = await settleRestored(active).catch(() => ({ issues: [] as DependencyIssue[], provided: [] as string[] }));
   await audit(opts.actor, "backup.restore", backup.manifest.createdAt);
-  // Cale RAWG (à retirer en 0.3.0, voir services/rawgBridge.ts) : une sauvegarde d'avant la reprise rend les réglages d'avant ; le module « Jaquettes de jeux » est (ré)installé et repris, au mieux, sans attendre.
+  // Reprise finale RAWG (services/rawgHandover.ts) : une sauvegarde d'avant la reprise rend les réglages d'avant ; le module « Jaquettes de jeux » est (ré)installé et repris, au mieux, sans attendre.
   noteRawgModulesChanged();
   return { ok: true, modules: outcomes, migrations, dependencies: settled.issues, provided: settled.provided, safetyCopy: copy, counts: { users: d.users.length, entries: d.entries.length, instances: d.instances.length, records: d.records.length, retired: (d.retired ?? []).length, uploads: backup.uploads.length } };
 }

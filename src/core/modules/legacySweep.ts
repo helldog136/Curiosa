@@ -34,7 +34,7 @@ const run = promisify(execFile);
  *   5. si plus rien n'est à convertir, le marqueur `core.legacyCleared` est posé (une fois : sa date reste celle de la fin de la conversion).
  *      Sinon il n'est pas posé, le démarrage suivant reprend où celui-ci s'est arrêté, et l'admin l'explique (bandeau + page Entretien).
  * Journal : des nombres et des identifiants de modules, jamais une valeur de réglage.
- * ⚠️ À RETIRER EN PHASE 3 (mise à jour d'entretien, 0.3.0 au plus tard) : l'étape 2 (et legacyOff.ts) disparaît avec le code `bundled` ; le balayage et le marqueur restent (garde bloquante).
+ * ⚠️ À RETIRER EN PHASE 3 (mise à jour d'entretien, version à fixer) : l'étape 2 (et legacyOff.ts) disparaît avec le code `bundled` ; le balayage et le marqueur restent (garde bloquante).
  */
 export const SWEEP_BUDGET_MS = 20_000;
 

@@ -49,6 +49,7 @@ const FAULTS = {
   "def.matches": (f) => editManifest(f, (m) => { m.sections.push({ id: "ghost", label: { en: "Ghost", fr: "Fantôme" } }); }),
   "perm.declared": (f) => editManifest(f, (m) => { m.permissions = m.permissions.filter((p) => p !== "storage"); }),
   "perm.minimal": (f) => editManifest(f, (m) => { m.permissions.push("filters"); }),
+  "perm.rawgDeprecated": (f) => editManifest(f, (m) => { m.permissions.push("rawg"); }),
   "code.neighbourImports": (f) => { f["helper.mjs"] = "export const x = 1;\n"; f["index.mjs"] = `import { x } from "./helper.mjs";\n${f["index.mjs"]}\nexport const y = x;\n`; },
   "code.imports": (f) => { f["index.mjs"] = `import pad from "left-pad";\n${f["index.mjs"]}`; },
   "code.noDanger": (f) => append(f, "index.mjs", "export const run = (s) => eval(s);"),

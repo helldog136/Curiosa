@@ -79,7 +79,7 @@ export async function useTestDb() {
   };
 }
 
-/** Les reprises lancées en arrière-plan (cale RAWG, après une installation, une mise à jour ou une restauration) doivent être finies avant de vider la base ou de la fermer, et avant de comparer des réglages. */
+/** Les reprises lancées en arrière-plan (reprise finale RAWG, après une installation, une mise à jour ou une restauration) doivent être finies avant de vider la base ou de la fermer, et avant de comparer des réglages. */
 export async function settleBackground() {
-  try { await (await import("@/core/services/rawgNote")).rawgNoteIdle(); } catch { /* le cœur testé n'a pas (encore) cette cale */ }
+  try { await (await import("@/core/services/rawgNote")).rawgNoteIdle(); } catch { /* le cœur testé n'a pas (encore) cette reprise */ }
 }
