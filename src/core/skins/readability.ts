@@ -52,7 +52,10 @@ export function contrastRatio(a: Rgba, b: Rgba): number {
 export function composite(fg: Rgba, bg: Rgba): Rgba {
   const a = fg.a + bg.a * (1 - fg.a);
   if (a <= 0) return { r: 0, g: 0, b: 0, a: 0 };
-  const ch = (f: number, b: number) => (f * fg.a + b * bg.a * (1 - fg.a)) / a;
+  const ch = (f: number, b: number) => {
+    const v = (f * fg.a + b * bg.a * (1 - fg.a)) / a;
+    return a >= 1 ? Math.round(v) : v; // un navigateur affiche des canaux entiers
+  };
   return { r: ch(fg.r, bg.r), g: ch(fg.g, bg.g), b: ch(fg.b, bg.b), a };
 }
 
@@ -141,7 +144,7 @@ function resolve(tokens: Tokens, name: string): { raw: string | undefined; color
   let current = name;
   for (let i = 0; i < 6; i++) {
     const raw = tokens[current];
-    if (typeof raw !== "string") return { raw: undefined, color: null };
+    if (typeof raw !== "string") return i === 0 ? { raw: undefined, color: null } : { raw: tokens[name], color: null };
     const ref = /^var\(\s*(--[a-z0-9-]+)\s*(?:,[^)]*)?\)$/i.exec(raw.trim());
     if (!ref) return { raw, color: parseColor(raw) };
     current = ref[1]!;
@@ -186,8 +189,8 @@ export function suggestColor(color: Rgba, against: readonly Rgba[], min: number)
   const mix = (to: Rgba, t: number): Rgba => ({ r: opaque.r + (to.r - opaque.r) * t, g: opaque.g + (to.g - opaque.g) * t, b: opaque.b + (to.b - opaque.b) * t, a: 1 });
   let best: { hex: string; dir: "lighter" | "darker"; steps: number } | null = null;
   for (const [to, dir] of [[BLACK, "darker"], [WHITE, "lighter"]] as const) {
-    for (let step = 0; step <= 100; step++) {
-      const c = mix(to, step / 100);
+    for (let step = 0; step <= 400; step++) {
+      const c = mix(to, step / 400);
       const rounded: Rgba = { r: Math.round(c.r), g: Math.round(c.g), b: Math.round(c.b), a: 1 };
       if (against.every((b) => contrastRatio(rounded, b) >= min)) {
         if (!best || step < best.steps) best = { hex: toHex(rounded), dir, steps: step };
@@ -226,9 +229,9 @@ function makeIssue(pair: number, severity: "error" | "advice", mode: Mode, fgTok
  */
 export function checkReadability(tokens: Tokens, mode: Mode, options: ReadabilityOptions = {}): ReadabilityIssue[] {
   try {
-    const exempt = options.exempt ?? options.skinId === "basic";
+    const exempt = options?.exempt ?? options?.skinId === "basic";
     if (exempt) return [];
-    return evaluate(tokens, mode, options);
+    return evaluate(tokens !== null && typeof tokens === "object" ? tokens : {}, mode, options ?? {});
   } catch {
     return [];
   }
@@ -244,8 +247,11 @@ function evaluate(tokens: Tokens, mode: Mode, options: ReadabilityOptions): Read
   const out: ReadabilityIssue[] = [];
   const r = resolveAll(tokens, mode);
   for (const m of r.missing) out.push(plainIssue("read-token-missing", mode, m));
-  for (const [name] of r.unreadable) out.push(plainIssue("read-color-unreadable", mode, name));
-  if (r.missing.length) return out;
+  for (const base of ["--v-bg", "--v-surface", "--v-fg", "--v-accent"]) r.get(base);
+  if (r.missing.length) {
+    for (const [name] of r.unreadable) out.push(plainIssue("read-color-unreadable", mode, name));
+    return out;
+  }
 
   const test = (pair: PairSpec, fgToken: string, bgTokens: readonly string[], min = pair.min) => {
     const fg = r.get(fgToken);
@@ -301,6 +307,9 @@ function evaluate(tokens: Tokens, mode: Mode, options: ReadabilityOptions): Read
     if (pair.id === 4 && !r.has("--v-accent-fg")) continue;
     test(pair, fgToken, pair.bg);
   }
+  // couleurs présentes mais incompréhensibles : on ne peut pas prouver qu'elles sont lisibles
+  const seen = new Set(out.filter((i) => i.code === "read-color-unreadable").map((i) => i.fgToken));
+  for (const [name] of r.unreadable) if (!seen.has(name)) out.push(plainIssue("read-color-unreadable", mode, name));
   return out;
 }
 
@@ -340,6 +349,8 @@ function hexOf(c: Rgba | null, fallback: string): string {
  * noir/blanc jusqu'au seuil ; (3) jeton de pièce de module remis à sa valeur par défaut ; (4) sinon `suspended`.
  */
 export function correctReadability(tokens: Tokens, mode: Mode, options: ReadabilityOptions = {}): Correction {
+  if (tokens === null || typeof tokens !== "object") tokens = {};
+  options ??= {};
   const original: Record<string, string> = { ...tokens };
   const unchanged: Correction = { tokens: original, changes: [], suspended: false, remaining: [], notice: null };
   try {
