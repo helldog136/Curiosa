@@ -25,7 +25,7 @@ test("un module conforme réussit toutes les exigences (aucune en échec, aucune
   const report = await checkModule(dir, { siblings: [] });
   assert.equal(report.summary.ok, true);
   // « neutrality.clean » est sautée sans liste de neutralité, vérifiée (et réussie) avec : les deux sont corrects.
-  const notPassed = report.results.filter((r) => r.status !== "pass" && r.id !== "neutrality.clean").map((r) => `${r.id}:${r.status}`);
+  const notPassed = report.results.filter((r) => r.status !== "pass" && r.id !== "neutrality.clean" && !(r.group === "skin" && r.status === "na")).map((r) => `${r.id}:${r.status}`);
   assert.deepEqual(notPassed.sort(), ["srp.single:na"]);
   // avec un voisin sans rapport, « un propriétaire par donnée » est vérifié et réussit
   void other;
@@ -36,6 +36,21 @@ test("un module conforme réussit toutes les exigences (aucune en échec, aucune
 
 // ── Un module fautif par exigence ───────────────────────────────────────────────────────────────────────────────────
 const REPLACE = (f, from, to) => { assert.ok(f["index.mjs"].includes(from), `fixture : « ${from} » introuvable`); f["index.mjs"] = f["index.mjs"].replace(from, to); };
+
+// ── Pièces de skin (clé « skin », docs/SKINS.md §8) : un module avec pièces conforme, dont chaque défaut est dérivé ───────
+const SKIN_TOKENS = [
+  { name: "--sk-m-full-mod-card-radius", type: "length", default: "var(--sk-radius-card)" },
+  { name: "--sk-m-full-mod-card-bg", type: "color", default: "var(--v-surface)" },
+  { name: "--sk-m-full-mod-card-fg", type: "color", default: "var(--v-fg)", on: "--sk-m-full-mod-card-bg" },
+];
+const SKIN_CSS = "export const SKIN_CSS = `.fm-card{border-radius:var(--sk-m-full-mod-card-radius,var(--sk-radius-card,1rem));background:var(--sk-m-full-mod-card-bg,var(--v-surface,#1c1c1f));color:var(--sk-m-full-mod-card-fg,var(--v-fg,#ffffff))}`;\nexport const SKIN_HTML = '<li class=\"fm-card\" data-skin-part=\"full-mod.card\">x</li>';";
+const withSkin = (f, { tokens = SKIN_TOKENS, code = SKIN_CSS, skin = {} } = {}) => {
+  editManifest(f, (m) => {
+    m.minCore = "0.4.0";
+    m.skin = { since: 1, parts: [{ id: "full-mod.card", kind: "card", name: { fr: "Carte", en: "Card" }, description: { fr: "La carte d'un message.", en: "The card of a message." }, tokens }], ...skin };
+  });
+  append(f, "index.mjs", code);
+};
 const FAULTS = {
   "manifest.file": (f) => { f["module.json"] = null; },
   "manifest.valid": (f) => editManifest(f, (m) => { m.instances = "bogus"; }),
@@ -97,6 +112,14 @@ const FAULTS = {
   "privacy.declared": (f) => editManifest(f, (m) => { delete m.privacy; }),
   "privacy.thirdParty": (f) => { f["index.mjs"] = f["index.mjs"]; editManifest(f, (m) => { delete m.privacy; }); },
   "page.scripts": (f) => REPLACE(f, 'scripts: ["ui.js"]', 'scripts: ["missing.js", "Bad Name.js"]'),
+  "skin.valid": (f) => withSkin(f, { tokens: [{ name: "--sk-m-full-mod-card-bg", type: "color", default: "1rem" }] }),
+  "skin.parts": (f) => withSkin(f, { code: SKIN_CSS.replace(' data-skin-part="full-mod.card"', "") }),
+  "skin.fallback": (f) => withSkin(f, { code: SKIN_CSS.replace("var(--sk-radius-card,1rem)", "var(--sk-radius-card)") }),
+  "skin.noMasking": (f) => withSkin(f, { code: `${SKIN_CSS}\nexport const MASK = ".fm-x{opacity:var(--sk-m-full-mod-card-radius,1)}";` }),
+  "skin.demo": (f) => { withSkin(f, { skin: { demo: "skin-demo.html" } }); f["skin-demo.html"] = '<li data-skin-part="full-mod.card"><script>alert(1)</script></li>'; },
+  "skin.tokensUsed": (f) => withSkin(f, { tokens: [...SKIN_TOKENS, { name: "--sk-m-full-mod-card-gap", type: "length", default: "1rem" }] }),
+  "skin.textPair": (f) => withSkin(f, { tokens: SKIN_TOKENS.map(({ on, ...t }) => t) }),
+  "skin.declare": (f) => append(f, "index.mjs", 'export const CSS = ".fm-card{border-radius:1rem;padding:1rem;background:#222}";'),
   "routes.visitorIp": null, // vérifié à part : demande un cœur 0.2.6 (voir plus bas)
   "srp.single": null, // voir plus bas : demande un voisin
   "srp.coupling": (f) => append(f, "index.mjs", 'export const peek = (ctx) => ctx.api.instances.list({ module: "contacts" });'),
@@ -431,4 +454,38 @@ test("fakeCtx : ctx.api.files suit les règles du cœur (revendiquer, supprimer,
   assert.equal((await no.api.files.claim(id(1))).reason, "no-permission");
   assert.deepEqual(no.calls.denied, ["files"]);
   assert.deepEqual(await no.api.files.usage(), { files: 0, bytes: 0, limitFiles: 0, limitBytes: 0 });
+});
+
+test("skin : un module avec pièces conforme réussit toutes les exigences « skin » (l'apparence par défaut est celle d'avant)", async () => {
+  const rep = await checkModule(mk((f) => withSkin(f)), { siblings: [] });
+  const skin = rep.results.filter((r) => r.group === "skin");
+  assert.equal(skin.length, 8);
+  assert.deepEqual(skin.filter((r) => r.status !== "pass").map((r) => `${r.id}:${r.status}:${r.problems}`), ["skin.demo:na:", "skin.declare:pass:"].filter((x) => x.startsWith("skin.demo")));
+  assert.equal(rep.summary.ok, true, JSON.stringify(rep.results.filter((r) => r.status === "fail" && r.level === "mandatory")));
+  // sans la clé « skin », les exigences se taisent (module existant : rien ne change)
+  const plain = await checkModule(mk(), { siblings: [] });
+  assert.deepEqual(plain.results.filter((r) => r.group === "skin").map((r) => r.status).filter((x) => x !== "na"), []);
+});
+
+test("skin : « minCore » doit couvrir la clé « skin » (cœur 0.4.0)", async () => {
+  const rep = await checkModule(mk((f) => { withSkin(f); editManifest(f, (m) => { m.minCore = "0.3.0"; }); }), { siblings: [] });
+  assert.equal(status(rep, "compat.minCore").status, "fail");
+  assert.match(status(rep, "compat.minCore").problems.join(" "), /skin/);
+});
+
+test("skin : le principe fondateur — un module ne peut pas utiliser un jeton pour masquer, déplacer ou grossir du contenu", async () => {
+  for (const prop of ["display", "visibility", "opacity", "content", "position", "font-size", "width", "transform", "clip-path", "overflow"]) {
+    const rep = await checkModule(mk((f) => withSkin(f, { code: `${SKIN_CSS}\nexport const X = ".fm-y{${prop}:var(--sk-m-full-mod-card-radius,1)}";` })), { siblings: [] });
+    assert.equal(status(rep, "skin.noMasking").status, "fail", prop);
+  }
+  // les propriétés d'apparence sont permises
+  for (const prop of ["border-radius", "padding", "gap", "box-shadow", "transition"]) {
+    const rep = await checkModule(mk((f) => withSkin(f, { code: `${SKIN_CSS}\nexport const X = ".fm-y{${prop}:var(--sk-m-full-mod-card-radius,1px)}";` })), { siblings: [] });
+    assert.equal(status(rep, "skin.noMasking").status, "pass", prop);
+  }
+  // le jeton d'un autre module, ou non déclaré, est refusé ; une pièce commune du cœur aussi
+  const other = await checkModule(mk((f) => withSkin(f, { code: `${SKIN_CSS}\nexport const X = ".a{color:var(--sk-m-elsewhere-card-fg,red)} .b{color:var(--sk-m-full-mod-card-ghost,red)}";` })), { siblings: [] });
+  assert.equal(status(other, "skin.fallback").problems.length, 2);
+  const core = await checkModule(mk((f) => withSkin(f, { code: `${SKIN_CSS}\nexport const H = '<li data-skin-part=\\"card\\">';` })), { siblings: [] });
+  assert.equal(status(core, "skin.parts").status, "fail");
 });

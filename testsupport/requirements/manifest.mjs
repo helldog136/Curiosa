@@ -9,6 +9,7 @@ const MAX_BYTES = 10 * 1024 * 1024; // même plafond que l'installateur du cœur
  * Les fonctions d'avant la 0.1.10 ne sont pas listées : aucun site à jour n'a un cœur aussi ancien, une exigence là-dessus ne ferait que du bruit.
  */
 export const FEATURES = [
+  { since: "0.4.0", label: "« skin » dans module.json (pièces et jetons stylables par les skins)", test: (m, man) => man.skin !== undefined },
   { since: "0.2.14", label: "un réglage « multichoice » (plusieurs choix par cases à cocher)", test: (m, man) => allSettings(man).some((s) => s.type === "multichoice") },
   { since: "0.2.14", label: "« family » dans module.json (rangement choisi par le module)", test: (m, man) => man.family !== undefined },
   { since: "0.2.14", label: "« sitemapFromPage » dans module.json (chemins de la page ajoutés au plan du site)", test: (m, man) => man.sitemapFromPage !== undefined },

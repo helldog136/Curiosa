@@ -113,6 +113,14 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 | [`links.safe`](#linkssafe) | obligatoire | Les liens venus de l'extérieur sont vérifiés |
 | [`blocks.valid`](#blocksvalid) | obligatoire | Ce que le module renvoie a la bonne forme |
 | [`run.noCrash`](#runnocrash) | conseil | Le module ne plante pas, même avec des données inattendues |
+| [`skin.valid`](#skinvalid) | obligatoire | La clé « skin » ne décrit que de l'apparence, avec des valeurs valables |
+| [`skin.parts`](#skinparts) | obligatoire | Les pièces déclarées sont dans le HTML, et celles du HTML sont déclarées |
+| [`skin.fallback`](#skinfallback) | obligatoire | Chaque jeton lu par le CSS garde sa valeur d'aujourd'hui en repli |
+| [`skin.noMasking`](#skinnomasking) | obligatoire | Un jeton de module ne peut ni masquer, ni déplacer, ni écraser du contenu |
+| [`skin.demo`](#skindemo) | obligatoire | L'aperçu du banc d'essai est un petit fragment HTML sans script |
+| [`skin.tokensUsed`](#skintokensused) | conseil | Les jetons déclarés sont utilisés par le CSS du module |
+| [`skin.textPair`](#skintextpair) | conseil | Un jeton de couleur de texte dit sur quel fond il est posé |
+| [`skin.declare`](#skindeclare) | conseil | Un module qui met en forme une page publique déclare ses pièces de skin |
 | [`routes.methods`](#routesmethods) | obligatoire | Les routes n'écrivent que sur demande explicite (POST) |
 | [`routes.size`](#routessize) | obligatoire | Les routes bornent la taille de ce qu'elles reçoivent |
 | [`routes.redirect`](#routesredirect) | obligatoire | Aucune redirection vers un site extérieur |
@@ -144,7 +152,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 | [`readme.plain`](#readmeplain) | conseil | Le README est écrit en langage de tous les jours |
 | [`neutrality.clean`](#neutralityclean) | conseil | Aucune donnée personnelle ni propre à un site dans le module |
 
-36 exigences obligatoires et 27 conseils.
+41 exigences obligatoires et 30 conseils.
 
 ### Le fichier module.json
 
@@ -423,6 +431,72 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 - **Ce qui est vérifié.** Sections, pages, emplacements, overlay, panneau d'administration et routes terminent sans erreur avec les réglages par défaut, des réglages remplis et des données piégées.
 - **Pourquoi.** Le cœur isole les erreurs d'un module (le site continue), mais le visiteur voit alors une section vide ou une page d'erreur. Un module robuste dégrade son affichage sans planter.
 - **Comment corriger.** Protégez le code qui lit une donnée optionnelle (valeur absente, liste vide, texte trop long) et répondez par un code 4xx plutôt que de laisser une erreur remonter.
+
+### Les skins (apparence)
+
+#### `skin.valid`
+
+**La clé « skin » ne décrit que de l'apparence, avec des valeurs valables** — niveau : **obligatoire**
+
+- **Ce qui est vérifié.** Si module.json a une clé « skin », chaque jeton porte le préfixe « --sk-m-<id du module>- », son type est dans la liste (couleur, longueur, ombre, nombre, police, durée, casse), sa valeur par défaut passe les mêmes contrôles que les valeurs d'un skin et ne cite que des jetons communs (« --sk-… », « --v-… ») ou des jetons du même module, chaque pièce est « <id du module>.<pièce> », et le tout tient dans 12 pièces et 24 jetons.
+- **Pourquoi.** Un skin ne définit que de l'apparence (docs/SKINS.md §0) : si un module pouvait y glisser du contenu ou une valeur dangereuse, changer de skin ferait perdre quelque chose ou ouvrirait une faille. Une valeur refusée est ignorée par le site (le module garde son apparence d'origine) mais le module ne ressemble alors pas à ce que vous avez voulu décrire.
+- **Comment corriger.** Lisez le message : il nomme le jeton. Écrivez la valeur d'aujourd'hui (« 1rem », « #e8a23b », « 0 1px 2px rgb(0 0 0 / .2) ») ou une référence à un jeton commun (« var(--sk-radius-card) », « var(--v-surface) »). Voir docs/MODULES.md, « Rendre un module stylable ».
+
+#### `skin.parts`
+
+**Les pièces déclarées sont dans le HTML, et celles du HTML sont déclarées** — niveau : **obligatoire**
+
+- **Ce qui est vérifié.** Chaque pièce déclarée dans « skin.parts » est posée au moins une fois dans le HTML du module (data-skin-part="<id du module>.<pièce>"), et chaque data-skin-part du module est une pièce déclarée de CE module (jamais le nom d'une pièce commune du cœur comme « card » ni la pièce d'un autre module). La valeur est écrite en entier, sans calcul.
+- **Pourquoi.** Un skin vise une pièce par ce nom. Une pièce déclarée mais jamais posée ne peut pas être restylée ; une pièce posée sans être déclarée est invisible pour les auteurs de skins et pour le banc d'essai ; une pièce qui porte le nom d'une pièce du cœur ferait appliquer à tort le style de la carte du cœur à votre élément. Ajouter un attribut n'est pas un changement de contenu.
+- **Comment corriger.** Ajoutez data-skin-part="mon-module.carte" sur l'élément concerné (en plus de sa classe), ou retirez la pièce de module.json. Écrivez le nom en entier (pas de `${…}`).
+
+#### `skin.fallback`
+
+**Chaque jeton lu par le CSS garde sa valeur d'aujourd'hui en repli** — niveau : **obligatoire**
+
+- **Ce qui est vérifié.** Toute lecture d'un jeton de skin dans le CSS du module (« var(--sk-…) ») a une valeur de repli, et la chaîne finit par la valeur actuelle : var(--sk-m-module-pièce-propriété, var(--sk-jeton-commun, valeur-actuelle)). Les jetons « --sk-m-… » lus sont déclarés dans « skin.parts » et appartiennent à ce module.
+- **Pourquoi.** Sans repli, un cœur sans skins (ou un jeton oublié) rendrait le module différent de ce qu'il est aujourd'hui, voire cassé. Avec la chaîne complète, le rendu par défaut est IDENTIQUE à l'ancien et le module reste compatible avec les cœurs plus anciens. Lire le jeton d'un autre module créerait une dépendance cachée entre modules.
+- **Comment corriger.** Écrivez par exemple border-radius:var(--sk-m-tw-card-radius,var(--sk-radius-card,1rem)) : jeton du module, puis jeton commun, puis la valeur que le module avait avant. Déclarez le jeton du module dans « skin.parts[].tokens ».
+
+#### `skin.noMasking`
+
+**Un jeton de module ne peut ni masquer, ni déplacer, ni écraser du contenu** — niveau : **obligatoire**
+
+- **Ce qui est vérifié.** Aucun jeton « --sk-m-… » n'est lu dans une propriété qui pourrait masquer, déplacer ou rendre illisible un élément (display, visibility, opacity, content, clip-path, mask, position, décalages, transform, z-index, order, overflow, text-indent, font-size, line-height, width, height, max-width, max-height, filter…). Pour une taille de texte ou de boîte, utilisez un jeton COMMUN (« var(--sk-text-sm, .9rem) »).
+- **Pourquoi.** Un skin ne doit jamais pouvoir faire disparaître un texte ou un bouton (docs/SKINS.md §0.1) : les jetons communs sont bornés par le cœur (taille de texte minimale, cible tactile…), pas ceux d'un module. Un jeton « opacité » valant 0 effacerait le contenu.
+- **Comment corriger.** Gardez les jetons de module pour des couleurs, des rayons, des bordures, des ombres, des espaces et des durées (propriétés color, background, border, border-radius, box-shadow, padding, margin, gap, transition…).
+
+#### `skin.demo`
+
+**L'aperçu du banc d'essai est un petit fragment HTML sans script** — niveau : **obligatoire**
+
+- **Ce qui est vérifié.** Si « skin.demo » nomme un fichier, il existe à la racine du module, pèse 20 Ko au plus, ne contient ni script, ni gestionnaire d'évènement (onclick…), ni feuille de style, ni attribut style, ni adresse externe, ni cadre, et ne pose que les pièces déclarées par le module.
+- **Pourquoi.** Le banc d'essai affiche ce fragment pour qu'un auteur de skin voie la pièce sans installer le module. Il suit les mêmes règles qu'un bloc « html » : un fragment qui exécute du code ou charge un tiers serait une faille ; un fragment qui définit son propre style ne montrerait pas l'effet du skin.
+- **Comment corriger.** Réduisez le fichier à du HTML simple (div, p, ul, li, a, img sans adresse externe…) avec les data-skin-part du module, des textes d'exemple neutres, et aucune mise en forme intégrée.
+
+#### `skin.tokensUsed`
+
+**Les jetons déclarés sont utilisés par le CSS du module** — niveau : **conseil**
+
+- **Ce qui est vérifié.** Chaque jeton de « skin.parts[].tokens » est lu au moins une fois par le CSS du module (var(--sk-m-…)).
+- **Pourquoi.** Un jeton que rien ne lit promet aux auteurs de skins un réglage qui ne fait rien.
+- **Comment corriger.** Utilisez le jeton dans le CSS (avec sa chaîne de repli) ou retirez-le de module.json.
+
+#### `skin.textPair`
+
+**Un jeton de couleur de texte dit sur quel fond il est posé** — niveau : **conseil**
+
+- **Ce qui est vérifié.** Un jeton de couleur lu dans « color » (le texte) déclare « on » : le jeton de fond de la même pièce, pour que Curiosa contrôle la lisibilité du texte sur ce fond avec un skin.
+- **Pourquoi.** Sans cette paire, un skin pourrait poser un texte clair sur un fond clair dans la pièce du module sans que le contrôle de lisibilité automatique s'en aperçoive.
+- **Comment corriger.** Ajoutez "on": "--sk-m-<module>-<pièce>-bg" au jeton de texte (le fond doit être un autre jeton de couleur du module).
+
+#### `skin.declare`
+
+**Un module qui met en forme une page publique déclare ses pièces de skin** — niveau : **conseil**
+
+- **Ce qui est vérifié.** Le module qui a une page ou des sections avec sa propre mise en forme (CSS intégré) déclare une clé « skin » : ses pièces stylables et leurs jetons, avec leur valeur d'aujourd'hui en repli.
+- **Pourquoi.** Sans déclaration le module fonctionne à l'identique, mais un skin ne peut pas le restyler : ses rayons, ses espaces et ses ombres restent ceux du module quel que soit le skin choisi (docs/SKINS.md §8.5).
+- **Comment corriger.** Suivez « Rendre un module stylable » dans docs/MODULES.md : remplacez les valeurs en dur par var(--sk-m-…, var(--sk-…, valeur-actuelle)), posez data-skin-part et déclarez-les dans « skin ». Ajoutez « minCore »: « 0.4.0 » et passez le module en version mineure (apparence inchangée).
 
 ### Les routes (formulaires et envois)
 
