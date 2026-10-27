@@ -9,7 +9,7 @@ import crypto from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { CORE_DIR, WIDTHS, VIEWPORT_HEIGHT, FIXED_NOW, LOCALES, SNAPSHOT_DIR, PORT_BASE } from "./config.mjs";
 import { PROFILES, PROFILE_ORDER } from "./profiles.mjs";
-import { discover, crawl, selectPages, pageId, STATES, FORM_ERRORS } from "./pages.mjs";
+import { discover, crawl, selectPages, pageId, STATES } from "./pages.mjs";
 import { loadPlaywright, chromiumPath, CHROMIUM_ARGS } from "./lib/playwright.mjs";
 import { sh } from "./lib/proc.mjs";
 import { fileURLToPath } from "node:url";
@@ -75,6 +75,8 @@ async function settle(tab) {
   await withTimeout(tab.evaluate(async () => {
     const cap = (p, ms) => Promise.race([p, new Promise((r) => setTimeout(r, ms))]);
     await cap(document.fonts.ready, 5000);
+    // Plus d'images paresseuses : toutes sont demandées tout de suite (sinon leur chargement dépend du défilement et de la charge de la machine).
+    for (const i of document.images) { if (i.loading === "lazy") i.loading = "eager"; }
     const h = document.documentElement.scrollHeight;
     for (let y = 0; y < h; y += 500) { window.scrollTo(0, y); await new Promise((r) => setTimeout(r, 20)); }
     window.scrollTo(0, 0);
@@ -100,7 +102,7 @@ async function stableShot(tab) {
 
 const tasks = [];
 let browser;
-function addTask(t) { if (!only || `${t.profile}/${t.locale}/${t.id}`.includes(only)) tasks.push(t); }
+function addTask(t) { if (!only || only.split(",").some((o) => `${t.profile}/${t.locale}/${t.id}`.includes(o))) tasks.push(t); }
 
 const TASK_MS = Number(process.env.VISUAL_TASK_TIMEOUT_MS || 90000);
 const withTimeout = (p, ms, what) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error(`délai dépassé (${ms} ms) : ${what}`)), ms))]);

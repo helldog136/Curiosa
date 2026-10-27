@@ -1,5 +1,5 @@
 // Liste des pages à capturer : DÉCOUVERTE automatique (plan du site), plus les pages fixes et les états. Rien n'est codé en dur pour un module en particulier,
-// sauf la liste des formulaires à soumettre vides (FORM_ERRORS) et les pages « échantillon » des variantes de mise en page.
+// sauf la liste des formulaires à soumettre vides et les pages « échantillon » des variantes de mise en page.
 import { LOCALES } from "./config.mjs";
 
 /** Nom de fichier stable d'une page : "/" → "home", "/blog/mon-billet" → "blog__mon-billet". */
@@ -53,11 +53,19 @@ export const STATES = [
   { id: "submenu-open", when: (p) => p.bare === "/", widths: [768, 1280, 1920], run: async (t) => { if (await t.locator("[data-trigger]").count()) await t.locator("[data-trigger]").first().click(); } },
   { id: "cookies", when: (p) => p.bare === "/" || p.bare === "/privacy", fresh: true, run: async () => {} },
   { id: "focus", when: (p) => p.bare === "/", run: async (t) => { await t.keyboard.press("Tab"); } },
+  // Formulaire de contact de l'accueil envoyé avec un e-mail refusé par le serveur : l'erreur s'affiche sous le formulaire.
+  { id: "form-error", when: (p) => p.bare === "/", run: async (t) => {
+    const f = t.locator("form.space-y-3").first();
+    if (!(await f.count())) return;
+    await f.locator("input[name=name]").fill("A");
+    await f.locator("input[name=email]").fill("a@b");
+    await f.locator("textarea[name=message]").fill("x");
+    await f.locator("button[type=submit]").click();
+    await t.waitForTimeout(1500);
+  } },
   { id: "focus2", when: (p) => p.bare === "/", run: async (t) => { await t.keyboard.press("Tab"); await t.keyboard.press("Tab"); } },
 ];
 
-/** Formulaires à envoyer VIDES pour voir leurs erreurs sous les champs : { chemin FR, sélecteur du bouton d'envoi }. Ajouter une ligne pour une nouvelle page. */
-export const FORM_ERRORS = [];
 
 const SKIP = /^\/(admin|api|m|go|uploads|overlays|feed|_next|icon|favicon|robots|sitemap|llms)/;
 /** Complète la découverte : liens internes d'une page de liste (fiches d'événements, d'albums, de sondages, de questions…), sans les chercher dans le plan du site. */

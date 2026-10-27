@@ -14,4 +14,4 @@ export function chromiumPath() {
   if (!fs.existsSync(p)) throw new Error(`Chromium introuvable : ${p} (variable CHROMIUM_PATH ; Playwright : PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers)`);
   return p;
 }
-export const CHROMIUM_ARGS = ["--no-sandbox", "--disable-gpu", "--force-color-profile=srgb", "--font-render-hinting=none", "--disable-lcd-text", "--hide-scrollbars", "--force-device-scale-factor=1", "--disable-features=Translate,BackForwardCache", "--autoplay-policy=user-gesture-required", "--mute-audio"];
+export const CHROMIUM_ARGS = ["--no-sandbox", "--disable-gpu", "--force-color-profile=srgb", "--font-render-hinting=none", "--disable-lcd-text", "--hide-scrollbars", "--num-raster-threads=1", "--disable-partial-raster", "--disable-gpu-rasterization", "--disable-gpu-compositing", "--disable-lcd-text", "--force-device-scale-factor=1", "--disable-features=Translate,BackForwardCache", "--autoplay-policy=user-gesture-required", "--mute-audio"];

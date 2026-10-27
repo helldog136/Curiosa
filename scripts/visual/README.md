@@ -53,7 +53,7 @@ Le rapport est écrit dans `<candidate>/compare/` : `rapport.txt`, `rapport.html
 - **Largeurs** : 390, 768, 1280, 1920 px, pleine page.
 - **Langues** : français partout ; anglais pour le profil `night` (accueil, privacy, 404 et chaque page de liste).
 - **Pages** : découvertes automatiquement (plan du site ; liens internes de chaque page de liste pour les fiches : événement, album, sondage, question…) — voir `pages.mjs`. Au plus 2 fiches par module. Pages fixes ajoutées : 404.
-- **États** : menu mobile ouvert (390), sous-menu ouvert (≥ 768), bandeau de cookies ouvert (accueil et privacy, visiteur neuf), focus clavier sur le premier et le deuxième élément (accueil), page 2 des listes paginées.
+- **États** : menu mobile ouvert (390), sous-menu ouvert (≥ 768), bandeau de cookies ouvert (accueil et privacy, visiteur neuf), formulaire de contact en erreur (accueil), focus clavier sur le premier et le deuxième élément (accueil), page 2 des listes paginées.
 - **Contenu de démonstration** (`seed/`) : les 70 modules du catalogue sont installés ; ceux qui ont une page publique ont du contenu réaliste (blog de 14 billets bilingues avec pagination, notes, événements à venir / passés / complet / annulé / répété, galeries, FAQ, sondages, planning en 7 apparences, avis, carte, vidéos, annuaire, remerciements, soutiens, jeu du jour, mascotte, commandes, suggestions, mentions légales, compte à rebours…), plus des instances vides (page vide) pour le blog, les événements.
 
 ### Exclusions assumées (listées, non capturées)
@@ -88,7 +88,7 @@ Le manifeste (`manifest.json` de chaque capture) liste les pages découvertes, l
 ## Ajouter une page ou un état
 
 - **Une page de module** : rien à faire si elle est dans le plan du site ou liée depuis une page de liste. Sinon, ajoutez du contenu dans `seed/modules/<module>.mjs` (une fonction `export default async (h, instance) => {}` ; `h.act(module, action, valeurs)` appelle les mêmes actions que l'administration, avec les mêmes validations), puis `visual:prepare` **et refaites la référence**.
-- **Un état** (formulaire en erreur, panneau ouvert…) : ajoutez-le dans `STATES` (`pages.mjs`) : `when(page)`, `widths`, `fresh` (visiteur sans cookie de choix), `run(onglet)` ; ou `FORM_ERRORS` pour un formulaire envoyé vide.
+- **Un état** (formulaire en erreur, panneau ouvert…) : ajoutez-le dans `STATES` (`pages.mjs`) : `when(page)`, `widths`, `fresh` (visiteur sans cookie de choix), `run(onglet)` ; (exemple : `form-error`, le formulaire de contact de l'accueil envoyé avec une adresse refusée).
 - **Un jeu de réglages** (nouveau thème, nouvelle mise en page) : une entrée dans `profiles.mjs` (`@fr:clé` / `@en:clé` pour un réglage traduit).
 - Toute modification du harnais ou du contenu change la référence : refaire référence **et** candidate.
 

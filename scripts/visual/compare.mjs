@@ -31,7 +31,7 @@ if (mA.fonts !== mB.fonts) warnings.push("polices système différentes entre le
 if (mA.browser !== mB.browser) warnings.push(`Chromium différent (${mA.browser} / ${mB.browser})`);
 if (mA.now !== mB.now) warnings.push("horloge figée différente");
 
-const names = [...new Set([...ma.keys(), ...mb.keys()])].sort().filter((f) => !ONLY || f.includes(ONLY));
+const names = [...new Set([...ma.keys(), ...mb.keys()])].sort().filter((f) => !ONLY || ONLY.split(",").some((o) => f.includes(o)));
 const rows = [];
 fs.mkdirSync(path.join(OUT, "diff"), { recursive: true });
 
