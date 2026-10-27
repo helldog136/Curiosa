@@ -13,6 +13,7 @@ import { discover, crawl, selectPages, pageId, STATES, FORM_ERRORS } from "./pag
 import { loadPlaywright, chromiumPath, CHROMIUM_ARGS } from "./lib/playwright.mjs";
 import { sh } from "./lib/proc.mjs";
 import { fileURLToPath } from "node:url";
+import { demoImage } from "./lib/images.mjs";
 
 const SITE = fileURLToPath(new URL("./site.mjs", import.meta.url));
 const argv = process.argv.slice(2);
@@ -38,7 +39,17 @@ const sha = (b) => crypto.createHash("sha256").update(b).digest("hex");
 const STILL_CSS = `*,*::before,*::after{animation:none!important;animation-delay:0s!important;transition:none!important;caret-color:transparent!important;scroll-behavior:auto!important}
 html{cursor:none!important}*{cursor:none!important}::-webkit-scrollbar{display:none}`;
 const SHIM = fs.readFileSync(new URL("./lib/page-shim.js", import.meta.url), "utf8").replace("__NOW__", FIXED_NOW);
-const PLACEHOLDER = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", "base64"); // 1×1 gris : toute image tierce
+// Toute image tierce (jaquettes, miniatures, tuiles de carte, avatars) est remplacée par une illustration locale, la même à chaque fois pour la même adresse.
+const artCache = new Map();
+async function externalImage(u) {
+  const tile = u.hostname.endsWith("openstreetmap.org");
+  const key = tile ? "tile" : u.hostname + u.pathname;
+  if (!artCache.has(key)) {
+    const n = [...key].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7) % 8;
+    artCache.set(key, tile ? await demoImage(256, 256, 2, "png") : await demoImage(u.hostname.includes("rawg") ? 640 : 480, u.hostname.includes("rawg") ? 360 : 270, n));
+  }
+  return { body: artCache.get(key), contentType: tile ? "image/png" : "image/jpeg" };
+}
 
 async function newContext(browser, { width, port, consent }) {
   const ctx = await browser.newContext({
@@ -48,11 +59,11 @@ async function newContext(browser, { width, port, consent }) {
   await ctx.addInitScript(SHIM);
   if (consent) await ctx.addCookies([{ name: "curiosa_cookies", value: "no", domain: "127.0.0.1", path: "/", expires: Math.floor(Date.parse(FIXED_NOW) / 1000) + 86400 * 20 }]);
   const blocked = (ctx.blocked = new Set());
-  await ctx.route("**/*", (route) => {
+  await ctx.route("**/*", async (route) => {
     const u = new URL(route.request().url());
     if (u.hostname === "127.0.0.1" || u.protocol === "data:" || u.protocol === "blob:") return route.continue();
     blocked.add(`${u.hostname}${u.pathname}`);
-    return route.request().resourceType() === "image" ? route.fulfill({ status: 200, contentType: "image/png", body: PLACEHOLDER }) : route.abort("blockedbyclient");
+    return route.request().resourceType() === "image" ? route.fulfill({ status: 200, ...(await externalImage(u)) }) : route.abort("blockedbyclient");
   });
   return ctx;
 }
