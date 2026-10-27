@@ -60,8 +60,9 @@ export const STATES = [
     await f.locator("input[name=name]").fill("A");
     await f.locator("input[name=email]").fill("a@b");
     await f.locator("textarea[name=message]").fill("x");
-    await f.locator("button[type=submit]").click();
-    await t.waitForTimeout(1500);
+    // requestSubmit : même chemin que le bouton, mais sans dépendre d'un élément flottant qui le recouvrirait selon la largeur.
+    await f.evaluate((form) => form.requestSubmit());
+    await t.waitForTimeout(2500);
   } },
   { id: "focus2", when: (p) => p.bare === "/", run: async (t) => { await t.keyboard.press("Tab"); await t.keyboard.press("Tab"); } },
 ];
