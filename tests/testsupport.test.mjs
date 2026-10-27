@@ -118,7 +118,7 @@ const FAULTS = {
   "skin.noMasking": (f) => withSkin(f, { code: `${SKIN_CSS}\nexport const MASK = ".fm-x{opacity:var(--sk-m-full-mod-card-radius,1)}";` }),
   "skin.demo": (f) => { withSkin(f, { skin: { demo: "skin-demo.html" } }); f["skin-demo.html"] = '<li data-skin-part="full-mod.card"><script>alert(1)</script></li>'; },
   "skin.tokensUsed": (f) => withSkin(f, { tokens: [...SKIN_TOKENS, { name: "--sk-m-full-mod-card-gap", type: "length", default: "1rem" }] }),
-  "skin.textPair": (f) => withSkin(f, { tokens: SKIN_TOKENS.map(({ on, ...t }) => t) }),
+  "skin.textPair": (f) => withSkin(f, { tokens: SKIN_TOKENS.map((t) => ({ name: t.name, type: t.type, default: t.default })) }),
   "skin.declare": (f) => append(f, "index.mjs", 'export const CSS = ".fm-card{border-radius:1rem;padding:1rem;background:#222}";'),
   "routes.visitorIp": null, // vérifié à part : demande un cœur 0.2.6 (voir plus bas)
   "srp.single": null, // voir plus bas : demande un voisin
