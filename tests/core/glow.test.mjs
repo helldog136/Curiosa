@@ -67,7 +67,8 @@ test("halo : réglages normalisés — hors limites ramenés aux bornes, texte o
 });
 
 test("halo : branché sur le site, choisi dans l'admin (simple : niveaux ; avancé : réglages fins), validé côté serveur", () => {
-  assert.match(fs.readFileSync("src/app/(site)/layout.tsx", "utf8"), /glowCss\(localized\.glow\.level, localized\.glow\.custom, localized\.accent\)/);
+  assert.match(fs.readFileSync("src/core/skins/render.ts", "utf8"), /glowCss\(glowLevel, localized\.glow\.custom, theme\.accent, scope\)/, "la composition des skins écrit le halo du site");
+  assert.match(fs.readFileSync("src/app/(site)/layout.tsx", "utf8"), /resolveLook\(localized\)/);
   const page = fs.readFileSync("src/app/admin/(panel)/settings/page.tsx", "utf8");
   assert.match(page, /name="glow"/);
   for (const k of ["count", "size", "variance", "hue", "intensity", "seed"]) assert.match(page, new RegExp(`name="glow_${k}"`));

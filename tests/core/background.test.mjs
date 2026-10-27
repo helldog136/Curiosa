@@ -108,7 +108,8 @@ test("fond : les préréglages sont valides, s'adaptent au thème, et l'image de
 
 test("fond : branché sur le site et l'admin (préréglage en tous modes, description et « personnalisé » en avancé, validation avant enregistrement)", () => {
   const layout = fs.readFileSync("src/app/(site)/layout.tsx", "utf8");
-  assert.match(layout, /effectiveLayers\(localized\.bg\.preset, localized\.bg\.custom, localized\.bg\.image, localized\.bg\.svg\)/);
+  assert.match(fs.readFileSync("src/core/skins/render.ts", "utf8"), /effectiveLayers\(bg\.preset, bg\.custom, bg\.image, bg\.svg\)/, "la composition des skins lit le fond du site");
+  assert.match(layout, /resolveLook\(localized\)/);
   assert.match(layout, /className="cbg" aria-hidden="true"/);
   const page = fs.readFileSync("src/app/admin/(panel)/settings/page.tsx", "utf8");
   for (const n of ["bgPreset", "bgImage", "bgCustom"]) assert.match(page, new RegExp(`name="${n}"`));

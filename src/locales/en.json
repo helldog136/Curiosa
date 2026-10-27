@@ -1143,6 +1143,10 @@
   "navigation.groupName": "Submenu name",
   "navigation.groupEmpty": "This submenu is empty: on the item right below it, use \"Put in …\" to fill it. An empty submenu is not saved.",
   "site.menu": "Menu",
+  "site.mode.group": "Appearance",
+  "site.mode.auto": "Automatic",
+  "site.mode.light": "Light",
+  "site.mode.dark": "Dark",
   "site.socials": "Social networks",
   "settings.header": "Site header",
   "settings.headerHelp": "Choose the layout of the top of your pages. The logo, menu, languages and the elements below place themselves.",
@@ -1177,6 +1181,7 @@
   "privacy.cookies.locale": "**Language**: the site remembers the language you choose (cookie \"curiosa_locale\", 1 year). It is needed to show you the site in the right language.",
   "privacy.cookies.news": "**News**: only if you click \"Accept cookies\" in the site's banner, the site remembers in your browser the date of your last visit to flag what is new since you last came (cookies \"curiosa_news\", \"curiosa_seen\" and \"curiosa_since\", up to 1 year). Nothing is sent anywhere else. You can withdraw your consent at any time with the \"Cookies\" link in the footer: everything is then erased.",
   "privacy.cookies.choice": "**Your answer**: if you answer \"No thanks\" to the cookie banner, the site remembers that refusal (cookie \"curiosa_cookies\", 30 days) so it does not ask again on every page. If you close the banner with the Escape key, that marker only lasts for your visit. It only holds a plain \"no\" or \"later\".",
+  "privacy.cookies.mode": "**Light or dark**: when the site offers both looks and you pick one with the switch in the header, that choice is kept in your browser only (local storage \"curiosa-mode\"). It is not a cookie: it is never sent to the site or to anyone, and it only serves to show the pages the way you asked. Without a choice from you, the site follows your device setting.",
   "privacy.cookies.none": "The site sets no advertising or tracking cookie and uses no third-party measurement service.",
   "privacy.stats": "Audience measurement",
   "privacy.stats.on": "The site counts its visits anonymously: page views, most read pages and where visitors come from, as daily counters. Nothing is stored in your browser and your IP address is never recorded; to count a visitor only once a day, the server derives a single-use fingerprint from it, deleted the next day, which cannot recognise you from one day to the next. Visitors who send \"Do Not Track\" or \"Global Privacy Control\" are not counted.",
@@ -2534,10 +2539,5 @@
   "settings.colorInvalid": "Enter a color in #rrggbb format.",
   "settings.contrast.text": "Text is hard to read on this background (contrast {ratio}:1, at least 4.5:1 recommended).",
   "settings.contrast.accent": "The accent barely stands out from the background (contrast {ratio}:1, at least 3:1 recommended).",
-  "settings.contrast.accent2": "The secondary color barely stands out from the background (contrast {ratio}:1, at least 3:1 recommended).",
-  "site.mode.group": "Appearance",
-  "site.mode.auto": "Automatic",
-  "site.mode.light": "Light",
-  "site.mode.dark": "Dark",
-  "privacy.cookies.mode": "**Light or dark**: when the site offers both looks and you pick one with the switch in the header, that choice is kept in your browser only (local storage \"curiosa-mode\"). It is not a cookie: it is never sent to the site or to anyone, and it only serves to show the pages the way you asked. Without a choice from you, the site follows your device setting."
+  "settings.contrast.accent2": "The secondary color barely stands out from the background (contrast {ratio}:1, at least 3:1 recommended)."
 }

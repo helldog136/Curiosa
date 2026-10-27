@@ -1143,6 +1143,10 @@
   "navigation.groupName": "Nom du sous-menu",
   "navigation.groupEmpty": "Ce sous-menu est vide : sur l'élément placé juste en dessous, utilisez « Mettre dans … » pour le remplir. Un sous-menu vide n'est pas enregistré.",
   "site.menu": "Menu",
+  "site.mode.group": "Apparence",
+  "site.mode.auto": "Automatique",
+  "site.mode.light": "Clair",
+  "site.mode.dark": "Sombre",
   "site.socials": "Réseaux sociaux",
   "settings.header": "En-tête du site",
   "settings.headerHelp": "Choisissez la disposition du haut de vos pages. Le logo, le menu, les langues et les éléments ci-dessous s'y placent tout seuls.",
@@ -1177,6 +1181,7 @@
   "privacy.cookies.locale": "**Langue** : le site mémorise la langue que vous choisissez (cookie « curiosa_locale », 1 an). Il est nécessaire pour vous afficher le site dans la bonne langue.",
   "privacy.cookies.news": "**Nouveautés** : uniquement si vous cliquez sur « Accepter les cookies » dans le bandeau du site, il mémorise dans votre navigateur la date de votre dernière visite, pour signaler ce qui est nouveau depuis votre dernier passage (cookies « curiosa_news », « curiosa_seen » et « curiosa_since », jusqu'à 1 an). Rien n'est envoyé ailleurs. Vous pouvez retirer votre accord à tout moment avec le lien « Cookies » du pied de page : tout est alors effacé.",
   "privacy.cookies.choice": "**Votre réponse** : si vous répondez « Non merci » au bandeau de cookies, le site retient ce refus (cookie « curiosa_cookies », 30 jours) pour ne pas vous le redemander à chaque page. Si vous fermez le bandeau avec la touche Échap, ce repère ne dure que le temps de votre visite. Il ne contient qu'un simple « non » ou « plus tard ».",
+  "privacy.cookies.mode": "**Clair ou sombre** : quand le site propose les deux apparences et que vous en choisissez une avec le sélecteur de l'en-tête, ce choix est gardé dans votre navigateur seulement (stockage local « curiosa-mode »). Ce n'est pas un cookie : il n'est jamais envoyé au site ni à personne, et il ne sert qu'à vous afficher les pages comme vous l'avez demandé. Sans choix de votre part, le site suit le réglage de votre appareil.",
   "privacy.cookies.none": "Le site ne dépose aucun cookie publicitaire ni de suivi, et n'utilise aucun service tiers de mesure.",
   "privacy.stats": "Mesure d'audience",
   "privacy.stats.on": "Le site compte ses visites de façon anonyme : pages vues, pages les plus lues et sites d'où viennent les visiteurs, sous forme de compteurs par jour. Rien n'est déposé dans votre navigateur et votre adresse IP n'est jamais enregistrée ; pour ne compter qu'une fois un visiteur par jour, le serveur en tire une empreinte à usage unique, supprimée le lendemain, qui ne permet pas de vous reconnaître d'un jour à l'autre. Les visiteurs qui envoient « Do Not Track » ou « Global Privacy Control » ne sont pas comptés.",
@@ -2534,10 +2539,5 @@
   "settings.colorInvalid": "Écrivez une couleur au format #rrggbb.",
   "settings.contrast.text": "Le texte est peu lisible sur ce fond (contraste {ratio}:1, au moins 4,5:1 conseillé).",
   "settings.contrast.accent": "L'accent se distingue mal du fond (contraste {ratio}:1, au moins 3:1 conseillé).",
-  "settings.contrast.accent2": "La couleur secondaire se distingue mal du fond (contraste {ratio}:1, au moins 3:1 conseillé).",
-  "site.mode.group": "Apparence",
-  "site.mode.auto": "Automatique",
-  "site.mode.light": "Clair",
-  "site.mode.dark": "Sombre",
-  "privacy.cookies.mode": "**Clair ou sombre** : quand le site propose les deux apparences et que vous en choisissez une avec le sélecteur de l'en-tête, ce choix est gardé dans votre navigateur seulement (stockage local « curiosa-mode »). Ce n'est pas un cookie : il n'est jamais envoyé au site ni à personne, et il ne sert qu'à vous afficher les pages comme vous l'avez demandé. Sans choix de votre part, le site suit le réglage de votre appareil."
+  "settings.contrast.accent2": "La couleur secondaire se distingue mal du fond (contraste {ratio}:1, au moins 3:1 conseillé)."
 }

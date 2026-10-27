@@ -20,9 +20,12 @@ test("hasAccent2 : seulement si accent2 est défini et différent de l'accent", 
 });
 
 test("l'attribut data-accent2 n'est posé que si hasAccent2, jamais en dur", () => {
-  assert.match(layout, /data-accent2=\{two \? "1" : undefined\}/);
-  assert.match(layout, /const two = hasAccent2\(localized\)/);
-  assert.match(layout, /data-surface=\{hasChosenSurface\(localized\)/);
+  assert.match(layout, /data-accent2=\{look\.composed\.hasAccent2 \? "1" : undefined\}/);
+  assert.match(layout, /data-surface=\{look\.composed\.hasChosenSurface \? "1" : undefined\}/);
+  // la composition applique la même règle que hasAccent2 / hasChosenSurface (tests/core/skins-compose.test.mjs le prouve sur 400 combinaisons)
+  const compose = read("src/core/skins/compose.ts");
+  assert.match(compose, /a\.toLowerCase\(\) !== b\.toLowerCase\(\)/);
+  assert.match(compose, /isHexColor\(r\?\.surface\)/);
 });
 
 test("règles CSS visuelles toutes scopées sur data-accent2 / data-surface", () => {

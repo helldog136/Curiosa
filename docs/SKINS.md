@@ -1,6 +1,6 @@
 # Les skins de Curiosa : le contrat
 
-> Statut : **conception (phase 1)**, rien n'est implémenté. Ce document est le contrat lu par (1) les auteurs de skins et (2) l'agent qui implémentera le mécanisme. Cœur de référence : v0.2.14 (master `a409ebb`) ; modules de référence : `curiosa-extras` v1.22.0. Les constats chiffrés qui fondent les choix sont dans `docs/ideas/skins-exploration.md`, le découpage en lots dans `docs/ideas/skins-effort.md`.
+> Statut : **conception, avec le lot S1 implémenté** : les jetons (`src/core/skins/tokens.ts`), le skin `basic` embarqué (`src/core/skins/basic/`), la composition (`compose.ts`, `sheet.ts`, `render.ts`), les retouches des deux modes (`retouch.ts`) et la bascule clair/sombre du visiteur (`modeScript.ts`, `src/components/site/ModeSwitch.tsx`) sont dans le cœur ; l'assainisseur et la lisibilité (lot S6) aussi. Pas encore faits : DOM stable et régions (S2), composants par les jetons (S3), pièces des modules (S4, l'interface est prête : `moduleParts.ts`), installation depuis un dépôt (S5), page Apparence (S7), kit et banc d'essai (S8). Cœur de référence : v0.3.0 ; modules de référence : `curiosa-extras` v1.22.0. Les constats chiffrés qui fondent les choix sont dans `docs/ideas/skins-exploration.md`, le découpage en lots dans `docs/ideas/skins-effort.md`.
 >
 > Les noms techniques (jetons, attributs, clés JSON, fichiers) sont en anglais comme dans le reste du dépôt ; le texte est en français. Aucun nom de site réel n'apparaît ici ni ne doit apparaître dans un skin, un test ou un texte par défaut.
 
@@ -209,26 +209,27 @@ La personne **choisit** (réglage `theme.palette`) :
 
 ### 4.2 Les jetons communs (valeurs de basic = apparence ACTUELLE, à l'identique)
 
-La colonne « Basic » donne la valeur exacte à fixer pour que `basic` reproduise le rendu actuel. Les valeurs Tailwind sont celles de Tailwind 4.3.3 (`--radius-xl: .75rem`…). Un rendu identique est **vérifié par comparaison d'images** (§12).
+La colonne « Basic » donne la valeur exacte à fixer pour que `basic` reproduise le rendu actuel. Les valeurs de basic ont été **relevées dans le CSS compilé** et `tailwindcss/theme.css` 4.3.3 (les premières versions de ce tableau étaient écrites de mémoire : surface, texte secondaire, filets et pile monospace étaient inexacts) ; `tests/core/skins-tokens.test.mjs` compare chaque valeur reliée à Tailwind à `theme.css`. Un rendu identique est **vérifié par comparaison d'images** (§12).
 
 **Couleurs** (existantes ; le skin donne les 5 de base, les autres sont facultatives et dérivées sinon)
 
 | Jeton | Rôle | Basic (sombre actuel) | Obligatoire dans le skin ? |
 |---|---|---|---|
 | `--v-bg` | fond de page | `#121214` | oui |
-| `--v-surface` | fond des cartes et panneaux | `#1c1c1f` (dérivé : fond + 6 % de texte ; `#1d1d21` dans la palette « night ») | oui |
+| `--v-surface` | fond des cartes et panneaux | `#202022` (dérivé : fond + 6 % de texte, `buildPalette`) | oui |
 | `--v-fg` | texte | `#f4f4f5` | oui |
 | `--v-accent` | couleur de marque, liens, boutons | `#e8a23b` | oui |
-| `--v-accent2` | accent secondaire (= `--v-accent` si non choisi) | `var(--v-accent)` | non |
-| `--v-muted` | texte secondaire | dérivé (≥ 4,5:1) | non (dérivé) |
-| `--v-line` | filets et bordures | dérivé (`mix(bg, fg, 0.16)`) | non (dérivé) |
+| `--v-accent2` | accent secondaire (= `--v-accent` si non choisi) | `var(--v-accent)` (la feuille écrit la couleur effective) | non |
+| `--v-muted` | texte secondaire | `#9e9ea0` (dérivé, ≥ 4,5:1) | non (dérivé) |
+| `--v-line` | filets et bordures | `#363638` (dérivé : `mix(bg, fg, 0.16)`) | non (dérivé) |
 | `--v-accent-fg`, `--v-accent2-fg` | texte sur l'accent | noir `#111111` ou blanc, meilleur contraste | non (dérivé) |
 | `--v-success`, `--v-warning`, `--v-danger` (+ `-fg`) | états | `#4ade80` / `#fbbf24` / `#f87171` (sombre) ; `#15803d` / `#b45309` / `#b91c1c` (clair) | non (dérivé) |
-| `--v-gradient` | dégradé accent → accent2 | `linear-gradient(120deg, accent, accent2)` | non |
+| `--v-gradient` | dégradé accent → accent2 | `linear-gradient(120deg, #e8a23b, #e8a23b)` ; si les deux accents diffèrent, la feuille l'écrit en sRGB puis l'améliore en OKLCH (`@supports`) | non |
 | `--sk-color-focus` | anneau de focus | `var(--v-accent)` | non |
 | `--sk-color-link` | liens dans le texte | `var(--v-accent)` | non |
 | `--sk-color-veil` | voile sur image (blocs « panneau ») | `rgb(0 0 0 / .55)` | non |
-| `--sk-color-selection` | sélection de texte | (navigateur) | non |
+| `--sk-color-selection` | sélection de texte | (navigateur : basic ne le fixe pas) | non |
+| `--sk-color-heading` | titres (Q-C : facultatif ; défini, contrôlé à 3:1) | (non fixé par basic) | non |
 
 Le cœur **n'impose pas** de calculer les couleurs dérivées : un skin peut les fixer toutes (`tokens.json` §5.4). S'il les laisse vides, `buildPalette()` les dérive des couleurs effectives (comportement actuel).
 
@@ -238,11 +239,11 @@ Le cœur **n'impose pas** de calculer les couleurs dérivées : un skin peut les
 |---|---|---|
 | `--v-font` | police du texte (pile) | `ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif` |
 | `--sk-font-heading` | police des titres | `var(--v-font)` |
-| `--sk-font-mono` | police du code | `ui-monospace, SFMono-Regular, Menlo, Consolas, monospace` |
-| `--sk-text-xs` / `-sm` / `-base` / `-lg` / `-xl` / `-2xl` / `-3xl` / `-4xl` / `-5xl` | tailles | `.75rem` / `.875rem` / `1rem` / `1.125rem` / `1.25rem` / `1.5rem` / `1.875rem` / `2.25rem` / `3rem` |
+| `--sk-font-mono` | police du code | `ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace` (relevée dans Tailwind 4.3.3) |
+| `--sk-text-xs` / `-sm` / `-base` / `-lg` / `-xl` / `-2xl` / `-3xl` / `-4xl` / `-5xl` / `-6xl` | tailles | `.75rem` / `.875rem` / `1rem` / `1.125rem` / `1.25rem` / `1.5rem` / `1.875rem` / `2.25rem` / `3rem` / `3.75rem` |
 | `--sk-leading-body` | interligne du texte courant | `1.75rem` (= `leading-7`) |
-| `--sk-weight-medium` / `-semibold` / `-bold` / `-extrabold` | graisses | `500` / `600` / `700` / `800` |
-| `--sk-tracking-tight` / `-wide` | espacement des lettres | `-0.025em` / `0.025em` |
+| `--sk-weight-normal` / `-medium` / `-semibold` / `-bold` / `-extrabold` | graisses | `400` / `500` / `600` / `700` / `800` |
+| `--sk-tracking-tight` / `-wide` / `-wider` / `-widest` | espacement des lettres | `-.025em` / `.025em` / `.05em` / `.1em` |
 | `--sk-heading-transform` | `none` ou `uppercase` pour les titres | `none` |
 | `--sk-eyebrow-transform` | casse de la petite ligne au-dessus d'un titre | `uppercase` |
 
@@ -262,7 +263,7 @@ Le cœur **n'impose pas** de calculer les couleurs dérivées : un skin peut les
 
 | Jeton | Basic |
 |---|---|
-| `--sk-radius-sm` / `-md` / `-lg` / `-xl` / `-2xl` / `-full` | `.25rem` / `.375rem` / `.5rem` / `.75rem` / `1rem` / `9999px` |
+| `--sk-radius-sm` / `-md` / `-lg` / `-xl` / `-2xl` / `-3xl` / `-full` | `.25rem` / `.375rem` / `.5rem` / `.75rem` / `1rem` / `1.5rem` / `9999px` |
 | `--sk-radius-card` | `var(--sk-radius-xl)` |
 | `--sk-radius-panel` | `var(--sk-radius-2xl)` |
 | `--sk-radius-button` | `var(--sk-radius-full)` |
@@ -273,7 +274,7 @@ Le cœur **n'impose pas** de calculer les couleurs dérivées : un skin peut les
 | `--sk-border-width-strong` | `2px` |
 | `--sk-border-style` | `solid` |
 | `--sk-shadow-card` | `none` (avec `data-accent2`/`data-surface` : l'ombre actuelle, conservée) |
-| `--sk-shadow-raised` | `0 10px 15px -3px rgb(0 0 0 / .1), 0 4px 6px -4px rgb(0 0 0 / .1)` (= `shadow-lg`) |
+| `--sk-shadow-raised` | `0 10px 15px -3px #0000001a, 0 4px 6px -4px #0000001a` (= `shadow-lg`, comme le CSS compilé) |
 | `--sk-shadow-pop` | `var(--sk-shadow-raised)` (sous-menus, menu de l'en-tête sobre) |
 | `--sk-glow` | `none` (lueur appliquée aux pièces qui l'acceptent : bouton, carte survolée, titre) |
 
@@ -1015,5 +1016,23 @@ Ordre recommandé : harnais d'images **d'abord** (sinon aucune preuve) → jeton
 **Encore ouverte (courte)** :
 
 - **Q-A** Version du cœur qui livre les skins : `0.4.0` retenu comme espace réservé ; **ou `1.0.0`** ? À confirmer par le propriétaire (tous les `minCore` d'exemple changent en conséquence).
-- **Q-B** (soulevée par le lot S6) : la feuille d'un skin ne peut pas cibler le choix manuel du visiteur (`data-mode`, §3.8), car `data-mode` n'est pas dans la liste des attributs permis (§6.1) ; un `@media (prefers-color-scheme: dark)` dans la feuille suit donc l'appareil, pas le choix du visiteur. Proposition : autoriser, comme qualificatif de tête de sélecteur, `[data-mode="light"]` / `[data-mode="dark"]` (posé sur la racine, déjà sous le préfixe `:root[data-skin]`), et laisser les jetons faire le reste. À trancher avant d'écrire les skins à deux modes.
-- **Q-C** (soulevée par le lot S6) : la paire 12 (§7.1, « titres ») n'a pas de jeton à mesurer. Le lot S6 contrôle un jeton facultatif `--sk-color-heading` au seuil 3:1 ; à confirmer (l'ajouter au vocabulaire du §4.2) ou à supprimer.
+- **Q-B** (tranchée, implémentée au lot S1) : la feuille d'un skin PEUT cibler le choix du visiteur : `[data-mode="light"]` / `[data-mode="dark"]` est permis **en tête de sélecteur seulement**, seul ou après le préfixe `:root[data-skin="<id>"]` ; la sortie est `:root[data-skin="<id>"][data-mode="dark"] …`. Ailleurs, `data-mode` reste refusé. `data-mode` est absent en « Automatique » : pour le mode de l'appareil, un skin utilise ses jetons `light`/`dark`.
+- **Q-C** (tranchée) : `--sk-color-heading` est un jeton **facultatif** ; défini, la paire « titres » est contrôlée à 3:1, sinon ignorée.
+
+---
+
+## 20. Notes de mise en œuvre du lot S1 (jetons, basic, composition, bascule)
+
+| Sujet | Où | Précisions |
+|---|---|---|
+| Vocabulaire des jetons | `src/core/skins/tokens.ts` | 87 jetons (§4.2), un type et une propriété CSS « représentative » chacun ; `validateTokenValue()` = sûreté de la feuille + forme du type + **mêmes bornes que l'assainisseur** (texte ≥ 0,6875 rem, durée ≤ 600 ms, cible ≥ 2,75 rem…). Jeton inconnu : ignoré sans erreur ; valeur refusée : repli sur basic + avertissement ; les `var()` sont suivis (`literalOf`) et la valeur finale contrôlée. Ajouts : `--sk-text-6xl`, `--sk-weight-normal`, `--sk-tracking-wider/-widest`, `--sk-radius-3xl`, `--sk-color-heading`. `--sk-shell-areas` accepte des chaînes. |
+| Basic | `src/core/skins/basic/` | `skin.json`, `tokens.json`, `skin.css` (vide). Un seul mode (sombre), pas de `color-scheme`, `deriveFromBackground` : retoucher fond/accent/texte/cartes donne `buildPalette(…)` comme avant les skins (400 combinaisons testées). |
+| Liaison Tailwind | `src/app/globals.css` | `@theme inline` : 30 échelles avec pour repli la valeur de Tailwind ; focus et accueil fluide aussi. L'administration n'a pas de `--sk-*`. Seul écart compilé : `shadow-lg` n'injecte plus `--tw-shadow-color` (aucune ombre colorée utilisée). |
+| Composition | `compose.ts` (pure), `sheet.ts`, `render.ts`, `folder.ts` | basic < pièces des modules (`moduleParts.ts`, vide) < skin actif < retouches. Cache borné dont la clé contient tout ; aucun minuteur ; `invalidateSkinCache()` / `invalidateSkinFiles()` pour l'installation. |
+| Retouches | `retouch.ts` | `theme.*` inchangés ; `theme.palette` et `theme.light.*` / `theme.dark.*` lus et composés (écran de saisie : S7). En « un seul mode », un fond retouché rend le site mono-mode (luminance) ; sans fond retouché, les autres couleurs vont aux deux modes. |
+| Lisibilité | `compose.ts` | `correctReadability()` par mode d'un skin (jamais basic) ; irrécupérable = couleurs de basic pour ce mode, notice dans `Composed.notices` (affichage : S7). |
+| Bascule | `modeScript.ts`, `src/app/skins/mode.js/route.ts`, `ModeSwitch.tsx`, `Header.tsx` | §3.8. `/skins` est un chemin réservé. Pièce posée à côté du sélecteur de langue (la région `tools` viendra avec S2). Logos : deux `<img data-for>` par rôle si les deux variantes existent. |
+| Confidentialité | `privacy.ts`, `docs/PRIVACY.md` | La ligne « Clair ou sombre » n'est ajoutée à `/privacy` que si la bascule existe : basic ne change pas la page. |
+| Sauvegarde | réglages génériques | `skin.active`, `skin.installed`, `skin.options`, `theme.*` sont des réglages : déjà sauvegardés/restaurés (testé). Absents = basic. Les fichiers des skins ne sont pas sauvegardés (S5 les réinstalle). |
+
+Laissé aux lots suivants : saisie des deux modes et encadré de lisibilité (S7), installation (S5 : écrit `skin.installed`), DOM stable / région `tools` (S2), jetons non encore consommés par les composants (S3), registre des pièces de modules (S4).

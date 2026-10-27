@@ -95,6 +95,12 @@
   }
 }
 
+/* Logo à deux variantes (clair / sombre), rendues en deux <img data-for> quand le site propose la bascule du visiteur (docs/SKINS.md §3.8) : le cœur montre
+   la bonne selon le mode effectif (choix du visiteur, sinon appareil) ; un skin n'y touche pas. Sans <img data-for>, rien ne s'applique. */
+:root[data-mode="light"] img[data-for="dark"], :root[data-mode="dark"] img[data-for="light"] { display: none; }
+@media (prefers-color-scheme: dark) { :root:not([data-mode]) img[data-for="light"] { display: none; } }
+@media (prefers-color-scheme: light), (prefers-color-scheme: no-preference) { :root:not([data-mode]) img[data-for="dark"] { display: none; } }
+
 /* Accueil fluide : les morceaux s'écoulent à la ligne, chacun avec une taille naturelle (voir src/core/home.ts). */
 .vh-flow { display: flex; flex-wrap: wrap; gap: var(--sk-flow-gap, 2rem 1.5rem); align-items: stretch; }
 .vh-cell { min-width: 0; flex: 1 1 var(--vh-basis); max-width: min(100%, var(--vh-max)); }
@@ -121,12 +127,6 @@
 @keyframes cookie-tray-out { from { transform: translateY(0); opacity: 1; } to { transform: translateY(100%); opacity: 0; } }
 .cookie-tray { animation: cookie-tray-in 360ms cubic-bezier(0.22, 1, 0.36, 1) both; }
 .cookie-tray[data-closing] { animation: cookie-tray-out 200ms ease-in both; }
-
-/* Logo à deux variantes (clair / sombre), rendues en deux <img data-for> quand le site propose la bascule du visiteur (docs/SKINS.md §3.8) : le cœur montre
-   la bonne selon le mode effectif (choix du visiteur, sinon appareil) ; un skin n'y touche pas. Sans <img data-for>, rien ne s'applique. */
-:root[data-mode="light"] img[data-for="dark"], :root[data-mode="dark"] img[data-for="light"] { display: none; }
-@media (prefers-color-scheme: dark) { :root:not([data-mode]) img[data-for="light"] { display: none; } }
-@media (prefers-color-scheme: light), (prefers-color-scheme: no-preference) { :root:not([data-mode]) img[data-for="dark"] { display: none; } }
 
 /* Accent secondaire choisi (attribut data-accent2 posé sur <html> seulement si accent2 est défini ET différent de l'accent) :
    boutons pleins, accents de détail, dégradé. Sans cet attribut, rien ci-dessous ne s'applique et le site garde son apparence d'origine (règle 60-30-10 : le secondaire reste dans les petits détails). */

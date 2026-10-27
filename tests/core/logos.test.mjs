@@ -43,7 +43,8 @@ test("logos : branchés — en-tête (horizontal / icône), favicon, partage, do
   const read = (p) => fs.readFileSync(p, "utf8");
   const header = read("src/components/site/Header.tsx");
   assert.match(header, /pickLogo\(config\.logos, "wide", dark\)/);
-  assert.match(header, /hidden sm:block/, "horizontal sur grand écran, icône sur téléphone");
+  assert.match(header, /<BrandLogos name=\{config\.name\} wide=\{wide\} icon=\{icon\}/);
+  assert.match(read("src/components/site/BrandLogos.tsx"), /hidden sm:block/, "horizontal sur grand écran, icône sur téléphone");
   const layout = read("src/app/(site)/layout.tsx");
   assert.match(layout, /pickLogo\(config\.logos, "favicon", false\)/);
   assert.match(layout, /pickLogo\(config\.logos, "share", false\)/);

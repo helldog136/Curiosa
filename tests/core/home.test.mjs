@@ -42,7 +42,7 @@ test("accueil fluide : aucun réglage de colonnes ni de hauteur — seulement l'
 
 test("accueil fluide : les tailles vont du petit encart à la pleine largeur, dans l'ordre croissant", () => {
   const css = fs.readFileSync("src/app/globals.css", "utf8");
-  const basis = (z) => css.match(new RegExp(`\\.vh-${z}\\s*\\{\\s*--vh-basis:\\s*([\\d.]+)(rem|%)`));
+  const basis = (z) => css.match(new RegExp(`\\.vh-${z}\\s*\\{\\s*--vh-basis:\\s*(?:var\\(--sk-vh-${z}-basis,\\s*)?([\\d.]+)(rem|%)`));
   const [small, medium, large] = ["small", "medium", "large"].map((z) => Number(basis(z)[1]));
   assert.ok(small < medium && medium < large);
   assert.equal(basis("full")[1], "100");
