@@ -101,6 +101,7 @@ async function stableShot(tab) {
 }
 
 const tasks = [];
+const ctxs_close = [];
 let browser;
 function addTask(t) { if (!only || only.split(",").some((o) => `${t.profile}/${t.locale}/${t.id}`.includes(o))) tasks.push(t); }
 
@@ -142,7 +143,10 @@ async function runTaskInner(ctxFor, t, port) {
     }
   } catch (e) {
     manifest.shots.push({ file: null, profile: t.profile, locale: t.locale, width: t.width, page: t.path, id: t.id, state: t.state?.id ?? null, status, error: String(e.message).slice(0, 300) });
-  } finally { await Promise.race([tab.close().catch(() => {}), new Promise((r) => setTimeout(r, 5000))]); }
+  } finally {
+    await Promise.race([tab.close().catch(() => {}), new Promise((r) => setTimeout(r, 5000))]);
+    if (process.env.VISUAL_CTX !== "shared") { for (const b of ctx.blocked) manifest.excluded.push({ profile: t.profile, blockedExternal: b }); ctxs_close.push(ctx); await Promise.race([ctx.close().catch(() => {}), new Promise((r) => setTimeout(r, 5000))]); }
+  }
 }
 
 async function pool(list, fn, n) {
@@ -184,7 +188,13 @@ for (const profile of profiles) {
     }
     // Un contexte par (largeur, visiteur neuf ou non) ; les tâches de même largeur partagent la même fenêtre mais chaque page a son onglet.
     const ctxs = new Map();
-    const ctxFor = async (width, fresh) => { const k = `${width}|${fresh ? 1 : 0}`; if (!ctxs.has(k)) ctxs.set(k, newContext(browser, { width, port, consent: !fresh })); return ctxs.get(k); };
+    // Un contexte (= une fenêtre de navigateur) par capture : des onglets simultanés d'un même contexte se disputent la visibilité et le cache de décodage des images, ce qui
+    // faisait varier de quelques niveaux de gris le rééchantillonnage des photos réduites. `VISUAL_CTX=shared` rétablit un contexte par largeur (plus rapide, moins fiable).
+    const SHARED = process.env.VISUAL_CTX === "shared";
+    const ctxFor = async (width, fresh) => {
+      if (!SHARED) { const c = await newContext(browser, { width, port, consent: !fresh }); ctxs.set(c, Promise.resolve(c)); return c; }
+      const k = `${width}|${fresh ? 1 : 0}`; if (!ctxs.has(k)) ctxs.set(k, newContext(browser, { width, port, consent: !fresh })); return ctxs.get(k);
+    };
     let done = 0;
     for (let round = 0; round < 3; round++) {
       const batch = tasks.splice(0);
