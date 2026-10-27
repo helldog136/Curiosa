@@ -14,7 +14,7 @@ import Link from "next/link";
 import { CatalogueSearch } from "@/components/admin/CatalogueSearch";
 import { ActionForm } from "@/components/admin/ActionForm";
 import { ConfirmButton } from "@/components/admin/ConfirmButton";
-import { discoverModules, listSources, sourceAddress, type SourceModule } from "@/core/modules/sources";
+import { discoverModules, isTruncated, listSources, sourceAddress, type SourceModule } from "@/core/modules/sources";
 import { buildNames, viewPlan, type PlanView } from "@/core/modules/dependencyView";
 import { DependencyPlanBox } from "@/components/admin/DependencyPlanBox";
 import { EXTENSIONS_HREF } from "@/core/modules/extensionsLinks";
@@ -144,6 +144,8 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
               {modules === null ? <p className="text-sm text-muted">{t("catalogue.sources.unreachable")}</p>
                 : modules.length === 0 ? <p className="text-sm text-muted">{t("catalogue.sources.none")}</p>
                 : (
+                  <>
+                  {isTruncated(modules) && <p className="text-sm text-amber-700 dark:text-amber-300" role="status">{t("catalogue.sources.truncated", { count: String(modules.length) })}</p>}
                   <ul className="grid gap-3 sm:grid-cols-2">
                     {modules.map((m) => (
                       <li key={m.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-bg p-3">
@@ -154,6 +156,7 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
                       </li>
                     ))}
                   </ul>
+                  </>
                 )}
             </div>
           ))}

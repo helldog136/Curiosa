@@ -74,10 +74,16 @@ test("dépôts : https sur un hôte autorisé, avec ou sans .git et référence"
 
 test("dépôts : refus des protocoles, hôtes, identifiants et chemins inattendus", () => {
   const err = (s) => { const r = parseRepoUrl(s); assert.ok(!r.ok, s); return r.error; };
-  assert.equal(err("http://github.com/a/b"), "modules.error.url");
+  // Une cause = un message (avec exemple) : voir les textes modules.error.url* (http, www., identifiants, ?paramètres, page du dépôt).
+  assert.equal(err("http://github.com/a/b"), "modules.error.urlHttp");
   assert.equal(err("ssh://git@github.com/a/b"), "modules.error.url");
-  assert.equal(err("https://user:pw@github.com/a/b"), "modules.error.url");
-  assert.equal(err("https://github.com/a/b?x=1"), "modules.error.url");
+  assert.equal(err("git@github.com:a/b.git"), "modules.error.url");
+  assert.equal(err("https://user:pw@github.com/a/b"), "modules.error.urlCreds");
+  assert.equal(err("https://github.com/a/b?x=1"), "modules.error.urlQuery");
+  assert.equal(err("https://www.github.com/a/b"), "modules.error.urlWww");
+  assert.equal(err("https://github.com/a/b/tree/master/examples/x"), "modules.error.urlPage");
+  assert.equal(err("https://github.com/a/b/blob/main/README.md"), "modules.error.urlPage");
+  assert.equal(err("https://www.evil.example/a/b"), "modules.error.host");
   assert.equal(err("https://github.com/a"), "modules.error.url");
   assert.equal(err("https://github.com/a/b/c/d/e"), "modules.error.url");
   assert.equal(err("https://evil.example/a/b"), "modules.error.host");
@@ -244,3 +250,17 @@ test("registre : les instances actives sont celles des modules installés et cha
   void a;
 });
 
+
+test("dépôts : chaque erreur d'adresse a un message simple, en français et en anglais, avec un exemple d'adresse", async () => {
+  const fs = await import("node:fs");
+  const fr = JSON.parse(fs.readFileSync(new URL("../../src/locales/fr.json", import.meta.url), "utf8"));
+  const en = JSON.parse(fs.readFileSync(new URL("../../src/locales/en.json", import.meta.url), "utf8"));
+  for (const code of ["url", "urlHttp", "urlWww", "urlCreds", "urlQuery", "urlPage", "host", "local", "ref", "subdir"]) {
+    for (const [lang, t] of [["fr", fr], ["en", en]]) {
+      const msg = t[`modules.error.${code}`];
+      assert.ok(msg, `${lang} ${code}`);
+      assert.ok(!/MODULES_ALLOWED_HOSTS|tag|module\.json/i.test(msg), `${lang} ${code} : pas de jargon (${msg})`);
+      assert.match(msg, /https:\/\/github\.com\/(nom|name)\/(depot|repo)|https:\/\/github\.com/, `${lang} ${code} : un exemple d'adresse`);
+    }
+  }
+});

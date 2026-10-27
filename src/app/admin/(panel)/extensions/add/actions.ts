@@ -5,6 +5,7 @@ import { adminCtx } from "@/core/admin";
 import { revalidatePath } from "next/cache";
 import { clearRecognizedCache } from "@/core/modules/recognized";
 import { installFromCatalogue, installModule } from "@/core/modules/installer";
+import { forgetModulesReport } from "@/core/modules/updateStatus";
 import { addSource, clearSourcesCache, removeSource } from "@/core/modules/sources";
 import { audit } from "@/core/permissions";
 import { buildNames } from "@/core/modules/dependencyView";
@@ -29,6 +30,7 @@ async function afterInstall(id: string, restored: string[] | undefined, locale: 
 export async function installFromCatalogueAction(id: string): Promise<void> {
   const { user, locale, config } = await adminCtx("owner");
   const result = await installFromCatalogue(id);
+  forgetModulesReport();
   if (!result.ok) redirect(`${EXTENSIONS_ADD_HREF}?error=${encodeURIComponent(result.error)}`);
   for (const provided of result.provided ?? []) await audit(user.email, "module.install.auto", provided);
   await audit(user.email, "module.install", id);
@@ -42,6 +44,7 @@ export async function installModuleAction(id: string, opId?: string): Promise<{ 
   const run = await trackOperation(user, { kind: "install", key: `install:${String(id).slice(0, 60)}`, opId: opIdOf(opId) }, () => installFromCatalogue(id), (r) => ({ ok: r.ok, error: r.ok ? undefined : r.error }));
   if (run.busy) return { ok: false, error: t("progress.busy") };
   const result = run.result;
+  forgetModulesReport();
   if (!result.ok) {
     // Un fournisseur qui n'a pas pu être mis en place : on dit lequel et pourquoi (le bouton affiche ce message).
     if (result.missing?.length) {
@@ -68,6 +71,7 @@ export async function installExtraAction(_prev: ActionState, formData: FormData)
   const run = await trackOperation(user, { kind: "install", key: `install:${id.slice(0, 60)}`, opId: opIdOf(formData.get("_op")) }, () => installFromCatalogue(id, { confirmExtra: true }), (r) => ({ ok: r.ok, error: r.ok ? undefined : r.error }));
   if (run.busy) return { error: t("progress.busy") };
   const result = run.result;
+  forgetModulesReport();
   if (!result.ok) return { error: result.missing?.length ? describeMissingList(result.missing, t, await buildNames(locale, config.defaultLocale)).join(" ") : t(result.error, { services: result.detail ?? "", modules: result.detail ?? "" }) };
   for (const provided of result.provided ?? []) await audit(user.email, "module.install.auto", provided);
   await audit(user.email, "module.install", id);
@@ -82,6 +86,7 @@ export async function installCustomAction(_prev: ActionState, formData: FormData
   const run = await trackOperation(user, { kind: "install", key: `install-custom:${repo.slice(0, 200)}`, opId: opIdOf(formData.get("_op")) }, () => installModule(repo), (r) => ({ ok: r.ok, error: r.ok ? undefined : r.error }));
   if (run.busy) return { error: t("progress.busy") };
   const result = run.result;
+  forgetModulesReport();
   if (!result.ok) return { error: result.missing?.length ? describeMissingList(result.missing, t, await buildNames(locale, config.defaultLocale)).join(" ") : t(result.error) };
   for (const provided of result.provided ?? []) await audit(user.email, "module.install.auto", provided);
   await audit(user.email, "module.install.custom", result.id);

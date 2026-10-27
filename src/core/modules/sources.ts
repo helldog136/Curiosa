@@ -22,7 +22,8 @@ export type SourceModule = {
 
 const KEY = "modules.sources";
 export const MAX_SOURCES = 10;
-const MAX_MODULES = 60;
+/** Modules listés par dépôt. 200 : de quoi tenir le plus gros dépôt officiel (une soixantaine de modules, 72 avec les exemples) avec de la marge ; coût : un clone superficiel, au plus 200 petits module.json lus, et ≤ 200 lignes gardées 10 minutes par dépôt (10 dépôts au plus). Au-delà, la liste est coupée ET le dit (`isTruncated`). */
+export const MAX_MODULES = 200;
 const SKIP = new Set([".git", "node_modules"]);
 
 export async function listSources(): Promise<Source[]> {
@@ -35,19 +36,24 @@ export async function listSources(): Promise<Source[]> {
 }
 
 /** Cherche les dossiers qui contiennent un `module.json` (3 niveaux au plus, comme le permet l'adresse `#ref:dossier`). */
-function findModuleDirs(root: string, rel = "", depth = 0): string[] {
+function findModuleDirs(root: string, rel = "", depth = 0, state = { truncated: false }): string[] {
   const out: string[] = [];
   if (fs.existsSync(path.join(root, rel, "module.json"))) out.push(rel);
   if (depth >= 3 || (rel === "" && out.length)) return out;
-  for (const e of fs.readdirSync(path.join(root, rel), { withFileTypes: true })) {
+  for (const e of fs.readdirSync(path.join(root, rel), { withFileTypes: true }).sort((a, b) => (a.name < b.name ? -1 : 1))) {
     if (!e.isDirectory() || e.isSymbolicLink() || SKIP.has(e.name) || e.name.startsWith(".")) continue;
     const sub = rel ? `${rel}/${e.name}` : e.name;
     if (!isSubdir(sub)) continue;
-    out.push(...findModuleDirs(root, sub, depth + 1));
-    if (out.length >= MAX_MODULES) break;
+    if (out.length >= MAX_MODULES) { state.truncated = true; break; }
+    out.push(...findModuleDirs(root, sub, depth + 1, state));
   }
+  if (out.length > MAX_MODULES) { out.length = MAX_MODULES; state.truncated = true; }
   return out;
 }
+
+const truncatedLists = new WeakSet<object>();
+/** La liste de ce dépôt a-t-elle été coupée à MAX_MODULES ? (pour le dire, au lieu de cacher des modules). */
+export const isTruncated = (list: readonly SourceModule[] | null | undefined): boolean => !!list && truncatedLists.has(list);
 
 const memo = new Map<string, { at: number; modules: SourceModule[] }>();
 const TTL = 10 * 60_000;
@@ -71,7 +77,8 @@ export async function discoverModules(repo: ParsedRepo, opts: { fresh?: boolean;
     });
     await git(["-c", "advice.detachedHead=false", "checkout", "-q", "--detach", isCommitRef(repo.ref) ? repo.ref! : "FETCH_HEAD"], checkout);
     const modules: SourceModule[] = [];
-    for (const rel of findModuleDirs(checkout)) {
+    const state = { truncated: false };
+    for (const rel of findModuleDirs(checkout, "", 0, state)) {
       try {
         const parsed = parseManifest(JSON.parse(fs.readFileSync(path.join(checkout, rel, "module.json"), "utf8")));
         if (!parsed.ok || modules.some((m) => m.id === parsed.manifest.id)) continue;
@@ -79,6 +86,7 @@ export async function discoverModules(repo: ParsedRepo, opts: { fresh?: boolean;
         modules.push({ id: m.id, name: m.name, description: m.description ?? "", version: m.version, icon: m.icon, author: m.author, ...(rel ? { subdir: rel } : {}), compatible: m.apiVersion === MODULE_API_VERSION });
       } catch { /* manifeste illisible : ce dossier n'est pas un module */ }
     }
+    if (state.truncated) truncatedLists.add(modules);
     memo.set(key, { at: now, modules });
     return modules;
   } finally {
