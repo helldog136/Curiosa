@@ -7,6 +7,8 @@
     apply() { return new RealDate(NOW).toString(); },
     get(t, p, r) { return p === "now" ? () => NOW : Reflect.get(t, p, r); },
   });
+  // Le temps écoulé depuis le chargement est figé aussi (les comptes à rebours ajoutent performance.now() à l'heure du serveur).
+  try { Object.defineProperty(Performance.prototype, "now", { value: () => 1000, configurable: true, writable: true }); } catch {}
   let a = 0x9e3779b9;
   const next = () => { a = (a + 0x6d2b79f5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
   Math.random = next;

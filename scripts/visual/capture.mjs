@@ -71,16 +71,18 @@ async function newContext(browser, { width, port, consent }) {
 /** Attend que la page soit posée : polices, images (défilement pour les images paresseuses), puis deux captures identiques de suite (jusqu'à 5 essais). */
 async function settle(tab) {
   await tab.addStyleTag({ content: STILL_CSS }).catch(() => {});
-  await tab.evaluate(async () => {
-    await document.fonts.ready;
+  await tab.bringToFront().catch(() => {});
+  await withTimeout(tab.evaluate(async () => {
+    const cap = (p, ms) => Promise.race([p, new Promise((r) => setTimeout(r, ms))]);
+    await cap(document.fonts.ready, 5000);
     const h = document.documentElement.scrollHeight;
     for (let y = 0; y < h; y += 500) { window.scrollTo(0, y); await new Promise((r) => setTimeout(r, 20)); }
     window.scrollTo(0, 0);
     const imgs = [...document.images];
-    await Promise.all(imgs.map((i) => (i.complete ? null : new Promise((r) => { i.addEventListener("load", r, { once: true }); i.addEventListener("error", r, { once: true }); setTimeout(r, 6000); }))));
-    await Promise.all(imgs.map((i) => (i.decode ? i.decode().catch(() => {}) : null)));
-    await document.fonts.ready;
-  }).catch(() => {});
+    await Promise.all(imgs.map((i) => (i.complete ? null : cap(new Promise((r) => { i.addEventListener("load", r, { once: true }); i.addEventListener("error", r, { once: true }); }), 6000))));
+    await Promise.all(imgs.map((i) => (i.decode ? cap(i.decode().catch(() => {}), 3000) : null)));
+    await cap(document.fonts.ready, 5000);
+  }), 30000, "attente de la page").catch(() => {});
   await tab.waitForLoadState("networkidle", { timeout: 4000 }).catch(() => {});
 }
 
@@ -88,6 +90,7 @@ async function stableShot(tab, keepFocus) {
   let prev = null, buf = null;
   for (let i = 0; i < 5; i++) {
     buf = await tab.screenshot({ fullPage: true, animations: "disabled", caret: "hide", type: "png" });
+    if (process.env.VISUAL_DEBUG) fs.writeFileSync(`/dev/shm/visual/dbg-${i}.png`, buf);
     if (prev && buf.equals(prev)) return { buf, stable: true };
     prev = buf;
     await tab.waitForTimeout(120);
@@ -99,7 +102,15 @@ const tasks = [];
 let browser;
 function addTask(t) { if (!only || `${t.profile}/${t.locale}/${t.id}`.includes(only)) tasks.push(t); }
 
+const TASK_MS = Number(process.env.VISUAL_TASK_TIMEOUT_MS || 90000);
+const withTimeout = (p, ms, what) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error(`délai dépassé (${ms} ms) : ${what}`)), ms))]);
 async function runTask(ctxFor, t, port) {
+  const label = `${t.profile}/${t.locale}/${t.width}/${t.id}${t.state ? "~" + t.state.id : ""}`;
+  const t0 = Date.now(); if (process.env.VISUAL_VERBOSE) console.log(`  > ${label}`);
+  try { await withTimeout(runTaskInner(ctxFor, t, port), TASK_MS, label); if (process.env.VISUAL_VERBOSE) console.log(`  < ${label} ${Date.now() - t0} ms`); }
+  catch (e) { manifest.shots.push({ file: null, profile: t.profile, locale: t.locale, width: t.width, page: t.path, id: t.id, state: t.state?.id ?? null, status: 0, error: String(e.message).slice(0, 300) }); console.log(`  ÉCHEC ${label} : ${e.message}`); }
+}
+async function runTaskInner(ctxFor, t, port) {
   const ctx = await ctxFor(t.width, t.fresh);
   const tab = await ctx.newPage();
   const errors = [];
@@ -113,11 +124,15 @@ async function runTask(ctxFor, t, port) {
     status = resp?.status() ?? 0;
     await settle(tab);
     if (t.state?.run) { await t.state.run(tab); await settle(tab); }
+    const V = (m) => process.env.VISUAL_VERBOSE && console.log(`    . ${m}`);
+    V("avant capture");
     const { buf, stable } = await stableShot(tab);
+    V("capture faite");
     const rel = `${t.profile}/${t.locale}/${t.width}/${t.id}${t.state ? "~" + t.state.id : ""}.png`;
     fs.mkdirSync(path.dirname(path.join(out, rel)), { recursive: true });
     fs.writeFileSync(path.join(out, rel), buf);
     const info = await tab.evaluate(() => ({ h: document.documentElement.scrollHeight, next: document.querySelector('[data-pagination] a[rel="next"]')?.getAttribute("href") ?? null })).catch(() => ({ h: 0, next: null }));
+    V("info faite");
     manifest.shots.push({ file: rel, profile: t.profile, locale: t.locale, width: t.width, page: t.path, id: t.id, state: t.state?.id ?? null, status, height: info.h, bytes: buf.length, sha256: sha(buf), stable, errors: errors.slice(0, 5) });
     if (!t.state && info.next && !t.path.includes("page=") && t.locale === LOCALES[0]) {
       addTask({ ...t, path: `${t.path.replace(/\?.*$/, "")}?page=2`, id: pageId(`${t.path}?page=2`), later: true });
@@ -125,7 +140,7 @@ async function runTask(ctxFor, t, port) {
     }
   } catch (e) {
     manifest.shots.push({ file: null, profile: t.profile, locale: t.locale, width: t.width, page: t.path, id: t.id, state: t.state?.id ?? null, status, error: String(e.message).slice(0, 300) });
-  } finally { await tab.close().catch(() => {}); }
+  } finally { await Promise.race([tab.close().catch(() => {}), new Promise((r) => setTimeout(r, 5000))]); }
 }
 
 async function pool(list, fn, n) {

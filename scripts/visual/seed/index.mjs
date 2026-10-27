@@ -123,6 +123,8 @@ for (const id of [...FIRST.filter((x) => ids.includes(x)), ...ids.filter((x) => 
 }
 
 // ─── 4. accueil et menu ───
+const socialsFile = path.join(HERE, "socials.mjs");
+if (fs.existsSync(socialsFile)) await (await import(pathToFileURL(socialsFile).href)).default(helpers);
 const homeFile = path.join(HERE, "home.mjs");
 if (fs.existsSync(homeFile)) await (await import(pathToFileURL(homeFile).href)).default(helpers);
 
