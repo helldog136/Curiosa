@@ -4,7 +4,7 @@ Ce tutoriel s'adresse à quelqu'un qui n'a **jamais vu le framework**. À la fin
 faire, vous aurez testé le vôtre sur votre machine et vous saurez le publier. Il s'appuie sur un module d'exemple complet et fonctionnel,
 `examples/guestbook` (`curiosa-extras/examples/guestbook`) (un livre d'or modéré), dont chaque partie est expliquée par des
 commentaires dans `index.mjs` (`curiosa-extras/examples/guestbook/index.mjs`). La **référence exhaustive** de chaque champ est
-[MODULES.md](MODULES.md) ; quand ce tutoriel dit « voir la référence », c'est là.
+[MODULES.md](MODULES.md) ; quand ce tutoriel dit « voir la référence », c'est là. **Vous voulez seulement publier votre module dans votre propre dépôt, sans rien nous demander ?** Lisez d'abord le guide court [PUBLIER-SON-MODULE.md](PUBLIER-SON-MODULE.md).
 
 **Sommaire** : [1. Les idées](#1-les-idées-à-connaître) · [2. Prérequis](#2-prérequis) · [3. Un premier module](#3-un-premier-module-hello) ·
 [4. Réglages](#4-réglages-et-apparence) · [5. Accueil](#5-sections-de-la-page-daccueil-et-tailles) · [6. Pages](#6-une-page-publique) ·
@@ -569,7 +569,7 @@ personnalisés. Les entrées alimentent le sujet `core.entry` : n'importe quel o
 
 1. Lancez le framework en local (voir [INSTALL.md](INSTALL.md)) avec la variable d'environnement **`CURIOSA_ALLOW_LOCAL_MODULES=1`** (elle autorise les dépôts locaux ; **jamais** sur un serveur public).
 2. Votre module est un dépôt git **avec au moins un commit** : `git init && git add . && git commit -m "first version"`.
-3. Admin → **Fonctionnalités** → onglet **Ajouter** (le catalogue) → **Installer un dépôt personnel (non vérifié)** → saisissez `file:///chemin/absolu/vers/votre/depot`, cochez la case de confiance. Le module est installé **actif** (l'accord se donne par cette case, avant).
+3. Admin → passez en **mode avancé** (menu de gauche : « Afficher les réglages avancés » ; en mode simple, l'installation depuis un dépôt est cachée) → **Extensions** → **Catalogue** → **Installer un dépôt personnel (non vérifié)** → saisissez `file:///chemin/absolu/vers/votre/depot`, cochez la case de confiance. Le module est installé **actif** (l'accord se donne par cette case, avant).
 4. **Extensions** → « Réglages » (une fenêtre) : ajoutez une instance, ouvrez-la : réglages, panneau d'admin, page publique, section sur l'accueil (admin → Accueil).
 5. Vous avez modifié le code ? **Validez** (`git commit`), puis **Extensions → Réglages → Chercher une mise à jour → Mettre à jour**. Le module est rechargé depuis le dernier commit.
 
@@ -585,6 +585,8 @@ Le cœur fournit une suite de vérifications prête à l'emploi, le **kit de tes
 ```
 npm run module:check -- /chemin/vers/votre-module
 ```
+
+**Depuis votre propre dépôt, sans toucher au cœur** : clonez le cœur à côté (`git clone --branch vX.Y.Z --depth 1 https://github.com/helldog136/Curiosa ../Curiosa`), préparez-le une fois (`npm ci --omit=dev --ignore-scripts && npx prisma generate` dans `../Curiosa` : ne lance pas le site), puis `node ../Curiosa/testsupport/check.mjs .` depuis votre dépôt. Le guide [PUBLIER-SON-MODULE.md](PUBLIER-SON-MODULE.md) donne le pas à pas et le workflow GitHub Actions.
 
 **Lisez le rapport de haut en bas : tout ce qui est ❌ est à corriger.** Pour chaque ❌, il vous dit *ce qui ne va pas*, *pourquoi c'est exigé* et *comment corriger*, avec un lien vers la fiche de l'exigence. Corrigez, relancez la même commande, recommencez jusqu'à ce que tout soit ✅. Deux niveaux :
 
@@ -634,8 +636,8 @@ Lancez : `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test mon-module.
 **Être listé dans le Catalogue** : deux voies.
 
 1. **Dans le dépôt `curiosa-extras`** : un dossier de module dans `modules/` (modules complets) ou `examples/` (exemples), `module.json` à sa racine, et une entrée dans son `catalogue/index.json` (étiquette épinglée). Le cœur n'embarque aucun module : il est installé depuis ce dépôt, lu sur le réseau. Un dépôt peut aussi regrouper plusieurs modules : `https://hôte/propriétaire/dépôt#ref:dossier` installe le seul module de ce dossier.
-2. **Votre propre dépôt de modules** : un dépôt (par exemple `jeanmi/mes-modules-curiosa`) qui regroupe vos modules, un dossier chacun. Le propriétaire d'un site l’ajoute dans Extensions → Ajouter → *Mes dépôts de modules* (mode avancé) et installe ceux qu'il veut ; rien à faire de votre côté que de publier le dépôt.
-3. **Dépôt reconnu** : une entrée dans [`catalogue/index.json`](../catalogue/README.md), le fichier du dépôt de modules que **chaque installation relit à l'exécution sur le réseau** — il ne suit pas le rythme des versions du framework (`CURIOSA_CATALOGUE_REPO` et `CURIOSA_CATALOGUE_REF` règlent cette lecture ; `MODULES_INDEX_URL` ajoute un index `https://` supplémentaire). On l'ajoute par une demande de fusion :
+2. **Votre propre dépôt de modules** : un dépôt (par exemple `jeanmi/mes-modules-curiosa`) qui regroupe vos modules, un dossier chacun (200 modules au plus par dépôt : au-delà, la liste est coupée et le dit), ou **un seul module à la racine**. Le propriétaire d'un site l’ajoute dans Extensions → Catalogue → *Mes dépôts de modules* (mode avancé) — ou colle l'adresse dans *Installer un dépôt personnel (non vérifié)* pour un module à la racine — et installe ceux qu'il veut ; rien à faire de votre côté que de publier le dépôt. Pas à pas : [PUBLIER-SON-MODULE.md](PUBLIER-SON-MODULE.md).
+3. **Dépôt reconnu** : une entrée dans [`catalogue/index.json`](../catalogue/README.md), le fichier du dépôt de modules que **chaque installation relit à l'exécution sur le réseau** — il ne suit pas le rythme des versions du framework (`CURIOSA_CATALOGUE_REPO` et `CURIOSA_CATALOGUE_REF` règlent cette lecture ; `MODULES_INDEX_URL` ajoute un index `https://` supplémentaire). Dans `curiosa-extras`, ce fichier est **généré** à partir des dossiers `modules/` et `examples/` (`node scripts/build-index.mjs`, vérifié par la CI) : on ne l'édite pas à la main ; on demande l'inscription (voir [PUBLIER-SON-MODULE.md](PUBLIER-SON-MODULE.md#demander-linscription-au-catalogue-officiel-facultatif)). Format d'une entrée :
 
 ```json
 { "id": "guestbook", "name": "Guestbook", "description": "A moderated guestbook.", "repo": "https://github.com/<vous>/<depot>",
@@ -673,6 +675,8 @@ Un module est **du code de confiance** : il tourne sur le serveur avec les droit
 ```
 
 Le cœur reprend ce texte tel quel, sous le nom de l'instance. Un module qui ne collecte **rien** n'a rien à écrire. Voir [PRIVACY.md](PRIVACY.md).
+
+**Images et ressources d'un autre site.** Le site n'envoie aucune politique de sécurité de contenu : un `<img src="https://autre-site/…">` s'affiche, et le navigateur du visiteur contacte alors ce tiers (adresse IP, page visitée). Rien ne vous en empêche : **c'est à vous**. Pour les images d'un service externe, faites-les passer par une route de votre module (`/m/<clé>/img?c=<numéro>`) : le site télécharge l'image avec `fetch` et `AbortSignal.timeout`, vérifie son type (PNG, JPEG ou WebP, jamais SVG) et sa taille, la garde en mémoire pour un temps et un nombre bornés, et la sert depuis sa propre adresse ; le visiteur ne donne qu'un numéro, jamais l'adresse. `ctx.api.net.request` rend du texte (`json` ou `text`), pas des octets : il ne convient pas aux images. L'affichage direct depuis le tiers ne doit être qu'un choix avancé de l'administrateur, dit dans `privacy`. Modèle complet : le guide [PUBLIER-SON-MODULE.md](PUBLIER-SON-MODULE.md#vie-privée).
 
 **Cookies et stockage.** Le framework ne demande aucun consentement parce qu'il ne dépose rien d'inutile. **Ne rompez pas cela** : un module qui dépose un cookie, utilise le stockage du navigateur ou charge un service tiers (lecteur vidéo, widget, statistiques) pour autre chose que ce que le visiteur vient de demander impose un consentement préalable, et c'est à vous de le prévoir et de le déclarer dans `privacy`. En cas de doute : n'en déposez pas.
 

@@ -25,6 +25,17 @@ npm run module:check -- /chemin/vers/votre-module
 
 (équivalent : \`node testsupport/check.mjs /chemin/vers/votre-module\`)
 
+### Depuis votre propre dépôt (sans cloner le dépôt de travail du cœur)
+
+Le kit se lance **depuis n'importe où** : clonez le cœur à côté de votre dépôt, à une étiquette publiée (\`git clone --branch vX.Y.Z --depth 1 https://github.com/helldog136/Curiosa ../Curiosa\`), préparez-le une seule fois (\`cd ../Curiosa && npm ci --omit=dev --ignore-scripts && npx prisma generate\` : cela ne lance pas le site et ne demande aucune base, mais **\`prisma generate\` est indispensable**, sans lui l'import échoue sur \`PrismaClient\`), puis depuis votre dépôt :
+
+\`\`\`
+node ../Curiosa/testsupport/check.mjs .                       # le rapport
+CURIOSA_DIR=../Curiosa node --test test/*.test.mjs             # vos tests (ils importent le kit par CURIOSA_DIR)
+\`\`\`
+
+Un dépôt prêt à copier, avec son workflow GitHub Actions : le dossier \`starter/\` de \`curiosa-extras\`. Le pas à pas complet : [PUBLIER-SON-MODULE.md](PUBLIER-SON-MODULE.md).
+
 Le rapport liste chaque exigence avec ✅ réussi ou ❌ échec. Pour chaque ❌ il dit **ce qui ne va pas**, **pourquoi c'est exigé** et **comment corriger**, avec un lien vers la fiche de l'exigence (ci-dessous). **Tout ce qui est ❌ est à corriger ; lancez la même commande jusqu'à ce qu'il n'y en ait plus.**
 
 - **Obligatoire** : condition pour être proposé dans le catalogue. Un échec donne un code de sortie différent de 0.

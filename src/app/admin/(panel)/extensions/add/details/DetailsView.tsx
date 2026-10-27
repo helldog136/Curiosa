@@ -79,7 +79,10 @@ export async function DetailsView({ id, repo, embedded = false }: { id?: string;
           {advanced && custom && <p className="mt-1 break-all font-mono text-xs text-muted">{custom.url}{custom.ref || custom.subdir ? `#${custom.ref ?? ""}${custom.subdir ? `:${custom.subdir}` : ""}` : ""}</p>}
         </div>
       </header>
-      {entry && <p className="max-w-2xl text-[17px] leading-7">{L(entry.description)}</p>}
+      {entry ? <p className="max-w-2xl text-[17px] leading-7">{L(entry.description)}</p> : m?.description ? <p className="max-w-2xl text-[17px] leading-7">{L(m.description)}</p> : null}
+
+      {/* Dépôt personnel sans module lisible (par exemple la racine d'un dépôt qui en regroupe plusieurs) : on le dit, sans proposer d'installer. */}
+      {custom && !failed && !m && <p role="alert" data-testid="no-module" className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm">{t("modules.error.nomanifest")}</p>}
 
       {kept.length > 0 && <Callout tone="info" role="status"><span data-testid="kept-note">🗂 {t("kept.detailsNote", { name, count: kept.length })}</span></Callout>}
 
@@ -105,6 +108,13 @@ export async function DetailsView({ id, repo, embedded = false }: { id?: string;
         </section>
       )}
 
+      {m?.privacy && (
+        <section className={`${ui.card} space-y-2`} data-testid="module-privacy">
+          <h2 className="text-lg font-semibold">{t("catalogue.privacy.title")}</h2>
+          <p className="text-[15px]">{L(m.privacy)}</p>
+        </section>
+      )}
+
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">{t("catalogue.presentation")}</h2>
         {preview?.readme ? (
@@ -115,7 +125,7 @@ export async function DetailsView({ id, repo, embedded = false }: { id?: string;
         ) : !failed ? <p className="text-sm text-muted">{t("catalogue.noReadme")}</p> : null}
       </section>
 
-      {isOwner && !failed && (
+      {isOwner && !failed && (entry || m) && (
         <section className={`${ui.card} space-y-4`}>
           {entry ? (
             installed ? <a href={EXTENSIONS_HREF} className="text-sm font-medium text-accent hover:underline">{t("catalogue.installed")}</a>
@@ -139,7 +149,7 @@ export async function DetailsView({ id, repo, embedded = false }: { id?: string;
                     </div>
                   )
               )
-          ) : custom ? (
+          ) : custom && m ? (
             <>
               <p className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm">{t("catalogue.customWarning")}</p>
               <ActionForm action={installCustomAction} submitLabel={t("catalogue.install")} pendingLabel={t("catalogue.installing")} track="install">

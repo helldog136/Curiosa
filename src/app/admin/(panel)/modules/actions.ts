@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { adminCtx } from "@/core/admin";
 import { checkForUpdate, repairRequirements, uninstallModule, updateModule } from "@/core/modules/installer";
+import { forgetModulesReport } from "@/core/modules/updateStatus";
 import { audit } from "@/core/permissions";
 import { getModule } from "@/core/modules/registry";
 import { prisma } from "@/core/db";
@@ -74,6 +75,7 @@ export async function updateModuleAction(id: string, opId?: string): Promise<Mod
   // Suivi d'opération (étapes : téléchargement, vérification, dépendances, données, activation) ; un second lancement rejoint le premier.
   const run = await trackOperation(user, { kind: "module-update", key: `module-update:${String(id).slice(0, 60)}`, opId: opIdOf(opId) }, async () => {
     const done = await updateModule(id);
+    forgetModulesReport();
     await audit(user.email, "module.update", done.ok && done.auditTarget ? done.auditTarget : id);
     revalidatePath("/", "layout");
     return done;
@@ -96,6 +98,7 @@ export async function uninstallModuleAction(id: string, keepData: boolean): Prom
   const { user, locale, config } = await adminCtx("owner");
   const name = await nameOf(id, locale, config.defaultLocale);
   const result = await uninstallModule(id, { keepData });
+  forgetModulesReport();
   if (result.ok) await audit(user.email, keepData ? "module.uninstall.keep" : "module.uninstall.erase", id);
   revalidatePath("/", "layout");
   if (!result.ok) redirect(modulePage(id, refusal(result, "uninstall")));
@@ -138,6 +141,7 @@ export async function cleanupAutoModuleAction(id: string, keepData: boolean): Pr
   if (!suggestion) redirect(modulePage(id, "error=modules.error.autoUsed"));
   const name = await nameOf(id, locale, config.defaultLocale);
   const result = await uninstallModule(id, { keepData });
+  forgetModulesReport();
   if (result.ok) await audit(user.email, "module.uninstall.auto", id);
   revalidatePath("/", "layout");
   if (!result.ok) redirect(modulePage(id, refusal(result)));
