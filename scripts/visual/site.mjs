@@ -41,7 +41,7 @@ function migrate(dbFile, env) {
 
 async function prepare() {
   ensureDirs();
-  const extras = ensureExtras();
+  ensureExtras();
   if (process.env.VISUAL_EXTRAS_REF) sh("git", ["-C", EXTRAS_DIR, "checkout", "--detach", process.env.VISUAL_EXTRAS_REF]);
   const extrasHead = sh("git", ["-C", EXTRAS_DIR, "rev-parse", "HEAD"]).trim();
   fs.rmSync(SNAPSHOT_DIR, { recursive: true, force: true });

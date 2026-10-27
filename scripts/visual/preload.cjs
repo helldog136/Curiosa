@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 // Préchargé (NODE_OPTIONS=--require) dans le serveur du site ET dans l'amorçage : rend le processus déterministe et sans réseau.
 //  1. Horloge figée (VISUAL_NOW) : Date.now(), new Date(), Date().
 //  2. Hasard déterministe PAR REQUÊTE : Math.random, crypto.randomBytes/randomUUID/getRandomValues/randomInt dérivent d'une graine (VISUAL_SEED + adresse demandée),

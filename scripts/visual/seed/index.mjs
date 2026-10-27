@@ -18,7 +18,7 @@ const R = await import("@/core/modules/registry");
 const { createInstance } = await import("@/core/instanceService");
 const { createEntry } = await import("@/core/content/service");
 const { storeUpload } = await import("@/core/services/uploads");
-const { saveMenu } = await import("@/core/menuStore");
+
 const { buildContext } = await import("@/core/modules/context");
 const { listInstances } = await import("@/core/instances");
 

@@ -1,7 +1,7 @@
 // Événements : modèle « association » (5 types), 9 rendez-vous à venir (dont un complet, un annulé, un répété, un avec programme / intervenants / coordonnées / image) et 5 passés
 // (rétrospective, certains avec un album photo). Un second agenda vide.
 const rid = (r) => /edit=([^&]+)/.exec(r.redirect)[1];
-export default async function events(h, row) {
+export default async function events(h) {
   await h.act("events", "chooseStarter", { starter: "association" });
   const { ctx } = await h.raw("events");
   const types = (await ctx.api.store.list("ev_types", { limit: 50 })).map((r) => r.data.key);
@@ -18,7 +18,7 @@ export default async function events(h, row) {
     [70, "10h", "Stage d'été : initiation à la céramique", "Atelier principal", "Cinq matinées pour réaliser ses premières pièces.", 2],
   ];
   const ids = [];
-  for (const [d, time, title, place, text, t] of UP) {
+  for (const [d, time, title, place, text] of UP) {
     const r = await h.act("events", "quickAdd", { title, date: iso(d), time, place, text, publish: "on" });
     ids.push(rid(r));
   }

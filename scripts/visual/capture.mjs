@@ -86,7 +86,7 @@ async function settle(tab) {
   await tab.waitForLoadState("networkidle", { timeout: 4000 }).catch(() => {});
 }
 
-async function stableShot(tab, keepFocus) {
+async function stableShot(tab) {
   let prev = null, buf = null;
   for (let i = 0; i < 5; i++) {
     buf = await tab.screenshot({ fullPage: true, animations: "disabled", caret: "hide", type: "png" });
