@@ -46,9 +46,9 @@ async function externalImage(u) {
   const key = tile ? "tile" : u.hostname + u.pathname;
   if (!artCache.has(key)) {
     const n = [...key].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7) % 8;
-    artCache.set(key, tile ? await demoImage(256, 256, 2, "png") : await demoImage(u.hostname.includes("rawg") ? 640 : 480, u.hostname.includes("rawg") ? 360 : 270, n));
+    artCache.set(key, tile ? await demoImage(256, 256, 2, "png") : await demoImage(u.hostname.includes("rawg") ? 640 : 480, u.hostname.includes("rawg") ? 360 : 270, n, "png"));
   }
-  return { body: artCache.get(key), contentType: tile ? "image/png" : "image/jpeg" };
+  return { body: artCache.get(key), contentType: "image/png" };
 }
 
 async function newContext(browser, { width, port, consent }) {

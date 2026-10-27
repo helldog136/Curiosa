@@ -86,7 +86,7 @@ const helpers = {
   /** Le module (définition chargée) et un contexte d'administration complet, pour les amorçages qui parlent directement au stockage. */
   async raw(id, { locale = "fr", row = inst[id] } = {}) { R.resetModuleRegistry(); const mod = await R.getModule(id); const ctx = await helpers.ctx(id, locale, row); ctx.can = () => true; return { mod, ctx, dir: path.join(MODULES_DIR, id) }; },
   /** Image de démonstration (cachée par clé) : renvoie /uploads/<nom>. */
-  async img(n = 0, w = 800, h = 450, fmt = "jpeg") { const k = `${n}|${w}|${h}|${fmt}`; if (!imgCache.has(k)) imgCache.set(k, await up(await demoImage(w, h, n, fmt), fmt === "jpeg" ? "jpg" : "png")); return imgCache.get(k); },
+  async img(n = 0, w = 800, h = 450, fmt = "png") { const k = `${n}|${w}|${h}|${fmt}`; if (!imgCache.has(k)) imgCache.set(k, await up(await demoImage(w, h, n, fmt), fmt === "jpeg" ? "jpg" : "png")); return imgCache.get(k); },
   /** Une instance de plus d'un module (surnom obligatoire) : `display` / `clickAction` / `basePath` peuvent être imposés. */
   async extra(id, { nickname, fr, en, display, clickAction, basePath }) {
     R.resetModuleRegistry();

@@ -4,7 +4,8 @@ import sharp from "sharp";
 const PALETTE = [["#355c7d", "#c06c84"], ["#2a9d8f", "#e9c46a"], ["#6a4c93", "#ff9f1c"], ["#264653", "#e76f51"], ["#0b525b", "#f4a261"], ["#5f0f40", "#fb8b24"], ["#1d3557", "#a8dadc"], ["#386641", "#bc4749"]];
 
 /** Une image `w`×`h` de la variante `n` (couleurs et formes différentes selon n). */
-export async function demoImage(w, h, n = 0, format = "jpeg") {
+// PNG par défaut : sans perte, et surtout sans le décodage JPEG « à échelle réduite » de Chromium, dont le grain varie d'une capture à l'autre quand la photo est affichée plus petite que sa taille.
+export async function demoImage(w, h, n = 0, format = "png") {
   const [a, b] = PALETTE[n % PALETTE.length];
   const k = (n * 37) % 100;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
