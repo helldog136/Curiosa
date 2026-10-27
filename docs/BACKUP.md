@@ -10,6 +10,7 @@ données — pas le code du framework :
 | données de **chaque module installé** (leur stockage, leurs réglages) | le code du framework et des modules (réinstallé depuis le catalogue) |
 | images et fichiers envoyés | |
 | la liste des modules installés (identifiant, version, dépôt, activé ou non) | |
+| la liste des **skins** installés (dépôt, étiquette, version) et le skin choisi, avec vos retouches d'apparence (ce sont des réglages) | les fichiers des skins (réinstallés depuis leur dépôt, comme les modules) |
 
 Le **cœur** fait la sauvegarde ; il sait aussi aller chercher ce que les modules ont stocké, sans que ceux-ci aient à coder quoi que ce soit.
 Un module peut en plus ajouter ses propres fichiers lisibles (un CSV de ses données, par exemple) avec `backup.readable`
@@ -31,7 +32,7 @@ tar xzf backup.tar.gz
 
 ```
 README.txt          mode d'emploi (français et anglais) — il est dans l'archive, avec vos données
-backup.json         inventaire : version, date, modules, empreinte SHA-256 de chaque fichier
+backup.json         inventaire : version, date, modules, skins (facultatif), empreinte SHA-256 de chaque fichier
 readable/           VOS DONNÉES MISES EN FORME POUR UN HUMAIN — commencez ici
   site.txt            résumé : nom du site, langues, modules, compteurs, réglages (secrets masqués)
   <instance>/*.md     une entrée par fichier Markdown et par langue, avec un en-tête (titre, statut, dates, étiquettes, lien, code…)

@@ -1,6 +1,6 @@
 # Les skins de Curiosa : le contrat
 
-> Statut : **conception (phase 1)**, rien n'est implémenté. Ce document est le contrat lu par (1) les auteurs de skins et (2) l'agent qui implémentera le mécanisme. Cœur de référence : v0.2.14 (master `a409ebb`) ; modules de référence : `curiosa-extras` v1.22.0. Les constats chiffrés qui fondent les choix sont dans `docs/ideas/skins-exploration.md`, le découpage en lots dans `docs/ideas/skins-effort.md`.
+> Statut : **conception (phase 1)** ; implémentés à ce jour : la bibliothèque d'assainissement et de lisibilité (§6.7, lot S6) et l'installation depuis un dépôt git (§20, lot S5) ; le reste (jetons, basic, composition, page Apparence…) ne l'est pas encore. Ce document est le contrat lu par (1) les auteurs de skins et (2) l'agent qui implémentera le mécanisme. Cœur de référence : v0.2.14 (master `a409ebb`) ; modules de référence : `curiosa-extras` v1.22.0. Les constats chiffrés qui fondent les choix sont dans `docs/ideas/skins-exploration.md`, le découpage en lots dans `docs/ideas/skins-effort.md`.
 >
 > Les noms techniques (jetons, attributs, clés JSON, fichiers) sont en anglais comme dans le reste du dépôt ; le texte est en français. Aucun nom de site réel n'apparaît ici ni ne doit apparaître dans un skin, un test ou un texte par défaut.
 
@@ -104,7 +104,7 @@ Valeur finale d'un jeton = la plus forte couche qui le définit. **Repli valeur 
 | Clé | Rôle | Absente = |
 |---|---|---|
 | `skin.active` | id du skin actif (`"basic"` ou id installé) | `"basic"` |
-| `skin.installed` | liste JSON `[{ id, version, repo, ref, subdir, source: "catalogue"\|"personal", installedAt, previous?: {version, ref} }]` | `[]` |
+| `skin.installed` | liste JSON `[{ id, version, repo, ref, subdir, source: "catalogue"\|"personal", commit, tree, fingerprint, installedAt, previous?: {version, ref, commit, tree, fingerprint} }]` (voir §20.3) | `[]` |
 | `skin.options` | objet `{ [optionId]: valeur }` (§3.4) | valeurs par défaut du skin |
 | `skin.snapshot` | copie des retouches d'avant le dernier changement de skin, pour « Annuler » | rien |
 | `theme.background`, `theme.accent`, `theme.accent2`, `theme.surface`, `theme.text` | **retouches des 5 couleurs (inchangées)** | la valeur du skin |
@@ -472,7 +472,7 @@ Même logique que le catalogue des modules (`catalogue/README.md` du cœur, `cur
 
 ### 5.6 Installation et stockage
 
-`DATA_DIR/skins/<id>/<version>/…` (à côté de `DATA_DIR/modules`). Servi par la route `GET /skins/<id>/<version>/<chemin>` (polices et images **seulement**, types fixés par extension, `X-Content-Type-Options: nosniff`, `Cache-Control: public, max-age=31536000, immutable` : l'URL change avec la version). La feuille et les jetons ne sont **pas** servis en fichiers : le cœur les assainit puis les écrit en `<style>` dans la page. Le chemin `skin:fonts/body.woff2` d'une feuille est réécrit en `/skins/<id>/<version>/fonts/body.woff2`.
+`DATA_DIR/skins/<id>/<version>/…` (à côté de `DATA_DIR/modules`). Servi par la route `GET /skins/<id>/<version>/<dossier>/<fichier>` (§20.7 ; polices et images **seulement**, types fixés par extension, `X-Content-Type-Options: nosniff`, `Cache-Control: public, max-age=31536000, immutable` : l'URL change avec la version). La feuille et les jetons ne sont **pas** servis en fichiers : le cœur les assainit puis les écrit en `<style>` dans la page. Le chemin `skin:fonts/body.woff2` d'une feuille est réécrit en `/skins/<id>/<version>/fonts/body.woff2`.
 
 ---
 
@@ -1017,3 +1017,83 @@ Ordre recommandé : harnais d'images **d'abord** (sinon aucune preuve) → jeton
 - **Q-A** Version du cœur qui livre les skins : `0.4.0` retenu comme espace réservé ; **ou `1.0.0`** ? À confirmer par le propriétaire (tous les `minCore` d'exemple changent en conséquence).
 - **Q-B** (soulevée par le lot S6) : la feuille d'un skin ne peut pas cibler le choix manuel du visiteur (`data-mode`, §3.8), car `data-mode` n'est pas dans la liste des attributs permis (§6.1) ; un `@media (prefers-color-scheme: dark)` dans la feuille suit donc l'appareil, pas le choix du visiteur. Proposition : autoriser, comme qualificatif de tête de sélecteur, `[data-mode="light"]` / `[data-mode="dark"]` (posé sur la racine, déjà sous le préfixe `:root[data-skin]`), et laisser les jetons faire le reste. À trancher avant d'écrire les skins à deux modes.
 - **Q-C** (soulevée par le lot S6) : la paire 12 (§7.1, « titres ») n'a pas de jeton à mesurer. Le lot S6 contrôle un jeton facultatif `--sk-color-heading` au seuil 3:1 ; à confirmer (l'ajouter au vocabulaire du §4.2) ou à supprimer.
+
+---
+
+## 20. Installation depuis un dépôt git : ce qui est implémenté (lot S5)
+
+> Le mécanisme existe, **sans interface** (la page Apparence est le lot S7) et **sans toucher au rendu** (le lot S1 écrit les jetons, basic, la composition et la bascule). Rien n'est appliqué au site : on récupère, on contrôle, on pose des fichiers et on note le skin.
+
+### 20.1 Où est le code
+
+| Fichier (`src/core/skins/`) | Rôle | Pur ? |
+|---|---|---|
+| `manifest.ts` | schéma zod de `skin.json` (§5.2) | oui |
+| `validate.ts` | **LA** validation d'un dossier local (manifeste, fichiers, ressources, licences, jetons, feuille, lisibilité) ; partagée par l'installation, l'aperçu, la mise à jour et `skin:check` | lit un dossier, rien d'autre |
+| `constants.ts`, `semver.ts` | plafonds (§5.3), licences permises, vocabulaire d'étiquettes, comparaison de versions | oui |
+| `source.ts` | récupération git (hôtes autorisés, clone superficiel, sous-dossier) en réutilisant `modules/installer.ts` | réseau |
+| `catalogue.ts` | `catalogue/index.json` du dépôt de skins, copie reçue, index supplémentaire | réseau |
+| `registry.ts` | registre `skin.installed`, verrou, rangement | base |
+| `service.ts` | **l'API interne** (§20.2) | base + réseau |
+| `restore.ts` | sauvegarde et restauration (§20.8) | base |
+| `serve.ts` + `src/app/skins/[id]/[version]/[dir]/[file]/route.ts` | service HTTP des ressources (§20.7) | fichiers |
+| `scripts/skin-check.mjs` | `npm run skin:check -- <dossier>` (§20.9) | lit un dossier |
+
+L'adresse du dépôt officiel de skins est écrite **une seule fois**, dans `core/config.ts` (`DEFAULT_SKINS_REPO`) ; `CURIOSA_SKINS_REPO` la remplace, `CURIOSA_SKINS_REF` choisit l'étiquette lue, `SKINS_INDEX_URL` ajoute un index https supplémentaire.
+
+### 20.2 L'API interne (pour la page Apparence et l'assistant)
+
+Toutes les fonctions rendent `{ ok: true, … }` ou `{ ok: false, error: "skins.error.…", issues?, … }` ; jamais d'exception pour un cas prévu. `issues` sont des problèmes à message simple FR/EN (`SkinIssue`, §6.7).
+
+| Fonction | Rôle |
+|---|---|
+| `listCatalogue({ fresh?, fetchImpl? })` | skins installables (officiel + index supplémentaire) avec `installed`, `installedVersion`, `updateAvailable` ; catalogue injoignable : `unreachable: true` + `message` FR/EN, les skins installés continuent |
+| `inspect(url)` | README (sans HTML ni image), licence, aperçus (en données locales), licences des polices et images, options, taille, résultat complet du contrôle, **sans rien installer** ; un dépôt de plusieurs skins rend la liste `candidates` |
+| `install(url, { confirmPersonal?, actor? })` | installe ; dépôt hors catalogue officiel (personnel ou index supplémentaire) : refusé sans `confirmPersonal: true` |
+| `installFromCatalogue(id, { confirmExtra?, actor? })` | installe un skin listé (version épinglée par le catalogue) |
+| `checkUpdate(id)` | `{ available, target?, level?, needsCore? }` sans rien changer |
+| `update(id, { acceptMajor?, actor? })` | étiquette stable la plus haute (dépôt personnel) ou version épinglée du catalogue ; majeure : seulement avec `acceptMajor: true` |
+| `revert(id)` · `reinstall(id)` · `remove(id)` | version d'avant · réinstallation depuis le dépôt noté · retrait |
+| `installed()` | skins installés + `status` (`ok` · `missing` · `modified` · `invalid`) + `problems` |
+| `activeSkinId()` | `skin.active` si les fichiers sont là, sinon `"basic"` |
+| `loadInstalledSkin(id)` | manifeste + feuille et jetons **assainis de nouveau** (cache 10 min) pour la composition du rendu |
+| `readInstalledPreview(id, version, file)` | octets d'un aperçu, pour l'administration seulement |
+
+### 20.3 Stockage : le réglage `skin.installed` (pas de table)
+
+Décision : la liste vit dans le réglage `skin.installed` (§3.2), les fichiers sous `data/skins/<id>/<version>/`. Pourquoi : la conception le prévoit ; la sauvegarde contient déjà tous les réglages et les remet d'un bloc (aucune migration de base, aucun nouveau format) ; un seul propriétaire par donnée. Une ligne : `id`, `version`, `repo`, `ref` (étiquette ou commit), `subdir`, `source` (`catalogue` ou `personal`), `commit`, `tree` (empreinte git du dossier du skin, sert à voir si une mise à jour existe), `fingerprint` (SHA-256 du contenu installé, relue pour détecter une altération), `installedAt`, `previous` (la version d'avant, gardée sur le disque). Les lectures passent par la base (pas par le cache de requête) et les écritures sont sérialisées.
+
+### 20.4 Garde-fous des modules, réutilisés
+
+Adresse `https://hôte/propriétaire/dépôt[.git][#étiquette-ou-commit[:dossier]]` ; hôtes de `MODULES_ALLOWED_HOSTS` (**le même réglage** : c'est la liste des hébergeurs git de confiance de l'installation) ; dépôts locaux seulement avec `CURIOSA_ALLOW_LOCAL_MODULES=1` ; récupération superficielle, aucun crochet git, protocole `ext` fermé, délai de 90 s ; dossier du skin jamais hors du dépôt ; **adresse du registre revérifiée à chaque usage** (une ligne venue d'une sauvegarde trafiquée ne fait jamais contacter un hôte interdit) ; installation atomique (dossier temporaire puis renommage) ; audit `skin.install`, `skin.update`, `skin.remove`, `skin.refused` (le refus ne note que l'id et le code du premier problème, jamais un extrait du skin).
+
+### 20.5 Ce que la validation refuse (`validateSkinFolder`)
+
+Dans l'ordre : dossier (aucun lien symbolique, un seul niveau `fonts/ images/ previews/ LICENSES/`, noms simples, 60 fichiers, 2 Mo) → manifeste (zod ; id = nom du dossier, `basic` réservé, contrat et `minCore` pas trop récents, licence SPDX permise) → fichiers prévus (tout fichier hors liste est refusé) → plafonds (§5.3) → ressources (extension **et** octets magiques ; SVG réécrit par `sanitizeSvg` ou refusé ; licence, fichier de licence, auteur et source pour chaque police et image) → `tokens.json` (forme, noms, chaque valeur par `sanitizeTokenValue`, plus un contrôle typé des jetons de nature connue, ex. `--sk-text-*` comme `font-size`) → feuille (`sanitizeSkinCss`, `assetBase = /skins/<id>/<version>/`) → lisibilité (`checkReadability`, **chaque mode déclaré**, refus sous AA) → animations sans `supports.reducedMotion`. Un skin refusé n'installe rien (`installFiles` est vide).
+
+### 20.6 Mise à jour, retour arrière, retrait, repli
+
+La nouvelle version est posée **à côté** de l'ancienne, contrôlée comme à l'installation, puis seulement alors le registre bascule ; la moindre erreur laisse tout comme avant (`kept`). Une version qui n'augmente pas est refusée (les adresses de ressources sont éternelles, une version ne change jamais de contenu). La version d'avant reste (`revert`). Retirer : fichiers et ligne partent ; si le skin était actif, `skin.active` redevient `basic` et `skin.options` est nettoyé, les retouches (`theme.*`, `header.layout`) restent. Un skin dont les fichiers manquent ou ont changé n'est pas appliqué : `activeSkinId()` rend `basic` et `skin.active` est gardé ; il se réactive dès que `reinstall` réussit.
+
+### 20.7 La route des ressources
+
+`GET|HEAD /skins/<id>/<version>/fonts/<fichier>.woff2` et `…/images/<fichier>.<png|jpg|webp|avif|svg>` : type fixé par l'extension, `Cache-Control: public, max-age=31536000, immutable`, `X-Content-Type-Options: nosniff`, SVG avec une politique `sandbox`. Les segments sont validés un à un (aucun `..`, aucun nom caché, version `x.y.z`), jamais de lien symbolique, **jamais** la feuille, les jetons, le manifeste ni les aperçus. `/skins/mode.js` (lot S1) n'est pas servi ici. `skins` est un premier segment réservé (`RESERVED_PATHS`).
+
+### 20.8 Sauvegarde et restauration
+
+Les réglages `skin.*` et `theme.*` font déjà partie de `data/settings.json` ; `backup.json` reçoit en plus `skins` (id, version, dépôt, étiquette, commit, source, nom) et `counts.skins`, **seulement s'il y a des skins** (une sauvegarde sans skin est inchangée ; un cœur plus ancien ignore la clé, une sauvegarde plus ancienne n'en a pas). Les fichiers ne sont pas sauvegardés : après le remplacement des données, chaque skin dont les fichiers manquent est réinstallé depuis son dépôt, à l'étiquette notée. Un dépôt **personnel** n'est réinstallé que si la restauration le confirme (`"skin:<id>"` dans la liste de confirmations). Dépôt injoignable, cœur trop ancien ou non confirmé : le bilan le dit (`skins` dans le rapport), `basic` s'applique en attendant, rien n'est perdu. Les skins installés ici et absents de la sauvegarde restent installés ; les dossiers que plus rien ne réclame sont rangés.
+
+### 20.9 `skin:check`
+
+`npm run skin:check -- <dossier> [--lang fr|en] [--json] [--strict] [--advice] [--core-version X.Y.Z]` : mêmes fonctions que l'installation, messages simples avec « comment corriger », code de sortie 0/1/2. Un dépôt de skins (`skins/<id>/skin.json`) est contrôlé en entier (CI de `curiosa-skins`).
+
+### 20.10 Écarts avec la conception
+
+1. **Registre** : la ligne de `skin.installed` gagne `commit`, `tree`, `fingerprint` (le §3.2 ne les prévoyait pas ; nécessaires pour la mise à jour et la détection d'altération).
+2. **Mise à jour majeure** : demande `acceptMajor: true` (le §10.7 disait seulement « signalée »).
+3. **Aperçus** : leur absence est un avertissement, pas un refus (§5.2 disait 1 à 4) ; `skin:check --strict` la fait échouer.
+4. **Étiquettes** hors vocabulaire et clés inconnues de `skin.json` : avertissement et ignorées (un contrat qui s'enrichit ne casse pas les skins écrits avant).
+5. **Fichiers permis à la racine** : `README.md` (ou `README.xx.md`), `LICENSE[.md|.txt]`, en plus de `skin.json`, des jetons et de la feuille.
+6. **Jetons** : `sanitizeTokenValue` + un contrôle typé pour quelques noms (`--sk-text-*`, `--sk-leading-*`, `--sk-radius-*`…) ; la validation par type de **tout** le vocabulaire reste au lot « jetons » (S1), de même que l'avertissement « jeton inconnu ».
+7. **Commande** : `scripts/skin-check.mjs` (pas `testsupport/skins/check.mjs`) ; les niveaux navigateur (`--visual`), le banc d'essai et le test de neutralité des textes d'un skin restent à faire. Les pièces et paires de couleurs des modules ne sont pas encore fournies à la validation (les options `moduleParts` et `modulePairs` existent).
+8. **Constante officielle** : dans `core/config.ts` et non sous `core/skins/` (le test de neutralité de la bibliothèque interdit un nom de dépôt réel dans ses sources).
