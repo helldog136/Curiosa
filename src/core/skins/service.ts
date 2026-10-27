@@ -236,6 +236,15 @@ export async function installFromCatalogue(id: string, opts: Opts & { confirmExt
 // ---------------------------------------------------------------------------------------------------------------------
 // Mise à jour
 
+/**
+ * L'adresse d'un skin déjà noté est REVÉRIFIÉE à chaque usage (hôtes autorisés, https…) : le registre peut venir d'une sauvegarde, donc d'un fichier que
+ * quelqu'un a pu modifier ; une ligne trafiquée ne doit jamais faire contacter un hôte interdit.
+ */
+function specOf(row: SkinRow): Spec | Failure {
+  const p = parseSkinRepoUrl(repoAddress({ url: row.repo, ref: row.ref, subdir: row.subdir }));
+  return p.ok ? { url: p.repo.url, ref: p.repo.ref ?? null, subdir: p.repo.subdir ?? null } : fail(p.error);
+}
+
 const isStableTag = (ref: string | null | undefined): ref is string => !!ref && TAG_RE.test(ref);
 
 export type UpdateCheck = { available: boolean; target?: string; level?: UpdateLevel; needsCore?: string; /** La vérification elle-même a échoué (réseau, dépôt absent). */ failed?: boolean };
@@ -244,17 +253,19 @@ type Target = { spec: Spec; fromCatalogue: boolean; entry?: SkinCatalogueEntry }
 
 /** Quelle étiquette ou quel commit suivre ? Un skin du catalogue suit la version que le catalogue épingle ; un skin personnel suit la sienne. */
 async function targetOf(row: SkinRow): Promise<Target> {
+  const base = specOf(row);
+  if ("ok" in base) return base;
   const cat = await readSkinCatalogue({ coreVersion: getCoreVersion() });
   const entry = cat.entries.find((e) => e.id === row.id && e.origin === "official" && sameRepoUrl(e.repo, row.repo) && (e.subdir ?? null) === row.subdir);
-  if (entry) return { spec: { url: row.repo, ref: entry.ref ?? row.ref, subdir: row.subdir }, fromCatalogue: true, entry };
+  if (entry) return { spec: { url: base.url, ref: entry.ref ?? base.ref, subdir: base.subdir }, fromCatalogue: true, entry };
   if (row.source === "catalogue" && cat.unreachable) return fail("skins.error.catalogue");
   if (isCommitRef(row.ref)) return { none: "pinned" };
   if (isStableTag(row.ref)) {
-    const latest = await latestStableTag(row.repo);
+    const latest = await latestStableTag(base.url);
     if (!latest || !classify(row.ref, latest)) return { none: "uptodate" };
-    return { spec: { url: row.repo, ref: latest, subdir: row.subdir }, fromCatalogue: false };
+    return { spec: { url: base.url, ref: latest, subdir: base.subdir }, fromCatalogue: false };
   }
-  return { spec: { url: row.repo, ref: row.ref, subdir: row.subdir }, fromCatalogue: false };
+  return { spec: base, fromCatalogue: false };
 }
 
 /** Y a-t-il une version plus récente ? Ne télécharge pas le skin et ne change rien. */
@@ -271,7 +282,7 @@ export async function checkUpdate(id: string): Promise<UpdateCheck> {
       return available ? { available, target: e.version ?? e.ref, level: e.version ? classify(row.version, e.version) ?? undefined : undefined, needsCore: e.needsNewerCore } : { available: false };
     }
     if (isStableTag(t.spec.ref) && t.spec.ref !== row.ref) return { available: true, target: t.spec.ref, level: classify(row.ref ?? "0.0.0", t.spec.ref) ?? undefined };
-    const head = await remoteHead(row.repo, t.spec.ref);
+    const head = await remoteHead(t.spec.url, t.spec.ref);
     return head && head !== row.commit ? { available: true, target: head.slice(0, 7) } : { available: false };
   } catch { return { available: false, failed: true }; }
 }
@@ -356,7 +367,9 @@ export async function revert(id: string, opts: Opts = {}): Promise<{ ok: true; i
 export async function reinstall(id: string, opts: Opts = {}): Promise<InstallOk | Failure> {
   const row = (await readRows()).find((r) => r.id === id);
   if (!row) return fail("skins.error.notfound");
-  return installFrom({ url: row.repo, ref: row.ref, subdir: row.subdir }, { source: row.source, expectId: id, actor: systemActor(opts), mode: "reinstall" });
+  const spec = specOf(row);
+  if ("ok" in spec) return spec;
+  return installFrom(spec, { source: row.source, expectId: id, actor: systemActor(opts), mode: "reinstall" });
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
