@@ -7,7 +7,7 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { CORE_DIR, WIDTHS, VIEWPORT_HEIGHT, FIXED_NOW, LOCALES, SNAPSHOT_DIR, PORT_BASE } from "./config.mjs";
+import { CORE_DIR, ROOT, WIDTHS, VIEWPORT_HEIGHT, FIXED_NOW, LOCALES, SNAPSHOT_DIR, PORT_BASE } from "./config.mjs";
 import { PROFILES, PROFILE_ORDER } from "./profiles.mjs";
 import { discover, crawl, selectPages, pageId, STATES } from "./pages.mjs";
 import { loadPlaywright, chromiumPath, CHROMIUM_ARGS } from "./lib/playwright.mjs";
@@ -37,7 +37,9 @@ function readJson(f) { try { return JSON.parse(fs.readFileSync(f, "utf8")); } ca
 const sha = (b) => crypto.createHash("sha256").update(b).digest("hex");
 
 const STILL_CSS = `*,*::before,*::after{animation:none!important;animation-delay:0s!important;transition:none!important;caret-color:transparent!important;scroll-behavior:auto!important}
-html{cursor:none!important}*{cursor:none!important}::-webkit-scrollbar{display:none}`;
+html{cursor:none!important}*{cursor:none!important}::-webkit-scrollbar{display:none}
+/* Réduction des photos : le filtre choisi par Chromium (plus ou moins fin) varie d'une capture à l'autre selon l'ordre de décodage ; le plus proche voisin ne varie pas. */
+img,video,canvas,picture{image-rendering:pixelated!important}`;
 const SHIM = fs.readFileSync(new URL("./lib/page-shim.js", import.meta.url), "utf8").replace("__NOW__", FIXED_NOW);
 // Toute image tierce (jaquettes, miniatures, tuiles de carte, avatars) est remplacée par une illustration locale, la même à chaque fois pour la même adresse.
 const artCache = new Map();
@@ -123,7 +125,9 @@ async function runTaskInner(ctxFor, t, port) {
   const url = `http://127.0.0.1:${port}${t.path}`;
   let status = 0;
   try {
-    const resp = await tab.goto(url, { waitUntil: "load", timeout: 45000 });
+    let resp = await tab.goto(url, { waitUntil: "load", timeout: 45000 });
+    // Une réponse 5xx n'est jamais une page à comparer : on réessaie (2 fois), puis on enregistre l'état tel quel.
+    for (let k = 0; k < 2 && (resp?.status() ?? 0) >= 500; k++) { await tab.waitForTimeout(1500); resp = await tab.goto(url, { waitUntil: "load", timeout: 45000 }); }
     status = resp?.status() ?? 0;
     await settle(tab);
     if (t.state?.run) { await t.state.run(tab); await settle(tab); }
@@ -166,6 +170,9 @@ for (const profile of profiles) {
   try {
     const base = `http://127.0.0.1:${port}`;
     if (!found) { found = await crawl(base, await discover(base)); manifest.discovered = { count: found.length, paths: found.map((f) => f.path) }; }
+    // Échauffement : chaque page est demandée une fois (compilation et caches du serveur), pour qu'aucune capture ne tombe sur un démarrage à froid.
+    for (const p of found) { try { await fetch(base + p.path, { signal: AbortSignal.timeout(30000) }); } catch {} }
+    for (const p of ["/page-introuvable", "/en/page-introuvable"]) { try { await fetch(base + p, { signal: AbortSignal.timeout(30000) }); } catch {} }
     tasks.length = 0;
     const scope = PROFILES[profile].scope;
     const locales = scope === "all" && profile === "night" ? LOCALES : [LOCALES[0]];
@@ -205,6 +212,10 @@ for (const profile of profiles) {
     console.log(`  ${done} captures pour ${profile}`);
   } finally {
     execFileSync("node", [SITE, "down", profile], { stdio: "inherit", env: { ...process.env, NODE_OPTIONS: "" } });
+    // Journaux du serveur et appels réseau refusés, gardés avec la capture (diagnostic d'un 500 ou d'un hôte externe inattendu).
+    const rd = `${ROOT}/run-${profile}`;
+    fs.mkdirSync(path.join(out, "logs"), { recursive: true });
+    for (const [f, n] of [["server.log", `${profile}.server.log`], ["net-blocked.log", `${profile}.net-blocked.log`]]) { try { fs.copyFileSync(path.join(rd, f), path.join(out, "logs", n)); } catch {} }
   }
 }
 await browser.close();
