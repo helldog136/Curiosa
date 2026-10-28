@@ -13,7 +13,7 @@ import { tokenizeValue, type Tok } from "./valueTokens";
 
 export type TokenType =
   | "color" | "gradient" | "length" | "length-pair" | "text-size" | "line-height" | "number" | "weight" | "tracking" | "duration" | "easing"
-  | "font" | "shadow" | "text-transform" | "border-style" | "grid-columns" | "grid-areas" | "target";
+  | "font" | "shadow" | "text-transform" | "border-style" | "grid-columns" | "grid-areas" | "target" | "gradient-style";
 
 export type TokenGroup = "color" | "typography" | "space" | "radius" | "border" | "shadow" | "motion" | "layout";
 
@@ -71,6 +71,7 @@ export const TOKEN_DEFS: readonly TokenDef[] = [
   t("--sk-color-scrim", "color", "color", "#000000", "base des voiles translucides sur image ou vidéo (boutons, légende)"),
   t("--sk-color-on-veil", "color", "color", "#ffffff", "texte et filets posés sur un voile ou une vidéo"),
   t("--sk-color-veil-ink", "color", "color", "#000000", "texte d'un bouton rempli de la couleur « sur voile » (survol)"),
+  t("--sk-gradient", "color", "gradient-style", null, "dégradé du second accent (chiffres clés, panneau d'appel à l'action, filet sous l'en-tête) : `blend` ou `flat` (uni, couleur principale) ; sans second accent distinct, rien ne change ; facultatif : absent = `blend`"),
   t("--sk-color-selection", "color", "color", null, "sélection de texte (facultatif : le navigateur choisit)"),
   t("--sk-color-heading", "color", "color", null, "titres (facultatif : si défini, contrôlé à 3:1)"),
 
@@ -103,6 +104,7 @@ export const TOKEN_DEFS: readonly TokenDef[] = [
   t("--sk-prose-width", "space", "length", "42rem", "largeur de lecture des textes courts"),
   t("--sk-prose-width-wide", "space", "length", "48rem", "largeur de lecture des textes plus longs"),
   t("--sk-grid-gap", "space", "length", "1.25rem", "espace entre les cartes d'une grille"),
+  t("--sk-card-pad", "space", "length", "calc(var(--sk-space) * 4)", "remplissage d'une carte (entre son bord et son texte ; les cartes à image et les petites cartes en gardent la proportion)"),
 
   // ── Rayons
   ...RADII.map((r) => t(`--sk-radius-${r}`, "radius", "length", RADIUS_REM[r], `rayon « ${r} »`)),
@@ -175,7 +177,7 @@ const PROP_OF: Record<TokenType, string> = {
   color: "color", gradient: "background-image", length: "padding-left", "length-pair": "gap", "text-size": "font-size", "line-height": "line-height",
   number: "flex-grow", weight: "font-weight", tracking: "letter-spacing", duration: "transition-duration", easing: "transition-timing-function",
   font: "font-family", shadow: "box-shadow", "text-transform": "text-transform", "border-style": "border-style", "grid-columns": "grid-template-columns",
-  "grid-areas": "grid-template-areas", target: "min-height",
+  "grid-areas": "grid-template-areas", target: "min-height", "gradient-style": "",
 };
 
 /** Propriété plus précise pour certains jetons (bornes propres). */
@@ -239,6 +241,7 @@ function shapeOk(type: TokenType, name: string, toks: readonly Tok[]): boolean {
     case "text-transform": return isVarOnly || (m.length === 1 && first.k === "ident" && ["none", "uppercase", "lowercase", "capitalize"].includes(first.v.toLowerCase()));
     case "border-style": return isVarOnly || (m.length === 1 && first.k === "ident" && ["solid", "dashed", "dotted", "double"].includes(first.v.toLowerCase()));
     case "grid-columns": return m.length > 0;
+    case "gradient-style": return isVarOnly || (m.length === 1 && first.k === "ident" && ["blend", "flat"].includes(first.v.toLowerCase()));
     case "grid-areas": return m.length > 0 && m.every((x) => x.k === "str" || x.k === "ident");
   }
 }
@@ -275,7 +278,7 @@ export function validateTokenValue(name: string, value: unknown, options: { skin
   const prop = PROP_OVERRIDE[name] ?? PROP_OF[type];
   const m = meaningful(lex.tokens);
   const refOnly = m[0]!.k === "fn" && m[0]!.v === "var" && m[m.length - 1]!.k === "close";
-  if (!refOnly) {
+  if (!refOnly && prop) {
     const bounded = checkDeclaration(prop, generic.value, false, newCtx(skinId), report);
     if (!bounded) return { ok: false, issues };
     if (type === "target" && !targetBigEnough(generic.value)) {

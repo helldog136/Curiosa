@@ -88,7 +88,7 @@ export async function Blocks({ blocks, locale, adminInstanceId: panelInstanceId,
         out.push(
           <ul key={i} data-skin-part="list" data-kind="swatches" className="grid gap-3 sm:grid-cols-2">
             {block.items.filter((c) => /^#[0-9a-fA-F]{6}$/.test(c.hex)).map((c) => (
-              <li key={c.name + c.hex} data-card="" data-skin-part="card" className="flex items-center gap-4 rounded-card border-token border-line bg-surface p-3">
+              <li key={c.name + c.hex} data-card="" data-skin-part="card" className="flex items-center gap-4 rounded-card border-token border-line bg-surface p-[calc(var(--sk-card-pad,calc(var(--spacing)*4))*.75)]">
                 <span className="h-14 w-14 shrink-0 rounded-media border-token border-line" style={{ backgroundColor: c.hex }} aria-hidden="true" />
                 <div className="flex min-w-0 flex-col items-start gap-1">
                   <span className="text-sm font-semibold">{c.name}</span>
@@ -106,7 +106,7 @@ export async function Blocks({ blocks, locale, adminInstanceId: panelInstanceId,
         out.push(
           <ul key={i} data-skin-part="list" data-kind="downloads" className="grid gap-4 sm:grid-cols-2">
             {block.items.filter((d) => d.src.startsWith("/") || /^https?:\/\//.test(d.src)).map((d) => (
-              <li key={d.src} data-card="" data-skin-part="card" className="flex flex-col gap-3 rounded-card border-token border-line bg-surface p-4">
+              <li key={d.src} data-card="" data-skin-part="card" className="flex flex-col gap-3 rounded-card border-token border-line bg-surface p-[var(--sk-card-pad,calc(var(--spacing)*4))]">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={d.src} alt={d.label} data-skin-part="image" className="h-40 w-full object-contain" />
                 <div className="flex items-center justify-between gap-3 text-sm">
@@ -122,7 +122,7 @@ export async function Blocks({ blocks, locale, adminInstanceId: panelInstanceId,
       case "copy": {
         const t = makeTranslator(locale);
         out.push(
-          <div key={i} data-card="" data-skin-part="card" className="space-y-2 rounded-card border-token border-line bg-surface p-4">
+          <div key={i} data-card="" data-skin-part="card" className="space-y-2 rounded-card border-token border-line bg-surface p-[var(--sk-card-pad,calc(var(--spacing)*4))]">
             {block.label && <p data-skin-part="eyebrow" className="text-xs uppercase tracking-wide text-muted">{block.label}</p>}
             <p className="text-sm">{block.text}</p>
             <CopyText text={block.text} copyLabel={t("site.copy")} copiedLabel={t("site.copied")} />
@@ -255,7 +255,7 @@ export async function Blocks({ blocks, locale, adminInstanceId: panelInstanceId,
         const view = describeNetHealth(block.items, locale);
         if (view.lines.length === 0) break;
         out.push(
-          <section key={i} data-card="" data-skin-part="card" className="space-y-3 rounded-card border-token border-line bg-surface p-4" aria-label={view.title}>
+          <section key={i} data-card="" data-skin-part="card" className="space-y-3 rounded-card border-token border-line bg-surface p-[var(--sk-card-pad,calc(var(--spacing)*4))]" aria-label={view.title}>
             <h3 className="text-sm font-semibold">{view.title}</h3>
             {view.summary && (
               <div className="rounded-field border-token border-warning p-3 text-sm" role="status">

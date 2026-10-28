@@ -20,7 +20,7 @@ const PRINCIPLE = new Set([
   "offset-out-of-range", "text-indent-bad", "margin-too-negative", "spacing-too-large", "content-not-allowed", "content-too-long", "content-selector", "attr-forbidden",
   "counter-forbidden", "pointer-events-content", "blend-mode-content", "mask-needs-decor", "clip-path-bad", "clip-path-subject", "position-fixed-forbidden",
   "transform-not-allowed", "transform-too-large", "filter-not-allowed", "filter-too-strong", "unknown-region", "unknown-part", "class-selector", "id-selector",
-  "element-not-allowed", "selector-needs-anchor", "universal-selector", "root-selector", "global-selector", "wrong-scope", "fixed-background-limit", "string-not-allowed",
+  "element-not-allowed", "element-needs-module-html", "selector-needs-anchor", "universal-selector", "root-selector", "global-selector", "wrong-scope", "fixed-background-limit", "string-not-allowed",
   "z-index-range", "order-range", "float-not-none", "focus-indicator-missing",
 ]);
 

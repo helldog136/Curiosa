@@ -283,3 +283,19 @@ test("retouches : lecture des réglages (clés, casse, invalides ignorés), aucu
   assert.deepEqual(retouchesFrom(() => undefined), { palette: "single", single: {}, light: {}, dark: {} }, "site existant sans aucune clé = aucune retouche");
   assert.ok(RETOUCH_KEYS.includes("theme.light.text") && RETOUCH_KEYS.includes("theme.palette") && RETOUCH_KEYS.includes("theme.font"));
 });
+
+test("--sk-gradient: flat : dégradé et texte du panneau unis, même avec un second accent et après une retouche ; absent, rien ne change", () => {
+  const withGrad = (g) => skin({ tokens: { ...skin().tokens, common: { ...skin().tokens.common, "--sk-gradient": g }, dark: { ...skin().tokens.dark, "--v-accent2": "#ffd54a" } }, modes: ["dark"] });
+  const flat = composeSkin({ skin: withGrad("flat") }).modes[0];
+  assert.equal(flat.tokens["--v-gradient"], "linear-gradient(120deg, var(--v-accent), var(--v-accent))");
+  assert.equal(flat.tokens["--c-grad-fg"], "var(--v-accent-fg)");
+  const retouched = composeSkin({ skin: withGrad("flat"), retouches: retouch({ accent: "#d6336c", accent2: "#00a86b" }) }).modes[0];
+  assert.equal(retouched.tokens["--v-gradient"], "linear-gradient(120deg, var(--v-accent), var(--v-accent))");
+  const blend = composeSkin({ skin: withGrad("blend") }).modes[0];
+  assert.match(blend.tokens["--v-gradient"], /#ffd54a/i);
+  assert.notEqual(blend.tokens["--c-grad-fg"], "var(--v-accent-fg)");
+  assert.equal(composeSkin({}).modes[0].tokens["--sk-gradient"], undefined);
+  // deux couleurs dont aucun texte ne se lit sur tout le dégradé : le cœur passe seul au dégradé uni (la lisibilité d'abord)
+  const clash = composeSkin({ skin: withGrad("blend"), retouches: retouch({ accent: "#ff00aa", accent2: "#00a86b" }) }).modes[0];
+  assert.equal(clash.tokens["--v-gradient"], "linear-gradient(120deg, var(--v-accent), var(--v-accent))");
+});

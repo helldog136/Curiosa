@@ -36,10 +36,10 @@ test("vocabulaire : noms valides et uniques, un type et un rôle pour chacun", (
   for (const n of ["--sk-space", "--sk-page-width", "--sk-radius-card", "--sk-radius-button", "--sk-shadow-pop", "--sk-duration", "--sk-target", "--sk-shell-areas", "--sk-flow-gap", "--sk-vh-large-basis", "--sk-leading-body", "--sk-heading-transform"]) assert.ok(T.isKnownToken(n), n);
 });
 
-test("basic : définit chaque jeton du vocabulaire (sauf les deux facultatifs) et chaque valeur passe la validation", () => {
+test("basic : définit chaque jeton du vocabulaire (sauf les trois facultatifs) et chaque valeur passe la validation", () => {
   const defined = { ...BASIC.tokens.common, ...BASIC.tokens.dark };
   const optional = T.TOKEN_DEFS.filter((d) => d.basic === null).map((d) => d.name).sort();
-  assert.deepEqual(optional, ["--sk-color-heading", "--sk-color-selection"], "jetons facultatifs que basic ne fixe pas");
+  assert.deepEqual(optional, ["--sk-color-heading", "--sk-color-selection", "--sk-gradient"], "jetons facultatifs que basic ne fixe pas");
   for (const d of T.TOKEN_DEFS) {
     if (d.basic === null) { assert.equal(defined[d.name], undefined, d.name); continue; }
     assert.equal(defined[d.name], d.basic, `tokens.json de basic = vocabulaire : ${d.name}`);

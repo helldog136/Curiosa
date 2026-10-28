@@ -168,7 +168,10 @@ function composeMode(args: {
   }
   // Texte à poser sur le dégradé accent → accent secondaire (règles `[data-accent2]` du cœur) : seulement si les deux accents diffèrent
   const a = finalTokens["--v-accent"], b = finalTokens["--v-accent2"];
-  if (isHexColor(a) && isHexColor(b) && a.toLowerCase() !== b.toLowerCase()) finalTokens = { ...finalTokens, "--c-grad-fg": gradientTextOn(a, b) };
+  if (!isBasic && (finalTokens["--sk-gradient"] ?? "").trim().toLowerCase() === "flat") {
+    // `--sk-gradient: flat` : le dégradé du cœur (chiffres clés, panneau d'appel à l'action, filet sous l'en-tête) devient la couleur principale unie, même après une retouche des couleurs
+    finalTokens = { ...finalTokens, "--v-gradient": "linear-gradient(120deg, var(--v-accent), var(--v-accent))", "--c-grad-fg": "var(--v-accent-fg)" };
+  } else if (isHexColor(a) && isHexColor(b) && a.toLowerCase() !== b.toLowerCase()) finalTokens = { ...finalTokens, "--c-grad-fg": gradientTextOn(a, b) };
   const theme = themeOf(finalTokens, args.font);
   return { mode, tokens: finalTokens, theme, suspended, changes, notice, darkBackground: isDarkHex(theme.bg) };
 }

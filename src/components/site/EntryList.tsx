@@ -85,7 +85,7 @@ export function EntryList({ entries, collection, locale, defaultLocale }: Props)
             data-card="" data-skin-part="card" className={`flex flex-col overflow-hidden rounded-card border-token border-line bg-surface ${e.expired ? "opacity-60" : ""}`}
           >
             {e.cover && <CoverImage src={e.cover} variant="card" />}
-            <div className="flex flex-1 flex-col gap-2 p-5">
+            <div data-skin-part="card-body" className="flex flex-1 flex-col gap-2 p-[calc(var(--sk-card-pad,calc(var(--spacing)*4))*1.25)]">
               <h3 data-skin-part="heading" data-level="3" className="flex items-center gap-2 text-lg font-semibold">
                 <EntryIcon icon={e.icon} />
                 <a href={href} data-skin-part="link" {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})} className="hover:text-accent">

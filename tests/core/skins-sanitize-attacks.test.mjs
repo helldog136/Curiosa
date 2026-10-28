@@ -177,7 +177,7 @@ for (const sel of [
   "[data-skin-part=\"card\"][data-level=\"9\"]", "[data-skin-part=\"card\"][aria-expanded=\"maybe\"]", "[data-skin-part=\"card\"][lang=\"x!\"]", "[data-skin-part=\"card\"][rel=\"external\"]", "[data-skin-part=\"card\"][target~=\"_blank\"]",
 ]) {
   add(`sélecteur : ${JSON.stringify(sel)}`, `${sel}{color:red}`, [
-    "universal-selector", "global-selector", "root-selector", "wrong-scope", "element-not-allowed", "class-selector", "id-selector", "attribute-not-allowed", "attribute-operator", "attribute-value",
+    "universal-selector", "global-selector", "root-selector", "wrong-scope", "element-not-allowed", "element-needs-module-html", "class-selector", "id-selector", "attribute-not-allowed", "attribute-operator", "attribute-value",
     "unknown-part", "unknown-region", "selector-needs-anchor", "selector-syntax", "pseudo-class-not-allowed", "pseudo-element-not-allowed", "pseudo-element-position", "escape-sequence", "non-ascii-char",
     "nth-bad", "nesting-selector", "namespace-selector", "selector-too-nested", "has-too-deep", "css-syntax", "declaration-outside-rule", "media-syntax",
   ]);

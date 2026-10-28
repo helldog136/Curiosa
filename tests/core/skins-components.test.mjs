@@ -81,7 +81,7 @@ test("largeurs, rythme et grille : repli = valeur d'avant", () => {
 });
 
 test("chaque jeton du vocabulaire est lu par le cœur (feuille, composants, pages ou feuille de jetons)", () => {
-  const sources = [css, read("src/core/skins/sheet.ts"), ...SITE.map(read)].join("\n");
+  const sources = [css, read("src/core/skins/sheet.ts"), read("src/core/skins/compose.ts"), ...SITE.map(read)].join("\n");
   const unread = T.TOKEN_DEFS.map((d) => d.name).filter((n) => !sources.includes(n));
   assert.deepEqual(unread, []);
 });

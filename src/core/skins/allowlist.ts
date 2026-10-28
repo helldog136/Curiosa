@@ -23,7 +23,7 @@ export const REGIONS = ["backdrop", "tray", "shell", "banner", "header", "nav", 
 
 /** Pièces communes du DOM stable (§9.2). Ajouter une pièce est additif ; en retirer une est cassant (`skinContract`). */
 export const PARTS = [
-  "card", "button", "chip", "badge", "news-dot",
+  "card", "card-body", "button", "chip", "badge", "news-dot",
   "field", "input", "textarea", "label", "field-error",
   "list", "list-item", "table", "table-head", "table-row", "table-cell",
   "heading", "eyebrow", "lead", "prose", "quote", "code", "code-block", "copy-code",
@@ -49,6 +49,16 @@ export const CONTENT_ELEMENTS: readonly string[] = [
   "blockquote", "code", "pre", "hr", "strong", "em", "button", "input", "select", "textarea", "label", "figure",
   "figcaption", "svg", "time", "details", "summary",
 ];
+
+/**
+ * Éléments de MISE EN PAGE ciblables UNIQUEMENT sous `[data-skin-part="module-html"]` (docs/SKINS.md §6.1.1) : les boîtes internes que les modules écrivent eux-mêmes
+ * dans leur HTML (`<div>`, `<span>`, `<section>`, `<article>`). Nulle part ailleurs : le DOM du cœur est ciblé par ses régions et ses pièces.
+ */
+export const MODULE_HTML_ELEMENTS: readonly string[] = ["div", "span", "section", "article"];
+/** Pièce sous laquelle les éléments ci-dessus (et l'attribut `[data-marker]`) deviennent ciblables. */
+export const MODULE_HTML_PART = "module-html";
+/** Repères de HTML de module (présence seulement, jamais de valeur) ciblables sous la même condition. */
+export const MODULE_HTML_ATTRIBUTES: readonly string[] = ["data-marker"];
 
 /** Cibles qui sortent de la portée d'un skin : refusées avec un message dédié. */
 export const GLOBAL_ELEMENTS: readonly string[] = ["html", "body"];
@@ -236,7 +246,7 @@ export const GENERIC_FONT_FAMILIES: readonly string[] = [
 /** Pièces et régions listées au §9.3 (documentaire : la règle appliquée est « tout sauf le décor »). */
 export const NON_HIDEABLE: readonly string[] = [
   "brand", "nav-link", "nav-list", "submenu", "tools", "lang-switcher", "heading", "prose", "link", "button", "field", "input", "textarea",
-  "label", "field-error", "card", "list-item", "image", "media", "cover", "avatar", "notice", "stat", "tab", "pagination",
+  "label", "field-error", "card", "card-body", "list-item", "image", "media", "cover", "avatar", "notice", "stat", "tab", "pagination",
   "pagination-link", "cookie-tray", "footer-link", "credit", "skip-link", "mode-switch", "mode-option", "submenu-toggle", "header-group", "entries", "module-html",
 ];
 
@@ -278,7 +288,7 @@ export const DEFAULT_LIMITS: SkinLimits = {
   maxKeyframes: 12,
   maxKeyframeSteps: 20,
   maxFontFaces: 4,
-  maxSelectorLength: 300,
+  maxSelectorLength: 600,
   maxSelectorsPerRule: 20,
   maxSelectorDepth: 6,
   maxFunctionalNesting: 2,

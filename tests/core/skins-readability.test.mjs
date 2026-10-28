@@ -138,12 +138,12 @@ test("suggestion de couleur : la plus petite correction qui passe", () => {
 });
 
 // ---------------------------------------------------------------------------------------------------------------------
-// Les 12 paires
+// Les 14 paires (12 du §7.1, plus 13 et 14 : le dégradé du second accent)
 
-test("les 12 paires du §7.1 sont déclarées, seuils compris", () => {
-  assert.deepEqual(R.READABILITY_PAIRS.map((p) => p.id), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
+test("les 14 paires sont déclarées, seuils compris", () => {
+  assert.deepEqual(R.READABILITY_PAIRS.map((p) => p.id), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]);
   const min = Object.fromEntries(R.READABILITY_PAIRS.map((p) => [p.id, p.min]));
-  assert.deepEqual(min, { 1: 4.5, 2: 4.5, 3: 4.5, 4: 4.5, 5: 4.5, 6: 4.5, 7: 3, 8: 3, 9: 4.5, 10: 4.5, 11: 4.5, 12: 3 });
+  assert.deepEqual(min, { 1: 4.5, 2: 4.5, 3: 4.5, 4: 4.5, 5: 4.5, 6: 4.5, 7: 3, 8: 3, 9: 4.5, 10: 4.5, 11: 4.5, 12: 3, 13: 3, 14: 4.5 });
   assert.equal(R.AA_TEXT, 4.5);
   assert.equal(R.AA_LARGE, 3);
   assert.equal(R.AAA_TEXT, 7);
@@ -447,4 +447,32 @@ test("pannes internes : le contrôle échoue toujours du côté prudent", () => 
   const c = R.correctReadability(boom, "light");
   assert.equal(c.suspended, true);
   assert.deepEqual(R.probableIllegibility({ get background() { throw new Error("boom"); } }, null), [], "l'avertissement de retouche n'est qu'un conseil");
+});
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Le dégradé du second accent (paires 13 et 14, jeton --sk-gradient)
+
+test("dégradé : second accent proche du fond ou texte illisible sur le dégradé = problème bloquant ; `flat` ou second accent absent = rien à mesurer", async () => {
+  const base = { ...darkTokens() };
+  // second accent identique ou absent : aucune paire 13 ni 14
+  assert.deepEqual(pairs(R.checkReadability({ ...base, "--v-accent2": base["--v-accent"] }, "dark")), []);
+  const { "--v-accent2": _drop, ...noSecond } = base;
+  assert.deepEqual(pairs(R.checkReadability(noSecond, "dark")), []);
+  // second accent presque invisible sur le fond : paire 13
+  const dim = { ...base, "--v-accent2": "#16161f" };
+  assert.ok(pairs(R.checkReadability(dim, "dark")).includes(13));
+  assert.ok(!pairs(R.checkReadability({ ...dim, "--sk-gradient": "flat" }, "dark")).includes(13));
+  // rose vif -> vert vif : ni le noir ni le blanc ne se lit partout sur le dégradé (paire 14)
+  const clash = { ...base, "--v-accent": "#ff00aa", "--v-accent2": "#00a86b", "--v-accent-fg": "#111111", "--v-accent2-fg": "#111111" };
+  const issues = R.checkReadability(clash, "dark");
+  const p14 = issues.find((i) => i.pair === 14);
+  assert.ok(p14, JSON.stringify(pairs(issues)));
+  assert.match(p14.hint.fr, /--sk-gradient/);
+  assert.match(p14.hint.en, /--sk-gradient/);
+  assert.ok(!pairs(R.checkReadability({ ...clash, "--sk-gradient": "flat" }, "dark")).includes(14));
+  // la correction automatique passe par le dégradé uni et ne touche pas aux couleurs
+  const fixed = R.correctReadability(clash, "dark");
+  assert.equal(fixed.suspended, false);
+  assert.equal(fixed.tokens["--sk-gradient"], "flat");
+  assert.equal(fixed.tokens["--v-accent"], clash["--v-accent"]);
 });

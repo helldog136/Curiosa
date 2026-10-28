@@ -12,7 +12,7 @@
  * Transparences : un fond translucide est composé sur ce qu'il y a derrière (fond de page, puis blanc en mode clair / noir en
  * mode sombre) ; un texte translucide est composé sur son fond. Ainsi un skin « verre » est jugé sur ce qu'on voit.
  */
-import { buildPalette } from "../color";
+import { buildPalette, contrast as hexContrast, gradientTextOn, mix as hexMix } from "../color";
 import { parseColor, toHex, type Rgba } from "./colorParse";
 import { catalogEntry, makeText, type Params, type Text } from "./messages";
 
@@ -98,6 +98,10 @@ export const READABILITY_PAIRS: readonly PairSpec[] = [
   { id: 11, fg: [], bg: [], min: AA_TEXT, text: true, label: { fr: "les pièces de module", en: "module parts" } },
   // Paire 12 : les titres. Le §7.1 ne nomme pas de jeton de titre ; on contrôle `--sk-color-heading` (facultatif) au seuil « grand texte ».
   { id: 12, fg: ["--sk-color-heading"], bg: ["--v-bg", "--v-surface"], min: AA_LARGE, text: true, label: { fr: "les gros titres", en: "large headings" } },
+  // Paires 13 et 14 : le DÉGRADÉ que le cœur applique dès qu'un second accent distinct existe (chiffres clés, onglet actif, panneau d'appel à l'action). Elles ne comptent que si le dégradé
+  // est actif (second accent distinct, et `--sk-gradient` différent de `flat`).
+  { id: 13, fg: ["--v-accent2"], bg: ["--v-bg", "--v-surface"], min: AA_LARGE, text: false, label: { fr: "la seconde couleur (chiffres clés et onglet actif, fin du dégradé)", en: "the second color (key figures and active tab, end of the gradient)" } },
+  { id: 14, fg: ["--v-accent"], bg: ["--v-accent2"], min: AA_TEXT, text: true, label: { fr: "le texte du panneau d'appel à l'action posé sur le dégradé", en: "the text of the call-to-action panel on the gradient" } },
 ];
 
 export type ModulePair = {
@@ -290,6 +294,7 @@ function evaluate(tokens: Tokens, mode: Mode, options: ReadabilityOptions): Read
       }
       continue;
     }
+    if (pair.id === 13 || pair.id === 14) continue;
     if (pair.id === 10) {
       for (const s of STATES) if (r.has(`--v-${s}-fg`) && r.has(`--v-${s}`)) test(pair, `--v-${s}-fg`, [`--v-${s}`]);
       continue;
@@ -308,10 +313,40 @@ function evaluate(tokens: Tokens, mode: Mode, options: ReadabilityOptions): Read
     if (pair.id === 4 && !r.has("--v-accent-fg")) continue;
     test(pair, fgToken, pair.bg);
   }
+  const grad = activeGradient(tokens, r);
+  if (grad) {
+    const p13 = READABILITY_PAIRS.find((p) => p.id === 13)!;
+    test(p13, "--v-accent2", p13.bg);
+    const p14 = READABILITY_PAIRS.find((p) => p.id === 14)!;
+    const worst = gradientInkRatio(grad.a, grad.b);
+    if (worst < p14.min) out.push(gradientIssue(mode, worst, p14.min));
+  }
   // couleurs présentes mais incompréhensibles : on ne peut pas prouver qu'elles sont lisibles
   const seen = new Set(out.filter((i) => i.code === "read-color-unreadable").map((i) => i.fgToken));
   for (const [name] of r.unreadable) if (!seen.has(name)) out.push(plainIssue("read-color-unreadable", mode, name));
   return out;
+}
+
+/** Le dégradé du cœur est actif : un second accent distinct, et `--sk-gradient` n'est pas `flat`. */
+function activeGradient(tokens: Tokens, r: Resolved): { a: Rgba; b: Rgba } | null {
+  if ((tokens["--sk-gradient"] ?? "").trim().toLowerCase() === "flat") return null;
+  if (!r.has("--v-accent2")) return null;
+  const a = r.get("--v-accent"), b = r.get("--v-accent2");
+  if (!a || !b || a.a < 1 || b.a < 1) return null;
+  return toHex(a).toLowerCase() === toHex(b).toLowerCase() ? null : { a, b };
+}
+
+/** Pire contraste du texte que le cœur pose sur le dégradé (noir ou blanc, le meilleur des deux : `gradientTextOn`), mesuré sur cinq points. */
+function gradientInkRatio(a: Rgba, b: Rgba): number {
+  const ha = toHex(a), hb = toHex(b);
+  const ink = gradientTextOn(ha, hb);
+  return Math.min(...[0, 0.25, 0.5, 0.75, 1].map((t) => hexContrast(hexMix(ha, hb, t), ink)));
+}
+
+function gradientIssue(mode: Mode, ratio: number, required: number): ReadabilityIssue {
+  const params: Params = { mode: modeText(mode), ratio: round2(ratio), min: required, token: "--sk-gradient" };
+  const e = catalogEntry("read-low-14")!;
+  return { code: "read-low-14", severity: "error", pair: 14, mode, fgToken: "--v-accent", bgToken: "--v-accent2", ratio: round2(ratio), required, message: makeText(e.fr, e.en, params), hint: makeText(e.hintFr, e.hintEn, params), example: "flat" };
 }
 
 /** Vrai s'il y a au moins un problème bloquant (sous le seuil AA). */
@@ -413,6 +448,9 @@ export function correctReadability(tokens: Tokens, mode: Mode, options: Readabil
       }
       if (pairs.has(12)) nudge("--sk-color-heading", [r.bg, r.surface], AA_LARGE, 12);
       if (pairs.has(7)) nudge("--v-accent", [r.bg], AA_LARGE, 7);
+      if (pairs.has(13)) nudge("--v-accent2", [r.bg, r.surface], AA_LARGE, 13);
+      // le texte du panneau d'appel à l'action ne se lit pas sur le dégradé : un dégradé uni (`--sk-gradient: flat`) règle le cas sans toucher aux couleurs
+      if (pairs.has(14)) set("--sk-gradient", "flat", "text", 14);
       issues = check();
       // les couleurs dérivées suivent le texte et l'accent qui viennent de bouger
       if (issues.length) {

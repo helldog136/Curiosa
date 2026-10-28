@@ -6,7 +6,7 @@
  */
 import {
   CONTENT_ELEMENTS, DECOR_PARTS, DECOR_PSEUDO_ELEMENTS, DECOR_REGIONS, GLOBAL_ELEMENTS, LEGACY_PSEUDO_ELEMENTS, LOGICAL_PSEUDO_CLASSES, MODE_ATTRIBUTE, MODE_QUALIFIER_VALUES,
-  MODULE_PART_RE, NTH_PSEUDO_CLASSES, PARTS, PSEUDO_CLASSES, PSEUDO_ELEMENTS, REGIONS, STATE_ATTRIBUTES, type SkinLimits,
+  MODULE_HTML_ATTRIBUTES, MODULE_HTML_ELEMENTS, MODULE_HTML_PART, MODULE_PART_RE, NTH_PSEUDO_CLASSES, PARTS, PSEUDO_CLASSES, PSEUDO_ELEMENTS, REGIONS, STATE_ATTRIBUTES, type SkinLimits,
 } from "./allowlist";
 
 export type Attr = { name: string; op: "" | "=" | "~=" | "|="; value: string };
@@ -269,10 +269,15 @@ function isAnchored(c: Compound): boolean {
   return c.pseudos.some((p) => (p.name === "is" || p.name === "where") && Array.isArray(p.arg) && p.arg.length > 0 && p.arg.every((x) => x.lead === null && isAnchored(x.compounds[0]!)));
 }
 
-function validateCompound(c: Compound, ctx: SelectorContext, inner: boolean) {
+/** Le composé est la pièce `module-html` elle-même. */
+const isModuleHtml = (c: Compound): boolean => anchorOf(c).part === MODULE_HTML_PART;
+
+function validateCompound(c: Compound, ctx: SelectorContext, inner: boolean, underModuleHtml: boolean) {
   if (c.type !== null) {
     if (GLOBAL_ELEMENTS.includes(c.type)) throw new SelectorError("global-selector", { name: c.type });
-    if (!CONTENT_ELEMENTS.includes(c.type)) throw new SelectorError("element-not-allowed", { name: c.type });
+    if (MODULE_HTML_ELEMENTS.includes(c.type)) {
+      if (!underModuleHtml) throw new SelectorError("element-needs-module-html", { name: c.type });
+    } else if (!CONTENT_ELEMENTS.includes(c.type)) throw new SelectorError("element-not-allowed", { name: c.type });
   }
   if (c.pseudos.some((p) => p.name === "root")) throw new SelectorError("root-selector");
   for (const a of c.attrs) {
@@ -283,26 +288,40 @@ function validateCompound(c: Compound, ctx: SelectorContext, inner: boolean) {
       if (a.name === "data-skin-part" && !partKnown(a.value, ctx)) throw new SelectorError("unknown-part", { name: a.value.slice(0, 40) });
       continue;
     }
+    if (MODULE_HTML_ATTRIBUTES.includes(a.name)) {
+      if (!underModuleHtml) throw new SelectorError("element-needs-module-html", { name: `[${a.name}]` });
+      if (a.op !== "") throw new SelectorError("attribute-operator", { name: a.name });
+      continue;
+    }
     const spec = STATE_ATTRIBUTES[a.name];
     if (!spec) throw new SelectorError("attribute-not-allowed", { name: a.name.slice(0, 40) });
     if (!spec.ops.includes(a.op)) throw new SelectorError("attribute-operator", { name: a.name });
     if (a.op !== "" && !spec.value!.test(a.value)) throw new SelectorError("attribute-value", { name: a.name, value: a.value.slice(0, 40) });
   }
+  // `:is()`, `:where()`, `:not()` parlent du MÊME élément, `:has()` de ses descendants : la condition « sous module-html » se transmet (le composé lui-même compte)
   for (const p of c.pseudos) {
     if (!Array.isArray(p.arg)) continue;
-    for (const x of p.arg) validateComplex(x, ctx, true, p.name);
+    for (const x of p.arg) validateComplex(x, ctx, true, p.name, underModuleHtml || isModuleHtml(c));
   }
   if (inner && c.pseudoElement) throw new SelectorError("pseudo-element-position");
 }
 
-function validateComplex(x: Complex, ctx: SelectorContext, inner: boolean, within?: string) {
+function validateComplex(x: Complex, ctx: SelectorContext, inner: boolean, within?: string, underModuleHtml = false) {
   if (within === "has") {
     if (x.compounds.length > 2) throw new SelectorError("has-too-deep");
     if (x.compounds.some((c) => c.pseudos.some((p) => p.name === "has"))) throw new SelectorError("has-too-deep");
   }
+  // Sous `module-html` : à l'intérieur de la pièce (descendant ou enfant d'un composé qui l'est, ou de la pièce) ; un FRÈRE de la pièce elle-même (`+`, `~`) est dehors.
+  let inside = underModuleHtml && (x.lead === null || x.lead === ">" || x.lead === " "); // le composé précédent est strictement à l'intérieur
+  let isPart = false;                                                                       // le composé précédent EST la pièce
   x.compounds.forEach((c, i) => {
+    if (i > 0) {
+      const k = x.combinators[i - 1]!;
+      inside = k === " " || k === ">" ? inside || isPart : inside;
+    }
     if (c.pseudoElement && i !== x.compounds.length - 1) throw new SelectorError("pseudo-element-position");
-    validateCompound(c, ctx, inner);
+    validateCompound(c, ctx, inner, inside);
+    isPart = isModuleHtml(c);
   });
 }
 
