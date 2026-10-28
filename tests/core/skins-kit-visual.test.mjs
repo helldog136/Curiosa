@@ -49,16 +49,18 @@ for (const d of DEFECTS.filter((x) => x.visual?.length)) {
     for (const code of d.visual) assert.ok(has(r, code), `${code} attendu ; obtenu : ${real(r).map((i) => i.code).join(", ")}`);
     assert.equal(r.ok, false);
     assert.ok(r.levels[d.visual[0] === "kit-hidden" || d.visual[0] === "kit-covered" || d.visual[0] === "kit-injected-text" ? "principle" : "browser"].errors > 0);
-    const issue = r.issues.find((i) => i.code === d.visual[0]);
+    const issue = r.issues.find((i) => i.code.startsWith(d.visual[0]));
     assert.ok(issue.message.fr && issue.message.en && issue.hint.fr && issue.hint.en, "message simple en FR et EN, avec l'aide");
   });
 }
 
-test("un défaut passé par l'assainisseur (recouvrement par un décor, ordre chaotique, cible, focus, police, contraste rendu) est attrapé SANS la feuille de contournement : c'est le vrai chemin d'installation", { skip, ...T }, async () => {
+test("un défaut passé par l'assainisseur (recouvrement par un décor, ordre chaotique, cible, focus, police, contraste rendu) passe le contrôle statique tel quel (c'est le vrai chemin d'installation) : seul le navigateur peut l'attraper, et il l'a fait plus haut sans feuille de contournement", { skip, ...T }, async () => {
   for (const id of ["covers-link", "chaotic-tab-order", "tiny-targets", "no-focus", "missing-font", "horizontal-scroll", "rendered-contrast"]) {
     const d = DEFECTS.find((x) => x.id === id);
     assert.equal(d.unsafeCss, undefined, id);
-    const staticOnly = await checkOne(d.build(path.join(tmp, `s-${id}`), `s-${id}`) ?? path.join(tmp, `s-${id}`), { coreVersion: "0.4.0" });
+    const dir = path.join(tmp, `s-${id}`);
+    d.build(dir, `s-${id}`);
+    const staticOnly = await checkOne(dir, { coreVersion: "0.4.0" });
     assert.deepEqual(staticOnly.issues.filter((i) => i.severity === "error"), [], `${id} : doit passer le contrôle statique`);
   }
 });
