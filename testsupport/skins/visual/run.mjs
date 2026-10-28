@@ -145,6 +145,7 @@ export async function visualCheck(st, options = {}) {
         if (home) {
           const { page } = await visit(ctx, sk, home);
           await menuChecks(page, bag, width, home);
+          await page.mouse.move(0, 0); await page.keyboard.press("Escape"); await page.waitForTimeout(60);
           if (modes.length === 2 && mode === modes[0]) await switchChecks(page, bag, width, home, skinSite);
           await page.close();
         }
@@ -233,7 +234,7 @@ function measure(bag, data, def, width, mode) {
     const m = tabOrderMetrics({ items: vis.map((f) => ({ region: f.region, path: f.path, label: f.key })), boxes: data.orderBoxes, columns: data.orderColumns });
     const j = judgeOrder(m);
     const reg = j.region ? { fr: regionName(j.region, "fr"), en: regionName(j.region, "en") } : "";
-    if (process.env.DEBUG_KIT) console.error("order", width, def.id, m.percent, JSON.stringify(Object.fromEntries(Object.entries(m.regions).map(([k, v]) => [k, v.percent]))), JSON.stringify(m.samples));
+    if (process.env.DEBUG_KIT) console.error("order", width, def.id, m.percent, JSON.stringify(m.containers.slice(0, 2).map((c) => `${c.region}:${c.branches}br:${c.percent}`)), JSON.stringify(m.samples));
     if (j.level === "error") bag.add(j.region ? "kit-tab-order-region" : "kit-tab-order", { percent: j.percent, region: reg, page: p, width, mode });
     else if (j.level === "warning") bag.add("kit-tab-order-warn", { percent: j.percent, region: reg, page: p, width, mode }, "warn");
   }
@@ -339,6 +340,7 @@ async function switchChecks(page, bag, width, def, site) {
   if (opts.length !== 3 || opts.some((o) => !o.visible)) return fail("ses trois boutons ne sont pas tous visibles", "its three buttons are not all visible");
   const state = async () => page.evaluate(() => ({ mode: document.documentElement.getAttribute("data-mode"), bg: getComputedStyle(document.body).backgroundColor, pressed: [...document.querySelectorAll("[data-skin-part=mode-option]")].map((b) => b.getAttribute("aria-pressed")), text: document.body.innerText.replace(/\s+/g, " ").trim() }));
   const clickValue = async (v) => { await page.locator(`[data-skin-part=mode-option][data-mode-value=${v}]`).first().click({ timeout: 3000 }); await page.waitForTimeout(60); };
+  try {
   await clickValue("light"); const a = await state();
   await clickValue("dark"); const b = await state();
   if (a.mode !== "light" || b.mode !== "dark") return fail("un clic ne change pas le mode", "a click does not change the mode");
@@ -346,6 +348,7 @@ async function switchChecks(page, bag, width, def, site) {
   if (a.pressed.filter((x) => x === "true").length !== 1 || b.pressed.filter((x) => x === "true").length !== 1) fail("l'état choisi n'est pas annoncé (aria-pressed)", "the chosen state is not announced (aria-pressed)");
   if (a.text.replace(/\s+/g, "") !== b.text.replace(/\s+/g, "")) fail("basculer change des textes", "switching changes texts");
   await clickValue("auto");
+  } catch (e) { fail("un des boutons de la bascule ne peut pas être touché (recouvert ou hors de l'écran)", "one of the switch buttons cannot be touched (covered or off-screen)"); if (process.env.DEBUG_KIT) console.error(String(e).slice(0, 600)); }
 }
 
 /** Basic : la page rendue avec ses jetons (composition) est identique, au pixel, à la page rendue seulement avec les couleurs d'origine du site (avant les skins). */

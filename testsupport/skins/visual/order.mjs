@@ -20,10 +20,9 @@ function inverted(a, b) {
 
 export function tabOrderMetrics({ items, boxes, columns = [] }) {
   const cols = new Set(columns);
-  const stat = () => ({ n: 0, pairs: 0, inverted: 0, percent: 0 });
-  const total = stat(); total.n = items.length;
-  const regions = {};
-  for (const it of items) (regions[it.region] ??= stat()).n++;
+  const total = { n: items.length, pairs: 0, inverted: 0, percent: 0 };
+  /** conteneur (plus proche ancêtre commun) → { branches: Map(id de branche → rang de première apparition), region } */
+  const containers = new Map();
   const samples = [];
   for (let i = 0; i < items.length; i++) {
     for (let j = i + 1; j < items.length; j++) {
@@ -36,23 +35,41 @@ export function tabOrderMetrics({ items, boxes, columns = [] }) {
       if (!A || !B) continue;
       const bad = inverted(A, B);
       total.pairs++; if (bad) total.inverted++;
-      if (items[i].region === items[j].region) { const r = regions[items[i].region]; r.pairs++; if (bad) r.inverted++; }
       if (bad && samples.length < 3) samples.push([items[i].label ?? i, items[j].label ?? j]);
+      const c = k > 0 ? pa[k - 1] : -1;
+      const entry = containers.get(c) ?? containers.set(c, { branches: new Map(), region: items[i].region }).get(c);
+      if (!entry.branches.has(pa[k])) entry.branches.set(pa[k], i);
+      if (!entry.branches.has(pb[k])) entry.branches.set(pb[k], j);
     }
   }
-  const pct = (s) => { s.percent = s.pairs ? Math.round((1000 * s.inverted) / s.pairs) / 10 : 0; };
-  pct(total); Object.values(regions).forEach(pct);
-  return { ...total, regions, samples };
+  // par conteneur : parmi les paires de BRANCHES (éléments frères qui contiennent des éléments cliquables), combien sont à l'envers ?
+  const list = [];
+  for (const [id, entry] of containers) {
+    const ids = [...entry.branches.entries()].sort((a, b) => a[1] - b[1]).map(([b]) => b);
+    if (ids.length < 3 && !(ids.length === 2)) continue;
+    let pairs = 0, inv = 0;
+    for (let x = 0; x < ids.length; x++) for (let y = x + 1; y < ids.length; y++) { pairs++; if (boxes[ids[x]] && boxes[ids[y]] && inverted(boxes[ids[x]], boxes[ids[y]])) inv++; }
+    list.push({ id, branches: ids.length, pairs, inverted: inv, percent: pairs ? Math.round((1000 * inv) / pairs) / 10 : 0, region: entry.region });
+  }
+  total.percent = total.pairs ? Math.round((1000 * total.inverted) / total.pairs) / 10 : 0;
+  list.sort((a, b) => b.percent - a.percent);
+  return { ...total, containers: list, samples };
 }
 
-/** Seuils du §6.5 (avertissement au-delà de 3 %, erreur au-delà de 10 %), appliqués à la page ET à chaque région d'au moins 3 éléments : une inversion locale (un menu à l'envers) serait sinon diluée par le reste de la page. */
-export const ORDER_THRESHOLDS = { warn: 3, error: 10, regionWarn: 3, regionError: 10, regionMin: 3 };
+/**
+ * Seuils du §6.5 (avertissement au-delà de 3 %, erreur au-delà de 10 %), appliqués à la page entière ET au pire conteneur (au moins 3 branches ; deux branches
+ * seulement sont jugées si elles sont à l'envers l'une de l'autre). Mesuré (docs/CREER-UN-SKIN.md) : la page entière dilue une inversion locale (un menu à l'envers = 14 % de la page, 100 % de
+ * son conteneur), le conteneur la montre.
+ */
+export const ORDER_THRESHOLDS = { warn: 3, error: 10, containerWarn: 3, containerError: 10, containerMin: 3 };
 
 export function judgeOrder(m, t = ORDER_THRESHOLDS) {
-  const worst = Object.entries(m.regions).filter(([, r]) => r.n >= t.regionMin).sort((a, b) => b[1].percent - a[1].percent)[0];
+  const worst = m.containers.find((c) => c.branches >= t.containerMin);
+  const two = m.containers.find((c) => c.branches === 2 && c.percent === 100);
   if (m.percent > t.error) return { level: "error", percent: m.percent };
-  if (worst && worst[1].percent > t.regionError) return { level: "error", region: worst[0], percent: worst[1].percent };
+  if (worst && worst.percent > t.containerError) return { level: "error", region: worst.region, percent: worst.percent };
+  if (two) return { level: "error", region: two.region, percent: two.percent };
   if (m.percent > t.warn) return { level: "warning", percent: m.percent };
-  if (worst && worst[1].percent > t.regionWarn) return { level: "warning", region: worst[0], percent: worst[1].percent };
+  if (worst && worst.percent > t.containerWarn) return { level: "warning", region: worst.region, percent: worst.percent };
   return { level: "ok", percent: m.percent };
 }
