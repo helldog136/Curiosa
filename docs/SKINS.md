@@ -203,7 +203,7 @@ La personne **choisit** (réglage `theme.palette`) :
 
 - Les couleurs existantes **gardent leur nom** (`--v-*` ; c'est un contrat public des modules : `ctx.theme`, `theme:accent`).
 - Tout nouveau jeton s'appelle `--sk-<groupe>-<nom>`.
-- Les jetons d'un module : `--sk-<idDuModule>-<pièce>-<propriété>` (§8) ; `-` seul comme séparateur ; l'id du module garde ses tirets.
+- Les jetons d'un module : `--sk-m-<idDuModule>-<pièce>-<propriété>` (§8, préfixe `m` obligatoire) ; `-` seul comme séparateur ; l'id du module garde ses tirets.
 - Un skin n'invente pas de jeton hors de ce vocabulaire ni de celui des modules installés ; un jeton inconnu est **ignoré sans erreur** (un skin écrit aujourd'hui reste valable avec les modules de demain, et inversement). Le kit de test avertit.
 - Valeurs : une valeur est du texte CSS court, validé par type (couleur, longueur, durée, nombre, pile de polices, ombre, dégradé…) ; `url()` interdit sauf `url(skin:…)` (§6.4). Longueur max d'une valeur : 300 caractères.
 
@@ -432,7 +432,7 @@ Un dépôt peut contenir plusieurs skins (comme `modules/` dans `curiosa-extras`
     "--sk-space": "0.3125rem"
   },
   "modules": {
-    "events": { "--sk-events-card-radius": "0" }
+    "events": { "--sk-m-events-card-radius": "0" }
   }
 }
 ```

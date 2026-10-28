@@ -223,9 +223,9 @@ test("jetons : fichier absent ou illisible, forme, noms, valeurs non permises, u
   assert.ok(codes(check(mk({ files: { "tokens.json": tok({ common: { "--sk-x": 12 } }) } }))).includes("value-syntax"), "valeurs en texte seulement");
   assert.ok(codes(check(mk({ files: { "tokens.json": tok({ common: { "--sk-x": "expression(alert(1))" } }) } }))).some((c) => c !== "tokens-shape"), "expression refusée");
   assert.ok(codes(check(mk({ files: { "tokens.json": tok({ modules: { events: { "--sk-autre-x": "1px" } } }) } }))).includes("tokens-module-name"));
-  const ok = check(mk({ files: { "tokens.json": tok({ modules: { events: { "--sk-events-card-radius": "0" } } }) } }));
+  const ok = check(mk({ files: { "tokens.json": tok({ modules: { events: { "--sk-m-events-card-radius": "0" } } }) } }));
   assert.equal(ok.ok, true);
-  assert.equal(ok.tokens.modules.events["--sk-events-card-radius"], "0");
+  assert.equal(ok.tokens.modules.events["--sk-m-events-card-radius"], "0");
   const undeclared = check(mk({ files: { "tokens.json": tok({ dark: { "--v-bg": "#000000" } }) } }));
   assert.ok(codes(undeclared, "warning").includes("tokens-mode-undeclared"), "mode non déclaré : ignoré avec avertissement");
   const huge = Object.fromEntries(Array.from({ length: 401 }, (_, i) => [`--sk-t${i}`, "1px"]));

@@ -347,7 +347,7 @@ function readTokens(bytes: Buffer, m: SkinManifest, so: { skinId: string; assetB
     if (!modules || typeof modules !== "object" || Array.isArray(modules)) add("tokens-shape", { what: "modules" });
     else for (const [id, v] of Object.entries(modules as Record<string, unknown>)) {
       if (!SKIN_ID_RE.test(id)) { add("tokens-module-name", { name: id }); continue; }
-      out.modules[id] = group(`modules.${id}`, v, `--sk-${id}-`);
+      out.modules[id] = group(`modules.${id}`, v, `--sk-m-${id}-`);
     }
   }
   // Les jetons des options sont des valeurs d'apparence comme les autres : mêmes règles.
