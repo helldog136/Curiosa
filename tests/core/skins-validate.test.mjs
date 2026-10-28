@@ -118,6 +118,16 @@ test("fichiers : lien symbolique, fichier hors liste, dossier inconnu, trop prof
   assert.ok(codes(nonDeclared).includes("skin-file-unlisted"), "une police non déclarée dans assets est refusée");
 });
 
+test("fichiers : les notes de l'auteur à la racine (PROGRESS.md…) sont tolérées, ni installées ni comptées dans l'empreinte ; ailleurs, toujours refusées", () => {
+  const plain = check(mk());
+  const withNotes = check(mk({ files: { "PROGRESS.md": "# notes", "NOTES.md": "x", "TODO.fr.md": "x", "CHANGELOG.md": "x" } }));
+  assert.equal(withNotes.ok, true, JSON.stringify(withNotes.issues.map((i) => i.code)));
+  assert.equal(withNotes.fingerprint, plain.fingerprint, "l'empreinte ignore les notes");
+  assert.ok(!withNotes.installFiles.some((f) => /PROGRESS|NOTES|TODO|CHANGELOG/.test(f.path)), "rien n'en est installé");
+  assert.ok(codes(check(mk({ files: { "previews/PROGRESS.md": "x" } }))).length > 0, "dans un sous-dossier : refusé");
+  assert.ok(codes(check(mk({ files: { "SCRIPT.md": "x" } }))).includes("skin-file-unlisted"), "un autre fichier .md reste refusé");
+});
+
 test("fichiers : trop de fichiers, trop d'octets en tout", () => {
   const many = {}; for (let i = 0; i < 61; i++) many[`LICENSES/l${i}.txt`] = "x";
   assert.ok(codes(check(mk({ files: many }))).includes("skin-too-many-files"));

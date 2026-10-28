@@ -66,6 +66,11 @@ export type SkinValidation = {
 };
 
 const ROOT_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
+/**
+ * Fichiers de NOTES de l'auteur, tolérés à la racine d'un skin (docs/SKINS.md §5.1) : ni lus, ni installés, ni comptés dans l'empreinte, ni refusés.
+ * Tout autre fichier hors liste reste refusé (`skin-file-unlisted`).
+ */
+export const IGNORED_ROOT_FILE_RE = /^(PROGRESS|NOTES|TODO|CHANGELOG|CONTRIBUTING)(\.[a-z]{2})?\.md$/;
 const ASSET_NAME_RE = /^[a-z0-9][a-z0-9._-]{0,63}$/;
 const TOKENS_FILE_RE = /^[a-z0-9][a-z0-9._-]{0,63}\.json$/;
 const SHEET_FILE_RE = /^[a-z0-9][a-z0-9._-]{0,63}\.css$/;
@@ -302,6 +307,7 @@ function scan(dir: string, add: (code: string, params?: Params) => void): Found[
         continue;
       }
       if (!e.isFile()) { refuse("skin-file-unlisted", { file: r }); continue; }
+      if (depth === 0 && IGNORED_ROOT_FILE_RE.test(e.name)) continue;
       const strict = rel === "fonts" || rel === "images" || rel === "previews";
       if (!(strict ? ASSET_NAME_RE : ROOT_NAME_RE).test(e.name)) { refuse("skin-file-name", { file: r }); continue; }
       const size = fs.lstatSync(p).size;

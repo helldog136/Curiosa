@@ -258,6 +258,7 @@ Le cœur **n'impose pas** de calculer les couleurs dérivées : un skin peut les
 | `--sk-stack-gap` | espace entre les blocs d'une page (`space-y-6`) | `1.5rem` |
 | `--sk-prose-width` | largeur de lecture des textes courts (`max-w-2xl`, `max-w-3xl`) | `42rem` / `48rem` (deux jetons : `--sk-prose-width`, `--sk-prose-width-wide`) |
 | `--sk-grid-gap` | espace entre cartes d'une grille | `1.25rem` |
+| `--sk-card-pad` | `calc(var(--sk-space) * 4)` (remplissage des cartes ; les cartes à image gardent `× 1,25` et les petites cartes de couleurs `× 0,75`, §25.2) |
 
 **Rayons, bordures, ombres**
 
@@ -350,6 +351,8 @@ curiosa-skins/
 
 Un dépôt peut contenir plusieurs skins (comme `modules/` dans `curiosa-extras`) ou un seul à la racine (`subdir: ""`).
 
+**Notes de l'auteur.** À la racine d'un skin, les fichiers `PROGRESS.md`, `NOTES.md`, `TODO.md`, `CHANGELOG.md` et `CONTRIBUTING.md` (avec ou sans suffixe de langue : `TODO.fr.md`) sont **tolérés** : le contrôle ne les lit pas, ils ne sont pas installés et ne comptent pas dans l'empreinte. Tout autre fichier hors liste reste refusé (`skin-file-unlisted`), et ces mêmes noms dans un sous-dossier aussi. La liste est `IGNORED_ROOT_FILE_RE` (`validate.ts`).
+
 ### 5.2 `skin.json`
 
 ```json
@@ -394,7 +397,7 @@ Un dépôt peut contenir plusieurs skins (comme `modules/` dans `curiosa-extras`
 | `tags` | vocabulaire contrôlé : `light`, `dark`, `serif`, `sans`, `mono`, `pixel`, `playful`, `minimal`, `bold`, `editorial`, `retro`, `glass`, `high-contrast`. 6 au plus. |
 | `modes` | `["light"]`, `["dark"]` ou `["light","dark"]`. |
 | `tokens`, `stylesheet` | chemins relatifs dans le dossier du skin. `stylesheet` est facultatif (un skin peut n'être que des jetons). |
-| `previews` | 1 à 4 images `webp` ≤ 150 Ko, 1280 × 800 : montrées **seulement** dans l'administration (copiées et servies par le site, jamais chargées depuis GitHub chez un visiteur). `alt` obligatoire. |
+| `previews` | 1 à 4 images `webp` ≤ 150 Ko, **1280 × 800** : montrées **seulement** dans l'administration (copiées et servies par le site, jamais chargées depuis GitHub chez un visiteur), réduites à la largeur de l'écran (mobile d'abord). `alt` obligatoire. Le cœur ne mesure pas les dimensions (il vérifie le format, la signature et le poids) ; c'est `skin:check` qui avertit (`kit-preview-size`) hors 1280 × 800, et `skin:bench --previews` les produit à cette taille. `width` (facultatif) ne sert qu'à décrire la capture. Les captures de 390 px sont celles des planches (`--shots`), pas des aperçus. |
 | `assets` | **toute** police ou image embarquée est listée avec sa `license` (SPDX), son `licenseFile`, son `author` et sa `source`. Un fichier de `fonts/` ou `images/` non listé = refus. |
 | `defaults` | valeurs de départ de ce que la personne peut retoucher : `headerLayout` (`classic`/`twoRows`/`centered`/`minimal`), `font` (`sans`/`serif`/`mono`/`skin` : `skin` = la police du skin), `glow` (`none`/`soft`/`strong`), `background` (`"none"`, `"dusk"`, `"grid"` ou un tableau de couches au format de `src/core/background.ts`). Ce sont les valeurs que les retouches remplacent. |
 | `options` | §3.4. |
@@ -544,7 +547,7 @@ Le DOM est l'ordre de lecture et de tabulation (§9). `order`, `grid-area`, `pos
 L'assainisseur (`sanitize.ts`) et le contrôle de lisibilité (`readability.ts`) sont une bibliothèque **pure** (sans Next, sans base de données, sans réseau, sans minuteur), partagée par l'installation, le rendu et le kit `skin:check` (§13). La liste blanche lisible est dans `allowlist.ts`, les messages (FR/EN en parité, avec un code technique stable) dans `messages.ts`. Ce qui précise ou complète les §6.1-§6.6 :
 
 - **Sortie** : la feuille est **réécrite** à partir de ce qui a été compris, jamais recopiée. Une erreur retire la déclaration fautive (ou la règle entière si un sélecteur de sa liste est refusé, comme le fait CSS) et met `ok: false` (le skin n'est pas installé). Un **plafond** dépassé (taille, règles, déclarations, keyframes, polices) est fatal : sortie vide, rien n'est appliqué (§6.6). Un avertissement (`menu-toggle` masqué) ne rend pas `ok` faux.
-- **Sélecteurs** : le premier composé doit être une région ou une pièce (directement, ou par `:is()`/`:where()` dont chaque branche l'est) ; un préfixe écrit par l'auteur, exactement `:root[data-skin="<id>"]`, est accepté et jamais doublé ; `&` (imbrication CSS), `|`, `\`, caractères non ASCII refusés ; un pseudo-élément ne va qu'à la fin ; au plus 6 composés, 20 sélecteurs par règle, 300 caractères ; `:has()` accepte 2 éléments au plus et ne s'imbrique pas ; `:not/:is/:where/:has` s'imbriquent sur 2 niveaux au plus ; attributs : `=` seulement (plus `~=` pour `rel`, `|=` pour `lang`), valeur courte en minuscules ; un nom de région ou de pièce inconnu est une **erreur** (pas un avertissement) ; une pièce de module `mod.piece` est contrôlée si la liste des pièces des modules installés est fournie.
+- **Sélecteurs** : le premier composé doit être une région ou une pièce (directement, ou par `:is()`/`:where()` dont chaque branche l'est) ; un préfixe écrit par l'auteur, exactement `:root[data-skin="<id>"]`, est accepté et jamais doublé ; `&` (imbrication CSS), `|`, `\`, caractères non ASCII refusés ; un pseudo-élément ne va qu'à la fin ; au plus 6 composés, 20 sélecteurs par règle, **600 caractères** par sélecteur (300 avant le lot d'intégration 2 : une liste `:is(a, b, c…)` longue passe maintenant ; pour factoriser plusieurs pièces, écrivez `:is([data-skin-part="card"], [data-skin-part="panel"]) h3` plutôt que de répéter le sélecteur complet) ; `:has()` accepte 2 éléments au plus et ne s'imbrique pas ; `:not/:is/:where/:has` s'imbriquent sur 2 niveaux au plus ; attributs : `=` seulement (plus `~=` pour `rel`, `|=` pour `lang`), valeur courte en minuscules ; un nom de région ou de pièce inconnu est une **erreur** (pas un avertissement) ; une pièce de module `mod.piece` est contrôlée si la liste des pièces des modules installés est fournie.
 - **Valeurs** : alphabet ASCII ; un commentaire vaut une espace ; les échappements CSS (`\75 `) sont **refusés** partout sauf dans les chaînes de `content`, qui sont réécrites en `\HEX ` ; `!important` refuse la déclaration ; fonctions, unités et `url(skin:…)` sur liste (`ALLOWED_FUNCTIONS`) ; `var()` ne lit que `--v-*`/`--sk-*`, comme premier argument ; une valeur fait 500 caractères au plus (300 pour une variable, §4.1) ; les chaînes entre guillemets ne sont permises que dans `content`/`quotes` (ponctuation), `font-family` et le nom de police des variables `--v-font`/`--sk-font-*`, `font-feature-settings`, `grid-template-areas` ; `url()` seulement dans `background`, `background-image`, `mask-image` et les variables ; `calc()/min()/max()/clamp()` entièrement littéraux sont **évalués** avant les bornes (`font-size: calc(0px)` vaut zéro).
 - **Variables** : un cycle (`--a → --b → --a`) retire les variables concernées (`var-cycle`) ; une variable dont le développement dépasse 20 000 caractères aussi (`var-expansion-too-large`) ; pour `display`, `opacity`, `width`… la valeur littérale que la feuille donne à chaque variable utilisée est essayée (`--x:none; display:var(--x)` est refusé). Les valeurs données aux jetons **hors** de la feuille (`tokens.json`) ne sont pas suivies : leur validation par type est celle du lot « jetons » (`sanitizeTokenValue()` applique les mêmes règles de valeur, 300 caractères).
 - **Masquer** (§0.1, §9.3) : la règle s'applique au **sujet** (dernier composé). Est du décor : un pseudo-élément `::before`/`::after`, tout ce qui est dans la région `backdrop` ou la pièce `divider`. `display:none` n'est permis que sur le décor, sur `menu-toggle` (avertissement : le kit vérifie dans le navigateur que la liste du menu reste visible) et sur `nav-list`/`submenu` à l'état fermé (`[data-open="false"]` ou `:not([data-open="true"])`). `visibility`, `clip`, `content-visibility` sont refusés partout. Sur tout le reste : `opacity` ≥ 0,6 (aussi dans `@keyframes`), `font-size` ≥ 0,6875rem, `line-height` ≥ 0,8, `width`/`height`/`max-*` ≥ 0,25rem (4 px), marges négatives ≥ -4rem, `text-indent` entre -0,5em et 8rem, interlettrage ≤ 8 px, décalages (`top`, `left`, `inset`…) entre -1rem et 60rem (et 0 à 100 %), `color` d'opacité ≥ 0,5, `filter: blur` ≤ 2px (`backdrop-filter` ≤ 24px ; décor ≤ 100px), `brightness`/`contrast`/`opacity()` entre 0,5 et 2 / ≥ 0,6, `transform` : `translate` ≤ 4rem (≤ 50 %), `rotate` ≤ 5°, `scale` 0,9-1,1 ; **sur le décor** ces bornes tombent, sauf le flou. `mix-blend-mode` (autre que `normal`), `mask-image`, `pointer-events: none`, `user-select: none` : décor seulement ; `clip-path` : formes `inset(0 round …)`, `circle(50%)`, `ellipse(50% 50%)` sur `card`, `panel`, `button`, `image`, `avatar`, `badge` ; `position: fixed` : `header` et `nav` seulement ; `position: absolute` n'est **pas** vérifiable statiquement (« dans une pièce `relative` ») : seules les bornes de décalage s'appliquent, le kit navigateur fait le reste.
@@ -575,6 +578,8 @@ Pour **chaque mode** déclaré, sur les valeurs **effectives** (skin + retouches
 | 10 | chaque `*-fg` d'état / sa couleur d'état | 4,5 | texte sur bandeau d'état |
 | 11 | pièces de module : toute paire de jetons `fg`/`bg` déclarée dans le `skin` d'un module (§8) | 4,5 | |
 | 12 | **titres** (`--sk-text-2xl` et plus, ou graisse ≥ 700 à ≥ `1.125rem`) : jeton facultatif `--sk-color-heading` (proposé, voir Q-C) / `--v-bg` et / `--v-surface` | 3 | seuil « grand texte ». Le §7.1 n'avait pas de jeton de couleur de titre : sans lui, la paire 12 n'a rien à mesurer (les titres prennent `--v-fg`, déjà jugé aux paires 1 et 2 à 4,5) |
+| 13 | `--v-accent2` / `--v-bg` et / `--v-surface` — **seulement si le dégradé est actif** (§25.3) | 3 | chiffres clés, onglet actif, fin du dégradé |
+| 14 | pire contraste du texte posé sur le dégradé du panneau d'appel à l'action (`gradientTextOn`, 5 points entre `--v-accent` et `--v-accent2`) — **seulement si le dégradé est actif** | 4,5 | `--sk-gradient: flat` règle le cas |
 
 Contrôle **rendu** (niveau navigateur du kit, §13) en plus : pour chaque texte visible du banc d'essai, couleur calculée contre l'arrière-plan réellement derrière (capture avec le texte rendu transparent, échantillon des pixels sous la boîte du texte, en prenant le plus mauvais). Il trouve les cas que les jetons ne voient pas (un dégradé, une image de fond, un `backdrop-filter` qui ne s'applique pas). Les effets `backdrop-filter` sont testés **avec et sans** (repli sans flou).
 
@@ -739,6 +744,7 @@ Contraintes de rendu du cœur, pour que ces régions soient pilotables : (1) les
 | `badge` | petites étiquettes (« expiré », langue, pastille de nouveauté) | |
 | `news-dot` | pastille « nouveau » du menu | `data-testid="news-dot"` |
 | `field`, `input`, `textarea`, `label`, `field-error` | formulaires (`ModuleForm`) ; pas de pièce `select` : le site public n'a aucun menu déroulant de formulaire | |
+| `card-body` | la zone de texte d'une carte à image (`EntryList`), à l'intérieur de `card` : son remplissage vient du jeton `--sk-card-pad` (§25.2) | |
 | `list`, `list-item` | `EntryList` en liste, `links` | |
 | `table`, `table-head`, `table-row`, `table-cell` | bloc `table`, tables Markdown | |
 | `heading` (`data-level="1…6"`), `eyebrow`, `lead` | titres de page, petite ligne, chapeau | `data-marker` |
@@ -755,7 +761,7 @@ Contraintes de rendu du cœur, pour que ces régions soient pilotables : (1) les
 | `tabs`, `tab` | `PanelTabs` | `role="tab"` |
 | `pagination`, `pagination-link` | `Pagination` | `data-pagination` |
 | `mode-switch` (`data-state`), `mode-option` (`aria-pressed`) | bascule clair / sombre (§3.8) | |
-| `brand`, `menu-toggle`, `nav-list`, `nav-link`, `submenu`, `submenu-toggle`, `header-group`, `lang-switcher`, `socials` | en-tête | `data-site-nav`, `data-testid="header-socials"` |
+| `brand`, `menu-toggle`, `nav-list`, `nav-link`, `submenu`, `submenu-toggle`, `header-group`, `lang-switcher`, `socials` | en-tête | `data-site-nav`, `data-testid="header-socials"` (**jamais ciblés par un skin** : écrivez `[data-skin-region="nav"] [data-skin-part="nav-list"]` à la place de `[data-site-nav]`) |
 | `entries`, `module-html` | bloc « entrées » ; HTML écrit par un module (un skin n'agit que sur la boîte, pas sur ses classes) | |
 | `home-flow`, `home-cell` (`data-size="small\|medium\|large\|full"`) | accueil fluide (`vh-flow`, `vh-cell`) | classes `vh-*` |
 | `cookie-tray` | bandeau de cookies | `.cookie-tray` |
@@ -1257,3 +1263,53 @@ Outils `maintenance_skin_status`, `maintenance_skin_list` (niveau 1, lecture) ; 
 | Régression de basic | `visual/run.mjs` | La page de basic (composition) comparée **au pixel** à la même page avec les seules couleurs d'origine (`themeCss(buildTheme(…))`, sans `data-skin`) : 0 pixel attendu. **A trouvé un écart réel dans le cœur** : le titre de niveau 6 d'un texte Markdown perdait ses capitales sous basic (la règle `--sk-heading-transform` écrasait la classe `uppercase`) ; corrigé dans `globals.css`. |
 | Gabarits | `docs/skin-starter/`, `docs/CREER-UN-SKIN.md` | Dépôt de départ (skin à deux modes, valide sous `--strict`, `skin.json` annoté, CI contre la dernière version publiée du cœur) dans `docs/` (jamais livré avec le site). Guide en français calqué sur PUBLIER-SON-MODULE.md, avec une partie pour une IA. |
 | Écarts avec la conception | | (1) Les fichiers sont dans `testsupport/skins/` et `scripts/` (pas `testsupport/skins/check.mjs`). (2) Les fragments sont générés par un script **Node sans Next** (`skin:bench:refresh`). (3) Mode « page réelle » (`--site`) non réalisé. (4) La régression de basic compare à l'apparence d'origine reconstruite, pas à des PNG versionnés (aucun PNG n'est versionné ; la référence du harnais d'images reste le garde-fou du site complet). |
+
+---
+
+## 25. Lot d'intégration 2 : les frictions relevées par les auteurs de skins
+
+Quatre auteurs ont écrit un skin chacun (`brutaliste-clair`, `retro-neon`, `editorial-papier`, `verre-doux`) et relevé ce qui les gênait. Tout ce qui suit est **additif** : basic reste identique (zéro pixel, 1 168 captures), aucun skin existant n'est refusé à cause d'un changement de ce lot, sauf le contrôle du dégradé (§25.3), qui est un cas d'illisibilité réel.
+
+### 25.1 Les boîtes intérieures des modules (`module-html`)
+
+Le HTML d'un module (`[data-skin-part="module-html"]`) contient des `<div>`, `<span>`, `<section>`, `<article>` que le cœur ne connaît pas. Avant ce lot, un skin ne pouvait pas les restyler (arrondis, ombres, fonds : « boîtes de modules encore arrondies »). Désormais :
+
+- `div`, `span`, `section`, `article` et l'attribut `[data-marker]` (présence seulement : jamais de valeur ni d'opérateur) sont permis **uniquement dans un sélecteur où une pièce `module-html` précède l'élément**, reliée par un espace ou `>` : `[data-skin-part="module-html"] div`, `[data-skin-part="module-html"] > section article`, `[data-skin-part="module-html"] :is(div, span)`, `[data-skin-part="module-html"]:has(> div)`, `… [data-marker]::before`.
+- Refusés (`element-needs-module-html`, avec la forme permise dans l'aide) : `div`, `[data-skin-part="card"] div`, `[data-skin-region="main"] section`, un FRÈRE de la pièce (`module-html + div`, `module-html ~ span`), `div module-html`, une liste où une seule branche n'est pas sous la pièce.
+- **Propriétés** : les mêmes que partout, rien de plus. Les mêmes interdits de masquage s'appliquent, avec la rigueur d'une pièce de contenu : `display:none`, `visibility`, `opacity` < 0,6, `font-size` < 0,6875rem, boîte réduite à rien, décalage hors de l'écran, `content` de texte, `transform` large, etc. sont refusés (sujet sans région ni pièce propre = « contenu », donc strict).
+
+**Risques évalués (principe fondateur, §0).** (1) *Masquer ou vider le contenu d'un module* : impossible, les interdits de masquage s'appliquent à ces boîtes comme à une carte ; test `skins-module-html.test.mjs`. (2) *Mettre en page le contenu d'un module à contre-sens* (grille, `order`, positions) : permis par le §0 (la mise en page est de l'apparence), borné comme ailleurs (`order` 0-10, `position:fixed` refusé, décalages bornés) ; le kit `--visual` contrôle toujours le recouvrement, le défilement horizontal et l'ordre de tabulation sur la planche. (3) *Dépendre du HTML interne d'un module* : un module peut changer ses `<div>` sans prévenir, le skin perd alors son style (jamais son contenu) : c'est une dette de **compatibilité**, pas de sécurité, et c'est pourquoi les pièces déclarées par le module (`skin` du manifeste, §8) restent la voie recommandée ; la conversion des modules (lot S9) rendra ces sélecteurs inutiles. (4) *Ciblage hors module* : fermé par la règle de position ci-dessus (ni région, ni autre pièce, ni frère). (5) *Classes et identifiants* : toujours refusés, y compris sous `module-html`. (6) *Surface d'attaque de l'assainisseur* : un seul chemin de plus, dans la validation d'un composé, couvert par les tests d'attaque existants (qui montrent que `div`/`span`/`section` seuls ou sous une autre pièce restent refusés) et par les nouveaux.
+
+### 25.2 Aligner le texte d'une carte avec ses filets
+
+Les cartes avaient un remplissage fixe (`p-4`, `p-3`, `p-5`) que ni un jeton ni une pièce ne rejoignaient. Maintenant :
+
+- le jeton **`--sk-card-pad`** (longueur, basic = `calc(var(--sk-space) * 4)`, soit 1 rem) est le remplissage des cartes de blocs ; les cartes de couleurs (`swatches`) en gardent les ¾ et la zone de texte des cartes à image en garde 1,25 fois : mêmes valeurs qu'avant sous basic, une seule valeur à régler pour les autres skins ;
+- la pièce **`card-body`** désigne la zone de texte des cartes à image (`EntryList`), à l'intérieur de `card` (jusque-là un `<div>` sans repère) : `[data-skin-part="card"] > [data-skin-part="card-body"] { padding-block: … }`. Elle ne se masque pas (liste du §9.3).
+
+Pour aligner un filet sur le texte : `[data-skin-part="card"]::before { margin-inline: var(--sk-card-pad); }` (un pseudo-élément est du décor).
+
+### 25.3 Le dégradé du second accent : `--sk-gradient`
+
+Dès qu'un second accent distinct existe, le cœur pose (règles `[data-accent2]` de `globals.css`) un dégradé accent → accent 2 sous l'en-tête, sur les chiffres clés (texte rendu transparent, le dégradé est découpé dans les lettres : `-webkit-text-fill-color` que la feuille d'un skin n'a pas le droit de réécrire, voir §6.7) et dans le panneau d'appel à l'action. Un skin pouvait le plier à ses couleurs, jamais s'en passer, et un `background-image: none` rendait les chiffres invisibles.
+
+- Jeton facultatif **`--sk-gradient`** : `blend` (défaut, absent de basic) ou `flat`. Avec `flat`, le cœur remplace `--v-gradient` par un dégradé uni sur `--v-accent` et le texte du panneau par `--v-accent-fg` : le filet, les chiffres clés et le panneau prennent la couleur principale, unie, **même après une retouche des couleurs** par la personne.
+- **Contrôle de lisibilité (paires 13 et 14, §7.1)**, seulement quand le dégradé est actif (second accent distinct et `--sk-gradient` ≠ `flat`) : la seconde couleur sur le fond et les cartes (3:1) ; le texte du panneau sur le dégradé, au pire des cinq points (4,5:1). Un manquement refuse le skin à l'installation avec un conseil (`--sk-gradient: flat` ou rapprocher les couleurs) ; au rendu (retouche de la personne qui crée le cas), l'échelle de correction (§7.3) passe seule `--sk-gradient` à `flat`, sans toucher aux couleurs.
+
+### 25.4 Petits points de contrat, documentés
+
+- **Longueur d'un sélecteur** : 600 caractères (§6.7). Pour factoriser, `:is()` (une seule imbrication de deux niveaux est permise).
+- **Refus fréquents et leur remplacement** : `:first-of-type` (état non permis, `pseudo-class-not-allowed`) → `:first-child` ou `:nth-of-type(1)` ; `line-height: 0.7` (`line-height-too-small`, minimum 0,8, idéalement 1,4 pour du texte) → `line-height: 1.2` ; `float: left` (`float-not-none`) → `display: flex` ou `grid` (par exemple une image à côté du texte : `display: grid; grid-template-columns: 8rem 1fr`) ; `[data-site-nav]` (`attribute-not-allowed`) → `[data-skin-region="nav"] [data-skin-part="nav-list"]`.
+- **Aperçus** : 1280 × 800, voir la ligne `previews` du §5.2 (le cœur ne mesure pas, le kit avertit).
+- **Notes de l'auteur à la racine** : voir §5.1.
+- **Banc de test d'images (`scripts/visual/`)** : le profil `skin-test` écrit la ligne `skin.installed` complète avec la vraie empreinte (calculée par le validateur du cœur) ; sans empreinte, le skin est ignoré en silence. `VISUAL_SKIN_IGNORE_MINCORE=1` (réglage de test) ramène le `minCore` de la copie à la version du cœur essayé, pour juger un skin écrit pour 0.4.0 sur un cœur 0.3.x.
+
+### 25.5 Un skin fusionné par écrasement perd ses références (`ref`)
+
+Le catalogue (`catalogue/index.json`, §5.5) épingle chaque skin par son champ `ref`. Quand un skin vit sur sa propre branche (`skin/<id>`) puis arrive sur `main` par écrasement (`git checkout skin/<id> -- skins/<id>`, fusion « squash », réécriture), les **hash de commit changent** : un `ref` écrit comme un hash ne mène plus nulle part. La procédure :
+
+1. **Étiquetez chaque version publiée** du skin, sur le commit relu : `git tag -a <id>/v<version> -m "…" <commit>` (par exemple `retro-neon/v1.0.0`), puis `git push origin <id>/v<version>`. Une étiquette est stable après une fusion ou un écrasement (elle garde son commit, tant que l'étiquette n'est pas supprimée ; ne supprimez pas la branche si l'étiquette n'a pas été poussée).
+2. Dans `catalogue/index.json`, mettez l'**étiquette** dans `ref` (`"ref": "retro-neon/v1.0.0"`, jamais un hash ni un nom de branche) : le motif accepté est `[A-Za-z0-9_./-]`, 100 caractères.
+3. `version` du catalogue, `version` de `skin.json` et étiquette disent la même chose (`1.0.0`).
+4. Après une fusion par écrasement, **vérifiez** : `git ls-remote --tags origin '<id>/v*'` doit lister l'étiquette, et `npm run skin:check -- <dossier du skin à ce ref>` doit passer. L'écrasement refait les hash, pas les étiquettes : s'il faut une étiquette sur le NOUVEAU commit (parce que la branche a été supprimée), refaites `git tag -f` après relecture et republiez le catalogue.
+5. Mettre à jour un skin = nouvelle version, nouvelle étiquette, nouvelle ligne du catalogue ; la page Apparence compare l'empreinte git du dossier (`tree`), qui, elle, ne change pas quand seul le hash du commit change.
