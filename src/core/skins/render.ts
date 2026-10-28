@@ -12,10 +12,12 @@ import { isDarkBackground } from "../logos";
 import { getSetting, type SiteConfig } from "../settings";
 import { BASIC } from "./basic";
 import { composeSkin, type Composed } from "./compose";
-import { loadInstalledSkin } from "./folder";
+import { toSkinDefinition } from "./folder";
+import { invalidateSkinCache, skinCacheGeneration } from "./invalidate";
 import { getModuleSkinLayer } from "./moduleParts";
 import { MODE_SCRIPT_URL } from "./modeScript";
 import { retouchesFrom, RETOUCH_KEYS } from "./retouch";
+import { loadInstalledSkin } from "./service";
 import { renderSheet } from "./sheet";
 import type { SkinDefinition } from "./types";
 
@@ -31,46 +33,36 @@ export type SkinLook = {
   modeScriptUrl: string | null;
 };
 
-type Installed = { id: string; version: string };
-
-/** Le skin actif (`skin.active`, absent = basic) tel qu'il est installé ; basic si absent, introuvable ou inutilisable. */
-export async function activeSkin(): Promise<{ skin: SkinDefinition; serial: string }> {
+/**
+ * Le skin actif (`skin.active`, absent = basic) tel qu'il est installé ; basic si absent, introuvable, modifié depuis son installation ou inutilisable.
+ * Un site sans skin choisi ne lit ni base ni disque en plus. `moduleParts` : les pièces des modules installés (voir `loadInstalledSkin`).
+ */
+export async function activeSkin(moduleParts?: Readonly<Record<string, readonly string[]>>): Promise<{ skin: SkinDefinition; serial: string }> {
   const id = await getSetting<string>("skin.active");
   if (typeof id !== "string" || id === "" || id === BASIC.id) return { skin: BASIC, serial: "basic" };
-  const installed = (await getSetting<Installed[]>("skin.installed")) ?? [];
-  const entry = Array.isArray(installed) ? installed.find((e) => e && e.id === id && typeof e.version === "string") : undefined;
-  const loaded = entry ? loadInstalledSkin(entry.id, entry.version) : null;
-  if (!loaded) return { skin: BASIC, serial: "basic" };
-  return { skin: loaded.skin, serial: serialOf(loaded) };
-}
-
-const serials = new WeakMap<object, number>();
-let nextSerial = 1;
-function serialOf(o: object): string {
-  let n = serials.get(o);
-  if (n === undefined) serials.set(o, (n = nextSerial++));
-  return `${(o as { skin: SkinDefinition }).skin.id}@${(o as { skin: SkinDefinition }).skin.version}#${n}`;
+  const loaded = await loadInstalledSkin(id, { moduleParts });
+  if (!loaded.ok) return { skin: BASIC, serial: "basic" };
+  // l'empreinte du contenu installé fait partie de la clé : une réinstallation ou une mise à jour donne une autre feuille
+  const skin = toSkinDefinition(loaded);
+  return { skin, serial: `${skin.id}@${skin.version}:${loaded.fingerprint}` };
 }
 
 type Cached = Omit<SkinLook, "modeScriptUrl">;
 const CACHE = new Map<string, Cached>();
 const MAX_ENTRIES = 24;
 
-/** Vide les feuilles composées (changement de skin, d'options ou de réglage depuis l'administration, installation…). */
-export function invalidateSkinCache(): void {
-  CACHE.clear();
-}
+export { invalidateSkinCache };
 
 /** Le rendu du skin pour la configuration localisée du site. */
 export async function resolveLook(localized: SiteConfig): Promise<SkinLook> {
-  const { skin, serial } = await activeSkin();
+  const moduleLayer = await getModuleSkinLayer();
+  const { skin, serial } = await activeSkin(moduleLayer.byModule);
   const isBasic = skin === BASIC;
   const raw = new Map<string, unknown>();
   for (const key of RETOUCH_KEYS) raw.set(key, await getSetting(key));
   const retouches = retouchesFrom((k) => raw.get(k));
   const optionsSetting = await getSetting<Record<string, string>>("skin.options");
   const options = optionsSetting && typeof optionsSetting === "object" && !Array.isArray(optionsSetting) ? optionsSetting : {};
-  const moduleLayer = await getModuleSkinLayer();
 
   // halo, fond, en-tête : la valeur de la personne, sinon le départ du skin, sinon l'absence (comportement d'avant les skins)
   const glowRaw = await getSetting("theme.glow");
@@ -84,7 +76,7 @@ export async function resolveLook(localized: SiteConfig): Promise<SkinLook> {
   }
   const headerLayout: HeaderLayout = isHeaderLayout(layoutRaw) ? layoutRaw : (!isBasic && skin.defaults.headerLayout) || localized.header.layout;
 
-  const key = createHash("sha1").update(JSON.stringify([serial, retouches, options, moduleLayer.version, glowLevel, localized.glow.custom, bg, headerLayout])).digest("hex");
+  const key = createHash("sha1").update(JSON.stringify([skinCacheGeneration(), serial, retouches, options, moduleLayer.version, glowLevel, localized.glow.custom, bg, headerLayout])).digest("hex");
   let hit = CACHE.get(key);
   if (!hit) {
     const composed = composeSkin({ skin, retouches, options, moduleTokens: moduleLayer.tokens, modulePairs: moduleLayer.pairs });

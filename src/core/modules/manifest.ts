@@ -8,6 +8,7 @@ import { MAX_MODULE_RIGHTS, OPEN, RIGHT_ID_RE } from "../auth/rights";
 import { SERVICE_RE } from "./serviceVersions";
 import { NO_CREATE_REFERS, REFERS_TO } from "./choiceValues";
 import { MAX_TAB_ENTRIES, TAB_ID_RE, TAB_LABEL_MAX, tabIssues } from "./tabs";
+import { moduleSkinIssues, moduleSkinSchema } from "./skinDecl";
 
 const localized = z.union([z.string().max(500), z.record(z.string(), z.string().max(500))]);
 const methodName = z.string().regex(/^[a-zA-Z][a-zA-Z0-9_]{0,40}$/);
@@ -247,6 +248,11 @@ export const manifestSchema = z.object({
   defaultEnabled: z.boolean().optional(),
   permissions: z.array(z.enum(["slots", "routes", "storage", "filters", "sections", "pages", "topics", "overlay", "mcp", "admin", "mail", "rawg", "privacy", "visitor.geolocation", "files"])).default([]),
   /**
+   * (0.4.0) Pièces d'APPARENCE que les skins peuvent restyler, et jetons de style propres au module (préfixe `--sk-m-<module>-`). Apparence seulement : jamais de contenu ni de
+   * masquage (docs/SKINS.md §0, §8). Un cœur plus ancien ignore la clé : un module qui la déclare indique `minCore: "0.4.0"`.
+   */
+  skin: moduleSkinSchema.optional(),
+  /**
    * Droits du module (0.2.0), proposés dans les rôles de la page Équipe. Identifiant LOCAL (« email.view ») : le cœur le préfixe par l'identifiant du module
    * (« <module>:email.view »), un module ne peut donc pas déclarer le droit d'un autre. `open` (ouvrir la page d'admin du module) est implicite.
    * `default` : ce que reçoivent les rôles prédéfinis (administrateur : oui sauf `admin: false` ; éditeur : non sauf `editor: true`). Un cœur ancien ignore cette clé.
@@ -259,6 +265,7 @@ export const manifestSchema = z.object({
     default: z.object({ admin: z.boolean().optional(), editor: z.boolean().optional() }).optional(),
   })).max(MAX_MODULE_RIGHTS).optional(),
 }).superRefine((m, ctx) => {
+  if (m.skin) for (const issue of moduleSkinIssues(m.id, m.skin)) ctx.addIssue({ code: "custom", path: ["skin", ...issue.path], message: issue.message });
   if (m.pageSetting !== undefined) {
     const field = m.settings.find((f) => f.key === m.pageSetting);
     if (!field) ctx.addIssue({ code: "custom", path: ["pageSetting"], message: `pageSetting "${m.pageSetting}" must be the key of a setting of this module` });

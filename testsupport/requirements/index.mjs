@@ -3,6 +3,7 @@ import manifest from "./manifest.mjs";
 import code from "./code.mjs";
 import text from "./text.mjs";
 import runtime from "./runtime.mjs";
+import skin from "./skin.mjs";
 
 /** Rubriques, dans l'ordre où le rapport les présente. */
 export const GROUPS = {
@@ -13,6 +14,7 @@ export const GROUPS = {
   i18n: "Les langues",
   settings: "Les réglages",
   security: "Sécurité et forme des pages",
+  skin: "Les skins (apparence)",
   routes: "Les routes (formulaires et envois)",
   forms: "Les formulaires d'administration",
   mcp: "Les actions pour les assistants IA (MCP)",
@@ -26,7 +28,7 @@ export const GROUPS = {
 
 export const LEVELS = { mandatory: "obligatoire", advice: "conseil" };
 
-const all = [...manifest, ...code, ...text, ...runtime];
+const all = [...manifest, ...code, ...text, ...runtime, ...skin];
 const order = Object.keys(GROUPS);
 /** Toutes les exigences, rangées par rubrique (l'ordre à l'intérieur d'une rubrique est celui des fichiers). */
 export const REQUIREMENTS = order.flatMap((g) => all.filter((r) => r.group === g));

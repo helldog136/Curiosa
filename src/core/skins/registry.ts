@@ -14,6 +14,7 @@ import { SKINS_DIR } from "../config";
 import { deleteSetting, setSetting } from "../settings";
 import { SKIN_ID_RE } from "./allowlist";
 import { BASIC_ID, SETTING_ACTIVE, SETTING_INSTALLED, SETTING_OPTIONS } from "./constants";
+import { invalidateSkinCache } from "./invalidate";
 import { SEMVER_RE } from "./semver";
 
 export type SkinSource = "catalogue" | "personal";
@@ -73,6 +74,7 @@ export async function readRows(): Promise<SkinRow[]> {
 
 export async function writeRows(rows: readonly SkinRow[]): Promise<void> {
   await setSetting(SETTING_INSTALLED, rows);
+  invalidateSkinCache(); // installation, mise à jour, retour arrière, retrait, restauration : le rendu du site public recompose
 }
 
 /** Le skin actif tel que réglé (même si ses fichiers manquent) ; « basic » si rien. */
@@ -88,6 +90,7 @@ export async function readActiveSetting(): Promise<string> {
 export async function fallBackToBasic(): Promise<void> {
   await setSetting(SETTING_ACTIVE, BASIC_ID);
   await deleteSetting(SETTING_OPTIONS);
+  invalidateSkinCache();
 }
 
 /** Dossier d'une version installée : `data/skins/<id>/<version>/`. Les arguments sont validés : jamais de chemin hors de `data/skins`. */

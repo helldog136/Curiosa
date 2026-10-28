@@ -31,6 +31,45 @@ Sur 70 modules : **~45 n'ont rien à convertir** (blocs du cœur) ; **19 ont du 
 
 Priorité pour les captures du propriétaire : `events`, `gallery`, `planning`, `faq`, `videos`, `directory`, `polls`, `map`.
 
+### Conversion des modules (S9) : mesure et procédure (lot S4)
+
+**Mesure** (script `scripts/skin-module-census.mjs <dépôt de modules>`, lecture seule, `curiosa-extras` 1.22.1 avant conversion) : nombre de **déclarations dont la valeur est écrite en dur** dans le CSS public. Une valeur lue par `var(--v-…, repli)` n'est pas en dur (le repli d'une variable de palette est déjà un jeton) : les « couleurs en dur » du recensement initial étaient en fait des replis de variables ; presque tout ce qui reste à convertir est rayons, espaces, tailles de texte, ombres et durées. « À convertir en priorité » = couleurs + rayons + ombres + durées + écarts de grille (ce que les skins changent) ; les marges intérieures et les tailles de texte (colonnes « en dur » moins « priorité ») ne se convertissent que si un skin en a besoin. Taille : S ≤ 40 valeurs en dur dans 2 fichiers au plus, M ≤ 150 dans 4 au plus, L au-delà. Jours-agent indicatifs : 0,5 de base (lecture, jetons, test) + 0,01 par valeur en dur + 0,25 par fichier de CSS de plus + 0,1 par règle `[data-accent2]` (à traiter à part, voir `docs/MODULES.md`, piège n°2).
+
+| Module | Fichiers de CSS | Valeurs en dur | dont à convertir en priorité | Rayons | Règles `[data-accent2]` | Taille | Jours indicatifs |
+|---|---:|---:|---:|---:|---:|:-:|---:|
+| `events` | 1 | 102 | 37 | 20 | 0 | M | 1.5 |
+| `gallery` | 1 | 84 | 29 | 15 | 0 | M | 1.3 |
+| `planning` | 11 | 240 | 99 | 27 | 3 | L | 5.7 |
+| `map` | 1 | 71 | 25 | 13 | 0 | M | 1.2 |
+| `polls` | 1 | 70 | 31 | 12 | 0 | M | 1.2 |
+| `faq` | 1 | 58 | 16 | 8 | 0 | M | 1.1 |
+| `directory` | 1 | 67 | 27 | 8 | 2 | M | 1.4 |
+| `videos` | 1 | 72 | 29 | 15 | 4 | M | 1.6 |
+| `daily-game` | 1 | 89 | 30 | 15 | 0 | M | 1.4 |
+| `mascot` | 1 | 24 | 15 | 6 | 0 | S | 0.7 |
+| `countdown` | 1 | 38 | 16 | 6 | 0 | S | 0.9 |
+| `thanks-wall` | 1 | 40 | 15 | 6 | 2 | S | 1.1 |
+| `supporters` | 1 | 36 | 12 | 7 | 0 | S | 0.9 |
+| `testimonials` | 1 | 43 | 24 | 9 | 0 | M | 0.9 |
+| `live-status` | 1 | 21 | 9 | 6 | 0 | S | 0.7 |
+| `commissions` | 1 | 37 | 15 | 5 | 0 | S | 0.9 |
+| `content-planner` | 1 | 31 | 14 | 7 | 0 | S | 0.8 |
+| `twitch-raid` | 1 | 29 | 12 | 6 | 0 | S | 0.8 |
+| `audience` | 1 | 17 | 6 | 4 | 0 | S | 0.7 |
+| **19 modules** | 29 | **1169** | **461** | 195 | 11 | | **24.8** |
+
+Pilote : `thanks-wall` 1.0.1 → 1.1.0 (taille S, 40 valeurs en dur dont 15 prioritaires ; **14 jetons et 6 pièces**, 7 valeurs converties : arrondis, bordures, ombres, surfaces, écarts de grille ; le reste, marges intérieures et tailles de texte, est resté à l'échelle du module). Le script estime ce module à 1,1 jour (module, test de non-régression, aperçu) ; la preuve d'image (0 pixel) demande une référence restreinte prise avec l'ancienne version du module (`--only merci`, 16 captures en quelques minutes).
+
+**Procédure pour chaque module** (une branche et un test par module, parallélisable ; le détail et les pièges sont dans `docs/MODULES.md`, « Rendre un module stylable par les skins ») :
+
+1. Lancer le recensement du module et noter les valeurs prioritaires ; lister 3 à 8 **pièces** (carte, liste, bouton, étiquette, en-tête de section…), pas une par classe.
+2. Écrire la clé `skin` (pièces FR/EN, jetons `--sk-m-<module>-…`, défauts = valeurs d'aujourd'hui ou jeton commun **égal sous basic**), `minCore` `0.4.0`, version **mineure**, `skin-demo.html`.
+3. Réécrire les valeurs en `var(jeton-du-module, var(jeton-commun, valeur-actuelle))` et poser `data-skin-part` sur chaque élément de pièce. Ne pas toucher aux règles conditionnelles (`[data-accent2]`, états) ni aux propriétés qui masquent ou déplacent.
+4. Recopier le test de `thanks-wall` (`tests/thanks-wall-skin.test.mjs`) : réduction exacte à l'ancienne feuille, défauts = valeurs d'avant sous basic, pièces posées = pièces déclarées, aucun texte ajouté.
+5. `npm run module:check -- modules/<id>` : aucun ❌ ; `CURIOSA_DIR=<cœur construit> node scripts/test.mjs` : `fail 0`.
+6. Harnais d'images : référence prise avec l'ancienne version du module, candidate avec la nouvelle, sur le même cœur construit : **0 pixel** (`--only <page du module>`), clair et sombre. Un écart = soit une valeur de repli fausse (le test de l'étape 4 la désigne), soit un piège n°2 ou n°3.
+7. Un fichier d'extrait de changelog (`docs/changelog-parts/<module>-skin.md`) : « prêt pour les skins, rien ne change pour vous ».
+
 ## Dépendances et parallélisation
 
 ```

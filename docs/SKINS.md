@@ -605,7 +605,7 @@ Le kit vérifie aussi (statique + rendu) : un `outline: none` / `outline: 0` n'e
 
 Le cœur et basic restent **neutres** (leçon de l'audit de généricité) : un nouveau module ne doit pas obliger à modifier le cœur ni basic. Basic ne connaît que le vocabulaire commun (carte, bouton, liste, étiquette…). C'est le **module** qui déclare ses pièces stylables et leurs valeurs par défaut, rattachées aux jetons communs.
 
-### 8.2 Clé facultative `skin` du `module.json` (additive, `"minCore"` = première version du cœur qui la lit)
+### 8.2 Clé facultative `skin` du `module.json` (additive, `"minCore": "0.4.0"` = première version du cœur qui la lit)
 
 ```json
 {
@@ -616,20 +616,12 @@ Le cœur et basic restent **neutres** (leçon de l'audit de généricité) : un 
       {
         "id": "events.card",
         "kind": "card",
-        "label": { "fr": "Fiche d'évènement", "en": "Event card" },
+        "name": { "fr": "Fiche d'évènement", "en": "Event card" },
+        "description": { "fr": "La fiche de chaque évènement dans la liste.", "en": "The card of each event in the list." },
         "tokens": [
-          { "name": "--sk-events-card-radius", "type": "length", "default": "var(--sk-radius-card)" },
-          { "name": "--sk-events-card-bg",     "type": "color",  "default": "var(--v-surface)" },
-          { "name": "--sk-events-card-fg",     "type": "color",  "default": "var(--v-fg)", "on": "--sk-events-card-bg" }
-        ]
-      },
-      {
-        "id": "events.badge",
-        "kind": "badge",
-        "label": { "fr": "Pastille de date", "en": "Date badge" },
-        "tokens": [
-          { "name": "--sk-events-badge-bg", "type": "color", "default": "var(--v-bg)" },
-          { "name": "--sk-events-badge-fg", "type": "color", "default": "var(--v-fg)", "on": "--sk-events-badge-bg" }
+          { "name": "--sk-m-events-card-radius", "type": "length", "default": "var(--sk-radius-card)" },
+          { "name": "--sk-m-events-card-bg",     "type": "color",  "default": "var(--v-surface)" },
+          { "name": "--sk-m-events-card-fg",     "type": "color",  "default": "var(--v-fg)", "on": "--sk-m-events-card-bg" }
         ]
       }
     ],
@@ -640,11 +632,14 @@ Le cœur et basic restent **neutres** (leçon de l'audit de généricité) : un 
 
 | Champ | Règle |
 |---|---|
-| `since` | version du contrat de pièces de modules (`1`) ; un cœur qui ne connaît pas la clé l'**ignore sans erreur** (le module reste valable ; `minCore` protège sinon). |
-| `parts[].id` | `<idDuModule>.<pièce>`, `^[a-z][a-z0-9-]*\.[a-z][a-z0-9-]*$` ; c'est la valeur de `data-skin-part` que le module pose sur son HTML. |
-| `parts[].kind` | l'une des pièces **communes** du §9 (`card`, `button`, `chip`, `badge`, `list`, `field`…) : le skin qui stylise `[data-skin-part="card"]` sait que cette pièce *est une carte* ; le kit teste aussi que la pièce du module se comporte comme sa famille. |
-| `parts[].tokens[]` | `name` : `--sk-<idDuModule>-<pièce>-<propriété>` ; `type` : `color`, `length`, `shadow`, `number`, `font`, `duration`, `text-transform` ; `default` : toujours une référence à un jeton **commun** (`var(--v-surface)`, `var(--sk-radius-card)`) ou une valeur littérale (la valeur actuelle) ; `on` (couleurs de texte) : le jeton de fond sur lequel le texte est posé, pour le contrôle de lisibilité (§7, paire 11). 24 jetons au plus par module. |
-| `demo` | fichier HTML facultatif (≤ 20 Ko) d'exemple de la pièce, utilisé par le banc d'essai (§14) ; sans lui le banc génère un gabarit générique d'après `kind`. Il suit les mêmes règles qu'un bloc `html` du module (aucun script). |
+| `since` | version du contrat de pièces de modules (`1`) ; un cœur qui ne connaît pas la clé l'**ignore sans erreur** (le manifeste n'est pas strict ; `minCore` protège sinon). |
+| `parts[].id` | `<idDuModule>.<pièce>`, `^[a-z][a-z0-9-]{1,40}\.[a-z][a-z0-9-]{1,40}$`, **commence par l'id du module** ; c'est la valeur de `data-skin-part` que le module pose sur son HTML. 12 pièces au plus. |
+| `parts[].kind` | facultatif, informatif : l'une des pièces **communes** du §9 (`card`, `button`, `badge`, `list`, `avatar`, `panel`…) ; le kit vérifie qu'elle existe. |
+| `parts[].name`, `description` | **FR et EN obligatoires** (nom ≤ 120 caractères, description ≤ 300) : affichés par le banc d'essai et la page Apparence. |
+| `parts[].tokens[]` | `name` : `--sk-m-<idDuModule>-<pièce>-<propriété>` (**préfixe obligatoire** `--sk-m-<module>-` ; ≤ 66 caractères) ; `type` : `color`, `length`, `shadow`, `number`, `font`, `duration`, `text-transform` (liste fermée) ; `default` : la **valeur d'aujourd'hui**, ou une référence à un jeton **commun** (`var(--sk-radius-card)`, `var(--v-surface)`) ou **du même module** : jamais un jeton d'un autre module, jamais d'URL ; `on` (couleur de texte) : le jeton de fond du même module sur lequel le texte est posé, pour le contrôle de lisibilité (§7, paire 11). **24 jetons au plus** par module, tous contrôlés avec les mêmes règles que les jetons d'un skin (`validateTokenValue` : sûreté, forme du type, bornes). |
+| `demo` | fichier HTML facultatif (≤ 20 Ko) d'exemple des pièces, à la racine du module, pour le banc d'essai (§14) ; sans lui le banc génère un gabarit générique d'après `kind`. Aucun script, aucun style intégré, aucune adresse externe (le kit le vérifie). |
+
+**Interdits (principe fondateur, §0)** : la déclaration est de la *donnée d'apparence*. Aucune clé n'y décrit du contenu (le schéma est strict : toute clé inconnue est refusée, `template`, `html`, `content`, `hidden`… comprises) ; les types de jetons sont une liste fermée de valeurs de style ; une valeur par défaut ne peut contenir ni `url()`, ni `attr()`, ni accolades, ni point-virgule, ni échappement ; le kit refuse un jeton de module lu dans `display`, `visibility`, `opacity`, `content`, `position`, `transform`, `font-size`, `width`… (propriétés qui masqueraient ou déplaceraient du contenu : pour une taille de texte, on utilise un jeton **commun**, que le cœur borne).
 
 ### 8.3 Ce que le module fait de son CSS
 
@@ -663,7 +658,13 @@ Le module garde son `<style>` en ligne (aucun changement d'architecture), mais s
 
 ### 8.4 Composition (couche 2)
 
-Au démarrage (et à l'installation/retrait d'un module), le cœur lit les `skin.parts` des modules actifs et construit le **registre des pièces** : `{ parts: [{id, kind, moduleId, tokens[]}] }` (en mémoire, recalculé comme `permissionsPolicy`). Il en tire (a) la liste des jetons de module autorisés dans `tokens.json` (`modules.<id>`) et dans les sélecteurs `[data-skin-part="<id>"]` des feuilles, (b) les paires à contrôler, (c) les pièces du banc d'essai. Les valeurs par défaut des jetons de module sont émises dans `:root` **avant** celles du skin (donc le skin les surcharge) : le skin ne définit rien → c'est la valeur par défaut du module qui s'applique → qui retombe sur basic.
+À chaque page, `getModuleSkinLayer()` (`src/core/skins/moduleParts.ts`) rend la **couche des pièces** des modules **installés** (installé = actif) : `{ tokens, pairs, parts, byModule, version }`. Elle en tire (a) la liste des jetons de module autorisés dans `tokens.json` (`modules.<id>`), (b) les paires de lisibilité (`on`), (c) les pièces ciblables dans les feuilles (`[data-skin-part="<module>.<pièce>"]`, option `moduleParts` de l'assainisseur), (d) les pièces du banc d'essai. Les valeurs par défaut des jetons de module sont émises dans `:root[data-skin]` **avant** celles du skin (donc le skin les surcharge) : le skin ne définit rien → c'est la valeur par défaut du module qui s'applique → qui retombe sur basic.
+
+- **Source** : le seul `module.json` de chaque module (le code du module n'est pas chargé), validé par `parseManifest` puis `analyzeModuleSkin()` (`src/core/skins/moduleSkin.ts`, bibliothèque pure réutilisée par le kit de conformité). Un jeton refusé est **retiré** (jamais corrigé) et le module garde sa valeur de repli : son rendu ne change pas. Un module dont le manifeste est invalide n'a pas de pièces.
+- **Cache sans minuteur** : la couche est gardée avec l'empreinte `(id, version, commit)` des modules installés (une ligne de base par page, aucun fichier lu) et recalculée quand cette empreinte change, ou quand `forgetModule` / `resetModuleRegistry` (installation, mise à jour, réinstallation, retrait) appellent `invalidateModuleSkinLayer()`. Un fichier illisible n'est pas gardé en mémoire. Sans aucune pièce : `EMPTY_MODULE_LAYER` (version `"0"`) et la composition est **identique** à celle d'avant (testé : mêmes jetons, même feuille).
+- **Feuilles de skin** : `loadInstalledSkin(id, version, root, moduleParts)` assainit la feuille avec la liste des pièces installées et garde en cache selon l'empreinte de cette liste : une règle qui vise la pièce d'un module absent est **retirée au rendu** (sans erreur ; le skin installé n'est pas touché) et revient quand le module est réinstallé. À l'installation d'un skin (lot S5), la liste n'est pas connue : toute pièce `module.pièce` bien formée est acceptée.
+- **Préfixes** : un jeton `--sk-m-a-b-x` appartient au module `a-b` s'il est installé, pas au module `a` ; deux modules ne peuvent pas déclarer le même jeton (le premier par ordre d'identifiant le garde).
+- **Lisibilité** : les paires `on` sont la paire 11 du §7.1. Si un skin rend un texte de module illisible sur son fond, l'échelle de correction (§7.3) remet **les valeurs par défaut du module** (et non celles du skin) ; en dernier recours, le mode est suspendu.
 
 ### 8.5 Modules sans déclaration
 
@@ -671,7 +672,7 @@ Un module qui n'a pas de clé `skin` continue de fonctionner à l'identique : se
 
 ### 8.6 Numéro de version du module qui adopte les pièces
 
-Règle (décision du propriétaire) : un module qui **ajoute la clé `skin`** et réécrit son CSS public avec les repli `var(jeton, var(commun, valeur-actuelle))` **sans changer son apparence par défaut** passe en version **mineure** (`1.22.0` → `1.23.0`, avec `minCore` = première version du cœur qui lit la clé). S'il **modifie son apparence par défaut** (une couleur, un rayon, une taille qui change vraiment sous basic), il passe en version **majeure**. Un simple correctif de valeur sans effet visible : correctif (`x.y.z`). Le harnais d'images (§12) tranche : image identique = mineure, image différente = majeure.
+Règle (décision du propriétaire) : un module qui **ajoute la clé `skin`** et réécrit son CSS public avec les repli `var(jeton, var(commun, valeur-actuelle))` **sans changer son apparence par défaut** passe en version **mineure** (`1.22.0` → `1.23.0`, avec `minCore` = première version du cœur qui lit la clé). S'il **modifie son apparence par défaut** (une couleur, un rayon, une taille qui change vraiment sous basic), il passe en version **majeure**. Un simple correctif de valeur sans effet visible : correctif (`x.y.z`). Le harnais d'images (§12) tranche : image identique = mineure, image différente = majeure. **`minCore` vaut `0.4.0`** (le kit l'exige dès qu'il y a une clé `skin`, `compat.minCore`) : un cœur plus ancien refuse la mise à jour avec le message habituel « mettez d'abord le site à jour » au lieu de recevoir un module dont il ignore les pièces. Modèle : `thanks-wall` 1.0.1 → 1.1.0 (`curiosa-extras`, test `tests/thanks-wall-skin.test.mjs`).
 
 ---
 
@@ -1033,7 +1034,7 @@ Ordre recommandé : harnais d'images **d'abord** (sinon aucune preuve) → jeton
 | Vocabulaire des jetons | `src/core/skins/tokens.ts` | 87 jetons (§4.2), un type et une propriété CSS « représentative » chacun ; `validateTokenValue()` = sûreté de la feuille + forme du type + **mêmes bornes que l'assainisseur** (texte ≥ 0,6875 rem, durée ≤ 600 ms, cible ≥ 2,75 rem…). Jeton inconnu : ignoré sans erreur ; valeur refusée : repli sur basic + avertissement ; les `var()` sont suivis (`literalOf`) et la valeur finale contrôlée. Ajouts : `--sk-text-6xl`, `--sk-weight-normal`, `--sk-tracking-wider/-widest`, `--sk-radius-3xl`, `--sk-color-heading`. `--sk-shell-areas` accepte des chaînes. |
 | Basic | `src/core/skins/basic/` | `skin.json`, `tokens.json`, `skin.css` (vide). Un seul mode (sombre), pas de `color-scheme`, `deriveFromBackground` : retoucher fond/accent/texte/cartes donne `buildPalette(…)` comme avant les skins (400 combinaisons testées). |
 | Liaison Tailwind | `src/app/globals.css` | `@theme inline` : 30 échelles avec pour repli la valeur de Tailwind ; focus et accueil fluide aussi. L'administration n'a pas de `--sk-*`. Seul écart compilé : `shadow-lg` n'injecte plus `--tw-shadow-color` (aucune ombre colorée utilisée). |
-| Composition | `compose.ts` (pure), `sheet.ts`, `render.ts`, `folder.ts` | basic < pièces des modules (`moduleParts.ts`, vide) < skin actif < retouches. Cache borné dont la clé contient tout ; aucun minuteur ; `invalidateSkinCache()` / `invalidateSkinFiles()` pour l'installation. |
+| Composition | `compose.ts` (pure), `sheet.ts`, `render.ts`, `folder.ts` | basic < pièces des modules (`moduleParts.ts`) < skin actif < retouches. Cache borné dont la clé contient tout (dont un numéro de génération) ; aucun minuteur. Le skin actif est celui du **registre du lot S5** (`service.loadInstalledSkin` : contrôle complet, empreinte du contenu relue, mémoire de 10 min) ; `folder.ts` ne fait que le mettre sous la forme `SkinDefinition`. `invalidateSkinCache()` (`invalidate.ts`) est appelée après chaque écriture du registre (installation, mise à jour, retour arrière, retrait, restauration) et après l'installation ou le retrait d'un module. |
 | Retouches | `retouch.ts` | `theme.*` inchangés ; `theme.palette` et `theme.light.*` / `theme.dark.*` lus et composés (écran de saisie : S7). En « un seul mode », un fond retouché rend le site mono-mode (luminance) ; sans fond retouché, les autres couleurs vont aux deux modes. |
 | Lisibilité | `compose.ts` | `correctReadability()` par mode d'un skin (jamais basic) ; irrécupérable = couleurs de basic pour ce mode, notice dans `Composed.notices` (affichage : S7). |
 | Bascule | `modeScript.ts`, `src/app/skins/mode.js/route.ts`, `ModeSwitch.tsx`, `Header.tsx` | §3.8. `/skins` est un chemin réservé. Pièce posée à côté du sélecteur de langue, dans la région `tools` (lot S2). Logos : deux `<img data-for>` par rôle si les deux variantes existent. |
@@ -1152,5 +1153,21 @@ Les réglages `skin.*` et `theme.*` font déjà partie de `data/settings.json` ;
 4. **Étiquettes** hors vocabulaire et clés inconnues de `skin.json` : avertissement et ignorées (un contrat qui s'enrichit ne casse pas les skins écrits avant).
 5. **Fichiers permis à la racine** : `README.md` (ou `README.xx.md`), `LICENSE[.md|.txt]`, en plus de `skin.json`, des jetons et de la feuille.
 6. **Jetons** : `sanitizeTokenValue` + un contrôle typé pour quelques noms (`--sk-text-*`, `--sk-leading-*`, `--sk-radius-*`…) ; la validation par type de **tout** le vocabulaire reste au lot « jetons » (S1), de même que l'avertissement « jeton inconnu ».
-7. **Commande** : `scripts/skin-check.mjs` (pas `testsupport/skins/check.mjs`) ; les niveaux navigateur (`--visual`), le banc d'essai et le test de neutralité des textes d'un skin restent à faire. Les pièces et paires de couleurs des modules ne sont pas encore fournies à la validation (les options `moduleParts` et `modulePairs` existent).
+7. **Commande** : `scripts/skin-check.mjs` (pas `testsupport/skins/check.mjs`) ; les niveaux navigateur (`--visual`), le banc d'essai et le test de neutralité des textes d'un skin restent à faire. À l'installation, les pièces des modules ne sont pas fournies (toute pièce `module.piece` bien formée passe : on ne sait pas quels modules viendront). Au rendu, `loadInstalledSkin` fournit les pièces des modules installés : la règle visant la pièce d'un module absent est retirée avec un avertissement (jamais une erreur), le reste du skin s'applique. Les paires de couleurs des modules ne sont pas fournies à la validation : c'est la composition qui les corrige (paire 11).
 8. **Constante officielle** : dans `core/config.ts` et non sous `core/skins/` (le test de neutralité de la bibliothèque interdit un nom de dépôt réel dans ses sources).
+
+---
+
+## 22. Notes de mise en œuvre du lot S4 (pièces des modules)
+
+| Sujet | Où | Précisions |
+|---|---|---|
+| Manifeste | `src/core/modules/skinDecl.ts`, `manifest.ts` | Clé `skin` (zod strict, additive, sans dépendance lourde : le manifeste est lu par le garde de `permissionsPolicy`). Règles liées à l'id du module dans `moduleSkinIssues()` (préfixes, doublons, `on`, 24 jetons). `kind` facultatif ; noms et descriptions FR **et** EN. |
+| Validation des valeurs | `src/core/skins/moduleSkin.ts` | `analyzeModuleSkin(id, skin)` : chaque défaut passe `validateTokenValue` (= `sanitizeTokenValue` + forme du type + bornes de la propriété représentative) ; références limitées aux jetons communs et à ceux du module ; messages FR/EN en parité (`module-*` dans `messages.ts`). `buildModuleSkinLayer(modules)` : couche 2 (ordre d'identifiant, préfixes, doublons). |
+| Lecture et cache | `src/core/skins/moduleParts.ts` | `getModuleSkinLayer()`, `invalidateModuleSkinLayer()` (appelée par `forgetModule` et `resetModuleRegistry`), `createLayerCache(source)` (injectable pour les tests). Aucun minuteur (test sur le texte). |
+| Composition | `compose.ts` | Inchangée sauf un correctif : les défauts passés à l'échelle de correction de la paire 11 sont ceux du MODULE (`moduleBase`), pas ceux du skin. |
+| Feuilles de skin | `service.ts`, `render.ts` | `loadInstalledSkin(id, { moduleParts })` : la feuille est assainie avec les pièces installées (mémoire selon l'empreinte de la liste, `partsSignature`) ; `activeSkin(moduleParts)`. |
+| Kit des modules | `testsupport/requirements/skin.mjs` | `skin.valid`, `skin.parts`, `skin.fallback`, `skin.noMasking`, `skin.demo` (obligatoires si la clé existe) ; `skin.tokensUsed`, `skin.textPair`, `skin.declare` (conseils) ; `compat.minCore` exige `0.4.0` avec la clé. Détail : `docs/TESTSUPPORT.md`. |
+| Recensement | `scripts/skin-module-census.mjs` | Valeurs en dur du CSS public des 19 modules, par catégorie, et estimation de conversion (lot S9) : `docs/ideas/skins-effort.md`. |
+
+Laissé aux lots suivants : le banc d'essai lit `layer.parts` et `demo` (S8) ; la page Apparence affiche les pièces et le message « le module X propose N pièces » (S7) ; la conversion des 18 autres modules (S9).

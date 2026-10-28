@@ -37,6 +37,8 @@ import { audit } from "../permissions";
 import { SKIN_ID_RE } from "./allowlist";
 import { clearSkinCatalogueCache, readSkinCatalogue, type CatalogueRead, type SkinCatalogueEntry, type SkinOrigin } from "./catalogue";
 import { BASIC_ID } from "./constants";
+import { invalidateSkinCache, onSkinInvalidate } from "./invalidate";
+import { partsSignature } from "./moduleSkin";
 import type { SkinManifest } from "./manifest";
 import { makeIssue, type SkinIssue, type Text } from "./messages";
 import type { ReadabilityIssue } from "./readability";
@@ -451,31 +453,34 @@ export async function activeSkinId(): Promise<string> {
   return row && filesPresent(row.id, row.version) ? id : BASIC_ID;
 }
 
-export type LoadedSkin = { ok: true; id: string; version: string; manifest: SkinManifest; css: string; tokens: SkinTokens; assetBase: string } | { ok: false; id: string; issues: SkinIssue[] };
+export type LoadedSkin = { ok: true; id: string; version: string; fingerprint: string; manifest: SkinManifest; css: string; tokens: SkinTokens; assetBase: string } | { ok: false; id: string; issues: SkinIssue[] };
 const loadMemo = new Map<string, { at: number; value: LoadedSkin }>();
 const LOAD_TTL = 10 * 60_000;
 
 /**
- * Relit un skin installé : feuille et jetons ASSAINIS de nouveau (le fichier source n'est jamais servi, §6). Mis en cache 10 minutes par (id, version, empreinte).
+ * Relit un skin installé : feuille et jetons ASSAINIS de nouveau (le fichier source n'est jamais servi, §6). Mis en cache 10 minutes par (id, version, empreinte, pièces de modules).
  * `ok: false` : le skin ne passe plus le contrôle (fichiers absents ou altérés) — l'appelant applique basic.
+ * `moduleParts` : les pièces des modules INSTALLÉS ; une règle qui vise la pièce d'un module absent est alors retirée de la feuille rendue (le skin installé, lui, n'est pas touché).
+ * Absent : toute pièce `module.piece` bien formée est acceptée (c'est le cas à l'installation, où l'on ne sait pas quels modules viendront).
  */
-export async function loadInstalledSkin(id: string, opts: { now?: number } = {}): Promise<LoadedSkin> {
+export async function loadInstalledSkin(id: string, opts: { now?: number; moduleParts?: Readonly<Record<string, readonly string[]>> } = {}): Promise<LoadedSkin> {
   const row = (await readRows()).find((r) => r.id === id);
   if (!row || !filesPresent(row.id, row.version)) return { ok: false, id, issues: [makeIssue("skin-files-missing")] };
-  const key = `${row.id}@${row.version}:${row.fingerprint}:${getCoreVersion()}`;
+  const key = `${row.id}@${row.version}:${row.fingerprint}:${getCoreVersion()}:${opts.moduleParts ? partsSignature(opts.moduleParts) || "none" : "any"}`;
   const now = opts.now ?? Date.now();
   const hit = loadMemo.get(key);
   if (hit && now - hit.at < LOAD_TTL) return hit.value;
-  const v = validateSkinFolder(skinDir(row.id, row.version), { coreVersion: getCoreVersion(), expectId: row.id });
+  const v = validateSkinFolder(skinDir(row.id, row.version), { coreVersion: getCoreVersion(), expectId: row.id, moduleParts: opts.moduleParts });
   let value: LoadedSkin;
   if (!v.ok || !v.manifest || !v.tokens) value = { ok: false, id, issues: v.issues };
   else if (v.fingerprint !== row.fingerprint) value = { ok: false, id, issues: [makeIssue("skin-modified")] };
-  else value = { ok: true, id, version: row.version, manifest: v.manifest, css: v.css, tokens: v.tokens, assetBase: `/skins/${id}/${row.version}/` };
+  else value = { ok: true, id, version: row.version, fingerprint: row.fingerprint, manifest: v.manifest, css: v.css, tokens: v.tokens, assetBase: `/skins/${id}/${row.version}/` };
   loadMemo.set(key, { at: now, value });
   if (loadMemo.size > 50) loadMemo.delete(loadMemo.keys().next().value!);
   return value;
 }
-export const clearSkinCaches = (): void => { loadMemo.clear(); clearSkinCatalogueCache(); };
+onSkinInvalidate(() => loadMemo.clear()); // chaque changement de registre (installation, mise à jour, retrait, réinstallation, restauration) oublie les skins relus
+export const clearSkinCaches = (): void => { clearSkinCatalogueCache(); invalidateSkinCache(); };
 
 /** Octets d'une image d'aperçu (`previews/….webp`, 150 Ko au plus, signature vérifiée) lue dans `root`, ou null. */
 function readPreviewFile(root: string, file: string): Buffer | null {

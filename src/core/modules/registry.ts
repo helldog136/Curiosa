@@ -11,6 +11,7 @@ import { getSetting } from "../settings";
 import type { ModuleDefinition, SectionDecl } from "./types";
 import { forgetLoadFailures, reportLoadFailure } from "./loadLog";
 import { invalidatePermissionsPolicy } from "../permissionsPolicy";
+import { invalidateModuleSkinLayer } from "../skins/moduleParts";
 import { pageIsOn, pageSettingStorageKey } from "./publicPage";
 import { discardSnapshot, pruneSnapshots, snapshotModule } from "./snapshot";
 import { cleanReason, describeShape, shapeProblems } from "./loadCheck";
@@ -158,6 +159,7 @@ export function forgetModule(id: string, keep?: Pick<Module, "id" | "version" | 
   const kept = keep ? cacheKeyOf(keep) : null;
   for (const key of loadedCache.keys()) if (key.startsWith(`${id}@`) && key !== kept) loadedCache.delete(key);
   invalidatePermissionsPolicy(); // installé, mis à jour, réinstallé ou désinstallé : l'en-tête Permissions-Policy est recalculé (core/permissionsPolicy.ts)
+  invalidateModuleSkinLayer(); // et les pièces de skin que les modules déclarent (core/skins/moduleParts.ts)
 }
 
 export async function listModuleRows(): Promise<Module[]> {
@@ -227,4 +229,5 @@ export function sectionsOf(manifest: ParsedManifest): SectionDecl[] {
 export function resetModuleRegistry(): void {
   loadedCache.clear();
   invalidatePermissionsPolicy();
+  invalidateModuleSkinLayer();
 }

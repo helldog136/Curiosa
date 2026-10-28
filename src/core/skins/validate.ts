@@ -27,7 +27,10 @@ export type ValidateOptions = {
   folderName?: string | null;
   /** Id annoncé par le catalogue : le dossier doit servir CE skin. */
   expectId?: string;
-  /** Pièces des modules installés (`{ idDuModule: ["piece"] }`), pour la feuille. */
+  /**
+   * Pièces des modules installés (`{ idDuModule: ["piece"] }`), pour la feuille. Fournies = lecture au rendu : une règle qui vise la pièce d'un module absent
+   * est retirée de la feuille avec un avertissement (jamais une erreur : le module peut revenir). Absentes = installation : toute pièce bien formée passe.
+   */
   moduleParts?: Readonly<Record<string, readonly string[]>>;
   /** Paires de couleurs déclarées par les modules installés (paire 11 de la lisibilité). */
   modulePairs?: readonly ModulePair[];
@@ -228,7 +231,9 @@ function run(dir: string, opts: ValidateOptions): SkinValidation {
   let css = "";
   if (hasSheet) {   // le plafond de 60 Ko est celui de l'assainisseur (message précis, rien n'est appliqué)
     const sheet = sanitizeSkinCss(read(m.stylesheet!).toString("utf8"), { skinId: m.id, assetBase, assets: assetPaths, fontFamilies: families, moduleParts: opts.moduleParts });
-    issues.push(...sheet.issues);
+    // Lecture au rendu (`moduleParts` fourni) : la règle qui vise la pièce d'un module absent est retirée par l'assainisseur, le reste du skin s'applique ;
+    // ce n'est donc plus une erreur (à l'installation, `moduleParts` est absent et toute pièce bien formée est acceptée).
+    issues.push(...sheet.issues.map((i): SkinIssue => (opts.moduleParts && i.code === "unknown-part" ? { ...i, severity: "warning" } : i)));
     css = sheet.css;
     if (sheet.stats.keyframes > 0 && m.supports?.reducedMotion !== true) add("manifest-reduced-motion");
   }

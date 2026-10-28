@@ -13,11 +13,11 @@ export const CORE_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)
 const here = pathToFileURL(path.join(CORE_DIR, "tests/helpers/")).href;
 
 let cached;
-/** { dir, version, apiVersion, parseManifest, SLOTS, isCompatible } — chargé une fois. */
+/** { dir, version, apiVersion, parseManifest, SLOTS, isCompatible, analyzeModuleSkin, skinParts } — chargé une fois. */
 export async function loadCore() {
   if (cached) return cached;
   process.env.CURIOSA_CATALOGUE_RUNTIME ??= "0"; // jamais de réseau
-  const attempt = () => Promise.all([import("@/core/modules/manifest"), import("@/core/config"), import("@/core/blocks"), import("@/core/modules/compat")]);
+  const attempt = () => Promise.all([import("@/core/modules/manifest"), import("@/core/config"), import("@/core/blocks"), import("@/core/modules/compat"), import("@/core/skins/moduleSkin"), import("@/core/skins/allowlist")]);
   let mods;
   try {
     mods = await attempt();
@@ -25,8 +25,8 @@ export async function loadCore() {
     register("./alias-hooks.mjs", here);
     mods = await attempt();
   }
-  const [manifest, config, blocks, compat] = mods;
+  const [manifest, config, blocks, compat, moduleSkin, allowlist] = mods;
   const pkg = JSON.parse(fs.readFileSync(path.join(CORE_DIR, "package.json"), "utf8"));
-  cached = { dir: CORE_DIR, version: pkg.version, apiVersion: config.MODULE_API_VERSION, parseManifest: manifest.parseManifest, SLOTS: blocks.SLOTS, parseCoreVersion: compat.parseCoreVersion, isCompatible: compat.isCompatible };
+  cached = { dir: CORE_DIR, version: pkg.version, apiVersion: config.MODULE_API_VERSION, parseManifest: manifest.parseManifest, SLOTS: blocks.SLOTS, parseCoreVersion: compat.parseCoreVersion, isCompatible: compat.isCompatible, analyzeModuleSkin: moduleSkin.analyzeModuleSkin, skinParts: [...allowlist.PARTS] };
   return cached;
 }
