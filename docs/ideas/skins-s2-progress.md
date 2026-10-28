@@ -14,7 +14,7 @@ Reprise : `git clone … /dev/shm/skins-s2 && git checkout feat/skins-s2`, copie
 
 ## Reste à faire (mettre à jour à chaque jalon)
 - [x] référence v0.3.1 prête (1168 captures, fichier READY)
-- [ ] S2 : comparaison 0 pixel (commit 731256a)
+- [x] S2 (731256a) : 1 165 / 1 168 identiques ; night : 3 vignettes de photos (galeries, accueil 768) ; daylight, custom, layout-* : 0 pixel (voir bruit des photos plus bas)
 - [ ] S3 : comparaison 0 pixel (dernier commit)
 - [ ] tests unitaires `npm test` x2, tsc, eslint comparé à la base
 - [ ] `npm run visual:dom` (navigateur)
