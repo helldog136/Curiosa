@@ -10,7 +10,7 @@ import { getModuleSkinLayer, type ModuleSkinLayer } from "./moduleParts";
 import { readActiveSetting } from "./registry";
 import { COLOR_FIELDS, RETOUCH_KEYS, retouchesFrom, type ColorField } from "./retouch";
 import { installed, loadInstalledSkin, type InstalledSkin } from "./service";
-import { RETOUCH_SETTINGS, readSnapshot, type SkinBase, type SkinSnapshot } from "./appearance";
+import { RETOUCH_SETTINGS, loadUndoPoint, type SkinBase, type SkinSnapshot } from "./appearance";
 import { prisma } from "../db";
 import { BASIC_ID, SETTING_OPTIONS } from "./constants";
 import type { Mode, Retouches, SkinDefinition } from "./types";
@@ -170,7 +170,7 @@ export async function loadAppearanceView(): Promise<AppearanceView> {
   const bgDefault = d.background === undefined || d.background === "none" ? "none" : Array.isArray(d.background) ? "custom" : String(d.background);
   const base: SkinBase = { id: activeId, colors: skinColors as SkinBase["colors"], modes, defaults: { headerLayout: d.headerLayout } };
 
-  const snap = await readSnapshot();
+  const snap = await loadUndoPoint();
   const cards: SkinCardModel[] = [cardOf(BASIC, null, layer, activeId === BASIC_ID)];
   for (const r of rows) {
     const def = r.status === "ok" ? await definitionOf(r.id, layer) : null;

@@ -2259,7 +2259,7 @@
   "appearance.permissions": "This skin can only change the look: it cannot run any program, load anything from another site, change your content or touch the administration.",
   "appearance.unreadable": "This skin isn't readable enough, so it won't be installed:",
   "appearance.issues": "Notes about this skin ({n})",
-  "appearance.assets": "Bundled fonts and images ({n}) and their licenses",
+  "appearance.assets": "Included fonts and images ({n}) and their licenses",
   "appearance.readme": "Read the README",
   "appearance.licenseText": "Read the license",
   "appearance.size": "{kb} KB",

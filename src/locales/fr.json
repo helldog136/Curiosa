@@ -2259,7 +2259,7 @@
   "appearance.permissions": "Ce skin ne peut changer que l'apparence : il ne peut ni faire tourner de programme, ni charger quoi que ce soit d'un autre site, ni modifier votre contenu, ni toucher à l'administration.",
   "appearance.unreadable": "Ce skin n'est pas assez lisible, il ne sera pas installé :",
   "appearance.issues": "Remarques sur ce skin ({n})",
-  "appearance.assets": "Polices et images embarquées ({n}) et leurs licences",
+  "appearance.assets": "Polices et images incluses ({n}) et leurs licences",
   "appearance.readme": "Lire le README",
   "appearance.licenseText": "Lire la licence",
   "appearance.size": "{kb} Ko",

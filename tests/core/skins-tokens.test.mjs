@@ -101,7 +101,8 @@ test("l'administration ne définit AUCUN --sk-* et garde ses valeurs (le repli)"
   const walk = (d) => { for (const f of fs.readdirSync(d, { withFileTypes: true })) { const p = `${d}/${f.name}`; if (f.isDirectory()) walk(p); else files.push(p); } };
   walk("src/app/admin"); walk("src/components/admin");
   files.push("src/core/adminTheme.ts");
-  for (const f of files) assert.ok(!/--sk-/.test(read(f)), `${f} ne définit ni n'emploie de jeton --sk-*`);
+  // seule exception : l'aperçu de l'éditeur d'entrée pose les jetons du skin sur UN conteneur local (jamais sur la page : l'administration n'est pas restylée)
+  for (const f of files.filter((f) => !/\/EntryPreview\.tsx$/.test(f))) assert.ok(!/--sk-/.test(read(f)), `${f} ne définit ni n'emploie de jeton --sk-*`);
   // le skin n'est posé que par la mise en page du site public
   assert.ok(!/data-skin/.test(read("src/app/admin/layout.tsx")));
   assert.match(read("src/app/(site)/layout.tsx"), /data-skin=\{look\.composed\.skinId\}/);

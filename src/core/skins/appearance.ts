@@ -60,7 +60,7 @@ async function readKeys(keys: readonly string[]): Promise<Map<string, unknown>> 
   return out;
 }
 
-export async function readSnapshot(): Promise<SkinSnapshot | null> {
+export async function loadUndoPoint(): Promise<SkinSnapshot | null> {
   const v = (await readKeys([SETTING_SNAPSHOT])).get(SETTING_SNAPSHOT);
   if (!v || typeof v !== "object") return null;
   const s = v as Partial<SkinSnapshot>;
@@ -104,7 +104,7 @@ export type ChooseResult = { ok: true; changed: boolean; /** Des retouches ont �
 export async function chooseSkin(id: string, opts: { actor?: string } = {}): Promise<ChooseResult> {
   const usable = await usableSkin(id);
   if (usable !== true) return usable;
-  if ((await readActiveSetting()) === id) return { ok: true, changed: false, keptSnapshot: (await readSnapshot()) !== null };
+  if ((await readActiveSetting()) === id) return { ok: true, changed: false, keptSnapshot: (await loadUndoPoint()) !== null };
   const { snapshot } = await takeSnapshot("choose");
   await setSetting(SETTING_SNAPSHOT, snapshot);
   await setSetting(SETTING_ACTIVE, id);
@@ -128,7 +128,7 @@ export async function resetToSkin(opts: { actor?: string } = {}): Promise<{ ok: 
 
 /** « Annuler » : remet le skin et les retouches d'avant le dernier changement. Un skin qui n'est plus installé est remplacé par basic ; les retouches reviennent quand même. */
 export async function undoLastChange(opts: { actor?: string } = {}): Promise<{ ok: true; skin: string } | Failure> {
-  const snap = await readSnapshot();
+  const snap = await loadUndoPoint();
   if (!snap) return fail("skins.error.nosnapshot");
   const back = (await usableSkin(snap.fromSkin)) === true ? snap.fromSkin : BASIC_ID;
   await clearRetouches();

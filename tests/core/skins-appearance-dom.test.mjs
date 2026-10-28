@@ -210,7 +210,7 @@ async function page(locale = "fr", role = "owner") {
   const u = (await db.prisma.user.findUnique({ where: { email } })) ?? (await db.prisma.user.create({ data: { email, name: role, role, passwordHash: "x", locale } }));
   globalThis.curiosaTestSession = { user: { id: u.id, sv: 0 } };
   const { default: Page } = await import("@/app/admin/(panel)/appearance/page");
-  return renderToStaticMarkup(await resolveAsync(await Page()));
+  return renderToStaticMarkup(await resolveAsync(await Page({ searchParams: Promise.resolve({}) })));
 }
 const install = async (id, from) => { await cat.publish(id, { from }); assert.equal((await S.installFromCatalogue(id)).ok, true); };
 

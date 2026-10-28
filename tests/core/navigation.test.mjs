@@ -61,7 +61,7 @@ test("en-tête : quatre dispositions au choix, réseaux sociaux repris de TOUS l
   assert.match(header, /loadSocialLinks\(locale\)/, "les réseaux viennent de tous les modules qui fournissent « social.link » — le cœur ne connaît aucun réseau");
   assert.match(read("src/core/social.ts"), /isSafeExternalUrl\(href\)/);
   const actions2 = read("src/app/admin/(panel)/settings/actions.ts");
-  assert.match(actions2, /isHeaderLayout\(layout\) \? layout : "classic"/);
+  assert.match(read("src/core/skins/appearance.ts"), /isHeaderLayout\(input\.headerLayout\) \? input\.headerLayout : "classic"/);
   assert.match(actions2, /!headerLink\("x", href\)\) return \{ error/);
-  assert.match(read("src/app/admin/(panel)/settings/page.tsx"), /<HeaderLayoutPicker name="headerLayout"/);
+  assert.match(read("src/app/admin/(panel)/appearance/page.tsx"), /<HeaderLayoutPicker name="headerLayout"/);
 });

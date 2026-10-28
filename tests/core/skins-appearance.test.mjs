@@ -78,7 +78,7 @@ test("choisir un skin : retouches copiées dans skin.snapshot puis supprimées, 
   assert.deepEqual(await retouchKeys(), [], "le skin donne les valeurs de départ : plus aucune retouche");
   assert.equal(await getSetting("theme.admin"), "dark", "l'administration garde son thème");
   assert.equal(await getSetting("skin.options"), undefined);
-  const snap = await A.readSnapshot();
+  const snap = await A.loadUndoPoint();
   assert.equal(snap.kind, "choose");
   assert.equal(snap.fromSkin, "basic");
   assert.equal(snap.values["theme.accent"], "#38bdf8");
@@ -101,7 +101,7 @@ test("choisir : un skin inconnu, un id douteux ou un skin dont les fichiers ont 
   }
   assert.equal(await getSetting("skin.active"), undefined);
   assert.equal((await retouchKeys()).length, 9);
-  assert.equal(await A.readSnapshot(), null);
+  assert.equal(await A.loadUndoPoint(), null);
   fs.rmSync(path.join(SKINS, "plain-light"), { recursive: true });
   S.clearSkinCaches();
   const gone = await A.chooseSkin("plain-light");
@@ -120,7 +120,7 @@ test("annuler : skin, retouches et options d'avant reviennent exactement ; le sk
   assert.equal(await getSetting("skin.active"), "basic");
   assert.deepEqual(await keys("theme."), before, "tout est comme avant, clé pour clé");
   assert.equal(await getSetting("header.layout"), "twoRows");
-  assert.equal(await A.readSnapshot(), null);
+  assert.equal(await A.loadUndoPoint(), null);
   assert.equal((await A.undoLastChange()).error, "skins.error.nosnapshot");
 
   // d'un skin à un autre, avec options
@@ -152,7 +152,7 @@ test("revenir au skin : retouches mises de côté (avec « Annuler »), rien à 
   assert.deepEqual(r, { ok: true, changed: true });
   assert.deepEqual(await retouchKeys(), []);
   assert.equal(await getSetting("theme.admin"), "light");
-  const snap = await A.readSnapshot();
+  const snap = await A.loadUndoPoint();
   assert.equal(snap.kind, "reset");
   assert.equal(snap.fromSkin, "plain-light");
   assert.equal((await A.undoLastChange()).skin, "plain-light");
@@ -240,9 +240,9 @@ test("enregistrer une vraie retouche supprime le « Annuler » du dernier change
   const sv = (await V.loadAppearanceView()).skinColors.light;
   const same = { background: sv.background, accent: sv.accent, accent2: "", surface: sv.surface, text: sv.text, glow: "skin", bgPreset: "skin", headerLayout: "classic" };
   await actions.saveAppearance(null, form(same));
-  assert.notEqual(await A.readSnapshot(), null, "rien n'a changé : on peut encore annuler");
+  assert.notEqual(await A.loadUndoPoint(), null, "rien n'a changé : on peut encore annuler");
   await actions.saveAppearance(null, form({ ...same, accent: "#123456" }));
-  assert.equal(await A.readSnapshot(), null, "tant qu'on n'a pas changé autre chose (§3.3)");
+  assert.equal(await A.loadUndoPoint(), null, "tant qu'on n'a pas changé autre chose (§3.3)");
 });
 
 // ── deux modes
@@ -410,7 +410,7 @@ test("actions : catalogue → installer et utiliser en un envoi ; dépôt person
   let r = await actions.installFromCatalogueAction(null, form({ id: "plain-light", activate: "1" }));
   assert.ok(r.ok && !r.error, JSON.stringify(r));
   assert.equal(await getSetting("skin.active"), "plain-light");
-  assert.notEqual(await A.readSnapshot(), null);
+  assert.notEqual(await A.loadUndoPoint(), null);
 
   await cat.publish("mien", { from: "duo", listed: false });
   const url = `${cat.url}#mien-v1.0.0:skins/mien`;

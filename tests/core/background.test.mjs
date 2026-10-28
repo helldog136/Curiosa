@@ -109,16 +109,16 @@ test("fond : les préréglages sont valides, s'adaptent au thème, et l'image de
 test("fond : branché sur le site et l'admin (préréglage en tous modes, description et « personnalisé » en avancé, validation avant enregistrement)", () => {
   const layout = fs.readFileSync("src/app/(site)/layout.tsx", "utf8");
   assert.match(fs.readFileSync("src/core/skins/render.ts", "utf8"), /effectiveLayers\(bg\.preset, bg\.custom, bg\.image, bg\.svg\)/, "la composition des skins lit le fond du site");
-  assert.match(layout, /resolveLook\(localized\)/);
+  assert.match(layout, /resolveLook\(localized,/);
   assert.match(layout, /className="cbg" aria-hidden="true"/);
-  const page = fs.readFileSync("src/app/admin/(panel)/settings/page.tsx", "utf8");
+  const page = fs.readFileSync("src/app/admin/(panel)/appearance/page.tsx", "utf8");
   for (const n of ["bgPreset", "bgImage", "bgCustom"]) assert.match(page, new RegExp(`name="${n}"`));
   assert.match(page, /advanced \? \[\{ value: "custom"/);
-  assert.ok(/\{advanced && \(\s*<ShowWhen field="bgPreset" equals="custom" initial=\{config\.bg\.preset\}>\s*<TextArea name="bgCustom"/.test(page), "la description JSON n'est offerte qu'en mode avancé, et seulement si « Personnalisé » est choisi");
-  const actions = fs.readFileSync("src/app/admin/(panel)/settings/actions.ts", "utf8");
-  assert.match(actions, /parseBackground\(bgCustom\)/);
-  assert.match(actions, /isBackgroundImage\(bgImage\)/);
-  assert.match(actions, /adv \|\| \(bgPreset !== "custom" && bgPreset !== "svg"\)/);
+  assert.ok(/\{advanced && \(\s*<ShowWhen field="bgPreset" equals="custom" initial=\{bgPreset\}>\s*<TextArea name="bgCustom"/.test(page), "la description JSON n'est offerte qu'en mode avancé, et seulement si « Personnalisé » est choisi");
+  const actions = fs.readFileSync("src/core/skins/appearance.ts", "utf8");
+  assert.match(actions, /parseBackground\(i\.bgCustom\)/);
+  assert.match(actions, /isBackgroundImage\(i\.bgImage\)/);
+  assert.match(actions, /input\.advanced \|\| \(input\.bgPreset !== "custom" && input\.bgPreset !== "svg"\)/);
   assert.ok(fs.existsSync("docs/BACKGROUND.md"));
 });
 
