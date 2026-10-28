@@ -153,12 +153,18 @@ export function prepareContrast(noFilter) {
       // texte réservé aux lecteurs d'écran (boîte de 1 px qui rogne) : rien à voir
       const b = e.getBoundingClientRect();
       if ((b.width <= 2 || b.height <= 2) && (s.overflow !== "visible" || s.clip !== "auto" || s.clipPath !== "none")) { ok = false; break; }
+      // même boîte avec une bordure ou un remplissage ajoutés par un skin (1 px + bordure = 7 px) : le contenu reste rogné à 1 px, le texte n'est toujours lu que par les lecteurs d'écran
+      if (s.position === "absolute" && s.overflow !== "visible" && (/^rect\(0(px)?,? 0(px)?,? 0(px)?,? 0(px)?\)$/.test(s.clip) || /^inset\(\s*50%\s*\)$/.test(s.clipPath))) { ok = false; break; }
     }
     if (!ok) continue;
     const range = document.createRange(); range.selectNodeContents(n);
-    const rects = [...range.getClientRects()].filter((r) => r.width > 3 && r.height > 3);
+    // hors de la page (ex. lien d'évitement rangé au-dessus de l'écran jusqu'à ce qu'il prenne le focus) : rien à échantillonner
+    const rects = [...range.getClientRects()].filter((r) => r.width > 3 && r.height > 3 && r.bottom > 0 && r.right > 0);
     if (!rects.length) continue;
     const s = getComputedStyle(p);
+    // texte rempli par le fond (`background-clip: text` et remplissage transparent : chiffres clés en dégradé) : le fond DERRIÈRE est le texte lui-même, l'échantillon ne dit rien ;
+    // la lisibilité de ce dégradé est jugée par les paires 13 et 14 du contrôle statique (SKINS.md §25.3)
+    if (/text/.test(s.webkitBackgroundClip || s.backgroundClip || "") && /rgba?\(\s*0,\s*0,\s*0,\s*0\s*\)|transparent/.test(s.webkitTextFillColor || "")) continue;
     // opacité des ancêtres : le texte est plus pâle d'autant
     let op = 1; for (let e = p; e; e = e.parentElement) op *= parseFloat(getComputedStyle(e).opacity);
     // un élément atténué par le cœur lui-même (entrée expirée, bouton désactivé) n'est pas jugé : un skin ne peut pas descendre l'opacité sous 0,6
@@ -169,7 +175,7 @@ export function prepareContrast(noFilter) {
   }
   const st = document.createElement("style");
   st.setAttribute("data-bench-contrast", "");
-  st.textContent = `*,*::before,*::after{color:transparent!important;-webkit-text-fill-color:transparent!important;text-shadow:none!important;caret-color:transparent!important;text-decoration-color:transparent!important}svg{visibility:hidden!important}${noFilter ? "*,*::before,*::after{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}" : ""}`;
+  st.textContent = `*,*::before,*::after{transition:none!important;animation:none!important;color:transparent!important;-webkit-text-fill-color:transparent!important;text-shadow:none!important;caret-color:transparent!important;text-decoration-color:transparent!important}svg{visibility:hidden!important}${noFilter ? "*,*::before,*::after{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}" : ""}`;
   document.head.appendChild(st);
   return runs;
 }

@@ -109,7 +109,8 @@ export async function visualCheck(st, options = {}) {
     for (const width of widths) {
       const ctx = await newCtx(bs, width, "dark");
       for (const def of pages) {
-        const { page } = await visit(ctx, bs, def);
+        // basic est montré avec l'en-tête par défaut du skin : une mise en page d'en-tête (ex. deux rangées) ordonne autrement les liens, ce n'est pas un changement de contenu
+        const { page } = await visit(ctx, bs, def, `?layout=${skinSite.look.headerLayout}`);
         const data = await page.evaluate(inpage.collectPage);
         data.covered = await page.evaluate(inpage.findCovered);
         baseline.set(`${width}|${def.id}`, data);

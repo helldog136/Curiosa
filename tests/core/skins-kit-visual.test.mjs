@@ -81,6 +81,19 @@ test("seuils de l'ordre de tabulation, validés sur de vraies mises en page : co
   }
 });
 
+test("faux positifs écartés (intégration 2) : en-tête par défaut non classique, lien d'évitement à bordure, chiffres en dégradé, skin refusé dont les polices restent servies", { skip, ...T }, async () => {
+  const dir = goodSkin(tmp, "kit-fp");
+  const manifest = JSON.parse(fs.readFileSync(path.join(dir, "skin.json"), "utf8"));
+  manifest.defaults = { ...(manifest.defaults ?? {}), headerLayout: "twoRows" };
+  fs.writeFileSync(path.join(dir, "skin.json"), JSON.stringify(manifest, null, 2));
+  fs.appendFileSync(path.join(dir, "skin.css"), `\n:root[data-skin="kit-fp"] [data-skin-part="skip-link"] { border: 3px solid #ffffff; }\n:root[data-skin="kit-fp"] [data-skin-part="stat"] { background-image: linear-gradient(120deg, #1d4ed8, #7c3aed); }\n`);
+  const r = await checkOne(dir, FAST);
+  const codes = real(r).map((i) => i.code);
+  assert.ok(!codes.includes("kit-structure-changed") && !codes.includes("kit-text-changed"), `l'en-tête deux rangées ordonne autrement les liens : ce n'est pas un changement de contenu (obtenu : ${codes.join(", ")})`);
+  assert.ok(!r.issues.some((i) => i.code === "kit-contrast-rendered" && /Aller au contenu/.test(i.message.fr)), "le lien d'évitement rogné à 1 px reste caché, même avec une bordure");
+  assert.ok(!codes.includes("kit-request-failed"), "les fichiers d'un skin refusé sont servis quand même (pas de fausse erreur de chargement)");
+});
+
 test("régression de basic : la page de basic est identique, au pixel, à l'apparence d'origine (0 pixel) sur les six pages-types aux quatre largeurs", { skip, timeout: 300000 }, async () => {
   const r = await checkOne(goodSkin(tmp, "kit-good-regression"), { coreVersion: "0.4.0", visual: true, widths: [390], onlyPages: ["home"] });
   assert.deepEqual(r.issues.filter((i) => i.code === "kit-basic-regression"), []);

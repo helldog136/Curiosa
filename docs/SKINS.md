@@ -1313,3 +1313,14 @@ Le catalogue (`catalogue/index.json`, §5.5) épingle chaque skin par son champ 
 3. `version` du catalogue, `version` de `skin.json` et étiquette disent la même chose (`1.0.0`).
 4. Après une fusion par écrasement, **vérifiez** : `git ls-remote --tags origin '<id>/v*'` doit lister l'étiquette, et `npm run skin:check -- <dossier du skin à ce ref>` doit passer. L'écrasement refait les hash, pas les étiquettes : s'il faut une étiquette sur le NOUVEAU commit (parce que la branche a été supprimée), refaites `git tag -f` après relecture et republiez le catalogue.
 5. Mettre à jour un skin = nouvelle version, nouvelle étiquette, nouvelle ligne du catalogue ; la page Apparence compare l'empreinte git du dossier (`tree`), qui, elle, ne change pas quand seul le hash du commit change.
+
+### 25.6 Faux positifs du niveau navigateur écartés (essai sur les quatre skins)
+
+En passant `skin:check --visual --strict` sur les quatre skins du dépôt `curiosa-skins`, quatre faux signalements du kit ont été corrigés (ils faisaient échouer des skins pour de mauvaises raisons) :
+
+- **En-tête par défaut non classique** (`defaults.headerLayout` à `twoRows`, `centered`, `minimal`) : basic est maintenant montré avec **le même en-tête** que le skin pour la comparaison des textes, liens et éléments cliquables. Les quatre mises en page de l'en-tête ordonnent autrement les liens du DOM, ce n'est pas un changement de contenu (avant : `kit-text-changed` et `kit-structure-changed` sur toutes les pages).
+- **Lien d'évitement** (`skip-link`) : rangé par le cœur dans une boîte de 1 px rognée (`clip-path: inset(50%)`), il restait mesuré dès qu'un skin lui donnait une bordure (la boîte passe à 7 px) et sortait « illisible » (contraste 1). Une boîte absolue rognée de cette façon n'est plus mesurée.
+- **Chiffres clés en dégradé** (`background-clip: text`, remplissage transparent) : l'échantillon derrière le texte est le texte lui-même ; ils ne sont plus mesurés au rendu, c'est le contrôle statique (paires 13 et 14, §25.3) qui juge ce dégradé.
+- **Skin refusé** : ses polices et images ne sont plus retirées du banc (le rapport n'était plus qu'une cascade de `kit-request-failed` et `kit-font-not-loaded` qui cachait la vraie cause, par exemple une paire de lisibilité).
+
+Ce qui reste signalé après ces corrections est de vrais défauts de skins (cibles et textes trop petits, texte blanc sur panneau pastel, etc.) : le kit ne les masque pas.

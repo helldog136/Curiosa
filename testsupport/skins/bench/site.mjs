@@ -78,6 +78,21 @@ ${(look.switchAvailable || site.forceSwitch) && !site.legacy ? `<script src="${s
   return { status: page.status ?? 200, html };
 }
 
+/** Fichiers ordinaires de `fonts/` et `images/` d'un dossier de skin (jamais de lien symbolique), pour servir un skin refusé dans le banc. */
+function readSkinMedia(dir) {
+  const out = [];
+  if (!dir) return out;
+  for (const sub of ["fonts", "images"]) {
+    let names = [];
+    try { names = fs.readdirSync(path.join(dir, sub)); } catch { continue; }
+    for (const n of names.slice(0, 60)) {
+      const f = path.join(dir, sub, n);
+      try { const st = fs.lstatSync(f); if (st.isFile() && st.size <= 2 * 1024 * 1024) out.push({ path: `${sub}/${n}`, content: fs.readFileSync(f) }); } catch { /* fichier illisible : ignoré */ }
+    }
+  }
+  return out;
+}
+
 /**
  * Prépare un site de démonstration pour un skin déjà contrôlé.
  * `check` : résultat de `staticCheck()` ; `opts` : { legacy, unsafeCss, options, retouches }. Pour basic : `check` = null.
@@ -90,7 +105,10 @@ export async function prepareSite(check, opts = {}) {
   if (check?.manifest && check.tokens) {
     const { toSkinDefinition } = await import("../../../src/core/skins/folder.ts");
     skin = toSkinDefinition({ id: check.manifest.id, version: check.manifest.version, manifest: check.manifest, css: check.css, tokens: check.tokens });
-    for (const f of check.validation.installFiles.length ? check.validation.installFiles : []) {
+    // Un skin refusé n'a pas de fichiers à installer (`installFiles` vide) : on sert alors ceux du dossier, pour que le navigateur montre le vrai rendu et que le rapport
+    // ne s'encombre pas de « fichier introuvable » qui cacheraient la vraie cause (lisibilité, etc.). Fichiers ordinaires de fonts/ et images/ seulement, 2 Mo au plus.
+    const served = check.validation.installFiles.length ? check.validation.installFiles : readSkinMedia(check.dir);
+    for (const f of served) {
       if (/^(fonts|images)\//.test(f.path)) files.set(`/skins/${check.manifest.id}/${check.manifest.version}/${f.path}`, f.content);
     }
   }
