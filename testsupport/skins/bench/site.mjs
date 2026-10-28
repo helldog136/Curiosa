@@ -55,7 +55,7 @@ export function renderDemoPage(site, req) {
   const page = known ?? { id: "notfound", path: route, fragment: "page-notfound", status: 404 };
 
   const look = site.look;
-  const sw = look.switchAvailable;
+  const sw = look.switchAvailable || site.forceSwitch === true;
   const layout = ["classic", "twoRows", "centered", "minimal"].includes(q.layout) ? q.layout : look.headerLayout;
   let header = layout === "classic" && q.logo ? fragment(L, "header-classic-logo") : fragment(L, `header-${layout}${sw ? "-switch" : ""}`);
   const menuOpen = q.menu === "open";
@@ -73,7 +73,7 @@ export function renderDemoPage(site, req) {
   const backdrop = !site.legacy && look.layers.length ? `<div class="cbg" aria-hidden="true" data-skin-region="backdrop">${look.layers.map(() => "<i></i>").join("")}</div>` : "";
   const html = `<!doctype html>
 ${root}<head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>${esc(title)} | ${L === "fr" ? "Mon site" : "My site"}</title>
-${sw && !site.legacy ? `<script src="${site.modeScriptUrl}"></script>` : ""}<style>${site.coreCss}</style><style>${site.sheet}${site.unsafeCss ?? ""}</style></head>
+${(look.switchAvailable || site.forceSwitch) && !site.legacy ? `<script src="${site.modeScriptUrl}"></script>` : ""}<style>${site.coreCss}</style><style>${site.sheet}${site.unsafeCss ?? ""}</style></head>
 <body class="min-h-screen bg-bg text-fg antialiased" data-skin-root="">${backdrop}<a href="#content" data-skin-part="skip-link" class="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:bg-accent focus:px-3 focus:py-1 focus:text-accent-fg">${skip}</a>${tray}<div data-skin-region="shell"><div data-skin-region="banner">${banner}</div>${header}<main id="content" data-skin-region="main"><div data-skin-region="content">${content}</div></main>${footer}</div>${panel ? `<template id="bench-minimal-panel">${panel}</template>` : ""}<script src="/__bench/client.js"></script></body></html>`;
   return { status: page.status ?? 200, html };
 }
@@ -101,7 +101,7 @@ export async function prepareSite(check, opts = {}) {
     sheet = themeCss(buildTheme("#121214", "#e8a23b", "sans"));
   }
   return {
-    look, sheet, files, check, legacy: !!opts.legacy, unsafeCss: opts.unsafeCss, coreCss: await coreCss(), modeScript: MODE_SCRIPT, modeScriptUrl: MODE_SCRIPT_URL,
+    look, sheet, files, check, legacy: !!opts.legacy, forceSwitch: !!opts.forceSwitch, unsafeCss: opts.unsafeCss, coreCss: await coreCss(), modeScript: MODE_SCRIPT, modeScriptUrl: MODE_SCRIPT_URL,
     modules: check?.modules ?? [], layer: check?.layer ?? null, skinId: look.composed.skinId, manifest: check?.manifest ?? null, issues: check?.issues ?? [],
   };
 }

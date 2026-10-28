@@ -60,7 +60,9 @@ export async function visualCheck(st, options = {}) {
   const servers = [];
   try {
     const skinSite = await prepareSite(st.manifest ? st : null, { unsafeCss: options.unsafeCss });
-    const basicSite = await prepareSite(null);
+    const dual = skinSite.look.composed.modes.length === 2;
+    // basic n'a pas de bascule ; pour comparer à armes égales avec un skin à deux modes, sa page porte la même (le cœur la pose pour tout skin à deux modes)
+    const basicSite = await prepareSite(null, { forceSwitch: dual });
     const sk = await startDemoServer(skinSite, { port: await freePort() }); servers.push(sk);
     const bs = await startDemoServer(basicSite, { port: await freePort(sk.port + 1) }); servers.push(bs);
 
@@ -226,12 +228,14 @@ function measure(bag, data, def, width, mode) {
     else if (s.fs < 13.99 && s.body) bag.add("kit-text-size-warn", { what: s.key, size: Math.round(s.fs * 10) / 10, page: p, width, mode });
     if (s.body && s.lines >= 2 && s.lh / s.fs < 1.3) bag.add("kit-leading", { what: s.key, ratio: Math.round((s.lh / s.fs) * 100) / 100, min: 1.4, page: p, width, mode });
   }
-  const vis = data.focusables.filter((f) => f.visible && !f.fixed);
+  const vis = data.focusables.filter((f) => f.visible && f.path && f.region !== "skip");
   if (vis.length >= 4) {
-    const m = tabOrderMetrics(vis);
+    const m = tabOrderMetrics({ items: vis.map((f) => ({ region: f.region, path: f.path, label: f.key })), boxes: data.orderBoxes, columns: data.orderColumns });
     const j = judgeOrder(m);
-    if (j.level === "error") bag.add(j.region ? "kit-tab-order-region" : "kit-tab-order", { percent: j.percent, region: j.region ? { fr: regionName(j.region, "fr"), en: regionName(j.region, "en") } : "", page: p, width, mode });
-    else if (j.level === "warning") bag.add(j.region ? "kit-tab-order-region" : "kit-tab-order-warn", { percent: j.percent, region: j.region ? { fr: regionName(j.region, "fr"), en: regionName(j.region, "en") } : "", page: p, width, mode }, "warn");
+    const reg = j.region ? { fr: regionName(j.region, "fr"), en: regionName(j.region, "en") } : "";
+    if (process.env.DEBUG_KIT) console.error("order", width, def.id, m.percent, JSON.stringify(Object.fromEntries(Object.entries(m.regions).map(([k, v]) => [k, v.percent]))), JSON.stringify(m.samples));
+    if (j.level === "error") bag.add(j.region ? "kit-tab-order-region" : "kit-tab-order", { percent: j.percent, region: reg, page: p, width, mode });
+    else if (j.level === "warning") bag.add("kit-tab-order-warn", { percent: j.percent, region: reg, page: p, width, mode }, "warn");
   }
 }
 const regionName = (r, L) => ({ header: L === "fr" ? "l'en-tête" : "the header", main: L === "fr" ? "le contenu" : "the content", footer: L === "fr" ? "le pied de page" : "the footer", banner: L === "fr" ? "le bandeau" : "the banner" }[r] ?? r);
@@ -250,39 +254,41 @@ async function contrast(page, bag, def, width, mode, noFilter, site) {
   } finally { await page.evaluate(inpage.unhide); }
 }
 
+/** Dans la page : l'élément qui a le focus (clé, boîte) ; il est mémorisé pour le retrouver après l'avoir quitté. */
+function focusInfo() {
+  const a = document.activeElement;
+  if (!a || a === document.body) return null;
+  a.scrollIntoView({ block: "center" });
+  window.__benchFocused = a;
+  const r = a.getBoundingClientRect(); const part = a.getAttribute("data-skin-part") || "";
+  let op = 1; for (let n = a; n; n = n.parentElement) op *= parseFloat(getComputedStyle(n).opacity);
+  return { dim: op < 0.99, key: `${a.tagName.toLowerCase()}${part ? `[${part}]` : ""}:${(a.getAttribute("aria-label") || a.textContent || a.getAttribute("href") || a.getAttribute("name") || "").replace(/\s+/g, " ").trim().slice(0, 50)}`, x: r.left, y: r.top, w: r.width, h: r.height, skip: part === "skip-link" };
+}
+
 /** Focus visible : on atteint les éléments avec Tab ; chacun doit changer de façon visible (cadre, ombre, fond…). */
 async function focus(page, bag, data, def, width) {
-  await page.evaluate(() => { document.activeElement?.blur?.(); window.scrollTo(0, 0); });
+  await page.evaluate(() => { window.scrollTo(0, 0); document.body.setAttribute("tabindex", "-1"); document.body.focus(); document.body.removeAttribute("tabindex"); });
   const seen = new Set();
-  const visibleKeys = new Set(data.focusables.filter((f) => f.visible).map((f) => f.key));
   let count = 0;
   for (let i = 0; i < 60 && count < FOCUS_CAP; i++) {
     await page.keyboard.press("Tab");
-    const info = await page.evaluate(() => {
-      const a = document.activeElement; if (!a || a === document.body) return null;
-      a.scrollIntoView({ block: "center" });
-      const r = a.getBoundingClientRect(); const part = a.getAttribute("data-skin-part") || "";
-      return { key: `${a.tagName.toLowerCase()}${part ? `[${part}]` : ""}:${(a.getAttribute("aria-label") || a.textContent || a.getAttribute("href") || a.getAttribute("name") || "").replace(/\s+/g, " ").trim().slice(0, 50)}`, x: r.left, y: r.top, w: r.width, h: r.height, skip: part === "skip-link" };
-    });
-    if (!info) break;
-    if (seen.has(info.key)) break;
+    const info = await page.evaluate(focusInfo);
+    if (!info || seen.has(info.key)) break;
     seen.add(info.key);
-    if (info.skip || info.w < 2 || info.h < 2) continue;
+    if (info.skip || info.dim || info.w < 2 || info.h < 2) continue;
     const pad = 10;
     const clip = { x: Math.max(0, info.x - pad), y: Math.max(0, info.y - pad), width: Math.min(info.w + 2 * pad, 700), height: Math.min(info.h + 2 * pad, 300) };
     const after = await rawOf(await page.screenshot({ clip }));
-    await page.evaluate(() => { document.activeElement?.blur?.(); });
+    await page.evaluate(() => { window.__benchFocused?.blur?.(); });
     const before = await rawOf(await page.screenshot({ clip }));
     const ch = await focusChange(before, after);
+    if (process.env.DEBUG_KIT) console.error("focus", width, def.id, info.key, ch);
     const p = pageLabel(def);
     if (ch.changed < 12) bag.add("kit-focus-missing", { what: info.key, page: p, width });
     else if (ch.strong / ch.changed < 0.3) bag.add("kit-focus-weak", { what: info.key, ratio: "< 3", page: p, width }, "weak");
     count++;
-    // retrouver la place dans l'ordre de tabulation
-    await page.evaluate((key) => { const all = [...document.querySelectorAll('a[href], button, input:not([type="hidden"]), textarea, select')]; const el = all.find((e) => `${e.tagName.toLowerCase()}`.length && (e.getAttribute("aria-label") || e.textContent || e.getAttribute("href") || e.getAttribute("name") || "").replace(/\s+/g, " ").trim().slice(0, 50) === key.split(":").slice(1).join(":") && e.tagName.toLowerCase() === key.split(/[[:]/)[0]); el?.focus({ focusVisible: true }); }, info.key);
+    await page.evaluate(() => { window.__benchFocused?.focus({ focusVisible: true }); });
   }
-  // tous les éléments visibles doivent se laisser atteindre au clavier
-  void visibleKeys;
 }
 
 /** Menu : petit écran (ouvrir, liens visibles, Échap) ou grand écran (sous-menu au survol). */

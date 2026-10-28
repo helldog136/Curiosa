@@ -24,34 +24,28 @@ export function collectPage() {
     const n = r?.getAttribute("data-skin-region");
     return n === "nav" || n === "tools" ? "header" : n === "content" ? "main" : n || "other";
   };
-  const regionBox = (name) => {
-    const el = document.querySelector(`[data-skin-region="${name}"]`);
-    if (!el) return null;
-    const r = el.getBoundingClientRect();
-    return { top: r.top + sy, left: r.left + sx };
-  };
-  const colRoots = [];
-  const colOf = (e) => {
-    for (let n = e.parentElement; n && n !== document.body; n = n.parentElement) {
-      const s = getComputedStyle(n);
-      if (s.columnCount !== "auto" && s.columnCount !== "1") {
-        let i = colRoots.indexOf(n); if (i < 0) { colRoots.push(n); i = colRoots.length - 1; }
-        const r = n.getBoundingClientRect();
-        return { id: String(i), left: r.left + sx, width: r.width / Number(s.columnCount) };
-      }
+  const ids = new Map();
+  const idOf = (e) => { let i = ids.get(e); if (i === undefined) { i = ids.size; ids.set(e, i); } return i; };
+  const boxes = {};
+  const columns = [];
+  const pathOf = (e) => {
+    const out = [];
+    for (let n = e; n && n !== document.documentElement; n = n.parentElement) {
+      if (n !== e && getComputedStyle(n).display === "contents") continue;
+      const id = idOf(n); out.unshift(id);
+      if (!(id in boxes)) { const r = n.getBoundingClientRect(); boxes[id] = { top: r.top + sy, left: r.left + sx, bottom: r.bottom + sy, right: r.right + sx }; const cs = getComputedStyle(n); if (cs.columnCount !== "auto" && cs.columnCount !== "1") columns.push(id); }
     }
-    return null;
+    return out;
   };
   const focusables = [...document.querySelectorAll(SEL)].filter((e) => !skip(e) && !e.disabled && e.getAttribute("tabindex") !== "-1")
     .map((e) => {
       const r = e.getBoundingClientRect();
       const s = getComputedStyle(e);
       const regionName = regionOf(e);
-      const rb = regionBox(regionName === "skip" ? "shell" : regionName);
       return {
         key: key(e), part: part(e), visible: vis(e), inline: s.display === "inline" && !!e.closest("p,li,dd,[data-skin-part=prose]") && !e.closest("nav"),
-        region: regionName, top: r.top + sy, left: r.left + sx, bottom: r.bottom + sy, right: r.right + sx, w: r.width, h: r.height, regionTop: rb?.top, regionLeft: rb?.left, col: colOf(e),
-        fixed: s.position === "fixed",
+        region: regionName, top: r.top + sy, left: r.left + sx, bottom: r.bottom + sy, right: r.right + sx, w: r.width, h: r.height,
+        fixed: s.position === "fixed", path: vis(e) && s.position !== "fixed" ? pathOf(e) : null,
       };
     });
   // texte visible, par élément (une entrée par texte)
@@ -100,7 +94,7 @@ export function collectPage() {
     images: [...document.images].filter((i) => !i.closest("[data-skin-part=brand]") && !skip(i)).map((i) => i.getAttribute("src")),
     headings: [...document.querySelectorAll("h1,h2,h3,h4,h5,h6")].filter((e) => !skip(e)).map((h) => `${h.tagName}:${norm(h.textContent)}`),
     controls: focusables.map((f) => f.key),
-    focusables, texts, injected, sizes, clipped,
+    focusables, orderBoxes: boxes, orderColumns: columns, texts, injected, sizes, clipped,
     scroll: { scrollWidth: doc.scrollWidth, clientWidth: doc.clientWidth, innerWidth: window.innerWidth },
     docHeight: doc.scrollHeight,
   };
@@ -122,7 +116,19 @@ export function findCovered() {
     const r = e.getBoundingClientRect();
     const x = Math.min(innerWidth - 1, Math.max(0, r.left + r.width / 2)), y = Math.min(innerHeight - 1, Math.max(0, r.top + r.height / 2));
     const hit = document.elementFromPoint(x, y);
-    if (!hit || hit === e || e.contains(hit)) continue;
+    if (!hit) continue;
+    // décor posé PAR-DESSUS son propre élément (::before / ::after absolu, opaque, qui couvre l'essentiel de la boîte)
+    let overlay = false;
+    for (const ps of ["::before", "::after"]) {
+      const c = getComputedStyle(e, ps);
+      if (c.content === "none" || c.content === "normal" || (c.position !== "absolute" && c.position !== "fixed")) continue;
+      const z = c.zIndex === "auto" ? 0 : Number(c.zIndex);
+      const w = parseFloat(c.width), h = parseFloat(c.height);
+      const m = /rgba?\(([^)]+)\)/.exec(c.backgroundColor); const alpha = m ? (m[1].split(/[\s,\/]+/).filter(Boolean).length > 3 ? Number(m[1].split(/[\s,\/]+/).filter(Boolean)[3]) : 1) : 0;
+      const painted = alpha >= 0.5 || c.backgroundImage !== "none";
+      if (z >= 0 && painted && w >= 0.8 * r.width && h >= 0.8 * r.height) overlay = true;
+    }
+    if (hit === e || e.contains(hit)) { if (overlay) out.push(`${e.tagName.toLowerCase()}:${norm(e.getAttribute("aria-label") || e.textContent).slice(0, 40)}`); continue; }
     let covered = !hit.contains(e);
     if (!covered) for (const ps of ["::before", "::after"]) { const s = getComputedStyle(hit, ps); if (s.content !== "none" && s.content !== "normal" && (s.position === "absolute" || s.position === "fixed")) covered = true; }
     if (covered) out.push(`${e.tagName.toLowerCase()}:${norm(e.getAttribute("aria-label") || e.textContent).slice(0, 40)}`);
@@ -141,7 +147,13 @@ export function prepareContrast(noFilter) {
     const t = norm(n.nodeValue), p = n.parentElement;
     if (!t || !p || p.closest("[data-bench-chrome],template,script,style,noscript")) continue;
     let ok = true;
-    for (let e = p; e; e = e.parentElement) { const s = getComputedStyle(e); if (s.display === "none" || s.visibility === "hidden" || parseFloat(s.opacity) < 0.05) { ok = false; break; } }
+    for (let e = p; e; e = e.parentElement) {
+      const s = getComputedStyle(e);
+      if (s.display === "none" || s.visibility === "hidden" || parseFloat(s.opacity) < 0.05) { ok = false; break; }
+      // texte réservé aux lecteurs d'écran (boîte de 1 px qui rogne) : rien à voir
+      const b = e.getBoundingClientRect();
+      if ((b.width <= 2 || b.height <= 2) && (s.overflow !== "visible" || s.clip !== "auto" || s.clipPath !== "none")) { ok = false; break; }
+    }
     if (!ok) continue;
     const range = document.createRange(); range.selectNodeContents(n);
     const rects = [...range.getClientRects()].filter((r) => r.width > 3 && r.height > 3);
