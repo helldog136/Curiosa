@@ -134,8 +134,8 @@ export async function visualCheck(st, options = {}) {
           await collectFonts(page);
           if (width === widths[0] || width === 1280) { const moving = await page.evaluate(inpage.runningMotion); if (moving.length) bag.add("kit-reduced-motion", { what: moving.join(", "), page: pageLabel(def), width }); }
 
-          if (CONTRAST_WIDTHS.includes(width) || options.allContrast) await contrast(page, bag, def, width, mode, false, skinSite);
-          if (hasBackdrop && CONTRAST_WIDTHS.includes(width)) await contrast(page, bag, def, width, mode, true, skinSite);
+          if (CONTRAST_WIDTHS.includes(width) || options.allContrast) await contrast(page, bag, def, width, mode, false);
+          if (hasBackdrop && CONTRAST_WIDTHS.includes(width)) await contrast(page, bag, def, width, mode, true);
           if (FOCUS_WIDTHS.includes(width) && FOCUS_PAGES.includes(def.id) && mode === modes[0]) await focus(page, bag, data, def, width);
           if (shotDir) { await page.screenshot({ path: path.join(shotDir, `${st.manifest?.id ?? "skin"}-${def.id}-${width}-${mode}.png`), fullPage: true }); info.shots++; }
           await page.close();
@@ -146,7 +146,7 @@ export async function visualCheck(st, options = {}) {
           const { page } = await visit(ctx, sk, home);
           await menuChecks(page, bag, width, home);
           await page.mouse.move(0, 0); await page.keyboard.press("Escape"); await page.waitForTimeout(60);
-          if (modes.length === 2 && mode === modes[0]) await switchChecks(page, bag, width, home, skinSite);
+          if (modes.length === 2 && mode === modes[0]) await switchChecks(page, bag, width, home);
           await page.close();
         }
         await ctx.close();
@@ -242,7 +242,7 @@ function measure(bag, data, def, width, mode) {
 const regionName = (r, L) => ({ header: L === "fr" ? "l'en-tête" : "the header", main: L === "fr" ? "le contenu" : "the content", footer: L === "fr" ? "le pied de page" : "the footer", banner: L === "fr" ? "le bandeau" : "the banner" }[r] ?? r);
 
 /** Contraste rendu : le texte devient transparent, on lit les pixels qui sont réellement derrière chaque texte. */
-async function contrast(page, bag, def, width, mode, noFilter, site) {
+async function contrast(page, bag, def, width, mode, noFilter) {
   const runs = await page.evaluate(inpage.prepareContrast, noFilter);
   try {
     const shot = await page.screenshot({ fullPage: true });
@@ -331,7 +331,7 @@ async function menuChecks(page, bag, width, def) {
 }
 
 /** Bascule clair/sombre : visible, opérable, trois états distincts, ne change que les couleurs. */
-async function switchChecks(page, bag, width, def, site) {
+async function switchChecks(page, bag, width, def) {
   const p = pageLabel(def);
   const group = (await page.evaluate(inpage.boxes, "[data-skin-part=mode-switch]"))[0];
   const opts = await page.evaluate(inpage.boxes, "[data-skin-part=mode-option]");

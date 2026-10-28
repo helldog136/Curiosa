@@ -64,7 +64,7 @@ export function renderDemoPage(site, req) {
   const footer = fragment(L, "footer");
   const tray = fragment(L, q.tray === "1" ? "tray" : "tray-closed");
   const skip = L === "fr" ? "Aller au contenu" : "Skip to content";
-  const content = page.id === "board" ? boardContent(site, L, { ...q, layout }) : fragment(L, page.fragment);
+  const content = page.id === "board" ? boardContent(site, L) : fragment(L, page.fragment);
   const banner = q.banner === "1" ? fragment(L, "block-banners") : "";
   const title = page.title?.[L] ?? (L === "fr" ? "Mon site" : "My site");
   const root = site.legacy

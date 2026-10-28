@@ -19,7 +19,6 @@
 // Code de sortie : 0 tout va bien · 1 au moins un skin refusé (ou avertissement avec --strict) · 2 mauvais usage.
 // Aucune écriture hors de --shots, aucun réseau : le site de démonstration est local.
 import { spawnSync } from "node:child_process";
-import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 

@@ -66,7 +66,7 @@ export function moduleSection(site, L) {
 }
 
 /** Le contenu de la planche pour une langue. `q.layout` : mise en page d'en-tête montrée (pour la légende). */
-export function boardContent(site, L, q = {}) {
+export function boardContent(site, L) {
   const css = `<style data-bench-chrome>[data-bench-chrome]{display:block;font:12px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;color:#222;background:#e4e4e7;border-radius:3px;padding:.25rem .5rem;margin:1.25rem 0 .5rem;text-transform:none;letter-spacing:0;font-weight:400;text-shadow:none;max-width:100%;overflow-wrap:anywhere}.bench-h{font-size:14px!important;font-weight:700;margin-top:3rem}</style>`;
   const seen = new Set();
   const sections = SECTIONS.map(([id, fr, en, names]) => {

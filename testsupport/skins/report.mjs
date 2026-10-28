@@ -1,7 +1,6 @@
 // Mise en forme du rapport du kit : texte lisible (mots simples, FR ou EN) et JSON. Un rapport = { tool, coreVersion, ok, exitCode, skins: [...] }.
 import { LEVELS, LEVEL_TITLE } from "./levels.mjs";
 
-const ICON = { error: "❌", warning: "⚠️ ", advice: "💡" };
 
 /** Résume les problèmes d'un skin par niveau : { level: { errors, warnings, advice } }. */
 export function summarize(issues, ran = {}) {

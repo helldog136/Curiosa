@@ -101,7 +101,6 @@ function entriesFor(L, over = {}) {
 }
 
 const CFG = (L, over = {}) => demoConfig({ locale: L, ...over });
-const blocks = (L, list) => h(Blocks, { blocks: list, locale: L });
 
 function panelBlocks(L) {
   const p = TEXT[L].panels;

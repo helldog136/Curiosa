@@ -1,12 +1,10 @@
 // Skins de test du kit (docs/SKINS.md §13) : un skin VALIDE et, pour chaque défaut que le kit doit attraper, une variante qui contient ce défaut et seulement lui.
 // `build(dir)` écrit le dossier du skin ; `static` : codes que le niveau statique doit donner ; `visual` : codes que le niveau navigateur doit donner ; `unsafeCss` :
 // feuille ajoutée APRÈS l'assainissement (ce que l'assainisseur refuse, pour prouver que le navigateur l'attraperait aussi : défense en profondeur).
-import fs from "node:fs";
 import path from "node:path";
 import { copySkin, fakeFont } from "./skins.mjs";
 
 const BASE = "plain-light";
-const read = (dir, f) => fs.readFileSync(path.join(dir, f), "utf8");
 
 /** Le skin valide de référence : copie de `plain-light` sous le nom `id`. */
 export function goodSkin(parent, id = "kit-good") {
