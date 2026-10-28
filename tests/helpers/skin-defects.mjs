@@ -49,7 +49,7 @@ export const DEFECTS = [
   },
   {
     id: "injects-text", what: "ajoute du texte avec content",
-    build: withCss('[data-skin-part="heading"]::before { content: "Promo "; }\n'),
+    build: withCss('[data-skin-part="heading"]::before { content: "A"; }\n'),
     static: ["content-not-allowed"],
     unsafeCss: ':root[data-skin="kit-injects-text"] [data-skin-part="heading"]::before{content:"Promo "}',
     visual: ["kit-injected-text"],

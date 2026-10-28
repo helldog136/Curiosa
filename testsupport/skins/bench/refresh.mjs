@@ -124,6 +124,7 @@ function miscBlocks(L) {
     { type: "copy", label: T.copy.label, text: T.copy.text },
     { type: "table", columns: ["A", "B", "C"], rows: [["1", "2", "3"], ["4", "5", "6"]] },
     { type: "markdown", text: T.lead },
+    { type: "html", html: `<p>${T.copy.text}</p>` },
   ];
 }
 
@@ -202,6 +203,7 @@ async function fragmentsFor(L) {
   const article = entriesFor(L)[1];
   const dtf = new Intl.DateTimeFormat(L, { dateStyle: "long" });
   add(`${L}/page-article`, await render(h("article", { lang: L, className: "mx-auto max-w-[var(--sk-prose-width-wide,48rem)] space-y-6" },
+    L === "en" ? h("p", { "data-skin-part": "notice", "data-tone": "info", className: "rounded-card border-token border-line bg-surface p-3 text-sm text-muted" }, t("site.fallbackNotice", { lang: "FR" })) : null,
     h(CoverImage, { src: img(1), variant: "article" }),
     h("header", { className: "space-y-2" },
       h("h1", { "data-skin-part": "heading", "data-level": "1", className: "flex items-center gap-3 text-3xl font-bold" }, h(EntryIcon, { icon: null, className: "h-7 w-7" }), T.articleTitle),
