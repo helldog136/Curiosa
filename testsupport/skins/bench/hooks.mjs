@@ -59,11 +59,28 @@ export async function resolve(specifier, context, next) {
   return next(specifier, context);
 }
 
+/**
+ * Les seuls écarts avec le code du cœur : l'ÉTAT INITIAL de deux composants à état, pour pouvoir montrer dans une planche le panneau du menu sobre ouvert et un
+ * formulaire en erreur (un rendu serveur ne les montre jamais : ils n'existent qu'après un clic). Chaque motif est vérifié : s'il change dans le cœur, le banc le dit.
+ */
+const INITIAL_STATE = {
+  "MenuToggle.tsx": [['useState(false)', 'useState(globalThis.__benchMenuOpen === true)']],
+  "ModuleForm.tsx": [
+    ['useState<"idle" | "sending" | "done" | "error">("idle")', 'useState(globalThis.__benchFormState ?? "idle")'],
+    ['useState<string | null>(null)', 'useState(globalThis.__benchFormMessage ?? null)'],
+  ],
+};
+
 let ts;
 export async function load(url, context, next) {
   if (url.startsWith("file://") && /\.tsx$/.test(url)) {
     ts ??= (await import("typescript")).default;
-    const source = fs.readFileSync(fileURLToPath(url), "utf8");
+    let source = fs.readFileSync(fileURLToPath(url), "utf8");
+    const tweaks = INITIAL_STATE[path.basename(fileURLToPath(url))];
+    for (const [from, to] of tweaks ?? []) {
+      if (!source.includes(from)) throw new Error(`Le banc d'essai ne retrouve plus « ${from} » dans ${path.basename(fileURLToPath(url))} : mettez à jour testsupport/skins/bench/hooks.mjs.`);
+      source = source.replace(from, to);
+    }
     const out = ts.transpileModule(source, { fileName: fileURLToPath(url), compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } });
     return { format: "module", source: out.outputText, shortCircuit: true };
   }

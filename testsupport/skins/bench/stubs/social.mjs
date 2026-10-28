@@ -10,7 +10,7 @@ export const cleanSocialReferrerPolicy = () => null;
 export const cleanSocialTarget = () => null;
 export async function loadSocialLinks() {
   return [
-    { label: "Exemple A", href: "https://example.org/a", icon: "link", instance: "a", module: "demo", rel: "noopener noreferrer", referrerPolicy: null, target: "_blank" },
-    { label: "Exemple B", href: "https://example.org/b", icon: "mail", instance: "b", module: "demo", rel: "noopener noreferrer", referrerPolicy: null, target: "_blank" },
+    { label: "Exemple A", href: "https://example.org/a", icon: "★", instance: "a", module: "demo", rel: "noopener noreferrer", referrerPolicy: null, target: "_blank" },
+    { label: "Exemple B", href: "https://example.org/b", icon: "✉", instance: "b", module: "demo", rel: "noopener noreferrer", referrerPolicy: null, target: "_blank" },
   ];
 }
