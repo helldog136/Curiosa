@@ -16,7 +16,7 @@
   "modes": ["light", "dark"],              // ["light"], ["dark"] ou les deux. Un seul mode : il est imposé. Les deux : le visiteur peut choisir.
   "tokens": "tokens.json",                 // les valeurs (couleurs, polices, arrondis, largeurs…).
   "stylesheet": "skin.css",                // facultatif : la mise en page et les formes. Un skin peut n'être que des jetons.
-  "previews": [                            // 1 à 4 images WebP de 1280 × 800, 150 Ko au plus chacune. Montrées dans l'administration seulement.
+  "previews": [                            // 1 à 4 images WebP de 1280 × 800 (ou 390 × 844, téléphone), 150 Ko au plus chacune. Montrées dans l'administration seulement.
     { "file": "previews/home-light.webp", "mode": "light", "width": 1280, "alt": { "fr": "Page d'accueil, mode clair", "en": "Home page, light mode" } },
     { "file": "previews/home-dark.webp", "mode": "dark", "width": 1280, "alt": { "fr": "Page d'accueil, mode sombre", "en": "Home page, dark mode" } }
   ],

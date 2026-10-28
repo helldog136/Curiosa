@@ -34,7 +34,7 @@ mon-depot/
 │   ├── skin.json            qui est le skin
 │   ├── tokens.json          les valeurs (couleurs, polices, arrondis, largeurs…)
 │   ├── skin.css             la mise en page et les formes
-│   ├── previews/            deux captures 1280 × 800 (le banc d'essai les fabrique)
+│   ├── previews/            deux captures 1280 × 800 (le banc d'essai les fabrique) ; 390 × 844 est aussi admis (téléphone)
 │   ├── README.md  LICENSE
 ├── docs/skin.commente.jsonc le skin.json expliqué ligne par ligne (JSON n'accepte pas les commentaires)
 ├── .github/workflows/ci.yml le contrôle automatique à chaque envoi (contre la dernière version publiée du cœur)
@@ -146,7 +146,7 @@ npm run skin:check -- <dossier> [--visual] [--shots <dossier>] [--modules <dossi
 | Niveau | Ce qui est contrôlé |
 |---|---|
 | **Manifeste** | `skin.json` valide ; `id` = dossier ; FR + EN ; version, contrat, `minCore` ; licence ; étiquettes ; `modes` ; aperçus avec `alt` |
-| **Ressources** | chaque fichier de `fonts/` ou `images/` est listé, chaque fichier listé existe ; signatures ; plafonds ; SVG nettoyé ; licences ; aperçus 1280 × 800 ; polices et images utilisées ; LICENSE, README |
+| **Ressources** | chaque fichier de `fonts/` ou `images/` est listé, chaque fichier listé existe ; signatures ; plafonds ; SVG nettoyé ; licences ; aperçus 1280 × 800 ou 390 × 844 ; polices et images utilisées ; LICENSE, README |
 | **Jetons** | couleurs de base par mode ; type de chaque valeur ; jetons inconnus ; jetons de pièces de modules (`--modules`) ; corrections de lisibilité que Curiosa devrait faire |
 | **Feuille** | sélecteurs, at-règles, propriétés, valeurs, plafonds ; animations hors `prefers-reduced-motion` ; points de rupture non déclarés ; cibles, interligne et taille de texte réglés trop bas |
 | **Principe fondateur** | aucun masquage, aucun texte injecté, aucune région ou pièce inventée ; **dans le navigateur** : rien de masqué, recouvert, repoussé hors de l'écran ou ajouté par rapport à basic |
@@ -202,7 +202,7 @@ Chaque problème porte un code stable (entre crochets dans le rapport), dans les
 | `kit-module-token-unknown` | ⚠️ | jeton que le module ne déclare pas |
 | `kit-readability-adjusted` | ⚠️ | Curiosa corrigera une couleur au rendu |
 | `kit-mode-suspended` | ❌ | un mode serait suspendu (illisible même corrigé) |
-| `kit-preview-size` | ⚠️ | aperçu qui n'est pas 1280 × 800 |
+| `kit-preview-size` | ⚠️ | aperçu qui n'est ni 1280 × 800 ni 390 × 844 |
 | `kit-preview-unreadable` | ⚠️ | dimensions d'aperçu illisibles |
 | `kit-font-unused` | ⚠️ | police embarquée mais inutilisée |
 | `kit-image-unused` | ⚠️ | image embarquée mais inutilisée |

@@ -126,7 +126,9 @@ export async function staticCheck(dir, options = {}) {
     if (!bytes) continue;
     const size = imageSize(bytes);
     if (!size) { add(kitIssue("kit-preview-unreadable", { file: p.file })); continue; }
-    if (size.width !== 1280 || size.height !== 800) add(kitIssue("kit-preview-size", { file: p.file, size: `${size.width} × ${size.height}`, expected: "1280 × 800" }));
+    // deux formats : ordinateur (1280 × 800, celui que produit le banc d'essai) et téléphone (390 × 844, la page Apparence est pensée pour le téléphone d'abord)
+    const known = (size.width === 1280 && size.height === 800) || (size.width === 390 && size.height === 844);
+    if (!known) add(kitIssue("kit-preview-size", { file: p.file, size: `${size.width} × ${size.height}`, expected: "1280 × 800 / 390 × 844" }));
   }
   const cssNoFace = sourceCss.replace(/@font-face\s*\{[^}]*\}/g, "");
   for (const a of m.assets ?? []) {

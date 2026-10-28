@@ -91,13 +91,15 @@ test("jetons : un jeton inconnu est signalé, une valeur au mauvais type aussi, 
   assert.ok(codes(missing).includes("kit-module-tokens-unverified"));
 });
 
-test("ressources : aperçu qui n'est pas 1280 × 800, police et image inutilisées", async () => {
+test("ressources : aperçu qui n'est ni 1280 × 800 (ordinateur) ni 390 × 844 (téléphone), police et image inutilisées", async () => {
   const small = await sharp({ create: { width: 100, height: 60, channels: 3, background: "#888" } }).webp().toBuffer();
   const exact = await sharp({ create: { width: 1280, height: 800, channels: 3, background: "#888" } }).webp().toBuffer();
   assert.deepEqual(imageSize(small), { width: 100, height: 60 });
   assert.deepEqual(imageSize(exact), { width: 1280, height: 800 });
+  const phone = await sharp({ create: { width: 390, height: 844, channels: 3, background: "#888" } }).webp().toBuffer();
+  assert.deepEqual(imageSize(phone), { width: 390, height: 844 });
   const dir = make("kit-resources", (d, id) => {
-    copySkin("plain-light", d, { id, patch: (m) => { m.previews = [{ file: "previews/a.webp", mode: "light", width: 1280, alt: { fr: "a", en: "a" } }, { file: "previews/b.webp", mode: "light", width: 1280, alt: { fr: "b", en: "b" } }]; m.assets = [{ file: "fonts/x.woff2", kind: "font", license: "OFL-1.1", licenseFile: "LICENSES/x.txt", author: "A", source: "https://example.org", family: "Skin X" }, { file: "images/p.svg", kind: "image", license: "CC0-1.0", licenseFile: "LICENSES/x.txt", author: "A", source: "https://example.org" }]; }, files: { "previews/home.webp": null, "previews/a.webp": small, "previews/b.webp": exact, "fonts/x.woff2": Buffer.concat([Buffer.from("wOF2"), Buffer.alloc(64)]), "images/p.svg": '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10"/></svg>', "LICENSES/x.txt": "licence\n" } });
+    copySkin("plain-light", d, { id, patch: (m) => { m.previews = [{ file: "previews/a.webp", mode: "light", width: 1280, alt: { fr: "a", en: "a" } }, { file: "previews/b.webp", mode: "light", width: 1280, alt: { fr: "b", en: "b" } }, { file: "previews/c.webp", mode: "light", width: 390, alt: { fr: "c", en: "c" } }]; m.assets = [{ file: "fonts/x.woff2", kind: "font", license: "OFL-1.1", licenseFile: "LICENSES/x.txt", author: "A", source: "https://example.org", family: "Skin X" }, { file: "images/p.svg", kind: "image", license: "CC0-1.0", licenseFile: "LICENSES/x.txt", author: "A", source: "https://example.org" }]; }, files: { "previews/home.webp": null, "previews/a.webp": small, "previews/b.webp": exact, "previews/c.webp": phone, "fonts/x.woff2": Buffer.concat([Buffer.from("wOF2"), Buffer.alloc(64)]), "images/p.svg": '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10"/></svg>', "LICENSES/x.txt": "licence\n" } });
   });
   const r = await checkOne(dir, { coreVersion: CORE });
   assert.deepEqual(codes(r, "error"), []);
