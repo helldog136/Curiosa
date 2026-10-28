@@ -60,10 +60,29 @@ async function prepare() {
   console.log("instantané :", SNAPSHOT_DIR, sha.slice(0, 12));
 }
 
-function applyProfile(dbFile, profile) {
+/** Copie le skin d'essai dans DATA_DIR/skins/<id>/<version>/ et rend la ligne `skin.installed` COMPLÈTE : l'empreinte vient du validateur du cœur (sans elle, le skin serait ignoré en silence).
+ *  VISUAL_SKIN_IGNORE_MINCORE=1 (réglage de test) : le `minCore` de la COPIE est ramené à la version du cœur essayé, pour juger un skin écrit pour une version plus récente. */
+function installSkinCopy(dir, p) {
+  const dest = `${dir}/data/skins/${p.skinId}/${p.skinVersion}`;
+  fs.cpSync(p.skinDir, dest, { recursive: true });
+  const coreVersion = JSON.parse(fs.readFileSync(path.join(CORE_DIR, "package.json"), "utf8")).version;
+  if (process.env.VISUAL_SKIN_IGNORE_MINCORE === "1") {
+    const f = `${dest}/skin.json`;
+    const m = JSON.parse(fs.readFileSync(f, "utf8"));
+    if (m.minCore) { m.minCore = coreVersion; fs.writeFileSync(f, JSON.stringify(m, null, 2) + "\n"); }
+  }
+  const out = sh("node", ["--disable-warning=MODULE_TYPELESS_PACKAGE_JSON", "--import", path.join(CORE_DIR, "tests/helpers/register.mjs"), path.join(HERE, "skin-fingerprint.mjs"), dest, p.skinId, coreVersion], { cwd: CORE_DIR });
+  const got = JSON.parse(String(out).trim().split("\n").pop());
+  if (!got.ok) throw new Error(`le skin d'essai est refusé par le cœur ${coreVersion} :\n  ${got.issues.join("\n  ")}\n(minCore trop récent ? VISUAL_SKIN_IGNORE_MINCORE=1)`);
+  return { id: p.skinId, version: p.skinVersion, repo: "", ref: null, subdir: null, source: "personal", commit: "", tree: null, fingerprint: got.fingerprint, installedAt: "2026-06-15T00:00:00.000Z" };
+}
+
+function applyProfile(dbFile, profile, skinRow = null) {
   const db = new DatabaseSync(dbFile);
   const put = db.prepare("INSERT INTO Setting (key, locale, value) VALUES (?, ?, ?) ON CONFLICT(key, locale) DO UPDATE SET value = excluded.value");
-  for (const [k, v] of Object.entries(PROFILES[profile].settings)) {
+  const settings = { ...PROFILES[profile].settings };
+  if (skinRow) settings["skin.installed"] = [skinRow];
+  for (const [k, v] of Object.entries(settings)) {
     const m = /^@(\w+):(.+)$/.exec(k);
     put.run(m ? m[2] : k, m ? m[1] : "", JSON.stringify(v));
   }
@@ -80,13 +99,14 @@ async function up(profile, portArg) {
   fs.mkdirSync(dir, { recursive: true });
   fs.cpSync(`${SNAPSHOT_DIR}/data`, `${dir}/data`, { recursive: true });
   const skinProfile = PROFILES[profile];
-  if (skinProfile.skinDir) fs.cpSync(skinProfile.skinDir, `${dir}/data/skins/${skinProfile.skinId}/${skinProfile.skinVersion}`, { recursive: true });
+  let skinRow = null;
+  if (skinProfile.skinDir) skinRow = installSkinCopy(dir, skinProfile);
   const port = Number(portArg || portOf(profile));
   if (port < PORT_BASE || port > PORT_MAX) throw new Error(`port ${port} hors de la plage ${PORT_BASE}-${PORT_MAX}`);
   const dbFile = `${dir}/data/curiosa.db`;
   const env = baseEnv(`${dir}/data`, dbFile, port);
   migrate(dbFile, env); // le candidat peut porter des migrations de plus que la référence
-  applyProfile(dbFile, profile);
+  applyProfile(dbFile, profile, skinRow);
   const pid = start("node", [path.join(CORE_DIR, "node_modules/next/dist/bin/next"), "start", "-p", String(port), "-H", "127.0.0.1"], { cwd: CORE_DIR, env: { ...env, NODE_ENV: "production" }, logFile: `${dir}/server.log` });
   fs.writeFileSync(`${dir}/server.pid`, String(pid));
   if (!(await waitHttp(`http://127.0.0.1:${port}/api/health`))) { await stopPid(pid); throw new Error(`le serveur ne répond pas (voir ${dir}/server.log)`); }
