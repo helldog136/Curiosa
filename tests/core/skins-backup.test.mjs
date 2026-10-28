@@ -7,6 +7,7 @@ import path from "node:path";
 import { useTestDb } from "../helpers/db.mjs";
 import { createSkinsRepo, SKINS_HTTPS, TEST_CORE } from "../helpers/skins.mjs";
 
+// eslint-disable-next-line react-hooks/rules-of-hooks -- useTestDb n'est pas un hook React
 const db = await useTestDb();
 const { setCoreVersionForTests } = await import("@/core/modules/compat");
 setCoreVersionForTests(TEST_CORE);

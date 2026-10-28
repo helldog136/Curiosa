@@ -2,7 +2,6 @@
 // Preuve qu'un skin ne change QUE l'apparence : mêmes textes, mêmes liens, mêmes éléments focalisables, même ordre de tabulation, rien de masqué, avec et sans le skin d'essai.
 //   VISUAL_SKIN_DIR=<dossier> VISUAL_SKIN_ID=<id> node scripts/visual/skin-proof.mjs [--widths 390,768,1280,1920]
 // Compare le profil `night` (basic) au profil `skin-test` (le skin installé à la main) sur l'accueil, la confidentialité, la page introuvable, des listes, une fiche et des pages de modules.
-import fs from "node:fs";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { PORT_BASE } from "./config.mjs";
