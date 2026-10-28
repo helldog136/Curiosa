@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 const bcrypt = require("/dev/shm/s7/node_modules/bcryptjs");
 const { DatabaseSync } = require("node:sqlite");
 const db = new DatabaseSync(process.env.DATA_DIR + "/curiosa.db");

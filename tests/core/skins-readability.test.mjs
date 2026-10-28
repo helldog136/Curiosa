@@ -456,7 +456,8 @@ test("dégradé : second accent proche du fond ou texte illisible sur le dégrad
   const base = { ...darkTokens() };
   // second accent identique ou absent : aucune paire 13 ni 14
   assert.deepEqual(pairs(R.checkReadability({ ...base, "--v-accent2": base["--v-accent"] }, "dark")), []);
-  const { "--v-accent2": _drop, ...noSecond } = base;
+  const noSecond = { ...base };
+  delete noSecond["--v-accent2"];
   assert.deepEqual(pairs(R.checkReadability(noSecond, "dark")), []);
   // second accent presque invisible sur le fond : paire 13
   const dim = { ...base, "--v-accent2": "#16161f" };
