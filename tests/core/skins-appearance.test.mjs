@@ -494,3 +494,44 @@ test("rôles : un administrateur règle l'apparence mais n'ajoute, ne met à jou
   ]) await assert.rejects(call);
   assert.equal((await S.installed()).length, 1);
 });
+
+test("mise à jour majeure : signalée, refusée sans « Je comprends », acceptée avec ; retour à la version d'avant ensuite", async () => {
+  await cat.publish("plain-light", { from: "plain-light" });
+  assert.equal((await actions.installFromCatalogueAction(null, form({ id: "plain-light" }))).ok !== undefined, true);
+  await cat.publish("plain-light", { from: "plain-light", version: "2.0.0" });
+  const check = await actions.checkUpdateAction("plain-light");
+  assert.deepEqual([check.available, check.target, check.level], [true, "2.0.0", "major"]);
+  const refused = await actions.updateSkinAction(null, form({ id: "plain-light" }));
+  assert.match(refused.error, /grosse mise à jour|big update/i, "dit en mots simples qu'il faut confirmer");
+  assert.equal((await S.installed())[0].version, "1.0.0", "rien n'a changé");
+  const ok = await actions.updateSkinAction(null, form({ id: "plain-light", acceptMajor: "on" }));
+  assert.ok(ok.ok, JSON.stringify(ok));
+  assert.equal((await S.installed())[0].version, "2.0.0");
+  assert.equal((await S.installed())[0].previous.version, "1.0.0");
+  assert.ok((await actions.revertSkinAction(null, form({ id: "plain-light" }))).ok);
+  assert.equal((await S.installed())[0].version, "1.0.0");
+  // une mise à jour dont le skin n'est plus lisible est refusée et laisse tout comme avant
+  await cat.publish("plain-light", { from: "faded-grey", version: "2.1.0" });
+  const bad = await actions.updateSkinAction(null, form({ id: "plain-light", acceptMajor: "on" }));
+  assert.ok(bad.error, JSON.stringify(bad));
+  assert.equal((await S.installed())[0].version, "1.0.0");
+});
+
+test("messages d'erreur : chaque refus du service des skins a une phrase simple en français ET en anglais (jamais une clé brute)", async () => {
+  const fr = JSON.parse(fs.readFileSync("src/locales/fr.json", "utf8"));
+  const en = JSON.parse(fs.readFileSync("src/locales/en.json", "utf8"));
+  const src = ["service.ts", "registry.ts", "source.ts", "catalogue.ts"].map((f) => fs.readFileSync(`src/core/skins/${f}`, "utf8")).join("\n") + fs.readFileSync("src/core/skins/appearance.ts", "utf8");
+  const codes = new Set([...src.matchAll(/["'](skins\.error\.[A-Za-z]+)["']/g)].map((m) => m[1]));
+  assert.ok(codes.size >= 15);
+  for (const c of codes) { assert.ok(fr[c] && en[c], c); assert.doesNotMatch(fr[c], /\b(stderr|exception|stack|ENOENT|git)\b/i, `${c} : jargon`); }
+  const { failureText } = await import("@/app/admin/(panel)/appearance/actions");
+  const { makeTranslator } = await import("@/core/i18n/dictionary");
+  const issue = (await S.inspect("pas une adresse")).error;
+  assert.ok(issue);
+  for (const locale of ["fr", "en"]) {
+    const text = await failureText({ error: "skins.error.core", needsCore: "9.9.9" }, makeTranslator(locale), locale);
+    assert.ok(!text.includes("skins.error"), text);
+  }
+  assert.match(await failureText({ error: "skins.error.url" }, makeTranslator("fr"), "fr"), /Exemple : https:\/\/github\.com/);
+  assert.match(await failureText({ error: "skins.error.url" }, makeTranslator("en"), "en"), /Example: https:\/\/github\.com/);
+});

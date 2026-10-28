@@ -365,3 +365,15 @@ test("actions « Revenir au skin » et « Annuler » : réservées aux administr
   assert.ok((await actions.undoSkinAction(null, f({ what: "undo" }))).error, "plus rien à annuler : un message");
   assert.ok((await actions.undoSkinAction(null, f({}))).error);
 });
+
+test("documentation : §23 de docs/SKINS.md cite des fichiers qui existent et chaque action de la page y est décrite", () => {
+  const doc = read("docs/SKINS.md");
+  const section = doc.slice(doc.indexOf("## 23. La page Apparence"));
+  assert.ok(section.length > 3000);
+  const paths = [...section.matchAll(/`((?:src|docs)\/[A-Za-z0-9_./()\[\]-]+?)`/g)].map((m) => m[1]).filter((p) => !p.endsWith("/") || fs.existsSync(p));
+  assert.ok(paths.length >= 8);
+  for (const p of paths) assert.ok(fs.existsSync(p), `cité mais absent : ${p}`);
+  for (const fn of ["chooseSkin", "resetToSkin", "undoLastChange", "saveSkinOptions", "saveRetouches", "activePreviewTokens"]) assert.ok(section.includes(fn), fn);
+  for (const tool of ["maintenance_skin_status", "maintenance_skin_list", "maintenance_skin_install", "maintenance_skin_activate", "maintenance_skin_remove"]) assert.ok(section.includes(tool), tool);
+  assert.match(doc.slice(0, 2500), /La page Apparence \(lot S7, §23\) est faite aussi/);
+});

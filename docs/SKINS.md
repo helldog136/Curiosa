@@ -1,6 +1,6 @@
 # Les skins de Curiosa : le contrat
 
-> Statut : **conception, avec les lots S1, S2 et S3 implémentés** : les jetons (`src/core/skins/tokens.ts`), le skin `basic` embarqué (`src/core/skins/basic/`), la composition (`compose.ts`, `sheet.ts`, `render.ts`), les retouches des deux modes (`retouch.ts`) et la bascule clair/sombre du visiteur (`modeScript.ts`, `src/components/site/ModeSwitch.tsx`) sont dans le cœur ; l'assainisseur et la lisibilité (lot S6) aussi. Le DOM stable (régions, pièces, coquille, menu dans la feuille du cœur : S2) et les composants du site public par les jetons (S3) le sont aussi (§20). L'installation depuis un dépôt git (lot S5, §21) et les pièces de modules (lot S4, §22) le sont aussi. Pas encore faits : page Apparence (S7), kit et banc d'essai (S8). Cœur de référence : v0.3.0 ; modules de référence : `curiosa-extras` v1.22.0. Les constats chiffrés qui fondent les choix sont dans `docs/ideas/skins-exploration.md`, le découpage en lots dans `docs/ideas/skins-effort.md`.
+> Statut : **conception, avec les lots S1, S2 et S3 implémentés** : les jetons (`src/core/skins/tokens.ts`), le skin `basic` embarqué (`src/core/skins/basic/`), la composition (`compose.ts`, `sheet.ts`, `render.ts`), les retouches des deux modes (`retouch.ts`) et la bascule clair/sombre du visiteur (`modeScript.ts`, `src/components/site/ModeSwitch.tsx`) sont dans le cœur ; l'assainisseur et la lisibilité (lot S6) aussi. Le DOM stable (régions, pièces, coquille, menu dans la feuille du cœur : S2) et les composants du site public par les jetons (S3) le sont aussi (§20). L'installation depuis un dépôt git (lot S5, §21) et les pièces de modules (lot S4, §22) le sont aussi. La page Apparence (lot S7, §23) est faite aussi. Pas encore faits : kit et banc d'essai (S8). Cœur de référence : v0.3.0 ; modules de référence : `curiosa-extras` v1.22.0. Les constats chiffrés qui fondent les choix sont dans `docs/ideas/skins-exploration.md`, le découpage en lots dans `docs/ideas/skins-effort.md`.
 >
 > Les noms techniques (jetons, attributs, clés JSON, fichiers) sont en anglais comme dans le reste du dépôt ; le texte est en français. Aucun nom de site réel n'apparaît ici ni ne doit apparaître dans un skin, un test ou un texte par défaut.
 
@@ -1171,3 +1171,72 @@ Les réglages `skin.*` et `theme.*` font déjà partie de `data/settings.json` ;
 | Recensement | `scripts/skin-module-census.mjs` | Valeurs en dur du CSS public des 19 modules, par catégorie, et estimation de conversion (lot S9) : `docs/ideas/skins-effort.md`. |
 
 Laissé aux lots suivants : le banc d'essai lit `layer.parts` et `demo` (S8) ; la page Apparence affiche les pièces et le message « le module X propose N pièces » (S7) ; la conversion des 18 autres modules (S9).
+
+---
+
+## 23. La page Apparence : ce qui est implémenté (lot S7)
+
+> Emma, créatrice non technique (pas une personne réelle) : mots simples, zéro configuration, avertissements sous le champ avec un exemple, téléphone d'abord (390 px), français et anglais en parité exacte, clavier et lecteur d'écran, cibles d'au moins 44 px, options avancées repliées. Le titre reste « Apparence » ; le mot « skin » désigne l'objet choisi, partout.
+
+### 23.1 Où est le code
+
+| Fichier | Rôle |
+|---|---|
+| `src/app/admin/(panel)/appearance/` | la page (`page.tsx`), ses actions (`actions.ts`), la fenêtre d'aperçu (`PreviewDialog.tsx`), les cartes (`SkinCards.tsx`), le catalogue (`CatalogueCard.tsx`), l'ajout par adresse (`PersonalRepo.tsx`, `InspectPanel.tsx`), la gestion (`ManageSkin.tsx`), les couleurs (`ColorSection.tsx`) |
+| `src/core/skins/appearance.ts` | **tout ce que la page écrit** : `chooseSkin`, `resetToSkin`, `undoLastChange`, `saveSkinOptions`, `saveRetouches` (+ `parseRetouchForm`, `checkRetouchInput`), `readSnapshot` ; aucun accès à Next |
+| `src/core/skins/appearanceView.ts` | le modèle de la page (`loadAppearanceView`), composé avec les mêmes fonctions que le rendu du site ; `activePreviewTokens` pour l'éditeur d'entrée |
+| `src/core/skins/previewToken.ts`, `render.ts` (`resolveLook(…, { previewSkinId })`), `src/proxy.ts`, `src/app/(site)/layout.tsx` | l'aperçu d'un skin avant de l'utiliser |
+| `src/core/maintenance/skins.ts` | l'assistant IA (§23.6) |
+| `src/components/admin/EntryPreview.tsx`, `EntryPreviewBox.tsx` | l'aperçu dans l'éditeur d'entrée |
+| `src/components/admin/ThemePicker.tsx` | le sélecteur de couleurs d'avant, étendu (préfixe de champs, avertissements « illisibilité probable », « ↺ Valeur du skin ») |
+
+Droits : choisir, retoucher, revenir au skin, annuler, aperçu = « administrateur » (comme les réglages) ; ajouter (catalogue ou adresse), lire un dépôt, mettre à jour, revenir à la version d'avant, retirer = « propriétaire » (comme les modules : cela récupère des fichiers d'un dépôt git). Menu : *Mon site › Apparence*, à côté de *Réglages*.
+
+### 23.2 L'écran, de haut en bas (une colonne sur téléphone)
+
+1. Encadrés : skin choisi inutilisable (basic s'applique, rien n'est perdu) ; « Nous avons ajusté une couleur pour qu'on puisse la lire » (`Composed.notices`) ; bandeau **Annuler** tant que le dernier changement n'a pas été suivi d'une autre retouche.
+2. **Le skin de votre site** : aperçu (image du skin, sinon vignette de ses couleurs), nom, auteur, licence, modes, [Changer de skin], [Aperçu].
+3. **Choisir un skin** : cartes (basic toujours présent) ; [Aperçu] ouvre une fenêtre (`<dialog>` : focus piégé, Échap) avec la **vraie page du site** habillée du skin (page, téléphone / ordinateur, Automatique / Clair / Sombre) et [Utiliser ce skin] dedans.
+4. **Ajouter un skin** : le catalogue (lu à part, en flux : la page s'affiche même si le dépôt est lent ; message simple s'il est injoignable) avec [Voir les détails] (lit le dépôt SANS rien installer : README, licences, aperçus, lisibilité), [Installer et utiliser] (un clic) et [Installer] ; dessous, **replié**, « Ajouter depuis une adresse (avancé) » : [Vérifier] → résumé → avertissement « Ce skin ne vient pas de la liste vérifiée… » + case **« Je comprends, je l'ajoute »** obligatoire (message sous la case sinon).
+5. **Mes retouches** (un seul formulaire, barre flottante « Enregistrer / Annuler » comme Réglages) : en-tête (4 dispositions), **couleurs** (§23.3), police (avancé), halo, fond et image, fond avancé ; en dessous « **Revenir au skin** » (avec confirmation) ; **options du skin** (si le skin en déclare).
+6. **Clair / sombre pour vos visiteurs** : dit si le bouton existe et pourquoi (§3.8), avec une maquette du bouton.
+7. **Mises à jour et retrait** (replié, par skin installé) : « Chercher une mise à jour » → version → [Mettre à jour] ; une montée **majeure** demande « Je comprends » ; [Revenir à la version d'avant] ; **Retirer** avec l'explication « votre contenu ne change pas » et confirmation. Crédits et licences du skin actuel (replié).
+
+### 23.3 Couleurs : un seul mode ou clair et sombre
+
+- Deux grandes cases (`<input type=radio>`) quand le skin a les deux modes : « Un seul mode » / « Clair et sombre » ; basic et les skins à un mode n'ont pas le choix (aucun changement pour un site existant : mêmes champs `background`, `accent`, `accent2`, `surface`, `text`).
+- « Clair et sombre » : onglets Clair / Sombre (`role=tablist`, flèches du clavier), les champs de chaque mode portent les préfixes `light_` / `dark_` ; les deux jeux sont toujours envoyés (panneau caché mais dans le formulaire).
+- **Avertissements en direct** (`probableIllegibility`) : sous le champ concerné, une phrase avec un exemple (« Dans le mode sombre, le texte serait difficile à lire sur ce fond. Essayez un texte plus clair, par exemple #f4f4f5. »), les chiffres dans « Détails » (replié) ; **jamais bloquant** (la retouche s'enregistre, le rendu la corrige : §7.3). Sur basic, les avertissements d'avant (`contrastIssues`) restent tels quels.
+- Maquette : un mode, ou les deux côte à côte (empilés sur téléphone), calculée par `buildPalette` ; le texte dit en direct si le bouton Clair / Sombre restera.
+- « ↺ Valeur du skin » apparaît à côté d'un champ qui diffère de la valeur du skin.
+
+### 23.4 Ce qui est écrit, exactement
+
+| Action | Réglages touchés |
+|---|---|
+| Choisir un skin | `skin.snapshot` ← copie des retouches et des options ; `skin.active` ; **supprimés** : `skin.options` et toutes les retouches (`theme.*` sauf `theme.admin`, `header.layout`). Le même skin deux fois : rien. Un skin absent ou altéré est refusé (rien ne change). |
+| Revenir au skin | comme ci-dessus, sans changer `skin.active` (`skin.snapshot.kind = "reset"`) ; rien à faire s'il n'y a aucune retouche |
+| Annuler | remet les retouches et le skin d'avant (basic si celui-ci a été retiré), puis efface le snapshot |
+| Enregistrer les retouches | **sur basic : exactement les écritures d'avant les skins** (fond et accent toujours écrits, casse conservée ; vide = clé supprimée ; police seulement en avancé) ; **sur un autre skin : seulement ce qui diffère du skin** (une valeur remise à celle du skin supprime la clé) ; `theme.palette = both` et `theme.light.*` / `theme.dark.*` en « clair et sombre » (les clés `theme.*` d'avant sont gardées) ; halo, fond, police : « Celui du skin » ne retouche rien ; une vraie modification efface le snapshot |
+| Options | `skin.options` ne garde que les valeurs déclarées par le skin et différentes du défaut |
+
+Réglages → Apparence ne contient plus les couleurs, la police, le halo, le fond ni la disposition de l'en-tête (`saveSettings` n'y touche plus) : l'onglet garde un lien vers Apparence et le lien / bouton de l'en-tête.
+
+### 23.5 L'aperçu, sans rien enregistrer
+
+`/admin/appearance/preview/<id>` (§10.3) a été remplacé par une adresse de la **vraie page** du site : `<page>?curiosa_skin_preview=<jeton>`. Le jeton (`<skin>.<fin>.<signature>`, HMAC du secret du site, **quinze minutes**) est fabriqué par une action d'administrateur ; le proxy ne fait que le recopier dans l'en-tête interne `x-curiosa-skin-preview` (après avoir effacé celui du visiteur) ; le gabarit du site le vérifie puis compose le skin demandé **sans les retouches ni les options de la personne** (c'est ce que donnerait « Utiliser ce skin ») et ajoute `noindex`. Rien n'est écrit, aucun cookie, aucun état serveur ; un jeton ne donne accès à rien de privé (le site est public) : il choisit seulement quel skin habille la page. Un skin absent ou altéré s'affiche en basic.
+
+**Éditeur d'entrée** : un bloc replié « Voir avec mon skin » montre le titre et le texte en cours d'écriture avec le composant `Markdown` du site, les **jetons effectifs** du skin posés comme variables CSS sur ce seul conteneur (jamais sur la page : l'administration n'est jamais restylée ; pas de feuille de skin, donc ni mise en page ni polices embarquées : pour cela, l'aperçu d'Apparence).
+
+### 23.6 L'assistant IA (maintenance)
+
+Outils `maintenance_skin_status`, `maintenance_skin_list` (niveau 1, lecture) ; `maintenance_skin_install`, `maintenance_skin_activate`, `maintenance_skin_remove` (niveau 3 : des **demandes** que la propriétaire approuve dans *Assistants IA › Demandes à valider*, 24 heures, plan figé et revérifié à l'exécution). Jamais : un dépôt personnel ou une adresse (l'IA ne donne qu'un identifiant du **catalogue officiel**), une installation sans accord (même en « exécution directe » : comme `module_install`), toucher au contenu. Activer met les retouches de côté (annulables). Détail : `docs/MAINTENANCE-IA.md`. (Les noms `appearance_*` du §10.6 ont été remplacés par `maintenance_skin_*` pour rester dans la famille `maintenance_`, ses niveaux, ses jetons et son audit.)
+
+### 23.7 Écarts avec la conception
+
+1. **Aperçu** : une adresse de la vraie page avec jeton signé, pas une route `/admin/appearance/preview/<id>` (une route d'administration ne peut pas porter le `<html>` du site).
+2. **Noms des outils IA** : `maintenance_skin_*` (§23.6).
+3. **Retrait d'un skin** : le message « Votre contenu ne change pas » est dans la zone repliée de chaque skin installé, avec confirmation.
+4. **Mise à jour** : la page propose « Chercher une mise à jour » par skin (réseau à la demande) et signale « Mise à jour disponible » sur les cartes du catalogue ; pas d'onglet dans *Mises à jour*.
+5. **Éditeur d'entrée** : aperçu par variables CSS locales (§23.5), pas la feuille entière du skin.
+6. **Textes** : clés `appearance.*` (page, actions, aperçu) et `skins.error.*` ; ajoutées avant les clés de thème (convention de `tests/core/theme-colors.test.mjs`).
