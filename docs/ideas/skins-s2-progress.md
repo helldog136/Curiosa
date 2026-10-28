@@ -14,7 +14,7 @@ Reprise : `git clone … /dev/shm/skins-s2 && git checkout feat/skins-s2`, copie
 
 ## Reste à faire (mettre à jour à chaque jalon)
 - [x] référence v0.3.1 prête (1168 captures, fichier READY)
-- [x] S2 (731256a) : 1 165 / 1 168 identiques ; night : 3 vignettes de photos (galeries, accueil 768) ; daylight, custom, layout-* : 0 pixel (voir bruit des photos plus bas)
+- [x] S2 (731256a) : **1 168 / 1 168 identiques, 0 pixel** (référence v0.3.1 et candidate prises en série, `--jobs 1`). Cause du bruit des photos trouvée : captures en parallèle (voir README du harnais).
 - [ ] S3 : comparaison 0 pixel (dernier commit)
 - [ ] tests unitaires `npm test` x2, tsc, eslint comparé à la base
 - [ ] `npm run visual:dom` (navigateur)
