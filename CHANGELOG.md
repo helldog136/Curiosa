@@ -7,6 +7,23 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.3.1
+
+### Améliorations
+
+- **Installer un module d'un dépôt tiers : des messages qui disent quoi changer.** Une adresse mal collée (http://, « www. », page du dépôt, identifiant dans l'adresse…) est expliquée en mots simples, avec un exemple d'adresse correcte.
+- **La fiche d'un module d'un dépôt tiers est plus complète.** Elle montre ce que fait le module et ce qu'il dit faire des données de vos visiteurs. Si l'adresse ne mène à aucun module (par exemple un dépôt qui en regroupe plusieurs), elle le dit et renvoie vers « Mes dépôts de modules » au lieu de proposer d'installer.
+- **« Mes dépôts de modules » liste jusqu'à 200 modules par dépôt**, au lieu de 60, et le dit si la liste est coupée. Le dépôt officiel en compte 72 : une dizaine n'apparaissaient pas.
+- **La page « Mises à jour » est à jour juste après une action.** Après avoir installé, mis à jour ou retiré un module depuis sa page, elle n'affiche plus l'ancien état pendant quelques minutes.
+- **Un guide « Publier son propre module » pour les auteurs de modules.** Il explique, de zéro, comment publier un module dans son dépôt et comment ses utilisateurs l'installent.
+- Rien d'autre ne change pour votre site.
+
+### Pour les développeurs
+
+- Nouveaux codes d'erreur d'adresse : `modules.error.urlHttp`, `urlWww`, `urlCreds`, `urlQuery`, `urlPage` (le code `url` reste pour les autres cas). Textes FR/EN réécrits (`host`, `local`, `ref`, `subdir`, `nosubdir`, `nomanifest`) ; `modules.permissions` devient « Fonctions techniques utilisées ».
+- `MAX_MODULES` de `sources.ts` passe de 60 à 200, avec `isTruncated()` ; `forgetModulesReport()` est appelé après une installation, une mise à jour ou un retrait fait hors « Tout mettre à jour ». La fiche d'un dépôt personnel sans `module.json` n'a plus de bouton d'installation.
+- Docs : `docs/PUBLIER-SON-MODULE.md` (publication hors du dépôt du cœur, tests avec `CURIOSA_DIR`, workflow GitHub Actions), section « Depuis votre propre dépôt » de `TESTSUPPORT.md` (générée par `testsupport/docs.mjs`). Le dossier `starter/` de curiosa-extras est le module de départ. Les hôtes contactés par un module ne sont pas encore déclarés dans le manifeste.
+
 ## 0.3.0
 
 ### Améliorations

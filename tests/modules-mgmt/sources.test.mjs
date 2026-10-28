@@ -34,6 +34,17 @@ test("dépôt de modules : on retrouve les modules de chaque dossier, sans lire 
   assert.deepEqual(list.map((m) => [m.id, m.subdir, m.compatible]).sort(), [["agenda", "modules/agenda", true], ["profond", "outils/divers/profond", true], ["rss", "modules/rss", true]]);
 });
 
+test("dépôt de plus de modules que la limite : la liste est coupée À MAX_MODULES et le dit (jamais en silence)", async () => {
+  const files = {};
+  for (let i = 0; i < S.MAX_MODULES + 5; i++) { const id = `m${String(i).padStart(3, "0")}`; files[`modules/${id}/module.json`] = manifest(id); }
+  const big = await S.discoverModules({ url: makeRepo(files).url });
+  assert.equal(big.length, S.MAX_MODULES);
+  assert.equal(S.isTruncated(big), true);
+  assert.ok(S.MAX_MODULES >= 100, "de quoi lister le dépôt officiel (72 modules)");
+  const small = await S.discoverModules({ url: jeanmi().url });
+  assert.equal(S.isTruncated(small), false);
+});
+
 test("dépôt d'un seul module (module.json à la racine) : le module est le dépôt entier", async () => {
   const repo = makeRepo({ "module.json": manifest("solo"), "index.mjs": code, "autre/module.json": manifest("ignore") });
   const list = await S.discoverModules({ url: repo.url });

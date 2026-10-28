@@ -61,4 +61,4 @@ Un lien court (`/twitch`) ne dépose aucun cookie. Chaque passage ajoute 1 au co
 
 ## Si vous installez des modules
 
-Un module peut déposer des cookies ou charger un service tiers (lecteur vidéo, widget). Le catalogue décrit ce que chaque module demande avant l'installation ; dès qu'un module dépose quelque chose de non essentiel, **un consentement préalable devient nécessaire** pour cette partie. Le framework n'ajoute aucun bandeau de lui-même.
+Un module peut déposer des cookies ou charger un service tiers (lecteur vidéo, widget). Le catalogue décrit ce que chaque module demande avant l'installation ; dès qu'un module dépose quelque chose de non essentiel, **un consentement préalable devient nécessaire** pour cette partie. Le framework n'ajoute aucun bandeau de lui-même. Une image, une police ou un script d'un autre domaine chargé par la page contacte ce tiers depuis le navigateur du visiteur : le site n'envoie aucune politique de sécurité de contenu qui l'empêcherait, c'est donc au module de ne pas le faire sans consentement (modèle : une route du module qui sert l'image depuis le site, voir [PUBLIER-SON-MODULE.md](PUBLIER-SON-MODULE.md#vie-privée)).

@@ -28,6 +28,9 @@ export async function getModulesReport(force = false): Promise<ModulesReport> {
 /** Sans attendre le réseau (menu d'admin) : le dernier rapport connu, et une vérification en arrière-plan s'il est périmé. */
 export const peekModulesReport = () => cache.peek();
 
+/** Oublie le rapport gardé : à appeler quand un module vient d'être installé, mis à jour ou retiré HORS de « Tout mettre à jour » (sinon la page Mises à jour et la pastille du menu montrent un état périmé jusqu'à 5 minutes). */
+export const forgetModulesReport = (): void => cache.clear();
+
 /** Offres et besoins de la version visée : l'entrée du catalogue (version proposée), à défaut le manifeste installé. */
 async function updateLinks(ids: string[]): Promise<UpdateLinks[]> {
   const market = await getCatalogue().catch((): CatalogueEntry[] => []);
