@@ -137,6 +137,9 @@ si le dépôt est injoignable, le site tient avec la dernière liste reçue (gar
 | `CURIOSA_TRUSTED_PROXIES` | Nombre de reverse proxys devant le site (1 par défaut) : sert à lire la vraie adresse du visiteur pour les blocages de connexion. Voir [SECURITE.md](SECURITE.md). |
 | `CURIOSA_CATALOGUE_REF` | Branche ou étiquette à lire (défaut : la branche par défaut). |
 | `MODULES_INDEX_URL` | Index JSON `https://` **supplémentaire** (le vôtre, celui d'une communauté) : il ne peut qu'ajouter des modules. |
+| `CURIOSA_SKINS_REPO` | Dépôt git qui publie le catalogue des **skins** (`catalogue/index.json`) ; défaut : le dépôt officiel de skins. Voir [SKINS.md](SKINS.md) §21. |
+| `CURIOSA_SKINS_REF` | Branche ou étiquette à lire dans ce dépôt (défaut : la branche par défaut). |
+| `SKINS_INDEX_URL` | Index JSON `https://` **supplémentaire** de skins : il ne peut qu'ajouter des skins, jamais installés sans confirmation. |
 
 ## Sauvegarder
 

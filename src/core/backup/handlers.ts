@@ -3,7 +3,7 @@ import { MAX_UPLOAD } from "./guard";
 import { buildNames } from "@/core/modules/dependencyView";
 import { getSiteConfig } from "@/core/settings";
 import { opIdOf, trackOperation } from "@/core/operations/run";
-import { applyRestore, checkSchema, openBackupAsync, parseBackupAsync, planModules } from "./restore";
+import { applyRestore, checkSchema, openBackupAsync, parseBackupAsync, planBackupSkins, planModules } from "./restore";
 
 /**
  * Les deux étapes d'une restauration, communes à l'admin (propriétaire connecté) et à l'assistant de première installation
@@ -37,6 +37,7 @@ export async function previewHandler(request: Request, guard: Guard): Promise<Re
     createdAt: manifest.createdAt,
     frameworkVersion: manifest.frameworkVersion,
     counts: manifest.counts,
+    skins: await planBackupSkins(opened.backup).catch(() => []),
     modules: await (async () => {
       const names = await readableNames();
       return (await planModules(opened.backup.data.modules)).map((p) => (p.missing?.length ? { ...p, missingLabels: p.missing.map((m) => serviceLabel(names, m)) } : p));

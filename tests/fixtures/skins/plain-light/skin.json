@@ -1,0 +1,53 @@
+{
+  "skinContract": 1,
+  "id": "plain-light",
+  "name": {
+    "fr": "Clair simple",
+    "en": "Plain light"
+  },
+  "description": {
+    "fr": "Skin de test : sert aux tests d'installation.",
+    "en": "Test skin: used by the installation tests."
+  },
+  "version": "1.0.0",
+  "minCore": "0.4.0",
+  "author": {
+    "name": "Équipe Curiosa"
+  },
+  "license": "MIT",
+  "tags": [
+    "light",
+    "sans",
+    "minimal"
+  ],
+  "modes": [
+    "light"
+  ],
+  "tokens": "tokens.json",
+  "stylesheet": "skin.css",
+  "previews": [
+    {
+      "file": "previews/home.webp",
+      "mode": "light",
+      "width": 1280,
+      "alt": {
+        "fr": "Page d'accueil",
+        "en": "Home page"
+      }
+    }
+  ],
+  "assets": [],
+  "defaults": {
+    "headerLayout": "classic",
+    "font": "sans",
+    "glow": "none",
+    "background": "none"
+  },
+  "options": [],
+  "breakpoints": [
+    640
+  ],
+  "supports": {
+    "reducedMotion": true
+  }
+}

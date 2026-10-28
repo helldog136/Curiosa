@@ -7,8 +7,9 @@ import { useProgressText } from "./ProgressLabels";
 import { ui } from "./ui";
 
 type Plan = { id: string; name: string; version: string; status: "installed" | "catalogue" | "custom" | "unavailable"; repoUrl: string | null; ref: string | null; needsConfirmation: boolean; /** Module actif dont un fournisseur manque : services en clair. */ missingLabels?: string[] };
-type Preview = { token: string; site: { name: string }; createdAt: string; frameworkVersion: string; counts: Record<string, number>; modules: Plan[] };
-type Report = { ok: boolean; error?: string; modules: { id: string; outcome: string; error?: string }[]; migrations?: { key: string; from: number; to: number; status: string; error?: string }[]; counts?: Record<string, number>; dependencyLines?: { id: string; name: string; labels: string[] }[]; providedNames?: string[] };
+type SkinPlan = { id: string; name: string; version: string; status: "installed" | "catalogue" | "personal"; repoUrl: string; ref: string | null; needsConfirmation: boolean };
+type Preview = { token: string; site: { name: string }; createdAt: string; frameworkVersion: string; counts: Record<string, number>; modules: Plan[]; /** Skins de la sauvegarde (absent d'une sauvegarde d'avant les skins). */ skins?: SkinPlan[] };
+type Report = { ok: boolean; error?: string; modules: { id: string; outcome: string; error?: string }[]; skins?: { id: string; outcome: string }[]; migrations?: { key: string; from: number; to: number; status: string; error?: string }[]; counts?: Record<string, number>; dependencyLines?: { id: string; name: string; labels: string[] }[]; providedNames?: string[] };
 type Labels = Record<string, string>;
 
 /** Restauration en deux temps : (1) fichier + mot de passe → aperçu ; (2) confirmation, module personnel par module personnel. */
@@ -55,6 +56,11 @@ export function RestorePanel({ labels, previewUrl = "/api/admin/backup/restore",
         <ul className="list-disc pl-5 text-sm">
           {report.modules.map((m) => <li key={m.id}><span className="font-mono">{m.id}</span> — {L(`outcome.${m.outcome}`)}{m.error ? ` (${m.error})` : ""}</li>)}
         </ul>
+        {(report.skins ?? []).length > 0 && (
+          <ul className="list-disc pl-5 text-sm" data-testid="restore-skins">
+            {report.skins!.map((s) => <li key={s.id}>{L("skin")} <span className="font-mono">{s.id}</span> — {L(`skinOutcome.${s.outcome}`)}</li>)}
+          </ul>
+        )}
         {(report.providedNames ?? []).length > 0 && <p className="text-sm text-muted" data-testid="restore-provided">➕ {L("deps.provided").replace("{names}", report.providedNames!.join(", "))}</p>}
         {(report.dependencyLines ?? []).length > 0 && (
           <div className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm" data-testid="restore-missing" role="alert">
@@ -105,6 +111,21 @@ export function RestorePanel({ labels, previewUrl = "/api/admin/backup/restore",
               </li>
             ))}
           </ul>
+          {(preview.skins ?? []).length > 0 && (
+            <ul className="space-y-2" data-testid="restore-plan-skins">
+              {preview.skins!.map((s) => (
+                <li key={s.id} className={`${ui.card} text-sm`}>
+                  <p className="font-medium">{L("skin")} {s.name} <span className="text-xs text-muted">v{s.version}</span> — {L(s.status === "personal" ? "status.skinPersonal" : `status.${s.status}`)}</p>
+                  {s.status === "personal" && (
+                    <label className="mt-2 flex items-start gap-2">
+                      <input type="checkbox" checked={accepted.has(`skin:${s.id}`)} onChange={(e) => setAccepted((a) => { const n = new Set(a); if (e.target.checked) n.add(`skin:${s.id}`); else n.delete(`skin:${s.id}`); return n; })} className="mt-1 h-4 w-4" />
+                      <span>{L("trustCustomSkin")} <code className="break-all font-mono text-xs">{s.repoUrl}{s.ref ? `#${s.ref}` : ""}</code></span>
+                    </label>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
           <div className="flex flex-wrap items-start gap-3">
             <AnimatedActionButton look="danger" icon="♻" track={needsToken ? undefined : "restore"} testid="restore-apply" className="items-start" confirm={L("confirmReplace")}
               labels={{ idle: L("apply"), working: p("restoring"), done: p("done"), failed: L("error.failed") }} run={apply} />

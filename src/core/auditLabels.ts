@@ -16,6 +16,7 @@ export const AUDIT_ACTIONS = [
   "mcp.enable", "mcp.disable", "mcp.token.create", "mcp.token.revoke", "mcp.token.url.on", "mcp.token.url.off", "mcp.grant.on", "mcp.grant.off", "mcp.grants.defaults", "mcp.grants.none",
   "mcp.maintenance.request", "mcp.maintenance.approve", "mcp.maintenance.deny", "mcp.maintenance.mode", "mcp.maintenance.notify",
   "mcp.maintenance.module_install", "mcp.maintenance.module_configure", "mcp.maintenance.module_configure_advanced",
+  "skin.install", "skin.update", "skin.remove", "skin.refused",
   "content.check",
   "mail.sent", "file.claim", "file.remove", "file.erase",
   "setting.fromText",

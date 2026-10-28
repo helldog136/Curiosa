@@ -9,7 +9,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { isGlowLevel } from "../glow";
 import { isHeaderLayout } from "../header";
-import { SKINS_DIR } from "./paths";
+import { SKINS_DIR } from "../config";
 import { SKIN_ID_RE } from "./allowlist";
 import { makeIssue, type SkinIssue } from "./messages";
 import { sanitizeSkinCss } from "./sanitize";

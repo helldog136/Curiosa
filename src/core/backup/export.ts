@@ -16,6 +16,7 @@ import { readmeText } from "./readme";
 import { currentSchemaVersion } from "./schema";
 import { createTarGzAsync, isSafeArchivePath, type TarFile } from "./tar";
 import { opStep } from "../operations/tracker";
+import { backupSkins } from "@/core/skins/restore";
 
 /** Réglages qui n'ont aucun sens après une restauration (état de la dernière vérification de version). */
 const VOLATILE_SETTINGS = new Set(["updates.latest", "updates.checkedAt", "updates.error", "rawg.toCheck"]); // journaux et caches : ils se reconstituent tout seuls
@@ -76,6 +77,8 @@ export async function createBackup(password: string, opts: { now?: Date; iterati
       origin: moduleOrigin(row, market), name: loaded ? localized(loaded.manifest.name, "en", "en") : row.id,
     });
   }
+
+  const skins = await backupSkins();
 
   const files: TarFile[] = [
     jsonFile(DATA_FILES.users, users),
@@ -151,8 +154,9 @@ export async function createBackup(password: string, opts: { now?: Date; iterati
   const manifest: BackupManifest = {
     format: FORMAT, formatVersion: FORMAT_VERSION, createdAt: now.toISOString(), frameworkVersion: readVersion(), schemaVersion: await currentSchemaVersion(),
     site: { name: config.name, defaultLocale: config.defaultLocale, locales: config.locales },
-    counts: { users: users.length, instances: instances.length, entries: entries.length, translations: entryTranslations.length, records: records.count, retired: retired.length, redirects: redirects.length, modules: modules.length, uploads: uploadCount },
+    counts: { users: users.length, instances: instances.length, entries: entries.length, translations: entryTranslations.length, records: records.count, retired: retired.length, redirects: redirects.length, modules: modules.length, uploads: uploadCount, ...(skins.length ? { skins: skins.length } : {}) },
     modules,
+    ...(skins.length ? { skins } : {}),
     files: await runAsync(fingerprints(files)),
   };
   const archive: TarFile[] = [

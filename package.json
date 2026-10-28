@@ -15,6 +15,7 @@
     "start": "next start",
     "lint": "eslint .",
     "module:check": "node testsupport/check.mjs",
+    "skin:check": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/skin-check.mjs",
     "typecheck": "tsc --noEmit",
     "bootstrap": "node scripts/bootstrap.mjs",
     "prisma:generate": "prisma generate",
