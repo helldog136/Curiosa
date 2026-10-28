@@ -163,7 +163,7 @@ test("pièce mode-switch : groupe étiqueté, trois boutons avec état annoncé,
     assert.equal((html.match(/<button type="button"/g) ?? []).length, 3);
     for (const v of ["auto", "light", "dark"]) assert.match(html, new RegExp(`data-skin-part="mode-option" data-mode-value="${v}" aria-pressed="${v === "auto"}"`));
     for (const l of labels.slice(1)) assert.match(html, new RegExp(`<span class="sr-only">${l}</span>`), `libellé texte « ${l} »`);
-    assert.equal((html.match(/min-h-11 min-w-11/g) ?? []).length, 3, "cible d'au moins 44 px");
+    assert.equal((html.match(/min-h-target min-w-target/g) ?? []).length, 3, "cible d'au moins 44 px (jeton --sk-target)");
     assert.equal((html.match(/aria-hidden="true"/g) ?? []).length, 3, "pictogrammes cachés aux lecteurs d'écran");
     assert.doesNotMatch(html, /<script|onclick|style=/i);
   }
@@ -178,16 +178,16 @@ test("logos : une seule image comme avant, ou DEUX images data-for quand le logo
   // React 19 ajoute des <link rel="preload"> pour les images d'un rendu statique : sans importance ici
   const render = (props) => renderToStaticMarkup(React.createElement(BrandLogos, { name: "Mon site", wide: null, icon: null, wideVariants: null, iconVariants: null, ...props })).replace(/<link [^>]*>/g, "");
   // comme avant
-  assert.equal(render({ wide: "/uploads/w.png", icon: "/uploads/i.png" }), '<img src="/uploads/w.png" alt="Mon site" class="hidden sm:block h-9 w-auto max-w-[14rem] object-contain"/><img src="/uploads/i.png" alt="" class="sm:hidden h-9 w-9 object-contain"/>');
-  assert.equal(render({ wide: "/uploads/w.png" }), '<img src="/uploads/w.png" alt="Mon site" class=" h-9 w-auto max-w-[14rem] object-contain"/>');
+  assert.equal(render({ wide: "/uploads/w.png", icon: "/uploads/i.png" }), '<img src="/uploads/w.png" data-logo="wide" data-paired="" alt="Mon site" class="h-9 w-auto max-w-[14rem] object-contain"/><img src="/uploads/i.png" data-logo="icon" data-paired="" alt="" class="h-9 w-9 object-contain"/>');
+  assert.equal(render({ wide: "/uploads/w.png" }), '<img src="/uploads/w.png" data-logo="wide" alt="Mon site" class="h-9 w-auto max-w-[14rem] object-contain"/>');
   assert.equal(render({}), "");
   // deux variantes
   const two = render({ wide: "/uploads/w-dark.png", icon: "/uploads/i-dark.png", wideVariants: ["/uploads/w.png", "/uploads/w-dark.png"], iconVariants: ["/uploads/i.png", "/uploads/i-dark.png"] });
   assert.equal((two.match(/<img /g) ?? []).length, 4);
-  assert.match(two, /<img src="\/uploads\/w\.png" data-for="light" alt="Mon site"/);
-  assert.match(two, /<img src="\/uploads\/w-dark\.png" data-for="dark" alt="Mon site"/);
-  assert.match(two, /<img src="\/uploads\/i\.png" data-for="light" alt=""/);
-  assert.match(two, /<img src="\/uploads\/i-dark\.png" data-for="dark" alt=""/);
+  assert.match(two, /<img src="\/uploads\/w\.png" data-for="light" data-logo="wide" data-paired="" alt="Mon site"/);
+  assert.match(two, /<img src="\/uploads\/w-dark\.png" data-for="dark" data-logo="wide" data-paired="" alt="Mon site"/);
+  assert.match(two, /<img src="\/uploads\/i\.png" data-for="light" data-logo="icon" data-paired="" alt=""/);
+  assert.match(two, /<img src="\/uploads\/i-dark\.png" data-for="dark" data-logo="icon" data-paired="" alt=""/);
   fs.rmSync(dir, { recursive: true, force: true });
   // les règles du cœur (jamais celles d'un skin) montrent la bonne variante selon le mode effectif
   const css = read("src/app/globals.css");

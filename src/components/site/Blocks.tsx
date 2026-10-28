@@ -258,7 +258,7 @@ export async function Blocks({ blocks, locale, adminInstanceId: panelInstanceId,
           <section key={i} data-card="" data-skin-part="card" className="space-y-3 rounded-card border-token border-line bg-surface p-4" aria-label={view.title}>
             <h3 className="text-sm font-semibold">{view.title}</h3>
             {view.summary && (
-              <div className="rounded-lg border border-warning p-3 text-sm" role="status">
+              <div className="rounded-field border-token border-warning p-3 text-sm" role="status">
                 <p className="font-medium">{view.summary}</p>
                 {view.hint && <p className="mt-1 text-muted">{view.hint}</p>}
               </div>
@@ -266,7 +266,7 @@ export async function Blocks({ blocks, locale, adminInstanceId: panelInstanceId,
             <ul className="space-y-2">
               {view.lines.map((l) => (
                 <li key={`${l.host}-${l.label}`} className="flex items-start gap-2 text-sm">
-                  <span aria-hidden="true" className={`mt-1.5 inline-block h-2 w-2 shrink-0 rounded-full ${NET_DOT[l.state]}`} />
+                  <span aria-hidden="true" className={`mt-1.5 inline-block h-2 w-2 shrink-0 rounded-chip ${NET_DOT[l.state]}`} />
                   <span className="min-w-0 break-words">{l.text}</span>
                 </li>
               ))}

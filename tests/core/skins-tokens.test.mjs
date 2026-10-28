@@ -72,7 +72,7 @@ test("basic : chaque valeur reliée à Tailwind est celle de Tailwind 4.3.3 (the
     const m = new RegExp(`\\n  ${name.replace(/[-]/g, "\\-")}:\\s*([^;]+);`).exec(theme);
     return m ? m[1].replace(/\s+/g, " ").trim() : null;
   };
-  const block = css.slice(css.indexOf("@theme inline"), css.indexOf("/* Valeurs par défaut"));
+  const block = css.slice(css.indexOf("@theme inline"), css.indexOf("/* Pièces sémantiques"));
   const bindings = [...block.matchAll(/\n\s*(--[a-z0-9-]+): var\((--sk-[a-z0-9-]+), ([^;]+)\);/g)].map((m) => ({ tw: m[1], sk: m[2], fallback: m[3] }));
   assert.ok(bindings.length === 30, `liaisons trouvées : ${bindings.length}`);
   for (const b of bindings) {

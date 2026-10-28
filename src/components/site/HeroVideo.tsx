@@ -39,7 +39,7 @@ export function HeroVideo({ src, poster, sound, title, text, logo, eyebrow, butt
       <div className="space-y-4 px-6 py-16">
         {logo && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={logo} alt="" data-skin-part="avatar" className="mx-auto h-24 w-24 rounded-full object-cover" />
+          <img src={logo} alt="" data-skin-part="avatar" className="mx-auto h-24 w-24 rounded-avatar object-cover" />
         )}
         {eyebrow && <p data-skin-part="eyebrow" className="text-lg font-semibold drop-shadow">{eyebrow}</p>}
         {title && <h1 data-skin-part="heading" data-level="1" className="text-4xl font-bold tracking-tight drop-shadow sm:text-6xl">{title}</h1>}

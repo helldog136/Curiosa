@@ -33,9 +33,8 @@ test("les classes des composants du site public ne portent plus de valeur d'appa
   ];
   const bad = used.filter(([, u]) => forbidden.some((re) => re.test(u)));
   assert.deepEqual(bad.map(([f, u]) => `${f} : ${u}`), []);
-  // `rounded-full` n'est permis que pour les pastilles d'état (2 × 2) : tout le reste passe par un rayon de pièce
-  const full = used.filter(([, u]) => u === "rounded-full");
-  assert.ok(full.length <= 3, full.map(([f]) => f).join(", "));
+  // plus aucun `rounded-full` : pastilles d'état (`rounded-chip`), boutons, portraits (`rounded-avatar`) passent par un rayon de pièce
+  assert.deepEqual(used.filter(([, u]) => u === "rounded-full"), []);
 });
 
 test("rayons de pièce : chaque liaison `--radius-<pièce>` a pour repli la valeur de basic, exactement", () => {

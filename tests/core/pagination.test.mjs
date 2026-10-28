@@ -290,7 +290,7 @@ test("accessibilité : navigation étiquetée, page courante, précédent/suivan
   assert.match(nav, /rel="prev"/);
   assert.match(nav, /rel="next"/);
   assert.match(nav, /aria-hidden="true">←/, "flèches décoratives masquées aux lecteurs d'écran");
-  assert.match(nav, /min-h-11 min-w-11/, "cibles tactiles confortables");
+  assert.match(nav, /min-h-target min-w-target/, "cibles tactiles confortables (jeton --sk-target, 2,75 rem)");
   const fr = JSON.parse(fs.readFileSync("src/locales/fr.json", "utf8"));
   const en = JSON.parse(fs.readFileSync("src/locales/en.json", "utf8"));
   const keys = Object.keys(fr).filter((k) => k.startsWith("site.pagination.") || /^entries\.(search|stateLabel|filter|clearFilter|noMatch|rangeCount|pagesLabel|titleSortCapped|state\.all)/.test(k) || k === "ai.sitemapTruncated");

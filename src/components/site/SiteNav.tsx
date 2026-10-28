@@ -74,7 +74,7 @@ export function SiteNav({ items, strings }: { items: NavItem[]; strings: NavStri
   }
 
   const dot = (
-    <span data-testid="news-dot" data-skin-part="news-dot" role="img" aria-label={strings.news} title={strings.news} className="ml-1.5 inline-block h-2 w-2 rounded-full bg-accent align-middle" />
+    <span data-testid="news-dot" data-skin-part="news-dot" role="img" aria-label={strings.news} title={strings.news} className="ml-1.5 inline-block h-2 w-2 rounded-chip bg-accent align-middle" />
   );
   const chevron = (isOpen: boolean) => (
     <svg viewBox="0 0 12 12" aria-hidden="true" className={`h-3 w-3 transition-transform motion-reduce:transition-none ${isOpen ? "rotate-180" : ""}`}>

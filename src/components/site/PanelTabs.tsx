@@ -19,7 +19,7 @@ export function PanelTabs({ tabs, side }: { tabs: PanelTab[]; side?: React.React
   const active = tabs[current];
   return (
     <div className="grid gap-6 md:grid-cols-[minmax(10rem,14rem)_1fr]" data-testid="panel-tabs" data-skin-part="tabs">
-      <div role="tablist" aria-orientation="vertical" className="flex gap-1 overflow-x-auto border-b border-line md:flex-col md:overflow-visible md:border-b-0 md:border-l">
+      <div role="tablist" aria-orientation="vertical" className="flex gap-1 overflow-x-auto border-b-token border-line md:flex-col md:overflow-visible md:border-b-0 md:border-l">
         {tabs.map((t, i) => (
           <button key={i} data-skin-part="tab" ref={(el) => { refs.current[i] = el; }} role="tab" id={`${id}-t${i}`} aria-selected={i === current} aria-controls={`${id}-p`} tabIndex={i === current ? 0 : -1}
             onClick={() => setCurrent(i)} onKeyDown={(e) => onKey(e, i)}

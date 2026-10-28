@@ -42,7 +42,7 @@ export async function Header({ config, locale, appearance }: { config: SiteConfi
   ];
 
   const dot = (
-    <span data-testid="news-dot" data-skin-part="news-dot" role="img" aria-label={t("site.news")} title={t("site.news")} className="ml-1.5 inline-block h-2 w-2 rounded-full bg-accent align-middle" />
+    <span data-testid="news-dot" data-skin-part="news-dot" role="img" aria-label={t("site.news")} title={t("site.news")} className="ml-1.5 inline-block h-2 w-2 rounded-chip bg-accent align-middle" />
   );
 
   const brand = (

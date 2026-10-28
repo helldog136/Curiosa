@@ -39,7 +39,7 @@ test("règles CSS visuelles toutes scopées sur data-accent2 / data-surface", ()
 
 test("bouton plein scopé, repère data-btn sur le bouton d'en-tête et les boutons de panneau", () => {
   assert.match(css, /\[data-accent2\] \[data-btn="primary"\] \{ background-color: var\(--v-accent\);[^}]*color: var\(--v-accent-fg\)/);
-  assert.match(site.find(([f]) => f === "Header.tsx")[1], /data-testid="header-button" data-btn="primary"/);
+  assert.match(site.find(([f]) => f === "Header.tsx")[1], /data-testid="header-button" data-skin-part="button" data-btn="primary"/);
   assert.match(site.find(([f]) => f === "Panel.tsx")[1], /data-btn=\{on \? undefined : "primary"\}/);
 });
 
