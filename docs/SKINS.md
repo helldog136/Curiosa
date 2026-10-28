@@ -1298,7 +1298,7 @@ Dès qu'un second accent distinct existe, le cœur pose (règles `[data-accent2]
 
 ### 25.4 Petits points de contrat, documentés
 
-- **Longueur d'un sélecteur** : 600 caractères (§6.7). Pour factoriser, `:is()` (une seule imbrication de deux niveaux est permise).
+- **Longueur d'un sélecteur** : 600 caractères (§6.7). Pour factoriser, `:is()` (imbrication sur 2 niveaux au plus).
 - **Refus fréquents et leur remplacement** : `:first-of-type` (état non permis, `pseudo-class-not-allowed`) → `:first-child` ou `:nth-of-type(1)` ; `line-height: 0.7` (`line-height-too-small`, minimum 0,8, idéalement 1,4 pour du texte) → `line-height: 1.2` ; `float: left` (`float-not-none`) → `display: flex` ou `grid` (par exemple une image à côté du texte : `display: grid; grid-template-columns: 8rem 1fr`) ; `[data-site-nav]` (`attribute-not-allowed`) → `[data-skin-region="nav"] [data-skin-part="nav-list"]`.
 - **Aperçus** : 1280 × 800, voir la ligne `previews` du §5.2 (le cœur ne mesure pas, le kit avertit).
 - **Notes de l'auteur à la racine** : voir §5.1.
