@@ -1,0 +1,22 @@
+{
+  "skinContract": 1,
+  "id": "side-column",
+  "name": { "fr": "Colonne latérale (essai)", "en": "Side column (test)" },
+  "description": {
+    "fr": "Skin d'essai : menu et outils dans une colonne à gauche, contenu étroit centré, cartes en blocs. Ne change aucun contenu.",
+    "en": "Test skin: menu and tools in a left column, narrow centred content, blocky cards. Changes no content."
+  },
+  "version": "1.0.0",
+  "minCore": "0.4.0",
+  "author": { "name": "Équipe Curiosa" },
+  "license": "MIT",
+  "tags": ["light", "mono", "bold"],
+  "modes": ["light"],
+  "tokens": "tokens.json",
+  "stylesheet": "skin.css",
+  "assets": [],
+  "defaults": { "headerLayout": "classic", "font": "mono" },
+  "options": [],
+  "breakpoints": [640],
+  "supports": { "reducedMotion": true }
+}

@@ -28,7 +28,8 @@
     "visual:capture": "node scripts/visual/capture.mjs",
     "visual:compare": "node scripts/visual/compare.mjs",
     "visual:sensitivity": "node scripts/visual/sensitivity.mjs",
-    "visual:dom": "node scripts/visual/dom-check.mjs"
+    "visual:dom": "node scripts/visual/dom-check.mjs",
+    "visual:skin-proof": "node scripts/visual/skin-proof.mjs"
   },
   "dependencies": {
     "@prisma/client": "6.19.3",

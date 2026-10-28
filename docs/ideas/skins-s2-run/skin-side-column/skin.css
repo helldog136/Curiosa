@@ -1,0 +1,21 @@
+/* Mise en page d'essai : à partir de 40 rem, l'en-tête devient une colonne à gauche (marque, menu, outils) ; en dessous, le menu du cœur est inchangé. */
+@media (min-width: 40rem) {
+  [data-skin-region="shell"] { display: grid; align-items: start; min-height: 100vh; }
+  [data-skin-region="header"] { position: sticky; top: 0; height: 100vh; overflow-y: auto; display: flex; flex-direction: column; flex-wrap: nowrap; align-items: stretch; justify-content: flex-start; gap: 1.5rem; background-color: var(--v-surface); border-bottom: 0; border-right: 3px solid var(--v-fg); padding-block: 1.5rem; padding-inline: 1.25rem; }
+  [data-skin-part="header-group"] { display: contents; }
+  [data-skin-part="brand"] { display: flex; font-size: var(--sk-text-xl); }
+  [data-skin-part="brand"] img { max-width: 100%; }
+  [data-skin-region="nav"] { width: 100%; }
+  [data-skin-region="nav"] [data-skin-part="nav-list"] { flex-direction: column; flex-wrap: nowrap; row-gap: 0.25rem; column-gap: 0; }
+  [data-skin-region="nav"] [data-skin-part="nav-link"] { display: flex; width: 100%; padding-block: 0.5rem; padding-inline: 0.75rem; border: 3px solid transparent; font-weight: var(--sk-weight-bold); text-transform: uppercase; color: var(--v-fg); }
+  [data-skin-region="nav"] [data-skin-part="nav-link"]:hover { background-color: var(--v-accent); color: var(--v-accent-fg); border-color: var(--v-fg); }
+  [data-skin-region="nav"] [data-skin-part="submenu"] { position: static; min-width: 0; border: 0; box-shadow: none; background-color: transparent; padding-left: 1rem; }
+  [data-skin-region="nav"] [data-skin-part="submenu-toggle"] { width: 100%; }
+  [data-skin-region="tools"] { display: flex; flex-direction: column; flex-wrap: nowrap; align-items: flex-start; gap: 1rem; margin-top: auto; }
+  [data-skin-part="home-flow"] { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.75rem; }
+  [data-skin-part="home-cell"] { max-width: none; }
+  [data-skin-part="home-cell"][data-size="large"], [data-skin-part="home-cell"][data-size="full"] { grid-column: 1 / -1; }
+}
+/* Partout : cadres épais et ombres dures. */
+[data-skin-part="panel"] { border: 3px solid var(--v-fg); box-shadow: 6px 6px 0 var(--v-fg); }
+[data-skin-part="button"] { font-weight: var(--sk-weight-bold); text-transform: uppercase; }
