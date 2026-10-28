@@ -11,7 +11,7 @@
 //   --json          sortie lisible par une machine (même code de sortie)
 //   --strict        les avertissements font aussi échouer la commande
 //   --advice        ajoute les conseils « confort » de lisibilité (niveau AAA) et les conseils du kit
-//   --core-version X.Y.Z   version du cœur qui juge `minCore` (défaut : celle de ce dépôt)
+//   --core-version X.Y.Z   version du cœur qui juge `minCore` (défaut : celle de ce dépôt, au moins 0.4.0 : la version qui apporte les skins)
 //   --neutrality <fichier> liste de termes interdits (sinon NEUTRALITY_TERMS ou .neutrality-terms)
 //   --lock <fichier> attend ce verrou (flock) avant le niveau navigateur, pour ne pas lancer deux Chromium à la fois
 //   --widths 390,1280  --only-pages home,blog   restreignent le niveau navigateur (essais rapides)
@@ -53,7 +53,8 @@ try { await import("../tests/helpers/register.mjs"); } catch {
 }
 const { checkTargets } = await import("../testsupport/skins/check.mjs");
 const { toJson, toText } = await import("../testsupport/skins/report.mjs");
-const coreVersion = flag("core-version") ?? JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8")).version;
+const { defaultCoreVersion } = await import("../testsupport/skins/version.mjs");
+const coreVersion = defaultCoreVersion(root, flag("core-version"));
 
 const widths = flag("widths")?.split(",").map(Number).filter((n) => n >= 280 && n <= 3000);
 const report = await checkTargets(targets, {

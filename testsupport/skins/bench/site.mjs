@@ -109,10 +109,12 @@ export async function prepareSite(check, opts = {}) {
 const TYPES = { ".svg": "image/svg+xml", ".png": "image/png", ".webp": "image/webp", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".avif": "image/avif", ".woff2": "font/woff2" };
 
 /** Démarre le serveur HTTP du site de démonstration (127.0.0.1). Rend { url, port, close() }. `port: 0` : un port libre. */
-export async function startDemoServer(site, { port = 0, host = "127.0.0.1", log = () => {} } = {}) {
+export async function startDemoServer(siteOrGetter, { port = 0, host = "127.0.0.1", log = () => {} } = {}) {
+  const getSite = typeof siteOrGetter === "function" ? siteOrGetter : () => siteOrGetter;
   const clientJs = fs.readFileSync(path.join(HERE, "client.js"));
-  const server = http.createServer((req, res) => {
+  const server = http.createServer(async (req, res) => {
     try {
+      const site = await getSite();
       const url = new URL(req.url ?? "/", "http://localhost");
       const p = decodeURIComponent(url.pathname);
       const query = Object.fromEntries(url.searchParams);
