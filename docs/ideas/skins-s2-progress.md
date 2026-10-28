@@ -13,11 +13,12 @@ Les scripts sont dans `docs/ideas/skins-s2-run/` (copie de ceux du scratchpad) :
 Reprise : `git clone … /dev/shm/skins-s2 && git checkout feat/skins-s2`, copier `scripts/visual` dans un dossier `harness-s2`, puis `ref.sh`, `cand.sh s2 731256a`, `cand.sh s3 <dernier commit>`.
 
 ## Reste à faire (mettre à jour à chaque jalon)
-- [x] référence v0.3.1 prête (1168 captures, fichier READY)
-- [x] S2 (731256a) : **1 168 / 1 168 identiques, 0 pixel** (référence v0.3.1 et candidate prises en série, `--jobs 1`). Cause du bruit des photos trouvée : captures en parallèle (voir README du harnais).
-- [x] S3 (60f013d) : **1 168 / 1 168 identiques, 0 pixel**
-- [ ] tests unitaires `npm test` x2, tsc, eslint comparé à la base
-- [ ] `npm run visual:dom` (navigateur)
-- [ ] skin d'essai « colonne latérale » : captures 390/768/1280/1920
-- [ ] release-pack + smoke-release
-- [ ] déterminisme : captures répétées d'un sous-ensemble (`--only galeries`)
+- [x] référence v0.3.1 prête (1168 captures, en série, fichier READY)
+- [x] S2 (731256a) : 1 168 / 1 168 identiques, 0 pixel
+- [x] S3 (60f013d) : 1 168 / 1 168 identiques, 0 pixel
+- [x] `npm test` x2 : 7 492 tests, 7 488 réussis, 0 échec, 4 ignorés ; tsc propre ; eslint 103 = 103 problèmes (aucun nouveau)
+- [x] `npm run visual:dom` : 3 952 contrôles, 0 écart
+- [x] skin d'essai « colonne latérale » : preuve (36 pages, 0 écart) et captures 390/768/1280/1920
+- [x] release-pack + smoke-release : « Archive validée »
+- [x] déterminisme : 3 captures de la galerie identiques entre elles et à la référence
+- Reste : rien (supprimer ce fichier avant la fusion).
