@@ -10,8 +10,8 @@ Branche `feat/skins-s8` (partie de `feat/skins-int`). Dépôt de travail : un se
 - Correctif du cœur trouvé par le kit : titres de niveau 6 de basic (globals.css).
 - Tests : tests/core/skins-kit-{static,order,visual}.test.mjs, skins-bench.test.mjs (visual : 17 tests, ~8 min, derrière flock).
 
-## Reste
-- Suite complète du cœur ×2, tsc, eslint (base 103), release-pack + smoke-release, harnais d'images (référence absente : non comparé).
+## Vérifications (fin)
+- Suite complète : 7657 tests, 1re passe 1 échec corrigé (test de skin:check), 2e passe 0 échec. tsc propre. eslint : aucun nouveau problème dans les fichiers du lot. Build + release-pack (173 Mo) + smoke-release : OK. Harnais d'images : référence absente, non comparé.
 
 ## Commandes
 - Tests : `HOME=/dev/shm/s8/home TMPDIR=/dev/shm/tmp-s8 flock /dev/shm/heavy.lock npm test`
