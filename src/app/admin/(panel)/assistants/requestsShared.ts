@@ -12,5 +12,6 @@ export function describeRequest(r: MaintenanceRequest, t: Translator, name: (id:
     const perms = (p.permissions ?? []).map((x) => t(`perm.${x}`)).filter((x, i) => x !== `perm.${(p.permissions ?? [])[i]}`);
     return t("aim.req.module_install", { name: p.name ?? name(p.module ?? ""), version: p.to ?? "?" }) + (also.length ? ` ${t("aim.req.module_install.also", { list: also.join(", ") })}` : "") + (perms.length ? ` ${t("aim.req.module_install.perms", { list: perms.join(" · ") })}` : "");
   }
+  if (r.action === "skin_install" || r.action === "skin_activate" || r.action === "skin_remove") return t(`aim.req.${r.action}`, { name: p.name ?? p.skin ?? "?", version: p.to ?? "?" });
   return t(p.keepData === false ? "aim.req.module_uninstall_erase" : "aim.req.module_uninstall", { name: name(p.module ?? "") });
 }

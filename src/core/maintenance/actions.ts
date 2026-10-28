@@ -14,6 +14,7 @@ import { getApprovalMode } from "./settings";
 import { runContentCheck } from "./content/service";
 import { executeInstall, prepareInstall, samePlan } from "./install";
 import { applyConfigure, parseConfigureArgs } from "./moduleSettings";
+import { executeSkin, isSkinAction, prepareSkin } from "./skins";
 
 /**
  * ACTIONS de maintenance : niveau 2 (sans risque : revérifier, sauvegarder, réinstaller, relancer) et niveau 3 (à risque : mises à jour, désinstallation).
@@ -29,7 +30,7 @@ import { applyConfigure, parseConfigureArgs } from "./moduleSettings";
  */
 export type Outcome = { ok: boolean; message: string; details?: unknown; /** L'opération n'a pas commencé (verrou pris) : rien n'a été fait. */ busy?: boolean };
 export type Level2Tool = "check_updates" | "backup_run" | "module_reinstall" | "module_restart" | "content_check_run";
-export type Params = { module?: string; instance?: string; /** Installation : clé facultative de la première instance. */ instanceKey?: string; /** Contrôle du contenu : reprendre la vérification commencée au lieu d'en commencer une. */ continue?: boolean; /** Désinstallation : garder (défaut) ou effacer les données. */ keepData?: boolean };
+export type Params = { module?: string; instance?: string; /** Skins : l'identifiant du skin. */ skin?: string; /** Installation : clé facultative de la première instance. */ instanceKey?: string; /** Contrôle du contenu : reprendre la vérification commencée au lieu d'en commencer une. */ continue?: boolean; /** Désinstallation : garder (défaut) ou effacer les données. */ keepData?: boolean };
 
 /* ───────────── Verrou et cadence ───────────── */
 
@@ -201,6 +202,7 @@ export async function prepare(action: Level3Action, args: Params): Promise<Plan>
   }
 
   if (action === "module_install") return prepareInstall({ module: args.module, instanceKey: args.instanceKey });
+  if (isSkinAction(action)) return prepareSkin(action, { skin: args.skin });
 
   if (action === "module_update" || action === "module_uninstall") {
     const id = moduleId(args.module);
@@ -238,13 +240,14 @@ export async function prepare(action: Level3Action, args: Params): Promise<Plan>
 async function execute(action: Level3Action, plan: Plan, actorLabel: string): Promise<Outcome> {
   // Les conditions sont relues maintenant : la demande a pu attendre des heures.
   let fresh: Plan;
-  try { fresh = await prepare(action, { module: plan.module, keepData: plan.keepData, instanceKey: plan.instanceKey }); } catch (error) {
+  try { fresh = await prepare(action, { module: plan.module, keepData: plan.keepData, instanceKey: plan.instanceKey, skin: plan.skin }); } catch (error) {
     if (error instanceof McpToolError) return { ok: false, message: `Not done: ${error.message}` };
     throw error;
   }
   if (action === "core_update" && fresh.to !== plan.to) return { ok: false, message: `Not done: the highest stable release changed since the request (was ${plan.to}, now ${fresh.to}). Ask again.` };
   if (action === "module_update" && fresh.to !== plan.to) return { ok: false, message: `Not done: the available version of "${plan.module}" changed since the request (was ${plan.to}, now ${fresh.to}). Ask again.` };
 
+  if (isSkinAction(action)) return executeSkin(action, plan, actorLabel);
   if (action === "module_install") {
     // Le plan relu doit être celui qui a été demandé : même version, mêmes fournisseurs (la propriétaire a approuvé CETTE liste, pas une autre).
     if (!samePlan(plan, fresh)) return { ok: false, message: `Not done: what the installation of "${plan.module}" would do changed since the request (version, or the modules that come with it). Ask again.` };
@@ -272,7 +275,7 @@ async function execute(action: Level3Action, plan: Plan, actorLabel: string): Pr
   return { ok: s.failed.length === 0 && !s.stoppedOn && s.updated.length > 0, message: parts.join("; ") || "Nothing was updated.", details: { updated: s.updated } };
 }
 
-const paramsText = (plan: Plan) => (plan.adds ? `${plan.module} ${plan.to}${plan.instanceKey ? ` key=${plan.instanceKey}` : ""}${plan.adds.length ? ` + ${plan.adds.map((a) => a.id).join(", ")}` : ""}` : plan.module ? (plan.keepData === undefined ? plan.module : `${plan.module}${plan.keepData ? " keepData" : " erase"}`) : null) ?? (plan.modules ? plan.modules.map((m) => `${m.id} ${m.from}>${m.to}`).join(", ") : plan.to ? `${plan.from}>${plan.to}` : "");
+const paramsText = (plan: Plan) => plan.skin ? `${plan.skin}${plan.to ? ` ${plan.to}` : ""}` : (plan.adds ? `${plan.module} ${plan.to}${plan.instanceKey ? ` key=${plan.instanceKey}` : ""}${plan.adds.length ? ` + ${plan.adds.map((a) => a.id).join(", ")}` : ""}` : plan.module ? (plan.keepData === undefined ? plan.module : `${plan.module}${plan.keepData ? " keepData" : " erase"}`) : null) ?? (plan.modules ? plan.modules.map((m) => `${m.id} ${m.from}>${m.to}`).join(", ") : plan.to ? `${plan.from}>${plan.to}` : "");
 
 /** Verrou + audit + avertissement autour d'une exécution de niveau 3. */
 async function runGuarded(action: Level3Action, plan: Plan, who: { tokenName: string; tokenId?: string; via: "direct" | "approved" }): Promise<Outcome> {
@@ -297,7 +300,7 @@ export async function callLevel3(action: Level3Action, args: Params, actor: { na
   const plan = await prepare(action, args);
   // Installer du code sur le site n'est JAMAIS exécuté sans l'accord de la propriétaire, même pour un jeton en « exécution directe » : le réglage vaut pour
   // les mises à jour et désinstallations, et rien dans le modèle ne dit quel module est « sans danger ».
-  if (action !== "module_install" && (await getApprovalMode(actor.tokenId)) === "direct") {
+  if (action !== "module_install" && action !== "skin_install" && (await getApprovalMode(actor.tokenId)) === "direct") {
     const outcome = await runGuarded(action, plan, { tokenName: actor.name, tokenId: actor.tokenId, via: "direct" });
     if (outcome.busy) throw new McpToolError(outcome.message);
     return { status: outcome.ok ? "done" : "failed", message: outcome.message };

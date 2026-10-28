@@ -5,6 +5,7 @@ import { ActionForm } from "@/components/admin/ActionForm";
 import { floatingLabels } from "@/components/admin/floating";
 import { Checkbox, Select, TextArea, TextField } from "@/components/admin/Field";
 import { ImageField } from "@/components/admin/ImageField";
+import { EntryPreviewBox } from "@/components/admin/EntryPreviewBox";
 import { MarkdownField } from "@/components/admin/MarkdownField";
 import { ui } from "@/components/admin/ui";
 import { saveEntry } from "./actions";
@@ -33,6 +34,8 @@ type Props = {
   advanced: boolean;
   /** Options des champs « référence », par sujet. */
   refOptions?: Record<string, { value: string; label: string }[]>;
+  /** Langue de l'administration (pour le nom du skin dans l'aperçu). */
+  adminLocale?: string;
 };
 
 /**
@@ -40,7 +43,7 @@ type Props = {
  * publication. Tout le facultatif (résumé, icône, étiquettes, adresse…) est rangé dans « Options », qui s'ouvre d'office si une valeur y est déjà.
  * Une version par langue : on n'en demande qu'une, les autres s'ajoutent à la demande (jamais imposées).
  */
-export function EntryForm({ t, collection, locales, locale, data, advanced, refOptions = {} }: Props) {
+export function EntryForm({ t, collection, locales, locale, data, advanced, refOptions = {}, adminLocale = "fr" }: Props) {
   const has = (f: string) => collection.features.includes(f as never);
   const current = data.translations.find((tr) => tr.locale === locale);
   const missing = locales.filter((l) => !data.translations.some((tr) => tr.locale === l));
@@ -118,6 +121,9 @@ export function EntryForm({ t, collection, locales, locale, data, advanced, refO
           <MarkdownField name="body" label={t("field.body")} help={t("field.bodyHelp")} rows={14} defaultValue={current?.body}
             labels={{ bold: t("editor.bold"), italic: t("editor.italic"), link: t("editor.link"), list: t("editor.list"), heading: t("editor.heading"), quote: t("editor.quote") }} />
         )}
+
+        {/* Aperçu avec le skin du site : le titre et le texte en cours d'écriture (l'administration, elle, n'est jamais restylée). */}
+        {has("body") && <EntryPreviewBox t={t} locale={adminLocale} />}
 
         {/* 4. L'image (la même pour toutes les langues). */}
         {has("cover") && (

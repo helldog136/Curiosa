@@ -113,7 +113,7 @@ export default async function AppearancePage() {
         {view.snapshot && (
           <div role="status" data-testid="undo-banner" className="space-y-2 rounded-xl border border-line bg-surface p-4 text-sm">
             <p>{view.snapshot.kind === "choose" ? t("appearance.undo.choose", { name: view.snapshot.fromName?.[locale] ?? t("appearance.undo.unknown") }) : t("appearance.undo.reset")}</p>
-            <ActionForm action={undoSkinAction} submitLabel={t("appearance.undo.button")} secondary pendingLabel={t("appearance.undo.doing")} className="space-y-1">{null}</ActionForm>
+            <ActionForm action={undoSkinAction} submitLabel={t("appearance.undo.button")} secondary pendingLabel={t("appearance.undo.doing")} className="space-y-1"><input type="hidden" name="what" value="undo" /></ActionForm>
           </div>
         )}
 
@@ -256,7 +256,7 @@ export default async function AppearancePage() {
             <div className={`${ui.card} space-y-3`} data-testid="reset-card">
               <h3 className="font-semibold">{t("appearance.reset.title")}</h3>
               <p className={ui.help}>{view.retouched ? t("appearance.reset.help", { name: view.active.name[locale] }) : t("appearance.reset.none", { name: view.active.name[locale] })}</p>
-              {view.retouched && <ActionForm action={resetSkinAction} submitLabel={t("appearance.reset.button")} secondary pendingLabel={t("appearance.reset.doing")} confirm={t("appearance.reset.confirm", { name: view.active.name[locale] })} className="space-y-1">{null}</ActionForm>}
+              {view.retouched && <ActionForm action={resetSkinAction} submitLabel={t("appearance.reset.button")} secondary pendingLabel={t("appearance.reset.doing")} confirm={t("appearance.reset.confirm", { name: view.active.name[locale] })} className="space-y-1"><input type="hidden" name="what" value="reset" /></ActionForm>}
             </div>
           )}
         </section>

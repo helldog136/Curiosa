@@ -68,14 +68,15 @@ test("halo : réglages normalisés — hors limites ramenés aux bornes, texte o
 
 test("halo : branché sur le site, choisi dans l'admin (simple : niveaux ; avancé : réglages fins), validé côté serveur", () => {
   assert.match(fs.readFileSync("src/core/skins/render.ts", "utf8"), /glowCss\(glowLevel, localized\.glow\.custom, theme\.accent, scope\)/, "la composition des skins écrit le halo du site");
-  assert.match(fs.readFileSync("src/app/(site)/layout.tsx", "utf8"), /resolveLook\(localized\)/);
-  const page = fs.readFileSync("src/app/admin/(panel)/settings/page.tsx", "utf8");
+  assert.match(fs.readFileSync("src/app/(site)/layout.tsx", "utf8"), /resolveLook\(localized,/);
+  const page = fs.readFileSync("src/app/admin/(panel)/appearance/page.tsx", "utf8");
   assert.match(page, /name="glow"/);
   for (const k of ["count", "size", "variance", "hue", "intensity", "seed"]) assert.match(page, new RegExp(`name="glow_${k}"`));
   assert.match(page, /advanced \? \[\{ value: "custom"/, "« personnalisé » seulement en mode avancé");
-  const actions = fs.readFileSync("src/app/admin/(panel)/settings/actions.ts", "utf8");
-  assert.match(actions, /normalizeTuning\(raw\)/);
-  assert.match(actions, /adv \|\| glow !== "custom"/, "le mode simple ne peut pas activer le personnalisé");
+  // l'enregistrement du halo vit dans le cœur des skins (core/skins/appearance.ts), appelé par l'action de la page Apparence
+  const actions = fs.readFileSync("src/core/skins/appearance.ts", "utf8");
+  assert.match(actions, /normalizeTuning\(input\.glowTuning\)/);
+  assert.match(actions, /input\.advanced \|\| input\.glow !== "custom"/, "le mode simple ne peut pas activer le personnalisé");
 });
 
 test("admin : « Powered by Curiosa vX.Y.Z » est tout en bas de la page (hors du menu), pour tous les rôles et dans les deux modes", () => {
@@ -102,9 +103,9 @@ test("halo : couleur propre aux taches (sinon l'accent) ; le décalage de teinte
 });
 
 test("admin : un bloc de réglages n'apparaît que lorsque son choix est sélectionné (halo « personnalisé », description du fond « personnalisé »), sans perdre les valeurs", () => {
-  const page = fs.readFileSync("src/app/admin/(panel)/settings/page.tsx", "utf8");
-  assert.match(page, /<ShowWhen field="glow" equals="custom" initial=\{config\.glow\.level\}>/);
-  assert.match(page, /<ShowWhen field="bgPreset" equals="custom" initial=\{config\.bg\.preset\}>/);
+  const page = fs.readFileSync("src/app/admin/(panel)/appearance/page.tsx", "utf8");
+  assert.match(page, /<ShowWhen field="glow" equals="custom" initial=\{glowLevel\}>/);
+  assert.match(page, /<ShowWhen field="bgPreset" equals="custom" initial=\{bgPreset\}>/);
   const comp = fs.readFileSync("src/components/admin/ShowWhen.tsx", "utf8");
   assert.match(comp, /hidden=\{value !== equals\}/, "masqué par `hidden` : les champs restent dans le formulaire et sont envoyés");
   assert.match(comp, /RadioNodeList/);

@@ -54,7 +54,7 @@ export default async function EditEntryPage({ params, searchParams }: {
       </div>
       {created === "1" && <p role="status" className="rounded-lg border border-emerald-500/50 bg-emerald-500/10 p-3 text-sm text-emerald-700">{t("entries.created")}</p>}
       <EntryForm
-        refOptions={refOptions} advanced={advanced} t={t} collection={collection} locales={config.locales} locale={locale}
+        refOptions={refOptions} advanced={advanced} adminLocale={adminLocale} t={t} collection={collection} locales={config.locales} locale={locale}
         data={{
           id: entry.id, status: entry.status, cover: entry.cover, icon: entry.icon, url: entry.url, code: entry.code,
           featured: entry.featured, tags: parseTags(entry.tags).join(", "), expiresAt: day(entry.expiresAt), publishedAt: day(entry.publishedAt), fields,

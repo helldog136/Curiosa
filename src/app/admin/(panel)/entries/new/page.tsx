@@ -22,7 +22,7 @@ export default async function NewEntryPage({ searchParams }: { searchParams: Pro
         <p className="mt-1 text-sm text-muted">{t("entries.newIntro")}</p>
       </div>
       <EntryForm
-        refOptions={refOptions} advanced={advanced} t={t} collection={collection} locales={config.locales} locale={entryLocale}
+        refOptions={refOptions} advanced={advanced} adminLocale={adminLocale} t={t} collection={collection} locales={config.locales} locale={entryLocale}
         data={{ status: "draft", cover: null, icon: null, url: null, code: null, featured: false, tags: "", expiresAt: "", publishedAt: "", fields: {}, translations: [] }}
       />
     </div>

@@ -17,7 +17,7 @@
 import { prisma } from "../db";
 import { audit } from "../permissions";
 import { deleteSetting, setSetting } from "../settings";
-import { isHexColor, parseOptionalColors } from "../color";
+import { isHexColor } from "../color";
 import { isBackgroundImage, isPreset, parseBackground } from "../background";
 import { isGlowLevel, normalizeTuning } from "../glow";
 import { isHeaderLayout } from "../header";
@@ -334,6 +334,3 @@ export async function saveRetouches(input: RetouchInput, base: SkinBase, opts: {
   }
   return { ok: true, changed };
 }
-
-/** Pour les tests et l'écran : les couleurs facultatives d'un formulaire « un seul mode » comme l'ancien enregistrement les lisait. */
-export { parseOptionalColors };

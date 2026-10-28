@@ -18,7 +18,7 @@ export const REQUEST_TTL_MS = 24 * 60 * 60_000;
 const KEEP = 50;
 const KEY = "maintenance.requests";
 
-export const LEVEL3_ACTIONS = ["module_update", "modules_update_all", "core_update", "module_uninstall", "module_install"] as const;
+export const LEVEL3_ACTIONS = ["module_update", "modules_update_all", "core_update", "module_uninstall", "module_install", "skin_install", "skin_activate", "skin_remove"] as const;
 export type Level3Action = (typeof LEVEL3_ACTIONS)[number];
 
 export type Plan = {
@@ -38,6 +38,8 @@ export type Plan = {
   instanceKey?: string;
   /** Installation : les permissions que demande le module (pour que la propriétaire sache ce qu'elle accorde). */
   permissions?: string[];
+  /** Skins (installer, utiliser, retirer) : l'identifiant du skin ; `name` est son nom lisible, `to` la version à installer, `from` le skin en place (utiliser) ou la version installée (retirer). */
+  skin?: string;
 };
 export type RequestStatus = "pending" | "running" | "done" | "failed" | "denied" | "expired";
 export type MaintenanceRequest = {

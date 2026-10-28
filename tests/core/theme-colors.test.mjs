@@ -175,10 +175,11 @@ test("réglages : validation stricte, vide = dérivé (champ absent = on n'y tou
   for (const bad of ["red", "#12345g", "#1234567", "rgb(0,0,0)", "#fff;}", "<x>", "javascript:1"]) {
     for (const f of ["accent2", "surface", "text"]) assert.equal(C.parseOptionalColors(form({ [f]: bad })), null, `${f}=${bad}`);
   }
-  const actions = src("src/app/admin/(panel)/settings/actions.ts");
-  assert.match(actions, /parseOptionalColors\(formData\)/);
-  assert.match(actions, /if \(!optionalColors\) return \{ error/);
-  assert.match(actions, /else await deleteSetting\(key\)/, "vide = réglage supprimé");
+  // l'enregistrement des couleurs vit dans le cœur des skins (core/skins/appearance.ts), appelé par l'action de la page Apparence
+  const core = src("src/core/skins/appearance.ts");
+  assert.match(core, /if \(v && !isHexColor\(v\)\) return null;/, "une couleur qui n'est pas #rrggbb refuse tout l'envoi");
+  assert.match(src("src/app/admin/(panel)/appearance/actions.ts"), /if \(!input\) return \{ error/);
+  assert.match(core, /if \(had\) \{ await deleteSetting\(key\)/, "vide = réglage supprimé");
 });
 
 test("sauvegarde : les réglages de thème sont des lignes ordinaires de Setting, donc emportés tels quels", () => {

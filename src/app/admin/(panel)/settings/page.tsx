@@ -158,7 +158,6 @@ export default async function SettingsPage() {
         </section>
 
         <section data-tab="appearance" className="space-y-6">
-          <h2 className="text-lg font-semibold">{t("settings.appearanceTab")}</h2>
           <div className={`${ui.card} space-y-3`} data-testid="appearance-moved">
             <h3 className="font-semibold">{t("settings.appearanceMovedTitle")}</h3>
             <p className={ui.help}>{t("settings.appearanceMovedHelp")}</p>

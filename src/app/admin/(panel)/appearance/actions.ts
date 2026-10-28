@@ -37,15 +37,17 @@ export async function chooseSkinAction(_prev: ActionState, fd: FormData): Promis
   return { ok: r.changed ? t("appearance.chosen") : t("appearance.alreadyChosen") };
 }
 
-export async function resetSkinAction(_prev: ActionState, _fd?: FormData): Promise<ActionState> {
+export async function resetSkinAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
   const { user, t } = await adminCtx("admin");
+  if (fd.get("what") !== "reset") return { error: t("error.generic") };
   const r = await resetToSkin({ actor: user.email });
   done();
   return { ok: r.changed ? t("appearance.resetDone") : t("appearance.resetNothing") };
 }
 
-export async function undoSkinAction(_prev: ActionState, _fd?: FormData): Promise<ActionState> {
+export async function undoSkinAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
   const { user, t, locale } = await adminCtx("admin");
+  if (fd.get("what") !== "undo") return { error: t("error.generic") };
   const r = await undoLastChange({ actor: user.email });
   if (!r.ok) return { error: await failureText(r, t, locale) };
   done();

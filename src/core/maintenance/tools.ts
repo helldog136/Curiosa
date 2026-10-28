@@ -9,6 +9,7 @@ import { contentCheckView } from "./content/service";
 import { legacyReportForAssistant } from "@/core/modules/legacyReport";
 import { redactDeep } from "./redact";
 import { getRequest, type Level3Action } from "./requests";
+import { SKIN_ARG, SKIN_LIST_INPUT, skinList, skinStatus } from "./skins";
 
 /**
  * OUTILS MCP DU CŒUR pour la maintenance (préfixe `maintenance_`) : une IA diagnostique et entretient le site. Ce ne sont pas des outils d'un module :
@@ -53,7 +54,7 @@ const INSTALL_ARG: JsonSchemaLite = {
   },
   required: ["module"],
 };
-const level3 = (name: Level3Action): Def["run"] => (args, actor) => callLevel3(name, validateArgs(name === "core_update" || name === "modules_update_all" ? NONE : name === "module_uninstall" ? UNINSTALL_ARG : name === "module_install" ? INSTALL_ARG : MODULE_ARG, args), actor);
+const level3 = (name: Level3Action): Def["run"] => (args, actor) => callLevel3(name, validateArgs(name === "core_update" || name === "modules_update_all" ? NONE : name.startsWith("skin_") ? SKIN_ARG : name === "module_uninstall" ? UNINSTALL_ARG : name === "module_install" ? INSTALL_ARG : MODULE_ARG, args), actor);
 
 const DEFS: Def[] = [
   { name: "status", level: 1, title: "Site status", description: "Core version and update channel, Node version, uptime, number of modules, state of the update in progress. Start here.", input: NONE, run: () => status() },
@@ -84,6 +85,8 @@ const DEFS: Def[] = [
     description: "The full sheet of one module, in plain words, to help the owner choose: what it is for, what visitors see, what personal data it collects (the author's declaration), what permissions it asks for, the modules it needs (required) and the ones that make it work better (optional) with what each brings, whether it fits this site's Curiosa version, whether it is already installed, which settings to plan (never a value, never a secret) and which modules go well with it. Read-only. To install it, use maintenance_module_install (the owner approves).",
     input: CATALOG_GET_INPUT, run: (args) => catalogGet(args),
   },
+  { name: "skin_status", level: 1, title: "Appearance of the site", description: "The skin in use, whether the owner adjusted colors, font, glow, background or header, whether visitors get a Light / Dark button, and colors that were adjusted so they can be read. Start here for any question about how the site looks. Nothing here can be changed without the owner's approval.", input: NONE, run: () => skinStatus() },
+  { name: "skin_list", level: 1, title: "Skins installed and available", description: "The skins installed on this site, and the skins of the official catalogue that it does not have yet (name, description, author, light / dark modes). A skin only changes the look, never the content. Use it to guide the owner; to act, use maintenance_skin_install or maintenance_skin_activate (both are requests the owner approves).", input: SKIN_LIST_INPUT, run: (args) => skinList(args) },
   { name: "content_check", level: 1, title: "Content check result", description: "The result of the last check of the site's content (images without text, titles, descriptions for search engines, missing translations, menu entries and links that lead nowhere, outside links). READ-ONLY: it shows the last result and contacts no site. Each remark has an importance (important / advised / info), a short sentence, why it matters and, where there is one, the admin screen that fixes it. Never a score.", input: NONE, run: () => contentCheckView() },
 
   { name: "check_updates", level: 2, title: "Check for updates again", description: "Clears the version caches and checks the core and the modules again (the admin's \"Check again\" button).", input: NONE, run: level2("check_updates") },
@@ -112,6 +115,21 @@ const DEFS: Def[] = [
     name: "module_install", level: 3, title: "Install a catalogue module",
     description: "Asks to install a module of the official catalogue (id from maintenance_catalog_list). It NEVER installs by itself: it creates a request that the owner approves in Admin > AI assistants, whatever the token's approval setting is; then poll maintenance_request_status. Checked before asking: the module exists and is verified, fits this Curiosa version, is not installed yet, and every module it requires can be put in place (they are listed in the request, the owner sees them, nothing comes in secretly). After approval the first instance is created with default settings; then use maintenance_module_settings and maintenance_module_configure. Optional instanceKey for a module that allows several instances.",
     input: INSTALL_ARG, run: level3("module_install"),
+  },
+  {
+    name: "skin_install", level: 3, title: "Install a catalogue skin",
+    description: "Asks to install a skin of the OFFICIAL catalogue (id from maintenance_skin_list). It NEVER installs by itself: it creates a request that the owner approves in Admin > AI assistants, whatever the token's approval setting. It only installs; to use the skin, ask for maintenance_skin_activate. You cannot install a skin from a personal repository or any address: only the owner can, by hand. The skin is checked first (rules, license, readability); a refusal is explained. Then poll maintenance_request_status.",
+    input: SKIN_ARG, run: level3("skin_install"),
+  },
+  {
+    name: "skin_activate", level: 3, title: "Use an installed skin",
+    description: "Asks to switch the site to an installed skin (or to basic, the built-in one). By default this only creates a request that the owner approves; then poll maintenance_request_status. Switching sets the owner's own color, font, glow and background adjustments aside (the owner can undo in Admin > Appearance). Content is never changed: a skin is only a look.",
+    input: SKIN_ARG, run: level3("skin_activate"),
+  },
+  {
+    name: "skin_remove", level: 3, title: "Remove an installed skin",
+    description: "Asks to remove an installed skin's files. By default this only creates a request that the owner approves; then poll maintenance_request_status. Content never changes. If it was the active skin, the basic skin applies and the owner's adjustments are kept.",
+    input: SKIN_ARG, run: level3("skin_remove"),
   },
   { name: "module_update", level: 3, title: "Update a module", description: "Updates one module to its latest STABLE version (never a pre-release). By default this only creates a request that the owner approves; then poll request_status.", input: MODULE_ARG, run: level3("module_update") },
   { name: "modules_update_all", level: 3, title: "Update all modules", description: "Updates every module that has a STABLE update, one by one. By default this only creates a request that the owner approves; then poll request_status.", input: NONE, run: level3("modules_update_all") },

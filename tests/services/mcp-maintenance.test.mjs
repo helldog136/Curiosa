@@ -87,13 +87,13 @@ const auditRows = (action) => db.prisma.auditLog.findMany({ where: { action: { s
 
 // ── Catalogue et défauts ────────────────────────────────────────────────────────────────────────────────────────────────────
 
-test("catalogue : les 24 outils (niveaux 1, 2 et 3) avec les bonnes annotations ; aucun n'est actif par défaut ; un destructeur n'est jamais actif d'office", async () => {
+test("catalogue : les 29 outils (niveaux 1, 2 et 3) avec les bonnes annotations ; aucun n'est actif par défaut ; un destructeur n'est jamais actif d'office", async () => {
   const tools = await LIST();
   assert.deepEqual(tools.map((t) => t.name), [
-    "maintenance_status", "maintenance_health", "maintenance_modules", "maintenance_updates", "maintenance_diagnose", "maintenance_audit", "maintenance_request_status", "maintenance_legacy", "maintenance_catalog_list", "maintenance_catalog_get", "maintenance_content_check",
+    "maintenance_status", "maintenance_health", "maintenance_modules", "maintenance_updates", "maintenance_diagnose", "maintenance_audit", "maintenance_request_status", "maintenance_legacy", "maintenance_catalog_list", "maintenance_catalog_get", "maintenance_skin_status", "maintenance_skin_list", "maintenance_content_check",
     "maintenance_check_updates", "maintenance_backup_run", "maintenance_module_reinstall", "maintenance_module_restart", "maintenance_content_check_run",
     "maintenance_module_settings", "maintenance_module_configure", "maintenance_module_configure_advanced",
-    "maintenance_module_install", "maintenance_module_update", "maintenance_modules_update_all", "maintenance_core_update", "maintenance_module_uninstall",
+    "maintenance_module_install", "maintenance_skin_install", "maintenance_skin_activate", "maintenance_skin_remove", "maintenance_module_update", "maintenance_modules_update_all", "maintenance_core_update", "maintenance_module_uninstall",
   ]);
   for (const t of tools) {
     const level = MAINTENANCE_TOOLS.find((m) => m.name === t.name).level;
@@ -111,7 +111,7 @@ test("accès : un jeton ordinaire ne voit AUCUN outil de maintenance ; le profil
   const plain = await T.createToken("Brouillons", "write", "o");
   assert.deepEqual((await listed(plain)).filter((n) => n.startsWith("maintenance_")), []);
   const { token } = await maintenanceToken();
-  assert.deepEqual(await listed(token), ["maintenance_status", "maintenance_health", "maintenance_modules", "maintenance_updates", "maintenance_diagnose", "maintenance_audit", "maintenance_request_status", "maintenance_legacy", "maintenance_catalog_list", "maintenance_catalog_get", "maintenance_content_check"]);
+  assert.deepEqual(await listed(token), ["maintenance_status", "maintenance_health", "maintenance_modules", "maintenance_updates", "maintenance_diagnose", "maintenance_audit", "maintenance_request_status", "maintenance_legacy", "maintenance_catalog_list", "maintenance_catalog_get", "maintenance_skin_status", "maintenance_skin_list", "maintenance_content_check"]);
 });
 
 test("accès : le niveau 2 et le niveau 3 s'accordent un à un ; un jeton en lecture seule n'en reçoit aucun, même accordé", async () => {

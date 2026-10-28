@@ -194,3 +194,29 @@ export async function loadAppearanceView(): Promise<AppearanceView> {
 }
 
 export { COLOR_FIELDS, RETOUCH_KEYS };
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Aperçu dans l'éditeur d'entrée
+
+export type PreviewTokens = { skinId: string; name: Text; modes: { mode: Mode; tokens: Record<string, string> }[] };
+
+/** Une valeur de jeton sûre à poser dans un attribut `style` : pas d'adresse (`url(…)`), pas de texte long. */
+const safeValue = (v: string) => v.length <= 300 && !/url\s*\(|[<>{};]|expression/i.test(v);
+
+/**
+ * Les jetons EFFECTIFS du skin en place (skin + retouches, comme les verra un visiteur), par mode, pour l'aperçu de l'éditeur d'entrée : posés sur UN conteneur
+ * de l'aperçu (variables CSS locales), jamais sur la page d'administration, qui n'est jamais restylée. Seuls les jetons communs sont rendus (`--v-*`, `--sk-*`).
+ */
+export async function activePreviewTokens(): Promise<PreviewTokens> {
+  const layer = await getModuleSkinLayer();
+  const rawActive = await readActiveSetting();
+  const def = (rawActive === BASIC_ID ? BASIC : await definitionOf(rawActive, layer)) ?? BASIC;
+  const fresh = await readFresh([...RETOUCH_SETTINGS, SETTING_OPTIONS]);
+  const optionsRaw = fresh.get(SETTING_OPTIONS);
+  const options = optionsRaw && typeof optionsRaw === "object" && !Array.isArray(optionsRaw) ? (optionsRaw as Record<string, string>) : {};
+  const c = composeSkin({ skin: def === BASIC ? null : def, retouches: retouchesFrom((k) => fresh.get(k)), options, moduleTokens: layer.tokens, modulePairs: layer.pairs });
+  return {
+    skinId: def.id, name: def.name,
+    modes: c.modes.map((m) => ({ mode: m.mode, tokens: Object.fromEntries(Object.entries(m.tokens).filter(([k, v]) => /^--(v|sk)-[a-z0-9-]+$/.test(k) && !k.startsWith("--sk-m-") && typeof v === "string" && safeValue(v))) })),
+  };
+}

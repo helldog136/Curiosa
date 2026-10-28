@@ -12,7 +12,7 @@ export function AppearanceLabelsProvider({ labels, children }: { labels: Labels;
 
 export type AL = (key: string, vars?: Record<string, string | number>) => string;
 
-/** `al("appearance.save")` → le texte ; `{n}` remplacés. Clé absente : la clé elle-même (jamais une erreur). */
+/** `al("appearance.use")` → le texte ; `{n}` remplacés. Clé absente : la clé elle-même (jamais une erreur). */
 export function useAL(): AL {
   const labels = useContext(Ctx);
   return (key, vars) => {
