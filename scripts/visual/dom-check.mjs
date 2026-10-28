@@ -96,7 +96,10 @@ for (const profile of profiles) {
             mainWidth: content ? Math.round(content.getBoundingClientRect().width) : null,
           };
         });
-        for (const r of ["shell", "banner", "header", "nav", "tools", "main", "content", "footer"]) ok(info.regions.includes(r), `${tag} : région « ${r} » absente`);
+        // En-tête sobre (`minimal`) : le menu est un panneau qui n'existe dans le DOM que lorsqu'il est ouvert ; la région `nav` y est donc absente tant qu'il est fermé (limite documentée, §20.2).
+        const minimal = profile === "layout-minimal";
+        for (const r of ["shell", "banner", "header", "tools", "main", "content", "footer", ...(minimal ? [] : ["nav"])]) ok(info.regions.includes(r), `${tag} : région « ${r} » absente`);
+        if (minimal) ok(info.parts.includes("menu-toggle"), `${tag} : bouton du menu sobre absent`);
         for (const r of new Set(info.regions)) ok(REGIONS.includes(r), `${tag} : région inconnue de l'assainisseur : ${r}`);
         for (const r of new Set(info.parts)) ok(PARTS.includes(r) || r.includes("."), `${tag} : pièce inconnue de l'assainisseur : ${r}`);
         for (const part of ["brand", "footer-link", "credit", "skip-link"]) ok(info.parts.includes(part), `${tag} : pièce « ${part} » absente`);
@@ -104,17 +107,18 @@ for (const profile of profiles) {
         ok(info.skinAttr === "basic" || !!info.skinAttr, `${tag} : html sans data-skin`);
         ok(info.mains === 1 && info.mainId === "content" && info.skipHref === "#content", `${tag} : main / lien d'évitement (${info.mains} main, id ${info.mainId}, href ${info.skipHref})`);
         ok(info.order, `${tag} : l'ordre du DOM n'est pas lien d'évitement, bannière, en-tête, contenu, pied`);
-        ok(info.nesting, `${tag} : emboîtement des régions incorrect`);
+        ok(info.nesting || minimal, `${tag} : emboîtement des régions incorrect`);
         ok(info.brandInHeader, `${tag} : la marque n'est pas dans l'en-tête`);
         ok(info.credit && info.footerLinks >= 1, `${tag} : crédit ou lien du pied absent`);
-        ok(info.navLinks >= 1, `${tag} : aucun lien de menu`);
+        ok(info.navLinks >= 1 || minimal, `${tag} : aucun lien de menu`);
         ok(info.shellDisplay === "block", `${tag} : la coquille de basic doit être en display:block (est : ${info.shellDisplay})`);
         if (p !== "/") ok(info.h1 >= 1 || p === "/page-introuvable", `${tag} : pas de titre de niveau 1`);
         // ordre de tabulation = ordre du DOM, et chaque élément visible est atteint
         const { dom, seen } = await tabOrder(tab);
         const sorted = [...seen].every((v, i) => i === 0 || v > seen[i - 1]);
         ok(sorted, `${tag} : l'ordre de tabulation ne suit pas l'ordre du DOM (${seen.slice(0, 30).join(",")})`);
-        ok(seen.length >= Math.min(dom, 100) - 1, `${tag} : Tab n'atteint que ${seen.length} éléments sur ${dom}`);
+        // (un groupe de boutons radio, un onglet à tabindex itinérant ou un élément dans un <details> fermé n'ont qu'un arrêt) : on exige que Tab traverse TOUTE la page, jusqu'au pied
+        ok(seen.length >= 5 && seen[seen.length - 1] >= dom - 4, `${tag} : Tab s'arrête trop tôt (dernier arrêt ${seen[seen.length - 1]} sur ${dom})`);
         ok(seen[0] === 0, `${tag} : le premier élément atteint n'est pas le lien d'évitement (${seen[0]})`);
         await tab.close();
       }

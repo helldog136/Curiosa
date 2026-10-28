@@ -40,11 +40,14 @@ async function collect(profile) {
           // les éléments cachés AVANT tout skin (par le cœur : menu fermé, bascule sans script, piège à robots) : on les range à part
           const label = (e) => norm(e.getAttribute("aria-label") || e.textContent || e.getAttribute("title") || e.getAttribute("href") || e.name);
           return {
-            text: norm(document.body.textContent),
+            // le texte visible et lisible (sans scripts, feuilles de style ni données structurées, qui portent l'adresse du serveur : un port différent par profil)
+            text: (() => { const c = document.body.cloneNode(true); c.querySelectorAll("script, style, noscript").forEach((e) => e.remove()); return norm(c.textContent); })(),
             links: [...document.querySelectorAll("a[href]")].map((a) => a.getAttribute("href")),
             controls: all.map((e) => `${e.tagName.toLowerCase()}:${label(e).slice(0, 60)}`),
             visible: all.filter(box).map((e) => `${e.tagName.toLowerCase()}:${label(e).slice(0, 60)}`),
-            images: [...document.images].map((i) => i.getAttribute("src")).filter(Boolean),
+            // le logo suit la luminance du fond (variante claire ou sombre : règle du cœur, pas du skin) : on compare ses textes (alt), pas son fichier
+            images: [...document.images].filter((i) => !i.closest('[data-skin-part="brand"]')).map((i) => i.getAttribute("src")).filter(Boolean),
+            brandAlts: [...document.querySelectorAll('[data-skin-part="brand"] img')].map((i) => i.getAttribute("alt")),
             headings: [...document.querySelectorAll("h1,h2,h3,h4,h5,h6")].map((h) => `${h.tagName}:${norm(h.textContent)}`),
             scrollX: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
           };
@@ -79,7 +82,8 @@ for (const key of Object.keys(basic)) {
   const a = basic[key], b = skin[key];
   if (!b) { note(`${key} : absente avec le skin`); continue; }
   if (a.status !== b.status) note(`${key} : statut ${a.status} → ${b.status}`);
-  if (a.text !== b.text) note(`${key} : le texte (textContent) diffère`);
+  if (a.text !== b.text) { let i = 0; while (i < a.text.length && a.text[i] === b.text[i]) i++; note(`${key} : le texte (textContent) diffère vers « ${a.text.slice(Math.max(0, i - 30), i + 50)} » / « ${b.text.slice(Math.max(0, i - 30), i + 50)} »`); }
+  if (JSON.stringify(a.brandAlts) !== JSON.stringify(b.brandAlts)) note(`${key} : le nom de la marque diffère`);
   if (JSON.stringify(a.links) !== JSON.stringify(b.links)) note(`${key} : les liens diffèrent`);
   if (JSON.stringify(a.controls) !== JSON.stringify(b.controls)) note(`${key} : les éléments focalisables diffèrent`);
   if (JSON.stringify(a.images) !== JSON.stringify(b.images)) note(`${key} : les images diffèrent`);
