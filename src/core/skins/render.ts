@@ -53,30 +53,43 @@ const MAX_ENTRIES = 24;
 
 export { invalidateSkinCache };
 
-/** Le rendu du skin pour la configuration localisée du site. */
-export async function resolveLook(localized: SiteConfig): Promise<SkinLook> {
+/** Le skin d'un APERÇU (page Apparence) : celui qu'on demande, s'il est installé et intact ; sinon basic. Rien n'est enregistré. */
+async function previewSkin(id: string, moduleParts: Readonly<Record<string, readonly string[]>>): Promise<{ skin: SkinDefinition; serial: string }> {
+  if (id === BASIC.id) return { skin: BASIC, serial: "basic" };
+  const loaded = await loadInstalledSkin(id, { moduleParts });
+  if (!loaded.ok) return { skin: BASIC, serial: "basic" };
+  const skin = toSkinDefinition(loaded);
+  return { skin, serial: `${skin.id}@${skin.version}:${loaded.fingerprint}` };
+}
+
+/**
+ * Le rendu du skin pour la configuration localisée du site.
+ * `previewSkinId` : aperçu d'un skin (docs/SKINS.md §10.3) : ce skin SANS les retouches de la personne ni ses options, c'est ce que donnerait « Utiliser ce skin ».
+ */
+export async function resolveLook(localized: SiteConfig, opts: { previewSkinId?: string } = {}): Promise<SkinLook> {
   const moduleLayer = await getModuleSkinLayer();
-  const { skin, serial } = await activeSkin(moduleLayer.byModule);
+  const preview = opts.previewSkinId !== undefined;
+  const { skin, serial } = preview ? await previewSkin(opts.previewSkinId!, moduleLayer.byModule) : await activeSkin(moduleLayer.byModule);
   const isBasic = skin === BASIC;
   const raw = new Map<string, unknown>();
-  for (const key of RETOUCH_KEYS) raw.set(key, await getSetting(key));
+  if (!preview) for (const key of RETOUCH_KEYS) raw.set(key, await getSetting(key));
   const retouches = retouchesFrom((k) => raw.get(k));
-  const optionsSetting = await getSetting<Record<string, string>>("skin.options");
+  const optionsSetting = preview ? undefined : await getSetting<Record<string, string>>("skin.options");
   const options = optionsSetting && typeof optionsSetting === "object" && !Array.isArray(optionsSetting) ? optionsSetting : {};
 
   // halo, fond, en-tête : la valeur de la personne, sinon le départ du skin, sinon l'absence (comportement d'avant les skins)
-  const glowRaw = await getSetting("theme.glow");
-  const bgRaw = await getSetting("theme.bgPreset");
-  const layoutRaw = await getSetting("header.layout");
-  const glowLevel: GlowLevel = isGlowLevel(glowRaw) ? glowRaw : (!isBasic && skin.defaults.glow) || localized.glow.level;
-  let bg = localized.bg;
+  const glowRaw = preview ? undefined : await getSetting("theme.glow");
+  const bgRaw = preview ? undefined : await getSetting("theme.bgPreset");
+  const layoutRaw = preview ? undefined : await getSetting("header.layout");
+  const glowLevel: GlowLevel = isGlowLevel(glowRaw) ? glowRaw : (!isBasic && skin.defaults.glow) || (preview ? "none" : localized.glow.level);
+  let bg = preview ? { ...localized.bg, preset: "none" as const, custom: "", image: null, svg: { ...localized.bg.svg, markup: "" } } : localized.bg;
   if (!isBasic && bgRaw === undefined && skin.defaults.background !== undefined && skin.defaults.background !== "none") {
     const d = skin.defaults.background;
     bg = Array.isArray(d) ? { ...bg, preset: "custom", custom: JSON.stringify(d) } : { ...bg, preset: d as "dusk" | "grid" };
   }
-  const headerLayout: HeaderLayout = isHeaderLayout(layoutRaw) ? layoutRaw : (!isBasic && skin.defaults.headerLayout) || localized.header.layout;
+  const headerLayout: HeaderLayout = isHeaderLayout(layoutRaw) ? layoutRaw : (!isBasic && skin.defaults.headerLayout) || (preview ? "classic" : localized.header.layout);
 
-  const key = createHash("sha1").update(JSON.stringify([skinCacheGeneration(), serial, retouches, options, moduleLayer.version, glowLevel, localized.glow.custom, bg, headerLayout])).digest("hex");
+  const key = createHash("sha1").update(JSON.stringify([skinCacheGeneration(), serial, retouches, options, moduleLayer.version, glowLevel, localized.glow.custom, bg, headerLayout, preview ? "p" : ""])).digest("hex");
   let hit = CACHE.get(key);
   if (!hit) {
     const composed = composeSkin({ skin, retouches, options, moduleTokens: moduleLayer.tokens, modulePairs: moduleLayer.pairs });
@@ -90,7 +103,7 @@ export async function resolveLook(localized: SiteConfig): Promise<SkinLook> {
     hit = {
       composed, sheet, layers, headerLayout,
       // le fond sombre : celui du mode unique ; avec la bascule, la variante de logo est choisie par le CSS du cœur (le mode « clair » sert de valeur de base)
-      appearance: { dark: isBasic ? isDarkBackground(localized.background) : composed.modes.length === 1 ? first.darkBackground : false, modeSwitch: composed.switchAvailable },
+      appearance: { dark: isBasic ? (preview ? true : isDarkBackground(localized.background)) : composed.modes.length === 1 ? first.darkBackground : false, modeSwitch: composed.switchAvailable },
     };
     CACHE.set(key, hit);
     while (CACHE.size > MAX_ENTRIES) CACHE.delete(CACHE.keys().next().value as string);

@@ -19,10 +19,10 @@ export function fixHref(f: unknown, defaultLocale = ""): string | null {
     case "n": return "/admin/navigation";
     case "r": return "/admin/redirects";
     case "x": return "/admin/social";
-    case "s": return a === "appearance" ? "/admin/settings#appearance" : "/admin/settings#site";
+    case "s": return a === "appearance" ? "/admin/appearance" : "/admin/settings#site";
     default: return null;
   }
 }
 
 /** Les écrans que fixHref peut désigner (modèles de route de app/admin/(panel)), pour le test de cohérence. */
-export const FIX_ROUTES = ["entries/[id]", "entries", "instances/[id]", "navigation", "redirects", "social", "settings"] as const;
+export const FIX_ROUTES = ["entries/[id]", "entries", "instances/[id]", "navigation", "redirects", "social", "settings", "appearance"] as const;

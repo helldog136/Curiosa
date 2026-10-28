@@ -102,6 +102,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
           <p className={group}>{t("nav.mySite")}</p>
           {canManage && <NavLink href="/admin/home">{t("nav.home")}</NavLink>}
           {canManage && <NavLink href="/admin/navigation">{advanced ? t("nav.navigation") : t("nav.navigation.simple")}</NavLink>}
+          {canManage && <NavLink href="/admin/appearance">{t("nav.appearance")}</NavLink>}
           {canManage && <NavLink href="/admin/settings">{advanced ? t("nav.settings") : t("nav.settings.simple")}</NavLink>}
           {canManage && <NavLink href="/admin/social">{t("nav.social")}</NavLink>}
           {canManage && <NavLink href="/admin/ai-visibility">{t("nav.aiVisibility")}</NavLink>}

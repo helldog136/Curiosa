@@ -4,6 +4,7 @@ import { NEWS_COOKIE, planVisit, SEEN_COOKIE, SINCE_COOKIE, SINCE_HEADER } from 
 import { TIMED_OUT, withDeadline } from "@/core/deadline";
 import { isRedirectEnded } from "@/core/redirectGate";
 import { geolocationOpen, policyValue } from "@/core/permissionsPolicy";
+import { PREVIEW_HEADER, PREVIEW_PARAM, PREVIEW_TOKEN_RE } from "@/core/skins/previewToken";
 
 const LOCALE_HEADER = "x-curiosa-locale";
 const PATH_HEADER = "x-curiosa-path";
@@ -53,6 +54,10 @@ export async function proxy(request: NextRequest) {
   headers.delete(PROOF_HEADER);
   headers.delete(PATH_HEADER);
   headers.delete(SINCE_HEADER);
+  // Aperçu d'un skin (page Apparence) : le jeton de l'adresse est recopié dans un en-tête interne ; il n'est cru qu'après vérification de sa signature, par le gabarit du site.
+  headers.delete(PREVIEW_HEADER);
+  const previewToken = searchParams.get(PREVIEW_PARAM);
+  if (previewToken && PREVIEW_TOKEN_RE.test(previewToken)) headers.set(PREVIEW_HEADER, previewToken);
   // Dernière visite : date retenue pour cette visite, transmise aux pages ; les cookies ne contiennent que des dates.
   // Seulement si le visiteur l'a DEMANDÉ (cookie de son choix) ; sinon rien n'est déposé et les cookies d'avant sont effacés.
   const optedIn = request.cookies.get(NEWS_COOKIE)?.value === "1";

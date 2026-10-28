@@ -8,23 +8,14 @@ import { KNOWN_LOCALES, localeName } from "@/core/i18n/locales";
 import { UI_LOCALES } from "@/core/i18n/dictionary";
 import { ActionForm } from "@/components/admin/ActionForm";
 import { Checkbox, Select, TextArea, TextField } from "@/components/admin/Field";
-import { HeaderLayoutPicker } from "@/components/admin/HeaderLayoutPicker";
 import { ImageField } from "@/components/admin/ImageField";
-import { ShowWhen } from "@/components/admin/ShowWhen";
 import { Tabs } from "@/components/admin/Tabs";
-import { ThemePicker } from "@/components/admin/ThemePicker";
-import { CUSTOM_PALETTE, THEME_PRESETS } from "@/core/palettes";
 import { ui } from "@/components/admin/ui";
 import { hasRole } from "@/core/permissions";
 import { getMailConfig } from "@/core/services/mail";
 import { getAiBlocking, getSiteEntity, isLlmsTxtEnabled } from "@/core/seoSettings";
 import { saveSettings } from "./actions";
 
-/** Exemple affiché tant qu'aucune description personnalisée n'est enregistrée : le format est décrit dans docs/BACKGROUND.md. */
-const BG_EXAMPLE = JSON.stringify([
-  { type: "radial", x: 50, y: 0, w: 80, h: 50, stops: [{ color: "accent", a: 22 }, { color: "accent", at: 100, a: 0 }] },
-  { type: "grid", color: "fg", gap: 48, opacity: 6, side: "top", span: 80 },
-], null, 2);
 import { saveMail, sendTestMail } from "./mail-actions";
 import { retryRawgHandover } from "./rawg-actions";
 import { providerInstance } from "@/core/modules/dependencies";
@@ -33,22 +24,6 @@ import { trackRawgJob } from "@/core/services/rawgNote";
 import Link from "next/link";
 
 const TRANSLATABLE = ["site.name", "site.tagline", "site.about", "footer.text", "header.secondaryLabel", "header.buttonLabel", "privacy.extra"] as const;
-
-/** Une couche de l'arrière-plan : numéro (du bas vers le haut), titre, ce qu'elle fait, puis ses réglages. */
-function LayerRow({ n, title, note, children }: { n: number; title: string; note: string; children: React.ReactNode }) {
-  return (
-    <li className="flex gap-3">
-      <span aria-hidden="true" className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-line text-xs font-semibold text-muted">{n}</span>
-      <div className="min-w-0 flex-1 space-y-3">
-        <div>
-          <p className="font-medium">{title}</p>
-          <p className={ui.help}>{note}</p>
-        </div>
-        {children}
-      </div>
-    </li>
-  );
-}
 
 export default async function SettingsPage() {
   const { t, config, advanced, user } = await adminCtx("admin");
@@ -71,7 +46,7 @@ export default async function SettingsPage() {
   return (
     <div className="space-y-6">
       <header><h1 className={ui.pageTitle}>{advanced ? t("nav.settings") : t("nav.settings.simple")}</h1>{!advanced && <p className={ui.pageIntro}>{t("settings.intro.simple")}</p>}</header>
-      <Tabs tabs={[{ id: "site", label: t("settings.identity") }, { id: "languages", label: t("settings.languages") }, { id: "appearance", label: t("settings.appearance") }, { id: "privacy", label: t("settings.privacy") }, ...(hasRole(user, "owner") ? [{ id: "mail", label: t("settings.mail") }, ...(rawgModule || rawgPending ? [{ id: "services", label: t("settings.services") }] : [])] : [])]}>
+      <Tabs tabs={[{ id: "site", label: t("settings.identity") }, { id: "languages", label: t("settings.languages") }, { id: "appearance", label: t("settings.appearanceTab") }, { id: "privacy", label: t("settings.privacy") }, ...(hasRole(user, "owner") ? [{ id: "mail", label: t("settings.mail") }, ...(rawgModule || rawgPending ? [{ id: "services", label: t("settings.services") }] : [])] : [])]}>
       <div data-tab="site languages appearance privacy">
       <ActionForm action={saveSettings} floating={floatingLabels(t)} submitLabel={t("action.save")} className="space-y-8" submitTabs="site languages appearance privacy">
         {advanced && <input type="hidden" name="__adv" value="1" />}
@@ -183,13 +158,14 @@ export default async function SettingsPage() {
         </section>
 
         <section data-tab="appearance" className="space-y-6">
-          <h2 className="text-lg font-semibold">{t("settings.appearance")}</h2>
+          <h2 className="text-lg font-semibold">{t("settings.appearanceTab")}</h2>
+          <div className={`${ui.card} space-y-3`} data-testid="appearance-moved">
+            <h3 className="font-semibold">{t("settings.appearanceMovedTitle")}</h3>
+            <p className={ui.help}>{t("settings.appearanceMovedHelp")}</p>
+            <Link href="/admin/appearance" className={`${ui.btnPrimary} min-h-11`}>{t("settings.appearanceOpen")}</Link>
+          </div>
           <div className={`${ui.card} space-y-4`}>
-            <h3 className="font-semibold">{t("settings.header")}</h3>
-            <p className={ui.help}>{t("settings.headerHelp")}</p>
-            <HeaderLayoutPicker name="headerLayout" value={config.header.layout}
-              labels={{ classic: { title: t("settings.header.classic"), help: t("settings.header.classicHelp") }, twoRows: { title: t("settings.header.twoRows"), help: t("settings.header.twoRowsHelp") },
-                centered: { title: t("settings.header.centered"), help: t("settings.header.centeredHelp") }, minimal: { title: t("settings.header.minimal"), help: t("settings.header.minimalHelp") } }} />
+            <h3 className="font-semibold">{t("settings.headerLinks")}</h3>
             {socialCount > 0
               ? <Checkbox name="headerSocials" label={t("settings.header.socials")} help={t("settings.header.socialsHelp", { count: socialCount })} defaultChecked={config.header.socials} />
               : <p className={ui.help}>{t("settings.header.socialsNone")}</p>}
@@ -207,86 +183,6 @@ export default async function SettingsPage() {
             </div>
             <p className={ui.help}>{t("settings.header.linksHelp")}</p>
           </div>
-          <div className={`${ui.card} space-y-4`}>
-          <h3 className="font-semibold">{t("settings.colors")}</h3>
-          <ThemePicker background={config.background} accent={config.accent} accent2={config.accent2} surface={config.surface} text={config.textColor} advanced={advanced}
-            labels={{ background: t("settings.background"), accent: t("settings.accent"), accent2: t("settings.accent2"), surface: t("settings.surface"), text: t("settings.text"),
-              addSecond: t("settings.accent2.add"), removeSecond: t("settings.accent2.remove"), optionalHint: t("settings.colorOptionalHint"), invalid: t("settings.colorInvalid"),
-              warnText: t("settings.contrast.text"), warnAccent: t("settings.contrast.accent"), warnAccent2: t("settings.contrast.accent2") }}
-            names={Object.fromEntries([...THEME_PRESETS.map((p) => p.id), CUSTOM_PALETTE].map((id) => [id, t(`theme.${id}`)]))} />
-          {advanced && (
-            <Select name="font" label={t("settings.font")} defaultValue={config.font}
-              options={[{ value: "sans", label: "Sans-serif" }, { value: "serif", label: "Serif" }, { value: "mono", label: "Monospace" }]} />
-          )}
-          </div>
-          <div className={`${ui.card} space-y-5`} data-testid="bg-layers">
-            <div>
-              <h3 className="font-semibold">{t("settings.layers")}</h3>
-              <p className={ui.help}>{t("settings.layersHelp")}</p>
-            </div>
-            <ol className="space-y-5">
-              <LayerRow n={1} title={t("settings.layer.color")} note={t("settings.layer.colorNote")}>
-                <span className="inline-flex items-center gap-2 text-sm"><span aria-hidden="true" className="h-5 w-5 rounded-md border border-line" style={{ background: config.background }} />{config.background}</span>
-              </LayerRow>
-              <LayerRow n={2} title={t("settings.layer.glow")} note={t("settings.layer.glowNote")}>
-          <Select name="glow" label={t("settings.glow")} defaultValue={config.glow.level}
-            options={[
-              { value: "none", label: t("settings.glow.none") }, { value: "soft", label: t("settings.glow.soft") }, { value: "strong", label: t("settings.glow.strong") },
-              ...(advanced ? [{ value: "custom", label: t("settings.glow.custom") }] : []),
-            ]} />
-          {advanced && (
-            <ShowWhen field="glow" equals="custom" initial={config.glow.level}>
-            <fieldset className="space-y-3 rounded-2xl border border-line p-4">
-              <legend className="px-2 text-sm font-medium">{t("settings.glow.tuning")}</legend>
-              <p className={ui.help}>{t("settings.glow.tuningHelp")}</p>
-              <div className="space-y-2">
-                <Checkbox name="glow_followAccent" label={t("settings.glow.followAccent")} defaultChecked={!config.glow.custom.color} />
-                <TextField name="glow_color" type="color" label={t("settings.glow.color")} help={t("settings.glow.colorHelp")} defaultValue={config.glow.custom.color || config.accent} />
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <TextField name="glow_count" type="number" label={t("settings.glow.count")} help={t("settings.glow.countHelp")} defaultValue={String(config.glow.custom.count)} />
-                <TextField name="glow_size" type="number" label={t("settings.glow.size")} help={t("settings.glow.sizeHelp")} defaultValue={String(config.glow.custom.size)} />
-                <TextField name="glow_variance" type="number" label={t("settings.glow.variance")} help={t("settings.glow.varianceHelp")} defaultValue={String(config.glow.custom.variance)} />
-                <TextField name="glow_hue" type="number" label={t("settings.glow.hue")} help={t("settings.glow.hueHelp")} defaultValue={String(config.glow.custom.hue)} />
-                <TextField name="glow_intensity" type="number" label={t("settings.glow.intensity")} help={t("settings.glow.intensityHelp")} defaultValue={String(config.glow.custom.intensity)} />
-                <TextField name="glow_seed" type="number" label={t("settings.glow.seed")} help={t("settings.glow.seedHelp")} defaultValue={String(config.glow.custom.seed)} />
-              </div>
-            </fieldset>
-            </ShowWhen>
-          )}
-              </LayerRow>
-              <LayerRow n={3} title={t("settings.layer.image")} note={t("settings.layer.imageNote")}>
-          <ImageField name="bgImage" label={t("settings.bgImage")} defaultValue={config.bg.image} uploadLabel={t("action.upload")} />
-              </LayerRow>
-              <LayerRow n={4} title={t("settings.layer.pattern")} note={t("settings.layer.patternNote")}>
-          <Select name="bgPreset" label={t("settings.bg")} defaultValue={config.bg.preset}
-            options={[
-              { value: "none", label: t("settings.bg.none") }, { value: "dusk", label: t("settings.bg.dusk") }, { value: "grid", label: t("settings.bg.grid") },
-              ...(advanced ? [{ value: "svg", label: t("settings.bg.svg") }, { value: "custom", label: t("settings.bg.custom") }] : []),
-            ]} />
-          {advanced && (
-            <ShowWhen field="bgPreset" equals="svg" initial={config.bg.preset}>
-              <div className="space-y-3">
-                <TextArea name="bgSvg" label={t("settings.bgSvg")} help={t("settings.bgSvgHelp")} rows={12} mono defaultValue={config.bg.svg.markup} />
-                <Select name="bgSvgFit" label={t("settings.bgSvgFit")} defaultValue={config.bg.svg.fit}
-                  options={[{ value: "cover", label: t("settings.bgSvgFit.cover") }, { value: "contain", label: t("settings.bgSvgFit.contain") }, { value: "tile", label: t("settings.bgSvgFit.tile") }]} />
-                <Select name="bgSvgAlign" label={t("settings.bgSvgAlign")} help={t("settings.bgSvgAlignHelp")} defaultValue={config.bg.svg.align}
-                  options={[{ value: "center", label: t("settings.bgSvgAlign.center") }, { value: "left", label: t("settings.bgSvgAlign.left") }, { value: "right", label: t("settings.bgSvgAlign.right") }]} />
-                <ShowWhen field="bgSvgFit" equals="tile" initial={config.bg.svg.fit}>
-                  <TextField name="bgSvgTile" type="number" label={t("settings.bgSvgTile")} help={t("settings.bgSvgTileHelp")} defaultValue={String(config.bg.svg.tile)} />
-                </ShowWhen>
-              </div>
-            </ShowWhen>
-          )}
-          {advanced && (
-            <ShowWhen field="bgPreset" equals="custom" initial={config.bg.preset}>
-            <TextArea name="bgCustom" label={t("settings.bgCustom")} help={t("settings.bgCustomHelp")} rows={10} mono defaultValue={config.bg.custom || BG_EXAMPLE} />
-            </ShowWhen>
-          )}
-              </LayerRow>
-            </ol>
-          </div>
-          {advanced && <p className={ui.help}>{t("settings.appearanceHelp")}</p>}
         </section>
       </ActionForm>
       </div>

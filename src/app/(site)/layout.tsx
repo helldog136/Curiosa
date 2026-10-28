@@ -4,6 +4,8 @@ import { notFound, redirect } from "next/navigation";
 import { cookies, headers } from "next/headers";
 import { faviconUrl } from "@/core/favicon";
 import { resolveLook } from "@/core/skins/render";
+import { PREVIEW_HEADER, verifyPreview } from "@/core/skins/previewToken";
+import { getAuthSecret } from "@/core/secret";
 import { RTL_LOCALES } from "@/core/i18n/locales";
 import { getVisitorLocale, getVisitorTranslator, LOCALE_HEADER, PATH_HEADER } from "@/core/i18n/request";
 import { runSlot } from "@/core/modules/runtime";
@@ -30,6 +32,12 @@ async function currentPath(): Promise<string> {
   return raw.startsWith("/") ? raw : "/";
 }
 
+/** Aperçu d'un skin demandé par la page Apparence (jeton signé, quinze minutes) : le skin à montrer, ou null. Rien n'est enregistré. */
+async function previewedSkin(): Promise<string | null> {
+  const token = (await headers()).get(PREVIEW_HEADER);
+  return token ? verifyPreview(token, getAuthSecret()) : null;
+}
+
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getVisitorLocale();
   const config = await getSiteConfig(locale);
@@ -40,6 +48,7 @@ export async function generateMetadata(): Promise<Metadata> {
   // (une entrée traduite en partie) redéfinissent `alternates` elles-mêmes.
   const alt = languageAlternates(siteUrl, base.locales, locale, base.defaultLocale, path);
   return {
+    ...((await previewedSkin()) !== null ? { robots: { index: false, follow: false } } : {}),
     metadataBase: new URL(siteUrl),
     title: { default: config.name, template: `%s | ${config.name}` },
     description: config.tagline || undefined,
@@ -62,7 +71,8 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
   const t = await getVisitorTranslator();
   // L'apparence : basic < pièces des modules < skin actif (`skin.active`, absent = basic) < retouches de la personne (core/skins/render.ts). Sans skin choisi,
   // la feuille est celle d'avant les skins (mêmes valeurs) ; elle ne touche jamais l'administration.
-  const look = await resolveLook(localized);
+  const preview = await previewedSkin();
+  const look = await resolveLook(localized, preview !== null ? { previewSkinId: preview } : {});
   const css = look.sheet;
   const layers = look.layers;
   const headerConfig = look.headerLayout === localized.header.layout ? localized : { ...localized, header: { ...localized.header, layout: look.headerLayout } };
