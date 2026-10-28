@@ -64,7 +64,12 @@ async function Catalogue({ locale, canInstall }: { locale: "fr" | "en"; canInsta
   );
 }
 
-export default async function AppearancePage() {
+const FLASH = { updated: "appearance.updatedOk", reverted: "appearance.revertedOk", removed: "appearance.removedOk", removedActive: "appearance.removedActive" } as const;
+
+export default async function AppearancePage({ searchParams }: { searchParams?: Promise<{ done?: string; v?: string }> }) {
+  const sp = (await searchParams) ?? {};
+  const flashKey = Object.hasOwn(FLASH, String(sp.done)) ? FLASH[sp.done as keyof typeof FLASH] : null;
+  const flashVersion = /^\d{1,4}\.\d{1,4}\.\d{1,4}$/.test(String(sp.v)) ? String(sp.v) : "";
   const { t, config, advanced, user, locale: rawLocale } = await adminCtx("admin");
   const locale: "fr" | "en" = rawLocale === "fr" ? "fr" : "en";
   const isOwner = hasRole(user, "owner");
@@ -102,6 +107,7 @@ export default async function AppearancePage() {
           <p className={ui.pageIntro}>{t("appearance.intro")}</p>
         </header>
 
+        {flashKey && <p role="status" data-testid="flash" className="rounded-xl border border-emerald-500/50 bg-emerald-500/10 p-4 text-sm text-emerald-700">{t(flashKey, { version: flashVersion })}</p>}
         {view.activeProblem && <p role="alert" data-testid="active-problem" className="rounded-xl border border-amber-500/50 bg-amber-500/10 p-4 text-sm">{t("appearance.activeProblem")}</p>}
         {view.notices.length > 0 && (
           <div role="status" data-testid="adjusted-notice" className="space-y-2 rounded-xl border border-amber-500/50 bg-amber-500/10 p-4 text-sm">

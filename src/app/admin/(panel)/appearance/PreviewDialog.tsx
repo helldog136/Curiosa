@@ -81,14 +81,13 @@ export function PreviewButton({ skinId, skinName, bothModes, pages, canChoose, a
               </fieldset>
             )}
           </div>
-          <p className="px-3 pt-2 text-[13px] text-muted sm:px-5">{al("appearance.preview.note")}</p>
+          <p className="px-3 pt-2 text-[13px] text-muted sm:px-5">{al("appearance.preview.note")}{loading && !error ? <span role="status"> · {al("appearance.preview.loading")}</span> : null}</p>
           <div className="flex min-h-0 flex-1 justify-center overflow-auto bg-bg/60 p-2 sm:p-4">
             {error ? <p role="alert" className="m-4 rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm text-red-700">{error}</p> : src && (
               <iframe ref={frame} src={src} title={al("appearance.preview.frameTitle", { name: skinName })} data-testid="preview-frame"
                 onLoad={() => { setLoading(false); applyMode(mode); }}
                 className={`h-full rounded-xl border border-line bg-white ${width === "phone" ? "w-[390px] max-w-full" : "w-full"}`} />
             )}
-            {loading && !error && <p role="status" className="absolute m-4 text-sm text-muted">{al("appearance.preview.loading")}</p>}
           </div>
           {canChoose && !active && (
             <div className="border-t border-line p-3 sm:px-5">

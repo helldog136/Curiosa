@@ -254,10 +254,10 @@ export type UpdateCheck = { available: boolean; target?: string; level?: UpdateL
 type Target = { spec: Spec; fromCatalogue: boolean; entry?: SkinCatalogueEntry } | Failure | { none: "pinned" | "uptodate" };
 
 /** Quelle étiquette ou quel commit suivre ? Un skin du catalogue suit la version que le catalogue épingle ; un skin personnel suit la sienne. */
-async function targetOf(row: SkinRow): Promise<Target> {
+async function targetOf(row: SkinRow, fresh = false): Promise<Target> {
   const base = specOf(row);
   if ("ok" in base) return base;
-  const cat = await readSkinCatalogue({ coreVersion: getCoreVersion() });
+  const cat = await readSkinCatalogue({ coreVersion: getCoreVersion(), fresh });
   const entry = cat.entries.find((e) => e.id === row.id && e.origin === "official" && sameRepoUrl(e.repo, row.repo) && (e.subdir ?? null) === row.subdir);
   if (entry) return { spec: { url: base.url, ref: entry.ref ?? base.ref, subdir: base.subdir }, fromCatalogue: true, entry };
   if (row.source === "catalogue" && cat.unreachable) return fail("skins.error.catalogue");
@@ -271,11 +271,12 @@ async function targetOf(row: SkinRow): Promise<Target> {
 }
 
 /** Y a-t-il une version plus récente ? Ne télécharge pas le skin et ne change rien. */
-export async function checkUpdate(id: string): Promise<UpdateCheck> {
+/** `fresh` : relit le catalogue au lieu de sa copie en mémoire (la personne vient de demander « Chercher une mise à jour »). */
+export async function checkUpdate(id: string, opts: { fresh?: boolean } = {}): Promise<UpdateCheck> {
   const row = (await readRows()).find((r) => r.id === id);
   if (!row) return { available: false };
   try {
-    const t = await targetOf(row);
+    const t = await targetOf(row, opts.fresh);
     if ("ok" in t) return { available: false, failed: true };
     if ("none" in t) return { available: false };
     if (t.entry) {

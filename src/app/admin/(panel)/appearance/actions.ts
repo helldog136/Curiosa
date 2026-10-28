@@ -149,7 +149,7 @@ export type UpdateView = { ok: true; available: boolean; target?: string; level?
 
 export async function checkUpdateAction(id: string): Promise<UpdateView> {
   await adminCtx("owner");
-  const c = await skins.checkUpdate(String(id));
+  const c = await skins.checkUpdate(String(id), { fresh: true });
   return { ok: true, available: c.available, target: c.target, level: c.level ?? undefined, needsCore: c.needsCore, failed: c.failed };
 }
 
