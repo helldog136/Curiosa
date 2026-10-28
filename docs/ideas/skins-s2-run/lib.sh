@@ -22,4 +22,4 @@ if(fs.existsSync(f)){m=JSON.parse(fs.readFileSync(f));m.shots=[...m.shots,...ms.
 fs.writeFileSync(f,JSON.stringify(m,null,2));' "$1" "$2"; }
 capture_profile() { # <profil> <dossier> [options...]
   local p=$1 d=$2; shift 2; guard; cd $RUN; rm -rf $d
-  heavy node scripts/visual/capture.mjs $d --profiles $p --jobs 2 "$@" >> $S/log.txt 2>&1; return $?; }
+  heavy node scripts/visual/capture.mjs $d --profiles $p "$@" >> $S/log.txt 2>&1; return $?; }

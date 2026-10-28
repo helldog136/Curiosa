@@ -25,7 +25,9 @@ if (out.startsWith(CORE_DIR + path.sep) && !process.env.VISUAL_ALLOW_IN_REPO) { 
 const profiles = (opt("profiles", PROFILE_ORDER.join(","))).split(",").filter(Boolean);
 const widths = (opt("widths", WIDTHS.join(","))).split(",").map(Number);
 const only = opt("only", "");
-const JOBS = Number(opt("jobs", "3"));
+// UNE capture à la fois : deux fenêtres qui se rastérisent en même temps font varier le rééchantillonnage des photos réduites d'une exécution à l'autre (mesuré : mêmes pages, même code,
+// 3 captures simultanées différentes ; 3 captures en série identiques). `--jobs N` reste possible pour un essai rapide, jamais pour une référence.
+const JOBS = Number(opt("jobs", "1"));
 const ENTRIES = Number(opt("entries", "2"));
 for (const p of profiles) if (!PROFILES[p]) { console.error(`profil inconnu : ${p}`); process.exit(2); }
 
