@@ -161,6 +161,8 @@
 
 /* Typographie des pièces (site public seulement : `:where(:root[data-skin])` n'ajoute aucune spécificité, une feuille de skin passe donc toujours devant). */
 :where(:root[data-skin]) [data-skin-part="heading"] { font-family: var(--sk-font-heading, var(--v-font)); text-transform: var(--sk-heading-transform, none); }
+/* Le titre de niveau 6 est une petite ligne en capitales (comme avant les skins) : la règle ci-dessus ne doit pas lui retirer ses capitales sous basic. Un skin peut toujours en décider (sa règle est plus spécifique). */
+:where(:root[data-skin]) [data-skin-part="heading"][data-level="6"] { text-transform: uppercase; }
 :where(:root[data-skin]) [data-skin-part="eyebrow"] { text-transform: var(--sk-eyebrow-transform, uppercase); }
 /* Ombre des cartes (jeton `--sk-shadow-card`, aucune sous basic ; la règle `data-accent2` / `data-surface` plus bas, plus spécifique, garde la sienne). */
 :where(:root[data-skin]) [data-skin-part="card"] { box-shadow: var(--sk-shadow-card, none); }
