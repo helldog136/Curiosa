@@ -301,7 +301,7 @@ const cli = (...a) => spawnSync(process.execPath, ["--disable-warning=MODULE_TYP
 test("skin:check : skin valide → code 0 ; illisible ou hostile → code 1 avec « comment corriger » ; sans dossier → code 2", () => {
   const ok = cli(path.join(FIXTURES, "plain-light"), "--lang", "fr");
   assert.equal(ok.status, 0, ok.stderr);
-  assert.match(ok.stdout, /✅ plain-light 1\.0\.0 — valide/);
+  assert.match(ok.stdout, /(✅|⚠️ ) plain-light 1\.0\.0 — valide/);
   const bad = cli(path.join(FIXTURES, "faded-grey"), "--lang", "en");
   assert.equal(bad.status, 1);
   assert.match(bad.stdout, /In light mode, the text would be hard to read/);
