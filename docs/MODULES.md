@@ -241,7 +241,7 @@ Chaque réglage est un objet (`SettingField`) :
 | `key` | Identifiant (lettre puis lettres, chiffres, `_` ; 41 caractères au plus). C'est ce que lit `ctx.setting("clé")`. |
 | `label` | Libellé affiché dans l'admin (texte ou `{ langue: texte }`). |
 | `type` | L'un des types ci-dessous. |
-| `help` | Aide sous le champ. |
+| `help` | Aide du champ. Une aide courte (60 caractères au plus, une ligne) reste sous le champ ; une aide plus longue s'affiche dans une bulle « ? » à côté du libellé : gardez les aides utiles et courtes. |
 | `default` | Valeur par défaut (texte, nombre ou booléen). `ctx.setting` la renvoie tant que rien n'est réglé, et l'admin **pré-remplit** le champ avec elle. Pour `text` / `textarea` : `"site:name"` (nom du site) ou `"site:tagline"` (accroche), dans la langue du champ (voir ci-dessous). |
 | `options` | Pour `select` et `multichoice` : `[{ "value": "info", "label": { "en": "…" } }]` (50 au plus ; pour `multichoice`, 2 au moins, valeurs faites de lettres, chiffres, `.`, `-`, `_`, 60 caractères au plus, sans doublon). |
 | `defaultValues`, `minChoices`, `maxChoices` | Pour `multichoice` (cœur 0.2.14) : les cases cochées au départ (parmi `options`), le nombre minimal et maximal de cases cochées (défaut : 0 et toutes les options). Refusés pour un autre type. |
@@ -1143,6 +1143,8 @@ Balises de `head` : `{ tag: "meta", name?, property?, content }`, `{ tag: "link"
 
 Champs d'un `adminForm` (`AdminField`) : `{ name, label, kind?, value?, required?, help?, options? }`. `kind` : `text`, `textarea`, `email`,
 `url`, `number`, `date`, `select` (avec `options: [{ value, label }]`), `hidden`, `image` (téléversement), `checkbox` (case à cocher : cochée si `value` vaut `on`, `1` ou `true` ; une fois envoyée, le module reçoit `values[name] === "on"`, et rien du tout si elle est décochée).
+
+Le `help` d'un champ (réglage ou `adminForm`) suit la même règle partout : une aide longue s'affiche dans une bulle « ? » (survol, clavier ou toucher) ; gardez les aides utiles et courtes. Les messages d'erreur ne passent jamais par cette bulle : ils restent sous le champ.
 
 ## Échanger des informations entre modules : les sujets
 

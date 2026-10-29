@@ -9,7 +9,8 @@ import type { AdminField, Block } from "@/core/blocks";
 import { ImageField } from "./ImageField";
 import { FileField } from "./FileField";
 import { ui } from "./ui";
-import { Checkbox } from "./Field";
+import { Checkbox, FieldLabel } from "./Field";
+import { HelpBelow } from "./HelpTip";
 import { useCropLabels } from "./CropLabels";
 import { askConfirm } from "./confirmDialog";
 import { runModuleAdminAction } from "@/app/admin/(panel)/instances/module-actions";
@@ -38,7 +39,7 @@ function Field({ f }: { f: AdminField }) {
   const common = { id: `f_${f.name}`, name: f.name, required: f.required, defaultValue: f.value ?? "", className: ui.input };
   return (
     <div>
-      <label className={ui.label} htmlFor={common.id}>{f.label}</label>
+      <FieldLabel id={common.id} className={ui.label} help={f.help} text={f.label}>{f.label}</FieldLabel>
       {f.kind === "textarea" ? (
         <textarea {...common} rows={4} />
       ) : f.kind === "select" ? (
@@ -46,7 +47,7 @@ function Field({ f }: { f: AdminField }) {
       ) : (
         <input {...common} type={f.kind ?? "text"} />
       )}
-      {f.help && <p className={ui.help}>{f.help}</p>}
+      <HelpBelow help={f.help} className={ui.help} />
     </div>
   );
 }

@@ -21,6 +21,7 @@ import { getUpdateCheck, readVersion } from "@/core/updates/service";
 import { peekModulesReport } from "@/core/modules/updateStatus";
 import { MobileMenu } from "@/components/admin/MobileMenu";
 import { CropLabelsProvider } from "@/components/admin/CropLabels";
+import { HelpTipProvider } from "@/components/admin/HelpTip";
 import { CROP_LABEL_KEYS } from "@/components/admin/cropLabelKeys";
 import { cookies } from "next/headers";
 import { ADMIN_THEMES, ADMIN_THEME_COOKIE, parseAdminTheme } from "@/core/adminTheme";
@@ -150,7 +151,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
           {legacyPending && (
             <LegacyBanner title={t("legacy.banner.title")} text={t("legacy.banner.text")} link={isOwner(user) ? t("legacy.banner.link") : null} ownerNote={isOwner(user) ? null : t("legacy.banner.owner")} />
           )}
-          <CropLabelsProvider advanced={advanced} labels={Object.fromEntries(CROP_LABEL_KEYS.map((k) => [k, t(`crop.${k}`)]))}>{children}</CropLabelsProvider></div>
+          <CropLabelsProvider advanced={advanced} labels={Object.fromEntries(CROP_LABEL_KEYS.map((k) => [k, t(`crop.${k}`)]))}><HelpTipProvider label={t("help.tip")}>{children}</HelpTipProvider></CropLabelsProvider></div>
       </main>
       </div>
       {/* Tout en bas de la page, pour tous les rôles et dans les deux modes : crédit exigé par la licence, et numéro de version à donner pour un signalement ou une mise à jour. */}

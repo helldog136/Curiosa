@@ -1914,6 +1914,7 @@
   "crop.gif": "Les images animées (GIF) et les SVG ne se recadrent pas.",
   "crop.close": "Fermer",
   "crop.urlPlaceholder": "https://… ou /uploads/…",
+  "help.tip": "Aide : {name}",
   "site.pagination.label": "Pages de la liste",
   "site.pagination.previous": "Page précédente",
   "site.pagination.next": "Page suivante",
