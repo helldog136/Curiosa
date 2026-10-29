@@ -7,6 +7,30 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.4.0
+
+### Apparence / skins
+
+- **Une nouvelle page « Apparence » dans l'administration.** Vous y choisissez le skin de votre site (son apparence complète : couleurs, polices, formes, mise en page), avec un aperçu sur vos vraies pages avant de l'utiliser. Les couleurs, la police, le halo, le fond et l'en-tête qui étaient dans les Réglages y ont déménagé.
+- **Votre site ne change pas tant que vous ne touchez à rien.** Le skin de base est identique à l'apparence actuelle, vérifié page par page, en clair et en sombre, sur téléphone comme sur ordinateur. Vos réglages et vos contenus sont repris tels quels.
+- **Quatre skins au catalogue, installables en un clic** : Brutaliste clair, Éditorial papier, Rétro néon et Verre doux. Vous pouvez aussi ajouter un skin depuis l'adresse GitHub de son dépôt (avec une confirmation de votre part) et le retirer quand vous voulez : votre contenu ne change jamais.
+- **Vos retouches restent à vous.** Changer de skin donne de nouvelles valeurs de départ, mais vous pouvez retoucher les couleurs, la police, le halo, le fond et l'en-tête. « Revenir au skin » remet ses valeurs, et « Annuler » rétablit l'état d'avant.
+- **Clair ou sombre, au choix de vos visiteurs.** Quand le skin propose les deux, un petit bouton leur laisse choisir Automatique, Clair ou Sombre. Leur choix reste dans leur navigateur : rien n'est suivi, aucun cookie n'est ajouté.
+- **Un avertissement si vos couleurs se liront mal.** Il apparaît sous le champ, avec un exemple de couleur qui convient. Un skin illisible est corrigé automatiquement, et l'administration garde toujours son apparence habituelle.
+- **Mises à jour et sauvegardes.** Vous pouvez mettre un skin à jour, revenir à la version d'avant ou le retirer depuis la page Apparence. Votre choix et vos retouches sont dans les sauvegardes ; un skin manquant est réinstallé à la restauration, et le skin de base s'applique en attendant.
+- **Votre assistant IA peut lister, installer, activer et retirer des skins du catalogue officiel**, mais seulement avec votre accord.
+- **Pour les auteurs de modules :** un module peut déclarer les parties de son affichage que les skins peuvent habiller. Les modules existants fonctionnent sans changement.
+- **Pour les auteurs de skins :** une commande de contrôle, un banc d'essai, un guide « Je crée mon skin en 30 minutes » et un dépôt de départ.
+- **Sécurité et vie privée.** Un skin ne contient aucun programme : sa feuille de style est nettoyée avant d'être servie. Ses polices et images viennent de votre site, jamais d'un service tiers, et un skin ne peut ni masquer ni retirer du contenu.
+- Rien d'autre ne change pour votre site.
+
+### Pour les développeurs
+
+- Contrat complet : `docs/SKINS.md`. Jetons `--sk-*` (valeurs de `basic` = apparence 0.3.1, repli valeur par valeur), skin `basic` embarqué, DOM stable (`data-skin-region`, `data-skin-part`), `skin.json`, `tokens.json`, `skin.css` assaini par liste blanche (`src/core/skins/`, `postcss` devient une dépendance directe).
+- Modules : clé facultative `skin` du `module.json` (`"minCore": "0.4.0"`), jetons `--sk-m-<module>-…`, boîtes intérieures ciblables sous `module-html`. Réglages : `skin.active`, `skin.installed`, `skin.options`, `skin.snapshot` ; aucune migration de base, `skin.active` absent = `basic`.
+- Outils : `npm run skin:check -- <dossier>` (huit niveaux, `--visual`, `--strict`), `npm run skin:bench`, gabarit `docs/skin-starter/`, guide `docs/CREER-UN-SKIN.md`. Harnais d'images (`npm run visual:*`) pour prouver que `basic` reste à 0 pixel d'écart.
+- Assistant IA : `maintenance_skin_status`, `maintenance_skin_list`, `maintenance_skin_install`, `maintenance_skin_activate`, `maintenance_skin_remove` (demandes à valider). Corrigé au passage : le titre de niveau 6 d'un texte Markdown perdait ses capitales sous `basic`.
+
 ## 0.3.1
 
 ### Améliorations

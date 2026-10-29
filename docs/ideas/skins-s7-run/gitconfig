@@ -1,5 +1,0 @@
-[url "file:///dev/shm/s7-e2e/skins-repo"]
-	insteadOf = https://github.com/e2e/curiosa-skins
-[user]
-	name = t
-	email = t@t
