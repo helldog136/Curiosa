@@ -210,6 +210,10 @@
 .cookie-tray { animation: cookie-tray-in 360ms cubic-bezier(0.22, 1, 0.36, 1) both; }
 .cookie-tray[data-closing] { animation: cookie-tray-out 200ms ease-in both; }
 
+/* Bulle d'aide « ? » de l'admin (components/admin/HelpTip.tsx) : fondu léger, supprimé par la règle prefers-reduced-motion ci-dessus. */
+@keyframes help-tip-in { from { opacity: 0; } to { opacity: 1; } }
+.help-tip-bubble:not([hidden]) { animation: help-tip-in 0.12s ease-out; }
+
 /* Accent secondaire choisi (attribut data-accent2 posé sur <html> seulement si accent2 est défini ET différent de l'accent) :
    boutons pleins, accents de détail, dégradé. Sans cet attribut, rien ci-dessous ne s'applique et le site garde son apparence d'origine (règle 60-30-10 : le secondaire reste dans les petits détails). */
 [data-accent2] [data-btn="primary"] { background-color: var(--v-accent); border-color: var(--v-accent); color: var(--v-accent-fg); transition: filter 0.15s; }
@@ -238,7 +242,3 @@
   border-color: color-mix(in srgb, var(--v-line) 65%, var(--v-fg));
   box-shadow: 0 1px 2px color-mix(in srgb, var(--v-fg) 10%, transparent), 0 8px 20px -10px color-mix(in srgb, var(--v-fg) 28%, transparent);
 }
-
-/* Bulle d'aide « ? » de l'admin (components/admin/HelpTip.tsx) : fondu léger, supprimé par la règle prefers-reduced-motion ci-dessus. */
-@keyframes help-tip-in { from { opacity: 0; } to { opacity: 1; } }
-.help-tip-bubble:not([hidden]) { animation: help-tip-in 0.12s ease-out; }
