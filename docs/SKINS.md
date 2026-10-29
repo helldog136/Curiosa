@@ -145,7 +145,7 @@ Le choix est stocké dans `skin.options` (ex. `{"density":"airy"}`), jamais aill
 ### 3.5 Clair et sombre
 
 - `modes` dans `skin.json` : `["light","dark"]`, `["light"]` ou `["dark"]`.
-- **Deux modes** : par défaut la personne qui visite voit le mode de son appareil (`prefers-color-scheme`) ; il peut aussi **choisir** « Clair », « Sombre » ou « Automatique » (§3.8). Le cœur émet les jetons ainsi :
+- **Deux modes** : par défaut la personne qui visite voit le mode de son appareil (`prefers-color-scheme`) ; elle peut aussi **choisir** « Clair », « Sombre » ou « Automatique » (§3.8). Le cœur émet les jetons ainsi :
 
 ```css
 :root[data-skin]                                            { /* jetons du mode clair */ color-scheme: light; }

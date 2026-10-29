@@ -4,7 +4,7 @@ Ce document décrit ce que le framework stocke chez les personnes qui visitent v
 
 ## En bref : pas de bandeau de cookies
 
-La règle européenne (directive ePrivacy, RGPD) exige l'accord de la personne qui visite avant de déposer ou lire quelque chose dans son navigateur, **sauf** ce qui est strictement nécessaire au service qu'il demande ou qu'il a choisi lui-même. Curiosa est conçu pour rester dans ces exceptions : **tant que vous n'ajoutez pas de module qui dépose autre chose, aucun bandeau n'est nécessaire.**
+La règle européenne (directive ePrivacy, RGPD) exige l'accord de la personne qui visite avant de déposer ou lire quelque chose dans son navigateur, **sauf** ce qui est strictement nécessaire au service qu'elle demande ou qu'elle a choisi elle-même. Curiosa est conçu pour rester dans ces exceptions : **tant que vous n'ajoutez pas de module qui dépose autre chose, aucun bandeau n'est nécessaire.**
 
 ## La page « Politique de confidentialité » est fournie par le cœur
 
@@ -27,7 +27,7 @@ Le bandeau n'existe que si le réglage est actif. Il s'affiche tant que la perso
 
 ### Le choix « clair / sombre » de la personne qui visite (skins à deux modes)
 
-Quand le skin du site fournit les deux apparences (clair et sombre), l'en-tête propose à la personne qui visite un sélecteur « Automatique / Clair / Sombre ». S'il choisit « Clair » ou « Sombre », son choix est gardé dans le **stockage local de son navigateur** (clé `curiosa-mode`, valeur `light` ou `dark`). Ce n'est **pas un cookie** : il n'est jamais envoyé au serveur ni à personne, il ne contient aucun identifiant et ne sert qu'à afficher les pages comme la personne qui visite l'a demandé. C'est une préférence d'affichage strictement fonctionnelle, choisie par la personne qui visite elle-même : elle ne demande pas de consentement et **le bandeau de cookies ne change pas**. Sans choix, le site suit le réglage de l'appareil (`prefers-color-scheme`). Le petit script du cœur qui la lit (`/skins/mode.js`, même origine, servi par le cœur, jamais par un skin) ne fait aucune requête. Cette ligne est ajoutée à la page `/privacy` seulement quand le sélecteur existe (skin à deux modes) ; le skin de base, qui n'a qu'un mode, ne le propose pas.
+Quand le skin du site fournit les deux apparences (clair et sombre), l'en-tête propose à la personne qui visite un sélecteur « Automatique / Clair / Sombre ». Si elle choisit « Clair » ou « Sombre », son choix est gardé dans le **stockage local de son navigateur** (clé `curiosa-mode`, valeur `light` ou `dark`). Ce n'est **pas un cookie** : il n'est jamais envoyé au serveur ni à personne, il ne contient aucun identifiant et ne sert qu'à afficher les pages comme la personne qui visite l'a demandé. C'est une préférence d'affichage strictement fonctionnelle, choisie par la personne qui visite elle-même : elle ne demande pas de consentement et **le bandeau de cookies ne change pas**. Sans choix, le site suit le réglage de l'appareil (`prefers-color-scheme`). Le petit script du cœur qui la lit (`/skins/mode.js`, même origine, servi par le cœur, jamais par un skin) ne fait aucune requête. Cette ligne est ajoutée à la page `/privacy` seulement quand le sélecteur existe (skin à deux modes) ; le skin de base, qui n'a qu'un mode, ne le propose pas.
 
 Rien d'autre côté public : pas de cookie publicitaire, pas d'identifiant, pas de service tiers (polices, statistiques, vidéos intégrées…).
 

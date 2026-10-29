@@ -590,7 +590,7 @@ const requirements = [
     id: "net.fallback", level: "advice", group: "network",
     title: "En cas de panne d'un service externe, la page s'affiche quand même",
     what: "Sonde « trou noir » : le réseau ne répond jamais. Chaque section, emplacement et page du module doit rendre la main en moins de 3 s, sans erreur (avec les dernières données connues et leur date, ou un message simple).",
-    why: "Un service externe finit toujours par tomber. Si la page attend sa réponse, elle se fige pour tous les personnes qui visitent ; le cœur coupe alors la section, et la personne qui visite ne voit rien du tout.",
+    why: "Un service externe finit toujours par tomber. Si la page attend sa réponse, elle se fige pour toutes les personnes qui visitent ; le cœur coupe alors la section, et la personne qui visite ne voit rien du tout.",
     fix: "Dans une page, ne lancez pas d'appel réseau long : affichez ce que la tâche planifiée a mis en cache (avec « mis à jour à 10 h 30 »), ou passez par ctx.api.net.request, dont le délai suit le temps restant de la page, et affichez un repli si « r.ok » est faux.",
     async run(m) {
       const def = m.definition ?? {};

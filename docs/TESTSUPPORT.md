@@ -660,7 +660,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 **En cas de panne d'un service externe, la page s'affiche quand même** — niveau : **conseil**
 
 - **Ce qui est vérifié.** Sonde « trou noir » : le réseau ne répond jamais. Chaque section, emplacement et page du module doit rendre la main en moins de 3 s, sans erreur (avec les dernières données connues et leur date, ou un message simple).
-- **Pourquoi.** Un service externe finit toujours par tomber. Si la page attend sa réponse, elle se fige pour tous les personnes qui visitent ; le cœur coupe alors la section, et la personne qui visite ne voit rien du tout.
+- **Pourquoi.** Un service externe finit toujours par tomber. Si la page attend sa réponse, elle se fige pour toutes les personnes qui visitent ; le cœur coupe alors la section, et la personne qui visite ne voit rien du tout.
 - **Comment corriger.** Dans une page, ne lancez pas d'appel réseau long : affichez ce que la tâche planifiée a mis en cache (avec « mis à jour à 10 h 30 »), ou passez par ctx.api.net.request, dont le délai suit le temps restant de la page, et affichez un repli si « r.ok » est faux.
 
 ### Les données

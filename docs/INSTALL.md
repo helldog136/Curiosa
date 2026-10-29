@@ -161,7 +161,7 @@ secret de session) et `.env`.
 
 ## Statistiques de visite et nouveautés
 
-- **Statistiques anonymes** (Réglages → Apparence… « Compter les visites ») : des compteurs par jour affichés sur le tableau de bord (visites, pages les plus lues, provenances). Jamais d'adresse IP, de cookie ni d'identifiant conservé : une personne qui visite est reconnu seulement dans la journée par une empreinte à sel quotidien détruite le lendemain. Les robots, les personnes qui visitent qui refusent le suivi (Do Not Track, Global Privacy Control) et l'équipe connectée à l'admin ne sont pas comptés. Aucun service externe.
+- **Statistiques anonymes** (Réglages → Apparence… « Compter les visites ») : des compteurs par jour affichés sur le tableau de bord (visites, pages les plus lues, provenances). Jamais d'adresse IP, de cookie ni d'identifiant conservé : une personne qui visite est reconnue seulement dans la journée par une empreinte à sel quotidien détruite le lendemain. Les robots, les personnes qui visitent qui refusent le suivi (Do Not Track, Global Privacy Control) et l'équipe connectée à l'admin ne sont pas comptés. Aucun service externe.
 - **Pastilles de nouveautés** : avec l'accord de la personne qui visite (bandeau de cookies à activer dans les réglages), son navigateur garde la date de sa dernière visite (cookies `curiosa_seen` et `curiosa_since`, sans donnée personnelle) ; le menu signale ce qui est nouveau depuis. Voir `news` dans [MODULES.md](MODULES.md).
 
 ## Logos

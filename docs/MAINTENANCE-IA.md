@@ -16,7 +16,7 @@ Une IA ne peut agir sur votre site que par un **jeton** : c'est son mot de passe
 
 1. Ouvrez **Admin › Assistants IA** (onglet *Accès*), puis *Connecter un assistant IA* en choisissant *À surveiller et entretenir le site* (en mode avancé, ce type s'appelle *Maintenance*). « MCP » est simplement le moyen par lequel une IA se branche à un site.
 2. Donnez-lui le nom de l'IA (« Claude », par exemple).
-3. Gardez les réglages proposés, ce sont les plus prudents : l'IA peut **regarder et diagnostiquer**, rien d'autre ; chaque demande risquée vous est soumise ; vous êtes prévenu dans l'admin.
+3. Gardez les réglages proposés, ce sont les plus prudents : l'IA peut **regarder et diagnostiquer**, rien d'autre ; chaque demande risquée vous est soumise ; une alerte apparaît dans l'admin.
 4. Copiez le jeton (il n'est montré qu'une fois) et suivez les consignes de branchement affichées dessous. Donnez aussi à votre IA ce guide.
 
 ### Ce que l'IA peut faire — trois niveaux
@@ -51,7 +51,7 @@ Vous cliquez **Approuver et exécuter** ou **Refuser**. Une demande sans répons
 ### Réglages (Assistants IA › Demandes à valider, et la page de chaque accès)
 
 - **Actions à risque, jeton par jeton** : *Je valide chaque demande* (recommandé) ou *L'IA agit sans me demander*. Dans ce second cas, les mises à jour et désinstallations se font **tout de suite, sans votre accord** (pas l'installation d'une fonctionnalité, qui attend toujours votre clic) : à réserver à une IA en qui vous avez toute confiance, et à un site sauvegardé.
-- **Être prévenu** : *Dans l'admin* (par défaut) ou *Dans l'admin et par e-mail*. L'e-mail part à la personne propriétaire quand une demande attend et quand une IA a fait une action ; il ne contient jamais de mot de passe ni de secret. L'envoi d'e-mails doit être réglé dans les réglages du site.
+- **Notifications** : *Dans l'admin* (par défaut) ou *Dans l'admin et par e-mail*. L'e-mail part à la personne propriétaire quand une demande attend et quand une IA a fait une action ; il ne contient jamais de mot de passe ni de secret. L'envoi d'e-mails doit être réglé dans les réglages du site.
 
 ### En cas de doute
 
@@ -63,7 +63,7 @@ Vous cliquez **Approuver et exécuter** ou **Refuser**. Une demande sans répons
 
 ## Pour l'IA
 
-Tu es branchée à un site Curiosa par un jeton « Maintenance ». Ton rôle : surveiller le site, expliquer clairement à la personne propriétaire (qui n'a pas forcément de connaissances techniques) ce qui ne va pas, et faire ce qui t'est permis. Les outils s'appellent `maintenance_…` ; **tu ne vois que ceux que la personne propriétaire t'a accordés**. Les réponses sont en anglais, courtes, sans secret ; seuls les textes écrits pour la personne (les erreurs de `maintenance_module_configure`, les textes d'un module) sont dans la langue du site : tu peux les lui répéter tels quels.
+Un jeton « Maintenance » te relie à un site Curiosa. Ton rôle : surveiller le site, expliquer clairement à la personne propriétaire (qui n'a pas forcément de connaissances techniques) ce qui ne va pas, et faire ce qui t'est permis. Les outils s'appellent `maintenance_…` ; **tu ne vois que ceux que la personne propriétaire t'a accordés**. Les réponses sont en anglais, courtes, sans secret ; seuls les textes écrits pour la personne (les erreurs de `maintenance_module_configure`, les textes d'un module) sont dans la langue du site : tu peux les lui répéter tels quels.
 
 ### Ordre conseillé
 
