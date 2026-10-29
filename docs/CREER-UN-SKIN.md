@@ -198,6 +198,7 @@ Chaque problème porte un code stable (entre crochets dans le rapport), dans les
 |---|---|---|
 | `kit-token-unknown` | ⚠️ | jeton hors du vocabulaire (ignoré) |
 | `kit-module-tokens-unverified` | 💡 | jetons de modules non vérifiables sans `--modules` |
+| `kit-coverage` | 💡 | pièces et régions que la feuille ne cible pas (le skin de base les habille ; `--coverage` pour la liste entière) |
 | `kit-module-unknown` | ⚠️ | le skin règle un module absent du dossier donné |
 | `kit-module-token-unknown` | ⚠️ | jeton que le module ne déclare pas |
 | `kit-readability-adjusted` | ⚠️ | Curiosa corrigera une couleur au rendu |
