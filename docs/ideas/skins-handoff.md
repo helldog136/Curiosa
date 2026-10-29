@@ -39,7 +39,7 @@ Skins (https://github.com/helldog136/curiosa-skins, une branche par skin, `main`
 - Message à l'entreprise ChatDeck (module tiers) : prêt, guide `docs/PUBLIER-SON-MODULE.md` et dossier `starter/` de curiosa-extras en ligne sur master (cœur 0.3.1, modules 1.22.1).
 - À faire par le propriétaire : cliquer « Tester la clé » dans le module « Jaquettes de jeux » (helldog136.be) pour confirmer la reprise de la clé RAWG.
 - Évolution du contrat des modules envisagée : champ de manifeste pour déclarer les hôtes contactés (`network: [{ host, why }]`), non engagée.
-- Phase 3 d'entretien (retrait du code `bundled` et des colonnes `enabled`) repoussée (`removeAfter` 0.3.99) ; rappel programmé le 3 novembre 2026.
+- Phase 3 d'entretien (retrait du code `bundled` et des colonnes `enabled`) repoussée (`removeAfter` 0.4.99 depuis la 0.4.0) ; rappel programmé le 3 novembre 2026.
 - Audit à faire si le propriétaire le souhaite : sauvegarde module par module (partie lisible manquante sur 50 modules sur 70) avec test de sauvegarde-restauration.
 
 ## Après la 0.4.0
