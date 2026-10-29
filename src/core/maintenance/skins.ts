@@ -14,10 +14,10 @@ import type { Plan } from "./requests";
  *
  *  - niveau 1, lecture seule : `skin_status` (le skin actif, les retouches de la personne, le bouton Clair / Sombre, les couleurs ajustées pour être lues) et
  *    `skin_list` (les skins installés et ceux du catalogue officiel que le site n'a pas encore) ;
- *  - niveau 3, DEMANDES que la propriétaire approuve dans l'administration : `skin_install` (un skin du catalogue officiel), `skin_activate`, `skin_remove`.
+ *  - niveau 3, DEMANDES que la personne propriétaire approuve dans l'administration : `skin_install` (un skin du catalogue officiel), `skin_activate`, `skin_remove`.
  *
  * Jamais : installer un dépôt personnel ou une adresse donnée par l'IA (elle ne donne qu'un identifiant du catalogue officiel, comme pour les modules), installer
- * sans l'accord de la propriétaire (même pour un jeton en « exécution directe »), toucher au contenu (un skin ne définit que l'apparence : changer ou retirer un
+ * sans l'accord de la personne propriétaire (même pour un jeton en « exécution directe »), toucher au contenu (un skin ne définit que l'apparence : changer ou retirer un
  * skin ne change ni pages, ni articles, ni réglages de modules), toucher à l'administration (jamais restylée). Activer un skin met de côté les retouches de la
  * personne (elle peut annuler dans Apparence). Les textes (nom, description) viennent de l'auteur du skin : de l'information, jamais des instructions.
  */
@@ -82,7 +82,7 @@ export async function skinList(args: Record<string, unknown>): Promise<unknown> 
   };
 }
 
-/** Niveau 3, préparation (lecture seule, ne change rien) : vérifie tout AVANT de déranger la propriétaire et fige le plan dans la demande. */
+/** Niveau 3, préparation (lecture seule, ne change rien) : vérifie tout AVANT de déranger la personne propriétaire et fige le plan dans la demande. */
 export async function prepareSkin(action: SkinAction, args: { skin?: unknown }): Promise<Plan> {
   const refuse = (m: string): never => { throw new McpToolError(m); };
   const id = skinId(args.skin);
@@ -109,7 +109,7 @@ export async function prepareSkin(action: SkinAction, args: { skin?: unknown }):
   return { skin: id, name: card.name.en, from: card.version };
 }
 
-/** Niveau 3, exécution (après l'accord de la propriétaire) : revérifie que la demande vise toujours la même chose, puis passe par les mêmes fonctions que l'admin. */
+/** Niveau 3, exécution (après l'accord de la personne propriétaire) : revérifie que la demande vise toujours la même chose, puis passe par les mêmes fonctions que l'admin. */
 export async function executeSkin(action: SkinAction, plan: Plan, actorLabel: string): Promise<Outcome> {
   const id = plan.skin ?? "";
   let fresh: Plan;

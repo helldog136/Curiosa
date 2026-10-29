@@ -40,14 +40,14 @@ logique de langues, un seul sitemap — et un module qui sait lire des entrées 
 ## Une seule admin
 
 `/admin` est l'unique interface. Sa barre latérale regroupe par **type de module** une entrée par
-instance configurée (nommée par l'utilisateur) ; chaque instance est une sous-page de cet admin
+instance configurée (nommée par la personne qui gère le site) ; chaque instance est une sous-page de cet admin
 (`/admin/entries?c=<clé>` pour ses entrées, `/admin/instances/<id>` pour ses réglages). Les
 sections « Site » (accueil, navigation, réglages, redirections) et « Modules » (liste, catalogue,
 installation depuis git) complètent l'ensemble. Aucun module n'a son propre back-office.
 
 ## Admin simple et avancée
 
-Chaque utilisateur choisit sa version de l'admin (`User.advanced`, bascule dans la barre latérale ; défaut :
+Chaque personne choisit sa version de l'admin (`User.advanced`, bascule dans la barre latérale ; défaut :
 simple). La version **simple** s'adresse à quelqu'un qui ne connaît rien au web : thèmes de couleurs prêts à
 l'emploi plutôt que des sélecteurs, barre d'outils de mise en forme (gras, lien, liste…) plutôt que du Markdown
 à connaître, pas d'adresses, de slugs, d'étiquettes, de champs personnalisés, de sources techniques ni
@@ -111,8 +111,8 @@ Trois notions indépendantes :
 | | Où se règle | Détail |
 |---|---|---|
 | Langue **du site** (par défaut) | Réglages | Pas de préfixe d'URL. |
-| Langues **proposées aux visiteurs** | Réglages | Préfixe `/en`, `/nl`… posé par `src/proxy.ts` qui réécrit vers la route sans préfixe et transmet la langue par en-tête (jamais cru s'il vient du client). Une langue non activée donne un 404. |
-| Langue de l'**admin** | Réglage du site + compte de chaque utilisateur | Texte de l'interface depuis `src/locales/<code>.json`, repli sur l'anglais. |
+| Langues **proposées aux personnes qui visitent** | Réglages | Préfixe `/en`, `/nl`… posé par `src/proxy.ts` qui réécrit vers la route sans préfixe et transmet la langue par en-tête (jamais cru s'il vient du client). Une langue non activée donne un 404. |
+| Langue de l'**admin** | Réglage du site + compte de chaque personne | Texte de l'interface depuis `src/locales/<code>.json`, repli sur l'anglais. |
 
 **Comment la langue d'une page `/en/…` est décidée** (tout est dans `src/proxy.ts`, `src/core/i18n/request.ts` et la mise en page du site) :
 
@@ -123,7 +123,7 @@ Trois notions indépendantes :
 **Activer l'anglais sur un site de test** : *Réglages › Langues* (« Proposer le site dans d'autres langues »). Sur une base jetable sans interface : réglages `i18n.default` = `"fr"` et `i18n.enabled` = `["fr","en"]` (JSON, langue vide). Sans `i18n.enabled`, seule la langue par défaut existe et `/en/…` répond 404 (jamais du français sous une adresse anglaise). Le test `tests/core/locale-routing.test.mjs` verrouille les trois points.
 
 Contenu : chaque entrée n'exige qu'**une** traduction. Dans l'éditeur, les autres langues
-s'ajoutent via un bouton. Un visiteur dans une langue sans version voit la langue par
+s'ajoutent via un bouton. Une personne qui visite dans une langue sans version voit la langue par
 défaut (désactivable par instance) avec un bandeau. Changer de langue conserve la page :
 comme les slugs diffèrent selon la langue, un slug « étranger » redirige vers la bonne
 traduction (`findEntryBySlug`). Les liens `hreflang` sont générés pour les entrées traduites.
@@ -147,7 +147,7 @@ routes `/m/<clé d'instance>/…`, filtre le corps des entrées, définit sa pro
 un panneau d'admin. Le cœur s'occupe du rendu, du thème et des langues.
 
 Les modules sont **du code de confiance** : ils tournent dans le processus du serveur. Les
-garde-fous sont organisationnels et explicites : installation réservée au propriétaire,
+garde-fous sont organisationnels et explicites : installation réservée à la personne propriétaire,
 hébergeurs autorisés (`MODULES_ALLOWED_HOSTS`), clone sans hooks ni protocoles exotiques,
 module installé **actif** (installé = actif, pas d'état intermédiaire), manifeste validé, taille et liens symboliques contrôlés,
 version épinglable (`#tag`), mises à jour manuelles. Un module qui plante est isolé (log

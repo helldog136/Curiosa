@@ -328,7 +328,7 @@ export function explainBlocker(d, { serviceUnit = null } = {}) {
     case "other-program":
       return `Le port ${d.port} est tenu par un autre programme de ce serveur${d.cwd ? ` (dossier ${d.cwd})` : ""}${where}. Arrêtez-le ou changez le port du site, puis relancez le service. La nouvelle version est déjà installée.`;
     case "unknown-owner":
-      return `Le port ${d.port} est tenu par un processus que cette mise à jour n'a pas le droit d'examiner (probablement un autre utilisateur). Cherchez-le avec \`sudo ss -ltnp | grep :${d.port}\`, arrêtez-le, puis relancez le service. La nouvelle version est déjà installée.`;
+      return `Le port ${d.port} est tenu par un processus que cette mise à jour n'a pas le droit d'examiner (probablement un autre compte du serveur). Cherchez-le avec \`sudo ss -ltnp | grep :${d.port}\`, arrêtez-le, puis relancez le service. La nouvelle version est déjà installée.`;
     case "stuck":
       return `Le port ${d.port} est encore tenu par l'ancien serveur${where}, qui ne s'arrête pas. Redémarrez le service (\`sudo systemctl restart ${svc.replace(/\.service$/, "")}\`) ; s'il persiste, regardez \`sudo ss -ltnp | grep :${d.port}\`. La nouvelle version est déjà installée.`;
     default:

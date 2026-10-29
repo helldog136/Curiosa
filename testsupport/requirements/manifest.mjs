@@ -17,9 +17,9 @@ export const FEATURES = [
   { since: "0.2.14", label: "une route à segment libre (« :slug » dans routes, ctx.params.slug)", test: (m) => Object.keys(m.definition?.routes ?? {}).some((k) => k === ":slug" || k.endsWith("/:slug")) || /\bparams\s*\??\.\s*slug\b/.test(stripComments(m.code)) },
   { since: "0.2.13", label: "la permission « files » (ctx.api.files : revendiquer et supprimer les fichiers envoyés)", test: (m, man) => (man.permissions ?? []).includes("files") || /\bapi\s*\??\.\s*files\b/.test(stripComments(m.code)) },
   { since: "0.2.12", label: "« pageSetting » (page facultative, allumée par un réglage booléen)", test: (m, man) => man.pageSetting !== undefined },
-  { since: "0.2.12", label: "la permission « visitor.geolocation » (demander la position du visiteur)", test: (m, man) => (man.permissions ?? []).includes("visitor.geolocation") },
+  { since: "0.2.12", label: "la permission « visitor.geolocation » (demander la position de la personne qui visite)", test: (m, man) => (man.permissions ?? []).includes("visitor.geolocation") },
   { since: "0.2.10", label: "ctx.api.rawg.candidates (jeux proposés pour un titre)", test: (m) => /\bapi\s*\??\.\s*rawg\s*\??\.\s*candidates\b/.test(stripComments(m.code)) },
-  { since: "0.2.6", label: "ctx.api.visitor.fingerprint (empreinte du visiteur)", test: (m) => /\bapi\s*\??\.\s*visitor\b/.test(stripComments(m.code)) },
+  { since: "0.2.6", label: "ctx.api.visitor.fingerprint (empreinte de la personne qui visite)", test: (m) => /\bapi\s*\??\.\s*visitor\b/.test(stripComments(m.code)) },
   { since: "0.2.6", label: "la permission « privacy » (ctx.api.privacy.declarations)", test: (m, man) => (man.permissions ?? []).includes("privacy") || /\bapi\s*\??\.\s*privacy\b/.test(stripComments(m.code)) },
   { since: "0.2.6", label: "un script rattaché à la page (« scripts » dans le résultat de page())", test: (m) => /\bscripts\s*:\s*\[/.test(stripComments(m.code)) && typeof m.definition?.page === "function" },
   {
@@ -94,8 +94,8 @@ const requirements = [
   {
     id: "manifest.catalogue", level: "advice", group: "manifest",
     title: "La fiche du module est complète pour le catalogue",
-    what: "Le module a un nom et une description en français et en anglais, un auteur et une licence.",
-    why: "Le catalogue affiche cette fiche avant l'installation. Une description manquante ou dans une seule langue laisse les visiteurs du catalogue sans explication.",
+    what: "Le module a un nom et une description en français et en anglais, le nom de la personne qui l'a écrit et une licence.",
+    why: "Le catalogue affiche cette fiche avant l'installation. Une description manquante ou dans une seule langue laisse les personnes qui visitent du catalogue sans explication.",
     fix: "Ajoutez « description »: { « fr »: « … », « en »: « … » }, « author » et « license » (MIT, propriétaire…) dans module.json.",
     run(m) {
       const man = m.manifest;
@@ -104,7 +104,7 @@ const requirements = [
       for (const l of missingLangs(man.name)) out.push(`le nom n'a pas de version ${l === "fr" ? "française" : "anglaise"}`);
       if (man.description === undefined) out.push("il n'y a pas de description");
       else for (const l of missingLangs(man.description)) out.push(`la description n'a pas de version ${l === "fr" ? "française" : "anglaise"}`);
-      if (!man.author) out.push("l'auteur n'est pas indiqué (« author »)");
+      if (!man.author) out.push("la personne qui a écrit le module n'est pas indiquée (« author »)");
       if (!man.license) out.push("la licence n'est pas indiquée (« license »)");
       return out;
     },

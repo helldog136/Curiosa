@@ -4,7 +4,7 @@
 //   - menu mobile (ouvrir, Échap) et sous-menu ; bascule clair/sombre ; mouvement réduit ; aucune requête extérieure ; polices vraiment chargées ;
 //   - régression de basic (pixel pour pixel) ; captures facultatives (`shots`).
 // Une règle que le skin de base enfreint aussi (par exemple une cible de 28 px dans le menu large) n'est reprochée au skin que s'il fait PIRE : la même constatation
-// est alors donnée en conseil. Tout est mesuré sur la feuille ASSAINIE (celle que le site appliquerait), pas sur le fichier de l'auteur.
+// est alors donnée en conseil. Tout est mesuré sur la feuille ASSAINIE (celle que le site appliquerait), pas sur le fichier du skin tel qu'il a été écrit.
 import fs from "node:fs";
 import path from "node:path";
 import { kitIssue } from "../messages.mjs";

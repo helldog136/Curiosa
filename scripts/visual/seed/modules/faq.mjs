@@ -6,7 +6,7 @@ export default async function faq(h) {
   for (const [fr, en] of [["Général", "General"], ["Ateliers", "Workshops"], ["Pratique", "Practical"]]) await h.act("faq", "saveTheme", { name_fr: fr, name_en: en });
   const themes = await D.loadThemes(ctx);
   const Q = [
-    [0, "Qui êtes-vous ?", "Who are you?", "Un petit **collectif** de créateurs et créatrices.", "A small **collective** of makers."],
+    [0, "Qui êtes-vous ?", "Who are you?", "Un petit **collectif** de personnes qui créent.", "A small **collective** of makers."],
     [0, "Le site est-il gratuit ?", "Is the site free?", "Oui, tout le contenu est en accès libre.", "Yes, all content is free to access."],
     [0, "Comment vous contacter ?", "How can I contact you?", "Par le formulaire de contact ou par e-mail.", "Through the contact form or by e-mail."],
     [1, "Faut-il du matériel pour participer ?", "Do I need equipment?", "Non, tout est prêté sur place.\n\n- cutters\n- plaques\n- encre\n\nPensez seulement à des vêtements qui peuvent se salir.", "No, everything is lent on site."],

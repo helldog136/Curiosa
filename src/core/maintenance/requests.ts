@@ -30,13 +30,13 @@ export type Plan = {
   keepData?: boolean;
   /** Plusieurs modules (tout mettre à jour) : identifiant, version actuelle, version visée. */
   modules?: { id: string; from: string; to: string }[];
-  /** Installation : les modules qui viendront AVEC celui-ci (fournisseurs que le module exige), montrés à la propriétaire ; jamais installés en cachette. `to` = la version installée. */
+  /** Installation : les modules qui viendront AVEC celui-ci (fournisseurs que le module exige), montrés à la personne propriétaire ; jamais installés en cachette. `to` = la version installée. */
   adds?: { id: string; action: "install" | "setup" | "update"; name?: string }[];
   /** Installation : le nom lisible du module (il n'est pas encore installé : l'admin ne peut pas le retrouver autrement). */
   name?: string;
   /** Installation : clé choisie pour la première instance (sinon dérivée de l'identifiant du module). */
   instanceKey?: string;
-  /** Installation : les permissions que demande le module (pour que la propriétaire sache ce qu'elle accorde). */
+  /** Installation : les permissions que demande le module (pour que la personne propriétaire sache ce qu'elle accorde). */
   permissions?: string[];
   /** Skins (installer, utiliser, retirer) : l'identifiant du skin ; `name` est son nom lisible, `to` la version à installer, `from` le skin en place (utiliser) ou la version installée (retirer). */
   skin?: string;

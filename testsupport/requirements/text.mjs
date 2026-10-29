@@ -18,7 +18,7 @@ const SAYS_OPTIONAL = /facultatif|optionnel|\boptional\b/i;
 export const NAMES_EXISTING = /\b(?:saisissez|tapez|indiquez|écrivez|entrez)\s+(?:ici\s+)?(?:le|la|l['’])\s*(?:nom|identifiant|pseudo|chaîne|catégorie|page|agenda)\b|\b(?:type|enter|write)\s+(?:here\s+)?the\s+(?:exact\s+)?(?:name\s+of\b|[\w-]+\s+(?:\()?(?:name|login)\b|(?:channel|category|page|calendar)\b)/i;
 /** Clés de profils EXTERNES (un pseudo sur une autre plateforme n'existe pas sur le site) : jamais signalées par settings.textNamesExisting. */
 const EXTERNAL_KEYS = ["profile", "channelId"];
-/** Mots techniques interdits dans ce que lit une personne non technicienne (mode simple de l'administration). Réunit les listes des tests des modules. */
+/** Mots techniques interdits dans ce que lit une personne sans bagage technique (mode simple de l'administration). Réunit les listes des tests des modules. */
 export const JARGON = /\b(sujets?|m[ée]triques?|collecteurs?|collector|topics?|metrics?|api|json|sch[ée]mas?|endpoint|payload|jetons?|tokens?|oauth|scope|quota|http|mcp|ctx|prisma|overlay\.item|feed\.item)\b/i;
 /** Un texte sans ses adresses d'exemple (« https://monnom.bandcamp.com » n'est pas du jargon). */
 const noUrls = (t) => String(t).replace(/\bhttps?:\/\/\S+/gi, " ");
@@ -37,7 +37,7 @@ const requirements = [
     id: "i18n.manifest", level: "mandatory", group: "i18n",
     title: "Les textes de module.json existent en français et en anglais",
     what: "Le nom, la description, les libellés de sections, les libellés et aides de réglages (et leurs options) sont fournis en français ET en anglais.",
-    why: "Le site est multilingue : un texte absent dans la langue du visiteur ou de l'administrateur s'affiche vide ou dans la mauvaise langue.",
+    why: "Le site est multilingue : un texte absent dans la langue de la personne qui visite ou de la personne qui gère le site s'affiche vide ou dans la mauvaise langue.",
     fix: "Remplacez chaque texte seul par { « fr »: « … », « en »: « … » } dans module.json.",
     run(m) {
       if (!m.manifest) return { skip: "module.json illisible" };
@@ -62,7 +62,7 @@ const requirements = [
     id: "i18n.parity", level: "mandatory", group: "i18n",
     title: "Les fichiers de langue fr et en sont alignés",
     what: "Si le module a un dossier locales/, il contient fr.json ET en.json avec exactement les mêmes clés, les mêmes variables {x} dans chaque phrase, et aucune traduction vide. Un code qui appelle ctx.t() doit avoir ce dossier.",
-    why: "Une clé qui n'existe que dans une langue affiche la clé brute (« err_config ») au visiteur. Une variable oubliée donne des phrases à trous (« Bonjour  »).",
+    why: "Une clé qui n'existe que dans une langue affiche la clé brute (« err_config ») à la personne qui visite. Une variable oubliée donne des phrases à trous (« Bonjour  »).",
     fix: "Ajoutez la clé manquante dans l'autre fichier, avec les mêmes {variables}. Gardez les deux fichiers triés pareil pour les comparer à l'œil.",
     run(m) {
       const out = [...m.loadErrors.filter((e) => e.kind === "locale-json").map((e) => e.message), ...localeProblems(m.locales)];
@@ -111,7 +111,7 @@ const requirements = [
     id: "settings.sane", level: "mandatory", group: "settings",
     title: "Les réglages sont bien formés",
     what: "Chaque réglage a une clé unique, un libellé en français et en anglais ; une liste a des options et un défaut qui en fait partie ; un secret n'a jamais de valeur par défaut ; le défaut a le bon type (nombre pour un nombre, couleur #RRGGBB pour une couleur…).",
-    why: "Ce sont les champs que l'administrateur remplit. Un défaut hors liste ou d'un mauvais type donne un formulaire cassé ou un module qui démarre sur une valeur absurde ; un secret avec un défaut serait publié avec le code.",
+    why: "Ce sont les champs que la personne qui gère le site remplit. Un défaut hors liste ou d'un mauvais type donne un formulaire cassé ou un module qui démarre sur une valeur absurde ; un secret avec un défaut serait publié avec le code.",
     fix: "Corrigez le réglage cité dans module.json.",
     run(m) {
       if (!m.manifest) return { skip: "module.json illisible" };
@@ -131,7 +131,7 @@ const requirements = [
     id: "tabs.reasonable", level: "advice", group: "settings",
     title: "Les onglets ajoutés restent peu nombreux et bien nommés",
     what: `Si le module déclare « tabs » (cœur 0.2.2) : au plus ${MAX_ADDED_TABS} onglets ajoutés en plus des quatre onglets du cœur (Utiliser, Réglages, Sources, Général), et chaque nom d'onglet (ajouté ou renommé) est court (${TAB_NAME_MAX} caractères au plus) et existe en français ET en anglais.`,
-    why: "Sur un téléphone, la rangée d'onglets défile : au-delà de six ou sept onglets, ou avec des noms longs, on ne voit plus où l'on est et on cherche le bon onglet. Un nom dans une seule langue laisse la moitié des administrateurs devant un mot qu'ils ne lisent pas.",
+    why: "Sur un téléphone, la rangée d'onglets défile : au-delà de six ou sept onglets, ou avec des noms longs, on ne voit plus où l'on est et on cherche le bon onglet. Un nom dans une seule langue laisse la moitié des personnes qui gèrent le site devant un mot qu'elles ne lisent pas.",
     fix: "Regroupez les réglages proches dans un même onglet (« tab » d'un réglage), raccourcissez les noms (« Vidéo », « Ma liste », « Créneaux ») et donnez « label »: { « fr »: « … », « en »: « … » }.",
     run(m) {
       if (!m.manifest) return { skip: "module.json illisible" };
@@ -153,7 +153,7 @@ const requirements = [
     id: "settings.optional", level: "mandatory", group: "settings",
     title: "Un réglage « facultatif » le déclare",
     what: "Quand le libellé ou l'aide d'un réglage dit « facultatif », « optionnel » ou « optional », le réglage porte \"optional\": true.",
-    why: "Sans cela, le site compte le réglage vide comme « à remplir » et affiche l'extension « À configurer » alors que tout va bien : l'administrateur croit qu'il doit encore faire quelque chose.",
+    why: "Sans cela, le site compte le réglage vide comme « à remplir » et affiche l'extension « À configurer » alors que tout va bien : la personne qui gère le site croit qu'elle doit encore faire quelque chose.",
     fix: "Ajoutez \"optional\": true au réglage cité (et \"minCore\": \"0.1.22\" au module), ou retirez le mot « facultatif » du texte si le réglage est en réalité obligatoire.",
     run(m) {
       if (!m.manifest) return { skip: "module.json illisible" };
@@ -227,8 +227,8 @@ const requirements = [
     id: "wording.simple", level: "mandatory", group: "wording",
     title: "Pas de jargon dans ce que lit la personne",
     what: "Le nom, la description, les libellés de sections et les libellés, aides et options des réglages non avancés n'emploient aucun terme technique (sujet, métrique, API, JSON, jeton, OAuth, MCP…).",
-    why: "Ces textes sont ce que voit Emma, qui n'a aucun bagage technique. Un réglage doit dire « Adresse de votre salon Discord », pas « webhookUrl ». Les réglages techniques vont en mode avancé (\"advanced\": true).",
-    fix: "Réécrivez la phrase avec des mots de tous les jours, ou marquez le réglage \"advanced\": true s'il n'est destiné qu'aux techniciens.",
+    why: "Ces textes sont ce que voit une personne sans bagage technique. Un réglage doit dire « Adresse de votre salon Discord », pas « webhookUrl ». Les réglages techniques vont en mode avancé (\"advanced\": true).",
+    fix: "Réécrivez la phrase avec des mots de tous les jours, ou marquez le réglage \"advanced\": true s'il est purement technique.",
     run(m) {
       if (!m.manifest) return { skip: "module.json illisible" };
       const out = [];
@@ -240,7 +240,7 @@ const requirements = [
     id: "wording.locales", level: "advice", group: "wording",
     title: "Pas de jargon dans les phrases affichées par le module",
     what: "Les textes des fichiers de langue (messages, erreurs, titres) n'emploient pas de terme technique.",
-    why: "Ce sont les phrases que lisent les visiteurs et l'administrateur. Une erreur « JSON invalide » ne dit pas quoi faire ; « Ajoutez votre clé dans Réglages » si.",
+    why: "Ce sont les phrases que lisent les personnes qui visitent et celle qui gère le site. Une erreur « JSON invalide » ne dit pas quoi faire ; « Ajoutez votre clé dans Réglages » si.",
     fix: "Reformulez en disant ce qui se passe et ce qu'on peut faire, avec des mots simples.",
     run(m) {
       if (!Object.keys(m.locales).length) return { na: "pas de locales/" };
@@ -264,11 +264,11 @@ const requirements = [
     id: "readme.plain", level: "advice", group: "wording",
     title: "Le README est écrit en langage de tous les jours",
     what: "Le README n'emploie pas de termes techniques (API, JSON, endpoint…) hors des blocs de code.",
-    why: "Le README s'adresse d'abord à quelqu'un qui veut savoir si le module lui sert, pas à un développeur.",
+    why: "Le README s'adresse d'abord à quelqu'un qui veut savoir si le module lui sert, pas à une personne qui développe.",
     fix: "Réécrivez les passages cités. Les détails techniques peuvent rester dans une section « Pour les développeurs » à la fin.",
     run(m) {
       if (m.readme === null) return { skip: "pas de README.md" };
-      const body = m.readme.replace(/```[\s\S]*?```/g, "").replace(/`[^`]*`/g, "").split(/\n#{1,6}\s*(?:pour les développeurs|for developers)[\s\S]*$/i)[0];
+      const body = m.readme.replace(/```[\s\S]*?```/g, "").replace(/`[^`]*`/g, "").split(/\n#{1,6}\s*(?:pour les développeurs|côté technique|for developers)[\s\S]*$/i)[0];
       const found = [...new Set([...noUrls(body).matchAll(new RegExp(JARGON.source, "gi"))].map((x) => x[0].toLowerCase()))];
       return found.map((w) => `le README emploie le mot technique « ${w} »`);
     },

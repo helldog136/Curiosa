@@ -83,7 +83,7 @@ const requirements = [
     id: "skin.parts", level: "mandatory", group: "skin",
     title: "Les pièces déclarées sont dans le HTML, et celles du HTML sont déclarées",
     what: "Chaque pièce déclarée dans « skin.parts » est posée au moins une fois dans le HTML du module (data-skin-part=\"<id du module>.<pièce>\"), et chaque data-skin-part du module est une pièce déclarée de CE module (jamais le nom d'une pièce commune du cœur comme « card » ni la pièce d'un autre module). La valeur est écrite en entier, sans calcul.",
-    why: "Un skin vise une pièce par ce nom. Une pièce déclarée mais jamais posée ne peut pas être restylée ; une pièce posée sans être déclarée est invisible pour les auteurs de skins et pour le banc d'essai ; une pièce qui porte le nom d'une pièce du cœur ferait appliquer à tort le style de la carte du cœur à votre élément. Ajouter un attribut n'est pas un changement de contenu.",
+    why: "Un skin vise une pièce par ce nom. Une pièce déclarée mais jamais posée ne peut pas être restylée ; une pièce posée sans être déclarée est invisible pour les personnes qui écrivent des skins et pour le banc d'essai ; une pièce qui porte le nom d'une pièce du cœur ferait appliquer à tort le style de la carte du cœur à votre élément. Ajouter un attribut n'est pas un changement de contenu.",
     fix: "Ajoutez data-skin-part=\"mon-module.carte\" sur l'élément concerné (en plus de sa classe), ou retirez la pièce de module.json. Écrivez le nom en entier (pas de `${…}`).",
     run(m) {
       const { ids, dynamic } = emittedParts(m);
@@ -134,7 +134,7 @@ const requirements = [
     id: "skin.demo", level: "mandatory", group: "skin",
     title: "L'aperçu du banc d'essai est un petit fragment HTML sans script",
     what: "Si « skin.demo » nomme un fichier, il existe à la racine du module, pèse 20 Ko au plus, ne contient ni script, ni gestionnaire d'évènement (onclick…), ni feuille de style, ni attribut style, ni adresse externe, ni cadre, et ne pose que les pièces déclarées par le module.",
-    why: "Le banc d'essai affiche ce fragment pour qu'un auteur de skin voie la pièce sans installer le module. Il suit les mêmes règles qu'un bloc « html » : un fragment qui exécute du code ou charge un tiers serait une faille ; un fragment qui définit son propre style ne montrerait pas l'effet du skin.",
+    why: "Le banc d'essai affiche ce fragment pour qu'une personne qui écrit un skin voie la pièce sans installer le module. Il suit les mêmes règles qu'un bloc « html » : un fragment qui exécute du code ou charge un tiers serait une faille ; un fragment qui définit son propre style ne montrerait pas l'effet du skin.",
     fix: "Réduisez le fichier à du HTML simple (div, p, ul, li, a, img sans adresse externe…) avec les data-skin-part du module, des textes d'exemple neutres, et aucune mise en forme intégrée.",
     run(m) {
       const demo = hasSkin(m) ? m.manifest.skin.demo : undefined;
@@ -160,7 +160,7 @@ const requirements = [
     id: "skin.tokensUsed", level: "advice", group: "skin",
     title: "Les jetons déclarés sont utilisés par le CSS du module",
     what: "Chaque jeton de « skin.parts[].tokens » est lu au moins une fois par le CSS du module (var(--sk-m-…)).",
-    why: "Un jeton que rien ne lit promet aux auteurs de skins un réglage qui ne fait rien.",
+    why: "Un jeton que rien ne lit promet aux personnes qui écrivent des skins un réglage qui ne fait rien.",
     fix: "Utilisez le jeton dans le CSS (avec sa chaîne de repli) ou retirez-le de module.json.",
     run(m) {
       if (!hasSkin(m)) return { na: "le module ne déclare pas de pièces de skin" };

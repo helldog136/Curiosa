@@ -102,7 +102,7 @@ test("couleurs, clair et sombre : choix en deux grandes cases, onglets Clair / S
   assert.doesNotMatch(html, /name="background"/, "pas de jeu « un seul mode » en même temps");
   assert.equal(count(html, /data-testid="color-mock"/g), 2, "l'aperçu des deux modes");
   assert.match(html, /Aperçu des deux modes/);
-  assert.match(html, /data-testid="switch-note" data-switch="on"[^>]*>Vos visiteurs verront un bouton Clair \/ Sombre\./);
+  assert.match(html, /data-testid="switch-note" data-switch="on"[^>]*>Votre public verra un bouton Clair \/ Sombre\./);
   // chaque champ de couleur a son étiquette
   assert.ok(count(html, /<label for="light_background-color"/g) === 1 && count(html, /<label for="dark_accent-color"/g) === 1);
   // cibles tactiles
@@ -245,7 +245,7 @@ test("page, avec un skin à deux modes choisi : skin actuel, « Annuler », Reve
   assert.match(html, /role="tablist"/);
   assert.match(html, /data-testid="reset-card"[\s\S]*Remet les couleurs, la police, le halo, le fond et l&#x27;en-tête de « Duo de test »/);
   assert.match(html, /data-testid="skin-options"[\s\S]*Densité/);
-  assert.match(html, /data-testid="visitor-switch"[\s\S]*data-switch="on"[^>]*>Vos visiteurs peuvent choisir Clair, Sombre ou Automatique/);
+  assert.match(html, /data-testid="visitor-switch"[\s\S]*data-switch="on"[^>]*>Votre public peut choisir Clair, Sombre ou Automatique/);
   assert.match(html, /data-testid="manage-skins"[\s\S]*data-manage="duo"/);
   assert.match(html, /data-catalogue-skin="duo"[\s\S]*Installé/, "le catalogue dit ce qui est installé");
   assert.match(html, /<option value="skin"[^>]*>Celui du skin<\/option>/, "halo et fond : « celui du skin »");

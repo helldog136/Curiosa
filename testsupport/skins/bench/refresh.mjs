@@ -137,7 +137,7 @@ async function fragmentsFor(L) {
   const ap = (modeSwitch, dark = true) => ({ dark, modeSwitch });
   const logos = { wide: img(1), square: img(2), wideDark: img(3), squareDark: img(4), favicon: null, share: null };
 
-  // En-tête : quatre mises en page, avec et sans la bascule clair/sombre du visiteur ; un en-tête avec logos à deux variantes.
+  // En-tête : quatre mises en page, avec et sans la bascule clair/sombre de la personne qui visite ; un en-tête avec logos à deux variantes.
   for (const layout of ["classic", "twoRows", "centered", "minimal"]) {
     for (const sw of [false, true]) {
       const cfg = CFG(L, { header: { ...CFG(L).header, layout } });

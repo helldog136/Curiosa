@@ -13,7 +13,7 @@ if (!/^\d+\.\d+\.\d+(-rc\.\d+)?$/.test(version)) { console.error("Usage : node s
 const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
 if (pkg.version !== version) { console.error(`package.json est en ${pkg.version}, pas en ${version} : corrigez la version avant d'étiqueter.`); process.exit(1); }
 const repo = process.env.GITHUB_REPOSITORY ?? process.env.CURIOSA_RELEASE_REPO ?? "";
-if (!REPO_RE.test(repo)) { console.error("Dépôt inconnu : GITHUB_REPOSITORY (ou CURIOSA_RELEASE_REPO) doit valoir « propriétaire/nom »."); process.exit(1); }
+if (!REPO_RE.test(repo)) { console.error("Dépôt inconnu : GITHUB_REPOSITORY (ou CURIOSA_RELEASE_REPO) doit valoir « compte/nom »."); process.exit(1); }
 
 /** Tout ce que le site lit à l'exécution ; rien d'autre. Les données de l'exploitant n'y sont jamais, ni AUCUN module : Curiosa s'installe seul, ses modules viennent du catalogue. */
 const PATHS = [

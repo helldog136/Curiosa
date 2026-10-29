@@ -1,4 +1,4 @@
-// Test d'auteur : la suite de conformité du cœur, puis les tests propres à CE module.
+// Test de la personne qui écrit le module : la suite de conformité du cœur, puis les tests propres à CE module.
 //
 // Lancer (depuis le dossier du cœur, ou avec CURIOSA_DIR=/chemin/vers/le/cœur) :
 //   node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test testsupport/template/my-module.test.mjs

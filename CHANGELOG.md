@@ -2,10 +2,23 @@
 
 Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a changé depuis la version précédente publiée** ; ce texte est aussi celui de la release sur GitHub et celui affiché dans l'admin, page *Mises à jour*.
 
-**Comment c'est écrit** : pour quelqu'un qui n'est pas technicien. Un point = une à trois phrases, dites ce que ça change pour vous, pas comment c'est fait. Les détails techniques vont dans la rubrique « Pour les développeurs ». Un test vérifie ces règles.
+**Comment c'est écrit** : pour une personne sans bagage technique. Un point = une à trois phrases, dites ce que ça change pour vous, pas comment c'est fait. Les détails techniques vont dans la rubrique « Pour les développeurs ». Un test vérifie ces règles.
 
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
+
+## Prochaine version (non publiée)
+
+### Améliorations
+
+- **Des textes qui ne devinent plus qui vous êtes.** Les écrans d'administration, le site public, les e-mails, les messages d'installation et les guides parlent de « la personne propriétaire », de « votre public » ou de « l'équipe », sans supposer le genre de la personne qui gère le site ni celui de son public.
+- **Le menu « Utilisateurs » s'appelle « Équipe » en français.** Les adresses et les rôles ne changent pas ; seul le nom affiché est différent.
+- Rien d'autre ne change pour votre site.
+
+### Pour les développeurs
+
+- Nouveau test `tests/core/neutral-writing.test.mjs` (termes genrés connus, liste blanche justifiée) et audit `docs/ideas/ecriture-neutre-audit.md`. Les messages du kit de test sont reformulés (`docs/TESTSUPPORT.md` régénéré) ; le README d'un module peut aussi nommer sa rubrique technique « Côté technique ».
+- Les noms de rôles (`owner`, Propriétaire, Administrateur, Éditeur) et les identifiants ne changent pas ; leur éventuel renommage est à décider séparément.
 
 ## 0.3.1
 

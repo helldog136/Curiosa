@@ -111,7 +111,7 @@ Le journal complet est dans *Détails techniques* de la page *Mises à jour* ; i
 
 ## Publier une release (mainteneurs)
 
-**Avant chaque publication (stable ou release candidate), rédigez dans `CHANGELOG.md` ce qui change depuis la version précédente publiée** : une section « ## X.Y.Z » (pour une RC, « ## X.Y.Z-rc.N ») dont le contenu est pour les utilisateurs, pas pour les développeurs. Ce texte devient celui de la release GitHub et celui de la page *Mises à jour* de l'admin ; un test échoue si la version de `package.json` n'a pas sa section. Entre deux publications, les changements s'accumulent sous « Prochaine version (non publiée) ». **Style** : écrivez pour quelqu'un qui n'est pas technicien (Emma, pas Hugo). Un point = une à trois phrases, qui disent ce que ça change pour l'utilisateur et non comment c'est fait ; pas de code ni de mots techniques en dehors de la rubrique « Pour les développeurs ». Un test (`tests/core/changelog.test.mjs`) vérifie la longueur, le nombre de phrases et le vocabulaire.
+**Avant chaque publication (stable ou release candidate), rédigez dans `CHANGELOG.md` ce qui change depuis la version précédente publiée** : une section « ## X.Y.Z » (pour une RC, « ## X.Y.Z-rc.N ») dont le contenu s'adresse aux personnes qui gèrent un site, pas à celles qui développent. Ce texte devient celui de la release GitHub et celui de la page *Mises à jour* de l'admin ; un test échoue si la version de `package.json` n'a pas sa section. Entre deux publications, les changements s'accumulent sous « Prochaine version (non publiée) ». **Style** : écrivez pour une personne sans bagage technique. Un point = une à trois phrases, qui disent ce que ça change pour la personne qui gère le site et non comment c'est fait ; pas de code ni de mots techniques en dehors de la rubrique « Pour les développeurs ». Un test (`tests/core/changelog.test.mjs`) vérifie la longueur, le nombre de phrases et le vocabulaire.
 
 Le cycle suit deux branches :
 
@@ -134,7 +134,7 @@ si le dépôt est injoignable, le site tient avec la dernière liste reçue (gar
 | Variable | Effet |
 |---|---|
 | `CURIOSA_CATALOGUE_REPO` | Dépôt git qui publie l'index et la liste des suggestions (défaut : `https://github.com/helldog136/curiosa-extras`, le seul dépôt que le cœur connaît). |
-| `CURIOSA_TRUSTED_PROXIES` | Nombre de reverse proxys devant le site (1 par défaut) : sert à lire la vraie adresse du visiteur pour les blocages de connexion. Voir [SECURITE.md](SECURITE.md). |
+| `CURIOSA_TRUSTED_PROXIES` | Nombre de reverse proxys devant le site (1 par défaut) : sert à lire la vraie adresse de la personne qui visite pour les blocages de connexion. Voir [SECURITE.md](SECURITE.md). |
 | `CURIOSA_CATALOGUE_REF` | Branche ou étiquette à lire (défaut : la branche par défaut). |
 | `MODULES_INDEX_URL` | Index JSON `https://` **supplémentaire** (le vôtre, celui d'une communauté) : il ne peut qu'ajouter des modules. |
 | `CURIOSA_SKINS_REPO` | Dépôt git qui publie le catalogue des **skins** (`catalogue/index.json`) ; défaut : le dépôt officiel de skins. Voir [SKINS.md](SKINS.md) §21. |
@@ -157,12 +157,12 @@ secret de session) et `.env`.
 
 ## Sécurité des dépendances
 
-`npm run audit` interroge les failles connues (CVE) des dépendances de production. Il est lancé **côté projet**, jamais chez l'utilisateur : en CI à chaque push, chaque PR, chaque lundi (`.github/workflows/security.yml`) et avant chaque release (`release.yml`). Une faille de gravité haute fait échouer la CI, donc empêche de publier une release ; une release publiée est déjà saine, et la mise à jour proposée dans l'admin n'a rien à vérifier. Les exceptions justifiées sont dans `scripts/audit.mjs`.
+`npm run audit` interroge les failles connues (CVE) des dépendances de production. Il est lancé **côté projet**, jamais sur votre site : en CI à chaque push, chaque PR, chaque lundi (`.github/workflows/security.yml`) et avant chaque release (`release.yml`). Une faille de gravité haute fait échouer la CI, donc empêche de publier une release ; une release publiée est déjà saine, et la mise à jour proposée dans l'admin n'a rien à vérifier. Les exceptions justifiées sont dans `scripts/audit.mjs`.
 
 ## Statistiques de visite et nouveautés
 
-- **Statistiques anonymes** (Réglages → Apparence… « Compter les visites ») : des compteurs par jour affichés sur le tableau de bord (visiteurs, pages les plus lues, provenances). Jamais d'adresse IP, de cookie ni d'identifiant conservé : un visiteur est reconnu seulement dans la journée par une empreinte à sel quotidien détruite le lendemain. Les robots, les visiteurs qui refusent le suivi (Do Not Track, Global Privacy Control) et l'équipe connectée à l'admin ne sont pas comptés. Aucun service externe.
-- **Pastilles de nouveautés** : avec l'accord du visiteur (bandeau de cookies à activer dans les réglages), son navigateur garde la date de sa dernière visite (cookies `curiosa_seen` et `curiosa_since`, sans donnée personnelle) ; le menu signale ce qui est nouveau depuis. Voir `news` dans [MODULES.md](MODULES.md).
+- **Statistiques anonymes** (Réglages → Apparence… « Compter les visites ») : des compteurs par jour affichés sur le tableau de bord (visites, pages les plus lues, provenances). Jamais d'adresse IP, de cookie ni d'identifiant conservé : une personne qui visite est reconnue seulement dans la journée par une empreinte à sel quotidien détruite le lendemain. Les robots, les personnes qui visitent qui refusent le suivi (Do Not Track, Global Privacy Control) et l'équipe connectée à l'admin ne sont pas comptés. Aucun service externe.
+- **Pastilles de nouveautés** : avec l'accord de la personne qui visite (bandeau de cookies à activer dans les réglages), son navigateur garde la date de sa dernière visite (cookies `curiosa_seen` et `curiosa_since`, sans donnée personnelle) ; le menu signale ce qui est nouveau depuis. Voir `news` dans [MODULES.md](MODULES.md).
 
 ## Logos
 
