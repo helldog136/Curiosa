@@ -87,7 +87,7 @@ test("rapport : le texte n'affiche le conseil qu'avec --advice, la section de co
   assert.match(toText({ ...report, advice: true }, "fr"), /ne règle pas \d+ pièce\(s\)/);
   const text = toText({ ...report, coverage: true }, "fr");
   assert.match(text, /Couverture \(conseil/);
-  assert.match(text, /Pièces réglées : \d+ \/ \d+\n\s+laissé\(es\) au skin de base : /);
+  assert.match(text, /Pièces réglées : \d+ \/ \d+\n\s+ce qui reste au skin de base : /);
   assert.match(toText({ ...report, coverage: true }, "en"), /Parts styled: \d+ \/ \d+/);
   const json = JSON.parse(toJson(report));
   assert.equal(json.skins[0].coverage.parts.total, PARTS.length);
@@ -115,4 +115,27 @@ test("le message du conseil est documenté dans le guide et en parité FR/EN", (
   const e = kitCatalog()["kit-coverage"];
   assert.equal(e.severity, "advice");
   assert.ok(fs.readFileSync("docs/CREER-UN-SKIN.md", "utf8").includes("`kit-coverage`"));
+});
+
+// ── Garde-fou de la règle « tout élément public nouveau reste habillable » (docs/SKINS.md, « Un nouvel élément est-il habillable ? »)
+test("chaque région et pièce de l'allowlist est montrée par le banc d'essai ET comptée par le rapport de couverture (une nouveauté oubliée fait échouer ce test)", async () => {
+  const { prepareSite } = await import("../../testsupport/skins/bench/site.mjs");
+  const { coverage } = await import("../../testsupport/skins/bench/board.mjs");
+  const { readBaseline, BASELINE_FILE, newNames } = await import("../../testsupport/skins/official.mjs");
+  const site = await prepareSite(null);
+  const regle = "Règle : un élément public nouveau déclare sa pièce (allowlist), est montré par le banc d'essai (testsupport/skins/bench/refresh.mjs puis npm run skin:bench:refresh) et testé dans skins-dom.test.mjs, dans la même PR (docs/SKINS.md « Un nouvel élément est-il habillable ? »).";
+  for (const L of ["fr", "en"]) {
+    const cov = await coverage(site, L);
+    assert.deepEqual(cov.missing, [], `pièces ou régions absentes du banc d'essai (${L}) : ${cov.missing.join(", ")}. ${regle}`);
+  }
+  // le rapport de couverture d'un skin vide compte exactement les mêmes éléments : rien n'échappe au conseil de couverture
+  const empty = await skinCoverage({ css: "", tokens: {} });
+  assert.deepEqual(empty.regions.missing, [...REGIONS]);
+  assert.deepEqual(empty.parts.missing, [...PARTS]);
+  assert.equal(empty.regions.total + empty.parts.total, REGIONS.length + PARTS.length);
+  // les nouveautés (par rapport à la dernière version publiée) sont des éléments de l'allowlist : la liste de référence ne contient rien d'inconnu
+  const base = readBaseline(BASELINE_FILE);
+  for (const n of [...base.regions, ...base.parts]) assert.ok([...REGIONS, ...PARTS].includes(n), `${n} est dans ${BASELINE_FILE} mais plus dans l'allowlist : retirer une pièce publiée est un changement cassant`);
+  const fresh = newNames({ regions: [...REGIONS], parts: [...PARTS] }, base);
+  assert.ok(Array.isArray(fresh.parts) && Array.isArray(fresh.regions));
 });

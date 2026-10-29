@@ -119,6 +119,13 @@ Le cycle suit deux branches :
 - **`master`** (ou `main`) : le stable. **Fusionner `dev` dans `master` publie la release** `vX.Y.Z`, où `X.Y.Z` est la version de `package.json` (à monter avant de fusionner,
   sans suffixe `-rc`). Si cette version est déjà publiée, la CI ne fait rien.
 
+**Liste de publication du cœur : les skins officiels (obligatoire dès qu'un élément public a été ajouté depuis la dernière version, [SKINS.md §26](SKINS.md)).**
+
+1. `npm run skin:official` (réseau GitHub ; sous `flock` si une autre commande lourde tourne). Tous les skins doivent être valides (code 0).
+2. Pour chaque skin qui affiche « Nouveautés non habillées » : préparez dans le dépôt `curiosa-skins` la règle qui habille la pièce (version corrective ou mineure du skin, `requires.core` = la version à publier), regardez les captures (`npm run skin:bench -- <skin> --shots <dossier>`) et contrôlez avec `npm run skin:official -- --core-version <version à publier>`. Il n'y a pas de preuve 0 pixel : le rendu change volontairement.
+3. Dans la demande de fusion qui monte la version : `npm run skin:official -- --update-baseline` (réécrit `docs/skins-parts-baseline.json` avec les pièces publiées), `CHANGELOG.md` à jour.
+4. Publiez le cœur, puis fusionnez les demandes du dépôt `curiosa-skins` (catalogue mis à jour : `version`, `ref` = `<id>/vX.Y.Z`, `requires.core` ; le workflow `tag-skins` pose l'étiquette). Vérifiez avec `npm run skin:official -- --since v<version précédente>` : aucune nouveauté non habillée.
+
 Avant la toute première release : `npm run migrations:freeze` (déjà fait pour `v0.1.0`). Le workflow [`release.yml`](../.github/workflows/release.yml) lance l'audit des failles, les types, les tests,
 compile, puis publie l'archive et son empreinte sur la release GitHub.
 

@@ -136,7 +136,7 @@ Le niveau navigateur contrôle en plus le contraste **réellement rendu** : pour
 ## 8. Les tests : `skin:check`
 
 ```bash
-npm run skin:check -- <dossier> [--visual] [--shots <dossier>] [--modules <dossier>] [--lang fr|en] [--json] [--strict] [--advice] [--core-version X.Y.Z] [--neutrality <fichier>] [--lock <fichier>]
+npm run skin:check -- <dossier> [--visual] [--shots <dossier>] [--modules <dossier>] [--lang fr|en] [--json] [--strict] [--advice] [--coverage] [--core-version X.Y.Z] [--neutrality <fichier>] [--lock <fichier>]
 ```
 
 `<dossier>` : un skin (il contient `skin.json`) ou un dépôt de skins (`skins/<id>/skin.json` : tous sont contrôlés). Code de sortie : **0** tout va bien · **1** au moins un skin refusé (ou un avertissement avec `--strict`) · **2** mauvais usage. `--json` : le même rapport pour une machine.
@@ -153,6 +153,10 @@ npm run skin:check -- <dossier> [--visual] [--shots <dossier>] [--modules <dossi
 | **Lisibilité** | les 12 paires WCAG AA par mode ; AAA en conseil ; **dans le navigateur** : contraste rendu |
 | **Neutralité** | aucun nom de site, d'association ou de ville dans les textes (liste locale : `--neutrality`, variable `NEUTRALITY_TERMS` ou `.neutrality-terms`) |
 | **Navigateur** (`--visual`) | voir ci-dessous |
+
+### La couverture : ce que votre skin ne règle pas (conseil)
+
+`skin:check` ajoute un **conseil** « pièces et régions que ce skin ne cible pas » (`kit-coverage`) : la liste des éléments du site que votre feuille ne vise pas. Ce n'est **jamais une erreur** et `--strict` n'échoue pas à cause de lui : un skin peut laisser le skin de base habiller une pièce, et rien ne casse (repli valeur par valeur). Il sert à repérer une pièce qui pourrait jurer avec votre thème. `--coverage` donne la liste entière (régions, pièces, et jetons que vous ne fixez pas). Une pièce est comptée « ciblée » quand `skin.css` a un sélecteur qui la vise ; un skin qui ne joue que sur les jetons la voit comptée « non ciblée ».
 
 ### Le niveau navigateur (`--visual`)
 
@@ -265,9 +269,13 @@ Chaque problème porte un code stable (entre crochets dans le rapport), dans les
 
    `ref` est une étiquette **épinglée et relue** (jamais une branche) : une nouvelle version demande une nouvelle relecture. Neutralité exigée (aucun nom de site réel dans le skin) : lancez le kit avec la liste `--neutrality`.
 
+### Quand Curiosa ajoute un élément
+
+Chaque nouvelle version de Curiosa peut ajouter des pièces ou des régions (jamais en retirer : ce serait un changement cassant). Pour les **skins officiels**, l'équipe de Curiosa lance `npm run skin:official` avant de publier le cœur et ajoute la règle qui manque (version corrective ou mineure du skin, `requires.core` à jour, étiquette `<id>/vX.Y.Z`). Pour **votre** skin, relancez `skin:check --coverage` après chaque mise à jour du cœur : le conseil liste ce qui est nouveau pour lui. Un cœur plus ancien refuse un skin qui vise une pièce qu'il ne connaît pas : mettez `requires.core` à la première version qui l'apporte. Voir [SKINS.md §26](SKINS.md).
+
 ## 10. Les pièces des modules
 
-Un module peut déclarer ses propres **pièces stylables** et leurs jetons (clé `skin` de son `module.json`, [SKINS.md §8](SKINS.md)). Pour les voir et les contrôler : `--modules <dossier du dépôt de modules>` sur `skin:check` et `skin:bench`. La planche montre alors chaque pièce (avec l'exemple `demo` du module s'il existe, sinon un gabarit selon son `kind`), et le kit vérifie que vos jetons `modules.<id>` existent bien. Un jeton de module absent est **ignoré sans erreur** : un skin écrit aujourd'hui reste valable avec les modules de demain.
+Un module peut déclarer ses propres **pièces stylables** et leurs jetons (clé `skin` de son `module.json`, [SKINS.md §8](SKINS.md)). Un module qui ajoute des pièces suit la même règle que le cœur (« tout élément nouveau reste habillable », [SKINS.md §26](SKINS.md)) : pièces déclarées, jetons avec valeur de repli, exemple `demo` pour le banc d'essai. Pour les voir et les contrôler : `--modules <dossier du dépôt de modules>` sur `skin:check` et `skin:bench`. La planche montre alors chaque pièce (avec l'exemple `demo` du module s'il existe, sinon un gabarit selon son `kind`), et le kit vérifie que vos jetons `modules.<id>` existent bien. Un jeton de module absent est **ignoré sans erreur** : un skin écrit aujourd'hui reste valable avec les modules de demain.
 
 ## 11. Pour une IA qui crée un skin pour quelqu'un
 
@@ -291,6 +299,7 @@ Vous êtes un assistant qui écrit un skin pour une personne qui n'est pas techn
 ## Votre liste de contrôle avant chaque étiquette
 
 - [ ] `npm run skin:check -- <dépôt> --visual --strict` : ✅ partout, aucun avertissement.
+- [ ] `npm run skin:check -- <dépôt> --coverage` : la liste des pièces non ciblées est faite exprès (le skin de base les habille) ou complétée par des règles.
 - [ ] Les captures regardées (planches, mobile compris), en clair **et** en sombre si le skin a les deux.
 - [ ] `version` de `skin.json` = l'étiquette ; `README.md` à jour (polices, licences, comment tester).
 - [ ] Chaque police et chaque image : licence, fichier de licence, nom de la personne qui l'a créée et source dans `assets`.
@@ -298,6 +307,6 @@ Vous êtes un assistant qui écrit un skin pour une personne qui n'est pas techn
 
 ## English summary
 
-A Curiosa skin is a folder of data in your own git repository: `skin.json` (who it is, FR + EN texts, license, modes, assets, previews), `tokens.json` (colors, fonts, radii, widths…) and `skin.css` (layout and shapes, targeting only the stable `data-skin-region` / `data-skin-part` names). No code runs. A skin only defines **appearance**: it may change the layout of the same elements radically, but it can never add, remove, rename or hide an element that carries content or an action, inject text, or load anything from a third party. Fonts and images are embedded in the folder with their license. Start from `docs/skin-starter/`; preview with `npm run skin:bench -- <skin>` (a local page showing every region and part, light and dark, all widths, built from the real core components); check with `npm run skin:check -- <repo> --visual --strict` (manifest, resources, tokens, style sheet, founding principle, readability AA, neutrality, and a real Chromium: nothing hidden, covered or added versus the basic skin, tab order vs visual order, 24/44 px targets, text size and line spacing, visible focus, rendered contrast, no horizontal scroll, mobile menu, light/dark switch, reduced motion, no external request, fonts really loaded, basic unchanged to the pixel). Exit code 0 ok, 1 refused, 2 misuse; `--json` for machines. Publish with a git tag `vX.Y.Z`; users paste `https://github.com/<you>/<repo>#vX.Y.Z:skins/<id>` in Admin → Appearance → Add from an address (explicit confirmation). Registration in the official catalogue (`catalogue/index.json` of the skins repository) is optional and reviewed by the owner. An AI creating a skin for someone must start from the starter, never bypass a check, loop on the JSON report until `ok` with no warning, show screenshots, and publish nothing without the person's consent.
+A Curiosa skin is a folder of data in your own git repository: `skin.json` (who it is, FR + EN texts, license, modes, assets, previews), `tokens.json` (colors, fonts, radii, widths…) and `skin.css` (layout and shapes, targeting only the stable `data-skin-region` / `data-skin-part` names). No code runs. A skin only defines **appearance**: it may change the layout of the same elements radically, but it can never add, remove, rename or hide an element that carries content or an action, inject text, or load anything from a third party. Fonts and images are embedded in the folder with their license. Start from `docs/skin-starter/`; preview with `npm run skin:bench -- <skin>` (a local page showing every region and part, light and dark, all widths, built from the real core components); check with `npm run skin:check -- <repo> --visual --strict` (manifest, resources, tokens, style sheet, founding principle, readability AA, neutrality, and a real Chromium: nothing hidden, covered or added versus the basic skin, tab order vs visual order, 24/44 px targets, text size and line spacing, visible focus, rendered contrast, no horizontal scroll, mobile menu, light/dark switch, reduced motion, no external request, fonts really loaded, basic unchanged to the pixel). Exit code 0 ok, 1 refused, 2 misuse; `--json` for machines. `skin:check` also gives a coverage *advice* (parts and regions your sheet does not target; the basic skin dresses them; never an error, not even with `--strict`; `--coverage` lists them all). Rule for the core: every new public element stays dressable by the official skins (`npm run skin:official`, SKINS.md §26). Publish with a git tag `vX.Y.Z`; users paste `https://github.com/<you>/<repo>#vX.Y.Z:skins/<id>` in Admin → Appearance → Add from an address (explicit confirmation). Registration in the official catalogue (`catalogue/index.json` of the skins repository) is optional and reviewed by the owner. An AI creating a skin for someone must start from the starter, never bypass a check, loop on the JSON report until `ok` with no warning, show screenshots, and publish nothing without the person's consent.
 
 Good to know ([SKINS.md §25](SKINS.md)): `div`, `span`, `section`, `article` and `[data-marker]` can only be targeted **under** `[data-skin-part="module-html"]`; `--sk-card-pad` sets the padding of cards and `[data-skin-part="card-body"]` is the text area of image cards; `"--sk-gradient": "flat"` turns the second-accent gradient into the plain main color; a selector may be 600 characters long (factor with `:is()`); `PROGRESS.md`, `NOTES.md`, `TODO.md`, `CHANGELOG.md` and `CONTRIBUTING.md` may stay at the skin's root (never read, never installed); in a repository with several skins, tag releases as `<id>/v1.0.0` and put the tag (never a commit hash) in the catalogue `ref`.

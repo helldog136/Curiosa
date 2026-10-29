@@ -40,7 +40,7 @@ export function toJson(report) {
 /** La couverture en entier (option --coverage) : ce que le skin règle et ce qu'il laisse au skin de base. */
 export function coverageLines(c, lang = "fr") {
   const T = (fr, en) => (lang === "fr" ? fr : en);
-  const row = (fr, en, g, targeted) => `   · ${T(`${fr} :`, `${en}:`)} ${g[targeted].length} / ${g.total}${g.missing.length ? `\n       ${T("laissé(es) au skin de base :", "left to the basic skin:")} ${g.missing.join(", ")}` : ""}`;
+  const row = (fr, en, g, targeted) => `   · ${T(`${fr} :`, `${en}:`)} ${g[targeted].length} / ${g.total}${g.missing.length ? `\n       ${T("ce qui reste au skin de base :", "left to the basic skin:")} ${g.missing.join(", ")}` : ""}`;
   return [
     `   ${T("Couverture (conseil : un skin peut laisser le skin de base habiller un élément)", "Coverage (advice: a skin may let the basic skin dress an element)")}`,
     row("Régions réglées", "Regions styled", c.regions, "targeted"),
