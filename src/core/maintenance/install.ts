@@ -19,9 +19,9 @@ import { redactSecrets } from "./redact";
 /**
  * INSTALLER UN MODULE DU CATALOGUE à la demande d'une IA (niveau 3). Deux temps, comme les autres actions à risque :
  *
- *  - `prepareInstall` (lecture seule, ne change rien) : vérifie tout AVANT de déranger la propriétaire et fige le PLAN dans la demande : quel module, quelle version,
- *    quels fournisseurs viendront avec lui (jamais installés en cachette : ils sont dans la demande, que la propriétaire lit), quelles permissions il demande ;
- *  - `executeInstall` (après l'accord de la propriétaire) : revérifie que le plan est inchangé, installe PAR LA MÊME FONCTION que l'admin (`installFromCatalogue` :
+ *  - `prepareInstall` (lecture seule, ne change rien) : vérifie tout AVANT de déranger la personne propriétaire et fige le PLAN dans la demande : quel module, quelle version,
+ *    quels fournisseurs viendront avec lui (jamais installés en cachette : ils sont dans la demande, que la personne propriétaire lit), quelles permissions il demande ;
+ *  - `executeInstall` (après l'accord de la personne propriétaire) : revérifie que le plan est inchangé, installe PAR LA MÊME FONCTION que l'admin (`installFromCatalogue` :
  *    dépôt reconnu, étiquette épinglée, identifiant du module relu, cœur minimal, fournisseurs avec annulation en bloc au moindre échec), puis crée la première
  *    instance (réglages par défaut, ou données retrouvées d'une désinstallation précédente).
  *

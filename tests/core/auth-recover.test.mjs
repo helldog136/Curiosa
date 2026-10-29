@@ -19,7 +19,7 @@ const owner = () => db.prisma.user.create({ data: { email: "o@example.org", name
 const editor = () => db.prisma.user.create({ data: { email: "e@example.org", name: "E", role: "editor", passwordHash: "ancien" } });
 async function lock(ip, email) { for (let i = 0; i < 5; i++) await L.recordFailure(ip, email); }
 
-test("secours SSH : « status » montre ce qui est bloqué, « unlock » lève tout, ou une adresse, ou l'e-mail du propriétaire", async () => {
+test("secours SSH : « status » montre ce qui est bloqué, « unlock » lève tout, ou une adresse, ou l'e-mail d'une personne propriétaire", async () => {
   await owner(); await lock("1.2.3.4", "o@example.org");
   assert.match((await run()).text, /ip:1\.2\.3\.4[\s\S]*email:o@example\.org[\s\S]*Propriétaire\(s\) : o@example\.org/);
   await run("unlock", "1.2.3.4");
@@ -38,7 +38,7 @@ test("secours SSH : « status » montre ce qui est bloqué, « unlock » lève t
 test("secours SSH : réservé au propriétaire — jamais le compte d'un autre, jamais un compte inexistant", async () => {
   await owner(); const e = await editor(); await lock("1.2.3.4", "e@example.org");
   const r = await run("unlock", "e@example.org");
-  assert.equal(r.code, 1); assert.match(r.text, /pas le propriétaire/);
+  assert.equal(r.code, 1); assert.match(r.text, /pas une personne propriétaire/);
   assert.ok(await L.isEmailLocked("e@example.org"), "l'éditeur reste bloqué : c'est au propriétaire de le débloquer depuis l'admin");
   const p = await run("reset-password", "e@example.org");
   assert.equal(p.code, 1);

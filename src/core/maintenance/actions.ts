@@ -249,7 +249,7 @@ async function execute(action: Level3Action, plan: Plan, actorLabel: string): Pr
 
   if (isSkinAction(action)) return executeSkin(action, plan, actorLabel);
   if (action === "module_install") {
-    // Le plan relu doit être celui qui a été demandé : même version, mêmes fournisseurs (la propriétaire a approuvé CETTE liste, pas une autre).
+    // Le plan relu doit être celui qui a été demandé : même version, mêmes fournisseurs (la personne propriétaire a approuvé CETTE liste, pas une autre).
     if (!samePlan(plan, fresh)) return { ok: false, message: `Not done: what the installation of "${plan.module}" would do changed since the request (version, or the modules that come with it). Ask again.` };
     return executeInstall(plan, actorLabel);
   }
@@ -298,7 +298,7 @@ async function runGuarded(action: Level3Action, plan: Plan, who: { tokenName: st
 export async function callLevel3(action: Level3Action, args: Params, actor: { name: string; tokenId?: string }): Promise<unknown> {
   takeSlot(actor.tokenId);
   const plan = await prepare(action, args);
-  // Installer du code sur le site n'est JAMAIS exécuté sans l'accord de la propriétaire, même pour un jeton en « exécution directe » : le réglage vaut pour
+  // Installer du code sur le site n'est JAMAIS exécuté sans l'accord de la personne propriétaire, même pour un jeton en « exécution directe » : le réglage vaut pour
   // les mises à jour et désinstallations, et rien dans le modèle ne dit quel module est « sans danger ».
   if (action !== "module_install" && action !== "skin_install" && (await getApprovalMode(actor.tokenId)) === "direct") {
     const outcome = await runGuarded(action, plan, { tokenName: actor.name, tokenId: actor.tokenId, via: "direct" });

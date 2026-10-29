@@ -133,7 +133,7 @@ export async function createBackup(password: string, opts: { now?: Date; iterati
   files.push(fileOf("readable/site.txt", [
     `${config.name}`, "=".repeat(Math.max(3, config.name.length)), `Langue par défaut / default language : ${config.defaultLocale}`, `Langues / languages : ${config.locales.join(", ")}`, "",
     "Modules / instances :", ...instances.map((i) => `- ${i.nickname ?? i.moduleId} (module ${i.moduleId}, id ${i.key})`), "",
-    `Entrées / entries : ${entries.length}`, `Utilisateurs / users : ${users.length}`, `Redirections : ${redirects.length}`,
+    `Entrées / entries : ${entries.length}`, `Comptes / users : ${users.length}`, `Redirections : ${redirects.length}`,
     `Données gardées de modules retirés / kept data of removed modules : ${retired.length}${retired.length ? ` (${retired.map((r) => `${r.moduleId}/${r.key}`).join(", ")})` : ""}`, "",
     "Réglages / settings (valeurs secrètes masquées / secret values hidden) :",
     ...settings.filter((s) => !VOLATILE_SETTINGS.has(s.key) && !s.key.startsWith("instance.")).map((s) => `- ${s.key}${s.locale ? `[${s.locale}]` : ""} = ${secretKeys(s.key) ? "••••" : s.value.slice(0, 300)}`), "",

@@ -1,5 +1,5 @@
 // Miroir de la documentation du dépôt vers le wiki GitHub.
-//   node scripts/wiki-sync.mjs <dossier-du-wiki> <propriétaire/dépôt>
+//   node scripts/wiki-sync.mjs <dossier-du-wiki> <compte/dépôt>
 // Le dépôt reste la SOURCE DE VÉRITÉ (la doc est versionnée avec le code, relue, testée) ; le wiki n'en est que le reflet : chaque page porte un bandeau
 // qui renvoie vers le fichier du dépôt, et ce script réécrit tout le contenu du wiki à chaque publication (ne modifiez pas le wiki à la main).
 import fs from "node:fs";
@@ -55,7 +55,7 @@ export function buildWiki(repo, read = (f) => fs.readFileSync(path.join(root, f)
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const [dir, repo] = process.argv.slice(2);
-  if (!dir || !/^[\w.-]+\/[\w.-]+$/.test(repo ?? "")) { console.error("usage : node scripts/wiki-sync.mjs <dossier> <propriétaire/dépôt>"); process.exit(2); }
+  if (!dir || !/^[\w.-]+\/[\w.-]+$/.test(repo ?? "")) { console.error("usage : node scripts/wiki-sync.mjs <dossier> <compte/dépôt>"); process.exit(2); }
   // Le wiki est un miroir : on remplace tout son contenu (sauf .git).
   for (const f of fs.readdirSync(dir)) if (f !== ".git") fs.rmSync(path.join(dir, f), { recursive: true, force: true });
   const pages = buildWiki(repo);

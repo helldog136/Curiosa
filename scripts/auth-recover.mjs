@@ -1,12 +1,12 @@
-// Commande de secours EN SSH, réservée au PROPRIÉTAIRE du serveur (celui qui a accès à la machine) : débloquer une connexion, remettre un mot de passe.
-// Elle ne change jamais un autre compte que celui d'un propriétaire (les autres se gèrent depuis l'admin, page Utilisateurs). Chaque action est notée dans le journal.
+// Commande de secours EN SSH, réservée à la personne qui gère le SERVEUR (celle qui a accès à la machine) : débloquer une connexion, remettre un mot de passe.
+// Elle ne change jamais un autre compte que celui d'une personne propriétaire (les autres se gèrent depuis l'admin, page Équipe). Chaque action est notée dans le journal.
 //
 //   node scripts/auth-recover.mjs                         état : adresses et e-mails bloqués, comptes propriétaires
 //   node scripts/auth-recover.mjs unlock                  débloque TOUT (adresses et e-mails)
 //   node scripts/auth-recover.mjs unlock <adresse IP>     débloque une adresse
-//   node scripts/auth-recover.mjs unlock <e-mail>         débloque l'e-mail d'un propriétaire
+//   node scripts/auth-recover.mjs unlock <e-mail>         débloque l'e-mail d'une personne propriétaire
 //   node scripts/auth-recover.mjs reset-password <e-mail> nouveau mot de passe généré (affiché une seule fois), anciennes sessions coupées
-//   node scripts/auth-recover.mjs reset-2fa <e-mail>      retire la double vérification ET les clés d'accès du propriétaire (téléphone et codes de secours perdus), sessions coupées
+//   node scripts/auth-recover.mjs reset-2fa <e-mail>      retire la double vérification ET les clés d'accès de la personne propriétaire (téléphone et codes de secours perdus), sessions coupées
 //
 // Lancer depuis le dossier de l'application (celui de .env), avec le même utilisateur que le service. Aucune dépendance à TypeScript : fonctionne dans l'archive de production.
 import crypto from "node:crypto";
@@ -33,7 +33,7 @@ export async function recover(args, { prisma, bcrypt, out = console.log }) {
   const owner = async (email) => {
     const user = await prisma.user.findUnique({ where: { email: String(email ?? "").trim().toLowerCase() } });
     if (!user) { out(`Aucun compte « ${email} ».`); return null; }
-    if (user.role !== "owner") { out(`« ${user.email} » n'est pas le propriétaire : cette commande de secours ne concerne que lui. Pour un autre compte, utilisez Utilisateurs dans l'admin.`); return null; }
+    if (user.role !== "owner") { out(`« ${user.email} » n'est pas une personne propriétaire : cette commande de secours ne concerne que ces comptes. Pour un autre compte, utilisez Équipe dans l'admin.`); return null; }
     return user;
   };
   const note = (action, targetText) => prisma.auditLog.create({ data: { actor: "ssh", action, target: targetText } });
@@ -43,7 +43,7 @@ export async function recover(args, { prisma, bcrypt, out = console.log }) {
     out(locks.length ? "Bloqués en ce moment :" : "Rien n'est bloqué en ce moment.");
     for (const l of locks) out(`  ${l.key.padEnd(40)} jusqu'à ${l.lockedUntil.toISOString().replace("T", " ").slice(0, 16)} UTC`);
     const owners = await prisma.user.findMany({ where: { role: "owner" }, select: { email: true, totpEnabledAt: true } });
-    out(`Propriétaire(s) : ${owners.map((o) => o.email + (o.totpEnabledAt ? " (double vérification activée)" : "")).join(", ") || "aucun"}`);
+    out(`Comptes propriétaires : ${owners.map((o) => o.email + (o.totpEnabledAt ? " (double vérification activée)" : "")).join(", ") || "aucun"}`);
     return 0;
   }
   if (cmd === "unlock") {
@@ -87,7 +87,7 @@ export async function recover(args, { prisma, bcrypt, out = console.log }) {
     out(`La double vérification et les clés d'accès de ${user.email} sont retirées, ses sessions sont coupées. Connectez-vous avec le mot de passe, puis réactivez-la dans Mon compte.`);
     return 0;
   }
-  out("Commandes : status | unlock [adresse IP | e-mail du propriétaire] | reset-password <e-mail du propriétaire> | reset-2fa <e-mail du propriétaire>");
+  out("Commandes : status | unlock [adresse IP | e-mail d'une personne propriétaire] | reset-password <e-mail d'une personne propriétaire> | reset-2fa <e-mail d'une personne propriétaire>");
   return cmd === "help" || cmd === "--help" ? 0 : 1;
 }
 

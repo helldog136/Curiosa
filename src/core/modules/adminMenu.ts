@@ -5,7 +5,7 @@ export type AdminEntry = "extensions" | "assistants" | "users" | "health" | "bac
 
 /**
  * Quelles entrées d'« Administration » voit cette personne ? Logique pure, testée.
- * - Assistants IA : propriétaire seulement, en mode simple comme en mode avancé (c'est la page qu'une créatrice non technique utilise pour brancher une IA) ;
+ * - Assistants IA : propriétaire seulement, en mode simple comme en mode avancé (c'est la page qu'une personne non technique utilise pour brancher une IA) ;
  * - Santé de mon site (contrôle du contenu) : administrateur et propriétaire, en mode simple comme avancé ;
  * - Journal d'audit : propriétaire, mode avancé seulement.
  */
