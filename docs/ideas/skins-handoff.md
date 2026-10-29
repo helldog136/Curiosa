@@ -33,7 +33,9 @@ Skins (https://github.com/helldog136/curiosa-skins, une branche par skin, `main`
 - Pousser après chaque jalon ; le conteneur a redémarré 3 fois.
 - Commits en français avec les trailers `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>` et `Claude-Session: …`.
 - Jamais de publication sans les vérifications : CI verte, SHA complet de 40 caractères pour fusionner, release vérifiée, `dev` aligné sur `master`, sauvegarde avant mise à jour des sites, diagnostic après.
-- Le propriétaire veut des SOUS-SESSIONS (create_session) plutôt que des sous-agents pour les nouveaux travaux.
+- Les travaux se font par SOUS-AGENTS (l'instruction « sous-sessions » a été retirée par le propriétaire).
+- **Preuve visuelle complète (1 168 captures, 0 pixel)** : décision du propriétaire, elle n'a été exigée que pour la 0.4.0 (première version à toucher le rendu public). Pour les versions suivantes, ne la relancer QUE si le code de rendu public change (régions/pièces, `globals.css`, `layout.tsx`, composants du site public, jetons de `basic`) ou sur demande ; sinon, les tests et la CI suffisent. Un changement de texte seul n'en demande pas (deux phrases de la page Confidentialité ont d'ailleurs changé volontairement en 0.4.0 : 34 captures, expliquées).
+- Les outils de pilotage des sites (MCP) se déconnectent parfois : les recharger par ToolSearch ; un appel `maintenance_modules_update_all` peut dépasser 60 s sans échouer côté site : ne pas le relancer, attendre (« Another maintenance operation is running » le confirme).
 
 ## Autres sujets ouverts
 - Message à l'entreprise ChatDeck (module tiers) : prêt, guide `docs/PUBLIER-SON-MODULE.md` et dossier `starter/` de curiosa-extras en ligne sur master (cœur 0.3.1, modules 1.22.1).
