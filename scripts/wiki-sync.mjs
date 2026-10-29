@@ -1,5 +1,5 @@
 // Miroir de la documentation du dépôt vers le wiki GitHub.
-//   node scripts/wiki-sync.mjs <dossier-du-wiki> <propriétaire/dépôt>
+//   node scripts/wiki-sync.mjs <dossier-du-wiki> <compte/dépôt>
 // Le dépôt reste la SOURCE DE VÉRITÉ (la doc est versionnée avec le code, relue, testée) ; le wiki n'en est que le reflet : chaque page porte un bandeau
 // qui renvoie vers le fichier du dépôt, et ce script réécrit tout le contenu du wiki à chaque publication (ne modifiez pas le wiki à la main).
 import fs from "node:fs";
@@ -48,14 +48,14 @@ export function buildWiki(repo, read = (f) => fs.readFileSync(path.join(root, f)
   const out = {};
   for (const p of PAGES) out[`${p.page}.md`] = banner(p.file, repo) + rewriteLinks(read(p.file), p.file, repo);
   const list = PAGES.map((p) => `- [${p.page.replaceAll("-", " ")}](${p.page}) — ${p.blurb}`).join("\n");
-  out["Home.md"] = `# Curiosa — documentation\n\nCuriosa est un framework de site personnel pour créateurs : un site complet qu'on installe une fois et qu'on gère seul. Cette documentation est le reflet de celle du dépôt, publié à chaque release.\n\n## Pages\n\n${list}\n\n## Écrire son propre module\n\nCommencez par [Créer un module](Créer-un-module), puis gardez la [Référence des modules](Référence-des-modules) sous la main.\n\n[Dépôt](https://github.com/${repo}) · [Releases](https://github.com/${repo}/releases)\n`;
+  out["Home.md"] = `# Curiosa — documentation\n\nCuriosa est un framework de site personnel pour les personnes qui créent : un site complet qu'on installe une fois et qu'on gère soi-même. Cette documentation est le reflet de celle du dépôt, publié à chaque release.\n\n## Pages\n\n${list}\n\n## Écrire son propre module\n\nCommencez par [Créer un module](Créer-un-module), puis gardez la [Référence des modules](Référence-des-modules) sous la main.\n\n[Dépôt](https://github.com/${repo}) · [Releases](https://github.com/${repo}/releases)\n`;
   out["_Sidebar.md"] = `**[Accueil](Home)**\n\n${PAGES.map((p) => `- [${p.page.replaceAll("-", " ")}](${p.page})`).join("\n")}\n`;
   return out;
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const [dir, repo] = process.argv.slice(2);
-  if (!dir || !/^[\w.-]+\/[\w.-]+$/.test(repo ?? "")) { console.error("usage : node scripts/wiki-sync.mjs <dossier> <propriétaire/dépôt>"); process.exit(2); }
+  if (!dir || !/^[\w.-]+\/[\w.-]+$/.test(repo ?? "")) { console.error("usage : node scripts/wiki-sync.mjs <dossier> <compte/dépôt>"); process.exit(2); }
   // Le wiki est un miroir : on remplace tout son contenu (sauf .git).
   for (const f of fs.readdirSync(dir)) if (f !== ".git") fs.rmSync(path.join(dir, f), { recursive: true, force: true });
   const pages = buildWiki(repo);

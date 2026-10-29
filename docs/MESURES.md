@@ -32,7 +32,7 @@ Curiosa s'installe seul : l'archive ne contient aucun module (la 0.1.4, mesurée
 
 **Ça reste lourd** pour ce que fait le logiciel : Next.js seul pèse 203 Mo, Prisma et ses moteurs environ 190 Mo (deux moteurs de base de données, pour être compatible avec les systèmes anciens comme récents), `effect` 34 Mo. Si l'espace disque est votre contrainte, c'est encore un point faible.
 
-## Ce que la page envoie au visiteur (site neuf créé par l'assistant, page d'accueil)
+## Ce que la page envoie à la personne qui visite (site neuf créé par l'assistant, page d'accueil)
 
 Mesuré avec `scripts/measure.mjs` (voir plus bas), puis recoupé dans un vrai navigateur.
 
@@ -46,7 +46,7 @@ Mesuré avec `scripts/measure.mjs` (voir plus bas), puis recoupé dans un vrai n
 
 - **Services tiers contactés : aucun.** Le navigateur ne parle qu'au site lui-même (12 requêtes au total, toutes vers le même serveur).
 - **Cookies déposés à la première visite : aucun.**
-- Temps d'affichage **en local, sans réseau** : premier affichage à 136 ms, chargement complet à 187 ms. Ce chiffre ne dit **rien** de ce que verra un visiteur réel sur un vrai réseau.
+- Temps d'affichage **en local, sans réseau** : premier affichage à 136 ms, chargement complet à 187 ms. Ce chiffre ne dit **rien** de ce que verra une personne qui visite réel sur un vrai réseau.
 
 **Le JavaScript est un point faible** : une page d'accueil sans interaction envoie ≈ 177 Ko de JavaScript compressé, parce que le site est une application Next.js/React. Un site statique (Hugo, Astro…) en envoie presque zéro.
 
@@ -61,7 +61,7 @@ Mesuré avec `scripts/measure.mjs` (voir plus bas), puis recoupé dans un vrai n
 
 ## Ce qui n'est PAS mesuré
 
-- **La tenue en charge** : combien de visiteurs simultanés avant que le serveur ne ralentisse.
+- **La tenue en charge** : combien de personnes simultanés avant que le serveur ne ralentisse.
 - **Un score Lighthouse ou des mesures sur un réseau réel** (mobile, lent, lointain).
 - **Toute comparaison avec un autre outil** (WordPress, Ghost, Hugo, Wix…) : aucun chiffre de concurrent n'est cité ici parce qu'aucun n'a été mesuré dans les mêmes conditions.
 - **La durée humaine de l'installation complète**, et la facilité réelle pour quelqu'un qui ne connaît pas le projet : c'est justement ce qu'il faut faire tester à des personnes extérieures.
@@ -75,4 +75,4 @@ node scripts/measure.mjs http://localhost:3000/ --pid 1234      # + mémoire (Li
 node scripts/measure.mjs https://votre-site.example/ --json     # même chose, lisible par un programme
 ```
 
-Le script charge la page comme un premier visiteur (sans cookie), télécharge chaque fichier qu'elle référence et additionne. Limite : il ne voit pas les fichiers demandés par le JavaScript *après* le chargement (la page de ce projet n'en demande que vers son propre serveur, ce que le recoupement dans un navigateur a confirmé). Pour l'installation, rejouez les étapes du README en chronométrant chacune.
+Le script charge la page comme un première personne qui visite (sans cookie), télécharge chaque fichier qu'elle référence et additionne. Limite : il ne voit pas les fichiers demandés par le JavaScript *après* le chargement (la page de ce projet n'en demande que vers son propre serveur, ce que le recoupement dans un navigateur a confirmé). Pour l'installation, rejouez les étapes du README en chronométrant chacune.

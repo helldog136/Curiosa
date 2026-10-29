@@ -1,18 +1,18 @@
 # Les skins de Curiosa : le contrat
 
-> Statut : **conception, avec les lots S1, S2 et S3 implémentés** : les jetons (`src/core/skins/tokens.ts`), le skin `basic` embarqué (`src/core/skins/basic/`), la composition (`compose.ts`, `sheet.ts`, `render.ts`), les retouches des deux modes (`retouch.ts`) et la bascule clair/sombre du visiteur (`modeScript.ts`, `src/components/site/ModeSwitch.tsx`) sont dans le cœur ; l'assainisseur et la lisibilité (lot S6) aussi. Le DOM stable (régions, pièces, coquille, menu dans la feuille du cœur : S2) et les composants du site public par les jetons (S3) le sont aussi (§20). L'installation depuis un dépôt git (lot S5, §21) et les pièces de modules (lot S4, §22) le sont aussi. La page Apparence (lot S7, §23) est faite aussi. Le kit de test et le banc d'essai (lot S8, §24, guide des auteurs [CREER-UN-SKIN.md](CREER-UN-SKIN.md)) le sont aussi. Pas encore faite : la conversion des modules (S9). Cœur de référence : v0.3.0 ; modules de référence : `curiosa-extras` v1.22.0. Les constats chiffrés qui fondent les choix sont dans `docs/ideas/skins-exploration.md`, le découpage en lots dans `docs/ideas/skins-effort.md`.
+> Statut : **conception, avec les lots S1, S2 et S3 implémentés** : les jetons (`src/core/skins/tokens.ts`), le skin `basic` embarqué (`src/core/skins/basic/`), la composition (`compose.ts`, `sheet.ts`, `render.ts`), les retouches des deux modes (`retouch.ts`) et la bascule clair/sombre de la personne qui visite (`modeScript.ts`, `src/components/site/ModeSwitch.tsx`) sont dans le cœur ; l'assainisseur et la lisibilité (lot S6) aussi. Le DOM stable (régions, pièces, coquille, menu dans la feuille du cœur : S2) et les composants du site public par les jetons (S3) le sont aussi (§20). L'installation depuis un dépôt git (lot S5, §21) et les pièces de modules (lot S4, §22) le sont aussi. La page Apparence (lot S7, §23) est faite aussi. Le kit de test et le banc d'essai (lot S8, §24, guide pour écrire un skin [CREER-UN-SKIN.md](CREER-UN-SKIN.md)) le sont aussi. Pas encore faite : la conversion des modules (S9). Cœur de référence : v0.3.0 ; modules de référence : `curiosa-extras` v1.22.0. Les constats chiffrés qui fondent les choix sont dans `docs/ideas/skins-exploration.md`, le découpage en lots dans `docs/ideas/skins-effort.md`.
 >
 > Les noms techniques (jetons, attributs, clés JSON, fichiers) sont en anglais comme dans le reste du dépôt ; le texte est en français. Aucun nom de site réel n'apparaît ici ni ne doit apparaître dans un skin, un test ou un texte par défaut.
 
 ## 0. Le principe fondateur : un skin ne définit que de l'APPARENCE
 
-> « Un skin ne définit que de l'apparence ; ne faisons pas l'erreur que Grav a faite, où les thèmes définissent des éléments de page personnalisés, rendant la migration de thème impossible. » (le propriétaire)
+> « Un skin ne définit que de l'apparence ; ne faisons pas l'erreur que Grav a faite, où les thèmes définissent des éléments de page personnalisés, rendant la migration de thème impossible. » (la personne propriétaire)
 
 Sur Grav, un thème apportait ses propres blocs, champs et gabarits de contenu : changer de thème obligeait à réécrire le contenu. **Curiosa n'ouvre jamais cette porte.** Conséquences, qui valent règle pour tout le reste du document :
 
 1. **Le contenu et la structure sémantique ne dépendent JAMAIS du skin.** On change de skin à tout moment, à l'infini, sans rien perdre ni réécrire. Aucune page, entrée, section d'accueil, réglage de module ni bloc ne référence un skin (ni son id, ni une de ses valeurs). Le seul endroit où un skin est nommé est le réglage `skin.active` (et ses valeurs d'apparence, §3.4).
 2. **Un skin ne peut ni ajouter, ni retirer, ni renommer, ni masquer un élément porteur de contenu ou d'action.** Pas de `display:none` / `visibility` / `clip` / `opacity:0` sur une pièce de contenu ; pas de texte injecté (`content:` autre qu'ornement vide ou ponctuation, §6.3) ; pas d'image porteuse d'information ; **pas de bloc, de section, de champ, d'emplacement ni de réglage de contenu défini par un skin**.
-3. **La mise en page, elle, EST de l'apparence** (précision du propriétaire) : un skin peut changer radicalement la position et la forme de l'en-tête et du menu (barre en haut, colonne latérale gauche ou droite, menu centré), le nombre de colonnes, la largeur et l'alignement du contenu, la forme (grille, liste, cartes, maçonnerie) sous laquelle on voit **les mêmes données**, l'ordre **visuel** des régions, la densité, un héros plein écran ou compact, les marges. **Mise en page libre pour les MÊMES éléments ; contenu jamais défini par le skin.**
+3. **La mise en page, elle, EST de l'apparence** (précision de la personne propriétaire) : un skin peut changer radicalement la position et la forme de l'en-tête et du menu (barre en haut, colonne latérale gauche ou droite, menu centré), le nombre de colonnes, la largeur et l'alignement du contenu, la forme (grille, liste, cartes, maçonnerie) sous laquelle on voit **les mêmes données**, l'ordre **visuel** des régions, la densité, un héros plein écran ou compact, les marges. **Mise en page libre pour les MÊMES éléments ; contenu jamais défini par le skin.**
 4. **Les « gabarits déclaratifs » sont ÉCARTÉS.** Ce n'est pas une évolution prévue. Si une évolution de mise en page est un jour envisagée, elle ne pourra être que de l'agencement (grille, ordre, espacement) des MÊMES éléments dans des pièces que le cœur définit, jamais de nouveaux éléments.
 5. **Les « options de skin »** (variante, densité…) ne sont que des valeurs d'apparence, stockées à côté du skin (§3.4), jamais dans le contenu ni dans les réglages de module. Un skin qui disparaît est remplacé par `basic` sans perte.
 6. **Pour les modules** : un module ne déclare que des **pièces d'apparence** (jetons et pièces stylables, §8), jamais des variantes de contenu selon le skin. Le contenu qu'un module produit est le même sous tous les skins.
@@ -95,8 +95,8 @@ Valeur finale d'un jeton = la plus forte couche qui le définit. **Repli valeur 
 | Couche | Où elle vit | Qui l'écrit |
 |---|---|---|
 | basic | `src/core/skins/basic/` (embarqué, voir §4.2) | le cœur |
-| pièces des modules | clé `skin` du `module.json` (§8) | l'auteur du module |
-| skin actif | `DATA_DIR/skins/<id>/<version>/` (installé depuis un dépôt, §5) | l'auteur du skin |
+| pièces des modules | clé `skin` du `module.json` (§8) | la personne qui écrit le module |
+| skin actif | `DATA_DIR/skins/<id>/<version>/` (installé depuis un dépôt, §5) | la personne qui écrit le skin |
 | retouches | réglages `theme.*` et `header.layout` existants | la personne (page Apparence) |
 
 ### 3.2 Réglages (clés de la table de réglages existante)
@@ -119,7 +119,7 @@ Valeur finale d'un jeton = la plus forte couche qui le définit. **Repli valeur 
 
 ### 3.3 Choisir un skin, retoucher, revenir au skin
 
-- **Choisir un skin** : le cœur écrit `skin.active`, copie les retouches actuelles dans `skin.snapshot`, puis **supprime** les clés de retouche (`theme.*`, `header.layout`) pour que les valeurs du skin apparaissent (décision du propriétaire : « le skin donne les valeurs de départ »). Un bouton « Annuler » (tant qu'on n'a pas changé autre chose) restaure le snapshot. Rien n'est perdu.
+- **Choisir un skin** : le cœur écrit `skin.active`, copie les retouches actuelles dans `skin.snapshot`, puis **supprime** les clés de retouche (`theme.*`, `header.layout`) pour que les valeurs du skin apparaissent (décision de la personne propriétaire : « le skin donne les valeurs de départ »). Un bouton « Annuler » (tant qu'on n'a pas changé autre chose) restaure le snapshot. Rien n'est perdu.
 - **Retoucher** : la personne change une couleur, la police, le halo, le fond ou l'agencement de l'en-tête dans Apparence : le cœur écrit la clé `theme.*` correspondante, comme aujourd'hui. Les couleurs dérivées (`muted`, `line`, `*-fg`, états) sont recalculées par `buildPalette` à partir des couleurs retouchées quand le skin ne les fixe pas, ou quand la retouche change leurs bases (§4.3).
 - **Revenir au skin** : supprime les clés de retouche, d'un seul bouton, ou champ par champ (« ↺ valeur du skin » à côté de chaque réglage retouché).
 - **Retoucher les couleurs d'un skin à deux modes** : voir §3.7 (la personne choisit un seul mode ou les deux).
@@ -145,7 +145,7 @@ Le choix est stocké dans `skin.options` (ex. `{"density":"airy"}`), jamais aill
 ### 3.5 Clair et sombre
 
 - `modes` dans `skin.json` : `["light","dark"]`, `["light"]` ou `["dark"]`.
-- **Deux modes** : par défaut le visiteur voit le mode de son appareil (`prefers-color-scheme`) ; il peut aussi **choisir** « Clair », « Sombre » ou « Automatique » (§3.8). Le cœur émet les jetons ainsi :
+- **Deux modes** : par défaut la personne qui visite voit le mode de son appareil (`prefers-color-scheme`) ; elle peut aussi **choisir** « Clair », « Sombre » ou « Automatique » (§3.8). Le cœur émet les jetons ainsi :
 
 ```css
 :root[data-skin]                                            { /* jetons du mode clair */ color-scheme: light; }
@@ -164,12 +164,12 @@ Le choix est stocké dans `skin.options` (ex. `{"density":"airy"}`), jamais aill
 
 Seulement le **site public** : `<html data-skin="<id>">` est posé par `src/app/(site)/layout.tsx`. Toute règle d'un skin est préfixée par `:root[data-skin="<id>"]` par l'assainisseur (§6.1) : **rien ne peut sortir** de cette portée. L'administration (`src/app/admin/layout.tsx`), les overlays (`src/app/overlays/`), les routes `/m/…` et les pages autonomes des modules n'ont pas cet attribut : ils ne sont jamais restylés. Les overlays reçoivent seulement les couleurs `--v-*` **effectives** (skin + retouches, mode imposé sombre ou clair selon le fond) : ils peuvent s'accorder à l'identité du site sans que la feuille du skin ne s'y applique.
 
-### 3.7 Retoucher les couleurs d'un skin à deux modes (décision du propriétaire)
+### 3.7 Retoucher les couleurs d'un skin à deux modes (décision de la personne propriétaire)
 
 La personne **choisit** (réglage `theme.palette`) :
 
-- **« Un seul mode »** (`single`, défaut, **identique à aujourd'hui**) : ses couleurs (`theme.background`, `theme.accent`, `theme.accent2`, `theme.surface`, `theme.text`) s'appliquent à un seul mode, celui que dit la luminance du fond (`isDarkBackground`). Le site devient **mono-mode** ; la bascule du visiteur disparaît.
-- **« Clair et sombre »** (`both`) : deux jeux de couleurs, `theme.light.*` et `theme.dark.*`. Une clé absente prend la valeur **du skin pour ce mode**. Le site garde ses deux modes et la bascule du visiteur.
+- **« Un seul mode »** (`single`, défaut, **identique à aujourd'hui**) : ses couleurs (`theme.background`, `theme.accent`, `theme.accent2`, `theme.surface`, `theme.text`) s'appliquent à un seul mode, celui que dit la luminance du fond (`isDarkBackground`). Le site devient **mono-mode** ; la bascule de la personne qui visite disparaît.
+- **« Clair et sombre »** (`both`) : deux jeux de couleurs, `theme.light.*` et `theme.dark.*`. Une clé absente prend la valeur **du skin pour ce mode**. Le site garde ses deux modes et la bascule de la personne qui visite.
 
 **Compatibilité, sans migration** : un site existant n'a ni `theme.palette` ni `theme.light.*` / `theme.dark.*` ; ses `theme.*` actuels sont le jeu `single`, exactement comme aujourd'hui. Passer de `single` à `both` copie le jeu actuel dans le mode qui lui correspond (par luminance) et laisse l'autre mode aux valeurs du skin ; les anciennes clés `theme.*` sont **conservées** (pour revenir à `single` sans perte) mais ignorées tant que `both` est actif. « Revenir au skin » supprime toutes ces clés (`theme.*`, `theme.light.*`, `theme.dark.*`, `theme.palette`). Sur un skin à un seul mode ou sur basic, le choix « Clair et sombre » n'est pas proposé (basic n'a qu'un mode).
 
@@ -180,20 +180,20 @@ La personne **choisit** (réglage `theme.palette`) :
 3. **Avertissement en direct sous le champ** (calcul pur côté navigateur, `contrastIssues`/`contrast` de `color.ts`), **jamais bloquant** pour une retouche, en mots simples avec un exemple : « Dans le mode sombre, le texte serait difficile à lire sur ce fond. Essayez un texte plus clair, par exemple `#f4f4f5`. » Les chiffres (rapport 2,1 ; il faut 4,5) sont dans « Détails » (replié). L'enregistrement reste possible ; au rendu, l'échelle de correction du §7.3 s'applique.
 4. Si l'une des deux palettes est illisible, l'encadré de la page dit lequel des deux modes est concerné.
 
-### 3.8 La bascule clair / sombre par le visiteur
+### 3.8 La bascule clair / sombre par la personne qui visite
 
 **Quand elle existe** : seulement si le skin effectif fournit **les deux modes** et que la personne n'a pas choisi « Un seul mode ». Sinon la pièce n'est pas rendue (rien à choisir).
 
 **La pièce** : `data-skin-part="mode-switch"`, posée par le cœur dans la région `tools` de l'en-tête (et reprise dans le panneau du menu sobre `minimal`). Groupe de trois boutons `role="group"` + `aria-label` « Apparence » / *Appearance* : **Automatique** (appareil), **Clair**, **Sombre**, chacun avec `aria-pressed` (état annoncé), libellé texte (visible ou `sr-only`) + pictogramme `aria-hidden`, cible ≥ 44 px (`--sk-target`), opérable au clavier (Tab, Entrée/Espace ; flèches facultatives). Un skin la **stylise** (couleurs, forme, position dans `tools`) mais **ne peut ni la masquer ni la retirer** (§9.3).
 
-**Stockage** : `localStorage["curiosa-mode"]` = `"light"` ou `"dark"` (absent = Automatique). **Jamais de cookie, jamais envoyé au serveur**, aucun suivi, aucun identifiant. C'est une préférence d'affichage strictement fonctionnelle, demandée par la visiteuse ou le visiteur lui-même : exemptée de consentement (`docs/PRIVACY.md`). Elle est **déclarée** dans la déclaration `privacy` du cœur et dans la page de confidentialité (une ligne : « Votre choix clair/sombre, gardé dans votre navigateur uniquement »), et ajoutée à `docs/PRIVACY.md`. Accès protégé par `try/catch` (navigation privée, stockage bloqué : on retombe sur Automatique).
+**Stockage** : `localStorage["curiosa-mode"]` = `"light"` ou `"dark"` (absent = Automatique). **Jamais de cookie, jamais envoyé au serveur**, aucun suivi, aucun identifiant. C'est une préférence d'affichage strictement fonctionnelle, demandée par la personne qui visite elle-même : exemptée de consentement (`docs/PRIVACY.md`). Elle est **déclarée** dans la déclaration `privacy` du cœur et dans la page de confidentialité (une ligne : « Votre choix clair/sombre, gardé dans votre navigateur uniquement »), et ajoutée à `docs/PRIVACY.md`. Accès protégé par `try/catch` (navigation privée, stockage bloqué : on retombe sur Automatique).
 
-**Script (du CŒUR, jamais d'un skin) — choix et justification.** Le site n'envoie aujourd'hui **aucune CSP** (`docs/SECURITE.md`) ; `docs/SECURITE.md` prévoit de fermer `script-src 'self'` sans `'unsafe-inline'` ni nonce. On choisit donc un **script externe bloquant, même origine, servi par le cœur** : `<script src="/skins/mode.js?v=<empreinte>"></script>` dans `<head>`, **sans `defer` ni `async`**, avant la feuille de jetons. ~0,4 Ko, `Cache-Control: public, max-age=31536000, immutable` (l'URL change avec l'empreinte), types `text/javascript`, `nosniff`. Il lit `localStorage` et pose `document.documentElement.dataset.mode` **avant le premier rendu** (pas de flash, pas de clignotement de mode) ; il branche aussi le clic des boutons par délégation (met à jour `aria-pressed`, `localStorage`, `data-mode`). Alternative écartée : un script en ligne exigerait un nonce (rendu dynamique de chaque page, perte du cache) ou un hash (à régénérer à chaque version) et casserait la future CSP ; un attribut posé côté serveur est impossible (le serveur ne voit pas `localStorage`, et un cookie serait un traceur à déclarer). Sans JavaScript, la pièce est rendue avec l'attribut `hidden` (posé par le cœur, levé par le script) : le visiteur sans script garde le mode de son appareil, qui est le défaut.
+**Script (du CŒUR, jamais d'un skin) — choix et justification.** Le site n'envoie aujourd'hui **aucune CSP** (`docs/SECURITE.md`) ; `docs/SECURITE.md` prévoit de fermer `script-src 'self'` sans `'unsafe-inline'` ni nonce. On choisit donc un **script externe bloquant, même origine, servi par le cœur** : `<script src="/skins/mode.js?v=<empreinte>"></script>` dans `<head>`, **sans `defer` ni `async`**, avant la feuille de jetons. ~0,4 Ko, `Cache-Control: public, max-age=31536000, immutable` (l'URL change avec l'empreinte), types `text/javascript`, `nosniff`. Il lit `localStorage` et pose `document.documentElement.dataset.mode` **avant le premier rendu** (pas de flash, pas de clignotement de mode) ; il branche aussi le clic des boutons par délégation (met à jour `aria-pressed`, `localStorage`, `data-mode`). Alternative écartée : un script en ligne exigerait un nonce (rendu dynamique de chaque page, perte du cache) ou un hash (à régénérer à chaque version) et casserait la future CSP ; un attribut posé côté serveur est impossible (le serveur ne voit pas `localStorage`, et un cookie serait un traceur à déclarer). Sans JavaScript, la pièce est rendue avec l'attribut `hidden` (posé par le cœur, levé par le script) : la personne qui visite sans script garde le mode de son appareil, qui est le défaut.
 
 **Le logo suit le choix manuel** : quand les deux variantes existent (`logos.square/wide` et `…Dark`), le cœur rend **deux `<img>`** (`data-for="light"` / `data-for="dark"`) dont l'affichage est réglé par **les règles du cœur** (pas par la feuille d'un skin) :
 `img[data-for="dark"]{display:none}` ; sous `prefers-color-scheme: dark` sans `data-mode="light"` et avec `data-mode="dark"` : la variante sombre s'affiche et la claire se masque, et inversement. Le skin ne peut pas modifier cela (ce sont des variantes d'une même image de marque, pas du contenu masqué). S'il n'y a qu'une variante, une seule `<img>`. (Ceci remplace l'idée du `<picture>` du §2/§3.5, qui ne sait pas suivre un choix manuel.)
 
-**Le bandeau de cookies ne change pas.** `localStorage` n'est pas un cookie, rien n'est envoyé au serveur, le choix est demandé par la personne et sert uniquement l'affichage : il reste dans l'exception « strictement nécessaire / choisi par l'utilisateur » (`PRIVACY.md`). `core/cookieTray.ts` et `trayState` ne sont pas modifiés ; le bandeau n'apparaît toujours que pour les pastilles de nouveautés, comme aujourd'hui.
+**Le bandeau de cookies ne change pas.** `localStorage` n'est pas un cookie, rien n'est envoyé au serveur, le choix est demandé par la personne et sert uniquement l'affichage : il reste dans l'exception « strictement nécessaire / choisi par la personne » (`PRIVACY.md`). `core/cookieTray.ts` et `trayState` ne sont pas modifiés ; le bandeau n'apparaît toujours que pour les pastilles de nouveautés, comme aujourd'hui.
 
 ---
 
@@ -343,7 +343,7 @@ curiosa-skins/
       skin.css                       # feuille de style (facultative, §6)
       fonts/*.woff2                  # polices embarquées
       images/*                       # images embarquées (png, webp, avif, jpg, svg)
-      previews/*.webp                # aperçus pour la page Apparence (jamais servis aux visiteurs)
+      previews/*.webp                # aperçus pour la page Apparence (jamais servis aux personnes qui visitent)
       LICENSES/<fichier>.txt         # licence de chaque ressource
       README.md                      # description (fr)
   scripts/ , tests/                  # validation du dépôt (appelle le kit de test du cœur)
@@ -351,7 +351,7 @@ curiosa-skins/
 
 Un dépôt peut contenir plusieurs skins (comme `modules/` dans `curiosa-extras`) ou un seul à la racine (`subdir: ""`).
 
-**Notes de l'auteur.** À la racine d'un skin, les fichiers `PROGRESS.md`, `NOTES.md`, `TODO.md`, `CHANGELOG.md` et `CONTRIBUTING.md` (avec ou sans suffixe de langue : `TODO.fr.md`) sont **tolérés** : le contrôle ne les lit pas, ils ne sont pas installés et ne comptent pas dans l'empreinte. Tout autre fichier hors liste reste refusé (`skin-file-unlisted`), et ces mêmes noms dans un sous-dossier aussi. La liste est `IGNORED_ROOT_FILE_RE` (`validate.ts`).
+**Notes de la personne qui écrit le skin.** À la racine d'un skin, les fichiers `PROGRESS.md`, `NOTES.md`, `TODO.md`, `CHANGELOG.md` et `CONTRIBUTING.md` (avec ou sans suffixe de langue : `TODO.fr.md`) sont **tolérés** : le contrôle ne les lit pas, ils ne sont pas installés et ne comptent pas dans l'empreinte. Tout autre fichier hors liste reste refusé (`skin-file-unlisted`), et ces mêmes noms dans un sous-dossier aussi. La liste est `IGNORED_ROOT_FILE_RE` (`validate.ts`).
 
 ### 5.2 `skin.json`
 
@@ -366,7 +366,7 @@ Un dépôt peut contenir plusieurs skins (comme `modules/` dans `curiosa-extras`
   },
   "version": "1.0.0",
   "minCore": "0.4.0",
-  "author": { "name": "Nom de l'auteur", "url": "https://example.org" },
+  "author": { "name": "Votre nom", "url": "https://example.org" },
   "license": "MIT",
   "tags": ["light", "serif", "editorial"],
   "modes": ["light"],
@@ -397,7 +397,7 @@ Un dépôt peut contenir plusieurs skins (comme `modules/` dans `curiosa-extras`
 | `tags` | vocabulaire contrôlé : `light`, `dark`, `serif`, `sans`, `mono`, `pixel`, `playful`, `minimal`, `bold`, `editorial`, `retro`, `glass`, `high-contrast`. 6 au plus. |
 | `modes` | `["light"]`, `["dark"]` ou `["light","dark"]`. |
 | `tokens`, `stylesheet` | chemins relatifs dans le dossier du skin. `stylesheet` est facultatif (un skin peut n'être que des jetons). |
-| `previews` | 1 à 4 images `webp` ≤ 150 Ko, **1280 × 800** (ordinateur) **ou 390 × 844** (téléphone) : montrées **seulement** dans l'administration (copiées et servies par le site, jamais chargées depuis GitHub chez un visiteur), réduites à la largeur de l'écran (mobile d'abord). `alt` obligatoire. Le cœur ne mesure pas les dimensions (il vérifie le format, la signature et le poids) ; c'est `skin:check` qui avertit (`kit-preview-size`) hors de ces deux formats, et `skin:bench --previews` produit le format ordinateur. `width` (facultatif) ne sert qu'à décrire la capture. Les planches du banc (`--shots`, 390 à 1920 px) sont d'autres images : ne les mettez pas dans `previews/`. |
+| `previews` | 1 à 4 images `webp` ≤ 150 Ko, **1280 × 800** (ordinateur) **ou 390 × 844** (téléphone) : montrées **seulement** dans l'administration (copiées et servies par le site, jamais chargées depuis GitHub chez une personne qui visite), réduites à la largeur de l'écran (mobile d'abord). `alt` obligatoire. Le cœur ne mesure pas les dimensions (il vérifie le format, la signature et le poids) ; c'est `skin:check` qui avertit (`kit-preview-size`) hors de ces deux formats, et `skin:bench --previews` produit le format ordinateur. `width` (facultatif) ne sert qu'à décrire la capture. Les planches du banc (`--shots`, 390 à 1920 px) sont d'autres images : ne les mettez pas dans `previews/`. |
 | `assets` | **toute** police ou image embarquée est listée avec sa `license` (SPDX), son `licenseFile`, son `author` et sa `source`. Un fichier de `fonts/` ou `images/` non listé = refus. |
 | `defaults` | valeurs de départ de ce que la personne peut retoucher : `headerLayout` (`classic`/`twoRows`/`centered`/`minimal`), `font` (`sans`/`serif`/`mono`/`skin` : `skin` = la police du skin), `glow` (`none`/`soft`/`strong`), `background` (`"none"`, `"dusk"`, `"grid"` ou un tableau de couches au format de `src/core/background.ts`). Ce sont les valeurs que les retouches remplacent. |
 | `options` | §3.4. |
@@ -461,7 +461,7 @@ Même logique que le catalogue des modules (`catalogue/README.md` du cœur, `cur
       "ref": "v1.0.0",
       "version": "1.0.0",
       "skinContract": 1,
-      "author": "Nom de l'auteur",
+      "author": "Votre nom",
       "icon": "📖",
       "tags": ["light", "serif", "editorial"],
       "modes": ["light"],
@@ -547,7 +547,7 @@ Le DOM est l'ordre de lecture et de tabulation (§9). `order`, `grid-area`, `pos
 L'assainisseur (`sanitize.ts`) et le contrôle de lisibilité (`readability.ts`) sont une bibliothèque **pure** (sans Next, sans base de données, sans réseau, sans minuteur), partagée par l'installation, le rendu et le kit `skin:check` (§13). La liste blanche lisible est dans `allowlist.ts`, les messages (FR/EN en parité, avec un code technique stable) dans `messages.ts`. Ce qui précise ou complète les §6.1-§6.6 :
 
 - **Sortie** : la feuille est **réécrite** à partir de ce qui a été compris, jamais recopiée. Une erreur retire la déclaration fautive (ou la règle entière si un sélecteur de sa liste est refusé, comme le fait CSS) et met `ok: false` (le skin n'est pas installé). Un **plafond** dépassé (taille, règles, déclarations, keyframes, polices) est fatal : sortie vide, rien n'est appliqué (§6.6). Un avertissement (`menu-toggle` masqué) ne rend pas `ok` faux.
-- **Sélecteurs** : le premier composé doit être une région ou une pièce (directement, ou par `:is()`/`:where()` dont chaque branche l'est) ; un préfixe écrit par l'auteur, exactement `:root[data-skin="<id>"]`, est accepté et jamais doublé ; `&` (imbrication CSS), `|`, `\`, caractères non ASCII refusés ; un pseudo-élément ne va qu'à la fin ; au plus 6 composés, 20 sélecteurs par règle, **600 caractères** par sélecteur (300 avant le lot d'intégration 2 : une liste `:is(a, b, c…)` longue passe maintenant ; pour factoriser plusieurs pièces, écrivez `:is([data-skin-part="card"], [data-skin-part="panel"]) h3` plutôt que de répéter le sélecteur complet) ; `:has()` accepte 2 éléments au plus et ne s'imbrique pas ; `:not/:is/:where/:has` s'imbriquent sur 2 niveaux au plus ; attributs : `=` seulement (plus `~=` pour `rel`, `|=` pour `lang`), valeur courte en minuscules ; un nom de région ou de pièce inconnu est une **erreur** (pas un avertissement) ; une pièce de module `mod.piece` est contrôlée si la liste des pièces des modules installés est fournie.
+- **Sélecteurs** : le premier composé doit être une région ou une pièce (directement, ou par `:is()`/`:where()` dont chaque branche l'est) ; un préfixe écrit dans le skin, exactement `:root[data-skin="<id>"]`, est accepté et jamais doublé ; `&` (imbrication CSS), `|`, `\`, caractères non ASCII refusés ; un pseudo-élément ne va qu'à la fin ; au plus 6 composés, 20 sélecteurs par règle, **600 caractères** par sélecteur (300 avant le lot d'intégration 2 : une liste `:is(a, b, c…)` longue passe maintenant ; pour factoriser plusieurs pièces, écrivez `:is([data-skin-part="card"], [data-skin-part="panel"]) h3` plutôt que de répéter le sélecteur complet) ; `:has()` accepte 2 éléments au plus et ne s'imbrique pas ; `:not/:is/:where/:has` s'imbriquent sur 2 niveaux au plus ; attributs : `=` seulement (plus `~=` pour `rel`, `|=` pour `lang`), valeur courte en minuscules ; un nom de région ou de pièce inconnu est une **erreur** (pas un avertissement) ; une pièce de module `mod.piece` est contrôlée si la liste des pièces des modules installés est fournie.
 - **Valeurs** : alphabet ASCII ; un commentaire vaut une espace ; les échappements CSS (`\75 `) sont **refusés** partout sauf dans les chaînes de `content`, qui sont réécrites en `\HEX ` ; `!important` refuse la déclaration ; fonctions, unités et `url(skin:…)` sur liste (`ALLOWED_FUNCTIONS`) ; `var()` ne lit que `--v-*`/`--sk-*`, comme premier argument ; une valeur fait 500 caractères au plus (300 pour une variable, §4.1) ; les chaînes entre guillemets ne sont permises que dans `content`/`quotes` (ponctuation), `font-family` et le nom de police des variables `--v-font`/`--sk-font-*`, `font-feature-settings`, `grid-template-areas` ; `url()` seulement dans `background`, `background-image`, `mask-image` et les variables ; `calc()/min()/max()/clamp()` entièrement littéraux sont **évalués** avant les bornes (`font-size: calc(0px)` vaut zéro).
 - **Variables** : un cycle (`--a → --b → --a`) retire les variables concernées (`var-cycle`) ; une variable dont le développement dépasse 20 000 caractères aussi (`var-expansion-too-large`) ; pour `display`, `opacity`, `width`… la valeur littérale que la feuille donne à chaque variable utilisée est essayée (`--x:none; display:var(--x)` est refusé). Les valeurs données aux jetons **hors** de la feuille (`tokens.json`) ne sont pas suivies : leur validation par type est celle du lot « jetons » (`sanitizeTokenValue()` applique les mêmes règles de valeur, 300 caractères).
 - **Masquer** (§0.1, §9.3) : la règle s'applique au **sujet** (dernier composé). Est du décor : un pseudo-élément `::before`/`::after`, tout ce qui est dans la région `backdrop` ou la pièce `divider`. `display:none` n'est permis que sur le décor, sur `menu-toggle` (avertissement : le kit vérifie dans le navigateur que la liste du menu reste visible) et sur `nav-list`/`submenu` à l'état fermé (`[data-open="false"]` ou `:not([data-open="true"])`). `visibility`, `clip`, `content-visibility` sont refusés partout. Sur tout le reste : `opacity` ≥ 0,6 (aussi dans `@keyframes`), `font-size` ≥ 0,6875rem, `line-height` ≥ 0,8, `width`/`height`/`max-*` ≥ 0,25rem (4 px), marges négatives ≥ -4rem, `text-indent` entre -0,5em et 8rem, interlettrage ≤ 8 px, décalages (`top`, `left`, `inset`…) entre -1rem et 60rem (et 0 à 100 %), `color` d'opacité ≥ 0,5, `filter: blur` ≤ 2px (`backdrop-filter` ≤ 24px ; décor ≤ 100px), `brightness`/`contrast`/`opacity()` entre 0,5 et 2 / ≥ 0,6, `transform` : `translate` ≤ 4rem (≤ 50 %), `rotate` ≤ 5°, `scale` 0,9-1,1 ; **sur le décor** ces bornes tombent, sauf le flou. `mix-blend-mode` (autre que `normal`), `mask-image`, `pointer-events: none`, `user-select: none` : décor seulement ; `clip-path` : formes `inset(0 round …)`, `circle(50%)`, `ellipse(50% 50%)` sur `card`, `panel`, `button`, `image`, `avatar`, `badge` ; `position: fixed` : `header` et `nav` seulement ; `position: absolute` n'est **pas** vérifiable statiquement (« dans une pièce `relative` ») : seules les bornes de décalage s'appliquent, le kit navigateur fait le reste.
@@ -589,7 +589,7 @@ basic est la référence ; il est exempté de ces contrôles (c'est l'apparence 
 
 | Situation | Comportement |
 |---|---|
-| **Installation** ou **mise à jour** d'un skin (catalogue ou personnel) | Les valeurs **déclarées par l'auteur** doivent passer toutes les paires, dans chaque mode : **refus** avec un message simple, sans rien installer : « Ce skin n'est pas assez lisible : le texte serait trop pâle sur le fond (rapport 2,1 ; il faut au moins 4,5). Il n'a pas été installé. » Une mise à jour refusée laisse le skin comme il était. |
+| **Installation** ou **mise à jour** d'un skin (catalogue ou personnel) | Les valeurs **déclarées dans le skin** doivent passer toutes les paires, dans chaque mode : **refus** avec un message simple, sans rien installer : « Ce skin n'est pas assez lisible : le texte serait trop pâle sur le fond (rapport 2,1 ; il faut au moins 4,5). Il n'a pas été installé. » Une mise à jour refusée laisse le skin comme il était. |
 | **Activation** d'un skin installé avec les retouches existantes de la personne | Le calcul est fait avant d'appliquer ; s'il échoue à cause des retouches, voir ci-dessous. |
 | **Retouche** de la personne qui rend une paire illisible | **On n'empêche pas d'enregistrer** (comportement actuel de `contrastIssues` : un avertissement sous le champ avec un exemple). Au rendu, le cœur applique l'échelle de correction ci-dessous. |
 | Changement de réglage, **mise à jour d'un module** ou d'un skin qui fait échouer une paire après coup | Même échelle de correction au rendu ; la page Apparence affiche un encadré « Nous avons ajusté une couleur pour qu'on puisse la lire » avec un bouton « Revenir au skin » ; rien n'est supprimé. |
@@ -677,7 +677,7 @@ Un module qui n'a pas de clé `skin` continue de fonctionner à l'identique : se
 
 ### 8.6 Numéro de version du module qui adopte les pièces
 
-Règle (décision du propriétaire) : un module qui **ajoute la clé `skin`** et réécrit son CSS public avec les repli `var(jeton, var(commun, valeur-actuelle))` **sans changer son apparence par défaut** passe en version **mineure** (`1.22.0` → `1.23.0`, avec `minCore` = première version du cœur qui lit la clé). S'il **modifie son apparence par défaut** (une couleur, un rayon, une taille qui change vraiment sous basic), il passe en version **majeure**. Un simple correctif de valeur sans effet visible : correctif (`x.y.z`). Le harnais d'images (§12) tranche : image identique = mineure, image différente = majeure. **`minCore` vaut `0.4.0`** (le kit l'exige dès qu'il y a une clé `skin`, `compat.minCore`) : un cœur plus ancien refuse la mise à jour avec le message habituel « mettez d'abord le site à jour » au lieu de recevoir un module dont il ignore les pièces. Modèle : `thanks-wall` 1.0.1 → 1.1.0 (`curiosa-extras`, test `tests/thanks-wall-skin.test.mjs`).
+Règle (décision de la personne propriétaire) : un module qui **ajoute la clé `skin`** et réécrit son CSS public avec les repli `var(jeton, var(commun, valeur-actuelle))` **sans changer son apparence par défaut** passe en version **mineure** (`1.22.0` → `1.23.0`, avec `minCore` = première version du cœur qui lit la clé). S'il **modifie son apparence par défaut** (une couleur, un rayon, une taille qui change vraiment sous basic), il passe en version **majeure**. Un simple correctif de valeur sans effet visible : correctif (`x.y.z`). Le harnais d'images (§12) tranche : image identique = mineure, image différente = majeure. **`minCore` vaut `0.4.0`** (le kit l'exige dès qu'il y a une clé `skin`, `compat.minCore`) : un cœur plus ancien refuse la mise à jour avec le message habituel « mettez d'abord le site à jour » au lieu de recevoir un module dont il ignore les pièces. Modèle : `thanks-wall` 1.0.1 → 1.1.0 (`curiosa-extras`, test `tests/thanks-wall-skin.test.mjs`).
 
 ---
 
@@ -778,7 +778,7 @@ Le kit refuse tout `display:none`, `visibility:hidden`, `opacity < 0.6`, `clip`,
 
 ## 10. Administration (page « Apparence »)
 
-Archétype : Emma, créatrice non technique (**pas** une personne réelle). Mots simples, mobile d'abord, FR + EN en parité exacte, erreurs sous le champ avec un exemple, options avancées repliées.
+Archétype : une personne non technique (**pas** une personne réelle). Mots simples, mobile d'abord, FR + EN en parité exacte, erreurs sous le champ avec un exemple, options avancées repliées.
 
 ### 10.1 Où
 
@@ -786,14 +786,14 @@ Une page **Apparence** (`/admin/appearance`, rubrique *Administration* du menu) 
 
 ### 10.2 Écran (mobile d'abord)
 
-1. **Le skin actuel** : une carte avec son aperçu, son nom, « Skin de base » ou l'auteur, boutons [Changer de skin] (et [Mettre à jour] s'il y a une version plus récente).
+1. **Le skin actuel** : une carte avec son aperçu, son nom, « Skin de base » ou le nom de la personne qui l'a écrit, boutons [Changer de skin] (et [Mettre à jour] s'il y a une version plus récente).
 2. **Choisir un skin** : une grille de cartes à une colonne sur mobile (aperçu, nom, une phrase, pastilles « Clair »/« Sombre »). Toucher une carte ouvre un **aperçu en plein écran** (la vraie page d'accueil du site avec ce skin, bouton « Essayer » / « Annuler »). Aucun enregistrement avant « Utiliser ce look ».
 3. **Ajouter un skin** : le catalogue officiel (même mécanique que *Extensions → Ajouter* : recherche, fiche, installation en un clic). Dessous, replié : « Ajouter depuis une adresse (avancé) ».
 4. **Mes retouches** : couleurs (un seul mode ou clair et sombre, §3.7), police, halo, fond, en-tête (existant). À côté de chaque réglage retouché, « ↺ Valeur du skin ». Bouton général **« Revenir au skin »** (avec confirmation courte).
 5. **Options du skin** (si le skin en déclare) : densité, etc. en choix simples.
 6. **Mises à jour** et **Retirer** (replié) ; crédits des polices et images du skin (« Voir les licences »).
 
-Mots à utiliser (FR / EN, clés `skins.*` du dictionnaire) : le mot **« skin »** partout, côté personne comme côté technique (décision du propriétaire : « un skin parle à tout le monde »). La page s'appelle « Apparence » / *Appearance* ; l'objet choisi est un « skin » / *skin*. Exemples : « Choisir un skin » / *Choose a skin* ; « Revenir au skin » / *Reset to the skin's values* ; « Ce skin n'est pas assez lisible, il n'a pas été installé. » / *This skin isn't readable enough, so it wasn't installed.* ; « Ce skin ne vient pas de la liste vérifiée. » / *This skin isn't from the verified list.*
+Mots à utiliser (FR / EN, clés `skins.*` du dictionnaire) : le mot **« skin »** partout, côté personne comme côté technique (décision de la personne propriétaire : « un skin parle à tout le monde »). La page s'appelle « Apparence » / *Appearance* ; l'objet choisi est un « skin » / *skin*. Exemples : « Choisir un skin » / *Choose a skin* ; « Revenir au skin » / *Reset to the skin's values* ; « Ce skin n'est pas assez lisible, il n'a pas été installé. » / *This skin isn't readable enough, so it wasn't installed.* ; « Ce skin ne vient pas de la liste vérifiée. » / *This skin isn't from the verified list.*
 
 ### 10.3 Aperçu de l'éditeur
 
@@ -847,7 +847,7 @@ Même philosophie que les outils `maintenance_*` existants : **lecture** (`appea
 
 ## 13. Le kit de test des skins
 
-Commande : `npm run skin:check -- <dossier-du-skin>` (réalisé au lot S8, §23 ; guide des auteurs : [CREER-UN-SKIN.md](CREER-UN-SKIN.md)), même esprit que `npm run module:check` (`docs/TESTSUPPORT.md`) : rapport ✅ / ❌ / ⚠️ avec « ce qui ne va pas, pourquoi, comment corriger » ; `--json`, `--strict`, `--visual` (niveau navigateur, Chromium), `--seulement id1,id2`. Code de sortie ≠ 0 si une exigence obligatoire échoue. Le dépôt `curiosa-skins` l'exécute sur chaque skin avant fusion, et le cœur **réutilise la même bibliothèque** (`validateSkin()`, `sanitizeSkinCss()`, `checkReadability()`) à l'installation : ce qui passe le kit passe l'installation.
+Commande : `npm run skin:check -- <dossier-du-skin>` (réalisé au lot S8, §23 ; guide pour écrire un skin : [CREER-UN-SKIN.md](CREER-UN-SKIN.md)), même esprit que `npm run module:check` (`docs/TESTSUPPORT.md`) : rapport ✅ / ❌ / ⚠️ avec « ce qui ne va pas, pourquoi, comment corriger » ; `--json`, `--strict`, `--visual` (niveau navigateur, Chromium), `--seulement id1,id2`. Code de sortie ≠ 0 si une exigence obligatoire échoue. Le dépôt `curiosa-skins` l'exécute sur chaque skin avant fusion, et le cœur **réutilise la même bibliothèque** (`validateSkin()`, `sanitizeSkinCss()`, `checkReadability()`) à l'installation : ce qui passe le kit passe l'installation.
 
 | Niveau | Exigences (obligatoires sauf mention) |
 |---|---|
@@ -868,12 +868,12 @@ Tests du cœur (en plus du kit) : `tests/core/skins-*.test.mjs` : assainisseur (
 
 ## 14. Le banc d'essai
 
-But : un auteur teste son skin **sans installer un site entier**.
+But : une personne teste son skin **sans installer un site entier**.
 
 - `npm run skin:bench -- <dossier-du-skin> [--port 4600] [--shots <dossier>]` démarre un petit serveur Node (sans base de données ni Next) qui sert une page `/` : la **coquille réelle** du site (mêmes régions et pièces que §9) remplie de **fragments HTML de démonstration**, avec la même fonction `composeSkin()` que le site réel (donc le même assainissement et le même repli). Les fragments sont **générés à partir des vrais composants du cœur** (rendu statique avec des données de test fixes) par `npm run skin:bench:refresh` dans le cœur et versionnés dans `testsupport/skins/bench/fragments/` (un test vérifie qu'ils sont à jour). Les modules apportent leur fragment via `skin.demo` (§8.2) ; sans lui, un gabarit générique selon `kind`.
 - La page liste **toutes** les pièces du §9.2 (avec leur nom en légende, dans un bandeau de la page de démonstration qui n'est pas dans le DOM mesuré), dans tous leurs états (normal, survol simulé par une classe de démonstration, focus, désactivé, erreur), plus les quatre `header.layout`, une accueil fluide avec les quatre tailles de morceaux, un menu à sous-menus ouvert, le bandeau de cookies, et les pièces des modules installés **dans le dépôt de skins** (`--modules <dossier>` pour lire leurs `module.json`).
 - Un bouton « Clair / Sombre / Appareil » (le banc seul, pas le site réel) et un sélecteur de largeur (390, 768, 1280, 1920 + les `breakpoints`).
-- `--shots` produit les captures PNG de toutes les combinaisons (clair/sombre × largeurs) avec Chromium et lance le contrôle `--visual`. Ce sont les captures que le propriétaire verra avant publication.
+- `--shots` produit les captures PNG de toutes les combinaisons (clair/sombre × largeurs) avec Chromium et lance le contrôle `--visual`. Ce sont les captures que la personne propriétaire verra avant publication.
 - Un mode « page réelle » : `npm run skin:bench -- <dossier> --site http://localhost:3000` applique le skin en mémoire à un site local de développement (en lecture seule, sans toucher à ses réglages) pour voir ses vraies pages.
 
 ---
@@ -883,7 +883,7 @@ But : un auteur teste son skin **sans installer un site entier**.
 - **Aucune exécution de code** (§6) : pas de JS, pas de React, pas d'`@import`, pas d'expression. Un skin est de la donnée assainie.
 - **Portée** : toutes les règles préfixées `:root[data-skin="<id>"]` ; jamais l'administration, les overlays, les routes `/m`.
 - **Liste blanche** de sélecteurs, d'at-règles, de propriétés, de valeurs (§6) ; plafonds de taille et de nombre de règles ; sortie assainie recalculée côté serveur (le fichier source n'est jamais servi).
-- **Aucune ressource tierce** : toute URL non `skin:` est refusée. Polices (`.woff2`) et images **servies par le site lui-même** depuis `/skins/<id>/<version>/…` (même origine) ; aucune requête vers Google Fonts, un CDN ou GitHub chez le visiteur. Les aperçus ne sont chargés que par l'administration, depuis le site (copie locale). Aucune ressource de skin n'est conditionnée par un cookie ; aucun suivi.
+- **Aucune ressource tierce** : toute URL non `skin:` est refusée. Polices (`.woff2`) et images **servies par le site lui-même** depuis `/skins/<id>/<version>/…` (même origine) ; aucune requête vers Google Fonts, un CDN ou GitHub chez la personne qui visite. Les aperçus ne sont chargés que par l'administration, depuis le site (copie locale). Aucune ressource de skin n'est conditionnée par un cookie ; aucun suivi.
 - **Licences** : toute ressource a sa licence listée et affichée dans « Voir les licences » ; liste d'identifiants SPDX autorisés ; `THIRD-PARTY-NOTICES.md` n'embarque pas les skins (ils sont installés, pas livrés).
 - **Préférence clair/sombre** : `localStorage` du navigateur uniquement, jamais envoyée, déclarée dans `privacy` et la page de confidentialité (§3.8) ; aucun cookie ajouté ; bandeau de cookies inchangé.
 - **Pas de minuteur de fond** : composition calculée à la demande avec cache expirant (10 min) ; rien ne tourne en arrière-plan ; vérification de mises à jour des skins avec celle des modules (déjà planifiée par le cœur).
@@ -1005,18 +1005,18 @@ Ordre recommandé : harnais d'images **d'abord** (sinon aucune preuve) → jeton
 
 ---
 
-## 19. Décisions du propriétaire et questions encore ouvertes
+## 19. Décisions de la personne propriétaire et questions encore ouvertes
 
-**Tranchées par le propriétaire (reportées dans le document)** :
+**Tranchées par la personne propriétaire (reportées dans le document)** :
 
 | Sujet | Décision | Où |
 |---|---|---|
 | Vocabulaire | « **skin** » partout, côté personne et technique ; la page s'appelle « Apparence » | §10 |
 | Retouche des couleurs d'un skin à deux modes | la personne choisit **un seul mode OU les deux** (clair et sombre), avertissement de lisibilité en direct, jamais bloquant ; clés `theme.light.*` / `theme.dark.*` | §3.7 |
-| Bascule clair/sombre par le visiteur | **oui** : Automatique / Clair / Sombre, `localStorage` seul, script externe du cœur, pièce non masquable ; le bandeau de cookies ne change pas | §3.8 |
+| Bascule clair/sombre par la personne qui visite | **oui** : Automatique / Clair / Sombre, `localStorage` seul, script externe du cœur, pièce non masquable ; le bandeau de cookies ne change pas | §3.8 |
 | Crédit « Propulsé par » et lien Confidentialité | constantes, non masquables, non modifiables par un skin | §9.3 |
 | Lisibilité | AA obligatoire, AAA en conseil, basic exempté | §7 |
-| Catalogue officiel | relu par le propriétaire, kit en CI du dépôt de skins, `ref` épinglé | §5.5, §13 |
+| Catalogue officiel | relu par la personne propriétaire, kit en CI du dépôt de skins, `ref` épinglé | §5.5, §13 |
 | Version du cœur | **nouvelle version majeure** ; espace réservé `0.4.0` (voir Q-A) | partout (`minCore`) |
 | Modules | un module qui ajoute la clé `skin` et **change son apparence publique par défaut** passe en **version majeure** ; sinon **mineure** (repli = valeur actuelle, rendu identique) ; un module qui ne change rien d'autre : correctif | §8.6 |
 | Pages autonomes de modules | plus tard, seulement si elles déclarent des pièces | §11 |
@@ -1027,8 +1027,8 @@ Ordre recommandé : harnais d'images **d'abord** (sinon aucune preuve) → jeton
 
 **Encore ouverte (courte)** :
 
-- **Q-A** Version du cœur qui livre les skins : `0.4.0` retenu comme espace réservé ; **ou `1.0.0`** ? À confirmer par le propriétaire (tous les `minCore` d'exemple changent en conséquence).
-- **Q-B** (tranchée, implémentée au lot S1) : la feuille d'un skin PEUT cibler le choix du visiteur : `[data-mode="light"]` / `[data-mode="dark"]` est permis **en tête de sélecteur seulement**, seul ou après le préfixe `:root[data-skin="<id>"]` ; la sortie est `:root[data-skin="<id>"][data-mode="dark"] …`. Ailleurs, `data-mode` reste refusé. `data-mode` est absent en « Automatique » : pour le mode de l'appareil, un skin utilise ses jetons `light`/`dark`.
+- **Q-A** Version du cœur qui livre les skins : `0.4.0` retenu comme espace réservé ; **ou `1.0.0`** ? À confirmer par la personne propriétaire (tous les `minCore` d'exemple changent en conséquence).
+- **Q-B** (tranchée, implémentée au lot S1) : la feuille d'un skin PEUT cibler le choix de la personne qui visite : `[data-mode="light"]` / `[data-mode="dark"]` est permis **en tête de sélecteur seulement**, seul ou après le préfixe `:root[data-skin="<id>"]` ; la sortie est `:root[data-skin="<id>"][data-mode="dark"] …`. Ailleurs, `data-mode` reste refusé. `data-mode` est absent en « Automatique » : pour le mode de l'appareil, un skin utilise ses jetons `light`/`dark`.
 - **Q-C** (tranchée) : `--sk-color-heading` est un jeton **facultatif** ; défini, la paire « titres » est contrôlée à 3:1, sinon ignorée.
 
 ---
@@ -1182,7 +1182,7 @@ Laissé aux lots suivants : le banc d'essai lit `layer.parts` et `demo` (S8) ; l
 
 ## 23. La page Apparence : ce qui est implémenté (lot S7)
 
-> Emma, créatrice non technique (pas une personne réelle) : mots simples, zéro configuration, avertissements sous le champ avec un exemple, téléphone d'abord (390 px), français et anglais en parité exacte, clavier et lecteur d'écran, cibles d'au moins 44 px, options avancées repliées. Le titre reste « Apparence » ; le mot « skin » désigne l'objet choisi, partout.
+> Une personne non technique (archétype, pas une personne réelle) : mots simples, zéro configuration, avertissements sous le champ avec un exemple, téléphone d'abord (390 px), français et anglais en parité exacte, clavier et lecteur d'écran, cibles d'au moins 44 px, options avancées repliées. Le titre reste « Apparence » ; le mot « skin » désigne l'objet choisi, partout.
 
 ### 23.1 Où est le code
 
@@ -1205,7 +1205,7 @@ Droits : choisir, retoucher, revenir au skin, annuler, aperçu = « administrate
 3. **Choisir un skin** : cartes (basic toujours présent) ; [Aperçu] ouvre une fenêtre (`<dialog>` : focus piégé, Échap) avec la **vraie page du site** habillée du skin (page, téléphone / ordinateur, Automatique / Clair / Sombre) et [Utiliser ce skin] dedans.
 4. **Ajouter un skin** : le catalogue (lu à part, en flux : la page s'affiche même si le dépôt est lent ; message simple s'il est injoignable) avec [Voir les détails] (lit le dépôt SANS rien installer : README, licences, aperçus, lisibilité), [Installer et utiliser] (un clic) et [Installer] ; dessous, **replié**, « Ajouter depuis une adresse (avancé) » : [Vérifier] → résumé → avertissement « Ce skin ne vient pas de la liste vérifiée… » + case **« Je comprends, je l'ajoute »** obligatoire (message sous la case sinon).
 5. **Mes retouches** (un seul formulaire, barre flottante « Enregistrer / Annuler » comme Réglages) : en-tête (4 dispositions), **couleurs** (§23.3), police (avancé), halo, fond et image, fond avancé ; en dessous « **Revenir au skin** » (avec confirmation) ; **options du skin** (si le skin en déclare).
-6. **Clair / sombre pour vos visiteurs** : dit si le bouton existe et pourquoi (§3.8), avec une maquette du bouton.
+6. **Clair / sombre pour les personnes qui visitent votre site** : dit si le bouton existe et pourquoi (§3.8), avec une maquette du bouton.
 7. **Mises à jour et retrait** (replié, par skin installé) : « Chercher une mise à jour » → version → [Mettre à jour] ; une montée **majeure** demande « Je comprends » ; [Revenir à la version d'avant] ; **Retirer** avec l'explication « votre contenu ne change pas » et confirmation. Crédits et licences du skin actuel (replié).
 
 ### 23.3 Couleurs : un seul mode ou clair et sombre
@@ -1230,13 +1230,13 @@ Réglages → Apparence ne contient plus les couleurs, la police, le halo, le fo
 
 ### 23.5 L'aperçu, sans rien enregistrer
 
-`/admin/appearance/preview/<id>` (§10.3) a été remplacé par une adresse de la **vraie page** du site : `<page>?curiosa_skin_preview=<jeton>`. Le jeton (`<skin>.<fin>.<signature>`, HMAC du secret du site, **quinze minutes**) est fabriqué par une action d'administrateur ; le proxy ne fait que le recopier dans l'en-tête interne `x-curiosa-skin-preview` (après avoir effacé celui du visiteur) ; le gabarit du site le vérifie puis compose le skin demandé **sans les retouches ni les options de la personne** (c'est ce que donnerait « Utiliser ce skin ») et ajoute `noindex`. Rien n'est écrit, aucun cookie, aucun état serveur ; un jeton ne donne accès à rien de privé (le site est public) : il choisit seulement quel skin habille la page. Un skin absent ou altéré s'affiche en basic.
+`/admin/appearance/preview/<id>` (§10.3) a été remplacé par une adresse de la **vraie page** du site : `<page>?curiosa_skin_preview=<jeton>`. Le jeton (`<skin>.<fin>.<signature>`, HMAC du secret du site, **quinze minutes**) est fabriqué par une action d'administrateur ; le proxy ne fait que le recopier dans l'en-tête interne `x-curiosa-skin-preview` (après avoir effacé celui de la personne qui visite) ; le gabarit du site le vérifie puis compose le skin demandé **sans les retouches ni les options de la personne** (c'est ce que donnerait « Utiliser ce skin ») et ajoute `noindex`. Rien n'est écrit, aucun cookie, aucun état serveur ; un jeton ne donne accès à rien de privé (le site est public) : il choisit seulement quel skin habille la page. Un skin absent ou altéré s'affiche en basic.
 
 **Éditeur d'entrée** : un bloc replié « Voir avec mon skin » montre le titre et le texte en cours d'écriture avec le composant `Markdown` du site, les **jetons effectifs** du skin posés comme variables CSS sur ce seul conteneur (jamais sur la page : l'administration n'est jamais restylée ; pas de feuille de skin, donc ni mise en page ni polices embarquées : pour cela, l'aperçu d'Apparence).
 
 ### 23.6 L'assistant IA (maintenance)
 
-Outils `maintenance_skin_status`, `maintenance_skin_list` (niveau 1, lecture) ; `maintenance_skin_install`, `maintenance_skin_activate`, `maintenance_skin_remove` (niveau 3 : des **demandes** que la propriétaire approuve dans *Assistants IA › Demandes à valider*, 24 heures, plan figé et revérifié à l'exécution). Jamais : un dépôt personnel ou une adresse (l'IA ne donne qu'un identifiant du **catalogue officiel**), une installation sans accord (même en « exécution directe » : comme `module_install`), toucher au contenu. Activer met les retouches de côté (annulables). Détail : `docs/MAINTENANCE-IA.md`. (Les noms `appearance_*` du §10.6 ont été remplacés par `maintenance_skin_*` pour rester dans la famille `maintenance_`, ses niveaux, ses jetons et son audit.)
+Outils `maintenance_skin_status`, `maintenance_skin_list` (niveau 1, lecture) ; `maintenance_skin_install`, `maintenance_skin_activate`, `maintenance_skin_remove` (niveau 3 : des **demandes** que la personne propriétaire approuve dans *Assistants IA › Demandes à valider*, 24 heures, plan figé et revérifié à l'exécution). Jamais : un dépôt personnel ou une adresse (l'IA ne donne qu'un identifiant du **catalogue officiel**), une installation sans accord (même en « exécution directe » : comme `module_install`), toucher au contenu. Activer met les retouches de côté (annulables). Détail : `docs/MAINTENANCE-IA.md`. (Les noms `appearance_*` du §10.6 ont été remplacés par `maintenance_skin_*` pour rester dans la famille `maintenance_`, ses niveaux, ses jetons et son audit.)
 
 ### 23.7 Écarts avec la conception
 
@@ -1249,7 +1249,7 @@ Outils `maintenance_skin_status`, `maintenance_skin_list` (niveau 1, lecture) ; 
 
 ---
 
-## 24. Notes de mise en œuvre du lot S8 (kit de test, banc d'essai, gabarits des auteurs)
+## 24. Notes de mise en œuvre du lot S8 (kit de test, banc d'essai, gabarits pour écrire un skin)
 
 | Sujet | Où | Précisions |
 |---|---|---|
@@ -1266,9 +1266,9 @@ Outils `maintenance_skin_status`, `maintenance_skin_list` (niveau 1, lecture) ; 
 
 ---
 
-## 25. Lot d'intégration 2 : les frictions relevées par les auteurs de skins
+## 25. Lot d'intégration 2 : les frictions relevées par les personnes qui ont écrit des skins
 
-Quatre auteurs ont écrit un skin chacun (`brutaliste-clair`, `retro-neon`, `editorial-papier`, `verre-doux`) et relevé ce qui les gênait. Tout ce qui suit est **additif** : basic reste identique (zéro pixel, 1 168 captures), aucun skin existant n'est refusé à cause d'un changement de ce lot, sauf le contrôle du dégradé (§25.3), qui est un cas d'illisibilité réel.
+Quatre personnes ont écrit un skin chacune (`brutaliste-clair`, `retro-neon`, `editorial-papier`, `verre-doux`) et relevé ce qui les gênait. Tout ce qui suit est **additif** : basic reste identique (zéro pixel, 1 168 captures), aucun skin existant n'est refusé à cause d'un changement de ce lot, sauf le contrôle du dégradé (§25.3), qui est un cas d'illisibilité réel.
 
 ### 25.1 Les boîtes intérieures des modules (`module-html`)
 
@@ -1301,7 +1301,7 @@ Dès qu'un second accent distinct existe, le cœur pose (règles `[data-accent2]
 - **Longueur d'un sélecteur** : 600 caractères (§6.7). Pour factoriser, `:is()` (imbrication sur 2 niveaux au plus).
 - **Refus fréquents et leur remplacement** : `:first-of-type` (état non permis, `pseudo-class-not-allowed`) → `:first-child` ou `:nth-of-type(1)` ; `line-height: 0.7` (`line-height-too-small`, minimum 0,8, idéalement 1,4 pour du texte) → `line-height: 1.2` ; `float: left` (`float-not-none`) → `display: flex` ou `grid` (par exemple une image à côté du texte : `display: grid; grid-template-columns: 8rem 1fr`) ; `[data-site-nav]` (`attribute-not-allowed`) → `[data-skin-region="nav"] [data-skin-part="nav-list"]`.
 - **Aperçus** : 1280 × 800 (ordinateur) ou 390 × 844 (téléphone), voir la ligne `previews` du §5.2 (le cœur ne mesure pas, le kit avertit hors de ces deux formats).
-- **Notes de l'auteur à la racine** : voir §5.1.
+- **Notes de la personne qui écrit le skin, à la racine** : voir §5.1.
 - **Banc de test d'images (`scripts/visual/`)** : le profil `skin-test` écrit la ligne `skin.installed` complète avec la vraie empreinte (calculée par le validateur du cœur) ; sans empreinte, le skin est ignoré en silence. `VISUAL_SKIN_IGNORE_MINCORE=1` (réglage de test) ramène le `minCore` de la copie à la version du cœur essayé, pour juger un skin écrit pour 0.4.0 sur un cœur 0.3.x.
 
 ### 25.5 Un skin fusionné par écrasement perd ses références (`ref`)

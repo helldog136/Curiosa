@@ -41,6 +41,6 @@ De plus en plus de personnes posent leurs questions à un assistant IA plutôt q
 3. Ouvrez `https://votre-site/llms.txt` : relisez-le, il ne doit contenir que ce que vous acceptez de voir public.
 4. Posez une question sur votre sujet à un assistant IA qui cherche sur le web, quelques semaines plus tard : c'est la seule vraie mesure, et elle reste incertaine.
 
-## Pour les développeurs de modules
+## Pour qui développe des modules
 
 Un module ajoute ses données structurées par l'emplacement `layout.head` avec `ctx.api.seo.jsonLd(…)` : voir [CREATE-A-MODULE.md](CREATE-A-MODULE.md) (types recommandés : Article / BlogPosting, Event / BroadcastEvent, VideoObject, Person, FAQPage, Product). Code du cœur : `src/core/seo.ts` (robots, JSON-LD, adresses canoniques), `src/core/llms.ts` (llms.txt), `src/core/aiVisibility.ts` (page de contrôle).

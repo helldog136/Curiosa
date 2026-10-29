@@ -17,7 +17,7 @@ import { StallTracker, type StallConfig } from "./stallTracker";
  * (`boxedInner`) : le fournisseur lent est nommé à la place du consommateur, qui peut alors afficher son repli. Hors d'une page publique (administration,
  * tâches planifiées, routes de module, MCP), `boxedInner` ne limite rien : ces appels peuvent légitimement durer.
  *
- * Réglage : aucun pour la créatrice. Variable d'environnement facultative pour les développeurs : CURIOSA_SECTION_TIMEOUT_MS (100 à 120000, 8000 par défaut) ;
+ * Réglage : aucun pour la personne qui gère le site. Variable d'environnement facultative pour les développeurs : CURIOSA_SECTION_TIMEOUT_MS (100 à 120000, 8000 par défaut) ;
  * le seuil « lent », la pause entre deux essais et le reste en découlent.
  */
 export const DEFAULT_SECTION_TIMEOUT_MS = 8000;

@@ -20,13 +20,13 @@ const moduleDirs = ["modules", "examples"].flatMap((group) => {
 const KNOWN = {
   guestbook: {
     "settings.optional": "« banner » et « accessCode » se disent facultatifs sans \"optional\": true (et minCore 0.1.22)",
-    "privacy.declared": "le livre d'or reçoit des messages de visiteurs mais ne déclare pas « privacy »",
+    "privacy.declared": "le livre d'or reçoit des messages de personnes mais ne déclare pas « privacy »",
   },
   "announcement-banner": {
     "settings.optional": "« link » se dit facultatif sans \"optional\": true (et minCore 0.1.22)",
     "wording.simple": "la description parle de « sujet » (topic) : exemple pour développeurs, à reformuler",
   },
-  "game-suggestions": { "privacy.declared": "reçoit des suggestions de visiteurs mais ne déclare pas « privacy »" },
+  "game-suggestions": { "privacy.declared": "reçoit des suggestions de personnes mais ne déclare pas « privacy »" },
   contacts: { "mcp.safety": "contact_create et contact_note écrivent mais sont activées par défaut (\"default\": true)" },
   partnerships: { "mcp.safety": "partner_create, partner_update, partner_log et partner_link_contact écrivent mais sont activées par défaut" },
   "alerts-overlay": { "wording.simple": "la description dit « HTTP » et le réglage « Jeton d'envoi » est visible en mode simple (le passer en avancé ou le reformuler)" },

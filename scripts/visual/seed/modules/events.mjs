@@ -10,11 +10,11 @@ export default async function events(h) {
     [3, "14h", "Atelier d'initiation à la gravure", "Salle des fêtes, rue du Marché", "Venez découvrir la gravure sur bois avec du matériel prêté.", 1],
     [6, "19:30", "Rencontre mensuelle des membres", "Café associatif", "Un moment simple pour se retrouver et présenter ses projets.", 4],
     [9, "10h", "Formation : photographier ses réalisations", "Atelier principal", "Une demi-journée pour apprendre à bien photographier son travail.", 2],
-    [14, "18h", "Masterclass de reliure japonaise", "Studio B", "Une masterclass avec une intervenante invitée. Places limitées.", 3],
+    [14, "18h", "Masterclass de reliure japonaise", "Studio B", "Une masterclass avec une personne invitée. Places limitées.", 3],
     [21, "20h", "Soirée projections", "Salle polyvalente", "Courts métrages d'atelier et discussion.", 0],
     [28, "09:00", "Journée portes ouvertes", "Atelier principal", "Toute la journée : visites, démonstrations et café offert.", 0],
     [40, "15h", "Atelier enfants : mon premier carnet", "Salle des fêtes", "Pour les 7-12 ans, accompagnés d'un adulte.", 1],
-    [55, "18:30", "Conférence : l'artisanat demain", "Auditorium", "Trois invités parlent de l'avenir des métiers d'art.", 3],
+    [55, "18:30", "Conférence : l'artisanat demain", "Auditorium", "Trois personnes invitées parlent de l'avenir des métiers d'art.", 3],
     [70, "10h", "Stage d'été : initiation à la céramique", "Atelier principal", "Cinq matinées pour réaliser ses premières pièces.", 2],
   ];
   const ids = [];
@@ -24,7 +24,7 @@ export default async function events(h) {
   }
   for (let i = 0; i < ids.length; i++) await h.act("events", "saveEvent", { id: ids[i], section: "essential", title: UP[i][2], type: types[UP[i][5] % types.length], date: iso(UP[i][0]), time: UP[i][1], place: UP[i][3], text: UP[i][4], status: "published" });
   // détail riche sur le premier
-  await h.act("events", "saveEvent", { id: ids[0], section: "program", program: "14:00 Accueil et présentation\n14:30 Premiers gestes\n16:00 Pause\n16:30 Impression des gravures", speakers: "Camille Durand | Graveuse | /a-propos\nMaël Lefèvre | Imprimeur" });
+  await h.act("events", "saveEvent", { id: ids[0], section: "program", program: "14:00 Accueil et présentation\n14:30 Premiers gestes\n16:00 Pause\n16:30 Impression des gravures", speakers: "Camille Durand | Gravure | /a-propos\nMaël Lefèvre | Impression" });
   await h.act("events", "saveEvent", { id: ids[0], section: "where", endDate: "", endTime: "17:30", tz: "Europe/Paris", lat: "48.8566", lng: "2.3522" });
   await h.act("events", "saveEvent", { id: ids[0], section: "media", image: await h.img(1, 1200, 630), imageAlt: "Établi de gravure", signupUrl: "https://example.org/inscription", seatsLeft: "4", seatsTotal: "12", videoUrl: "" });
   await h.act("events", "saveEvent", { id: ids[3], section: "media", image: await h.img(4, 1200, 630), imageAlt: "Reliure", signupUrl: "https://example.org/inscription", seatsLeft: "0", seatsTotal: "10", videoUrl: "" });

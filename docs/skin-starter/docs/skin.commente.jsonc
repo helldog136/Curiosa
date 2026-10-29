@@ -13,7 +13,7 @@
   "author": { "name": "Votre nom" },       // facultatif : "url" aussi.
   "license": "MIT",                        // MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, CC0-1.0, CC-BY-4.0, CC-BY-SA-4.0 ou OFL-1.1 : celle de TOUT le contenu du skin.
   "tags": ["light", "dark", "minimal"],    // 6 au plus, dans cette liste : light dark serif sans mono pixel playful minimal bold editorial retro glass high-contrast.
-  "modes": ["light", "dark"],              // ["light"], ["dark"] ou les deux. Un seul mode : il est imposé. Les deux : le visiteur peut choisir.
+  "modes": ["light", "dark"],              // ["light"], ["dark"] ou les deux. Un seul mode : il est imposé. Les deux : la personne qui visite peut choisir.
   "tokens": "tokens.json",                 // les valeurs (couleurs, polices, arrondis, largeurs…).
   "stylesheet": "skin.css",                // facultatif : la mise en page et les formes. Un skin peut n'être que des jetons.
   "previews": [                            // 1 à 4 images WebP de 1280 × 800 (ou 390 × 844, téléphone), 150 Ko au plus chacune. Montrées dans l'administration seulement.

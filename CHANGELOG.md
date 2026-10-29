@@ -2,7 +2,7 @@
 
 Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a changé depuis la version précédente publiée** ; ce texte est aussi celui de la release sur GitHub et celui affiché dans l'admin, page *Mises à jour*.
 
-**Comment c'est écrit** : pour quelqu'un qui n'est pas technicien. Un point = une à trois phrases, dites ce que ça change pour vous, pas comment c'est fait. Les détails techniques vont dans la rubrique « Pour les développeurs ». Un test vérifie ces règles.
+**Comment c'est écrit** : pour une personne sans bagage technique. Un point = une à trois phrases, dites ce que ça change pour vous, pas comment c'est fait. Les détails techniques vont dans la rubrique « Pour les développeurs ». Un test vérifie ces règles.
 
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
@@ -22,6 +22,11 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Pour les auteurs de modules :** un module peut déclarer les parties de son affichage que les skins peuvent habiller. Les modules existants fonctionnent sans changement.
 - **Pour les auteurs de skins :** une commande de contrôle, un banc d'essai, un guide « Je crée mon skin en 30 minutes » et un dépôt de départ.
 - **Sécurité et vie privée.** Un skin ne contient aucun programme : sa feuille de style est nettoyée avant d'être servie. Ses polices et images viennent de votre site, jamais d'un service tiers, et un skin ne peut ni masquer ni retirer du contenu.
+
+### Améliorations
+
+- **Des textes qui ne devinent plus qui vous êtes.** Les écrans d'administration, le site public, les e-mails, les messages d'installation et les guides parlent de « la personne propriétaire », de « votre public » ou de « l'équipe », sans supposer le genre de la personne qui gère le site ni celui de son public.
+- **Le menu « Utilisateurs » s'appelle « Équipe » en français.** Les adresses et les rôles ne changent pas ; seul le nom affiché est différent.
 - Rien d'autre ne change pour votre site.
 
 ### Pour les développeurs
@@ -30,6 +35,8 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - Modules : clé facultative `skin` du `module.json` (`"minCore": "0.4.0"`), jetons `--sk-m-<module>-…`, boîtes intérieures ciblables sous `module-html`. Réglages : `skin.active`, `skin.installed`, `skin.options`, `skin.snapshot` ; aucune migration de base, `skin.active` absent = `basic`.
 - Outils : `npm run skin:check -- <dossier>` (huit niveaux, `--visual`, `--strict`), `npm run skin:bench`, gabarit `docs/skin-starter/`, guide `docs/CREER-UN-SKIN.md`. Harnais d'images (`npm run visual:*`) pour prouver que `basic` reste à 0 pixel d'écart.
 - Assistant IA : `maintenance_skin_status`, `maintenance_skin_list`, `maintenance_skin_install`, `maintenance_skin_activate`, `maintenance_skin_remove` (demandes à valider). Corrigé au passage : le titre de niveau 6 d'un texte Markdown perdait ses capitales sous `basic`.
+- Nouveau test `tests/core/neutral-writing.test.mjs` (termes genrés connus, liste blanche justifiée) et audit `docs/ideas/ecriture-neutre-audit.md`. Les messages du kit de test sont reformulés (`docs/TESTSUPPORT.md` régénéré) ; le README d'un module peut aussi nommer sa rubrique technique « Côté technique ».
+- Les noms de rôles (`owner`, Propriétaire, Administrateur, Éditeur) et les identifiants ne changent pas ; leur éventuel renommage est à décider séparément.
 
 ## 0.3.1
 

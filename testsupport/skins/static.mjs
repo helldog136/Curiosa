@@ -100,7 +100,7 @@ export async function staticCheck(dir, options = {}) {
         for (const name of Object.keys(validation.tokens.modules[id])) if (!declared.has(name)) add(kitIssue("kit-module-token-unknown", { module: id, token: name }));
       }
     }
-    // ce que verrait le visiteur : valeurs refusées à la composition, corrections de lisibilité
+    // ce que verrait la personne qui visite : valeurs refusées à la composition, corrections de lisibilité
     try {
       const { toSkinDefinition } = await lib("folder");
       const { composeSkin } = await lib("compose");

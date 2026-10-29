@@ -137,7 +137,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 | [`routes.redirect`](#routesredirect) | obligatoire | Aucune redirection vers un site extérieur |
 | [`routes.errors`](#routeserrors) | obligatoire | Les réponses d'erreur ne révèlent rien d'interne |
 | [`routes.protected`](#routesprotected) | obligatoire | Une route publique qui écrit est protégée contre les abus |
-| [`routes.visitorIp`](#routesvisitorip) | conseil | L'adresse du visiteur n'est pas lue dans les en-têtes |
+| [`routes.visitorIp`](#routesvisitorip) | conseil | L'adresse de la personne qui visite n'est pas lue dans les en-têtes |
 | [`forms.fieldErrors`](#formsfielderrors) | conseil | Une erreur de champ s'affiche sous son champ |
 | [`mcp.name`](#mcpname) | obligatoire | Les noms d'outils MCP restent assez courts |
 | [`mcp.safety`](#mcpsafety) | obligatoire | Les outils MCP déclarent honnêtement ce qu'ils font |
@@ -154,7 +154,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 | [`data.version`](#dataversion) | obligatoire | dataVersion et migrations sont cohérentes |
 | [`data.migrations`](#datamigrations) | conseil | Les migrations se déroulent sans erreur |
 | [`privacy.declared`](#privacydeclared) | obligatoire | Un module qui collecte des données le déclare (privacy) |
-| [`privacy.thirdParty`](#privacythirdparty) | conseil | Les services tiers chargés chez le visiteur sont mentionnés |
+| [`privacy.thirdParty`](#privacythirdparty) | conseil | Les services tiers chargés chez la personne qui visite sont mentionnés |
 | [`srp.single`](#srpsingle) | obligatoire | Un module fait une chose ; chaque donnée a un seul propriétaire |
 | [`srp.coupling`](#srpcoupling) | conseil | Le module ne connaît pas un autre module par son nom |
 | [`wording.simple`](#wordingsimple) | obligatoire | Pas de jargon dans ce que lit la personne |
@@ -203,8 +203,8 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 
 **La fiche du module est complète pour le catalogue** — niveau : **conseil**
 
-- **Ce qui est vérifié.** Le module a un nom et une description en français et en anglais, un auteur et une licence.
-- **Pourquoi.** Le catalogue affiche cette fiche avant l'installation. Une description manquante ou dans une seule langue laisse les visiteurs du catalogue sans explication.
+- **Ce qui est vérifié.** Le module a un nom et une description en français et en anglais, le nom de la personne qui l'a écrit et une licence.
+- **Pourquoi.** Le catalogue affiche cette fiche avant l'installation. Une description manquante ou dans une seule langue laisse les personnes qui visitent du catalogue sans explication.
 - **Comment corriger.** Ajoutez « description »: { « fr »: « … », « en »: « … » }, « author » et « license » (MIT, propriétaire…) dans module.json.
 
 ### Compatibilité avec le cœur
@@ -297,8 +297,8 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 
 **Chaque capacité utilisée est déclarée dans « permissions »** — niveau : **obligatoire**
 
-- **Ce qui est vérifié.** Le code n'utilise le stockage, l'e-mail, les sujets d'échange, les jaquettes de jeux, les fichiers envoyés (ctx.api.files), la position du visiteur, les routes, pages, emplacements, sections, overlay, filtres, actions MCP ou l'administration que si la permission correspondante est dans module.json. Le test l'a vérifié en lisant le code et en le faisant tourner avec un contexte qui refuse ce qui n'est pas déclaré.
-- **Pourquoi.** Les permissions sont montrées à l'administrateur avant l'installation : c'est ce qui lui permet de dire oui en connaissance de cause. Un module qui en utilise plus qu'il n'en annonce trompe cette confiance.
+- **Ce qui est vérifié.** Le code n'utilise le stockage, l'e-mail, les sujets d'échange, les jaquettes de jeux, les fichiers envoyés (ctx.api.files), la position de la personne qui visite, les routes, pages, emplacements, sections, overlay, filtres, actions MCP ou l'administration que si la permission correspondante est dans module.json. Le test l'a vérifié en lisant le code et en le faisant tourner avec un contexte qui refuse ce qui n'est pas déclaré.
+- **Pourquoi.** Les permissions sont montrées à la personne qui gère le site avant l'installation : c'est ce qui lui permet de dire oui en connaissance de cause. Un module qui en utilise plus qu'il n'en annonce trompe cette confiance.
 - **Comment corriger.** Ajoutez la permission citée au tableau « permissions » de module.json — ou retirez du code ce qui l'utilise si ce n'est pas voulu.
 
 #### `perm.minimal`
@@ -306,7 +306,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 **Aucune permission inutile n'est demandée** — niveau : **conseil**
 
 - **Ce qui est vérifié.** Chaque permission déclarée correspond à quelque chose que le code fait vraiment.
-- **Pourquoi.** Moins un module demande, plus il est facile à accepter pour l'administrateur (principe du moindre privilège). Une permission en trop fait hésiter pour rien.
+- **Pourquoi.** Moins un module demande, plus il est facile à accepter pour la personne qui gère le site (principe du moindre privilège). Une permission en trop fait hésiter pour rien.
 - **Comment corriger.** Retirez de « permissions » celles que le message cite comme inutilisées.
 
 #### `perm.rawgDeprecated`
@@ -324,7 +324,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 **Les textes de module.json existent en français et en anglais** — niveau : **obligatoire**
 
 - **Ce qui est vérifié.** Le nom, la description, les libellés de sections, les libellés et aides de réglages (et leurs options) sont fournis en français ET en anglais.
-- **Pourquoi.** Le site est multilingue : un texte absent dans la langue du visiteur ou de l'administrateur s'affiche vide ou dans la mauvaise langue.
+- **Pourquoi.** Le site est multilingue : un texte absent dans la langue de la personne qui visite ou de la personne qui gère le site s'affiche vide ou dans la mauvaise langue.
 - **Comment corriger.** Remplacez chaque texte seul par { « fr »: « … », « en »: « … » } dans module.json.
 
 #### `i18n.parity`
@@ -332,7 +332,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 **Les fichiers de langue fr et en sont alignés** — niveau : **obligatoire**
 
 - **Ce qui est vérifié.** Si le module a un dossier locales/, il contient fr.json ET en.json avec exactement les mêmes clés, les mêmes variables {x} dans chaque phrase, et aucune traduction vide. Un code qui appelle ctx.t() doit avoir ce dossier.
-- **Pourquoi.** Une clé qui n'existe que dans une langue affiche la clé brute (« err_config ») au visiteur. Une variable oubliée donne des phrases à trous (« Bonjour  »).
+- **Pourquoi.** Une clé qui n'existe que dans une langue affiche la clé brute (« err_config ») à la personne qui visite. Une variable oubliée donne des phrases à trous (« Bonjour  »).
 - **Comment corriger.** Ajoutez la clé manquante dans l'autre fichier, avec les mêmes {variables}. Gardez les deux fichiers triés pareil pour les comparer à l'œil.
 
 #### `i18n.keys`
@@ -358,7 +358,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 **Les réglages sont bien formés** — niveau : **obligatoire**
 
 - **Ce qui est vérifié.** Chaque réglage a une clé unique, un libellé en français et en anglais ; une liste a des options et un défaut qui en fait partie ; un secret n'a jamais de valeur par défaut ; le défaut a le bon type (nombre pour un nombre, couleur #RRGGBB pour une couleur…).
-- **Pourquoi.** Ce sont les champs que l'administrateur remplit. Un défaut hors liste ou d'un mauvais type donne un formulaire cassé ou un module qui démarre sur une valeur absurde ; un secret avec un défaut serait publié avec le code.
+- **Pourquoi.** Ce sont les champs que la personne qui gère le site remplit. Un défaut hors liste ou d'un mauvais type donne un formulaire cassé ou un module qui démarre sur une valeur absurde ; un secret avec un défaut serait publié avec le code.
 - **Comment corriger.** Corrigez le réglage cité dans module.json.
 
 #### `tabs.reasonable`
@@ -366,7 +366,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 **Les onglets ajoutés restent peu nombreux et bien nommés** — niveau : **conseil**
 
 - **Ce qui est vérifié.** Si le module déclare « tabs » (cœur 0.2.2) : au plus 3 onglets ajoutés en plus des quatre onglets du cœur (Utiliser, Réglages, Sources, Général), et chaque nom d'onglet (ajouté ou renommé) est court (20 caractères au plus) et existe en français ET en anglais.
-- **Pourquoi.** Sur un téléphone, la rangée d'onglets défile : au-delà de six ou sept onglets, ou avec des noms longs, on ne voit plus où l'on est et on cherche le bon onglet. Un nom dans une seule langue laisse la moitié des administrateurs devant un mot qu'ils ne lisent pas.
+- **Pourquoi.** Sur un téléphone, la rangée d'onglets défile : au-delà de six ou sept onglets, ou avec des noms longs, on ne voit plus où l'on est et on cherche le bon onglet. Un nom dans une seule langue laisse la moitié des personnes qui gèrent le site devant un mot qu'elles ne lisent pas.
 - **Comment corriger.** Regroupez les réglages proches dans un même onglet (« tab » d'un réglage), raccourcissez les noms (« Vidéo », « Ma liste », « Créneaux ») et donnez « label »: { « fr »: « … », « en »: « … » }.
 
 #### `settings.optional`
@@ -374,7 +374,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 **Un réglage « facultatif » le déclare** — niveau : **obligatoire**
 
 - **Ce qui est vérifié.** Quand le libellé ou l'aide d'un réglage dit « facultatif », « optionnel » ou « optional », le réglage porte "optional": true.
-- **Pourquoi.** Sans cela, le site compte le réglage vide comme « à remplir » et affiche l'extension « À configurer » alors que tout va bien : l'administrateur croit qu'il doit encore faire quelque chose.
+- **Pourquoi.** Sans cela, le site compte le réglage vide comme « à remplir » et affiche l'extension « À configurer » alors que tout va bien : la personne qui gère le site croit qu'elle doit encore faire quelque chose.
 - **Comment corriger.** Ajoutez "optional": true au réglage cité (et "minCore": "0.1.22" au module), ou retirez le mot « facultatif » du texte si le réglage est en réalité obligatoire.
 
 #### `settings.advanced`
@@ -416,7 +416,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 **Les textes venus de l'extérieur sont échappés dans les pages** — niveau : **obligatoire**
 
 - **Ce qui est vérifié.** Le module est essayé avec des données piégées (textes contenant des balises, des scripts, des guillemets) placées dans les réglages, le stockage, les formulaires, l'adresse de la page, le nom du site, les entrées et les sujets reçus. Aucune page, section, emplacement, overlay ni réponse de route ne doit les restituer tels quels.
-- **Pourquoi.** Le bloc « html » est brut : ce que vous y mettez est exécuté par le navigateur du visiteur. Un message de livre d'or contenant <script> pourrait voler la session de l'administrateur qui le modère (faille XSS).
+- **Pourquoi.** Le bloc « html » est brut : ce que vous y mettez est exécuté par le navigateur de la personne qui visite. Un message de livre d'or contenant <script> pourrait voler la session de la personne qui gère le site, qui le modère (faille XSS).
 - **Comment corriger.** Passez CHAQUE valeur qui n'est pas écrite par vous dans une fonction d'échappement (& < > " ' devenant &amp; &lt; &gt; &quot; &#39;) avant de l'insérer dans du HTML. Voir la fonction esc() de l'exemple guestbook. Préférez les blocs markdown, heading, table, qui échappent seuls.
 
 #### `links.safe`
@@ -424,7 +424,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 **Les liens venus de l'extérieur sont vérifiés** — niveau : **obligatoire**
 
 - **Ce qui est vérifié.** Une adresse « javascript:… » saisie dans un réglage, une entrée ou un sujet reçu n'est jamais reprise comme lien, image ou vidéo.
-- **Pourquoi.** Un lien « javascript: » s'exécute au clic dans le navigateur du visiteur. Seuls https:, http:, mailto: et les chemins du site (/…) sont sûrs.
+- **Pourquoi.** Un lien « javascript: » s'exécute au clic dans le navigateur de la personne qui visite. Seuls https:, http:, mailto: et les chemins du site (/…) sont sûrs.
 - **Comment corriger.** Avant d'utiliser une adresse, vérifiez qu'elle commence par https://, http://, mailto: ou par un seul « / » (pas « // »), sinon ignorez-la. Voir safeSrc() dans l'exemple guestbook.
 
 #### `blocks.valid`
@@ -440,7 +440,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 **Le module ne plante pas, même avec des données inattendues** — niveau : **conseil**
 
 - **Ce qui est vérifié.** Sections, pages, emplacements, overlay, panneau d'administration et routes terminent sans erreur avec les réglages par défaut, des réglages remplis et des données piégées.
-- **Pourquoi.** Le cœur isole les erreurs d'un module (le site continue), mais le visiteur voit alors une section vide ou une page d'erreur. Un module robuste dégrade son affichage sans planter.
+- **Pourquoi.** Le cœur isole les erreurs d'un module (le site continue), mais la personne qui visite voit alors une section vide ou une page d'erreur. Un module robuste dégrade son affichage sans planter.
 - **Comment corriger.** Protégez le code qui lit une donnée optionnelle (valeur absente, liste vide, texte trop long) et répondez par un code 4xx plutôt que de laisser une erreur remonter.
 
 ### Les skins (apparence)
@@ -458,7 +458,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 **Les pièces déclarées sont dans le HTML, et celles du HTML sont déclarées** — niveau : **obligatoire**
 
 - **Ce qui est vérifié.** Chaque pièce déclarée dans « skin.parts » est posée au moins une fois dans le HTML du module (data-skin-part="<id du module>.<pièce>"), et chaque data-skin-part du module est une pièce déclarée de CE module (jamais le nom d'une pièce commune du cœur comme « card » ni la pièce d'un autre module). La valeur est écrite en entier, sans calcul.
-- **Pourquoi.** Un skin vise une pièce par ce nom. Une pièce déclarée mais jamais posée ne peut pas être restylée ; une pièce posée sans être déclarée est invisible pour les auteurs de skins et pour le banc d'essai ; une pièce qui porte le nom d'une pièce du cœur ferait appliquer à tort le style de la carte du cœur à votre élément. Ajouter un attribut n'est pas un changement de contenu.
+- **Pourquoi.** Un skin vise une pièce par ce nom. Une pièce déclarée mais jamais posée ne peut pas être restylée ; une pièce posée sans être déclarée est invisible pour les personnes qui écrivent des skins et pour le banc d'essai ; une pièce qui porte le nom d'une pièce du cœur ferait appliquer à tort le style de la carte du cœur à votre élément. Ajouter un attribut n'est pas un changement de contenu.
 - **Comment corriger.** Ajoutez data-skin-part="mon-module.carte" sur l'élément concerné (en plus de sa classe), ou retirez la pièce de module.json. Écrivez le nom en entier (pas de `${…}`).
 
 #### `skin.fallback`
@@ -482,7 +482,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 **L'aperçu du banc d'essai est un petit fragment HTML sans script** — niveau : **obligatoire**
 
 - **Ce qui est vérifié.** Si « skin.demo » nomme un fichier, il existe à la racine du module, pèse 20 Ko au plus, ne contient ni script, ni gestionnaire d'évènement (onclick…), ni feuille de style, ni attribut style, ni adresse externe, ni cadre, et ne pose que les pièces déclarées par le module.
-- **Pourquoi.** Le banc d'essai affiche ce fragment pour qu'un auteur de skin voie la pièce sans installer le module. Il suit les mêmes règles qu'un bloc « html » : un fragment qui exécute du code ou charge un tiers serait une faille ; un fragment qui définit son propre style ne montrerait pas l'effet du skin.
+- **Pourquoi.** Le banc d'essai affiche ce fragment pour qu'une personne qui écrit un skin voie la pièce sans installer le module. Il suit les mêmes règles qu'un bloc « html » : un fragment qui exécute du code ou charge un tiers serait une faille ; un fragment qui définit son propre style ne montrerait pas l'effet du skin.
 - **Comment corriger.** Réduisez le fichier à du HTML simple (div, p, ul, li, a, img sans adresse externe…) avec les data-skin-part du module, des textes d'exemple neutres, et aucune mise en forme intégrée.
 
 #### `skin.tokensUsed`
@@ -490,7 +490,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 **Les jetons déclarés sont utilisés par le CSS du module** — niveau : **conseil**
 
 - **Ce qui est vérifié.** Chaque jeton de « skin.parts[].tokens » est lu au moins une fois par le CSS du module (var(--sk-m-…)).
-- **Pourquoi.** Un jeton que rien ne lit promet aux auteurs de skins un réglage qui ne fait rien.
+- **Pourquoi.** Un jeton que rien ne lit promet aux personnes qui écrivent des skins un réglage qui ne fait rien.
 - **Comment corriger.** Utilisez le jeton dans le CSS (avec sa chaîne de repli) ou retirez-le de module.json.
 
 #### `skin.textPair`
@@ -540,23 +540,23 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 **Les réponses d'erreur ne révèlent rien d'interne** — niveau : **obligatoire**
 
 - **Ce qui est vérifié.** Les réponses des routes sont de vrais objets Response et ne contiennent ni chemin de fichier, ni trace d'erreur, ni détail de base de données ou de réglage secret.
-- **Pourquoi.** Un chemin ou une trace aide un attaquant à comprendre le serveur. Un visiteur n'a rien à faire d'un message technique.
+- **Pourquoi.** Un chemin ou une trace aide une personne malveillante à comprendre le serveur. Une personne qui visite n'a rien à faire d'un message technique.
 - **Comment corriger.** Répondez par un code et un mot (400, 403, 404) sans détail : new Response(null, { status: 400 }) ou Response.json({ ok: false }, { status: 400 }). Journalisez l'erreur côté serveur, brièvement.
 
 #### `routes.protected`
 
 **Une route publique qui écrit est protégée contre les abus** — niveau : **obligatoire**
 
-- **Ce qui est vérifié.** Quarante envois valides, à la suite, depuis le même visiteur, ne sont pas tous acceptés : la route a un limiteur de débit, un plafond de stockage, un code d'accès ou une modération qui la protège.
+- **Ce qui est vérifié.** Quarante envois valides, à la suite, depuis le même personne, ne sont pas tous acceptés : la route a un limiteur de débit, un plafond de stockage, un code d'accès ou une modération qui la protège.
 - **Pourquoi.** Une route ouverte à tous qui écrit sans limite permet à un robot de remplir le stockage du site en quelques minutes.
-- **Comment corriger.** Ajoutez un limiteur de débit par visiteur (voir limited() dans l'exemple guestbook : N envois par heure), un plafond du nombre d'éléments stockés (réponse 503 au-delà), et un champ piège pour les robots.
+- **Comment corriger.** Ajoutez un limiteur de débit par personne (voir limited() dans l'exemple guestbook : N envois par heure), un plafond du nombre d'éléments stockés (réponse 503 au-delà), et un champ piège pour les robots.
 
 #### `routes.visitorIp`
 
-**L'adresse du visiteur n'est pas lue dans les en-têtes** — niveau : **conseil**
+**L'adresse de la personne qui visite n'est pas lue dans les en-têtes** — niveau : **conseil**
 
 - **Ce qui est vérifié.** Le code ne lit pas lui-même X-Forwarded-For, X-Real-IP ou un en-tête d'adresse du même genre : pour une limite de débit, il demande ctx.api.visitor.fingerprint(request) (cœur 0.2.6). Vérifié seulement quand le cœur qui teste fournit cette fonction.
-- **Pourquoi.** Le début de X-Forwarded-For est écrit par le visiteur : le lire permet de contourner la limite en changeant d'adresse inventée à chaque envoi. Le cœur, lui, prend l'entrée ajoutée par SON proxy, la seule de confiance, et ne rend qu'une empreinte salée, jamais l'adresse.
+- **Pourquoi.** Le début de X-Forwarded-For est écrit par la personne qui visite : le lire permet de contourner la limite en changeant d'adresse inventée à chaque envoi. Le cœur, lui, prend l'entrée ajoutée par SON proxy, la seule de confiance, et ne rend qu'une empreinte salée, jamais l'adresse.
 - **Comment corriger.** Remplacez la lecture de l'en-tête par « const who = ctx.api.visitor.fingerprint(request, "envoi") » et comptez par « who ». Déclarez « minCore »: « 0.2.6 ». Ne gardez jamais l'adresse elle-même.
 
 ### Les formulaires d'administration
@@ -584,7 +584,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 **Les outils MCP déclarent honnêtement ce qu'ils font** — niveau : **obligatoire**
 
 - **Ce qui est vérifié.** Une action qui lit seulement est marquée « readOnly » ; une action qui écrit n'est jamais activée par défaut (« default »: true) ; une action irréversible est « destructive » (et jamais par défaut) ; une action dont le nom parle de suppression ou de publication est « destructive ».
-- **Pourquoi.** L'administrateur décide quels outils chaque assistant peut utiliser, et par défaut un assistant reçoit les outils « sûrs ». Un outil qui écrit, annoncé par erreur comme sûr, laisse un assistant modifier le site sans accord.
+- **Pourquoi.** La personne qui gère le site décide quels outils chaque assistant peut utiliser, et par défaut un assistant reçoit les outils « sûrs ». Un outil qui écrit, annoncé par erreur comme sûr, laisse un assistant modifier le site sans accord.
 - **Comment corriger.** Dans module.json (« mcp »), ajoutez "readOnly": true aux lectures, retirez "default": true des écritures, et ajoutez "destructive": true à tout ce qui supprime, retire ou publie.
 
 #### `mcp.readOnly`
@@ -660,7 +660,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 **En cas de panne d'un service externe, la page s'affiche quand même** — niveau : **conseil**
 
 - **Ce qui est vérifié.** Sonde « trou noir » : le réseau ne répond jamais. Chaque section, emplacement et page du module doit rendre la main en moins de 3 s, sans erreur (avec les dernières données connues et leur date, ou un message simple).
-- **Pourquoi.** Un service externe finit toujours par tomber. Si la page attend sa réponse, elle se fige pour tous les visiteurs ; le cœur coupe alors la section, et le visiteur ne voit rien du tout.
+- **Pourquoi.** Un service externe finit toujours par tomber. Si la page attend sa réponse, elle se fige pour toutes les personnes qui visitent ; le cœur coupe alors la section, et la personne qui visite ne voit rien du tout.
 - **Comment corriger.** Dans une page, ne lancez pas d'appel réseau long : affichez ce que la tâche planifiée a mis en cache (avec « mis à jour à 10 h 30 »), ou passez par ctx.api.net.request, dont le délai suit le temps restant de la page, et affichez un repli si « r.ok » est faux.
 
 ### Les données
@@ -686,7 +686,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 **Les migrations se déroulent sans erreur** — niveau : **conseil**
 
 - **Ce qui est vérifié.** Chaque migration s'exécute sans erreur sur un stockage vide, et deux fois de suite sans rien dupliquer.
-- **Pourquoi.** Une migration qui échoue met l'instance à l'écart sur le site réel. Le test sur stockage vide attrape les erreurs les plus bêtes avant qu'un administrateur ne les rencontre.
+- **Pourquoi.** Une migration qui échoue met l'instance à l'écart sur le site réel. Le test sur stockage vide attrape les erreurs les plus bêtes avant qu'une personne qui gère le site ne les rencontre.
 - **Comment corriger.** Traitez le cas « rien à convertir » (liste vide) et ne supposez aucun champ : lisez-les avec une valeur par défaut.
 
 ### La vie privée
@@ -695,16 +695,16 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 
 **Un module qui collecte des données le déclare (privacy)** — niveau : **obligatoire**
 
-- **Ce qui est vérifié.** Si le module reçoit des données de visiteurs (formulaire public qui enregistre ou envoie quelque chose), module.json a un texte « privacy » en français et en anglais : quoi, pourquoi, comment faire effacer.
-- **Pourquoi.** Le site écrit lui-même sa politique de confidentialité d'après ce que déclarent ses modules. Sans votre déclaration, elle serait fausse — et le propriétaire du site responsable d'une collecte qu'il ignore.
+- **Ce qui est vérifié.** Si le module reçoit des données des personnes qui visitent (formulaire public qui enregistre ou envoie quelque chose), module.json a un texte « privacy » en français et en anglais : quoi, pourquoi, comment faire effacer.
+- **Pourquoi.** Le site écrit lui-même sa politique de confidentialité d'après ce que déclarent ses modules. Sans votre déclaration, elle serait fausse — et la personne propriétaire du site responsable d'une collecte qu'elle ignore.
 - **Comment corriger.** Ajoutez dans module.json : "privacy": { "fr": "Si vous … votre nom et votre message sont … Pour les faire retirer, écrivez au contact du site.", "en": "…" }.
 
 #### `privacy.thirdParty`
 
-**Les services tiers chargés chez le visiteur sont mentionnés** — niveau : **conseil**
+**Les services tiers chargés chez la personne qui visite sont mentionnés** — niveau : **conseil**
 
 - **Ce qui est vérifié.** Si une page du module charge quelque chose depuis un autre site (vidéo intégrée, script, iframe), module.json le dit dans « privacy ».
-- **Pourquoi.** Charger un service tiers transmet l'adresse (IP) du visiteur à ce service. C'est une information que le propriétaire doit connaître et pouvoir donner dans sa politique de confidentialité.
+- **Pourquoi.** Charger un service tiers transmet l'adresse (IP) de la personne qui visite à ce service. C'est une information que la personne propriétaire doit connaître et pouvoir donner dans sa politique de confidentialité.
 - **Comment corriger.** Ajoutez une phrase dans « privacy » (fr et en) : « Cette page charge un lecteur de <service> : … », ou n'intégrez pas le service.
 
 ### Un module, une seule chose
@@ -714,7 +714,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 **Un module fait une chose ; chaque donnée a un seul propriétaire** — niveau : **obligatoire**
 
 - **Ce qui est vérifié.** Comparé aux autres modules du même ensemble : pas de service offert par deux modules, pas d'action MCP du même nom, pas de réglage secret identique demandé à deux modules sans lien, pas de collection de données de même nom chez deux modules sans lien.
-- **Pourquoi.** Deux modules qui offrent la même chose ou demandent la même clé obligent l'administrateur à tout saisir deux fois et créent des conflits. Une donnée a un propriétaire ; les autres modules la demandent à ce propriétaire (service).
+- **Pourquoi.** Deux modules qui offrent la même chose ou demandent la même clé obligent la personne qui gère le site à tout saisir deux fois et créent des conflits. Une donnée a un propriétaire ; les autres modules la demandent à ce propriétaire (service).
 - **Comment corriger.** Confiez la donnée ou la clé à un seul module (fournisseur) que l'autre appelle par un service (offers / requires), ou renommez ce qui n'est qu'une coïncidence de nom.
 
 #### `srp.coupling`
@@ -732,15 +732,15 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 **Pas de jargon dans ce que lit la personne** — niveau : **obligatoire**
 
 - **Ce qui est vérifié.** Le nom, la description, les libellés de sections et les libellés, aides et options des réglages non avancés n'emploient aucun terme technique (sujet, métrique, API, JSON, jeton, OAuth, MCP…).
-- **Pourquoi.** Ces textes sont ce que voit Emma, qui n'a aucun bagage technique. Un réglage doit dire « Adresse de votre salon Discord », pas « webhookUrl ». Les réglages techniques vont en mode avancé ("advanced": true).
-- **Comment corriger.** Réécrivez la phrase avec des mots de tous les jours, ou marquez le réglage "advanced": true s'il n'est destiné qu'aux techniciens.
+- **Pourquoi.** Ces textes sont ce que voit une personne sans bagage technique. Un réglage doit dire « Adresse de votre salon Discord », pas « webhookUrl ». Les réglages techniques vont en mode avancé ("advanced": true).
+- **Comment corriger.** Réécrivez la phrase avec des mots de tous les jours, ou marquez le réglage "advanced": true s'il est purement technique.
 
 #### `wording.locales`
 
 **Pas de jargon dans les phrases affichées par le module** — niveau : **conseil**
 
 - **Ce qui est vérifié.** Les textes des fichiers de langue (messages, erreurs, titres) n'emploient pas de terme technique.
-- **Pourquoi.** Ce sont les phrases que lisent les visiteurs et l'administrateur. Une erreur « JSON invalide » ne dit pas quoi faire ; « Ajoutez votre clé dans Réglages » si.
+- **Pourquoi.** Ce sont les phrases que lisent les personnes qui visitent et celle qui gère le site. Une erreur « JSON invalide » ne dit pas quoi faire ; « Ajoutez votre clé dans Réglages » si.
 - **Comment corriger.** Reformulez en disant ce qui se passe et ce qu'on peut faire, avec des mots simples.
 
 #### `readme.exists`
@@ -756,7 +756,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 **Le README est écrit en langage de tous les jours** — niveau : **conseil**
 
 - **Ce qui est vérifié.** Le README n'emploie pas de termes techniques (API, JSON, endpoint…) hors des blocs de code.
-- **Pourquoi.** Le README s'adresse d'abord à quelqu'un qui veut savoir si le module lui sert, pas à un développeur.
+- **Pourquoi.** Le README s'adresse d'abord à quelqu'un qui veut savoir si le module lui sert, pas à une personne qui développe.
 - **Comment corriger.** Réécrivez les passages cités. Les détails techniques peuvent rester dans une section « Pour les développeurs » à la fin.
 
 #### `neutrality.clean`

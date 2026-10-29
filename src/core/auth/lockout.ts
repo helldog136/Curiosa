@@ -79,7 +79,7 @@ export async function recordSuccess(ip: string, userId: string, email: string, n
   if (stale.length) await prisma.trustedIp.deleteMany({ where: { userId, hash: { in: stale.map((r) => r.hash) } } });
 }
 
-/** Le propriétaire débloque quelqu'un (page Utilisateurs) : son e-mail redevient libre. L'adresse IP, elle, n'est pas concernée. */
+/** Le propriétaire débloque quelqu'un (page Équipe) : son e-mail redevient libre. L'adresse IP, elle, n'est pas concernée. */
 export async function unlockEmail(email: string): Promise<void> {
   await prisma.authLock.deleteMany({ where: { key: emailKey(email) } });
 }

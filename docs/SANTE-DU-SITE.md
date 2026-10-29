@@ -6,10 +6,10 @@ C'est une extension de l'Entretien du cœur (diagnostic, audit, outils `maintena
 
 ## Pour vous, qui gérez le site
 
-1. Ouvrez **Santé de mon site** (menu *Administration*, mode simple comme avancé ; réservé aux administrateurs et au propriétaire).
+1. Ouvrez **Santé de mon site** (menu *Administration*, mode simple comme avancé ; réservé aux administrateurs et à la personne propriétaire).
 2. Cliquez **Vérifier maintenant**. Une barre de progression dit où l'on en est (« Lien 12 sur 87 »). Tant que la page reste ouverte, les paquets de liens s'enchaînent ; si vous la fermez, la vérification s'arrête, et **Continuer la vérification** reprend à la visite suivante.
 3. Le résumé est un mot : *Tout va bien.* ou *Quelques petites choses à regarder.* Trois pastilles comptent les remarques par importance :
-   - **Important** : quelque chose est cassé ou invisible pour un visiteur (image sans texte alternatif, titre vide, lien vers une page disparue, élément de menu mort, image envoyée introuvable, lien externe mort) ;
+   - **Important** : quelque chose est cassé ou invisible pour une personne qui visite (image sans texte alternatif, titre vide, lien vers une page disparue, élément de menu mort, image envoyée introuvable, lien externe mort) ;
    - **Conseillé** : le site marche, mais pourrait mieux (page sans description pour les moteurs de recherche, titres en double, traduction manquante ou identique à l'original, accueil sans accroche, menu vide, lien vers une offre expirée, lien externe qui ne répond pas) ;
    - **Pour info** : bon à savoir (pas d'adresse de contact, site sans page publiée, adresse du site en « http », lien « http » au lieu de « https », lien qui a changé d'adresse, site qui refuse les robots, lien non vérifié cette fois).
 4. Chaque remarque est une phrase, un « pourquoi », puis des lignes avec **Corriger** (ouvre l'écran d'administration qui règle la chose) et **Ignorer** (masque la ligne ; **Tout réafficher** la ramène, 200 remarques masquées au plus).
@@ -31,7 +31,7 @@ Le tableau de bord montre une ligne discrète (« Votre site a quelques petites 
 | `link_gone` / `img_gone` lien ou image distante disparue (404, 410) | important | visite (voir plus bas) |
 | `summary` page sans description pour les moteurs | conseillé | pages qui ont leur propre page (pas les listes de liens sortants) |
 | `title_dup` titres en double | conseillé | dans une même rubrique et une même langue (accents et casse ignorés) |
-| `translation_missing` / `translation_same` | conseillé | pour chaque langue du site : l'entrée n'existe pas dans cette langue (les visiteurs voient l'original, ou rien si le repli est coupé), ou son texte est identique à l'original. Les **vraies langues disponibles** de l'entrée sont données |
+| `translation_missing` / `translation_same` | conseillé | pour chaque langue du site : l'entrée n'existe pas dans cette langue (les personnes qui visitent voient l'original, ou rien si le repli est coupé), ou son texte est identique à l'original. Les **vraies langues disponibles** de l'entrée sont données |
 | `home` accueil sans accroche | conseillé | |
 | `menu_empty` menu vide | conseillé | ni rubrique dans le menu automatique, ni élément libre, ni fonctionnalité qui en ajoute |
 | `expired_linked` lien vers une entrée expirée | conseillé | |
@@ -68,7 +68,7 @@ Le client réseau est `createNetClient` du cœur (délai dur, 429, disjoncteur p
 
 ## Données gardées et vie privée
 
-Dans la table `Setting`, clés `maintenance.content.*` (aucune migration, la mise à jour d'un site existant n'a rien à faire) : `report` (dernier rapport, 40 lignes au plus par remarque), `summary` (compteurs, lu par le tableau de bord et le diagnostic), `run` (vérification en cours, ≤ 200 liens, **effacée à la fin**), `state` (où reprendre), `history` (5), `ignored` (200), `settings`. Aucune donnée de visiteur. Les adresses gardées dans le rapport n'ont **ni paramètres ni fragment ni identifiants** (un lien privé peut porter un jeton).
+Dans la table `Setting`, clés `maintenance.content.*` (aucune migration, la mise à jour d'un site existant n'a rien à faire) : `report` (dernier rapport, 40 lignes au plus par remarque), `summary` (compteurs, lu par le tableau de bord et le diagnostic), `run` (vérification en cours, ≤ 200 liens, **effacée à la fin**), `state` (où reprendre), `history` (5), `ignored` (200), `settings`. Aucune donnée sur les personnes qui visitent. Les adresses gardées dans le rapport n'ont **ni paramètres ni fragment ni identifiants** (un lien privé peut porter un jeton).
 
 Lecture bornée : paquets de 200 entrées publiées, **5 000** au plus (le rapport le dit au-delà), 2 000 fichiers envoyés testés, 400 liens par texte, 200 raccourcis.
 

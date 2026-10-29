@@ -1,7 +1,7 @@
 // Blog : 14 billets (chaque billet porte un titre de niveau 6 : le rendu de ce niveau sous basic est ainsi vu par le harnais) (donc 2 pages de liste), français + anglais pour la plupart, avec couvertures, étiquettes, un billet mis en avant ; un second blog en liste ; un blog vide.
 const TOPICS = [
   ["Les coulisses d'un atelier ouvert", "Behind the scenes of an open workshop"], ["Trois outils qui changent le quotidien", "Three tools that change daily life"], ["Carnet de bord : la saison commence", "Logbook: the season begins"],
-  ["Pourquoi nous partageons nos brouillons", "Why we share our drafts"], ["Retour sur le week-end des créateurs", "Looking back at the makers' weekend"], ["Un mois de petits projets", "A month of small projects"],
+  ["Pourquoi nous partageons nos brouillons", "Why we share our drafts"], ["Retour sur le week-end de la création", "Looking back at the makers' weekend"], ["Un mois de petits projets", "A month of small projects"],
   ["Ce que nous avons appris des erreurs", "What we learned from mistakes"], ["Le matériel que nous utilisons", "The gear we use"], ["Une journée type", "A typical day"], ["Questions fréquentes sur l'atelier", "Frequently asked questions about the workshop"],
   ["Nos lectures du moment", "What we are reading"], ["Prochaines étapes", "Next steps"], ["Merci à la communauté", "Thanks to the community"], ["Bienvenue sur le site", "Welcome to the site"],
 ];

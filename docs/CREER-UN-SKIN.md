@@ -1,6 +1,6 @@
 # Je crée mon skin en 30 minutes
 
-Ce guide s'adresse à **une personne (ou une IA qui travaille pour elle) qui veut offrir un skin à des sites Curiosa**, dans **son propre dépôt git**. Un skin est l'apparence complète d'un site : couleurs, polices, formes, **mise en page**. Il ne touche jamais au contenu. Le contrat complet est dans [SKINS.md](SKINS.md) ; ici, le chemin le plus court, de zéro à « mes utilisateurs l'installent », calqué sur [PUBLIER-SON-MODULE.md](PUBLIER-SON-MODULE.md).
+Ce guide s'adresse à **une personne (ou une IA qui travaille pour elle) qui veut offrir un skin à des sites Curiosa**, dans **son propre dépôt git**. Un skin est l'apparence complète d'un site : couleurs, polices, formes, **mise en page**. Il ne touche jamais au contenu. Le contrat complet est dans [SKINS.md](SKINS.md) ; ici, le chemin le plus court, de zéro à « ma communauté l'installe », calqué sur [PUBLIER-SON-MODULE.md](PUBLIER-SON-MODULE.md).
 
 > *English summary at the end of this page.*
 
@@ -10,7 +10,7 @@ Ce guide s'adresse à **une personne (ou une IA qui travaille pour elle) qui veu
 2. **Un skin ne définit que de l'APPARENCE.** Le contenu et la structure d'une page ne dépendent jamais de lui : on change de skin à tout moment, à l'infini, sans rien perdre ni réécrire. C'est la règle qui évite l'erreur des thèmes de Grav (qui apportaient leurs propres blocs et rendaient tout changement de thème impossible).
 3. **La mise en page, elle, est de l'apparence** : vous pouvez tout changer de ce qu'on voit (menu en colonne latérale, en-tête en bandeau, grille de cartes, héros plein écran, colonnes, marges…), **pour les mêmes éléments**.
 4. Curiosa **vérifie votre skin tout seul** (kit de test, une commande) avant qu'il soit installé : il refuse ce qui masque, ajoute du texte, appelle un autre site ou se lit mal. Les mêmes contrôles tournent sur votre machine et dans votre dépôt.
-5. Vos utilisateurs collent **l'adresse de votre dépôt** dans l'administration (**Apparence → Ajouter depuis une adresse**). Aucune inscription chez nous. Être au catalogue officiel est facultatif.
+5. Les personnes qui veulent votre skin collent **l'adresse de votre dépôt** dans l'administration (**Apparence → Ajouter depuis une adresse**). Aucune inscription chez nous. Être au catalogue officiel est facultatif.
 
 ## 1. Ce qu'il vous faut (5 minutes)
 
@@ -87,7 +87,7 @@ Chaque règle vise une **région** (`[data-skin-region="header"]`) ou une **piè
 
 | Vous pouvez | Vous ne pouvez pas (le kit refuse) | Pourquoi |
 |---|---|---|
-| Couleurs, polices, tailles, graisses, interlignes, espacements, rayons, bordures, ombres, lueurs, dégradés, motifs, images **embarquées** | Charger une police, une image ou une feuille **d'un autre site** (Google Fonts, CDN…) | Vie privée : le visiteur ne contacte jamais un tiers |
+| Couleurs, polices, tailles, graisses, interlignes, espacements, rayons, bordures, ombres, lueurs, dégradés, motifs, images **embarquées** | Charger une police, une image ou une feuille **d'un autre site** (Google Fonts, CDN…) | Vie privée : la personne qui visite ne contacte jamais un tiers |
 | **Changer la mise en page** : grille, colonnes, en-tête en colonne ou en bandeau, menu en pilules, cartes en maçonnerie, largeur du contenu, héros, densité, **ordre visuel** | Ajouter, retirer, renommer ou **masquer** un lien, un bouton, un champ, un titre, un texte, une image, une pastille, le crédit « Propulsé par » ou le lien Confidentialité | Un skin qui disparaît se remplace par basic **sans rien perdre** |
 | Décorer avec `::before` / `::after` **vides** ou de la ponctuation (`"·"`, `"—"`) | **Du texte injecté** : `content` avec une lettre ou un chiffre, `attr()`, `counter()` | Un skin ne change jamais un libellé |
 | Animer, avec un mouvement court, **sous** `@media (prefers-reduced-motion: no-preference)` | Une animation qui clignote ou qui boucle sans fin et gêne la lecture ; un mouvement qui échappe à « moins de mouvement » | Accessibilité |
@@ -252,8 +252,8 @@ Chaque problème porte un code stable (entre crochets dans le rapport), dans les
 
 1. Poussez sur votre dépôt public. **Mettez le contrôle en CI** : le fichier `.github/workflows/ci.yml` du dépôt de départ lance `skin:check --visual --strict` contre **la dernière version publiée** du cœur, à chaque envoi.
 2. Étiquetez : `git tag v1.0.0 && git push origin v1.0.0`. L'étiquette est égale à `version` de `skin.json`. Dans un dépôt qui porte **plusieurs** skins, préfixez l'étiquette par l'id (`mon-skin/v1.0.0`) et mettez **cette étiquette** dans `ref` du catalogue, jamais un hash de commit (un écrasement ou une fusion « squash » change les hash : [SKINS.md §25.5](SKINS.md)). **Ne supprimez jamais une étiquette** ; une version ne change jamais de contenu (publiez la suivante).
-3. **Installation par l'utilisateur** (administration → **Apparence**) : **Ajouter depuis une adresse** (option avancée), coller `https://github.com/<vous>/<depot>#v1.0.0:skins/mon-skin` (`#v1.0.0` seul si le skin est à la racine). Curiosa clone, **refait le même contrôle**, montre le résumé (auteur, licences des polices, taille, lisibilité) et demande une confirmation : « Ce skin ne vient pas de la liste vérifiée. Il ne peut pas faire tourner de programme : il ne peut changer que l'apparence. » Il peut alors le choisir, retoucher ses couleurs ou **revenir aux valeurs du skin**. Les mises à jour se proposent d'elles-mêmes quand vous publiez une version plus haute (une majeure demande une confirmation).
-4. **Inscription au catalogue officiel** (facultative, « ✔ vérifié », installation en un clic) : ouvrez une demande (issue ou demande de fusion) sur le dépôt `curiosa-skins` avec l'adresse de votre dépôt, l'étiquette à relire et le résultat de `skin:check --visual --strict`. Le propriétaire relit, puis ajoute une entrée à `catalogue/index.json` (sa CI relance le kit sur chaque skin) :
+3. **Installation par la personne qui gère le site** (administration → **Apparence**) : **Ajouter depuis une adresse** (option avancée), coller `https://github.com/<vous>/<depot>#v1.0.0:skins/mon-skin` (`#v1.0.0` seul si le skin est à la racine). Curiosa clone, **refait le même contrôle**, montre le résumé (nom de la personne qui l'a écrit, licences des polices, taille, lisibilité) et demande une confirmation : « Ce skin ne vient pas de la liste vérifiée. Il ne peut pas faire tourner de programme : il ne peut changer que l'apparence. » Il peut alors le choisir, retoucher ses couleurs ou **revenir aux valeurs du skin**. Les mises à jour se proposent d'elles-mêmes quand vous publiez une version plus haute (une majeure demande une confirmation).
+4. **Inscription au catalogue officiel** (facultative, « ✔ vérifié », installation en un clic) : ouvrez une demande (issue ou demande de fusion) sur le dépôt `curiosa-skins` avec l'adresse de votre dépôt, l'étiquette à relire et le résultat de `skin:check --visual --strict`. La personne propriétaire relit, puis ajoute une entrée à `catalogue/index.json` (sa CI relance le kit sur chaque skin) :
 
    ```json
    { "id": "mon-skin", "name": { "fr": "Mon skin", "en": "My skin" }, "description": { "fr": "…", "en": "…" },
@@ -292,7 +292,7 @@ Vous êtes un assistant qui écrit un skin pour une personne qui n'est pas techn
 - [ ] `npm run skin:check -- <dépôt> --visual --strict` : ✅ partout, aucun avertissement.
 - [ ] Les captures regardées (planches, mobile compris), en clair **et** en sombre si le skin a les deux.
 - [ ] `version` de `skin.json` = l'étiquette ; `README.md` à jour (polices, licences, comment tester).
-- [ ] Chaque police et chaque image : licence, fichier de licence, auteur et source dans `assets`.
+- [ ] Chaque police et chaque image : licence, fichier de licence, nom de la personne qui l'a créée et source dans `assets`.
 - [ ] Aucun nom de site, d'association ou de ville dans les textes.
 
 ## English summary

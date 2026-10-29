@@ -46,7 +46,7 @@ export type InstallResult = {
   missing?: Missing[];
   /** Réussite avec une remarque (jamais un refus) : voir staticImports.ts. */
   warnings?: LoadWarning[];
-} | { ok: false; error: string; /** Erreur « modules.error.loadCheck » : raison courte (anglais, sans chemin) pour le journal et l'assistant ; JAMAIS à montrer telle quelle à la propriétaire. */ loadError?: string; /** Le contrôle de chargement a refusé la nouvelle version ET l'ancienne a été remise : le module tourne comme avant. */ rolledBack?: boolean; /** Détail structuré de ce qui manque (service, version, cause) quand l'erreur est « modules.error.requires ». */ missing?: Missing[]; /** Précision lisible (ex. les services manquants). */ detail?: string; /** Erreur « modules.error.core » : version du cœur que le module demande (voir compat.ts). */ needsCore?: string };
+} | { ok: false; error: string; /** Erreur « modules.error.loadCheck » : raison courte (anglais, sans chemin) pour le journal et l'assistant ; JAMAIS à montrer telle quelle à la personne propriétaire. */ loadError?: string; /** Le contrôle de chargement a refusé la nouvelle version ET l'ancienne a été remise : le module tourne comme avant. */ rolledBack?: boolean; /** Détail structuré de ce qui manque (service, version, cause) quand l'erreur est « modules.error.requires ». */ missing?: Missing[]; /** Précision lisible (ex. les services manquants). */ detail?: string; /** Erreur « modules.error.core » : version du cœur que le module demande (voir compat.ts). */ needsCore?: string };
 
 /** Le module demande un cœur plus récent que celui-ci : on refuse d'entrer ou de monter de version (jamais de désactiver un module déjà là). */
 export class CoreTooOld extends Error {
