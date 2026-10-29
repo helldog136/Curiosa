@@ -14,6 +14,7 @@ import type { ChoiceView } from "@/core/modules/choice";
 import { OptionalGroup } from "./OptionalGroup";
 import { Checkbox, CheckboxGroup, Select, TextArea, TextField } from "./Field";
 import { ui } from "./ui";
+import { HelpBelow, HelpTip } from "./HelpTip";
 
 type Site = { name: string; tagline: string };
 
@@ -167,9 +168,9 @@ export function ModuleSettings({ t, locale, defaultLocale, locales, fields, allF
     }
     // Plusieurs langues : le libellé du réglage une fois, puis une ligne par langue.
     return (
-      <fieldset key={f.key} className="min-w-0">
-        <legend className={`${ui.label} mb-0.5`}>{label}</legend>
-        {f.help && <p className="mb-2 text-[13px] leading-5 text-muted">{L(f.help)}</p>}
+      <fieldset key={f.key} className="min-w-0" aria-labelledby={`s__${f.key}__legend`}>
+        <legend className={`${ui.label} mb-0.5`}><span id={`s__${f.key}__legend`}>{label}</span><HelpTip help={f.help ? L(f.help) : undefined} name={label} /></legend>
+        <HelpBelow help={f.help ? L(f.help) : undefined} className="mb-2 text-[13px] leading-5 text-muted" />
         <div className="space-y-2.5">
           {ordered.map((l) => control(f, `s__${f.key}__${l}`, stored[f.key]?.[l], localeName(l), { inline: true, required: required && l === defaultLocale, resolved: resolveDefault(f, site(l)) }))}
         </div>

@@ -1,15 +1,22 @@
 import { ui } from "./ui";
+import { HelpBelow, HelpTip } from "./HelpTip";
+import { isLongHelp } from "./helpRule";
 
 type Common = { label: string; name: string; help?: string; required?: boolean; /** Petite étiquette à côté du libellé (« à remplir » : le réglage dont dépend l'état « à configurer »). */ flag?: string };
 
-/** Le libellé d'un champ, avec son étiquette éventuelle (la forme « ✎ » accompagne la couleur : l'information ne passe pas que par la couleur). */
-function FieldLabel({ id, className, flag, children }: { id: string; className: string; flag?: string; children: React.ReactNode }) {
-  return (
-    <label className={className} htmlFor={id}>
+/**
+ * Le libellé d'un champ, avec son étiquette éventuelle (la forme « ✎ » accompagne la couleur : l'information ne passe pas que par la couleur).
+ * Aide longue : le bouton « ? » se place à CÔTÉ du libellé (jamais dedans : il n'entrerait pas dans le nom du champ), sans changer la hauteur de la ligne.
+ */
+export function FieldLabel({ id, className, flag, help, text, children }: { id: string; className: string; flag?: string; help?: string; text: string; children: React.ReactNode }) {
+  const label = (
+    <label className={isLongHelp(help) ? className.replace(/\bmb-1\.5\b/, "mb-0") : className} htmlFor={id}>
       {children}
       {flag && <span data-testid="field-flag" className={`${ui.chipWarn} ml-2 align-middle`}><span aria-hidden>✎</span>{flag}</span>}
     </label>
   );
+  if (!isLongHelp(help)) return label;
+  return <div className="mb-1.5 flex items-center gap-1">{label}<HelpTip help={help} name={text} /></div>;
 }
 
 /** `inline` : libellé à gauche du champ (une ligne par langue d'un réglage traduisible), au lieu d'au-dessus. */
@@ -21,10 +28,10 @@ export function TextField({ label, name, help, required, flag, defaultValue, typ
 }) {
   return (
     <div className={rowClass(inline)}>
-      <FieldLabel id={name} className={labelClass(inline)} flag={flag}>{label}</FieldLabel>
+      <FieldLabel id={name} className={labelClass(inline)} flag={flag} help={help} text={label}>{label}</FieldLabel>
       <div className={inline ? "min-w-0 flex-1" : undefined}>
         <input id={name} name={name} type={type} required={required} defaultValue={defaultValue} placeholder={placeholder} autoComplete={autoComplete} list={list} pattern={pattern} title={title} {...(autoComplete === "off" || autoComplete === "new-password" ? { "data-1p-ignore": true, "data-lpignore": "true", "data-bwignore": "true", "data-form-type": "other" } : {})} className={type === "color" ? ui.colorInput : ui.input} />
-        {help && <p className={ui.help}>{help}</p>}
+        <HelpBelow help={help} className={ui.help} />
       </div>
     </div>
   );
@@ -33,10 +40,10 @@ export function TextField({ label, name, help, required, flag, defaultValue, typ
 export function TextArea({ label, name, help, required, flag, defaultValue, rows = 6, mono, inline }: Common & { defaultValue?: string; rows?: number; mono?: boolean; inline?: boolean }) {
   return (
     <div className={rowClass(inline)}>
-      <FieldLabel id={name} className={labelClass(inline)} flag={flag}>{label}</FieldLabel>
+      <FieldLabel id={name} className={labelClass(inline)} flag={flag} help={help} text={label}>{label}</FieldLabel>
       <div className={inline ? "min-w-0 flex-1" : undefined}>
         <textarea id={name} name={name} rows={rows} required={required} defaultValue={defaultValue} className={`${ui.input} ${mono ? "font-mono" : ""}`} />
-        {help && <p className={ui.help}>{help}</p>}
+        <HelpBelow help={help} className={ui.help} />
       </div>
     </div>
   );
@@ -45,11 +52,14 @@ export function TextArea({ label, name, help, required, flag, defaultValue, rows
 export function Checkbox({ label, name, defaultChecked, help, value, required }: { label: string; name: string; defaultChecked?: boolean; help?: string; value?: string; required?: boolean }) {
   return (
     <div>
-      <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" name={name} value={value} defaultChecked={defaultChecked} required={required} className="h-4 w-4 accent-[var(--v-accent)]" />
-        {label}
-      </label>
-      {help && <p className={ui.help}>{help}</p>}
+      <div className="flex items-center gap-1">
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" name={name} value={value} defaultChecked={defaultChecked} required={required} className="h-4 w-4 accent-[var(--v-accent)]" />
+          {label}
+        </label>
+        <HelpTip help={help} name={label} />
+      </div>
+      <HelpBelow help={help} className={ui.help} />
     </div>
   );
 }
@@ -59,11 +69,11 @@ export function Select({ label, name, options, defaultValue, help }: {
 }) {
   return (
     <div>
-      <label className={ui.label} htmlFor={name}>{label}</label>
+      <FieldLabel id={name} className={ui.label} help={help} text={label}>{label}</FieldLabel>
       <select id={name} name={name} defaultValue={defaultValue} className={ui.input}>
         {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
-      {help && <p className={ui.help}>{help}</p>}
+      <HelpBelow help={help} className={ui.help} />
     </div>
   );
 }
@@ -76,12 +86,15 @@ export function Select({ label, name, options, defaultValue, help }: {
 export function CheckboxGroup({ label, name, options, checked, help, hint, flag }: {
   label: string; name: string; options: { value: string; label: string }[]; checked: readonly string[]; help?: string; hint?: string; flag?: string;
 }) {
-  const note = [help, hint].filter(Boolean).join(" ");
+  // L'aide longue passe dans la bulle « ? » ; l'indication (`hint`, ex. « 2 à 3 choix ») reste sous la liste.
+  const tip = isLongHelp(help) ? help : undefined;
+  const flagChip = flag && <span data-testid="field-flag" className={`${ui.chipWarn} ml-2 align-middle`}><span aria-hidden>✎</span>{flag}</span>;
+  const note = [tip ? undefined : help, hint].filter(Boolean).join(" ");
   return (
-    <fieldset id={`${name}__group`} name={`${name}__group`} tabIndex={-1} data-multichoice="" aria-describedby={note ? `${name}__note` : undefined} className="min-w-0 rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+    <fieldset id={`${name}__group`} name={`${name}__group`} tabIndex={-1} data-multichoice="" aria-labelledby={tip ? `${name}__legend` : undefined} aria-describedby={note ? `${name}__note` : undefined} className="min-w-0 rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
       <legend className={`${ui.label} max-w-full`}>
-        {label}
-        {flag && <span data-testid="field-flag" className={`${ui.chipWarn} ml-2 align-middle`}><span aria-hidden>✎</span>{flag}</span>}
+        {tip ? <span id={`${name}__legend`}>{label}{flagChip}</span> : <>{label}{flagChip}</>}
+        <HelpTip help={tip} name={label} />
       </legend>
       <input type="hidden" name={`${name}__multi`} value="1" />
       <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-bg">
@@ -95,6 +108,7 @@ export function CheckboxGroup({ label, name, options, checked, help, hint, flag 
         ))}
       </ul>
       {note && <p id={`${name}__note`} className={ui.help}>{note}</p>}
+      <HelpBelow help={tip} className={ui.help} />
     </fieldset>
   );
 }
