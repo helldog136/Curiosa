@@ -1,15 +1,16 @@
 # Sauvegarde et restauration
 
-Une sauvegarde est **un seul fichier**, en un clic depuis l'admin (*Sauvegarde*, propriétaire uniquement). Elle contient toutes vos
+Une sauvegarde est **un seul fichier**, en un clic depuis l'admin (*Sauvegarde*, propriétaire ou coordination technique : droit `core:backup`). Elle contient toutes vos
 données — pas le code du framework :
 
 | Inclus | Pas inclus |
 |---|---|
-| utilisateurs (mots de passe **hachés**), réglages (secrets compris : mot de passe e-mail, adresses privées…) ; la clé RAWG et vos corrections de jaquettes sont dans les données du module « Jaquettes de jeux » (et, par prudence, encore dans les réglages du cœur, que la 0.3.0 n'efface jamais : une sauvegarde d'avant la reprise se restaure et le module la reprend toute seule, sans rien perdre) | jetons d'API (à recréer) |
+| comptes (mots de passe **hachés**), réglages (secrets compris : mot de passe e-mail, adresses privées…) ; la clé RAWG et vos corrections de jaquettes sont dans les données du module « Jaquettes de jeux » (et, par prudence, encore dans les réglages du cœur, que la 0.3.0 n'efface jamais : une sauvegarde d'avant la reprise se restaure et le module la reprend toute seule, sans rien perdre) | jetons d'API (à recréer) |
 | instances de modules, entrées (toutes langues, brouillons compris), redirections | journal d'audit, liste « Jaquettes à vérifier » (elle se remplit seule) |
 | données de **chaque module installé** (leur stockage, leurs réglages) | le code du framework et des modules (réinstallé depuis le catalogue) |
 | images et fichiers envoyés | |
 | la liste des modules installés (identifiant, version, dépôt, activé ou non) | |
+| la liste des **skins** installés (dépôt, étiquette, version) et le skin choisi, avec vos retouches d'apparence (ce sont des réglages) | les fichiers des skins (réinstallés depuis leur dépôt, comme les modules) |
 
 Le **cœur** fait la sauvegarde ; il sait aussi aller chercher ce que les modules ont stocké, sans que ceux-ci aient à coder quoi que ce soit.
 Un module peut en plus ajouter ses propres fichiers lisibles (un CSV de ses données, par exemple) avec `backup.readable`
@@ -31,7 +32,7 @@ tar xzf backup.tar.gz
 
 ```
 README.txt          mode d'emploi (français et anglais) — il est dans l'archive, avec vos données
-backup.json         inventaire : version, date, modules, empreinte SHA-256 de chaque fichier
+backup.json         inventaire : version, date, modules, skins (facultatif), empreinte SHA-256 de chaque fichier
 readable/           VOS DONNÉES MISES EN FORME POUR UN HUMAIN — commencez ici
   site.txt            résumé : nom du site, langues, modules, compteurs, réglages (secrets masqués)
   <instance>/*.md     une entrée par fichier Markdown et par langue, avec un en-tête (titre, statut, dates, étiquettes, lien, code…)
@@ -61,7 +62,7 @@ Tout est du **texte** (JSON, Markdown, CSV), sauf les images. Pour vérifier l'i
 *Sauvegarde › Restaurer une sauvegarde* (encadré rouge : la restauration **remplace** les données actuelles) : choisissez le fichier, saisissez le mot de passe, puis **vérifiez l'aperçu** avant de confirmer.
 
 - Le fichier est **vérifié avant tout** : mot de passe, format, version, empreinte de chaque fichier (une sauvegarde modifiée ou incomplète
-  est refusée), présence d'un propriétaire (une restauration ne doit jamais vous enfermer dehors).
+  est refusée), présence d'une personne propriétaire (une restauration ne doit jamais vous enfermer dehors).
 - Les **modules sont réinstallés depuis le catalogue** (dépôts du catalogue). Un module **personnel**
   (dépôt non vérifié) n'est réinstallé que si vous le **confirmez, module par module** ; sinon ses données sont gardées mais le module reste à réinstaller.
 - La restauration **remplace** les données actuelles, en une seule transaction : tout ou rien. Une copie de la base actuelle est gardée dans
@@ -75,7 +76,7 @@ Tout est du **texte** (JSON, Markdown, CSV), sauf les images. Pour vérifier l'i
 **Sur un serveur neuf** : installez le framework ([INSTALL.md](INSTALL.md)) et ouvrez le site. Le **premier écran de l'assistant propose
 « J'ai déjà une sauvegarde : la restaurer »** : même procédure (fichier, mot de passe, aperçu, confirmation des modules personnels), sans créer
 de compte provisoire. Si `SETUP_TOKEN` est défini, le même jeton est demandé. Ce chemin n'existe que **tant qu'aucun compte n'existe** :
-un site en service ne peut se restaurer que depuis l'admin, par son propriétaire. Reconnectez-vous ensuite avec un compte de la sauvegarde.
+un site en service ne peut se restaurer que depuis l'admin, par la personne propriétaire ou la coordination technique (droit `core:backup`). Reconnectez-vous ensuite avec un compte de la sauvegarde.
 
 - **Fichiers supprimés par un module** (permission `files`, 0.2.13) : une sauvegarde est une photographie. Restaurer remet les fichiers qu'elle contient (supprimés depuis ou non) avec leur propriétaire et les données des modules de la même date : tout reste cohérent, la suppression ne casse jamais une restauration. Un fichier supprimé après la sauvegarde n'est plus dans les sauvegardes suivantes ; les anciennes sauvegardes le gardent tant que vous les gardez.
 
@@ -84,3 +85,7 @@ un site en service ne peut se restaurer que depuis l'admin, par son propriétair
 - La sauvegarde contient des **secrets** et les empreintes des mots de passe : gardez le fichier **et** son mot de passe en lieu sûr, séparément.
 - Faites-en régulièrement et **essayez** de relire une sauvegarde de temps en temps : c'est la seule façon d'être sûr qu'elle sert.
 - Pas de sauvegarde automatique pour l'instant ; la restauration d'une sauvegarde créée par une version **plus récente** du framework est refusée (mettez-le à jour d'abord).
+
+## Skins (apparence)
+
+Les réglages d'apparence (`theme.*`, `header.layout`) et ceux des skins (`skin.active`, `skin.installed`, `skin.options`) sont des réglages comme les autres : ils sont dans la sauvegarde et restaurés tels quels. Une sauvegarde faite avant les skins n'en contient aucun : le site s'affiche avec le skin de base, à l'identique. Les **fichiers** d'un skin installé ne sont pas dans la sauvegarde : ils sont réinstallés depuis leur dépôt. Tant qu'ils manquent, le skin de base s'applique, rien n'est perdu et `skin.active` est gardé : le skin se réactive dès qu'il est de nouveau installé.

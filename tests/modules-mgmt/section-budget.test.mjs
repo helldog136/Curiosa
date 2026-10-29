@@ -167,18 +167,24 @@ test("service qui ne répond pas : le consommateur reçoit un échec avant la fi
   assert.equal(text(run.value), "svc-repli:failed", "la section est rendue avec son repli, pas omise");
   assert.ok(run.ms >= 150 && run.ms < 1500, `${run.ms} ms`);   // le repli est rendu (la section n'est pas omise) : l'appel interne a fini AVANT la section
   await RT.runSection("alpha", "viasvc", {}, "fr");
-  // La borne interne (75 % du délai) est réduite du temps déjà passé dans la section : 0,3 s sur une machine au repos, 0,2 s si elle est chargée.
-  assert.deepEqual(stallLines().map((l) => l.replace(/ en 0,[23] s /, " en 0,N s ")), ["[modules] Le service « svc.demo.ping » du module pb (instance pb) n'a pas répondu en 0,N s ; l'appel est ignoré pour cette page."]);
+  // La borne interne (75 % du délai) est réduite du temps déjà passé dans la section : 0,3 s sur une machine au repos, 0,2 s ou 0,1 s si elle est chargée.
+  assert.deepEqual(stallLines().map((l) => l.replace(/ en 0,[1-3] s /, " en 0,N s ")), ["[modules] Le service « svc.demo.ping » du module pb (instance pb) n'a pas répondu en 0,N s ; l'appel est ignoré pour cette page."]);
   assert.ok(!lines.some(([, l]) => l.includes("service svc.demo.ping failed")), "pas de seconde ligne d'erreur");
 });
 
 test("callAll : une instance qui ne répond pas ne retient pas les autres", async () => {
   await setup();
   F.svcHang = new Set(["pb"]);
-  const run = await timed(() => RT.runSection("alpha", "viaall", {}, "fr"));
-  assert.equal(text(run.value), "pb:failed,b2:ok");
-  assert.ok(run.ms < 1500, `${run.ms} ms`);
-  assert.equal(stallLines().length, 1);
+  // Marge (test instable sous charge) : l'appel bloqué consomme les trois quarts du délai de section, et le quart restant doit suffire à rendre la section.
+  // À 400 ms ce quart (100 ms) disparaissait sur une machine chargée et la section entière était omise ; à 1,6 s il vaut 400 ms. Le SENS ne change pas :
+  // le fournisseur bloqué est signalé (échec), les autres répondent, la section se termine sans attendre le fournisseur bloqué et UNE seule ligne nomme le fautif.
+  const normal = process.env.CURIOSA_SECTION_TIMEOUT_MS; process.env.CURIOSA_SECTION_TIMEOUT_MS = "1600";
+  try {
+    const run = await timed(() => RT.runSection("alpha", "viaall", {}, "fr"));
+    assert.equal(text(run.value), "pb:failed,b2:ok");
+    assert.ok(run.ms < 4000, `la section se termine (environ 1,2 s attendues, jamais sans fin) : ${run.ms} ms`);
+    assert.equal(stallLines().length, 1);
+  } finally { process.env.CURIOSA_SECTION_TIMEOUT_MS = normal; }
 });
 
 test("sujet : un fournisseur qui ne répond pas est ignoré, les autres fournisseurs sont collectés", async () => {
@@ -187,7 +193,7 @@ test("sujet : un fournisseur qui ne répond pas est ignoré, les autres fourniss
   const run = await timed(() => RT.runSection("beta", "viatopic", {}, "fr"));
   assert.equal(text(run.value), "topic:t-beta");
   assert.ok(run.ms < 1500, `${run.ms} ms`);
-  assert.deepEqual(stallLines().map((l) => l.replace(/ en 0,[23] s /, " en 0,N s ")), ["[modules] Le sujet « demo.item » fourni par le module pa (instance alpha) n'a pas répondu en 0,N s ; ses éléments sont ignorés pour cette page."]);
+  assert.deepEqual(stallLines().map((l) => l.replace(/ en 0,[1-3] s /, " en 0,N s ")), ["[modules] Le sujet « demo.item » fourni par le module pa (instance alpha) n'a pas répondu en 0,N s ; ses éléments sont ignorés pour cette page."]);
 });
 
 test("collecte pour une page du cœur (en-tête, flux) : le fournisseur bloqué est ignoré au délai complet", async () => {

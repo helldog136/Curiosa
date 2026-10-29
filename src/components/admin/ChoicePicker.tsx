@@ -4,6 +4,9 @@ import { useEffect, useId, useRef, useState } from "react";
 import { createChoice, searchChoice } from "@/app/admin/(panel)/instances/choiceActions";
 import { announce, fill, keyIntent, mergePage, optionCount, optionDomId, showCreate, showEmptyNote, type PickerItem, type PickerStrings } from "./choicePickerModel";
 import { ui } from "./ui";
+import { FieldLabel } from "./Field";
+import { HelpBelow } from "./HelpTip";
+import { isLongHelp } from "./helpRule";
 import { Spinner } from "./ActionKit";
 import { useProgressText } from "./ProgressLabels";
 
@@ -123,10 +126,7 @@ export function ChoicePicker({ instanceId, fieldKey, name, label, help, flag, in
       {showEmptyNote({ hasNote: emptyNote !== undefined, created, value, found: items.length }) && <div data-testid="choice-empty-note">{emptyNote}</div>}
       <input type="hidden" name={name} value={value} />
       <input type="hidden" name={`${name}__choice`} value="1" />
-      <label htmlFor={`${base}-q`} className={ui.label}>
-        {label}
-        {flag && <span data-testid="field-flag" className={`${ui.chipWarn} ml-2 align-middle`}><span aria-hidden>✎</span>{flag}</span>}
-      </label>
+      <FieldLabel id={`${base}-q`} className={ui.label} flag={flag} help={help} text={label}>{label}</FieldLabel>
       {notice && <p role="status" className={`rounded-lg border p-3 text-sm ${notice.tone === "warn" ? "border-amber-500/50 bg-amber-500/10" : "border-emerald-500/40 bg-emerald-500/10"}`}>{notice.text}</p>}
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <span>{current ? fill(strings.current, { label: current }) : strings.noneChosen}</span>
@@ -137,7 +137,7 @@ export function ChoicePicker({ instanceId, fieldKey, name, label, help, flag, in
       <div className="relative">
         <input
           ref={input} id={`${base}-q`} type="search" role="combobox" autoComplete="off" spellCheck={false} maxLength={100}
-          aria-expanded={open} aria-controls={listId} aria-autocomplete="list" aria-describedby={help ? helpId : undefined}
+          aria-expanded={open} aria-controls={listId} aria-autocomplete="list" aria-describedby={help && !isLongHelp(help) ? helpId : undefined}
           aria-activedescendant={open && active >= 0 && active < count ? optionDomId(base, active) : undefined}
           placeholder={strings.placeholder} aria-label={`${strings.search} : ${label}`} value={q}
           onChange={(e) => onType(e.target.value)} onKeyDown={onKeyDown}
@@ -168,7 +168,7 @@ export function ChoicePicker({ instanceId, fieldKey, name, label, help, flag, in
       )}
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
       <p aria-live="polite" role="status" className="sr-only" data-testid="choice-live">{live}</p>
-      {help && <p id={helpId} className={ui.help}>{help}</p>}
+      <HelpBelow help={help} id={helpId} className={ui.help} />
     </div>
   );
 }

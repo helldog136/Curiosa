@@ -15,7 +15,7 @@ export function CopyText({ text, copyLabel, copiedLabel }: { text: string; copyL
     }
   }
   return (
-    <button type="button" onClick={copy} className="rounded-full border border-accent/50 px-3 py-1 text-xs text-accent transition-colors hover:bg-accent/10">
+    <button type="button" data-skin-part="copy-code" onClick={copy} className="rounded-chip border-token border-accent/50 px-3 py-1 text-xs text-accent transition-colors hover:bg-accent/10">
       {copied ? copiedLabel : copyLabel}
     </button>
   );

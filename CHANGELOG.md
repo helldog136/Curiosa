@@ -2,10 +2,46 @@
 
 Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a changé depuis la version précédente publiée** ; ce texte est aussi celui de la release sur GitHub et celui affiché dans l'admin, page *Mises à jour*.
 
-**Comment c'est écrit** : pour quelqu'un qui n'est pas technicien. Un point = une à trois phrases, dites ce que ça change pour vous, pas comment c'est fait. Les détails techniques vont dans la rubrique « Pour les développeurs ». Un test vérifie ces règles.
+**Comment c'est écrit** : pour une personne sans bagage technique. Un point = une à trois phrases, dites ce que ça change pour vous, pas comment c'est fait. Les détails techniques vont dans la rubrique « Pour les développeurs ». Un test vérifie ces règles.
 
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
+
+## 0.4.0
+
+### Apparence / skins
+
+- **Une nouvelle page « Apparence » dans l'administration.** Vous y choisissez le skin de votre site (son apparence complète : couleurs, polices, formes, mise en page), avec un aperçu sur vos vraies pages avant de l'utiliser. Les couleurs, la police, le halo, le fond et l'en-tête qui étaient dans les Réglages y ont déménagé.
+- **Votre site ne change pas tant que vous ne touchez à rien.** Le skin de base est identique à l'apparence actuelle, vérifié page par page, en clair et en sombre, sur téléphone comme sur ordinateur. Vos réglages et vos contenus sont repris tels quels.
+- **Quatre skins au catalogue, installables en un clic** : Brutaliste clair, Éditorial papier, Rétro néon et Verre doux. Vous pouvez aussi ajouter un skin depuis l'adresse GitHub de son dépôt (avec une confirmation de votre part) et le retirer quand vous voulez : votre contenu ne change jamais.
+- **Vos retouches restent à vous.** Changer de skin donne de nouvelles valeurs de départ, mais vous pouvez retoucher les couleurs, la police, le halo, le fond et l'en-tête. « Revenir au skin » remet ses valeurs, et « Annuler » rétablit l'état d'avant.
+- **Clair ou sombre, au choix de vos visiteurs.** Quand le skin propose les deux, un petit bouton leur laisse choisir Automatique, Clair ou Sombre. Leur choix reste dans leur navigateur : rien n'est suivi, aucun cookie n'est ajouté.
+- **Un avertissement si vos couleurs se liront mal.** Il apparaît sous le champ, avec un exemple de couleur qui convient. Un skin illisible est corrigé automatiquement, et l'administration garde toujours son apparence habituelle.
+- **Mises à jour et sauvegardes.** Vous pouvez mettre un skin à jour, revenir à la version d'avant ou le retirer depuis la page Apparence. Votre choix et vos retouches sont dans les sauvegardes ; un skin manquant est réinstallé à la restauration, et le skin de base s'applique en attendant.
+- **Votre assistant IA peut lister, installer, activer et retirer des skins du catalogue officiel**, mais seulement avec votre accord.
+- **Pour les auteurs de modules :** un module peut déclarer les parties de son affichage que les skins peuvent habiller. Les modules existants fonctionnent sans changement.
+- **Pour les auteurs de skins :** une commande de contrôle, un banc d'essai, un guide « Je crée mon skin en 30 minutes » et un dépôt de départ.
+- **Sécurité et vie privée.** Un skin ne contient aucun programme : sa feuille de style est nettoyée avant d'être servie. Ses polices et images viennent de votre site, jamais d'un service tiers, et un skin ne peut ni masquer ni retirer du contenu.
+
+### Améliorations
+
+- **Des textes qui ne devinent plus qui vous êtes.** Les écrans d'administration, le site public, les e-mails, les messages d'installation et les guides parlent de « la personne propriétaire », de « votre public » ou de « l'équipe », sans supposer le genre de la personne qui gère le site ni celui de son public.
+- **Le menu « Utilisateurs » s'appelle « Équipe » en français.** Les adresses et les rôles ne changent pas ; seul le nom affiché est différent.
+- **Nouveau niveau d'accès : la « Coordination technique ».** Elle gère tout le côté technique du site (mises à jour, modules, sauvegardes, sécurité, équipe et rôles) mais ne peut ni toucher au propriétaire ni reprendre le site. Aucun compte existant ne change.
+- **Les longues explications des formulaires d'administration tiennent dans une bulle « ? ».** Une aide courte reste sous le champ ; une aide plus longue s'ouvre en passant la souris sur le « ? » à côté du libellé, ou en appuyant dessus sur téléphone. Les messages d'erreur restent toujours affichés sous le champ.
+- **Deux rôles changent de nom à l'écran : « Administration » et « Rédaction ».** Ils remplacent « Administrateur » et « Éditeur » ; ce que chaque rôle permet ne change pas, et aucun compte n'est modifié. « Propriétaire » et « Coordination technique » gardent leur nom.
+- Rien d'autre ne change pour votre site.
+
+### Pour les développeurs
+
+- Contrat complet : `docs/SKINS.md`. Jetons `--sk-*` (valeurs de `basic` = apparence 0.3.1, repli valeur par valeur), skin `basic` embarqué, DOM stable (`data-skin-region`, `data-skin-part`), `skin.json`, `tokens.json`, `skin.css` assaini par liste blanche (`src/core/skins/`, `postcss` devient une dépendance directe).
+- Modules : clé facultative `skin` du `module.json` (`"minCore": "0.4.0"`), jetons `--sk-m-<module>-…`, boîtes intérieures ciblables sous `module-html`. Réglages : `skin.active`, `skin.installed`, `skin.options`, `skin.snapshot` ; aucune migration de base, `skin.active` absent = `basic`.
+- Outils : `npm run skin:check -- <dossier>` (huit niveaux, `--visual`, `--strict`), `npm run skin:bench`, gabarit `docs/skin-starter/`, guide `docs/CREER-UN-SKIN.md`. Harnais d'images (`npm run visual:*`) pour prouver que `basic` reste à 0 pixel d'écart.
+- Assistant IA : `maintenance_skin_status`, `maintenance_skin_list`, `maintenance_skin_install`, `maintenance_skin_activate`, `maintenance_skin_remove` (demandes à valider). Corrigé au passage : le titre de niveau 6 d'un texte Markdown perdait ses capitales sous `basic`.
+- Nouveau test `tests/core/neutral-writing.test.mjs` (termes genrés connus, liste blanche justifiée) et audit `docs/ideas/ecriture-neutre-audit.md`. Les messages du kit de test sont reformulés (`docs/TESTSUPPORT.md` régénéré) ; le README d'un module peut aussi nommer sa rubrique technique « Côté technique ».
+- Noms de rôles affichés : « Administration » et « Rédaction » (EN « Administration », « Editorial ») remplacent « Administrateur » et « Éditeur ». Identifiants (`owner`, `coordinator`, `admin`, `editor`), clés de texte et droits inchangés ; `neutral-writing.test.mjs` signale aussi les anciens noms.
+- Niveau `coordinator` : `User.role` reste `admin` (repli sûr pour un ancien cœur) et la colonne `User.coordinator` porte le niveau ; droits réservés par niveau dans la table `LEVEL_RESERVED` (`rights.ts`) ; règles d'équipe dans `team.ts` et `members.ts` ; les opérations techniques exigent un droit (`adminCtx({ right })`) et non plus `owner`. Voir `docs/SECURITE.md`.
+- Nouveau composant `HelpTip` (`components/admin/HelpTip.tsx`) et règle `isLongHelp` (60 caractères, une ligne ; `helpRule.ts`), branchés dans les champs de `Field.tsx`, `adminForm`, `ChoicePicker`, `MarkdownField`, réglages de modules et rôles. Aucun changement de manifeste : le champ `help` suffit. Nouveau texte `help.tip` (« Aide : {name} »).
 
 ## 0.3.1
 

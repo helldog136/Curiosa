@@ -10,7 +10,7 @@ Framework : version ${p.frameworkVersion} — format de sauvegarde n°${FORMAT_V
 
 FRANÇAIS
 --------
-Cette sauvegarde contient TOUTES vos données (contenus, réglages, utilisateurs, données des modules, images envoyées).
+Cette sauvegarde contient TOUTES vos données (contenus, réglages, comptes, données des modules, images envoyées).
 Tout est du texte lisible (JSON, Markdown, CSV), sauf les images. Vous n'avez besoin d'AUCUN logiciel particulier :
 si le framework disparaît, vos données restent lisibles.
 
@@ -29,7 +29,7 @@ Que trouve-t-on dedans ?
   uploads/                  images et fichiers envoyés
   backup.json               inventaire et empreintes SHA-256 des fichiers (pour vérifier que rien n'est altéré)
 
-ATTENTION : data/users.json contient les empreintes (hachées, pas en clair) des mots de passe des utilisateurs, et
+ATTENTION : data/users.json contient les empreintes (hachées, pas en clair) des mots de passe des comptes, et
 data/settings.json peut contenir des secrets (mot de passe du serveur e-mail, clé RAWG, adresses privées de calendrier…).
 Gardez ce fichier et son mot de passe à l'abri. Sans le mot de passe, le contenu est irrécupérable : il n'existe aucun
 moyen de le réinitialiser. Les jetons d'API et le journal d'audit ne sont pas sauvegardés.

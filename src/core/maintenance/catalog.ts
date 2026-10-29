@@ -25,7 +25,7 @@ import { publicRepo, redactSecrets } from "./redact";
  * CATALOGUE pour une IA (niveau 1, lecture seule) : « quels modules existent, que je n'ai pas encore, et lequel conviendrait ? ».
  *
  *  - `catalogList` : la liste du catalogue (les modules PAS encore installés, ou tous avec les installés marqués), cherchable, paginée (50 au plus) ;
- *  - `catalogGet`  : la fiche complète d'un module, en mots simples, pour que l'IA puisse expliquer à la propriétaire ce que ce module ferait chez elle.
+ *  - `catalogGet`  : la fiche complète d'un module, en mots simples, pour que l'IA puisse expliquer à la personne propriétaire ce que ce module ferait chez elle.
  *
  * Le réseau : exactement le chemin et le cache de la page « Ajouter » de l'admin (`getCatalogue` : dépôt du catalogue, hôtes permis, copie de la dernière réception ;
  * `getModulePreview` pour la fiche : clone superficiel, 10 min de cache). Aucune adresse n'est lue ailleurs. Chaque attente est bornée (`deps.catalogTimeoutMs`) ;

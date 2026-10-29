@@ -143,7 +143,7 @@ test("la page Mises à jour : section Modules, actions réservées au propriéta
   assert.match(section, /data-testid="modules-updates"/);
   assert.match(fs.readFileSync("src/app/admin/(panel)/extensions/updates/page.tsx", "utf8"), /ModulesUpdatesSection/);
   const actions = fs.readFileSync("src/app/admin/(panel)/updates/actions.ts", "utf8");
-  for (const fn of ["recheckModules", "updateModulesAction"]) assert.match(actions, new RegExp(`export async function ${fn}[^]*?adminCtx\\("owner"\\)`));
+  for (const fn of ["recheckModules", "updateModulesAction"]) assert.match(actions, new RegExp(`export async function ${fn}[^]*?adminCtx\\(\\{ right: "core:[a-z.]+" \\}\\)`));
   assert.match(actions, /audit\(user\.email, "module\.update", /);
   const ui = fs.readFileSync("src/components/admin/ModulesUpdates.tsx", "utf8");
   assert.ok(!/window\.confirm|\bconfirm\(/.test(ui.replace(/confirm=|confirmAll|confirmMajor/g, "")));

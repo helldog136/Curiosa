@@ -117,6 +117,6 @@ test("branchements : mot de passe jamais regardé quand c'est bloqué, comparais
   assert.ok(!/x-forwarded-for/i.test(auth), "l'adresse vient de clientIp, jamais de la première entrée d'un en-tête");
   const action = fs.readFileSync("src/app/admin/(auth)/login/actions.ts", "utf8");
   assert.match(action, /login\.locked/); assert.match(action, /formatUntil/);
-  assert.match(fs.readFileSync("src/app/admin/(panel)/users/actions.ts", "utf8"), /unlockUser[\s\S]*adminCtx\("owner"\)/);
+  assert.match(fs.readFileSync("src/app/admin/(panel)/users/actions.ts", "utf8"), /unlockUser[\s\S]*adminCtx\(\{ right: "core:[a-z.]+" \}\)/);
   assert.match(fs.readFileSync("src/locales/fr.json", "utf8"), /"login\.locked": "Trop d'essais/);
 });

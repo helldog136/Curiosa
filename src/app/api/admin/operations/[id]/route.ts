@@ -1,4 +1,4 @@
-import { currentUser, isOwner } from "@/core/permissions";
+import { can, currentUser } from "@/core/permissions";
 import { readOperation } from "@/core/operations/tracker";
 import { CORE_OP_ID, coreUpdateSnapshot } from "@/core/operations/coreUpdate";
 import { readUpdateState } from "@/core/updates/service";
@@ -10,14 +10,14 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 
 /**
  * Avancement d'une opération longue (lecture seule). Le navigateur ne l'interroge que pendant une opération QU'IL a lancée.
- * Droits : le suivi d'une personne n'est lisible que par elle ou par un propriétaire ; inconnu, oublié et interdit donnent la MÊME réponse (404).
- * `core-update` (mise à jour du site) : propriétaire seulement, lue sur le disque (survit au redémarrage du site).
+ * Droits : le suivi d'une personne n'est lisible que par elle ou par qui détient `core:updates` ; inconnu, oublié et interdit donnent la MÊME réponse (404).
+ * `core-update` (mise à jour du site) : droit `core:updates` (propriétaire, coordinateur technique), lue sur le disque (survit au redémarrage du site).
  */
 export async function GET(_request: Request, ctx: { params: Promise<{ id: string }> }) {
   const user = await currentUser();
   if (!user) return json({ ok: false, error: "unauthorized" }, 401);
   const { id } = await ctx.params;
-  const owner = isOwner(user);
+  const owner = can(user, "core:updates");
   if (id === CORE_OP_ID) return owner ? json({ ok: true, operation: coreUpdateSnapshot(readUpdateState()) }) : json({ ok: false, error: "not-found" }, 404);
   const op = readOperation(id, { email: user.email, owner });
   return op ? json({ ok: true, operation: op }) : json({ ok: false, error: "not-found" }, 404);

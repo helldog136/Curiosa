@@ -73,7 +73,7 @@ Les champs importants : `apiVersion` (toujours `2` aujourd'hui : le contrat avec
 `version` (`x.y.z`), `main` (le fichier de code ; sans lui, module « sans code »), `instances` (`"multiple"` ou `"single"`), `permissions` (ce que vous utilisez). Si votre module a besoin d'une fonction récente du cœur, ajoutez `"minCore": "0.1.10"` (la version minimale du cœur, trois nombres) : un site plus ancien refusera de l'installer ou de monter de version, avec un message qui lui dit de se mettre à jour d'abord. Si votre module concerne une plateforme (Twitch, Discord, YouTube…), ajoutez `"platform": "twitch"` (minuscules, chiffres et tirets) : l'admin regroupe sous la même plateforme les modules qui la partagent. Purement visuel, facultatif. Un module de type `overlay` (ou avec la permission `overlay` et sans `page` ni `sections`) est rangé dans la page Overlays, avec son adresse OBS ; s'il a une page ou des sections, il est rangé comme les autres modules (cœur 0.2.6). Détails : [`MODULES.md`](MODULES.md).
 
 Les **permissions** sont déclaratives : elles disent à l'administrateur ce que fait le module. Une par capacité utilisée : `slots`, `sections`, `pages`,
-`routes`, `storage`, `filters`, `topics`, `overlay`, `mcp`, `admin`, `mail`, `rawg`, `privacy` (lire les déclarations de vie privée des autres modules, cœur 0.2.6), `files` (garder et supprimer les fichiers envoyés, cœur 0.2.13), `visitor.geolocation` (demander la position du visiteur après un clic, cœur 0.2.12). Le cœur ne bloque pas une capacité non déclarée — déclarez-les fidèlement. **Seule exception : `visitor.geolocation`.** Le site ferme la position du visiteur (`Permissions-Policy: geolocation=()`) tant qu'aucun module installé ne la déclare ; sans elle, `navigator.geolocation` est refusé par le navigateur. Si votre module la déclare, ajoutez `"minCore": "0.2.12"` et n'appelez la position qu'après un clic. Détails : [MODULES.md](MODULES.md).
+`routes`, `storage`, `filters`, `topics`, `overlay`, `mcp`, `admin`, `mail`, `rawg`, `privacy` (lire les déclarations de vie privée des autres modules, cœur 0.2.6), `files` (garder et supprimer les fichiers envoyés, cœur 0.2.13), `visitor.geolocation` (demander la position de la personne qui visite après un clic, cœur 0.2.12). Le cœur ne bloque pas une capacité non déclarée — déclarez-les fidèlement. **Seule exception : `visitor.geolocation`.** Le site ferme la position de la personne qui visite (`Permissions-Policy: geolocation=()`) tant qu'aucun module installé ne la déclare ; sans elle, `navigator.geolocation` est refusé par le navigateur. Si votre module la déclare, ajoutez `"minCore": "0.2.12"` et n'appelez la position qu'après un clic. Détails : [MODULES.md](MODULES.md).
 
 L'exemple minimal « de production » est `announcement-banner` (`curiosa-extras/examples/announcement-banner`) ; essayez le vôtre tout de suite :
 [section 17](#17-tester-son-module). Toutes les clés possibles de `index.mjs` sont des **clés optionnelles** de l'objet exporté :
@@ -186,8 +186,8 @@ export default {
 ```
 
 Les **blocs** les plus utiles (liste complète dans la référence, « Blocs ») : `markdown` (sans HTML brut), `html` (brut — **vous échappez**), `heading`, `banner`, `links`,
-`hero`, `panel`, `entries`, `embed`, `form`, `table`, `copy`, `swatches`, `downloads`, `head`, `adminForm`. Pour afficher du texte de visiteur avec une mise en forme, le plus sûr est un
-bloc `html` dont vous échappez chaque valeur (`esc()` dans l'exemple) ; **jamais** de texte de visiteur dans un bloc `markdown` (les liens et images Markdown fonctionnent).
+`hero`, `panel`, `entries`, `embed`, `form`, `table`, `copy`, `swatches`, `downloads`, `head`, `adminForm`. Pour afficher du texte saisi par le public avec une mise en forme, le plus sûr est un
+bloc `html` dont vous échappez chaque valeur (`esc()` dans l'exemple) ; **jamais** de texte saisi par le public dans un bloc `markdown` (les liens et images Markdown fonctionnent).
 
 ## 7. Routes et formulaires
 
@@ -234,7 +234,7 @@ await ctx.api.store.remove(id);
 ```
 
 Pas de requête : lisez une page raisonnable et filtrez en code (l'exemple lit au plus 1000 messages et filtre `approved`). Le stockage est sauvegardé par le cœur
-et supprimé avec l'instance. Permission : `storage`. Le workflow de modération de l'exemple (`pending` → `approved`) est le modèle à suivre pour tout contenu venant de visiteurs.
+et supprimé avec l'instance. Permission : `storage`. Le workflow de modération de l'exemple (`pending` → `approved`) est le modèle à suivre pour tout contenu venant de personnes.
 
 ## 9. Envoyer un e-mail
 
@@ -243,20 +243,20 @@ const result = await ctx.api.mail.send({ to: "owner", subject: "New message", te
 // → { ok: true } ou { ok: false, reason: "not_configured" | "no_recipient" | "invalid" | "rate_limited" | "failed" }
 ```
 
-`to: "owner"` = le contact du site (ou une adresse). Le serveur d'e-mail est réglé une fois par le propriétaire du site ; vous n'avez ni identifiants ni choix de l'expéditeur.
+`to: "owner"` = le contact du site (ou une adresse). Le serveur d'e-mail est réglé une fois par la personne propriétaire du site ; vous n'avez ni identifiants ni choix de l'expéditeur.
 `send` **ne lève jamais** ; `ctx.api.mail.configured()` dit si un serveur est réglé. **Règle d'or** : l'e-mail est un plus. **Conservez d'abord** (`store.add`), **prévenez ensuite**, et ne faites
 jamais échouer la requête si l'e-mail échoue — c'est exactement l'ordre de `routes.sign` dans l'exemple. Permission : `mail`.
 
 **Appeler une API externe.** Préférez `await ctx.api.net.request({ url: "https://api.example.org/v1/items" })` à `fetch` : le cœur fixe un délai (8 s, ou le temps restant de la page), fait une pause après un « 429 trop de demandes » ou un quota épuisé (sans rappeler le service d'ici là), coupe un hôte en panne (disjoncteur), regroupe les appels identiques et refuse tout de suite quand la file est pleine. L'appel ne lève jamais : testez `r.ok`, puis `r.status` et `r.json`. En cas d'échec, affichez les dernières données connues avec leur date. `api.net.health()` donne l'état des services, et le bloc d'admin `netHealth` l'explique à l'administrateur. Voir « Appeler une API externe » dans [MODULES.md](MODULES.md).
 
-**Limiter les envois par visiteur.** Ne lisez jamais `X-Forwarded-For` vous-même (son début est écrit par le visiteur) : `const who = ctx.api.visitor.fingerprint(request, "envoi")` donne une empreinte salée et non réversible du visiteur (jamais son adresse), à compter dans une table bornée. Cœur 0.2.6 (`minCore`), aucune permission. Détails : [MODULES.md](MODULES.md).
+**Limiter les envois par personne.** Ne lisez jamais `X-Forwarded-For` vous-même (son début est écrit par la personne qui visite) : `const who = ctx.api.visitor.fingerprint(request, "envoi")` donne une empreinte salée et non réversible de la personne qui visite (jamais son adresse), à compter dans une table bornée. Cœur 0.2.6 (`minCore`), aucune permission. Détails : [MODULES.md](MODULES.md).
 
 **Reprendre ce que les autres modules déclarent récolter.** `await ctx.api.privacy.declarations()` renvoie, par module actif, sa déclaration `privacy` par langue (permission `privacy`, cœur 0.2.6) : utile à un module « Mentions légales » pour ne pas recopier la liste à la main. Un script pour votre seule page : `scripts: ["mon-script.js"]` dans le résultat de `page()` (fichier du dossier `scripts/`). Détails : [MODULES.md](MODULES.md).
 
 **Supprimer vraiment un fichier envoyé.** Retirer une photo de vos données ne la supprime pas du disque : le fichier appartient au cœur. Déclarez la permission `files` (`"minCore": "0.2.13"`), puis dans l'action d'administration qui enregistre la photo : `const c = await ctx.api.files.claim(values.photo)` (échoue avec un motif : `expired`, `taken`, `not-uploader`, `quota`…), et quand on la retire : `await ctx.api.files.remove(url)` (original et versions cadrées ; sans effet si déjà supprimé). Seuls les fichiers que votre instance a revendiqués se suppriment. Détails, motifs et garanties : [MODULES.md](MODULES.md#fichiers-envoyés-garder-et-supprimer-ctxapifiles). Test : `fakeCtx({ permissions: ["files"], uploads: [url] })`.
 
 **Jaquettes de jeux.** Déclarez `"requires": [{ "service": "game.cover", "optional": true }]` et appelez `await ctx.api.services.call("game.cover", "cover", { title: "Hades" })` : le module officiel « Jaquettes de jeux » détient la clé et répond (voir [MODULES.md](MODULES.md#jaquettes-de-jeux-rawg)). La réponse est `{ ok, value }` (`value` : `{ status, url }` avec `found`, `none`, `no-key`, `refused`, `unreachable`, plus `name`, `id` et `ambiguous` facultatifs) ; `ok` est faux si le module n'est pas là : affichez alors le jeu sans image. `candidates` donne les jeux proposés (6 au plus), `status` dit si une clé est réglée. **L'ancienne interface `ctx.api.rawg` (permission `rawg`) est dépréciée depuis le cœur 0.3.0** : elle reste acceptée (aucune erreur pour un module existant) mais n'est plus qu'un relais vers ce service, sans clé ni repli propres ; ne l'utilisez plus dans un nouveau module (le kit de test le signale par le conseil `perm.rawgDeprecated`).
-La clé RAWG se règle une fois par le propriétaire (dans le module « Jaquettes de jeux ») : ne la demandez jamais dans les réglages de votre module. Aucune permission à déclarer (la permission `rawg` est dépréciée). Détails : [MODULES.md](MODULES.md#jaquettes-de-jeux-rawg).
+La clé RAWG se règle une fois par la personne propriétaire (dans le module « Jaquettes de jeux ») : ne la demandez jamais dans les réglages de votre module. Aucune permission à déclarer (la permission `rawg` est dépréciée). Détails : [MODULES.md](MODULES.md#jaquettes-de-jeux-rawg).
 
 ## 10. Échanger avec les autres modules : sujets et flux RSS
 
@@ -284,9 +284,9 @@ exports: {
 ```
 
 `feed.item` est le sujet **du cœur** pour le flux RSS (`/feed.xml`) : tout module qui le fournit y apparaît. `topics` sont des **rubriques partagées** : si deux modules publient sur
-`announcement`, un lecteur abonné à `announcement` reçoit les deux. Ne publiez que ce qui est **public** (jamais un message en attente de modération). Le cœur écarte lui-même les éléments dont `publishedAt` est dans le futur, ceux sans adresse valide (chemin du site ou http(s)) et les identifiants en double ; il ne peut pas connaître vos règles de modération, c'est à vous de ne renvoyer que du public.
+`announcement`, tout abonnement à `announcement` reçoit les deux. Ne publiez que ce qui est **public** (jamais un message en attente de modération). Le cœur écarte lui-même les éléments dont `publishedAt` est dans le futur, ceux sans adresse valide (chemin du site ou http(s)) et les identifiants en double ; il ne peut pas connaître vos règles de modération, c'est à vous de ne renvoyer que du public.
 
-Vous n'avez **rien à fournir** pour un module à contenu (blog, pages, sponsoring…) : ses entrées publiées, non expirées et datées d'avant maintenant alimentent le flux par `core.entry`, sauf si l'instance n'est pas « proposée au public ». Les flux sont : `/feed.xml?lang=fr` (tout), `/feed.xml?topics=a,b` (rubriques), `/feed/<clé-d'instance>.xml` (une instance), `/feed/topics.json` (catalogue). Au plus 50 éléments, du plus récent au plus ancien ; ETag et Last-Modified permettent aux lecteurs un 304. Le propriétaire retrouve ces adresses dans l'admin, bloc « Flux RSS » de la page *Visibilité dans les réponses des IA* ; l'icône du pied de page apparaît dès qu'une instance à contenu ou un module `feed.item` existe (et se masque dans ce bloc). Vous pouvez aussi définir
+Vous n'avez **rien à fournir** pour un module à contenu (blog, pages, sponsoring…) : ses entrées publiées, non expirées et datées d'avant maintenant alimentent le flux par `core.entry`, sauf si l'instance n'est pas « proposée au public ». Les flux sont : `/feed.xml?lang=fr` (tout), `/feed.xml?topics=a,b` (rubriques), `/feed/<clé-d'instance>.xml` (une instance), `/feed/topics.json` (catalogue). Au plus 50 éléments, du plus récent au plus ancien ; ETag et Last-Modified permettent aux applications de lecture un 304. La personne propriétaire retrouve ces adresses dans l'admin, bloc « Flux RSS » de la page *Visibilité dans les réponses des IA* ; l'icône du pied de page apparaît dès qu'une instance à contenu ou un module `feed.item` existe (et se masque dans ce bloc). Vous pouvez aussi définir
 **votre propre sujet** (`guestbook.message`, format `{ id, name, text, publishedAt }`) : voir `exports` dans l'exemple.
 
 **Consommer** (module.json puis index.mjs) :
@@ -318,7 +318,7 @@ Un module qui fournit `social.link` renvoie `[{ label, url, icon? }]` et peut aj
 
 ## 11. Panneau et actions d'admin
 
-Sous les réglages de chaque instance, votre module peut afficher son propre panneau : tableau, boutons, formulaires — toujours réservé aux administrateurs (le cœur vérifie).
+Sous les réglages de chaque instance, votre module peut afficher son propre panneau : tableau, boutons, formulaires — toujours réservé au rôle Administration (le cœur vérifie).
 
 ```js
 export default {
@@ -377,7 +377,7 @@ Permission : `admin`. Le détail est dans [MODULES.md](MODULES.md) (« Ajouter u
 
 ## 12. Actions MCP pour les assistants
 
-Le cœur héberge un serveur MCP : un assistant IA (avec un **jeton** créé par le propriétaire) peut appeler les actions que vos modules déclarent. Rien n'est codé en dur dans le cœur.
+Le cœur héberge un serveur MCP : un assistant IA (avec un **jeton** créé par la personne propriétaire) peut appeler les actions que vos modules déclarent. Rien n'est codé en dur dans le cœur.
 
 ```json
 "mcp": [
@@ -417,7 +417,7 @@ Les arguments inconnus sont refusés ; le schéma `input` accepte `type`, `prope
 Quand une version de votre module change la **forme** des données qu'il stocke, déclarez `"dataVersion": N` dans `module.json` et écrivez la fonction `migrations[N]` (elle reçoit `ctx`) qui convertit les données
 d'**une** instance de la version N-1 à N (voir [MODULES.md › `migrations`](MODULES.md)). Le cœur les exécute dans l'ordre après une mise à jour du module ou une restauration de sauvegarde, garde
 une copie de la base avant, et si l'une échoue **remet l'instance dans son état d'avant** et la met à l'écart avec un bouton « Réessayer ». Gardez-les idempotentes, testez-les sur des données de
-l'ancienne version. Si l'utilisateur **saute des versions** (1.2 → 1.6), le framework récupère chaque étiquette intermédiaire (1.3, 1.4, 1.5) et exécute la migration **de cette version, avec son code**, avant de passer à la suivante : votre dernière version n'a donc pas besoin de garder les anciennes migrations. Pour que cela marche, publiez chaque version sous une étiquette `vX.Y.Z` et ne supprimez pas les étiquettes.
+l'ancienne version. Si la personne **saute des versions** (1.2 → 1.6), le framework récupère chaque étiquette intermédiaire (1.3, 1.4, 1.5) et exécute la migration **de cette version, avec son code**, avant de passer à la suivante : votre dernière version n'a donc pas besoin de garder les anciennes migrations. Pour que cela marche, publiez chaque version sous une étiquette `vX.Y.Z` et ne supprimez pas les étiquettes.
 
 **Reprendre vos réglages dans un autre module.** Si, dans la nouvelle version, un module dont vous dépendez prend en charge une donnée que vous gardiez vous-même (une adresse de calendrier, une clé), déclarez-le dans `seeds`
 (avec le `requires` correspondant, ou le `consumes` du sujet que la cible fournit si votre module doit marcher sans elle) et, dans votre migration, appelez `ctx.seedInstance(cible, { nickname, settings, seedKey })` puis `ctx.clearSetting(clé)` : le cœur crée l'instance **une seule fois**, sans jamais écraser
@@ -447,7 +447,7 @@ Le fichier atterrit dans `readable/modules/<clé de l'instance>/messages.csv` de
 
 - dans un bloc `html` ou un overlay, utilisez les variables CSS `--v-accent`, `--v-bg`, `--v-fg`, `--v-surface`, `--v-muted`, `--v-line`, `--v-accent-fg`, `--v-font` ;
 - dans le code, `ctx.theme` donne les mêmes valeurs (`accent`, `accentFg`, `bg`, `surface`, `fg`, `muted`, `line`, `font`, `fontKey`) ;
-- `ctx.visit.lastVisit` donne la date du passage précédent du visiteur (1er janvier 1970 s'il est inconnu) ; une fonction `news(ctx)` qui renvoie `true` fait apparaître une pastille « nouveau » sur le lien du menu de l'instance (par défaut : des entrées publiées depuis cette date) ;
+- `ctx.visit.lastVisit` donne la date du passage précédent de la personne qui visite (1er janvier 1970 s'il est inconnu) ; une fonction `news(ctx)` qui renvoie `true` fait apparaître une pastille « nouveau » sur le lien du menu de l'instance (par défaut : des entrées publiées depuis cette date) ;
 - `adminBadge(ctx)` renvoie le nombre d'éléments qui attendent l'équipe (messages à lire, fiches à vérifier…) : une pastille s'affiche sur le lien de votre instance dans le menu de l'admin ;
 - un réglage `color` avec `"default": "theme:accent"` suit le thème tant que l'administrateur ne choisit pas (l'exemple en fait la couleur du liseré des cartes, avec `ctx.theme.accent` en repli).
 
@@ -465,6 +465,10 @@ ctx.t("mailSubject", { name })   // repli : langue par défaut, puis « en », p
 
 Les libellés de `module.json` (`name`, `label`, `help`, `description`…) sont du texte ou `{ "en": "…", "fr": "…" }`. Les réglages `translatable` donnent une valeur par langue.
 Le contexte porte `ctx.locale`, `ctx.defaultLocale`, `ctx.locales`. Quand vous construisez un lien interne, préfixez la langue si elle n'est pas la langue par défaut (`/fr/guestbook`) — voir `pageHref()` dans l'exemple.
+
+### Rendre son module stylable par les skins (cœur 0.4.0)
+
+Un skin change l'apparence du site sans toucher au contenu. Pour que votre page publique suive un skin (arrondis, bordures, ombres, surfaces), déclarez ses **pièces** dans `module.json` (clé `skin`) et lisez des jetons `--sk-m-<votre-module>-…` avec, à chaque fois, la **valeur d'aujourd'hui** en dernier repli : `border-radius:var(--sk-m-hello-card-radius,var(--sk-radius-panel,1rem))`. Posez `data-skin-part="hello.card"` sur l'élément. Votre module garde son `<style>` en ligne et son rendu par défaut ne change pas d'un pixel : c'est une version **mineure** avec `"minCore": "0.4.0"`. Le kit (`npm run module:check`) vérifie les jetons, les pièces, la chaîne de repli et l'absence de masquage. Guide complet, pièges et exemple réel : `docs/MODULES.md`, « Rendre un module stylable par les skins ».
 
 ## 15. Overlays, crochets, emplacements, filtres
 
@@ -507,11 +511,11 @@ Permission : `filters`. Le filtre s'applique en chaîne avec ceux des autres mod
 
 ### Le temps que le site vous laisse (8 secondes)
 
-Le site refuse qu'un module bloque une page entière. Quand votre code fabrique un morceau de page publique, il a **8 secondes** : une **section**, un **emplacement**, un **filtre**, votre **page**, la pastille de nouveauté, un **overlay**. Passé ce délai, votre morceau est **omis** (votre page : 404 sobre) et le journal dit, une fois : « La section « … » du module … (instance …) n'a pas répondu en 8 s ; elle est ignorée pour cette page. » Dès **3 secondes**, il écrit aussi « est lente », pour que vous soyez prévenu avant. Un morceau qui échoue 3 fois de suite fait **recharger votre module** (une fois par heure au plus ; vos données ne bougent pas).
+Le site refuse qu'un module bloque une page entière. Quand votre code fabrique un morceau de page publique, il a **8 secondes** : une **section**, un **emplacement**, un **filtre**, votre **page**, la pastille de nouveauté, un **overlay**. Passé ce délai, votre morceau est **omis** (votre page : 404 sobre) et le journal dit, une fois : « La section « … » du module … (instance …) n'a pas répondu en 8 s ; elle est ignorée pour cette page. » Dès **3 secondes**, il écrit aussi « est lente », pour que l'alerte arrive avant. Un morceau qui échoue 3 fois de suite fait **recharger votre module** (une fois par heure au plus ; vos données ne bougent pas).
 
 Pour ne pas être ignoré :
 - **Bornez chaque attente.** Un `fetch` s'écrit `fetch(url, { signal: AbortSignal.timeout(5000) })`, jamais sans. Lisez le corps (`res.json()`) sous le même signal.
-- **Ne partagez jamais une promesse sans la nettoyer.** Si vous gardez une demande « en cours » dans une `Map` pour que deux visiteurs la partagent, retirez-la dans un `finally` ET donnez-lui un délai : une entrée dont la promesse ne se termine jamais bloque tous les visiteurs suivants jusqu'au redémarrage.
+- **Ne partagez jamais une promesse sans la nettoyer.** Si vous gardez une demande « en cours » dans une `Map` pour que deux personnes la partagent, retirez-la dans un `finally` ET donnez-lui un délai : une entrée dont la promesse ne se termine jamais bloque toutes les personnes qui visitent ensuite, jusqu'au redémarrage.
 - **Pas de boucle d'appels en série sans plafond** : 15 appels de 5 s l'un après l'autre font 75 s. Faites-les en parallèle, mettez le résultat en cache, ou limitez leur nombre.
 - **Les appels de service et de sujet** (`ctx.api.services.call`, `callAll`, `ctx.api.topics.collect`) faits pendant la page ont **6 secondes** : au-delà, vous recevez `{ ok: false, reason: "failed" }` (ou `error: "failed"` dans `callAll`). Gérez ce cas en affichant un repli (ou rien), comme pour `unavailable`.
 - Les tâches planifiées, les routes `/m/…` et l'administration ne sont pas concernées par ce délai.
@@ -613,7 +617,7 @@ test("la bannière affiche le texte réglé", async () => {
   assert.deepEqual(await def.slots["layout.banner"](ctx), [{ type: "banner", text: "Hi!" }]);
 });
 
-test("signer conserve le message en attente et prévient le propriétaire", async () => {
+test("signer conserve le message en attente et prévient la personne propriétaire", async () => {
   const ctx = fakeCtx({ settings: {}, mailConfigured: true });
   const body = new FormData(); body.set("name", "Ada"); body.set("message", "Bravo");
   const res = await def.routes.sign(new Request("https://example.org/m/x/sign", { method: "POST", body }), ctx);
@@ -636,7 +640,7 @@ Lancez : `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test mon-module.
 **Être listé dans le Catalogue** : deux voies.
 
 1. **Dans le dépôt `curiosa-extras`** : un dossier de module dans `modules/` (modules complets) ou `examples/` (exemples), `module.json` à sa racine, et une entrée dans son `catalogue/index.json` (étiquette épinglée). Le cœur n'embarque aucun module : il est installé depuis ce dépôt, lu sur le réseau. Un dépôt peut aussi regrouper plusieurs modules : `https://hôte/propriétaire/dépôt#ref:dossier` installe le seul module de ce dossier.
-2. **Votre propre dépôt de modules** : un dépôt (par exemple `jeanmi/mes-modules-curiosa`) qui regroupe vos modules, un dossier chacun (200 modules au plus par dépôt : au-delà, la liste est coupée et le dit), ou **un seul module à la racine**. Le propriétaire d'un site l’ajoute dans Extensions → Catalogue → *Mes dépôts de modules* (mode avancé) — ou colle l'adresse dans *Installer un dépôt personnel (non vérifié)* pour un module à la racine — et installe ceux qu'il veut ; rien à faire de votre côté que de publier le dépôt. Pas à pas : [PUBLIER-SON-MODULE.md](PUBLIER-SON-MODULE.md).
+2. **Votre propre dépôt de modules** : un dépôt (par exemple `jeanmi/mes-modules-curiosa`) qui regroupe vos modules, un dossier chacun (200 modules au plus par dépôt : au-delà, la liste est coupée et le dit), ou **un seul module à la racine**. La personne propriétaire d'un site l’ajoute dans Extensions → Catalogue → *Mes dépôts de modules* (mode avancé) — ou colle l'adresse dans *Installer un dépôt personnel (non vérifié)* pour un module à la racine — et installe ceux qu'il veut ; rien à faire de votre côté que de publier le dépôt. Pas à pas : [PUBLIER-SON-MODULE.md](PUBLIER-SON-MODULE.md).
 3. **Dépôt reconnu** : une entrée dans [`catalogue/index.json`](../catalogue/README.md), le fichier du dépôt de modules que **chaque installation relit à l'exécution sur le réseau** — il ne suit pas le rythme des versions du framework (`CURIOSA_CATALOGUE_REPO` et `CURIOSA_CATALOGUE_REF` règlent cette lecture ; `MODULES_INDEX_URL` ajoute un index `https://` supplémentaire). Dans `curiosa-extras`, ce fichier est **généré** à partir des dossiers `modules/` et `examples/` (`node scripts/build-index.mjs`, vérifié par la CI) : on ne l'édite pas à la main ; on demande l'inscription (voir [PUBLIER-SON-MODULE.md](PUBLIER-SON-MODULE.md#demander-linscription-au-catalogue-officiel-facultatif)). Format d'une entrée :
 
 ```json
@@ -649,23 +653,23 @@ sur un hôte autorisé ; rien n'est installé automatiquement. Critères et form
 
 ## 19. Règles de sécurité
 
-Un module est **du code de confiance** : il tourne sur le serveur avec les droits du site, et le propriétaire l'installe en connaissance de cause. Cela ne dispense pas d'être irréprochable :
+Un module est **du code de confiance** : il tourne sur le serveur avec les droits du site, et la personne propriétaire l'installe en connaissance de cause. Cela ne dispense pas d'être irréprochable :
 
-- **Tout ce qui vient d'un visiteur est hostile** (formulaire, `segments`, en-têtes, `query`). Validez à l'entrée : types, tailles, caractères de contrôle, nombre de liens. Bornez les réglages numériques.
-- **Échappez à la sortie.** Un bloc `html` est brut : passez chaque valeur de visiteur par un échappement (`& < > " '`). Les blocs `markdown`, `heading`, `table`, `banner`… échappent le HTML,
-  mais le Markdown rend liens et images : ne l'utilisez que pour du texte que vous ou l'administrateur écrivez. Jamais de texte de visiteur dans un attribut ou un `style` sans validation (une couleur doit être `#RRGGBB`).
+- **Tout ce qui vient d'une personne qui visite est hostile** (formulaire, `segments`, en-têtes, `query`). Validez à l'entrée : types, tailles, caractères de contrôle, nombre de liens. Bornez les réglages numériques.
+- **Échappez à la sortie.** Un bloc `html` est brut : passez chaque valeur saisie par le public par un échappement (`& < > " '`). Les blocs `markdown`, `heading`, `table`, `banner`… échappent le HTML,
+  mais le Markdown rend liens et images : ne l'utilisez que pour du texte que vous ou l'administrateur écrivez. Jamais de texte saisi par le public dans un attribut ou un `style` sans validation (une couleur doit être `#RRGGBB`).
 - **Liens sûrs.** N'acceptez que `https:`, `http:`, `mailto:` ou un chemin du site (`/…` mais pas `//…`). Jamais `javascript:` ni `data:`.
 - **Pas de `eval`**, de `new Function`, ni d'exécution de commandes ; pas d'`import` de code téléchargé à l'exécution.
 - **Pas de secret dans les journaux.** Ne journalisez ni réglage `secret`, ni contenu privé, ni message complet : un message d'erreur court suffit.
-- **Modération.** Tout contenu public soumis par des visiteurs attend une validation par défaut ; ne le publiez (page, flux RSS, sujets) qu'une fois approuvé.
+- **Modération.** Tout contenu public soumis par des personnes qui visitent attend une validation par défaut ; ne le publiez (page, flux RSS, sujets) qu'une fois approuvé.
 - **Anti-abus.** Limiteur de débit, piège à robots, plafond de stockage sur toute route publique qui écrit.
 - **Moindre privilège.** N'activez `default` que pour des actions MCP sans danger ; marquez `destructive` ce qui est irréversible ; ne demandez que les permissions que vous utilisez.
-- **Réponses d'erreur muettes.** Ne renvoyez jamais de détail interne (chemin, requête, identifiant technique) à un visiteur.
+- **Réponses d'erreur muettes.** Ne renvoyez jamais de détail interne (chemin, requête, identifiant technique) à une personne qui visite.
 - **Sorties de tableur.** Neutralisez `=`, `+`, `-`, `@` en tête de cellule d'un CSV (injection de formule).
 
 ## 20. Vie privée, cookies et licence
 
-**Vie privée.** Le cœur fournit à chaque site une page « Politique de confidentialité » (`/privacy`, liée dans le pied de page) qu'il écrit lui-même d'après ce que le site fait. Pour qu'elle soit **vraie**, un module qui collecte des données de visiteurs doit le **déclarer** dans son manifeste, en une ou deux phrases (quoi, pourquoi, comment les faire effacer) :
+**Vie privée.** Le cœur fournit à chaque site une page « Politique de confidentialité » (`/privacy`, liée dans le pied de page) qu'il écrit lui-même d'après ce que le site fait. Pour qu'elle soit **vraie**, un module qui collecte des données des personnes qui visitent doit le **déclarer** dans son manifeste, en une ou deux phrases (quoi, pourquoi, comment les faire effacer) :
 
 ```json
 "privacy": {
@@ -676,9 +680,9 @@ Un module est **du code de confiance** : il tourne sur le serveur avec les droit
 
 Le cœur reprend ce texte tel quel, sous le nom de l'instance. Un module qui ne collecte **rien** n'a rien à écrire. Voir [PRIVACY.md](PRIVACY.md).
 
-**Images et ressources d'un autre site.** Le site n'envoie aucune politique de sécurité de contenu : un `<img src="https://autre-site/…">` s'affiche, et le navigateur du visiteur contacte alors ce tiers (adresse IP, page visitée). Rien ne vous en empêche : **c'est à vous**. Pour les images d'un service externe, faites-les passer par une route de votre module (`/m/<clé>/img?c=<numéro>`) : le site télécharge l'image avec `fetch` et `AbortSignal.timeout`, vérifie son type (PNG, JPEG ou WebP, jamais SVG) et sa taille, la garde en mémoire pour un temps et un nombre bornés, et la sert depuis sa propre adresse ; le visiteur ne donne qu'un numéro, jamais l'adresse. `ctx.api.net.request` rend du texte (`json` ou `text`), pas des octets : il ne convient pas aux images. L'affichage direct depuis le tiers ne doit être qu'un choix avancé de l'administrateur, dit dans `privacy`. Modèle complet : le guide [PUBLIER-SON-MODULE.md](PUBLIER-SON-MODULE.md#vie-privée).
+**Images et ressources d'un autre site.** Le site n'envoie aucune politique de sécurité de contenu : un `<img src="https://autre-site/…">` s'affiche, et le navigateur de la personne qui visite contacte alors ce tiers (adresse IP, page visitée). Rien ne vous en empêche : **c'est à vous**. Pour les images d'un service externe, faites-les passer par une route de votre module (`/m/<clé>/img?c=<numéro>`) : le site télécharge l'image avec `fetch` et `AbortSignal.timeout`, vérifie son type (PNG, JPEG ou WebP, jamais SVG) et sa taille, la garde en mémoire pour un temps et un nombre bornés, et la sert depuis sa propre adresse ; la personne qui visite ne donne qu'un numéro, jamais l'adresse. `ctx.api.net.request` rend du texte (`json` ou `text`), pas des octets : il ne convient pas aux images. L'affichage direct depuis le tiers ne doit être qu'un choix avancé de l'administrateur, dit dans `privacy`. Modèle complet : le guide [PUBLIER-SON-MODULE.md](PUBLIER-SON-MODULE.md#vie-privée).
 
-**Cookies et stockage.** Le framework ne demande aucun consentement parce qu'il ne dépose rien d'inutile. **Ne rompez pas cela** : un module qui dépose un cookie, utilise le stockage du navigateur ou charge un service tiers (lecteur vidéo, widget, statistiques) pour autre chose que ce que le visiteur vient de demander impose un consentement préalable, et c'est à vous de le prévoir et de le déclarer dans `privacy`. En cas de doute : n'en déposez pas.
+**Cookies et stockage.** Le framework ne demande aucun consentement parce qu'il ne dépose rien d'inutile. **Ne rompez pas cela** : un module qui dépose un cookie, utilise le stockage du navigateur ou charge un service tiers (lecteur vidéo, widget, statistiques) pour autre chose que ce que la personne qui visite vient de demander impose un consentement préalable, et c'est à vous de le prévoir et de le déclarer dans `privacy`. En cas de doute : n'en déposez pas.
 
 **Licence.** Votre module est **à vous** : `license` dans `module.json` est votre choix (MIT, propriétaire, payant…), vous en gardez tout le mérite, et vous pouvez le vendre. La licence du framework (Curiosa License) ne s'applique pas à un module qui l'utilise seulement par son interface publique (`module.json` et l'API des modules) sans copier de code du cœur. Elle s'applique, en revanche, au cœur et aux modules livrés dans `src/modules-builtin/` ; voir [LICENSE](../LICENSE).
 
@@ -692,17 +696,18 @@ Le cœur reprend ce texte tel quel, sous le nom de l'instance. Un module qui ne 
 - [ ] Tous les textes montrés aux humains sont dans `locales/` (`en` **et** `fr`, mêmes clés) ; tous les identifiants (sujets, rubriques, actions) sont en anglais.
 - [ ] Chaque réglage `advanced` a une valeur par défaut ; les réglages numériques et les couleurs sont validés avant usage.
 - [ ] Les actions MCP : lecture seule marquée `readOnly`, écritures sans `default: true` sauf choix assumé, irréversibles `destructive` (jamais `default: true`), `input` complet.
-- [ ] Le texte des visiteurs est validé à l'entrée et échappé à la sortie ; liens limités à `https:`/`http:`/`mailto:`/chemins du site ; aucun `eval`.
-- [ ] Les messages de visiteurs sont modérés (ou le contraire est un choix explicite de l'administrateur) ; le flux RSS et les sujets n'exposent que le public.
+- [ ] Le texte des personnes qui visitent est validé à l'entrée et échappé à la sortie ; liens limités à `https:`/`http:`/`mailto:`/chemins du site ; aucun `eval`.
+- [ ] Les messages de personnes sont modérés (ou le contraire est un choix explicite de l'administrateur) ; le flux RSS et les sujets n'exposent que le public.
 - [ ] Les routes publiques ont limiteur de débit, piège à robots, plafond ; l'e-mail est **après** la conservation et ne fait jamais échouer la requête.
 - [ ] Aucun secret, ni donnée privée, ni identifiant réel dans le code, les exemples ou les journaux ; exemples neutres (`example.org`, « Demo »).
 - [ ] `npm run module:check -- <dossier>` ne montre aucun ❌ (le kit vérifie le manifeste, les langues, les droits, l'échappement, les routes, le MCP, les tâches, la vie privée…) ; le module a ses propres tests de comportement et ils passent.
 - [ ] Si la forme de mes données a changé : `dataVersion` augmenté et migration écrite et testée sur des données de l'ancienne version.
-- [ ] Si le module collecte des données de visiteurs : champ `privacy` renseigné (en **et** fr) ; aucun cookie, stockage navigateur ni service tiers non essentiel sans consentement.
+- [ ] Si le module collecte des données des personnes qui visitent : champ `privacy` renseigné (en **et** fr) ; aucun cookie, stockage navigateur ni service tiers non essentiel sans consentement.
+- [ ] Un module qui met en forme une page publique déclare ses pièces de skin (`skin`, `minCore` 0.4.0) avec la **chaîne de repli complète** (`var(jeton-du-module, var(jeton-commun, valeur-actuelle))`) : rendu par défaut inchangé, jamais de jeton dans `display`, `opacity`, `content`…
 - [ ] `license` choisie dans `module.json` (elle n'a pas à être celle du framework).
 - [ ] Essayé en vrai : installation locale, instance, page, formulaire, admin, désinstallation en gardant les données puis réinstallation (tout revient), désinstallation en effaçant tout.
 - [ ] Rien ne suppose un état « éteint » : un module installé tourne ; `hooks.onInstanceDelete` n'est appelé que quand les données sont effacées (en « garder », elles sont rangées, pas détruites).
 - [ ] Un `README.md` explique ce que fait le module, ses réglages et ses limites ; la version est **taguée** (`git tag v1.0.0`).
-- [ ] **Pensez à Emma et à Hugo.** Emma n'a aucun bagage technique : tout réglage qu'elle doit remplir porte un libellé simple (« Adresse de votre salon Discord », pas « webhookUrl ») et une aide en une phrase ; un réglage de technicien (délai, mode de test, format) porte `"advanced": true` : il n'apparaît que dans le mode avancé de Hugo, avec une valeur par défaut raisonnable. Vos textes d'admin (`adminPanel`) disent ce qu'on peut faire, pas comment ça marche.
+- [ ] **Pensez à deux profils.** Une personne sans bagage technique : tout réglage à remplir porte un libellé simple (« Adresse de votre salon Discord », pas « webhookUrl ») et une aide en une phrase ; un réglage technique (délai, mode de test, format) porte `"advanced": true` : il n'apparaît que dans le mode avancé, pour une personne à l'aise avec la technique, avec une valeur par défaut raisonnable. Vos textes d'admin (`adminPanel`) disent ce qu'on peut faire, pas comment ça marche.
 - [ ] Un **README.md** à la racine du dépôt : il est affiché dans le Catalogue avant l'installation (à quoi sert le module, réglages, permissions, et si vous le souhaitez un lien pour un don volontaire : le Catalogue est gratuit, rien ne s'y vend).
 - [ ] Pour le Catalogue : dépôt public sur un hôte autorisé, ajouté à `catalogue/index.json` de `curiosa-extras` (demande de fusion), ou proposé dans son `modules/` / `examples/`.

@@ -380,9 +380,9 @@ export type ModuleApi = {
     /** Une clé RAWG est-elle réglée (et ce module a-t-il la permission) ? */
     configured(): Promise<boolean>;
     /**
-     * Jaquette du jeu `title` : `found` (url https), `none` (aucun résultat, ou « aucune jaquette » choisi par la propriétaire), `no-key`, `refused` (RAWG refuse la clé), `unreachable`.
-     * Champs facultatifs (cœur 0.2.10, avec `found` seulement) : `name` (le jeu trouvé), `id` (son numéro RAWG), `ambiguous` (vrai si le titre est douteux : la propriétaire peut
-     * le corriger dans l'admin). Une correction de la propriétaire est appliquée avant tout le reste.
+     * Jaquette du jeu `title` : `found` (url https), `none` (aucun résultat, ou « aucune jaquette » choisi par la personne propriétaire), `no-key`, `refused` (RAWG refuse la clé), `unreachable`.
+     * Champs facultatifs (cœur 0.2.10, avec `found` seulement) : `name` (le jeu trouvé), `id` (son numéro RAWG), `ambiguous` (vrai si le titre est douteux : la personne propriétaire peut
+     * le corriger dans l'admin). Une correction de la personne propriétaire est appliquée avant tout le reste.
      */
     cover(title: string): Promise<{ status: "found" | "none" | "no-key" | "refused" | "unreachable"; url: string | null; name?: string; id?: number; ambiguous?: boolean }>;
     /**

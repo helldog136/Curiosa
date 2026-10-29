@@ -29,20 +29,21 @@ export function entryHref(
 
 export function EntryList({ entries, collection, locale, defaultLocale }: Props) {
   const t = makeTranslator(locale);
-  if (entries.length === 0) return <p className="text-muted">{t("site.empty")}</p>;
+  if (entries.length === 0) return <p data-skin-part="prose" className="text-muted">{t("site.empty")}</p>;
 
   if (collection.display === "links") {
     return (
-      <ul className="flex flex-wrap gap-3">
+      <ul data-skin-part="list" data-kind="links" className="flex flex-wrap gap-3">
         {entries.map((e) => {
           const { href, external } = entryHref(e, collection, defaultLocale);
           return (
-            <li key={e.id}>
+            <li key={e.id} data-skin-part="list-item">
               <a
                 href={href}
                 lang={e.locale}
+                data-skin-part="chip"
                 {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-                data-chip="" className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-4 py-2 text-sm transition-colors hover:border-accent hover:text-accent"
+                data-chip="" className="inline-flex items-center gap-2 rounded-chip border-token border-line bg-surface px-4 py-2 text-sm transition-colors hover:border-accent hover:text-accent"
               >
                 <EntryIcon icon={e.icon} />
                 {e.title}
@@ -56,15 +57,15 @@ export function EntryList({ entries, collection, locale, defaultLocale }: Props)
 
   if (collection.display === "list") {
     return (
-      <ul className="divide-y divide-line border-y border-line">
+      <ul data-skin-part="list" data-kind="list" className="divide-y divide-line border-y-token border-line">
         {entries.map((e) => {
           const { href, external } = entryHref(e, collection, defaultLocale);
           return (
-            <li key={e.id} lang={e.locale} className="py-4">
-              <a href={href} {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})} className="font-medium hover:text-accent">
+            <li key={e.id} lang={e.locale} data-skin-part="list-item" className="py-4">
+              <a href={href} data-skin-part="link" {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})} className="font-medium hover:text-accent">
                 {e.title}
               </a>
-              {e.summary && <p className="mt-1 text-sm text-muted">{e.summary}</p>}
+              {e.summary && <p data-skin-part="lead" className="mt-1 text-sm text-muted">{e.summary}</p>}
             </li>
           );
         })}
@@ -73,7 +74,7 @@ export function EntryList({ entries, collection, locale, defaultLocale }: Props)
   }
 
   return (
-    <ul className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,15rem),1fr))] gap-5">
+    <ul data-skin-part="list" data-kind="cards" className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,var(--sk-cards-min,15rem)),1fr))] gap-[var(--sk-grid-gap,1.25rem)]">
       {entries.map((e) => {
         const { href, external } = entryHref(e, collection, defaultLocale);
         const isCode = collection.display === "codes";
@@ -81,24 +82,24 @@ export function EntryList({ entries, collection, locale, defaultLocale }: Props)
           <li
             key={e.id}
             lang={e.locale}
-            data-card="" className={`flex flex-col overflow-hidden rounded-xl border border-line bg-surface ${e.expired ? "opacity-60" : ""}`}
+            data-card="" data-skin-part="card" className={`flex flex-col overflow-hidden rounded-card border-token border-line bg-surface ${e.expired ? "opacity-60" : ""}`}
           >
             {e.cover && <CoverImage src={e.cover} variant="card" />}
-            <div className="flex flex-1 flex-col gap-2 p-5">
-              <h3 className="flex items-center gap-2 text-lg font-semibold">
+            <div data-skin-part="card-body" className="flex flex-1 flex-col gap-2 p-[calc(var(--sk-card-pad,calc(var(--spacing)*4))*1.25)]">
+              <h3 data-skin-part="heading" data-level="3" className="flex items-center gap-2 text-lg font-semibold">
                 <EntryIcon icon={e.icon} />
-                <a href={href} {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})} className="hover:text-accent">
+                <a href={href} data-skin-part="link" {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})} className="hover:text-accent">
                   {e.title}
                 </a>
               </h3>
-              {e.summary && <p className="text-sm text-muted">{e.summary}</p>}
+              {e.summary && <p data-skin-part="lead" className="text-sm text-muted">{e.summary}</p>}
               <div className="mt-auto flex flex-wrap items-center gap-3 pt-3 text-xs text-muted">
                 {isCode && e.code && (
                   <CopyCode code={e.code} copyLabel={t("site.copy")} copiedLabel={t("site.copied")} />
                 )}
-                {e.expired && <span className="rounded bg-line px-2 py-0.5">{t("site.expired")}</span>}
+                {e.expired && <span data-skin-part="badge" className="rounded-sm bg-line px-2 py-0.5">{t("site.expired")}</span>}
                 {!isCode && <time>{formatDate(e.publishedAt, locale)}</time>}
-                {e.isFallback && <span className="uppercase">{e.locale}</span>}
+                {e.isFallback && <span data-skin-part="badge" className="uppercase">{e.locale}</span>}
               </div>
             </div>
           </li>

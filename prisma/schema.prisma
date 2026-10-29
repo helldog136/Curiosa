@@ -17,7 +17,10 @@ model User {
   id           String   @id @default(cuid())
   email        String   @unique
   name         String
+  // Niveau HISTORIQUE (« owner | admin | editor | none »), lu aussi par les anciens cœurs. Le coordinateur technique y est « admin » (repli le plus sûr d'un ancien cœur).
   role         String   @default("editor")
+  // Vrai pour un Coordinateur technique (0.4.0) : ne vaut que si `role` est « admin » (sinon ignoré et effacé au démarrage). Un ancien cœur ignore cette colonne.
+  coordinator  Boolean  @default(false)
   passwordHash String
   // Langue de l'interface d'admin de cet utilisateur (null = défaut du site).
   locale       String?
@@ -43,7 +46,7 @@ model User {
 }
 
 // ─── Rôles et droits (0.2.0) ────────────────────────────────────────────────
-// Trois rôles prédéfinis (owner, admin, editor : system = true, créés au démarrage, non modifiables) et des rôles personnalisés (« r-<slug> »).
+// Quatre rôles prédéfinis (owner, coordinator, admin, editor : system = true, créés au démarrage, non modifiables) et des rôles personnalisés (« r-<slug> »).
 // rights : liste JSON de droits (« core:entries.edit », « <module>:<droit> ») ; vide pour les rôles prédéfinis, dont les droits sont calculés.
 model Role {
   id          String     @id @default(cuid())

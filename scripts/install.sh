@@ -224,7 +224,7 @@ phase_detect() {
   APT=0
   case " $OS_ID $OS_LIKE " in *" debian "*|*" ubuntu "*) APT=1 ;; esac
   if [ "$OS_ID" = alpine ]; then fail "Alpine Linux n'est pas pris en charge (la release est faite pour les systèmes de type Debian/Ubuntu)." "créez le serveur avec Ubuntu LTS ou Debian."; fi
-  if [ "$APT" -eq 1 ]; then ok "Système : $OS_NAME."; else warn "Système : $OS_NAME. Je sais tout installer seul sur Ubuntu et Debian ; ici je m'arrêterai si un outil manque."; fi
+  if [ "$APT" -eq 1 ]; then ok "Système : $OS_NAME."; else warn "Système : $OS_NAME. Je sais tout installer sans aide sur Ubuntu et Debian ; ici je m'arrêterai si un outil manque."; fi
   if [ ! -d "$(rp /run/systemd/system)" ]; then
     fail "systemd n'est pas actif sur ce serveur (c'est lui qui garde le site allumé)." "utilisez un serveur Ubuntu ou Debian classique (pas un conteneur sans systemd), ou suivez l'installation manuelle de docs/AGENT-INSTALL.md."
   fi
@@ -280,7 +280,7 @@ phase_ask() {
   [ -n "$SITE" ] || fail "Il manque le nom du site." "relancez avec --site monsite (court, en minuscules)."
   printf '%s' "$SITE" | grep -Eq '^[a-z][a-z0-9-]{1,30}$' || fail "Le nom du site « $SITE » n'est pas valable." "utilisez 2 à 31 caractères : des lettres minuscules sans accent, des chiffres ou des tirets, en commençant par une lettre (ex. monsite)."
   if [ "$NO_DOMAIN" -eq 0 ] && [ -z "$DOMAIN" ] && interactive; then
-    say "  2. Nom de domaine : l'adresse que verront vos visiteurs (ex. monsite.example.org). Laissez vide pour un simple essai sans domaine."
+    say "  2. Nom de domaine : l'adresse que verra votre public (ex. monsite.example.org). Laissez vide pour un simple essai sans domaine."
     read -r -p "     Nom de domaine : " DOMAIN || DOMAIN=""
   fi
   DOMAIN=$(printf '%s' "$DOMAIN" | tr 'A-Z' 'a-z' | sed -E 's#^https?://##; s#/.*$##; s#\.$##')

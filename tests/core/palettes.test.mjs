@@ -93,17 +93,18 @@ test("composant : tuile Personnalisé, états accessibles, noms de champs, coule
   assert.match(src, /aria-pressed=\{on\}/);
   assert.match(src, /matchPalette\(bg, ac, a2, sf, tx\)/);
   assert.match(src, /forced \? CUSTOM_PALETTE/);
-  assert.match(src, /name="background"/);
-  assert.match(src, /name="accent"/);
-  for (const n of ["accent2", "surface", "text"]) assert.match(src, new RegExp(`<input type="hidden" name="${n}"`), n);
+  // les noms des champs portent un préfixe (vide : background, accent… comme toujours ; `light_` / `dark_` pour un skin à deux modes)
+  assert.match(src, /name=\{`\$\{prefix\}background`\}/);
+  assert.match(src, /name=\{`\$\{prefix\}accent`\}/);
+  for (const n of ["accent2", "surface", "text"]) assert.match(src, new RegExp("<input type=\"hidden\" name=\\{`\\$\\{prefix\\}" + n + "`\\}"), n);
   assert.match(src, /showFields = advanced \|\| custom \|\| wantCustom/);
   assert.match(src, /\{advanced && \(/, "surface et texte : version avancée seulement");
   assert.match(src, /contrastIssues\(/);
   assert.match(src, /data-testid="theme-add-second"/);
   assert.match(src, /data-testid="theme-remove-second"/);
-  const page = fs.readFileSync("src/app/admin/(panel)/settings/page.tsx", "utf8");
+  const page = fs.readFileSync("src/app/admin/(panel)/appearance/page.tsx", "utf8");
   assert.match(page, /THEME_PRESETS\.map\(\(p\) => p\.id\)/);
-  assert.match(page, /text=\{config\.textColor\}/);
+  assert.match(page, /text: config\.textColor/);
   for (const l of ["fr", "en"]) {
     const dict = JSON.parse(fs.readFileSync(`src/locales/${l}.json`, "utf8"));
     for (const id of [...THEME_PRESETS.map((p) => p.id), "custom"]) assert.ok(dict[`theme.${id}`], `${l} theme.${id}`);

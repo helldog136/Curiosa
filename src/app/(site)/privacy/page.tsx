@@ -9,6 +9,7 @@ import { getSetting, getSiteConfig } from "@/core/settings";
 import { siteUrl } from "@/core/config";
 import { pickLogo } from "@/core/logos";
 import { languageAlternates, socialMeta } from "@/core/seo";
+import { resolveLook } from "@/core/skins/render";
 import { Markdown } from "@/components/site/Markdown";
 import { CookieSettingsLink } from "@/components/site/CookieTray";
 
@@ -33,14 +34,16 @@ export default async function PrivacyPage() {
     return declared ? [{ name: pickName(instance, locale, config.defaultLocale), text: localized(declared, locale, config.defaultLocale) }] : [];
   });
   const extra = (await getSetting<string>("privacy.extra", locale)) ?? (await getSetting<string>("privacy.extra", config.defaultLocale)) ?? "";
-  const text = buildPrivacyPolicy({ siteName: config.name, contactEmail: config.contactEmail, statsEnabled: config.statsEnabled, newsToggle: config.newsToggle, features, extra, t });
+  // Le choix clair/sombre du visiteur n'existe (et n'est donc déclaré) que si le skin du site fournit les deux apparences.
+  const modeSwitch = (await resolveLook(config)).appearance.modeSwitch;
+  const text = buildPrivacyPolicy({ siteName: config.name, contactEmail: config.contactEmail, statsEnabled: config.statsEnabled, newsToggle: config.newsToggle, modeSwitch, features, extra, t });
   return (
-    <article className="mx-auto max-w-3xl space-y-4 py-6">
-      <h1 className="text-3xl font-bold tracking-tight">{t("privacy.title")}</h1>
+    <article className="mx-auto max-w-[var(--sk-prose-width-wide,48rem)] space-y-4 py-6">
+      <h1 data-skin-part="heading" data-level="1" className="text-3xl font-bold tracking-tight">{t("privacy.title")}</h1>
       <Markdown text={text} />
       {config.newsToggle && (
-        <p id="cookies" data-testid="privacy-cookie-control" className="scroll-mt-24 rounded-xl border border-line p-4 text-sm">
-          <CookieSettingsLink label={t("cookies.manage")} href="#cookies" className="font-semibold text-accent underline underline-offset-2" />
+        <p id="cookies" data-testid="privacy-cookie-control" data-skin-part="notice" data-tone="info" className="scroll-mt-24 rounded-card border-token border-line p-4 text-sm">
+          <CookieSettingsLink label={t("cookies.manage")} href="#cookies" part="link" className="font-semibold text-link underline underline-offset-2" />
         </p>
       )}
     </article>

@@ -36,16 +36,18 @@ test("en-tête : clavier — Entrée/Espace (vrai <button>), ↓ ouvre, ↑ ↓ 
 test("en-tête : toucher — un premier toucher ouvre, un second suit le lien ; clavier et souris suivent toujours le lien", () => {
   assert.match(nav, /e\.detail > 0 && pointer\.current !== "mouse" && pointer\.current !== "" && !isOpen\) \{ e\.preventDefault\(\); setOpen\(i\)/);
   assert.match(nav, /onPointerDown=\{\(e\) => \{ pointer\.current = e\.pointerType; \}\}/);
-  assert.match(nav, /sm:group-hover\/sub:block/, "la souris ouvre au survol, en CSS pur");
+  assert.match(read("src/app/globals.css"), /@media \(hover: hover\) \{\s*\[data-site-nav\] \[data-row\]:hover \[data-skin-part="submenu"\] \{ display: block; \}/, "la souris ouvre au survol, en CSS pur (feuille du cœur)");
 });
 
 test("en-tête : sans minuteur, mouvement réduit respecté, focus visible, cibles de 44 px, panneau sur petit écran", () => {
   const code = noComments(nav);
   for (const banned of ["setTimeout", "setInterval", "requestAnimationFrame", "dangerouslySetInnerHTML"]) assert.ok(!code.includes(banned), banned);
   assert.match(code, /motion-reduce:transition-none/);
-  assert.match(code, /min-h-11/);
-  assert.match(code, /sm:hidden/, "bouton Menu seulement sur petit écran");
-  assert.match(code, /\$\{panel \? "flex" : "hidden"\}[^`]*sm:flex/, "le panneau se replie sur petit écran, jamais sur grand écran");
+  assert.match(code, /min-h-target/);
+  const css = read("src/app/globals.css");
+  assert.match(css, /@media \(width >= 40rem\) \{\s*\[data-site-nav\] \[data-skin-part="menu-toggle"\] \{ display: none; \}/, "bouton Menu seulement sur petit écran");
+  assert.match(code, /data-open=\{panel \? "true" : "false"\}/);
+  assert.match(css, /@media \(width < 40rem\) \{[^}]*\}\s*\[data-site-nav\] \[data-skin-part="nav-list"\]\[data-open="false"\] \{ display: none; \}/, "le panneau se replie sur petit écran, jamais sur grand écran");
   assert.match(read("src/app/globals.css"), /a:focus-visible,[\s\S]*button:focus-visible/, "le focus clavier est visible partout");
   assert.match(code, /document\.addEventListener\("pointerdown", away\)/);
   assert.match(code, /document\.removeEventListener\("pointerdown", away\)/, "l'écouteur est retiré");

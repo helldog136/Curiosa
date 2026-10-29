@@ -1,0 +1,16 @@
+{
+  "skinContract": 1,
+  "id": "basic",
+  "name": { "fr": "Skin de base", "en": "Basic skin" },
+  "description": {
+    "fr": "L'apparence de Curiosa : sombre, douce, arrondie, sans empattement. C'est la base de tous les skins.",
+    "en": "The Curiosa look: dark, soft, rounded, sans-serif. It is the base of every skin."
+  },
+  "version": "1.0.0",
+  "license": "SEE LICENSE IN LICENSE",
+  "tags": ["dark", "sans"],
+  "modes": ["dark"],
+  "tokens": "tokens.json",
+  "defaults": { "headerLayout": "classic", "font": "sans", "glow": "none", "background": "none" },
+  "options": []
+}

@@ -11,7 +11,7 @@ Un site web personnel (blog, pages, collections, accueil composé de sections, m
 1. **Ne jamais demander de coller ou d'afficher un secret** (`SETUP_TOKEN`, `.env`, mots de passe, clés SSH, jetons). Le code d'installation est généré sur le serveur et **lu par la personne elle-même** : c'est pourquoi le script ne l'affiche pas, il donne la commande pour le lire.
 2. **Ne rien supprimer ni écraser sans l'avoir regardé** : un dossier non vide, une configuration de serveur web existante, un service déjà en place appartiennent peut-être à un autre site. Le script s'arrête plutôt que d'écraser ; ne contourne pas ses refus.
 3. **Lire le script avant de le lancer** (`less install.sh`, ou le fichier est dans le dépôt) et le lancer d'abord avec `--dry-run`. Ne jamais proposer `curl … | bash` : toujours « télécharger, relire, puis exécuter ».
-4. **Parler simplement.** La personne n'est pas technicienne : un mot technique = une phrase d'explication, une erreur = ce qui s'est passé + une seule chose à faire. Ne jamais faire peur ; rien de ce que fait le script n'est irréversible (voir [Retour arrière](#retour-arrière)).
+4. **Parler simplement.** La personne n'a pas de bagage technique : un mot technique = une phrase d'explication, une erreur = ce qui s'est passé + une seule chose à faire. Ne jamais faire peur ; rien de ce que fait le script n'est irréversible (voir [Retour arrière](#retour-arrière)).
 5. **Ne pas deviner l'environnement** : le script le mesure et le dit. Si l'agent a un accès direct au serveur, il lance les commandes et lit les sorties ; sinon il donne les commandes à la personne et lui demande de coller les **sorties** (jamais les secrets).
 6. **Ne jamais recommander une offre commerciale précise comme obligatoire, ni citer de prix** : les offres et les tarifs changent, l'agent invite à les vérifier sur le site du fournisseur.
 
@@ -64,7 +64,7 @@ Des hébergeurs de serveurs virtuels connus, parmi beaucoup d'autres : OVHcloud,
 
 ### Créer le serveur
 
-À la création, l'hébergeur demande en général : une **région** (proche de vos visiteurs), un **système** (Ubuntu LTS), un **modèle** (voir le profil), et comment se connecter : un **mot de passe** ou une **clé SSH**. Retenez l'**adresse IP** affichée une fois le serveur prêt.
+À la création, l'hébergeur demande en général : une **région** (proche de votre public), un **système** (Ubuntu LTS), un **modèle** (voir le profil), et comment se connecter : un **mot de passe** ou une **clé SSH**. Retenez l'**adresse IP** affichée une fois le serveur prêt.
 
 ### Se connecter en SSH (minimum utile)
 
@@ -85,7 +85,7 @@ ssh root@ADRESSE-IP-DU-SERVEUR
 Le DNS est l'annuaire qui dit « `monsite.example.org` se trouve à telle adresse IP ». Chez le **registraire** (là où le domaine a été acheté), dans la zone DNS du domaine :
 
 - créer un enregistrement **A** : nom `@` (le domaine seul) ou `monsite` (un sous-domaine), valeur = l'**adresse IPv4** du serveur ;
-- si l'hébergeur donne aussi une adresse **IPv6**, créer un enregistrement **AAAA** avec elle ; **sinon, ne pas laisser d'AAAA** qui pointerait ailleurs (le certificat HTTPS échouerait pour certains visiteurs) ;
+- si l'hébergeur donne aussi une adresse **IPv6**, créer un enregistrement **AAAA** avec elle ; **sinon, ne pas laisser d'AAAA** qui pointerait ailleurs (le certificat HTTPS échouerait pour certaines personnes) ;
 - si le registraire est aussi un service de type « proxy » (nuage orange chez certains), le passer en **DNS seul** (nuage gris) pendant l'installation.
 
 **Vérifier la propagation** (de quelques minutes à quelques heures) depuis le serveur ou son ordinateur :
@@ -135,9 +135,9 @@ sudo bash install.sh --site monsite --domain monsite.example.org --user monsite-
 
 ### Pourquoi un utilisateur dédié (à expliquer à la personne, avec vos mots)
 
-- Un site web est un programme **ouvert sur Internet** : n'importe qui peut lui envoyer des requêtes. Si une faille est un jour découverte dans ce programme (ou dans une de ses dépendances), un attaquant peut lui faire exécuter des commandes.
-- Ces commandes s'exécutent **avec les droits de l'utilisateur qui fait tourner le site**. Si c'est `root` ou le compte administrateur de la personne, l'attaquant récupère tout : ses autres sites, ses clés SSH, ses fichiers.
-- Avec un **utilisateur dédié, sans droits d'administration**, qui ne possède que le dossier du site, les dégâts restent **cantonnés à ce seul site** : comme donner à un invité la clé d'une pièce plutôt que celle de toute la maison.
+- Un site web est un programme **ouvert sur Internet** : n'importe qui peut lui envoyer des requêtes. Si une faille est un jour découverte dans ce programme (ou dans une de ses dépendances), une personne malveillante peut lui faire exécuter des commandes.
+- Ces commandes s'exécutent **avec les droits de l'utilisateur qui fait tourner le site**. Si c'est `root` ou le compte administrateur de la personne, cette personne malveillante récupère tout : les autres sites, les clés SSH, les fichiers.
+- Avec un **utilisateur dédié, sans droits d'administration**, qui ne possède que le dossier du site, les dégâts restent **cantonnés à ce seul site** : comme donner à une personne invitée la clé d'une pièce plutôt que celle de toute la maison.
 - C'est aussi plus propre (on voit ce qui appartient à ce site, on peut le retirer sans toucher au reste) et nécessaire aux mises à jour depuis l'admin (le dossier doit appartenir à cet utilisateur).
 - Ce n'est pas un surcoût : le script le crée. Le nom `root` est refusé.
 
@@ -154,7 +154,7 @@ Le script est **reprenable** : après un échec ou une coupure, relancer la **m�
 
 ### Le code d'installation : pourquoi le script ne l'affiche pas
 
-Le code protège un site neuf contre un inconnu qui le réclamerait avant son propriétaire. S'il apparaissait dans la sortie du script, il se retrouverait dans l'historique du terminal, un journal, ou la conversation avec une IA qui relaye les sorties. Le script donne donc **la commande** à taper soi-même :
+Le code protège un site neuf contre un inconnu qui le réclamerait avant la personne propriétaire. S'il apparaissait dans la sortie du script, il se retrouverait dans l'historique du terminal, un journal, ou la conversation avec une IA qui relaye les sorties. Le script donne donc **la commande** à taper soi-même :
 
 ```bash
 sudo sed -n 's/^SETUP_TOKEN=//p' /var/www/monsite/.env | tr -d '"'

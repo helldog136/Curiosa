@@ -24,6 +24,7 @@ import { readTarGz, readTarGzAsync, type TarFile } from "./tar";
 import { linksFor, orderByDependencies, previewMissing, settleRestored, type DependencyIssue } from "./restoreDeps";
 import type { Missing } from "@/core/modules/dependencyInstaller";
 import { opStep } from "../operations/tracker";
+import { planSkins, restoreSkins, skinsBeforeRestore, skinsOfBackup, type SkinOutcome, type SkinPlan } from "@/core/skins/restore";
 
 type Row = Record<string, unknown>;
 export type ParsedBackup = {
@@ -151,7 +152,12 @@ async function planModulesBase(modules: BackupModule[]): Promise<ModulePlan[]> {
 /* ───────────── Application ───────────── */
 
 export type ModuleOutcome = { id: string; outcome: "kept" | "installed" | "skipped" | "failed" | "unavailable"; error?: string; /** Avec l'erreur « modules.error.core » : cœur demandé par le module. */ needsCore?: string };
-export type RestoreReport = { ok: false; error: "newer-schema"; modules: ModuleOutcome[] } | { ok: true; modules: ModuleOutcome[]; migrations: MigrationOutcome[]; /** Modules actifs restaurés auxquels il manque encore un fournisseur (restaurés avec leurs données, à compléter). */ dependencies: DependencyIssue[]; /** Fournisseurs installés d'office pour eux. */ provided: string[]; counts: Record<string, number>; safetyCopy: string | null } | { ok: false; error: "invalid" | "failed"; modules: ModuleOutcome[] };
+/** Skins d'une sauvegarde, avec ce qui va se passer pour chacun. */
+export async function planBackupSkins(backup: ParsedBackup): Promise<SkinPlan[]> {
+  return planSkins(skinsOfBackup(backup.manifest.skins, backup.data.settings));
+}
+
+export type RestoreReport = { ok: false; error: "newer-schema"; modules: ModuleOutcome[] } | { ok: true; modules: ModuleOutcome[]; /** Skins réinstallés depuis leur dépôt (basic s'applique tant qu'un skin manque). */ skins: SkinOutcome[]; migrations: MigrationOutcome[]; /** Modules actifs restaurés auxquels il manque encore un fournisseur (restaurés avec leurs données, à compléter). */ dependencies: DependencyIssue[]; /** Fournisseurs installés d'office pour eux. */ provided: string[]; counts: Record<string, number>; safetyCopy: string | null } | { ok: false; error: "invalid" | "failed"; modules: ModuleOutcome[] };
 
 type Installers = { fromCatalogue: (id: string) => Promise<InstallResult>; fromRepo: (url: string) => Promise<InstallResult> };
 // Sans cascade ici : l'ordre et la vérification des dépendances se font pour toute la sauvegarde (restoreDeps.ts).
@@ -163,6 +169,11 @@ const MODEL_BY_FILE = { users: "User", settings: "Setting", instances: "ModuleIn
 function rightsList(v: unknown): string[] {
   if (typeof v === "string") { try { v = JSON.parse(v); } catch { return []; } }
   return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string").slice(0, 500) : [];
+}
+
+/** Le drapeau « coordinateur » d'une sauvegarde ne vaut que sur un compte « admin » (sinon il est effacé) ; absent d'une sauvegarde plus ancienne = faux. Jamais cru sur parole. */
+function sanitizeUserLevel(row: Row): Row {
+  return { ...row, coordinator: levelOf(row) === "coordinator" };
 }
 
 /** Rôles d'une sauvegarde : colonnes connues, dates relues, droits en texte JSON, `system` recalculé d'après la clé (jamais cru sur parole). */
@@ -226,6 +237,7 @@ export async function applyRestore(backup: ParsedBackup, opts: { confirmCustom: 
   }
 
   if ((await checkSchema(backup.manifest)) === "newer-schema") return { ok: false, error: "newer-schema", modules: [] };
+  const skinsBefore = await skinsBeforeRestore();
   opStep("safety");
   const copy = safetyCopy("pre-restore", opts.dataDir);
   // Sauvegarde d'un schéma plus ancien : transformations explicites, puis seules les colonnes encore connues (les nouvelles prennent leur défaut).
@@ -234,7 +246,7 @@ export async function applyRestore(backup: ParsedBackup, opts: { confirmCustom: 
   applyUpgrades(d, backup.manifest.schemaVersion);
   for (const key of ["users", "instances", "instanceTranslations", "entries", "entryTranslations", "redirects", "records"] as const) {
     const rows: Row[] = [];
-    for (let i = 0; i < d[key].length; i += SLICE_ROWS) { rows.push(...d[key].slice(i, i + SLICE_ROWS).map((r) => pickKnownColumns(key, r))); await tick(); }
+    for (let i = 0; i < d[key].length; i += SLICE_ROWS) { rows.push(...d[key].slice(i, i + SLICE_ROWS).map((r) => (key === "users" ? sanitizeUserLevel(pickKnownColumns(key, r)) : pickKnownColumns(key, r)))); await tick(); }
     d[key] = rows;
   }
   // Compteurs de génération du stockage d'AVANT : la restauration remet ceux de la sauvegarde, mais un compteur ne recule jamais.
@@ -304,9 +316,11 @@ export async function applyRestore(backup: ParsedBackup, opts: { confirmCustom: 
   const migrations = (await migrateAllInstances().catch(() => [])).filter((m) => m.status !== "none");
   // Les modules actifs retrouvent ce dont ils ont besoin (fournisseur disponible installé avec son instance) ; sinon le bilan le dit.
   const active = d.modules.filter((m) => m.enabled !== false && !["skipped", "failed", "unavailable"].includes(outcomes.find((o) => o.id === m.id)?.outcome ?? "")).map((m) => m.id);
+  // Skins : réinstallés depuis leur dépôt (les réglages ont été restaurés d'un bloc avec les autres) ; sinon basic s'applique en attendant, sans rien perdre.
+  const skins = await restoreSkins({ before: skinsBefore, confirmCustom: opts.confirmCustom, actor: opts.actor });
   const settled = await settleRestored(active).catch(() => ({ issues: [] as DependencyIssue[], provided: [] as string[] }));
   await audit(opts.actor, "backup.restore", backup.manifest.createdAt);
   // Reprise finale RAWG (services/rawgHandover.ts) : une sauvegarde d'avant la reprise rend les réglages d'avant ; le module « Jaquettes de jeux » est (ré)installé et repris, au mieux, sans attendre.
   noteRawgModulesChanged();
-  return { ok: true, modules: outcomes, migrations, dependencies: settled.issues, provided: settled.provided, safetyCopy: copy, counts: { users: d.users.length, entries: d.entries.length, instances: d.instances.length, records: d.records.length, retired: (d.retired ?? []).length, uploads: backup.uploads.length } };
+  return { ok: true, modules: outcomes, skins, migrations, dependencies: settled.issues, provided: settled.provided, safetyCopy: copy, counts: { users: d.users.length, entries: d.entries.length, instances: d.instances.length, records: d.records.length, retired: (d.retired ?? []).length, uploads: backup.uploads.length } };
 }

@@ -17,7 +17,69 @@
   --color-accent2: var(--v-accent2);
   --color-accent2-fg: var(--v-accent2-fg);
   --font-sans: var(--v-font);
+
+  /* Jetons de design (docs/SKINS.md §4.4). `inline` : la valeur est écrite dans chaque utilitaire, avec pour REPLI la valeur d'origine de Tailwind 4.3.3, relevée dans le
+     CSS compilé. Sans skin (administration, overlays, pages autonomes) `--sk-*` n'existe pas : tout est strictement comme avant. Le site public les définit
+     par `:root[data-skin="…"]` (src/core/skins/sheet.ts). Seules les échelles que les utilitaires du site emploient sont reliées. */
+  --spacing: var(--sk-space, 0.25rem);
+  --radius-sm: var(--sk-radius-sm, 0.25rem);
+  --radius-md: var(--sk-radius-md, 0.375rem);
+  --radius-lg: var(--sk-radius-lg, 0.5rem);
+  --radius-xl: var(--sk-radius-xl, 0.75rem);
+  --radius-2xl: var(--sk-radius-2xl, 1rem);
+  --radius-3xl: var(--sk-radius-3xl, 1.5rem);
+  --text-xs: var(--sk-text-xs, 0.75rem);
+  --text-sm: var(--sk-text-sm, 0.875rem);
+  --text-base: var(--sk-text-base, 1rem);
+  --text-lg: var(--sk-text-lg, 1.125rem);
+  --text-xl: var(--sk-text-xl, 1.25rem);
+  --text-2xl: var(--sk-text-2xl, 1.5rem);
+  --text-3xl: var(--sk-text-3xl, 1.875rem);
+  --text-4xl: var(--sk-text-4xl, 2.25rem);
+  --text-5xl: var(--sk-text-5xl, 3rem);
+  --text-6xl: var(--sk-text-6xl, 3.75rem);
+  --font-weight-normal: var(--sk-weight-normal, 400);
+  --font-weight-medium: var(--sk-weight-medium, 500);
+  --font-weight-semibold: var(--sk-weight-semibold, 600);
+  --font-weight-bold: var(--sk-weight-bold, 700);
+  --font-weight-extrabold: var(--sk-weight-extrabold, 800);
+  --tracking-tight: var(--sk-tracking-tight, -0.025em);
+  --tracking-wide: var(--sk-tracking-wide, 0.025em);
+  --tracking-wider: var(--sk-tracking-wider, 0.05em);
+  --tracking-widest: var(--sk-tracking-widest, 0.1em);
+  --shadow-lg: var(--sk-shadow-raised, 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1));
+  --font-mono: var(--sk-font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace);
+  --default-transition-duration: var(--sk-duration, 150ms);
+  --default-transition-timing-function: var(--sk-ease, cubic-bezier(0.4, 0, 0.2, 1));
+
+  /* Pièces sémantiques (docs/SKINS.md §4.4) : `rounded-card`, `rounded-button`… lisent le jeton de la pièce, puis l'échelle, puis la valeur d'avant. Mêmes valeurs qu'avant sous basic. */
+  --radius-card: var(--sk-radius-card, var(--sk-radius-xl, 0.75rem));
+  --radius-panel: var(--sk-radius-panel, var(--sk-radius-2xl, 1rem));
+  --radius-button: var(--sk-radius-button, var(--sk-radius-full, 9999px));
+  --radius-field: var(--sk-radius-field, var(--sk-radius-lg, 0.5rem));
+  --radius-chip: var(--sk-radius-chip, var(--sk-radius-full, 9999px));
+  --radius-media: var(--sk-radius-media, var(--sk-radius-lg, 0.5rem));
+  --radius-avatar: var(--sk-radius-avatar, var(--sk-radius-full, 9999px));
+  /* Noirs et blancs d'avant : voile sur image, texte sur voile, lien dans le texte, ombre du bandeau. */
+  --color-veil: var(--sk-color-veil, rgb(0 0 0 / 0.55));
+  --color-scrim: var(--sk-color-scrim, #000000);
+  --color-on-veil: var(--sk-color-on-veil, #ffffff);
+  --color-veil-ink: var(--sk-color-veil-ink, #000000);
+  --color-link: var(--sk-color-link, var(--v-accent));
+  --shadow-tray: var(--sk-shadow-tray, 0 -8px 30px #0000002e);
+  --shadow-pop: var(--sk-shadow-pop, var(--sk-shadow-raised, 0 10px 15px -3px #0000001a, 0 4px 6px -4px #0000001a));
 }
+
+/* Bordures lues dans les jetons (épaisseur et style), avec la valeur d'avant en repli : `border-token` (1px), `border-token-strong` (2px) et leurs côtés. */
+@utility border-token { border-style: var(--sk-border-style, solid); border-width: var(--sk-border-width, 1px); }
+@utility border-token-strong { border-style: var(--sk-border-style, solid); border-width: var(--sk-border-width-strong, 2px); }
+@utility border-t-token { border-top-style: var(--sk-border-style, solid); border-top-width: var(--sk-border-width, 1px); }
+@utility border-b-token { border-bottom-style: var(--sk-border-style, solid); border-bottom-width: var(--sk-border-width, 1px); }
+/* Cibles tactiles : la taille minimale vient du jeton `--sk-target` (2,75 rem sous basic). */
+@utility min-h-target { min-height: var(--sk-target, 2.75rem); }
+@utility min-w-target { min-width: var(--sk-target, 2.75rem); }
+@utility h-target { height: var(--sk-target, 2.75rem); }
+@utility border-y-token { border-block-style: var(--sk-border-style, solid); border-block-width: var(--sk-border-width, 1px); }
 
 /* Valeurs par défaut ; surchargées par le thème choisi dans l'admin. */
 :root {
@@ -49,8 +111,8 @@
   input:focus-visible,
   textarea:focus-visible,
   select:focus-visible {
-    outline: 2px solid var(--color-accent);
-    outline-offset: 2px;
+    outline: var(--sk-focus-width, 2px) solid var(--sk-color-focus, var(--color-accent));
+    outline-offset: var(--sk-focus-offset, 2px);
   }
 }
 
@@ -61,12 +123,72 @@
   }
 }
 
+/* ── DOM stable : coquille, régions, menu (docs/SKINS.md §9) ─────────────────────────────────────────────────────────────────────────────────────────
+   Le site public rend le MÊME DOM sous tous les skins : régions `data-skin-region`, pièces `data-skin-part`. Les règles ci-dessous sont celles de BASIC : elles reproduisent
+   exactement l'apparence d'avant les skins (coquille en simple bloc, mêmes largeurs, même menu). Elles sont volontairement de faible spécificité et ne sont pas rangées
+   en `@layer` : une feuille de skin (préfixée `:root[data-skin="…"]`) les remplace sans effort ; elles passent elles-mêmes devant les utilitaires (rangés en `@layer`).
+   L'ordre du DOM est l'ordre de lecture et de tabulation : bannière, en-tête (marque, menu, outils), contenu, pied. */
+[data-skin-region="shell"] { display: block; grid-template-columns: var(--sk-shell-columns, minmax(0, 1fr)); grid-template-areas: var(--sk-shell-areas, "banner" "header" "main" "footer"); }
+[data-skin-region="banner"] { grid-area: banner; min-width: 0; }
+[data-skin-region="header"] { grid-area: header; min-width: 0; width: var(--sk-header-width, auto); }
+[data-skin-region="main"] { grid-area: main; min-width: 0; padding-block: var(--sk-page-pad-y, 2.5rem); }
+[data-skin-region="footer"] { grid-area: footer; min-width: 0; }
+/* L'en-tête et le pied sont eux-mêmes le conteneur centré : marges de la page, ou davantage quand la page est plus large que le contenu. */
+[data-skin-region="header"], [data-skin-region="footer"] { padding-inline: max(var(--sk-page-pad-x, 1rem), calc((100% - var(--sk-page-width, 64rem)) / 2 + var(--sk-page-pad-x, 1rem))); }
+[data-skin-region="content"] { margin-inline: auto; max-width: var(--sk-page-width, 64rem); padding-inline: var(--sk-page-pad-x, 1rem); }
+
+/* Menu principal (SiteNav) : au-dessous de 40 rem la liste devient un panneau sous l'en-tête et le bouton « Menu » l'ouvre (`data-open`, posé par le script du cœur) ;
+   à partir de 40 rem la liste est une rangée et les sous-menus sont des listes déroulantes. Le comportement (ouverture, clavier, Échap) reste celui du cœur. */
+[data-site-nav] [data-skin-part="nav-list"] { display: flex; flex-direction: column; row-gap: var(--sk-space, 0.25rem); }
+[data-site-nav] [data-skin-part="submenu"] { display: none; }
+[data-site-nav] [data-skin-part="submenu"][data-open="true"] { display: block; }
+@media (width < 40rem) {
+  [data-site-nav] [data-skin-part="nav-list"] { position: absolute; inset-inline: 0; top: 100%; z-index: 40; max-height: calc(100vh - 5rem); overflow-y: auto; border-bottom: var(--sk-border-width, 1px) var(--sk-border-style, solid) var(--v-line); background-color: var(--v-surface); padding-inline: calc(var(--sk-space, 0.25rem) * 4); padding-block: calc(var(--sk-space, 0.25rem) * 3); box-shadow: var(--sk-shadow-pop, var(--sk-shadow-raised, 0 10px 15px -3px #0000001a, 0 4px 6px -4px #0000001a)); }
+  [data-site-nav] [data-skin-part="nav-list"][data-open="false"] { display: none; }
+}
+@media (width >= 40rem) {
+  [data-site-nav] [data-skin-part="menu-toggle"] { display: none; }
+  [data-site-nav] [data-skin-part="nav-list"] { flex-direction: row; flex-wrap: wrap; column-gap: calc(var(--sk-space, 0.25rem) * 5); }
+  [data-site-nav] [data-nav-top] { min-height: 0; }
+  [data-site-nav] [data-skin-part="submenu-toggle"] { height: calc(var(--sk-space, 0.25rem) * 8); width: calc(var(--sk-space, 0.25rem) * 6); }
+  [data-site-nav] [data-skin-part="submenu"] { position: absolute; left: 0; top: 100%; z-index: 40; min-width: calc(var(--sk-space, 0.25rem) * 48); overflow: hidden; border-radius: var(--sk-radius-xl, 0.75rem); border: var(--sk-border-width, 1px) var(--sk-border-style, solid) var(--v-line); background-color: var(--v-surface); padding-block: var(--sk-space, 0.25rem); padding-left: 0; box-shadow: var(--sk-shadow-pop, var(--sk-shadow-raised, 0 10px 15px -3px #0000001a, 0 4px 6px -4px #0000001a)); }
+  [data-site-nav] [data-skin-part="submenu"] [data-skin-part="nav-link"] { padding-inline: calc(var(--sk-space, 0.25rem) * 4); color: var(--v-fg); }
+  @media (hover: hover) {
+    [data-site-nav] [data-row]:hover [data-skin-part="submenu"] { display: block; }
+    [data-site-nav] [data-skin-part="submenu"] [data-skin-part="nav-link"]:hover { background-color: var(--v-accent); color: var(--v-accent-fg); }
+  }
+}
+
+/* Typographie des pièces (site public seulement : `:where(:root[data-skin])` n'ajoute aucune spécificité, une feuille de skin passe donc toujours devant). */
+:where(:root[data-skin]) [data-skin-part="heading"] { font-family: var(--sk-font-heading, var(--v-font)); text-transform: var(--sk-heading-transform, none); }
+/* Le titre de niveau 6 est une petite ligne en capitales (comme avant les skins) : la règle ci-dessus ne doit pas lui retirer ses capitales sous basic. Un skin peut toujours en décider (sa règle est plus spécifique). */
+:where(:root[data-skin]) [data-skin-part="heading"][data-level="6"] { text-transform: uppercase; }
+:where(:root[data-skin]) [data-skin-part="eyebrow"] { text-transform: var(--sk-eyebrow-transform, uppercase); }
+/* Ombre des cartes (jeton `--sk-shadow-card`, aucune sous basic ; la règle `data-accent2` / `data-surface` plus bas, plus spécifique, garde la sienne). */
+:where(:root[data-skin]) [data-skin-part="card"] { box-shadow: var(--sk-shadow-card, none); }
+/* Lueur : posée sur les boutons (jeton `--sk-glow`, aucune lueur sous basic). */
+:where(:root[data-skin]) [data-skin-part="button"] { box-shadow: var(--sk-glow, none); }
+
+/* Marque : sur petit écran l'icône remplace le logo horizontal (quand les deux existent) et le nom écrit n'apparaît que s'il n'y a pas de logo horizontal. */
+[data-skin-part="brand"] img[data-logo="wide"][data-paired] { display: none; }
+@media (width >= 40rem) {
+  [data-skin-part="brand"] img[data-logo="wide"][data-paired] { display: block; }
+  [data-skin-part="brand"] img[data-logo="icon"][data-paired] { display: none; }
+  [data-skin-part="brand"] [data-brand-name][data-with-wide] { display: none; }
+}
+
+/* Logo à deux variantes (clair / sombre), rendues en deux <img data-for> quand le site propose la bascule du visiteur (docs/SKINS.md §3.8) : le cœur montre
+   la bonne selon le mode effectif (choix du visiteur, sinon appareil) ; un skin n'y touche pas. Sans <img data-for>, rien ne s'applique. */
+:root[data-mode="light"] img[data-for="dark"], :root[data-mode="dark"] img[data-for="light"] { display: none; }
+@media (prefers-color-scheme: dark) { :root:not([data-mode]) img[data-for="light"] { display: none; } }
+@media (prefers-color-scheme: light), (prefers-color-scheme: no-preference) { :root:not([data-mode]) img[data-for="dark"] { display: none; } }
+
 /* Accueil fluide : les morceaux s'écoulent à la ligne, chacun avec une taille naturelle (voir src/core/home.ts). */
-.vh-flow { display: flex; flex-wrap: wrap; gap: 2rem 1.5rem; align-items: stretch; }
+.vh-flow { display: flex; flex-wrap: wrap; gap: var(--sk-flow-gap, 2rem 1.5rem); align-items: stretch; }
 .vh-cell { min-width: 0; flex: 1 1 var(--vh-basis); max-width: min(100%, var(--vh-max)); }
-.vh-small  { --vh-basis: 14rem; --vh-max: 24rem; --vh-solo: 24rem; }
-.vh-medium { --vh-basis: 22rem; --vh-max: 36rem; --vh-solo: 36rem; }
-.vh-large  { --vh-basis: 34rem; --vh-max: 100%; --vh-solo: 52rem; }
+.vh-small  { --vh-basis: var(--sk-vh-small-basis, 14rem); --vh-max: 24rem; --vh-solo: 24rem; }
+.vh-medium { --vh-basis: var(--sk-vh-medium-basis, 22rem); --vh-max: 36rem; --vh-solo: 36rem; }
+.vh-large  { --vh-basis: var(--sk-vh-large-basis, 34rem); --vh-max: 100%; --vh-solo: 52rem; }
 .vh-full   { --vh-basis: 100%;  --vh-max: 100%; --vh-solo: 100%; }
 /* Morceau isolé : une ligne à lui (retour à la ligne avant et après), centré, à sa taille naturelle. */
 .vh-isolated { flex: 1 1 100%; max-width: 100%; display: flex; justify-content: center; }
@@ -87,6 +209,10 @@
 @keyframes cookie-tray-out { from { transform: translateY(0); opacity: 1; } to { transform: translateY(100%); opacity: 0; } }
 .cookie-tray { animation: cookie-tray-in 360ms cubic-bezier(0.22, 1, 0.36, 1) both; }
 .cookie-tray[data-closing] { animation: cookie-tray-out 200ms ease-in both; }
+
+/* Bulle d'aide « ? » de l'admin (components/admin/HelpTip.tsx) : fondu léger, supprimé par la règle prefers-reduced-motion ci-dessus. */
+@keyframes help-tip-in { from { opacity: 0; } to { opacity: 1; } }
+.help-tip-bubble:not([hidden]) { animation: help-tip-in 0.12s ease-out; }
 
 /* Accent secondaire choisi (attribut data-accent2 posé sur <html> seulement si accent2 est défini ET différent de l'accent) :
    boutons pleins, accents de détail, dégradé. Sans cet attribut, rien ci-dessous ne s'applique et le site garde son apparence d'origine (règle 60-30-10 : le secondaire reste dans les petits détails). */

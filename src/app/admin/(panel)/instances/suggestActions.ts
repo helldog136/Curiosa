@@ -15,7 +15,7 @@ const back = (instanceId: string, query: string) => `/admin/instances/${encodeUR
  * (suivi d'opération, voir core/operations), puis va à `href` (la page de l'instance, avec le résultat ou l'erreur).
  */
 export async function installSuggestedAction(instanceId: string, service: string, moduleId: string, confirmExtra: boolean, opId?: string): Promise<{ ok: boolean; error?: string; href: string }> {
-  const { user, t } = await adminCtx("owner");
+  const { user, t } = await adminCtx({ right: "core:modules.install" });
   const run = await trackOperation(user, { kind: "install", key: `install:${String(moduleId).slice(0, 60)}`, opId: opIdOf(opId) },
     () => installSuggestedCore(user, { instanceId, service, moduleId, confirmExtra: confirmExtra === true }),
     (r) => ({ ok: r.ok, error: r.ok ? undefined : r.error }));
@@ -30,7 +30,7 @@ export async function installSuggestedAction(instanceId: string, service: string
 
 /** « Ne plus proposer » pour ce service, sur cette instance. */
 export async function dismissSuggestionAction(instanceId: string, service: string): Promise<void> {
-  const { user } = await adminCtx("owner");
+  const { user } = await adminCtx({ right: "core:modules.install" });
   await dismissSuggestion(user, instanceId, service);
   revalidatePath(`/admin/instances/${instanceId}`);
   redirect(back(instanceId, "suggest=dismissed"));
@@ -38,7 +38,7 @@ export async function dismissSuggestionAction(instanceId: string, service: strin
 
 /** « Afficher de nouveau les suggestions » (page de l'instance). */
 export async function resetSuggestionsAction(instanceId: string): Promise<void> {
-  const { user } = await adminCtx("owner");
+  const { user } = await adminCtx({ right: "core:modules.install" });
   await resetSuggestions(user, instanceId);
   revalidatePath(`/admin/instances/${instanceId}`);
   redirect(back(instanceId, "suggest=shown"));

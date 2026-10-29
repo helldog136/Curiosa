@@ -47,7 +47,18 @@ export async function resolve(specifier, context, next) {
   return next(specifier, context);
 }
 
+/** Les composants du site et de l'administration sont en .tsx : transpilés à la volée (TypeScript, JSX automatique), pour les rendre avec react-dom/server dans les tests. */
+let tsPromise = null;
+async function transpileTsx(file) {
+  tsPromise ??= import("typescript").then((m) => m.default ?? m);
+  const ts = await tsPromise;
+  return ts.transpileModule(fs.readFileSync(file, "utf8"), { fileName: file, compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText;
+}
+
 export async function load(url, context, next) {
+  if (url.startsWith("file://") && url.endsWith(".tsx") && url.includes("/src/")) {
+    return { format: "module", source: await transpileTsx(fileURLToPath(url)), shortCircuit: true };
+  }
   // JSON importé sans attribut `with { type: "json" }` (comme le fait le bundler) : servi comme module.
   if (url.startsWith("file://") && url.endsWith(".json") && url.includes("/src/")) {
     const text = fs.readFileSync(fileURLToPath(url), "utf8");

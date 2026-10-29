@@ -39,7 +39,7 @@ c'est ce qui rend la mention « vérifié » vraie ; une branche mouvante ne l'e
 
 ## Gratuit, avec dons volontaires
 
-Le Catalogue **ne vend rien** : tout module qui y figure est gratuit et sous licence ouverte. Un auteur qui accepte des dons volontaires le dit dans le **README.md** de son dépôt :
+Le Catalogue **ne vend rien** : tout module qui y figure est gratuit et sous licence ouverte. Une personne qui accepte des dons volontaires le dit dans le **README.md** de son dépôt :
 l'admin affiche ce README (et les permissions demandées) **avant toute installation**. Un don n'est jamais une condition pour installer ni pour recevoir des mises à jour ; le framework
 ne gère aucun paiement et ne touche à aucun argent.
 

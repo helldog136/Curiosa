@@ -1,5 +1,5 @@
 import { adminCtx } from "@/core/admin";
-import { isOwner as ownerCheck } from "@/core/auth/access";
+import { can as canDo } from "@/core/auth/access";
 import { CatalogueSearch } from "@/components/admin/CatalogueSearch";
 import { ExtensionCard } from "@/components/admin/ExtensionCard";
 import { ExtensionsHeader } from "@/components/admin/ExtensionsHeader";
@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
 /** Extensions > Installées : tout ce qui est installé sur le site, par famille (Contenu, Communauté, Réseaux et connexions, Overlays), avec son état, ses réglages et « épingler au menu ». */
 export default async function ExtensionsPage({ searchParams }: { searchParams: Promise<NoticeQuery & { family?: string }> }) {
   const { t, locale, user, config, advanced } = await adminCtx("admin");
-  const isOwner = ownerCheck(user);
+  const isOwner = canDo(user, "core:modules.install"); // peut installer / mettre à jour des modules
   const query = await searchParams;
   const family = parseFamily(query.family);
   const { total, present, groups } = await loadInstalled({ t, locale, defaultLocale: config.defaultLocale, advanced, isOwner, family });

@@ -88,11 +88,11 @@ test("signalement : le lien est dans le menu d'admin (les deux modes), la page d
 // ── Maintenance par IA : branchement dans l'admin ──────────────────────────────────────────────────────────────────────────
 
 test("admin : la page et ses actions sont réservées au propriétaire ; menu, tableau de bord et jeton « Maintenance » sont branchés", () => {
-  assert.match(read(`${PANEL}/assistants/page.tsx`), /adminCtx\("owner"\)/);
-  assert.match(read(`${PANEL}/assistants/[id]/page.tsx`), /adminCtx\("owner"\)/);
+  assert.match(read(`${PANEL}/assistants/page.tsx`), /adminCtx\(\{ right: "core:[a-z.]+" \}\)/);
+  assert.match(read(`${PANEL}/assistants/[id]/page.tsx`), /adminCtx\(\{ right: "core:[a-z.]+" \}\)/);
   const actions = read(`${PANEL}/assistants/requestsActions.ts`);
   assert.match(actions, /^"use server"/);
-  assert.equal((actions.match(/adminCtx\("owner"\)/g) ?? []).length, 4, "approuver, refuser, validation par jeton, avertissements");
+  assert.equal((actions.match(/adminCtx\(\{ right: "core:[a-z.]+" \}\)/g) ?? []).length, 4, "approuver, refuser, validation par jeton, avertissements");
   assert.match(read(`${PANEL}/layout.tsx`), /<NavLink key="assistants" href=\{ASSISTANTS_HREF\}/);
   assert.match(read(`${PANEL}/page.tsx`), /data-testid="ai-maintenance-notice"|testid="ai-maintenance-notice"/);
   // « Voir » mène aux demandes seulement s'il y en a à valider ; sinon à l'historique de ce que l'IA a fait

@@ -6,7 +6,7 @@ import fs from "node:fs";
 const TEMPORARY = [
   {
     why: "migration des modules et instances « éteints » (avant la 0.1.20) vers « désinstallé, données gardées »",
-    removeAfter: "0.3.99",   // phase 3 d'entretien (décidé pour 0.3.0 : pas de retrait dans cette version ; base de données et sauvegardes)
+    removeAfter: "0.4.99",   // phase 3 d'entretien : toujours repoussée (décidé : pas de retrait dans la 0.4.0, qui porte déjà les skins ; base de données et sauvegardes). Échéance relevée de 0.3.99 à 0.4.99 pour la 0.4.0.
     files: ["src/core/modules/legacyOff.ts"],
     alsoRemove: ["son appel dans le balayage du démarrage (src/core/modules/legacySweep.ts, étape 1) et dans applyRestore (src/core/backup/restore.ts) ; les colonnes Module.enabled et ModuleInstance.enabled (prisma/schema.prisma, nouvelle migration), le champ enabled de BackupModule (backup/format.ts) ; les tests « migration des éteints » de tests/modules-mgmt/module-lifecycle.test.mjs"],
   },

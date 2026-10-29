@@ -100,8 +100,8 @@ export function spotGradients(t: GlowTuning, accent: string): string[] {
 }
 
 /** CSS du halo (sur le corps de la page) ; chaîne vide si désactivé. */
-export function glowCss(level: GlowLevel, custom: GlowTuning, accent: string): string {
+export function glowCss(level: GlowLevel, custom: GlowTuning, accent: string, scope = ""): string {
   const t = tuningFor(level, custom);
   if (!t) return "";
-  return `body{background-image:${spotGradients(t, accent).join(",")};background-repeat:no-repeat;background-attachment:fixed}`;
+  return `${scope}body{background-image:${spotGradients(t, accent).join(",")};background-repeat:no-repeat;background-attachment:fixed}`;
 }

@@ -241,15 +241,15 @@ type CatalogueEntry = { /* … */ origin: "official" | "extra" };
 - **Règles** :
   - `rankCandidates` (`dependencyPlan.ts:22-29`) classe l'officiel avant l'`extra`.
   - `satisfyRequirements` et `tryCandidate` **n'installent jamais** une entrée `extra`. Le manque est rapporté avec la nouvelle raison `reason: "extra"` et l'id du module.
-  - `installFromCatalogue` d'une entrée `extra` exige `opts.confirmExtra === true`, qui n'est passé que par une action du propriétaire après l'avertissement « Ce module n'est pas vérifié par le catalogue officiel ».
+  - `installFromCatalogue` d'une entrée `extra` exige `opts.confirmExtra === true`, qui n'est passé que par une action de la personne propriétaire après l'avertissement « Ce module n'est pas vérifié par le catalogue officiel ».
 - **`suggestInstall`** :
   - bloc rendu seulement dans `adminPanel` (ignoré ailleurs) ;
   - le cœur cherche dans le catalogue les entrées compatibles qui offrent `service` en version ≥ `min` : officielles d'abord, `extra` ensuite avec avertissement ;
-  - rien n'est rendu si un fournisseur actif existe déjà, ou si le propriétaire a refusé ;
+  - rien n'est rendu si un fournisseur actif existe déjà, ou si la personne propriétaire a refusé ;
   - propriétaire : liste (nom, description), bouton « Installer » (action serveur `installSuggested(instanceId, service, moduleId)`, `isOwner` exigé, revérifie l'offre, l'origine et la compatibilité), bouton « Ne plus proposer » ;
-  - non-propriétaire : « Demandez au propriétaire du site d'installer un module qui <reason> ».
+  - non-propriétaire : « Demandez à la personne propriétaire du site d'installer un module qui <reason> ».
 - **État « refusé »** : réglage `suggest.dismissed.<instanceId>.<service>` (date). Il se remet à zéro seulement par « Afficher de nouveau les suggestions », sur la page de l'instance. Aucun minuteur.
-- **Jamais déclenché** par un service, une tâche, une migration ou le MCP : `ctx.api` n'expose aucune installation. Le seul point d'entrée est un clic du propriétaire.
+- **Jamais déclenché** par un service, une tâche, une migration ou le MCP : `ctx.api` n'expose aucune installation. Le seul point d'entrée est un clic de la personne propriétaire.
 
 ### c. Invariants
 
@@ -268,7 +268,7 @@ Un cœur ancien ne connaît pas le type de bloc [à vérifier : `Blocks.tsx` ign
 
 - Une entrée `extra` jamais installée par cascade, avec `reason: "extra"`.
 - L'officiel classé avant l'`extra`.
-- `installSuggested` refusé à un administrateur non propriétaire.
+- `installSuggested` refusé au rôle Administration (non propriétaire).
 - État refusé respecté.
 - Bloc vide si un fournisseur existe.
 
@@ -406,34 +406,35 @@ adminActions?: Record<string, AdminActionHandler | { right: string; run: AdminAc
 
 - **Rôles prédéfinis** (upsert au démarrage, `system: true`, non modifiables) :
   - `owner` : tout ;
-  - `admin` : tout sauf les droits réservés au propriétaire ;
+  - `coordinator` (0.4.0) : `admin` + les droits réservés listés dans `LEVEL_RESERVED` (`rights.ts`) ; stocké `User.role = "admin"` + `User.coordinator = true` ;
+  - `admin` : tout sauf les droits réservés à la personne propriétaire ;
   - `editor` : `core:entries.edit`, plus les droits de module `default.editor`.
   - `admin` reçoit les droits de module dont `default.admin !== false`.
-- **Affectation initiale** : chaque utilisateur reçoit le rôle système égal à `User.role`.
+- **Affectation initiale** : chaque compte reçoit le rôle système égal à `User.role`.
 - **`User.role`** est recalculé par le cœur à chaque changement : le plus haut niveau parmi les rôles système, sinon `"none"`.
 - **Droits = union.** Les droits du cœur sont dans l'espace `core:`.
   - Délégables : `core:entries.edit`, `core:entries.publish`.
-  - Réservés au propriétaire (jamais proposés dans un rôle personnalisé) : `core:team`, `core:roles`, `core:backup`, `core:updates`, `core:modules.install`, `core:mcp.tokens`, `core:security`.
+  - Réservés (jamais proposés dans un rôle personnalisé ; détenus par la personne propriétaire et, selon `LEVEL_RESERVED`, le coordination technique) : `core:team`, `core:roles`, `core:backup`, `core:updates`, `core:modules.install`, `core:mcp.tokens`, `core:security`.
 - **Droits de modules** : préfixés `<moduleId>:` par le cœur (un module ne peut déclarer un droit pour un autre). Le droit implicite `<moduleId>:open` ouvre la page d'admin du module.
-- **`ctx.can(id)`** n'existe que dans les contextes d'admin d'un humain : `adminPanel`, `adminActions`, `entryPanels`, le `create` d'un `choice` (contrat 1) et, depuis 0.2.4, une méthode listée dans `offers[].callerRights` appelée avec `{ asCaller: true }` depuis une `adminAction`. Il vaut `false` (refus par défaut) dans une page publique, une route, une tâche, un service hors admin ou le MCP. Le cœur relit l'utilisateur en base à chaque requête (`access.ts:15-26`).
+- **`ctx.can(id)`** n'existe que dans les contextes d'admin d'un humain : `adminPanel`, `adminActions`, `entryPanels`, le `create` d'un `choice` (contrat 1) et, depuis 0.2.4, une méthode listée dans `offers[].callerRights` appelée avec `{ asCaller: true }` depuis une `adminAction`. Il vaut `false` (refus par défaut) dans une page publique, une route, une tâche, un service hors admin ou le MCP. Le cœur relit le compte en base à chaque requête (`access.ts:15-26`).
 - **`adminActions`** :
   - forme fonction : exigence actuelle inchangée (`adminCtx("admin")`, `module-actions.ts:17,48`) ;
   - forme objet : `<module>:open` + `right`, vérifiés par le cœur **avant** d'appeler `run`.
-- **Page Équipe** (`/admin/users`) : un onglet « Rôles », réservé au propriétaire (décision 4). Cases à cocher par module en mots simples, et un aperçu « Ce que cette personne peut faire ».
+- **Page Équipe** (`/admin/users`) : un onglet « Rôles », réservé à qui détient `core:roles` (propriétaire, coordination technique ; décision 4 révisée en 0.4.0). Cases à cocher par module en mots simples, et un aperçu « Ce que cette personne peut faire ».
 
 ### c. Invariants
 
 - **Anti-élévation** :
-  - seul le propriétaire gère les rôles ;
+  - seule la personne propriétaire gère les rôles ;
   - un droit inconnu ou réservé est refusé côté serveur ;
-  - le rôle `owner` ne s'affecte jamais par `UserRole` (le propriétaire est unique et créé par le cœur) ;
+  - le rôle `owner` ne s'affecte jamais par `UserRole` (la personne propriétaire est unique et créé par le cœur) ;
   - un `roleId` forgé dans un formulaire est revérifié.
 - **Anti-verrouillage** :
-  - un utilisateur garde au moins un rôle ;
+  - un compte garde au moins un rôle ;
   - supprimer un rôle en usage demande une réaffectation (`onDelete: Restrict`) ;
-  - le propriétaire est intouchable (comportement actuel de `users/actions.ts:38,47`).
+  - la personne propriétaire est intouchable (comportement actuel de `users/actions.ts:38,47`).
 - L'ordre de `accessGate` est inchangé : connecté → mot de passe temporaire → droit → double vérification.
-- **Audit** : `role.create`, `role.update`, `role.delete`, `user.roles`, et `access.denied` (au plus un par utilisateur et par droit toutes les 10 min). À ajouter dans `auditLabels.ts:7`.
+- **Audit** : `role.create`, `role.update`, `role.delete`, `user.roles`, et `access.denied` (au plus un par compte et par droit toutes les 10 min). À ajouter dans `auditLabels.ts:7`.
 - **Sauvegarde** :
   - `data/roles.json` et `data/user-roles.json` (`format.ts:18-30`, `schema.ts:43` `MODEL_BY_KEY`) ;
   - fichiers absents : on recrée les rôles système et l'affectation depuis `User.role` ;
@@ -461,13 +462,13 @@ adminActions?: Record<string, AdminActionHandler | { right: string; run: AdminAc
 - `entries/page.tsx:29` (négatif) ;
 - `entries/[id]/page.tsx:64` (`EntryPanelView.role`, `types.ts:421` : on garde le type, et la valeur `"none"` devient `"editor"` si `core:entries.edit`) ;
 - `assistants/requestsActions.ts:16,24` ;
-- `restore.ts:71` (données, pas un utilisateur : liste blanche du test).
+- `restore.ts:71` (données, pas un compte : liste blanche du test).
 
 Soit 45 sites [à vérifier : recompter après fusion, grep `\.role\b`].
 
 ### d. Compatibilité
 
-- **Retour à 0.1.28** : `Role` et `UserRole` sont inertes. Un utilisateur `none` est refusé partout (`RANK["none"] ?? 0`, `access.ts:29`) : bloqué, jamais élevé. À documenter dans `docs/SECURITE.md`.
+- **Retour à 0.1.28** : `Role` et `UserRole` sont inertes. Un compte `none` est refusé partout (`RANK["none"] ?? 0`, `access.ts:29`) : bloqué, jamais élevé. À documenter dans `docs/SECURITE.md`.
 - Module ancien : aucun `rights`, actions fonction : comportement identique.
 - Un module nouveau sur cœur ancien voit `rights` ignoré et `ctx.can` absent. Il doit traiter l'absence comme un refus, et exiger `minCore 0.2.0`.
 
@@ -480,7 +481,7 @@ Soit 45 sites [à vérifier : recompter après fusion, grep `\.role\b`].
 - Les 3 rôles se comportent exactement comme en 0.1.28 (tableau de toutes les pages).
 - Élévation par formulaire forgé.
 - Retrait de droit effectif à la requête suivante.
-- Utilisateur `none` sans droit.
+- Compte `none` sans droit.
 - Rôle supprimé en usage.
 - Propriétaire non modifiable.
 - Droit du module A refusé pour B.
@@ -840,7 +841,7 @@ Compatible avec Partnerships (`min 1`). La v2 est un sur-ensemble.
 ### 11.5 Règles transverses
 
 - **Photo** : calculée **seulement** à l'ouverture d'une fiche ou sur « Actualiser » (interaction humaine), jamais par balayage ni par tâche. Ordre : photo manuelle, puis compte à la plus grosse communauté (abonnés en cache daté), sinon Twitch, puis YouTube, puis Bluesky. Bluesky passe par `ctx.api.net`. Contacts est propriétaire de la photo ; Raid ne lit plus `GET users` pour les avatars.
-- **Catégorie « Cible de raid »** : créée par Raid à sa première utilisation de l'ajout rapide ou de « Ranger mes chaînes » (clic de la personne, action d'administration), via `createCategory` appelé avec `{ asCaller: true }` (cœur 0.2.4 : le fournisseur liste `createCategory` dans `offers[].callerRights` et vérifie `categories.create`; voir MODULES.md « asCaller »). Avant 0.2.4, ou sans le droit : le `choice` du réglage « Liste de raid ». Le nom est dans la langue par défaut, puis devient une donnée de l'utilisateur. Raid stocke seulement l'id (`choice`, source `contact.book` / `categories`). En cas de catégorie supprimée, le comportement `missing` du contrat 1 s'applique.
+- **Catégorie « Cible de raid »** : créée par Raid à sa première utilisation de l'ajout rapide ou de « Ranger mes chaînes » (clic de la personne, action d'administration), via `createCategory` appelé avec `{ asCaller: true }` (cœur 0.2.4 : le fournisseur liste `createCategory` dans `offers[].callerRights` et vérifie `categories.create`; voir MODULES.md « asCaller »). Avant 0.2.4, ou sans le droit : le `choice` du réglage « Liste de raid ». Le nom est dans la langue par défaut, puis devient une donnée de la personne. Raid stocke seulement l'id (`choice`, source `contact.book` / `categories`). En cas de catégorie supprimée, le comportement `missing` du contrat 1 s'applique.
 
 ---
 
@@ -859,7 +860,7 @@ Compatible avec Partnerships (`min 1`). La v2 est un sur-ensemble.
 2. **Clé d'instance par défaut et identifiant du module** du Connecteur Twitch (et donc l'adresse de retour OAuth des nouvelles configurations) : un nom à figer avant le tag « Connexions ».
 3. **Garde au démarrage** : avertissement en 0.2.0 et blocage en phase 3 (proposition de ce document), ou blocage de l'admin dès 0.2.0 ?
 4. **`live-status.channels`** (liste de pseudos) : choix multiple hors v2, `refersTo: "external"` en attendant ?
-5. **Droits Helix** pour les statistiques (`moderator:read:followers`, `channel:read:subscriptions`) : faut-il demander une nouvelle autorisation aux chaînes déjà connectées ? Cela crée une friction pour Emma.
+5. **Droits Helix** pour les statistiques (`moderator:read:followers`, `channel:read:subscriptions`) : faut-il demander une nouvelle autorisation aux chaînes déjà connectées ? Cela crée une friction pour une personne sans bagage technique.
 6. **Sauvegardes de modules d'origine `extra`** : faut-il une valeur `origin` distincte dans `BackupModule` (`format.ts:45`) ?
 
 ## Conflits possibles entre lots
@@ -893,7 +894,7 @@ Règle générale : le **chemin critique** (contrats 2 et 3) passe en premier. E
 - [ ] Toute liste a un maximum : `list` 50 (choice), `page` 1 000, `list` 10 000, `providers` 50, services Contacts 500, admin 50 par page, RSS 50.
 - [ ] Aucune migration de module avant que ses `requires` durs soient satisfaits ; le journal défait l'installation si la mise à jour échoue avant les migrations.
 - [ ] Un `requires` facultatif n'apparaît ni dans `dependentsOf`, ni dans le plan, ni dans la cascade.
-- [ ] Un module `extra` n'est jamais installé sans clic et confirmation du propriétaire.
+- [ ] Un module `extra` n'est jamais installé sans clic et confirmation de la personne propriétaire.
 - [ ] Aucune colonne supprimée, aucun code hérité retiré en 0.2.0.
 - [ ] `user.role` n'est lu que dans `access.ts` et `auth.ts` ; les comparaisons négatives sont migrées.
 - [ ] Les secrets ne transitent qu'en mémoire (`adopt`, `legacy.get`) ; jamais dans un journal, un audit ou une réponse.

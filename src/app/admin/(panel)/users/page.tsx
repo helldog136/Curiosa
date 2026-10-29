@@ -1,5 +1,5 @@
 import { adminCtx } from "@/core/admin";
-import { isOwner as ownerCheck } from "@/core/auth/access";
+import { can } from "@/core/auth/access";
 import { prisma } from "@/core/db";
 import { ActionForm } from "@/components/admin/ActionForm";
 import { ConfirmButton } from "@/components/admin/ConfirmButton";
@@ -14,6 +14,7 @@ import { Tabs } from "@/components/admin/Tabs";
 import { currentCatalogue, levelOf } from "@/core/auth/access";
 import { describeAccess, rightsOf } from "@/core/auth/describe";
 import { parseStoredRights } from "@/core/auth/rights";
+import { canManageMember, grantableLevels } from "@/core/auth/team";
 import { listRoles } from "@/core/auth/roles";
 import { createUser, deleteUser, resetUserTwoFactor, revokeUserSessions, setRequireTwoFactor, setTemporaryPassword, setUserRolesAction, unlockUser } from "./actions";
 import { RolesPanel } from "./RolesPanel";
@@ -26,15 +27,19 @@ import { PendingButton } from "@/components/admin/PendingButton";
 export default async function UsersPage() {
   const { t, user, locale, config } = await adminCtx("admin");
   const users = await prisma.user.findMany({ orderBy: { createdAt: "asc" }, include: { _count: { select: { passkeys: true } }, roles: { include: { role: { select: { id: true, key: true, name: true, system: true, rights: true } } } } } });
-  const isOwner = ownerCheck(user);
+  // Équipe : `core:team` (propriétaire, coordinateur technique) gère les personnes ; `core:roles` gère les rôles personnalisés. L'administrateur garde la page d'avant (inviter, retirer un éditeur).
+  const canTeam = can(user, "core:team");
+  const canRoles = can(user, "core:roles");
   const catalogue = await currentCatalogue();
-  const allRoles = isOwner ? await listRoles() : [];
-  // Ce que le propriétaire peut cocher pour une personne : les rôles prédéfinis admin et éditeur, puis les rôles personnalisés (jamais « owner »).
-  const assignable = allRoles.filter((r) => r.key !== "owner");
+  const allRoles = canTeam || canRoles ? await listRoles() : [];
+  // Ce qu'on peut cocher pour une personne : les niveaux que l'on peut attribuer (jamais « owner » ; « coordinateur » : propriétaire seul), puis les rôles personnalisés
+  // dont chaque droit est aussi le nôtre (anti-élévation, revérifiée côté serveur).
+  const grantable = new Set<string>(grantableLevels(user.level));
+  const assignable = allRoles.filter((r) => (r.system ? grantable.has(r.key) : r.rights.every((x) => user.rights.has(x))));
   const roleName = (r: { key: string; name: string; system: boolean }) => (r.system ? t(`role.${r.key}`) : r.name);
   const required = (await getSetting<boolean>("security.require2fa")) === true;
   const locks = new Map(await Promise.all(users.map(async (u) => [u.id, await isEmailLocked(u.email)] as const)));
-  const roles = isOwner ? ["admin", "editor"] : ["editor"];
+  const invitable = grantableLevels(user.level);
   const tempLabels = {
     open: t("users.temp.open"), title: t("users.temp.title"), generate: t("users.temp.generate"), generateHelp: t("users.temp.generateHelp"), custom: t("users.temp.custom"),
     customLabel: t("users.temp.customLabel"), customHelp: t("users.temp.customHelp", { n: MIN_PASSWORD_LENGTH }), warning: t("users.temp.warning"), apply: t("users.temp.apply"), cancel: t("floating.discard"), working: t("users.temp.working"),
@@ -54,10 +59,11 @@ export default async function UsersPage() {
             // Le rôle prédéfini coché suit le niveau (`User.role`), même si l'affectation n'a pas encore été écrite.
             const held = new Set([...custom.map((r) => r.id), ...allRoles.filter((r) => r.system && r.key === level).map((r) => r.id)]);
             const canLines = describeAccess(level, rightsOf(level, custom.flatMap((r) => parseStoredRights(r.rights, catalogue)), catalogue), catalogue, t, locale, config.defaultLocale);
-            const canDelete = level !== "owner" && !me && (isOwner || level === "editor");
-            const canReset = isOwner && !me;
-            // Mot de passe temporaire : propriétaire seulement, jamais sur soi-même (Mon compte) ni sur un autre propriétaire. Le serveur le revérifie.
-            const canTempPassword = isOwner && !me && level !== "owner";
+            // Qui peut gérer cette personne : team.ts (propriétaire intouchable ; un coordinateur n'est géré que par le propriétaire). Le serveur le revérifie.
+            const manageable = canTeam && canManageMember(user.level, level, { self: me });
+            const canDelete = canTeam ? manageable : user.level === "admin" && !me && level === "editor";
+            const canReset = manageable;
+            const canTempPassword = manageable;
             const hasDanger = canDelete || canReset || canTempPassword;
             return (
               <li key={u.id} className="space-y-3 py-4 first:pt-0 last:pb-0" data-testid="user-row">
@@ -68,7 +74,7 @@ export default async function UsersPage() {
                     </p>
                     <p className="break-all text-sm text-muted">{u.email}</p>
                     <p className="mt-1.5 flex flex-wrap gap-1.5">
-                      {isOwner && level !== "owner" ? null : (
+                      {manageable ? null : (
                         <>
                           {level !== "none" && <span className={ui.chip}>{t(`role.${level}`)}</span>}
                           {custom.map((r) => <span key={r.id} className={ui.chip} data-testid="user-role-chip">{r.name}</span>)}
@@ -79,7 +85,8 @@ export default async function UsersPage() {
                     </p>
                   </div>
                 </div>
-                {isOwner && level !== "owner" && (
+                {level !== "none" && <p className="text-sm text-muted" data-testid="user-level-help">{t(`roles.system.${level}`)}</p>}
+                {manageable && (
                   <div className="space-y-2" data-testid="user-roles">
                     <ActionForm action={setUserRolesAction.bind(null, u.id)} submitLabel={t("users.changeRole")} className="space-y-3">
                       <fieldset>
@@ -105,7 +112,7 @@ export default async function UsersPage() {
                   <Callout tone="warn" testid="user-locked">
                     <span className="flex flex-wrap items-center gap-3">
                       {t("users.locked", { time: formatUntil(lock, locale) })}
-                      {isOwner && <form action={unlockUser.bind(null, u.id)}><PendingButton>{t("users.unlock")}</PendingButton></form>}
+                      {manageable && <form action={unlockUser.bind(null, u.id)}><PendingButton>{t("users.unlock")}</PendingButton></form>}
                     </span>
                   </Callout>
                 )}
@@ -131,12 +138,23 @@ export default async function UsersPage() {
             <TextField name="name" label={t("field.name")} required />
             <TextField name="email" type="email" label={t("field.email")} required />
             <TextField name="password" type="password" label={t("users.firstPassword")} required help={t("users.passwordHelp")} autoComplete="new-password" />
-            <Select name="role" label={t("users.role")} options={roles.map((r) => ({ value: r, label: t(`role.${r}`) }))} />
+            <Select name="role" label={t("users.role")} options={invitable.map((r) => ({ value: r, label: t(`role.${r}`) }))} />
+          </div>
+          <div className="space-y-2 text-sm" data-testid="invite-levels">
+            <p className="font-medium">{t("users.levelsTitle")}</p>
+            <ul className="space-y-2">
+              {invitable.map((r) => (
+                <li key={r} data-testid={`invite-level-${r}`}>
+                  <span className="font-medium">{t(`role.${r}`)}</span>
+                  <span className="block text-muted">{t(`users.levelHelp.${r}`)}</span>
+                </li>
+              ))}
+            </ul>
           </div>
         </ActionForm>
       </Panel>
 
-      {isOwner && (
+      {can(user, "core:security") && (
         <Panel title={t("users.securityTitle")} testid="require-2fa">
           <ActionForm action={setRequireTwoFactor} submitLabel={t("action.save")}>
             <label className="flex items-start gap-3 text-sm"><input type="checkbox" name="require" defaultChecked={required} className="mt-1 h-4 w-4" /><span><span className="font-medium">{t("users.require2fa")}</span><span className="block text-muted">{t("users.require2faHelp")}</span></span></label>
@@ -149,11 +167,11 @@ export default async function UsersPage() {
   return (
     <div className="space-y-8">
       <PageHeader title={t("nav.users")} intro={t("users.intro")} />
-      {/* Rôles : propriétaire seulement (décision 4). Pour les autres, la page reste celle d'avant. */}
-      {isOwner ? (
+      {/* Rôles : droit `core:roles` (propriétaire, coordinateur technique). Pour les autres, la page reste celle d'avant. */}
+      {canRoles ? (
         <Tabs tabs={[{ id: "team", label: t("users.tab.team") }, { id: "roles", label: t("users.tab.roles") }]}>
           {team}
-          <div data-tab="roles"><RolesPanel roles={allRoles} catalogue={catalogue} t={t} locale={locale} defaultLocale={config.defaultLocale} /></div>
+          <div data-tab="roles"><RolesPanel roles={allRoles} catalogue={catalogue} held={user.rights} isOwner={user.level === "owner"} t={t} locale={locale} defaultLocale={config.defaultLocale} /></div>
         </Tabs>
       ) : team}
     </div>

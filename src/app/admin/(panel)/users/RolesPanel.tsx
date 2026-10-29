@@ -1,5 +1,6 @@
 import { ActionForm } from "@/components/admin/ActionForm";
-import { Select } from "@/components/admin/Field";
+import { FieldLabel, Select } from "@/components/admin/Field";
+import { HelpBelow } from "@/components/admin/HelpTip";
 import { Panel } from "@/components/admin/Page";
 import { ui } from "@/components/admin/ui";
 import type { Translator } from "@/core/i18n/dictionary";
@@ -9,15 +10,16 @@ import type { RoleSummary } from "@/core/auth/roles";
 import { localized } from "@/core/modules/types";
 import { createRoleAction, deleteRoleAction, updateRoleAction } from "./actions";
 
-type Props = { roles: RoleSummary[]; catalogue: RightInfo[]; t: Translator; locale: string; defaultLocale: string };
+type Props = { roles: RoleSummary[]; catalogue: RightInfo[]; held: ReadonlySet<string>; isOwner: boolean; t: Translator; locale: string; defaultLocale: string };
 
 /**
- * Onglet « Rôles » de la page Équipe (propriétaire seulement) : les rôles prédéfinis (non modifiables, expliqués en une phrase), les rôles personnalisés
+ * Onglet « Rôles » de la page Équipe (propriétaire et coordinateur technique) : les rôles prédéfinis (non modifiables, expliqués en une phrase), les rôles personnalisés
  * (nom, phrase, cases à cocher par module en mots simples), et « Nouveau rôle ». Seuls les droits délégables sont proposés : jamais un droit réservé
  * au propriétaire. Le serveur revérifie tout (core/auth/roles.ts).
  */
-export function RolesPanel({ roles, catalogue, t, locale, defaultLocale }: Props) {
-  const delegable = catalogue.filter((r) => !r.reserved);
+export function RolesPanel({ roles, catalogue, held, isOwner, t, locale, defaultLocale }: Props) {
+  // On ne propose que les droits que l'on possède soi-même (anti-élévation ; le serveur le revérifie).
+  const delegable = catalogue.filter((r) => !r.reserved && held.has(r.id));
   const groups: { id: string; title: string; rights: RightInfo[] }[] = [{ id: "core", title: t("roles.group.core"), rights: delegable.filter((r) => !r.moduleId) }];
   for (const r of delegable) {
     if (!r.moduleId) continue;
@@ -29,9 +31,9 @@ export function RolesPanel({ roles, catalogue, t, locale, defaultLocale }: Props
   // Plusieurs formulaires sur la page : chaque champ a son propre identifiant (le libellé désigne toujours le bon champ).
   const field = (id: string, name: string, label: string, opts: { value?: string; required?: boolean; help?: string; placeholder?: string } = {}) => (
     <div>
-      <label className={ui.label} htmlFor={id}>{label}</label>
+      <FieldLabel id={id} className={ui.label} help={opts.help} text={label}>{label}</FieldLabel>
       <input id={id} name={name} defaultValue={opts.value} required={opts.required} placeholder={opts.placeholder} maxLength={name === "name" ? 60 : 300} className={ui.input} />
-      {opts.help && <p className={ui.help}>{opts.help}</p>}
+      <HelpBelow help={opts.help} className={ui.help} />
     </div>
   );
   const name = (r: RoleSummary) => (r.system ? t(`role.${r.key}`) : r.name);
@@ -67,7 +69,7 @@ export function RolesPanel({ roles, catalogue, t, locale, defaultLocale }: Props
                 <p className="text-sm text-muted">{t("roles.members", { n: r.users })}</p>
               </div>
               <p className="text-sm text-muted">{r.system ? t(`roles.system.${r.key}`) : r.description || t("roles.noDescription")}</p>
-              {!r.system && (
+              {!r.system && r.rights.every((x) => held.has(x)) && (
                 <details className={ui.card}>
                   <summary className="cursor-pointer font-medium">{t("roles.edit")}</summary>
                   <div className="mt-4 space-y-6">
@@ -79,7 +81,7 @@ export function RolesPanel({ roles, catalogue, t, locale, defaultLocale }: Props
                     <ActionForm action={deleteRoleAction.bind(null, r.id)} submitLabel={t("roles.delete")} pendingLabel={t("progress.deleting")} confirm={t("roles.deleteConfirm", { name: r.name })} className="space-y-3 border-t border-line pt-4">
                       {r.users > 0 ? (
                         <Select name="replacement" label={t("roles.replacement", { n: r.users })} help={t("roles.replacementHelp")}
-                          options={roles.filter((x) => x.id !== r.id && x.key !== "owner").map((x) => ({ value: x.id, label: name(x) }))} />
+                          options={roles.filter((x) => x.id !== r.id && x.key !== "owner" && (isOwner || x.key !== "coordinator") && (x.system || x.rights.every((y) => held.has(y)))).map((x) => ({ value: x.id, label: name(x) }))} />
                       ) : <p className="text-sm text-muted">{t("roles.deleteUnused")}</p>}
                     </ActionForm>
                   </div>

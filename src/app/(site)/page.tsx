@@ -46,9 +46,9 @@ export default async function HomePage() {
   const shown = rendered.filter((s) => s.blocks.length > 0);
 
   return (
-    <div className="vh-flow">
+    <div data-skin-part="home-flow" className="vh-flow">
       {shown.map((s) => (
-        <div key={s.id} className={`vh-cell vh-${s.size}${s.isolated ? " vh-isolated" : ""}`}>
+        <div key={s.id} data-skin-part="home-cell" data-size={s.size} className={`vh-cell vh-${s.size}${s.isolated ? " vh-isolated" : ""}`}>
           {s.isolated ? (
             <div className="vh-solo">
               <Blocks blocks={s.blocks} locale={locale} />

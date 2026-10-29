@@ -427,7 +427,7 @@ test("page Entretien : un seul message, jamais « terminée » avec des élémen
   assert.match(banner, /usePathname/);
   assert.match(banner, /pathname === LEGACY_PAGE/);
   const actions = fs.readFileSync("src/app/admin/(panel)/maintenance/legacy/actions.ts", "utf8");
-  for (const fn of ["keepLegacyRowAction", "undoKeepLegacyRowAction", "removeLegacyRowAction"]) assert.match(actions, new RegExp(`export async function ${fn}[^]*?adminCtx\\("owner"\\)`), fn);
+  for (const fn of ["keepLegacyRowAction", "undoKeepLegacyRowAction", "removeLegacyRowAction"]) assert.match(actions, new RegExp(`export async function ${fn}[^]*?adminCtx\\(\\{ right: "core:[a-z.]+" \\}\\)`), fn);
   const page = fs.readFileSync("src/app/admin/(panel)/maintenance/legacy/page.tsx", "utf8");
   assert.match(page, /legacyStatus\(r\)/);
   assert.match(page, /RemoveChoices/);

@@ -9,8 +9,8 @@ Un modèle de module pour Curiosa. Une fois installé, il affiche un court messa
 
 ## Limites
 
-C'est un exemple : il ne stocke rien et ne collecte aucune donnée sur les visiteurs.
+C'est un exemple : il ne stocke rien et ne collecte aucune donnée sur les personnes qui visitent.
 
-## Pour les développeurs
+## Côté technique
 
 Copiez ce dossier, changez l'identifiant dans `module.json`, puis lancez `npm run module:check -- <votre-dossier>` depuis le dépôt du cœur : tout ce qui est marqué ❌ est à corriger.

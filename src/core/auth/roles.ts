@@ -2,17 +2,20 @@
  * RÔLES (0.2.0) : rôles prédéfinis, rôles personnalisés et affectations. Toutes les règles de sécurité sont ICI, côté serveur ; les actions de la page Équipe
  * ne font que passer l'identifiant de la personne connectée (jamais lu dans le formulaire) et les valeurs envoyées.
  *
- * - Seul le propriétaire gère les rôles et les affectations (l'acteur est RELU en base à chaque appel).
- * - Anti-élévation : un rôle ne contient que des droits connus que son créateur possède, jamais un droit réservé au propriétaire ; le rôle `owner` ne
- *   s'affecte jamais par le formulaire ; un identifiant de rôle forgé (inconnu, `owner`) est refusé.
+ * - Seuls les niveaux qui détiennent `core:roles` (rôles) ou `core:team` (affectations) agissent : le propriétaire et, selon `LEVEL_RESERVED`, le coordinateur
+ *   technique (l'acteur est RELU en base à chaque appel). Voir team.ts pour « qui peut gérer qui ».
+ * - Anti-élévation : un rôle ne contient que des droits connus que son créateur possède, jamais un droit réservé ; un rôle qu'on affecte ne donne que des droits
+ *   que l'acteur possède ; les rôles `owner` (jamais) et `coordinator` (propriétaire seul) ne s'affectent pas autrement ; un identifiant forgé est refusé.
  * - Anti-verrouillage : une personne garde au moins un rôle ; un rôle en usage ne se supprime qu'avec une réaffectation ; le propriétaire est intouchable.
- * - `User.role` (niveau historique, lu par un ancien cœur) est recalculé à chaque changement : le plus haut rôle prédéfini, sinon « none ».
+ * - `User.role` (niveau historique, lu par un ancien cœur) et `User.coordinator` sont recalculés à chaque changement : le plus haut rôle prédéfini, sinon « none »
+ *   (le coordinateur s'écrit « admin » + drapeau, voir `columnsOf`).
  */
 import { prisma } from "../db";
 import { accessOf, currentCatalogue, levelOf } from "./access";
-import { isReserved, isSystemKey, levelFromKeys, SYSTEM_ROLE_KEYS, type Level, type RightInfo } from "./rights";
+import { columnsOf, parseStoredRights, isReserved, isSystemKey, levelFromKeys, SYSTEM_ROLE_KEYS, type Level, type RightInfo } from "./rights";
+import { canManageMember, grantableLevels } from "./team";
 
-const SYSTEM_NAMES: Record<(typeof SYSTEM_ROLE_KEYS)[number], string> = { owner: "Owner", admin: "Administrator", editor: "Editor" };
+const SYSTEM_NAMES: Record<(typeof SYSTEM_ROLE_KEYS)[number], string> = { owner: "Owner", coordinator: "Technical coordination", admin: "Administration", editor: "Editorial" };
 export const ROLE_NAME_MAX = 60;
 export const ROLE_DESCRIPTION_MAX = 300;
 /** Plafond de rôles personnalisés (dézoom permanent : la page Équipe reste lisible et bornée). */
@@ -39,10 +42,12 @@ export async function syncSystemAssignments(): Promise<{ added: number; removed:
   const idOf = new Map(system.map((r) => [r.key, r.id]));
   const keyOf = new Map(system.map((r) => [r.id, r.key]));
   let added = 0, removed = 0;
+  // Le drapeau « coordinateur » ne vaut que sur un compte « admin » : si un ancien cœur a changé `role`, le drapeau périmé est effacé (jamais de retour d'un niveau perdu).
+  await prisma.user.updateMany({ where: { coordinator: true, NOT: { role: "admin" } }, data: { coordinator: false } });
   // Par tranches : l'équipe est petite, mais rien n'est lu sans borne.
   let cursor: string | undefined;
   for (;;) {
-    const users = await prisma.user.findMany({ select: { id: true, role: true, roles: { select: { roleId: true } } }, orderBy: { id: "asc" }, take: 200, ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}) });
+    const users = await prisma.user.findMany({ select: { id: true, role: true, coordinator: true, roles: { select: { roleId: true } } }, orderBy: { id: "asc" }, take: 200, ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}) });
     if (users.length === 0) break;
     for (const u of users) {
       const level = levelOf(u);
@@ -67,15 +72,25 @@ export async function initRoles(): Promise<void> {
   }
 }
 
-export type RoleFailure = "denied" | "name" | "rights" | "system" | "missing" | "inUse" | "replacement" | "owner" | "empty" | "role" | "limit";
+export type RoleFailure = "denied" | "name" | "rights" | "system" | "missing" | "inUse" | "replacement" | "owner" | "empty" | "role" | "limit" | "level";
 export type RoleResult<T = object> = ({ ok: true } & T) | { ok: false; reason: RoleFailure };
 
-/** L'acteur, relu en base : seul le propriétaire (niveau « owner ») gère les rôles. Retourne aussi ses droits (anti-élévation). */
-async function ownerActor(actorId: string, catalogue: RightInfo[]): Promise<{ email: string; rights: Set<string> } | null> {
-  const row = await prisma.user.findUnique({ where: { id: String(actorId ?? "") }, select: { id: true, email: true, role: true, mustChangePassword: true } });
-  if (!row || levelOf(row) !== "owner" || row.mustChangePassword) return null;
-  return { email: row.email, rights: (await accessOf(row, catalogue)).rights };
+type Actor = { id: string; email: string; level: Level; rights: Set<string> };
+
+/**
+ * L'acteur, relu en base : il doit détenir ce droit réservé (`core:roles` pour les rôles, `core:team` pour les personnes), ne pas avoir de mot de passe temporaire
+ * à remplacer. Retourne aussi son niveau et ses droits (anti-élévation).
+ */
+async function actorWith(actorId: string, right: "core:roles" | "core:team", catalogue: RightInfo[]): Promise<Actor | null> {
+  const row = await prisma.user.findUnique({ where: { id: String(actorId ?? "") }, select: { id: true, email: true, role: true, coordinator: true, mustChangePassword: true } });
+  if (!row || row.mustChangePassword) return null;
+  const access = await accessOf(row, catalogue);
+  return access.rights.has(right) ? { id: row.id, email: row.email, level: access.level, rights: access.rights } : null;
 }
+
+/** Les droits d'un rôle (liste JSON), valides seulement. */
+const storedRights = (raw: string, catalogue: RightInfo[]): string[] => parseStoredRights(raw, catalogue);
+const withinRights = (rights: string[], actor: Actor): boolean => rights.every((r) => actor.rights.has(r));
 
 const slugify = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "role";
 
@@ -100,7 +115,7 @@ function cleanName(input: { name?: unknown; description?: unknown }): { name: st
 
 export async function createRole(actorId: string, input: { name?: unknown; description?: unknown; rights?: unknown }): Promise<RoleResult<{ id: string; key: string }>> {
   const catalogue = await currentCatalogue();
-  const actor = await ownerActor(actorId, catalogue);
+  const actor = await actorWith(actorId, "core:roles", catalogue);
   if (!actor) return { ok: false, reason: "denied" };
   const text = cleanName(input);
   if (!text) return { ok: false, reason: "name" };
@@ -119,11 +134,13 @@ export async function createRole(actorId: string, input: { name?: unknown; descr
 
 export async function updateRole(actorId: string, roleId: string, input: { name?: unknown; description?: unknown; rights?: unknown }): Promise<RoleResult> {
   const catalogue = await currentCatalogue();
-  const actor = await ownerActor(actorId, catalogue);
+  const actor = await actorWith(actorId, "core:roles", catalogue);
   if (!actor) return { ok: false, reason: "denied" };
   const role = await prisma.role.findUnique({ where: { id: String(roleId ?? "") } });
   if (!role) return { ok: false, reason: "missing" };
   if (role.system || isSystemKey(role.key)) return { ok: false, reason: "system" };
+  // Anti-élévation : on ne remodèle pas un rôle qui donne des droits qu'on n'a pas soi-même.
+  if (!withinRights(storedRights(role.rights, catalogue), actor)) return { ok: false, reason: "rights" };
   const text = cleanName(input);
   if (!text) return { ok: false, reason: "name" };
   const rights = checkRights(input.rights, actor.rights, catalogue);
@@ -134,11 +151,13 @@ export async function updateRole(actorId: string, roleId: string, input: { name?
   return { ok: true };
 }
 
-/** Recalcule `User.role` d'une personne (le plus haut rôle prédéfini, sinon « none »). */
+/** Recalcule `User.role` et `User.coordinator` d'une personne (le plus haut rôle prédéfini, sinon « none »). */
 async function recomputeLevel(tx: Pick<typeof prisma, "userRole" | "user">, userId: string): Promise<Level> {
   const rows = await tx.userRole.findMany({ where: { userId }, include: { role: { select: { key: true, system: true } } } });
-  const level = levelFromKeys(rows.filter((r) => r.role.system).map((r) => r.role.key));
-  await tx.user.update({ where: { id: userId }, data: { role: level } });
+  // Le niveau actuel de la ligne compte aussi : une affectation prédéfinie manquante (pas encore synchronisée) ne doit jamais retirer un niveau à quelqu'un.
+  const now = await tx.user.findUnique({ where: { id: userId }, select: { role: true, coordinator: true } });
+  const level = levelFromKeys([...rows.filter((r) => r.role.system).map((r) => r.role.key), levelOf(now)]);
+  await tx.user.update({ where: { id: userId }, data: columnsOf(level) });
   return level;
 }
 
@@ -148,17 +167,27 @@ async function recomputeLevel(tx: Pick<typeof prisma, "userRole" | "user">, user
  */
 export async function deleteRole(actorId: string, roleId: string, replacementId?: string | null): Promise<RoleResult<{ moved: number }>> {
   const catalogue = await currentCatalogue();
-  const actor = await ownerActor(actorId, catalogue);
+  const actor = await actorWith(actorId, "core:roles", catalogue);
   if (!actor) return { ok: false, reason: "denied" };
   const role = await prisma.role.findUnique({ where: { id: String(roleId ?? "") }, include: { users: { select: { userId: true } } } });
   if (!role) return { ok: false, reason: "missing" };
   if (role.system || isSystemKey(role.key)) return { ok: false, reason: "system" };
+  if (!withinRights(storedRights(role.rights, catalogue), actor)) return { ok: false, reason: "rights" };
   const holders = role.users.map((u) => u.userId);
+  // Supprimer un rôle réaffecte ses membres : un coordinateur ne touche donc pas un rôle tenu par un autre coordinateur (ni par le propriétaire).
+  if (holders.length) {
+    const rows = await prisma.user.findMany({ where: { id: { in: holders } }, select: { id: true, role: true, coordinator: true } });
+    if (actor.level !== "owner" && rows.some((h) => levelOf(h) === "coordinator" || levelOf(h) === "owner")) return { ok: false, reason: "level" };
+  }
   let replacement: { id: string; key: string; system: boolean } | null = null;
   if (holders.length > 0) {
     if (!replacementId) return { ok: false, reason: "inUse" };
     replacement = await prisma.role.findUnique({ where: { id: String(replacementId) }, select: { id: true, key: true, system: true } });
-    if (!replacement || replacement.id === role.id || replacement.key === "owner") return { ok: false, reason: "replacement" };
+    if (!replacement || replacement.id === role.id || replacement.key === "owner" || (replacement.key === "coordinator" && actor.level !== "owner")) return { ok: false, reason: "replacement" };
+    if (!replacement.system) {
+      const rep = await prisma.role.findUnique({ where: { id: replacement.id }, select: { rights: true } });
+      if (!withinRights(storedRights(rep?.rights ?? "[]", catalogue), actor)) return { ok: false, reason: "rights" };
+    }
   }
   await prisma.$transaction(async (tx) => {
     for (const userId of holders) {
@@ -186,29 +215,36 @@ export async function deleteRole(actorId: string, roleId: string, replacementId?
 }
 
 /**
- * Les rôles d'une personne (puces cumulables). Propriétaire seulement ; la cible n'est jamais le propriétaire ; au moins un rôle ; `owner` et tout
- * identifiant inconnu sont refusés ; parmi les rôles prédéfinis (admin, editor), seul le plus haut est gardé (c'est le niveau).
+ * Les rôles d'une personne (puces cumulables). Il faut détenir `core:team` ; la cible n'est jamais le propriétaire, ni soi-même, ni (sauf pour le propriétaire)
+ * un coordinateur ; au moins un rôle ; `owner` et tout identifiant inconnu sont refusés ; le niveau attribué doit être de ceux que l'acteur peut attribuer
+ * (`grantableLevels` : seul le propriétaire nomme un coordinateur) ; un rôle personnalisé AJOUTÉ ne donne que des droits que l'acteur possède.
+ * Parmi les rôles prédéfinis, seul le plus haut est gardé (c'est le niveau).
  */
 export async function setUserRoles(actorId: string, targetId: string, roleIds: unknown): Promise<RoleResult<{ level: Level }>> {
   const catalogue = await currentCatalogue();
-  const actor = await ownerActor(actorId, catalogue);
+  const actor = await actorWith(actorId, "core:team", catalogue);
   if (!actor) return { ok: false, reason: "denied" };
-  const target = await prisma.user.findUnique({ where: { id: String(targetId ?? "") }, select: { id: true, email: true, role: true } });
+  const target = await prisma.user.findUnique({ where: { id: String(targetId ?? "") }, select: { id: true, email: true, role: true, coordinator: true, roles: { select: { roleId: true } } } });
   if (!target) return { ok: false, reason: "missing" };
-  if (levelOf(target) === "owner" || target.id === String(actorId)) return { ok: false, reason: "owner" };
+  const current = levelOf(target);
+  if (current === "owner" || target.id === actor.id) return { ok: false, reason: "owner" };
+  if (!canManageMember(actor.level, current)) return { ok: false, reason: "level" };
   if (!Array.isArray(roleIds)) return { ok: false, reason: "role" };
   const ids = [...new Set(roleIds.map((r) => String(r ?? "")))].filter(Boolean);
   if (ids.length === 0) return { ok: false, reason: "empty" };
-  if (ids.length > MAX_CUSTOM_ROLES + 2) return { ok: false, reason: "role" };
+  if (ids.length > MAX_CUSTOM_ROLES + 3) return { ok: false, reason: "role" };
   await ensureSystemRoles();
-  const roles = await prisma.role.findMany({ where: { id: { in: ids } }, select: { id: true, key: true, system: true } });
+  const roles = await prisma.role.findMany({ where: { id: { in: ids } }, select: { id: true, key: true, system: true, rights: true } });
   if (roles.length !== ids.length || roles.some((r) => r.key === "owner" || (r.system && !isSystemKey(r.key)))) return { ok: false, reason: "role" };
   const level = levelFromKeys(roles.filter((r) => r.system).map((r) => r.key));
+  if (level !== current && level !== "none" && !grantableLevels(actor.level).includes(level)) return { ok: false, reason: "level" };
+  const held = new Set(target.roles.map((r) => r.roleId));
+  for (const r of roles) if (!r.system && !held.has(r.id) && !withinRights(storedRights(r.rights, catalogue), actor)) return { ok: false, reason: "rights" };
   const keep = roles.filter((r) => !r.system || r.key === level);
   await prisma.$transaction(async (tx) => {
     await tx.userRole.deleteMany({ where: { userId: target.id } });
     for (const r of keep) await tx.userRole.create({ data: { userId: target.id, roleId: r.id } });
-    await tx.user.update({ where: { id: target.id }, data: { role: level } });
+    await tx.user.update({ where: { id: target.id }, data: columnsOf(level) });
   });
   await audit(actor.email, "user.roles", `${target.email}:${keep.map((r) => r.key).sort().join(",")}`);
   return { ok: true, level };
@@ -217,7 +253,7 @@ export async function setUserRoles(actorId: string, targetId: string, roleIds: u
 /** Rôle prédéfini d'une personne nouvellement créée (après `prisma.user.create`) : son affectation suit `User.role`. */
 export async function assignInitialRole(userId: string): Promise<void> {
   await ensureSystemRoles();
-  const u = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
+  const u = await prisma.user.findUnique({ where: { id: userId }, select: { role: true, coordinator: true } });
   const level = levelOf(u);
   if (level === "none") return;
   const role = await prisma.role.findUnique({ where: { key: level }, select: { id: true } });

@@ -15,12 +15,13 @@ import { loadInstanceStatuses } from "@/core/modules/integrations";
 import { shortLabel } from "@/core/modules/missingSettings";
 import { getAdminNav } from "@/core/modules/adminNav";
 import { administrationEntries, navItemVisible, type AdminEntry } from "@/core/modules/adminMenu";
-import { can, hasRole, isOwner } from "@/core/auth/access";
+import { can, hasRole } from "@/core/auth/access";
 import { ASSISTANTS_HREF } from "@/core/services/mcp/assistantsLinks";
 import { getUpdateCheck, readVersion } from "@/core/updates/service";
 import { peekModulesReport } from "@/core/modules/updateStatus";
 import { MobileMenu } from "@/components/admin/MobileMenu";
 import { CropLabelsProvider } from "@/components/admin/CropLabels";
+import { HelpTipProvider } from "@/components/admin/HelpTip";
 import { CROP_LABEL_KEYS } from "@/components/admin/cropLabelKeys";
 import { cookies } from "next/headers";
 import { ADMIN_THEMES, ADMIN_THEME_COOKIE, parseAdminTheme } from "@/core/adminTheme";
@@ -37,10 +38,10 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   const editor = hasRole(user, "editor");
   const theme = parseAdminTheme((await cookies()).get(ADMIN_THEME_COOKIE)?.value);
   const canManage = hasRole(user, "admin");
-  const updateAvailable = isOwner(user) && (await getUpdateCheck().catch(() => null))?.available === true;
+  const updateAvailable = can(user, "core:updates") && (await getUpdateCheck().catch(() => null))?.available === true;
   // Modules en retard : jamais d'attente du réseau ici (menu de toutes les pages) ; la vérification se fait en arrière-plan et reste en mémoire quelques minutes.
-  const modulesBehind = isOwner(user) ? (peekModulesReport()?.outdated.length ?? 0) : 0;
-  const aiWaiting = isOwner(user) ? (await maintenanceSummary().catch(() => null))?.total ?? 0 : 0;
+  const modulesBehind = can(user, "core:modules.install") ? (peekModulesReport()?.outdated.length ?? 0) : 0;
+  const aiWaiting = can(user, "core:mcp.tokens") ? (await maintenanceSummary().catch(() => null))?.total ?? 0 : 0;
   // Garde du démarrage (0.2.0) : un AVERTISSEMENT seulement si la mise à niveau des données n'est pas terminée (le site public reste servi ; bloquant en phase 3).
   const legacyPending = canManage ? await legacyConversionPending() : false;
   const bugUrl = await adminBugReportUrl(t);
@@ -102,6 +103,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
           <p className={group}>{t("nav.mySite")}</p>
           {canManage && <NavLink href="/admin/home">{t("nav.home")}</NavLink>}
           {canManage && <NavLink href="/admin/navigation">{advanced ? t("nav.navigation") : t("nav.navigation.simple")}</NavLink>}
+          {canManage && <NavLink href="/admin/appearance">{t("nav.appearance")}</NavLink>}
           {canManage && <NavLink href="/admin/settings">{advanced ? t("nav.settings") : t("nav.settings.simple")}</NavLink>}
           {canManage && <NavLink href="/admin/social">{t("nav.social")}</NavLink>}
           {canManage && <NavLink href="/admin/ai-visibility">{t("nav.aiVisibility")}</NavLink>}
@@ -140,16 +142,16 @@ export default async function PanelLayout({ children }: { children: React.ReactN
           }}
           className="mt-6 px-3"
         >
-          <p className="mb-2 truncate text-xs text-muted">{user.name} · {user.level === "none" ? t("role.custom") : user.level}</p>
+          <p className="mb-2 truncate text-xs text-muted">{user.name} · {user.level === "none" ? t("role.custom") : t(`role.${user.level}`)}</p>
           <PendingButton pendingLabel={t("progress.signingOut")}>{t("nav.logout")}</PendingButton>
         </form>
       </MobileMenu>
       <main className="min-w-0 flex-1 p-6 md:p-10">
         <div className="mx-auto max-w-4xl">
           {legacyPending && (
-            <LegacyBanner title={t("legacy.banner.title")} text={t("legacy.banner.text")} link={isOwner(user) ? t("legacy.banner.link") : null} ownerNote={isOwner(user) ? null : t("legacy.banner.owner")} />
+            <LegacyBanner title={t("legacy.banner.title")} text={t("legacy.banner.text")} link={can(user, "core:updates") ? t("legacy.banner.link") : null} ownerNote={can(user, "core:updates") ? null : t("legacy.banner.owner")} />
           )}
-          <CropLabelsProvider advanced={advanced} labels={Object.fromEntries(CROP_LABEL_KEYS.map((k) => [k, t(`crop.${k}`)]))}>{children}</CropLabelsProvider></div>
+          <CropLabelsProvider advanced={advanced} labels={Object.fromEntries(CROP_LABEL_KEYS.map((k) => [k, t(`crop.${k}`)]))}><HelpTipProvider label={t("help.tip")}>{children}</HelpTipProvider></CropLabelsProvider></div>
       </main>
       </div>
       {/* Tout en bas de la page, pour tous les rôles et dans les deux modes : crédit exigé par la licence, et numéro de version à donner pour un signalement ou une mise à jour. */}

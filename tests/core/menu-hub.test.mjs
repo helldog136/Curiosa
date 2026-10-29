@@ -308,7 +308,7 @@ test("Extensions : trois onglets (Installées, Ajouter, Mises à jour), l'onglet
   assert.match(tabs, /peekModulesReport\(\)\?\.outdated\.length/, "compteur sans réseau");
   assert.match(tabs, /isOwner \? t\("hub\.tab\.updates"\) : undefined/, "réservé au propriétaire");
   const updates = read(`${PANEL}/extensions/updates/page.tsx`);
-  assert.match(updates, /!isOwner\(user\)\) redirect\(EXTENSIONS_HREF\)/);
+  assert.match(updates, /!can\(user, "core:modules\.install"\)\) redirect\(EXTENSIONS_HREF\)/);
   assert.match(updates, /<ModulesUpdatesSection/);
   assert.match(updates, /href="\/admin\/updates"/, "les mises à jour du cœur gardent leur page");
   assert.match(read(`${PANEL}/extensions/page.tsx`), /current="installed"/);
@@ -370,7 +370,7 @@ test("menu : l'ordre des rubriques et des entrées d'Administration", () => {
   // Les entrées viennent de administrationEntries (adminMenu.ts) ; le layout les range dans cet ordre.
   const links = layout.slice(layout.indexOf("const adminLinks"), layout.indexOf("const group ="));
   const entries = ["nav.extensions", "nav.assistants", "nav.users", "nav.health", "nav.backup", "nav.updates", "nav.audit"].map((k) => links.indexOf(`"${k}"`));
-  assert.ok(entries.every((n, i) => n > -1 && (i === 0 || n > entries[i - 1])), "Extensions, Assistants IA (une seule entrée), Utilisateurs, Santé de mon site, Sauvegarde, Mises à jour, Journal d'audit");
+  assert.ok(entries.every((n, i) => n > -1 && (i === 0 || n > entries[i - 1])), "Extensions, Assistants IA (une seule entrée), Équipe, Santé de mon site, Sauvegarde, Mises à jour, Journal d'audit");
   assert.ok(!layout.includes("nav.mcp") && !layout.includes("nav.maintenanceAi") && !layout.includes("/admin/mcp") && !layout.includes("/admin/maintenance-ia"), "les deux anciennes entrées ont disparu");
   const site = layout.slice(layout.indexOf('t("nav.mySite")'), layout.indexOf('t("nav.admin")'));
   for (const href of ["/admin/home", "/admin/navigation", "/admin/settings", "/admin/social", "/admin/ai-visibility", "/admin/redirects"]) assert.ok(site.includes(`href="${href}"`), href);

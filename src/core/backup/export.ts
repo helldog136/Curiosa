@@ -16,6 +16,7 @@ import { readmeText } from "./readme";
 import { currentSchemaVersion } from "./schema";
 import { createTarGzAsync, isSafeArchivePath, type TarFile } from "./tar";
 import { opStep } from "../operations/tracker";
+import { backupSkins } from "@/core/skins/restore";
 
 /** Réglages qui n'ont aucun sens après une restauration (état de la dernière vérification de version). */
 const VOLATILE_SETTINGS = new Set(["updates.latest", "updates.checkedAt", "updates.error", "rawg.toCheck"]); // journaux et caches : ils se reconstituent tout seuls
@@ -77,6 +78,8 @@ export async function createBackup(password: string, opts: { now?: Date; iterati
     });
   }
 
+  const skins = await backupSkins();
+
   const files: TarFile[] = [
     jsonFile(DATA_FILES.users, users),
     jsonFile(DATA_FILES.settings, settings.filter((s) => !VOLATILE_SETTINGS.has(s.key)).map((s) => ({ ...s, value: safeParse(s.value) }))),
@@ -130,7 +133,7 @@ export async function createBackup(password: string, opts: { now?: Date; iterati
   files.push(fileOf("readable/site.txt", [
     `${config.name}`, "=".repeat(Math.max(3, config.name.length)), `Langue par défaut / default language : ${config.defaultLocale}`, `Langues / languages : ${config.locales.join(", ")}`, "",
     "Modules / instances :", ...instances.map((i) => `- ${i.nickname ?? i.moduleId} (module ${i.moduleId}, id ${i.key})`), "",
-    `Entrées / entries : ${entries.length}`, `Utilisateurs / users : ${users.length}`, `Redirections : ${redirects.length}`,
+    `Entrées / entries : ${entries.length}`, `Comptes / users : ${users.length}`, `Redirections : ${redirects.length}`,
     `Données gardées de modules retirés / kept data of removed modules : ${retired.length}${retired.length ? ` (${retired.map((r) => `${r.moduleId}/${r.key}`).join(", ")})` : ""}`, "",
     "Réglages / settings (valeurs secrètes masquées / secret values hidden) :",
     ...settings.filter((s) => !VOLATILE_SETTINGS.has(s.key) && !s.key.startsWith("instance.")).map((s) => `- ${s.key}${s.locale ? `[${s.locale}]` : ""} = ${secretKeys(s.key) ? "••••" : s.value.slice(0, 300)}`), "",
@@ -151,8 +154,9 @@ export async function createBackup(password: string, opts: { now?: Date; iterati
   const manifest: BackupManifest = {
     format: FORMAT, formatVersion: FORMAT_VERSION, createdAt: now.toISOString(), frameworkVersion: readVersion(), schemaVersion: await currentSchemaVersion(),
     site: { name: config.name, defaultLocale: config.defaultLocale, locales: config.locales },
-    counts: { users: users.length, instances: instances.length, entries: entries.length, translations: entryTranslations.length, records: records.count, retired: retired.length, redirects: redirects.length, modules: modules.length, uploads: uploadCount },
+    counts: { users: users.length, instances: instances.length, entries: entries.length, translations: entryTranslations.length, records: records.count, retired: retired.length, redirects: redirects.length, modules: modules.length, uploads: uploadCount, ...(skins.length ? { skins: skins.length } : {}) },
     modules,
+    ...(skins.length ? { skins } : {}),
     files: await runAsync(fingerprints(files)),
   };
   const archive: TarFile[] = [

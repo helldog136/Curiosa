@@ -2,7 +2,7 @@ import { prisma } from "../db";
 import { deleteSetting, getSetting, setSetting } from "../settings";
 
 /**
- * MÉMOIRE D'UNE MISE À JOUR REFUSÉE. Quand le contrôle de chargement (loadCheck.ts) refuse une nouvelle version, l'ancienne est restée en place. Pour que la propriétaire
+ * MÉMOIRE D'UNE MISE À JOUR REFUSÉE. Quand le contrôle de chargement (loadCheck.ts) refuse une nouvelle version, l'ancienne est restée en place. Pour que la personne propriétaire
  * et l'assistant le sachent APRÈS coup (la page d'erreur disparaît au rechargement), on garde une ligne par module : quelle version a été refusée, quand, pourquoi.
  * Effacée à la prochaine mise à jour réussie, à la réinstallation réussie et à la désinstallation. Rien de secret : identifiants, versions et une raison courte sans chemin.
  */
