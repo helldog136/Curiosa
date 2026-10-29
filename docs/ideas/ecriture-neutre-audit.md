@@ -24,10 +24,10 @@ Des textes supposaient le genre de la personne qui gère le site ou de son publi
 
 ## Résultat chiffré
 
-- **529 textes modifiés** (valeurs de locale et lignes de documents ou de code visibles) :
+- **530 textes modifiés** (valeurs de locale et lignes de documents ou de code visibles) :
   - README, docs et guides : 333
   - Divers : 1
-  - Messages d'outils, d'installation et du kit de test : 90
+  - Messages d'outils, d'installation et du kit de test : 91
   - Données d'exemple (outil de contrôle visuel) : 9
   - Locales (admin et site public) : 96
 - Le test échouait sur 421 emplacements avant correction (au premier passage), il passe à 0, les emplois légitimes étant listés (avec leur raison) dans la liste blanche du test.
@@ -416,7 +416,7 @@ Chaque ligne montre la zone modifiée, avec un peu de contexte. Pour les locales
 |---|---|---|---|
 | package.json | 7 | …work générique de site pour créateurs : collections, redirections… | …work générique de site pour les personnes qui créent : collections, redirections… |
 
-### Messages d'outils, d'installation et du kit de test (90)
+### Messages d'outils, d'installation et du kit de test (91)
 
 | Fichier | Repère | Avant | Après |
 |---|---|---|---|
@@ -505,6 +505,7 @@ Chaque ligne montre la zone modifiée, avec un peu de contexte. Pour les locales
 | testsupport/requirements/text.mjs | 243 | … les phrases que lisent les visiteurs et l'administrateur. Une erreur « JSON invalide… | … les phrases que lisent les personnes qui visitent et celle qui gère le site. Une erreur « JSON invalide… |
 | testsupport/requirements/text.mjs | 267 | …le module lui sert, pas à un développeur.", | …le module lui sert, pas à une personne qui développe.", |
 | testsupport/requirements/text.mjs | 271 | …\s*(?:pour les développeurs\|for developers)[\s\S]*$/i)[0… | …\s*(?:pour les développeurs\|côté technique\|for developers)[\s\S]*$/i)[0… |
+| testsupport/skins/bench/fragments/fr/page-privacy.html | 3 | …e « Mon site » est géré par son propriétaire. Pour toute qu… | …e « Mon site » est géré par la personne qui en est propriétaire. Pour toute qu… |
 | testsupport/skins/bench/refresh.mjs | 140 | …ns la bascule clair/sombre du visiteur ; un en-tête avec logos à d… | …ns la bascule clair/sombre de la personne qui visite ; un en-tête avec logos à d… |
 | testsupport/skins/bench/site.mjs | 35 | …l'ouverture est une action du visiteur). */ | …l'ouverture est une action de la personne qui visite). */ |
 | testsupport/skins/static.mjs | 103 |     // ce que verrait le visiteur : valeurs refusées à la com… |     // ce que verrait la personne qui visite : valeurs refusées à la com… |

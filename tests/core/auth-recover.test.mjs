@@ -21,7 +21,7 @@ async function lock(ip, email) { for (let i = 0; i < 5; i++) await L.recordFailu
 
 test("secours SSH : « status » montre ce qui est bloqué, « unlock » lève tout, ou une adresse, ou l'e-mail d'une personne propriétaire", async () => {
   await owner(); await lock("1.2.3.4", "o@example.org");
-  assert.match((await run()).text, /ip:1\.2\.3\.4[\s\S]*email:o@example\.org[\s\S]*Propriétaire\(s\) : o@example\.org/);
+  assert.match((await run()).text, /ip:1\.2\.3\.4[\s\S]*email:o@example\.org[\s\S]*Comptes propriétaires : o@example\.org/);
   await run("unlock", "1.2.3.4");
   assert.ok(await L.isEmailLocked("o@example.org"), "l'e-mail reste bloqué : seule l'adresse a été levée");
   assert.equal((await L.checkLogin("1.2.3.4", "libre@x.org")).locked, false, "l'adresse est libre");
