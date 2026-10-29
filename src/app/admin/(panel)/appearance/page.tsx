@@ -9,7 +9,7 @@ import { ImageField } from "@/components/admin/ImageField";
 import { ShowWhen } from "@/components/admin/ShowWhen";
 import { ui } from "@/components/admin/ui";
 import { CUSTOM_PALETTE, THEME_PRESETS } from "@/core/palettes";
-import { hasRole } from "@/core/permissions";
+import { can } from "@/core/permissions";
 import { loadAppearanceView } from "@/core/skins/appearanceView";
 import { listCatalogue } from "@/core/skins/service";
 import { AppearanceLabelsProvider } from "./AppearanceLabels";
@@ -72,7 +72,8 @@ export default async function AppearancePage({ searchParams }: { searchParams?: 
   const flashVersion = /^\d{1,4}\.\d{1,4}\.\d{1,4}$/.test(String(sp.v)) ? String(sp.v) : "";
   const { t, config, advanced, user, locale: rawLocale } = await adminCtx("admin");
   const locale: "fr" | "en" = rawLocale === "fr" ? "fr" : "en";
-  const isOwner = hasRole(user, "owner");
+  // « isOwner » : peut installer des extensions (droit `core:modules.install` : propriétaire, coordinateur technique).
+  const isOwner = can(user, "core:modules.install");
   const view = await loadAppearanceView();
   const legacy = view.activeId === "basic";
   const labels = appearanceLabels(t);

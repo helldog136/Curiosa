@@ -15,14 +15,14 @@ import { accessHref, ASSISTANTS_HREF } from "@/core/services/mcp/assistantsLinks
 export type CreateTokenState = { error?: string; created?: { name: string; token: string; byUrl: boolean } } | null;
 
 export async function setMcpEnabled(enabled: boolean): Promise<void> {
-  const { user } = await adminCtx("owner");
+  const { user } = await adminCtx({ right: "core:mcp.tokens" });
   await setSetting("mcp.enabled", enabled);
   await audit(user.email, enabled ? "mcp.enable" : "mcp.disable");
   revalidatePath(ASSISTANTS_HREF);
 }
 
 export async function createTokenAction(_prev: CreateTokenState, formData: FormData): Promise<CreateTokenState> {
-  const { user, t } = await adminCtx("owner");
+  const { user, t } = await adminCtx({ right: "core:mcp.tokens" });
   const name = String(formData.get("name") ?? "").trim();
   const maintenance = formData.get("profile") === "maintenance";
   // Profil « Maintenance » : le plafond est « écriture » (sinon on ne pourrait jamais accorder une action sans risque), mais SEULS les outils de maintenance
@@ -47,7 +47,7 @@ export async function createTokenAction(_prev: CreateTokenState, formData: FormD
 
 /** Autorise ou retire la connexion par adresse secrète d'un jeton existant (propriétaire seulement). Le journal ne garde jamais l'adresse ni le jeton. */
 export async function setUrlAccessAction(tokenId: string, enabled: boolean): Promise<void> {
-  const { user } = await adminCtx("owner");
+  const { user } = await adminCtx({ right: "core:mcp.tokens" });
   const row = await prisma.apiToken.findUnique({ where: { id: tokenId } });
   if (!row || row.revokedAt) return;
   await setUrlAccess(tokenId, enabled);
@@ -58,7 +58,7 @@ export async function setUrlAccessAction(tokenId: string, enabled: boolean): Pro
 }
 
 export async function revokeTokenAction(id: string): Promise<void> {
-  const { user } = await adminCtx("owner");
+  const { user } = await adminCtx({ right: "core:mcp.tokens" });
   await revokeToken(id);
   await audit(user.email, "mcp.token.revoke", id);
   revalidatePath(ASSISTANTS_HREF);
@@ -70,7 +70,7 @@ export async function revokeTokenAction(id: string): Promise<void> {
  * requête, le jeton n'a pas à être regénéré ni le site redéployé.
  */
 export async function setGrantAction(tokenId: string, toolName: string, enabled: boolean): Promise<{ ok: boolean }> {
-  const { user } = await adminCtx("owner");
+  const { user } = await adminCtx({ right: "core:mcp.tokens" });
   const [token, catalogue] = await Promise.all([getTokenGrants(tokenId), listMcpToolCatalogue()]);
   const tool = catalogue.find((t) => t.name === toolName);
   if (!token || !tool) return { ok: false };
@@ -84,7 +84,7 @@ export async function setGrantAction(tokenId: string, toolName: string, enabled:
 
 /** Remet les actions d'une instance (ou de tout le jeton) aux défauts de leurs modules, ou les retire toutes. */
 export async function resetGrantsAction(tokenId: string, instanceKey: string | null, mode: "defaults" | "none"): Promise<void> {
-  const { user } = await adminCtx("owner");
+  const { user } = await adminCtx({ right: "core:mcp.tokens" });
   const [token, catalogue] = await Promise.all([getTokenGrants(tokenId), listMcpToolCatalogue()]);
   if (!token) return;
   let grants: Grants = token.grants;

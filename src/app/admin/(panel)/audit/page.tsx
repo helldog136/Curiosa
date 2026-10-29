@@ -5,7 +5,7 @@ import { EmptyState, PageHeader } from "@/components/admin/Page";
 import { ui } from "@/components/admin/ui";
 
 export default async function AuditPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const { t, locale, advanced } = await adminCtx("owner");
+  const { t, locale, advanced } = await adminCtx({ right: "core:security" });
   const sp = await searchParams;
   const q = typeof sp.q === "string" ? sp.q : "";
   const { rows, total, page, pages } = await listAudit({ q, page: Number(typeof sp.page === "string" ? sp.page : 1) });

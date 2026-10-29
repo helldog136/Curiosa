@@ -129,19 +129,19 @@ test("architecture : plus d'erreur de champ affichée en bas — les actions d'a
 test("architecture : chaque action longue passe par le suivi d'opération (un seul lancement à la fois) avec les mêmes droits qu'avant", () => {
   const P = "src/app/admin/(panel)/";
   const cases = [
-    [P + "extensions/add/actions.ts", /trackOperation\(user, \{ kind: "install"/, "owner"],
-    [P + "updates/actions.ts", /trackOperation\(user, \{ kind: ids\?\.length === 1 \? "module-update" : "modules-update"/, "owner"],
-    [P + "modules/actions.ts", /trackOperation\(user, \{ kind: "module-update"/, "owner"],
-    [P + "modules/maintenanceActions.ts", /trackOperation\(user, \{ kind: "module-reinstall"/, "owner"],
-    [P + "instances/suggestActions.ts", /trackOperation\(user, \{ kind: "install"/, "owner"],
+    [P + "extensions/add/actions.ts", /trackOperation\(user, \{ kind: "install"/, "core:modules.install"],
+    [P + "updates/actions.ts", /trackOperation\(user, \{ kind: ids\?\.length === 1 \? "module-update" : "modules-update"/, "core:updates"],
+    [P + "modules/actions.ts", /trackOperation\(user, \{ kind: "module-update"/, "core:modules.install"],
+    [P + "modules/maintenanceActions.ts", /trackOperation\(user, \{ kind: "module-reinstall"/, "core:modules.install"],
+    [P + "instances/suggestActions.ts", /trackOperation\(user, \{ kind: "install"/, "core:modules.install"],
   ];
   for (const [file, re, role] of cases) {
     const src = read(file);
     assert.match(src, re, file);
-    assert.match(src, new RegExp(`adminCtx\\("${role}"\\)`), `${file} : même garde qu'avant`);
+    assert.match(src, new RegExp(`adminCtx\\(\\{ right: "${role.replaceAll(".", "\\.")}" \\}\\)`), `${file} : même garde qu'avant`);
     assert.ok(src.indexOf("adminCtx(") < src.indexOf("trackOperation("), `${file} : le contrôle de droits passe AVANT le suivi`);
   }
-  assert.match(read("src/app/api/admin/backup/route.ts"), /guardOwner[\s\S]*trackOperation\(/);
+  assert.match(read("src/app/api/admin/backup/route.ts"), /guardBackup[\s\S]*trackOperation\(/);
   assert.match(read("src/core/backup/handlers.ts"), /await guard\(request\)[\s\S]*trackOperation\(/);
   assert.match(read("src/app/api/admin/backup/route.ts"), /secretKeyPart\(password\)/, "un double clic avec un autre mot de passe ne rejoint jamais la sauvegarde d'autrui");
 });

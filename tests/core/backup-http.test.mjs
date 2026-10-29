@@ -28,7 +28,7 @@ test("restauration : la garde passe AVANT toute lecture du corps, et il n'y a ja
 });
 
 test("restauration : l'admin exige le propriétaire connecté, l'assistant exige un site SANS compte", () => {
-  for (const f of ["src/app/api/admin/backup/route.ts", "src/app/api/admin/backup/restore/route.ts", "src/app/api/admin/backup/restore/apply/route.ts"]) assert.ok(fs.readFileSync(f, "utf8").includes("guardOwner"), f);
+  for (const f of ["src/app/api/admin/backup/route.ts", "src/app/api/admin/backup/restore/route.ts", "src/app/api/admin/backup/restore/apply/route.ts"]) assert.ok(fs.readFileSync(f, "utf8").includes("guardBackup"), f);
   for (const f of ["src/app/api/setup/restore/route.ts", "src/app/api/setup/restore/apply/route.ts"]) {
     const src = fs.readFileSync(f, "utf8");
     assert.ok(src.includes("guardFresh") && !src.includes("guardOwner"), f);

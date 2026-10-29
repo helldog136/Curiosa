@@ -27,6 +27,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 - **Des textes qui ne devinent plus qui vous êtes.** Les écrans d'administration, le site public, les e-mails, les messages d'installation et les guides parlent de « la personne propriétaire », de « votre public » ou de « l'équipe », sans supposer le genre de la personne qui gère le site ni celui de son public.
 - **Le menu « Utilisateurs » s'appelle « Équipe » en français.** Les adresses et les rôles ne changent pas ; seul le nom affiché est différent.
+- **Nouveau niveau d'accès : la « Coordination technique ».** Elle gère tout le côté technique du site (mises à jour, modules, sauvegardes, sécurité, équipe et rôles) mais ne peut ni toucher au propriétaire ni reprendre le site. Aucun compte existant ne change.
 - Rien d'autre ne change pour votre site.
 
 ### Pour les développeurs
@@ -37,6 +38,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - Assistant IA : `maintenance_skin_status`, `maintenance_skin_list`, `maintenance_skin_install`, `maintenance_skin_activate`, `maintenance_skin_remove` (demandes à valider). Corrigé au passage : le titre de niveau 6 d'un texte Markdown perdait ses capitales sous `basic`.
 - Nouveau test `tests/core/neutral-writing.test.mjs` (termes genrés connus, liste blanche justifiée) et audit `docs/ideas/ecriture-neutre-audit.md`. Les messages du kit de test sont reformulés (`docs/TESTSUPPORT.md` régénéré) ; le README d'un module peut aussi nommer sa rubrique technique « Côté technique ».
 - Les noms de rôles (`owner`, Propriétaire, Administrateur, Éditeur) et les identifiants ne changent pas ; leur éventuel renommage est à décider séparément.
+- Niveau `coordinator` : `User.role` reste `admin` (repli sûr pour un ancien cœur) et la colonne `User.coordinator` porte le niveau ; droits réservés par niveau dans la table `LEVEL_RESERVED` (`rights.ts`) ; règles d'équipe dans `team.ts` et `members.ts` ; les opérations techniques exigent un droit (`adminCtx({ right })`) et non plus `owner`. Voir `docs/SECURITE.md`.
 
 ## 0.3.1
 

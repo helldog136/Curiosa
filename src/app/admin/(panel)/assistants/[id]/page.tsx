@@ -25,7 +25,7 @@ export const dynamic = "force-dynamic";
 
 /** Un accès : ce qu'il peut faire, comment les actions à risque sont validées, et (en mode avancé) chaque action de chaque module. Modifiable en direct. */
 export default async function AccessPage({ params }: { params: Promise<{ id: string }> }) {
-  const { t, locale, config, advanced } = await adminCtx("owner");
+  const { t, locale, config, advanced } = await adminCtx({ right: "core:mcp.tokens" });
   const { id } = await params;
   const row = await prisma.apiToken.findUnique({ where: { id } });
   if (!row) notFound();

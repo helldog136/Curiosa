@@ -101,11 +101,12 @@ const PAGES = [
 
 test("non-régression : sur chaque page d'admin importante, propriétaire, administrateur et éditeur entrent (ou non) exactement comme avant", async () => {
   for (const [file, before] of PAGES) {
-    const m = read(`${PANEL}/${file}`).match(/adminCtx\("(owner|admin|editor|member)"/);
+    // 0.4.0 : les opérations techniques exigent un DROIT (propriétaire et coordinateur), plus « owner » ; pour owner/admin/editor le verdict est inchangé.
+    const m = read(`${PANEL}/${file}`).match(/adminCtx\((?:"(owner|admin|editor|member)"|\{ right: "([^"]+)" \})/);
     assert.ok(m, `${file} : adminCtx introuvable`);
     for (const key of ["owner", "admin", "editor"]) {
       as(T[key]);
-      const now = await gate(m[1]);
+      const now = await gate(m[1] ?? { right: m[2] });
       const then = OLD_RANK[key] >= OLD_RANK[before] ? "ok" : "/admin?denied=1";
       assert.equal(now, then, `${file} pour ${key}`);
     }
@@ -232,7 +233,7 @@ test("élévation : fabriquer l'appel d'un autre utilisateur — l'acteur vient 
   assert.ok(done.ok && !done.error, JSON.stringify(done));
   assert.equal((await prisma.user.findUnique({ where: { id: T.editor.id } })).role, "admin");
   const src = read(`${PANEL}/users/actions.ts`);
-  for (const fn of ["setUserRolesAction", "createRoleAction", "updateRoleAction", "deleteRoleAction"]) assert.match(src, new RegExp(`export async function ${fn}[\\s\\S]*?adminCtx\\("owner"\\)[\\s\\S]*?\\(user\\.id,`), fn);
+  for (const fn of ["setUserRolesAction", "createRoleAction", "updateRoleAction", "deleteRoleAction"]) assert.match(src, new RegExp(`export async function ${fn}[\\s\\S]*?adminCtx\\(\\{ right: "core:(?:team|roles)" \\}\\)[\\s\\S]*?\\(user\\.id,`), fn);
   assert.doesNotMatch(src, /formData\.get\("(actor|actorId|userId|level|role)"\)[^;]*setUserRoles/);
 });
 
@@ -452,7 +453,7 @@ test("démarrage : rôles prédéfinis créés une fois (idempotent), affectatio
   await prisma.userRole.deleteMany(); await prisma.role.deleteMany();
   await R.syncSystemAssignments();
   await R.syncSystemAssignments();
-  assert.deepEqual((await prisma.role.findMany({ orderBy: { key: "asc" } })).map((r) => [r.key, r.system]), [["admin", true], ["editor", true], ["owner", true]]);
+  assert.deepEqual((await prisma.role.findMany({ orderBy: { key: "asc" } })).map((r) => [r.key, r.system]), [["admin", true], ["coordinator", true], ["editor", true], ["owner", true]]);
   for (const key of ["owner", "admin", "editor"]) {
     const rows = await prisma.userRole.findMany({ where: { userId: T[key].id }, include: { role: true } });
     assert.deepEqual(rows.map((r) => r.role.key), [key]);
@@ -503,7 +504,7 @@ test("restauration d'une sauvegarde d'avant les rôles (sans data/roles.json) : 
     data: { users: [user("o", "owner"), user("a", "admin"), user("e", "editor")], settings: [], modules: [], instances: [], instanceTranslations: [], entries: [], entryTranslations: [], redirects: [], records: [], ...extra }, uploads: [] });
   const report = await Rs.applyRestore(backup(), { confirmCustom: [], actor: "o" });
   assert.equal(report.ok, true, JSON.stringify(report));
-  assert.equal(await prisma.role.count({ where: { system: true } }), 3);
+  assert.equal(await prisma.role.count({ where: { system: true } }), 4);
   for (const [id, key] of [["o", "owner"], ["a", "admin"], ["e", "editor"]]) {
     assert.deepEqual((await prisma.userRole.findMany({ where: { userId: id }, include: { role: true } })).map((r) => r.role.key), [key], id);
   }

@@ -28,7 +28,7 @@ async function afterInstall(id: string, restored: string[] | undefined, locale: 
 }
 
 export async function installFromCatalogueAction(id: string): Promise<void> {
-  const { user, locale, config } = await adminCtx("owner");
+  const { user, locale, config } = await adminCtx({ right: "core:modules.install" });
   const result = await installFromCatalogue(id);
   forgetModulesReport();
   if (!result.ok) redirect(`${EXTENSIONS_ADD_HREF}?error=${encodeURIComponent(result.error)}`);
@@ -39,7 +39,7 @@ export async function installFromCatalogueAction(id: string): Promise<void> {
 
 /** Installation depuis la fiche d'un module : sans redirection, pour que le bouton montre le téléchargement avant de passer à la page des modules. */
 export async function installModuleAction(id: string, opId?: string): Promise<{ ok: true; /** Combien d'éléments gardés d'une désinstallation précédente sont revenus. */ restored: number } | { ok: false; error: string }> {
-  const { user, t, locale, config } = await adminCtx("owner");
+  const { user, t, locale, config } = await adminCtx({ right: "core:modules.install" });
   // Suivi d'opération (téléchargement → vérification → dépendances → activation → vos réglages). Un second clic rejoint l'installation en cours.
   const run = await trackOperation(user, { kind: "install", key: `install:${String(id).slice(0, 60)}`, opId: opIdOf(opId) }, () => installFromCatalogue(id), (r) => ({ ok: r.ok, error: r.ok ? undefined : r.error }));
   if (run.busy) return { ok: false, error: t("progress.busy") };
@@ -65,7 +65,7 @@ export async function installModuleAction(id: string, opId?: string): Promise<{ 
  * Jamais d'office : c'est le seul chemin qui passe `confirmExtra`.
  */
 export async function installExtraAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  const { user, t, locale, config } = await adminCtx("owner");
+  const { user, t, locale, config } = await adminCtx({ right: "core:modules.install" });
   if (formData.get("trust") !== "on") return { error: t("catalogue.trustRequired") };
   const id = String(formData.get("id") ?? "");
   const run = await trackOperation(user, { kind: "install", key: `install:${id.slice(0, 60)}`, opId: opIdOf(formData.get("_op")) }, () => installFromCatalogue(id, { confirmExtra: true }), (r) => ({ ok: r.ok, error: r.ok ? undefined : r.error }));
@@ -80,7 +80,7 @@ export async function installExtraAction(_prev: ActionState, formData: FormData)
 
 /** Dépôt git personnel : jamais vérifié. L'installation exige que l'utilisateur ait coché qu'il l'a compris. */
 export async function installCustomAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  const { user, t, locale, config } = await adminCtx("owner");
+  const { user, t, locale, config } = await adminCtx({ right: "core:modules.install" });
   if (formData.get("trust") !== "on") return { error: t("catalogue.trustRequired") };
   const repo = String(formData.get("repo") ?? "");
   const run = await trackOperation(user, { kind: "install", key: `install-custom:${repo.slice(0, 200)}`, opId: opIdOf(formData.get("_op")) }, () => installModule(repo), (r) => ({ ok: r.ok, error: r.ok ? undefined : r.error }));
@@ -95,14 +95,14 @@ export async function installCustomAction(_prev: ActionState, formData: FormData
 
 /** Relit tout de suite la liste des modules reconnus (sinon elle est relue au plus toutes les 15 minutes). */
 export async function refreshCatalogueAction(): Promise<void> {
-  await adminCtx("owner");
+  await adminCtx({ right: "core:modules.install" });
   clearRecognizedCache();
   revalidatePath(EXTENSIONS_ADD_HREF);
 }
 
 /** Ajoute un dépôt de modules personnel (propriétaire seulement) : il doit contenir au moins un module. */
 export async function addSourceAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  const { user, t } = await adminCtx("owner");
+  const { user, t } = await adminCtx({ right: "core:modules.install" });
   const result = await addSource(String(formData.get("repo") ?? ""));
   if (!result.ok) return { error: t(result.error) };
   await audit(user.email, "module.source.add", String(formData.get("repo") ?? "").slice(0, 200));
@@ -111,7 +111,7 @@ export async function addSourceAction(_prev: ActionState, formData: FormData): P
 }
 
 export async function removeSourceAction(url: string): Promise<void> {
-  const { user } = await adminCtx("owner");
+  const { user } = await adminCtx({ right: "core:modules.install" });
   await removeSource(url);
   await audit(user.email, "module.source.remove", url.slice(0, 200));
   revalidatePath(EXTENSIONS_ADD_HREF);
@@ -119,7 +119,7 @@ export async function removeSourceAction(url: string): Promise<void> {
 
 /** Relit tout de suite les modules des dépôts personnels (sinon relus au plus toutes les 10 minutes). */
 export async function refreshSourcesAction(): Promise<void> {
-  await adminCtx("owner");
+  await adminCtx({ right: "core:modules.install" });
   clearSourcesCache();
   revalidatePath(EXTENSIONS_ADD_HREF);
 }

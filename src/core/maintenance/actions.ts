@@ -319,7 +319,7 @@ export async function callLevel3(action: Level3Action, args: Params, actor: { na
 
 /* ───────────── Décision humaine ───────────── */
 
-/** Qui décide : `owner` vient de `isOwner(user)` (personne relue en base), jamais d'un formulaire. */
+/** Qui décide : `owner` vient de `can(user, "core:mcp.tokens")` (personne relue en base), jamais d'un formulaire. */
 export type Decider = { email: string; owner: boolean };
 export type DecisionResult = { ok: boolean; message: string; reason?: "forbidden" | "unknown" | "not-pending" | "expired" | "busy" | "failed" };
 

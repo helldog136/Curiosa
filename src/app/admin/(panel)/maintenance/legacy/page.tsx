@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
  * Entretien (0.2.0) : ce qui reste à mettre à niveau après une mise à jour depuis une version plus ancienne du site. Le rapport d'héritage (src/core/modules/legacyReport.ts) est en lecture seule ; s'y ajoutent « Relancer » (le même balayage qu'au démarrage) et, pour un module que le catalogue ne propose plus, « le retirer » ou « le garder tel quel ». Jamais la valeur d'un réglage : des nombres et des noms.
  */
 export default async function LegacyPage({ searchParams }: { searchParams: Promise<{ done?: string }> }) {
-  const { t, locale } = await adminCtx("owner");
+  const { t, locale } = await adminCtx({ right: "core:updates" });
   const { done } = await searchParams;
   const r = await legacyReport();
   const status = legacyStatus(r);

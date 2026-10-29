@@ -145,21 +145,46 @@ Dans *Équipe → Actions sensibles → Définir un mot de passe temporaire*, la
 
 Une personne a **un ou plusieurs rôles** ; elle peut faire tout ce que l'un d'eux permet (union des droits).
 
-- **Rôles prédéfinis**, non modifiables : *Propriétaire* (tout ; une seule personne, intouchable), *Administrateur* (tout sauf ce qui est réservé à la personne propriétaire),
+- **Rôles prédéfinis**, non modifiables, du plus haut au plus bas : *Propriétaire* (tout ; la première personne, intouchable), *Coordination technique* (0.4.0, voir ci-dessous),
+  *Administrateur* (tout sauf ce qui est réservé : équipe, rôles, sauvegardes, mises à jour, installation de modules, jetons des assistants IA, sécurité),
   *Éditeur* (écrire, modifier et publier les contenus). Ils sont créés au démarrage (`src/core/auth/roles.ts`, idempotent) ; chaque personne reçoit celui de son niveau.
-- **Rôles personnalisés** (*Équipe → Rôles*, **propriétaire seulement**) : un nom, une phrase, des cases à cocher par module en mots simples
+- **Rôles personnalisés** (*Équipe → Rôles*, **propriétaire et coordination technique** : droit `core:roles`) : un nom, une phrase, des cases à cocher par module en mots simples
   (« Contacts : voir les e-mails »). Sur la fiche d'une personne, des **puces cumulables** (Éditeur + Modérateur) et l'aperçu « Ce que cette personne peut faire ».
 - **Droits** : ceux du cœur (`core:entries.edit`, `core:entries.publish`) et ceux des modules, toujours **préfixés par le cœur** (`<module>:<droit>`) : un module ne peut
   ni déclarer ni tester le droit d'un autre. `<module>:open` ouvre la page d'un module (administrateurs : oui ; éditeurs : non, comme avant).
 - **Jamais proposés** dans un rôle (et refusés par le serveur s'ils arrivent dans un formulaire forgé) : `core:team`, `core:roles`, `core:backup`, `core:updates`,
-  `core:modules.install`, `core:mcp.tokens`, `core:security`. Ces pages restent celles de la personne propriétaire.
+  `core:modules.install`, `core:mcp.tokens`, `core:security`. Ils ne s'obtiennent que par le **niveau** (propriétaire, coordination technique), jamais par un rôle personnalisé.
+
+### Le Coordination technique (0.4.0)
+
+Une personne peut installer Curiosa pour elle ou son organisation et confier toute l'administration à un tiers : *Équipe → Ajouter → Coordination technique*.
+Hiérarchie : **propriétaire > coordination technique > administrateur > éditeur**. La première personne reste TOUJOURS la personne propriétaire.
+
+**Droits** : une seule table, `LEVEL_RESERVED` dans `src/core/auth/rights.ts` (décision de la propriétaire ; pour la changer, modifier cette ligne, les pages, actions et tests suivent).
+Le coordinateur a tous les droits de l'administrateur (dont les droits de module `default.admin !== false`, y compris les droits `sensitive` déclarés par défaut pour l'administrateur), plus
+**les sept droits réservés** : `core:updates`, `core:modules.install`, `core:backup`, `core:mcp.tokens`, `core:security`, `core:team`, `core:roles`. Là où une page exigeait « propriétaire » pour une
+opération technique, elle exige désormais le droit (`adminCtx({ right })`, `can`) : mises à jour et restauration du site, modules et skins (installer, mettre à jour, retirer), sauvegardes
+(page et routes HTTP), assistants IA (jetons, droits, validation des demandes de maintenance), journal d'audit, « exiger la double vérification », suivi des opérations longues, rôles et équipe.
+
+**Ce qui reste au propriétaire SEUL** (inventaire) : son compte (modifier, rétrograder, supprimer, mot de passe temporaire, sessions, double vérification, déblocage) ; nommer, modifier, rétrograder, supprimer ou
+réinitialiser un coordinateur ; affecter le niveau propriétaire (jamais possible, ni par la personne propriétaire : le site se transfère hors de l'application) ; transférer ou supprimer le site ; les réglages d'envoi des
+e-mails (*Réglages → E-mail*) et la clé du service de jaquettes, qui n'ont pas de droit propre.
+
+**Garde-fous** (`team.ts`, `members.ts`, `roles.ts`, testés par `tests/core/coordinator.test.mjs`) : tout est revérifié côté serveur, l'acteur relu en base ; un coordinateur ne se promeut pas et n'en crée pas ;
+ne donne à un rôle ou à une personne que des droits qu'il possède lui-même (les droits de module `default.admin: false` ne sont donc pas à sa portée) ; ne remodèle pas un rôle qui donne plus que lui ; ne supprime pas un
+rôle tenu par un coordinateur ; il reste toujours un propriétaire. Journal : `user.create` (avec le niveau), `user.roles`, `role.*`, `user.delete`, etc.
+
+**Stockage et retour en arrière** : le niveau historique `User.role` d'un coordinateur vaut **`admin`** (valeur de repli la plus sûre : un ancien cœur le traite en administrateur, jamais en propriétaire ni en « aucun accès »),
+et la colonne `User.coordinator` (migration `20261029090000_coordinator`, faux par défaut : aucun compte existant ne change) porte le drapeau. Le drapeau ne vaut **que** si `role` est `admin` : si un ancien cœur change `role`,
+le drapeau est ignoré puis effacé au démarrage du nouveau cœur. Une sauvegarde porte la colonne ; restaurée sur ce cœur, elle redonne le niveau ; sur un ancien cœur ou depuis une sauvegarde d'avant, le compte est un administrateur.
+Cas limite assumé : si, sur un ancien cœur, la personne propriétaire rétrograde un coordinateur puis le remet administrateur avant tout démarrage du nouveau cœur, le drapeau est encore là et il redevient coordinateur.
 
 **Ce que vérifie le serveur** (testé par `tests/core/roles-security.test.mjs`) :
 
 - La personne est **relue en base à chaque requête** : un droit retiré est refusé dès la requête suivante, sans reconnexion. Le jeton de session garde un champ `role`
   (compatibilité) mais **ne décide de rien**.
-- **Anti-élévation** : seule la personne propriétaire (relu en base) crée, modifie ou supprime un rôle et choisit les rôles des autres ; un rôle ne contient que des droits connus que
-  la personne qui l'a créé possède ; le rôle *Propriétaire* ne s'affecte jamais ; un identifiant de rôle forgé ou inconnu est refusé (rien n'est écrit en partie).
+- **Anti-élévation** : seuls le propriétaire et le coordinateur (droits `core:roles` / `core:team`, relus en base) créent, modifient ou suppriment un rôle et choisissent les rôles des autres ; un rôle ne contient que des droits connus que
+  son créateur possède ; le rôle *Propriétaire* ne s'affecte jamais ; un identifiant de rôle forgé ou inconnu est refusé (rien n'est écrit en partie).
 - **Anti-verrouillage** : une personne garde au moins un rôle ; un rôle en usage ne se supprime qu'en choisissant le rôle que recevront ses membres (la base le refuse
   aussi : `onDelete: Restrict`) ; la personne propriétaire est intouchable.
 - **Ordre inchangé** : connecté → mot de passe temporaire → rôle ou droit → double vérification. Un mot de passe temporaire bloque tout, quels que soient les rôles.

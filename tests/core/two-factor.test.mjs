@@ -140,8 +140,8 @@ test("branchements : le mot de passe seul n'ouvre jamais un compte protégé (ni
   assert.match(perms, /needsTwoFactor && !opts\.allowUnenrolled\) return "enroll"/);
   assert.match(perms, /enroll: "\/admin\/account\?need2fa=1"/);
   const users = fs.readFileSync("src/app/admin/(panel)/users/actions.ts", "utf8");
-  assert.match(users, /resetUserTwoFactor[\s\S]*adminCtx\("owner"\)/);
-  assert.match(users, /setRequireTwoFactor[\s\S]*adminCtx\("owner"\)[\s\S]*users\.require2faNeedsYou/, "le propriétaire ne peut pas l'exiger sans l'avoir activée");
+  assert.match(users, /resetUserTwoFactor[\s\S]*adminCtx\(\{ right: "core:[a-z.]+" \}\)/);
+  assert.match(users, /setRequireTwoFactor[\s\S]*adminCtx\(\{ right: "core:[a-z.]+" \}\)[\s\S]*users\.require2faNeedsYou/, "le propriétaire ne peut pas l'exiger sans l'avoir activée");
   const account = fs.readFileSync("src/app/admin/(panel)/account/actions.ts", "utf8");
   assert.match(account, /disableMyTwoFactor[\s\S]*security\.require2fa[\s\S]*verifyPassword[\s\S]*verifySecondFactor/, "désactiver : refusé si exigé, sinon mot de passe ET code");
   assert.match(fs.readFileSync("scripts/auth-recover.mjs", "utf8"), /reset-2fa/);

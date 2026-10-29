@@ -189,7 +189,7 @@ test("branchements : actions et routes d'admin fermées aux sessions forcées, d
   // Les jetons MCP appartiennent au site (hash en base), jamais à la session de la personne : aucune route MCP ne lit la session.
   for (const f of ["src/app/api/mcp/route.ts", "src/app/api/mcp/[token]/route.ts", "src/core/services/mcp/tokens.ts", "src/core/services/mcp/server.ts"]) assert.doesNotMatch(read(f), /@\/auth|permissions|currentUser/, f);
   // L'action du propriétaire : rôle exigé côté serveur, arguments dans le corps de la requête.
-  assert.match(read("src/app/admin/(panel)/users/actions.ts"), /export async function setTemporaryPassword[\s\S]*adminCtx\("owner"\)[\s\S]*resetMemberPassword/);
+  assert.match(read("src/app/admin/(panel)/users/actions.ts"), /export async function setTemporaryPassword[\s\S]*adminCtx\(\{ right: "core:[a-z.]+" \}\)[\s\S]*resetMemberPassword/);
   // Le mot de passe n'est jamais dans l'adresse ni stocké par le navigateur.
   const ui = read("src/components/admin/TemporaryPasswordButton.tsx");
   assert.doesNotMatch(ui, /localStorage|sessionStorage|document\.cookie|router\.|searchParams|location\./);

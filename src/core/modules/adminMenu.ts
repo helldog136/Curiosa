@@ -1,24 +1,25 @@
 import type { Level } from "../auth/rights";
+import { levelHolds } from "../auth/team";
 
 /** Les entrées de la rubrique « Administration » du menu, dans l'ordre d'affichage. */
 export type AdminEntry = "extensions" | "assistants" | "users" | "health" | "backup" | "updates" | "audit";
 
 /**
  * Quelles entrées d'« Administration » voit cette personne ? Logique pure, testée.
- * - Assistants IA : propriétaire seulement, en mode simple comme en mode avancé (c'est la page qu'une personne non technique utilise pour brancher une IA) ;
+ * - Assistants IA : qui détient `core:mcp.tokens` (personne propriétaire, coordination technique), en mode simple comme en mode avancé (c'est la page qu'une personne non technique utilise pour brancher une IA) ;
+ * - Sauvegardes, Mises à jour : `core:backup`, `core:updates` ; Journal d'audit : `core:security`, mode avancé seulement (la table est dans rights.ts, `LEVEL_RESERVED`) ;
  * - Santé de mon site (contrôle du contenu) : administrateur et propriétaire, en mode simple comme avancé ;
- * - Journal d'audit : propriétaire, mode avancé seulement.
  */
 export function administrationEntries({ role, advanced }: { role: Level; advanced: boolean }): AdminEntry[] {
-  // « Gérer » : administrateur ou propriétaire (un « none » à rôles personnalisés n'a pas cette rubrique, comme un éditeur).
-  const manage = role === "admin" || role === "owner";
-  const owner = role === "owner";
+  // « Gérer » : administrateur, coordinateur ou propriétaire (un « none » à rôles personnalisés n'a pas cette rubrique, comme un éditeur).
+  const manage = role === "admin" || role === "coordinator" || role === "owner";
   const out: AdminEntry[] = [];
   if (manage) out.push("extensions");
-  if (owner) out.push("assistants");
+  if (levelHolds(role, "core:mcp.tokens")) out.push("assistants");
   if (manage) out.push("users", "health");
-  if (owner) out.push("backup", "updates");
-  if (owner && advanced) out.push("audit");
+  if (levelHolds(role, "core:backup")) out.push("backup");
+  if (levelHolds(role, "core:updates")) out.push("updates");
+  if (levelHolds(role, "core:security") && advanced) out.push("audit");
   return out;
 }
 

@@ -1,6 +1,6 @@
 import { floatingLabels } from "@/components/admin/floating";
 import { notFound, redirect } from "next/navigation";
-import { can, deniedPath, hasRole, isOwner } from "@/core/auth/access";
+import { can, deniedPath, hasRole } from "@/core/auth/access";
 import { auditDenied } from "@/core/permissions";
 import { adminCtx } from "@/core/admin";
 import { DISPLAYS, FEATURES, getInstanceById } from "@/core/instances";
@@ -76,7 +76,7 @@ export async function InstanceView({ id, query: sp, inModal = false }: { id: str
   const inMenu = await isInstanceInMenu(instance.id);
   const moduleName = L(mod.manifest.name);
   // Le propriétaire qui retire la SEULE instance de son module retire le module lui-même ; sinon, seulement cette instance (le module reste installé).
-  const scope = removalScope({ isOwner: isOwner(user), otherInstances: labeler.siblingsOf(instance).length });
+  const scope = removalScope({ isOwner: can(user, "core:modules.install"), otherInstances: labeler.siblingsOf(instance).length });
 
   let panel: Awaited<ReturnType<NonNullable<typeof mod.def.adminPanel>>> = []; // blocs d'un panneau : chacun peut viser un onglet (`tab`, 0.2.5)
   if (mod.def.adminPanel) {
@@ -361,7 +361,7 @@ export async function InstanceView({ id, query: sp, inModal = false }: { id: str
             <form action={retryMigrationAction.bind(null, instance.id)}><PendingButton pendingLabel={t("progress.retrying")}>{t("migration.retry")}</PendingButton></form>
           </div>
         )}
-        <SuggestNotices instanceId={instance.id} query={sp} t={t} isOwner={isOwner(user)} />
+        <SuggestNotices instanceId={instance.id} query={sp} t={t} isOwner={can(user, "core:modules.install")} />
       </div>
 
       {visible.length > 1 || lead ? (

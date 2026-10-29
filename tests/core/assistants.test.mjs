@@ -135,7 +135,7 @@ test("mode simple : aucun mot technique (MCP, jeton, token, API, endpoint, scope
 test("page : sous-titre « API & MCP » et réglages techniques seulement en mode avancé ; onglets Accès, Demandes à valider, Historique ; secret jamais relu", () => {
   const page = read(`${PANEL}/assistants/page.tsx`);
   assert.match(page, /advanced && <span[^>]*>\{t\("assistants\.subtitle"\)\}/);
-  assert.match(page, /adminCtx\("owner"\)/);
+  assert.match(page, /adminCtx\(\{ right: "core:[a-z.]+" \}\)/);
   const access = read(`${PANEL}/assistants/AccessTab.tsx`);
   assert.match(access, /\{advanced && \(\s*<Panel title=\{t\("assistants\.tech\.title"\)\}/, "adresse du serveur, guides par outil et liste des actions : avancé seulement");
   assert.ok(access.indexOf("/api/mcp</code>") > access.indexOf("{advanced && ("), "l'adresse du serveur n'est montrée qu'en avancé");
@@ -155,5 +155,5 @@ test("accès : la page d'un accès réunit droits et validation, le détail par 
   assert.match(page, /data-testid="maintenance-approval"/);
   assert.match(page, /ConfirmButton message=\{t\("aim\.approval\.directConfirm", \{ token: row\.name \}\)\}/, "la confirmation de l'exécution directe est conservée");
   assert.match(page, /confirmMessage=\{tool\.destructive \?/, "la confirmation d'une action irréversible est conservée");
-  assert.match(page, /adminCtx\("owner"\)/);
+  assert.match(page, /adminCtx\(\{ right: "core:[a-z.]+" \}\)/);
 });

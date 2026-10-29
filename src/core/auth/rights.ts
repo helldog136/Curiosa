@@ -6,13 +6,13 @@
  * - Droits de modules : déclarés dans `rights` du manifeste avec un identifiant LOCAL (« email.view ») ; le cœur les préfixe par l'identifiant
  *   du module (« contacts:email.view ») : un module ne peut donc jamais déclarer un droit qui s'applique à un autre.
  *   Le droit implicite `<module>:open` ouvre la page d'administration du module.
- * - Rôles prédéfinis : owner = tout ; admin = tout sauf les droits réservés, et les droits de modules dont `default.admin !== false` ;
+ * - Rôles prédéfinis : owner = tout ; coordinator = admin + les droits réservés de `LEVEL_RESERVED` ; admin = tout sauf les droits réservés, et les droits de modules dont `default.admin !== false` ;
  *   editor = modifier et publier les contenus, et les droits de modules dont `default.editor === true` (comportement d'avant la 0.2.0 : un éditeur publie).
  */
 import type { LocalizedString } from "../modules/types";
 
-export type Level = "owner" | "admin" | "editor" | "none";
-export const SYSTEM_ROLE_KEYS = ["owner", "admin", "editor"] as const;
+export type Level = "owner" | "coordinator" | "admin" | "editor" | "none";
+export const SYSTEM_ROLE_KEYS = ["owner", "coordinator", "admin", "editor"] as const;
 export type SystemRoleKey = (typeof SYSTEM_ROLE_KEYS)[number];
 export const isSystemKey = (k: string): k is SystemRoleKey => (SYSTEM_ROLE_KEYS as readonly string[]).includes(k);
 
@@ -20,6 +20,46 @@ export const CORE_DELEGABLE = ["core:entries.edit", "core:entries.publish"] as c
 export const CORE_RESERVED = ["core:team", "core:roles", "core:backup", "core:updates", "core:modules.install", "core:mcp.tokens", "core:security"] as const;
 const RESERVED = new Set<string>(CORE_RESERVED);
 export const isReserved = (right: string): boolean => RESERVED.has(right);
+export type ReservedRight = (typeof CORE_RESERVED)[number];
+
+/**
+ * LA TABLE DES DROITS RÉSERVÉS PAR NIVEAU (0.4.0) : le SEUL endroit à changer pour décider ce que détient le Coordinateur technique.
+ * Le propriétaire les a tous (voir `systemRights`) ; l'administrateur et l'éditeur n'en ont aucun ; un rôle personnalisé n'en a jamais.
+ * Décision de la propriétaire : le coordinateur a toute l'administration technique ET l'équipe/les rôles. Pour lui retirer l'équipe et les rôles,
+ * il suffit d'enlever « core:team » et « core:roles » de la ligne `coordinator` ; les pages, actions et tests suivent cette table.
+ * Ce qui reste au propriétaire SEUL n'est pas un droit : toucher à son compte, nommer un coordinateur, créer ou affecter le niveau propriétaire,
+ * transférer ou supprimer le site (voir team.ts et docs/SECURITE.md).
+ */
+export const LEVEL_RESERVED: Record<Level, readonly ReservedRight[]> = {
+  owner: CORE_RESERVED,
+  coordinator: ["core:team", "core:roles", "core:backup", "core:updates", "core:modules.install", "core:mcp.tokens", "core:security"],
+  admin: [],
+  editor: [],
+  none: [],
+};
+
+/**
+ * Valeur HISTORIQUE de `User.role` écrite pour chaque niveau (lue par un ancien cœur, qui ne connaît que owner|admin|editor|none). Le coordinateur y est
+ * « admin » : l'ancien cœur lui donne exactement les droits d'un administrateur, jamais ceux du propriétaire, et jamais « aucun accès » (verrouillage).
+ * Le niveau réel est la combinaison `role` + drapeau `coordinator` (voir `levelOfRow`).
+ */
+export const LEGACY_ROLE: Record<Level, "owner" | "admin" | "editor" | "none"> = { owner: "owner", coordinator: "admin", admin: "admin", editor: "editor", none: "none" };
+
+/** Colonnes `User` à écrire pour un niveau : `role` (historique) et `coordinator` (drapeau lu seulement par ce cœur et les suivants). */
+export function columnsOf(level: Level): { role: string; coordinator: boolean } {
+  return { role: LEGACY_ROLE[level], coordinator: level === "coordinator" };
+}
+
+/**
+ * Le niveau d'une ligne `User` (ou d'une ligne de sauvegarde). Le drapeau `coordinator` ne vaut QUE sur un compte dont `role` est « admin » :
+ * si un ancien cœur a changé `role`, le drapeau est ignoré (jamais d'élévation). Valeur inconnue = « none ».
+ */
+export function levelOfRow(row: { role?: unknown; coordinator?: unknown } | null | undefined): Level {
+  const { role: r, coordinator } = row ?? {};
+  if (r === "owner") return "owner";
+  if (r === "admin") return coordinator === true ? "coordinator" : "admin";
+  return r === "editor" ? "editor" : "none";
+}
 
 /** Identifiant local d'un droit de module (manifeste) : 1 à 3 segments en minuscules, jamais de « : » (le préfixe est l'affaire du cœur). */
 export const RIGHT_ID_RE = /^[a-z][a-z0-9-]*(\.[a-z][a-z0-9-]*){0,2}$/;
@@ -84,6 +124,7 @@ export function rightsCatalogue(modules: ModuleRightsSource[]): RightInfo[] {
 /** Les droits d'un rôle prédéfini (calculés : un module installé plus tard apporte ses droits par défaut sans rien enregistrer). */
 export function systemRights(level: Level, catalogue: RightInfo[]): Set<string> {
   if (level === "owner") return new Set(catalogue.map((r) => r.id));
+  if (level === "coordinator") return new Set([...catalogue.filter((r) => !r.reserved && r.admin).map((r) => r.id), ...LEVEL_RESERVED.coordinator]);
   if (level === "admin") return new Set(catalogue.filter((r) => !r.reserved && r.admin).map((r) => r.id));
   if (level === "editor") return new Set(catalogue.filter((r) => !r.reserved && r.editor).map((r) => r.id));
   return new Set();
@@ -103,7 +144,7 @@ export function parseStoredRights(raw: string, catalogue: RightInfo[]): string[]
   return [...new Set(list.filter((r): r is string => typeof r === "string" && allowed.has(r)))];
 }
 
-export const RANK: Record<Level, number> = { none: 0, editor: 1, admin: 2, owner: 3 };
+export const RANK: Record<Level, number> = { none: 0, editor: 1, admin: 2, coordinator: 3, owner: 4 };
 
 /** Niveau historique d'après des clés de rôles : le plus haut rôle prédéfini, sinon « none ». */
 export function levelFromKeys(keys: readonly string[]): Level {

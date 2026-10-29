@@ -13,7 +13,7 @@ import { EXTENSIONS_HREF, EXTENSIONS_UPDATES_HREF } from "@/core/modules/extensi
 
 /** Réservé au propriétaire : une mise à jour change le code qui tourne sur le serveur. */
 export async function checkNow(): Promise<ActionState> {
-  const { t } = await adminCtx("owner");
+  const { t } = await adminCtx({ right: "core:updates" });
   const check = await checkForUpdate();
   revalidatePath("/admin/updates");
   if (check.error) return { error: t("updates.unreachable") };
@@ -21,7 +21,7 @@ export async function checkNow(): Promise<ActionState> {
 }
 
 export async function applyUpdate(): Promise<ActionState> {
-  const { user, t } = await adminCtx("owner");
+  const { user, t } = await adminCtx({ right: "core:updates" });
   const check = await getUpdateCheck();
   if (!check.available || !check.latest) return { error: t("updates.nothingToApply") };
   const result = await startUpdate(check.latest, user.email);
@@ -31,7 +31,7 @@ export async function applyUpdate(): Promise<ActionState> {
 }
 
 export async function saveAutoUpdate(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  const { user, t } = await adminCtx("owner");
+  const { user, t } = await adminCtx({ right: "core:updates" });
   const on = formData.get("auto") === "on";
   await setAutoUpdate(on);
   await audit(user.email, on ? "update.auto.on" : "update.auto.off");
@@ -41,7 +41,7 @@ export async function saveAutoUpdate(_prev: ActionState, formData: FormData): Pr
 
 /** Canal « release candidates » : réservé au mode avancé, car une rc n'a pas fini d'être éprouvée. */
 export async function saveChannel(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  const { user, t, advanced } = await adminCtx("owner");
+  const { user, t, advanced } = await adminCtx({ right: "core:updates" });
   if (!advanced) return { error: t("error.generic") };
   const rc = formData.get("rc") === "on" && formData.get("rcRisk") === "on";
   await setUpdateChannel(rc ? "rc" : "stable");
@@ -53,7 +53,7 @@ export async function saveChannel(_prev: ActionState, formData: FormData): Promi
 
 /** Revérifie les modules maintenant (sans attendre la fin du délai de mémorisation). */
 export async function recheckModules(): Promise<ActionState> {
-  const { t } = await adminCtx("owner");
+  const { t } = await adminCtx({ right: "core:updates" });
   await getModulesReport(true);
   revalidatePath("/admin/updates");
   revalidatePath(EXTENSIONS_HREF);
@@ -69,7 +69,7 @@ export type ModulesBilan = { /** Rien n'a été lancé : une autre mise à jour 
  * Chaque mise à jour est inscrite au journal (« module.update »), réussie ou non, comme sur la page des modules.
  */
 export async function updateModulesAction(ids?: string[], opId?: string): Promise<ModulesBilan> {
-  const { user, t, locale, config } = await adminCtx("owner");
+  const { user, t, locale, config } = await adminCtx({ right: "core:updates" });
   const todo = ids?.length ? ids.filter((id) => typeof id === "string").slice(0, 200) : (await getModulesReport(true)).outdated.map((o) => o.id);
   const names = await moduleNames(locale, config.defaultLocale);
   // Suivi d'opération : « module N sur M » avec le nom du module en cours. Un second lancement (autre onglet, double clic) rejoint celui-ci et en rend le bilan.

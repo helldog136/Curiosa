@@ -194,7 +194,7 @@ test("page de l'instance : droits inchangés (open, administrateurs, propriétai
   assert.match(v, /if \(manage\) \{\n\s+for \(const f of shownSettings\) filled\.add\(settingArea\(f\)\);/, "Réglages / Sources / Général : administrateurs seulement");
   assert.match(v, /const showSources = manage && advanced/);
   assert.match(v, /\{manage && here\("general"\) && <>\{generalForm\}\{tasksNode\}\{dangerZone\}<\/>\}/, "zone sensible : en bas de Général");
-  assert.match(v, /removalScope\(\{ isOwner: isOwner\(user\)/, "retirer le module : propriétaire");
+  assert.match(v, /removalScope\(\{ isOwner: can\(user, "core:modules\.install"\)/, "retirer le module : propriétaire");
   assert.match(v, /<input type="hidden" name="__tab" value=\{tab\} \/>/);
   assert.match(v, /history=\{inModal \? "replace" : "push"\}/, "dans la fenêtre d'Extensions, Fermer (retour) ferme bien la fenêtre");
   assert.match(read("src/app/admin/(panel)/extensions/@modal/(..)instances/[id]/page.tsx"), /<InstanceView id=\{id\} query=\{await searchParams\} inModal \/>/);

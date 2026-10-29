@@ -1,5 +1,5 @@
 import { prisma } from "../db";
-import { audit, hasRole, type AdminUser } from "../permissions";
+import { audit, can, type AdminUser } from "../permissions";
 import { deleteSetting, getSetting, setSetting } from "../settings";
 import { getCatalogue, type CatalogueEntry } from "./catalogue";
 import { liveProviders } from "./dependencies";
@@ -83,7 +83,7 @@ export async function suggestionView(instanceId: string, service: unknown, min?:
 
 /** « Ne plus proposer » (propriétaire). */
 export async function dismissSuggestion(user: AdminUser | null, instanceId: string, service: string): Promise<boolean> {
-  if (!hasRole(user, "owner") || !validService(service)) return false;
+  if (!user || !can(user, "core:modules.install") || !validService(service)) return false;
   if (!(await prisma.moduleInstance.findUnique({ where: { id: instanceId }, select: { id: true } }))) return false;
   await setSetting(dismissKey(instanceId, service), new Date().toISOString());
   return true;
@@ -97,7 +97,7 @@ export async function dismissedServices(instanceId: string): Promise<string[]> {
 
 /** « Afficher de nouveau les suggestions » (propriétaire) : tous les refus de cette instance sont oubliés. */
 export async function resetSuggestions(user: AdminUser | null, instanceId: string): Promise<boolean> {
-  if (!hasRole(user, "owner")) return false;
+  if (!user || !can(user, "core:modules.install")) return false;
   for (const service of await dismissedServices(instanceId)) await deleteSetting(dismissKey(instanceId, service));
   return true;
 }
@@ -110,7 +110,7 @@ export type SuggestInstallResult = InstallResult | { ok: false; error: "modules.
  * la confirmation explicite de l'avertissement. Audit : `module.install.suggested` (module, service, origine ; jamais de secret).
  */
 export async function installSuggested(user: AdminUser | null, input: { instanceId: string; service: string; moduleId: string; confirmExtra?: boolean }): Promise<SuggestInstallResult> {
-  if (!hasRole(user, "owner")) return { ok: false, error: "modules.error.ownerOnly" };
+  if (!user || !can(user, "core:modules.install")) return { ok: false, error: "modules.error.ownerOnly" };
   const { instanceId, service, moduleId } = input;
   if (!validService(service) || typeof moduleId !== "string" || !/^[a-z][a-z0-9-]{1,39}$/.test(moduleId)) return { ok: false, error: "modules.error.suggestInvalid" };
   const inst = await prisma.moduleInstance.findUnique({ where: { id: instanceId }, select: { moduleId: true } });

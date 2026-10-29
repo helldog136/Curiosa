@@ -83,7 +83,7 @@ export async function saveOptionsAction(_prev: ActionState, fd: FormData): Promi
 // ── skins : ajouter, mettre à jour, retirer (propriétaire)
 
 export async function installFromCatalogueAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
-  const { user, t, locale } = await adminCtx("owner");
+  const { user, t, locale } = await adminCtx({ right: "core:modules.install" });
   const id = idOf(fd);
   const r = await skins.installFromCatalogue(id, { actor: user.email });
   if (!r.ok) return { error: await failureText(r, t, locale) };
@@ -109,7 +109,7 @@ export type InspectView = {
 
 /** Lit un dépôt SANS rien installer : README, licences, aperçus, contrôle de lisibilité. */
 export async function inspectSkinAction(url: string): Promise<InspectView> {
-  const { t, locale } = await adminCtx("owner");
+  const { t, locale } = await adminCtx({ right: "core:modules.install" });
   const text = (x: { fr: string; en: string }) => (locale === "fr" ? x.fr : x.en);
   const r = await skins.inspect(String(url).slice(0, 400));
   if (!r.ok) return { ok: false, error: await failureText(r, t, locale) };
@@ -130,7 +130,7 @@ export async function inspectSkinAction(url: string): Promise<InspectView> {
 
 /** Dépôt personnel : installé seulement avec la case « je comprends » cochée. */
 export async function installPersonalAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
-  const { user, t, locale } = await adminCtx("owner");
+  const { user, t, locale } = await adminCtx({ right: "core:modules.install" });
   const url = String(fd.get("url") ?? "").trim();
   if (fd.get("understood") !== "on") return { errors: { understood: t("appearance.personal.mustConfirm") } };
   const r = await skins.install(url, { confirmPersonal: true, actor: user.email });
@@ -148,13 +148,13 @@ export async function installPersonalAction(_prev: ActionState, fd: FormData): P
 export type UpdateView = { ok: true; available: boolean; target?: string; level?: string; needsCore?: string; failed?: boolean } | { ok: false; error: string };
 
 export async function checkUpdateAction(id: string): Promise<UpdateView> {
-  await adminCtx("owner");
+  await adminCtx({ right: "core:modules.install" });
   const c = await skins.checkUpdate(String(id), { fresh: true });
   return { ok: true, available: c.available, target: c.target, level: c.level ?? undefined, needsCore: c.needsCore, failed: c.failed };
 }
 
 export async function updateSkinAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
-  const { user, t, locale } = await adminCtx("owner");
+  const { user, t, locale } = await adminCtx({ right: "core:modules.install" });
   const r = await skins.update(idOf(fd), { actor: user.email, acceptMajor: fd.get("acceptMajor") === "on" || fd.get("acceptMajor") === "1" });
   if (!r.ok) return { error: await failureText(r, t, locale) };
   done();
@@ -162,7 +162,7 @@ export async function updateSkinAction(_prev: ActionState, fd: FormData): Promis
 }
 
 export async function revertSkinAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
-  const { user, t, locale } = await adminCtx("owner");
+  const { user, t, locale } = await adminCtx({ right: "core:modules.install" });
   const r = await skins.revert(idOf(fd), { actor: user.email });
   if (!r.ok) return { error: await failureText(r, t, locale) };
   done();
@@ -170,7 +170,7 @@ export async function revertSkinAction(_prev: ActionState, fd: FormData): Promis
 }
 
 export async function removeSkinAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
-  const { user, t, locale } = await adminCtx("owner");
+  const { user, t, locale } = await adminCtx({ right: "core:modules.install" });
   const r = await skins.remove(idOf(fd), { actor: user.email });
   if (!r.ok) return { error: await failureText(r, t, locale) };
   done();
@@ -187,7 +187,7 @@ export async function previewLinkAction(id: string, path = "/"): Promise<{ ok: t
 
 /** Adresse du dépôt d'un skin du catalogue (pour « Voir les détails » avant d'installer). */
 export async function catalogueAddress(id: string): Promise<string | null> {
-  await adminCtx("owner");
+  await adminCtx({ right: "core:modules.install" });
   const cat = await skins.listCatalogue();
   const e = cat.items.find((x) => x.id === id);
   return e ? repoAddress({ url: e.repo, ref: e.ref ?? null, subdir: e.subdir ?? null }) : null;

@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { isOwner, type AdminUser } from "@/core/permissions";
+import { can, type AdminUser } from "@/core/permissions";
 import { OperationBusy, OperationWaitTimeout, runOperation, type OpKind } from "./tracker";
 
 export type Tracked<R> = { busy: false; joined: boolean; result: R } | { busy: true };
@@ -31,4 +31,5 @@ export const opIdOf = (value: unknown): string | null => (typeof value === "stri
 const salt = crypto.randomBytes(16);
 export const secretKeyPart = (value: string): string => crypto.createHmac("sha256", salt).update(value).digest("hex").slice(0, 24);
 
-export const viewerOf = (user: AdminUser): { email: string; owner: boolean } => ({ email: user.email, owner: isOwner(user) });
+/** `owner` : peut lire les opérations des autres (suivi technique : mises à jour, sauvegardes) = détient `core:updates` (propriétaire, coordinateur technique). */
+export const viewerOf = (user: AdminUser): { email: string; owner: boolean } => ({ email: user.email, owner: can(user, "core:updates") });

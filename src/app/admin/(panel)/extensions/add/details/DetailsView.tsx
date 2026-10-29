@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { adminCtx } from "@/core/admin";
-import { isOwner as ownerCheck } from "@/core/auth/access";
+import { can as canDo } from "@/core/auth/access";
 import { findCatalogueEntry } from "@/core/modules/catalogue";
 import { getCoreVersion } from "@/core/modules/compat";
 import { parseRepoUrl } from "@/core/modules/installer";
@@ -27,7 +27,7 @@ import { installCustomAction, installExtraAction } from "../actions";
 /** Le contenu d'une fiche de module : seul ou dans la fenêtre par-dessus le catalogue (`embedded`, avec le bouton d'installation flottant en bas). */
 export async function DetailsView({ id, repo, embedded = false }: { id?: string; repo?: string; embedded?: boolean }) {
   const { t, locale, config, user, advanced } = await adminCtx("admin");
-  const isOwner = ownerCheck(user);
+  const isOwner = canDo(user, "core:modules.install"); // peut installer des extensions
   const L = (v: Parameters<typeof localized>[0]) => localized(v, locale, config.defaultLocale);
 
   let target: PreviewTarget | null = null;

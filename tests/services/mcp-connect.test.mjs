@@ -235,7 +235,7 @@ test("option réservée au propriétaire : création et changement passent par a
   const actions = read(`${PANEL}/actions.ts`);
   for (const name of ["createTokenAction", "setUrlAccessAction"]) {
     const body = actions.slice(actions.indexOf(`export async function ${name}`));
-    assert.match(body.slice(0, 200), /adminCtx\("owner"\)/, name);
+    assert.match(body.slice(0, 200), /adminCtx\(\{ right: "core:[a-z.]+" \}\)/, name);
   }
   assert.match(actions, /audit\(user\.email, "mcp\.token\.url\.on", row\.name\)/);
   assert.match(actions, /audit\(user\.email, "mcp\.token\.url\.off", row\.name\)/);

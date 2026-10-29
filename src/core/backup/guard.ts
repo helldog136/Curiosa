@@ -1,11 +1,11 @@
 import crypto from "node:crypto";
 import { prisma } from "@/core/db";
-import { currentUser, isOwner } from "@/core/permissions";
+import { can, currentUser } from "@/core/permissions";
 
 /**
  * Les routes de sauvegarde sont des routes HTTP « nues » (pas des actions serveur) : Next.js n'y ajoute aucune protection
  * contre les requêtes envoyées depuis un AUTRE site avec les cookies de l'administrateur. On l'ajoute ici :
- * la requête doit venir de ce même site (en-tête Origin = hôte de la requête), et d'un propriétaire connecté.
+ * la requête doit venir de ce même site (en-tête Origin = hôte de la requête), et d'une personne connectée qui détient le droit `core:backup` (propriétaire, ou coordinateur technique).
  */
 export function isSameOrigin(headers: Pick<Headers, "get">): boolean {
   const origin = headers.get("origin");
@@ -14,14 +14,17 @@ export function isSameOrigin(headers: Pick<Headers, "get">): boolean {
   try { return new URL(origin).host === host.split(",")[0]!.trim(); } catch { return false; }
 }
 
-/** `null` = autorisé ; sinon la réponse d'erreur à renvoyer. Les sauvegardes contiennent tout le site : propriétaire seulement. */
-export async function guardOwner(request: Request): Promise<Response | null> {
+/** `null` = autorisé ; sinon la réponse d'erreur à renvoyer. Les sauvegardes contiennent tout le site : droit `core:backup` seulement (jamais un éditeur ni un administrateur). */
+export async function guardBackup(request: Request): Promise<Response | null> {
   if (!isSameOrigin(request.headers)) return Response.json({ ok: false, error: "forbidden" }, { status: 403 });
   const user = await currentUser();
   if (!user) return Response.json({ ok: false, error: "unauthorized" }, { status: 401 });
-  if (!isOwner(user)) return Response.json({ ok: false, error: "forbidden" }, { status: 403 });
+  if (!can(user, "core:backup")) return Response.json({ ok: false, error: "forbidden" }, { status: 403 });
   return null;
 }
+
+/** Ancien nom, gardé pour les routes existantes. */
+export const guardOwner = guardBackup;
 
 export const MAX_UPLOAD = 1024 * 1024 * 1024;
 

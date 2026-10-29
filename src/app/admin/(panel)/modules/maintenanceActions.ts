@@ -12,7 +12,7 @@ export type MaintenanceResult = { ok: boolean; lines: string[] };
 
 /** Remet le code du module à neuf depuis sa source (réglages, instances et données conservés). Renvoie le bilan déjà rédigé. */
 export async function reinstallModuleAction(id: string, opId?: string): Promise<MaintenanceResult> {
-  const { user, t } = await adminCtx("owner");
+  const { user, t } = await adminCtx({ right: "core:modules.install" });
   // Suivi d'opération : un second clic (autre onglet) rejoint la réinstallation en cours au lieu d'en lancer une autre.
   const run = await trackOperation(user, { kind: "module-reinstall", key: `module-reinstall:${String(id).slice(0, 60)}`, opId: opIdOf(opId) }, async () => {
     const result = await reinstallModule(id);
@@ -25,7 +25,7 @@ export async function reinstallModuleAction(id: string, opId?: string): Promise<
 
 /** « Comparer avec la source » : appel réseau explicite pour un module git ; le contenu installé est-il identique à celui de la source ? */
 export async function compareSourceAction(id: string): Promise<MaintenanceResult & { state: "identical" | "different" | "unavailable"; sourceVersion?: string }> {
-  await adminCtx("owner");
+  await adminCtx({ right: "core:modules.install" });
   const d = await diagnoseModule(id, { compare: "network" });
   const c = d?.comparison;
   return { ok: !!c && c.state !== "unavailable", lines: [], state: c?.state ?? "unavailable", sourceVersion: c?.sourceVersion };

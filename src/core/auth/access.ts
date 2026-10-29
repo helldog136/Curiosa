@@ -1,12 +1,15 @@
 import { prisma } from "../db";
 import { sessionIsCurrent } from "./sessions";
 import { getSetting } from "../settings";
-import { parseStoredRights, RANK as LEVEL_RANK, rightsCatalogue, systemRights, type Level, type ModuleRightsSource, type RightInfo } from "./rights";
+import { levelOfRow, parseStoredRights, RANK as LEVEL_RANK, rightsCatalogue, systemRights, type Level, type ModuleRightsSource, type RightInfo } from "./rights";
 
 export type { Level } from "./rights";
-/** Les trois paliers que les pages exigent (`adminCtx("editor" | "admin" | "owner")`). */
+/**
+ * Les trois paliers que les pages exigent (`adminCtx("editor" | "admin" | "owner")`). Le coordinateur technique (rang 3) passe « admin » (rang 2) et ne passe PAS « owner » (rang 4) :
+ * ce qui était réservé au propriétaire pour une opération technique s'exige désormais par DROIT (`adminCtx({ right })`, `can`), voir rights.ts.
+ */
 export type Role = "owner" | "admin" | "editor";
-export const RANK: Record<Role, number> = { editor: 1, admin: 2, owner: 3 };
+export const RANK: Record<Role, number> = { editor: 1, admin: 2, owner: 4 };
 
 /**
  * `level` : le niveau historique (colonne `User.role`, recalculée par le cœur : le plus haut rôle prédéfini de la personne, sinon « none »).
@@ -19,10 +22,9 @@ export type AdminUser = {
   locale: string | null; advanced: boolean; totp: boolean; passkeys: number; twoFactor: boolean; needsTwoFactor: boolean; mustChangePassword: boolean;
 };
 
-/** Le niveau lu sur une ligne de la base (utilisateur, ou ligne d'une sauvegarde) : seul endroit du cœur qui lit la colonne `role`. Valeur inconnue = « none ». */
-export function levelOf(row: { role?: unknown } | null | undefined): Level {
-  const r = row?.role;
-  return r === "owner" || r === "admin" || r === "editor" ? r : "none";
+/** Le niveau lu sur une ligne de la base (utilisateur, ou ligne d'une sauvegarde) : seul endroit du cœur qui lit les colonnes `role` et `coordinator`. Valeur inconnue = « none ». */
+export function levelOf(row: { role?: unknown; coordinator?: unknown } | null | undefined): Level {
+  return levelOfRow(row);
 }
 
 /** Les droits déclarés par les modules installés (lus à chaque requête, comme l'utilisateur : un module retiré ne laisse aucun droit). */
@@ -43,7 +45,7 @@ export async function currentCatalogue(): Promise<RightInfo[]> {
  * Rôles et droits d'une ligne `User`, relus en base. Le niveau prédéfini vient TOUJOURS de `User.role` (même après un passage par un ancien cœur qui l'aurait changé) ;
  * les affectations `UserRole` n'ajoutent que les rôles personnalisés (une affectation prédéfinie qui ne correspond plus à `User.role` est ignorée).
  */
-export async function accessOf(user: { id: string; role: string }, catalogue?: RightInfo[]): Promise<{ level: Level; roles: string[]; rights: Set<string> }> {
+export async function accessOf(user: { id: string; role: string; coordinator?: boolean }, catalogue?: RightInfo[]): Promise<{ level: Level; roles: string[]; rights: Set<string> }> {
   const level = levelOf(user);
   const cat = catalogue ?? (await currentCatalogue());
   const rights = systemRights(level, cat);
@@ -91,6 +93,11 @@ export function isMember(user: AdminUser | null): boolean {
   return hasRole(user, "editor") || ((user as AdminUser).rights?.size ?? 0) > 0;
 }
 
+/** Un niveau qui administre la technique du site (propriétaire ou coordinateur) : pour les écrans, jamais pour décider d'un droit (utiliser `can`). */
+export function isTechnical(user: AdminUser | null): user is AdminUser {
+  return !!user && (user.level === "owner" || user.level === "coordinator");
+}
+
 export function isOwner(user: AdminUser | null): user is AdminUser {
   return !!user && user.level === "owner";
 }
@@ -112,7 +119,8 @@ export function can(user: AdminUser | null, right: string): boolean {
 /** Le palier pour l'éditeur d'entrée (`EntryPanelView.role`) : jamais « none » (une personne sans palier qui a `core:entries.edit` vaut « editor »). */
 export function panelRole(user: AdminUser): Role {
   const l = effectiveLevel(user);
-  return l === "none" ? "editor" : l;
+  // Les modules ne connaissent que owner|admin|editor : le coordinateur y est un administrateur (le propriétaire reste seul « owner »).
+  return l === "none" ? "editor" : l === "coordinator" ? "admin" : l;
 }
 
 /** Ce qu'une page exige : un palier, n'importe quel accès (« member » : menu, tableau de bord, Mon compte), ou un droit précis. */

@@ -1,6 +1,6 @@
 # Sauvegarde et restauration
 
-Une sauvegarde est **un seul fichier**, en un clic depuis l'admin (*Sauvegarde*, propriétaire uniquement). Elle contient toutes vos
+Une sauvegarde est **un seul fichier**, en un clic depuis l'admin (*Sauvegarde*, propriétaire ou coordination technique : droit `core:backup`). Elle contient toutes vos
 données — pas le code du framework :
 
 | Inclus | Pas inclus |
@@ -76,7 +76,7 @@ Tout est du **texte** (JSON, Markdown, CSV), sauf les images. Pour vérifier l'i
 **Sur un serveur neuf** : installez le framework ([INSTALL.md](INSTALL.md)) et ouvrez le site. Le **premier écran de l'assistant propose
 « J'ai déjà une sauvegarde : la restaurer »** : même procédure (fichier, mot de passe, aperçu, confirmation des modules personnels), sans créer
 de compte provisoire. Si `SETUP_TOKEN` est défini, le même jeton est demandé. Ce chemin n'existe que **tant qu'aucun compte n'existe** :
-un site en service ne peut se restaurer que depuis l'admin, par la personne propriétaire. Reconnectez-vous ensuite avec un compte de la sauvegarde.
+un site en service ne peut se restaurer que depuis l'admin, par la personne propriétaire ou la coordination technique (droit `core:backup`). Reconnectez-vous ensuite avec un compte de la sauvegarde.
 
 - **Fichiers supprimés par un module** (permission `files`, 0.2.13) : une sauvegarde est une photographie. Restaurer remet les fichiers qu'elle contient (supprimés depuis ou non) avec leur propriétaire et les données des modules de la même date : tout reste cohérent, la suppression ne casse jamais une restauration. Un fichier supprimé après la sauvegarde n'est plus dans les sauvegardes suivantes ; les anciennes sauvegardes le gardent tant que vous les gardez.
 
