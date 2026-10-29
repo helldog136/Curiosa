@@ -55,9 +55,9 @@ export function columnsOf(level: Level): { role: string; coordinator: boolean } 
  * si un ancien cœur a changé `role`, le drapeau est ignoré (jamais d'élévation). Valeur inconnue = « none ».
  */
 export function levelOfRow(row: { role?: unknown; coordinator?: unknown } | null | undefined): Level {
-  const r = row?.role;
+  const { role: r, coordinator } = row ?? {};
   if (r === "owner") return "owner";
-  if (r === "admin") return row?.coordinator === true ? "coordinator" : "admin";
+  if (r === "admin") return coordinator === true ? "coordinator" : "admin";
   return r === "editor" ? "editor" : "none";
 }
 

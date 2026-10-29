@@ -504,10 +504,10 @@ test("textes : le niveau et ses explications existent en français ET en anglais
     // mêmes paramètres {…} des deux côtés
     assert.deepEqual((fr[k].match(/\{\w+\}/g) ?? []).sort(), (en[k].match(/\{\w+\}/g) ?? []).sort(), k);
   }
-  assert.equal(fr["role.coordinator"], "Coordinateur technique");
-  assert.equal(en["role.coordinator"], "Technical coordinator");
-  assert.equal(fr["roles.system.coordinator"], "Gère tout le côté technique du site : mises à jour, modules, sauvegardes, sécurité, équipe et rôles. Ne peut ni toucher au propriétaire ni reprendre le site.");
-  assert.equal(en["roles.system.coordinator"], "Handles everything technical on the site: updates, modules, backups, security, the team and roles. Cannot touch the owner or take over the site.");
+  assert.equal(fr["role.coordinator"], "Coordination technique");
+  assert.equal(en["role.coordinator"], "Technical coordination");
+  assert.equal(fr["roles.system.coordinator"], "La coordination technique gère tout le côté technique du site : mises à jour, modules, sauvegardes, sécurité, équipe et rôles. Elle ne peut ni toucher au propriétaire ni reprendre le site.");
+  assert.equal(en["roles.system.coordinator"], "Technical coordination handles everything technical on the site: updates, modules, backups, security, the team and roles. It cannot touch the owner or take over the site.");
   assert.deepEqual(Object.keys(fr).filter((k) => !(k in en)), [], "aucune clé française sans anglais");
   assert.deepEqual(Object.keys(en).filter((k) => !(k in fr)), [], "aucune clé anglaise sans français");
   assert.match(fr["users.error.invalid"], /exemple/i);

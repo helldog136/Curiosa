@@ -414,13 +414,13 @@ adminActions?: Record<string, AdminActionHandler | { right: string; run: AdminAc
 - **`User.role`** est recalculé par le cœur à chaque changement : le plus haut niveau parmi les rôles système, sinon `"none"`.
 - **Droits = union.** Les droits du cœur sont dans l'espace `core:`.
   - Délégables : `core:entries.edit`, `core:entries.publish`.
-  - Réservés (jamais proposés dans un rôle personnalisé ; détenus par le propriétaire et, selon `LEVEL_RESERVED`, le coordinateur technique) : `core:team`, `core:roles`, `core:backup`, `core:updates`, `core:modules.install`, `core:mcp.tokens`, `core:security`.
+  - Réservés (jamais proposés dans un rôle personnalisé ; détenus par le propriétaire et, selon `LEVEL_RESERVED`, le coordination technique) : `core:team`, `core:roles`, `core:backup`, `core:updates`, `core:modules.install`, `core:mcp.tokens`, `core:security`.
 - **Droits de modules** : préfixés `<moduleId>:` par le cœur (un module ne peut déclarer un droit pour un autre). Le droit implicite `<moduleId>:open` ouvre la page d'admin du module.
 - **`ctx.can(id)`** n'existe que dans les contextes d'admin d'un humain : `adminPanel`, `adminActions`, `entryPanels`, le `create` d'un `choice` (contrat 1) et, depuis 0.2.4, une méthode listée dans `offers[].callerRights` appelée avec `{ asCaller: true }` depuis une `adminAction`. Il vaut `false` (refus par défaut) dans une page publique, une route, une tâche, un service hors admin ou le MCP. Le cœur relit l'utilisateur en base à chaque requête (`access.ts:15-26`).
 - **`adminActions`** :
   - forme fonction : exigence actuelle inchangée (`adminCtx("admin")`, `module-actions.ts:17,48`) ;
   - forme objet : `<module>:open` + `right`, vérifiés par le cœur **avant** d'appeler `run`.
-- **Page Équipe** (`/admin/users`) : un onglet « Rôles », réservé à qui détient `core:roles` (propriétaire, coordinateur technique ; décision 4 révisée en 0.4.0). Cases à cocher par module en mots simples, et un aperçu « Ce que cette personne peut faire ».
+- **Page Équipe** (`/admin/users`) : un onglet « Rôles », réservé à qui détient `core:roles` (propriétaire, coordination technique ; décision 4 révisée en 0.4.0). Cases à cocher par module en mots simples, et un aperçu « Ce que cette personne peut faire ».
 
 ### c. Invariants
 

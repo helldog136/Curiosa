@@ -145,20 +145,20 @@ Dans *Utilisateurs → Actions sensibles → Définir un mot de passe temporaire
 
 Une personne a **un ou plusieurs rôles** ; elle peut faire tout ce que l'un d'eux permet (union des droits).
 
-- **Rôles prédéfinis**, non modifiables, du plus haut au plus bas : *Propriétaire* (tout ; la première personne, intouchable), *Coordinateur technique* (0.4.0, voir ci-dessous),
+- **Rôles prédéfinis**, non modifiables, du plus haut au plus bas : *Propriétaire* (tout ; la première personne, intouchable), *Coordination technique* (0.4.0, voir ci-dessous),
   *Administrateur* (tout sauf ce qui est réservé : équipe, rôles, sauvegardes, mises à jour, installation de modules, jetons des assistants IA, sécurité),
   *Éditeur* (écrire, modifier et publier les contenus). Ils sont créés au démarrage (`src/core/auth/roles.ts`, idempotent) ; chaque personne reçoit celui de son niveau.
-- **Rôles personnalisés** (*Équipe → Rôles*, **propriétaire et coordinateur technique** : droit `core:roles`) : un nom, une phrase, des cases à cocher par module en mots simples
+- **Rôles personnalisés** (*Équipe → Rôles*, **propriétaire et coordination technique** : droit `core:roles`) : un nom, une phrase, des cases à cocher par module en mots simples
   (« Contacts : voir les e-mails »). Sur la fiche d'une personne, des **puces cumulables** (Éditeur + Modérateur) et l'aperçu « Ce que cette personne peut faire ».
 - **Droits** : ceux du cœur (`core:entries.edit`, `core:entries.publish`) et ceux des modules, toujours **préfixés par le cœur** (`<module>:<droit>`) : un module ne peut
   ni déclarer ni tester le droit d'un autre. `<module>:open` ouvre la page d'un module (administrateurs : oui ; éditeurs : non, comme avant).
 - **Jamais proposés** dans un rôle (et refusés par le serveur s'ils arrivent dans un formulaire forgé) : `core:team`, `core:roles`, `core:backup`, `core:updates`,
-  `core:modules.install`, `core:mcp.tokens`, `core:security`. Ils ne s'obtiennent que par le **niveau** (propriétaire, coordinateur technique), jamais par un rôle personnalisé.
+  `core:modules.install`, `core:mcp.tokens`, `core:security`. Ils ne s'obtiennent que par le **niveau** (propriétaire, coordination technique), jamais par un rôle personnalisé.
 
-### Le Coordinateur technique (0.4.0)
+### Le Coordination technique (0.4.0)
 
-Une personne peut installer Curiosa pour elle ou son organisation et confier toute l'administration à un tiers : *Équipe → Ajouter → Coordinateur technique*.
-Hiérarchie : **propriétaire > coordinateur technique > administrateur > éditeur**. La première personne reste TOUJOURS le propriétaire.
+Une personne peut installer Curiosa pour elle ou son organisation et confier toute l'administration à un tiers : *Équipe → Ajouter → Coordination technique*.
+Hiérarchie : **propriétaire > coordination technique > administrateur > éditeur**. La première personne reste TOUJOURS le propriétaire.
 
 **Droits** : une seule table, `LEVEL_RESERVED` dans `src/core/auth/rights.ts` (décision de la propriétaire ; pour la changer, modifier cette ligne, les pages, actions et tests suivent).
 Le coordinateur a tous les droits de l'administrateur (dont les droits de module `default.admin !== false`, y compris les droits `sensitive` déclarés par défaut pour l'administrateur), plus

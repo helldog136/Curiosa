@@ -233,7 +233,7 @@ test("élévation : fabriquer l'appel d'un autre utilisateur — l'acteur vient 
   assert.ok(done.ok && !done.error, JSON.stringify(done));
   assert.equal((await prisma.user.findUnique({ where: { id: T.editor.id } })).role, "admin");
   const src = read(`${PANEL}/users/actions.ts`);
-  for (const fn of ["setUserRolesAction", "createRoleAction", "updateRoleAction", "deleteRoleAction"]) assert.match(src, new RegExp(`export async function ${fn}[\\s\\S]*?adminCtx\\("owner"\\)[\\s\\S]*?\\(user\\.id,`), fn);
+  for (const fn of ["setUserRolesAction", "createRoleAction", "updateRoleAction", "deleteRoleAction"]) assert.match(src, new RegExp(`export async function ${fn}[\\s\\S]*?adminCtx\\(\\{ right: "core:(?:team|roles)" \\}\\)[\\s\\S]*?\\(user\\.id,`), fn);
   assert.doesNotMatch(src, /formData\.get\("(actor|actorId|userId|level|role)"\)[^;]*setUserRoles/);
 });
 
@@ -453,7 +453,7 @@ test("démarrage : rôles prédéfinis créés une fois (idempotent), affectatio
   await prisma.userRole.deleteMany(); await prisma.role.deleteMany();
   await R.syncSystemAssignments();
   await R.syncSystemAssignments();
-  assert.deepEqual((await prisma.role.findMany({ orderBy: { key: "asc" } })).map((r) => [r.key, r.system]), [["admin", true], ["editor", true], ["owner", true]]);
+  assert.deepEqual((await prisma.role.findMany({ orderBy: { key: "asc" } })).map((r) => [r.key, r.system]), [["admin", true], ["coordinator", true], ["editor", true], ["owner", true]]);
   for (const key of ["owner", "admin", "editor"]) {
     const rows = await prisma.userRole.findMany({ where: { userId: T[key].id }, include: { role: true } });
     assert.deepEqual(rows.map((r) => r.role.key), [key]);

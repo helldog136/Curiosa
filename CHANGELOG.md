@@ -11,7 +11,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Améliorations
 
-- **Nouveau niveau d'accès : le « Coordinateur technique ».** Il gère tout le côté technique du site (mises à jour, modules, sauvegardes, sécurité, équipe et rôles) mais ne peut ni toucher au propriétaire ni reprendre le site. Aucun compte existant ne change.
+- **Nouveau niveau d'accès : la « Coordination technique ».** Elle gère tout le côté technique du site (mises à jour, modules, sauvegardes, sécurité, équipe et rôles) mais ne peut ni toucher au propriétaire ni reprendre le site. Aucun compte existant ne change.
 
 ### Pour les développeurs
 

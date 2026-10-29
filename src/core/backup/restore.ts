@@ -173,7 +173,7 @@ function rightsList(v: unknown): string[] {
 
 /** Le drapeau « coordinateur » d'une sauvegarde ne vaut que sur un compte « admin » (sinon il est effacé) ; absent d'une sauvegarde plus ancienne = faux. Jamais cru sur parole. */
 function sanitizeUserLevel(row: Row): Row {
-  return { ...row, coordinator: row.coordinator === true && row.role === "admin" };
+  return { ...row, coordinator: levelOf(row) === "coordinator" };
 }
 
 /** Rôles d'une sauvegarde : colonnes connues, dates relues, droits en texte JSON, `system` recalculé d'après la clé (jamais cru sur parole). */

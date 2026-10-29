@@ -327,7 +327,7 @@ test("réservé au propriétaire : chaque action serveur de maintenance exige le
   const src = fs.readFileSync("src/app/admin/(panel)/modules/maintenanceActions.ts", "utf8");
   const actions = [...src.matchAll(/export async function (\w+)[\s\S]*?\n}\n/g)];
   assert.equal(actions.length, 2);
-  for (const a of actions) assert.match(a[0], /adminCtx\("owner"\)/, a[1]);
+  for (const a of actions) assert.match(a[0], /adminCtx\(\{ right: "core:[a-z.]+" \}\)/, a[1]);
   const page = fs.readFileSync("src/app/admin/(panel)/modules/[id]/ModuleView.tsx", "utf8");
   assert.match(page, /isOwner && <ModuleMaintenance/);
 });

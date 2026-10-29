@@ -308,7 +308,7 @@ test("Extensions : trois onglets (Installées, Ajouter, Mises à jour), l'onglet
   assert.match(tabs, /peekModulesReport\(\)\?\.outdated\.length/, "compteur sans réseau");
   assert.match(tabs, /isOwner \? t\("hub\.tab\.updates"\) : undefined/, "réservé au propriétaire");
   const updates = read(`${PANEL}/extensions/updates/page.tsx`);
-  assert.match(updates, /!isOwner\(user\)\) redirect\(EXTENSIONS_HREF\)/);
+  assert.match(updates, /!can\(user, "core:modules\.install"\)\) redirect\(EXTENSIONS_HREF\)/);
   assert.match(updates, /<ModulesUpdatesSection/);
   assert.match(updates, /href="\/admin\/updates"/, "les mises à jour du cœur gardent leur page");
   assert.match(read(`${PANEL}/extensions/page.tsx`), /current="installed"/);
