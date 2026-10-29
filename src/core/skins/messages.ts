@@ -3,7 +3,7 @@
  *
  * Chaque problème porte :
  *  - `code` : identifiant technique STABLE (pour les auteurs, le kit `skin:check`, les tests) ;
- *  - `message` : ce qu'on dit à la personne (Emma : créatrice non technique), sans jargon ;
+ *  - `message` : ce qu'on dit à la personne (une personne non technique), sans jargon ;
  *  - `hint` : comment corriger, pour l'auteur du skin (peut citer une propriété ou un sélecteur).
  * Les `{variables}` sont remplacées ; les nombres décimaux suivent la langue (« 4,5 » / « 4.5 »).
  */

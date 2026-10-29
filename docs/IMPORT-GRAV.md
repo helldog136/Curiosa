@@ -6,7 +6,7 @@ comme n'importe quelle sauvegarde (assistant d'installation → « J'ai déjà u
 ## 1. Rapatrier les fichiers
 
 ```bash
-# depuis votre poste ; adaptez l'utilisateur, le serveur et le chemin de Grav
+# depuis votre poste ; adaptez le compte, le serveur et le chemin de Grav
 rsync -av --exclude 'cache' --exclude 'logs' --exclude 'themes' --exclude 'plugins' \
   utilisateur@serveur:/chemin/vers/grav/user/ ./grav-user/
 ```
@@ -42,7 +42,7 @@ Options : `--password <mot de passe de la sauvegarde>` (sinon généré et affic
 | images du dossier de la page | fichiers envoyés du framework (png, jpg, webp, gif ≤ 5 Mo) ; options Grav (`?cropZoom=…`) retirées |
 | liens relatifs et absolus entre pages | réécrits vers les nouvelles adresses |
 | ancienne adresse ≠ nouvelle | **redirection permanente** (les anciens liens continuent de marcher) |
-| `accounts/*.yaml` | utilisateurs ; `access.admin.super` → propriétaire, `access.admin.configuration` → administrateur, sinon rédacteur ; comptes désactivés ignorés. **Le mot de passe Grav (bcrypt) reste valable.** |
+| `accounts/*.yaml` | comptes ; `access.admin.super` → propriétaire, `access.admin.configuration` → administrateur, sinon rédacteur ; comptes désactivés ignorés. **Le mot de passe Grav (bcrypt) reste valable.** |
 
 ## Ce qui ne l'est pas — et qui est toujours signalé
 

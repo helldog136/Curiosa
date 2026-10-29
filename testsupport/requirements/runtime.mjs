@@ -102,7 +102,7 @@ const requirements = [
     id: "html.escaped", level: "mandatory", group: "security",
     title: "Les textes venus de l'extérieur sont échappés dans les pages",
     what: "Le module est essayé avec des données piégées (textes contenant des balises, des scripts, des guillemets) placées dans les réglages, le stockage, les formulaires, l'adresse de la page, le nom du site, les entrées et les sujets reçus. Aucune page, section, emplacement, overlay ni réponse de route ne doit les restituer tels quels.",
-    why: "Le bloc « html » est brut : ce que vous y mettez est exécuté par le navigateur du visiteur. Un message de livre d'or contenant <script> pourrait voler la session de l'administrateur qui le modère (faille XSS).",
+    why: "Le bloc « html » est brut : ce que vous y mettez est exécuté par le navigateur de la personne qui visite. Un message de livre d'or contenant <script> pourrait voler la session de la personne qui gère le site, qui le modère (faille XSS).",
     fix: "Passez CHAQUE valeur qui n'est pas écrite par vous dans une fonction d'échappement (& < > \" ' devenant &amp; &lt; &gt; &quot; &#39;) avant de l'insérer dans du HTML. Voir la fonction esc() de l'exemple guestbook. Préférez les blocs markdown, heading, table, qui échappent seuls.",
     async run(m) {
       if (!m.parsed?.ok) return { skip: "module.json invalide" };
@@ -116,7 +116,7 @@ const requirements = [
     id: "links.safe", level: "mandatory", group: "security",
     title: "Les liens venus de l'extérieur sont vérifiés",
     what: "Une adresse « javascript:… » saisie dans un réglage, une entrée ou un sujet reçu n'est jamais reprise comme lien, image ou vidéo.",
-    why: "Un lien « javascript: » s'exécute au clic dans le navigateur du visiteur. Seuls https:, http:, mailto: et les chemins du site (/…) sont sûrs.",
+    why: "Un lien « javascript: » s'exécute au clic dans le navigateur de la personne qui visite. Seuls https:, http:, mailto: et les chemins du site (/…) sont sûrs.",
     fix: "Avant d'utiliser une adresse, vérifiez qu'elle commence par https://, http://, mailto: ou par un seul « / » (pas « // »), sinon ignorez-la. Voir safeSrc() dans l'exemple guestbook.",
     async run(m) {
       if (!m.parsed?.ok) return { skip: "module.json invalide" };
@@ -167,7 +167,7 @@ const requirements = [
     id: "run.noCrash", level: "advice", group: "security",
     title: "Le module ne plante pas, même avec des données inattendues",
     what: "Sections, pages, emplacements, overlay, panneau d'administration et routes terminent sans erreur avec les réglages par défaut, des réglages remplis et des données piégées.",
-    why: "Le cœur isole les erreurs d'un module (le site continue), mais le visiteur voit alors une section vide ou une page d'erreur. Un module robuste dégrade son affichage sans planter.",
+    why: "Le cœur isole les erreurs d'un module (le site continue), mais la personne qui visite voit alors une section vide ou une page d'erreur. Un module robuste dégrade son affichage sans planter.",
     fix: "Protégez le code qui lit une donnée optionnelle (valeur absente, liste vide, texte trop long) et répondez par un code 4xx plutôt que de laisser une erreur remonter.",
     async run(m) {
       if (!m.parsed?.ok) return { skip: "module.json invalide" };
@@ -236,7 +236,7 @@ const requirements = [
     id: "routes.errors", level: "mandatory", group: "routes",
     title: "Les réponses d'erreur ne révèlent rien d'interne",
     what: "Les réponses des routes sont de vrais objets Response et ne contiennent ni chemin de fichier, ni trace d'erreur, ni détail de base de données ou de réglage secret.",
-    why: "Un chemin ou une trace aide un attaquant à comprendre le serveur. Un visiteur n'a rien à faire d'un message technique.",
+    why: "Un chemin ou une trace aide un attaquant à comprendre le serveur. Une personne qui visite n'a rien à faire d'un message technique.",
     fix: "Répondez par un code et un mot (400, 403, 404) sans détail : new Response(null, { status: 400 }) ou Response.json({ ok: false }, { status: 400 }). Journalisez l'erreur côté serveur, brièvement.",
     async run(m) {
       if (!Object.keys(m.definition?.routes ?? {}).length) return { na: "le module n'a pas de routes" };
@@ -254,9 +254,9 @@ const requirements = [
   {
     id: "routes.protected", level: "mandatory", group: "routes",
     title: "Une route publique qui écrit est protégée contre les abus",
-    what: "Quarante envois valides, à la suite, depuis le même visiteur, ne sont pas tous acceptés : la route a un limiteur de débit, un plafond de stockage, un code d'accès ou une modération qui la protège.",
+    what: "Quarante envois valides, à la suite, depuis le même personne, ne sont pas tous acceptés : la route a un limiteur de débit, un plafond de stockage, un code d'accès ou une modération qui la protège.",
     why: "Une route ouverte à tous qui écrit sans limite permet à un robot de remplir le stockage du site en quelques minutes.",
-    fix: "Ajoutez un limiteur de débit par visiteur (voir limited() dans l'exemple guestbook : N envois par heure), un plafond du nombre d'éléments stockés (réponse 503 au-delà), et un champ piège pour les robots.",
+    fix: "Ajoutez un limiteur de débit par personne (voir limited() dans l'exemple guestbook : N envois par heure), un plafond du nombre d'éléments stockés (réponse 503 au-delà), et un champ piège pour les robots.",
     async run(m) {
       if (!Object.keys(m.definition?.routes ?? {}).length) return { na: "le module n'a pas de routes" };
       const obs = await observe(m);
@@ -289,7 +289,7 @@ const requirements = [
     id: "mcp.safety", level: "mandatory", group: "mcp",
     title: "Les outils MCP déclarent honnêtement ce qu'ils font",
     what: "Une action qui lit seulement est marquée « readOnly » ; une action qui écrit n'est jamais activée par défaut (« default »: true) ; une action irréversible est « destructive » (et jamais par défaut) ; une action dont le nom parle de suppression ou de publication est « destructive ».",
-    why: "L'administrateur décide quels outils chaque assistant peut utiliser, et par défaut un assistant reçoit les outils « sûrs ». Un outil qui écrit, annoncé par erreur comme sûr, laisse un assistant modifier le site sans accord.",
+    why: "La personne qui gère le site décide quels outils chaque assistant peut utiliser, et par défaut un assistant reçoit les outils « sûrs ». Un outil qui écrit, annoncé par erreur comme sûr, laisse un assistant modifier le site sans accord.",
     fix: "Dans module.json (« mcp »), ajoutez \"readOnly\": true aux lectures, retirez \"default\": true des écritures, et ajoutez \"destructive\": true à tout ce qui supprime, retire ou publie.",
     run(m) {
       const mcp = m.manifest?.mcp;
@@ -480,7 +480,7 @@ const requirements = [
     id: "data.migrations", level: "advice", group: "data",
     title: "Les migrations se déroulent sans erreur",
     what: "Chaque migration s'exécute sans erreur sur un stockage vide, et deux fois de suite sans rien dupliquer.",
-    why: "Une migration qui échoue met l'instance à l'écart sur le site réel. Le test sur stockage vide attrape les erreurs les plus bêtes avant qu'un administrateur ne les rencontre.",
+    why: "Une migration qui échoue met l'instance à l'écart sur le site réel. Le test sur stockage vide attrape les erreurs les plus bêtes avant qu'une personne qui gère le site ne les rencontre.",
     fix: "Traitez le cas « rien à convertir » (liste vide) et ne supposez aucun champ : lisez-les avec une valeur par défaut.",
     async run(m) {
       const migs = m.definition?.migrations;
@@ -498,8 +498,8 @@ const requirements = [
   {
     id: "privacy.declared", level: "mandatory", group: "privacy",
     title: "Un module qui collecte des données le déclare (privacy)",
-    what: "Si le module reçoit des données de visiteurs (formulaire public qui enregistre ou envoie quelque chose), module.json a un texte « privacy » en français et en anglais : quoi, pourquoi, comment faire effacer.",
-    why: "Le site écrit lui-même sa politique de confidentialité d'après ce que déclarent ses modules. Sans votre déclaration, elle serait fausse — et le propriétaire du site responsable d'une collecte qu'il ignore.",
+    what: "Si le module reçoit des données des personnes qui visitent (formulaire public qui enregistre ou envoie quelque chose), module.json a un texte « privacy » en français et en anglais : quoi, pourquoi, comment faire effacer.",
+    why: "Le site écrit lui-même sa politique de confidentialité d'après ce que déclarent ses modules. Sans votre déclaration, elle serait fausse — et la personne propriétaire du site responsable d'une collecte qu'elle ignore.",
     fix: "Ajoutez dans module.json : \"privacy\": { \"fr\": \"Si vous … votre nom et votre message sont … Pour les faire retirer, écrivez au contact du site.\", \"en\": \"…\" }.",
     async run(m) {
       if (!m.parsed?.ok) return { skip: "module.json invalide" };
@@ -507,18 +507,18 @@ const requirements = [
       const collects = [];
       for (const run of Object.values(obs.runs)) for (const o of run.outputs) if (o.kind === "route" && o.ok && o.method === "POST" && (o.wrote > 0 || o.mailed > 0) && o.value?.status < 400) collects.push(o.route);
       const publicForms = [...new Set(Object.values(obs.runs).flatMap((r) => r.forms).filter((f) => !f.admin).map((f) => String(f.action).split(/[?#]/)[0].split("/").filter(Boolean).pop()).filter(Boolean))];
-      if (!collects.length && !publicForms.length) return { na: "le module ne collecte rien auprès des visiteurs" };
+      if (!collects.length && !publicForms.length) return { na: "le module ne collecte rien auprès des personnes qui visitent" };
       const p = m.manifest.privacy;
       const miss = ["fr", "en"].filter((l) => !String(typeof p === "string" ? p : p?.[l] ?? "").trim());
-      if (miss.length === 2 || (typeof p === "string" && !p.trim())) return [`le module reçoit des données de visiteurs (route ${[...new Set([...collects, ...publicForms])].join(", ")}) mais module.json n'a pas de « privacy »`];
+      if (miss.length === 2 || (typeof p === "string" && !p.trim())) return [`le module reçoit des données des personnes qui visitent (route ${[...new Set([...collects, ...publicForms])].join(", ")}) mais module.json n'a pas de « privacy »`];
       return miss.map((l) => `la déclaration « privacy » n'a pas de texte ${l === "fr" ? "français" : "anglais"}`);
     },
   },
   {
     id: "privacy.thirdParty", level: "advice", group: "privacy",
-    title: "Les services tiers chargés chez le visiteur sont mentionnés",
+    title: "Les services tiers chargés chez la personne qui visite sont mentionnés",
     what: "Si une page du module charge quelque chose depuis un autre site (vidéo intégrée, script, iframe), module.json le dit dans « privacy ».",
-    why: "Charger un service tiers transmet l'adresse (IP) du visiteur à ce service. C'est une information que le propriétaire doit connaître et pouvoir donner dans sa politique de confidentialité.",
+    why: "Charger un service tiers transmet l'adresse (IP) de la personne qui visite à ce service. C'est une information que la personne propriétaire doit connaître et pouvoir donner dans sa politique de confidentialité.",
     fix: "Ajoutez une phrase dans « privacy » (fr et en) : « Cette page charge un lecteur de <service> : … », ou n'intégrez pas le service.",
     async run(m) {
       if (!m.parsed?.ok) return { skip: "module.json invalide" };
@@ -537,7 +537,7 @@ const requirements = [
     id: "srp.single", level: "mandatory", group: "srp",
     title: "Un module fait une chose ; chaque donnée a un seul propriétaire",
     what: "Comparé aux autres modules du même ensemble : pas de service offert par deux modules, pas d'action MCP du même nom, pas de réglage secret identique demandé à deux modules sans lien, pas de collection de données de même nom chez deux modules sans lien.",
-    why: "Deux modules qui offrent la même chose ou demandent la même clé obligent l'administrateur à tout saisir deux fois et créent des conflits. Une donnée a un propriétaire ; les autres modules la demandent à ce propriétaire (service).",
+    why: "Deux modules qui offrent la même chose ou demandent la même clé obligent la personne qui gère le site à tout saisir deux fois et créent des conflits. Une donnée a un propriétaire ; les autres modules la demandent à ce propriétaire (service).",
     fix: "Confiez la donnée ou la clé à un seul module (fournisseur) que l'autre appelle par un service (offers / requires), ou renommez ce qui n'est qu'une coïncidence de nom.",
     async run(m) {
       if (!m.manifest) return { skip: "module.json illisible" };
@@ -590,7 +590,7 @@ const requirements = [
     id: "net.fallback", level: "advice", group: "network",
     title: "En cas de panne d'un service externe, la page s'affiche quand même",
     what: "Sonde « trou noir » : le réseau ne répond jamais. Chaque section, emplacement et page du module doit rendre la main en moins de 3 s, sans erreur (avec les dernières données connues et leur date, ou un message simple).",
-    why: "Un service externe finit toujours par tomber. Si la page attend sa réponse, elle se fige pour tous les visiteurs ; le cœur coupe alors la section, et le visiteur ne voit rien du tout.",
+    why: "Un service externe finit toujours par tomber. Si la page attend sa réponse, elle se fige pour tous les personnes qui visitent ; le cœur coupe alors la section, et la personne qui visite ne voit rien du tout.",
     fix: "Dans une page, ne lancez pas d'appel réseau long : affichez ce que la tâche planifiée a mis en cache (avec « mis à jour à 10 h 30 »), ou passez par ctx.api.net.request, dont le délai suit le temps restant de la page, et affichez un repli si « r.ok » est faux.",
     async run(m) {
       const def = m.definition ?? {};
@@ -650,9 +650,9 @@ const requirements = [
   },
   {
     id: "routes.visitorIp", level: "advice", group: "routes",
-    title: "L'adresse du visiteur n'est pas lue dans les en-têtes",
+    title: "L'adresse de la personne qui visite n'est pas lue dans les en-têtes",
     what: "Le code ne lit pas lui-même X-Forwarded-For, X-Real-IP ou un en-tête d'adresse du même genre : pour une limite de débit, il demande ctx.api.visitor.fingerprint(request) (cœur 0.2.6). Vérifié seulement quand le cœur qui teste fournit cette fonction.",
-    why: "Le début de X-Forwarded-For est écrit par le visiteur : le lire permet de contourner la limite en changeant d'adresse inventée à chaque envoi. Le cœur, lui, prend l'entrée ajoutée par SON proxy, la seule de confiance, et ne rend qu'une empreinte salée, jamais l'adresse.",
+    why: "Le début de X-Forwarded-For est écrit par la personne qui visite : le lire permet de contourner la limite en changeant d'adresse inventée à chaque envoi. Le cœur, lui, prend l'entrée ajoutée par SON proxy, la seule de confiance, et ne rend qu'une empreinte salée, jamais l'adresse.",
     fix: "Remplacez la lecture de l'en-tête par « const who = ctx.api.visitor.fingerprint(request, \"envoi\") » et comptez par « who ». Déclarez « minCore »: « 0.2.6 ». Ne gardez jamais l'adresse elle-même.",
     run(m) {
       if (!Object.keys(m.definition?.routes ?? {}).length) return { na: "le module n'a pas de routes" };

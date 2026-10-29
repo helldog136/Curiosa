@@ -31,7 +31,7 @@ Le contrôle dans un navigateur demande Chromium et le module `playwright` (`npm
 
 ## Publier
 
-1. Renommez `mon-skin` (dossier et `id`), changez le nom, l'auteur, la licence, les couleurs.
+1. Renommez `mon-skin` (dossier et `id`), changez le nom, votre nom (la personne qui signe le skin), la licence, les couleurs.
 2. `npm run skin:bench -- <skin> --previews <skin>/previews` fabrique les deux aperçus.
 3. Poussez, puis étiquetez : `git tag v1.0.0 && git push origin v1.0.0`.
-4. Vos utilisateurs collent `https://github.com/<vous>/<depot>#v1.0.0:skins/mon-skin` dans **Apparence → Ajouter depuis une adresse**.
+4. Les personnes qui veulent votre skin collent `https://github.com/<vous>/<depot>#v1.0.0:skins/mon-skin` dans **Apparence → Ajouter depuis une adresse**.

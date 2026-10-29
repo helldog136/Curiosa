@@ -48,7 +48,7 @@ export function buildWiki(repo, read = (f) => fs.readFileSync(path.join(root, f)
   const out = {};
   for (const p of PAGES) out[`${p.page}.md`] = banner(p.file, repo) + rewriteLinks(read(p.file), p.file, repo);
   const list = PAGES.map((p) => `- [${p.page.replaceAll("-", " ")}](${p.page}) — ${p.blurb}`).join("\n");
-  out["Home.md"] = `# Curiosa — documentation\n\nCuriosa est un framework de site personnel pour créateurs : un site complet qu'on installe une fois et qu'on gère seul. Cette documentation est le reflet de celle du dépôt, publié à chaque release.\n\n## Pages\n\n${list}\n\n## Écrire son propre module\n\nCommencez par [Créer un module](Créer-un-module), puis gardez la [Référence des modules](Référence-des-modules) sous la main.\n\n[Dépôt](https://github.com/${repo}) · [Releases](https://github.com/${repo}/releases)\n`;
+  out["Home.md"] = `# Curiosa — documentation\n\nCuriosa est un framework de site personnel pour les personnes qui créent : un site complet qu'on installe une fois et qu'on gère soi-même. Cette documentation est le reflet de celle du dépôt, publié à chaque release.\n\n## Pages\n\n${list}\n\n## Écrire son propre module\n\nCommencez par [Créer un module](Créer-un-module), puis gardez la [Référence des modules](Référence-des-modules) sous la main.\n\n[Dépôt](https://github.com/${repo}) · [Releases](https://github.com/${repo}/releases)\n`;
   out["_Sidebar.md"] = `**[Accueil](Home)**\n\n${PAGES.map((p) => `- [${p.page.replaceAll("-", " ")}](${p.page})`).join("\n")}\n`;
   return out;
 }

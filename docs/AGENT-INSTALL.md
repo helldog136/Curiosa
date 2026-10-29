@@ -64,7 +64,7 @@ Des hébergeurs de serveurs virtuels connus, parmi beaucoup d'autres : OVHcloud,
 
 ### Créer le serveur
 
-À la création, l'hébergeur demande en général : une **région** (proche de vos visiteurs), un **système** (Ubuntu LTS), un **modèle** (voir le profil), et comment se connecter : un **mot de passe** ou une **clé SSH**. Retenez l'**adresse IP** affichée une fois le serveur prêt.
+À la création, l'hébergeur demande en général : une **région** (proche de votre public), un **système** (Ubuntu LTS), un **modèle** (voir le profil), et comment se connecter : un **mot de passe** ou une **clé SSH**. Retenez l'**adresse IP** affichée une fois le serveur prêt.
 
 ### Se connecter en SSH (minimum utile)
 
@@ -85,7 +85,7 @@ ssh root@ADRESSE-IP-DU-SERVEUR
 Le DNS est l'annuaire qui dit « `monsite.example.org` se trouve à telle adresse IP ». Chez le **registraire** (là où le domaine a été acheté), dans la zone DNS du domaine :
 
 - créer un enregistrement **A** : nom `@` (le domaine seul) ou `monsite` (un sous-domaine), valeur = l'**adresse IPv4** du serveur ;
-- si l'hébergeur donne aussi une adresse **IPv6**, créer un enregistrement **AAAA** avec elle ; **sinon, ne pas laisser d'AAAA** qui pointerait ailleurs (le certificat HTTPS échouerait pour certains visiteurs) ;
+- si l'hébergeur donne aussi une adresse **IPv6**, créer un enregistrement **AAAA** avec elle ; **sinon, ne pas laisser d'AAAA** qui pointerait ailleurs (le certificat HTTPS échouerait pour certaines personnes) ;
 - si le registraire est aussi un service de type « proxy » (nuage orange chez certains), le passer en **DNS seul** (nuage gris) pendant l'installation.
 
 **Vérifier la propagation** (de quelques minutes à quelques heures) depuis le serveur ou son ordinateur :
@@ -154,7 +154,7 @@ Le script est **reprenable** : après un échec ou une coupure, relancer la **m�
 
 ### Le code d'installation : pourquoi le script ne l'affiche pas
 
-Le code protège un site neuf contre un inconnu qui le réclamerait avant son propriétaire. S'il apparaissait dans la sortie du script, il se retrouverait dans l'historique du terminal, un journal, ou la conversation avec une IA qui relaye les sorties. Le script donne donc **la commande** à taper soi-même :
+Le code protège un site neuf contre un inconnu qui le réclamerait avant la personne propriétaire. S'il apparaissait dans la sortie du script, il se retrouverait dans l'historique du terminal, un journal, ou la conversation avec une IA qui relaye les sorties. Le script donne donc **la commande** à taper soi-même :
 
 ```bash
 sudo sed -n 's/^SETUP_TOKEN=//p' /var/www/monsite/.env | tr -d '"'

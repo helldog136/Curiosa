@@ -14,7 +14,7 @@ const API_USE = [
   { permission: "rawg", re: /\bapi\s*\??\.\s*rawg\b(?!\.io\b)|\{[^}]*\brawg\b[^}]*\}\s*=\s*[\w.]*\bapi\b/, label: "les jaquettes de jeux (ctx.api.rawg)" },
   { permission: "privacy", re: /\bapi\s*\??\.\s*privacy\b|\{[^}]*\bprivacy\b[^}]*\}\s*=\s*[\w.]*\bapi\b/, label: "les déclarations de vie privée des modules (ctx.api.privacy)" },
   { permission: "files", re: /\bapi\s*\??\.\s*files\b|\{[^}]*\bfiles\b[^}]*\}\s*=\s*[\w.]*\bapi\b/, label: "les fichiers envoyés à garder et à supprimer (ctx.api.files)" },
-  { permission: "visitor.geolocation", re: /\bnavigator\s*\??\.\s*geolocation\b|\bgeolocation\s*\??\.\s*(?:getCurrentPosition|watchPosition)\b/, label: "la position du visiteur (navigator.geolocation)" },
+  { permission: "visitor.geolocation", re: /\bnavigator\s*\??\.\s*geolocation\b|\bgeolocation\s*\??\.\s*(?:getCurrentPosition|watchPosition)\b/, label: "la position de la personne qui visite (navigator.geolocation)" },
   { permission: "topics", re: /\bapi\s*\??\.\s*topics\b|\{[^}]*\btopics\b[^}]*\}\s*=\s*[\w.]*\bapi\b/, label: "les sujets d'échange (ctx.api.topics)" },
 ];
 
@@ -117,8 +117,8 @@ const requirements = [
   {
     id: "perm.declared", level: "mandatory", group: "permissions",
     title: "Chaque capacité utilisée est déclarée dans « permissions »",
-    what: "Le code n'utilise le stockage, l'e-mail, les sujets d'échange, les jaquettes de jeux, les fichiers envoyés (ctx.api.files), la position du visiteur, les routes, pages, emplacements, sections, overlay, filtres, actions MCP ou l'administration que si la permission correspondante est dans module.json. Le test l'a vérifié en lisant le code et en le faisant tourner avec un contexte qui refuse ce qui n'est pas déclaré.",
-    why: "Les permissions sont montrées à l'administrateur avant l'installation : c'est ce qui lui permet de dire oui en connaissance de cause. Un module qui en utilise plus qu'il n'en annonce trompe cette confiance.",
+    what: "Le code n'utilise le stockage, l'e-mail, les sujets d'échange, les jaquettes de jeux, les fichiers envoyés (ctx.api.files), la position de la personne qui visite, les routes, pages, emplacements, sections, overlay, filtres, actions MCP ou l'administration que si la permission correspondante est dans module.json. Le test l'a vérifié en lisant le code et en le faisant tourner avec un contexte qui refuse ce qui n'est pas déclaré.",
+    why: "Les permissions sont montrées à la personne qui gère le site avant l'installation : c'est ce qui lui permet de dire oui en connaissance de cause. Un module qui en utilise plus qu'il n'en annonce trompe cette confiance.",
     fix: "Ajoutez la permission citée au tableau « permissions » de module.json — ou retirez du code ce qui l'utilise si ce n'est pas voulu.",
     async run(m) {
       if (!m.parsed?.ok) return { skip: "module.json invalide (voir « manifest.valid »)" };
@@ -141,7 +141,7 @@ const requirements = [
     id: "perm.minimal", level: "advice", group: "permissions",
     title: "Aucune permission inutile n'est demandée",
     what: "Chaque permission déclarée correspond à quelque chose que le code fait vraiment.",
-    why: "Moins un module demande, plus il est facile à accepter pour l'administrateur (principe du moindre privilège). Une permission en trop fait hésiter pour rien.",
+    why: "Moins un module demande, plus il est facile à accepter pour la personne qui gère le site (principe du moindre privilège). Une permission en trop fait hésiter pour rien.",
     fix: "Retirez de « permissions » celles que le message cite comme inutilisées.",
     run(m) {
       if (!m.parsed?.ok) return { skip: "module.json invalide" };

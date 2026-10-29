@@ -5,7 +5,7 @@ données — pas le code du framework :
 
 | Inclus | Pas inclus |
 |---|---|
-| utilisateurs (mots de passe **hachés**), réglages (secrets compris : mot de passe e-mail, adresses privées…) ; la clé RAWG et vos corrections de jaquettes sont dans les données du module « Jaquettes de jeux » (et, par prudence, encore dans les réglages du cœur, que la 0.3.0 n'efface jamais : une sauvegarde d'avant la reprise se restaure et le module la reprend toute seule, sans rien perdre) | jetons d'API (à recréer) |
+| comptes (mots de passe **hachés**), réglages (secrets compris : mot de passe e-mail, adresses privées…) ; la clé RAWG et vos corrections de jaquettes sont dans les données du module « Jaquettes de jeux » (et, par prudence, encore dans les réglages du cœur, que la 0.3.0 n'efface jamais : une sauvegarde d'avant la reprise se restaure et le module la reprend toute seule, sans rien perdre) | jetons d'API (à recréer) |
 | instances de modules, entrées (toutes langues, brouillons compris), redirections | journal d'audit, liste « Jaquettes à vérifier » (elle se remplit seule) |
 | données de **chaque module installé** (leur stockage, leurs réglages) | le code du framework et des modules (réinstallé depuis le catalogue) |
 | images et fichiers envoyés | |
@@ -62,7 +62,7 @@ Tout est du **texte** (JSON, Markdown, CSV), sauf les images. Pour vérifier l'i
 *Sauvegarde › Restaurer une sauvegarde* (encadré rouge : la restauration **remplace** les données actuelles) : choisissez le fichier, saisissez le mot de passe, puis **vérifiez l'aperçu** avant de confirmer.
 
 - Le fichier est **vérifié avant tout** : mot de passe, format, version, empreinte de chaque fichier (une sauvegarde modifiée ou incomplète
-  est refusée), présence d'un propriétaire (une restauration ne doit jamais vous enfermer dehors).
+  est refusée), présence d'une personne propriétaire (une restauration ne doit jamais vous enfermer dehors).
 - Les **modules sont réinstallés depuis le catalogue** (dépôts du catalogue). Un module **personnel**
   (dépôt non vérifié) n'est réinstallé que si vous le **confirmez, module par module** ; sinon ses données sont gardées mais le module reste à réinstaller.
 - La restauration **remplace** les données actuelles, en une seule transaction : tout ou rien. Une copie de la base actuelle est gardée dans
@@ -76,7 +76,7 @@ Tout est du **texte** (JSON, Markdown, CSV), sauf les images. Pour vérifier l'i
 **Sur un serveur neuf** : installez le framework ([INSTALL.md](INSTALL.md)) et ouvrez le site. Le **premier écran de l'assistant propose
 « J'ai déjà une sauvegarde : la restaurer »** : même procédure (fichier, mot de passe, aperçu, confirmation des modules personnels), sans créer
 de compte provisoire. Si `SETUP_TOKEN` est défini, le même jeton est demandé. Ce chemin n'existe que **tant qu'aucun compte n'existe** :
-un site en service ne peut se restaurer que depuis l'admin, par son propriétaire. Reconnectez-vous ensuite avec un compte de la sauvegarde.
+un site en service ne peut se restaurer que depuis l'admin, par la personne propriétaire. Reconnectez-vous ensuite avec un compte de la sauvegarde.
 
 - **Fichiers supprimés par un module** (permission `files`, 0.2.13) : une sauvegarde est une photographie. Restaurer remet les fichiers qu'elle contient (supprimés depuis ou non) avec leur propriétaire et les données des modules de la même date : tout reste cohérent, la suppression ne casse jamais une restauration. Un fichier supprimé après la sauvegarde n'est plus dans les sauvegardes suivantes ; les anciennes sauvegardes le gardent tant que vous les gardez.
 

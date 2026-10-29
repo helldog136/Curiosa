@@ -32,7 +32,7 @@ export const BOARD_PATH = "/bench";
 
 const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
 
-/** Active le menu ouvert dans un fragment d'en-tête (le cœur ne rend que `data-open="false"` : l'ouverture est une action du visiteur). */
+/** Active le menu ouvert dans un fragment d'en-tête (le cœur ne rend que `data-open="false"` : l'ouverture est une action de la personne qui visite). */
 function openMenu(html) {
   return html
     .replace('data-skin-part="nav-list" data-open="false"', 'data-skin-part="nav-list" data-open="true"')
