@@ -268,7 +268,7 @@ Un cœur ancien ne connaît pas le type de bloc [à vérifier : `Blocks.tsx` ign
 
 - Une entrée `extra` jamais installée par cascade, avec `reason: "extra"`.
 - L'officiel classé avant l'`extra`.
-- `installSuggested` refusé à un administrateur non propriétaire.
+- `installSuggested` refusé au rôle Administration (non propriétaire).
 - État refusé respecté.
 - Bloc vide si un fournisseur existe.
 
@@ -407,14 +407,14 @@ adminActions?: Record<string, AdminActionHandler | { right: string; run: AdminAc
 - **Rôles prédéfinis** (upsert au démarrage, `system: true`, non modifiables) :
   - `owner` : tout ;
   - `coordinator` (0.4.0) : `admin` + les droits réservés listés dans `LEVEL_RESERVED` (`rights.ts`) ; stocké `User.role = "admin"` + `User.coordinator = true` ;
-  - `admin` : tout sauf les droits réservés au propriétaire ;
+  - `admin` : tout sauf les droits réservés à la personne propriétaire ;
   - `editor` : `core:entries.edit`, plus les droits de module `default.editor`.
   - `admin` reçoit les droits de module dont `default.admin !== false`.
 - **Affectation initiale** : chaque compte reçoit le rôle système égal à `User.role`.
 - **`User.role`** est recalculé par le cœur à chaque changement : le plus haut niveau parmi les rôles système, sinon `"none"`.
 - **Droits = union.** Les droits du cœur sont dans l'espace `core:`.
   - Délégables : `core:entries.edit`, `core:entries.publish`.
-  - Réservés (jamais proposés dans un rôle personnalisé ; détenus par le propriétaire et, selon `LEVEL_RESERVED`, le coordination technique) : `core:team`, `core:roles`, `core:backup`, `core:updates`, `core:modules.install`, `core:mcp.tokens`, `core:security`.
+  - Réservés (jamais proposés dans un rôle personnalisé ; détenus par la personne propriétaire et, selon `LEVEL_RESERVED`, le coordination technique) : `core:team`, `core:roles`, `core:backup`, `core:updates`, `core:modules.install`, `core:mcp.tokens`, `core:security`.
 - **Droits de modules** : préfixés `<moduleId>:` par le cœur (un module ne peut déclarer un droit pour un autre). Le droit implicite `<moduleId>:open` ouvre la page d'admin du module.
 - **`ctx.can(id)`** n'existe que dans les contextes d'admin d'un humain : `adminPanel`, `adminActions`, `entryPanels`, le `create` d'un `choice` (contrat 1) et, depuis 0.2.4, une méthode listée dans `offers[].callerRights` appelée avec `{ asCaller: true }` depuis une `adminAction`. Il vaut `false` (refus par défaut) dans une page publique, une route, une tâche, un service hors admin ou le MCP. Le cœur relit le compte en base à chaque requête (`access.ts:15-26`).
 - **`adminActions`** :

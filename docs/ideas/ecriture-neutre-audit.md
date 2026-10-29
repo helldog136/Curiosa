@@ -56,8 +56,8 @@ Les noms de rôles du système restent inchangés (identifiants `owner`, `admin`
 | Rôle actuel (fr) | Problème | Proposition |
 |---|---|---|
 | Propriétaire (`role.owner`) | Masculin par l'article (« le Propriétaire ») | « Responsable du site » (ou « Propriétaire » avec l'article toujours évité, comme aujourd'hui dans les textes : « la personne propriétaire ») |
-| Administrateur (`role.admin`) | Masculin | « Administration » |
-| Éditeur (`role.editor`) | Masculin | « Rédaction » (ou « Édition ») |
+| Administrateur (`role.admin`) | Masculin | **Fait (0.4.0)** : « Administration » (EN « Administration ») |
+| Éditeur (`role.editor`) | Masculin | **Fait (0.4.0)** : « Rédaction » (EN « Editorial ») |
 | Modérateur (exemple de rôle personnalisé) | Masculin | « Modération » (déjà corrigé dans les exemples) |
 | Rédacteur (docs SECURITE.md) | Masculin | « Rédaction » |
 | Menu « Utilisateurs » | Masculin générique | **Fait** : « Équipe » (identifiant `nav.users` et adresse `/admin/users` inchangés) |

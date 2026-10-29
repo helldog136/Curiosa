@@ -42,7 +42,7 @@ Options : `--password <mot de passe de la sauvegarde>` (sinon généré et affic
 | images du dossier de la page | fichiers envoyés du framework (png, jpg, webp, gif ≤ 5 Mo) ; options Grav (`?cropZoom=…`) retirées |
 | liens relatifs et absolus entre pages | réécrits vers les nouvelles adresses |
 | ancienne adresse ≠ nouvelle | **redirection permanente** (les anciens liens continuent de marcher) |
-| `accounts/*.yaml` | comptes ; `access.admin.super` → propriétaire, `access.admin.configuration` → administrateur, sinon rédacteur ; comptes désactivés ignorés. **Le mot de passe Grav (bcrypt) reste valable.** |
+| `accounts/*.yaml` | comptes ; `access.admin.super` → propriétaire, `access.admin.configuration` → Administration, sinon Rédaction ; comptes désactivés ignorés. **Le mot de passe Grav (bcrypt) reste valable.** |
 
 ## Ce qui ne l'est pas — et qui est toujours signalé
 

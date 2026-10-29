@@ -6,7 +6,7 @@ C'est une extension de l'Entretien du cœur (diagnostic, audit, outils `maintena
 
 ## Pour vous, qui gérez le site
 
-1. Ouvrez **Santé de mon site** (menu *Administration*, mode simple comme avancé ; réservé aux administrateurs et à la personne propriétaire).
+1. Ouvrez **Santé de mon site** (menu *Administration*, mode simple comme avancé ; réservé au rôle Administration et à la personne propriétaire).
 2. Cliquez **Vérifier maintenant**. Une barre de progression dit où l'on en est (« Lien 12 sur 87 »). Tant que la page reste ouverte, les paquets de liens s'enchaînent ; si vous la fermez, la vérification s'arrête, et **Continuer la vérification** reprend à la visite suivante.
 3. Le résumé est un mot : *Tout va bien.* ou *Quelques petites choses à regarder.* Trois pastilles comptent les remarques par importance :
    - **Important** : quelque chose est cassé ou invisible pour une personne qui visite (image sans texte alternatif, titre vide, lien vers une page disparue, élément de menu mort, image envoyée introuvable, lien externe mort) ;
@@ -45,7 +45,7 @@ Les liens externes visités sont ceux des textes, des champs d'adresse des entr�
 
 ## Les visites de liens externes : garde-fous
 
-À la demande seulement (`startCheck` / `continueCheck` ne sont appelés que par un clic d'administrateur ou l'outil `maintenance_content_check_run`) : aucune tâche planifiée, aucun minuteur de fond. Code : `src/core/maintenance/content/` (`run.ts`, `probe.ts`, `net.ts`).
+À la demande seulement (`startCheck` / `continueCheck` ne sont appelés que par un clic dans l'administration ou l'outil `maintenance_content_check_run`) : aucune tâche planifiée, aucun minuteur de fond. Code : `src/core/maintenance/content/` (`run.ts`, `probe.ts`, `net.ts`).
 
 | Règle | Valeur |
 |---|---|
@@ -83,7 +83,7 @@ Voir [MAINTENANCE-IA.md](MAINTENANCE-IA.md).
 
 ## Droits
 
-Page et actions : administrateur ou propriétaire (`adminCtx("admin")` en tête de la page et de chaque action). Un éditeur ne les voit pas.
+Page et actions : rôle Administration ou Propriétaire (`adminCtx("admin")` en tête de la page et de chaque action). Le rôle Rédaction ne les voit pas.
 
 ## Pour étendre
 

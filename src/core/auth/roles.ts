@@ -15,7 +15,7 @@ import { accessOf, currentCatalogue, levelOf } from "./access";
 import { columnsOf, parseStoredRights, isReserved, isSystemKey, levelFromKeys, SYSTEM_ROLE_KEYS, type Level, type RightInfo } from "./rights";
 import { canManageMember, grantableLevels } from "./team";
 
-const SYSTEM_NAMES: Record<(typeof SYSTEM_ROLE_KEYS)[number], string> = { owner: "Owner", coordinator: "Technical coordinator", admin: "Administrator", editor: "Editor" };
+const SYSTEM_NAMES: Record<(typeof SYSTEM_ROLE_KEYS)[number], string> = { owner: "Owner", coordinator: "Technical coordination", admin: "Administration", editor: "Editorial" };
 export const ROLE_NAME_MAX = 60;
 export const ROLE_DESCRIPTION_MAX = 300;
 /** Plafond de rôles personnalisés (dézoom permanent : la page Équipe reste lisible et bornée). */

@@ -44,7 +44,7 @@ Curiosa est un **site vitrine clé en main que vous possédez** : votre contenu,
 ## Respect des personnes qui visitent votre site, et sécurité
 
 - **Des statistiques sans suivi personnel.** Vous voyez combien de personnes passent, jamais qui. Aucun outil extérieur, aucune publicité.
-- **Des accès protégés.** Chaque personne a son compte avec son rôle (propriétaire, éditeur…), les mots de passe ne sont jamais lisibles, et un journal garde la trace de chaque action importante.
+- **Des accès protégés.** Chaque personne a son compte avec son rôle (propriétaire, administration, rédaction…), les mots de passe ne sont jamais lisibles, et un journal garde la trace de chaque action importante.
 - **Tout est chez vous.** Vos données tiennent dans un seul fichier, sur votre serveur, et les failles connues sont vérifiées régulièrement.
 
 ## Gratuit, lisible, et reconnu

@@ -137,7 +137,7 @@ if (!users.some((u) => u.role === "owner")) {
   if (users.length) { users[0].role = "owner"; warn(`aucun super-administrateur Grav : « ${users[0].a.username} » devient propriétaire`); }
   else {
     const temp = randomPw();
-    users.push({ a: { email: owner.email ?? "admin@example.invalid", fullname: owner.name ?? "Administrateur", username: "admin" }, role: "owner", hash: await bcrypt.hash(temp, 12) });
+    users.push({ a: { email: owner.email ?? "admin@example.invalid", fullname: owner.name ?? "Propriétaire", username: "admin" }, role: "owner", hash: await bcrypt.hash(temp, 12) });
     warn(`aucun compte Grav : propriétaire créé (${owner.email ?? "admin@example.invalid"}), mot de passe provisoire : ${temp}`);
   }
 }

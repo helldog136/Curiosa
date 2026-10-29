@@ -318,7 +318,7 @@ Un module qui fournit `social.link` renvoie `[{ label, url, icon? }]` et peut aj
 
 ## 11. Panneau et actions d'admin
 
-Sous les réglages de chaque instance, votre module peut afficher son propre panneau : tableau, boutons, formulaires — toujours réservé aux administrateurs (le cœur vérifie).
+Sous les réglages de chaque instance, votre module peut afficher son propre panneau : tableau, boutons, formulaires — toujours réservé au rôle Administration (le cœur vérifie).
 
 ```js
 export default {

@@ -69,7 +69,7 @@ Il n'y a **volontairement pas** d'outil de restauration : elle remplace tout le 
 
 **Menaces et réponses**
 
-- *IA compromise ou manipulée (injection de consignes dans un texte qu'elle lit)* : au pire elle peut **demander**. Avec la validation humaine, le niveau 3 se limite à une demande en attente que seul le **propriétaire connecté** peut approuver (les administrateurs et éditeurs n'ont pas ce droit) ; l'approbation ne s'applique qu'à ce qui est décrit dans la demande, en langage simple. Les niveaux 1 et 2 ne peuvent rien détruire ni rien exfiltrer : pas de secret dans les sorties, la copie de la base n'est ni lisible ni téléchargeable par l'API, et la file est bornée (5 demandes par jeton, 12 actions par heure).
+- *IA compromise ou manipulée (injection de consignes dans un texte qu'elle lit)* : au pire elle peut **demander**. Avec la validation humaine, le niveau 3 se limite à une demande en attente que seul le **propriétaire connecté** peut approuver (les rôles Administration et Rédaction n'ont pas ce droit) ; l'approbation ne s'applique qu'à ce qui est décrit dans la demande, en langage simple. Les niveaux 1 et 2 ne peuvent rien détruire ni rien exfiltrer : pas de secret dans les sorties, la copie de la base n'est ni lisible ni téléchargeable par l'API, et la file est bornée (5 demandes par jeton, 12 actions par heure).
 - *Jeton volé* : mêmes limites que ci-dessus (c'est le pire cas d'une IA compromise), et la personne propriétaire le **révoque** en un clic ; l'exécution directe, elle, doit avoir été choisie **explicitement** pour ce jeton, avec un avertissement : ne l'activez que pour une IA de confiance. La connexion par adresse secrète reste désactivée par défaut.
 - *Demande forgée* : une demande n'existe que créée par un outil appelé avec un jeton qui en a le droit ; elle est liée à ce jeton (une IA ne relit que les siennes). Son contenu (le « plan » : versions de départ et d'arrivée) est figé à la création, puis **revérifié au moment d'exécuter** ; une demande dont la cible a changé n'est pas exécutée. Une demande ne s'approuve **qu'une fois** (passage atomique « en attente → en cours »), expire au bout de **24 heures**, et une demande refusée ou expirée ne s'exécute jamais, même si on tente de l'approuver ensuite.
 - *Mise à jour vers un code non éprouvé* : le cœur **n'exécute jamais** de mise à jour demandée par une IA vers une version candidate (`X.Y.Z-rc.N`) ou un instantané `dev-…`, quel que soit le canal du site (un site sur le canal des candidates peut être mis à jour à la main par l'administrateur, jamais par l'IA), et jamais de rétrogradation. Une candidate n'a pas fini d'être éprouvée : si elle est défaillante, une mise à jour automatisée sans regard humain étendrait le dégât. `core_update` ne vise que la plus haute release **stable**, `startUpdate(…, { stableOnly })` le refuse une seconde fois en dernier recours, et un module n'est mis à jour que s'il suit des étiquettes stables `vX.Y.Z` (pas une branche, pas un commit, pas une préversion). Un module qui exige un cœur plus récent est refusé.
@@ -86,7 +86,7 @@ Le cœur visite lui-même des adresses venues du contenu (liens d'un texte, du m
 - *Adresse interne ou piégée* : refusée **avant toute résolution** (`hostProblem`) : autre schéma, identifiants, port ≠ 443, adresse numérique sous toute écriture, noms `localhost` / `.local` / `.lan` / `.internal` / sans point. Idem à **chaque redirection** (5 au plus, une boucle est coupée).
 - *Nom qui mène à une adresse privée, et rebinding* : le nom est résolu **une fois** ; une seule adresse privée, locale ou réservée (`addressIsPrivate`) refuse tout le nom. La connexion est ouverte avec un `lookup` qui ne rend que les adresses vérifiées : pas de seconde résolution, un nom non vérifié n'est jamais contacté (fail closed). Le certificat reste celui du nom.
 - *Marteler un site* : 200 liens par vérification, 25 par site, jamais deux visites de suite sur le même site, 250 ms entre visites, HEAD puis GET de 2 Ko, délai de 6 s par demande, et un site qui répond « trop de demandes » n'est plus contacté. Le disjoncteur du client réseau du cœur s'applique.
-- *Visites non voulues* : jamais en arrière-plan ni planifiées ; un clic d'administrateur (ou l'outil `maintenance_content_check_run`, niveau 2, accordé jeton par jeton) ; un seul passage à la fois.
+- *Visites non voulues* : jamais en arrière-plan ni planifiées ; un clic dans l'administration (ou l'outil `maintenance_content_check_run`, niveau 2, accordé jeton par jeton) ; un seul passage à la fois.
 - *Fuite* : le rapport ne garde ni paramètres, ni fragments, ni identifiants d'adresse ; les outils de l'assistant IA ne donnent que le **nom** du site visité, sans secret. Le lien « Corriger » est choisi dans une liste fermée d'écrans d'administration (aucune redirection ouverte, même si le rapport gardé était modifié).
 
 ## Réinstaller un module (propriétaire seulement)
@@ -101,7 +101,7 @@ Installer, mettre à jour ou réinstaller un module commence par **essayer de ch
 
 - **Origine** : une entrée du catalogue vaut `official` (dépôt du catalogue ou sa dernière copie reçue) ou `extra` (index supplémentaire `MODULES_INDEX_URL`). Une entrée `extra` n'est **jamais** installée ni mise à jour d'office (cascade de dépendances, graine, restauration d'un fournisseur manquant) : le manque est signalé (raison « extra »). Elle ne s'installe que par la personne propriétaire, après l'avertissement « non vérifié par le catalogue officiel » et une case cochée (`confirmExtra`, revérifié côté serveur). À service égal, l'officiel passe toujours avant. Seule exception : restaurer une sauvegarde remet un module `extra` que la personne propriétaire avait déjà installé (la personne confirme la restauration).
 - **Besoin facultatif** (`requires[].optional`) : jamais installé d'office, ne retient pas son fournisseur.
-- **Bloc `suggestInstall`** : seul un clic de la **personne propriétaire** installe (action serveur `installSuggested`, rôle propriétaire exigé, puis revérifiés : l'instance existe, son module déclare le service dans `requires`, l'entrée du catalogue offre bien ce service en version suffisante, est compatible, et une entrée `extra` porte la case cochée). Un administrateur ou un rédacteur lit seulement « Demandez à la personne propriétaire… ». `ctx.api` n'expose aucune installation : ni un service, ni une tâche, ni une migration, ni le MCP ne peuvent en déclencher. Audit : `module.install.suggested` (module, service, origine ; jamais de secret). La lecture du catalogue pendant le rendu est bornée à 2 s.
+- **Bloc `suggestInstall`** : seul un clic de la **personne propriétaire** installe (action serveur `installSuggested`, rôle propriétaire exigé, puis revérifiés : l'instance existe, son module déclare le service dans `requires`, l'entrée du catalogue offre bien ce service en version suffisante, est compatible, et une entrée `extra` porte la case cochée). Une personne du rôle Administration ou Rédaction lit seulement « Demandez à la personne propriétaire… ». `ctx.api` n'expose aucune installation : ni un service, ni une tâche, ni une migration, ni le MCP ne peuvent en déclencher. Audit : `module.install.suggested` (module, service, origine ; jamais de secret). La lecture du catalogue pendant le rendu est bornée à 2 s.
 - **Mise à jour** : aucune migration de données tant qu'un `requires` dur de la nouvelle version manque ; sinon tout est défait (fichiers, ligne du module, modules apportés par la cascade) et les données restent intactes.
 
 ## Module qui sème une instance (modèle de menace)
@@ -133,7 +133,7 @@ Une session dure **14 jours au plus**. Elle se coupe aussi à tout moment :
 
 ### Mot de passe temporaire (propriétaire seulement)
 
-Dans *Équipe → Actions sensibles → Définir un mot de passe temporaire*, la personne propriétaire peut remplacer le mot de passe d'un administrateur ou d'un éditeur (jamais le sien, qui se change dans *Mon compte*, ni celui d'un autre propriétaire). Le rôle est vérifié par le serveur, pas seulement par l'interface.
+Dans *Équipe → Actions sensibles → Définir un mot de passe temporaire*, la personne propriétaire peut remplacer le mot de passe d'une personne des rôles Administration ou Rédaction (jamais le sien, qui se change dans *Mon compte*, ni celui d'un autre propriétaire). Le rôle est vérifié par le serveur, pas seulement par l'interface.
 
 - Par défaut le site **génère** un mot de passe de 16 caractères lisibles (sans `0/O` ni `1/l/I`), affiché **une seule fois** avec un bouton *Copier* ; la personne propriétaire peut aussi en choisir un (10 caractères au moins). Le mot de passe n'est ni enregistré en clair, ni écrit dans le journal d'audit, ni envoyé par e-mail, ni placé dans l'adresse ou un cookie.
 - Toutes les sessions ouvertes de la personne sont coupées. Le journal note *qui*, *pour qui* et *quand* (`user.password.reset`). Si l'e-mail du site est réglé, la personne reçoit un courrier (sans le mot de passe) ; sinon, rien n'est envoyé et la personne propriétaire la prévient elle-même. L'action est limitée en débit (10 par quart d'heure, 5 par heure pour une même personne).
@@ -146,45 +146,45 @@ Dans *Équipe → Actions sensibles → Définir un mot de passe temporaire*, la
 Une personne a **un ou plusieurs rôles** ; elle peut faire tout ce que l'un d'eux permet (union des droits).
 
 - **Rôles prédéfinis**, non modifiables, du plus haut au plus bas : *Propriétaire* (tout ; la première personne, intouchable), *Coordination technique* (0.4.0, voir ci-dessous),
-  *Administrateur* (tout sauf ce qui est réservé : équipe, rôles, sauvegardes, mises à jour, installation de modules, jetons des assistants IA, sécurité),
-  *Éditeur* (écrire, modifier et publier les contenus). Ils sont créés au démarrage (`src/core/auth/roles.ts`, idempotent) ; chaque personne reçoit celui de son niveau.
+  *Administration* (tout sauf ce qui est réservé : équipe, rôles, sauvegardes, mises à jour, installation de modules, jetons des assistants IA, sécurité),
+  *Rédaction* (écrire, modifier et publier les contenus). Ils sont créés au démarrage (`src/core/auth/roles.ts`, idempotent) ; chaque personne reçoit celui de son niveau.
 - **Rôles personnalisés** (*Équipe → Rôles*, **propriétaire et coordination technique** : droit `core:roles`) : un nom, une phrase, des cases à cocher par module en mots simples
-  (« Contacts : voir les e-mails »). Sur la fiche d'une personne, des **puces cumulables** (Éditeur + Modérateur) et l'aperçu « Ce que cette personne peut faire ».
+  (« Contacts : voir les e-mails »). Sur la fiche d'une personne, des **puces cumulables** (Rédaction + Modérateur) et l'aperçu « Ce que cette personne peut faire ».
 - **Droits** : ceux du cœur (`core:entries.edit`, `core:entries.publish`) et ceux des modules, toujours **préfixés par le cœur** (`<module>:<droit>`) : un module ne peut
-  ni déclarer ni tester le droit d'un autre. `<module>:open` ouvre la page d'un module (administrateurs : oui ; éditeurs : non, comme avant).
+  ni déclarer ni tester le droit d'un autre. `<module>:open` ouvre la page d'un module (Administration : oui ; Rédaction : non, comme avant).
 - **Jamais proposés** dans un rôle (et refusés par le serveur s'ils arrivent dans un formulaire forgé) : `core:team`, `core:roles`, `core:backup`, `core:updates`,
   `core:modules.install`, `core:mcp.tokens`, `core:security`. Ils ne s'obtiennent que par le **niveau** (propriétaire, coordination technique), jamais par un rôle personnalisé.
 
 ### Le Coordination technique (0.4.0)
 
 Une personne peut installer Curiosa pour elle ou son organisation et confier toute l'administration à un tiers : *Équipe → Ajouter → Coordination technique*.
-Hiérarchie : **propriétaire > coordination technique > administrateur > éditeur**. La première personne reste TOUJOURS la personne propriétaire.
+Hiérarchie : **propriétaire > coordination technique > Administration > Rédaction**. La première personne reste TOUJOURS la personne propriétaire.
 
-**Droits** : une seule table, `LEVEL_RESERVED` dans `src/core/auth/rights.ts` (décision de la propriétaire ; pour la changer, modifier cette ligne, les pages, actions et tests suivent).
-Le coordinateur a tous les droits de l'administrateur (dont les droits de module `default.admin !== false`, y compris les droits `sensitive` déclarés par défaut pour l'administrateur), plus
+**Droits** : une seule table, `LEVEL_RESERVED` dans `src/core/auth/rights.ts` (décision de la personne propriétaire ; pour la changer, modifier cette ligne, les pages, actions et tests suivent).
+La coordination technique a tous les droits du rôle Administration (dont les droits de module `default.admin !== false`, y compris les droits `sensitive` déclarés par défaut pour l'Administration), plus
 **les sept droits réservés** : `core:updates`, `core:modules.install`, `core:backup`, `core:mcp.tokens`, `core:security`, `core:team`, `core:roles`. Là où une page exigeait « propriétaire » pour une
 opération technique, elle exige désormais le droit (`adminCtx({ right })`, `can`) : mises à jour et restauration du site, modules et skins (installer, mettre à jour, retirer), sauvegardes
 (page et routes HTTP), assistants IA (jetons, droits, validation des demandes de maintenance), journal d'audit, « exiger la double vérification », suivi des opérations longues, rôles et équipe.
 
-**Ce qui reste au propriétaire SEUL** (inventaire) : son compte (modifier, rétrograder, supprimer, mot de passe temporaire, sessions, double vérification, déblocage) ; nommer, modifier, rétrograder, supprimer ou
-réinitialiser un coordinateur ; affecter le niveau propriétaire (jamais possible, ni par la personne propriétaire : le site se transfère hors de l'application) ; transférer ou supprimer le site ; les réglages d'envoi des
+**Ce qui reste à la personne propriétaire SEULE** (inventaire) : son compte (modifier, rétrograder, supprimer, mot de passe temporaire, sessions, double vérification, déblocage) ; nommer, modifier, rétrograder, supprimer ou
+réinitialiser un compte de coordination technique ; affecter le niveau propriétaire (jamais possible, ni par la personne propriétaire : le site se transfère hors de l'application) ; transférer ou supprimer le site ; les réglages d'envoi des
 e-mails (*Réglages → E-mail*) et la clé du service de jaquettes, qui n'ont pas de droit propre.
 
-**Garde-fous** (`team.ts`, `members.ts`, `roles.ts`, testés par `tests/core/coordinator.test.mjs`) : tout est revérifié côté serveur, l'acteur relu en base ; un coordinateur ne se promeut pas et n'en crée pas ;
+**Garde-fous** (`team.ts`, `members.ts`, `roles.ts`, testés par `tests/core/coordinator.test.mjs`) : tout est revérifié côté serveur, l'acteur relu en base ; une coordination technique ne se promeut pas et n'en crée pas ;
 ne donne à un rôle ou à une personne que des droits qu'il possède lui-même (les droits de module `default.admin: false` ne sont donc pas à sa portée) ; ne remodèle pas un rôle qui donne plus que lui ; ne supprime pas un
-rôle tenu par un coordinateur ; il reste toujours un propriétaire. Journal : `user.create` (avec le niveau), `user.roles`, `role.*`, `user.delete`, etc.
+rôle tenu par un compte de coordination technique ; il reste toujours une personne propriétaire. Journal : `user.create` (avec le niveau), `user.roles`, `role.*`, `user.delete`, etc.
 
-**Stockage et retour en arrière** : le niveau historique `User.role` d'un coordinateur vaut **`admin`** (valeur de repli la plus sûre : un ancien cœur le traite en administrateur, jamais en propriétaire ni en « aucun accès »),
+**Stockage et retour en arrière** : le niveau historique `User.role` d'un compte de coordination technique vaut **`admin`** (valeur de repli la plus sûre : un ancien cœur le traite en rôle Administration, jamais en propriétaire ni en « aucun accès »),
 et la colonne `User.coordinator` (migration `20261029090000_coordinator`, faux par défaut : aucun compte existant ne change) porte le drapeau. Le drapeau ne vaut **que** si `role` est `admin` : si un ancien cœur change `role`,
-le drapeau est ignoré puis effacé au démarrage du nouveau cœur. Une sauvegarde porte la colonne ; restaurée sur ce cœur, elle redonne le niveau ; sur un ancien cœur ou depuis une sauvegarde d'avant, le compte est un administrateur.
-Cas limite assumé : si, sur un ancien cœur, la personne propriétaire rétrograde un coordinateur puis le remet administrateur avant tout démarrage du nouveau cœur, le drapeau est encore là et il redevient coordinateur.
+le drapeau est ignoré puis effacé au démarrage du nouveau cœur. Une sauvegarde porte la colonne ; restaurée sur ce cœur, elle redonne le niveau ; sur un ancien cœur ou depuis une sauvegarde d'avant, le compte est du rôle Administration.
+Cas limite assumé : si, sur un ancien cœur, la personne propriétaire rétrograde un compte de coordination technique puis le remet au rôle Administration avant tout démarrage du nouveau cœur, le drapeau est encore là et le compte redevient coordination technique.
 
 **Ce que vérifie le serveur** (testé par `tests/core/roles-security.test.mjs`) :
 
 - La personne est **relue en base à chaque requête** : un droit retiré est refusé dès la requête suivante, sans reconnexion. Le jeton de session garde un champ `role`
   (compatibilité) mais **ne décide de rien**.
-- **Anti-élévation** : seuls le propriétaire et le coordinateur (droits `core:roles` / `core:team`, relus en base) créent, modifient ou suppriment un rôle et choisissent les rôles des autres ; un rôle ne contient que des droits connus que
-  son créateur possède ; le rôle *Propriétaire* ne s'affecte jamais ; un identifiant de rôle forgé ou inconnu est refusé (rien n'est écrit en partie).
+- **Anti-élévation** : seules la personne propriétaire et la coordination technique (droits `core:roles` / `core:team`, relus en base) créent, modifient ou suppriment un rôle et choisissent les rôles des autres ; un rôle ne contient que des droits connus que
+  la personne qui le crée possède ; le rôle *Propriétaire* ne s'affecte jamais ; un identifiant de rôle forgé ou inconnu est refusé (rien n'est écrit en partie).
 - **Anti-verrouillage** : une personne garde au moins un rôle ; un rôle en usage ne se supprime qu'en choisissant le rôle que recevront ses membres (la base le refuse
   aussi : `onDelete: Restrict`) ; la personne propriétaire est intouchable.
 - **Ordre inchangé** : connecté → mot de passe temporaire → rôle ou droit → double vérification. Un mot de passe temporaire bloque tout, quels que soient les rôles.
@@ -197,8 +197,8 @@ Cas limite assumé : si, sur un ancien cœur, la personne propriétaire rétrogr
 (elle n'a que des rôles personnalisés). Il reste la source du niveau : un changement fait par un ancien cœur est respecté au retour, jamais une élévation.
 
 **Retour à la 0.1.28** (après une mise à jour annulée) : les tables `Role` et `UserRole` sont ignorées. Un compte « none » est **refusé partout** par l'ancien cœur
-(son rang vaut 0) : il est **bloqué, jamais élevé**, jusqu'au retour en 0.2.0 ou jusqu'à ce que la personne propriétaire lui redonne le rôle Éditeur ou Administrateur.
-Les propriétaires, administrateurs et éditeurs ne voient aucune différence.
+(son rang vaut 0) : il est **bloqué, jamais élevé**, jusqu'au retour en 0.2.0 ou jusqu'à ce que la personne propriétaire lui redonne le rôle Rédaction ou Administration.
+Les rôles Propriétaire, Administration et Rédaction ne voient aucune différence.
 
 ## Exports et envois de fichiers de l'administration (0.2.0)
 
@@ -257,7 +257,7 @@ Les jaquettes sont servies par le module officiel « Jaquettes de jeux » (même
 - **Lecture seule, rien n'est effacé** : les réglages `rawg.key`, `rawg.fixes`, `rawg.toCheck` du cœur ne sont ni modifiés ni supprimés (retour arrière et sauvegardes d'avant possibles). La clé reste donc, comme avant, dans les réglages du cœur et dans leur sauvegarde (secret, masquée dans le résumé lisible) jusqu'à une purge optionnelle future ; elle n'apparaît dans aucun écran, journal ni réponse.
 - **`ctx.api.rawg` (permission `rawg`, dépréciée)** : simple relais vers `game.cover` ; la réponse du module est relue avec méfiance (statuts connus, https seulement, longueurs bornées, 6 candidats, jamais d'exception, jamais la clé) ; sans la permission, comme sans clé.
 - **Assistants IA** : les alias `rawg_covers_to_check` (lecture) et `rawg_cover_set` (écriture, **jamais accordée d'office**) ont le même schéma d'arguments que ceux du module, validé avant l'appel ; ils suivent l'interrupteur MCP de l'instance du module ; chaque écriture est consignée par le serveur MCP comme pour tout outil d'écriture.
-- **Écran historique** `/admin/settings/rawg-covers` : redirection (administrateurs seulement), `titre`, `q` (400 caractères au plus) et `saved` (valeurs connues) sont seuls conservés ; l'écran de correction, ses contrôles d'image (`https://media.rawg.io/media/….(png|jpg|jpeg|webp)`, forme canonique, aucun paramètre ni détour), sa cadence limitée et son plafond de 1000 corrections sont ceux du module.
+- **Écran historique** `/admin/settings/rawg-covers` : redirection (Administration seulement), `titre`, `q` (400 caractères au plus) et `saved` (valeurs connues) sont seuls conservés ; l'écran de correction, ses contrôles d'image (`https://media.rawg.io/media/….(png|jpg|jpeg|webp)`, forme canonique, aucun paramètre ni détour), sa cadence limitée et son plafond de 1000 corrections sont ceux du module.
 
 ## Fichiers envoyés : revendiquer et supprimer (0.2.13)
 

@@ -30,6 +30,9 @@ const TERMES = [
   { id: "technicien", langue: "fr", re: mot("\\b(?:non[- ]techniciens?|techniciens?|technicienne)\\b", "iu"), pourquoi: "genre supposé : « sans bagage technique », « technique »" },
   { id: "archetype-prenom-genre", langue: "fr", re: mot("\\bEmma\\b", "u"), pourquoi: "archétype « Emma » (personne non technique) : le cliché est le problème" },
   { id: "attaquant", langue: "fr", re: mot("\\b(?:l'|un )attaquants?\\b", "iu"), pourquoi: "masculin générique : « une personne malveillante »" },
+  { id: "coordinateur-masculin", langue: "fr", re: mot("\\b(?:le|un|ce|du|au|les|des|aux|d'un|chaque|ni) coordinateurs?\\b", "iu"), pourquoi: "niveau masculin générique : « la coordination technique » (le nom du niveau, jamais « le coordinateur »)" },
+  { id: "role-ancien-nom", langue: "fr", re: mot("\\b(?:les|des|aux|tout|un|d'un|d'une) administrateurs?\\b|\\b(?:les|aux|des) éditeurs\\b|\\bAdministrateurs?\\b|\\bÉditeurs?(?! d(?:'|e ))", "u"), pourquoi: "ancien nom de rôle (0.4.0) : « Administration » et « Rédaction » (ou « l'administration », « la rédaction ») ; l'éditeur d'entrée ou de menu est un outil, pas un rôle" },
+  { id: "role-ancien-nom-en", langue: "en", re: mot("\\b(?:Administrators?|Editors?)\\b", "u"), pourquoi: "ancien nom de rôle (0.4.0) : « Administration » et « Editorial »" },
   { id: "pronoms-en", langue: "en", re: mot("\\b(?:he|she|his|hers?|him|himself|herself|he\\/she|s\\/he|his\\/her|chairman|chairmen|mankind|manpower|man-hours?|salesman|salesmen|businessman|businessmen|guys|ladies|gentlemen)\\b", "iu"), pourquoi: "anglais : « they/them », « chair », « people », « workforce »" },
 ];
 
@@ -78,6 +81,7 @@ const LISTE_BLANCHE = [
   { id: "developpeur-masculin", fichier: "", contient: "« Pour les développeurs »", pourquoi: "cite l'intitulé de rubrique du CHANGELOG, lu par un test (à renommer avec lui)" },
   { id: "developpeur-masculin", fichier: "", contient: "pour les développeurs|côté technique", pourquoi: "expression régulière du kit de test : reconnaît l'ancien intitulé de rubrique des README de modules déjà publiés" },
   { id: "developpeur-masculin", fichier: "", contient: "pour les développeurs", pourquoi: "ligne du kit de test qui reconnaît l'ancien intitulé de rubrique des README de modules déjà publiés" },
+  { id: "role-ancien-nom", fichier: "scripts/visual/seed/modules/pages.mjs", contient: "## Éditeur", pourquoi: "intitulé d'une page de mentions légales de démonstration (l'éditeur du site, au sens juridique), pas un rôle" },
   { id: "pronoms-en", fichier: "src/core/i18n/locales.ts", contient: "he", pourquoi: "code de langue (hébreu), pas un pronom" },
 ];
 
@@ -140,6 +144,9 @@ export function violations(ens = textes()) {
 test("écriture neutre : le détecteur reconnaît les termes genrés connus (et laisse passer les formulations neutres)", () => {
   const essai = (texte, langue = "fr") => violations([{ fichier: "x.md", lieu: "1", texte, langue }]).length > 0 ? 1 : 0;
   for (const mal of ["Les créatrices et leurs clientes", "Un site pour les créateurs", "Vous êtes connecté sur cet appareil", "Connecté(e) avec x", "créateur·rice", "passionné·e", "Bonjour Madame", "👩 Bonjour", "Vos visiteurs voient la page", "Seul le propriétaire peut", "Emma, créatrice non technique", "écrivez pour quelqu'un qui n'est pas technicien"]) assert.equal(essai(mal), 1, mal);
+  for (const mal of ["Gérer les administrateurs et les éditeurs", "Réservé aux administrateurs", "Rôle Administrateur", "Rôle Éditeur", "Le coordinateur technique", "Ne touche pas au compte d'un coordinateur"]) assert.equal(essai(mal), 1, mal);
+  for (const mal of ["Administrator: manages the site", "Editor: writes content"]) assert.equal(essai(mal, "en"), 1, mal);
+  for (const bien of ["Rôle Administration", "Rôle Rédaction", "La coordination technique gère les mises à jour", "Un éditeur d'entrée ouvre la page", "Éditeur de menu"]) assert.equal(essai(bien), 0, bien);
   for (const mal of ["He sent it to her", "The chairman and his team", "mankind"]) assert.equal(essai(mal, "en"), 1, mal);
   for (const bien of ["Les personnes qui vous suivent", "Votre public voit la page", "Seule la personne propriétaire peut", "Connexion active avec x", "Invitation envoyée", "Appareils connectés", "Bienvenue sur {name}", "La clientèle", "They sent it to their team"]) assert.equal(essai(bien, bien.startsWith("They") ? "en" : "fr"), 0, bien);
   // la liste blanche ne tolère que ce qu'elle décrit
@@ -162,4 +169,23 @@ test("écriture neutre : les locales fr et en gardent exactement les mêmes clé
   const fr = localeValues("src/locales/fr.json").map(([k]) => k).sort(); const en = localeValues("src/locales/en.json").map(([k]) => k).sort();
   assert.deepEqual(fr.filter((k) => !en.includes(k)), [], "clés seulement en français");
   assert.deepEqual(en.filter((k) => !fr.includes(k)), [], "clés seulement en anglais");
+});
+
+test("écriture neutre : noms des rôles (0.4.0) — Administration et Rédaction (EN : Administration, Editorial), Propriétaire et Coordination technique inchangés ; les clés restent", () => {
+  const fr = JSON.parse(fs.readFileSync("src/locales/fr.json", "utf8")), en = JSON.parse(fs.readFileSync("src/locales/en.json", "utf8"));
+  assert.deepEqual([fr["role.owner"], fr["role.coordinator"], fr["role.admin"], fr["role.editor"]], ["Propriétaire", "Coordination technique", "Administration", "Rédaction"]);
+  assert.deepEqual([en["role.owner"], en["role.coordinator"], en["role.admin"], en["role.editor"]], ["Owner", "Technical coordination", "Administration", "Editorial"]);
+  for (const k of ["roles.system.admin", "roles.system.editor", "access.admin", "access.editor", "users.levelHelp.admin", "users.levelHelp.editor", "users.rolesHelp"]) { assert.ok(fr[k] && en[k], k); }
+  assert.match(fr["users.rolesHelp"], /Administration : .*Rédaction : /);
+  assert.match(en["users.rolesHelp"], /Administration: .*Editorial: /);
+});
+
+test("écriture neutre : le périmètre couvre les textes de toutes les branches de la 0.4.0 (coordination technique, bulle d'aide, skins, écriture neutre)", () => {
+  const ens = textes(); const files = new Set(ens.map((t) => t.fichier));
+  for (const f of ["src/components/admin/HelpTip.tsx", "docs/SECURITE.md", "docs/MODULES.md", "docs/SKINS.md", "docs/CREER-UN-SKIN.md", "src/locales/fr.json", "src/locales/en.json", "src/core/modules/adminMenu.ts", "src/core/auth/team.ts"]) assert.ok(files.has(f), `hors périmètre : ${f}`);
+  const keys = new Set(ens.filter((t) => t.fichier === "src/locales/fr.json").map((t) => t.lieu));
+  for (const k of ["roles.system.coordinator", "access.coordinator", "users.levelHelp.coordinator", "roles.error.level", "roles.error.denied", "users.rolesHelp"]) assert.ok(keys.has(k), `clé non analysée : ${k}`);
+  // tout fichier suivi qui contient une clé de locale du bloc coordination technique est analysé dans les DEUX langues
+  const en = new Set(ens.filter((t) => t.fichier === "src/locales/en.json").map((t) => t.lieu));
+  for (const k of keys) if (/coordinator|HelpTip|helpTip/.test(k)) assert.ok(en.has(k), `clé absente de en.json : ${k}`);
 });

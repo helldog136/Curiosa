@@ -797,7 +797,7 @@ Mots à utiliser (FR / EN, clés `skins.*` du dictionnaire) : le mot **« skin �
 
 ### 10.3 Aperçu de l'éditeur
 
-L'éditeur de contenu (page, entrée, accueil) montre le skin actif sur son aperçu. L'aperçu d'un skin **non activé** (écran 2) est une page `/admin/appearance/preview/<id>` rendue par le même code que le site public avec `data-skin="<id>"` forcé, réservée aux administrateurs connectés, `noindex`, jamais mise en cache partagée.
+L'éditeur de contenu (page, entrée, accueil) montre le skin actif sur son aperçu. L'aperçu d'un skin **non activé** (écran 2) est une page `/admin/appearance/preview/<id>` rendue par le même code que le site public avec `data-skin="<id>"` forcé, réservée aux personnes connectées du rôle Administration, `noindex`, jamais mise en cache partagée.
 
 ### 10.4 Messages
 
@@ -1196,7 +1196,7 @@ Laissé aux lots suivants : le banc d'essai lit `layer.parts` et `demo` (S8) ; l
 | `src/components/admin/EntryPreview.tsx`, `EntryPreviewBox.tsx` | l'aperçu dans l'éditeur d'entrée |
 | `src/components/admin/ThemePicker.tsx` | le sélecteur de couleurs d'avant, étendu (préfixe de champs, avertissements « illisibilité probable », « ↺ Valeur du skin ») |
 
-Droits : choisir, retoucher, revenir au skin, annuler, aperçu = « administrateur » (comme les réglages) ; ajouter (catalogue ou adresse), lire un dépôt, mettre à jour, revenir à la version d'avant, retirer = « propriétaire » (comme les modules : cela récupère des fichiers d'un dépôt git). Menu : *Mon site › Apparence*, à côté de *Réglages*.
+Droits : choisir, retoucher, revenir au skin, annuler, aperçu = rôle Administration (comme les réglages) ; ajouter (catalogue ou adresse), lire un dépôt, mettre à jour, revenir à la version d'avant, retirer = « propriétaire » (comme les modules : cela récupère des fichiers d'un dépôt git). Menu : *Mon site › Apparence*, à côté de *Réglages*.
 
 ### 23.2 L'écran, de haut en bas (une colonne sur téléphone)
 
@@ -1230,7 +1230,7 @@ Réglages → Apparence ne contient plus les couleurs, la police, le halo, le fo
 
 ### 23.5 L'aperçu, sans rien enregistrer
 
-`/admin/appearance/preview/<id>` (§10.3) a été remplacé par une adresse de la **vraie page** du site : `<page>?curiosa_skin_preview=<jeton>`. Le jeton (`<skin>.<fin>.<signature>`, HMAC du secret du site, **quinze minutes**) est fabriqué par une action d'administrateur ; le proxy ne fait que le recopier dans l'en-tête interne `x-curiosa-skin-preview` (après avoir effacé celui de la personne qui visite) ; le gabarit du site le vérifie puis compose le skin demandé **sans les retouches ni les options de la personne** (c'est ce que donnerait « Utiliser ce skin ») et ajoute `noindex`. Rien n'est écrit, aucun cookie, aucun état serveur ; un jeton ne donne accès à rien de privé (le site est public) : il choisit seulement quel skin habille la page. Un skin absent ou altéré s'affiche en basic.
+`/admin/appearance/preview/<id>` (§10.3) a été remplacé par une adresse de la **vraie page** du site : `<page>?curiosa_skin_preview=<jeton>`. Le jeton (`<skin>.<fin>.<signature>`, HMAC du secret du site, **quinze minutes**) est fabriqué par une action de l'administration ; le proxy ne fait que le recopier dans l'en-tête interne `x-curiosa-skin-preview` (après avoir effacé celui de la personne qui visite) ; le gabarit du site le vérifie puis compose le skin demandé **sans les retouches ni les options de la personne** (c'est ce que donnerait « Utiliser ce skin ») et ajoute `noindex`. Rien n'est écrit, aucun cookie, aucun état serveur ; un jeton ne donne accès à rien de privé (le site est public) : il choisit seulement quel skin habille la page. Un skin absent ou altéré s'affiche en basic.
 
 **Éditeur d'entrée** : un bloc replié « Voir avec mon skin » montre le titre et le texte en cours d'écriture avec le composant `Markdown` du site, les **jetons effectifs** du skin posés comme variables CSS sur ce seul conteneur (jamais sur la page : l'administration n'est jamais restylée ; pas de feuille de skin, donc ni mise en page ni polices embarquées : pour cela, l'aperçu d'Apparence).
 

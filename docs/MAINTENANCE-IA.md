@@ -6,7 +6,7 @@ Ce guide a deux parties : **pour vous** (la personne propriétaire du site, sans
 
 ## Pour vous, qui gérez le site
 
-> Depuis la 0.4.0, un **coordination technique** (droit `core:mcp.tokens`) peut aussi créer les jetons, régler leurs droits et valider les demandes de maintenance de l'IA, comme le propriétaire.
+> Depuis la 0.4.0, la **coordination technique** (droit `core:mcp.tokens`) peut aussi créer les jetons, régler leurs droits et valider les demandes de maintenance de l'IA, comme la personne propriétaire.
 
 ### À quoi ça sert
 
