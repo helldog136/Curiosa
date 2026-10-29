@@ -18,8 +18,9 @@ export function CopyCode({ code, copyLabel, copiedLabel }: { code: string; copyL
   return (
     <button
       type="button"
+      data-skin-part="copy-code"
       onClick={copy}
-      className="inline-flex items-center gap-2 rounded-full border border-accent/50 px-3 py-1 text-xs text-accent transition-colors hover:bg-accent/10"
+      className="inline-flex items-center gap-2 rounded-chip border-token border-accent/50 px-3 py-1 text-xs text-accent transition-colors hover:bg-accent/10"
       aria-label={`${copyLabel} ${code}`}
     >
       <span className="font-mono">{code}</span>

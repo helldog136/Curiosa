@@ -1,0 +1,83 @@
+{
+  "skinContract": 1,
+  "id": "duo",
+  "name": {
+    "fr": "Duo de test",
+    "en": "Test duo"
+  },
+  "description": {
+    "fr": "Skin de test à deux modes : clair et sombre.",
+    "en": "Two-mode test skin: light and dark."
+  },
+  "version": "1.0.0",
+  "minCore": "0.4.0",
+  "author": {
+    "name": "Équipe Curiosa"
+  },
+  "license": "MIT",
+  "tags": [
+    "light",
+    "dark",
+    "sans"
+  ],
+  "modes": [
+    "light",
+    "dark"
+  ],
+  "tokens": "tokens.json",
+  "stylesheet": "skin.css",
+  "previews": [
+    {
+      "file": "previews/home.webp",
+      "mode": "light",
+      "width": 1280,
+      "alt": {
+        "fr": "Page d'accueil",
+        "en": "Home page"
+      }
+    }
+  ],
+  "assets": [],
+  "defaults": {
+    "headerLayout": "centered",
+    "font": "sans",
+    "glow": "soft",
+    "background": "none"
+  },
+  "options": [
+    {
+      "id": "density",
+      "label": {
+        "fr": "Densité",
+        "en": "Density"
+      },
+      "default": "normal",
+      "values": [
+        {
+          "id": "normal",
+          "label": {
+            "fr": "Normale",
+            "en": "Normal"
+          },
+          "tokens": {}
+        },
+        {
+          "id": "airy",
+          "label": {
+            "fr": "Aérée",
+            "en": "Airy"
+          },
+          "tokens": {
+            "--sk-stack-gap": "2rem"
+          }
+        }
+      ]
+    }
+  ],
+  "breakpoints": [
+    640
+  ],
+  "supports": {
+    "reducedMotion": true
+  }
+}

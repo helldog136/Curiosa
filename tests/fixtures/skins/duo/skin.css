@@ -1,0 +1,19 @@
+/* Les cartes ont une ombre légère et se soulèvent au survol. */
+[data-skin-part="card"] {
+  box-shadow: var(--sk-shadow-card);
+  transition: transform var(--sk-duration) var(--sk-ease), box-shadow var(--sk-duration) var(--sk-ease);
+}
+@media (prefers-reduced-motion: no-preference) {
+  [data-skin-part="card"]:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgb(0 0 0 / 0.12); }
+}
+
+/* Un filet d'accent sous l'en-tête. */
+[data-skin-region="header"] { border-bottom: 2px solid var(--v-accent); }
+
+/* Boutons pleins : texte gras. */
+[data-skin-part="button"][data-btn="primary"] { font-weight: var(--sk-weight-bold); }
+
+/* Mise en page : menu à droite sur grand écran. */
+@media (min-width: 40rem) {
+  [data-skin-region="header"] { display: flex; justify-content: space-between; align-items: center; }
+}

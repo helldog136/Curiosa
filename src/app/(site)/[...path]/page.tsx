@@ -183,7 +183,7 @@ export default async function CatchAllPage({ params, searchParams }: Props) {
       return (
         <div className="space-y-8">
           {page.title && <BreadcrumbLd items={[home, { name: page.title, url: pageUrl(siteUrl, locale, config.defaultLocale, `/${[resolved.active.instance.basePath, ...resolved.segments].filter(Boolean).join("/")}`) }]} />}
-          {page.title && <h1 className="text-3xl font-bold">{page.title}</h1>}
+          {page.title && <h1 data-skin-part="heading" data-level="1" className="text-3xl font-bold">{page.title}</h1>}
           <Blocks blocks={top} locale={locale} />
           <Blocks blocks={page.blocks} locale={locale} />
           <Blocks blocks={bottom} locale={locale} />
@@ -209,8 +209,8 @@ export default async function CatchAllPage({ params, searchParams }: Props) {
         <div className="space-y-8">
           <BreadcrumbLd items={[home, { name: pickName(instance, locale, config.defaultLocale), url: pageUrl(siteUrl, locale, config.defaultLocale, `/${instance.basePath}`) }]} />
           <header className="space-y-2">
-            <h1 className="text-3xl font-bold">{pickName(instance, locale, config.defaultLocale)}</h1>
-            {description && <p className="text-muted">{description}</p>}
+            <h1 data-skin-part="heading" data-level="1" className="text-3xl font-bold">{pickName(instance, locale, config.defaultLocale)}</h1>
+            {description && <p data-skin-part="lead" className="text-muted">{description}</p>}
           </header>
           <Blocks blocks={top} locale={locale} />
           <EntryList entries={entries} collection={instance} locale={locale} defaultLocale={config.defaultLocale} />
@@ -254,27 +254,27 @@ async function EntryPage({
   const customFields = instance.fieldSchema.filter((f) => f.type !== "ref" && entry.fields[f.key] !== undefined && entry.fields[f.key] !== "");
 
   return (
-    <article lang={entry.locale} className="mx-auto max-w-3xl space-y-6">
+    <article lang={entry.locale} className="mx-auto max-w-[var(--sk-prose-width-wide,48rem)] space-y-6">
       <BreadcrumbLd items={crumbs} />
       {entry.isFallback && (
-        <p className="rounded-lg border border-line bg-surface p-3 text-sm text-muted">{t("site.fallbackNotice", { lang: entry.locale.toUpperCase() })}</p>
+        <p data-skin-part="notice" data-tone="info" className="rounded-card border-token border-line bg-surface p-3 text-sm text-muted">{t("site.fallbackNotice", { lang: entry.locale.toUpperCase() })}</p>
       )}
       {entry.cover && <CoverImage src={entry.cover} variant="article" />}
       <header className="space-y-2">
-        <h1 className="flex items-center gap-3 text-3xl font-bold"><EntryIcon icon={entry.icon} className="h-7 w-7" />{entry.title}</h1>
+        <h1 data-skin-part="heading" data-level="1" className="flex items-center gap-3 text-3xl font-bold"><EntryIcon icon={entry.icon} className="h-7 w-7" />{entry.title}</h1>
         {instance.display !== "links" && entry.publishedAt && (
           <time className="text-sm text-muted" dateTime={entry.publishedAt.toISOString()}>
             {new Intl.DateTimeFormat(locale, { dateStyle: "long" }).format(entry.publishedAt)}
           </time>
         )}
-        {entry.summary && <p className="text-lg text-muted">{entry.summary}</p>}
+        {entry.summary && <p data-skin-part="lead" className="text-lg text-muted">{entry.summary}</p>}
       </header>
 
       {(entry.code || isSafeExternalUrl(entry.url)) && (
         <div className="flex flex-wrap items-center gap-4">
           {entry.code && <CopyCode code={entry.code} copyLabel={t("site.copy")} copiedLabel={t("site.copied")} />}
           {isSafeExternalUrl(entry.url) && (
-            <a href={entry.url} target="_blank" rel="noopener noreferrer" className="rounded-full bg-accent px-5 py-2 text-sm font-medium text-accent-fg">
+            <a href={entry.url} target="_blank" rel="noopener noreferrer" data-skin-part="button" className="rounded-button bg-accent px-5 py-2 text-sm font-medium text-accent-fg">
               {t("site.visit")}
             </a>
           )}

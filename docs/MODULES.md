@@ -141,6 +141,7 @@ Validé à l'installation et au chargement (zod, `src/core/modules/manifest.ts`)
 | `pageSetting` | (cœur 0.2.12, `"minCore": "0.2.12"`) Facultatif : clé d'un réglage **booléen** du module (case à cocher) qui allume ou éteint la page publique de l'instance. Tant qu'il est faux (ou jamais enregistré et sans `default: true`), la page n'existe pour personne : 404 sur l'adresse et sur son `page-script`, et rien dans le plan du site, `llms.txt`, le menu ni l'éditeur de menu. Refusé si la clé n'est pas celle d'un réglage booléen du module, ou si le module n'a pas de page. Sans le champ : rien ne change. L'administration de l'instance dit si la page est allumée. Règle unique : `hasPublicPage` (`src/core/modules/publicPage.ts`). |
 | `sitemapFromPage` | (cœur 0.2.14, `"minCore": "0.2.14"`) Facultatif : `true` si `page()` liste, dans `PageResult.sitemap`, des chemins de sa page à ajouter au plan du site et à `llms.txt` (ou se déclare `robots: "noindex"` pour toute l'instance). **Seul** un module qui le demande est lu pour cela : le cœur appelle alors `page(ctx, { segments: [], for: "sitemap" })` (pour la langue par défaut), au plus une fois par minute et par instance. Sans la clé, `page()` n'est jamais appelée pour le plan du site : rien ne change. Refusé sans page publique. |
 | `family` | (cœur 0.2.14, `"minCore": "0.2.14"`) Facultatif : `"content"`, `"community"`, `"connections"` ou `"overlays"` : le rangement dans l'administration, qui **prime** sur la déduction du cœur (voir « Rangement dans le menu »). Sans la clé : la règle habituelle, inchangée. |
+| `skin` | (cœur 0.4.0, `"minCore": "0.4.0"`) Facultatif : les **pièces d'apparence** que les skins peuvent restyler et les jetons de style propres au module (`--sk-m-<module>-…`), avec leur valeur d'aujourd'hui par défaut. Apparence seulement : jamais de contenu, de texte ni de masquage. Un cœur plus ancien ignore la clé. Sans la clé : rien ne change. Voir [Rendre un module stylable par les skins](#rendre-un-module-stylable-par-les-skins-skin-cœur-040). |
 | `privacy` | Facultatif : ce que le module collecte comme données personnelles, pourquoi et comment les faire effacer (texte simple, traduisible comme `description`). **Un module qui collecte des données de visiteurs doit le déclarer** : le cœur reprend ce texte tel quel, sous le nom de l'instance, dans la page « Politique de confidentialité » du site (`/privacy`, lien permanent du pied de page). Un module qui ne collecte rien n'a rien à écrire. |
 | `icon` | Emoji affiché dans l'admin. |
 | `main` | Fichier ES module du code, relatif à la racine. Absent : module « sans code » (réglages, contenu). |
@@ -455,6 +456,73 @@ entrées portent un code (codes promo…), `random` (un code au hasard, `small`)
 | `label` | Nom montré à l'administrateur (`consumes` : obligatoire ; `provides` : facultatif). |
 | `schema` | `consumes` seulement : le format que le consommateur sait digérer, une liste de `{ key, type, required? }`. Types : `string`, `url`, `number`, `boolean`, `string[]`, `datetime` (chaîne ISO 8601 : voir « sujets »). Absent pour les sujets du cœur (`core.entry`). |
 | `tags` | `consumes` seulement : l'administrateur peut restreindre les sources par étiquette. |
+
+### Rendre un module stylable par les skins (`skin`, cœur 0.4.0)
+
+Un **skin** change l'apparence du site (couleurs, arrondis, ombres, mise en page) sans jamais toucher au contenu (`docs/SKINS.md` §0). Le cœur et le skin « basic » ne connaissent que des pièces communes (carte, bouton, liste…) : c'est **le module** qui dit quelles sont **ses** pièces stylables et quelles valeurs elles ont aujourd'hui. Un module sans clé `skin` fonctionne exactement comme avant ; ses couleurs lues par `var(--v-…)` suivent déjà le skin, mais ses arrondis, ombres et espaces restent les siens.
+
+**1. Déclarer** (`module.json`, avec `"minCore": "0.4.0"`) :
+
+```json
+"skin": {
+  "since": 1,
+  "parts": [
+    {
+      "id": "thanks-wall.card",
+      "kind": "card",
+      "name": { "fr": "Carte d'une personne", "en": "Person card" },
+      "description": { "fr": "La carte d'une personne dans la grille.", "en": "The card of one person in the grid." },
+      "tokens": [
+        { "name": "--sk-m-thanks-wall-card-radius", "type": "length", "default": "var(--sk-radius-panel)" },
+        { "name": "--sk-m-thanks-wall-card-bg",     "type": "color",  "default": "var(--v-surface)" },
+        { "name": "--sk-m-thanks-wall-card-shadow", "type": "shadow", "default": "var(--sk-shadow-card)" }
+      ]
+    }
+  ],
+  "demo": "skin-demo.html"
+}
+```
+
+| Règle | Détail |
+|---|---|
+| Pièce | `<id du module>.<pièce>` (lettres minuscules, chiffres, tirets), 12 au plus, nom et description **en français et en anglais**. |
+| Jeton | `--sk-m-<id du module>-<pièce>-<propriété>`, 24 au plus ; types `color`, `length`, `shadow`, `number`, `font`, `duration`, `text-transform`. |
+| Valeur par défaut | **la valeur que le module a aujourd'hui** (`1.25rem`, `0 1px 2px …`) ou une référence à un jeton commun **qui vaut la même chose sous basic** (`var(--sk-radius-panel)` = `1rem`). Jamais d'URL, jamais le jeton d'un autre module. Les valeurs sont contrôlées comme celles d'un skin ; une valeur refusée est ignorée (le module garde son CSS). |
+| `on` | un texte de couleur déclare le jeton de **fond** sur lequel il est posé : Curiosa contrôle sa lisibilité avec n'importe quel skin. |
+| `demo` | un petit fichier HTML (≤ 20 Ko, sans script, sans style, sans adresse externe) qui montre les pièces, pour le banc d'essai. |
+| Interdit | un jeton ne dit jamais quoi afficher ni quoi cacher : le kit refuse un jeton de module lu dans `display`, `visibility`, `opacity`, `content`, `position`, `transform`, `font-size`, `width`, `height`, `overflow`… (pour une taille de texte, lisez un jeton **commun** : le cœur le borne). |
+
+**2. Réécrire le CSS** : on garde son `<style>` en ligne ; chaque valeur à changer devient `var(jeton-du-module, var(jeton-commun, valeur-actuelle))`, et chaque élément de la pièce reçoit `data-skin-part` (en plus de sa classe) :
+
+```css
+/* avant  */ .tw-card{background:var(--v-surface,#1c1c1f);border:1px solid var(--v-line,#333);border-radius:1rem}
+/* après  */ .tw-card{background:var(--sk-m-thanks-wall-card-bg,var(--v-surface,#1c1c1f));
+                      border:var(--sk-border-width,1px) var(--sk-border-style,solid) var(--sk-m-thanks-wall-card-border,var(--v-line,#333));
+                      border-radius:var(--sk-m-thanks-wall-card-radius,var(--sk-radius-panel,1rem))}
+```
+
+```html
+<li class="tw-card" data-skin-part="thanks-wall.card">…</li>
+```
+
+Le dernier maillon est **toujours la valeur d'avant** : sur un cœur sans skins, ou sous basic, le rendu est identique pixel pour pixel. Ajouter un attribut n'est pas changer le contenu. Le module ne lit jamais le skin actif et n'a aucune variante de contenu selon le skin.
+
+**3. Les pièges, vus à la conversion du module pilote** (`thanks-wall`, curiosa-extras 1.1.0) :
+
+1. **Un jeton commun au milieu de la chaîne n'est permis que s'il vaut LA MÊME chose sous basic.** `--sk-radius-chip` vaut `9999px` sous basic : écrire `var(--sk-radius-chip,999px)` changerait la valeur (même rendu pour un bouton rond, mais pas la même valeur : le test de non-régression le refuse). Sinon : valeur littérale seule, `var(--sk-m-…, 999px)`.
+2. **La valeur par défaut d'un jeton est toujours émise par le cœur** : elle masque donc toute règle qui ne passe pas par ce jeton. Une règle conditionnelle (`[data-accent2] .tw-eyebrow{background:var(--v-accent2)}`) ne se convertit **pas** en jeton de couleur : sinon le défaut (`var(--v-accent)`) l'emporterait et le second accent disparaîtrait. On ne tokenise pas ces couleurs (un skin les atteint par la pièce : `[data-skin-part="thanks-wall.badge"]`) ; on tokenise ce qui ne change pas selon un attribut (arrondi, bordure, ombre).
+3. **Un défaut qui lit `var(--v-…)` est résolu à la racine** (`:root`) : si le module redéfinit `--v-…` plus bas dans la page, l'identité n'est plus garantie. Le harnais d'images le dirait ; sinon laissez ce jeton hors de la déclaration.
+4. **Les marges intérieures et les tailles de texte** restent celles du module (échelle propre) sauf besoin précis ; ce que les skins changent : couleurs de surface et de filet, rayons, bordures, ombres, écarts de grille, durées.
+5. **Une pièce = une seule valeur de `data-skin-part`** (pas de liste) ; on ne pose **jamais** le nom d'une pièce commune du cœur (`card`) sur un élément de module.
+
+**4. Version** (`docs/SKINS.md` §8.6) : clé `skin` ajoutée **sans changer l'apparence par défaut** = version **mineure** (`1.0.1` → `1.1.0`) avec `"minCore": "0.4.0"` ; apparence par défaut modifiée = **majeure**. Un cœur plus ancien refuse la mise à jour (« mettez d'abord le site à jour »).
+
+**5. Vérifier** :
+
+- `npm run module:check -- <dossier du module>` : les exigences `skin.*` (voir `docs/TESTSUPPORT.md`) : valeurs des jetons, pièces posées et déclarées, **chaîne de repli complète**, aucun masquage, aperçu sans script.
+- Un test de non-régression dans le dépôt du module (modèle : `tests/thanks-wall-skin.test.mjs` de curiosa-extras) : la feuille, une fois chaque `var(--sk-…, repli)` remplacé par son dernier repli, est **exactement** l'ancienne ; chaque défaut déclaré, résolu avec les valeurs de basic, vaut la valeur d'avant ; les `data-skin-part` du HTML sont ceux déclarés.
+- Les images : harnais du cœur (`scripts/visual/README.md`), **0 pixel** contre une référence prise avec l'ancienne version du module (`--only <page du module>`).
+- Estimation d'une conversion : `node scripts/skin-module-census.mjs <dépôt de modules>` (valeurs en dur par catégorie, taille S/M/L, jours indicatifs ; `docs/ideas/skins-effort.md`).
 
 ### Actions MCP (`mcp`)
 

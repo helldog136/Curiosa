@@ -129,13 +129,13 @@ test("fond : préréglage « svg » — le dessin enregistré est utilisé, un d
 });
 
 test("admin : le dessin SVG se colle en mode avancé, est validé avant enregistrement, et n'apparaît que si « Dessin SVG » est choisi", () => {
-  const page = fs.readFileSync("src/app/admin/(panel)/settings/page.tsx", "utf8");
-  assert.match(page, /<ShowWhen field="bgPreset" equals="svg" initial=\{config\.bg\.preset\}>/);
+  const page = fs.readFileSync("src/app/admin/(panel)/appearance/page.tsx", "utf8");
+  assert.match(page, /<ShowWhen field="bgPreset" equals="svg" initial=\{bgPreset\}>/);
   assert.match(page, /name="bgSvg"/);
   assert.match(page, /name="bgSvgFit"/);
-  const actions = fs.readFileSync("src/app/admin/(panel)/settings/actions.ts", "utf8");
-  assert.match(actions, /sanitizeSvg\(bgSvg/);
-  assert.match(actions, /bgPreset !== "svg"/, "le mode simple ne peut pas activer le préréglage svg");
+  const actions = fs.readFileSync("src/core/skins/appearance.ts", "utf8");
+  assert.match(actions, /sanitizeSvg\(i\.bgSvg\.markup/);
+  assert.match(actions, /input\.bgPreset !== "svg"/, "le mode simple ne peut pas activer le préréglage svg");
 });
 
 test("svg : alignement du dessin quand la fenêtre n'a pas ses proportions (gauche, centre, droite)", () => {

@@ -10,6 +10,7 @@ données — pas le code du framework :
 | données de **chaque module installé** (leur stockage, leurs réglages) | le code du framework et des modules (réinstallé depuis le catalogue) |
 | images et fichiers envoyés | |
 | la liste des modules installés (identifiant, version, dépôt, activé ou non) | |
+| la liste des **skins** installés (dépôt, étiquette, version) et le skin choisi, avec vos retouches d'apparence (ce sont des réglages) | les fichiers des skins (réinstallés depuis leur dépôt, comme les modules) |
 
 Le **cœur** fait la sauvegarde ; il sait aussi aller chercher ce que les modules ont stocké, sans que ceux-ci aient à coder quoi que ce soit.
 Un module peut en plus ajouter ses propres fichiers lisibles (un CSV de ses données, par exemple) avec `backup.readable`
@@ -31,7 +32,7 @@ tar xzf backup.tar.gz
 
 ```
 README.txt          mode d'emploi (français et anglais) — il est dans l'archive, avec vos données
-backup.json         inventaire : version, date, modules, empreinte SHA-256 de chaque fichier
+backup.json         inventaire : version, date, modules, skins (facultatif), empreinte SHA-256 de chaque fichier
 readable/           VOS DONNÉES MISES EN FORME POUR UN HUMAIN — commencez ici
   site.txt            résumé : nom du site, langues, modules, compteurs, réglages (secrets masqués)
   <instance>/*.md     une entrée par fichier Markdown et par langue, avec un en-tête (titre, statut, dates, étiquettes, lien, code…)
@@ -84,3 +85,7 @@ un site en service ne peut se restaurer que depuis l'admin, par son propriétair
 - La sauvegarde contient des **secrets** et les empreintes des mots de passe : gardez le fichier **et** son mot de passe en lieu sûr, séparément.
 - Faites-en régulièrement et **essayez** de relire une sauvegarde de temps en temps : c'est la seule façon d'être sûr qu'elle sert.
 - Pas de sauvegarde automatique pour l'instant ; la restauration d'une sauvegarde créée par une version **plus récente** du framework est refusée (mettez-le à jour d'abord).
+
+## Skins (apparence)
+
+Les réglages d'apparence (`theme.*`, `header.layout`) et ceux des skins (`skin.active`, `skin.installed`, `skin.options`) sont des réglages comme les autres : ils sont dans la sauvegarde et restaurés tels quels. Une sauvegarde faite avant les skins n'en contient aucun : le site s'affiche avec le skin de base, à l'identique. Les **fichiers** d'un skin installé ne sont pas dans la sauvegarde : ils sont réinstallés depuis leur dépôt. Tant qu'ils manquent, le skin de base s'applique, rien n'est perdu et `skin.active` est gardé : le skin se réactive dès qu'il est de nouveau installé.

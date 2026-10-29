@@ -43,7 +43,10 @@ test("logos : branchés — en-tête (horizontal / icône), favicon, partage, do
   const read = (p) => fs.readFileSync(p, "utf8");
   const header = read("src/components/site/Header.tsx");
   assert.match(header, /pickLogo\(config\.logos, "wide", dark\)/);
-  assert.match(header, /hidden sm:block/, "horizontal sur grand écran, icône sur téléphone");
+  assert.match(header, /<BrandLogos name=\{config\.name\} wide=\{wide\} icon=\{icon\}/);
+  // horizontal sur grand écran, icône sur téléphone : depuis le lot S2, c'est la feuille du cœur (data-logo / data-paired), pas des classes
+  assert.match(read("src/components/site/BrandLogos.tsx"), /data-paired/);
+  assert.match(read("src/app/globals.css"), /img\[data-logo="wide"\]\[data-paired\] \{ display: none; \}[\s\S]*@media \(width >= 40rem\) \{[^}]*img\[data-logo="wide"\]\[data-paired\] \{ display: block; \}[^}]*img\[data-logo="icon"\]\[data-paired\] \{ display: none; \}/);
   const layout = read("src/app/(site)/layout.tsx");
   assert.match(layout, /pickLogo\(config\.logos, "favicon", false\)/);
   assert.match(layout, /pickLogo\(config\.logos, "share", false\)/);

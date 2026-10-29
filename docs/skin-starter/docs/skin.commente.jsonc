@@ -1,0 +1,33 @@
+// Le skin.json de « mon-skin », EXPLIQUÉ. JSON n'accepte pas les commentaires : ce fichier est une copie annotée (JSONC) qui ne fait pas partie du skin.
+// Le vrai fichier est skins/mon-skin/skin.json. Détails : docs/SKINS.md §5.2 et docs/CREER-UN-SKIN.md.
+{
+  "skinContract": 1,                       // version du contrat des skins. Toujours 1 aujourd'hui.
+  "id": "mon-skin",                        // minuscules, chiffres, tirets ; EGAL au nom du dossier ; stable pour toujours ; « basic » est réservé.
+  "name": { "fr": "Mon skin", "en": "My skin" },            // les DEUX langues sont obligatoires (40 caractères au plus).
+  "description": {                         // une ou deux phrases, en mots simples, les DEUX langues (200 caractères au plus).
+    "fr": "Un point de départ : clair et sombre, titres à empattement, cartes légères.",
+    "en": "A starting point: light and dark, serif headings, light cards."
+  },
+  "version": "1.0.0",                      // x.y.z, égal à l'étiquette git vX.Y.Z que vous publiez ; les sites détectent les mises à jour avec.
+  "minCore": "0.4.0",                      // la plus petite version de Curiosa qui connaît les skins.
+  "author": { "name": "Votre nom" },       // facultatif : "url" aussi.
+  "license": "MIT",                        // MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, CC0-1.0, CC-BY-4.0, CC-BY-SA-4.0 ou OFL-1.1 : celle de TOUT le contenu du skin.
+  "tags": ["light", "dark", "minimal"],    // 6 au plus, dans cette liste : light dark serif sans mono pixel playful minimal bold editorial retro glass high-contrast.
+  "modes": ["light", "dark"],              // ["light"], ["dark"] ou les deux. Un seul mode : il est imposé. Les deux : le visiteur peut choisir.
+  "tokens": "tokens.json",                 // les valeurs (couleurs, polices, arrondis, largeurs…).
+  "stylesheet": "skin.css",                // facultatif : la mise en page et les formes. Un skin peut n'être que des jetons.
+  "previews": [                            // 1 à 4 images WebP de 1280 × 800 (ou 390 × 844, téléphone), 150 Ko au plus chacune. Montrées dans l'administration seulement.
+    { "file": "previews/home-light.webp", "mode": "light", "width": 1280, "alt": { "fr": "Page d'accueil, mode clair", "en": "Home page, light mode" } },
+    { "file": "previews/home-dark.webp", "mode": "dark", "width": 1280, "alt": { "fr": "Page d'accueil, mode sombre", "en": "Home page, dark mode" } }
+  ],
+  "assets": [],                            // TOUTE police ou image embarquée est listée ici, avec sa licence (voir le guide). Aucune ici : polices du système.
+  "defaults": {                            // les valeurs de départ de ce que la personne peut retoucher.
+    "headerLayout": "classic",             // classic | twoRows | centered | minimal
+    "font": "sans",                        // sans | serif | mono | skin (« skin » = la police du skin)
+    "glow": "none",                        // none | soft | strong
+    "background": "none"                   // none | dusk | grid
+  },
+  "options": [],                           // variantes d'apparence (densité…), chacune n'est qu'une liste de jetons.
+  "breakpoints": [640],                    // les largeurs (px) où VOTRE mise en page change : le banc d'essai les capture en plus de 390, 768, 1280 et 1920.
+  "supports": { "reducedMotion": true }    // true si la feuille contient des animations (elles sont coupées pour qui a demandé « moins de mouvement »).
+}

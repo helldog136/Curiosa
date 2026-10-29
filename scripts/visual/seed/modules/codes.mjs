@@ -1,0 +1,5 @@
+// Codes promo : quatre codes (un expire bientôt, un sans date) avec couvertures et icônes.
+export default async function codes(h, row) {
+  const C = [["Atelier du printemps", "Spring workshop", "PRINTEMPS10", 20], ["Matériel partenaire", "Partner gear", "MATERIEL15", 45], ["Abonnement annuel", "Yearly plan", "ANNEE25", null], ["Pack découverte", "Discovery pack", "DECOUVERTE", 6]];
+  for (let i = 0; i < C.length; i++) await h.entry(row, { fr: { title: C[i][0], summary: `Profitez de l'offre « ${C[i][0]} » avec le code ci-dessous.`, body: "Le code est valable une fois par personne.\n\nConditions détaillées sur le site du partenaire." }, en: { title: C[i][1], summary: `Enjoy the “${C[i][1]}” offer with the code below.`, body: "The code can be used once per person." }, code: C[i][2], url: "https://example.org/offre", icon: ["🌱", "🎧", "⭐", "🎁"][i], cover: i % 2 ? await h.img(i + 3, 600, 400) : null, expiresAt: C[i][3] ? h.day(C[i][3]) : null, tags: ["offre"], position: i, at: h.day(-10 - i) });
+}

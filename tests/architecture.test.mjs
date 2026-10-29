@@ -105,9 +105,12 @@ test("l'identité visuelle a UNE source : le site, les overlays et les modules l
   const brand = read("src/core/brand.ts");
   assert.ok(brand.includes("buildPalette"), "brand.ts calcule sa palette avec buildPalette");
   assert.ok(read("src/core/color.ts").includes("buildPalette(background, accent, extra)"), "buildTheme repose sur buildPalette");
-  for (const f of ["src/app/(site)/layout.tsx", "src/app/overlays/[key]/page.tsx", "src/core/modules/context.ts"]) {
+  for (const f of ["src/app/overlays/[key]/page.tsx", "src/core/modules/context.ts"]) {
     assert.ok(read(f).includes("buildTheme"), `${f} doit lire le thème via buildTheme (même calcul que le site)`);
   }
+  // le site public passe par la composition des skins (basic < skin < retouches), dont la couche « basic » est EXACTEMENT buildPalette (tests/core/skins-compose.test.mjs)
+  assert.ok(read("src/app/(site)/layout.tsx").includes("resolveLook"), "le site public lit son apparence via la composition des skins");
+  assert.ok(read("src/core/skins/compose.ts").includes("buildPalette(bg, accent, { accent2: R.accent2, surface: R.surface, text: R.text })"), "la composition de basic repose sur buildPalette");
 });
 
 test("une case à cocher lue avec getAll() porte une valeur (sinon le navigateur envoie « on »)", () => {

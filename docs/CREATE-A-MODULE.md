@@ -466,6 +466,10 @@ ctx.t("mailSubject", { name })   // repli : langue par défaut, puis « en », p
 Les libellés de `module.json` (`name`, `label`, `help`, `description`…) sont du texte ou `{ "en": "…", "fr": "…" }`. Les réglages `translatable` donnent une valeur par langue.
 Le contexte porte `ctx.locale`, `ctx.defaultLocale`, `ctx.locales`. Quand vous construisez un lien interne, préfixez la langue si elle n'est pas la langue par défaut (`/fr/guestbook`) — voir `pageHref()` dans l'exemple.
 
+### Rendre son module stylable par les skins (cœur 0.4.0)
+
+Un skin change l'apparence du site sans toucher au contenu. Pour que votre page publique suive un skin (arrondis, bordures, ombres, surfaces), déclarez ses **pièces** dans `module.json` (clé `skin`) et lisez des jetons `--sk-m-<votre-module>-…` avec, à chaque fois, la **valeur d'aujourd'hui** en dernier repli : `border-radius:var(--sk-m-hello-card-radius,var(--sk-radius-panel,1rem))`. Posez `data-skin-part="hello.card"` sur l'élément. Votre module garde son `<style>` en ligne et son rendu par défaut ne change pas d'un pixel : c'est une version **mineure** avec `"minCore": "0.4.0"`. Le kit (`npm run module:check`) vérifie les jetons, les pièces, la chaîne de repli et l'absence de masquage. Guide complet, pièges et exemple réel : `docs/MODULES.md`, « Rendre un module stylable par les skins ».
+
 ## 15. Overlays, crochets, emplacements, filtres
 
 Ce que le guestbook n'utilise pas, mais que vous pouvez utiliser.
@@ -699,6 +703,7 @@ Le cœur reprend ce texte tel quel, sous le nom de l'instance. Un module qui ne 
 - [ ] `npm run module:check -- <dossier>` ne montre aucun ❌ (le kit vérifie le manifeste, les langues, les droits, l'échappement, les routes, le MCP, les tâches, la vie privée…) ; le module a ses propres tests de comportement et ils passent.
 - [ ] Si la forme de mes données a changé : `dataVersion` augmenté et migration écrite et testée sur des données de l'ancienne version.
 - [ ] Si le module collecte des données de visiteurs : champ `privacy` renseigné (en **et** fr) ; aucun cookie, stockage navigateur ni service tiers non essentiel sans consentement.
+- [ ] Un module qui met en forme une page publique déclare ses pièces de skin (`skin`, `minCore` 0.4.0) avec la **chaîne de repli complète** (`var(jeton-du-module, var(jeton-commun, valeur-actuelle))`) : rendu par défaut inchangé, jamais de jeton dans `display`, `opacity`, `content`…
 - [ ] `license` choisie dans `module.json` (elle n'a pas à être celle du framework).
 - [ ] Essayé en vrai : installation locale, instance, page, formulaire, admin, désinstallation en gardant les données puis réinstallation (tout revient), désinstallation en effaçant tout.
 - [ ] Rien ne suppose un état « éteint » : un module installé tourne ; `hooks.onInstanceDelete` n'est appelé que quand les données sont effacées (en « garder », elles sont rangées, pas détruites).
