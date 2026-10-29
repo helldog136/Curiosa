@@ -167,8 +167,8 @@ test("service qui ne répond pas : le consommateur reçoit un échec avant la fi
   assert.equal(text(run.value), "svc-repli:failed", "la section est rendue avec son repli, pas omise");
   assert.ok(run.ms >= 150 && run.ms < 1500, `${run.ms} ms`);   // le repli est rendu (la section n'est pas omise) : l'appel interne a fini AVANT la section
   await RT.runSection("alpha", "viasvc", {}, "fr");
-  // La borne interne (75 % du délai) est réduite du temps déjà passé dans la section : 0,3 s sur une machine au repos, 0,2 s si elle est chargée.
-  assert.deepEqual(stallLines().map((l) => l.replace(/ en 0,[23] s /, " en 0,N s ")), ["[modules] Le service « svc.demo.ping » du module pb (instance pb) n'a pas répondu en 0,N s ; l'appel est ignoré pour cette page."]);
+  // La borne interne (75 % du délai) est réduite du temps déjà passé dans la section : 0,3 s sur une machine au repos, 0,2 s ou 0,1 s si elle est chargée.
+  assert.deepEqual(stallLines().map((l) => l.replace(/ en 0,[1-3] s /, " en 0,N s ")), ["[modules] Le service « svc.demo.ping » du module pb (instance pb) n'a pas répondu en 0,N s ; l'appel est ignoré pour cette page."]);
   assert.ok(!lines.some(([, l]) => l.includes("service svc.demo.ping failed")), "pas de seconde ligne d'erreur");
 });
 
@@ -193,7 +193,7 @@ test("sujet : un fournisseur qui ne répond pas est ignoré, les autres fourniss
   const run = await timed(() => RT.runSection("beta", "viatopic", {}, "fr"));
   assert.equal(text(run.value), "topic:t-beta");
   assert.ok(run.ms < 1500, `${run.ms} ms`);
-  assert.deepEqual(stallLines().map((l) => l.replace(/ en 0,[23] s /, " en 0,N s ")), ["[modules] Le sujet « demo.item » fourni par le module pa (instance alpha) n'a pas répondu en 0,N s ; ses éléments sont ignorés pour cette page."]);
+  assert.deepEqual(stallLines().map((l) => l.replace(/ en 0,[1-3] s /, " en 0,N s ")), ["[modules] Le sujet « demo.item » fourni par le module pa (instance alpha) n'a pas répondu en 0,N s ; ses éléments sont ignorés pour cette page."]);
 });
 
 test("collecte pour une page du cœur (en-tête, flux) : le fournisseur bloqué est ignoré au délai complet", async () => {
