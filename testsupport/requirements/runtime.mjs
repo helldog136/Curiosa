@@ -236,7 +236,7 @@ const requirements = [
     id: "routes.errors", level: "mandatory", group: "routes",
     title: "Les réponses d'erreur ne révèlent rien d'interne",
     what: "Les réponses des routes sont de vrais objets Response et ne contiennent ni chemin de fichier, ni trace d'erreur, ni détail de base de données ou de réglage secret.",
-    why: "Un chemin ou une trace aide un attaquant à comprendre le serveur. Une personne qui visite n'a rien à faire d'un message technique.",
+    why: "Un chemin ou une trace aide une personne malveillante à comprendre le serveur. Une personne qui visite n'a rien à faire d'un message technique.",
     fix: "Répondez par un code et un mot (400, 403, 404) sans détail : new Response(null, { status: 400 }) ou Response.json({ ok: false }, { status: 400 }). Journalisez l'erreur côté serveur, brièvement.",
     async run(m) {
       if (!Object.keys(m.definition?.routes ?? {}).length) return { na: "le module n'a pas de routes" };

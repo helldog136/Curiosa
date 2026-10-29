@@ -1,6 +1,6 @@
 # Sécurité de la connexion
 
-Ce que fait Curiosa pour protéger l'espace de gestion, et comment vous dépanner si vous êtes bloqué.
+Ce que fait Curiosa pour protéger l'espace de gestion, et comment vous dépanner en cas de blocage.
 
 ## Essais ratés : des blocages qui ne sont jamais définitifs
 

@@ -540,7 +540,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 **Les réponses d'erreur ne révèlent rien d'interne** — niveau : **obligatoire**
 
 - **Ce qui est vérifié.** Les réponses des routes sont de vrais objets Response et ne contiennent ni chemin de fichier, ni trace d'erreur, ni détail de base de données ou de réglage secret.
-- **Pourquoi.** Un chemin ou une trace aide un attaquant à comprendre le serveur. Une personne qui visite n'a rien à faire d'un message technique.
+- **Pourquoi.** Un chemin ou une trace aide une personne malveillante à comprendre le serveur. Une personne qui visite n'a rien à faire d'un message technique.
 - **Comment corriger.** Répondez par un code et un mot (400, 403, 404) sans détail : new Response(null, { status: 400 }) ou Response.json({ ok: false }, { status: 400 }). Journalisez l'erreur côté serveur, brièvement.
 
 #### `routes.protected`
@@ -756,7 +756,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 **Le README est écrit en langage de tous les jours** — niveau : **conseil**
 
 - **Ce qui est vérifié.** Le README n'emploie pas de termes techniques (API, JSON, endpoint…) hors des blocs de code.
-- **Pourquoi.** Le README s'adresse d'abord à quelqu'un qui veut savoir si le module lui sert, pas à un développeur.
+- **Pourquoi.** Le README s'adresse d'abord à quelqu'un qui veut savoir si le module lui sert, pas à une personne qui développe.
 - **Comment corriger.** Réécrivez les passages cités. Les détails techniques peuvent rester dans une section « Pour les développeurs » à la fin.
 
 #### `neutrality.clean`

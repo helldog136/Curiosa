@@ -14,7 +14,7 @@ export default async function home(h) {
     { kind: "link", href: "/privacy", label: { fr: "Confidentialité", en: "Privacy" } },
   ]);
   // Hero (module) : titre, texte, bouton, image d'illustration.
-  await h.setBoth("hero", "title", "Un atelier ouvert à toutes et tous", "A workshop open to everyone");
+  await h.setBoth("hero", "title", "Un atelier ouvert à tout le monde", "A workshop open to everyone");
   await h.setBoth("hero", "eyebrow", "Bienvenue", "Welcome");
   await h.setBoth("hero", "text", "Découvrez nos projets, nos ateliers et notre communauté. Tout ici est fictif, pour la démonstration.", "Discover our projects, workshops and community. Everything here is fictional, for demonstration.");
   await h.setBoth("hero", "buttonLabel", "Voir l'agenda", "See the calendar");

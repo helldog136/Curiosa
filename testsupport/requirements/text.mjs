@@ -18,7 +18,7 @@ const SAYS_OPTIONAL = /facultatif|optionnel|\boptional\b/i;
 export const NAMES_EXISTING = /\b(?:saisissez|tapez|indiquez|écrivez|entrez)\s+(?:ici\s+)?(?:le|la|l['’])\s*(?:nom|identifiant|pseudo|chaîne|catégorie|page|agenda)\b|\b(?:type|enter|write)\s+(?:here\s+)?the\s+(?:exact\s+)?(?:name\s+of\b|[\w-]+\s+(?:\()?(?:name|login)\b|(?:channel|category|page|calendar)\b)/i;
 /** Clés de profils EXTERNES (un pseudo sur une autre plateforme n'existe pas sur le site) : jamais signalées par settings.textNamesExisting. */
 const EXTERNAL_KEYS = ["profile", "channelId"];
-/** Mots techniques interdits dans ce que lit une personne non technicienne (mode simple de l'administration). Réunit les listes des tests des modules. */
+/** Mots techniques interdits dans ce que lit une personne sans bagage technique (mode simple de l'administration). Réunit les listes des tests des modules. */
 export const JARGON = /\b(sujets?|m[ée]triques?|collecteurs?|collector|topics?|metrics?|api|json|sch[ée]mas?|endpoint|payload|jetons?|tokens?|oauth|scope|quota|http|mcp|ctx|prisma|overlay\.item|feed\.item)\b/i;
 /** Un texte sans ses adresses d'exemple (« https://monnom.bandcamp.com » n'est pas du jargon). */
 const noUrls = (t) => String(t).replace(/\bhttps?:\/\/\S+/gi, " ");
@@ -264,7 +264,7 @@ const requirements = [
     id: "readme.plain", level: "advice", group: "wording",
     title: "Le README est écrit en langage de tous les jours",
     what: "Le README n'emploie pas de termes techniques (API, JSON, endpoint…) hors des blocs de code.",
-    why: "Le README s'adresse d'abord à quelqu'un qui veut savoir si le module lui sert, pas à un développeur.",
+    why: "Le README s'adresse d'abord à quelqu'un qui veut savoir si le module lui sert, pas à une personne qui développe.",
     fix: "Réécrivez les passages cités. Les détails techniques peuvent rester dans une section « Pour les développeurs » à la fin.",
     run(m) {
       if (m.readme === null) return { skip: "pas de README.md" };

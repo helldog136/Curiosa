@@ -323,7 +323,7 @@ Un assistant IA peut écrire un module à partir de ces documents : donnez-lui `
 | [docs/MESURES.md](docs/MESURES.md) | les chiffres mesurés (installation, poids, mémoire, cookies), leur méthode, et ce qui n'est pas mesuré |
 | [CHANGELOG.md](CHANGELOG.md) | ce qui change à chaque version |
 
-## Pour les développeurs : structure du dépôt
+## Côté technique : structure du dépôt
 
 ```
 src/core/services/  Les HELPERS que le cœur offre aux modules : QR code, MCP, stockage privé,
