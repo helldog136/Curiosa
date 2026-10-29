@@ -12,7 +12,7 @@ import type { ActionState } from "@/components/admin/ActionForm";
 
 /** « Relancer » : le même balayage qu'au démarrage (borné à 20 s, sans réseau). Réservé au propriétaire : il peut convertir des données de modules. */
 export async function rerunLegacySweep(): Promise<ActionState> {
-  const { user, t } = await adminCtx("owner");
+  const { user, t } = await adminCtx({ right: "core:updates" });
   const r = await runLegacySweep();
   if (r.busy) return { error: t("legacy.rerun.busy") };
   await audit(user.email, "core.legacy.sweep", r.done ? "done" : r.timedOut ? "timeout" : "pending");
@@ -28,7 +28,7 @@ const PAGE = "/admin/maintenance/legacy";
  * (règle dans legacyDismiss.ts). Refusé pour un module que le catalogue propose encore ou dont on ne sait rien : sa mise à jour le règle.
  */
 export async function keepLegacyRowAction(id: string): Promise<void> {
-  const { user } = await adminCtx("owner");
+  const { user } = await adminCtx({ right: "core:updates" });
   const row = (await legacyReport()).sourceRows.find((r) => r.id === id);
   if (row?.state === "absent") {
     await dismissLegacyRow(id);
@@ -41,7 +41,7 @@ export async function keepLegacyRowAction(id: string): Promise<void> {
 
 /** Annule « Le garder tel quel ». */
 export async function undoKeepLegacyRowAction(id: string): Promise<void> {
-  const { user } = await adminCtx("owner");
+  const { user } = await adminCtx({ right: "core:updates" });
   await undoDismissLegacyRow(id);
   await audit(user.email, "core.legacy.keep.undo", id);
   await runLegacySweep();
@@ -51,7 +51,7 @@ export async function undoKeepLegacyRowAction(id: string): Promise<void> {
 
 /** Retire un module hérité (les mêmes boutons que sur sa page, mais on revient ici). Réservé aux modules de la liste « ce qui reste ». */
 export async function removeLegacyRowAction(id: string, keepData: boolean): Promise<void> {
-  const { user } = await adminCtx("owner");
+  const { user } = await adminCtx({ right: "core:updates" });
   const row = (await legacyReport()).sourceRows.find((r) => r.id === id);
   if (!row) redirect(`${PAGE}?done=refused`);
   const result = await uninstallModule(id, { keepData });

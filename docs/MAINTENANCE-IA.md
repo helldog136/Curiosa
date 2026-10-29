@@ -6,6 +6,8 @@ Ce guide a deux parties : **pour vous** (le propriétaire du site, sans connaiss
 
 ## Pour vous, propriétaire du site
 
+> Depuis la 0.4.0, un **coordinateur technique** (droit `core:mcp.tokens`) peut aussi créer les jetons, régler leurs droits et valider les demandes de maintenance de l'IA, comme le propriétaire.
+
 ### À quoi ça sert
 
 Entretenir un site, c'est surveiller qu'il va bien, faire des copies de sécurité et mettre à jour ce qui doit l'être. Vous pouvez confier cela à une IA (Claude, par exemple) : elle regarde l'état du site, vous dit ce qui ne va pas, et peut faire les mises à jour. **Tout ce qui est risqué attend votre accord.**

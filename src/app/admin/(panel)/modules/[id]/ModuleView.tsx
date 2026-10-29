@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { adminCtx } from "@/core/admin";
-import { isOwner as ownerCheck } from "@/core/auth/access";
+import { can as canDo } from "@/core/auth/access";
 import { listInstances, pickName } from "@/core/instances";
 import { getInstanceLabeler } from "@/core/modules/labels";
 import { getCatalogue, moduleOrigin } from "@/core/modules/catalogue";
@@ -32,7 +32,8 @@ export type ModuleQuery = { update?: string; error?: string; detail?: string; mi
  */
 export async function ModuleView({ id, query, embedded = false }: { id: string; query: ModuleQuery; embedded?: boolean }) {
   const { t, locale, user, config, advanced } = await adminCtx("admin");
-  const isOwner = ownerCheck(user);
+  // « isOwner » : peut installer, mettre à jour et désinstaller des modules (droit `core:modules.install`).
+  const isOwner = canDo(user, "core:modules.install");
   const { update, error, detail, missing, to, level } = query;
   const row = (await listModuleRows()).find((r) => r.id === decodeURIComponent(id));
   if (!row) notFound();

@@ -141,7 +141,7 @@ test("architecture : chaque action longue passe par le suivi d'opération (un se
     assert.match(src, new RegExp(`adminCtx\\("${role}"\\)`), `${file} : même garde qu'avant`);
     assert.ok(src.indexOf("adminCtx(") < src.indexOf("trackOperation("), `${file} : le contrôle de droits passe AVANT le suivi`);
   }
-  assert.match(read("src/app/api/admin/backup/route.ts"), /guardOwner[\s\S]*trackOperation\(/);
+  assert.match(read("src/app/api/admin/backup/route.ts"), /guardBackup[\s\S]*trackOperation\(/);
   assert.match(read("src/core/backup/handlers.ts"), /await guard\(request\)[\s\S]*trackOperation\(/);
   assert.match(read("src/app/api/admin/backup/route.ts"), /secretKeyPart\(password\)/, "un double clic avec un autre mot de passe ne rejoint jamais la sauvegarde d'autrui");
 });

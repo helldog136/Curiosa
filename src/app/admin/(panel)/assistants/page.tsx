@@ -19,7 +19,7 @@ export const dynamic = "force-dynamic";
  * Les réglages techniques (adresse du serveur, liste des actions, consignes par outil) n'apparaissent qu'en mode avancé.
  */
 export default async function AssistantsPage({ searchParams }: { searchParams: Promise<{ tab?: string; notice?: string; profile?: string }> }) {
-  const { t, locale, config, advanced } = await adminCtx("owner");
+  const { t, locale, config, advanced } = await adminCtx({ right: "core:mcp.tokens" });
   const query = await searchParams;
   const tab = parseTab(query.tab);
   const notice = REQUEST_NOTICES.find((n) => n === query.notice);

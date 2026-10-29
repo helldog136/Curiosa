@@ -7,6 +7,16 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.4.0 (à venir)
+
+### Améliorations
+
+- **Nouveau niveau d'accès : le « Coordinateur technique ».** Il gère tout le côté technique du site (mises à jour, modules, sauvegardes, sécurité, équipe et rôles) mais ne peut ni toucher au propriétaire ni reprendre le site. Aucun compte existant ne change.
+
+### Pour les développeurs
+
+- Niveau `coordinator` : `User.role` reste `admin` (repli sûr pour un ancien cœur) et la colonne `User.coordinator` porte le niveau ; droits réservés par niveau dans la table `LEVEL_RESERVED` (`rights.ts`) ; règles d'équipe dans `team.ts` et `members.ts` ; les opérations techniques exigent un droit (`adminCtx({ right })`) et non plus `owner`. Voir `docs/SECURITE.md`.
+
 ## 0.3.1
 
 ### Améliorations

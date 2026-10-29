@@ -31,7 +31,7 @@ function VersionCard({ label, version, tone, children }: { label: string; versio
 
 /** Mettre le site à jour, dans l'ordre où on y pense : où j'en suis, ce qui existe, ce que ça change, puis un seul bouton ; pendant l'installation, où on en est. */
 export default async function UpdatesPage() {
-  const { t, locale, advanced, config } = await adminCtx("owner");
+  const { t, locale, advanced, config } = await adminCtx({ right: "core:updates" });
   const info = getInstallInfo();
   // Première visite : on interroge le dépôt une fois pour ne pas montrer « jamais vérifié ».
   let check = await getUpdateCheck();

@@ -33,7 +33,7 @@ const refusal = (result: Extract<InstallResult, { ok: false }>, op = "") => {
 
 /** « Mettre en place ce qui manque » : les modules dont celui-ci a besoin sont installés d'office (avec leur instance). */
 export async function repairModuleAction(id: string): Promise<void> {
-  const { user } = await adminCtx("owner");
+  const { user } = await adminCtx({ right: "core:modules.install" });
   const result = await repairRequirements(id);
   for (const provided of result.ok ? result.provided ?? [] : []) await audit(user.email, "module.install.auto", provided);
   revalidatePath("/", "layout");
@@ -45,7 +45,7 @@ export async function repairModuleAction(id: string): Promise<void> {
 
 /** Maître et répliques d'un service offert par plusieurs instances. */
 export async function saveServiceRouting(service: string, formData: FormData): Promise<void> {
-  const { user } = await adminCtx("owner");
+  const { user } = await adminCtx({ right: "core:modules.install" });
   const providers = await providerInstances(service);
   if (isEachService(providers, service)) redirect(EXTENSIONS_HREF);   // chaque instance répond pour elle-même : aucun maître à choisir
   const keys = providers.map((p) => p.instance.key);
@@ -62,7 +62,7 @@ export async function saveServiceRouting(service: string, formData: FormData): P
 export type ModuleActionResult = { ok: boolean; href: string };
 
 export async function checkUpdateAction(id: string): Promise<ModuleActionResult> {
-  await adminCtx("owner");
+  await adminCtx({ right: "core:modules.install" });
   const { available, target, level } = await checkForUpdate(id);
   const params = new URLSearchParams({ update: available ? "yes" : "no", module: id });
   if (available && target) params.set("to", target);
@@ -71,7 +71,7 @@ export async function checkUpdateAction(id: string): Promise<ModuleActionResult>
 }
 
 export async function updateModuleAction(id: string, opId?: string): Promise<ModuleActionResult> {
-  const { user } = await adminCtx("owner");
+  const { user } = await adminCtx({ right: "core:modules.install" });
   // Suivi d'opération (étapes : téléchargement, vérification, dépendances, données, activation) ; un second lancement rejoint le premier.
   const run = await trackOperation(user, { kind: "module-update", key: `module-update:${String(id).slice(0, 60)}`, opId: opIdOf(opId) }, async () => {
     const done = await updateModule(id);
@@ -95,7 +95,7 @@ async function nameOf(id: string, locale: string, defaultLocale: string): Promis
 
 /** Désinstalle un module. `keepData` : « Retirer et garder mes données » (rangées, retrouvées à la réinstallation) ou « Retirer et tout effacer » (irréversible). */
 export async function uninstallModuleAction(id: string, keepData: boolean): Promise<void> {
-  const { user, locale, config } = await adminCtx("owner");
+  const { user, locale, config } = await adminCtx({ right: "core:modules.install" });
   const name = await nameOf(id, locale, config.defaultLocale);
   const result = await uninstallModule(id, { keepData });
   forgetModulesReport();
@@ -119,8 +119,8 @@ export async function restoreRetiredAction(id: string): Promise<void> {
 
 /** Efface pour de bon des données gardées : une instance (`id`) ou tout ce qui reste d'un module (`moduleId`). */
 export async function eraseRetiredAction(target: { id: string } | { moduleId: string }): Promise<void> {
-  // Une instance : un administrateur, comme pour la supprimer. Tout ce qui reste d'un module : le propriétaire, comme pour le désinstaller.
-  const { user } = await adminCtx("moduleId" in target ? "owner" : "admin");
+  // Une instance : un administrateur, comme pour la supprimer. Tout ce qui reste d'un module : qui peut installer des modules (droit `core:modules.install`), comme pour le désinstaller.
+  const { user } = await adminCtx("moduleId" in target ? { right: "core:modules.install" } : "admin");
   const lines = await listRetired("moduleId" in target ? target.moduleId : undefined);
   const mine = "id" in target ? lines.filter((l) => l.id === target.id) : lines;
   if (!mine.length) redirect(EXTENSIONS_HREF);
@@ -136,7 +136,7 @@ export async function eraseRetiredAction(target: { id: string } | { moduleId: st
  * avec le même choix qu'une désinstallation : garder ses données (rangées) ou tout effacer.
  */
 export async function cleanupAutoModuleAction(id: string, keepData: boolean): Promise<void> {
-  const { user, locale, config } = await adminCtx("owner");
+  const { user, locale, config } = await adminCtx({ right: "core:modules.install" });
   const suggestion = (await cleanupSuggestions()).find((c) => c.id === id);
   if (!suggestion) redirect(modulePage(id, "error=modules.error.autoUsed"));
   const name = await nameOf(id, locale, config.defaultLocale);
@@ -150,7 +150,7 @@ export async function cleanupAutoModuleAction(id: string, keepData: boolean): Pr
 
 /** « Le garder » : le module n'est plus considéré comme installé automatiquement (plus de proposition de nettoyage). */
 export async function keepAutoModuleAction(id: string): Promise<void> {
-  const { user } = await adminCtx("owner");
+  const { user } = await adminCtx({ right: "core:modules.install" });
   await forgetAuto(id);
   await audit(user.email, "module.keep.auto", id);
   revalidatePath("/", "layout");

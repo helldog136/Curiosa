@@ -1,6 +1,6 @@
 import { createBackup } from "@/core/backup/export";
 import { MIN_PASSWORD_LENGTH } from "@/core/backup/crypto";
-import { guardOwner } from "@/core/backup/guard";
+import { guardBackup } from "@/core/backup/guard";
 import { currentUser, audit } from "@/core/permissions";
 import { opIdOf, secretKeyPart, trackOperation } from "@/core/operations/run";
 
@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 /** Une sauvegarde en un clic : le mot de passe est choisi ICI, il chiffre le fichier et n'est conservé nulle part. */
 export async function POST(request: Request) {
-  const denied = await guardOwner(request);
+  const denied = await guardBackup(request);
   if (denied) return denied;
   const form = await request.formData().catch(() => null);
   const password = String(form?.get("password") ?? "");

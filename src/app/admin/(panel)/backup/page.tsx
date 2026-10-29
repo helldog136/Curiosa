@@ -7,7 +7,7 @@ import { Callout, PageHeader, Panel } from "@/components/admin/Page";
 export const dynamic = "force-dynamic";
 
 export default async function BackupPage() {
-  const { t, advanced } = await adminCtx("owner");
+  const { t, advanced } = await adminCtx({ right: "core:backup" });
   const labels = Object.fromEntries(
     ["deps.missing", "deps.provided", "deps.note", "deps.title", "migrated", "migrationFailed", "file", "password", "check", "apply", "cancel", "done", "login", "entries", "users", "instances", "uploads", "replaceWarning", "confirmReplace", "trustCustom",
       "status.installed", "status.catalogue", "status.custom", "status.unavailable", "outcome.kept", "outcome.installed", "outcome.skipped", "outcome.failed", "outcome.unavailable", "skin", "status.skinPersonal", "trustCustomSkin", "skinOutcome.kept", "skinOutcome.installed", "skinOutcome.skipped", "skinOutcome.failed",

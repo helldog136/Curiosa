@@ -5,10 +5,12 @@ import { sendMail } from "../services/mail";
 import { getSiteConfig } from "../settings";
 import { generateTemporaryPassword, passwordProblem } from "./passwordPolicy";
 import { levelOf } from "./access";
+import { canManageMember, levelHolds } from "./team";
 
 /**
  * MOT DE PASSE TEMPORAIRE FIXÉ PAR LE PROPRIÉTAIRE. Ce module porte toute la règle ; les actions serveur ne font que l'appeler.
- *  - Seul le propriétaire (relu EN BASE, jamais une valeur envoyée par le navigateur) ; jamais sur soi-même ni sur un autre propriétaire.
+ *  - Seul un niveau qui détient `core:team` (propriétaire, ou coordinateur technique : relu EN BASE, jamais une valeur envoyée par le navigateur) ; jamais sur soi-même
+ *    ni sur le propriétaire ; un coordinateur n'agit pas non plus sur un autre coordinateur (voir team.ts).
  *  - Le mot de passe n'est ni journalisé, ni stocké en clair, ni envoyé par e-mail : il est renvoyé UNE fois à l'appelant (mode « généré »), puis perdu.
  *  - En une seule écriture : nouveau hash, drapeau « doit choisir le sien » posé, numéro de session augmenté (toutes ses sessions ouvertes sont coupées).
  *  - Les clés d'accès et la double vérification restent en place : la prochaine connexion RÉUSSIE (mot de passe, code ou clé d'accès) mène à « Choisissez votre mot de passe ».
@@ -48,12 +50,13 @@ async function notify(target: { email: string; name: string; locale: string | nu
 
 export async function resetMemberPassword(input: { actorId: string; targetId: string; mode: "generate" | "custom"; password?: string; now?: number }): Promise<ResetResult> {
   const now = input.now ?? Date.now();
-  const actor = await prisma.user.findUnique({ where: { id: String(input.actorId ?? "") }, select: { id: true, email: true, role: true } });
-  if (!actor || levelOf(actor) !== "owner") return { ok: false, reason: "denied" };
+  const actor = await prisma.user.findUnique({ where: { id: String(input.actorId ?? "") }, select: { id: true, email: true, role: true, coordinator: true, mustChangePassword: true } });
+  if (!actor || actor.mustChangePassword || !levelHolds(levelOf(actor), "core:team")) return { ok: false, reason: "denied" };
   const target = await prisma.user.findUnique({ where: { id: String(input.targetId ?? "") } });
   if (!target) return { ok: false, reason: "missing" };
   if (target.id === actor.id) return { ok: false, reason: "self" };
   if (levelOf(target) === "owner") return { ok: false, reason: "owner" };
+  if (!canManageMember(levelOf(actor), levelOf(target))) return { ok: false, reason: "denied" };
   const custom = input.mode === "custom";
   if (custom && passwordProblem(String(input.password ?? ""))) return { ok: false, reason: "weak" };
   if (!allow(actor.id, target.id, now)) return { ok: false, reason: "limited" };

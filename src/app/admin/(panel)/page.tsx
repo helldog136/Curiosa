@@ -1,5 +1,5 @@
 import { adminCtx } from "@/core/admin";
-import { can, hasRole, isOwner } from "@/core/auth/access";
+import { can, hasRole } from "@/core/auth/access";
 import { navItemVisible } from "@/core/modules/adminMenu";
 import { prisma } from "@/core/db";
 import { getAdminNav } from "@/core/modules/adminNav";
@@ -32,8 +32,8 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   // Extensions à configurer : chacune dit ce qu'il reste à renseigner (réservé à qui règle les extensions).
   const statuses = hasRole(user, "admin") ? await loadInstanceStatuses(locale, config.defaultLocale).catch(() => null) : null;
   const toSetUp = nav.flatMap((i) => { const s = statuses?.get(i.id); return s?.state === "setup" ? [{ item: i, summary: summarizeMissing(s.missing) }] : []; });
-  const updateAvailable = isOwner(user) && (await getUpdateCheck().catch(() => null))?.available === true;
-  const ai = isOwner(user) ? await maintenanceSummary().catch(() => null) : null;
+  const updateAvailable = can(user, "core:updates") && (await getUpdateCheck().catch(() => null))?.available === true;
+  const ai = can(user, "core:mcp.tokens") ? await maintenanceSummary().catch(() => null) : null;
   // Santé de mon site : une seule ligne sobre, seulement s'il y a quelque chose de conseillé ou d'important à regarder (jamais d'alarme ni de note).
   const contentLook = hasRole(user, "admin") ? await contentBadge().catch(() => null) : null;
   const stats = (await statsEnabled()) ? await statsSummary() : null;

@@ -171,6 +171,11 @@ function rightsList(v: unknown): string[] {
   return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string").slice(0, 500) : [];
 }
 
+/** Le drapeau « coordinateur » d'une sauvegarde ne vaut que sur un compte « admin » (sinon il est effacé) ; absent d'une sauvegarde plus ancienne = faux. Jamais cru sur parole. */
+function sanitizeUserLevel(row: Row): Row {
+  return { ...row, coordinator: row.coordinator === true && row.role === "admin" };
+}
+
 /** Rôles d'une sauvegarde : colonnes connues, dates relues, droits en texte JSON, `system` recalculé d'après la clé (jamais cru sur parole). */
 function restorableRoles(rows: Row[]): Row[] {
   const seen = new Set<string>();
@@ -241,7 +246,7 @@ export async function applyRestore(backup: ParsedBackup, opts: { confirmCustom: 
   applyUpgrades(d, backup.manifest.schemaVersion);
   for (const key of ["users", "instances", "instanceTranslations", "entries", "entryTranslations", "redirects", "records"] as const) {
     const rows: Row[] = [];
-    for (let i = 0; i < d[key].length; i += SLICE_ROWS) { rows.push(...d[key].slice(i, i + SLICE_ROWS).map((r) => pickKnownColumns(key, r))); await tick(); }
+    for (let i = 0; i < d[key].length; i += SLICE_ROWS) { rows.push(...d[key].slice(i, i + SLICE_ROWS).map((r) => (key === "users" ? sanitizeUserLevel(pickKnownColumns(key, r)) : pickKnownColumns(key, r)))); await tick(); }
     d[key] = rows;
   }
   // Compteurs de génération du stockage d'AVANT : la restauration remet ceux de la sauvegarde, mais un compteur ne recule jamais.

@@ -12,7 +12,7 @@ import { addInstance } from "../modules/actions";
  * puis en crée une instance — comme le bouton « Ajouter une instance » de la page Modules (surnoms demandés dès la deuxième).
  */
 export async function addNetwork(moduleId: string, formData: FormData): Promise<void> {
-  const { user } = await adminCtx("owner");
+  const { user } = await adminCtx({ right: "core:modules.install" });
   if (!(await getModule(moduleId))) {
     const installed = await installFromCatalogue(moduleId);
     if (!installed.ok) redirect(`/admin/social?error=${encodeURIComponent(installed.error)}`);

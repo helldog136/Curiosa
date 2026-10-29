@@ -101,11 +101,12 @@ const PAGES = [
 
 test("non-régression : sur chaque page d'admin importante, propriétaire, administrateur et éditeur entrent (ou non) exactement comme avant", async () => {
   for (const [file, before] of PAGES) {
-    const m = read(`${PANEL}/${file}`).match(/adminCtx\("(owner|admin|editor|member)"/);
+    // 0.4.0 : les opérations techniques exigent un DROIT (propriétaire et coordinateur), plus « owner » ; pour owner/admin/editor le verdict est inchangé.
+    const m = read(`${PANEL}/${file}`).match(/adminCtx\((?:"(owner|admin|editor|member)"|\{ right: "([^"]+)" \})/);
     assert.ok(m, `${file} : adminCtx introuvable`);
     for (const key of ["owner", "admin", "editor"]) {
       as(T[key]);
-      const now = await gate(m[1]);
+      const now = await gate(m[1] ?? { right: m[2] });
       const then = OLD_RANK[key] >= OLD_RANK[before] ? "ok" : "/admin?denied=1";
       assert.equal(now, then, `${file} pour ${key}`);
     }
@@ -503,7 +504,7 @@ test("restauration d'une sauvegarde d'avant les rôles (sans data/roles.json) : 
     data: { users: [user("o", "owner"), user("a", "admin"), user("e", "editor")], settings: [], modules: [], instances: [], instanceTranslations: [], entries: [], entryTranslations: [], redirects: [], records: [], ...extra }, uploads: [] });
   const report = await Rs.applyRestore(backup(), { confirmCustom: [], actor: "o" });
   assert.equal(report.ok, true, JSON.stringify(report));
-  assert.equal(await prisma.role.count({ where: { system: true } }), 3);
+  assert.equal(await prisma.role.count({ where: { system: true } }), 4);
   for (const [id, key] of [["o", "owner"], ["a", "admin"], ["e", "editor"]]) {
     assert.deepEqual((await prisma.userRole.findMany({ where: { userId: id }, include: { role: true } })).map((r) => r.role.key), [key], id);
   }

@@ -1,5 +1,5 @@
 import { makeTranslator, type Translator } from "@/core/i18n/dictionary";
-import { currentUser, hasRole } from "@/core/permissions";
+import { can, currentUser } from "@/core/permissions";
 import { getSiteConfig } from "@/core/settings";
 import { localized } from "@/core/modules/types";
 import { dismissedServices, suggestionView } from "@/core/modules/suggestInstall";
@@ -17,7 +17,7 @@ export async function SuggestInstall({ instanceId, service, min, reason, locale 
   const view = await suggestionView(instanceId, service, min);
   if (view.state === "hidden") return null;
   const why = String(reason ?? "").slice(0, 200);
-  const isOwner = hasRole(await currentUser(), "owner");
+  const isOwner = can(await currentUser(), "core:modules.install");
   if (!isOwner) {
     return <p className="rounded-xl border border-line bg-surface p-4 text-sm" data-testid="suggest-ask">{t("suggest.askOwner", { reason: why })}</p>;
   }
