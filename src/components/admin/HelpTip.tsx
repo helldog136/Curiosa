@@ -30,10 +30,8 @@ export function HelpTip({ help, name }: { help?: string | null; name: string }) 
     const b = button.current, p = bubble.current;
     if (!b || !p) return;
     const r = b.getBoundingClientRect();
-    p.style.maxWidth = "";
     const size = { width: p.offsetWidth, height: p.offsetHeight };
     const at = placeBubble({ left: r.left, top: r.top, width: r.width, height: r.height }, size, { width: document.documentElement.clientWidth, height: window.innerHeight });
-    p.style.maxWidth = `${at.maxWidth}px`;
     p.style.left = `${at.left}px`;
     p.style.top = `${at.top}px`;
   };
