@@ -1,5 +1,6 @@
 import { ActionForm } from "@/components/admin/ActionForm";
-import { Select } from "@/components/admin/Field";
+import { FieldLabel, Select } from "@/components/admin/Field";
+import { HelpBelow } from "@/components/admin/HelpTip";
 import { Panel } from "@/components/admin/Page";
 import { ui } from "@/components/admin/ui";
 import type { Translator } from "@/core/i18n/dictionary";
@@ -30,9 +31,9 @@ export function RolesPanel({ roles, catalogue, held, isOwner, t, locale, default
   // Plusieurs formulaires sur la page : chaque champ a son propre identifiant (le libellé désigne toujours le bon champ).
   const field = (id: string, name: string, label: string, opts: { value?: string; required?: boolean; help?: string; placeholder?: string } = {}) => (
     <div>
-      <label className={ui.label} htmlFor={id}>{label}</label>
+      <FieldLabel id={id} className={ui.label} help={opts.help} text={label}>{label}</FieldLabel>
       <input id={id} name={name} defaultValue={opts.value} required={opts.required} placeholder={opts.placeholder} maxLength={name === "name" ? 60 : 300} className={ui.input} />
-      {opts.help && <p className={ui.help}>{opts.help}</p>}
+      <HelpBelow help={opts.help} className={ui.help} />
     </div>
   );
   const name = (r: RoleSummary) => (r.system ? t(`role.${r.key}`) : r.name);

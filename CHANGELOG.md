@@ -28,6 +28,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Des textes qui ne devinent plus qui vous êtes.** Les écrans d'administration, le site public, les e-mails, les messages d'installation et les guides parlent de « la personne propriétaire », de « votre public » ou de « l'équipe », sans supposer le genre de la personne qui gère le site ni celui de son public.
 - **Le menu « Utilisateurs » s'appelle « Équipe » en français.** Les adresses et les rôles ne changent pas ; seul le nom affiché est différent.
 - **Nouveau niveau d'accès : la « Coordination technique ».** Elle gère tout le côté technique du site (mises à jour, modules, sauvegardes, sécurité, équipe et rôles) mais ne peut ni toucher au propriétaire ni reprendre le site. Aucun compte existant ne change.
+- **Les longues explications des formulaires d'administration tiennent dans une bulle « ? ».** Une aide courte reste sous le champ ; une aide plus longue s'ouvre en passant la souris sur le « ? » à côté du libellé, ou en appuyant dessus sur téléphone. Les messages d'erreur restent toujours affichés sous le champ.
 - Rien d'autre ne change pour votre site.
 
 ### Pour les développeurs
@@ -39,6 +40,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - Nouveau test `tests/core/neutral-writing.test.mjs` (termes genrés connus, liste blanche justifiée) et audit `docs/ideas/ecriture-neutre-audit.md`. Les messages du kit de test sont reformulés (`docs/TESTSUPPORT.md` régénéré) ; le README d'un module peut aussi nommer sa rubrique technique « Côté technique ».
 - Les noms de rôles (`owner`, Propriétaire, Administrateur, Éditeur) et les identifiants ne changent pas ; leur éventuel renommage est à décider séparément.
 - Niveau `coordinator` : `User.role` reste `admin` (repli sûr pour un ancien cœur) et la colonne `User.coordinator` porte le niveau ; droits réservés par niveau dans la table `LEVEL_RESERVED` (`rights.ts`) ; règles d'équipe dans `team.ts` et `members.ts` ; les opérations techniques exigent un droit (`adminCtx({ right })`) et non plus `owner`. Voir `docs/SECURITE.md`.
+- Nouveau composant `HelpTip` (`components/admin/HelpTip.tsx`) et règle `isLongHelp` (60 caractères, une ligne ; `helpRule.ts`), branchés dans les champs de `Field.tsx`, `adminForm`, `ChoicePicker`, `MarkdownField`, réglages de modules et rôles. Aucun changement de manifeste : le champ `help` suffit. Nouveau texte `help.tip` (« Aide : {name} »).
 
 ## 0.3.1
 

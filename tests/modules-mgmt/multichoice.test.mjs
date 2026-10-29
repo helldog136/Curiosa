@@ -154,8 +154,9 @@ test("rendu : un groupe de cases à cocher accessible, cibles d'au moins 44 px, 
   const os = await import("node:os");
   const path = await import("node:path");
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-field-"));
-  for (const [src, out] of [["src/components/admin/ui.ts", "ui.mjs"], ["src/components/admin/Field.tsx", "Field.mjs"]]) {
-    const js = ts.transpileModule(fs.readFileSync(src, "utf8"), { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText.replace('from "./ui"', 'from "./ui.mjs"');
+  for (const [src, out] of [["src/components/admin/ui.ts", "ui.mjs"], ["src/components/admin/helpRule.ts", "helpRule.mjs"], ["src/components/admin/HelpTip.tsx", "HelpTip.mjs"], ["src/components/admin/Field.tsx", "Field.mjs"]]) {
+    const js = ts.transpileModule(fs.readFileSync(src, "utf8"), { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText
+      .replace('from "./ui"', 'from "./ui.mjs"').replace('from "./helpRule"', 'from "./helpRule.mjs"').replace('from "./HelpTip"', 'from "./HelpTip.mjs"');
     fs.writeFileSync(path.join(dir, out), js);
   }
   fs.symlinkSync(path.resolve("node_modules"), path.join(dir, "node_modules"));

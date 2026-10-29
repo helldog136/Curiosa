@@ -2,6 +2,8 @@
 
 import { useRef } from "react";
 import { ui } from "./ui";
+import { FieldLabel } from "./Field";
+import { HelpBelow } from "./HelpTip";
 
 type Labels = { bold: string; italic: string; link: string; list: string; heading: string; quote: string };
 
@@ -39,7 +41,7 @@ export function MarkdownField({ name, label, help, defaultValue, rows = 12, labe
   const tool = "rounded border border-line px-2 py-1 text-sm hover:border-accent hover:text-accent";
   return (
     <div>
-      <label className={ui.label} htmlFor={name}>{label}</label>
+      <FieldLabel id={name} className={ui.label} help={help} text={label}>{label}</FieldLabel>
       <div className="mb-1 flex flex-wrap gap-1" role="toolbar" aria-label={label}>
         <button type="button" className={`${tool} font-bold`} onClick={() => wrap("**", "**", "…")}>{labels.bold}</button>
         <button type="button" className={`${tool} italic`} onClick={() => wrap("*", "*", "…")}>{labels.italic}</button>
@@ -49,7 +51,7 @@ export function MarkdownField({ name, label, help, defaultValue, rows = 12, labe
         <button type="button" className={tool} onClick={link}>{labels.link}</button>
       </div>
       <textarea ref={ref} id={name} name={name} rows={rows} defaultValue={defaultValue} className={`${ui.input} font-mono`} />
-      {help && <p className={ui.help}>{help}</p>}
+      <HelpBelow help={help} className={ui.help} />
     </div>
   );
 }

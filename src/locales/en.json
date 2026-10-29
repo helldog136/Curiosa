@@ -1914,6 +1914,7 @@
   "crop.gif": "Animated images (GIF) and SVG files cannot be cropped.",
   "crop.close": "Close",
   "crop.urlPlaceholder": "https://… or /uploads/…",
+  "help.tip": "Help: {name}",
   "site.pagination.label": "List pages",
   "site.pagination.previous": "Previous page",
   "site.pagination.next": "Next page",
