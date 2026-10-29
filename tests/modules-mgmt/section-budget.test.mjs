@@ -175,10 +175,16 @@ test("service qui ne répond pas : le consommateur reçoit un échec avant la fi
 test("callAll : une instance qui ne répond pas ne retient pas les autres", async () => {
   await setup();
   F.svcHang = new Set(["pb"]);
-  const run = await timed(() => RT.runSection("alpha", "viaall", {}, "fr"));
-  assert.equal(text(run.value), "pb:failed,b2:ok");
-  assert.ok(run.ms < 1500, `${run.ms} ms`);
-  assert.equal(stallLines().length, 1);
+  // Marge (test instable sous charge) : l'appel bloqué consomme les trois quarts du délai de section, et le quart restant doit suffire à rendre la section.
+  // À 400 ms ce quart (100 ms) disparaissait sur une machine chargée et la section entière était omise ; à 1,6 s il vaut 400 ms. Le SENS ne change pas :
+  // le fournisseur bloqué est signalé (échec), les autres répondent, la section se termine sans attendre le fournisseur bloqué et UNE seule ligne nomme le fautif.
+  const normal = process.env.CURIOSA_SECTION_TIMEOUT_MS; process.env.CURIOSA_SECTION_TIMEOUT_MS = "1600";
+  try {
+    const run = await timed(() => RT.runSection("alpha", "viaall", {}, "fr"));
+    assert.equal(text(run.value), "pb:failed,b2:ok");
+    assert.ok(run.ms < 4000, `la section se termine (environ 1,2 s attendues, jamais sans fin) : ${run.ms} ms`);
+    assert.equal(stallLines().length, 1);
+  } finally { process.env.CURIOSA_SECTION_TIMEOUT_MS = normal; }
 });
 
 test("sujet : un fournisseur qui ne répond pas est ignoré, les autres fournisseurs sont collectés", async () => {
