@@ -8,14 +8,15 @@ import os from "node:os";
 import path from "node:path";
 import { useTestDb } from "../helpers/db.mjs";
 import { createSkinsRepo, TEST_CORE } from "../helpers/skins.mjs";
+import { makeTempDir } from "../helpers/tmp.mjs";
 
 // eslint-disable-next-line react-hooks/rules-of-hooks -- useTestDb n'est pas un hook React
 const db = await useTestDb();
 const O = await import("../../testsupport/skins/official.mjs");
 const { PARTS, REGIONS } = await import("@/core/skins/allowlist");
 const cat = createSkinsRepo();
-const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-official-test-"));
-after(() => { cat.close(); db.close(); fs.rmSync(tmp, { recursive: true, force: true }); });
+const tmp = makeTempDir("curiosa-official-test-");
+after(() => { cat.close(); db.close(); });
 
 const current = { regions: [...REGIONS], parts: [...PARTS] };
 const baselineWithout = (file, { regions = [], parts = [] }) => {

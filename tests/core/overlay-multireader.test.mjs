@@ -3,6 +3,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { makeTempDir } from "../helpers/tmp.mjs";
 
 const kit = await import(pathToFileURL(path.resolve("testsupport/index.mjs")).href);
 const { assertMultiReaders, fakeCtx, loadModuleDir } = kit;
@@ -29,14 +30,13 @@ test("un lecteur qui rejoue tout le flux à chaque lecture, ou qui perd des év�
   await assert.rejects(assertMultiReaders({ publish: async (e) => { log.push(e); }, open: async () => { let at = log.length; return { read: async () => { const out = log.slice(at, at + 1); at += 1; return out; } }; } }));
 });
 
-test("l'exigence « overlay.elements » du kit : réussie pour l'exemple, ÉCHEC pour un module qui déclare sans servir, sert sans déclarer ou répond une adresse externe", async () => {
+test("l'exigence « overlay.elements » du kit : réussie pour l'exemple, ÉCHEC pour un module qui déclare sans servir, sert sans déclarer ou répond une adresse externe", async (t) => {
   const { checkModule } = kit;
   const fs = await import("node:fs");
-  const os = await import("node:os");
   const report = await checkModule(path.resolve("examples/overlay-demo"), { only: ["overlay.elements"] });
   assert.equal(report.results[0].status, "pass", JSON.stringify(report.results[0]));
   const copy = (mutate) => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ovl-kit-"));
+    const dir = makeTempDir("ovl-kit-", { t });
     const mod = path.join(dir, "overlay-demo");
     fs.cpSync(path.resolve("examples/overlay-demo"), mod, { recursive: true });
     mutate(mod);

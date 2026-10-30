@@ -7,6 +7,7 @@ import os from "node:os";
 import path from "node:path";
 import { goodSkin } from "../helpers/skin-defects.mjs";
 import { copySkin } from "../helpers/skins.mjs";
+import { makeTempDir } from "../helpers/tmp.mjs";
 
 const { checkOne } = await import("../../testsupport/skins/check.mjs");
 const { stripConditions, targetedNames, skinCoverage } = await import("../../testsupport/skins/coverage.mjs");
@@ -15,8 +16,7 @@ const { kitCatalog } = await import("../../testsupport/skins/messages.mjs");
 const { PARTS, REGIONS } = await import("@/core/skins/allowlist");
 
 const CORE = "0.4.0";
-const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-cov-"));
-test.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
+const tmp = makeTempDir("curiosa-cov-");
 
 test("targetedNames : lit les sélecteurs de la feuille ; une mention dans :not() ou :has() ne compte pas", () => {
   const css = `

@@ -211,6 +211,29 @@ test("mode test vu de la page : cadres du cœur « module · élément · taille
 });
 const state_headers = (r) => /no-store/.test(r.headers.get("cache-control")) && r.headers.get("set-cookie") === null;
 
+test("mode test : exactement 30 minutes, vu de la page d'OBS (29 min : encore actif ; 31 min : fini) ; une page inactive répond « désactivé » même en mode test", async () => {
+  const { page, secret } = await pageWith(({ demoKey }) => [place("aaaaaa", demoKey, "clock")]);
+  const statePath = `/overlays/page/${secret}/state`;
+  const pageHtml = async () => (await get({ secret, path: `/overlays/page/${secret}` })).text();
+  const MIN = 60_000;
+  await S.setTest(page.id, "start", Date.now() - 29 * MIN);
+  const alive = await (await get({ secret, path: statePath }, StateRoute)).json();
+  assert.equal(alive.test, true, "29 minutes après le départ : encore en mode test");
+  assert.ok(alive.until - alive.now > 0 && alive.until - alive.now <= 1 * MIN + 2000, "il reste environ une minute");
+  assert.match(await pageHtml(), /<html [^>]*data-test="1"/);
+  await S.setTest(page.id, "start", Date.now() - 31 * MIN);
+  const gone = await (await get({ secret, path: statePath }, StateRoute)).json();
+  assert.equal(gone.test, false, "31 minutes après le départ : le mode test s'est arrêté tout seul");
+  assert.doesNotMatch(await pageHtml(), /<html [^>]*data-test/);
+  // Une page inactive répond « désactivé » sans iframe, même si son mode test court encore.
+  await S.setTest(page.id, "start", Date.now());
+  await S.setActive(page.id, false);
+  const off = await pageHtml();
+  assert.match(off, /Cet overlay est désactivé/); assert.doesNotMatch(off, /<iframe/);
+  const offState = await (await get({ secret, path: statePath }, StateRoute)).json();
+  assert.equal(offState.active, false);
+});
+
 test("élément disparu (module retiré) : cadre vide en direct, message en mode test, la page ne casse pas ; sauvegarde de la page conservée", async () => {
   const { page, secret } = await pageWith(({ demoKey }) => [place("aaaaaa", demoKey, "clock"), place("bbbbbb", "ancien-module", "thing", { options: { a: 1 } })]);
   const catalog = await buildCatalog("fr", "fr");
