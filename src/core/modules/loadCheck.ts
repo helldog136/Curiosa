@@ -42,7 +42,7 @@ export function describeShape(value: unknown, depth = 3): Shape {
 export function shapeProblems(shape: Shape | undefined): string[] {
   const out: string[] = [];
   if (!isMap(shape)) return ["the main file must export by default an object (export default { … })"];
-  for (const group of ["sections", "slots", "routes", "exports", "adminActions", "adminDownloads", "mcp", "tasks", "services", "migrations"]) {
+  for (const group of ["sections", "slots", "routes", "overlayElements", "exports", "adminActions", "adminDownloads", "mcp", "tasks", "services", "migrations"]) {
     const g = shape[group];
     if (g === undefined) continue;
     if (!isMap(g)) { out.push(`"${group}" must be an object`); continue; }

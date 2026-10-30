@@ -64,6 +64,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   const adminEntries = administrationEntries({ role: user.level, advanced });
   const adminLinks: Record<AdminEntry, React.ReactNode> = {
     extensions: <NavLink key="extensions" href={EXTENSIONS_HREF} also={["/admin/modules", ...unpinnedPages]} badge={extensions.count} badgeLabel={extensionsLabel}>{t("nav.extensions")}</NavLink>,
+    overlays: <NavLink key="overlays" href="/admin/overlay-pages">{t("nav.overlayPages")}</NavLink>,
     assistants: <NavLink key="assistants" href={ASSISTANTS_HREF} badge={aiWaiting} badgeLabel={t("nav.badge.ai")}>{t("nav.assistants")}</NavLink>,
     users: <NavLink key="users" href="/admin/users">{t("nav.users")}</NavLink>,
     health: <NavLink key="health" href="/admin/maintenance/content">{t("nav.health")}</NavLink>,
@@ -147,7 +148,8 @@ export default async function PanelLayout({ children }: { children: React.ReactN
         </form>
       </MobileMenu>
       <main className="min-w-0 flex-1 p-6 md:p-10">
-        <div className="mx-auto max-w-4xl">
+        {/* Une page qui a besoin de largeur (l'éditeur de pages d'overlay) porte data-admin-wide : la zone de contenu s'élargit alors, sans toucher aux autres pages. */}
+        <div className="mx-auto max-w-4xl has-[[data-admin-wide]]:max-w-[112rem]">
           {legacyPending && (
             <LegacyBanner title={t("legacy.banner.title")} text={t("legacy.banner.text")} link={can(user, "core:updates") ? t("legacy.banner.link") : null} ownerNote={can(user, "core:updates") ? null : t("legacy.banner.owner")} />
           )}

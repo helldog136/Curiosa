@@ -2,7 +2,7 @@ import type { Level } from "../auth/rights";
 import { levelHolds } from "../auth/team";
 
 /** Les entrées de la rubrique « Administration » du menu, dans l'ordre d'affichage. */
-export type AdminEntry = "extensions" | "assistants" | "users" | "health" | "backup" | "updates" | "audit";
+export type AdminEntry = "extensions" | "overlays" | "assistants" | "users" | "health" | "backup" | "updates" | "audit";
 
 /**
  * Quelles entrées d'« Administration » voit cette personne ? Logique pure, testée.
@@ -15,6 +15,9 @@ export function administrationEntries({ role, advanced }: { role: Level; advance
   const manage = role === "admin" || role === "coordinator" || role === "owner";
   const out: AdminEntry[] = [];
   if (manage) out.push("extensions");
+  // Overlays (0.5.0) : composer les pages d'overlay est une fonction d'administration (administration, coordination technique, personne propriétaire), en mode simple comme avancé.
+  // Pas de droit dédié : l'éditeur et les rôles personnalisés sans palier n'y entrent pas (voir overlays/access.ts).
+  if (manage) out.push("overlays");
   if (levelHolds(role, "core:mcp.tokens")) out.push("assistants");
   if (manage) out.push("users", "health");
   if (levelHolds(role, "core:backup")) out.push("backup");

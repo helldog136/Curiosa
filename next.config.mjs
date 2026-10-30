@@ -33,6 +33,8 @@ const nextConfig = {
       // Serveur MCP : l'adresse secrète `/api/mcp/<jeton>` ne doit jamais fuir par un en-tête « Referer », ni être mise en cache.
       { source: "/api/mcp/:path*", headers: [{ key: "Referrer-Policy", value: "no-referrer" }, { key: "Cache-Control", value: "no-store" }] },
       { source: "/api/mcp", headers: [{ key: "Referrer-Policy", value: "no-referrer" }] },
+      // Pages d'overlay (0.5.0) : l'adresse secrète `/overlays/page/<secret>` ne fuit jamais par « Referer » et rien n'est gardé en cache ; la politique de sécurité et le reste viennent de la page elle-même (core/overlays/render.ts).
+      { source: "/overlays/page/:path*", headers: [{ key: "Referrer-Policy", value: "no-referrer" }, { key: "Cache-Control", value: "no-store, max-age=0" }] },
       { source: "/admin/:path*", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] },
     ];
   },

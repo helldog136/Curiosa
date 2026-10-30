@@ -32,6 +32,8 @@ export const DATA_FILES = {
   userRoles: "data/user-roles.json",
   /** Propriétaire des fichiers revendiqués par des modules (0.2.13, voir services/files.ts). Absent d'une sauvegarde plus ancienne : aucun fichier n'a de propriétaire (ils restent au cœur). */
   uploadFiles: "data/upload-files.json",
+  /** Pages d'overlay (0.5.0, voir overlays/backup.ts). Absent d'une sauvegarde plus ancienne : aucune page. */
+  overlayPages: "data/overlay-pages.json",
 } as const;
 
 export type BackupModule = {
