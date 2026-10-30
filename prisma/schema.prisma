@@ -415,3 +415,23 @@ model UploadFile {
   @@index([ownerModule])
   @@index([createdAt])
 }
+
+// ─── Pages d'overlay (0.5.0) ──────────────────────────────────────────────
+// Une composition pour OBS : résolution, éléments fournis par les modules (JSON borné : 30 au plus), style commun, interrupteur actif/inactif, mode test à échéance.
+// Le cœur en est le seul propriétaire (une source de vérité) ; elle fait partie de la sauvegarde. Le secret de l'adresse n'est jamais stocké en clair : `secretHash`
+// (SHA-256, sert à retrouver la page) et `secretSealed` (chiffré avec le secret du site, sert à recopier l'adresse). `rev` augmente à chaque changement visible dans OBS.
+model OverlayPage {
+  id           String    @id @default(cuid())
+  name         String
+  width        Int       @default(1920)
+  height       Int       @default(1080)
+  active       Boolean   @default(true)
+  style        String    @default("{}")
+  elements     String    @default("[]")
+  secretHash   String    @unique
+  secretSealed String    @default("")
+  testUntil    DateTime?
+  rev          Int       @default(1)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}

@@ -1,11 +1,11 @@
 import test, { beforeEach, after } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { useTestDb } from "../helpers/db.mjs";
 import { makeRepo } from "../helpers/repo.mjs";
 import { createCatalogue } from "../helpers/catalogue.mjs";
+import { makeTempDir } from "../helpers/tmp.mjs";
 
 process.env.CURIOSA_ALLOW_LOCAL_MODULES = "1";
 const db = await useTestDb();
@@ -33,7 +33,7 @@ const leftovers = () => fs.readdirSync(path.dirname(installed())).filter((n) => 
 
 /** Un dossier de module jetable (pour l'empreinte). */
 function makeDir(files) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-fp-"));
+  const dir = makeTempDir("curiosa-fp-");
   for (const [name, content] of Object.entries(files)) {
     fs.mkdirSync(path.dirname(path.join(dir, name)), { recursive: true });
     fs.writeFileSync(path.join(dir, name), typeof content === "string" ? content : JSON.stringify(content));
@@ -211,7 +211,7 @@ test("refus : inconnu, sans source, mise à jour du site en cours, autre identif
 
   await bundledWithData();
   const hash = X.fingerprintDir(installed()).hash;
-  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-upd-"));
+  const dataDir = makeTempDir("curiosa-upd-");
   fs.mkdirSync(path.join(dataDir, "update"));
   fs.writeFileSync(path.join(dataDir, "update", "state.json"), JSON.stringify({ status: "running" }));
   assert.equal((await X.reinstallModule("planning", { dataDir })).error, "modules.error.reinstallBusy");

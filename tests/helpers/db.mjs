@@ -2,9 +2,9 @@
 // SA copie d'un modèle migré (construit une fois, reconstruit si les migrations changent) — rapide et sans interférence.
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { makeTempDir } from "./tmp.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const tmp = path.join(root, "tests/.tmp");
@@ -33,7 +33,7 @@ function ensureTemplate() {
  */
 export async function useTestDb() {
   ensureTemplate();
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-test-"));
+  const dir = makeTempDir("curiosa-test-");
   const file = path.join(dir, "test.db");
   fs.copyFileSync(template, file);
   // Une seule connexion : les réglages ci-dessous (propres à la connexion) s'appliquent à toutes les requêtes du test.
@@ -51,7 +51,7 @@ export async function useTestDb() {
   // Base jetable, détruite à la fin du test : on n'attend pas les écritures sur disque (synchronous=OFF, journal en mémoire). Aucun effet sur ce qui est vérifié.
   await prisma.$queryRawUnsafe("PRAGMA journal_mode=MEMORY");
   await prisma.$queryRawUnsafe("PRAGMA synchronous=OFF");
-  const tables = ["UploadFile", "UserRole", "Role", "VisitSeen", "VisitDaily", "ApiToken", "AuditLog", "ModuleRecord", "EntryTranslation", "Entry", "InstanceTranslation", "ModuleInstance", "RedirectDay", "Redirect", "Setting", "Module", "AuthLock", "TrustedIp", "RecoveryCode", "Passkey", "PasskeyChallenge", "User"];
+  const tables = ["OverlayPage", "UploadFile", "UserRole", "Role", "VisitSeen", "VisitDaily", "ApiToken", "AuditLog", "ModuleRecord", "EntryTranslation", "Entry", "InstanceTranslation", "ModuleInstance", "RedirectDay", "Redirect", "Setting", "Module", "AuthLock", "TrustedIp", "RecoveryCode", "Passkey", "PasskeyChallenge", "User"];
   return {
     dir,
     prisma,

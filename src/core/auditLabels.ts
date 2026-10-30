@@ -19,7 +19,7 @@ export const AUDIT_ACTIONS = [
   "skin.install", "skin.update", "skin.remove", "skin.refused", "skin.activate", "skin.reset", "skin.undo", "skin.options", "appearance.update",
   "content.check",
   "mail.sent", "file.claim", "file.remove", "file.erase",
-  "setting.fromText",
+  "setting.fromText", "overlay.create", "overlay.update", "overlay.rename", "overlay.duplicate", "overlay.delete", "overlay.activate", "overlay.deactivate", "overlay.secret", "overlay.test.start", "overlay.test.extend", "overlay.test.stop",
 ] as const;
 
 const KNOWN = new Set<string>(AUDIT_ACTIONS);

@@ -4,9 +4,9 @@ import test, { beforeEach, after } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { useTestDb } from "../helpers/db.mjs";
+import { makeTempDir } from "../helpers/tmp.mjs";
 
 const db = await useTestDb();
 const { prisma } = db;
@@ -134,10 +134,10 @@ test("une personne dont une ancienne version a changé User.role perd le niveau 
 });
 
 test("menu d'administration par niveau (sans changement pour owner, admin, editor)", () => {
-  assert.deepEqual(administrationEntries({ role: "owner", advanced: true }), ["extensions", "assistants", "users", "health", "backup", "updates", "audit"]);
-  assert.deepEqual(administrationEntries({ role: "coordinator", advanced: true }), ["extensions", "assistants", "users", "health", "backup", "updates", "audit"]);
-  assert.deepEqual(administrationEntries({ role: "coordinator", advanced: false }), ["extensions", "assistants", "users", "health", "backup", "updates"]);
-  assert.deepEqual(administrationEntries({ role: "admin", advanced: true }), ["extensions", "users", "health"]);
+  assert.deepEqual(administrationEntries({ role: "owner", advanced: true }), ["extensions", "overlays", "assistants", "users", "health", "backup", "updates", "audit"]);
+  assert.deepEqual(administrationEntries({ role: "coordinator", advanced: true }), ["extensions", "overlays", "assistants", "users", "health", "backup", "updates", "audit"]);
+  assert.deepEqual(administrationEntries({ role: "coordinator", advanced: false }), ["extensions", "overlays", "assistants", "users", "health", "backup", "updates"]);
+  assert.deepEqual(administrationEntries({ role: "admin", advanced: true }), ["extensions", "overlays", "users", "health"]);
   assert.deepEqual(administrationEntries({ role: "editor", advanced: true }), []);
 });
 
@@ -460,7 +460,7 @@ const sqlite = (dbFile, sql) => execFileSync("node", ["-e", `const {PrismaClient
 const deploy = (schema, dbFile) => execFileSync("npx", ["prisma", "migrate", "deploy", "--schema", schema], { cwd: root, env: { ...process.env, DATABASE_URL: `file:${dbFile}` }, stdio: "pipe" });
 
 test("migration depuis un état 0.3.1 : propriétaire, administrateurs et éditeurs existants ne changent pas, le drapeau vaut faux partout", () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-mig-"));
+  const dir = makeTempDir("curiosa-mig-");
   try {
     const old = path.join(dir, "prisma");
     fs.cpSync(path.join(root, "prisma"), old, { recursive: true });
@@ -483,12 +483,14 @@ test("migration depuis un état 0.3.1 : propriétaire, administrateurs et édite
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
-test("migration : texte SQL purement additif ; migration postérieure à toutes les autres", () => {
+test("migration : texte SQL purement additif ; migration postérieure à toutes les autres (sauf celle des pages d'overlay)", () => {
   const sql = read(path.join("prisma/migrations", MIGRATION, "migration.sql")).replace(/--.*$/gm, "");
   assert.ok(!/\bDROP\b|\bRENAME\b|DELETE\s+FROM|UPDATE\s+"/i.test(sql));
   assert.match(sql, /ALTER TABLE "User" ADD COLUMN "coordinator" BOOLEAN NOT NULL DEFAULT false/);
   const all = fs.readdirSync("prisma/migrations").filter((d) => /^\d{8,}_/.test(d)).sort();
-  assert.equal(all.at(-1), MIGRATION);
+  // Les pages d'overlay (0.5.0) ont ajouté la migration suivante : celle-ci est l'avant-dernière, rien ne s'intercale avant elle.
+  assert.equal(all.at(-2), MIGRATION);
+  assert.equal(all.at(-1), "20261030090000_overlay_pages");
 });
 
 /* ───────────── Textes ───────────── */

@@ -3,10 +3,10 @@
 // index factice (catalogue/index.json) et sa liste de suggestions (catalogue/suggested.json). Aucun réseau : l'adresse https qu'annonce l'index est
 // redirigée vers le dépôt local par un gitconfig global jetable, et CURIOSA_CATALOGUE_REPO désigne ce dépôt.
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { makeRepo } from "./repo.mjs";
+import { makeTempDir } from "./tmp.mjs";
 
 const fixtures = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../fixtures/extras");
 export const CATALOGUE_HTTPS = "https://github.com/test/curiosa-extras";
@@ -20,7 +20,7 @@ const man = (id, over = {}) => ({ apiVersion: 2, id, name: id, version: "1.0.0",
  *   cat.setIndex(...entrées brutes) · cat.suggest(ids) · cat.unlist(id) · cat.down({ forget }) · cat.up() · cat.clear()
  */
 export function createCatalogue() {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-cat-"));
+  const tmp = makeTempDir("curiosa-cat-");
   const gitconfig = process.env.GIT_CONFIG_GLOBAL || path.join(tmp, "gitconfig");
   const repo = makeRepo({ "catalogue/index.json": { version: 1, modules: [] }, "catalogue/suggested.json": [] });
   fs.appendFileSync(gitconfig, `[url "${repo.url}"]\n\tinsteadOf = ${CATALOGUE_HTTPS}\n`);

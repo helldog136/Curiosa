@@ -1,12 +1,12 @@
 import test, { beforeEach, after } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { useTestDb, settleBackground } from "../helpers/db.mjs";
 import { makeRepo } from "../helpers/repo.mjs";
 import { createCatalogue } from "../helpers/catalogue.mjs";
+import { makeTempDir } from "../helpers/tmp.mjs";
 
 const db = await useTestDb();
 // Le cœur ne contient aucun module : ceux que ces tests appellent « du catalogue » viennent d'un faux dépôt curiosa-extras local (index factice).
@@ -116,7 +116,7 @@ test("sauvegarde : nom de fichier sûr, daté ; mot de passe trop court refusé"
 
 test("LISIBLE SANS LE FRAMEWORK : le fichier produit s'ouvre avec `openssl` puis `tar`, avec les vraies valeurs", async () => {
   await seed();
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-bk-"));
+  const dir = makeTempDir("curiosa-bk-");
   const b = await B.createBackup(PW); // vraies itérations
   fs.writeFileSync(path.join(dir, b.filename), b.buffer);
   execFileSync("openssl", ["enc", "-d", "-aes-256-cbc", "-pbkdf2", "-iter", "600000", "-md", "sha256", "-pass", `pass:${PW}`, "-in", path.join(dir, b.filename), "-out", path.join(dir, "b.tar.gz")]);
@@ -311,7 +311,7 @@ test("restauration des modules : les modules d'une ancienne sauvegarde (« inté
 /* ───────────── Mise de côté entre aperçu et confirmation ───────────── */
 
 test("mise de côté : jeton aléatoire, lisible une fois valide, expirée après 30 minutes, jamais d'évasion de chemin", () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-stash-"));
+  const dir = makeTempDir("curiosa-stash-");
   const token = stash(Buffer.from("contenu"), dir);
   assert.match(token, /^[0-9a-f]{32}$/);
   assert.equal(unstash(token, dir).toString(), "contenu");

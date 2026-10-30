@@ -10,6 +10,7 @@ import { checkModule, registerConformanceTests, REQUIREMENTS, fakeCtx, fakeFetch
 import { renderDocs } from "../testsupport/docs.mjs";
 import { KNOWN_BLOCKS } from "../testsupport/requirements/runtime.mjs";
 import { makeModule, dispose, editManifest } from "./fixtures/testsupport/fullModule.mjs";
+import { makeTempDir } from "./helpers/tmp.mjs";
 
 const cleanEnv = Object.fromEntries(Object.entries(process.env).filter(([k]) => k !== "NODE_TEST_CONTEXT")); // un test lancé depuis un test doit afficher son propre résultat
 const made = [];
@@ -26,7 +27,7 @@ test("un module conforme réussit toutes les exigences (aucune en échec, aucune
   assert.equal(report.summary.ok, true);
   // « neutrality.clean » est sautée sans liste de neutralité, vérifiée (et réussie) avec : les deux sont corrects.
   const notPassed = report.results.filter((r) => r.status !== "pass" && r.id !== "neutrality.clean" && !(r.group === "skin" && r.status === "na")).map((r) => `${r.id}:${r.status}`);
-  assert.deepEqual(notPassed.sort(), ["srp.single:na"]);
+  assert.deepEqual(notPassed.sort(), ["overlay.elements:na", "srp.single:na"]);
   // avec un voisin sans rapport, « un propriétaire par donnée » est vérifié et réussit
   void other;
   assert.equal(status(await checkModule(dir, { siblings: [path.join(path.dirname(other), "full-mod")] }), "srp.single").status, "pass");
@@ -120,6 +121,7 @@ const FAULTS = {
   "skin.tokensUsed": (f) => withSkin(f, { tokens: [...SKIN_TOKENS, { name: "--sk-m-full-mod-card-gap", type: "length", default: "1rem" }] }),
   "skin.textPair": (f) => withSkin(f, { tokens: SKIN_TOKENS.map((t) => ({ name: t.name, type: t.type, default: t.default })) }),
   "skin.declare": (f) => append(f, "index.mjs", 'export const CSS = ".fm-card{border-radius:1rem;padding:1rem;background:#222}";'),
+  "overlay.elements": (f) => editManifest(f, (m) => { m.minCore = "0.5.0"; m.overlayElements = [{ id: "ghost", label: { fr: "Fantôme", en: "Ghost" }, fit: "fluid" }]; }),
   "routes.visitorIp": null, // vérifié à part : demande un cœur 0.2.6 (voir plus bas)
   "srp.single": null, // voir plus bas : demande un voisin
   "srp.coupling": (f) => append(f, "index.mjs", 'export const peek = (ctx) => ctx.api.instances.list({ module: "contacts" });'),
@@ -204,7 +206,7 @@ test("la commande : code 0 et JSON lisible pour un module conforme, code 1 pour 
 
 // ── Importé depuis un autre dépôt, par le chemin du cœur ─────────────────────────────────────────────────────────────
 test("le kit s'importe depuis un dossier hors du cœur par son chemin absolu, sans dépendre de la position relative (et avec le chargeur du cœur)", () => {
-  const outside = fs.mkdtempSync(path.join(os.tmpdir(), "ts-outside-"));
+  const outside = makeTempDir("ts-outside-");
   made.push(path.join(outside, "x")); // nettoyé par `after`
   const dir = mk();
   const kit = pathToFileURL(path.resolve("testsupport/index.mjs")).href;

@@ -1,14 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
+import { makeTempDir } from "../helpers/tmp.mjs";
 
 const { createTarGz, readTarGz, isSafeArchivePath } = await import("@/core/backup/tar");
 const { encryptBackup, decryptBackup, MIN_PASSWORD_LENGTH } = await import("@/core/backup/crypto");
 
-const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-fmt-"));
+const tmp = () => makeTempDir("curiosa-fmt-");
 const files = [
   { path: "README.txt", content: Buffer.from("Bonjour — lisible.\n", "utf8") },
   { path: "data/a.json", content: Buffer.from('{"é":"ü"}') },

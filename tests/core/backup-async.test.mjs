@@ -5,6 +5,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { execFileSync, spawnSync } from "node:child_process";
 import { useTestDb } from "../helpers/db.mjs";
+import { makeTempDir } from "../helpers/tmp.mjs";
 
 const db = await useTestDb();
 const B = await import("@/core/backup/export");
@@ -64,7 +65,7 @@ test("compatibilité : une archive fabriquée par l'ANCIEN code (fixture) se lit
   assert.equal((C.decryptBackup(enc, "mot-de-passe-de-reference")).ok, true);
   // Écrit maintenant, relu par openssl.
   if (spawnSync("openssl", ["version"]).status === 0) {
-    const tmp = fs.mkdtempSync(path.join(process.env.TMPDIR ?? "/tmp", "bk-"));
+    const tmp = makeTempDir("bk-");
     try {
       const out = await C.encryptBackupAsync(dec.plain, "mot-de-passe-de-reference", 1000);
       fs.writeFileSync(path.join(tmp, "b.enc"), out);

@@ -9,6 +9,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const core = process.env.CURIOSA_DIR ?? path.resolve(here, "../.."); // le dossier du cœur ; en dehors du cœur : CURIOSA_DIR
+// Besoin d'un dossier temporaire ? Utilisez makeTempDir(prefix) du kit (même import) : ne créez jamais de dossier dans /tmp sans l'enregistrer.
 const { registerConformanceTests, fakeCtx, loadModuleDir } = await import(pathToFileURL(path.join(core, "testsupport/index.mjs")).href);
 
 // 1) Tout module doit réussir ceci : une exigence = un test nommé. Les « obligatoires » font échouer le test ; les « conseils » s'affichent en remarque.

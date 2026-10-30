@@ -33,7 +33,9 @@ Skins (https://github.com/helldog136/curiosa-skins, une branche par skin, `main`
 - Pousser après chaque jalon ; le conteneur a redémarré 3 fois.
 - Commits en français avec les trailers `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>` et `Claude-Session: …`.
 - Jamais de publication sans les vérifications : CI verte, SHA complet de 40 caractères pour fusionner, release vérifiée, `dev` aligné sur `master`, sauvegarde avant mise à jour des sites, diagnostic après.
-- Le propriétaire veut des SOUS-SESSIONS (create_session) plutôt que des sous-agents pour les nouveaux travaux.
+- Les travaux se font par SOUS-AGENTS (l'instruction « sous-sessions » a été retirée par le propriétaire).
+- **Preuve visuelle 0 pixel (1 168 captures) : faite pour la 0.4.0 seulement.** Elle prouvait la RÉTROCOMPATIBILITÉ (le skin `basic` rend exactement le site 0.3.1) ; elle n'a plus de sens quand le rendu change volontairement (on ne peut pas comparer à « identique »). Pour les versions suivantes : ne pas la relancer. La règle devient : **tout élément public nouveau doit rester habillable par les skins** (voir `docs/SKINS.md` §26 « Un nouvel élément est-il habillable ? »). Garde-fous : conseil `kit-coverage` de `skin:check`, `npm run skin:official` (tableau des skins du catalogue contre le cœur courant, référence `docs/skins-parts-baseline.json`), test `skins-kit-coverage`.
+- Les outils de pilotage des sites (MCP) se déconnectent parfois : les recharger par ToolSearch ; un appel `maintenance_modules_update_all` peut dépasser 60 s sans échouer côté site : ne pas le relancer, attendre (« Another maintenance operation is running » le confirme).
 
 ## Autres sujets ouverts
 - Message à l'entreprise ChatDeck (module tiers) : prêt, guide `docs/PUBLIER-SON-MODULE.md` et dossier `starter/` de curiosa-extras en ligne sur master (cœur 0.3.1, modules 1.22.1).
@@ -47,3 +49,11 @@ Skins (https://github.com/helldog136/curiosa-skins, une branche par skin, `main`
 - S9 : convertir les modules à CSS public aux pièces de skin (un module par sous-session ou par groupe, preuve à 0 pixel, version mineure, `minCore` 0.4.0).
 - Cinquième skin « steampunk / victorien » (voir plus haut), en dernier.
 - Les points « Autres sujets ouverts » ci-dessus restent valables.
+
+## Liste de publication du cœur (skins)
+Avant chaque publication du cœur qui ajoute un élément public (détail : `docs/INSTALL.md`, « Publier une release », et `docs/SKINS.md` §26) :
+- [ ] la pièce ou région est dans l'allowlist, le banc d'essai et `skins-dom.test.mjs` (même demande de fusion) ;
+- [ ] `npm run skin:official` : tous les skins valides ; pour chaque « nouveauté non habillée », une règle est prête dans `curiosa-skins` (version corrective ou mineure, `requires.core` à jour) ;
+- [ ] captures regardées par une personne (pas de preuve 0 pixel) ;
+- [ ] `npm run skin:official -- --update-baseline` dans la demande de fusion de la version ;
+- [ ] après la publication : demandes de `curiosa-skins` fusionnées, étiquettes `<id>/vX.Y.Z` posées, `npm run skin:official -- --since v<précédente>` sans nouveauté non habillée.

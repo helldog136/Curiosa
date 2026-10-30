@@ -1,11 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import crypto from "node:crypto";
 import { execFile, execFileSync } from "node:child_process";
 import { promisify } from "node:util";
+import { makeTempDir } from "../helpers/tmp.mjs";
 
 const V = await import("@/core/updates/versions");
 const { runUpdate, runUpdateChain, planUpdate, readState, resolveSqlitePath, safeEntry } = await import("../../scripts/update-lib.mjs");
@@ -82,7 +82,7 @@ const sha = (f) => crypto.createHash("sha256").update(fs.readFileSync(f)).digest
 
 /** Une « release » : un dossier de fichiers + release.json, empaqueté en .tar.gz avec son .sha256, comme le fait la CI. */
 function setup() {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-upd-"));
+  const root = makeTempDir("curiosa-upd-");
   const hosted = path.join(root, "hosted"); // ce que « GitHub » sert
   fs.mkdirSync(hosted);
   const build = (version, { files = {}, paths, platform = PLATFORM, badSum = false } = {}) => {

@@ -1,16 +1,16 @@
 // Banc d'essai des mises à jour : de vraies archives .tar.gz avec leur empreinte, un vrai tar ; prisma et le redémarrage sont simulés.
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import crypto from "node:crypto";
 import { execFileSync } from "node:child_process";
+import { makeTempDir } from "./tmp.mjs";
 
 export const PLATFORM = `${process.platform}-${process.arch}`;
 const sha = (f) => crypto.createHash("sha256").update(fs.readFileSync(f)).digest("hex");
 
 /** Une « release » : un dossier de fichiers + release.json, empaqueté en .tar.gz avec son .sha256, comme le fait la CI. */
 export function setup() {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-upd-"));
+  const root = makeTempDir("curiosa-upd-");
   const hosted = path.join(root, "hosted"); // ce que « GitHub » sert
   fs.mkdirSync(hosted);
   const build = (version, { files = {}, paths, platform = PLATFORM, badSum = false } = {}) => {

@@ -63,6 +63,10 @@ registerConformanceTests(new URL(".", import.meta.url).pathname, { test }); // u
 
 Une exigence obligatoire en échec fait échouer son test (avec le message complet) ; un conseil s'affiche en remarque. Un exemple complet à copier : [`testsupport/template/`](../testsupport/template) (un module minimal et son `my-module.test.mjs`).
 
+**Dossiers temporaires** : utilisez l'aide `makeTempDir(prefix)` du kit (`testsupport/index.mjs`), ne créez jamais de dossier dans `/tmp` sans l'enregistrer.
+Elle supprime le dossier à la fin du test (`makeTempDir(prefix, { t })`), avec `cleanupAll()` dans un `after`, et en filet de sécurité à la sortie du processus.
+Dans le cœur, `npm test` donne à chaque exécution son propre `TMPDIR`, le supprime à la fin et liste en clair (échec) tout ce que les tests y ont laissé ; `KEEP_TEST_TMP=1` garde tout pour déboguer.
+
 Le kit se retrouve tout seul : il peut être importé depuis un autre dépôt (par exemple `curiosa-extras`) par le chemin du cœur, sans dépendre de la position relative des dossiers. Lancez alors vos tests avec le chargeur de test du cœur : `node --import <cœur>/tests/helpers/register.mjs --test …`.
 
 ## L'API publique du kit
@@ -77,6 +81,7 @@ Tout s'importe depuis `testsupport/index.mjs` (stable) :
 | `loadModuleDir(dir)` | Charge un dossier de module comme le cœur (manifeste, code, textes), sans jamais lever. |
 | `fakeFetch(routes)`, `withFakeFetch(routes, fn)`, `blockNetwork(fn)` | Faux `fetch` pour tester un module qui appelle un service, sans réseau. La clé `"*"` répond à toutes les adresses ; le `signal` d'annulation est respecté. |
 | `netReplies`, `makeNetClient(options)` | Pannes prêtes à l'emploi pour `fakeFetch` : `rateLimited(120)` (429 + Retry-After), `rateLimitedBody(s)`, `rateLimitedReset(époque)`, `quotaExceeded()` (403), `silence()` (jamais de réponse), `truncatedJson()`, `slow(ms, réponse)`, `down()`, `status(code)`. `makeNetClient` : le vrai client `ctx.api.net`, état neuf. |
+| `makeTempDir(prefix, { t, in })`, `cleanupAll()`, `removeTempDir(dir)` | Dossiers temporaires de test, enregistrés puis supprimés (fin du test, `cleanupAll`, sortie du processus). `KEEP_TEST_TMP=1` : rien n'est supprimé. |
 | `startLocalServer(handler)` | Petit serveur HTTP local (127.0.0.1) pour tester un module qui parle à une adresse ; rien ne sort de la machine. |
 | `settingsDefaults`, `assertValidManifest`, `assertLocalesParity`, `findSrpViolations`… | Les vérifications unitaires que la suite réutilise (source unique). |
 | `REQUIREMENTS`, `GROUPS`, `formatText`, `formatMatrix` | La liste des exigences et la mise en forme du rapport. |
@@ -132,6 +137,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 | [`skin.tokensUsed`](#skintokensused) | conseil | Les jetons déclarés sont utilisés par le CSS du module |
 | [`skin.textPair`](#skintextpair) | conseil | Un jeton de couleur de texte dit sur quel fond il est posé |
 | [`skin.declare`](#skindeclare) | conseil | Un module qui met en forme une page publique déclare ses pièces de skin |
+| [`overlay.elements`](#overlayelements) | obligatoire | Les éléments d'overlay déclarés sont servis, avec des adresses valables |
 | [`routes.methods`](#routesmethods) | obligatoire | Les routes n'écrivent que sur demande explicite (POST) |
 | [`routes.size`](#routessize) | obligatoire | Les routes bornent la taille de ce qu'elles reçoivent |
 | [`routes.redirect`](#routesredirect) | obligatoire | Aucune redirection vers un site extérieur |
@@ -163,7 +169,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 | [`readme.plain`](#readmeplain) | conseil | Le README est écrit en langage de tous les jours |
 | [`neutrality.clean`](#neutralityclean) | conseil | Aucune donnée personnelle ni propre à un site dans le module |
 
-41 exigences obligatoires et 30 conseils.
+42 exigences obligatoires et 30 conseils.
 
 ### Le fichier module.json
 
@@ -508,6 +514,16 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 - **Ce qui est vérifié.** Le module qui a une page ou des sections avec sa propre mise en forme (CSS intégré) déclare une clé « skin » : ses pièces stylables et leurs jetons, avec leur valeur d'aujourd'hui en repli.
 - **Pourquoi.** Sans déclaration le module fonctionne à l'identique, mais un skin ne peut pas le restyler : ses rayons, ses espaces et ses ombres restent ceux du module quel que soit le skin choisi (docs/SKINS.md §8.5).
 - **Comment corriger.** Suivez « Rendre un module stylable » dans docs/MODULES.md : remplacez les valeurs en dur par var(--sk-m-…, var(--sk-…, valeur-actuelle)), posez data-skin-part et déclarez-les dans « skin ». Ajoutez « minCore »: « 0.4.0 » et passez le module en version mineure (apparence inchangée).
+
+### Les éléments des pages d'overlay
+
+#### `overlay.elements`
+
+**Les éléments d'overlay déclarés sont servis, avec des adresses valables** — niveau : **obligatoire**
+
+- **Ce qui est vérifié.** Chaque élément de « overlayElements » (module.json) a sa fonction dans « overlayElements » du code, et inversement ; chaque fonction répond par une adresse du site (un chemin qui commence par « / », jamais une adresse externe) ou par null, même avec des options extrêmes ou hostiles.
+- **Pourquoi.** Le cœur demande à votre module, côté serveur, l'adresse de chaque élément. Une adresse externe ou mal formée est refusée (cadre vide dans OBS) ; une fonction qui plante avec une option inattendue fait disparaître l'élément du direct.
+- **Comment corriger.** Déclarez chaque élément des deux côtés avec le même identifiant. Répondez { url: `/m/${ctx.instance.key}/…` } ; validez les options reçues (ignorez celles que vous ne connaissez pas) ; répondez null si l'élément n'est pas disponible.
 
 ### Les routes (formulaires et envois)
 

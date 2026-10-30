@@ -2,10 +2,10 @@
 // une étiquette `<id>-v<version>` par version publiée) avec son index factice (catalogue/index.json). Aucun réseau : l'adresse https que l'index annonce est
 // redirigée vers le dépôt local par le gitconfig global jetable de useTestDb(), et CURIOSA_SKINS_REPO désigne ce dépôt.
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { makeRepo } from "./repo.mjs";
+import { makeTempDir } from "./tmp.mjs";
 
 export const FIXTURES = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../fixtures/skins");
 export const SKINS_HTTPS = "https://github.com/test/curiosa-skins";
@@ -36,7 +36,7 @@ export const fakePng = (n = 64) => Buffer.concat([Buffer.from([0x89, 0x50, 0x4e,
 export const SVG_OK = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10" fill="#cccccc"/></svg>';
 
 export function createSkinsRepo() {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-skins-"));
+  const tmp = makeTempDir("curiosa-skins-");
   const gitconfig = process.env.GIT_CONFIG_GLOBAL || path.join(tmp, "gitconfig");
   const repo = makeRepo({ "catalogue/index.json": { version: 1, skins: [] }, "README.md": "# faux dépôt de skins\n" });
   fs.appendFileSync(gitconfig, `[url "${repo.url}"]\n\tinsteadOf = ${SKINS_HTTPS}\n`);

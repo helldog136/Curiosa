@@ -142,6 +142,7 @@ Validé à l'installation et au chargement (zod, `src/core/modules/manifest.ts`)
 | `sitemapFromPage` | (cœur 0.2.14, `"minCore": "0.2.14"`) Facultatif : `true` si `page()` liste, dans `PageResult.sitemap`, des chemins de sa page à ajouter au plan du site et à `llms.txt` (ou se déclare `robots: "noindex"` pour toute l'instance). **Seul** un module qui le demande est lu pour cela : le cœur appelle alors `page(ctx, { segments: [], for: "sitemap" })` (pour la langue par défaut), au plus une fois par minute et par instance. Sans la clé, `page()` n'est jamais appelée pour le plan du site : rien ne change. Refusé sans page publique. |
 | `family` | (cœur 0.2.14, `"minCore": "0.2.14"`) Facultatif : `"content"`, `"community"`, `"connections"` ou `"overlays"` : le rangement dans l'administration, qui **prime** sur la déduction du cœur (voir « Rangement dans le menu »). Sans la clé : la règle habituelle, inchangée. |
 | `skin` | (cœur 0.4.0, `"minCore": "0.4.0"`) Facultatif : les **pièces d'apparence** que les skins peuvent restyler et les jetons de style propres au module (`--sk-m-<module>-…`), avec leur valeur d'aujourd'hui par défaut. Apparence seulement : jamais de contenu, de texte ni de masquage. Un cœur plus ancien ignore la clé. Sans la clé : rien ne change. Voir [Rendre un module stylable par les skins](#rendre-un-module-stylable-par-les-skins-skin-cœur-040). |
+| `overlayElements` | (cœur 0.5.0, `"minCore": "0.5.0"`) Facultatif : les **éléments** que le module propose aux **pages d'overlay** (section « Overlays » de l'administration) : `id`, `label` et `description` FR/EN, `fit` (`scale` par défaut, `ratio`, `fluid`), `size` ou `referenceHeight`, `ratios`, `minSize`, `followsStyle`, `options` (choix, oui/non, nombre, texte court ; 20 au plus), `demo`. Sans la clé : aucun élément, rien ne change. Voir [Proposer des éléments pour les pages d'overlay](OVERLAY-ELEMENTS.md). |
 | `privacy` | Facultatif : ce que le module collecte comme données personnelles, pourquoi et comment les faire effacer (texte simple, traduisible comme `description`). **Un module qui collecte des données des personnes qui visitent doit le déclarer** : le cœur reprend ce texte tel quel, sous le nom de l'instance, dans la page « Politique de confidentialité » du site (`/privacy`, lien permanent du pied de page). Un module qui ne collecte rien n'a rien à écrire. |
 | `icon` | Emoji affiché dans l'admin. |
 | `main` | Fichier ES module du code, relatif à la racine. Absent : module « sans code » (réglages, contenu). |
@@ -706,6 +707,10 @@ async page(ctx) { return { title: "FAQ", blocks: [...], scripts: ["faq.js"] }; }
 ### `overlay` : source navigateur OBS
 
 Voir « Overlay (type `overlay`) ». `OverlayResult` : `html`, `css?`, `script?`, `title?`.
+
+### `overlayElements` : des éléments pour les pages d'overlay (cœur 0.5.0)
+
+Pour chaque élément déclaré dans `overlayElements` du manifeste (`"minCore": "0.5.0"`), une fonction `(ctx, request) => ({ url }) | null` qui répond, côté serveur et avec les secrets du module, **l'adresse (un chemin du site) de la page de l'élément**. Elle reçoit `request` : `element`, `fit`, `width`, `height` (la fenêtre de l'élément), `style` (le style commun, ou `null`), `options` (déjà contrôlées par le cœur ; le module les valide encore et ignore l'inconnu) et `lang`. Le cœur ajoute à l'adresse les paramètres réservés `ov-*` et `opt-*`. Un élément supporte **plusieurs lecteurs en même temps** (un repère par lecteur). Tout le détail, le contrat, les jetons `--ov-*`, le test multi-lecteurs et la liste de contrôle d'adoption : [OVERLAY-ELEMENTS.md](OVERLAY-ELEMENTS.md). Exemple : `examples/overlay-demo/`.
 
 ### `exports` : fournir un sujet
 

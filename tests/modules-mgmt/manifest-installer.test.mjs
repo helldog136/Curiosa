@@ -1,10 +1,10 @@
 import test, { beforeEach, after } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { useTestDb } from "../helpers/db.mjs";
+import { makeTempDir } from "../helpers/tmp.mjs";
 
 const db = await useTestDb();
 const { parseManifest, effectiveType, hasPage } = await import("@/core/modules/manifest");
@@ -112,7 +112,7 @@ test("dépôts : file:// refusé sauf mode développement, liste d'hôtes config
 /* ───────────── Installation depuis un vrai dépôt git local ───────────── */
 
 function makeRepo(files, { branch = "main" } = {}) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-repo-"));
+  const dir = makeTempDir("curiosa-repo-");
   for (const [name, content] of Object.entries(files)) {
     fs.mkdirSync(path.dirname(path.join(dir, name)), { recursive: true });
     fs.writeFileSync(path.join(dir, name), typeof content === "string" ? content : JSON.stringify(content));

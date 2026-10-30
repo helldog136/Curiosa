@@ -378,10 +378,10 @@ test("menu : l'ordre des rubriques et des entrées d'Administration", () => {
 
 test("menu Administration : Assistants IA est UNE entrée, visible du propriétaire en mode simple ET avancé ; le journal d'audit reste avancé", async () => {
   const { administrationEntries } = await import("@/core/modules/adminMenu");
-  assert.deepEqual(administrationEntries({ role: "owner", advanced: false }), ["extensions", "assistants", "users", "health", "backup", "updates"], "mode simple : Assistants IA y est, pas le journal");
-  assert.deepEqual(administrationEntries({ role: "owner", advanced: true }), ["extensions", "assistants", "users", "health", "backup", "updates", "audit"]);
+  assert.deepEqual(administrationEntries({ role: "owner", advanced: false }), ["extensions", "overlays", "assistants", "users", "health", "backup", "updates"], "mode simple : Assistants IA y est, pas le journal");
+  assert.deepEqual(administrationEntries({ role: "owner", advanced: true }), ["extensions", "overlays", "assistants", "users", "health", "backup", "updates", "audit"]);
   for (const advanced of [false, true]) {
-    assert.deepEqual(administrationEntries({ role: "admin", advanced }), ["extensions", "users", "health"], "un administrateur gère les extensions, les utilisateurs et la santé du site, pas les assistants");
+    assert.deepEqual(administrationEntries({ role: "admin", advanced }), ["extensions", "overlays", "users", "health"], "un administrateur gère les extensions, les utilisateurs et la santé du site, pas les assistants");
     assert.deepEqual(administrationEntries({ role: "editor", advanced }), [], "un éditeur n'a pas de rubrique Administration");
     assert.equal(administrationEntries({ role: "owner", advanced }).filter((e) => e === "assistants").length, 1, "jamais deux entrées d'assistants");
   }
