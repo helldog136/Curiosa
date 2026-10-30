@@ -6,10 +6,10 @@
 //   import { assertMultiReaders } from "<dossier du cœur>/testsupport/index.mjs";
 //   await assertMultiReaders({
 //     publish: (event) => publishEvent(ctx, event),                    // ajoute un événement au flux
-//     open: async () => { let cursor = "now"; return { read: async () => { const r = await readFeed(ctx, cursor); cursor = r.cursor; return r.events; } }; },
+//     open: async () => { let cursor = (await readFeed(ctx, "now")).cursor; return { read: async () => { const r = await readFeed(ctx, cursor); cursor = r.cursor; return r.events; } }; },
 //   });
 //
-// `open()` crée un lecteur neuf, placé à la fin du flux ; `read()` rend les événements arrivés depuis SA dernière lecture. Rien d'autre n'est supposé de votre module.
+// `open()` crée un lecteur neuf, dont le repère est pris TOUT DE SUITE à la fin du flux ; `read()` rend les événements arrivés depuis SA dernière lecture. Rien d'autre n'est supposé de votre module.
 import assert from "node:assert/strict";
 
 const keyOf = (e) => (typeof e === "string" ? e : typeof e?.text === "string" ? e.text : JSON.stringify(e));

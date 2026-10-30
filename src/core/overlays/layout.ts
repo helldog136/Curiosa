@@ -54,7 +54,8 @@ export function constrainRect(d: LayoutDecl, rect: Rect, page: Size, keep: "w" |
     w = Math.round(w); h = Math.round(h);
   }
   w = Math.min(w, page.width); h = Math.min(h, page.height);
-  return { x: Math.round(clamp(rect.x, 0, page.width - w)), y: Math.round(clamp(rect.y, 0, page.height - h)), w, h };
+  const x0 = Number.isFinite(rect.x) ? rect.x : 0, y0 = Number.isFinite(rect.y) ? rect.y : 0;
+  return { x: Math.round(clamp(x0, 0, page.width - w)), y: Math.round(clamp(y0, 0, page.height - h)), w, h };
 }
 
 /** Taille et position de l'iframe à l'intérieur du cadre, et échelle à appliquer (transform: scale). */

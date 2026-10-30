@@ -6,6 +6,7 @@ import { localized, type OverlayElementRequest } from "../modules/types";
 import { finalAddress, parseAddress } from "./address";
 import { frameLayout, type FrameLayout } from "./layout";
 import type { OverlayPageData, PageElement } from "./model";
+import { checkOptions } from "./options";
 
 /**
  * Pour chaque élément VISIBLE d'une page, demande au module (côté serveur, avec ses secrets) l'adresse de son élément. Jamais d'exception : un élément qui ne répond pas,
@@ -33,10 +34,12 @@ export async function resolvePage(page: OverlayPageData, opts: { lang: string; d
     if (!a || !decl || typeof serve !== "function") return { el, title: `${el.instance} · ${el.element}`, status: "missing", reason: "gone" };
     const title = `${labeler.label(a.instance)} · ${localized(decl.label, opts.lang, opts.defaultLocale)}`;
     const layout = frameLayout(decl, el);
+    // Valeurs enregistrées, contrôlées d'après la déclaration ; une option absente ou devenue invalide prend son défaut.
+    const options = checkOptions(decl.options, el.options).values;
     const request: OverlayElementRequest = {
       element: decl.id, fit: decl.fit, width: layout.iframeW, height: layout.iframeH,
       style: decl.followsStyle ? { text: page.style.text, surface: page.style.background, corners: page.style.corners } : null,
-      options: { ...el.options }, lang: opts.lang,
+      options: { ...options }, lang: opts.lang,
     };
     try {
       const ctx = await buildContext(a.mod, a.instance, opts.lang);
@@ -45,7 +48,7 @@ export async function resolvePage(page: OverlayPageData, opts: { lang: string; d
       if (answer === null || answer === undefined) return { el, title, status: "failed", reason: "empty", layout };
       const base = parseAddress(answer);
       if (!base) return { el, title, status: "failed", reason: "address", layout };
-      const input = { decl, layout, style: page.style, options: el.options, lang: opts.lang };
+      const input = { decl, layout, style: page.style, options, lang: opts.lang };
       return { el, title, status: "ok", layout, src: finalAddress(base, input), ...(decl.demo ? { demoSrc: finalAddress(base, input, true) } : {}) };
     } catch (error) {
       // Le message d'un module peut contenir une adresse secrète : on ne journalise que sa nature.
