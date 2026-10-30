@@ -9,6 +9,26 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ## Prochaine version (non publiée)
 
+### Overlays
+
+- **Une nouvelle section « Overlays » : composez vos pages pour OBS.** Une page d'overlay réunit plusieurs éléments fournis par vos extensions, derrière une seule adresse à coller dans OBS. Vous choisissez la résolution, puis vous placez chaque élément.
+- **Placer, c'est simple.** Glissez les éléments sur un aperçu, tirez les poignées, ou tapez leur position et leur taille. Des boutons les collent à un bord ou au centre ; tout se fait aussi au clavier.
+- **Un style commun par page.** Texte clair ou sombre, fond transparent ou semi-transparent, coins arrondis ou droits. Les éléments qui savent le suivre l'appliquent, les autres gardent leur apparence.
+- **Un mode test pour vérifier dans OBS.** Un cadre coloré entoure chaque élément, avec son nom et sa taille, sans recoller d'adresse ; il s'arrête tout seul au bout de 30 minutes. Un « Aperçu en direct » est aussi dans l'éditeur.
+- **Un éditeur de page d'overlay fait pour l'écran d'un PC.** L'aperçu occupe toute la largeur de la zone de contenu, avec son échelle affichée (« Aperçu à 38 % ») et un zoom ; les noms des cadres ne se chevauchent plus, les poignées sont plus faciles à saisir, et un clic dans l'aperçu sélectionne l'élément.
+- **Plusieurs pages d'overlay.** Jusqu'à 20 pages, dont 10 actives, de 30 éléments au plus ; vous pouvez les dupliquer, les renommer, les désactiver et les supprimer. Le même élément peut figurer dans plusieurs pages.
+- **Une adresse secrète que vous pouvez changer.** « Changer l'adresse secrète » coupe aussitôt l'ancienne. L'adresse n'est jamais affichée ni écrite dans le journal.
+- **Discret et sûr.** La page d'OBS ne dépose aucun cookie, ne suit personne et ne charge rien d'extérieur. Un élément qui ne répond pas, ou dont l'extension est retirée, laisse un cadre vide.
+- **Sauvegardes.** Vos pages d'overlay sont dans les sauvegardes, et les adresses déjà collées dans OBS fonctionnent encore après une restauration.
+- **Rien ne change pour vos overlays actuels.** Leurs adresses et leur fonctionnement restent les mêmes ; la section est ouverte à l'administration, à la coordination technique et à la personne propriétaire.
+
+### Pour les développeurs
+
+- Clé facultative `overlayElements` du `module.json` (`"minCore": "0.5.0"`) : `id`, libellé et description FR/EN, `fit` (`scale`, `ratio`, `fluid`), `size`, `referenceHeight`, `ratios`, `minSize`, `followsStyle`, `options` (20 au plus), `demo`. Côté code : `overlayElements: { id: (ctx, request) => ({ url }) | null }`, adresse calculée côté serveur avec les secrets du module.
+- Paramètres réservés ajoutés à l'adresse : `ov-w`, `ov-h`, `ov-fit`, `ov-lang`, `ov-text`, `ov-surface`, `ov-corners`, `ov-demo`, `opt-<id>`. Jetons `--ov-fg`, `--ov-surface`, `--ov-radius`, `--ov-border` ; attributs `data-ov-part` et `data-ov-region` (vocabulaire distinct des skins de site).
+- Un élément supporte plusieurs lecteurs simultanés (un repère par lecteur). Kit : exigence `overlay.elements`, test `assertMultiReaders`, exemple `examples/overlay-demo/`, guide `docs/OVERLAY-ELEMENTS.md` et liste de contrôle d'adoption.
+- Routes `/overlays/page/<secret>` (politique de sécurité propre, iframes en `sandbox`) et `/overlays/page/<secret>/state` (interrogation légère). Table `OverlayPage` (migration additive), fichier de sauvegarde `data/overlay-pages.json`.
+
 ### Pour les développeurs
 
 - **Les tests ne laissent plus de dossiers dans `/tmp`.** Une seule aide `makeTempDir()` (`testsupport/tmp.mjs`, offerte aussi aux auteurs de modules) enregistre et supprime chaque dossier temporaire, et `npm test` donne à chaque exécution son propre `TMPDIR`, supprimé à la fin. Ce qui reste est listé et fait échouer l'exécution (`KEEP_TEST_TMP=1` pour déboguer).
