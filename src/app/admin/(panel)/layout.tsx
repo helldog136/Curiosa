@@ -64,6 +64,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   const adminEntries = administrationEntries({ role: user.level, advanced });
   const adminLinks: Record<AdminEntry, React.ReactNode> = {
     extensions: <NavLink key="extensions" href={EXTENSIONS_HREF} also={["/admin/modules", ...unpinnedPages]} badge={extensions.count} badgeLabel={extensionsLabel}>{t("nav.extensions")}</NavLink>,
+    overlays: <NavLink key="overlays" href="/admin/overlay-pages">{t("nav.overlays")}</NavLink>,
     assistants: <NavLink key="assistants" href={ASSISTANTS_HREF} badge={aiWaiting} badgeLabel={t("nav.badge.ai")}>{t("nav.assistants")}</NavLink>,
     users: <NavLink key="users" href="/admin/users">{t("nav.users")}</NavLink>,
     health: <NavLink key="health" href="/admin/maintenance/content">{t("nav.health")}</NavLink>,
