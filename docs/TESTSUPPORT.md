@@ -79,7 +79,6 @@ Tout s'importe depuis `testsupport/index.mjs` (stable) :
 | `netReplies`, `makeNetClient(options)` | Pannes prêtes à l'emploi pour `fakeFetch` : `rateLimited(120)` (429 + Retry-After), `rateLimitedBody(s)`, `rateLimitedReset(époque)`, `quotaExceeded()` (403), `silence()` (jamais de réponse), `truncatedJson()`, `slow(ms, réponse)`, `down()`, `status(code)`. `makeNetClient` : le vrai client `ctx.api.net`, état neuf. |
 | `startLocalServer(handler)` | Petit serveur HTTP local (127.0.0.1) pour tester un module qui parle à une adresse ; rien ne sort de la machine. |
 | `settingsDefaults`, `assertValidManifest`, `assertLocalesParity`, `findSrpViolations`… | Les vérifications unitaires que la suite réutilise (source unique). |
-| `assertMultiReaders({ publish, open, readers })` | (cœur 0.5.0) Le test **multi-lecteurs** des éléments de page d'overlay : plusieurs lecteurs d'un même flux d'événements reçoivent les mêmes événements, chacun avec son propre repère, sans se les disputer. Voir [OVERLAY-ELEMENTS.md](OVERLAY-ELEMENTS.md#5-plusieurs-lecteurs-dun-même-élément). |
 | `REQUIREMENTS`, `GROUPS`, `formatText`, `formatMatrix` | La liste des exigences et la mise en forme du rapport. |
 
 ## Comment la suite essaie votre module
@@ -165,7 +164,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 | [`readme.plain`](#readmeplain) | conseil | Le README est écrit en langage de tous les jours |
 | [`neutrality.clean`](#neutralityclean) | conseil | Aucune donnée personnelle ni propre à un site dans le module |
 
-41 exigences obligatoires et 30 conseils.
+42 exigences obligatoires et 30 conseils.
 
 ### Le fichier module.json
 
@@ -515,11 +514,11 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 
 #### `overlay.elements`
 
-**Les éléments d'overlay déclarés sont servis, avec des adresses valables** — niveau : **obligatoire** (sans objet si le module ne propose aucun élément)
+**Les éléments d'overlay déclarés sont servis, avec des adresses valables** — niveau : **obligatoire**
 
-- **Ce qui est vérifié.** Chaque élément de « overlayElements » (module.json) a sa fonction dans « overlayElements » du code, et inversement ; chaque fonction répond par une adresse du site (un chemin qui commence par « / », jamais une adresse externe) ou par null, même avec des options par défaut, extrêmes ou hostiles.
+- **Ce qui est vérifié.** Chaque élément de « overlayElements » (module.json) a sa fonction dans « overlayElements » du code, et inversement ; chaque fonction répond par une adresse du site (un chemin qui commence par « / », jamais une adresse externe) ou par null, même avec des options extrêmes ou hostiles.
 - **Pourquoi.** Le cœur demande à votre module, côté serveur, l'adresse de chaque élément. Une adresse externe ou mal formée est refusée (cadre vide dans OBS) ; une fonction qui plante avec une option inattendue fait disparaître l'élément du direct.
-- **Comment corriger.** Déclarez chaque élément des deux côtés avec le même identifiant. Répondez { url: `/m/${ctx.instance.key}/…` } ; validez les options reçues (ignorez celles que vous ne connaissez pas) ; répondez null si l'élément n'est pas disponible. Le guide : [OVERLAY-ELEMENTS.md](OVERLAY-ELEMENTS.md).
+- **Comment corriger.** Déclarez chaque élément des deux côtés avec le même identifiant. Répondez { url: `/m/${ctx.instance.key}/…` } ; validez les options reçues (ignorez celles que vous ne connaissez pas) ; répondez null si l'élément n'est pas disponible.
 
 ### Les routes (formulaires et envois)
 

@@ -6,7 +6,7 @@ import path from "node:path";
 
 const fr = JSON.parse(fs.readFileSync("src/locales/fr.json", "utf8"));
 const en = JSON.parse(fs.readFileSync("src/locales/en.json", "utf8"));
-const mine = (d) => Object.keys(d).filter((k) => /^(ovp\.|overlay\.page\.|audit\.action\.overlay\.|nav\.overlays$)/.test(k));
+const mine = (d) => Object.keys(d).filter((k) => /^(ovp\.|overlay\.page\.|audit\.action\.overlay\.|nav\.overlayPages$)/.test(k));
 const walk = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(dir, e.name)) : [path.join(dir, e.name)]));
 const sources = [...walk("src/app/admin/(panel)/overlay-pages"), ...walk("src/core/overlays"), "src/components/admin/OverlayEditor.tsx", "src/components/admin/CopyAddress.tsx"].filter((f) => /\.(ts|tsx)$/.test(f));
 
@@ -32,7 +32,7 @@ test("chaque clé de texte citée dans le code existe, et chaque clé écrite se
   for (const code_ of ["number", "integer", "range", "rangeMin", "rangeMax", "choice", "boolean", "text", "length"]) assert.ok(`ovp.err.option.${code_}` in fr, code_);
   for (const r of ["stalled", "error", "address", "empty"]) assert.ok(`overlay.page.failed.${r}` in fr, r);
   for (const a of ["tl", "tc", "tr", "ml", "c", "mr", "bl", "bc", "br"]) assert.ok(`ovp.ed.anchor.${a}` in fr && `ovp.ed.anchor.${a}` in en);
-  const unused = mine(fr).filter((k) => !used.has(k) && k !== "nav.overlays" && k !== "overlay.page.gone" && !/^ovp\.(ed|flash|err\.option)\./.test(k) && !/^overlay\.page\.failed\./.test(k) && !k.startsWith("audit.action.") && !/\.one$/.test(k));
+  const unused = mine(fr).filter((k) => !used.has(k) && k !== "nav.overlayPages" && k !== "overlay.page.gone" && !/^ovp\.(ed|flash|err\.option)\./.test(k) && !/^overlay\.page\.failed\./.test(k) && !k.startsWith("audit.action.") && !/\.one$/.test(k));
   assert.deepEqual(unused, [], "clés écrites mais jamais utilisées");
 });
 

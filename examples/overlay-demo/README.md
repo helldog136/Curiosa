@@ -1,6 +1,6 @@
 # Démonstration d'éléments d'overlay
 
-Un petit module d'exemple pour les auteurs de modules : il propose quatre éléments aux pages d'overlay de Curiosa (section « Overlays » de l'administration).
+Un petit module d'exemple pour les personnes qui écrivent des modules : il propose quatre éléments aux pages d'overlay de Curiosa (section « Overlays » de l'administration).
 
 - **Horloge** : garde ses proportions (600 × 200), quatre options (format, secondes, légende, taille du texte).
 - **Tableau** : s'adapte à la taille choisie, une option (nombre de lignes).
