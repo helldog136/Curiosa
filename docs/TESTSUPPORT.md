@@ -79,6 +79,7 @@ Tout s'importe depuis `testsupport/index.mjs` (stable) :
 | `netReplies`, `makeNetClient(options)` | Pannes prêtes à l'emploi pour `fakeFetch` : `rateLimited(120)` (429 + Retry-After), `rateLimitedBody(s)`, `rateLimitedReset(époque)`, `quotaExceeded()` (403), `silence()` (jamais de réponse), `truncatedJson()`, `slow(ms, réponse)`, `down()`, `status(code)`. `makeNetClient` : le vrai client `ctx.api.net`, état neuf. |
 | `startLocalServer(handler)` | Petit serveur HTTP local (127.0.0.1) pour tester un module qui parle à une adresse ; rien ne sort de la machine. |
 | `settingsDefaults`, `assertValidManifest`, `assertLocalesParity`, `findSrpViolations`… | Les vérifications unitaires que la suite réutilise (source unique). |
+| `assertMultiReaders({ publish, open, readers })` | (cœur 0.5.0) Le test **multi-lecteurs** des éléments de page d'overlay : plusieurs lecteurs d'un même flux d'événements reçoivent les mêmes événements, chacun avec son propre repère, sans se les disputer. Voir [OVERLAY-ELEMENTS.md](OVERLAY-ELEMENTS.md#5-plusieurs-lecteurs-dun-même-élément). |
 | `REQUIREMENTS`, `GROUPS`, `formatText`, `formatMatrix` | La liste des exigences et la mise en forme du rapport. |
 
 ## Comment la suite essaie votre module
@@ -132,6 +133,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 | [`skin.tokensUsed`](#skintokensused) | conseil | Les jetons déclarés sont utilisés par le CSS du module |
 | [`skin.textPair`](#skintextpair) | conseil | Un jeton de couleur de texte dit sur quel fond il est posé |
 | [`skin.declare`](#skindeclare) | conseil | Un module qui met en forme une page publique déclare ses pièces de skin |
+| [`overlay.elements`](#overlayelements) | obligatoire | Les éléments d'overlay déclarés sont servis, avec des adresses valables |
 | [`routes.methods`](#routesmethods) | obligatoire | Les routes n'écrivent que sur demande explicite (POST) |
 | [`routes.size`](#routessize) | obligatoire | Les routes bornent la taille de ce qu'elles reçoivent |
 | [`routes.redirect`](#routesredirect) | obligatoire | Aucune redirection vers un site extérieur |
@@ -508,6 +510,16 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 - **Ce qui est vérifié.** Le module qui a une page ou des sections avec sa propre mise en forme (CSS intégré) déclare une clé « skin » : ses pièces stylables et leurs jetons, avec leur valeur d'aujourd'hui en repli.
 - **Pourquoi.** Sans déclaration le module fonctionne à l'identique, mais un skin ne peut pas le restyler : ses rayons, ses espaces et ses ombres restent ceux du module quel que soit le skin choisi (docs/SKINS.md §8.5).
 - **Comment corriger.** Suivez « Rendre un module stylable » dans docs/MODULES.md : remplacez les valeurs en dur par var(--sk-m-…, var(--sk-…, valeur-actuelle)), posez data-skin-part et déclarez-les dans « skin ». Ajoutez « minCore »: « 0.4.0 » et passez le module en version mineure (apparence inchangée).
+
+### Les éléments des pages d'overlay
+
+#### `overlay.elements`
+
+**Les éléments d'overlay déclarés sont servis, avec des adresses valables** — niveau : **obligatoire** (sans objet si le module ne propose aucun élément)
+
+- **Ce qui est vérifié.** Chaque élément de « overlayElements » (module.json) a sa fonction dans « overlayElements » du code, et inversement ; chaque fonction répond par une adresse du site (un chemin qui commence par « / », jamais une adresse externe) ou par null, même avec des options par défaut, extrêmes ou hostiles.
+- **Pourquoi.** Le cœur demande à votre module, côté serveur, l'adresse de chaque élément. Une adresse externe ou mal formée est refusée (cadre vide dans OBS) ; une fonction qui plante avec une option inattendue fait disparaître l'élément du direct.
+- **Comment corriger.** Déclarez chaque élément des deux côtés avec le même identifiant. Répondez { url: `/m/${ctx.instance.key}/…` } ; validez les options reçues (ignorez celles que vous ne connaissez pas) ; répondez null si l'élément n'est pas disponible. Le guide : [OVERLAY-ELEMENTS.md](OVERLAY-ELEMENTS.md).
 
 ### Les routes (formulaires et envois)
 

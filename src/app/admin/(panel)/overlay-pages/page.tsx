@@ -2,7 +2,7 @@ import Link from "next/link";
 import { adminCtx } from "@/core/admin";
 import { siteUrl } from "@/core/config";
 import { OVERLAY_NEED } from "@/core/overlays/access";
-import { MAX_ACTIVE_PAGES, MAX_PAGES, RESOLUTIONS, testActive } from "@/core/overlays/model";
+import { MAX_ACTIVE_PAGES, MAX_PAGES, RESOLUTIONS, nowMs, testActive } from "@/core/overlays/model";
 import { listPages, readSecret } from "@/core/overlays/store";
 import { ConfirmButton } from "@/components/admin/ConfirmButton";
 import { CopyAddress } from "@/components/admin/CopyAddress";
@@ -24,7 +24,7 @@ export default async function OverlayPagesPage({ searchParams }: { searchParams:
   const e = one(sp.e), ok = one(sp.ok);
   const pages = await listPages();
   const activeCount = pages.filter((p) => p.active).length;
-  const now = Date.now();
+  const now = nowMs();
   const addresses = new Map<string, string | null>();
   for (const p of pages) { const s = await readSecret(p.id); addresses.set(p.id, s ? `${siteUrl}/overlays/page/${s}` : null); }
 

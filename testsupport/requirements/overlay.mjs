@@ -21,7 +21,7 @@ function optionValues(options, mode) {
 
 const sizeOf = (d) => (d.fit === "scale" ? d.size : { width: Math.round((d.referenceHeight ?? 1080) * (d.ratios ? (d.ratios.min + d.ratios.max) / 2 : 1.78)), height: d.referenceHeight ?? 720 });
 
-export default [
+const requirements = [
   {
     id: "overlay.elements", level: "mandatory", group: "overlay",
     title: "Les éléments d'overlay déclarés sont servis, avec des adresses valables",
@@ -58,3 +58,5 @@ export default [
     },
   },
 ];
+
+export default requirements;

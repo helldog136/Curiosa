@@ -4,7 +4,7 @@ import { adminCtx } from "@/core/admin";
 import { OVERLAY_NEED } from "@/core/overlays/access";
 import { buildCatalog } from "@/core/overlays/catalog";
 import { defaultOf } from "@/core/overlays/options";
-import { catalogKey, MAX_ELEMENTS_PER_PAGE, MAX_SIDE, MIN_SIDE, RESOLUTIONS, testActive } from "@/core/overlays/model";
+import { catalogKey, MAX_ELEMENTS_PER_PAGE, MAX_SIDE, MIN_SIDE, RESOLUTIONS, nowMs, testActive } from "@/core/overlays/model";
 import { OPTIONS_FOLDED_AFTER } from "@/core/overlays/decl";
 import { getPage } from "@/core/overlays/store";
 import { localized } from "@/core/modules/types";
@@ -41,7 +41,7 @@ export default async function OverlayPageEditor({ params }: { params: Promise<{ 
   if (!page) notFound();
   const catalog = await buildCatalog(locale, config.defaultLocale);
   const tz = await siteTimezone();
-  const now = Date.now();
+  const now = nowMs();
   const testing = testActive(page.testUntil, now);
   const L = (v: Parameters<typeof localized>[0]) => localized(v, locale, config.defaultLocale);
 
@@ -85,7 +85,6 @@ export default async function OverlayPageEditor({ params }: { params: Promise<{ 
 
       <ActionForm action={savePageAction.bind(null, page.id)} floating={floatingLabels(t)} submitLabel={t("action.save")} className="space-y-6">
         <OverlayEditor
-          pageId={page.id}
           initial={{ name: page.name, width: page.width, height: page.height, style: page.style, elements: initial }}
           available={available}
           resolutions={RESOLUTIONS.map(([w, h]) => [w, h])}

@@ -79,3 +79,6 @@ export function nextTestUntil(action: "start" | "extend" | "stop", current: numb
   const base = action === "extend" && testActive(current, now) ? (current as number) : now;
   return Math.min(base + TEST_MINUTES * 60_000, now + TEST_MAX_MINUTES * 60_000);
 }
+
+/** L'heure du serveur (une fonction à part : les pages d'administration la lisent à chaque affichage, jamais en cache). */
+export const nowMs = (): number => Date.now();

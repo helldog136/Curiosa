@@ -14,7 +14,6 @@ export type ClientOption = { id: string; type: "choice" | "boolean" | "number" |
 export type ClientElement = { key: string; instance: string; element: string; group: string; title: string; label: string; description: string; layout: LayoutDecl; followsStyle: boolean; options: ClientOption[] };
 export type EditorElement = PageElement & { missing?: boolean };
 type Props = {
-  pageId: string;
   initial: { name: string; width: number; height: number; style: OverlayStyle; elements: EditorElement[] };
   available: ClientElement[];
   resolutions: [number, number][];
@@ -27,7 +26,7 @@ const hue = (i: number) => (i * 47 + 10) % 360;
 const GRID_ANCHORS: Anchor[] = [...ANCHORS];
 const SNAP_PX = 8;
 
-export function OverlayEditor({ pageId, initial, available, resolutions, limits, previewSrc, strings }: Props) {
+export function OverlayEditor({ initial, available, resolutions, limits, previewSrc, strings }: Props) {
   const s = useCallback((key: string, vars?: Record<string, string | number>) => {
     let text = strings[key] ?? key;
     if (vars) for (const [k, v] of Object.entries(vars)) text = text.replaceAll(`{${k}}`, String(v));

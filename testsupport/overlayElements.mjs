@@ -27,7 +27,7 @@ export async function assertMultiReaders({ publish, open, readers = 3, keyOf: ke
   const readers_ = [];
   for (let i = 0; i < n; i++) readers_.push(await open());
   const seen = readers_.map(() => []);
-  const drain = async (i, label) => {
+  const drain = async (i) => {
     const got = (await readers_[i].read()).map(key);
     seen[i].push(...got);
     return got;
