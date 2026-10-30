@@ -7,6 +7,7 @@ import { HelpBelow } from "./HelpTip";
 import { ui } from "./ui";
 import { addElement, anchorElement, changeResolution, newUid, removeElement, reorder, setField, setRect } from "@/core/overlays/editorModel";
 import { ANCHORS, handlesFor, resizeRect, snapMove, type Anchor, type Guide, type Handle, type LayoutDecl, type Rect } from "@/core/overlays/layout";
+import { placeLabels, previewScale, ZOOMS, LABEL_HEIGHT, OUTSIDE_GAP } from "@/core/overlays/previewView";
 import { catalogKey, type OptionValue, type OverlayStyle, type PageElement } from "@/core/overlays/model";
 
 /** Éditeur d'une page d'overlay (navigateur de PC). Aperçu à l'échelle avec cadres nommés, glisser-déposer + poignées, champs précis, ancrages, ordre, options, style. Tout est faisable au clavier. */
@@ -47,7 +48,10 @@ export function OverlayEditor({ initial, available, resolutions, limits, preview
   const [margin, setMargin] = useState("24");
   const [guides, setGuides] = useState<Guide[]>([]);
   const [announce, setAnnounce] = useState("");
+  const [zoom, setZoom] = useState<number>(1);
+  const [avail, setAvail] = useState(880);
   const canvas = useRef<HTMLDivElement>(null);
+  const stage = useRef<HTMLDivElement>(null);
   const drag = useRef<{ uid: string; mode: "move" | Handle; x: number; y: number; start: Rect; scale: number; moved: boolean } | null>(null);
 
   const page = useMemo(() => ({ width: size.width, height: size.height }), [size.width, size.height]);
@@ -58,6 +62,21 @@ export function OverlayEditor({ initial, available, resolutions, limits, preview
 
   const update = (next: EditorElement[]) => setElements(next as EditorElement[]);
   const titleOf = (e: EditorElement) => byKey.get(catalogKey(e.instance, e.element))?.title ?? `${e.instance} · ${e.element}`;
+
+  // Largeur disponible pour l'aperçu : mesurée, et suivie quand la fenêtre change.
+  useEffect(() => {
+    const node = stage.current;
+    if (!node || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver((entries) => { const w = Math.floor(entries[0]?.contentRect.width ?? 0); if (w > 0) setAvail(w); });
+    ro.observe(node);
+    return () => ro.disconnect();
+  }, [live]);
+  const view = previewScale(avail, page, zoom);
+  const labels = useMemo(() => {
+    const placed = placeLabels(elements.map((el) => ({ uid: el.uid, x: el.x * view.scale, y: el.y * view.scale, w: el.w * view.scale, h: el.h * view.scale, text: byKey.get(catalogKey(el.instance, el.element)) ? `${titleOf(el)} · ${el.w}×${el.h} px` : s("ed.gone") })), { width: view.width, height: view.height });
+    return new Map(placed.map((p) => [p.uid, p]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [elements, view.scale, view.width, view.height, byKey]);
 
   function add(a: ClientElement) {
     const taken = new Set(elements.map((e) => e.uid));
@@ -145,11 +164,12 @@ export function OverlayEditor({ initial, available, resolutions, limits, preview
   const full = elements.length >= limits.elements;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-admin-wide="">
       <input type="hidden" name="data" value={data} />
       <p role="status" aria-live="polite" className="sr-only">{announce}</p>
 
-      <section className={`${ui.card} grid gap-4 lg:grid-cols-[2fr_2fr_3fr]`}>
+      <section className={`${ui.card} max-w-4xl space-y-5`}>
+        <div className="grid gap-4 md:grid-cols-2">
         <div>
           <label htmlFor="ov-name" className={ui.label}>{s("ed.name")}</label>
           <input id="ov-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={60} className={`${ui.input} ${nameError.className}`} {...nameError.props} />
@@ -172,9 +192,10 @@ export function OverlayEditor({ initial, available, resolutions, limits, preview
           <FieldErrorText id={resError.id} message={resError.message} />
           <p className={ui.help}>{s("ed.resolutionHelp")}</p>
         </div>
+        </div>
         <fieldset className="min-w-0">
           <legend className={ui.label}>{s("ed.style")}</legend>
-          <div className="grid gap-2 sm:grid-cols-3">
+          <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(12rem,1fr))]">
             <StyleSelect label={s("ed.style.text")} value={style.text} onChange={(v) => setStyle({ ...style, text: v as OverlayStyle["text"] })} options={[["light", s("ed.style.text.light")], ["dark", s("ed.style.text.dark")]]} />
             <StyleSelect label={s("ed.style.background")} value={style.background} onChange={(v) => setStyle({ ...style, background: v as OverlayStyle["background"] })} options={[["transparent", s("ed.style.background.transparent")], ["soft", s("ed.style.background.soft")]]} />
             <StyleSelect label={s("ed.style.corners")} value={style.corners} onChange={(v) => setStyle({ ...style, corners: v as OverlayStyle["corners"] })} options={[["round", s("ed.style.corners.round")], ["square", s("ed.style.corners.square")]]} />
@@ -183,12 +204,21 @@ export function OverlayEditor({ initial, available, resolutions, limits, preview
         </fieldset>
       </section>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="space-y-6">
         <section className="min-w-0 space-y-3" aria-label={s("ed.preview")}>
           <div className="flex flex-wrap items-center gap-2">
             <button type="button" className={ui.btnPrimary} aria-expanded={adding} onClick={() => setAdding(!adding)} disabled={full}>{s("ed.add")}</button>
             <button type="button" className={ui.btn} aria-pressed={live} onClick={() => setLive(!live)}>{live ? s("ed.backToEdit") : s("ed.live")}</button>
             <span className="text-sm text-muted">{s("ed.count", { n: elements.length, max: limits.elements })}</span>
+            <div className="ml-auto flex flex-wrap items-center gap-2">
+              <span className="text-sm font-medium text-muted" data-testid="overlay-scale" role="status">{s("ed.previewScale", { pct: view.percent })}</span>
+              {!live && (
+                <div role="group" aria-label={s("ed.zoom")} className="flex items-center gap-1">
+                  <span className="text-sm text-muted" aria-hidden>{s("ed.zoom")}</span>
+                  {ZOOMS.map((z) => <button key={z} type="button" aria-pressed={zoom === z} onClick={() => setZoom(z)} className={`${ui.btn} min-w-11 !px-3 ${zoom === z ? "!border-accent !text-accent" : ""}`}>{z === 1 ? s("ed.zoomFit") : s("ed.zoomX", { n: z })}</button>)}
+                </div>
+              )}
+            </div>
           </div>
           {full && <p className={ui.help}>{s("ed.full", { max: limits.elements })}</p>}
           {adding && (
@@ -215,48 +245,58 @@ export function OverlayEditor({ initial, available, resolutions, limits, preview
 
           {live ? (
             <div className="space-y-2">
-              <div className="w-full overflow-hidden rounded-xl border border-line bg-[repeating-conic-gradient(#0000000f_0%_25%,transparent_0%_50%)] bg-[length:20px_20px]" style={{ aspectRatio: `${size.width} / ${size.height}` }}>
-                <iframe title={s("ed.live")} src={previewSrc} sandbox="allow-scripts allow-same-origin" className="h-full w-full border-0" />
+              <div ref={stage} className="overflow-auto rounded-xl">
+                <div className="mx-auto overflow-hidden rounded-xl border border-line bg-[repeating-conic-gradient(#0000000f_0%_25%,transparent_0%_50%)] bg-[length:20px_20px]" style={{ width: view.width || "100%", aspectRatio: `${size.width} / ${size.height}` }}>
+                  <iframe title={s("ed.live")} src={previewSrc} sandbox="allow-scripts allow-same-origin" className="h-full w-full border-0" />
+                </div>
               </div>
               <p className={ui.help}>{s("ed.liveHelp")}</p>
             </div>
           ) : (
             <div className="space-y-2">
-              <div ref={canvas} data-testid="overlay-canvas" className="relative w-full select-none overflow-hidden rounded-xl border border-line bg-[repeating-conic-gradient(#0000000f_0%_25%,transparent_0%_50%)] bg-[length:20px_20px]" style={{ aspectRatio: `${size.width} / ${size.height}`, touchAction: "none" }}
-                onPointerDown={(e) => { if (e.target === e.currentTarget) setSelected(null); }}>
-                {elements.map((el, i) => {
-                  const c = `hsl(${hue(i)} 70% 42%)`;
-                  const isSel = el.uid === selected;
-                  const info = byKey.get(catalogKey(el.instance, el.element));
-                  const gone = !info;
-                  const decl = info?.layout;
-                  return (
-                    <div key={el.uid} role="button" tabIndex={0} aria-pressed={isSel}
-                      aria-label={`${titleOf(el)} — ${el.w}×${el.h} px${el.visible ? "" : ` (${s("ed.hidden")})`}`}
-                      onPointerDown={(e) => begin(e, el.uid, "move")} onPointerMove={moveDrag} onPointerUp={endDrag} onPointerCancel={endDrag}
-                      onFocus={() => setSelected(el.uid)} onKeyDown={(e) => keys(e, el)}
-                      className={`absolute cursor-move overflow-hidden border-2 outline-offset-2 focus-visible:outline-2 focus-visible:outline-accent ${isSel ? "border-solid shadow-lg" : "border-dashed"} ${el.visible ? "" : "opacity-45"}`}
-                      style={{ left: `${(el.x / size.width) * 100}%`, top: `${(el.y / size.height) * 100}%`, width: `${(el.w / size.width) * 100}%`, height: `${(el.h / size.height) * 100}%`, zIndex: i + 1, borderColor: c, background: gone ? "repeating-linear-gradient(45deg,#8883 0 6px,transparent 6px 12px)" : `color-mix(in srgb, ${c} 14%, transparent)` }}>
-                      <span className="absolute left-0 top-0 max-w-full truncate px-1.5 py-0.5 text-[11px] font-semibold leading-4 text-white" style={{ background: c }}>
-                        {gone ? s("ed.gone") : `${titleOf(el)} · ${el.w}×${el.h} px`}
-                      </span>
-                      {isSel && decl && handlesFor(decl).map((h) => (
-                        <span key={h} onPointerDown={(e) => begin(e, el.uid, h)} onPointerMove={moveDrag} onPointerUp={endDrag} onPointerCancel={endDrag} aria-hidden="true"
-                          className="absolute h-3 w-3 rounded-sm border-2 border-white" style={{ background: c, ...handleStyle(h), cursor: handleCursor(h) }} />
-                      ))}
-                    </div>
-                  );
-                })}
-                {guides.map((g, i) => (
-                  <span key={i} aria-hidden="true" className="pointer-events-none absolute bg-accent/70" style={g.axis === "x" ? { left: `${(g.at / size.width) * 100}%`, top: 0, bottom: 0, width: 1 } : { top: `${(g.at / size.height) * 100}%`, left: 0, right: 0, height: 1 }} />
-                ))}
+              <div ref={stage} className="overflow-auto rounded-xl border border-line bg-surface p-3" data-testid="overlay-stage">
+                <div ref={canvas} data-testid="overlay-canvas" className="relative mx-auto select-none rounded-md border border-line bg-[repeating-conic-gradient(#0000000f_0%_25%,transparent_0%_50%)] bg-[length:20px_20px]" style={{ width: view.width, height: view.height, touchAction: "none" }}
+                  onPointerDown={(e) => { if (e.target === e.currentTarget) setSelected(null); }}>
+                  {elements.map((el, i) => {
+                    const c = `hsl(${hue(i)} 70% 42%)`;
+                    const isSel = el.uid === selected;
+                    const info = byKey.get(catalogKey(el.instance, el.element));
+                    const gone = !info;
+                    const decl = info?.layout;
+                    const lab = labels.get(el.uid);
+                    const out = lab?.corner === "ot" || lab?.corner === "ob";
+                    const inset = isSel && decl ? 12 : 0;   // laisse la poignée du coin libre
+                    const text = gone ? s("ed.gone") : `${titleOf(el)} · ${el.w}×${el.h} px`;
+                    return (
+                      <div key={el.uid} role="button" tabIndex={0} aria-pressed={isSel} title={text}
+                        aria-label={`${titleOf(el)} — ${el.w}×${el.h} px${el.visible ? "" : ` (${s("ed.hidden")})`}`}
+                        onPointerDown={(e) => begin(e, el.uid, "move")} onPointerMove={moveDrag} onPointerUp={endDrag} onPointerCancel={endDrag}
+                        onFocus={() => setSelected(el.uid)} onKeyDown={(e) => keys(e, el)}
+                        className={`absolute cursor-move border-2 outline-offset-2 focus-visible:outline-2 focus-visible:outline-accent ${isSel ? "border-solid shadow-lg" : "border-dashed"} ${el.visible ? "" : "opacity-45"}`}
+                        style={{ left: `${(el.x / size.width) * 100}%`, top: `${(el.y / size.height) * 100}%`, width: `${(el.w / size.width) * 100}%`, height: `${(el.h / size.height) * 100}%`, zIndex: i + 1, borderColor: c, background: gone ? "repeating-linear-gradient(45deg,#8883 0 6px,transparent 6px 12px)" : `color-mix(in srgb, ${c} ${isSel ? 22 : 14}%, transparent)` }}>
+                        {view.width >= 420 && <span data-label={lab?.corner} className={`pointer-events-none absolute block truncate px-1.5 text-[11px] font-semibold text-white ${out ? "rounded-sm shadow" : ""}`} style={{ background: c, height: LABEL_HEIGHT, lineHeight: `${LABEL_HEIGHT}px`, ...(out ? { width: lab?.width, ...(lab?.corner === "ot" ? { bottom: `calc(100% + ${OUTSIDE_GAP - 2}px)` } : { top: `calc(100% + ${OUTSIDE_GAP - 2}px)` }), ...(lab && lab.x < el.x * view.scale + el.w * view.scale / 2 ? { left: -2 } : { right: -2 }) } : { maxWidth: `calc(100% - ${inset}px)`, ...(lab?.corner === "tr" || lab?.corner === "br" ? { right: -2 + inset } : { left: -2 + inset }), ...(lab?.corner === "bl" || lab?.corner === "br" ? { bottom: -2 } : { top: -2 }) }) }}>
+                          {text}
+                        </span>}
+                        {isSel && decl && handlesFor(decl).map((h) => (
+                          <span key={h} onPointerDown={(e) => begin(e, el.uid, h)} onPointerMove={moveDrag} onPointerUp={endDrag} onPointerCancel={endDrag} aria-hidden="true"
+                            className="absolute flex h-6 w-6 items-center justify-center" style={{ ...handleStyle(h), cursor: handleCursor(h) }}>
+                            <span className="block h-3.5 w-3.5 rounded-sm border-2 border-white shadow" style={{ background: c }} />
+                          </span>
+                        ))}
+                      </div>
+                    );
+                  })}
+                  {guides.map((g, i) => (
+                    <span key={i} aria-hidden="true" className="pointer-events-none absolute bg-accent/70" style={g.axis === "x" ? { left: `${(g.at / size.width) * 100}%`, top: 0, bottom: 0, width: 1 } : { top: `${(g.at / size.height) * 100}%`, left: 0, right: 0, height: 1 }} />
+                  ))}
+                </div>
               </div>
               <p className={ui.help}>{s("ed.canvasHelp")}</p>
             </div>
           )}
         </section>
 
-        <aside className="min-w-0 space-y-4" aria-label={s("ed.panel")}>
+        <aside className="grid min-w-0 items-start gap-6 lg:grid-cols-[minmax(15rem,1fr)_minmax(0,2fr)]" aria-label={s("ed.panel")}>
           <section className={`${ui.card} space-y-2`}>
             <h2 className="text-base font-semibold">{s("ed.elements")}</h2>
             {elements.length === 0 ? <p className="text-sm text-muted">{s("ed.empty")}</p> : (
@@ -284,7 +324,8 @@ export function OverlayEditor({ initial, available, resolutions, limits, preview
                 {!selInfo && <p className={ui.help}>{s("ed.goneHelp")}</p>}
                 {selInfo && <p className={ui.help}>{s(`ed.fit.${selInfo.layout.fit}`)}</p>}
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-x-6 gap-y-4 lg:grid-cols-[minmax(0,1fr)_auto]">
+              <div className="grid grid-cols-2 gap-3 self-start">
                 {(["x", "y", "w", "h"] as const).map((f) => (
                   <div key={f}>
                     <label htmlFor={`ov-${f}`} className="mb-1 block text-sm font-medium">{s(`ed.field.${f}`)}</label>
@@ -310,8 +351,9 @@ export function OverlayEditor({ initial, available, resolutions, limits, preview
                   <input id="ov-margin" inputMode="numeric" value={margin} onChange={(e) => setMargin(e.target.value.replace(/[^0-9]/g, "").slice(0, 3))} className={`${ui.input} w-20`} />
                   <span className="text-sm text-muted">px</span>
                 </div>
-                <p id="ov-anchor-help" className={ui.help}>{s("ed.anchorHelp")}</p>
+                <p id="ov-anchor-help" className={`${ui.help} max-w-[16rem]`}>{s("ed.anchorHelp")}</p>
               </fieldset>
+              </div>
               <div className="flex flex-wrap gap-2">
                 <button type="button" className={ui.btn} onClick={() => update(reorder(elements, sel.uid, "front"))}>{s("ed.front")}</button>
                 <button type="button" className={ui.btn} onClick={() => update(reorder(elements, sel.uid, "back"))}>{s("ed.back")}</button>
@@ -342,8 +384,8 @@ function StyleSelect({ label, value, onChange, options }: { label: string; value
 
 const ARROWS: Record<Anchor, string> = { tl: "↖", tc: "↑", tr: "↗", ml: "←", c: "●", mr: "→", bl: "↙", bc: "↓", br: "↘" };
 const handleStyle = (h: Handle): React.CSSProperties => ({
-  ...(h.includes("n") ? { top: -7 } : h.includes("s") ? { bottom: -7 } : { top: "calc(50% - 6px)" }),
-  ...(h.includes("w") ? { left: -7 } : h.includes("e") ? { right: -7 } : { left: "calc(50% - 6px)" }),
+  ...(h.includes("n") ? { top: -13 } : h.includes("s") ? { bottom: -13 } : { top: "calc(50% - 12px)" }),
+  ...(h.includes("w") ? { left: -13 } : h.includes("e") ? { right: -13 } : { left: "calc(50% - 12px)" }),
 });
 const handleCursor = (h: Handle): string => ({ n: "ns-resize", s: "ns-resize", e: "ew-resize", w: "ew-resize", ne: "nesw-resize", sw: "nesw-resize", nw: "nwse-resize", se: "nwse-resize" })[h];
 

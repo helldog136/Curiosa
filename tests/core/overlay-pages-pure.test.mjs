@@ -307,3 +307,43 @@ test("mode test : 30 minutes constatées à la lecture, prolonger, arrêter", ()
   assert.equal(u, now + 240 * 60_000, "plafond de 4 heures");
   assert.equal(M.nextTestUntil("stop", start, now), null);
 });
+
+// ── Aperçu de l'éditeur : échelle affichée et placement des libellés ──────────────────────────────────────────────────
+const V = await import("@/core/overlays/previewView");
+
+test("aperçu : l'échelle suit la largeur disponible, le zoom, et la hauteur est plafonnée", () => {
+  const wide = { width: 3440, height: 1440 };
+  const a = V.previewScale(1000, wide);
+  assert.equal(a.width, 1000); assert.equal(a.percent, 29); assert.ok(Math.abs(a.height - (1000 * 1440) / 3440) < 1e-9);
+  assert.equal(V.previewScale(1000, wide, 2).percent, 58);
+  assert.equal(V.previewScale(1500, { width: 3840, height: 2160 }, 1).percent, 30);   // plafonné par la hauteur : 640 × 16/9 = 1138 px
+  const portrait = V.previewScale(1500, { width: 1080, height: 1920 });
+  assert.ok(portrait.height <= V.PREVIEW_MAX_HEIGHT + 1e-9); assert.equal(portrait.percent, 33);
+  assert.deepEqual(V.previewScale(0, wide), { scale: 0, percent: 0, width: 0, height: 0 });
+  assert.ok(V.ZOOMS.includes(1) && V.ZOOMS.length >= 3);
+});
+
+test("aperçu : des libellés qui se gênent vont dans d'autres coins, un petit cadre porte le sien à l'extérieur", () => {
+  const f = (uid, x, y, w, h, text = "Démo · Élément · 600×200 px") => ({ uid, x, y, w, h, text });
+  const hit = (a, b) => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+  // Un cadre plein écran et un cadre dans son coin haut gauche : le libellé de la page ne couvre pas celui du cadre.
+  const bounds = { width: 900, height: 400 };
+  const p = V.placeLabels([f("page", 0, 0, 900, 400), f("clock", 0, 0, 200, 80)], bounds);
+  assert.equal(p[1].corner, "tl"); assert.notEqual(p[0].corner, "tl"); assert.ok(!hit(p[0], p[1]));
+  // Aucun chevauchement sur un lot de cadres, tous les libellés restent dans l'aperçu.
+  const many = [f("a", 0, 0, 900, 400), f("b", 20, 20, 300, 120), f("c", 560, 20, 320, 160), f("d", 20, 250, 400, 130), f("e", 440, 190, 90, 40)];
+  const q = V.placeLabels(many, bounds);
+  for (let i = 0; i < q.length; i++) {
+    assert.ok(q[i].x >= -1 && q[i].y >= -1 && q[i].x + q[i].width <= 901 && q[i].y + q[i].height <= 401, q[i].uid);
+    for (let j = i + 1; j < q.length; j++) assert.ok(!hit(q[i], q[j]), `${q[i].uid}/${q[j].uid}`);
+  }
+  // Un cadre trop petit : libellé hors du cadre, à sa taille naturelle (au plus V.OUTSIDE_MAX).
+  const small = q[4];
+  assert.ok(small.corner === "ot" || small.corner === "ob"); assert.ok(small.width > 90 && small.width <= V.OUTSIDE_MAX);
+  // En haut de l'aperçu, pas de place au-dessus : sous le cadre.
+  assert.equal(V.placeLabels([f("t", 100, 2, 60, 30)], bounds)[0].corner, "ob");
+  // Un grand cadre : libellé plafonné à sa largeur (le texte est alors tronqué avec « … »), jamais plus large.
+  assert.ok(V.placeLabels([f("n", 0, 0, 80, 60, "Un titre très très long")], undefined)[0].width <= 280);
+  assert.equal(V.labelWidth("x".repeat(100), 120), 120);
+  assert.equal(V.isSmallFrame({ w: 100, h: 200 }), true); assert.equal(V.isSmallFrame({ w: 300, h: 200 }), false);
+});

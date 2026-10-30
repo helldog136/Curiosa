@@ -22,7 +22,7 @@ export const dynamic = "force-dynamic";
 /** Les textes de l'éditeur (ovp.ed.<clé>) : envoyés tels quels au navigateur, qui n'a pas le dictionnaire. */
 const STRINGS = [
   "name", "resolution", "resolutionOther", "resolutionHelp", "width", "height", "style", "styleHelp", "style.text", "style.text.light", "style.text.dark", "style.background", "style.background.transparent", "style.background.soft",
-  "style.corners", "style.corners.round", "style.corners.square", "preview", "add", "backToEdit", "live", "liveHelp", "count", "full", "noneAvailable", "cancel", "canvasHelp", "hidden", "gone", "goneHelp", "elements", "empty",
+  "style.corners", "style.corners.round", "style.corners.square", "preview", "add", "backToEdit", "live", "liveHelp", "count", "full", "noneAvailable", "cancel", "canvasHelp", "previewScale", "zoom", "zoomFit", "zoomX", "hidden", "gone", "goneHelp", "elements", "empty",
   "visible", "panel", "field.x", "field.y", "field.w", "field.h", "anchor", "anchorHelp", "margin", "front", "back", "up", "down", "options", "moreOptions", "noStyle", "remove", "removed", "added",
   "fit.scale", "fit.ratio", "fit.fluid", "anchor.tl", "anchor.tc", "anchor.tr", "anchor.ml", "anchor.c", "anchor.mr", "anchor.bl", "anchor.bc", "anchor.br",
 ] as const;
@@ -58,6 +58,7 @@ export default async function OverlayPageEditor({ params }: { params: Promise<{ 
 
   return (
     <div className="space-y-6">
+      <div className="max-w-4xl space-y-6">
       <PageHeader title={page.name} intro={t("ovp.editIntro")}>
         <Link href="/admin/overlay-pages" className={ui.btn}>{t("ovp.back")}</Link>
       </PageHeader>
@@ -82,6 +83,7 @@ export default async function OverlayPageEditor({ params }: { params: Promise<{ 
       </section>
 
       {!page.active && <Callout tone="warn">{t("ovp.inactiveNote")}</Callout>}
+      </div>
 
       <ActionForm action={savePageAction.bind(null, page.id)} floating={floatingLabels(t)} submitLabel={t("action.save")} className="space-y-6">
         <OverlayEditor

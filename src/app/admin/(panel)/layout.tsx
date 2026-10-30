@@ -148,7 +148,8 @@ export default async function PanelLayout({ children }: { children: React.ReactN
         </form>
       </MobileMenu>
       <main className="min-w-0 flex-1 p-6 md:p-10">
-        <div className="mx-auto max-w-4xl">
+        {/* Une page qui a besoin de largeur (l'éditeur de pages d'overlay) porte data-admin-wide : la zone de contenu s'élargit alors, sans toucher aux autres pages. */}
+        <div className="mx-auto max-w-4xl has-[[data-admin-wide]]:max-w-[112rem]">
           {legacyPending && (
             <LegacyBanner title={t("legacy.banner.title")} text={t("legacy.banner.text")} link={can(user, "core:updates") ? t("legacy.banner.link") : null} ownerNote={can(user, "core:updates") ? null : t("legacy.banner.owner")} />
           )}
