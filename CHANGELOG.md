@@ -7,11 +7,12 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
-## Prochaine version (non publiée)
+## 0.5.0
 
-### Overlays
+### Pages d'overlay
 
-- **Une nouvelle section « Overlays » : composez vos pages pour OBS.** Une page d'overlay réunit plusieurs éléments fournis par vos extensions, derrière une seule adresse à coller dans OBS. Vous choisissez la résolution, puis vous placez chaque élément.
+- **Une nouvelle section « Overlays » : composez vos pages pour OBS.** Une page d'overlay réunit plusieurs éléments fournis par vos extensions, derrière une seule adresse par page, à coller dans OBS. Vous choisissez la résolution, puis vous placez chaque élément.
+- **Chaque élément s'adapte à sa façon.** Il garde ses proportions, s'adapte au ratio du cadre ou s'adapte à la taille choisie, selon ce que prévoit l'extension qui le fournit ; l'éditeur vous l'indique en toutes lettres.
 - **Placer, c'est simple.** Glissez les éléments sur un aperçu, tirez les poignées, ou tapez leur position et leur taille. Des boutons les collent à un bord ou au centre ; tout se fait aussi au clavier.
 - **Un style commun par page.** Texte clair ou sombre, fond transparent ou semi-transparent, coins arrondis ou droits. Les éléments qui savent le suivre l'appliquent, les autres gardent leur apparence.
 - **Un mode test pour vérifier dans OBS.** Un cadre coloré entoure chaque élément, avec son nom et sa taille, sans recoller d'adresse ; il s'arrête tout seul au bout de 30 minutes. Un « Aperçu en direct » est aussi dans l'éditeur.
@@ -28,9 +29,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - Paramètres réservés ajoutés à l'adresse : `ov-w`, `ov-h`, `ov-fit`, `ov-lang`, `ov-text`, `ov-surface`, `ov-corners`, `ov-demo`, `opt-<id>`. Jetons `--ov-fg`, `--ov-surface`, `--ov-radius`, `--ov-border` ; attributs `data-ov-part` et `data-ov-region` (vocabulaire distinct des skins de site).
 - Un élément supporte plusieurs lecteurs simultanés (un repère par lecteur). Kit : exigence `overlay.elements`, test `assertMultiReaders`, exemple `examples/overlay-demo/`, guide `docs/OVERLAY-ELEMENTS.md` et liste de contrôle d'adoption.
 - Routes `/overlays/page/<secret>` (politique de sécurité propre, iframes en `sandbox`) et `/overlays/page/<secret>/state` (interrogation légère). Table `OverlayPage` (migration additive), fichier de sauvegarde `data/overlay-pages.json`.
-
-### Pour les développeurs
-
+- Règle « tout élément public nouveau reste habillable par les skins » (`docs/SKINS.md` §26). `npm run skin:official` contrôle les skins du catalogue contre le cœur courant et liste les pièces nouvelles qu'ils n'habillent pas (référence : `docs/skins-parts-baseline.json`). `npm run skin:check` ajoute un conseil de couverture (`--coverage`). Aucun changement de rendu.
 - **Les tests ne laissent plus de dossiers dans `/tmp`.** Une seule aide `makeTempDir()` (`testsupport/tmp.mjs`, offerte aussi aux auteurs de modules) enregistre et supprime chaque dossier temporaire, et `npm test` donne à chaque exécution son propre `TMPDIR`, supprimé à la fin. Ce qui reste est listé et fait échouer l'exécution (`KEEP_TEST_TMP=1` pour déboguer).
 
 ## 0.4.0

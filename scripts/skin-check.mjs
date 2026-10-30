@@ -11,6 +11,7 @@
 //   --json          sortie lisible par une machine (même code de sortie)
 //   --strict        les avertissements font aussi échouer la commande
 //   --advice        ajoute les conseils « confort » de lisibilité (niveau AAA) et les conseils du kit
+//   --coverage      liste EN ENTIER les régions, pièces et jetons que le skin ne règle pas (conseil : le skin de base les habille ; jamais une erreur, même avec --strict)
 //   --core-version X.Y.Z   version du cœur qui juge `minCore` (défaut : celle de ce dépôt, au moins 0.4.0 : la version qui apporte les skins)
 //   --neutrality <fichier> liste de termes interdits (sinon NEUTRALITY_TERMS ou .neutrality-terms)
 //   --lock <fichier> attend ce verrou (flock) avant le niveau navigateur, pour ne pas lancer deux Chromium à la fois
@@ -34,8 +35,8 @@ const T = (fr, en) => (lang === "fr" ? fr : en);
 
 if (!targets.length) {
   console.error(T(
-    "Usage : npm run skin:check -- <dossier-du-skin> [--visual] [--shots <dossier>] [--modules <dossier>] [--lang fr|en] [--json] [--strict] [--advice] [--core-version X.Y.Z]",
-    "Usage: npm run skin:check -- <skin-folder> [--visual] [--shots <folder>] [--modules <folder>] [--lang fr|en] [--json] [--strict] [--advice] [--core-version X.Y.Z]"));
+    "Usage : npm run skin:check -- <dossier-du-skin> [--visual] [--shots <dossier>] [--modules <dossier>] [--lang fr|en] [--json] [--strict] [--advice] [--coverage] [--core-version X.Y.Z]",
+    "Usage: npm run skin:check -- <skin-folder> [--visual] [--shots <folder>] [--modules <folder>] [--lang fr|en] [--json] [--strict] [--advice] [--coverage] [--core-version X.Y.Z]"));
   process.exit(2);
 }
 
@@ -57,10 +58,11 @@ const coreVersion = defaultCoreVersion(root, flag("core-version"));
 
 const widths = flag("widths")?.split(",").map(Number).filter((n) => n >= 280 && n <= 3000);
 const report = await checkTargets(targets, {
-  coreVersion, strict: has("strict"), advice: has("advice"), visual: has("visual"), modules: flag("modules"), neutrality: flag("neutrality"),
+  coreVersion, strict: has("strict"), advice: has("advice"), visual: has("visual"), coverage: has("coverage"), modules: flag("modules"), neutrality: flag("neutrality"),
   shots: flag("shots"), lang, widths, onlyPages: flag("only-pages")?.split(","),
 });
 report.advice = has("advice");
+report.coverage = has("coverage");
 if (has("json")) console.log(toJson(report));
 else console.log(toText(report, lang));
 process.exit(report.exitCode);

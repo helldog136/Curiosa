@@ -7,6 +7,7 @@ import { imageSize } from "./imageinfo.mjs";
 import { levelOfCode } from "./levels.mjs";
 import { kitIssue } from "./messages.mjs";
 import { loadRulesText, parseRules, violations } from "./neutrality.mjs";
+import { shortList, skinCoverage } from "./coverage.mjs";
 import { moduleLayer, readModules } from "./modules.mjs";
 
 const lib = async (name) => import(`../../src/core/skins/${name}.ts`);
@@ -146,6 +147,17 @@ export async function staticCheck(dir, options = {}) {
     if (![...declared].some((d) => Math.abs(d - w) <= 1)) add(kitIssue("kit-breakpoint-undeclared", { width: w }));
   }
   if (validation.css) await sizeAdvice(validation.css, add);
+
+  // ── couverture : pièces et régions que la feuille ne cible pas (conseil, jamais une erreur : `basic` les habille)
+  try {
+    const cov = await skinCoverage({ css: validation.css, tokens: validation.tokens });
+    result.coverage = cov;
+    const names = [...cov.regions.missing.map((r) => ({ fr: `${r} (région)`, en: `${r} (region)` })), ...cov.parts.missing.map((p) => ({ fr: p, en: p }))];
+    if (names.length) {
+      const list = (lang) => { const l = names.map((n) => n[lang]); return options.coverage ? l.join(", ") : shortList(l, 8, (n) => (lang === "fr" ? `et ${n} autres` : `and ${n} more`)); };
+      add(kitIssue("kit-coverage", { count: names.length, list: { fr: list("fr"), en: list("en") } }));
+    }
+  } catch { /* la couverture est un plus : elle ne doit jamais faire échouer le kit */ }
 
   // ── neutralité des textes
   const text = loadRulesText(options.neutrality);

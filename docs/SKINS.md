@@ -768,7 +768,7 @@ Contraintes de rendu du cœur, pour que ces régions soient pilotables : (1) les
 | `footer-text`, `footer-link`, `credit` | pied | `data-testid="credit"`, `"privacy-link"` |
 | `skip-link` | lien « aller au contenu » | |
 
-Les pièces ci-dessus et leurs attributs d'état forment **la liste des noms stables** du contrat (`skinContract` 1). Ajouter une pièce est additif ; en renommer ou en retirer une est cassant (nouveau `skinContract`).
+Les pièces ci-dessus et leurs attributs d'état forment **la liste des noms stables** du contrat (`skinContract` 1). Ajouter une pièce est additif ; en renommer ou en retirer une est cassant (nouveau `skinContract`). **Une pièce ajoutée doit rester habillable par nos skins officiels : voir §26.**
 
 ### 9.3 Éléments non masquables (liste d'interdits pour la feuille)
 
@@ -861,6 +861,7 @@ Commande : `npm run skin:check -- <dossier-du-skin>` (réalisé au lot S8, §23 
 | **Bascule clair/sombre** | skin à deux modes : la pièce `mode-switch` existe, est visible et opérable au clavier aux quatre largeurs, ses trois états sont distincts et lisibles ; basculer ne change **aucun** texte ni élément (seuls les jetons changent) ; contrôle de lisibilité refait dans chaque mode après bascule ; skin à un mode : pas de pièce |
 | **Régression de basic** | exécuté sur basic : captures identiques à la référence (§12) |
 | **Neutralité** | aucun nom de site/association/ville dans les textes et exemples du skin (`.neutrality-terms`) |
+| **Couverture** (conseil) | les régions et pièces que la feuille du skin ne cible pas (le skin de base les habille) : jamais une erreur, même avec `--strict` ; `--coverage` en donne la liste entière, avec les jetons non fixés (§26) |
 
 Tests du cœur (en plus du kit) : `tests/core/skins-*.test.mjs` : assainisseur (corpus d'attaques : `@import`, `url(https://…)`, `expression`, `</style>`, séquences d'échappement CSS, `\0`, sélecteurs hors portée, classes, `content: attr()`, `display:none` sur chaque pièce de §9.3, propriétés hors liste, plafonds) ; composition (repli valeur par valeur, ordre des couches, options, retouches, mode imposé) ; contrôle de lisibilité (échelle de correction) ; installation (refus, mise à jour atomique, retour arrière, sauvegarde/restauration, dépôt personnel) ; migration (aucune clé écrite pour un site existant) ; neutralité (les 4 skins + basic).
 
@@ -1324,3 +1325,44 @@ En passant `skin:check --visual --strict` sur les quatre skins du dépôt `curio
 - **Skin refusé** : ses polices et images ne sont plus retirées du banc (le rapport n'était plus qu'une cascade de `kit-request-failed` et `kit-font-not-loaded` qui cachait la vraie cause, par exemple une paire de lisibilité).
 
 Ce qui reste signalé après ces corrections est de vrais défauts de skins (cibles et textes trop petits, texte blanc sur panneau pastel, etc.) : le kit ne les masque pas.
+
+---
+
+## 26. Un nouvel élément est-il habillable ?
+
+**La règle : tout élément public NOUVEAU reste habillable par les skins, et d'abord par nos skins officiels** (dépôt `curiosa-skins` : brutaliste clair, rétro néon, éditorial papier, steampunk victorien, verre doux).
+
+La preuve « 0 pixel » de la 0.4.0 prouvait une chose : le skin `basic` rend exactement le site 0.3.1. Elle n'a plus de sens quand le rendu change volontairement (on ne peut pas comparer à « identique »). Ce qui la remplace : le banc d'essai, `skin:check`, `skin:official`, et un regard humain sur les captures.
+
+### 26.1 La règle, en cinq points
+
+1. **Déclarer.** Un élément public nouveau déclare sa pièce ou sa région (`data-skin-part` / `data-skin-region`) et ses jetons `--sk-*`, chacun avec une valeur de repli égale à celle de `basic` (§4, §9).
+2. **Dans la même demande de fusion.** La liste blanche (`src/core/skins/allowlist.ts`), le banc d'essai (`testsupport/skins/bench/refresh.mjs`, puis `npm run skin:bench:refresh`) et le test `tests/core/skins-dom.test.mjs` sont mis à jour avec l'élément. Les tests échouent sinon.
+3. **Avant la publication du cœur.** Lancez `npm run skin:official`. Les skins officiels qui n'habillent pas la pièce reçoivent une règle : version corrective ou mineure du skin, `requires.core` à jour, étiquette `<id>/vX.Y.Z` (le workflow du dépôt de skins la pose), catalogue mis à jour.
+4. **Pas de preuve 0 pixel.** Le rendu change volontairement. Le contrôle, c'est le banc d'essai, `skin:check` (dont le conseil de couverture) et les captures regardées par une personne.
+5. **Un module qui ajoute des pièces** suit la même règle, par la clé `skin` de son manifeste (§8) : pièces déclarées, jetons avec repli, exemple `demo` pour le banc d'essai.
+
+### 26.2 Ce que chaque outil garantit
+
+| Outil | Ce qu'il garantit | Ce qu'il ne garantit pas |
+|---|---|---|
+| `tests/core/skins-dom.test.mjs` | Toute pièce ou région émise par le site public est dans la liste blanche, et inversement. | Que les skins l'habillent. |
+| Banc d'essai (`skins-bench.test.mjs`, `skins-kit-coverage.test.mjs`) | Chaque pièce et région de la liste blanche est montrée par la planche et comptée par le rapport de couverture. | Que le rendu soit joli. |
+| `npm run skin:check` (conseil de couverture) | Dit à la personne qui écrit un skin quelles pièces et régions sa feuille ne cible pas. Jamais une erreur : un skin peut laisser `basic` habiller une pièce. | Que la pièce non ciblée aille bien avec le thème. |
+| `npm run skin:official` | Contrôle chaque skin du catalogue contre le cœur COURANT et liste les pièces NOUVELLES qu'il ne cible pas. | Le jugement esthétique (regardez les captures). |
+
+### 26.3 `npm run skin:official`
+
+Il lit le catalogue officiel comme le fait le cœur (`git fetch --depth 1` du dépôt de skins, `catalogue/index.json`), récupère chaque skin à son étiquette épinglée par le code même de l'installation, lui fait passer le kit contre le cœur courant (niveaux statiques, couverture, et niveau navigateur si Chromium est disponible, sinon il le dit), puis imprime un tableau : skin, valide ou non, pièces et régions nouvelles non habillées.
+
+- **Ce qui est « nouveau »** : ce que la liste blanche courante a de plus que `docs/skins-parts-baseline.json`, la liste des pièces de la dernière version PUBLIÉE du cœur. Ce fichier est versionné : il ne dépend ni de l'historique git (clone superficiel), ni des étiquettes, ni du réseau. Un test vérifie qu'il est lisible et qu'aucune pièce publiée n'en a disparu. `--since <étiquette>` compare plutôt à la liste d'une étiquette ou d'un commit du cœur.
+- **Régénérer la référence** : `npm run skin:official -- --update-baseline`, dans la demande de fusion qui monte la version (voir la liste de publication, `docs/INSTALL.md`). Sans réseau.
+- **Code de sortie** : 0 si tous les skins sont valides ; 1 si un skin est refusé ; 2 si le catalogue est illisible ou si l'appel est mauvais. Des pièces nouvelles non habillées sont un **avertissement visible** (« ajoutez la règle au skin, version corrective ou mineure du skin, `requires.core` à jour »). `--fail-on-uncovered` en fait un échec (code 1).
+- Autres options : `--json`, `--strict`, `--no-visual`, `--only id1,id2`, `--repo`, `--ref`, `--core-version`, `--lang fr|en`, `--lock <fichier>` (une seule instance de Chromium à la fois).
+
+### 26.4 Limites à connaître
+
+- **La couverture compte les sélecteurs.** Une pièce est « ciblée » quand la feuille du skin a un sélecteur qui la vise (hors `:not()` et `:has()`). Un skin qui l'habille seulement par des jetons (`--sk-radius-card`…) la voit comptée comme non ciblée : c'est un conseil, pas un défaut.
+- **Un cœur plus ancien refuse un skin qui vise une pièce qu'il ne connaît pas.** La règle ajoutée pour une pièce nouvelle demande donc `requires.core` au moins égal à la version du cœur qui apporte la pièce. Les sites encore sur l'ancien cœur gardent le skin installé ; la nouvelle version leur est proposée après la mise à jour du cœur. Avant la publication, contrôlez les skins préparés avec `--core-version <prochaine version>`.
+- **Les pièces de modules ne sont pas dans ce tableau** : `skin:check --modules <dossier>` les vérifie, skin par skin.
+- **Le réseau** : seule la lecture du dépôt de skins sur GitHub. Les tests du cœur n'en font pas : ils utilisent un dépôt git local jetable.

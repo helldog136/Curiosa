@@ -37,7 +37,7 @@ export const LEVEL_OF_KIT = {
   "kit-token-unknown": "tokens", "kit-module-tokens-unverified": "tokens", "kit-module-unknown": "tokens", "kit-module-token-unknown": "tokens",
   "kit-readability-adjusted": "readability", "kit-mode-suspended": "readability",
   "kit-preview-size": "resources", "kit-preview-unreadable": "resources", "kit-font-unused": "resources", "kit-image-unused": "resources", "kit-no-own-license": "resources", "kit-no-readme": "resources",
-  "kit-breakpoint-undeclared": "stylesheet", "kit-target-small": "stylesheet", "kit-leading-low": "stylesheet", "kit-text-small": "stylesheet",
+  "kit-breakpoint-undeclared": "stylesheet", "kit-target-small": "stylesheet", "kit-leading-low": "stylesheet", "kit-text-small": "stylesheet", "kit-coverage": "stylesheet",
   "kit-neutral": "neutrality", "kit-neutral-skipped": "neutrality",
   "kit-hidden": "principle", "kit-text-changed": "principle", "kit-structure-changed": "principle", "kit-injected-text": "principle", "kit-covered": "principle", "kit-offscreen": "principle",
 };
