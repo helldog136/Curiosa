@@ -30,11 +30,23 @@ export function toJson(report) {
   return JSON.stringify({
     ...report,
     skins: report.skins.map((s) => ({
-      id: s.id, version: s.version, dir: s.dir, ok: s.ok, levels: s.levels, stats: s.stats,
+      id: s.id, version: s.version, dir: s.dir, ok: s.ok, levels: s.levels, stats: s.stats, ...(s.coverage ? { coverage: s.coverage } : {}),
       issues: s.issues.map((i) => ({ code: i.code, level: i.level, severity: i.severity, message: i.message, hint: i.hint, ...(i.where ? { where: i.where } : {}) })),
       ...(s.noSkin ? { noSkin: true } : {}),
     })),
   }, null, 2);
+}
+
+/** La couverture en entier (option --coverage) : ce que le skin règle et ce qu'il laisse au skin de base. */
+export function coverageLines(c, lang = "fr") {
+  const T = (fr, en) => (lang === "fr" ? fr : en);
+  const row = (fr, en, g, targeted) => `   · ${T(`${fr} :`, `${en}:`)} ${g[targeted].length} / ${g.total}${g.missing.length ? `\n       ${T("ce qui reste au skin de base :", "left to the basic skin:")} ${g.missing.join(", ")}` : ""}`;
+  return [
+    `   ${T("Couverture (conseil : un skin peut laisser le skin de base habiller un élément)", "Coverage (advice: a skin may let the basic skin dress an element)")}`,
+    row("Régions réglées", "Regions styled", c.regions, "targeted"),
+    row("Pièces réglées", "Parts styled", c.parts, "targeted"),
+    row("Jetons fixés", "Tokens set", c.tokens, "set"),
+  ];
 }
 
 export function toText(report, lang = "fr", { detail = false } = {}) {
@@ -60,6 +72,7 @@ export function toText(report, lang = "fr", { detail = false } = {}) {
     for (const i of errors) lines.push(`   ❌ ${i.message[lang]}\n      ${T("Comment corriger", "How to fix")} : ${i.hint[lang]}   [${i.code}]${i.where ? ` (${i.where})` : ""}`);
     for (const i of warnings) lines.push(`   ⚠️  ${i.message[lang]}${i.hint[lang] ? `\n      ${i.hint[lang]}` : ""}   [${i.code}]${i.where ? ` (${i.where})` : ""}`);
     if (detail || report.advice) for (const i of s.issues.filter((x) => x.severity === "advice")) lines.push(`   💡 ${i.message[lang]}${i.hint[lang] ? `\n      ${i.hint[lang]}` : ""}   [${i.code}]`);
+    if (report.coverage && s.coverage) lines.push(...coverageLines(s.coverage, lang));
     lines.push("");
   }
   const failed = report.skins.filter((s) => skinFails(s, report.strict));

@@ -38,7 +38,7 @@ export async function checkOne(dir, options = {}) {
   } else ran.browser = false;
   return {
     dir: st.dir, id: st.manifest?.id ?? path.basename(dir), version: st.manifest?.version, ok: !issues.some((i) => i.severity === "error"),
-    issues, levels: summarize(issues, ran),
+    issues, levels: summarize(issues, ran), coverage: st.coverage,
     stats: { files: st.files.length, bytes: st.validation.totalBytes, fingerprint: st.validation.fingerprint, ...(visualInfo ? { visual: visualInfo } : {}) },
   };
 }

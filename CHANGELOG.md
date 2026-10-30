@@ -7,6 +7,12 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## Prochaine version (non publiée)
+
+### Pour les développeurs
+
+- Règle « tout élément public nouveau reste habillable par les skins » (`docs/SKINS.md` §26). `npm run skin:official` contrôle les skins du catalogue contre le cœur courant et liste les pièces nouvelles qu'ils n'habillent pas (référence : `docs/skins-parts-baseline.json`). `npm run skin:check` ajoute un conseil de couverture (`--coverage`). Aucun changement de rendu.
+
 ## 0.4.0
 
 ### Apparence / skins
