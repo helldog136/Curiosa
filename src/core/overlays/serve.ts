@@ -16,7 +16,8 @@ export async function pageResponse(page: OverlayPageData, request: Request, opts
   const now = Date.now();
   const shown = opts.preview ? { ...page, active: true } : page;
   const test = testActive(page.testUntil, now);
-  const elements = shown.active ? await resolvePage(shown, { lang, defaultLocale: config.defaultLocale }) : [];
+  // Jamais d'erreur visible dans OBS : si la résolution échoue en bloc, la page reste là, sans éléments.
+  const elements = shown.active ? await resolvePage(shown, { lang, defaultLocale: config.defaultLocale }).catch(() => []) : [];
   const nonce = crypto.randomBytes(16).toString("base64");
   const host = request.headers.get("x-forwarded-host")?.split(",")[0]?.trim() || request.headers.get("host");
   const html = renderPage({ page: shown, elements, t: makeTranslator(lang), lang, test, now, nonce, stateUrl: opts.stateUrl ?? "", fit: !!opts.preview || new URL(request.url).searchParams.get("fit") === "1" });

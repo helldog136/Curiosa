@@ -11,14 +11,11 @@ const demo = await loadModuleDir(path.resolve("examples/overlay-demo"));
 test("module d'exemple : le fil est lu par plusieurs lecteurs sans qu'ils se disputent les événements (kit, faux contexte)", async () => {
   const ctx = fakeCtx({ moduleId: "overlay-demo", key: "demo", permissions: ["routes", "storage", "admin"] });
   const feed = async (after) => (await demo.definition.routes.feed(new Request(`http://x/feed?after=${encodeURIComponent(after)}`), ctx)).json();
-  let clock = 0;
-  const realNow = Date.now;
   await assertMultiReaders({
     publish: async (text) => { await demo.definition.adminActions.push(ctx, { text }); },
     open: async () => { let cursor = (await feed("now")).cursor; return { read: async () => { const r = await feed(cursor); cursor = r.cursor; return r.events; } }; },
     readers: 5,
   });
-  void clock; void realNow;
 });
 
 test("une file PARTAGÉE (le premier lecteur la vide) est détectée", async () => {
