@@ -7,6 +7,7 @@ import path from "node:path";
 import { useTestDb } from "../helpers/db.mjs";
 import { makeRepo } from "../helpers/repo.mjs";
 import { copySkin, createSkinsRepo, fakeFont, fakePng, SKINS_HTTPS, TEST_CORE } from "../helpers/skins.mjs";
+import { makeTempDir } from "../helpers/tmp.mjs";
 
 // eslint-disable-next-line react-hooks/rules-of-hooks -- useTestDb n'est pas un hook React
 const db = await useTestDb();
@@ -208,7 +209,7 @@ test("refus : lien symbolique dans le dépôt (git le garde tel quel) — jamais
   assert.ok(r.issues.some((i) => i.code === "skin-symlink"));
   assert.deepEqual(await rows(), []);
   // Dossier du skin lui-même qui pointe hors du dépôt.
-  const outside = fs.mkdtempSync(path.join(path.dirname(cat.dir), "dehors-"));
+  const outside = makeTempDir("dehors-", { in: path.dirname(cat.dir) });
   copySkin("plain-light", path.join(outside, "x"), { id: "evasion" });
   fs.symlinkSync(path.join(outside, "x"), path.join(cat.dir, "skins", "evasion"));
   cat.repo.g("add", "-A"); cat.repo.g("commit", "-qm", "evasion"); cat.repo.g("tag", "-f", "evasion-v1");

@@ -28,6 +28,7 @@ if (!root || !fs.existsSync(path.join(root, "pages"))) { console.error("Usage : 
 
 // ── base temporaire : l'import ne touche jamais à une base existante ──
 const work = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-grav-"));
+process.on("exit", () => fs.rmSync(work, { recursive: true, force: true })); // aussi quand le script s'arrête sur une erreur (catalogue injoignable…) : rien ne reste dans /tmp
 process.env.DATA_DIR = work;
 process.env.DATABASE_URL = `file:${path.join(work, "import.db")}`;
 execFileSync("npx", ["prisma", "migrate", "deploy"], { stdio: "ignore", env: process.env });

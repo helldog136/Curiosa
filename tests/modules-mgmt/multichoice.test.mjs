@@ -2,6 +2,7 @@ import test, { beforeEach, after } from "node:test";
 import assert from "node:assert/strict";
 import { useTestDb as openTestDb } from "../helpers/db.mjs";
 import { makeRepo } from "../helpers/repo.mjs";
+import { makeTempDir } from "../helpers/tmp.mjs";
 
 // Réglage « plusieurs choix » (`multichoice`, cœur 0.2.14) : manifeste, validation commune, lecture par le module (ctx.setting), enregistrement par l'administration
 // (cases à cocher, erreur sous le champ, rien d'écrit en cas d'erreur), rendu (cibles tactiles, aucun JavaScript), assistant, graine, sauvegarde et restauration.
@@ -151,9 +152,8 @@ test("rendu : un groupe de cases à cocher accessible, cibles d'au moins 44 px, 
   // Les composants sont en .tsx : on transpile Field.tsx (et ui.ts) avec TypeScript dans un dossier jetable, puis on rend avec react-dom/server.
   const ts = (await import("typescript")).default;
   const fs = await import("node:fs");
-  const os = await import("node:os");
   const path = await import("node:path");
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-field-"));
+  const dir = makeTempDir("curiosa-field-");
   for (const [src, out] of [["src/components/admin/ui.ts", "ui.mjs"], ["src/components/admin/helpRule.ts", "helpRule.mjs"], ["src/components/admin/HelpTip.tsx", "HelpTip.mjs"], ["src/components/admin/Field.tsx", "Field.mjs"]]) {
     const js = ts.transpileModule(fs.readFileSync(src, "utf8"), { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText
       .replace('from "./ui"', 'from "./ui.mjs"').replace('from "./helpRule"', 'from "./helpRule.mjs"').replace('from "./HelpTip"', 'from "./HelpTip.mjs"');

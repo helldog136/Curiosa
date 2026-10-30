@@ -10,6 +10,7 @@ import { checkModule, registerConformanceTests, REQUIREMENTS, fakeCtx, fakeFetch
 import { renderDocs } from "../testsupport/docs.mjs";
 import { KNOWN_BLOCKS } from "../testsupport/requirements/runtime.mjs";
 import { makeModule, dispose, editManifest } from "./fixtures/testsupport/fullModule.mjs";
+import { makeTempDir } from "./helpers/tmp.mjs";
 
 const cleanEnv = Object.fromEntries(Object.entries(process.env).filter(([k]) => k !== "NODE_TEST_CONTEXT")); // un test lancé depuis un test doit afficher son propre résultat
 const made = [];
@@ -204,7 +205,7 @@ test("la commande : code 0 et JSON lisible pour un module conforme, code 1 pour 
 
 // ── Importé depuis un autre dépôt, par le chemin du cœur ─────────────────────────────────────────────────────────────
 test("le kit s'importe depuis un dossier hors du cœur par son chemin absolu, sans dépendre de la position relative (et avec le chargeur du cœur)", () => {
-  const outside = fs.mkdtempSync(path.join(os.tmpdir(), "ts-outside-"));
+  const outside = makeTempDir("ts-outside-");
   made.push(path.join(outside, "x")); // nettoyé par `after`
   const dir = mk();
   const kit = pathToFileURL(path.resolve("testsupport/index.mjs")).href;

@@ -2,11 +2,11 @@
 import test, { after } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { fakeFont, fakePng, SVG_OK } from "../helpers/skins.mjs";
+import { makeTempDir } from "../helpers/tmp.mjs";
 
-const root = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-skinserve-"));
+const root = makeTempDir("curiosa-skinserve-");
 process.env.DATA_DIR = root;
 const { resolveSkinAsset, assetHeaders } = await import("@/core/skins/serve");
 const route = await import("../../src/app/skins/[id]/[version]/[dir]/[file]/route.ts");

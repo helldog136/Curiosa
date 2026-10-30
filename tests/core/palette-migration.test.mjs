@@ -5,6 +5,7 @@ import test, { after } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import { useTestDb } from "../helpers/db.mjs";
+import { makeTempDir } from "../helpers/tmp.mjs";
 
 const db = await useTestDb();
 const Rs = await import("@/core/backup/restore");
@@ -18,7 +19,7 @@ const COLORS = { background: "#0b1716", surface: "#122321", text: "#e9f3f1", acc
 async function restoreFixture() {
   const opened = Rs.openBackup(fs.readFileSync(FIX), "mot-de-passe-de-reference", 1000);
   assert.equal(opened.ok, true, "la sauvegarde de la 0.2.13 s'ouvre");
-  const report = await Rs.applyRestore(opened.backup, { confirmCustom: [], actor: "test", dataDir: fs.mkdtempSync(`${process.env.TMPDIR ?? "/tmp"}/pm-`) });
+  const report = await Rs.applyRestore(opened.backup, { confirmCustom: [], actor: "test", dataDir: makeTempDir("pm-") });
   assert.equal(report.ok, true);
 }
 const settingsRows = async () => (await db.prisma.setting.findMany({ where: { key: { startsWith: "theme." } }, orderBy: { key: "asc" } })).map((r) => [r.key, r.locale, r.value]);

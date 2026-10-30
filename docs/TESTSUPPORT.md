@@ -63,6 +63,10 @@ registerConformanceTests(new URL(".", import.meta.url).pathname, { test }); // u
 
 Une exigence obligatoire en échec fait échouer son test (avec le message complet) ; un conseil s'affiche en remarque. Un exemple complet à copier : [`testsupport/template/`](../testsupport/template) (un module minimal et son `my-module.test.mjs`).
 
+**Dossiers temporaires** : utilisez l'aide `makeTempDir(prefix)` du kit (`testsupport/index.mjs`), ne créez jamais de dossier dans `/tmp` sans l'enregistrer.
+Elle supprime le dossier à la fin du test (`makeTempDir(prefix, { t })`), avec `cleanupAll()` dans un `after`, et en filet de sécurité à la sortie du processus.
+Dans le cœur, `npm test` donne à chaque exécution son propre `TMPDIR`, le supprime à la fin et liste en clair (échec) tout ce que les tests y ont laissé ; `KEEP_TEST_TMP=1` garde tout pour déboguer.
+
 Le kit se retrouve tout seul : il peut être importé depuis un autre dépôt (par exemple `curiosa-extras`) par le chemin du cœur, sans dépendre de la position relative des dossiers. Lancez alors vos tests avec le chargeur de test du cœur : `node --import <cœur>/tests/helpers/register.mjs --test …`.
 
 ## L'API publique du kit
@@ -77,6 +81,7 @@ Tout s'importe depuis `testsupport/index.mjs` (stable) :
 | `loadModuleDir(dir)` | Charge un dossier de module comme le cœur (manifeste, code, textes), sans jamais lever. |
 | `fakeFetch(routes)`, `withFakeFetch(routes, fn)`, `blockNetwork(fn)` | Faux `fetch` pour tester un module qui appelle un service, sans réseau. La clé `"*"` répond à toutes les adresses ; le `signal` d'annulation est respecté. |
 | `netReplies`, `makeNetClient(options)` | Pannes prêtes à l'emploi pour `fakeFetch` : `rateLimited(120)` (429 + Retry-After), `rateLimitedBody(s)`, `rateLimitedReset(époque)`, `quotaExceeded()` (403), `silence()` (jamais de réponse), `truncatedJson()`, `slow(ms, réponse)`, `down()`, `status(code)`. `makeNetClient` : le vrai client `ctx.api.net`, état neuf. |
+| `makeTempDir(prefix, { t, in })`, `cleanupAll()`, `removeTempDir(dir)` | Dossiers temporaires de test, enregistrés puis supprimés (fin du test, `cleanupAll`, sortie du processus). `KEEP_TEST_TMP=1` : rien n'est supprimé. |
 | `startLocalServer(handler)` | Petit serveur HTTP local (127.0.0.1) pour tester un module qui parle à une adresse ; rien ne sort de la machine. |
 | `settingsDefaults`, `assertValidManifest`, `assertLocalesParity`, `findSrpViolations`… | Les vérifications unitaires que la suite réutilise (source unique). |
 | `REQUIREMENTS`, `GROUPS`, `formatText`, `formatMatrix` | La liste des exigences et la mise en forme du rapport. |

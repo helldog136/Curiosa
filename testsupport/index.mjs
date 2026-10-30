@@ -20,6 +20,7 @@ export { loadModuleDir, readModuleLight, watchNetwork } from "./loader.mjs";
 export { GROUPS, LEVELS, REQUIREMENTS, docLink } from "./requirements/index.mjs";
 export { formatText, formatMatrix } from "./report.mjs";
 export { loadCore, CORE_DIR } from "./core.mjs";
+export { makeTempDir, cleanupAll, removeTempDir } from "./tmp.mjs";
 export { HOSTILE, HOSTILE_URL, CANARY, settingValue, makeCtx, observe } from "./probes.mjs";
 export { settingsDefaults, findSrpViolations, assertNoSrpViolations, placeholders, assertValidManifest, assertDefinitionMatchesManifest, assertLocalesParity, assertSettingsSane } from "./builtinChecks.mjs";
 

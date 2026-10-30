@@ -1,12 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import crypto from "node:crypto";
+import { makeTempDir } from "../helpers/tmp.mjs";
 
 // Dossier de données jetable : AVANT d'importer le cœur (UPLOADS_DIR et le cache en dépendent).
-process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-crop-"));
+process.env.DATA_DIR = makeTempDir("curiosa-crop-");
 const sharp = (await import("sharp")).default;
 
 const K = await import("@/core/imageCrop");

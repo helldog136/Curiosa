@@ -5,6 +5,7 @@ import path from "node:path";
 import { useTestDb } from "../helpers/db.mjs";
 import { makeRepo } from "../helpers/repo.mjs";
 import { createCatalogue } from "../helpers/catalogue.mjs";
+import { makeTempDir } from "../helpers/tmp.mjs";
 
 // L'INCIDENT : une mise à jour de module dans le MÊME processus. Le fichier principal est rechargé avec `?v=<commit>`, mais un fichier voisin importé
 // statiquement (`import … from "./source.mjs"`) restait à l'ancienne version dans le cache de Node : le nouveau fichier principal ne s'accordait plus avec lui,
@@ -86,7 +87,7 @@ test("la même version rechargée sans changement de numéro (réinitialisation 
 });
 
 test("copies de chargement : un dossier neuf par chargement, jamais de .git ni node_modules, 4 générations gardées, un dossier par processus", () => {
-  const dataDir = fs.mkdtempSync(path.join(process.env.TMPDIR ?? "/tmp", "curiosa-snap-"));
+  const dataDir = makeTempDir("curiosa-snap-");
   try {
     const src = path.join(dataDir, "src"); fs.mkdirSync(path.join(src, ".git"), { recursive: true }); fs.mkdirSync(path.join(src, "node_modules")); fs.writeFileSync(path.join(src, "a.mjs"), "1"); fs.writeFileSync(path.join(src, ".git", "x"), "1"); fs.writeFileSync(path.join(src, "node_modules", "y"), "1");
     // un processus disparu a laissé son dossier ; un autre vivant (le nôtre, simulé par pid 1 ou ppid) est conservé
@@ -150,7 +151,7 @@ test("un module qui échoue au contrôle n'est PAS gardé en mémoire ; un modul
 });
 
 test("preflightModule (processus tout neuf) : sain, erreur d'import, export manquant, délai dépassé, programme introuvable, environnement vide", async () => {
-  const dir = fs.mkdtempSync(path.join(process.env.TMPDIR ?? "/tmp", "curiosa-pre-"));
+  const dir = makeTempDir("curiosa-pre-");
   const write = (f) => { fs.rmSync(dir, { recursive: true, force: true }); for (const [n, c] of Object.entries(f)) { fs.mkdirSync(path.dirname(path.join(dir, n)), { recursive: true }); fs.writeFileSync(path.join(dir, n), typeof c === "string" ? c : JSON.stringify(c)); } };
   try {
     write(files("1.0.0")); assert.deepEqual(await C.preflightModule(dir, { main: "index.mjs" }), { ok: true, ran: true });
@@ -171,7 +172,7 @@ test("preflightModule (processus tout neuf) : sain, erreur d'import, export manq
 });
 
 test("le script du processus de contrôle et describeShape donnent la même forme", async () => {
-  const dir = fs.mkdtempSync(path.join(process.env.TMPDIR ?? "/tmp", "curiosa-shape-"));
+  const dir = makeTempDir("curiosa-shape-");
   try {
     const code = 'export default { routes: { a() {} }, tasks: { t: { everyMinutes: 5, run() {} } }, entryPanels: { p: { render() {}, actions: { x() {} } } }, page() {}, flag: true, list: [1], nothing: null };\n';
     fs.writeFileSync(path.join(dir, "index.mjs"), code);
@@ -350,7 +351,7 @@ test("détection des imports statiques de voisins : les formes d'import, sans fa
 });
 
 test("staticNeighbourImports : parcourt le dossier (sous-dossiers compris), ignore scripts/ et node_modules", () => {
-  const dir = fs.mkdtempSync(path.join(process.env.TMPDIR ?? "/tmp", "curiosa-static-"));
+  const dir = makeTempDir("curiosa-static-");
   try {
     for (const [n, c] of Object.entries({
       "index.mjs": 'import { a } from "./lib/a.mjs";\n', "lib/a.mjs": "export const a = 1;\n", "lib/b.mjs": 'export * from "./a.mjs";\n',

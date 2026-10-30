@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { useTestDb } from "../helpers/db.mjs";
 import { makeRepo } from "../helpers/repo.mjs";
+import { makeTempDir } from "../helpers/tmp.mjs";
 
 process.env.CURIOSA_ALLOW_LOCAL_MODULES = "1";
 const db = await useTestDb();
@@ -65,7 +66,7 @@ test("dossier absent, sans manifeste, ou sortant du dépôt (lien symbolique) : 
   assert.deepEqual(await I.installModule(`${repo.url}#:inconnu`), { ok: false, error: "modules.error.nosubdir" });
   fs.mkdirSync(path.join(repo.dir, "vide")); fs.writeFileSync(path.join(repo.dir, "vide/x.txt"), "x"); repo.g("add", "-A"); repo.g("commit", "-qm", "vide");
   assert.deepEqual(await I.installModule(`${repo.url}#:vide`), { ok: false, error: "modules.error.nosubdir" });
-  const outside = fs.mkdtempSync(path.join(path.dirname(repo.dir), "dehors-"));
+  const outside = makeTempDir("dehors-", { in: path.dirname(repo.dir) });
   fs.writeFileSync(path.join(outside, "module.json"), JSON.stringify(manifest("evil")));
   fs.symlinkSync(outside, path.join(repo.dir, "piege")); repo.g("add", "-A"); repo.g("commit", "-qm", "piege");
   assert.equal((await I.installModule(`${repo.url}#:piege`)).ok, false, "un dossier qui pointe hors du dépôt n'est jamais lu");

@@ -1,9 +1,9 @@
 import test, { beforeEach, after } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { useTestDb } from "../helpers/db.mjs";
+import { makeTempDir } from "../helpers/tmp.mjs";
 
 const db = await useTestDb();
 const S = await import("@/core/updates/service");
@@ -16,7 +16,7 @@ after(() => db.close());
 
 const ASSET = (tag) => `curiosa-${tag}-${process.platform}-${process.arch}.tar.gz`;
 function app({ version = "1.0.0", release = true, repo = "owner/curiosa" } = {}) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-svc-"));
+  const dir = makeTempDir("curiosa-svc-");
   fs.writeFileSync(path.join(dir, "package.json"), JSON.stringify({ name: "curiosa", version }));
   if (release) fs.writeFileSync(path.join(dir, "release.json"), JSON.stringify({ version, repo }));
   return dir;
@@ -117,7 +117,7 @@ test("politique automatique : seulement si activée, applicable, sans mise à jo
 
 test("lancement : version invalide, non plus récente, installation non mise à jour, opération déjà en cours → refusés sans rien lancer", async () => {
   const dir = app({ version: "1.1.0" });
-  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-data-"));
+  const dataDir = makeTempDir("curiosa-data-");
   const started = [];
   const o = { appDir: dir, spawner: (t) => started.push(t), dataDir };
   assert.equal((await S.startUpdate("main", "x", o)).error, "invalid-tag");
@@ -132,7 +132,7 @@ test("lancement : version invalide, non plus récente, installation non mise à 
 
 test("lancement : version plus récente → tâche détachée lancée avec CETTE version, action consignée dans l'audit", async () => {
   const started = [];
-  const r = await S.startUpdate("v1.2.0", "owner@example.org", { appDir: app({ version: "1.1.0" }), spawner: (t) => started.push(t), dataDir: fs.mkdtempSync(path.join(os.tmpdir(), "d-")) });
+  const r = await S.startUpdate("v1.2.0", "owner@example.org", { appDir: app({ version: "1.1.0" }), spawner: (t) => started.push(t), dataDir: makeTempDir("d-") });
   assert.deepEqual(r, { ok: true });
   assert.deepEqual(started, ["v1.2.0"]);
   const row = await db.prisma.auditLog.findFirst({ where: { action: "update.start" } });
@@ -141,7 +141,7 @@ test("lancement : version plus récente → tâche détachée lancée avec CETTE
 
 test("vérification périodique : l'automatique étant désactivé par défaut, une mise à jour disponible n'est JAMAIS lancée seule", async () => {
   const started = [];
-  const r = await S.runScheduledCheck({ appDir: app({ version: "1.0.0" }), fetchJson: fakeApi({ tags: TAGS }), spawner: (t) => started.push(t), dataDir: fs.mkdtempSync(path.join(os.tmpdir(), "d-")) });
+  const r = await S.runScheduledCheck({ appDir: app({ version: "1.0.0" }), fetchJson: fakeApi({ tags: TAGS }), spawner: (t) => started.push(t), dataDir: makeTempDir("d-") });
   assert.equal(r, "disabled");
   assert.deepEqual(started, []);
   assert.equal((await S.getUpdateCheck(app({ version: "1.0.0" }))).latest, "v1.1.0", "mais la disponibilité est connue et affichée dans l'admin");
@@ -149,7 +149,7 @@ test("vérification périodique : l'automatique étant désactivé par défaut, 
 
 test("vérification périodique : automatique activé → correctifs et nouveautés installés ; changement majeur seulement signalé", async () => {
   await S.setAutoUpdate(true);
-  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "d-"));
+  const dataDir = makeTempDir("d-");
   const started = [];
   const o = (version, tags) => ({ appDir: app({ version }), fetchJson: fakeApi({ tags }), spawner: (t) => started.push(t), dataDir });
   assert.equal(await S.runScheduledCheck(o("1.0.0", TAGS)), "started");
@@ -162,7 +162,7 @@ test("vérification périodique : automatique activé → correctifs et nouveaut
 
 test("vérification périodique : pas de seconde mise à jour pendant qu'une autre tourne", async () => {
   await S.setAutoUpdate(true);
-  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "d-"));
+  const dataDir = makeTempDir("d-");
   fs.mkdirSync(path.join(dataDir, "update"));
   fs.writeFileSync(path.join(dataDir, "update", "state.json"), JSON.stringify({ status: "running", startedAt: Date.now() }));
   const started = [];
@@ -171,7 +171,7 @@ test("vérification périodique : pas de seconde mise à jour pendant qu'une aut
 });
 
 test("état et journal : lisibles, vides par défaut, journal tronqué à la fin", () => {
-  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "d-"));
+  const dataDir = makeTempDir("d-");
   assert.deepEqual(S.readUpdateState(dataDir), { status: "idle" });
   assert.equal(S.readUpdateLog(10, dataDir), "");
   fs.mkdirSync(path.join(dataDir, "update"));
@@ -205,7 +205,7 @@ test("canal rc : stable par défaut ; en rc on propose la release candidate, en 
 
 test("canal rc : lancer une rc exige le canal rc ; jamais appliquée automatiquement", async () => {
   const dir = app({ version: "1.0.0" });
-  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "d-"));
+  const dataDir = makeTempDir("d-");
   const started = [];
   const o = { appDir: dir, spawner: (t) => started.push(t), dataDir };
   assert.equal((await S.startUpdate("v1.1.0-rc.1", "x", o)).error, "invalid-tag", "canal stable : refusé");

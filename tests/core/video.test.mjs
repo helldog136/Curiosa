@@ -1,10 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
+import { makeTempDir } from "../helpers/tmp.mjs";
 
-const dir = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-video-"));
+const dir = makeTempDir("curiosa-video-");
 process.env.DATA_DIR = dir;
 const U = await import("@/core/services/uploads");
 const { GET } = await import("../../src/app/uploads/[name]/route.ts");

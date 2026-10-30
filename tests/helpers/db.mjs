@@ -2,9 +2,9 @@
 // SA copie d'un modèle migré (construit une fois, reconstruit si les migrations changent) — rapide et sans interférence.
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { makeTempDir } from "./tmp.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const tmp = path.join(root, "tests/.tmp");
@@ -33,7 +33,7 @@ function ensureTemplate() {
  */
 export async function useTestDb() {
   ensureTemplate();
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-test-"));
+  const dir = makeTempDir("curiosa-test-");
   const file = path.join(dir, "test.db");
   fs.copyFileSync(template, file);
   // Une seule connexion : les réglages ci-dessous (propres à la connexion) s'appliquent à toutes les requêtes du test.

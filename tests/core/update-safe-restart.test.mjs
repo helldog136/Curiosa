@@ -3,7 +3,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 
@@ -14,6 +13,7 @@ import {
 import { hashVersion, makeSiteWaiter, readState, runUpdate, runUpdateChain } from "../../scripts/update-lib.mjs";
 import { opts, setup } from "../helpers/update-harness.mjs";
 import { freePort, health, installFakeSite, killAllUnder, startSupervised, until } from "../helpers/fake-site.mjs";
+import { makeTempDir } from "../helpers/tmp.mjs";
 
 /* ───────────── /proc simulé ───────────── */
 
@@ -49,7 +49,7 @@ test("arrêt : TOUS les processus du site (wrapper, shell, serveur, ET le second
 });
 
 test("arrêt : comparaison de dossiers EXACTE — /var/www/a ne touche pas /var/www/a-autre, ni un sous-dossier, ni un lien qui y mène par erreur", () => {
-  const a = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-cwd-"));
+  const a = makeTempDir("curiosa-cwd-");
   try {
     const dirA = path.join(a, "site"), dirB = path.join(a, "site-autre"), sub = path.join(dirA, "sub");
     for (const d of [dirA, dirB, sub]) fs.mkdirSync(d, { recursive: true });
@@ -85,7 +85,7 @@ test("cgroup : l'unité systemd est lue en cgroup v2 comme v1 ; illisible → nu
 });
 
 test("lecture réelle de /proc (faux /proc sur disque) : processus, dossier courant, ports en écoute et leur propriétaire", () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-proc-"));
+  const root = makeTempDir("curiosa-proc-");
   try {
     const site = path.join(root, "site"); fs.mkdirSync(site);
     const proc = path.join(root, "proc");
@@ -171,7 +171,7 @@ test("diagnostic du port : qui tient le port, en mots simples et en français, a
   const relaunched = [...procs, P(900, 100, SITE, ["next-server (v16.3.8)"])];
   assert.equal(diagnosePort({ appDir: SITE, port: 3000, procs: relaunched, holders: { listening: true, pids: [900] }, oldPids: new Set([102]), referenceCgroup: SYSTEMD("curiosa.service") }), null);
   // Un autre site de la machine, ou le serveur de jeu : nommés, jamais tués.
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-other-"));
+  const dir = makeTempDir("curiosa-other-");
   try {
     fs.writeFileSync(path.join(dir, "release.json"), "{}");
     const other = diagnosePort({ appDir: SITE, port: 3001, procs: [P(300, 1, dir, ["next-server (v16.3.8)"], SYSTEMD("autresite.service"))], holders: { listening: true, pids: [300] }, oldPids: new Set(), referenceCgroup: SYSTEMD("curiosa.service") });
@@ -483,7 +483,7 @@ test("chaîne : un port tenu par un autre gestionnaire à l'étape 1 arrête tou
 
 test("tâche arrêtée par le service pendant le redémarrage (KillMode=control-group) : le nouveau serveur conclut honnêtement, sur la version qui tourne", async () => {
   const { reconcileInterruptedUpdate } = await import("@/core/updates/service");
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-rec-"));
+  const dir = makeTempDir("curiosa-rec-");
   try {
     const write = (patch) => { fs.mkdirSync(path.join(dir, "update"), { recursive: true }); fs.writeFileSync(path.join(dir, "update", "state.json"), JSON.stringify({ status: "running", step: "restarting", target: "v1.2.0", expectedVersion: "1.2.0", updaterPid: 424242, startedAt: 1, ...patch })); };
     const dead = () => false, alive = () => true;

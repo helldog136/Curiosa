@@ -1,12 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import http from "node:http";
 import net from "node:net";
 import crypto from "node:crypto";
 import { execFileSync, spawn, spawnSync } from "node:child_process";
+import { makeTempDir } from "../helpers/tmp.mjs";
 
 /**
  * scripts/install.sh : le chemin d'installation « facile ». Le script n'est JAMAIS lancé pour de vrai ici :
@@ -80,7 +80,7 @@ async function startGithub(dir, rel, opts = {}) {
 
 /** Un environnement jetable complet. */
 async function lab(t, o = {}) {
-  const base = fs.mkdtempSync(path.join(process.env.TMPDIR ?? os.tmpdir(), "inst-"));
+  const base = makeTempDir("inst-");
   const root = path.join(base, "root");
   for (const d of ["run/systemd/system", "etc", "var/www", "var/log"]) fs.mkdirSync(path.join(root, d), { recursive: true });
   fs.writeFileSync(path.join(root, "os-release"), 'ID=ubuntu\nID_LIKE=debian\nPRETTY_NAME="Ubuntu 24.04 LTS"\n');
