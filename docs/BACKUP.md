@@ -39,7 +39,9 @@ readable/           VOS DONNÉES MISES EN FORME POUR UN HUMAIN — commencez ici
   modules/<instance>/ les données de chaque module (JSON ; CSV et autres fichiers que le module fournit)
 data/               les mêmes données, brutes, en JSON : c'est ce que la restauration relit
                     (dont retired-instances.json : les données GARDÉES de modules ou d'instances retirés, inertes ; absent des sauvegardes d'avant la 0.1.20)
-                    (dont upload-files.json : qui possède quel fichier envoyé, pour les modules qui peuvent les supprimer, 0.2.13 ; absent avant : aucun fichier n'a de propriétaire)
+                    (dont upload-files.json : qui possède quel fichier envoyé, pour les modules qui peuvent les supprimer, 0.2.13 ; absent avant : aucun fichier n'a de propriétaire ;
+                     overlay-pages.json : les pages d'overlay avec leurs éléments, leur style et leur adresse secrète, 0.5.0 ; absent avant : aucune page. Le mode test, volatil, n'y est pas.
+                     La sauvegarde étant chiffrée, l'adresse secrète y est écrite pour que les adresses collées dans OBS fonctionnent encore après une restauration)
                     (dont roles.json et user-roles.json : les rôles et qui les a ; absents avant la 0.2.0 : la restauration recrée alors les rôles
                      prédéfinis et donne à chacun celui de son niveau `role` dans users.json)
 uploads/            images et fichiers envoyés

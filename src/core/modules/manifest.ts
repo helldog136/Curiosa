@@ -9,6 +9,7 @@ import { SERVICE_RE } from "./serviceVersions";
 import { NO_CREATE_REFERS, REFERS_TO } from "./choiceValues";
 import { MAX_TAB_ENTRIES, TAB_ID_RE, TAB_LABEL_MAX, tabIssues } from "./tabs";
 import { moduleSkinIssues, moduleSkinSchema } from "./skinDecl";
+import { overlayElementIssues, overlayElementsSchema } from "../overlays/decl";
 
 const localized = z.union([z.string().max(500), z.record(z.string(), z.string().max(500))]);
 const methodName = z.string().regex(/^[a-zA-Z][a-zA-Z0-9_]{0,40}$/);
@@ -253,6 +254,12 @@ export const manifestSchema = z.object({
    */
   skin: moduleSkinSchema.optional(),
   /**
+   * (0.5.0) Éléments que le module propose aux PAGES D'OVERLAY (section « Overlays » de l'administration) : identifiant, libellé et description FR/EN, comportement
+   * (`scale` par défaut, `ratio`, `fluid`), taille naturelle ou hauteur de référence, plage de ratios, taille minimale, options. Voir docs/OVERLAY-ELEMENTS.md.
+   * Sans cette clé, aucun élément. Un cœur plus ancien ignore la clé : le module indique `minCore: "0.5.0"` (exigé ici).
+   */
+  overlayElements: overlayElementsSchema.optional(),
+  /**
    * Droits du module (0.2.0), proposés dans les rôles de la page Équipe. Identifiant LOCAL (« email.view ») : le cœur le préfixe par l'identifiant du module
    * (« <module>:email.view »), un module ne peut donc pas déclarer le droit d'un autre. `open` (ouvrir la page d'admin du module) est implicite.
    * `default` : ce que reçoivent les rôles prédéfinis (administrateur : oui sauf `admin: false` ; éditeur : non sauf `editor: true`). Un cœur ancien ignore cette clé.
@@ -266,6 +273,7 @@ export const manifestSchema = z.object({
   })).max(MAX_MODULE_RIGHTS).optional(),
 }).superRefine((m, ctx) => {
   if (m.skin) for (const issue of moduleSkinIssues(m.id, m.skin)) ctx.addIssue({ code: "custom", path: ["skin", ...issue.path], message: issue.message });
+  for (const issue of overlayElementIssues(m.overlayElements, m.minCore)) ctx.addIssue({ code: "custom", path: ["overlayElements", ...issue.path], message: issue.message });
   if (m.pageSetting !== undefined) {
     const field = m.settings.find((f) => f.key === m.pageSetting);
     if (!field) ctx.addIssue({ code: "custom", path: ["pageSetting"], message: `pageSetting "${m.pageSetting}" must be the key of a setting of this module` });

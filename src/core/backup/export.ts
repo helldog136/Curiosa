@@ -17,6 +17,7 @@ import { currentSchemaVersion } from "./schema";
 import { createTarGzAsync, isSafeArchivePath, type TarFile } from "./tar";
 import { opStep } from "../operations/tracker";
 import { backupSkins } from "@/core/skins/restore";
+import { toBackupRows } from "@/core/overlays/backup";
 
 /** Réglages qui n'ont aucun sens après une restauration (état de la dernière vérification de version). */
 const VOLATILE_SETTINGS = new Set(["updates.latest", "updates.checkedAt", "updates.error", "rawg.toCheck"]); // journaux et caches : ils se reconstituent tout seuls
@@ -50,7 +51,7 @@ export async function createBackup(password: string, opts: { now?: Date; iterati
   opStep("collect");
   const now = opts.now ?? new Date();
   const config = await getSiteConfig();
-  const [users, settings, moduleRows, instances, instanceTranslations, entries, entryTranslations, redirects, retired, roles, userRoles, uploadFiles] = await Promise.all([
+  const [users, settings, moduleRows, instances, instanceTranslations, entries, entryTranslations, redirects, retired, roles, userRoles, uploadFiles, overlayPages] = await Promise.all([
     prisma.user.findMany({ orderBy: { createdAt: "asc" } }),
     prisma.setting.findMany({ orderBy: [{ key: "asc" }, { locale: "asc" }] }),
     listModuleRows(),
@@ -64,6 +65,8 @@ export async function createBackup(password: string, opts: { now?: Date; iterati
     prisma.userRole.findMany({ orderBy: [{ userId: "asc" }, { roleId: "asc" }] }),
     // Seulement les fichiers revendiqués par un module (propriétaire connu) : les envois « en attente » expirent seuls.
     prisma.uploadFile.findMany({ where: { ownerInstance: { not: null } }, orderBy: { name: "asc" } }),
+    // Pages d'overlay (20 au plus) : l'adresse secrète est dans le fichier chiffré, pour que les adresses collées dans OBS survivent à une restauration.
+    prisma.overlayPage.findMany({ orderBy: [{ createdAt: "asc" }, { id: "asc" }], take: 20 }),
   ]);
 
   const keyOf = new Map(instances.map((i) => [i.id, i.key]));
@@ -97,6 +100,7 @@ export async function createBackup(password: string, opts: { now?: Date; iterati
     jsonFile(DATA_FILES.userRoles, userRoles),
     // Qui possède quel fichier envoyé (modules à permission « files ») : la restauration remet le propriétaire avec le fichier.
     jsonFile(DATA_FILES.uploadFiles, uploadFiles),
+    jsonFile(DATA_FILES.overlayPages, toBackupRows(overlayPages)),
   ];
 
   // ── Copie lisible ───────────────────────────────────────────────────────────
@@ -154,7 +158,7 @@ export async function createBackup(password: string, opts: { now?: Date; iterati
   const manifest: BackupManifest = {
     format: FORMAT, formatVersion: FORMAT_VERSION, createdAt: now.toISOString(), frameworkVersion: readVersion(), schemaVersion: await currentSchemaVersion(),
     site: { name: config.name, defaultLocale: config.defaultLocale, locales: config.locales },
-    counts: { users: users.length, instances: instances.length, entries: entries.length, translations: entryTranslations.length, records: records.count, retired: retired.length, redirects: redirects.length, modules: modules.length, uploads: uploadCount, ...(skins.length ? { skins: skins.length } : {}) },
+    counts: { users: users.length, instances: instances.length, entries: entries.length, translations: entryTranslations.length, records: records.count, retired: retired.length, redirects: redirects.length, overlayPages: overlayPages.length, modules: modules.length, uploads: uploadCount, ...(skins.length ? { skins: skins.length } : {}) },
     modules,
     ...(skins.length ? { skins } : {}),
     files: await runAsync(fingerprints(files)),

@@ -524,6 +524,25 @@ export type TopicQuery = { locale: string; limit: number; tags: string[]; from?:
 /** Rendu d'un overlay (source navigateur OBS) : page nue, fond transparent, sous /overlays/<clé>. */
 export type OverlayResult = { html: string; css?: string; script?: string; title?: string };
 
+/**
+ * (0.5.0) Ce que le cœur demande à un module pour un ÉLÉMENT de page d'overlay (déclaré dans `overlayElements` du manifeste). Le module répond par l'ADRESSE de son élément,
+ * calculée côté serveur avec ses propres secrets : aucun secret de module n'apparaît dans l'administration. Voir docs/OVERLAY-ELEMENTS.md.
+ * - `width` / `height` : taille de la fenêtre dans laquelle l'élément s'affichera (taille naturelle pour « scale », fenêtre virtuelle pour « ratio », taille réelle pour « fluid »).
+ * - `style` : le style commun de la page (`--ov-*`), ou null si l'élément ne le suit pas (`followsStyle: false`).
+ * - `options` : valeurs des options déclarées, déjà contrôlées par le cœur ; le module les valide encore et IGNORE ce qu'il ne connaît pas (un événement supprimé, par exemple).
+ */
+export type OverlayElementRequest = {
+  element: string;
+  fit: "scale" | "ratio" | "fluid";
+  width: number;
+  height: number;
+  style: { text: "light" | "dark"; surface: "transparent" | "soft"; corners: "round" | "square" } | null;
+  options: Record<string, string | number | boolean>;
+  lang: string;
+};
+/** Adresse de l'élément : un chemin du site (`/overlays/<clé>?k=…`, `/m/<clé>/element?…`), jamais une adresse externe. Le cœur y ajoute les paramètres `ov-*` et `opt-*` (réservés). */
+export type OverlayElementAddress = { url: string };
+
 export type PageResult = {
   title?: string;
   description?: string;
@@ -571,6 +590,12 @@ export type ModuleDefinition = {
   page?: (ctx: ModuleContext, request: { segments: string[]; /** (0.2.14) `"sitemap"` : le cœur lit la page pour le plan du site (module qui déclare `sitemapFromPage`) : ne comptez pas une visite. */ for?: "sitemap" }) => PageResult | null | Promise<PageResult | null>;
   /** Overlay : rendu de la page /overlays/<clé de l'instance> (modules de type "overlay"). */
   overlay?: (ctx: ModuleContext, request: { query: URLSearchParams }) => OverlayResult | Promise<OverlayResult>;
+  /**
+   * (0.5.0) Éléments proposés aux pages d'overlay, par identifiant déclaré dans `overlayElements` du manifeste (`minCore: "0.5.0"`). La fonction reçoit la taille, le style commun et les
+   * options (voir `OverlayElementRequest`) et répond par l'adresse de l'élément (voir `OverlayElementAddress`), ou null s'il n'est pas disponible. Un élément supporte PLUSIEURS
+   * lecteurs en même temps (le même élément peut figurer dans plusieurs pages) : chaque lecteur a son propre repère dans le flux d'événements. Un cœur plus ancien ignore la clé.
+   */
+  overlayElements?: Record<string, (ctx: ModuleContext, request: OverlayElementRequest) => OverlayElementAddress | null | Promise<OverlayElementAddress | null>>;
   /** Informations exposées aux consommateurs, par sujet déclaré dans `provides`. Exécuté pour chaque instance fournisseuse. */
   exports?: Record<string, (ctx: ModuleContext, query: TopicQuery) => Record<string, unknown>[] | Promise<Record<string, unknown>[]>>;
   /** Routes exposées sous /m/<clé d'instance>/<route> (GET et POST). */

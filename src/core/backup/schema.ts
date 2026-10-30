@@ -26,7 +26,7 @@ export async function currentSchemaVersion(migrationsDir = path.join(process.cwd
 export const isNewerSchema = (backup: string | undefined, current: string): boolean => !!backup && !!current && backup > current;
 
 type Row = Record<string, unknown>;
-export type BackupData = { users: Row[]; settings: Row[]; modules: Row[]; instances: Row[]; instanceTranslations: Row[]; entries: Row[]; entryTranslations: Row[]; redirects: Row[]; records: Row[]; retired?: Row[]; roles?: Row[]; userRoles?: Row[]; uploadFiles?: Row[] };
+export type BackupData = { users: Row[]; settings: Row[]; modules: Row[]; instances: Row[]; instanceTranslations: Row[]; entries: Row[]; entryTranslations: Row[]; redirects: Row[]; records: Row[]; retired?: Row[]; roles?: Row[]; userRoles?: Row[]; uploadFiles?: Row[]; overlayPages?: Row[] };
 
 /**
  * Transformations explicites des données d'une sauvegarde faite AVANT une migration qui change le sens d'une donnée (renommage, découpage…).

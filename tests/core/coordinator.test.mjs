@@ -134,10 +134,10 @@ test("une personne dont une ancienne version a changé User.role perd le niveau 
 });
 
 test("menu d'administration par niveau (sans changement pour owner, admin, editor)", () => {
-  assert.deepEqual(administrationEntries({ role: "owner", advanced: true }), ["extensions", "assistants", "users", "health", "backup", "updates", "audit"]);
-  assert.deepEqual(administrationEntries({ role: "coordinator", advanced: true }), ["extensions", "assistants", "users", "health", "backup", "updates", "audit"]);
-  assert.deepEqual(administrationEntries({ role: "coordinator", advanced: false }), ["extensions", "assistants", "users", "health", "backup", "updates"]);
-  assert.deepEqual(administrationEntries({ role: "admin", advanced: true }), ["extensions", "users", "health"]);
+  assert.deepEqual(administrationEntries({ role: "owner", advanced: true }), ["extensions", "overlays", "assistants", "users", "health", "backup", "updates", "audit"]);
+  assert.deepEqual(administrationEntries({ role: "coordinator", advanced: true }), ["extensions", "overlays", "assistants", "users", "health", "backup", "updates", "audit"]);
+  assert.deepEqual(administrationEntries({ role: "coordinator", advanced: false }), ["extensions", "overlays", "assistants", "users", "health", "backup", "updates"]);
+  assert.deepEqual(administrationEntries({ role: "admin", advanced: true }), ["extensions", "overlays", "users", "health"]);
   assert.deepEqual(administrationEntries({ role: "editor", advanced: true }), []);
 });
 
@@ -483,12 +483,14 @@ test("migration depuis un état 0.3.1 : propriétaire, administrateurs et édite
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
-test("migration : texte SQL purement additif ; migration postérieure à toutes les autres", () => {
+test("migration : texte SQL purement additif ; migration postérieure à toutes les autres (sauf celle des pages d'overlay)", () => {
   const sql = read(path.join("prisma/migrations", MIGRATION, "migration.sql")).replace(/--.*$/gm, "");
   assert.ok(!/\bDROP\b|\bRENAME\b|DELETE\s+FROM|UPDATE\s+"/i.test(sql));
   assert.match(sql, /ALTER TABLE "User" ADD COLUMN "coordinator" BOOLEAN NOT NULL DEFAULT false/);
   const all = fs.readdirSync("prisma/migrations").filter((d) => /^\d{8,}_/.test(d)).sort();
-  assert.equal(all.at(-1), MIGRATION);
+  // Les pages d'overlay (0.5.0) ont ajouté la migration suivante : celle-ci est l'avant-dernière, rien ne s'intercale avant elle.
+  assert.equal(all.at(-2), MIGRATION);
+  assert.equal(all.at(-1), "20261030090000_overlay_pages");
 });
 
 /* ───────────── Textes ───────────── */

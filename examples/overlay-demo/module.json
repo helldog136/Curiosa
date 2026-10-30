@@ -1,0 +1,196 @@
+{
+  "apiVersion": 2,
+  "id": "overlay-demo",
+  "name": {
+    "en": "Overlay elements demo",
+    "fr": "Démonstration d'éléments d'overlay"
+  },
+  "version": "1.0.0",
+  "minCore": "0.5.0",
+  "description": {
+    "en": "A small example of a module that offers elements to overlay pages: a clock, a board, a 3D-style scene and a live feed read by several overlay pages at once.",
+    "fr": "Un petit exemple de module qui propose des éléments aux pages d'overlay : une horloge, un tableau, une scène et un fil d'événements lu par plusieurs pages d'overlay à la fois."
+  },
+  "author": "Curiosa",
+  "license": "MIT",
+  "icon": "🎬",
+  "main": "index.mjs",
+  "type": "widget",
+  "instances": "multiple",
+  "permissions": [
+    "routes",
+    "storage",
+    "admin"
+  ],
+  "overlayElements": [
+    {
+      "id": "clock",
+      "label": {
+        "en": "Clock",
+        "fr": "Horloge"
+      },
+      "description": {
+        "en": "The current time, in large letters.",
+        "fr": "L'heure actuelle, en grand."
+      },
+      "fit": "scale",
+      "size": {
+        "width": 600,
+        "height": 200
+      },
+      "demo": true,
+      "options": [
+        {
+          "id": "format",
+          "type": "choice",
+          "label": {
+            "en": "Time format",
+            "fr": "Format de l'heure"
+          },
+          "help": {
+            "en": "24-hour or 12-hour clock.",
+            "fr": "Horloge sur 24 heures ou sur 12 heures."
+          },
+          "choices": [
+            {
+              "value": "24h",
+              "label": {
+                "en": "24 hours",
+                "fr": "24 heures"
+              }
+            },
+            {
+              "value": "12h",
+              "label": {
+                "en": "12 hours",
+                "fr": "12 heures"
+              }
+            }
+          ],
+          "default": "24h"
+        },
+        {
+          "id": "seconds",
+          "type": "boolean",
+          "label": {
+            "en": "Show seconds",
+            "fr": "Afficher les secondes"
+          },
+          "default": true
+        },
+        {
+          "id": "label",
+          "type": "text",
+          "label": {
+            "en": "Caption",
+            "fr": "Légende"
+          },
+          "example": "On air",
+          "maxLength": 30,
+          "default": ""
+        },
+        {
+          "id": "size",
+          "type": "number",
+          "label": {
+            "en": "Text size",
+            "fr": "Taille du texte"
+          },
+          "help": {
+            "en": "In pixels, from 20 to 200.",
+            "fr": "En pixels, de 20 à 200."
+          },
+          "min": 20,
+          "max": 200,
+          "integer": true,
+          "example": "96",
+          "default": 96
+        }
+      ]
+    },
+    {
+      "id": "board",
+      "label": {
+        "en": "Board",
+        "fr": "Tableau"
+      },
+      "description": {
+        "en": "A list that reorganises itself to the size you choose.",
+        "fr": "Une liste qui se réorganise selon la taille choisie."
+      },
+      "fit": "fluid",
+      "ratios": {
+        "min": 0.5,
+        "max": 4
+      },
+      "minSize": {
+        "width": 300,
+        "height": 200
+      },
+      "options": [
+        {
+          "id": "rows",
+          "type": "number",
+          "label": {
+            "en": "Number of rows",
+            "fr": "Nombre de lignes"
+          },
+          "min": 1,
+          "max": 10,
+          "integer": true,
+          "example": "5",
+          "default": 5
+        }
+      ]
+    },
+    {
+      "id": "scene",
+      "label": {
+        "en": "Scene",
+        "fr": "Scène"
+      },
+      "description": {
+        "en": "A wide scene that follows the ratio of its frame.",
+        "fr": "Une scène large qui suit le ratio de son cadre."
+      },
+      "fit": "ratio",
+      "referenceHeight": 1080,
+      "ratios": {
+        "min": 1.3,
+        "max": 2.4
+      },
+      "followsStyle": false
+    },
+    {
+      "id": "feed",
+      "label": {
+        "en": "Live feed",
+        "fr": "Fil en direct"
+      },
+      "description": {
+        "en": "The latest events, read by every overlay page that shows it.",
+        "fr": "Les derniers événements, lus par chaque page d'overlay qui l'affiche."
+      },
+      "fit": "scale",
+      "size": {
+        "width": 600,
+        "height": 300
+      },
+      "options": [
+        {
+          "id": "lines",
+          "type": "number",
+          "label": {
+            "en": "Lines shown",
+            "fr": "Lignes affichées"
+          },
+          "min": 1,
+          "max": 10,
+          "integer": true,
+          "example": "5",
+          "default": 5
+        }
+      ]
+    }
+  ]
+}
