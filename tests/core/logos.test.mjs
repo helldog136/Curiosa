@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import { makeTempDir } from "../helpers/tmp.mjs";
 
 const L = await import("@/core/logos");
 // Logos abstraits : de simples adresses, aucune image réelle.
@@ -60,9 +61,8 @@ test("logos : branchés — en-tête (horizontal / icône), favicon, partage, do
 
 test("logos SVG : acceptés à l'envoi seulement s'ils sont nettoyés ; scripts, styles, textes, images et liens externes refusés avec un message", async () => {
   const fsx = await import("node:fs");
-  const os = await import("node:os");
   const path = await import("node:path");
-  const dir = fsx.mkdtempSync(path.join(os.tmpdir(), "curiosa-svg-"));
+  const dir = makeTempDir("curiosa-svg-");
   process.env.DATA_DIR = dir;
   const U = { ...(await import("@/core/services/uploads")), ...(await import("@/core/logoUpload")) };
   const ok = '<?xml version="1.0"?><svg xmlns="http://www.w3.org/2000/svg" width="120" height="40"><circle cx="20" cy="20" r="18" fill="#e8337a"/></svg>';

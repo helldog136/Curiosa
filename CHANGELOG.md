@@ -7,6 +7,12 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## Prochaine version (non publiée)
+
+### Pour les développeurs
+
+- **Les tests ne laissent plus de dossiers dans `/tmp`.** Une seule aide `makeTempDir()` (`testsupport/tmp.mjs`, offerte aussi aux auteurs de modules) enregistre et supprime chaque dossier temporaire, et `npm test` donne à chaque exécution son propre `TMPDIR`, supprimé à la fin. Ce qui reste est listé et fait échouer l'exécution (`KEEP_TEST_TMP=1` pour déboguer).
+
 ## 0.4.0
 
 ### Apparence / skins

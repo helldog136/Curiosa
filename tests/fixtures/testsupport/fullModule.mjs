@@ -1,8 +1,8 @@
 // Un module fictif COMPLET et conforme (routes, stockage, tâche, MCP, migration, vie privée…), généré en mémoire, qui sert de base aux tests du kit :
 // il doit réussir toutes les exigences ; chaque test d'échec en dérive un module fautif en changeant UNE chose.
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
+import { makeTempDir } from "../../helpers/tmp.mjs";
 
 export const manifest = () => ({
   apiVersion: 2,
@@ -134,7 +134,7 @@ export const files = () => ({
 });
 
 /** Écrit un module dans un dossier temporaire (nommé comme son id) et renvoie son chemin. `edit(files)` change les fichiers avant l'écriture ; une valeur `null` supprime le fichier. */
-export function makeModule(edit, root = fs.mkdtempSync(path.join(os.tmpdir(), "ts-"))) {
+export function makeModule(edit, root = makeTempDir("ts-")) {
   const f = files();
   edit?.(f);
   const dir = path.join(root, "full-mod");

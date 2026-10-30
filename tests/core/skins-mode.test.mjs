@@ -2,9 +2,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import vm from "node:vm";
+import { makeTempDir } from "../helpers/tmp.mjs";
 
 const S = await import("@/core/skins/modeScript");
 const { makeTranslator } = await import("@/core/i18n/dictionary");
@@ -141,7 +141,7 @@ test("mise en page : script externe bloquant dans <head> (ni defer ni async), av
 // ── pièces rendues (transpilées avec TypeScript, rendues avec react-dom/server)
 async function load(files) {
   const ts = (await import("typescript")).default;
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-mode-"));
+  const dir = makeTempDir("curiosa-mode-");
   for (const [src, out] of files) {
     const js = ts.transpileModule(read(src), { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText;
     fs.writeFileSync(path.join(dir, out), js);

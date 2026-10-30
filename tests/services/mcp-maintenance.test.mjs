@@ -1,9 +1,9 @@
 import test, { beforeEach, after } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { useTestDb } from "../helpers/db.mjs";
+import { makeTempDir } from "../helpers/tmp.mjs";
 
 const db = await useTestDb();
 const T = await import("@/core/services/mcp/tokens");
@@ -22,7 +22,7 @@ const mail = await import("@/core/services/mail");
 const U = await import("@/core/updates/service");
 
 // Une « application » jetable : package.json + release.json = une installation par archive (mise à jour possible).
-const app = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-app-"));
+const app = makeTempDir("curiosa-app-");
 const setVersion = (v) => fs.writeFileSync(path.join(app, "package.json"), JSON.stringify({ version: v }));
 fs.writeFileSync(path.join(app, "release.json"), JSON.stringify({ repo: "owner/repo" }));
 setVersion("0.1.14");

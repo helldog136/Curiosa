@@ -4,9 +4,9 @@ import test, { beforeEach, after } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { useTestDb } from "../helpers/db.mjs";
+import { makeTempDir } from "../helpers/tmp.mjs";
 
 const db = await useTestDb();
 const { prisma } = db;
@@ -460,7 +460,7 @@ const sqlite = (dbFile, sql) => execFileSync("node", ["-e", `const {PrismaClient
 const deploy = (schema, dbFile) => execFileSync("npx", ["prisma", "migrate", "deploy", "--schema", schema], { cwd: root, env: { ...process.env, DATABASE_URL: `file:${dbFile}` }, stdio: "pipe" });
 
 test("migration depuis un état 0.3.1 : propriétaire, administrateurs et éditeurs existants ne changent pas, le drapeau vaut faux partout", () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-mig-"));
+  const dir = makeTempDir("curiosa-mig-");
   try {
     const old = path.join(dir, "prisma");
     fs.cpSync(path.join(root, "prisma"), old, { recursive: true });

@@ -2,12 +2,12 @@
 import test, { after } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
+import { makeTempDir } from "../helpers/tmp.mjs";
 
 const { pageScriptTags, readModuleScript, MAX_PAGE_SCRIPTS, MAX_SCRIPT_BYTES, scriptVersion } = await import("@/core/modules/pageScripts");
 
-const base = fs.mkdtempSync(path.join(os.tmpdir(), "ps-"));
+const base = makeTempDir("ps-");
 after(() => fs.rmSync(base, { recursive: true, force: true }));
 fs.mkdirSync(path.join(base, "scripts"));
 const put = (name, text) => fs.writeFileSync(path.join(base, "scripts", name), text);

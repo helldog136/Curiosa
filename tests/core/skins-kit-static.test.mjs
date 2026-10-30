@@ -3,11 +3,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import sharp from "sharp";
 import { DEFECTS, dualSkin, goodSkin } from "../helpers/skin-defects.mjs";
 import { copySkin } from "../helpers/skins.mjs";
+import { makeTempDir } from "../helpers/tmp.mjs";
 
 const { checkOne, checkTargets, skinDirs } = await import("../../testsupport/skins/check.mjs");
 const { kitCatalog, kitIssue, KIT_CODES } = await import("../../testsupport/skins/messages.mjs");
@@ -18,7 +18,7 @@ const { defaultCoreVersion, SKINS_SINCE } = await import("../../testsupport/skin
 const { ISSUE_CODES } = await import("@/core/skins/messages");
 
 const CORE = "0.4.0";
-const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-kit-"));
+const tmp = makeTempDir("curiosa-kit-");
 const codes = (r, severity) => r.issues.filter((i) => !severity || i.severity === severity).map((i) => i.code);
 const make = (name, build) => { const dir = path.join(tmp, name); build(dir, name); return dir; };
 
@@ -198,7 +198,7 @@ test("version de cœur par défaut : celle du dépôt, au moins 0.4.0 (la versio
   assert.equal(SKINS_SINCE, "0.4.0");
   assert.equal(defaultCoreVersion(".", "9.9.9"), "9.9.9");
   assert.match(defaultCoreVersion("."), /^\d+\.\d+\.\d+/);
-  const dir = fs.mkdtempSync(path.join(tmp, "v-"));
+  const dir = makeTempDir("v-", { in: tmp });
   fs.writeFileSync(path.join(dir, "package.json"), JSON.stringify({ version: "0.3.1" }));
   assert.equal(defaultCoreVersion(dir), "0.4.0");
   fs.writeFileSync(path.join(dir, "package.json"), JSON.stringify({ version: "0.12.0" }));

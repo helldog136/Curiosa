@@ -1,11 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
 import { makeGrav } from "../helpers/fakeGrav.mjs";
 import { createCatalogue } from "../helpers/catalogue.mjs";
+import { makeTempDir } from "../helpers/tmp.mjs";
 
 const { openBackup } = await import("@/core/backup/restore");
 
@@ -22,7 +22,7 @@ function run(extra = []) {
 }
 
 function execute(extra) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-grav-test-"));
+  const dir = makeTempDir("curiosa-grav-test-");
   makeGrav(path.join(dir, "user"));
   const out = path.join(dir, "import.tar.gz.enc");
   const stdout = execFileSync(process.execPath, ["--disable-warning=MODULE_TYPELESS_PACKAGE_JSON", "--import", "./tests/helpers/register.mjs", "scripts/import-grav.mjs", path.join(dir, "user"), "--out", out, "--password", "mdp-de-test", "--domain", "monsite.be", ...extra], { encoding: "utf8", env: { ...process.env, DATA_DIR: "", DATABASE_URL: "", CURIOSA_EXTRAS_DIR: path.resolve("tests/fixtures/extras") } });
@@ -80,7 +80,7 @@ test("import Grav : anciennes adresses redirigées vers les nouvelles, accueil e
 });
 
 test("import Grav : le script refuse un dossier qui n'est pas un site Grav, et n'écrit que le fichier demandé", () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-grav-bad-"));
+  const dir = makeTempDir("curiosa-grav-bad-");
   assert.throws(() => execFileSync(process.execPath, ["--import", "./tests/helpers/register.mjs", "scripts/import-grav.mjs", dir], { stdio: "pipe" }));
   const src = fs.readFileSync("scripts/import-grav.mjs", "utf8");
   assert.match(src, /mkdtempSync/, "base temporaire : aucune base existante n'est touchée");
@@ -107,10 +107,13 @@ test("import Grav : plusieurs collections de type blog, page « external », blo
 });
 
 test("import Grav sans catalogue : arrêt net avec un message clair, aucune copie locale de module", () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-grav-down-"));
+  const dir = makeTempDir("curiosa-grav-down-");
   makeGrav(path.join(dir, "user"));
-  const r = spawnSync(process.execPath, ["--disable-warning=MODULE_TYPELESS_PACKAGE_JSON", "--import", "./tests/helpers/register.mjs", "scripts/import-grav.mjs", path.join(dir, "user"), "--out", path.join(dir, "x.enc"), "--password", "mdp-de-test"], { encoding: "utf8", env: { ...process.env, CURIOSA_CATALOGUE_REPO: "file:///nonexistent/curiosa-extras" } });
+  const scratch = path.join(dir, "scratch"); // TMPDIR du script : on vérifie qu'il n'y laisse rien, même quand il s'arrête sur une erreur
+  fs.mkdirSync(scratch);
+  const r = spawnSync(process.execPath, ["--disable-warning=MODULE_TYPELESS_PACKAGE_JSON", "--import", "./tests/helpers/register.mjs", "scripts/import-grav.mjs", path.join(dir, "user"), "--out", path.join(dir, "x.enc"), "--password", "mdp-de-test"], { encoding: "utf8", env: { ...process.env, TMPDIR: scratch, CURIOSA_CATALOGUE_REPO: "file:///nonexistent/curiosa-extras" } });
   assert.notEqual(r.status, 0);
+  assert.deepEqual(fs.readdirSync(scratch).filter((n) => n !== "node-compile-cache"), [], "le script supprime sa base temporaire même quand il s'arrête sur une erreur");
   assert.match(r.stderr, /le catalogue n'est pas joignable/);
   assert.ok(!fs.existsSync(path.join(dir, "x.enc")), "aucune sauvegarde à moitié produite");
 });

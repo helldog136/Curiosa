@@ -1,11 +1,11 @@
 import test, { beforeEach, after } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { useTestDb } from "../helpers/db.mjs";
 import { createCatalogue } from "../helpers/catalogue.mjs";
+import { makeTempDir } from "../helpers/tmp.mjs";
 
 // PRINCIPE : le cœur est installé SEUL. Aucun module n'est embarqué avec lui (ni archive de release, ni dossier extras/, ni instantané, ni copie hors ligne).
 // Le cœur va chercher les modules dans le catalogue (par défaut le dépôt curiosa-extras) ; sans réseau, le catalogue est vide, jamais une copie locale.
@@ -31,7 +31,7 @@ const stripComments = (t) => t.replace(/\/\*[\s\S]*?\*\/|(^|[^:"'`])\/\/.*$/gm, 
 
 /** Un dossier « ancienne installation » : extras/, examples/ et catalogue/ locaux, tels que les anciennes versions du cœur les embarquaient. Le cœur ne doit PAS les lire. */
 function decoyExtras() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-decoy-"));
+  const dir = makeTempDir("curiosa-decoy-");
   for (const [kind, id] of [["modules", "leurre"], ["examples", "leurre-exemple"]]) {
     fs.mkdirSync(path.join(dir, "extras", kind, id), { recursive: true });
     fs.writeFileSync(path.join(dir, "extras", kind, id, "module.json"), JSON.stringify({ apiVersion: 2, id, name: id, version: "1.0.0" }));
@@ -55,7 +55,7 @@ test("archive : le gabarit de packaging ne contient aucun module, et l'archive r
   assert.ok(!/fetch-extras|extras:fetch/.test(read(".github/workflows/release.yml") + read("package.json")), "ni la CI ni package.json ne le lancent");
 
   // Fabrication réelle, dans un arbre factice qui contient un extras/ « piège » : il ne doit jamais atterrir dans l'archive.
-  const tree = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-pack-"));
+  const tree = makeTempDir("curiosa-pack-");
   const out = path.join(tree, "dist");
   const put = (f, c = "x") => { fs.mkdirSync(path.dirname(path.join(tree, f)), { recursive: true }); fs.writeFileSync(path.join(tree, f), c); };
   put("package.json", JSON.stringify({ name: "curiosa", version: "9.9.9" })); put("package-lock.json", "{}"); put("next.config.mjs"); put("upgrade.json", JSON.stringify({ minFrom: "0.0.0" }));

@@ -3,9 +3,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { createRequire } from "node:module";
+import { makeTempDir } from "../helpers/tmp.mjs";
 
 const root = process.cwd();
 const MIGRATION = "20261022090000_redirections_2";
@@ -14,7 +14,7 @@ const deploy = (schema, db) => execFileSync("npx", ["prisma", "migrate", "deploy
 
 test("migration : la base d'avant garde ses redirections (chemin, destination, total) ; colonnes et table ajoutées seulement", () => {
   createRequire(import.meta.url);
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-mig-"));
+  const dir = makeTempDir("curiosa-mig-");
   try {
     // Un dossier prisma/ copié SANS la nouvelle migration = l'état d'un site existant.
     const old = path.join(dir, "prisma");

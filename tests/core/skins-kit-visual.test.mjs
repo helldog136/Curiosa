@@ -4,10 +4,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { DEFECTS, dualSkin, goodSkin } from "../helpers/skin-defects.mjs";
 import { copySkin } from "../helpers/skins.mjs";
+import { makeTempDir } from "../helpers/tmp.mjs";
 
 const { checkOne } = await import("../../testsupport/skins/check.mjs");
 const pw = await import("../../scripts/visual/lib/playwright.mjs");
@@ -15,7 +15,7 @@ let available = true;
 try { pw.loadPlaywright(); pw.chromiumPath(); } catch { available = false; }
 if (!available && process.env.SKIN_BROWSER_TESTS === "1") throw new Error("SKIN_BROWSER_TESTS=1 mais Chromium ou playwright est introuvable");
 const skip = available ? false : "Chromium ou playwright introuvable : niveau navigateur non essayé";
-const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-kit-visual-"));
+const tmp = makeTempDir("curiosa-kit-visual-");
 test.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
 
 // Essai rapide : deux largeurs (téléphone, bureau), trois pages ; la régression de basic a son propre test.

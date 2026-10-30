@@ -1,10 +1,10 @@
 import test, { beforeEach, after } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { useTestDb } from "../helpers/db.mjs";
+import { makeTempDir } from "../helpers/tmp.mjs";
 
 const db = await useTestDb();
 const L = await import("@/core/auth/lockout");
@@ -63,7 +63,7 @@ test("secours SSH : « reset-password » donne un mot de passe neuf (affiché un
 
 test("secours SSH : le script se lance tout seul depuis l'application (lit .env, base de données du service), sans TypeScript", async () => {
   await owner(); await lock("1.2.3.4", "o@example.org");
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-recover-"));
+  const dir = makeTempDir("curiosa-recover-");
   fs.writeFileSync(path.join(dir, ".env"), `# commentaire\nDATABASE_URL="${process.env.DATABASE_URL}"\nAUTRE='valeur'\n`);
   const env = { ...process.env }; delete env.DATABASE_URL;
   const out = execFileSync(process.execPath, [path.resolve("scripts/auth-recover.mjs"), "status"], { cwd: dir, env: { ...env, NODE_PATH: path.resolve("node_modules") }, encoding: "utf8" });

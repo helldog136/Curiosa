@@ -7,11 +7,12 @@ import os from "node:os";
 import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
 import { copySkin, FIXTURES, fakeFont, fakePng, SVG_OK, TEST_CORE } from "../helpers/skins.mjs";
+import { makeTempDir } from "../helpers/tmp.mjs";
 
 const V = await import("@/core/skins/validate");
 const M = await import("@/core/skins/messages");
 
-const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-skinval-"));
+const tmp = makeTempDir("curiosa-skinval-");
 let n = 0;
 /** Un dossier de skin jetable : la fixture « plain-light » modifiée. */
 function mk(over = {}) {
