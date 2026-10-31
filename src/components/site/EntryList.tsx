@@ -1,6 +1,7 @@
 import type { InstanceView } from "@/core/instances";
 import { entryPath, type EntryView } from "@/core/content/entries";
 import { makeTranslator } from "@/core/i18n/dictionary";
+import { measureHref, type MeasureMap } from "@/core/redirectMeasure";
 import { safeHref } from "@/core/url";
 import { CopyCode } from "./CopyCode";
 import { EntryIcon } from "./EntryIcon";
@@ -11,6 +12,8 @@ type Props = {
   collection: Pick<InstanceView, "display" | "clickAction">;
   locale: string;
   defaultLocale: string;
+  /** « Compter les clics sur mes liens » : la carte destination → lien court (core/redirectMeasure.ts) ; absente ou vide : adresses inchangées. */
+  measure?: MeasureMap;
 };
 
 function formatDate(date: Date | null, locale: string): string {
@@ -22,12 +25,13 @@ export function entryHref(
   entry: EntryView,
   collection: Pick<InstanceView, "clickAction">,
   defaultLocale: string,
+  measure?: MeasureMap,
 ): { href: string; external: boolean } {
-  if (collection.clickAction === "external" && entry.url) return { href: safeHref(entry.url), external: true };
+  if (collection.clickAction === "external" && entry.url) return { href: measure ? measureHref(measure, safeHref(entry.url)) : safeHref(entry.url), external: true };
   return { href: entryPath(entry, defaultLocale), external: false };
 }
 
-export function EntryList({ entries, collection, locale, defaultLocale }: Props) {
+export function EntryList({ entries, collection, locale, defaultLocale, measure }: Props) {
   const t = makeTranslator(locale);
   if (entries.length === 0) return <p data-skin-part="prose" className="text-muted">{t("site.empty")}</p>;
 
@@ -35,7 +39,7 @@ export function EntryList({ entries, collection, locale, defaultLocale }: Props)
     return (
       <ul data-skin-part="list" data-kind="links" className="flex flex-wrap gap-3">
         {entries.map((e) => {
-          const { href, external } = entryHref(e, collection, defaultLocale);
+          const { href, external } = entryHref(e, collection, defaultLocale, measure);
           return (
             <li key={e.id} data-skin-part="list-item">
               <a
@@ -59,7 +63,7 @@ export function EntryList({ entries, collection, locale, defaultLocale }: Props)
     return (
       <ul data-skin-part="list" data-kind="list" className="divide-y divide-line border-y-token border-line">
         {entries.map((e) => {
-          const { href, external } = entryHref(e, collection, defaultLocale);
+          const { href, external } = entryHref(e, collection, defaultLocale, measure);
           return (
             <li key={e.id} lang={e.locale} data-skin-part="list-item" className="py-4">
               <a href={href} data-skin-part="link" {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})} className="font-medium hover:text-accent">
@@ -76,7 +80,7 @@ export function EntryList({ entries, collection, locale, defaultLocale }: Props)
   return (
     <ul data-skin-part="list" data-kind="cards" className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,var(--sk-cards-min,15rem)),1fr))] gap-[var(--sk-grid-gap,1.25rem)]">
       {entries.map((e) => {
-        const { href, external } = entryHref(e, collection, defaultLocale);
+        const { href, external } = entryHref(e, collection, defaultLocale, measure);
         const isCode = collection.display === "codes";
         return (
           <li

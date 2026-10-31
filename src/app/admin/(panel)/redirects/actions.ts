@@ -8,6 +8,8 @@ import { audit } from "@/core/permissions";
 import { endInstant } from "@/core/redirectEnd";
 import { checkRedirectTarget, createRedirectRecord, deleteRedirectRecord, proposeRedirectPath, updateRedirectRecord, type RedirectFail } from "@/core/redirects";
 import { invalidateRedirectGate } from "@/core/redirectGate";
+import { MEASURE_SETTING } from "@/core/redirectMeasure";
+import { setSetting } from "@/core/settings";
 import { siteTimezone } from "@/core/siteTime";
 import type { ActionState } from "@/components/admin/ActionForm";
 
@@ -99,4 +101,14 @@ export async function suggestRedirectName(address: string): Promise<string> {
   const checked = await checkRedirectTarget(String(address ?? "").slice(0, 2100));
   if ("error" in checked) return "";
   return proposeRedirectPath({ url: checked.url, siteName: config.name });
+}
+
+/** « Compter les clics sur mes liens » : réglage du site, réservé à l'administration (il change les adresses de boutons de tout le site). Désactivé par défaut. */
+export async function saveMeasureLinks(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const { user, t } = await adminCtx("admin");
+  await setSetting(MEASURE_SETTING, formData.get("measureLinks") === "on");
+  invalidateRedirectGate(); // relit aussi la carte « destination → lien court »
+  await audit(user.email, "settings.update", MEASURE_SETTING);
+  revalidatePath("/", "layout");
+  return { ok: t("action.saved") };
 }

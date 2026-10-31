@@ -44,6 +44,8 @@ L'équipe du site, elle, reçoit un cookie de **session** à la connexion à l'a
 
 Un lien court (`/twitch`) ne dépose aucun cookie. Chaque passage ajoute 1 au compteur du lien pour le jour en cours (heure du site) et à son total : rien d'autre n'est gardé, ni adresse IP, ni navigateur, ni provenance, ni identifiant de la personne qui visite. Les robots, les aperçus de messagerie et les personnes connectées à l'administration ne sont pas comptés. Le détail par jour est gardé 120 jours. Détails : [PLATFORM.md](PLATFORM.md), « Liens courts ».
 
+Le total par destination additionne ces mêmes compteurs : aucune donnée de plus. Si la personne qui gère le site active « Compter les clics sur mes liens », certains boutons de son site passent par un lien court ; le clic est alors compté comme n'importe quel passage par ce lien, sans rien de plus.
+
 ## Les robots IA et le fichier llms.txt
 
 - Les **robots de réponse** des assistants IA (ceux qui lisent une page pour répondre à une question) sont autorisés par défaut ; les robots d'**entraînement** sont bloqués par défaut. Les deux se règlent dans Réglages › Confidentialité (voir [GEO.md](GEO.md)).

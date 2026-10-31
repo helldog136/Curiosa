@@ -27,6 +27,7 @@ import { EntryList } from "@/components/site/EntryList";
 import { Pagination } from "@/components/site/Pagination";
 import { CoverImage } from "@/components/site/CoverImage";
 import { Markdown } from "@/components/site/Markdown";
+import { loadMeasureMap } from "@/core/redirectMeasure";
 
 export const dynamic = "force-dynamic";
 
@@ -213,7 +214,7 @@ export default async function CatchAllPage({ params, searchParams }: Props) {
             {description && <p data-skin-part="lead" className="text-muted">{description}</p>}
           </header>
           <Blocks blocks={top} locale={locale} />
-          <EntryList entries={entries} collection={instance} locale={locale} defaultLocale={config.defaultLocale} />
+          <EntryList entries={entries} collection={instance} locale={locale} defaultLocale={config.defaultLocale} measure={await loadMeasureMap()} />
           <Pagination page={pageNo} pages={data.pages} base={listPath} t={t} />
           <Blocks blocks={bottom} locale={locale} />
         </div>

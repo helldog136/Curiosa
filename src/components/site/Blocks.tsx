@@ -1,3 +1,4 @@
+import { loadMeasureMap } from "@/core/redirectMeasure";
 import { HeroVideo } from "./HeroVideo";
 import { Panel, HeroButton } from "./Panel";
 import type { Block } from "@/core/blocks";
@@ -175,7 +176,7 @@ export async function Blocks({ blocks, locale, adminInstanceId: panelInstanceId,
                 {seeAll && <a href={seeAll} data-skin-part="link" className="text-sm text-link hover:underline">{makeTranslator(locale)("site.seeAll")}</a>}
               </div>
             )}
-            <EntryList entries={entries} collection={instance} locale={locale} defaultLocale={config.defaultLocale} />
+            <EntryList entries={entries} collection={instance} locale={locale} defaultLocale={config.defaultLocale} measure={await loadMeasureMap()} />
           </section>,
         );
         break;
