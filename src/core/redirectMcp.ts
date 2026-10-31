@@ -5,8 +5,9 @@ import type { JsonSchemaLite } from "@/core/modules/types";
 import type { McpTool, McpToolProvider } from "@/core/services/mcp/types";
 import { McpToolError, validateArgs } from "@/core/services/mcp/validate";
 import { endInstant, formatEnd } from "./redirectEnd";
-import { createRedirectRecord, deleteRedirectRecord, listRedirects, normalizeRedirectPath, proposeRedirectPath, redirectShortUrl, redirectState, updateRedirectRecord, MAX_END_MESSAGE, type RedirectFail } from "./redirects";
+import { cleanPastedAddress, createRedirectRecord, deleteRedirectRecord, listRedirects, normalizeRedirectPath, proposeRedirectPath, redirectShortUrl, redirectState, updateRedirectRecord, MAX_END_MESSAGE, type RedirectFail } from "./redirects";
 import { redirectStats } from "./redirectStats";
+import { destinationKey, destinationSummary, GROUP_MAX_LINKS, type DestinationGroup } from "./redirectGroups";
 import { getSiteConfig } from "./settings";
 import { siteTimezone } from "./siteTime";
 
@@ -15,6 +16,9 @@ import { siteTimezone } from "./siteTime";
  * Les mêmes règles que l'écran d'administration (redirects.ts) : adresses http(s) seulement, noms réservés refusés, le nom court d'un lien ne change jamais
  * (il est dans le QR code imprimé), une date de fin vaut « jusqu'à la fin de ce jour » à l'heure du site.
  * Écriture et suppression ne sont JAMAIS accordées d'office à un jeton ; les erreurs sont lisibles par l'agent, en anglais, avec un nom court de remplacement si le nom est pris.
+ * `redirects_summary` est un outil À PART (et non un paramètre de `redirects_stats`) : `redirects_stats` répond pour UN lien et exige son identifiant ; le total par destination
+ * répond par une LISTE classée (autre forme de réponse, autre borne : 200 liens, 30 jours). Un outil par forme évite un schéma « l'un ou l'autre » que les assistants remplissent
+ * mal, et un jeton qui a reçu `redirects_stats` ne reçoit rien de plus sans le décider (chaque outil est accordé séparément).
  * Aucun de ces outils ne renvoie de secret, ni de provenance ou d'adresse de visiteur (il n'en existe pas).
  */
 const en = makeTranslator("en");
@@ -31,6 +35,12 @@ async function find(ref: string): Promise<Redirect> {
   if (!row) throw new McpToolError("redirect not found: pass the \"id\" or the short name (path) of an existing link");
   return row;
 }
+
+const groupView = (g: DestinationGroup, rank: number, withSeries: boolean) => ({
+  rank, destination: g.destination, today: g.today, week: g.week, month: g.month, total: g.total,
+  aliases: g.links.map((l) => ({ id: l.id, path: l.path, address: redirectShortUrl(l.path), state: l.state, today: l.today, week: l.week, month: l.month, total: l.total })),
+  ...(withSeries ? { series: g.series } : {}),
+});
 
 async function failure(fail: RedirectFail, targetUrl?: string): Promise<never> {
   let message = en(fail.key);
@@ -54,6 +64,7 @@ export const redirectsToolProvider: McpToolProvider = {
     const base = { source: "core", destructive: false };
     const listSchema: JsonSchemaLite = { type: "object", properties: { q: str(100), page: { type: "integer", minimum: 1, maximum: 100000 } } };
     const statsSchema: JsonSchemaLite = { type: "object", required: ["redirect"], properties: { redirect: str(80) } };
+    const summarySchema: JsonSchemaLite = { type: "object", properties: { destination: str(2000) } };
     const writeProps = {
       targetUrl: str(2000), endDate: str(10), endTime: str(5), endMessage: str(MAX_END_MESSAGE), permanent: { type: "boolean" as const },
     };
@@ -79,6 +90,23 @@ export const redirectsToolProvider: McpToolProvider = {
           const row = await find(a.redirect as string);
           const stats = (await redirectStats(row.id))!;
           return { id: row.id, path: row.path, address: redirectShortUrl(row.path), ...stats };
+        },
+      },
+      {
+        ...base, name: "redirects_summary", title: "Short links: totals by destination", readOnly: true, default: true, input: summarySchema,
+        description: "Total visits per DESTINATION: short links that lead to the same address (/instagram, /ig, /insta) are added together (same address ignoring http/https, www., capital letters in the domain, a trailing slash and tracking parameters such as utm_*; other parameters count). Answer: { destinations: [{ rank, destination, today, week, month (30 days), total, aliases: [{ path, address, state, today, week, month, total }] }], linksRead, linksTotal, truncated, hidden }, best-visited first. At most " + GROUP_MAX_LINKS + " links (the most visited) and 30 days are read; 50 destinations are returned. Optional \"destination\" (an address, or the short name of one link) answers for that one destination only, with its last 30 days day by day (\"series\"). Anonymous per-day totals only: robots and message previews are not counted and no IP address, cookie or origin is kept.",
+        call: async (raw) => {
+          const a = validateArgs(summarySchema, raw);
+          const sum = await destinationSummary();
+          const rest = { linksRead: sum.linksRead, linksTotal: sum.linksTotal, truncated: sum.linksTotal > sum.linksRead || sum.hidden > 0, hidden: sum.hidden };
+          const ask = typeof a.destination === "string" ? a.destination.trim() : "";
+          if (!ask) return { destinations: sum.groups.map((g, i) => groupView(g, i + 1, false)), ...rest };
+          // Un nom court connu désigne la destination de ce lien ; sinon on comprend l'adresse comme on le fait à la saisie.
+          const byName = sum.groups.findIndex((g) => g.links.some((l) => l.path === normalizeRedirectPath(ask)));
+          const key = byName >= 0 ? sum.groups[byName]!.key : destinationKey(cleanPastedAddress(ask));
+          const at = sum.groups.findIndex((g) => g.key === key);
+          if (!key || at < 0) throw new McpToolError("destination not found: pass an address that one of your short links leads to, or the short name of one of them (see redirects_summary without arguments)");
+          return { destinations: [groupView(sum.groups[at]!, at + 1, true)], ...rest };
         },
       },
       {

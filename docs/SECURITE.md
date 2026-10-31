@@ -247,7 +247,7 @@ Le site n'envoie aucune politique `Content-Security-Policy` globale (seulement `
 - **Vie privée** : un nombre par lien et par jour ; ni cookie, ni adresse IP, ni provenance, ni navigateur gardés (le texte « agent » sert à écarter les robots, il n'est ni lu plus loin ni conservé). Voir [PRIVACY.md](PRIVACY.md).
 - **Bornes** : aucune lecture ni écriture non bornée (2 000 liens, pages de 50, 500 compteurs en attente, paquets de 200, porte du proxy limitée à 1,5 s), aucun minuteur de fond, une panne de base ne bloque jamais une redirection.
 - **QR et export** : routes réservées à l'équipe connectée (401 sinon, 403 sans accès), `Cache-Control: private, no-store`, SVG avec `Content-Security-Policy: default-src 'none'`, texte alternatif échappé, CSV neutralisé contre les formules.
-- **Assistants IA** : `redirects_list` et `redirects_stats` sont des lectures ; `redirects_create`, `redirects_update` (écriture) et `redirects_delete` (destructif) ne sont **jamais accordés d'office**, un jeton en lecture ne peut pas les recevoir, et chaque écriture est consignée (`mcp:<jeton> redirect.create|update|delete`).
+- **Assistants IA** : `redirects_list`, `redirects_stats` et `redirects_summary` sont des lectures ; `redirects_create`, `redirects_update` (écriture) et `redirects_delete` (destructif) ne sont **jamais accordés d'office**, un jeton en lecture ne peut pas les recevoir, et chaque écriture est consignée (`mcp:<jeton> redirect.create|update|delete`).
 
 ## Jaquettes de jeux : corrections de la personne propriétaire (module « Jaquettes de jeux », cœur 0.3.0)
 

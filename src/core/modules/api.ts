@@ -3,6 +3,7 @@ import type { AdminUser } from "../auth/access";
 import { getBrand } from "@/core/brand";
 import { siteUrl } from "@/core/config";
 import { moduleJsonLd } from "@/core/seo";
+import { measuredHref } from "@/core/redirectMeasure";
 import { entryPath, listEntries, MAX_LIST_LIMIT } from "@/core/content/entries";
 import { getInstanceByKey, listInstances, pickName, type InstanceView } from "@/core/instances";
 import { isMailConfigured, sendMail } from "@/core/services/mail";
@@ -77,6 +78,9 @@ export function makeApi(instance: InstanceView, locale: string, permissions: rea
 
     // Empreinte salée, non réversible et cloisonnée du visiteur d'une requête (limites de débit) : jamais l'adresse, jamais la première entrée de X-Forwarded-For.
     visitor: { fingerprint: (request, scope) => visitorFingerprint(instance.moduleId, request, scope) },
+
+    // Adresse mesurée d'un bouton (réglage « Compter les clics sur mes liens ») : un simple relais, sans permission ; sans le réglage, l'adresse revient telle quelle.
+    links: { measured: (url, opts) => measuredHref(String(url ?? ""), { absolute: opts?.absolute === true }) },
 
     seo: { jsonLd: (data) => { const ld = moduleJsonLd(data); return ld ? { tag: "script", jsonLd: ld } : null; } },
 
