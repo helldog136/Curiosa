@@ -246,6 +246,8 @@ export function fakeCtx(opts = {}) {
           return createHash("sha256").update(`fake-salt\n${moduleId}\n${String(scope ?? "").slice(0, 64)}\n${ip}`).digest("base64url").slice(0, 22);
         },
       },
+      // `ctx.api.links.measured(url)` : hors site réel il n'y a pas de lien court, l'adresse revient telle quelle (comme sur un site où « Compter les clics » est désactivé).
+      links: { measured: async (url) => String(url ?? "") },
       files: filesApi,
       privacy: { declarations: async () => ((!allowed || allowed.has("privacy")) ? structuredClone(privacyDeclarations) : { modules: [], truncated: false }) },
       rawg: { configured: async () => (!allowed || allowed.has("rawg")) && rawgConfigured, cover: async (title) => { calls.rawg.push(title); if (allowed && !allowed.has("rawg")) return { status: "no-key", url: null }; return typeof rawgCover === "function" ? rawgCover(title) : rawgCover; }, candidates: async (title) => { calls.rawgCandidates.push(title); if (allowed && !allowed.has("rawg")) return { status: "no-key", candidates: [] }; return typeof rawgCandidates === "function" ? rawgCandidates(title) : rawgCandidates; } },

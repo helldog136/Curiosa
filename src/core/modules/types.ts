@@ -327,6 +327,14 @@ export type ModuleApi = {
      */
     fingerprint(request: Request | Headers, scope?: string): string;
   };
+  /**
+   * Liens courts du site (cœur après 0.5.0, aucune permission). `measured(url)` renvoie l'adresse à mettre dans votre bouton : si le propriétaire a activé « Compter les clics
+   * sur mes liens » ET qu'il a un lien court ACTIF (non terminé) pour cette destination, le chemin de ce lien court (`/ig`) ; sinon `url` telle quelle. Ne lève jamais, ne lit rien du visiteur.
+   * `{ absolute: true }` : l'adresse complète du lien court (pour un e-mail ou un flux). Seules les adresses http(s) vers un autre site sont concernées.
+   */
+  links: {
+    measured(url: string, opts?: { absolute?: boolean }): Promise<string>;
+  };
   /** Données structurées (schema.org) pour les moteurs de recherche et les assistants IA. */
   seo: {
     /**
