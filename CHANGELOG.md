@@ -11,9 +11,9 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Liens courts
 
-- **Un total par destination.** Dans « Redirections », la nouvelle vue « Par destination » additionne les clics des liens courts qui mènent au même endroit (par exemple /instagram, /ig et /insta). Vous voyez le total d'aujourd'hui, des 7 et 30 derniers jours et depuis le début, les destinations classées, et les liens courts qui y mènent juste dessous.
+- **Un total par destination.** La vue « Par destination » additionne les clics des liens courts qui mènent au même endroit (par exemple /instagram, /ig et /insta). Vous voyez les totaux du jour, de 7 et 30 jours et depuis le début, les destinations classées et leurs liens courts.
 - **Une petite courbe par destination.** Elle montre les 30 derniers jours, avec une phrase qui la décrit et un tableau jour par jour pour la lire sans la voir.
-- **« Compter les clics sur mes liens » (désactivé au départ).** Une fois l'option cochée, un bouton de votre site (menu, en-tête, boutons de réseaux, listes de contenus) qui mène à une adresse pour laquelle vous avez un lien court actif passe par ce lien court. Vos statistiques comptent alors ces clics, sans rien suivre des personnes.
+- **« Compter les clics sur mes liens » (désactivé au départ).** Une fois l'option cochée, un bouton de votre site (menu, en-tête, réseaux, listes de contenus) qui mène à une adresse pour laquelle vous avez un lien court actif passe par ce lien court. Vos statistiques comptent alors ces clics, sans rien suivre des personnes.
 - **Sans surprise.** Un lien désactivé ou terminé n'est jamais utilisé : le bouton garde son adresse d'origine. Les boutons dessinés par une extension ne changent pas, sauf si elle l'a prévu.
 - **Pour vos assistants IA.** Un nouvel outil en lecture seule, « Liens courts : totaux par destination », leur donne les mêmes chiffres. Il ne contient aucune donnée personnelle.
 

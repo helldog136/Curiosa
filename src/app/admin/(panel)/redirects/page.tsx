@@ -160,12 +160,13 @@ export default async function RedirectsPage({ searchParams }: { searchParams: Pr
         <h2 id="redirects-measure" className="text-lg font-semibold">{t("redirects.measure.title")}</h2>
         {canChange ? (
           <ActionForm action={saveMeasureLinks} submitLabel={t("action.save")} secondary className="space-y-3">
-            <Checkbox name="measureLinks" label={t("redirects.measure.label")} help={t("redirects.measure.help")} defaultChecked={measure} />
+            <p className="max-w-[70ch] text-[15px] leading-6 text-muted">{t("redirects.measure.help")}</p>
+            <Checkbox name="measureLinks" label={t("redirects.measure.label")} defaultChecked={measure} />
             {advanced && <p className={ui.help}>{t("redirects.measure.advanced")}</p>}
           </ActionForm>
         ) : (
           <div className="space-y-1.5 text-[15px]">
-            <p className={ui.help}>{t("redirects.measure.help")}</p>
+            <p className="max-w-[70ch] text-muted">{t("redirects.measure.help")}</p>
             <p>{measure ? t("redirects.measure.on") : t("redirects.measure.off")} {t("redirects.measure.adminOnly")}</p>
           </div>
         )}
