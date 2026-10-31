@@ -204,9 +204,9 @@ test("liste : 50 par page, recherche, du plus récent au plus ancien ; export CS
 
 test("outils MCP : lecture accordée d'office, écriture et suppression jamais ; mêmes règles que l'écran", async () => {
   const tools = await redirectsToolProvider.list();
-  assert.deepEqual(tools.map((t) => t.name), ["redirects_list", "redirects_stats", "redirects_create", "redirects_update", "redirects_delete"]);
+  assert.deepEqual(tools.map((t) => t.name), ["redirects_list", "redirects_stats", "redirects_summary", "redirects_create", "redirects_update", "redirects_delete"]);
   const by = Object.fromEntries(tools.map((t) => [t.name, t]));
-  for (const n of ["redirects_list", "redirects_stats"]) { assert.equal(by[n].readOnly, true); assert.equal(by[n].default, true); assert.equal(by[n].destructive, false); }
+  for (const n of ["redirects_list", "redirects_stats", "redirects_summary"]) { assert.equal(by[n].readOnly, true); assert.equal(by[n].default, true); assert.equal(by[n].destructive, false); }
   for (const n of ["redirects_create", "redirects_update", "redirects_delete"]) { assert.equal(by[n].readOnly, false); assert.equal(by[n].default, false, `${n} jamais d'office`); }
   assert.equal(by.redirects_delete.destructive, true); assert.equal(by.redirects_create.destructive, false);
   for (const t of tools) assert.ok(t.source === "core" && t.input && t.description.length > 40);

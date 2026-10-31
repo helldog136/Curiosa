@@ -28,6 +28,7 @@ import { createHash } from "node:crypto";
  *   le vrai cœur peut y ajouter `name`, `id` et `ambiguous`, tous facultatifs). `candidates(title)` (cœur 0.2.10) enregistre dans `ctx.calls.rawgCandidates` ; résultat réglable via `rawgCandidates`
  *   (défaut `{ status: "none", candidates: [] }` ; un candidat est `{ id, name, year, platforms, url }`, 6 au plus dans le vrai cœur)
  * - `ctx.api.visitor.fingerprint(request, scope?)` (cœur 0.2.6) : même règle que le cœur (DERNIÈRE entrée de `X-Forwarded-For`, sinon `X-Real-IP`, sinon « local »), empreinte de 22 caractères avec un sel fixe de test (jamais l'adresse) ; propre à `scope` et au module
+ * - `ctx.api.links.measured(url, opts?)` (cœur après 0.5.0) : renvoie l'adresse telle quelle (il n'y a pas de lien court hors d'un vrai site).
  * - `ctx.api.privacy.declarations()` (permission « privacy », cœur 0.2.6) : renvoie `privacyDeclarations` (option ; défaut `{ modules: [], truncated: false }`) ; sans la permission déclarée : `{ modules: [], truncated: false }`
  * - `ctx.api.files` (permission « files », cœur 0.2.13) : `claim(url)`, `remove(url)`, `owns(url)`, `usage()` avec les MÊMES règles et les mêmes codes de refus que le cœur.
  *   `uploads` = les fichiers que le cœur « vient de recevoir » : `[url | { url, bytes?, by?, ageMs?, owner? }]` (`bytes` 1000 par défaut, `by` = identifiant de la personne qui l'a envoyé, `ageMs` son âge,
