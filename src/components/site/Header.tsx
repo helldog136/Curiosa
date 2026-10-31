@@ -3,6 +3,7 @@ import { makeTranslator } from "@/core/i18n/dictionary";
 import { isDarkBackground, pickLogo } from "@/core/logos";
 import { withLocale } from "@/core/links";
 import { resolvePublicMenu } from "@/core/menuResolve";
+import { loadMeasureMap, measureHref } from "@/core/redirectMeasure";
 import { runSlot } from "@/core/modules/runtime";
 import type { SiteConfig } from "@/core/settings";
 import { safeHref } from "@/core/url";
@@ -28,7 +29,10 @@ export async function Header({ config, locale, appearance }: { config: SiteConfi
   const variants = (light: string | null, darkOne: string | null): LogoVariants | null => (modeSwitch && light && darkOne ? [light, darkOne] : null);
   const wideBoth = variants(config.logos.wide, config.logos.wideDark);
   const iconBoth = variants(config.logos.square, config.logos.squareDark);
-  const local = (path: string) => withLocale(safeHref(path), locale, config.defaultLocale);
+  // « Compter les clics sur mes liens » (Liens courts) : désactivé = carte vide, rien ne change. Voir core/redirectMeasure.ts.
+  const measureMap = await loadMeasureMap();
+  const measured = (href: string) => measureHref(measureMap, href);
+  const local = (path: string) => measured(withLocale(safeHref(path), locale, config.defaultLocale));
 
   // Le menu que la personne a composé (pages, extensions, contenus, raccourcis, liens, sous-menus), dans la langue du visiteur ; puis les liens que des modules ajoutent
   // eux-mêmes par l'emplacement « nav.items ». Aucune page n'entre au menu sans que la personne l'ait décidé (voir core/menu.ts).
@@ -37,8 +41,8 @@ export async function Header({ config, locale, appearance }: { config: SiteConfi
   const socials = config.header.socials ? await loadSocialLinks(locale) : [];
 
   const items: NavItem[] = [
-    ...composed,
-    ...moduleNav.flatMap((b) => (b.type === "links" ? b.items.map((i) => ({ label: i.label, href: safeHref(i.href), news: false })) : [])),
+    ...composed.map((i) => ({ ...i, href: measured(i.href), ...(i.children ? { children: i.children.map((c) => ({ ...c, href: measured(c.href) })) } : {}) })),
+    ...moduleNav.flatMap((b) => (b.type === "links" ? b.items.map((i) => ({ label: i.label, href: measured(safeHref(i.href)), news: false })) : [])),
   ];
 
   const dot = (
@@ -57,7 +61,7 @@ export async function Header({ config, locale, appearance }: { config: SiteConfi
   const socialsEl = socials.length > 0 && (
     <ul aria-label={t("site.socials")} className="flex items-center gap-3" data-testid="header-socials" data-skin-part="socials">
       {socials.map((s) => (
-        <li key={s.href}><a href={s.href} data-skin-part="link" rel={s.rel} referrerPolicy={s.referrerPolicy ?? undefined} target={s.target} aria-label={s.label} title={s.label} className="inline-flex text-muted hover:text-fg"><EntryIcon icon={s.icon} className="h-5 w-5" /></a></li>
+        <li key={s.href}><a href={measured(s.href)} data-skin-part="link" rel={s.rel} referrerPolicy={s.referrerPolicy ?? undefined} target={s.target} aria-label={s.label} title={s.label} className="inline-flex text-muted hover:text-fg"><EntryIcon icon={s.icon} className="h-5 w-5" /></a></li>
       ))}
     </ul>
   );

@@ -1,4 +1,5 @@
 import { prisma } from "./db";
+import { invalidateRedirectMeasure } from "./redirectMeasure";
 
 /**
  * PORTE DES LIENS TERMINÉS. Une page de Next ne peut pas répondre « 410 » : c'est le proxy (src/proxy.ts) qui détourne vers la page « lien terminé » (api/redirect-gone)
@@ -18,6 +19,7 @@ const gate = (): Gate => (g.curiosaRedirectGate ??= { map: new Map(), at: 0, ttl
 export function invalidateRedirectGate(): void {
   const s = gate();
   s.at = 0;
+  invalidateRedirectMeasure();
 }
 
 async function refresh(): Promise<void> {
