@@ -7,6 +7,22 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.5.1
+
+### Liens courts
+
+- **Un total par destination.** La vue « Par destination » additionne les clics des liens courts qui mènent au même endroit (par exemple /instagram, /ig et /insta). Vous voyez les totaux du jour, de 7 et 30 jours et depuis le début, les destinations classées et leurs liens courts.
+- **Une petite courbe par destination.** Elle montre les 30 derniers jours, avec une phrase qui la décrit et un tableau jour par jour pour la lire sans la voir.
+- **« Compter les clics sur mes liens » (désactivé au départ).** Une fois l'option cochée, un bouton de votre site (menu, en-tête, réseaux, listes de contenus) qui mène à une adresse pour laquelle vous avez un lien court actif passe par ce lien court. Vos statistiques comptent alors ces clics, sans rien suivre des personnes.
+- **Sans surprise.** Un lien désactivé ou terminé n'est jamais utilisé : le bouton garde son adresse d'origine. Les boutons dessinés par une extension ne changent pas, sauf si elle l'a prévu.
+- **Pour vos assistants IA.** Un nouvel outil en lecture seule, « Liens courts : totaux par destination », leur donne les mêmes chiffres. Il ne contient aucune donnée personnelle.
+
+### Pour les développeurs
+
+- **`ctx.api.links.measured(url, { absolute? })`** : renvoie le lien court actif de la destination quand « Compter les clics sur mes liens » est activé, sinon `url` telle quelle. Aucune permission ; le faux contexte de `testsupport` renvoie l'adresse inchangée.
+- **Outil MCP `redirects_summary`** (lecture, accordé d'office) : totaux par destination, 200 liens et 30 jours au plus, filtre `destination`. `redirects_stats` ne change pas.
+- **Aucune migration** : le réglage `redirects.measureLinks` est un réglage ordinaire (déjà dans les sauvegardes) ; les totaux sont calculés depuis `Redirect` et `RedirectDay`.
+
 ## 0.5.0
 
 ### Pages d'overlay
