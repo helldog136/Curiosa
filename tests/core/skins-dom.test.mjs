@@ -16,7 +16,7 @@ function files(dir) {
     return e.isDirectory() ? files(p) : /\.tsx$/.test(e.name) ? [p] : [];
   });
 }
-const SITE = [...files("src/components/site"), ...files("src/app/(site)")];
+const SITE = [...files("src/components/site"), ...files("src/components/brand"), ...files("src/app/(site)")];
 const source = SITE.map((f) => [f, read(f)]);
 const all = source.map(([, s]) => s).join("\n");
 

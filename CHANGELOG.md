@@ -7,6 +7,22 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## Prochaine version (non publiée)
+
+### Apparence du site
+
+- **Le nom « Curiosa » du pied de page ne change plus avec le skin.** Dans « Propulsé par Curiosa », le nom garde partout la même police, la même casse, le même espacement et le même soulignement, quel que soit le skin choisi. Seule sa couleur suit le pied de page, pour que le texte reste lisible même sur un fond sombre.
+- **Pour les créatrices et créateurs de skins.** Un skin qui essaie de changer l'allure de ce nom est refusé, avec un message qui dit quoi retirer. Les skins déjà installés continuent de s'afficher normalement ; leurs règles sur ce nom sont simplement ignorées.
+- **Le même nom dans l'administration.** Le crédit du bas de l'administration utilise maintenant exactement le même nom que le site public.
+
+### Pour les développeurs
+
+- **Pièce verrouillée `brand-mark`** (additive : pas de nouveau `skinContract`). Le composant `CuriosaMark` (`src/components/brand/CuriosaMark.tsx`) rend le lien du crédit avec `data-skin-part="brand-mark"` et `data-curiosa-wordmark` ; le pied public et le pied de l'administration l'utilisent. `docs/skins-parts-baseline.json` est à régénérer à la publication.
+- **Assainisseur** : nouveau code `kit-brand-restyled` (erreur) pour toute déclaration de police, casse, espacement ou soulignement qui atteint le mot (pièce, `credit a`, ou propriété héritée posée sur `credit`). À la relecture d'un skin installé (`reading`), c'est un avertissement et la déclaration est retirée.
+- **Règle du cœur** `BRAND_MARK_CSS` (`src/core/skins/brand.ts`) émise après la feuille du skin, en `!important` ; la police vient de `--curiosa-wordmark-font` (option `variable` de `wordmark.ts`).
+- **Kit** : `skin:check --visual` compare le style calculé du mot sous le skin et sous basic (`kit-brand-changed`) et vérifie que la police de marque est chargée (`kit-brand-font-missing`). Le banc d'essai chargeait un double sans police : il embarque maintenant le vrai fichier `curiosa-wordmark.woff2`.
+- **Les cinq skins du catalogue** posent encore `text-transform` / `letter-spacing` sur `credit` ou `credit a` : ils sont refusés à l'installation par ce cœur tant que `curiosa-skins` n'a pas publié une version corrective.
+
 ## 0.6.0 — 2026-11-01
 
 **En bref.** Cette version rend l'administration plus simple à lire et à manier. Vous pouvez chercher dans une liste en tapant, activer ou désactiver d'un clic avec un interrupteur, lire des tableaux plus clairs, choisir une période ou une date de fin dans un seul champ, et garder les réglages rares repliés sous « Plus d'options ». La page des raccourcis de liens est entièrement refaite avec ces outils. Chaque extension a maintenant un onglet « Historique », et le « Journal d'audit » réunit tout ce qui se passe sur le site, avec des filtres. Rien ne change pour vos visiteuses et visiteurs, et vos réglages actuels sont conservés.

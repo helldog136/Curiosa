@@ -113,6 +113,7 @@ export async function visualCheck(st, options = {}) {
         const { page } = await visit(ctx, bs, def, `?layout=${skinSite.look.headerLayout}`);
         const data = await page.evaluate(inpage.collectPage);
         data.covered = await page.evaluate(inpage.findCovered);
+        data.brand = await page.evaluate(inpage.brandStyle);
         baseline.set(`${width}|${def.id}`, data);
         measure(basicBag, data, def, width, "dark");
         await page.close();
@@ -129,6 +130,7 @@ export async function visualCheck(st, options = {}) {
           if (status !== (def.status ?? 200)) bag.add("kit-page-error", { page: pageLabel(def), status });
           const data = await page.evaluate(inpage.collectPage);
           data.covered = await page.evaluate(inpage.findCovered);
+          data.brand = await page.evaluate(inpage.brandStyle);
           const base = baseline.get(`${width}|${def.id}`);
           compare(bag, base, data, def, width, mode);
           measure(bag, data, def, width, mode);
@@ -169,7 +171,7 @@ export async function visualCheck(st, options = {}) {
     if (options.basicRegression !== false) issues.push(...(await basicRegression(browser, widths.filter((w) => DEFAULT_WIDTHS.includes(w)), pages, newCtx, visit, servers)));
 
     const basicKeys = new Set([...basicBag.map.values()].map((e) => `${e.code}|${JSON.stringify(e.rest)}|${e.page?.en ?? ""}`));
-    issues.push(...bag.issues((e) => basicKeys.has(`${e.code}|${JSON.stringify(e.rest)}|${e.page?.en ?? ""}`) && !/^kit-(hidden|text-changed|structure-changed|injected-text|covered|offscreen|font|external|request|page-error|mode-switch|focus-missing)/.test(e.code)));
+    issues.push(...bag.issues((e) => basicKeys.has(`${e.code}|${JSON.stringify(e.rest)}|${e.page?.en ?? ""}`) && !/^kit-(hidden|text-changed|structure-changed|injected-text|covered|offscreen|brand|font|external|request|page-error|mode-switch|focus-missing)/.test(e.code)));
   } catch (e) {
     issues.push(kitIssue("kit-browser-unavailable", { reason: String(e?.stack ?? e).split("\n").slice(0, 2).join(" ").slice(0, 200) }));
   } finally {
@@ -208,9 +210,31 @@ function compare(bag, base, data, def, width, mode) {
     if (!now || !now.visible) bag.add("kit-hidden", { what: f.key, page: p, width, mode });
     else if (!now.fixed && (now.right < 0 || now.left > data.scroll.innerWidth + 1)) bag.add("kit-offscreen", { what: f.key, page: p, width, mode });
   }
+  brandCheck(bag, base.brand, data.brand, p, width, mode);
   for (const t of data.injected) bag.add("kit-injected-text", { text: t, page: p, width, mode });
   const baseCovered = new Set(base.covered);
   for (const c of data.covered) if (!baseCovered.has(c)) bag.add("kit-covered", { what: c, page: p, width, mode });
+}
+
+const BRAND_LABEL = {
+  fontFamily: { fr: "police", en: "font" }, fontWeight: { fr: "graisse", en: "weight" }, fontStyle: { fr: "style", en: "style" }, textTransform: { fr: "casse", en: "case" },
+  letterSpacing: { fr: "espacement des lettres", en: "letter spacing" }, wordSpacing: { fr: "espacement des mots", en: "word spacing" }, fontVariant: { fr: "variante de police", en: "font variant" },
+  fontFeatureSettings: { fr: "options de police", en: "font features" }, textDecorationLine: { fr: "soulignement", en: "underline" }, textDecorationStyle: { fr: "trait du soulignement", en: "underline style" },
+  textUnderlineOffset: { fr: "décalage du soulignement", en: "underline offset" }, relativeSize: { fr: "taille relative", en: "relative size" },
+};
+
+/**
+ * Le nom « Curiosa » (pied de page) sous le skin, contre basic : même style CALCULÉ (famille, graisse, style, casse, espacements, soulignement, taille relative), donc l'héritage
+ * est couvert (une casse posée sur le crédit, une règle large `footer a`…). La police de marque doit aussi être RÉELLEMENT chargée, sinon la comparaison ne prouverait rien
+ * (c'est ce qui arrivait quand le banc n'embarquait pas Fraunces : le lien retombait sur la police du pied).
+ */
+function brandCheck(bag, base, now, p, width, mode) {
+  if (!base || !now) return;
+  if (!base.fontLoaded || !now.fontLoaded) bag.add("kit-brand-font-missing", { page: p });
+  const diff = Object.keys(BRAND_LABEL).filter((k) => base[k] !== now[k]);
+  if (!diff.length) return;
+  const what = { fr: diff.map((k) => `${BRAND_LABEL[k].fr} (${base[k]} → ${now[k]})`).join(", "), en: diff.map((k) => `${BRAND_LABEL[k].en} (${base[k]} → ${now[k]})`).join(", ") };
+  bag.add("kit-brand-changed", { what, page: p, width, mode });
 }
 
 /** Les mesures qui ne demandent pas de comparaison : défilement, texte coupé, cibles, tailles, interligne, ordre de tabulation. */
