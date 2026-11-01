@@ -3,6 +3,7 @@ import { MODULE_API_VERSION } from "../config";
 import { COLOR_TOKENS } from "../color";
 import { groupIssues } from "./groups";
 import { MULTI_VALUE_RE, siteDefaultRef } from "./settingValues";
+import { checkDateTime, parsePeriod } from "../adminkit/values";
 import { PLATFORM_PATTERN } from "./platform";
 import { MAX_MODULE_RIGHTS, OPEN, RIGHT_ID_RE } from "../auth/rights";
 import { SERVICE_RE } from "./serviceVersions";
@@ -22,7 +23,7 @@ const choiceSource = z.discriminatedUnion("kind", [
 export const settingField = z.object({
   key: z.string().regex(/^[a-zA-Z][a-zA-Z0-9_]{0,40}$/),
   label: localized,
-  type: z.enum(["text", "textarea", "url", "link", "number", "boolean", "select", "color", "secret", "image", "video", "choice", "multichoice"]),
+  type: z.enum(["text", "textarea", "url", "link", "number", "boolean", "select", "color", "secret", "image", "video", "choice", "multichoice", "period", "datetime", "duration"]),
   help: localized.optional(),
   default: z.union([z.string(), z.number(), z.boolean()]).optional(),
   options: z.array(z.object({ value: z.string(), label: localized })).max(50).optional(),
@@ -30,6 +31,14 @@ export const settingField = z.object({
   defaultValues: z.array(z.string().regex(MULTI_VALUE_RE)).max(50).optional(),
   minChoices: z.number().int().min(0).max(50).optional(),
   maxChoices: z.number().int().min(1).max(50).optional(),
+  /** (0.6.0) Bornes et pas d'un `number` ou d'une `duration` (secondes), unité d'un `number`, exemple, réglage rare, affichage en boutons : un cœur ancien les ignore (mais refuse les types `period`, `datetime`, `duration`). */
+  min: z.number().finite().optional(),
+  max: z.number().finite().optional(),
+  step: z.number().finite().positive().optional(),
+  unit: localized.optional(),
+  example: localized.optional(),
+  rare: z.boolean().optional(),
+  display: z.enum(["segmented"]).optional(),
   translatable: z.boolean().optional(),
   advanced: z.boolean().optional(),
   /** Réglage facultatif : le laisser vide ne met pas l'extension « à configurer » (sinon, un texte, une adresse ou un secret vide sans valeur par défaut est à remplir). */
@@ -77,6 +86,27 @@ export const settingField = z.object({
   } else {
     for (const k of ["defaultValues", "minChoices", "maxChoices"] as const) if (f[k] !== undefined) ctx.addIssue({ code: "custom", message: `${k} is only for a multichoice setting` });
   }
+  // Contrôles de la 0.6.0 : chacun n'a de sens que pour son type.
+  if (f.type !== "number" && f.type !== "duration") for (const k of ["min", "max", "step"] as const) if (f[k] !== undefined) ctx.addIssue({ code: "custom", message: `${k} is only for a number or duration setting` });
+  if (f.type !== "number" && f.unit !== undefined) ctx.addIssue({ code: "custom", message: "unit is only for a number setting (a duration chooses its own unit)" });
+  if (f.min !== undefined && f.max !== undefined && f.min > f.max) ctx.addIssue({ code: "custom", message: "min cannot exceed max" });
+  if (f.type === "duration") {
+    if (f.step !== undefined) ctx.addIssue({ code: "custom", message: "a duration has no step (it is a whole number of seconds)" });
+    for (const k of ["min", "max"] as const) if (f[k] !== undefined && (!Number.isInteger(f[k]) || (f[k] as number) < 0)) ctx.addIssue({ code: "custom", message: `${k} of a duration is a whole number of seconds, 0 or more` });
+  }
+  if (f.type === "period" || f.type === "datetime" || f.type === "duration") {
+    if (f.translatable) ctx.addIssue({ code: "custom", message: `a ${f.type} setting cannot be translatable` });
+    if (f.default !== undefined) {
+      const ok = f.type === "period" ? typeof f.default === "string" && parsePeriod(f.default).ok : f.type === "datetime" ? typeof f.default === "string" && checkDateTime(f.default) : typeof f.default === "number" && Number.isInteger(f.default) && f.default >= 0;
+      if (!ok) ctx.addIssue({ code: "custom", message: `the default of a ${f.type} setting must be ${f.type === "period" ? "like \"11-01/11-30\" (every year) or \"2026-11-01/2026-11-30\"" : f.type === "datetime" ? "like \"2026-11-30T18:30\"" : "a whole number of seconds"}` });
+    }
+  }
+  if (f.display === "segmented") {
+    const n = (f.options ?? []).length;
+    if (f.type !== "select") ctx.addIssue({ code: "custom", message: "display \"segmented\" is only for a select setting" });
+    else if (n < 2 || n > 4) ctx.addIssue({ code: "custom", message: "display \"segmented\" needs 2 to 4 options (use the default list beyond that)" });
+  }
+  if (f.rare && f.advanced) ctx.addIssue({ code: "custom", message: "a setting is either advanced (hidden in the simple admin) or rare (folded under « More options »), not both" });
   // Une couleur peut suivre le thème du site : default "theme:<jeton>". Rien d'autre n'est permis comme référence.
   if (typeof f.default === "string" && f.default.startsWith("theme:")) {
     if (f.type !== "color") ctx.addIssue({ code: "custom", message: "only a color setting can default to a theme token" });
