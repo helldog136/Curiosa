@@ -1,5 +1,6 @@
 import type { Translator } from "@/core/i18n/dictionary";
 import type { AddItem } from "@/core/modules/ficheView";
+import type { GalleryLabels } from "./PreviewGallery";
 import { ui } from "./ui";
 
 /**
@@ -66,4 +67,9 @@ export function InstallBlockedButton({ label }: { label: string }) {
       {label}
     </button>
   );
+}
+
+/** Les textes de la galerie (client) : traduits ici, sur le serveur, puis passés tels quels. `{n}`, `{total}` et `{caption}` sont remplis par la galerie. */
+export function galleryLabels(t: Translator): GalleryLabels {
+  return { title: t("fiche.gallery.title"), open: t("fiche.gallery.open"), close: t("fiche.gallery.close"), prev: t("fiche.gallery.prev"), next: t("fiche.gallery.next"), count: t("fiche.gallery.count"), sample: t("fiche.gallery.sample") };
 }

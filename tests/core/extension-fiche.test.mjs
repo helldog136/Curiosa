@@ -141,18 +141,85 @@ test("galerie : la première image est plus grande à partir de trois ; sans ima
   assert.doesNotMatch(src, /animate-|transition-transform|duration-/, "aucune animation");
 });
 
-/* ───────────── la fiche : l'ordre ───────────── */
+/* ───────────── la fiche entière : ordre, avec / sans visuels, états de la barre ───────────── */
 
-test("fiche avant installation : description, puis visuels, puis ce qu'il ajoute, puis présentation, puis détails techniques, puis la barre d'installation", () => {
-  const view = read("src/app/admin/(panel)/extensions/add/details/DetailsView.tsx");
-  const at = (s) => { const i = view.indexOf(s); assert.ok(i >= 0, s); return i; };
-  const order = [at("L(entry.description)"), at("<PreviewGallery"), at("<AddsList"), at('t("catalogue.presentation")'), at("<TechnicalDetails"), at("<InstallBar")];
-  assert.deepEqual(order, [...order].sort((a, b) => a - b));
+const { ExtensionFiche } = await import("@/components/admin/ExtensionFiche");
+const { galleryLabels } = await import("@/components/admin/FicheParts");
+const props = (over = {}) => ({
+  t: tr, embedded: true, advanced: false, origin: "official", name: "Commandes", icon: "🧰", version: "1.2.0", author: "Ada", license: "MIT",
+  description: "Une page de commandes pour votre chaîne.", noModule: false, failed: false, keptCount: 0, gallery: items, galleryLabels: galleryLabels(tr),
+  adds: [{ kind: "page", icon: "🌐" }, { kind: "tools", icon: "🤖", n: 2 }], readme: h("article", null, "Le README"), hasManifest: true, perms: ["storage", "routes"], privacy: "Le pseudo est gardé.",
+  plan: h("div", { "data-testid": "deps-plan" }, "Installe aussi Contacts"), summary: "Garde des données de votre public · Demande 2 autorisations · Installe aussi Contacts",
+  currentCore: "0.6.0", incompatible: false, bar: { kind: "ready", confirm: false }, action: h("button", { type: "button", "data-testid": "install-button" }, "Installer sur mon site"), ...over,
+});
+
+test("fiche : description, visuels, ce qu'il ajoute, présentation, PUIS détails techniques repliés, PUIS la barre d'installation", () => {
+  const out = html(h(ExtensionFiche, props()));
+  const at = (needle) => { const i = out.indexOf(needle); assert.ok(i >= 0, needle); return i; };
+  const order = [at("Une page de commandes pour votre chaîne."), at('data-testid="preview-gallery"'), at('data-testid="module-adds"'), at("Le README"), at('data-testid="technical-details"'), at('data-testid="install-bar"')];
+  assert.deepEqual(order, [...order].sort((x, y) => x - y));
   // Rien de technique avant les détails : ni les autorisations, ni les données, ni les dépendances, ni la version.
-  const before = view.slice(0, at("<TechnicalDetails"));
-  for (const tech of ["catalogue.asks.friendly", "catalogue.privacy.title", "<DependencyPlanBox", "fiche.tech.versionTitle"]) assert.ok(!before.includes(tech), `${tech} doit être sous « Détails techniques »`);
-  assert.match(view, /<InstallBar [^>]*embedded=\{embedded\}/, "même barre en page entière et en fenêtre");
+  const before = out.slice(0, at('data-testid="technical-details"'));
+  for (const tech of ["module-asks", "module-privacy", "deps-plan", "Version et compatibilité", "Le pseudo est gardé."]) assert.ok(!before.includes(tech), `${tech} doit être sous « Détails techniques »`);
+  const details = out.slice(at('data-testid="technical-details"'), at('data-testid="install-bar"'));
+  for (const tech of ["module-asks", "module-privacy", "deps-plan", "Version et compatibilité", "Le pseudo est gardé.", "Source"]) assert.ok(details.includes(tech), `${tech} dans les détails`);
+  assert.match(out, /<details id="details-techniques"(?![^>]*\bopen)/, "repliés");
+  assert.match(out, /Garde des données de votre public · Demande 2 autorisations · Installe aussi Contacts/, "résumé d'une ligne");
+  assert.equal((out.match(/data-testid="install-button"/g) ?? []).length, 1, "un seul bouton principal");
+});
+
+test("fiche sans visuel : aucun bloc vide, aucun titre « À quoi cela ressemble », le reste est identique", () => {
+  const out = html(h(ExtensionFiche, props({ gallery: [] })));
+  assert.doesNotMatch(out, /preview-gallery|À quoi cela ressemble|<img|<dialog/);
+  assert.match(out, /Ce que ce module ajoute/);
+  const none = html(h(ExtensionFiche, props({ gallery: [], adds: [], readme: null })));
+  assert.doesNotMatch(none, /module-adds|Ce que ce module ajoute/, "rien d'ajouté à dire : pas de bloc");
+  assert.match(none, /Ce module n&#x27;a pas de README\./);
+  assert.match(none, /data-testid="install-bar"/, "la barre d'installation reste");
+});
+
+test("barre d'installation d'une fiche : version et « installation possible » quand tout va bien ; module non vérifié : avertissement + case dans la barre", () => {
+  const ok = html(h(ExtensionFiche, props()));
+  assert.match(ok, /Installation possible · version 1\.2\.0/);
+  assert.match(ok, /Elle sera installée éteinte/);
+  const noVersion = html(h(ExtensionFiche, props({ version: undefined })));
+  assert.match(noVersion, /id="install-status"[^>]*>Installation possible</);
+  const extra = html(h(ExtensionFiche, props({ origin: "extra", bar: { kind: "ready", confirm: true } })));
+  assert.match(extra, /data-testid="extra-warning"/);
+  assert.match(extra, /Ce module n&#x27;est pas vérifié\. Cochez la case/);
+  assert.doesNotMatch(extra, /Elle sera installée éteinte/);
+  const custom = html(h(ExtensionFiche, props({ origin: "custom", bar: { kind: "ready", confirm: true } })));
+  assert.match(custom, /data-testid="custom-warning"/);
+});
+
+test("barre bloquée : bouton inactif, raison écrite avec son lien ; prérequis manquant : détails techniques ouverts", () => {
+  const deps = html(h(ExtensionFiche, props({ bar: { kind: "blocked", reason: "deps" }, firstProblem: "Il manque « Contacts », qui n'est pas dans le catalogue." })));
+  assert.match(deps, /data-testid="install-blocked"[^>]*/);
+  assert.match(deps, / disabled=""/);
+  assert.match(deps, /Installation impossible pour l&#x27;instant\. Il manque « Contacts »[^<]*<a href="#details-techniques"[^>]*>Voir le détail</);
+  assert.match(deps, /<details id="details-techniques"[^>]* open=""/, "le lien arrive sur des détails ouverts");
+  assert.doesNotMatch(deps, /data-testid="install-button"/);
+  const core = html(h(ExtensionFiche, props({ bar: { kind: "blocked", reason: "core" }, needsNewerCore: "0.9.0" })));
+  assert.match(core, /Demande Curiosa 0\.9\.0 ou plus \(vous avez 0\.6\.0\)[^<]*<a href="\/admin\/updates"[^>]*>Mettre à jour le site</);
+  assert.match(html(h(ExtensionFiche, props({ bar: { kind: "blocked", reason: "incompatible" }, incompatible: true }))), /Incompatible avec cette version du framework/);
+  assert.match(html(h(ExtensionFiche, props({ bar: { kind: "blocked", reason: "read" }, failed: true, gallery: [], readme: null }))), /ce module n&#x27;a pas pu être lu/);
+});
+
+test("fiche d'un module déjà installé : la barre renvoie vers sa page ; pour qui ne peut pas installer, pas de barre", () => {
+  const installed = html(h(ExtensionFiche, props({ bar: { kind: "installed" }, manageHref: "/admin/modules/demo-mod" })));
+  assert.match(installed, /Déjà sur votre site/);
+  assert.match(installed, /<a href="\/admin\/modules\/demo-mod"[^>]*>Gérer cette extension</);
+  assert.doesNotMatch(installed, /install-button|install-blocked/);
+  assert.doesNotMatch(html(h(ExtensionFiche, props({ bar: { kind: "hidden" } }))), /install-bar/);
+});
+
+test("fiche : la source est détaillée en mode avancé seulement ; l'ordre est le même en page entière (retour au catalogue) qu'en fenêtre", () => {
+  assert.doesNotMatch(html(h(ExtensionFiche, props({ source: "https://github.com/o/r#v1" }))), /github\.com/);
+  assert.match(html(h(ExtensionFiche, props({ source: "https://github.com/o/r#v1", advanced: true }))), /github\.com\/o\/r#v1/);
+  const view = read("src/app/admin/(panel)/extensions/add/details/DetailsView.tsx");
+  assert.match(view, /<ExtensionFiche /);
   assert.equal((view.match(/<InstallButton /g) ?? []).length, 1, "un seul bouton d'installation principal");
+  assert.match(read("src/app/admin/(panel)/extensions/add/@modal/(.)details/page.tsx"), /<DetailsView id=\{id\} repo=\{repo\} embedded \/>/);
 });
 
 test("fiche d'un module installé : même ordre, détails techniques repliés sous les réglages", () => {

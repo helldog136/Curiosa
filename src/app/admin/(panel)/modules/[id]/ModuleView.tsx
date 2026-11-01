@@ -23,8 +23,8 @@ import { ModuleLinksBox } from "@/components/admin/ModuleLinksBox";
 import { addInstance, uninstallModuleAction } from "../actions";
 import { EXTENSIONS_HREF } from "@/core/modules/extensionsLinks";
 import { PendingButton } from "@/components/admin/PendingButton";
-import { AddsList, TechnicalDetails } from "@/components/admin/FicheParts";
-import { PreviewGallery, type GalleryItem, type GalleryLabels } from "@/components/admin/PreviewGallery";
+import { AddsList, TechnicalDetails, galleryLabels } from "@/components/admin/FicheParts";
+import { PreviewGallery, type GalleryItem } from "@/components/admin/PreviewGallery";
 import { techSummary, whatItAdds } from "@/core/modules/ficheView";
 import { previewUrl, readInstalledPreviews } from "@/core/modules/previewServe";
 
@@ -68,7 +68,6 @@ export async function ModuleView({ id, query, embedded = false }: { id: string; 
   const m = mod?.manifest;
   const images = m?.previews?.length ? await readInstalledPreviews(row.id) : [];
   const galleryItems: GalleryItem[] = images.map((i) => ({ src: previewUrl({ installed: row.id }, i.index, row.version), width: i.width, height: i.height, caption: L(i.decl.caption), alt: L(i.decl.alt), typeLabel: t(`fiche.gallery.type.${i.decl.type}`) }));
-  const galleryLabels: GalleryLabels = { title: t("fiche.gallery.title"), open: t("fiche.gallery.open"), close: t("fiche.gallery.close"), prev: t("fiche.gallery.prev"), next: t("fiche.gallery.next"), count: t("fiche.gallery.count"), sample: t("fiche.gallery.sample") };
   const perms = (m?.permissions ?? []).filter((p) => t(`perm.${p}`) !== `perm.${p}`);
   const sum = m ? techSummary(m, perms) : null;
   const techSummaryText = sum ? [t(`fiche.tech.keeps.${sum.keeps}`), sum.asks === 0 ? t("fiche.tech.asks.none") : t("fiche.tech.asks", { n: sum.asks })].join(" · ") : "";
@@ -103,7 +102,7 @@ export async function ModuleView({ id, query, embedded = false }: { id: string; 
         )}
       </section>
 
-      <PreviewGallery items={galleryItems} labels={galleryLabels} />
+      <PreviewGallery items={galleryItems} labels={galleryLabels(t)} />
       {m && <AddsList items={whatItAdds(m, L)} t={t} />}
 
       <ModuleLinksBox id={row.id} name={name} view={links} t={t} names={names} advanced={advanced} isOwner={isOwner} />

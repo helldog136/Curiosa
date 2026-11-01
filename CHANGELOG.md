@@ -18,7 +18,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Pour les développeurs
 
-- **Visuels de la fiche (`previews`).** Clé facultative de `module.json` : 6 visuels au plus, WebP ou PNG de 150 Ko, légende et texte alternatif en `fr` et `en`. Aucun `minCore` n'est à déclarer. Le kit ajoute `manifest.previews` ; voir `docs/MODULES.md`.
+- **Visuels de la fiche (`previews`).** Clé facultative du manifeste : 6 images au plus (WebP ou PNG de 150 Ko), légende et texte alternatif en `fr` et `en`, sans `minCore` à déclarer. Le kit ajoute l'exigence `manifest.previews`.
 - **Service des images.** `GET /api/admin/extension-previews?id|repo|installed=…&n=0..5`, réservé à l'administration : le cœur lit l'image (dépôt ou dossier du module), vérifie type réel, poids et dimensions, puis la sert (cache privé, 12 Mo de mémoire au plus pour toutes les images lues).
 - **Règle R31** de `docs/ERGONOMIE-ADMIN.md` : la fiche d'une extension montre ce que ça fait avant les détails techniques, avec une barre d'installation toujours visible.
 
