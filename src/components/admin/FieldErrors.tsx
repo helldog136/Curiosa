@@ -72,7 +72,8 @@ export function useFieldErrorsDom(form: RefObject<HTMLElement | null>, errors: F
       const icon = document.createElement("span"); icon.setAttribute("aria-hidden", "true"); icon.textContent = ICON;
       const text = document.createElement("span"); text.className = "min-w-0 [overflow-wrap:anywhere]"; text.textContent = message;
       p.append(icon, text);
-      el.after(p);
+      // Champ mot de passe : le message va sous l'ensemble « champ + bouton Afficher », pas à l'intérieur.
+      (el.closest("[data-password-wrap]") ?? el).after(p);
       const before = el.getAttribute("aria-describedby");
       el.setAttribute("aria-invalid", "true");
       el.setAttribute("aria-describedby", [before, id].filter(Boolean).join(" "));
