@@ -96,7 +96,8 @@ la langue courante, ou la valeur par défaut.
 | Type | Pour |
 |---|---|
 | `text`, `textarea`, `url` | texte court, long, adresse |
-| `number`, `boolean`, `select` | nombre, case à cocher, liste (`options`) |
+| `number`, `boolean`, `select` | nombre (cœur 0.6.0 : avec `min`, `max`, `step`, `unit`), case à cocher, liste (`options`, ou `display: "segmented"` pour 2 à 4 boutons) |
+| `period`, `datetime`, `duration` | (cœur 0.6.0, `minCore` 0.6.0) une période (« Du 1er novembre au 30 novembre, chaque année »), une date et une heure, une durée : **un seul champ** chacune, jamais un champ par composant |
 | `color` | couleur `#RRGGBB` ; avec `"default": "theme:accent"` elle **suit le thème du site** tant que l'administrateur n'en choisit pas |
 | `image` | téléversement ou adresse ; l'administrateur peut **recadrer** les images téléversées (voir « Images recadrées » plus bas) |
 | `video` | téléversement d'une vidéo MP4 ou WebM (50 Mo au plus), **réservée aux fichiers du site** (`/uploads/…`) ; vérifiez la valeur avant de l'utiliser, comme le fait le module « Bandeau d'accueil » |
@@ -110,7 +111,7 @@ la langue courante, ou la valeur par défaut.
 **Le contrat** : mettez la valeur **telle quelle** dans un `src` (`<img src>`, `background-image`, bloc `image`, `og:image`…). Le serveur répond alors avec la **version cadrée** (WebP, 1 600 px au plus), fabriquée à la demande et gardée en cache ; si elle ne peut pas l'être, il répond avec l'original, donc l'image s'affiche toujours. Ne **découpez pas** la valeur, ne retirez pas le `?c=…` (ce serait perdre le cadrage de l'administrateur) et ne la comparez pas à une expression `^/uploads/[0-9a-f-]{36}\.png$` : acceptez un éventuel `?c=…`. Si vous **validez** la valeur, utilisez le même motif que le cœur (`UPLOADED_RASTER` de `core/imageCrop.ts`, ou `ctx.api.site()` pour les logos). Pour **réserver la place** avant le chargement, le ratio d'un cadrage est le premier nombre de `c` (`1.7778` = 16:9) ; `o` veut dire « le ratio de l'image d'origine » (inconnu d'avance). Ne supposez plus 16:9 : une image peut être carrée, verticale, panoramique. Pour une image de partage (Open Graph), le cœur sait déjà en fabriquer une 1,91:1 (`&s=1` ajouté à la valeur) ; vous n'avez rien à faire si vous passez par `socialMeta`. Les images distantes (https), les GIF et les SVG ne se cadrent pas : leur valeur ne change jamais.
 
 Attributs : `translatable: true` (une valeur par langue du site), `advanced: true` (masqué en admin simplifié — **donnez toujours une valeur par défaut**),
-`optional: true` (réglage facultatif : vide, il ne met pas l'extension « À configurer » — sans cela, un texte, une adresse, un lien ou un secret vide et sans valeur par défaut est signalé à l'administrateur comme « à remplir », avec son libellé), `group: "appearance"` (rangé sous « Apparence de ce module »). Les jetons de thème permis pour `theme:` sont `accent`, `accentFg`, `bg`, `surface`, `fg`, `muted`, `line`.
+`rare: true` (cœur 0.6.0 : rangé sous « Plus d'options », replié), `example` (cœur 0.6.0 : « Par exemple : … » sous le champ), `min` / `max` / `step` / `unit` (cœur 0.6.0 : nombre borné avec son unité), `display: "segmented"` (cœur 0.6.0 : 2 à 4 choix en boutons), `optional: true` (réglage facultatif : vide, il ne met pas l'extension « À configurer » — sans cela, un texte, une adresse, un lien ou un secret vide et sans valeur par défaut est signalé à l'administrateur comme « à remplir », avec son libellé), `group: "appearance"` (rangé sous « Apparence de ce module »). Les jetons de thème permis pour `theme:` sont `accent`, `accentFg`, `bg`, `surface`, `fg`, `muted`, `line`.
 
 **Piège classique** : la valeur d'un réglage n'est **pas garantie** (un nombre peut arriver en texte, une couleur ou une adresse peut être n'importe quoi). Convertissez,
 bornez, validez avant d'utiliser. L'exemple a des petits outils pour cela (`num()`, `safeColor()`, `safeSrc()` dans `index.mjs` (`curiosa-extras/examples/guestbook/index.mjs`)).
@@ -347,8 +348,28 @@ export default {
 ```
 
 Une action renvoie `{ ok }` (message vert), `{ error }` (message rouge) et/ou `{ redirect: "?" }` (retour à la page de l'instance ; `"?edit=…"` ajoute des paramètres). Un bloc `adminForm`
-(champs `text`, `textarea`, `email`, `url`, `number`, `date`, `select`, `hidden`, `image`) poste sur une action ; les `adminForm` ne s'affichent jamais sur le site public. Permission : `admin`.
+(champs `text`, `textarea`, `email`, `url`, `number`, `date`, `select`, `hidden`, `image`, et depuis le cœur 0.6.0 `switch`, `segmented`, `period`, `datetime`, `duration`) poste sur une action ; les `adminForm` ne s'affichent jamais sur le site public. Permission : `admin`.
 Voir `adminPanel` et `adminActions` dans l'exemple (modifier un message : `?edit=<id>` ouvre un `adminForm`).
+
+**Les briques d'ergonomie du cœur (cœur 0.6.0, `"minCore": "0.6.0"`).** Les pages de réglages et d'administration suivent `docs/ERGONOMIE-ADMIN.md` : recherche en direct dès le départ, interrupteur d'état, une notion = un champ, options rares repliées. Le cœur fournit ces briques **une fois, en composants natifs** : un module n'ajoute jamais de script à sa page d'administration (le cœur n'en exécute aucun), il les demande dans ses blocs et son manifeste.
+
+- **Tableau qui se cherche** : `{ type: "table", …, searchable: true }` ajoute un champ « Rechercher » qui filtre pendant la frappe (sans seuil, sans tenir compte des accents), avec « Aucun résultat » et « Effacer la recherche » ; `filters: [{ column: 1 }]` ajoute des pastilles « Tout · … » avec leur nombre ; 50 lignes par page ; sur téléphone, chaque ligne devient une carte.
+- **Une colonne d'origine colorée ET écrite** : une cellule `{ text: "Partenaires", badge: "info" }` (`accent`, `info`, `ok`, `warn`, `danger`, `neutral`). Plusieurs listes de mêmes colonnes ne font qu'un tableau, dont l'origine est une colonne avec ses pastilles de filtre.
+- **Un interrupteur dans la ligne** : une cellule `{ text: "Actif", switch: { on: true, action: "setEnabled", label: "Commande !bonjour active" } }`. L'action reçoit `values.id` et `values.enabled` (`"1"` ou `"0"`) : elle **dit l'état voulu**, elle n'inverse rien, et renvoie `{ ok }` ou `{ error }` (alors l'interrupteur revient en arrière). Plus de bouton « Activer / désactiver ».
+- **Au plus deux boutons par ligne** : les suivants, ceux marqués `inMenu: true` et ceux marqués `danger: true` vont dans un menu « ⋯ ».
+- **Un champ par notion** : dans un `adminForm`, `kind: "period"` (valeur `"11-01/11-30"` chaque année, ou `"2026-11-01/2026-11-30"`), `"datetime"` (`"2026-11-30T18:30"`), `"duration"` (secondes) ou `"number"` avec `min`, `max`, `unit` ; dans `module.json`, les mêmes en `type` de réglage (`period`, `datetime`, `duration`, et `number` avec `min` / `max` / `step` / `unit`). Le serveur revérifie les réglages et dit les bornes avec un exemple.
+- **2 à 4 choix en boutons** : `kind: "segmented"` (formulaire) ou `"display": "segmented"` (réglage `select`). **Un oui/non en interrupteur** : `kind: "switch"`.
+- **Les options rares repliées** : `folded: true` sur un champ de formulaire, `"rare": true` sur un réglage : ils vont sous « Plus d'options », qui résume ce qui y est déjà réglé et ne compte plus dans le budget de champs (5 par formulaire, 7 par onglet).
+- **Un exemple et l'erreur sous le champ** : `example: "insta, ig"` (le cœur écrit « Par exemple : »), et `errors: { champ: "Écrivez un nombre entier, par exemple 500." }` dans le résultat d'une action.
+
+```js
+{ type: "table", columns: ["Commande", "Origine", "État"], rowIds: ids, searchable: true, filters: [{ column: 1 }],
+  rows: cmds.map((c) => [c.name, { text: c.own ? "Les vôtres" : "Partenaires", badge: c.own ? "accent" : "info" },
+    { text: c.on ? "Actif" : "Désactivé", switch: { on: c.on, action: "setEnabled", label: `Commande ${c.name} active` } }]),
+  rowActions: [{ label: "Modifier", href: "?edit={id}" }, { label: "Supprimer", action: "remove", danger: true, confirm: "Supprimer cette commande ?" }] }
+```
+
+Le détail de chaque clé est dans [MODULES.md](MODULES.md) (« Contrôles `period`, `datetime`, `duration` », « Tableau enrichi »). Le kit de test mesure ce qui peut l'être (`admin.ergonomics`, `assertAdminPageErgonomics`) et exige `minCore` 0.6.0 si vous utilisez l'une de ces briques.
 
 ### Un export à télécharger, un fichier à envoyer (`adminDownloads`, champ `file`)
 

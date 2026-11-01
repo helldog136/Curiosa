@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { BadgeTone, Block, TableCell } from "@/core/blocks";
 import { splitActions } from "@/core/adminkit/table";
 import { TABLE_PAGE_SIZE, pageSlice, pillOptions, rowPasses, searchText } from "@/core/adminkit/search";
@@ -34,7 +34,7 @@ const norm = (c: TableCell | undefined): Cell => (typeof c === "string" || c ===
 export function AdminTable({ block, instanceId, entry, labels }: { block: TableBlock; instanceId?: string; entry?: EntryScope; labels: TableLabels }) {
   const [query, setQuery] = useState("");
   const [pills, setPills] = useState<Record<string, string>>({});
-  const [page, setPage] = useState(1);
+  const [pageAt, setPageAt] = useState({ key: "", page: 1 });
   const top = useRef<HTMLDivElement>(null);
   const size = block.pageSize === 0 ? 0 : block.pageSize ?? TABLE_PAGE_SIZE;
   const filters = useMemo(() => block.filters ?? [], [block.filters]);
@@ -47,9 +47,11 @@ export function AdminTable({ block, instanceId, entry, labels }: { block: TableB
   }), [block.rows, filters]);
 
   const shown = rows.filter((r) => rowPasses({ haystack: r.haystack, ...r.keys }, query, pills));
+  // Un nouveau filtre ou une nouvelle recherche ramène à la première page.
+  const filterKey = `${query}\u0000${JSON.stringify(pills)}`;
+  const page = pageAt.key === filterKey ? pageAt.page : 1;
+  const setPage = (n: number) => setPageAt({ key: filterKey, page: n });
   const view = pageSlice(shown, page, size);
-  // Un nouveau filtre ramène à la première page.
-  useEffect(() => setPage(1), [query, pills]);
 
   const clear = () => { setQuery(""); setPills({}); };
   const active = query.trim() !== "" || Object.values(pills).some((v) => v !== "all");

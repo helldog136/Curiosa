@@ -17,8 +17,26 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Sans encombrer le site.** Les lignes d'une extension sont gardées 90 jours et 500 au plus ; les lignes très fréquentes, 7 jours et 200 au plus. Aucun secret ni message du public n'est enregistré.
 - **Pour vos assistants IA.** Un nouvel outil en lecture seule, « Journal : derniers événements du site », n'est jamais accordé d'office.
 
+### Liens courts
+
+- **La recherche est là dès le premier lien.** Tapez quelques lettres : la liste se filtre pendant que vous écrivez, sans bouton, sur tous vos liens (pas seulement la page affichée), sans tenir compte des majuscules ni des accents. Si rien ne correspond, « Aucun résultat » vous propose d'effacer la recherche.
+- **Un interrupteur au lieu de « Désactiver / Activer ».** Chaque lien montre s'il est actif ou désactivé, et un clic suffit pour le changer. Un message s'affiche juste à côté ; si le changement échoue, l'interrupteur revient à son état d'avant.
+- **« Supprimer » est rangé dans un menu « ⋯ ».** Chaque ligne n'a plus que « Ouvrir » et l'interrupteur à portée de main, et il est plus difficile de supprimer un lien par erreur.
+- **Des filtres par état.** Dès qu'un lien est désactivé ou terminé, des boutons « Tout · Actifs · Désactivés · Terminés » (avec leur nombre) apparaissent au-dessus de la liste.
+- **La date de fin tient en un seul champ.** Vous choisissez la date et, si vous le voulez, l'heure, sur une seule ligne ; une phrase dit ce qui a été compris. Les options rares sont rangées sous « Plus d'options », qui résume ce qui y est réglé.
+
+### Administration
+
+- **Des champs plus clairs partout.** Un nombre dit ses limites et son unité, un exemple s'affiche sous les champs libres, et une erreur dit quoi faire avec un exemple, juste sous le champ.
+- **De nouveaux contrôles pour les extensions.** Elles peuvent maintenant demander une recherche en direct, un interrupteur dans une ligne, une période, une date et une heure, une durée, ou des boutons côte à côte, sans refaire ces contrôles chacune de son côté. Les tableaux des extensions deviennent des cartes sur téléphone.
+
 ### Pour les développeurs
 
+- **Kit d'administration (`minCore` 0.6.0).** Types de réglage `period`, `datetime` et `duration` (secondes entières), clés `min`, `max`, `step`, `unit`, `example`, `rare` (rangé sous « Plus d'options ») et `display: "segmented"`. Le serveur revérifie, l'erreur dit les bornes avec un exemple ; sans ces clés rien ne change.
+- **Blocs.** `adminForm` : champs `switch`, `segmented`, `period`, `datetime`, `duration`, clés `example`, `min`, `max`, `unit`, `folded`. `table` : `searchable`, `filters`, `truncate`, `pageSize`, `empty`, cellules `{ text, badge, href, switch }`, `rowActions[].inMenu`. Sans ces clés, le tableau garde son rendu d'avant.
+- **Interrupteur d'une ligne.** L'action reçoit `values.id` et `values.enabled` (`"1"` ou `"0"`) : elle dit l'état voulu, n'inverse rien, et renvoie `{ ok }` ou `{ error }` (l'interrupteur revient alors en arrière).
+- **Composants natifs, aucun script de module.** `Switch`, `Segmented`, `LiveSearch`, `MoreOptions`, `NumberField`, `PeriodField`, `DateTimeField`, `DurationField`, `AdminTable`, `example` et `error` sur `Field` ; logique pure dans `src/core/adminkit/`. Le cœur n'exécute toujours aucun script venu d'un module.
+- **Divers.** `listRedirects` accepte `state`, renvoie `counts` et ignore casse et accents. Kit de test : exigences `FEATURES` 0.6.0, `rare` et `example` pour R5 et R11. Les quatre documents `docs/` concernés sont à jour.
 - **`ctx.api.log.write` et `logEvents`** : un module écrit au journal du cœur et déclare ses événements (libellé FR/EN, champs autorisés) ; le cœur déduit l'acteur et purge à l'écriture. Voir `docs/CREATE-A-MODULE.md` (12 ter) et `docs/MIGRER-SON-JOURNAL.md`.
 - **Droit implicite `<module>:history`** (Administration par défaut, réglable dans un rôle) ; identifiant d'onglet `history` réservé.
 - **Migration additive** : cinq colonnes ajoutées à `AuditLog` (`module`, `instance`, `level`, `actorKind`, `data`), aucune ligne perdue ; un ancien cœur les ignore.

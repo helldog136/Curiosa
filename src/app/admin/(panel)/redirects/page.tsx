@@ -144,7 +144,7 @@ export default async function RedirectsPage({ searchParams }: { searchParams: Pr
               return (
                 <li key={r.id} className={`${ui.card} !p-4 ${rowState === "off" ? "opacity-80" : ""}`} data-testid="redirect-row" data-live-item="redirects" data-search={searchText([r.path, target])}>
                   <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-                    <div className="min-w-0 flex-1 space-y-1">
+                    <div className="min-w-0 basis-full space-y-1 sm:flex-1 sm:basis-0">
                       <p className="flex flex-wrap items-center gap-2">
                         <Link href={`/admin/redirects/${r.id}`} className="font-mono text-[15px] font-semibold [overflow-wrap:anywhere] hover:text-accent hover:underline">/{r.path}</Link>
                         {/* Une étiquette seulement quand la ligne sort de l'ordinaire (R14) : « actif » est la règle, « désactivé » se lit sur l'interrupteur. */}

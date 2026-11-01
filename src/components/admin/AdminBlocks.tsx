@@ -44,6 +44,8 @@ export type FormLabels = {
   locale: string; example: string; more: string;
   period: PeriodLabels; datetime: DateTimeLabels; duration: DurationLabels;
   hints?: Record<string, string>;
+  /** Le message d'un nombre hors bornes (par champ), à la place de la bulle du navigateur. */
+  invalid?: Record<string, string>;
   fold?: { summary: string; count: number };
 };
 
@@ -56,9 +58,9 @@ function Field({ f, labels }: { f: AdminField; labels?: FormLabels }) {
   if (f.kind === "segmented" && fitsSegmented((f.options ?? []).length)) return <Segmented label={f.label} name={f.name} options={f.options ?? []} defaultValue={f.value} help={f.help} example={example} required={f.required} />;
   if (labels && f.kind === "period") return <PeriodField label={f.label} name={f.name} defaultValue={f.value} help={f.help} example={example} required={f.required} locale={labels.locale} labels={labels.period} />;
   if (labels && f.kind === "datetime") return <DateTimeField label={f.label} name={f.name} defaultValue={f.value} optionalTime={f.optionalTime} help={f.help} example={example} required={f.required} locale={labels.locale} labels={labels.datetime} />;
-  if (labels && f.kind === "duration") return <DurationField label={f.label} name={f.name} defaultValue={f.value} min={f.min} max={f.max} help={f.help} example={[labels.hints?.[f.name], example].filter(Boolean).join(" · ") || undefined} required={f.required} labels={labels.duration} />;
+  if (labels && f.kind === "duration") return <DurationField label={f.label} name={f.name} defaultValue={f.value} min={f.min} max={f.max} invalidText={labels.invalid?.[f.name]} help={f.help} example={[labels.hints?.[f.name], example].filter(Boolean).join(" · ") || undefined} required={f.required} labels={labels.duration} />;
   if (f.kind === "number" && (f.min !== undefined || f.max !== undefined || f.step !== undefined || f.unit !== undefined)) {
-    return <NumberField label={f.label} name={f.name} defaultValue={f.value} min={f.min} max={f.max} step={f.step} unit={f.unit} required={f.required} help={f.help} hint={labels?.hints?.[f.name]} example={example}
+    return <NumberField label={f.label} name={f.name} defaultValue={f.value} min={f.min} max={f.max} step={f.step} unit={f.unit} required={f.required} help={f.help} hint={labels?.hints?.[f.name]} invalidText={labels?.invalid?.[f.name]} example={example}
       emptyValue={f.placeholder} />;
   }
   if (f.kind === "image") return <ImageField name={f.name} label={f.label} defaultValue={f.value} uploadLabel="↑" />;

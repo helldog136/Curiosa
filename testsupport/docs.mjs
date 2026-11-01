@@ -111,10 +111,10 @@ Les règles de [\`docs/ERGONOMIE-ADMIN.md\`](ERGONOMIE-ADMIN.md) marquées **[au
 
 | Règle | Ce qui est mesuré |
 |---|---|
-| R5 | au plus 7 réglages simples par onglet (les réglages \`advanced\` et ceux d'un groupe facultatif replié ne comptent pas) |
+| R5 | au plus 7 réglages simples par onglet (les réglages \`advanced\`, les réglages \`rare\` rangés sous « Plus d'options » et ceux d'un groupe facultatif replié ne comptent pas) |
 | R9 | aucun mot du code (clé, slug, instance, topic, sujet, token, jeton, webhook, EventSub, route, service, identifiant, payload, API, JSON, cache, hash, SSE, OAuth, key, identifier) dans les libellés, aides, options et messages FR et EN, hors réglages \`advanced\` ; \`{accolades}\` visibles dans un libellé. La liste est modifiable en tête de \`testsupport/ergonomics.mjs\` (\`FORBIDDEN_WORDS\`), avec une liste blanche **justifiée** (\`JARGON_WHITELIST\`) |
 | R10 | libellé de 60 caractères au plus, sans « : » final, sans parenthèse de précision à rallonge |
-| R11 | tout champ libre (texte, texte long, adresse, nombre) a une aide avec un exemple concret (« Par exemple… », « ex. », une valeur entre guillemets, une adresse, un @pseudo ; un nombre suffit pour un champ numérique) ou une valeur par défaut visible ; l'aide ne répète pas le libellé. Une aide de plus de 60 caractères n'est **pas** un écart : le cœur 0.5.x la passe dans la bulle « ? » (elle est comptée à part par \`--report\`) |
+| R11 | tout champ libre (texte, texte long, adresse, nombre) a une aide avec un exemple concret (« Par exemple… », « ex. », une valeur entre guillemets, une adresse, un @pseudo ; un nombre suffit pour un champ numérique) ou une valeur par défaut visible, ou une clé \`example\` (cœur 0.6.0 : le cœur écrit « Par exemple : … » sous le champ) ; l'aide ne répète pas le libellé. Une aide de plus de 60 caractères n'est **pas** un écart : le cœur 0.5.x la passe dans la bulle « ? » (elle est comptée à part par \`--report\`) |
 | R13 | pas de « ! », pas de « Veuillez », pas de MAJUSCULES criardes (sigles de \`ALLOWED_CAPS\` permis), vouvoiement, phrases de 20 mots au plus, pas de point médian ni de « (e) » |
 | R17 | aucun texte « Activer / désactiver » |
 | R19 | pas de liste oui/non pour un booléen, pas de case négative (« Ne pas… ») |
@@ -143,10 +143,12 @@ assertAdminPageErgonomics(blocks, { errors: ["Écrivez un nombre entier, par exe
 | R3 | un bouton d'envoi qui s'appelle « OK », « Valider », « Soumettre », « Envoyer »… (un verbe précis est attendu) |
 | R4 | au plus 5 champs visibles par formulaire (\`adminForm\`), 7 par section (entre deux \`heading\`) ; les champs \`hidden\` et ceux marqués \`advanced\` / \`folded\` ne comptent pas |
 | R9, R10 | mots du code et libellés trop longs dans les champs des formulaires |
-| R14 | une colonne dont toutes les cellules sont identiques dans un tableau de plus de 5 lignes |
+| R14 | une colonne dont toutes les cellules sont identiques dans un tableau de plus de 5 lignes (une colonne d'interrupteurs, cellule \`switch\`, n'en est jamais une) ; une pastille \`badge\` identique sur toutes les lignes est un titre, pas une étiquette |
 | R15 | un tableau de plus de 10 lignes sans champ de recherche (un \`<input type="search">\` dans un bloc \`html\`, un champ \`q\` / \`search\` / « Rechercher » dans un \`adminForm\`, ou \`searchable: true\` sur le tableau) |
-| R17 | un bouton de ligne, un lien ou un bouton nommé « Activer / désactiver » |
+| R17 | un bouton de ligne, un lien ou un bouton nommé « Activer / désactiver » (la réponse : une cellule \`switch\`, voir \`docs/MODULES.md\` › Tableau enrichi) |
 | R22 | les messages d'erreur donnés dans \`errors\` : un exemple (« par exemple 500 »), jamais de code, de trace ni d'« erreur 500 » |
+
+**Briques du cœur 0.6.0.** Les cellules de tableau peuvent être des objets (\`{ text, badge, switch }\`) et les champs d'un formulaire des champs \`switch\`, \`segmented\`, \`period\`, \`datetime\`, \`duration\` : l'aide les comprend (texte de la cellule, champs \`folded\` non comptés). L'exigence \`compat.minCore\` demande \`"minCore": "0.6.0"\` à un module qui en utilise une.
 
 L'option \`skip: ["R15"]\` écarte une règle (écrivez la raison dans votre test). \`adminPageErgonomicsProblems(blocks, opts)\` rend la liste au lieu de lever.
 

@@ -45,3 +45,26 @@ test("QR : le téléchargement SVG/PNG et la fiche passent par la bibliothèque 
   const qr = read("src/core/redirectQr.ts");
   assert.match(qr, /from "qrcode"/); assert.ok(!/reedSolomon|galois|penalty/i.test(qr));
 });
+
+test("raccourcis (kit d'administration) : recherche en direct dès le départ, interrupteur, « Supprimer » dans le menu, date de fin en un champ", () => {
+  const list = read("src/app/admin/(panel)/redirects/page.tsx");
+  assert.match(list, /<LiveSearch mode="server"/, "recherche en direct qui interroge le serveur (liste paginée)");
+  assert.doesNotMatch(list, /list\.total > 8/, "plus de seuil : elle est là dès le premier lien");
+  assert.ok(!/redirects\.searchButton/.test(list), "pas de bouton « Chercher »");
+  assert.match(list, /<Switch label=\{t\("redirects\.switch\.label"/);
+  assert.match(list, /onToggle=\{setRedirectActive\.bind\(null, r\.id\)\}/);
+  assert.ok(!/action\.disable|action\.enable|toggleRedirect/.test(list), "plus de bouton « Désactiver / Activer »");
+  assert.match(list, /<RowMenu[\s\S]*<ConfirmButton menu[\s\S]*redirects\.deleteMenu/, "« Supprimer » est rangé dans le menu ⋯");
+  assert.match(list, /<DateTimeField name="end" optionalTime/);
+  assert.ok(!/name="endDate"|name="endTime"/.test(list), "la date et l'heure de fin ne sont plus deux champs");
+  assert.match(list, /<MoreOptions /);
+  assert.match(list, /truncate text-sm text-muted" title=\{target\}/, "destination coupée par « … », complète dans l'info-bulle");
+  assert.match(list, /data-live-item="redirects"/);
+  const sheet = read("src/app/admin/(panel)/redirects/[id]/page.tsx");
+  assert.match(sheet, /<Switch label=/);
+  assert.ok(!/toggleRedirect|action\.disable/.test(sheet));
+  assert.match(sheet, /<DateTimeField name="end" optionalTime/);
+  const actions = read("src/app/admin/(panel)/redirects/actions.ts");
+  assert.match(actions, /export async function setRedirectActive\(id: string, active: boolean\)/, "l'interrupteur dit l'état voulu, il n'inverse rien");
+  assert.ok(!/export function/.test(actions), "un fichier d'actions n'exporte que des actions asynchrones");
+});

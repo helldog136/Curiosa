@@ -289,3 +289,52 @@ test("assertAdminPageErgonomics : lève une erreur claire, ou passe", () => {
   assert.doesNotThrow(() => assertAdminPageErgonomics([{ type: "heading", text: "Commandes" }, { type: "html", html: '<input type="search">' }, { type: "table", columns: ["Nom"], rows: rowsOf(20, (i) => [`x${i}`]) }]));
   assert.doesNotThrow(() => assertAdminPageErgonomics(undefined));
 });
+
+/* ───────────── kit d'administration (cœur 0.6.0) : les nouvelles clés comptent pour les règles ───────────── */
+
+test("réglage rare (« Plus d'options ») : ne compte plus dans les 7 réglages simples d'un onglet (R5)", () => {
+  const settings = Array.from({ length: 9 }, (_, i) => field(`s${i}`));
+  assert.equal(only(mod({ settings }), "R5").length, 1, "9 réglages simples : écart");
+  const rare = settings.map((f, i) => (i >= 6 ? { ...f, rare: true } : f));
+  assert.equal(only(mod({ settings: rare }), "R5").length, 0, "3 réglages rares : 6 simples, plus d'écart");
+});
+
+test("réglage avec « example » : un exemple concret (R11) ; ses textes sont contrôlés comme les autres (R9, R29)", () => {
+  const bare = { key: "pseudo", type: "text", label: L("Pseudo", "Nickname") };
+  assert.equal(only(mod({ settings: [bare] }), "R11").length, 1, "champ libre sans aide ni exemple");
+  assert.equal(only(mod({ settings: [{ ...bare, example: L("insta, ig", "insta, ig") }] }), "R11").length, 0);
+  assert.equal(only(mod({ settings: [{ ...bare, help: L("Votre nom affiché.", "Your display name."), example: L("insta", "insta") }] }), "R11").length, 0);
+  const jargon = only(mod({ settings: [{ ...bare, example: L("votre token", "your token") }] }), "R9");
+  assert.ok(jargon.some((g) => /example/.test(g.where)), "un mot du code dans l'exemple est repéré");
+});
+
+test("page produite par du code : un tableau enrichi (recherche, pastilles, interrupteurs) et un champ « example » respectent les règles", () => {
+  const rows = Array.from({ length: 30 }, (_, i) => [`!cmd${i}`, { text: i % 2 ? "Partenaires" : "Les vôtres", badge: i % 2 ? "info" : "accent" }, { text: "Actif", switch: { on: true, action: "toggle", label: `Commande ${i} active` } }]);
+  const table = { type: "table", columns: ["Commande", "Origine", "État"], rows, rowIds: rows.map((_, i) => String(i)), searchable: true, rowActions: [{ label: "Modifier", href: "?edit={id}" }, { label: "Supprimer", action: "del", danger: true, inMenu: true }] };
+  assert.deepEqual(adminPageErgonomicsProblems([table]), [], "30 lignes avec recherche : aucun écart ; la colonne d'origine n'est pas uniforme");
+  assert.ok(adminPageErgonomicsProblems([{ ...table, searchable: undefined }]).some((p) => p.rule === "R15"), "sans recherche : écart R15");
+  const same = { ...table, rows: rows.map((r) => [r[0], { text: "Les vôtres", badge: "accent" }, r[2]]) };
+  assert.ok(adminPageErgonomicsProblems([same]).some((p) => p.rule === "R14"), "une pastille identique sur toutes les lignes est un titre, pas une étiquette (R14)");
+  const form = { type: "adminForm", action: "save", submitLabel: "Ajouter la commande", fields: [
+    { name: "a", label: "Nom", example: "!bonjour" }, { name: "b", label: "Réponse", kind: "textarea" }, { name: "c", label: "Qui", kind: "segmented", options: [{ value: "x", label: "X" }, { value: "y", label: "Y" }] },
+    { name: "d", label: "Attente", kind: "duration", folded: true }, { name: "e", label: "Fin", kind: "datetime", folded: true }, { name: "f", label: "Période", kind: "period", folded: true }, { name: "g", label: "Note", folded: true },
+  ] };
+  assert.deepEqual(adminPageErgonomicsProblems([form]), [], "3 champs visibles + 4 repliés : sous le budget de 5");
+  assert.ok(adminPageErgonomicsProblems([{ ...form, fields: form.fields.map((f) => ({ ...f, folded: undefined })) }]).some((p) => p.rule === "R4"), "dépliés, ils dépassent");
+});
+
+test("exigences : un module qui utilise un contrôle de la 0.6.0 doit déclarer « minCore » 0.6.0", async () => {
+  const { FEATURES } = await import("../testsupport/requirements/manifest.mjs");
+  const news = FEATURES.filter((f) => f.since === "0.6.0");
+  assert.equal(news.length, 4);
+  const code = (src, man = { settings: [] }) => news.filter((f) => f.test({ code: src }, man)).length;
+  assert.equal(code("blocks.push({ type: 'table', columns: [], rows: [], searchable: true })"), 1);
+  assert.equal(code("{ type: 'table', rows: [[{ text: 'a', badge: 'ok' }]] }"), 1);
+  assert.equal(code("{ type: 'table', pageSize: 20 }"), 0, "« pageSize » seul est trop courant pour exiger quoi que ce soit");
+  assert.equal(code("{ kind: 'switch', name: 'x' }"), 1);
+  assert.equal(code("{ name: 'x', folded: true }"), 1);
+  assert.equal(code("nothing"), 0);
+  assert.equal(code("", { settings: [{ key: "k", type: "period" }] }), 1);
+  assert.equal(code("", { settings: [{ key: "k", type: "number", min: 1 }] }), 1);
+  assert.equal(code("", { settings: [{ key: "k", type: "number" }] }), 0);
+});

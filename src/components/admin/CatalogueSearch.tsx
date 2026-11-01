@@ -22,7 +22,8 @@ export function CatalogueSearch({ placeholder, noneLabel, clearLabel }: { placeh
     document.querySelectorAll<HTMLElement>("[data-catalogue-section]").forEach((sec) => {
       sec.hidden = sec.querySelectorAll("[data-catalogue-item]:not([hidden])").length === 0;
     });
-    setNone(words.length > 0 && shown === 0);
+    const frame = requestAnimationFrame(() => setNone(words.length > 0 && shown === 0));
+    return () => cancelAnimationFrame(frame);
   }, [query]);
   useEffect(() => {
     const key = (e: KeyboardEvent) => {

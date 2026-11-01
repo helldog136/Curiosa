@@ -15,8 +15,8 @@ export type DurationLabels = Record<DurationUnit, string> & { day: string };
  * bornes `min` et `max` (en secondes) limitent la saisie et les unités proposées ; l'unité de départ est la plus grande qui tombe juste (5400 → 90 minutes). Vide :
  * rien n'est envoyé (le module garde sa valeur par défaut, que `emptyHint` peut annoncer : « Vide : 30 s »).
  */
-export function DurationField({ label, name, defaultValue, min, max, required, help, example, error, labels, emptyHint }: {
-  label: string; name: string; defaultValue?: string | number; min?: number; max?: number; required?: boolean; help?: string; example?: string; error?: string; labels: DurationLabels; emptyHint?: string;
+export function DurationField({ label, name, defaultValue, min, max, required, help, example, error, labels, emptyHint, invalidText }: {
+  label: string; name: string; defaultValue?: string | number; min?: number; max?: number; required?: boolean; help?: string; example?: string; error?: string; labels: DurationLabels; emptyHint?: string; invalidText?: string;
 }) {
   const units = durationUnits(max);
   const start = defaultValue === undefined || defaultValue === "" || !Number.isFinite(Number(defaultValue)) ? null : splitDuration(Number(defaultValue), units);
@@ -35,7 +35,7 @@ export function DurationField({ label, name, defaultValue, min, max, required, h
       <input type="hidden" name={name} value={seconds === null ? "" : String(seconds)} />
       <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,10rem)] gap-2">
         <input id={`${name}__n`} type="number" inputMode="numeric" min={min === undefined ? 0 : Math.ceil(min / size)} max={max === undefined ? undefined : Math.floor(max / size)} step={1} value={n}
-          onChange={(e) => setN(e.target.value)} required={required} aria-describedby={described} aria-invalid={error ? true : undefined} className={`${ui.input} min-h-11${error ? ` ${ERROR_BORDER}` : ""}`} />
+          onChange={(e) => { e.currentTarget.setCustomValidity(""); setN(e.target.value); }} onInvalid={invalidText ? (e) => e.currentTarget.setCustomValidity(invalidText) : undefined} required={required} aria-describedby={described} aria-invalid={error ? true : undefined} className={`${ui.input} min-h-11${error ? ` ${ERROR_BORDER}` : ""}`} />
         <select aria-label={label} value={unit} onChange={(e) => setUnit(e.target.value as DurationUnit)} className={`${ui.input} min-h-11`}>
           {units.map((u) => <option key={u} value={u}>{labels[u]}</option>)}
         </select>

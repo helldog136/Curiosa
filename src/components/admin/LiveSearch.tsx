@@ -99,8 +99,9 @@ export function LiveSearch({ scope, placeholder, noneLabel, clearLabel, countLab
     document.querySelectorAll<HTMLElement>(`[data-live-group="${CSS.escape(scope)}"]`).forEach((g) => {
       g.hidden = g.querySelectorAll(`[data-live-item="${CSS.escape(scope)}"]:not([hidden])`).length === 0;
     });
-    setNone(total > 0 && shown === 0);
-    setCounts({ shown, total });
+    // Les compteurs s'affichent à l'image suivante (le filtrage des lignes, lui, est immédiat).
+    const frame = requestAnimationFrame(() => { setNone(total > 0 && shown === 0); setCounts({ shown, total }); });
+    return () => cancelAnimationFrame(frame);
   }, [mode, scope, query, pills]);
 
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);

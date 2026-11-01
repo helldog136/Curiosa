@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useSyncExternalStore, useTransition } from "react";
 import { ui } from "./ui";
 import { createPasskey, passkeysSupported } from "./webauthn";
 import { PendingButton } from "./PendingButton";
@@ -24,8 +24,7 @@ export function PasskeysPanel({ items, labels, start, finish, remove, rename }: 
   const [error, setError] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
-  const [supported, setSupported] = useState(true);
-  useEffect(() => { setSupported(passkeysSupported()); }, []);
+  const supported = useSyncExternalStore(() => () => {}, passkeysSupported, () => true);
   const reset = () => { setMode("idle"); setPassword(""); setName(""); setError(""); };
   const when = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString() : labels.never);
 
