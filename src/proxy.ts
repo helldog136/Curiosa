@@ -5,6 +5,7 @@ import { TIMED_OUT, withDeadline } from "@/core/deadline";
 import { isRedirectEnded } from "@/core/redirectGate";
 import { geolocationOpen, policyValue } from "@/core/permissionsPolicy";
 import { PREVIEW_HEADER, PREVIEW_PARAM, PREVIEW_TOKEN_RE } from "@/core/skins/previewToken";
+import { legacyConfig, legacyRedirectTarget, requestHost } from "@/core/siteAddress";
 
 const LOCALE_HEADER = "x-curiosa-locale";
 const PATH_HEADER = "x-curiosa-path";
@@ -46,6 +47,15 @@ async function endedRewrite(request: NextRequest, path: string, headers: Headers
  */
 export async function proxy(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
+  // Ancien domaine (LEGACY_HOSTS, docs/MIGRER-DOMAINE.md) : redirection permanente vers SITE_URL, avant tout le reste. Elle ne dépend que de l'en-tête Host posé par NOTRE proxy web
+  // et de SITE_URL ; la cible n'est jamais lue dans la requête (voir core/siteAddress.ts). Sans ancien domaine, ce test ne coûte rien.
+  const legacy = legacyConfig();
+  if (legacy.hosts.length > 0) {
+    const target = legacyRedirectTarget({ method: request.method, host: requestHost(request.headers.get("host")), pathname, search: request.nextUrl.search }, legacy.siteUrl, legacy.hosts);
+    if (target) return NextResponse.redirect(target, { status: 301, headers: { "Cache-Control": "private, max-age=3600", Vary: "Host" } });
+  }
+  // Le proxy voit maintenant TOUTES les adresses (pour l'ancien domaine) : celles qu'il ignorait avant (admin, API, modules, overlays, envois, fichiers) restent servies telles quelles.
+  if (IGNORED.test(pathname)) return NextResponse.next();
   const headers = new Headers(request.headers);
   // Jamais de confiance dans ces en-têtes s'ils viennent du client, SAUF la langue que ce même proxy vient de poser au premier passage (preuve secrète).
   const carried = request.headers.get(LOCALE_HEADER);
@@ -112,7 +122,10 @@ export async function proxy(request: NextRequest) {
   return stamp(NextResponse.next({ request: { headers } }));
 }
 
+/** Adresses que ce proxy ne traitait pas avant l'ancien domaine : pas d'admin, d'API, de fichiers statiques ni de routes de modules (même motif que l'ancien `matcher`). */
+const IGNORED = /^\/(?:_next|api|admin|m\/|overlays\/|uploads\/)|\./;
+
 export const config = {
-  // Pas d'admin, d'API, de fichiers statiques ni de routes de modules.
-  matcher: ["/((?!_next|api|admin|m/|overlays/|uploads/|.*\\..*).*)"],
+  // Tout passe ici sauf les fichiers internes de Next : le test de l'ancien domaine doit voir aussi l'admin, les overlays et les fichiers (QR et liens déjà diffusés).
+  matcher: ["/((?!_next/static|_next/image).*)"],
 };

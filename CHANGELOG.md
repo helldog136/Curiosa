@@ -7,6 +7,22 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## Prochaine version (non publiée)
+
+### Adresse du site
+
+- **Une page pour changer de nom de domaine sans rien oublier.** En réglages avancés, « Adresse du site » propose un assistant en trois étapes : la nouvelle adresse, la liste de ce que votre site doit reprendre, puis les commandes à copier sur le serveur.
+- **La liste est faite pour votre site.** Elle compte vos clés d'accès à recréer, vos liens courts et QR codes, vos accès d'assistants et vos adresses d'overlay, et donne l'ancienne et la nouvelle adresse à copier pour chaque extension connectée à un service tiers. Aucun secret n'y est affiché.
+- **Les contenus qui écrivent l'ancien domaine sont retrouvés.** Pages, articles, liens, menu et réglages, avec un lien vers chacun. Rien n'est modifié.
+- **L'ancien domaine continue de marcher.** Les QR codes déjà imprimés et les liens partagés mènent à la nouvelle adresse, page demandée comprise.
+- **Une page « Après le changement ».** Elle vérifie à la demande que le site répond à sa nouvelle adresse et que l'ancienne redirige bien, puis garde vos coches sur ce qu'il reste à refaire.
+- **Le script d'installation sait changer de domaine.** Il montre d'abord ce qu'il ferait, sauvegarde vos fichiers et ne touche jamais à une configuration qu'il n'a pas écrite.
+
+### Pour les développeurs
+
+- **Anciens domaines.** `LEGACY_HOSTS` (10 noms au plus) : le proxy du cœur répond 301 vers `SITE_URL` pour GET et HEAD, selon `Host` seul, jamais pour `/api/*` ni les retours `oauth` ; voir `src/core/siteAddress.ts` et `docs/MIGRER-DOMAINE.md`.
+- **Manifeste.** Clés facultatives `returnAddresses` et `siteAddressUses` (sans `minCore`), documentées dans `docs/MODULES.md`. Script : `install.sh --change-domain NOM [--apply]`.
+
 ## 0.6.1 — 2026-11-01
 
 **En bref.** Cette version simplifie les réglages de votre site et rend plusieurs choses plus claires. L'Équipe tient en un seul tableau, et vos assistants IA en font partie, avec leurs droits en quelques mots. Vos réseaux sociaux s'ajoutent en collant l'adresse de votre profil dans un seul champ. Les polices se choisissent dans une bibliothèque de vingt familles, ou s'envoient depuis votre ordinateur. La fiche d'une extension montre d'abord ce qu'elle fait, avec des images, et garde le bouton « Installer » toujours visible. L'extension Discord peut créer pour vous l'adresse courte « /discord », qui suit votre invitation. Le menu est clarifié : « Réglages du site » ne fait plus doublon avec « Apparence ». Vos couleurs ne sont plus jamais corrigées en cachette : un conseil s'affiche, sans rien bloquer. Le script d'installation parle français et anglais, les gestionnaires de mots de passe reconnaissent les formulaires, et le catalogue des extensions s'ouvre plus vite. Le champ « Période » propose un mois entier, les saisons et les fêtes, et le nom « Curiosa » du pied de page reste identique quel que soit le skin. Vos réglages actuels sont conservés.

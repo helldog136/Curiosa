@@ -598,6 +598,20 @@ Les redirections (« liens courts », page *Raccourcis de liens*) **appartiennen
 
 **Pas de nouvelle valeur dans `permissions`** : un cœur plus ancien refuserait le manifeste. Il **ignore** la clé `shortLink` : le module marche, sans adresse courte, donc votre `minCore` n'a pas à monter (la version précédente du réglage `boolean` suffit).
 
+### Adresses données à un service tiers (`returnAddresses`, `siteAddressUses`, cœur après 0.6.1)
+
+Quand la personne change de nom de domaine, la page *Adresse du site* (réglages avancés) liste ce qui dépend de l'ancienne adresse. Deux clés **facultatives** du manifeste lui disent ce que votre module a donné à l'extérieur :
+
+```json
+"returnAddresses": [{ "path": "/m/{instance}/oauth/callback", "label": { "fr": "Twitch", "en": "Twitch" }, "where": { "fr": "Console des développeurs, « URL de redirection »", "en": "Developer console, \"redirect URL\"" } }],
+"siteAddressUses": [{ "label": { "fr": "Home Assistant", "en": "Home Assistant" }, "where": { "fr": "Appareils et services, Curiosa, Reconfigurer", "en": "Devices and services, Curiosa, Reconfigure" } }]
+```
+
+- `returnAddresses` (5 au plus) : une **adresse de retour** (OAuth…) enregistrée chez le service tiers. `path` commence par `/m/` ou `/api/` (lettres, chiffres, `- _ . /` et `{instance}`, remplacé par la clé de l'instance ; ni paramètre, ni `..`, ni `//`). `label` : le nom du service. `where` : où l'enregistrer chez lui. Le cœur affiche l'ancienne et la nouvelle adresse complètes, avec un bouton « Copier ».
+- `siteAddressUses` (5 au plus) : un endroit **hors du site** où la personne a tapé l'adresse du site (`label`, `where`).
+- Lecture seule : le cœur ne contacte jamais le service tiers et ne modifie rien. Seules les instances **actives** sont listées.
+- **Sans danger pour un cœur plus ancien** : il ignore les clés, donc aucun `minCore` à déclarer. Une clé mal formée rend le manifeste invalide, comme toute autre. Les retours de connexion ne sont jamais redirigés depuis un ancien domaine (voir [MIGRER-DOMAINE.md](MIGRER-DOMAINE.md)).
+
 ### Actions MCP (`mcp`)
 
 | Clé | Rôle |

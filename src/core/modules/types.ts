@@ -4,6 +4,7 @@ import type { Block, PanelBlock, Slot } from "../blocks";
 import type { StorePage, StoreRecord } from "../services/store";
 import type { NetHealthItem, NetRequest, NetResult } from "../services/net";
 import type { TabDecl } from "./tabs";
+import type { ReturnAddressDecl, SiteAddressUseDecl } from "./addressDecl";
 
 // Les modules typent leurs blocs avec ce ré-export : ils n'importent rien d'autre du cœur.
 export type { Block, Slot };
@@ -208,6 +209,13 @@ export type ModuleManifest = {
   sitemapFromPage?: boolean;
   /** (0.2.14) Rangement dans l'administration, déclaré par le module : prime sur la déduction du cœur (voir menuPlacement.ts). Absent = la règle habituelle. */
   family?: "content" | "community" | "connections" | "overlays";
+  /**
+   * (cœur après 0.6.1) Adresses de retour (OAuth…) enregistrées chez un service tiers : `{ path: "/m/{instance}/oauth/callback", label, where? }`. La page « Adresse du site » de l'administration
+   * les met dans la liste de contrôle d'un changement de domaine, avec l'ancienne et la nouvelle adresse à copier. Un cœur plus ancien ignore la clé. Voir modules/addressDecl.ts.
+   */
+  returnAddresses?: ReturnAddressDecl[];
+  /** (cœur après 0.6.1) Endroits hors du site où la personne a tapé l'adresse du site (`{ label, where }`) : rappelés dans la liste de contrôle d'un changement de domaine. Un cœur plus ancien ignore la clé. */
+  siteAddressUses?: SiteAddressUseDecl[];
   /** Morceaux que les instances proposent à la page d'accueil. */
   sections: SectionDecl[];
   /** Informations que ce module digère (ses instances s'abonnent à des sources dans l'admin). */
