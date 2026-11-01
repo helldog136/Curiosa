@@ -17,9 +17,11 @@ Le chemin est : **trois questions, une commande, un navigateur**. Lis d'abord `d
    curl -fsSL https://github.com/helldog136/Curiosa/releases/latest/download/install.sh -o install.sh
    less install.sh      # ou affiche-le / résume-le à la personne
    ```
-5. **Essai à blanc d'abord** : `sudo bash install.sh --site <site> --domain <domaine> --user <utilisateur> --dry-run`. Il ne modifie rien ; il dit ce qu'il a trouvé (processeur, système, Node, serveur web existant, port choisi, DNS, release) et ce qu'il ferait. Lis-le avec la personne, explique chaque confirmation qu'il demandera (installer Node.js, installer Caddy, ouvrir les ports 80/443 dans ufw).
+5. **Essai à blanc d'abord** (ajoute `--lang fr` ou `--lang en` selon la langue de la personne : le script parle les deux, et sur une machine en « C » il choisirait l'anglais) : `sudo bash install.sh --site <site> --domain <domaine> --user <utilisateur> --dry-run`. Il ne modifie rien ; il dit ce qu'il a trouvé (processeur, système, Node, serveur web existant, port choisi, DNS, release) et ce qu'il ferait. Lis-le avec la personne, explique chaque confirmation qu'il demandera (installer Node.js, installer Caddy, ouvrir les ports 80/443 dans ufw).
 6. **Installation réelle** : même commande sans `--dry-run`, avec `--yes` **seulement après l'accord de la personne** sur ces confirmations. Le script est reprenable : s'il s'arrête, lis le message (un remède par erreur), corrige, puis relance **la même commande**.
 7. **Passer la main** : le script affiche l'adresse `/admin/setup` et la **commande pour lire le code d'installation sur le serveur**. La personne ouvre l'adresse et tape cette commande **elle-même**. Propose ensuite une sauvegarde depuis l'admin et rappelle de retirer `SETUP_TOKEN` du `.env` une fois le site configuré.
+
+Langue du script : `--lang fr|en` (sinon `CURIOSA_LANG`, puis la langue du système, sinon anglais). Les codes de sortie (`0`, `1`, `2`, `10`) et les options sont les mêmes dans toutes les langues : décide d'après le code de sortie, jamais d'après le texte d'un message. Les messages sont ceux de la langue choisie ; traduis-les à la personne si elle parle une autre langue. À la fin, en anglais ou dans une autre langue que le français, le script rappelle que l'assistant `/admin/setup` s'ouvre en français et qu'on y choisit sa langue à la première question.
 
 Code de sortie `10` : installé, mais l'adresse publique ne répond pas encore (DNS, ports 80/443 chez l'hébergeur, certificat en cours) : suis la liste « À régler » de la page finale.
 

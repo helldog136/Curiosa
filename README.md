@@ -84,7 +84,7 @@ curl -fsSL https://github.com/helldog136/Curiosa/releases/latest/download/instal
 sudo bash install.sh
 ```
 
-Le script pose **trois questions** (nom du site, nom de domaine, utilisateur dédié), vérifie le serveur, installe ce qui manque avec votre accord, met le site en HTTPS sans toucher à vos autres sites, puis affiche **l'adresse à ouvrir** et la commande pour lire le code d'installation. Il peut être relancé sans risque s'il s'arrête en route. Pour voir ce qu'il ferait sans rien modifier : `sudo bash install.sh --dry-run`. Toutes les options : `bash install.sh --help`.
+Le script pose **trois questions** (nom du site, nom de domaine, utilisateur dédié), vérifie le serveur, installe ce qui manque avec votre accord, met le site en HTTPS sans toucher à vos autres sites, puis affiche **l'adresse à ouvrir** et la commande pour lire le code d'installation. Il peut être relancé sans risque s'il s'arrête en route. Pour voir ce qu'il ferait sans rien modifier : `sudo bash install.sh --dry-run`. Toutes les options : `bash install.sh --help`. Le script parle français ou anglais (`--lang fr` / `--lang en`, ou la langue de votre système ; voir [Languages / Langues](docs/INSTALL.md#languages--langues)). / The script speaks English or French (`--lang en` / `--lang fr`, or your system language).
 
 Ensuite, ouvrez `https://votre-domaine/admin/setup` et suivez l'assistant.
 

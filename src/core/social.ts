@@ -1,5 +1,6 @@
 import type { TopicField } from "@/core/modules/types";
 import { collectForCore } from "@/core/services/topics";
+import { getSetting } from "@/core/settings";
 import { isSafeExternalUrl } from "@/core/url";
 
 /**
@@ -53,22 +54,74 @@ export type SocialLink = {
   rel: string; referrerPolicy: SocialReferrerPolicy | null; target: SocialTarget;
 };
 
-/** Les boutons de tous les réseaux actifs, dans l'ordre des instances ; adresses externes sûres seulement, sans doublon. */
-export async function loadSocialLinks(locale: string, max = MAX_SOCIALS): Promise<SocialLink[]> {
-  const out: SocialLink[] = [];
+/** Réglages du cœur (ajoutés, jamais migrés : sans eux, rien ne change) : les réseaux masqués et l'ordre des boutons, par clé d'instance. */
+export const SOCIAL_HIDDEN_KEY = "social.hidden";
+export const SOCIAL_ORDER_KEY = "social.order";
+
+const keysOf = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string").slice(0, 500) : []);
+export async function readSocialPrefs(): Promise<{ hidden: Set<string>; order: string[] }> {
+  return { hidden: new Set(keysOf(await getSetting(SOCIAL_HIDDEN_KEY))), order: keysOf(await getSetting(SOCIAL_ORDER_KEY)) };
+}
+
+/** Pourquoi un bouton est (ou n'est pas) dans l'en-tête : affiché, masqué par la personne, même adresse qu'un bouton déjà affiché, ou au-delà de la limite. */
+export type SocialStatus = "shown" | "hidden" | "duplicate" | "limit";
+export type SocialEntry = { link: SocialLink; status: SocialStatus };
+
+/**
+ * TOUS les boutons des réseaux actifs avec leur état, dans l'ordre choisi (réglage `social.order`, sinon l'ordre des instances) ; adresses externes sûres seulement.
+ * Un bouton masqué ne compte pas dans la limite ni dans les doublons. `max` : nombre de boutons affichés au plus.
+ */
+export async function loadSocialEntries(locale: string, max = MAX_SOCIALS): Promise<SocialEntry[]> {
+  const { hidden, order } = await readSocialPrefs();
+  const rank = (instance: string) => { const i = order.indexOf(instance); return i < 0 ? Number.MAX_SAFE_INTEGER : i; };
+  const items = (await collectForCore(SOCIAL_TOPIC, SOCIAL_SCHEMA, { locale, limit: 200 })).map((item, index) => ({ item, index })).sort((a, b) => rank(a.item.source.instance) - rank(b.item.source.instance) || a.index - b.index);
+  const out: SocialEntry[] = [];
   const seen = new Set<string>();
-  for (const item of await collectForCore(SOCIAL_TOPIC, SOCIAL_SCHEMA, { locale, limit: 200 })) {
+  let shown = 0;
+  for (const { item } of items) {
     const href = String(item.url);
-    if (!isSafeExternalUrl(href) || seen.has(href)) continue;
-    seen.add(href);
+    if (!isSafeExternalUrl(href)) continue;
     const referrerPolicy = cleanSocialReferrerPolicy(item.referrerPolicy);
     // Sans `rel` valable : `noopener noreferrer`. Une politique de référent choisie sans `rel` remplace `noreferrer` (qui l'annulerait).
     const rel = cleanSocialRel(item.rel) ?? (referrerPolicy ? "noopener" : "noopener noreferrer");
-    out.push({
+    const link: SocialLink = {
       label: String(item.label), href, icon: typeof item.icon === "string" ? item.icon : null, instance: item.source.instance, module: item.source.module,
       rel, referrerPolicy, target: cleanSocialTarget(item.target) ?? "_blank",
-    });
-    if (out.length >= max) break;
+    };
+    let status: SocialStatus;
+    if (hidden.has(link.instance)) status = "hidden";
+    else if (seen.has(href)) status = "duplicate";
+    else if (shown >= max) status = "limit";
+    else { status = "shown"; seen.add(href); shown++; }
+    out.push({ link, status });
   }
   return out;
+}
+
+/** Les boutons de l'en-tête : les réseaux actifs et affichés, dans l'ordre choisi, sans doublon, `MAX_SOCIALS` au plus. */
+export async function loadSocialLinks(locale: string, max = MAX_SOCIALS): Promise<SocialLink[]> {
+  return (await loadSocialEntries(locale, max)).filter((e) => e.status === "shown").map((e) => e.link);
+}
+
+/** L'ordre complet des réseaux : d'abord ceux de la liste enregistrée (ceux qui n'existent plus sont oubliés), puis les autres dans l'ordre d'arrivée. Pur. */
+export function orderedKeys(all: readonly string[], order: readonly string[]): string[] {
+  const known = new Set(all);
+  const first = [...new Set(order)].filter((k) => known.has(k));
+  return [...first, ...all.filter((k) => !first.includes(k))];
+}
+
+/** Déplace `key` d'un cran vers le haut ou le bas ; aux extrémités, rien ne change. Pur. */
+export function moveKey(keys: readonly string[], key: string, direction: "up" | "down"): string[] {
+  const out = [...keys];
+  const at = out.indexOf(key);
+  const to = direction === "up" ? at - 1 : at + 1;
+  if (at < 0 || to < 0 || to >= out.length) return out;
+  [out[at], out[to]] = [out[to]!, out[at]!];
+  return out;
+}
+
+/** D'où vient le bouton : un réseau, une chaîne en direct (Twitch, YouTube) ou une autre page de liens. Sert à la pastille « Origine » du tableau. */
+export function socialOrigin(manifest: { id: string; type?: string }): "network" | "channel" | "other" {
+  if (manifest.id.endsWith("-channel")) return "channel";
+  return manifest.type === "social" ? "network" : "other";
 }

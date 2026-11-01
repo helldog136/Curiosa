@@ -8,6 +8,7 @@ import { isSubdir, parseRepoUrl } from "./installer";
 import { sanitizeRequires, type CoreRequirement } from "./compat";
 import { sanitizeServiceList } from "./serviceVersions";
 import { PLATFORM_PATTERN } from "./platform";
+import { parseSocialSpec, type SocialSpec } from "../socialSpec";
 import { sanitizePreviews, type PreviewDecl } from "./previews";
 
 export type RecognizedItem = {
@@ -28,6 +29,8 @@ export type RecognizedItem = {
   platform?: string;
   /** Sujets fournis par le module (annoncés par l'index, relus à l'installation). */
   provides?: string[];
+  /** (cœur 0.6.2) Réseau social : comment reconnaître l'adresse de son profil, annoncé par l'index pour la reconnaître AVANT l'installation. Bloc abîmé ignoré. */
+  social?: SocialSpec;
   /** Cœur minimal annoncé par l'index (`"requires": { "core": "0.1.10" }`) : permet de savoir SANS télécharger si le module convient. Absent = aucune exigence. Un cœur plus ancien ignore ce champ. */
   requires?: CoreRequirement;
   /** Services que le module offre, annoncés par l'index (`"offers": ["contact.store"]`, ou `{ service, version }`) : permet de le choisir comme fournisseur SANS le télécharger. Facultatif, relu à l'installation. */
@@ -70,6 +73,7 @@ export function sanitizeEntries(json: unknown): RecognizedItem[] {
       apiVersion: Number.isInteger(i.apiVersion) ? i.apiVersion : undefined,
       platform: typeof i.platform === "string" && PLATFORM_PATTERN.test(i.platform) ? i.platform : undefined,
       provides: Array.isArray(i.provides) ? i.provides.filter((x: unknown): x is string => typeof x === "string" && /^[a-z][a-z0-9.-]{0,40}$/.test(x)).slice(0, 20) : undefined,
+      social: parseSocialSpec(i.social),
       requires: sanitizeRequires(i.requires),
       offers: sanitizeServiceList(i.offers, "version"),
       needs: sanitizeServiceList(Array.isArray(i.requires) ? i.requires : i.needs, "min"),
