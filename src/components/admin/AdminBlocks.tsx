@@ -99,7 +99,7 @@ function FormFields({ fields, labels }: { fields: AdminField[]; labels?: FormLab
       {fields.filter((f) => f.kind === "hidden").map((f) => <Field key={f.name} f={f} />)}
       {grid(visible)}
       {folded.length > 0 && (
-        <MoreOptions title={labels?.more ?? "More options"} summary={labels?.fold?.summary} count={labels?.fold?.count} defaultOpen={folded.some((f) => (f.value ?? "") !== "" && f.value !== "0" && f.value !== "off")}>
+        <MoreOptions title={labels?.more ?? "…"} summary={labels?.fold?.summary} count={labels?.fold?.count} defaultOpen={folded.some((f) => (f.value ?? "") !== "" && f.value !== "0" && f.value !== "off")}>
           {grid(folded)}
         </MoreOptions>
       )}

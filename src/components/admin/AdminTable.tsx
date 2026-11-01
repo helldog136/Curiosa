@@ -77,6 +77,8 @@ export function AdminTable({ block, instanceId, entry, labels }: { block: TableB
           <button type="button" onClick={clear} className={`${ui.btn} min-h-11`}>{labels.clear}</button>
         </div>
       ) : (
+        // Plus large que l'écran, le tableau défile ; sous 640 px chaque ligne devient une carte (rien ne déborde).
+        <div className="relative sm:overflow-x-auto">
         <table role="table" data-skin-part="table" className="w-full text-left text-sm max-sm:block">
           <thead data-skin-part="table-head" role="rowgroup" className="text-muted max-sm:sr-only">
             <tr data-skin-part="table-row" role="row">
@@ -114,6 +116,7 @@ export function AdminTable({ block, instanceId, entry, labels }: { block: TableB
             })}
           </tbody>
         </table>
+        </div>
       )}
       {view.pages > 1 && (
         <nav aria-label={labels.pages} className="flex items-center justify-between gap-3">

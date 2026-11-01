@@ -30,7 +30,7 @@ test("raccourcis : état vide explicatif avec exemples, formulaire sans « — �
   const p = page("redirects");
   assert.match(p, /redirects\.length === 0 \?/);
   assert.match(p, /t\("redirects\.examples"\)/);
-  assert.match(p, /<details[\s\S]*withUrl\.length > 0 && \(/, "l'entrée à suivre est dans une zone repliée, et seulement s'il y en a");
+  assert.match(p, /<(?:details|MoreOptions)[\s\S]*withUrl\.length > 0 && \(/, "l'entrée à suivre est dans une zone repliée, et seulement s'il y en a");
   assert.ok(!/label: "—"/.test(p));
   assert.match(p, /<ActionForm action=\{createRedirect\}[^>]*\breset\b/);
 });
