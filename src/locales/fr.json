@@ -295,6 +295,7 @@
   "social.paste.title": "Ajouter vos réseaux",
   "social.paste.label": "Collez l'adresse de votre profil",
   "social.paste.help": "Une ou plusieurs adresses, une par ligne.",
+  "social.paste.clear": "Tout effacer",
   "social.paste.add": "Ajouter",
   "social.paste.addOne": "Ajouter 1 réseau",
   "social.paste.addMany": "Ajouter {n} réseaux",

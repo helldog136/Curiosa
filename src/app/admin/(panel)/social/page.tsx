@@ -57,13 +57,13 @@ export default async function SocialPage({ searchParams }: { searchParams: Promi
   const sources = socialSourcesOf(market);
   const icons: Record<string, { svg?: string; text?: string } | null> = {};
   for (const src of sources) { const r = resolveIcon(src.spec.icon ?? null); icons[src.id] = r ? ("svg" in r ? { svg: r.svg } : { text: r.text }) : null; }
-  const example = (() => { const first = sources[0]?.spec.example; return typeof first === "string" ? first : first?.[locale] ?? first?.fr ?? Object.values(first ?? {})[0] ?? ""; })();
+  const example = (() => { const first = (sources.find((x) => x.id === "instagram") ?? sources[0])?.spec.example; return typeof first === "string" ? first : first?.[locale] ?? first?.fr ?? Object.values(first ?? {})[0] ?? ""; })();
   const paste: SocialPasteLabels = {
     label: t("social.paste.label"), help: t("social.paste.help"), example: example ? t("field.example", { example }) : "", placeholder: "",
     add: t("social.paste.add"), addOne: t("social.paste.addOne"), addMany: t("social.paste.addMany", { n: "{n}" }), running: t("social.paste.running", { name: "{name}", n: "{n}", total: "{total}" }),
     done: t("social.paste.done", { label: "{label}" }), doneMany: t("social.paste.doneMany", { n: "{n}" }), failed: t("social.failed"),
     ready: t("social.paste.ready"), have: t("social.paste.have"), dup: t("social.paste.dup"), choose: t("social.paste.choose"), choosePlaceholder: t("social.paste.choosePlaceholder"),
-    unknown: t("social.paste.unknown"), ownerOnly: t("social.ownerOnly"), clear: t("search.clear"), limit: t("social.paste.limit", { max: "{max}", n: "{n}" }),
+    unknown: t("social.paste.unknown"), ownerOnly: t("social.ownerOnly"), clear: t("social.paste.clear"), limit: t("social.paste.limit", { max: "{max}", n: "{n}" }),
   };
 
   const available = market.map((e) => ({ id: e.id, icon: e.icon, name: localized(e.name, locale, config.defaultLocale), description: localized(e.description, locale, config.defaultLocale), installed: counts.get(e.id) ?? 0 }));
