@@ -133,6 +133,8 @@ sudo bash install.sh --site monsite --domain monsite.example.org --user monsite-
 
 `--yes` répond « oui » aux confirmations (installer Node.js, Caddy, ouvrir 80/443 dans ufw) : l'agent l'ajoute **seulement après avoir expliqué ces points à la personne et obtenu son accord**. Autres options : `--port`, `--dir`, `--tag`, `--skip-dns-check`, `--skip-proxy`, `--uninstall` (voir `--help`).
 
+**Langue.** Le script parle français ou anglais (`--lang fr|en`, sinon `CURIOSA_LANG`, `LC_ALL` / `LC_MESSAGES` / `LANG`, sinon anglais ; détail dans [INSTALL.md](INSTALL.md#languages--langues)). Une machine en « C » ou en « POSIX » reçoit l'anglais : **ajoutez `--lang fr` si la personne parle français** (ou `--lang en`), pour que les messages que vous lui relisez soient dans sa langue. Les codes de sortie, les options et les fichiers écrits ne changent pas avec la langue : ne vous appuyez que sur eux, jamais sur le texte d'un message, pour décider de la suite.
+
 ### Pourquoi un utilisateur dédié (à expliquer à la personne, avec vos mots)
 
 - Un site web est un programme **ouvert sur Internet** : n'importe qui peut lui envoyer des requêtes. Si une faille est un jour découverte dans ce programme (ou dans une de ses dépendances), une personne malveillante peut lui faire exécuter des commandes.
@@ -198,7 +200,7 @@ Codes de sortie du script : `0` terminé ; `1` arrêté sur une erreur (message 
 
 ## Ce qui est testé, et ce qui ne l'est pas
 
-Le script est couvert par des tests automatiques (`tests/core/install-script.test.mjs`) qui le lancent dans une **racine fictive**, avec une release simulée et des commandes système remplacées : arrêt avant toute modification (ARM, dossier non vide, SHA-256 faux, Node trop ancien, DNS), port suivant, installation complète, nginx (ajout, refus, domaine déjà géré), reprise, idempotence, désinstallation. Une installation a aussi été rejouée avec la vraie release (téléchargement réel, vraie base, vrai démarrage de Next) dans une racine fictive. **Non vérifié automatiquement** : systemd réel, Caddy et le certificat HTTPS réels, le DNS réel, `apt` (Node.js, Caddy), Apache, ufw, et un Ubuntu vierge de bout en bout : à confirmer sur un serveur jetable avant d'en faire la voie unique.
+Le script est couvert par des tests automatiques (`tests/core/install-script.test.mjs`) qui le lancent dans une **racine fictive**, avec une release simulée et des commandes système remplacées : arrêt avant toute modification (ARM, dossier non vide, SHA-256 faux, Node trop ancien, DNS), port suivant, installation complète, nginx (ajout, refus, domaine déjà géré), reprise, idempotence, désinstallation. Une installation a aussi été rejouée avec la vraie release (téléchargement réel, vraie base, vrai démarrage de Next) dans une racine fictive. **Non vérifié automatiquement** : systemd réel, Caddy et le certificat HTTPS réels, le DNS réel, `apt` (Node.js, Caddy), Apache, ufw, et un Ubuntu vierge de bout en bout : à confirmer sur un serveur jetable avant d'en faire la voie unique. Les langues (français, anglais) sont couvertes par `tests/core/install-i18n.test.mjs` : parité des textes, choix de la langue, mêmes codes de sortie et mêmes fichiers dans chaque langue. Jamais testé sur une machine réelle : le choix de la langue par `LANG` sous `sudo` (le plus souvent conservé par sudo, mais cela dépend de sa configuration), et la question de langue dans un vrai terminal.
 
 ## Installation manuelle (avancé)
 

@@ -29,6 +29,11 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Pour les créatrices et créateurs de skins.** Un skin qui essaie de changer l'allure de ce nom est refusé, avec un message qui dit quoi retirer. Les skins déjà installés continuent de s'afficher normalement ; leurs règles sur ce nom sont simplement ignorées.
 - **Le même nom dans l'administration.** Le crédit du bas de l'administration utilise maintenant exactement le même nom que le site public.
 
+### Installation
+
+- **Le script d'installation parle français et anglais.** Il suit la langue de votre serveur, ou l'option « --lang fr » ou « --lang en » ; si la langue n'est pas reconnue, il parle anglais, ou vous la demande une fois dans un terminal. Un serveur en français garde les mêmes messages qu'avant.
+- **Rien d'autre ne change selon la langue.** Les codes de sortie, les options et les fichiers écrits sur le serveur restent les mêmes : on peut relancer ou désinstaller dans l'autre langue.
+
 ### Pour les développeurs
 
 - **Visuels de la fiche (`previews`).** Clé facultative du manifeste : 6 images au plus (WebP ou PNG de 150 Ko), légende et texte alternatif en `fr` et `en`, sans `minCore` à déclarer. Le kit ajoute l'exigence `manifest.previews`.
@@ -41,6 +46,29 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Règle du cœur** `BRAND_MARK_CSS` (`src/core/skins/brand.ts`) émise après la feuille du skin, en `!important` ; la police vient de `--curiosa-wordmark-font` (option `variable` de `wordmark.ts`).
 - **Kit** : `skin:check --visual` compare le style calculé du mot sous le skin et sous basic (`kit-brand-changed`) et vérifie que la police de marque est chargée (`kit-brand-font-missing`). Le banc d'essai chargeait un double sans police : il embarque maintenant le vrai fichier `curiosa-wordmark.woff2`.
 - **Les cinq skins du catalogue** posent encore `text-transform` / `letter-spacing` sur `credit` ou `credit a` : ils sont refusés à l'installation par ce cœur tant que `curiosa-skins` n'a pas publié une version corrective.
+- **`scripts/install.sh` : catalogues de messages.** Un bloc `catalog_XX` par langue dans le fichier (toujours un seul fichier, compatible bash 3) ; langue choisie par `--lang`, `CURIOSA_LANG`, `LC_ALL`, `LC_MESSAGES`, `LANG`. Ajouter une langue : un bloc et son code dans `LANGS` (docs/INSTALL.md). `tests/core/install-i18n.test.mjs` vérifie la parité et les sorties machine.
+
+
+## 0.6.1 — 2026-11-01
+
+**En bref.** La page « Réseaux sociaux » tient en un seul tableau, avec une recherche qui filtre en tapant, un interrupteur « Affiché » et l'ordre des boutons. Une adresse de profil qui n'est pas reconnue est dite tout de suite, sous le champ, avec un exemple.
+
+### Réseaux sociaux
+
+- **Un seul tableau pour tous vos réseaux.** Réseau, adresse, origine (une pastille écrite : Réseau, Chaîne en direct, Autre plateforme), interrupteur « Affiché » et ordre. Les noms ne sont plus coupés, et chaque réseau n'apparaît plus deux fois sur la page.
+- **Une recherche qui filtre pendant la frappe**, dès le premier réseau, et des filtres « Affiché · Masqué · À régler » avec leur nombre. Sur téléphone, chaque ligne devient une carte.
+- **Un interrupteur « Affiché » dans la ligne.** Vous masquez un bouton de l'en-tête sans rien supprimer ; l'interrupteur revient en arrière si l'enregistrement échoue.
+- **L'ordre des boutons se règle.** Les boutons « Monter » et « Descendre » de chaque ligne marchent au clavier comme à la souris.
+- **« 6 sur 10 affichés ».** Le compteur prévient quand l'en-tête est plein ou quand deux boutons ont la même adresse : plus rien n'est écarté en silence.
+- **Une adresse qui n'est pas reconnue est dite tout de suite.** Le message est sous le champ, avec un exemple (« Par exemple : https://… »), et votre saisie est gardée. Quand elle est reconnue, le message dit le bouton qui s'affichera (« Instagram · monpseudo »).
+- **Ajouter un réseau demande un clic.** Une recherche remplace la grille de cartes, et le champ « Nom » disparaît : un deuxième compte du même réseau reçoit un nom d'office (« Instagram 2 »), que vous changez dans « Modifier ».
+
+### Pour les développeurs
+
+- **Aucune migration.** Deux réglages du cœur, ajoutés sans toucher aux instances : `social.hidden` (clés d'instances masquées) et `social.order` (ordre des clés). Absents, le comportement est celui d'avant ; une valeur abîmée est ignorée.
+- **`loadSocialEntries(locale, max)`** renvoie chaque bouton avec son état (`shown`, `hidden`, `duplicate`, `limit`) ; `loadSocialLinks` en est le filtre « affichés » (même signature qu'avant, l'en-tête, `llms.txt` et le plan du site n'ont pas changé). Fonctions pures : `orderedKeys`, `moveKey`, `socialOrigin`.
+- **Vérification de l'adresse** (`src/core/socialCheck.ts`) : pour un module `type: "social"` qui fournit `social.link`, le réglage `profile` est essayé avant d'être écrit (le module est appelé avec la valeur proposée, 2 secondes au plus). Convention, pas de nouvelle clé de manifeste. Les messages sont `social.error.profile` (avec `example` du réglage) et `social.saved`.
+- Pas de clé de manifeste nouvelle : le cœur reste en 0.6.x.
 
 ## 0.6.2 — 2026-11-01
 

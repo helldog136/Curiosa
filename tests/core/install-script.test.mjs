@@ -91,7 +91,8 @@ async function lab(t, o = {}) {
   const gh = await startGithub(relDir, rel, o);
   const portStart = o.portStart ?? await freePort();
   const env = {
-    PATH: `${bin}:${path.dirname(NODE)}:/usr/bin:/bin:/usr/sbin:/sbin`, HOME: base, TMPDIR: base, LANG: "C.UTF-8",
+    PATH: `${bin}:${path.dirname(NODE)}:/usr/bin:/bin:/usr/sbin:/sbin`, HOME: base, TMPDIR: base, LANG: "C.UTF-8", CURIOSA_LANG: "fr",   // ces assertions lisent les messages français ; tests/core/install-i18n.test.mjs couvre l'anglais
+   
     CURIOSA_ROOT: root, CURIOSA_ALLOW_NONROOT: "1", CURIOSA_UNAME_M: "x86_64", CURIOSA_OS_RELEASE: path.join(root, "os-release"),
     CURIOSA_GITHUB_API: gh.url, CURIOSA_GITHUB_WEB: gh.url, CURIOSA_MIN_FREE_MB: "1", CURIOSA_PORT_START: String(portStart),
     CURIOSA_PUBLIC_IP: "203.0.113.7", CURIOSA_DOMAIN_IP: "203.0.113.7",
