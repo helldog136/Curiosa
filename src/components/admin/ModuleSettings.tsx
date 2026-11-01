@@ -17,6 +17,7 @@ import { MoreOptions } from "./MoreOptions";
 import { NumberField } from "./NumberField";
 import { Segmented, fitsSegmented } from "./Segmented";
 import { PeriodField } from "./PeriodField";
+import { periodLabels } from "./periodLabels";
 import { DateTimeField } from "./DateTimeField";
 import { DurationField } from "./DurationField";
 import { numberHint, valueErrorKey } from "@/core/adminkit/hints";
@@ -88,7 +89,7 @@ export function ModuleSettings({ t, locale, defaultLocale, locales, fields, allF
         return <CheckboxGroup key={name} name={name} label={label} help={help} hint={hint} flag={opts.flag} options={(f.options ?? []).map((o) => ({ value: o.value, label: L(o.label) }))} checked={readMulti(f, value)} />;
       }
       case "secret":
-        return <TextField key={name} {...common} type="password" placeholder={value ? "••••••••" : ""} autoComplete="new-password" required={required && !value} />;
+        return <TextField key={name} {...common} type="password" noManager placeholder={value ? "••••••••" : ""} autoComplete="new-password" required={required && !value} />;
       case "number": {
         // Sans borne ni unité : le champ d'avant. Avec : un nombre borné qui écrit son unité et montre sa valeur par défaut.
         if (f.min === undefined && f.max === undefined && f.step === undefined && f.unit === undefined) return <TextField key={name} {...common} type="number" defaultValue={str} />;
@@ -98,7 +99,7 @@ export function ModuleSettings({ t, locale, defaultLocale, locales, fields, allF
       }
       case "period":
         return <PeriodField key={name} name={name} label={label} help={common.help} example={example} required={required} defaultValue={str} locale={locale}
-          labels={{ from: t("period.from"), to: t("period.to"), yearly: t("period.yearly"), sentenceYearly: t("period.sentenceYearly"), sentenceOnce: t("period.sentenceOnce"), none: t("period.none"), clear: t("period.clear"), order: t("period.order") }} />;
+          labels={periodLabels(t)} />;
       case "datetime":
         return <DateTimeField key={name} name={name} label={label} help={common.help} example={example} required={required} defaultValue={str} locale={locale}
           labels={{ date: t("datetime.date"), time: t("datetime.time"), clear: t("datetime.clear"), at: t("datetime.at"), preview: t("datetime.preview") }} />;

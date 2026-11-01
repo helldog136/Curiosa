@@ -22,6 +22,23 @@ Points à retenir :
 **Développer le framework** : cloner le dépôt (`git clone`, branche `dev`), puis `npm ci && npm run bootstrap && npm run build && npm start`. Un clone de
 développement ne se met pas à jour depuis l'admin (c'est à vous de faire `git pull`).
 
+## Languages / Langues
+
+Le script `install.sh` parle **français et anglais**. Il choisit la langue dans cet ordre :
+
+1. l'option `--lang fr` ou `--lang en` ;
+2. la variable `CURIOSA_LANG` (`fr`, `en`, ou une valeur de la forme `fr_BE.UTF-8`) ; une valeur inconnue est ignorée ;
+3. les variables du système `LC_ALL`, puis `LC_MESSAGES`, puis `LANG` (la première qui est renseignée l'emporte) ;
+4. sinon, l'**anglais**.
+
+Si rien ne permet de deviner (aucune langue, « C », « POSIX » ou une langue non proposée) **et** que vous êtes dans un terminal, le script pose une fois la question « Language / Langue ». Avec `--yes`, ou sans terminal (une IA, un script), il ne demande rien. Une machine configurée en français (`LANG=fr_FR.UTF-8` par exemple) reste en français comme avant ; une machine en « C » passe en anglais, ou ajoutez `--lang fr`.
+
+Ce qui **ne dépend pas** de la langue : les codes de sortie (0, 1, 2, 10), les noms des options, les fichiers écrits sur le serveur (`.env`, service, configuration du serveur web, y compris leur ligne `# Géré par install-curiosa`, qui sert à reconnaître ce que le script a installé), la commande qui affiche le code d'installation. On peut donc relancer, ou désinstaller, dans une autre langue que celle de l'installation. La page `/admin/setup` s'ouvre en français : la page finale, quand le script parle une autre langue, dit de choisir la langue du site à la première question de l'assistant.
+
+**Pour ajouter une langue** (par exemple `de`) : dans `scripts/install.sh`, copiez le bloc `catalog_en` en `catalog_de` (délimiteur `CATALOG_DE`), traduisez le texte de chaque ligne (une ligne = « clé texte » ; gardez les clés, les `{1}`, `{2}`… et les options telles quelles ; `lang.name` = le nom de la langue dans sa langue ; `plural.zero` = `one` si 0 s'accorde au singulier, comme en français, sinon `other`), puis ajoutez `de` à la liste `LANGS` en haut du fichier. Le script reste **un seul fichier** (il est téléchargé seul, voir plus haut) : le catalogue n'est jamais dans un fichier à côté. Une clé absente d'une langue s'affiche en anglais, mais `tests/core/install-i18n.test.mjs` exige la parité exacte (mêmes clés, mêmes arguments) : mettez aussi à jour la liste des langues attendues dans ce test. Les textes suivent [ERGONOMIE-ADMIN.md](ERGONOMIE-ADMIN.md) (vouvoiement ou équivalent, phrases courtes, pas de jargon, pas de point d'exclamation).
+
+**English summary.** `install.sh` speaks English and French. Language order: `--lang fr|en`, then `CURIOSA_LANG`, then `LC_ALL` / `LC_MESSAGES` / `LANG`, otherwise English. In a terminal, when nothing tells the language (unset, `C`, `POSIX`, or an unsupported language), the script asks once; with `--yes` or without a terminal it never asks. Exit codes, option names and every file written on the server are the same in every language. To add a language, add a `catalog_xx` block to `scripts/install.sh` and `xx` to `LANGS` (see the comments above the catalogues).
+
 ## Démarrage automatique
 
 L'unité systemd (écrite par le script, ou donnée dans le [README](../README.md#installation-manuelle-avancé)) (un exemple figure aussi dans [`deploy/curiosa.service`](../deploy/curiosa.service)). Avec pm2 : `pm2 start node_modules/next/dist/bin/next --name curiosa -- start -p 3000`
@@ -187,6 +204,6 @@ Formats acceptés : png, jpg, webp, gif, et **SVG pour les logos et le favicon**
 
 ## En-tête et menu
 
-- **Réglages → Apparence → En-tête du site** : quatre dispositions au choix (*Classique*, *Deux niveaux*, *Centré*, *Discret*). Le logo (voir *Logos*), le menu, les langues, les icônes sociales, un lien secondaire (ex. « Nous contacter ») et un bouton (ex. « Devenir membre ») s'y placent tout seuls.
+- **Apparence → Retoucher → En-tête du site** : quatre dispositions au choix (*Classique*, *Deux niveaux*, *Centré*, *Discret*). Le logo (voir *Logos*), le menu, les langues, les icônes sociales, un lien secondaire (ex. « Nous contacter ») et un bouton (ex. « Devenir membre ») s'y placent tout seuls.
 - **Icônes sociales** : elles reprennent les entrées de **toutes** les listes de réseaux sociaux actives du site (une liste par chaîne si vous en avez plusieurs) ; rien à ressaisir.
 - **Menu → Menu déroulant** : un groupe range des pages et des liens sous un nom (« À propos ▾ »), un seul niveau. Il s'ouvre au clic, au toucher, au survol et au clavier (Échap le ferme). Un groupe vide n'est pas enregistré.

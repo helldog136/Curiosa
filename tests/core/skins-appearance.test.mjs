@@ -332,7 +332,7 @@ test("modèle : un skin dont les fichiers ont disparu ne casse pas la page (basi
   assert.equal(await getSetting("skin.active"), "plain-light", "le choix est gardé : il se réactive à la réinstallation");
 });
 
-test("modèle : « nous avons ajusté une couleur » (notices de composition) pour des retouches illisibles ; la retouche est enregistrée quand même", async () => {
+test("modèle : une retouche illisible est enregistrée ET rendue telle quelle : aucune notice « nous avons ajusté une couleur »", async () => {
   await install("plain-light", "plain-light");
   await A.chooseSkin("plain-light");
   const sv = (await V.loadAppearanceView()).skinColors.light;
@@ -340,8 +340,8 @@ test("modèle : « nous avons ajusté une couleur » (notices de composition) po
   assert.ok(r.ok, "jamais bloquant");
   assert.equal(await getSetting("theme.text"), "#f4f4f5");
   const v = await V.loadAppearanceView();
-  assert.ok(v.notices.length > 0, "le rendu a corrigé le texte pâle sur fond blanc");
-  assert.ok(v.notices.every((n) => n.fr && n.en));
+  assert.equal(v.notices.length, 0, "le texte pâle choisi n'est pas corrigé en cachette");
+  assert.equal(v.single.text, "#f4f4f5", "la couleur choisie est celle que la page montre et que le site applique");
 });
 
 // ── aperçu

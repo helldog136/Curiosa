@@ -8,11 +8,13 @@
  *
  * Repli valeur par valeur : tout jeton que le skin ne définit pas, ou dont la valeur est refusée, vient de basic. Les couleurs dérivées (texte secondaire,
  * filets, texte des boutons, états, dégradé) sont recalculées par `buildPalette` quand une couleur dont elles dépendent est retouchée, sinon le skin les fixe
- * ou, à défaut, elles sont dérivées. Le contrôle de lisibilité (`correctReadability`) s'applique au résultat de chaque mode d'un skin (basic est exempté).
+ * ou, à défaut, elles sont dérivées. Le contrôle de lisibilité (`correctReadability`) s'applique au résultat de chaque mode d'un skin tel qu'il est livré (basic est exempté) ;
+ * il ne corrige JAMAIS une couleur choisie par la personne propriétaire (retouches : appliquées telles quelles, un simple conseil s'affiche à l'écran Apparence).
  *
  * Pour basic, le résultat est EXACTEMENT celui d'avant les skins : `buildPalette(fond, accent, choix facultatifs)` (tests/core/skins-compose.test.mjs).
  */
 import { buildPalette, FONT_STACKS, gradientTextOn, isHexColor, luminance, THEME_TOKENS, type Theme, type ThemeToken } from "../color";
+import type { ResolvedFonts } from "../fonts/css";
 import { BASIC } from "./basic";
 import { parseColor, toHex } from "./colorParse";
 import { makeIssue, type SkinIssue, type Text } from "./messages";
@@ -119,7 +121,7 @@ function planModes(skin: SkinDefinition, ret: Retouches): { modes: Mode[]; retou
 
 /** Les jetons effectifs d'un mode. */
 function composeMode(args: {
-  mode: Mode; skin: SkinDefinition; basic: SkinDefinition; retouch: ColorRetouch; font?: "sans" | "serif" | "mono"; issues: SkinIssue[];
+  mode: Mode; skin: SkinDefinition; basic: SkinDefinition; retouch: ColorRetouch; font?: "sans" | "serif" | "mono"; fonts?: ResolvedFonts; issues: SkinIssue[];
   extra: ReadonlyMap<string, TokenType>; moduleDefaults: Layer; moduleBase: Layer; optionLayer: Layer; modulePairs: readonly ModulePairDecl[];
 }): ComposedMode {
   const { mode, skin, basic, retouch: R, issues, extra } = args;
@@ -131,6 +133,9 @@ function composeMode(args: {
   const merged: Layer = { ...stripPalette(basicLayer), ...args.moduleDefaults, ...stripPalette(skinLayer), ...args.optionLayer };
   const skinPalette: Layer = isBasic ? basicLayer : pickPalette(skinLayer);
   if (args.font) merged["--v-font"] = FONT_STACKS[args.font];
+  // Polices choisies dans Apparence (docs/POLICES.md) : le texte l'emporte sur l'ancien `theme.font` ; les titres sur la police de titres du skin (qui, sinon, suit le texte).
+  if (args.fonts?.body) merged["--v-font"] = args.fonts.body.stack;
+  if (args.fonts?.heading) merged["--sk-font-heading"] = args.fonts.heading.stack;
 
   // ── palette
   const palette = isBasic ? basicPalette(R, basicLayer) : skinPaletteOf(R, skinPalette, basicLayer);
@@ -157,14 +162,33 @@ function composeMode(args: {
   let finalTokens = tokens;
   if (!isBasic) {
     const c = correctReadability(tokens, mode, { skinId: skin.id, modulePairs: args.modulePairs.map((p) => ({ fg: p.fg, bg: p.bg, defaults: { fg: args.moduleBase[p.fg], bg: args.moduleBase[p.bg] } })) });
-    changes = c.changes;
-    notice = c.notice;
-    if (c.suspended) {
-      suspended = true;
+    const chosen = Object.values(R).some((v) => !!v);
+    if (!chosen) {
+      // le skin tel qu'il est livré : l'échelle de correction du §7.3 (inchangée)
+      changes = c.changes;
       notice = c.notice;
-      // basic s'applique à ce mode : ses couleurs (la feuille et les autres jetons du skin restent)
-      finalTokens = { ...tokens, ...basicPalette({}, basicLayer) };
-    } else finalTokens = c.tokens;
+      if (c.suspended) {
+        suspended = true;
+        // basic s'applique à ce mode : ses couleurs (la feuille et les autres jetons du skin restent)
+        finalTokens = { ...tokens, ...basicPalette({}, basicLayer) };
+      } else finalTokens = c.tokens;
+    } else {
+      // Couleurs choisies par la personne : appliquées TELLES QUELLES, sans correction cachée ni suspension (docs/SKINS.md §7.5).
+      // Ne reste de l'échelle que ce qui ne touche à aucun choix (pièces de module remises à leur valeur par défaut), et seulement si le skin, sans les retouches,
+      // en avait déjà besoin. Un skin déjà suspendu sans retouche garde basic pour ce mode, mais avec les couleurs choisies.
+      const alone = composeMode({ ...args, retouch: {}, issues: [] });
+      if (alone.suspended) {
+        suspended = true;
+        notice = alone.notice;
+        finalTokens = { ...tokens, ...basicPalette(R, basicLayer) };
+      } else {
+        const kept = c.suspended ? [] : c.changes.filter((ch) => ch.step !== "text" && alone.changes.some((a) => a.token === ch.token));
+        changes = kept;
+        finalTokens = { ...tokens };
+        for (const ch of kept) finalTokens[ch.token] = ch.to;
+        notice = kept.length ? c.notice : null;
+      }
+    }
   }
   // Texte à poser sur le dégradé accent → accent secondaire (règles `[data-accent2]` du cœur) : seulement si les deux accents diffèrent
   const a = finalTokens["--v-accent"], b = finalTokens["--v-accent2"];
@@ -172,7 +196,7 @@ function composeMode(args: {
     // `--sk-gradient: flat` : le dégradé du cœur (chiffres clés, panneau d'appel à l'action, filet sous l'en-tête) devient la couleur principale unie, même après une retouche des couleurs
     finalTokens = { ...finalTokens, "--v-gradient": "linear-gradient(120deg, var(--v-accent), var(--v-accent))", "--c-grad-fg": "var(--v-accent-fg)" };
   } else if (isHexColor(a) && isHexColor(b) && a.toLowerCase() !== b.toLowerCase()) finalTokens = { ...finalTokens, "--c-grad-fg": gradientTextOn(a, b) };
-  const theme = themeOf(finalTokens, args.font);
+  const theme = themeOf(finalTokens, args.fonts?.body?.key ?? args.font);
   return { mode, tokens: finalTokens, theme, suspended, changes, notice, darkBackground: isDarkHex(theme.bg) };
 }
 
@@ -272,7 +296,7 @@ function compose(input: ComposeInput, issues: SkinIssue[], forceBasic = false): 
   const plan = planModes(skin, ret);
   const modes = plan.modes.map((mode) =>
     composeMode({
-      mode, skin, basic, retouch: plan.retouch[mode] ?? {}, font: ret.font, issues, extra, moduleDefaults: moduleLayer, moduleBase: moduleDefaults, optionLayer, modulePairs: input.modulePairs ?? [],
+      mode, skin, basic, retouch: plan.retouch[mode] ?? {}, font: ret.font, fonts: ret.fonts, issues, extra, moduleDefaults: moduleLayer, moduleBase: moduleDefaults, optionLayer, modulePairs: input.modulePairs ?? [],
     }),
   );
   const hasAcc2 = modes.some((m) => {

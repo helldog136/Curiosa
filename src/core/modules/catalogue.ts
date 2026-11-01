@@ -2,6 +2,8 @@ import { MODULE_API_VERSION } from "../config";
 import { getRecognizedDetailed, readRecognizedCacheOffline, type RecognizedItem, type RecognizedResult } from "./recognized";
 import { incompatWithThisCore, type CoreRequirement } from "./compat";
 import type { LocalizedString } from "./types";
+import type { SocialSpec } from "../socialSpec";
+import type { PreviewDecl } from "./previews";
 import { normalizeNeeds, normalizeOffers, type ServiceNeed, type ServiceOffer } from "./serviceVersions";
 
 /**
@@ -32,6 +34,8 @@ export type CatalogueEntry = {
   platform?: string;
   /** Sujets que le module fournit (ex. `social.link`) : le cœur s'en sert pour proposer les réseaux sociaux. */
   provides?: string[];
+  /** (cœur 0.6.1) Réseau social : de quoi reconnaître l'adresse de son profil sans l'installer (voir socialRecognize.ts). */
+  social?: SocialSpec;
   /** Ce module vise-t-il l'API de modules de CE framework ? Sinon il est listé mais non installable. */
   compatible: boolean;
   /** Cœur minimal demandé (index ou manifeste), absent = aucune exigence. Ne change pas `compatible` (API) : voir `needsNewerCore`. */
@@ -41,6 +45,8 @@ export type CatalogueEntry = {
   /** Services offerts / exigés (index du catalogue) : lus SANS installer, pour dire ce que l'installation apportera. */
   offers?: ServiceOffer[];
   needs?: ServiceNeed[];
+  /** Visuels annoncés par l'index (légende, texte alternatif, type) : sert à dire qu'il y en a, sans rien télécharger. Les images viennent du dépôt du module, lues par le cœur (previewServe.ts). */
+  previews?: PreviewDecl[];
   /**
    * D'où vient l'entrée : « official » = dépôt du catalogue (ou sa dernière copie reçue) ; « extra » = index supplémentaire (MODULES_INDEX_URL).
    * Un module « extra » n'est JAMAIS installé d'office (cascade, suggestion) : seulement proposé, avec un avertissement, sur un clic du propriétaire.
@@ -55,9 +61,9 @@ function recognizedEntry(c: RecognizedItem, suggested: Set<string>): CatalogueEn
   const needs = normalizeNeeds(c.needs);
   return {
     id: c.id, name: c.name, description: c.description, version: c.version, icon: c.icon, author: c.author, suggested: c.catalogueOrigin !== "extra" && suggested.has(c.id),
-    kind: "recognized", provides: c.provides, platform: c.platform, repo: c.repo, ref: c.ref, subdir: c.subdir, compatible: c.apiVersion === undefined || c.apiVersion === MODULE_API_VERSION,
+    kind: "recognized", provides: c.provides, social: c.social, platform: c.platform, repo: c.repo, ref: c.ref, subdir: c.subdir, compatible: c.apiVersion === undefined || c.apiVersion === MODULE_API_VERSION,
     requires: c.requires, needsNewerCore: incompatWithThisCore(c.requires)?.needs,
-    offers: offers?.length ? offers : undefined, needs: needs?.length ? needs : undefined,
+    offers: offers?.length ? offers : undefined, needs: needs?.length ? needs : undefined, previews: c.previews,
     origin: c.catalogueOrigin === "extra" ? "extra" : "official",
   };
 }
@@ -65,8 +71,8 @@ function recognizedEntry(c: RecognizedItem, suggested: Set<string>): CatalogueEn
 /**
  * Tout ce qu'on peut installer en confiance : l'index du catalogue (réseau, version épinglée par étiquette), et rien d'autre. Sans réseau ni dernière copie reçue : liste vide.
  */
-export async function getCatalogue(opts: { fetchImpl?: typeof fetch } = {}): Promise<CatalogueEntry[]> {
-  const { items, suggested } = await getRecognizedDetailed({ fetchImpl: opts.fetchImpl });
+export async function getCatalogue(opts: { fetchImpl?: typeof fetch; staleOk?: boolean } = {}): Promise<CatalogueEntry[]> {
+  const { items, suggested } = await getRecognizedDetailed({ fetchImpl: opts.fetchImpl, staleOk: opts.staleOk });
   const ids = new Set(suggested);
   return items.map((c) => recognizedEntry(c, ids));
 }
@@ -82,7 +88,7 @@ export async function catalogueUnreachable(opts: { fetchImpl?: typeof fetch } = 
   return r.source === "none" && r.items.length === 0;
 }
 
-export async function findCatalogueEntry(id: string, opts: { fetchImpl?: typeof fetch } = {}): Promise<CatalogueEntry | undefined> {
+export async function findCatalogueEntry(id: string, opts: { fetchImpl?: typeof fetch; staleOk?: boolean } = {}): Promise<CatalogueEntry | undefined> {
   return (await getCatalogue(opts)).find((e) => e.id === id);
 }
 

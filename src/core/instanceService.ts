@@ -9,6 +9,7 @@ import { listInstances, toInstanceView } from "./instances";
 import { localized } from "./modules/types";
 import { keyFromNickname } from "./instanceLabel";
 import { retireInstance } from "./modules/retired";
+import { releaseManaged } from "./managedRedirects";
 import { eraseOwnedFiles } from "./services/files";
 import { forgetAllChoices } from "./modules/choiceCache";
 import { ensureMenuMigrated, setInstanceInMenu } from "./menuStore";
@@ -156,6 +157,7 @@ export async function deleteInstance(id: string): Promise<void> {
 async function deleteInstanceRow(id: string): Promise<void> {
   const row = await prisma.moduleInstance.findUnique({ where: { id }, include: { translations: true } });
   if (!row) return;
+  await releaseManaged(id);   // son adresse courte (managedRedirects.ts) part avec elle
   const mod = await getModule(row.moduleId);
   if (mod?.def.hooks?.onInstanceDelete) {
     try {

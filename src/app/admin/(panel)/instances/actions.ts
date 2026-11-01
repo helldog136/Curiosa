@@ -23,7 +23,11 @@ import { getModule } from "@/core/modules/registry";
 import { forgetChoices, validateChoices, type ChoiceField } from "@/core/modules/choice";
 import { getSources, providersOf, setSources } from "@/core/services/topics";
 import { audit } from "@/core/permissions";
-import { deleteSetting, getSettingByLocale, getSiteConfig, setSetting } from "@/core/settings";
+import { isSocialProfileField, previewSocialButton } from "@/core/socialCheck";
+import { deleteSetting, getSetting, getSettingByLocale, getSiteConfig, setSetting } from "@/core/settings";
+import { managedRedirectOf, reconcileManaged, shortLinkNameProblem, shortLinkOf, wantedName } from "@/core/managedRedirects";
+import { redirectShortUrl } from "@/core/redirects";
+import { isMeasureEnabled } from "@/core/redirectMeasure";
 import { mcpInstanceKey } from "@/core/modules/mcpProvider";
 import { isSort, sortSettingKey } from "@/core/content/sort";
 import type { ActionState } from "@/components/admin/ActionForm";
@@ -140,6 +144,8 @@ export async function saveInstanceSettings(_prev: ActionState, formData: FormDat
   const fields = mod.manifest.settings.filter(inForm);
   const L = (v: Parameters<typeof localized>[0]) => localized(v, config.defaultLocale, config.defaultLocale);
   const siteByLocale = Object.fromEntries(await Promise.all(config.locales.map(async (l) => { const c = await getSiteConfig(l); return [l, { name: c.name, tagline: c.tagline }] as const; })));
+  /** Le bouton que l'adresse d'un réseau social va afficher (dit à la personne après l'enregistrement). */
+  let socialButton: string | null = null;
   /** Opérations à appliquer : on contrôle TOUT avant d'écrire quoi que ce soit (une erreur n'enregistre rien). */
   const ops: ({ key: string; locale?: string } & ({ del: true } | { del?: false; value: unknown }))[] = [];
 
@@ -224,6 +230,16 @@ export async function saveInstanceSettings(_prev: ActionState, formData: FormDat
         // Sous le champ fautif (et l'onglet qui le contient s'ouvre de lui-même s'il était caché).
         return { errors: { [name]: reason === "link" ? t("instances.error.link", { field: L(field.label) }) : reason === "video" || reason === "image" || reason === "url" ? t("error.badUrl") : t("error.generic") } };
       }
+      // Réseau social : l'adresse du profil est vérifiée AVANT d'être enregistrée, sous le champ, avec un exemple (R22) ; la réussite montre le bouton qui s'affichera.
+      if (isSocialProfileField(mod, field.key)) {
+        const view = await getInstanceById(id);
+        const button = view ? await previewSocialButton(mod, view, raw, config.defaultLocale) : null;
+        if (!button) {
+          const example = field.example ? L(field.example) : "";
+          return { errors: { [name]: t(example ? "social.error.profile" : "social.error.profileNoExample", { network: L(mod.manifest.name), example }) } };
+        }
+        socialButton = button.label;
+      }
       op(checked.value);
     }
   }
@@ -239,14 +255,37 @@ export async function saveInstanceSettings(_prev: ActionState, formData: FormDat
       ops.push(check.store === null ? { key: c.key, locale: "", del: true } : { key: c.key, locale: "", value: check.store });
     }
   }
+  // Adresse courte demandée par le module (`shortLink`) : un nom déjà pris par un lien de la personne, réservé ou mal écrit est refusé ICI, sous le champ, avec un exemple,
+  // avant d'enregistrer quoi que ce soit. Seulement quand l'allumage ou le nom viennent de changer : une autre modification n'est jamais bloquée par ce réglage.
+  const shortLink = shortLinkOf(mod);
+  if (shortLink) {
+    const sent = (key: string) => ops.filter((o) => o.key === instanceSettingKey(id, key)).at(-1);
+    const was = async (key: string) => (await getSetting(instanceSettingKey(id, key))) ?? mod.manifest.settings.find((f) => f.key === key)?.default;
+    const valueOf = async (key: string) => { const op = sent(key); return op ? (op.del ? mod.manifest.settings.find((f) => f.key === key)?.default : op.value) : await was(key); };
+    const touched = [shortLink.enabled, shortLink.name].filter((k): k is string => !!k && !!sent(k));
+    let changed = false;
+    for (const k of touched) if ((await valueOf(k)) !== (await was(k))) changed = true;
+    const enabled = (await valueOf(shortLink.enabled)) === true;
+    if (changed && enabled) {
+      const name = wantedName(shortLink, shortLink.name ? await valueOf(shortLink.name) : undefined);
+      const problem = await shortLinkNameProblem(id, name, true);
+      if (problem) return { errors: { [`s__${shortLink.name && sent(shortLink.name) ? shortLink.name : shortLink.enabled}`]: t(`shortlink.error.${problem}`, { name, example: `${name}-2` }) } };
+    }
+  }
   for (const o of ops) {
     if (o.del) await deleteSetting(o.key, o.locale);
     else await setSetting(o.key, o.value, o.locale);
   }
   forgetChoices(id);
+  // Le cœur met l'adresse courte d'accord avec ce que le module demande (création, nouvelle destination, nouveau nom, retrait) ; il ne touche jamais un lien de la personne.
+  const managed = shortLink ? await reconcileManaged() : null;
+  const alias = managed && (await managedRedirectOf(id).catch(() => null));
+  const aliasMade = alias && [...managed.created, ...managed.updated].includes(alias.path) ? alias : null;
   await audit(user.email, "instance.settings", instance.key, { module: instance.moduleId, instance: instance.key });
   revalidatePath("/", "layout");
-  return { ok: t("action.saved") };
+  revalidatePath("/admin/redirects");
+  const saved = socialButton ? t("social.saved", { button: socialButton }) : t("action.saved");
+  return { ok: aliasMade ? `${saved} ${t((await isMeasureEnabled()) ? "shortlink.ready" : "shortlink.readyHint", { address: redirectShortUrl(aliasMade.path) })}` : saved };
 }
 
 /** « Réessayer » : relance la migration des données d'une instance mise à l'écart. */

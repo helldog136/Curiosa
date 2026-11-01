@@ -37,6 +37,8 @@
 c'est ce qui rend la mention « vérifié » vraie ; une branche mouvante ne l'est pas. `apiVersion` : la version de l'API des modules visée
 (autre que celle du framework = listé comme incompatible).
 
+Facultatif : `previews` (jusqu'à 6 visuels, recopiés tels quels du `module.json` : `file`, `caption`, `alt` en français et en anglais, `type`) annonce que la fiche du module a des images. Les images ne sont **jamais** dans l'index : le cœur les lit dans le dépôt du module, côté serveur. Voir [MODULES.md](../docs/MODULES.md), « Visuels de la fiche (`previews`) ».
+
 ## Gratuit, avec dons volontaires
 
 Le Catalogue **ne vend rien** : tout module qui y figure est gratuit et sous licence ouverte. Une personne qui accepte des dons volontaires le dit dans le **README.md** de son dépôt :

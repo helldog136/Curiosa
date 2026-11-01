@@ -23,6 +23,7 @@ import { migrateModuleInstances, type MigrationOutcome } from "./dataMigrations"
 import { incompatWithThisCore, requirementOf, type CoreRequirement } from "./compat";
 import { classify, compareVersions, pickLatestTag, TAG_RE, type UpdateLevel } from "../updates/versions";
 import { opStep } from "../operations/tracker";
+import { reconcileManaged } from "../managedRedirects";
 
 const run = promisify(execFile);
 
@@ -125,6 +126,19 @@ function gitArgs(args: string[]): string[] {
 export async function git(args: string[], cwd?: string, env?: Record<string, string>): Promise<string> {
   const { stdout } = await run("git", gitArgs(args), { cwd, timeout: 90_000, env: env ? { ...GIT_ENV, ...env } : GIT_ENV, maxBuffer: 1024 * 1024 });
   return stdout.trim();
+}
+
+/**
+ * Contenu BRUT d'un fichier d'un dépôt cloné (`rev:chemin`), ou null s'il n'existe pas ou dépasse `maxBytes` (la taille est demandée AVANT de lire le contenu).
+ * Court délai : sert aux petits fichiers de la fiche d'une extension (ses visuels), jamais à des fichiers de taille libre.
+ */
+export async function gitBlob(spec: string, cwd: string, maxBytes: number): Promise<Buffer | null> {
+  try {
+    const size = Number((await run("git", gitArgs(["cat-file", "-s", spec]), { cwd, timeout: 30_000, env: GIT_ENV, maxBuffer: 1024 })).stdout.trim());
+    if (!Number.isInteger(size) || size <= 0 || size > maxBytes) return null;
+    const { stdout } = await run("git", gitArgs(["show", spec]), { cwd, timeout: 30_000, env: GIT_ENV, maxBuffer: maxBytes + 1024, encoding: "buffer" });
+    return stdout.length === size ? stdout : null;
+  } catch { return null; }
 }
 
 export function dirSize(dir: string): number {
@@ -663,6 +677,7 @@ async function seededServices(manifest: ParsedManifest): Promise<Set<string>> {
 async function afterMigrations(id: string, settled: { journal: Journal; deferred?: true }): Promise<{ provided: string[]; missing?: Missing[] }> {
   await commitJournal(settled.journal);
   const provided = [...settled.journal.provided];
+  await reconcileManaged();   // le module installé ou mis à jour peut demander (ou ne plus demander) une adresse courte
   if (!settled.deferred) return { provided };
   const late = await settleDependencies(id);
   return { provided: [...provided, ...(late.provided ?? [])], ...(late.missing?.length ? { missing: late.missing } : {}) };
@@ -813,6 +828,7 @@ export async function purgeModule(id: string): Promise<void> {
   await prisma.module.delete({ where: { id } });
   forgetModule(id);
   await clearBlockedUpdate(id);
+  await reconcileManaged();   // les adresses courtes de ses instances partent avec elles
   fs.rmSync(moduleDir(id), { recursive: true, force: true });
 }
 

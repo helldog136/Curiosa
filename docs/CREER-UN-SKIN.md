@@ -227,6 +227,8 @@ Chaque problème porte un code stable (entre crochets dans le rapport), dans les
 | `kit-injected-text` | ❌ | texte ajouté (`content`) |
 | `kit-covered` | ❌ | élément cliquable recouvert par un décor |
 | `kit-offscreen` | ❌ | élément repoussé hors de l'écran |
+| `kit-brand-changed` | ❌ | le nom Curiosa du pied de page s'affiche autrement que sous basic (police, graisse, casse, espacement, soulignement ; y compris par héritage) |
+| `kit-brand-font-missing` | ❌ | la police de marque n'est pas chargée dans la page de démonstration (pas votre faute) |
 | `kit-tab-order` | ❌ | ordre de tabulation à l'envers (page entière) |
 | `kit-tab-order-warn` | ⚠️ | ordre de tabulation qui s'écarte de l'ordre visuel |
 | `kit-tab-order-region` | ❌ | ordre à l'envers dans un groupe (menu, cartes…) |

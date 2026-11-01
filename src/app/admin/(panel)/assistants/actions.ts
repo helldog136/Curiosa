@@ -9,7 +9,7 @@ import { audit } from "@/core/permissions";
 import { setApprovalMode, setNotifyMode } from "@/core/maintenance/settings";
 import { setSetting } from "@/core/settings";
 import { prisma } from "@/core/db";
-import { accessHref, ASSISTANTS_HREF } from "@/core/services/mcp/assistantsLinks";
+import { accessHref, ASSISTANTS_HREF, TEAM_HREF } from "@/core/services/mcp/assistantsLinks";
 
 /** Résultat de la création d'un jeton : le seul moment où le texte en clair (et l'adresse secrète) existe. Jamais relu depuis la base. */
 export type CreateTokenState = { error?: string; created?: { name: string; token: string; byUrl: boolean } } | null;
@@ -19,6 +19,7 @@ export async function setMcpEnabled(enabled: boolean): Promise<void> {
   await setSetting("mcp.enabled", enabled);
   await audit(user.email, enabled ? "mcp.enable" : "mcp.disable");
   revalidatePath(ASSISTANTS_HREF);
+  revalidatePath(TEAM_HREF);
 }
 
 export async function createTokenAction(_prev: CreateTokenState, formData: FormData): Promise<CreateTokenState> {
@@ -42,6 +43,7 @@ export async function createTokenAction(_prev: CreateTokenState, formData: FormD
   }
   if (byUrl) await audit(user.email, "mcp.token.url.on", name);
   revalidatePath(ASSISTANTS_HREF);
+  revalidatePath(TEAM_HREF);
   return { created: { name, token, byUrl } };
 }
 
@@ -54,7 +56,9 @@ export async function setUrlAccessAction(tokenId: string, enabled: boolean): Pro
   if (enabled) await audit(user.email, "mcp.token.url.on", row.name);
   else await audit(user.email, "mcp.token.url.off", row.name);
   revalidatePath(ASSISTANTS_HREF);
+  revalidatePath(TEAM_HREF);
   revalidatePath(accessHref(tokenId));
+  revalidatePath(TEAM_HREF);
 }
 
 export async function revokeTokenAction(id: string): Promise<void> {
@@ -62,7 +66,9 @@ export async function revokeTokenAction(id: string): Promise<void> {
   await revokeToken(id);
   await audit(user.email, "mcp.token.revoke", id);
   revalidatePath(ASSISTANTS_HREF);
+  revalidatePath(TEAM_HREF);
   revalidatePath(accessHref(id));
+  revalidatePath(TEAM_HREF);
 }
 
 /**
@@ -79,6 +85,7 @@ export async function setGrantAction(tokenId: string, toolName: string, enabled:
   await saveTokenGrants(tokenId, setGrant(token.grants, tool, enabled));
   await audit(user.email, `mcp.grant.${enabled ? "on" : "off"}`, `${tokenId}:${toolName}`);
   revalidatePath(accessHref(tokenId));
+  revalidatePath(TEAM_HREF);
   return { ok: true };
 }
 
@@ -92,5 +99,6 @@ export async function resetGrantsAction(tokenId: string, instanceKey: string | n
   await saveTokenGrants(tokenId, grants);
   await audit(user.email, `mcp.grants.${mode}`, `${tokenId}:${instanceKey ?? "all"}`);
   revalidatePath(accessHref(tokenId));
+  revalidatePath(TEAM_HREF);
 }
 

@@ -3,6 +3,7 @@
 import { useRef } from "react";
 import { AnimatedActionButton } from "./AnimatedActionButton";
 import { ui } from "./ui";
+import { PasswordInput } from "./PasswordInput";
 
 type Labels = Record<string, string>;
 
@@ -21,8 +22,8 @@ export function BackupForm({ labels, minLength }: { labels: Labels; minLength: n
   return (
     <form ref={form} onSubmit={(e) => e.preventDefault()} className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
-        <label className="block text-sm"><span className={ui.label}>{labels.password}</span><input name="password" type="password" required minLength={minLength} autoComplete="new-password" className={ui.input} /></label>
-        <label className="block text-sm"><span className={ui.label}>{labels.passwordConfirm}</span><input name="confirm" type="password" required minLength={minLength} autoComplete="new-password" className={ui.input} /></label>
+        <div className="text-sm"><label className={ui.label} htmlFor="backup-password">{labels.password}</label><PasswordInput id="backup-password" name="password" required minLength={minLength} autoComplete="new-password" className={ui.input} /></div>
+        <div className="text-sm"><label className={ui.label} htmlFor="backup-confirm">{labels.passwordConfirm}</label><PasswordInput id="backup-confirm" name="confirm" required minLength={minLength} autoComplete="new-password" className={ui.input} /></div>
       </div>
       <AnimatedActionButton look="primary" icon="💾" track="backup" testid="backup-button" className="items-start"
         labels={{ idle: labels.createButton!, working: labels.working!, done: labels.downloaded!, failed: labels.failed! }}

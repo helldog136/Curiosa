@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { contrastIssues, isHexColor, buildPalette } from "@/core/color";
+import { isHexColor, buildPalette } from "@/core/color";
 import { CUSTOM_PALETTE, THEME_PRESETS, matchPalette } from "@/core/palettes";
 import { probableIllegibility, type ProbableField, type ProbableIssue } from "@/core/skins/readability";
 import { ui } from "./ui";
@@ -11,10 +11,10 @@ export { THEME_PRESETS };
 type Labels = {
   background: string; accent: string; accent2: string; surface: string; text: string;
   addSecond: string; removeSecond: string; optionalHint: string; invalid: string;
-  /** Avertissements de contraste ; `{ratio}` est remplacé par le rapport mesuré. */
-  warnText: string; warnAccent: string; warnAccent2: string;
-  /** Skins (page Apparence) : « ↺ Valeur du skin » à côté d'un champ retouché, et « Détails » (replié) sous un avertissement. */
-  resetField?: string; details?: string;
+  /** Skins (page Apparence) : « ↺ Valeur du skin » à côté d'un champ retouché. */
+  resetField?: string;
+  /** Conseil de lisibilité (jamais bloquant) : « Essayer une couleur plus lisible », « Garder ma couleur », « Utiliser cette couleur », la ligne « Proposition : {color} » et la ligne qui reste une fois le conseil replié. */
+  advice: { tryOne: string; keep: string; use: string; proposal: string; kept: string; review: string };
 };
 
 type Values = { background: string; accent: string; accent2: string; surface: string; text: string };
@@ -67,26 +67,44 @@ function OptionalColor({ label, value, derived, onChange, testid, invalid, hint,
   );
 }
 
-/** Avertissement « difficile à lire » sous le champ concerné : une phrase simple avec un exemple, les chiffres dans « Détails » (replié). Jamais bloquant. */
-function Warnings({ issues, field, locale, details }: { issues: ProbableIssue[]; field: ProbableField; locale: "fr" | "en"; details?: string }) {
+/** Un CONSEIL de lisibilité sous le champ concerné (jamais une erreur : ni rouge, ni bloquant). La couleur choisie reste celle du site, quoi qu'on fasse ici. */
+function Advice({ issues, field, locale, labels, folded, proposing, onTry, onKeep, onUse, onReview }: {
+  issues: ProbableIssue[]; field: ProbableField; locale: "fr" | "en"; labels: Labels["advice"]; folded: boolean; proposing: boolean;
+  onTry: () => void; onKeep: () => void; onUse: (hex: string) => void; onReview: () => void;
+}) {
   const mine = issues.filter((i) => i.field === field);
   if (!mine.length) return null;
+  if (folded) {
+    return (
+      <p data-testid={`advice-kept-${field}`} className="mt-1.5 text-[13px] leading-5 text-muted">
+        {labels.kept} <button type="button" onClick={onReview} className="inline-flex min-h-11 items-center text-fg underline">{labels.review}</button>
+      </p>
+    );
+  }
+  const proposal = mine.find((i) => i.example)?.example;
   return (
-    <ul role="status" data-testid={`warn-${field}`} className="mt-1.5 space-y-1 rounded-xl border border-warning/60 bg-warning/10 px-3 py-2 text-[13px] leading-5">
-      {mine.map((i) => (
-        <li key={`${i.pair}-${i.field}`}>
-          ⚠ {i.message[locale]}{i.exampleHint ? ` ${i.exampleHint[locale]}` : ""}
-          <details className="mt-0.5"><summary className="inline-flex min-h-6 cursor-pointer text-muted">{details ?? "…"}</summary><span className="block text-muted">{i.detail[locale]}</span></details>
-        </li>
-      ))}
-    </ul>
+    <div role="status" data-testid={`warn-${field}`} className="mt-1.5 space-y-2 rounded-xl border border-line bg-surface px-3 py-2 text-[13px] leading-5">
+      <ul className="space-y-1">{mine.map((i) => <li key={`${i.pair}-${i.field}`}>{i.advice[locale]}</li>)}</ul>
+      {proposing && proposal && (
+        <p data-testid={`advice-proposal-${field}`} className="flex items-center gap-2">
+          <span aria-hidden="true" className="h-5 w-5 shrink-0 rounded-md border border-line" style={{ background: proposal }} />
+          <span>{labels.proposal.replace("{color}", proposal)}</span>
+        </p>
+      )}
+      <div className="flex flex-wrap gap-2">
+        {proposing && proposal
+          ? <button type="button" data-testid={`advice-use-${field}`} onClick={() => onUse(proposal)} className={`${ui.btn} min-h-11`}>{labels.use}</button>
+          : proposal ? <button type="button" data-testid={`advice-try-${field}`} onClick={onTry} className={`${ui.btn} min-h-11`}>{labels.tryOne}</button> : null}
+        <button type="button" data-testid={`advice-keep-${field}`} onClick={onKeep} className={`${ui.btn} min-h-11`}>{labels.keep}</button>
+      </div>
+    </div>
   );
 }
 
 /**
  * Choix de l'apparence : des palettes prêtes à l'emploi pour tout le monde (elles fixent les cinq couleurs d'un coup) ;
  * « Personnalisé » ouvre le fond, l'accent et, au choix, une couleur secondaire ; la version avancée ajoute la surface et le texte.
- * Un avertissement de contraste s'affiche en direct (sans jamais bloquer l'enregistrement).
+ * Un CONSEIL de lisibilité s'affiche en direct sous le champ concerné : il ne bloque rien, ne change aucune couleur tout seul, et la couleur choisie est toujours enregistrée telle quelle.
  */
 export function ThemePicker({ background, accent, accent2, surface, text, advanced, names, labels, prefix = "", mode, presetMode, skinValues, locale = "fr", onValues }: {
   background: string; accent: string; accent2: string; surface: string; text: string; advanced: boolean; names: Record<string, string>; labels: Labels;
@@ -109,11 +127,21 @@ export function ThemePicker({ background, accent, accent2, surface, text, advanc
   const edit = (set: (v: string) => void) => (v: string) => { set(v); setForced(false); };
   const derived = buildPalette(bg, ac);
   const valid = (v: string) => (isHexColor(v) ? v : undefined);
-  const skinMode = mode !== undefined;
-  // Skins : avertissements « illisibilité probable » (phrase simple + exemple sous le champ) ; sans skin : ceux d'avant, en liste.
-  const probable = skinMode ? probableIllegibility({ background: bg, accent: ac, accent2: valid(a2), surface: valid(sf), text: valid(tx) }, mode) : [];
-  const issues = skinMode ? [] : contrastIssues(bg, ac, { accent2: valid(a2), surface: valid(sf), text: valid(tx) });
-  const warn = { text: labels.warnText, accent: labels.warnAccent, accent2: labels.warnAccent2 };
+  // Conseils de lisibilité (même calcul avec ou sans skin ; « Dans le mode… » seulement quand un mode est connu) : jamais bloquants.
+  const probable = probableIllegibility({ background: bg, accent: ac, accent2: valid(a2), surface: valid(sf), text: valid(tx) }, mode ?? null);
+  const signature = JSON.stringify([bg, ac, a2, sf, tx]);
+  // « Garder ma couleur » replie le conseil tant que les couleurs ne changent pas ; « Essayer une couleur plus lisible » montre la valeur proposée sans l'appliquer.
+  const [keptAt, setKeptAt] = useState<Record<string, string>>({});
+  const [proposing, setProposing] = useState<Record<string, string>>({});
+  const adviceFor = (field: ProbableField, set: (v: string) => void) => (
+    <Advice issues={probable} field={field} locale={locale} labels={labels.advice} folded={keptAt[field] === signature} proposing={proposing[field] === signature}
+      onTry={() => setProposing((p) => ({ ...p, [field]: signature }))}
+      onKeep={() => { setKeptAt((p) => ({ ...p, [field]: signature })); setProposing((p) => { const n = { ...p }; delete n[field]; return n; }); }}
+      onUse={(hex) => { set(hex); setForced(false); }}
+      onReview={() => setKeptAt((p) => { const n = { ...p }; delete n[field]; return n; })} />
+  );
+  // Conseils dont le champ n'est pas à l'écran (palette prête à l'emploi, ou texte et cartes en version simple) : une simple liste, sans bouton.
+  const unseen = probable.filter((i) => !showFields || (!advanced && (i.field === "text" || i.field === "surface")));
   const current: Values = { background: bg, accent: ac, accent2: a2, surface: sf, text: tx };
   const onValuesRef = useRef(onValues);
   useEffect(() => { onValuesRef.current = onValues; });
@@ -148,23 +176,23 @@ export function ThemePicker({ background, accent, accent2, surface, text, advanc
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="block text-sm"><label htmlFor={`${prefix}background-color`} className={ui.label}>{labels.background}</label>
               <input id={`${prefix}background-color`} name={`${prefix}background`} type="color" ref={bgRef} value={bg} onChange={(e) => edit(setBg)(e.target.value)} className={ui.colorInput} />
-              <Warnings issues={probable} field="background" locale={locale} details={labels.details} />{fixed("background", setBg)}</div>
+              {adviceFor("background", setBg)}{fixed("background", setBg)}</div>
             <div className="block text-sm"><label htmlFor={`${prefix}accent-color`} className={ui.label}>{labels.accent}</label>
               <input id={`${prefix}accent-color`} name={`${prefix}accent`} type="color" value={ac} onChange={(e) => edit(setAc)(e.target.value)} className={ui.colorInput} />
-              <Warnings issues={probable} field="accent" locale={locale} details={labels.details} />{fixed("accent", setAc)}</div>
+              {adviceFor("accent", setAc)}{fixed("accent", setAc)}</div>
           </div>
           {a2 === "" ? (
             <button type="button" data-testid="theme-add-second" onClick={() => { setA2(ac); setForced(false); }} className="inline-flex min-h-11 items-center text-sm font-medium text-accent hover:underline">{labels.addSecond}</button>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2">
-              <OptionalColor testid="theme-accent2" label={labels.accent2} value={a2} derived={ac} invalid={labels.invalid} onChange={edit(setA2)} below={<><Warnings issues={probable} field="accent2" locale={locale} details={labels.details} />{fixed("accent2", setA2)}</>}
+              <OptionalColor testid="theme-accent2" label={labels.accent2} value={a2} derived={ac} invalid={labels.invalid} onChange={edit(setA2)} below={<>{adviceFor("accent2", setA2)}{fixed("accent2", setA2)}</>}
                 action={<button type="button" data-testid="theme-remove-second" onClick={() => { setA2(""); setForced(false); }} className="inline-flex min-h-11 items-center text-sm text-muted hover:text-fg hover:underline">{labels.removeSecond}</button>} />
             </div>
           )}
           {advanced && (
             <div className="grid gap-4 sm:grid-cols-2">
-              <OptionalColor testid="theme-surface" label={labels.surface} value={sf} derived={derived["--v-surface"]!} invalid={labels.invalid} hint={labels.optionalHint} onChange={edit(setSf)} below={<><Warnings issues={probable} field="surface" locale={locale} details={labels.details} />{fixed("surface", setSf)}</>} />
-              <OptionalColor testid="theme-text" label={labels.text} value={tx} derived={derived["--v-fg"]!} invalid={labels.invalid} hint={labels.optionalHint} onChange={edit(setTx)} below={<><Warnings issues={probable} field="text" locale={locale} details={labels.details} />{fixed("text", setTx)}</>} />
+              <OptionalColor testid="theme-surface" label={labels.surface} value={sf} derived={derived["--v-surface"]!} invalid={labels.invalid} hint={labels.optionalHint} onChange={edit(setSf)} below={<>{adviceFor("surface", setSf)}{fixed("surface", setSf)}</>} />
+              <OptionalColor testid="theme-text" label={labels.text} value={tx} derived={derived["--v-fg"]!} invalid={labels.invalid} hint={labels.optionalHint} onChange={edit(setTx)} below={<>{adviceFor("text", setTx)}{fixed("text", setTx)}</>} />
             </div>
           )}
         </div>
@@ -177,14 +205,9 @@ export function ThemePicker({ background, accent, accent2, surface, text, advanc
       <input type="hidden" name={`${prefix}accent2`} value={a2} />
       <input type="hidden" name={`${prefix}surface`} value={sf} />
       <input type="hidden" name={`${prefix}text`} value={tx} />
-      {skinMode && !showFields && probable.length > 0 && (
-        <ul role="status" data-testid="theme-contrast-warning" className="space-y-1 rounded-xl border border-warning/60 bg-warning/10 px-4 py-3 text-sm">
-          {probable.map((i) => <li key={`${i.pair}-${i.field}`}>⚠ {i.message[locale]}{i.exampleHint ? ` ${i.exampleHint[locale]}` : ""}</li>)}
-        </ul>
-      )}
-      {issues.length > 0 && (
-        <ul role="status" data-testid="theme-contrast-warning" className="space-y-1 rounded-xl border border-warning/60 bg-warning/10 px-4 py-3 text-sm">
-          {issues.map((i) => <li key={i.kind}>⚠ {warn[i.kind].replace("{ratio}", i.ratio.toFixed(1))}</li>)}
+      {unseen.length > 0 && (
+        <ul role="status" data-testid="theme-contrast-warning" className="space-y-1 rounded-xl border border-line bg-surface px-4 py-3 text-sm">
+          {unseen.map((i) => <li key={`${i.pair}-${i.field}`}>{i.advice[locale]}</li>)}
         </ul>
       )}
     </div>

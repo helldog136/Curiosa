@@ -12,6 +12,8 @@ import { signPreview, previewUrl } from "@/core/skins/previewToken";
 import * as skins from "@/core/skins/service";
 import { repoAddress } from "@/core/skins/source";
 import { BASIC_ID } from "@/core/skins/constants";
+import { addUpload, removeUpload, type UploadErrorCode } from "@/core/fonts/uploads";
+import { UPLOAD_LIMITS } from "@/core/fonts/types";
 
 /**
  * Actions de la page Apparence. Choisir, retoucher, revenir au skin, annuler : « admin » (comme les réglages). Ajouter, mettre à jour, retirer un skin,
@@ -191,4 +193,35 @@ export async function catalogueAddress(id: string): Promise<string | null> {
   const cat = await skins.listCatalogue();
   const e = cat.items.find((x) => x.id === id);
   return e ? repoAddress({ url: e.repo, ref: e.ref ?? null, subdir: e.subdir ?? null }) : null;
+}
+
+/** Un code d'erreur d'envoi → la phrase qui dit quoi faire (clé `appearance.font.error.*`). */
+const FONT_ERROR: Record<UploadErrorCode, string> = {
+  license: "license", empty: "empty", "too-large": "large", "not-woff2": "notWoff2", collection: "collection", private: "forbidden", svg: "forbidden", trailing: "broken",
+  header: "broken", tables: "broken", truncated: "broken", compressed: "broken", sizes: "broken", missing: "broken", head: "broken",
+  name: "name", limit: "limit", duplicate: "duplicate", style: "style", write: "write",
+};
+const FONT_FIELD = { font: "font", name: "fontName", license: "license" } as const;
+
+/** Envoi d'une police (administration seulement) : octets vérifiés, case de licence obligatoire. Les erreurs s'affichent sous le champ concerné. */
+export async function uploadFontAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
+  const { user, t } = await adminCtx("admin");
+  const file = fd.get("font");
+  const accepted = fd.get("license") === "on";
+  if (!accepted) return { errors: { license: t("appearance.font.error.license") } };
+  if (!(file instanceof File) || file.size === 0) return { errors: { font: t("appearance.font.error.empty") } };
+  if (file.size > UPLOAD_LIMITS.maxBytes) return { errors: { font: t("appearance.font.error.large") } };
+  const r = await addUpload({ bytes: Buffer.from(await file.arrayBuffer()), name: String(fd.get("fontName") ?? ""), accepted, actor: user.email });
+  if (!r.ok) return { errors: { [FONT_FIELD[r.field]]: t(`appearance.font.error.${FONT_ERROR[r.code]}`) } };
+  done();
+  return { ok: t("appearance.font.uploaded", { name: r.font.family }) };
+}
+
+/** Suppression d'une police envoyée : le fichier part ; si elle était choisie, « celle du skin » reprend. */
+export async function deleteFontAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
+  const { user, t } = await adminCtx("admin");
+  const r = await removeUpload(String(fd.get("id") ?? ""), { actor: user.email });
+  if (!r.ok) return { error: t("appearance.font.error.gone") };
+  done();
+  return { ok: r.reset.length ? t("appearance.font.removedReset", { name: r.family }) : t("appearance.font.removed", { name: r.family }) };
 }

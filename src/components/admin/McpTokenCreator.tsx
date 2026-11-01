@@ -8,6 +8,7 @@ import { McpConnectGuide, type GuideTexts } from "./McpConnectGuide";
 import { ui } from "./ui";
 import { PendingButton } from "./PendingButton";
 import { submitKeepingValues } from "./keepValues";
+import { MoreOptions } from "./MoreOptions";
 
 export type CreatorLabels = {
   name: string; nameHelp: string; submit: string; afterCreate: string;
@@ -20,6 +21,8 @@ export type CreatorLabels = {
   url: { label: string; help: string; keyLabel: string; keyHelp: string };
   /** Mode simple : ce qu'on dit après la création, sans les blocs de configuration techniques. */
   simpleGuide: { claudeTitle: string; claudeText: string; keyText: string; warn: string };
+  /** Mode compact (page Équipe) : titre et résumé de « Plus d'options ». */
+  more?: { title: string; summary: string };
 };
 
 /**
@@ -27,7 +30,7 @@ export type CreatorLabels = {
  * avec les consignes de branchement déjà remplies. L'état reste dans ce composant : rien n'est relu depuis la base, rien n'est conservé.
  * Mode simple : des mots de tous les jours et une seule consigne. Mode avancé : tous les blocs de configuration des clients courants.
  */
-export function McpTokenCreator({ action, baseUrl, labels, guide, advanced, defaultProfile = "standard" }: { action: (prev: CreateTokenState, form: FormData) => Promise<CreateTokenState>; baseUrl: string; labels: CreatorLabels; guide: GuideTexts; advanced: boolean; defaultProfile?: "standard" | "maintenance" }) {
+export function McpTokenCreator({ action, baseUrl, labels, guide, advanced, defaultProfile = "standard", compact = false }: { action: (prev: CreateTokenState, form: FormData) => Promise<CreateTokenState>; baseUrl: string; labels: CreatorLabels; guide: GuideTexts; advanced: boolean; defaultProfile?: "standard" | "maintenance"; /** Chemin court : le nom et ce qu'il peut faire ; le type d'assistant et la façon de se connecter sont repliés. */ compact?: boolean }) {
   const [state, run, pending] = useActionState(action, null);
   const [profile, setProfile] = useState(defaultProfile);
   const maintenance = profile === "maintenance";
@@ -35,35 +38,7 @@ export function McpTokenCreator({ action, baseUrl, labels, guide, advanced, defa
   const copy = { copyLabel: labels.copy, copiedLabel: labels.copied };
   const group = "rounded-xl border border-line p-4";
   const radio = "mt-1 h-4 w-4 shrink-0 accent-[var(--v-accent)]";
-  return (
-    <div className="space-y-4">
-      {created && (
-        <div className="space-y-4 rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-4" role="status" data-testid="mcp-created">
-          <h3 className="text-base font-semibold">{labels.createdTitle.replace("{name}", created.name)}</h3>
-          {advanced ? (
-            <>
-              <CopyBlock text={created.token} label={labels.createdSecret} {...copy} />
-              {created.byUrl && <CopyBlock text={`${baseUrl}/api/mcp/${created.token}`} label={labels.createdUrl} {...copy} />}
-            </>
-          ) : created.byUrl ? (
-            <CopyBlock text={`${baseUrl}/api/mcp/${created.token}`} label={labels.createdUrl} {...copy} />
-          ) : (
-            <CopyBlock text={created.token} label={labels.createdSecret} {...copy} />
-          )}
-          <p className="text-sm font-medium">{labels.createdOnce}</p>
-          {advanced ? (
-            <McpConnectGuide texts={guide} baseUrl={baseUrl} token={created.token} byUrl={created.byUrl} advanced />
-          ) : (
-            <div className="space-y-2 text-sm leading-6" data-testid="assistants-simple-guide">
-              {created.byUrl && <p className="font-semibold">{labels.simpleGuide.claudeTitle}</p>}
-              <p>{created.byUrl ? labels.simpleGuide.claudeText : labels.simpleGuide.keyText}</p>
-              {created.byUrl && <Callout tone="warn">{labels.simpleGuide.warn}</Callout>}
-            </div>
-          )}
-        </div>
-      )}
-      {/* `key` : le formulaire est vidé après chaque création. */}
-      <form onSubmit={submitKeepingValues(run)} key={created?.token ?? "new"} className="space-y-4">
+  const profileBlock = (
         <div>
           <label className={ui.label} htmlFor="mcp-profile">{labels.profile.label}</label>
           <select id="mcp-profile" name="profile" value={profile} onChange={(e) => setProfile(e.target.value === "maintenance" ? "maintenance" : "standard")} className={ui.input}>
@@ -93,11 +68,15 @@ export function McpTokenCreator({ action, baseUrl, labels, guide, advanced, defa
             </div>
           )}
         </div>
+  );
+  const nameBlock = (
         <div>
           <label className={ui.label} htmlFor="mcp-name">{labels.name}</label>
           <input id="mcp-name" name="name" required maxLength={80} placeholder="Claude" className={ui.input} />
           <p className={ui.help}>{labels.nameHelp}</p>
         </div>
+  );
+  const scopeBlock = (
         <div className={maintenance ? "hidden" : undefined}>
           {advanced ? (
             <>
@@ -121,7 +100,9 @@ export function McpTokenCreator({ action, baseUrl, labels, guide, advanced, defa
             </fieldset>
           )}
         </div>
-        {advanced ? (
+  );
+  const urlBlock = (
+        advanced ? (
           <div>
             <label className="flex items-center gap-2 text-sm font-medium">
               <input type="checkbox" name="byUrl" className="h-4 w-4 accent-[var(--v-accent)]" />
@@ -141,6 +122,46 @@ export function McpTokenCreator({ action, baseUrl, labels, guide, advanced, defa
               <span><span className="block">{labels.url.keyLabel}</span><span className="mt-0.5 block text-[13px] leading-5 text-muted">{labels.url.keyHelp}</span></span>
             </label>
           </fieldset>
+        )
+  );
+  return (
+    <div className="space-y-4">
+      {created && (
+        <div className="space-y-4 rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-4" role="status" data-testid="mcp-created">
+          <h3 className="text-base font-semibold">{labels.createdTitle.replace("{name}", created.name)}</h3>
+          {advanced ? (
+            <>
+              <CopyBlock text={created.token} label={labels.createdSecret} {...copy} />
+              {created.byUrl && <CopyBlock text={`${baseUrl}/api/mcp/${created.token}`} label={labels.createdUrl} {...copy} />}
+            </>
+          ) : created.byUrl ? (
+            <CopyBlock text={`${baseUrl}/api/mcp/${created.token}`} label={labels.createdUrl} {...copy} />
+          ) : (
+            <CopyBlock text={created.token} label={labels.createdSecret} {...copy} />
+          )}
+          <p className="text-sm font-medium">{labels.createdOnce}</p>
+          {advanced ? (
+            <McpConnectGuide texts={guide} baseUrl={baseUrl} token={created.token} byUrl={created.byUrl} advanced />
+          ) : (
+            <div className="space-y-2 text-sm leading-6" data-testid="assistants-simple-guide">
+              {created.byUrl && <p className="font-semibold">{labels.simpleGuide.claudeTitle}</p>}
+              <p>{created.byUrl ? labels.simpleGuide.claudeText : labels.simpleGuide.keyText}</p>
+              {created.byUrl && <Callout tone="warn">{labels.simpleGuide.warn}</Callout>}
+            </div>
+          )}
+        </div>
+      )}
+      {/* `key` : le formulaire est vidé après chaque création. */}
+      <form onSubmit={submitKeepingValues(run)} key={created?.token ?? "new"} className="space-y-4">
+        {!compact && profileBlock}
+        {nameBlock}
+        {scopeBlock}
+        {!compact && urlBlock}
+        {compact && (
+          <MoreOptions title={labels.more?.title ?? ""} summary={labels.more?.summary}>
+            {profileBlock}
+            {urlBlock}
+          </MoreOptions>
         )}
         {state?.error && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm text-red-700">{state.error}</p>}
         <PendingButton variant="primary" pending={pending}>{labels.submit}</PendingButton>

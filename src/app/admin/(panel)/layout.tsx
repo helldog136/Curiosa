@@ -1,8 +1,7 @@
 import { signOut } from "@/auth";
-import { wordmark } from "@/components/brand/wordmark";
+import { CuriosaMark } from "@/components/brand/CuriosaMark";
 import { adminCtx } from "@/core/admin";
 import { adminBugReportUrl } from "@/core/bugReport";
-import { CREDIT_URL } from "@/core/credit";
 import { BugReportLink } from "@/components/admin/BugReportLink";
 import { maintenanceSummary } from "@/core/maintenance/summary";
 import { legacyConversionPending } from "@/core/modules/legacyReport";
@@ -105,7 +104,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
           {canManage && <NavLink href="/admin/home">{t("nav.home")}</NavLink>}
           {canManage && <NavLink href="/admin/navigation">{advanced ? t("nav.navigation") : t("nav.navigation.simple")}</NavLink>}
           {canManage && <NavLink href="/admin/appearance">{t("nav.appearance")}</NavLink>}
-          {canManage && <NavLink href="/admin/settings">{advanced ? t("nav.settings") : t("nav.settings.simple")}</NavLink>}
+          {canManage && <NavLink href="/admin/settings">{t("nav.settings")}</NavLink>}
           {canManage && <NavLink href="/admin/social">{t("nav.social")}</NavLink>}
           {canManage && <NavLink href="/admin/ai-visibility">{t("nav.aiVisibility")}</NavLink>}
           {editor && <NavLink href="/admin/redirects">{advanced ? t("nav.redirects") : t("nav.redirects.simple")}</NavLink>}
@@ -158,7 +157,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
       </div>
       {/* Tout en bas de la page, pour tous les rôles et dans les deux modes : crédit exigé par la licence, et numéro de version à donner pour un signalement ou une mise à jour. */}
       <footer className="border-t border-line px-4 py-3 text-center text-xs text-muted" data-testid="app-version">
-        {t("site.poweredBy")} <a href={CREDIT_URL} target="_blank" rel="noopener" className={`${wordmark.className} text-[1.15em] underline underline-offset-2 hover:text-fg`}>Curiosa</a> v{readVersion()}
+        {t("site.poweredBy")} <CuriosaMark newTab /> v{readVersion()}
       </footer>
     </div>
   );

@@ -4,6 +4,7 @@ import { RESERVED_PATHS } from "../config";
 import { isKnownLocale } from "../i18n/locales";
 import { pickKnownColumns } from "../backup/schema";
 import { eraseOwnedFiles } from "../services/files";
+import { reconcileManaged, releaseManaged } from "../managedRedirects";
 import { bumpGenerations } from "../services/store";
 import { migrateModuleInstances, type MigrationOutcome } from "./dataMigrations";
 import { getModule } from "./registry";
@@ -32,6 +33,7 @@ export async function retireInstance(id: string, reason: RetiredReason): Promise
 async function retireInstanceRow(id: string, reason: RetiredReason): Promise<RetiredLine | null> {
   const inst = await prisma.moduleInstance.findUnique({ where: { id }, include: { translations: true } });
   if (!inst) return null;
+  await releaseManaged(id);   // son adresse courte part avec elle (elle revient à la restauration, si le nom est libre)
   const [entries, settings, records, moduleRow, mod] = await Promise.all([
     prisma.entry.findMany({ where: { instanceId: id }, include: { translations: true }, orderBy: { createdAt: "asc" } }),
     prisma.setting.findMany({ where: { key: { startsWith: prefix(id) } }, orderBy: [{ key: "asc" }, { locale: "asc" }] }),
@@ -123,6 +125,7 @@ export async function restoreInstance(id: string): Promise<RestoreOutcome> {
   }, { timeout: 120_000, maxWait: 10_000 });
   // Le stockage revient de l'extérieur (données gardées) : la génération augmente à partir de celle gardée avec les réglages.
   await bumpGenerations([id]).catch((e) => console.error("[retired] store generation bump failed:", (e as Error)?.message));
+  await reconcileManaged();   // son adresse courte revient si elle était allumée et que son nom est libre
   return { ok: true, id, key: plan.key, changed: plan.changed };
 }
 

@@ -8,6 +8,8 @@ import { isSubdir, parseRepoUrl } from "./installer";
 import { sanitizeRequires, type CoreRequirement } from "./compat";
 import { sanitizeServiceList } from "./serviceVersions";
 import { PLATFORM_PATTERN } from "./platform";
+import { parseSocialSpec, type SocialSpec } from "../socialSpec";
+import { sanitizePreviews, type PreviewDecl } from "./previews";
 
 export type RecognizedItem = {
   id: string;
@@ -27,12 +29,16 @@ export type RecognizedItem = {
   platform?: string;
   /** Sujets fournis par le module (annoncés par l'index, relus à l'installation). */
   provides?: string[];
+  /** (cœur 0.6.1) Réseau social : comment reconnaître l'adresse de son profil, annoncé par l'index pour la reconnaître AVANT l'installation. Bloc abîmé ignoré. */
+  social?: SocialSpec;
   /** Cœur minimal annoncé par l'index (`"requires": { "core": "0.1.10" }`) : permet de savoir SANS télécharger si le module convient. Absent = aucune exigence. Un cœur plus ancien ignore ce champ. */
   requires?: CoreRequirement;
   /** Services que le module offre, annoncés par l'index (`"offers": ["contact.store"]`, ou `{ service, version }`) : permet de le choisir comme fournisseur SANS le télécharger. Facultatif, relu à l'installation. */
   offers?: { service: string; version?: number; each?: true }[];
   /** Services dont le module a besoin (`"requires": ["contact.store"]`, ou `{ service, min }` ; une liste, à ne pas confondre avec `requires: { core }`). Forme interne gardée dans la copie locale : `needs`. */
   needs?: { service: string; min?: number; optional?: true }[];
+  /** Visuels annoncés par l'index (copie de `previews` du manifeste, 6 au plus) : permet d'annoncer « 3 visuels » SANS télécharger le module. Les images, elles, sont lues par le cœur dans le dépôt du module. Facultatif. */
+  previews?: PreviewDecl[];
   /** « official » : listé par le dépôt du catalogue (ou sa dernière copie reçue) ; « extra » : ajouté par MODULES_INDEX_URL, jamais installé d'office (voir dependencyPlan.ts). */
   catalogueOrigin?: "official" | "extra";
 };
@@ -67,9 +73,11 @@ export function sanitizeEntries(json: unknown): RecognizedItem[] {
       apiVersion: Number.isInteger(i.apiVersion) ? i.apiVersion : undefined,
       platform: typeof i.platform === "string" && PLATFORM_PATTERN.test(i.platform) ? i.platform : undefined,
       provides: Array.isArray(i.provides) ? i.provides.filter((x: unknown): x is string => typeof x === "string" && /^[a-z][a-z0-9.-]{0,40}$/.test(x)).slice(0, 20) : undefined,
+      social: parseSocialSpec(i.social),
       requires: sanitizeRequires(i.requires),
       offers: sanitizeServiceList(i.offers, "version"),
       needs: sanitizeServiceList(Array.isArray(i.requires) ? i.requires : i.needs, "min"),
+      previews: sanitizePreviews(i.previews),
     });
     if (items.length >= 300) break;
   }
@@ -137,9 +145,15 @@ export function readRecognizedCacheOffline(): RecognizedItem[] {
 /** Un catalogue injoignable n'est retenu que quelques secondes : « réessayez » doit pouvoir réussir sans attendre un quart d'heure. */
 const FAILED_TTL = 20_000;
 let memo: { at: number; key: string; result: RecognizedResult } | null = null;
-export function clearRecognizedCache(): void { memo = null; }
+export function clearRecognizedCache(): void { memo = null; inflight = null; }
 
-export type RecognizedOptions = { fetchImpl?: typeof fetch; git?: IndexGit; now?: () => number };
+export type RecognizedOptions = {
+  fetchImpl?: typeof fetch; git?: IndexGit; now?: () => number;
+  /** Une copie périmée d'un catalogue déjà reçu vaut mieux qu'attendre le réseau (fiche d'une extension : le clic ne doit jamais attendre l'index) : elle est servie, et relue en coulisse. */
+  staleOk?: boolean;
+};
+/** Relecture en cours : plusieurs demandes en même temps (la page, la fenêtre, le survol) ne lisent l'index qu'une fois. */
+let inflight: { key: string; promise: Promise<RecognizedResult> } | null = null;
 
 /**
  * Index des modules RECONNUS, lu UNIQUEMENT sur le réseau : le cœur ne contient ni module ni copie de l'index. Deux sources, la plus fraîche d'abord :
@@ -150,11 +164,23 @@ export type RecognizedOptions = { fetchImpl?: typeof fetch; git?: IndexGit; now?
  * Celui qui publie un index se porte garant des dépôts qu'il liste ; chaque entrée est revalidée ici. Rien n'est installé automatiquement.
  */
 export async function getRecognizedDetailed(opts: RecognizedOptions = {}): Promise<RecognizedResult> {
-  const { fetchImpl = fetch, git = defaultGit, now = Date.now } = opts;
+  const { now = Date.now } = opts;
   const extraUrl = process.env.MODULES_INDEX_URL;
   const key = `${process.env.CURIOSA_CATALOGUE_REPO ?? ""}|${process.env.CURIOSA_CATALOGUE_REF ?? ""}|${extraUrl ?? ""}`;
   if (memo && memo.key === key && now() - memo.at < (memo.result.source === "none" ? FAILED_TTL : TTL)) return memo.result;
+  const reading = inflight && inflight.key === key ? inflight.promise : (() => {
+    const promise = readRecognized(opts, key).finally(() => { if (inflight?.promise === promise) inflight = null; });
+    inflight = { key, promise };
+    return promise;
+  })();
+  // Copie périmée mais bonne : servie tout de suite, la relecture continue en coulisse (déclenchée par cette demande, aucun minuteur).
+  if (opts.staleOk && memo && memo.key === key && memo.result.source !== "none") { void reading.catch(() => {}); return memo.result; }
+  return reading;
+}
 
+async function readRecognized(opts: RecognizedOptions, key: string): Promise<RecognizedResult> {
+  const { fetchImpl = fetch, git = defaultGit, now = Date.now } = opts;
+  const extraUrl = process.env.MODULES_INDEX_URL;
   let base: RecognizedResult = { items: [], source: "none", fetchedAt: null, origin: null, suggested: [] };
   const repo = resolveIndexRepo();
   if (repo) {

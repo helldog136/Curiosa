@@ -44,7 +44,7 @@ test("menu : « Modules » n'est plus en haut ni en surbrillance ; le catalogue 
   const page = read("src/app/admin/(panel)/extensions/add/page.tsx");
   assert.match(page, /<CatalogueSearch/);
   assert.match(page, /data-catalogue-item data-search=/);
-  assert.match(page, /<Link href=\{`\/admin\/extensions\/add\/details\?id=/, "navigation douce : la fiche s'ouvre par-dessus");
+  assert.match(page, /<(?:Link|CatalogueDetailsLink) href=\{`\/admin\/extensions\/add\/details\?id=/, "navigation douce : la fiche s'ouvre par-dessus");
   assert.match(read("src/components/admin/CatalogueSearch.tsx"), /foldText/, "sans accents ni majuscules (filtre partagé avec la page Modules)");
   assert.match(read("src/core/modules/installedList.ts"), /normalize\("NFD"\)/, "sans accents ni majuscules");
   // fiche en fenêtre : route interceptée + emplacement parallèle ; ouverte seule, la même fiche s'affiche en page entière
@@ -53,8 +53,8 @@ test("menu : « Modules » n'est plus en haut ni en surbrillance ; le catalogue 
   assert.match(read("src/app/admin/(panel)/extensions/add/layout.tsx"), /\{children\}\{modal\}/);
   assert.match(read("src/components/admin/RouteModal.tsx"), /key === "Escape"/);
   const view = read("src/app/admin/(panel)/extensions/add/details/DetailsView.tsx");
-  assert.match(view, /data-testid="floating-install"/);
-  assert.match(view, /sticky bottom-0/);
+  assert.match(read("src/components/admin/ExtensionFiche.tsx"), /<InstallBar /, "barre d'installation collée en bas (voir tests/core/extension-fiche.test.mjs)");
+  assert.match(read("src/components/admin/FicheParts.tsx"), /data-testid="install-bar"[\s\S]*sticky z-20|sticky z-20[\s\S]*data-testid="install-bar"/);
   const button = read("src/components/admin/InstallButton.tsx");
   assert.match(read("src/components/admin/animatedAction.ts"), /MIN_MS = 900/, "animation d'au moins une demi-seconde, même si l'installation est instantanée");
   assert.match(button, /installModuleAction\(id, opId\)/);

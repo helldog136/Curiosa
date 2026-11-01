@@ -7,6 +7,8 @@ import { Select, TextArea, TextField, Checkbox } from "@/components/admin/Field"
 import { HeaderLayoutPicker } from "@/components/admin/HeaderLayoutPicker";
 import { ImageField } from "@/components/admin/ImageField";
 import { ShowWhen } from "@/components/admin/ShowWhen";
+import { previewFaces } from "@/core/fonts/css";
+import { choiceValue, parseChoice } from "@/core/fonts/types";
 import { ui } from "@/components/admin/ui";
 import { CUSTOM_PALETTE, THEME_PRESETS } from "@/core/palettes";
 import { can } from "@/core/permissions";
@@ -18,6 +20,9 @@ import { ColorSection } from "./ColorSection";
 import { ManageSkin, type ManagedSkin } from "./ManageSkin";
 import { PersonalRepo } from "./PersonalRepo";
 import { SkinCards, SwatchTile } from "./SkinCards";
+import { FontPickers } from "./FontPickers";
+import { FontUpload } from "./FontUpload";
+import { fontModel } from "./fontModel";
 import { PreviewButton, type PreviewPage } from "./PreviewDialog";
 import { appearanceLabels } from "./labels";
 import { resetSkinAction, saveAppearance, saveOptionsAction, undoSkinAction } from "./actions";
@@ -85,13 +90,18 @@ export default async function AppearancePage({ searchParams }: { searchParams?: 
   const headerLayout = (view.raw.headerLayout ?? (legacy ? config.header.layout : view.skinDefaults.headerLayout)) as typeof config.header.layout;
   const glowLevel = legacy ? config.glow.level : (view.raw.glow ?? "skin");
   const bgPreset = legacy ? config.bg.preset : (view.raw.bgPreset ?? "skin");
-  const font = legacy ? config.font : (view.raw.font ?? "");
+  // Polices (docs/POLICES.md) : l'ancien réglage `theme.font` est repris comme choix du texte tant qu'aucun nouveau choix n'existe ; un choix qui vise une police disparue s'affiche « celle du skin ».
+  const fontUi = fontModel(t, view.fonts.uploads);
+  const known = new Set(fontUi.options.map((o) => o.value));
+  const asKnown = (v: string | undefined) => { const c = choiceValue(parseChoice(v)); return known.has(c) ? c : ""; };
+  const fontBodyValue = asKnown(view.raw.fontBody ?? view.raw.font);
+  const fontHeadingValue = asKnown(view.raw.fontHeading);
   const baseValues = (m: "light" | "dark" | undefined) => view.skinColors[m ?? "dark"];
   const pickerLabels = {
     background: t("settings.background"), accent: t("settings.accent"), accent2: t("settings.accent2"), surface: t("settings.surface"), text: t("settings.text"),
     addSecond: t("settings.accent2.add"), removeSecond: t("settings.accent2.remove"), optionalHint: t("settings.colorOptionalHint"), invalid: t("settings.colorInvalid"),
-    warnText: t("settings.contrast.text"), warnAccent: t("settings.contrast.accent"), warnAccent2: t("settings.contrast.accent2"),
-    resetField: t("appearance.resetField"), details: t("appearance.details.short"),
+    resetField: t("appearance.resetField"),
+    advice: { tryOne: t("appearance.advice.try"), keep: t("appearance.advice.keep"), use: t("appearance.advice.use"), proposal: t("appearance.advice.proposal", { color: "{color}" }), kept: t("appearance.advice.kept"), review: t("appearance.advice.review") },
   };
   const names = Object.fromEntries([...THEME_PRESETS.map((p) => p.id), CUSTOM_PALETTE].map((id) => [id, t(`theme.${id}`)]));
   // Les champs « un seul mode » montrent la sauvegarde du site (comme avant les skins) sur basic, les valeurs effectives sinon.
@@ -175,17 +185,20 @@ export default async function AppearancePage({ searchParams }: { searchParams?: 
               <HeaderLayoutPicker name="headerLayout" value={headerLayout}
                 labels={{ classic: { title: t("settings.header.classic"), help: t("settings.header.classicHelp") }, twoRows: { title: t("settings.header.twoRows"), help: t("settings.header.twoRowsHelp") },
                   centered: { title: t("settings.header.centered"), help: t("settings.header.centeredHelp") }, minimal: { title: t("settings.header.minimal"), help: t("settings.header.minimalHelp") } }} />
-              <p className={ui.help}>{t("appearance.header.links", { page: advanced ? t("nav.settings") : t("nav.settings.simple") })}</p>
+              <p className={ui.help}>{t("appearance.header.links", { page: advanced ? t("nav.navigation") : t("nav.navigation.simple") })}</p>
             </div>
             <div className={`${ui.card} space-y-4`}>
               <h3 className="font-semibold">{t("settings.colors")}</h3>
               <ColorSection locale={locale} modes={view.modes} palette={view.palette} legacy={legacy} advanced={advanced} single={single}
                 both={{ light: view.both.light, dark: view.both.dark }} skinColors={{ light: baseValues("light"), dark: baseValues("dark") }}
                 skinBackgrounds={{ light: view.skinColors.light?.background, dark: view.skinColors.dark?.background }} names={names} labels={pickerLabels} />
-              {advanced && (
-                <Select name="font" label={t("settings.font")} defaultValue={font}
-                  options={[...(legacy ? [] : [{ value: "", label: t("appearance.fromSkin") }]), { value: "sans", label: "Sans-serif" }, { value: "serif", label: "Serif" }, { value: "mono", label: "Monospace" }]} />
-              )}
+            </div>
+            <div className={`${ui.card} space-y-4`} data-testid="fonts-card">
+              <div>
+                <h3 className="font-semibold">{t("appearance.font.title")}</h3>
+                <p className={ui.help}>{t("appearance.font.help")}</p>
+              </div>
+              <FontPickers groups={fontUi.groups} options={fontUi.options} headingValue={fontHeadingValue} bodyValue={fontBodyValue} skin={view.fonts.skin} faces={previewFaces(view.fonts.uploads)} />
             </div>
             <div className={`${ui.card} space-y-5`} data-testid="bg-layers">
               <div>
@@ -258,6 +271,8 @@ export default async function AppearancePage({ searchParams }: { searchParams?: 
             </div>
             {advanced && <p className={ui.help}>{t("settings.appearanceHelp")}</p>}
           </ActionForm>
+
+          <FontUpload t={t} uploads={view.fonts.uploads} />
 
           {!legacy && (
             <div className={`${ui.card} space-y-3`} data-testid="reset-card">

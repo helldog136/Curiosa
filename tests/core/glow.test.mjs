@@ -83,7 +83,7 @@ test("admin : « Powered by Curiosa vX.Y.Z » est tout en bas de la page (hors d
   const layout = fs.readFileSync("src/app/admin/(panel)/layout.tsx", "utf8");
   const footer = layout.slice(layout.indexOf('<footer'));
   assert.match(footer, /data-testid="app-version"/);
-  assert.match(footer, /href=\{CREDIT_URL\}[^>]*>Curiosa<\/a> v\{readVersion\(\)\}/);
+  assert.match(footer, /<CuriosaMark newTab \/> v\{readVersion\(\)\}/, "le nom passe par le composant verrouillé CuriosaMark");
   assert.ok(layout.indexOf("</MobileMenu>") < layout.indexOf('<footer'), "après le menu et le contenu, pas dans la liste des liens");
   const before = layout.slice(0, layout.indexOf('data-testid="app-version"'));
   assert.ok(!/(role|advanced)\s*(===|&&)[^<]{0,40}$/.test(before.slice(-120)), "pas conditionné au rôle ni au mode");

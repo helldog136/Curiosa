@@ -108,7 +108,8 @@ Valeur finale d'un jeton = la plus forte couche qui le définit. **Repli valeur 
 | `skin.options` | objet `{ [optionId]: valeur }` (§3.4) | valeurs par défaut du skin |
 | `skin.snapshot` | copie des retouches d'avant le dernier changement de skin, pour « Annuler » | rien |
 | `theme.background`, `theme.accent`, `theme.accent2`, `theme.surface`, `theme.text` | **retouches des 5 couleurs (inchangées)** | la valeur du skin |
-| `theme.font` | `sans` \| `serif` \| `mono` (retouche) | la police du skin |
+| `theme.font` | `sans` \| `serif` \| `mono` (retouche, ancien réglage toujours lu) | la police du skin |
+| `theme.fontBody`, `theme.fontHeading` | `sys:…`, `lib:<famille>`, `up:<nom>` (retouches, [POLICES.md](POLICES.md)) | la police du skin : `--v-font` (texte) et `--sk-font-heading` (titres) |
 | `theme.glow`, `theme.glow.custom`, `theme.bgPreset`, `theme.bgCustom`, `theme.bgImage`, `theme.bgSvg*` | retouches du halo et du fond | le halo et le fond du skin |
 | `theme.palette` | `"single"` ou `"both"` : la personne définit ses couleurs pour un seul mode (comme aujourd'hui) ou pour les deux (§3.7) | `"single"` |
 | `theme.light.background`, `theme.light.accent`, `theme.light.accent2`, `theme.light.surface`, `theme.light.text` | retouches du mode clair (utilisées si `theme.palette` = `both`) | la valeur du skin, mode clair |
@@ -120,7 +121,7 @@ Valeur finale d'un jeton = la plus forte couche qui le définit. **Repli valeur 
 ### 3.3 Choisir un skin, retoucher, revenir au skin
 
 - **Choisir un skin** : le cœur écrit `skin.active`, copie les retouches actuelles dans `skin.snapshot`, puis **supprime** les clés de retouche (`theme.*`, `header.layout`) pour que les valeurs du skin apparaissent (décision de la personne propriétaire : « le skin donne les valeurs de départ »). Un bouton « Annuler » (tant qu'on n'a pas changé autre chose) restaure le snapshot. Rien n'est perdu.
-- **Retoucher** : la personne change une couleur, la police, le halo, le fond ou l'agencement de l'en-tête dans Apparence : le cœur écrit la clé `theme.*` correspondante, comme aujourd'hui. Les couleurs dérivées (`muted`, `line`, `*-fg`, états) sont recalculées par `buildPalette` à partir des couleurs retouchées quand le skin ne les fixe pas, ou quand la retouche change leurs bases (§4.3).
+- **Retoucher** : la personne change une couleur, la police (titres et texte séparément : [POLICES.md](POLICES.md)), le halo, le fond ou l'agencement de l'en-tête dans Apparence : le cœur écrit la clé `theme.*` correspondante, comme aujourd'hui. Les couleurs dérivées (`muted`, `line`, `*-fg`, états) sont recalculées par `buildPalette` à partir des couleurs retouchées quand le skin ne les fixe pas, ou quand la retouche change leurs bases (§4.3).
 - **Revenir au skin** : supprime les clés de retouche, d'un seul bouton, ou champ par champ (« ↺ valeur du skin » à côté de chaque réglage retouché).
 - **Retoucher les couleurs d'un skin à deux modes** : voir §3.7 (la personne choisit un seul mode ou les deux).
 
@@ -177,7 +178,7 @@ La personne **choisit** (réglage `theme.palette`) :
 
 1. Choix en deux grandes cases, FR/EN : « **Un seul mode** : mes couleurs, clair ou sombre selon le fond » / « **Clair et sombre** : je choisis mes couleurs pour les deux » (EN : *One mode* / *Light and dark*).
 2. En « Clair et sombre » : deux onglets « Clair » / « Sombre » (une colonne sur mobile) avec les cinq mêmes champs de couleur chacun, chacun avec « ↺ valeur du skin » ; un **aperçu des deux modes côte à côte** (empilés sur mobile) de la carte, du bouton, du texte secondaire et d'un lien.
-3. **Avertissement en direct sous le champ** (calcul pur côté navigateur, `contrastIssues`/`contrast` de `color.ts`), **jamais bloquant** pour une retouche, en mots simples avec un exemple : « Dans le mode sombre, le texte serait difficile à lire sur ce fond. Essayez un texte plus clair, par exemple `#f4f4f5`. » Les chiffres (rapport 2,1 ; il faut 4,5) sont dans « Détails » (replié). L'enregistrement reste possible ; au rendu, l'échelle de correction du §7.3 s'applique.
+3. **Conseil de lisibilité en direct sous le champ** (calcul pur côté navigateur, `probableIllegibility` de `skins/readability.ts` ; même calcul WCAG que les skins officiels), **jamais bloquant, jamais en rouge d'erreur** : « Conseil : dans le mode sombre, le texte serait difficile à lire sur ce fond (rapport 2,6 ; 4,5 recommandé pour le texte). Vous pouvez garder cette couleur. » Deux boutons secondaires : « **Essayer une couleur plus lisible** » (montre la valeur proposée, avec sa pastille, SANS l'appliquer ; « Utiliser cette couleur » l'applique) et « **Garder ma couleur** » (le conseil se replie en une ligne, « Revoir le conseil » le rouvre ; il revient si une couleur change). **La couleur choisie est toujours enregistrée et appliquée telle quelle** au site public, en clair et en sombre (§7.2, §7.5). Les seuils qui déclenchent le conseil sont plus bas que le niveau AA (§7.5).
 4. Si l'une des deux palettes est illisible, l'encadré de la page dit lequel des deux modes est concerné.
 
 ### 3.8 La bascule clair / sombre par la personne qui visite
@@ -591,12 +592,30 @@ basic est la référence ; il est exempté de ces contrôles (c'est l'apparence 
 |---|---|
 | **Installation** ou **mise à jour** d'un skin (catalogue ou personnel) | Les valeurs **déclarées dans le skin** doivent passer toutes les paires, dans chaque mode : **refus** avec un message simple, sans rien installer : « Ce skin n'est pas assez lisible : le texte serait trop pâle sur le fond (rapport 2,1 ; il faut au moins 4,5). Il n'a pas été installé. » Une mise à jour refusée laisse le skin comme il était. |
 | **Activation** d'un skin installé avec les retouches existantes de la personne | Le calcul est fait avant d'appliquer ; s'il échoue à cause des retouches, voir ci-dessous. |
-| **Retouche** de la personne qui rend une paire illisible | **On n'empêche pas d'enregistrer** (comportement actuel de `contrastIssues` : un avertissement sous le champ avec un exemple). Au rendu, le cœur applique l'échelle de correction ci-dessous. |
+| **Retouche** de la personne propriétaire (fond, accent, couleur secondaire, surface, texte ; clair et sombre) | **Jamais refusée, jamais corrigée** : la couleur choisie est enregistrée et rendue telle quelle (formulaire, serveur, feuille CSS publique, aperçu, assistants IA). Seul un **conseil** s'affiche (§7.5). |
 | Changement de réglage, **mise à jour d'un module** ou d'un skin qui fait échouer une paire après coup | Même échelle de correction au rendu ; la page Apparence affiche un encadré « Nous avons ajusté une couleur pour qu'on puisse la lire » avec un bouton « Revenir au skin » ; rien n'est supprimé. |
 
 ### 7.3 Échelle de correction (au rendu, jamais bloquante)
 
 Pour une paire en échec, dans l'ordre : (1) recalculer les couleurs **dérivées** (`muted`, `*-fg`, états) à partir des couleurs effectives (`reach()` de `color.ts`) ; (2) rapprocher le texte (`--v-fg`, `--sk-color-link`) du noir/blanc jusqu'au seuil ; (3) si c'est un jeton de pièce de module qui échoue : retour à la valeur par défaut du module (couche 2) ; (4) si le fond lui-même rend toute correction impossible : **le mode concerné de ce skin est suspendu et basic s'applique** (pour ce mode), avec la notice dans Apparence. Mise en œuvre (`correctReadability()`, fonction pure) : l'étape 1 recalcule avec `buildPalette()` les seules couleurs dérivées en échec ; l'étape 2 cherche, pour `--v-fg`, `--sk-color-link`, `--sk-color-focus` (créés si absents, pour ne pas toucher à la couleur principale) et, pour la paire 7, `--v-accent`, la plus petite correction vers le noir ou le blanc qui convient à **tous** les fonds où la couleur est posée (puis les dérivées sont recalculées une dernière fois) ; l'étape 3 remet les deux jetons d'une paire de module à leur valeur par défaut (couche 2) ; au final, si une erreur reste, le résultat est `suspended: true` et les jetons sont rendus tels quels. Les transparences sont composées (fond de page sur blanc en clair / noir en sombre, surface sur le fond de page, texte sur son fond) avec des canaux entiers, comme un navigateur. **L'administration n'est jamais touchée** : un skin illisible ne peut pas enfermer la personne dehors.
+
+### 7.5 Conseil de lisibilité pour les couleurs choisies par la personne propriétaire (seuils relaxés)
+
+Décision de la personne propriétaire : « on devrait mettre en garde sans bloquer la couleur choisie ; tant pis si c'est illisible, c'est son choix ». Donc :
+
+- **Les couleurs retouchées ne passent jamais par l'échelle du §7.3.** `composeMode` (`compose.ts`) applique l'échelle de correction au skin **tel qu'il est livré** (sans retouche, comportement inchangé). Dès qu'un mode porte au moins une couleur choisie, le texte, les liens, le focus, les titres, le dégradé uni et la suspension ne sont plus appliqués à cause d'elle : les cinq couleurs (`--v-bg`, `--v-surface`, `--v-fg`, `--v-accent`, `--v-accent2`) sont rendues telles quelles. Restent seulement les corrections dont le skin seul avait déjà besoin (pièces de module remises à leur valeur par défaut) ; un skin déjà suspendu sans retouche garde basic pour ce mode, mais avec les couleurs choisies. Les couleurs **dérivées** (texte secondaire, texte des boutons, états, texte posé sur le dégradé) restent recalculées par `buildPalette` : ce ne sont pas des choix de la personne.
+- **Conseil, pas erreur.** Même calcul de contraste (`contrastRatio`), mais le conseil ne se déclenche que sous des seuils plus bas que l'AA :
+
+| Ce qui est mesuré | Seuil AA (skins officiels, `skin:check`, inchangé) | Le conseil se déclenche sous | « Recommandé » affiché |
+|---|---|---|---|
+| texte sur le fond et sur les cartes | 4,5 | **3** | 4,5 |
+| liens (la couleur principale posée sur le fond et les cartes) | 4,5 | **2** | 4,5 |
+| couleur principale (contours, pastilles) | 3 | **2** | 3 |
+| couleur secondaire (décorative) | 3 | **1,5** | 3 |
+
+  Justification : sous 3, un texte courant devient pénible à lire pour beaucoup de monde, au-dessus c'est un choix de style assumé ; sous 2, une couleur de lien ou de contour se confond presque avec le fond ; la couleur secondaire n'a qu'un rôle décoratif (fin du dégradé) et ne porte pas d'information, d'où 1,5. Les niveaux « recommandés » restent ceux de WCAG AA : c'est ce que « Essayer une couleur plus lisible » vise. Constantes : `ADVICE_TEXT`, `ADVICE_LINK`, `ADVICE_UI`, `ADVICE_DECOR` (`readability.ts`) ; `contrastIssues` (`color.ts`) suit les mêmes seuils.
+- **Assistants IA et API.** Aucun outil MCP ni point d'accès ne modifie ces couleurs (les outils `skin_*` choisissent, installent ou retirent un skin) ; `maintenance_skin_status` rapporte les couleurs choisies telles quelles et ajoute `readabilityTips` (les mêmes conseils, en anglais, avec `suggestedColor`), jamais une erreur. Un réglage de module de type `color` n'est contrôlé que sur sa forme `#rrggbb`.
+- **Installation d'un skin** (§7.2) : inchangée, AA obligatoire.
 
 ### 7.4 Focus, mouvement, cible
 
@@ -766,13 +785,37 @@ Contraintes de rendu du cœur, pour que ces régions soient pilotables : (1) les
 | `home-flow`, `home-cell` (`data-size="small\|medium\|large\|full"`) | accueil fluide (`vh-flow`, `vh-cell`) | classes `vh-*` |
 | `cookie-tray` | bandeau de cookies | `.cookie-tray` |
 | `footer-text`, `footer-link`, `credit` | pied | `data-testid="credit"`, `"privacy-link"` |
+| `brand-mark` | le nom « Curiosa » du crédit (**pièce verrouillée**, §9.4) | `data-curiosa-wordmark` |
 | `skip-link` | lien « aller au contenu » | |
 
 Les pièces ci-dessus et leurs attributs d'état forment **la liste des noms stables** du contrat (`skinContract` 1). Ajouter une pièce est additif ; en renommer ou en retirer une est cassant (nouveau `skinContract`). **Une pièce ajoutée doit rester habillable par nos skins officiels : voir §26.**
 
 ### 9.3 Éléments non masquables (liste d'interdits pour la feuille)
 
-Le kit refuse tout `display:none`, `visibility:hidden`, `opacity < 0.6`, `clip`, `height/width: 0`, `font-size: 0`, `position` hors écran, sur : `brand`, `nav-link`, `nav-list` et `submenu` (sauf `display:none` à l'état fermé, `[data-open="false"]` : c'est la règle du menu mobile que le skin ré-exprime, §9.1), `tools` et ses enfants, `lang-switcher`, `heading`, `prose`, `link`, `button`, `field*`, `card`, `list-item`, `image`/`cover`/`avatar`, `notice`, `stat`, `tab`, `pagination*`, `cookie-tray`, `footer-link`, `credit`, `skip-link`, **`mode-switch`**, `mode-option`, et les deux variantes de logo. Le crédit « Propulsé par » et le lien « Confidentialité » sont des **constantes du cœur** : un skin ne peut ni les masquer, ni en changer le texte, le lien ou le contenu (`content`, `font-size`, `color` identique au fond refusés par le contrôle de contraste rendu). **Exception unique** : `menu-toggle` peut être `display:none` **si** `nav-list` est alors affiché en permanence (le kit le vérifie dans le navigateur aux quatre largeurs : tous les liens du menu ont une boîte visible sans interaction).
+Le kit refuse tout `display:none`, `visibility:hidden`, `opacity < 0.6`, `clip`, `height/width: 0`, `font-size: 0`, `position` hors écran, sur : `brand`, `nav-link`, `nav-list` et `submenu` (sauf `display:none` à l'état fermé, `[data-open="false"]` : c'est la règle du menu mobile que le skin ré-exprime, §9.1), `tools` et ses enfants, `lang-switcher`, `heading`, `prose`, `link`, `button`, `field*`, `card`, `list-item`, `image`/`cover`/`avatar`, `notice`, `stat`, `tab`, `pagination*`, `cookie-tray`, `footer-link`, `credit`, `brand-mark`, `skip-link`, **`mode-switch`**, `mode-option`, et les deux variantes de logo. Le crédit « Propulsé par » et le lien « Confidentialité » sont des **constantes du cœur** : un skin ne peut ni les masquer, ni en changer le texte, le lien ou le contenu (`content`, `font-size`, `color` identique au fond refusés par le contrôle de contraste rendu). **Exception unique** : `menu-toggle` peut être `display:none` **si** `nav-list` est alors affiché en permanence (le kit le vérifie dans le navigateur aux quatre largeurs : tous les liens du menu ont une boîte visible sans interaction).
+
+### 9.4 Ce qu'un skin ne peut jamais changer : le nom Curiosa
+
+Règle de la personne propriétaire : **le nom « Curiosa » du crédit « Propulsé par Curiosa » ne change jamais de police de DA, pour aucun skin.** Il a sa propre pièce, `brand-mark` (le lien du pied porte aussi `data-curiosa-wordmark`), posée par le composant `CuriosaMark` (`src/components/brand/CuriosaMark.tsx`) ; le pied du site public et le pied de l'administration l'utilisent, donc c'est le même mot au même rendu. Tout nouvel endroit qui écrit le nom de Curiosa passe par ce composant, jamais par un lien écrit à la main.
+
+**Ce qui est verrouillé** : `font`, `font-family`, `font-weight`, `font-style`, `font-variant*`, `font-feature-settings`, `font-variation-settings`, `font-kerning`, `font-stretch`, `font-synthesis`, `font-optical-sizing`, `text-transform`, `letter-spacing`, `word-spacing`, `font-size` (la taille reste `1.15em` du texte du crédit) et le soulignement de lien du cœur (`text-decoration*`, `text-underline-offset`, `text-underline-position`).
+
+**Ce qui reste habillable** : la **couleur** du mot (le pied d'un skin peut être sombre : la lisibilité prime), l'alignement, la marge, le fond et le survol du lien.
+
+Trois garde-fous indépendants :
+
+1. **L'assainisseur refuse** (`kit-brand-restyled`, erreur ; la déclaration est retirée de la feuille) toute déclaration verrouillée qui atteint le mot : par sa pièce (`[data-skin-part="brand-mark"]`), par le lien du crédit (`[data-skin-part="credit"] a`, `credit > a`, `credit [rel~="noopener"]`…), ou **par héritage** : une propriété héritée de la liste (casse, espacement, police…) posée sur `[data-skin-part="credit"]` lui-même. Le texte « Propulsé par » ne peut donc plus être mis en capitales ni espacé ; sa couleur, sa taille et sa marge restent libres. Un skin déjà installé avant cette règle n'est pas refusé au rendu : la déclaration est retirée de la feuille et signalée par un avertissement (`reading`), le skin garde son apparence ; l'installer ou le mettre à jour à nouveau reste refusé jusqu'à correction.
+2. **Le cœur a le dernier mot.** `BRAND_MARK_CSS` (`src/core/skins/brand.ts`) est émise **après** la feuille du skin (`renderSheet`), en `!important` (qu'une feuille de skin n'a pas le droit d'écrire) : même une règle large (`footer a`) ou une valeur héritée ne peut pas changer la police du mot. La police vient de la variable `--curiosa-wordmark-font`, posée par la classe `wordmark.variable` sur le lien lui-même.
+3. **Le kit compare** (`skin:check --visual`, `kit-brand-changed`, erreur) : le style CALCULÉ du mot sous le skin et sous basic (famille, graisse, style, casse, espacements, variante, soulignement, taille relative) doit être identique, ce qui couvre l'héritage et les sélecteurs larges. Il vérifie aussi que la police de marque est réellement chargée dans le banc (`kit-brand-font-missing`) : le banc d'essai embarque désormais la vraie police (`testsupport/skins/bench/site.mjs`), sinon la comparaison ne prouverait rien.
+
+Pour un skin : posez la couleur du mot, rien d'autre.
+
+```css
+[data-skin-part="brand-mark"] { color: var(--v-fg); }
+[data-skin-part="brand-mark"]:hover { color: var(--v-accent); }
+```
+
+Ajouter `brand-mark` à la liste des pièces est **additif** : aucun nouveau `skinContract`.
 
 ---
 
@@ -782,7 +825,7 @@ Archétype : une personne non technique (**pas** une personne réelle). Mots sim
 
 ### 10.1 Où
 
-Une page **Apparence** (`/admin/appearance`, rubrique *Administration* du menu) qui reprend l'onglet « Apparence » de Réglages (palette, police, halo, fond, en-tête) et ajoute les skins. L'onglet de Réglages garde un lien « Aller dans Apparence ». L'administration elle-même n'est jamais restylée (son thème reste `adminThemeCss`).
+Une page **Apparence** (`/admin/appearance`, rubrique *Mon site* du menu) qui reprend l'ancien onglet « Apparence » de Réglages (palette, police, halo, fond, disposition de l'en-tête) et ajoute les skins. Les Réglages du site n'ont plus d'onglet Apparence : ils gardent, sous le titre, une phrase et un lien « Ouvrir Apparence » ; l'ancienne adresse `/admin/settings#appearance` y renvoie. Le lien et le bouton de l'en-tête se règlent dans *Menu du site* (onglet « Lien et bouton »), les icônes sociales dans *Réseaux sociaux*. L'administration elle-même n'est jamais restylée (son thème reste `adminThemeCss`).
 
 ### 10.2 Écran (mobile d'abord)
 
@@ -1195,7 +1238,7 @@ Laissé aux lots suivants : le banc d'essai lit `layer.parts` et `demo` (S8) ; l
 | `src/core/skins/previewToken.ts`, `render.ts` (`resolveLook(…, { previewSkinId })`), `src/proxy.ts`, `src/app/(site)/layout.tsx` | l'aperçu d'un skin avant de l'utiliser |
 | `src/core/maintenance/skins.ts` | l'assistant IA (§23.6) |
 | `src/components/admin/EntryPreview.tsx`, `EntryPreviewBox.tsx` | l'aperçu dans l'éditeur d'entrée |
-| `src/components/admin/ThemePicker.tsx` | le sélecteur de couleurs d'avant, étendu (préfixe de champs, avertissements « illisibilité probable », « ↺ Valeur du skin ») |
+| `src/components/admin/ThemePicker.tsx` | le sélecteur de couleurs d'avant, étendu (préfixe de champs, conseils de lisibilité, « ↺ Valeur du skin ») |
 
 Droits : choisir, retoucher, revenir au skin, annuler, aperçu = rôle Administration (comme les réglages) ; ajouter (catalogue ou adresse), lire un dépôt, mettre à jour, revenir à la version d'avant, retirer = « propriétaire » (comme les modules : cela récupère des fichiers d'un dépôt git). Menu : *Mon site › Apparence*, à côté de *Réglages*.
 
@@ -1213,7 +1256,7 @@ Droits : choisir, retoucher, revenir au skin, annuler, aperçu = rôle Administr
 
 - Deux grandes cases (`<input type=radio>`) quand le skin a les deux modes : « Un seul mode » / « Clair et sombre » ; basic et les skins à un mode n'ont pas le choix (aucun changement pour un site existant : mêmes champs `background`, `accent`, `accent2`, `surface`, `text`).
 - « Clair et sombre » : onglets Clair / Sombre (`role=tablist`, flèches du clavier), les champs de chaque mode portent les préfixes `light_` / `dark_` ; les deux jeux sont toujours envoyés (panneau caché mais dans le formulaire).
-- **Avertissements en direct** (`probableIllegibility`) : sous le champ concerné, une phrase avec un exemple (« Dans le mode sombre, le texte serait difficile à lire sur ce fond. Essayez un texte plus clair, par exemple #f4f4f5. »), les chiffres dans « Détails » (replié) ; **jamais bloquant** (la retouche s'enregistre, le rendu la corrige : §7.3). Sur basic, les avertissements d'avant (`contrastIssues`) restent tels quels.
+- **Conseils en direct** (`probableIllegibility`, §3.7 et §7.5) : sous le champ concerné, « Conseil : … (rapport 2,6 ; 4,5 recommandé pour le texte). Vous pouvez garder cette couleur. », avec « Essayer une couleur plus lisible » (propose sans appliquer) et « Garder ma couleur » (replie) ; **jamais bloquant** et la couleur choisie est rendue telle quelle (pas de correction du §7.3). Sur basic, le même conseil s'affiche.
 - Maquette : un mode, ou les deux côte à côte (empilés sur téléphone), calculée par `buildPalette` ; le texte dit en direct si le bouton Clair / Sombre restera.
 - « ↺ Valeur du skin » apparaît à côté d'un champ qui diffère de la valeur du skin.
 

@@ -100,6 +100,24 @@ export function collectPage() {
   };
 }
 
+/**
+ * Le nom « Curiosa » du pied de page (src/core/skins/brand.ts) : son style CALCULÉ (donc ce que l'héritage et toutes les règles ont fini par donner), sa taille relative au
+ * texte qui l'entoure, et si sa police de marque est vraiment chargée par le navigateur. `null` si la page n'en a pas.
+ */
+export function brandStyle() {
+  const e = document.querySelector("[data-curiosa-wordmark]");
+  if (!e) return null;
+  const s = getComputedStyle(e);
+  const parent = parseFloat(getComputedStyle(e.parentElement).fontSize);
+  const faces = [...document.fonts].filter((f) => /wordmark/i.test(f.family));
+  return {
+    fontFamily: s.fontFamily, fontWeight: s.fontWeight, fontStyle: s.fontStyle, textTransform: s.textTransform, letterSpacing: s.letterSpacing, wordSpacing: s.wordSpacing,
+    fontVariant: s.fontVariant, fontFeatureSettings: s.fontFeatureSettings, textDecorationLine: s.textDecorationLine, textDecorationStyle: s.textDecorationStyle,
+    textUnderlineOffset: s.textUnderlineOffset, relativeSize: Math.round((parseFloat(s.fontSize) / parent) * 1000) / 1000,
+    fontLoaded: faces.some((f) => f.status === "loaded"), fontDeclared: faces.length > 0,
+  };
+}
+
 /** Pour chaque élément focalisable visible : le centre est-il recouvert par autre chose ? (fait défiler la page, puis revient en haut.) */
 export function findCovered() {
   const SEL = 'a[href], button, input:not([type="hidden"]), textarea, select, summary';

@@ -5,6 +5,8 @@ import { groupIssues } from "./groups";
 import { MULTI_VALUE_RE, siteDefaultRef } from "./settingValues";
 import { checkDateTime, parsePeriod } from "../adminkit/values";
 import { PLATFORM_PATTERN } from "./platform";
+import { socialSpecSchema } from "../socialSpec";
+import { shortLinkIssues, shortLinkSchema } from "./shortLink";
 import { HISTORY, MAX_MODULE_RIGHTS, OPEN, RIGHT_ID_RE } from "../auth/rights";
 import { EVENT_KEY_MAX, EVENT_KEY_RE, FIELD_KEY_RE, JOURNAL_LIMITS, LEVELS, logEventIssues } from "../journal/events";
 import { SERVICE_RE } from "./serviceVersions";
@@ -12,6 +14,7 @@ import { NO_CREATE_REFERS, REFERS_TO } from "./choiceValues";
 import { MAX_TAB_ENTRIES, TAB_ID_RE, TAB_LABEL_MAX, tabIssues } from "./tabs";
 import { moduleSkinIssues, moduleSkinSchema } from "./skinDecl";
 import { overlayElementIssues, overlayElementsSchema } from "../overlays/decl";
+import { previewIssues, previewsSchema } from "./previews";
 
 const localized = z.union([z.string().max(500), z.record(z.string(), z.string().max(500))]);
 const methodName = z.string().regex(/^[a-zA-Z][a-zA-Z0-9_]{0,40}$/);
@@ -195,6 +198,16 @@ export const manifestSchema = z.object({
    * Purement visuel, aucune dépendance. Absent = aucune plateforme. Un ancien cœur ignore ce champ. Voir platform.ts.
    */
   platform: z.string().regex(PLATFORM_PATTERN, "platform must be a lowercase identifier like twitch or discord (a-z, 0-9 and dashes, 31 characters at most, starting with a letter)").optional(),
+  /**
+   * (cœur 0.6.1) Réseau social : comment reconnaître l'adresse de son profil (sites acceptés, modèle d'adresse, exemple, formes courtes). Le catalogue le recopie : le cœur reconnaît
+   * « instagram.com/monpseudo » AVANT d'installer le module. Un bloc abîmé est ignoré (jamais une erreur de manifeste) ; un ancien cœur ignore le champ. Voir socialRecognize.ts.
+   */
+  social: socialSpecSchema.optional().catch(undefined),
+  /**
+   * (cœur 0.6.1) Adresse courte que le module DEMANDE au cœur (« /discord ») : le cœur la crée seulement si le nom est libre, ne touche jamais un lien créé par la personne,
+   * la garde à jour et la retire avec l'option ou l'instance. Un cœur plus ancien ignore la clé. Voir modules/shortLink.ts et managedRedirects.ts.
+   */
+  shortLink: shortLinkSchema.optional(),
   instances: z.enum(["single", "multiple"]).default("multiple"),
   consumes: z.array(z.object({ topic: topicId, label: localized, schema: z.array(topicField).max(20).optional(), tags: z.boolean().optional() })).max(10).default([]),
   provides: z.array(z.object({ topic: topicId, label: localized.optional() })).max(10).default([]),
@@ -218,7 +231,7 @@ export const manifestSchema = z.object({
   mcp: z.array(z.object({ name: z.string().regex(/^[a-z][a-z0-9_]{1,39}$/), description: z.string().max(1000), readOnly: z.boolean().optional(), default: z.boolean().optional(), destructive: z.boolean().optional(), input: jsonSchemaLite.optional() }).refine((a) => !a.destructive || a.default !== true, "a destructive action cannot be enabled by default").refine((a) => !(a.readOnly && a.destructive), "a read-only action cannot be destructive")).max(60).optional(),
   content: content.optional(),
   page: z.boolean().optional(),
-  /** (prochaine version) « Je suggère d'être au menu du site » : la page de l'instance est proposée à la personne dans « Pages qui ne sont pas dans le menu », jamais ajoutée d'office. Défaut : `content.showInNav`, sinon non. Un cœur ancien ignore la clé. */
+  /** (cœur 0.6.1) « Je suggère d'être au menu du site » : la page de l'instance est proposée à la personne dans « Pages qui ne sont pas dans le menu », jamais ajoutée d'office. Défaut : `content.showInNav`, sinon non. Un cœur ancien ignore la clé. */
   suggestInMenu: z.boolean().optional(),
   basePath: z.string().regex(/^[a-z0-9-]*$/).optional(),
   /** (0.2.12) Clé d'un réglage BOOLÉEN du module : tant qu'il est faux, la page de l'instance est éteinte (404) et absente du plan du site, de llms.txt et du menu. Un cœur ancien ignore la clé : `minCore: "0.2.12"`. */
@@ -303,6 +316,12 @@ export const manifestSchema = z.object({
    */
   overlayElements: overlayElementsSchema.optional(),
   /**
+   * (cœur 0.6.1) VISUELS du module : 6 captures au plus (`{ file: "previews/commandes.webp", caption, alt, type: "public" | "admin" | "overlay" }`, légende et texte alternatif en français ET en anglais)
+   * qui montrent dans la fiche de l'extension ce que le module ajoute. Images WebP ou PNG de 150 Ko au plus, lues par le cœur (jamais chargées par le navigateur depuis un site tiers). Voir docs/CREATE-A-MODULE.md.
+   * AJOUT SANS DANGER : un cœur plus ancien ignore la clé et affiche la fiche comme avant, donc aucun `minCore` n'est à déclarer pour elle.
+   */
+  previews: previewsSchema.optional(),
+  /**
    * Droits du module (0.2.0), proposés dans les rôles de la page Équipe. Identifiant LOCAL (« email.view ») : le cœur le préfixe par l'identifiant du module
    * (« <module>:email.view »), un module ne peut donc pas déclarer le droit d'un autre. `open` (ouvrir la page d'admin du module) est implicite.
    * `default` : ce que reçoivent les rôles prédéfinis (administrateur : oui sauf `admin: false` ; éditeur : non sauf `editor: true`). Un cœur ancien ignore cette clé.
@@ -324,6 +343,8 @@ export const manifestSchema = z.object({
     if (!hasPage(m)) ctx.addIssue({ code: "custom", path: ["pageSetting"], message: "pageSetting needs a module with a public page (page: true)" });
   }
   if (m.sitemapFromPage && !hasPage(m)) ctx.addIssue({ code: "custom", path: ["sitemapFromPage"], message: "sitemapFromPage needs a module with a public page (page: true)" });
+  for (const issue of previewIssues(m.previews)) ctx.addIssue({ code: "custom", path: ["previews", ...issue.path], message: issue.message });
+  for (const message of shortLinkIssues(m.shortLink, m.settings, { provides: m.provides.map((p) => p.topic) })) ctx.addIssue({ code: "custom", path: ["shortLink"], message });
   for (const message of logEventIssues(m.logEvents)) ctx.addIssue({ code: "custom", path: ["logEvents"], message });
   if (new Set((m.rights ?? []).map((r) => r.id)).size < (m.rights ?? []).length) ctx.addIssue({ code: "custom", path: ["rights"], message: "duplicate right id" });
   for (const [i, seed] of (m.seeds ?? []).entries()) {

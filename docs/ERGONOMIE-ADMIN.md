@@ -31,7 +31,7 @@ Légende : **[auto]** = vérifié par le kit de test (`admin.ergonomics`) ; **[r
 **R9 [auto] Les mots de la personne, pas ceux du code.** Interdits dans les libellés, aides et messages visibles hors mode avancé : clé, slug, instance, topic, sujet (au sens technique), token, jeton, webhook, EventSub, route, service, identifiant, payload, API, JSON, cache, hash, SSE, OAuth (sauf quand un tiers l'impose, avec explication), `{accolades}` non expliquées. Liste modifiable en tête du test.
 **R10 [auto] Libellés courts et sans deux-points** : au plus 60 caractères, pas de « : » final, pas de parenthèses de précision à rallonge (« (seulement si la période ne revient pas) » est un signe qu'il faut un autre contrôle, voir R6).
 **R11 [auto] Aides courtes.** Une aide visible fait au plus 60 caractères et une ligne ; plus long, elle passe dans la bulle « ? » du cœur. **Tout champ libre a un exemple concret** (« Par exemple : insta, ig »). Une aide ne répète pas le libellé.
-**R12 [revue] Même mot pour la même chose partout** (glossaire du dépôt) : « élément », « page d'overlay », « extension », « récompense », « tirage au sort »… Un nouveau mot s'ajoute au glossaire avant d'être utilisé.
+**R12 [revue] Même mot pour la même chose partout** (glossaire du dépôt ; deux entrées du menu d'administration ne portent jamais le même nom, ni le même premier mot : « Apparence » et « Réglages du site », jamais « Apparence » et « Apparence et réglages ») : « élément », « page d'overlay », « extension », « récompense », « tirage au sort »… Un nouveau mot s'ajoute au glossaire avant d'être utilisé.
 **R13 [auto] Ton :** neutre en genre, vouvoiement, phrases de 20 mots au plus, pas de point d'exclamation, pas de « Veuillez », pas de MAJUSCULES, pas de nom de personne réelle ni de site réel dans les textes par défaut.
 
 ## 4. Les listes et les lignes
@@ -41,6 +41,8 @@ Légende : **[auto]** = vérifié par le kit de test (`admin.ergonomics`) ; **[r
 **R17 [revue] Un interrupteur montre l'état, il n'est pas un verbe.** Activer/désactiver se fait par un **interrupteur** qui affiche l'état courant, directement dans la liste. Jamais un bouton « Activer / désactiver » (la personne ne sait pas dans quel état on est) et jamais deux gros boutons côte à côte sur chaque ligne.
 **R30 [revue] Même schéma = un seul tableau.** Quand plusieurs listes ont les mêmes colonnes (par exemple les commandes « à vous », « toutes prêtes », « de partenaires » et « de réseaux »), on n'en fait pas trois listes l'une sous l'autre : **un seul tableau**, où ce qui les distingue (l'origine, le type, la source) devient **une colonne** avec une pastille **colorée ET écrite** (la couleur seule ne suffit jamais : R28), et des filtres rapides au-dessus (« Toutes · Les vôtres · Partenaires · Réseaux »). La recherche couvre tout le tableau (R15). Un élément **produit automatiquement par une autre page** reste une ligne comme les autres, mais son bouton ne dit pas « Modifier » : il **renvoie vers la page qui le produit**, en le disant (« Ouvrir la fiche du partenaire → », « Réglages du réseau → »), pour que la personne sache où se règle la chose. Les sources qui ne produisent encore rien (un partenaire sans commande) ne sont pas des lignes : un seul bouton « Ajouter… » avec recherche ouvre le choix.
 **R18 [revue] Un état vide dit quoi faire** : une phrase, un bouton, éventuellement un exemple à ajouter en un clic. Jamais une page blanche.
+
+**R31 [revue] La fiche d'une extension montre ce que ça fait AVANT les détails techniques, et l'installation est toujours à portée de main.** Dans l'ordre : la description, puis des visuels (« à quoi ressemble une page de commandes »), puis ce que le module ajoute (pages, éléments d'overlay, outils pour l'assistant IA) ; ensuite, **repliés** sous « Détails techniques » avec un résumé d'une ligne (« Garde des données de votre public · Demande 3 autorisations »), les données, les autorisations, les dépendances, la version et la source. Le bouton « Installer » vit dans une **barre collée en bas de la fenêtre** (au moins 44 px, sur 390 px comme sur 1280 px, sans cacher la fin du contenu) qui dit l'état (version, « installation possible », ou la raison qui bloque avec un lien) ; c'est le seul bouton principal, il montre « en cours » pendant l'installation (R3, R23). Sans visuel, la fiche s'affiche sans trou. Les images viennent du site lui-même (jamais d'un site tiers), avec légende et texte alternatif (R28), sans vraies données personnelles.
 
 ## 5. Les contrôles
 **R19 [revue] Le bon contrôle :** oui/non = case ou interrupteur (jamais une liste) ; 2 à 4 choix = boutons segmentés ou radio ; 5 à 10 = liste ; plus de 10 = recherche. Les listes ne **tronquent jamais** leurs libellés. Pas de case négative (« Ne pas… ») : on écrit ce qu'on veut qui se passe.
@@ -81,6 +83,7 @@ La relecture refuse la PR si un écran dépasse les budgets R4/R5 sans repli, si
 - [ ] Listes qui peuvent grandir : recherche dynamique en direct dès le départ ; aucune étiquette identique répétée ; groupes ; interrupteur d'état dans la ligne (R14, R15, R16, R17).
 - [ ] Erreurs sous le champ avec exemple ; retour d'action visible (R22, R23).
 - [ ] Liens vers les autres modules avec leur état (R25).
+- [ ] Fiche d'extension : description, visuels et ce qui est ajouté d'abord ; détails techniques repliés ; bouton d'installation dans une barre toujours visible (R31).
 - [ ] FR/EN à parité, ton neutre, vouvoiement (R13, R29).
 - [ ] Captures regardées, 1280 et 390 px (section 9).
 
@@ -96,10 +99,11 @@ Le cœur fournit ces briques **une fois**, pour ses pages **et** pour les module
 | Interrupteur d'état dans la ligne, retour d'action, retour arrière si échec | R17 | `Switch` (effet immédiat), `SwitchField` (dans un formulaire) | cellule `{ switch }`, champ `kind: "switch"` |
 | Au plus 2 actions visibles, les autres dans « ⋯ » | R16 | `RowMenu` | `rowActions[].inMenu`, `danger` |
 | Cartes sur 390 px, texte coupé avec « … », 50 lignes par page | R16, R27 | `AdminTable` | `table` enrichi : `truncate`, `pageSize` |
-| Période, date et heure, durée : un champ | R6, R21 | `PeriodField`, `DateTimeField`, `DurationField` | réglages `period`, `datetime`, `duration` ; champs de même `kind` |
+| Période, date et heure, durée : un champ, avec « Tout le mois de » et « Une période toute prête » (saisons, fêtes) | R6, R7, R21 | `PeriodField`, `DateTimeField`, `DurationField` | réglages `period`, `datetime`, `duration` ; champs de même `kind` (les raccourcis viennent sans rien changer) |
 | Nombre borné avec son unité et sa valeur par défaut visible | R20, R22 | `NumberField` | réglage `number` + `min`, `max`, `step`, `unit` |
 | Options rares repliées avec un résumé | R2, R7 | `MoreOptions` | réglage `rare`, champ `folded` |
 | 2 à 4 choix en boutons côte à côte | R19 | `Segmented` | réglage `display: "segmented"`, champ `kind: "segmented"` |
 | Exemple et erreur sous le champ | R11, R22 | `Field` : `example`, `error` | réglage `example`, champ `example`, `errors` d'une action |
+| Mot de passe, identifiant, code à usage unique | R22, R28 | `PasswordInput`, `UsernameHint` | réglage `secret` (clé d'un service) ; règles dans [FORMULAIRES-AUTHENTIFICATION.md](FORMULAIRES-AUTHENTIFICATION.md) |
 
 Un nouveau besoin qui revient dans plusieurs pages s'ajoute **ici, au cœur**, pas page par page.

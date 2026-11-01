@@ -265,6 +265,9 @@ model Redirect {
   expiresAt DateTime?
   // Message de la page « lien terminé » (vide = le message habituel du site).
   endMessage String  @default("")
+  // Instance de module qui GÈRE ce lien (adresse courte demandée par un module : voir src/core/managedRedirects.ts). null = créé par une personne, que le cœur ne
+  // touche jamais. Unique : au plus un lien géré par instance. Un lien géré ne se modifie ni ne se supprime à la main ; il disparaît avec l'instance ou l'option.
+  managedBy String?  @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
