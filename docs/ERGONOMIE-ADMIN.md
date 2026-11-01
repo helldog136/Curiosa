@@ -96,7 +96,7 @@ Le cœur fournit ces briques **une fois**, pour ses pages **et** pour les module
 | Interrupteur d'état dans la ligne, retour d'action, retour arrière si échec | R17 | `Switch` (effet immédiat), `SwitchField` (dans un formulaire) | cellule `{ switch }`, champ `kind: "switch"` |
 | Au plus 2 actions visibles, les autres dans « ⋯ » | R16 | `RowMenu` | `rowActions[].inMenu`, `danger` |
 | Cartes sur 390 px, texte coupé avec « … », 50 lignes par page | R16, R27 | `AdminTable` | `table` enrichi : `truncate`, `pageSize` |
-| Période, date et heure, durée : un champ | R6, R21 | `PeriodField`, `DateTimeField`, `DurationField` | réglages `period`, `datetime`, `duration` ; champs de même `kind` |
+| Période, date et heure, durée : un champ, avec « Tout le mois de » et « Une période toute prête » (saisons, fêtes) | R6, R7, R21 | `PeriodField`, `DateTimeField`, `DurationField` | réglages `period`, `datetime`, `duration` ; champs de même `kind` (les raccourcis viennent sans rien changer) |
 | Nombre borné avec son unité et sa valeur par défaut visible | R20, R22 | `NumberField` | réglage `number` + `min`, `max`, `step`, `unit` |
 | Options rares repliées avec un résumé | R2, R7 | `MoreOptions` | réglage `rare`, champ `folded` |
 | 2 à 4 choix en boutons côte à côte | R19 | `Segmented` | réglage `display: "segmented"`, champ `kind: "segmented"` |
