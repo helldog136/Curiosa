@@ -7,6 +7,7 @@ import { issueText } from "@/core/skins/messages";
 import { probableIllegibility, type ProbableIssue } from "@/core/skins/readability";
 import { SKIN_ID_RE } from "@/core/skins/allowlist";
 import * as skins from "@/core/skins/service";
+import { fontStatus } from "./fonts";
 import type { Outcome } from "./actions";
 import type { Plan } from "./requests";
 
@@ -72,6 +73,7 @@ export async function skinStatus(): Promise<unknown> {
       colors: r.palette === "both" ? { mode: "light and dark", light: colors(r.light), dark: colors(r.dark) } : { mode: "one mode", ...colors(r.single) },
       font: r.font ?? null, glow: v.raw.glow ?? null, background: v.raw.bgPreset ?? null, headerLayout: v.raw.headerLayout ?? null,
     },
+    fonts: await fontStatus(),
     adjustedForReadability: v.notices.map((n) => n.en),
     // CONSEILS de lisibilité sur les couleurs choisies par la personne : jamais une erreur, jamais appliqués. Ses couleurs sont toujours gardées telles quelles.
     readabilityTips: readabilityTips(v),

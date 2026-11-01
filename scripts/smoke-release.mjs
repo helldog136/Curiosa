@@ -98,6 +98,15 @@ const q = (env, code) => execFileSync(process.execPath, ["-e", code], { cwd: app
     check(tables === "0,0,0,0", "mise à jour : les tables de sécurité (verrouillage, clés d'accès, codes de secours) existent");
     const login = await fetch(`${s.base}/admin/login`);
     check(login.status === 200, "mise à jour : la page de connexion répond");
+    // Polices embarquées (fonts/ de l'archive) : une police de la bibliothèque est servie par le site, au bon type, avec son cache éternel.
+    {
+      const inv = JSON.parse(fs.readFileSync(path.join(app, "fonts/library.json"), "utf8"));
+      const f = inv.fonts[0].files[0];
+      const res = await fetch(`${s.base}/fonts/${f.file.replace(/\.woff2$/, "")}.${f.sha256.slice(0, 10)}.woff2`);
+      const body = Buffer.from(await res.arrayBuffer());
+      check(res.status === 200 && res.headers.get("content-type") === "font/woff2" && /immutable/.test(res.headers.get("cache-control") ?? "") && body.subarray(0, 4).toString() === "wOF2", "polices : une police de la bibliothèque est servie depuis l'archive (font/woff2, immutable)");
+      check((await fetch(`${s.base}/fonts/library.json`)).status === 404, "polices : l'inventaire n'est pas servi");
+    }
   } finally { s.stop(); }
 }
 

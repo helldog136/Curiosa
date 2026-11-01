@@ -9,6 +9,7 @@ import { contentCheckView } from "./content/service";
 import { legacyReportForAssistant } from "@/core/modules/legacyReport";
 import { redactDeep } from "./redact";
 import { getRequest, type Level3Action } from "./requests";
+import { FONT_SET_ARG } from "./fonts";
 import { SKIN_ARG, SKIN_LIST_INPUT, skinList, skinStatus } from "./skins";
 
 /**
@@ -54,7 +55,7 @@ const INSTALL_ARG: JsonSchemaLite = {
   },
   required: ["module"],
 };
-const level3 = (name: Level3Action): Def["run"] => (args, actor) => callLevel3(name, validateArgs(name === "core_update" || name === "modules_update_all" ? NONE : name.startsWith("skin_") ? SKIN_ARG : name === "module_uninstall" ? UNINSTALL_ARG : name === "module_install" ? INSTALL_ARG : MODULE_ARG, args), actor);
+const level3 = (name: Level3Action): Def["run"] => (args, actor) => callLevel3(name, validateArgs(name === "core_update" || name === "modules_update_all" ? NONE : name.startsWith("skin_") ? SKIN_ARG : name === "font_set" ? FONT_SET_ARG : name === "module_uninstall" ? UNINSTALL_ARG : name === "module_install" ? INSTALL_ARG : MODULE_ARG, args), actor);
 
 const DEFS: Def[] = [
   { name: "status", level: 1, title: "Site status", description: "Core version and update channel, Node version, uptime, number of modules, state of the update in progress. Start here.", input: NONE, run: () => status() },
@@ -85,7 +86,7 @@ const DEFS: Def[] = [
     description: "The full sheet of one module, in plain words, to help the owner choose: what it is for, what visitors see, what personal data it collects (the author's declaration), what permissions it asks for, the modules it needs (required) and the ones that make it work better (optional) with what each brings, whether it fits this site's Curiosa version, whether it is already installed, which settings to plan (never a value, never a secret) and which modules go well with it. Read-only. To install it, use maintenance_module_install (the owner approves).",
     input: CATALOG_GET_INPUT, run: (args) => catalogGet(args),
   },
-  { name: "skin_status", level: 1, title: "Appearance of the site", description: "The skin in use, whether the owner adjusted colors, font, glow, background or header, whether visitors get a Light / Dark button, and colors that were adjusted so they can be read. Start here for any question about how the site looks. Nothing here can be changed without the owner's approval.", input: NONE, run: () => skinStatus() },
+  { name: "skin_status", level: 1, title: "Appearance of the site", description: "The skin in use, whether the owner adjusted colors, glow, background or header, the font of titles and of text (with tips, and the fonts that can be chosen), whether visitors get a Light / Dark button, and colors that were adjusted so they can be read. Start here for any question about how the site looks. Nothing here can be changed without the owner's approval.", input: NONE, run: () => skinStatus() },
   { name: "skin_list", level: 1, title: "Skins installed and available", description: "The skins installed on this site, and the skins of the official catalogue that it does not have yet (name, description, author, light / dark modes). A skin only changes the look, never the content. Use it to guide the owner; to act, use maintenance_skin_install or maintenance_skin_activate (both are requests the owner approves).", input: SKIN_LIST_INPUT, run: (args) => skinList(args) },
   { name: "content_check", level: 1, title: "Content check result", description: "The result of the last check of the site's content (images without text, titles, descriptions for search engines, missing translations, menu entries and links that lead nowhere, outside links). READ-ONLY: it shows the last result and contacts no site. Each remark has an importance (important / advised / info), a short sentence, why it matters and, where there is one, the admin screen that fixes it. Never a score.", input: NONE, run: () => contentCheckView() },
 
@@ -130,6 +131,11 @@ const DEFS: Def[] = [
     name: "skin_remove", level: 3, title: "Remove an installed skin",
     description: "Asks to remove an installed skin's files. By default this only creates a request that the owner approves; then poll maintenance_request_status. Content never changes. If it was the active skin, the basic skin applies and the owner's adjustments are kept.",
     input: SKIN_ARG, run: level3("skin_remove"),
+  },
+  {
+    name: "font_set", level: 3, title: "Change the fonts of the site",
+    description: "Asks to change the font of titles and/or of body text (Admin > Appearance > Fonts). Values: \"skin\" (the skin's own font, nothing retouched) or a value listed in maintenance_skin_status > fonts.available (a library font such as lib:lora, a system font such as sys:serif, or a font the owner uploaded). By default this only creates a request that the owner approves; then poll maintenance_request_status. The chosen font is always applied; tips (no bold version, a poster font used for long text) are advice, never a block. You cannot upload a font file: only the owner can, because they take responsibility for its license. The owner can undo with \"Back to the skin\".",
+    input: FONT_SET_ARG, run: level3("font_set"),
   },
   { name: "module_update", level: 3, title: "Update a module", description: "Updates one module to its latest STABLE version (never a pre-release). By default this only creates a request that the owner approves; then poll request_status.", input: MODULE_ARG, run: level3("module_update") },
   { name: "modules_update_all", level: 3, title: "Update all modules", description: "Updates every module that has a STABLE update, one by one. By default this only creates a request that the owner approves; then poll request_status.", input: NONE, run: level3("modules_update_all") },

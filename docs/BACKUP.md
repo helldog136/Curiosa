@@ -10,6 +10,7 @@ données — pas le code du framework :
 | données de **chaque module installé** (leur stockage, leurs réglages) | le code du framework et des modules (réinstallé depuis le catalogue) |
 | images et fichiers envoyés | |
 | la liste des modules installés (identifiant, version, dépôt, activé ou non) | |
+| les **polices envoyées** (fichiers `.woff2`, dossier `fonts/` de l'archive) et le choix des polices (réglages) | la bibliothèque de polices livrée avec le cœur (elle est dans l'installation, pas dans vos données) |
 | la liste des **skins** installés (dépôt, étiquette, version) et le skin choisi, avec vos retouches d'apparence (ce sont des réglages) | les fichiers des skins (réinstallés depuis leur dépôt, comme les modules) |
 
 Le **cœur** fait la sauvegarde ; il sait aussi aller chercher ce que les modules ont stocké, sans que ceux-ci aient à coder quoi que ce soit.
@@ -45,6 +46,7 @@ data/               les mêmes données, brutes, en JSON : c'est ce que la resta
                     (dont roles.json et user-roles.json : les rôles et qui les a ; absents avant la 0.2.0 : la restauration recrée alors les rôles
                      prédéfinis et donne à chacun celui de son niveau `role` dans users.json)
 uploads/            images et fichiers envoyés
+fonts/              polices envoyées (.woff2) ; absent s'il n'y en a pas (docs/POLICES.md)
 ```
 
 Tout est du **texte** (JSON, Markdown, CSV), sauf les images. Pour vérifier l'intégrité :

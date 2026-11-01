@@ -108,7 +108,8 @@ Valeur finale d'un jeton = la plus forte couche qui le définit. **Repli valeur 
 | `skin.options` | objet `{ [optionId]: valeur }` (§3.4) | valeurs par défaut du skin |
 | `skin.snapshot` | copie des retouches d'avant le dernier changement de skin, pour « Annuler » | rien |
 | `theme.background`, `theme.accent`, `theme.accent2`, `theme.surface`, `theme.text` | **retouches des 5 couleurs (inchangées)** | la valeur du skin |
-| `theme.font` | `sans` \| `serif` \| `mono` (retouche) | la police du skin |
+| `theme.font` | `sans` \| `serif` \| `mono` (retouche, ancien réglage toujours lu) | la police du skin |
+| `theme.fontBody`, `theme.fontHeading` | `sys:…`, `lib:<famille>`, `up:<nom>` (retouches, [POLICES.md](POLICES.md)) | la police du skin : `--v-font` (texte) et `--sk-font-heading` (titres) |
 | `theme.glow`, `theme.glow.custom`, `theme.bgPreset`, `theme.bgCustom`, `theme.bgImage`, `theme.bgSvg*` | retouches du halo et du fond | le halo et le fond du skin |
 | `theme.palette` | `"single"` ou `"both"` : la personne définit ses couleurs pour un seul mode (comme aujourd'hui) ou pour les deux (§3.7) | `"single"` |
 | `theme.light.background`, `theme.light.accent`, `theme.light.accent2`, `theme.light.surface`, `theme.light.text` | retouches du mode clair (utilisées si `theme.palette` = `both`) | la valeur du skin, mode clair |
@@ -120,7 +121,7 @@ Valeur finale d'un jeton = la plus forte couche qui le définit. **Repli valeur 
 ### 3.3 Choisir un skin, retoucher, revenir au skin
 
 - **Choisir un skin** : le cœur écrit `skin.active`, copie les retouches actuelles dans `skin.snapshot`, puis **supprime** les clés de retouche (`theme.*`, `header.layout`) pour que les valeurs du skin apparaissent (décision de la personne propriétaire : « le skin donne les valeurs de départ »). Un bouton « Annuler » (tant qu'on n'a pas changé autre chose) restaure le snapshot. Rien n'est perdu.
-- **Retoucher** : la personne change une couleur, la police, le halo, le fond ou l'agencement de l'en-tête dans Apparence : le cœur écrit la clé `theme.*` correspondante, comme aujourd'hui. Les couleurs dérivées (`muted`, `line`, `*-fg`, états) sont recalculées par `buildPalette` à partir des couleurs retouchées quand le skin ne les fixe pas, ou quand la retouche change leurs bases (§4.3).
+- **Retoucher** : la personne change une couleur, la police (titres et texte séparément : [POLICES.md](POLICES.md)), le halo, le fond ou l'agencement de l'en-tête dans Apparence : le cœur écrit la clé `theme.*` correspondante, comme aujourd'hui. Les couleurs dérivées (`muted`, `line`, `*-fg`, états) sont recalculées par `buildPalette` à partir des couleurs retouchées quand le skin ne les fixe pas, ou quand la retouche change leurs bases (§4.3).
 - **Revenir au skin** : supprime les clés de retouche, d'un seul bouton, ou champ par champ (« ↺ valeur du skin » à côté de chaque réglage retouché).
 - **Retoucher les couleurs d'un skin à deux modes** : voir §3.7 (la personne choisit un seul mode ou les deux).
 

@@ -27,6 +27,7 @@ Que trouve-t-on dedans ?
     modules/<instance>/...    les données propres à chaque module (JSON, CSV…)
   data/                     les mêmes données, brutes (JSON) : c'est ce que le framework relit pour restaurer
   uploads/                  images et fichiers envoyés
+  fonts/                    polices envoyées (fichiers .woff2 ; absent s'il n'y en a pas)
   backup.json               inventaire et empreintes SHA-256 des fichiers (pour vérifier que rien n'est altéré)
 
 ATTENTION : data/users.json contient les empreintes (hachées, pas en clair) des mots de passe des comptes, et
