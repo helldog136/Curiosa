@@ -42,7 +42,8 @@ export function Switch({ label, checked, onToggle, onText, offText, disabled, fa
   const [note, setNote] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // La page se recharge avec la vraie valeur du serveur : l'interrupteur la suit.
-  useEffect(() => setOn(checked), [checked]);
+  const [seen, setSeen] = useState(checked);
+  if (seen !== checked) { setSeen(checked); setOn(checked); }
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
 
   function change() {
