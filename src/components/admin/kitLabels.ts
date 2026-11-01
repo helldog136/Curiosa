@@ -1,6 +1,6 @@
 import type { AdminField, Block } from "@/core/blocks";
 import type { Translator } from "@/core/i18n/dictionary";
-import { numberHint } from "@/core/adminkit/hints";
+import { numberHint, valueErrorKey } from "@/core/adminkit/hints";
 import { summarizeGroup } from "@/core/adminkit/summary";
 import type { FormLabels } from "./AdminBlocks";
 import type { TableLabels } from "./AdminTable";
@@ -20,8 +20,10 @@ export function tableLabels(t: Translator): TableLabels {
  */
 export function formLabels(t: Translator, locale: string, block: Extract<Block, { type: "adminForm" }>): FormLabels {
   const hints: Record<string, string> = {};
+  const invalid: Record<string, string> = {};
   for (const f of block.fields as AdminField[]) {
     if ((f.kind === "number" || f.kind === "duration") && (f.min !== undefined || f.max !== undefined || f.step !== undefined)) {
+      { const e = valueErrorKey("range", { type: f.kind, min: f.min, max: f.max, step: f.step, default: f.kind === "number" && f.placeholder !== undefined && Number.isFinite(Number(f.placeholder)) ? Number(f.placeholder) : undefined }, t); invalid[f.name] = t(e.key, { field: f.label, ...e.vars }); }
       hints[f.name] = numberHint(t, { type: f.kind, min: f.min, max: f.max, step: f.step }, f.kind === "number" ? f.unit : undefined);
     }
   }
@@ -35,6 +37,6 @@ export function formLabels(t: Translator, locale: string, block: Extract<Block, 
     period: { from: t("period.from"), to: t("period.to"), yearly: t("period.yearly"), sentenceYearly: t("period.sentenceYearly"), sentenceOnce: t("period.sentenceOnce"), none: t("period.none"), clear: t("period.clear"), order: t("period.order") },
     datetime: { date: t("datetime.date"), time: t("datetime.time"), clear: t("datetime.clear"), at: t("datetime.at"), preview: t("datetime.preview") },
     duration: { s: t("unit.s"), min: t("unit.min"), h: t("unit.h"), d: t("unit.d"), day: t("unit.day") },
-    hints, fold,
+    hints, invalid, fold,
   };
 }

@@ -19,7 +19,7 @@ import { Segmented, fitsSegmented } from "./Segmented";
 import { PeriodField } from "./PeriodField";
 import { DateTimeField } from "./DateTimeField";
 import { DurationField } from "./DurationField";
-import { numberHint } from "@/core/adminkit/hints";
+import { numberHint, valueErrorKey } from "@/core/adminkit/hints";
 import { summarizeGroup } from "@/core/adminkit/summary";
 import { ui } from "./ui";
 import { HelpBelow, HelpTip } from "./HelpTip";
@@ -94,7 +94,7 @@ export function ModuleSettings({ t, locale, defaultLocale, locales, fields, allF
         if (f.min === undefined && f.max === undefined && f.step === undefined && f.unit === undefined) return <TextField key={name} {...common} type="number" defaultValue={str} />;
         const unit = f.unit ? L(f.unit) : undefined;
         return <NumberField key={name} name={name} label={label} help={common.help} example={example} required={required} defaultValue={str} min={f.min} max={f.max} step={f.step} unit={unit}
-          emptyValue={typeof f.default === "number" ? f.default : undefined} hint={numberHint(t, f, unit)} />;
+          emptyValue={typeof f.default === "number" ? f.default : undefined} hint={numberHint(t, f, unit)} invalidText={(() => { const e = valueErrorKey("range", f, t); return t(e.key, { field: label, ...e.vars }); })()} />;
       }
       case "period":
         return <PeriodField key={name} name={name} label={label} help={common.help} example={example} required={required} defaultValue={str} locale={locale}
@@ -103,7 +103,7 @@ export function ModuleSettings({ t, locale, defaultLocale, locales, fields, allF
         return <DateTimeField key={name} name={name} label={label} help={common.help} example={example} required={required} defaultValue={str} locale={locale}
           labels={{ date: t("datetime.date"), time: t("datetime.time"), clear: t("datetime.clear"), at: t("datetime.at"), preview: t("datetime.preview") }} />;
       case "duration":
-        return <DurationField key={name} name={name} label={label} help={common.help} example={[numberHint(t, f), example].filter(Boolean).join(" · ") || undefined} required={required} defaultValue={str} min={f.min} max={f.max}
+        return <DurationField key={name} name={name} label={label} help={common.help} example={[numberHint(t, f), example].filter(Boolean).join(" · ") || undefined} required={required} defaultValue={str} min={f.min} max={f.max} invalidText={(() => { const e = valueErrorKey("range", f, t); return t(e.key, { field: label, ...e.vars }); })()}
           labels={{ s: t("unit.s"), min: t("unit.min"), h: t("unit.h"), d: t("unit.d"), day: t("unit.day") }} />;
       case "color": {
         // Une couleur qui suit le thème (défaut « theme:… ») : case « Suivre le thème » cochée tant qu'aucune couleur n'est choisie.

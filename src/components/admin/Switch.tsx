@@ -16,8 +16,9 @@ import { ui } from "./ui";
 /** Ce que renvoie l'appel : `error` (texte) fait revenir en arrière ; `ok` est le message de réussite. Rien du tout (ou `{}`) = réussi sans message. */
 export type SwitchResult = { ok?: string; error?: string } | void | null;
 
-const TRACK = "relative inline-block h-6 w-11 shrink-0 rounded-full border border-line bg-line/60 transition-colors after:absolute after:left-0.5 after:top-0.5 after:h-4 after:w-4 after:rounded-full after:bg-surface after:shadow after:transition-transform after:content-['']";
+const TRACK = "relative inline-block h-6 w-11 shrink-0 rounded-full border transition-colors after:absolute after:left-0.5 after:top-0.5 after:h-4 after:w-4 after:rounded-full after:bg-surface after:shadow after:transition-transform after:content-['']";
 const TRACK_ON = "bg-accent border-accent after:translate-x-5";
+const TRACK_OFF = "bg-line/60 border-line";
 
 /** Le message de retour reste affiché 3 secondes (une erreur reste jusqu'au prochain clic). */
 const OK_MS = 3000;
@@ -66,7 +67,7 @@ export function Switch({ label, checked, onToggle, onText, offText, disabled, fa
     <span className={`inline-flex flex-wrap items-center gap-x-2 ${className}`} data-testid={testid}>
       <button type="button" role="switch" aria-checked={on} aria-label={label} aria-busy={pending || undefined} disabled={disabled} onClick={change}
         className="group inline-flex min-h-11 items-center gap-2 rounded-xl px-1 disabled:cursor-not-allowed disabled:opacity-60 aria-busy:cursor-progress">
-        <span aria-hidden="true" className={`${TRACK} ${on ? TRACK_ON : ""} ${pending ? "opacity-70" : ""}`} />
+        <span aria-hidden="true" className={`${TRACK} ${on ? TRACK_ON : TRACK_OFF} ${pending ? "opacity-70" : ""}`} />
         {state && <span className="text-sm">{state}</span>}
       </button>
       {/* Le retour est juste à côté de ce qu'on a touché : annoncé aux lecteurs d'écran, jamais seulement coloré. */}
@@ -93,7 +94,7 @@ export function SwitchField({ label, name, defaultChecked, help, example, error,
         <label htmlFor={id} className="inline-flex min-h-11 cursor-pointer items-center gap-3 text-[15px]">
           <input id={id} type="checkbox" role="switch" name={name} value={value} defaultChecked={defaultChecked} required={required} onChange={(e) => setOn(e.currentTarget.checked)}
             aria-invalid={error ? true : undefined} aria-describedby={error ? `err-${name}` : undefined} className="peer sr-only" />
-          <span aria-hidden="true" className={`${TRACK} ${on ? TRACK_ON : ""} peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent ${error ? "border-red-500" : ""}`} />
+          <span aria-hidden="true" className={`${TRACK} ${on ? TRACK_ON : TRACK_OFF} peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent ${error ? "!border-red-500" : ""}`} />
           <span>{label}</span>
           {state && <span className="text-sm text-muted">{state}</span>}
         </label>
