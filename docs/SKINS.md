@@ -177,7 +177,7 @@ La personne **choisit** (réglage `theme.palette`) :
 
 1. Choix en deux grandes cases, FR/EN : « **Un seul mode** : mes couleurs, clair ou sombre selon le fond » / « **Clair et sombre** : je choisis mes couleurs pour les deux » (EN : *One mode* / *Light and dark*).
 2. En « Clair et sombre » : deux onglets « Clair » / « Sombre » (une colonne sur mobile) avec les cinq mêmes champs de couleur chacun, chacun avec « ↺ valeur du skin » ; un **aperçu des deux modes côte à côte** (empilés sur mobile) de la carte, du bouton, du texte secondaire et d'un lien.
-3. **Avertissement en direct sous le champ** (calcul pur côté navigateur, `contrastIssues`/`contrast` de `color.ts`), **jamais bloquant** pour une retouche, en mots simples avec un exemple : « Dans le mode sombre, le texte serait difficile à lire sur ce fond. Essayez un texte plus clair, par exemple `#f4f4f5`. » Les chiffres (rapport 2,1 ; il faut 4,5) sont dans « Détails » (replié). L'enregistrement reste possible ; au rendu, l'échelle de correction du §7.3 s'applique.
+3. **Conseil de lisibilité en direct sous le champ** (calcul pur côté navigateur, `probableIllegibility` de `skins/readability.ts` ; même calcul WCAG que les skins officiels), **jamais bloquant, jamais en rouge d'erreur** : « Conseil : dans le mode sombre, le texte serait difficile à lire sur ce fond (rapport 2,6 ; 4,5 recommandé pour le texte). Vous pouvez garder cette couleur. » Deux boutons secondaires : « **Essayer une couleur plus lisible** » (montre la valeur proposée, avec sa pastille, SANS l'appliquer ; « Utiliser cette couleur » l'applique) et « **Garder ma couleur** » (le conseil se replie en une ligne, « Revoir le conseil » le rouvre ; il revient si une couleur change). **La couleur choisie est toujours enregistrée et appliquée telle quelle** au site public, en clair et en sombre (§7.2, §7.5). Les seuils qui déclenchent le conseil sont plus bas que le niveau AA (§7.5).
 4. Si l'une des deux palettes est illisible, l'encadré de la page dit lequel des deux modes est concerné.
 
 ### 3.8 La bascule clair / sombre par la personne qui visite
@@ -591,12 +591,30 @@ basic est la référence ; il est exempté de ces contrôles (c'est l'apparence 
 |---|---|
 | **Installation** ou **mise à jour** d'un skin (catalogue ou personnel) | Les valeurs **déclarées dans le skin** doivent passer toutes les paires, dans chaque mode : **refus** avec un message simple, sans rien installer : « Ce skin n'est pas assez lisible : le texte serait trop pâle sur le fond (rapport 2,1 ; il faut au moins 4,5). Il n'a pas été installé. » Une mise à jour refusée laisse le skin comme il était. |
 | **Activation** d'un skin installé avec les retouches existantes de la personne | Le calcul est fait avant d'appliquer ; s'il échoue à cause des retouches, voir ci-dessous. |
-| **Retouche** de la personne qui rend une paire illisible | **On n'empêche pas d'enregistrer** (comportement actuel de `contrastIssues` : un avertissement sous le champ avec un exemple). Au rendu, le cœur applique l'échelle de correction ci-dessous. |
+| **Retouche** de la personne propriétaire (fond, accent, couleur secondaire, surface, texte ; clair et sombre) | **Jamais refusée, jamais corrigée** : la couleur choisie est enregistrée et rendue telle quelle (formulaire, serveur, feuille CSS publique, aperçu, assistants IA). Seul un **conseil** s'affiche (§7.5). |
 | Changement de réglage, **mise à jour d'un module** ou d'un skin qui fait échouer une paire après coup | Même échelle de correction au rendu ; la page Apparence affiche un encadré « Nous avons ajusté une couleur pour qu'on puisse la lire » avec un bouton « Revenir au skin » ; rien n'est supprimé. |
 
 ### 7.3 Échelle de correction (au rendu, jamais bloquante)
 
 Pour une paire en échec, dans l'ordre : (1) recalculer les couleurs **dérivées** (`muted`, `*-fg`, états) à partir des couleurs effectives (`reach()` de `color.ts`) ; (2) rapprocher le texte (`--v-fg`, `--sk-color-link`) du noir/blanc jusqu'au seuil ; (3) si c'est un jeton de pièce de module qui échoue : retour à la valeur par défaut du module (couche 2) ; (4) si le fond lui-même rend toute correction impossible : **le mode concerné de ce skin est suspendu et basic s'applique** (pour ce mode), avec la notice dans Apparence. Mise en œuvre (`correctReadability()`, fonction pure) : l'étape 1 recalcule avec `buildPalette()` les seules couleurs dérivées en échec ; l'étape 2 cherche, pour `--v-fg`, `--sk-color-link`, `--sk-color-focus` (créés si absents, pour ne pas toucher à la couleur principale) et, pour la paire 7, `--v-accent`, la plus petite correction vers le noir ou le blanc qui convient à **tous** les fonds où la couleur est posée (puis les dérivées sont recalculées une dernière fois) ; l'étape 3 remet les deux jetons d'une paire de module à leur valeur par défaut (couche 2) ; au final, si une erreur reste, le résultat est `suspended: true` et les jetons sont rendus tels quels. Les transparences sont composées (fond de page sur blanc en clair / noir en sombre, surface sur le fond de page, texte sur son fond) avec des canaux entiers, comme un navigateur. **L'administration n'est jamais touchée** : un skin illisible ne peut pas enfermer la personne dehors.
+
+### 7.5 Conseil de lisibilité pour les couleurs choisies par la personne propriétaire (seuils relaxés)
+
+Décision de la personne propriétaire : « on devrait mettre en garde sans bloquer la couleur choisie ; tant pis si c'est illisible, c'est son choix ». Donc :
+
+- **Les couleurs retouchées ne passent jamais par l'échelle du §7.3.** `composeMode` (`compose.ts`) applique l'échelle de correction au skin **tel qu'il est livré** (sans retouche, comportement inchangé). Dès qu'un mode porte au moins une couleur choisie, le texte, les liens, le focus, les titres, le dégradé uni et la suspension ne sont plus appliqués à cause d'elle : les cinq couleurs (`--v-bg`, `--v-surface`, `--v-fg`, `--v-accent`, `--v-accent2`) sont rendues telles quelles. Restent seulement les corrections dont le skin seul avait déjà besoin (pièces de module remises à leur valeur par défaut) ; un skin déjà suspendu sans retouche garde basic pour ce mode, mais avec les couleurs choisies. Les couleurs **dérivées** (texte secondaire, texte des boutons, états, texte posé sur le dégradé) restent recalculées par `buildPalette` : ce ne sont pas des choix de la personne.
+- **Conseil, pas erreur.** Même calcul de contraste (`contrastRatio`), mais le conseil ne se déclenche que sous des seuils plus bas que l'AA :
+
+| Ce qui est mesuré | Seuil AA (skins officiels, `skin:check`, inchangé) | Le conseil se déclenche sous | « Recommandé » affiché |
+|---|---|---|---|
+| texte sur le fond et sur les cartes | 4,5 | **3** | 4,5 |
+| liens (la couleur principale posée sur le fond et les cartes) | 4,5 | **2** | 4,5 |
+| couleur principale (contours, pastilles) | 3 | **2** | 3 |
+| couleur secondaire (décorative) | 3 | **1,5** | 3 |
+
+  Justification : sous 3, un texte courant devient pénible à lire pour beaucoup de monde, au-dessus c'est un choix de style assumé ; sous 2, une couleur de lien ou de contour se confond presque avec le fond ; la couleur secondaire n'a qu'un rôle décoratif (fin du dégradé) et ne porte pas d'information, d'où 1,5. Les niveaux « recommandés » restent ceux de WCAG AA : c'est ce que « Essayer une couleur plus lisible » vise. Constantes : `ADVICE_TEXT`, `ADVICE_LINK`, `ADVICE_UI`, `ADVICE_DECOR` (`readability.ts`) ; `contrastIssues` (`color.ts`) suit les mêmes seuils.
+- **Assistants IA et API.** Aucun outil MCP ni point d'accès ne modifie ces couleurs (les outils `skin_*` choisissent, installent ou retirent un skin) ; `maintenance_skin_status` rapporte les couleurs choisies telles quelles et ajoute `readabilityTips` (les mêmes conseils, en anglais, avec `suggestedColor`), jamais une erreur. Un réglage de module de type `color` n'est contrôlé que sur sa forme `#rrggbb`.
+- **Installation d'un skin** (§7.2) : inchangée, AA obligatoire.
 
 ### 7.4 Focus, mouvement, cible
 
@@ -1219,7 +1237,7 @@ Laissé aux lots suivants : le banc d'essai lit `layer.parts` et `demo` (S8) ; l
 | `src/core/skins/previewToken.ts`, `render.ts` (`resolveLook(…, { previewSkinId })`), `src/proxy.ts`, `src/app/(site)/layout.tsx` | l'aperçu d'un skin avant de l'utiliser |
 | `src/core/maintenance/skins.ts` | l'assistant IA (§23.6) |
 | `src/components/admin/EntryPreview.tsx`, `EntryPreviewBox.tsx` | l'aperçu dans l'éditeur d'entrée |
-| `src/components/admin/ThemePicker.tsx` | le sélecteur de couleurs d'avant, étendu (préfixe de champs, avertissements « illisibilité probable », « ↺ Valeur du skin ») |
+| `src/components/admin/ThemePicker.tsx` | le sélecteur de couleurs d'avant, étendu (préfixe de champs, conseils de lisibilité, « ↺ Valeur du skin ») |
 
 Droits : choisir, retoucher, revenir au skin, annuler, aperçu = rôle Administration (comme les réglages) ; ajouter (catalogue ou adresse), lire un dépôt, mettre à jour, revenir à la version d'avant, retirer = « propriétaire » (comme les modules : cela récupère des fichiers d'un dépôt git). Menu : *Mon site › Apparence*, à côté de *Réglages*.
 
@@ -1237,7 +1255,7 @@ Droits : choisir, retoucher, revenir au skin, annuler, aperçu = rôle Administr
 
 - Deux grandes cases (`<input type=radio>`) quand le skin a les deux modes : « Un seul mode » / « Clair et sombre » ; basic et les skins à un mode n'ont pas le choix (aucun changement pour un site existant : mêmes champs `background`, `accent`, `accent2`, `surface`, `text`).
 - « Clair et sombre » : onglets Clair / Sombre (`role=tablist`, flèches du clavier), les champs de chaque mode portent les préfixes `light_` / `dark_` ; les deux jeux sont toujours envoyés (panneau caché mais dans le formulaire).
-- **Avertissements en direct** (`probableIllegibility`) : sous le champ concerné, une phrase avec un exemple (« Dans le mode sombre, le texte serait difficile à lire sur ce fond. Essayez un texte plus clair, par exemple #f4f4f5. »), les chiffres dans « Détails » (replié) ; **jamais bloquant** (la retouche s'enregistre, le rendu la corrige : §7.3). Sur basic, les avertissements d'avant (`contrastIssues`) restent tels quels.
+- **Conseils en direct** (`probableIllegibility`, §3.7 et §7.5) : sous le champ concerné, « Conseil : … (rapport 2,6 ; 4,5 recommandé pour le texte). Vous pouvez garder cette couleur. », avec « Essayer une couleur plus lisible » (propose sans appliquer) et « Garder ma couleur » (replie) ; **jamais bloquant** et la couleur choisie est rendue telle quelle (pas de correction du §7.3). Sur basic, le même conseil s'affiche.
 - Maquette : un mode, ou les deux côte à côte (empilés sur téléphone), calculée par `buildPalette` ; le texte dit en direct si le bouton Clair / Sombre restera.
 - « ↺ Valeur du skin » apparaît à côté d'un champ qui diffère de la valeur du skin.
 

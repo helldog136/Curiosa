@@ -32,9 +32,16 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Les détails techniques passent en dessous.** Les données gardées, les autorisations demandées, les autres extensions nécessaires, la version et la source sont rangées sous « Détails techniques », repliées, avec un résumé d'une ligne. Cela vaut avant l'installation comme après.
 - **Le bouton « Installer » reste visible.** Une barre collée en bas de la fenêtre indique la version et si l'installation est possible. S'il manque quelque chose, elle le dit avec un lien et le bouton est grisé.
 - **Vos données restent chez vous.** Les images sont lues par votre site puis affichées depuis votre site : votre navigateur ne contacte aucun autre site pour les voir. Une fiche sans image s'affiche comme avant.
+- **La fiche d'une extension s'ouvre tout de suite.** Dès que vous cliquez sur « Voir le détail et installer », la fenêtre s'ouvre avec le nom et la description, et une phrase dit que le reste arrive. Auparavant, rien ne bougeait pendant plusieurs secondes et il fallait parfois recliquer.
+- **Moins d'attente pour lire la fiche.** Le site lit l'extension dès que vous survolez le bouton. Le texte arrive d'abord, les images ensuite, et un deuxième clic est ignoré.
+- **Si la lecture échoue ou traîne, vous le savez.** Un message clair apparaît avec un bouton « Réessayer ». « Actualiser » relit aussi les fiches.
 
 ### Apparence du site
 
+- **Votre couleur est toujours la vôtre.** Le fond, l'accent et la couleur secondaire que vous choisissez (en clair comme en sombre) sont enregistrés et appliqués tels quels sur votre site. Plus aucune couleur n'est corrigée ou remplacée en cachette, même si elle est difficile à lire.
+- **Un conseil, jamais un blocage.** Si une couleur risque d'être difficile à lire, un conseil s'affiche sous le champ avec le rapport mesuré. Vous pouvez garder votre couleur ou essayer une couleur plus lisible, proposée sans être appliquée d'office.
+- **Des conseils plus rares.** Ils n'apparaissent plus que dans les cas vraiment pénibles : texte sous 3, liens et contours sous 2, couleur secondaire sous 1,5. Les skins officiels gardent leur exigence de lisibilité.
+- **Pour les assistants IA.** L'état de l'apparence rapporte vos couleurs telles quelles, avec les mêmes conseils, sans jamais les traiter comme des erreurs.
 - **Le nom « Curiosa » du pied de page ne change plus avec le skin.** Dans « Propulsé par Curiosa », le nom garde partout la même police, la même casse, le même espacement et le même soulignement, quel que soit le skin choisi. Seule sa couleur suit le pied de page, pour que le texte reste lisible même sur un fond sombre.
 - **Pour les créatrices et créateurs de skins.** Un skin qui essaie de changer l'allure de ce nom est refusé, avec un message qui dit quoi retirer. Les skins déjà installés continuent de s'afficher normalement ; leurs règles sur ce nom sont simplement ignorées.
 - **Le même nom dans l'administration.** Le crédit du bas de l'administration utilise maintenant exactement le même nom que le site public.
@@ -54,6 +61,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Pour les développeurs
 
+- **Lecture de la fiche.** `getModulePreview(target, { waitMs })` ne porte plus les images : `getPreviewImages(target)` les lit après le texte. Lectures en parallèle, 3 dépôts au plus, attente de 20 s au plus (`PreviewTimeout`). Nouvelle route `GET /api/admin/extension-warm` (204), appelée au survol.
 - **Visuels de la fiche (`previews`).** Clé facultative du manifeste : 6 images au plus (WebP ou PNG de 150 Ko), légende et texte alternatif en `fr` et `en`, sans `minCore` à déclarer. Le kit ajoute l'exigence `manifest.previews`.
 - **Service des images.** `GET /api/admin/extension-previews?id|repo|installed=…&n=0..5`, réservé à l'administration : le cœur lit l'image (dépôt ou dossier du module), vérifie type réel, poids et dimensions, puis la sert (cache privé, 12 Mo de mémoire au plus pour toutes les images lues).
 - **Règle R31** de `docs/ERGONOMIE-ADMIN.md` : la fiche d'une extension montre ce que ça fait avant les détails techniques, avec une barre d'installation toujours visible.
