@@ -7,6 +7,21 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## Prochaine version (non publiée)
+
+### Extensions
+
+- **La fiche d'une extension dit d'abord ce qu'elle fait.** Vous lisez la description, puis des images qui montrent ce que l'extension ajoute à votre site (par exemple une page de commandes), puis la liste de ce qu'elle ajoute : pages, éléments pour vos pages d'overlay, outils pour votre assistant IA.
+- **Les détails techniques passent en dessous.** Les données gardées, les autorisations demandées, les autres extensions nécessaires, la version et la source sont rangées sous « Détails techniques », repliées, avec un résumé d'une ligne. Cela vaut avant l'installation comme après.
+- **Le bouton « Installer » reste visible.** Une barre collée en bas de la fenêtre indique la version et si l'installation est possible. S'il manque quelque chose, elle le dit avec un lien et le bouton est grisé.
+- **Vos données restent chez vous.** Les images sont lues par votre site puis affichées depuis votre site : votre navigateur ne contacte aucun autre site pour les voir. Une fiche sans image s'affiche comme avant.
+
+### Pour les développeurs
+
+- **Visuels de la fiche (`previews`).** Clé facultative de `module.json` : 6 visuels au plus, WebP ou PNG de 150 Ko, légende et texte alternatif en `fr` et `en`. Aucun `minCore` n'est à déclarer. Le kit ajoute `manifest.previews` ; voir `docs/MODULES.md`.
+- **Service des images.** `GET /api/admin/extension-previews?id|repo|installed=…&n=0..5`, réservé à l'administration : le cœur lit l'image (dépôt ou dossier du module), vérifie type réel, poids et dimensions, puis la sert (cache privé, 12 Mo de mémoire au plus pour toutes les images lues).
+- **Règle R31** de `docs/ERGONOMIE-ADMIN.md` : la fiche d'une extension montre ce que ça fait avant les détails techniques, avec une barre d'installation toujours visible.
+
 ## 0.6.0 — 2026-11-01
 
 **En bref.** Cette version rend l'administration plus simple à lire et à manier. Vous pouvez chercher dans une liste en tapant, activer ou désactiver d'un clic avec un interrupteur, lire des tableaux plus clairs, choisir une période ou une date de fin dans un seul champ, et garder les réglages rares repliés sous « Plus d'options ». La page des raccourcis de liens est entièrement refaite avec ces outils. Chaque extension a maintenant un onglet « Historique », et le « Journal d'audit » réunit tout ce qui se passe sur le site, avec des filtres. Rien ne change pour vos visiteuses et visiteurs, et vos réglages actuels sont conservés.
