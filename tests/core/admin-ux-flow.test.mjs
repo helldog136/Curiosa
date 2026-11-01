@@ -8,7 +8,7 @@ const fr = JSON.parse(read("src/locales/fr.json"));
 const en = JSON.parse(read("src/locales/en.json"));
 
 test("pages d'administration du site : le titre porte le même nom que le menu, en mode simple comme en mode avancé", () => {
-  assert.match(page("settings"), /advanced \? t\("nav\.settings"\) : t\("nav\.settings\.simple"\)/);
+  assert.match(page("settings"), /<h1 className=\{ui\.pageTitle\}>\{t\("nav\.settings"\)\}<\/h1>/);
   assert.match(page("navigation"), /advanced \? t\("nav\.navigation"\) : t\("nav\.navigation\.simple"\)/);
   assert.match(page("redirects"), /advanced \? t\("nav\.redirects"\) : t\("nav\.redirects\.simple"\)/);
 });
@@ -19,7 +19,7 @@ test("réglages : chaque onglet commence par une phrase d'aide (pas un titre qui
   assert.match(p, /<ActionForm action=\{saveSettings\} floating=\{floatingLabels\(t\)\}/);
   assert.equal((p.match(/floating=/g) ?? []).length, 1);
   // Le formulaire principal est masqué en entier sur l'onglet e-mail : pas de vide au-dessus du formulaire d'e-mail.
-  assert.match(p, /<div data-tab="site languages appearance privacy">\s*<ActionForm action=\{saveSettings\}/);
+  assert.match(p, /<div data-tab="site languages privacy">\s*<ActionForm action=\{saveSettings\}/);
   // Les réglages facultatifs sont regroupés par intention, et seulement en mode avancé.
   assert.match(p, /\{advanced && \(\s*<div className=\{`\$\{ui\.card\} space-y-4`\}>\s*<h3 className="font-semibold">\{t\("settings\.contactCard"\)\}/);
   assert.match(p, /name="contactEmail"/);
@@ -38,7 +38,7 @@ test("raccourcis : état vide explicatif avec exemples, formulaire sans « — �
 test("réseaux sociaux : liste compacte à ajouter, état vide qui dit quoi faire ensuite, et le nom de la page des réglages suit le mode", () => {
   const p = page("social");
   assert.match(p, /t\("social\.noneHelp"\)/);
-  assert.match(p, /advanced \? t\("nav\.settings"\) : t\("nav\.settings\.simple"\)/);
+  assert.match(p, /t\("social\.header\.label"\)/);
   assert.ok(!/ui\.btnPrimary/.test(p), "un bouton « Ajouter » par ligne reste discret");
   assert.match(p, /data-testid="social-available"/);
 });

@@ -1,20 +1,16 @@
 "use server";
 
-import { providersOf } from "@/core/services/topics";
-import { SOCIAL_TOPIC } from "@/core/social";
 import { revalidatePath } from "next/cache";
 import { adminCtx } from "@/core/admin";
-import { headerLink } from "@/core/header";
 import { LOGO_KEYS } from "@/core/logos";
 import { isKnownLocale } from "@/core/i18n/locales";
 import { isSiteEntity } from "@/core/seo";
 import { audit } from "@/core/permissions";
-import { normalizeLinkInput } from "@/core/url";
 import { deleteSetting, setSetting } from "@/core/settings";
 import { isTimezone, TIMEZONE_SETTING } from "@/core/siteTime";
 import type { ActionState } from "@/components/admin/ActionForm";
 
-const TRANSLATABLE = ["site.name", "site.tagline", "site.about", "footer.text", "header.secondaryLabel", "header.buttonLabel", "privacy.extra"];
+const TRANSLATABLE = ["site.name", "site.tagline", "site.about", "footer.text", "privacy.extra"];
 
 export async function saveSettings(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const { user, t } = await adminCtx("admin");
@@ -69,17 +65,8 @@ export async function saveSettings(_prev: ActionState, formData: FormData): Prom
     if (value) await setSetting(settingKey, value);
     else await deleteSetting(settingKey);
   }
-  // En-tête : icônes sociales, lien secondaire et bouton (adresse : page du site, https ou mailto ; une adresse invalide n'enregistre rien).
-  // La disposition de l'en-tête, les couleurs, la police, le halo et le fond se règlent dans Apparence (voir appearance/actions.ts).
-  // La case n'existe que s'il y a au moins un réseau : sans réseau, on ne touche pas au choix (sinon il serait remis à « masqué » sans que personne l'ait voulu).
-  if ((await providersOf(SOCIAL_TOPIC)).length > 0) await setSetting("header.socials", formData.get("headerSocials") === "on");
-  for (const [field, key] of [["headerSecondaryHref", "header.secondaryHref"], ["headerButtonHref", "header.buttonHref"]] as const) {
-    if (!(formData.has(field))) continue;
-    const href = normalizeLinkInput(String(formData.get(field) ?? ""));
-    if (href && !headerLink("x", href)) return { errors: { [field]: t("error.badLink") } };
-    if (href) await setSetting(key, href);
-    else await deleteSetting(key);
-  }
+  // Le lien et le bouton de l'en-tête se règlent dans « Menu du site » (navigation/actions.ts), les icônes sociales dans « Réseaux sociaux » ;
+  // la disposition de l'en-tête, les couleurs, la police, le halo et le fond dans Apparence (appearance/actions.ts).
   await setSetting("stats.enabled", formData.get("statsEnabled") === "on");
   await setSetting("news.toggle", formData.get("newsToggle") === "on");
   if (adv) await setSetting("site.contactEmail", String(formData.get("contactEmail") ?? "").trim());

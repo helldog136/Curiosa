@@ -71,6 +71,8 @@ Tout le reste vit dans **Extensions** (rubrique *Administration* du menu), une p
 `/admin/integrations`, `/admin/overlays`) redirigent, paramètres conservés. La page d'un module (`/admin/modules/<id>`) et celle d'une instance (`/admin/instances/<id>`) ne changent pas : elles sont des sous-pages de cet admin,
 avec leurs réglages (générés depuis `settings`), leurs abonnements (voir « sujets ») et le panneau `adminPanel` du module.
 
+**Les rubriques du menu (cœur 0.6.x).** *Mon contenu* et *Ma communauté* reçoivent les instances épinglées ; *Mon site* est réservée au cœur et dit, dans l'ordre : Page d'accueil, Menu du site, **Apparence** (tout ce qui change l'allure : skin, couleurs, polices, fond, halo, disposition de l'en-tête), **Réglages du site** (nom, logo, langues, confidentialité, e-mail), Réseaux sociaux, Visibilité dans les IA, Raccourcis de liens ; *Administration* ; *Compte*. Un module n'ajoute rien à *Mon site* : ni `menu`, ni `adminPages`, ni `suggestInMenu` ne changent. Deux entrées du menu ne portent jamais le même nom ni le même premier mot (test `menu-hub`) ; un module qui veut régler l'allure ou l'identité du site le dit dans son texte d'aide avec un lien vers ces deux pages, sans en créer une troisième.
+
 #### Rangement dans le menu : épinglée ou seulement dans Extensions
 
 Une instance est **épinglée au menu** (placement `menu`) ou **seulement dans Extensions** (placements `integrations` et `overlays`, noms conservés pour ne pas perdre les choix déjà faits). Le cœur décide du choix par défaut, **sans rien demander au module**, à partir de son manifeste seul, dans cet ordre :

@@ -11,6 +11,7 @@ import { EntryIcon } from "@/components/site/EntryIcon";
 import { ui } from "@/components/admin/ui";
 import { LiveSearch } from "@/components/admin/LiveSearch";
 import { SocialSwitch } from "@/components/admin/SocialSwitch";
+import { HeaderSocialsSwitch } from "@/components/admin/HeaderSocialsSwitch";
 import { PendingButton } from "@/components/admin/PendingButton";
 import { SocialPaste, type SocialPasteLabels } from "@/components/admin/SocialPaste";
 import { socialSourcesOf } from "@/core/socialRecognize";
@@ -157,7 +158,13 @@ export default async function SocialPage({ searchParams }: { searchParams: Promi
                 </tbody>
               </table>
             </div>
-            <p className={ui.help}>{t("social.headerHint", { page: advanced ? t("nav.settings") : t("nav.settings.simple") })}</p>
+            <div className={`${ui.card} flex flex-wrap items-center justify-between gap-3`} data-testid="social-header">
+              <div>
+                <p className="font-medium">{t("social.header.label")}</p>
+                <p className={ui.help}>{t("social.header.help")}</p>
+              </div>
+              <HeaderSocialsSwitch label={t("social.header.label")} shown={config.header.socials} onText={t("social.state.shown")} offText={t("social.state.hidden")} failedText={t("social.failed")} />
+            </div>
           </>
         )}
       </section>
