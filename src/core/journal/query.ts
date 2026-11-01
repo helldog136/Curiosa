@@ -14,11 +14,11 @@ const one = (v: string | string[] | undefined): string => (typeof v === "string"
 
 export function parseJournalParams(sp: Record<string, string | string[] | undefined>, prefix = "", modules: readonly string[] | null = null): JournalParams {
   const get = (k: string) => one(sp[`${prefix}${k}`]);
-  const module = get("module");
+  const mod = get("module");
   const page = Number(get("page"));
   return {
     q: get("q").trim().slice(0, 100),
-    module: module === CORE_ONLY || (modules ? modules.includes(module) : /^[a-z][a-z0-9-]{1,39}$/.test(module)) ? module : "",
+    module: mod === CORE_ONLY || (modules ? modules.includes(mod) : /^[a-z][a-z0-9-]{1,39}$/.test(mod)) ? mod : "",
     level: isLevel(get("level")) ? get("level") : "",
     kind: isActorKind(get("kind")) ? get("kind") : "",
     period: Object.hasOwn(AUDIT_PERIODS, get("period")) ? get("period") : "",

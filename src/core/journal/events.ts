@@ -64,7 +64,6 @@ export function looksSecret(value: string): boolean {
 /** Texte propre pour une valeur : sans caractères de contrôle, espaces réduits, 200 caractères au plus ; null s'il ressemble à un secret ou s'il est vide. */
 export function cleanText(value: unknown, max: number = JOURNAL_LIMITS.fieldChars): string | null {
   if (typeof value !== "string" && typeof value !== "number" && typeof value !== "boolean") return null;
-  // eslint-disable-next-line no-control-regex
   const text = String(value).replace(/[\u0000-\u001f\u007f\u2028\u2029]+/g, " ").replace(/\s+/g, " ").trim();
   if (!text || looksSecret(text)) return null;
   return text.length > max ? `${text.slice(0, max - 1)}…` : text;
