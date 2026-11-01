@@ -1,0 +1,846 @@
+{
+ "version": 1,
+ "packagedFrom": "@fontsource/<id>@5.3.0 (npm), polices de Google Fonts sous-ensemblées latin et latin-étendu, graisses 400 et 700",
+ "fonts": [
+  {
+   "id": "inter",
+   "name": "Inter",
+   "group": "sans",
+   "generic": "sans-serif",
+   "weights": [
+    400,
+    700
+   ],
+   "author": "The Inter Project Authors",
+   "source": "https://github.com/rsms/inter",
+   "license": "OFL-1.1",
+   "licenseFile": "LICENSES/inter-OFL.txt",
+   "copyright": "Copyright 2016 The Inter Project Authors (https://github.com/rsms/inter) Inter-Italic[opsz,wght].ttf: Copyright 2016 The Inter Project Authors (https://github.com/rsms/inter)",
+   "files": [
+    {
+     "file": "inter-400-latin.woff2",
+     "weight": 400,
+     "subset": "latin",
+     "bytes": 23664,
+     "sha256": "8909904ab6c872eb994093482a88a28eca2cd95912d7b6fecd72103b0dc07edc"
+    },
+    {
+     "file": "inter-700-latin.woff2",
+     "weight": 700,
+     "subset": "latin",
+     "bytes": 24356,
+     "sha256": "6f56409fd3d64bb85f7d070bce20749db2d66b6d63cec586cc22d1c761be2491"
+    },
+    {
+     "file": "inter-400-latin-ext.woff2",
+     "weight": 400,
+     "subset": "latin-ext",
+     "bytes": 35000,
+     "sha256": "6744a7f509ebc6ab220a6cd4ea77e898adf014f03d88dcda5d45d8a9feefb4e9"
+    },
+    {
+     "file": "inter-700-latin-ext.woff2",
+     "weight": 700,
+     "subset": "latin-ext",
+     "bytes": 36244,
+     "sha256": "143f9504f1377012aa3e39c90c4354ef429cb0494b9ac0e1437f1a81e5412236"
+    }
+   ]
+  },
+  {
+   "id": "dm-sans",
+   "name": "DM Sans",
+   "group": "sans",
+   "generic": "sans-serif",
+   "weights": [
+    400,
+    700
+   ],
+   "author": "The DM Sans Project Authors",
+   "source": "https://github.com/googlefonts/dm-fonts",
+   "license": "OFL-1.1",
+   "licenseFile": "LICENSES/dm-sans-OFL.txt",
+   "copyright": "Copyright 2014 The DM Sans Project Authors (https://github.com/googlefonts/dm-fonts) DMSans-Italic[opsz,wght].ttf: Copyright 2014 The DM Sans Project Authors (https://github.com/googlefonts/dm-fonts)",
+   "files": [
+    {
+     "file": "dm-sans-400-latin.woff2",
+     "weight": 400,
+     "subset": "latin",
+     "bytes": 14200,
+     "sha256": "4ab51eb2cd7305d177187908d6397474d4520663f6c6e572feb0a64f4fa80006"
+    },
+    {
+     "file": "dm-sans-700-latin.woff2",
+     "weight": 700,
+     "subset": "latin",
+     "bytes": 14348,
+     "sha256": "35c5efa0e5daa52ee5c6500f5be354bf751fb65c4e49e1d6806c6eb5883e8fe9"
+    },
+    {
+     "file": "dm-sans-400-latin-ext.woff2",
+     "weight": 400,
+     "subset": "latin-ext",
+     "bytes": 7364,
+     "sha256": "962730c6ff7595f9499b0d963a3bccb2139d793f0fb31fbd87aed1881c020e0a"
+    },
+    {
+     "file": "dm-sans-700-latin-ext.woff2",
+     "weight": 700,
+     "subset": "latin-ext",
+     "bytes": 7452,
+     "sha256": "f6640907b94df0d227f26e2fcb6db2497d6c44c4b68f731ea1e06f5b45e2e91b"
+    }
+   ]
+  },
+  {
+   "id": "nunito",
+   "name": "Nunito",
+   "group": "sans",
+   "generic": "sans-serif",
+   "weights": [
+    400,
+    700
+   ],
+   "author": "The Nunito Project Authors",
+   "source": "https://github.com/googlefonts/nunito",
+   "license": "OFL-1.1",
+   "licenseFile": "LICENSES/nunito-OFL.txt",
+   "copyright": "Copyright 2014 The Nunito Project Authors (https://github.com/googlefonts/nunito) Nunito-Italic[wght].ttf: Copyright 2014 The Nunito Project Authors (https://github.com/googlefonts/nunito)",
+   "files": [
+    {
+     "file": "nunito-400-latin.woff2",
+     "weight": 400,
+     "subset": "latin",
+     "bytes": 16316,
+     "sha256": "a5906e15ceb68f73d3b2c2076b4057c3f6ed401186d56283b45ce12944ca0735"
+    },
+    {
+     "file": "nunito-700-latin.woff2",
+     "weight": 700,
+     "subset": "latin",
+     "bytes": 16228,
+     "sha256": "fa89300b9bbb3bd0f60d6991aa055965d98e2ccca27bf8688fe0c39cdc796846"
+    },
+    {
+     "file": "nunito-400-latin-ext.woff2",
+     "weight": 400,
+     "subset": "latin-ext",
+     "bytes": 15888,
+     "sha256": "67250a41de218bef49c04ea88c3d73c5756ad750a182209a560e1a521323a680"
+    },
+    {
+     "file": "nunito-700-latin-ext.woff2",
+     "weight": 700,
+     "subset": "latin-ext",
+     "bytes": 15820,
+     "sha256": "0a4e4a02e13c6b36cf2a3ce236cc5ad8c0b93352fc5fb380860161557a9b199e"
+    }
+   ]
+  },
+  {
+   "id": "work-sans",
+   "name": "Work Sans",
+   "group": "sans",
+   "generic": "sans-serif",
+   "weights": [
+    400,
+    700
+   ],
+   "author": "The Work Sans Project Authors",
+   "source": "https://github.com/weiweihuanghuang/Work-Sans",
+   "license": "OFL-1.1",
+   "licenseFile": "LICENSES/work-sans-OFL.txt",
+   "copyright": "Copyright 2019 The Work Sans Project Authors (https://github.com/weiweihuanghuang/Work-Sans) WorkSans-Italic[wght].ttf: Copyright 2019 The Work Sans Project Authors (https://github.com/weiweihuanghuan",
+   "files": [
+    {
+     "file": "work-sans-400-latin.woff2",
+     "weight": 400,
+     "subset": "latin",
+     "bytes": 19900,
+     "sha256": "418b06936717d2e9b6c7a1fb61acb7e2f40030be4b230452f96505230e7b6b41"
+    },
+    {
+     "file": "work-sans-700-latin.woff2",
+     "weight": 700,
+     "subset": "latin",
+     "bytes": 20840,
+     "sha256": "c1e51267967030c3d8893931aa3b2e087b9caf44332cf7c384f4f4c22da0dadc"
+    },
+    {
+     "file": "work-sans-400-latin-ext.woff2",
+     "weight": 400,
+     "subset": "latin-ext",
+     "bytes": 15296,
+     "sha256": "7b2538119da8724c4678021a93a1b1959c0d9c99444e3c6871381ec89fba5949"
+    },
+    {
+     "file": "work-sans-700-latin-ext.woff2",
+     "weight": 700,
+     "subset": "latin-ext",
+     "bytes": 16168,
+     "sha256": "b7c35cff11db7f3ad72fe2176036f4c9c084656fbc3615acb87767b5fdc0b00c"
+    }
+   ]
+  },
+  {
+   "id": "bitter",
+   "name": "Bitter",
+   "group": "serif",
+   "generic": "serif",
+   "weights": [
+    400,
+    700
+   ],
+   "author": "The Bitter Project Authors",
+   "source": "https://github.com/solmatas/BitterPro",
+   "license": "OFL-1.1",
+   "licenseFile": "LICENSES/bitter-OFL.txt",
+   "copyright": "Copyright 2011 The Bitter Project Authors (https://github.com/solmatas/BitterPro) Bitter-Italic[wght].ttf: Copyright 2011 The Bitter Project Authors (https://github.com/solmatas/BitterPro)",
+   "files": [
+    {
+     "file": "bitter-400-latin.woff2",
+     "weight": 400,
+     "subset": "latin",
+     "bytes": 18568,
+     "sha256": "a9960fdb72f913dc0ccd67dbf6c520f720123bd1a4542cb05555e7ebb2dae42f"
+    },
+    {
+     "file": "bitter-700-latin.woff2",
+     "weight": 700,
+     "subset": "latin",
+     "bytes": 18572,
+     "sha256": "222764fa2fd737779886878c572108b38f675e3c04c87f82376cd56e92bac2d6"
+    },
+    {
+     "file": "bitter-400-latin-ext.woff2",
+     "weight": 400,
+     "subset": "latin-ext",
+     "bytes": 17912,
+     "sha256": "9412cae577a4776cd086c9cb4cbfab5f08fdf40fab69729d130083aef2f6fbfc"
+    },
+    {
+     "file": "bitter-700-latin-ext.woff2",
+     "weight": 700,
+     "subset": "latin-ext",
+     "bytes": 18408,
+     "sha256": "6b126d7c5d834c2f62901a92ee37c3578b5fef0814fd6b01b2be90e44eecdb8b"
+    }
+   ]
+  },
+  {
+   "id": "crimson-pro",
+   "name": "Crimson Pro",
+   "group": "serif",
+   "generic": "serif",
+   "weights": [
+    400,
+    700
+   ],
+   "author": "The Crimson Pro Project Authors",
+   "source": "https://github.com/Fonthausen/CrimsonPro",
+   "license": "OFL-1.1",
+   "licenseFile": "LICENSES/crimson-pro-OFL.txt",
+   "copyright": "Copyright 2018 The Crimson Pro Project Authors (https://github.com/Fonthausen/CrimsonPro) CrimsonPro-Italic[wght].ttf: Copyright 2018 The Crimson Pro Project Authors (https://github.com/Fonthausen/Cri",
+   "files": [
+    {
+     "file": "crimson-pro-400-latin.woff2",
+     "weight": 400,
+     "subset": "latin",
+     "bytes": 18336,
+     "sha256": "d2a3a146387d91b8d476d508849dd1d93a3cbde85d1e0d303e3d5c970726a703"
+    },
+    {
+     "file": "crimson-pro-700-latin.woff2",
+     "weight": 700,
+     "subset": "latin",
+     "bytes": 18724,
+     "sha256": "e34581dd821e87e007f5525f03b45f90207539a6c79132851217b5c1a0616c68"
+    },
+    {
+     "file": "crimson-pro-400-latin-ext.woff2",
+     "weight": 400,
+     "subset": "latin-ext",
+     "bytes": 15216,
+     "sha256": "fa39b28ba18ffac71ca8dad08e94cce160af7179f24662ff1beea3bdecc15b9c"
+    },
+    {
+     "file": "crimson-pro-700-latin-ext.woff2",
+     "weight": 700,
+     "subset": "latin-ext",
+     "bytes": 15436,
+     "sha256": "28b192e6c83bfd5bfab75d74b48cc7fce48a9f6fd4d72f88547b38aa5ea71d9f"
+    }
+   ]
+  },
+  {
+   "id": "libre-baskerville",
+   "name": "Libre Baskerville",
+   "group": "serif",
+   "generic": "serif",
+   "weights": [
+    400,
+    700
+   ],
+   "author": "The Libre Baskerville Project Authors",
+   "source": "https://github.com/impallari/Libre-Baskerville",
+   "license": "OFL-1.1",
+   "licenseFile": "LICENSES/libre-baskerville-OFL.txt",
+   "copyright": "Copyright 2012 The Libre Baskerville Project Authors (https://github.com/impallari/Libre-Baskerville) LibreBaskerville-Italic[wght].ttf: Copyright 2012 The Libre Baskerville Project Authors (https://g",
+   "files": [
+    {
+     "file": "libre-baskerville-400-latin.woff2",
+     "weight": 400,
+     "subset": "latin",
+     "bytes": 20108,
+     "sha256": "3eb80fbca70498126925ce16ff5c20b2fa35e67ae7123ddb46302d2778dfbf0e"
+    },
+    {
+     "file": "libre-baskerville-700-latin.woff2",
+     "weight": 700,
+     "subset": "latin",
+     "bytes": 20436,
+     "sha256": "96fa63376eed93029fa2514a02f5cb80276b016e239426858787de6e794d8619"
+    },
+    {
+     "file": "libre-baskerville-400-latin-ext.woff2",
+     "weight": 400,
+     "subset": "latin-ext",
+     "bytes": 21272,
+     "sha256": "3fc071cd0f715bfcf79df9aa61fe6112278ac62f859b486d3956fe19b64a02fb"
+    },
+    {
+     "file": "libre-baskerville-700-latin-ext.woff2",
+     "weight": 700,
+     "subset": "latin-ext",
+     "bytes": 21708,
+     "sha256": "676ac40c0c9ed3a60897731cf2879f6006a17b294e423043d5a5505ae05cb9af"
+    }
+   ]
+  },
+  {
+   "id": "cormorant-garamond",
+   "name": "Cormorant Garamond",
+   "group": "serif",
+   "generic": "serif",
+   "weights": [
+    400,
+    700
+   ],
+   "author": "The Cormorant Project Authors",
+   "source": "https://github.com/CatharsisFonts/Cormorant",
+   "license": "OFL-1.1",
+   "licenseFile": "LICENSES/cormorant-garamond-OFL.txt",
+   "copyright": "Copyright 2015 The Cormorant Project Authors (github.com/CatharsisFonts/Cormorant) CormorantGaramond-Italic[wght].ttf: Copyright 2015 The Cormorant Project Authors (github.com/CatharsisFonts/Cormorant",
+   "files": [
+    {
+     "file": "cormorant-garamond-400-latin.woff2",
+     "weight": 400,
+     "subset": "latin",
+     "bytes": 22876,
+     "sha256": "8048ac209bec741e1c29cd0cfac5aac1c0c2ba8c3ddbd4a58fa9bd92ef5c63c2"
+    },
+    {
+     "file": "cormorant-garamond-700-latin.woff2",
+     "weight": 700,
+     "subset": "latin",
+     "bytes": 22340,
+     "sha256": "21a0fc1c5c22708cf4aa0c147fd32982e25bf9e21efec0ca31a4495ba41753eb"
+    },
+    {
+     "file": "cormorant-garamond-400-latin-ext.woff2",
+     "weight": 400,
+     "subset": "latin-ext",
+     "bytes": 19888,
+     "sha256": "375a088756d1cb10eb91a9a7de18ad5e9858689abe76496dd78e560fef0bbebb"
+    },
+    {
+     "file": "cormorant-garamond-700-latin-ext.woff2",
+     "weight": 700,
+     "subset": "latin-ext",
+     "bytes": 19328,
+     "sha256": "f6cf9ae2417875c056a91df3669b14099da0a004ed66460324208d3541e7fa86"
+    }
+   ]
+  },
+  {
+   "id": "kalam",
+   "name": "Kalam",
+   "group": "handwriting",
+   "generic": "cursive",
+   "weights": [
+    400,
+    700
+   ],
+   "author": "Indian Type Foundry",
+   "source": "https://fontsource.org/fonts/kalam",
+   "license": "OFL-1.1",
+   "licenseFile": "LICENSES/kalam-OFL.txt",
+   "copyright": "Copyright (c) 2014 Indian Type Foundry (info@indiantypefoundry.com) Kalam-Regular.ttf: Copyright (c) 2014 Indian Type Foundry (info@indiantypefoundry.com) Kalam-Bold.ttf: Copyright (c) 2014 Indian Typ",
+   "files": [
+    {
+     "file": "kalam-400-latin.woff2",
+     "weight": 400,
+     "subset": "latin",
+     "bytes": 22336,
+     "sha256": "954410601a823f37e219f7930b7446f86afa15621326a7078d56fb9c910135cb"
+    },
+    {
+     "file": "kalam-700-latin.woff2",
+     "weight": 700,
+     "subset": "latin",
+     "bytes": 22144,
+     "sha256": "252063af6ade8b9a744cde4ddad0fc21ea53b8ba711eed121a0c2e8610ea9c93"
+    },
+    {
+     "file": "kalam-400-latin-ext.woff2",
+     "weight": 400,
+     "subset": "latin-ext",
+     "bytes": 12140,
+     "sha256": "1099e56781c48f97dc66c8df2039a640ded07742acd4c6f2c9dc6350c3e3f324"
+    },
+    {
+     "file": "kalam-700-latin-ext.woff2",
+     "weight": 700,
+     "subset": "latin-ext",
+     "bytes": 12152,
+     "sha256": "1fc176f6b1fbc091d4321ef2c9b683a6f512f645b9f22c460c2e2f3d298fcf74"
+    }
+   ]
+  },
+  {
+   "id": "patrick-hand",
+   "name": "Patrick Hand",
+   "group": "handwriting",
+   "generic": "cursive",
+   "weights": [
+    400
+   ],
+   "author": "Patrick Wagesreiter",
+   "source": "https://fontsource.org/fonts/patrick-hand",
+   "license": "OFL-1.1",
+   "licenseFile": "LICENSES/patrick-hand-OFL.txt",
+   "copyright": "Copyright (c) 2010-2012 Patrick Wagesreiter (mail@patrickwagesreiter.at)",
+   "files": [
+    {
+     "file": "patrick-hand-400-latin.woff2",
+     "weight": 400,
+     "subset": "latin",
+     "bytes": 23944,
+     "sha256": "ac5bc9033b2572bf84d39f7150c1634e37ed16e8dbee632d6d0bceac0bbf0199"
+    },
+    {
+     "file": "patrick-hand-400-latin-ext.woff2",
+     "weight": 400,
+     "subset": "latin-ext",
+     "bytes": 20112,
+     "sha256": "c16846bad9501534b8402172c18f87e927146c4e63af2942f1fa8ad8ba7e6e70"
+    }
+   ]
+  },
+  {
+   "id": "pacifico",
+   "name": "Pacifico",
+   "group": "handwriting",
+   "generic": "cursive",
+   "weights": [
+    400
+   ],
+   "author": "The Pacifico Project Authors",
+   "source": "https://github.com/googlefonts/Pacifico",
+   "license": "OFL-1.1",
+   "licenseFile": "LICENSES/pacifico-OFL.txt",
+   "copyright": "Copyright 2018 The Pacifico Project Authors (https://github.com/googlefonts/Pacifico)",
+   "files": [
+    {
+     "file": "pacifico-400-latin.woff2",
+     "weight": 400,
+     "subset": "latin",
+     "bytes": 32280,
+     "sha256": "99ec044ad9040a708e38f90ebd5984ca03fc46afeee26d5c77c4769c66ed89e2"
+    },
+    {
+     "file": "pacifico-400-latin-ext.woff2",
+     "weight": 400,
+     "subset": "latin-ext",
+     "bytes": 31080,
+     "sha256": "0e2fe23a0a87bf572e6463b29ea7782e1898d87d6399698ad9fb40b676e13758"
+    }
+   ]
+  },
+  {
+   "id": "bebas-neue",
+   "name": "Bebas Neue",
+   "group": "display",
+   "generic": "sans-serif",
+   "weights": [
+    400
+   ],
+   "author": "The Bebas Neue Project Authors",
+   "source": "https://github.com/dharmatype/Bebas-Neue",
+   "license": "OFL-1.1",
+   "licenseFile": "LICENSES/bebas-neue-OFL.txt",
+   "copyright": "Copyright 2019 The Bebas Neue Project Authors (https://github.com/dharmatype/Bebas-Neue)",
+   "files": [
+    {
+     "file": "bebas-neue-400-latin.woff2",
+     "weight": 400,
+     "subset": "latin",
+     "bytes": 13768,
+     "sha256": "a7c90c89240c134f7fdd33d40c000ec90b79d675ea53e8cc5a6d423c073de412"
+    },
+    {
+     "file": "bebas-neue-400-latin-ext.woff2",
+     "weight": 400,
+     "subset": "latin-ext",
+     "bytes": 8928,
+     "sha256": "16c95ce45a2922f52551d38d565d14c92cf257b8f219c89613407d81fdd21a39"
+    }
+   ]
+  },
+  {
+   "id": "oswald",
+   "name": "Oswald",
+   "group": "display",
+   "generic": "sans-serif",
+   "weights": [
+    400,
+    700
+   ],
+   "author": "The Oswald Project Authors",
+   "source": "https://github.com/googlefonts/OswaldFont",
+   "license": "OFL-1.1",
+   "licenseFile": "LICENSES/oswald-OFL.txt",
+   "copyright": "Copyright 2016 The Oswald Project Authors (https://github.com/googlefonts/OswaldFont)",
+   "files": [
+    {
+     "file": "oswald-400-latin.woff2",
+     "weight": 400,
+     "subset": "latin",
+     "bytes": 12248,
+     "sha256": "e902b779e43944c300cf8ae5e4a1affa68cb8a823fd263dd2f479c4cdfbd213c"
+    },
+    {
+     "file": "oswald-700-latin.woff2",
+     "weight": 700,
+     "subset": "latin",
+     "bytes": 12672,
+     "sha256": "aae665c75af89ea7cb7d8ccc8b0911ea72267442ebcd84f6e3efa041ad3b3c16"
+    },
+    {
+     "file": "oswald-400-latin-ext.woff2",
+     "weight": 400,
+     "subset": "latin-ext",
+     "bytes": 11624,
+     "sha256": "6d476422160d95b77d171000b7e8cc5cfd42f1dcb8f89b4d6350c8631a5fe0a3"
+    },
+    {
+     "file": "oswald-700-latin-ext.woff2",
+     "weight": 700,
+     "subset": "latin-ext",
+     "bytes": 11980,
+     "sha256": "ceb8c34b47b9e706ebbb402ca2db8055adea563a417590090bd5ac42df3c8272"
+    }
+   ]
+  },
+  {
+   "id": "anton",
+   "name": "Anton",
+   "group": "display",
+   "generic": "sans-serif",
+   "weights": [
+    400
+   ],
+   "author": "The Anton Project Authors",
+   "source": "https://github.com/googlefonts/AntonFont",
+   "license": "OFL-1.1",
+   "licenseFile": "LICENSES/anton-OFL.txt",
+   "copyright": "Copyright 2020 The Anton Project Authors (https://github.com/googlefonts/AntonFont.git)",
+   "files": [
+    {
+     "file": "anton-400-latin.woff2",
+     "weight": 400,
+     "subset": "latin",
+     "bytes": 18612,
+     "sha256": "d0fa07ff63dd60cbc0e2f58e29c802dca2a5ae0276c999f59c6111ab7bbaec3b"
+    },
+    {
+     "file": "anton-400-latin-ext.woff2",
+     "weight": 400,
+     "subset": "latin-ext",
+     "bytes": 31356,
+     "sha256": "0d17b7880f389deeb6663a52fa4eadc6d9116bdda725f0aa1f3d404fbb7d3d59"
+    }
+   ]
+  },
+  {
+   "id": "fredoka",
+   "name": "Fredoka",
+   "group": "display",
+   "generic": "sans-serif",
+   "weights": [
+    400,
+    700
+   ],
+   "author": "The Fredoka Project Authors",
+   "source": "https://github.com/hafontia/Fredoka-One",
+   "license": "OFL-1.1",
+   "licenseFile": "LICENSES/fredoka-OFL.txt",
+   "copyright": "Copyright 2016 The Fredoka Project Authors (https://github.com/hafontia/Fredoka-One)",
+   "files": [
+    {
+     "file": "fredoka-400-latin.woff2",
+     "weight": 400,
+     "subset": "latin",
+     "bytes": 16076,
+     "sha256": "9cf74f703532ef61311d6c6dd32a582b6e410727f5fce1dbf5570cbe6b023c2f"
+    },
+    {
+     "file": "fredoka-700-latin.woff2",
+     "weight": 700,
+     "subset": "latin",
+     "bytes": 15900,
+     "sha256": "ee61b48acab42fcfee4e1c398b03bbae7e09d1be8471779c440a97dc85118c16"
+    },
+    {
+     "file": "fredoka-400-latin-ext.woff2",
+     "weight": 400,
+     "subset": "latin-ext",
+     "bytes": 2628,
+     "sha256": "fe97fe966d090d46c2bf2fe89faee6ac64d6f4b0a3a9cc3b74df38e3266b3399"
+    },
+    {
+     "file": "fredoka-700-latin-ext.woff2",
+     "weight": 700,
+     "subset": "latin-ext",
+     "bytes": 2676,
+     "sha256": "e5272989e860007c4dbb922c687aeea68d74ac0f4bcc6c052f1c21cffaec637d"
+    }
+   ]
+  },
+  {
+   "id": "jetbrains-mono",
+   "name": "JetBrains Mono",
+   "group": "mono",
+   "generic": "monospace",
+   "weights": [
+    400,
+    700
+   ],
+   "author": "The JetBrains Mono Project Authors",
+   "source": "https://github.com/JetBrains/JetBrainsMono",
+   "license": "OFL-1.1",
+   "licenseFile": "LICENSES/jetbrains-mono-OFL.txt",
+   "copyright": "Copyright 2020 The JetBrains Mono Project Authors (https://github.com/JetBrains/JetBrainsMono) JetBrainsMono-Italic[wght].ttf: Copyright 2020 The JetBrains Mono Project Authors (https://github.com/Jet",
+   "files": [
+    {
+     "file": "jetbrains-mono-400-latin.woff2",
+     "weight": 400,
+     "subset": "latin",
+     "bytes": 21168,
+     "sha256": "14425ba9c695763c1547f48a206b7aa60350a33ae23de09f0407877f3fcd89eb"
+    },
+    {
+     "file": "jetbrains-mono-700-latin.woff2",
+     "weight": 700,
+     "subset": "latin",
+     "bytes": 21908,
+     "sha256": "d0d4e818808f2a0ba39b2b09d1989366f63494e295f003c7ef436697378507e8"
+    },
+    {
+     "file": "jetbrains-mono-400-latin-ext.woff2",
+     "weight": 400,
+     "subset": "latin-ext",
+     "bytes": 7336,
+     "sha256": "505dfba8ecbe77e82765f36d317ed7ef4ac42719dc5f4ae68d1c483fd22d0d14"
+    },
+    {
+     "file": "jetbrains-mono-700-latin-ext.woff2",
+     "weight": 700,
+     "subset": "latin-ext",
+     "bytes": 7472,
+     "sha256": "45a606d88f72bc0afae4d1a6988e3dba3a5e77ee51aa3b550e37c31c728f4d2d"
+    }
+   ]
+  },
+  {
+   "id": "ibm-plex-mono",
+   "name": "IBM Plex Mono",
+   "group": "mono",
+   "generic": "monospace",
+   "weights": [
+    400,
+    700
+   ],
+   "author": "IBM Corp.",
+   "source": "https://github.com/IBM/plex",
+   "license": "OFL-1.1",
+   "licenseFile": "LICENSES/ibm-plex-mono-OFL.txt",
+   "copyright": "Copyright 2017 IBM Corp. All rights reserved. IBMPlexMono-ThinItalic.ttf: Copyright 2017 IBM Corp. All rights reserved. IBMPlexMono-ExtraLight.ttf: Copyright 2017 IBM Corp. All rights reserved. IBMPle",
+   "files": [
+    {
+     "file": "ibm-plex-mono-400-latin.woff2",
+     "weight": 400,
+     "subset": "latin",
+     "bytes": 14708,
+     "sha256": "08949f728dc52d528e69b1667d15c89a5686a4ee9a296ff90983985f99c380f7"
+    },
+    {
+     "file": "ibm-plex-mono-700-latin.woff2",
+     "weight": 700,
+     "subset": "latin",
+     "bytes": 14908,
+     "sha256": "4f84d86cfd060f4ded334358ff8a4c81d4db2ed5addd568359d693f44a87765a"
+    },
+    {
+     "file": "ibm-plex-mono-400-latin-ext.woff2",
+     "weight": 400,
+     "subset": "latin-ext",
+     "bytes": 13348,
+     "sha256": "6bc0f226a5b7884a8170e3f62c63d7675609d4631bdc5931b5cdab81821f00eb"
+    },
+    {
+     "file": "ibm-plex-mono-700-latin-ext.woff2",
+     "weight": 700,
+     "subset": "latin-ext",
+     "bytes": 13380,
+     "sha256": "5b9b81f54dd69635c7adcaacd4c4545a73fe4809c528e22734b238a83a74135f"
+    }
+   ]
+  },
+  {
+   "id": "space-mono",
+   "name": "Space Mono",
+   "group": "mono",
+   "generic": "monospace",
+   "weights": [
+    400,
+    700
+   ],
+   "author": "The Space Mono Project Authors",
+   "source": "https://github.com/googlefonts/spacemono",
+   "license": "OFL-1.1",
+   "licenseFile": "LICENSES/space-mono-OFL.txt",
+   "copyright": "Copyright 2016 The Space Mono Project Authors (https://github.com/googlefonts/spacemono) SpaceMono-Italic.ttf: Copyright 2016 The Space Mono Project Authors (https://github.com/googlefonts/spacemono) ",
+   "files": [
+    {
+     "file": "space-mono-400-latin.woff2",
+     "weight": 400,
+     "subset": "latin",
+     "bytes": 16520,
+     "sha256": "fb4a81a2d0a893e5c38c394a7e716a1cef0b24610a0af49c96f6d529bd66bf2b"
+    },
+    {
+     "file": "space-mono-700-latin.woff2",
+     "weight": 700,
+     "subset": "latin",
+     "bytes": 16724,
+     "sha256": "2d46bd159b53f55c41167a4f1540a074649464194fd1e416f5b4694a6c0f282c"
+    },
+    {
+     "file": "space-mono-400-latin-ext.woff2",
+     "weight": 400,
+     "subset": "latin-ext",
+     "bytes": 15832,
+     "sha256": "44ad50c760fa8f5b62da3d489edb40adebabaf97988b9b0adbbc3f0be859050a"
+    },
+    {
+     "file": "space-mono-700-latin-ext.woff2",
+     "weight": 700,
+     "subset": "latin-ext",
+     "bytes": 15808,
+     "sha256": "52edd9a8959ec3e68d618e2a4757182c0e61bfeea61679850cad8744a68cadf3"
+    }
+   ]
+  },
+  {
+   "id": "atkinson-hyperlegible",
+   "name": "Atkinson Hyperlegible",
+   "group": "readable",
+   "generic": "sans-serif",
+   "weights": [
+    400,
+    700
+   ],
+   "author": "Braille Institute of America, Inc.",
+   "source": "https://www.brailleinstitute.org/freefont/",
+   "license": "OFL-1.1",
+   "licenseFile": "LICENSES/atkinson-hyperlegible-OFL.txt",
+   "copyright": "Copyright 2020 Braille Institute of America, Inc. AtkinsonHyperlegible-Italic.ttf: Copyright 2020 Braille Institute of America, Inc. AtkinsonHyperlegible-Bold.ttf: Copyright 2020 Braille Institute of ",
+   "files": [
+    {
+     "file": "atkinson-hyperlegible-400-latin.woff2",
+     "weight": 400,
+     "subset": "latin",
+     "bytes": 17208,
+     "sha256": "d64ba838ef5472bba248620ec4fd8b5aa7cf0db2908e0bb230600caf279ba7bc"
+    },
+    {
+     "file": "atkinson-hyperlegible-700-latin.woff2",
+     "weight": 700,
+     "subset": "latin",
+     "bytes": 17524,
+     "sha256": "140e2bd25a7315c8a062508391426b0d8c3297400c947b8d847be28f73a199f0"
+    },
+    {
+     "file": "atkinson-hyperlegible-400-latin-ext.woff2",
+     "weight": 400,
+     "subset": "latin-ext",
+     "bytes": 9384,
+     "sha256": "61eeb0eb8b881a84d069e67be1723f5b353b0b9b866ad8e7ad9dba66cdc4dabd"
+    },
+    {
+     "file": "atkinson-hyperlegible-700-latin-ext.woff2",
+     "weight": 700,
+     "subset": "latin-ext",
+     "bytes": 9372,
+     "sha256": "840ced16f975d8abc2594b436d0206649e0c2a7327e36750ff849d3d37c3c02e"
+    }
+   ]
+  },
+  {
+   "id": "lexend",
+   "name": "Lexend",
+   "group": "readable",
+   "generic": "sans-serif",
+   "weights": [
+    400,
+    700
+   ],
+   "author": "The Lexend Project Authors",
+   "source": "https://github.com/googlefonts/lexend",
+   "license": "OFL-1.1",
+   "licenseFile": "LICENSES/lexend-OFL.txt",
+   "copyright": "Copyright 2019 The Lexend Project Authors (https://github.com/googlefonts/lexend)",
+   "files": [
+    {
+     "file": "lexend-400-latin.woff2",
+     "weight": 400,
+     "subset": "latin",
+     "bytes": 14476,
+     "sha256": "0601e0a909219a542cdd581e3f8f1ff8fb208978cbc9bca1c90df02fd8062bb1"
+    },
+    {
+     "file": "lexend-700-latin.woff2",
+     "weight": 700,
+     "subset": "latin",
+     "bytes": 14808,
+     "sha256": "52dcdaa127bac4a5ea4c39ee17a3f454ceacc18d9f2a45cc453eeab68d378588"
+    },
+    {
+     "file": "lexend-400-latin-ext.woff2",
+     "weight": 400,
+     "subset": "latin-ext",
+     "bytes": 13144,
+     "sha256": "b7289189cf6efefd520224a63a24bc02054f8566f33e39ce9d1a448ccd8a40a4"
+    },
+    {
+     "file": "lexend-700-latin-ext.woff2",
+     "weight": 700,
+     "subset": "latin-ext",
+     "bytes": 13708,
+     "sha256": "5ae459b6dc29461eab9f02d0ff4395d3842d6bdf280e8224a79ab2667e65ee2f"
+    }
+   ]
+  }
+ ]
+}

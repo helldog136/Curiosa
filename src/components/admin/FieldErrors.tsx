@@ -73,7 +73,10 @@ export function useFieldErrorsDom(form: RefObject<HTMLElement | null>, errors: F
       const text = document.createElement("span"); text.className = "min-w-0 [overflow-wrap:anywhere]"; text.textContent = message;
       p.append(icon, text);
       // Champ mot de passe : le message va sous l'ensemble « champ + bouton Afficher », pas à l'intérieur.
-      (el.closest("[data-password-wrap]") ?? el).after(p);
+      // Case à cocher : sous toute la ligne (la case et son libellé), pas au milieu de la phrase.
+      const holder = (el as HTMLInputElement).type === "checkbox" ? el.closest("label")?.parentElement : null;
+      const row = holder?.tagName === "DIV" ? holder : null;
+      (el.closest("[data-password-wrap]") ?? row ?? el).after(p);
       const before = el.getAttribute("aria-describedby");
       el.setAttribute("aria-invalid", "true");
       el.setAttribute("aria-describedby", [before, id].filter(Boolean).join(" "));

@@ -1,6 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
-import { UPLOADS_DIR } from "@/core/config";
+import { FONTS_DIR, UPLOADS_DIR } from "@/core/config";
+import { uploadFileName } from "@/core/fonts/registry";
+import { listUploads } from "@/core/fonts/uploads";
 import { prisma } from "@/core/db";
 import { getCatalogue, moduleOrigin } from "@/core/modules/catalogue";
 import { buildContext } from "@/core/modules/context";
@@ -154,11 +156,22 @@ export async function createBackup(password: string, opts: { now?: Date; iterati
     }
   } catch { /* pas encore d'envois */ }
 
+  // Polices envoyées (docs/POLICES.md) : leurs fichiers (la liste est dans les réglages). Seulement celles de la liste, seulement si le fichier existe.
+  let fontCount = 0;
+  try {
+    for (const f of await listUploads()) {
+      try {
+        files.push(fileOf(`fonts/${uploadFileName(f.id)}`, await fs.promises.readFile(path.join(FONTS_DIR, uploadFileName(f.id)))));
+        fontCount++;
+      } catch { /* fichier absent : la restauration retirera l'entrée de la liste */ }
+    }
+  } catch { /* pas de polices */ }
+
   opStep("seal");
   const manifest: BackupManifest = {
     format: FORMAT, formatVersion: FORMAT_VERSION, createdAt: now.toISOString(), frameworkVersion: readVersion(), schemaVersion: await currentSchemaVersion(),
     site: { name: config.name, defaultLocale: config.defaultLocale, locales: config.locales },
-    counts: { users: users.length, instances: instances.length, entries: entries.length, translations: entryTranslations.length, records: records.count, retired: retired.length, redirects: redirects.length, overlayPages: overlayPages.length, modules: modules.length, uploads: uploadCount, ...(skins.length ? { skins: skins.length } : {}) },
+    counts: { users: users.length, instances: instances.length, entries: entries.length, translations: entryTranslations.length, records: records.count, retired: retired.length, redirects: redirects.length, overlayPages: overlayPages.length, modules: modules.length, uploads: uploadCount, ...(fontCount ? { fonts: fontCount } : {}), ...(skins.length ? { skins: skins.length } : {}) },
     modules,
     ...(skins.length ? { skins } : {}),
     files: await runAsync(fingerprints(files)),
