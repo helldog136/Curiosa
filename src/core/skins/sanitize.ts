@@ -372,14 +372,14 @@ function processRule(node: Rule, state: State, motionOk: boolean): Out | null {
       if (count === limits.maxDeclarationsPerRule + 1) reporter(state, child)("too-many-declarations-rule", { max: limits.maxDeclarationsPerRule });
       continue;
     }
-    // Le nom « Curiosa » ne change jamais d'allure (src/core/skins/brand.ts) : la déclaration est retirée, quelle que soit sa valeur.
-    const propName = (child as Declaration).prop.toLowerCase();
+    const d = checkDeclaration((child as Declaration).prop, (child as Declaration).value, (child as Declaration).important === true, ctx, reporter(state, child));
+    if (!d) continue;
+    // Le nom « Curiosa » ne change jamais d'allure (src/core/skins/brand.ts) : la déclaration est retirée, quelle que soit sa valeur (les autres refus ont déjà parlé).
+    const propName = d.prop.toLowerCase();
     if (reach && (reach === "own" ? BRAND_LOCKED_OWN : BRAND_LOCKED_INHERITED).has(propName)) {
       reporter(state, child)("kit-brand-restyled", { prop: safeName(propName) });
       continue;
     }
-    const d = checkDeclaration((child as Declaration).prop, (child as Declaration).value, (child as Declaration).important === true, ctx, reporter(state, child));
-    if (!d) continue;
     const entry: DeclOut = { prop: d.prop, value: d.value, line: child.source?.start?.line };
     decls.push(entry);
     infinite ||= d.infinite;

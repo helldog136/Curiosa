@@ -68,7 +68,7 @@ test("refusé : par le lien du crédit (`credit a`, `credit > a`, `a:hover`, att
 test("refusé : par héritage, une propriété héritée posée sur le crédit lui-même", () => {
   for (const prop of BRAND_LOCKED_INHERITED) {
     if (prop === "font-feature-settings" || prop === "font" || prop.startsWith("font-variant") || ["font-variation-settings", "font-kerning", "font-stretch", "font-synthesis", "font-optical-sizing"].includes(prop)) continue; // valeurs non listées ici : couvertes ci-dessous
-    const v = { "font-family": "Georgia, serif", "font-weight": "300", "font-style": "italic", "text-transform": "uppercase", "letter-spacing": "0.2em", "word-spacing": "1em" }[prop];
+    const v = { "font-family": "Georgia, serif", "font-weight": "300", "font-style": "italic", "text-transform": "uppercase", "letter-spacing": "0.2em", "word-spacing": "0.1em" }[prop];
     if (v) refused(`[data-skin-part="credit"] { ${prop}: ${v}; }`, prop);
   }
   refused('[data-skin-part="credit"] { font-variant: small-caps; }', "font-variant");
