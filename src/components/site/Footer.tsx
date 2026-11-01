@@ -1,5 +1,4 @@
-import { CREDIT_URL } from "@/core/credit";
-import { wordmark } from "@/components/brand/wordmark";
+import { CuriosaMark } from "@/components/brand/CuriosaMark";
 import { feedPath, hasFeedSource } from "@/core/feeds";
 import { withLocale } from "@/core/links";
 import { makeTranslator } from "@/core/i18n/dictionary";
@@ -29,7 +28,7 @@ export async function Footer({ config, locale }: { config: SiteConfig; locale: s
         </p>
         {/* Crédit exigé par la licence (section 4) : ne pas retirer. */}
         <p data-testid="credit" data-skin-part="credit" className="text-xs">
-          {t("site.poweredBy")} <a href={CREDIT_URL} rel="noopener" className={`${wordmark.className} text-[1.15em] underline underline-offset-2 hover:text-fg`}>Curiosa</a>
+          {t("site.poweredBy")} <CuriosaMark />
         </p>
     </footer>
   );

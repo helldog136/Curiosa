@@ -17,6 +17,7 @@ import { parseContainer, parseMedia, parseSupports, AtRuleError } from "./atrule
 import {
   ALLOWED_AT_RULES, ANIMATION_KEYWORDS, BOUNDS, ASSET_BASE_RE, CONDITIONAL_AT_RULES, CSS_WIDE_KEYWORDS, DEFAULT_LIMITS, FONT_PATH_RE, SKIN_ID_RE, type SkinLimits,
 } from "./allowlist";
+import { BRAND_LOCKED_INHERITED, BRAND_LOCKED_OWN, brandReach } from "./brand";
 import { checkDeclaration, urlOut, type DeclContext } from "./declarations";
 import type { Params } from "./messages";
 import { makeIssue, type SkinIssue } from "./messages";
@@ -352,6 +353,7 @@ function processRule(node: Rule, state: State, motionOk: boolean): Out | null {
   let infinite = false;
   let durations: number[] = [];
   let count = 0;
+  const reach = brandReach(list);
   const focusSubject = list.some((x) => x.compounds[x.compounds.length - 1]!.pseudos.some((p) => ["focus-visible", "focus", "focus-within"].includes(p.name)));
   for (const child of node.nodes ?? []) {
     if (child.type === "comment") continue;
@@ -372,6 +374,12 @@ function processRule(node: Rule, state: State, motionOk: boolean): Out | null {
     }
     const d = checkDeclaration((child as Declaration).prop, (child as Declaration).value, (child as Declaration).important === true, ctx, reporter(state, child));
     if (!d) continue;
+    // Le nom « Curiosa » ne change jamais d'allure (src/core/skins/brand.ts) : la déclaration est retirée, quelle que soit sa valeur (les autres refus ont déjà parlé).
+    const propName = d.prop.toLowerCase();
+    if (reach && (reach === "own" ? BRAND_LOCKED_OWN : BRAND_LOCKED_INHERITED).has(propName)) {
+      reporter(state, child)("kit-brand-restyled", { prop: safeName(propName) });
+      continue;
+    }
     const entry: DeclOut = { prop: d.prop, value: d.value, line: child.source?.start?.line };
     decls.push(entry);
     infinite ||= d.infinite;

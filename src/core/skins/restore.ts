@@ -76,7 +76,7 @@ export const skinsBeforeRestore = (): Promise<SkinRow[]> => readRows();
 /** Le skin est-il en place et intact (fichiers présents, contenu = empreinte notée) ? */
 function intact(row: SkinRow): boolean {
   if (!filesPresent(row.id, row.version)) return false;
-  const v = validateSkinFolder(skinDir(row.id, row.version), { coreVersion: getCoreVersion(), expectId: row.id });
+  const v = validateSkinFolder(skinDir(row.id, row.version), { coreVersion: getCoreVersion(), expectId: row.id, reading: true });
   return v.ok && v.fingerprint === row.fingerprint;
 }
 
