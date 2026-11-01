@@ -11,7 +11,7 @@ import {
 } from "../testsupport/ergonomics.mjs";
 import { findBaseline } from "../testsupport/requirements/ergonomics.mjs";
 import { makeModule, dispose, editManifest } from "./fixtures/testsupport/fullModule.mjs";
-import { makeTempDir } from "./helpers/tmp.mjs";
+import { makeTempDir, removeTempDir } from "./helpers/tmp.mjs";
 
 const made = [];
 const mk = (edit) => { const d = makeModule(edit); made.push(d); return d; };
@@ -225,6 +225,7 @@ test("cliquet : sans base, rien n'échoue (avertissements seulement) ; un module
   assert.equal((await checkModule(path.join(repo, "modules", "full-mod"), { siblings: [] })).results.find((r) => r.id === "admin.ergonomics").status, "fail");
   assert.deepEqual(findBaseline({ dir: path.join(repo, "modules", "full-mod"), opts: {} }).modules, { "full-mod": [] });
   assert.equal(findBaseline({ dir: path.join(repo, "modules", "full-mod"), opts: { ergonomicsBaseline: false } }), null);
+  removeTempDir(repo);
 });
 
 /* ───────────── Pages produites par du code ───────────── */
