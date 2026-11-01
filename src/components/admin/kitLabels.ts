@@ -4,6 +4,7 @@ import { numberHint, valueErrorKey } from "@/core/adminkit/hints";
 import { summarizeGroup } from "@/core/adminkit/summary";
 import type { FormLabels } from "./AdminBlocks";
 import type { TableLabels } from "./AdminTable";
+import { periodLabels } from "./periodLabels";
 
 /** Les textes (traduits côté serveur) du bloc `table` enrichi. */
 export function tableLabels(t: Translator): TableLabels {
@@ -34,7 +35,7 @@ export function formLabels(t: Translator, locale: string, block: Extract<Block, 
     : undefined;
   return {
     locale, example: t("field.example", { example: "{example}" }), more: t("instances.s.more"),
-    period: { from: t("period.from"), to: t("period.to"), yearly: t("period.yearly"), sentenceYearly: t("period.sentenceYearly"), sentenceOnce: t("period.sentenceOnce"), none: t("period.none"), clear: t("period.clear"), order: t("period.order") },
+    period: periodLabels(t),
     datetime: { date: t("datetime.date"), time: t("datetime.time"), clear: t("datetime.clear"), at: t("datetime.at"), preview: t("datetime.preview") },
     duration: { s: t("unit.s"), min: t("unit.min"), h: t("unit.h"), d: t("unit.d"), day: t("unit.day") },
     hints, invalid, fold,

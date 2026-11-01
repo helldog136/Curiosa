@@ -7,6 +7,19 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## Prochaine version (non publiée)
+
+### Administration
+
+- **Choisir un mois entier en un geste.** Dans le champ « Période », la liste « Tout le mois de » remplit d'un coup le 1er et le dernier jour du mois, février compris. Si vous changez ensuite un jour à la main, la liste revient à « Choisir un mois ».
+- **Des périodes toutes prêtes.** Une liste avec recherche propose les saisons et des fêtes de plusieurs traditions, rangées par date ou par ordre alphabétique. Chaque ligne montre ses dates.
+- **Les fêtes qui changent chaque année sont honnêtes.** Elles remplissent les dates de la prochaine fois, sans « Chaque année », avec un rappel de les refaire l'an prochain. Pour les fêtes musulmanes, la date réelle dépend de la lune, à un jour près.
+- **Moins d'erreurs à l'ouverture.** Le champ « Période » n'affiche plus de message tant que vous n'avez rien saisi ; un rappel apparaît si une seule des deux dates est remplie. Vos réglages enregistrés restent identiques.
+
+### Pour les développeurs
+
+- **`PeriodField`** : logique pure dans `src/core/adminkit/periodInputs.ts` et `periodPresets.ts` (Pâques par calcul, fêtes lunaires, chinoise et juives par `Intl.DateTimeFormat`, sans bibliothèque). Format enregistré inchangé, aucune migration, aucune version montée.
+
 ## 0.6.0 — 2026-11-01
 
 **En bref.** Cette version rend l'administration plus simple à lire et à manier. Vous pouvez chercher dans une liste en tapant, activer ou désactiver d'un clic avec un interrupteur, lire des tableaux plus clairs, choisir une période ou une date de fin dans un seul champ, et garder les réglages rares repliés sous « Plus d'options ». La page des raccourcis de liens est entièrement refaite avec ces outils. Chaque extension a maintenant un onglet « Historique », et le « Journal d'audit » réunit tout ce qui se passe sur le site, avec des filtres. Rien ne change pour vos visiteuses et visiteurs, et vos réglages actuels sont conservés.
