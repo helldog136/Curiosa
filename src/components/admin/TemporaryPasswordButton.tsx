@@ -17,7 +17,7 @@ export type TemporaryPasswordLabels = {
  * en mode généré, le mot de passe affiché UNE SEULE FOIS. Il n'existe que dans l'état de cette boîte : fermée, il est effacé ; il n'est ni dans l'adresse, ni dans un cookie,
  * ni dans le stockage du navigateur. L'action est appelée comme une fonction (corps de la requête), pas par une adresse.
  */
-export function TemporaryPasswordButton({ memberName, action, labels }: { memberName: string; action: (mode: string, password?: string) => Promise<TemporaryPasswordResult>; labels: TemporaryPasswordLabels }) {
+export function TemporaryPasswordButton({ memberName, action, labels, menu = false }: { memberName: string; /** Entrée d'un menu « ⋯ » (pleine largeur) au lieu d'un gros bouton rouge. */ menu?: boolean; action: (mode: string, password?: string) => Promise<TemporaryPasswordResult>; labels: TemporaryPasswordLabels }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [mode, setMode] = useState<"generate" | "custom">("generate");
   const [custom, setCustom] = useState("");
@@ -59,7 +59,7 @@ export function TemporaryPasswordButton({ memberName, action, labels }: { member
 
   return (
     <>
-      <button type="button" className={ui.btnDanger} onClick={show} data-testid="temp-password-open">{labels.open}</button>
+      <button type="button" role={menu ? "menuitem" : undefined} className={menu ? "flex min-h-11 w-full items-center justify-start px-4 text-left text-sm transition hover:bg-bg" : ui.btnDanger} onClick={show} data-testid="temp-password-open">{labels.open}</button>
       <dialog ref={dialog} aria-labelledby={`${id}-t`} onCancel={(e) => { if (busy) e.preventDefault(); }} className="m-auto w-[min(92vw,30rem)] rounded-2xl border border-line bg-surface p-5 text-fg shadow-2xl backdrop:bg-black/60 sm:p-6" data-testid="temp-password-dialog">
         {result ? (
           <div className="space-y-4">

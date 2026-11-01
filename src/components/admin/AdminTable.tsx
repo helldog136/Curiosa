@@ -5,6 +5,7 @@ import type { BadgeTone, Block, TableCell } from "@/core/blocks";
 import { splitActions } from "@/core/adminkit/table";
 import { TABLE_PAGE_SIZE, pageSlice, pillOptions, rowPasses, searchText } from "@/core/adminkit/search";
 import { Pills, SearchField } from "./LiveSearch";
+import { BADGE } from "./Badge";
 import { RowMenu } from "./RowMenu";
 import { RowActionButton, RowMenuItem, RowSwitch, type EntryScope } from "./AdminBlocks";
 import { safeHref } from "@/core/url";
@@ -16,16 +17,6 @@ type TableBlock = Extract<Block, { type: "table" }>;
 export type TableLabels = {
   search: string; none: string; clear: string; all: string; count: string; prev: string; next: string; page: string; pages: string; actions: string; menu: string; saved: string; failed: string;
   on: string; off: string;
-};
-
-/** Une pastille : couleur ET texte, jamais la couleur seule. */
-export const BADGE: Record<BadgeTone, string> = {
-  accent: "bg-accent/10 text-accent",
-  info: "bg-sky-500/15 text-sky-800",
-  ok: "bg-emerald-500/15 text-emerald-800",
-  warn: "bg-amber-500/20 text-amber-900",
-  danger: "bg-red-500/15 text-red-800",
-  neutral: "bg-line/60 text-fg",
 };
 
 type Cell = { text: string; badge?: BadgeTone; href?: string; title?: string; sw?: Extract<TableCell, object>["switch"] };
