@@ -197,7 +197,7 @@ export async function catalogueAddress(id: string): Promise<string | null> {
 
 /** Un code d'erreur d'envoi → la phrase qui dit quoi faire (clé `appearance.font.error.*`). */
 const FONT_ERROR: Record<UploadErrorCode, string> = {
-  license: "license", empty: "empty", "too-large": "large", "not-woff2": "notWoff2", collection: "collection", private: "forbidden", svg: "forbidden",
+  license: "license", empty: "empty", "too-large": "large", "not-woff2": "notWoff2", collection: "collection", private: "forbidden", svg: "forbidden", trailing: "broken",
   header: "broken", tables: "broken", truncated: "broken", compressed: "broken", sizes: "broken", missing: "broken", head: "broken",
   name: "name", limit: "limit", duplicate: "duplicate", style: "style", write: "write",
 };

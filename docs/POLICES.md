@@ -49,7 +49,7 @@ Le site n'a pas de politique de sécurité de contenu globale (ses pages portent
 | Licence | la case « J'ai le droit d'utiliser cette police » est obligatoire (la personne engage sa licence) |
 | Qui | l'administration humaine (page Apparence). **Jamais** un assistant IA |
 
-**Vérification des octets** (`src/core/fonts/woff2.ts`) : signature `wOF2`, longueur annoncée égale à la longueur réelle, en-tête cohérent, répertoire de tables lu jusqu'au bout, flux Brotli **décompressé avec un plafond** (une bombe est refusée), taille décompressée égale à la somme exacte des tables annoncées, tables indispensables présentes (`cmap`, `head` avec son nombre magique, `hhea`, `hmtx`, `maxp`, `name`, `glyf`+`loca` ou `CFF `). Refusés : collections, données privées, dessins SVG embarqués. Rien n'est exécuté. Le nom de la famille, la graisse (ou la plage d'une police variable) et le style sont lus dans le fichier ; le champ « Nom de la police » les remplace.
+**Vérification des octets** (`src/core/fonts/woff2.ts`) : signature `wOF2`, longueur annoncée égale à la longueur réelle, en-tête cohérent, répertoire de tables lu jusqu'au bout, flux Brotli **décompressé avec un plafond** (une bombe est refusée), taille décompressée égale à la somme exacte des tables annoncées, tables indispensables présentes (`cmap`, `head` avec son nombre magique, `hhea`, `hmtx`, `maxp`, `name`, `glyf`+`loca` ou `CFF `). Refusés : collections, données privées, dessins SVG embarqués, et tout octet après la police (fichier « polyglotte » : le flux finit où commencent les métadonnées, sinon à la fin du fichier, à 3 octets de bourrage près). Un enregistrement de nom de longueur impaire est ignoré. Rien n'est exécuté. Le nom de la famille, la graisse (ou la plage d'une police variable) et le style sont lus dans le fichier ; le champ « Nom de la police » les remplace.
 
 **Stockage** : `DATA_DIR/fonts/u-<empreinte>.woff2` (écrit par un fichier temporaire puis renommé) ; la liste est le réglage `theme.fontFiles`. **Sauvegarde** : les fichiers vont dans l'archive sous `fonts/` (et dans `backup.json` : `counts.fonts`, empreintes comprises), la liste suit avec les réglages. **Restauration** : les polices du site sont remplacées par celles de la sauvegarde, chaque fichier est revérifié, une entrée sans fichier valide est retirée, un fichier sans entrée est effacé, un choix qui visait une famille disparue revient à « celle du skin ». Une sauvegarde d'avant les polices se restaure comme avant.
 
@@ -71,5 +71,9 @@ Le site n'a pas de politique de sécurité de contenu globale (ses pages portent
 ## Pour les assistants IA
 
 - `maintenance_skin_status` (niveau 1, lecture) : champ `fonts` avec le choix des titres et du texte, les conseils et la liste de ce qui peut être choisi (`fonts.available`).
-- `maintenance_font_set` (niveau 3, **demande approuvée par la personne propriétaire**, comme `maintenance_skin_activate`) : `titles` et/ou `text` = `skin` ou une valeur de `fonts.available`. Les mêmes écritures que la page ; les conseils reviennent dans la réponse, sans rien bloquer.
+- `maintenance_font_set` (niveau 3, par défaut **une demande que la personne propriétaire approuve** ; si elle a réglé le jeton en exécution « directe », l'outil s'exécute sans approbation, comme `maintenance_skin_activate`) : `titles` et/ou `text` = `skin` ou une valeur de `fonts.available`. Les mêmes écritures que la page ; les conseils reviennent dans la réponse, sans rien bloquer.
 - L'envoi d'un fichier et la suppression d'une police restent réservés à l'administration humaine.
+
+## Cache
+
+Les polices envoyées sont servies avec `Cache-Control: immutable` pour un an. Une police supprimée peut donc rester en cache chez des personnes qui ont déjà visité le site, jusqu'à un an ; l'adresse change avec le contenu, donc une nouvelle police n'est jamais confondue avec l'ancienne.
