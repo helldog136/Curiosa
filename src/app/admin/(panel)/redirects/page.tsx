@@ -81,7 +81,7 @@ export default async function RedirectsPage({ searchParams }: { searchParams: Pr
 
       {siteUrlLooksLocal() && <p role="alert" className="rounded-xl border border-amber-500/50 bg-amber-500/10 p-3 text-sm text-amber-800">{t("redirects.localWarning", { site })}</p>}
       {managed.issues.map((i) => (
-        <div key={i.instanceId} role="alert" data-testid="managed-conflict" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-500/50 bg-amber-500/10 p-4 text-sm text-amber-900">
+        <div key={i.instanceId} role="alert" data-testid="managed-conflict" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-500/50 bg-amber-500/10 p-4 text-sm text-fg">
           <p className="max-w-prose">{t(`redirects.managed.conflict.${i.kind}`, { name: i.moduleName, address: `/${i.path}`, example: `${i.path}-2` })}</p>
           <div className="flex flex-wrap gap-2">
             <Link href={`/admin/instances/${i.instanceId}`} className={`${ui.btnPrimary} min-h-11`}>{t("redirects.managed.fix", { name: i.moduleName })}</Link>
