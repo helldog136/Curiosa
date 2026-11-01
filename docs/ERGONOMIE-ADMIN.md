@@ -83,3 +83,23 @@ La relecture refuse la PR si un écran dépasse les budgets R4/R5 sans repli, si
 - [ ] Liens vers les autres modules avec leur état (R25).
 - [ ] FR/EN à parité, ton neutre, vouvoiement (R13, R29).
 - [ ] Captures regardées, 1280 et 390 px (section 9).
+
+## 11. Les briques du cœur (à utiliser, jamais à refaire)
+
+Le cœur fournit ces briques **une fois**, pour ses pages **et** pour les modules (cœur 0.6.0, `"minCore": "0.6.0"`). Un module ne les refait pas à la main, et n'ajoute aucun script à sa page d'administration (le cœur n'en exécute aucun) : il les demande dans ses blocs (`adminPanel`, `adminForm`) et son manifeste (`settings`). Détail de chaque clé : [MODULES.md](MODULES.md) (« Tableau enrichi », « Contrôles `period`, `datetime`, `duration` »).
+
+| Besoin | Règle | Page du cœur (composant) | Module |
+|---|---|---|---|
+| Recherche en direct, sans seuil, « Aucun résultat → Effacer la recherche » | R15 | `LiveSearch` (mode page : lignes déjà dans la page ; mode serveur : liste paginée) | `table` : `searchable: true` |
+| Pastilles de filtre avec leur nombre | R15, R30 | `LiveSearch` (`filters`) ou liens | `table` : `filters: [{ column }]` |
+| Colonne d'origine colorée ET écrite | R14, R30 | `BADGE` (pastille) | cellule `{ text, badge }` |
+| Interrupteur d'état dans la ligne, retour d'action, retour arrière si échec | R17 | `Switch` (effet immédiat), `SwitchField` (dans un formulaire) | cellule `{ switch }`, champ `kind: "switch"` |
+| Au plus 2 actions visibles, les autres dans « ⋯ » | R16 | `RowMenu` | `rowActions[].inMenu`, `danger` |
+| Cartes sur 390 px, texte coupé avec « … », 50 lignes par page | R16, R27 | `AdminTable` | `table` enrichi : `truncate`, `pageSize` |
+| Période, date et heure, durée : un champ | R6, R21 | `PeriodField`, `DateTimeField`, `DurationField` | réglages `period`, `datetime`, `duration` ; champs de même `kind` |
+| Nombre borné avec son unité et sa valeur par défaut visible | R20, R22 | `NumberField` | réglage `number` + `min`, `max`, `step`, `unit` |
+| Options rares repliées avec un résumé | R2, R7 | `MoreOptions` | réglage `rare`, champ `folded` |
+| 2 à 4 choix en boutons côte à côte | R19 | `Segmented` | réglage `display: "segmented"`, champ `kind: "segmented"` |
+| Exemple et erreur sous le champ | R11, R22 | `Field` : `example`, `error` | réglage `example`, champ `example`, `errors` d'une action |
+
+Un nouveau besoin qui revient dans plusieurs pages s'ajoute **ici, au cœur**, pas page par page.

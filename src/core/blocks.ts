@@ -16,10 +16,11 @@ export type AdminField = {
     /** (cœur 0.2.0) Fichier TEXTE (UTF-8) de 5 Mo au plus, lu par le cœur et transmis à l'action en texte dans `values[name]`. Un cœur plus ancien l'ignore (exigez `minCore` 0.2.0). */
     | "file"
     /**
-     * (cœur 0.6.0, `minCore: "0.6.0"` ; un cœur plus ancien les montre comme un champ texte) Contrôles « une notion = un champ » :
-     * `switch` interrupteur dans un formulaire (comme `checkbox` : « on » reçu si activé, absent sinon) ; `segmented` 2 à 4 `options` en boutons côte à côte (comme `select`) ;
-     * `period` période (« Du 1er novembre au 30 novembre, chaque année ») reçue comme `"11-01/11-30"` ou `"2026-11-01/2026-11-30"` ;
-     * `datetime` date et heure en un champ, reçues comme `"2026-11-30T18:30"` (ou `"2026-11-30"` si `optionalTime` et l'heure est vide) ;
+     * (cœur 0.6.0, `minCore` 0.6.0, un cœur plus ancien les montre comme un champ texte) Contrôles « une notion = un champ » :
+     * `switch` interrupteur dans un formulaire (comme `checkbox`, la valeur `on` est reçue si activé, absente sinon),
+     * `segmented` 2 à 4 `options` en boutons côte à côte (comme `select`),
+     * `period` période (« Du 1er novembre au 30 novembre, chaque année ») reçue comme `11-01/11-30` ou `2026-11-01/2026-11-30`,
+     * `datetime` date et heure en un champ, reçues comme `2026-11-30T18:30` (ou `2026-11-30` si `optionalTime` et l'heure est vide),
      * `duration` nombre et unité, reçus comme un nombre entier de SECONDES (`min` et `max` en secondes).
      */
     | "switch" | "segmented" | "period" | "datetime" | "duration";
