@@ -1,0 +1,14 @@
+{
+  "apiVersion": 2,
+  "id": "demo-other",
+  "name": { "en": "Demo other", "fr": "Démo autre" },
+  "version": "1.0.0",
+  "main": "index.mjs",
+  "description": { "en": "Demo other: a second test module with rights.", "fr": "Démo autre : un second module de test avec des droits." },
+  "author": "Tests",
+  "license": "MIT",
+  "icon": "🧪",
+  "permissions": ["admin"],
+  "rights": [{ "id": "secret.view", "label": { "fr": "voir le secret", "en": "see the secret" } }],
+  "settings": []
+}

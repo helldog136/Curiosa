@@ -1,0 +1,61 @@
+{
+  "apiVersion": 2,
+  "id": "demo-guarded",
+  "name": {
+    "en": "Demo guarded",
+    "fr": "Démo protégée"
+  },
+  "version": "1.0.0",
+  "main": "index.mjs",
+  "minCore": "0.2.0",
+  "description": {
+    "en": "Demo guarded: a test module with rights.",
+    "fr": "Démo protégée : un module de test avec des droits."
+  },
+  "author": "Tests",
+  "license": "MIT",
+  "icon": "🧪",
+  "permissions": [
+    "admin",
+    "routes",
+    "mcp"
+  ],
+  "rights": [
+    {
+      "id": "notes.view",
+      "label": {
+        "fr": "voir les notes",
+        "en": "see notes"
+      }
+    },
+    {
+      "id": "phone.edit",
+      "label": {
+        "fr": "modifier les téléphones",
+        "en": "edit phone numbers"
+      },
+      "sensitive": true,
+      "default": {
+        "admin": false
+      }
+    },
+    {
+      "id": "drafts",
+      "label": {
+        "fr": "préparer des brouillons",
+        "en": "prepare drafts"
+      },
+      "default": {
+        "editor": true
+      }
+    }
+  ],
+  "settings": [],
+  "mcp": [
+    {
+      "name": "probe",
+      "description": "Says whether ctx.can answers yes (it never should here).",
+      "readOnly": true
+    }
+  ]
+}

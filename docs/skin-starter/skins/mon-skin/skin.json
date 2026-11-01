@@ -1,0 +1,26 @@
+{
+  "skinContract": 1,
+  "id": "mon-skin",
+  "name": { "fr": "Mon skin", "en": "My skin" },
+  "description": {
+    "fr": "Un point de départ : clair et sombre, titres à empattement, cartes légères.",
+    "en": "A starting point: light and dark, serif headings, light cards."
+  },
+  "version": "1.0.0",
+  "minCore": "0.4.0",
+  "author": { "name": "Votre nom" },
+  "license": "MIT",
+  "tags": ["light", "dark", "minimal"],
+  "modes": ["light", "dark"],
+  "tokens": "tokens.json",
+  "stylesheet": "skin.css",
+  "previews": [
+    { "file": "previews/home-light.webp", "mode": "light", "width": 1280, "alt": { "fr": "Page d'accueil, mode clair", "en": "Home page, light mode" } },
+    { "file": "previews/home-dark.webp", "mode": "dark", "width": 1280, "alt": { "fr": "Page d'accueil, mode sombre", "en": "Home page, dark mode" } }
+  ],
+  "assets": [],
+  "defaults": { "headerLayout": "classic", "font": "sans", "glow": "none", "background": "none" },
+  "options": [],
+  "breakpoints": [640],
+  "supports": { "reducedMotion": true }
+}

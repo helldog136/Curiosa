@@ -1,0 +1,48 @@
+{
+  "apiVersion": 2,
+  "id": "codes",
+  "name": {
+    "en": "Promo codes",
+    "fr": "Codes promo"
+  },
+  "version": "1.0.0",
+  "author": "Tests",
+  "license": "MIT",
+  "instances": "multiple",
+  "sections": [],
+  "consumes": [],
+  "provides": [],
+  "settings": [],
+  "permissions": [
+    "pages",
+    "sections"
+  ],
+  "icon": "🏷️",
+  "description": {
+    "en": "Partner offers with a code, a link and an expiry date.",
+    "fr": "Les offres de vos partenaires : code, lien et date d'expiration."
+  },
+  "content": {
+    "display": "codes",
+    "clickAction": "external",
+    "features": [
+      "icon",
+      "cover",
+      "summary",
+      "body",
+      "url",
+      "code",
+      "expiresAt",
+      "tags"
+    ],
+    "basePath": "codes",
+    "showInNav": true,
+    "allowGoLinks": true
+  },
+  "onboarding": {
+    "home": {
+      "section": "latest",
+      "count": 3
+    }
+  }
+}

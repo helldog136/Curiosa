@@ -1,0 +1,18 @@
+{
+  "apiVersion": 2,
+  "id": "demo-planner",
+  "name": {
+    "en": "Demo planner",
+    "fr": "Demo planner"
+  },
+  "version": "1.0.0",
+  "main": "index.mjs",
+  "description": {
+    "en": "Demo planner: a test module.",
+    "fr": "Demo planner : un module pour les tests."
+  },
+  "author": "Tests",
+  "license": "MIT",
+  "icon": "🧪",
+  "settings": []
+}

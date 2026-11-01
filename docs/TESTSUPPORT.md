@@ -1,0 +1,872 @@
+# Le kit de test des modules (testsupport)
+
+Vous écrivez un module pour Curiosa et vous voulez savoir : **« suis-je conforme ? »** Le cœur vous répond avec une suite de vérifications prête à l'emploi, versionnée avec le cœur (elle décrit son contrat de module). Elle ne demande ni serveur, ni réseau, ni base de données.
+
+## En une commande
+
+Depuis le dossier du cœur (le dépôt Curiosa) :
+
+```
+npm run module:check -- /chemin/vers/votre-module
+```
+
+(équivalent : `node testsupport/check.mjs /chemin/vers/votre-module`)
+
+### Depuis votre propre dépôt (sans cloner le dépôt de travail du cœur)
+
+Le kit se lance **depuis n'importe où** : clonez le cœur à côté de votre dépôt, à une étiquette publiée (`git clone --branch vX.Y.Z --depth 1 https://github.com/helldog136/Curiosa ../Curiosa`), préparez-le une seule fois (`cd ../Curiosa && npm ci --omit=dev --ignore-scripts && npx prisma generate` : cela ne lance pas le site et ne demande aucune base, mais **`prisma generate` est indispensable**, sans lui l'import échoue sur `PrismaClient`), puis depuis votre dépôt :
+
+```
+node ../Curiosa/testsupport/check.mjs .                       # le rapport
+CURIOSA_DIR=../Curiosa node --test test/*.test.mjs             # vos tests (ils importent le kit par CURIOSA_DIR)
+```
+
+Un dépôt prêt à copier, avec son workflow GitHub Actions : le dossier `starter/` de `curiosa-extras`. Le pas à pas complet : [PUBLIER-SON-MODULE.md](PUBLIER-SON-MODULE.md).
+
+Le rapport liste chaque exigence avec ✅ réussi ou ❌ échec. Pour chaque ❌ il dit **ce qui ne va pas**, **pourquoi c'est exigé** et **comment corriger**, avec un lien vers la fiche de l'exigence (ci-dessous). **Tout ce qui est ❌ est à corriger ; lancez la même commande jusqu'à ce qu'il n'y en ait plus.**
+
+- **Obligatoire** : condition pour être proposé dans le catalogue. Un échec donne un code de sortie différent de 0.
+- **Conseil** (⚠️) : un avertissement. Il n'empêche rien, mais votre module sera meilleur en le suivant.
+- **Sans objet** (➖) : l'exigence ne concerne pas votre module (par exemple « tâches planifiées » si vous n'en avez pas).
+- **Non vérifié** : la vérification n'a pas pu se faire (par exemple parce que module.json est invalide) ; corrigez d'abord le reste.
+
+Options : `--json` (rapport lisible par une machine), `--voisins <dossier>` (comparer à d'autres modules, voir « srp.single »), `--strict` (les conseils font aussi échouer), `--seulement id1,id2`, `--liste` (affiche les exigences), `--tableau` (plusieurs modules : tableau module × exigence).
+
+## Laisser Claude (ou une autre IA) corriger
+
+Demandez-lui de lancer `npm run module:check -- <dossier> --json`, de lire le rapport et de corriger jusqu'à ce que `summary.ok` soit `true`. Le JSON a cette forme :
+
+```json
+{
+  "module": { "dir": "…", "folder": "guestbook", "id": "guestbook", "version": "1.0.0" },
+  "core": { "version": "0.1.22", "apiVersion": 2 },
+  "summary": { "ok": false, "mandatory": { "passed": 29, "failed": 3, "na": 4, "skipped": 0 }, "advice": { "passed": 7, "failed": 2, "na": 4, "skipped": 0 } },
+  "results": [
+    { "id": "settings.optional", "level": "mandatory", "group": "settings", "title": "…", "status": "fail",
+      "problems": ["réglage « banner » dit « facultatif » mais ne déclare pas \"optional\": true"],
+      "what": "…", "why": "…", "fix": "…", "doc": "docs/TESTSUPPORT.md#settingsoptional", "note": "" }
+  ]
+}
+```
+
+`status` vaut `pass`, `fail`, `na` (sans objet) ou `skip` (non vérifié). Les champs `problems` et `fix` sont faits pour être lus par une IA comme par une personne.
+
+## Dans vos tests (node:test)
+
+```js
+import test from "node:test";
+import { registerConformanceTests, fakeCtx, loadModuleDir } from "<dossier du cœur>/testsupport/index.mjs";
+
+registerConformanceTests(new URL(".", import.meta.url).pathname, { test }); // une exigence = un test nommé
+// … puis vos propres tests, avec fakeCtx
+```
+
+Une exigence obligatoire en échec fait échouer son test (avec le message complet) ; un conseil s'affiche en remarque. Un exemple complet à copier : [`testsupport/template/`](../testsupport/template) (un module minimal et son `my-module.test.mjs`).
+
+**Dossiers temporaires** : utilisez l'aide `makeTempDir(prefix)` du kit (`testsupport/index.mjs`), ne créez jamais de dossier dans `/tmp` sans l'enregistrer.
+Elle supprime le dossier à la fin du test (`makeTempDir(prefix, { t })`), avec `cleanupAll()` dans un `after`, et en filet de sécurité à la sortie du processus.
+Dans le cœur, `npm test` donne à chaque exécution son propre `TMPDIR`, le supprime à la fin et liste en clair (échec) tout ce que les tests y ont laissé ; `KEEP_TEST_TMP=1` garde tout pour déboguer.
+
+Le kit se retrouve tout seul : il peut être importé depuis un autre dépôt (par exemple `curiosa-extras`) par le chemin du cœur, sans dépendre de la position relative des dossiers. Lancez alors vos tests avec le chargeur de test du cœur : `node --import <cœur>/tests/helpers/register.mjs --test …`.
+
+## L'API publique du kit
+
+Tout s'importe depuis `testsupport/index.mjs` (stable) :
+
+| Export | Rôle |
+|---|---|
+| `checkModule(dir, opts)` | Lance toutes les exigences sur un dossier et renvoie le rapport (celui de `--json`). `opts.siblings` : dossiers des autres modules ; `opts.only` : identifiants à lancer. Ne lève jamais pour un module fautif. |
+| `registerConformanceTests(dir, { test, siblings, only, prefix })` | Adaptateur node:test : une exigence = un test nommé. |
+| `fakeCtx(options)` | Faux contexte de module (réglages, stockage en mémoire, e-mail enregistré, sujets, services…). Option `permissions` : le contexte refuse ce qui n'est pas déclaré. `ctx.api.files` (cœur 0.2.13) : mêmes règles et mêmes refus que le cœur, options `uploads`, `person`, `filesQuota`, appels dans `ctx.calls.files`, `ctx.dumpFiles()` pour constater qu'un fichier a disparu. `ctx.api.rawg` : `cover` et `candidates` (options `rawgCover`, `rawgCandidates` ; appels dans `ctx.calls.rawg` et `ctx.calls.rawgCandidates`). `ctx.api.net` est le vrai client réseau du cœur (état neuf par contexte ; options `netLimits`, `netBudgetMs`), branché sur `globalThis.fetch`. `ctx.api.log.write` (cœur après 0.5.1) : option `logEvents` (celle de votre `module.json`), mêmes règles que le cœur (liste blanche, 200 caractères, secrets écartés, clé invalide : `false`), option `actor`, lignes dans `ctx.calls.log` et `ctx.dumpLog()`. `ctx.params` (cœur 0.2.14) : option `params` (par exemple `{ slug: "abc" }` pour une route `"go/:slug"`). `ctx.calls` garde les appels, `ctx.dumpStore()` le contenu du stockage ; le stockage gère aussi les clés d'index (`add(collection, data, { key })`, `getByKey`, `listByKey`, `page({ key })`, `addMany`). Voir l'en-tête de `testsupport/fakeCtx.mjs`. |
+| `loadModuleDir(dir)` | Charge un dossier de module comme le cœur (manifeste, code, textes), sans jamais lever. |
+| `fakeFetch(routes)`, `withFakeFetch(routes, fn)`, `blockNetwork(fn)` | Faux `fetch` pour tester un module qui appelle un service, sans réseau. La clé `"*"` répond à toutes les adresses ; le `signal` d'annulation est respecté. |
+| `netReplies`, `makeNetClient(options)` | Pannes prêtes à l'emploi pour `fakeFetch` : `rateLimited(120)` (429 + Retry-After), `rateLimitedBody(s)`, `rateLimitedReset(époque)`, `quotaExceeded()` (403), `silence()` (jamais de réponse), `truncatedJson()`, `slow(ms, réponse)`, `down()`, `status(code)`. `makeNetClient` : le vrai client `ctx.api.net`, état neuf. |
+| `makeTempDir(prefix, { t, in })`, `cleanupAll()`, `removeTempDir(dir)` | Dossiers temporaires de test, enregistrés puis supprimés (fin du test, `cleanupAll`, sortie du processus). `KEEP_TEST_TMP=1` : rien n'est supprimé. |
+| `startLocalServer(handler)` | Petit serveur HTTP local (127.0.0.1) pour tester un module qui parle à une adresse ; rien ne sort de la machine. |
+| `settingsDefaults`, `assertValidManifest`, `assertLocalesParity`, `findSrpViolations`… | Les vérifications unitaires que la suite réutilise (source unique). |
+| `REQUIREMENTS`, `GROUPS`, `formatText`, `formatMatrix` | La liste des exigences et la mise en forme du rapport. |
+
+## Comment la suite essaie votre module
+
+Le code de votre module est exécuté avec un faux contexte, **sans réseau** (tout accès est refusé et noté), dans plusieurs situations : réglages par défaut, réglages remplis (français et anglais), puis **données piégées** (textes contenant des balises et des scripts dans les réglages, le stockage, les formulaires, l'adresse de la page, le nom du site, les entrées et les sujets reçus). Rien n'est installé et rien n'est écrit en dehors de la mémoire du test. C'est une **sonde**, pas une preuve : elle atteint ce qu'elle peut atteindre. Un ✅ veut dire « rien trouvé », pas « parfait ».
+
+## L'ergonomie des pages d'administration (`admin.ergonomics`)
+
+Les règles de [`docs/ERGONOMIE-ADMIN.md`](ERGONOMIE-ADMIN.md) marquées **[auto]** sont mesurées par le kit. Deux façons de les contrôler, selon que le texte vient du manifeste ou du code.
+
+**1. Le manifeste et les textes (exigences `admin.ergonomics` et `admin.ergonomics.known`).** Le kit lit `module.json` et `locales/*.json`, jamais le code :
+
+| Règle | Ce qui est mesuré |
+|---|---|
+| R5 | au plus 7 réglages simples par onglet (les réglages `advanced`, les réglages `rare` rangés sous « Plus d'options » et ceux d'un groupe facultatif replié ne comptent pas) |
+| R9 | aucun mot du code (clé, slug, instance, topic, sujet, token, jeton, webhook, EventSub, route, service, identifiant, payload, API, JSON, cache, hash, SSE, OAuth, key, identifier) dans les libellés, aides, options et messages FR et EN, hors réglages `advanced` ; `{accolades}` visibles dans un libellé. La liste est modifiable en tête de `testsupport/ergonomics.mjs` (`FORBIDDEN_WORDS`), avec une liste blanche **justifiée** (`JARGON_WHITELIST`) |
+| R10 | libellé de 60 caractères au plus, sans « : » final, sans parenthèse de précision à rallonge |
+| R11 | tout champ libre (texte, texte long, adresse, nombre) a une aide avec un exemple concret (« Par exemple… », « ex. », une valeur entre guillemets, une adresse, un @pseudo ; un nombre suffit pour un champ numérique) ou une valeur par défaut visible, ou une clé `example` (cœur 0.6.0 : le cœur écrit « Par exemple : … » sous le champ) ; l'aide ne répète pas le libellé. Une aide de plus de 60 caractères n'est **pas** un écart : le cœur 0.5.x la passe dans la bulle « ? » (elle est comptée à part par `--report`) |
+| R13 | pas de « ! », pas de « Veuillez », pas de MAJUSCULES criardes (sigles de `ALLOWED_CAPS` permis), vouvoiement, phrases de 20 mots au plus, pas de point médian ni de « (e) » |
+| R17 | aucun texte « Activer / désactiver » |
+| R19 | pas de liste oui/non pour un booléen, pas de case négative (« Ne pas… ») |
+| R29 | FR et EN à parité exacte : mêmes clés, mêmes `{variables}`, aucune langue manquante dans un texte du manifeste |
+
+**Le cliquet.** Les modules qui existent déjà ont des écarts. Le dépôt des modules garde donc une base `tests/ergonomics-baseline.json` : pour chaque module, la liste de ses écarts connus (une règle, un endroit, un condensé du texte fautif). Le kit la trouve tout seul (`<dépôt>/tests/ergonomics-baseline.json`, pour un module dans `<dépôt>/modules/<id>`), ou par l'option `ergonomicsBaseline` de `checkModule` / `registerConformanceTests` (un objet, un chemin, ou `false`).
+
+- un écart **de la base** : avertissement (`admin.ergonomics.known`, conseil) ;
+- un **nouvel** écart (nouveau réglage, nouveau texte, texte modifié qui reste fautif) : **échec** (`admin.ergonomics`, obligatoire) ;
+- un écart de la base **qui a disparu** : échec aussi, « retirez cette ligne de la base » : la base ne peut que **rétrécir** ;
+- un module absent d'une base existante n'a droit à aucun écart ; **sans base**, rien n'échoue (tous les écarts sont des avertissements).
+
+Dans le dépôt des modules : `node scripts/ergonomics-baseline.mjs --write` (crée la base, ou la fait rétrécir ; il refuse d'ajouter un écart), `--report` (le tableau « module → nombre d'écarts par règle »), `--check`.
+
+**2. Les pages produites par du code.** Un panneau d'administration (`adminPanel`) est du code, pas un manifeste : le kit ne peut pas le lire. Dans les tests de votre module, appelez l'aide avec le faux contexte :
+
+```js
+import { fakeCtx, assertAdminPageErgonomics } from "<dossier du cœur>/testsupport/index.mjs";
+
+const blocks = await def.adminPanel(fakeCtx({ settings: {} }), { query: {} });
+assertAdminPageErgonomics(blocks, { errors: ["Écrivez un nombre entier, par exemple 500."] });
+```
+
+| Règle | Ce qui est mesuré sur les blocs |
+|---|---|
+| R3 | un bouton d'envoi qui s'appelle « OK », « Valider », « Soumettre », « Envoyer »… (un verbe précis est attendu) |
+| R4 | au plus 5 champs visibles par formulaire (`adminForm`), 7 par section (entre deux `heading`) ; les champs `hidden` et ceux marqués `advanced` / `folded` ne comptent pas |
+| R9, R10 | mots du code et libellés trop longs dans les champs des formulaires |
+| R14 | une colonne dont toutes les cellules sont identiques dans un tableau de plus de 5 lignes (une colonne d'interrupteurs, cellule `switch`, n'en est jamais une) ; une pastille `badge` identique sur toutes les lignes est un titre, pas une étiquette |
+| R15 | un tableau de plus de 10 lignes sans champ de recherche (un `<input type="search">` dans un bloc `html`, un champ `q` / `search` / « Rechercher » dans un `adminForm`, ou `searchable: true` sur le tableau) |
+| R17 | un bouton de ligne, un lien ou un bouton nommé « Activer / désactiver » (la réponse : une cellule `switch`, voir `docs/MODULES.md` › Tableau enrichi) |
+| R22 | les messages d'erreur donnés dans `errors` : un exemple (« par exemple 500 »), jamais de code, de trace ni d'« erreur 500 » |
+
+**Briques du cœur 0.6.0.** Les cellules de tableau peuvent être des objets (`{ text, badge, switch }`) et les champs d'un formulaire des champs `switch`, `segmented`, `period`, `datetime`, `duration` : l'aide les comprend (texte de la cellule, champs `folded` non comptés). L'exigence `compat.minCore` demande `"minCore": "0.6.0"` à un module qui en utilise une.
+
+L'option `skip: ["R15"]` écarte une règle (écrivez la raison dans votre test). `adminPageErgonomicsProblems(blocks, opts)` rend la liste au lieu de lever.
+
+**Ce que le kit ne peut PAS vérifier : revue humaine et captures.** R1 (une page, une tâche), R2 (chemin court), R3 (le choix du verbe : seuls « OK », « Valider »… sont repérés), R6 (une notion = un champ), R7, R8, R12 (même mot partout), R14 (seule l'étiquette uniforme est mesurée), R16 à R18 (régularité des lignes, interrupteur d'état, état vide), R20, R21, R23 à R28 (retours d'action, liens entre modules, premier usage, téléphone, clavier et lecteur d'écran), R30. La PR les justifie dans sa section « Ergonomie », avec des captures regardées (1280 et 390 px, clair et sombre).
+
+## Les exigences, une par une
+
+Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant est stable (utilisable dans `--seulement`).
+
+| Identifiant | Niveau | Exigence |
+|---|---|---|
+| [`manifest.file`](#manifestfile) | obligatoire | Le dossier du module est complet |
+| [`manifest.valid`](#manifestvalid) | obligatoire | module.json est valide |
+| [`manifest.version`](#manifestversion) | obligatoire | La version est au format x.y.z |
+| [`manifest.id`](#manifestid) | conseil | L'identifiant correspond au nom du dossier |
+| [`manifest.previews`](#manifestpreviews) | obligatoire | Les visuels de la fiche sont des images valables |
+| [`manifest.catalogue`](#manifestcatalogue) | conseil | La fiche du module est complète pour le catalogue |
+| [`compat.apiVersion`](#compatapiversion) | obligatoire | Le module vise la bonne version de l'API des modules |
+| [`compat.minCore`](#compatmincore) | obligatoire | minCore couvre les fonctions du cœur utilisées |
+| [`compat.minCoreKnown`](#compatmincoreknown) | conseil | minCore n'est pas plus récent que ce cœur |
+| [`def.loads`](#defloads) | obligatoire | Le code se charge sans erreur |
+| [`def.matches`](#defmatches) | obligatoire | Ce que module.json annonce est ce que le code fait |
+| [`code.imports`](#codeimports) | obligatoire | Le module ne dépend de rien d'autre que de ctx |
+| [`code.neighbourImports`](#codeneighbourimports) | conseil | Les fichiers voisins sont importés avec la version du fichier principal |
+| [`code.noDanger`](#codenodanger) | obligatoire | Pas de code dangereux |
+| [`load.noNetwork`](#loadnonetwork) | obligatoire | Aucun accès au réseau au chargement |
+| [`page.scripts`](#pagescripts) | conseil | Les scripts de page sont de vrais fichiers du dossier scripts/ |
+| [`perm.declared`](#permdeclared) | obligatoire | Chaque capacité utilisée est déclarée dans « permissions » |
+| [`perm.minimal`](#permminimal) | conseil | Aucune permission inutile n'est demandée |
+| [`perm.rawgDeprecated`](#permrawgdeprecated) | conseil | Les jaquettes de jeux passent par le service « game.cover », pas par ctx.api.rawg |
+| [`i18n.manifest`](#i18nmanifest) | obligatoire | Les textes de module.json existent en français et en anglais |
+| [`i18n.parity`](#i18nparity) | obligatoire | Les fichiers de langue fr et en sont alignés |
+| [`i18n.keys`](#i18nkeys) | obligatoire | Toutes les clés de traduction utilisées existent |
+| [`i18n.unused`](#i18nunused) | conseil | Pas de traduction inutilisée |
+| [`settings.sane`](#settingssane) | obligatoire | Les réglages sont bien formés |
+| [`tabs.reasonable`](#tabsreasonable) | conseil | Les onglets ajoutés restent peu nombreux et bien nommés |
+| [`settings.optional`](#settingsoptional) | obligatoire | Un réglage « facultatif » le déclare |
+| [`settings.advanced`](#settingsadvanced) | obligatoire | Les réglages « advanced » ont une valeur par défaut |
+| [`settings.refersToChoice`](#settingsreferstochoice) | conseil | Un réglage qui désigne un élément existant est un « choix parmi » |
+| [`settings.textNamesExisting`](#settingstextnamesexisting) | conseil | On ne fait pas taper le nom d'un élément qui existe déjà |
+| [`secrets.hidden`](#secretshidden) | obligatoire | Les secrets ne s'affichent ni ne se journalisent jamais |
+| [`html.escaped`](#htmlescaped) | obligatoire | Les textes venus de l'extérieur sont échappés dans les pages |
+| [`links.safe`](#linkssafe) | obligatoire | Les liens venus de l'extérieur sont vérifiés |
+| [`blocks.valid`](#blocksvalid) | obligatoire | Ce que le module renvoie a la bonne forme |
+| [`run.noCrash`](#runnocrash) | conseil | Le module ne plante pas, même avec des données inattendues |
+| [`skin.valid`](#skinvalid) | obligatoire | La clé « skin » ne décrit que de l'apparence, avec des valeurs valables |
+| [`skin.parts`](#skinparts) | obligatoire | Les pièces déclarées sont dans le HTML, et celles du HTML sont déclarées |
+| [`skin.fallback`](#skinfallback) | obligatoire | Chaque jeton lu par le CSS garde sa valeur d'aujourd'hui en repli |
+| [`skin.noMasking`](#skinnomasking) | obligatoire | Un jeton de module ne peut ni masquer, ni déplacer, ni écraser du contenu |
+| [`skin.demo`](#skindemo) | obligatoire | L'aperçu du banc d'essai est un petit fragment HTML sans script |
+| [`skin.tokensUsed`](#skintokensused) | conseil | Les jetons déclarés sont utilisés par le CSS du module |
+| [`skin.textPair`](#skintextpair) | conseil | Un jeton de couleur de texte dit sur quel fond il est posé |
+| [`skin.declare`](#skindeclare) | conseil | Un module qui met en forme une page publique déclare ses pièces de skin |
+| [`overlay.elements`](#overlayelements) | obligatoire | Les éléments d'overlay déclarés sont servis, avec des adresses valables |
+| [`routes.methods`](#routesmethods) | obligatoire | Les routes n'écrivent que sur demande explicite (POST) |
+| [`routes.size`](#routessize) | obligatoire | Les routes bornent la taille de ce qu'elles reçoivent |
+| [`routes.redirect`](#routesredirect) | obligatoire | Aucune redirection vers un site extérieur |
+| [`routes.errors`](#routeserrors) | obligatoire | Les réponses d'erreur ne révèlent rien d'interne |
+| [`routes.protected`](#routesprotected) | obligatoire | Une route publique qui écrit est protégée contre les abus |
+| [`routes.visitorIp`](#routesvisitorip) | conseil | L'adresse de la personne qui visite n'est pas lue dans les en-têtes |
+| [`forms.fieldErrors`](#formsfielderrors) | conseil | Une erreur de champ s'affiche sous son champ |
+| [`mcp.name`](#mcpname) | obligatoire | Les noms d'outils MCP restent assez courts |
+| [`mcp.safety`](#mcpsafety) | obligatoire | Les outils MCP déclarent honnêtement ce qu'ils font |
+| [`mcp.readOnly`](#mcpreadonly) | obligatoire | Une action « lecture seule » ne modifie rien |
+| [`mcp.described`](#mcpdescribed) | conseil | Les outils MCP sont bien décrits |
+| [`tasks.valid`](#tasksvalid) | obligatoire | Les tâches planifiées sont bien déclarées |
+| [`tasks.idempotent`](#tasksidempotent) | obligatoire | Lancer une tâche deux fois de suite ne duplique rien |
+| [`tasks.failure`](#tasksfailure) | conseil | Une tâche supporte un service indisponible |
+| [`net.bounded`](#netbounded) | conseil | Chaque appel réseau a un délai |
+| [`net.noIdleTimer`](#netnoidletimer) | conseil | Aucune boucle réseau qui tourne sans personne |
+| [`net.429`](#net429) | conseil | Après « trop de demandes » (429), le module fait une pause |
+| [`net.fallback`](#netfallback) | conseil | En cas de panne d'un service externe, la page s'affiche quand même |
+| [`downloads.bounded`](#downloadsbounded) | conseil | Les téléchargements d'administration sont bornés |
+| [`data.version`](#dataversion) | obligatoire | dataVersion et migrations sont cohérentes |
+| [`data.migrations`](#datamigrations) | conseil | Les migrations se déroulent sans erreur |
+| [`privacy.declared`](#privacydeclared) | obligatoire | Un module qui collecte des données le déclare (privacy) |
+| [`privacy.thirdParty`](#privacythirdparty) | conseil | Les services tiers chargés chez la personne qui visite sont mentionnés |
+| [`srp.single`](#srpsingle) | obligatoire | Un module fait une chose ; chaque donnée a un seul propriétaire |
+| [`srp.coupling`](#srpcoupling) | conseil | Le module ne connaît pas un autre module par son nom |
+| [`wording.simple`](#wordingsimple) | obligatoire | Pas de jargon dans ce que lit la personne |
+| [`wording.locales`](#wordinglocales) | conseil | Pas de jargon dans les phrases affichées par le module |
+| [`readme.exists`](#readmeexists) | obligatoire | Un README.md explique le module |
+| [`readme.plain`](#readmeplain) | conseil | Le README est écrit en langage de tous les jours |
+| [`neutrality.clean`](#neutralityclean) | conseil | Aucune donnée personnelle ni propre à un site dans le module |
+| [`admin.ergonomics`](#adminergonomics) | obligatoire | Aucun nouvel écart d'ergonomie dans les réglages et les textes |
+| [`admin.ergonomics.known`](#adminergonomicsknown) | conseil | Écarts d'ergonomie connus, à résorber |
+
+44 exigences obligatoires et 31 conseils.
+
+### Le fichier module.json
+
+#### `manifest.file`
+
+**Le dossier du module est complet** — niveau : **obligatoire**
+
+- **Ce qui est vérifié.** Le dossier contient un module.json lisible à sa racine, le fichier principal annoncé par « main », aucun lien symbolique, et pèse moins de 10 Mo.
+- **Pourquoi.** Le cœur installe un module en lisant son dossier tel quel. Sans module.json à la racine, avec un fichier principal manquant, des liens symboliques ou plus de 10 Mo, l'installation est refusée.
+- **Comment corriger.** Placez module.json à la racine du dossier (pas dans un sous-dossier), vérifiez que « main » nomme un fichier qui existe, remplacez les liens symboliques par de vrais fichiers et retirez les gros fichiers inutiles.
+
+#### `manifest.valid`
+
+**module.json est valide** — niveau : **obligatoire**
+
+- **Ce qui est vérifié.** Le manifeste passe la même validation que celle du cœur à l'installation (parseManifest) : champs connus, types corrects, valeurs dans les limites.
+- **Pourquoi.** Un manifeste invalide est refusé à l'installation : le module n'apparaît pas dans le catalogue et ne peut pas être essayé.
+- **Comment corriger.** Lisez le message : il donne le champ fautif (par exemple « settings.2.key »). Comparez avec docs/MODULES.md, section « Le manifeste module.json », et corrigez ce champ.
+
+#### `manifest.version`
+
+**La version est au format x.y.z** — niveau : **obligatoire**
+
+- **Ce qui est vérifié.** Le champ « version » est faite de trois nombres séparés par des points (1.0.0, 0.3.12), sans suffixe.
+- **Pourquoi.** Les mises à jour comparent les versions pour savoir ce qui est plus récent. Un autre format (v1, 1.0, 1.0.0-beta) ne se compare pas correctement.
+- **Comment corriger.** Écrivez par exemple « version »: « 1.0.0 », et augmentez-la à chaque nouvelle publication.
+
+#### `manifest.id`
+
+**L'identifiant correspond au nom du dossier** — niveau : **conseil**
+
+- **Ce qui est vérifié.** Le champ « id » est identique au nom du dossier du module.
+- **Pourquoi.** Quand plusieurs modules vivent dans un même dépôt (un dossier chacun), retrouver un module par son dossier évite les confusions. Les dépôts de modules reconnus l'exigent.
+- **Comment corriger.** Renommez le dossier comme l'« id », ou l'« id » comme le dossier (attention : l'« id » ne doit plus changer une fois le module publié).
+
+#### `manifest.previews`
+
+**Les visuels de la fiche sont des images valables** — niveau : **obligatoire**
+
+- **Ce qui est vérifié.** Chaque visuel de « previews » (6 au plus) est un fichier « previews/….webp » ou « .png » du module : 150 Ko au plus, de vraies images (pas un autre format renommé), de 240 à 2400 pixels de côté, avec une légende et un texte alternatif en français et en anglais. Sans « previews », rien à vérifier.
+- **Pourquoi.** Le cœur lit ces images lui-même et les montre dans la fiche du module, avant et après l'installation. Une image trop lourde, d'un autre format ou absente est simplement écartée : la fiche paraît alors incomplète à la personne qui hésite à installer.
+- **Comment corriger.** Exportez chaque capture en WebP (ou PNG) de moins de 150 Ko, rangez-la dans « previews/ », déclarez-la dans « previews » avec « file », « caption », « alt » et « type » (public, admin ou overlay). Ne montrez jamais de vraies données personnelles : utilisez des exemples inventés.
+
+#### `manifest.catalogue`
+
+**La fiche du module est complète pour le catalogue** — niveau : **conseil**
+
+- **Ce qui est vérifié.** Le module a un nom et une description en français et en anglais, le nom de la personne qui l'a écrit et une licence.
+- **Pourquoi.** Le catalogue affiche cette fiche avant l'installation. Une description manquante ou dans une seule langue laisse les personnes qui visitent du catalogue sans explication.
+- **Comment corriger.** Ajoutez « description »: { « fr »: « … », « en »: « … » }, « author » et « license » (MIT, propriétaire…) dans module.json.
+
+### Compatibilité avec le cœur
+
+#### `compat.apiVersion`
+
+**Le module vise la bonne version de l'API des modules** — niveau : **obligatoire**
+
+- **Ce qui est vérifié.** « apiVersion » vaut la version de l'API des modules que parle ce cœur.
+- **Pourquoi.** Un module d'une autre version d'API est refusé plutôt que cassé. C'est la promesse du cœur : tant que la version est la même, le module continue de fonctionner quand le cœur évolue.
+- **Comment corriger.** Mettez « apiVersion » à la valeur indiquée dans le message. Si le cœur a changé d'API, lisez CHANGELOG.md : les changements à faire y sont décrits.
+
+#### `compat.minCore`
+
+**minCore couvre les fonctions du cœur utilisées** — niveau : **obligatoire**
+
+- **Ce qui est vérifié.** Si le module utilise une fonction apportée par une version récente du cœur (par exemple « optional » : 0.1.22), « minCore » est au moins cette version.
+- **Pourquoi.** Sans « minCore », un site dont le cœur est plus ancien installe quand même le module, et celui-ci se comporte mal (réglage qui n'existe pas, manifeste refusé…). Avec « minCore », le site répond clairement « mettez d'abord le site à jour ».
+- **Comment corriger.** Ajoutez dans module.json « minCore »: « x.y.z » avec la version indiquée dans le message (trois nombres, rien d'autre).
+
+#### `compat.minCoreKnown`
+
+**minCore n'est pas plus récent que ce cœur** — niveau : **conseil**
+
+- **Ce qui est vérifié.** « minCore » n'est pas supérieur à la version du cœur qui vérifie le module.
+- **Pourquoi.** Si « minCore » dépasse le cœur sur lequel vous testez, ce module ne peut pas s'y installer : vous ne pourriez pas l'essayer.
+- **Comment corriger.** Baissez « minCore » à la plus petite version qui apporte ce dont le module a besoin, ou testez avec un cœur à jour.
+
+### Le code du module
+
+#### `def.loads`
+
+**Le code se charge sans erreur** — niveau : **obligatoire**
+
+- **Ce qui est vérifié.** Le fichier principal s'importe, exporte par défaut un objet, et chaque morceau (sections, routes, actions…) est une fonction.
+- **Pourquoi.** Un module dont le code ne se charge pas ne fait rien sur le site : le cœur l'écarte et journalise l'erreur.
+- **Comment corriger.** Corrigez l'erreur indiquée (souvent une faute de syntaxe ou un import manquant). Le fichier doit finir par « export default { … } ».
+
+#### `def.matches`
+
+**Ce que module.json annonce est ce que le code fait** — niveau : **obligatoire**
+
+- **Ce qui est vérifié.** Chaque section, section d'éditeur d'entrée, action MCP, service offert, sujet partagé, page et overlay déclarés existent dans le code — et inversement. Les emplacements (slots) ont un nom connu, les formulaires pointent vers une route ou une action qui existe (une action d'administration peut être une fonction OU un objet « { right, run } » ; dans une section d'éditeur : une action de cette section), et les services ou sujets appelés sont déclarés.
+- **Pourquoi.** Le cœur ne connaît le module que par son manifeste. Une section annoncée mais absente s'affiche vide ; un code jamais annoncé n'est jamais appelé ; un service non déclaré est refusé à l'appel.
+- **Comment corriger.** Ajoutez ce qui manque d'un côté ou de l'autre : le message dit si c'est le manifeste (module.json) ou le code (index.mjs) qui est en retard.
+
+#### `code.imports`
+
+**Le module ne dépend de rien d'autre que de ctx** — niveau : **obligatoire**
+
+- **Ce qui est vérifié.** Le code n'importe rien du cœur (« @/… », « src/… »), aucun paquet à installer (npm), aucun fichier hors de son dossier. Seuls sont permis les modules intégrés de Node (« node:… ») et les fichiers du dossier du module.
+- **Pourquoi.** Un module est un simple dossier chargé tel quel : pas de « npm install », pas de compilation. Tout ce dont il a besoin lui est donné par ctx. Une dépendance cachée casserait l'installation sur un autre site.
+- **Comment corriger.** Remplacez l'import par ce que ctx.api offre (stockage, e-mail, QR…), ou recopiez le petit morceau de code dans votre dossier. Gardez les fichiers du module dans son dossier.
+
+#### `code.neighbourImports`
+
+**Les fichiers voisins sont importés avec la version du fichier principal** — niveau : **conseil**
+
+- **Ce qui est vérifié.** Aucun fichier du module ne contient d'import statique d'un fichier voisin (`import { x } from "./source.mjs"`, `export … from "./y.mjs"`) : un voisin s'importe avec `await import(new URL("./source.mjs" + q, import.meta.url).href)`, où `const q = new URL(import.meta.url).search;`. Seuls les fichiers `.mjs` (le code du serveur) sont concernés : les `.js` sont des fichiers du navigateur. Détection par lecture du texte, sans exécuter le code.
+- **Pourquoi.** Node garde en mémoire chaque fichier déjà importé. Sur un cœur d'avant la 0.2.13, après une mise à jour du module dans le même processus, le fichier principal était rechargé mais pas ses voisins importés statiquement : l'ancien voisin ne s'accordait plus avec le nouveau fichier principal et le module devenait « impossible à charger » jusqu'au redémarrage du site (incident réel, cœur 0.2.12). Depuis la 0.2.13 le cœur charge chaque version depuis une copie neuve et ce défaut n'existe plus ; ce conseil garde le module sûr sur un site resté sur un cœur plus ancien.
+- **Comment corriger.** Remplacez `import { a } from "./source.mjs"` par `const q = new URL(import.meta.url).search; const { a } = await import(new URL(`./source.mjs${q}`, import.meta.url).href);` en tête du fichier principal (modèle : le module « live-status » du dépôt curiosa-extras), et dans chaque fichier voisin qui en importe un autre.
+
+#### `code.noDanger`
+
+**Pas de code dangereux** — niveau : **obligatoire**
+
+- **Ce qui est vérifié.** Le code n'utilise ni eval, ni new Function, ni lancement de commandes (child_process), ni accès direct à la base (Prisma), ni écriture de fichiers sur le disque, ni arrêt du serveur (process.exit).
+- **Pourquoi.** Un module tourne dans le serveur avec les droits du site. Ces outils permettent de tout casser ou de tout lire ; ctx.api offre les moyens sûrs de stocker et d'envoyer.
+- **Comment corriger.** Stockez avec ctx.api.store, envoyez avec ctx.api.mail, et supprimez l'usage de la fonction citée. Si vous construisez du code à la volée, remplacez-le par une table de correspondance.
+
+#### `load.noNetwork`
+
+**Aucun accès au réseau au chargement** — niveau : **obligatoire**
+
+- **Ce qui est vérifié.** Charger le fichier principal ne déclenche aucune requête réseau (fetch, http, connexion, résolution de nom).
+- **Pourquoi.** Le cœur charge tous les modules au démarrage du site, y compris quand Internet ne répond pas. Un module qui appelle un service dès son chargement ralentit ou bloque le démarrage de tout le site.
+- **Comment corriger.** Déplacez l'appel réseau dans une fonction (section, route, tâche planifiée) : il ne part alors qu'à la demande, jamais à l'import.
+
+#### `page.scripts`
+
+**Les scripts de page sont de vrais fichiers du dossier scripts/** — niveau : **conseil**
+
+- **Ce qui est vérifié.** Si la page renvoie « scripts » (cœur 0.2.6), ce sont au plus 3 noms de fichiers (lettres minuscules, chiffres, « . », « - » ou « _ », qui finissent par .js) qui existent dans le dossier « scripts/ » du module et pèsent 32 Ko au plus.
+- **Pourquoi.** Le cœur sert lui-même ces fichiers, uniquement sur la page concernée, avec une empreinte d'intégrité. Un nom invalide ou un fichier absent est ignoré sans bruit : la page s'affiche, mais sans son script.
+- **Comment corriger.** Mettez le script dans scripts/mon-script.js (dossier du module) et renvoyez « scripts: ["mon-script.js"] » avec la page. N'écrivez pas de script en ligne et n'en chargez pas depuis un autre site.
+
+### Les droits demandés
+
+#### `perm.declared`
+
+**Chaque capacité utilisée est déclarée dans « permissions »** — niveau : **obligatoire**
+
+- **Ce qui est vérifié.** Le code n'utilise le stockage, l'e-mail, les sujets d'échange, les jaquettes de jeux, les fichiers envoyés (ctx.api.files), la position de la personne qui visite, les routes, pages, emplacements, sections, overlay, filtres, actions MCP ou l'administration que si la permission correspondante est dans module.json. Le test l'a vérifié en lisant le code et en le faisant tourner avec un contexte qui refuse ce qui n'est pas déclaré.
+- **Pourquoi.** Les permissions sont montrées à la personne qui gère le site avant l'installation : c'est ce qui lui permet de dire oui en connaissance de cause. Un module qui en utilise plus qu'il n'en annonce trompe cette confiance.
+- **Comment corriger.** Ajoutez la permission citée au tableau « permissions » de module.json — ou retirez du code ce qui l'utilise si ce n'est pas voulu.
+
+#### `perm.minimal`
+
+**Aucune permission inutile n'est demandée** — niveau : **conseil**
+
+- **Ce qui est vérifié.** Chaque permission déclarée correspond à quelque chose que le code fait vraiment.
+- **Pourquoi.** Moins un module demande, plus il est facile à accepter pour la personne qui gère le site (principe du moindre privilège). Une permission en trop fait hésiter pour rien.
+- **Comment corriger.** Retirez de « permissions » celles que le message cite comme inutilisées.
+
+#### `perm.rawgDeprecated`
+
+**Les jaquettes de jeux passent par le service « game.cover », pas par ctx.api.rawg** — niveau : **conseil**
+
+- **Ce qui est vérifié.** Le module ne déclare pas la permission « rawg » et n'appelle pas ctx.api.rawg : cette interface est dépréciée depuis le cœur 0.3.0 (simple relais, sans repli, vers le module « Jaquettes de jeux »).
+- **Pourquoi.** Le cœur n'a plus aucun service RAWG : la clé et les corrections appartiennent au module « Jaquettes de jeux ». Un module qui passe encore par ctx.api.rawg continue de fonctionner (jamais d'erreur), mais seulement si ce module est installé, et la permission sera retirée un jour.
+- **Comment corriger.** Déclarez `"requires": [{ "service": "game.cover", "optional": true }]`, appelez `await ctx.api.services.call("game.cover", "cover", { title })` (réponse { ok, value } avec le même { status, url, name?, id?, ambiguous? }), puis retirez la permission « rawg » et l'appel à ctx.api.rawg. Voir « Jaquettes de jeux » dans docs/CREATE-A-MODULE.md.
+
+### Les langues
+
+#### `i18n.manifest`
+
+**Les textes de module.json existent en français et en anglais** — niveau : **obligatoire**
+
+- **Ce qui est vérifié.** Le nom, la description, les libellés de sections, les libellés et aides de réglages (et leurs options) sont fournis en français ET en anglais.
+- **Pourquoi.** Le site est multilingue : un texte absent dans la langue de la personne qui visite ou de la personne qui gère le site s'affiche vide ou dans la mauvaise langue.
+- **Comment corriger.** Remplacez chaque texte seul par { « fr »: « … », « en »: « … » } dans module.json.
+
+#### `i18n.parity`
+
+**Les fichiers de langue fr et en sont alignés** — niveau : **obligatoire**
+
+- **Ce qui est vérifié.** Si le module a un dossier locales/, il contient fr.json ET en.json avec exactement les mêmes clés, les mêmes variables {x} dans chaque phrase, et aucune traduction vide. Un code qui appelle ctx.t() doit avoir ce dossier.
+- **Pourquoi.** Une clé qui n'existe que dans une langue affiche la clé brute (« err_config ») à la personne qui visite. Une variable oubliée donne des phrases à trous (« Bonjour  »).
+- **Comment corriger.** Ajoutez la clé manquante dans l'autre fichier, avec les mêmes {variables}. Gardez les deux fichiers triés pareil pour les comparer à l'œil.
+
+#### `i18n.keys`
+
+**Toutes les clés de traduction utilisées existent** — niveau : **obligatoire**
+
+- **Ce qui est vérifié.** Chaque ctx.t("clé") du code correspond à une clé présente dans fr.json et en.json.
+- **Pourquoi.** Une clé inconnue s'affiche telle quelle à l'écran (« err_hidden ») au lieu d'une phrase.
+- **Comment corriger.** Ajoutez la clé dans fr.json et en.json (ou corrigez la faute de frappe dans le code).
+
+#### `i18n.unused`
+
+**Pas de traduction inutilisée** — niveau : **conseil**
+
+- **Ce qui est vérifié.** Chaque clé des fichiers de langue est utilisée quelque part dans le code.
+- **Pourquoi.** Les clés oubliées alourdissent les fichiers et laissent croire qu'un texte existe alors qu'il n'est plus affiché.
+- **Comment corriger.** Supprimez les clés citées des deux fichiers de langue (après vérification qu'aucun code ne les construit dynamiquement).
+
+### Les réglages
+
+#### `settings.sane`
+
+**Les réglages sont bien formés** — niveau : **obligatoire**
+
+- **Ce qui est vérifié.** Chaque réglage a une clé unique, un libellé en français et en anglais ; une liste a des options et un défaut qui en fait partie ; un secret n'a jamais de valeur par défaut ; le défaut a le bon type (nombre pour un nombre, couleur #RRGGBB pour une couleur…).
+- **Pourquoi.** Ce sont les champs que la personne qui gère le site remplit. Un défaut hors liste ou d'un mauvais type donne un formulaire cassé ou un module qui démarre sur une valeur absurde ; un secret avec un défaut serait publié avec le code.
+- **Comment corriger.** Corrigez le réglage cité dans module.json.
+
+#### `tabs.reasonable`
+
+**Les onglets ajoutés restent peu nombreux et bien nommés** — niveau : **conseil**
+
+- **Ce qui est vérifié.** Si le module déclare « tabs » (cœur 0.2.2) : au plus 3 onglets ajoutés en plus des quatre onglets du cœur (Utiliser, Réglages, Sources, Général), et chaque nom d'onglet (ajouté ou renommé) est court (20 caractères au plus) et existe en français ET en anglais.
+- **Pourquoi.** Sur un téléphone, la rangée d'onglets défile : au-delà de six ou sept onglets, ou avec des noms longs, on ne voit plus où l'on est et on cherche le bon onglet. Un nom dans une seule langue laisse la moitié des personnes qui gèrent le site devant un mot qu'elles ne lisent pas.
+- **Comment corriger.** Regroupez les réglages proches dans un même onglet (« tab » d'un réglage), raccourcissez les noms (« Vidéo », « Ma liste », « Créneaux ») et donnez « label »: { « fr »: « … », « en »: « … » }.
+
+#### `settings.optional`
+
+**Un réglage « facultatif » le déclare** — niveau : **obligatoire**
+
+- **Ce qui est vérifié.** Quand le libellé ou l'aide d'un réglage dit « facultatif », « optionnel » ou « optional », le réglage porte "optional": true.
+- **Pourquoi.** Sans cela, le site compte le réglage vide comme « à remplir » et affiche l'extension « À configurer » alors que tout va bien : la personne qui gère le site croit qu'elle doit encore faire quelque chose.
+- **Comment corriger.** Ajoutez "optional": true au réglage cité (et "minCore": "0.1.22" au module), ou retirez le mot « facultatif » du texte si le réglage est en réalité obligatoire.
+
+#### `settings.advanced`
+
+**Les réglages « advanced » ont une valeur par défaut** — niveau : **obligatoire**
+
+- **Ce qui est vérifié.** Un réglage marqué "advanced": true (nombre, liste ou couleur) a une valeur par défaut raisonnable.
+- **Pourquoi.** Les réglages avancés sont cachés en mode simple : la personne ne les voit jamais, c'est donc le défaut qui s'applique. Sans défaut, le module démarre sur du vide.
+- **Comment corriger.** Ajoutez "default" au réglage cité, ou retirez "advanced": true s'il doit être rempli par la personne.
+
+#### `settings.refersToChoice`
+
+**Un réglage qui désigne un élément existant est un « choix parmi »** — niveau : **conseil**
+
+- **Ce qui est vérifié.** Un réglage qui déclare « refersTo » (une catégorie, une chaîne, une page, un agenda…) autre que « external » est de type « choice » : la personne choisit dans une liste, elle ne tape pas un nom. Conseil dans le cœur 0.2.0 ; deviendra obligatoire.
+- **Pourquoi.** Un nom tapé à la main casse dès que l'élément est renommé, ne voit pas qu'il a été supprimé, et laisse passer les fautes de frappe. Un « choix parmi » garde un identifiant stable, se cache quand il n'y a qu'une option et signale un élément disparu.
+- **Comment corriger.** Passez le réglage en « type »: « choice » avec une « source » (« providers » pour une instance qui offre un service, « service » pour un élément d'un autre module), « fromText »: true pour reprendre les valeurs déjà tapées, et « minCore »: « 0.2.0 ». Pour un profil sur une autre plateforme, écrivez « refersTo »: « external ».
+
+#### `settings.textNamesExisting`
+
+**On ne fait pas taper le nom d'un élément qui existe déjà** — niveau : **conseil**
+
+- **Ce qui est vérifié.** Un réglage texte dont l'aide demande de « saisir le nom de… » (« type the name of… », « type the channel name ») un élément du site déclare « refersTo » ; s'il désigne un élément du site, c'est un « choice ». Les profils externes (« profile », « channelId », et « channel » dans un module de type « social ») ne sont pas concernés ; « refersTo »: « external » fait taire la règle.
+- **Pourquoi.** La personne doit retrouver et recopier un nom exact, qui casse au premier renommage. Une liste où l'on choisit est plus simple, et le module reçoit un identifiant qui ne change jamais.
+- **Comment corriger.** Remplacez le réglage par un « choice » (même clé, « fromText »: true pour convertir les valeurs déjà saisies, « minCore »: « 0.2.0 »). Si c'est un profil sur une autre plateforme (un pseudo, une adresse), ajoutez « refersTo »: « external ».
+
+#### `secrets.hidden`
+
+**Les secrets ne s'affichent ni ne se journalisent jamais** — niveau : **obligatoire**
+
+- **Ce qui est vérifié.** Une valeur de réglage « secret » (clé d'API, mot de passe, code) ne ressort dans aucune page, section, overlay, panneau d'administration, réponse de route, résultat MCP, message d'erreur ni journal. Le test donne une valeur-piège au secret et cherche où elle réapparaît.
+- **Pourquoi.** Une page publique, un journal ou une réponse MCP qui contient un secret le livre à n'importe qui. Un secret ne sert qu'à parler au service qui l'a émis.
+- **Comment corriger.** Ne mettez jamais la valeur du secret dans un bloc, un message, une réponse ou console.log. Affichez plutôt « enregistré » / « manquant ». Un message d'erreur court suffit.
+
+### Sécurité et forme des pages
+
+#### `html.escaped`
+
+**Les textes venus de l'extérieur sont échappés dans les pages** — niveau : **obligatoire**
+
+- **Ce qui est vérifié.** Le module est essayé avec des données piégées (textes contenant des balises, des scripts, des guillemets) placées dans les réglages, le stockage, les formulaires, l'adresse de la page, le nom du site, les entrées et les sujets reçus. Aucune page, section, emplacement, overlay ni réponse de route ne doit les restituer tels quels.
+- **Pourquoi.** Le bloc « html » est brut : ce que vous y mettez est exécuté par le navigateur de la personne qui visite. Un message de livre d'or contenant <script> pourrait voler la session de la personne qui gère le site, qui le modère (faille XSS).
+- **Comment corriger.** Passez CHAQUE valeur qui n'est pas écrite par vous dans une fonction d'échappement (& < > " ' devenant &amp; &lt; &gt; &quot; &#39;) avant de l'insérer dans du HTML. Voir la fonction esc() de l'exemple guestbook. Préférez les blocs markdown, heading, table, qui échappent seuls.
+
+#### `links.safe`
+
+**Les liens venus de l'extérieur sont vérifiés** — niveau : **obligatoire**
+
+- **Ce qui est vérifié.** Une adresse « javascript:… » saisie dans un réglage, une entrée ou un sujet reçu n'est jamais reprise comme lien, image ou vidéo.
+- **Pourquoi.** Un lien « javascript: » s'exécute au clic dans le navigateur de la personne qui visite. Seuls https:, http:, mailto: et les chemins du site (/…) sont sûrs.
+- **Comment corriger.** Avant d'utiliser une adresse, vérifiez qu'elle commence par https://, http://, mailto: ou par un seul « / » (pas « // »), sinon ignorez-la. Voir safeSrc() dans l'exemple guestbook.
+
+#### `blocks.valid`
+
+**Ce que le module renvoie a la bonne forme** — niveau : **obligatoire**
+
+- **Ce qui est vérifié.** Les sections, emplacements, pages, panneaux d'administration, overlays et partages renvoient des blocs connus (markdown, html, links, form…) avec leurs champs obligatoires, sous la forme attendue (liste de blocs, { blocks }, { html }…).
+- **Pourquoi.** Le cœur affiche ce qu'on lui rend sans le deviner. Un bloc inconnu ou une forme inattendue s'affiche vide ou fait échouer toute la page.
+- **Comment corriger.** Comparez avec les exemples de docs/CREATE-A-MODULE.md (sections 5 à 7 et 11) : chaque bloc a un « type » connu et ses champs.
+
+#### `run.noCrash`
+
+**Le module ne plante pas, même avec des données inattendues** — niveau : **conseil**
+
+- **Ce qui est vérifié.** Sections, pages, emplacements, overlay, panneau d'administration et routes terminent sans erreur avec les réglages par défaut, des réglages remplis et des données piégées.
+- **Pourquoi.** Le cœur isole les erreurs d'un module (le site continue), mais la personne qui visite voit alors une section vide ou une page d'erreur. Un module robuste dégrade son affichage sans planter.
+- **Comment corriger.** Protégez le code qui lit une donnée optionnelle (valeur absente, liste vide, texte trop long) et répondez par un code 4xx plutôt que de laisser une erreur remonter.
+
+### Les skins (apparence)
+
+#### `skin.valid`
+
+**La clé « skin » ne décrit que de l'apparence, avec des valeurs valables** — niveau : **obligatoire**
+
+- **Ce qui est vérifié.** Si module.json a une clé « skin », chaque jeton porte le préfixe « --sk-m-<id du module>- », son type est dans la liste (couleur, longueur, ombre, nombre, police, durée, casse), sa valeur par défaut passe les mêmes contrôles que les valeurs d'un skin et ne cite que des jetons communs (« --sk-… », « --v-… ») ou des jetons du même module, chaque pièce est « <id du module>.<pièce> », et le tout tient dans 12 pièces et 24 jetons.
+- **Pourquoi.** Un skin ne définit que de l'apparence (docs/SKINS.md §0) : si un module pouvait y glisser du contenu ou une valeur dangereuse, changer de skin ferait perdre quelque chose ou ouvrirait une faille. Une valeur refusée est ignorée par le site (le module garde son apparence d'origine) mais le module ne ressemble alors pas à ce que vous avez voulu décrire.
+- **Comment corriger.** Lisez le message : il nomme le jeton. Écrivez la valeur d'aujourd'hui (« 1rem », « #e8a23b », « 0 1px 2px rgb(0 0 0 / .2) ») ou une référence à un jeton commun (« var(--sk-radius-card) », « var(--v-surface) »). Voir docs/MODULES.md, « Rendre un module stylable ».
+
+#### `skin.parts`
+
+**Les pièces déclarées sont dans le HTML, et celles du HTML sont déclarées** — niveau : **obligatoire**
+
+- **Ce qui est vérifié.** Chaque pièce déclarée dans « skin.parts » est posée au moins une fois dans le HTML du module (data-skin-part="<id du module>.<pièce>"), et chaque data-skin-part du module est une pièce déclarée de CE module (jamais le nom d'une pièce commune du cœur comme « card » ni la pièce d'un autre module). La valeur est écrite en entier, sans calcul.
+- **Pourquoi.** Un skin vise une pièce par ce nom. Une pièce déclarée mais jamais posée ne peut pas être restylée ; une pièce posée sans être déclarée est invisible pour les personnes qui écrivent des skins et pour le banc d'essai ; une pièce qui porte le nom d'une pièce du cœur ferait appliquer à tort le style de la carte du cœur à votre élément. Ajouter un attribut n'est pas un changement de contenu.
+- **Comment corriger.** Ajoutez data-skin-part="mon-module.carte" sur l'élément concerné (en plus de sa classe), ou retirez la pièce de module.json. Écrivez le nom en entier (pas de `${…}`).
+
+#### `skin.fallback`
+
+**Chaque jeton lu par le CSS garde sa valeur d'aujourd'hui en repli** — niveau : **obligatoire**
+
+- **Ce qui est vérifié.** Toute lecture d'un jeton de skin dans le CSS du module (« var(--sk-…) ») a une valeur de repli, et la chaîne finit par la valeur actuelle : var(--sk-m-module-pièce-propriété, var(--sk-jeton-commun, valeur-actuelle)). Les jetons « --sk-m-… » lus sont déclarés dans « skin.parts » et appartiennent à ce module.
+- **Pourquoi.** Sans repli, un cœur sans skins (ou un jeton oublié) rendrait le module différent de ce qu'il est aujourd'hui, voire cassé. Avec la chaîne complète, le rendu par défaut est IDENTIQUE à l'ancien et le module reste compatible avec les cœurs plus anciens. Lire le jeton d'un autre module créerait une dépendance cachée entre modules.
+- **Comment corriger.** Écrivez par exemple border-radius:var(--sk-m-tw-card-radius,var(--sk-radius-card,1rem)) : jeton du module, puis jeton commun, puis la valeur que le module avait avant. Déclarez le jeton du module dans « skin.parts[].tokens ».
+
+#### `skin.noMasking`
+
+**Un jeton de module ne peut ni masquer, ni déplacer, ni écraser du contenu** — niveau : **obligatoire**
+
+- **Ce qui est vérifié.** Aucun jeton « --sk-m-… » n'est lu dans une propriété qui pourrait masquer, déplacer ou rendre illisible un élément (display, visibility, opacity, content, clip-path, mask, position, décalages, transform, z-index, order, overflow, text-indent, font-size, line-height, width, height, max-width, max-height, filter…). Pour une taille de texte ou de boîte, utilisez un jeton COMMUN (« var(--sk-text-sm, .9rem) »).
+- **Pourquoi.** Un skin ne doit jamais pouvoir faire disparaître un texte ou un bouton (docs/SKINS.md §0.1) : les jetons communs sont bornés par le cœur (taille de texte minimale, cible tactile…), pas ceux d'un module. Un jeton « opacité » valant 0 effacerait le contenu.
+- **Comment corriger.** Gardez les jetons de module pour des couleurs, des rayons, des bordures, des ombres, des espaces et des durées (propriétés color, background, border, border-radius, box-shadow, padding, margin, gap, transition…).
+
+#### `skin.demo`
+
+**L'aperçu du banc d'essai est un petit fragment HTML sans script** — niveau : **obligatoire**
+
+- **Ce qui est vérifié.** Si « skin.demo » nomme un fichier, il existe à la racine du module, pèse 20 Ko au plus, ne contient ni script, ni gestionnaire d'évènement (onclick…), ni feuille de style, ni attribut style, ni adresse externe, ni cadre, et ne pose que les pièces déclarées par le module.
+- **Pourquoi.** Le banc d'essai affiche ce fragment pour qu'une personne qui écrit un skin voie la pièce sans installer le module. Il suit les mêmes règles qu'un bloc « html » : un fragment qui exécute du code ou charge un tiers serait une faille ; un fragment qui définit son propre style ne montrerait pas l'effet du skin.
+- **Comment corriger.** Réduisez le fichier à du HTML simple (div, p, ul, li, a, img sans adresse externe…) avec les data-skin-part du module, des textes d'exemple neutres, et aucune mise en forme intégrée.
+
+#### `skin.tokensUsed`
+
+**Les jetons déclarés sont utilisés par le CSS du module** — niveau : **conseil**
+
+- **Ce qui est vérifié.** Chaque jeton de « skin.parts[].tokens » est lu au moins une fois par le CSS du module (var(--sk-m-…)).
+- **Pourquoi.** Un jeton que rien ne lit promet aux personnes qui écrivent des skins un réglage qui ne fait rien.
+- **Comment corriger.** Utilisez le jeton dans le CSS (avec sa chaîne de repli) ou retirez-le de module.json.
+
+#### `skin.textPair`
+
+**Un jeton de couleur de texte dit sur quel fond il est posé** — niveau : **conseil**
+
+- **Ce qui est vérifié.** Un jeton de couleur lu dans « color » (le texte) déclare « on » : le jeton de fond de la même pièce, pour que Curiosa contrôle la lisibilité du texte sur ce fond avec un skin.
+- **Pourquoi.** Sans cette paire, un skin pourrait poser un texte clair sur un fond clair dans la pièce du module sans que le contrôle de lisibilité automatique s'en aperçoive.
+- **Comment corriger.** Ajoutez "on": "--sk-m-<module>-<pièce>-bg" au jeton de texte (le fond doit être un autre jeton de couleur du module).
+
+#### `skin.declare`
+
+**Un module qui met en forme une page publique déclare ses pièces de skin** — niveau : **conseil**
+
+- **Ce qui est vérifié.** Le module qui a une page ou des sections avec sa propre mise en forme (CSS intégré) déclare une clé « skin » : ses pièces stylables et leurs jetons, avec leur valeur d'aujourd'hui en repli.
+- **Pourquoi.** Sans déclaration le module fonctionne à l'identique, mais un skin ne peut pas le restyler : ses rayons, ses espaces et ses ombres restent ceux du module quel que soit le skin choisi (docs/SKINS.md §8.5).
+- **Comment corriger.** Suivez « Rendre un module stylable » dans docs/MODULES.md : remplacez les valeurs en dur par var(--sk-m-…, var(--sk-…, valeur-actuelle)), posez data-skin-part et déclarez-les dans « skin ». Ajoutez « minCore »: « 0.4.0 » et passez le module en version mineure (apparence inchangée).
+
+### Les éléments des pages d'overlay
+
+#### `overlay.elements`
+
+**Les éléments d'overlay déclarés sont servis, avec des adresses valables** — niveau : **obligatoire**
+
+- **Ce qui est vérifié.** Chaque élément de « overlayElements » (module.json) a sa fonction dans « overlayElements » du code, et inversement ; chaque fonction répond par une adresse du site (un chemin qui commence par « / », jamais une adresse externe) ou par null, même avec des options extrêmes ou hostiles.
+- **Pourquoi.** Le cœur demande à votre module, côté serveur, l'adresse de chaque élément. Une adresse externe ou mal formée est refusée (cadre vide dans OBS) ; une fonction qui plante avec une option inattendue fait disparaître l'élément du direct.
+- **Comment corriger.** Déclarez chaque élément des deux côtés avec le même identifiant. Répondez { url: `/m/${ctx.instance.key}/…` } ; validez les options reçues (ignorez celles que vous ne connaissez pas) ; répondez null si l'élément n'est pas disponible.
+
+### Les routes (formulaires et envois)
+
+#### `routes.methods`
+
+**Les routes n'écrivent que sur demande explicite (POST)** — niveau : **obligatoire**
+
+- **Ce qui est vérifié.** Appeler une route en GET (lecture simple, y compris via un lien ou une image) ou avec une autre méthode (PUT, DELETE) ne modifie rien : ni stockage, ni e-mail envoyé.
+- **Pourquoi.** Un GET peut être déclenché par n'importe quelle page, image ou robot, sans formulaire ni intention de la personne. Seul un POST, soumis à la protection contre les envois venus d'autres sites, est une action volontaire.
+- **Comment corriger.** Au début de la route, répondez 405 si request.method n'est pas POST : if (request.method !== "POST") return new Response("Method not allowed", { status: 405 }).
+
+#### `routes.size`
+
+**Les routes bornent la taille de ce qu'elles reçoivent** — niveau : **obligatoire**
+
+- **Ce qui est vérifié.** Envoyer des champs de plusieurs mégaoctets à une route ne remplit pas le stockage : la route refuse (4xx) ou tronque.
+- **Pourquoi.** Sans borne, un seul envoi peut remplir la base de données du site (déni de service) ou la ralentir pour tout le monde.
+- **Comment corriger.** Limitez chaque champ à sa taille utile avant de le stocker : String(valeur).slice(0, 500). Voir clean() dans l'exemple guestbook.
+
+#### `routes.redirect`
+
+**Aucune redirection vers un site extérieur** — niveau : **obligatoire**
+
+- **Ce qui est vérifié.** Une route ou une action d'administration ne redirige jamais vers une adresse reçue (paramètres next, redirect, return, url…) : seules les adresses du site sont permises.
+- **Pourquoi.** Une « redirection ouverte » permet de bâtir un lien qui part de votre site et atterrit chez un escroc : la confiance dans votre adresse sert l'hameçonnage.
+- **Comment corriger.** Ignorez les adresses reçues. Si vous devez rediriger, n'acceptez qu'un chemin du site (qui commence par un seul « / »).
+
+#### `routes.errors`
+
+**Les réponses d'erreur ne révèlent rien d'interne** — niveau : **obligatoire**
+
+- **Ce qui est vérifié.** Les réponses des routes sont de vrais objets Response et ne contiennent ni chemin de fichier, ni trace d'erreur, ni détail de base de données ou de réglage secret.
+- **Pourquoi.** Un chemin ou une trace aide une personne malveillante à comprendre le serveur. Une personne qui visite n'a rien à faire d'un message technique.
+- **Comment corriger.** Répondez par un code et un mot (400, 403, 404) sans détail : new Response(null, { status: 400 }) ou Response.json({ ok: false }, { status: 400 }). Journalisez l'erreur côté serveur, brièvement.
+
+#### `routes.protected`
+
+**Une route publique qui écrit est protégée contre les abus** — niveau : **obligatoire**
+
+- **Ce qui est vérifié.** Quarante envois valides, à la suite, depuis le même personne, ne sont pas tous acceptés : la route a un limiteur de débit, un plafond de stockage, un code d'accès ou une modération qui la protège.
+- **Pourquoi.** Une route ouverte à tous qui écrit sans limite permet à un robot de remplir le stockage du site en quelques minutes.
+- **Comment corriger.** Ajoutez un limiteur de débit par personne (voir limited() dans l'exemple guestbook : N envois par heure), un plafond du nombre d'éléments stockés (réponse 503 au-delà), et un champ piège pour les robots.
+
+#### `routes.visitorIp`
+
+**L'adresse de la personne qui visite n'est pas lue dans les en-têtes** — niveau : **conseil**
+
+- **Ce qui est vérifié.** Le code ne lit pas lui-même X-Forwarded-For, X-Real-IP ou un en-tête d'adresse du même genre : pour une limite de débit, il demande ctx.api.visitor.fingerprint(request) (cœur 0.2.6). Vérifié seulement quand le cœur qui teste fournit cette fonction.
+- **Pourquoi.** Le début de X-Forwarded-For est écrit par la personne qui visite : le lire permet de contourner la limite en changeant d'adresse inventée à chaque envoi. Le cœur, lui, prend l'entrée ajoutée par SON proxy, la seule de confiance, et ne rend qu'une empreinte salée, jamais l'adresse.
+- **Comment corriger.** Remplacez la lecture de l'en-tête par « const who = ctx.api.visitor.fingerprint(request, "envoi") » et comptez par « who ». Déclarez « minCore »: « 0.2.6 ». Ne gardez jamais l'adresse elle-même.
+
+### Les formulaires d'administration
+
+#### `forms.fieldErrors`
+
+**Une erreur de champ s'affiche sous son champ** — niveau : **conseil**
+
+- **Ce qui est vérifié.** Une action d'administration qui refuse une valeur saisie dit QUEL champ pose problème (`errors: { champ: "message" }`) au lieu d'un seul `error` général.
+- **Pourquoi.** Un message général s'affiche loin du champ, parfois hors de l'écran sur un téléphone : la personne ne voit pas ce qu'il faut corriger. Avec `errors`, le message apparaît juste sous le champ, qui prend le focus.
+- **Comment corriger.** Renvoyez `{ errors: { adresse: "Écrivez une adresse complète, par exemple https://www.monsite.be/contact." } }` (nom du champ → message, avec un exemple). Gardez `error` pour ce qui ne concerne aucun champ.
+
+### Les actions pour les assistants IA (MCP)
+
+#### `mcp.name`
+
+**Les noms d'outils MCP restent assez courts** — niveau : **obligatoire**
+
+- **Ce qui est vérifié.** L'outil visible par l'assistant s'appelle « clé-de-l'instance__nom-de-l'action ». Avec une clé de 31 caractères au plus, le nom d'action fait 31 caractères au plus pour que le total ne dépasse jamais 64.
+- **Pourquoi.** Les assistants IA refusent les outils dont le nom dépasse 64 caractères : l'action disparaîtrait sans message pour une instance à clé longue.
+- **Comment corriger.** Raccourcissez le nom de l'action dans module.json (« mcp ») et dans le code, par exemple « guestbook_list » plutôt que « list_all_guestbook_messages_for_moderation ».
+
+#### `mcp.safety`
+
+**Les outils MCP déclarent honnêtement ce qu'ils font** — niveau : **obligatoire**
+
+- **Ce qui est vérifié.** Une action qui lit seulement est marquée « readOnly » ; une action qui écrit n'est jamais activée par défaut (« default »: true) ; une action irréversible est « destructive » (et jamais par défaut) ; une action dont le nom parle de suppression ou de publication est « destructive ».
+- **Pourquoi.** La personne qui gère le site décide quels outils chaque assistant peut utiliser, et par défaut un assistant reçoit les outils « sûrs ». Un outil qui écrit, annoncé par erreur comme sûr, laisse un assistant modifier le site sans accord.
+- **Comment corriger.** Dans module.json (« mcp »), ajoutez "readOnly": true aux lectures, retirez "default": true des écritures, et ajoutez "destructive": true à tout ce qui supprime, retire ou publie.
+
+#### `mcp.readOnly`
+
+**Une action « lecture seule » ne modifie rien** — niveau : **obligatoire**
+
+- **Ce qui est vérifié.** Appeler une action marquée « readOnly » ne modifie pas le stockage et n'envoie pas d'e-mail.
+- **Pourquoi.** Les accès en lecture seule donnent des actions « readOnly » aux assistants les moins fiables : si elles écrivent, la protection ne sert à rien.
+- **Comment corriger.** Retirez "readOnly": true de l'action si elle écrit vraiment (et mettez-la hors défaut), ou supprimez l'écriture de l'action.
+
+#### `mcp.described`
+
+**Les outils MCP sont bien décrits** — niveau : **conseil**
+
+- **Ce qui est vérifié.** Chaque action a une description claire (une phrase) ; chaque paramètre est décrit, les textes ont une longueur maximale, et chaque paramètre « required » existe.
+- **Pourquoi.** L'assistant ne voit que ces descriptions pour choisir l'outil et remplir ses paramètres. Une description vague donne des erreurs et des appels inutiles.
+- **Comment corriger.** Complétez « description » de l'action et de chacun de ses paramètres, ajoutez "maxLength" aux textes, en anglais simple.
+
+### Les tâches planifiées
+
+#### `tasks.valid`
+
+**Les tâches planifiées sont bien déclarées** — niveau : **obligatoire**
+
+- **Ce qui est vérifié.** Chaque tâche a un intervalle « everyMinutes » (nombre d'au moins 1) et une fonction « run ».
+- **Pourquoi.** Le cœur lance les tâches une fois par minute au plus : un intervalle absent ou inférieur à 1 minute n'est jamais respecté, la tâche ne tournerait pas comme prévu.
+- **Comment corriger.** Écrivez par exemple tasks: { refresh: { everyMinutes: 60, async run(ctx) { … } } }.
+
+#### `tasks.idempotent`
+
+**Lancer une tâche deux fois de suite ne duplique rien** — niveau : **obligatoire**
+
+- **Ce qui est vérifié.** Exécuter deux fois la même tâche, dans la même situation, ne crée pas de nouvelles données et n'envoie pas deux fois la même notification.
+- **Pourquoi.** Le cœur peut relancer une tâche (après une panne, un redémarrage, une exécution en retard). Sans cette garantie, le site se remplit de doublons ou prévient dix fois du même événement.
+- **Comment corriger.** Avant de créer un élément, cherchez s'il existe déjà (par un identifiant stable de la source) et mettez-le à jour au lieu d'en ajouter un. Mémorisez ce qui a déjà été notifié.
+
+#### `tasks.failure`
+
+**Une tâche supporte un service indisponible** — niveau : **conseil**
+
+- **Ce qui est vérifié.** Quand le réseau ne répond pas, la tâche se termine sans erreur (elle note l'échec et réessaiera) au lieu de s'interrompre.
+- **Pourquoi.** Le cœur isole les erreurs, mais une tâche qui lève une exception perd son travail en cours et affiche une erreur dans l'administration à chaque panne passagère.
+- **Comment corriger.** Entourez l'appel réseau d'un try/catch : en cas d'échec, gardez les anciennes données et terminez normalement.
+
+### Les appels réseau
+
+#### `net.bounded`
+
+**Chaque appel réseau a un délai** — niveau : **conseil**
+
+- **Ce qui est vérifié.** Aucun « fetch( » sans délai : soit l'appel passe par ctx.api.net.request (délai, pauses et disjoncteur fournis par le cœur), soit il porte un « signal » (par exemple AbortSignal.timeout(8000)). Conseil dans le cœur 0.2.0 ; deviendra obligatoire.
+- **Pourquoi.** Un appel sans délai vers un service qui ne répond plus attend pour toujours : la page, la tâche ou l'action qui l'attend reste figée, et les appels suivants s'empilent jusqu'à faire tomber le site entier.
+- **Comment corriger.** Remplacez « await fetch(url) » par « await ctx.api.net.request({ url }) » (il ne lève jamais : testez « r.ok »), ou au minimum ajoutez « { signal: AbortSignal.timeout(8000) } » à l'appel.
+
+#### `net.noIdleTimer`
+
+**Aucune boucle réseau qui tourne sans personne** — niveau : **conseil**
+
+- **Ce qui est vérifié.** Le code ne lance pas de minuteur répétitif (setInterval) : un travail régulier est une tâche planifiée déclarée (« tasks »), et un appel réseau ne part que quand quelqu'un en a besoin (une page, une action, une tâche).
+- **Pourquoi.** Un setInterval tourne même quand personne ne regarde, n'est jamais arrêté à la désactivation du module, se multiplie à chaque rechargement du code, et appelle des services externes pour rien : quotas consommés, pannes aggravées.
+- **Comment corriger.** Déclarez une tâche planifiée (tasks: { refresh: { everyMinutes: 15, run } }) : le cœur la lance une fois par instance active, sans chevauchement. Ou bien calculez à la demande et gardez le résultat en cache daté.
+
+#### `net.429`
+
+**Après « trop de demandes » (429), le module fait une pause** — niveau : **conseil**
+
+- **Ce qui est vérifié.** Sonde : toutes les adresses répondent 429 avec « Retry-After: 120 ». On fait tourner deux fois les tâches planifiées et les routes du module ; au second passage, il ne doit partir AUCUN appel réseau. Conseil dans le cœur 0.2.0 ; deviendra obligatoire.
+- **Pourquoi.** Un service qui répond 429 demande une pause. L'ignorer prolonge le blocage, peut faire bannir la clé ou l'adresse du site, et gaspille le temps des pages. ctx.api.net s'en charge seul : jusqu'à la reprise, il répond « rate » sans appeler le réseau.
+- **Comment corriger.** Passez par ctx.api.net.request (la pause est automatique, partagée par tout le site). Sinon, notez « Retry-After » (en secondes ou en date) dans votre stockage et ne rappelez pas avant cette heure.
+
+#### `net.fallback`
+
+**En cas de panne d'un service externe, la page s'affiche quand même** — niveau : **conseil**
+
+- **Ce qui est vérifié.** Sonde « trou noir » : le réseau ne répond jamais. Chaque section, emplacement et page du module doit rendre la main en moins de 3 s, sans erreur (avec les dernières données connues et leur date, ou un message simple).
+- **Pourquoi.** Un service externe finit toujours par tomber. Si la page attend sa réponse, elle se fige pour toutes les personnes qui visitent ; le cœur coupe alors la section, et la personne qui visite ne voit rien du tout.
+- **Comment corriger.** Dans une page, ne lancez pas d'appel réseau long : affichez ce que la tâche planifiée a mis en cache (avec « mis à jour à 10 h 30 »), ou passez par ctx.api.net.request, dont le délai suit le temps restant de la page, et affichez un repli si « r.ok » est faux.
+
+### Les données
+
+#### `downloads.bounded`
+
+**Les téléchargements d'administration sont bornés** — niveau : **conseil**
+
+- **Ce qui est vérifié.** Chaque téléchargement déclaré dans adminDownloads a un nom de fichier, un type connu, un droit déclaré dans module.json (si « right » est donné), et son générateur FINIT : avec des données d'essai, il produit moins de 20 Mo, en moins de 5 secondes, et n'envoie que du texte.
+- **Pourquoi.** Un export contient souvent des données personnelles : il est servi par le cœur (droit, journal d'audit), mais c'est le module qui le produit. Un générateur qui ne s'arrête pas, ou qui construit tout en mémoire, bloque le site ; le cœur le coupe à 512 Mo ou 10 minutes, et l'administratrice n'obtient alors qu'un fichier en échec.
+- **Comment corriger.** Lisez le stockage par pages (ctx.api.store.page, 1 000 lignes) dans une boucle qui s'arrête à la dernière page, produisez le texte ligne par ligne avec « yield », et déclarez le droit dans « rights » de module.json.
+
+#### `data.version`
+
+**dataVersion et migrations sont cohérentes** — niveau : **obligatoire**
+
+- **Ce qui est vérifié.** Chaque migration porte un numéro entre 2 et dataVersion ; un module sans dataVersion n'a pas de migrations ; un module qui change la forme de ses données (dataVersion > 1) les convertit.
+- **Pourquoi.** Quand la forme des données stockées change, les anciennes données d'un site doivent suivre. Le cœur rejoue les migrations dans l'ordre après une mise à jour : une migration au mauvais numéro ne serait jamais jouée et laisserait des données illisibles.
+- **Comment corriger.** Augmentez « dataVersion » de 1 à chaque changement de forme des données et écrivez migrations: { 2: async (ctx) => { … } } qui convertit celles de la version précédente.
+
+#### `data.migrations`
+
+**Les migrations se déroulent sans erreur** — niveau : **conseil**
+
+- **Ce qui est vérifié.** Chaque migration s'exécute sans erreur sur un stockage vide, et deux fois de suite sans rien dupliquer.
+- **Pourquoi.** Une migration qui échoue met l'instance à l'écart sur le site réel. Le test sur stockage vide attrape les erreurs les plus bêtes avant qu'une personne qui gère le site ne les rencontre.
+- **Comment corriger.** Traitez le cas « rien à convertir » (liste vide) et ne supposez aucun champ : lisez-les avec une valeur par défaut.
+
+### La vie privée
+
+#### `privacy.declared`
+
+**Un module qui collecte des données le déclare (privacy)** — niveau : **obligatoire**
+
+- **Ce qui est vérifié.** Si le module reçoit des données des personnes qui visitent (formulaire public qui enregistre ou envoie quelque chose), module.json a un texte « privacy » en français et en anglais : quoi, pourquoi, comment faire effacer.
+- **Pourquoi.** Le site écrit lui-même sa politique de confidentialité d'après ce que déclarent ses modules. Sans votre déclaration, elle serait fausse — et la personne propriétaire du site responsable d'une collecte qu'elle ignore.
+- **Comment corriger.** Ajoutez dans module.json : "privacy": { "fr": "Si vous … votre nom et votre message sont … Pour les faire retirer, écrivez au contact du site.", "en": "…" }.
+
+#### `privacy.thirdParty`
+
+**Les services tiers chargés chez la personne qui visite sont mentionnés** — niveau : **conseil**
+
+- **Ce qui est vérifié.** Si une page du module charge quelque chose depuis un autre site (vidéo intégrée, script, iframe), module.json le dit dans « privacy ».
+- **Pourquoi.** Charger un service tiers transmet l'adresse (IP) de la personne qui visite à ce service. C'est une information que la personne propriétaire doit connaître et pouvoir donner dans sa politique de confidentialité.
+- **Comment corriger.** Ajoutez une phrase dans « privacy » (fr et en) : « Cette page charge un lecteur de <service> : … », ou n'intégrez pas le service.
+
+### Un module, une seule chose
+
+#### `srp.single`
+
+**Un module fait une chose ; chaque donnée a un seul propriétaire** — niveau : **obligatoire**
+
+- **Ce qui est vérifié.** Comparé aux autres modules du même ensemble : pas de service offert par deux modules, pas d'action MCP du même nom, pas de réglage secret identique demandé à deux modules sans lien, pas de collection de données de même nom chez deux modules sans lien.
+- **Pourquoi.** Deux modules qui offrent la même chose ou demandent la même clé obligent la personne qui gère le site à tout saisir deux fois et créent des conflits. Une donnée a un propriétaire ; les autres modules la demandent à ce propriétaire (service).
+- **Comment corriger.** Confiez la donnée ou la clé à un seul module (fournisseur) que l'autre appelle par un service (offers / requires), ou renommez ce qui n'est qu'une coïncidence de nom.
+
+#### `srp.coupling`
+
+**Le module ne connaît pas un autre module par son nom** — niveau : **conseil**
+
+- **Ce qui est vérifié.** Le code ne cherche pas les instances d'un module précis (ctx.api.instances.list({ module: "…" })) : il dépend d'un service ou d'un sujet, pas d'un module.
+- **Pourquoi.** On dépend d'un service, jamais d'un module précis : n'importe quel module qui l'offre doit convenir. Une dépendance nommée casse dès que l'autre module est remplacé ou renommé.
+- **Comment corriger.** Déclarez ce dont vous avez besoin avec « requires » (service) ou « consumes » (sujet) et appelez ctx.api.services / ctx.api.topics.
+
+### Les mots et la documentation
+
+#### `wording.simple`
+
+**Pas de jargon dans ce que lit la personne** — niveau : **obligatoire**
+
+- **Ce qui est vérifié.** Le nom, la description, les libellés de sections et les libellés, aides et options des réglages non avancés n'emploient aucun terme technique (sujet, métrique, API, JSON, jeton, OAuth, MCP…).
+- **Pourquoi.** Ces textes sont ce que voit une personne sans bagage technique. Un réglage doit dire « Adresse de votre salon Discord », pas « webhookUrl ». Les réglages techniques vont en mode avancé ("advanced": true).
+- **Comment corriger.** Réécrivez la phrase avec des mots de tous les jours, ou marquez le réglage "advanced": true s'il est purement technique.
+
+#### `wording.locales`
+
+**Pas de jargon dans les phrases affichées par le module** — niveau : **conseil**
+
+- **Ce qui est vérifié.** Les textes des fichiers de langue (messages, erreurs, titres) n'emploient pas de terme technique.
+- **Pourquoi.** Ce sont les phrases que lisent les personnes qui visitent et celle qui gère le site. Une erreur « JSON invalide » ne dit pas quoi faire ; « Ajoutez votre clé dans Réglages » si.
+- **Comment corriger.** Reformulez en disant ce qui se passe et ce qu'on peut faire, avec des mots simples.
+
+#### `readme.exists`
+
+**Un README.md explique le module** — niveau : **obligatoire**
+
+- **Ce qui est vérifié.** Un fichier README.md à la racine du dossier, d'au moins quelques phrases.
+- **Pourquoi.** Le catalogue affiche le README avant l'installation : c'est la vitrine du module (à quoi il sert, ses réglages, ses limites). Sans lui, personne n'ose l'installer.
+- **Comment corriger.** Créez README.md : une phrase sur ce que fait le module, la liste de ses réglages en mots simples, ses limites, et si vous le souhaitez un lien pour un don volontaire.
+
+#### `readme.plain`
+
+**Le README est écrit en langage de tous les jours** — niveau : **conseil**
+
+- **Ce qui est vérifié.** Le README n'emploie pas de termes techniques (API, JSON, endpoint…) hors des blocs de code.
+- **Pourquoi.** Le README s'adresse d'abord à quelqu'un qui veut savoir si le module lui sert, pas à une personne qui développe.
+- **Comment corriger.** Réécrivez les passages cités. Les détails techniques peuvent rester dans une section « Pour les développeurs » à la fin.
+
+#### `neutrality.clean`
+
+**Aucune donnée personnelle ni propre à un site dans le module** — niveau : **conseil**
+
+- **Ce qui est vérifié.** Aucun fichier du module ne contient un des termes interdits de votre liste de neutralité (noms, domaines, adresses réels), ni une adresse e-mail personnelle courante.
+- **Pourquoi.** Un module se partage : y laisser le nom de son propre site ou une adresse réelle livre ces informations à tous ceux qui l'installent. Utilisez des exemples neutres (example.org, « Demo »).
+- **Comment corriger.** Remplacez l'élément cité par une valeur d'exemple. Pour une liste de termes à vérifier, créez un fichier .neutrality-terms (un terme par ligne) ou la variable NEUTRALITY_TERMS.
+
+### L'ergonomie des pages d'administration
+
+#### `admin.ergonomics`
+
+**Aucun nouvel écart d'ergonomie dans les réglages et les textes** — niveau : **obligatoire**
+
+- **Ce qui est vérifié.** Le manifeste (module.json) et les textes (locales/fr.json, en.json) respectent les règles automatiques de docs/ERGONOMIE-ADMIN.md : R5 (7 réglages simples au plus par onglet), R9 (aucun mot du code), R10 (libellés de 60 caractères au plus, sans « : »), R11 (aides courtes avec un exemple pour tout champ libre), R13 (vouvoiement, sans « ! », sans « Veuillez », sans majuscules criardes, phrases de 20 mots au plus), R17 (pas de bouton « Activer / désactiver »), R19 (pas de liste pour un booléen, pas de case négative) et R29 (FR et EN à parité exacte : mêmes clés, mêmes {variables}). Les écarts déjà connus d'un module, listés dans tests/ergonomics-baseline.json, sont tolérés (voir admin.ergonomics.known) ; tout NOUVEL écart (nouveau réglage, nouveau texte) échoue, et un écart connu qui a disparu doit être retiré de la base.
+- **Pourquoi.** Une personne qui crée du contenu juge une page de réglages en dix secondes. Les règles sont mesurées pour que la page ne se dégrade pas : la base ne peut que rétrécir, jamais grossir.
+- **Comment corriger.** Corrigez le texte ou le réglage signalé (le message dit la règle et l'endroit). Pour un écart « disparu », retirez sa ligne de la base : node scripts/ergonomics-baseline.mjs --write. Ne rajoutez jamais une ligne à la base pour faire taire un nouvel écart ; pour un mot qui est le bon mot (un tiers l'impose), ajoutez une entrée JUSTIFIÉE à JARGON_WHITELIST en tête de testsupport/ergonomics.mjs.
+
+#### `admin.ergonomics.known`
+
+**Écarts d'ergonomie connus, à résorber** — niveau : **conseil**
+
+- **Ce qui est vérifié.** Les écarts d'ergonomie qui existent déjà (ceux de tests/ergonomics-baseline.json ; sans base, tous les écarts). Ils n'empêchent rien, mais la base doit rétrécir.
+- **Pourquoi.** Ces écarts sont de la dette : un texte trop long, un mot du code, un onglet trop chargé. Les garder visibles en avertissement évite de les oublier.
+- **Comment corriger.** Corrigez un écart, puis retirez sa ligne de la base (node scripts/ergonomics-baseline.mjs --write). Le tableau par module et par règle : node scripts/ergonomics-baseline.mjs --report.
+
+## Limites connues
+
+- La suite lit votre code avec des motifs simples (permissions, imports, appels de `ctx.t`) : un code très dynamique peut lui échapper. Les sondes d'exécution comblent une partie de ce manque.
+- Les sondes de sécurité n'ont pas de service tiers à interroger : un module qui n'affiche des données qu'après un appel réseau réussi n'est essayé qu'avec ses données locales. Testez ces cas avec `fakeFetch` dans vos propres tests.
+- « Un propriétaire par donnée » (`srp.single`) demande à voir les autres modules : sans `--voisins` ou voisins de dossier, il est « sans objet ».
+- La neutralité (`neutrality.clean`) utilise votre liste de termes : fichier `.neutrality-terms` (un terme par ligne) ou variable `NEUTRALITY_TERMS`.
+- Le fichier que vous lisez est généré par `node testsupport/docs.mjs --write` à partir des exigences : ne le modifiez pas à la main.

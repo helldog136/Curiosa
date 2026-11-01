@@ -1,0 +1,35 @@
+name: Wiki
+# Le wiki GitHub est un MIROIR de la documentation du dépôt (qui reste la source de vérité) : il est réécrit à chaque fusion dans master (release stable).
+# Prérequis, une seule fois, à la main : activer le wiki du dépôt et y créer une première page (GitHub ne crée le dépôt du wiki qu'à ce moment).
+on:
+  push:
+    branches: [master, main]
+    paths: ["docs/**", "CHANGELOG.md", "scripts/wiki-sync.mjs", ".github/workflows/wiki.yml"]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  wiki:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cloner le wiki
+        id: wiki
+        env:
+          TOKEN: ${{ github.token }}
+        run: |
+          if git clone "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.wiki.git" wiki 2>/dev/null; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::Le wiki n'est pas encore initialisé : activez-le dans les réglages du dépôt et créez-y une première page, puis relancez ce workflow."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Publier la documentation
+        if: steps.wiki.outputs.ready == 'true'
+        run: |
+          node scripts/wiki-sync.mjs wiki "$GITHUB_REPOSITORY"
+          cd wiki
+          git add -A
+          if git diff --cached --quiet; then echo "Wiki déjà à jour."; exit 0; fi
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -q -m "Documentation du ${GITHUB_SHA::7}"
+          git push

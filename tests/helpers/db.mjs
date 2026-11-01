@@ -1,0 +1,85 @@
+// Base SQLite jetable pour les tests qui touchent la base. Chaque fichier de test tourne dans son processus : il obtient
+// SA copie d'un modèle migré (construit une fois, reconstruit si les migrations changent) — rapide et sans interférence.
+import { execFileSync } from "node:child_process";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { makeTempDir } from "./tmp.mjs";
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+const tmp = path.join(root, "tests/.tmp");
+const template = path.join(tmp, "template.db");
+
+function newestMigration() {
+  const dir = path.join(root, "prisma/migrations");
+  return Math.max(...fs.readdirSync(dir, { recursive: true }).map((f) => fs.statSync(path.join(dir, String(f))).mtimeMs));
+}
+
+function ensureTemplate() {
+  fs.mkdirSync(tmp, { recursive: true });
+  if (fs.existsSync(template) && fs.statSync(template).mtimeMs > newestMigration()) return;
+  // Les fichiers de test tournent en parallèle : à froid, plusieurs processus arrivent ici en même temps. Chacun construit SA copie
+  // sous un nom unique puis la pose d'un coup (rename atomique) : personne ne lit jamais une base à moitié construite.
+  const mine = path.join(tmp, `template.${process.pid}.db`);
+  fs.rmSync(mine, { force: true });
+  execFileSync("npx", ["prisma", "migrate", "deploy"], { cwd: root, env: { ...process.env, DATABASE_URL: `file:${mine}` }, stdio: "pipe" });
+  fs.renameSync(mine, template);
+}
+
+/**
+ * À appeler tout en haut d'un test, AVANT d'importer le moindre module du cœur (les imports dynamiques viennent après) :
+ *   const db = await useTestDb();
+ *   const { prisma } = await import("@/core/db");
+ */
+export async function useTestDb() {
+  ensureTemplate();
+  const dir = makeTempDir("curiosa-test-");
+  const file = path.join(dir, "test.db");
+  fs.copyFileSync(template, file);
+  // Une seule connexion : les réglages ci-dessous (propres à la connexion) s'appliquent à toutes les requêtes du test.
+  process.env.DATABASE_URL = `file:${file}?connection_limit=1`;
+  process.env.DATA_DIR = dir;
+  process.env.CURIOSA_ALLOW_LOCAL_MODULES = "1";
+  // gitconfig global jetable, posé AVANT que l'installateur ne lise l'environnement : tests/helpers/catalogue.mjs y ajoute la redirection https → dépôt local du faux catalogue.
+  if (!process.env.GIT_CONFIG_GLOBAL) { process.env.GIT_CONFIG_GLOBAL = path.join(dir, "gitconfig"); fs.writeFileSync(process.env.GIT_CONFIG_GLOBAL, ""); }
+  // Les dépôts git des tests sont jetables, y compris ceux que l'installateur crée lui-même : modèle vide, pas de fsync, pas de ramasse-miettes (même résultat, bien plus vite).
+  Object.assign(process.env, { GIT_CONFIG_COUNT: "3", GIT_CONFIG_KEY_0: "init.templateDir", GIT_CONFIG_VALUE_0: "", GIT_CONFIG_KEY_1: "core.fsync", GIT_CONFIG_VALUE_1: "none", GIT_CONFIG_KEY_2: "gc.auto", GIT_CONFIG_VALUE_2: "0" });
+  // Le cœur ne contient aucun module et le catalogue vient UNIQUEMENT du réseau : par défaut un test n'a donc AUCUN catalogue (dépôt local inexistant, jamais Internet).
+  // Un test qui a besoin d'un catalogue en fabrique un (tests/helpers/catalogue.mjs : dépôt git local + index factice).
+  process.env.CURIOSA_CATALOGUE_REPO ??= "file:///nonexistent/curiosa-extras";
+  const { prisma } = await import("@/core/db");
+  // Base jetable, détruite à la fin du test : on n'attend pas les écritures sur disque (synchronous=OFF, journal en mémoire). Aucun effet sur ce qui est vérifié.
+  await prisma.$queryRawUnsafe("PRAGMA journal_mode=MEMORY");
+  await prisma.$queryRawUnsafe("PRAGMA synchronous=OFF");
+  const tables = ["OverlayPage", "UploadFile", "UserRole", "Role", "VisitSeen", "VisitDaily", "ApiToken", "AuditLog", "ModuleRecord", "EntryTranslation", "Entry", "InstanceTranslation", "ModuleInstance", "RedirectDay", "Redirect", "Setting", "Module", "AuthLock", "TrustedIp", "RecoveryCode", "Passkey", "PasskeyChallenge", "User"];
+  return {
+    dir,
+    prisma,
+    /** Installe un module de test (tests/fixtures/extras/modules/<id>) : fichiers copiés + ligne en base, activé. La ligne est `bundled` : un site ancien (compatibilité), dossier déjà sur le disque. */
+    async fixture(id, enabled = true) {
+      const { installFixtureFiles } = await import("./fixtureModules.mjs");
+      installFixtureFiles(dir, id);
+      const version = JSON.parse(fs.readFileSync(path.join(dir, "modules", id, "module.json"), "utf8")).version;
+      return prisma.module.upsert({ where: { id }, create: { id, source: "bundled", version, enabled }, update: { enabled } });
+    },
+    /** Vide toutes les tables (entre deux tests). Les migrations de mise à jour repassent à la demande. */
+    async reset() {
+      await settleBackground();
+      for (const t of tables) await prisma.$executeRawUnsafe(`DELETE FROM "${t}"`);
+      globalThis.curiosaBuiltinsSynced = false; globalThis.curiosaBuiltinsSyncing = null;
+      globalThis.curiosaModuleCache?.clear?.();
+      // Modules installés depuis git : on repart d'un dossier vide.
+      fs.rmSync(path.join(dir, "modules"), { recursive: true, force: true });
+    },
+    async close() {
+      await settleBackground();
+      await prisma.$disconnect();
+      fs.rmSync(dir, { recursive: true, force: true });
+    },
+  };
+}
+
+/** Les reprises lancées en arrière-plan (reprise finale RAWG, après une installation, une mise à jour ou une restauration) doivent être finies avant de vider la base ou de la fermer, et avant de comparer des réglages. */
+export async function settleBackground() {
+  try { await (await import("@/core/services/rawgNote")).rawgNoteIdle(); } catch { /* le cœur testé n'a pas (encore) cette reprise */ }
+}

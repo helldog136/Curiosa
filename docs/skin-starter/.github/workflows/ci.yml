@@ -1,0 +1,39 @@
+# Contrôle automatique du skin à chaque envoi : le kit de test de Curiosa, DANS UN NAVIGATEUR, contre la dernière version publiée du cœur.
+# Rien à configurer : copiez ce fichier tel quel. Une cassure de compatibilité se voit ici avant de se voir chez vos utilisateurs.
+name: Skin
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+jobs:
+  skin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trouver la dernière version publiée de Curiosa
+        id: core
+        run: |
+          ref=$(git ls-remote --tags --refs https://github.com/helldog136/Curiosa 'refs/tags/v*' | sed 's#.*refs/tags/##' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1)
+          test -n "$ref" || { echo "Aucune version publiée de Curiosa trouvée"; exit 1; }
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with: { repository: helldog136/Curiosa, ref: "${{ steps.core.outputs.ref }}", path: curiosa-core }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Préparer le cœur (sans lancer le site)
+        working-directory: curiosa-core
+        run: npm ci --ignore-scripts && npx prisma generate
+      - name: Installer le navigateur du contrôle
+        run: |
+          npm install --global playwright
+          npx playwright install --with-deps chromium
+      - name: Contrôler le skin (niveaux statiques et navigateur, les avertissements font échouer)
+        working-directory: curiosa-core
+        run: |
+          export PLAYWRIGHT_MODULE="$(npm root -g)"
+          export CHROMIUM_PATH="$(node -e "console.log(require(process.env.PLAYWRIGHT_MODULE + '/playwright').chromium.executablePath())")"
+          npm run skin:check -- "$GITHUB_WORKSPACE" --visual --strict --shots "$GITHUB_WORKSPACE/captures"
+      - name: Garder les captures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with: { name: captures, path: captures, if-no-files-found: ignore }

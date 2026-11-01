@@ -1,0 +1,36 @@
+{
+  "apiVersion": 2,
+  "id": "pages",
+  "name": {
+    "en": "Pages",
+    "fr": "Pages"
+  },
+  "version": "1.0.0",
+  "author": "Tests",
+  "license": "MIT",
+  "instances": "single",
+  "sections": [],
+  "consumes": [],
+  "provides": [],
+  "settings": [],
+  "permissions": [
+    "pages",
+    "sections"
+  ],
+  "icon": "📄",
+  "description": {
+    "en": "Free-form pages at the site root (/about, /contact…).",
+    "fr": "Des pages libres à la racine du site (/a-propos, /contact…)."
+  },
+  "content": {
+    "display": "list",
+    "clickAction": "detail",
+    "features": [
+      "cover",
+      "summary",
+      "body"
+    ],
+    "basePath": "",
+    "showInNav": false
+  }
+}
