@@ -46,6 +46,29 @@ export function serializePeriod(p: Period): string {
   return `${one(p.from)}/${one(p.to)}`;
 }
 
+/**
+ * « Tout le mois de [mois] » : du 1er au dernier jour du mois. Avec une année, le dernier jour est celui du calendrier (février : 28, ou 29 si l'année est
+ * bissextile). Sans année (« chaque année »), février finit le 29 : c'est la règle du cœur (`parsePeriod` accepte « 02-29 », `periodContains` compare
+ * mois et jour), donc la période couvre tout février, bissextile ou non.
+ */
+export function wholeMonth(m: number, y?: number): { from: DayRef; to: DayRef } | null {
+  if (!Number.isInteger(m) || m < 1 || m > 12) return null;
+  const last = daysIn(m, y);
+  return y === undefined ? { from: { m, d: 1 }, to: { m, d: last } } : { from: { m, d: 1, y }, to: { m, d: last, y } };
+}
+
+/** Le mois entier que couvrent ces deux jours (1 à 12), ou null : début ≠ 1er, fin ≠ dernier jour, mois ou années différents. */
+export function wholeMonthOf(from: DayRef, to: DayRef): number | null {
+  if (from.m !== to.m || from.y !== to.y) return null;
+  const whole = wholeMonth(from.m, from.y);
+  return whole && from.d === 1 && to.d === whole.to.d ? from.m : null;
+}
+
+/** Le nom du mois, dans la langue (« novembre », « November »), pour la liste « Tout le mois de ». */
+export function monthName(m: number, locale: string): string {
+  return new Intl.DateTimeFormat(locale, { month: "long", timeZone: "UTC" }).format(new Date(Date.UTC(2001, m - 1, 15)));
+}
+
 /** La date en toutes lettres : « 1er novembre » (fr), « 1 November » (en), avec l'année pour une période unique. */
 export function dateWords(x: DayRef, locale: string, withYear = false): string {
   const month = new Intl.DateTimeFormat(locale, { month: "long", timeZone: "UTC" }).format(new Date(Date.UTC(2001, x.m - 1, 15)));
