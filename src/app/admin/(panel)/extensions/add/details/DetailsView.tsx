@@ -51,7 +51,7 @@ export async function DetailsView({ id, repo, embedded = false }: { id?: string;
 
   // Tout ce qui est connu sans lire le dépôt (nom, icône, description) s'affiche TOUT DE SUITE ; la lecture du dépôt (README, autorisations) arrive ensuite, dans la page.
   return (
-    <Suspense fallback={<FicheSkeleton t={t} embedded={embedded} back={t("catalogue.back")} name={entry ? L(entry.name) : custom?.url ?? ""} icon={entry?.icon ?? "🧩"} description={entry ? L(entry.description) : undefined} />}>
+    <Suspense fallback={<FicheSkeleton text={t("fiche.loading")} embedded={embedded} back={t("catalogue.back")} name={entry ? L(entry.name) : custom?.url ?? ""} icon={entry?.icon ?? "🧩"} description={entry ? L(entry.description) : undefined} />}>
       <FicheBody embedded={embedded} entry={entry} custom={custom} target={target} />
     </Suspense>
   );
