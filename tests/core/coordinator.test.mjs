@@ -491,7 +491,7 @@ test("migration : texte SQL purement additif ; migration postérieure à toutes 
   // Les pages d'overlay (0.5.0) ont ajouté la migration suivante : celle-ci est l'avant-dernière, rien ne s'intercale avant elle.
   assert.equal(all.at(-3), MIGRATION);
   assert.equal(all.at(-2), "20261030090000_overlay_pages");
-  assert.equal(all.at(-1), "20261101090000_central_journal"); // le journal central (prochaine version) vient après, additif lui aussi
+  assert.equal(all.at(-1), "20261101090000_central_journal"); // le journal central (cœur 0.6.0) vient après, additif lui aussi
 });
 
 /* ───────────── Textes ───────────── */

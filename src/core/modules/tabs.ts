@@ -17,7 +17,7 @@ import type { LocalizedString } from "./types";
  */
 
 export const BUILTIN_TABS = ["use", "settings", "sources", "general"] as const;
-/** L'onglet « Historique » (prochaine version) : ajouté par le cœur à la page de CHAQUE module, après les autres, pour les personnes qui ont le droit `<module>:history`. Un module ne peut pas en déclarer un de ce nom. */
+/** L'onglet « Historique » (cœur 0.6.0) : ajouté par le cœur à la page de CHAQUE module, après les autres, pour les personnes qui ont le droit `<module>:history`. Un module ne peut pas en déclarer un de ce nom. */
 export const HISTORY_TAB = "history";
 export type BuiltinTab = (typeof BUILTIN_TABS)[number];
 

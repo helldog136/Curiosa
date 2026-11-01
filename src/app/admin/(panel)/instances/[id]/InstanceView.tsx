@@ -136,7 +136,7 @@ export async function InstanceView({ id, query: sp, inModal = false }: { id: str
     if (showSources) filled.add("sources");
     filled.add("general");
   }
-  // « Historique » (prochaine version) : ajouté par le cœur à chaque module, en dernier, pour qui a le droit `<module>:history` (Administration par défaut, réglable dans un rôle).
+  // « Historique » (cœur 0.6.0) : ajouté par le cœur à chaque module, en dernier, pour qui a le droit `<module>:history` (Administration par défaut, réglable dans un rôle).
   const canHistory = can(user, `${mod.manifest.id}:history`);
   const visible = [...visibleTabs(plan, filled), ...(canHistory ? [{ id: HISTORY_TAB, builtin: true, label: undefined }] : [])];
   const tabLabel = (tab: (typeof visible)[number]) => (tab.label !== undefined ? L(tab.label) : t(`moduleTabs.${tab.id}`));

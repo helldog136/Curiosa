@@ -66,7 +66,7 @@ export const RIGHT_ID_RE = /^[a-z][a-z0-9-]*(\.[a-z][a-z0-9-]*){0,2}$/;
 export const MAX_MODULE_RIGHTS = 20;
 /** Le droit implicite de chaque module : ouvrir sa page d'administration. Un module ne le redéclare pas. */
 export const OPEN = "open";
-/** Le droit implicite de chaque module (prochaine version) : voir son onglet « Historique ». Administration par défaut ; réglable dans un rôle ; un module ne le redéclare pas. */
+/** Le droit implicite de chaque module (cœur 0.6.0) : voir son onglet « Historique ». Administration par défaut ; réglable dans un rôle ; un module ne le redéclare pas. */
 export const HISTORY = "history";
 
 export type RightDecl = { id: string; label?: LocalizedString; help?: LocalizedString; sensitive?: boolean; default?: { admin?: boolean; editor?: boolean } };

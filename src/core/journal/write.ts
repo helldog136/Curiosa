@@ -2,7 +2,7 @@ import { prisma } from "@/core/db";
 import { ACTION_RE_FOR_MODULE, RESERVED_ACTION_RE, cleanText, isLevel, JOURNAL_LIMITS, serializeData, shapeData, type ActorKind, type JournalLevel, type LogEventDecl } from "./events";
 
 /**
- * ÉCRITURE AU JOURNAL CENTRAL (prochaine version). Un seul chemin pour les modules (`ctx.api.log.write`, voir modules/api.ts) et pour le cœur.
+ * ÉCRITURE AU JOURNAL CENTRAL (cœur 0.6.0). Un seul chemin pour les modules (`ctx.api.log.write`, voir modules/api.ts) et pour le cœur.
  * Jamais d'exception vers l'appelant. Pas de minuteur de fond : chaque écriture purge, en petites tranches, ce qui dépasse les bornes DU MODULE concerné.
  */
 

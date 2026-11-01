@@ -232,7 +232,7 @@ export type ModuleManifest = {
   entryPanels?: EntryPanelDecl[];
   /** Actions proposées à l'API MCP du cœur (désactivable). */
   mcp?: McpDecl[];
-  /** (prochaine version) Types d'événements que le module écrit au journal du cœur (`ctx.api.log.write`) : clé, libellé fr/en, champs autorisés. Voir core/journal/events.ts. */
+  /** (cœur 0.6.0) Types d'événements que le module écrit au journal du cœur (`ctx.api.log.write`) : clé, libellé fr/en, champs autorisés. Voir core/journal/events.ts. */
   logEvents?: LogEventDecl[];
   /** Ce qui se passe si l'utilisateur choisit ce module pendant l'assistant de première installation. Le cœur n'a aucune connaissance d'un module en particulier : tout est déclaré ici. */
   onboarding?: {
@@ -316,7 +316,7 @@ export type LogEntryInput = {
 
 export type ModuleApi = {
   /**
-   * Journal central du site (prochaine version ; aucune permission). Ne lève jamais : une ligne refusée (clé invalide) renvoie `false`. Le cœur déduit QUI agit
+   * Journal central du site (cœur 0.6.0 ; aucune permission). Ne lève jamais : une ligne refusée (clé invalide) renvoie `false`. Le cœur déduit QUI agit
    * (la personne connectée, un assistant IA, le module lui-même ou le système), injecte le module et l'instance, écarte tout champ non déclaré et purge à l'écriture
    * (90 jours, 500 lignes par module). Un cœur plus ancien n'a pas `ctx.api.log` : écrire `ctx.api.log?.write(…)`.
    */

@@ -40,7 +40,7 @@ export async function requireRole(min: Need, opts: { allowUnenrolled?: boolean; 
 }
 
 /**
- * Écrit une ligne du journal d'audit. `meta` (prochaine version) la rattache à un module (`module`, `instance`) pour son onglet « Historique » et fixe son niveau ;
+ * Écrit une ligne du journal d'audit. `meta` (cœur 0.6.0) la rattache à un module (`module`, `instance`) pour son onglet « Historique » et fixe son niveau ;
  * l'origine (`actorKind`) se déduit de la forme de `actor` (adresse e-mail = personne, « mcp: » = assistant, « module: » = module, sinon le système).
  */
 export async function audit(actor: string, action: string, target = "", meta: { module?: string; instance?: string; level?: "info" | "warn" | "error" } = {}): Promise<void> {

@@ -7,7 +7,9 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
-## Prochaine version (non publiée)
+## 0.6.0 — 2026-11-01
+
+**En bref.** Cette version rend l'administration plus simple à lire et à manier. Vous pouvez chercher dans une liste en tapant, activer ou désactiver d'un clic avec un interrupteur, lire des tableaux plus clairs, choisir une période ou une date de fin dans un seul champ, et garder les réglages rares repliés sous « Plus d'options ». La page des raccourcis de liens est entièrement refaite avec ces outils. Chaque extension a maintenant un onglet « Historique », et le « Journal d'audit » réunit tout ce qui se passe sur le site, avec des filtres. Rien ne change pour vos visiteuses et visiteurs, et vos réglages actuels sont conservés.
 
 ### Journal d'audit
 
