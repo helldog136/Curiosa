@@ -118,7 +118,7 @@ test("conseils de contraste : texte/fond sous 3 (4,5 recommandé), accent sous 2
   assert.deepEqual(C.contrastIssues("#fafafa", "#fde68a").map((i) => i.kind), ["accent"]);
   assert.deepEqual(C.contrastIssues("#fafafa", "#999999"), [], "environ 2,7 : plus de conseil");
   assert.deepEqual(C.contrastIssues("#121214", "#e8a23b", { accent2: "#1a1a1e" }).map((i) => i.kind), ["accent2"]);
-  assert.deepEqual(C.contrastIssues("#121214", "#e8a23b", { accent2: "#303036" }), [], "seconde couleur à environ 1,5 : plus de conseil");
+  assert.deepEqual(C.contrastIssues("#121214", "#e8a23b", { accent2: "#35353b" }), [], "seconde couleur au-dessus de 1,5 : plus de conseil");
   assert.deepEqual(C.contrastIssues("#121214", "#e8a23b", { accent2: "pas une couleur" }), [], "accent 2 invalide : ignoré");
   for (const p of THEME_PRESETS) assert.deepEqual(C.contrastIssues(p.background, p.accent, { accent2: p.accent2, surface: p.surface, text: p.text }), [], p.id);
 });

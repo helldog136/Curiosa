@@ -140,6 +140,8 @@ export function ThemePicker({ background, accent, accent2, surface, text, advanc
       onUse={(hex) => { set(hex); setForced(false); }}
       onReview={() => setKeptAt((p) => { const n = { ...p }; delete n[field]; return n; })} />
   );
+  // Conseils dont le champ n'est pas à l'écran (palette prête à l'emploi, ou texte et cartes en version simple) : une simple liste, sans bouton.
+  const unseen = probable.filter((i) => !showFields || (!advanced && (i.field === "text" || i.field === "surface")));
   const current: Values = { background: bg, accent: ac, accent2: a2, surface: sf, text: tx };
   const onValuesRef = useRef(onValues);
   useEffect(() => { onValuesRef.current = onValues; });
@@ -203,9 +205,9 @@ export function ThemePicker({ background, accent, accent2, surface, text, advanc
       <input type="hidden" name={`${prefix}accent2`} value={a2} />
       <input type="hidden" name={`${prefix}surface`} value={sf} />
       <input type="hidden" name={`${prefix}text`} value={tx} />
-      {!showFields && probable.length > 0 && (
+      {unseen.length > 0 && (
         <ul role="status" data-testid="theme-contrast-warning" className="space-y-1 rounded-xl border border-line bg-surface px-4 py-3 text-sm">
-          {probable.map((i) => <li key={`${i.pair}-${i.field}`}>{i.advice[locale]}</li>)}
+          {unseen.map((i) => <li key={`${i.pair}-${i.field}`}>{i.advice[locale]}</li>)}
         </ul>
       )}
     </div>

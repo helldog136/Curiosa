@@ -140,7 +140,7 @@ test("lisibilité en direct : un texte pâle donne un CONSEIL SOUS le champ (pas
   assert.match(dark, /name="dark_text" value="#2a2a30"/, "la couleur choisie reste celle du formulaire");
   const light = html.slice(html.indexOf('id="panel-light"'), html.indexOf('id="panel-dark"'));
   assert.doesNotMatch(light, /data-testid="warn-/, "le mode clair est lisible : aucun conseil");
-  assert.doesNotMatch(html, /disabled/, "rien ne bloque l'enregistrement");
+  assert.doesNotMatch(html, /disabled=/, "rien ne bloque l'enregistrement");
   const e = render(colorSection({ both: { light: LIGHT, dark: bad } }, "en"), "en");
   assert.match(e, /Tip: in dark mode, the text would be hard to read on this background \(ratio 1\.\d+; 4\.5 recommended for text\)\. You can keep this color\./);
   assert.match(e, />Try a more readable color<\/button>/);
@@ -161,7 +161,7 @@ test("sur basic (site existant), le même conseil s'affiche sous le champ", () =
   const html = render(colorSection({ modes: ["dark"], palette: "single", legacy: true, advanced: false, single: { ...DARK, text: "" , background: "#808080", accent: "#838383" }, both: {}, skinColors: {}, skinBackgrounds: {} }));
   assert.match(html, /data-testid="warn-accent"/);
   assert.match(html, /Conseil : /);
-  assert.doesNotMatch(html, /il faut|disabled/);
+  assert.doesNotMatch(html, /il faut|disabled=/);
 });
 
 // ── cartes, détails
@@ -272,15 +272,17 @@ test("page, avec un skin à deux modes choisi : skin actuel, « Annuler », Reve
   assert.doesNotMatch(en, /\bappearance\.[a-z]+\.?[A-Za-z.]*/);
 });
 
-test("page, un skin cassé : l'encadré le dit, le skin de base s'applique, rien n'est perdu ; les couleurs ajustées pour être lues sont signalées", async () => {
+test("page, un skin cassé : l'encadré le dit, le skin de base s'applique, rien n'est perdu ; les couleurs choisies ne sont pas ajustées, un conseil les accompagne", async () => {
   process.env.CURIOSA_SKINS_REPO = cat.url;
   await install("plain-light", "plain-light");
   await A.chooseSkin("plain-light");
   await setSetting("theme.text", "#f4f4f5");
   await setSetting("theme.background", "#ffffff");
   let html = await page("fr");
-  assert.match(html, /data-testid="adjusted-notice"[^>]*>[\s\S]*Nous avons ajusté une couleur pour qu&#x27;on puisse la lire\./);
-  assert.match(html, /« Revenir au skin » remet les couleurs d&#x27;origine/);
+  // couleurs choisies par la personne : jamais ajustées en cachette (pas d'encadré « Nous avons ajusté… »), seulement un conseil sous le champ
+  assert.doesNotMatch(html, /data-testid="adjusted-notice"/);
+  assert.doesNotMatch(html, /Nous avons ajusté une couleur/);
+  assert.match(html, /Conseil : [^<]*le texte serait difficile à lire sur ce fond/);
   fs.rmSync(path.join(SKINS, "plain-light"), { recursive: true });
   S.clearSkinCaches();
   html = await page("fr");
