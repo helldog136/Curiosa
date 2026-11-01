@@ -17,12 +17,15 @@ import { parseLevel } from "@/core/redirectQr";
 import { MAX_END_MESSAGE, redirectShortUrl, redirectState, siteUrlLooksLocal } from "@/core/redirects";
 import { redirectStats } from "@/core/redirectStats";
 import { siteTimezone } from "@/core/siteTime";
+import { Badge } from "@/components/admin/Badge";
+import { getModule } from "@/core/modules/registry";
+import { localized } from "@/core/modules/types";
 import { deleteRedirect, reactivateRedirect, setRedirectActive, updateRedirect } from "../actions";
 
 export const dynamic = "force-dynamic";
 
 export default async function RedirectPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const { t, advanced, locale } = await adminCtx("editor");
+  const { t, advanced, locale, config } = await adminCtx("editor");
   const { id } = await params;
   const sp = await searchParams;
   const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? "";
@@ -41,6 +44,10 @@ export default async function RedirectPage({ params, searchParams }: { params: P
   const withUrl = advanced
     ? await prisma.entry.findMany({ where: { url: { not: null }, instanceId: { in: collections.filter((c) => c.features.includes("url")).map((c) => c.id) } }, include: { translations: { take: 1 } }, take: 200 })
     : [];
+  // Lien géré par une extension : lecture seule ici (adresse, statistiques, QR code), tout se règle dans l'extension.
+  const owner = r.managedBy ? (await listInstances()).find((c) => c.id === r.managedBy) : undefined;
+  const ownerMod = owner ? await getModule(owner.moduleId).catch(() => null) : null;
+  const ownerName = owner ? (ownerMod ? localized(ownerMod.manifest.name, locale, config.defaultLocale) : owner.key) : "";
   const stateChip = { active: ui.chipOk, ended: ui.chipWarn, off: ui.chip } as const;
   const justCreated = one(sp.created) === "1";
 
@@ -51,11 +58,20 @@ export default async function RedirectPage({ params, searchParams }: { params: P
         <h1 className={`${ui.pageTitle} font-mono [overflow-wrap:anywhere]`}>/{r.path}</h1>
         <p className="flex flex-wrap items-center gap-2">
           {/* L'état se lit et se change au même endroit : l'interrupteur (R17). « Terminé » reste une étiquette, car il ne dépend pas de l'interrupteur. */}
-          <Switch label={t("redirects.switch.label", { address: `/${r.path}` })} checked={r.active} onText={t("redirects.state.active")} offText={t("redirects.state.off")} failedText={t("switch.failed")} onToggle={setRedirectActive.bind(null, id)} testid="redirect-switch" />
+          {owner ? <span className={stateChip.active}>{t("redirects.state.active")}</span> : (
+            <Switch label={t("redirects.switch.label", { address: `/${r.path}` })} checked={r.active} onText={t("redirects.state.active")} offText={t("redirects.state.off")} failedText={t("switch.failed")} onToggle={setRedirectActive.bind(null, id)} testid="redirect-switch" />
+          )}
+          {owner && <Badge tone="info" testid="managed-badge">{t("redirects.origin.extension", { name: ownerName })}</Badge>}
           {state === "ended" && <span className={stateChip.ended}>{t("redirects.state.ended")}</span>}{r.expiresAt && <span className="text-sm text-muted">{state === "ended" ? t("redirects.endedOn", { date: formatEnd(r.expiresAt, tz, locale) }) : t("redirects.untilDate", { date: formatEnd(r.expiresAt, tz, locale) })}</span>}</p>
       </div>
 
       {justCreated && <p role="status" className="rounded-xl border border-emerald-500/50 bg-emerald-500/10 p-4 text-[15px] font-medium text-emerald-800">{t("redirects.createdBanner")}</p>}
+      {owner && (
+        <div role="status" data-testid="managed-notice" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-sky-500/40 bg-sky-500/10 p-4">
+          <p className="max-w-prose text-[15px]">{t("redirects.managed.notice", { name: ownerName })}</p>
+          <Link href={`/admin/instances/${owner.id}`} className={`${ui.btnPrimary} min-h-11`}>{t("redirects.managed.open", { name: ownerName })}</Link>
+        </div>
+      )}
       {siteUrlLooksLocal() && <p role="alert" className="rounded-xl border border-amber-500/50 bg-amber-500/10 p-3 text-sm text-amber-800">{t("redirects.localWarning", { site: new URL(address).host })}</p>}
       {state === "ended" && (
         <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-500/50 bg-amber-500/10 p-4">
@@ -98,6 +114,7 @@ export default async function RedirectPage({ params, searchParams }: { params: P
         <p className={ui.help}>{t("redirects.stats.privacy")}</p>
       </section>
 
+      {!owner && <>
       <section className={`${ui.card} space-y-4`} aria-labelledby="settings-title">
         <h2 id="settings-title" className="text-lg font-semibold">{t("redirects.settingsTitle")}</h2>
         <ActionForm action={updateRedirect.bind(null, id)} submitLabel={t("action.save")} pendingLabel={t("progress.saving")}>
@@ -120,6 +137,7 @@ export default async function RedirectPage({ params, searchParams }: { params: P
           <form action={deleteRedirect.bind(null, id)}><ConfirmButton message={t("redirects.deleteConfirm", { address: address.replace(/^https?:\/\//, "") })} confirmLabel={t("redirects.deleteYes")} dangerConfirm pendingLabel={t("progress.deleting")}>{t("action.delete")}</ConfirmButton></form>
         </div>
       </section>
+      </>}
     </div>
   );
 }
