@@ -72,3 +72,19 @@ test("plafonds : entrée trop lourde refusée ; octets en trop, nom impair et fi
   assert.equal(out.ok && checkWoff2(out.woff2).ok, true);
   assert.ok(out.woff2.equals(ok), "les octets en trop après la dernière table ne sont pas recopiés")
 });
+
+test("suivi : CFF2 a son message ; contours TrueType incohérents refusés ; polices couleur COLR/CPAL acceptées", async () => {
+  const t = tablesOf(TTF);
+  const noGlyf = { ...t }; delete noGlyf.glyf; delete noGlyf.loca;
+  assert.equal(await conv(build(0x4f54544f, { ...noGlyf, CFF2: Buffer.alloc(8) })), "cff2");
+  // loca décroissant, trop court, ou qui dépasse glyf
+  const loca = Buffer.from(t.loca);
+  const long = TTF.readInt16BE(0) === 0 && tablesOf(TTF).head.readInt16BE(50) === 1;
+  const sz = long ? 4 : 2, w = (b, i, v) => (long ? b.writeUInt32BE(v, i * 4) : b.writeUInt16BE(v / 2, i * 2));
+  const dec = Buffer.from(loca); w(dec, 2, 0); w(dec, 1, 40);
+  assert.equal(await conv(build(0x00010000, { ...t, loca: dec })), "corrupt", "croissant exigé");
+  assert.equal(await conv(build(0x00010000, { ...t, loca: loca.subarray(0, sz * 3) })), "corrupt", "trop court pour numGlyphs");
+  const over = Buffer.from(loca); w(over, over.length / sz - 1, t.glyf.length + 4);
+  assert.equal(await conv(build(0x00010000, { ...t, loca: over })), "corrupt", "dépasse glyf");
+  assert.equal(await conv(build(0x00010000, { ...t, COLR: Buffer.alloc(14), CPAL: Buffer.alloc(14) })), "ok");
+});

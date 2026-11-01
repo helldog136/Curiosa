@@ -41,7 +41,7 @@ Le site n'a pas de politique de sécurité de contenu globale (ses pages portent
 
 ## Les polices envoyées
 
-**Conversion** (`src/core/fonts/sfnt.ts`) : le fichier `.ttf` ou `.otf` est lu pour de bon (signature, répertoire de tables dans le fichier et sans chevauchement, tables indispensables, `head` avec son nombre magique). Refusés : collections, ancien WOFF, dessins SVG et polices en images. On écrit alors un WOFF2 (tables `glyf` et `loca` en « transformation nulle », permise par la norme ; flux Brotli, mode police, qualité 11, dans un fil de travail), qui repasse par la vérification ci-dessous, comme un envoi WOFF2. Les octets en trop après la dernière table ne sont pas recopiés. Vérifié dans Chromium : une police convertie s'affiche par `@font-face`.
+**Conversion** (`src/core/fonts/sfnt.ts`) : le fichier `.ttf` ou `.otf` est lu pour de bon (signature, répertoire de tables dans le fichier et sans chevauchement, tables indispensables, `head` avec son nombre magique). Refusés : collections, ancien WOFF, dessins SVG et polices en images (bitmap), polices variables CFF2 (message dédié : les exporter en `.ttf` ou `.woff2`), contours TrueType incohérents (`loca` décroissant ou plus long que `glyf`). Les polices couleur `COLR`/`CPAL` sont acceptées (ce sont des données, sans script). On écrit alors un WOFF2 (tables `glyf` et `loca` en « transformation nulle », permise par la norme ; flux Brotli, mode police, qualité 11, par le pool de fils de Node (sans bloquer le serveur, un envoi à la fois)), qui repasse par la vérification ci-dessous, comme un envoi WOFF2. Les octets en trop après la dernière table ne sont pas recopiés. Vérifié dans Chromium : une police convertie s'affiche par `@font-face`.
 
 | Règle | Valeur |
 |---|---|
