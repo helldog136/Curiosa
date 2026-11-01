@@ -2,7 +2,9 @@ import fs from "node:fs";
 import { noteRawgModulesChanged } from "@/core/services/rawgNote";
 import path from "node:path";
 import { Prisma } from "@prisma/client";
-import { UPLOADS_DIR } from "@/core/config";
+import { FONTS_DIR, UPLOADS_DIR } from "@/core/config";
+import { UPLOAD_NAME_RE as FONT_NAME_RE } from "@/core/fonts/registry";
+import { reconcileUploads } from "@/core/fonts/uploads";
 import { prisma } from "@/core/db";
 import { migrateAllInstances, type MigrationOutcome } from "@/core/modules/dataMigrations";
 import { retireLegacyOff } from "@/core/modules/legacyOff";
@@ -32,6 +34,8 @@ export type ParsedBackup = {
   manifest: BackupManifest;
   data: { users: Row[]; settings: Row[]; modules: BackupModule[]; instances: Row[]; instanceTranslations: Row[]; entries: Row[]; entryTranslations: Row[]; redirects: Row[]; records: Row[]; /** Données gardées de modules retirés (absent des sauvegardes d'avant la 0.1.20). */ retired?: Row[]; /** Rôles et affectations (absents avant la 0.2.0 : recréés depuis `User.role`). */ roles?: Row[]; userRoles?: Row[]; /** Propriétaires des fichiers revendiqués (0.2.13 ; absent avant : aucun). */ uploadFiles?: Row[]; /** Pages d'overlay (0.5.0 ; absent avant : aucune). */ overlayPages?: Row[] };
   uploads: { name: string; content: Buffer }[];
+  /** Polices envoyées (0.7.0 ; absent avant : aucune). */
+  fonts?: { name: string; content: Buffer }[];
 };
 export type ParseError = "not-a-backup" | "wrong-password" | "corrupt" | "tampered" | "newer-format" | "newer-schema" | "no-owner";
 
@@ -111,7 +115,8 @@ function* checkFiles(tar: TarFile[]): Steps<Parsed> {
   const d = data as Record<"users" | "settings" | "instances" | "instanceTranslations" | "entries" | "entryTranslations" | "redirects" | "records", Row[]>;
   if (!d.users.some((u) => levelOf(u) === "owner" && typeof u.email === "string" && typeof u.passwordHash === "string")) return { ok: false, error: "no-owner" };
   const uploads = [...files.entries()].filter(([p]) => p.startsWith("uploads/") && UPLOAD_NAME_RE.test(p.slice(8))).map(([p, content]) => ({ name: p.slice(8), content }));
-  return { ok: true, backup: { manifest, data: { ...d, modules, retired, roles, userRoles, uploadFiles, overlayPages }, uploads } };
+  const fonts = [...files.entries()].filter(([p]) => p.startsWith("fonts/") && FONT_NAME_RE.test(p.slice(6))).map(([p, content]) => ({ name: p.slice(6), content }));
+  return { ok: true, backup: { manifest, data: { ...d, modules, retired, roles, userRoles, uploadFiles, overlayPages }, uploads, fonts } };
 }
 
 /* ───────────── Plan : que va-t-il se passer pour chaque module ? ───────────── */
@@ -312,6 +317,12 @@ export async function applyRestore(backup: ParsedBackup, opts: { confirmCustom: 
   fs.mkdirSync(UPLOADS_DIR, { recursive: true });
   for (const f of fs.readdirSync(UPLOADS_DIR)) if (UPLOAD_NAME_RE.test(f)) fs.rmSync(path.join(UPLOADS_DIR, f), { force: true });
   for (const u of backup.uploads) fs.writeFileSync(path.join(UPLOADS_DIR, u.name), u.content);
+  // Polices envoyées : celles du site sont remplacées par celles de la sauvegarde, puis la liste (restaurée avec les réglages) et les fichiers sont remis d'accord
+  // (un fichier qui n'est pas une vraie police est écarté, jamais écrit tel quel dans la liste servie).
+  fs.mkdirSync(FONTS_DIR, { recursive: true });
+  for (const f of fs.readdirSync(FONTS_DIR)) if (FONT_NAME_RE.test(f)) fs.rmSync(path.join(FONTS_DIR, f), { force: true });
+  for (const f of backup.fonts ?? []) fs.writeFileSync(path.join(FONTS_DIR, f.name), f.content);
+  await reconcileUploads(FONTS_DIR).catch((e) => console.error("[backup] fonts reconcile failed:", (e as Error)?.message));
 
   resetModuleRegistry();
   opStep("finish");

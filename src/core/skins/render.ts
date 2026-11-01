@@ -16,7 +16,7 @@ import { toSkinDefinition } from "./folder";
 import { invalidateSkinCache, skinCacheGeneration } from "./invalidate";
 import { getModuleSkinLayer } from "./moduleParts";
 import { MODE_SCRIPT_URL } from "./modeScript";
-import { retouchesFrom, RETOUCH_KEYS } from "./retouch";
+import { retouchesFrom, RETOUCH_READ_KEYS } from "./retouch";
 import { loadInstalledSkin } from "./service";
 import { renderSheet } from "./sheet";
 import type { SkinDefinition } from "./types";
@@ -72,7 +72,7 @@ export async function resolveLook(localized: SiteConfig, opts: { previewSkinId?:
   const { skin, serial } = preview ? await previewSkin(opts.previewSkinId!, moduleLayer.byModule) : await activeSkin(moduleLayer.byModule);
   const isBasic = skin === BASIC;
   const raw = new Map<string, unknown>();
-  if (!preview) for (const key of RETOUCH_KEYS) raw.set(key, await getSetting(key));
+  if (!preview) for (const key of RETOUCH_READ_KEYS) raw.set(key, await getSetting(key));
   const retouches = retouchesFrom((k) => raw.get(k));
   const optionsSetting = preview ? undefined : await getSetting<Record<string, string>>("skin.options");
   const options = optionsSetting && typeof optionsSetting === "object" && !Array.isArray(optionsSetting) ? optionsSetting : {};
@@ -94,7 +94,8 @@ export async function resolveLook(localized: SiteConfig, opts: { previewSkinId?:
   if (!hit) {
     const composed = composeSkin({ skin, retouches, options, moduleTokens: moduleLayer.tokens, modulePairs: moduleLayer.pairs });
     const layers = effectiveLayers(bg.preset, bg.custom, bg.image, bg.svg);
-    const sheet = renderSheet(composed, {
+    // Les règles `@font-face` des polices choisies (docs/POLICES.md) viennent AVANT la feuille ; sans police choisie, la feuille est strictement celle d'avant.
+    const sheet = (retouches.fonts?.faces ?? "") + renderSheet(composed, {
       glow: (theme, scope) => glowCss(glowLevel, localized.glow.custom, theme.accent, scope),
       background: layers.length ? (theme, scope) => backgroundRules(layers, theme, scope) : undefined,
       backgroundBase: layers.length ? BACKGROUND_BASE_CSS : undefined,

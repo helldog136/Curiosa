@@ -6,6 +6,7 @@ import { BASIC_ID } from "@/core/skins/constants";
 import { issueText } from "@/core/skins/messages";
 import { SKIN_ID_RE } from "@/core/skins/allowlist";
 import * as skins from "@/core/skins/service";
+import { fontStatus } from "./fonts";
 import type { Outcome } from "./actions";
 import type { Plan } from "./requests";
 
@@ -61,6 +62,7 @@ export async function skinStatus(): Promise<unknown> {
       colors: r.palette === "both" ? { mode: "light and dark", light: colors(r.light), dark: colors(r.dark) } : { mode: "one mode", ...colors(r.single) },
       font: r.font ?? null, glow: v.raw.glow ?? null, background: v.raw.bgPreset ?? null, headerLayout: v.raw.headerLayout ?? null,
     },
+    fonts: await fontStatus(),
     adjustedForReadability: v.notices.map((n) => n.en),
     canUndoLastChange: v.snapshot !== null,
     where: "Admin > Appearance: the owner chooses a skin, previews it, adjusts colors, and can always undo or go back to the skin's own values.",
