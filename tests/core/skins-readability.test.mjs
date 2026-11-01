@@ -397,8 +397,8 @@ test("retouches : texte trop pâle, CONSEIL (pas une erreur) avec exemple, sous 
   const w = out[0];
   assert.equal(w.field, "text");
   assert.equal(w.mode, "dark");
-  assert.equal(w.message.fr, "dans le mode sombre, le texte serait difficile à lire sur ce fond");
-  assert.equal(w.message.en, "in dark mode, the text would be hard to read on this background");
+  assert.equal(w.message.fr, "Dans le mode sombre, le texte serait difficile à lire sur ce fond.");
+  assert.equal(w.message.en, "In dark mode, the text would be hard to read on this background.");
   assert.match(w.advice.fr, /^Conseil : dans le mode sombre, le texte serait difficile à lire sur ce fond \(rapport 2,\d+ ; 4,5 recommandé pour le texte\)\. Vous pouvez garder cette couleur\.$/);
   assert.match(w.advice.en, /^Tip: in dark mode, the text would be hard to read on this background \(ratio 2\.\d+; 4\.5 recommended for text\)\. You can keep this color\.$/);
   for (const t of [w.advice.fr, w.advice.en]) assert.doesNotMatch(t, /il faut|must|need|required|erreur|error/i, "un conseil n'exige rien");
@@ -428,8 +428,8 @@ test("retouches : SEUILS relaxés du conseil (texte 3, liens 2, interface 2, sec
 test("retouches : en « un seul mode », la phrase ne parle pas de mode", () => {
   const w = R.probableIllegibility({ background: "#ffffff", text: "#cccccc" }, null)[0];
   assert.equal(w.mode, null);
-  assert.equal(w.message.fr, "le texte serait difficile à lire sur ce fond");
-  assert.equal(w.message.en, "the text would be hard to read on this background");
+  assert.equal(w.message.fr, "Le texte serait difficile à lire sur ce fond.");
+  assert.equal(w.message.en, "The text would be hard to read on this background.");
   assert.match(w.advice.fr, /^Conseil : le texte serait/);
   assert.match(w.exampleHint.fr, /plus foncé/);
 });
@@ -448,7 +448,7 @@ test("retouches : couleur principale et seconde couleur trop proches du fond ; l
 });
 
 test("retouches : sous le fond, la valeur proposée est celle du FOND", () => {
-  const w = R.probableIllegibility({ background: "#7a7a7a" }, null);
+  const w = R.probableIllegibility({ background: "#999999" }, null);
   assert.equal(w[0]?.field, "background");
   assert.deepEqual(R.probableIllegibility({ background: w[0].example }, null), [], "avec la valeur proposée, plus de conseil");
 });

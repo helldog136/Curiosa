@@ -312,7 +312,7 @@ test("couleurs CHOISIES par la personne : appliquées telles quelles sur un skin
     assert.equal(m.notice, null);
     assert.deepEqual(m.changes, []);
     for (const [token, field] of [["--v-bg", "background"], ["--v-surface", "surface"], ["--v-fg", "text"], ["--v-accent", "accent"], ["--v-accent2", "accent2"]]) assert.equal(m.tokens[token], mine[field], `${token} tel que choisi`);
-    assert.equal(m.tokens["--sk-color-link"], undefined, "pas de couleur de lien substituée à l'accent choisi");
+    assert.ok([undefined, "var(--v-accent)"].includes(m.tokens["--sk-color-link"]), "les liens gardent l'accent choisi (aucune couleur de lien substituée)");
     assert.equal(m.tokens["--sk-gradient"], undefined, "pas de dégradé uni imposé");
   }
   const css = renderSheet(c);

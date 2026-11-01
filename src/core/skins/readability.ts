@@ -520,11 +520,11 @@ export type ProbableIssue = {
   required: number;
   /** Niveau recommandé (AA), affiché à la personne. */
   recommended: number;
-  /** Ce qui est mesuré : la clause (« dans le mode clair, les liens seraient difficiles à lire sur ce fond »). */
+  /** Ce qui est mesuré, en une phrase (« Dans le mode clair, les liens seraient difficiles à lire sur ce fond. »). */
   message: Text;
   /** Le conseil complet, prêt à afficher : « Conseil : … (rapport 2,6 ; 4,5 recommandé pour le texte). Vous pouvez garder cette couleur. » */
   advice: Text;
-  /** Chiffres seuls : « rapport 2,6 ; 4,5 recommandé pour le texte ». */
+  /** Chiffres seuls : « Rapport 2,6 ; 4,5 recommandé pour le texte. » */
   detail: Text;
   /** Valeur suggérée pour le champ (jamais appliquée d'office). */
   example?: string;
@@ -572,6 +572,12 @@ function suggestFor(base: Hexes, field: ProbableField, keys: readonly Key[], min
   return best ? { hex: best.hex, dir: best.dir } : null;
 }
 
+/** Une phrase devient une proposition à insérer dans une autre : minuscule initiale, point final retiré. */
+const clause = (t: Text): Text => {
+  const f = (x: string) => x.replace(/\.$/, "").replace(/^[A-ZÀ-Ý]/, (c) => c.toLowerCase());
+  return { fr: f(t.fr), en: f(t.en) };
+};
+
 const FOR: Record<"text" | "link" | "ui" | "second", Text> = {
   text: { fr: "pour le texte", en: "for text" },
   link: { fr: "pour les liens", en: "for links" },
@@ -606,7 +612,7 @@ export function probableIllegibility(colors: RetouchColors, mode: Mode | null): 
       const detail = makeText(d.fr, d.en, { ratio: round2(value), rec: recommend, for: forWhat });
       const item: ProbableIssue = {
         field, pair, mode, ratio: round2(value), required: advise, recommended: recommend, message, detail,
-        advice: makeText(a.fr, a.en, { msg: message, detail }),
+        advice: makeText(a.fr, a.en, { msg: clause(message), detail: clause(detail) }),
       };
       const s = suggestFor(base, fixField, fixKeys, recommend);
       if (s) {
