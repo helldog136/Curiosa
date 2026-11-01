@@ -85,6 +85,7 @@ test("lecture : skin_status dit le skin, les retouches, le bouton Clair / Sombre
   assert.equal(s.adjustments.colors.mode, "light and dark");
   assert.equal(s.adjustments.colors.dark.accent, "#aaccff");
   assert.equal(s.canUndoLastChange, true);
+  assert.deepEqual(s.readabilityTips, [], "des couleurs lisibles : aucun conseil");
   assert.ok(!JSON.stringify(s).includes("hunter2"));
   const l = (await call(token, "maintenance_skin_list")).value;
   assert.deepEqual(l.installed.map((i) => [i.id, i.active, i.source]), [["basic", false, "built in"], ["duo", true, "official catalogue"]]);
@@ -227,4 +228,21 @@ test("demandes : la page des demandes décrit chaque action de skin en français
     assert.match(describeRequest(req, makeTranslator("en"), (x) => x), en);
     for (const k of [`aim.risk.${action}`, `aim.action.${action}`, `aim.tool.${action}`]) for (const l of ["fr", "en"]) assert.notEqual(makeTranslator(l)(k), k, `${l} ${k}`);
   }
+});
+
+test("une couleur « illisible » reste acceptée et appliquée : skin_status la rapporte telle quelle, avec un CONSEIL (information, pas une erreur ni une correction)", async () => {
+  const { chooseSkin } = await import("@/core/skins/appearance");
+  await cat.publish("duo", { from: "duo" });
+  assert.equal((await SK.installFromCatalogue("duo")).ok, true);
+  await chooseSkin("duo");
+  await setSetting("theme.palette", "both");
+  await setSetting("theme.dark.text", "#2a2a30");
+  const { token } = await maintenanceToken();
+  const s = (await call(token, "maintenance_skin_status")).value;
+  assert.equal(s.adjustments.colors.dark.text, "#2a2a30", "la couleur choisie est gardée telle quelle");
+  assert.deepEqual(s.adjustedForReadability, [], "aucune correction cachée");
+  const tip = s.readabilityTips.find((t) => t.mode === "dark" && t.field === "text");
+  assert.ok(tip, JSON.stringify(s.readabilityTips));
+  assert.match(tip.tip, /^Tip: in dark mode, the text would be hard to read on this background \(ratio \d\.\d+; 4\.5 recommended for text\)\. You can keep this color\.$/);
+  assert.match(tip.suggestedColor, /^#[0-9a-f]{6}$/);
 });

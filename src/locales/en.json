@@ -2348,6 +2348,12 @@
   "appearance.switch.offOneMode": "With this background, your site has just one mode: the Light / Dark button won't appear.",
   "appearance.switch.offSkin": "This skin has just one mode: the Light / Dark button won't appear.",
   "appearance.resetField": "↺ Skin's value",
+  "appearance.advice.try": "Try a more readable color",
+  "appearance.advice.keep": "Keep my color",
+  "appearance.advice.use": "Use this color",
+  "appearance.advice.proposal": "Suggestion: {color}",
+  "appearance.advice.kept": "Color kept despite the tip.",
+  "appearance.advice.review": "See the tip again",
   "appearance.reset.title": "Reset to the skin",
   "appearance.reset.help": "Puts back the colors, font, glow, background and header of “{name}”. Your adjustments are kept aside: you will be able to undo.",
   "appearance.reset.none": "You haven't adjusted anything: your site has exactly the values of “{name}”.",
@@ -3259,7 +3265,7 @@
   "settings.text": "Text",
   "settings.colorOptionalHint": "Optional: leave empty for an automatic value.",
   "settings.colorInvalid": "Enter a color in #rrggbb format.",
-  "settings.contrast.text": "Text is hard to read on this background (contrast {ratio}:1, at least 4.5:1 recommended).",
-  "settings.contrast.accent": "The accent barely stands out from the background (contrast {ratio}:1, at least 3:1 recommended).",
-  "settings.contrast.accent2": "The secondary color barely stands out from the background (contrast {ratio}:1, at least 3:1 recommended)."
+  "settings.contrast.text": "Tip: text is hard to read on this background (ratio {ratio}; 4.5 recommended for text). You can keep this color.",
+  "settings.contrast.accent": "Tip: the accent barely stands out from the background (ratio {ratio}; 3 recommended for interface elements). You can keep this color.",
+  "settings.contrast.accent2": "Tip: the secondary color barely stands out from the background (ratio {ratio}; 3 recommended). You can keep this color."
 }
