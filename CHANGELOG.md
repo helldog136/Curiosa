@@ -11,9 +11,10 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Tableau de bord
 
-- **Les brouillons se retrouvent.** Les chiffres « Entrées publiées » et « Brouillons » disent d'où ils viennent (« 1 dans Pages ») et chaque ligne ouvre la liste de cette extension, déjà réglée sur les brouillons. Rien venant d'une extension retirée n'est compté.
-- **Un filtre « Publiées / Brouillons » avec leur nombre** en haut de chaque liste d'entrées.
-- **Une seule carte « Extensions installées »** en mode simple, au lieu de « Instances de modules » et « Modules installés » (gardées en mode avancé). Le site en chiffres s'affiche aussi en mode simple.
+- **Vos brouillons sont sous vos yeux.** Un bloc « À finir » montre les premiers brouillons de toutes vos extensions, chacun avec son nom et un bouton « Ouvrir ». « Voir tous les brouillons » ouvre la liste complète.
+- **Des chiffres qui mènent quelque part.** « Contenus publiés » dit combien il y en a dans chaque extension, et chaque ligne ouvre sa liste. Ce qui s'ouvre porte une flèche, un simple chiffre ne ressemble plus à un bouton.
+- **Un filtre « Publiées / Brouillons » avec leur nombre** en haut de chaque liste de contenus.
+- **Un mode simple plus clair.** Une seule carte « Extensions installées » ; « Liens courts » n'apparaît que s'il y en a. « Instances de modules » et « Modules installés » restent en mode avancé.
 
 ### Apparence du site
 
