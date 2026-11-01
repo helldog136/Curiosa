@@ -4,7 +4,7 @@ import { findCatalogueEntry } from "./catalogue";
 import { parseRepoUrl } from "./installer";
 import { parseManifest } from "./manifest";
 import { loadPreviewImages, PREVIEW_LIMITS, type PreviewImage } from "./previews";
-import { getModulePreview, type PreviewTarget } from "./readme";
+import { getPreviewImages, warmModulePreview, type PreviewTarget } from "./readme";
 import { moduleDir } from "./registry";
 
 /**
@@ -52,10 +52,10 @@ export async function readInstalledPreviews(id: string, root: string = moduleDir
 
 export const realPreviewDeps: PreviewDeps = {
   async catalogueTarget(id) {
-    const entry = await findCatalogueEntry(id);
+    const entry = await findCatalogueEntry(id, { staleOk: true });
     return entry?.repo ? { kind: "repo", url: entry.repo, ref: entry.ref, subdir: entry.subdir } : null;
   },
-  async repoPreview(target) { return (await getModulePreview(target)).images; },
+  repoPreview: (target) => getPreviewImages(target),
   installedImages: (id) => readInstalledPreviews(id),
 };
 
@@ -85,4 +85,22 @@ export async function servePreview(params: URLSearchParams, deps: PreviewDeps = 
   const src: PreviewSource = sources[0] === "id" ? { id: value } : sources[0] === "repo" ? { repo: value } : { installed: value };
   const image = (await previewImages(src, deps)).find((i) => i.index === Number(n));
   return image ? { status: 200, mime: image.mime, bytes: image.bytes } : { status: 404 };
+}
+
+/**
+ * Réchauffe la lecture d'une fiche quand la personne survole ou touche « Voir le détail » : le dépôt se lit déjà pendant qu'elle décide de cliquer.
+ * Rend la main tout de suite (jamais d'attente, jamais d'erreur) ; la lecture est la même que celle de la fiche (une seule à la fois par module, voir readme.ts).
+ * Même règle que les visuels : l'adresse d'un module du catalogue vient du catalogue, celle d'un dépôt personnel est contrôlée par `parseRepoUrl`.
+ */
+export async function warmFiche(src: { id: string } | { repo: string }): Promise<void> {
+  try {
+    if ("id" in src) {
+      if (!ID_RE.test(src.id)) return;
+      const target = await realPreviewDeps.catalogueTarget(src.id);
+      if (target) warmModulePreview(target);
+      return;
+    }
+    const parsed = parseRepoUrl(src.repo);
+    if (parsed.ok) warmModulePreview({ kind: "repo", url: parsed.repo.url, ref: parsed.repo.ref, subdir: parsed.repo.subdir });
+  } catch { /* réchauffer est un plus */ }
 }

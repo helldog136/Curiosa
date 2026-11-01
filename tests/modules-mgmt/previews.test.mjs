@@ -108,7 +108,8 @@ test("dépôt : les visuels déclarés sont lus côté serveur et vérifiés ; u
     "previews/ok.png": png(800, 500), "previews/lourd.png": padPng(png(800, 500), 160 * 1024), "previews/faux.webp": png(800, 500), "previews/ok2.webp": webp(1000, 600),
     "previews/non-declare.png": png(800, 500), "README.md": "# Démo",
   });
-  const p = await R.getModulePreview({ kind: "repo", url: repo.url });
+  const images = await R.getPreviewImages({ kind: "repo", url: repo.url });
+  const p = { images };
   assert.deepEqual(p.images.map((i) => [i.index, i.decl.file, i.mime, i.width, i.height]), [[0, "previews/ok.png", "image/png", 800, 500], [4, "previews/ok2.webp", "image/webp", 1000, 600]]);
   assert.ok(Buffer.isBuffer(p.images[0].bytes) && p.images[0].bytes.equals(png(800, 500)), "octets identiques, pas abîmés par un décodage en texte");
   const tmp = path.join(process.env.DATA_DIR, "tmp");
@@ -117,16 +118,16 @@ test("dépôt : les visuels déclarés sont lus côté serveur et vérifiés ; u
 
 test("dépôt : sans `previews`, ou module dans un sous-dossier, la fiche se lit comme avant", async () => {
   const none = makeRepo({ "module.json": base, "README.md": "x" });
-  assert.deepEqual((await R.getModulePreview({ kind: "repo", url: none.url })).images, []);
+  assert.deepEqual(await R.getPreviewImages({ kind: "repo", url: none.url }), []);
   const grouped = makeRepo({ "mod/module.json": MANIFEST([decl("previews/a.png")]), "mod/previews/a.png": png(700, 400), "other/previews/a.png": png(300, 300) });
-  const p = await R.getModulePreview({ kind: "repo", url: grouped.url, subdir: "mod" });
+  const p = { images: await R.getPreviewImages({ kind: "repo", url: grouped.url, subdir: "mod" }) };
   assert.deepEqual(p.images.map((i) => [i.width, i.height]), [[700, 400]], "l'image du dossier du module, pas celle d'un voisin");
   const bad = makeRepo({ "module.json": "{ cassé" });
-  assert.deepEqual((await R.getModulePreview({ kind: "repo", url: bad.url })).images, []);
+  assert.deepEqual(await R.getPreviewImages({ kind: "repo", url: bad.url }), []);
 });
 
 test("mémoire : le cache des aperçus est borné en nombre ET en octets d'images (le plus ancien part d'abord, le dernier lu reste)", () => {
-  const entry = (n) => ({ at: 0, value: { manifest: null, readme: null, truncated: false, images: n ? [{ index: 0, bytes: Buffer.alloc(n) }] : [] } });
+  const entry = (n) => ({ at: 0, value: { images: n ? [{ index: 0, bytes: Buffer.alloc(n) }] : [] } });
   const m = new Map([["a", entry(500)], ["b", entry(500)], ["c", entry(500)]]);
   R.trimPreviewCache(m, 100, 1200);
   assert.deepEqual([...m.keys()], ["b", "c"]);

@@ -165,3 +165,33 @@ test("le Catalogue indique d'où vient sa liste, et les dépôts reconnus de l'i
   const src = await M.getCatalogueSource();
   assert.equal(src.source, "repository");
 });
+
+test("index du catalogue : plusieurs demandes en même temps ne le lisent qu'une fois ; une copie périmée est servie tout de suite (staleOk) et relue en coulisse", async () => {
+  let reads = 0;
+  let release;
+  const gate = new Promise((r) => { release = r; });
+  const git = async (args) => {
+    if (args[0] === "init") return "";
+    if (args[0] === "fetch") { reads++; await gate; return ""; }
+    if (args[0] === "show" && String(args[1]).endsWith("index.json")) return JSON.stringify({ version: 1, modules: [ENTRY("alpha")] });
+    throw new Error("absent");
+  };
+  process.env.CURIOSA_CATALOGUE_REPO = "https://github.com/x/curiosa-extras";
+  let t = 1_000;
+  const now = () => t;
+  const first = Promise.all([C.getRecognizedDetailed({ git, now }), C.getRecognizedDetailed({ git, now }), C.getRecognizedDetailed({ git, now })]);
+  release();
+  const [a, b] = await first;
+  assert.deepEqual([reads, ids(a), ids(b)], [1, ["alpha"], ["alpha"]], "une seule lecture pour trois demandes");
+  t += 16 * 60_000; // l'index a plus de 15 minutes
+  let release2; const gate2 = new Promise((r) => { release2 = r; });
+  const slow = async (args) => (args[0] === "fetch" ? (reads++, await gate2, "") : git(args));
+  const t0 = Date.now();
+  const stale = await C.getRecognizedDetailed({ git: slow, now, staleOk: true });
+  assert.deepEqual(ids(stale), ["alpha"]);
+  assert.ok(Date.now() - t0 < 500, "servi sans attendre le réseau");
+  await new Promise((r) => setTimeout(r, 50));
+  assert.equal(reads, 2, "la relecture a bien démarré en coulisse");
+  release2();
+  await new Promise((r) => setTimeout(r, 150)); // la relecture se termine (et efface son dossier temporaire) avant la fin du test
+});
