@@ -7,7 +7,6 @@ import { parseRepoUrl } from "@/core/modules/installer";
 import { getModulePreview, type ModulePreview, type PreviewTarget } from "@/core/modules/readme";
 import { listModuleRows } from "@/core/modules/registry";
 import { listRetired } from "@/core/modules/retired";
-import { Callout } from "@/components/admin/Page";
 import { localized } from "@/core/modules/types";
 import { buildNames, viewPlan } from "@/core/modules/dependencyView";
 import { normalizeNeeds } from "@/core/modules/serviceVersions";
@@ -17,8 +16,13 @@ import { Checkbox } from "@/components/admin/Field";
 import { ui } from "@/components/admin/ui";
 import { Markdown } from "@/components/site/Markdown";
 import { InstallButton } from "@/components/admin/InstallButton";
-import { EXTENSIONS_ADD_HREF, EXTENSIONS_HREF } from "@/core/modules/extensionsLinks";
 import { installCustomAction, installExtraAction } from "../actions";
+import { galleryLabels } from "@/components/admin/FicheParts";
+import { ExtensionFiche, FicheFrame } from "@/components/admin/ExtensionFiche";
+import type { GalleryItem } from "@/components/admin/PreviewGallery";
+import { installBarState, techSummary, whatItAdds } from "@/core/modules/ficheView";
+import { previewUrl, readInstalledPreviews, type PreviewSource } from "@/core/modules/previewServe";
+import { describeMissing } from "@/core/modules/dependencyMessages";
 
 /**
  * Avant d'installer : le README du module et ce qu'il demande (permissions, services), lus sans l'installer.
@@ -40,7 +44,7 @@ export async function DetailsView({ id, repo, embedded = false }: { id?: string;
   } else if (repo) {
     const parsed = parseRepoUrl(repo);
     if (parsed.ok) { custom = parsed.repo; target = { kind: "repo", url: parsed.repo.url, ref: parsed.repo.ref, subdir: parsed.repo.subdir }; }
-    else return <Frame embedded={embedded} back={t("catalogue.back")}><p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm">{t(parsed.error)}</p></Frame>;
+    else return <FicheFrame embedded={embedded} back={t("catalogue.back")}><p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm">{t(parsed.error)}</p></FicheFrame>;
   } else notFound();
 
   let preview: ModulePreview | null = null;
@@ -62,123 +66,61 @@ export async function DetailsView({ id, repo, embedded = false }: { id?: string;
   const planView = !installed && (entry || m) ? await viewPlan(entry?.id ?? m?.id ?? "", needs, names) : null;
 
   const installLabels = { install: t("catalogue.install"), installing: t("catalogue.installing"), done: t("catalogue.installDone"), failed: t("catalogue.installFailed") };
-  const canInstall = isOwner && !failed && !!entry && !installed && entry.compatible && !entry.needsNewerCore;
+  const bar = installBarState({ canInstall: isOwner, hasModule: !!(entry || m), failed, installed, entry: entry ? { compatible: entry.compatible, needsNewerCore: entry.needsNewerCore, origin: entry.origin } : undefined, problems: planView?.problems.length ?? 0 });
+  const repoSpec = custom ? `${custom.url}${custom.ref || custom.subdir ? `#${custom.ref ?? ""}${custom.subdir ? `:${custom.subdir}` : ""}` : ""}` : "";
+
+  // Les visuels : d'un module déjà installé, ceux de son dossier ; sinon ceux que le cœur a lus dans son dépôt. Servis par le site lui-même (previewServe.ts), jamais chargés depuis un site tiers.
+  const images = installed && entry ? await readInstalledPreviews(entry.id) : preview?.images ?? [];
+  const source: PreviewSource = installed && entry ? { installed: entry.id } : entry ? { id: entry.id } : { repo: repoSpec };
+  const version = entry?.version ?? m?.version;
+  const gallery: GalleryItem[] = images.map((i) => ({ src: previewUrl(source, i.index, version), width: i.width, height: i.height, caption: L(i.decl.caption), alt: L(i.decl.alt), typeLabel: t(`fiche.gallery.type.${i.decl.type}`) }));
+
+  // Résumé d'une ligne des détails techniques : « Garde des données de votre public · Demande 3 autorisations · Installe aussi Contacts ».
+  const alsoInstalls = (planView?.lines ?? []).filter((l) => l.action === "install").map((l) => l.name);
+  const origin = entry ? (entry.origin === "extra" ? "extra" : "official") : "custom";
+  const summary = m
+    ? (() => { const s = techSummary(m, perms); return [t(`fiche.tech.keeps.${s.keeps}`), s.asks === 0 ? t("fiche.tech.asks.none") : t("fiche.tech.asks", { n: s.asks }), alsoInstalls.length ? t("fiche.tech.alsoInstalls", { names: alsoInstalls.join(", ") }) : ""].filter(Boolean).join(" · "); })()
+    : origin === "official" ? t("fiche.tech.source.official") : t(origin === "extra" ? "catalogue.origin.extra" : "catalogue.origin.custom");
+
+  // Le contrôle d'installation : un bouton pour le catalogue officiel ; une case à cocher et un bouton pour un module non vérifié (index supplémentaire ou dépôt personnel).
+  const formClass = "flex flex-wrap items-center gap-x-4 gap-y-2 max-sm:flex-col max-sm:items-stretch [&_button]:min-h-11 max-sm:[&_button]:w-full";
+  const action = bar.kind !== "ready" ? null : entry && !bar.confirm ? <InstallButton id={entry.id} name={name} labels={installLabels} /> : entry ? (
+    <ActionForm action={installExtraAction} submitLabel={t("catalogue.install")} pendingLabel={t("catalogue.installing")} track="install" className={formClass}>
+      <input type="hidden" name="id" value={entry.id} />
+      <Checkbox name="trust" label={t("catalogue.trust")} required />
+    </ActionForm>
+  ) : (
+    <ActionForm action={installCustomAction} submitLabel={t("catalogue.install")} pendingLabel={t("catalogue.installing")} track="install" className={formClass}>
+      <input type="hidden" name="repo" value={repoSpec} />
+      <Checkbox name="trust" label={t("catalogue.trust")} required />
+    </ActionForm>
+  );
+  const firstProblem = planView?.problems[0];
 
   return (
-    <Frame embedded={embedded} back={t("catalogue.back")}>
-      <header className="flex items-start gap-5">
-        <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-3xl bg-accent/10 text-4xl" aria-hidden>{icon}</span>
-        <div className="min-w-0">
-          <h1 className={ui.pageTitle}>{name}</h1>
-          <p className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted">
-            {entry && entry.origin !== "extra" ? <span className={ui.chipOk}>✔ {t("catalogue.verified")}</span> : entry ? <span className={ui.chipWarn}>⚠ {t("catalogue.origin.extra")}</span> : <span className={ui.chipWarn}>⚠ {t("catalogue.origin.custom")}</span>}
-            {advanced && (entry?.version ?? m?.version) && <span>v{entry?.version ?? m?.version}</span>}
-            {m?.author && <span>{t("catalogue.by", { author: m.author })}</span>}
-            {m?.license && advanced && <span>· {m.license}</span>}
-          </p>
-          {advanced && custom && <p className="mt-1 break-all font-mono text-xs text-muted">{custom.url}{custom.ref || custom.subdir ? `#${custom.ref ?? ""}${custom.subdir ? `:${custom.subdir}` : ""}` : ""}</p>}
-        </div>
-      </header>
-      {entry ? <p className="max-w-2xl text-[17px] leading-7">{L(entry.description)}</p> : m?.description ? <p className="max-w-2xl text-[17px] leading-7">{L(m.description)}</p> : null}
-
-      {/* Dépôt personnel sans module lisible (par exemple la racine d'un dépôt qui en regroupe plusieurs) : on le dit, sans proposer d'installer. */}
-      {custom && !failed && !m && <p role="alert" data-testid="no-module" className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm">{t("modules.error.nomanifest")}</p>}
-
-      {kept.length > 0 && <Callout tone="info" role="status"><span data-testid="kept-note">🗂 {t("kept.detailsNote", { name, count: kept.length })}</span></Callout>}
-
-      {failed && <p role="alert" className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-sm">{t("catalogue.previewFailed")}</p>}
-
-      {planView && <DependencyPlanBox view={planView} t={t} names={names} advanced={advanced} />}
-
-      {m && (
-        <section className={`${ui.card} space-y-3`}>
-          <h2 className="text-lg font-semibold">{t("catalogue.asks.friendly")}</h2>
-          {perms.length > 0 ? (
-            <ul className="space-y-2 text-[15px]">
-              {perms.map((p) => <li key={p} className="flex items-start gap-3"><span aria-hidden className="mt-0.5">✓</span><span>{t(`perm.${p}`)}</span></li>)}
-            </ul>
-          ) : <p className="text-sm text-muted">{t("catalogue.nothingSpecial")}</p>}
-          {advanced && (
-            <p className="border-t border-line pt-3 font-mono text-xs text-muted">
-              {t("modules.permissions")}: {m.permissions.join(", ") || "—"}
-              {(m.offers ?? []).length > 0 && <> · {t("modules.offers")}: {(m.offers ?? []).map((o) => `${o.service}${(o.version ?? 1) > 1 ? ` v${o.version}` : ""}`).join(", ")}</>}
-              {(m.requires ?? []).length > 0 && <> · {t("modules.requires")}: {(m.requires ?? []).map((r) => `${r.service}${(r.min ?? 1) > 1 ? ` ≥ ${r.min}` : ""}`).join(", ")}</>}
-            </p>
-          )}
-        </section>
+    <ExtensionFiche t={t} embedded={embedded} advanced={advanced} origin={origin} name={name} icon={icon}
+      version={version} author={m?.author} license={m?.license} source={entry?.repo ? `${entry.repo}${entry.ref ? `#${entry.ref}` : ""}` : repoSpec || undefined}
+      description={entry ? L(entry.description) : m?.description ? L(m.description) : undefined}
+      noModule={!!custom && !failed && !m} failed={failed} keptCount={kept.length}
+      gallery={gallery} galleryLabels={galleryLabels(t)} adds={m ? whatItAdds(m, L) : []}
+      readme={preview?.readme ? (
+        <article className={`${ui.card} overflow-x-auto !p-6 text-[16px] sm:!p-8 [&_h2:first-child]:mt-0 [&>div>*:first-child]:mt-0`}>
+          <Markdown text={preview.readme} untrusted />
+          {preview.truncated && <p className="mt-6 text-xs text-muted">{t("catalogue.truncated")}</p>}
+        </article>
+      ) : null}
+      hasManifest={!!m} perms={perms} privacy={m?.privacy ? L(m.privacy) : undefined}
+      permsRaw={m && (
+        <p className="border-t border-line pt-3 font-mono text-xs text-muted">
+          {t("modules.permissions")}: {m.permissions.join(", ") || "—"}
+          {(m.offers ?? []).length > 0 && <> · {t("modules.offers")}: {(m.offers ?? []).map((o) => `${o.service}${(o.version ?? 1) > 1 ? ` v${o.version}` : ""}`).join(", ")}</>}
+          {(m.requires ?? []).length > 0 && <> · {t("modules.requires")}: {(m.requires ?? []).map((r) => `${r.service}${(r.min ?? 1) > 1 ? ` ≥ ${r.min}` : ""}`).join(", ")}</>}
+        </p>
       )}
-
-      {m?.privacy && (
-        <section className={`${ui.card} space-y-2`} data-testid="module-privacy">
-          <h2 className="text-lg font-semibold">{t("catalogue.privacy.title")}</h2>
-          <p className="text-[15px]">{L(m.privacy)}</p>
-        </section>
-      )}
-
-      <section className="space-y-3">
-        <h2 className="text-lg font-semibold">{t("catalogue.presentation")}</h2>
-        {preview?.readme ? (
-          <article className={`${ui.card} overflow-x-auto !p-6 text-[16px] sm:!p-8 [&_h2:first-child]:mt-0 [&>div>*:first-child]:mt-0`}>
-            <Markdown text={preview.readme} untrusted />
-            {preview.truncated && <p className="mt-6 text-xs text-muted">{t("catalogue.truncated")}</p>}
-          </article>
-        ) : !failed ? <p className="text-sm text-muted">{t("catalogue.noReadme")}</p> : null}
-      </section>
-
-      {isOwner && !failed && (entry || m) && (
-        <section className={`${ui.card} space-y-4`}>
-          {entry ? (
-            installed ? <a href={EXTENSIONS_HREF} className="text-sm font-medium text-accent hover:underline">{t("catalogue.installed")}</a>
-              : !entry.compatible ? <p className="text-sm text-muted">{t("catalogue.incompatible")}</p>
-              : entry.needsNewerCore ? <p className="text-sm text-muted">{t("modules.core.badge", { version: entry.needsNewerCore, current: getCoreVersion() })}</p>
-              : (
-                entry.origin === "extra" ? (
-                  <>
-                    <p className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm" data-testid="extra-warning">{t("catalogue.extraWarning")}</p>
-                    <ActionForm action={installExtraAction} submitLabel={t("catalogue.install")} pendingLabel={t("catalogue.installing")} track="install">
-                      <input type="hidden" name="id" value={entry.id} />
-                      <Checkbox name="trust" label={t("catalogue.trust")} required />
-                    </ActionForm>
-                  </>
-                ) : embedded
-                  ? <p className="text-sm text-muted">{t("catalogue.installNote")}</p>
-                  : (
-                    <div className="flex flex-wrap items-center gap-4">
-                      <InstallButton id={entry.id} name={name} labels={installLabels} />
-                      <p className="text-sm text-muted">{t("catalogue.installNote")}</p>
-                    </div>
-                  )
-              )
-          ) : custom && m ? (
-            <>
-              <p className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm">{t("catalogue.customWarning")}</p>
-              <ActionForm action={installCustomAction} submitLabel={t("catalogue.install")} pendingLabel={t("catalogue.installing")} track="install">
-                <input type="hidden" name="repo" value={`${custom.url}${custom.ref || custom.subdir ? `#${custom.ref ?? ""}${custom.subdir ? `:${custom.subdir}` : ""}` : ""}`} />
-                <Checkbox name="trust" label={t("catalogue.trust")} required />
-              </ActionForm>
-            </>
-          ) : null}
-        </section>
-      )}
-      {embedded && canInstall && entry && entry.origin !== "extra" && (
-        <div className="pointer-events-none sticky bottom-0 -mx-4 -mb-8 flex justify-center bg-gradient-to-t from-surface via-surface/90 to-transparent px-4 pb-6 pt-8 sm:-mx-8 sm:px-8" data-testid="floating-install">
-          <div className="pointer-events-auto"><InstallButton id={entry.id} name={name} labels={installLabels} /></div>
-        </div>
-      )}
-    </Frame>
+      plan={planView ? <DependencyPlanBox view={planView} t={t} names={names} advanced={advanced} /> : null}
+      summary={summary} needsNewerCore={entry?.needsNewerCore} currentCore={getCoreVersion()} incompatible={!!entry && !entry.compatible}
+      bar={bar} firstProblem={firstProblem ? describeMissing(firstProblem, t, names) : undefined} action={action}
+      manageHref={entry ? `/admin/modules/${encodeURIComponent(entry.id)}` : undefined} />
   );
 }
 
-/** Seule, la fiche garde son lien de retour ; dans la fenêtre, c'est la fenêtre qui se ferme. */
-function Frame({ embedded, back, children }: { embedded: boolean; back: string; children: React.ReactNode }) {
-  return embedded ? <div className="space-y-7">{children}</div> : <Shell back={back}>{children}</Shell>;
-}
-
-function Shell({ back, children }: { back: string; children: React.ReactNode }) {
-  return (
-    <div className="space-y-7">
-      <a href={EXTENSIONS_ADD_HREF} className="inline-block text-sm text-muted hover:text-accent">← {back}</a>
-      {children}
-    </div>
-  );
-}

@@ -48,7 +48,7 @@ for (const d of DEFECTS.filter((x) => x.visual?.length)) {
     const r = await checkOne(dir, { ...FAST, unsafeCss: d.unsafeCss });
     for (const code of d.visual) assert.ok(has(r, code), `${code} attendu ; obtenu : ${real(r).map((i) => i.code).join(", ")}`);
     assert.equal(r.ok, false);
-    assert.ok(r.levels[d.visual[0] === "kit-hidden" || d.visual[0] === "kit-covered" || d.visual[0] === "kit-injected-text" ? "principle" : "browser"].errors > 0);
+    assert.ok(r.levels[["kit-hidden", "kit-covered", "kit-injected-text", "kit-brand-changed"].includes(d.visual[0]) ? "principle" : "browser"].errors > 0);
     const issue = r.issues.find((i) => i.code.startsWith(d.visual[0]));
     assert.ok(issue.message.fr && issue.message.en && issue.hint.fr && issue.hint.en, "message simple en FR et EN, avec l'aide");
   });

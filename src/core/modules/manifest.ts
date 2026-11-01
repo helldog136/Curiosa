@@ -13,6 +13,7 @@ import { NO_CREATE_REFERS, REFERS_TO } from "./choiceValues";
 import { MAX_TAB_ENTRIES, TAB_ID_RE, TAB_LABEL_MAX, tabIssues } from "./tabs";
 import { moduleSkinIssues, moduleSkinSchema } from "./skinDecl";
 import { overlayElementIssues, overlayElementsSchema } from "../overlays/decl";
+import { previewIssues, previewsSchema } from "./previews";
 
 const localized = z.union([z.string().max(500), z.record(z.string(), z.string().max(500))]);
 const methodName = z.string().regex(/^[a-zA-Z][a-zA-Z0-9_]{0,40}$/);
@@ -309,6 +310,12 @@ export const manifestSchema = z.object({
    */
   overlayElements: overlayElementsSchema.optional(),
   /**
+   * (cœur 0.6.x) VISUELS du module : 6 captures au plus (`{ file: "previews/commandes.webp", caption, alt, type: "public" | "admin" | "overlay" }`, légende et texte alternatif en français ET en anglais)
+   * qui montrent dans la fiche de l'extension ce que le module ajoute. Images WebP ou PNG de 150 Ko au plus, lues par le cœur (jamais chargées par le navigateur depuis un site tiers). Voir docs/CREATE-A-MODULE.md.
+   * AJOUT SANS DANGER : un cœur plus ancien ignore la clé et affiche la fiche comme avant, donc aucun `minCore` n'est à déclarer pour elle.
+   */
+  previews: previewsSchema.optional(),
+  /**
    * Droits du module (0.2.0), proposés dans les rôles de la page Équipe. Identifiant LOCAL (« email.view ») : le cœur le préfixe par l'identifiant du module
    * (« <module>:email.view »), un module ne peut donc pas déclarer le droit d'un autre. `open` (ouvrir la page d'admin du module) est implicite.
    * `default` : ce que reçoivent les rôles prédéfinis (administrateur : oui sauf `admin: false` ; éditeur : non sauf `editor: true`). Un cœur ancien ignore cette clé.
@@ -330,6 +337,7 @@ export const manifestSchema = z.object({
     if (!hasPage(m)) ctx.addIssue({ code: "custom", path: ["pageSetting"], message: "pageSetting needs a module with a public page (page: true)" });
   }
   if (m.sitemapFromPage && !hasPage(m)) ctx.addIssue({ code: "custom", path: ["sitemapFromPage"], message: "sitemapFromPage needs a module with a public page (page: true)" });
+  for (const issue of previewIssues(m.previews)) ctx.addIssue({ code: "custom", path: ["previews", ...issue.path], message: issue.message });
   for (const message of logEventIssues(m.logEvents)) ctx.addIssue({ code: "custom", path: ["logEvents"], message });
   if (new Set((m.rights ?? []).map((r) => r.id)).size < (m.rights ?? []).length) ctx.addIssue({ code: "custom", path: ["rights"], message: "duplicate right id" });
   for (const [i, seed] of (m.seeds ?? []).entries()) {

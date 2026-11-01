@@ -127,6 +127,19 @@ export async function git(args: string[], cwd?: string, env?: Record<string, str
   return stdout.trim();
 }
 
+/**
+ * Contenu BRUT d'un fichier d'un dépôt cloné (`rev:chemin`), ou null s'il n'existe pas ou dépasse `maxBytes` (la taille est demandée AVANT de lire le contenu).
+ * Court délai : sert aux petits fichiers de la fiche d'une extension (ses visuels), jamais à des fichiers de taille libre.
+ */
+export async function gitBlob(spec: string, cwd: string, maxBytes: number): Promise<Buffer | null> {
+  try {
+    const size = Number((await run("git", gitArgs(["cat-file", "-s", spec]), { cwd, timeout: 30_000, env: GIT_ENV, maxBuffer: 1024 })).stdout.trim());
+    if (!Number.isInteger(size) || size <= 0 || size > maxBytes) return null;
+    const { stdout } = await run("git", gitArgs(["show", spec]), { cwd, timeout: 30_000, env: GIT_ENV, maxBuffer: maxBytes + 1024, encoding: "buffer" });
+    return stdout.length === size ? stdout : null;
+  } catch { return null; }
+}
+
 export function dirSize(dir: string): number {
   let total = 0;
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {

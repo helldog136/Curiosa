@@ -115,7 +115,10 @@ test("nombre borné : bornes natives, unité à droite, valeur par défaut gris�
   assert.match(out, /Vide : 30 secondes/);
 });
 
-const periodLabels = { from: "Du", to: "au", yearly: "Chaque année", sentenceYearly: "Du {from} au {to}, chaque année", sentenceOnce: "Du {from} au {to}", none: "Aucune période choisie", clear: "Effacer la période", order: "La fin doit venir après le début." };
+const periodLabels = { from: "Du", to: "au", yearly: "Chaque année", sentenceYearly: "Du {from} au {to}, chaque année", sentenceOnce: "Du {from} au {to}", none: "Aucune période choisie", clear: "Effacer la période", order: "La fin doit venir après le début.", month: "Tout le mois de", monthPick: "Choisir un mois", incomplete: "Choisissez les deux dates, par exemple du 1er au 30 novembre.",
+  preset: "Une période toute prête", presetPick: "Choisir une période", presetSearch: "Rechercher une fête ou une saison", presetEmpty: "Aucune période ne correspond.", presetClear: "Effacer la recherche",
+  presetNote: "Dates de cette année. Pensez à les refaire l'an prochain.", presetMoon: "Lune.", presetEve: "Veille.",
+  groups: { season: "Saisons", fixed: "Fêtes à date fixe", movable: "Fêtes qui changent chaque année" }, names: { spring: "Printemps" } };
 
 test("période : une ligne, un seul libellé, la phrase d'aperçu et la valeur enregistrée dans un champ caché", () => {
   const out = html(wrap(h(PeriodField, { label: "Période", name: "period", defaultValue: "11-01/11-30", locale: "fr", labels: periodLabels, refYear: 2026 })));
@@ -124,7 +127,7 @@ test("période : une ligne, un seul libellé, la phrase d'aperçu et la valeur e
   assert.match(out, /Du 1er novembre au 30 novembre, chaque année/);
   assert.equal((out.match(/type="date"/g) ?? []).length, 2);
   assert.match(out, /checked=""/, "« Chaque année » coché");
-  assert.equal((out.match(/<label/g) ?? []).length, 2, "un libellé pour le champ, un pour la case");
+  assert.equal((out.match(/<label/g) ?? []).length, 3, "un libellé pour le champ, un pour « Tout le mois de », un pour la case");
   const once = html(wrap(h(PeriodField, { label: "P", name: "p", defaultValue: "2026-12-20/2026-12-31", locale: "fr", labels: periodLabels })));
   assert.match(once, /value="2026-12-20\/2026-12-31"/);
   assert.match(once, /Du 20 décembre 2026 au 31 décembre 2026/);
@@ -133,6 +136,31 @@ test("période : une ligne, un seul libellé, la phrase d'aperçu et la valeur e
   const empty = html(wrap(h(PeriodField, { label: "P", name: "p", locale: "fr", labels: periodLabels })));
   assert.match(empty, /<input type="hidden" name="p" value=""/);
   assert.match(empty, /Aucune période choisie/);
+});
+
+test("période : « Tout le mois de » est une liste de 12 mois sans nom (rien d'envoyé), l'état de départ n'affiche aucune erreur", () => {
+  const empty = html(wrap(h(PeriodField, { label: "P", name: "p", locale: "fr", labels: periodLabels, refYear: 2026 })));
+  assert.match(empty, /<label for="p__month"[^>]*>Tout le mois de<\/label>/);
+  const sel = /<select id="p__month"[^>]*>[\s\S]*?<\/select>/.exec(empty)?.[0] ?? "";
+  assert.ok(sel && !/ name=/.test(sel), "la liste n'envoie rien");
+  assert.equal((sel.match(/<option/g) ?? []).length, 13);
+  assert.match(sel, /<option value="" selected="">Choisir un mois<\/option>/);
+  assert.match(sel, /<option value="2">février<\/option>/); assert.match(sel, /<option value="8">août<\/option>/);
+  assert.doesNotMatch(empty, /role="alert"|Choisissez les deux dates/, "pas d'erreur à l'ouverture");
+  assert.match(empty, /min-h-11/);
+  const nov = html(wrap(h(PeriodField, { label: "P", name: "p", defaultValue: "11-01/11-30", locale: "fr", labels: periodLabels, refYear: 2026 })));
+  assert.match(nov, /<option value="11" selected="">novembre<\/option>/, "la liste montre le mois entier");
+  const part = html(wrap(h(PeriodField, { label: "P", name: "p", defaultValue: "11-05/11-30", locale: "fr", labels: periodLabels, refYear: 2026 })));
+  assert.match(part, /<option value="" selected="">Choisir un mois<\/option>/, "jours modifiés : retour à « Choisir un mois »");
+  const feb = html(wrap(h(PeriodField, { label: "P", name: "p", defaultValue: "02-01/02-29", locale: "fr", labels: periodLabels, refYear: 2026 })));
+  assert.match(feb, /<option value="2" selected="">février<\/option>/); assert.match(feb, /value="2028-02-29"/);
+  const en = html(wrap(h(PeriodField, { label: "P", name: "p", defaultValue: "11-01/11-30", locale: "en", labels: { ...periodLabels, sentenceYearly: "From {from} to {to}, every year" }, refYear: 2026 })));
+  assert.match(en, /<option value="11" selected="">November<\/option>/); assert.match(en, /From 1 November to 30 November, every year/);
+  assert.match(empty, /<span[^>]*>Une période toute prête<\/span>/);
+  assert.match(empty, /aria-expanded="false"[^>]*>Choisir une période/, "la liste toute prête est repliée au départ");
+  assert.doesNotMatch(empty, /Dates de cette année/, "pas de remarque tant qu'aucune fête mobile n'est choisie");
+  const err = html(wrap(h(PeriodField, { label: "P", name: "p", locale: "fr", labels: periodLabels, error: "Oups, par exemple 5" })));
+  assert.match(err, /Oups, par exemple 5/);
 });
 
 test("date et heure : un champ, deux sélecteurs natifs, valeur « AAAA-MM-JJTHH:mm » (ou la date seule si l'heure est facultative)", () => {

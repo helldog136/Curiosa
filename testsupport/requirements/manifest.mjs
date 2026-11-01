@@ -1,4 +1,6 @@
 // Exigences sur le fichier module.json et la compatibilité avec le cœur.
+import fs from "node:fs";
+import path from "node:path";
 import { allSettings, compareVersions, missingLangs, stripComments } from "./util.mjs";
 
 const MAX_BYTES = 10 * 1024 * 1024; // même plafond que l'installateur du cœur
@@ -93,6 +95,33 @@ const requirements = [
     run(m) {
       if (!m.manifest?.id) return { skip: "pas d'id lisible" };
       return m.manifest.id === m.name ? [] : [`l'id est « ${m.manifest.id} » mais le dossier s'appelle « ${m.name} »`];
+    },
+  },
+  {
+    id: "manifest.previews", level: "mandatory", group: "manifest",
+    title: "Les visuels de la fiche sont des images valables",
+    what: "Chaque visuel de « previews » (6 au plus) est un fichier « previews/….webp » ou « .png » du module : 150 Ko au plus, de vraies images (pas un autre format renommé), de 240 à 2400 pixels de côté, avec une légende et un texte alternatif en français et en anglais. Sans « previews », rien à vérifier.",
+    why: "Le cœur lit ces images lui-même et les montre dans la fiche du module, avant et après l'installation. Une image trop lourde, d'un autre format ou absente est simplement écartée : la fiche paraît alors incomplète à la personne qui hésite à installer.",
+    fix: "Exportez chaque capture en WebP (ou PNG) de moins de 150 Ko, rangez-la dans « previews/ », déclarez-la dans « previews » avec « file », « caption », « alt » et « type » (public, admin ou overlay). Ne montrez jamais de vraies données personnelles : utilisez des exemples inventés.",
+    async run(m) {
+      const man = m.parsed?.ok ? m.parsed.manifest : m.manifest;
+      const decls = man?.previews;
+      if (!Array.isArray(decls) || decls.length === 0) return { na: "le module ne déclare aucun visuel" };
+      if (!m.parsed?.ok) return { skip: "module.json invalide" };
+      const { checkPreviewImage, PREVIEW_LIMITS } = await import("@/core/modules/previews");
+      const why = { "too-large": `plus de ${PREVIEW_LIMITS.bytes / 1024} Ko`, type: "ce n'est pas un vrai WebP ou PNG (ou l'extension ne correspond pas au contenu)", corrupt: "fichier abîmé", dimensions: `dimensions hors de ${PREVIEW_LIMITS.minSide} à ${PREVIEW_LIMITS.maxSide} pixels` };
+      const out = [];
+      for (const d of decls) {
+        const full = path.join(m.dir, d.file);
+        try {
+          const st = fs.lstatSync(full);
+          if (!st.isFile()) { out.push(`« ${d.file} » n'est pas un fichier ordinaire`); continue; }
+          if (st.size > PREVIEW_LIMITS.bytes) { out.push(`« ${d.file} » pèse ${Math.ceil(st.size / 1024)} Ko : le maximum est ${PREVIEW_LIMITS.bytes / 1024} Ko`); continue; }
+          const c = checkPreviewImage(fs.readFileSync(full), d.file);
+          if (!c.ok) out.push(`« ${d.file} » : ${why[c.problem]}`);
+        } catch { out.push(`« ${d.file} » est déclaré dans « previews » mais le fichier n'existe pas`); }
+      }
+      return out;
     },
   },
   {
