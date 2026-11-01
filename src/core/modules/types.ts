@@ -1,3 +1,4 @@
+import type { LogEventDecl } from "../journal/events";
 import type { Theme } from "../color";
 import type { Block, PanelBlock, Slot } from "../blocks";
 import type { StorePage, StoreRecord } from "../services/store";
@@ -212,6 +213,8 @@ export type ModuleManifest = {
   entryPanels?: EntryPanelDecl[];
   /** Actions proposées à l'API MCP du cœur (désactivable). */
   mcp?: McpDecl[];
+  /** (prochaine version) Types d'événements que le module écrit au journal du cœur (`ctx.api.log.write`) : clé, libellé fr/en, champs autorisés. Voir core/journal/events.ts. */
+  logEvents?: LogEventDecl[];
   /** Ce qui se passe si l'utilisateur choisit ce module pendant l'assistant de première installation. Le cœur n'a aucune connaissance d'un module en particulier : tout est déclaré ici. */
   onboarding?: {
     /** Section placée sur l'accueil à la création (`count` = nombre d'entrées pour « latest »). */
@@ -280,7 +283,27 @@ export type PrivacyDeclarations = {
   truncated: boolean;
 };
 
+/** Ce qu'un module écrit au journal central (`ctx.api.log.write`). L'acteur n'en fait JAMAIS partie : le cœur le déduit. */
+export type LogEntryInput = {
+  /** Clé d'un événement déclaré dans `logEvents` (« command.run »). Une clé non déclarée donne une ligne générique, sans données. */
+  action: string;
+  /** Ce sur quoi porte l'action (un nom, 200 caractères au plus) ; jamais de secret ni de texte du public. */
+  target?: string;
+  /** « info » (défaut, ou celui de l'événement), « warn » ou « error ». */
+  level?: "info" | "warn" | "error";
+  /** Les champs déclarés pour cet événement ; tout autre champ est écarté. */
+  data?: Record<string, string | number | boolean>;
+};
+
 export type ModuleApi = {
+  /**
+   * Journal central du site (prochaine version ; aucune permission). Ne lève jamais : une ligne refusée (clé invalide) renvoie `false`. Le cœur déduit QUI agit
+   * (la personne connectée, un assistant IA, le module lui-même ou le système), injecte le module et l'instance, écarte tout champ non déclaré et purge à l'écriture
+   * (90 jours, 500 lignes par module). Un cœur plus ancien n'a pas `ctx.api.log` : écrire `ctx.api.log?.write(…)`.
+   */
+  log: {
+    write(entry: LogEntryInput): Promise<boolean>;
+  };
   topics: {
     /**
      * Récupère les informations des sources auxquelles CETTE instance est abonnée

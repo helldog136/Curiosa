@@ -17,6 +17,6 @@ export async function setPlacementAction(instanceId: string, placement: string):
   if (!chosen || !instance || !mod || !placementsFor(mod.manifest).includes(chosen)) return;
   if (chosen === defaultPlacement(mod.manifest)) await deleteSetting(placementSettingKey(instanceId));
   else await setSetting(placementSettingKey(instanceId), chosen);
-  await audit(user.email, "instance.update", instance.key);
+  await audit(user.email, "instance.update", instance.key, { module: instance.moduleId, instance: instance.key });
   revalidatePath("/", "layout");
 }

@@ -11,6 +11,7 @@ export function rightLabel(r: RightInfo, t: Translator, locale: string, defaultL
   if (!r.moduleId) return t(`right.core.${r.local}`);
   const mod = localized(r.moduleName ?? r.moduleId, locale, defaultLocale) || r.moduleId;
   if (r.local === "open") return t("right.open", { module: mod });
+  if (r.local === "history") return t("right.history", { module: mod });
   return `${mod} : ${localized(r.label ?? r.local, locale, defaultLocale) || r.local}`;
 }
 

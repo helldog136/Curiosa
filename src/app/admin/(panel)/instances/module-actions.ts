@@ -43,7 +43,7 @@ export async function runModuleAdminAction(instanceId: string, action: string, _
     console.error(`[modules] ${active.instance.key} adminAction ${action} failed:`, error);
     return { error: t("error.generic") };
   }
-  await audit(user.email, `module.${active.instance.key}.${action}`);
+  await audit(user.email, `module.${active.instance.key}.${action}`, "", { module: active.mod.manifest.id, instance: active.instance.key });
   revalidatePath("/admin", "layout");
   if (result.redirect) {
     // Un module ne peut rediriger que dans l'admin : "?x=y" reste sur la page de l'instance, "/admin/…" va ailleurs dans l'admin.

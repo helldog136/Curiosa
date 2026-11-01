@@ -118,7 +118,7 @@ export async function saveInstance(_prev: ActionState, formData: FormData): Prom
   }
 
   await prisma.moduleInstance.update({ where: { id }, data });
-  await audit(user.email, "instance.update", existing.key);
+  await audit(user.email, "instance.update", existing.key, { module: existing.moduleId, instance: existing.key });
   revalidatePath("/", "layout");
   return { ok: t("action.saved") };
 }
@@ -238,7 +238,7 @@ export async function saveInstanceSettings(_prev: ActionState, formData: FormDat
     else await setSetting(o.key, o.value, o.locale);
   }
   forgetChoices(id);
-  await audit(user.email, "instance.settings", instance.key);
+  await audit(user.email, "instance.settings", instance.key, { module: instance.moduleId, instance: instance.key });
   revalidatePath("/", "layout");
   return { ok: t("action.saved") };
 }
@@ -288,7 +288,7 @@ export async function saveSources(_prev: ActionState, formData: FormData): Promi
       : [];
     await setSources(id, decl.topic, { instances: chosen.length === available.length ? null : chosen, tags });
   }
-  await audit(user.email, "instance.sources", instance.key);
+  await audit(user.email, "instance.sources", instance.key, { module: instance.moduleId, instance: instance.key });
   revalidatePath("/", "layout");
   return { ok: t("action.saved") };
 }

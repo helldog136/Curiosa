@@ -21,6 +21,8 @@ export type McpTool = {
   source: string;
   /** Si l'outil appartient à une instance : permet au cœur de respecter son retrait du MCP. */
   instanceId?: string;
+  /** Journal central : le module de l'instance (pour ranger la ligne d'audit dans son historique). */
+  moduleId?: string;
   call: (args: Record<string, unknown>, actor: McpActor) => Promise<unknown>;
 };
 
