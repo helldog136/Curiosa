@@ -5,7 +5,7 @@ import { groupIssues } from "./groups";
 import { MULTI_VALUE_RE, siteDefaultRef } from "./settingValues";
 import { checkDateTime, parsePeriod } from "../adminkit/values";
 import { PLATFORM_PATTERN } from "./platform";
-import { socialSpecSchema } from "../socialRecognize";
+import { socialSpecSchema } from "../socialSpec";
 import { HISTORY, MAX_MODULE_RIGHTS, OPEN, RIGHT_ID_RE } from "../auth/rights";
 import { EVENT_KEY_MAX, EVENT_KEY_RE, FIELD_KEY_RE, JOURNAL_LIMITS, LEVELS, logEventIssues } from "../journal/events";
 import { SERVICE_RE } from "./serviceVersions";

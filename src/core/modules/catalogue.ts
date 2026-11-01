@@ -2,7 +2,7 @@ import { MODULE_API_VERSION } from "../config";
 import { getRecognizedDetailed, readRecognizedCacheOffline, type RecognizedItem, type RecognizedResult } from "./recognized";
 import { incompatWithThisCore, type CoreRequirement } from "./compat";
 import type { LocalizedString } from "./types";
-import type { SocialSpec } from "../socialRecognize";
+import type { SocialSpec } from "../socialSpec";
 import { normalizeNeeds, normalizeOffers, type ServiceNeed, type ServiceOffer } from "./serviceVersions";
 
 /**
