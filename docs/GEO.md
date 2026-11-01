@@ -14,7 +14,7 @@ De plus en plus de personnes posent leurs questions à un assistant IA plutôt q
 - **Un fichier pour les IA** : `/llms.txt` (et `/fr/llms.txt`… pour chaque autre langue). C'est une présentation du site en texte simple : son nom, sa description, ses pages, ses dernières publications et vos réseaux sociaux. Il est construit **uniquement** à partir de ce qui est déjà public sur votre site ; vous pouvez le désactiver (même réglage).
 - **Un plan du site** (`/sitemap.xml`) avec les pages de chaque langue, reliées entre elles, et la date de publication quand elle existe.
 - **Un flux RSS** annoncé dans chaque page.
-- **Des données structurées** (JSON-LD) dans chaque page : qui est derrière le site (une personne ou une organisation, au choix dans Réglages › Mon site), son nom, sa description, son logo, sa langue, vos profils sur les réseaux sociaux, et le chemin de la page (accueil › rubrique › page). Les modules peuvent ajouter les leurs (article, événement, vidéo, FAQ…).
+- **Des données structurées** (JSON-LD) dans chaque page : qui est derrière le site (une personne ou une organisation, au choix dans Réglages du site › Identité), son nom, sa description, son logo, sa langue, vos profils sur les réseaux sociaux, et le chemin de la page (accueil › rubrique › page). Les modules peuvent ajouter les leurs (article, événement, vidéo, FAQ…).
 - **Des adresses claires** : chaque page dit quelle est son adresse officielle, dans quelles langues elle existe, et comment elle doit apparaître quand on la partage.
 
 ## Ce que vous pouvez faire

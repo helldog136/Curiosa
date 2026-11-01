@@ -376,6 +376,21 @@ test("menu : l'ordre des rubriques et des entrées d'Administration", () => {
   for (const href of ["/admin/home", "/admin/navigation", "/admin/settings", "/admin/social", "/admin/ai-visibility", "/admin/redirects"]) assert.ok(site.includes(`href="${href}"`), href);
 });
 
+test("menu : « Apparence » et « Réglages du site » sont deux mots différents, sans doublon de libellé, en français comme en anglais (R12)", () => {
+  const layout = read(`${PANEL}/layout.tsx`);
+  const site = layout.slice(layout.indexOf('t("nav.mySite")'), layout.indexOf('t("nav.admin")'));
+  const keys = [...site.matchAll(/t\("(nav\.[A-Za-z.]+)"\)/g)].map((m) => m[1]).filter((k) => k !== "nav.mySite" && k !== "nav.admin");
+  assert.ok(keys.includes("nav.appearance") && keys.includes("nav.settings"));
+  assert.ok(!layout.includes("nav.settings.simple"), "une seule étiquette pour les réglages, en mode simple comme avancé");
+  for (const lang of ["fr", "en"]) {
+    const d = JSON.parse(read(`src/locales/${lang}.json`));
+    const all = ["nav.dashboard", ...keys, "nav.extensions", "nav.overlayPages", "nav.assistants", "nav.users", "nav.health", "nav.backup", "nav.updates", "nav.audit", "nav.myAccount"].map((k) => d[k]);
+    assert.equal(new Set(all.map((l) => l.toLowerCase())).size, all.length, `${lang} : deux entrées du menu portent le même nom`);
+    assert.ok(!/(appearance|apparence)\s*(&|et|and)\s*(settings|r[ée]glages)/i.test(JSON.stringify(d["nav.settings"])), "plus d'entrée « Apparence et réglages »");
+    assert.ok(!all.some((l) => /^(apparence|appearance)\b.+/i.test(l)), `${lang} : aucune entrée ne commence par « Apparence »`);
+  }
+});
+
 test("menu Administration : Assistants IA est UNE entrée, visible du propriétaire en mode simple ET avancé ; le journal d'audit reste avancé", async () => {
   const { administrationEntries } = await import("@/core/modules/adminMenu");
   assert.deepEqual(administrationEntries({ role: "owner", advanced: false }), ["extensions", "overlays", "assistants", "users", "health", "backup", "updates"], "mode simple : Assistants IA y est, pas le journal");

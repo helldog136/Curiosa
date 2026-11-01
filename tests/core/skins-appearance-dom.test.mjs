@@ -286,15 +286,20 @@ test("page, un administrateur (pas propriétaire) : il règle l'apparence, mais 
 
 // ── Réglages : ce qui a bougé
 
-test("Réglages : l'onglet garde un lien vers Apparence et le lien / bouton de l'en-tête ; plus de couleurs, de police, de fond ni de disposition dans ce formulaire ; le menu a l'entrée Apparence", () => {
+test("Réglages : un lien vers Apparence mais plus d'onglet Apparence ; le lien / bouton de l'en-tête est dans « Menu du site » ; plus de couleurs, de police, de fond ni de disposition dans ce formulaire ; le menu a l'entrée Apparence", () => {
   const settings = read("src/app/admin/(panel)/settings/page.tsx");
   assert.match(settings, /href="\/admin\/appearance"/);
-  assert.match(settings, /name="headerSecondaryHref"/);
-  assert.match(settings, /name="headerButtonHref"/);
+  assert.ok(!/id: "appearance"|data-tab="appearance"/.test(settings), "plus d'onglet Apparence dans Réglages");
+  assert.ok(!/headerSecondaryHref|headerButtonHref|headerSocials/.test(settings), "le lien, le bouton et les icônes de l'en-tête ne sont plus dans Réglages");
+  const navigation = read("src/app/admin/(panel)/navigation/page.tsx");
+  assert.match(navigation, /name="headerSecondaryHref"/);
+  assert.match(navigation, /name="headerButtonHref"/);
   for (const gone of ["ThemePicker", "HeaderLayoutPicker", "bgPreset", "name=\"font\"", "name=\"glow\"", "data-testid=\"bg-layers\""]) assert.ok(!settings.includes(gone), `Réglages ne doit plus contenir ${gone}`);
   const actions = read("src/app/admin/(panel)/settings/actions.ts");
   for (const gone of ["theme.background", "theme.accent", "theme.glow", "theme.bgPreset", "header.layout", "theme.font"]) assert.ok(!actions.includes(gone), `saveSettings ne doit plus écrire ${gone}`);
-  assert.match(actions, /header\.socials/);
+  assert.ok(!/header\.socials|header\.secondary|header\.button/.test(actions), "saveSettings ne touche plus à l'en-tête");
+  assert.match(read("src/app/admin/(panel)/social/actions.ts"), /"header\.socials"/);
+  assert.match(read("src/app/admin/(panel)/navigation/actions.ts"), /header\.secondaryHref[\s\S]*header\.buttonHref/);
   const layout = read("src/app/admin/(panel)/layout.tsx");
   assert.match(layout, /<NavLink href="\/admin\/appearance">\{t\("nav\.appearance"\)\}<\/NavLink>/);
   assert.ok(layout.indexOf("/admin/appearance") < layout.indexOf("/admin/settings"));

@@ -175,7 +175,7 @@ export default async function AppearancePage({ searchParams }: { searchParams?: 
               <HeaderLayoutPicker name="headerLayout" value={headerLayout}
                 labels={{ classic: { title: t("settings.header.classic"), help: t("settings.header.classicHelp") }, twoRows: { title: t("settings.header.twoRows"), help: t("settings.header.twoRowsHelp") },
                   centered: { title: t("settings.header.centered"), help: t("settings.header.centeredHelp") }, minimal: { title: t("settings.header.minimal"), help: t("settings.header.minimalHelp") } }} />
-              <p className={ui.help}>{t("appearance.header.links", { page: advanced ? t("nav.settings") : t("nav.settings.simple") })}</p>
+              <p className={ui.help}>{t("appearance.header.links", { page: advanced ? t("nav.navigation") : t("nav.navigation.simple") })}</p>
             </div>
             <div className={`${ui.card} space-y-4`}>
               <h3 className="font-semibold">{t("settings.colors")}</h3>

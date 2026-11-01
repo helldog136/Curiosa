@@ -110,6 +110,15 @@ export async function setSocialShown(instanceKey: string, shown: boolean): Promi
   return { ok: t(shown ? "social.nowShown" : "social.nowHidden") };
 }
 
+/** L'interrupteur du haut de la page : montre ou masque tous les boutons de réseaux dans l'en-tête (réglage `header.socials`, inchangé), sans rien supprimer. */
+export async function setHeaderSocials(shown: boolean): Promise<{ ok?: string; error?: string }> {
+  const { user, t } = await adminCtx("admin");
+  await setSetting("header.socials", shown);
+  await audit(user.email, shown ? "social.show" : "social.hide", "header");
+  revalidatePath("/", "layout");
+  return { ok: t(shown ? "social.header.nowShown" : "social.header.nowHidden") };
+}
+
 /** « Monter » / « Descendre » : un cran, au clavier comme à la souris. L'ordre enregistré couvre tous les réseaux. */
 export async function moveSocial(instanceKey: string, direction: "up" | "down"): Promise<void> {
   const { user } = await adminCtx("admin");

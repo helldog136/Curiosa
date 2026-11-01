@@ -806,7 +806,7 @@ Archétype : une personne non technique (**pas** une personne réelle). Mots sim
 
 ### 10.1 Où
 
-Une page **Apparence** (`/admin/appearance`, rubrique *Administration* du menu) qui reprend l'onglet « Apparence » de Réglages (palette, police, halo, fond, en-tête) et ajoute les skins. L'onglet de Réglages garde un lien « Aller dans Apparence ». L'administration elle-même n'est jamais restylée (son thème reste `adminThemeCss`).
+Une page **Apparence** (`/admin/appearance`, rubrique *Mon site* du menu) qui reprend l'ancien onglet « Apparence » de Réglages (palette, police, halo, fond, disposition de l'en-tête) et ajoute les skins. Les Réglages du site n'ont plus d'onglet Apparence : ils gardent, sous le titre, une phrase et un lien « Ouvrir Apparence » ; l'ancienne adresse `/admin/settings#appearance` y renvoie. Le lien et le bouton de l'en-tête se règlent dans *Menu du site* (onglet « Lien et bouton »), les icônes sociales dans *Réseaux sociaux*. L'administration elle-même n'est jamais restylée (son thème reste `adminThemeCss`).
 
 ### 10.2 Écran (mobile d'abord)
 

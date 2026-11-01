@@ -1,5 +1,3 @@
-import { providersOf } from "@/core/services/topics";
-import { SOCIAL_TOPIC } from "@/core/social";
 import { floatingLabels } from "@/components/admin/floating";
 import { adminCtx } from "@/core/admin";
 import { getSettingByLocale, getSetting } from "@/core/settings";
@@ -22,12 +20,12 @@ import { providerInstance } from "@/core/modules/dependencies";
 import { COVERS_MODULE, COVERS_SERVICE, ensureRawgHandover, handoverPending } from "@/core/services/rawgHandover";
 import { trackRawgJob } from "@/core/services/rawgNote";
 import Link from "next/link";
+import { LegacyHash } from "@/components/admin/LegacyHash";
 
-const TRANSLATABLE = ["site.name", "site.tagline", "site.about", "footer.text", "header.secondaryLabel", "header.buttonLabel", "privacy.extra"] as const;
+const TRANSLATABLE = ["site.name", "site.tagline", "site.about", "footer.text", "privacy.extra"] as const;
 
 export default async function SettingsPage() {
   const { t, config, advanced, user } = await adminCtx("admin");
-  const socialCount = (await providersOf(SOCIAL_TOPIC)).length;
   const mail = await getMailConfig();
   const isOwner = hasRole(user, "owner");
   // Jaquettes de jeux (voir services/rawgHandover.ts) : la clé et les corrections se règlent dans le module « Jaquettes de jeux ». Si le cœur garde encore celles de l'ancien service
@@ -45,10 +43,15 @@ export default async function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <header><h1 className={ui.pageTitle}>{advanced ? t("nav.settings") : t("nav.settings.simple")}</h1>{!advanced && <p className={ui.pageIntro}>{t("settings.intro.simple")}</p>}</header>
-      <Tabs tabs={[{ id: "site", label: t("settings.identity") }, { id: "languages", label: t("settings.languages") }, { id: "appearance", label: t("settings.appearanceTab") }, { id: "privacy", label: t("settings.privacy") }, ...(hasRole(user, "owner") ? [{ id: "mail", label: t("settings.mail") }, ...(rawgModule || rawgPending ? [{ id: "services", label: t("settings.services") }] : [])] : [])]}>
-      <div data-tab="site languages appearance privacy">
-      <ActionForm action={saveSettings} floating={floatingLabels(t)} submitLabel={t("action.save")} className="space-y-8" submitTabs="site languages appearance privacy">
+      <header>
+        <h1 className={ui.pageTitle}>{t("nav.settings")}</h1>
+        <p className={ui.pageIntro}>{t("settings.intro")}</p>
+        <p className={`${ui.help} mt-1`}>{t("settings.appearanceHint")} <Link href="/admin/appearance" className="font-medium text-accent hover:underline" data-testid="to-appearance">{t("settings.appearanceOpen")} →</Link></p>
+      </header>
+      <LegacyHash map={{ appearance: "/admin/appearance", header: "/admin/navigation#header" }} />
+      <Tabs tabs={[{ id: "site", label: t("settings.identity") }, { id: "languages", label: t("settings.languages") }, { id: "privacy", label: t("settings.privacy") }, ...(hasRole(user, "owner") ? [{ id: "mail", label: t("settings.mail") }, ...(rawgModule || rawgPending ? [{ id: "services", label: t("settings.services") }] : [])] : [])]}>
+      <div data-tab="site languages privacy">
+      <ActionForm action={saveSettings} floating={floatingLabels(t)} submitLabel={t("action.save")} className="space-y-8" submitTabs="site languages privacy">
         {advanced && <input type="hidden" name="__adv" value="1" />}
         <section data-tab="site" className="space-y-5">
           <p className={ui.help}>{t("settings.identityIntro")}</p>
@@ -157,32 +160,6 @@ export default async function SettingsPage() {
           </div>
         </section>
 
-        <section data-tab="appearance" className="space-y-6">
-          <div className={`${ui.card} space-y-3`} data-testid="appearance-moved">
-            <h3 className="font-semibold">{t("settings.appearanceMovedTitle")}</h3>
-            <p className={ui.help}>{t("settings.appearanceMovedHelp")}</p>
-            <Link href="/admin/appearance" className={`${ui.btnPrimary} min-h-11`}>{t("settings.appearanceOpen")}</Link>
-          </div>
-          <div className={`${ui.card} space-y-4`}>
-            <h3 className="font-semibold">{t("settings.headerLinks")}</h3>
-            {socialCount > 0
-              ? <Checkbox name="headerSocials" label={t("settings.header.socials")} help={t("settings.header.socialsHelp", { count: socialCount })} defaultChecked={config.header.socials} />
-              : <p className={ui.help}>{t("settings.header.socialsNone")}</p>}
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-3">
-                <p className="text-sm font-medium">{t("settings.header.secondary")}</p>
-                {config.locales.map((l) => <TextField key={l} name={`header.secondaryLabel__${l}`} label={`${t("settings.header.label")}${config.locales.length > 1 ? ` — ${localeName(l)}` : ""}`} defaultValue={String(values["header.secondaryLabel"]?.[l] ?? "")} />)}
-                <TextField name="headerSecondaryHref" label={t("settings.header.href")} placeholder="/contact" defaultValue={String((await getSetting<string>("header.secondaryHref")) ?? "")} />
-              </div>
-              <div className="space-y-3">
-                <p className="text-sm font-medium">{t("settings.header.button")}</p>
-                {config.locales.map((l) => <TextField key={l} name={`header.buttonLabel__${l}`} label={`${t("settings.header.label")}${config.locales.length > 1 ? ` — ${localeName(l)}` : ""}`} defaultValue={String(values["header.buttonLabel"]?.[l] ?? "")} />)}
-                <TextField name="headerButtonHref" label={t("settings.header.href")} placeholder="https://…" defaultValue={String((await getSetting<string>("header.buttonHref")) ?? "")} />
-              </div>
-            </div>
-            <p className={ui.help}>{t("settings.header.linksHelp")}</p>
-          </div>
-        </section>
       </ActionForm>
       </div>
 
