@@ -8,7 +8,7 @@ import { isSubdir, parseRepoUrl } from "./installer";
 import { sanitizeRequires, type CoreRequirement } from "./compat";
 import { sanitizeServiceList } from "./serviceVersions";
 import { PLATFORM_PATTERN } from "./platform";
-import { parseSocialSpec, type SocialSpec } from "../socialRecognize";
+import { parseSocialSpec, type SocialSpec } from "../socialSpec";
 
 export type RecognizedItem = {
   id: string;
