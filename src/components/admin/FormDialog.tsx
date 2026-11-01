@@ -39,7 +39,7 @@ export function FormDialog({ trigger, title, intro, closeLabel, children, closeW
   }, [onClose]);
   return (
     <>
-      <button type="button" aria-label={triggerLabel} aria-haspopup="dialog" onClick={() => dialog.current?.showModal()} className={`${ui.btn} min-h-11 whitespace-nowrap`} data-testid={testid}>{trigger}</button>
+      <button type="button" aria-label={triggerLabel} aria-haspopup="dialog" onClick={() => dialog.current?.showModal()} className={`${ui.btn} min-h-11 whitespace-nowrap sm:min-h-9 sm:py-1.5`} data-testid={testid}>{trigger}</button>
       <dialog ref={dialog} aria-labelledby={titleId}
         onClick={(e) => { if (e.target === dialog.current) dialog.current?.close(); }}
         className={`m-auto max-h-[90vh] ${wide ? "w-[min(94vw,44rem)]" : "w-[min(94vw,34rem)]"} overflow-y-auto rounded-2xl border border-line bg-surface p-0 text-fg shadow-2xl backdrop:bg-black/60`}>

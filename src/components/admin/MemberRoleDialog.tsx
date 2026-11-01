@@ -59,7 +59,7 @@ export function MemberRoleDialog({ memberName, action, base, extra, held, allowN
           <legend className="mb-1 text-[15px] font-medium">{labels.base}</legend>
           {/* Le choix de base part sous le même nom que les rôles en plus (`roleId`), comme avant ; « aucun » n'envoie rien. */}
           {pickedBase && <input type="hidden" name="roleId" value={pickedBase} />}
-          {[...(allowNoBase ? [{ id: "", name: labels.noBase, summary: labels.noBaseSummary }] : []), ...base].map((r) => (
+          {[...base, ...(allowNoBase ? [{ id: "", name: labels.noBase, summary: labels.noBaseSummary }] : [])].map((r) => (
             <label key={r.id || "none"} className="flex min-h-11 cursor-pointer items-start gap-3 rounded-xl border border-line bg-bg/40 p-3 text-sm has-[:checked]:border-accent has-[:checked]:bg-accent/10">
               <input type="radio" name="base" value={r.id} checked={pickedBase === r.id} onChange={() => setPickedBase(r.id)} className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--v-accent)]" />
               <span className="min-w-0"><span className="block font-medium">{r.name}</span><span className="block text-muted">{r.summary}</span></span>

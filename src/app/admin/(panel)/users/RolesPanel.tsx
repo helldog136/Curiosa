@@ -81,7 +81,7 @@ export function RolesPanel({ roles, catalogue, held, isOwner, t, locale, default
               <RightsEditor groups={shownGroups} selected={r.rights} labels={rightsLabels} />
             </ActionForm>
             <DangerZone title={t("users.moreActions")}>
-              <ActionForm action={deleteRoleAction.bind(null, r.id)} submitLabel={t("roles.delete")} pendingLabel={t("progress.deleting")} confirm={r.users > 0 ? t("roles.deleteConfirm", { name: r.name, n: r.users }) : t("roles.deleteConfirmUnused", { name: r.name })} className="w-full space-y-3">
+              <ActionForm action={deleteRoleAction.bind(null, r.id)} submitLabel={t("roles.delete")} pendingLabel={t("progress.deleting")} confirm={r.users > 0 ? t("roles.deleteConfirm", { name: r.name }) : t("roles.deleteConfirmUnused", { name: r.name })} className="w-full space-y-3">
                 {r.users > 0 ? (
                   <Select name="replacement" label={t("roles.replacement", { n: r.users })} help={t("roles.replacementHelp")}
                     options={roles.filter((x) => x.id !== r.id && x.key !== "owner" && (isOwner || x.key !== "coordinator") && (x.system || x.rights.every((y) => held.has(y)))).map((x) => ({ value: x.id, label: name(x) }))} />

@@ -182,10 +182,10 @@ export default async function UsersPage() {
           filters={[{ key: "role", allLabel: t("users.filter.all"), options: levelsPresent.map((k) => ({ value: k, label: k === "none" ? t("users.noRole") : t(`role.${k}`), count: users.filter((u) => levelOf(u) === k).length })) }]} />
         <RowTable scope="team" actionsLabel={t("users.actions")}
           columns={[
-            { key: "person", label: t("users.col.person"), width: "w-[30%]" },
-            { key: "role", label: t("users.col.role"), width: "w-[22%]" },
-            { key: "state", label: t("users.col.state"), width: "w-[19%]", optional: true },
-            { key: "seen", label: t("users.col.seen"), width: "w-[12%]" },
+            { key: "person", label: t("users.col.person"), width: "w-[26%]" },
+            { key: "role", label: t("users.col.role"), width: "w-[26%]" },
+            { key: "state", label: t("users.col.state"), width: "w-[17%]", optional: true },
+            { key: "seen", label: t("users.col.seen"), width: "w-[14%]" },
           ]}
           rows={rows} />
       </Panel>

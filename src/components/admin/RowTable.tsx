@@ -25,6 +25,7 @@ export type TableRow = {
 export function RowTable({ scope, columns, rows, actionsLabel, testid }: { scope: string; columns: RowColumn[]; rows: TableRow[]; actionsLabel: string; testid?: string }) {
   const hasActions = rows.some((r) => r.actions);
   return (
+    <div className="relative max-sm:overflow-x-auto sm:overflow-x-clip">
     <table role="table" className="w-full text-left text-sm max-sm:block sm:table-fixed" data-testid={testid}>
       <thead role="rowgroup" className="text-muted max-sm:sr-only">
         <tr role="row">
@@ -49,7 +50,7 @@ export function RowTable({ scope, columns, rows, actionsLabel, testid }: { scope
                 );
               })}
               {hasActions && (
-                <td role="cell" className="px-3 py-2 max-sm:flex max-sm:justify-end max-sm:px-1 max-sm:pt-2">
+                <td role="cell" className={`px-3 py-2 max-sm:flex max-sm:justify-end max-sm:px-1 max-sm:pt-2 ${r.actions ? "" : "max-sm:hidden"}`}>
                   <div className="flex min-h-11 items-center justify-end gap-2">{r.actions}</div>
                 </td>
               )}
@@ -58,5 +59,6 @@ export function RowTable({ scope, columns, rows, actionsLabel, testid }: { scope
         })}
       </tbody>
     </table>
+    </div>
   );
 }
