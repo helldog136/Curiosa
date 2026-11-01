@@ -719,3 +719,7 @@ Le cœur reprend ce texte tel quel, sous le nom de l'instance. Un module qui ne 
 ## Pages de configuration : les règles d'ergonomie sont obligatoires
 
 Toute page de réglages ou d'administration d'un module suit `docs/ERGONOMIE-ADMIN.md` (budgets de champs, mots interdits, listes sans étiquettes répétées, une notion = un contrôle, erreurs sous le champ…). La PR doit contenir sa section « Ergonomie » et des captures regardées.
+
+**Ce que le kit contrôle tout seul (`admin.ergonomics`).** Les règles marquées **[auto]** sont mesurées sur le manifeste et les textes : au plus 7 réglages simples par onglet (R5), aucun mot du code (R9), libellés de 60 caractères au plus sans « : » (R10), aides courtes avec un exemple pour tout champ libre (R11), vouvoiement sans « ! » ni « Veuillez » (R13), FR et EN à parité (R29), pas de liste oui/non pour un booléen (R19). Un module nouveau doit n'avoir **aucun** écart ; un module ancien garde sa base d'écarts connus (`tests/ergonomics-baseline.json`) qui ne peut que rétrécir.
+
+Pour les pages produites par du code (`adminPanel`), ajoutez à vos tests : `assertAdminPageErgonomics(await def.adminPanel(fakeCtx({ settings: {} }), { query: {} }))` (champs visibles par formulaire, recherche au-dessus d'une liste de plus de 10 lignes, étiquette répétée, bouton « Activer / désactiver », erreurs avec exemple). Le reste (R1, R2, R3, R6, R12, R16 à R18, R21, R23 à R28) se juge en revue, sur les captures : voir `docs/TESTSUPPORT.md`, section « L'ergonomie des pages d'administration ».
