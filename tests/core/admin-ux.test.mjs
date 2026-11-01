@@ -72,7 +72,7 @@ test("journal d'audit : toute action écrite par le code est dans la liste (sino
 });
 
 test("pages d'admin : chaque clé de traduction écrite en dur dans ces pages existe en français et en anglais", () => {
-  const files = ["page.tsx", "users/page.tsx", "backup/page.tsx", "updates/page.tsx", "account/page.tsx", "audit/page.tsx", "assistants/page.tsx", "assistants/AccessTab.tsx", "assistants/RequestsTab.tsx", "assistants/HistoryTab.tsx", "assistants/AssistantTabs.tsx", "assistants/[id]/page.tsx", "mode/page.tsx", "modules/page.tsx", "modules/[id]/page.tsx"];
+  const files = ["page.tsx", "users/page.tsx", "backup/page.tsx", "updates/page.tsx", "account/page.tsx", "audit/page.tsx", "assistants/page.tsx", "assistants/AccessTab.tsx", "users/assistantMembers.tsx", "assistants/RequestsTab.tsx", "assistants/HistoryTab.tsx", "assistants/AssistantTabs.tsx", "assistants/[id]/page.tsx", "mode/page.tsx", "modules/page.tsx", "modules/[id]/page.tsx"];
   for (const f of files) {
     for (const m of read(`${PANEL}/${f}`).matchAll(/\bt\("([a-zA-Z0-9_.-]+)"/g)) {
       assert.ok(m[1] in fr, `${f} : « ${m[1]} » manque en français`);
@@ -117,12 +117,13 @@ test("sauvegarde : le détail technique (openssl) est réservé au mode avancé,
   assert.match(page, /<Panel title=\{t\("backup\.restoreTitle"\)\}[^>]*tone="danger"/);
 });
 
-test("Assistants IA : étapes, suspension et retrait confirmés, états vides qui expliquent", () => {
+test("Assistants IA : réglages communs, suspension confirmée ; ajout et retrait dans l'Équipe, confirmés, états vides qui expliquent", () => {
   const page = read(`${PANEL}/assistants/AccessTab.tsx`);
-  assert.ok(page.indexOf('"assistants.active.title"') < page.indexOf('"assistants.new.title"') && page.indexOf('"assistants.new.title"') < page.indexOf('"assistants.master.title"'), "accès actifs, puis création, puis suspension générale");
+  assert.ok(page.indexOf('"team.ai.where.title"') < page.indexOf('"assistants.master.title"'), "renvoi vers l'Équipe, puis suspension générale");
   assert.match(page, /ConfirmButton message=\{t\("assistants\.master\.confirm"\)\}/);
-  assert.match(page, /ConfirmButton message=\{t\("assistants\.revokeConfirm", \{ name: k\.name \}\)\}/);
-  assert.match(page, /<EmptyState/);
+  const team = read(`${PANEL}/users/page.tsx`);
+  assert.ok(team.indexOf("<McpTokenCreator") > 0 && team.indexOf('testid="assistants-none"') > 0, "ajout dans l'Équipe, état vide qui dit quoi faire");
+  assert.match(read(`${PANEL}/users/assistantMembers.tsx`), /ConfirmButton menu message=\{t\("assistants\.revokeConfirm", \{ name: k\.name \}\)\}/);
 });
 
 test("modules installés : état vide qui mène au catalogue, désinstallation dans la zone danger", () => {
