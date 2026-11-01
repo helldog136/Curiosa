@@ -53,7 +53,7 @@ Un assistant se connecte à `/api/mcp` avec un **jeton** (`vit_…`, créé par 
 
 Garde-fous communs : droits réglés jeton par jeton et action par action, relus à chaque requête ; 120 requêtes par minute et par jeton ; révocation immédiate (elle retire aussi l'option d'adresse). Garde-fous propres à l'adresse : un jeton inconnu, mal formé, révoqué ou non autorisé par adresse reçoit **la même réponse** (404) ; le jeton n'est jamais écrit dans le journal d'audit (qui note seulement « connexion par adresse activée/désactivée » avec le nom du jeton), ni dans les erreurs ; les réponses portent `Cache-Control: no-store` et `Referrer-Policy: no-referrer`. Si vous activez l'option, évitez de journaliser les chemins des requêtes `/api/mcp/` dans votre proxy (le serveur de développement `next dev` les affiche aussi dans son terminal ; le serveur de production ne journalise pas les requêtes).
 
-### Les assistants IA dans la page Équipe (prochaine version)
+### Les assistants IA dans la page Équipe (cœur 0.6.1)
 La page Équipe montre les assistants IA dans le même tableau que les personnes, mais **la présentation seule est unifiée** : un assistant reste un accès (plafond lecture/écriture, actions accordées une à une), sans rôle, sans mot de passe ni double vérification. Les lignes d'assistant, le formulaire d'ajout et le retrait ne sont affichés qu'à qui détient `core:mcp.tokens` (personne propriétaire, coordination technique) ; l'administration voit l'Équipe comme avant, sans assistant. Chaque action (ajout, retrait, droits) revérifie ce droit côté serveur. Le tableau n'affiche jamais de jeton, d'empreinte ni d'adresse de connexion (le secret n'existe qu'une fois, à la création). Retirer l'accès reste immédiat et confirmé. La dernière activité vient du Journal central (origine « assistant »), sans nouveau minuteur.
 
 ## Maintenance par IA : modèle de menace
@@ -297,7 +297,7 @@ Elle ne touche **jamais** au compte d'une autre personne que la personne propri�
 - Les droits des actions ne changent pas : le contrôle (`adminCtx("owner")`, `guardOwner`…) passe AVANT le suivi. Un second lancement avec la même clé rejoint l'opération en cours ; la clé d'une sauvegarde contient une empreinte salée du mot de passe, pour que personne ne reçoive le fichier chiffré d'un autre.
 - L'identifiant d'une opération est choisi par le navigateur, mais le serveur le valide (16 à 64 caractères sûrs), refuse un identifiant déjà pris par quelqu'un d'autre et lie toujours l'opération à la personne authentifiée.
 
-## Menu du site (prochaine version)
+## Menu du site (cœur 0.6.1)
 
 - Le navigateur n'est jamais cru sur parole : à l'enregistrement du menu, chaque référence (page du cœur, instance, entrée, raccourci) est vérifiée en base ; un lien libre est normalisé puis validé (`/chemin` ou `http(s)://`, `mailto:` ; `javascript:` et `//hôte` non résolu sont refusés). L'adresse est **revalidée à chaque affichage** (`safeHref`, `isSafeExternalUrl`) : un réglage altéré en base n'atteint pas la personne qui visite.
 - La recherche du sélecteur est réservée à l'administration (`adminCtx("admin")`), bornée (requête de 80 caractères, 12 résultats, 1 500 lignes regardées au plus, paquets de 250, repère de reprise validé par expression régulière) et ne journalise que le nom d'une erreur. Elle ne fait aucune requête sortante.

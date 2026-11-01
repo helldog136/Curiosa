@@ -7,14 +7,25 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
-## Prochaine version (non publiée)
+## 0.6.1 — 2026-11-01
 
-### Menu d'administration
+**En bref.** Cette version simplifie les réglages de votre site et rend plusieurs choses plus claires. L'Équipe tient en un seul tableau, et vos assistants IA en font partie, avec leurs droits en quelques mots. Vos réseaux sociaux s'ajoutent en collant l'adresse de votre profil dans un seul champ. Les polices se choisissent dans une bibliothèque de vingt familles, ou s'envoient depuis votre ordinateur. La fiche d'une extension montre d'abord ce qu'elle fait, avec des images, et garde le bouton « Installer » toujours visible. L'extension Discord peut créer pour vous l'adresse courte « /discord », qui suit votre invitation. Le menu est clarifié : « Réglages du site » ne fait plus doublon avec « Apparence ». Vos couleurs ne sont plus jamais corrigées en cachette : un conseil s'affiche, sans rien bloquer. Le script d'installation parle français et anglais, les gestionnaires de mots de passe reconnaissent les formulaires, et le catalogue des extensions s'ouvre plus vite. Le champ « Période » propose un mois entier, les saisons et les fêtes, et le nom « Curiosa » du pied de page reste identique quel que soit le skin. Vos réglages actuels sont conservés.
 
-- **Plus de doublon entre « Apparence » et « Apparence et réglages ».** La page des réglages s'appelle « Réglages du site » (nom, logo, langues, confidentialité, e-mail) ; « Apparence » ne garde que l'allure : skin, couleurs, polices, fond, halo, en-tête. Même nom en mode simple et avancé.
-- **Le lien et le bouton du haut de page se règlent avec le menu.** Ils ont quitté l'ancien onglet « Apparence et en-tête » de Réglages pour l'onglet « Lien et bouton » de « Menu du site ». Vos textes et vos adresses sont conservés tels quels.
-- **L'interrupteur « Afficher mes réseaux dans l'en-tête » est sur la page des réseaux.** Il bascule tout de suite et montre son état, comme ceux de chaque ligne.
-- **Les anciennes adresses fonctionnent toujours.** Un favori vers « Réglages, onglet Apparence » ouvre Apparence ; « Réglages » garde une phrase et un lien vers Apparence. Aucun de vos réglages n'est perdu, et les mêmes rôles voient les mêmes pages.
+### Réseaux sociaux
+
+- **Un seul tableau pour tous vos réseaux.** Réseau, adresse, origine (une pastille écrite : Réseau, Chaîne en direct, Autre plateforme), interrupteur « Affiché » et ordre. Les noms ne sont plus coupés, et chaque réseau n'apparaît plus deux fois sur la page.
+- **Une recherche qui filtre pendant la frappe**, dès le premier réseau, et des filtres « Affiché · Masqué · À régler » avec leur nombre. Sur téléphone, chaque ligne devient une carte.
+- **Un interrupteur « Affiché » dans la ligne.** Vous masquez un bouton de l'en-tête sans rien supprimer ; l'interrupteur revient en arrière si l'enregistrement échoue.
+- **L'ordre des boutons se règle.** Les boutons « Monter » et « Descendre » de chaque ligne marchent au clavier comme à la souris.
+- **« 6 sur 10 affichés ».** Le compteur prévient quand l'en-tête est plein ou quand deux boutons ont la même adresse : plus rien n'est écarté en silence.
+- **Une adresse qui n'est pas reconnue est dite tout de suite.** Le message est sous le champ, avec un exemple (« Par exemple : https://… »), et votre saisie est gardée. Quand elle est reconnue, le message dit le bouton qui s'affichera (« Instagram · monpseudo »).
+- **Une adresse collée est reconnue avant toute installation.** Le Catalogue connaît, pour chaque réseau, ses sites, la forme de ses adresses et un exemple. Le nom seul, l'adresse sans « https », les liens courts et les liens de partage avec suivi mènent au même bouton.
+- **Plusieurs adresses d'un coup.** Un texte collé qui en contient plusieurs (une par ligne, ou séparées par des espaces ou des virgules) est lu adresse par adresse : chacune est reconnue, à choisir (un nom seul peut aller à plusieurs réseaux) ou non reconnue.
+- **Un seul champ : « Collez l'adresse de votre profil ».** Une ou plusieurs adresses, une par ligne. Pour chacune, vous voyez tout de suite le réseau reconnu et le bouton qui s'affichera (« Instagram · monpseudo »), avant que rien ne soit installé.
+- **Un clic pour tout ajouter.** Le bouton dit combien (« Ajouter 6 réseaux ») et la page avance réseau par réseau (« Ajout de TikTok… 2 sur 6 »). Si l'un échoue, les autres sont quand même ajoutés.
+- **Un nom seul peut aller à plusieurs réseaux** (« @monpseudo ») : la page vous demande de quel réseau il s'agit. Une adresse déjà ajoutée est signalée ; une adresse non reconnue vous renvoie vers la liste de tous les réseaux.
+- **Sans rien taper de plus.** Un deuxième compte du même réseau reçoit un nom d'office (« Instagram 2 »). Si l'adresse n'est finalement pas reconnue par le module, le réseau est ajouté « À régler » et la page le dit.
+- **Seule la personne propriétaire peut ajouter un réseau** (cela installe une extension) : une personne administratrice voit les adresses reconnues et un message qui l'explique.
 
 ### Équipe et rôles
 
@@ -26,14 +37,20 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Vos assistants IA font partie de l'équipe.** Ils apparaissent dans le même tableau que les personnes, avec une pastille « Assistant IA » écrite et colorée, leurs droits en quelques mots (« Lecture seule », « Lecture et écriture »…) et leur dernière activité. Le filtre « Assistants IA » et la recherche les retrouvent en tapant.
 - **Ajouter un assistant IA en deux champs.** À côté de « Ajouter une personne », il suffit d'un nom et de ce qu'il peut faire. « Droits et outils » ouvre ses réglages, « Voir son historique » ce qu'il a fait, et « Retirer l'accès » reste immédiat et confirmé.
 
-### Administration
+### Apparence du site
 
-- **Les gestionnaires de mots de passe reconnaissent l'installation.** 1Password, Bitwarden, Dashlane, Chrome et Safari peuvent maintenant proposer un mot de passe et l'enregistrer avec votre e-mail. Un bouton « Afficher » permet de relire ce que vous tapez.
-- **La même correction pour la connexion et les mots de passe du compte.** Premier mot de passe, changement, double vérification, clés d'accès et sauvegarde sont reconnus de la même façon, et les erreurs s'écrivent sous le champ concerné.
-- **Choisir un mois entier en un geste.** Dans le champ « Période », la liste « Tout le mois de » remplit d'un coup le 1er et le dernier jour du mois, février compris. Si vous changez ensuite un jour à la main, la liste revient à « Choisir un mois ».
-- **Des périodes toutes prêtes.** Une liste avec recherche propose les saisons et des fêtes de plusieurs traditions, rangées par date ou par ordre alphabétique. Chaque ligne montre ses dates.
-- **Les fêtes qui changent chaque année sont honnêtes.** Elles remplissent les dates de la prochaine fois, sans « Chaque année », avec un rappel de les refaire l'an prochain. Pour les fêtes musulmanes, la date réelle dépend de la lune, à un jour près.
-- **Moins d'erreurs à l'ouverture.** Le champ « Période » n'affiche plus de message tant que vous n'avez rien saisi ; un rappel apparaît si une seule des deux dates est remplie. Vos réglages enregistrés restent identiques.
+- **Votre couleur est toujours la vôtre.** Le fond, l'accent et la couleur secondaire que vous choisissez (en clair comme en sombre) sont enregistrés et appliqués tels quels sur votre site. Plus aucune couleur n'est corrigée ou remplacée en cachette, même si elle est difficile à lire.
+- **Un conseil, jamais un blocage.** Si une couleur risque d'être difficile à lire, un conseil s'affiche sous le champ avec le rapport mesuré. Vous pouvez garder votre couleur ou essayer une couleur plus lisible, proposée sans être appliquée d'office.
+- **Des conseils plus rares.** Ils n'apparaissent plus que dans les cas vraiment pénibles : texte sous 3, liens et contours sous 2, couleur secondaire sous 1,5. Les skins officiels gardent leur exigence de lisibilité.
+- **Pour les assistants IA.** L'état de l'apparence rapporte vos couleurs telles quelles, avec les mêmes conseils, sans jamais les traiter comme des erreurs.
+- **Le nom « Curiosa » du pied de page ne change plus avec le skin.** Dans « Propulsé par Curiosa », le nom garde partout la même police, la même casse, le même espacement et le même soulignement, quel que soit le skin choisi. Seule sa couleur suit le pied de page, pour que le texte reste lisible même sur un fond sombre.
+- **Pour les créatrices et créateurs de skins.** Un skin qui essaie de changer l'allure de ce nom est refusé, avec un message qui dit quoi retirer. Les skins déjà installés continuent de s'afficher normalement ; leurs règles sur ce nom sont simplement ignorées.
+- **Le même nom dans l'administration.** Le crédit du bas de l'administration utilise maintenant exactement le même nom que le site public.
+- **Choisir la police des titres et celle du texte.** Dans Apparence, deux listes avec recherche, rangées par style, chacune montrée dans sa propre police. Par défaut, c'est celle du skin : rien ne change si vous n'y touchez pas.
+- **Vingt polices libres livrées avec le site.** Elles sont servies par votre site, jamais par un site tiers, et ne se chargent que si vous en choisissez une. Leurs licences sont dans le dossier des polices de l'installation.
+- **Envoyer votre propre police.** Un fichier de police de 150 Ko au plus, quatre fichiers au plus : il est vérifié, vous cochez « J'ai le droit d'utiliser cette police », et il fait partie de la sauvegarde.
+- **Un conseil, jamais un blocage.** Si la police choisie n'a pas de version grasse, ou si une police d'affiche est choisie pour un long texte, un encart le dit. La police choisie s'applique toujours.
+- **Les assistants IA peuvent proposer une police.** Ils lisent le choix actuel et demandent un changement, qui ne s'applique qu'avec votre accord. Ils ne peuvent pas envoyer de fichier.
 
 ### Extensions
 
@@ -45,27 +62,6 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Moins d'attente pour lire la fiche.** Le site lit l'extension dès que vous survolez le bouton. Le texte arrive d'abord, les images ensuite, et un deuxième clic est ignoré.
 - **Si la lecture échoue ou traîne, vous le savez.** Un message clair apparaît avec un bouton « Réessayer ». « Actualiser » relit aussi les fiches.
 
-### Apparence du site
-
-- **Votre couleur est toujours la vôtre.** Le fond, l'accent et la couleur secondaire que vous choisissez (en clair comme en sombre) sont enregistrés et appliqués tels quels sur votre site. Plus aucune couleur n'est corrigée ou remplacée en cachette, même si elle est difficile à lire.
-- **Un conseil, jamais un blocage.** Si une couleur risque d'être difficile à lire, un conseil s'affiche sous le champ avec le rapport mesuré. Vous pouvez garder votre couleur ou essayer une couleur plus lisible, proposée sans être appliquée d'office.
-- **Des conseils plus rares.** Ils n'apparaissent plus que dans les cas vraiment pénibles : texte sous 3, liens et contours sous 2, couleur secondaire sous 1,5. Les skins officiels gardent leur exigence de lisibilité.
-- **Pour les assistants IA.** L'état de l'apparence rapporte vos couleurs telles quelles, avec les mêmes conseils, sans jamais les traiter comme des erreurs.
-- **Le nom « Curiosa » du pied de page ne change plus avec le skin.** Dans « Propulsé par Curiosa », le nom garde partout la même police, la même casse, le même espacement et le même soulignement, quel que soit le skin choisi. Seule sa couleur suit le pied de page, pour que le texte reste lisible même sur un fond sombre.
-- **Pour les créatrices et créateurs de skins.** Un skin qui essaie de changer l'allure de ce nom est refusé, avec un message qui dit quoi retirer. Les skins déjà installés continuent de s'afficher normalement ; leurs règles sur ce nom sont simplement ignorées.
-- **Le même nom dans l'administration.** Le crédit du bas de l'administration utilise maintenant exactement le même nom que le site public.
-
-- **Choisir la police des titres et celle du texte.** Dans Apparence, deux listes avec recherche, rangées par style, chacune montrée dans sa propre police. Par défaut, c'est celle du skin : rien ne change si vous n'y touchez pas.
-- **Vingt polices libres livrées avec le site.** Elles sont servies par votre site, jamais par un site tiers, et ne se chargent que si vous en choisissez une. Leurs licences sont dans le dossier des polices de l'installation.
-- **Envoyer votre propre police.** Un fichier de police de 150 Ko au plus, quatre fichiers au plus : il est vérifié, vous cochez « J'ai le droit d'utiliser cette police », et il fait partie de la sauvegarde.
-- **Un conseil, jamais un blocage.** Si la police choisie n'a pas de version grasse, ou si une police d'affiche est choisie pour un long texte, un encart le dit. La police choisie s'applique toujours.
-- **Les assistants IA peuvent proposer une police.** Ils lisent le choix actuel et demandent un changement, qui ne s'applique qu'avec votre accord. Ils ne peuvent pas envoyer de fichier.
-
-### Installation
-
-- **Le script d'installation parle français et anglais.** Il suit la langue de votre serveur, ou l'option « --lang fr » ou « --lang en » ; si la langue n'est pas reconnue, il parle anglais, ou vous la demande une fois dans un terminal. Un serveur en français garde les mêmes messages qu'avant.
-- **Rien d'autre ne change selon la langue.** Les codes de sortie, les options et les fichiers écrits sur le serveur restent les mêmes : on peut relancer ou désinstaller dans l'autre langue.
-
 ### Liens courts
 
 - **Une extension peut créer une adresse courte pour vous.** Par exemple, l'extension Discord peut créer « votresite.be/discord » : une adresse stable qui mène à votre invitation, même si celle-ci change un jour. C'est vous qui l'allumez, dans les réglages de l'extension.
@@ -74,6 +70,27 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Elle suit l'extension.** Si l'adresse de votre Discord change, l'adresse courte suit sans changer de nom ni perdre ses chiffres. Si vous coupez l'option ou retirez l'extension, elle disparaît avec ses chiffres, et le nom redevient libre.
 - **Rien de plus n'est suivi.** Ce sont les mêmes chiffres anonymes que pour tout lien court. Le bouton de l'en-tête ne passe par cette adresse que si « Compter les clics sur mes liens » est activé, comme pour les autres boutons.
 
+### Menu d'administration
+
+- **Plus de doublon entre « Apparence » et « Apparence et réglages ».** La page des réglages s'appelle « Réglages du site » (nom, logo, langues, confidentialité, e-mail) ; « Apparence » ne garde que l'allure : skin, couleurs, polices, fond, halo, en-tête. Même nom en mode simple et avancé.
+- **Le lien et le bouton du haut de page se règlent avec le menu.** Ils ont quitté l'ancien onglet « Apparence et en-tête » de Réglages pour l'onglet « Lien et bouton » de « Menu du site ». Vos textes et vos adresses sont conservés tels quels.
+- **L'interrupteur « Afficher mes réseaux dans l'en-tête » est sur la page des réseaux.** Il bascule tout de suite et montre son état, comme ceux de chaque ligne.
+- **Les anciennes adresses fonctionnent toujours.** Un favori vers « Réglages, onglet Apparence » ouvre Apparence ; « Réglages » garde une phrase et un lien vers Apparence. Aucun de vos réglages n'est perdu, et les mêmes rôles voient les mêmes pages.
+
+### Administration
+
+- **Les gestionnaires de mots de passe reconnaissent l'installation.** 1Password, Bitwarden, Dashlane, Chrome et Safari peuvent maintenant proposer un mot de passe et l'enregistrer avec votre e-mail. Un bouton « Afficher » permet de relire ce que vous tapez.
+- **La même correction pour la connexion et les mots de passe du compte.** Premier mot de passe, changement, double vérification, clés d'accès et sauvegarde sont reconnus de la même façon, et les erreurs s'écrivent sous le champ concerné.
+- **Choisir un mois entier en un geste.** Dans le champ « Période », la liste « Tout le mois de » remplit d'un coup le 1er et le dernier jour du mois, février compris. Si vous changez ensuite un jour à la main, la liste revient à « Choisir un mois ».
+- **Des périodes toutes prêtes.** Une liste avec recherche propose les saisons et des fêtes de plusieurs traditions, rangées par date ou par ordre alphabétique. Chaque ligne montre ses dates.
+- **Les fêtes qui changent chaque année sont honnêtes.** Elles remplissent les dates de la prochaine fois, sans « Chaque année », avec un rappel de les refaire l'an prochain. Pour les fêtes musulmanes, la date réelle dépend de la lune, à un jour près.
+- **Moins d'erreurs à l'ouverture.** Le champ « Période » n'affiche plus de message tant que vous n'avez rien saisi ; un rappel apparaît si une seule des deux dates est remplie. Vos réglages enregistrés restent identiques.
+
+### Installation
+
+- **Le script d'installation parle français et anglais.** Il suit la langue de votre serveur, ou l'option « --lang fr » ou « --lang en » ; si la langue n'est pas reconnue, il parle anglais, ou vous la demande une fois dans un terminal. Un serveur en français garde les mêmes messages qu'avant.
+- **Rien d'autre ne change selon la langue.** Les codes de sortie, les options et les fichiers écrits sur le serveur restent les mêmes : on peut relancer ou désinstaller dans l'autre langue.
+
 ### Pour les développeurs
 
 - **Menu d'administration.** `nav.settings` devient « Réglages du site » et `nav.settings.simple` disparaît ; `menu-hub` interdit deux entrées au même nom. `saveHeaderLinks` et `setHeaderSocials` écrivent les clés `header.*`, inchangées ; `LegacyHash` renvoie les anciennes ancres de Réglages.
@@ -81,9 +98,8 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Visuels de la fiche (`previews`).** Clé facultative du manifeste : 6 images au plus (WebP ou PNG de 150 Ko), légende et texte alternatif en `fr` et `en`, sans `minCore` à déclarer. Le kit ajoute l'exigence `manifest.previews`.
 - **Service des images.** `GET /api/admin/extension-previews?id|repo|installed=…&n=0..5`, réservé à l'administration : le cœur lit l'image (dépôt ou dossier du module), vérifie type réel, poids et dimensions, puis la sert (cache privé, 12 Mo de mémoire au plus pour toutes les images lues).
 - **Règle R31** de `docs/ERGONOMIE-ADMIN.md` : la fiche d'une extension montre ce que ça fait avant les détails techniques, avec une barre d'installation toujours visible.
-
-- **`PeriodField`** : logique pure dans `src/core/adminkit/periodInputs.ts` et `periodPresets.ts` (Pâques par calcul, fêtes lunaires, chinoise et juives par `Intl.DateTimeFormat`, sans bibliothèque). Format enregistré inchangé, aucune migration, aucune version montée.
-- **Pièce verrouillée `brand-mark`** (additive : pas de nouveau `skinContract`). Le composant `CuriosaMark` (`src/components/brand/CuriosaMark.tsx`) rend le lien du crédit avec `data-skin-part="brand-mark"` et `data-curiosa-wordmark` ; le pied public et le pied de l'administration l'utilisent. `docs/skins-parts-baseline.json` est à régénérer à la publication.
+- **`PeriodField`** : logique pure dans `src/core/adminkit/periodInputs.ts` et `periodPresets.ts` (Pâques par calcul, fêtes lunaires, chinoise et juives par `Intl.DateTimeFormat`, sans bibliothèque). Format enregistré inchangé, aucune migration.
+- **Pièce verrouillée `brand-mark`** (additive : pas de nouveau `skinContract`). Le composant `CuriosaMark` (`src/components/brand/CuriosaMark.tsx`) rend le lien du crédit avec `data-skin-part="brand-mark"` et `data-curiosa-wordmark` ; le pied public et le pied de l'administration l'utilisent. `docs/skins-parts-baseline.json` porte la 0.6.1.
 - **Assainisseur** : nouveau code `kit-brand-restyled` (erreur) pour toute déclaration de police, casse, espacement ou soulignement qui atteint le mot (pièce, `credit a`, ou propriété héritée posée sur `credit`). À la relecture d'un skin installé (`reading`), c'est un avertissement et la déclaration est retirée.
 - **Polices : réglages.** `theme.fontHeading` et `theme.fontBody` (`sys:…`, `lib:<famille>`, `up:<nom>`) s'ajoutent ; `theme.font` reste lu et `theme.fontBody` l'emporte sur lui. `theme.fontFiles` liste les polices envoyées.
 - **Polices : bibliothèque et service.** Dossier `fonts/` (72 fichiers, 1,2 Mo) dans `PATHS` de `release-pack.mjs`, et route `GET|HEAD /fonts/<fichier>.woff2` (chemin réservé `fonts`) ; détail dans `docs/POLICES.md`.
@@ -97,59 +113,15 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Clé `shortLink` du manifeste (additive).** Un module demande une adresse courte sans écrire de code ; le cœur la crée, la tient à jour et la retire. Aucune nouvelle permission, et un cœur plus ancien ignore la clé.
 - **Colonne `Redirect.managedBy`.** Migration additive : elle nomme l'instance qui gère le lien, vide pour les liens des personnes. Les liens gérés refusent toute modification à la main, y compris par MCP.
 - **Mise en accord sans minuteur.** Elle a lieu aux écritures de réglages, au retrait d'une instance et à l'installation d'un module. Tests : `tests/core/managed-redirects-db.test.mjs`.
-
-## 0.6.3 — 2026-11-01
-
-**En bref.** Ajouter vos réseaux tient en un champ : vous collez l'adresse de votre profil (ou de plusieurs), la page reconnaît chaque réseau en direct, puis un clic les ajoute tous.
-
-### Réseaux sociaux
-
-- **Un seul champ : « Collez l'adresse de votre profil ».** Une ou plusieurs adresses, une par ligne. Pour chacune, vous voyez tout de suite le réseau reconnu et le bouton qui s'affichera (« Instagram · monpseudo »), avant que rien ne soit installé.
-- **Un clic pour tout ajouter.** Le bouton dit combien (« Ajouter 6 réseaux ») et la page avance réseau par réseau (« Ajout de TikTok… 2 sur 6 »). Si l'un échoue, les autres sont quand même ajoutés.
-- **Un nom seul peut aller à plusieurs réseaux** (« @monpseudo ») : la page vous demande de quel réseau il s'agit. Une adresse déjà ajoutée est signalée ; une adresse non reconnue vous renvoie vers la liste de tous les réseaux.
-- **Sans rien taper de plus.** Un deuxième compte du même réseau reçoit un nom d'office (« Instagram 2 »). Si l'adresse n'est finalement pas reconnue par le module, le réseau est ajouté « À régler » et la page le dit.
-- **Seule la personne propriétaire peut ajouter un réseau** (cela installe une extension) : une personne administratrice voit les adresses reconnues et un message qui l'explique.
-
-### Pour les développeurs
-
 - **`addNetworkWithProfile(moduleId, adresse)`** (action serveur, droit `core:modules.install`) : installe le module si besoin, crée l'instance (surnoms d'office), écrit `profile` **après** que le module a confirmé son bouton (`previewSocialButton`). La page l'appelle réseau par réseau : un échec n'arrête pas les autres. Aucune migration.
 - **`SocialPaste`** (composant client) lit le texte avec `recognizeSocial` ; les icônes sont résolues côté serveur et la validation du bloc (`socialSpec.ts`, zod) reste hors du navigateur.
-
-## 0.6.2 — 2026-11-01
-
-**En bref.** Le Catalogue sait désormais reconnaître l'adresse de votre profil (Instagram, TikTok, Mastodon…) avant d'installer le réseau. C'est la base du champ unique « Collez l'adresse de votre profil », qui arrive ensuite.
-
-### Réseaux sociaux
-
-- **Une adresse collée est reconnue avant toute installation.** Le Catalogue connaît, pour chaque réseau, ses sites, la forme de ses adresses et un exemple. Le nom seul, l'adresse sans « https », les liens courts et les liens de partage avec suivi mènent au même bouton.
-- **Plusieurs adresses d'un coup.** Un texte collé qui en contient plusieurs (une par ligne, ou séparées par des espaces ou des virgules) est lu adresse par adresse : chacune est reconnue, à choisir (un nom seul peut aller à plusieurs réseaux) ou non reconnue.
-
-### Pour les développeurs
-
 - **Clé de manifeste facultative `social`** (`name`, `icon`, `hosts`, `template`, `example`, et au besoin `handle`, `tag`, `aliases`, `forms`, `shapes`, `fediverse`) : validée par `socialSpecSchema`, un bloc abîmé est ignoré, un cœur plus ancien l'ignore. Documentée dans `docs/MODULES.md`.
 - **Le catalogue la recopie** (`CatalogueEntry.social`) et la relit sans réseau depuis sa dernière copie.
 - **`src/core/socialRecognize.ts`** (pur) : `recognizeOne` fait ce que fait le `profile()` du module ; `recognizeSocial` lit un texte à plusieurs adresses. Aucune migration, aucun réglage ajouté.
-
-## 0.6.1 — 2026-11-01
-
-**En bref.** La page « Réseaux sociaux » tient en un seul tableau, avec une recherche qui filtre en tapant, un interrupteur « Affiché » et l'ordre des boutons. Une adresse de profil qui n'est pas reconnue est dite tout de suite, sous le champ, avec un exemple.
-
-### Réseaux sociaux
-
-- **Un seul tableau pour tous vos réseaux.** Réseau, adresse, origine (une pastille écrite : Réseau, Chaîne en direct, Autre plateforme), interrupteur « Affiché » et ordre. Les noms ne sont plus coupés, et chaque réseau n'apparaît plus deux fois sur la page.
-- **Une recherche qui filtre pendant la frappe**, dès le premier réseau, et des filtres « Affiché · Masqué · À régler » avec leur nombre. Sur téléphone, chaque ligne devient une carte.
-- **Un interrupteur « Affiché » dans la ligne.** Vous masquez un bouton de l'en-tête sans rien supprimer ; l'interrupteur revient en arrière si l'enregistrement échoue.
-- **L'ordre des boutons se règle.** Les boutons « Monter » et « Descendre » de chaque ligne marchent au clavier comme à la souris.
-- **« 6 sur 10 affichés ».** Le compteur prévient quand l'en-tête est plein ou quand deux boutons ont la même adresse : plus rien n'est écarté en silence.
-- **Une adresse qui n'est pas reconnue est dite tout de suite.** Le message est sous le champ, avec un exemple (« Par exemple : https://… »), et votre saisie est gardée. Quand elle est reconnue, le message dit le bouton qui s'affichera (« Instagram · monpseudo »).
-- **Ajouter un réseau demande un clic.** Une recherche remplace la grille de cartes, et le champ « Nom » disparaît : un deuxième compte du même réseau reçoit un nom d'office (« Instagram 2 »), que vous changez dans « Modifier ».
-
-### Pour les développeurs
-
-- **Aucune migration.** Deux réglages du cœur, ajoutés sans toucher aux instances : `social.hidden` (clés d'instances masquées) et `social.order` (ordre des clés). Absents, le comportement est celui d'avant ; une valeur abîmée est ignorée.
+- **Réseaux sociaux : aucune migration.** Deux réglages du cœur, ajoutés sans toucher aux instances : `social.hidden` (clés d'instances masquées) et `social.order` (ordre des clés). Absents, le comportement est celui d'avant ; une valeur abîmée est ignorée.
 - **`loadSocialEntries(locale, max)`** renvoie chaque bouton avec son état (`shown`, `hidden`, `duplicate`, `limit`) ; `loadSocialLinks` en est le filtre « affichés » (même signature qu'avant, l'en-tête, `llms.txt` et le plan du site n'ont pas changé). Fonctions pures : `orderedKeys`, `moveKey`, `socialOrigin`.
 - **Vérification de l'adresse** (`src/core/socialCheck.ts`) : pour un module `type: "social"` qui fournit `social.link`, le réglage `profile` est essayé avant d'être écrit (le module est appelé avec la valeur proposée, 2 secondes au plus). Convention, pas de nouvelle clé de manifeste. Les messages sont `social.error.profile` (avec `example` du réglage) et `social.saved`.
-- Pas de clé de manifeste nouvelle : le cœur reste en 0.6.x.
+- **Numéro de version.** Les clés de manifeste ajoutées (`shortLink`, `social`, `previews`) sont facultatives et ignorées par un cœur plus ancien : aucune n'exige un `minCore` au-delà de 0.6.0. La seule migration depuis la 0.6.0 est additive (`Redirect.managedBy`). Le cœur reste donc en 0.6.x (le code temporaire de `legacyOff.ts` a pour échéance 0.6.99).
 
 ## 0.6.0 — 2026-11-01
 

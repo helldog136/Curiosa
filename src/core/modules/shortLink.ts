@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 /**
- * ADRESSE COURTE DEMANDÉE PAR UN MODULE (`shortLink` du manifeste, cœur après 0.6.3).
+ * ADRESSE COURTE DEMANDÉE PAR UN MODULE (`shortLink` du manifeste, cœur 0.6.1).
  *
  * Les redirections (« liens courts ») appartiennent au CŒUR : un module ne les écrit pas, il en DEMANDE une, et le cœur la crée, la tient à jour et la retire
  * (voir src/core/managedRedirects.ts). Le module ne déclare que des CLÉS de ses propres réglages ; il n'a aucun code à écrire.
