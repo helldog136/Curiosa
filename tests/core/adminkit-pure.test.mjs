@@ -6,6 +6,8 @@ import fs from "node:fs";
 
 const S = await import("@/core/adminkit/search");
 const V = await import("@/core/adminkit/values");
+const PI = await import("@/core/adminkit/periodInputs");
+const PP = await import("@/core/adminkit/periodPresets");
 const T = await import("@/core/adminkit/table");
 const H = await import("@/core/adminkit/hints");
 const Sum = await import("@/core/adminkit/summary");
@@ -72,6 +74,134 @@ test("période : chaque année ou une seule fois, vérifiée, en toutes lettres,
   assert.equal(V.periodContains(wrap, { y: 2026, m: 6, d: 1 }), false);
   assert.equal(V.periodContains(y.period, { y: 1999, m: 11, d: 15 }), true, "chaque année : l'année ne compte pas");
   assert.equal(V.periodContains(o.period, { y: 2027, m: 11, d: 15 }), false, "une seule fois : l'année compte");
+});
+
+test("période : « Tout le mois de » couvre 28, 29, 30 et 31 jours, selon l'année", () => {
+  const last = (m, y) => V.wholeMonth(m, y).to.d;
+  assert.deepEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((m) => last(m, 2027)), [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]);
+  assert.equal(last(2, 2028), 29, "année bissextile");
+  assert.equal(last(2, 2100), 28, "2100 n'est pas bissextile");
+  assert.equal(last(2, 2000), 29);
+  assert.deepEqual(V.wholeMonth(11, 2026), { from: { m: 11, d: 1, y: 2026 }, to: { m: 11, d: 30, y: 2026 } });
+  assert.equal(V.wholeMonth(13), null); assert.equal(V.wholeMonth(0), null);
+  // Chaque année (sans année) : février finit le 29, la règle du cœur (parsePeriod l'accepte, periodContains compare mois et jour).
+  assert.deepEqual(V.wholeMonth(2), { from: { m: 2, d: 1 }, to: { m: 2, d: 29 } });
+  const feb = V.parsePeriod(V.serializePeriod({ yearly: true, ...V.wholeMonth(2) }));
+  assert.ok(feb.ok);
+  assert.equal(V.periodContains(feb.period, { y: 2027, m: 2, d: 28 }), true);
+  assert.equal(V.periodContains(feb.period, { y: 2028, m: 2, d: 29 }), true);
+  assert.equal(V.periodContains(feb.period, { y: 2027, m: 3, d: 1 }), false);
+  for (let m = 1; m <= 12; m++) {
+    const w = V.wholeMonth(m);
+    assert.ok(V.parsePeriod(V.serializePeriod({ yearly: true, ...w })).ok, `mois ${m} chaque année`);
+    assert.ok(V.parsePeriod(V.serializePeriod({ yearly: false, ...V.wholeMonth(m, 2027) })).ok, `mois ${m} une fois`);
+  }
+});
+
+test("période : reconnaître un mois entier, noms FR et EN", () => {
+  assert.equal(V.wholeMonthOf({ m: 11, d: 1 }, { m: 11, d: 30 }), 11);
+  assert.equal(V.wholeMonthOf({ m: 2, d: 1 }, { m: 2, d: 29 }), 2);
+  assert.equal(V.wholeMonthOf({ m: 2, d: 1 }, { m: 2, d: 28 }), null, "chaque année : le 28 ne couvre pas tout février");
+  assert.equal(V.wholeMonthOf({ m: 2, d: 1, y: 2027 }, { m: 2, d: 28, y: 2027 }), 2);
+  assert.equal(V.wholeMonthOf({ m: 2, d: 1, y: 2028 }, { m: 2, d: 28, y: 2028 }), null, "2028 est bissextile");
+  assert.equal(V.wholeMonthOf({ m: 11, d: 2 }, { m: 11, d: 30 }), null);
+  assert.equal(V.wholeMonthOf({ m: 11, d: 1 }, { m: 12, d: 30 }), null);
+  assert.equal(V.wholeMonthOf({ m: 11, d: 1, y: 2026 }, { m: 11, d: 30, y: 2027 }), null);
+  assert.equal(V.monthName(11, "fr"), "novembre"); assert.equal(V.monthName(2, "fr"), "février");
+  assert.equal(V.monthName(11, "en"), "November"); assert.equal(V.monthName(8, "fr"), "août");
+});
+
+test("période : le choix d'un mois remplit les deux dates, la liste revient à « Choisir un mois » dès qu'un jour change", () => {
+  // Chaque année : l'année de référence sert seulement à l'affichage.
+  assert.deepEqual(PI.monthInputs(11, true, "", 2026), { from: "2026-11-01", to: "2026-11-30" });
+  assert.deepEqual(PI.monthInputs(2, true, "", 2026), { from: "2028-02-01", to: "2028-02-29" }, "février : une année bissextile pour montrer le 29");
+  // Une seule fois : l'année de la date de début si elle est choisie, sinon l'année de référence.
+  assert.deepEqual(PI.monthInputs(2, false, "2027-05-10", 2026), { from: "2027-02-01", to: "2027-02-28" });
+  assert.deepEqual(PI.monthInputs(2, false, "2028-05-10", 2026), { from: "2028-02-01", to: "2028-02-29" });
+  assert.deepEqual(PI.monthInputs(2, false, "", 2026), { from: "2026-02-01", to: "2026-02-28" });
+  assert.deepEqual(PI.monthInputs(12, false, "", 2026), { from: "2026-12-01", to: "2026-12-31" });
+  // Le sélecteur suit les jours.
+  assert.equal(PI.monthShown("2026-11-01", "2026-11-30", true), 11);
+  assert.equal(PI.monthShown("2026-11-01", "2026-11-30", false), 11);
+  assert.equal(PI.monthShown("2026-11-02", "2026-11-30", false), null, "début modifié à la main");
+  assert.equal(PI.monthShown("2026-11-01", "2026-11-29", true), null, "fin modifiée à la main");
+  assert.equal(PI.monthShown("2026-11-01", "", true), null);
+  assert.equal(PI.monthShown("", "", true), null);
+  assert.equal(PI.monthShown("2026-11-01", "2027-11-30", false), null, "deux années différentes");
+  assert.equal(PI.monthShown("2028-02-01", "2028-02-29", true), 2);
+  // Un 29 février enregistré « chaque année » reste affichable.
+  assert.equal(PI.monthShown(...Object.values(PI.monthInputs(2, true, "", 2026)), true), 2);
+});
+
+test("périodes toutes prêtes : Pâques sur des années connues, bissextile compris", () => {
+  const easter = (y) => { const e = PP.easterSunday(y); return `${e.y}-${String(e.m).padStart(2, "0")}-${String(e.d).padStart(2, "0")}`; };
+  for (const [y, d] of [[2024, "2024-03-31"], [2025, "2025-04-20"], [2026, "2026-04-05"], [2027, "2027-03-28"], [2028, "2028-04-16"], [2038, "2038-04-25"], [2000, "2000-04-23"]]) assert.equal(easter(y), d, `Pâques ${y}`);
+  // week-end pascal : vendredi saint → lundi de Pâques ; carnaval : dimanche gras → mardi gras
+  assert.equal(PP.presetValue("easter", { y: 2026, m: 1, d: 10 }), "2026-04-03/2026-04-06");
+  assert.equal(PP.presetValue("carnival", { y: 2026, m: 1, d: 10 }), "2026-02-15/2026-02-17");
+  assert.equal(PP.presetValue("easter", { y: 2028, m: 1, d: 1 }), "2028-04-14/2028-04-17", "année bissextile");
+  assert.equal(PP.presetValue("carnival", { y: 2028, m: 1, d: 1 }), "2028-02-27/2028-02-29", "le mardi gras tombe un 29 février");
+  // la prochaine occurrence : en cours = encore elle ; passée = l'an suivant
+  assert.equal(PP.presetValue("easter", { y: 2026, m: 4, d: 6 }), "2026-04-03/2026-04-06", "le dernier jour compte encore");
+  assert.equal(PP.presetValue("easter", { y: 2026, m: 4, d: 7 }), "2027-03-26/2027-03-29");
+  assert.equal(PP.presetValue("easter", { y: 2026, m: 12, d: 31 }), "2027-03-26/2027-03-29");
+});
+
+test("périodes toutes prêtes : fêtes lunaires, chinoise et juives calculées avec Intl (vérifiées sur des dates connues)", () => {
+  const v = (id, y, m, d) => PP.presetValue(id, { y, m, d });
+  assert.equal(v("ramadan", 2026, 1, 1), "2026-02-18/2026-03-19");
+  assert.equal(v("eidFitr", 2026, 1, 1), "2026-03-20/2026-03-22");
+  assert.equal(v("eidAdha", 2026, 1, 1), "2026-05-27/2026-05-29");
+  assert.equal(v("chineseNewYear", 2026, 1, 1), "2026-02-17/2026-03-03");
+  assert.equal(v("chineseNewYear", 2025, 1, 1), "2025-01-29/2025-02-12");
+  assert.equal(v("passover", 2026, 1, 1), "2026-04-02/2026-04-09");
+  assert.equal(v("roshHashanah", 2026, 1, 1), "2026-09-12/2026-09-13");
+  assert.equal(v("yomKippur", 2026, 1, 1), "2026-09-21/2026-09-21");
+  assert.equal(v("hanukkah", 2026, 1, 1), "2026-12-05/2026-12-12");
+  assert.equal(v("hanukkah", 2026, 12, 20), "2027-12-25/2028-01-01", "passée : la suivante, à cheval sur deux années");
+  assert.equal(v("ramadan", 2026, 3, 1), "2026-02-18/2026-03-19", "en cours : encore elle");
+  // Toujours une occurrence, quelle que soit la date du jour, et toujours une période que le cœur accepte.
+  for (const id of ["ramadan", "eidFitr", "eidAdha", "chineseNewYear", "hanukkah", "passover", "roshHashanah", "yomKippur", "easter", "carnival"]) {
+    for (let t = Date.UTC(2026, 0, 1); t < Date.UTC(2027, 0, 1); t += 17 * 86_400_000) {
+      const x = new Date(t), val = PP.presetValue(id, { y: x.getUTCFullYear(), m: x.getUTCMonth() + 1, d: x.getUTCDate() });
+      assert.ok(val && /^\d{4}-/.test(val) && V.parsePeriod(val).ok, `${id} ${x.toISOString().slice(0, 10)} : ${val}`);
+      const end = val.split("/")[1];
+      assert.ok(end >= x.toISOString().slice(0, 10), `${id} : la période n'est pas finie`);
+    }
+  }
+});
+
+test("périodes toutes prêtes : saisons et fêtes fixes en « chaque année », fêtes mobiles jamais", () => {
+  const today = { y: 2026, m: 11, d: 1 };
+  assert.equal(PP.presetValue("winter", today), "12-21/03-19", "l'hiver chevauche l'année");
+  assert.equal(PP.presetValue("newYear", today), "12-31/01-02");
+  assert.equal(PP.presetValue("spring", today), "03-20/06-20");
+  assert.equal(PP.presetValue("halloween", today), "10-25/10-31");
+  assert.equal(PP.presetValue("nope", today), null);
+  // Les saisons se suivent sans trou ni recouvrement.
+  const next = (md) => { const [m, d] = md.split("-").map(Number); const t = new Date(Date.UTC(2027, m - 1, d + 1)); return `${String(t.getUTCMonth() + 1).padStart(2, "0")}-${String(t.getUTCDate()).padStart(2, "0")}`; };
+  const seasons = ["spring", "summer", "autumn", "winter"].map((id) => PP.presetValue(id, today).split("/"));
+  for (let i = 0; i < 4; i++) assert.equal(next(seasons[i][1]), seasons[(i + 1) % 4][0], `la saison ${i} est suivie de la suivante`);
+  for (const p of PP.PRESETS) {
+    const val = PP.presetValue(p.id, today), parsed = V.parsePeriod(val);
+    assert.ok(parsed.ok, p.id);
+    assert.equal(parsed.period.yearly, p.group !== "movable", `${p.id} : chaque année seulement si la date est fixe`);
+    assert.equal(PP.isMovable(p.id), p.group === "movable");
+  }
+  assert.equal(new Set(PP.PRESETS.map((p) => p.id)).size, PP.PRESETS.length);
+});
+
+test("périodes toutes prêtes : chaque période a son nom en FR et en EN, les mêmes groupes, textes neutres", () => {
+  const fr = JSON.parse(fs.readFileSync("src/locales/fr.json", "utf8")), en = JSON.parse(fs.readFileSync("src/locales/en.json", "utf8"));
+  const keys = [...PP.PRESETS.map((p) => `period.preset.${p.id}`), "period.preset", "period.presetPick", "period.presetSearch", "period.presetEmpty", "period.presetClear", "period.presetNote", "period.presetMoon", "period.presetEve", ...["season", "fixed", "movable"].map((g) => `period.presetGroup.${g}`)];
+  for (const k of keys) { assert.ok(typeof fr[k] === "string" && fr[k], `fr ${k}`); assert.ok(typeof en[k] === "string" && en[k], `en ${k}`); assert.ok(fr[k].length <= 60 && en[k].length <= 60, `${k} : 60 caractères au plus`); assert.doesNotMatch(fr[k] + en[k], /!|Veuillez|[:]\s*$/); }
+  for (const k of Object.keys(fr).filter((x) => x.startsWith("period."))) assert.ok(k in en, `en ${k}`);
+  for (const k of Object.keys(en).filter((x) => x.startsWith("period."))) assert.ok(k in fr, `fr ${k}`);
+  const vars = (x) => (x.match(/\{\w+\}/g) ?? []).sort().join();
+  for (const k of keys) assert.equal(vars(fr[k]), vars(en[k]), `${k} : mêmes {variables}`);
+  // Un nom de fête garde son vrai nom (Noël, Pâques…), distinct dans chaque langue.
+  assert.equal(fr["period.preset.christmas"], "Noël"); assert.equal(en["period.preset.christmas"], "Christmas");
+  assert.equal(new Set(PP.PRESETS.map((p) => fr[`period.preset.${p.id}`])).size, PP.PRESETS.length);
 });
 
 /* ───────────── date et heure, durée, nombre ───────────── */

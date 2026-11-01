@@ -277,6 +277,8 @@ Une notion = **un seul champ** (règles R6, R20, R21) : une période, une durée
 | `duration` | un nombre et une unité (secondes, minutes, heures, jours), l'unité la plus grande qui tombe juste est choisie au départ | un **nombre entier de secondes** (`5400` pour 1 h 30), dans `min`–`max` |
 | `number` avec `min` / `max` / `step` / `unit` | un champ numérique qui n'accepte que cela, l'unité à droite, la valeur par défaut grisée dans le champ, l'indication « Entre 5 et 3600 secondes · Vide : 30 s » | un nombre |
 
+**Raccourcis du contrôle `period` (aucun réglage à faire, aucune valeur nouvelle).** « Tout le mois de [mois] » remplit le 1er et le dernier jour du mois (février : 28, ou 29 si l'année est bissextile et choisie ; en « chaque année », la fin de février est le **29**, ce qui couvre tout février, car `periodContains` compare mois et jour) et revient à « Choisir un mois » dès qu'un jour est modifié à la main. « Une période toute prête » (liste avec recherche, groupée) propose des saisons et des fêtes **à date fixe** (valeur « chaque année ») et des fêtes **mobiles** (Pâques, Carnaval, Ramadan, Aïd, Nouvel An chinois, fêtes juives) : celles-ci écrivent les dates de la **prochaine** occurrence avec l'année, « Chaque année » décoché, car leurs dates changent ; le module doit donc les faire redéfinir chaque année. Les valeurs enregistrées restent `MM-JJ/MM-JJ` et `AAAA-MM-JJ/AAAA-MM-JJ`.
+
 ```json
 { "key": "season", "type": "period", "default": "11-01/11-30", "label": { "en": "Season", "fr": "Période" } },
 { "key": "wait", "type": "duration", "min": 5, "max": 3600, "default": 60, "label": { "en": "Wait", "fr": "Attente" } },

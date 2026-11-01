@@ -9,6 +9,13 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ## Prochaine version (non publiée)
 
+### Administration
+
+- **Choisir un mois entier en un geste.** Dans le champ « Période », la liste « Tout le mois de » remplit d'un coup le 1er et le dernier jour du mois, février compris. Si vous changez ensuite un jour à la main, la liste revient à « Choisir un mois ».
+- **Des périodes toutes prêtes.** Une liste avec recherche propose les saisons et des fêtes de plusieurs traditions, rangées par date ou par ordre alphabétique. Chaque ligne montre ses dates.
+- **Les fêtes qui changent chaque année sont honnêtes.** Elles remplissent les dates de la prochaine fois, sans « Chaque année », avec un rappel de les refaire l'an prochain. Pour les fêtes musulmanes, la date réelle dépend de la lune, à un jour près.
+- **Moins d'erreurs à l'ouverture.** Le champ « Période » n'affiche plus de message tant que vous n'avez rien saisi ; un rappel apparaît si une seule des deux dates est remplie. Vos réglages enregistrés restent identiques.
+
 ### Extensions
 
 - **La fiche d'une extension dit d'abord ce qu'elle fait.** Vous lisez la description, puis des images qui montrent ce que l'extension ajoute à votre site (par exemple une page de commandes), puis la liste de ce qu'elle ajoute : pages, éléments pour vos pages d'overlay, outils pour votre assistant IA.
@@ -21,6 +28,8 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Visuels de la fiche (`previews`).** Clé facultative du manifeste : 6 images au plus (WebP ou PNG de 150 Ko), légende et texte alternatif en `fr` et `en`, sans `minCore` à déclarer. Le kit ajoute l'exigence `manifest.previews`.
 - **Service des images.** `GET /api/admin/extension-previews?id|repo|installed=…&n=0..5`, réservé à l'administration : le cœur lit l'image (dépôt ou dossier du module), vérifie type réel, poids et dimensions, puis la sert (cache privé, 12 Mo de mémoire au plus pour toutes les images lues).
 - **Règle R31** de `docs/ERGONOMIE-ADMIN.md` : la fiche d'une extension montre ce que ça fait avant les détails techniques, avec une barre d'installation toujours visible.
+
+- **`PeriodField`** : logique pure dans `src/core/adminkit/periodInputs.ts` et `periodPresets.ts` (Pâques par calcul, fêtes lunaires, chinoise et juives par `Intl.DateTimeFormat`, sans bibliothèque). Format enregistré inchangé, aucune migration, aucune version montée.
 
 ## 0.6.0 — 2026-11-01
 
