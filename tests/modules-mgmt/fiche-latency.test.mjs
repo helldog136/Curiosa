@@ -5,7 +5,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-const shimDir = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-gitshim-")); // effacé dans after()
+const shimDir = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-gitshim-")); // effacé dans after() // tmp-ok
 const real = ["/usr/bin/git", "/bin/git", "/usr/local/bin/git"].find((p) => fs.existsSync(p));
 fs.writeFileSync(path.join(shimDir, "git"), `#!/bin/sh
 d=$(cat "${shimDir}/delay" 2>/dev/null || echo 0)
