@@ -45,6 +45,10 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Apparence du site
 
+- **Votre couleur est toujours la vôtre.** Le fond, l'accent et la couleur secondaire que vous choisissez (en clair comme en sombre) sont enregistrés et appliqués tels quels sur votre site. Plus aucune couleur n'est corrigée ou remplacée en cachette, même si elle est difficile à lire.
+- **Un conseil, jamais un blocage.** Si une couleur risque d'être difficile à lire, un conseil s'affiche sous le champ avec le rapport mesuré. Vous pouvez garder votre couleur ou essayer une couleur plus lisible, proposée sans être appliquée d'office.
+- **Des conseils plus rares.** Ils n'apparaissent plus que dans les cas vraiment pénibles : texte sous 3, liens et contours sous 2, couleur secondaire sous 1,5. Les skins officiels gardent leur exigence de lisibilité.
+- **Pour les assistants IA.** L'état de l'apparence rapporte vos couleurs telles quelles, avec les mêmes conseils, sans jamais les traiter comme des erreurs.
 - **Le nom « Curiosa » du pied de page ne change plus avec le skin.** Dans « Propulsé par Curiosa », le nom garde partout la même police, la même casse, le même espacement et le même soulignement, quel que soit le skin choisi. Seule sa couleur suit le pied de page, pour que le texte reste lisible même sur un fond sombre.
 - **Pour les créatrices et créateurs de skins.** Un skin qui essaie de changer l'allure de ce nom est refusé, avec un message qui dit quoi retirer. Les skins déjà installés continuent de s'afficher normalement ; leurs règles sur ce nom sont simplement ignorées.
 - **Le même nom dans l'administration.** Le crédit du bas de l'administration utilise maintenant exactement le même nom que le site public.

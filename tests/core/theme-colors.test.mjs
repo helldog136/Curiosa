@@ -107,16 +107,32 @@ test("surcharges invalides ignorées, jamais injectées", () => {
   assert.deepEqual(bad, base);
 });
 
-test("avertissements de contraste : texte/fond 4,5, accents/fond 3, calcul pur", () => {
+test("conseils de contraste : texte/fond sous 3 (4,5 recommandé), accent sous 2 (3 recommandé), seconde couleur sous 1,5, calcul pur", () => {
   assert.deepEqual(C.contrastIssues("#121214", "#e8a23b"), []);
   const text = C.contrastIssues("#121214", "#e8a23b", { text: "#2a2a30" });
   assert.deepEqual(text.map((i) => i.kind), ["text"]);
-  assert.equal(text[0].min, 4.5);
-  assert.ok(text[0].ratio < 4.5);
+  assert.equal(text[0].min, 3);
+  assert.equal(text[0].recommended, 4.5);
+  assert.ok(text[0].ratio < 3);
+  assert.deepEqual(C.contrastIssues("#121214", "#e8a23b", { text: "#767680" }), [], "3,3 : plus de conseil");
   assert.deepEqual(C.contrastIssues("#fafafa", "#fde68a").map((i) => i.kind), ["accent"]);
+  assert.deepEqual(C.contrastIssues("#fafafa", "#999999"), [], "environ 2,7 : plus de conseil");
   assert.deepEqual(C.contrastIssues("#121214", "#e8a23b", { accent2: "#1a1a1e" }).map((i) => i.kind), ["accent2"]);
+  assert.deepEqual(C.contrastIssues("#121214", "#e8a23b", { accent2: "#35353b" }), [], "seconde couleur au-dessus de 1,5 : plus de conseil");
   assert.deepEqual(C.contrastIssues("#121214", "#e8a23b", { accent2: "pas une couleur" }), [], "accent 2 invalide : ignoré");
   for (const p of THEME_PRESETS) assert.deepEqual(C.contrastIssues(p.background, p.accent, { accent2: p.accent2, surface: p.surface, text: p.text }), [], p.id);
+});
+
+test("une couleur « illisible » est appliquée TELLE QUELLE : ni fond, ni accent, ni couleur secondaire, ni texte, ni surface choisis ne sont modifiés", () => {
+  const extra = { accent2: "#7d7d7d", text: "#8a8a8a", surface: "#838383" };
+  const p = C.buildPalette("#808080", "#858585", extra);
+  assert.equal(p["--v-bg"], "#808080");
+  assert.equal(p["--v-accent"], "#858585");
+  assert.equal(p["--v-accent2"], "#7d7d7d");
+  assert.equal(p["--v-fg"], "#8a8a8a");
+  assert.equal(p["--v-surface"], "#838383");
+  const css = C.themeCss(C.buildTheme("#808080", "#858585", "sans", extra));
+  for (const c of ["--v-bg:#808080", "--v-accent:#858585", "--v-accent2:#7d7d7d", "--v-fg:#8a8a8a", "--v-surface:#838383"]) assert.ok(css.includes(c), c);
 });
 
 test("thème de l'admin : définit les nouveaux jetons avec ses propres valeurs", () => {

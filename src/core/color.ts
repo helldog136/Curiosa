@@ -124,13 +124,17 @@ export function buildPalette(background: string, accent: string, extra: ThemeExt
   return palette;
 }
 
-/** Problèmes de lisibilité d'une combinaison de couleurs (rapports WCAG sous les seuils : texte/fond 4,5, accents/fond 3). Calcul pur, utilisable côté navigateur. */
-export type ContrastIssue = { kind: "text" | "accent" | "accent2"; ratio: number; min: number };
+/**
+ * CONSEILS de lisibilité d'une combinaison de couleurs choisie par la personne propriétaire (calcul WCAG pur, utilisable côté navigateur). Ce ne sont que des conseils :
+ * ils ne changent jamais les couleurs et ne bloquent jamais l'enregistrement. Ils se déclenchent plus bas que le niveau recommandé (AA) : texte sous 3 (recommandé 4,5),
+ * accent sous 2 (recommandé 3), couleur secondaire, décorative, sous 1,5 (recommandé 3). Le kit des skins officiels garde le niveau AA (`src/core/skins/readability.ts`).
+ */
+export type ContrastIssue = { kind: "text" | "accent" | "accent2"; ratio: number; min: number; recommended: number };
 export function contrastIssues(background: string, accent: string, extra: ThemeExtra = {}): ContrastIssue[] {
   const p = buildPalette(background, accent, extra);
-  const checks: [ContrastIssue["kind"], string, number][] = [["text", p["--v-fg"]!, 4.5], ["accent", p["--v-accent"]!, 3]];
-  if (isHexColor(extra.accent2)) checks.push(["accent2", p["--v-accent2"]!, 3]);
-  return checks.map(([kind, color, min]) => ({ kind, min, ratio: Math.round(contrast(color, p["--v-bg"]!) * 100) / 100 })).filter((c) => c.ratio < c.min);
+  const checks: [ContrastIssue["kind"], string, number, number][] = [["text", p["--v-fg"]!, 3, 4.5], ["accent", p["--v-accent"]!, 2, 3]];
+  if (isHexColor(extra.accent2)) checks.push(["accent2", p["--v-accent2"]!, 1.5, 3]);
+  return checks.map(([kind, color, min, recommended]) => ({ kind, min, recommended, ratio: Math.round(contrast(color, p["--v-bg"]!) * 100) / 100 })).filter((c) => c.ratio < c.min);
 }
 
 /** Couleurs facultatives du thème envoyées par le formulaire (champ absent = on n'y touche pas ; vide = retour au dérivé). Null si l'une n'est pas un « #rrggbb ». */

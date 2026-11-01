@@ -2338,6 +2338,12 @@
   "appearance.switch.offOneMode": "Avec ce fond, votre site n'a plus qu'un seul mode : le bouton Clair / Sombre n'apparaît pas.",
   "appearance.switch.offSkin": "Ce skin n'a qu'un seul mode : le bouton Clair / Sombre n'apparaît pas.",
   "appearance.resetField": "↺ Valeur du skin",
+  "appearance.advice.try": "Essayer une couleur plus lisible",
+  "appearance.advice.keep": "Garder ma couleur",
+  "appearance.advice.use": "Utiliser cette couleur",
+  "appearance.advice.proposal": "Proposition : {color}",
+  "appearance.advice.kept": "Couleur gardée malgré le conseil.",
+  "appearance.advice.review": "Revoir le conseil",
   "appearance.reset.title": "Revenir au skin",
   "appearance.reset.help": "Remet les couleurs, la police, le halo, le fond et l'en-tête de « {name} ». Vos retouches sont gardées de côté : vous pourrez annuler.",
   "appearance.reset.none": "Vous n'avez rien retouché : votre site a exactement les valeurs de « {name} ».",
@@ -3249,8 +3255,8 @@
   "settings.text": "Texte",
   "settings.colorOptionalHint": "Facultatif : laissez vide pour un calcul automatique.",
   "settings.colorInvalid": "Écrivez une couleur au format #rrggbb.",
-  "settings.contrast.text": "Le texte est peu lisible sur ce fond (contraste {ratio}:1, au moins 4,5:1 conseillé).",
-  "settings.contrast.accent": "L'accent se distingue mal du fond (contraste {ratio}:1, au moins 3:1 conseillé).",
+  "settings.contrast.text": "Conseil : le texte est peu lisible sur ce fond (rapport {ratio} ; 4,5 recommandé pour le texte). Vous pouvez garder cette couleur.",
+  "settings.contrast.accent": "Conseil : l'accent se distingue peu du fond (rapport {ratio} ; 3 recommandé pour les éléments d'interface). Vous pouvez garder cette couleur.",
   "settings.intro": "Le nom, le logo, les langues et la confidentialité de votre site.",
   "settings.appearanceHint": "Les couleurs, les polices et le fond se règlent dans Apparence.",
   "navigation.tab.menu": "Menu",
@@ -3260,5 +3266,5 @@
   "social.header.help": "Un seul réglage pour tous les boutons ci-dessous.",
   "social.header.nowShown": "Les boutons s'affichent dans l'en-tête.",
   "social.header.nowHidden": "Les boutons sont masqués.",
-  "settings.contrast.accent2": "La couleur secondaire se distingue mal du fond (contraste {ratio}:1, au moins 3:1 conseillé)."
+  "settings.contrast.accent2": "Conseil : la couleur secondaire se distingue peu du fond (rapport {ratio} ; 3 recommandé). Vous pouvez garder cette couleur."
 }

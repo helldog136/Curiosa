@@ -4,6 +4,7 @@ import { chooseSkin } from "@/core/skins/appearance";
 import { loadAppearanceView } from "@/core/skins/appearanceView";
 import { BASIC_ID } from "@/core/skins/constants";
 import { issueText } from "@/core/skins/messages";
+import { probableIllegibility, type ProbableIssue } from "@/core/skins/readability";
 import { SKIN_ID_RE } from "@/core/skins/allowlist";
 import * as skins from "@/core/skins/service";
 import type { Outcome } from "./actions";
@@ -46,6 +47,16 @@ const skinId = (v: unknown): string => {
   return v;
 };
 
+/** Conseils de lisibilité (anglais) pour les couleurs choisies par la personne : de l'information, jamais un refus ni une correction. */
+function readabilityTips(v: Awaited<ReturnType<typeof loadAppearanceView>>): { mode: string; field: string; tip: string; suggestedColor?: string }[] {
+  const out: { mode: string; field: string; tip: string; suggestedColor?: string }[] = [];
+  const push = (mode: string, list: ProbableIssue[]) => { for (const i of list) out.push({ mode, field: i.field, tip: i.advice.en, ...(i.example ? { suggestedColor: i.example } : {}) }); };
+  // les couleurs EFFECTIVES (celles du site : choisies par la personne, sinon celles du skin)
+  if (v.palette === "both") for (const m of v.modes) { const c = v.both[m]; if (c) push(m, probableIllegibility(c, m)); }
+  else push("one mode", probableIllegibility(v.single, null));
+  return out;
+}
+
 /** Niveau 1 : l'état de l'apparence du site. */
 export async function skinStatus(): Promise<unknown> {
   const v = await loadAppearanceView();
@@ -62,6 +73,8 @@ export async function skinStatus(): Promise<unknown> {
       font: r.font ?? null, glow: v.raw.glow ?? null, background: v.raw.bgPreset ?? null, headerLayout: v.raw.headerLayout ?? null,
     },
     adjustedForReadability: v.notices.map((n) => n.en),
+    // CONSEILS de lisibilité sur les couleurs choisies par la personne : jamais une erreur, jamais appliqués. Ses couleurs sont toujours gardées telles quelles.
+    readabilityTips: readabilityTips(v),
     canUndoLastChange: v.snapshot !== null,
     where: "Admin > Appearance: the owner chooses a skin, previews it, adjusts colors, and can always undo or go back to the skin's own values.",
   };
