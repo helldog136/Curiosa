@@ -7,6 +7,14 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## Prochaine version (non publiée)
+
+### Pour les développeurs
+
+- **Le kit de test mesure les règles automatiques d'ergonomie (`docs/ERGONOMIE-ADMIN.md`).** Deux nouvelles exigences, `admin.ergonomics` et `admin.ergonomics.known`, lisent `module.json` et `locales/` : réglages par onglet, mots interdits, libellés, aides et exemples, ton, parité FR/EN. Elles n'échouent que pour un nouvel écart, selon une base `tests/ergonomics-baseline.json` qui ne peut que rétrécir.
+- **`assertAdminPageErgonomics(blocks, { errors })`** : une aide de test pour les pages produites par du code (champs visibles, recherche d'une longue liste, étiquettes répétées, bouton « Activer / désactiver », erreurs avec exemple). Elle est exportée par `testsupport/index.mjs` ; `docs/TESTSUPPORT.md` dit aussi ce que le kit ne peut pas vérifier.
+- **Le module d'exemple (`testsupport/template`) respecte ces règles** : aides avec exemple, aucun point d'exclamation.
+
 ## 0.5.1
 
 ### Liens courts

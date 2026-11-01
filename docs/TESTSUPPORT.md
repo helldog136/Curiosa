@@ -90,6 +90,55 @@ Tout s'importe depuis `testsupport/index.mjs` (stable) :
 
 Le code de votre module est exécuté avec un faux contexte, **sans réseau** (tout accès est refusé et noté), dans plusieurs situations : réglages par défaut, réglages remplis (français et anglais), puis **données piégées** (textes contenant des balises et des scripts dans les réglages, le stockage, les formulaires, l'adresse de la page, le nom du site, les entrées et les sujets reçus). Rien n'est installé et rien n'est écrit en dehors de la mémoire du test. C'est une **sonde**, pas une preuve : elle atteint ce qu'elle peut atteindre. Un ✅ veut dire « rien trouvé », pas « parfait ».
 
+## L'ergonomie des pages d'administration (`admin.ergonomics`)
+
+Les règles de [`docs/ERGONOMIE-ADMIN.md`](ERGONOMIE-ADMIN.md) marquées **[auto]** sont mesurées par le kit. Deux façons de les contrôler, selon que le texte vient du manifeste ou du code.
+
+**1. Le manifeste et les textes (exigences `admin.ergonomics` et `admin.ergonomics.known`).** Le kit lit `module.json` et `locales/*.json`, jamais le code :
+
+| Règle | Ce qui est mesuré |
+|---|---|
+| R5 | au plus 7 réglages simples par onglet (les réglages `advanced` et ceux d'un groupe facultatif replié ne comptent pas) |
+| R9 | aucun mot du code (clé, slug, instance, topic, sujet, token, jeton, webhook, EventSub, route, service, identifiant, payload, API, JSON, cache, hash, SSE, OAuth, key, identifier) dans les libellés, aides, options et messages FR et EN, hors réglages `advanced` ; `{accolades}` visibles dans un libellé. La liste est modifiable en tête de `testsupport/ergonomics.mjs` (`FORBIDDEN_WORDS`), avec une liste blanche **justifiée** (`JARGON_WHITELIST`) |
+| R10 | libellé de 60 caractères au plus, sans « : » final, sans parenthèse de précision à rallonge |
+| R11 | tout champ libre (texte, texte long, adresse, nombre) a une aide avec un exemple concret (« Par exemple… », « ex. », une valeur entre guillemets, une adresse, un @pseudo ; un nombre suffit pour un champ numérique) ou une valeur par défaut visible ; l'aide ne répète pas le libellé. Une aide de plus de 60 caractères n'est **pas** un écart : le cœur 0.5.x la passe dans la bulle « ? » (elle est comptée à part par `--report`) |
+| R13 | pas de « ! », pas de « Veuillez », pas de MAJUSCULES criardes (sigles de `ALLOWED_CAPS` permis), vouvoiement, phrases de 20 mots au plus, pas de point médian ni de « (e) » |
+| R17 | aucun texte « Activer / désactiver » |
+| R19 | pas de liste oui/non pour un booléen, pas de case négative (« Ne pas… ») |
+| R29 | FR et EN à parité exacte : mêmes clés, mêmes `{variables}`, aucune langue manquante dans un texte du manifeste |
+
+**Le cliquet.** Les modules qui existent déjà ont des écarts. Le dépôt des modules garde donc une base `tests/ergonomics-baseline.json` : pour chaque module, la liste de ses écarts connus (une règle, un endroit, un condensé du texte fautif). Le kit la trouve tout seul (`<dépôt>/tests/ergonomics-baseline.json`, pour un module dans `<dépôt>/modules/<id>`), ou par l'option `ergonomicsBaseline` de `checkModule` / `registerConformanceTests` (un objet, un chemin, ou `false`).
+
+- un écart **de la base** : avertissement (`admin.ergonomics.known`, conseil) ;
+- un **nouvel** écart (nouveau réglage, nouveau texte, texte modifié qui reste fautif) : **échec** (`admin.ergonomics`, obligatoire) ;
+- un écart de la base **qui a disparu** : échec aussi, « retirez cette ligne de la base » : la base ne peut que **rétrécir** ;
+- un module absent d'une base existante n'a droit à aucun écart ; **sans base**, rien n'échoue (tous les écarts sont des avertissements).
+
+Dans le dépôt des modules : `node scripts/ergonomics-baseline.mjs --write` (crée la base, ou la fait rétrécir ; il refuse d'ajouter un écart), `--report` (le tableau « module → nombre d'écarts par règle »), `--check`.
+
+**2. Les pages produites par du code.** Un panneau d'administration (`adminPanel`) est du code, pas un manifeste : le kit ne peut pas le lire. Dans les tests de votre module, appelez l'aide avec le faux contexte :
+
+```js
+import { fakeCtx, assertAdminPageErgonomics } from "<dossier du cœur>/testsupport/index.mjs";
+
+const blocks = await def.adminPanel(fakeCtx({ settings: {} }), { query: {} });
+assertAdminPageErgonomics(blocks, { errors: ["Écrivez un nombre entier, par exemple 500."] });
+```
+
+| Règle | Ce qui est mesuré sur les blocs |
+|---|---|
+| R3 | un bouton d'envoi qui s'appelle « OK », « Valider », « Soumettre », « Envoyer »… (un verbe précis est attendu) |
+| R4 | au plus 5 champs visibles par formulaire (`adminForm`), 7 par section (entre deux `heading`) ; les champs `hidden` et ceux marqués `advanced` / `folded` ne comptent pas |
+| R9, R10 | mots du code et libellés trop longs dans les champs des formulaires |
+| R14 | une colonne dont toutes les cellules sont identiques dans un tableau de plus de 5 lignes |
+| R15 | un tableau de plus de 10 lignes sans champ de recherche (un `<input type="search">` dans un bloc `html`, un champ `q` / `search` / « Rechercher » dans un `adminForm`, ou `searchable: true` sur le tableau) |
+| R17 | un bouton de ligne, un lien ou un bouton nommé « Activer / désactiver » |
+| R22 | les messages d'erreur donnés dans `errors` : un exemple (« par exemple 500 »), jamais de code, de trace ni d'« erreur 500 » |
+
+L'option `skip: ["R15"]` écarte une règle (écrivez la raison dans votre test). `adminPageErgonomicsProblems(blocks, opts)` rend la liste au lieu de lever.
+
+**Ce que le kit ne peut PAS vérifier : revue humaine et captures.** R1 (une page, une tâche), R2 (chemin court), R3 (le choix du verbe : seuls « OK », « Valider »… sont repérés), R6 (une notion = un champ), R7, R8, R12 (même mot partout), R14 (seule l'étiquette uniforme est mesurée), R16 à R18 (régularité des lignes, interrupteur d'état, état vide), R20, R21, R23 à R28 (retours d'action, liens entre modules, premier usage, téléphone, clavier et lecteur d'écran), R30. La PR les justifie dans sa section « Ergonomie », avec des captures regardées (1280 et 390 px, clair et sombre).
+
 ## Les exigences, une par une
 
 Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant est stable (utilisable dans `--seulement`).
@@ -168,8 +217,10 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 | [`readme.exists`](#readmeexists) | obligatoire | Un README.md explique le module |
 | [`readme.plain`](#readmeplain) | conseil | Le README est écrit en langage de tous les jours |
 | [`neutrality.clean`](#neutralityclean) | conseil | Aucune donnée personnelle ni propre à un site dans le module |
+| [`admin.ergonomics`](#adminergonomics) | obligatoire | Aucun nouvel écart d'ergonomie dans les réglages et les textes |
+| [`admin.ergonomics.known`](#adminergonomicsknown) | conseil | Écarts d'ergonomie connus, à résorber |
 
-42 exigences obligatoires et 30 conseils.
+43 exigences obligatoires et 31 conseils.
 
 ### Le fichier module.json
 
@@ -782,6 +833,24 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 - **Ce qui est vérifié.** Aucun fichier du module ne contient un des termes interdits de votre liste de neutralité (noms, domaines, adresses réels), ni une adresse e-mail personnelle courante.
 - **Pourquoi.** Un module se partage : y laisser le nom de son propre site ou une adresse réelle livre ces informations à tous ceux qui l'installent. Utilisez des exemples neutres (example.org, « Demo »).
 - **Comment corriger.** Remplacez l'élément cité par une valeur d'exemple. Pour une liste de termes à vérifier, créez un fichier .neutrality-terms (un terme par ligne) ou la variable NEUTRALITY_TERMS.
+
+### L'ergonomie des pages d'administration
+
+#### `admin.ergonomics`
+
+**Aucun nouvel écart d'ergonomie dans les réglages et les textes** — niveau : **obligatoire**
+
+- **Ce qui est vérifié.** Le manifeste (module.json) et les textes (locales/fr.json, en.json) respectent les règles automatiques de docs/ERGONOMIE-ADMIN.md : R5 (7 réglages simples au plus par onglet), R9 (aucun mot du code), R10 (libellés de 60 caractères au plus, sans « : »), R11 (aides courtes avec un exemple pour tout champ libre), R13 (vouvoiement, sans « ! », sans « Veuillez », sans majuscules criardes, phrases de 20 mots au plus), R17 (pas de bouton « Activer / désactiver »), R19 (pas de liste pour un booléen, pas de case négative) et R29 (FR et EN à parité exacte : mêmes clés, mêmes {variables}). Les écarts déjà connus d'un module, listés dans tests/ergonomics-baseline.json, sont tolérés (voir admin.ergonomics.known) ; tout NOUVEL écart (nouveau réglage, nouveau texte) échoue, et un écart connu qui a disparu doit être retiré de la base.
+- **Pourquoi.** Une personne qui crée du contenu juge une page de réglages en dix secondes. Les règles sont mesurées pour que la page ne se dégrade pas : la base ne peut que rétrécir, jamais grossir.
+- **Comment corriger.** Corrigez le texte ou le réglage signalé (le message dit la règle et l'endroit). Pour un écart « disparu », retirez sa ligne de la base : node scripts/ergonomics-baseline.mjs --write. Ne rajoutez jamais une ligne à la base pour faire taire un nouvel écart ; pour un mot qui est le bon mot (un tiers l'impose), ajoutez une entrée JUSTIFIÉE à JARGON_WHITELIST en tête de testsupport/ergonomics.mjs.
+
+#### `admin.ergonomics.known`
+
+**Écarts d'ergonomie connus, à résorber** — niveau : **conseil**
+
+- **Ce qui est vérifié.** Les écarts d'ergonomie qui existent déjà (ceux de tests/ergonomics-baseline.json ; sans base, tous les écarts). Ils n'empêchent rien, mais la base doit rétrécir.
+- **Pourquoi.** Ces écarts sont de la dette : un texte trop long, un mot du code, un onglet trop chargé. Les garder visibles en avertissement évite de les oublier.
+- **Comment corriger.** Corrigez un écart, puis retirez sa ligne de la base (node scripts/ergonomics-baseline.mjs --write). Le tableau par module et par règle : node scripts/ergonomics-baseline.mjs --report.
 
 ## Limites connues
 
