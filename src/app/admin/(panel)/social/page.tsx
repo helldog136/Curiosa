@@ -12,6 +12,9 @@ import { ui } from "@/components/admin/ui";
 import { LiveSearch } from "@/components/admin/LiveSearch";
 import { SocialSwitch } from "@/components/admin/SocialSwitch";
 import { PendingButton } from "@/components/admin/PendingButton";
+import { SocialPaste, type SocialPasteLabels } from "@/components/admin/SocialPaste";
+import { socialSourcesOf } from "@/core/socialRecognize";
+import { resolveIcon } from "@/core/icons";
 import { addNetwork, moveSocial } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -50,6 +53,19 @@ export default async function SocialPage({ searchParams }: { searchParams: Promi
   });
   const stateCounts = { shown: rows.filter((r) => r.state === "shown").length, hidden: rows.filter((r) => r.state === "hidden").length, todo: rows.filter((r) => r.state === "todo").length };
 
+  // Le champ unique : les réseaux que le Catalogue sait reconnaître (bloc `social`) ; leurs icônes sont résolues ici pour que le navigateur n'embarque pas toute la bibliothèque.
+  const sources = socialSourcesOf(market);
+  const icons: Record<string, { svg?: string; text?: string } | null> = {};
+  for (const src of sources) { const r = resolveIcon(src.spec.icon ?? null); icons[src.id] = r ? ("svg" in r ? { svg: r.svg } : { text: r.text }) : null; }
+  const example = (() => { const first = (sources.find((x) => x.id === "instagram") ?? sources[0])?.spec.example; return typeof first === "string" ? first : first?.[locale] ?? first?.fr ?? Object.values(first ?? {})[0] ?? ""; })();
+  const paste: SocialPasteLabels = {
+    label: t("social.paste.label"), help: t("social.paste.help"), example: example ? t("field.example", { example }) : "", placeholder: "",
+    add: t("social.paste.add"), addOne: t("social.paste.addOne"), addMany: t("social.paste.addMany", { n: "{n}" }), running: t("social.paste.running", { name: "{name}", n: "{n}", total: "{total}" }),
+    done: t("social.paste.done", { label: "{label}" }), doneMany: t("social.paste.doneMany", { n: "{n}" }), failed: t("social.failed"),
+    ready: t("social.paste.ready"), have: t("social.paste.have"), dup: t("social.paste.dup"), choose: t("social.paste.choose"), choosePlaceholder: t("social.paste.choosePlaceholder"),
+    unknown: t("social.paste.unknown"), ownerOnly: t("social.ownerOnly"), clear: t("social.paste.clear"), limit: t("social.paste.limit", { max: "{max}", n: "{n}" }),
+  };
+
   const available = market.map((e) => ({ id: e.id, icon: e.icon, name: localized(e.name, locale, config.defaultLocale), description: localized(e.description, locale, config.defaultLocale), installed: counts.get(e.id) ?? 0 }));
 
   return (
@@ -59,6 +75,13 @@ export default async function SocialPage({ searchParams }: { searchParams: Promi
         <p className={ui.pageIntro}>{t("social.intro")}</p>
       </div>
       {error && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm">{error.startsWith("modules.error.") ? t(error, { service: "" }) : t("error.generic")}</p>}
+
+      {sources.length > 0 && (
+        <section className={`${ui.card} space-y-3`} aria-labelledby="social-paste-title">
+          <h2 id="social-paste-title" className="text-lg font-semibold">{t("social.paste.title")}</h2>
+          <SocialPaste sources={sources} icons={icons} existing={entries.map((e) => e.link.href)} canInstall={isOwner} shown={shownCount} max={MAX_SOCIALS} labels={paste} />
+        </section>
+      )}
 
       <section className="space-y-3" aria-labelledby="social-mine">
         <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
