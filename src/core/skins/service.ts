@@ -354,7 +354,7 @@ export async function revert(id: string, opts: Opts = {}): Promise<{ ok: true; i
     if (!row) return fail("skins.error.notfound");
     const prev = row.previous;
     if (!prev || !filesPresent(id, prev.version)) return fail("skins.error.noprevious");
-    const v = validateSkinFolder(skinDir(id, prev.version), { coreVersion: getCoreVersion(), expectId: id });
+    const v = validateSkinFolder(skinDir(id, prev.version), { coreVersion: getCoreVersion(), expectId: id, reading: true });
     if (!v.ok || v.fingerprint !== prev.fingerprint) return fail("skins.error.invalid", { issues: v.issues });
     const { previous: _gone, ...rest } = row;
     void _gone;
@@ -433,7 +433,7 @@ export async function installed(): Promise<InstalledSkin[]> {
       out.push({ ...base, name: fallbackName, description: { fr: "", en: "" }, modes: [], tags: [], status: "missing", problems: [makeIssue("skin-files-missing")], previews: [] });
       continue;
     }
-    const v = validateSkinFolder(skinDir(row.id, row.version), { coreVersion: getCoreVersion(), expectId: row.id });
+    const v = validateSkinFolder(skinDir(row.id, row.version), { coreVersion: getCoreVersion(), expectId: row.id, reading: true });
     const m = v.manifest;
     const modified = v.ok && v.fingerprint !== row.fingerprint;
     out.push({
@@ -471,7 +471,7 @@ export async function loadInstalledSkin(id: string, opts: { now?: number; module
   const now = opts.now ?? Date.now();
   const hit = loadMemo.get(key);
   if (hit && now - hit.at < LOAD_TTL) return hit.value;
-  const v = validateSkinFolder(skinDir(row.id, row.version), { coreVersion: getCoreVersion(), expectId: row.id, moduleParts: opts.moduleParts });
+  const v = validateSkinFolder(skinDir(row.id, row.version), { coreVersion: getCoreVersion(), expectId: row.id, moduleParts: opts.moduleParts, reading: true });
   let value: LoadedSkin;
   if (!v.ok || !v.manifest || !v.tokens) value = { ok: false, id, issues: v.issues };
   else if (v.fingerprint !== row.fingerprint) value = { ok: false, id, issues: [makeIssue("skin-modified")] };

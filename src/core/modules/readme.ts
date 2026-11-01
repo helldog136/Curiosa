@@ -1,7 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { DATA_DIR } from "../config";
-import { git, isCommitRef, parseRepoUrl } from "./installer";
+import { git, gitBlob, isCommitRef, parseRepoUrl } from "./installer";
+import { loadPreviewImages, PREVIEW_CACHE_BYTES, type PreviewImage } from "./previews";
 import { parseManifest, type ParsedManifest } from "./manifest";
 
 /**
@@ -10,7 +11,7 @@ import { parseManifest, type ParsedManifest } from "./manifest";
  * Un dépôt git (du catalogue ou personnel) se lit par un clonage superficiel dans un dossier temporaire, avec les mêmes garde-fous que l'installation (hôtes autorisés, https, aucun crochet git). Le texte est NON FIABLE :
  * il n'est affiché que par le rendu Markdown sans HTML brut.
  */
-export type ModulePreview = { manifest: ParsedManifest | null; readme: string | null; truncated: boolean };
+export type ModulePreview = { manifest: ParsedManifest | null; readme: string | null; truncated: boolean; /** Visuels du manifeste (`previews`) déjà lus ET vérifiés côté serveur : ceux qui manquent ou ne conviennent pas sont absents. */ images: PreviewImage[] };
 export type PreviewTarget = { kind: "repo"; url: string; ref?: string; subdir?: string };
 
 const MAX_README = 100_000;
@@ -18,13 +19,28 @@ const MAX_MANIFEST = 100_000;
 const TTL = 10 * 60_000;
 const README_RE = /^readme(\.md|\.markdown|\.txt)?$/i;
 const cache = new Map<string, { at: number; value: ModulePreview }>();
-export const clearPreviewCache = () => cache.clear();
+/** Lectures en cours : plusieurs demandes en même temps pour le même module (la fiche et ses images) ne clonent le dépôt qu'une fois. */
+const pending = new Map<string, Promise<ModulePreview>>();
+export const clearPreviewCache = () => { cache.clear(); pending.clear(); };
+const imageBytes = (p: ModulePreview) => p.images.reduce((n, i) => n + i.bytes.length, 0);
 
-function finish(manifestText: string | null, readmeText: string | null): ModulePreview {
+/** Mémoire bornée : `maxEntries` aperçus au plus et `maxBytes` d'images au total (le dernier lu est toujours gardé) ; les plus anciens partent d'abord. */
+export function trimPreviewCache(map: Map<string, { value: ModulePreview }>, maxEntries: number, maxBytes: number): void {
+  let total = 0;
+  for (const e of map.values()) total += imageBytes(e.value);
+  while (map.size > maxEntries || (total > maxBytes && map.size > 1)) {
+    const oldest = map.keys().next().value!;
+    total -= imageBytes(map.get(oldest)!.value);
+    map.delete(oldest);
+  }
+}
+
+async function finish(manifestText: string | null, readmeText: string | null, readFile: (file: string, maxBytes: number) => Promise<Buffer | null>): Promise<ModulePreview> {
   let manifest: ParsedManifest | null = null;
   try { const p = manifestText ? parseManifest(JSON.parse(manifestText)) : null; manifest = p?.ok ? p.manifest : null; } catch { /* manifeste illisible : pas d'aperçu des permissions */ }
   const truncated = (readmeText?.length ?? 0) > MAX_README;
-  return { manifest, readme: readmeText === null ? null : readmeText.slice(0, MAX_README), truncated };
+  const images = await loadPreviewImages(manifest?.previews, readFile);
+  return { manifest, readme: readmeText === null ? null : readmeText.slice(0, MAX_README), truncated, images };
 }
 
 async function readRepo(url: string, ref?: string, subdir?: string): Promise<ModulePreview> {
@@ -50,7 +66,9 @@ async function readRepo(url: string, ref?: string, subdir?: string): Promise<Mod
     const names = (await git(["ls-tree", "--name-only", subdir ? `HEAD:${subdir}` : "HEAD"], dir)).split("\n");
     const show = async (name: string | undefined) => (name ? git(["show", `HEAD:${prefix}${name}`], dir).then((t) => t.slice(0, MAX_README + 1)) : null);
     const readme = names.find((n) => README_RE.test(n));
-    return finish(await show(names.includes("module.json") ? "module.json" : undefined).then((t) => (t ?? "").slice(0, MAX_MANIFEST) || null), await show(readme));
+    // Les visuels : seulement ceux que le manifeste déclare, dans `previews/` du module, taille contrôlée avant lecture.
+    const image = (file: string, maxBytes: number) => gitBlob(`HEAD:${prefix}${file}`, dir, maxBytes);
+    return await finish(await show(names.includes("module.json") ? "module.json" : undefined).then((t) => (t ?? "").slice(0, MAX_MANIFEST) || null), await show(readme), image);
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }
@@ -61,8 +79,10 @@ export async function getModulePreview(target: PreviewTarget): Promise<ModulePre
   const key = `r:${target.url}#${target.ref ?? ""}:${target.subdir ?? ""}`;
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at < TTL) return hit.value;
-  const value = await readRepo(target.url, target.ref, target.subdir);
+  let reading = pending.get(key);
+  if (!reading) { reading = readRepo(target.url, target.ref, target.subdir).finally(() => pending.delete(key)); pending.set(key, reading); }
+  const value = await reading;
   cache.set(key, { at: Date.now(), value });
-  if (cache.size > 100) cache.delete(cache.keys().next().value!);
+  trimPreviewCache(cache, 100, PREVIEW_CACHE_BYTES);
   return value;
 }

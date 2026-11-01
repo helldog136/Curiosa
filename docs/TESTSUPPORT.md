@@ -151,6 +151,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 | [`manifest.valid`](#manifestvalid) | obligatoire | module.json est valide |
 | [`manifest.version`](#manifestversion) | obligatoire | La version est au format x.y.z |
 | [`manifest.id`](#manifestid) | conseil | L'identifiant correspond au nom du dossier |
+| [`manifest.previews`](#manifestpreviews) | obligatoire | Les visuels de la fiche sont des images valables |
 | [`manifest.catalogue`](#manifestcatalogue) | conseil | La fiche du module est complète pour le catalogue |
 | [`compat.apiVersion`](#compatapiversion) | obligatoire | Le module vise la bonne version de l'API des modules |
 | [`compat.minCore`](#compatmincore) | obligatoire | minCore couvre les fonctions du cœur utilisées |
@@ -222,7 +223,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 | [`admin.ergonomics`](#adminergonomics) | obligatoire | Aucun nouvel écart d'ergonomie dans les réglages et les textes |
 | [`admin.ergonomics.known`](#adminergonomicsknown) | conseil | Écarts d'ergonomie connus, à résorber |
 
-43 exigences obligatoires et 31 conseils.
+44 exigences obligatoires et 31 conseils.
 
 ### Le fichier module.json
 
@@ -257,6 +258,14 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 - **Ce qui est vérifié.** Le champ « id » est identique au nom du dossier du module.
 - **Pourquoi.** Quand plusieurs modules vivent dans un même dépôt (un dossier chacun), retrouver un module par son dossier évite les confusions. Les dépôts de modules reconnus l'exigent.
 - **Comment corriger.** Renommez le dossier comme l'« id », ou l'« id » comme le dossier (attention : l'« id » ne doit plus changer une fois le module publié).
+
+#### `manifest.previews`
+
+**Les visuels de la fiche sont des images valables** — niveau : **obligatoire**
+
+- **Ce qui est vérifié.** Chaque visuel de « previews » (6 au plus) est un fichier « previews/….webp » ou « .png » du module : 150 Ko au plus, de vraies images (pas un autre format renommé), de 240 à 2400 pixels de côté, avec une légende et un texte alternatif en français et en anglais. Sans « previews », rien à vérifier.
+- **Pourquoi.** Le cœur lit ces images lui-même et les montre dans la fiche du module, avant et après l'installation. Une image trop lourde, d'un autre format ou absente est simplement écartée : la fiche paraît alors incomplète à la personne qui hésite à installer.
+- **Comment corriger.** Exportez chaque capture en WebP (ou PNG) de moins de 150 Ko, rangez-la dans « previews/ », déclarez-la dans « previews » avec « file », « caption », « alt » et « type » (public, admin ou overlay). Ne montrez jamais de vraies données personnelles : utilisez des exemples inventés.
 
 #### `manifest.catalogue`
 

@@ -143,6 +143,7 @@ Validé à l'installation et au chargement (zod, `src/core/modules/manifest.ts`)
 | `family` | (cœur 0.2.14, `"minCore": "0.2.14"`) Facultatif : `"content"`, `"community"`, `"connections"` ou `"overlays"` : le rangement dans l'administration, qui **prime** sur la déduction du cœur (voir « Rangement dans le menu »). Sans la clé : la règle habituelle, inchangée. |
 | `skin` | (cœur 0.4.0, `"minCore": "0.4.0"`) Facultatif : les **pièces d'apparence** que les skins peuvent restyler et les jetons de style propres au module (`--sk-m-<module>-…`), avec leur valeur d'aujourd'hui par défaut. Apparence seulement : jamais de contenu, de texte ni de masquage. Un cœur plus ancien ignore la clé. Sans la clé : rien ne change. Voir [Rendre un module stylable par les skins](#rendre-un-module-stylable-par-les-skins-skin-cœur-040). |
 | `overlayElements` | (cœur 0.5.0, `"minCore": "0.5.0"`) Facultatif : les **éléments** que le module propose aux **pages d'overlay** (section « Overlays » de l'administration) : `id`, `label` et `description` FR/EN, `fit` (`scale` par défaut, `ratio`, `fluid`), `size` ou `referenceHeight`, `ratios`, `minSize`, `followsStyle`, `options` (choix, oui/non, nombre, texte court ; 20 au plus), `demo`. Sans la clé : aucun élément, rien ne change. Voir [Proposer des éléments pour les pages d'overlay](OVERLAY-ELEMENTS.md). |
+| `previews` | (cœur 0.6.x, aucun `minCore` à déclarer : un cœur plus ancien ignore la clé et montre la fiche comme avant) Facultatif : **6 visuels au plus** qui montrent dans la fiche de l'extension ce que le module ajoute. Chaque visuel : `file` (`previews/<nom>.webp` ou `.png`), `caption` (légende, vouvoiement, 140 caractères au plus), `alt` (texte alternatif, 250 au plus), tous deux en `fr` **et** `en`, et `type` (`public`, `admin` ou `overlay`). Voir « Visuels de la fiche (`previews`) ». |
 | `privacy` | Facultatif : ce que le module collecte comme données personnelles, pourquoi et comment les faire effacer (texte simple, traduisible comme `description`). **Un module qui collecte des données des personnes qui visitent doit le déclarer** : le cœur reprend ce texte tel quel, sous le nom de l'instance, dans la page « Politique de confidentialité » du site (`/privacy`, lien permanent du pied de page). Un module qui ne collecte rien n'a rien à écrire. |
 | `icon` | Emoji affiché dans l'admin. |
 | `main` | Fichier ES module du code, relatif à la racine. Absent : module « sans code » (réglages, contenu). |
@@ -275,6 +276,8 @@ Une notion = **un seul champ** (règles R6, R20, R21) : une période, une durée
 | `datetime` | une date et une heure natives sur une ligne, avec la phrase d'aperçu | `"2026-11-30T18:30"` (heure du site, sans fuseau) |
 | `duration` | un nombre et une unité (secondes, minutes, heures, jours), l'unité la plus grande qui tombe juste est choisie au départ | un **nombre entier de secondes** (`5400` pour 1 h 30), dans `min`–`max` |
 | `number` avec `min` / `max` / `step` / `unit` | un champ numérique qui n'accepte que cela, l'unité à droite, la valeur par défaut grisée dans le champ, l'indication « Entre 5 et 3600 secondes · Vide : 30 s » | un nombre |
+
+**Raccourcis du contrôle `period` (aucun réglage à faire, aucune valeur nouvelle).** « Tout le mois de [mois] » remplit le 1er et le dernier jour du mois (février : 28, ou 29 si l'année est bissextile et choisie ; en « chaque année », la fin de février est le **29**, ce qui couvre tout février, car `periodContains` compare mois et jour) et revient à « Choisir un mois » dès qu'un jour est modifié à la main. « Une période toute prête » (liste avec recherche, groupée) propose des saisons et des fêtes **à date fixe** (valeur « chaque année ») et des fêtes **mobiles** (Pâques, Carnaval, Ramadan, Aïd, Nouvel An chinois, fêtes juives) : celles-ci écrivent les dates de la **prochaine** occurrence avec l'année, « Chaque année » décoché, car leurs dates changent ; le module doit donc les faire redéfinir chaque année. Les valeurs enregistrées restent `MM-JJ/MM-JJ` et `AAAA-MM-JJ/AAAA-MM-JJ`.
 
 ```json
 { "key": "season", "type": "period", "default": "11-01/11-30", "label": { "en": "Season", "fr": "Période" } },
@@ -553,6 +556,26 @@ Le dernier maillon est **toujours la valeur d'avant** : sur un cœur sans skins,
 
 ### Journal du cœur (`logEvents`, cœur 0.6.0)
 Types d'événements que le module écrit avec `ctx.api.log.write({ action, target?, level?, data? })` : `key` (`command.run`, 48 caractères au plus ; `module`, `mcp`, `instance` réservés), `label` (`fr` ET `en`, 120 caractères, `{champ}` déclarés), `level` (`info`, `warn`, `error`), `frequent` (7 jours et 200 lignes au plus), `fields` (5 au plus : `key`, `type` `text`, `number` ou `boolean` ; 200 caractères par valeur). Champ nommé comme un secret ou un texte du public : refusé. L'acteur est déduit par le cœur (jamais fourni). Un module sans déclaration écrit des lignes génériques sans données. 90 jours et 500 lignes par module ; onglet « Historique » automatique, droit implicite `<module>:history`. Un cœur ancien ignore la clé et n'a pas `ctx.api.log`. Voir `docs/CREATE-A-MODULE.md` (12 ter) et `docs/MIGRER-SON-JOURNAL.md`.
+
+### Visuels de la fiche (`previews`, cœur 0.6.x)
+
+La fiche d'une extension (dans le catalogue comme sur la page de l'extension installée) montre d'abord ce que fait le module : sa description, puis ses **visuels**, puis ce qu'il ajoute ; les détails techniques viennent en dessous, repliés. Les visuels sont les captures que vous déclarez dans `previews` :
+
+```json
+"previews": [
+  { "file": "previews/commandes.webp", "type": "public",
+    "caption": { "fr": "Votre page de commandes, telle que la voit votre public.", "en": "Your commands page, as your audience sees it." },
+    "alt": { "fr": "Liste de trois commandes avec leur description.", "en": "List of three commands with their description." } }
+]
+```
+
+- **Format.** 6 visuels au plus, déclarés dans l'ordre d'affichage (le premier est le plus grand à partir de trois). Fichiers `previews/<nom>.webp` ou `.png` à la racine du module (noms en minuscules, chiffres, `.`, `_`, `-`, 64 caractères au plus ; pas de sous-dossier).
+- **Images.** 150 Ko au plus chacune, de **vrais** WebP ou PNG (le type est lu dans les octets, pas dans le nom), de 240 à 2400 pixels de côté et 4 millions de pixels au plus. Une image qui ne convient pas est écartée en silence : la fiche s'affiche sans elle. Le kit `npm run module:check` (exigence `manifest.previews`) la signale avant la publication. Conseil : 1200 × 750 en WebP.
+- **Textes.** `caption` et `alt` sont obligatoires en **français et en anglais** (d'autres langues sont permises en plus). La légende est une phrase au vouvoiement qui dit ce que montre l'image ; le texte alternatif décrit l'image pour qui ne la voit pas.
+- **Type.** `public` (une page du site), `admin` (un écran d'administration) ou `overlay` (un élément d'une page d'overlay) : la fiche l'écrit sous l'image.
+- **Sans `previews`**, la fiche s'affiche comme avant, sans bloc vide. Un `previews` mal formé rend le manifeste invalide (comme toute autre clé).
+- **Vie privée.** Le navigateur ne charge jamais ces images depuis un site tiers : le cœur les lit côté serveur (dépôt du catalogue, dépôt personnel ou dossier du module installé), les vérifie, puis les sert depuis `/api/admin/extension-previews` (réservé à l'administration, mise en cache privée, 6 images et 150 Ko chacune au plus, 12 Mo de mémoire pour tous les visuels lus). **Aucune capture ne doit montrer de vraies données personnelles** (noms, adresses e-mail, pseudos, adresses IP, jetons) : utilisez des exemples inventés, comme `example.org` ou « Démo ».
+- **Catalogue.** L'entrée de `catalogue/index.json` peut porter la même liste `previews` (le script qui génère l'index la recopie du `module.json`, comme `minCore` devient `requires.core`) : le cœur sait alors annoncer des visuels sans télécharger le module. Les images, elles, ne sont jamais dans l'index. Une entrée mal formée est ignorée visuel par visuel.
 
 ### Actions MCP (`mcp`)
 
