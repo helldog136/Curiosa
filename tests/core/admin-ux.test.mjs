@@ -89,10 +89,11 @@ test("mon compte : connexion (mot de passe), puis sécurité renforcée (double 
   assert.ok(page.includes("<DangerZone") && /DangerZone[^]*signOutEverywhere/.test(page), "« déconnecter tous mes appareils » est dans la zone danger");
 });
 
-test("utilisateurs : suppression et coupure de sessions sont à part (zone danger repliée) et confirmées avec le nom de la personne", () => {
+test("utilisateurs : suppression et coupure de sessions sont rangées dans le menu « ⋯ » de la ligne, confirmées avec le nom de la personne et ce qu'elle perd", () => {
   const page = read(`${PANEL}/users/page.tsx`);
-  assert.match(page, /<DangerZone[^]*deleteUser[^]*<\/DangerZone>/);
-  assert.match(page, /users\.deleteConfirm", \{ name: u\.name \}/);
+  assert.match(page, /<RowMenu[^]*deleteUser[^]*<\/RowMenu>/);
+  assert.match(page, /users\.deleteConfirm", \{ name: u\.name, roles: rolesText \}/, "la confirmation dit qui est supprimé et quels droits sont perdus");
+  assert.match(page, /users\.revokeConfirm", \{ name: u\.name \}/);
   assert.ok(!/confirm\.delete/.test(page), "pas de message générique « cet élément »");
   assert.ok(page.indexOf("setRequireTwoFactor") > page.indexOf("createUser"), "la sécurité de l'équipe vient après l'ajout d'une personne");
 });
