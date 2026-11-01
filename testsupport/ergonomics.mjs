@@ -125,7 +125,7 @@ const wordCount = (s) => (String(s).match(/[\p{L}\p{N}][\p{L}\p{N}'’\-/]*/gu) 
 /** Problèmes de ton (R13) d'un texte visible. */
 export function toneProblems(text, lang = "*") {
   const t = String(text);
-  const body = plain(t);
+  const body = plain(t).replace(/\b[\p{Lu}]{3,}\.(?:md|json|txt|csv|html|ics|pdf)\b/gu, " "); // « SKILL.md », « README.md » : des noms de fichiers
   const out = [];
   if (/!(?![\p{L}\p{N}_])/u.test(body.replace(/<!--[\s\S]*?-->/g, ""))) out.push("contient un point d'exclamation");
   if (/\bveuillez\b/i.test(body)) out.push("contient « Veuillez »");
@@ -134,7 +134,7 @@ export function toneProblems(text, lang = "*") {
   if (lang !== "en" && (/(?<![\p{L}\p{N}_])(?:tu|toi|ton|ta|tes|te)(?![\p{L}\p{N}_])/iu.test(body.replace(/[A-Za-z]+-(?:tu|te)\b/g, " ")) || /(?<![\p{L}\p{N}_])t['’]\p{L}/iu.test(body))) out.push("tutoiement (le vouvoiement est la règle)");
   const long = sentences(t).find((s) => wordCount(s) > SENTENCE_MAX_WORDS);
   if (long) out.push(`phrase de ${wordCount(long)} mots (${SENTENCE_MAX_WORDS} au plus) : « ${excerpt(long, 40)} »`);
-  if (/[\p{L}]·[\p{L}]/u.test(body) || /[éèiuntlrsfcdv]\((?:e|es|ne|le|ve|trice|rice|euse|ère|se)\)/iu.test(body)) out.push("écriture qui suppose un genre (point médian ou « (e) »)");
+  if (lang !== "en" && (/[\p{L}]·[\p{L}]/u.test(body) || /[éèiuntlrsfcdv]\((?:e|es|ne|le|ve|trice|rice|euse|ère|se)\)/iu.test(body))) out.push("écriture qui suppose un genre (point médian ou « (e) »)");
   return out;
 }
 
@@ -324,6 +324,20 @@ export function compareToBaseline(gaps, known) {
 export function parseBaseline(value) {
   if (!value || typeof value !== "object" || typeof value.modules !== "object" || value.modules === null) return null;
   return value;
+}
+
+/**
+ * La base ne peut que RÉTRÉCIR : les clés de `next` qui n'étaient pas dans `previous` (par module). Un module absent de `previous` n'avait aucun écart toléré :
+ * toutes ses clés sont une croissance. Renvoie [] quand la base n'a fait que rétrécir.
+ */
+export function baselineGrowth(previous, next) {
+  const before = previous?.modules ?? {};
+  const out = [];
+  for (const [id, keys] of Object.entries(next?.modules ?? {})) {
+    const old = new Set(before[id] ?? []);
+    for (const k of keys) if (!old.has(k)) out.push(`${id} : ${k}`);
+  }
+  return out;
 }
 
 /** Nombre d'écarts par règle : { R9: 3, R10: 1 }. */

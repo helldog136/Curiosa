@@ -6,7 +6,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { checkModule } from "../testsupport/index.mjs";
 import {
-  analyzeModule, bubbleCount, compareToBaseline, countByRule, forbiddenWords, hasExample, toneProblems, labelProblems, errorMessageProblems,
+  analyzeModule, bubbleCount, compareToBaseline, baselineGrowth, countByRule, forbiddenWords, hasExample, toneProblems, labelProblems, errorMessageProblems,
   adminPageErgonomicsProblems, assertAdminPageErgonomics, JARGON_WHITELIST, FORBIDDEN_WORDS,
 } from "../testsupport/ergonomics.mjs";
 import { findBaseline } from "../testsupport/requirements/ergonomics.mjs";
@@ -153,6 +153,19 @@ test("cliquet : toléré / nouveau / disparu", () => {
   assert.deepEqual(r.fresh.map((g) => g.key), ["R13 b"]);
   assert.deepEqual(r.stale, ["R9 vieux"]);
   assert.deepEqual(countByRule([{ rule: "R9" }, { rule: "R9" }, { rule: "R5" }]), { R9: 2, R5: 1 });
+});
+
+test("cliquet : la base ne peut que rétrécir (baselineGrowth)", () => {
+  const before = { modules: { a: ["R10 x", "R13 y"] } };
+  assert.deepEqual(baselineGrowth(before, { modules: { a: ["R10 x"] } }), []);
+  assert.deepEqual(baselineGrowth(before, { modules: { a: ["R10 x", "R9 z"] } }), ["a : R9 z"]);
+  assert.deepEqual(baselineGrowth(before, { modules: { neuf: ["R9 z"] } }), ["neuf : R9 z"], "un module nouveau n'a droit à aucun écart");
+  assert.deepEqual(baselineGrowth(null, { modules: {} }), []);
+});
+
+test("R13 : les noms de fichiers en capitales et le « (es) » anglais ne sont pas des écarts", () => {
+  assert.deepEqual(toneProblems("Un fichier SKILL.md pour votre assistant", "fr"), []);
+  assert.deepEqual(toneProblems("address(es) ready", "en"), []);
 });
 
 const baselineFor = (dir, keys) => ({ version: 1, modules: { [path.basename(dir)]: keys } });
