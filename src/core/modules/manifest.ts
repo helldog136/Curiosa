@@ -279,7 +279,7 @@ export const manifestSchema = z.object({
     .optional(),
   defaultEnabled: z.boolean().optional(),
   /**
-   * (prochaine version) Types d'ÉVÉNEMENTS que le module écrit au journal du cœur avec `ctx.api.log.write` : clé (« command.run »), libellé français ET anglais avec des {champs},
+   * (cœur 0.6.0) Types d'ÉVÉNEMENTS que le module écrit au journal du cœur avec `ctx.api.log.write` : clé (« command.run »), libellé français ET anglais avec des {champs},
    * niveau par défaut, `frequent` (événement très fréquent : gardé 7 jours et 200 lignes au plus) et CHAMPS autorisés (5 au plus, 200 caractères chacun ; jamais de secret ni de texte du public).
    * Tout champ non déclaré est écarté ; un module sans déclaration n'écrit que des lignes génériques sans données. Un cœur plus ancien ignore la clé. Voir docs/CREATE-A-MODULE.md.
    */

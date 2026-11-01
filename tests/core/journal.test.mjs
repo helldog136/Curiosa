@@ -1,4 +1,4 @@
-// JOURNAL CENTRAL (prochaine version) : écriture par les modules, acteur déduit par le cœur, liste blanche des champs, bornes sans minuteur, purge à l'écriture,
+// JOURNAL CENTRAL (cœur 0.6.0) : écriture par les modules, acteur déduit par le cœur, liste blanche des champs, bornes sans minuteur, purge à l'écriture,
 // droit « historique », migration additive, lecture filtrée et phrases en clair. Vraie base SQLite, vrai code du cœur.
 import test, { beforeEach, after } from "node:test";
 import assert from "node:assert/strict";
