@@ -38,7 +38,12 @@ La méthode la plus sûre : on se connecte avec l'**empreinte, le visage, le cod
 - Le mot de passe reste possible à côté (avec son code si la double vérification est activée) : une clé d'accès s'ajoute, elle ne remplace rien d'office.
 - Les clés d'accès comptent pour l'exigence de double vérification de l'équipe.
 - **Le domaine compte** : réglez `SITE_URL` dans `.env` avec l'adresse définitive du site. Si elle change, les clés d'accès déjà enregistrées ne fonctionnent plus (le mot de passe, lui, continue) et il faut les recréer.
+- **Changer de domaine** perd toutes les clés d'accès (chaque personne les recrée) : voir [MIGRER-DOMAINE.md](MIGRER-DOMAINE.md).
 - Une personne propriétaire qui perd l'accès à ses appareils se dépanne en SSH (voir plus bas) : la commande `reset-2fa` retire aussi ses clés d'accès. Pour un collègue, *Équipe → Réinitialiser sa double vérification et ses clés d'accès*.
+
+## Ancien domaine : `LEGACY_HOSTS` (modèle de menace)
+
+`LEGACY_HOSTS` fait répondre une redirection permanente aux requêtes GET et HEAD dont l'en-tête `Host` est un ancien domaine (voir [MIGRER-DOMAINE.md](MIGRER-DOMAINE.md)). La cible est **toujours** `SITE_URL` : aucun paramètre, chemin ni en-tête de la requête ne la choisit (pas de redirection ouverte, testé avec des chemins `//autre.site`, `/\autre.site`, `%2f%2f`, des retours à la ligne). Seul `Host` est lu, jamais `X-Forwarded-Host`, `Origin` ni `Referer`. Jamais pour `/api/*` ni les retours de connexion d'un service tiers, jamais pour un POST. Liste bornée à 10 noms valides ; un nom invalide ou celui du site est ignoré. La réponse est `Cache-Control: private` avec `Vary: Host`. La page *Adresse du site* est réservée au rôle administration en mode avancé : elle ne montre aucun secret (les jetons des assistants et les adresses d'overlay sont comptés, pas affichés) et sa recherche de l'ancien domaine ne rend que des emplacements, sans valeur. Les contrôles de « Après le changement » n'appellent que `SITE_URL` et `LEGACY_HOSTS`, sans suivre de redirection, en refusant les adresses privées ou locales.
 
 ## Robots IA et llms.txt
 

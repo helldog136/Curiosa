@@ -8,7 +8,7 @@ import { HeaderLayoutPicker } from "@/components/admin/HeaderLayoutPicker";
 import { ImageField } from "@/components/admin/ImageField";
 import { ShowWhen } from "@/components/admin/ShowWhen";
 import { previewFaces } from "@/core/fonts/css";
-import { choiceValue, parseChoice } from "@/core/fonts/types";
+import { choiceValue, parseChoice, UPLOAD_LIMITS } from "@/core/fonts/types";
 import { ui } from "@/components/admin/ui";
 import { CUSTOM_PALETTE, THEME_PRESETS } from "@/core/palettes";
 import { can } from "@/core/permissions";
@@ -177,7 +177,15 @@ export default async function AppearancePage({ searchParams }: { searchParams?: 
             <h2 id="touch-title" className="text-lg font-semibold">{t("appearance.touch.title")}</h2>
             <p className={ui.help}>{legacy ? t("appearance.touch.helpBasic") : t("appearance.touch.help", { name: view.active.name[locale] })}</p>
           </div>
-          <ActionForm key={formKey} action={saveAppearance} floating={floatingLabels(t)} submitLabel={t("action.save")} className="space-y-6">
+          <div className={`${ui.card} space-y-4`} data-testid="fonts-card" id="polices">
+            <div>
+              <h3 className="font-semibold">{t("appearance.font.title")}</h3>
+              <p className={ui.help}>{t("appearance.font.help")}</p>
+            </div>
+            <FontPickers groups={fontUi.groups} options={fontUi.options} headingValue={fontHeadingValue} bodyValue={fontBodyValue} skin={view.fonts.skin} faces={previewFaces(view.fonts.uploads)}
+              uploadSlot={<FontUpload t={t} count={view.fonts.uploads.length} />} uploadCount={view.fonts.uploads.length} maxFiles={UPLOAD_LIMITS.maxFiles} formId="retouches-form" />
+          </div>
+          <ActionForm id="retouches-form" key={formKey} action={saveAppearance} floating={floatingLabels(t)} submitLabel={t("action.save")} className="space-y-6">
             {advanced && <input type="hidden" name="__adv" value="1" />}
             <div className={`${ui.card} space-y-4`}>
               <h3 className="font-semibold">{t("settings.header")}</h3>
@@ -192,13 +200,6 @@ export default async function AppearancePage({ searchParams }: { searchParams?: 
               <ColorSection locale={locale} modes={view.modes} palette={view.palette} legacy={legacy} advanced={advanced} single={single}
                 both={{ light: view.both.light, dark: view.both.dark }} skinColors={{ light: baseValues("light"), dark: baseValues("dark") }}
                 skinBackgrounds={{ light: view.skinColors.light?.background, dark: view.skinColors.dark?.background }} names={names} labels={pickerLabels} />
-            </div>
-            <div className={`${ui.card} space-y-4`} data-testid="fonts-card">
-              <div>
-                <h3 className="font-semibold">{t("appearance.font.title")}</h3>
-                <p className={ui.help}>{t("appearance.font.help")}</p>
-              </div>
-              <FontPickers groups={fontUi.groups} options={fontUi.options} headingValue={fontHeadingValue} bodyValue={fontBodyValue} skin={view.fonts.skin} faces={previewFaces(view.fonts.uploads)} />
             </div>
             <div className={`${ui.card} space-y-5`} data-testid="bg-layers">
               <div>
@@ -271,8 +272,6 @@ export default async function AppearancePage({ searchParams }: { searchParams?: 
             </div>
             {advanced && <p className={ui.help}>{t("settings.appearanceHelp")}</p>}
           </ActionForm>
-
-          <FontUpload t={t} uploads={view.fonts.uploads} />
 
           {!legacy && (
             <div className={`${ui.card} space-y-3`} data-testid="reset-card">

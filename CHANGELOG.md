@@ -18,10 +18,17 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Une page « Après le changement ».** Elle vérifie à la demande que le site répond à sa nouvelle adresse et que l'ancienne redirige bien, puis garde vos coches sur ce qu'il reste à refaire.
 - **Le script d'installation sait changer de domaine.** Il montre d'abord ce qu'il ferait, sauvegarde vos fichiers et ne touche jamais à une configuration qu'il n'a pas écrite.
 
+### Apparence du site
+
+- **L'envoi de votre police est au bon endroit.** Il se trouve dans la section « Polices », juste sous les listes : chaque liste se termine par « Utiliser ma propre police… ». Vos polices apparaissent en tête des listes, dans « Mes polices », où vous pouvez les supprimer.
+- **Les fichiers .otf et .ttf sont acceptés.** Le site les convertit lui-même en .woff2, plus léger. Un fichier trop lourd est refusé avec la marche à suivre pour le convertir.
+- **Un envoi plus court.** Un fichier et la case de licence ; le nom est sous « Plus d'options ».
+
 ### Pour les développeurs
 
 - **Anciens domaines.** `LEGACY_HOSTS` (10 noms au plus) : le proxy du cœur répond 301 vers `SITE_URL` pour GET et HEAD, selon `Host` seul, jamais pour `/api/*` ni les retours `oauth` ; voir `src/core/siteAddress.ts` et `docs/MIGRER-DOMAINE.md`.
 - **Manifeste.** Clés facultatives `returnAddresses` et `siteAddressUses` (sans `minCore`), documentées dans `docs/MODULES.md`. Script : `install.sh --change-domain NOM [--apply]`.
+- **Polices.** `sfntToWoff2` (`src/core/fonts/sfnt.ts`) convertit en WOFF2, puis `checkWoff2` revérifie le résultat. `ActionForm` accepte `id`, et le choix des polices se rattache au formulaire des retouches par `form`.
 
 ## 0.6.1 — 2026-11-01
 

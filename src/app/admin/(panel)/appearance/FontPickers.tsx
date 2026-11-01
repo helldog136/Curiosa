@@ -1,12 +1,15 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { askConfirm } from "@/components/admin/confirmDialog";
 import { fontAdvice, type AdviceInfo, type Role } from "@/core/fonts/types";
 import { ui } from "@/components/admin/ui";
 import { useAL } from "./AppearanceLabels";
+import { deleteFontAction } from "./actions";
 
 /** Une police proposée dans une liste : sa valeur à enregistrer, son nom, son groupe, sa pile CSS (pour s'afficher dans sa propre police) et ce que le conseil en sait. */
-export type FontOption = { value: string; label: string; group: string; stack: string | null; info: AdviceInfo | null };
+export type FontOption = { value: string; label: string; group: string; stack: string | null; info: AdviceInfo | null; /** Police envoyée : les fichiers à supprimer avec elle. */ ids?: string[] };
 export type FontGroupModel = { id: string; label: string };
 
 type Props = {
@@ -18,6 +21,12 @@ type Props = {
   skin: { body: string; heading: string; headingFollowsBody: boolean };
   /** Règles `@font-face` des aperçus (écrites par le cœur à partir de la bibliothèque et des polices envoyées ; les fichiers ne se téléchargent que si un aperçu les montre). */
   faces: string;
+  /** Le formulaire d'envoi (affiché sous les listes, dans cette section), le nombre de fichiers envoyés et le plafond. */
+  uploadSlot: React.ReactNode;
+  uploadCount: number;
+  maxFiles: number;
+  /** Identifiant du formulaire « Mes retouches » auquel les deux choix se rattachent. */
+  formId: string;
 };
 
 /** Sans accents ni majuscules : « Lisibilité » se trouve en tapant « lisib » ou « LISIB ». */
@@ -27,8 +36,26 @@ const fold = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCa
  * Les deux listes de polices (titres, texte) avec recherche en direct, groupes, aperçu dans chaque police et conseils. Les choix partent dans le formulaire
  * « Mes retouches » par deux champs cachés (`fontHeading`, `fontBody`). Les fichiers des polices ne sont téléchargés que lorsqu'une liste est ouverte.
  */
-export function FontPickers({ groups, options, headingValue, bodyValue, skin, faces }: Props) {
+export function FontPickers({ groups, options, headingValue, bodyValue, skin, faces, uploadSlot, uploadCount, maxFiles, formId }: Props) {
   const al = useAL();
+  const router = useRouter();
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const uploadBox = useRef<HTMLDivElement>(null);
+  // « Utiliser ma propre police… » : le formulaire s'ouvre ici, dans cette section, et le champ fichier reçoit le focus.
+  const openUpload = () => setUploadOpen(true);
+  useEffect(() => {
+    if (!uploadOpen) return;
+    const input = uploadBox.current?.querySelector<HTMLInputElement>("input[type=file]");
+    uploadBox.current?.scrollIntoView({ block: "nearest" });
+    input?.focus();
+  }, [uploadOpen]);
+  const remove = async (o: FontOption) => {
+    if (!(await askConfirm(al("appearance.font.deleteConfirm", { name: o.label }), { danger: true, confirmLabel: al("appearance.font.delete") }))) return;
+    for (const id of o.ids ?? []) { const fd = new FormData(); fd.set("id", id); await deleteFontAction(null, fd); }
+    if (heading === o.value) setHeading("");
+    if (body === o.value) setBody("");
+    router.refresh();
+  };
   // Les aperçus ont besoin des polices : une feuille propre à cette page, posée au navigateur (jamais une feuille de skin) et retirée en quittant la page.
   useEffect(() => {
     const style = document.createElement("style");
@@ -48,11 +75,17 @@ export function FontPickers({ groups, options, headingValue, bodyValue, skin, fa
 
   return (
     <div className="space-y-4" data-testid="font-pickers">
-      <input type="hidden" name="fontHeading" value={heading} />
-      <input type="hidden" name="fontBody" value={body} />
+      <input type="hidden" name="fontHeading" form={formId} value={heading} />
+      <input type="hidden" name="fontBody" form={formId} value={body} />
       <div className="grid gap-4 lg:grid-cols-2">
-        <FontList role="heading" label={al("appearance.font.heading")} value={heading} onChange={setHeading} groups={groups} options={options} advice={advice("heading", heading)} />
-        <FontList role="body" label={al("appearance.font.body")} value={body} onChange={setBody} groups={groups} options={options} advice={advice("body", body)} />
+        <FontList role="heading" label={al("appearance.font.heading")} value={heading} onChange={setHeading} groups={groups} options={options} advice={advice("heading", heading)} onUpload={openUpload} onDelete={remove} />
+        <FontList role="body" label={al("appearance.font.body")} value={body} onChange={setBody} groups={groups} options={options} advice={advice("body", body)} onUpload={openUpload} onDelete={remove} />
+      </div>
+      <div data-testid="font-upload" id="envoi-police">
+        <button type="button" aria-expanded={uploadOpen} onClick={() => setUploadOpen(!uploadOpen)} className="min-h-11 text-sm font-medium text-accent underline underline-offset-2">
+          {al("appearance.font.mine.summary", { n: uploadCount, max: maxFiles })}
+        </button>
+        <div ref={uploadBox} hidden={!uploadOpen} className="mt-2 rounded-xl border border-line bg-bg p-4">{uploadSlot}</div>
       </div>
       <figure className="rounded-xl border border-line bg-bg p-4" data-testid="font-preview" aria-label={al("appearance.font.preview")}>
         <figcaption className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">{al("appearance.font.preview")}</figcaption>
@@ -66,8 +99,8 @@ export function FontPickers({ groups, options, headingValue, bodyValue, skin, fa
   );
 }
 
-function FontList({ role, label, value, onChange, groups, options, advice }: {
-  role: Role; label: string; value: string; onChange: (v: string) => void; groups: FontGroupModel[]; options: FontOption[]; advice: ReturnType<typeof fontAdvice>;
+function FontList({ role, label, value, onChange, groups, options, advice, onUpload, onDelete }: {
+  role: Role; label: string; value: string; onChange: (v: string) => void; groups: FontGroupModel[]; options: FontOption[]; advice: ReturnType<typeof fontAdvice>; onUpload: () => void; onDelete: (o: FontOption) => void;
 }) {
   const al = useAL();
   const uid = useId();
@@ -122,7 +155,7 @@ function FontList({ role, label, value, onChange, groups, options, advice }: {
           <div role="listbox" aria-label={label} className="mt-2 max-h-[min(30rem,65vh)] space-y-3 overflow-y-auto pr-1">
             {shown.some((o) => o.group === "") && (
               <ul role="presentation" className="space-y-1">
-                {shown.filter((o) => o.group === "").map((o) => <Option key={o.value} o={o} selected={o.value === value} onPick={pick} />)}
+                {shown.filter((o) => o.group === "").map((o) => <Option key={o.value} o={o} selected={o.value === value} onPick={pick} onDelete={onDelete} />)}
               </ul>
             )}
             {groups.map((g) => {
@@ -132,7 +165,7 @@ function FontList({ role, label, value, onChange, groups, options, advice }: {
                 <div key={g.id} role="group" aria-label={g.label}>
                   <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted">{g.label} <span className="font-normal">({inGroup.length})</span></p>
                   <ul role="presentation" className="space-y-1">
-                    {inGroup.map((o) => <Option key={o.value} o={o} selected={o.value === value} onPick={pick} />)}
+                    {inGroup.map((o) => <Option key={o.value} o={o} selected={o.value === value} onPick={pick} onDelete={onDelete} />)}
                   </ul>
                 </div>
               );
@@ -143,6 +176,10 @@ function FontList({ role, label, value, onChange, groups, options, advice }: {
               </p>
             )}
           </div>
+          <button type="button" data-testid={`font-own-${role}`} onClick={() => { setOpen(false); setQuery(""); onUpload(); }}
+            className="mt-2 flex min-h-11 w-full items-center gap-2 rounded-lg border border-dashed border-line px-3 py-2 text-left text-sm font-medium text-accent hover:bg-bg">
+            <span aria-hidden="true">＋</span>{al("appearance.font.useOwn")}
+          </button>
         </div>
       )}
       {advice.length > 0 && (
@@ -158,15 +195,17 @@ function FontList({ role, label, value, onChange, groups, options, advice }: {
   );
 }
 
-function Option({ o, selected, onPick }: { o: FontOption; selected: boolean; onPick: (v: string) => void }) {
+function Option({ o, selected, onPick, onDelete }: { o: FontOption; selected: boolean; onPick: (v: string) => void; onDelete: (o: FontOption) => void }) {
+  const al = useAL();
   return (
-    <li role="presentation">
+    <li role="presentation" className="flex items-stretch gap-1">
       <button type="button" role="option" aria-selected={selected} onClick={() => onPick(o.value)} data-value={o.value}
-        className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-lg border px-3 py-2 text-left text-lg [overflow-wrap:anywhere] ${selected ? "border-accent bg-accent/10" : "border-transparent hover:border-line hover:bg-bg"}`}
+        className={`flex min-h-11 min-w-0 flex-1 items-center justify-between gap-3 rounded-lg border px-3 py-2 text-left text-lg [overflow-wrap:anywhere] ${selected ? "border-accent bg-accent/10" : "border-transparent hover:border-line hover:bg-bg"}`}
         style={{ fontFamily: o.stack ?? undefined }}>
         <span className="min-w-0">{o.label}</span>
         {selected && <span aria-hidden="true" className="shrink-0 text-sm text-accent">✓</span>}
       </button>
+      {o.ids && <button type="button" onClick={() => onDelete(o)} aria-label={`${al("appearance.font.delete")} : ${o.label}`} className="min-h-11 shrink-0 rounded-lg px-3 text-sm text-muted hover:text-red-700">{al("appearance.font.deleteShort")}</button>}
     </li>
   );
 }
