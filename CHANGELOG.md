@@ -11,7 +11,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Menu d'administration
 
-- **Plus de doublon entre « Apparence » et « Apparence et réglages ».** La page des réglages s'appelle maintenant « Réglages du site » (nom, logo, langues, confidentialité, e-mail) et « Apparence » ne contient que ce qui change l'allure du site : skin, couleurs, polices, fond, halo et disposition de l'en-tête. Le nom est le même en mode simple et en mode avancé.
+- **Plus de doublon entre « Apparence » et « Apparence et réglages ».** La page des réglages s'appelle « Réglages du site » (nom, logo, langues, confidentialité, e-mail) ; « Apparence » ne garde que l'allure : skin, couleurs, polices, fond, halo, en-tête. Même nom en mode simple et avancé.
 - **Le lien et le bouton du haut de page se règlent avec le menu.** Ils ont quitté l'ancien onglet « Apparence et en-tête » de Réglages pour l'onglet « Lien et bouton » de « Menu du site ». Vos textes et vos adresses sont conservés tels quels.
 - **L'interrupteur « Afficher mes réseaux dans l'en-tête » est sur la page des réseaux.** Il bascule tout de suite et montre son état, comme ceux de chaque ligne.
 - **Les anciennes adresses fonctionnent toujours.** Un favori vers « Réglages, onglet Apparence » ouvre Apparence ; « Réglages » garde une phrase et un lien vers Apparence. Aucun de vos réglages n'est perdu, et les mêmes rôles voient les mêmes pages.
@@ -60,7 +60,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Pour les développeurs
 
-- **Menu d'administration.** `nav.settings` devient « Réglages du site » (FR et EN) et `nav.settings.simple` disparaît ; le test `menu-hub` interdit deux entrées au même nom. `saveSettings` n'écrit plus `header.socials`, `header.secondary*` ni `header.button*` : ces clés, inchangées, sont écrites par `saveHeaderLinks` (`navigation/actions.ts`) et `setHeaderSocials` (`social/actions.ts`). Le composant `LegacyHash` renvoie `/admin/settings#appearance` vers Apparence et `#header` vers `/admin/navigation#header`.
+- **Menu d'administration.** `nav.settings` devient « Réglages du site » et `nav.settings.simple` disparaît ; `menu-hub` interdit deux entrées au même nom. `saveHeaderLinks` et `setHeaderSocials` écrivent les clés `header.*`, inchangées ; `LegacyHash` renvoie les anciennes ancres de Réglages.
 - **Lecture de la fiche.** `getModulePreview(target, { waitMs })` ne porte plus les images : `getPreviewImages(target)` les lit après le texte. Lectures en parallèle, 3 dépôts au plus, attente de 20 s au plus (`PreviewTimeout`). Nouvelle route `GET /api/admin/extension-warm` (204), appelée au survol.
 - **Visuels de la fiche (`previews`).** Clé facultative du manifeste : 6 images au plus (WebP ou PNG de 150 Ko), légende et texte alternatif en `fr` et `en`, sans `minCore` à déclarer. Le kit ajoute l'exigence `manifest.previews`.
 - **Service des images.** `GET /api/admin/extension-previews?id|repo|installed=…&n=0..5`, réservé à l'administration : le cœur lit l'image (dépôt ou dossier du module), vérifie type réel, poids et dimensions, puis la sert (cache privé, 12 Mo de mémoire au plus pour toutes les images lues).
