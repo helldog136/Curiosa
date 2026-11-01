@@ -715,3 +715,7 @@ Le cœur reprend ce texte tel quel, sous le nom de l'instance. Un module qui ne 
 - [ ] **Pensez à deux profils.** Une personne sans bagage technique : tout réglage à remplir porte un libellé simple (« Adresse de votre salon Discord », pas « webhookUrl ») et une aide en une phrase ; un réglage technique (délai, mode de test, format) porte `"advanced": true` : il n'apparaît que dans le mode avancé, pour une personne à l'aise avec la technique, avec une valeur par défaut raisonnable. Vos textes d'admin (`adminPanel`) disent ce qu'on peut faire, pas comment ça marche.
 - [ ] Un **README.md** à la racine du dépôt : il est affiché dans le Catalogue avant l'installation (à quoi sert le module, réglages, permissions, et si vous le souhaitez un lien pour un don volontaire : le Catalogue est gratuit, rien ne s'y vend).
 - [ ] Pour le Catalogue : dépôt public sur un hôte autorisé, ajouté à `catalogue/index.json` de `curiosa-extras` (demande de fusion), ou proposé dans son `modules/` / `examples/`.
+
+## Pages de configuration : les règles d'ergonomie sont obligatoires
+
+Toute page de réglages ou d'administration d'un module suit `docs/ERGONOMIE-ADMIN.md` (budgets de champs, mots interdits, listes sans étiquettes répétées, une notion = un contrôle, erreurs sous le champ…). La PR doit contenir sa section « Ergonomie » et des captures regardées.
