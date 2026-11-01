@@ -100,8 +100,8 @@ export default async function AppearancePage({ searchParams }: { searchParams?: 
   const pickerLabels = {
     background: t("settings.background"), accent: t("settings.accent"), accent2: t("settings.accent2"), surface: t("settings.surface"), text: t("settings.text"),
     addSecond: t("settings.accent2.add"), removeSecond: t("settings.accent2.remove"), optionalHint: t("settings.colorOptionalHint"), invalid: t("settings.colorInvalid"),
-    warnText: t("settings.contrast.text"), warnAccent: t("settings.contrast.accent"), warnAccent2: t("settings.contrast.accent2"),
-    resetField: t("appearance.resetField"), details: t("appearance.details.short"),
+    resetField: t("appearance.resetField"),
+    advice: { tryOne: t("appearance.advice.try"), keep: t("appearance.advice.keep"), use: t("appearance.advice.use"), proposal: t("appearance.advice.proposal", { color: "{color}" }), kept: t("appearance.advice.kept"), review: t("appearance.advice.review") },
   };
   const names = Object.fromEntries([...THEME_PRESETS.map((p) => p.id), CUSTOM_PALETTE].map((id) => [id, t(`theme.${id}`)]));
   // Les champs « un seul mode » montrent la sauvegarde du site (comme avant les skins) sur basic, les valeurs effectives sinon.

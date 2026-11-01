@@ -8,7 +8,8 @@
  *
  * Repli valeur par valeur : tout jeton que le skin ne définit pas, ou dont la valeur est refusée, vient de basic. Les couleurs dérivées (texte secondaire,
  * filets, texte des boutons, états, dégradé) sont recalculées par `buildPalette` quand une couleur dont elles dépendent est retouchée, sinon le skin les fixe
- * ou, à défaut, elles sont dérivées. Le contrôle de lisibilité (`correctReadability`) s'applique au résultat de chaque mode d'un skin (basic est exempté).
+ * ou, à défaut, elles sont dérivées. Le contrôle de lisibilité (`correctReadability`) s'applique au résultat de chaque mode d'un skin tel qu'il est livré (basic est exempté) ;
+ * il ne corrige JAMAIS une couleur choisie par la personne propriétaire (retouches : appliquées telles quelles, un simple conseil s'affiche à l'écran Apparence).
  *
  * Pour basic, le résultat est EXACTEMENT celui d'avant les skins : `buildPalette(fond, accent, choix facultatifs)` (tests/core/skins-compose.test.mjs).
  */
@@ -161,14 +162,33 @@ function composeMode(args: {
   let finalTokens = tokens;
   if (!isBasic) {
     const c = correctReadability(tokens, mode, { skinId: skin.id, modulePairs: args.modulePairs.map((p) => ({ fg: p.fg, bg: p.bg, defaults: { fg: args.moduleBase[p.fg], bg: args.moduleBase[p.bg] } })) });
-    changes = c.changes;
-    notice = c.notice;
-    if (c.suspended) {
-      suspended = true;
+    const chosen = Object.values(R).some((v) => !!v);
+    if (!chosen) {
+      // le skin tel qu'il est livré : l'échelle de correction du §7.3 (inchangée)
+      changes = c.changes;
       notice = c.notice;
-      // basic s'applique à ce mode : ses couleurs (la feuille et les autres jetons du skin restent)
-      finalTokens = { ...tokens, ...basicPalette({}, basicLayer) };
-    } else finalTokens = c.tokens;
+      if (c.suspended) {
+        suspended = true;
+        // basic s'applique à ce mode : ses couleurs (la feuille et les autres jetons du skin restent)
+        finalTokens = { ...tokens, ...basicPalette({}, basicLayer) };
+      } else finalTokens = c.tokens;
+    } else {
+      // Couleurs choisies par la personne : appliquées TELLES QUELLES, sans correction cachée ni suspension (docs/SKINS.md §7.5).
+      // Ne reste de l'échelle que ce qui ne touche à aucun choix (pièces de module remises à leur valeur par défaut), et seulement si le skin, sans les retouches,
+      // en avait déjà besoin. Un skin déjà suspendu sans retouche garde basic pour ce mode, mais avec les couleurs choisies.
+      const alone = composeMode({ ...args, retouch: {}, issues: [] });
+      if (alone.suspended) {
+        suspended = true;
+        notice = alone.notice;
+        finalTokens = { ...tokens, ...basicPalette(R, basicLayer) };
+      } else {
+        const kept = c.suspended ? [] : c.changes.filter((ch) => ch.step !== "text" && alone.changes.some((a) => a.token === ch.token));
+        changes = kept;
+        finalTokens = { ...tokens };
+        for (const ch of kept) finalTokens[ch.token] = ch.to;
+        notice = kept.length ? c.notice : null;
+      }
+    }
   }
   // Texte à poser sur le dégradé accent → accent secondaire (règles `[data-accent2]` du cœur) : seulement si les deux accents diffèrent
   const a = finalTokens["--v-accent"], b = finalTokens["--v-accent2"];

@@ -391,7 +391,7 @@ test("retouches : couleurs lisibles, aucun avertissement", () => {
   assert.deepEqual(R.probableIllegibility({ background: "pas une couleur" }, null), []);
 });
 
-test("retouches : texte trop pâle, message simple avec exemple, sous le bon champ", () => {
+test("retouches : texte trop pâle, CONSEIL (pas une erreur) avec exemple, sous le bon champ", () => {
   const out = R.probableIllegibility({ background: "#121214", text: "#555555", accent: "#e8a23b" }, "dark");
   assert.equal(out.length, 1);
   const w = out[0];
@@ -399,12 +399,30 @@ test("retouches : texte trop pâle, message simple avec exemple, sous le bon cha
   assert.equal(w.mode, "dark");
   assert.equal(w.message.fr, "Dans le mode sombre, le texte serait difficile à lire sur ce fond.");
   assert.equal(w.message.en, "In dark mode, the text would be hard to read on this background.");
-  assert.match(w.exampleHint.fr, /^Essayez un texte plus clair, par exemple #[0-9a-f]{6}\.$/);
-  assert.match(w.exampleHint.en, /^Try a lighter text color, for example #[0-9a-f]{6}\.$/);
-  assert.match(w.detail.fr, /^Rapport 2,\d ; il faut au moins 4,5\.$/);
-  assert.ok(R.contrastRatio(parseColor(w.example), parseColor("#121214")) >= 4.5);
-  assert.equal(w.ratio < 4.5, true);
-  assert.equal(w.required, 4.5);
+  assert.match(w.advice.fr, /^Conseil : dans le mode sombre, le texte serait difficile à lire sur ce fond \(rapport 2,\d+ ; 4,5 recommandé pour le texte\)\. Vous pouvez garder cette couleur\.$/);
+  assert.match(w.advice.en, /^Tip: in dark mode, the text would be hard to read on this background \(ratio 2\.\d+; 4\.5 recommended for text\)\. You can keep this color\.$/);
+  for (const t of [w.advice.fr, w.advice.en]) assert.doesNotMatch(t, /il faut|must|need|required|erreur|error/i, "un conseil n'exige rien");
+  assert.match(w.exampleHint.fr, /^Un texte plus clair, par exemple #[0-9a-f]{6}, serait plus confortable\.$/);
+  assert.match(w.exampleHint.en, /^A lighter text color, for example #[0-9a-f]{6}, would be more comfortable\.$/);
+  assert.ok(R.contrastRatio(parseColor(w.example), parseColor("#121214")) >= 4.5, "la valeur proposée atteint le niveau recommandé");
+  assert.equal(w.required, R.ADVICE_TEXT);
+  assert.equal(w.recommended, 4.5);
+  assert.ok(w.ratio < 3);
+});
+
+test("retouches : SEUILS relaxés du conseil (texte 3, liens 2, interface 2, seconde couleur 1,5) ; le niveau AA des skins officiels est inchangé", () => {
+  assert.deepEqual([R.ADVICE_TEXT, R.ADVICE_LINK, R.ADVICE_UI, R.ADVICE_DECOR], [3, 2, 2, 1.5]);
+  assert.deepEqual([R.AA_TEXT, R.AA_LARGE], [4.5, 3], "les skins officiels gardent AA");
+  const r = R.contrastRatio(parseColor("#767680"), parseColor("#121214"));
+  assert.ok(r > 3 && r < 4.5);
+  assert.deepEqual(R.probableIllegibility({ background: "#121214", text: "#767680" }, "dark"), []);
+  assert.deepEqual(R.probableIllegibility({ background: "#ffffff", accent: "#999999" }, null), []);
+  assert.deepEqual(R.probableIllegibility({ background: "#ffffff", accent: "#ffee99" }, null).map((x) => x.field), ["accent"]);
+  assert.deepEqual(R.probableIllegibility({ background: "#101010", accent: "#e8a23b", accent2: "#3a3a3a" }, null), []);
+  assert.deepEqual(R.probableIllegibility({ background: "#101010", accent: "#e8a23b", accent2: "#181818" }, null).map((x) => x.field), ["accent2"]);
+  // le même texte à 3,3, côté skin livré, reste une ERREUR (AA)
+  const t = { "--v-bg": "#121214", "--v-surface": "#1c1c20", "--v-fg": "#767680", "--v-accent": "#e8a23b" };
+  assert.ok(R.checkReadability(t, "dark", { skinId: "x" }).some((i) => i.severity === "error" && i.pair === 1));
 });
 
 test("retouches : en « un seul mode », la phrase ne parle pas de mode", () => {
@@ -412,20 +430,27 @@ test("retouches : en « un seul mode », la phrase ne parle pas de mode", () => 
   assert.equal(w.mode, null);
   assert.equal(w.message.fr, "Le texte serait difficile à lire sur ce fond.");
   assert.equal(w.message.en, "The text would be hard to read on this background.");
+  assert.match(w.advice.fr, /^Conseil : le texte serait/);
   assert.match(w.exampleHint.fr, /plus foncé/);
 });
 
-test("retouches : couleur principale et seconde couleur trop proches du fond", () => {
+test("retouches : couleur principale et seconde couleur trop proches du fond ; la valeur proposée atteint le niveau recommandé", () => {
   const a = R.probableIllegibility({ background: "#ffffff", accent: "#ffee99" }, "light");
   assert.deepEqual(a.map((x) => x.field), ["accent"]);
-  assert.match(a[0].message.fr, /La couleur principale|la couleur principale/);
-  assert.equal(a[0].required, 3);
-  const b = R.probableIllegibility({ background: "#101010", accent: "#e8a23b", accent2: "#202020" }, null);
+  assert.match(a[0].message.fr, /la couleur principale/);
+  assert.equal(a[0].required, 2);
+  assert.equal(a[0].recommended, 3);
+  assert.match(a[0].advice.fr, /3 recommandé pour les éléments d'interface\)/);
+  const b = R.probableIllegibility({ background: "#101010", accent: "#e8a23b", accent2: "#141414" }, null);
   assert.deepEqual(b.map((x) => x.field), ["accent2"]);
   assert.match(b[0].exampleHint.fr, /plus claire/);
-  // des liens (4,5) plus exigeants que le contour (3)
-  const l = R.probableIllegibility({ background: "#ffffff", accent: "#999999" }, null);
-  assert.ok(l.some((x) => x.field === "accent"));
+  assert.ok(R.contrastRatio(parseColor(b[0].example), parseColor("#101010")) >= 3);
+});
+
+test("retouches : sous le fond, la valeur proposée est celle du FOND", () => {
+  const w = R.probableIllegibility({ background: "#999999" }, null);
+  assert.equal(w[0]?.field, "background");
+  assert.deepEqual(R.probableIllegibility({ background: w[0].example }, null), [], "avec la valeur proposée, plus de conseil");
 });
 
 test("retouches : surface choisie, texte non choisi : avertit sous la surface", () => {
