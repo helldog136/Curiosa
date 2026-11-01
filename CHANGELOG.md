@@ -14,7 +14,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 ### Réseaux sociaux
 
 - **Un seul champ : « Collez l'adresse de votre profil ».** Une ou plusieurs adresses, une par ligne. Pour chacune, vous voyez tout de suite le réseau reconnu et le bouton qui s'affichera (« Instagram · monpseudo »), avant que rien ne soit installé.
-- **Un clic pour tout ajouter.** Le bouton dit combien (« Ajouter 6 réseaux »). La page ajoute les réseaux l'un après l'autre et montre où elle en est (« Ajout de TikTok… 2 sur 6 »). Si l'un échoue, les autres sont quand même ajoutés et le message dit quoi faire.
+- **Un clic pour tout ajouter.** Le bouton dit combien (« Ajouter 6 réseaux ») et la page avance réseau par réseau (« Ajout de TikTok… 2 sur 6 »). Si l'un échoue, les autres sont quand même ajoutés.
 - **Un nom seul peut aller à plusieurs réseaux** (« @monpseudo ») : la page vous demande de quel réseau il s'agit. Une adresse déjà ajoutée est signalée ; une adresse non reconnue vous renvoie vers la liste de tous les réseaux.
 - **Sans rien taper de plus.** Un deuxième compte du même réseau reçoit un nom d'office (« Instagram 2 »). Si l'adresse n'est finalement pas reconnue par le module, le réseau est ajouté « À régler » et la page le dit.
 - **Seule la personne propriétaire peut ajouter un réseau** (cela installe une extension) : une personne administratrice voit les adresses reconnues et un message qui l'explique.
