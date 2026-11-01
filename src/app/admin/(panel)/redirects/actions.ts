@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { adminCtx } from "@/core/admin";
 import { prisma } from "@/core/db";
 import { audit } from "@/core/permissions";
-import { endInstant } from "@/core/redirectEnd";
+import { endFormParts, endInstant } from "@/core/redirectEnd";
 import { checkRedirectTarget, createRedirectRecord, deleteRedirectRecord, proposeRedirectPath, updateRedirectRecord, type RedirectFail } from "@/core/redirects";
 import { invalidateRedirectGate } from "@/core/redirectGate";
 import { MEASURE_SETTING } from "@/core/redirectMeasure";
@@ -13,13 +13,14 @@ import { setSetting } from "@/core/settings";
 import { siteTimezone } from "@/core/siteTime";
 import type { ActionState } from "@/components/admin/ActionForm";
 
-const FIELD: Record<RedirectFail["field"], string> = { path: "path", targetUrl: "targetUrl", entryId: "entryId", expiresAt: "endDate", endMessage: "endMessage" };
+const FIELD: Record<RedirectFail["field"], string> = { path: "path", targetUrl: "targetUrl", entryId: "entryId", expiresAt: "end__date", endMessage: "endMessage" };
 
-/** Les champs « date de fin » du formulaire → l'instant (null : pas de fin) ou une erreur sous le champ. `current` : la date déjà enregistrée (la laisser telle quelle n'est jamais une erreur). */
+/** Le champ « date de fin » du formulaire (voir `endFormParts`) → l'instant (null : pas de fin) ou une erreur sous le champ. `current` : la date déjà enregistrée (la laisser telle quelle n'est jamais une erreur). */
 async function readEnd(formData: FormData, t: (k: string) => string, current?: Date | null): Promise<{ at: Date | null } | { errors: Record<string, string> }> {
-  const at = endInstant(String(formData.get("endDate") ?? ""), String(formData.get("endTime") ?? ""), await siteTimezone());
-  if (at === undefined) return { errors: { endDate: t("redirects.error.date") } };
-  if (at && at.getTime() <= Date.now() && at.getTime() !== current?.getTime()) return { errors: { endDate: t("redirects.error.datePast") } };
+  const { date, time } = endFormParts(formData);
+  const at = endInstant(date, time, await siteTimezone());
+  if (at === undefined) return { errors: { end__date: t("redirects.error.date") } };
+  if (at && at.getTime() <= Date.now() && at.getTime() !== current?.getTime()) return { errors: { end__date: t("redirects.error.datePast") } };
   return { at };
 }
 
@@ -72,6 +73,24 @@ export async function toggleRedirect(id: string): Promise<void> {
   await audit(user.email, "redirect.toggle", r.path);
   revalidatePath("/admin/redirects");
   revalidatePath(`/admin/redirects/${id}`);
+}
+
+/**
+ * L'interrupteur « Actif » d'un lien : il DIT l'état voulu (`active`), il n'inverse rien, donc un double clic ne défait jamais le premier. Renvoie le message de retour
+ * (ou l'erreur) que l'interrupteur affiche juste à côté ; l'état réel revient avec la page.
+ */
+export async function setRedirectActive(id: string, active: boolean): Promise<{ ok?: string; error?: string }> {
+  const { user, t } = await adminCtx("editor");
+  const r = await prisma.redirect.findUnique({ where: { id } });
+  if (!r) return { error: t("redirects.error.missing") };
+  if (r.active !== active) {
+    await prisma.redirect.update({ where: { id }, data: { active } });
+    invalidateRedirectGate();
+    await audit(user.email, "redirect.toggle", r.path);
+    revalidatePath("/admin/redirects");
+    revalidatePath(`/admin/redirects/${id}`);
+  }
+  return { ok: t(active ? "redirects.switch.on" : "redirects.switch.off") };
 }
 
 /** « Réactiver » en un clic : retire la date de fin (le lien redirige de nouveau tout de suite). */

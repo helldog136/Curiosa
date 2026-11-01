@@ -35,8 +35,8 @@ export function DateTimeField({ label, name, defaultValue = "", optionalTime, re
       </div>
       <input type="hidden" name={name} value={value} />
       <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,9rem)] gap-2">
-        <input id={`${name}__date`} name={`${name}__date`} type="date" value={date} onChange={(e) => setDate(e.target.value)} required={required} aria-label={labels.date} aria-describedby={described} aria-invalid={error ? true : undefined} className={`${ui.input} min-h-11${error ? ` ${ERROR_BORDER}` : ""}`} />
-        <input id={`${name}__time`} name={`${name}__time`} type="time" value={time} onChange={(e) => setTime(e.target.value)} aria-label={labels.time} title={labels.timePlaceholder} aria-describedby={described} className={`${ui.input} min-h-11`} />
+        <div className="min-w-0"><input id={`${name}__date`} name={`${name}__date`} type="date" value={date} onChange={(e) => setDate(e.target.value)} required={required} aria-label={labels.date} aria-describedby={described} aria-invalid={error ? true : undefined} className={`${ui.input} min-h-11${error ? ` ${ERROR_BORDER}` : ""}`} /></div>
+        <div className="min-w-0"><input id={`${name}__time`} name={`${name}__time`} type="time" value={time} onChange={(e) => setTime(e.target.value)} aria-label={labels.time} title={labels.timePlaceholder} aria-describedby={described} className={`${ui.input} min-h-11`} /></div>
       </div>
       <p id={`pv-${name}`} className="mt-1.5 flex min-h-5 flex-wrap items-center gap-x-3 text-sm text-muted" aria-live="polite">
         {shown ? labels.preview.replace("{when}", shown) : optionalTime && labels.timePlaceholder ? labels.timePlaceholder : ""}
