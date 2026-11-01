@@ -119,9 +119,9 @@ function FontList({ role, label, value, onChange, groups, options, advice }: {
             <input ref={search} type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={al("appearance.font.searchExample")} autoComplete="off" spellCheck={false}
               className={ui.input} data-testid={`font-search-${role}`} />
           </label>
-          <div role="listbox" aria-label={label} className="mt-2 max-h-80 space-y-3 overflow-y-auto pr-1">
+          <div role="listbox" aria-label={label} className="mt-2 max-h-[min(30rem,65vh)] space-y-3 overflow-y-auto pr-1">
             {shown.some((o) => o.group === "") && (
-              <ul className="space-y-1">
+              <ul role="presentation" className="space-y-1">
                 {shown.filter((o) => o.group === "").map((o) => <Option key={o.value} o={o} selected={o.value === value} onPick={pick} />)}
               </ul>
             )}
@@ -131,7 +131,7 @@ function FontList({ role, label, value, onChange, groups, options, advice }: {
               return (
                 <div key={g.id} role="group" aria-label={g.label}>
                   <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted">{g.label} <span className="font-normal">({inGroup.length})</span></p>
-                  <ul className="space-y-1">
+                  <ul role="presentation" className="space-y-1">
                     {inGroup.map((o) => <Option key={o.value} o={o} selected={o.value === value} onPick={pick} />)}
                   </ul>
                 </div>
@@ -160,7 +160,7 @@ function FontList({ role, label, value, onChange, groups, options, advice }: {
 
 function Option({ o, selected, onPick }: { o: FontOption; selected: boolean; onPick: (v: string) => void }) {
   return (
-    <li>
+    <li role="presentation">
       <button type="button" role="option" aria-selected={selected} onClick={() => onPick(o.value)} data-value={o.value}
         className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-lg border px-3 py-2 text-left text-lg [overflow-wrap:anywhere] ${selected ? "border-accent bg-accent/10" : "border-transparent hover:border-line hover:bg-bg"}`}
         style={{ fontFamily: o.stack ?? undefined }}>

@@ -3299,7 +3299,7 @@
   "appearance.font.advice.title-font-for-text": "This font is made for short titles. For long text, a sans-serif or serif font is easier to read.",
   "appearance.font.advice.mono-for-text": "A monospace font tires the eyes quickly on long text.",
   "appearance.font.mine.summary": "Upload my own font ({n} of {max})",
-  "appearance.font.mine.intro": "Upload a .woff2 file: your site serves it itself, never another website.",
+  "appearance.font.mine.intro": "A .woff2 file, served by your site only.",
   "appearance.font.mine.full": "You already have {max} files. Delete one to upload another.",
   "appearance.font.file": "Font file",
   "appearance.font.fileHelp": "A .woff2 file of 150 KB at most. To convert a .ttf or an .otf, search online for “ttf to woff2”.",

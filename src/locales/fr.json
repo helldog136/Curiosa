@@ -3299,7 +3299,7 @@
   "appearance.font.advice.title-font-for-text": "Cette police est faite pour de courts titres. Pour un long texte, une police sans ou avec empattement se lit mieux.",
   "appearance.font.advice.mono-for-text": "Une police à chasse fixe fatigue vite sur un long texte.",
   "appearance.font.mine.summary": "Envoyer ma propre police ({n} sur {max})",
-  "appearance.font.mine.intro": "Envoyez un fichier .woff2 : il est servi par votre site, jamais par un site tiers.",
+  "appearance.font.mine.intro": "Un fichier .woff2, servi par votre site seulement.",
   "appearance.font.mine.full": "Vous avez déjà {max} fichiers. Supprimez-en un pour en envoyer un autre.",
   "appearance.font.file": "Fichier de police",
   "appearance.font.fileHelp": "Un fichier .woff2 de 150 Ko au plus. Pour convertir un .ttf ou un .otf, cherchez « ttf vers woff2 » en ligne.",
