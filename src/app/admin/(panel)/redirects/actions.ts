@@ -67,7 +67,7 @@ export async function updateRedirect(id: string, _prev: ActionState, formData: F
 export async function toggleRedirect(id: string): Promise<void> {
   const { user } = await adminCtx("editor");
   const r = await prisma.redirect.findUnique({ where: { id } });
-  if (!r) return;
+  if (!r || r.managedBy) return;   // un lien géré par un module se règle dans ce module
   await prisma.redirect.update({ where: { id }, data: { active: !r.active } });
   invalidateRedirectGate();
   await audit(user.email, "redirect.toggle", r.path);
@@ -83,6 +83,7 @@ export async function setRedirectActive(id: string, active: boolean): Promise<{ 
   const { user, t } = await adminCtx("editor");
   const r = await prisma.redirect.findUnique({ where: { id } });
   if (!r) return { error: t("redirects.error.missing") };
+  if (r.managedBy) return { error: t("redirects.error.managed") };
   if (r.active !== active) {
     await prisma.redirect.update({ where: { id }, data: { active } });
     invalidateRedirectGate();
@@ -97,7 +98,7 @@ export async function setRedirectActive(id: string, active: boolean): Promise<{ 
 export async function reactivateRedirect(id: string): Promise<void> {
   const { user } = await adminCtx("editor");
   const r = await prisma.redirect.findUnique({ where: { id } });
-  if (!r) return;
+  if (!r || r.managedBy) return;
   await prisma.redirect.update({ where: { id }, data: { expiresAt: null, active: true } });
   invalidateRedirectGate();
   await audit(user.email, "redirect.reactivate", r.path);

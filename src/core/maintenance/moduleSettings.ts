@@ -312,6 +312,7 @@ export async function applyConfigure(input: ConfigureArgs, advanced: boolean): P
     if (o.del) await deleteSetting(key, o.locale); else await setSetting(key, o.value, o.locale);
   }
   forgetChoices(c.inst.id);
+  if (writes.length) await (await import("@/core/managedRedirects")).reconcileManaged();   // l'adresse courte demandée par le module suit ses réglages
   try { (await import("next/cache")).revalidatePath("/", "layout"); } catch { /* hors requête : rien à rafraîchir */ }
 
   // Ce qui reste à renseigner (noms seulement).

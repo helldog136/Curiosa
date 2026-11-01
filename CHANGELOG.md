@@ -40,6 +40,10 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Apparence du site
 
+- **Votre couleur est toujours la vôtre.** Le fond, l'accent et la couleur secondaire que vous choisissez (en clair comme en sombre) sont enregistrés et appliqués tels quels sur votre site. Plus aucune couleur n'est corrigée ou remplacée en cachette, même si elle est difficile à lire.
+- **Un conseil, jamais un blocage.** Si une couleur risque d'être difficile à lire, un conseil s'affiche sous le champ avec le rapport mesuré. Vous pouvez garder votre couleur ou essayer une couleur plus lisible, proposée sans être appliquée d'office.
+- **Des conseils plus rares.** Ils n'apparaissent plus que dans les cas vraiment pénibles : texte sous 3, liens et contours sous 2, couleur secondaire sous 1,5. Les skins officiels gardent leur exigence de lisibilité.
+- **Pour les assistants IA.** L'état de l'apparence rapporte vos couleurs telles quelles, avec les mêmes conseils, sans jamais les traiter comme des erreurs.
 - **Le nom « Curiosa » du pied de page ne change plus avec le skin.** Dans « Propulsé par Curiosa », le nom garde partout la même police, la même casse, le même espacement et le même soulignement, quel que soit le skin choisi. Seule sa couleur suit le pied de page, pour que le texte reste lisible même sur un fond sombre.
 - **Pour les créatrices et créateurs de skins.** Un skin qui essaie de changer l'allure de ce nom est refusé, avec un message qui dit quoi retirer. Les skins déjà installés continuent de s'afficher normalement ; leurs règles sur ce nom sont simplement ignorées.
 - **Le même nom dans l'administration.** Le crédit du bas de l'administration utilise maintenant exactement le même nom que le site public.
@@ -48,6 +52,14 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 - **Le script d'installation parle français et anglais.** Il suit la langue de votre serveur, ou l'option « --lang fr » ou « --lang en » ; si la langue n'est pas reconnue, il parle anglais, ou vous la demande une fois dans un terminal. Un serveur en français garde les mêmes messages qu'avant.
 - **Rien d'autre ne change selon la langue.** Les codes de sortie, les options et les fichiers écrits sur le serveur restent les mêmes : on peut relancer ou désinstaller dans l'autre langue.
+
+### Liens courts
+
+- **Une extension peut créer une adresse courte pour vous.** Par exemple, l'extension Discord peut créer « votresite.be/discord » : une adresse stable qui mène à votre invitation, même si celle-ci change un jour. C'est vous qui l'allumez, dans les réglages de l'extension.
+- **Vos propres liens ne sont jamais touchés.** Si le nom est déjà pris par l'un de vos liens, rien n'est créé et un message sous le champ vous propose un autre nom. La page « Raccourcis de liens » le rappelle, avec un bouton vers les réglages de l'extension.
+- **Elle se voit dans « Raccourcis de liens ».** Une pastille « Extension Discord » la distingue, et son bouton mène aux réglages de l'extension. Elle se règle là-bas : on ne la modifie ni ne la supprime à la main ici.
+- **Elle suit l'extension.** Si l'adresse de votre Discord change, l'adresse courte suit sans changer de nom ni perdre ses chiffres. Si vous coupez l'option ou retirez l'extension, elle disparaît avec ses chiffres, et le nom redevient libre.
+- **Rien de plus n'est suivi.** Ce sont les mêmes chiffres anonymes que pour tout lien court. Le bouton de l'en-tête ne passe par cette adresse que si « Compter les clics sur mes liens » est activé, comme pour les autres boutons.
 
 ### Pour les développeurs
 
@@ -64,7 +76,9 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Les cinq skins du catalogue** posent encore `text-transform` / `letter-spacing` sur `credit` ou `credit a` : ils sont refusés à l'installation par ce cœur tant que `curiosa-skins` n'a pas publié une version corrective.
 - Nouveaux composants du cœur : `RowTable` (tableau de lignes pour les pages du cœur), `FormDialog`, `RightsEditor`, `MemberRoleDialog` et `Badge` (la table des pastilles sort d'`AdminTable`). Aucune règle de sécurité ni de permission modifiée.
 - **`scripts/install.sh` : catalogues de messages.** Un bloc `catalog_XX` par langue dans le fichier (toujours un seul fichier, compatible bash 3) ; langue choisie par `--lang`, `CURIOSA_LANG`, `LC_ALL`, `LC_MESSAGES`, `LANG`. Ajouter une langue : un bloc et son code dans `LANGS` (docs/INSTALL.md). `tests/core/install-i18n.test.mjs` vérifie la parité et les sorties machine.
-
+- **Clé `shortLink` du manifeste (additive).** Un module demande une adresse courte sans écrire de code ; le cœur la crée, la tient à jour et la retire. Aucune nouvelle permission, et un cœur plus ancien ignore la clé.
+- **Colonne `Redirect.managedBy`.** Migration additive : elle nomme l'instance qui gère le lien, vide pour les liens des personnes. Les liens gérés refusent toute modification à la main, y compris par MCP.
+- **Mise en accord sans minuteur.** Elle a lieu aux écritures de réglages, au retrait d'une instance et à l'installation d'un module. Tests : `tests/core/managed-redirects-db.test.mjs`.
 
 ## 0.6.3 — 2026-11-01
 

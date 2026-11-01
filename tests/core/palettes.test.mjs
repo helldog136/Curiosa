@@ -99,7 +99,8 @@ test("composant : tuile Personnalisé, états accessibles, noms de champs, coule
   for (const n of ["accent2", "surface", "text"]) assert.match(src, new RegExp("<input type=\"hidden\" name=\\{`\\$\\{prefix\\}" + n + "`\\}"), n);
   assert.match(src, /showFields = advanced \|\| custom \|\| wantCustom/);
   assert.match(src, /\{advanced && \(/, "surface et texte : version avancée seulement");
-  assert.match(src, /contrastIssues\(/);
+  assert.match(src, /probableIllegibility\(/);
+  assert.doesNotMatch(src, /disabled=/, "un conseil ne bloque rien");
   assert.match(src, /data-testid="theme-add-second"/);
   assert.match(src, /data-testid="theme-remove-second"/);
   const page = fs.readFileSync("src/app/admin/(panel)/appearance/page.tsx", "utf8");

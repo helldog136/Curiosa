@@ -6,6 +6,7 @@ import { MULTI_VALUE_RE, siteDefaultRef } from "./settingValues";
 import { checkDateTime, parsePeriod } from "../adminkit/values";
 import { PLATFORM_PATTERN } from "./platform";
 import { socialSpecSchema } from "../socialSpec";
+import { shortLinkIssues, shortLinkSchema } from "./shortLink";
 import { HISTORY, MAX_MODULE_RIGHTS, OPEN, RIGHT_ID_RE } from "../auth/rights";
 import { EVENT_KEY_MAX, EVENT_KEY_RE, FIELD_KEY_RE, JOURNAL_LIMITS, LEVELS, logEventIssues } from "../journal/events";
 import { SERVICE_RE } from "./serviceVersions";
@@ -202,6 +203,11 @@ export const manifestSchema = z.object({
    * « instagram.com/monpseudo » AVANT d'installer le module. Un bloc abîmé est ignoré (jamais une erreur de manifeste) ; un ancien cœur ignore le champ. Voir socialRecognize.ts.
    */
   social: socialSpecSchema.optional().catch(undefined),
+  /**
+   * (cœur après 0.6.3) Adresse courte que le module DEMANDE au cœur (« /discord ») : le cœur la crée seulement si le nom est libre, ne touche jamais un lien créé par la personne,
+   * la garde à jour et la retire avec l'option ou l'instance. Un cœur plus ancien ignore la clé. Voir modules/shortLink.ts et managedRedirects.ts.
+   */
+  shortLink: shortLinkSchema.optional(),
   instances: z.enum(["single", "multiple"]).default("multiple"),
   consumes: z.array(z.object({ topic: topicId, label: localized, schema: z.array(topicField).max(20).optional(), tags: z.boolean().optional() })).max(10).default([]),
   provides: z.array(z.object({ topic: topicId, label: localized.optional() })).max(10).default([]),
@@ -338,6 +344,7 @@ export const manifestSchema = z.object({
   }
   if (m.sitemapFromPage && !hasPage(m)) ctx.addIssue({ code: "custom", path: ["sitemapFromPage"], message: "sitemapFromPage needs a module with a public page (page: true)" });
   for (const issue of previewIssues(m.previews)) ctx.addIssue({ code: "custom", path: ["previews", ...issue.path], message: issue.message });
+  for (const message of shortLinkIssues(m.shortLink, m.settings, { provides: m.provides.map((p) => p.topic) })) ctx.addIssue({ code: "custom", path: ["shortLink"], message });
   for (const message of logEventIssues(m.logEvents)) ctx.addIssue({ code: "custom", path: ["logEvents"], message });
   if (new Set((m.rights ?? []).map((r) => r.id)).size < (m.rights ?? []).length) ctx.addIssue({ code: "custom", path: ["rights"], message: "duplicate right id" });
   for (const [i, seed] of (m.seeds ?? []).entries()) {

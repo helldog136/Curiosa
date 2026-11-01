@@ -27,7 +27,7 @@ const str = (max = 2000) => ({ type: "string" as const, maxLength: max });
 const view = (r: Redirect, tz: string) => ({
   id: r.id, path: r.path, address: redirectShortUrl(r.path), target: r.targetUrl, followsEntry: !!r.entryId, permanent: r.permanent,
   state: redirectState(r), endsAt: r.expiresAt ? r.expiresAt.toISOString() : null, endsOn: r.expiresAt ? formatEnd(r.expiresAt, tz, "en") : null,
-  endMessage: r.endMessage || null, visits: r.hits, createdAt: r.createdAt.toISOString(),
+  endMessage: r.endMessage || null, managedByModule: !!r.managedBy, visits: r.hits, createdAt: r.createdAt.toISOString(),
 });
 
 async function find(ref: string): Promise<Redirect> {
@@ -146,6 +146,7 @@ export const redirectsToolProvider: McpToolProvider = {
         call: async (raw, actor) => {
           const a = validateArgs(deleteSchema, raw);
           const row = await find(a.redirect as string);
+          if (row.managedBy) throw new McpToolError("redirect: " + en("redirects.error.managed"));
           const path = await deleteRedirectRecord(row.id);
           if (path !== null) await prisma.auditLog.create({ data: { actor: `mcp:${actor.name}`, action: "redirect.delete", target: path } }).catch(() => {});
           return { deleted: path !== null, path: row.path };
