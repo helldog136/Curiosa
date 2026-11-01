@@ -1,10 +1,11 @@
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { adminCtx } from "@/core/admin";
 import { can as canDo } from "@/core/auth/access";
 import { findCatalogueEntry } from "@/core/modules/catalogue";
 import { getCoreVersion } from "@/core/modules/compat";
 import { parseRepoUrl } from "@/core/modules/installer";
-import { getModulePreview, type ModulePreview, type PreviewTarget } from "@/core/modules/readme";
+import { getModulePreview, getPreviewImages, PREVIEW_WAIT_MS, PreviewTimeout, type ModulePreview, type PreviewTarget } from "@/core/modules/readme";
 import { listModuleRows } from "@/core/modules/registry";
 import { listRetired } from "@/core/modules/retired";
 import { localized } from "@/core/modules/types";
@@ -19,7 +20,8 @@ import { InstallButton } from "@/components/admin/InstallButton";
 import { installCustomAction, installExtraAction } from "../actions";
 import { galleryLabels } from "@/components/admin/FicheParts";
 import { ExtensionFiche, FicheFrame } from "@/components/admin/ExtensionFiche";
-import type { GalleryItem } from "@/components/admin/PreviewGallery";
+import { PreviewGallery, type GalleryItem } from "@/components/admin/PreviewGallery";
+import { FicheSkeleton, GallerySkeleton } from "@/components/admin/FicheSkeleton";
 import { installBarState, techSummary, whatItAdds } from "@/core/modules/ficheView";
 import { previewUrl, readInstalledPreviews, type PreviewSource } from "@/core/modules/previewServe";
 import { describeMissing } from "@/core/modules/dependencyMessages";
@@ -30,15 +32,15 @@ import { describeMissing } from "@/core/modules/dependencyMessages";
  */
 /** Le contenu d'une fiche de module : seul ou dans la fenêtre par-dessus le catalogue (`embedded`, avec le bouton d'installation flottant en bas). */
 export async function DetailsView({ id, repo, embedded = false }: { id?: string; repo?: string; embedded?: boolean }) {
-  const { t, locale, config, user, advanced } = await adminCtx("admin");
-  const isOwner = canDo(user, "core:modules.install"); // peut installer des extensions
+  const { t, locale, config } = await adminCtx("admin");
   const L = (v: Parameters<typeof localized>[0]) => localized(v, locale, config.defaultLocale);
 
   let target: PreviewTarget | null = null;
   let entry: Awaited<ReturnType<typeof findCatalogueEntry>> | undefined;
   let custom: { url: string; ref?: string; subdir?: string } | null = null;
   if (id) {
-    entry = await findCatalogueEntry(id);
+    // L'index du catalogue : une copie déjà reçue suffit (jamais d'attente du réseau pour ouvrir une fiche), elle est relue en coulisse.
+    entry = await findCatalogueEntry(id, { staleOk: true });
     if (!entry) notFound();
     target = entry.repo ? { kind: "repo", url: entry.repo, ref: entry.ref, subdir: entry.subdir } : null;
   } else if (repo) {
@@ -47,9 +49,25 @@ export async function DetailsView({ id, repo, embedded = false }: { id?: string;
     else return <FicheFrame embedded={embedded} back={t("catalogue.back")}><p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm">{t(parsed.error)}</p></FicheFrame>;
   } else notFound();
 
+  // Tout ce qui est connu sans lire le dépôt (nom, icône, description) s'affiche TOUT DE SUITE ; la lecture du dépôt (README, autorisations) arrive ensuite, dans la page.
+  return (
+    <Suspense fallback={<FicheSkeleton t={t} embedded={embedded} back={t("catalogue.back")} name={entry ? L(entry.name) : custom?.url ?? ""} icon={entry?.icon ?? "🧩"} description={entry ? L(entry.description) : undefined} />}>
+      <FicheBody embedded={embedded} entry={entry} custom={custom} target={target} />
+    </Suspense>
+  );
+}
+
+type Entry = Awaited<ReturnType<typeof findCatalogueEntry>>;
+async function FicheBody({ embedded, entry, custom, target }: { embedded: boolean; entry: Entry; custom: { url: string; ref?: string; subdir?: string } | null; target: PreviewTarget | null }) {
+  const { t, locale, config, user, advanced } = await adminCtx("admin");
+  const isOwner = canDo(user, "core:modules.install"); // peut installer des extensions
+  const L = (v: Parameters<typeof localized>[0]) => localized(v, locale, config.defaultLocale);
+
   let preview: ModulePreview | null = null;
   let failed = false;
-  if (target) { try { preview = await getModulePreview(target); } catch (e) { console.error("[catalogue] preview failed:", (e as Error)?.message); failed = true; } }
+  let timedOut = false;
+  // Attente bornée : au-delà, un message clair et « Réessayer » (la lecture continue en coulisse, la tentative suivante en profite).
+  if (target) { try { preview = await getModulePreview(target, { waitMs: PREVIEW_WAIT_MS }); } catch (e) { console.error("[catalogue] preview failed:", (e as Error)?.message); failed = true; timedOut = e instanceof PreviewTimeout; } }
 
   const m = preview?.manifest ?? null;
   const installed = entry ? (await listModuleRows()).some((r) => r.id === entry!.id) : false;
@@ -70,10 +88,14 @@ export async function DetailsView({ id, repo, embedded = false }: { id?: string;
   const repoSpec = custom ? `${custom.url}${custom.ref || custom.subdir ? `#${custom.ref ?? ""}${custom.subdir ? `:${custom.subdir}` : ""}` : ""}` : "";
 
   // Les visuels : d'un module déjà installé, ceux de son dossier ; sinon ceux que le cœur a lus dans son dépôt. Servis par le site lui-même (previewServe.ts), jamais chargés depuis un site tiers.
-  const images = installed && entry ? await readInstalledPreviews(entry.id) : preview?.images ?? [];
+  // Les visuels d'un dépôt distant ne retardent JAMAIS la fiche : la galerie arrive après (emplacement réservé), lue en parallèle.
+  const installedImages = installed && entry ? await readInstalledPreviews(entry.id) : null;
   const source: PreviewSource = installed && entry ? { installed: entry.id } : entry ? { id: entry.id } : { repo: repoSpec };
   const version = entry?.version ?? m?.version;
-  const gallery: GalleryItem[] = images.map((i) => ({ src: previewUrl(source, i.index, version), width: i.width, height: i.height, caption: L(i.decl.caption), alt: L(i.decl.alt), typeLabel: t(`fiche.gallery.type.${i.decl.type}`) }));
+  const toItems = (list: Awaited<ReturnType<typeof getPreviewImages>>): GalleryItem[] => list.map((i) => ({ src: previewUrl(source, i.index, version), width: i.width, height: i.height, caption: L(i.decl.caption), alt: L(i.decl.alt), typeLabel: t(`fiche.gallery.type.${i.decl.type}`) }));
+  const declared = m?.previews?.length ?? 0;
+  const gallery: GalleryItem[] = installedImages ? toItems(installedImages) : [];
+  const remoteGallery = !installedImages && target && declared > 0 ? <Suspense fallback={<GallerySkeleton label={t("fiche.gallery.loading")} count={declared} />}><RemoteGallery target={target} toItems={toItems} labels={galleryLabels(t)} /></Suspense> : null;
 
   // Résumé d'une ligne des détails techniques : « Garde des données de votre public · Demande 3 autorisations · Installe aussi Contacts ».
   const alsoInstalls = (planView?.lines ?? []).filter((l) => l.action === "install").map((l) => l.name);
@@ -101,8 +123,8 @@ export async function DetailsView({ id, repo, embedded = false }: { id?: string;
     <ExtensionFiche t={t} embedded={embedded} advanced={advanced} origin={origin} name={name} icon={icon}
       version={version} author={m?.author} license={m?.license} source={entry?.repo ? `${entry.repo}${entry.ref ? `#${entry.ref}` : ""}` : repoSpec || undefined}
       description={entry ? L(entry.description) : m?.description ? L(m.description) : undefined}
-      noModule={!!custom && !failed && !m} failed={failed} keptCount={kept.length}
-      gallery={gallery} galleryLabels={galleryLabels(t)} adds={m ? whatItAdds(m, L) : []}
+      noModule={!!custom && !failed && !m} failed={failed} timedOut={timedOut} keptCount={kept.length}
+      gallery={gallery} gallerySlot={remoteGallery} galleryLabels={galleryLabels(t)} adds={m ? whatItAdds(m, L) : []}
       readme={preview?.readme ? (
         <article className={`${ui.card} overflow-x-auto !p-6 text-[16px] sm:!p-8 [&_h2:first-child]:mt-0 [&>div>*:first-child]:mt-0`}>
           <Markdown text={preview.readme} untrusted />
@@ -124,3 +146,9 @@ export async function DetailsView({ id, repo, embedded = false }: { id?: string;
   );
 }
 
+
+/** La galerie d'un dépôt distant : lue après la fiche (et en parallèle), sans jamais la retarder. Sans image valable : rien (pas de trou). */
+async function RemoteGallery({ target, toItems, labels }: { target: PreviewTarget; toItems: (l: Awaited<ReturnType<typeof getPreviewImages>>) => GalleryItem[]; labels: ReturnType<typeof galleryLabels> }) {
+  const items = toItems(await getPreviewImages(target));
+  return items.length ? <PreviewGallery items={items} labels={labels} /> : null;
+}

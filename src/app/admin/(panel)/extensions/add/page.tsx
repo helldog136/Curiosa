@@ -11,6 +11,7 @@ import { TextField } from "@/components/admin/Field";
 import { ExtensionsHeader } from "@/components/admin/ExtensionsHeader";
 import { ui } from "@/components/admin/ui";
 import Link from "next/link";
+import { CatalogueDetailsLink } from "@/components/admin/CatalogueDetailsLink";
 import { CatalogueSearch } from "@/components/admin/CatalogueSearch";
 import { ActionForm } from "@/components/admin/ActionForm";
 import { ConfirmButton } from "@/components/admin/ConfirmButton";
@@ -88,7 +89,7 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
                   ) : e.needsNewerCore ? (
                     <span className="text-sm text-muted">{t("modules.core.badge", { version: e.needsNewerCore, current: getCoreVersion() })}</span>
                   ) : (
-                    <Link href={`/admin/extensions/add/details?id=${encodeURIComponent(e.id)}`} scroll={false} className={ui.btnPrimary}>{advanced ? t("catalogue.details") : t("catalogue.details.simple")}</Link>
+                    <CatalogueDetailsLink href={`/admin/extensions/add/details?id=${encodeURIComponent(e.id)}`} query={`id=${encodeURIComponent(e.id)}`} className={ui.btnPrimary} pendingLabel={t("progress.opening")}>{advanced ? t("catalogue.details") : t("catalogue.details.simple")}</CatalogueDetailsLink>
                   )}
                 </div>
               </li>

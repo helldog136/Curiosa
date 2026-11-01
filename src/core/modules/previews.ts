@@ -111,15 +111,15 @@ export type PreviewImage = { index: number; decl: PreviewDecl; mime: PreviewMime
  * écarté (jamais d'erreur pour la fiche). `read` reçoit la taille permise et rend les octets, ou null.
  */
 export async function loadPreviewImages(decls: PreviewDecl[] | undefined, read: (file: string, maxBytes: number) => Promise<Buffer | null>): Promise<PreviewImage[]> {
-  const out: PreviewImage[] = [];
-  for (const [index, decl] of (decls ?? []).slice(0, PREVIEW_LIMITS.max).entries()) {
+  // En parallèle (au plus 6 lectures) : chaque lecture d'un dépôt distant coûte un aller-retour réseau, les faire l'une après l'autre les additionnerait.
+  const got = await Promise.all((decls ?? []).slice(0, PREVIEW_LIMITS.max).map(async (decl, index): Promise<PreviewImage | null> => {
     let bytes: Buffer | null = null;
     try { bytes = await read(decl.file, PREVIEW_LIMITS.bytes); } catch { bytes = null; }
-    if (!bytes) continue;
+    if (!bytes) return null;
     const c = checkPreviewImage(bytes, decl.file);
-    if (c.ok) out.push({ index, decl, mime: c.mime, width: c.width, height: c.height, bytes });
-  }
-  return out;
+    return c.ok ? { index, decl, mime: c.mime, width: c.width, height: c.height, bytes } : null;
+  }));
+  return got.filter((i): i is PreviewImage => i !== null);
 }
 
 /** Octets conservés au plus en mémoire pour tous les visuels lus (le reste est relu à la demande). */

@@ -3186,5 +3186,14 @@
   "settings.colorInvalid": "Écrivez une couleur au format #rrggbb.",
   "settings.contrast.text": "Le texte est peu lisible sur ce fond (contraste {ratio}:1, au moins 4,5:1 conseillé).",
   "settings.contrast.accent": "L'accent se distingue mal du fond (contraste {ratio}:1, au moins 3:1 conseillé).",
-  "settings.contrast.accent2": "La couleur secondaire se distingue mal du fond (contraste {ratio}:1, au moins 3:1 conseillé)."
+  "settings.contrast.accent2": "La couleur secondaire se distingue mal du fond (contraste {ratio}:1, au moins 3:1 conseillé).",
+  "progress.opening": "J'ouvre la fiche…",
+  "progress.ficheBack": "Retour au catalogue",
+  "progress.ficheClose": "Fermer",
+  "progress.ficheLabel": "Fiche de l'extension",
+  "fiche.loading": "Lecture de la fiche en cours…",
+  "fiche.gallery.loading": "Chargement des images…",
+  "fiche.retry": "Réessayer",
+  "fiche.retrying": "Nouvelle tentative…",
+  "catalogue.previewSlow": "La lecture de cette fiche prend plus de temps que prévu. Rien n'a été installé. Vous pouvez réessayer."
 }
