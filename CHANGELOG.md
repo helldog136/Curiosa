@@ -7,6 +7,23 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.7.1 — 2026-11-01
+
+**En bref.** Ajouter vos réseaux tient en un champ : vous collez l'adresse de votre profil (ou de plusieurs), la page reconnaît chaque réseau en direct, puis un clic les ajoute tous.
+
+### Réseaux sociaux
+
+- **Un seul champ : « Collez l'adresse de votre profil ».** Une ou plusieurs adresses, une par ligne. Pour chacune, vous voyez tout de suite le réseau reconnu et le bouton qui s'affichera (« Instagram · monpseudo »), avant que rien ne soit installé.
+- **Un clic pour tout ajouter.** Le bouton dit combien (« Ajouter 6 réseaux »). La page ajoute les réseaux l'un après l'autre et montre où elle en est (« Ajout de TikTok… 2 sur 6 »). Si l'un échoue, les autres sont quand même ajoutés et le message dit quoi faire.
+- **Un nom seul peut aller à plusieurs réseaux** (« @monpseudo ») : la page vous demande de quel réseau il s'agit. Une adresse déjà ajoutée est signalée ; une adresse non reconnue vous renvoie vers la liste de tous les réseaux.
+- **Sans rien taper de plus.** Un deuxième compte du même réseau reçoit un nom d'office (« Instagram 2 »). Si l'adresse n'est finalement pas reconnue par le module, le réseau est ajouté « À régler » et la page le dit.
+- **Seule la personne propriétaire peut ajouter un réseau** (cela installe une extension) : une personne administratrice voit les adresses reconnues et un message qui l'explique.
+
+### Pour les développeurs
+
+- **`addNetworkWithProfile(moduleId, adresse)`** (action serveur, droit `core:modules.install`) : installe le module si besoin, crée l'instance (surnoms d'office), écrit `profile` **après** que le module a confirmé son bouton (`previewSocialButton`). La page l'appelle réseau par réseau : un échec n'arrête pas les autres. Aucune migration.
+- **`SocialPaste`** (composant client) lit le texte avec `recognizeSocial` ; les icônes sont résolues côté serveur et la validation du bloc (`socialSpec.ts`, zod) reste hors du navigateur.
+
 ## 0.7.0 — 2026-11-01
 
 **En bref.** Le Catalogue sait désormais reconnaître l'adresse de votre profil (Instagram, TikTok, Mastodon…) avant d'installer le réseau. C'est la base du champ unique « Collez l'adresse de votre profil », qui arrive ensuite.
