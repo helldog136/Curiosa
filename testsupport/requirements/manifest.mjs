@@ -9,6 +9,10 @@ const MAX_BYTES = 10 * 1024 * 1024; // même plafond que l'installateur du cœur
  * Les fonctions d'avant la 0.1.10 ne sont pas listées : aucun site à jour n'a un cœur aussi ancien, une exigence là-dessus ne ferait que du bruit.
  */
 export const FEATURES = [
+  { since: "0.6.0", label: "un réglage « period », « datetime » ou « duration » (période, date et heure, durée en un seul champ)", test: (m, man) => allSettings(man).some((s) => s.type === "period" || s.type === "datetime" || s.type === "duration") },
+  { since: "0.6.0", label: "un réglage avec « min », « max », « step », « unit », « example », « rare » ou « display »", test: (m, man) => allSettings(man).some((s) => s.min !== undefined || s.max !== undefined || s.step !== undefined || s.unit !== undefined || s.example !== undefined || s.rare !== undefined || s.display !== undefined) },
+  { since: "0.6.0", label: "un bloc du panneau avec un tableau enrichi (« searchable », « filters », cellule « badge » ou « switch », action « inMenu »)", test: (m) => /\bsearchable\s*:\s*true|\bfilters\s*:\s*\[\s*\{\s*column|\bbadge\s*:\s*["']|\binMenu\s*:\s*true|\bswitch\s*:\s*\{\s*on\b/.test(stripComments(m.code)) && /type\s*:\s*["']table["']/.test(stripComments(m.code)) },
+  { since: "0.6.0", label: "un champ de formulaire « switch », « segmented », « period », « datetime » ou « duration », ou un champ « folded »", test: (m) => /\bkind\s*:\s*["'](?:switch|segmented|period|datetime|duration)["']|\bfolded\s*:\s*true/.test(stripComments(m.code)) },
   { since: "0.4.0", label: "« skin » dans module.json (pièces et jetons stylables par les skins)", test: (m, man) => man.skin !== undefined },
   { since: "0.2.14", label: "un réglage « multichoice » (plusieurs choix par cases à cocher)", test: (m, man) => allSettings(man).some((s) => s.type === "multichoice") },
   { since: "0.2.14", label: "« family » dans module.json (rangement choisi par le module)", test: (m, man) => man.family !== undefined },
