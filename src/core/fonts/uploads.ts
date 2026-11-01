@@ -38,7 +38,7 @@ const serial = <T>(fn: () => Promise<T>): Promise<T> => { const next = chain.the
 
 export type UploadResult = { ok: true; font: UploadedFont; detected: { weight: string; style: string; variable: boolean } } | { ok: false; code: UploadErrorCode; field: "font" | "name" | "license" };
 
-export function addUpload(input: { bytes: Buffer; name?: string; accepted: boolean; actor: string; dir?: string }): Promise<UploadResult> {
+export function addUpload(input: { bytes: Buffer; name?: string; accepted: boolean; actor: string; dir?: string; /** Pour les tests : remplace l'écriture du fichier ou celle de la liste, afin de simuler une panne. */ deps?: { write?: (file: string, bytes: Buffer) => void; save?: (list: UploadedFont[]) => Promise<void> } }): Promise<UploadResult> {
   return serial(async () => {
     const fail = (code: UploadErrorCode, field: "font" | "name" | "license" = "font"): UploadResult => ({ ok: false, code, field });
     if (!input.accepted) return fail("license", "license");
@@ -67,14 +67,17 @@ export function addUpload(input: { bytes: Buffer; name?: string; accepted: boole
     // La famille garde un seul nom d'affichage : celui de la première graisse envoyée.
     const known = list.find((f) => f.slug === slug);
     const font: UploadedFont = { id, family: known?.family ?? family, slug, weight: check.weight, style: check.style, bytes: bytes.length, addedAt: new Date().toISOString() };
+    const target = path.join(dir, uploadFileName(id));
+    const tmp = `${target}.${process.pid}.tmp`;
     try {
       fs.mkdirSync(dir, { recursive: true });
-      const target = path.join(dir, uploadFileName(id));
-      const tmp = `${target}.${process.pid}.tmp`;
-      fs.writeFileSync(tmp, bytes, { mode: 0o640 });
+      (input.deps?.write ?? ((f, b) => fs.writeFileSync(f, b, { mode: 0o640 })))(tmp, bytes);
       fs.renameSync(tmp, target);
-    } catch { return fail("write"); }
-    await setSetting(SETTING_FILES, [...list, font]);
+    } catch { fs.rmSync(tmp, { force: true }); return fail("write"); } // disque plein : aucun reste
+    try { await (input.deps?.save ?? ((l) => setSetting(SETTING_FILES, l)))([...list, font]); } catch {
+      fs.rmSync(target, { force: true }); // la liste n'a pas pu être écrite : le fichier n'a pas de raison de rester
+      return fail("write");
+    }
     invalidateSkinCache();
     await audit(input.actor, "appearance.font.add", `${font.family} ${font.weight} ${font.style}`);
     return { ok: true, font, detected: { weight: check.weight, style: check.style, variable: check.variable } };

@@ -421,3 +421,16 @@ test("structure de la page : l'envoi est DANS la section Polices (sous les deux 
   assert.ok(model.indexOf('id: "mine"') < model.indexOf('id: "system"'), "« Mes polices » en tête");
   assert.match(fs.readFileSync("src/app/admin/(panel)/settings/page.tsx", "utf8"), /\/admin\/appearance#polices/);
 });
+
+test("suivi : une panne d'écriture ne laisse aucun reste (fichier temporaire, fichier sans entrée) ; CFF2 dit son message sous le champ", async () => {
+  const left = () => (fs.existsSync(FONTS) ? fs.readdirSync(FONTS) : []);
+  const full = await add(KALAM4, { deps: { write: (f) => { fs.writeFileSync(f, "x"); throw new Error("disque plein"); } } });
+  assert.deepEqual([full.ok, full.code], [false, "write"]);
+  assert.deepEqual(left(), [], "le fichier temporaire est supprimé");
+  const noList = await add(KALAM4, { deps: { save: async () => { throw new Error("base indisponible"); } } });
+  assert.deepEqual([noList.ok, noList.code], [false, "write"]);
+  assert.deepEqual(left(), [], "pas de fichier sans entrée");
+  assert.deepEqual(await U.listUploads(), []);
+  assert.equal((await add(KALAM4)).ok, true, "l'envoi suivant réussit");
+  assert.match((await actions.uploadFontAction(null, form({ license: "on", font: new File([Buffer.from("wOF2" + "x".repeat(10))], "a.woff2") }))).errors.font, /abîmé|pas une police/);
+});

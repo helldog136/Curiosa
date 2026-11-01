@@ -3,7 +3,7 @@
  *
  * On lit le fichier sfnt pour de bon (signature, répertoire de tables dans le fichier, sans chevauchement, tables indispensables, `head` avec son nombre magique), on refuse
  * les collections, l'ancien format WOFF, les dessins SVG et les polices en images (bitmap), puis on écrit un WOFF2 : en-tête, répertoire (étiquettes connues indexées ;
- * `glyf` et `loca` en « transformation nulle », version 3, permise par la norme), flux de tables compressé en Brotli (mode police) par un fil de travail, bourrage à 4 octets.
+ * `glyf` et `loca` en « transformation nulle », version 3, permise par la norme), flux de tables compressé en Brotli (mode police) par le pool de fils de Node (`zlib`, sans bloquer le serveur ; un envoi à la fois grâce au verrou d'envoi), bourrage à 4 octets.
  * Le résultat repasse ensuite par `checkWoff2`, comme un envoi WOFF2 : aucune confiance dans ce que ce fichier-ci vient de produire. Rien n'est exécuté.
  */
 import zlib from "node:zlib";
@@ -12,7 +12,7 @@ import { KNOWN_TAGS } from "./woff2";
 
 const brotli = promisify(zlib.brotliCompress);
 
-export type SfntCode = "not-font" | "collection" | "truncated" | "tables" | "bitmap" | "missing" | "head" | "too-large";
+export type SfntCode = "cff2" | "corrupt" | "not-font" | "collection" | "truncated" | "tables" | "bitmap" | "missing" | "head" | "too-large";
 export type Converted = { ok: true; woff2: Buffer } | { ok: false; code: SfntCode };
 
 const FLAVORS = new Set([0x00010000, 0x4f54544f, 0x74727565]);
@@ -63,13 +63,28 @@ export async function sfntToWoff2(buf: Buffer, opts: { maxInput?: number } = {})
   const byOffset = [...tables].sort((a, b) => a.offset - b.offset);
   for (let i = 1; i < byOffset.length; i++) if (byOffset[i]!.offset < byOffset[i - 1]!.offset + byOffset[i - 1]!.length) return bad("tables");
   for (const need of ["cmap", "head", "hhea", "hmtx", "maxp", "name"]) if (!seen.has(need)) return bad("missing");
-  if (!(seen.has("glyf") && seen.has("loca")) && !seen.has("CFF ") && !seen.has("CFF2")) return bad("missing");
+  if (seen.has("CFF2")) return bad("cff2");
+  if (!(seen.has("glyf") && seen.has("loca")) && !seen.has("CFF ")) return bad("missing");
 
   const data = (t: { offset: number; length: number }) => Buffer.from(buf.subarray(t.offset, t.offset + t.length));
   const headT = tables.find((t) => t.tag === "head")!;
   if (headT.length < 54) return bad("head");
   const head = data(headT);
   if (head.readUInt32BE(12) !== 0x5f0f3cf5) return bad("head");
+  // contours TrueType : `loca` croissant, de la bonne longueur pour `maxp.numGlyphs`, et sans dépasser `glyf`
+  if (seen.has("glyf")) {
+    const maxp = data(tables.find((t) => t.tag === "maxp")!), loca = data(tables.find((t) => t.tag === "loca")!), glyfLen = tables.find((t) => t.tag === "glyf")!.length;
+    const long = head.readInt16BE(50);
+    if (maxp.length < 6 || (long !== 0 && long !== 1)) return bad("corrupt");
+    const count = maxp.readUInt16BE(4) + 1, size = long ? 4 : 2;
+    if (loca.length < count * size) return bad("corrupt");
+    let prev = 0;
+    for (let i = 0; i < count; i++) {
+      const o = (long ? loca.readUInt32BE(i * 4) : loca.readUInt16BE(i * 2) * 2);
+      if (o < prev || o > glyfLen) return bad("corrupt");
+      prev = o;
+    }
+  }
   head.writeUInt16BE(head.readUInt16BE(16) | (1 << 11), 16); // « police convertie sans perte » (norme WOFF2)
 
   // répertoire WOFF2 + flux concaténé
