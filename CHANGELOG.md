@@ -16,6 +16,13 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Les fêtes qui changent chaque année sont honnêtes.** Elles remplissent les dates de la prochaine fois, sans « Chaque année », avec un rappel de les refaire l'an prochain. Pour les fêtes musulmanes, la date réelle dépend de la lune, à un jour près.
 - **Moins d'erreurs à l'ouverture.** Le champ « Période » n'affiche plus de message tant que vous n'avez rien saisi ; un rappel apparaît si une seule des deux dates est remplie. Vos réglages enregistrés restent identiques.
 
+### Extensions
+
+- **La fiche d'une extension dit d'abord ce qu'elle fait.** Vous lisez la description, puis des images qui montrent ce que l'extension ajoute à votre site (par exemple une page de commandes), puis la liste de ce qu'elle ajoute : pages, éléments pour vos pages d'overlay, outils pour votre assistant IA.
+- **Les détails techniques passent en dessous.** Les données gardées, les autorisations demandées, les autres extensions nécessaires, la version et la source sont rangées sous « Détails techniques », repliées, avec un résumé d'une ligne. Cela vaut avant l'installation comme après.
+- **Le bouton « Installer » reste visible.** Une barre collée en bas de la fenêtre indique la version et si l'installation est possible. S'il manque quelque chose, elle le dit avec un lien et le bouton est grisé.
+- **Vos données restent chez vous.** Les images sont lues par votre site puis affichées depuis votre site : votre navigateur ne contacte aucun autre site pour les voir. Une fiche sans image s'affiche comme avant.
+
 ### Apparence du site
 
 - **Le nom « Curiosa » du pied de page ne change plus avec le skin.** Dans « Propulsé par Curiosa », le nom garde partout la même police, la même casse, le même espacement et le même soulignement, quel que soit le skin choisi. Seule sa couleur suit le pied de page, pour que le texte reste lisible même sur un fond sombre.
@@ -23,6 +30,10 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Le même nom dans l'administration.** Le crédit du bas de l'administration utilise maintenant exactement le même nom que le site public.
 
 ### Pour les développeurs
+
+- **Visuels de la fiche (`previews`).** Clé facultative du manifeste : 6 images au plus (WebP ou PNG de 150 Ko), légende et texte alternatif en `fr` et `en`, sans `minCore` à déclarer. Le kit ajoute l'exigence `manifest.previews`.
+- **Service des images.** `GET /api/admin/extension-previews?id|repo|installed=…&n=0..5`, réservé à l'administration : le cœur lit l'image (dépôt ou dossier du module), vérifie type réel, poids et dimensions, puis la sert (cache privé, 12 Mo de mémoire au plus pour toutes les images lues).
+- **Règle R31** de `docs/ERGONOMIE-ADMIN.md` : la fiche d'une extension montre ce que ça fait avant les détails techniques, avec une barre d'installation toujours visible.
 
 - **`PeriodField`** : logique pure dans `src/core/adminkit/periodInputs.ts` et `periodPresets.ts` (Pâques par calcul, fêtes lunaires, chinoise et juives par `Intl.DateTimeFormat`, sans bibliothèque). Format enregistré inchangé, aucune migration, aucune version montée.
 - **Pièce verrouillée `brand-mark`** (additive : pas de nouveau `skinContract`). Le composant `CuriosaMark` (`src/components/brand/CuriosaMark.tsx`) rend le lien du crédit avec `data-skin-part="brand-mark"` et `data-curiosa-wordmark` ; le pied public et le pied de l'administration l'utilisent. `docs/skins-parts-baseline.json` est à régénérer à la publication.

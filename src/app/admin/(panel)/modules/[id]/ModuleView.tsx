@@ -23,6 +23,10 @@ import { ModuleLinksBox } from "@/components/admin/ModuleLinksBox";
 import { addInstance, uninstallModuleAction } from "../actions";
 import { EXTENSIONS_HREF } from "@/core/modules/extensionsLinks";
 import { PendingButton } from "@/components/admin/PendingButton";
+import { AddsList, TechnicalDetails, galleryLabels } from "@/components/admin/FicheParts";
+import { PreviewGallery, type GalleryItem } from "@/components/admin/PreviewGallery";
+import { techSummary, whatItAdds } from "@/core/modules/ficheView";
+import { previewUrl, readInstalledPreviews } from "@/core/modules/previewServe";
 
 export type ModuleQuery = { update?: string; error?: string; detail?: string; missing?: string; op?: string; module?: string; to?: string; level?: string };
 
@@ -60,6 +64,13 @@ export async function ModuleView({ id, query, embedded = false }: { id: string; 
         ? t(error, { services: detail ? detail.split(", ").map(names.service).join(", ") : "", modules: detail ? detail.split(", ").map(names.module).join(", ") : "" })
         : error ? t("error.generic") : null;
   const listTitle = t("nav.extensions");
+  // Même ordre que la fiche avant installation : ce que fait le module (description, visuels, ce qu'il ajoute), puis ses réglages, puis les détails techniques repliés.
+  const m = mod?.manifest;
+  const images = m?.previews?.length ? await readInstalledPreviews(row.id) : [];
+  const galleryItems: GalleryItem[] = images.map((i) => ({ src: previewUrl({ installed: row.id }, i.index, row.version), width: i.width, height: i.height, caption: L(i.decl.caption), alt: L(i.decl.alt), typeLabel: t(`fiche.gallery.type.${i.decl.type}`) }));
+  const perms = (m?.permissions ?? []).filter((p) => t(`perm.${p}`) !== `perm.${p}`);
+  const sum = m ? techSummary(m, perms) : null;
+  const techSummaryText = sum ? [t(`fiche.tech.keeps.${sum.keeps}`), sum.asks === 0 ? t("fiche.tech.asks.none") : t("fiche.tech.asks", { n: sum.asks })].join(" · ") : "";
 
   return (
     <div className="space-y-6">
@@ -83,9 +94,6 @@ export async function ModuleView({ id, query, embedded = false }: { id: string; 
 
       <section className={`${ui.card} space-y-3`}>
         <p className="text-sm">{mod ? L(mod.manifest.description) : t("modules.broken")}</p>
-        {advanced && mod && (mod.manifest.offers ?? []).length > 0 && <p className="text-xs text-muted">{t("modules.offers")} : {(mod.manifest.offers ?? []).map((o) => (o.label ? L(o.label) : o.service)).join(", ")}</p>}
-        {advanced && mod && mod.manifest.permissions.length > 0 && <p className="text-xs text-muted">{t("modules.permissions")} : {mod.manifest.permissions.join(", ")}</p>}
-        {advanced && row.repoUrl && <p className="break-all font-mono text-xs text-muted">{row.repoUrl}{row.ref || row.subdir ? `#${row.ref ?? ""}${row.subdir ? `:${row.subdir}` : ""}` : ""} @ {row.commit?.slice(0, 7)}</p>}
         {isOwner && (
           <div className="flex flex-wrap gap-2 pt-1">
             <ModuleUpdateButton id={row.id} kind="check" labels={{ idle: t("modules.checkUpdate"), working: t("modules.checking"), done: t("modules.checked"), failed: t("modules.updateFailed") }} />
@@ -93,6 +101,9 @@ export async function ModuleView({ id, query, embedded = false }: { id: string; 
           </div>
         )}
       </section>
+
+      <PreviewGallery items={galleryItems} labels={galleryLabels(t)} />
+      {m && <AddsList items={whatItAdds(m, L)} t={t} />}
 
       <ModuleLinksBox id={row.id} name={name} view={links} t={t} names={names} advanced={advanced} isOwner={isOwner} />
 
@@ -131,6 +142,40 @@ export async function ModuleView({ id, query, embedded = false }: { id: string; 
             </form>
           )}
         </section>
+      )}
+
+      {m && (
+        <TechnicalDetails summary={techSummaryText} open={false} t={t}>
+          <div className="space-y-2" data-testid="module-asks">
+            <h3 className="font-semibold">{t("catalogue.asks.friendly")}</h3>
+            {perms.length > 0 ? (
+              <ul className="space-y-2 text-[15px]">{perms.map((p) => <li key={p} className="flex items-start gap-3"><span aria-hidden className="mt-0.5">✓</span><span>{t(`perm.${p}`)}</span></li>)}</ul>
+            ) : <p className="text-sm text-muted">{t("catalogue.nothingSpecial")}</p>}
+            {advanced && (
+              <p className="border-t border-line pt-3 font-mono text-xs text-muted">
+                {t("modules.permissions")}: {m.permissions.join(", ") || "—"}
+                {(m.offers ?? []).length > 0 && <> · {t("modules.offers")}: {(m.offers ?? []).map((o) => (o.label ? L(o.label) : o.service)).join(", ")}</>}
+              </p>
+            )}
+          </div>
+          <div className="space-y-2" data-testid="module-privacy">
+            <h3 className="font-semibold">{t("catalogue.privacy.title")}</h3>
+            <p className={m.privacy ? "text-[15px]" : "text-sm text-muted"}>{m.privacy ? L(m.privacy) : t("fiche.tech.noPrivacy")}</p>
+          </div>
+          <div className="space-y-2">
+            <h3 className="font-semibold">{t("fiche.tech.versionTitle")}</h3>
+            <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+              <dt className="text-muted">{t("fiche.tech.version")}</dt><dd>{row.version}</dd>
+              {m.author && <><dt className="text-muted">{t("fiche.tech.author")}</dt><dd>{m.author}</dd></>}
+              {m.license && <><dt className="text-muted">{t("fiche.tech.license")}</dt><dd>{m.license}</dd></>}
+            </dl>
+          </div>
+          <div className="space-y-2">
+            <h3 className="font-semibold">{t("fiche.tech.sourceTitle")}</h3>
+            <p className="text-sm">{moduleOrigin(row, market) === "custom" ? t("catalogue.origin.custom") : t("fiche.tech.source.official")}</p>
+            {advanced && row.repoUrl && <p className="break-all font-mono text-xs text-muted">{row.repoUrl}{row.ref || row.subdir ? `#${row.ref ?? ""}${row.subdir ? `:${row.subdir}` : ""}` : ""} @ {row.commit?.slice(0, 7)}</p>}
+          </div>
+        </TechnicalDetails>
       )}
 
       <KeptData t={t} locale={locale} name={name} kept={kept} />
