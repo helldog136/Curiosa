@@ -121,7 +121,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Réseaux sociaux : aucune migration.** Deux réglages du cœur, ajoutés sans toucher aux instances : `social.hidden` (clés d'instances masquées) et `social.order` (ordre des clés). Absents, le comportement est celui d'avant ; une valeur abîmée est ignorée.
 - **`loadSocialEntries(locale, max)`** renvoie chaque bouton avec son état (`shown`, `hidden`, `duplicate`, `limit`) ; `loadSocialLinks` en est le filtre « affichés » (même signature qu'avant, l'en-tête, `llms.txt` et le plan du site n'ont pas changé). Fonctions pures : `orderedKeys`, `moveKey`, `socialOrigin`.
 - **Vérification de l'adresse** (`src/core/socialCheck.ts`) : pour un module `type: "social"` qui fournit `social.link`, le réglage `profile` est essayé avant d'être écrit (le module est appelé avec la valeur proposée, 2 secondes au plus). Convention, pas de nouvelle clé de manifeste. Les messages sont `social.error.profile` (avec `example` du réglage) et `social.saved`.
-- **Numéro de version.** Les clés de manifeste ajoutées (`shortLink`, `social`, `previews`) sont facultatives et ignorées par un cœur plus ancien : aucune n'exige un `minCore` au-delà de 0.6.0. La seule migration depuis la 0.6.0 est additive (`Redirect.managedBy`). Le cœur reste donc en 0.6.x (le code temporaire de `legacyOff.ts` a pour échéance 0.6.99).
+- **Numéro de version.** Les clés de manifeste ajoutées (`shortLink`, `social`, `previews`) sont facultatives, ignorées par un cœur plus ancien, sans `minCore` au-delà de 0.6.0. La seule migration depuis la 0.6.0 est additive (`Redirect.managedBy`) : le cœur reste en 0.6.x.
 
 ## 0.6.0 — 2026-11-01
 
