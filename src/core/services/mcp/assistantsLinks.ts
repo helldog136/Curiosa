@@ -28,9 +28,14 @@ export function accessHref(id: string): string {
   return `${ASSISTANTS_HREF}/${encodeURIComponent(id)}`;
 }
 
-/** Formulaire de création (ancre conservée), éventuellement avec le type « Maintenance » déjà choisi. */
+/** La page Équipe : les assistants IA y sont listés avec les personnes (tableau unique). */
+export const TEAM_HREF = "/admin/users";
+/** Ancre du formulaire d'ajout d'un assistant, sur la page Équipe. */
+export const ADD_ASSISTANT_ANCHOR = "add-assistant";
+
+/** Formulaire d'ajout d'un assistant IA (dans l'Équipe), éventuellement avec le type « Entretien du site » déjà choisi. */
 export function newAccessHref(maintenance = false): string {
-  return `${maintenance ? `${ASSISTANTS_HREF}?profile=maintenance` : ASSISTANTS_HREF}#new-token`;
+  return `${TEAM_HREF}${maintenance ? "?assistant=maintenance" : ""}#${ADD_ASSISTANT_ANCHOR}`;
 }
 
 export type RawQuery = Record<string, string | string[] | undefined>;
@@ -40,14 +45,14 @@ export const REQUEST_NOTICES = ["busy", "expired", "not-pending", "unknown", "fo
 
 /**
  * Anciennes adresses → nouvelle vue, paramètres utiles conservés :
- *   /admin/mcp                → Assistants IA › Accès (?profile=maintenance conservé)
+ *   /admin/mcp                → Assistants IA › Réglages (?profile=maintenance : le formulaire d'ajout de l'Équipe, type Entretien déjà choisi)
  *   /admin/mcp/<id>           → page de cet accès
  *   /admin/maintenance-ia     → Assistants IA › Demandes à valider (?notice=… conservé)
  * Null pour une adresse qui n'est pas une ancienne page.
  */
 export function legacyAssistantsTarget(pathname: string, query: RawQuery = {}): string | null {
   const path = pathname.replace(/\/+$/, "");
-  if (path === "/admin/mcp") return first(query.profile) === "maintenance" ? `${ASSISTANTS_HREF}?profile=maintenance` : ASSISTANTS_HREF;
+  if (path === "/admin/mcp") return first(query.profile) === "maintenance" ? newAccessHref(true) : ASSISTANTS_HREF;
   const one = /^\/admin\/mcp\/([^/]+)$/.exec(path);
   if (one) return `${ASSISTANTS_HREF}/${one[1]}`;
   if (path === "/admin/maintenance-ia") {

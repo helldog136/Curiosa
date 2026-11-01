@@ -12,7 +12,7 @@ import { ui } from "./ui";
  *
  * Deux façons de s'en servir :
  *  - `mode="page"` (défaut) : la liste est déjà dans la page (rendue par le serveur). Chaque ligne porte `data-live-item="<scope>"` et `data-search="<son texte>"`
- *    (voir `searchText()`), éventuellement `data-live-<clé>="<valeur>"` pour les pastilles ; un groupe porte `data-live-group="<scope>"` (il disparaît s'il
+ *    (voir `searchText()`), éventuellement `data-live-<clé>="<valeur>"` pour les pastilles (plusieurs valeurs possibles, séparées par une espace : une ligne « person editor » répond aux pastilles « person » et « editor ») ; un groupe porte `data-live-group="<scope>"` (il disparaît s'il
  *    est vide). Sans JavaScript la liste entière reste affichée.
  *  - `mode="server"` : la liste est paginée par le serveur ; la frappe interroge le serveur (délai de 250 ms) en remplaçant `?q=` dans l'adresse. Le serveur
  *    rend alors la bonne page (et le message « aucun résultat » de la liste, voir `NoResults`).
@@ -92,7 +92,7 @@ export function LiveSearch({ scope, placeholder, noneLabel, clearLabel, countLab
       total++;
       const hay = foldText(el.dataset.search ?? el.textContent ?? "");
       const textOk = words.every((w) => hay.includes(w));
-      const pillsOk = Object.entries(pills).every(([key, want]) => want === "all" || el.getAttribute(`data-live-${key}`) === want);
+      const pillsOk = Object.entries(pills).every(([key, want]) => want === "all" || (el.getAttribute(`data-live-${key}`) ?? "").split(" ").includes(want));
       el.hidden = !(textOk && pillsOk);
       if (!el.hidden) shown++;
     });

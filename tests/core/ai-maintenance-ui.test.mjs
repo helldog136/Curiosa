@@ -102,7 +102,7 @@ test("admin : la page et ses actions sont réservées au propriétaire ; menu, t
   assert.match(creator, /name="profile"/);
   assert.match(creator, /name="approval" defaultValue="human"/, "validation humaine par défaut");
   assert.match(creator, /name="notify" defaultValue="admin"/, "avertissement dans l'admin par défaut");
-  assert.match(read(`${PANEL}/assistants/AccessTab.tsx`), /defaultProfile=\{profile === "maintenance"/);
+  assert.match(read(`${PANEL}/users/page.tsx`), /defaultProfile=\{query\.assistant === "maintenance"/);
 });
 
 test("admin : le guide pour l'IA est un lien vers le dépôt (construit sur la constante du crédit), pas un fichier servi par le site", () => {

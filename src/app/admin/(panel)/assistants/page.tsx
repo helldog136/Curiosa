@@ -1,7 +1,8 @@
+import { redirect } from "next/navigation";
 import { adminCtx } from "@/core/admin";
 import { CREDIT_URL } from "@/core/credit";
 import { adminBugReportUrl } from "@/core/bugReport";
-import { REQUEST_NOTICES, parseTab } from "@/core/services/mcp/assistantsLinks";
+import { REQUEST_NOTICES, newAccessHref, parseTab } from "@/core/services/mcp/assistantsLinks";
 import { maintenanceSummary } from "@/core/maintenance/summary";
 import { markSeen } from "@/core/maintenance/settings";
 import { BugReportLink } from "@/components/admin/BugReportLink";
@@ -15,13 +16,16 @@ export const dynamic = "force-dynamic";
 
 /**
  * Assistants IA : l'unique page pour laisser une IA lire ou gérer le site (remplace « API & MCP » et « Maintenance par IA »).
- * Trois vues : Accès (qui est branché, avec quels droits), Demandes à valider, Historique. Propriétaire seulement.
+ * Trois vues : Réglages (commun à tous), Demandes à valider, Historique. Les assistants eux-mêmes (liste, ajout, retrait) sont dans l'Équipe ; la fiche de chacun
+ * (droits par outil, approbations) reste ici, à /admin/assistants/<id>. Propriétaire et coordination technique seulement.
  * Les réglages techniques (adresse du serveur, liste des actions, consignes par outil) n'apparaissent qu'en mode avancé.
  */
 export default async function AssistantsPage({ searchParams }: { searchParams: Promise<{ tab?: string; notice?: string; profile?: string }> }) {
   const { t, locale, config, advanced } = await adminCtx({ right: "core:mcp.tokens" });
   const query = await searchParams;
   const tab = parseTab(query.tab);
+  // Ancien lien « ajouter un assistant d'entretien » : le formulaire est maintenant dans l'Équipe.
+  if (tab === "access" && query.profile === "maintenance") redirect(newAccessHref(true));
   const notice = REQUEST_NOTICES.find((n) => n === query.notice);
   const [{ pending }, bugUrl] = await Promise.all([maintenanceSummary(), adminBugReportUrl(t)]);
   // Voir les demandes ou l'historique = avoir vu ce que les IA ont fait : la pastille du menu repart de zéro (les demandes en attente, elles, restent).
@@ -35,7 +39,7 @@ export default async function AssistantsPage({ searchParams }: { searchParams: P
         intro={t("assistants.intro")}
       />
       <AssistantTabs t={t} current={tab} pending={pending} />
-      {tab === "access" && <AccessTab t={t} locale={locale} advanced={advanced} profile={query.profile} />}
+      {tab === "access" && <AccessTab t={t} advanced={advanced} />}
       {tab === "requests" && <RequestsTab t={t} locale={locale} defaultLocale={config.defaultLocale} notice={notice} />}
       {tab === "history" && <HistoryTab t={t} locale={locale} defaultLocale={config.defaultLocale} advanced={advanced} />}
 

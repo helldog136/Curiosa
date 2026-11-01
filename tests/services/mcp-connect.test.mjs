@@ -250,7 +250,7 @@ test("interface : clés fr/en présentes pour le guide, la création et l'accès
   assert.ok(keys.length > 40);
   for (const k of keys) assert.ok(en[k]?.trim(), k);
   const used = new Set();
-  for (const f of [`${PANEL}/page.tsx`, `${PANEL}/AccessTab.tsx`, `${PANEL}/[id]/page.tsx`, "src/components/admin/McpConnectGuide.tsx", "src/components/admin/McpTokenCreator.tsx"]) for (const m of read(f).matchAll(/\bt\(\s*"([\w.]+)"/g)) used.add(m[1]);
+  for (const f of [`${PANEL}/page.tsx`, `${PANEL}/AccessTab.tsx`, `${PANEL}/[id]/page.tsx`, "src/app/admin/(panel)/assistants/creatorLabels.ts", "src/components/admin/McpConnectGuide.tsx", "src/components/admin/McpTokenCreator.tsx"]) for (const m of read(f).matchAll(/\bt\(\s*"([\w.]+)"/g)) used.add(m[1]);
   for (const k of used) assert.ok(fr[k] && en[k], `clé manquante : ${k}`);
   for (const k of ["mcp.url.title", "mcp.url.enable", "mcp.url.disable", "mcp.urlChip", "assistants.created.title", "mcp.urlOption"]) assert.ok(used.has(k) || fr[k], k);
   assert.match(fr["mcp.urlOptionHelp"], /EST le mot de passe/);
@@ -262,9 +262,10 @@ test("interface : clés fr/en présentes pour le guide, la création et l'accès
 
 test("page Assistants IA : étapes en tête du formulaire, un bloc par assistant (mode avancé), jeton réel seulement à la création", () => {
   const page = read(`${PANEL}/AccessTab.tsx`);
+  const team = read("src/app/admin/(panel)/users/page.tsx");
   const guide = read("src/components/admin/McpConnectGuide.tsx");
   const creator = read("src/components/admin/McpTokenCreator.tsx");
-  assert.ok(page.indexOf('t(`assistants.step.${n}`)') > 0 && page.indexOf('t(`assistants.step.${n}`)') < page.indexOf("<McpTokenCreator"), "les trois étapes viennent avant le formulaire");
+  assert.ok(team.includes("<McpTokenCreator compact"), "le formulaire d'ajout (chemin court) est dans l'Équipe");
   assert.ok(page.includes('{advanced && (') && page.indexOf("<McpConnectGuide") > page.indexOf("{advanced && ("), "les blocs de configuration par outil sont réservés au mode avancé");
   for (const id of ["mcp-guide-claude", "mcp-guide-code", "mcp-guide-other", "mcp-guide-test", "mcp-guide-how"]) assert.ok(guide.includes(id), id);
   assert.match(guide, /claude mcp add --transport http curiosa \$\{endpoint\} --header "Authorization: Bearer \$\{secret\}"/);

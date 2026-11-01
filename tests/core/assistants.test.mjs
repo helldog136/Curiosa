@@ -139,13 +139,15 @@ test("page : sous-titre « API & MCP » et réglages techniques seulement en mod
   const access = read(`${PANEL}/assistants/AccessTab.tsx`);
   assert.match(access, /\{advanced && \(\s*<Panel title=\{t\("assistants\.tech\.title"\)\}/, "adresse du serveur, guides par outil et liste des actions : avancé seulement");
   assert.ok(access.indexOf("/api/mcp</code>") > access.indexOf("{advanced && ("), "l'adresse du serveur n'est montrée qu'en avancé");
-  // Les accès arrêtés sont dans une zone repliée (jamais `open`), après les actifs.
-  assert.match(access, /<details className="[^"]*" data-testid="assistants-inactive">/);
-  assert.ok(access.indexOf('data-testid="assistants-active"') < access.indexOf('data-testid="assistants-inactive"'));
-  assert.ok(!/open/.test(access.slice(access.indexOf('data-testid="assistants-inactive"') - 80, access.indexOf('data-testid="assistants-inactive"'))));
+  // Les accès arrêtés sont dans une zone repliée (jamais `open`), sous le tableau de l'Équipe où vivent maintenant les assistants.
+  const team = read(`${PANEL}/users/page.tsx`);
+  assert.match(team, /<details className="[^"]*" data-testid="assistants-inactive">/);
+  assert.ok(!/open/.test(team.slice(team.indexOf('data-testid="assistants-inactive"') - 80, team.indexOf('data-testid="assistants-inactive"'))));
   // Le secret n'existe que dans l'état du formulaire de création.
-  assert.ok(!/(?<![.\w])created\.(token|byUrl)|\bk\.hash/.test(access), "la liste ne manipule aucun secret");
-  assert.ok(!/hash/.test(access), "ni empreinte");
+  for (const f of [access, team, read(`${PANEL}/users/assistantMembers.tsx`)]) {
+    assert.ok(!/(?<![.\w])created\.(token|byUrl)|\bk\.hash|\.prefix/.test(f), "la liste ne manipule aucun secret");
+    assert.ok(!/hash/.test(f), "ni empreinte");
+  }
   assert.match(read(`${PANEL}/assistants/AssistantTabs.tsx`), /aria-current=\{here \? "page" : undefined\}/);
 });
 

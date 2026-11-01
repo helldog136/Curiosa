@@ -9,7 +9,8 @@ import { localized } from "@/core/modules/types";
 import { siteUrl } from "@/core/config";
 import { canUse, defaultFor, isGranted, MAINTENANCE_PROFILE, parseGrants, withinCeiling } from "@/core/services/mcp/access";
 import { abilities } from "@/core/services/mcp/accessView";
-import { ASSISTANTS_HREF } from "@/core/services/mcp/assistantsLinks";
+import { assistantHistoryHref } from "@/core/services/mcp/teamView";
+import { TEAM_HREF } from "@/core/services/mcp/assistantsLinks";
 import { getApprovalMode } from "@/core/maintenance/settings";
 import { MAINTENANCE_TOOLS } from "@/core/maintenance/tools";
 import { isUrlAccessEnabled } from "@/core/services/mcp/tokens";
@@ -50,7 +51,7 @@ export default async function AccessPage({ params }: { params: Promise<{ id: str
   return (
     <div className="space-y-6">
       <div>
-        <a href={ASSISTANTS_HREF} className="text-sm text-muted hover:text-accent">← {t("assistants.title")}</a>
+        <a href={TEAM_HREF} className="text-sm text-muted hover:text-accent" data-testid="assistant-back">← {t("nav.users")}</a>
         <h1 className={`mt-1 break-words ${ui.pageTitle}`}>{row.name} {advanced && <span className="font-mono text-base text-muted">{row.prefix}…</span>}</h1>
         {advanced && (
           <p className="mt-1 text-sm text-muted">
@@ -59,6 +60,7 @@ export default async function AccessPage({ params }: { params: Promise<{ id: str
         )}
         {revoked && <p className="mt-2 rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm" role="status" data-testid="access-revoked">{t("assistants.detail.revoked")}</p>}
         <p className="mt-2 max-w-2xl text-[15px] leading-6" data-testid="assistants-can">{can.map((a) => t(`assistants.can.${a}`)).join(" ")}</p>
+        {!revoked && <p className="mt-2 text-sm"><a href={assistantHistoryHref(row.name)} className="text-accent underline underline-offset-2" data-testid="assistant-history">{t("team.ai.history")}</a></p>}
         <p className={ui.pageIntro}>{t(advanced ? "mcp.accessIntro" : "assistants.detail.intro")}</p>
         {token.scope === "read" && <p className="mt-2 rounded-lg border border-line bg-surface p-3 text-sm">{t(advanced ? "mcp.readCeiling" : "assistants.detail.readOnly")}</p>}
       </div>
