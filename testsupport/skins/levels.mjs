@@ -39,7 +39,7 @@ export const LEVEL_OF_KIT = {
   "kit-preview-size": "resources", "kit-preview-unreadable": "resources", "kit-font-unused": "resources", "kit-image-unused": "resources", "kit-no-own-license": "resources", "kit-no-readme": "resources",
   "kit-breakpoint-undeclared": "stylesheet", "kit-target-small": "stylesheet", "kit-leading-low": "stylesheet", "kit-text-small": "stylesheet", "kit-coverage": "stylesheet",
   "kit-neutral": "neutrality", "kit-neutral-skipped": "neutrality",
-  "kit-hidden": "principle", "kit-text-changed": "principle", "kit-structure-changed": "principle", "kit-injected-text": "principle", "kit-covered": "principle", "kit-offscreen": "principle",
+  "kit-brand-restyled": "principle", "kit-brand-changed": "principle", "kit-hidden": "principle", "kit-text-changed": "principle", "kit-structure-changed": "principle", "kit-injected-text": "principle", "kit-covered": "principle", "kit-offscreen": "principle",
 };
 // tout le reste des `kit-…` est du niveau navigateur
 export const levelOfCode = (code) => (code.startsWith("kit-") ? LEVEL_OF_KIT[code] ?? "browser" : levelOf(code));
