@@ -447,6 +447,32 @@ l'ancienne version. Si la personne **saute des versions** (1.2 → 1.6), le fram
 l'existante, défait tout si la migration échoue, et n'écrit jamais les valeurs dans le journal. Détails et séquence d'installation de la cible : [MODULES.md › `migrations`](MODULES.md). Les sujets, eux, acceptent une période
 (`collect(sujet, { from, to })`) et le type `datetime` : voir « sujets ».
 
+## 12 ter. Écrire au journal du cœur (`ctx.api.log`)
+
+Un module n'a pas son propre journal : il écrit dans **le journal du cœur**, ce qui le centralise (page « Journal d'audit ») et lui donne **un onglet « Historique » automatique** sur sa page d'administration (visible par Administration et au-dessus ; droit `<module>:history`, réglable dans un rôle). Aucune permission à déclarer.
+
+```json
+"logEvents": [
+  { "key": "command.run", "label": { "fr": "Commande {name} utilisée", "en": "Command {name} used" }, "frequent": true, "fields": [{ "key": "name" }] },
+  { "key": "reward.failed", "label": { "fr": "Échec de la récompense {name}", "en": "Reward {name} failed" }, "level": "error", "fields": [{ "key": "name" }, { "key": "attempts", "type": "number" }] }
+]
+```
+```js
+await ctx.api.log?.write({ action: "command.run", target: "!discord", data: { name: "discord" } }); // renvoie true/false, ne lève jamais
+```
+
+- **Le module dit quoi, le cœur déduit qui.** Jamais d'acteur fourni : la personne connectée (action d'administration), un assistant IA (action MCP) ou le module lui-même. Module et instance sont ajoutés par le cœur.
+- **Déclarer ses événements** (`logEvents`, 30 au plus) : clé (`command.run`), libellé français ET anglais avec des `{champs}` (120 caractères), `level` par défaut (`info`, `warn`, `error`), `frequent` (ligne très fréquente : 7 jours et 200 lignes au plus), `fields` (5 au plus, `text` par défaut, `number` ou `boolean`).
+- **Liste blanche** : tout champ non déclaré est écarté, chaque valeur tient en 200 caractères, une valeur qui ressemble à un secret est écartée. Un champ nommé comme un secret (`token`, `password`…) ou comme un texte du public (`message`, `comment`…) est refusé au manifeste : **jamais de secret, jamais de texte libre du public**. Premiers segments `module`, `mcp` et `instance` réservés au cœur.
+- **Rétrocompatibilité** : un module sans `logEvents` (ou une clé non déclarée) écrit des lignes génériques **sans données**. Un cœur plus ancien n'a pas `ctx.api.log` : écrire `ctx.api.log?.write(…)`, et déclarer `minCore` si le journal est indispensable.
+- **Bornes, sans minuteur** : 90 jours et 500 lignes au plus par module, purge à l'écriture par tranches de 50 lignes. Les lignes que le cœur écrit lui-même pour un module (action d'administration, assistant, réglages) sont dans la même limite.
+- **Tester** : `fakeCtx({ logEvents })` applique les mêmes règles ; `ctx.calls.log` / `ctx.dumpLog()` donnent les lignes écrites (`docs/TESTSUPPORT.md`).
+- Un assistant IA lit le journal avec l'outil `log_list` (lecture seule, jamais accordé d'office).
+
+### Phase 2 (préparée, pas encore faite) : migrer ses journaux propres
+
+Les journaux propres aux modules (Bot Twitch, Participation, Home Assistant, Sondages, journal des échanges de récompenses) restent en place : **rien n'est migré dans cette version**. Le guide pas à pas est dans `docs/MIGRER-SON-JOURNAL.md`.
+
 ## 13. Sauvegarde lisible
 
 Le cœur sauvegarde déjà tout ce que vous mettez dans `ctx.api.store` (en JSON). Pour que les données importantes restent **lisibles sans le framework**, ajoutez des fichiers à la sauvegarde :

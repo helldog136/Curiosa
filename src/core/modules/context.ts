@@ -77,6 +77,13 @@ export async function buildContext(mod: LoadedModule, instance: InstanceView, lo
   return ctx;
 }
 
+/** Journal central : ce contexte sert l'appel d'un assistant IA (action MCP du module) ; ses lignes porteront « assistant ». Aucun droit n'est ouvert. */
+export function asAssistant<T extends ModuleContext>(ctx: T, tokenName: string): T {
+  const c = CALLERS.get(ctx);
+  if (c) c.assistant = String(tokenName).slice(0, 80);
+  return ctx;
+}
+
 /**
  * Le même contexte, pour une personne qui regarde l'administration (`adminPanel`, `adminActions`, `entryPanels`) : `ctx.can("email.view")` vérifie
  * « <ce module>:email.view » pour elle (relue en base à cette requête). Le préfixe est imposé : un module ne teste jamais le droit d'un autre.

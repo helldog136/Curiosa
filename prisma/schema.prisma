@@ -350,8 +350,19 @@ model AuditLog {
   action    String
   target    String   @default("")
   createdAt DateTime @default(now())
+  /// Journal central : module propriétaire de la ligne (identifiant) et instance (clé) ; vides = le cœur.
+  module    String   @default("")
+  instance  String   @default("")
+  /// info | warn | error
+  level     String   @default("info")
+  /// person | module | assistant | system
+  actorKind String   @default("system")
+  /// JSON borné (champs déclarés par le module, 200 caractères au plus chacun) ; vide = ligne générique.
+  data      String   @default("")
 
   @@index([createdAt])
+  @@index([module, createdAt])
+  @@index([instance, createdAt])
 }
 
 // Jetons d'accès à l'API MCP du cœur (agents, assistants…). Seul le hash est conservé :

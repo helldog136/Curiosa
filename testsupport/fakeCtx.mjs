@@ -1,5 +1,6 @@
 import { makeNetClient } from "./fakeNet.mjs";
 import { createHash } from "node:crypto";
+import { loadCore } from "./core.mjs";
 
 /**
  * FAUX CONTEXTE DE MODULE — API publique du kit de test (testsupport/). Voir docs/TESTSUPPORT.md.
@@ -36,6 +37,9 @@ import { createHash } from "node:crypto";
  *   d'administration : une page, une route, une tâche → `claim` répond `no-person`) ; `by` vaut « u1 » par défaut. `filesQuota` = `{ bytes, files }` (défaut 4 Go / 20 000). Sans la permission
  *   « files » (option `permissions`) : `claim`/`remove` répondent `no-permission` et `ctx.calls.denied` le note. `ctx.calls.files` garde chaque appel `{ op, url, result }` ;
  *   `ctx.dumpFiles()` donne les fichiers encore là `[{ url, bytes, owner }]` (`owner` : « me », une autre instance, ou null), de quoi vérifier qu'un fichier a bien disparu.
+ * - `ctx.api.log.write({ action, target?, level?, data? })` (cœur après 0.5.1) : le journal central. Les MÊMES règles que le cœur (bornes, liste blanche des champs, 200 caractères, secrets écartés) s'appliquent à partir de `logEvents`
+ *   (option : la liste `logEvents` de votre module.json). Une action non déclarée, ou un module sans `logEvents`, donne une ligne générique sans `data`. Une clé invalide renvoie `false` (jamais d'exception). L'acteur n'est jamais fourni
+ *   par le module : `actor` (option) vaut « module » (défaut), « person », « assistant » ou « system ». `ctx.calls.log` garde chaque ligne ÉCRITE `{ action, target, level, data, actor }` ; `ctx.dumpLog()` la même liste.
  * - `ctx.api.services` : `services` = { nom: { méthode: (args) => valeur } } ; absent → `unavailable`
  * - `ctx.api.services.callAll(nom, méthode, args)` : `serviceInstances` = { nom: [{ instance, name?, methods: { méthode: (args) => valeur } }] } → une entrée par instance (un fournisseur qui lève
  *   donne `{ ok: false, error: "failed" }`) ; sans `serviceInstances[nom]`, UNE entrée tirée de `services[nom]` (comme un service non-each) ; service inconnu → []
@@ -63,10 +67,11 @@ export function fakeCtx(opts = {}) {
     migration = false, seedResult, legacy, rows: seedRows = {}, permissions, lastVisit = new Date(0), site = { name: "Site", tagline: "", logo: null }, theme = { accent: "#e8a23b", accentFg: "#111111", bg: "#121214", surface: "#1b1b1d", fg: "#f4f4f5", muted: "#a1a1a3", line: "#2e2e30", fontKey: "sans", font: "sans-serif" }, services = {}, serviceInstances = {}, mailConfigured = true, mailResult = { ok: true }, privacyDeclarations = { modules: [], truncated: false }, rawgConfigured = true, rawgCover = { status: "found", url: "https://media.example.test/cover.jpg" }, rawgCandidates = { status: "none", candidates: [] }, siteUrl = "https://example.test",
     net: netOverride, netLimits, netBudgetMs = null, choices = {},
     uploads = [], person = { id: "u1", email: "admin@example.test" }, filesQuota = {},
+    logEvents = [], actor: logActor = "module",
   } = opts;
   const rows = new Map();
   let seq = 0;
-  const calls = { topics: [], qr: [], entries: [], mail: [], png: [], services: [], rawg: [], rawgCandidates: [], files: [], seeds: [], cleared: [], legacyCleared: [], writes: [], denied: [], net: [], netLog: [], choices: [] };
+  const calls = { topics: [], qr: [], entries: [], mail: [], png: [], services: [], rawg: [], rawgCandidates: [], files: [], seeds: [], cleared: [], legacyCleared: [], writes: [], denied: [], net: [], netLog: [], choices: [], log: [] };
   let netClient;
   const client = () => (netClient ??= makeNetClient({ limits: { retryMinMs: 1, retryMaxMs: 5, ...netLimits }, log: (line) => calls.netLog.push(line) }));
   const net = netOverride ?? {
@@ -164,6 +169,22 @@ export function fakeCtx(opts = {}) {
     },
   };
 
+  // ── Journal central (ctx.api.log, cœur après 0.5.1) : mêmes règles que core/journal/write.ts, en mémoire. ──
+  const logApi = {
+    write: async (entry) => {
+      try {
+        const { journal: j } = await loadCore();
+        const action = typeof entry?.action === "string" ? entry.action.trim() : "";
+        if (!j.ACTION_RE_FOR_MODULE.test(action) || j.RESERVED_ACTION_RE.test(action)) return false;
+        const decl = logEvents.find((e) => e.key === action);
+        const level = j.isLevel(entry.level) ? entry.level : decl?.level ?? "info";
+        const data = decl ? j.shapeData(decl, entry.data) : {};
+        const line = { action, target: j.cleanText(entry.target) ?? "", level, data, actor: logActor };
+        calls.log.push(line);
+        return true;
+      } catch { return false; }
+    },
+  };
   const migrationApi = !migration ? {} : {
     seedInstance: async (target, request) => {
       calls.seeds.push([target, request]);
@@ -201,6 +222,8 @@ export function fakeCtx(opts = {}) {
     /** Tout ce que le module a rangé dans son stockage : [{ id, collection, data }] (sans passer par la permission « storage »). */
     dumpStore: () => [...rows.values()].map((r) => ({ id: r.id, collection: r.collection, data: structuredClone(r.data) })),
     /** Les fichiers encore présents (ctx.api.files) : [{ url, bytes, owner }], owner = « me » (revendiqué par ce module), une autre instance, ou null. */
+    /** Les lignes écrites au journal central (ctx.api.log) : `[{ action, target, level, data, actor }]`. */
+    dumpLog: () => structuredClone(calls.log),
     dumpFiles: () => [...fileRows].map(([name, r]) => ({ url: `/uploads/${name}`, bytes: r.bytes, owner: r.owner })),
     api: Object.defineProperties({
       siteUrl,
@@ -250,6 +273,7 @@ export function fakeCtx(opts = {}) {
       // `ctx.api.links.measured(url)` : hors site réel il n'y a pas de lien court, l'adresse revient telle quelle (comme sur un site où « Compter les clics » est désactivé).
       links: { measured: async (url) => String(url ?? "") },
       files: filesApi,
+      log: logApi,
       privacy: { declarations: async () => ((!allowed || allowed.has("privacy")) ? structuredClone(privacyDeclarations) : { modules: [], truncated: false }) },
       rawg: { configured: async () => (!allowed || allowed.has("rawg")) && rawgConfigured, cover: async (title) => { calls.rawg.push(title); if (allowed && !allowed.has("rawg")) return { status: "no-key", url: null }; return typeof rawgCover === "function" ? rawgCover(title) : rawgCover; }, candidates: async (title) => { calls.rawgCandidates.push(title); if (allowed && !allowed.has("rawg")) return { status: "no-key", candidates: [] }; return typeof rawgCandidates === "function" ? rawgCandidates(title) : rawgCandidates; } },
       net,

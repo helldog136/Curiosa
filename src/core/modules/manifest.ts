@@ -5,7 +5,8 @@ import { groupIssues } from "./groups";
 import { MULTI_VALUE_RE, siteDefaultRef } from "./settingValues";
 import { checkDateTime, parsePeriod } from "../adminkit/values";
 import { PLATFORM_PATTERN } from "./platform";
-import { MAX_MODULE_RIGHTS, OPEN, RIGHT_ID_RE } from "../auth/rights";
+import { HISTORY, MAX_MODULE_RIGHTS, OPEN, RIGHT_ID_RE } from "../auth/rights";
+import { EVENT_KEY_MAX, EVENT_KEY_RE, FIELD_KEY_RE, JOURNAL_LIMITS, LEVELS, logEventIssues } from "../journal/events";
 import { SERVICE_RE } from "./serviceVersions";
 import { NO_CREATE_REFERS, REFERS_TO } from "./choiceValues";
 import { MAX_TAB_ENTRIES, TAB_ID_RE, TAB_LABEL_MAX, tabIssues } from "./tabs";
@@ -277,6 +278,18 @@ export const manifestSchema = z.object({
     })
     .optional(),
   defaultEnabled: z.boolean().optional(),
+  /**
+   * (prochaine version) Types d'ÉVÉNEMENTS que le module écrit au journal du cœur avec `ctx.api.log.write` : clé (« command.run »), libellé français ET anglais avec des {champs},
+   * niveau par défaut, `frequent` (événement très fréquent : gardé 7 jours et 200 lignes au plus) et CHAMPS autorisés (5 au plus, 200 caractères chacun ; jamais de secret ni de texte du public).
+   * Tout champ non déclaré est écarté ; un module sans déclaration n'écrit que des lignes génériques sans données. Un cœur plus ancien ignore la clé. Voir docs/CREATE-A-MODULE.md.
+   */
+  logEvents: z.array(z.object({
+    key: z.string().max(EVENT_KEY_MAX).regex(EVENT_KEY_RE),
+    label: z.record(z.string().regex(/^[a-z]{2}(-[A-Za-z]{2,4})?$/), z.string().trim().min(1).max(JOURNAL_LIMITS.labelChars)),
+    level: z.enum(LEVELS).optional(),
+    frequent: z.boolean().optional(),
+    fields: z.array(z.object({ key: z.string().regex(FIELD_KEY_RE), type: z.enum(["text", "number", "boolean"]).optional() }).strict()).max(JOURNAL_LIMITS.maxFields).optional(),
+  }).strict()).max(JOURNAL_LIMITS.maxEvents).optional(),
   permissions: z.array(z.enum(["slots", "routes", "storage", "filters", "sections", "pages", "topics", "overlay", "mcp", "admin", "mail", "rawg", "privacy", "visitor.geolocation", "files"])).default([]),
   /**
    * (0.4.0) Pièces d'APPARENCE que les skins peuvent restyler, et jetons de style propres au module (préfixe `--sk-m-<module>-`). Apparence seulement : jamais de contenu ni de
@@ -295,7 +308,7 @@ export const manifestSchema = z.object({
    * `default` : ce que reçoivent les rôles prédéfinis (administrateur : oui sauf `admin: false` ; éditeur : non sauf `editor: true`). Un cœur ancien ignore cette clé.
    */
   rights: z.array(z.object({
-    id: z.string().regex(RIGHT_ID_RE, "right id must be lowercase segments like email.view (no colon: the core adds the module prefix)").refine((id) => id !== OPEN, "open is implicit: do not declare it"),
+    id: z.string().regex(RIGHT_ID_RE, "right id must be lowercase segments like email.view (no colon: the core adds the module prefix)").refine((id) => id !== OPEN, "open is implicit: do not declare it").refine((id) => id !== HISTORY, "history is implicit (the History tab of every module): do not declare it"),
     label: localized,
     help: localized.optional(),
     sensitive: z.boolean().optional(),
@@ -311,6 +324,7 @@ export const manifestSchema = z.object({
     if (!hasPage(m)) ctx.addIssue({ code: "custom", path: ["pageSetting"], message: "pageSetting needs a module with a public page (page: true)" });
   }
   if (m.sitemapFromPage && !hasPage(m)) ctx.addIssue({ code: "custom", path: ["sitemapFromPage"], message: "sitemapFromPage needs a module with a public page (page: true)" });
+  for (const message of logEventIssues(m.logEvents)) ctx.addIssue({ code: "custom", path: ["logEvents"], message });
   if (new Set((m.rights ?? []).map((r) => r.id)).size < (m.rights ?? []).length) ctx.addIssue({ code: "custom", path: ["rights"], message: "duplicate right id" });
   for (const [i, seed] of (m.seeds ?? []).entries()) {
     if (seed.module === m.id) ctx.addIssue({ code: "custom", path: ["seeds", i, "module"], message: "a module cannot seed itself" });

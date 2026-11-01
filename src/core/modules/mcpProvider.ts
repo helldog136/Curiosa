@@ -1,5 +1,5 @@
 import { getInstanceLabeler } from "@/core/modules/labels";
-import { buildContext } from "@/core/modules/context";
+import { asAssistant, buildContext } from "@/core/modules/context";
 import { getActiveInstances } from "@/core/modules/registry";
 import type { McpTool, McpToolProvider } from "@/core/services/mcp/types";
 import { validateArgs } from "@/core/services/mcp/validate";
@@ -36,7 +36,8 @@ export const moduleActionProvider: McpToolProvider = {
           input: decl.input ?? { type: "object" },
           source: instance.key,
           instanceId: instance.id,
-          call: async (args, actor) => handler(await buildContext(mod, instance, config.defaultLocale), validateArgs(decl.input, args), actor),
+          call: async (args, actor) => handler(asAssistant(await buildContext(mod, instance, config.defaultLocale), actor.name), validateArgs(decl.input, args), actor),
+          moduleId: mod.manifest.id,
         });
       }
     }

@@ -20,6 +20,8 @@ import { callService, callServiceAll, providersOf, serviceAvailable } from "./de
 import { visitorFingerprint } from "./visitorFingerprint";
 import { privacyDeclarations } from "./privacyDeclarations";
 import { getActiveInstances, getModule, type ActiveInstance } from "./registry";
+import { eventsOf } from "@/core/journal/events";
+import { writeModuleLog, type JournalActor } from "@/core/journal/write";
 import type { ModuleApi } from "./types";
 
 /**
@@ -47,7 +49,18 @@ import type { ModuleApi } from "./types";
 const NET_PAGE_MARGIN_MS = 500;
 
 /** La personne dont l'action d'administration s'exécute, quand le cœur accepte qu'elle porte ses droits (voir context.ts) ; `null` partout ailleurs. */
-export type CallerRef = { person: AdminUser | null };
+export type CallerRef = {
+  person: AdminUser | null;
+  /** Journal central : nom du jeton d'un assistant IA qui appelle une action MCP du module (n'ouvre AUCUN droit : voir `asAssistant` dans context.ts). */
+  assistant?: string | null;
+};
+
+/** Qui agit, DÉDUIT par le cœur (jamais fourni par le module) : la personne connectée, un assistant IA ou, sinon, le module lui-même (le « système » est réservé aux écritures du cœur). */
+export function journalActor(instance: Pick<InstanceView, "key">, caller?: CallerRef): JournalActor {
+  if (caller?.assistant) return { kind: "assistant", name: `mcp:${caller.assistant}` };
+  if (caller?.person) return { kind: "person", name: caller.person.email };
+  return { kind: "module", name: `module:${instance.key}` };
+}
 
 export function makeApi(instance: InstanceView, locale: string, permissions: readonly string[] = [], caller?: CallerRef): ModuleApi {
   const rawgAllowed = permissions.includes("rawg");
@@ -83,6 +96,18 @@ export function makeApi(instance: InstanceView, locale: string, permissions: rea
     links: { measured: (url, opts) => measuredHref(String(url ?? ""), { absolute: opts?.absolute === true }) },
 
     seo: { jsonLd: (data) => { const ld = moduleJsonLd(data); return ld ? { tag: "script", jsonLd: ld } : null; } },
+
+    // Journal central : le module dit QUOI (événement déclaré dans `logEvents`), le cœur déduit QUI, injecte module et instance, écarte les champs non déclarés et purge. Aucune permission.
+    log: {
+      write: async (entry) => {
+        try {
+          const mod = await getModule(instance.moduleId).catch(() => null);
+          return await writeModuleLog({ action: entry?.action, target: entry?.target, level: entry?.level, data: entry?.data, actor: journalActor(instance, caller), module: instance.moduleId, instance: instance.key, events: eventsOf(mod?.manifest) });
+        } catch {
+          return false;
+        }
+      },
+    },
 
     // ── SERVICES du cœur ────────────────────────────────────────────────────────
     qr: qrSvg,

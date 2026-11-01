@@ -346,7 +346,7 @@ test("modules : un module ne peut pas déclarer le droit d'un autre ; droits mal
   assert.equal(parseManifest({ ...base, rights: [{ id: "a.b-c.d", label: "x", default: { admin: false, editor: true } }] }).ok, true);
   // Même sans le manifeste (catalogue construit autrement), le préfixe est imposé.
   const cat = Rt.rightsCatalogue([{ moduleId: "demo-other", name: "o", rights: [{ id: "demo-guarded:notes.view" }, { id: "x:y" }, { id: "ok" }] }]);
-  assert.deepEqual(cat.filter((r) => r.moduleId).map((r) => r.id), ["demo-other:open", "demo-other:ok"]);
+  assert.deepEqual(cat.filter((r) => r.moduleId).map((r) => r.id), ["demo-other:open", "demo-other:history", "demo-other:ok"]);
 });
 
 test("modules : les droits du module A ne valent rien pour B (actions, ctx.can) — même pour le propriétaire, un droit d'un autre module est refusé", async () => {
