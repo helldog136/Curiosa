@@ -1,5 +1,5 @@
 /**
- * RECONNAISSANCE DE L'ADRESSE D'UN PROFIL (cœur 0.7.0) : pur, sans réseau ni base, testé sans navigateur.
+ * RECONNAISSANCE DE L'ADRESSE D'UN PROFIL (cœur 0.6.2) : pur, sans réseau ni base, testé sans navigateur.
  *
  * Chaque réseau déclare dans son manifeste un bloc `social` (hôtes acceptés, modèle d'adresse, exemple, formes reconnues) que le catalogue recopie : le cœur sait donc
  * reconnaître « instagram.com/monpseudo » AVANT d'avoir installé le module. `recognizeOne` fait exactement ce que fait le `profile()` de chaque module (le dépôt des

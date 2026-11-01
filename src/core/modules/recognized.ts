@@ -28,7 +28,7 @@ export type RecognizedItem = {
   platform?: string;
   /** Sujets fournis par le module (annoncés par l'index, relus à l'installation). */
   provides?: string[];
-  /** (cœur 0.7.0) Réseau social : comment reconnaître l'adresse de son profil, annoncé par l'index pour la reconnaître AVANT l'installation. Bloc abîmé ignoré. */
+  /** (cœur 0.6.2) Réseau social : comment reconnaître l'adresse de son profil, annoncé par l'index pour la reconnaître AVANT l'installation. Bloc abîmé ignoré. */
   social?: SocialSpec;
   /** Cœur minimal annoncé par l'index (`"requires": { "core": "0.1.10" }`) : permet de savoir SANS télécharger si le module convient. Absent = aucune exigence. Un cœur plus ancien ignore ce champ. */
   requires?: CoreRequirement;

@@ -4,7 +4,7 @@ import fs from "node:fs";
 import { useTestDb } from "../helpers/db.mjs";
 import { makeRepo } from "../helpers/repo.mjs";
 
-// Le champ unique « Collez l'adresse de votre profil » (0.7.0) : installation si besoin, instance, adresse écrite et vérifiée par le module, un réseau après l'autre,
+// Le champ unique « Collez l'adresse de votre profil » (0.6.2) : installation si besoin, instance, adresse écrite et vérifiée par le module, un réseau après l'autre,
 // un échec n'empêche pas les autres ; réservé à la personne propriétaire ; le navigateur n'embarque pas la validation du manifeste.
 const db = await useTestDb();
 const R = await import("@/core/modules/registry");

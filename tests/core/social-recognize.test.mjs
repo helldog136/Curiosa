@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-// Reconnaissance de l'adresse d'un profil (0.7.0) : pure, sans base ; le bloc `social` des manifestes est validé, recopié par le catalogue et ignoré s'il est abîmé.
+// Reconnaissance de l'adresse d'un profil (0.6.2) : pure, sans base ; le bloc `social` des manifestes est validé, recopié par le catalogue et ignoré s'il est abîmé.
 const R = { ...(await import("@/core/socialRecognize")), ...(await import("@/core/socialSpec")) };
 const { parseManifest } = await import("@/core/modules/manifest");
 const { sanitizeEntries } = await import("@/core/modules/recognized");
