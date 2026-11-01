@@ -9,7 +9,26 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ## Prochaine version (non publiée)
 
+### Liens courts
+
+- **La recherche est là dès le premier lien.** Tapez quelques lettres : la liste se filtre pendant que vous écrivez, sans bouton, sur tous vos liens (pas seulement la page affichée), sans tenir compte des majuscules ni des accents. Si rien ne correspond, « Aucun résultat » vous propose d'effacer la recherche.
+- **Un interrupteur au lieu de « Désactiver / Activer ».** Chaque lien montre s'il est actif ou désactivé, et un clic suffit pour le changer. Un message s'affiche juste à côté ; si le changement échoue, l'interrupteur revient à son état d'avant.
+- **« Supprimer » est rangé dans un menu « ⋯ ».** Chaque ligne n'a plus que « Ouvrir » et l'interrupteur à portée de main, et il est plus difficile de supprimer un lien par erreur.
+- **Des filtres par état.** Dès qu'un lien est désactivé ou terminé, des boutons « Tout · Actifs · Désactivés · Terminés » (avec leur nombre) apparaissent au-dessus de la liste.
+- **La date de fin tient en un seul champ.** Vous choisissez la date et, si vous le voulez, l'heure, sur une seule ligne ; une phrase dit ce qui a été compris. Les options rares sont rangées sous « Plus d'options », qui résume ce qui y est réglé.
+
+### Administration
+
+- **Des champs plus clairs partout.** Un nombre dit ses limites et son unité, un exemple s'affiche sous les champs libres, et une erreur dit quoi faire avec un exemple, juste sous le champ.
+- **De nouveaux contrôles pour les extensions.** Elles peuvent maintenant demander une recherche en direct, un interrupteur dans une ligne, une période, une date et une heure, une durée, ou des boutons côte à côte, sans refaire ces contrôles chacune de son côté. Les tableaux des extensions deviennent des cartes sur téléphone.
+
 ### Pour les développeurs
+
+- **Kit d'administration (`minCore` 0.6.0).** Types de réglage `period`, `datetime` et `duration` (secondes entières), clés `min`, `max`, `step`, `unit`, `example`, `rare` (rangé sous « Plus d'options ») et `display: "segmented"`. Le serveur revérifie, l'erreur dit les bornes avec un exemple ; sans ces clés rien ne change.
+- **Blocs.** `adminForm` : champs `switch`, `segmented`, `period`, `datetime`, `duration`, clés `example`, `min`, `max`, `unit`, `folded`. `table` : `searchable`, `filters`, `truncate`, `pageSize`, `empty`, cellules `{ text, badge, href, switch }`, `rowActions[].inMenu`. Sans ces clés, le tableau garde son rendu d'avant.
+- **Interrupteur d'une ligne.** L'action reçoit `values.id` et `values.enabled` (`"1"` ou `"0"`) : elle dit l'état voulu, n'inverse rien, et renvoie `{ ok }` ou `{ error }` (l'interrupteur revient alors en arrière).
+- **Composants natifs, aucun script de module.** `Switch`, `Segmented`, `LiveSearch`, `MoreOptions`, `NumberField`, `PeriodField`, `DateTimeField`, `DurationField`, `AdminTable`, `example` et `error` sur `Field` ; logique pure dans `src/core/adminkit/`. Le cœur n'exécute toujours aucun script venu d'un module.
+- **Divers.** `listRedirects` accepte `state`, renvoie `counts` et ignore casse et accents. Kit de test : exigences `FEATURES` 0.6.0, `rare` et `example` pour R5 et R11. Les quatre documents `docs/` concernés sont à jour.
 
 - **Le kit de test mesure les règles automatiques d'ergonomie (`docs/ERGONOMIE-ADMIN.md`).** Deux nouvelles exigences, `admin.ergonomics` et `admin.ergonomics.known`, lisent `module.json` et `locales/` : réglages par onglet, mots interdits, libellés, aides et exemples, ton, parité FR/EN. Elles n'échouent que pour un nouvel écart, selon une base `tests/ergonomics-baseline.json` qui ne peut que rétrécir.
 - **`assertAdminPageErgonomics(blocks, { errors })`** : une aide de test pour les pages produites par du code (champs visibles, recherche d'une longue liste, étiquettes répétées, bouton « Activer / désactiver », erreurs avec exemple). Elle est exportée par `testsupport/index.mjs` ; `docs/TESTSUPPORT.md` dit aussi ce que le kit ne peut pas vérifier.

@@ -21,6 +21,9 @@ import { GridEditor } from "../admin/GridEditor";
 import { floatingLabels } from "../admin/floating";
 import { mayShowDownload } from "@/core/modules/downloadAccess";
 import { SuggestInstall } from "../admin/SuggestInstall";
+import { AdminTable } from "../admin/AdminTable";
+import { isEnhancedTable } from "@/core/adminkit/table";
+import { formLabels, tableLabels } from "../admin/kitLabels";
 
 const TONES = {
   info: "bg-accent text-accent-fg",
@@ -202,7 +205,7 @@ export async function Blocks({ blocks, locale, adminInstanceId: panelInstanceId,
           const fileLabels: FileLabels | undefined = block.fields.some((f) => f.kind === "file")
             ? { tooBig: t("transfer.file.tooLarge"), sending: t("transfer.sending"), failed: t("transfer.failed"), done: t("transfer.done") }
             : undefined;
-          out.push(<AdminBlockForm key={i} instanceId={adminInstanceId} block={block} entry={entryScope} fileLabels={fileLabels} />);
+          out.push(<AdminBlockForm key={i} instanceId={adminInstanceId} block={block} entry={entryScope} fileLabels={fileLabels} labels={formLabels(t, locale, block)} />);
         }
         break;
       case "download":
@@ -220,6 +223,11 @@ export async function Blocks({ blocks, locale, adminInstanceId: panelInstanceId,
         if (adminInstanceId && !entryScope) out.push(<GridEditor key={i} instanceId={adminInstanceId} block={block} floating={floatingLabels(makeTranslator(locale))} />);
         break;
       case "table":
+        // (0.6.0) Tableau enrichi (recherche en direct, pastilles, interrupteur, menu « ⋯ », cartes sur téléphone) : seulement si le module a demandé l'une de ces choses.
+        if (isEnhancedTable(block)) {
+          out.push(<AdminTable key={i} block={block} instanceId={adminInstanceId} entry={entryScope} labels={tableLabels(makeTranslator(locale))} />);
+          break;
+        }
         out.push(
           <div key={i} className="relative overflow-x-auto">
             <table data-skin-part="table" className="w-full text-left text-sm">
@@ -232,7 +240,7 @@ export async function Blocks({ blocks, locale, adminInstanceId: panelInstanceId,
               <tbody>
                 {block.rows.map((row, r) => (
                   <tr key={r} data-skin-part="table-row" className="border-t-token border-line align-top">
-                    {row.map((cell, c) => <td key={c} data-skin-part="table-cell" className="whitespace-pre-wrap px-3 py-2">{cell}</td>)}
+                    {row.map((cell, c) => <td key={c} data-skin-part="table-cell" className="whitespace-pre-wrap px-3 py-2">{cell as string}</td>)}
                     {adminInstanceId && block.rowActions && (
                       <td className="whitespace-nowrap px-3 py-2">
                         <div className="flex items-start gap-2">

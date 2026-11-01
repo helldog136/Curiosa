@@ -182,6 +182,7 @@ Un module qui s'appuie sur une fonction récente du cœur (par exemple la permis
 - **Jamais rétroactif** : un module déjà installé et chargé n'est jamais désactivé ni cassé à cause de ce champ (la vérification ne porte que sur l'entrée ou la montée de version). Les modules déjà installés restent chargés tels quels.
 - **Catalogue** : l'entrée de l'index peut porter `"requires": { "core": "0.1.10" }` (même numéro) pour que le cœur sache **sans télécharger** si le module convient ; le script du dépôt de modules la recopie depuis `minCore`. Un champ mal formé est ignoré.
 - **Anciens cœurs (0.1.9 et avant)** : `minCore` et `requires.core` d'une entrée d'index sont des clés inconnues, **ignorées sans erreur** (schémas non stricts) ; le module reste lisible, mais l'ancien cœur n'applique évidemment pas l'exigence.
+- **Cœur 0.6.0** (kit d'administration) : les types de réglage `period`, `datetime`, `duration`, les clés `min`, `max`, `step`, `unit`, `example`, `rare`, `display` d'un réglage, les champs `switch`, `segmented`, `period`, `datetime`, `duration` et les clés `example`, `folded`, `min`, `max`, `step`, `unit` d'un champ d'`adminForm`, et le tableau enrichi demandent `"minCore": "0.6.0"`. Le kit de test (exigence `manifest.minCore`) le contrôle.
 - Côté code : `isCompatible(requires, coreVersion)` et `describeIncompat(requires, coreVersion)` (`src/core/modules/compat.ts`), fonctions pures.
 
 ### Permissions
@@ -255,9 +256,34 @@ Chaque réglage est un objet (`SettingField`) :
 | `fromText` | Pour `choice` qui remplace un réglage texte de même clé : une valeur texte égale à l'étiquette d'UNE option est remplacée par son identifiant. |
 | `refersTo` | Ce que désigne le réglage : `category`, `contact`, `organisation`, `channel`, `connector`, `instance`, `module`, `calendar`, `game`, `page`, `user`, `role`, `theme`, ou `external` (un profil hors du site). Un cœur ancien ignore la clé ; le kit de test s'en sert (règles `settings.refersToChoice`, `settings.textNamesExisting`). |
 | `tab` | (cœur 0.2.2) Onglet de la page d'admin où s'affiche le réglage : `settings` (défaut, onglet « Réglages »), `sources`, `general` ou l'`id` d'un onglet déclaré dans `tabs`. Tous les réglages d'un groupe facultatif sont dans le même onglet. Un cœur ancien ignore la clé ; déclarez `"minCore": "0.2.2"`. |
+| `min`, `max`, `step` | (cœur 0.6.0) Pour `number` : bornes et pas ; pour `duration` : bornes en **secondes** (entiers, pas de `step`). Le champ n'accepte que cela (le navigateur, puis le serveur) et le message d'erreur dit les bornes avec un exemple. Refusés pour un autre type ; `min` ne dépasse pas `max`. Sans aucune borne, un `number` se comporte exactement comme avant. |
+| `unit` | (cœur 0.6.0) Pour `number` : l'unité écrite à droite du champ (« secondes », « % », « caractères »), texte ou `{ langue: texte }`. Une `duration` choisit elle-même son unité. |
+| `example` | (cœur 0.6.0) Un exemple concret sous un champ libre : écrivez la valeur seule (« insta, ig »), le cœur écrit « Par exemple : … ». Le kit de test le compte comme l'exemple exigé par la règle R11. |
+| `rare` | (cœur 0.6.0) `true` : réglage rare, rangé avec les autres sous un panneau replié **« Plus d'options »** qui résume ce qui y est déjà réglé et s'ouvre d'office quand une valeur y est. À la différence de `advanced`, il reste visible en version simplifiée ; il ne compte pas dans les 7 réglages simples par onglet (règle R5). Pas avec `advanced`. |
+| `display` | (cœur 0.6.0) Pour `select` de 2 à 4 options : `"segmented"` les montre en **boutons côte à côte** au lieu d'une liste (règle R19). Au-delà, la liste reste la règle. |
 
 Types : `text`, `textarea`, `url` (adresse http ou https), `link` (une page du site comme `/contact`, une adresse `https://…` ou `mailto:…` ; contrôlé dans le navigateur et par le serveur), `number`, `boolean`, `select`, `color`, `image` (envoi de fichier ou URL), `video` (envoi d'une vidéo MP4 ou WebM de 50 Mo au plus, réservée aux fichiers du site : `/uploads/…`), `secret`
-(jamais réaffiché une fois enregistré ; ne l'écrivez jamais dans un journal), `choice` (« choix parmi », cœur 0.2.0 : voir ci-dessous), `multichoice` (« plusieurs choix », cœur 0.2.14 : voir « Réglage `multichoice` »).
+(jamais réaffiché une fois enregistré ; ne l'écrivez jamais dans un journal), `choice` (« choix parmi », cœur 0.2.0 : voir ci-dessous), `multichoice` (« plusieurs choix », cœur 0.2.14 : voir « Réglage `multichoice` »), `period`, `datetime` et `duration` (cœur 0.6.0 : voir « Contrôles `period`, `datetime`, `duration` »).
+
+#### Contrôles `period`, `datetime`, `duration` et nombre borné (cœur 0.6.0)
+
+Une notion = **un seul champ** (règles R6, R20, R21) : une période, une durée ou une date ne se demandent jamais en plusieurs champs (jour, mois, année…). Le cœur les fournit une fois, pour tous les modules, avec un contrôle compact sur une ligne. Il faut `"minCore": "0.6.0"` : un cœur plus ancien refuse ces types.
+
+| Type | Contrôle | Valeur enregistrée (ce que lit `ctx.setting`) |
+|---|---|---|
+| `period` | « Du [date] au [date] » et un interrupteur « Chaque année », puis la phrase qui dit ce qui a été compris (« Du 1er novembre au 30 novembre, chaque année ») | `"11-01/11-30"` (chaque année : `MM-JJ/MM-JJ`, la fin peut passer au-delà du 31 décembre, le 29 février est permis) ou `"2026-11-01/2026-11-30"` (une seule fois : `AAAA-MM-JJ/AAAA-MM-JJ`, la fin après le début) ; vide : rien d'enregistré |
+| `datetime` | une date et une heure natives sur une ligne, avec la phrase d'aperçu | `"2026-11-30T18:30"` (heure du site, sans fuseau) |
+| `duration` | un nombre et une unité (secondes, minutes, heures, jours), l'unité la plus grande qui tombe juste est choisie au départ | un **nombre entier de secondes** (`5400` pour 1 h 30), dans `min`–`max` |
+| `number` avec `min` / `max` / `step` / `unit` | un champ numérique qui n'accepte que cela, l'unité à droite, la valeur par défaut grisée dans le champ, l'indication « Entre 5 et 3600 secondes · Vide : 30 s » | un nombre |
+
+```json
+{ "key": "season", "type": "period", "default": "11-01/11-30", "label": { "en": "Season", "fr": "Période" } },
+{ "key": "wait", "type": "duration", "min": 5, "max": 3600, "default": 60, "label": { "en": "Wait", "fr": "Attente" } },
+{ "key": "size", "type": "number", "min": 1, "max": 100, "unit": { "en": "characters", "fr": "caractères" }, "default": 20, "example": "20", "label": { "en": "Length", "fr": "Longueur" } },
+{ "key": "mode", "type": "select", "display": "segmented", "options": [{ "value": "all", "label": { "en": "Everyone" } }, { "value": "subs", "label": { "en": "Subscribers" } }], "label": { "en": "Who" } }
+```
+
+Le serveur vérifie la valeur comme le navigateur (même règle pour l'administration, l'assistant IA et `ctx.seedInstance`) ; l'erreur s'affiche **sous le champ** avec les bornes et un exemple (« Écrivez un nombre entre 5 et 3600, par exemple 60 »). `default` d'une `period`, d'un `datetime` ou d'une `duration` doit avoir la forme ci-dessus (le manifeste est refusé sinon) ; ces trois types ne sont jamais `translatable`. Pour savoir si « aujourd'hui » tombe dans une `period`, comparez `MM-JJ` (chaque année, en gérant le cas où le début dépasse la fin : la période enjambe le 31 décembre) ou la date entière (une seule fois), dans l'heure du site.
 
 #### Réglage `choice` (« choix parmi », cœur 0.2.0)
 
@@ -1132,8 +1158,8 @@ Un module renvoie des **blocs déclaratifs** ; le cœur se charge du rendu, des 
 | `entries` | `instance` (clé), `limit?`, `title?`, `link?`, `pick?` (`"random"`) — entrées d'une instance, rendues par le cœur |
 | `embed` | `src` (https uniquement), `title`, `ratio?` |
 | `form` | `action` (`<clé d'instance>/<route>`), `fields: [{ name, label, kind?, required? }]` (`kind` : `text`, `email`, `textarea`), `submitLabel`, `successText` |
-| `table` | `columns`, `rows` (tableaux de texte), `rowIds?`, `rowActions?` (admin seulement, voir plus bas) |
-| `adminForm` | `action`, `fields`, `submitLabel`, `title?`, `cancelHref?` — panneau d'admin uniquement |
+| `table` | `columns`, `rows` (tableaux de texte ; cœur 0.6.0 : ou de cellules `TableCell`), `rowIds?`, `rowActions?` (admin seulement, voir plus bas) et, depuis le cœur 0.6.0, `searchable?`, `searchPlaceholder?`, `filters?`, `truncate?`, `pageSize?`, `empty?` : voir « Tableau enrichi » |
+| `adminForm` | `action`, `fields`, `submitLabel`, `title?`, `cancelHref?` — panneau d'admin uniquement ; champs `switch`, `segmented`, `period`, `datetime`, `duration`, `example`, `folded`… depuis le cœur 0.6.0 |
 | `gridEditor` | éditeur de **grille** (panneau d'admin uniquement) : `action`, `width`, `height`, `cells` (un caractère par case, ligne après ligne), `palette` (`[{ value, label, color }]`, une `value` = un caractère), `submitLabel`, `title?`, `minSize?`, `maxSize?`, `cancelHref?`, `labels?` (`width`, `height`, `fillAll`, `border`, `reset`, `hint`, `generateError`), et, en option, `generateAction` + `generateLabel` (bouton « générer ») et `autoLabel` + `autoNotice` + `autoActive?` (mode « automatique »). La personne choisit un pinceau et peint à la souris ou au doigt, redimensionne, et enregistre : l'action reçoit `width`, `height` et `cells` en texte (à valider !). Les options sont décrites sous le tableau. Exemple : le tracé du module *maze-overlay*. |
 | `head` | `tags`: `meta` / `link` / `script` (uniquement dans `layout.head`) |
 | `suggestInstall` | `service`, `min?`, `reason` — **panneau d'admin uniquement** (cœur 0.2.0 ; ignoré ailleurs et par un cœur plus ancien). « Il vous manque un module qui `reason` » : le cœur cherche lui-même dans le catalogue les modules qui offrent `service` (version ≥ `min`) — officiels d'abord, puis ceux de l'index supplémentaire avec l'avertissement « non vérifié par le catalogue officiel » et une case à cocher. Le **propriétaire** voit la liste (nom, description), un bouton *Installer* (le module et son instance) et *Ne plus proposer* ; les autres lisent *« Demandez à la personne propriétaire du site d'installer un module qui … »*. Rien n'est affiché si un fournisseur actif existe, ou si la personne propriétaire a dit *Ne plus proposer* (mémorisé par instance et par service, jusqu'à *Afficher de nouveau les suggestions* sur la page de l'instance). Le catalogue est lu 2 s au plus ; au-delà, « Catalogue injoignable, réessayez plus tard ». Rien n'est jamais installé sans ce clic : `ctx.api` n'offre aucune installation (ni service, ni tâche, ni migration, ni MCP). `reason` : une fin de phrase en mots simples, dans la langue du panneau (« affiche vos prochains lives »). Audit : `module.install.suggested`. |
@@ -1147,8 +1173,42 @@ Une valeur de cellule de `table`, un `text` de `heading`, de `banner`… sont du
 
 Balises de `head` : `{ tag: "meta", name?, property?, content }`, `{ tag: "link", rel, href, type?, title? }`, `{ tag: "script", src?, inline?, defer?, jsonLd? }`. `jsonLd` (un objet, obtenu par `ctx.api.seo.jsonLd`) : le cœur écrit une balise `application/ld+json` sûre ; `src` et `inline` restent du code exécuté, à éviter.
 
-Champs d'un `adminForm` (`AdminField`) : `{ name, label, kind?, value?, required?, help?, options? }`. `kind` : `text`, `textarea`, `email`,
-`url`, `number`, `date`, `select` (avec `options: [{ value, label }]`), `hidden`, `image` (téléversement), `checkbox` (case à cocher : cochée si `value` vaut `on`, `1` ou `true` ; une fois envoyée, le module reçoit `values[name] === "on"`, et rien du tout si elle est décochée).
+Champs d'un `adminForm` (`AdminField`) : `{ name, label, kind?, value?, required?, help?, options?, example?, placeholder?, min?, max?, step?, unit?, optionalTime?, folded? }`. `kind` : `text`, `textarea`, `email`,
+`url`, `number`, `date`, `select` (avec `options: [{ value, label }]`), `hidden`, `image` (téléversement), `checkbox` (case à cocher : cochée si `value` vaut `on`, `1` ou `true` ; une fois envoyée, le module reçoit `values[name] === "on"`, et rien du tout si elle est décochée), puis, depuis le **cœur 0.6.0** (`"minCore": "0.6.0"`, un cœur plus ancien les montre comme un champ texte) :
+
+- `switch` : un **interrupteur** dans le formulaire. Comme `checkbox` : `value` `on` = activé, le module reçoit `values[name] === "on"` ou rien.
+- `segmented` : 2 à 4 `options` en **boutons côte à côte** (comme `select`, la valeur choisie arrive dans `values[name]`).
+- `period` : une **période** en un champ ; `values[name]` vaut `"11-01/11-30"` (chaque année) ou `"2026-11-01/2026-11-30"`, ou rien. Voir « Contrôles `period`, `datetime`, `duration` ».
+- `datetime` : **date et heure** en un champ ; `values[name]` vaut `"2026-11-30T18:30"` (heure du site) ou rien. Avec `optionalTime: true`, l'heure peut rester vide et la valeur est alors `"2026-11-30"` : au module de dire ce que cela veut dire (« jusqu'à la fin du jour »).
+- `duration` : un nombre et une unité ; `values[name]` est un nombre entier de **secondes** (`min` et `max` en secondes).
+- `number` avec `min`, `max`, `step`, `unit` : un nombre borné, l'unité à droite, `placeholder` grisé (la valeur utilisée quand le champ reste vide). **Le module revérifie toujours dans son action** (un navigateur ne fait pas foi).
+- `example` : un exemple concret sous le champ (écrivez la valeur seule : « insta, ig », le cœur écrit « Par exemple : »).
+- `folded: true` : champ **rare**, rangé sous un panneau replié **« Plus d'options »** qui résume ce qui y est déjà réglé et s'ouvre d'office quand l'un de ses champs a une valeur. Il ne compte plus parmi les 5 champs visibles (règle R4) ; les champs repliés partent avec le formulaire.
+
+#### Tableau enrichi (`table`, cœur 0.6.0)
+
+Un bloc `table` reste le même tant qu'il n'utilise aucune des clés ci-dessous (**compatibilité totale**, avec son défilement horizontal d'avant). Dès que l'une est présente, le tableau devient « enrichi » : sous 640 px de large, chaque ligne est une **carte** (jamais de défilement horizontal), et il se pagine par 50 lignes. Un cœur plus ancien affiche le tableau simple (déclarez `"minCore": "0.6.0"` si la recherche ou l'interrupteur sont indispensables).
+
+| Clé | Rôle |
+|---|---|
+| `searchable: true` | Un champ **« Rechercher »** au-dessus, qui filtre **en direct** pendant la frappe (sans bouton, sans seuil, sans tenir compte de la casse ni des accents, dans tout ce qui est affiché). Rien ne correspond : « Aucun résultat » et « Effacer la recherche ». Présent même quand la liste est courte aujourd'hui (règle R15). `searchPlaceholder?` change son texte. |
+| `filters: [{ column, allLabel? }]` | Des **pastilles de filtre** « Tout · … » tirées des valeurs distinctes de la colonne `column` (rang à partir de 0), chacune avec son nombre de lignes. Combinables avec la recherche. |
+| `truncate: [colonnes]` | Les colonnes dont le texte long est coupé avec « … » (le texte complet est dans l'info-bulle) : des lignes de même hauteur (règle R16). |
+| `pageSize` | Lignes par page (50 par défaut, `0` = tout sur une page). |
+| `empty` | La phrase affichée quand il n'y a aucune ligne : dites quoi faire (règle R18). |
+| cellules | Une cellule peut être un objet `TableCell` : `{ text, badge?, href?, title?, switch? }`. **`badge`** (`accent`, `info`, `ok`, `warn`, `danger`, `neutral`) : une **pastille colorée ET écrite** (`text`), pour une colonne d'origine, de type ou de source (règle R30) ; **`href`** : le texte est un lien ; **`title`** : l'info-bulle ; **`switch: { on, action, label, onText?, offText? }`** : un **interrupteur d'état** dans la ligne (règle R17). |
+| `rowActions[].inMenu` | Range l'action dans le menu **« ⋯ »** de la ligne. Dans un tableau enrichi, **deux actions** au plus restent visibles ; les suivantes, celles marquées `inMenu` et celles marquées `danger` vont dans le menu (règle R16). |
+
+L'interrupteur appelle l'`adminAction` nommée par `switch.action` avec `values.id` (pris dans `rowIds`, même ordre que `rows`) et `values.enabled` : `"1"` ou `"0"`. **L'action DIT l'état voulu, elle n'inverse rien** (un double clic ne défait donc jamais le premier). Elle renvoie `{ ok }` (le message s'affiche à côté de l'interrupteur) ou `{ error }` (l'interrupteur revient en arrière et le message s'affiche). Hors du panneau d'admin, la cellule n'est que le texte de l'état.
+
+```js
+{ type: "table", columns: ["Commande", "Origine", "Réponse", "État"], rowIds: cmds.map((c) => c.id), searchable: true, filters: [{ column: 1 }], truncate: [2],
+  rows: cmds.map((c) => [c.name, { text: c.own ? "Les vôtres" : "Partenaires", badge: c.own ? "accent" : "info" }, c.reply,
+    { text: c.on ? "Actif" : "Désactivé", switch: { on: c.on, action: "setEnabled", label: `Commande ${c.name} active`, onText: "Actif", offText: "Désactivé" } }]),
+  rowActions: [{ label: "Modifier", href: "?edit={id}" }, { label: "Supprimer", action: "remove", danger: true, confirm: "Supprimer cette commande ?" }] }
+```
+
+Une page du cœur n'exécute **aucun script** venu d'un module : ces briques natives sont le moyen d'avoir une recherche en direct, un interrupteur ou un champ de période dans l'administration d'un module (n'essayez pas de les refaire avec un bloc `html`).
 
 Le `help` d'un champ (réglage ou `adminForm`) suit la même règle partout : une aide longue s'affiche dans une bulle « ? » (survol, clavier ou toucher) ; gardez les aides utiles et courtes. Les messages d'erreur ne passent jamais par cette bulle : ils restent sous le champ.
 
@@ -1295,9 +1355,9 @@ export default {
 };
 ```
 
-- **Champs** d'un `adminForm` : `text`, `textarea`, `email`, `url`, `number`, `date`, `select` (`options`), `image`, `hidden`, `checkbox`, `file` (voir « Champ fichier »). Les blocs
+- **Champs** d'un `adminForm` : `text`, `textarea`, `email`, `url`, `number`, `date`, `select` (`options`), `image`, `hidden`, `checkbox`, `file` (voir « Champ fichier »), et depuis le cœur 0.6.0 `switch`, `segmented`, `period`, `datetime`, `duration` (voir « Champs d'un `adminForm` »). Les blocs
   `adminForm` ne s'affichent que dans l'admin (jamais sur le site public).
-- **Boutons de ligne** d'une `table` (`rowActions`, admin seulement) : `{ label, action?, href?, confirm?, danger? }`. `action` exécute une
+- **Boutons de ligne** d'une `table` (`rowActions`, admin seulement) : `{ label, action?, href?, confirm?, danger?, inMenu? }` (`inMenu` : cœur 0.6.0, voir « Tableau enrichi »). `action` exécute une
   `adminAction` en lui envoyant `values.id` (pris dans `rowIds`, même ordre que `rows`) ; `href` navigue (`{id}` est remplacé par l'identifiant) ;
   `confirm` demande confirmation ; `danger` colore le bouton en rouge.
 - **Valeurs** : `adminActions.<nom>(ctx, values)` reçoit les champs du formulaire **en texte** (20 000 caractères au plus par champ) ; **validez-les**.

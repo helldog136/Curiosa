@@ -39,7 +39,26 @@ export type ChoiceResolution =
 export type SettingField = {
   key: string;
   label: LocalizedString;
-  type: "text" | "textarea" | "url" | "link" | "number" | "boolean" | "select" | "color" | "secret" | "image" | "video" | "choice" | "multichoice";
+  type: "text" | "textarea" | "url" | "link" | "number" | "boolean" | "select" | "color" | "secret" | "image" | "video" | "choice" | "multichoice"
+    /**
+     * (cœur 0.6.0, `minCore: "0.6.0"`) Un seul contrôle compact par notion : `period` (« Du 1er novembre au 30 novembre, chaque année » : deux dates, un interrupteur
+     * « chaque année » et une phrase d'aperçu), `datetime` (date et heure en un champ), `duration` (un nombre et une unité : secondes, minutes, heures, jours).
+     * Valeurs enregistrées : `period` = `"11-01/11-30"` (chaque année) ou `"2026-11-01/2026-11-30"` ; `datetime` = `"2026-11-30T18:30"` (heure du site) ;
+     * `duration` = un nombre entier de SECONDES. Un cœur plus ancien refuse ces types.
+     */
+    | "period" | "datetime" | "duration";
+  /** (0.6.0) `number` et `duration` : bornes (une durée en secondes) et pas ; le champ n'accepte que cela et l'erreur dit les bornes avec un exemple. */
+  min?: number;
+  max?: number;
+  step?: number;
+  /** (0.6.0) `number` : l'unité affichée à droite du champ (« secondes », « % », « caractères »). */
+  unit?: LocalizedString;
+  /** (0.6.0) Un exemple concret affiché sous un champ libre : « Par exemple : insta, ig » (le cœur écrit « Par exemple : » lui-même, écrivez seulement la valeur). */
+  example?: LocalizedString;
+  /** (0.6.0) Réglage rare : rangé sous « Plus d'options » (replié, avec un résumé de ce qui y est réglé, ouvert d'office si une valeur y est déjà). Contrairement à `advanced`, il reste visible en mode simple. */
+  rare?: boolean;
+  /** (0.6.0) `select` de 2 à 4 options : `"segmented"` les montre en boutons côte à côte au lieu d'une liste. */
+  display?: "segmented";
   /** Obligatoire pour `choice` : d'où viennent les options. */
   source?: ChoiceSource;
   /** `choice` de source `service` avec `create` : propose « Créer « X » » (le module propriétaire crée, avec SES droits). Défaut false. */

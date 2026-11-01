@@ -6,6 +6,7 @@ import { isKnownLocale } from "./i18n/locales";
 import { invalidateRedirectGate } from "./redirectGate";
 import { flushRedirectHits, isHumanVisit, recordRedirectHit } from "./redirectStats";
 import { slugify } from "./slug";
+import { matchesSearch, searchText } from "./adminkit/search";
 import { isSafeExternalUrl, normalizeLinkInput } from "./url";
 
 /**
@@ -237,24 +238,30 @@ export async function deleteRedirectRecord(id: string): Promise<string | null> {
 
 /* ───────────── Liste ───────────── */
 
-export type RedirectPage = { items: Redirect[]; total: number; page: number; pages: number };
+export type RedirectStateFilter = "active" | "ended" | "off";
+export type RedirectPage = { items: Redirect[]; total: number; page: number; pages: number; /** Nombre de liens par état, pour la recherche en cours (sans le filtre d'état). */ counts: { all: number } & Record<RedirectStateFilter, number> };
 
-/** Une page de la liste (50 par page), du plus récent au plus ancien ; `q` cherche dans le nom court et la destination. */
-export async function listRedirects(opts: { q?: string; page?: number } = {}): Promise<RedirectPage> {
+/**
+ * Une page de la liste (50 par page), du plus récent au plus ancien. `q` cherche dans le nom court et la destination comme la recherche en direct de l'admin :
+ * sans tenir compte des majuscules ni des accents, tous les mots devant s'y trouver. `state` ne garde que les liens actifs, terminés ou désactivés.
+ */
+export async function listRedirects(opts: { q?: string; page?: number; state?: RedirectStateFilter } = {}): Promise<RedirectPage> {
   await flushRedirectHits(); // les passages en attente sont comptés avant d'afficher les totaux
   const q = (opts.q ?? "").trim().slice(0, 100);
-  // Recherche littérale : « % » et « _ » ne sont pas des jokers (un nom peut contenir « _ »).
-  let where: { id?: { in: string[] } } = {};
-  if (q) {
-    const like = (v: string) => `%${v.replace(/[\\%_]/g, "\\$&")}%`;
-    const found = await prisma.$queryRaw<{ id: string }[]>`SELECT id FROM "Redirect" WHERE path LIKE ${like(q.toLowerCase().replace(/^\/+/, ""))} ESCAPE '\\' OR "targetUrl" LIKE ${like(q)} ESCAPE '\\' LIMIT 2000`;
-    where = { id: { in: found.map((r) => r.id) } };
-  }
-  const total = await prisma.redirect.count({ where });
+  const light = await prisma.redirect.findMany({ select: { id: true, path: true, targetUrl: true, active: true, expiresAt: true }, orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 20000 });
+  // Recherche littérale : « % » et « _ » ne sont pas des jokers (un nom peut contenir « _ »), un « / » en tête est ignoré.
+  const found = q ? light.filter((r) => matchesSearch(searchText([r.path, r.targetUrl]), q.replace(/(^|\s)\/+/g, "$1"))) : light;
+  const now = Date.now();
+  const counts = { all: found.length, active: 0, ended: 0, off: 0 };
+  for (const r of found) counts[redirectState(r, now)]++;
+  const kept = opts.state ? found.filter((r) => redirectState(r, now) === opts.state) : found;
+  const total = kept.length;
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const page = Math.min(Math.max(1, Math.floor(opts.page ?? 1) || 1), pages);
-  const items = await prisma.redirect.findMany({ where, orderBy: [{ createdAt: "desc" }, { id: "desc" }], skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE });
-  return { items, total, page, pages };
+  const ids = kept.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((r) => r.id);
+  const rows = ids.length ? await prisma.redirect.findMany({ where: { id: { in: ids } } }) : [];
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  return { items: ids.map((id) => byId.get(id)).filter((r): r is Redirect => !!r), total, page, pages, counts };
 }
 
 /** État lisible d'une redirection à un instant donné. */
