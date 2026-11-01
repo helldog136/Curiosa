@@ -3,6 +3,7 @@ import { getRecognizedDetailed, readRecognizedCacheOffline, type RecognizedItem,
 import { incompatWithThisCore, type CoreRequirement } from "./compat";
 import type { LocalizedString } from "./types";
 import type { SocialSpec } from "../socialSpec";
+import type { PreviewDecl } from "./previews";
 import { normalizeNeeds, normalizeOffers, type ServiceNeed, type ServiceOffer } from "./serviceVersions";
 
 /**
@@ -44,6 +45,8 @@ export type CatalogueEntry = {
   /** Services offerts / exigés (index du catalogue) : lus SANS installer, pour dire ce que l'installation apportera. */
   offers?: ServiceOffer[];
   needs?: ServiceNeed[];
+  /** Visuels annoncés par l'index (légende, texte alternatif, type) : sert à dire qu'il y en a, sans rien télécharger. Les images viennent du dépôt du module, lues par le cœur (previewServe.ts). */
+  previews?: PreviewDecl[];
   /**
    * D'où vient l'entrée : « official » = dépôt du catalogue (ou sa dernière copie reçue) ; « extra » = index supplémentaire (MODULES_INDEX_URL).
    * Un module « extra » n'est JAMAIS installé d'office (cascade, suggestion) : seulement proposé, avec un avertissement, sur un clic du propriétaire.
@@ -60,7 +63,7 @@ function recognizedEntry(c: RecognizedItem, suggested: Set<string>): CatalogueEn
     id: c.id, name: c.name, description: c.description, version: c.version, icon: c.icon, author: c.author, suggested: c.catalogueOrigin !== "extra" && suggested.has(c.id),
     kind: "recognized", provides: c.provides, social: c.social, platform: c.platform, repo: c.repo, ref: c.ref, subdir: c.subdir, compatible: c.apiVersion === undefined || c.apiVersion === MODULE_API_VERSION,
     requires: c.requires, needsNewerCore: incompatWithThisCore(c.requires)?.needs,
-    offers: offers?.length ? offers : undefined, needs: needs?.length ? needs : undefined,
+    offers: offers?.length ? offers : undefined, needs: needs?.length ? needs : undefined, previews: c.previews,
     origin: c.catalogueOrigin === "extra" ? "extra" : "official",
   };
 }

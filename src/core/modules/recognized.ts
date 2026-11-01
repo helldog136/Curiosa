@@ -9,6 +9,7 @@ import { sanitizeRequires, type CoreRequirement } from "./compat";
 import { sanitizeServiceList } from "./serviceVersions";
 import { PLATFORM_PATTERN } from "./platform";
 import { parseSocialSpec, type SocialSpec } from "../socialSpec";
+import { sanitizePreviews, type PreviewDecl } from "./previews";
 
 export type RecognizedItem = {
   id: string;
@@ -36,6 +37,8 @@ export type RecognizedItem = {
   offers?: { service: string; version?: number; each?: true }[];
   /** Services dont le module a besoin (`"requires": ["contact.store"]`, ou `{ service, min }` ; une liste, à ne pas confondre avec `requires: { core }`). Forme interne gardée dans la copie locale : `needs`. */
   needs?: { service: string; min?: number; optional?: true }[];
+  /** Visuels annoncés par l'index (copie de `previews` du manifeste, 6 au plus) : permet d'annoncer « 3 visuels » SANS télécharger le module. Les images, elles, sont lues par le cœur dans le dépôt du module. Facultatif. */
+  previews?: PreviewDecl[];
   /** « official » : listé par le dépôt du catalogue (ou sa dernière copie reçue) ; « extra » : ajouté par MODULES_INDEX_URL, jamais installé d'office (voir dependencyPlan.ts). */
   catalogueOrigin?: "official" | "extra";
 };
@@ -74,6 +77,7 @@ export function sanitizeEntries(json: unknown): RecognizedItem[] {
       requires: sanitizeRequires(i.requires),
       offers: sanitizeServiceList(i.offers, "version"),
       needs: sanitizeServiceList(Array.isArray(i.requires) ? i.requires : i.needs, "min"),
+      previews: sanitizePreviews(i.previews),
     });
     if (items.length >= 300) break;
   }

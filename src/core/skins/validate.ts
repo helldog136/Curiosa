@@ -32,6 +32,12 @@ export type ValidateOptions = {
    * est retirée de la feuille avec un avertissement (jamais une erreur : le module peut revenir). Absentes = installation : toute pièce bien formée passe.
    */
   moduleParts?: Readonly<Record<string, readonly string[]>>;
+  /**
+   * Relecture d'un skin DÉJÀ installé (rendu, liste de la page Apparence, retour arrière, restauration), non son installation ou sa mise à jour : la déclaration qui
+   * vise le nom Curiosa est retirée de la feuille (la règle du cœur la rendrait sans effet de toute façon) mais n'est qu'un avertissement, pour qu'un skin installé
+   * avant cette règle ne retombe pas sur le skin de base. Installer ou mettre à jour le même skin reste refusé.
+   */
+  reading?: boolean;
   /** Paires de couleurs déclarées par les modules installés (paire 11 de la lisibilité). */
   modulePairs?: readonly ModulePair[];
   /** Ajoute les conseils « confort » (AAA) en avertissements. */
@@ -238,7 +244,7 @@ function run(dir: string, opts: ValidateOptions): SkinValidation {
     const sheet = sanitizeSkinCss(read(m.stylesheet!).toString("utf8"), { skinId: m.id, assetBase, assets: assetPaths, fontFamilies: families, moduleParts: opts.moduleParts });
     // Lecture au rendu (`moduleParts` fourni) : la règle qui vise la pièce d'un module absent est retirée par l'assainisseur, le reste du skin s'applique ;
     // ce n'est donc plus une erreur (à l'installation, `moduleParts` est absent et toute pièce bien formée est acceptée).
-    issues.push(...sheet.issues.map((i): SkinIssue => (opts.moduleParts && i.code === "unknown-part" ? { ...i, severity: "warning" } : i)));
+    issues.push(...sheet.issues.map((i): SkinIssue => ((opts.moduleParts && i.code === "unknown-part") || (opts.reading && i.code === "kit-brand-restyled") ? { ...i, severity: "warning" } : i)));
     css = sheet.css;
     if (sheet.stats.keyframes > 0 && m.supports?.reducedMotion !== true) add("manifest-reduced-motion");
   }

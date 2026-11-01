@@ -12,7 +12,7 @@ commentaires dans `index.mjs` (`curiosa-extras/examples/guestbook/index.mjs`). L
 [10. Sujets et RSS](#10-échanger-avec-les-autres-modules-sujets-et-flux-rss) · [11. Admin](#11-panneau-et-actions-dadmin) ·
 [12. MCP](#12-actions-mcp-pour-les-assistants) · [13. Sauvegarde](#13-sauvegarde-lisible) · [14. Thème et langues](#14-thème-et-langues) ·
 [15. Overlays, hooks, slots, filtres](#15-overlays-crochets-emplacements-filtres) · [16. Zéro code](#16-modules-à-contenu-zéro-code) ·
-[17. Tester](#17-tester-son-module) (le kit `module:check`) · [18. Versions et catalogue](#18-versions-et-publication) · [19. Sécurité](#19-règles-de-sécurité) · [20. Vie privée et licence](#20-vie-privée-cookies-et-licence) ·
+[17. Tester](#17-tester-son-module) (le kit `module:check`) · [18. Versions et catalogue](#18-versions-et-publication) · [18 bis. Visuels](#18-bis-montrer-le-module--previews) · [19. Sécurité](#19-règles-de-sécurité) · [20. Vie privée et licence](#20-vie-privée-cookies-et-licence) ·
 [Checklist](#checklist-avant-de-publier)
 
 ## 1. Les idées à connaître
@@ -702,6 +702,24 @@ Lancez : `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test mon-module.
 `id`, `name`, `description` et `repo` suffisent ; `ref` (**étiquette ou commit que les relecteurs ont relus** : c'est ce qui rend « vérifié » vrai), `version`, `apiVersion`, `author`, `icon` sont facultatifs. Le dépôt cité doit servir **le module annoncé** (`id` identique à celui de son `module.json`),
 sur un hôte autorisé ; rien n'est installé automatiquement. Critères et format : [`catalogue/README.md`](../catalogue/README.md). Un modèle d'index supplémentaire : [`modules-index.example.json`](modules-index.example.json). Tout autre dépôt reste un module **personnel** : il s'installe avec un avertissement.
 
+## 18 bis. Montrer le module : `previews`
+
+Une personne qui hésite à installer votre module veut **voir** ce qu'il ajoute à son site : à quoi ressemble une page de commandes, l'écran d'administration, un élément d'overlay. Déclarez jusqu'à six captures dans `previews` de `module.json` ; la fiche de l'extension les montre juste après la description, avant les détails techniques (données, droits, dépendances, version), et un clic les agrandit.
+
+1. Faites vos captures avec des **données inventées** (« Démo », `example.org`) : jamais de vrais noms, e-mails, pseudos, adresses IP ou jetons, ni de vrais comptes.
+2. Exportez-les en **WebP** (ou PNG), 150 Ko au plus chacune, par exemple 1200 × 750, dans `previews/` à la racine du module.
+3. Déclarez chaque image avec `file`, une `caption` (une phrase au vouvoiement) et un `alt` (la description de l'image), **en français et en anglais**, et son `type` : `public`, `admin` ou `overlay`.
+
+```json
+"previews": [
+  { "file": "previews/commandes.webp", "type": "public",
+    "caption": { "fr": "Votre page de commandes, telle que la voit votre public.", "en": "Your commands page, as your audience sees it." },
+    "alt": { "fr": "Liste de trois commandes avec leur description.", "en": "List of three commands with their description." } }
+]
+```
+
+Aucun `minCore` n'est à déclarer : un cœur plus ancien ignore la clé et montre la fiche comme avant. Sans `previews`, rien ne change. Le cœur lit lui-même les images (le navigateur ne contacte aucun site tiers) et le kit `npm run module:check` vérifie type, poids et dimensions (exigence `manifest.previews`). Toutes les limites : [MODULES.md](MODULES.md), « Visuels de la fiche (`previews`) ». Pour le catalogue, le script qui génère `catalogue/index.json` recopie `previews` dans l'entrée du module.
+
 ## 19. Règles de sécurité
 
 Un module est **du code de confiance** : il tourne sur le serveur avec les droits du site, et la personne propriétaire l'installe en connaissance de cause. Cela ne dispense pas d'être irréprochable :
@@ -755,6 +773,7 @@ Le cœur reprend ce texte tel quel, sous le nom de l'instance. Un module qui ne 
 - [ ] Si la forme de mes données a changé : `dataVersion` augmenté et migration écrite et testée sur des données de l'ancienne version.
 - [ ] Si le module collecte des données des personnes qui visitent : champ `privacy` renseigné (en **et** fr) ; aucun cookie, stockage navigateur ni service tiers non essentiel sans consentement.
 - [ ] Un module qui met en forme une page publique déclare ses pièces de skin (`skin`, `minCore` 0.4.0) avec la **chaîne de repli complète** (`var(jeton-du-module, var(jeton-commun, valeur-actuelle))`) : rendu par défaut inchangé, jamais de jeton dans `display`, `opacity`, `content`…
+- [ ] Si le module ajoute quelque chose qui se voit (page, écran, élément d'overlay) : 2 à 6 `previews` (WebP de 150 Ko au plus, légende et texte alternatif en français et en anglais), **sans vraies données personnelles** sur les captures.
 - [ ] `license` choisie dans `module.json` (elle n'a pas à être celle du framework).
 - [ ] Essayé en vrai : installation locale, instance, page, formulaire, admin, désinstallation en gardant les données puis réinstallation (tout revient), désinstallation en effaçant tout.
 - [ ] Rien ne suppose un état « éteint » : un module installé tourne ; `hooks.onInstanceDelete` n'est appelé que quand les données sont effacées (en « garder », elles sont rangées, pas détruites).

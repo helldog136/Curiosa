@@ -766,13 +766,37 @@ Contraintes de rendu du cœur, pour que ces régions soient pilotables : (1) les
 | `home-flow`, `home-cell` (`data-size="small\|medium\|large\|full"`) | accueil fluide (`vh-flow`, `vh-cell`) | classes `vh-*` |
 | `cookie-tray` | bandeau de cookies | `.cookie-tray` |
 | `footer-text`, `footer-link`, `credit` | pied | `data-testid="credit"`, `"privacy-link"` |
+| `brand-mark` | le nom « Curiosa » du crédit (**pièce verrouillée**, §9.4) | `data-curiosa-wordmark` |
 | `skip-link` | lien « aller au contenu » | |
 
 Les pièces ci-dessus et leurs attributs d'état forment **la liste des noms stables** du contrat (`skinContract` 1). Ajouter une pièce est additif ; en renommer ou en retirer une est cassant (nouveau `skinContract`). **Une pièce ajoutée doit rester habillable par nos skins officiels : voir §26.**
 
 ### 9.3 Éléments non masquables (liste d'interdits pour la feuille)
 
-Le kit refuse tout `display:none`, `visibility:hidden`, `opacity < 0.6`, `clip`, `height/width: 0`, `font-size: 0`, `position` hors écran, sur : `brand`, `nav-link`, `nav-list` et `submenu` (sauf `display:none` à l'état fermé, `[data-open="false"]` : c'est la règle du menu mobile que le skin ré-exprime, §9.1), `tools` et ses enfants, `lang-switcher`, `heading`, `prose`, `link`, `button`, `field*`, `card`, `list-item`, `image`/`cover`/`avatar`, `notice`, `stat`, `tab`, `pagination*`, `cookie-tray`, `footer-link`, `credit`, `skip-link`, **`mode-switch`**, `mode-option`, et les deux variantes de logo. Le crédit « Propulsé par » et le lien « Confidentialité » sont des **constantes du cœur** : un skin ne peut ni les masquer, ni en changer le texte, le lien ou le contenu (`content`, `font-size`, `color` identique au fond refusés par le contrôle de contraste rendu). **Exception unique** : `menu-toggle` peut être `display:none` **si** `nav-list` est alors affiché en permanence (le kit le vérifie dans le navigateur aux quatre largeurs : tous les liens du menu ont une boîte visible sans interaction).
+Le kit refuse tout `display:none`, `visibility:hidden`, `opacity < 0.6`, `clip`, `height/width: 0`, `font-size: 0`, `position` hors écran, sur : `brand`, `nav-link`, `nav-list` et `submenu` (sauf `display:none` à l'état fermé, `[data-open="false"]` : c'est la règle du menu mobile que le skin ré-exprime, §9.1), `tools` et ses enfants, `lang-switcher`, `heading`, `prose`, `link`, `button`, `field*`, `card`, `list-item`, `image`/`cover`/`avatar`, `notice`, `stat`, `tab`, `pagination*`, `cookie-tray`, `footer-link`, `credit`, `brand-mark`, `skip-link`, **`mode-switch`**, `mode-option`, et les deux variantes de logo. Le crédit « Propulsé par » et le lien « Confidentialité » sont des **constantes du cœur** : un skin ne peut ni les masquer, ni en changer le texte, le lien ou le contenu (`content`, `font-size`, `color` identique au fond refusés par le contrôle de contraste rendu). **Exception unique** : `menu-toggle` peut être `display:none` **si** `nav-list` est alors affiché en permanence (le kit le vérifie dans le navigateur aux quatre largeurs : tous les liens du menu ont une boîte visible sans interaction).
+
+### 9.4 Ce qu'un skin ne peut jamais changer : le nom Curiosa
+
+Règle de la personne propriétaire : **le nom « Curiosa » du crédit « Propulsé par Curiosa » ne change jamais de police de DA, pour aucun skin.** Il a sa propre pièce, `brand-mark` (le lien du pied porte aussi `data-curiosa-wordmark`), posée par le composant `CuriosaMark` (`src/components/brand/CuriosaMark.tsx`) ; le pied du site public et le pied de l'administration l'utilisent, donc c'est le même mot au même rendu. Tout nouvel endroit qui écrit le nom de Curiosa passe par ce composant, jamais par un lien écrit à la main.
+
+**Ce qui est verrouillé** : `font`, `font-family`, `font-weight`, `font-style`, `font-variant*`, `font-feature-settings`, `font-variation-settings`, `font-kerning`, `font-stretch`, `font-synthesis`, `font-optical-sizing`, `text-transform`, `letter-spacing`, `word-spacing`, `font-size` (la taille reste `1.15em` du texte du crédit) et le soulignement de lien du cœur (`text-decoration*`, `text-underline-offset`, `text-underline-position`).
+
+**Ce qui reste habillable** : la **couleur** du mot (le pied d'un skin peut être sombre : la lisibilité prime), l'alignement, la marge, le fond et le survol du lien.
+
+Trois garde-fous indépendants :
+
+1. **L'assainisseur refuse** (`kit-brand-restyled`, erreur ; la déclaration est retirée de la feuille) toute déclaration verrouillée qui atteint le mot : par sa pièce (`[data-skin-part="brand-mark"]`), par le lien du crédit (`[data-skin-part="credit"] a`, `credit > a`, `credit [rel~="noopener"]`…), ou **par héritage** : une propriété héritée de la liste (casse, espacement, police…) posée sur `[data-skin-part="credit"]` lui-même. Le texte « Propulsé par » ne peut donc plus être mis en capitales ni espacé ; sa couleur, sa taille et sa marge restent libres. Un skin déjà installé avant cette règle n'est pas refusé au rendu : la déclaration est retirée de la feuille et signalée par un avertissement (`reading`), le skin garde son apparence ; l'installer ou le mettre à jour à nouveau reste refusé jusqu'à correction.
+2. **Le cœur a le dernier mot.** `BRAND_MARK_CSS` (`src/core/skins/brand.ts`) est émise **après** la feuille du skin (`renderSheet`), en `!important` (qu'une feuille de skin n'a pas le droit d'écrire) : même une règle large (`footer a`) ou une valeur héritée ne peut pas changer la police du mot. La police vient de la variable `--curiosa-wordmark-font`, posée par la classe `wordmark.variable` sur le lien lui-même.
+3. **Le kit compare** (`skin:check --visual`, `kit-brand-changed`, erreur) : le style CALCULÉ du mot sous le skin et sous basic (famille, graisse, style, casse, espacements, variante, soulignement, taille relative) doit être identique, ce qui couvre l'héritage et les sélecteurs larges. Il vérifie aussi que la police de marque est réellement chargée dans le banc (`kit-brand-font-missing`) : le banc d'essai embarque désormais la vraie police (`testsupport/skins/bench/site.mjs`), sinon la comparaison ne prouverait rien.
+
+Pour un skin : posez la couleur du mot, rien d'autre.
+
+```css
+[data-skin-part="brand-mark"] { color: var(--v-fg); }
+[data-skin-part="brand-mark"]:hover { color: var(--v-accent); }
+```
+
+Ajouter `brand-mark` à la liste des pièces est **additif** : aucun nouveau `skinContract`.
 
 ---
 
