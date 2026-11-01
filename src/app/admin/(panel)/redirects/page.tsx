@@ -21,6 +21,10 @@ import { DestinationList } from "@/components/admin/DestinationList";
 import { destinationSummary } from "@/core/redirectGroups";
 import { isMeasureEnabled } from "@/core/redirectMeasure";
 import { hasRole } from "@/core/permissions";
+import { Badge } from "@/components/admin/Badge";
+import { reconcileManaged } from "@/core/managedRedirects";
+import { getModule } from "@/core/modules/registry";
+import { localized } from "@/core/modules/types";
 import { createRedirect, deleteRedirect, saveMeasureLinks, setRedirectActive, suggestRedirectName } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -33,8 +37,10 @@ const href = (q: string, page: number, state = "") => {
 };
 
 export default async function RedirectsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const { t, advanced, locale, user } = await adminCtx("editor");
+  const { t, advanced, locale, user, config } = await adminCtx("editor");
   const sp = await searchParams;
+  // Les adresses courtes demandées par des extensions (« /discord ») sont mises d'accord à l'ouverture de la page : sans effet quand tout l'est déjà ; un nom déjà pris est signalé plus bas.
+  const managed = await reconcileManaged();
   const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? "";
   const q = one(sp.q).trim().slice(0, 100);
   const view = one(sp.view) === "destinations" ? "destinations" : "all";
@@ -47,6 +53,14 @@ export default async function RedirectsPage({ searchParams }: { searchParams: Pr
   const entryIds = redirects.map((r) => r.entryId).filter((x): x is string => !!x);
   const linked = await prisma.entry.findMany({ where: { id: { in: entryIds } }, select: { id: true, url: true } });
   const collections = await listInstances();
+  // Qui gère quelle adresse : l'extension (et son instance) derrière chaque ligne marquée, pour la pastille et le bouton vers ses réglages.
+  const owners = new Map<string, { id: string; name: string }>();
+  for (const r of redirects) {
+    const inst = r.managedBy ? collections.find((c) => c.id === r.managedBy) : undefined;
+    const mod = inst ? await getModule(inst.moduleId).catch(() => null) : null;
+    if (inst) owners.set(inst.id, { id: inst.id, name: mod ? localized(mod.manifest.name, locale, config.defaultLocale) : inst.key });
+  }
+  const clashing = managed.issues.length ? await prisma.redirect.findMany({ where: { path: { in: managed.issues.map((i) => i.path) } }, select: { id: true, path: true } }) : [];
   const withUrl = advanced
     ? await prisma.entry.findMany({ where: { url: { not: null }, instanceId: { in: collections.filter((c) => c.features.includes("url")).map((c) => c.id) } }, include: { translations: { take: 1 } }, take: 200 })
     : [];
@@ -66,6 +80,15 @@ export default async function RedirectsPage({ searchParams }: { searchParams: Pr
       </div>
 
       {siteUrlLooksLocal() && <p role="alert" className="rounded-xl border border-amber-500/50 bg-amber-500/10 p-3 text-sm text-amber-800">{t("redirects.localWarning", { site })}</p>}
+      {managed.issues.map((i) => (
+        <div key={i.instanceId} role="alert" data-testid="managed-conflict" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-500/50 bg-amber-500/10 p-4 text-sm text-fg">
+          <p className="max-w-prose">{t(`redirects.managed.conflict.${i.kind}`, { name: i.moduleName, address: `/${i.path}`, example: `${i.path}-2` })}</p>
+          <div className="flex flex-wrap gap-2">
+            <Link href={`/admin/instances/${i.instanceId}`} className={`${ui.btnPrimary} min-h-11`}>{t("redirects.managed.fix", { name: i.moduleName })}</Link>
+            {i.kind === "taken" && clashing.find((c) => c.path === i.path) && <Link href={`/admin/redirects/${clashing.find((c) => c.path === i.path)!.id}`} className={`${ui.btn} min-h-11`}>{t("redirects.managed.seeYours", { address: `/${i.path}` })}</Link>}
+          </div>
+        </div>
+      ))}
       {sp.deleted && <p role="status" className="rounded-xl border border-emerald-500/50 bg-emerald-500/10 p-3 text-sm text-emerald-700">{t("redirects.deleted")}</p>}
 
       <nav aria-label={t("redirects.view.label")} className="flex flex-wrap gap-2" data-testid="redirects-views">
@@ -141,8 +164,9 @@ export default async function RedirectsPage({ searchParams }: { searchParams: Pr
               const rowState = redirectState(r);
               const end = r.expiresAt ? formatEnd(r.expiresAt, tz, locale) : null;
               const target = linked.find((e) => e.id === r.entryId)?.url ?? r.targetUrl;
+              const owner = r.managedBy ? owners.get(r.managedBy) : undefined;
               return (
-                <li key={r.id} className={`${ui.card} !p-4 ${rowState === "off" ? "opacity-80" : ""}`} data-testid="redirect-row" data-live-item="redirects" data-search={searchText([r.path, target])}>
+                <li key={r.id} className={`${ui.card} !p-4 ${rowState === "off" ? "opacity-80" : ""}`} data-testid="redirect-row" data-live-item="redirects" data-search={searchText([r.path, target, owner?.name ?? ""])}>
                   <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
                     <div className="min-w-0 basis-full space-y-1 sm:flex-1 sm:basis-0">
                       <p className="flex flex-wrap items-center gap-2">
@@ -150,6 +174,8 @@ export default async function RedirectsPage({ searchParams }: { searchParams: Pr
                         {/* Une étiquette seulement quand la ligne sort de l'ordinaire (R14) : « actif » est la règle, « désactivé » se lit sur l'interrupteur. */}
                         {rowState === "ended" && <span className={ui.chipWarn}>{t("redirects.state.ended")}</span>}
                         {r.entryId && <span className={ui.chip}>{t("redirects.followsEntry")}</span>}
+                        {/* Origine : seulement les liens qu'une extension gère (colorée ET écrite, R30). Les vôtres n'ont aucune étiquette (R14). */}
+                        {owner && <Badge tone="info" testid="managed-badge">{t("redirects.origin.extension", { name: owner.name })}</Badge>}
                       </p>
                       <p className="truncate text-sm text-muted" title={target}>{target}</p>
                       <p className="text-sm text-muted">
@@ -158,14 +184,19 @@ export default async function RedirectsPage({ searchParams }: { searchParams: Pr
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Switch label={t("redirects.switch.label", { address: `/${r.path}` })} checked={r.active} onText={t("redirects.state.active")} offText={t("redirects.state.off")}
-                        failedText={t("switch.failed")} onToggle={setRedirectActive.bind(null, r.id)} testid="redirect-switch" />
+                      {owner ? <span className={ui.chipOk}>{t("redirects.state.active")}</span> : (
+                        <Switch label={t("redirects.switch.label", { address: `/${r.path}` })} checked={r.active} onText={t("redirects.state.active")} offText={t("redirects.state.off")}
+                          failedText={t("switch.failed")} onToggle={setRedirectActive.bind(null, r.id)} testid="redirect-switch" />
+                      )}
                       <Link href={`/admin/redirects/${r.id}`} className={`${ui.btn} min-h-11`}>{t("redirects.open")}</Link>
-                      <RowMenu label={t("table.menu")}>
-                        <form action={deleteRedirect.bind(null, r.id)}>
-                          <ConfirmButton menu message={t("redirects.deleteConfirm", { address: `${site}/${r.path}` })} confirmLabel={t("redirects.deleteYes")} dangerConfirm pendingLabel={t("progress.deleting")}>{t("redirects.deleteMenu")}</ConfirmButton>
-                        </form>
-                      </RowMenu>
+                      {/* Un lien géré par une extension se règle chez elle : le bouton le dit et y mène (R30). */}
+                      {owner ? <Link href={`/admin/instances/${owner.id}`} className={`${ui.btn} min-h-11`}>{t("redirects.managed.open", { name: owner.name })}</Link> : (
+                        <RowMenu label={t("table.menu")}>
+                          <form action={deleteRedirect.bind(null, r.id)}>
+                            <ConfirmButton menu message={t("redirects.deleteConfirm", { address: `${site}/${r.path}` })} confirmLabel={t("redirects.deleteYes")} dangerConfirm pendingLabel={t("progress.deleting")}>{t("redirects.deleteMenu")}</ConfirmButton>
+                          </form>
+                        </RowMenu>
+                      )}
                     </div>
                   </div>
                 </li>

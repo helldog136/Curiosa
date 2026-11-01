@@ -213,6 +213,7 @@ export async function createRedirectRecord(input: RedirectInput, opts: { siteNam
 export async function updateRedirectRecord(id: string, input: Omit<RedirectInput, "path">): Promise<RedirectResult> {
   const current = await prisma.redirect.findUnique({ where: { id } });
   if (!current) return fail("path", "redirects.error.missing");
+  if (current.managedBy) return fail("path", "redirects.error.managed");   // lien géré par un module : se règle dans ce module (managedRedirects.ts)
   const checked = await checkCommon(input);
   if ("fail" in checked) return checked.fail;
   const redirect = await prisma.redirect.update({ where: { id }, data: {
@@ -229,8 +230,8 @@ export async function updateRedirectRecord(id: string, input: Omit<RedirectInput
 
 /** Supprime une redirection (ses chiffres par jour partent avec elle). Renvoie le chemin supprimé, ou null si elle n'existait pas. */
 export async function deleteRedirectRecord(id: string): Promise<string | null> {
-  const row = await prisma.redirect.findUnique({ where: { id }, select: { path: true } });
-  if (!row) return null;
+  const row = await prisma.redirect.findUnique({ where: { id }, select: { path: true, managedBy: true } });
+  if (!row || row.managedBy) return null;   // un lien géré par un module ne se supprime pas à la main : il disparaît avec l'option ou l'instance
   await prisma.redirect.delete({ where: { id } }).catch(() => {});
   invalidateRedirectGate();
   return row.path;
