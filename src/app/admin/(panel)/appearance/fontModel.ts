@@ -11,7 +11,7 @@ export function fontModel(t: Translator, uploads: readonly UploadedFont[]): { gr
   for (const k of SYSTEM_KEYS) options.push({ value: `sys:${k}`, label: t(`appearance.font.system.${k}`), group: "system", stack: previewStack(`sys:${k}`, []), info: { group: "system", weights: [400, 700] } });
   for (const f of loadLibrary().families) options.push({ value: `lib:${f.id}`, label: f.name, group: f.group, stack: previewStack(`lib:${f.id}`, []), info: { group: f.group, weights: f.weights } });
   const mine = uploadFamilies(uploads);
-  for (const g of mine) options.push({ value: `up:${g.slug}`, label: g.family, group: "mine", stack: previewStack(`up:${g.slug}`, uploads), info: { group: "upload", weights: uploadWeights(g.files) } });
-  const groups: FontGroupModel[] = [{ id: "system", label: t("appearance.font.group.system") }, ...FONT_GROUPS.map((id) => ({ id: id as string, label: t(`appearance.font.group.${id}`) })), ...(mine.length ? [{ id: "mine", label: t("appearance.font.group.mine") }] : [])];
+  for (const g of mine) options.push({ value: `up:${g.slug}`, label: g.family, group: "mine", stack: previewStack(`up:${g.slug}`, uploads), info: { group: "upload", weights: uploadWeights(g.files) }, ids: g.files.map((f) => f.id) });
+  const groups: FontGroupModel[] = [...(mine.length ? [{ id: "mine", label: t("appearance.font.group.mine") }] : []), { id: "system", label: t("appearance.font.group.system") }, ...FONT_GROUPS.map((id) => ({ id: id as string, label: t(`appearance.font.group.${id}`) }))];
   return { groups, options };
 }

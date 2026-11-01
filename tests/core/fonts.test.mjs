@@ -143,11 +143,11 @@ test("actions : l'envoi dit sous le bon champ ce qu'il faut faire (case, fichier
   let r = await actions.uploadFontAction(null, form({ font: file(KALAM4) }));
   assert.match(r.errors.license, /Cochez la case/);
   r = await actions.uploadFontAction(null, form({ license: "on" }));
-  assert.match(r.errors.font, /Choisissez un fichier \.woff2, par exemple/);
+  assert.match(r.errors.font, /Choisissez un fichier \.woff2, \.otf ou \.ttf/);
   r = await actions.uploadFontAction(null, form({ license: "on", font: file(Buffer.from("MZ" + "x".repeat(300)), "virus.woff2") }));
-  assert.match(r.errors.font, /n'est pas une police \.woff2/);
-  r = await actions.uploadFontAction(null, form({ license: "on", font: file(Buffer.alloc(150 * 1024 + 1)) }));
-  assert.match(r.errors.font, /150 Ko au plus/);
+  assert.match(r.errors.font, /n'est pas une police \.woff2, \.otf ou \.ttf/);
+  r = await actions.uploadFontAction(null, form({ license: "on", font: file(Buffer.alloc(500 * 1024 + 1)) }));
+  assert.match(r.errors.font, /Convertissez-le en \.woff2/);
   r = await actions.uploadFontAction(null, form({ license: "on", fontName: "<<>>", font: file(KALAM4) }));
   assert.match(r.errors.fontName, /Ce nom n'est pas utilisable/);
   r = await actions.uploadFontAction(null, form({ license: "on", font: file(KALAM4) }));
@@ -384,4 +384,40 @@ test("restauration : un fichier qui n'est plus une vraie police, une entrée san
   const r = await U.reconcileUploads();
   assert.deepEqual(r, { kept: 0, dropped: 2 });
   assert.deepEqual([fs.readdirSync(FONTS), await U.listUploads(), await getSetting("theme.fontBody")], [[], [], undefined]);
+});
+
+test("envoi .ttf et .otf : convertis en WOFF2 (seul du WOFF2 est stocké et servi) ; trop lourd après conversion ou avant = refus avec la marche à suivre", async () => {
+  const TTF = fs.readFileSync("tests/fixtures/fonts/kalam.ttf"), OTF = fs.readFileSync("tests/fixtures/fonts/anton-sub.otf");
+  const a = await add(TTF);
+  assert.equal(a.ok, true, JSON.stringify(a));
+  const stored = fs.readFileSync(path.join(FONTS, `u-${a.font.id}.woff2`));
+  assert.equal(stored.subarray(0, 4).toString(), "wOF2");
+  assert.equal(crypto.createHash("sha256").update(stored).digest("hex").slice(0, 16), a.font.id);
+  assert.equal((await add(OTF)).ok, true);
+  assert.equal((await add(TTF)).code, "duplicate", "même police envoyée deux fois");
+  assert.equal((await add(Buffer.concat([TTF, Buffer.alloc(500 * 1024)]))).code, "too-large");
+  assert.equal((await add(Buffer.concat([Buffer.from("ttcf"), Buffer.alloc(200)]))).code, "collection");
+  assert.equal((await add(Buffer.from("wOFF" + "x".repeat(200)))).ok, false);
+  assert.equal(fs.readdirSync(FONTS).length, 2, "seulement les deux WOFF2");
+  const r = await actions.uploadFontAction(null, form({ license: "on", font: new File([Buffer.concat([TTF, Buffer.alloc(500 * 1024)])], "gros.ttf") }));
+  assert.match(r.errors.font, /Convertissez-le en \.woff2.*« ttf vers woff2 »/);
+});
+
+test("structure de la page : l'envoi est DANS la section Polices (sous les deux listes), chaque liste finit par « Utiliser ma propre police… », « Mes polices » vient en tête, le nom est sous « Plus d'options »", () => {
+  const page = fs.readFileSync("src/app/admin/(panel)/appearance/page.tsx", "utf8");
+  assert.match(page, /data-testid="fonts-card" id="polices"[\s\S]*?<FontPickers[\s\S]*?uploadSlot=\{<FontUpload/, "le formulaire d'envoi est un enfant de la carte Polices");
+  assert.doesNotMatch(page, /<FontUpload t=\{t\} uploads=/, "plus de bloc d'envoi séparé plus bas");
+  assert.match(page, /<ActionForm id="retouches-form"/);
+  const pick = fs.readFileSync("src/app/admin/(panel)/appearance/FontPickers.tsx", "utf8");
+  assert.match(pick, /name="fontHeading" form=\{formId\}/);
+  assert.match(pick, /role="listbox"[\s\S]*?data-testid=\{`font-own-\$\{role\}`\}[\s\S]*?appearance\.font\.useOwn/, "la ligne d'envoi vient après la liste, dans le même panneau");
+  assert.match(pick, /input\?\.focus\(\)/, "le champ fichier reçoit le focus");
+  assert.match(pick, /askConfirm\(al\("appearance\.font\.deleteConfirm"/);
+  const up = fs.readFileSync("src/app/admin/(panel)/appearance/FontUpload.tsx", "utf8");
+  assert.match(up, /accept="\.woff2,\.otf,\.ttf/);
+  assert.match(up, /<MoreOptions[\s\S]*?name="fontName"/);
+  assert.ok(up.indexOf('name="license"') < up.indexOf("<MoreOptions"), "fichier et case d'abord, nom ensuite");
+  const model = fs.readFileSync("src/app/admin/(panel)/appearance/fontModel.ts", "utf8");
+  assert.ok(model.indexOf('id: "mine"') < model.indexOf('id: "system"'), "« Mes polices » en tête");
+  assert.match(fs.readFileSync("src/app/admin/(panel)/settings/page.tsx", "utf8"), /\/admin\/appearance#polices/);
 });

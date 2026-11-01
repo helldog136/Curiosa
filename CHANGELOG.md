@@ -7,6 +7,18 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## Prochaine version (non publiée)
+
+### Apparence du site
+
+- **L'envoi de votre police est au bon endroit.** Il se trouve dans la section « Polices », juste sous les listes : chaque liste se termine par « Utiliser ma propre police… ». Vos polices apparaissent en tête des listes, dans « Mes polices », où vous pouvez les supprimer.
+- **Les fichiers .otf et .ttf sont acceptés.** Le site les convertit lui-même en .woff2, plus léger. Un fichier trop lourd est refusé avec la marche à suivre pour le convertir.
+- **Un envoi plus court.** Un fichier et la case de licence ; le nom est sous « Plus d'options ».
+
+### Pour les développeurs
+
+- **Polices.** `sfntToWoff2` (`src/core/fonts/sfnt.ts`) convertit en WOFF2, puis `checkWoff2` revérifie le résultat. `ActionForm` accepte `id`, et le choix des polices se rattache au formulaire des retouches par `form`.
+
 ## 0.6.1 — 2026-11-01
 
 **En bref.** Cette version simplifie les réglages de votre site et rend plusieurs choses plus claires. L'Équipe tient en un seul tableau, et vos assistants IA en font partie, avec leurs droits en quelques mots. Vos réseaux sociaux s'ajoutent en collant l'adresse de votre profil dans un seul champ. Les polices se choisissent dans une bibliothèque de vingt familles, ou s'envoient depuis votre ordinateur. La fiche d'une extension montre d'abord ce qu'elle fait, avec des images, et garde le bouton « Installer » toujours visible. L'extension Discord peut créer pour vous l'adresse courte « /discord », qui suit votre invitation. Le menu est clarifié : « Réglages du site » ne fait plus doublon avec « Apparence ». Vos couleurs ne sont plus jamais corrigées en cachette : un conseil s'affiche, sans rien bloquer. Le script d'installation parle français et anglais, les gestionnaires de mots de passe reconnaissent les formulaires, et le catalogue des extensions s'ouvre plus vite. Le champ « Période » propose un mois entier, les saisons et les fêtes, et le nom « Curiosa » du pied de page reste identique quel que soit le skin. Vos réglages actuels sont conservés.
