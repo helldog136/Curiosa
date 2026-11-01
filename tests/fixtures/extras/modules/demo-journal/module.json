@@ -1,0 +1,22 @@
+{
+  "apiVersion": 2,
+  "id": "demo-journal",
+  "name": { "en": "Demo journal", "fr": "Démo journal" },
+  "version": "1.0.0",
+  "main": "index.mjs",
+  "minCore": "0.2.0",
+  "description": { "en": "Demo journal: a test module that writes to the central log.", "fr": "Démo journal : un module de test qui écrit au journal central." },
+  "author": "Tests",
+  "license": "MIT",
+  "icon": "📜",
+  "permissions": ["admin", "routes", "mcp"],
+  "settings": [],
+  "logEvents": [
+    { "key": "thing.done", "label": { "fr": "Chose faite : {name} ({count} fois, urgent : {urgent})", "en": "Thing done: {name} ({count} times, urgent: {urgent})" }, "fields": [{ "key": "name" }, { "key": "count", "type": "number" }, { "key": "urgent", "type": "boolean" }] },
+    { "key": "thing.failed", "label": { "fr": "Échec pour {name}", "en": "Failure for {name}" }, "level": "error", "fields": [{ "key": "name" }] },
+    { "key": "hit", "label": { "fr": "Passage de {name}", "en": "Visit by {name}" }, "frequent": true, "fields": [{ "key": "name" }] }
+  ],
+  "mcp": [
+    { "name": "noisy", "description": "Writes a line to the central log, as an assistant.", "default": true }
+  ]
+}

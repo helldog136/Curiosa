@@ -1,0 +1,5 @@
+// Liens : une liste de pastilles (display « links »), avec icônes et résumés.
+export default async function links(h, row) {
+  const L = [["Boutique", "Shop", "🛒", "https://example.org/boutique"], ["Documentation", "Documentation", "📚", "https://example.org/docs"], ["Journal vidéo", "Video log", "🎬", "https://example.org/videos"], ["Newsletter", "Newsletter", "✉️", "https://example.org/newsletter"], ["Plans à télécharger", "Plans to download", "📐", "https://example.org/plans"], ["Forum d'entraide", "Help forum", "💬", "https://example.org/forum"], ["Soutenir le projet", "Support the project", "❤️", "https://example.org/soutien"], ["Presse", "Press", "📰", "https://example.org/presse"]];
+  for (let i = 0; i < L.length; i++) await h.entry(row, { fr: { title: L[i][0], summary: `Le lien « ${L[i][0]} » : une courte description.` }, en: { title: L[i][1], summary: `The “${L[i][1]}” link: a short description.` }, icon: L[i][2], url: L[i][3], tags: i < 3 ? ["essentiel"] : [], position: i, at: h.day(-30 + i) });
+}

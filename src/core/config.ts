@@ -1,0 +1,37 @@
+import path from "node:path";
+
+/** Tout ce qui est propre à une installation (base, envois, modules, secret). */
+export const DATA_DIR = path.resolve(/* turbopackIgnore: true */ process.env.DATA_DIR || "data");
+export const UPLOADS_DIR = path.join(DATA_DIR, "uploads");
+export const MODULES_DIR = path.join(DATA_DIR, "modules");
+/** Skins installés depuis un dépôt git : `data/skins/<id>/<version>/` (docs/SKINS.md §5.6). */
+export const SKINS_DIR = path.join(DATA_DIR, "skins");
+/** Dépôt de skins que le catalogue connaît par défaut (le seul endroit où cette adresse est écrite) ; `CURIOSA_SKINS_REPO` la remplace. */
+export const DEFAULT_SKINS_REPO = "https://github.com/helldog136/curiosa-skins";
+
+/** Version du contrat entre le cœur et les modules (voir docs/MODULES.md). */
+export const MODULE_API_VERSION = 2;
+
+export const siteUrl = (process.env.SITE_URL || "http://localhost:3000").replace(/\/+$/, "");
+
+/** Premier chemin d'URL qui ne peut être ni une collection ni une redirection. */
+export const RESERVED_PATHS = new Set([
+  "admin",
+  "api",
+  "m",
+  "go",
+  "uploads",
+  "overlays",
+  "feed",
+  "feed.xml",
+  "_next",
+  "sitemap.xml",
+  "robots.txt",
+  "llms.txt",
+  "icon",
+  "favicon.ico",
+  // Page de confidentialité du cœur (obligatoire, voir core/privacy.ts)
+  "privacy",
+  // Fichiers des skins : script de bascule clair/sombre, polices et images des skins installés (/skins/<id>/<version>/…), voir docs/SKINS.md
+  "skins",
+]);

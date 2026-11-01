@@ -1,0 +1,7 @@
+@import url("https://example.org/evil.css");
+.btn { color: red; }
+body { background: url(https://example.org/pixel.gif); }
+[data-skin-part="brand"] { display: none; }
+[data-skin-part="credit"] { visibility: hidden; }
+[data-skin-part="heading"]::before { content: "Offre spéciale"; }
+[data-skin-part="card"] { behavior: url(x.htc); width: expression(alert(1)); }
