@@ -1,0 +1,451 @@
+generator client {
+  provider = "prisma-client-js"
+  // Les releases sont compilées une fois (CI) puis installées sur des serveurs différents : le moteur de base de données doit
+  // exister pour chaque version d'OpenSSL courante (Ubuntu 20.04 / Debian 10-11 : 1.1.x ; Ubuntu 22.04+ / Debian 12+ : 3.0.x).
+  binaryTargets = ["native", "debian-openssl-1.1.x", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Comptes ──────────────────────────────────────────────────────────────
+// role : owner | admin | editor | none (String : SQLite n'a pas d'enum natif). Depuis la 0.2.0, c'est le NIVEAU historique, recalculé par le cœur
+// à partir des rôles de la personne (le plus haut rôle prédéfini, sinon « none ») : voir src/core/auth/roles.ts. Un ancien cœur le lit encore.
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  // Niveau HISTORIQUE (« owner | admin | editor | none »), lu aussi par les anciens cœurs. Le coordinateur technique y est « admin » (repli le plus sûr d'un ancien cœur).
+  role         String   @default("editor")
+  // Vrai pour un Coordinateur technique (0.4.0) : ne vaut que si `role` est « admin » (sinon ignoré et effacé au démarrage). Un ancien cœur ignore cette colonne.
+  coordinator  Boolean  @default(false)
+  passwordHash String
+  // Langue de l'interface d'admin de cet utilisateur (null = défaut du site).
+  locale       String?
+  // Mode d'affichage de l'admin : simplifié (défaut) ou avancé (tous les réglages techniques).
+  advanced     Boolean  @default(false)
+  // Augmente pour couper toutes les sessions ouvertes de cet utilisateur (« déconnecter tous les appareils », changement de mot de passe…).
+  sessionVersion Int    @default(0)
+  // Vrai quand le propriétaire a fixé un mot de passe temporaire : la prochaine connexion réussie (mot de passe, double vérification ou clé d'accès) ne mène qu'à « Choisissez votre mot de passe ».
+  mustChangePassword Boolean @default(false)
+  // Double vérification (code à usage unique d'une application) : secret actif, secret en cours d'activation, date d'activation, dernier code accepté (jamais deux fois le même).
+  totpSecret    String?
+  totpPending   String?
+  totpEnabledAt DateTime?
+  totpLastStep  Int?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  entries Entry[]
+  trustedIps TrustedIp[]
+  recoveryCodes RecoveryCode[]
+  passkeys      Passkey[]
+  roles         UserRole[]
+}
+
+// ─── Rôles et droits (0.2.0) ────────────────────────────────────────────────
+// Quatre rôles prédéfinis (owner, coordinator, admin, editor : system = true, créés au démarrage, non modifiables) et des rôles personnalisés (« r-<slug> »).
+// rights : liste JSON de droits (« core:entries.edit », « <module>:<droit> ») ; vide pour les rôles prédéfinis, dont les droits sont calculés.
+model Role {
+  id          String     @id @default(cuid())
+  key         String     @unique
+  name        String
+  description String     @default("")
+  system      Boolean    @default(false)
+  rights      String     @default("[]")
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  users       UserRole[]
+}
+
+// Une personne a un ou plusieurs rôles ; ses droits sont l'union de leurs droits. Un rôle en usage ne se supprime pas sans réaffectation (Restrict).
+model UserRole {
+  userId String
+  roleId String
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role @relation(fields: [roleId], references: [id], onDelete: Restrict)
+
+  @@id([userId, roleId])
+  @@index([roleId])
+}
+
+// ─── Connexion : blocages progressifs ──────────────────────────────────────
+// Une ligne par « clé » (ip:<adresse> ou email:<adresse>) : erreurs de mot de passe, paliers déjà atteints, fin du blocage.
+model AuthLock {
+  key           String    @id
+  failures      Int       @default(0)
+  strikes       Int       @default(0)
+  lastFailureAt DateTime?
+  lockedUntil   DateTime?
+  updatedAt     DateTime  @updatedAt
+}
+
+// Codes de secours de la double vérification : seule leur empreinte est gardée, chacun ne sert qu'une fois.
+model RecoveryCode {
+  id        String    @id @default(cuid())
+  userId    String
+  codeHash  String
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// Clés d'accès (passkeys) : seule la clé PUBLIQUE est gardée ; la clé privée ne quitte jamais l'appareil de la personne.
+model Passkey {
+  id           String    @id @default(cuid())
+  userId       String
+  credentialId String    @unique
+  publicKey    Bytes
+  counter      Int       @default(0)
+  transports   String?
+  name         String
+  deviceType   String?
+  backedUp     Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  lastUsedAt   DateTime?
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// Défi à signer, valable quelques minutes et utilisable UNE seule fois (enregistrement ou connexion).
+model PasskeyChallenge {
+  id        String   @id @default(cuid())
+  challenge String
+  purpose   String
+  userId    String?
+  expiresAt DateTime
+}
+
+// Adresses (empreintes, jamais en clair) d'où un utilisateur s'est déjà connecté : un inconnu qui tape de faux mots de passe ne peut pas l'en bloquer depuis chez lui.
+model TrustedIp {
+  userId   String
+  hash     String
+  lastSeen DateTime
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, hash])
+}
+
+// ─── Réglages ─────────────────────────────────────────────────────────────
+// Clé/valeur. `locale` vaut "" pour un réglage non traduisible (et non NULL :
+// SQLite traite NULL comme distinct dans un index unique).
+// Les réglages d'une instance de module sont préfixés "instance.<id>.".
+model Setting {
+  key    String
+  locale String @default("")
+  value  String // JSON sérialisé
+
+  @@id([key, locale])
+}
+
+// ─── Instances de modules ─────────────────────────────────────────────────
+// Le cœur ne connaît que des modules. Un module est un type de code (blog,
+// réseaux sociaux, formulaire de contact…) ; une *instance* en est un
+// exemplaire configuré. Un site peut avoir autant de blogs ou de listes de
+// réseaux sociaux qu'il veut : ce sont des instances du même module.
+model ModuleInstance {
+  id       String @id @default(cuid())
+  moduleId String
+  // Identifiant technique stable (URLs /m/<key>/…, réglages, sections de l'accueil).
+  key      String @unique
+  // Surnom d'ADMIN pour distinguer deux instances du même module (« Actus », « Chaîne 2 »). Inutile — et masqué — tant
+  // qu'il n'y a qu'une instance. Voir src/core/instanceLabel.ts.
+  nickname String?
+  // Chemin public où l'instance est montée ("" = racine du site, NULL = pas de page).
+  basePath String? @unique
+  // HÉRITAGE (à retirer en phase 3 d'entretien) : une instance n'est plus « éteinte » (on la supprime, en gardant ou non ses données), voir Module.enabled.
+  enabled  Boolean @default(true)
+  showInNav Boolean @default(true)
+  navOrder  Int     @default(0)
+
+  // Réglages de contenu, utilisés par les modules qui déclarent `content`
+  // dans leur manifeste (blog, liens, codes promo, pages…).
+  display     String @default("cards")
+  clickAction String @default("detail")
+  features    String @default("[]")
+  fieldSchema String @default("[]")
+  fallbackToDefault Boolean @default(true)
+  allowGoLinks Boolean @default(false)
+  // Les entrées de cette instance sont proposées aux autres modules (overlays…) via le sujet "core.entry".
+  exposed Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  translations InstanceTranslation[]
+  entries      Entry[]
+
+  @@index([moduleId])
+}
+
+model InstanceTranslation {
+  id          String @id @default(cuid())
+  instanceId  String
+  locale      String
+  name        String
+  description String @default("")
+
+  instance ModuleInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+
+  @@unique([instanceId, locale])
+}
+
+// ─── Entrées ──────────────────────────────────────────────────────────────
+// Partie commune à toutes les langues. Le texte vit dans EntryTranslation :
+// une entrée n'a besoin que d'UNE traduction, les autres sont optionnelles.
+model Entry {
+  id           String    @id @default(cuid())
+  instanceId   String
+  // draft | published
+  status       String    @default("draft")
+  publishedAt  DateTime?
+  expiresAt    DateTime?
+  cover        String?
+  icon         String?
+  url          String?
+  code         String?
+  featured     Boolean   @default(false)
+  // Étiquettes libres (JSON : ["sponsor", "gaming"]) : filtrage côté modules consommateurs.
+  tags         String    @default("[]")
+  position     Int       @default(0)
+  // Valeurs des champs libres de l'instance (JSON).
+  fields       String    @default("{}")
+  // Langue dans laquelle l'entrée a été créée.
+  sourceLocale String
+  authorId     String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  instance     ModuleInstance     @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  author       User?              @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  translations EntryTranslation[]
+
+  @@index([instanceId, status, publishedAt])
+}
+
+model EntryTranslation {
+  id         String @id @default(cuid())
+  entryId    String
+  // Dénormalisé pour garantir l'unicité du slug par instance et par langue.
+  instanceId String
+  locale     String
+  slug       String
+  title      String
+  summary    String @default("")
+  body       String @default("")
+  updatedAt  DateTime @updatedAt
+
+  entry Entry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+
+  @@unique([entryId, locale])
+  @@unique([instanceId, locale, slug])
+}
+
+// ─── Redirections externes autorisées ─────────────────────────────────────
+// /<path> → targetUrl. Seules les cibles saisies ici (ou le lien d'une
+// entrée, si `entryId` est renseigné) sont atteignables : pas de redirection
+// ouverte.
+model Redirect {
+  id        String   @id @default(cuid())
+  path      String   @unique
+  targetUrl String
+  // Si renseigné, la cible est le lien actuel de cette entrée (la valeur de
+  // targetUrl sert alors de repli). Une seule source de vérité pour un lien.
+  entryId   String?
+  permanent Boolean  @default(false)
+  active    Boolean  @default(true)
+  // Total des passages (tous les jours confondus). Les passages jour par jour sont dans RedirectDay.
+  hits      Int      @default(0)
+  // Date de fin (instant exact ; null = sans fin). Une fois passée, la redirection répond 410 avec une page aimable.
+  expiresAt DateTime?
+  // Message de la page « lien terminé » (vide = le message habituel du site).
+  endMessage String  @default("")
+  // Instance de module qui GÈRE ce lien (adresse courte demandée par un module : voir src/core/managedRedirects.ts). null = créé par une personne, que le cœur ne
+  // touche jamais. Unique : au plus un lien géré par instance. Un lien géré ne se modifie ni ne se supprime à la main ; il disparaît avec l'instance ou l'option.
+  managedBy String?  @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  days RedirectDay[]
+}
+
+// Passages par jour d'une redirection (statistiques sans cookie, sans adresse IP, sans provenance : un simple nombre par jour).
+// `day` = jour AAAA-MM-JJ dans le fuseau du site. Gardé 120 jours ; au-delà, la ligne disparaît (le total est dans Redirect.hits).
+model RedirectDay {
+  redirectId String
+  day        String
+  hits       Int      @default(0)
+
+  redirect Redirect @relation(fields: [redirectId], references: [id], onDelete: Cascade)
+
+  @@id([redirectId, day])
+  @@index([day])
+}
+
+// ─── Modules ──────────────────────────────────────────────────────────────
+model Module {
+  id          String   @id
+  // builtin | git
+  source      String
+  repoUrl     String?
+  ref         String?
+  commit      String?
+  // Dossier du module dans le dépôt (dépôt regroupant plusieurs modules) ; null = le module est à la racine du dépôt.
+  subdir      String?
+  // Empreinte git du contenu de ce dossier : une mise à jour n'est proposée que si CE module a changé, pas le dépôt entier.
+  tree        String?
+  version     String
+  // HÉRITAGE (à retirer en phase 3 d'entretien) : l'état « installé mais éteint » n'existe plus, un module installé est toujours actif. La colonne reste pour qu'un site
+  // d'avant la 0.1.20 puisse être lu une dernière fois (src/core/modules/legacyOff.ts) et, si l'on revient en arrière, retrouve des modules allumés.
+  enabled     Boolean  @default(true)
+  installedAt DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// Stockage libre d'une instance de module (messages reçus, compteurs…).
+model ModuleRecord {
+  id         String   @id @default(cuid())
+  instanceId String
+  collection String
+  data       String // JSON
+  createdAt  DateTime @default(now())
+  // Clé facultative (200 caractères au plus, non unique) : retrouver un enregistrement sans parcourir la collection. L'unicité est l'affaire du module.
+  key        String?
+
+  @@index([instanceId, collection, createdAt])
+  @@index([instanceId, collection, key])
+}
+
+// Données MISES DE CÔTÉ d'une instance retirée en « gardant mes données » (désinstallation d'un module, ou suppression d'une instance). Une ligne = une instance,
+// avec tout ce qu'elle possédait (ses lignes d'instance, traductions, entrées, réglages et stockage) en un seul bloc JSON, inerte : le cœur est seul à le lire
+// (src/core/modules/retired.ts), jamais le module, jamais l'API, le MCP ou le site. Réinstaller le module (ou « Les retrouver ») remet tout tel quel, mêmes identifiants.
+model RetiredInstance {
+  // Identifiant de l'instance d'origine : il revient à l'identique à la restauration (les réglages et références s'y rattachent).
+  id         String   @id
+  moduleId   String
+  key        String
+  // Nom lisible au moment du retrait, pour le montrer sans rouvrir les données.
+  label      String
+  moduleName String
+  // D'où réinstaller le module quand ce n'est pas le catalogue (dépôt personnel) ; null = le catalogue.
+  repoUrl    String?
+  ref        String?
+  subdir     String?
+  // uninstall : le module a été désinstallé · delete : l'instance a été supprimée · legacy : migration des éteints (avant la 0.1.20).
+  reason     String
+  retiredAt  DateTime @default(now())
+  // Combien de contenus (entrées) et d'éléments stockés étaient là : pour le dire sans rouvrir le bloc.
+  entryCount  Int     @default(0)
+  recordCount Int     @default(0)
+  payload    String
+
+  @@index([moduleId])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actor     String
+  action    String
+  target    String   @default("")
+  createdAt DateTime @default(now())
+  /// Journal central : module propriétaire de la ligne (identifiant) et instance (clé) ; vides = le cœur.
+  module    String   @default("")
+  instance  String   @default("")
+  /// info | warn | error
+  level     String   @default("info")
+  /// person | module | assistant | system
+  actorKind String   @default("system")
+  /// JSON borné (champs déclarés par le module, 200 caractères au plus chacun) ; vide = ligne générique.
+  data      String   @default("")
+
+  @@index([createdAt])
+  @@index([module, createdAt])
+  @@index([instance, createdAt])
+}
+
+// Jetons d'accès à l'API MCP du cœur (agents, assistants…). Seul le hash est conservé :
+// le jeton en clair n'est montré qu'une fois, à sa création.
+model ApiToken {
+  id         String    @id @default(cuid())
+  name       String
+  hash       String    @unique
+  // Premiers caractères, pour reconnaître un jeton dans la liste sans le révéler.
+  prefix     String
+  // Plafond du jeton. read : jamais d'action qui écrit, quoi qu'on lui accorde. write : peut écrire, selon ses accès.
+  scope      String    @default("read")
+  // Accès action par action, modifiables à tout moment (JSON : { "<outil>": true|false }). Une action absente de
+  // la liste suit le défaut déclaré par son module. Lu à CHAQUE requête : un changement est immédiat.
+  grants     String    @default("{}")
+  createdBy  String
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+}
+
+/// Statistiques de visite ANONYMES, agrégées par jour : jamais d'adresse IP, de cookie ni d'identifiant stocké.
+/// kind : "site" (totaux, key vide) · "page" (key = chemin) · "ref" (key = nom d'hôte de la provenance).
+model VisitDaily {
+  day      String
+  kind     String
+  key      String
+  views    Int    @default(0)
+  visitors Int    @default(0)
+
+  @@id([day, kind, key])
+}
+
+/// Sert uniquement à ne compter qu'une fois un visiteur par jour : empreinte salée (sel renouvelé chaque jour, jamais conservé),
+/// supprimée dès que le jour est passé. Impossible de remonter à une personne.
+model VisitSeen {
+  day  String
+  hash String
+  kind String
+  key  String
+
+  @@id([day, hash, kind, key])
+}
+
+// Registre des fichiers envoyés par /api/admin/upload (0.2.13). Une ligne par envoi : « en attente » (ownerInstance vide) pendant la courte fenêtre où la personne
+// qui l'a envoyé peut le faire REVENDIQUER par un module (permission « files »), puis « revendiqué » (ownerInstance rempli) : seule cette instance peut alors le
+// supprimer, original et dérivés compris. Une ligne en attente expirée ne change rien au fichier (il reste au cœur, comme avant) : elle est simplement oubliée, à la lecture.
+// Les fichiers envoyés avant la 0.2.13 n'ont pas de ligne : aucun module ne peut les revendiquer.
+model UploadFile {
+  // Nom sur le disque (<uuid>.<ext>), validé par UPLOAD_NAME_RE.
+  name          String    @id
+  // Qui l'a envoyé (identifiant d'utilisateur ; pas de lien : la personne peut disparaître sans toucher au registre).
+  uploaderId    String?
+  bytes         Int       @default(0)
+  createdAt     DateTime  @default(now())
+  ownerModule   String?
+  ownerInstance String?
+  claimedAt     DateTime?
+
+  @@index([ownerInstance])
+  @@index([ownerModule])
+  @@index([createdAt])
+}
+
+// ─── Pages d'overlay (0.5.0) ──────────────────────────────────────────────
+// Une composition pour OBS : résolution, éléments fournis par les modules (JSON borné : 30 au plus), style commun, interrupteur actif/inactif, mode test à échéance.
+// Le cœur en est le seul propriétaire (une source de vérité) ; elle fait partie de la sauvegarde. Le secret de l'adresse n'est jamais stocké en clair : `secretHash`
+// (SHA-256, sert à retrouver la page) et `secretSealed` (chiffré avec le secret du site, sert à recopier l'adresse). `rev` augmente à chaque changement visible dans OBS.
+model OverlayPage {
+  id           String    @id @default(cuid())
+  name         String
+  width        Int       @default(1920)
+  height       Int       @default(1080)
+  active       Boolean   @default(true)
+  style        String    @default("{}")
+  elements     String    @default("[]")
+  secretHash   String    @unique
+  secretSealed String    @default("")
+  testUntil    DateTime?
+  rev          Int       @default(1)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}

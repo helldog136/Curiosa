@@ -1,0 +1,39 @@
+/*
+  La feuille de style de « Mon skin ». Elle ne contient que de l'APPARENCE : couleurs, formes, mise en page des
+  éléments qui existent déjà. Aucun texte ajouté, rien de masqué. Chaque règle vise une RÉGION (data-skin-region)
+  ou une PIÈCE (data-skin-part) : la liste est dans docs/SKINS.md §9. Les classes et les identifiants sont interdits.
+*/
+
+/* Les cartes : une ombre légère (le jeton --sk-shadow-card est défini dans tokens.json). */
+[data-skin-part="card"] {
+  box-shadow: var(--sk-shadow-card);
+}
+
+/* Un petit mouvement, seulement si la personne ne l'a pas désactivé dans son appareil. */
+@media (prefers-reduced-motion: no-preference) {
+  [data-skin-part="card"] {
+    transition: transform var(--sk-duration) var(--sk-ease);
+  }
+  [data-skin-part="card"]:hover {
+    transform: translateY(-2px);
+  }
+}
+
+/* Un filet de la couleur du skin sous l'en-tête. */
+[data-skin-region="header"] {
+  border-bottom: 2px solid var(--v-accent);
+}
+
+/* Le bouton principal en gras. */
+[data-skin-part="button"][data-btn="primary"] {
+  font-weight: var(--sk-weight-bold);
+}
+
+/* Mise en page : à partir de 40 rem, la marque à gauche, le menu et les outils à droite. */
+@media (min-width: 40rem) {
+  [data-skin-region="header"] {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+}

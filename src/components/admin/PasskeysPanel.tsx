@@ -1,0 +1,96 @@
+"use client";
+
+import { useState, useSyncExternalStore, useTransition } from "react";
+import { ui } from "./ui";
+import { createPasskey, passkeysSupported } from "./webauthn";
+import { PendingButton } from "./PendingButton";
+import { UsernameHint } from "./UsernameHint";
+import { PasswordInput } from "./PasswordInput";
+
+type Item = { id: string; name: string; createdAt: string; lastUsedAt: string | null };
+type R = { error?: string; options?: Record<string, unknown>; challengeId?: string; ok?: boolean };
+type Labels = Record<"title" | "help" | "none" | "add" | "name" | "password" | "created" | "lastUsed" | "never" | "remove" | "removeHelp" | "cancel" | "save" | "unsupported" | "cancelled" | "rename", string>;
+type Props = {
+  items: Item[]; labels: Labels;
+  start: (password: string) => Promise<R>;
+  finish: (challengeId: string, response: Record<string, unknown>, name: string) => Promise<R>;
+  remove: (id: string, password: string) => Promise<R>;
+  rename: (id: string, name: string) => Promise<R>;
+  /** E-mail du compte : donné aux gestionnaires de mots de passe (champ invisible) pour qu'ils sachent quelle fiche remplir. */
+  username?: string;
+};
+
+/** Ajouter, renommer et retirer ses clés d'accès (empreinte, visage, code de l'appareil, clé de sécurité). */
+export function PasskeysPanel({ items, labels, start, finish, remove, rename, username = "" }: Props) {
+  const [list, setList] = useState(items);
+  const [mode, setMode] = useState<"idle" | "add" | { remove: string }>("idle");
+  const [pending, run] = useTransition();
+  const [error, setError] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+  const supported = useSyncExternalStore(() => () => {}, passkeysSupported, () => true);
+  const reset = () => { setMode("idle"); setPassword(""); setName(""); setError(""); };
+  const when = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString() : labels.never);
+
+  const add = () => run(async () => {
+    setError("");
+    const begun = await start(password);
+    if (begun.error || !begun.options || !begun.challengeId) { setError(begun.error ?? ""); return; }
+    let response;
+    try { response = await createPasskey(begun.options); } catch { setError(labels.cancelled); return; }
+    const done = await finish(begun.challengeId, response, name);
+    if (done.error) { setError(done.error); return; }
+    location.reload(); // la liste est relue côté serveur
+  });
+  const drop = (id: string) => run(async () => {
+    const r = await remove(id, password);
+    if (r.error) { setError(r.error); return; }
+    setList((l) => l.filter((x) => x.id !== id)); reset();
+  });
+
+  return (
+    <section className={`${ui.card} space-y-4`} data-testid="passkeys-card">
+      <h3 className="text-lg font-semibold">{labels.title}</h3>
+      <p className="text-sm text-muted">{labels.help}</p>
+      {error && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm">{error}</p>}
+      {list.length === 0 && <p className="text-sm text-muted">{labels.none}</p>}
+      <ul className="space-y-2">
+        {list.map((k) => (
+          <li key={k.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line p-3" data-testid="passkey-row">
+            <span className="min-w-0">
+              <span className="block font-medium">🔑 {k.name}</span>
+              <span className="block text-xs text-muted">{labels.created} {when(k.createdAt)} · {labels.lastUsed} {when(k.lastUsedAt)}</span>
+            </span>
+            <span className="flex gap-2">
+              <button type="button" className={ui.btn} onClick={() => { const n = window.prompt(labels.rename, k.name); if (n) run(async () => { const r = await rename(k.id, n); if (r.error) setError(r.error); else setList((l) => l.map((x) => (x.id === k.id ? { ...x, name: n } : x))); }); }}>{labels.rename}</button>
+              <button type="button" className={ui.btnDanger} onClick={() => { setMode({ remove: k.id }); setError(""); setPassword(""); }}>{labels.remove}</button>
+            </span>
+          </li>
+        ))}
+      </ul>
+      {mode === "idle" && (supported ? <button type="button" className={ui.btnPrimary} onClick={() => { setMode("add"); setName(""); setPassword(""); setError(""); }}>{labels.add}</button> : <p className="text-sm text-muted">{labels.unsupported}</p>)}
+      {mode === "add" && (
+        <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); if (password && !pending) add(); }}>
+          {username && <UsernameHint value={username} />}
+          <input value={name} onChange={(e) => setName(e.target.value)} name="passkey-name" autoComplete="off" placeholder={labels.name} aria-label={labels.name} maxLength={60} className={`${ui.input} max-w-xs`} data-testid="passkey-name" />
+          <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} name="current-password" autoComplete="current-password" placeholder={labels.password} aria-label={labels.password} className={`${ui.input} max-w-xs`} data-testid="passkey-password" />
+          <div className="flex gap-3">
+            <PendingButton type="submit" variant="primary" pending={pending} disabled={!password} data-testid="passkey-add-confirm">{labels.add}</PendingButton>
+            <button type="button" className={ui.btn} onClick={reset}>{labels.cancel}</button>
+          </div>
+        </form>
+      )}
+      {typeof mode === "object" && (
+        <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); if (password && !pending) drop(mode.remove); }}>
+          <p className="text-sm text-muted">{labels.removeHelp}</p>
+          {username && <UsernameHint value={username} />}
+          <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} name="current-password" autoComplete="current-password" placeholder={labels.password} aria-label={labels.password} className={`${ui.input} max-w-xs`} />
+          <div className="flex gap-3">
+            <PendingButton type="submit" variant="danger" pending={pending} disabled={!password}>{labels.remove}</PendingButton>
+            <button type="button" className={ui.btn} onClick={reset}>{labels.cancel}</button>
+          </div>
+        </form>
+      )}
+    </section>
+  );
+}

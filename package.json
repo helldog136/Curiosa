@@ -1,0 +1,89 @@
+{
+  "name": "curiosa",
+  "version": "0.6.1",
+  "private": true,
+  "license": "SEE LICENSE IN LICENSE",
+  "author": "Helldog136 (https://helldog136.be)",
+  "description": "Framework générique de site pour les personnes qui créent : collections, redirections, multilingue et modules installables.",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "audit": "node scripts/audit.mjs",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "module:check": "node testsupport/check.mjs",
+    "skin:check": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/skin-check.mjs",
+    "skin:official": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/skin-official.mjs",
+    "skin:bench": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/skin-bench.mjs",
+    "skin:bench:refresh": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./testsupport/skins/bench/register.mjs testsupport/skins/bench/refresh.mjs",
+    "typecheck": "tsc --noEmit",
+    "bootstrap": "node scripts/bootstrap.mjs",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "licenses": "node scripts/licenses.mjs",
+    "migrations:freeze": "node scripts/migrations-freeze.mjs",
+    "test": "node scripts/test.mjs",
+    "test:watch": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./tests/helpers/register.mjs --test --watch \"tests/**/*.test.mjs\"",
+    "import:grav": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./tests/helpers/register.mjs scripts/import-grav.mjs",
+    "visual:prepare": "node scripts/visual/site.mjs prepare",
+    "visual:capture": "node scripts/visual/capture.mjs",
+    "visual:compare": "node scripts/visual/compare.mjs",
+    "visual:sensitivity": "node scripts/visual/sensitivity.mjs",
+    "visual:dom": "node scripts/visual/dom-check.mjs",
+    "visual:skin-proof": "node scripts/visual/skin-proof.mjs"
+  },
+  "dependencies": {
+    "@prisma/client": "6.19.3",
+    "@simplewebauthn/server": "^14.0.3",
+    "bcryptjs": "^3.0.3",
+    "next": "16.4.1",
+    "next-auth": "5.0.0-beta.32",
+    "nodemailer": "^10.0.16",
+    "postcss": "8.5.29",
+    "qrcode": "^1.5.4",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
+    "sharp": "^0.35.4",
+    "simple-icons": "^16.29.0",
+    "zod": "^4.6.6"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "4.3.3",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^20.17.10",
+    "@types/nodemailer": "^8.0.2",
+    "@types/qrcode": "^1.5.6",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.5",
+    "eslint": "^9.17.0",
+    "eslint-config-next": "16.4.1",
+    "prisma": "6.19.3",
+    "tailwindcss": "4.3.3",
+    "typescript": "^5.9.3",
+    "yaml": "^2.9.1"
+  },
+  "prisma": {
+    "schema": "prisma/schema.prisma"
+  },
+  "allowScripts": {
+    "prisma@6.19.3": true,
+    "@prisma/engines@6.19.3": true,
+    "unrs-resolver@1.12.2": true,
+    "@prisma/client@6.19.3": true
+  },
+  "overrides": {
+    "next-auth": {
+      "nodemailer": "$nodemailer",
+      "@simplewebauthn/server": "$@simplewebauthn/server"
+    },
+    "@auth/core": {
+      "nodemailer": "$nodemailer",
+      "@simplewebauthn/server": "$@simplewebauthn/server"
+    }
+  }
+}

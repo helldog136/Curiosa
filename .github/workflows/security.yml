@@ -1,0 +1,20 @@
+name: Sécurité
+on:
+  push:
+    branches: [dev, master, main]
+  pull_request:
+  schedule:
+    - cron: "17 5 * * 1" # chaque lundi : de nouvelles failles apparaissent sans qu'on touche au code
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm ci --ignore-scripts
+      - run: npm run audit
+      # la release n'est possible que si le build et les tests passent aussi
+      - run: npx prisma generate
+      - run: npm run build
+      - run: npm test

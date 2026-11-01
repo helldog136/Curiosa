@@ -1,0 +1,8 @@
+[
+  {
+    "id": "announcement-banner",
+    "name": "Announcement banner",
+    "description": "Bannière d'annonce multilingue (module d'exemple).",
+    "repo": "https://github.com/your-name/curiosa-module-announcement-banner"
+  }
+]

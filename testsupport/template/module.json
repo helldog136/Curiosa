@@ -1,0 +1,40 @@
+{
+  "apiVersion": 2,
+  "id": "my-module",
+  "name": { "en": "My module", "fr": "Mon module" },
+  "version": "1.0.0",
+  "minCore": "0.1.22",
+  "description": {
+    "en": "Shows a short welcome message on the home page. A starting point for your own module.",
+    "fr": "Affiche un court message d'accueil sur la page d'accueil. Un point de départ pour votre propre module."
+  },
+  "author": "Your name",
+  "license": "MIT",
+  "icon": "👋",
+  "main": "index.mjs",
+  "type": "widget",
+  "instances": "multiple",
+  "permissions": ["sections", "mcp"],
+  "settings": [
+    {
+      "key": "message", "type": "text", "default": "Welcome to my site", "translatable": true,
+      "label": { "en": "Welcome message", "fr": "Message d'accueil" },
+      "help": { "en": "Shown on the home page, for example “Welcome to my site”.", "fr": "Affichée sur l'accueil, par exemple « Bienvenue chez moi »." }
+    },
+    {
+      "key": "signature", "type": "text", "optional": true, "translatable": true,
+      "label": { "en": "Signature", "fr": "Signature" },
+      "help": { "en": "Shown under the message, for example “Marie”. Empty: none.", "fr": "Sous le message, par exemple « Marie ». Vide : aucune." }
+    }
+  ],
+  "sections": [
+    { "id": "welcome", "size": "small", "label": { "en": "Welcome message", "fr": "Message d'accueil" } }
+  ],
+  "mcp": [
+    {
+      "name": "my_module_message", "readOnly": true,
+      "description": "Read the welcome message currently shown on the home page.",
+      "input": { "type": "object", "properties": {} }
+    }
+  ]
+}
