@@ -2,6 +2,7 @@ import { ui } from "./ui";
 import { HelpBelow, HelpTip } from "./HelpTip";
 import { isLongHelp } from "./helpRule";
 import { ERROR_BORDER, FieldErrorText } from "./FieldErrors";
+import { MANAGER_IGNORE, PasswordInput } from "./PasswordInput";
 
 /**
  * Sous un champ : l'EXEMPLE (« Par exemple : insta, ig », déjà écrit en toutes lettres par l'appelant) puis l'ERREUR (icône + texte, jamais seule : « Écrivez un nombre
@@ -42,15 +43,23 @@ export function FieldLabel({ id, className, flag, help, text, children }: { id: 
 const rowClass = (inline?: boolean) => (inline ? "sm:flex sm:items-start sm:gap-3" : undefined);
 const labelClass = (inline?: boolean) => (inline ? "mb-1 block pt-0 text-sm text-muted sm:mb-0 sm:w-24 sm:shrink-0 sm:pt-3" : ui.label);
 
-export function TextField({ label, name, help, example, error, required, flag, defaultValue, type = "text", placeholder, autoComplete, list, pattern, title, inline, min, max, step, unit, inputMode, inputProps }: Common & {
+export function TextField({ label, name, help, example, error, required, flag, defaultValue, type = "text", placeholder, autoComplete, list, pattern, title, inline, min, max, step, unit, inputMode, inputProps, noManager, passwordMin }: Common & {
   defaultValue?: string | number; type?: string; placeholder?: string; autoComplete?: string; list?: string; pattern?: string; title?: string; inline?: boolean;
   /** (0.6.0) Nombre borné : bornes et pas du champ, et l'unité écrite à sa droite (« secondes »). */
   min?: number; max?: number; step?: number; unit?: string; inputMode?: "numeric" | "decimal" | "text" | "url";
   /** Attributs et gestionnaires de plus pour le champ (client seulement : `onInvalid`…). */
   inputProps?: React.InputHTMLAttributes<HTMLInputElement>;
+  /** Mot de passe : longueur minimale, dite aux gestionnaires de mots de passe pour qu'ils en génèrent un assez long (l'erreur, elle, s'écrit sous le champ). */
+  passwordMin?: number;
+  /** Mot de passe d'un AUTRE compte ou secret technique (clé d'un service) : les gestionnaires de mots de passe ne le proposent pas. Par défaut ils le proposent. */
+  noManager?: boolean;
 }) {
-  const field = (
-    <input id={name} name={name} type={type} required={required} defaultValue={defaultValue} placeholder={placeholder} autoComplete={autoComplete} list={list} pattern={pattern} title={title} min={min} max={max} step={step} inputMode={inputMode} {...inputProps} {...aria(name, example, error)} {...(autoComplete === "off" || autoComplete === "new-password" ? { "data-1p-ignore": true, "data-lpignore": "true", "data-bwignore": "true", "data-form-type": "other" } : {})} className={`${type === "color" ? ui.colorInput : ui.input}${error ? ` ${ERROR_BORDER}` : ""}`} />
+  const aware = autoComplete === "off" ? MANAGER_IGNORE : {};
+  const field = type === "password" ? (
+    <PasswordInput {...inputProps} id={name} name={name} required={required} placeholder={placeholder} passwordMin={passwordMin} autoComplete={autoComplete === "current-password" ? "current-password" : "new-password"} noManager={noManager}
+      {...aria(name, example, error)} className={`${ui.input}${error ? ` ${ERROR_BORDER}` : ""}`} />
+  ) : (
+    <input id={name} name={name} type={type} required={required} defaultValue={defaultValue} placeholder={placeholder} autoComplete={autoComplete} list={list} pattern={pattern} title={title} min={min} max={max} step={step} inputMode={inputMode} {...inputProps} {...aria(name, example, error)} {...aware} className={`${type === "color" ? ui.colorInput : ui.input}${error ? ` ${ERROR_BORDER}` : ""}`} />
   );
   return (
     <div className={rowClass(inline)}>

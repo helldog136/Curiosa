@@ -3,6 +3,7 @@ import { localeName } from "@/core/i18n/locales";
 import { UI_LOCALES } from "@/core/i18n/dictionary";
 import { ActionForm } from "@/components/admin/ActionForm";
 import { Select, TextField } from "@/components/admin/Field";
+import { UsernameHint } from "@/components/admin/UsernameHint";
 import { Callout, DangerZone, PageHeader, Panel } from "@/components/admin/Page";
 import { ConfirmButton } from "@/components/admin/ConfirmButton";
 import { PasskeysPanel } from "@/components/admin/PasskeysPanel";
@@ -37,9 +38,10 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
 
       <Panel title={t("account.password")} help={t("account.passwordHelp")} testid="password-card">
         <ActionForm action={changePassword} submitLabel={t("account.passwordButton")}>
+          <UsernameHint value={user.email} />
           <div className="grid gap-4 sm:grid-cols-2">
             <TextField name="current" type="password" label={t("account.currentPassword")} required autoComplete="current-password" />
-            <TextField name="next" type="password" label={t("account.newPassword")} required autoComplete="new-password" help={t("users.passwordHelp")} />
+            <TextField name="next" type="password" label={t("account.newPassword")} required passwordMin={10} autoComplete="new-password" help={t("users.passwordHelp")} />
           </div>
         </ActionForm>
       </Panel>
@@ -51,11 +53,11 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
         </div>
       <TwoFactorPanel
         enabled={user.totp} remaining={remaining} enforced={enforced} needed={false}
-        start={startTwoFactor} confirm={confirmTwoFactor} disable={disableMyTwoFactor} regenerate={regenerateMyRecoveryCodes}
+        username={user.email} start={startTwoFactor} confirm={confirmTwoFactor} disable={disableMyTwoFactor} regenerate={regenerateMyRecoveryCodes}
         labels={{ title: t("account.twofa.title"), help: t("account.twofa.help"), enable: t("account.twofa.enable"), scan: t("account.twofa.scan"), key: t("account.twofa.key"), confirm: t("account.twofa.confirm"), confirmButton: t("account.twofa.confirmButton"), codesTitle: t("account.twofa.codesTitle"), codesHelp: t("account.twofa.codesHelp"), codesDone: t("account.twofa.codesDone"), enabled: t("account.twofa.enabled"), remaining: t("account.twofa.remaining"), disable: t("account.twofa.disable"), disableHelp: t("account.twofa.disableHelp"), password: t("field.password"), code: t("login.code"), regen: t("account.twofa.regen"), regenHelp: t("account.twofa.regenHelp"), required: t("account.twofa.required"), need: t("account.twofa.need"), cancel: t("floating.discard"), print: t("account.twofa.print") }}
       />
       <PasskeysPanel
-        items={passkeys} start={startPasskeyRegistration} finish={finishPasskeyRegistration} remove={removeMyPasskey} rename={renameMyPasskey}
+        items={passkeys} username={user.email} start={startPasskeyRegistration} finish={finishPasskeyRegistration} remove={removeMyPasskey} rename={renameMyPasskey}
         labels={{ title: t("account.passkeys.title"), help: t("account.passkeys.help"), none: t("account.passkeys.none"), add: t("account.passkeys.add"), name: t("account.passkeys.name"), password: t("field.password"), created: t("account.passkeys.created"), lastUsed: t("account.passkeys.lastUsed"), never: t("account.passkeys.never"), remove: t("account.passkeys.remove"), removeHelp: t("account.passkeys.removeHelp"), cancel: t("floating.discard"), save: t("action.save"), unsupported: t("account.passkeys.unsupported"), cancelled: t("account.passkeys.cancelled"), rename: t("account.passkeys.rename") }}
       />
       </section>

@@ -33,13 +33,18 @@ export async function completeSetup(_prev: ActionState, formData: FormData): Pro
   const defaultLocale = str("defaultLocale");
   const t = makeTranslator(isKnownLocale(defaultLocale) ? defaultLocale : "en");
 
-  if (process.env.SETUP_TOKEN && !safeEqual(str("setupToken"), process.env.SETUP_TOKEN)) return { error: t("setup.error.token") };
   if (!isKnownLocale(defaultLocale)) return { error: t("setup.error.generic") };
 
   const email = str("ownerEmail").toLowerCase();
   const password = String(formData.get("ownerPassword") ?? "");
-  if (!str("ownerName") || !str("siteName") || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { error: t("setup.error.generic") };
-  if (password.length < 10) return { error: t("setup.error.password") };
+  if (!str("ownerName") || !str("siteName")) return { error: t("setup.error.generic") };
+  // Chaque problème est dit sous SON champ (le premier reçoit le focus), tous ensemble : on ne fait pas corriger une erreur à la fois.
+  const errors: Record<string, string> = {};
+  if (process.env.SETUP_TOKEN && !safeEqual(str("setupToken"), process.env.SETUP_TOKEN)) errors.setupToken = t("setup.error.token");
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) errors.ownerEmail = t("setup.error.email");
+  if (password.length < 10) errors.ownerPassword = t("setup.error.password");
+  else if (formData.has("ownerPasswordConfirm") && String(formData.get("ownerPasswordConfirm")) !== password) errors.ownerPasswordConfirm = t("choosePassword.mismatch");
+  if (Object.keys(errors).length) return { errors };
 
   const extra = formData.getAll("extraLocales").map(String).filter((l) => isKnownLocale(l) && l !== defaultLocale);
   const locales = [defaultLocale, ...new Set(extra)];

@@ -141,7 +141,7 @@ export function ActionForm({ action, children, submitLabel, className = "space-y
 
   return (
     // `data-dirty` : lu par les onglets de la page (point sur l'onglet modifié, avertissement avant de quitter par un lien).
-    <form ref={ref} onSubmit={onSubmit} className={className} data-dirty={floating && dirty ? "1" : undefined}>
+    <form ref={ref} method="post" onSubmit={onSubmit} className={className} data-dirty={floating && dirty ? "1" : undefined}>
       <FieldErrorsProvider value={fieldErrorsValue}>{children}</FieldErrorsProvider>
       {state?.error && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm text-red-700">{state.error}</p>}
       {state?.ok && <p role="status" className="rounded-lg border border-emerald-500/50 bg-emerald-500/10 p-3 text-sm text-emerald-700">{state.ok}</p>}

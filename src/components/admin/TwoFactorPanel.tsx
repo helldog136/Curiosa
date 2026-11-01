@@ -3,6 +3,8 @@
 import { useState, useTransition } from "react";
 import { ui } from "./ui";
 import { PendingButton } from "./PendingButton";
+import { UsernameHint } from "./UsernameHint";
+import { PasswordInput } from "./PasswordInput";
 
 type Result = { error?: string; qr?: string; secret?: string; codes?: string[]; remaining?: number };
 type Labels = Record<"title" | "help" | "enable" | "scan" | "key" | "confirm" | "confirmButton" | "codesTitle" | "codesHelp" | "codesDone" | "enabled" | "remaining" | "disable" | "disableHelp" | "password" | "code" | "regen" | "regenHelp" | "required" | "need" | "cancel" | "print", string>;
@@ -17,10 +19,12 @@ type Props = {
   confirm: (code: string) => Promise<Result>;
   disable: (password: string, code: string) => Promise<Result>;
   regenerate: (password: string) => Promise<Result>;
+  /** E-mail du compte : donné aux gestionnaires de mots de passe (champ invisible) pour qu'ils sachent quelle fiche remplir. */
+  username?: string;
 };
 
 /** Activer / désactiver la double vérification, voir ses codes de secours (une seule fois). Les actions sont des actions serveur : rien de secret ne transite côté client sauf ce qu'on affiche. */
-export function TwoFactorPanel({ enabled, remaining, enforced, needed, labels, start, confirm, disable, regenerate }: Props) {
+export function TwoFactorPanel({ enabled, remaining, enforced, needed, labels, start, confirm, disable, regenerate, username = "" }: Props) {
   const [pending, run] = useTransition();
   const [mode, setMode] = useState<"idle" | "enroll" | "codes" | "disable" | "regen">("idle");
   const [setup, setSetup] = useState<Result>({});
@@ -30,6 +34,8 @@ export function TwoFactorPanel({ enabled, remaining, enforced, needed, labels, s
   const [error, setError] = useState("");
   const [code, setCode] = useState("");
   const [password, setPassword] = useState("");
+  const doRegen = () => run(async () => { const r = await regenerate(password); settle(r, () => { setCodes(r.codes ?? []); setLeft(r.remaining ?? 0); setMode("codes"); }); });
+  const doDisable = () => run(async () => { const r = await disable(password, code); settle(r, () => { setIsOn(false); setMode("idle"); }); });
   const settle = (r: Result, then: () => void) => { if (r.error) setError(r.error); else { setError(""); then(); } };
 
   return (
@@ -81,26 +87,28 @@ export function TwoFactorPanel({ enabled, remaining, enforced, needed, labels, s
       )}
 
       {mode === "regen" && (
-        <div className="space-y-3">
+        <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); if (password && !pending) doRegen(); }}>
           <p className="text-sm text-muted">{labels.regenHelp}</p>
-          <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" autoComplete="current-password" placeholder={labels.password} aria-label={labels.password} className={`${ui.input} max-w-xs`} />
+          {username && <UsernameHint value={username} />}
+          <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} name="current-password" autoComplete="current-password" placeholder={labels.password} aria-label={labels.password} className={`${ui.input} max-w-xs`} />
           <div className="flex gap-3">
-            <PendingButton type="button" variant="primary" pending={pending} disabled={!password} onClick={() => run(async () => { const r = await regenerate(password); settle(r, () => { setCodes(r.codes ?? []); setLeft(r.remaining ?? 0); setMode("codes"); }); })}>{labels.regen}</PendingButton>
+            <PendingButton type="submit" variant="primary" pending={pending} disabled={!password}>{labels.regen}</PendingButton>
             <button type="button" className={ui.btn} onClick={() => { setMode("idle"); setError(""); }}>{labels.cancel}</button>
           </div>
-        </div>
+        </form>
       )}
 
       {mode === "disable" && (
-        <div className="space-y-3">
+        <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); if (password && code && !pending) doDisable(); }}>
           <p className="text-sm text-muted">{labels.disableHelp}</p>
-          <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" autoComplete="current-password" placeholder={labels.password} aria-label={labels.password} className={`${ui.input} max-w-xs`} />
-          <input value={code} onChange={(e) => setCode(e.target.value)} placeholder={labels.code} aria-label={labels.code} autoComplete="one-time-code" className={`${ui.input} max-w-xs`} />
+          {username && <UsernameHint value={username} />}
+          <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} name="current-password" autoComplete="current-password" placeholder={labels.password} aria-label={labels.password} className={`${ui.input} max-w-xs`} />
+          <input value={code} onChange={(e) => setCode(e.target.value)} name="code" placeholder={labels.code} aria-label={labels.code} autoComplete="one-time-code" autoCapitalize="none" spellCheck={false} className={`${ui.input} max-w-xs`} />
           <div className="flex gap-3">
-            <PendingButton type="button" variant="danger" pending={pending} disabled={!password || !code} onClick={() => run(async () => { const r = await disable(password, code); settle(r, () => { setIsOn(false); setMode("idle"); }); })}>{labels.disable}</PendingButton>
+            <PendingButton type="submit" variant="danger" pending={pending} disabled={!password || !code}>{labels.disable}</PendingButton>
             <button type="button" className={ui.btn} onClick={() => { setMode("idle"); setError(""); }}>{labels.cancel}</button>
           </div>
-        </div>
+        </form>
       )}
     </section>
   );

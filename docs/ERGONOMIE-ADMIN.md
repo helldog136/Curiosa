@@ -104,5 +104,6 @@ Le cœur fournit ces briques **une fois**, pour ses pages **et** pour les module
 | Options rares repliées avec un résumé | R2, R7 | `MoreOptions` | réglage `rare`, champ `folded` |
 | 2 à 4 choix en boutons côte à côte | R19 | `Segmented` | réglage `display: "segmented"`, champ `kind: "segmented"` |
 | Exemple et erreur sous le champ | R11, R22 | `Field` : `example`, `error` | réglage `example`, champ `example`, `errors` d'une action |
+| Mot de passe, identifiant, code à usage unique | R22, R28 | `PasswordInput`, `UsernameHint` | réglage `secret` (clé d'un service) ; règles dans [FORMULAIRES-AUTHENTIFICATION.md](FORMULAIRES-AUTHENTIFICATION.md) |
 
 Un nouveau besoin qui revient dans plusieurs pages s'ajoute **ici, au cœur**, pas page par page.

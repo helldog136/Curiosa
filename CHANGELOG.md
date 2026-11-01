@@ -9,8 +9,18 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ## Prochaine version (non publiée)
 
+### Équipe et rôles
+
+- **Un seul tableau pour toute l'équipe.** Chaque personne tient sur une ligne (nom, rôle, état, dernière connexion). Avec douze personnes, la page passe d'environ 5 500 px de haut à environ 2 000 px.
+- **Chercher en tapant, filtrer par rôle.** La recherche filtre pendant la frappe, sans accents ni majuscules ; des boutons par rôle affichent leur nombre. Sur téléphone, chaque ligne devient une carte.
+- **Changer un rôle depuis la ligne.** « Changer le rôle » ouvre une boîte qui dit ce que la personne perd et ce qu'elle gagne avant d'enregistrer. Le mot de passe temporaire, la déconnexion partout, la double vérification et la suppression sont rangés dans le menu « ⋯ », et chaque confirmation nomme la personne.
+- **Ajouter quelqu'un en deux champs.** Il suffit d'un e-mail et d'un rôle, et le rôle proposé est toujours le moins puissant (Rédaction). Le nom et le mot de passe de départ sont sous « Plus d'options » ; sans mot de passe, le site en crée un, affiché une seule fois, que la personne remplace à sa première connexion.
+- **Des rôles plus faciles à régler.** Un tableau avec recherche liste les rôles, et leurs droits sont rangés par module, repliés, avec une recherche. Aucune règle de droits n'a changé.
+
 ### Administration
 
+- **Les gestionnaires de mots de passe reconnaissent l'installation.** 1Password, Bitwarden, Dashlane, Chrome et Safari peuvent maintenant proposer un mot de passe et l'enregistrer avec votre e-mail. Un bouton « Afficher » permet de relire ce que vous tapez.
+- **La même correction pour la connexion et les mots de passe du compte.** Premier mot de passe, changement, double vérification, clés d'accès et sauvegarde sont reconnus de la même façon, et les erreurs s'écrivent sous le champ concerné.
 - **Choisir un mois entier en un geste.** Dans le champ « Période », la liste « Tout le mois de » remplit d'un coup le 1er et le dernier jour du mois, février compris. Si vous changez ensuite un jour à la main, la liste revient à « Choisir un mois ».
 - **Des périodes toutes prêtes.** Une liste avec recherche propose les saisons et des fêtes de plusieurs traditions, rangées par date ou par ordre alphabétique. Chaque ligne montre ses dates.
 - **Les fêtes qui changent chaque année sont honnêtes.** Elles remplissent les dates de la prochaine fois, sans « Chaque année », avec un rappel de les refaire l'an prochain. Pour les fêtes musulmanes, la date réelle dépend de la lune, à un jour près.
@@ -50,6 +60,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Règle du cœur** `BRAND_MARK_CSS` (`src/core/skins/brand.ts`) émise après la feuille du skin, en `!important` ; la police vient de `--curiosa-wordmark-font` (option `variable` de `wordmark.ts`).
 - **Kit** : `skin:check --visual` compare le style calculé du mot sous le skin et sous basic (`kit-brand-changed`) et vérifie que la police de marque est chargée (`kit-brand-font-missing`). Le banc d'essai chargeait un double sans police : il embarque maintenant le vrai fichier `curiosa-wordmark.woff2`.
 - **Les cinq skins du catalogue** posent encore `text-transform` / `letter-spacing` sur `credit` ou `credit a` : ils sont refusés à l'installation par ce cœur tant que `curiosa-skins` n'a pas publié une version corrective.
+- Nouveaux composants du cœur : `RowTable` (tableau de lignes pour les pages du cœur), `FormDialog`, `RightsEditor`, `MemberRoleDialog` et `Badge` (la table des pastilles sort d'`AdminTable`). Aucune règle de sécurité ni de permission modifiée.
 - **`scripts/install.sh` : catalogues de messages.** Un bloc `catalog_XX` par langue dans le fichier (toujours un seul fichier, compatible bash 3) ; langue choisie par `--lang`, `CURIOSA_LANG`, `LC_ALL`, `LC_MESSAGES`, `LANG`. Ajouter une langue : un bloc et son code dans `LANGS` (docs/INSTALL.md). `tests/core/install-i18n.test.mjs` vérifie la parité et les sorties machine.
 
 
