@@ -7,7 +7,8 @@
  *  - `correctReadability(tokens, mode, options)` : l'échelle de correction du §7.3 appliquée AU RENDU, sans rien écrire :
  *    (1) recalculer les couleurs dérivées, (2) rapprocher le texte (et liens, focus, couleur principale) du noir/blanc,
  *    (3) remettre une pièce de module à sa valeur par défaut, (4) sinon SUSPENDRE le mode (le cœur applique alors basic).
- *  - `probableIllegibility(colors, mode)` : avertissement « illisibilité probable » de l'écran de retouches (jamais bloquant).
+ *  - `probableIllegibility(colors, mode)` : CONSEIL de lisibilité pour les couleurs choisies par la personne propriétaire (écran de retouches, assistants IA) :
+ *    seuils plus bas que l'AA (`ADVICE_*`), jamais bloquant, jamais appliqué d'office. Le niveau AA ci-dessus ne vaut que pour les skins eux-mêmes.
  *
  * Transparences : un fond translucide est composé sur ce qu'il y a derrière (fond de page, puis blanc en mode clair / noir en
  * mode sombre) ; un texte translucide est composé sur son fond. Ainsi un skin « verre » est jugé sur ce qu'on voit.
@@ -484,7 +485,19 @@ function suspendedNotice(mode: Mode): Text {
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
-// Retouches : « illisibilité probable » (écran Apparence, jamais bloquant)
+// Retouches : CONSEIL de lisibilité (écran Apparence et assistants IA ; jamais bloquant, jamais appliqué d'office)
+
+/**
+ * Seuils du CONSEIL pour les couleurs que la personne propriétaire choisit elle-même. Le calcul est celui de WCAG (le même que les skins officiels),
+ * mais le conseil ne se déclenche que sous ces seuils, plus bas que le niveau AA que le kit des skins officiels (`skin:check`, `checkReadability`) continue d'exiger.
+ * Raisons : la couleur est un choix assumé de la personne qui possède le site ; un conseil trop fréquent est ignoré ; et ces valeurs ne marquent que
+ * les cas où la lecture devient réellement pénible (texte courant : sous 3 ; liens et éléments d'interface : sous 2 ; seconde couleur, décorative : sous 1,5).
+ * Les valeurs « recommandées » (celles qu'on affiche et que « Essayer une couleur plus lisible » vise) restent les niveaux AA.
+ */
+export const ADVICE_TEXT = 3;
+export const ADVICE_LINK = 2;
+export const ADVICE_UI = 2;
+export const ADVICE_DECOR = 1.5;
 
 export type RetouchColors = {
   background?: string | null;
@@ -497,16 +510,23 @@ export type RetouchColors = {
 export type ProbableField = "background" | "surface" | "text" | "accent" | "accent2";
 
 export type ProbableIssue = {
-  /** Champ sous lequel afficher l'avertissement. */
+  /** Champ sous lequel afficher le conseil. */
   field: ProbableField;
   pair: number;
   mode: Mode | null;
+  /** Rapport mesuré. */
   ratio: number;
+  /** Seuil sous lequel le conseil se déclenche. */
   required: number;
-  /** Phrase simple, avec un exemple. */
+  /** Niveau recommandé (AA), affiché à la personne. */
+  recommended: number;
+  /** Ce qui est mesuré : la clause (« dans le mode clair, les liens seraient difficiles à lire sur ce fond »). */
   message: Text;
-  /** Détails (à replier) : les chiffres. */
+  /** Le conseil complet, prêt à afficher : « Conseil : … (rapport 2,6 ; 4,5 recommandé pour le texte). Vous pouvez garder cette couleur. » */
+  advice: Text;
+  /** Chiffres seuls : « rapport 2,6 ; 4,5 recommandé pour le texte ». */
   detail: Text;
+  /** Valeur suggérée pour le champ (jamais appliquée d'office). */
   example?: string;
   exampleHint?: Text;
 };
@@ -516,39 +536,79 @@ const solid = (v: string | null | undefined): Rgba | null => {
   return c && c.a === 1 ? c : null;
 };
 
+type Hexes = { background: string; surface: string | null; text: string | null; accent: string | null; accent2: string | null };
+type Key = "text" | "surface" | "accent" | "link" | "accent2";
+
+/** Les rapports que le site rendrait pour ces couleurs (texte habituel dérivé du fond quand le texte n'est pas choisi). */
+function ratiosOf(c: Hexes): Record<Key, number> {
+  const bg = parseColor(c.background)!;
+  const palette = buildPalette(c.background, c.accent ?? "#e8a23b", { surface: c.surface, text: c.text, accent2: c.accent2 });
+  const fg = parseColor(palette["--v-fg"]!)!;
+  const card = parseColor(palette["--v-surface"]!)!;
+  const ac = parseColor(palette["--v-accent"]!)!;
+  const ac2 = parseColor(palette["--v-accent2"]!)!;
+  return {
+    text: contrastRatio(fg, bg), surface: contrastRatio(fg, card),
+    accent: contrastRatio(ac, bg), link: Math.min(contrastRatio(ac, bg), contrastRatio(ac, card)), accent2: contrastRatio(ac2, bg),
+  };
+}
+
+/** La plus petite retouche de `field` (vers le noir ou le blanc) pour laquelle tous les rapports `keys` atteignent `min`. */
+function suggestFor(base: Hexes, field: ProbableField, keys: readonly Key[], min: number): { hex: string; dir: "lighter" | "darker" } | null {
+  const start = solid(base[field] ?? undefined);
+  if (!start) return null;
+  let best: { hex: string; dir: "lighter" | "darker"; steps: number } | null = null;
+  for (const [to, dir] of [[BLACK, "darker"], [WHITE, "lighter"]] as const) {
+    for (let step = 1; step <= 100; step++) {
+      const t = step / 100;
+      const hex = toHex({ r: Math.round(start.r + (to.r - start.r) * t), g: Math.round(start.g + (to.g - start.g) * t), b: Math.round(start.b + (to.b - start.b) * t), a: 1 });
+      const r = ratiosOf({ ...base, [field]: hex });
+      if (keys.every((k) => r[k] >= min)) {
+        if (!best || step < best.steps) best = { hex, dir, steps: step };
+        break;
+      }
+    }
+  }
+  return best ? { hex: best.hex, dir: best.dir } : null;
+}
+
+const FOR: Record<"text" | "link" | "ui" | "second", Text> = {
+  text: { fr: "pour le texte", en: "for text" },
+  link: { fr: "pour les liens", en: "for links" },
+  ui: { fr: "pour les éléments d'interface", en: "for interface elements" },
+  second: { fr: "pour la seconde couleur", en: "for the second color" },
+};
+
 /**
- * Avertissement « illisibilité probable » pour l'écran de retouches : la personne a choisi ses couleurs (cinq au plus) ;
- * on dit, sous le bon champ et en mots simples, ce qui serait difficile à lire. `mode` est `null` en « un seul mode ».
- * Les couleurs dérivées (texte secondaire, texte des boutons, états) sont recalculées par le cœur : elles ne sont pas jugées ici.
+ * CONSEIL de lisibilité pour les couleurs que la personne a choisies (cinq au plus) : on dit, sous le bon champ et en mots simples, ce qui serait difficile à lire.
+ * Ce n'est qu'un conseil : la couleur choisie est toujours enregistrée et appliquée telle quelle. `mode` est `null` en « un seul mode ».
+ * Seuils : `ADVICE_*` ci-dessus (plus bas que le niveau AA des skins officiels). Les couleurs dérivées (texte secondaire, texte des boutons, états) sont
+ * recalculées par le cœur : elles ne sont pas jugées ici.
  */
 export function probableIllegibility(colors: RetouchColors, mode: Mode | null): ProbableIssue[] {
   try {
     const bg = solid(colors.background);
     if (!bg) return [];
-    const surface = solid(colors.surface) ?? null;
-    const text = solid(colors.text);
-    const accent = solid(colors.accent);
-    const accent2 = solid(colors.accent2);
-    // texte « habituel » quand la personne n'en a pas choisi : celui que le cœur dérive du fond
-    const hex = (c: Rgba) => toHex(c);
-    const palette = buildPalette(hex(bg), accent ? hex(accent) : "#e8a23b", { surface: surface ? hex(surface) : null, text: text ? hex(text) : null, accent2: accent2 ? hex(accent2) : null });
-    const fg = parseColor(palette["--v-fg"]!)!;
-    const card = parseColor(palette["--v-surface"]!)!;
+    const opt = (v: string | null | undefined) => { const c = solid(v); return c ? toHex(c) : null; };
+    const base: Hexes = { background: toHex(bg), surface: opt(colors.surface), text: opt(colors.text), accent: opt(colors.accent), accent2: opt(colors.accent2) };
+    const r = ratiosOf(base);
     const out: ProbableIssue[] = [];
     const sfx = mode ? "-mode" : "";
     const where: Params = { mode: mode ? modeText(mode) : "" };
 
-    const add = (field: ProbableField, pair: number, code: string, hintCode: string, fgColor: Rgba, backs: readonly Rgba[], min: number) => {
-      const worst = Math.min(...backs.map((b) => contrastRatio(fgColor, b)));
-      if (worst >= min) return;
+    const add = (field: ProbableField, pair: number, code: string, key: Key, advise: number, recommend: number, forWhat: Text, fixField: ProbableField, fixKeys: readonly Key[], hintCode: string) => {
+      const value = r[key];
+      if (value >= advise) return;
       const e = catalogEntry(code)!;
       const d = catalogEntry("probable-detail")!;
-      const s = suggestColor(fgColor, backs, min);
+      const a = catalogEntry("probable-advice")!;
+      const message = makeText(e.fr, e.en, where);
+      const detail = makeText(d.fr, d.en, { ratio: round2(value), rec: recommend, for: forWhat });
       const item: ProbableIssue = {
-        field, pair, mode, ratio: round2(worst), required: min,
-        message: makeText(e.fr, e.en, where),
-        detail: makeText(d.fr, d.en, { ratio: worst, min }),
+        field, pair, mode, ratio: round2(value), required: advise, recommended: recommend, message, detail,
+        advice: makeText(a.fr, a.en, { msg: message, detail }),
       };
+      const s = suggestFor(base, fixField, fixKeys, recommend);
       if (s) {
         const h = catalogEntry(hintCode)!;
         item.example = s.hex;
@@ -559,15 +619,19 @@ export function probableIllegibility(colors: RetouchColors, mode: Mode | null): 
       out.push(item);
     };
 
-    // texte / fond, texte / cartes : sous le champ « texte » s'il est choisi, sinon sous le fond ou la surface
-    const textField: ProbableField = text ? "text" : "background";
-    add(textField, 1, `probable-text${sfx}`, text ? "probable-hint-text" : "probable-hint-color", fg, [bg], AA_TEXT);
-    if (surface) add(text ? "text" : "surface", 2, `probable-surface${sfx}`, text ? "probable-hint-text" : "probable-hint-color", fg, [card], AA_TEXT);
-    if (accent) {
-      add("accent", 7, `probable-accent${sfx}`, "probable-hint-color", accent, [bg], AA_LARGE);
-      if (!out.some((i) => i.field === "accent")) add("accent", 6, `probable-link${sfx}`, "probable-hint-color", accent, [bg, card], AA_TEXT);
+    // texte / fond, texte / cartes : sous le champ « texte » s'il est choisi, sinon sous le fond ou la surface (c'est alors cette couleur que l'on propose de changer)
+    if (base.text) {
+      add("text", 1, `probable-text${sfx}`, "text", ADVICE_TEXT, AA_TEXT, FOR.text, "text", base.surface ? ["text", "surface"] : ["text"], "probable-hint-text");
+      if (base.surface) add("text", 2, `probable-surface${sfx}`, "surface", ADVICE_TEXT, AA_TEXT, FOR.text, "text", ["text", "surface"], "probable-hint-text");
+    } else {
+      add("background", 1, `probable-text${sfx}`, "text", ADVICE_TEXT, AA_TEXT, FOR.text, "background", base.surface ? ["text", "surface"] : ["text"], "probable-hint-color");
+      if (base.surface) add("surface", 2, `probable-surface${sfx}`, "surface", ADVICE_TEXT, AA_TEXT, FOR.text, "surface", ["surface"], "probable-hint-color");
     }
-    if (accent2) add("accent2", 7, `probable-accent2${sfx}`, "probable-hint-color", accent2, [bg], AA_LARGE);
+    if (base.accent) {
+      add("accent", 7, `probable-accent${sfx}`, "accent", ADVICE_UI, AA_LARGE, FOR.ui, "accent", ["accent"], "probable-hint-color");
+      if (!out.some((i) => i.field === "accent")) add("accent", 6, `probable-link${sfx}`, "link", ADVICE_LINK, AA_TEXT, FOR.link, "accent", ["link"], "probable-hint-color");
+    }
+    if (base.accent2) add("accent2", 13, `probable-accent2${sfx}`, "accent2", ADVICE_DECOR, AA_LARGE, FOR.second, "accent2", ["accent2"], "probable-hint-color");
     return out;
   } catch {
     return [];
