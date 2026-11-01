@@ -11,7 +11,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Tableau de bord
 
-- **Les brouillons se retrouvent.** Les chiffres « Entrées publiées » et « Brouillons » disent d'où ils viennent (« 1 dans Pages », « 1 dans Liste de liens ») et chaque ligne ouvre la liste de cette extension, déjà réglée sur les brouillons. Ils ne comptent plus que ce que vous pouvez retrouver : rien venant d'une extension retirée.
+- **Les brouillons se retrouvent.** Les chiffres « Entrées publiées » et « Brouillons » disent d'où ils viennent (« 1 dans Pages ») et chaque ligne ouvre la liste de cette extension, déjà réglée sur les brouillons. Rien venant d'une extension retirée n'est compté.
 - **Un filtre « Publiées / Brouillons » avec leur nombre** en haut de chaque liste d'entrées.
 - **Une seule carte « Extensions installées »** en mode simple, au lieu de « Instances de modules » et « Modules installés » (gardées en mode avancé). Le site en chiffres s'affiche aussi en mode simple.
 
