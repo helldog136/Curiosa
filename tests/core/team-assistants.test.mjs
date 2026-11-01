@@ -7,7 +7,6 @@ import { useTestDb } from "../helpers/db.mjs";
 
 const db = await useTestDb();
 const { prisma } = db;
-const React = (await import("react")).default;
 const { renderToStaticMarkup } = await import("react-dom/server");
 const V = await import("@/core/services/mcp/teamView");
 const L = await import("@/core/services/mcp/assistantsLinks");
