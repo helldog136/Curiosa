@@ -10,6 +10,7 @@
  * puis la feuille de style (assainie) du skin. Aucune URL, aucun script : seulement des déclarations de variables.
  */
 import { gradientOf, isHexColor, type Theme } from "../color";
+import { BRAND_MARK_CSS } from "./brand";
 import type { Composed, ComposedMode } from "./compose";
 
 const UPGRADE_SUPPORT = "@supports (background-image:linear-gradient(in oklch,#000,#fff))";
@@ -104,10 +105,10 @@ function optionalTokenRules(id: string, c: Composed): string {
     + (defined("--sk-color-heading") ? `${sel} [data-skin-part="heading"]{color:var(--sk-color-heading)}` : "");
 }
 
-/** La feuille complète : jetons, halo et fond, puis la feuille de style du skin. */
+/** La feuille complète : jetons, halo et fond, la feuille de style du skin, puis la règle du cœur qui fixe l'allure du nom Curiosa (brand.ts : elle a toujours le dernier mot). */
 export function renderSheet(c: Composed, decor: Decor = {}): string {
   const id = c.skinId;
   const [first, second] = c.modes;
   const tokens = c.modes.length === 2 ? dualSheet(id, first!.mode === "light" ? first! : second!, first!.mode === "light" ? second! : first!, c, decor) : monoSheet(id, first!, c, decor);
-  return tokens + optionalTokenRules(id, c) + (c.css ?? "");
+  return tokens + optionalTokenRules(id, c) + (c.css ?? "") + BRAND_MARK_CSS;
 }

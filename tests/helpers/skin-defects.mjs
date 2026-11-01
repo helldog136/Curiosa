@@ -103,4 +103,26 @@ export const DEFECTS = [
     static: [],
     visual: ["kit-contrast-rendered"],
   },
+  // ── le nom « Curiosa » (docs/SKINS.md, « Ce qu'un skin ne peut jamais changer : le nom Curiosa ») : refusé par l'assainisseur ; le navigateur le verrait aussi (feuille ajoutée après l'assainissement, en !important)
+  {
+    id: "brand-direct", what: "restyle le nom Curiosa par sa pièce (capitales, espacement)",
+    build: withCss('[data-skin-part="brand-mark"] { text-transform: uppercase; letter-spacing: 0.2em; }\n'),
+    static: ["kit-brand-restyled"],
+    unsafeCss: ':root[data-skin="kit-brand-direct"] [data-skin-part="brand-mark"]{text-transform:uppercase!important;letter-spacing:.2em!important}',
+    visual: ["kit-brand-changed"],
+  },
+  {
+    id: "brand-credit-link", what: "restyle le nom Curiosa par le lien du crédit (police, graisse)",
+    build: withCss('[data-skin-part="credit"] a { font-family: Georgia, serif; font-weight: 900; font-style: normal; }\n'),
+    static: ["kit-brand-restyled"],
+    unsafeCss: ':root[data-skin="kit-brand-credit-link"] [data-skin-part="credit"] a{font-family:Impact,sans-serif!important;font-weight:900!important;font-style:normal!important}',
+    visual: ["kit-brand-changed"],
+  },
+  {
+    id: "brand-inherited", what: "restyle le nom Curiosa par héritage (capitales posées sur le crédit)",
+    build: withCss('[data-skin-part="credit"] { text-transform: uppercase; letter-spacing: 0.14em; }\n'),
+    static: ["kit-brand-restyled"],
+    unsafeCss: ':root[data-skin="kit-brand-inherited"] [data-skin-region="footer"] a{text-transform:uppercase!important;word-spacing:.5em!important}',
+    visual: ["kit-brand-changed"],
+  },
 ];

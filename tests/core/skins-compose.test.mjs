@@ -10,6 +10,7 @@ const { NO_RETOUCHES } = await import("@/core/skins/types");
 const C = await import("@/core/color");
 const { backgroundCss, backgroundRules, BACKGROUND_BASE_CSS, effectiveLayers } = await import("@/core/background");
 const { glowCss } = await import("@/core/glow");
+const { BRAND_MARK_CSS } = await import("@/core/skins/brand");
 
 const skin = (over = {}) => ({
   id: "test-duo", version: "1.0.0", name: { fr: "Test", en: "Test" }, modes: ["light", "dark"], css: "", defaults: {}, options: [], deriveFromBackground: false, colorScheme: true,
@@ -268,7 +269,7 @@ test("la composition ne lève jamais : entrée absurde = basic", () => {
 test("la feuille du skin (déjà assainie) vient après les jetons ; le mode « sombre » du visiteur est ciblé par [data-mode]", () => {
   const css = ':root[data-skin="test-duo"] [data-skin-part="card"]{border-radius:0}';
   const sheet = renderSheet(composeSkin({ skin: skin({ css }) }));
-  assert.ok(sheet.endsWith(css));
+  assert.ok(sheet.endsWith(css + BRAND_MARK_CSS), "la feuille du skin, puis la règle du nom Curiosa (brand.ts) : le cœur a le dernier mot");
   assert.ok(sheet.indexOf('[data-mode="dark"]') < sheet.indexOf(css));
 });
 
