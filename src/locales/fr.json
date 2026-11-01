@@ -3099,7 +3099,6 @@
   "fiche.bar.ready": "Installation possible",
   "fiche.bar.readyVersion": "Installation possible · version {version}",
   "fiche.bar.manage": "Gérer cette extension",
-  "fiche.bar.unverified": "Ce module n'est pas vérifié. Cochez la case pour l'installer.",
   "fiche.bar.blockedDeps": "Installation impossible pour l'instant.",
   "fiche.bar.seeDetails": "Voir le détail",
   "fiche.bar.updateCore": "Mettre à jour le site",

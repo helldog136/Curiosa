@@ -145,7 +145,7 @@ export function ExtensionFiche(p: FicheProps) {
         <InstallBar label={t("fiche.bar.label")} embedded={p.embedded}
           status={(() => {
             if (bar.kind === "installed") return <span className="font-medium">✓ {t("catalogue.installed")}</span>;
-            if (bar.kind === "ready") return <>{p.version ? t("fiche.bar.readyVersion", { version: p.version }) : t("fiche.bar.ready")}{bar.confirm && <span className="mt-0.5 block text-muted">{t("fiche.bar.unverified")}</span>}</>;
+            if (bar.kind === "ready") return <>{p.version ? t("fiche.bar.readyVersion", { version: p.version }) : t("fiche.bar.ready")}</>;
             if (bar.reason === "read") return t("fiche.bar.blockedRead");
             if (bar.reason === "incompatible") return t("catalogue.incompatible");
             if (bar.reason === "core") return <>{t("modules.core.badge", { version: p.needsNewerCore ?? "", current: p.currentCore })} <a href="/admin/updates" className="whitespace-nowrap font-medium text-accent underline">{t("fiche.bar.updateCore")}</a></>;

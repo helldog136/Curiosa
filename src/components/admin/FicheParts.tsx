@@ -47,10 +47,11 @@ export function TechnicalDetails({ summary, open, t, children }: { summary: stri
  * et porte le bouton principal, unique. Dans le flux de la page (pas en superposition permanente) : elle ne cache jamais la fin du contenu. `embedded` : dans la fenêtre du catalogue.
  */
 export function InstallBar({ label, embedded, status, children }: { label: string; embedded: boolean; status: React.ReactNode; children: React.ReactNode }) {
-  const bleed = embedded ? "-mx-4 -mb-8 sm:-mx-8" : "-mx-6 -mb-6 md:-mx-10 md:-mb-10";
+  // Dans la fenêtre, la zone qui défile a 2 rem de marge basse (`pb-8`) : un élément collant s'arrêterait au-dessus d'elle. `-bottom-8` le pose sur le vrai bord bas.
+  const bleed = embedded ? "-bottom-8 -mx-4 -mb-8 sm:-mx-8" : "bottom-0 -mx-6 -mb-6 md:-mx-10 md:-mb-10";
   return (
     <div role="region" aria-label={label} data-testid="install-bar"
-      className={`sticky bottom-0 z-20 ${bleed} border-t border-line bg-surface px-4 pt-3 shadow-[0_-8px_24px_-12px_rgba(0,0,0,.25)] [padding-bottom:max(0.75rem,env(safe-area-inset-bottom))] sm:px-8`}>
+      className={`sticky z-20 ${bleed} border-t border-line bg-surface px-4 pt-3 shadow-[0_-8px_24px_-12px_rgba(0,0,0,.25)] [padding-bottom:max(0.75rem,env(safe-area-inset-bottom))] sm:px-8`}>
       <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-x-6 gap-y-3">
         <div id="install-status" role="status" className="min-w-0 flex-1 basis-56 text-sm leading-5" data-testid="install-status">{status}</div>
         <div className="flex min-w-0 shrink-0 flex-wrap items-center gap-3 max-sm:w-full [&>*]:max-sm:w-full">{children}</div>

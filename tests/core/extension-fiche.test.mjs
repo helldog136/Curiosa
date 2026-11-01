@@ -68,13 +68,13 @@ test("barre d'installation : région nommée, collée en bas (sticky), bouton �
   const page = html(h(InstallBar, { label: "Installation", embedded: false, status: h("span", null, "Installation possible · version 1.2.0") }, h("button", { type: "button" }, "Installer sur mon site")));
   assert.match(page, /role="region"[^>]*aria-label="Installation"|aria-label="Installation"[^>]*role="region"/);
   assert.match(page, /data-testid="install-bar"/);
-  assert.match(page, /sticky bottom-0/);
+  assert.match(page, /sticky z-20 bottom-0 /);
   assert.match(page, /id="install-status"[^>]*role="status"|role="status"[^>]*id="install-status"/);
   assert.match(page, /Installation possible · version 1\.2\.0/);
   assert.match(page, /safe-area-inset-bottom/, "ne passe pas sous la barre des téléphones");
   assert.match(page, /-mx-6 -mb-6 md:-mx-10 md:-mb-10/, "page entière : sur toute la largeur de la zone de contenu");
   const modal = html(h(InstallBar, { label: "Installation", embedded: true, status: "x" }, "y"));
-  assert.match(modal, /-mx-4 -mb-8 sm:-mx-8/, "dans la fenêtre : à la place de son pied");
+  assert.match(modal, /sticky z-20 -bottom-8 -mx-4 -mb-8 sm:-mx-8/, "dans la fenêtre : posée sur le vrai bord bas, malgré la marge basse (pb-8) de la zone qui défile");
   assert.doesNotMatch(page, /fixed /, "dans le flux (sticky), jamais en superposition permanente : la fin du contenu n'est jamais cachée");
 });
 
@@ -186,7 +186,6 @@ test("barre d'installation d'une fiche : version et « installation possible » 
   assert.match(noVersion, /id="install-status"[^>]*>Installation possible</);
   const extra = html(h(ExtensionFiche, props({ origin: "extra", bar: { kind: "ready", confirm: true } })));
   assert.match(extra, /data-testid="extra-warning"/);
-  assert.match(extra, /Ce module n&#x27;est pas vérifié\. Cochez la case/);
   assert.doesNotMatch(extra, /Elle sera installée éteinte/);
   const custom = html(h(ExtensionFiche, props({ origin: "custom", bar: { kind: "ready", confirm: true } })));
   assert.match(custom, /data-testid="custom-warning"/);

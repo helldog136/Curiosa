@@ -83,7 +83,7 @@ export async function DetailsView({ id, repo, embedded = false }: { id?: string;
     : origin === "official" ? t("fiche.tech.source.official") : t(origin === "extra" ? "catalogue.origin.extra" : "catalogue.origin.custom");
 
   // Le contrôle d'installation : un bouton pour le catalogue officiel ; une case à cocher et un bouton pour un module non vérifié (index supplémentaire ou dépôt personnel).
-  const formClass = "flex flex-wrap items-center gap-x-4 gap-y-2 [&_button]:min-h-11";
+  const formClass = "flex flex-wrap items-center gap-x-4 gap-y-2 max-sm:flex-col max-sm:items-stretch [&_button]:min-h-11 max-sm:[&_button]:w-full";
   const action = bar.kind !== "ready" ? null : entry && !bar.confirm ? <InstallButton id={entry.id} name={name} labels={installLabels} /> : entry ? (
     <ActionForm action={installExtraAction} submitLabel={t("catalogue.install")} pendingLabel={t("catalogue.installing")} track="install" className={formClass}>
       <input type="hidden" name="id" value={entry.id} />

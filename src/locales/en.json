@@ -3099,7 +3099,6 @@
   "fiche.bar.ready": "Ready to install",
   "fiche.bar.readyVersion": "Ready to install · version {version}",
   "fiche.bar.manage": "Manage this extension",
-  "fiche.bar.unverified": "This module is not verified. Tick the box to install it.",
   "fiche.bar.blockedDeps": "Cannot be installed for now.",
   "fiche.bar.seeDetails": "See details",
   "fiche.bar.updateCore": "Update the site",
