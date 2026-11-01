@@ -296,7 +296,41 @@ test("--sk-gradient: flat : dégradé et texte du panneau unis, même avec un se
   assert.match(blend.tokens["--v-gradient"], /#ffd54a/i);
   assert.notEqual(blend.tokens["--c-grad-fg"], "var(--v-accent-fg)");
   assert.equal(composeSkin({}).modes[0].tokens["--sk-gradient"], undefined);
-  // deux couleurs dont aucun texte ne se lit sur tout le dégradé : le cœur passe seul au dégradé uni (la lisibilité d'abord)
+  // deux couleurs CHOISIES dont aucun texte ne se lit sur tout le dégradé : le dégradé reste celui qu'elles forment (pas de repli caché sur un dégradé uni)
   const clash = composeSkin({ skin: withGrad("blend"), retouches: retouch({ accent: "#ff00aa", accent2: "#00a86b" }) }).modes[0];
-  assert.equal(clash.tokens["--v-gradient"], "linear-gradient(120deg, var(--v-accent), var(--v-accent))");
+  assert.match(clash.tokens["--v-gradient"], /#ff00aa/i);
+  assert.match(clash.tokens["--v-gradient"], /#00a86b/i);
+  assert.match(clash.tokens["--c-grad-fg"], /^#(111111|ffffff)$/);
+});
+
+test("couleurs CHOISIES par la personne : appliquées telles quelles sur un skin installé, sans correction cachée ni suspension (conseil à l'écran seulement)", () => {
+  const mine = { background: "#808080", surface: "#838383", text: "#8a8a8a", accent: "#858585", accent2: "#7d7d7d" };
+  const c = composeSkin({ skin: skin(), retouches: { ...NO_RETOUCHES, palette: "both", light: mine, dark: mine } });
+  assert.equal(c.modes.length, 2);
+  for (const m of c.modes) {
+    assert.equal(m.suspended, false, "jamais suspendu à cause d'un choix");
+    assert.equal(m.notice, null);
+    assert.deepEqual(m.changes, []);
+    for (const [token, field] of [["--v-bg", "background"], ["--v-surface", "surface"], ["--v-fg", "text"], ["--v-accent", "accent"], ["--v-accent2", "accent2"]]) assert.equal(m.tokens[token], mine[field], `${token} tel que choisi`);
+    assert.equal(m.tokens["--sk-color-link"], undefined, "pas de couleur de lien substituée à l'accent choisi");
+    assert.equal(m.tokens["--sk-gradient"], undefined, "pas de dégradé uni imposé");
+  }
+  const css = renderSheet(c);
+  for (const v of Object.values(mine)) assert.ok(css.includes(v), `${v} dans la feuille du site`);
+  assert.deepEqual(c.notices, []);
+  const one = composeSkin({ skin: skin(), retouches: retouch(mine) });
+  assert.equal(one.modes[0].tokens["--v-fg"], "#8a8a8a");
+  assert.equal(one.modes[0].suspended, false);
+});
+
+test("couleurs choisies : un texte pâle retouché est gardé ; le skin livré sans retouche garde, lui, l'échelle de correction", () => {
+  const pale = skin({ tokens: { light: { "--v-bg": "#ffffff", "--v-surface": "#ffffff", "--v-fg": "#cccccc", "--v-accent": "#1d4ed8" }, dark: skin().tokens.dark, common: {} } });
+  assert.ok(composeSkin({ skin: pale }).modes[0].changes.length > 0, "inchangé : le skin tel que livré est corrigé");
+  const mine = composeSkin({ skin: skin(), retouches: { ...NO_RETOUCHES, palette: "both", light: { text: "#cccccc", background: "#ffffff" }, dark: {} } });
+  assert.equal(mine.modes[0].tokens["--v-fg"], "#cccccc");
+  assert.equal(mine.modes[0].suspended, false);
+  const hopeless = skin({ tokens: { light: { "--v-bg": "#808080", "--v-surface": "#808080", "--v-fg": "#808080", "--v-accent": "#808080" }, dark: skin().tokens.dark, common: {} } });
+  const h = composeSkin({ skin: hopeless, retouches: { ...NO_RETOUCHES, palette: "both", light: { accent: "#858585" }, dark: {} } });
+  assert.equal(h.modes[0].suspended, true);
+  assert.equal(h.modes[0].tokens["--v-accent"], "#858585");
 });

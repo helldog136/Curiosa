@@ -44,7 +44,7 @@ const count = (html, re) => (html.match(re) ?? []).length;
 
 const LIGHT = { background: "#f4efe4", accent: "#a8231b", accent2: "", surface: "#ffffff", text: "#16130f" };
 const DARK = { background: "#14110d", accent: "#ff9a8b", accent2: "", surface: "#1f1a14", text: "#f4efe4" };
-const pickerLabels = (t) => ({ background: t("settings.background"), accent: t("settings.accent"), accent2: t("settings.accent2"), surface: t("settings.surface"), text: t("settings.text"), addSecond: t("settings.accent2.add"), removeSecond: t("settings.accent2.remove"), optionalHint: t("settings.colorOptionalHint"), invalid: t("settings.colorInvalid"), warnText: t("settings.contrast.text"), warnAccent: t("settings.contrast.accent"), warnAccent2: t("settings.contrast.accent2"), resetField: t("appearance.resetField"), details: t("appearance.details.short") });
+const pickerLabels = (t) => ({ background: t("settings.background"), accent: t("settings.accent"), accent2: t("settings.accent2"), surface: t("settings.surface"), text: t("settings.text"), addSecond: t("settings.accent2.add"), removeSecond: t("settings.accent2.remove"), optionalHint: t("settings.colorOptionalHint"), invalid: t("settings.colorInvalid"), resetField: t("appearance.resetField"), advice: { tryOne: t("appearance.advice.try"), keep: t("appearance.advice.keep"), use: t("appearance.advice.use"), proposal: t("appearance.advice.proposal"), kept: t("appearance.advice.kept"), review: t("appearance.advice.review") } });
 const colorSection = (over = {}, locale = "fr") => {
   const t = makeTranslator(locale);
   return React.createElement(ColorSection, { locale, modes: ["light", "dark"], palette: "both", legacy: false, advanced: true, single: LIGHT, both: { light: LIGHT, dark: DARK }, skinColors: { light: LIGHT, dark: DARK }, names: {}, labels: pickerLabels(t), skinBackgrounds: { light: LIGHT.background, dark: DARK.background }, ...over });
@@ -126,29 +126,42 @@ test("couleurs, un seul mode : les champs gardent EXACTEMENT leurs noms d'avant 
   assert.match(oneModeSkin, /data-switch="off"[^>]*>Ce skin n&#x27;a qu&#x27;un seul mode/);
 });
 
-test("lisibilité en direct : un texte pâle donne un avertissement SOUS le champ, en mots simples avec un exemple, jamais un blocage ; les chiffres sont dans « Détails » (replié)", () => {
+test("lisibilité en direct : un texte pâle donne un CONSEIL SOUS le champ (pas une erreur), avec les chiffres, « Essayer une couleur plus lisible » et « Garder ma couleur » ; rien ne bloque l'enregistrement", () => {
   const bad = { ...DARK, text: "#2a2a30" };
   const html = render(colorSection({ both: { light: LIGHT, dark: bad }, skinColors: { light: LIGHT, dark: DARK } }));
   const dark = html.slice(html.indexOf('id="panel-dark"'));
   assert.match(dark, /data-testid="warn-text"/);
-  assert.match(dark, /Dans le mode sombre, le texte serait difficile à lire sur ce fond/);
-  assert.match(dark, /par exemple[^<]*#[0-9a-f]{6}/i, "un exemple de couleur");
-  assert.match(dark, /<details[^>]*><summary[^>]*>Détails<\/summary><span[^>]*>[^<]*\d[^<]*<\/span>/, "les chiffres sont repliés");
+  assert.match(dark, /Conseil : dans le mode sombre, le texte serait difficile à lire sur ce fond \(rapport 1,\d+ ; 4,5 recommandé pour le texte\)\. Vous pouvez garder cette couleur\./);
+  assert.doesNotMatch(dark, /il faut|<details/, "pas d'exigence, pas de chiffres cachés");
+  assert.match(dark, /data-testid="advice-try-text"[^>]*>Essayer une couleur plus lisible<\/button>/);
+  assert.match(dark, /data-testid="advice-keep-text"[^>]*>Garder ma couleur<\/button>/);
+  assert.doesNotMatch(dark, /data-testid="warn-text"[^>]*(border-danger|text-danger|border-red)/, "jamais en rouge d'erreur");
+  assert.doesNotMatch(dark, /advice-proposal/, "la valeur proposée n'est montrée qu'après un clic, et n'est pas appliquée d'office");
+  assert.match(dark, /name="dark_text" value="#2a2a30"/, "la couleur choisie reste celle du formulaire");
   const light = html.slice(html.indexOf('id="panel-light"'), html.indexOf('id="panel-dark"'));
-  assert.doesNotMatch(light, /data-testid="warn-/, "le mode clair est lisible : aucun avertissement");
+  assert.doesNotMatch(light, /data-testid="warn-/, "le mode clair est lisible : aucun conseil");
   assert.doesNotMatch(html, /disabled/, "rien ne bloque l'enregistrement");
-  // en anglais : même avertissement, en anglais
   const e = render(colorSection({ both: { light: LIGHT, dark: bad } }, "en"), "en");
-  assert.match(e, /In dark mode, the text would be hard to read on this background/);
-  // « ↺ valeur du skin » seulement quand le champ est retouché
+  assert.match(e, /Tip: in dark mode, the text would be hard to read on this background \(ratio 1\.\d+; 4\.5 recommended for text\)\. You can keep this color\./);
+  assert.match(e, />Try a more readable color<\/button>/);
+  assert.match(e, />Keep my color<\/button>/);
   assert.match(html, /data-testid="reset-dark_text"[^>]*>↺ Valeur du skin/);
   assert.doesNotMatch(html, /data-testid="reset-light_/);
 });
 
-test("sur basic (site existant), les avertissements de contraste sont ceux d'avant, en liste", () => {
+test("des liens ou une couleur principale à environ 2,8 du fond ne déclenchent plus de conseil ; très proches du fond, le conseil dit « vous pouvez garder cette couleur »", () => {
+  const ok = render(colorSection({ both: { light: { ...LIGHT, background: "#ffffff", accent: "#999999", text: "" }, dark: DARK } }));
+  assert.doesNotMatch(ok, /data-testid="warn-/);
+  const low = render(colorSection({ both: { light: { ...LIGHT, background: "#ffffff", accent: "#f0e68c", text: "" }, dark: DARK } }));
+  assert.match(low, /data-testid="warn-accent"/);
+  assert.match(low, /Vous pouvez garder cette couleur\./);
+});
+
+test("sur basic (site existant), le même conseil s'affiche sous le champ", () => {
   const html = render(colorSection({ modes: ["dark"], palette: "single", legacy: true, advanced: false, single: { ...DARK, text: "" , background: "#808080", accent: "#838383" }, both: {}, skinColors: {}, skinBackgrounds: {} }));
-  assert.match(html, /data-testid="theme-contrast-warning"/);
-  assert.match(html, /L&#x27;accent se distingue mal du fond \(contraste/);
+  assert.match(html, /data-testid="warn-accent"/);
+  assert.match(html, /Conseil : /);
+  assert.doesNotMatch(html, /il faut|disabled/);
 });
 
 // ── cartes, détails
