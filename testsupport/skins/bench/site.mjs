@@ -14,6 +14,17 @@ import { benchUi } from "./ui.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
+/**
+ * La police du nom « Curiosa », comme la fabrique `next/font/local` du vrai site (src/components/brand/wordmark.ts) : le banc n'a pas de Next, son double (stubs/next.mjs) ne
+ * rend que des noms de classes. Sans cette feuille le lien du crédit tombait sur la police du pied (un sans-serif demi-gras) et le kit ne comparait pas le vrai rendu.
+ * Le fichier est celui du cœur, servi sous BRAND_FONT_URL ; `bench-font` pose la famille (comme la classe de Next) et `bench-font-var` la variable lue par la règle du cœur.
+ */
+export const BRAND_FONT_URL = "/__bench/curiosa-wordmark.woff2";
+export const BRAND_FONT_FAMILY = "Curiosa Wordmark";
+const BRAND_FONT_FILE = path.join(HERE, "../../../src/components/brand/curiosa-wordmark.woff2");
+const BRAND_FONT_CSS = `@font-face{font-family:"${BRAND_FONT_FAMILY}";src:url(${BRAND_FONT_URL}) format("woff2");font-weight:600;font-style:italic;font-display:swap}`
+  + `.bench-font-var{--curiosa-wordmark-font:"${BRAND_FONT_FAMILY}",Georgia,serif}.bench-font{font-family:var(--curiosa-wordmark-font);font-weight:600;font-style:italic}`;
+
 /** Les pages-types du site de démonstration : chemin (sans langue) → fragment, nom court et titre. */
 export const DEMO_PAGES = [
   { id: "home", path: "/", fragment: "page-home", title: { fr: "Accueil", en: "Home" } },
@@ -73,7 +84,7 @@ export function renderDemoPage(site, req) {
   const backdrop = !site.legacy && look.layers.length ? `<div class="cbg" aria-hidden="true" data-skin-region="backdrop">${look.layers.map(() => "<i></i>").join("")}</div>` : "";
   const html = `<!doctype html>
 ${root}<head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>${esc(title)} | ${L === "fr" ? "Mon site" : "My site"}</title>
-${(look.switchAvailable || site.forceSwitch) && !site.legacy ? `<script src="${site.modeScriptUrl}"></script>` : ""}<style>${site.coreCss}</style><style>${site.sheet}${site.unsafeCss ?? ""}</style></head>
+${(look.switchAvailable || site.forceSwitch) && !site.legacy ? `<script src="${site.modeScriptUrl}"></script>` : ""}<style>${BRAND_FONT_CSS}${site.coreCss}</style><style>${site.sheet}${site.unsafeCss ?? ""}</style></head>
 <body class="min-h-screen bg-bg text-fg antialiased" data-skin-root="">${backdrop}<a href="#content" data-skin-part="skip-link" class="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:bg-accent focus:px-3 focus:py-1 focus:text-accent-fg">${skip}</a>${tray}<div data-skin-region="shell"><div data-skin-region="banner">${banner}</div>${header}<main id="content" data-skin-region="main"><div data-skin-region="content">${content}</div></main>${footer}</div>${panel ? `<template id="bench-minimal-panel">${panel}</template>` : ""}<script src="/__bench/client.js"></script></body></html>`;
   return { status: page.status ?? 200, html };
 }
@@ -138,6 +149,7 @@ export async function startDemoServer(siteOrGetter, { port = 0, host = "127.0.0.
       const query = Object.fromEntries(url.searchParams);
       const send = (status, type, body, extra = {}) => { res.writeHead(status, { "content-type": type, "cache-control": "no-store", "x-content-type-options": "nosniff", ...extra }); res.end(body); };
       if (p === "/skins/mode.js") return send(200, "text/javascript; charset=utf-8", site.modeScript);
+      if (p === BRAND_FONT_URL) return send(200, "font/woff2", fs.readFileSync(BRAND_FONT_FILE));
       if (p === "/__bench/client.js") return send(200, "text/javascript; charset=utf-8", clientJs);
       if (p === "/__bench" || p === "/__bench/") return send(200, "text/html; charset=utf-8", benchUi(site, query));
       if (p === "/__bench/state.json") return send(200, "application/json", JSON.stringify({ skin: site.skinId, issues: site.issues.map((i) => ({ code: i.code, severity: i.severity, message: i.message })) }));
