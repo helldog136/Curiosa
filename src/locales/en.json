@@ -2485,6 +2485,11 @@
   "appearance.font.error.write": "The file could not be saved. Try again in a moment.",
   "appearance.font.error.gone": "This font was already deleted.",
   "appearance.font.error.unknown": "This font no longer exists. Choose another one from the list.",
+  "appearance.font.useOwn": "Use my own font…",
+  "appearance.font.deleteShort": "Delete",
+  "appearance.font.more": "More options",
+  "appearance.font.error.convertedLarge": "This file is too heavy once converted (150 KB at most). Convert it to .woff2 keeping only the characters you need, for example with the woff2_compress command.",
+  "appearance.font.fileLimit": ".woff2, .otf or .ttf, 500 KB at most.",
   "users.search": "Search for a person",
   "users.listHelp": "Change a role from its row; the ⋯ menu holds the rest.",
   "users.filter.all": "Everyone",
@@ -3372,10 +3377,5 @@
   "settings.colorInvalid": "Enter a color in #rrggbb format.",
   "settings.contrast.text": "Tip: text is hard to read on this background (ratio {ratio}; 4.5 recommended for text). You can keep this color.",
   "settings.contrast.accent": "Tip: the accent barely stands out from the background (ratio {ratio}; 3 recommended for interface elements). You can keep this color.",
-  "settings.contrast.accent2": "Tip: the secondary color barely stands out from the background (ratio {ratio}; 3 recommended). You can keep this color.",
-  "appearance.font.fileLimit": ".woff2, .otf or .ttf, 500 KB at most.",
-  "appearance.font.useOwn": "Use my own font…",
-  "appearance.font.deleteShort": "Delete",
-  "appearance.font.more": "More options",
-  "appearance.font.error.convertedLarge": "This file is too heavy once converted (150 KB at most). Convert it to .woff2 keeping only the characters you need, for example with the woff2_compress command."
+  "settings.contrast.accent2": "Tip: the secondary color barely stands out from the background (ratio {ratio}; 3 recommended). You can keep this color."
 }

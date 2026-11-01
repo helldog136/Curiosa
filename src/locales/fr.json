@@ -2485,6 +2485,11 @@
   "appearance.font.error.write": "Le fichier n'a pas pu être enregistré. Réessayez dans un instant.",
   "appearance.font.error.gone": "Cette police a déjà été supprimée.",
   "appearance.font.error.unknown": "Cette police n'existe plus. Choisissez-en une autre dans la liste.",
+  "appearance.font.useOwn": "Utiliser ma propre police…",
+  "appearance.font.deleteShort": "Supprimer",
+  "appearance.font.more": "Plus d'options",
+  "appearance.font.error.convertedLarge": "Ce fichier est trop lourd une fois converti (150 Ko au plus). Convertissez-le en .woff2 en gardant seulement les caractères utiles, par exemple avec la commande woff2_compress.",
+  "appearance.font.fileLimit": ".woff2, .otf ou .ttf, 500 Ko au plus.",
   "users.search": "Rechercher une personne",
   "users.listHelp": "Changez un rôle depuis sa ligne ; le menu ⋯ garde le reste.",
   "users.filter.all": "Toutes les personnes",
@@ -3372,10 +3377,5 @@
   "settings.colorInvalid": "Écrivez une couleur au format #rrggbb.",
   "settings.contrast.text": "Conseil : le texte est peu lisible sur ce fond (rapport {ratio} ; 4,5 recommandé pour le texte). Vous pouvez garder cette couleur.",
   "settings.contrast.accent": "Conseil : l'accent se distingue peu du fond (rapport {ratio} ; 3 recommandé pour les éléments d'interface). Vous pouvez garder cette couleur.",
-  "settings.contrast.accent2": "Conseil : la couleur secondaire se distingue peu du fond (rapport {ratio} ; 3 recommandé). Vous pouvez garder cette couleur.",
-  "appearance.font.fileLimit": ".woff2, .otf ou .ttf, 500 Ko au plus.",
-  "appearance.font.useOwn": "Utiliser ma propre police…",
-  "appearance.font.deleteShort": "Supprimer",
-  "appearance.font.more": "Plus d'options",
-  "appearance.font.error.convertedLarge": "Ce fichier est trop lourd une fois converti (150 Ko au plus). Convertissez-le en .woff2 en gardant seulement les caractères utiles, par exemple avec la commande woff2_compress."
+  "settings.contrast.accent2": "Conseil : la couleur secondaire se distingue peu du fond (rapport {ratio} ; 3 recommandé). Vous pouvez garder cette couleur."
 }
