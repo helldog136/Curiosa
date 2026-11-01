@@ -63,14 +63,15 @@ test("réseaux : sans aucun réseau, rien n'est affiché ; les icônes de l'en-t
   assert.equal((await getSiteConfig()).header.socials, false);
 });
 
-test("réseaux : l'en-tête lit les réseaux auprès du cœur (plus aucune liste « liens » lue d'office) ; les réglages ne montrent la case que s'il y a un réseau", async () => {
+test("réseaux : l'en-tête lit les réseaux auprès du cœur (plus aucune liste « liens » lue d'office) ; la page des réseaux ne montre l'interrupteur de l'en-tête que s'il y a un réseau", async () => {
   const fs = await import("node:fs");
   const header = fs.readFileSync("src/components/site/Header.tsx", "utf8");
   assert.match(header, /loadSocialLinks\(locale\)/);
   assert.ok(!/display !== "links"|listEntries/.test(header));
-  const settings = fs.readFileSync("src/app/admin/(panel)/settings/page.tsx", "utf8");
-  assert.match(settings, /socialCount > 0/);
-  assert.match(fs.readFileSync("src/app/admin/(panel)/settings/actions.ts", "utf8"), /providersOf\(SOCIAL_TOPIC\)\)\.length > 0\) await setSetting\("header\.socials"/);
+  const page = fs.readFileSync("src/app/admin/(panel)/social/page.tsx", "utf8");
+  assert.match(page, /rows\.length === 0 \?[\s\S]*<HeaderSocialsSwitch /, "l'interrupteur n'est que dans la branche « il y a des réseaux »");
+  assert.match(fs.readFileSync("src/app/admin/(panel)/social/actions.ts", "utf8"), /setHeaderSocials[\s\S]*setSetting\("header\.socials", shown\)/);
+  assert.ok(!/header\.socials/.test(fs.readFileSync("src/app/admin/(panel)/settings/actions.ts", "utf8")), "Réglages n'écrit plus ce réglage");
 });
 
 let n = 0;
