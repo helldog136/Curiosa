@@ -79,7 +79,7 @@ export type UploadedFont = {
 };
 
 /** Plafonds de l'envoi (docs/POLICES.md). */
-export const UPLOAD_LIMITS = { maxBytes: 150 * 1024, maxFiles: 4, maxName: 60 } as const;
+export const UPLOAD_LIMITS = { maxBytes: 150 * 1024, maxInputBytes: 500 * 1024, maxFiles: 4, maxName: 60 } as const;
 
 /** Réglages : les deux choix, et la liste des polices envoyées. */
 export const SETTING_HEADING = "theme.fontHeading";

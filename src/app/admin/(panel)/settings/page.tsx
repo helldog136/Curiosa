@@ -46,7 +46,7 @@ export default async function SettingsPage() {
       <header>
         <h1 className={ui.pageTitle}>{t("nav.settings")}</h1>
         <p className={ui.pageIntro}>{t("settings.intro")}</p>
-        <p className={`${ui.help} mt-1`}>{t("settings.appearanceHint")} <Link href="/admin/appearance" className="font-medium text-accent hover:underline" data-testid="to-appearance">{t("settings.appearanceOpen")} →</Link></p>
+        <p className={`${ui.help} mt-1`}>{t("settings.appearanceHint")} <Link href="/admin/appearance#polices" className="font-medium text-accent hover:underline" data-testid="to-appearance">{t("settings.appearanceOpen")} →</Link></p>
       </header>
       <LegacyHash map={{ appearance: "/admin/appearance", header: "/admin/navigation#header" }} />
       <Tabs tabs={[{ id: "site", label: t("settings.identity") }, { id: "languages", label: t("settings.languages") }, { id: "privacy", label: t("settings.privacy") }, ...(hasRole(user, "owner") ? [{ id: "mail", label: t("settings.mail") }, ...(rawgModule || rawgPending ? [{ id: "services", label: t("settings.services") }] : [])] : [])]}>
