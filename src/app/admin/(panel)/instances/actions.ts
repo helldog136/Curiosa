@@ -24,7 +24,10 @@ import { forgetChoices, validateChoices, type ChoiceField } from "@/core/modules
 import { getSources, providersOf, setSources } from "@/core/services/topics";
 import { audit } from "@/core/permissions";
 import { isSocialProfileField, previewSocialButton } from "@/core/socialCheck";
-import { deleteSetting, getSettingByLocale, getSiteConfig, setSetting } from "@/core/settings";
+import { deleteSetting, getSetting, getSettingByLocale, getSiteConfig, setSetting } from "@/core/settings";
+import { managedRedirectOf, reconcileManaged, shortLinkNameProblem, shortLinkOf, wantedName } from "@/core/managedRedirects";
+import { redirectShortUrl } from "@/core/redirects";
+import { isMeasureEnabled } from "@/core/redirectMeasure";
 import { mcpInstanceKey } from "@/core/modules/mcpProvider";
 import { isSort, sortSettingKey } from "@/core/content/sort";
 import type { ActionState } from "@/components/admin/ActionForm";
@@ -252,14 +255,37 @@ export async function saveInstanceSettings(_prev: ActionState, formData: FormDat
       ops.push(check.store === null ? { key: c.key, locale: "", del: true } : { key: c.key, locale: "", value: check.store });
     }
   }
+  // Adresse courte demandée par le module (`shortLink`) : un nom déjà pris par un lien de la personne, réservé ou mal écrit est refusé ICI, sous le champ, avec un exemple,
+  // avant d'enregistrer quoi que ce soit. Seulement quand l'allumage ou le nom viennent de changer : une autre modification n'est jamais bloquée par ce réglage.
+  const shortLink = shortLinkOf(mod);
+  if (shortLink) {
+    const sent = (key: string) => ops.filter((o) => o.key === instanceSettingKey(id, key)).at(-1);
+    const was = async (key: string) => (await getSetting(instanceSettingKey(id, key))) ?? mod.manifest.settings.find((f) => f.key === key)?.default;
+    const valueOf = async (key: string) => { const op = sent(key); return op ? (op.del ? mod.manifest.settings.find((f) => f.key === key)?.default : op.value) : await was(key); };
+    const touched = [shortLink.enabled, shortLink.name].filter((k): k is string => !!k && !!sent(k));
+    let changed = false;
+    for (const k of touched) if ((await valueOf(k)) !== (await was(k))) changed = true;
+    const enabled = (await valueOf(shortLink.enabled)) === true;
+    if (changed && enabled) {
+      const name = wantedName(shortLink, shortLink.name ? await valueOf(shortLink.name) : undefined);
+      const problem = await shortLinkNameProblem(id, name, true);
+      if (problem) return { errors: { [`s__${shortLink.name && sent(shortLink.name) ? shortLink.name : shortLink.enabled}`]: t(`shortlink.error.${problem}`, { name, example: `${name}-2` }) } };
+    }
+  }
   for (const o of ops) {
     if (o.del) await deleteSetting(o.key, o.locale);
     else await setSetting(o.key, o.value, o.locale);
   }
   forgetChoices(id);
+  // Le cœur met l'adresse courte d'accord avec ce que le module demande (création, nouvelle destination, nouveau nom, retrait) ; il ne touche jamais un lien de la personne.
+  const managed = shortLink ? await reconcileManaged() : null;
+  const alias = managed && (await managedRedirectOf(id).catch(() => null));
+  const aliasMade = alias && [...managed.created, ...managed.updated].includes(alias.path) ? alias : null;
   await audit(user.email, "instance.settings", instance.key, { module: instance.moduleId, instance: instance.key });
   revalidatePath("/", "layout");
-  return { ok: socialButton ? t("social.saved", { button: socialButton }) : t("action.saved") };
+  revalidatePath("/admin/redirects");
+  const saved = socialButton ? t("social.saved", { button: socialButton }) : t("action.saved");
+  return { ok: aliasMade ? `${saved} ${t((await isMeasureEnabled()) ? "shortlink.ready" : "shortlink.readyHint", { address: redirectShortUrl(aliasMade.path) })}` : saved };
 }
 
 /** « Réessayer » : relance la migration des données d'une instance mise à l'écart. */

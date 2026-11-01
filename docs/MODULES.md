@@ -577,6 +577,25 @@ La fiche d'une extension (dans le catalogue comme sur la page de l'extension ins
 - **Vie privée.** Le navigateur ne charge jamais ces images depuis un site tiers : le cœur les lit côté serveur (dépôt du catalogue, dépôt personnel ou dossier du module installé), les vérifie, puis les sert depuis `/api/admin/extension-previews` (réservé à l'administration, mise en cache privée, 6 images et 150 Ko chacune au plus, 12 Mo de mémoire pour tous les visuels lus). **Aucune capture ne doit montrer de vraies données personnelles** (noms, adresses e-mail, pseudos, adresses IP, jetons) : utilisez des exemples inventés, comme `example.org` ou « Démo ».
 - **Catalogue.** L'entrée de `catalogue/index.json` peut porter la même liste `previews` (le script qui génère l'index la recopie du `module.json`, comme `minCore` devient `requires.core`) : le cœur sait alors annoncer des visuels sans télécharger le module. Les images, elles, ne sont jamais dans l'index. Une entrée mal formée est ignorée visuel par visuel.
 
+### Adresse courte demandée par le module (`shortLink`, cœur après 0.6.3)
+
+Les redirections (« liens courts », page *Raccourcis de liens*) **appartiennent au cœur** : un module ne les écrit pas dans sa propre base, il en **demande** une. Le manifeste déclare, sans aucun code :
+
+```json
+"shortLink": { "enabled": "createShortLink", "name": "shortLinkName", "default": "discord", "target": "social.link" }
+```
+
+- `enabled` : clé d'un réglage `boolean` du module (désactivé par défaut : c'est la personne qui l'allume, c'est son consentement). Sans lui, rien n'est créé.
+- `name` : clé d'un réglage `text` (facultatif, à ranger avec `rare: true` et un `example`) qui porte le nom de l'adresse ; vide, c'est `default` (minuscules, chiffres, tirets, 32 caractères au plus).
+- `target` : où l'adresse mène. `"social.link"` : l'adresse du bouton que ce module fournit au cœur (le module doit fournir ce sujet) ; `{ "setting": "<clé>" }` : un réglage `url` ou `text` du module qui contient une adresse https. Le cœur relit la destination à chaque mise en accord ; sans destination, il n'y a pas d'adresse.
+- Une seule adresse par instance (la clé est au singulier). Le cœur refuse un manifeste dont les clés ne désignent pas des réglages du bon type.
+
+**Ce que fait le cœur** (`src/core/managedRedirects.ts`, seul endroit qui écrit ces liens) : il crée l'adresse **seulement si le nom est libre** ; il ne modifie, ne renomme, ne désactive ni ne supprime **jamais** un lien créé par la personne (un nom déjà pris est un conflit : rien n'est créé, l'erreur s'affiche sous le champ avec un exemple, et la page *Raccourcis de liens* le rappelle avec un lien vers les réglages du module) ; il garde l'adresse d'accord avec le module (nouvelle destination : même lien, mêmes compteurs ; nouveau nom : renommée sur place) ; il la retire, avec ses compteurs, quand l'option est coupée, que la destination disparaît, que l'instance est retirée ou le module désinstallé. Un lien géré porte la colonne `Redirect.managedBy` (l'instance), s'affiche avec une pastille « Extension X » et un bouton vers les réglages du module, et ne se modifie ni ne se supprime à la main (ni par les outils MCP). La mise en accord a lieu à la sauvegarde des réglages, au retrait ou à la restauration d'une instance, à l'installation, la mise à jour et la désinstallation du module, et à l'ouverture de la page ; aucun minuteur. Rien de plus n'est collecté : les compteurs sont ceux de tout lien court.
+
+**Le bouton du réseau dans l'en-tête ne change pas de comportement** : il passe par l'adresse courte seulement si la personne a activé « Compter les clics sur mes liens » (le cœur réécrit alors le bouton vers le lien court actif de même destination, voir `ctx.api.links.measured`). Activer l'adresse courte n'envoie donc aucun clic dans les statistiques sans que la personne l'ait choisi.
+
+**Pas de nouvelle valeur dans `permissions`** : un cœur plus ancien refuserait le manifeste. Il **ignore** la clé `shortLink` : le module marche, sans adresse courte, donc votre `minCore` n'a pas à monter (la version précédente du réglage `boolean` suffit).
+
 ### Actions MCP (`mcp`)
 
 | Clé | Rôle |
