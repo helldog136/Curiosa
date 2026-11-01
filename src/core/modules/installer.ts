@@ -23,6 +23,7 @@ import { migrateModuleInstances, type MigrationOutcome } from "./dataMigrations"
 import { incompatWithThisCore, requirementOf, type CoreRequirement } from "./compat";
 import { classify, compareVersions, pickLatestTag, TAG_RE, type UpdateLevel } from "../updates/versions";
 import { opStep } from "../operations/tracker";
+import { reconcileManaged } from "../managedRedirects";
 
 const run = promisify(execFile);
 
@@ -676,6 +677,7 @@ async function seededServices(manifest: ParsedManifest): Promise<Set<string>> {
 async function afterMigrations(id: string, settled: { journal: Journal; deferred?: true }): Promise<{ provided: string[]; missing?: Missing[] }> {
   await commitJournal(settled.journal);
   const provided = [...settled.journal.provided];
+  await reconcileManaged();   // le module installé ou mis à jour peut demander (ou ne plus demander) une adresse courte
   if (!settled.deferred) return { provided };
   const late = await settleDependencies(id);
   return { provided: [...provided, ...(late.provided ?? [])], ...(late.missing?.length ? { missing: late.missing } : {}) };
@@ -826,6 +828,7 @@ export async function purgeModule(id: string): Promise<void> {
   await prisma.module.delete({ where: { id } });
   forgetModule(id);
   await clearBlockedUpdate(id);
+  await reconcileManaged();   // les adresses courtes de ses instances partent avec elles
   fs.rmSync(moduleDir(id), { recursive: true, force: true });
 }
 
