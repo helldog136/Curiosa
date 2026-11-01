@@ -2412,6 +2412,8 @@
   "audit.action.skin.undo": "Changement de skin annulé",
   "audit.action.skin.options": "Options du skin changées",
   "audit.action.appearance.update": "Retouches d'apparence enregistrées",
+  "audit.action.appearance.font.add": "Police envoyée",
+  "audit.action.appearance.font.remove": "Police supprimée",
   "aim.req.skin_install": "Installer le skin « {name} » (version {version}). Il ne sera pas utilisé tout de suite.",
   "aim.req.skin_activate": "Utiliser le skin « {name} » pour votre site. Vos retouches de couleurs sont mises de côté : vous pourrez annuler dans Apparence.",
   "aim.req.skin_remove": "Retirer le skin « {name} ». Votre contenu ne change pas.",

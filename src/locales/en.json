@@ -2412,6 +2412,8 @@
   "audit.action.skin.undo": "Skin change undone",
   "audit.action.skin.options": "Skin options changed",
   "audit.action.appearance.update": "Appearance adjustments saved",
+  "audit.action.appearance.font.add": "Font uploaded",
+  "audit.action.appearance.font.remove": "Font deleted",
   "aim.req.skin_install": "Install the “{name}” skin (version {version}). It will not be in use right away.",
   "aim.req.skin_activate": "Use the “{name}” skin for your site. Your color adjustments are set aside: you will be able to undo in Appearance.",
   "aim.req.skin_remove": "Remove the “{name}” skin. Your content does not change.",
