@@ -23,6 +23,7 @@ import { getModule } from "@/core/modules/registry";
 import { forgetChoices, validateChoices, type ChoiceField } from "@/core/modules/choice";
 import { getSources, providersOf, setSources } from "@/core/services/topics";
 import { audit } from "@/core/permissions";
+import { isSocialProfileField, previewSocialButton } from "@/core/socialCheck";
 import { deleteSetting, getSettingByLocale, getSiteConfig, setSetting } from "@/core/settings";
 import { mcpInstanceKey } from "@/core/modules/mcpProvider";
 import { isSort, sortSettingKey } from "@/core/content/sort";
@@ -140,6 +141,8 @@ export async function saveInstanceSettings(_prev: ActionState, formData: FormDat
   const fields = mod.manifest.settings.filter(inForm);
   const L = (v: Parameters<typeof localized>[0]) => localized(v, config.defaultLocale, config.defaultLocale);
   const siteByLocale = Object.fromEntries(await Promise.all(config.locales.map(async (l) => { const c = await getSiteConfig(l); return [l, { name: c.name, tagline: c.tagline }] as const; })));
+  /** Le bouton que l'adresse d'un réseau social va afficher (dit à la personne après l'enregistrement). */
+  let socialButton: string | null = null;
   /** Opérations à appliquer : on contrôle TOUT avant d'écrire quoi que ce soit (une erreur n'enregistre rien). */
   const ops: ({ key: string; locale?: string } & ({ del: true } | { del?: false; value: unknown }))[] = [];
 
@@ -224,6 +227,16 @@ export async function saveInstanceSettings(_prev: ActionState, formData: FormDat
         // Sous le champ fautif (et l'onglet qui le contient s'ouvre de lui-même s'il était caché).
         return { errors: { [name]: reason === "link" ? t("instances.error.link", { field: L(field.label) }) : reason === "video" || reason === "image" || reason === "url" ? t("error.badUrl") : t("error.generic") } };
       }
+      // Réseau social : l'adresse du profil est vérifiée AVANT d'être enregistrée, sous le champ, avec un exemple (R22) ; la réussite montre le bouton qui s'affichera.
+      if (isSocialProfileField(mod, field.key)) {
+        const view = await getInstanceById(id);
+        const button = view ? await previewSocialButton(mod, view, raw, config.defaultLocale) : null;
+        if (!button) {
+          const example = field.example ? L(field.example) : "";
+          return { errors: { [name]: t(example ? "social.error.profile" : "social.error.profileNoExample", { network: L(mod.manifest.name), example }) } };
+        }
+        socialButton = button.label;
+      }
       op(checked.value);
     }
   }
@@ -246,7 +259,7 @@ export async function saveInstanceSettings(_prev: ActionState, formData: FormDat
   forgetChoices(id);
   await audit(user.email, "instance.settings", instance.key, { module: instance.moduleId, instance: instance.key });
   revalidatePath("/", "layout");
-  return { ok: t("action.saved") };
+  return { ok: socialButton ? t("social.saved", { button: socialButton }) : t("action.saved") };
 }
 
 /** « Réessayer » : relance la migration des données d'une instance mise à l'écart. */
