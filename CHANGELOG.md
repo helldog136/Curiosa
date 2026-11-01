@@ -19,7 +19,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Pour les développeurs
 
-- **`ctx.api.log.write({ action, target?, level?, data? })`** (aucune permission) et **`logEvents`** dans `module.json` : le module déclare ses types d'événements (clé, libellé FR/EN, champs autorisés), le cœur déduit l'acteur, injecte module et instance, écarte tout champ non déclaré et purge à l'écriture (90 jours, 500 lignes par module ; 7 jours et 200 lignes pour `frequent`). Un module sans déclaration écrit des lignes génériques sans données. Voir `docs/CREATE-A-MODULE.md` (12 ter) ; guide de la phase 2 (migration des journaux propres, non faite) : `docs/MIGRER-SON-JOURNAL.md`.
+- **`ctx.api.log.write` et `logEvents`** : un module écrit au journal du cœur et déclare ses événements (libellé FR/EN, champs autorisés) ; le cœur déduit l'acteur et purge à l'écriture. Voir `docs/CREATE-A-MODULE.md` (12 ter) et `docs/MIGRER-SON-JOURNAL.md`.
 - **Droit implicite `<module>:history`** (Administration par défaut, réglable dans un rôle) ; identifiant d'onglet `history` réservé.
 - **Migration additive** : cinq colonnes ajoutées à `AuditLog` (`module`, `instance`, `level`, `actorKind`, `data`), aucune ligne perdue ; un ancien cœur les ignore.
 - **Kit de test** : `fakeCtx({ logEvents })` simule `ctx.api.log` avec les mêmes règles (`ctx.calls.log`, `ctx.dumpLog()`).

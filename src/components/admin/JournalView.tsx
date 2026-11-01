@@ -85,6 +85,7 @@ export async function JournalView({ t, locale, defaultLocale, advanced, sp, path
 /** Un seul tableau pour toutes les origines (R30) ; sur téléphone, chaque ligne devient une petite fiche (R27, pas de défilement horizontal). */
 function JournalTable({ lines, t, locale, advanced, showModule }: { lines: JournalLine[]; t: Translator; locale: string; advanced: boolean; showModule: boolean }) {
   return (
+    <div className="relative overflow-x-auto">
     <table className="w-full" data-testid="journal-table">
       <thead className="max-md:sr-only">
         <tr>
@@ -117,5 +118,6 @@ function JournalTable({ lines, t, locale, advanced, showModule }: { lines: Journ
         ))}
       </tbody>
     </table>
+    </div>
   );
 }
