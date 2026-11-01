@@ -71,8 +71,8 @@ function recognizedEntry(c: RecognizedItem, suggested: Set<string>): CatalogueEn
 /**
  * Tout ce qu'on peut installer en confiance : l'index du catalogue (réseau, version épinglée par étiquette), et rien d'autre. Sans réseau ni dernière copie reçue : liste vide.
  */
-export async function getCatalogue(opts: { fetchImpl?: typeof fetch } = {}): Promise<CatalogueEntry[]> {
-  const { items, suggested } = await getRecognizedDetailed({ fetchImpl: opts.fetchImpl });
+export async function getCatalogue(opts: { fetchImpl?: typeof fetch; staleOk?: boolean } = {}): Promise<CatalogueEntry[]> {
+  const { items, suggested } = await getRecognizedDetailed({ fetchImpl: opts.fetchImpl, staleOk: opts.staleOk });
   const ids = new Set(suggested);
   return items.map((c) => recognizedEntry(c, ids));
 }
@@ -88,7 +88,7 @@ export async function catalogueUnreachable(opts: { fetchImpl?: typeof fetch } = 
   return r.source === "none" && r.items.length === 0;
 }
 
-export async function findCatalogueEntry(id: string, opts: { fetchImpl?: typeof fetch } = {}): Promise<CatalogueEntry | undefined> {
+export async function findCatalogueEntry(id: string, opts: { fetchImpl?: typeof fetch; staleOk?: boolean } = {}): Promise<CatalogueEntry | undefined> {
   return (await getCatalogue(opts)).find((e) => e.id === id);
 }
 

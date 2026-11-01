@@ -19,6 +19,8 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Administration
 
+- **Les gestionnaires de mots de passe reconnaissent l'installation.** 1Password, Bitwarden, Dashlane, Chrome et Safari peuvent maintenant proposer un mot de passe et l'enregistrer avec votre e-mail. Un bouton « Afficher » permet de relire ce que vous tapez.
+- **La même correction pour la connexion et les mots de passe du compte.** Premier mot de passe, changement, double vérification, clés d'accès et sauvegarde sont reconnus de la même façon, et les erreurs s'écrivent sous le champ concerné.
 - **Choisir un mois entier en un geste.** Dans le champ « Période », la liste « Tout le mois de » remplit d'un coup le 1er et le dernier jour du mois, février compris. Si vous changez ensuite un jour à la main, la liste revient à « Choisir un mois ».
 - **Des périodes toutes prêtes.** Une liste avec recherche propose les saisons et des fêtes de plusieurs traditions, rangées par date ou par ordre alphabétique. Chaque ligne montre ses dates.
 - **Les fêtes qui changent chaque année sont honnêtes.** Elles remplissent les dates de la prochaine fois, sans « Chaque année », avec un rappel de les refaire l'an prochain. Pour les fêtes musulmanes, la date réelle dépend de la lune, à un jour près.
@@ -30,6 +32,9 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Les détails techniques passent en dessous.** Les données gardées, les autorisations demandées, les autres extensions nécessaires, la version et la source sont rangées sous « Détails techniques », repliées, avec un résumé d'une ligne. Cela vaut avant l'installation comme après.
 - **Le bouton « Installer » reste visible.** Une barre collée en bas de la fenêtre indique la version et si l'installation est possible. S'il manque quelque chose, elle le dit avec un lien et le bouton est grisé.
 - **Vos données restent chez vous.** Les images sont lues par votre site puis affichées depuis votre site : votre navigateur ne contacte aucun autre site pour les voir. Une fiche sans image s'affiche comme avant.
+- **La fiche d'une extension s'ouvre tout de suite.** Dès que vous cliquez sur « Voir le détail et installer », la fenêtre s'ouvre avec le nom et la description, et une phrase dit que le reste arrive. Auparavant, rien ne bougeait pendant plusieurs secondes et il fallait parfois recliquer.
+- **Moins d'attente pour lire la fiche.** Le site lit l'extension dès que vous survolez le bouton. Le texte arrive d'abord, les images ensuite, et un deuxième clic est ignoré.
+- **Si la lecture échoue ou traîne, vous le savez.** Un message clair apparaît avec un bouton « Réessayer ». « Actualiser » relit aussi les fiches.
 
 ### Apparence du site
 
@@ -48,6 +53,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Pour les développeurs
 
+- **Lecture de la fiche.** `getModulePreview(target, { waitMs })` ne porte plus les images : `getPreviewImages(target)` les lit après le texte. Lectures en parallèle, 3 dépôts au plus, attente de 20 s au plus (`PreviewTimeout`). Nouvelle route `GET /api/admin/extension-warm` (204), appelée au survol.
 - **Visuels de la fiche (`previews`).** Clé facultative du manifeste : 6 images au plus (WebP ou PNG de 150 Ko), légende et texte alternatif en `fr` et `en`, sans `minCore` à déclarer. Le kit ajoute l'exigence `manifest.previews`.
 - **Service des images.** `GET /api/admin/extension-previews?id|repo|installed=…&n=0..5`, réservé à l'administration : le cœur lit l'image (dépôt ou dossier du module), vérifie type réel, poids et dimensions, puis la sert (cache privé, 12 Mo de mémoire au plus pour toutes les images lues).
 - **Règle R31** de `docs/ERGONOMIE-ADMIN.md` : la fiche d'une extension montre ce que ça fait avant les détails techniques, avec une barre d'installation toujours visible.

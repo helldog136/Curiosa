@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { adminCtx } from "@/core/admin";
 import { revalidatePath } from "next/cache";
 import { clearRecognizedCache } from "@/core/modules/recognized";
+import { clearPreviewCache } from "@/core/modules/readme";
 import { installFromCatalogue, installModule } from "@/core/modules/installer";
 import { forgetModulesReport } from "@/core/modules/updateStatus";
 import { addSource, clearSourcesCache, removeSource } from "@/core/modules/sources";
@@ -97,6 +98,7 @@ export async function installCustomAction(_prev: ActionState, formData: FormData
 export async function refreshCatalogueAction(): Promise<void> {
   await adminCtx({ right: "core:modules.install" });
   clearRecognizedCache();
+  clearPreviewCache(); // « Actualiser » relit aussi les fiches (README, visuels) : plus de copie de 10 minutes
   revalidatePath(EXTENSIONS_ADD_HREF);
 }
 

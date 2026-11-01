@@ -5,6 +5,7 @@ import { Callout } from "./Page";
 import { ui } from "./ui";
 import { AddsList, InstallBar, InstallBlockedButton, TechnicalDetails } from "./FicheParts";
 import { PreviewGallery, type GalleryItem, type GalleryLabels } from "./PreviewGallery";
+import { RetryButton } from "./RetryButton";
 
 /** Seule, la fiche garde son lien de retour ; dans la fenêtre, c'est la fenêtre qui se ferme. */
 export function FicheFrame({ embedded, back, children }: { embedded: boolean; back: string; children: React.ReactNode }) {
@@ -31,9 +32,13 @@ export type FicheProps = {
   noModule: boolean;
   /** Le dépôt n'a pas pu être lu. */
   failed: boolean;
+  /** La lecture a pris trop de temps (au lieu d'échouer) : le message le dit, « Réessayer » relit la fiche. */
+  timedOut?: boolean;
   /** Éléments gardés d'une désinstallation précédente qui reviendront avec le module. */
   keptCount: number;
   gallery: GalleryItem[]; galleryLabels: GalleryLabels;
+  /** Galerie lue après la fiche (dépôt distant) : remplace `gallery`, avec son propre emplacement réservé. */
+  gallerySlot?: React.ReactNode;
   adds: AddItem[];
   /** README déjà rendu (Markdown non fiable, sans HTML brut) ; null = pas de README. */
   readme: React.ReactNode;
@@ -89,9 +94,14 @@ export function ExtensionFiche(p: FicheProps) {
       {/* Dépôt personnel sans module lisible (par exemple la racine d'un dépôt qui en regroupe plusieurs) : on le dit, sans proposer d'installer. */}
       {p.noModule && <p role="alert" data-testid="no-module" className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm">{t("modules.error.nomanifest")}</p>}
       {p.keptCount > 0 && <Callout tone="info" role="status"><span data-testid="kept-note">🗂 {t("kept.detailsNote", { name: p.name, count: p.keptCount })}</span></Callout>}
-      {p.failed && <p role="alert" className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-sm">{t("catalogue.previewFailed")}</p>}
+      {p.failed && (
+        <div role="alert" data-testid="fiche-failed" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-sm">
+          <p className="min-w-0 flex-1 basis-64">{t(p.timedOut ? "catalogue.previewSlow" : "catalogue.previewFailed")}</p>
+          <RetryButton label={t("fiche.retry")} pendingLabel={t("fiche.retrying")} />
+        </div>
+      )}
 
-      <PreviewGallery items={p.gallery} labels={p.galleryLabels} />
+      {p.gallerySlot ?? <PreviewGallery items={p.gallery} labels={p.galleryLabels} />}
       <AddsList items={p.adds} t={t} />
 
       <section className="space-y-3">

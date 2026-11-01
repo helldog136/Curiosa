@@ -19,7 +19,8 @@ export async function choosePassword(_prev: ActionState, formData: FormData): Pr
   const r = await chooseOwnPassword(user.id, String(formData.get("next") ?? ""), String(formData.get("confirm") ?? ""));
   if (!r.ok) {
     if (r.reason === "notRequired") redirect("/admin");
-    return { error: r.reason === "weak" ? t("choosePassword.weak") : r.reason === "mismatch" ? t("choosePassword.mismatch") : t("choosePassword.same") };
+    // Sous le champ concerné (le premier champ en erreur reçoit le focus) : jamais un bandeau qui laisse chercher.
+    return r.reason === "weak" ? { errors: { next: t("choosePassword.weak") } } : r.reason === "mismatch" ? { errors: { confirm: t("choosePassword.mismatch") } } : { errors: { next: t("choosePassword.same") } };
   }
   // Les AUTRES sessions sont coupées (numéro de session augmenté) ; celle-ci est remplacée par une session neuve au bon numéro, sans redemander quoi que ce soit.
   try {

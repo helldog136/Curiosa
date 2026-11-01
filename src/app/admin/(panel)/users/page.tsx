@@ -171,7 +171,7 @@ export default async function UsersPage() {
           <MoreOptions title={t("users.addMore")} summary={t("users.addMoreSummary")}>
             <div className="grid gap-4 sm:grid-cols-2">
               <TextField name="name" label={t("users.displayName")} example={t("users.nameExample")} help={t("users.nameHelp")} autoComplete="off" />
-              <TextField name="password" type="password" label={t("users.firstPassword")} help={t("users.passwordHelp")} autoComplete="new-password" />
+              <TextField name="password" type="password" label={t("users.firstPassword")} help={t("users.passwordHelp")} passwordMin={10} autoComplete="new-password" />
             </div>
           </MoreOptions>
         </ActionForm>

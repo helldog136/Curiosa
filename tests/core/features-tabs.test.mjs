@@ -44,7 +44,7 @@ test("menu : « Modules » n'est plus en haut ni en surbrillance ; le catalogue 
   const page = read("src/app/admin/(panel)/extensions/add/page.tsx");
   assert.match(page, /<CatalogueSearch/);
   assert.match(page, /data-catalogue-item data-search=/);
-  assert.match(page, /<Link href=\{`\/admin\/extensions\/add\/details\?id=/, "navigation douce : la fiche s'ouvre par-dessus");
+  assert.match(page, /<(?:Link|CatalogueDetailsLink) href=\{`\/admin\/extensions\/add\/details\?id=/, "navigation douce : la fiche s'ouvre par-dessus");
   assert.match(read("src/components/admin/CatalogueSearch.tsx"), /foldText/, "sans accents ni majuscules (filtre partagé avec la page Modules)");
   assert.match(read("src/core/modules/installedList.ts"), /normalize\("NFD"\)/, "sans accents ni majuscules");
   // fiche en fenêtre : route interceptée + emplacement parallèle ; ouverte seule, la même fiche s'affiche en page entière

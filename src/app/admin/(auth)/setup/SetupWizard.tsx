@@ -7,6 +7,8 @@ import { completeSetup } from "./actions";
 import { progressPercent, stepNumber } from "./progress";
 import { PendingButton } from "@/components/admin/PendingButton";
 import { clearSecrets, submitKeepingValues } from "@/components/admin/keepValues";
+import { PasswordInput } from "@/components/admin/PasswordInput";
+import { useFieldErrorsDom } from "@/components/admin/FieldErrors";
 
 type Props = {
   strings: Record<string, Record<string, string>>;
@@ -25,12 +27,16 @@ export function SetupWizard({ strings, uiLocales, locales, presets, needsToken, 
   const [step, setStep] = useState(0);
   const [lang, setLang] = useState("fr");
   const [ownerName, setOwnerName] = useState("");
+  // L'e-mail se retient d'une étape à l'autre ; le mot de passe, jamais (la section « accès » n'existe dans la page qu'à la dernière étape).
+  const [ownerEmail, setOwnerEmail] = useState("");
   const [chosen, setChosen] = useState<string[]>([]);
   const [linkRows, setLinkRows] = useState([0]);
   const formRef = useRef<HTMLFormElement>(null);
   const [state, action, pending] = useActionState(completeSetup, null);
   // Une erreur garde tout ce qui a été saisi, sauf le mot de passe et le code d'installation (champs secrets).
   useEffect(() => { if (state) clearSecrets(formRef.current); }, [state]);
+  // Chaque erreur s'écrit sous son champ, et le premier champ en erreur reçoit le focus.
+  useFieldErrorsDom(formRef, state?.errors, state);
 
   const ui18n = strings[uiLocales.includes(lang) ? lang : "en"] ?? {};
   // L'assistant parle à la personne par son prénom dès qu'elle l'a donné.
@@ -77,7 +83,8 @@ export function SetupWizard({ strings, uiLocales, locales, presets, needsToken, 
         <span className="text-sm text-muted" data-testid="setup-step">{t("setup.step")} {stepNumber(step)}</span>
       </div>
       <div className={`${ui.card} !p-6 sm:!p-9`}>
-      <form ref={formRef} onSubmit={submitKeepingValues(action)} className="space-y-6">
+      {/* Un vrai formulaire POST : si le script ne s'est pas encore chargé, rien (surtout pas le mot de passe) ne part dans l'adresse. */}
+      <form ref={formRef} method="post" onSubmit={submitKeepingValues(action)} className="space-y-6">
         <input type="hidden" name="uiLang" value={lang} />
 
         <div {...section("welcome")}>
@@ -165,26 +172,37 @@ export function SetupWizard({ strings, uiLocales, locales, presets, needsToken, 
           <button type="button" className={ui.btn} onClick={() => setLinkRows((r) => [...r, (r.at(-1) ?? 0) + 1])}>＋ {t("setup.links.add")}</button>
         </div>
 
-        <div {...section("account")}>
-          <h2 className="text-2xl font-semibold tracking-tight">{t("setup.account.title")}</h2>
-          <p className="text-[15px] text-muted">{t("setup.account.help")}</p>
-          <div>
-            <label className={ui.label} htmlFor="ownerEmail">{t("setup.account.email")}</label>
-            <input id="ownerEmail" name="ownerEmail" type="email" required className={ui.input} autoComplete="username" />
-          </div>
-          <div>
-            <label className={ui.label} htmlFor="ownerPassword">{t("setup.account.password")}</label>
-            <input id="ownerPassword" name="ownerPassword" type="password" required minLength={10} className={ui.input} autoComplete="new-password" />
-            <p className={ui.help}>{t("setup.account.passwordHelp")}</p>
-          </div>
-          {needsToken && (
+        {/* Les champs d'accès n'existent dans la page qu'à la dernière étape, tous dans CE formulaire : e-mail (identifiant), mot de passe, confirmation.
+            Les gestionnaires de mots de passe les voient apparaître ensemble, comme sur toute page de création de compte. */}
+        {current === "account" && (
+          <div data-step="account" className="space-y-4">
+            <h2 className="text-2xl font-semibold tracking-tight">{t("setup.account.title")}</h2>
+            <p className="text-[15px] text-muted">{t("setup.account.help")}</p>
             <div>
-              <label className={ui.label} htmlFor="setupToken">{t("setup.account.token")}</label>
-              <input id="setupToken" name="setupToken" type="password" required className={ui.input} />
-              <p className={ui.help}>{t("setup.account.tokenHelp")}</p>
+              <label className={ui.label} htmlFor="ownerEmail">{t("setup.account.email")}</label>
+              <input id="ownerEmail" name="ownerEmail" type="email" required className={ui.input} autoComplete="username" inputMode="email" autoCapitalize="none" spellCheck={false} autoFocus
+                value={ownerEmail} onChange={(e) => setOwnerEmail(e.target.value)} aria-describedby="ownerEmailExample" />
+              <p id="ownerEmailExample" className={ui.help}>{t("setup.account.emailExample")}</p>
             </div>
-          )}
-        </div>
+            <div>
+              <label className={ui.label} htmlFor="ownerPassword">{t("setup.account.password")}</label>
+              <PasswordInput id="ownerPassword" name="ownerPassword" required passwordMin={10} autoComplete="new-password" showLabel={t("progress.showPassword")} hideLabel={t("progress.hidePassword")} aria-describedby="ownerPasswordHelp" />
+              <p id="ownerPasswordHelp" className={ui.help}>{t("setup.account.passwordHelp")}</p>
+            </div>
+            <div>
+              <label className={ui.label} htmlFor="ownerPasswordConfirm">{t("setup.account.confirm")}</label>
+              <PasswordInput id="ownerPasswordConfirm" name="ownerPasswordConfirm" required passwordMin={10} autoComplete="new-password" showLabel={t("progress.showPassword")} hideLabel={t("progress.hidePassword")} />
+            </div>
+            {needsToken && (
+              <div>
+                <label className={ui.label} htmlFor="setupToken">{t("setup.account.token")}</label>
+                {/* Pas un mot de passe : un code qu'on recopie une seule fois. Un second champ « mot de passe » ferait croire aux gestionnaires à un formulaire de changement. */}
+                <input id="setupToken" name="setupToken" type="text" required className={ui.input} autoComplete="one-time-code" autoCapitalize="none" spellCheck={false} aria-describedby="setupTokenHelp" />
+                <p id="setupTokenHelp" className={ui.help}>{t("setup.account.tokenHelp")}</p>
+              </div>
+            )}
+          </div>
+        )}
 
         {state?.error && <p role="alert" className="rounded-xl border border-red-500/50 bg-red-500/10 p-3 text-sm text-red-700">{state.error}</p>}
 
