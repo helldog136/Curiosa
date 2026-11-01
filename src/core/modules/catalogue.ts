@@ -34,7 +34,7 @@ export type CatalogueEntry = {
   platform?: string;
   /** Sujets que le module fournit (ex. `social.link`) : le cœur s'en sert pour proposer les réseaux sociaux. */
   provides?: string[];
-  /** (cœur 0.6.2) Réseau social : de quoi reconnaître l'adresse de son profil sans l'installer (voir socialRecognize.ts). */
+  /** (cœur 0.6.1) Réseau social : de quoi reconnaître l'adresse de son profil sans l'installer (voir socialRecognize.ts). */
   social?: SocialSpec;
   /** Ce module vise-t-il l'API de modules de CE framework ? Sinon il est listé mais non installable. */
   compatible: boolean;

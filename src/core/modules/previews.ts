@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 /**
- * VISUELS D'UN MODULE (`previews` du manifeste, cœur 0.6.x) : jusqu'à 6 captures qui montrent CE QUE LE MODULE AJOUTE (une page de commandes, un écran d'administration,
+ * VISUELS D'UN MODULE (`previews` du manifeste, cœur 0.6.1) : jusqu'à 6 captures qui montrent CE QUE LE MODULE AJOUTE (une page de commandes, un écran d'administration,
  * un élément d'overlay). Elles s'affichent dans la fiche de l'extension, avant l'installation comme après.
  *
  * Ce fichier ne dépend de rien d'autre du cœur : le schéma (utilisé par manifest.ts), la lecture de la taille d'une image et ses limites. Les octets ne sont JAMAIS chargés

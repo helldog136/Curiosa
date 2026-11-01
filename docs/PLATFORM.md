@@ -287,7 +287,7 @@ et la bascule vers un onglet caché en erreur ; `reveal.ts` permet à un lien (�
 collante reste celle d'`ActionForm` : une seule pour toute la page. Droits inchangés : un rôle qui n'a que `<module>:open` ne voit que l'onglet Utiliser.
 Voir [MODULES.md](MODULES.md) (« Onglets de la page d'admin »).
 
-## Menu du site : une fonctionnalité du cœur (prochaine version)
+## Menu du site : une fonctionnalité du cœur (cœur 0.6.1)
 
 Ce n'est pas un service : aucun module ne l'appelle. Le menu de l'en-tête public est **composé par la personne** ; le cœur n'y ajoute plus rien tout seul.
 
