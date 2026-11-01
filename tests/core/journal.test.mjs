@@ -286,3 +286,32 @@ test("une extension ne peut pas se faire passer pour le cœur : une action non d
   const [line] = await describeRows(all, { t: makeTranslator("fr"), locale: "fr", defaultLocale: "fr" });
   assert.equal(line.sentence, "Événement de l'extension");
 });
+
+/* ───────────── Outil MCP en lecture seule ───────────── */
+
+test("outil MCP log_list : lecture seule, pas accordé d'office, mêmes filtres que la page, phrases en anglais, rien d'écrit", async () => {
+  const { journalToolProvider } = await import("@/core/journalMcp");
+  const { canUse } = await import("@/core/services/mcp/access");
+  const { McpToolError } = await import("@/core/services/mcp/validate");
+  const [tool] = await journalToolProvider.list();
+  assert.deepEqual([tool.name, tool.readOnly, tool.destructive, tool.default], ["log_list", true, false, false]);
+  assert.equal(canUse(tool, { scope: "read", grants: {} }), false, "jamais accordé sans décision de la personne propriétaire");
+  assert.equal(canUse(tool, { scope: "read", grants: { log_list: true } }), true);
+  const ctx = await ctxOf();
+  await ctx.api.log.write({ action: "thing.done", data: { name: "Alice", count: 2, urgent: false, token: "nope" } });
+  await ctx.api.log.write({ action: "thing.failed", data: { name: "Bob" } });
+  await prisma.auditLog.create({ data: { actor: "owner@example.org", action: "login", actorKind: "person" } });
+  const before = await prisma.auditLog.count();
+  const all = await tool.call({}, { name: "Claude" });
+  assert.equal(all.total, 3);
+  assert.equal(all.items[0].text.length > 0, true);
+  const mine = await tool.call({ module: "demo-journal", level: "error", origin: "module", period: "day", q: "Bob" }, { name: "Claude" });
+  assert.deepEqual(mine.items.map((i) => [i.text, i.origin, i.level, i.module]), [["Failure for Bob", "module", "error", "demo-journal"]]);
+  assert.equal(JSON.stringify(all).includes("nope"), false, "un champ écarté n'est jamais enregistré ni renvoyé");
+  assert.equal((await tool.call({ module: "_core" }, { name: "Claude" })).total, 1);
+  assert.equal((await tool.call({ limit: 1 }, { name: "Claude" })).items.length, 1);
+  await assert.rejects(tool.call({ limit: 1000 }, { name: "Claude" }), McpToolError);
+  await assert.rejects(tool.call({ level: "fatal" }, { name: "Claude" }), McpToolError);
+  await assert.rejects(tool.call({ actor: "x" }, { name: "Claude" }), McpToolError, "pas d'argument inconnu");
+  assert.equal(await prisma.auditLog.count(), before, "lire ne crée aucune ligne");
+});
