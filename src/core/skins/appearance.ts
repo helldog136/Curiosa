@@ -22,6 +22,9 @@ import { isBackgroundImage, isPreset, parseBackground } from "../background";
 import { isGlowLevel, normalizeTuning } from "../glow";
 import { isHeaderLayout } from "../header";
 import { sanitizeSvg } from "../svg";
+import { loadLibrary } from "../fonts/library";
+import { normalizeChoice, parseChoice, SETTING_BODY, SETTING_HEADING } from "../fonts/types";
+import { listUploads } from "../fonts/uploads";
 import { SKIN_ID_RE } from "./allowlist";
 import { BASIC_ID, SETTING_ACTIVE, SETTING_OPTIONS } from "./constants";
 import { invalidateSkinCache } from "./invalidate";
@@ -170,6 +173,9 @@ export type RetouchInput = {
   light: ColorSetInput;
   dark: ColorSetInput;
   font: string | null;
+  /** Polices choisies (docs/POLICES.md) : `null` = absentes du formulaire (on n'y touche pas) ; `""` = celle du skin. */
+  fontHeading: string | null;
+  fontBody: string | null;
   glow: string;
   glowTuning: Record<string, unknown> | null;
   bgPreset: string;
@@ -212,6 +218,8 @@ export function parseRetouchForm(f: { has(n: string): boolean; get(n: string): u
     palette: f.get("palette") === "both" ? "both" : "single",
     single: sets.single, light: sets.light, dark: sets.dark,
     font: f.has("font") ? str("font") : null,
+    fontHeading: f.has("fontHeading") ? normalizeChoice(str("fontHeading")) : null,
+    fontBody: f.has("fontBody") ? normalizeChoice(str("fontBody")) : null,
     glow: str("glow") || "none",
     glowTuning: adv ? raw : null,
     bgPreset: str("bgPreset") || "none",
@@ -239,6 +247,39 @@ export function checkRetouchInput(i: RetouchInput): RetouchRefusal | null {
 
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
+/** Chaque choix de police (valeur enregistrée) vise-t-il une police qui existe ? « Celle du skin », le système et `null` (absent) : toujours. */
+export async function fontsExist(values: readonly (string | null | undefined)[]): Promise<boolean> {
+  for (const v of values) {
+    const c = parseChoice(v);
+    if (c.kind === "lib" && !loadLibrary().byId.has(c.id)) return false;
+    if (c.kind === "up" && !(await listUploads()).some((u) => u.slug === c.id)) return false;
+  }
+  return true;
+}
+
+/** Règle seulement les polices des titres et du texte (l'assistant IA, après l'accord de la personne propriétaire ; mêmes écritures que la page Apparence). `undefined` : on n'y touche pas ; `""` : celle du skin. */
+export async function saveFontChoices(input: { heading?: string; body?: string }, opts: { actor?: string } = {}): Promise<{ ok: true; changed: number } | Failure> {
+  const heading = input.heading === undefined ? null : normalizeChoice(input.heading);
+  const body = input.body === undefined ? null : normalizeChoice(input.body);
+  if (!(await fontsExist([heading, body]))) return fail("appearance.font.error.unknown");
+  const before = await readKeys([SETTING_HEADING, SETTING_BODY, "theme.font"]);
+  const target = new Map<string, unknown>();
+  if (heading !== null) target.set(SETTING_HEADING, heading === "" ? undefined : heading);
+  if (body !== null) { target.set(SETTING_BODY, body === "" ? undefined : body); target.set("theme.font", undefined); }
+  let changed = 0;
+  for (const [key, value] of target) {
+    const had = before.has(key);
+    if (value === undefined) { if (had) { await deleteSetting(key); changed++; } }
+    else if (!had || !same(before.get(key), value)) { await setSetting(key, value); changed++; }
+  }
+  if (changed > 0) {
+    await dropSnapshot();
+    invalidateSkinCache();
+    await audit(opts.actor ?? "system", "appearance.update", "fonts");
+  }
+  return { ok: true, changed };
+}
+
 /**
  * Enregistre les retouches. `base` : le skin actif (valeurs sans retouches) ; basic = le comportement d'avant les skins, écriture pour écriture.
  * Rend le nombre de réglages qui ont VRAIMENT changé (0 : rien n'a été touché, le « Annuler » du dernier changement reste possible).
@@ -249,6 +290,9 @@ export async function saveRetouches(input: RetouchInput, base: SkinBase, opts: {
   const target = new Map<string, unknown>(); // valeur voulue (undefined = supprimer)
   const want = (k: string, v: unknown) => { target.set(k, v); };
   const legacy = base.id === BASIC_ID;
+
+  // ── polices : un choix doit viser une police qui existe (sinon on le dit, rien n'est enregistré)
+  if (!(await fontsExist([input.fontHeading, input.fontBody]))) return fail("appearance.font.error.unknown");
 
   // ── couleurs
   const colorKey = (set: "single" | "light" | "dark", c: ColorField) => (set === "single" ? `theme.${c}` : `theme.${set}.${c}`);
@@ -283,6 +327,14 @@ export async function saveRetouches(input: RetouchInput, base: SkinBase, opts: {
   if (input.font !== null) {
     if (legacy) want("theme.font", ["sans", "serif", "mono"].includes(input.font) ? input.font : "sans");
     else want("theme.font", ["sans", "serif", "mono"].includes(input.font) ? input.font : undefined);
+  }
+
+  // ── polices des titres et du texte (docs/POLICES.md) : « celle du skin » (vide) supprime la clé. Le choix du texte reprend l'ancien `theme.font` (il y est affiché
+  // et enregistré dans la nouvelle clé) : l'ancienne clé est alors retirée, sinon « celle du skin » resterait sans effet.
+  if (input.fontHeading !== null) want(SETTING_HEADING, input.fontHeading === "" ? undefined : input.fontHeading);
+  if (input.fontBody !== null) {
+    want(SETTING_BODY, input.fontBody === "" ? undefined : input.fontBody);
+    if (input.font === null) want("theme.font", undefined);
   }
 
   // ── halo

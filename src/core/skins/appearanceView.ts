@@ -8,9 +8,12 @@ import { toSkinDefinition } from "./folder";
 import type { Text } from "./messages";
 import { getModuleSkinLayer, type ModuleSkinLayer } from "./moduleParts";
 import { readActiveSetting } from "./registry";
-import { COLOR_FIELDS, RETOUCH_KEYS, retouchesFrom, type ColorField } from "./retouch";
+import { COLOR_FIELDS, RETOUCH_KEYS, RETOUCH_READ_KEYS, retouchesFrom, type ColorField } from "./retouch";
 import { installed, loadInstalledSkin, type InstalledSkin } from "./service";
 import { RETOUCH_SETTINGS, loadUndoPoint, type SkinBase, type SkinSnapshot } from "./appearance";
+import { FONT_STACKS } from "../color";
+import { sanitizeUploads } from "../fonts/registry";
+import { SETTING_FILES, type UploadedFont } from "../fonts/types";
 import { prisma } from "../db";
 import { BASIC_ID, SETTING_OPTIONS } from "./constants";
 import type { Mode, Retouches, SkinDefinition } from "./types";
@@ -67,8 +70,10 @@ export type AppearanceView = {
   snapshot: { kind: SkinSnapshot["kind"]; fromSkin: string; fromName: Text | null; at: string } | null;
   /** Aperçu de l'ensemble des jetons effectifs, par mode (pour la maquette des deux modes). */
   mock: Partial<Record<Mode, Swatch>>;
+  /** Polices du skin SANS retouche (pour l'aperçu de « celle du skin ») et polices envoyées par la personne. */
+  fonts: { skin: { body: string; heading: string; headingFollowsBody: boolean }; uploads: UploadedFont[] };
   /** Ce que la personne a retouché (absent : la valeur du skin s'applique). */
-  raw: { glow?: string; bgPreset?: string; headerLayout?: string; font?: string; bgImage?: string };
+  raw: { glow?: string; bgPreset?: string; headerLayout?: string; font?: string; /** Police du texte et des titres choisies (`sys:…`, `lib:…`, `up:…`) ; absent : celle du skin. */ fontBody?: string; fontHeading?: string; bgImage?: string };
 };
 
 const str = (v: unknown): string | undefined => (typeof v === "string" && v ? v : undefined);
@@ -115,6 +120,15 @@ function cardOf(def: SkinDefinition | null, row: InstalledSkin | null, layer: Mo
   };
 }
 
+/** Les polices du skin sans retouche : le texte, les titres, et si les titres suivent le texte (cas de basic et de la plupart des skins). */
+function skinFonts(bare: Composed): AppearanceView["fonts"]["skin"] {
+  const tokens = bare.modes[0]?.tokens ?? {};
+  const body = tokens["--v-font"] ?? FONT_STACKS.sans;
+  const heading = (tokens["--sk-font-heading"] ?? "var(--v-font)").trim();
+  const follows = /^var\(\s*--v-font\s*\)$/.test(heading);
+  return { body, heading: follows ? body : heading, headingFollowsBody: follows };
+}
+
 /** Tout ce qu'il faut pour dessiner la page. */
 export async function loadAppearanceView(): Promise<AppearanceView> {
   const layer = await getModuleSkinLayer();
@@ -128,7 +142,7 @@ export async function loadAppearanceView(): Promise<AppearanceView> {
   if (!activeDef) activeDef = BASIC;
   const activeId = activeDef.id;
 
-  const fresh = await readFresh([...RETOUCH_SETTINGS, SETTING_OPTIONS]);
+  const fresh = await readFresh([...RETOUCH_READ_KEYS, ...RETOUCH_SETTINGS, SETTING_OPTIONS]);
   const retouches = retouchesFrom((k) => fresh.get(k));
   const optionsRaw = fresh.get(SETTING_OPTIONS);
   const chosenOptions = optionsRaw && typeof optionsRaw === "object" && !Array.isArray(optionsRaw) ? (optionsRaw as Record<string, string>) : {};
@@ -187,8 +201,12 @@ export async function loadAppearanceView(): Promise<AppearanceView> {
     skinDefaults: { headerLayout: d.headerLayout ?? "classic", font: d.font ?? "sans", glow: d.glow ?? "none", background: bgDefault },
     snapshot: snap ? { kind: snap.kind, fromSkin: snap.fromSkin, fromName: snap.fromSkin === BASIC_ID ? BASIC.name : (rowOf(snap.fromSkin)?.name ?? null), at: snap.at } : null,
     mock: { light: swatchOf(now, "light"), dark: swatchOf(now, "dark") },
+    fonts: {
+      skin: skinFonts(bare),
+      uploads: sanitizeUploads(fresh.get(SETTING_FILES)),
+    },
     raw: {
-      glow: str(fresh.get("theme.glow")), bgPreset: str(fresh.get("theme.bgPreset")), headerLayout: str(fresh.get("header.layout")), font: str(fresh.get("theme.font")), bgImage: str(fresh.get("theme.bgImage")),
+      glow: str(fresh.get("theme.glow")), bgPreset: str(fresh.get("theme.bgPreset")), headerLayout: str(fresh.get("header.layout")), font: str(fresh.get("theme.font")), fontBody: str(fresh.get("theme.fontBody")), fontHeading: str(fresh.get("theme.fontHeading")), bgImage: str(fresh.get("theme.bgImage")),
     },
   };
 }
@@ -211,7 +229,7 @@ export async function activePreviewTokens(): Promise<PreviewTokens> {
   const layer = await getModuleSkinLayer();
   const rawActive = await readActiveSetting();
   const def = (rawActive === BASIC_ID ? BASIC : await definitionOf(rawActive, layer)) ?? BASIC;
-  const fresh = await readFresh([...RETOUCH_SETTINGS, SETTING_OPTIONS]);
+  const fresh = await readFresh([...RETOUCH_READ_KEYS, ...RETOUCH_SETTINGS, SETTING_OPTIONS]);
   const optionsRaw = fresh.get(SETTING_OPTIONS);
   const options = optionsRaw && typeof optionsRaw === "object" && !Array.isArray(optionsRaw) ? (optionsRaw as Record<string, string>) : {};
   const c = composeSkin({ skin: def === BASIC ? null : def, retouches: retouchesFrom((k) => fresh.get(k)), options, moduleTokens: layer.tokens, modulePairs: layer.pairs });

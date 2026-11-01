@@ -7,6 +7,8 @@ import type { Text } from "./messages";
 import type { Mode } from "./readability";
 import type { TokenType } from "./tokens";
 
+import type { ResolvedFonts } from "../fonts/css";
+
 export type { Mode } from "./readability";
 
 /** `tokens.json` d'un skin (§5.4) : chaînes seulement, aucune exécution. */
@@ -68,6 +70,11 @@ export type Retouches = {
   dark: ColorRetouch;
   /** Police retouchée (`theme.font`) ; absent = celle du skin. */
   font?: "sans" | "serif" | "mono";
+  /**
+   * Polices choisies dans Apparence (`theme.fontBody`, `theme.fontHeading`), déjà résolues (pile CSS + règles `@font-face` des seules polices utilisées).
+   * Absent : aucune retouche de ce genre. Le texte l'emporte sur `theme.font` ; les titres sur la police de titres du skin.
+   */
+  fonts?: ResolvedFonts;
 };
 
 export const NO_RETOUCHES: Retouches = { palette: "single", single: {}, light: {}, dark: {} };

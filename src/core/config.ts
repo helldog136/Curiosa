@@ -6,6 +6,8 @@ export const UPLOADS_DIR = path.join(DATA_DIR, "uploads");
 export const MODULES_DIR = path.join(DATA_DIR, "modules");
 /** Skins installés depuis un dépôt git : `data/skins/<id>/<version>/` (docs/SKINS.md §5.6). */
 export const SKINS_DIR = path.join(DATA_DIR, "skins");
+/** Polices envoyées par la personne (docs/POLICES.md) : un fichier `u-<empreinte>.woff2` chacune, vérifié avant d'être écrit. */
+export const FONTS_DIR = path.join(DATA_DIR, "fonts");
 /** Dépôt de skins que le catalogue connaît par défaut (le seul endroit où cette adresse est écrite) ; `CURIOSA_SKINS_REPO` la remplace. */
 export const DEFAULT_SKINS_REPO = "https://github.com/helldog136/curiosa-skins";
 
@@ -34,4 +36,6 @@ export const RESERVED_PATHS = new Set([
   "privacy",
   // Fichiers des skins : script de bascule clair/sombre, polices et images des skins installés (/skins/<id>/<version>/…), voir docs/SKINS.md
   "skins",
+  // Polices : bibliothèque embarquée et polices envoyées (/fonts/<fichier>.woff2), voir docs/POLICES.md
+  "fonts",
 ]);
