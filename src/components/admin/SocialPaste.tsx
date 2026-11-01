@@ -82,8 +82,8 @@ export function SocialPaste({ sources, icons, existing, canInstall, shown, max, 
     }
     setRun(null);
     setReport({ ok, failed });
-    // Ce qui a été ajouté quitte le champ ; ce qui a échoué y reste pour être corrigé ou réessayé.
-    const keep = new Set([...kept, ...rows.filter((r) => r.state !== "ready").map((r) => r.text)]);
+    // Ce qui a été ajouté (ou l'était déjà) quitte le champ ; ce qui a échoué ou n'est pas reconnu y reste pour être corrigé ou réessayé.
+    const keep = new Set([...kept, ...rows.filter((r) => r.state === "unknown" || r.state === "choose").map((r) => r.text)]);
     setText([...keep].join("\n"));
     router.refresh();
     box.current?.focus();
