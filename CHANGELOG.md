@@ -7,21 +7,20 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
-## 0.7.0 — 2026-11-01
+## 0.6.2 — 2026-11-01
 
 **En bref.** Le Catalogue sait désormais reconnaître l'adresse de votre profil (Instagram, TikTok, Mastodon…) avant d'installer le réseau. C'est la base du champ unique « Collez l'adresse de votre profil », qui arrive ensuite.
 
 ### Réseaux sociaux
 
-- **Une adresse collée est reconnue avant toute installation.** Le Catalogue connaît, pour chaque réseau, ses sites, la forme de ses adresses et un exemple. Le nom seul, l'adresse sans « https », les liens courts et les liens de partage avec suivi (`?igsh=…`) mènent au même bouton.
+- **Une adresse collée est reconnue avant toute installation.** Le Catalogue connaît, pour chaque réseau, ses sites, la forme de ses adresses et un exemple. Le nom seul, l'adresse sans « https », les liens courts et les liens de partage avec suivi mènent au même bouton.
 - **Plusieurs adresses d'un coup.** Un texte collé qui en contient plusieurs (une par ligne, ou séparées par des espaces ou des virgules) est lu adresse par adresse : chacune est reconnue, à choisir (un nom seul peut aller à plusieurs réseaux) ou non reconnue.
 
 ### Pour les développeurs
 
-- **Nouvelle clé de manifeste `social` (cœur 0.7.0, d'où la version mineure).** Bloc facultatif d'un module de réseau : `name`, `icon`, `hosts` (ou `null` pour un réseau fédéré), `template` (`{h}` = le nom du compte), `example`, et, si besoin, `handle`, `tag`, `aliases`, `forms`, `shapes`, `fediverse`. Validé par `socialSpecSchema` (tailles, expressions régulières refusées si elles risquent un calcul sans fin) ; un bloc abîmé est ignoré, jamais une erreur de manifeste. Un cœur plus ancien ignore la clé.
-- **Le catalogue le recopie** (`social` dans l'index, `CatalogueEntry.social`) et le relit sans réseau depuis sa dernière copie.
-- **`src/core/socialRecognize.ts`** (pur, sans base) : `recognizeOne(spec, texte)` fait exactement ce que fait le `profile()` du module (le dépôt des modules le prouve par un test) ; `recognizeSocial(texte, sources)` lit un texte collé ; `splitAddresses`, `socialSourcesOf`, `buttonLabel`. Un réseau fédéré ne prend jamais l'adresse d'un réseau dont le site est celui de l'adresse.
-- Aucune migration, aucun réglage ajouté. `docs/MODULES.md` documente le bloc.
+- **Clé de manifeste facultative `social`** (`name`, `icon`, `hosts`, `template`, `example`, et au besoin `handle`, `tag`, `aliases`, `forms`, `shapes`, `fediverse`) : validée par `socialSpecSchema`, un bloc abîmé est ignoré, un cœur plus ancien l'ignore. Documentée dans `docs/MODULES.md`.
+- **Le catalogue la recopie** (`CatalogueEntry.social`) et la relit sans réseau depuis sa dernière copie.
+- **`src/core/socialRecognize.ts`** (pur) : `recognizeOne` fait ce que fait le `profile()` du module ; `recognizeSocial` lit un texte à plusieurs adresses. Aucune migration, aucun réglage ajouté.
 
 ## 0.6.1 — 2026-11-01
 

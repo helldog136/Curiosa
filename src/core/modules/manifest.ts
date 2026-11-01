@@ -197,7 +197,7 @@ export const manifestSchema = z.object({
    */
   platform: z.string().regex(PLATFORM_PATTERN, "platform must be a lowercase identifier like twitch or discord (a-z, 0-9 and dashes, 31 characters at most, starting with a letter)").optional(),
   /**
-   * (cœur 0.7.0) Réseau social : comment reconnaître l'adresse de son profil (sites acceptés, modèle d'adresse, exemple, formes courtes). Le catalogue le recopie : le cœur reconnaît
+   * (cœur 0.6.2) Réseau social : comment reconnaître l'adresse de son profil (sites acceptés, modèle d'adresse, exemple, formes courtes). Le catalogue le recopie : le cœur reconnaît
    * « instagram.com/monpseudo » AVANT d'installer le module. Un bloc abîmé est ignoré (jamais une erreur de manifeste) ; un ancien cœur ignore le champ. Voir socialRecognize.ts.
    */
   social: socialSpecSchema.optional().catch(undefined),

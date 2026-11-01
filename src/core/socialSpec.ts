@@ -1,5 +1,5 @@
 /**
- * LE BLOC `social` D'UN MANIFESTE (cœur 0.7.0) : sa forme et sa validation. Les données viennent d'un manifeste ou d'un index lu sur le réseau : tailles bornées,
+ * LE BLOC `social` D'UN MANIFESTE (cœur 0.6.2) : sa forme et sa validation. Les données viennent d'un manifeste ou d'un index lu sur le réseau : tailles bornées,
  * expressions régulières refusées si elles risquent un calcul sans fin. Séparé de `socialRecognize.ts` pour que le navigateur n'embarque pas la validation.
  */
 import { z } from "zod";
