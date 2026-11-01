@@ -30,6 +30,6 @@ test("un texte hostile dans le message est échappé", async () => {
 });
 
 test("sans message réglé, le texte de repli traduit s'affiche", async () => {
-  const ctx = fakeCtx({ settings: { message: "" }, messages: { fallback: "Bienvenue !" } });
+  const ctx = fakeCtx({ settings: { message: "" }, messages: { fallback: "Bienvenue sur mon site" } });
   assert.match((await def.sections.welcome(ctx))[0].html, /Bienvenue/);
 });

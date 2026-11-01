@@ -3,8 +3,10 @@ import { MODULE_API_VERSION } from "../config";
 import { COLOR_TOKENS } from "../color";
 import { groupIssues } from "./groups";
 import { MULTI_VALUE_RE, siteDefaultRef } from "./settingValues";
+import { checkDateTime, parsePeriod } from "../adminkit/values";
 import { PLATFORM_PATTERN } from "./platform";
-import { MAX_MODULE_RIGHTS, OPEN, RIGHT_ID_RE } from "../auth/rights";
+import { HISTORY, MAX_MODULE_RIGHTS, OPEN, RIGHT_ID_RE } from "../auth/rights";
+import { EVENT_KEY_MAX, EVENT_KEY_RE, FIELD_KEY_RE, JOURNAL_LIMITS, LEVELS, logEventIssues } from "../journal/events";
 import { SERVICE_RE } from "./serviceVersions";
 import { NO_CREATE_REFERS, REFERS_TO } from "./choiceValues";
 import { MAX_TAB_ENTRIES, TAB_ID_RE, TAB_LABEL_MAX, tabIssues } from "./tabs";
@@ -22,7 +24,7 @@ const choiceSource = z.discriminatedUnion("kind", [
 export const settingField = z.object({
   key: z.string().regex(/^[a-zA-Z][a-zA-Z0-9_]{0,40}$/),
   label: localized,
-  type: z.enum(["text", "textarea", "url", "link", "number", "boolean", "select", "color", "secret", "image", "video", "choice", "multichoice"]),
+  type: z.enum(["text", "textarea", "url", "link", "number", "boolean", "select", "color", "secret", "image", "video", "choice", "multichoice", "period", "datetime", "duration"]),
   help: localized.optional(),
   default: z.union([z.string(), z.number(), z.boolean()]).optional(),
   options: z.array(z.object({ value: z.string(), label: localized })).max(50).optional(),
@@ -30,6 +32,14 @@ export const settingField = z.object({
   defaultValues: z.array(z.string().regex(MULTI_VALUE_RE)).max(50).optional(),
   minChoices: z.number().int().min(0).max(50).optional(),
   maxChoices: z.number().int().min(1).max(50).optional(),
+  /** (0.6.0) Bornes et pas d'un `number` ou d'une `duration` (secondes), unité d'un `number`, exemple, réglage rare, affichage en boutons : un cœur ancien les ignore (mais refuse les types `period`, `datetime`, `duration`). */
+  min: z.number().finite().optional(),
+  max: z.number().finite().optional(),
+  step: z.number().finite().positive().optional(),
+  unit: localized.optional(),
+  example: localized.optional(),
+  rare: z.boolean().optional(),
+  display: z.enum(["segmented"]).optional(),
   translatable: z.boolean().optional(),
   advanced: z.boolean().optional(),
   /** Réglage facultatif : le laisser vide ne met pas l'extension « à configurer » (sinon, un texte, une adresse ou un secret vide sans valeur par défaut est à remplir). */
@@ -77,6 +87,27 @@ export const settingField = z.object({
   } else {
     for (const k of ["defaultValues", "minChoices", "maxChoices"] as const) if (f[k] !== undefined) ctx.addIssue({ code: "custom", message: `${k} is only for a multichoice setting` });
   }
+  // Contrôles de la 0.6.0 : chacun n'a de sens que pour son type.
+  if (f.type !== "number" && f.type !== "duration") for (const k of ["min", "max", "step"] as const) if (f[k] !== undefined) ctx.addIssue({ code: "custom", message: `${k} is only for a number or duration setting` });
+  if (f.type !== "number" && f.unit !== undefined) ctx.addIssue({ code: "custom", message: "unit is only for a number setting (a duration chooses its own unit)" });
+  if (f.min !== undefined && f.max !== undefined && f.min > f.max) ctx.addIssue({ code: "custom", message: "min cannot exceed max" });
+  if (f.type === "duration") {
+    if (f.step !== undefined) ctx.addIssue({ code: "custom", message: "a duration has no step (it is a whole number of seconds)" });
+    for (const k of ["min", "max"] as const) if (f[k] !== undefined && (!Number.isInteger(f[k]) || (f[k] as number) < 0)) ctx.addIssue({ code: "custom", message: `${k} of a duration is a whole number of seconds, 0 or more` });
+  }
+  if (f.type === "period" || f.type === "datetime" || f.type === "duration") {
+    if (f.translatable) ctx.addIssue({ code: "custom", message: `a ${f.type} setting cannot be translatable` });
+    if (f.default !== undefined) {
+      const ok = f.type === "period" ? typeof f.default === "string" && parsePeriod(f.default).ok : f.type === "datetime" ? typeof f.default === "string" && checkDateTime(f.default) : typeof f.default === "number" && Number.isInteger(f.default) && f.default >= 0;
+      if (!ok) ctx.addIssue({ code: "custom", message: `the default of a ${f.type} setting must be ${f.type === "period" ? "like \"11-01/11-30\" (every year) or \"2026-11-01/2026-11-30\"" : f.type === "datetime" ? "like \"2026-11-30T18:30\"" : "a whole number of seconds"}` });
+    }
+  }
+  if (f.display === "segmented") {
+    const n = (f.options ?? []).length;
+    if (f.type !== "select") ctx.addIssue({ code: "custom", message: "display \"segmented\" is only for a select setting" });
+    else if (n < 2 || n > 4) ctx.addIssue({ code: "custom", message: "display \"segmented\" needs 2 to 4 options (use the default list beyond that)" });
+  }
+  if (f.rare && f.advanced) ctx.addIssue({ code: "custom", message: "a setting is either advanced (hidden in the simple admin) or rare (folded under « More options »), not both" });
   // Une couleur peut suivre le thème du site : default "theme:<jeton>". Rien d'autre n'est permis comme référence.
   if (typeof f.default === "string" && f.default.startsWith("theme:")) {
     if (f.type !== "color") ctx.addIssue({ code: "custom", message: "only a color setting can default to a theme token" });
@@ -247,6 +278,18 @@ export const manifestSchema = z.object({
     })
     .optional(),
   defaultEnabled: z.boolean().optional(),
+  /**
+   * (cœur 0.6.0) Types d'ÉVÉNEMENTS que le module écrit au journal du cœur avec `ctx.api.log.write` : clé (« command.run »), libellé français ET anglais avec des {champs},
+   * niveau par défaut, `frequent` (événement très fréquent : gardé 7 jours et 200 lignes au plus) et CHAMPS autorisés (5 au plus, 200 caractères chacun ; jamais de secret ni de texte du public).
+   * Tout champ non déclaré est écarté ; un module sans déclaration n'écrit que des lignes génériques sans données. Un cœur plus ancien ignore la clé. Voir docs/CREATE-A-MODULE.md.
+   */
+  logEvents: z.array(z.object({
+    key: z.string().max(EVENT_KEY_MAX).regex(EVENT_KEY_RE),
+    label: z.record(z.string().regex(/^[a-z]{2}(-[A-Za-z]{2,4})?$/), z.string().trim().min(1).max(JOURNAL_LIMITS.labelChars)),
+    level: z.enum(LEVELS).optional(),
+    frequent: z.boolean().optional(),
+    fields: z.array(z.object({ key: z.string().regex(FIELD_KEY_RE), type: z.enum(["text", "number", "boolean"]).optional() }).strict()).max(JOURNAL_LIMITS.maxFields).optional(),
+  }).strict()).max(JOURNAL_LIMITS.maxEvents).optional(),
   permissions: z.array(z.enum(["slots", "routes", "storage", "filters", "sections", "pages", "topics", "overlay", "mcp", "admin", "mail", "rawg", "privacy", "visitor.geolocation", "files"])).default([]),
   /**
    * (0.4.0) Pièces d'APPARENCE que les skins peuvent restyler, et jetons de style propres au module (préfixe `--sk-m-<module>-`). Apparence seulement : jamais de contenu ni de
@@ -265,7 +308,7 @@ export const manifestSchema = z.object({
    * `default` : ce que reçoivent les rôles prédéfinis (administrateur : oui sauf `admin: false` ; éditeur : non sauf `editor: true`). Un cœur ancien ignore cette clé.
    */
   rights: z.array(z.object({
-    id: z.string().regex(RIGHT_ID_RE, "right id must be lowercase segments like email.view (no colon: the core adds the module prefix)").refine((id) => id !== OPEN, "open is implicit: do not declare it"),
+    id: z.string().regex(RIGHT_ID_RE, "right id must be lowercase segments like email.view (no colon: the core adds the module prefix)").refine((id) => id !== OPEN, "open is implicit: do not declare it").refine((id) => id !== HISTORY, "history is implicit (the History tab of every module): do not declare it"),
     label: localized,
     help: localized.optional(),
     sensitive: z.boolean().optional(),
@@ -281,6 +324,7 @@ export const manifestSchema = z.object({
     if (!hasPage(m)) ctx.addIssue({ code: "custom", path: ["pageSetting"], message: "pageSetting needs a module with a public page (page: true)" });
   }
   if (m.sitemapFromPage && !hasPage(m)) ctx.addIssue({ code: "custom", path: ["sitemapFromPage"], message: "sitemapFromPage needs a module with a public page (page: true)" });
+  for (const message of logEventIssues(m.logEvents)) ctx.addIssue({ code: "custom", path: ["logEvents"], message });
   if (new Set((m.rights ?? []).map((r) => r.id)).size < (m.rights ?? []).length) ctx.addIssue({ code: "custom", path: ["rights"], message: "duplicate right id" });
   for (const [i, seed] of (m.seeds ?? []).entries()) {
     if (seed.module === m.id) ctx.addIssue({ code: "custom", path: ["seeds", i, "module"], message: "a module cannot seed itself" });

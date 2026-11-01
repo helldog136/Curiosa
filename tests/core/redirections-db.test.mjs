@@ -202,6 +202,35 @@ test("liste : 50 par page, recherche, du plus récent au plus ancien ; export CS
   assert.ok(csv.startsWith("﻿A,B,C,D,E,F,G\r\n")); assert.match(csv, /\/a,"https:\/\/x\.example\/\?q=1,2",Actif,,4,0,\d{4}-\d\d-\d\d\r\n$/);
 });
 
+test("liste (lot 1 du kit) : recherche sans accents ni majuscules, tous les mots, filtre d'état et nombre par état", async () => {
+  await mk("été-2026", { targetUrl: "https://boutique.example/Été" });
+  await mk("twitch", { targetUrl: "https://www.twitch.tv/monpseudo" });
+  await mk("vieux", { targetUrl: "https://old.example/", expiresAt: new Date(Date.now() - 86400000) });
+  await mk("pause", { targetUrl: "https://pause.example/", active: false });
+  assert.equal((await R.listRedirects({ q: "ete" })).total, 1, "« ete » trouve « été »");
+  assert.equal((await R.listRedirects({ q: "ÉTÉ BOUTIQUE" })).total, 1, "tous les mots, dans le nom ET dans la destination");
+  assert.equal((await R.listRedirects({ q: "twitch pause" })).total, 0, "tous les mots, pas un seul");
+  assert.equal((await R.listRedirects({ q: "/twitch" })).total, 1, "un « / » en tête est ignoré");
+  assert.equal((await R.listRedirects({ q: "w" })).total, 1, "une seule lettre filtre déjà");
+  const all = await R.listRedirects();
+  assert.deepEqual(all.counts, { all: 4, active: 2, ended: 1, off: 1 });
+  assert.deepEqual((await R.listRedirects({ state: "off" })).items.map((r) => r.path), ["pause"]);
+  assert.deepEqual((await R.listRedirects({ state: "ended" })).items.map((r) => r.path), ["vieux"]);
+  const some = await R.listRedirects({ q: "example", state: "active" });
+  assert.equal(some.total, 1); assert.equal(some.counts.all, 4 - 1, "les nombres suivent la recherche, pas le filtre d'état");
+  assert.equal((await R.listRedirects({ q: "zzz" })).items.length, 0);
+});
+
+test("date de fin : un seul champ « end » (date seule ou date et heure), ou ses deux sélecteurs, ou les anciens champs", async () => {
+  const { endFormParts } = await import("@/core/redirectEnd");
+  const fd = (o) => { const f = new FormData(); for (const [k, v] of Object.entries(o)) f.set(k, v); return f; };
+  assert.deepEqual(endFormParts(fd({ end: "2026-11-30" })), { date: "2026-11-30", time: "" });
+  assert.deepEqual(endFormParts(fd({ end: "2026-11-30T18:30" })), { date: "2026-11-30", time: "18:30" });
+  assert.deepEqual(endFormParts(fd({ end: "", end__date: "2026-12-01", end__time: "09:00" })), { date: "2026-12-01", time: "09:00" }, "sans JavaScript : les deux sélecteurs");
+  assert.deepEqual(endFormParts(fd({ endDate: "2026-12-02", endTime: "10:15" })), { date: "2026-12-02", time: "10:15" }, "anciens champs");
+  assert.deepEqual(endFormParts(fd({})), { date: "", time: "" });
+});
+
 test("outils MCP : lecture accordée d'office, écriture et suppression jamais ; mêmes règles que l'écran", async () => {
   const tools = await redirectsToolProvider.list();
   assert.deepEqual(tools.map((t) => t.name), ["redirects_list", "redirects_stats", "redirects_summary", "redirects_create", "redirects_update", "redirects_delete"]);

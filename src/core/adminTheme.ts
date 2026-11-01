@@ -19,6 +19,8 @@ const STATE_OVERRIDES: [string[], string][] = [
   [["text-red-700", "text-red-600", "text-red-500"], "#fca5a5"],
   [["text-emerald-700", "text-emerald-800", "text-emerald-900"], "#6ee7b7"],
   [["text-amber-700"], "#fcd34d"],
+  [["text-sky-800"], "#7dd3fc"],
+  [["text-violet-800"], "#c4b5fd"],
 ];
 
 /** Feuille de style de l'admin : variables claires par défaut, sombres si `data-admin-theme="dark"` ou, en « auto », si le système est en mode sombre. */

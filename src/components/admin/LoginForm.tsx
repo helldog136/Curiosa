@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState, useTransition } from "react";
+import { useActionState, useEffect, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import { loginAction, passkeyLoginFinish, passkeyLoginStart } from "@/app/admin/(auth)/login/actions";
 import { passkeysSupported, getPasskeyAssertion } from "./webauthn";
 import { ui } from "./ui";
@@ -13,10 +13,9 @@ type Labels = { email: string; password: string; submit: string; code: string; c
 export function LoginForm({ labels }: { labels: Labels }) {
   const [state, action, pending] = useActionState(loginAction, null);
   const codeStep = state?.step === "code" && !!state.token;
-  const [supported, setSupported] = useState(false);
+  const supported = useSyncExternalStore(() => () => {}, passkeysSupported, () => false);
   const [passkeyError, setPasskeyError] = useState("");
   const [busy, startPasskey] = useTransition();
-  useEffect(() => { setSupported(passkeysSupported()); }, []);
   // Après un refus, l'e-mail reste (pour le corriger) mais ni le mot de passe ni le code à usage unique ne restent affichés.
   const formRef = useRef<HTMLFormElement>(null);
   useEffect(() => {

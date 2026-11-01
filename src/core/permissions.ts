@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "./db";
+import { actorKindOf } from "./journal/events";
 import { accessGate, can, deniedPath, GATE_PATH, hasRole, isMember, isOwner, loadAdminUser, needLabel, shouldAuditDenied, type AdminUser, type Need } from "./auth/access";
 
 export type { Role, AdminUser, Need, Level } from "./auth/access";
@@ -38,6 +39,10 @@ export async function requireRole(min: Need, opts: { allowUnenrolled?: boolean; 
   return user!;
 }
 
-export async function audit(actor: string, action: string, target = ""): Promise<void> {
-  await prisma.auditLog.create({ data: { actor, action, target } }).catch(() => {});
+/**
+ * Écrit une ligne du journal d'audit. `meta` (cœur 0.6.0) la rattache à un module (`module`, `instance`) pour son onglet « Historique » et fixe son niveau ;
+ * l'origine (`actorKind`) se déduit de la forme de `actor` (adresse e-mail = personne, « mcp: » = assistant, « module: » = module, sinon le système).
+ */
+export async function audit(actor: string, action: string, target = "", meta: { module?: string; instance?: string; level?: "info" | "warn" | "error" } = {}): Promise<void> {
+  await prisma.auditLog.create({ data: { actor, action, target, actorKind: actorKindOf(actor), ...(meta.module ? { module: meta.module, instance: meta.instance ?? "" } : {}), ...(meta.level ? { level: meta.level } : {}) } }).catch(() => {});
 }

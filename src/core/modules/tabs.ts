@@ -17,6 +17,8 @@ import type { LocalizedString } from "./types";
  */
 
 export const BUILTIN_TABS = ["use", "settings", "sources", "general"] as const;
+/** L'onglet « Historique » (cœur 0.6.0) : ajouté par le cœur à la page de CHAQUE module, après les autres, pour les personnes qui ont le droit `<module>:history`. Un module ne peut pas en déclarer un de ce nom. */
+export const HISTORY_TAB = "history";
 export type BuiltinTab = (typeof BUILTIN_TABS)[number];
 
 /** Identifiant d'un onglet : court, minuscules, chiffres et tirets (il apparaît dans l'adresse : `?tab=<id>`). */
@@ -51,6 +53,7 @@ export function tabIssues(tabs: readonly TabDecl[] | undefined, settings: readon
       if (t.panel !== undefined) issues.push(`tab "${t.id}": "panel" is only for an added tab (a default tab can already receive panel blocks)`);
     } else {
       custom++;
+      if (t.id === HISTORY_TAB) issues.push(`tab "${HISTORY_TAB}" is added by the core to every module (the History tab): choose another id`);
       if (t.hidden) issues.push(`tab "${t.id}": only a default tab (use, settings, sources) can be hidden`);
       if (t.label === undefined) issues.push(`tab "${t.id}" needs a label`);
     }

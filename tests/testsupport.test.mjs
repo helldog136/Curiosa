@@ -122,6 +122,8 @@ const FAULTS = {
   "skin.textPair": (f) => withSkin(f, { tokens: SKIN_TOKENS.map((t) => ({ name: t.name, type: t.type, default: t.default })) }),
   "skin.declare": (f) => append(f, "index.mjs", 'export const CSS = ".fm-card{border-radius:1rem;padding:1rem;background:#222}";'),
   "overlay.elements": (f) => editManifest(f, (m) => { m.minCore = "0.5.0"; m.overlayElements = [{ id: "ghost", label: { fr: "Fantôme", en: "Ghost" }, fit: "fluid" }]; }),
+  "admin.ergonomics": (f) => editManifest(f, (m) => { m.settings[0].label.fr = "Titre de la page :"; }), // avec une base vide : le NOUVEL écart (R10) échoue
+  "admin.ergonomics.known": (f) => editManifest(f, (m) => { m.settings[0].label.fr = "Titre de la page :"; }), // sans base : l'écart est un avertissement
   "routes.visitorIp": null, // vérifié à part : demande un cœur 0.2.6 (voir plus bas)
   "srp.single": null, // voir plus bas : demande un voisin
   "srp.coupling": (f) => append(f, "index.mjs", 'export const peek = (ctx) => ctx.api.instances.list({ module: "contacts" });'),
@@ -153,7 +155,7 @@ for (const r of REQUIREMENTS) {
     if (r.id === "neutrality.clean") process.env.NEUTRALITY_TERMS = "forbiddenword";
     let rep;
     try {
-      rep = await checkModule(mk(edit), { siblings: [] });
+      rep = await checkModule(mk(edit), { siblings: [], ...(r.id === "admin.ergonomics" ? { ergonomicsBaseline: { version: 1, modules: { "full-mod": [] } } } : {}) });
     } finally { if (r.id === "neutrality.clean") delete process.env.NEUTRALITY_TERMS; }
     const res = status(rep, r.id);
     assert.equal(res.status, "fail", `${r.id} aurait dû échouer : ${JSON.stringify(res)}`);

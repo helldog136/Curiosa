@@ -20,6 +20,7 @@ export { loadModuleDir, readModuleLight, watchNetwork } from "./loader.mjs";
 export { GROUPS, LEVELS, REQUIREMENTS, docLink } from "./requirements/index.mjs";
 export { formatText, formatMatrix } from "./report.mjs";
 export { assertMultiReaders } from "./overlayElements.mjs";
+export { assertAdminPageErgonomics, adminPageErgonomicsProblems, errorMessageProblems, analyzeModule as analyzeErgonomics, compareToBaseline as compareErgonomicsBaseline, RULES as ERGONOMICS_RULES } from "./ergonomics.mjs";
 export { loadCore, CORE_DIR } from "./core.mjs";
 export { makeTempDir, cleanupAll, removeTempDir } from "./tmp.mjs";
 export { HOSTILE, HOSTILE_URL, CANARY, settingValue, makeCtx, observe } from "./probes.mjs";
@@ -39,6 +40,7 @@ export function listModuleDirs(parent) {
  * @param {object} [opts]
  * @param {string[]} [opts.siblings] dossiers des AUTRES modules de l'ensemble (pour « un propriétaire par donnée »). Par défaut : les dossiers voisins qui contiennent un module.json.
  * @param {string[]} [opts.only] ne lancer que ces identifiants d'exigences
+ * @param {object|string|false} [opts.ergonomicsBaseline] base du cliquet d'ergonomie (objet, chemin du fichier, ou false) ; par défaut <dépôt>/tests/ergonomics-baseline.json
  * @returns {Promise<Report>} { module, core, summary, results[] } — voir docs/TESTSUPPORT.md
  */
 export async function checkModule(dir, opts = {}) {
@@ -46,6 +48,7 @@ export async function checkModule(dir, opts = {}) {
   const siblingDirs = (opts.siblings ?? listModuleDirs(path.dirname(root))).map((d) => path.resolve(d)).filter((d) => d !== root);
   const siblings = siblingDirs.map(readModuleLight).filter(Boolean);
   const m = await loadModuleDir(root, { siblings });
+  m.opts = opts; // options de l'appel (par exemple `ergonomicsBaseline`), lues par les exigences qui en ont besoin
   const results = [];
   for (const r of REQUIREMENTS) {
     if (opts.only && !opts.only.includes(r.id)) continue;
@@ -94,7 +97,7 @@ export function registerConformanceTests(dir, opts = {}) {
   const test = opts.test ?? nodeTest;
   const prefix = opts.prefix ?? `[${path.basename(path.resolve(dir))}]`;
   let report;
-  const reportOnce = () => (report ??= checkModule(dir, { siblings: opts.siblings, only: opts.only }));
+  const reportOnce = () => (report ??= checkModule(dir, { siblings: opts.siblings, only: opts.only, ergonomicsBaseline: opts.ergonomicsBaseline }));
   for (const r of REQUIREMENTS) {
     if (opts.only && !opts.only.includes(r.id)) continue;
     test(`${prefix} ${r.id} (${LEVELS[r.level]}) — ${r.title}`, async (t) => {

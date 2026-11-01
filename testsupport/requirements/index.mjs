@@ -5,6 +5,7 @@ import text from "./text.mjs";
 import runtime from "./runtime.mjs";
 import skin from "./skin.mjs";
 import overlay from "./overlay.mjs";
+import ergonomics from "./ergonomics.mjs";
 
 /** Rubriques, dans l'ordre où le rapport les présente. */
 export const GROUPS = {
@@ -26,11 +27,12 @@ export const GROUPS = {
   privacy: "La vie privée",
   srp: "Un module, une seule chose",
   wording: "Les mots et la documentation",
+  ergonomics: "L'ergonomie des pages d'administration",
 };
 
 export const LEVELS = { mandatory: "obligatoire", advice: "conseil" };
 
-const all = [...manifest, ...code, ...text, ...runtime, ...skin, ...overlay];
+const all = [...manifest, ...code, ...text, ...runtime, ...skin, ...overlay, ...ergonomics];
 const order = Object.keys(GROUPS);
 /** Toutes les exigences, rangées par rubrique (l'ordre à l'intérieur d'une rubrique est celui des fichiers). */
 export const REQUIREMENTS = order.flatMap((g) => all.filter((r) => r.group === g));

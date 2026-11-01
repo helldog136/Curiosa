@@ -31,3 +31,13 @@ export function formatEnd(expiresAt: Date, tz: string, locale: string): string {
   if (!f.time) return new Intl.DateTimeFormat(locale, { dateStyle: "long", timeZone: "UTC" }).format(new Date(`${f.date}T12:00:00Z`));
   return new Intl.DateTimeFormat(locale, { dateStyle: "long", timeStyle: "short", timeZone: tz }).format(expiresAt);
 }
+
+/**
+ * Les parties de la date de fin lues dans un formulaire : le champ unique « end » (« 2026-11-30 » ou « 2026-11-30T18:30 », voir DateTimeField), ou, sans JavaScript, ses deux
+ * sélecteurs (`end__date`, `end__time`), ou encore les anciens champs séparés (`endDate`, `endTime`) : un formulaire d'avant continue de marcher.
+ */
+export function endFormParts(formData: { get(name: string): unknown }): { date: string; time: string } {
+  const one = formData.get("end");
+  if (typeof one === "string" && one !== "") { const [date = "", time = ""] = one.split("T"); return { date, time }; }
+  return { date: String(formData.get("end__date") ?? formData.get("endDate") ?? ""), time: String(formData.get("end__time") ?? formData.get("endTime") ?? "") };
+}

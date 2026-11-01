@@ -4,7 +4,7 @@ Un modèle de module pour Curiosa. Une fois installé, il affiche un court messa
 
 ## Réglages
 
-- **Message d'accueil** : la phrase affichée. Si vous la videz, le module affiche « Bienvenue ! ».
+- **Message d'accueil** : la phrase affichée. Si vous la videz, le module affiche « Bienvenue sur mon site ».
 - **Signature** (facultatif) : une ligne sous le message.
 
 ## Limites

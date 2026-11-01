@@ -17,14 +17,14 @@
   "permissions": ["sections", "mcp"],
   "settings": [
     {
-      "key": "message", "type": "text", "default": "Welcome!", "translatable": true,
+      "key": "message", "type": "text", "default": "Welcome to my site", "translatable": true,
       "label": { "en": "Welcome message", "fr": "Message d'accueil" },
-      "help": { "en": "The sentence shown on the home page.", "fr": "La phrase affichée sur la page d'accueil." }
+      "help": { "en": "Shown on the home page, for example “Welcome to my site”.", "fr": "Affichée sur l'accueil, par exemple « Bienvenue chez moi »." }
     },
     {
       "key": "signature", "type": "text", "optional": true, "translatable": true,
-      "label": { "en": "Signature (optional)", "fr": "Signature (facultatif)" },
-      "help": { "en": "Shown under the message. Leave empty for none.", "fr": "Affichée sous le message. Laissez vide pour n'en mettre aucune." }
+      "label": { "en": "Signature", "fr": "Signature" },
+      "help": { "en": "Shown under the message, for example “Marie”. Empty: none.", "fr": "Sous le message, par exemple « Marie ». Vide : aucune." }
     }
   ],
   "sections": [

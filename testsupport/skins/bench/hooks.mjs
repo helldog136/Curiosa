@@ -22,6 +22,7 @@ const REPLACED = new Map([
   ["core/modules/downloadAccess", "empty.mjs"],
   ["core/netHealthText", "empty.mjs"],
   ["components/admin/AdminBlocks", "empty.mjs"],
+  ["components/admin/AdminTable", "empty.mjs"],
   ["components/admin/ui", "empty.mjs"],
   ["components/admin/GridEditor", "empty.mjs"],
   ["components/admin/floating", "empty.mjs"],

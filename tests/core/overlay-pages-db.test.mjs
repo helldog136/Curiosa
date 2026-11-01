@@ -72,7 +72,8 @@ test("migration : additive (une table et son index, rien d'existant modifié) et
   const cols = (await db.prisma.$queryRawUnsafe(`PRAGMA table_info("OverlayPage")`)).map((c) => c.name);
   for (const c of ["id", "name", "width", "height", "active", "style", "elements", "secretHash", "secretSealed", "testUntil", "rev", "createdAt", "updatedAt"]) assert.ok(cols.includes(c), c);
   const migrations = fs.readdirSync("prisma/migrations").filter((d) => /^\d{8,}_/.test(d)).sort();
-  assert.equal(migrations.at(-1), "20261030090000_overlay_pages", "la dernière migration est celle des pages d'overlay");
+  assert.equal(migrations.at(-2), "20261030090000_overlay_pages", "les pages d'overlay précèdent seulement le journal central");
+  assert.equal(migrations.at(-1), "20261101090000_central_journal");
 });
 
 // ── Stockage et limites dures ─────────────────────────────────────────────────────────────────────────────────────────────

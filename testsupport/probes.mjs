@@ -47,7 +47,10 @@ export function settingValue(field, mode) {
     case "multichoice": return field.defaultValues?.length ? field.defaultValues : (field.options ?? []).slice(0, Math.max(1, field.minChoices ?? 1)).map((o) => o.value);
     case "text": case "textarea": return d !== undefined && d !== "" ? d : "Demo text";
     case "url": case "link": return d ?? "https://example.org/demo";
-    case "number": return d ?? 3;
+    case "number": return d ?? (typeof field.min === "number" ? field.min : 3);
+    case "period": return d ?? "11-01/11-30";
+    case "datetime": return d ?? "2026-11-30T18:30";
+    case "duration": return d ?? (typeof field.min === "number" ? field.min : 90);
     case "boolean": return d ?? false;
     case "select": return d ?? field.options?.[0]?.value;
     case "color": return d ?? "#336699";

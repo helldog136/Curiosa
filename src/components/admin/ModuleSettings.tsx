@@ -13,6 +13,14 @@ import { SuggestInstall } from "./SuggestInstall";
 import type { ChoiceView } from "@/core/modules/choice";
 import { OptionalGroup } from "./OptionalGroup";
 import { Checkbox, CheckboxGroup, Select, TextArea, TextField } from "./Field";
+import { MoreOptions } from "./MoreOptions";
+import { NumberField } from "./NumberField";
+import { Segmented, fitsSegmented } from "./Segmented";
+import { PeriodField } from "./PeriodField";
+import { DateTimeField } from "./DateTimeField";
+import { DurationField } from "./DurationField";
+import { numberHint, valueErrorKey } from "@/core/adminkit/hints";
+import { summarizeGroup } from "@/core/adminkit/summary";
 import { ui } from "./ui";
 import { HelpBelow, HelpTip } from "./HelpTip";
 
@@ -57,7 +65,9 @@ export function ModuleSettings({ t, locale, defaultLocale, locales, fields, allF
     const required = opts.required;
     const help = f.help ? L(f.help) : f.type === "link" ? t("instances.linkHelp") : undefined;
     // Réglages d'un module : jamais remplis par le navigateur (un identifiant client + un secret ressemblent à un login/mot de passe).
-    const common = { name, label, help: opts.inline ? undefined : help, autoComplete: "off", required, inline: opts.inline, flag: opts.flag };
+    // (0.6.0) `example` : « Par exemple : … » sous le champ libre.
+    const example = f.example && !opts.inline ? t("field.example", { example: L(f.example) }) : undefined;
+    const common = { name, label, help: opts.inline ? undefined : help, example, autoComplete: "off", required, inline: opts.inline, flag: opts.flag };
     const base = opts.resolved ?? resolveDefault(f, site(defaultLocale));
     const str = value === undefined ? (base === undefined ? "" : String(base)) : String(value);
     switch (f.type) {
@@ -65,8 +75,12 @@ export function ModuleSettings({ t, locale, defaultLocale, locales, fields, allF
         return <Checkbox key={name} name={name} label={label} help={help} defaultChecked={value === undefined ? f.default === true : value === true} />;
       case "textarea":
         return <TextArea key={name} {...common} rows={opts.inline ? 3 : 4} defaultValue={str} />;
-      case "select":
-        return <Select key={name} name={name} label={label} help={help} defaultValue={str} options={(f.options ?? []).map((o) => ({ value: o.value, label: L(o.label) }))} />;
+      case "select": {
+        const options = (f.options ?? []).map((o) => ({ value: o.value, label: L(o.label) }));
+        // (0.6.0) `display: "segmented"` : 2 à 4 choix en boutons côte à côte ; sans lui, la liste d'avant.
+        if (f.display === "segmented" && fitsSegmented(options.length)) return <Segmented key={name} name={name} label={label} help={help} example={example} defaultValue={str} options={options} />;
+        return <Select key={name} name={name} label={label} help={help} example={example} defaultValue={str} options={options} />;
+      }
       case "multichoice": {
         const min = f.minChoices ?? 0;
         const max = f.maxChoices ?? 0;
@@ -75,8 +89,22 @@ export function ModuleSettings({ t, locale, defaultLocale, locales, fields, allF
       }
       case "secret":
         return <TextField key={name} {...common} type="password" placeholder={value ? "••••••••" : ""} autoComplete="new-password" required={required && !value} />;
-      case "number":
-        return <TextField key={name} {...common} type="number" defaultValue={str} />;
+      case "number": {
+        // Sans borne ni unité : le champ d'avant. Avec : un nombre borné qui écrit son unité et montre sa valeur par défaut.
+        if (f.min === undefined && f.max === undefined && f.step === undefined && f.unit === undefined) return <TextField key={name} {...common} type="number" defaultValue={str} />;
+        const unit = f.unit ? L(f.unit) : undefined;
+        return <NumberField key={name} name={name} label={label} help={common.help} example={example} required={required} defaultValue={str} min={f.min} max={f.max} step={f.step} unit={unit}
+          emptyValue={typeof f.default === "number" ? f.default : undefined} hint={numberHint(t, f, unit)} invalidText={(() => { const e = valueErrorKey("range", f, t); return t(e.key, { field: label, ...e.vars }); })()} />;
+      }
+      case "period":
+        return <PeriodField key={name} name={name} label={label} help={common.help} example={example} required={required} defaultValue={str} locale={locale}
+          labels={{ from: t("period.from"), to: t("period.to"), yearly: t("period.yearly"), sentenceYearly: t("period.sentenceYearly"), sentenceOnce: t("period.sentenceOnce"), none: t("period.none"), clear: t("period.clear"), order: t("period.order") }} />;
+      case "datetime":
+        return <DateTimeField key={name} name={name} label={label} help={common.help} example={example} required={required} defaultValue={str} locale={locale}
+          labels={{ date: t("datetime.date"), time: t("datetime.time"), clear: t("datetime.clear"), at: t("datetime.at"), preview: t("datetime.preview") }} />;
+      case "duration":
+        return <DurationField key={name} name={name} label={label} help={common.help} example={[numberHint(t, f), example].filter(Boolean).join(" · ") || undefined} required={required} defaultValue={str} min={f.min} max={f.max} invalidText={(() => { const e = valueErrorKey("range", f, t); return t(e.key, { field: label, ...e.vars }); })()}
+          labels={{ s: t("unit.s"), min: t("unit.min"), h: t("unit.h"), d: t("unit.d"), day: t("unit.day") }} />;
       case "color": {
         // Une couleur qui suit le thème (défaut « theme:… ») : case « Suivre le thème » cochée tant qu'aucune couleur n'est choisie.
         const token = themeRef(f.default);
@@ -195,12 +223,18 @@ export function ModuleSettings({ t, locale, defaultLocale, locales, fields, allF
   const inAppearance = (s: Slot) => (s.kind === "field" ? s.field : s.fields[0])?.group === "appearance";
   // Réglages techniques (mode avancé seulement) : à part, repliés, en bas — ils ne gênent pas les réglages de tous les jours.
   const isAdvanced = (s: Slot) => s.kind === "field" && s.field.advanced === true;
+  // (0.6.0) Réglages rares : un seul panneau replié « Plus d'options », avec le résumé de ce qui y est déjà réglé, ouvert d'office quand une valeur y est.
+  const isRare = (s: Slot) => s.kind === "field" && s.field.rare === true && !s.field.advanced;
   const sections = [
-    { id: "options", title: t("instances.s.options"), slots: slots.filter((s) => !inAppearance(s) && !isAdvanced(s)) },
-    { id: "appearance", title: t("instances.s.appearance"), slots: slots.filter((s) => inAppearance(s) && !isAdvanced(s)) },
+    { id: "options", title: t("instances.s.options"), slots: slots.filter((s) => !inAppearance(s) && !isAdvanced(s) && !isRare(s)) },
+    { id: "appearance", title: t("instances.s.appearance"), slots: slots.filter((s) => inAppearance(s) && !isAdvanced(s) && !isRare(s)) },
   ];
+  const rareSlots = slots.filter(isRare);
+  const rareFields = rareSlots.flatMap((s) => (s.kind === "field" ? [s.field] : []));
+  const rareView = summarizeGroup(rareFields.map((f) => ({ key: f.key, label: L(f.label), type: f.type, default: f.default, options: f.options?.map((o) => ({ value: o.value, label: L(o.label) })), unit: f.unit ? L(f.unit) : undefined })),
+    (key) => stored[key]?.[rareFields.find((f) => f.key === key)?.translatable ? defaultLocale : ""], locale, t);
   const technical = slots.filter(isAdvanced);
-  const hasEveryday = sections.some((s) => s.slots.length > 0);
+  const hasEveryday = sections.some((s) => s.slots.length > 0) || rareSlots.length > 0;
   // Un seul bloc : pas de titre visible (l'onglet le nomme déjà).
   const titled = sections.filter((s) => s.slots.length > 0).length + (technical.length > 0 ? 1 : 0) > 1 || !tabbed;
   return (
@@ -211,6 +245,13 @@ export function ModuleSettings({ t, locale, defaultLocale, locales, fields, allF
           <div className={`${ui.card} grid grid-cols-1 items-start gap-x-8 gap-y-5 min-[1100px]:grid-cols-2`}>{s.slots.map(slotNode)}</div>
         </section>
       ))}
+      {rareSlots.length > 0 && (
+        <section data-section="more" aria-label={t("instances.s.more")}>
+          <MoreOptions title={t("instances.s.more")} summary={rareView.summary} count={rareView.count} defaultOpen={rareView.count > 0}>
+            <div className="grid grid-cols-1 items-start gap-x-8 gap-y-5 min-[1100px]:grid-cols-2">{rareSlots.map(slotNode)}</div>
+          </MoreOptions>
+        </section>
+      )}
       {/* Seuls réglages de l'onglet : affichés tels quels (replier le seul contenu d'un onglet ne servirait à rien). */}
       {technical.length > 0 && !hasEveryday && (
         <section className="space-y-3" data-section="advanced">

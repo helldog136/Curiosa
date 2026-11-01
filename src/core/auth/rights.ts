@@ -66,6 +66,8 @@ export const RIGHT_ID_RE = /^[a-z][a-z0-9-]*(\.[a-z][a-z0-9-]*){0,2}$/;
 export const MAX_MODULE_RIGHTS = 20;
 /** Le droit implicite de chaque module : ouvrir sa page d'administration. Un module ne le redéclare pas. */
 export const OPEN = "open";
+/** Le droit implicite de chaque module (cœur 0.6.0) : voir son onglet « Historique ». Administration par défaut ; réglable dans un rôle ; un module ne le redéclare pas. */
+export const HISTORY = "history";
 
 export type RightDecl = { id: string; label?: LocalizedString; help?: LocalizedString; sensitive?: boolean; default?: { admin?: boolean; editor?: boolean } };
 export type ModuleRightsSource = { moduleId: string; name: LocalizedString; rights?: RightDecl[] | null };
@@ -109,8 +111,9 @@ export function rightsCatalogue(modules: ModuleRightsSource[]): RightInfo[] {
     ...CORE_RESERVED.map((id) => ({ id, moduleId: null, moduleName: null, local: id.slice(5), label: null, help: null, sensitive: false, reserved: true, admin: false, editor: false })),
   ];
   for (const m of [...modules].sort((a, b) => a.moduleId.localeCompare(b.moduleId))) {
-    const seen = new Set<string>([OPEN]);
+    const seen = new Set<string>([OPEN, HISTORY]);
     out.push({ id: `${m.moduleId}:${OPEN}`, moduleId: m.moduleId, moduleName: m.name, local: OPEN, label: null, help: null, sensitive: false, reserved: false, admin: true, editor: false });
+    out.push({ id: `${m.moduleId}:${HISTORY}`, moduleId: m.moduleId, moduleName: m.name, local: HISTORY, label: null, help: null, sensitive: false, reserved: false, admin: true, editor: false });
     for (const r of (m.rights ?? []).slice(0, MAX_MODULE_RIGHTS)) {
       const id = typeof r?.id === "string" ? moduleRight(m.moduleId, r.id) : null;
       if (!id || seen.has(r.id)) continue;

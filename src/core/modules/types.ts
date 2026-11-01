@@ -1,3 +1,4 @@
+import type { LogEventDecl } from "../journal/events";
 import type { Theme } from "../color";
 import type { Block, PanelBlock, Slot } from "../blocks";
 import type { StorePage, StoreRecord } from "../services/store";
@@ -39,7 +40,26 @@ export type ChoiceResolution =
 export type SettingField = {
   key: string;
   label: LocalizedString;
-  type: "text" | "textarea" | "url" | "link" | "number" | "boolean" | "select" | "color" | "secret" | "image" | "video" | "choice" | "multichoice";
+  type: "text" | "textarea" | "url" | "link" | "number" | "boolean" | "select" | "color" | "secret" | "image" | "video" | "choice" | "multichoice"
+    /**
+     * (cœur 0.6.0, `minCore: "0.6.0"`) Un seul contrôle compact par notion : `period` (« Du 1er novembre au 30 novembre, chaque année » : deux dates, un interrupteur
+     * « chaque année » et une phrase d'aperçu), `datetime` (date et heure en un champ), `duration` (un nombre et une unité : secondes, minutes, heures, jours).
+     * Valeurs enregistrées : `period` = `"11-01/11-30"` (chaque année) ou `"2026-11-01/2026-11-30"` ; `datetime` = `"2026-11-30T18:30"` (heure du site) ;
+     * `duration` = un nombre entier de SECONDES. Un cœur plus ancien refuse ces types.
+     */
+    | "period" | "datetime" | "duration";
+  /** (0.6.0) `number` et `duration` : bornes (une durée en secondes) et pas ; le champ n'accepte que cela et l'erreur dit les bornes avec un exemple. */
+  min?: number;
+  max?: number;
+  step?: number;
+  /** (0.6.0) `number` : l'unité affichée à droite du champ (« secondes », « % », « caractères »). */
+  unit?: LocalizedString;
+  /** (0.6.0) Un exemple concret affiché sous un champ libre : « Par exemple : insta, ig » (le cœur écrit « Par exemple : » lui-même, écrivez seulement la valeur). */
+  example?: LocalizedString;
+  /** (0.6.0) Réglage rare : rangé sous « Plus d'options » (replié, avec un résumé de ce qui y est réglé, ouvert d'office si une valeur y est déjà). Contrairement à `advanced`, il reste visible en mode simple. */
+  rare?: boolean;
+  /** (0.6.0) `select` de 2 à 4 options : `"segmented"` les montre en boutons côte à côte au lieu d'une liste. */
+  display?: "segmented";
   /** Obligatoire pour `choice` : d'où viennent les options. */
   source?: ChoiceSource;
   /** `choice` de source `service` avec `create` : propose « Créer « X » » (le module propriétaire crée, avec SES droits). Défaut false. */
@@ -212,6 +232,8 @@ export type ModuleManifest = {
   entryPanels?: EntryPanelDecl[];
   /** Actions proposées à l'API MCP du cœur (désactivable). */
   mcp?: McpDecl[];
+  /** (cœur 0.6.0) Types d'événements que le module écrit au journal du cœur (`ctx.api.log.write`) : clé, libellé fr/en, champs autorisés. Voir core/journal/events.ts. */
+  logEvents?: LogEventDecl[];
   /** Ce qui se passe si l'utilisateur choisit ce module pendant l'assistant de première installation. Le cœur n'a aucune connaissance d'un module en particulier : tout est déclaré ici. */
   onboarding?: {
     /** Section placée sur l'accueil à la création (`count` = nombre d'entrées pour « latest »). */
@@ -280,7 +302,27 @@ export type PrivacyDeclarations = {
   truncated: boolean;
 };
 
+/** Ce qu'un module écrit au journal central (`ctx.api.log.write`). L'acteur n'en fait JAMAIS partie : le cœur le déduit. */
+export type LogEntryInput = {
+  /** Clé d'un événement déclaré dans `logEvents` (« command.run »). Une clé non déclarée donne une ligne générique, sans données. */
+  action: string;
+  /** Ce sur quoi porte l'action (un nom, 200 caractères au plus) ; jamais de secret ni de texte du public. */
+  target?: string;
+  /** « info » (défaut, ou celui de l'événement), « warn » ou « error ». */
+  level?: "info" | "warn" | "error";
+  /** Les champs déclarés pour cet événement ; tout autre champ est écarté. */
+  data?: Record<string, string | number | boolean>;
+};
+
 export type ModuleApi = {
+  /**
+   * Journal central du site (cœur 0.6.0 ; aucune permission). Ne lève jamais : une ligne refusée (clé invalide) renvoie `false`. Le cœur déduit QUI agit
+   * (la personne connectée, un assistant IA, le module lui-même ou le système), injecte le module et l'instance, écarte tout champ non déclaré et purge à l'écriture
+   * (90 jours, 500 lignes par module). Un cœur plus ancien n'a pas `ctx.api.log` : écrire `ctx.api.log?.write(…)`.
+   */
+  log: {
+    write(entry: LogEntryInput): Promise<boolean>;
+  };
   topics: {
     /**
      * Récupère les informations des sources auxquelles CETTE instance est abonnée

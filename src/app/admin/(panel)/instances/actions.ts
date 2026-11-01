@@ -16,6 +16,7 @@ import { menuEligible } from "@/core/modules/menuEligibility";
 import { setInstanceInMenu } from "@/core/menuStore";
 import { defaultPlacement, parsePlacement, placementSettingKey, placementsFor } from "@/core/modules/menuPlacement";
 import { groupFlagName, judgeGroup } from "@/core/modules/groups";
+import { valueErrorKey } from "@/core/adminkit/hints";
 import { checkFieldInput, checkMultiInput, resolveDefault, shouldStore } from "@/core/modules/settingValues";
 import { localized } from "@/core/modules/types";
 import { getModule } from "@/core/modules/registry";
@@ -118,7 +119,7 @@ export async function saveInstance(_prev: ActionState, formData: FormData): Prom
   }
 
   await prisma.moduleInstance.update({ where: { id }, data });
-  await audit(user.email, "instance.update", existing.key);
+  await audit(user.email, "instance.update", existing.key, { module: existing.moduleId, instance: existing.key });
   revalidatePath("/", "layout");
   return { ok: t("action.saved") };
 }
@@ -215,6 +216,11 @@ export async function saveInstanceSettings(_prev: ActionState, formData: FormDat
       const checked = checkFieldInput(field, raw);
       if (!checked.ok) {
         const { reason } = checked;
+        // Un nombre, une durée, une période ou une date : le message dit les bornes et donne un exemple (R22).
+        if (reason === "number" || reason === "range" || reason === "duration" || reason === "period" || reason === "datetime") {
+          const e = valueErrorKey(reason, field, t);
+          return { errors: { [name]: t(e.key, { field: L(field.label), ...e.vars }) } };
+        }
         // Sous le champ fautif (et l'onglet qui le contient s'ouvre de lui-même s'il était caché).
         return { errors: { [name]: reason === "link" ? t("instances.error.link", { field: L(field.label) }) : reason === "video" || reason === "image" || reason === "url" ? t("error.badUrl") : t("error.generic") } };
       }
@@ -238,7 +244,7 @@ export async function saveInstanceSettings(_prev: ActionState, formData: FormDat
     else await setSetting(o.key, o.value, o.locale);
   }
   forgetChoices(id);
-  await audit(user.email, "instance.settings", instance.key);
+  await audit(user.email, "instance.settings", instance.key, { module: instance.moduleId, instance: instance.key });
   revalidatePath("/", "layout");
   return { ok: t("action.saved") };
 }
@@ -288,7 +294,7 @@ export async function saveSources(_prev: ActionState, formData: FormData): Promi
       : [];
     await setSources(id, decl.topic, { instances: chosen.length === available.length ? null : chosen, tags });
   }
-  await audit(user.email, "instance.sources", instance.key);
+  await audit(user.email, "instance.sources", instance.key, { module: instance.moduleId, instance: instance.key });
   revalidatePath("/", "layout");
   return { ok: t("action.saved") };
 }

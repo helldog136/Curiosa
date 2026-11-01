@@ -44,7 +44,9 @@ import { choiceAdminView, isChoiceField, viewCountsAsFilled, type ChoiceView } f
 import { FILLED_MARK } from "@/core/modules/choiceValues";
 import { PendingButton } from "@/components/admin/PendingButton";
 import { PageTabs, TabPanel } from "@/components/admin/PageTabs";
-import { initialTab, panelTab, planTabs, settingArea, settingTab, visibleTabs } from "@/core/modules/tabs";
+import { HISTORY_TAB, initialTab, panelTab, planTabs, settingArea, settingTab, visibleTabs } from "@/core/modules/tabs";
+import { JournalView } from "@/components/admin/JournalView";
+import { Panel } from "@/components/admin/Page";
 
 const PLACE_LABEL = { menu: "placement.pin", integrations: "placement.park", overlays: "placement.parkOverlays" } as const;
 
@@ -134,7 +136,9 @@ export async function InstanceView({ id, query: sp, inModal = false }: { id: str
     if (showSources) filled.add("sources");
     filled.add("general");
   }
-  const visible = visibleTabs(plan, filled);
+  // « Historique » (cœur 0.6.0) : ajouté par le cœur à chaque module, en dernier, pour qui a le droit `<module>:history` (Administration par défaut, réglable dans un rôle).
+  const canHistory = can(user, `${mod.manifest.id}:history`);
+  const visible = [...visibleTabs(plan, filled), ...(canHistory ? [{ id: HISTORY_TAB, builtin: true, label: undefined }] : [])];
   const tabLabel = (tab: (typeof visible)[number]) => (tab.label !== undefined ? L(tab.label) : t(`moduleTabs.${tab.id}`));
   const requested = typeof sp.tab === "string" ? sp.tab : null;
   const toFillTab = manage && missingFields[0] ? settingTab(plan, missingFields[0]) : null;
@@ -322,8 +326,17 @@ export async function InstanceView({ id, query: sp, inModal = false }: { id: str
     </section>
   );
 
+  // Onglet « Historique » : ce qui s'est passé dans CE module (liens relatifs : ils restent dans la page ou la fenêtre où l'on est).
+  const historyPanel = canHistory && (
+    <Panel title={t("moduleTabs.history")} help={`${t("journal.history.intro", { name: moduleName })} ${t("journal.history.keep")}`} testid="module-history">
+      <JournalView t={t} locale={locale} defaultLocale={config.defaultLocale} advanced={advanced} sp={{ ...Object.fromEntries(Object.entries(sp).flatMap(([k, v]) => (typeof v === "string" ? [[k, v]] : []))), tab: HISTORY_TAB }} path="" prefix="h" moduleId={mod.manifest.id} testid="module-history-list" />
+      {can(user, "core:security") && <p className="text-sm"><a href="/admin/audit" className="underline hover:text-accent">{t("journal.history.global")} →</a></p>}
+    </Panel>
+  );
+
   /** Ce que montre l'onglet `tab` : les zones qui y aboutissent (un onglet par défaut retiré verse la sienne dans un autre), dans un ordre fixe. */
   const tabContent = (tab: string) => {
+    if (tab === HISTORY_TAB) return historyPanel;
     const here = (area: string) => plan.target(area) === tab;
     const sourcesFirst = tab === "sources";
     return (
