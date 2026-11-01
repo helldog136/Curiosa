@@ -69,7 +69,7 @@ export default async function SocialPage({ searchParams }: { searchParams: Promi
           <div className={`${ui.card} space-y-3 text-[15px] leading-6`} data-testid="social-empty">
             <p className="font-medium">{t("social.none")}</p>
             <p className="text-muted">{t("social.noneHelp")}</p>
-            <a href="#social-add" className={`${ui.btnPrimary} min-h-11`}>{t("social.addFirst")}</a>
+            <a href="#social-add" className={`${ui.btn} min-h-11`}>{t("social.addFirst")}</a>
           </div>
         ) : (
           <>
