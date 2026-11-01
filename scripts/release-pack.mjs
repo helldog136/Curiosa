@@ -15,12 +15,10 @@ if (pkg.version !== version) { console.error(`package.json est en ${pkg.version}
 const repo = process.env.GITHUB_REPOSITORY ?? process.env.CURIOSA_RELEASE_REPO ?? "";
 if (!REPO_RE.test(repo)) { console.error("Dépôt inconnu : GITHUB_REPOSITORY (ou CURIOSA_RELEASE_REPO) doit valoir « compte/nom »."); process.exit(1); }
 
-/** Tout ce que le site lit à l'exécution ; rien d'autre. Les données de l'exploitant n'y sont jamais, ni AUCUN module : Curiosa s'installe seul, ses modules viennent du catalogue. */
+/** Tout ce que le site lit à l'exécution ; rien d'autre. `fonts` : les polices libres livrées avec le cœur (inventaire, fichiers, licences), servies par le site lui-même (docs/POLICES.md). Les données de l'exploitant n'y sont jamais, ni AUCUN module : Curiosa s'installe seul, ses modules viennent du catalogue. */
 const PATHS = [
   ".next", "node_modules", "package.json", "package-lock.json", "next.config.mjs", "release.json",
-  "prisma/schema.prisma", "prisma/migrations", "scripts",
-  // Polices libres embarquées (fonts/library.json, fichiers .woff2 et licences) : le site les sert lui-même, voir docs/POLICES.md.
-  "fonts",
+  "prisma/schema.prisma", "prisma/migrations", "scripts", "fonts",
   ".env.example", "LICENSE", "THIRD-PARTY-NOTICES.md",
 ].filter((p) => p === "release.json" || fs.existsSync(p));
 if (!PATHS.includes(".next")) { console.error("Pas de build (.next) : lancez `npm run build` d'abord."); process.exit(1); }

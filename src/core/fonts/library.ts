@@ -11,9 +11,9 @@ import { isFontGroup, type FontFile, type LibraryFamily } from "./types";
 
 export const HASH_LEN = 10;
 
-/** Le dossier `fonts/` du cœur. `CURIOSA_FONTS_DIR` : pour les tests. */
+/** Le dossier `fonts/` du cœur (à côté de `package.json`). */
 export function libraryDir(): string {
-  return process.env.CURIOSA_FONTS_DIR ? path.resolve(process.env.CURIOSA_FONTS_DIR) : path.join(/* turbopackIgnore: true */ process.cwd(), "fonts");
+  return path.join(/* turbopackIgnore: true */ process.cwd(), "fonts");
 }
 
 export type LibraryEntry = { family: LibraryFamily; file: FontFile; urlName: string; abs: string };

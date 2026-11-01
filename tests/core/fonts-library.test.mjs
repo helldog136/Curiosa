@@ -63,11 +63,8 @@ test("adresses : une empreinte de dix caractères, uniques, relues du disque ; u
   const names = lib.families.flatMap((f) => f.files.map(urlNameOf));
   assert.equal(new Set(names).size, names.length);
   for (const n of names) assert.match(n, /^[a-z0-9-]+-(?:400|700)-(?:latin|latin-ext)\.[0-9a-f]{10}\.woff2$/);
-  const save = process.env.CURIOSA_FONTS_DIR;
-  process.env.CURIOSA_FONTS_DIR = path.join(dir, "nulle-part");
-  resetLibraryCache();
-  assert.deepEqual(loadLibrary().families, []);
-  if (save === undefined) delete process.env.CURIOSA_FONTS_DIR; else process.env.CURIOSA_FONTS_DIR = save;
+  assert.deepEqual(loadLibrary(path.join(dir, "nulle-part")).families, []);
+  assert.deepEqual(loadLibrary(path.join(dir, "files")).families, [], "un dossier sans inventaire");
   resetLibraryCache();
   assert.equal(loadLibrary().families.length, lib.families.length);
 });
