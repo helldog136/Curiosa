@@ -241,11 +241,11 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
         <RowTable scope="team" actionsLabel={t("users.actions")}
           columns={mixed
             ? [
-                { key: "person", label: t("users.col.person"), width: "w-[21%]" },
-                { key: "type", label: t("team.col.type"), width: "w-[11%]" },
-                { key: "role", label: t("team.col.role"), width: "w-[20%]" },
-                { key: "state", label: t("users.col.state"), width: "w-[14%]", optional: true },
-                { key: "seen", label: t("team.col.seen"), width: "w-[13%]" },
+                { key: "person", label: t("users.col.person"), width: "w-[19%]" },
+                { key: "type", label: t("team.col.type"), width: "w-[13%]" },
+                { key: "role", label: t("team.col.role"), width: "w-[17%]" },
+                { key: "state", label: t("users.col.state"), width: "w-[12%]", optional: true },
+                { key: "seen", label: t("team.col.seen"), width: "w-[14%]" },
               ]
             : [
                 { key: "person", label: t("users.col.person"), width: "w-[26%]" },

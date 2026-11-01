@@ -28,13 +28,12 @@ export function summarizeRights(list: readonly Ability[]): RightsSummary {
 }
 
 /** Les seuls états à montrer sur une ligne : l'état normal (accès actif) ne s'écrit pas (R14). */
-export type AssistantFlag = "paused" | "waiting" | "neverUsed";
+export type AssistantFlag = "paused" | "waiting";
 
-export function assistantFlags(input: { enabled: boolean; pending: number; lastActivity: Date | null }): AssistantFlag[] {
+export function assistantFlags(input: { enabled: boolean; pending: number }): AssistantFlag[] {
   const out: AssistantFlag[] = [];
   if (!input.enabled) out.push("paused");
   if (input.pending > 0) out.push("waiting");
-  if (!input.lastActivity) out.push("neverUsed");
   return out;
 }
 

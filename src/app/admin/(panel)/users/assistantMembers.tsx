@@ -5,6 +5,7 @@ import { abilities, accessState, splitAccesses } from "@/core/services/mcp/acces
 import { accessHref, assistantsTabHref } from "@/core/services/mcp/assistantsLinks";
 import { assistantFlags, assistantHistoryHref, lastActivity, memberFilter, summarizeRights } from "@/core/services/mcp/teamView";
 import { isMcpEnabled } from "@/core/services/mcp/tokens";
+import { getApprovalModes } from "@/core/maintenance/settings";
 import { listRequests } from "@/core/maintenance/requests";
 import type { Translator } from "@/core/i18n/dictionary";
 import { Badge } from "@/components/admin/Badge";
@@ -21,7 +22,7 @@ import { revokeTokenAction } from "../assistants/actions";
  */
 export async function assistantMembers({ t, locale, canHistory }: { t: Translator; locale: string; canHistory: boolean }) {
   const now = new Date();
-  const [enabled, rows, catalogue, requests] = await Promise.all([isMcpEnabled(), prisma.apiToken.findMany({ orderBy: { createdAt: "asc" } }), listMcpToolCatalogue(), listRequests()]);
+  const [enabled, rows, catalogue, requests, modes] = await Promise.all([isMcpEnabled(), prisma.apiToken.findMany({ orderBy: { createdAt: "asc" } }), listMcpToolCatalogue(), listRequests(), getApprovalModes()]);
   const { active, inactive } = splitAccesses(rows, now);
   // Dernière activité : la plus récente entre l'usage de l'accès et une ligne du Journal central signée de son nom (une seule requête groupée, aucun minuteur).
   const journal = active.length === 0 ? [] : await prisma.auditLog.groupBy({ by: ["actor"], where: { actor: { in: active.map((k) => `mcp:${k.name}`) } }, _max: { createdAt: true } });
@@ -37,32 +38,31 @@ export async function assistantMembers({ t, locale, canHistory }: { t: Translato
     const rightsText = [t(`team.rights.${summary.level}`), summary.canDelete && t("team.rights.delete")].filter(Boolean).join(" · ");
     const seenAt = lastActivity(k.lastUsedAt, journalAt.get(`mcp:${k.name}`));
     const waiting = pending.get(k.id) ?? 0;
-    const flags = assistantFlags({ enabled, pending: waiting, lastActivity: seenAt });
+    // Seule l'exception s'écrit (R14) : un assistant d'entretien qui agit sans demander. La validation par une personne est la règle, donc sans étiquette.
+    const direct = can.some((a) => a.startsWith("maintenance")) && modes[k.id] === "direct";
+    const flags = assistantFlags({ enabled, pending: waiting });
     const historyHref = canHistory ? assistantHistoryHref(k.name) : assistantsTabHref("history");
     return {
       key: `ai:${k.id}`,
       testid: "assistant-row",
-      search: [k.name, t("team.type.assistant"), rightsText, ...flags.map((f) => t(`team.flag.${f}`))],
+      search: [k.name, t("team.type.assistant"), rightsText, direct && t("assistants.chip.direct"), ...flags.map((f) => t(`team.flag.${f}`))],
       filters: { who: memberFilter("assistant") },
       titles: { person: k.name, role: can.map((a) => t(`assistants.can.${a}`)).join(" ") },
       cells: {
-        person: <>
-          <span className="block truncate font-medium">{k.name}</span>
-          <span className="block truncate text-muted">{t("team.ai.added", { date: date(k.createdAt) })}</span>
-        </>,
+        person: <span className="block break-words font-medium">{k.name}</span>,
         type: <Badge tone="accent" testid="member-type">{t("team.type.assistant")}</Badge>,
         role: <span data-testid="assistant-rights" className="block">{rightsText}</span>,
-        state: flags.length === 0 ? null : (
+        state: flags.length === 0 && !direct ? null : (
           <span className="flex flex-wrap gap-1.5" data-testid="assistant-flags">
             {flags.includes("paused") && <span className={ui.chipWarn}>{t("team.flag.paused")}</span>}
             {flags.includes("waiting") && <a href={assistantsTabHref("requests")} className={`${ui.chipWarn} underline`}>{t("team.flag.waiting")}</a>}
-            {flags.includes("neverUsed") && <span className={ui.chip}>{t("team.flag.neverUsed")}</span>}
+            {direct && <span className={ui.chipWarn}>{t("assistants.chip.direct")}</span>}
           </span>
         ),
         seen: seenAt
           ? <>
               <time dateTime={seenAt.toISOString()} className="block whitespace-nowrap">{date(seenAt)}</time>
-              <a href={historyHref} className="block truncate text-accent underline underline-offset-2" data-testid="assistant-history">{t("team.ai.history")}<span className="sr-only"> {k.name}</span></a>
+              <a href={historyHref} className="block text-accent underline underline-offset-2" data-testid="assistant-history">{t("team.ai.history")}<span className="sr-only"> {k.name}</span></a>
             </>
           : <span className="text-muted">{t("team.ai.neverSeen")}</span>,
       },

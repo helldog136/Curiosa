@@ -44,9 +44,8 @@ test("droits résumés sans jargon, du plus fort au plus faible ; l'état normal
   assert.equal(V.summarizeRights(["read", "maintenance.watch"]).level, "read");
   assert.equal(V.summarizeRights(["maintenance.watch"]).level, "upkeep.watch");
   assert.equal(V.summarizeRights(["read", "maintenance.act"]).level, "upkeep.act");
-  const used = new Date("2026-01-01");
-  assert.deepEqual(V.assistantFlags({ enabled: true, pending: 0, lastActivity: used }), [], "actif et déjà utilisé : aucune étiquette (R14)");
-  assert.deepEqual(V.assistantFlags({ enabled: false, pending: 2, lastActivity: null }), ["paused", "waiting", "neverUsed"]);
+  assert.deepEqual(V.assistantFlags({ enabled: true, pending: 0 }), [], "accès actif : aucune étiquette (R14)");
+  assert.deepEqual(V.assistantFlags({ enabled: false, pending: 2 }), ["paused", "waiting"]);
 });
 
 test("dernière activité : la plus récente entre l'usage de l'accès et le Journal central ; historique filtré sur l'origine assistant et son nom", () => {
@@ -74,11 +73,10 @@ test("un seul tableau : personnes et assistants, colonne Type écrite, filtres P
   assert.match(html, /data-live-who="person owner"/);
   assert.match(html, />Assistant IA<\/span>/, "pastille écrite");
   assert.match(html, />Personne<\/span>/);
-  assert.match(html, /Lecture seule/);
-  assert.match(html, /Lecture et écriture/);
+  assert.equal((html.match(/data-testid="assistant-rights"/g) ?? []).length, 2, "les droits de chaque assistant sont résumés sur sa ligne");
   assert.match(html, /Droits et outils →/);
   assert.match(html, /href="\/admin\/assistants\/[a-z0-9]+"/, "bouton vers la fiche existante");
-  assert.match(html, /Jamais utilisé/);
+  assert.match(html, /Aucune activité/);
   for (const label of ["Toutes", "Personnes", "Assistants IA"]) assert.match(html, new RegExp(`>${label}<`));
   assert.match(html, /Ajouter un assistant IA/);
   assert.match(html, /Ajouter une personne/);

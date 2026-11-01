@@ -17,7 +17,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Ajouter quelqu'un en deux champs.** Il suffit d'un e-mail et d'un rôle, et le rôle proposé est toujours le moins puissant (Rédaction). Le nom et le mot de passe de départ sont sous « Plus d'options » ; sans mot de passe, le site en crée un, affiché une seule fois, que la personne remplace à sa première connexion.
 - **Des rôles plus faciles à régler.** Un tableau avec recherche liste les rôles, et leurs droits sont rangés par module, repliés, avec une recherche. Aucune règle de droits n'a changé.
 - **Vos assistants IA font partie de l'équipe.** Ils apparaissent dans le même tableau que les personnes, avec une pastille « Assistant IA » écrite et colorée, leurs droits en quelques mots (« Lecture seule », « Lecture et écriture »…) et leur dernière activité. Le filtre « Assistants IA » et la recherche les retrouvent en tapant.
-- **Ajouter un assistant IA en deux champs.** À côté de « Ajouter une personne », il suffit d'un nom et de ce qu'il peut faire ; le type d'assistant et la façon de se connecter sont sous « Plus d'options ». « Droits et outils » ouvre ses réglages fins, « Voir son historique » ouvre le journal de ce qu'il a fait, et « Retirer l'accès » reste immédiat et demande confirmation. Aucun droit n'a changé.
+- **Ajouter un assistant IA en deux champs.** À côté de « Ajouter une personne », il suffit d'un nom et de ce qu'il peut faire. « Droits et outils » ouvre ses réglages, « Voir son historique » ce qu'il a fait, et « Retirer l'accès » reste immédiat et confirmé.
 
 ### Administration
 

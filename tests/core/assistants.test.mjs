@@ -23,15 +23,15 @@ test("adresses : onglet par défaut, onglet inconnu, adresses construites au mê
   assert.equal(L.assistantsTabHref("requests", { notice: "busy" }), "/admin/assistants?tab=requests&notice=busy");
   assert.equal(L.accessHref("abc"), "/admin/assistants/abc");
   assert.equal(L.accessHref("a/b"), "/admin/assistants/a%2Fb", "un identifiant ne sort jamais du chemin");
-  assert.equal(L.newAccessHref(), "/admin/assistants#new-token");
-  assert.equal(L.newAccessHref(true), "/admin/assistants?profile=maintenance#new-token", "ancre et type Maintenance conservés");
+  assert.equal(L.newAccessHref(), "/admin/users#add-assistant", "le formulaire d'ajout est dans l'Équipe");
+  assert.equal(L.newAccessHref(true), "/admin/users?assistant=maintenance#add-assistant", "ancre et type Maintenance conservés");
 });
 
 test("anciennes adresses : /admin/mcp, /admin/mcp/<id> et /admin/maintenance-ia mènent à la bonne vue, paramètres utiles conservés", () => {
   const to = L.legacyAssistantsTarget;
   assert.equal(to("/admin/mcp"), "/admin/assistants");
   assert.equal(to("/admin/mcp/"), "/admin/assistants", "barre finale");
-  assert.equal(to("/admin/mcp", { profile: "maintenance" }), "/admin/assistants?profile=maintenance");
+  assert.equal(to("/admin/mcp", { profile: "maintenance" }), "/admin/users?assistant=maintenance#add-assistant");
   assert.equal(to("/admin/mcp", { profile: "autre" }), "/admin/assistants", "seul le profil connu passe");
   assert.equal(to("/admin/mcp/ck123"), "/admin/assistants/ck123");
   assert.equal(to("/admin/maintenance-ia"), "/admin/assistants?tab=requests");
@@ -96,11 +96,10 @@ test("accès : ce qu'il peut faire, en phrases courtes, d'après les actions ré
 });
 
 test("textes : chaque clé « assistants.* » écrite dans le code existe en français et en anglais, avec les mêmes variables", () => {
-  const files = [...walk(`${PANEL}/assistants`), "src/components/admin/McpTokenCreator.tsx", `${PANEL}/layout.tsx`, `${PANEL}/page.tsx`].filter((f) => /\.tsx?$/.test(f));
+  const files = [...walk(`${PANEL}/assistants`), `${PANEL}/users/assistantMembers.tsx`, `${PANEL}/users/page.tsx`, "src/components/admin/McpTokenCreator.tsx", `${PANEL}/layout.tsx`, `${PANEL}/page.tsx`].filter((f) => /\.tsx?$/.test(f));
   const keys = new Set(["nav.assistants"]);
   for (const f of files) for (const m of read(f).matchAll(/"((?:assistants|nav\.assistants)[\w.]*)"/g)) if (fr[m[1]] !== undefined || m[1] !== "assistants") keys.add(m[1]);
   for (const a of ["none", "read", "write", "delete", "maintenance.watch", "maintenance.act"]) keys.add(`assistants.can.${a}`);
-  for (const n of ["1", "2", "3"]) { keys.add(`assistants.step.${n}`); keys.add(`assistants.step.${n}d`); }
   for (const tab of L.ASSISTANT_TABS) keys.add(`assistants.tab.${tab}`);
   assert.ok(keys.size > 60, `seulement ${keys.size} clés trouvées`);
   const vars = (s) => [...String(s).matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort().join();
@@ -111,7 +110,7 @@ test("textes : chaque clé « assistants.* » écrite dans le code existe en fra
   }
   // Aucune clé de la section n'est restée sans emploi.
   const code = files.map(read).join("\n") + read("src/core/maintenance/notify.ts");
-  const unused = Object.keys(fr).filter((k) => k.startsWith("assistants.") && !code.includes(`"${k}"`) && !/^assistants\.(can|step|tab)\./.test(k));
+  const unused = Object.keys(fr).filter((k) => k.startsWith("assistants.") && !code.includes(`"${k}"`) && !/^assistants\.(can|tab)\./.test(k));
   assert.deepEqual(unused, []);
 });
 

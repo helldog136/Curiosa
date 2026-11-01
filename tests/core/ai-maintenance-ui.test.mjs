@@ -16,7 +16,7 @@ const read = (p) => fs.readFileSync(p, "utf8");
 const fr = JSON.parse(read("src/locales/fr.json"));
 const en = JSON.parse(read("src/locales/en.json"));
 const PANEL = "src/app/admin/(panel)";
-const UI_FILES = [`${PANEL}/assistants/page.tsx`, `${PANEL}/assistants/AccessTab.tsx`, `${PANEL}/assistants/RequestsTab.tsx`, `${PANEL}/assistants/HistoryTab.tsx`, `${PANEL}/assistants/AssistantTabs.tsx`, `${PANEL}/assistants/requestsActions.ts`, `${PANEL}/assistants/requestsShared.ts`, `${PANEL}/layout.tsx`, `${PANEL}/page.tsx`, `${PANEL}/assistants/actions.ts`, `${PANEL}/assistants/[id]/page.tsx`, `${PANEL}/updates/page.tsx`, "src/core/maintenance/notify.ts"];
+const UI_FILES = [`${PANEL}/assistants/page.tsx`, `${PANEL}/assistants/AccessTab.tsx`, `${PANEL}/assistants/creatorLabels.ts`, `${PANEL}/users/assistantMembers.tsx`, `${PANEL}/assistants/RequestsTab.tsx`, `${PANEL}/assistants/HistoryTab.tsx`, `${PANEL}/assistants/AssistantTabs.tsx`, `${PANEL}/assistants/requestsActions.ts`, `${PANEL}/assistants/requestsShared.ts`, `${PANEL}/layout.tsx`, `${PANEL}/page.tsx`, `${PANEL}/assistants/actions.ts`, `${PANEL}/assistants/[id]/page.tsx`, `${PANEL}/updates/page.tsx`, "src/core/maintenance/notify.ts"];
 
 // ── Lien « Signaler un bug » ────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -128,7 +128,6 @@ test("i18n : toutes les clés de traduction citées par les écrans de la mainte
   for (const l of [1, 2, 3]) { keys.add(`aim.level.${l}`); keys.add(`aim.level.${l}.help`); }
   for (const m of ["admin", "email"]) keys.add(`aim.notify.${m}`);
   for (const a of ["none", "read", "write", "delete", "maintenance.watch", "maintenance.act"]) keys.add(`assistants.can.${a}`);
-  for (const n of ["1", "2", "3"]) { keys.add(`assistants.step.${n}`); keys.add(`assistants.step.${n}d`); }
   for (const tab of ["access", "requests", "history"]) keys.add(`assistants.tab.${tab}`);
   for (const k of ["mcp.profile.help", "assistants.new.kind.upkeepHelp", "mcp.scope", "mcp.scopeHelp", "mcp.created.token", "mcp.created.url", "mcp.created.once", "mcp.afterCreate", "assistants.confirmDestructive", "mcp.confirmDestructive"]) keys.add(k);
   for (const m of ["pending", "done", "failed"]) { keys.add(`aim.mail.${m}.subject`); keys.add(`aim.mail.${m}.body`); }
