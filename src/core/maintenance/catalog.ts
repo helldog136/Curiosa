@@ -281,6 +281,7 @@ export async function catalogGet(args: Record<string, unknown>) {
     ...(f.type === "secret" ? { secret: true, whoEntersIt: "The owner types it in the admin; an AI can neither read nor set it." } : {}),
     ...(f.advanced ? { advanced: true } : {}),
     ...(f.type === "select" || f.type === "multichoice" ? { options: (f.options ?? []).slice(0, 20).map((o) => ({ value: o.value, label: L(o.label) })) } : {}),
+    ...(f.type === "number" || f.type === "duration" ? { ...(f.min !== undefined ? { min: f.min } : {}), ...(f.max !== undefined ? { max: f.max } : {}) } : {}),
     ...(f.type === "multichoice" ? { ...(f.minChoices !== undefined ? { minChoices: f.minChoices } : {}), ...(f.maxChoices !== undefined ? { maxChoices: f.maxChoices } : {}), ...(f.defaultValues?.length ? { defaultValues: f.defaultValues } : {}) } : {}),
     ...(f.type === "secret" ? {} : f.default !== undefined && typeof f.default !== "object" ? { defaultValue: typeof f.default === "string" ? text(f.default, 80) : f.default } : {}),
     tab: settingTab(tabs, f),

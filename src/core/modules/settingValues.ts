@@ -1,5 +1,6 @@
 import { isHexColor } from "../color";
 import type { SettingField } from "./types";
+import { checkBoundedNumber, checkDateTime, checkDuration, parsePeriod, serializePeriod } from "../adminkit/values";
 
 /**
  * Valeurs de réglages : fonctions pures (aucune base de données), partagées par l'admin, le serveur et `ctx.setting()`.
@@ -74,16 +75,24 @@ export function readMulti(field: Pick<SettingField, "options" | "defaultValues" 
   return options.filter((v) => chosen.has(v)).slice(0, field.maxChoices ?? options.length);
 }
 
-export type FieldCheck = { ok: true; value: unknown } | { ok: false; reason: "color" | "number" | "select" | "video" | "image" | "url" | "link" };
+export type FieldCheck = { ok: true; value: unknown } | { ok: false; reason: "color" | "number" | "range" | "select" | "video" | "image" | "url" | "link" | "period" | "datetime" | "duration" };
 
 /**
  * Valide la saisie (texte déjà « trimé », non vide) d'un réglage selon son type — LA règle commune à l'admin (formulaire des réglages d'une instance)
  * et à la création d'une instance semée par une migration (`ctx.seedInstance`). Un booléen ne passe pas par ici (il vaut « coché » ou non).
  */
-export function checkFieldInput(field: Pick<SettingField, "type" | "options">, raw: string): FieldCheck {
+export function checkFieldInput(field: Pick<SettingField, "type" | "options" | "min" | "max" | "step">, raw: string): FieldCheck {
   switch (field.type) {
     case "color": return isHexColor(raw) ? { ok: true, value: raw.slice(0, 5000) } : { ok: false, reason: "color" };
-    case "number": { const n = Number(raw); return Number.isFinite(n) ? { ok: true, value: n } : { ok: false, reason: "number" }; }
+    // Un nombre sans borne reste accepté tel quel (comme avant) ; avec `min` / `max` / `step` (0.6.0), il doit y rester.
+    case "number": {
+      if (field.min === undefined && field.max === undefined && field.step === undefined) { const n = Number(raw); return Number.isFinite(n) ? { ok: true, value: n } : { ok: false, reason: "number" }; }
+      const c = checkBoundedNumber(raw, field);
+      return c.ok ? { ok: true, value: c.value } : { ok: false, reason: c.reason };
+    }
+    case "period": { const c = parsePeriod(raw); return c.ok ? { ok: true, value: serializePeriod(c.period) } : { ok: false, reason: "period" }; }
+    case "datetime": return checkDateTime(raw) ? { ok: true, value: raw.trim() } : { ok: false, reason: "datetime" };
+    case "duration": { const c = checkDuration(raw, field); return c.ok ? { ok: true, value: c.value } : { ok: false, reason: c.reason === "range" ? "range" : "duration" }; }
     case "select": return field.options?.some((o) => o.value === raw) ? { ok: true, value: raw } : { ok: false, reason: "select" };
     case "video": return /^\/uploads\/[0-9a-f-]{36}\.(mp4|webm)$/.test(raw) ? { ok: true, value: raw } : { ok: false, reason: "video" };
     case "image": return /^(https?:\/\/|\/uploads\/)/i.test(raw) ? { ok: true, value: raw } : { ok: false, reason: "image" };

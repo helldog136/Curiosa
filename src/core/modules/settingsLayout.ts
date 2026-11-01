@@ -3,7 +3,7 @@
 type LayoutField = { type: string; translatable?: boolean };
 
 /** Types qui s'étalent sur toute la largeur : adresses, secrets, textes longs, médias. */
-const WIDE = ["url", "link", "secret", "textarea", "image", "video", "multichoice"];
+const WIDE = ["url", "link", "secret", "textarea", "image", "video", "multichoice", "period", "datetime"];
 
 export type Span = "half" | "full";
 

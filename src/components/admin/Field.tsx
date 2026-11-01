@@ -1,8 +1,27 @@
 import { ui } from "./ui";
 import { HelpBelow, HelpTip } from "./HelpTip";
 import { isLongHelp } from "./helpRule";
+import { ERROR_BORDER, FieldErrorText } from "./FieldErrors";
 
-type Common = { label: string; name: string; help?: string; required?: boolean; /** Petite étiquette à côté du libellé (« à remplir » : le réglage dont dépend l'état « à configurer »). */ flag?: string };
+/**
+ * Sous un champ : l'EXEMPLE (« Par exemple : insta, ig », déjà écrit en toutes lettres par l'appelant) puis l'ERREUR (icône + texte, jamais seule : « Écrivez un nombre
+ * entre 5 et 3600, par exemple 60 »). `describedBy` relie les deux au champ pour les lecteurs d'écran. Sans `example` ni `error`, rien n'est ajouté (même rendu qu'avant).
+ */
+function Below({ name, example, error }: { name: string; example?: string; error?: string }) {
+  return (
+    <>
+      {example && <p id={`ex-${name}`} className={ui.help} data-field-example="">{example}</p>}
+      <FieldErrorText id={`err-${name}`} message={error ?? null} />
+    </>
+  );
+}
+/** Les attributs d'un champ qui a un exemple et/ou une erreur (reliés, marqué invalide). */
+const aria = (name: string, example?: string, error?: string) => {
+  const described = [example ? `ex-${name}` : "", error ? `err-${name}` : ""].filter(Boolean).join(" ");
+  return { ...(described ? { "aria-describedby": described } : {}), ...(error ? { "aria-invalid": true as const } : {}) };
+};
+
+type Common = { label: string; name: string; help?: string; /** (0.6.0) Exemple concret sous le champ, déjà écrit (« Par exemple : insta, ig »). */ example?: string; /** (0.6.0) Erreur sous le champ : ce qu'il faut faire, avec un exemple. */ error?: string; required?: boolean; /** Petite étiquette à côté du libellé (« à remplir » : le réglage dont dépend l'état « à configurer »). */ flag?: string };
 
 /**
  * Le libellé d'un champ, avec son étiquette éventuelle (la forme « ✎ » accompagne la couleur : l'information ne passe pas que par la couleur).
@@ -23,57 +42,66 @@ export function FieldLabel({ id, className, flag, help, text, children }: { id: 
 const rowClass = (inline?: boolean) => (inline ? "sm:flex sm:items-start sm:gap-3" : undefined);
 const labelClass = (inline?: boolean) => (inline ? "mb-1 block pt-0 text-sm text-muted sm:mb-0 sm:w-24 sm:shrink-0 sm:pt-3" : ui.label);
 
-export function TextField({ label, name, help, required, flag, defaultValue, type = "text", placeholder, autoComplete, list, pattern, title, inline }: Common & {
+export function TextField({ label, name, help, example, error, required, flag, defaultValue, type = "text", placeholder, autoComplete, list, pattern, title, inline, min, max, step, unit, inputMode }: Common & {
   defaultValue?: string | number; type?: string; placeholder?: string; autoComplete?: string; list?: string; pattern?: string; title?: string; inline?: boolean;
+  /** (0.6.0) Nombre borné : bornes et pas du champ, et l'unité écrite à sa droite (« secondes »). */
+  min?: number; max?: number; step?: number; unit?: string; inputMode?: "numeric" | "decimal" | "text" | "url";
 }) {
+  const field = (
+    <input id={name} name={name} type={type} required={required} defaultValue={defaultValue} placeholder={placeholder} autoComplete={autoComplete} list={list} pattern={pattern} title={title} min={min} max={max} step={step} inputMode={inputMode} {...aria(name, example, error)} {...(autoComplete === "off" || autoComplete === "new-password" ? { "data-1p-ignore": true, "data-lpignore": "true", "data-bwignore": "true", "data-form-type": "other" } : {})} className={`${type === "color" ? ui.colorInput : ui.input}${error ? ` ${ERROR_BORDER}` : ""}`} />
+  );
   return (
     <div className={rowClass(inline)}>
       <FieldLabel id={name} className={labelClass(inline)} flag={flag} help={help} text={label}>{label}</FieldLabel>
       <div className={inline ? "min-w-0 flex-1" : undefined}>
-        <input id={name} name={name} type={type} required={required} defaultValue={defaultValue} placeholder={placeholder} autoComplete={autoComplete} list={list} pattern={pattern} title={title} {...(autoComplete === "off" || autoComplete === "new-password" ? { "data-1p-ignore": true, "data-lpignore": "true", "data-bwignore": "true", "data-form-type": "other" } : {})} className={type === "color" ? ui.colorInput : ui.input} />
+        {unit ? <div className="flex items-center gap-2"><div className="min-w-0 flex-1">{field}</div><span className="shrink-0 text-sm text-muted">{unit}</span></div> : field}
         <HelpBelow help={help} className={ui.help} />
+        <Below name={name} example={example} error={error} />
       </div>
     </div>
   );
 }
 
-export function TextArea({ label, name, help, required, flag, defaultValue, rows = 6, mono, inline }: Common & { defaultValue?: string; rows?: number; mono?: boolean; inline?: boolean }) {
+export function TextArea({ label, name, help, example, error, required, flag, defaultValue, rows = 6, mono, inline }: Common & { defaultValue?: string; rows?: number; mono?: boolean; inline?: boolean }) {
   return (
     <div className={rowClass(inline)}>
       <FieldLabel id={name} className={labelClass(inline)} flag={flag} help={help} text={label}>{label}</FieldLabel>
       <div className={inline ? "min-w-0 flex-1" : undefined}>
-        <textarea id={name} name={name} rows={rows} required={required} defaultValue={defaultValue} className={`${ui.input} ${mono ? "font-mono" : ""}`} />
+        <textarea id={name} name={name} rows={rows} required={required} defaultValue={defaultValue} {...aria(name, example, error)} className={`${ui.input} ${mono ? "font-mono" : ""}${error ? ` ${ERROR_BORDER}` : ""}`} />
         <HelpBelow help={help} className={ui.help} />
+        <Below name={name} example={example} error={error} />
       </div>
     </div>
   );
 }
 
-export function Checkbox({ label, name, defaultChecked, help, value, required }: { label: string; name: string; defaultChecked?: boolean; help?: string; value?: string; required?: boolean }) {
+export function Checkbox({ label, name, defaultChecked, help, example, error, value, required }: { label: string; name: string; defaultChecked?: boolean; help?: string; example?: string; error?: string; value?: string; required?: boolean }) {
   return (
     <div>
       <div className="flex items-center gap-1">
         <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" name={name} value={value} defaultChecked={defaultChecked} required={required} className="h-4 w-4 accent-[var(--v-accent)]" />
+          <input type="checkbox" name={name} value={value} defaultChecked={defaultChecked} required={required} {...aria(name, example, error)} className="h-4 w-4 accent-[var(--v-accent)]" />
           {label}
         </label>
         <HelpTip help={help} name={label} />
       </div>
       <HelpBelow help={help} className={ui.help} />
+      <Below name={name} example={example} error={error} />
     </div>
   );
 }
 
-export function Select({ label, name, options, defaultValue, help }: {
-  label: string; name: string; options: { value: string; label: string }[]; defaultValue?: string; help?: string;
+export function Select({ label, name, options, defaultValue, help, example, error }: {
+  label: string; name: string; options: { value: string; label: string }[]; defaultValue?: string; help?: string; example?: string; error?: string;
 }) {
   return (
     <div>
       <FieldLabel id={name} className={ui.label} help={help} text={label}>{label}</FieldLabel>
-      <select id={name} name={name} defaultValue={defaultValue} className={ui.input}>
+      <select id={name} name={name} defaultValue={defaultValue} {...aria(name, example, error)} className={`${ui.input}${error ? ` ${ERROR_BORDER}` : ""}`}>
         {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
       <HelpBelow help={help} className={ui.help} />
+      <Below name={name} example={example} error={error} />
     </div>
   );
 }

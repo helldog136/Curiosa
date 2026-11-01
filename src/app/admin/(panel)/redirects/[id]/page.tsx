@@ -5,6 +5,8 @@ import { listInstances } from "@/core/instances";
 import { prisma } from "@/core/db";
 import { ActionForm } from "@/components/admin/ActionForm";
 import { Checkbox, Select, TextArea, TextField } from "@/components/admin/Field";
+import { DateTimeField } from "@/components/admin/DateTimeField";
+import { Switch } from "@/components/admin/Switch";
 import { ConfirmButton } from "@/components/admin/ConfirmButton";
 import { CopyBlock } from "@/components/admin/CopyBlock";
 import { PendingButton } from "@/components/admin/PendingButton";
@@ -15,7 +17,7 @@ import { parseLevel } from "@/core/redirectQr";
 import { MAX_END_MESSAGE, redirectShortUrl, redirectState, siteUrlLooksLocal } from "@/core/redirects";
 import { redirectStats } from "@/core/redirectStats";
 import { siteTimezone } from "@/core/siteTime";
-import { deleteRedirect, reactivateRedirect, toggleRedirect, updateRedirect } from "../actions";
+import { deleteRedirect, reactivateRedirect, setRedirectActive, updateRedirect } from "../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -47,7 +49,10 @@ export default async function RedirectPage({ params, searchParams }: { params: P
       <div className="space-y-2">
         <Link href="/admin/redirects" className="inline-flex min-h-11 items-center text-sm text-muted hover:text-accent hover:underline">← {t("redirects.backToList")}</Link>
         <h1 className={`${ui.pageTitle} font-mono [overflow-wrap:anywhere]`}>/{r.path}</h1>
-        <p className="flex flex-wrap items-center gap-2"><span className={stateChip[state]}>{t(`redirects.state.${state}`)}</span>{r.expiresAt && <span className="text-sm text-muted">{state === "ended" ? t("redirects.endedOn", { date: formatEnd(r.expiresAt, tz, locale) }) : t("redirects.untilDate", { date: formatEnd(r.expiresAt, tz, locale) })}</span>}</p>
+        <p className="flex flex-wrap items-center gap-2">
+          {/* L'état se lit et se change au même endroit : l'interrupteur (R17). « Terminé » reste une étiquette, car il ne dépend pas de l'interrupteur. */}
+          <Switch label={t("redirects.switch.label", { address: `/${r.path}` })} checked={r.active} onText={t("redirects.state.active")} offText={t("redirects.state.off")} failedText={t("switch.failed")} onToggle={setRedirectActive.bind(null, id)} testid="redirect-switch" />
+          {state === "ended" && <span className={stateChip.ended}>{t("redirects.state.ended")}</span>}{r.expiresAt && <span className="text-sm text-muted">{state === "ended" ? t("redirects.endedOn", { date: formatEnd(r.expiresAt, tz, locale) }) : t("redirects.untilDate", { date: formatEnd(r.expiresAt, tz, locale) })}</span>}</p>
       </div>
 
       {justCreated && <p role="status" className="rounded-xl border border-emerald-500/50 bg-emerald-500/10 p-4 text-[15px] font-medium text-emerald-800">{t("redirects.createdBanner")}</p>}
@@ -97,10 +102,8 @@ export default async function RedirectPage({ params, searchParams }: { params: P
         <h2 id="settings-title" className="text-lg font-semibold">{t("redirects.settingsTitle")}</h2>
         <ActionForm action={updateRedirect.bind(null, id)} submitLabel={t("action.save")} pendingLabel={t("progress.saving")}>
           <TextField name="targetUrl" label={t("redirects.address")} help={t("redirects.targetChangeHelp")} defaultValue={r.targetUrl} />
-          <div className="grid gap-4 sm:grid-cols-2">
-            <TextField name="endDate" type="date" label={t("redirects.endDate")} help={t("redirects.endDateHelp", { zone: tz })} defaultValue={end.date} />
-            {advanced && <TextField name="endTime" type="time" label={t("redirects.endTime")} help={t("redirects.endTimeHelp")} defaultValue={end.time} />}
-          </div>
+          <DateTimeField name="end" optionalTime label={t("redirects.endDate")} help={t("redirects.endDateHelp", { zone: tz })} locale={locale} defaultValue={end.date ? `${end.date}${end.time ? `T${end.time}` : ""}` : ""}
+            labels={{ date: t("redirects.endDate.date"), time: t("redirects.endDate.time"), timePlaceholder: t("redirects.endDate.noTime"), clear: t("redirects.endDate.clear"), at: t("datetime.at"), preview: t("redirects.endDate.preview") }} />
           <TextArea name="endMessage" rows={3} label={t("redirects.endMessage")} help={t("redirects.endMessageHelp", { max: MAX_END_MESSAGE })} defaultValue={r.endMessage} />
           {advanced && withUrl.length > 0 && (
             <Select name="entryId" label={t("redirects.entryLabel")} help={t("redirects.orEntryHelp")} defaultValue={r.entryId ?? ""}
@@ -114,7 +117,6 @@ export default async function RedirectPage({ params, searchParams }: { params: P
         <h2 id="danger-title" className="text-lg font-semibold">{t("redirects.dangerTitle")}</h2>
         <p className="max-w-prose text-sm text-muted">{t("redirects.offHelp")}</p>
         <div className="flex flex-wrap gap-2">
-          <form action={toggleRedirect.bind(null, id)}><PendingButton>{r.active ? t("action.disable") : t("action.enable")}</PendingButton></form>
           <form action={deleteRedirect.bind(null, id)}><ConfirmButton message={t("redirects.deleteConfirm", { address: address.replace(/^https?:\/\//, "") })} confirmLabel={t("redirects.deleteYes")} dangerConfirm pendingLabel={t("progress.deleting")}>{t("action.delete")}</ConfirmButton></form>
         </div>
       </section>

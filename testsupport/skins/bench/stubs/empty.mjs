@@ -1,6 +1,7 @@
 // Parties d'administration et accès réservés importés par Blocks.tsx : le banc ne rend jamais l'administration (blocs « adminForm » ignorés).
 export const AdminBlockForm = () => null;
 export const RowActionButton = () => null;
+export const AdminTable = () => null;
 export const GridEditor = () => null;
 export const SuggestInstall = () => null;
 export const ui = {};

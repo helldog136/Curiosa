@@ -23,6 +23,9 @@ const VARIANTS = {
   primary: `${BASE} bg-accent px-5 font-semibold text-accent-fg shadow-sm hover:brightness-110`,
   danger: `${BASE} border border-red-500/40 bg-surface font-medium text-red-600 hover:bg-red-500/10`,
   /** Texte cliquable discret (« Ne plus proposer », « Annuler »…) : sans cadre, mais une cible de 44 px. */
+  /** Entrée d'un menu « ⋯ » : pleine largeur, 44 px de haut, alignée à gauche (ordinaire ou rouge pour ce qui efface). */
+  menu: "flex min-h-11 w-full items-center justify-start gap-2 px-4 text-left text-sm transition hover:bg-bg disabled:cursor-progress",
+  menuDanger: "flex min-h-11 w-full items-center justify-start gap-2 px-4 text-left text-sm font-medium text-red-700 transition hover:bg-red-500/10 disabled:cursor-progress",
   link: "inline-flex min-h-11 items-center justify-center gap-2 px-1 text-sm text-muted underline-offset-2 transition hover:underline disabled:cursor-progress",
 } as const;
 

@@ -103,11 +103,14 @@ function whereInAdmin(c: Ctx, field: SettingField): string {
   return `${c.t("nav.extensions")} › ${c.L(c.mod.manifest.name)} › ${tabName}`;
 }
 
-const EXAMPLE: Record<string, string> = { number: "12", color: "#ff8800", url: "https://example.org/page", link: "/contact  ·  https://example.org  ·  mailto:me@example.org", image: "https://example.org/picture.jpg", video: "/uploads/… (a video uploaded in the admin)", text: "…", textarea: "…", boolean: "true", select: "…", choice: "…", multichoice: "[\"a\", \"b\"]" };
+const EXAMPLE: Record<string, string> = { period: "11-01/11-30", datetime: "2026-11-30T18:30", duration: "90", range: "12", number: "12", color: "#ff8800", url: "https://example.org/page", link: "/contact  ·  https://example.org  ·  mailto:me@example.org", image: "https://example.org/picture.jpg", video: "/uploads/… (a video uploaded in the admin)", text: "…", textarea: "…", boolean: "true", select: "…", choice: "…", multichoice: "[\"a\", \"b\"]" };
 
 function allowedText(field: SettingField, c: Ctx): string {
   switch (field.type) {
-    case "number": return "a number";
+    case "number": return `a number${field.min !== undefined && field.max !== undefined ? ` between ${field.min} and ${field.max}` : field.min !== undefined ? ` of at least ${field.min}` : field.max !== undefined ? ` of at most ${field.max}` : ""}${field.unit ? ` (${c.L(field.unit)})` : ""}`;
+    case "period": return "a period written \"MM-DD/MM-DD\" (every year, for example 11-01/11-30) or \"YYYY-MM-DD/YYYY-MM-DD\" (once)";
+    case "datetime": return "a date and time of the site written \"YYYY-MM-DDTHH:mm\", for example 2026-11-30T18:30";
+    case "duration": return `a whole number of seconds${field.min !== undefined && field.max !== undefined ? `, between ${field.min} and ${field.max}` : field.min !== undefined ? `, at least ${field.min}` : field.max !== undefined ? `, at most ${field.max}` : ""}`;
     case "boolean": return "true or false";
     case "color": return "a color written #rrggbb";
     case "select": return `one of: ${(field.options ?? []).slice(0, 20).map((o) => o.value).join(", ")}`;
@@ -345,7 +348,10 @@ function parseValue(c: Ctx, f: SettingField, locale: string, value: unknown, sit
   if (typeof value === "boolean") return bad("text", EXAMPLE[f.type] ?? "…");
   if (f.type === "number") {
     const n = typeof value === "number" ? value : typeof value === "string" && value.trim() !== "" ? Number(value.trim()) : NaN;
-    return Number.isFinite(n) && Math.abs(n) <= 1e12 ? { ...base, del: false, value: n } : bad("number", EXAMPLE.number!);
+    if (!(Number.isFinite(n) && Math.abs(n) <= 1e12)) return bad("number", EXAMPLE.number!);
+    // Bornes et pas du réglage (0.6.0) : les mêmes que dans l'admin.
+    const inBounds = checkFieldInput(f, String(n));
+    return inBounds.ok ? { ...base, del: false, value: n } : bad("range", String(f.min ?? f.max ?? EXAMPLE.range!), { min: f.min ?? "", max: f.max ?? "" });
   }
   const text = String(value).trim();
   if (text === "") return { ...base, del: true };
