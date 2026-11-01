@@ -49,42 +49,6 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **`scripts/install.sh` : catalogues de messages.** Un bloc `catalog_XX` par langue dans le fichier (toujours un seul fichier, compatible bash 3) ; langue choisie par `--lang`, `CURIOSA_LANG`, `LC_ALL`, `LC_MESSAGES`, `LANG`. Ajouter une langue : un bloc et son code dans `LANGS` (docs/INSTALL.md). `tests/core/install-i18n.test.mjs` vérifie la parité et les sorties machine.
 
 
-## 0.6.2 — 2026-11-01
-
-**En bref.** Le Catalogue sait désormais reconnaître l'adresse de votre profil (Instagram, TikTok, Mastodon…) avant d'installer le réseau. C'est la base du champ unique « Collez l'adresse de votre profil », qui arrive ensuite.
-
-### Réseaux sociaux
-
-- **Une adresse collée est reconnue avant toute installation.** Le Catalogue connaît, pour chaque réseau, ses sites, la forme de ses adresses et un exemple. Le nom seul, l'adresse sans « https », les liens courts et les liens de partage avec suivi mènent au même bouton.
-- **Plusieurs adresses d'un coup.** Un texte collé qui en contient plusieurs (une par ligne, ou séparées par des espaces ou des virgules) est lu adresse par adresse : chacune est reconnue, à choisir (un nom seul peut aller à plusieurs réseaux) ou non reconnue.
-
-### Pour les développeurs
-
-- **Clé de manifeste facultative `social`** (`name`, `icon`, `hosts`, `template`, `example`, et au besoin `handle`, `tag`, `aliases`, `forms`, `shapes`, `fediverse`) : validée par `socialSpecSchema`, un bloc abîmé est ignoré, un cœur plus ancien l'ignore. Documentée dans `docs/MODULES.md`.
-- **Le catalogue la recopie** (`CatalogueEntry.social`) et la relit sans réseau depuis sa dernière copie.
-- **`src/core/socialRecognize.ts`** (pur) : `recognizeOne` fait ce que fait le `profile()` du module ; `recognizeSocial` lit un texte à plusieurs adresses. Aucune migration, aucun réglage ajouté.
-
-## 0.6.1 — 2026-11-01
-
-**En bref.** La page « Réseaux sociaux » tient en un seul tableau, avec une recherche qui filtre en tapant, un interrupteur « Affiché » et l'ordre des boutons. Une adresse de profil qui n'est pas reconnue est dite tout de suite, sous le champ, avec un exemple.
-
-### Réseaux sociaux
-
-- **Un seul tableau pour tous vos réseaux.** Réseau, adresse, origine (une pastille écrite : Réseau, Chaîne en direct, Autre plateforme), interrupteur « Affiché » et ordre. Les noms ne sont plus coupés, et chaque réseau n'apparaît plus deux fois sur la page.
-- **Une recherche qui filtre pendant la frappe**, dès le premier réseau, et des filtres « Affiché · Masqué · À régler » avec leur nombre. Sur téléphone, chaque ligne devient une carte.
-- **Un interrupteur « Affiché » dans la ligne.** Vous masquez un bouton de l'en-tête sans rien supprimer ; l'interrupteur revient en arrière si l'enregistrement échoue.
-- **L'ordre des boutons se règle.** Les boutons « Monter » et « Descendre » de chaque ligne marchent au clavier comme à la souris.
-- **« 6 sur 10 affichés ».** Le compteur prévient quand l'en-tête est plein ou quand deux boutons ont la même adresse : plus rien n'est écarté en silence.
-- **Une adresse qui n'est pas reconnue est dite tout de suite.** Le message est sous le champ, avec un exemple (« Par exemple : https://… »), et votre saisie est gardée. Quand elle est reconnue, le message dit le bouton qui s'affichera (« Instagram · monpseudo »).
-- **Ajouter un réseau demande un clic.** Une recherche remplace la grille de cartes, et le champ « Nom » disparaît : un deuxième compte du même réseau reçoit un nom d'office (« Instagram 2 »), que vous changez dans « Modifier ».
-
-### Pour les développeurs
-
-- **Aucune migration.** Deux réglages du cœur, ajoutés sans toucher aux instances : `social.hidden` (clés d'instances masquées) et `social.order` (ordre des clés). Absents, le comportement est celui d'avant ; une valeur abîmée est ignorée.
-- **`loadSocialEntries(locale, max)`** renvoie chaque bouton avec son état (`shown`, `hidden`, `duplicate`, `limit`) ; `loadSocialLinks` en est le filtre « affichés » (même signature qu'avant, l'en-tête, `llms.txt` et le plan du site n'ont pas changé). Fonctions pures : `orderedKeys`, `moveKey`, `socialOrigin`.
-- **Vérification de l'adresse** (`src/core/socialCheck.ts`) : pour un module `type: "social"` qui fournit `social.link`, le réglage `profile` est essayé avant d'être écrit (le module est appelé avec la valeur proposée, 2 secondes au plus). Convention, pas de nouvelle clé de manifeste. Les messages sont `social.error.profile` (avec `example` du réglage) et `social.saved`.
-- Pas de clé de manifeste nouvelle : le cœur reste en 0.6.x.
-
 ## 0.6.3 — 2026-11-01
 
 **En bref.** Ajouter vos réseaux tient en un champ : vous collez l'adresse de votre profil (ou de plusieurs), la page reconnaît chaque réseau en direct, puis un clic les ajoute tous.
