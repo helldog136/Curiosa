@@ -19,6 +19,8 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Administration
 
+- **Les gestionnaires de mots de passe reconnaissent l'installation.** 1Password, Bitwarden, Dashlane, Chrome et Safari peuvent maintenant proposer un mot de passe et l'enregistrer avec votre e-mail. Un bouton « Afficher » permet de relire ce que vous tapez.
+- **La même correction pour la connexion et les mots de passe du compte.** Premier mot de passe, changement, double vérification, clés d'accès et sauvegarde sont reconnus de la même façon, et les erreurs s'écrivent sous le champ concerné.
 - **Choisir un mois entier en un geste.** Dans le champ « Période », la liste « Tout le mois de » remplit d'un coup le 1er et le dernier jour du mois, février compris. Si vous changez ensuite un jour à la main, la liste revient à « Choisir un mois ».
 - **Des périodes toutes prêtes.** Une liste avec recherche propose les saisons et des fêtes de plusieurs traditions, rangées par date ou par ordre alphabétique. Chaque ligne montre ses dates.
 - **Les fêtes qui changent chaque année sont honnêtes.** Elles remplissent les dates de la prochaine fois, sans « Chaque année », avec un rappel de les refaire l'an prochain. Pour les fêtes musulmanes, la date réelle dépend de la lune, à un jour près.

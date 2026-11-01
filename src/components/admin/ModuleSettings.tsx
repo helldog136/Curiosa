@@ -89,7 +89,7 @@ export function ModuleSettings({ t, locale, defaultLocale, locales, fields, allF
         return <CheckboxGroup key={name} name={name} label={label} help={help} hint={hint} flag={opts.flag} options={(f.options ?? []).map((o) => ({ value: o.value, label: L(o.label) }))} checked={readMulti(f, value)} />;
       }
       case "secret":
-        return <TextField key={name} {...common} type="password" placeholder={value ? "••••••••" : ""} autoComplete="new-password" required={required && !value} />;
+        return <TextField key={name} {...common} type="password" noManager placeholder={value ? "••••••••" : ""} autoComplete="new-password" required={required && !value} />;
       case "number": {
         // Sans borne ni unité : le champ d'avant. Avec : un nombre borné qui écrit son unité et montre sa valeur par défaut.
         if (f.min === undefined && f.max === undefined && f.step === undefined && f.unit === undefined) return <TextField key={name} {...common} type="number" defaultValue={str} />;

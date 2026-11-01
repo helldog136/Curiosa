@@ -4,6 +4,8 @@ import { useState, useSyncExternalStore, useTransition } from "react";
 import { ui } from "./ui";
 import { createPasskey, passkeysSupported } from "./webauthn";
 import { PendingButton } from "./PendingButton";
+import { UsernameHint } from "./UsernameHint";
+import { PasswordInput } from "./PasswordInput";
 
 type Item = { id: string; name: string; createdAt: string; lastUsedAt: string | null };
 type R = { error?: string; options?: Record<string, unknown>; challengeId?: string; ok?: boolean };
@@ -14,10 +16,12 @@ type Props = {
   finish: (challengeId: string, response: Record<string, unknown>, name: string) => Promise<R>;
   remove: (id: string, password: string) => Promise<R>;
   rename: (id: string, name: string) => Promise<R>;
+  /** E-mail du compte : donné aux gestionnaires de mots de passe (champ invisible) pour qu'ils sachent quelle fiche remplir. */
+  username?: string;
 };
 
 /** Ajouter, renommer et retirer ses clés d'accès (empreinte, visage, code de l'appareil, clé de sécurité). */
-export function PasskeysPanel({ items, labels, start, finish, remove, rename }: Props) {
+export function PasskeysPanel({ items, labels, start, finish, remove, rename, username = "" }: Props) {
   const [list, setList] = useState(items);
   const [mode, setMode] = useState<"idle" | "add" | { remove: string }>("idle");
   const [pending, run] = useTransition();
@@ -66,24 +70,26 @@ export function PasskeysPanel({ items, labels, start, finish, remove, rename }: 
       </ul>
       {mode === "idle" && (supported ? <button type="button" className={ui.btnPrimary} onClick={() => { setMode("add"); setName(""); setPassword(""); setError(""); }}>{labels.add}</button> : <p className="text-sm text-muted">{labels.unsupported}</p>)}
       {mode === "add" && (
-        <div className="space-y-3">
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder={labels.name} aria-label={labels.name} maxLength={60} className={`${ui.input} max-w-xs`} data-testid="passkey-name" />
-          <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" autoComplete="current-password" placeholder={labels.password} aria-label={labels.password} className={`${ui.input} max-w-xs`} data-testid="passkey-password" />
+        <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); if (password && !pending) add(); }}>
+          {username && <UsernameHint value={username} />}
+          <input value={name} onChange={(e) => setName(e.target.value)} name="passkey-name" autoComplete="off" placeholder={labels.name} aria-label={labels.name} maxLength={60} className={`${ui.input} max-w-xs`} data-testid="passkey-name" />
+          <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} name="current-password" autoComplete="current-password" placeholder={labels.password} aria-label={labels.password} className={`${ui.input} max-w-xs`} data-testid="passkey-password" />
           <div className="flex gap-3">
-            <PendingButton type="button" variant="primary" pending={pending} disabled={!password} onClick={add} data-testid="passkey-add-confirm">{labels.add}</PendingButton>
+            <PendingButton type="submit" variant="primary" pending={pending} disabled={!password} data-testid="passkey-add-confirm">{labels.add}</PendingButton>
             <button type="button" className={ui.btn} onClick={reset}>{labels.cancel}</button>
           </div>
-        </div>
+        </form>
       )}
       {typeof mode === "object" && (
-        <div className="space-y-3">
+        <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); if (password && !pending) drop(mode.remove); }}>
           <p className="text-sm text-muted">{labels.removeHelp}</p>
-          <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" autoComplete="current-password" placeholder={labels.password} aria-label={labels.password} className={`${ui.input} max-w-xs`} />
+          {username && <UsernameHint value={username} />}
+          <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} name="current-password" autoComplete="current-password" placeholder={labels.password} aria-label={labels.password} className={`${ui.input} max-w-xs`} />
           <div className="flex gap-3">
-            <PendingButton type="button" variant="danger" pending={pending} disabled={!password} onClick={() => drop(mode.remove)}>{labels.remove}</PendingButton>
+            <PendingButton type="submit" variant="danger" pending={pending} disabled={!password}>{labels.remove}</PendingButton>
             <button type="button" className={ui.btn} onClick={reset}>{labels.cancel}</button>
           </div>
-        </div>
+        </form>
       )}
     </section>
   );
