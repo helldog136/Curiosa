@@ -13,17 +13,18 @@ import { statsEnabled, statsSummary } from "@/core/stats";
 import { maintenanceSummary } from "@/core/maintenance/summary";
 import { contentBadge } from "@/core/maintenance/content/service";
 import { EXTENSIONS_HREF } from "@/core/modules/extensionsLinks";
+import { dashboardEntryCounts, type EntryCount } from "@/core/content/dashboardCounts";
 import { assistantsTabHref } from "@/core/services/mcp/assistantsLinks";
 
 export default async function Dashboard({ searchParams }: { searchParams: Promise<{ denied?: string; welcome?: string; modules?: string }> }) {
   // Tout accès suffit (le menu y renvoie) ; ne montre que ce que cette personne peut ouvrir.
   const { t, locale, config, advanced, user } = await adminCtx("member");
-  const nav = (await getAdminNav(config.defaultLocale, config.defaultLocale)).filter((m) => navItemVisible(m, (right) => can(user, right)));
+  const allNav = await getAdminNav(config.defaultLocale, config.defaultLocale);
+  const nav = allNav.filter((m) => navItemVisible(m, (right) => can(user, right)));
   const firstContent = nav.find((i) => i.content && !i.error);
   const { denied, welcome, modules: setupModulesState } = await searchParams;
-  const [drafts, published, redirects, collections, modules] = await Promise.all([
-    prisma.entry.count({ where: { status: "draft" } }),
-    prisma.entry.count({ where: { status: "published" } }),
+  const [counts, redirects, instanceCount, modules] = await Promise.all([
+    dashboardEntryCounts(nav),
     prisma.redirect.count(),
     prisma.moduleInstance.count(),
     prisma.module.count(),
@@ -44,7 +45,33 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
       <p className="text-sm text-muted">{label}</p>
     </a>
   );
-  const entriesHref = firstContent ? `/admin/entries?c=${firstContent.key}` : EXTENSIONS_HREF;
+  // Une carte d'entrées dit ce qu'elle compte et d'où : une seule extension, la carte entière ouvre sa liste filtrée ; plusieurs, un lien par extension.
+  const entryStat = (label: string, c: EntryCount, state: "published" | "draft", testid: string) => {
+    const href = (key: string) => `/admin/entries?c=${key}&state=${state}`;
+    const only = c.parts[0];
+    if (c.parts.length === 1 && only) {
+      return (
+        <a href={href(only.key)} data-testid={testid} className={`${ui.card} block transition hover:-translate-y-0.5 hover:border-accent`}>
+          <p className="text-3xl font-bold">{c.total}</p>
+          <p className="text-sm text-muted">{label}</p>
+          <p className="mt-1 text-xs text-muted">{t("dashboard.entriesIn", { n: only.n, name: only.name })}</p>
+        </a>
+      );
+    }
+    return (
+      <div data-testid={testid} className={`${ui.card} block`}>
+        <p className="text-3xl font-bold">{c.total}</p>
+        <p className="text-sm text-muted">{label}</p>
+        {c.parts.length > 0 && (
+          <ul className="mt-2 space-y-0.5 text-sm">
+            {c.parts.map((p) => (
+              <li key={p.key}><a href={href(p.key)} className="flex items-center justify-between gap-3 rounded-lg px-2 py-1 hover:bg-accent/10"><span className="truncate">{p.icon} {p.name}</span><span className="text-muted">{p.n}</span></a></li>
+            ))}
+          </ul>
+        )}
+      </div>
+    );
+  };
   const first = user.name.split(" ")[0] ?? user.name;
   const noVisits = !!stats && stats.totals.last30.visitors === 0;
   return (
@@ -148,18 +175,22 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
           )}
         </section>
       )}
-      {advanced && (
-        <section aria-label={t("dashboard.inNumbers")} className="space-y-3">
-          <h2 className="text-lg font-semibold">{t("dashboard.inNumbers")}</h2>
-          <div className="grid gap-4 sm:grid-cols-3">
-            {stat(t("dashboard.published"), published, entriesHref)}
-            {stat(t("dashboard.drafts"), drafts, entriesHref)}
-            {stat(t("dashboard.redirects"), redirects, "/admin/redirects")}
-            {stat(t("dashboard.instances"), collections, EXTENSIONS_HREF)}
-            {stat(t("dashboard.modules"), modules, EXTENSIONS_HREF)}
-          </div>
-        </section>
-      )}
+      <section aria-label={t("dashboard.inNumbers")} data-testid="in-numbers" className="space-y-3">
+        <h2 className="text-lg font-semibold">{t("dashboard.inNumbers")}</h2>
+        <div className="grid gap-4 sm:grid-cols-3">
+          {entryStat(t("dashboard.published"), counts.published, "published", "stat-published")}
+          {entryStat(t("dashboard.drafts"), counts.draft, "draft", "stat-drafts")}
+          {stat(t("dashboard.redirects"), redirects, "/admin/redirects")}
+          {advanced ? (
+            <>
+              {stat(t("dashboard.instances"), instanceCount, EXTENSIONS_HREF)}
+              {stat(t("dashboard.modules"), modules, EXTENSIONS_HREF)}
+            </>
+          ) : (
+            stat(t("dashboard.extensions"), allNav.length, EXTENSIONS_HREF)
+          )}
+        </div>
+      </section>
     </div>
   );
 }

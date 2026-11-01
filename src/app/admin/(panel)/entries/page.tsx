@@ -6,9 +6,10 @@ import { localeName } from "@/core/i18n/locales";
 import { getActiveInstances } from "@/core/modules/registry";
 import { InstanceTabs } from "@/components/admin/InstanceTabs";
 import { getInstanceLabeler } from "@/core/modules/labels";
-import { ADMIN_STATES, cleanQuery, listAdminEntries, parseAdminState, SEARCH_MAX } from "@/core/content/adminList";
+import { cleanQuery, listAdminEntries, parseAdminState, SEARCH_MAX } from "@/core/content/adminList";
 import { parsePageParam } from "@/core/content/pagination";
 import { entryState, type EntryState } from "@/core/content/state";
+import { entryStateCounts } from "@/core/content/dashboardCounts";
 import { ui } from "@/components/admin/ui";
 import { Pagination } from "@/components/site/Pagination";
 
@@ -26,6 +27,9 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
   const param = parsePageParam(pageRaw);
   const list = await listAdminEntries({ instance: collection, defaultLocale: config.defaultLocale, page: param.kind === "page" ? param.page : 1, q, state });
   const { sort } = list;
+  const counts = await entryStateCounts(collection.id);
+  const chips = (["all", "published", "draft", "scheduled", "expired"] as const).filter((st) => st === "all" || st === "published" || st === "draft" || counts[st] > 0 || st === state);
+  const chipHref = (st: string) => `/admin/entries?${new URLSearchParams({ c: collection.key, ...(q ? { q } : {}), ...(st !== "all" ? { state: st } : {}) }).toString()}`;
   const entries = list.rows.map((e) => ({ e, main: e.translations.find((tr) => tr.locale === config.defaultLocale) ?? e.translations[0] }));
   const filtered = q !== "" || state !== "all";
   const base = `/admin/entries?${new URLSearchParams({ c: collection.key, ...(q ? { q } : {}), ...(state !== "all" ? { state } : {}) }).toString()}`;
@@ -55,18 +59,19 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
             <a href={newHref} className={ui.btnPrimary}>{t("entries.new")}</a>
           </div>
           {list.titleSortCapped && <p className={`${ui.card} border-amber-500/40 text-sm`} role="status" data-testid="title-sort-capped">{t("entries.titleSortCapped")}</p>}
+          <nav aria-label={t("entries.stateLabel")} data-testid="entries-state-chips" className="flex flex-wrap gap-2">
+            {chips.map((st) => (
+              <a key={st} href={chipHref(st)} aria-current={state === st ? "true" : undefined} data-state={st}
+                className={`${ui.btn} ${state === st ? "!border-accent !bg-accent/10 font-semibold" : ""}`}>{t(`entries.chip.${st}`)} <span className="text-muted">{counts[st]}</span></a>
+            ))}
+          </nav>
           <form method="get" action="/admin/entries" role="search" className="flex flex-wrap items-end gap-3" data-testid="entries-filter">
             <input type="hidden" name="c" value={collection.key} />
             <div className="min-w-0 flex-1 basis-56">
               <label htmlFor="entries-q" className={ui.label}>{t("entries.searchLabel")}</label>
               <input id="entries-q" name="q" type="search" defaultValue={q} maxLength={SEARCH_MAX} placeholder={t("entries.searchPlaceholder")} className={ui.input} />
             </div>
-            <div>
-              <label htmlFor="entries-state" className={ui.label}>{t("entries.stateLabel")}</label>
-              <select id="entries-state" name="state" defaultValue={state} className={ui.input}>
-                {ADMIN_STATES.map((st) => <option key={st} value={st}>{t(`entries.state.${st}`)}</option>)}
-              </select>
-            </div>
+            {state !== "all" && <input type="hidden" name="state" value={state} />}
             <button type="submit" className={ui.btn}>{t("entries.filter")}</button>
             {filtered && <a href={`/admin/entries?c=${collection.key}`} className="self-center text-sm underline hover:text-accent">{t("entries.clearFilter")}</a>}
           </form>

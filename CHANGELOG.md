@@ -9,6 +9,12 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ## Prochaine version (non publiée)
 
+### Tableau de bord
+
+- **Les brouillons se retrouvent.** Les chiffres « Entrées publiées » et « Brouillons » disent d'où ils viennent (« 1 dans Pages », « 1 dans Liste de liens ») et chaque ligne ouvre la liste de cette extension, déjà réglée sur les brouillons. Ils ne comptent plus que ce que vous pouvez retrouver : rien venant d'une extension retirée.
+- **Un filtre « Publiées / Brouillons » avec leur nombre** en haut de chaque liste d'entrées.
+- **Une seule carte « Extensions installées »** en mode simple, au lieu de « Instances de modules » et « Modules installés » (gardées en mode avancé). Le site en chiffres s'affiche aussi en mode simple.
+
 ### Apparence du site
 
 - **L'envoi de votre police est au bon endroit.** Il se trouve dans la section « Polices », juste sous les listes : chaque liste se termine par « Utiliser ma propre police… ». Vos polices apparaissent en tête des listes, dans « Mes polices », où vous pouvez les supprimer.
@@ -17,6 +23,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Pour les développeurs
 
+- **Tableau de bord.** `dashboardEntryCounts` et `entryStateCounts` (`src/core/content/dashboardCounts.ts`) comptent avec `stateWhere`, la même règle que les listes.
 - **Polices.** `sfntToWoff2` (`src/core/fonts/sfnt.ts`) convertit en WOFF2, puis `checkWoff2` revérifie le résultat. `ActionForm` accepte `id`, et le choix des polices se rattache au formulaire des retouches par `form`.
 
 ## 0.6.1 — 2026-11-01
