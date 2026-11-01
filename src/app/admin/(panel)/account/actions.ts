@@ -32,8 +32,8 @@ export async function changePassword(_prev: ActionState, formData: FormData): Pr
   const current = String(formData.get("current") ?? "");
   const next = String(formData.get("next") ?? "");
   const row = await prisma.user.findUnique({ where: { id: user.id } });
-  if (!row || !(await bcrypt.compare(current, row.passwordHash))) return { error: t("account.wrongPassword") };
-  if (passwordProblem(next)) return { error: t("setup.error.password") };
+  if (!row || !(await bcrypt.compare(current, row.passwordHash))) return { errors: { current: t("account.wrongPassword") } };
+  if (passwordProblem(next)) return { errors: { next: t("setup.error.password") } };
   await prisma.user.update({ where: { id: user.id }, data: { passwordHash: await bcrypt.hash(next, 12) } });
   await audit(user.email, "user.password");
   // Un nouveau mot de passe coupe toutes les sessions ouvertes (la vôtre aussi : on se reconnecte avec le nouveau).

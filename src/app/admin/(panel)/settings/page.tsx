@@ -200,7 +200,7 @@ export default async function SettingsPage() {
               <Checkbox name="mailSecure" label={t("settings.mailSecure")} defaultChecked={mail?.secure ?? false} />
               <div className="grid gap-4 sm:grid-cols-2">
                 <TextField name="mailUser" label={t("settings.mailUser")} defaultValue={mail?.user ?? ""} autoComplete="off" />
-                <TextField name="mailPass" type="password" label={t("settings.mailPass")} help={t("settings.mailPassHelp")} autoComplete="new-password" />
+                <TextField name="mailPass" type="password" noManager label={t("settings.mailPass")} help={t("settings.mailPassHelp")} autoComplete="new-password" />
               </div>
             </div>
             <div className={`${ui.card} space-y-4`}>

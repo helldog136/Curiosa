@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { AnimatedActionButton } from "./AnimatedActionButton";
 import { PendingButton } from "./PendingButton";
+import { PasswordInput } from "./PasswordInput";
 import { useProgressText } from "./ProgressLabels";
 import { ui } from "./ui";
 
@@ -84,8 +85,8 @@ export function RestorePanel({ labels, previewUrl = "/api/admin/backup/restore",
       {!preview && (
         <form onSubmit={check} className="space-y-3">
           <label className="block text-sm"><span className={ui.label}>{L("file")}</span><input name="file" type="file" required className={ui.input} /></label>
-          {needsToken && <label className="block text-sm"><span className={ui.label}>{L("setupToken")}</span><input type="password" required value={setupToken} onChange={(e) => setSetupToken(e.target.value)} autoComplete="off" className={ui.input} /></label>}
-          <label className="block text-sm"><span className={ui.label}>{L("password")}</span><input name="password" type="password" required autoComplete="off" className={ui.input} /></label>
+          {needsToken && <label className="block text-sm"><span className={ui.label}>{L("setupToken")}</span><input type="text" required value={setupToken} onChange={(e) => setSetupToken(e.target.value)} autoComplete="one-time-code" autoCapitalize="none" spellCheck={false} className={ui.input} /></label>}
+          <div className="text-sm"><label className={ui.label} htmlFor="restore-password">{L("password")}</label><PasswordInput id="restore-password" name="password" required autoComplete="current-password" className={ui.input} /></div>
           <PendingButton pending={busy} pendingLabel={p("checking")}>{L("check")}</PendingButton>
         </form>
       )}

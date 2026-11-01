@@ -19,5 +19,5 @@ export function submitKeepingValues(run: (data: FormData) => void) {
 
 /** Un mot de passe (ou tout champ secret) saisi ne reste jamais affiché après un envoi, réussi ou non. */
 export function clearSecrets(form: HTMLFormElement | null): void {
-  form?.querySelectorAll<HTMLInputElement>("input[type=password]").forEach((i) => { i.value = ""; });
+  form?.querySelectorAll<HTMLInputElement>("input[type=password], input[data-secret]").forEach((i) => { i.value = ""; });
 }

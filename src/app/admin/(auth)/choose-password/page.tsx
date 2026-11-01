@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { adminCtx } from "@/core/admin";
 import { ActionForm } from "@/components/admin/ActionForm";
 import { TextField } from "@/components/admin/Field";
+import { UsernameHint } from "@/components/admin/UsernameHint";
 import { MIN_PASSWORD_LENGTH } from "@/core/auth/passwordPolicy";
 import { choosePassword, signOutForced } from "./actions";
 import { PendingButton } from "@/components/admin/PendingButton";
@@ -19,8 +20,9 @@ export default async function ChoosePasswordPage() {
         <p className="text-sm leading-6 text-muted">{t("choosePassword.intro", { name: user.name })}</p>
       </div>
       <ActionForm action={choosePassword} submitLabel={t("choosePassword.submit")}>
-        <TextField name="next" type="password" label={t("account.newPassword")} required autoComplete="new-password" help={t("choosePassword.help", { n: MIN_PASSWORD_LENGTH })} />
-        <TextField name="confirm" type="password" label={t("choosePassword.confirm")} required autoComplete="new-password" />
+        <UsernameHint value={user.email} />
+        <TextField name="next" type="password" label={t("account.newPassword")} required passwordMin={MIN_PASSWORD_LENGTH} autoComplete="new-password" help={t("choosePassword.help", { n: MIN_PASSWORD_LENGTH })} />
+        <TextField name="confirm" type="password" label={t("choosePassword.confirm")} required passwordMin={MIN_PASSWORD_LENGTH} autoComplete="new-password" />
       </ActionForm>
       <form action={signOutForced} className="border-t border-line pt-4">
         <p className="mb-2 text-xs text-muted">{t("choosePassword.signedInAs", { email: user.email })}</p>
