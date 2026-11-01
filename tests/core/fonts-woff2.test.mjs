@@ -52,7 +52,7 @@ test("ce qui n'est pas une police : exécutables, pages, archives, vide, tout au
 test("signature juste mais fichier retouché ou abîmé : longueur annoncée, en-tête, troncature, flux corrompu, tailles de tables", () => {
   assert.equal(code(kalam.subarray(0, kalam.length - 40)), "header", "tronqué : la longueur annoncée ne correspond plus");
   const longer = Buffer.concat([kalam, Buffer.alloc(8)]);
-  assert.equal(code(longer), "header", "octets ajoutés à la fin");
+  assert.equal(code(longer), "header", "octets ajoutés à la fin sans corriger la longueur");
   const bad = (edit) => { const b = Buffer.from(kalam); edit(b); return code(b); };
   assert.equal(bad((b) => b.writeUInt16BE(0, 12)), "header", "aucune table");
   assert.equal(bad((b) => b.writeUInt16BE(500, 12)), "header", "trop de tables");
@@ -63,7 +63,7 @@ test("signature juste mais fichier retouché ou abîmé : longueur annoncée, en
   assert.equal(bad((b) => b.writeUInt32BE(1, 44)), "private", "données privées");
   assert.equal(bad((b) => b.writeUInt32BE(b.length * 2, 20)), "truncated", "flux plus long que le fichier");
   assert.match(bad((b) => { for (let i = b.length - 400; i < b.length - 100; i++) b[i] ^= 0xff; }), /compressed|sizes/, "flux Brotli corrompu");
-  assert.match(bad((b) => b.writeUInt32BE(b.readUInt32BE(20) - 8, 20)), /compressed|sizes/, "flux Brotli coupé");
+  assert.match(bad((b) => b.writeUInt32BE(b.readUInt32BE(20) - 8, 20)), /compressed|sizes|trailing/, "flux Brotli coupé");
   assert.equal(code(kalam, kalam.length - 1), "too-large", "au-delà de la taille permise");
 });
 
@@ -86,4 +86,17 @@ test("nom : nettoyé (lettres, chiffres, signes simples, 60 caractères) ; ident
   assert.equal(familySlug("Ma Police Éléphant & Co"), "ma-police-elephant-co");
   assert.equal(familySlug("???"), "");
   assert.ok(familySlug("a".repeat(80)).length <= 32);
+});
+
+test("suivi sécurité : nom de longueur impaire = refus propre ; octets après la police (polyglotte) = refus ; les vraies polices passent toujours", () => {
+  // une police réelle dont l'enregistrement « name » (plateforme 3) a une longueur impaire n'est plus qu'ignoré : jamais d'exception
+  const naming = (len) => { const n = Buffer.alloc(6 + 12 + 8); n.writeUInt16BE(1, 2); n.writeUInt16BE(18, 4); n.writeUInt16BE(3, 6); n.writeUInt16BE(1, 8); n.writeUInt16BE(1, 12); n.writeUInt16BE(len, 14); return n; };
+  const res = fake({ tags: ["cmap", "head", "hhea", "hmtx", "maxp", "name", "glyf", "loca"], lengths: [64, 64, 64, 64, 64, 24, 64, 0], payload: Buffer.concat([Buffer.alloc(64 * 5), naming(3), Buffer.alloc(64)]) });
+  assert.doesNotThrow(() => checkWoff2(res));
+  assert.equal(checkWoff2(res).ok, false);
+  const html = Buffer.from("<html><script>alert(1)</script></html>".padEnd(2048, " "));
+  const poly = Buffer.concat([kalam, html]);
+  poly.writeUInt32BE(poly.length, 8);
+  assert.equal(code(poly), "trailing");
+  for (const f of fs.readdirSync("fonts/files")) assert.equal(code(real(f), 40 * 1024), "ok", f);
 });

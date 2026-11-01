@@ -11,7 +11,7 @@ import zlib from "node:zlib";
 import { UPLOAD_LIMITS } from "./types";
 
 export type FontCheckCode =
-  | "empty" | "too-large" | "not-woff2" | "header" | "collection" | "truncated" | "tables" | "private" | "svg" | "compressed" | "sizes" | "missing" | "head" | "name";
+  | "empty" | "too-large" | "not-woff2" | "header" | "collection" | "truncated" | "tables" | "private" | "svg" | "trailing" | "compressed" | "sizes" | "missing" | "head" | "name";
 
 export type FontCheck =
   | { ok: true; family: string; weight: string; style: "normal" | "italic"; variable: boolean; glyphs: number }
@@ -103,6 +103,11 @@ export function checkWoff2(buf: Buffer, maxBytes: number = UPLOAD_LIMITS.maxByte
   if (metaLength !== 0 || metaOffset !== 0) {
     if (metaLength > MAX_META || metaOffset < dirEnd + totalCompressed || metaOffset + metaLength > buf.length) return bad("truncated");
   }
+  // Rien après la police : le flux (arrondi à 4 octets) finit où commencent les métadonnées, sinon à la fin du fichier ; au plus 3 octets de bourrage.
+  const streamEnd = dirEnd + totalCompressed;
+  const hasMeta = metaLength !== 0 || metaOffset !== 0;
+  const aligned = (streamEnd + 3) & ~3;
+  if (hasMeta ? (metaOffset !== aligned && metaOffset !== streamEnd) || buf.length - (metaOffset + metaLength) > 3 : buf.length < streamEnd || buf.length > aligned) return bad("trailing");
 
   // ── flux Brotli : décompressé avec un plafond, taille exacte
   let data: Buffer;
@@ -170,7 +175,9 @@ function familyName(name: Buffer | null): string | null {
     const start = strings + off;
     if (start + len > name.length || len === 0 || len > 400) continue;
     const raw = name.subarray(start, start + len);
-    const text = platform === 3 || platform === 0 ? Buffer.from(raw).swap16().toString("utf16le") : raw.toString("latin1");
+    const wide = platform === 3 || platform === 0;
+    if (wide && len % 2 !== 0) continue; // texte UTF-16 de longueur impaire : enregistrement abîmé, ignoré
+    const text = wide ? Buffer.from(raw).swap16().toString("utf16le") : raw.toString("latin1");
     const score = platform === 3 ? 3 : platform === 0 ? 2 : 1;
     if ((rank.get(id) ?? 0) < score) { found.set(id, text); rank.set(id, score); }
   }
