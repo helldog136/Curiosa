@@ -5,6 +5,7 @@ import { groupIssues } from "./groups";
 import { MULTI_VALUE_RE, siteDefaultRef } from "./settingValues";
 import { checkDateTime, parsePeriod } from "../adminkit/values";
 import { PLATFORM_PATTERN } from "./platform";
+import { socialSpecSchema } from "../socialRecognize";
 import { HISTORY, MAX_MODULE_RIGHTS, OPEN, RIGHT_ID_RE } from "../auth/rights";
 import { EVENT_KEY_MAX, EVENT_KEY_RE, FIELD_KEY_RE, JOURNAL_LIMITS, LEVELS, logEventIssues } from "../journal/events";
 import { SERVICE_RE } from "./serviceVersions";
@@ -195,6 +196,11 @@ export const manifestSchema = z.object({
    * Purement visuel, aucune dépendance. Absent = aucune plateforme. Un ancien cœur ignore ce champ. Voir platform.ts.
    */
   platform: z.string().regex(PLATFORM_PATTERN, "platform must be a lowercase identifier like twitch or discord (a-z, 0-9 and dashes, 31 characters at most, starting with a letter)").optional(),
+  /**
+   * (cœur 0.7.0) Réseau social : comment reconnaître l'adresse de son profil (sites acceptés, modèle d'adresse, exemple, formes courtes). Le catalogue le recopie : le cœur reconnaît
+   * « instagram.com/monpseudo » AVANT d'installer le module. Un bloc abîmé est ignoré (jamais une erreur de manifeste) ; un ancien cœur ignore le champ. Voir socialRecognize.ts.
+   */
+  social: socialSpecSchema.optional().catch(undefined),
   instances: z.enum(["single", "multiple"]).default("multiple"),
   consumes: z.array(z.object({ topic: topicId, label: localized, schema: z.array(topicField).max(20).optional(), tags: z.boolean().optional() })).max(10).default([]),
   provides: z.array(z.object({ topic: topicId, label: localized.optional() })).max(10).default([]),

@@ -2,6 +2,7 @@ import { MODULE_API_VERSION } from "../config";
 import { getRecognizedDetailed, readRecognizedCacheOffline, type RecognizedItem, type RecognizedResult } from "./recognized";
 import { incompatWithThisCore, type CoreRequirement } from "./compat";
 import type { LocalizedString } from "./types";
+import type { SocialSpec } from "../socialRecognize";
 import { normalizeNeeds, normalizeOffers, type ServiceNeed, type ServiceOffer } from "./serviceVersions";
 
 /**
@@ -32,6 +33,8 @@ export type CatalogueEntry = {
   platform?: string;
   /** Sujets que le module fournit (ex. `social.link`) : le cœur s'en sert pour proposer les réseaux sociaux. */
   provides?: string[];
+  /** (cœur 0.7.0) Réseau social : de quoi reconnaître l'adresse de son profil sans l'installer (voir socialRecognize.ts). */
+  social?: SocialSpec;
   /** Ce module vise-t-il l'API de modules de CE framework ? Sinon il est listé mais non installable. */
   compatible: boolean;
   /** Cœur minimal demandé (index ou manifeste), absent = aucune exigence. Ne change pas `compatible` (API) : voir `needsNewerCore`. */
@@ -55,7 +58,7 @@ function recognizedEntry(c: RecognizedItem, suggested: Set<string>): CatalogueEn
   const needs = normalizeNeeds(c.needs);
   return {
     id: c.id, name: c.name, description: c.description, version: c.version, icon: c.icon, author: c.author, suggested: c.catalogueOrigin !== "extra" && suggested.has(c.id),
-    kind: "recognized", provides: c.provides, platform: c.platform, repo: c.repo, ref: c.ref, subdir: c.subdir, compatible: c.apiVersion === undefined || c.apiVersion === MODULE_API_VERSION,
+    kind: "recognized", provides: c.provides, social: c.social, platform: c.platform, repo: c.repo, ref: c.ref, subdir: c.subdir, compatible: c.apiVersion === undefined || c.apiVersion === MODULE_API_VERSION,
     requires: c.requires, needsNewerCore: incompatWithThisCore(c.requires)?.needs,
     offers: offers?.length ? offers : undefined, needs: needs?.length ? needs : undefined,
     origin: c.catalogueOrigin === "extra" ? "extra" : "official",
