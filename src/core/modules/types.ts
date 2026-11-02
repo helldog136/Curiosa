@@ -119,6 +119,17 @@ export type ContentConfig = {
   basePath?: string;
   /** Suggère que la page de l'instance figure au menu du site. C'est une SUGGESTION (le cœur ne l'ajoute jamais d'office) : voir `suggestInMenu`. */
   showInNav?: boolean;
+  /** (cœur après 0.6.2) Modèles d'entrée : « Partir d'un modèle » dans la liste, pages d'exemple de l'assistant. Toujours créés en brouillon. Voir `entryTemplate` (manifest.ts). */
+  templates?: EntryTemplateDecl[];
+};
+
+export type EntryTemplateDecl = {
+  id: string;
+  name: LocalizedString;
+  description?: LocalizedString;
+  title: LocalizedString;
+  summary?: LocalizedString;
+  body?: LocalizedString;
 };
 
 /** Taille naturelle d'un morceau de l'accueil : la page s'écoule, ces tailles disent seulement la place qu'il aime prendre. */

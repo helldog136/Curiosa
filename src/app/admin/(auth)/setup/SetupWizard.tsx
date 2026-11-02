@@ -9,20 +9,24 @@ import { PendingButton } from "@/components/admin/PendingButton";
 import { clearSecrets, submitKeepingValues } from "@/components/admin/keepValues";
 import { PasswordInput } from "@/components/admin/PasswordInput";
 import { useFieldErrorsDom } from "@/components/admin/FieldErrors";
+import { MoreOptions } from "@/components/admin/MoreOptions";
+import { applyProfile, profileSamples } from "./profileChoice";
 
 type Props = {
   strings: Record<string, Record<string, string>>;
   uiLocales: string[];
   locales: { code: string; name: string }[];
-  presets: { id: string; icon: string; collectsLinks: boolean; names: Record<string, string>; descriptions: Record<string, string> }[];
+  presets: { id: string; icon: string; collectsLinks: boolean; names: Record<string, string>; descriptions: Record<string, string>; templates?: { id: string; name: Record<string, string>; description: Record<string, string> }[] }[];
+  /** Profils de départ (« Vous êtes… ? ») tenus par le dépôt de modules ; aucun : la question n'est pas posée. */
+  profiles?: { id: string; icon: string; names: Record<string, string>; descriptions: Record<string, string>; modules: string[]; samples: string[] }[];
   /** Le catalogue n'a pas pu être lu : aucune suggestion, le site se crée quand même. */
   catalogueUnreachable?: boolean;
   needsToken: boolean;
 };
 
-const STEPS = ["welcome", "identity", "modules", "links", "account"] as const;
+const STEPS = ["welcome", "identity", "profile", "modules", "links", "account"] as const;
 
-export function SetupWizard({ strings, uiLocales, locales, presets, needsToken, catalogueUnreachable = false }: Props) {
+export function SetupWizard({ strings, uiLocales, locales, presets, profiles = [], needsToken, catalogueUnreachable = false }: Props) {
   const [mode, setMode] = useState<"new" | "restore">("new");
   const [step, setStep] = useState(0);
   const [lang, setLang] = useState("fr");
@@ -30,6 +34,11 @@ export function SetupWizard({ strings, uiLocales, locales, presets, needsToken, 
   // L'e-mail se retient d'une étape à l'autre ; le mot de passe, jamais (la section « accès » n'existe dans la page qu'à la dernière étape).
   const [ownerEmail, setOwnerEmail] = useState("");
   const [chosen, setChosen] = useState<string[]>([]);
+  // Le profil ne fait que pré-cocher (extensions) et proposer (pages d'exemple) : tout reste modifiable à l'étape suivante. `null` = aucun (sauter, ou « Autre »).
+  const [profile, setProfile] = useState<string | null>(null);
+  const [samples, setSamples] = useState<string[]>([]);
+  // « Autre » est un vrai choix (il garde la carte cochée) mais ne change rien ; tant que rien n'est touché, aucune carte n'est cochée.
+  const [profileTouched, setProfileTouched] = useState(false);
   const [linkRows, setLinkRows] = useState([0]);
   const formRef = useRef<HTMLFormElement>(null);
   const [state, action, pending] = useActionState(completeSetup, null);
@@ -46,7 +55,7 @@ export function SetupWizard({ strings, uiLocales, locales, presets, needsToken, 
 
   // L'étape "liens" n'a de sens que si la collection de liens est choisie.
   const wantsLinks = presets.some((p) => p.collectsLinks && chosen.includes(p.id));
-  const visibleSteps = STEPS.filter((s) => s !== "links" || wantsLinks);
+  const visibleSteps = STEPS.filter((s) => (s !== "links" || wantsLinks) && (s !== "profile" || profiles.length > 0));
   const current = visibleSteps[Math.min(step, visibleSteps.length - 1)]!;
   const isLast = step >= visibleSteps.length - 1;
 
@@ -56,6 +65,18 @@ export function SetupWizard({ strings, uiLocales, locales, presets, needsToken, 
     if (invalid) return invalid.reportValidity();
     setStep((s) => s + 1);
   }
+
+  function chooseProfile(id: string | null) {
+    const next = applyProfile({ chosen, samples }, profiles.find((p) => p.id === profile) ?? null, profiles.find((p) => p.id === id) ?? null);
+    setProfile(id); setChosen(next.chosen); setSamples(next.samples);
+  }
+  // Les pages d'exemple proposées par le profil, tant que leur extension est cochée.
+  const offeredSamples = profileSamples(profiles.find((p) => p.id === profile) ?? null, chosen);
+  const templateOf = (ref: string) => {
+    const [moduleId, templateId] = ref.split(":");
+    return presets.find((p) => p.id === moduleId)?.templates?.find((x) => x.id === templateId);
+  };
+  const keptSamples = offeredSamples.filter((ref) => samples.includes(ref));
 
   const section = (id: (typeof STEPS)[number]) => ({ "data-step": id, hidden: current !== id, className: "space-y-4" });
 
@@ -132,6 +153,33 @@ export function SetupWizard({ strings, uiLocales, locales, presets, needsToken, 
           </div>
         </div>
 
+        <div {...section("profile")}>
+          <fieldset className="space-y-4">
+            <legend className="text-2xl font-semibold tracking-tight">{t("setup.profile.title")}</legend>
+            <p className="text-[15px] text-muted">{t("setup.profile.help")}</p>
+            <div className="grid gap-3 sm:grid-cols-2" data-testid="setup-profiles">
+              {[...profiles.map((p) => ({ id: p.id, icon: p.icon, name: pick(p.names), help: pick(p.descriptions) })), { id: "other", icon: "✨", name: t("setup.profile.other"), help: t("setup.profile.otherHelp") }].map((p) => {
+                const selected = p.id === "other" ? profile === null && profileTouched : profile === p.id;
+                return (
+                  <label key={p.id} className={`relative flex min-h-11 cursor-pointer items-start gap-3 rounded-2xl border p-4 transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent ${selected ? "border-accent bg-accent/5" : "border-line hover:border-accent/50"}`}>
+                    <input
+                      type="radio" name="profile" value={p.id} className="peer sr-only" checked={selected}
+                      onChange={() => { setProfileTouched(true); chooseProfile(p.id === "other" ? null : p.id); }}
+                    />
+                    <span aria-hidden className="text-2xl leading-none">{p.icon}</span>
+                    <span className="min-w-0">
+                      <span className="block text-[17px] font-medium [overflow-wrap:anywhere]">{p.name}{selected && <span className="ml-2 text-accent" aria-hidden>✓</span>}</span>
+                      <span className="block text-sm text-muted [overflow-wrap:anywhere]">{p.help}</span>
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          </fieldset>
+          <p className="rounded-2xl bg-accent/5 p-4 text-sm" data-testid="profile-skip-note">{t("setup.profile.skip")}</p>
+          <button type="button" className={ui.btn} data-testid="profile-skip" onClick={() => { chooseProfile(null); setProfileTouched(false); setStep((s) => s + 1); }}>{t("setup.profile.skipButton")} →</button>
+        </div>
+
         <div {...section("modules")}>
           <h2 className="text-2xl font-semibold tracking-tight">{t("setup.modules.title")}</h2>
           <p className="text-[15px] text-muted">{t("setup.modules.help")}</p>
@@ -139,7 +187,7 @@ export function SetupWizard({ strings, uiLocales, locales, presets, needsToken, 
           {presets.map((p) => (
             <label key={p.id} className={`flex cursor-pointer items-start gap-4 rounded-2xl border p-4 transition-colors ${chosen.includes(p.id) ? "border-accent bg-accent/5" : "border-line hover:border-accent/50"}`}>
               <input
-                type="checkbox" name="presets" value={p.id} className="mt-1 h-5 w-5 accent-[var(--v-accent)]"
+                type="checkbox" name="presets" value={p.id} className="mt-1 h-5 w-5 shrink-0 accent-[var(--v-accent)]"
                 checked={chosen.includes(p.id)}
                 onChange={(e) => setChosen((c) => (e.target.checked ? [...c, p.id] : c.filter((x) => x !== p.id)))}
               />
@@ -149,8 +197,26 @@ export function SetupWizard({ strings, uiLocales, locales, presets, needsToken, 
               </span>
             </label>
           ))}
+          {offeredSamples.length > 0 && (
+            <MoreOptions title={t("setup.samples.title")} summary={keptSamples.length === 0 ? "" : keptSamples.length === 1 ? t("setup.samples.summary.one") : t("setup.samples.summary").replace("{n}", String(keptSamples.length))}>
+              <p className="text-sm text-muted">{t("setup.samples.help")}</p>
+              {offeredSamples.map((ref) => {
+                const tpl = templateOf(ref);
+                return (
+                  <label key={ref} className="flex min-h-11 cursor-pointer items-start gap-3">
+                    <input type="checkbox" name="samples" value={ref} className="mt-1 h-5 w-5 shrink-0 accent-[var(--v-accent)]"
+                      checked={samples.includes(ref)} onChange={(e) => setSamples((c) => (e.target.checked ? [...c, ref] : c.filter((x) => x !== ref)))} />
+                    <span>
+                      <span className="block text-[15px] font-medium">{tpl ? pick(tpl.name) : ref}</span>
+                      {tpl && pick(tpl.description) && <span className="block text-sm text-muted">{pick(tpl.description)}</span>}
+                    </span>
+                  </label>
+                );
+              })}
+            </MoreOptions>
+          )}
           <p className="rounded-2xl bg-accent/5 p-4 text-sm" data-testid="modules-skip-note">{t("setup.modules.skip")}</p>
-          <button type="button" className={ui.btn} onClick={() => { setChosen([]); setStep((s) => s + 1); }}>{t("setup.modules.skipButton")} →</button>
+          <button type="button" className={ui.btn} onClick={() => { setChosen([]); setSamples([]); setStep((s) => s + 1); }}>{t("setup.modules.skipButton")} →</button>
         </div>
 
         <div {...section("links")}>
