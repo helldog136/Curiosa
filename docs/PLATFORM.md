@@ -163,6 +163,7 @@ Ce n'est pas un service : un module déclare `adminDownloads` (un générateur d
   (stockage, réglages, fichiers lisibles via `backup.readable`) et, à la restauration, réinstalle les modules depuis le catalogue.
 - **Catalogue** (`core/modules/catalogue.ts`) : la liste des modules vérifiés — publiés par les dépôts reconnus, listés dans `catalogue/index.json` du dépôt `curiosa-extras` (le seul que le cœur connaît par défaut) — un fichier **lu sur le réseau à l'exécution**, qui ne suit pas le rythme des versions (le cœur n'embarque ni module ni copie de la liste ; `MODULES_INDEX_URL` pour un index supplémentaire). Un dépôt git **personnel** reste
   installable, mais signalé « non vérifié » et soumis à confirmation explicite.
+- **Fiche d'une extension** (`core/modules/readme.ts`, `rawRead.ts`, `ficheCache.ts`) : copie sur disque d'abord, lecture directe d'un fichier par requête (`raw.githubusercontent.com`) ensuite, clonage temporaire seulement en dernier recours. La copie vit dans `DATA_DIR/cache/catalogue/` (50 Mo, 200 fiches, 2 versions par module, nettoyage à l'écriture, aucun minuteur) ; elle ne contient que les fichiers lus pour les fiches ouvertes. On la vide avec « Actualiser » (page Ajouter) ou en supprimant ce dossier. Détail : [MODULES.md](MODULES.md), « Visuels de la fiche ».
 
 ## Le flux RSS : une fonctionnalité du cœur
 

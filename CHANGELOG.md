@@ -17,6 +17,20 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Les noms suivent le menu.** « Extensions › Ajouter » remplace « Modules › Catalogue » et « Fonctionnalités → Ajouter » dans l'assistant d'installation et sur le tableau de bord ; les mises à jour parlent d'extensions.
 - **Le champ d'image est plus clair.** Il propose « Adresse de l'image » au lieu d'un exemple de chemin technique.
 
+### Tableau de bord
+
+- **Vos brouillons sont sous vos yeux.** Un bloc « À finir » montre les premiers brouillons de toutes vos extensions, chacun avec son nom et un bouton « Ouvrir ». « Voir tous les brouillons » ouvre la liste complète.
+- **Des chiffres qui mènent quelque part.** « Contenus publiés » dit combien il y en a dans chaque extension, et chaque ligne ouvre sa liste. Ce qui s'ouvre porte une flèche, un simple chiffre ne ressemble plus à un bouton.
+- **Un filtre « Publiées / Brouillons » avec leur nombre** en haut de chaque liste de contenus.
+- **Un mode simple plus clair.** Une seule carte « Extensions installées » ; « Liens courts » n'apparaît que s'il y en a. « Instances de modules » et « Modules installés » restent en mode avancé.
+
+### Extensions
+
+- **La fiche d'une extension s'ouvre vite, même sur un petit serveur.** Le site ne copie plus un dépôt entier pour lire un fichier texte : il va chercher directement le fichier utile (la description, le README, les captures). Un dépôt n'est copié qu'en dernier recours, si cette lecture directe échoue.
+- **Les fiches déjà vues restent disponibles après un redémarrage ou une mise à jour du site.** Une fiche reste valable tant que le catalogue annonce la même version du module ; elle est relue quand une nouvelle version sort. Le bouton « Actualiser » vide cette copie.
+- **Un écran qui parle.** Si la lecture dure plus de 5 secondes, la fiche affiche « Lecture du dépôt… » au lieu de rester muette ; l'attente est portée à 30 secondes, et « Réessayer » reprend la lecture en cours. Si l'hébergeur limite les lectures, le message le dit.
+- **Les premières fiches de la liste sont préparées à l'avance** (trois au plus, uniquement celles qui sont à l'écran).
+
 ### Adresse du site
 
 - **Une page pour changer de nom de domaine sans rien oublier.** En réglages avancés, « Adresse du site » propose un assistant en trois étapes : la nouvelle adresse, la liste de ce que votre site doit reprendre, puis les commandes à copier sur le serveur.
@@ -36,6 +50,8 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 - **Garde-fou du mode simple.** `tests/core/admin-simple-mode.test.mjs` rend les pages du cœur en mode simple et échoue sur un mot de la liste R9, un onglet de plus de 7 champs ou une entrée de menu avancée (`ADVANCED_ONLY_ENTRIES`) ; il vérifie aussi le changement de mode.
 - Corrections à faire dans les modules : `docs/ideas/audit-mode-simple-modules.md`.
+- **Tableau de bord.** `dashboardEntryCounts` et `entryStateCounts` (`src/core/content/dashboardCounts.ts`) comptent avec `stateWhere`, la même règle que les listes.
+- **Lecture des fiches.** `rawRead.ts` (lecture directe), `ficheCache.ts` (copie sur disque bornée) et `readme.ts` (copie, lecture directe, clonage temporaire). `PreviewTarget` porte `version`, `targetOf(entrée)` la construit, `clearPreviewCache()` vide aussi le disque. Voir MODULES.md.
 - **Anciens domaines.** `LEGACY_HOSTS` (10 noms au plus) : le proxy du cœur répond 301 vers `SITE_URL` pour GET et HEAD, selon `Host` seul, jamais pour `/api/*` ni les retours `oauth` ; voir `src/core/siteAddress.ts` et `docs/MIGRER-DOMAINE.md`.
 - **Manifeste.** Clés facultatives `returnAddresses` et `siteAddressUses` (sans `minCore`), documentées dans `docs/MODULES.md`. Script : `install.sh --change-domain NOM [--apply]`.
 - **Tableau de bord : l'API des extensions.** La clé facultative `dashboard` de `module.json` (`tasks`, `quickActions`, `cards`) et le code `dashboard.tasks` / `dashboard.cards` apportent au tableau de bord des tâches, des boutons « Créer… » et des cartes. Le cœur vérifie tout, appelle le code à l'affichage seulement et masque seulement l'extension en échec (voir `docs/CREATE-A-MODULE.md`).

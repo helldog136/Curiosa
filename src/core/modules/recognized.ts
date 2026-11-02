@@ -10,6 +10,7 @@ import { sanitizeServiceList } from "./serviceVersions";
 import { PLATFORM_PATTERN } from "./platform";
 import { parseSocialSpec, type SocialSpec } from "../socialSpec";
 import { sanitizePreviews, type PreviewDecl } from "./previews";
+import { rawBase, rawGet } from "./rawRead";
 
 export type RecognizedItem = {
   id: string;
@@ -121,6 +122,22 @@ export async function fetchCatalogueFromRepo(url: string, ref = "HEAD", git: Ind
   }
 }
 
+/**
+ * Les deux fichiers du catalogue lus DIRECTEMENT (deux requêtes sur raw.githubusercontent.com, voir rawRead.ts) au lieu d'un dépôt récupéré : bien plus rapide.
+ * null = pas applicable (dépôt hors GitHub) ou impossible (panne, limite de débit, fichier absent) : la récupération par git prend alors le relais.
+ */
+async function fetchCatalogueOverHttps(url: string, ref: string): Promise<{ index: unknown; suggested: unknown } | null> {
+  const base = rawBase(url, ref === "HEAD" ? undefined : ref);
+  if (!base) return null;
+  try {
+    const [i, s] = await Promise.all([rawGet(`${base}/${INDEX_PATH}`, MAX_INDEX_BYTES), rawGet(`${base}/${SUGGESTED_PATH}`, 64 * 1024).catch(() => null)]);
+    if (!i) return null;
+    let suggested: unknown = [];
+    try { if (s) suggested = JSON.parse(s.toString("utf8")); } catch { /* pas de liste : rien n'est suggéré */ }
+    return { index: JSON.parse(i.toString("utf8")), suggested };
+  } catch { return null; }
+}
+
 /** Identifiants valides d'une liste de suggestions (tout le reste est écarté). */
 export const sanitizeSuggested = (raw: unknown): string[] => (Array.isArray(raw) ? raw.filter((id): id is string => typeof id === "string" && ID_RE.test(id)) : []);
 
@@ -168,6 +185,8 @@ export async function getRecognizedDetailed(opts: RecognizedOptions = {}): Promi
   const extraUrl = process.env.MODULES_INDEX_URL;
   const key = `${process.env.CURIOSA_CATALOGUE_REPO ?? ""}|${process.env.CURIOSA_CATALOGUE_REF ?? ""}|${extraUrl ?? ""}`;
   if (memo && memo.key === key && now() - memo.at < (memo.result.source === "none" ? FAILED_TTL : TTL)) return memo.result;
+  // Premier appel depuis le démarrage : la dernière copie reçue (sur disque) est servie tout de suite pour une fiche, et l'index est relu en coulisse.
+  const persisted = opts.staleOk && !extraUrl && !(memo && memo.key === key) ? readRecognizedCacheOffline() : [];
   const reading = inflight && inflight.key === key ? inflight.promise : (() => {
     const promise = readRecognized(opts, key).finally(() => { if (inflight?.promise === promise) inflight = null; });
     inflight = { key, promise };
@@ -175,6 +194,11 @@ export async function getRecognizedDetailed(opts: RecognizedOptions = {}): Promi
   })();
   // Copie périmée mais bonne : servie tout de suite, la relecture continue en coulisse (déclenchée par cette demande, aucun minuteur).
   if (opts.staleOk && memo && memo.key === key && memo.result.source !== "none") { void reading.catch(() => {}); return memo.result; }
+  if (persisted.length) {
+    const kept = readPersisted()!;
+    void reading.catch(() => {});
+    return { items: persisted.map((i) => ({ ...i, catalogueOrigin: "official" as const })), source: "cache", fetchedAt: kept.fetchedAt, origin: kept.origin, suggested: kept.suggested };
+  }
   return reading;
 }
 
@@ -185,7 +209,9 @@ async function readRecognized(opts: RecognizedOptions, key: string): Promise<Rec
   const repo = resolveIndexRepo();
   if (repo) {
     try {
-      const got = await fetchCatalogueFromRepo(repo, process.env.CURIOSA_CATALOGUE_REF || "HEAD", git);
+      const ref = process.env.CURIOSA_CATALOGUE_REF || "HEAD";
+      // Lecture directe d'abord (sauf si l'appelant impose son propre git, comme les tests), récupération par git en dernier recours.
+      const got = (!opts.git ? await fetchCatalogueOverHttps(repo, ref) : null) ?? await fetchCatalogueFromRepo(repo, ref, git);
       const items = sanitizeEntries(got.index);
       const suggested = sanitizeSuggested(got.suggested);
       base = { items, source: "repository", fetchedAt: now(), origin: repo, suggested };

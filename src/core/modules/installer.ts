@@ -123,8 +123,8 @@ function gitArgs(args: string[]): string[] {
   ];
 }
 
-export async function git(args: string[], cwd?: string, env?: Record<string, string>): Promise<string> {
-  const { stdout } = await run("git", gitArgs(args), { cwd, timeout: 90_000, env: env ? { ...GIT_ENV, ...env } : GIT_ENV, maxBuffer: 1024 * 1024 });
+export async function git(args: string[], cwd?: string, env?: Record<string, string>, timeoutMs = 90_000): Promise<string> {
+  const { stdout } = await run("git", gitArgs(args), { cwd, timeout: timeoutMs, env: env ? { ...GIT_ENV, ...env } : GIT_ENV, maxBuffer: 1024 * 1024 });
   return stdout.trim();
 }
 

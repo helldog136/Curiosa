@@ -13,17 +13,22 @@ import { statsEnabled, statsSummary } from "@/core/stats";
 import { maintenanceSummary } from "@/core/maintenance/summary";
 import { contentBadge } from "@/core/maintenance/content/service";
 import { EXTENSIONS_HREF } from "@/core/modules/extensionsLinks";
+import { ModulePill } from "@/components/admin/ModulePill";
+import { dashboardEntryCounts, listDrafts, unlistedEntries, type EntryCount } from "@/core/content/dashboardCounts";
 import { assistantsTabHref } from "@/core/services/mcp/assistantsLinks";
 
 export default async function Dashboard({ searchParams }: { searchParams: Promise<{ denied?: string; welcome?: string; modules?: string }> }) {
   // Tout accès suffit (le menu y renvoie) ; ne montre que ce que cette personne peut ouvrir.
   const { t, locale, config, advanced, user } = await adminCtx("member");
-  const nav = (await getAdminNav(config.defaultLocale, config.defaultLocale)).filter((m) => navItemVisible(m, (right) => can(user, right)));
+  const allNav = await getAdminNav(config.defaultLocale, config.defaultLocale);
+  const nav = allNav.filter((m) => navItemVisible(m, (right) => can(user, right)));
   const firstContent = nav.find((i) => i.content && !i.error);
   const { denied, welcome, modules: setupModulesState } = await searchParams;
-  const [drafts, published, redirects, collections, modules] = await Promise.all([
-    prisma.entry.count({ where: { status: "draft" } }),
-    prisma.entry.count({ where: { status: "published" } }),
+  const canEdit = hasRole(user, "editor");
+  const [counts, draftList, unlisted, redirects, instanceCount, modules] = await Promise.all([
+    dashboardEntryCounts(nav),
+    listDrafts(nav, config.defaultLocale, { limit: 5 }),
+    advanced ? unlistedEntries(allNav) : Promise.resolve({ total: 0, parts: [] }),
     prisma.redirect.count(),
     prisma.moduleInstance.count(),
     prisma.module.count(),
@@ -38,13 +43,31 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   const contentLook = hasRole(user, "admin") ? await contentBadge().catch(() => null) : null;
   const stats = (await statsEnabled()) ? await statsSummary() : null;
   const peak = Math.max(1, ...(stats?.days.map((d) => d.visitors) ?? [1]));
-  const stat = (label: string, value: number, href: string) => (
-    <a href={href} className={`${ui.card} block transition hover:-translate-y-0.5 hover:border-accent`}>
-      <p className="text-3xl font-bold">{value}</p>
-      <p className="text-sm text-muted">{label}</p>
-    </a>
+  const ARROW = <span aria-hidden="true"> →</span>;
+  const plain = `${ui.card} block`;
+  const link = `${ui.card} block transition hover:-translate-y-0.5 hover:border-accent`;
+  // Un chiffre qui ouvre une page se voit comme tel (flèche, survol) ; un chiffre seul ne ressemble pas à un bouton.
+  const stat = (label: string, value: number, href: string | null, testid?: string) => {
+    const body = (<><p className="text-3xl font-bold">{value}</p><p className="text-sm text-muted">{label}{href && ARROW}</p></>);
+    return href ? <a href={href} data-testid={testid} className={link}>{body}</a> : <div data-testid={testid} className={plain}>{body}</div>;
+  };
+  // Contenus publiés : le total, puis une ligne par extension qui ouvre sa liste (jamais de lien vers une liste qui ne montrerait rien).
+  const publishedStat = (c: EntryCount) => (
+    <div data-testid="stat-published" className={plain}>
+      <p className="text-3xl font-bold">{c.total}</p>
+      <p className="text-sm text-muted">{t("dashboard.published")}</p>
+      {c.parts.length > 0 && (
+        <ul className="mt-2 space-y-0.5 text-sm">
+          {c.parts.map((p) => {
+            const row = (<><span className="truncate">{p.icon} {p.name}</span><span className="text-muted">{p.n}{canEdit && ARROW}</span></>);
+            return <li key={p.key}>{canEdit
+              ? <a href={`/admin/entries?c=${p.key}&state=published`} className="flex items-center justify-between gap-3 rounded-lg px-2 py-1 hover:bg-accent/10">{row}</a>
+              : <span className="flex items-center justify-between gap-3 px-2 py-1">{row}</span>}</li>;
+          })}
+        </ul>
+      )}
+    </div>
   );
-  const entriesHref = firstContent ? `/admin/entries?c=${firstContent.key}` : EXTENSIONS_HREF;
   const first = user.name.split(" ")[0] ?? user.name;
   const noVisits = !!stats && stats.totals.last30.visitors === 0;
   return (
@@ -81,6 +104,28 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
             ))}
             {updateAvailable && <li><a href="/admin/updates" className="flex items-center justify-between gap-3 rounded-xl px-3 py-2 hover:bg-accent/10"><span>⬆️ {t("dashboard.updateReady")}</span><span className="rounded-full bg-accent px-2 text-sm font-semibold text-accent-fg">{t("nav.badge.update")}</span></a></li>}
           </ul>
+        </section>
+      )}
+      {canEdit && (
+        <section aria-label={t("dashboard.toFinish")} data-testid="to-finish" className={`${ui.card} space-y-3`}>
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="text-lg font-semibold">{t("dashboard.toFinish")}</h2>
+            {draftList.total > 0 && <a href="/admin/drafts" data-testid="drafts-all" className="text-sm underline hover:text-accent">{t("dashboard.draftsAll", { n: draftList.total })}{ARROW}</a>}
+          </div>
+          {draftList.total === 0 ? (
+            <p className="text-sm text-muted" data-testid="drafts-none">{counts.published.total > 0 ? t("dashboard.draftsNone") : t("dashboard.draftsNoneYet")}</p>
+          ) : (
+            <ul className="divide-y divide-line">
+              {draftList.rows.map((d) => (
+                <li key={d.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5">
+                  <span className="min-w-0 flex-1 basis-48 truncate font-medium" title={d.title || undefined}>{d.title || "—"}</span>
+                  <ModulePill id={d.key} name={d.name} icon={d.icon} />
+                  <span className="text-xs text-muted">{new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(d.updatedAt)}</span>
+                  <a href={`/admin/entries/${d.id}`} className={ui.btn}>{t("dashboard.draftOpen")}{ARROW}</a>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
       )}
       {!advanced && hasRole(user, "editor") && (
@@ -148,18 +193,19 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
           )}
         </section>
       )}
-      {advanced && (
-        <section aria-label={t("dashboard.inNumbers")} className="space-y-3">
-          <h2 className="text-lg font-semibold">{t("dashboard.inNumbers")}</h2>
-          <div className="grid gap-4 sm:grid-cols-3">
-            {stat(t("dashboard.published"), published, entriesHref)}
-            {stat(t("dashboard.drafts"), drafts, entriesHref)}
-            {stat(t("dashboard.redirects"), redirects, "/admin/redirects")}
-            {stat(t("dashboard.instances"), collections, EXTENSIONS_HREF)}
-            {stat(t("dashboard.modules"), modules, EXTENSIONS_HREF)}
-          </div>
-        </section>
-      )}
+      <section aria-label={t("dashboard.inNumbers")} data-testid="in-numbers" className="space-y-3">
+        <h2 className="text-lg font-semibold">{t("dashboard.inNumbers")}</h2>
+        <div className="grid gap-4 sm:grid-cols-3">
+          {publishedStat(counts.published)}
+          {stat(t("dashboard.extensions"), allNav.length, EXTENSIONS_HREF, "stat-extensions")}
+          {redirects > 0 && stat(t("dashboard.shortLinks"), redirects, "/admin/redirects", "stat-redirects")}
+          {advanced && stat(t("dashboard.instances"), instanceCount, EXTENSIONS_HREF, "stat-instances")}
+          {advanced && stat(t("dashboard.modules"), modules, EXTENSIONS_HREF, "stat-modules")}
+        </div>
+        {advanced && unlisted.total > 0 && (
+          <p className="text-sm text-muted" data-testid="unlisted">{t("dashboard.unlisted", { where: unlisted.parts.map((p) => `${p.name || t("dashboard.removedExtension")} (${p.n})`).join(", ") })}</p>
+        )}
+      </section>
     </div>
   );
 }

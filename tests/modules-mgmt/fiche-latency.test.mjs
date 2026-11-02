@@ -107,7 +107,7 @@ test("échec : jamais gardé en mémoire (« Réessayer » relit vraiment) ; une
   await assert.rejects(R.getModulePreview({ kind: "repo", url: "https://evil.example/o/r" }, { waitMs: 5000 }), /modules\.error\.host/);
 });
 
-test("plafond : au plus MAX_PARALLEL_READS dépôts lus en même temps", async () => {
+test("plafond : au plus MAX_PARALLEL_READS clonages de secours en même temps (un seul)", async () => {
   const repos = Array.from({ length: 7 }, () => makeRepo({ "module.json": base, "README.md": "x" }));
   delay(120);
   await Promise.all(repos.map((r) => R.getModulePreview(target(r))));
@@ -115,7 +115,8 @@ test("plafond : au plus MAX_PARALLEL_READS dépôts lus en même temps", async (
   let now = 0, peak = 0;
   for (const [, d] of events) { now += d; peak = Math.max(peak, now); }
   assert.ok(peak <= R.MAX_PARALLEL_READS, `pic de ${peak} lectures`);
-  assert.ok(peak >= 2, "mais elles ne sont pas toutes l'une après l'autre");
+  assert.equal(R.MAX_PARALLEL_READS, 1);
+  assert.equal(events.length, 14, "mais chaque dépôt est bien lu (7 clonages, début et fin)");
 });
 
 test("images : lecture seule des fichiers déclarés ; un fichier absent n'empêche ni la fiche ni les autres", async () => {
