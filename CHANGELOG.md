@@ -9,6 +9,14 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ## Prochaine version (non publiée)
 
+### Le mode simple, revu page par page
+
+- **Le serveur d'e-mail tient en quatre champs.** Le port et la connexion sécurisée sont rangés sous « Plus d'options », avec les valeurs courantes déjà choisies ; rien de ce que vous aviez réglé n'est perdu.
+- **Le contact et le pied de page sont à portée de main.** L'adresse de contact et le texte du bas de page se règlent aussi en mode simple (repliés dans « Contact et pied de page »), au lieu d'être réservés au mode avancé. Le fuseau horaire reste avancé.
+- **Moins de mots techniques.** « Clé de connexion » devient « code de connexion », les noms de fichiers (llms.txt, robots.txt, sitemap.xml) disparaissent des titres de « Visibilité dans les IA », et les textes d'aide ne parlent plus de réglages d'hébergement ni de versions du serveur.
+- **Les noms suivent le menu.** « Extensions › Ajouter » remplace « Modules › Catalogue » et « Fonctionnalités → Ajouter » dans l'assistant d'installation et sur le tableau de bord ; les mises à jour parlent d'extensions.
+- **Le champ d'image est plus clair.** Il propose « Adresse de l'image » au lieu d'un exemple de chemin technique.
+
 ### Tableau de bord
 
 - **Vos brouillons sont sous vos yeux.** Un bloc « À finir » montre les premiers brouillons de toutes vos extensions, chacun avec son nom et un bouton « Ouvrir ». « Voir tous les brouillons » ouvre la liste complète.
@@ -40,6 +48,8 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Pour les développeurs
 
+- **Garde-fou du mode simple.** `tests/core/admin-simple-mode.test.mjs` rend les pages du cœur en mode simple et échoue sur un mot de la liste R9, un onglet de plus de 7 champs ou une entrée de menu avancée (`ADVANCED_ONLY_ENTRIES`) ; il vérifie aussi le changement de mode.
+- Corrections à faire dans les modules : `docs/ideas/audit-mode-simple-modules.md`.
 - **Tableau de bord.** `dashboardEntryCounts` et `entryStateCounts` (`src/core/content/dashboardCounts.ts`) comptent avec `stateWhere`, la même règle que les listes.
 - **Lecture des fiches.** `rawRead.ts` (lecture directe), `ficheCache.ts` (copie sur disque bornée) et `readme.ts` (copie, lecture directe, clonage temporaire). `PreviewTarget` porte `version`, `targetOf(entrée)` la construit, `clearPreviewCache()` vide aussi le disque. Voir MODULES.md.
 - **Anciens domaines.** `LEGACY_HOSTS` (10 noms au plus) : le proxy du cœur répond 301 vers `SITE_URL` pour GET et HEAD, selon `Host` seul, jamais pour `/api/*` ni les retours `oauth` ; voir `src/core/siteAddress.ts` et `docs/MIGRER-DOMAINE.md`.

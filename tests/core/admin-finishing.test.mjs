@@ -92,7 +92,9 @@ test("textes en dur : aucun placeholder / aria-label / title / alt en phrase dan
 
 test("textes en dur : le champ image traduit son exemple d'adresse (français ET anglais)", () => {
   assert.ok(!/ou \/uploads/.test(read("src/components/admin/ImageField.tsx")));
-  assert.match(read("src/components/admin/ImageField.tsx"), /c\("urlPlaceholder"\)/);
+  assert.match(read("src/components/admin/ImageField.tsx"), /c\(advanced \? "urlPlaceholder" : "urlPlaceholderSimple"\)/);
+  const simple = JSON.parse(read("src/locales/fr.json"))["crop.urlPlaceholderSimple"], simpleEn = JSON.parse(read("src/locales/en.json"))["crop.urlPlaceholderSimple"];
+  assert.ok(simple && simpleEn && !/uploads|https/.test(simple + simpleEn), "mode simple : pas de chemin technique dans l'exemple");
   const fr = JSON.parse(read("src/locales/fr.json")), en = JSON.parse(read("src/locales/en.json"));
   assert.match(fr["crop.urlPlaceholder"], / ou /);
   assert.match(en["crop.urlPlaceholder"], / or /);

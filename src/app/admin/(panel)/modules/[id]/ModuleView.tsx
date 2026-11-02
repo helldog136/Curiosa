@@ -109,7 +109,7 @@ export async function ModuleView({ id, query, embedded = false }: { id: string; 
 
       {(mine.length > 0 || canAdd) && (
         <section className="space-y-3">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">{t("modules.instancesTitle")}</h2>
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">{t(advanced ? "modules.instancesTitle" : "modules.instancesTitle.simple")}</h2>
           {mine.length > 0 && (
             <ul className="divide-y divide-line rounded-xl border border-line bg-surface">
               {mine.map((i) => (

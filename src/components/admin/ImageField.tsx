@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { RATIOS, joinImageRef, splitImageRef, type Crop } from "@/core/imageCrop";
-import { useCropLabels } from "./CropLabels";
+import { useAdvancedMode, useCropLabels } from "./CropLabels";
 import { ImageCropper } from "./ImageCropper";
 import { ui } from "./ui";
 import { Spinner } from "./ActionKit";
@@ -21,6 +21,7 @@ export function ImageField({ name, label, defaultValue, uploadLabel, kind = "ima
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const c = useCropLabels();
+  const advanced = useAdvancedMode();
   const p = useProgressText();
   const ref = splitImageRef(value);
   const croppable = kind === "image" && CROPPABLE.test(ref.path);
@@ -51,7 +52,7 @@ export function ImageField({ name, label, defaultValue, uploadLabel, kind = "ima
       <div className="flex flex-wrap items-center gap-3">
         {/* La valeur envoyée (champ caché) = adresse + cadrage ; la personne ne voit et ne modifie que l'adresse. */}
         <input type="hidden" name={name} value={value} />
-        <input id={name} required={required} value={ref.path} onChange={(e) => change(e.target.value)} placeholder={kind === "video" ? "/uploads/…" : c("urlPlaceholder")} className={`${ui.input} min-w-0 flex-1`} />
+        <input id={name} required={required} value={ref.path} onChange={(e) => change(e.target.value)} placeholder={kind === "video" ? "/uploads/…" : c(advanced ? "urlPlaceholder" : "urlPlaceholderSimple")} className={`${ui.input} min-w-0 flex-1`} />
         <label className={`${ui.btn} min-h-11 ${busy ? "pointer-events-none cursor-progress" : "cursor-pointer"}`} aria-busy={busy || undefined}>
           {busy ? <><Spinner />{p("sending")}</> : uploadLabel}
           <input type="file" disabled={busy} accept={kind === "video" ? "video/mp4,video/webm" : `image/png,image/jpeg,image/webp,image/gif${svg ? ",image/svg+xml" : ""}`} className="hidden" onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} />

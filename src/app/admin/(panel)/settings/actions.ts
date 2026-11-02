@@ -17,6 +17,8 @@ export async function saveSettings(_prev: ActionState, formData: FormData): Prom
 
   // Version simplifiée : les réglages techniques ne sont pas envoyés, on ne les touche pas.
   const adv = formData.get("__adv") === "1";
+  // Contact et pied de page : envoyés dans les deux versions (marqueur `__contact`) ; sans le marqueur, on n'y touche pas.
+  const withContact = adv || formData.get("__contact") === "1";
   const defaultLocale = String(formData.get("defaultLocale") ?? "");
   const enabled = formData.getAll("enabledLocales").map(String).filter(isKnownLocale);
   if (!isKnownLocale(defaultLocale)) return { error: t("error.generic") };
@@ -53,7 +55,7 @@ export async function saveSettings(_prev: ActionState, formData: FormData): Prom
   }
 
   for (const key of TRANSLATABLE) {
-    if (key === "footer.text" && !adv) continue;
+    if (key === "footer.text" && !withContact) continue;
     for (const locale of locales) {
       const value = String(formData.get(`${key}__${locale}`) ?? "").trim().slice(0, 20000);
       if (value) await setSetting(key, value, locale);
@@ -69,7 +71,7 @@ export async function saveSettings(_prev: ActionState, formData: FormData): Prom
   // la disposition de l'en-tête, les couleurs, la police, le halo et le fond dans Apparence (appearance/actions.ts).
   await setSetting("stats.enabled", formData.get("statsEnabled") === "on");
   await setSetting("news.toggle", formData.get("newsToggle") === "on");
-  if (adv) await setSetting("site.contactEmail", String(formData.get("contactEmail") ?? "").trim());
+  if (withContact) await setSetting("site.contactEmail", String(formData.get("contactEmail") ?? "").trim());
   if (timezone) await setSetting(TIMEZONE_SETTING, timezone);
   else if (timezone !== null) await deleteSetting(TIMEZONE_SETTING);
   await audit(user.email, "settings.update");
