@@ -11,7 +11,7 @@ import zlib from "node:zlib";
 import { UPLOAD_LIMITS } from "./types";
 
 export type FontCheckCode =
-  | "empty" | "too-large" | "not-woff2" | "header" | "collection" | "truncated" | "tables" | "private" | "svg" | "trailing" | "compressed" | "sizes" | "missing" | "head" | "name";
+  | "empty" | "too-large" | "not-woff2" | "header" | "collection" | "truncated" | "tables" | "private" | "svg" | "cff2" | "trailing" | "compressed" | "sizes" | "missing" | "head" | "name";
 
 export type FontCheck =
   | { ok: true; family: string; weight: string; style: "normal" | "italic"; variable: boolean; glyphs: number }
@@ -98,6 +98,7 @@ export function checkWoff2(buf: Buffer, maxBytes: number = UPLOAD_LIMITS.maxByte
     if (streamLength > MAX_SFNT) return bad("sizes");
   }
   if (seen.has("SVG ")) return bad("svg");
+  if (seen.has("CFF2")) return bad("cff2");
   const dirEnd = pos;
   if (dirEnd + totalCompressed > buf.length) return bad("truncated");
   if (metaLength !== 0 || metaOffset !== 0) {

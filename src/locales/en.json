@@ -2489,6 +2489,7 @@
   "appearance.font.deleteShort": "Delete",
   "appearance.font.more": "More options",
   "appearance.font.error.convertedLarge": "This file is too heavy once converted (150 KB at most). Convert it to .woff2 keeping only the characters you need, for example with the woff2_compress command.",
+  "appearance.font.error.cff2": "This font format (variable CFF2) is not supported. Export it as .ttf or .woff2.",
   "appearance.font.fileLimit": ".woff2, .otf or .ttf, 500 KB at most.",
   "users.search": "Search for a person",
   "users.listHelp": "Change a role from its row; the ⋯ menu holds the rest.",

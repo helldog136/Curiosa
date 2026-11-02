@@ -100,3 +100,7 @@ test("suivi sécurité : nom de longueur impaire = refus propre ; octets après 
   assert.equal(code(poly), "trailing");
   for (const f of fs.readdirSync("fonts/files")) assert.equal(code(real(f), 40 * 1024), "ok", f);
 });
+
+test("suivi : un WOFF2 avec CFF2 est refusé avec son code dédié", () => {
+  assert.equal(code(fake({ tags: ["cmap", "head", "hhea", "hmtx", "maxp", "name", "CFF2"] })), "cff2");
+});
