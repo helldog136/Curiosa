@@ -2489,6 +2489,7 @@
   "appearance.font.deleteShort": "Supprimer",
   "appearance.font.more": "Plus d'options",
   "appearance.font.error.convertedLarge": "Ce fichier est trop lourd une fois converti (150 Ko au plus). Convertissez-le en .woff2 en gardant seulement les caractères utiles, par exemple avec la commande woff2_compress.",
+  "appearance.font.error.cff2": "Ce format de police (variable CFF2) n'est pas pris en charge. Exportez-la en .ttf ou en .woff2.",
   "appearance.font.fileLimit": ".woff2, .otf ou .ttf, 500 Ko au plus.",
   "users.search": "Rechercher une personne",
   "users.listHelp": "Changez un rôle depuis sa ligne ; le menu ⋯ garde le reste.",
