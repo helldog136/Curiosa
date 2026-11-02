@@ -3438,7 +3438,7 @@
   "setup.samples.title": "Example pages",
   "setup.samples.help": "These are drafts: nothing is published without you. Untick the ones you do not want.",
   "setup.samples.summary": "{n} example pages as drafts",
-  "setup.samples.summary.one": "1 example page as a draft",
+  "setup.samples.summary.one": "{n} example page as a draft",
   "entries.templates.title": "Start from a template",
   "entries.templates.intro": "A template creates a filled-in draft that you then edit. Nothing is published without you.",
   "entries.templates.use": "Use this template",

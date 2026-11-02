@@ -387,7 +387,7 @@ test("l'index du catalogue se lit lui aussi en direct (git en dernier recours se
   const net = fakeRaw({ "acme/extras/HEAD/catalogue/index.json": [entry], "acme/extras/HEAD/catalogue/suggested.json": ["demo"] });
   const r = await REC.getRecognizedDetailed();
   assert.deepEqual([r.source, r.items.map((i) => i.id), r.suggested], ["repository", ["demo"], ["demo"]]);
-  assert.equal(net.log.length, 2);
+  assert.equal(net.log.length, 3, "index, suggestions et profils de départ (profiles.json, facultatif : absent = aucune question), lus en parallèle");
   assert.deepEqual(gitCalls(), []);
   // Panne directe : git prend le relais (une seule fois).
   REC.clearRecognizedCache();

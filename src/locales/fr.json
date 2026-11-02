@@ -3438,7 +3438,7 @@
   "setup.samples.title": "Pages d'exemple",
   "setup.samples.help": "Ce sont des brouillons : rien n'est publié sans vous. Décochez celles dont vous ne voulez pas.",
   "setup.samples.summary": "{n} pages d'exemple en brouillon",
-  "setup.samples.summary.one": "1 page d'exemple en brouillon",
+  "setup.samples.summary.one": "{n} page d'exemple en brouillon",
   "entries.templates.title": "Partir d'un modèle",
   "entries.templates.intro": "Un modèle crée un brouillon prérempli que vous modifiez ensuite. Rien n'est publié sans vous.",
   "entries.templates.use": "Utiliser ce modèle",

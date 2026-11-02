@@ -198,7 +198,7 @@ export function SetupWizard({ strings, uiLocales, locales, presets, profiles = [
             </label>
           ))}
           {offeredSamples.length > 0 && (
-            <MoreOptions title={t("setup.samples.title")} summary={keptSamples.length === 0 ? "" : keptSamples.length === 1 ? t("setup.samples.summary.one") : t("setup.samples.summary").replace("{n}", String(keptSamples.length))}>
+            <MoreOptions title={t("setup.samples.title")} summary={keptSamples.length === 0 ? "" : t(keptSamples.length === 1 ? "setup.samples.summary.one" : "setup.samples.summary").replace("{n}", String(keptSamples.length))}>
               <p className="text-sm text-muted">{t("setup.samples.help")}</p>
               {offeredSamples.map((ref) => {
                 const tpl = templateOf(ref);
