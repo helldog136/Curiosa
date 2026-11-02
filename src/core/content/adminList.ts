@@ -27,7 +27,7 @@ export function caseVariants(q: string): string[] {
   return [...new Set([q, lower, q.toLocaleUpperCase(), capital, words])];
 }
 
-const stateWhere = (state: AdminState, now: Date): Prisma.EntryWhereInput => {
+export const stateWhere = (state: AdminState, now: Date): Prisma.EntryWhereInput => {
   switch (state) {
     case "draft": return { status: { not: "published" } };
     case "expired": return { status: "published", expiresAt: { lte: now } };
