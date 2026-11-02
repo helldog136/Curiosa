@@ -27,6 +27,8 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 - **Garde-fou du mode simple.** `tests/core/admin-simple-mode.test.mjs` rend les pages du cœur en mode simple et échoue sur un mot de la liste R9, un onglet de plus de 7 champs ou une entrée de menu avancée (`ADVANCED_ONLY_ENTRIES`) ; il vérifie aussi le changement de mode.
 - Corrections à faire dans les modules : `docs/ideas/audit-mode-simple-modules.md`.
+- **Tableau de bord : l'API des extensions.** La clé facultative `dashboard` de `module.json` (`tasks`, `quickActions`, `cards`) et le code `dashboard.tasks` / `dashboard.cards` apportent au tableau de bord des tâches, des boutons « Créer… » et des cartes. Le cœur vérifie tout, appelle le code à l'affichage seulement et masque seulement l'extension en échec (voir `docs/CREATE-A-MODULE.md`).
+- **Tableau de bord : la logique.** `src/core/dashboard/` contient les briques de l'écran à venir : tâches, derniers événements du Journal central filtrés par droits, mise en route calculée, santé, visites comparées, actions rapides, blocs par palier. Le kit de test gagne l'exigence `dashboard.valid`.
 - **Polices.** `sfntToWoff2` (`src/core/fonts/sfnt.ts`) convertit en WOFF2, puis `checkWoff2` revérifie le résultat. `ActionForm` accepte `id`, et le choix des polices se rattache au formulaire des retouches par `form`.
 
 ## 0.6.1 — 2026-11-01

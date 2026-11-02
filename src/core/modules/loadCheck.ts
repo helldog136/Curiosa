@@ -54,6 +54,16 @@ export function shapeProblems(shape: Shape | undefined): string[] {
       else if (!FN(v)) out.push(`${group}.${k} must be a function`);
     }
   }
+  const dash = shape.dashboard;
+  if (dash !== undefined) {
+    if (!isMap(dash)) out.push('"dashboard" must be an object');
+    else for (const group of ["tasks", "cards"]) {
+      const g = dash[group];
+      if (g === undefined) continue;
+      if (!isMap(g)) { out.push(`"dashboard.${group}" must be an object`); continue; }
+      for (const [k, v] of Object.entries(g)) if (!FN(v)) out.push(`dashboard.${group}.${k} must be a function`);
+    }
+  }
   for (const k of ["page", "overlay", "news", "adminBadge", "adminPanel"]) if (shape[k] !== undefined && !FN(shape[k])) out.push(`"${k}" must be a function`);
   const panels = shape.entryPanels;
   if (panels !== undefined) {

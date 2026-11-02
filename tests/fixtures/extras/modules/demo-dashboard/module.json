@@ -1,0 +1,86 @@
+{
+  "apiVersion": 2,
+  "id": "demo-dashboard",
+  "name": {
+    "en": "Dashboard demo",
+    "fr": "Démo du tableau de bord"
+  },
+  "version": "1.0.0",
+  "main": "index.mjs",
+  "author": "Tests",
+  "license": "MIT",
+  "instances": "multiple",
+  "icon": "📊",
+  "sections": [],
+  "consumes": [],
+  "provides": [],
+  "settings": [
+    {
+      "key": "pending",
+      "type": "number",
+      "default": 3,
+      "label": {
+        "en": "Pending",
+        "fr": "En attente"
+      }
+    }
+  ],
+  "permissions": [
+    "storage",
+    "admin"
+  ],
+  "rights": [
+    {
+      "id": "triage",
+      "label": {
+        "en": "Triage the items",
+        "fr": "Trier les éléments"
+      },
+      "default": {
+        "editor": true
+      }
+    }
+  ],
+  "dashboard": {
+    "tasks": [
+      {
+        "id": "pending",
+        "label": {
+          "en": "{n} items to triage",
+          "fr": "{n} éléments à trier"
+        },
+        "href": "?tab=use",
+        "right": "triage"
+      }
+    ],
+    "quickActions": [
+      {
+        "id": "add",
+        "label": {
+          "en": "Add an item",
+          "fr": "Ajouter un élément"
+        },
+        "href": "?tab=use",
+        "right": "triage"
+      }
+    ],
+    "cards": [
+      {
+        "id": "count",
+        "type": "counter",
+        "title": {
+          "en": "Items",
+          "fr": "Éléments"
+        }
+      },
+      {
+        "id": "boom",
+        "type": "counter",
+        "title": {
+          "en": "Broken card",
+          "fr": "Carte cassée"
+        }
+      }
+    ]
+  }
+}

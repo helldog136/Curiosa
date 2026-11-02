@@ -130,6 +130,16 @@ export async function health() {
   };
 }
 
+/**
+ * Le coup d'œil du TABLEAU DE BORD : la base répond, le disque, les instances mises à l'écart, la dernière mise à jour. Aucun réseau, aucun module chargé, aucun fichier lu au-delà de la taille du disque ;
+ * c'est `health()` sans la liste des erreurs récentes. Ne lève jamais.
+ */
+export async function glance(): Promise<{ databaseOk: boolean; disk: "ok" | "low" | "critical" | "unknown"; instancesSetAside: number; updateFailed: boolean; backup: { at: string | null; recent: boolean } }> {
+  const [database, setAside, backup] = await Promise.all([checkDatabase(), instancesInError().catch(() => []), lastBackup().catch(() => ({ at: null, recent: false }))]);
+  const disk = diskSpace();
+  return { databaseOk: database.ok, disk: disk ? disk.level : "unknown", instancesSetAside: setAside.length, updateFailed: readUpdateState(dataDir()).status === "failed", backup: { at: backup.at, recent: backup.recent } };
+}
+
 export type ModuleLine = {
   id: string; version: string; source: string; repository: string | null; ref: string | null;
   loadable: boolean;
