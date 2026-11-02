@@ -142,6 +142,8 @@ test("mode simple / avancé : une page explique la différence et ne change que 
 
 test("tableau de bord : « à traiter » passe avant le reste ; les chiffres du mode avancé ont un titre", () => {
   const page = read(`${PANEL}/page.tsx`);
-  assert.ok(page.indexOf('data-testid="todo"') < page.indexOf('t("dashboard.start")'));
+  const layout = read("src/core/dashboard/layout.ts");
+  for (const blocks of layout.matchAll(/blocks = \[([^\]]*)\]/g)) assert.ok(blocks[1].indexOf('"todo"') >= 0 && blocks[1].indexOf('"todo"') < blocks[1].indexOf('"create"') || !blocks[1].includes('"create"'), "« À faire » avant « Créer »");
+  assert.match(read("src/components/admin/dashboard/Blocks.tsx"), /data-testid="todo"/);
   assert.ok(page.indexOf('t("dashboard.inNumbers")') > 0);
 });

@@ -40,7 +40,7 @@ test("toutes les clés `content.*` : mêmes clés en FR et EN, mêmes variables,
 
 test("les textes cités par la page, l'action et le bouton existent partout", () => {
   const keys = new Set();
-  for (const f of [`${PANEL}/page.tsx`, `${PANEL}/actions.ts`, "src/app/admin/(panel)/page.tsx", "src/app/admin/(panel)/layout.tsx"]) for (const m of read(f).matchAll(/\bt\(\s*"([\w.]+)"/g)) if (/^(content|dashboard\.content|nav\.health)/.test(m[1])) keys.add(m[1]);
+  for (const f of [`${PANEL}/page.tsx`, `${PANEL}/actions.ts`, "src/app/admin/(panel)/layout.tsx"]) for (const m of read(f).matchAll(/\bt\(\s*"([\w.]+)"/g)) if (/^(content|dashboard\.content|nav\.health)/.test(m[1])) keys.add(m[1]);
   for (const s of ["important", "advised", "info"]) { keys.add(`content.sev.${s}`); keys.add(`content.sev.${s}.help`); }
   assert.ok(keys.size > 25, [...keys].join());
   for (const k of keys) { assert.ok(fr[k], `fr ${k}`); assert.ok(en[k], `en ${k}`); }
@@ -145,10 +145,8 @@ test("droits : la page et CHAQUE action sont réservées aux administrateurs ; l
 });
 
 test("tableau de bord : une ligne sobre (ton « info »), seulement pour les administrateurs, jamais d'alarme", () => {
-  const page = read("src/app/admin/(panel)/page.tsx");
-  assert.match(page, /contentLook = hasRole\(user, "admin"\)/);
-  const block = page.slice(page.indexOf("{contentLook &&"), page.indexOf("{(todo.length"));
-  assert.match(block, /tone="info"/);
-  assert.ok(!/warn|danger/.test(block));
-  assert.match(block, /\/admin\/maintenance\/content/);
+  const health = read("src/core/dashboard/health.ts");
+  assert.match(health, /hasRole\(user, "admin"\)/);
+  assert.match(health, /id: "content", severity: "advice"/, "un conseil, jamais une alarme");
+  assert.match(health, /\/admin\/maintenance\/content/);
 });

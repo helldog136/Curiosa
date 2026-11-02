@@ -46,6 +46,8 @@ export type TodoEnv = {
   locale: string;
   defaultLocale: string;
   nav: readonly TodoNavItem[];
+  /** Le tableau de bord montre déjà le bloc « À finir » (brouillons avec leurs titres) : ne pas les répéter dans « À faire ». */
+  skipDrafts?: boolean;
   /** Extensions à régler (nom → résumé de ce qu'il reste à renseigner), lu par la page pour qui règle les extensions. */
   toSetUp?: readonly { id: string; name: string; icon: string; summary: string }[];
 };
@@ -94,7 +96,7 @@ export async function loadCoreTodo(env: TodoEnv): Promise<TodoItem[]> {
   const { user, t } = env;
   const admin = hasRole(user, "admin");
   const [drafts, ai, core, modules, skins, backup] = await Promise.all([
-    can(user, "core:entries.edit") ? within(() => draftsToFinish(env), null) : Promise.resolve(null),
+    can(user, "core:entries.edit") && !env.skipDrafts ? within(() => draftsToFinish(env), null) : Promise.resolve(null),
     can(user, "core:mcp.tokens") ? within(() => maintenanceSummary(), null) : Promise.resolve(null),
     can(user, "core:updates") ? within(() => getUpdateCheck(), null) : Promise.resolve(null),
     can(user, "core:updates") || admin ? within(async () => (await import("../modules/updateStatus")).peekModulesReport(), null) : Promise.resolve(null),
@@ -108,8 +110,8 @@ export async function loadCoreTodo(env: TodoEnv): Promise<TodoItem[]> {
   if (drafts && drafts.total > 0) {
     out.push({
       id: "drafts", kind: "drafts", icon: "📝", label: t("dash.todo.drafts", { n: drafts.total }), count: drafts.total, rows: drafts.rows.map((r) => ({ title: r.title, ...(r.detail ? { detail: r.detail } : {}), href: r.href })),
-      // Un seul extension avec des brouillons : la liste déjà réglée sur eux. Plusieurs : la première liste (la page agrégée « Brouillons » vient avec le tableau de bord).
-      href: `/admin/entries?c=${encodeURIComponent([...drafts.byKey.keys()][0] ?? drafts.rows[0]?.instanceKey ?? "")}&state=draft`,
+      // La page qui rassemble les brouillons de toutes les extensions.
+      href: "/admin/drafts",
     });
   }
   if (backup && !backup.backup.recent) out.push({ id: "backup", kind: "backup", icon: "💾", label: t(backup.backup.at ? "dash.todo.backupOld" : "dash.todo.backupNever"), href: "/admin/backup" });

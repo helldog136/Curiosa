@@ -137,7 +137,7 @@ test("branchements : balise de visite, route, cookies du proxy, hook `news`, pas
   assert.match(read("src/core/modules/types.ts"), /news\?: \(ctx: ModuleContext\) => boolean/);
   assert.match(read("src/core/modules/types.ts"), /visit: \{ lastVisit: Date \}/);
   assert.match(read("src/components/site/Header.tsx"), /data-testid="news-dot"/);
-  assert.match(read("src/app/admin/(panel)/page.tsx"), /data-testid="visits"/);
+  assert.match(read("src/components/admin/dashboard/Blocks.tsx"), /data-testid="visits"/);
 });
 
 test("pastilles d'admin : hook adminBadge → menu et carte « À traiter » ; mises à jour pour le propriétaire ; module Contacts compte les fiches à vérifier", () => {
@@ -147,7 +147,7 @@ test("pastilles d'admin : hook adminBadge → menu et carte « À traiter » ; m
   const layout = read("src/app/admin/(panel)/layout.tsx");
   assert.match(layout, /can\(user, "core:updates"\) && \(await getUpdateCheck/);
   assert.match(layout, /href="\/admin\/updates" badge=/);
-  assert.match(read("src/app/admin/(panel)/page.tsx"), /data-testid="todo"/);
+  assert.match(read("src/components/admin/dashboard/Blocks.tsx"), /data-testid="todo"/);
 });
 
 test("vie privée : la dernière visite n'est retenue que si le visiteur l'a demandé (accord dans le bandeau) ; les cookies d'avant sont effacés", async () => {
