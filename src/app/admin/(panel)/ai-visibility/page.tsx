@@ -48,6 +48,8 @@ export default async function AiVisibilityPage() {
     probes,
   );
   const todo = todoCount(checks);
+  // Mode simple : le titre sans nom de fichier (« .simple », quand il existe) ; le mode avancé garde les noms exacts.
+  const checkTitle = (id: string) => { const simple = advanced ? "" : t(`ai.check.${id}.simple`); return simple && simple !== `ai.check.${id}.simple` ? simple : t(`ai.check.${id}`); };
 
   return (
     <div className="space-y-6">
@@ -75,7 +77,7 @@ export default async function AiVisibilityPage() {
               </span>
               <div className="min-w-0 flex-1">
                 <p className="font-medium">
-                  {t(`ai.check.${c.id}`)} <span className="text-sm font-normal text-muted">— {c.status === "ok" ? t("ai.status.ok") : c.status === "todo" ? t("ai.status.todo") : t("ai.status.info")}</span>
+                  {checkTitle(c.id)} <span className="text-sm font-normal text-muted">— {c.status === "ok" ? t("ai.status.ok") : c.status === "todo" ? t("ai.status.todo") : t("ai.status.info")}</span>
                 </p>
                 <p className={ui.help}>{detail}</p>
               </div>

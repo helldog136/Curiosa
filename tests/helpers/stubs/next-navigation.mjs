@@ -5,3 +5,6 @@ export const redirect = (url) => { throw new RedirectError(url); };
 export const permanentRedirect = (url) => { throw new RedirectError(url); };
 export const notFound = () => { throw new NotFoundError(); };
 export const useRouter = () => ({ push() {}, replace() {}, refresh() {}, back() {} });
+export const usePathname = () => "/admin";
+export const useSearchParams = () => new URLSearchParams();
+export const useParams = () => ({});

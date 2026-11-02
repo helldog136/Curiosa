@@ -9,6 +9,7 @@ import { Checkbox, Select, TextArea, TextField } from "@/components/admin/Field"
 import { ImageField } from "@/components/admin/ImageField";
 import { Tabs } from "@/components/admin/Tabs";
 import { ui } from "@/components/admin/ui";
+import { MoreOptions } from "@/components/admin/MoreOptions";
 import { hasRole } from "@/core/permissions";
 import { getMailConfig } from "@/core/services/mail";
 import { getAiBlocking, getSiteEntity, isLlmsTxtEnabled } from "@/core/seoSettings";
@@ -40,6 +41,25 @@ export default async function SettingsPage() {
   const ai = await getAiBlocking();
   const llmsTxt = await isLlmsTxtEnabled();
   const entity = await getSiteEntity();
+
+  // Icône de l'onglet et image de partage : dans la grille en mode avancé, sous « Plus d'images » en mode simple (sans eux le site se débrouille).
+  const extraLogos = (
+    <>
+              <div className="space-y-1"><ImageField svg name="favicon" label={t("settings.favicon")} defaultValue={config.favicon} uploadLabel={t("action.upload")} /><p className={ui.help}>{t("settings.faviconHelp")}</p></div>
+              <div className="space-y-1"><ImageField name="logoShare" label={t("settings.logoShare")} defaultValue={config.logos.share} uploadLabel={t("action.upload")} /><p className={ui.help}>{t("settings.logoShareHelp")}</p></div>
+    </>
+  );
+
+  const contactFields = (
+    <>
+      <input type="hidden" name="__contact" value="1" />
+      <TextField name="contactEmail" type="email" label={t("settings.contactEmail")} help={t("settings.contactEmailHelp")} defaultValue={config.contactEmail} />
+      {advanced && <TextField name="timezone" label={t("settings.timezone")} help={t("settings.timezoneHelp", { zone: systemTimezone() })} defaultValue={timezoneSaved} placeholder="Europe/Brussels" autoComplete="off" />}
+      {config.locales.map((l) => (
+        <TextField key={l} name={`footer.text__${l}`} label={`${t("settings.footerText")}${config.locales.length > 1 ? ` — ${localeName(l)}` : ""}`} defaultValue={String(values["footer.text"]?.[l] ?? "")} />
+      ))}
+    </>
+  );
 
   return (
     <div className="space-y-6">
@@ -76,9 +96,13 @@ export default async function SettingsPage() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1"><ImageField svg name="logoWide" label={t("settings.logoWide")} defaultValue={config.logos.wide} uploadLabel={t("action.upload")} /><p className={ui.help}>{t("settings.logoWideHelp")}</p></div>
               <div className="space-y-1"><ImageField svg name="logo" label={t("settings.logoSquare")} defaultValue={logo} uploadLabel={t("action.upload")} /><p className={ui.help}>{t("settings.logoSquareHelp")}</p></div>
-              <div className="space-y-1"><ImageField svg name="favicon" label={t("settings.favicon")} defaultValue={config.favicon} uploadLabel={t("action.upload")} /><p className={ui.help}>{t("settings.faviconHelp")}</p></div>
-              <div className="space-y-1"><ImageField name="logoShare" label={t("settings.logoShare")} defaultValue={config.logos.share} uploadLabel={t("action.upload")} /><p className={ui.help}>{t("settings.logoShareHelp")}</p></div>
+              {advanced && extraLogos}
             </div>
+            {!advanced && (
+              <MoreOptions title={t("settings.logosMore")} defaultOpen={Boolean(config.favicon || config.logos.share)}>
+                <div className="grid gap-4 sm:grid-cols-2">{extraLogos}</div>
+              </MoreOptions>
+            )}
             <details className="rounded-xl border border-line p-3" open={!!(config.logos.wideDark || config.logos.squareDark)}>
               <summary className="cursor-pointer text-sm font-medium">{t("settings.logosDark")}</summary>
               <p className={`${ui.help} mt-2`}>{t("settings.logosDarkHelp")}</p>
@@ -88,15 +112,16 @@ export default async function SettingsPage() {
               </div>
             </details>
           </div>
-          {advanced && (
+          {/* Contact et pied de page : des réglages de tous les jours (la politique de confidentialité et la Santé du site s'y réfèrent), donc aussi en mode simple. Seul le fuseau horaire reste avancé. */}
+          {advanced ? (
             <div className={`${ui.card} space-y-4`}>
               <h3 className="font-semibold">{t("settings.contactCard")}</h3>
-              <TextField name="contactEmail" type="email" label={t("settings.contactEmail")} help={t("settings.contactEmailHelp")} defaultValue={config.contactEmail} />
-              <TextField name="timezone" label={t("settings.timezone")} help={t("settings.timezoneHelp", { zone: systemTimezone() })} defaultValue={timezoneSaved} placeholder="Europe/Brussels" autoComplete="off" />
-              {config.locales.map((l) => (
-                <TextField key={l} name={`footer.text__${l}`} label={`${t("settings.footerText")}${config.locales.length > 1 ? ` — ${localeName(l)}` : ""}`} defaultValue={String(values["footer.text"]?.[l] ?? "")} />
-              ))}
+              {contactFields}
             </div>
+          ) : (
+            <MoreOptions title={t("settings.contactCard")} summary={config.contactEmail || undefined} defaultOpen={Boolean(config.contactEmail || Object.values(values["footer.text"] ?? {}).some(Boolean))}>
+              {contactFields}
+            </MoreOptions>
           )}
         </section>
 
@@ -170,11 +195,24 @@ export default async function SettingsPage() {
           <ActionForm action={saveMail} submitLabel={t("settings.mailSave")} className="space-y-5">
             <div className={`${ui.card} space-y-4`}>
               <h3 className="font-semibold">{t("settings.mailServer")}</h3>
-              <div className="grid gap-4 sm:grid-cols-[1fr_8rem]">
-                <TextField name="mailHost" label={t("settings.mailHost")} defaultValue={mail?.host ?? ""} placeholder="smtp.example.com" autoComplete="off" />
-                <TextField name="mailPort" type="number" label={t("settings.mailPort")} defaultValue={mail?.port ?? 587} />
-              </div>
-              <Checkbox name="mailSecure" label={t("settings.mailSecure")} defaultChecked={mail?.secure ?? false} />
+              {/* Mode simple : le serveur seul ; le port et la connexion sécurisée (réglés d'avance sur les valeurs courantes) sont rangés sous « Plus d'options ». Les champs repliés partent avec le formulaire : rien n'est perdu. */}
+              {advanced ? (
+                <>
+                  <div className="grid gap-4 sm:grid-cols-[1fr_8rem]">
+                    <TextField name="mailHost" label={t("settings.mailHost")} defaultValue={mail?.host ?? ""} placeholder="smtp.example.com" autoComplete="off" />
+                    <TextField name="mailPort" type="number" label={t("settings.mailPort")} defaultValue={mail?.port ?? 587} />
+                  </div>
+                  <Checkbox name="mailSecure" label={t("settings.mailSecure")} defaultChecked={mail?.secure ?? false} />
+                </>
+              ) : (
+                <>
+                  <TextField name="mailHost" label={t("settings.mailHost")} help={t("settings.mailHostHelp")} defaultValue={mail?.host ?? ""} placeholder="smtp.example.com" autoComplete="off" />
+                  <MoreOptions title={t("settings.mailMore")} summary={mail ? t("settings.mailMoreSummary", { port: mail.port ?? 587 }) : undefined} defaultOpen={Boolean(mail && ((mail.port ?? 587) !== 587 || mail.secure))}>
+                    <TextField name="mailPort" type="number" label={t("settings.mailPort")} defaultValue={mail?.port ?? 587} />
+                    <Checkbox name="mailSecure" label={t("settings.mailSecure")} defaultChecked={mail?.secure ?? false} />
+                  </MoreOptions>
+                </>
+              )}
               <div className="grid gap-4 sm:grid-cols-2">
                 <TextField name="mailUser" label={t("settings.mailUser")} defaultValue={mail?.user ?? ""} autoComplete="off" />
                 <TextField name="mailPass" type="password" noManager label={t("settings.mailPass")} help={t("settings.mailPassHelp")} autoComplete="new-password" />

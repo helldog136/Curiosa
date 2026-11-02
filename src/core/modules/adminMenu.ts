@@ -4,6 +4,9 @@ import { levelHolds } from "../auth/team";
 /** Les entrées de la rubrique « Administration » du menu, dans l'ordre d'affichage. */
 export type AdminEntry = "extensions" | "overlays" | "assistants" | "users" | "health" | "backup" | "updates" | "audit";
 
+/** Les entrées d'« Administration » réservées au mode avancé : jamais dans le menu d'une personne en mode simple (test : tests/core/admin-simple-mode.test.mjs). */
+export const ADVANCED_ONLY_ENTRIES: readonly AdminEntry[] = ["audit"];
+
 /**
  * Quelles entrées d'« Administration » voit cette personne ? Logique pure, testée.
  * - Assistants IA : qui détient `core:mcp.tokens` (personne propriétaire, coordination technique), en mode simple comme en mode avancé (c'est la page qu'une personne non technique utilise pour brancher une IA) ;
@@ -22,8 +25,8 @@ export function administrationEntries({ role, advanced }: { role: Level; advance
   if (manage) out.push("users", "health");
   if (levelHolds(role, "core:backup")) out.push("backup");
   if (levelHolds(role, "core:updates")) out.push("updates");
-  if (levelHolds(role, "core:security") && advanced) out.push("audit");
-  return out;
+  if (levelHolds(role, "core:security")) out.push("audit");
+  return advanced ? out : out.filter((e) => !ADVANCED_ONLY_ENTRIES.includes(e));
 }
 
 /**
