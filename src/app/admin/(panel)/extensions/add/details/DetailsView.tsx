@@ -5,7 +5,7 @@ import { can as canDo } from "@/core/auth/access";
 import { findCatalogueEntry } from "@/core/modules/catalogue";
 import { getCoreVersion } from "@/core/modules/compat";
 import { parseRepoUrl } from "@/core/modules/installer";
-import { getModulePreview, getPreviewImages, PREVIEW_WAIT_MS, PreviewTimeout, type ModulePreview, type PreviewTarget } from "@/core/modules/readme";
+import { getModulePreview, getPreviewImages, PREVIEW_WAIT_MS, PreviewFailure, PreviewTimeout, targetOf, type ModulePreview, type PreviewTarget } from "@/core/modules/readme";
 import { listModuleRows } from "@/core/modules/registry";
 import { listRetired } from "@/core/modules/retired";
 import { localized } from "@/core/modules/types";
@@ -42,7 +42,7 @@ export async function DetailsView({ id, repo, embedded = false }: { id?: string;
     // L'index du catalogue : une copie déjà reçue suffit (jamais d'attente du réseau pour ouvrir une fiche), elle est relue en coulisse.
     entry = await findCatalogueEntry(id, { staleOk: true });
     if (!entry) notFound();
-    target = entry.repo ? { kind: "repo", url: entry.repo, ref: entry.ref, subdir: entry.subdir } : null;
+    target = targetOf(entry);
   } else if (repo) {
     const parsed = parseRepoUrl(repo);
     if (parsed.ok) { custom = parsed.repo; target = { kind: "repo", url: parsed.repo.url, ref: parsed.repo.ref, subdir: parsed.repo.subdir }; }
@@ -51,7 +51,7 @@ export async function DetailsView({ id, repo, embedded = false }: { id?: string;
 
   // Tout ce qui est connu sans lire le dépôt (nom, icône, description) s'affiche TOUT DE SUITE ; la lecture du dépôt (README, autorisations) arrive ensuite, dans la page.
   return (
-    <Suspense fallback={<FicheSkeleton text={t("fiche.loading")} embedded={embedded} back={t("catalogue.back")} name={entry ? L(entry.name) : custom?.url ?? ""} icon={entry?.icon ?? "🧩"} description={entry ? L(entry.description) : undefined} />}>
+    <Suspense fallback={<FicheSkeleton text={t("fiche.loading")} slowText={t("fiche.slow")} embedded={embedded} back={t("catalogue.back")} name={entry ? L(entry.name) : custom?.url ?? ""} icon={entry?.icon ?? "🧩"} description={entry ? L(entry.description) : undefined} />}>
       <FicheBody embedded={embedded} entry={entry} custom={custom} target={target} />
     </Suspense>
   );
@@ -66,8 +66,9 @@ async function FicheBody({ embedded, entry, custom, target }: { embedded: boolea
   let preview: ModulePreview | null = null;
   let failed = false;
   let timedOut = false;
+  let rateLimited = false;
   // Attente bornée : au-delà, un message clair et « Réessayer » (la lecture continue en coulisse, la tentative suivante en profite).
-  if (target) { try { preview = await getModulePreview(target, { waitMs: PREVIEW_WAIT_MS }); } catch (e) { console.error("[catalogue] preview failed:", (e as Error)?.message); failed = true; timedOut = e instanceof PreviewTimeout; } }
+  if (target) { try { preview = await getModulePreview(target, { waitMs: PREVIEW_WAIT_MS }); } catch (e) { console.error("[catalogue] preview failed:", (e as Error)?.message); failed = true; timedOut = e instanceof PreviewTimeout; rateLimited = e instanceof PreviewFailure && e.reason === "rate-limit"; } }
 
   const m = preview?.manifest ?? null;
   const installed = entry ? (await listModuleRows()).some((r) => r.id === entry!.id) : false;
@@ -123,7 +124,7 @@ async function FicheBody({ embedded, entry, custom, target }: { embedded: boolea
     <ExtensionFiche t={t} embedded={embedded} advanced={advanced} origin={origin} name={name} icon={icon}
       version={version} author={m?.author} license={m?.license} source={entry?.repo ? `${entry.repo}${entry.ref ? `#${entry.ref}` : ""}` : repoSpec || undefined}
       description={entry ? L(entry.description) : m?.description ? L(m.description) : undefined}
-      noModule={!!custom && !failed && !m} failed={failed} timedOut={timedOut} keptCount={kept.length}
+      noModule={!!custom && !failed && !m} failed={failed} timedOut={timedOut} rateLimited={rateLimited} keptCount={kept.length}
       gallery={gallery} gallerySlot={remoteGallery} galleryLabels={galleryLabels(t)} adds={m ? whatItAdds(m, L) : []}
       readme={preview?.readme ? (
         <article className={`${ui.card} overflow-x-auto !p-6 text-[16px] sm:!p-8 [&_h2:first-child]:mt-0 [&>div>*:first-child]:mt-0`}>

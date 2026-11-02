@@ -34,6 +34,8 @@ export type FicheProps = {
   failed: boolean;
   /** La lecture a pris trop de temps (au lieu d'échouer) : le message le dit, « Réessayer » relit la fiche. */
   timedOut?: boolean;
+  /** GitHub limite les lectures pour le moment : le message dit d'attendre un peu. */
+  rateLimited?: boolean;
   /** Éléments gardés d'une désinstallation précédente qui reviendront avec le module. */
   keptCount: number;
   gallery: GalleryItem[]; galleryLabels: GalleryLabels;
@@ -96,7 +98,7 @@ export function ExtensionFiche(p: FicheProps) {
       {p.keptCount > 0 && <Callout tone="info" role="status"><span data-testid="kept-note">🗂 {t("kept.detailsNote", { name: p.name, count: p.keptCount })}</span></Callout>}
       {p.failed && (
         <div role="alert" data-testid="fiche-failed" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-sm">
-          <p className="min-w-0 flex-1 basis-64">{t(p.timedOut ? "catalogue.previewSlow" : "catalogue.previewFailed")}</p>
+          <p className="min-w-0 flex-1 basis-64">{t(p.timedOut ? "catalogue.previewSlow" : p.rateLimited ? "catalogue.previewRateLimit" : "catalogue.previewFailed")}</p>
           <RetryButton label={t("fiche.retry")} pendingLabel={t("fiche.retrying")} />
         </div>
       )}
