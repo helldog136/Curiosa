@@ -658,6 +658,16 @@ export type ModuleDefinition = {
    * (0.2.5) Un bloc peut viser un autre onglet avec `tab` (voir `PanelBlock`) : il s'affiche AU-DESSUS des réglages de cet onglet.
    */
   adminPanel?: (ctx: ModuleContext, request: { query: Record<string, string> }) => PanelBlock[] | Promise<PanelBlock[]>;
+  /**
+   * (cœur après 0.6.1) Ce que le module montre au TABLEAU DE BORD, par identifiant déclaré dans `dashboard` du manifeste. `tasks.<id>(ctx)` renvoie un nombre (ce qui attend une action ; 0 = rien à montrer) ;
+   * `cards.<id>(ctx)` renvoie `{ value, detail? }` pour une carte `counter`, ou `{ rows: [{ title, detail?, href? }] }` (5 lignes au plus) pour une carte `list`. Le cœur appelle ces fonctions
+   * À L'AFFICHAGE seulement (jamais en tâche de fond), avec 1,5 seconde au plus par appel, et une réponse est gardée 20 secondes : restez rapide et lisez une donnée déjà calculée (un compteur de stockage,
+   * un nombre de lignes), jamais un service externe. Une erreur ou un délai dépassé masque seulement ce module. Le contexte ne dépend pas de la personne : le cœur filtre par droits.
+   */
+  dashboard?: {
+    tasks?: Record<string, (ctx: ModuleContext) => number | Promise<number>>;
+    cards?: Record<string, (ctx: ModuleContext) => unknown | Promise<unknown>>;
+  };
   /** Actions déclenchées par les blocs `adminForm` et les boutons de ligne des `table` du panneau d'admin. */
   /**
    * Forme fonction : réservée aux administrateurs (comme avant). Forme objet (0.2.0) : `{ right: "phone.edit", run }` : le cœur vérifie `<module>:open`

@@ -475,6 +475,53 @@ await ctx.api.log?.write({ action: "command.run", target: "!discord", data: { na
 
 Les journaux propres aux modules (Bot Twitch, Participation, Home Assistant, Sondages, journal des échanges de récompenses) restent en place : **rien n'est migré dans cette version**. Le guide pas à pas est dans `docs/MIGRER-SON-JOURNAL.md`.
 
+## 12 quater. Se montrer au tableau de bord (`dashboard`)
+
+Le tableau de bord de l'administration dit à la personne **ce qui attend une action**, **ce qui s'est passé**, de quoi **créer** quelque chose et quelques chiffres utiles. Votre module peut y apporter trois choses, toutes **facultatives**, en les déclarant dans `module.json` :
+
+```json
+"rights": [{ "id": "moderate", "label": { "fr": "Valider les avis", "en": "Approve reviews" } }],
+"dashboard": {
+  "tasks": [
+    { "id": "pending", "label": { "fr": "{n} avis à valider", "en": "{n} reviews to approve" }, "href": "?tab=pending", "right": "moderate" }
+  ],
+  "quickActions": [
+    { "id": "write", "label": { "fr": "Écrire un avis", "en": "Write a review" }, "href": "/admin/entries/new?c={key}" }
+  ],
+  "cards": [
+    { "id": "latest", "type": "list", "title": { "fr": "Derniers avis", "en": "Latest reviews" }, "href": "?tab=all",
+      "empty": { "fr": "Aucun avis pour le moment.", "en": "No reviews yet." } },
+    { "id": "average", "type": "counter", "title": { "fr": "Note moyenne", "en": "Average rating" } }
+  ]
+}
+```
+
+```js
+export default {
+  dashboard: {
+    tasks: {
+      async pending(ctx) { return (await ctx.api.store.list("reviews")).filter((r) => r.data.status === "pending").length; }, // un nombre
+    },
+    cards: {
+      async latest(ctx) {                                    // type « list » : 5 lignes au plus
+        const rows = (await ctx.api.store.list("reviews")).slice(0, 5);
+        return { rows: rows.map((r) => ({ title: r.data.author, detail: r.data.text, href: `?tab=all&open=${r.id}` })) };
+      },
+      async average(ctx) { return { value: "4,6 / 5", detail: "sur 128 avis" }; },   // type « counter »
+    },
+  },
+};
+```
+
+- **Trois sortes, des types fermés.** `tasks` (un nombre, un lien, « Ouvrir → »), `quickActions` (un bouton « Créer… », aucun code), `cards` (`counter` ou `list`, rien d'autre). Jamais de HTML, de style ni de script : le cœur choisit l'ordre et la place, et affiche votre texte tel quel (échappé).
+- **Des mots de la personne, en français ET en anglais.** Un libellé de tâche dit ce qu'il y a à faire avec `{n}` (« {n} avis à valider »), un bouton commence par un verbe (« Programmer un stream »). Mêmes règles que le reste de l'administration (`docs/ERGONOMIE-ADMIN.md`).
+- **Les liens restent dans l'administration.** `?tab=pending` ouvre la page de l'instance sur cet onglet ; `/admin/entries/new?c={key}` une page du cœur. Seuls `{id}` et `{key}` (l'instance) sont permis ; tout autre lien rend le manifeste invalide.
+- **Les droits.** `right` est un droit local déclaré dans `rights` (le cœur ajoute votre identifiant). Sans `right`, c'est « ouvrir la page du module ». Une rédaction ne voit pas ce qu'elle ne peut pas ouvrir, et votre code n'est même pas appelé pour elle.
+- **Rapide, par construction.** Le cœur appelle votre code **quand quelqu'un regarde le tableau de bord**, jamais en tâche de fond, avec **1,5 seconde au plus** et une réponse gardée 20 secondes. Lisez une donnée déjà prête (un compteur du stockage, le nombre de lignes d'un état), **jamais un service externe** : si votre code est lent ou échoue, seul votre module disparaît du tableau de bord. Mettez dans les tâches ce qui demande un geste, pas des statistiques ; dans les cartes, un chiffre ou cinq lignes qui aident à décider.
+- **Plusieurs instances.** Votre module est interrogé pour chacune (5 au plus) ; si elles sont plusieurs, le cœur ajoute le nom de l'instance au libellé.
+- **Ancien cœur.** La clé est ignorée : votre module marche comme avant. Pas de `minCore` à déclarer.
+- **Tester.** `fakeCtx` suffit (`dashboard.tasks.pending(fakeCtx({ … }))`) ; l'exigence `dashboard.valid` du kit (`npm run module:check`) vérifie les déclarations, les droits, les liens et la forme des réponses. Référence : `docs/MODULES.md` (« Tableau de bord »).
+
 ## 13. Sauvegarde lisible
 
 Le cœur sauvegarde déjà tout ce que vous mettez dans `ctx.api.store` (en JSON). Pour que les données importantes restent **lisibles sans le framework**, ajoutez des fichiers à la sauvegarde :
