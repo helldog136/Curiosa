@@ -10,6 +10,7 @@ const STUBBED = new Map([
   ["next/headers", "next-headers.mjs"],
   ["next/navigation", "next-navigation.mjs"],
   ["next/cache", "next-cache.mjs"],
+  ["next/font/local", "next-font-local.mjs"],
   // La session (next-auth) : choisie par le test (stubs/auth.mjs).
   ["@/auth", "auth.mjs"],
 ]);

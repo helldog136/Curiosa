@@ -20,8 +20,10 @@ test("réglages : chaque onglet commence par une phrase d'aide (pas un titre qui
   assert.equal((p.match(/floating=/g) ?? []).length, 1);
   // Le formulaire principal est masqué en entier sur l'onglet e-mail : pas de vide au-dessus du formulaire d'e-mail.
   assert.match(p, /<div data-tab="site languages privacy">\s*<ActionForm action=\{saveSettings\}/);
-  // Les réglages facultatifs sont regroupés par intention, et seulement en mode avancé.
-  assert.match(p, /\{advanced && \(\s*<div className=\{`\$\{ui\.card\} space-y-4`\}>\s*<h3 className="font-semibold">\{t\("settings\.contactCard"\)\}/);
+  // Contact et pied de page : dans les deux modes (en mode simple, replié sous « Plus d'options ») ; seul le fuseau horaire reste réservé au mode avancé.
+  assert.match(p, /\{advanced \? \(\s*<div className=\{`\$\{ui\.card\} space-y-4`\}>\s*<h3 className="font-semibold">\{t\("settings\.contactCard"\)\}/);
+  assert.match(p, /<MoreOptions title=\{t\("settings\.contactCard"\)\}/);
+  assert.match(p, /\{advanced && <TextField name="timezone"/);
   assert.match(p, /name="contactEmail"/);
   assert.match(p, /name="adminLocale"/);
 });
