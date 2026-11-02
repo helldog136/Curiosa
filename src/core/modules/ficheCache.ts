@@ -49,6 +49,7 @@ export function ficheKey(t: FicheTarget): FicheKey {
 const fileName = (rel: string) => slug(rel.replace(/\//g, "__"));
 const dirOf = (k: FicheKey) => path.join(root(), k.moduleDir, k.versionDir);
 
+let writes = 0;
 export type Entry = { bytes: Buffer; ageMs: number } | { absent: true; ageMs: number };
 
 /** La copie d'un fichier, ou null s'il n'y en a pas. `maxBytes` : une copie plus grosse (abîmée) est ignorée. */
@@ -72,13 +73,15 @@ export function touch(k: FicheKey): void {
 export function writeEntry(k: FicheKey, rel: string, bytes: Buffer | null): void {
   try {
     const dir = dirOf(k);
+    const fresh = !fs.existsSync(dir);
     fs.mkdirSync(dir, { recursive: true });
     const f = path.join(dir, fileName(rel));
     const tmp = `${f}.tmp-${process.pid}-${crypto.randomBytes(4).toString("hex")}`;
     // Un fichier présent et son marqueur d'absence ne coexistent jamais.
     if (bytes) { fs.writeFileSync(tmp, bytes); fs.renameSync(tmp, f); fs.rmSync(`${f}.absent`, { force: true }); }
     else { fs.writeFileSync(tmp, ""); fs.renameSync(tmp, `${f}.absent`); fs.rmSync(f, { force: true }); }
-    trim(k);
+    // Le nettoyage parcourt tout le dossier : fait à la création d'une fiche (et tous les 8 fichiers), pas à chacun de ses fichiers.
+    if (fresh || ++writes % 8 === 0) trim(k);
   } catch { /* disque plein ou en lecture seule : la fiche se lit sans copie */ }
 }
 

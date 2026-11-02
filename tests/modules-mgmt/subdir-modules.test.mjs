@@ -134,5 +134,6 @@ test("branchements : aperçu, sauvegarde et restauration connaissent le dossier 
   assert.match(read("src/core/modules/readme.ts"), /HEAD:\$\{subdir\}/);
   assert.match(read("src/core/backup/export.ts"), /subdir: row\.subdir/);
   assert.match(read("src/core/backup/restore.ts"), /m\.subdir \? `:\$\{m\.subdir\}`/);
-  assert.match(read("src/app/admin/(panel)/extensions/add/details/DetailsView.tsx"), /subdir: entry\.subdir/);
+  assert.match(read("src/app/admin/(panel)/extensions/add/details/DetailsView.tsx"), /targetOf\(entry\)/);
+  assert.match(read("src/core/modules/readme.ts"), /subdir: e\.subdir/, "la cible d'une entrée du catalogue porte son dossier");
 });

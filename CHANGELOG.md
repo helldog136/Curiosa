@@ -18,7 +18,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Pour les développeurs
 
-- **Lecture des fiches.** `src/core/modules/rawRead.ts` (lecture HTTPS directe : seul hôte `raw.githubusercontent.com`, 8 requêtes par fiche, 4 en parallèle, une requête partagée par adresse, limite de débit), `src/core/modules/ficheCache.ts` (copie sur disque bornée : 50 Mo, 200 fiches, 2 versions par module) et `readme.ts` (ordre : copie, lecture directe, clonage temporaire). `PreviewTarget` porte `version` ; `targetOf(entrée)` construit la cible d'une entrée du catalogue. `resetPreviewMemory()` oublie la mémoire seulement, `clearPreviewCache()` vide aussi le disque. `git()` accepte un délai en 4e paramètre. Documentation : MODULES.md et PLATFORM.md.
+- **Lecture des fiches.** `rawRead.ts` (lecture directe), `ficheCache.ts` (copie sur disque bornée) et `readme.ts` (copie, lecture directe, clonage temporaire). `PreviewTarget` porte `version`, `targetOf(entrée)` la construit, `clearPreviewCache()` vide aussi le disque. Voir MODULES.md.
 
 ### Apparence du site
 
