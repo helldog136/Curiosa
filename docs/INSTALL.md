@@ -39,6 +39,14 @@ Ce qui **ne dépend pas** de la langue : les codes de sortie (0, 1, 2, 10), les 
 
 **English summary.** `install.sh` speaks English and French. Language order: `--lang fr|en`, then `CURIOSA_LANG`, then `LC_ALL` / `LC_MESSAGES` / `LANG`, otherwise English. In a terminal, when nothing tells the language (unset, `C`, `POSIX`, or an unsupported language), the script asks once; with `--yes` or without a terminal it never asks. Exit codes, option names and every file written on the server are the same in every language. To add a language, add a `catalog_xx` block to `scripts/install.sh` and `xx` to `LANGS` (see the comments above the catalogues).
 
+## Changer de nom de domaine
+
+Voir [MIGRER-DOMAINE.md](MIGRER-DOMAINE.md). Dans l'administration, **activez les réglages avancés**, puis *Réglages du site → Adresse du site* : la liste de ce qui dépend de l'ancienne adresse et les commandes à copier. Variables du `.env` : `SITE_URL` (la nouvelle adresse) et `LEGACY_HOSTS` (anciens domaines qui redirigent vers elle, 10 au plus, séparés par des virgules). Un site installé par `install.sh` se change avec `sudo bash install.sh --site NOM --change-domain NOUVEAU` (un plan), puis `--apply`.
+
+| Variable | Effet |
+|---|---|
+| `LEGACY_HOSTS` | Anciens noms de domaine (10 au plus) : une requête GET ou HEAD reçue avec l'un d'eux reçoit une redirection permanente (301) vers `SITE_URL`, chemin et paramètres conservés. Jamais pour `/api/*`. Votre serveur web doit transmettre l'en-tête `Host`. |
+
 ## Démarrage automatique
 
 L'unité systemd (écrite par le script, ou donnée dans le [README](../README.md#installation-manuelle-avancé)) (un exemple figure aussi dans [`deploy/curiosa.service`](../deploy/curiosa.service)). Avec pm2 : `pm2 start node_modules/next/dist/bin/next --name curiosa -- start -p 3000`
