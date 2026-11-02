@@ -17,11 +17,6 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Les noms suivent le menu.** « Extensions › Ajouter » remplace « Modules › Catalogue » et « Fonctionnalités → Ajouter » dans l'assistant d'installation et sur le tableau de bord ; les mises à jour parlent d'extensions.
 - **Le champ d'image est plus clair.** Il propose « Adresse de l'image » au lieu d'un exemple de chemin technique.
 
-### Pour les développeurs
-
-- **Garde-fou du mode simple.** `tests/core/admin-simple-mode.test.mjs` rend les pages d'administration du cœur en mode simple et échoue si un mot de la liste R9 apparaît, si un onglet montre plus de 7 champs, ou si une entrée de menu réservée au mode avancé (`ADVANCED_ONLY_ENTRIES`, `adminMenu.ts`) apparaît ; il vérifie aussi le changement de mode (persistant, propre à chaque personne, sans fuite par lien direct). `tests/helpers` gagne `usePathname`, `useSearchParams` et un double de `next/font/local`.
-- La liste des corrections à faire dans les modules est dans `docs/ideas/audit-mode-simple-modules.md`.
-
 ### Apparence du site
 
 - **L'envoi de votre police est au bon endroit.** Il se trouve dans la section « Polices », juste sous les listes : chaque liste se termine par « Utiliser ma propre police… ». Vos polices apparaissent en tête des listes, dans « Mes polices », où vous pouvez les supprimer.
@@ -30,6 +25,8 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Pour les développeurs
 
+- **Garde-fou du mode simple.** `tests/core/admin-simple-mode.test.mjs` rend les pages du cœur en mode simple et échoue sur un mot de la liste R9, un onglet de plus de 7 champs ou une entrée de menu avancée (`ADVANCED_ONLY_ENTRIES`) ; il vérifie aussi le changement de mode.
+- Corrections à faire dans les modules : `docs/ideas/audit-mode-simple-modules.md`.
 - **Polices.** `sfntToWoff2` (`src/core/fonts/sfnt.ts`) convertit en WOFF2, puis `checkWoff2` revérifie le résultat. `ActionForm` accepte `id`, et le choix des polices se rattache au formulaire des retouches par `form`.
 
 ## 0.6.1 — 2026-11-01
