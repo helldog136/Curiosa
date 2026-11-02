@@ -214,7 +214,8 @@ export default async function SettingsPage() {
                   options={[{ value: "header", label: t("settings.searchPlace.header") }, { value: "footer", label: t("settings.searchPlace.footer") }, { value: "none", label: t("settings.searchPlace.none") }]} />
                 <NumberField name="searchPerPage" label={t("settings.searchPerPage")} unit={t("settings.searchPerPageUnit")} min={PER_PAGE_MIN} max={PER_PAGE_MAX} step={1} emptyValue={PER_PAGE_DEFAULT}
                   hint={numberHint(t, { type: "number", min: PER_PAGE_MIN, max: PER_PAGE_MAX, step: 1, default: PER_PAGE_DEFAULT }, t("settings.searchPerPageUnit"))}
-                  defaultValue={search.perPage === PER_PAGE_DEFAULT ? "" : search.perPage} />
+                  defaultValue={search.perPage === PER_PAGE_DEFAULT ? "" : search.perPage}
+                  invalidText={t("settings.searchPerPageError", { min: PER_PAGE_MIN, max: PER_PAGE_MAX, example: PER_PAGE_DEFAULT })} />
                 {searchTypes.length > 0 && (
                   <CheckboxGroup name="searchTypes" label={t("settings.searchTypes")} help={t("settings.searchTypesHelp")}
                     options={searchTypes.map((x) => ({ value: x.key, label: x.label }))} checked={searchTypes.filter((x) => !search.exclude.includes(x.key)).map((x) => x.key)} />
