@@ -356,3 +356,94 @@ test("--uninstall : arrête le site, retire le service et la config ajoutée, GA
   const none = await L.run(["--uninstall", "--site", "inconnu"]);
   assert.equal(none.code, 1);
 });
+
+/* ───────────── --change-domain ───────────── */
+
+async function installed(t, over = {}) {
+  const L = await lab(t);
+  const av = path.join(L.root, "etc/nginx/sites-available"); fs.mkdirSync(av, { recursive: true }); fs.mkdirSync(path.join(L.root, "etc/nginx/sites-enabled"));
+  const port = await freePort();
+  const r = await L.run(["--site", "monsite", "--domain", "ancien.example.org", "--yes", "--port", String(port)], { FAKE_ACTIVE: "nginx", CURIOSA_VERIFY_URL: `http://127.0.0.1:${port}/admin/setup` });
+  assert.equal(r.code, 0, r.out);
+  L.av = av; L.port = port; L.env = path.join(L.root, "var/www/monsite/.env"); L.conf = path.join(av, "monsite.conf");
+  L.change = (extra = [], envExtra = {}) => L.run(["--site", "monsite", "--change-domain", "nouveau.example.org", ...extra], { FAKE_ACTIVE: "nginx", CURIOSA_DOMAIN_IP: "203.0.113.7", CURIOSA_VERIFY_URL: `http://127.0.0.1:${port}/api/health`, ...envExtra });
+  return L;
+}
+
+test("--change-domain : par défaut un PLAN, rien n'est modifié (ni .env, ni nginx, ni redémarrage)", async (t) => {
+  const L = await installed(t);
+  const before = L.snapshot(), env = fs.readFileSync(L.env, "utf8"), conf = fs.readFileSync(L.conf, "utf8"), calls = fs.readFileSync(path.join(L.root, ".systemctl/calls"), "utf8");
+  const r = await L.change();
+  assert.equal(r.code, 0, r.out);
+  assert.match(r.out, /Rien n'a été modifié/);
+  assert.match(r.out, /--apply/);
+  assert.match(r.out, /https:\/\/nouveau\.example\.org/);
+  assert.deepEqual(L.snapshot(), before);
+  assert.equal(fs.readFileSync(L.env, "utf8"), env);
+  assert.equal(fs.readFileSync(L.conf, "utf8"), conf);
+  assert.equal(fs.readFileSync(path.join(L.root, ".systemctl/calls"), "utf8"), calls);
+  assert.equal((await L.change(["--apply", "--dry-run"])).code, 0, "--dry-run l'emporte sur --apply");
+  assert.deepEqual(L.snapshot(), before);
+});
+
+test("--change-domain --apply : sauvegardes, SITE_URL changé, ancien domaine dans LEGACY_HOSTS, nginx mis à jour (nginx -t, rechargé), redémarrage, certbot indiqué ; le reste du .env intact", async (t) => {
+  const L = await installed(t);
+  const envBefore = fs.readFileSync(L.env, "utf8");
+  const r = await L.change(["--apply", "--yes"]);
+  assert.equal(r.code, 10, `certbot absent : une étape reste à la main\n${r.out}`);
+  const env = fs.readFileSync(L.env, "utf8");
+  assert.match(env, /^SITE_URL="https:\/\/nouveau\.example\.org"$/m);
+  assert.match(env, /^LEGACY_HOSTS="ancien\.example\.org"$/m);
+  assert.equal(env.replace(/^(SITE_URL|LEGACY_HOSTS)=.*\n/gm, ""), envBefore.replace(/^SITE_URL=.*\n/m, ""), "aucune autre ligne ne change");
+  assert.ok(fs.readdirSync(path.dirname(L.env)).some((f) => f.startsWith(".env.avant-")), "sauvegarde du .env");
+  assert.ok(fs.readdirSync(L.av).some((f) => f.startsWith("monsite.conf.avant-")), "sauvegarde de la conf");
+  const conf = fs.readFileSync(L.conf, "utf8");
+  assert.match(conf, /server_name nouveau\.example\.org ancien\.example\.org;/);
+  assert.match(conf, /^# Géré par install-curiosa/m);
+  const calls = fs.readFileSync(path.join(L.root, ".systemctl/calls"), "utf8");
+  assert.match(calls, /^reload nginx$/m);
+  assert.match(calls, /^restart monsite\.service$/m);
+  assert.match(r.out, /certbot --nginx -d nouveau\.example\.org -d ancien\.example\.org/);
+  // Relancer pour le même domaine : refus clair, rien ne change.
+  const again = await L.change(["--apply", "--yes"]);
+  assert.equal(again.code, 1);
+  assert.match(again.out, /utilise déjà/);
+  // Un deuxième changement garde le premier ancien domaine (dix au plus).
+  const second = await L.run(["--site", "monsite", "--change-domain", "troisieme.example.org", "--apply", "--yes"], { FAKE_ACTIVE: "nginx", CURIOSA_DOMAIN_IP: "203.0.113.7", CURIOSA_VERIFY_URL: `http://127.0.0.1:${L.port}/api/health` });
+  assert.ok([0, 10].includes(second.code), second.out);
+  assert.match(fs.readFileSync(L.env, "utf8"), /^LEGACY_HOSTS="nouveau\.example\.org,ancien\.example\.org"$/m);
+});
+
+test("--change-domain : une configuration qui n'est pas à nous n'est JAMAIS modifiée ; nginx qui refuse → retour arrière complet, .env intact", async (t) => {
+  const L = await installed(t);
+  fs.writeFileSync(L.conf, "server { server_name ancien.example.org; }\n"); // marque retirée : plus à nous
+  const foreign = fs.readFileSync(L.conf, "utf8"), env = fs.readFileSync(L.env, "utf8");
+  const r = await L.change(["--apply", "--yes"]);
+  assert.equal(fs.readFileSync(L.conf, "utf8"), foreign);
+  assert.match(r.out, /n'est pas à moi/);
+  assert.equal(r.code, 10, r.out);
+  fs.writeFileSync(L.env, env.replace(/^LEGACY_HOSTS=.*\n/m, "").replace(/^SITE_URL=.*$/m, 'SITE_URL="https://ancien.example.org"'));
+  // Rendre la conf à nous, puis faire refuser nginx.
+  fs.writeFileSync(L.conf, `# Géré par install-curiosa (scripts/install.sh), site : monsite\nserver {\n    server_name ancien.example.org;\n}\n`);
+  const envNow = fs.readFileSync(L.env, "utf8"), confNow = fs.readFileSync(L.conf, "utf8");
+  const bad = await L.change(["--apply", "--yes"], { FAKE_NGINX_FAIL: "1" });
+  assert.equal(bad.code, 1, bad.out);
+  assert.equal(fs.readFileSync(L.conf, "utf8"), confNow, "ancienne configuration rétablie");
+  assert.equal(fs.readFileSync(L.env, "utf8"), envNow, ".env pas touché");
+});
+
+test("--change-domain : erreurs claires (domaine invalide, site inconnu, --apply seul, DNS ailleurs) avec les bons codes de sortie", async (t) => {
+  const L = await installed(t);
+  const run = (args, env = {}) => L.run(args, { FAKE_ACTIVE: "nginx", ...env });
+  assert.equal((await run(["--site", "monsite", "--change-domain", "192.168.1.5"])).code, 1);
+  assert.equal((await run(["--site", "monsite", "--change-domain", "localhost"])).code, 1);
+  assert.equal((await run(["--site", "monsite", "--change-domain", "https://x.example.org/chemin"])).code, 0, "le schéma et le chemin sont écartés, le nom reste valable");
+  assert.equal((await run(["--change-domain", "nouveau.example.org"])).code, 1, "--site obligatoire");
+  assert.equal((await run(["--site", "inconnu", "--change-domain", "nouveau.example.org"])).code, 1);
+  assert.equal((await run(["--site", "monsite", "--apply"])).code, 2, "--apply seul");
+  assert.equal((await run(["--site", "monsite", "--change-domain", "x.example.org", "--uninstall"])).code, 2);
+  const env = fs.readFileSync(L.env, "utf8");
+  const dns = await run(["--site", "monsite", "--change-domain", "nouveau.example.org", "--apply", "--yes"], { CURIOSA_DOMAIN_IP: "198.51.100.9" });
+  assert.equal(dns.code, 1);
+  assert.equal(fs.readFileSync(L.env, "utf8"), env, "DNS faux : rien n'est modifié");
+});

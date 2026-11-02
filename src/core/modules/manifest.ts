@@ -16,6 +16,7 @@ import { MAX_TAB_ENTRIES, TAB_ID_RE, TAB_LABEL_MAX, tabIssues } from "./tabs";
 import { moduleSkinIssues, moduleSkinSchema } from "./skinDecl";
 import { overlayElementIssues, overlayElementsSchema } from "../overlays/decl";
 import { previewIssues, previewsSchema } from "./previews";
+import { MAX_ADDRESS_DECLS, returnAddressIssues, returnAddressSchema, siteAddressUseSchema } from "./addressDecl";
 
 const localized = z.union([z.string().max(500), z.record(z.string(), z.string().max(500))]);
 const methodName = z.string().regex(/^[a-zA-Z][a-zA-Z0-9_]{0,40}$/);
@@ -209,6 +210,13 @@ export const manifestSchema = z.object({
    * la garde à jour et la retire avec l'option ou l'instance. Un cœur plus ancien ignore la clé. Voir modules/shortLink.ts et managedRedirects.ts.
    */
   shortLink: shortLinkSchema.optional(),
+  /**
+   * (cœur après 0.6.1) Adresses de RETOUR (OAuth…) que la personne a enregistrées chez un service tiers, et endroits HORS du site où elle a tapé l'adresse du site : la page « Adresse du site »
+   * de l'administration les met dans la liste de contrôle d'un changement de domaine (ancienne et nouvelle adresse à copier). Lecture seule : le cœur ne contacte jamais le service tiers.
+   * AJOUT SANS DANGER : un cœur plus ancien ignore les clés, aucun `minCore` n'est à déclarer. Voir modules/addressDecl.ts.
+   */
+  returnAddresses: z.array(returnAddressSchema).max(MAX_ADDRESS_DECLS).optional(),
+  siteAddressUses: z.array(siteAddressUseSchema).max(MAX_ADDRESS_DECLS).optional(),
   instances: z.enum(["single", "multiple"]).default("multiple"),
   consumes: z.array(z.object({ topic: topicId, label: localized, schema: z.array(topicField).max(20).optional(), tags: z.boolean().optional() })).max(10).default([]),
   provides: z.array(z.object({ topic: topicId, label: localized.optional() })).max(10).default([]),
@@ -353,6 +361,7 @@ export const manifestSchema = z.object({
   if (m.sitemapFromPage && !hasPage(m)) ctx.addIssue({ code: "custom", path: ["sitemapFromPage"], message: "sitemapFromPage needs a module with a public page (page: true)" });
   for (const issue of previewIssues(m.previews)) ctx.addIssue({ code: "custom", path: ["previews", ...issue.path], message: issue.message });
   for (const message of shortLinkIssues(m.shortLink, m.settings, { provides: m.provides.map((p) => p.topic) })) ctx.addIssue({ code: "custom", path: ["shortLink"], message });
+  for (const message of returnAddressIssues(m.returnAddresses)) ctx.addIssue({ code: "custom", path: ["returnAddresses"], message });
   for (const message of dashboardIssues(m.dashboard, (m.rights ?? []).map((r) => r.id))) ctx.addIssue({ code: "custom", path: ["dashboard"], message });
   for (const message of logEventIssues(m.logEvents)) ctx.addIssue({ code: "custom", path: ["logEvents"], message });
   if (new Set((m.rights ?? []).map((r) => r.id)).size < (m.rights ?? []).length) ctx.addIssue({ code: "custom", path: ["rights"], message: "duplicate right id" });
