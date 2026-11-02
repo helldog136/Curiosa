@@ -13,8 +13,7 @@ import { statsEnabled, statsSummary } from "@/core/stats";
 import { maintenanceSummary } from "@/core/maintenance/summary";
 import { contentBadge } from "@/core/maintenance/content/service";
 import { EXTENSIONS_HREF } from "@/core/modules/extensionsLinks";
-import { Badge } from "@/components/admin/Badge";
-import { moduleTone } from "@/components/admin/moduleTone";
+import { ModulePill } from "@/components/admin/ModulePill";
 import { dashboardEntryCounts, listDrafts, unlistedEntries, type EntryCount } from "@/core/content/dashboardCounts";
 import { assistantsTabHref } from "@/core/services/mcp/assistantsLinks";
 
@@ -120,7 +119,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
               {draftList.rows.map((d) => (
                 <li key={d.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5">
                   <span className="min-w-0 flex-1 basis-48 truncate font-medium" title={d.title || undefined}>{d.title || "—"}</span>
-                  <Badge tone={moduleTone(d.key)}>{d.icon} {d.name}</Badge>
+                  <ModulePill id={d.key} name={d.name} icon={d.icon} />
                   <span className="text-xs text-muted">{new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(d.updatedAt)}</span>
                   <a href={`/admin/entries/${d.id}`} className={ui.btn}>{t("dashboard.draftOpen")}{ARROW}</a>
                 </li>

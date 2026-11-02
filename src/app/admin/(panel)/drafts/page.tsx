@@ -5,9 +5,8 @@ import { getAdminNav } from "@/core/modules/adminNav";
 import { listDrafts } from "@/core/content/dashboardCounts";
 import { parsePageParam } from "@/core/content/pagination";
 import { ui } from "@/components/admin/ui";
-import { Badge } from "@/components/admin/Badge";
 import { PageHeader } from "@/components/admin/Page";
-import { moduleTone } from "@/components/admin/moduleTone";
+import { ModulePill } from "@/components/admin/ModulePill";
 import { Pagination } from "@/components/site/Pagination";
 
 const PER_PAGE = 50;
@@ -39,7 +38,7 @@ export default async function DraftsPage({ searchParams }: { searchParams: Promi
                   <a href={`/admin/entries/${d.id}`} className="block truncate font-medium hover:text-accent" title={d.title || undefined}>{d.title || "—"}</a>
                   <p className="mt-0.5 text-xs text-muted">{t("entries.updatedOn", { date: fmt.format(d.updatedAt) })}</p>
                 </div>
-                <Badge tone={moduleTone(d.key)}>{d.icon} {d.name}</Badge>
+                <ModulePill id={d.key} name={d.name} icon={d.icon} />
                 <a href={`/admin/entries/${d.id}`} className={ui.btn}>{t("drafts.open")}</a>
               </li>
             ))}
