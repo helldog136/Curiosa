@@ -169,8 +169,12 @@ test("repère absent alors que le module tient déjà les données (reprise fait
   await legacyFixture();
   await publish();
   assert.equal((await I.installFromCatalogue("game-covers")).ok, true);
+  // L'installation lance en arrière-plan la reprise du cœur (noteModulesChanged) : elle pose le repère à son rythme, donc selon la vitesse de la machine.
+  // On attend qu'elle ait fini, puis on retire le repère : l'état de départ (le module tient les données, aucun repère) ne dépend plus d'aucune course.
+  await settleBackground();
   const { ensureDefaultInstance } = await import("@/core/modules/defaultInstance");
   await ensureDefaultInstance("game-covers");
+  await db.prisma.setting.deleteMany({ where: { key: "rawg.handover" } });
   const adopt = () => callProvider("game.cover", "adopt", { key: KEY, fixes: { hades: { title: "Hades" } }, todo: [] }, { moduleId: "game-covers" });
   assert.equal((await adopt()).ok, true);
   assert.equal(await getSetting("rawg.handover"), undefined);
