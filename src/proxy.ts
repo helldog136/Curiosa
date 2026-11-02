@@ -126,6 +126,6 @@ export async function proxy(request: NextRequest) {
 const IGNORED = /^\/(?:_next|api|admin|m\/|overlays\/|uploads\/)|\./;
 
 export const config = {
-  // Tout passe ici sauf les fichiers internes de Next : le test de l'ancien domaine doit voir aussi l'admin, les overlays et les fichiers (QR et liens déjà diffusés).
-  matcher: ["/((?!_next/static|_next/image).*)"],
+  // Tout passe ici sauf les fichiers internes de Next (_next/) : le test de l'ancien domaine doit voir aussi l'admin, les overlays et les fichiers (QR et liens déjà diffusés).
+  matcher: ["/((?!_next/).*)"],
 };

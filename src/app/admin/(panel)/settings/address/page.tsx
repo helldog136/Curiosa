@@ -126,7 +126,7 @@ function Step2({ t, checklist: c, oldHost, newHost, same, next, back }: { t: Tra
         {c.returns.length === 0 && <Row t={t} todo={false} title={t("domain.check.returnsNone")} testid="check-returns" />}
         {c.returns.map((r, i) => (
           <Row key={`${r.instanceKey}-${i}`} t={t} todo title={t("domain.check.returns", { service: r.service, instance: r.instance })} testid="check-returns">
-            {r.where && <p className={small}>{t("domain.check.returnsWhere", { where: r.where })}</p>}
+            {r.where && <p className={small}>{t("domain.check.returnsWhere", { service: r.service, where: r.where })}</p>}
             <CopyBlock text={r.oldUrl} label={t("domain.check.returnsOld")} {...cp} />
             <CopyBlock text={r.newUrl} label={t("domain.check.returnsNew")} {...cp} />
             <Link href={r.href} className="text-sm font-medium text-accent hover:underline">{t("domain.check.openInstance", { instance: r.instance })} →</Link>

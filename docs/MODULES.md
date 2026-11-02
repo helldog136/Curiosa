@@ -603,7 +603,7 @@ Les redirections (« liens courts », page *Raccourcis de liens*) **appartiennen
 Quand la personne change de nom de domaine, la page *Adresse du site* (réglages avancés) liste ce qui dépend de l'ancienne adresse. Deux clés **facultatives** du manifeste lui disent ce que votre module a donné à l'extérieur :
 
 ```json
-"returnAddresses": [{ "path": "/m/{instance}/oauth/callback", "label": { "fr": "Twitch", "en": "Twitch" }, "where": { "fr": "Console des développeurs, « URL de redirection »", "en": "Developer console, \"redirect URL\"" } }],
+"returnAddresses": [{ "path": "/m/{instance}/oauth/callback", "label": { "fr": "Twitch", "en": "Twitch" }, "where": { "fr": "Console de développement, « URL de redirection »", "en": "Developer console, \"redirect URL\"" } }],
 "siteAddressUses": [{ "label": { "fr": "Home Assistant", "en": "Home Assistant" }, "where": { "fr": "Appareils et services, Curiosa, Reconfigurer", "en": "Devices and services, Curiosa, Reconfigure" } }]
 ```
 
