@@ -13,7 +13,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 - **Le serveur d'e-mail tient en quatre champs.** Le port et la connexion sécurisée sont rangés sous « Plus d'options », avec les valeurs courantes déjà choisies ; rien de ce que vous aviez réglé n'est perdu.
 - **Le contact et le pied de page sont à portée de main.** L'adresse de contact et le texte du bas de page se règlent aussi en mode simple (repliés dans « Contact et pied de page »), au lieu d'être réservés au mode avancé. Le fuseau horaire reste avancé.
-- **Moins de mots techniques.** « Clé de connexion » devient « code de connexion », les noms de fichiers (llms.txt, robots.txt, sitemap.xml) disparaissent des titres de « Visibilité dans les IA », et les textes d'aide ne parlent plus d'adresse du site technique, de Node ou de fichier d'archive.
+- **Moins de mots techniques.** « Clé de connexion » devient « code de connexion », les noms de fichiers (llms.txt, robots.txt, sitemap.xml) disparaissent des titres de « Visibilité dans les IA », et les textes d'aide ne parlent plus de réglages d'hébergement ni de versions du serveur.
 - **Les noms suivent le menu.** « Extensions › Ajouter » remplace « Modules › Catalogue » et « Fonctionnalités → Ajouter » dans l'assistant d'installation et sur le tableau de bord ; les mises à jour parlent d'extensions.
 - **Le champ d'image est plus clair.** Il propose « Adresse de l'image » au lieu d'un exemple de chemin technique.
 
