@@ -7,6 +7,7 @@
  * Chaque tâche n'apparaît que si la personne a le droit d'agir dessus : aucun droit élargi.
  */
 import { prisma } from "../db";
+import { stateWhere } from "../content/adminList";
 import { can, hasRole, type AdminUser } from "../auth/access";
 import { withDeadline, TIMED_OUT } from "../deadline";
 import type { Translator } from "../i18n/dictionary";
@@ -61,7 +62,7 @@ export async function draftsToFinish(env: Pick<TodoEnv, "nav" | "locale" | "defa
   const items = env.nav.filter((i) => i.content && !i.error);
   if (items.length === 0) return { total: 0, rows: [], byKey: new Map() };
   const ids = items.map((i) => i.id);
-  const where = { instanceId: { in: ids }, status: { not: "published" } };
+  const where = { AND: [{ instanceId: { in: ids } }, stateWhere("draft", new Date())] };
   const [grouped, latest] = await Promise.all([
     prisma.entry.groupBy({ by: ["instanceId"], where, _count: { _all: true } }),
     prisma.entry.findMany({ where, orderBy: [{ updatedAt: "desc" }, { id: "desc" }], take: limit, include: { translations: { select: { locale: true, title: true } } } }),
