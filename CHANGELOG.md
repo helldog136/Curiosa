@@ -9,6 +9,12 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ## Prochaine version (non publiée)
 
+### Nouveautés
+
+- **Une question pour démarrer : « Vous êtes… ? »** L'assistant d'installation vous propose quelques situations (streamer, association, activité indépendante, artiste) et coche d'avance les extensions qui vont avec. Vous pouvez passer la question, choisir « Autre », et tout changer à l'étape suivante.
+- **Des pages d'exemple, en brouillon.** Selon votre réponse, l'assistant propose des pages à modifier (« Qui sommes-nous », « Infos pratiques », « À propos de moi »…). Elles sont repliées, vous décochez celles dont vous ne voulez pas, et rien n'est publié sans vous.
+- **« Partir d'un modèle » sur la liste des pages.** Quand une extension propose des modèles, un bouton crée un brouillon prérempli à modifier. Il est aussi proposé quand la liste est vide.
+
 ### Recherche dans le site
 
 - **Les personnes qui visitent votre site peuvent y chercher.** Un champ « Rechercher dans le site » apparaît dans l'en-tête et ouvre une page de résultats : titre, extrait avec le mot mis en valeur, type (page, article…) et lien. Elle est **activée par défaut** ; un seul interrupteur la coupe.
@@ -21,6 +27,8 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Pour les développeurs
 
+- `catalogue/profiles.json` (dépôt de modules) : profils de départ, lus avec l'index et gardés avec sa dernière copie reçue ; fichier absent ou abîmé = aucune question. `suggested.json` ne change pas.
+- Manifeste : `content.templates` (8 modèles au plus), ignoré par un cœur plus ancien. Voir docs/MODULES.md.
 - **`src/core/search/`.** `text.ts` (repli sans accents, saisie bornée, extrait), `rank.ts` (titre, résumé, texte, puis récence), `index.ts` (index en mémoire : 4 000 fiches par langue, 60 s), `limit.ts` (30 par minute), `service.ts`, `settings.ts` (`search.*`).
 - **Page et pièces.** `/search` (chemin réservé, `noindex`, jamais en cache partagé), composants `SearchForm` et `SearchView`, pièces `search` et `mark` ajoutées à la liste blanche et au banc d'essai des skins. `SearchAction` ajoutée au JSON-LD du site. Détails : `docs/PLATFORM.md`, `docs/SKINS.md`, `docs/SECURITE.md`.
 - **Lecture par tranches.** `entriesChunk` (`src/core/content/entries.ts`) lit les entrées publiques d'une instance 250 par 250.

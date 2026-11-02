@@ -2,7 +2,10 @@
 
 import { redirect } from "next/navigation";
 import { adminCtx } from "@/core/admin";
-import { getInstanceById } from "@/core/instances";
+import { getInstanceById, getInstanceByKey } from "@/core/instances";
+import { getActiveInstances } from "@/core/modules/registry";
+import { pickLocalized } from "@/core/modules/profiles";
+import { createEntry } from "@/core/content/service";
 import { prisma } from "@/core/db";
 import { uniqueSlug } from "@/core/content/entries";
 import { audit, can } from "@/core/permissions";
@@ -127,4 +130,24 @@ export async function deleteEntry(entryId: string): Promise<void> {
   await prisma.entry.delete({ where: { id: entryId } });
   await audit(user.email, "entry.delete", entryId);
   redirect(`/admin/entries?c=${entry.instance.key}`);
+}
+
+/**
+ * « Partir d'un modèle » : crée un BROUILLON prérempli depuis un modèle que le module déclare (`content.templates`), dans la langue par défaut du site, puis ouvre l'éditeur.
+ * Le modèle est relu côté serveur dans le manifeste (une valeur envoyée à la main n'en invente aucun) ; rien n'est publié.
+ */
+export async function createFromTemplate(formData: FormData): Promise<void> {
+  const { user, config } = await adminCtx("editor");
+  const collection = await getInstanceByKey(String(formData.get("instanceKey") ?? ""));
+  if (!collection) redirect("/admin");
+  const templates = (await getActiveInstances()).find((a) => a.instance.id === collection.id)?.mod.manifest.content?.templates ?? [];
+  const tpl = templates.find((x) => x.id === String(formData.get("template") ?? ""));
+  if (!tpl) redirect(`/admin/entries?c=${collection.key}`);
+  const locale = config.defaultLocale;
+  const entry = await createEntry(prisma, {
+    instanceId: collection.id, locale, status: "draft", authorId: user.id,
+    title: pickLocalized(tpl.title, locale), summary: pickLocalized(tpl.summary, locale), body: pickLocalized(tpl.body, locale),
+  });
+  await audit(user.email, "entry.create", `${collection.key}/template:${tpl.id}`);
+  redirect(`/admin/entries/${entry.id}?locale=${locale}&created=template`);
 }

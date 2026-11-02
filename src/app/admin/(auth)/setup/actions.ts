@@ -7,7 +7,7 @@ import { signIn } from "@/auth";
 import { prisma } from "@/core/db";
 import { makeTranslator } from "@/core/i18n/dictionary";
 import { isKnownLocale } from "@/core/i18n/locales";
-import { installChosenModules } from "@/core/modules/starter";
+import { createSampleDrafts, installChosenModules } from "@/core/modules/starter";
 import type { ParsedManifest } from "@/core/modules/manifest";
 import { createInstance, defaultNames, runInstanceCreateHook } from "@/core/instanceService";
 import { audit } from "@/core/permissions";
@@ -49,6 +49,8 @@ export async function completeSetup(_prev: ActionState, formData: FormData): Pro
   const extra = formData.getAll("extraLocales").map(String).filter((l) => isKnownLocale(l) && l !== defaultLocale);
   const locales = [defaultLocale, ...new Set(extra)];
   const presetIds = formData.getAll("presets").map(String);
+  // Pages d'exemple cochées (« <extension>:<modèle> ») : relues plus bas dans le manifeste de l'extension installée, jamais prises telles quelles.
+  const sampleRefs = formData.getAll("samples").map(String);
   const passwordHash = await bcrypt.hash(password, 12);
 
   const linkLabels = formData.getAll("linkLabel").map(String);
@@ -129,6 +131,9 @@ export async function completeSetup(_prev: ActionState, formData: FormData): Pro
           }
         }
       }
+
+      // Pages d'exemple proposées par le profil et gardées par la personne : toujours des BROUILLONS (rien n'est publié sans elle), à modifier ou supprimer.
+      await createSampleDrafts(tx, sampleRefs, created, defaultLocale, owner.id);
 
       // Entrées d'exemple déclarées par les modules, pour que le site ne soit pas vide.
       for (const { manifest, instance } of created) {
