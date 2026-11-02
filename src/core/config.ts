@@ -34,6 +34,8 @@ export const RESERVED_PATHS = new Set([
   "favicon.ico",
   // Page de confidentialité du cœur (obligatoire, voir core/privacy.ts)
   "privacy",
+  // Recherche dans le site (page publique du cœur, voir core/search/) : /search et /<langue>/search
+  "search",
   // Fichiers des skins : script de bascule clair/sombre, polices et images des skins installés (/skins/<id>/<version>/…), voir docs/SKINS.md
   "skins",
   // Polices : bibliothèque embarquée et polices envoyées (/fonts/<fichier>.woff2), voir docs/POLICES.md

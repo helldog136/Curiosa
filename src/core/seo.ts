@@ -100,7 +100,12 @@ export type SiteJsonLdInput = {
   sameAs?: readonly string[];
   /** Adresse canonique de la page d'accueil dans cette langue (par défaut `url`). */
   homeUrl?: string;
+  /** Adresse de la page de recherche du site avec l'emplacement du mot cherché (`https://…/search?q={search_term_string}`) : ajoute la `SearchAction` de schema.org. Absent = rien. */
+  searchUrl?: string;
 };
+
+/** Le marqueur que les moteurs remplacent par le mot cherché (nom imposé par schema.org). */
+export const SEARCH_TERM_PLACEHOLDER = "{search_term_string}";
 
 export function siteJsonLd(site: SiteJsonLdInput) {
   const abs = (v: string) => (/^https?:\/\//.test(v) ? v : `${site.url}${v}`);
@@ -125,6 +130,9 @@ export function siteJsonLd(site: SiteJsonLdInput) {
       ...(site.tagline ? { description: site.tagline } : {}),
       publisher: { "@id": `${site.url}/#publisher` },
       inLanguage: site.locale,
+      ...(site.searchUrl && site.searchUrl.includes(SEARCH_TERM_PLACEHOLDER)
+        ? { potentialAction: { "@type": "SearchAction", target: { "@type": "EntryPoint", urlTemplate: site.searchUrl }, "query-input": "required name=search_term_string" } }
+        : {}),
     },
   ];
   return { "@context": "https://schema.org", "@graph": graph };

@@ -31,6 +31,8 @@ const { ModuleForm } = await import("@/components/site/ModuleForm");
 const { makeTranslator } = await import("@/core/i18n/dictionary");
 const { TRAY_TEXT_KEYS } = await import("@/core/cookieTray");
 const { buildPrivacyPolicy } = await import("@/core/privacy");
+const { SearchView } = await import("@/components/site/SearchView");
+const { highlight, snippet } = await import("@/core/search/text");
 
 const h = React.createElement;
 
@@ -229,6 +231,17 @@ async function fragmentsFor(L) {
     h("h1", { "data-skin-part": "heading", "data-level": "1", className: "text-3xl font-bold tracking-tight" }, t("privacy.title")),
     h(Markdown, { text: policy }),
     h("p", { id: "cookies", "data-testid": "privacy-cookie-control", "data-skin-part": "notice", "data-tone": "info", className: "scroll-mt-24 rounded-card border-token border-line p-4 text-sm" }, h("a", { href: "#cookies", "data-skin-part": "link", className: "font-semibold text-link underline underline-offset-2" }, t("cookies.manage")))), pre("p-priv")));
+
+  // Recherche dans le site (page /search) : le vrai composant `SearchView`, avec des résultats de démonstration (terme mis en évidence), sans résultat, champ vide et limite atteinte.
+  const S = L === "fr"
+    ? { q: "article", types: ["Blog", "Pages"], titles: ["Un article d'exemple", "À propos de ce site"], texts: ["Un court résumé de cet article, pour voir comment le terme cherché se détache dans le texte.", "Une page qui présente le site et la personne qui l'écrit, avec un article en lien."] }
+    : { q: "article", types: ["Blog", "Pages"], titles: ["A sample article", "About this site"], texts: ["A short summary of this article, to see how the searched word stands out in the text.", "A page that introduces the site and the person who writes it, with a linked article."] };
+  const hits = S.titles.map((title, i) => ({ id: `entry:s${i}`, title: highlight(title, [S.q]), typeLabel: S.types[i], url: i === 0 ? listPath + "/article-1" : "/about", external: false, lang: i === 1 && L === "en" ? "fr" : null, date: DATE(1 + i), excerpt: snippet(S.texts[i], [S.q]) }));
+  const view = (outcome) => render(h(SearchView, { outcome, locale: L, defaultLocale: "fr", t }), pre(`p-search-${outcome.kind}${outcome.items?.length ?? ""}`));
+  add(`${L}/page-search`, await view({ kind: "results", shown: S.q, trimmed: false, items: hits, total: 24, reachable: 24, page: 2, pages: 3, perPage: 10, indexTruncated: false }));
+  add(`${L}/page-search-none`, await view({ kind: "results", shown: S.q, trimmed: true, items: [], total: 0, reachable: 0, page: 1, pages: 1, perPage: 10, indexTruncated: false }));
+  add(`${L}/page-search-empty`, await view({ kind: "empty" }));
+  add(`${L}/page-search-limited`, await view({ kind: "limited", shown: S.q, retryAfterSeconds: 42 }));
 
   // Accueil fluide (page.tsx du cœur) : des morceaux de chaque taille
   const cell = (size, children, isolated = false) => h("div", { "data-skin-part": "home-cell", "data-size": size, className: `vh-cell vh-${size}${isolated ? " vh-isolated" : ""}` }, isolated ? h("div", { className: "vh-solo" }, children) : children);

@@ -12,6 +12,7 @@ import { EntryIcon } from "./EntryIcon";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { MenuToggle } from "./MenuToggle";
 import { ModeSwitch } from "./ModeSwitch";
+import { SearchForm } from "./SearchForm";
 import { SiteNav, type NavItem } from "./SiteNav";
 
 /**
@@ -71,6 +72,8 @@ export async function Header({ config, locale, appearance }: { config: SiteConfi
   );
   const lang = <LanguageSwitcher locales={config.locales} current={locale} defaultLocale={config.defaultLocale} />;
   const modeEl = modeSwitch ? <ModeSwitch t={t} /> : null;
+  // Recherche dans le site (core/search/) : le champ vit dans la région `tools`, quand la personne l'a voulu en tête de page (réglage « Où placer le champ »).
+  const searchEl = config.search.enabled && config.search.placement === "header" ? <SearchForm locale={locale} defaultLocale={config.defaultLocale} t={t} id="site-search-header" variant="tool" /> : null;
   // Langues et bascule ensemble quand la mise en page les place dans une rangée à deux éléments.
   // Régions de l'en-tête (docs/SKINS.md §9.1) : `tools` regroupe le lien secondaire, les réseaux, le bouton, la langue et la bascule ; `contents` = le groupe ne
   // fabrique aucune boîte (ses éléments restent dans la rangée du parent, comme avant les régions) tant qu'un skin ne lui donne pas une mise en page.
@@ -83,7 +86,7 @@ export async function Header({ config, locale, appearance }: { config: SiteConfi
     case "twoRows":
       body = (
         <>
-          <div data-skin-part="header-group" className="flex flex-wrap items-center justify-between gap-4">{brand}<div data-skin-region="tools" className="flex flex-wrap items-center gap-x-5 gap-y-2">{secondaryEl}{socialsEl}{buttonEl}</div></div>
+          <div data-skin-part="header-group" className="flex flex-wrap items-center justify-between gap-4">{brand}<div data-skin-region="tools" className="flex flex-wrap items-center gap-x-5 gap-y-2">{searchEl}{secondaryEl}{socialsEl}{buttonEl}</div></div>
           <div data-skin-part="header-group" className="flex flex-wrap items-center justify-between gap-4">{menu}{langTools}</div>
         </>
       );
@@ -92,7 +95,7 @@ export async function Header({ config, locale, appearance }: { config: SiteConfi
       body = (
         <>
           {brand}{menu}
-          <div data-skin-region="tools" className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">{secondaryEl}{socialsEl}{buttonEl}{lang}{modeEl}</div>
+          <div data-skin-region="tools" className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">{searchEl}{secondaryEl}{socialsEl}{buttonEl}{lang}{modeEl}</div>
         </>
       );
       break;
@@ -115,7 +118,7 @@ export async function Header({ config, locale, appearance }: { config: SiteConfi
                   </li>
                 ))}
               </ul>
-              {(secondaryEl || socialsEl || buttonEl) && <div data-skin-region="tools" className="flex flex-wrap items-center gap-x-4 gap-y-3 border-t-token border-line pt-3">{secondaryEl}{socialsEl}{buttonEl}</div>}
+              {(searchEl || secondaryEl || socialsEl || buttonEl) && <div data-skin-region="tools" className="flex flex-wrap items-center gap-x-4 gap-y-3 border-t-token border-line pt-3">{searchEl}{secondaryEl}{socialsEl}{buttonEl}</div>}
             </MenuToggle>
           </div>
         </>
@@ -125,7 +128,7 @@ export async function Header({ config, locale, appearance }: { config: SiteConfi
       body = (
         <>
           {brand}
-          <div data-skin-part="header-group" className="flex flex-wrap items-center gap-x-6 gap-y-2">{menu}<div data-skin-region="tools" className="contents">{secondaryEl}{socialsEl}{buttonEl}{lang}{modeEl}</div></div>
+          <div data-skin-part="header-group" className="flex flex-wrap items-center gap-x-6 gap-y-2">{menu}<div data-skin-region="tools" className="contents">{searchEl}{secondaryEl}{socialsEl}{buttonEl}{lang}{modeEl}</div></div>
         </>
       );
   }

@@ -40,6 +40,10 @@ L'équipe du site, elle, reçoit un cookie de **session** à la connexion à l'a
 - Ne sont pas comptés : les robots, les personnes qui visitent qui envoient « Do Not Track » ou « Global Privacy Control », et l'équipe connectée à l'admin.
 - Elles se coupent dans Réglages → Confidentialité.
 
+## La recherche dans le site
+
+La recherche des personnes qui visitent (`/search`, champ dans l'en-tête) ne dépose **aucun cookie** et ne garde **rien** : ni le texte cherché, ni la date, ni un compteur par mot, ni un journal. Il n'existe aucune statistique de recherches : la personne qui gère le site ne peut pas savoir ce que les personnes qui visitent ont cherché. Pour qu'un robot ne fasse pas travailler le site sans fin, une limite de 30 recherches par minute et par visiteur est tenue **en mémoire du serveur seulement** (une empreinte salée et non réversible, jamais l'adresse, oubliée au bout d'une minute et au redémarrage). La page de résultats n'est pas indexée par les moteurs de recherche. Elle est servie sans mise en cache partagée. Quand la recherche est active, la page `/privacy` le dit en deux phrases. (Comme pour toute page, l'adresse `/fr/search` pose le cookie de langue `curiosa_locale` décrit plus haut : c'est un choix de langue fait par la personne qui visite, pas la recherche.)
+
 ## Les liens courts
 
 Un lien court (`/twitch`) ne dépose aucun cookie. Chaque passage ajoute 1 au compteur du lien pour le jour en cours (heure du site) et à son total : rien d'autre n'est gardé, ni adresse IP, ni navigateur, ni provenance, ni identifiant de la personne qui visite. Les robots, les aperçus de messagerie et les personnes connectées à l'administration ne sont pas comptés. Le détail par jour est gardé 120 jours. Détails : [PLATFORM.md](PLATFORM.md), « Liens courts ».
