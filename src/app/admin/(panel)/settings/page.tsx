@@ -99,7 +99,7 @@ export default async function SettingsPage() {
               {advanced && extraLogos}
             </div>
             {!advanced && (
-              <MoreOptions title={t("settings.logosMore")} defaultOpen={Boolean(config.favicon || config.logos.share)}>
+              <MoreOptions title={t("settings.logosMore")} summary={t("settings.logosMoreSummary")} defaultOpen={Boolean(config.favicon || config.logos.share)}>
                 <div className="grid gap-4 sm:grid-cols-2">{extraLogos}</div>
               </MoreOptions>
             )}
