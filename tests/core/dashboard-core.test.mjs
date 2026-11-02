@@ -188,7 +188,8 @@ test("à faire : les brouillons montrent leurs titres et mènent à la liste ré
   const d = items.find((i) => i.id === "drafts");
   assert.equal(d.label, "1 brouillon à finir");
   assert.equal(d.rows[0].title, "Mon brouillon");
-  assert.equal(d.href, `/admin/entries?c=${blog.key}&state=draft`);
+  assert.equal(d.href, "/admin/drafts");
+  assert.equal((await Tdo.loadCoreTodo({ t, user: editor, locale: "fr", defaultLocale: "en", nav: [navOf(blog, "Blog")], skipDrafts: true })).some((i) => i.id === "drafts"), false, "le bloc « À finir » les montre déjà");
 });
 
 test("à faire : la sauvegarde jamais faite, puis faite, puis trop ancienne", async () => {
@@ -372,14 +373,13 @@ test("créer : les extensions d'abord, le cœur pour le reste, filtré par droit
 
 test("blocs : chaque palier voit les siens, le mode simple en a moins", () => {
   const plan = (u, advanced) => L.dashboardPlan(u, advanced);
-  assert.deepEqual(plan(editor, false).blocks, ["todo", "create", "visits", "activity", "modules"]);
-  assert.deepEqual(plan(coordinator, false).blocks, ["health", "todo", "activity", "modules"]);
-  assert.deepEqual(plan(admin, false).blocks, ["setup", "health", "todo", "create", "activity", "visits", "modules"]);
-  assert.deepEqual(plan(owner, true).blocks, [...plan(admin, false).blocks, "numbers"]);
-  assert.deepEqual(plan(coordinator, true).blocks, ["health", "todo", "activity", "modules", "numbers"]);
-  assert.deepEqual(plan(none, true).blocks, ["todo", "create", "activity", "modules"]);
+  assert.deepEqual(plan(editor, false).blocks, ["todo", "drafts", "create", "visits", "activity", "modules", "numbers"]);
+  assert.deepEqual(plan(coordinator, false).blocks, ["health", "todo", "activity", "modules", "numbers"]);
+  assert.deepEqual(plan(admin, false).blocks, ["setup", "health", "todo", "drafts", "create", "activity", "visits", "modules", "numbers"]);
+  assert.deepEqual(plan(owner, true).blocks, plan(admin, false).blocks);
+  assert.deepEqual(plan(none, true).blocks, ["todo", "drafts", "create", "activity", "modules", "numbers"]);
   assert.deepEqual([plan(admin, false).cards, plan(admin, true).cards], [2, 4]);
-  assert.ok(!plan(editor, true).blocks.includes("setup") && !plan(editor, true).blocks.includes("health") && !plan(editor, true).blocks.includes("numbers"));
+  assert.ok(!plan(editor, true).blocks.includes("setup") && !plan(editor, true).blocks.includes("health"));
   for (const u of [owner, admin, coordinator, editor, none]) for (const adv of [false, true]) assert.ok(L.dashboardPlan(u, adv).blocks.every((b) => L.BLOCKS.includes(b)));
 });
 

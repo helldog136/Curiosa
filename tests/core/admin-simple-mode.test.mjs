@@ -37,7 +37,7 @@ after(() => db.close());
 const PANEL = "../../src/app/admin/(panel)";
 /** Les pages du cœur du mode simple. `args` : les propriétés de la page (paramètres d'adresse). */
 const PAGES = [
-  ["settings", "settings/page.tsx"], ["appearance", "appearance/page.tsx"], ["users", "users/page.tsx"], ["backup", "backup/page.tsx"],
+  ["dashboard", "page.tsx"], ["settings", "settings/page.tsx"], ["appearance", "appearance/page.tsx"], ["users", "users/page.tsx"], ["backup", "backup/page.tsx"],
   ["updates", "updates/page.tsx"], ["health", "maintenance/content/page.tsx"], ["redirects", "redirects/page.tsx"], ["social", "social/page.tsx"],
   ["ai-visibility", "ai-visibility/page.tsx"], ["navigation", "navigation/page.tsx"], ["home", "home/page.tsx"], ["overlay-pages", "overlay-pages/page.tsx"],
   ["assistants", "assistants/page.tsx"], ["account", "account/page.tsx"], ["mode", "mode/page.tsx"], ["extensions", "extensions/page.tsx"],
@@ -55,6 +55,7 @@ const ALLOWED = [
   { term: /^cl[ée]s?$/, re: /cl[ée] de s[ée]curit[ée]/i, why: "« clé de sécurité » : l'objet physique que la personne tient en main" },
   { term: /^sujets?$/, re: /\bsujet (?:du|de votre|de l['’]|d['’])\s*(?:message|e-?mail|courriel|mail)/i, why: "« sujet » d'un e-mail est le mot courant" },
   { term: /^services?$/, re: /\bservice (?:client|public)\b/i, why: "« service client » est une expression ordinaire" },
+  { term: /^routes?$/, re: /mise en route/i, why: "« mise en route » : l'expression ordinaire pour « démarrer », pas la route d'un serveur" },
   { term: /^cache$/, re: /\bcache\b.{0,20}(?:les|des) /i, why: "« cache » verbe (cacher), pas la mémoire technique" },
 ];
 

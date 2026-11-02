@@ -23,6 +23,10 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Des chiffres qui mènent quelque part.** « Contenus publiés » dit combien il y en a dans chaque extension, et chaque ligne ouvre sa liste. Ce qui s'ouvre porte une flèche, un simple chiffre ne ressemble plus à un bouton.
 - **Un filtre « Publiées / Brouillons » avec leur nombre** en haut de chaque liste de contenus.
 - **Un mode simple plus clair.** Une seule carte « Extensions installées » ; « Liens courts » n'apparaît que s'il y en a. « Instances de modules » et « Modules installés » restent en mode avancé.
+- **Un tableau de bord qui sert.** « À faire » rassemble ce qui attend votre action : demandes de votre assistant IA, mises à jour, sauvegarde, et ce que vos extensions signalent. « Tout est à jour » quand il n'y a rien.
+- **Créer en un clic, et ce qui s'est passé.** Des boutons pour écrire ou ajouter, puis les 10 derniers événements du journal en phrases claires, limités à ce que votre rôle peut voir.
+- **Des visites comparées.** Les 7 et 30 derniers jours face à la période d'avant, les pages les plus lues avec leur titre, et les liens courts les plus cliqués.
+- **Une mise en route pour un site neuf**, avec sa progression, que vous pouvez masquer ; et une pastille « Tout va bien » ou « n points à vérifier ».
 
 ### Extensions
 
