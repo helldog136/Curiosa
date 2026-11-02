@@ -8,6 +8,7 @@ import { PLATFORM_PATTERN } from "./platform";
 import { socialSpecSchema } from "../socialSpec";
 import { shortLinkIssues, shortLinkSchema } from "./shortLink";
 import { HISTORY, MAX_MODULE_RIGHTS, OPEN, RIGHT_ID_RE } from "../auth/rights";
+import { dashboardIssues, dashboardSchema } from "../dashboard/spec";
 import { EVENT_KEY_MAX, EVENT_KEY_RE, FIELD_KEY_RE, JOURNAL_LIMITS, LEVELS, logEventIssues } from "../journal/events";
 import { SERVICE_RE } from "./serviceVersions";
 import { NO_CREATE_REFERS, REFERS_TO } from "./choiceValues";
@@ -311,6 +312,13 @@ export const manifestSchema = z.object({
     frequent: z.boolean().optional(),
     fields: z.array(z.object({ key: z.string().regex(FIELD_KEY_RE), type: z.enum(["text", "number", "boolean"]).optional() }).strict()).max(JOURNAL_LIMITS.maxFields).optional(),
   }).strict()).max(JOURNAL_LIMITS.maxEvents).optional(),
+  /**
+   * (cœur après 0.6.1) Ce que le module propose au TABLEAU DE BORD : `tasks` (ce qui attend une action, avec un nombre), `quickActions` (boutons « Créer… ») et `cards` (cartes d'information de types fermés :
+   * un chiffre, ou 5 lignes au plus). Le module écrit les textes (français ET anglais), les liens d'administration et le droit requis ; le nombre et le contenu des cartes viennent de
+   * `dashboard.tasks.<id>` et `dashboard.cards.<id>` dans le code. Tout est borné et vérifié par le cœur, jamais de HTML ni de script. Un cœur plus ancien ignore la clé et un module qui la déclare
+   * marche comme avant : aucun `minCore` n'est exigé. Voir core/dashboard/spec.ts et docs/CREATE-A-MODULE.md (« Tableau de bord »).
+   */
+  dashboard: dashboardSchema.optional(),
   permissions: z.array(z.enum(["slots", "routes", "storage", "filters", "sections", "pages", "topics", "overlay", "mcp", "admin", "mail", "rawg", "privacy", "visitor.geolocation", "files"])).default([]),
   /**
    * (0.4.0) Pièces d'APPARENCE que les skins peuvent restyler, et jetons de style propres au module (préfixe `--sk-m-<module>-`). Apparence seulement : jamais de contenu ni de
@@ -354,6 +362,7 @@ export const manifestSchema = z.object({
   for (const issue of previewIssues(m.previews)) ctx.addIssue({ code: "custom", path: ["previews", ...issue.path], message: issue.message });
   for (const message of shortLinkIssues(m.shortLink, m.settings, { provides: m.provides.map((p) => p.topic) })) ctx.addIssue({ code: "custom", path: ["shortLink"], message });
   for (const message of returnAddressIssues(m.returnAddresses)) ctx.addIssue({ code: "custom", path: ["returnAddresses"], message });
+  for (const message of dashboardIssues(m.dashboard, (m.rights ?? []).map((r) => r.id))) ctx.addIssue({ code: "custom", path: ["dashboard"], message });
   for (const message of logEventIssues(m.logEvents)) ctx.addIssue({ code: "custom", path: ["logEvents"], message });
   if (new Set((m.rights ?? []).map((r) => r.id)).size < (m.rights ?? []).length) ctx.addIssue({ code: "custom", path: ["rights"], message: "duplicate right id" });
   for (const [i, seed] of (m.seeds ?? []).entries()) {
