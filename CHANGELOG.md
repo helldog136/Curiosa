@@ -7,6 +7,19 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## Prochaine version (non publiée)
+
+### Nouveautés
+
+- **Une question pour démarrer : « Vous êtes… ? »** L'assistant d'installation vous propose quelques situations (streamer, association, activité indépendante, artiste) et coche d'avance les extensions qui vont avec. Vous pouvez passer la question, choisir « Autre », et tout changer à l'étape suivante.
+- **Des pages d'exemple, en brouillon.** Selon votre réponse, l'assistant propose des pages à modifier (« Qui sommes-nous », « Infos pratiques », « À propos de moi »…). Elles sont repliées, vous décochez celles dont vous ne voulez pas, et rien n'est publié sans vous.
+- **« Partir d'un modèle » sur la liste des pages.** Quand une extension propose des modèles, un bouton crée un brouillon prérempli à modifier. Il est aussi proposé quand la liste est vide.
+
+### Pour les développeurs
+
+- `catalogue/profiles.json` (dépôt de modules) : profils de départ, lus avec l'index et gardés avec sa dernière copie reçue ; fichier absent ou abîmé = aucune question. `suggested.json` ne change pas.
+- Manifeste : `content.templates` (8 modèles au plus), ignoré par un cœur plus ancien. Voir docs/MODULES.md.
+
 ## 0.6.2 — 2026-11-02
 
 **En bref.** Cette version rend le tableau de bord utile dès l'ouverture : ce qui attend une action, vos brouillons, vos derniers événements, vos visites et la mise en route d'un site neuf. Elle ajoute une page pour changer de nom de domaine sans rien oublier, et le mode simple est revu page par page, avec moins de mots techniques. La fiche d'une extension s'ouvre plus vite, même sur un petit serveur. L'envoi de votre propre police est au bon endroit et accepte les fichiers .otf et .ttf. Vos réglages actuels sont conservés.

@@ -232,8 +232,8 @@ Le cœur construit lui-même chaque lien d'icône de l'en-tête (`loadSocialLink
 ## Ce que le cœur ne fait pas
 
 - Il ne cite **aucun module par son identifiant**. L'assistant de première installation propose les modules que suggère
-  le Catalogue (`catalogue/suggested.json`, tenu par le dépôt de modules) et lit leurs manifestes (`onboarding.home`, `onboarding.sample`,
-  `onboarding.collectsLinks`) au lieu de connaître « blog » ou « hero ».
+  le Catalogue (`catalogue/suggested.json`, tenu par le dépôt de modules), les profils de départ (`catalogue/profiles.json`, même dépôt) et lit leurs manifestes (`onboarding.home`, `onboarding.sample`,
+  `onboarding.collectsLinks`, `content.templates`) au lieu de connaître « blog » ou « hero ».
 - Il ne contient aucune fonctionnalité de sponsor, de partenaire, d'overlay… Les cartes de sponsors, les fiches de partenaires, le
   labyrinthe sont des modules ; le cœur ne fournit que de quoi les faire (QR, stockage, sujets, MCP, formulaires d'admin).
 
