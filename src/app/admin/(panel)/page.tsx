@@ -107,6 +107,28 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
           </ul>
         </section>
       )}
+      {canEdit && (
+        <section aria-label={t("dashboard.toFinish")} data-testid="to-finish" className={`${ui.card} space-y-3`}>
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="text-lg font-semibold">{t("dashboard.toFinish")}</h2>
+            {draftList.total > 0 && <a href="/admin/drafts" data-testid="drafts-all" className="text-sm underline hover:text-accent">{t("dashboard.draftsAll", { n: draftList.total })}{ARROW}</a>}
+          </div>
+          {draftList.total === 0 ? (
+            <p className="text-sm text-muted" data-testid="drafts-none">{counts.published.total > 0 ? t("dashboard.draftsNone") : t("dashboard.draftsNoneYet")}</p>
+          ) : (
+            <ul className="divide-y divide-line">
+              {draftList.rows.map((d) => (
+                <li key={d.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5">
+                  <span className="min-w-0 flex-1 basis-48 truncate font-medium" title={d.title || undefined}>{d.title || "—"}</span>
+                  <Badge tone={moduleTone(d.key)}>{d.icon} {d.name}</Badge>
+                  <span className="text-xs text-muted">{new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(d.updatedAt)}</span>
+                  <a href={`/admin/entries/${d.id}`} className={ui.btn}>{t("dashboard.draftOpen")}{ARROW}</a>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
       {!advanced && hasRole(user, "editor") && (
         <section aria-label={t("dashboard.start")} className="space-y-3">
           <h2 className="text-lg font-semibold">{t("dashboard.start")}</h2>
@@ -169,28 +191,6 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
                 </div>
               ))}
             </div>
-          )}
-        </section>
-      )}
-      {canEdit && (
-        <section aria-label={t("dashboard.toFinish")} data-testid="to-finish" className={`${ui.card} space-y-3`}>
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className="text-lg font-semibold">{t("dashboard.toFinish")}</h2>
-            {draftList.total > 0 && <a href="/admin/drafts" data-testid="drafts-all" className="text-sm underline hover:text-accent">{t("dashboard.draftsAll", { n: draftList.total })}{ARROW}</a>}
-          </div>
-          {draftList.total === 0 ? (
-            <p className="text-sm text-muted" data-testid="drafts-none">{counts.published.total > 0 ? t("dashboard.draftsNone") : t("dashboard.draftsNoneYet")}</p>
-          ) : (
-            <ul className="divide-y divide-line">
-              {draftList.rows.map((d) => (
-                <li key={d.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5">
-                  <span className="min-w-0 flex-1 basis-48 truncate font-medium" title={d.title || undefined}>{d.title || "—"}</span>
-                  <Badge tone={moduleTone(d.key)}>{d.icon} {d.name}</Badge>
-                  <span className="text-xs text-muted">{new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(d.updatedAt)}</span>
-                  <a href={`/admin/entries/${d.id}`} className={ui.btn}>{t("dashboard.draftOpen")}{ARROW}</a>
-                </li>
-              ))}
-            </ul>
           )}
         </section>
       )}
