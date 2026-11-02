@@ -1,3 +1,4 @@
+import { SlowHint } from "./SlowHint";
 import { EXTENSIONS_ADD_HREF } from "@/core/modules/extensionsLinks";
 import { ui } from "./ui";
 
@@ -8,7 +9,7 @@ const BLOCK = "animate-pulse rounded-xl bg-line/60 motion-reduce:animate-none";
  * (pas de saut de mise en page) avec une phrase pour le lecteur d'écran. Elle s'affiche dès le clic (R23). Sans accès au serveur ni à la base : le texte et le lien de retour
  * viennent de l'appelant, pour que `loading.tsx` ne puisse rien attendre.
  */
-export function FicheSkeleton({ text, embedded, back, name, icon, description }: { text: string; embedded: boolean; back: string; name?: string; icon?: string; description?: string }) {
+export function FicheSkeleton({ text, embedded, back, name, icon, description, slowText }: { text: string; embedded: boolean; back: string; name?: string; icon?: string; description?: string; /** Phrase de progression, montrée si la lecture dépasse 5 secondes. */ slowText?: string }) {
   return (
     <div className="space-y-7">
       {!embedded && <a href={EXTENSIONS_ADD_HREF} className="inline-block text-sm text-muted hover:text-accent">← {back}</a>}
@@ -19,6 +20,7 @@ export function FicheSkeleton({ text, embedded, back, name, icon, description }:
         </header>
         {description && <p className="max-w-2xl text-[17px] leading-7">{description}</p>}
         <p className="text-sm text-muted">{text}</p>
+        {slowText && <SlowHint text={slowText} />}
         <div aria-hidden className="space-y-3"><div className={`${BLOCK} h-40`} /><div className={`${BLOCK} h-5 w-2/3`} /><div className={`${BLOCK} h-5 w-1/2`} /></div>
       </div>
     </div>

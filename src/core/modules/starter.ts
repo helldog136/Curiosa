@@ -3,7 +3,7 @@ import { catalogueUnreachable, getCatalogue, type CatalogueEntry } from "./catal
 import { installFromCatalogue } from "./installer";
 import type { ParsedManifest } from "./manifest";
 import { getModule } from "./registry";
-import { getModulePreview } from "./readme";
+import { getModulePreview, targetOf } from "./readme";
 
 /**
  * Modules proposés par l'assistant de première installation : la liste « suggérée » que tient le dépôt du catalogue (`catalogue/suggested.json`), jamais un drapeau
@@ -19,7 +19,8 @@ export async function setupModules(): Promise<SetupModules> {
   const suggested = all.filter((e) => e.suggested && e.compatible && !e.needsNewerCore && (e.needs ?? []).length === 0);
   // Le manifeste de chaque module suggéré est lu sans l'installer (aperçu du catalogue) : c'est lui, pas le cœur, qui dit s'il collecte des liens. Illisible : non.
   const modules = await Promise.all(suggested.map(async (e): Promise<SetupModule> => {
-    const preview = e.repo ? await getModulePreview({ kind: "repo", url: e.repo, ref: e.ref, subdir: e.subdir }).catch(() => null) : null;
+    const target = targetOf(e);
+    const preview = target ? await getModulePreview(target).catch(() => null) : null;
     return { ...e, collectsLinks: !!preview?.manifest?.onboarding?.collectsLinks };
   }));
   return {

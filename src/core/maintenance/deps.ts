@@ -4,7 +4,7 @@ import { safetyCopy } from "@/core/backup/files";
 import type { ModulesReport, Summary } from "@/core/modules/bulkUpdate";
 import { checkForUpdateDetailed, installFromCatalogue, uninstallModule, type ModuleUpdateCheck, type InstallResult } from "@/core/modules/installer";
 import { getCatalogue, getCatalogueSource, type CatalogueEntry } from "@/core/modules/catalogue";
-import { getModulePreview, type ModulePreview } from "@/core/modules/readme";
+import { getModulePreview, targetOf, type ModulePreview } from "@/core/modules/readme";
 import { retryInstanceMigration, type MigrationOutcome } from "@/core/modules/dataMigrations";
 import { reinstallModule, type ReinstallResult } from "@/core/modules/reinstall";
 import { getModulesReport, updateModules } from "@/core/modules/updateStatus";
@@ -66,7 +66,8 @@ export const realDeps = (): MaintenanceDeps => ({
     return { entries, source: source.source, fetchedAt: source.fetchedAt };
   },
   async preview(entry) {
-    return entry.repo ? getModulePreview({ kind: "repo", url: entry.repo, ref: entry.ref, subdir: entry.subdir }) : null;
+    const target = targetOf(entry);
+    return target ? getModulePreview(target) : null;
   },
   installFromCatalogue: (id) => installFromCatalogue(id),
   catalogTimeoutMs: 20_000,

@@ -7,6 +7,63 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.6.2 — 2026-11-02
+
+**En bref.** Cette version rend le tableau de bord utile dès l'ouverture : ce qui attend une action, vos brouillons, vos derniers événements, vos visites et la mise en route d'un site neuf. Elle ajoute une page pour changer de nom de domaine sans rien oublier, et le mode simple est revu page par page, avec moins de mots techniques. La fiche d'une extension s'ouvre plus vite, même sur un petit serveur. L'envoi de votre propre police est au bon endroit et accepte les fichiers .otf et .ttf. Vos réglages actuels sont conservés.
+
+### Le mode simple, revu page par page
+
+- **Le serveur d'e-mail tient en quatre champs.** Le port et la connexion sécurisée sont rangés sous « Plus d'options », avec les valeurs courantes déjà choisies ; rien de ce que vous aviez réglé n'est perdu.
+- **Le contact et le pied de page sont à portée de main.** L'adresse de contact et le texte du bas de page se règlent aussi en mode simple (repliés dans « Contact et pied de page »), au lieu d'être réservés au mode avancé. Le fuseau horaire reste avancé.
+- **Moins de mots techniques.** « Clé de connexion » devient « code de connexion », les noms de fichiers (llms.txt, robots.txt, sitemap.xml) disparaissent des titres de « Visibilité dans les IA », et les textes d'aide ne parlent plus de réglages d'hébergement ni de versions du serveur.
+- **Les noms suivent le menu.** « Extensions › Ajouter » remplace « Modules › Catalogue » et « Fonctionnalités → Ajouter » dans l'assistant d'installation et sur le tableau de bord ; les mises à jour parlent d'extensions.
+- **Le champ d'image est plus clair.** Il propose « Adresse de l'image » au lieu d'un exemple de chemin technique.
+
+### Tableau de bord
+
+- **Vos brouillons sont sous vos yeux.** Un bloc « À finir » montre les premiers brouillons de toutes vos extensions, chacun avec son nom et un bouton « Ouvrir ». « Voir tous les brouillons » ouvre la liste complète.
+- **Des chiffres qui mènent quelque part.** « Contenus publiés » dit combien il y en a dans chaque extension, et chaque ligne ouvre sa liste. Ce qui s'ouvre porte une flèche, un simple chiffre ne ressemble plus à un bouton.
+- **Un filtre « Publiées / Brouillons » avec leur nombre** en haut de chaque liste de contenus.
+- **Un mode simple plus clair.** Une seule carte « Extensions installées » ; « Liens courts » n'apparaît que s'il y en a. « Instances de modules » et « Modules installés » restent en mode avancé.
+- **Un tableau de bord qui sert.** « À faire » rassemble ce qui attend votre action : demandes de votre assistant IA, mises à jour, sauvegarde, et ce que vos extensions signalent. « Tout est à jour » quand il n'y a rien.
+- **Créer en un clic, et ce qui s'est passé.** Des boutons pour écrire ou ajouter, puis les 10 derniers événements du journal en phrases claires, limités à ce que votre rôle peut voir.
+- **Des visites comparées.** Les 7 et 30 derniers jours face à la période d'avant, les pages les plus lues avec leur titre, et les liens courts les plus cliqués.
+- **Une mise en route pour un site neuf**, avec sa progression, que vous pouvez masquer ; et une pastille « Tout va bien » ou « n points à vérifier ».
+
+### Extensions
+
+- **La fiche d'une extension s'ouvre vite, même sur un petit serveur.** Le site ne copie plus un dépôt entier pour lire un fichier texte : il va chercher directement le fichier utile (la description, le README, les captures). Un dépôt n'est copié qu'en dernier recours, si cette lecture directe échoue.
+- **Les fiches déjà vues restent disponibles après un redémarrage ou une mise à jour du site.** Une fiche reste valable tant que le catalogue annonce la même version du module ; elle est relue quand une nouvelle version sort. Le bouton « Actualiser » vide cette copie.
+- **Un écran qui parle.** Si la lecture dure plus de 5 secondes, la fiche affiche « Lecture du dépôt… » au lieu de rester muette ; l'attente est portée à 30 secondes, et « Réessayer » reprend la lecture en cours. Si l'hébergeur limite les lectures, le message le dit.
+- **Les premières fiches de la liste sont préparées à l'avance** (trois au plus, uniquement celles qui sont à l'écran).
+
+### Adresse du site
+
+- **Une page pour changer de nom de domaine sans rien oublier.** En réglages avancés, « Adresse du site » propose un assistant en trois étapes : la nouvelle adresse, la liste de ce que votre site doit reprendre, puis les commandes à copier sur le serveur.
+- **La liste est faite pour votre site.** Elle compte vos clés d'accès à recréer, vos liens courts et QR codes, vos accès d'assistants et vos adresses d'overlay, et donne l'ancienne et la nouvelle adresse à copier pour chaque extension connectée à un service tiers. Aucun secret n'y est affiché.
+- **Les contenus qui écrivent l'ancien domaine sont retrouvés.** Pages, articles, liens, menu et réglages, avec un lien vers chacun. Rien n'est modifié.
+- **L'ancien domaine continue de marcher.** Les QR codes déjà imprimés et les liens partagés mènent à la nouvelle adresse, page demandée comprise.
+- **Une page « Après le changement ».** Elle vérifie à la demande que le site répond à sa nouvelle adresse et que l'ancienne redirige bien, puis garde vos coches sur ce qu'il reste à refaire.
+- **Le script d'installation sait changer de domaine.** Il montre d'abord ce qu'il ferait, sauvegarde vos fichiers et ne touche jamais à une configuration qu'il n'a pas écrite.
+
+### Apparence du site
+
+- **L'envoi de votre police est au bon endroit.** Il se trouve dans la section « Polices », juste sous les listes : chaque liste se termine par « Utiliser ma propre police… ». Vos polices apparaissent en tête des listes, dans « Mes polices », où vous pouvez les supprimer.
+- **Les fichiers .otf et .ttf sont acceptés.** Le site les convertit lui-même en .woff2, plus léger. Un fichier trop lourd est refusé avec la marche à suivre pour le convertir.
+- **Un envoi plus court.** Un fichier et la case de licence ; le nom est sous « Plus d'options ».
+
+### Pour les développeurs
+
+- **Garde-fou du mode simple.** `tests/core/admin-simple-mode.test.mjs` rend les pages du cœur en mode simple et échoue sur un mot de la liste R9, un onglet de plus de 7 champs ou une entrée de menu avancée (`ADVANCED_ONLY_ENTRIES`) ; il vérifie aussi le changement de mode.
+- Corrections à faire dans les modules : `docs/ideas/audit-mode-simple-modules.md`.
+- **Tableau de bord.** `dashboardEntryCounts` et `entryStateCounts` (`src/core/content/dashboardCounts.ts`) comptent avec `stateWhere`, la même règle que les listes.
+- **Lecture des fiches.** `rawRead.ts` (lecture directe), `ficheCache.ts` (copie sur disque bornée) et `readme.ts` (copie, lecture directe, clonage temporaire). `PreviewTarget` porte `version`, `targetOf(entrée)` la construit, `clearPreviewCache()` vide aussi le disque. Voir MODULES.md.
+- **Anciens domaines.** `LEGACY_HOSTS` (10 noms au plus) : le proxy du cœur répond 301 vers `SITE_URL` pour GET et HEAD, selon `Host` seul, jamais pour `/api/*` ni les retours `oauth` ; voir `src/core/siteAddress.ts` et `docs/MIGRER-DOMAINE.md`.
+- **Manifeste.** Clés facultatives `returnAddresses` et `siteAddressUses` (sans `minCore`), documentées dans `docs/MODULES.md`. Script : `install.sh --change-domain NOM [--apply]`.
+- **Tableau de bord : l'API des extensions.** La clé facultative `dashboard` de `module.json` (`tasks`, `quickActions`, `cards`) et le code `dashboard.tasks` / `dashboard.cards` apportent au tableau de bord des tâches, des boutons « Créer… » et des cartes. Le cœur vérifie tout, appelle le code à l'affichage seulement et masque seulement l'extension en échec (voir `docs/CREATE-A-MODULE.md`).
+- **Tableau de bord : la logique.** `src/core/dashboard/` contient les briques de l'écran : tâches, derniers événements du Journal central filtrés par droits, mise en route calculée, santé, visites comparées, actions rapides, blocs par palier. Le kit de test gagne l'exigence `dashboard.valid`.
+- **Polices.** `sfntToWoff2` (`src/core/fonts/sfnt.ts`) convertit en WOFF2, puis `checkWoff2` revérifie le résultat. `ActionForm` accepte `id`, et le choix des polices se rattache au formulaire des retouches par `form`.
+
 ## 0.6.1 — 2026-11-01
 
 **En bref.** Cette version simplifie les réglages de votre site et rend plusieurs choses plus claires. L'Équipe tient en un seul tableau, et vos assistants IA en font partie, avec leurs droits en quelques mots. Vos réseaux sociaux s'ajoutent en collant l'adresse de votre profil dans un seul champ. Les polices se choisissent dans une bibliothèque de vingt familles, ou s'envoient depuis votre ordinateur. La fiche d'une extension montre d'abord ce qu'elle fait, avec des images, et garde le bouton « Installer » toujours visible. L'extension Discord peut créer pour vous l'adresse courte « /discord », qui suit votre invitation. Le menu est clarifié : « Réglages du site » ne fait plus doublon avec « Apparence ». Vos couleurs ne sont plus jamais corrigées en cachette : un conseil s'affiche, sans rien bloquer. Le script d'installation parle français et anglais, les gestionnaires de mots de passe reconnaissent les formulaires, et le catalogue des extensions s'ouvre plus vite. Le champ « Période » propose un mois entier, les saisons et les fêtes, et le nom « Curiosa » du pied de page reste identique quel que soit le skin. Vos réglages actuels sont conservés.

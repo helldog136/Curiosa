@@ -4,162 +4,121 @@ import { navItemVisible } from "@/core/modules/adminMenu";
 import { prisma } from "@/core/db";
 import { getAdminNav } from "@/core/modules/adminNav";
 import { ui } from "@/components/admin/ui";
-import { InstanceState } from "@/components/admin/InstanceState";
-import { loadInstanceStatuses } from "@/core/modules/integrations";
-import { summarizeMissing } from "@/core/modules/missingSettings";
 import { Callout, PageHeader } from "@/components/admin/Page";
-import { getUpdateCheck } from "@/core/updates/service";
-import { statsEnabled, statsSummary } from "@/core/stats";
-import { maintenanceSummary } from "@/core/maintenance/summary";
-import { contentBadge } from "@/core/maintenance/content/service";
-import { EXTENSIONS_HREF } from "@/core/modules/extensionsLinks";
-import { assistantsTabHref } from "@/core/services/mcp/assistantsLinks";
+import { EXTENSIONS_ADD_HREF, EXTENSIONS_HREF } from "@/core/modules/extensionsLinks";
+import { ModulePill } from "@/components/admin/ModulePill";
+import { dashboardEntryCounts, listDrafts, unlistedEntries, type EntryCount } from "@/core/content/dashboardCounts";
+import { dashboardPlan } from "@/core/dashboard/layout";
+import { ActivityBlock, CardsBlock, CreateBlock, HealthPill, SetupBlock, Slot, TodoBlock, VisitsBlock, type BlockCtx } from "@/components/admin/dashboard/Blocks";
 
 export default async function Dashboard({ searchParams }: { searchParams: Promise<{ denied?: string; welcome?: string; modules?: string }> }) {
   // Tout accès suffit (le menu y renvoie) ; ne montre que ce que cette personne peut ouvrir.
   const { t, locale, config, advanced, user } = await adminCtx("member");
-  const nav = (await getAdminNav(config.defaultLocale, config.defaultLocale)).filter((m) => navItemVisible(m, (right) => can(user, right)));
+  const allNav = await getAdminNav(config.defaultLocale, config.defaultLocale);
+  const nav = allNav.filter((m) => navItemVisible(m, (right) => can(user, right)));
   const firstContent = nav.find((i) => i.content && !i.error);
   const { denied, welcome, modules: setupModulesState } = await searchParams;
-  const [drafts, published, redirects, collections, modules] = await Promise.all([
-    prisma.entry.count({ where: { status: "draft" } }),
-    prisma.entry.count({ where: { status: "published" } }),
+  const canEdit = hasRole(user, "editor");
+  const [counts, draftList, unlisted, redirects, instanceCount, modules] = await Promise.all([
+    dashboardEntryCounts(nav),
+    listDrafts(nav, config.defaultLocale, { limit: 5 }),
+    advanced ? unlistedEntries(allNav) : Promise.resolve({ total: 0, parts: [] }),
     prisma.redirect.count(),
     prisma.moduleInstance.count(),
     prisma.module.count(),
   ]);
-  const todo = nav.filter((i) => i.badge > 0);
-  // Extensions à configurer : chacune dit ce qu'il reste à renseigner (réservé à qui règle les extensions).
-  const statuses = hasRole(user, "admin") ? await loadInstanceStatuses(locale, config.defaultLocale).catch(() => null) : null;
-  const toSetUp = nav.flatMap((i) => { const s = statuses?.get(i.id); return s?.state === "setup" ? [{ item: i, summary: summarizeMissing(s.missing) }] : []; });
-  const updateAvailable = can(user, "core:updates") && (await getUpdateCheck().catch(() => null))?.available === true;
-  const ai = can(user, "core:mcp.tokens") ? await maintenanceSummary().catch(() => null) : null;
-  // Santé de mon site : une seule ligne sobre, seulement s'il y a quelque chose de conseillé ou d'important à regarder (jamais d'alarme ni de note).
-  const contentLook = hasRole(user, "admin") ? await contentBadge().catch(() => null) : null;
-  const stats = (await statsEnabled()) ? await statsSummary() : null;
-  const peak = Math.max(1, ...(stats?.days.map((d) => d.visitors) ?? [1]));
-  const stat = (label: string, value: number, href: string) => (
-    <a href={href} className={`${ui.card} block transition hover:-translate-y-0.5 hover:border-accent`}>
-      <p className="text-3xl font-bold">{value}</p>
-      <p className="text-sm text-muted">{label}</p>
-    </a>
+  const plan = dashboardPlan(user, advanced);
+  const c: BlockCtx = {
+    t, locale, defaultLocale: config.defaultLocale, advanced, user,
+    nav: nav.map((i) => ({ id: i.id, key: i.key, name: i.name, icon: i.icon, content: i.content, error: i.error, badge: i.badge, moduleId: i.moduleId })),
+    contentIds: nav.filter((i) => i.content && !i.error).map((i) => i.id),
+    newPageHref: firstContent ? `/admin/entries/new?c=${encodeURIComponent(firstContent.key)}` : EXTENSIONS_ADD_HREF,
+  };
+  const ARROW = <span aria-hidden="true"> →</span>;
+  const plain = `${ui.card} block`;
+  const link = `${ui.card} block transition hover:-translate-y-0.5 hover:border-accent`;
+  // Un chiffre qui ouvre une page se voit comme tel (flèche, survol) ; un chiffre seul ne ressemble pas à un bouton.
+  const stat = (label: string, value: number, href: string | null, testid?: string) => {
+    const body = (<><p className="text-3xl font-bold">{value}</p><p className="text-sm text-muted">{label}{href && ARROW}</p></>);
+    return href ? <a href={href} data-testid={testid} className={link}>{body}</a> : <div data-testid={testid} className={plain}>{body}</div>;
+  };
+  // Contenus publiés : le total, puis une ligne par extension qui ouvre sa liste (jamais de lien vers une liste qui ne montrerait rien).
+  const publishedStat = (c: EntryCount) => (
+    <div data-testid="stat-published" className={plain}>
+      <p className="text-3xl font-bold">{c.total}</p>
+      <p className="text-sm text-muted">{t("dashboard.published")}</p>
+      {c.parts.length > 0 && (
+        <ul className="mt-2 space-y-0.5 text-sm">
+          {c.parts.map((p) => {
+            const row = (<><span className="truncate">{p.icon} {p.name}</span><span className="text-muted">{p.n}{canEdit && ARROW}</span></>);
+            return <li key={p.key}>{canEdit
+              ? <a href={`/admin/entries?c=${p.key}&state=published`} className="flex items-center justify-between gap-3 rounded-lg px-2 py-1 hover:bg-accent/10">{row}</a>
+              : <span className="flex items-center justify-between gap-3 px-2 py-1">{row}</span>}</li>;
+          })}
+        </ul>
+      )}
+    </div>
   );
-  const entriesHref = firstContent ? `/admin/entries?c=${firstContent.key}` : EXTENSIONS_HREF;
   const first = user.name.split(" ")[0] ?? user.name;
-  const noVisits = !!stats && stats.totals.last30.visitors === 0;
+  const draftsBlock = canEdit ? (
+    <section aria-label={t("dashboard.toFinish")} data-testid="to-finish" className={`${ui.card} space-y-3`}>
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="text-lg font-semibold">{t("dashboard.toFinish")}</h2>
+            {draftList.total > 0 && <a href="/admin/drafts" data-testid="drafts-all" className="text-sm underline hover:text-accent">{t("dashboard.draftsAll", { n: draftList.total })}{ARROW}</a>}
+          </div>
+          {draftList.total === 0 ? (
+            <p className="text-sm text-muted" data-testid="drafts-none">{counts.published.total > 0 ? t("dashboard.draftsNone") : t("dashboard.draftsNoneYet")}</p>
+          ) : (
+            <ul className="divide-y divide-line">
+              {draftList.rows.map((d) => (
+                <li key={d.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5">
+                  <span className="min-w-0 flex-1 basis-48 truncate font-medium" title={d.title || undefined}>{d.title || "—"}</span>
+                  <ModulePill id={d.key} name={d.name} icon={d.icon} />
+                  <span className="text-xs text-muted">{new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(d.updatedAt)}</span>
+                  <a href={`/admin/entries/${d.id}`} className={ui.btn}>{t("dashboard.draftOpen")}{ARROW}</a>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+  ) : null;
+  const numbersBlock = (
+    <section aria-label={t("dashboard.inNumbers")} data-testid="in-numbers" className="space-y-3">
+        <h2 className="text-lg font-semibold">{t("dashboard.inNumbers")}</h2>
+        <div className="grid gap-4 sm:grid-cols-3">
+          {publishedStat(counts.published)}
+          {stat(t("dashboard.extensions"), allNav.length, EXTENSIONS_HREF, "stat-extensions")}
+          {redirects > 0 && stat(t("dashboard.shortLinks"), redirects, "/admin/redirects", "stat-redirects")}
+          {advanced && stat(t("dashboard.instances"), instanceCount, EXTENSIONS_HREF, "stat-instances")}
+          {advanced && stat(t("dashboard.modules"), modules, EXTENSIONS_HREF, "stat-modules")}
+        </div>
+        {advanced && unlisted.total > 0 && (
+          <p className="text-sm text-muted" data-testid="unlisted">{t("dashboard.unlisted", { where: unlisted.parts.map((p) => `${p.name || t("dashboard.removedExtension")} (${p.n})`).join(", ") })}</p>
+        )}
+      </section>
+  );
+  const blocks: Record<string, React.ReactNode> = {
+    setup: <Slot key="setup" label={t("dash.loading")}><SetupBlock c={c} /></Slot>,
+    todo: <Slot key="todo" label={t("dash.loading")}><TodoBlock c={c} /></Slot>,
+    drafts: draftsBlock,
+    create: <Slot key="create" label={t("dash.loading")} height="h-16"><CreateBlock c={c} /></Slot>,
+    activity: <Slot key="activity" label={t("dash.loading")} height="h-40"><ActivityBlock c={c} /></Slot>,
+    visits: <Slot key="visits" label={t("dash.loading")} height="h-56"><VisitsBlock c={c} /></Slot>,
+    modules: <Slot key="modules" label={t("dash.loading")} height="h-24"><CardsBlock c={c} max={plan.cards} /></Slot>,
+    numbers: numbersBlock,
+  };
   return (
     <div className="space-y-6">
-      <PageHeader title={advanced ? t("dashboard.title", { name: config.name }) : t("dashboard.hello", { name: first })} intro={advanced ? t("dashboard.introAdvanced") : t("dashboard.helloIntro", { site: config.name })} />
+      <PageHeader title={advanced ? t("dashboard.title", { name: config.name }) : t("dashboard.hello", { name: first })} intro={advanced ? t("dashboard.introAdvanced") : t("dashboard.helloIntro", { site: config.name })}>
+        <div className="flex flex-wrap items-center gap-2">
+          {plan.blocks.includes("health") && <Slot label={t("dash.loading")} height="h-10"><HealthPill c={c} /></Slot>}
+          <a href="/" target="_blank" rel="noopener" className={`${ui.btn} min-h-11`}>{t("dash.view")}{ARROW}</a>
+        </div>
+      </PageHeader>
       {welcome && !advanced && <Callout tone="ok" role="status">🎉 {t("dashboard.welcome", { name: first })}</Callout>}
       {welcome && (setupModulesState === "failed" || setupModulesState === "partial") && <Callout tone="warn" role="status" testid="setup-modules-failed">{t(setupModulesState === "failed" ? "dashboard.modulesFailed" : "dashboard.modulesPartial")}</Callout>}
       {denied && <Callout tone="danger">{t("error.denied")}</Callout>}
-      {ai && ai.total > 0 && (
-        <Callout tone={ai.pending > 0 ? "warn" : "info"} role="status" testid="ai-maintenance-notice">
-          <span className="flex flex-wrap items-center justify-between gap-3">
-            <span>🤖 {ai.pending > 0 ? t("dashboard.ai.pending", { n: ai.pending }) : t("dashboard.ai.done", { n: ai.doneSinceVisit })}</span>
-            <a href={assistantsTabHref(ai.pending > 0 ? "requests" : "history")} className={ui.btn}>{t("dashboard.ai.open")}</a>
-          </span>
-        </Callout>
-      )}
-      {contentLook && (
-        <Callout tone="info" role="status" testid="content-health-notice">
-          <span className="flex flex-wrap items-center justify-between gap-3">
-            <span>🩺 {t("dashboard.contentLook")}</span>
-            <a href="/admin/maintenance/content" className={ui.btn}>{t("dashboard.contentOpen")}</a>
-          </span>
-        </Callout>
-      )}
-      {(todo.length > 0 || toSetUp.length > 0 || updateAvailable) && (
-        <section aria-label={t("dashboard.todo")} data-testid="todo" className={`${ui.card} space-y-2`}>
-          <h2 className="text-lg font-semibold">{t("dashboard.todo")}</h2>
-          <ul className="space-y-1.5">
-            {todo.map((i) => (
-              <li key={i.id}><a href={i.content ? `/admin/entries?c=${i.key}` : `/admin/instances/${i.id}`} className="flex items-center justify-between gap-3 rounded-xl px-3 py-2 hover:bg-accent/10"><span>{i.icon} {i.name}</span><span className="rounded-full bg-accent px-2 text-sm font-semibold text-accent-fg">{i.badge} {t("nav.badge.todo")}</span></a></li>
-            ))}
-            {toSetUp.map(({ item, summary }) => (
-              <li key={`setup-${item.id}`}><a href={`/admin/instances/${item.id}`} data-testid="todo-setup" className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-xl px-3 py-2 hover:bg-accent/10"><span>{item.icon} {item.name}</span><InstanceState t={t} state="setup" missing={summary} /></a></li>
-            ))}
-            {updateAvailable && <li><a href="/admin/updates" className="flex items-center justify-between gap-3 rounded-xl px-3 py-2 hover:bg-accent/10"><span>⬆️ {t("dashboard.updateReady")}</span><span className="rounded-full bg-accent px-2 text-sm font-semibold text-accent-fg">{t("nav.badge.update")}</span></a></li>}
-          </ul>
-        </section>
-      )}
-      {!advanced && hasRole(user, "editor") && (
-        <section aria-label={t("dashboard.start")} className="space-y-3">
-          <h2 className="text-lg font-semibold">{t("dashboard.start")}</h2>
-          <div className="grid gap-4 sm:grid-cols-2">
-            {firstContent && (
-              <a href={`/admin/entries/new?c=${firstContent.key}`} className={`${ui.card} block transition hover:-translate-y-0.5 hover:border-accent`}>
-                <span className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-accent/10 text-2xl" aria-hidden>✍️</span>
-                <p className="text-lg font-semibold">{t("dashboard.writeFirst")}</p>
-                <p className="mt-1 text-sm leading-5 text-muted">{t("dashboard.writeFirstHelp")}</p>
-              </a>
-            )}
-            <a href="/admin/settings" className={`${ui.card} block transition hover:-translate-y-0.5 hover:border-accent`}>
-              <span className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-accent/10 text-2xl" aria-hidden>🎨</span>
-                <p className="text-lg font-semibold">{t("dashboard.customize")}</p>
-                <p className="mt-1 text-sm leading-5 text-muted">{t("dashboard.customizeHelp")}</p>
-            </a>
-            <a href="/admin/redirects" className={`${ui.card} block transition hover:-translate-y-0.5 hover:border-accent`}>
-              <span className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-accent/10 text-2xl" aria-hidden>🔗</span>
-                <p className="text-lg font-semibold">{t("dashboard.shortcuts")}</p>
-                <p className="mt-1 text-sm leading-5 text-muted">{t("dashboard.shortcutsHelp")}</p>
-            </a>
-            {hasRole(user, "admin") && (
-              <a href={EXTENSIONS_HREF} className={`${ui.card} block transition hover:-translate-y-0.5 hover:border-accent`}>
-                <span className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-accent/10 text-2xl" aria-hidden>🧩</span>
-                <p className="text-lg font-semibold">{t("dashboard.addFeature")}</p>
-                <p className="mt-1 text-sm leading-5 text-muted">{t("dashboard.addFeatureHelp")}</p>
-              </a>
-            )}
-            <a href="/" target="_blank" rel="noopener" className={`${ui.card} block transition hover:-translate-y-0.5 hover:border-accent`}>
-              <span className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-accent/10 text-2xl" aria-hidden>👀</span>
-                <p className="text-lg font-semibold">{t("dashboard.viewSite")}</p>
-                <p className="mt-1 text-sm leading-5 text-muted">{t("dashboard.viewSiteHelp")}</p>
-            </a>
-          </div>
-        </section>
-      )}
-      {stats && (
-        <section aria-label={t("dashboard.visits")} data-testid="visits" className={`${ui.card} space-y-4`}>
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className="text-lg font-semibold">{t("dashboard.visits")}</h2>
-            <p className="text-xs text-muted">{t("dashboard.visitsPrivacy")}</p>
-          </div>
-          <div className="grid grid-cols-3 gap-3 text-center">
-            {([["today", stats.totals.today], ["last7", stats.totals.last7], ["last30", stats.totals.last30]] as const).map(([k, v]) => (
-              <div key={k}><p className="text-2xl font-bold">{v.visitors}</p><p className="text-xs text-muted">{t(`dashboard.visits.${k}`)}</p></div>
-            ))}
-          </div>
-          {noVisits && <p className="text-sm text-muted">{t("dashboard.visitsEmpty")}</p>}
-          <div className="flex h-20 items-end gap-px" role="img" aria-label={t("dashboard.visitsChart")}>
-            {stats.days.map((d) => (
-              <div key={d.day} title={`${d.day} : ${d.visitors}`} className="min-h-px flex-1 rounded-t bg-accent/70" style={{ height: `${Math.max(2, (d.visitors / peak) * 100)}%`, opacity: d.visitors ? 1 : 0.25 }} />
-            ))}
-          </div>
-          {(stats.topPages.length > 0 || stats.topSources.length > 0) && (
-            <div className="grid gap-4 sm:grid-cols-2">
-              {([["dashboard.topPages", stats.topPages.map((p) => [p.path, p.views] as const)], ["dashboard.topSources", stats.topSources.map((p) => [p.host, p.views] as const)]] as const).map(([title, rows]) => rows.length > 0 && (
-                <div key={title}>
-                  <h3 className="mb-1 text-sm font-semibold">{t(title)}</h3>
-                  <ul className="space-y-0.5 text-sm">{rows.map(([label, n]) => <li key={label} className="flex justify-between gap-3"><span className="truncate">{label}</span><span className="text-muted">{n}</span></li>)}</ul>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-      )}
-      {advanced && (
-        <section aria-label={t("dashboard.inNumbers")} className="space-y-3">
-          <h2 className="text-lg font-semibold">{t("dashboard.inNumbers")}</h2>
-          <div className="grid gap-4 sm:grid-cols-3">
-            {stat(t("dashboard.published"), published, entriesHref)}
-            {stat(t("dashboard.drafts"), drafts, entriesHref)}
-            {stat(t("dashboard.redirects"), redirects, "/admin/redirects")}
-            {stat(t("dashboard.instances"), collections, EXTENSIONS_HREF)}
-            {stat(t("dashboard.modules"), modules, EXTENSIONS_HREF)}
-          </div>
-        </section>
-      )}
+      {plan.blocks.filter((b) => b !== "health").map((b) => blocks[b] ?? null)}
     </div>
   );
 }

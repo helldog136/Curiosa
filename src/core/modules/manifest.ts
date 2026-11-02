@@ -8,6 +8,7 @@ import { PLATFORM_PATTERN } from "./platform";
 import { socialSpecSchema } from "../socialSpec";
 import { shortLinkIssues, shortLinkSchema } from "./shortLink";
 import { HISTORY, MAX_MODULE_RIGHTS, OPEN, RIGHT_ID_RE } from "../auth/rights";
+import { dashboardIssues, dashboardSchema } from "../dashboard/spec";
 import { EVENT_KEY_MAX, EVENT_KEY_RE, FIELD_KEY_RE, JOURNAL_LIMITS, LEVELS, logEventIssues } from "../journal/events";
 import { SERVICE_RE } from "./serviceVersions";
 import { NO_CREATE_REFERS, REFERS_TO } from "./choiceValues";
@@ -15,6 +16,7 @@ import { MAX_TAB_ENTRIES, TAB_ID_RE, TAB_LABEL_MAX, tabIssues } from "./tabs";
 import { moduleSkinIssues, moduleSkinSchema } from "./skinDecl";
 import { overlayElementIssues, overlayElementsSchema } from "../overlays/decl";
 import { previewIssues, previewsSchema } from "./previews";
+import { MAX_ADDRESS_DECLS, returnAddressIssues, returnAddressSchema, siteAddressUseSchema } from "./addressDecl";
 
 const localized = z.union([z.string().max(500), z.record(z.string(), z.string().max(500))]);
 const methodName = z.string().regex(/^[a-zA-Z][a-zA-Z0-9_]{0,40}$/);
@@ -208,6 +210,13 @@ export const manifestSchema = z.object({
    * la garde à jour et la retire avec l'option ou l'instance. Un cœur plus ancien ignore la clé. Voir modules/shortLink.ts et managedRedirects.ts.
    */
   shortLink: shortLinkSchema.optional(),
+  /**
+   * (cœur après 0.6.1) Adresses de RETOUR (OAuth…) que la personne a enregistrées chez un service tiers, et endroits HORS du site où elle a tapé l'adresse du site : la page « Adresse du site »
+   * de l'administration les met dans la liste de contrôle d'un changement de domaine (ancienne et nouvelle adresse à copier). Lecture seule : le cœur ne contacte jamais le service tiers.
+   * AJOUT SANS DANGER : un cœur plus ancien ignore les clés, aucun `minCore` n'est à déclarer. Voir modules/addressDecl.ts.
+   */
+  returnAddresses: z.array(returnAddressSchema).max(MAX_ADDRESS_DECLS).optional(),
+  siteAddressUses: z.array(siteAddressUseSchema).max(MAX_ADDRESS_DECLS).optional(),
   instances: z.enum(["single", "multiple"]).default("multiple"),
   consumes: z.array(z.object({ topic: topicId, label: localized, schema: z.array(topicField).max(20).optional(), tags: z.boolean().optional() })).max(10).default([]),
   provides: z.array(z.object({ topic: topicId, label: localized.optional() })).max(10).default([]),
@@ -303,6 +312,13 @@ export const manifestSchema = z.object({
     frequent: z.boolean().optional(),
     fields: z.array(z.object({ key: z.string().regex(FIELD_KEY_RE), type: z.enum(["text", "number", "boolean"]).optional() }).strict()).max(JOURNAL_LIMITS.maxFields).optional(),
   }).strict()).max(JOURNAL_LIMITS.maxEvents).optional(),
+  /**
+   * (cœur après 0.6.1) Ce que le module propose au TABLEAU DE BORD : `tasks` (ce qui attend une action, avec un nombre), `quickActions` (boutons « Créer… ») et `cards` (cartes d'information de types fermés :
+   * un chiffre, ou 5 lignes au plus). Le module écrit les textes (français ET anglais), les liens d'administration et le droit requis ; le nombre et le contenu des cartes viennent de
+   * `dashboard.tasks.<id>` et `dashboard.cards.<id>` dans le code. Tout est borné et vérifié par le cœur, jamais de HTML ni de script. Un cœur plus ancien ignore la clé et un module qui la déclare
+   * marche comme avant : aucun `minCore` n'est exigé. Voir core/dashboard/spec.ts et docs/CREATE-A-MODULE.md (« Tableau de bord »).
+   */
+  dashboard: dashboardSchema.optional(),
   permissions: z.array(z.enum(["slots", "routes", "storage", "filters", "sections", "pages", "topics", "overlay", "mcp", "admin", "mail", "rawg", "privacy", "visitor.geolocation", "files"])).default([]),
   /**
    * (0.4.0) Pièces d'APPARENCE que les skins peuvent restyler, et jetons de style propres au module (préfixe `--sk-m-<module>-`). Apparence seulement : jamais de contenu ni de
@@ -345,6 +361,8 @@ export const manifestSchema = z.object({
   if (m.sitemapFromPage && !hasPage(m)) ctx.addIssue({ code: "custom", path: ["sitemapFromPage"], message: "sitemapFromPage needs a module with a public page (page: true)" });
   for (const issue of previewIssues(m.previews)) ctx.addIssue({ code: "custom", path: ["previews", ...issue.path], message: issue.message });
   for (const message of shortLinkIssues(m.shortLink, m.settings, { provides: m.provides.map((p) => p.topic) })) ctx.addIssue({ code: "custom", path: ["shortLink"], message });
+  for (const message of returnAddressIssues(m.returnAddresses)) ctx.addIssue({ code: "custom", path: ["returnAddresses"], message });
+  for (const message of dashboardIssues(m.dashboard, (m.rights ?? []).map((r) => r.id))) ctx.addIssue({ code: "custom", path: ["dashboard"], message });
   for (const message of logEventIssues(m.logEvents)) ctx.addIssue({ code: "custom", path: ["logEvents"], message });
   if (new Set((m.rights ?? []).map((r) => r.id)).size < (m.rights ?? []).length) ctx.addIssue({ code: "custom", path: ["rights"], message: "duplicate right id" });
   for (const [i, seed] of (m.seeds ?? []).entries()) {

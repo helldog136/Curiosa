@@ -40,6 +40,8 @@ type Props = {
   pendingLabel?: string;
   /** Type d'opération suivie (`install`, `restore`…) : une barre d'étapes RÉELLE s'affiche pendant l'envoi (l'action lit l'identifiant dans le champ `_op`). */
   track?: string;
+  /** Identifiant du formulaire : des champs ailleurs dans la page peuvent s'y rattacher par `form="…"` (leurs valeurs partent avec lui). */
+  id?: string;
 };
 
 /** Formulaires dont la barre est affichée en ce moment, dans l'ordre d'apparition : plusieurs barres se superposent sans se recouvrir. */
@@ -65,7 +67,7 @@ function snapshot(form: HTMLFormElement): string {
 }
 
 /** Formulaire branché sur une action serveur, avec retour d'erreur / succès. */
-export function ActionForm({ action, children, submitLabel, className = "space-y-4", hideSubmit, secondary, confirm: confirmMessage, reset = false, submitTabs, floating, pendingLabel, track }: Props) {
+export function ActionForm({ action, children, submitLabel, className = "space-y-4", hideSubmit, secondary, confirm: confirmMessage, reset = false, submitTabs, floating, pendingLabel, track, id: formId }: Props) {
   const [state, formAction, pending] = useActionState(action, null);
   const p = useProgressText();
   const tracker = useTrackedRun();
@@ -141,7 +143,7 @@ export function ActionForm({ action, children, submitLabel, className = "space-y
 
   return (
     // `data-dirty` : lu par les onglets de la page (point sur l'onglet modifié, avertissement avant de quitter par un lien).
-    <form ref={ref} method="post" onSubmit={onSubmit} className={className} data-dirty={floating && dirty ? "1" : undefined}>
+    <form id={formId} ref={ref} method="post" onSubmit={onSubmit} className={className} data-dirty={floating && dirty ? "1" : undefined}>
       <FieldErrorsProvider value={fieldErrorsValue}>{children}</FieldErrorsProvider>
       {state?.error && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm text-red-700">{state.error}</p>}
       {state?.ok && <p role="status" className="rounded-lg border border-emerald-500/50 bg-emerald-500/10 p-3 text-sm text-emerald-700">{state.ok}</p>}

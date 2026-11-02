@@ -4,7 +4,7 @@ import { findCatalogueEntry } from "./catalogue";
 import { parseRepoUrl } from "./installer";
 import { parseManifest } from "./manifest";
 import { loadPreviewImages, PREVIEW_LIMITS, type PreviewImage } from "./previews";
-import { getPreviewImages, warmModulePreview, type PreviewTarget } from "./readme";
+import { getPreviewImages, targetOf, warmModulePreview, type PreviewTarget } from "./readme";
 import { moduleDir } from "./registry";
 
 /**
@@ -53,7 +53,7 @@ export async function readInstalledPreviews(id: string, root: string = moduleDir
 export const realPreviewDeps: PreviewDeps = {
   async catalogueTarget(id) {
     const entry = await findCatalogueEntry(id, { staleOk: true });
-    return entry?.repo ? { kind: "repo", url: entry.repo, ref: entry.ref, subdir: entry.subdir } : null;
+    return entry ? targetOf(entry) : null;
   },
   repoPreview: (target) => getPreviewImages(target),
   installedImages: (id) => readInstalledPreviews(id),

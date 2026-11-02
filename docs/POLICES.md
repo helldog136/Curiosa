@@ -7,7 +7,7 @@ Cette page décrit ce que la personne qui gère le site peut faire dans **Appare
 - **Deux listes** : « Police des titres » et « Police du texte ». Chacune a une recherche en direct, des groupes (Polices du système, Sans empattement, Avec empattement, Manuscrites, Titres et affiches, Chasse fixe, Lisibilité, Mes polices), l'aperçu de chaque nom dans sa propre police et un aperçu commun (un titre, un paragraphe, du gras, de l'italique).
 - **Valeur de départ : « Celle du skin »**. Qui ne touche à rien garde exactement l'apparence d'avant.
 - **Un conseil, jamais un blocage.** Une police sans version grasse, une police d'affiche ou manuscrite choisie pour le texte, une police à chasse fixe pour un long texte : un encart « Conseil » le dit. La police choisie est **toujours** appliquée.
-- **Envoyer sa propre police** (replié) : un fichier `.woff2`, un nom facultatif, et la case obligatoire « J'ai le droit d'utiliser cette police ». Pour convertir un `.ttf` ou un `.otf` : un convertisseur en ligne « ttf vers woff2 », ou la commande `woff2_compress`.
+- **Envoyer sa propre police**, dans la section « Polices », sous les deux listes : chaque liste se termine par « Utiliser ma propre police… », qui ouvre le formulaire au même endroit (le champ fichier a le focus). Un fichier `.woff2`, `.otf` ou `.ttf` (500 Ko au plus) et la case obligatoire « J'ai le droit d'utiliser cette police » ; le nom est facultatif, sous « Plus d'options ». Les polices envoyées sont dans les deux listes, groupe « Mes polices » en tête, avec « Supprimer » sur la ligne. Un fichier trop lourd : le convertir en `.woff2` (plus léger), par un convertisseur en ligne « ttf vers woff2 » ou la commande `woff2_compress`. Depuis Réglages, le lien « Aller dans Apparence » mène à `#polices`.
 
 Les boutons (formulaires, menus) héritent de la police du texte. Le code garde la police à chasse fixe du skin (`--sk-font-mono`) : elle n'est pas proposée ici.
 
@@ -41,10 +41,12 @@ Le site n'a pas de politique de sécurité de contenu globale (ses pages portent
 
 ## Les polices envoyées
 
+**Conversion** (`src/core/fonts/sfnt.ts`) : le fichier `.ttf` ou `.otf` est lu pour de bon (signature, répertoire de tables dans le fichier et sans chevauchement, tables indispensables, `head` avec son nombre magique). Refusés : collections, ancien WOFF, dessins SVG et polices en images (bitmap), polices variables CFF2 (message dédié : les exporter en `.ttf` ou `.woff2`), contours TrueType incohérents (`loca` décroissant ou plus long que `glyf`). Les polices couleur `COLR`/`CPAL` sont acceptées (ce sont des données, sans script). On écrit alors un WOFF2 (tables `glyf` et `loca` en « transformation nulle », permise par la norme ; flux Brotli, mode police, qualité 11, par le pool de fils de Node (sans bloquer le serveur, un envoi à la fois)), qui repasse par la vérification ci-dessous, comme un envoi WOFF2. Les octets en trop après la dernière table ne sont pas recopiés. Vérifié dans Chromium : une police convertie s'affiche par `@font-face`.
+
 | Règle | Valeur |
 |---|---|
-| Format | `.woff2` seulement |
-| Taille | 150 Ko au plus par fichier |
+| Format | `.woff2`, `.otf` ou `.ttf` ; un `.otf` ou `.ttf` est **converti en WOFF2** à l'envoi, seul du WOFF2 est gardé |
+| Taille | 500 Ko au plus à l'envoi ; **150 Ko au plus pour le WOFF2 gardé** (après conversion) |
 | Nombre | 4 fichiers au plus par site (graisses et styles d'une même famille) |
 | Licence | la case « J'ai le droit d'utiliser cette police » est obligatoire (la personne engage sa licence) |
 | Qui | l'administration humaine (page Apparence). **Jamais** un assistant IA |

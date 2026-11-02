@@ -31,6 +31,11 @@ export const manifest = () => ({
     { key: "perHour", type: "number", default: 5, advanced: true, label: { en: "Messages per hour", fr: "Messages par heure" } },
   ],
   sections: [{ id: "latest", size: "small", label: { en: "Latest message", fr: "Dernier message" } }],
+  dashboard: {
+    tasks: [{ id: "unread", label: { en: "{n} messages to read", fr: "{n} messages à lire" }, href: "?tab=use" }],
+    quickActions: [{ id: "write", label: { en: "Add a message", fr: "Ajouter un message" }, href: "?tab=use" }],
+    cards: [{ id: "latest", type: "list", title: { en: "Latest messages", fr: "Derniers messages" }, empty: { en: "No message yet.", fr: "Aucun message pour le moment." } }],
+  },
   mcp: [
     { name: "full_list", readOnly: true, description: "List the latest messages, newest first.", input: { type: "object", properties: { limit: { type: "integer", minimum: 1, maximum: 50, description: "How many messages at most." } } } },
     { name: "full_remove", destructive: true, default: false, description: "Permanently delete one message.", input: { type: "object", required: ["id"], properties: { id: { type: "string", maxLength: 100, description: "Message identifier (from full_list)." } } } },
@@ -50,6 +55,10 @@ export default {
       const [last] = await rows(ctx);
       return last ? [{ type: "html", html: "<p><strong>" + esc(last.name) + "</strong> " + esc(last.text) + "</p>" }] : [{ type: "markdown", text: ctx.t("empty") }];
     },
+  },
+  dashboard: {
+    tasks: { unread: async (ctx) => (await rows(ctx)).length },
+    cards: { latest: async (ctx) => ({ rows: (await rows(ctx)).slice(0, 5).map((r) => ({ title: r.name || "?", detail: r.text })) }) },
   },
   async page(ctx, { segments }) {
     if (segments.length) return { notFound: true, blocks: [] };

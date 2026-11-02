@@ -16,13 +16,14 @@ import { prisma } from "../db";
 import { audit } from "../permissions";
 import { deleteSetting, setSetting } from "../settings";
 import { invalidateSkinCache } from "../skins/invalidate";
+import { looksLikeSfnt, sfntToWoff2, type SfntCode } from "./sfnt";
 import { checkWoff2, cleanFontName, familySlug, type FontCheckCode } from "./woff2";
 import { sanitizeUploads, uploadFileName, UPLOAD_NAME_RE } from "./registry";
 import { parseChoice, SETTING_BODY, SETTING_FILES, SETTING_HEADING, UPLOAD_LIMITS, type UploadedFont } from "./types";
 
 export { sanitizeUploads, uploadFamilies, uploadFileName, uploadUrl, uploadWeights, UPLOAD_NAME_RE } from "./registry";
 
-export type UploadErrorCode = FontCheckCode | "license" | "limit" | "duplicate" | "style" | "name" | "write";
+export type UploadErrorCode = FontCheckCode | SfntCode | "converted-large" | "license" | "limit" | "duplicate" | "style" | "name" | "write";
 
 /** Lecture directe en base : juste après une écriture, la liste lue doit être la nouvelle (jamais le cache de la requête). */
 export async function listUploads(): Promise<UploadedFont[]> {
@@ -37,34 +38,46 @@ const serial = <T>(fn: () => Promise<T>): Promise<T> => { const next = chain.the
 
 export type UploadResult = { ok: true; font: UploadedFont; detected: { weight: string; style: string; variable: boolean } } | { ok: false; code: UploadErrorCode; field: "font" | "name" | "license" };
 
-export function addUpload(input: { bytes: Buffer; name?: string; accepted: boolean; actor: string; dir?: string }): Promise<UploadResult> {
+export function addUpload(input: { bytes: Buffer; name?: string; accepted: boolean; actor: string; dir?: string; /** Pour les tests : remplace l'écriture du fichier ou celle de la liste, afin de simuler une panne. */ deps?: { write?: (file: string, bytes: Buffer) => void; save?: (list: UploadedFont[]) => Promise<void> } }): Promise<UploadResult> {
   return serial(async () => {
     const fail = (code: UploadErrorCode, field: "font" | "name" | "license" = "font"): UploadResult => ({ ok: false, code, field });
     if (!input.accepted) return fail("license", "license");
     const dir = input.dir ?? FONTS_DIR;
-    const check = checkWoff2(input.bytes);
+    // .ttf et .otf : convertis en WOFF2 (docs/POLICES.md), puis le résultat est revérifié comme un envoi WOFF2 ; seul le WOFF2 est gardé.
+    let bytes = input.bytes;
+    if (bytes.length > UPLOAD_LIMITS.maxInputBytes) return fail("too-large");
+    if (looksLikeSfnt(bytes) && bytes.readUInt32BE(0) !== 0x774f4646) {
+      const c = await sfntToWoff2(bytes);
+      if (!c.ok) return fail(c.code);
+      if (c.woff2.length > UPLOAD_LIMITS.maxBytes) return fail("converted-large");
+      bytes = c.woff2;
+    }
+    const check = checkWoff2(bytes);
     if (!check.ok) return fail(check.code);
     const typed = cleanFontName(input.name ?? "");
     if ((input.name ?? "").trim() !== "" && typed === "") return fail("name", "name");
     const family = typed || check.family;
     const slug = familySlug(family);
     if (!family || !slug) return fail("name", "name");
-    const id = crypto.createHash("sha256").update(input.bytes).digest("hex").slice(0, 16);
+    const id = crypto.createHash("sha256").update(bytes).digest("hex").slice(0, 16);
     const list = await listUploads();
     if (list.some((f) => f.id === id)) return fail("duplicate");
     if (list.length >= UPLOAD_LIMITS.maxFiles) return fail("limit");
     if (list.some((f) => f.slug === slug && f.weight === check.weight && f.style === check.style)) return fail("style");
     // La famille garde un seul nom d'affichage : celui de la première graisse envoyée.
     const known = list.find((f) => f.slug === slug);
-    const font: UploadedFont = { id, family: known?.family ?? family, slug, weight: check.weight, style: check.style, bytes: input.bytes.length, addedAt: new Date().toISOString() };
+    const font: UploadedFont = { id, family: known?.family ?? family, slug, weight: check.weight, style: check.style, bytes: bytes.length, addedAt: new Date().toISOString() };
+    const target = path.join(dir, uploadFileName(id));
+    const tmp = `${target}.${process.pid}.tmp`;
     try {
       fs.mkdirSync(dir, { recursive: true });
-      const target = path.join(dir, uploadFileName(id));
-      const tmp = `${target}.${process.pid}.tmp`;
-      fs.writeFileSync(tmp, input.bytes, { mode: 0o640 });
+      (input.deps?.write ?? ((f, b) => fs.writeFileSync(f, b, { mode: 0o640 })))(tmp, bytes);
       fs.renameSync(tmp, target);
-    } catch { return fail("write"); }
-    await setSetting(SETTING_FILES, [...list, font]);
+    } catch { fs.rmSync(tmp, { force: true }); return fail("write"); } // disque plein : aucun reste
+    try { await (input.deps?.save ?? ((l) => setSetting(SETTING_FILES, l)))([...list, font]); } catch {
+      fs.rmSync(target, { force: true }); // la liste n'a pas pu être écrite : le fichier n'a pas de raison de rester
+      return fail("write");
+    }
     invalidateSkinCache();
     await audit(input.actor, "appearance.font.add", `${font.family} ${font.weight} ${font.style}`);
     return { ok: true, font, detected: { weight: check.weight, style: check.style, variable: check.variable } };

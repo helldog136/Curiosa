@@ -252,6 +252,8 @@ jamais échouer la requête si l'e-mail échoue — c'est exactement l'ordre de 
 
 **Compter les clics de vos boutons.** Si votre page écrit un bouton vers une adresse extérieure (réseau, boutique, don), passez-la par `await ctx.api.links.measured(url)` : quand la personne qui gère le site a activé « Compter les clics sur mes liens » et qu'elle a un lien court actif vers cette adresse, le bouton passe par ce lien court (ses statistiques comptent alors le clic, sans rien suivre de la personne) ; sinon vous récupérez `url` telle quelle. Aucune permission, ne lève jamais. Utilisez `{ absolute: true }` pour un e-mail ou un flux. Cœur après 0.5.0 (`minCore`). Les boutons de réseaux déclarés par le sujet `social.link` sont déjà traités par le cœur : n'appelez rien pour eux.
 
+**Déclarer ses adresses de retour.** Si votre module a donné une adresse du site à un service tiers (retour OAuth) ou demande à la personne de la saisir ailleurs, déclarez-le : `"returnAddresses": [{ "path": "/m/{instance}/oauth/callback", "label": "Twitch" }]` et `"siteAddressUses": [{ "label": "Mon application", "where": "Réglages, Adresse" }]`. La page *Adresse du site* du cœur les met dans la liste de contrôle d'un changement de domaine. Un cœur plus ancien ignore les clés. Détail : MODULES.md, « Adresses données à un service tiers ».
+
 **Demander une adresse courte.** Les redirections appartiennent au cœur : votre module ne les écrit pas, il en **demande une** dans son `module.json`, sans code : `"shortLink": { "enabled": "createShortLink", "name": "shortLinkName", "default": "discord", "target": "social.link" }` (un réglage oui/non éteint par défaut, un réglage texte rare pour le nom, et la destination : le bouton de votre réseau ou un réglage `url`). Le cœur crée l'adresse **seulement si le nom est libre**, ne touche jamais un lien de la personne, la garde à jour quand votre adresse change et la retire avec l'option ou l'instance ; elle s'affiche dans *Raccourcis de liens* avec une pastille « Extension X ». Un cœur plus ancien ignore la clé. Détail : MODULES.md, « Adresse courte demandée par le module ».
 
 **Limiter les envois par personne.** Ne lisez jamais `X-Forwarded-For` vous-même (son début est écrit par la personne qui visite) : `const who = ctx.api.visitor.fingerprint(request, "envoi")` donne une empreinte salée et non réversible de la personne qui visite (jamais son adresse), à compter dans une table bornée. Cœur 0.2.6 (`minCore`), aucune permission. Détails : [MODULES.md](MODULES.md).
@@ -474,6 +476,53 @@ await ctx.api.log?.write({ action: "command.run", target: "!discord", data: { na
 ### Phase 2 (préparée, pas encore faite) : migrer ses journaux propres
 
 Les journaux propres aux modules (Bot Twitch, Participation, Home Assistant, Sondages, journal des échanges de récompenses) restent en place : **rien n'est migré dans cette version**. Le guide pas à pas est dans `docs/MIGRER-SON-JOURNAL.md`.
+
+## 12 quater. Se montrer au tableau de bord (`dashboard`)
+
+Le tableau de bord de l'administration dit à la personne **ce qui attend une action**, **ce qui s'est passé**, de quoi **créer** quelque chose et quelques chiffres utiles. Votre module peut y apporter trois choses, toutes **facultatives**, en les déclarant dans `module.json` :
+
+```json
+"rights": [{ "id": "moderate", "label": { "fr": "Valider les avis", "en": "Approve reviews" } }],
+"dashboard": {
+  "tasks": [
+    { "id": "pending", "label": { "fr": "{n} avis à valider", "en": "{n} reviews to approve" }, "href": "?tab=pending", "right": "moderate" }
+  ],
+  "quickActions": [
+    { "id": "write", "label": { "fr": "Écrire un avis", "en": "Write a review" }, "href": "/admin/entries/new?c={key}" }
+  ],
+  "cards": [
+    { "id": "latest", "type": "list", "title": { "fr": "Derniers avis", "en": "Latest reviews" }, "href": "?tab=all",
+      "empty": { "fr": "Aucun avis pour le moment.", "en": "No reviews yet." } },
+    { "id": "average", "type": "counter", "title": { "fr": "Note moyenne", "en": "Average rating" } }
+  ]
+}
+```
+
+```js
+export default {
+  dashboard: {
+    tasks: {
+      async pending(ctx) { return (await ctx.api.store.list("reviews")).filter((r) => r.data.status === "pending").length; }, // un nombre
+    },
+    cards: {
+      async latest(ctx) {                                    // type « list » : 5 lignes au plus
+        const rows = (await ctx.api.store.list("reviews")).slice(0, 5);
+        return { rows: rows.map((r) => ({ title: r.data.author, detail: r.data.text, href: `?tab=all&open=${r.id}` })) };
+      },
+      async average(ctx) { return { value: "4,6 / 5", detail: "sur 128 avis" }; },   // type « counter »
+    },
+  },
+};
+```
+
+- **Trois sortes, des types fermés.** `tasks` (un nombre, un lien, « Ouvrir → »), `quickActions` (un bouton « Créer… », aucun code), `cards` (`counter` ou `list`, rien d'autre). Jamais de HTML, de style ni de script : le cœur choisit l'ordre et la place, et affiche votre texte tel quel (échappé).
+- **Des mots de la personne, en français ET en anglais.** Un libellé de tâche dit ce qu'il y a à faire avec `{n}` (« {n} avis à valider »), un bouton commence par un verbe (« Programmer un stream »). Mêmes règles que le reste de l'administration (`docs/ERGONOMIE-ADMIN.md`).
+- **Les liens restent dans l'administration.** `?tab=pending` ouvre la page de l'instance sur cet onglet ; `/admin/entries/new?c={key}` une page du cœur. Seuls `{id}` et `{key}` (l'instance) sont permis ; tout autre lien rend le manifeste invalide.
+- **Les droits.** `right` est un droit local déclaré dans `rights` (le cœur ajoute votre identifiant). Sans `right`, c'est « ouvrir la page du module ». Une rédaction ne voit pas ce qu'elle ne peut pas ouvrir, et votre code n'est même pas appelé pour elle.
+- **Rapide, par construction.** Le cœur appelle votre code **quand quelqu'un regarde le tableau de bord**, jamais en tâche de fond, avec **1,5 seconde au plus** et une réponse gardée 20 secondes. Lisez une donnée déjà prête (un compteur du stockage, le nombre de lignes d'un état), **jamais un service externe** : si votre code est lent ou échoue, seul votre module disparaît du tableau de bord. Mettez dans les tâches ce qui demande un geste, pas des statistiques ; dans les cartes, un chiffre ou cinq lignes qui aident à décider.
+- **Plusieurs instances.** Votre module est interrogé pour chacune (5 au plus) ; si elles sont plusieurs, le cœur ajoute le nom de l'instance au libellé.
+- **Ancien cœur.** La clé est ignorée : votre module marche comme avant. Pas de `minCore` à déclarer.
+- **Tester.** `fakeCtx` suffit (`dashboard.tasks.pending(fakeCtx({ … }))`) ; l'exigence `dashboard.valid` du kit (`npm run module:check`) vérifie les déclarations, les droits, les liens et la forme des réponses. Référence : `docs/MODULES.md` (« Tableau de bord »).
 
 ## 13. Sauvegarde lisible
 

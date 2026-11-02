@@ -31,13 +31,15 @@
 #   --skip-proxy      do not touch the web server (HTTPS): the site only listens locally
 #   --uninstall       stop the site and undo the added configuration (keeps the folder and the data)
 #   --purge           with --uninstall: also delete the folder and the user (typed confirmation, backup made first)
+#   --change-domain DOMAIN  change the domain of an installed site (with --site): a PLAN by default, nothing is changed
+#   --apply           with --change-domain: do it (backups, our web server file, .env, restart); only files marked "Géré par install-curiosa"
 #   --lang fr|en      language of the messages (see above)
 #   --help
 #
 # The script can be resumed: run again after a failure, it detects what is done and goes on.
 # Le script est reprenable : relancé après un échec, il détecte ce qui est fait et continue.
 # Exit codes / Codes de sortie : 0 done ; 1 stopped on an error (nothing broken, see the message) ; 2 unknown option
-# or language ; 10 installed, but the public address does not answer yet (DNS, firewall, certificate: see the last page).
+# or language ; 10 installed (or domain changed), but the public address does not answer yet or a manual step remains (DNS, firewall, certificate: see the last page).
 #
 # Where the texts live / Où sont les textes : every sentence shown to the person is in a catalogue at the end of this
 # file (catalog_en, catalog_fr), one line per message: « key text with {1} {2} placeholders ». The code only uses keys.
@@ -65,7 +67,7 @@ LANGS="en fr"
 WIZARD_LANG=fr
 
 SITE="" DOMAIN="" SITE_USER="" PORT="" DIR="" TAG="" NO_DOMAIN=0
-YES=0 DRY=0 SKIP_DNS=0 SKIP_PROXY=0 UNINSTALL=0 PURGE=0
+YES=0 DRY=0 SKIP_DNS=0 SKIP_PROXY=0 UNINSTALL=0 PURGE=0 APPLY=0 CHANGE_DOMAIN=""
 LANG_OPT="" LANG_CODE="" LANG_AMBIGUOUS=0
 CAT_CUR="" CAT_EN="" MSG="" RAW=""
 
@@ -251,6 +253,8 @@ parse_args() {
       --skip-proxy) SKIP_PROXY=1; shift ;;
       --uninstall) UNINSTALL=1; shift ;;
       --purge) PURGE=1; shift ;;
+      --change-domain) need_value "$@"; CHANGE_DOMAIN="$2"; shift 2 ;;
+      --apply) APPLY=1; shift ;;
       --help|-h) usage; exit 0 ;;
       *) _render opt.unknown "$1"; printf '%s\n' "$MSG" >&2; exit 2 ;;
     esac
@@ -333,6 +337,173 @@ do_uninstall() {
   mkdir -p "$(dirname "$backup")"; (umask 077; tar -czf "$backup" -C "$(rp "$DIR")" --ignore-failed-read data .env 2>/dev/null) || fail un.backup_failed
   rm -rf -- "${ROOT}${DIR:?}"; userdel "$SITE_USER" >/dev/null 2>&1 || true
   ok un.purged "$backup"
+}
+
+# ─── Changer de domaine (--change-domain) ───────────────────────────────────────────────────────────────────────────
+# Par défaut : un PLAN, rien n'est modifié. Avec --apply : sauvegarde du .env et des configurations, nouveau domaine dans .env (SITE_URL), ancien domaine ajouté à LEGACY_HOSTS (le site
+# le redirige lui-même vers le nouveau), configuration du serveur web QUE CE SCRIPT A ÉCRITE (marque « Géré par install-curiosa ») mise à jour, redémarrage. Une configuration
+# qui n'est pas la nôtre n'est jamais modifiée : on dit quoi y changer. Voir docs/MIGRER-DOMAINE.md.
+valid_domain() { # le nom est-il un nom de domaine public ?
+  printf '%s' "$1" | grep -Eq '^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{1,62}$' || return 1
+  case "$1" in *.localhost|*.local|*.internal|*.lan|*.home|*.home.arpa|*.corp|*.intranet|*.test|*.invalid|*.example) return 1 ;; esac
+  return 0
+}
+env_value() { # env_value FICHIER CLÉ -> la valeur, sans guillemets
+  sed -n "s/^$2=//p" "$1" 2>/dev/null | head -n1 | sed -E 's/^"(.*)"$/\1/'
+}
+set_env_value() { # set_env_value FICHIER CLÉ VALEUR : remplace la ligne CLÉ=… ou l'ajoute à la fin ; propriétaire et droits du fichier inchangés
+  local f="$1" k="$2" v="$3" tmp; tmp=$(mktemp)
+  awk -v k="$k" -v v="$v" 'BEGIN { done = 0 } index($0, k "=") == 1 { print k "=\"" v "\""; done = 1; next } { print } END { if (!done) print k "=\"" v "\"" }' "$f" >"$tmp"
+  cat "$tmp" >"$f"; rm -f -- "$tmp"
+}
+cd_backup() { # cd_backup FICHIER : copie datée à côté du fichier
+  local bak; bak="$1.avant-$(date +%Y%m%d-%H%M%S)"; cp -p -- "$1" "$bak"; CD_LAST_BACKUP="$bak"; info x.backup "$bak"
+}
+
+do_change_domain() {
+  STEP=step.change
+  local new old old_url cur d m envf names h
+  new=$(printf '%s' "$CHANGE_DOMAIN" | tr 'A-Z' 'a-z' | sed -E 's#^https?://##; s#/.*$##; s#\.$##')
+  [ -n "$SITE" ] || fail cd.site
+  valid_domain "$new" || fail cd.domain_bad "$new"
+  title cd.title "$SITE" "$new"
+  [ "$(id -u)" -eq 0 ] || [ -n "$ROOT" ] || fail cd.root "$SITE" "$new"
+  [ -n "$DIR" ] || DIR="/var/www/$SITE"
+  d="$(rp "$DIR")"; m="$d/$MARKER_NAME"; envf="$d/.env"
+  [ -f "$m" ] && [ "$(marker_get "$m" site)" = "$SITE" ] || fail cd.notfound "$SITE" "$DIR"
+  PORT=$(marker_get "$m" port); [ -n "$PORT" ] || PORT=3000
+  [ -f "$envf" ] || fail cd.noenv "$DIR"
+  old_url=$(env_value "$envf" SITE_URL)
+  case "$old_url" in
+    https://*) old="${old_url#https://}"; old="${old%%/*}" ;;
+    *) fail cd.nodomain "$SITE" "$old_url" ;;
+  esac
+  [ "$old" != "$new" ] || fail cd.same "$new"
+  ok cd.current "$old"
+
+  # anciens domaines déjà redirigés + celui-ci : dix au plus, sans doublon, jamais le nouveau
+  cur=$(env_value "$envf" LEGACY_HOSTS)
+  LEGACY_NEW="$old"
+  for h in $(printf '%s' "$cur" | tr 'A-Z,;' 'a-z  '); do
+    [ "$h" != "$new" ] || continue
+    case ",$LEGACY_NEW," in *",$h,"*) continue ;; esac
+    valid_domain "$h" || continue
+    LEGACY_NEW="$LEGACY_NEW,$h"
+  done
+  LEGACY_NEW=$(printf '%s' "$LEGACY_NEW" | cut -d, -f1-10)
+  names="$new $(printf '%s' "$LEGACY_NEW" | tr ',' ' ')"
+  CERT_ARGS=""; for h in $names; do CERT_ARGS="$CERT_ARGS -d $h"; done
+
+  # DNS du nouveau domaine
+  DNS_OK=1; local ips="${CURIOSA_DOMAIN_IP:-}" pub=""
+  [ -n "$ips" ] || ips=$(resolve_v4 "$new")
+  [ "$ips" = none ] && ips=""
+  pub=$(public_ip || true)
+  if [ -z "$ips" ]; then DNS_OK=0; warn s.dns_none "$new"
+  elif [ -z "$pub" ]; then warn s.dns_noip "$ips"
+  else case " $ips " in *" $pub "*) ok s.dns_ok "$new" "$pub" ;; *) DNS_OK=0; warn s.dns_other "$new" "$ips" "$pub" ;; esac; fi
+
+  # ce qui est à nous, ce qui ne l'est pas
+  local nginx_conf="" apache_conf="" caddy_conf="" f foreign=0
+  for f in "$(rp /etc/nginx/sites-available/$SITE.conf)" "$(rp /etc/nginx/conf.d/$SITE.conf)"; do
+    [ -f "$f" ] || continue
+    if grep -q '^# Géré par install-curiosa' "$f"; then nginx_conf="$f"; else warn x.conf_foreign "$f"; foreign=1; fi
+  done
+  f="$(rp /etc/apache2/sites-available/$SITE.conf)"
+  if [ -f "$f" ]; then if grep -q '^# Géré par install-curiosa' "$f"; then apache_conf="$f"; else warn x.conf_foreign "$f"; foreign=1; fi; fi
+  f="$(rp /etc/caddy/sites/$SITE.caddy)"
+  if [ -f "$f" ]; then if grep -q '^# Géré par install-curiosa' "$f"; then caddy_conf="$f"; else warn x.conf_foreign "$f"; foreign=1; fi; fi
+  local proxy_kind=""
+  if [ -n "$nginx_conf" ]; then proxy_kind=nginx; elif [ -n "$apache_conf" ]; then proxy_kind=apache; elif [ -n "$caddy_conf" ]; then proxy_kind=caddy; fi
+  if [ "$foreign" -eq 0 ] && [ -z "$proxy_kind" ]; then info cd.no_proxy; fi
+
+  title cd.plan
+  info cd.plan_env "$envf" "$old_url" "https://$new"
+  info cd.plan_legacy "$LEGACY_NEW"
+  [ -n "$nginx_conf" ] && info cd.plan_proxy "$nginx_conf" "$names"
+  [ -n "$apache_conf" ] && info cd.plan_proxy "$apache_conf" "$names"
+  [ -n "$caddy_conf" ] && info cd.plan_proxy "$caddy_conf" "$names"
+  [ "$foreign" -eq 1 ] && info cd.plan_foreign
+  case "$proxy_kind" in nginx|apache) info cd.plan_cert "sudo certbot --$proxy_kind$CERT_ARGS" ;; caddy) info cd.plan_cert_caddy ;; esac
+  info cd.plan_restart "$SITE"
+
+  if [ "$APPLY" -ne 1 ] || [ "$DRY" -eq 1 ]; then
+    blank; say cd.dry "$B" "$N" "$SITE" "$new"
+    return 0
+  fi
+
+  [ "$DNS_OK" -eq 1 ] || [ "$SKIP_DNS" -eq 1 ] || { sub s.dns_howto "$new" "${pub:-$(t s.dns_this_ip)}"; fail cd.dns_stop "$new"; }
+  if [ "$YES" -eq 0 ]; then consent cd.go "$old" "$new" || { say c.stop; exit 0; }; fi
+  LOG="$(rp /var/log)/curiosa-change-domain-$SITE.log"
+  mkdir -p "$(dirname "$LOG")"; ( umask 077; : >>"$LOG" )
+
+  # 1. le serveur web (si l'un de nos fichiers) : sauvegarde, nouveau nom, test, retour arrière au moindre refus
+  CD_MANUAL=0
+  STEP=step.proxy
+  if [ -n "$nginx_conf" ]; then
+    cd_backup "$nginx_conf"; local bak="$CD_LAST_BACKUP"
+    sed -i -E "s/^([[:space:]]*server_name[[:space:]]+).*;/\\1$names;/" "$nginx_conf"
+    if ! nginx -t >>"$LOG" 2>&1; then mv -- "$bak" "$nginx_conf"; tail -n 8 "$LOG" >&2; fail x.nginx_refused; fi
+    if systemctl is-active --quiet nginx 2>/dev/null; then systemctl reload nginx; fi
+    ok cd.proxy_done "$nginx_conf"
+  elif [ -n "$apache_conf" ]; then
+    cd_backup "$apache_conf"; local abak="$CD_LAST_BACKUP" aliases=""
+    for h in $(printf '%s' "$LEGACY_NEW" | tr ',' ' '); do aliases="$aliases\\n    ServerAlias $h"; done
+    sed -i -E "/^[[:space:]]*ServerAlias /d; s/^([[:space:]]*)ServerName .*/\\1ServerName $new$aliases/" "$apache_conf"
+    if ! apachectl configtest >>"$LOG" 2>&1; then mv -- "$abak" "$apache_conf"; tail -n 8 "$LOG" >&2; fail x.apache_refused; fi
+    systemctl reload apache2 || true
+    ok cd.proxy_done "$apache_conf"
+    [ -f "$(rp /etc/apache2/sites-available/$SITE-le-ssl.conf)" ] && { warn cd.apache_ssl "$SITE-le-ssl.conf"; CD_MANUAL=1; }
+  elif [ -n "$caddy_conf" ]; then
+    cd_backup "$caddy_conf"; local cbak="$CD_LAST_BACKUP"
+    { proxy_marker; printf '%s {\n    reverse_proxy 127.0.0.1:%s\n}\n' "$(printf '%s' "$names" | sed 's/ /, /g')" "$PORT"; } >"$caddy_conf"
+    if have caddy && ! caddy validate --config "$(rp /etc/caddy/Caddyfile)" >>"$LOG" 2>&1; then mv -- "$cbak" "$caddy_conf"; tail -n 8 "$LOG" >&2; fail x.caddy_refused; fi
+    systemctl reload caddy || systemctl restart caddy || true
+    ok cd.proxy_done "$caddy_conf"
+  fi
+  [ "$foreign" -eq 0 ] || { warn cd.foreign_todo "$names" "$PORT"; CD_MANUAL=1; }
+
+  # 2. le fichier de réglages du site
+  STEP=step.env
+  cd_backup "$envf"
+  set_env_value "$envf" SITE_URL "https://$new"
+  set_env_value "$envf" LEGACY_HOSTS "$LEGACY_NEW"
+  ok cd.env_done "https://$new" "$LEGACY_NEW"
+
+  # 3. redémarrage du site (il relit son fichier de réglages)
+  STEP=step.unit
+  local u; u="$(unit_path "$SITE")"
+  if [ -f "$u" ] && grep -q '^# Géré par install-curiosa' "$u"; then
+    systemctl restart "$SITE.service" >>"$LOG" 2>&1 || fail cd.restart_failed "$SITE"
+    ok cd.restarted "$SITE"
+  else
+    warn cd.restart_manual "$SITE"; CD_MANUAL=1
+  fi
+
+  # 4. certificat (Caddy l'obtient seul ; nginx et Apache : certbot, avec votre accord)
+  STEP=step.public
+  case "$proxy_kind" in
+    nginx|apache)
+      local hint="sudo certbot --$proxy_kind$CERT_ARGS"
+      if [ "$DNS_OK" -eq 0 ]; then info cd.cert_dns "$hint"; CD_MANUAL=1
+      elif have certbot; then
+        if consent cd.cert_ask "$hint"; then
+          # shellcheck disable=SC2086  # CERT_ARGS est une suite d'options « -d nom » voulue
+          if certbot "--$proxy_kind" $CERT_ARGS --non-interactive --redirect --expand >>"$LOG" 2>&1; then ok cd.cert_ok; else warn cd.cert_failed "$hint"; CD_MANUAL=1; fi
+        else info cd.cert_hint "$hint"; CD_MANUAL=1; fi
+      else info cd.cert_hint "$hint"; CD_MANUAL=1; fi ;;
+    caddy) info cd.cert_caddy ;;
+  esac
+
+  # 5. le site répond-il à sa nouvelle adresse ?
+  local url="${CURIOSA_VERIFY_URL:-https://$new/api/health}" public=1
+  if [ "$proxy_kind" = "" ]; then public=0
+  elif ! wait_http "$url" 30; then public=0; fi
+  blank
+  if [ "$public" -eq 1 ] && [ "$CD_MANUAL" -eq 0 ]; then say cd.done "$B" "$N" "$new"; else say cd.done_todo "$B" "$N" "$new"; fi
+  bullet cd.next_check "$new"
+  bullet cd.next_docs
+  [ "$public" -eq 1 ] && [ "$CD_MANUAL" -eq 0 ] || exit 10
 }
 
 # ─── Phase A : constater l'environnement (lecture seule) ────────────────────────────────────────────────────────────
@@ -884,12 +1055,17 @@ main() {
   if [ "$LANG_AMBIGUOUS" -eq 1 ] && [ "$YES" -eq 0 ] && interactive && [ -t 1 ]; then ask_lang; fi
   check_urls
   say m.title "$B" "$N"
+  if [ -n "$CHANGE_DOMAIN" ] && [ "$UNINSTALL" -eq 1 ]; then _render m.change_alone; printf '%s\n' "$MSG" >&2; exit 2; fi
   if [ "$UNINSTALL" -eq 1 ]; then
     [ "$(id -u)" -eq 0 ] || [ -n "$ROOT" ] || fail m.uninstall_root
     [ -n "$SITE" ] || fail m.uninstall_site
     do_uninstall; return 0
   fi
   [ "$PURGE" -eq 0 ] || fail m.purge_alone
+  if [ -n "$CHANGE_DOMAIN" ]; then
+    do_change_domain; return 0
+  fi
+  [ "$APPLY" -eq 0 ] || { _render m.apply_alone; printf '%s\n' "$MSG" >&2; exit 2; }
   phase_detect
   phase_ask
   phase_plan
@@ -1248,13 +1424,66 @@ help.18   --skip-dns-check  ne pas s'arrêter si le DNS du domaine ne pointe pas
 help.19   --skip-proxy      ne pas toucher au serveur web (HTTPS) : le site n'écoute qu'en local
 help.20   --uninstall       arrêter le site et défaire la configuration ajoutée (garde le dossier et les données)
 help.21   --purge           avec --uninstall : supprimer aussi le dossier et l'utilisateur (confirmation tapée, sauvegarde faite avant)
-help.22   --lang fr|en      langue des messages (sinon : variable CURIOSA_LANG, puis LC_ALL / LC_MESSAGES / LANG ; à défaut, anglais)
-help.23   --help
-help.24
-help.25 Le script est reprenable : relancé après un échec, il détecte ce qui est fait et continue.
-help.26 Codes de sortie : 0 terminé ; 1 arrêté sur une erreur (rien de cassé, voir le message) ; 2 option ou langue inconnue ;
-help.27 10 installé, mais l'adresse publique ne répond pas encore (DNS, pare-feu, certificat : voir le message final).
-help.28 Codes de sortie, options et fichiers écrits sont les mêmes dans toutes les langues.
+help.22   --change-domain DOMAINE  changer le domaine d'un site déjà installé (avec --site) : par défaut un plan, rien n'est modifié
+help.23   --apply          avec --change-domain : faire le changement (sauvegardes, serveur web écrit par ce script, .env, redémarrage)
+help.24   --lang fr|en      langue des messages (sinon : variable CURIOSA_LANG, puis LC_ALL / LC_MESSAGES / LANG ; à défaut, anglais)
+help.25   --help
+help.26
+help.27 Le script est reprenable : relancé après un échec, il détecte ce qui est fait et continue.
+help.28 Codes de sortie : 0 terminé ; 1 arrêté sur une erreur (rien de cassé, voir le message) ; 2 option ou langue inconnue ;
+help.29 10 installé, mais l'adresse publique ne répond pas encore (DNS, pare-feu, certificat : voir le message final).
+help.30 Codes de sortie, options et fichiers écrits sont les mêmes dans toutes les langues.
+step.change changement de domaine
+m.change_alone --change-domain ne s'utilise pas avec --uninstall.
+m.apply_alone --apply s'utilise avec --change-domain.
+m.apply_alone.fix relancez avec --change-domain NOUVEAU-DOMAINE --site NOM --apply.
+cd.site Il manque le nom du site dont il faut changer le domaine.
+cd.site.fix ajoutez --site NOM.
+cd.domain_bad « {1} » n'est pas un nom de domaine public valable (pas d'adresse numérique, ni « localhost », ni nom de réseau privé).
+cd.domain_bad.fix écrivez par exemple  --change-domain monsite.be
+cd.root Ce script doit être lancé avec les droits d'administration.
+cd.root.fix relancez avec : sudo bash install.sh --site {1} --change-domain {2}
+cd.notfound Je ne trouve pas d'installation « {1} » faite par ce script dans {2}.
+cd.notfound.fix vérifiez --site et --dir ; je ne touche qu'à ce que j'ai installé moi-même.
+cd.noenv Le fichier de réglages (.env) est introuvable dans {1}.
+cd.noenv.fix restaurez-le depuis une sauvegarde, puis relancez.
+cd.nodomain Le site « {1} » n'a pas de domaine public (adresse actuelle : {2}) : il n'y a rien à changer.
+cd.nodomain.fix pour lui donner un domaine, relancez l'installation avec --domain.
+cd.same Le site utilise déjà le domaine {1}.
+cd.same.fix choisissez un autre domaine.
+cd.title Changer le domaine de « {1} » en {2}
+cd.current Domaine actuel : {1}
+cd.plan Ce qui serait fait
+cd.plan_env Dans {1} : SITE_URL passe de {2} à {3}.
+cd.plan_legacy Anciens domaines redirigés vers le nouveau (LEGACY_HOSTS) : {1}
+cd.plan_proxy Dans {1} : les noms du site deviennent  {2}
+cd.plan_foreign Une configuration qui n'est pas à moi existe : je n'y touche pas, je dirai quoi y changer.
+cd.plan_cert Certificat HTTPS, avec votre accord : {1}
+cd.plan_cert_caddy Certificat HTTPS : Caddy le demande seul.
+cd.plan_restart Redémarrage du service {1}.
+cd.no_proxy Aucune configuration de serveur web écrite par ce script : seul le fichier de réglages est changé.
+cd.dry {1}Rien n'a été modifié.{2} Pour appliquer le changement du site {3} vers {4}, relancez la même commande en ajoutant --apply.
+cd.dns_stop Le DNS de {1} ne pointe pas (encore) vers ce serveur : le certificat HTTPS ne pourrait pas être obtenu.
+cd.dns_stop.fix corrigez l'enregistrement A et attendez la propagation ; ou ajoutez --skip-dns-check pour changer quand même. Rien n'a été modifié.
+cd.go Changer le domaine de {1} à {2} (sauvegardes faites avant, redémarrage du site)
+cd.proxy_done Serveur web mis à jour : {1}
+cd.apache_ssl Le fichier {1} (HTTPS) n'est pas à moi : remplacez-y l'ancien nom par le nouveau, ou relancez certbot.
+cd.foreign_todo Dans la configuration qui n'est pas à moi, faites répondre le serveur web aux noms  {1}  en envoyant le trafic vers http://127.0.0.1:{2}
+cd.env_done Fichier de réglages mis à jour : SITE_URL={1}  LEGACY_HOSTS={2}
+cd.restarted Service {1} redémarré.
+cd.restart_failed Le service {1} n'a pas redémarré.
+cd.restart_failed.fix regardez  sudo journalctl -u {1} -n 40 --no-pager  ; l'ancien .env est sauvegardé à côté (.env.avant-…).
+cd.restart_manual Le service {1} n'est pas à moi : redémarrez le site vous-même pour qu'il relise son fichier de réglages.
+cd.cert_dns Le DNS ne pointe pas encore vers ce serveur. Une fois à jour, lancez : {1}
+cd.cert_ask Obtenir le certificat HTTPS maintenant avec : {1}
+cd.cert_ok Certificat HTTPS obtenu pour tous les noms.
+cd.cert_failed Certbot n'a pas pu obtenir le certificat. Lancez vous-même : {1}
+cd.cert_hint Certificat HTTPS à obtenir (nginx et Apache ne le font pas seuls) : {1}
+cd.cert_caddy Le certificat HTTPS du nouveau nom est demandé par Caddy tout seul.
+cd.done {1}Domaine changé{2} : le site répond maintenant sur https://{3}
+cd.done_todo {1}Domaine changé, mais il reste des choses à faire{2} pour https://{3} (voir plus haut).
+cd.next_check Ouvrez l'administration en mode avancé : Réglages du site, Adresse du site, « Après le changement » (https://{1}/admin/settings/address/after).
+cd.next_docs Clés d'accès, adresses de retour chez les services tiers, OBS : voir docs/MIGRER-DOMAINE.md.
 CATALOG_FR
 }
 
@@ -1589,13 +1818,66 @@ help.18   --skip-dns-check  do not stop if the domain does not point (yet) to th
 help.19   --skip-proxy      do not touch the web server (HTTPS): the site only listens locally
 help.20   --uninstall       stop the site and undo the added configuration (keeps the folder and the data)
 help.21   --purge           with --uninstall: also delete the folder and the user (typed confirmation, backup made first)
-help.22   --lang fr|en      language of the messages (otherwise: CURIOSA_LANG variable, then LC_ALL / LC_MESSAGES / LANG; else English)
-help.23   --help
-help.24
-help.25 The script can be resumed: run again after a failure, it detects what is done and goes on.
-help.26 Exit codes: 0 done; 1 stopped on an error (nothing broken, see the message); 2 unknown option or language;
-help.27 10 installed, but the public address does not answer yet (DNS, firewall, certificate: see the last message).
-help.28 Exit codes, options and written files are the same in every language.
+help.22   --change-domain DOMAIN  change the domain of an already installed site (with --site): a plan by default, nothing is changed
+help.23   --apply          with --change-domain: do the change (backups, web server file written by this script, .env, restart)
+help.24   --lang fr|en      language of the messages (otherwise: CURIOSA_LANG variable, then LC_ALL / LC_MESSAGES / LANG; else English)
+help.25   --help
+help.26
+help.27 The script can be resumed: run again after a failure, it detects what is done and goes on.
+help.28 Exit codes: 0 done; 1 stopped on an error (nothing broken, see the message); 2 unknown option or language;
+help.29 10 installed, but the public address does not answer yet (DNS, firewall, certificate: see the last message).
+help.30 Exit codes, options and written files are the same in every language.
+step.change changing the domain
+m.change_alone --change-domain is not used together with --uninstall.
+m.apply_alone --apply is used together with --change-domain.
+m.apply_alone.fix run again with --change-domain NEW-DOMAIN --site NAME --apply.
+cd.site The name of the site whose domain must change is missing.
+cd.site.fix add --site NAME.
+cd.domain_bad "{1}" is not a valid public domain name (no numeric address, no "localhost", no private network name).
+cd.domain_bad.fix write for example  --change-domain mysite.com
+cd.root This script must be run with administrator rights.
+cd.root.fix run again with: sudo bash install.sh --site {1} --change-domain {2}
+cd.notfound I cannot find an installation "{1}" made by this script in {2}.
+cd.notfound.fix check --site and --dir; I only touch what I installed myself.
+cd.noenv The settings file (.env) is missing in {1}.
+cd.noenv.fix restore it from a backup, then run again.
+cd.nodomain The site "{1}" has no public domain (current address: {2}): there is nothing to change.
+cd.nodomain.fix to give it a domain, run the installation again with --domain.
+cd.same The site already uses the domain {1}.
+cd.same.fix choose another domain.
+cd.title Change the domain of "{1}" to {2}
+cd.current Current domain: {1}
+cd.plan What would be done
+cd.plan_env In {1}: SITE_URL goes from {2} to {3}.
+cd.plan_legacy Former domains redirected to the new one (LEGACY_HOSTS): {1}
+cd.plan_proxy In {1}: the site names become  {2}
+cd.plan_foreign A configuration that is not mine exists: I do not touch it, I will say what to change in it.
+cd.plan_cert HTTPS certificate, with your consent: {1}
+cd.plan_cert_caddy HTTPS certificate: Caddy asks for it by itself.
+cd.plan_restart Restart of the service {1}.
+cd.no_proxy No web server configuration written by this script: only the settings file is changed.
+cd.dry {1}Nothing was changed.{2} To apply the change of the site {3} to {4}, run the same command again with --apply added.
+cd.dns_stop The DNS of {1} does not point (yet) to this server: the HTTPS certificate could not be obtained.
+cd.dns_stop.fix fix the A record and wait for propagation; or add --skip-dns-check to change anyway. Nothing was changed.
+cd.go Change the domain of {1} to {2} (backups made first, the site restarts)
+cd.proxy_done Web server updated: {1}
+cd.apache_ssl The file {1} (HTTPS) is not mine: replace the old name with the new one in it, or run certbot again.
+cd.foreign_todo In the configuration that is not mine, make the web server answer to the names  {1}  and send the traffic to http://127.0.0.1:{2}
+cd.env_done Settings file updated: SITE_URL={1}  LEGACY_HOSTS={2}
+cd.restarted Service {1} restarted.
+cd.restart_failed The service {1} did not restart.
+cd.restart_failed.fix look at  sudo journalctl -u {1} -n 40 --no-pager  ; the former .env is saved next to it (.env.avant-…).
+cd.restart_manual The service {1} is not mine: restart the site yourself so that it reads its settings file again.
+cd.cert_dns The DNS does not point to this server yet. Once it is up to date, run: {1}
+cd.cert_ask Get the HTTPS certificate now with: {1}
+cd.cert_ok HTTPS certificate obtained for all names.
+cd.cert_failed Certbot could not obtain the certificate. Run it yourself: {1}
+cd.cert_hint HTTPS certificate to obtain (nginx and Apache do not do it by themselves): {1}
+cd.cert_caddy Caddy asks for the new name's HTTPS certificate by itself.
+cd.done {1}Domain changed{2}: the site now answers at https://{3}
+cd.done_todo {1}Domain changed, but things are left to do{2} for https://{3} (see above).
+cd.next_check Open the administration in advanced mode: Site settings, Site address, "After the change" (https://{1}/admin/settings/address/after).
+cd.next_docs Passkeys, return addresses at third-party services, OBS: see docs/MIGRER-DOMAINE.md.
 CATALOG_EN
 }
 

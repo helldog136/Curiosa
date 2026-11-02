@@ -58,3 +58,28 @@ test("fiche : le dépôt est lu dans un Suspense (le nom et la description s'aff
   assert.match(read("src/app/api/admin/extension-warm/route.ts"), /hasRole\(user, "admin"\)/);
   assert.match(read("src/app/admin/(panel)/extensions/add/actions.ts"), /clearPreviewCache\(\)/, "« Actualiser » relit aussi les fiches");
 });
+
+test("attente : après 5 secondes une phrase de progression remplace l'écran muet ; 30 secondes avant le message d'échec ; erreur de limite de débit dite en clair", async () => {
+  const { PREVIEW_SLOW_MS, PREVIEW_WAIT_MS } = await import("@/core/modules/previewTimings");
+  assert.equal(PREVIEW_SLOW_MS, 5_000);
+  assert.equal(PREVIEW_WAIT_MS, 30_000);
+  const { SlowHint } = await import("@/components/admin/SlowHint");
+  const html = renderToStaticMarkup(h(SlowHint, { text: fr("fiche.slow") }));
+  assert.match(html, /role="status"/);
+  assert.match(html, /data-testid="fiche-slow"/);
+  assert.match(fr("fiche.slow"), /Lecture du dépôt…/);
+  const sk = renderToStaticMarkup(h(FicheSkeleton, { text: fr("fiche.loading"), embedded: true, back: "Retour", slowText: fr("fiche.slow") }));
+  assert.match(sk, /data-testid="fiche-slow"/);
+  assert.ok(PROGRESS_LABEL_KEYS.includes("ficheSlow"), "la fenêtre (loading.tsx) a aussi sa phrase");
+  assert.match(read("src/components/admin/FicheLoading.tsx"), /slowText=\{p\("ficheSlow"\)\}/);
+  assert.match(read("src/app/admin/(panel)/extensions/add/details/DetailsView.tsx"), /PreviewFailure && e\.reason === "rate-limit"/);
+  assert.match(fr("catalogue.previewRateLimit"), /limite les lectures/);
+});
+
+test("liste des extensions : préchauffage des fiches à l'écran seulement, trois au plus par visite", () => {
+  const link = read("src/components/admin/CatalogueDetailsLink.tsx");
+  assert.match(link, /AUTO_WARM_MAX = 3/);
+  assert.match(link, /IntersectionObserver/);
+  assert.match(link, /isIntersecting/);
+  assert.doesNotMatch(link, /setInterval/);
+});

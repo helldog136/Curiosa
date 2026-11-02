@@ -559,6 +559,28 @@ Le dernier maillon est **toujours la valeur d'avant** : sur un cœur sans skins,
 ### Journal du cœur (`logEvents`, cœur 0.6.0)
 Types d'événements que le module écrit avec `ctx.api.log.write({ action, target?, level?, data? })` : `key` (`command.run`, 48 caractères au plus ; `module`, `mcp`, `instance` réservés), `label` (`fr` ET `en`, 120 caractères, `{champ}` déclarés), `level` (`info`, `warn`, `error`), `frequent` (7 jours et 200 lignes au plus), `fields` (5 au plus : `key`, `type` `text`, `number` ou `boolean` ; 200 caractères par valeur). Champ nommé comme un secret ou un texte du public : refusé. L'acteur est déduit par le cœur (jamais fourni). Un module sans déclaration écrit des lignes génériques sans données. 90 jours et 500 lignes par module ; onglet « Historique » automatique, droit implicite `<module>:history`. Un cœur ancien ignore la clé et n'a pas `ctx.api.log`. Voir `docs/CREATE-A-MODULE.md` (12 ter) et `docs/MIGRER-SON-JOURNAL.md`.
 
+### Tableau de bord (`dashboard`, cœur après 0.6.1)
+
+Ce que le module propose au tableau de bord de l'administration : trois listes **facultatives** déclarées dans `module.json`, jamais de HTML ni de script.
+
+```json
+"dashboard": {
+  "tasks": [{ "id": "pending", "label": { "fr": "{n} avis à valider", "en": "{n} reviews to approve" }, "href": "?tab=pending", "right": "moderate" }],
+  "quickActions": [{ "id": "write", "label": { "fr": "Écrire un avis", "en": "Write a review" }, "href": "/admin/entries/new?c={key}" }],
+  "cards": [{ "id": "latest", "type": "list", "title": { "fr": "Derniers avis", "en": "Latest reviews" }, "href": "?tab=all", "empty": { "fr": "Aucun avis pour le moment.", "en": "No reviews yet." } }]
+}
+```
+
+- **`tasks`** (6 au plus) : « ce qui attend une action ». Le libellé (`fr` ET `en`, 80 caractères) porte `{n}` ; le nombre vient de `dashboard.tasks.<id>(ctx)` dans le code (0 = rien n'est montré). Le tableau de bord les place sous « À faire », avec « Ouvrir → ».
+- **`quickActions`** (3 au plus) : des boutons « Créer… » (libellé `fr` ET `en`, `href`, `icon` facultatif). Aucun code : le cœur ne les appelle pas.
+- **`cards`** (2 au plus) : des cartes d'information de **deux types fermés**. `counter` : `dashboard.cards.<id>(ctx)` répond `{ value, detail? }` (`value` : un nombre ou 24 caractères au plus). `list` : il répond `{ rows: [{ title, detail?, href? }] }` (5 lignes au plus) ; `empty` est le message d'une liste vide (sans lui, une liste vide n'est pas montrée).
+- **`href`** : toujours dans l'administration. `?onglet=…` mène à la page de l'instance (`/admin/instances/<id>?onglet=…`), `/admin/…` à une page du cœur ; seuls `{id}` et `{key}` (l'instance) peuvent s'y trouver. Un lien vers un autre site, `//`, `..` ou un schéma (`javascript:`) rend le manifeste invalide.
+- **`right`** : identifiant LOCAL d'un droit déclaré dans `rights` (ou `open`, `history`) ; le cœur le préfixe. Absent : `<module>:open`. Sans le droit, l'élément n'est pas montré **et son code n'est pas appelé**.
+- **Le code** (`ModuleDefinition.dashboard`) : `{ tasks: { <id>: (ctx) => nombre }, cards: { <id>: (ctx) => … } }`. Appelé **à l'affichage seulement** (jamais en tâche de fond), avec le contexte de l'instance (qui ne dépend pas de la personne), **1,5 seconde au plus par appel**, une réponse gardée **20 secondes**. Une erreur, un délai dépassé ou une réponse hors format masque seulement ce module ; un module en échec n'est pas réinterrogé avant 30 secondes. 5 instances par module et 40 appels par affichage au plus.
+- **Ce que le cœur montre** : 12 tâches, 6 actions et 4 cartes au plus pour tout le site ; il décide de l'ordre et de la place. Le texte d'un module est du texte : échappé, nettoyé (sans caractères de contrôle), jamais interprété ; une valeur qui ressemble à un secret est écartée.
+- **Rétrocompatibilité.** Un cœur ancien ignore la clé : le module marche comme avant et le tableau de bord n'affiche rien de lui. Aucun `minCore` n'est exigé.
+- **Kit de test.** L'exigence `dashboard.valid` vérifie les déclarations, la correspondance avec le code, les droits, les liens et la forme des réponses (en moins de 1,5 seconde). Voir `docs/CREATE-A-MODULE.md` (« Tableau de bord »).
+
 ### Visuels de la fiche (`previews`, cœur 0.6.1)
 
 La fiche d'une extension (dans le catalogue comme sur la page de l'extension installée) montre d'abord ce que fait le module : sa description, puis ses **visuels**, puis ce qu'il ajoute ; les détails techniques viennent en dessous, repliés. Les visuels sont les captures que vous déclarez dans `previews` :
@@ -577,6 +599,10 @@ La fiche d'une extension (dans le catalogue comme sur la page de l'extension ins
 - **Type.** `public` (une page du site), `admin` (un écran d'administration) ou `overlay` (un élément d'une page d'overlay) : la fiche l'écrit sous l'image.
 - **Sans `previews`**, la fiche s'affiche comme avant, sans bloc vide. Un `previews` mal formé rend le manifeste invalide (comme toute autre clé).
 - **Vie privée.** Le navigateur ne charge jamais ces images depuis un site tiers : le cœur les lit côté serveur (dépôt du catalogue, dépôt personnel ou dossier du module installé), les vérifie, puis les sert depuis `/api/admin/extension-previews` (réservé à l'administration, mise en cache privée, 6 images et 150 Ko chacune au plus, 12 Mo de mémoire pour tous les visuels lus). **Aucune capture ne doit montrer de vraies données personnelles** (noms, adresses e-mail, pseudos, adresses IP, jetons) : utilisez des exemples inventés, comme `example.org` ou « Démo ».
+- **Lecture et copie de la fiche (cœur, après 0.6.1).** Pour afficher la fiche d'une extension, le cœur ne clone plus le dépôt. Ordre de lecture : (1) la **copie sur disque**, même ancienne, affichée tout de suite ; (2) la **lecture directe**, un fichier par requête sur `raw.githubusercontent.com` pour un dépôt GitHub (`module.json`, `README.md` ou `readme.md`, puis les visuels déclarés : 8 requêtes au plus par fiche, 4 en même temps, 2 essais, délai de 8 s, aucune redirection suivie) ; (3) **en dernier recours seulement** (GitHub injoignable ou qui refuse, dépôt hors GitHub), un clonage **temporaire** (`--depth 1 --filter=blob:none --no-checkout`, limité au dossier du module, un seul à la fois, effacé dès que les fichiers sont lus). L'index du catalogue se lit de la même façon. Les noms de README autres que `README.md` et `readme.md` ne sont reconnus que par le clonage de secours.
+- **Où vit la copie, et comment la vider.** `DATA_DIR/cache/catalogue/<module>/<étiquette+version>/<fichier>` : seulement les fichiers lus pour les fiches ouvertes (`module.json`, `README.md`, les visuels déclarés de CE module), jamais le code d'un module ni un dépôt entier (aucun `.git`). La clé d'une fiche est `<dépôt>/<module>@<étiquette>+<version du catalogue>` : l'étiquette est **immuable**, une entrée reste donc valable tant que le catalogue annonce la même version, sans expiration ni revalidation. Quand le catalogue annonce une nouvelle version, la fiche est relue et la plus ancienne des versions gardées est effacée (**2 versions** au plus par module). Sans étiquette de version (branche, dépôt personnel) la copie est fraîche **10 minutes** ; au-delà elle est servie tout de suite puis relue en coulisse (jamais par clonage). Bornes appliquées à chaque écriture, sans minuteur : **50 Mo**, **200 fiches**. Écriture atomique ; à la relecture, chaque valeur est validée comme à l'origine (manifeste relu par `parseManifest`, images revérifiées : 150 Ko, vrai type PNG/WebP, dimensions) et rien n'est jamais exécuté. Une erreur (réseau, limite de débit de GitHub) n'est **jamais** gardée. Pour tout vider : le bouton **Actualiser** de la page Ajouter (extensions), ou supprimer le dossier `cache/catalogue/` de `DATA_DIR`.
+- **Limite de débit.** Après un refus 429, ou 403 avec `X-RateLimit-Remaining: 0`, plus aucune requête directe n'est envoyée pendant le délai demandé par GitHub (`Retry-After`, 10 minutes au plus) ; la copie ou le clonage de secours prend le relais, sinon la fiche dit que le site d'hébergement limite les lectures et propose « Réessayer ».
+- **Installer ne change pas.** L'installation télécharge le dépôt à l'étiquette choisie (`git clone --depth 1 --single-branch --branch <étiquette>`), puis ne retient que le dossier du module ; le dossier temporaire est effacé. Rien de ce téléchargement n'entre dans la copie des fiches.
 - **Catalogue.** L'entrée de `catalogue/index.json` peut porter la même liste `previews` (le script qui génère l'index la recopie du `module.json`, comme `minCore` devient `requires.core`) : le cœur sait alors annoncer des visuels sans télécharger le module. Les images, elles, ne sont jamais dans l'index. Une entrée mal formée est ignorée visuel par visuel.
 
 ### Adresse courte demandée par le module (`shortLink`, cœur 0.6.1)
@@ -597,6 +623,20 @@ Les redirections (« liens courts », page *Raccourcis de liens*) **appartiennen
 **Le bouton du réseau dans l'en-tête ne change pas de comportement** : il passe par l'adresse courte seulement si la personne a activé « Compter les clics sur mes liens » (le cœur réécrit alors le bouton vers le lien court actif de même destination, voir `ctx.api.links.measured`). Activer l'adresse courte n'envoie donc aucun clic dans les statistiques sans que la personne l'ait choisi.
 
 **Pas de nouvelle valeur dans `permissions`** : un cœur plus ancien refuserait le manifeste. Il **ignore** la clé `shortLink` : le module marche, sans adresse courte, donc votre `minCore` n'a pas à monter (la version précédente du réglage `boolean` suffit).
+
+### Adresses données à un service tiers (`returnAddresses`, `siteAddressUses`, cœur après 0.6.1)
+
+Quand la personne change de nom de domaine, la page *Adresse du site* (réglages avancés) liste ce qui dépend de l'ancienne adresse. Deux clés **facultatives** du manifeste lui disent ce que votre module a donné à l'extérieur :
+
+```json
+"returnAddresses": [{ "path": "/m/{instance}/oauth/callback", "label": { "fr": "Twitch", "en": "Twitch" }, "where": { "fr": "Console de développement, « URL de redirection »", "en": "Developer console, \"redirect URL\"" } }],
+"siteAddressUses": [{ "label": { "fr": "Home Assistant", "en": "Home Assistant" }, "where": { "fr": "Appareils et services, Curiosa, Reconfigurer", "en": "Devices and services, Curiosa, Reconfigure" } }]
+```
+
+- `returnAddresses` (5 au plus) : une **adresse de retour** (OAuth…) enregistrée chez le service tiers. `path` commence par `/m/` ou `/api/` (lettres, chiffres, `- _ . /` et `{instance}`, remplacé par la clé de l'instance ; ni paramètre, ni `..`, ni `//`). `label` : le nom du service. `where` : où l'enregistrer chez lui. Le cœur affiche l'ancienne et la nouvelle adresse complètes, avec un bouton « Copier ».
+- `siteAddressUses` (5 au plus) : un endroit **hors du site** où la personne a tapé l'adresse du site (`label`, `where`).
+- Lecture seule : le cœur ne contacte jamais le service tiers et ne modifie rien. Seules les instances **actives** sont listées.
+- **Sans danger pour un cœur plus ancien** : il ignore les clés, donc aucun `minCore` à déclarer. Une clé mal formée rend le manifeste invalide, comme toute autre. Les retours de connexion ne sont jamais redirigés depuis un ancien domaine (voir [MIGRER-DOMAINE.md](MIGRER-DOMAINE.md)).
 
 ### Actions MCP (`mcp`)
 
