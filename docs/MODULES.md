@@ -559,6 +559,28 @@ Le dernier maillon est **toujours la valeur d'avant** : sur un cœur sans skins,
 ### Journal du cœur (`logEvents`, cœur 0.6.0)
 Types d'événements que le module écrit avec `ctx.api.log.write({ action, target?, level?, data? })` : `key` (`command.run`, 48 caractères au plus ; `module`, `mcp`, `instance` réservés), `label` (`fr` ET `en`, 120 caractères, `{champ}` déclarés), `level` (`info`, `warn`, `error`), `frequent` (7 jours et 200 lignes au plus), `fields` (5 au plus : `key`, `type` `text`, `number` ou `boolean` ; 200 caractères par valeur). Champ nommé comme un secret ou un texte du public : refusé. L'acteur est déduit par le cœur (jamais fourni). Un module sans déclaration écrit des lignes génériques sans données. 90 jours et 500 lignes par module ; onglet « Historique » automatique, droit implicite `<module>:history`. Un cœur ancien ignore la clé et n'a pas `ctx.api.log`. Voir `docs/CREATE-A-MODULE.md` (12 ter) et `docs/MIGRER-SON-JOURNAL.md`.
 
+### Tableau de bord (`dashboard`, cœur après 0.6.1)
+
+Ce que le module propose au tableau de bord de l'administration : trois listes **facultatives** déclarées dans `module.json`, jamais de HTML ni de script.
+
+```json
+"dashboard": {
+  "tasks": [{ "id": "pending", "label": { "fr": "{n} avis à valider", "en": "{n} reviews to approve" }, "href": "?tab=pending", "right": "moderate" }],
+  "quickActions": [{ "id": "write", "label": { "fr": "Écrire un avis", "en": "Write a review" }, "href": "/admin/entries/new?c={key}" }],
+  "cards": [{ "id": "latest", "type": "list", "title": { "fr": "Derniers avis", "en": "Latest reviews" }, "href": "?tab=all", "empty": { "fr": "Aucun avis pour le moment.", "en": "No reviews yet." } }]
+}
+```
+
+- **`tasks`** (6 au plus) : « ce qui attend une action ». Le libellé (`fr` ET `en`, 80 caractères) porte `{n}` ; le nombre vient de `dashboard.tasks.<id>(ctx)` dans le code (0 = rien n'est montré). Le tableau de bord les place sous « À faire », avec « Ouvrir → ».
+- **`quickActions`** (3 au plus) : des boutons « Créer… » (libellé `fr` ET `en`, `href`, `icon` facultatif). Aucun code : le cœur ne les appelle pas.
+- **`cards`** (2 au plus) : des cartes d'information de **deux types fermés**. `counter` : `dashboard.cards.<id>(ctx)` répond `{ value, detail? }` (`value` : un nombre ou 24 caractères au plus). `list` : il répond `{ rows: [{ title, detail?, href? }] }` (5 lignes au plus) ; `empty` est le message d'une liste vide (sans lui, une liste vide n'est pas montrée).
+- **`href`** : toujours dans l'administration. `?onglet=…` mène à la page de l'instance (`/admin/instances/<id>?onglet=…`), `/admin/…` à une page du cœur ; seuls `{id}` et `{key}` (l'instance) peuvent s'y trouver. Un lien vers un autre site, `//`, `..` ou un schéma (`javascript:`) rend le manifeste invalide.
+- **`right`** : identifiant LOCAL d'un droit déclaré dans `rights` (ou `open`, `history`) ; le cœur le préfixe. Absent : `<module>:open`. Sans le droit, l'élément n'est pas montré **et son code n'est pas appelé**.
+- **Le code** (`ModuleDefinition.dashboard`) : `{ tasks: { <id>: (ctx) => nombre }, cards: { <id>: (ctx) => … } }`. Appelé **à l'affichage seulement** (jamais en tâche de fond), avec le contexte de l'instance (qui ne dépend pas de la personne), **1,5 seconde au plus par appel**, une réponse gardée **20 secondes**. Une erreur, un délai dépassé ou une réponse hors format masque seulement ce module ; un module en échec n'est pas réinterrogé avant 30 secondes. 5 instances par module et 40 appels par affichage au plus.
+- **Ce que le cœur montre** : 12 tâches, 6 actions et 4 cartes au plus pour tout le site ; il décide de l'ordre et de la place. Le texte d'un module est du texte : échappé, nettoyé (sans caractères de contrôle), jamais interprété ; une valeur qui ressemble à un secret est écartée.
+- **Rétrocompatibilité.** Un cœur ancien ignore la clé : le module marche comme avant et le tableau de bord n'affiche rien de lui. Aucun `minCore` n'est exigé.
+- **Kit de test.** L'exigence `dashboard.valid` vérifie les déclarations, la correspondance avec le code, les droits, les liens et la forme des réponses (en moins de 1,5 seconde). Voir `docs/CREATE-A-MODULE.md` (« Tableau de bord »).
+
 ### Visuels de la fiche (`previews`, cœur 0.6.1)
 
 La fiche d'une extension (dans le catalogue comme sur la page de l'extension installée) montre d'abord ce que fait le module : sa description, puis ses **visuels**, puis ce qu'il ajoute ; les détails techniques viennent en dessous, repliés. Les visuels sont les captures que vous déclarez dans `previews` :

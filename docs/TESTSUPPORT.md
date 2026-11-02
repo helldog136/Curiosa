@@ -222,8 +222,9 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 | [`neutrality.clean`](#neutralityclean) | conseil | Aucune donnée personnelle ni propre à un site dans le module |
 | [`admin.ergonomics`](#adminergonomics) | obligatoire | Aucun nouvel écart d'ergonomie dans les réglages et les textes |
 | [`admin.ergonomics.known`](#adminergonomicsknown) | conseil | Écarts d'ergonomie connus, à résorber |
+| [`dashboard.valid`](#dashboardvalid) | obligatoire | Ce que le module propose au tableau de bord est complet et valide |
 
-44 exigences obligatoires et 31 conseils.
+45 exigences obligatoires et 31 conseils.
 
 ### Le fichier module.json
 
@@ -862,6 +863,16 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 - **Ce qui est vérifié.** Les écarts d'ergonomie qui existent déjà (ceux de tests/ergonomics-baseline.json ; sans base, tous les écarts). Ils n'empêchent rien, mais la base doit rétrécir.
 - **Pourquoi.** Ces écarts sont de la dette : un texte trop long, un mot du code, un onglet trop chargé. Les garder visibles en avertissement évite de les oublier.
 - **Comment corriger.** Corrigez un écart, puis retirez sa ligne de la base (node scripts/ergonomics-baseline.mjs --write). Le tableau par module et par règle : node scripts/ergonomics-baseline.mjs --report.
+
+### Le tableau de bord
+
+#### `dashboard.valid`
+
+**Ce que le module propose au tableau de bord est complet et valide** — niveau : **obligatoire**
+
+- **Ce qui est vérifié.** Si module.json déclare « dashboard » (tasks, quickActions, cards), chaque tâche et chaque carte déclarée a sa fonction dans le code (dashboard.tasks.<id>, dashboard.cards.<id>) et chaque fonction est déclarée ; les libellés sont en français ET en anglais, les liens mènent à l'administration, les droits sont déclarés dans « rights » ; chaque fonction répond dans la forme attendue (un nombre pour une tâche, { value, detail? } ou { rows } pour une carte) en moins de 1,5 seconde, avec des données d'essai.
+- **Pourquoi.** Le cœur appelle ces fonctions à chaque affichage du tableau de bord, avec 1,5 seconde au plus : une réponse mal formée ou trop lente fait disparaître le module du tableau de bord (les autres s'affichent). Le cœur n'affiche jamais de HTML ni de lien hors de l'administration venant d'un module.
+- **Comment corriger.** Déclarez dans module.json « dashboard »: { "tasks": [{ "id": "pending", "label": { "fr": "{n} avis à valider", "en": "{n} reviews to approve" }, "href": "?tab=reviews" }] } et écrivez « dashboard: { tasks: { pending: async (ctx) => nombre } } » dans le code ; lisez un compteur déjà calculé, jamais un service externe. Voir docs/CREATE-A-MODULE.md, « Tableau de bord ».
 
 ## Limites connues
 
