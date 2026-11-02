@@ -3491,7 +3491,7 @@
   "domain.after.run": "Run the check",
   "domain.after.again": "Run the check again",
   "domain.after.running": "Checking…",
-  "domain.after.checksNote": "A check is a snapshot: run it again after each fix.",
+  "domain.after.checksNote": "A check shows the situation at one moment: run it again after each fix.",
   "domain.status.ok": "Good",
   "domain.status.warn": "Take a look",
   "domain.status.fail": "To fix",
