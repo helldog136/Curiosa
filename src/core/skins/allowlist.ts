@@ -30,7 +30,7 @@ export const PARTS = [
   "image", "media", "avatar", "cover", "divider", "link", "notice", "panel", "hero", "stat",
   "tabs", "tab", "pagination", "pagination-link", "mode-switch", "mode-option",
   "brand", "menu-toggle", "nav-list", "nav-link", "submenu", "submenu-toggle", "header-group", "lang-switcher", "socials",
-  "entries", "module-html",
+  "entries", "module-html", "search", "mark",
   "home-flow", "home-cell", "cookie-tray", "footer-text", "footer-link", "credit", "brand-mark", "skip-link",
 ] as const;
 

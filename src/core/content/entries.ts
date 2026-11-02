@@ -260,6 +260,24 @@ export async function latestEntries(opts: { instance: InstanceView; locale: stri
   return views;
 }
 
+/**
+ * Une tranche (250 au plus) des entrées PUBLIQUES d'une instance dans cette langue (avec repli de langue comme partout) : publiées, date atteinte, non expirées,
+ * les plus récentes d'abord. Sert à la recherche du site, qui lit par tranches pour ne jamais tenir tout un blog en mémoire d'un coup.
+ */
+export async function entriesChunk(opts: { instance: InstanceView; locale: string; skip: number; take: number }): Promise<EntryView[]> {
+  const take = Math.min(250, Math.max(1, Math.trunc(opts.take) || 1));
+  const skip = Math.max(0, Math.trunc(opts.skip) || 0);
+  const { defaultLocale } = await getSiteConfig();
+  const where: Prisma.EntryWhereInput = { instanceId: opts.instance.id, ...publishedWhere(), ...languageWhere(opts.instance, opts.locale), ...freshWhere(new Date()) };
+  const rows = await prisma.entry.findMany({ where, include: { translations: true }, orderBy: [{ publishedAt: "desc" }, { id: "desc" }], skip, take });
+  const views: EntryView[] = [];
+  for (const row of rows) {
+    const picked = pickTranslation(row, opts.instance, opts.locale, defaultLocale);
+    if (picked) views.push(toView(row, opts.instance, picked));
+  }
+  return views;
+}
+
 /** Curseur opaque `publishedAt|id` (voir `entriesAfter`). */
 export const encodeEntryCursor = (e: { publishedAt: Date | null; id: string }): string =>
   Buffer.from(`${e.publishedAt?.getTime() ?? 0}|${e.id}`, "utf8").toString("base64url");

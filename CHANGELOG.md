@@ -15,10 +15,23 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Des pages d'exemple, en brouillon.** Selon votre réponse, l'assistant propose des pages à modifier (« Qui sommes-nous », « Infos pratiques », « À propos de moi »…). Elles sont repliées, vous décochez celles dont vous ne voulez pas, et rien n'est publié sans vous.
 - **« Partir d'un modèle » sur la liste des pages.** Quand une extension propose des modèles, un bouton crée un brouillon prérempli à modifier. Il est aussi proposé quand la liste est vide.
 
+### Recherche dans le site
+
+- **Les personnes qui visitent votre site peuvent y chercher.** Un champ « Rechercher dans le site » apparaît dans l'en-tête et ouvre une page de résultats : titre, extrait avec le mot mis en valeur, type (page, article…) et lien. Elle est **activée par défaut** ; un seul interrupteur la coupe.
+- **Elle trouve ce que l'on tape, sans souci d'accents ni de majuscules.** Seuls les contenus publiés sont cherchés : jamais un brouillon, une publication programmée, un contenu expiré ni une page désactivée. La langue de la personne passe en premier.
+- **Elle ne retient rien.** Pas de cookie, pas de liste des recherches, pas de statistiques sur ce que les personnes cherchent, aucun service extérieur. Une limite de 30 recherches par minute évite qu'un robot surcharge votre site.
+- **Un réglage, dans « Réglages du site », onglet « Recherche ».** Un interrupteur suffit. Sous « Plus d'options » : où placer le champ (en-tête, pied de page ou nulle part), le nombre de résultats par page et les contenus à chercher.
+- **Les recherches propres à vos extensions restent telles quelles.** L'annuaire, l'agenda ou les vidéos gardent leurs filtres ; leurs éléments déjà proposés au flux RSS sont aussi trouvés par la recherche du site.
+- **Les skins peuvent habiller le champ et le mot mis en valeur.** Deux nouvelles pièces, « search » et « mark », sont documentées pour les personnes qui écrivent un skin.
+- **La page de confidentialité le dit** : une courte section explique que ce que l'on tape n'est ni gardé ni transmis.
+
 ### Pour les développeurs
 
 - `catalogue/profiles.json` (dépôt de modules) : profils de départ, lus avec l'index et gardés avec sa dernière copie reçue ; fichier absent ou abîmé = aucune question. `suggested.json` ne change pas.
 - Manifeste : `content.templates` (8 modèles au plus), ignoré par un cœur plus ancien. Voir docs/MODULES.md.
+- **`src/core/search/`.** `text.ts` (repli sans accents, saisie bornée, extrait), `rank.ts` (titre, résumé, texte, puis récence), `index.ts` (index en mémoire : 4 000 fiches par langue, 60 s), `limit.ts` (30 par minute), `service.ts`, `settings.ts` (`search.*`).
+- **Page et pièces.** `/search` (chemin réservé, `noindex`, jamais en cache partagé), composants `SearchForm` et `SearchView`, pièces `search` et `mark` ajoutées à la liste blanche et au banc d'essai des skins. `SearchAction` ajoutée au JSON-LD du site. Détails : `docs/PLATFORM.md`, `docs/SKINS.md`, `docs/SECURITE.md`.
+- **Lecture par tranches.** `entriesChunk` (`src/core/content/entries.ts`) lit les entrées publiques d'une instance 250 par 250.
 
 ## 0.6.2 — 2026-11-02
 

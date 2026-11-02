@@ -6,6 +6,7 @@ import { runSlot } from "@/core/modules/runtime";
 import type { SiteConfig } from "@/core/settings";
 import { Blocks } from "./Blocks";
 import { CookieSettingsLink } from "./CookieTray";
+import { SearchForm } from "./SearchForm";
 
 export async function Footer({ config, locale }: { config: SiteConfig; locale: string }) {
   const blocks = await runSlot("layout.footer", locale);
@@ -16,6 +17,7 @@ export async function Footer({ config, locale }: { config: SiteConfig; locale: s
     // Le pied est lui-même le conteneur centré (marges et largeur : jetons `--sk-page-*`, globals.css).
     <footer data-skin-region="footer" className="space-y-4 border-t-token border-line py-8 text-sm text-muted">
         <Blocks blocks={blocks} locale={locale} />
+        {config.search.enabled && config.search.placement === "footer" && <SearchForm locale={locale} defaultLocale={config.defaultLocale} t={t} id="site-search-footer" variant="tool" />}
         <p data-skin-part="footer-text">{config.footerText || `© ${new Date().getFullYear()} ${config.name}`}</p>
         {/* Lien permanent vers la politique de confidentialité du cœur : il ne se retire pas. */}
         <p><a href={withLocale("/privacy", locale, config.defaultLocale)} data-testid="privacy-link" data-skin-part="footer-link" className="underline underline-offset-2 hover:text-fg">{t("privacy.title")}</a>
