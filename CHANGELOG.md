@@ -9,6 +9,17 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ## Prochaine version (non publiée)
 
+### Extensions
+
+- **La fiche d'une extension s'ouvre vite, même sur un petit serveur.** Le site ne copie plus un dépôt entier pour lire un fichier texte : il va chercher directement le fichier utile (la description, le README, les captures). Un dépôt n'est copié qu'en dernier recours, si cette lecture directe échoue.
+- **Les fiches déjà vues restent disponibles après un redémarrage ou une mise à jour du site.** Une fiche reste valable tant que le catalogue annonce la même version du module ; elle est relue quand une nouvelle version sort. Le bouton « Actualiser » vide cette copie.
+- **Un écran qui parle.** Si la lecture dure plus de 5 secondes, la fiche affiche « Lecture du dépôt… » au lieu de rester muette ; l'attente est portée à 30 secondes, et « Réessayer » reprend la lecture en cours. Si l'hébergeur limite les lectures, le message le dit.
+- **Les premières fiches de la liste sont préparées à l'avance** (trois au plus, uniquement celles qui sont à l'écran).
+
+### Pour les développeurs
+
+- **Lecture des fiches.** `src/core/modules/rawRead.ts` (lecture HTTPS directe : seul hôte `raw.githubusercontent.com`, 8 requêtes par fiche, 4 en parallèle, une requête partagée par adresse, limite de débit), `src/core/modules/ficheCache.ts` (copie sur disque bornée : 50 Mo, 200 fiches, 2 versions par module) et `readme.ts` (ordre : copie, lecture directe, clonage temporaire). `PreviewTarget` porte `version` ; `targetOf(entrée)` construit la cible d'une entrée du catalogue. `resetPreviewMemory()` oublie la mémoire seulement, `clearPreviewCache()` vide aussi le disque. `git()` accepte un délai en 4e paramètre. Documentation : MODULES.md et PLATFORM.md.
+
 ### Apparence du site
 
 - **L'envoi de votre police est au bon endroit.** Il se trouve dans la section « Polices », juste sous les listes : chaque liste se termine par « Utiliser ma propre police… ». Vos polices apparaissent en tête des listes, dans « Mes polices », où vous pouvez les supprimer.
