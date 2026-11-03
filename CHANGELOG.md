@@ -11,9 +11,8 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Corrections
 
-- **Une période à moitié remplie n'efface plus l'ancienne.** Si vous n'aviez rempli qu'une seule des deux dates d'une période, l'enregistrement la prenait pour « aucune période » et supprimait celle qui existait, sans rien dire. Maintenant, un message sous le champ vous dit de remplir les deux dates, avec un exemple, et rien n'est enregistré. Vos dates restent à l'écran.
-- **Une fin avant le début est refusée de la même façon.** Le message dit de mettre la fin après le début.
-- **Effacer une période reste possible.** Le bouton « Effacer la période » vide bien les deux dates, et c'est alors voulu. Dans un réglage qui accepte une période ouverte, une seule date reste valable.
+- **Une période à moitié remplie n'efface plus l'ancienne.** Avec une seule date remplie, l'enregistrement supprimait la période existante sans rien dire. Un message sous le champ demande maintenant les deux dates, et rien n'est enregistré.
+- **Une fin avant le début est refusée de la même façon.** Effacer une période reste possible, et un réglage qui accepte une période ouverte garde une seule date valable.
 
 ### Équipe
 
@@ -27,8 +26,8 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - `createMember(actorId, { …, mustChangePassword: true })` pose le drapeau dans l'écriture qui crée le compte (`createUser` ne fait plus de seconde écriture). Seul `true` compte.
 - `ActionState` gagne `secret?: OneTimeSecret` (`src/components/admin/OneTimeSecret.tsx`) : valeur, titre, notes et boutons déjà traduits côté serveur. `ActionForm` l'affiche avec `SecretReveal` et ne le garde que dans l'état de la page ; `SecretValue` (valeur + « Copier ») est aussi utilisé par `TemporaryPasswordButton`.
 - Clés de langue : `users.added.generated` n'a plus de `{password}` ; nouvelles clés `users.secret.*`. Test : `tests/core/team-first-password.test.mjs`.
-- **`PeriodField` n'envoie plus jamais une valeur vide pour une période incomplète.** Une seule date (`"2026-12-01/"`) ou une fin avant le début est envoyée telle quelle, pour que le serveur la refuse ; vide seulement quand les deux dates sont vides. Le champ ajoute un champ caché `<nom>__period` (`closed` ou `open`).
-- **Refus côté serveur.** `runModuleAdminAction` refuse une valeur de période à moitié remplie, à l'envers ou illisible AVANT d'appeler l'action du module (erreur sous le champ, `values` sans le champ caché). L'enregistrement des réglages refuse la valeur à moitié remplie avec le même message. Nouveaux : `periodErrorKey`, `isHalfPeriod`, `PERIOD_MARK` (`adminkit/values.ts`), `periodSent` (`adminkit/periodInputs.ts`) ; textes `period.errorHalf`, `period.errorFormat`, `period.errorFormatOpen`. Une action de module doit toujours revérifier ses valeurs.
+- **`PeriodField` n'envoie plus de valeur vide pour une période incomplète.** Une seule date (`"2026-12-01/"`) ou une fin avant le début est envoyée telle quelle pour être refusée ; vide seulement sans aucune date.
+- **Refus côté serveur.** `runModuleAdminAction` refuse une période à moitié remplie, à l'envers ou illisible avant d'appeler le module, et retire le champ caché `<nom>__period`. Nouveaux : `periodErrorKey`, `isHalfPeriod`, `PERIOD_MARK`, `periodSent` et trois textes `period.error*`.
 
 ## 0.6.4 — 2026-11-03
 
