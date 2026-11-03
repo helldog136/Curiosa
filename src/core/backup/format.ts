@@ -38,7 +38,7 @@ export const DATA_FILES = {
 
 export type BackupModule = {
   id: string;
-  // « builtin » et « bundled » : sauvegardes et lignes d'anciens sites (compatibilité, à retirer en phase 3 d'entretien) ; le cœur n'embarque plus aucun module.
+  // « builtin » et « bundled » : sauvegardes des premières versions, toujours LUES (un fichier de sauvegarde n'a pas de date de péremption : relever la version minimale de mise à jour n'empêche pas d'en restaurer une) ; le cœur n'embarque plus aucun module et n'en écrit plus.
   source: "builtin" | "bundled" | "git";
   version: string;
   /** Toujours true à l'écriture (plus d'état « éteint » depuis la 0.1.20) ; lu pour les sauvegardes plus anciennes, dont les modules éteints sont désinstallés en gardant leurs données. */

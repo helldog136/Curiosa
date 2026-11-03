@@ -3,9 +3,7 @@ import test, { beforeEach, after } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
 import { useTestDb } from "../helpers/db.mjs";
-import { makeRepo } from "../helpers/repo.mjs";
 
 process.env.CURIOSA_CATALOGUE_REPO = "https://github.com/exemple/modules";
 const db = await useTestDb();
@@ -52,15 +50,14 @@ function cachedCatalogue(modules) {
 const silent = { log: () => {} };
 const marker = () => Rp.readLegacyMarker();
 
-/* ───────────── Base d'avant : lignes bundled / builtin, éléments éteints ───────────── */
+/* ───────────── Base d'avant : lignes bundled / builtin ───────────── */
 
-test("base d'avant : lignes bundled/builtin et éteints comptés ; conversion sans réseau des lignes connues du catalogue à la même version ; marqueur absent tant qu'il en reste", async () => {
+test("base d'avant : lignes bundled/builtin comptées et laissées telles quelles par le démarrage (plus de conversion) ; marqueur absent tant qu'il en reste", async () => {
   await module("carnet", { version: "1.2.0" }, "export default {};", { source: "bundled", repoUrl: null });
-  await module("agenda", { version: "2.0.0" }, "export default {};", { source: "bundled", repoUrl: null });   // le catalogue propose une autre version
-  await module("vieux", { version: "0.1.0" }, "export default {};", { source: "builtin", repoUrl: null });   // inconnu du catalogue
-  await module("eteint", {}, "export default {};", { enabled: false });
+  await module("agenda", { version: "2.0.0" }, "export default {};", { source: "bundled", repoUrl: null });
+  await module("vieux", { version: "0.1.0" }, "export default {};", { source: "builtin", repoUrl: null });
   await module("allume");
-  await instance("allume", "Une", false);
+  // même avec une copie du catalogue qui propose le module à la MÊME version : le démarrage ne convertit plus rien
   cachedCatalogue([
     { id: "carnet", repo: "https://github.com/exemple/modules", ref: "v5.0.0", subdir: "modules/carnet", version: "1.2.0", apiVersion: 2 },
     { id: "agenda", repo: "https://github.com/exemple/modules", ref: "v5.0.0", subdir: "modules/agenda", version: "2.1.0", apiVersion: 2 },
@@ -68,34 +65,26 @@ test("base d'avant : lignes bundled/builtin et éteints comptés ; conversion sa
 
   const before = await Rp.legacyReport();
   assert.deepEqual(before.sourceRows.map((r) => [r.id, r.source]), [["agenda", "bundled"], ["carnet", "bundled"], ["vieux", "builtin"]]);
-  assert.deepEqual(before.switchedOff.modules, ["eteint"]);
-  assert.equal(before.switchedOff.instances.length, 1);
+  assert.deepEqual(before.switchedOff, { modules: [], instances: [] }, "champ gardé, toujours vide");
   assert.equal(before.converted, false);
 
   const lines = [];
   const r = await S.runLegacySweep({ log: (l) => lines.push(l) });
-  assert.equal(r.done, false, "il reste deux lignes héritées : pas de marqueur");
-  assert.equal(r.counts.convertedRows, 1);
-  assert.equal(r.counts.retiredModules, 1);
-  assert.equal(r.counts.retiredInstances, 1);
-  const carnet = await prisma.module.findUnique({ where: { id: "carnet" } });
-  assert.deepEqual([carnet.source, carnet.repoUrl, carnet.ref, carnet.subdir, carnet.version], ["git", "https://github.com/exemple/modules", "v5.0.0", "modules/carnet", "1.2.0"]);
-  assert.match(carnet.tree ?? "", /^[0-9a-f]{40}$/, "empreinte du dossier calculée sur place");
-  assert.equal((await prisma.module.findUnique({ where: { id: "agenda" } })).source, "bundled", "version différente : laissée à la mise à jour");
-  assert.equal((await prisma.module.findUnique({ where: { id: "vieux" } })).source, "builtin");
+  assert.equal(r.done, false, "il reste trois lignes héritées : pas de marqueur");
+  assert.deepEqual(Object.keys(r.counts).sort(), ["emptied", "migrated", "setAside"]);
+  for (const [id, source] of [["carnet", "bundled"], ["agenda", "bundled"], ["vieux", "builtin"]]) assert.equal((await prisma.module.findUnique({ where: { id } })).source, source, `${id} : aucune conversion au démarrage`);
   assert.equal(await marker(), null);
-  assert.ok((await prisma.auditLog.findMany()).some((a) => a.action === "module.legacy.convert" && a.target.startsWith("carnet 1.2.0")));
+  assert.equal((await prisma.auditLog.findMany()).filter((a) => a.action === "module.legacy.convert").length, 0);
   assert.equal(lines.length, 1);
   assert.match(lines[0], /not complete/);
   assert.doesNotMatch(lines[0], /github|https?:/, "jamais d'adresse de dépôt dans le journal");
 
   const after1 = await Rp.legacyReport();
-  assert.equal(after1.totals.sourceRows, 2);
-  assert.equal(after1.totals.switchedOffModules + after1.totals.switchedOffInstances, 0);
+  assert.equal(after1.totals.sourceRows, 3);
   assert.equal(await Rp.legacyConversionPending(), true, "garde : l'admin prévient");
 
-  // Le propriétaire met à jour / retire ce qui reste : le balayage suivant pose le marqueur.
-  await prisma.module.deleteMany({ where: { id: { in: ["agenda", "vieux"] } } });
+  // La personne retire ce qui reste : le balayage suivant pose le marqueur.
+  await prisma.module.deleteMany({ where: { id: { in: ["carnet", "agenda", "vieux"] } } });
   const r2 = await S.runLegacySweep(silent);
   assert.equal(r2.done, true);
   const m = await marker();
@@ -104,23 +93,14 @@ test("base d'avant : lignes bundled/builtin et éteints comptés ; conversion sa
   assert.equal(await Rp.legacyConversionPending(), false);
 });
 
-test("empreinte locale d'un dossier = empreinte git du même dossier dans un dépôt (rien à proposer s'il est identique)", async () => {
-  const repo = makeRepo({ "modules/carnet/module.json": { id: "carnet" }, "modules/carnet/index.mjs": "export default {};\n", "modules/carnet/locales/fr.json": { a: "b" }, "README.md": "x" });
-  const expected = execFileSync("git", ["rev-parse", "HEAD:modules/carnet"], { cwd: repo.dir }).toString().trim();
-  assert.equal(await S.localTreeHash(path.join(repo.dir, "modules/carnet")), expected);
-  fs.writeFileSync(path.join(repo.dir, "modules/carnet/index.mjs"), "export default { changed: 1 };\n");
-  assert.notEqual(await S.localTreeHash(path.join(repo.dir, "modules/carnet")), expected);
-  assert.equal(await S.localTreeHash(path.join(repo.dir, "absent")), null);
-});
-
-test("sans copie du catalogue (ou copie d'un autre dépôt) : rien n'est converti, rien n'est supposé", async () => {
-  await module("carnet", { version: "1.2.0" }, "export default {};", { source: "bundled", repoUrl: null });
-  assert.equal((await S.runLegacySweep(silent)).counts.convertedRows, 0);
-  fs.mkdirSync(path.join(db.dir, "cache"), { recursive: true });
-  fs.writeFileSync(path.join(db.dir, "cache", "recognized-index.json"), JSON.stringify({ version: 1, fetchedAt: Date.now(), origin: "https://github.com/autre/depot", modules: [{ id: "carnet", repo: "https://github.com/autre/depot", subdir: "carnet", version: "1.2.0", apiVersion: 2 }] }));
-  clearRecognizedCache();
-  assert.equal((await S.runLegacySweep(silent)).counts.convertedRows, 0);
-  assert.equal((await prisma.module.findUnique({ where: { id: "carnet" } })).source, "bundled");
+test("un module éteint d'avant la 0.1.20 n'est plus compté ni rangé au démarrage (la 0.2.0 l'a fait) ; le site démarre et pose le marqueur", async () => {
+  await module("eteint", {}, "export default {};", { enabled: false });
+  await module("allume");
+  const rep = await Rp.legacyReport();
+  assert.deepEqual([rep.totals.switchedOffModules, rep.totals.switchedOffInstances], [0, 0]);
+  const r = await S.runLegacySweep(silent);
+  assert.equal(r.done, true);
+  assert.ok(await prisma.module.findUnique({ where: { id: "eteint" } }), "rien n'est touché");
 });
 
 /* ───────────── Migrations en attente, idempotence, reprise, délai ───────────── */
@@ -143,7 +123,7 @@ test("migrations en attente : une instance à la fois, puis marqueur ; idempoten
 
   const again = await S.runLegacySweep(silent);
   assert.equal(again.done, true);
-  assert.deepEqual(again.counts, { retiredModules: 0, retiredInstances: 0, convertedRows: 0, migrated: 0, setAside: 0, emptied: 0 });
+  assert.deepEqual(again.counts, { migrated: 0, setAside: 0, emptied: 0 });
   assert.equal((await prisma.moduleRecord.count({ where: { collection: "journal" } })), 2, "chaque migration n'a tourné qu'une fois");
   assert.deepEqual(await marker(), first, "le marqueur garde la date de la fin de la conversion");
   assert.equal((await Rp.legacyReport()).clean, true);
@@ -372,7 +352,7 @@ test("module hérité absent du catalogue : état « absent » (jamais « conver
   assert.deepEqual((await Rp.legacyReport()).sourceRows.map((r) => [r.id, r.state]), [["agenda", "convertible"], ["vieux", "absent"]]);
 });
 
-test("« garder tel quel » : un module absent du catalogue ne retient plus la mise à niveau ; le marqueur est posé ; s'il revient au catalogue, il retient de nouveau", async () => {
+test("« garder tel quel » : un module hérité (listé ou non par le catalogue) ne retient plus la mise à niveau ; le marqueur est posé ; annuler le choix le fait retenir de nouveau", async () => {
   const { dismissLegacyRow, undoDismissLegacyRow, readDismissed } = await import("@/core/modules/legacyDismiss");
   await module("vieux", { version: "0.1.0" }, "export default {};", { source: "builtin", repoUrl: null });
   await module("agenda", { version: "2.0.0" }, "export default {};", { source: "bundled", repoUrl: null });
@@ -380,15 +360,15 @@ test("« garder tel quel » : un module absent du catalogue ne retient plus la m
   await S.runLegacySweep(silent);
   assert.equal(await marker(), null);
   await dismissLegacyRow("vieux");
-  await dismissLegacyRow("agenda");   // convertible : la mise à jour le règle, « garder » n'y change rien
   let r = await Rp.legacyReport();
   assert.deepEqual(r.sourceRows.map((x) => x.id), ["agenda"]);
   assert.deepEqual(r.keptRows, [{ id: "vieux", version: "0.1.0" }]);
   assert.equal(r.totals.keptRows, 1);
-  assert.equal(r.converted, false, "agenda retient encore");
+  assert.equal(r.converted, false, "agenda retient encore : plus aucun code ne le convertit, la personne choisit");
   assert.equal(Rp.legacyStatus(r), "pending");
-  await prisma.module.delete({ where: { id: "agenda" } });   // le propriétaire l'a retiré
+  await dismissLegacyRow("agenda");   // listé par le catalogue : on peut le garder tel quel aussi
   r = await Rp.legacyReport();
+  assert.deepEqual(r.keptRows.map((x) => x.id), ["agenda", "vieux"]);
   assert.equal(r.converted, true);
   assert.equal(r.clean, false, "gardé tel quel : pas « rien à signaler »");
   assert.equal(Rp.legacyStatus(r), "almost", "plus rien ne retient, marqueur pas encore posé");
@@ -396,20 +376,15 @@ test("« garder tel quel » : un module absent du catalogue ne retient plus la m
   assert.equal(done.done, true);
   assert.notEqual(await marker(), null);
   assert.equal(Rp.legacyStatus(await Rp.legacyReport()), "done");
-  assert.equal((await Rp.legacyReportForAssistant()).oldModulesKeptAsTheyAre.length, 1);
-  // Le catalogue reprend le module : il redevient à convertir, le marqueur tombe au balayage suivant.
-  cachedCatalogue([{ id: "vieux", repo: "https://github.com/exemple/modules", ref: "v5.0.0", subdir: "modules/vieux", version: "0.2.0", apiVersion: 2 }]);
+  assert.equal((await Rp.legacyReportForAssistant()).oldModulesKeptAsTheyAre.length, 2);
+  // Annuler le choix : la ligne retient de nouveau, le marqueur tombe au balayage suivant.
+  await undoDismissLegacyRow("vieux");
+  assert.deepEqual(await readDismissed(), ["agenda"]);
   r = await Rp.legacyReport();
-  assert.deepEqual(r.sourceRows.map((x) => [x.id, x.state]), [["vieux", "convertible"]]);
+  assert.deepEqual(r.sourceRows.map((x) => x.id), ["vieux"]);
   assert.equal(Rp.legacyStatus(r), "again", "marqueur posé mais un élément est revenu : jamais « terminée »");
   await S.runLegacySweep(silent);
   assert.equal(await marker(), null);
-  // Annuler le choix.
-  cachedCatalogue([{ id: "autre", repo: "https://github.com/exemple/modules", ref: "v5.0.0", subdir: "modules/autre", version: "1.0.0", apiVersion: 2 }]);
-  assert.equal((await Rp.legacyReport()).keptRows.length, 1);
-  await undoDismissLegacyRow("vieux");
-  assert.deepEqual(await readDismissed(), ["agenda"]);
-  assert.equal((await Rp.legacyReport()).totals.sourceRows, 1);
 });
 
 test("module retiré par l'administrateur (données gardées) : la ligne disparaît, le marqueur peut être posé", async () => {

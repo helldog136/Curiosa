@@ -328,7 +328,7 @@ export async function applyRestore(backup: ParsedBackup, opts: { confirmCustom: 
   opStep("finish");
   // Rôles prédéfinis présents et affectations alignées sur `User.role` (sauvegarde d'avant la 0.2.0 : c'est ce qui crée toute l'affectation).
   await syncSystemAssignments().catch((e) => console.error("[backup] roles sync failed:", (e as Error)?.message));
-  // TEMPORAIRE (retrait en phase 3 d'entretien) : une sauvegarde d'un site d'avant la 0.1.20 peut contenir des modules ou instances « éteints » ; ils deviennent « désinstallés, données gardées ».
+  // Seul appel restant de legacyOff.ts (plus appelé au démarrage) : une sauvegarde d'un site d'avant la 0.1.20 peut contenir des modules ou instances « éteints » ; ils deviennent « désinstallés, données gardées ».
   await retireLegacyOff().catch((e) => console.error("[backup] legacy off migration failed:", (e as Error)?.message));
   // Les données restaurées peuvent être celles d'une ancienne version d'un module, réinstallée plus récente : on les met à niveau.
   const migrations = (await migrateAllInstances().catch(() => [])).filter((m) => m.status !== "none");

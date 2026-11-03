@@ -1,9 +1,8 @@
 // Exécuté une fois au démarrage du serveur Node (pas dans le navigateur ni à l'edge).
 export async function register() {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
-  // Balayage de conversion (0.2.0, src/core/modules/legacySweep.ts), AVANT toute tâche planifiée : ce qui était « éteint » avant la 0.1.20 devient
-  // « désinstallé, données gardées » (retireLegacyOff, à retirer en phase 3), les lignes de modules héritées sont converties sans réseau, les migrations
-  // de données en attente tournent, puis le marqueur `core.legacyCleared` est posé. Borné à 20 s (Next attend `register` avant de servir) ; ne lève jamais.
+  // Balayage de conversion (0.2.0, src/core/modules/legacySweep.ts), AVANT toute tâche planifiée : les migrations de données en attente tournent, les valeurs
+  // vides de réglages hérités sont effacées, puis le marqueur `core.legacyCleared` est posé. Borné à 20 s (Next attend `register` avant de servir) ; ne lève jamais.
   // Inachevé : le site public est servi normalement, l'admin l'explique, et le démarrage suivant reprend.
   try {
     const { runLegacySweep } = await import("@/core/modules/legacySweep");

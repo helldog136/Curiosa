@@ -1,10 +1,10 @@
 import { prisma } from "@/core/db";
 
 /**
- * « Garder tel quel » (page Entretien) : un module copié par une très ancienne version de Curiosa que le catalogue ne propose plus ne passera jamais
- * seul au catalogue. L'administrateur peut le retirer (en gardant ses données), ou dire qu'il le garde tel quel : il ne retient alors plus la mise à
- * niveau. Règle : le marqueur `core.legacyCleared` peut être posé quand les seules lignes héritées restantes sont des modules ABSENTS du catalogue que
- * l'administrateur a ainsi gardés (ou qu'il a retirés : leur ligne n'existe plus). Liste d'identifiants dans un réglage, bornée.
+ * « Garder tel quel » (page Entretien) : un module copié par une très ancienne version de Curiosa ne passe plus au catalogue tout seul (le code qui le
+ * convertissait est retiré). L'administrateur peut le retirer (en gardant ses données, puis le réinstaller depuis le catalogue), ou dire qu'il le garde
+ * tel quel : il ne retient alors plus la mise à niveau. Règle : le marqueur `core.legacyCleared` peut être posé quand les seules lignes héritées restantes
+ * sont des modules que l'administrateur a ainsi gardés (ou qu'il a retirés : leur ligne n'existe plus). Liste d'identifiants dans un réglage, bornée.
  */
 export const DISMISSED_KEY = "core.legacyDismissed";
 export const DISMISSED_MAX = 50;

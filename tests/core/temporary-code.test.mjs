@@ -5,10 +5,10 @@ import fs from "node:fs";
 // Code jetable : chaque entrée dit jusqu'à quelle version stable il a une raison d'exister. Passé ce jalon, ce test échoue et impose le ménage.
 const TEMPORARY = [
   {
-    why: "migration des modules et instances « éteints » (avant la 0.1.20) vers « désinstallé, données gardées »",
-    removeAfter: "0.6.99",   // phase 3 d'entretien : toujours repoussée (décidé : pas de retrait dans la 0.4.0, qui porte déjà les skins ; base de données et sauvegardes). Échéance relevée de 0.3.99 à 0.4.99 pour la 0.4.0, puis à 0.5.99 pour la 0.5.0, puis à 0.6.99 pour la 0.6.0 (reports faits à l'assemblage de la release : à confirmer par la propriétaire).
+    why: "restauration d'une sauvegarde d'avant la 0.1.20 : ses modules et instances « éteints » deviennent « désinstallés, données gardées » (plus appelé au démarrage : `upgrade.json` exige la 0.2.0 depuis le retrait de l'entretien)",
+    removeAfter: "0.9.99",   // un fichier de sauvegarde garde son format quelle que soit la version du site : tant qu'une sauvegarde de cette époque peut être restaurée, ce code reste. Échéance à relire quand le format de sauvegarde refusera ces anciennes sauvegardes.
     files: ["src/core/modules/legacyOff.ts"],
-    alsoRemove: ["son appel dans le balayage du démarrage (src/core/modules/legacySweep.ts, étape 1) et dans applyRestore (src/core/backup/restore.ts) ; les colonnes Module.enabled et ModuleInstance.enabled (prisma/schema.prisma, nouvelle migration), le champ enabled de BackupModule (backup/format.ts) ; les tests « migration des éteints » de tests/modules-mgmt/module-lifecycle.test.mjs"],
+    alsoRemove: ["son appel dans applyRestore (src/core/backup/restore.ts) ; les colonnes Module.enabled et ModuleInstance.enabled (prisma/schema.prisma, nouvelle migration), le champ enabled de BackupModule (backup/format.ts) ; les tests « migration des éteints » de tests/modules-mgmt/module-lifecycle.test.mjs"],
   },
 ];
 
@@ -17,6 +17,7 @@ const TEMPORARY = [
 // et ajoutez ici une ligne.
 const REMOVED = [
   { what: "migrations « modules intégrés » et « Blocs de page » (0.1.2, 0.1.3-rc.x)", needs: "0.1.4" },
+  { what: "rangement au démarrage des modules et instances « éteints » (avant la 0.1.20) et conversion des lignes de modules `bundled` / `builtin` en modules du catalogue (balayage de démarrage, mise à jour, réinstallation) : le démarrage de la 0.2.0 les a faits", needs: "0.2.0" },
 ];
 
 const base = (v) => v.replace(/[-+].*$/, "").split(".").map(Number);

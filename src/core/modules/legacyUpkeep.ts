@@ -13,8 +13,8 @@ import { legacyReport, type LegacyReport } from "./legacyReport";
  * Logique pure sur le rapport (testée) ; seule `legacyUpkeepSummary` lit la base, avec une mémoire de 15 secondes pour le menu de toutes les pages.
  */
 export type UpkeepGroup = "todo" | "kept" | "done";
-/** Les lignes connues : une par rubrique du rapport, plus « finish » (le marqueur de fin n'est pas posé) et une ligne par extension que le catalogue ne propose plus. */
-export type UpkeepId = "finish" | "sourceRows" | "absent" | "switchedOff" | "behind" | "failed" | "newer" | "seedsMissing" | "collections" | "legacyValues" | "orphans" | "keptRows";
+/** Les lignes connues : une par rubrique du rapport, plus « finish » (le marqueur de fin n'est pas posé) et une ligne par extension copiée par une très ancienne version (« absent » : historique du nom). */
+export type UpkeepId = "finish" | "absent" | "behind" | "failed" | "newer" | "seedsMissing" | "collections" | "legacyValues" | "orphans" | "keptRows";
 export type UpkeepRow = {
   id: UpkeepId;
   group: UpkeepGroup;
@@ -22,7 +22,7 @@ export type UpkeepRow = {
   n: number;
   /** Quelques noms (l'ordre du rapport) ; jamais une valeur de réglage. */
   names: string[];
-  /** Pour « absent » : l'extension concernée (une ligne par extension). */
+  /** Pour « absent » : l'extension concernée (une ligne par extension, quelle que soit sa situation dans le catalogue). */
   moduleId?: string;
 };
 export type UpkeepState = "todo" | "kept" | "clean";
@@ -36,9 +36,7 @@ export type UpkeepSummary = {
 };
 
 /** Où classer chaque rubrique du rapport quand elle n'est pas à zéro. Une seule table : le menu, la page et l'outil MCP disent la même chose. */
-export const UPKEEP_GROUP: Record<"sourceRows" | "switchedOff" | "behind" | "failed" | "newer" | "seedsMissing" | "collections" | "legacyValues" | "orphans", "todo" | "kept"> = {
-  sourceRows: "todo",     // des extensions à faire passer au catalogue : « Voir les mises à jour »
-  switchedOff: "todo",    // éléments éteints à ranger : « Relancer »
+export const UPKEEP_GROUP: Record<"behind" | "failed" | "newer" | "seedsMissing" | "collections" | "legacyValues" | "orphans", "todo" | "kept"> = {
   behind: "todo",         // données en retard : « Relancer »
   failed: "todo",         // mises de côté : à rouvrir et réessayer
   newer: "todo",          // plus récentes que leur extension : mettre l'extension à jour
@@ -49,16 +47,14 @@ export const UPKEEP_GROUP: Record<"sourceRows" | "switchedOff" | "behind" | "fai
 };
 
 /** L'ordre d'affichage des lignes de chaque groupe. */
-export const UPKEEP_ORDER: readonly UpkeepId[] = ["finish", "absent", "sourceRows", "switchedOff", "behind", "failed", "newer", "keptRows", "collections", "seedsMissing", "legacyValues", "orphans"];
+export const UPKEEP_ORDER: readonly UpkeepId[] = ["finish", "absent", "behind", "failed", "newer", "keptRows", "collections", "seedsMissing", "legacyValues", "orphans"];
 
 /** Les lignes de la page : à faire, gardées, ou à zéro (« terminé »). Logique pure. */
 export function upkeepRows(r: LegacyReport): UpkeepRow[] {
   const rows: UpkeepRow[] = [];
-  const absent = r.sourceRows.filter((m) => m.state === "absent");
-  const convertible = r.sourceRows.filter((m) => m.state !== "absent");
+  // Une ligne héritée ne passe plus au catalogue toute seule : une ligne par extension, la personne la retire ou la garde telle quelle.
+  const absent = r.sourceRows;
   const names: Record<string, string[]> = {
-    sourceRows: convertible.map((m) => m.id),
-    switchedOff: [...r.switchedOff.modules, ...r.switchedOff.instances],
     behind: r.behind.map((i) => i.key),
     failed: r.failed.map((i) => i.key),
     newer: r.newer.map((i) => i.key),
@@ -68,8 +64,6 @@ export function upkeepRows(r: LegacyReport): UpkeepRow[] {
     orphans: r.orphans.map((i) => i.key),
   };
   const counts: Record<string, number> = {
-    sourceRows: convertible.length,
-    switchedOff: r.totals.switchedOffModules + r.totals.switchedOffInstances,
     behind: r.totals.behind, failed: r.totals.failed, newer: r.totals.newer, seedsMissing: r.totals.seedsMissing,
     collections: r.totals.collections, legacyValues: r.totals.legacyValues, orphans: r.totals.orphans,
   };
