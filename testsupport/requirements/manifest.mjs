@@ -125,6 +125,24 @@ const requirements = [
     },
   },
   {
+    id: "manifest.imageHosts", level: "mandatory", group: "manifest",
+    title: "Les hôtes d'images déclarés sont de simples noms d'hôte",
+    what: "« imageHosts » (5 au plus) liste des noms d'hôte exacts en minuscules (« media.example.org ») : pas de joker, d'adresse complète, de port, d'adresse numérique ni de nom interne, et aucun nom en double. Sans « imageHosts », rien à vérifier.",
+    why: "Le cœur n'affiche une vignette de tableau (cellule « image ») que si son adresse est une page du site ou vient d'un hôte déclaré ici. Un hôte mal écrit n'est jamais reconnu : les vignettes disparaîtraient sans bruit, ou le cœur refuserait le manifeste.",
+    fix: "Écrivez seulement le nom : « media.rawg.io », pas « https://media.rawg.io/ » ni « *.rawg.io ». Pour ne contacter aucun hôte, retirez « imageHosts » et enregistrez l'image sur le site (« /uploads/… »).",
+    async run(m) {
+      const hosts = m.manifest?.imageHosts;
+      if (hosts === undefined) return { na: "le module ne déclare aucun hôte d'images" };
+      if (!Array.isArray(hosts)) return ["« imageHosts » doit être une liste de noms d'hôte"];
+      const { isDeclarableImageHost, MAX_IMAGE_HOSTS } = await import("@/core/adminkit/image");
+      const out = [];
+      if (hosts.length > MAX_IMAGE_HOSTS) out.push(`${hosts.length} hôtes déclarés : ${MAX_IMAGE_HOSTS} au plus`);
+      for (const h of hosts) if (!isDeclarableImageHost(h)) out.push(`« ${String(h).slice(0, 80)} » n'est pas un nom d'hôte valable (exemple : media.example.org)`);
+      if (new Set(hosts).size !== hosts.length) out.push("un même hôte est déclaré deux fois");
+      return out;
+    },
+  },
+  {
     id: "manifest.catalogue", level: "advice", group: "manifest",
     title: "La fiche du module est complète pour le catalogue",
     what: "Le module a un nom et une description en français et en anglais, le nom de la personne qui l'a écrit et une licence.",

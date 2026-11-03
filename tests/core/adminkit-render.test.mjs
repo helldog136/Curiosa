@@ -267,6 +267,47 @@ test("tableau enrichi hors du panneau d'admin : pas de boutons de ligne ni d'int
   assert.match(out, />Actif</);
 });
 
+const picBlock = (extra = {}) => ({ type: "table", columns: ["Jeu", "Plateforme"], rowIds: ["a", "b", "c"], rows: [
+  [{ text: "Zelda", image: { src: "/uploads/zelda.webp", alt: "Jaquette de Zelda" } }, "Switch"],
+  [{ text: "Mario", image: { src: "https://media.rawg.io/mario.jpg", alt: "Jaquette de Mario", fit: "contain" } }, "Switch"],
+  [{ text: "Sans jaquette" }, "PC"],
+], searchable: true, ...extra });
+
+test("tableau enrichi, vignette : taille fixe, texte alternatif, chargement paresseux, object-fit, sans fuite de la page d'origine", () => {
+  const out = table(picBlock());
+  const imgs = out.match(/<img [^>]*>/g) ?? [];
+  assert.equal(imgs.length, 2);
+  for (const img of imgs) {
+    assert.match(img, /width="40" height="40"/, "taille fixe : lignes régulières");
+    assert.match(img, /loading="lazy"/); assert.match(img, /decoding="async"/); assert.match(img, /referrerPolicy="no-referrer"|referrerpolicy="no-referrer"/i);
+    assert.match(img, /alt="Jaquette de (Zelda|Mario)"/);
+  }
+  assert.match(imgs[0], /object-cover/); assert.match(imgs[1], /object-contain/);
+  assert.match(out, />Zelda</, "le texte reste écrit à côté de la vignette");
+  assert.match(out, /max-sm:block/, "carte sur 390 px comme les autres cellules");
+});
+
+test("tableau enrichi, vignette : une ligne sans image réserve la même place (même hauteur) ; la recherche porte sur le texte", () => {
+  const out = table(picBlock());
+  assert.equal((out.match(/inline-flex h-10 w-10 shrink-0/g) ?? []).length, 3, "trois cases de 40 px : deux images et une case vide");
+  assert.match(out, /<span class="inline-flex h-10 w-10 shrink-0[^"]*" aria-hidden="true"><\/span>/, "la case vide est muette pour les lecteurs d'écran");
+  assert.doesNotMatch(table({ type: "table", columns: ["A"], rows: [[{ text: "Seul", badge: "ok" }]] }), /h-10 w-10/, "aucune place réservée sans vignette");
+});
+
+test("tableau enrichi, vignette : sans texte alternatif ou avec une adresse étrangère à la page, rien n'est chargé (garde-fou du navigateur)", () => {
+  const out = table({ type: "table", columns: ["Jeu"], rows: [
+    [{ text: "A", image: { src: "/uploads/a.webp", alt: "" } }], [{ text: "B", image: { src: "javascript:alert(1)", alt: "x" } }], [{ text: "C", image: { src: "//evil.example/x.png", alt: "x" } }], [{ text: "D", image: { src: "http://evil.example/x.png", alt: "x" } }],
+  ] });
+  assert.doesNotMatch(out, /<img /);
+  assert.doesNotMatch(out, /h-10 w-10/, "aucune image valable : aucune place réservée");
+});
+
+test("tableau enrichi, vignette : hors du panneau d'admin (site public), la même cellule s'affiche sans élément interactif", () => {
+  const out = html(h(AdminTable, { block: picBlock(), labels: tlabels }));
+  assert.match(out, /<img /);
+  assert.doesNotMatch(out, /role="switch"/);
+});
+
 /* ───────────── formulaire d'un module ───────────── */
 
 const formBlock = () => ({ type: "adminForm", action: "save", submitLabel: "Enregistrer la commande", title: "Commande", fields: [
@@ -408,4 +449,12 @@ test("formulaire de module : un champ `period` avec `openEnded` accepte une seul
   const closed = b({});
   const c = html(wrap(h(AdminBlockForm, { instanceId: "i1", block: closed, labels: formLabels(tr, "fr", closed) })));
   assert.match(c, /name="p" value=""/); assert.doesNotMatch(c, /À partir du/);
+});
+
+test("tableau enrichi, vignette tombée : une pastille neutre avec la première lettre et le texte alternatif, jamais d'icône cassée", async () => {
+  const { ThumbView } = await import("@/components/admin/AdminTable");
+  const out = html(h(ThumbView, { image: { src: "/uploads/absente.webp", alt: "Jaquette de Zelda" }, initial: "zelda", failed: true }));
+  assert.doesNotMatch(out, /<img/);
+  assert.match(out, /role="img" aria-label="Jaquette de Zelda"[^>]*>Z</);
+  assert.match(out, /h-10 w-10/, "même taille que l'image : la ligne ne bouge pas");
 });

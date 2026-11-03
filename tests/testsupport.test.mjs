@@ -27,7 +27,7 @@ test("un module conforme réussit toutes les exigences (aucune en échec, aucune
   assert.equal(report.summary.ok, true);
   // « neutrality.clean » est sautée sans liste de neutralité, vérifiée (et réussie) avec : les deux sont corrects.
   const notPassed = report.results.filter((r) => r.status !== "pass" && r.id !== "neutrality.clean" && !(r.group === "skin" && r.status === "na")).map((r) => `${r.id}:${r.status}`);
-  assert.deepEqual(notPassed.sort(), ["manifest.previews:na", "overlay.elements:na", "srp.single:na"]);
+  assert.deepEqual(notPassed.sort(), ["manifest.imageHosts:na", "manifest.previews:na", "overlay.elements:na", "srp.single:na"]);
   // avec un voisin sans rapport, « un propriétaire par donnée » est vérifié et réussit
   void other;
   assert.equal(status(await checkModule(dir, { siblings: [path.join(path.dirname(other), "full-mod")] }), "srp.single").status, "pass");
@@ -122,6 +122,7 @@ const FAULTS = {
   "skin.tokensUsed": (f) => withSkin(f, { tokens: [...SKIN_TOKENS, { name: "--sk-m-full-mod-card-gap", type: "length", default: "1rem" }] }),
   "skin.textPair": (f) => withSkin(f, { tokens: SKIN_TOKENS.map((t) => ({ name: t.name, type: t.type, default: t.default })) }),
   "skin.declare": (f) => append(f, "index.mjs", 'export const CSS = ".fm-card{border-radius:1rem;padding:1rem;background:#222}";'),
+  "manifest.imageHosts": (f) => editManifest(f, (m) => { m.imageHosts = ["https://media.example.org/", "*.example.org"]; }),
   "manifest.previews": (f) => editManifest(f, (m) => { m.previews = [{ file: "previews/fantome.webp", caption: { fr: "Fantôme", en: "Ghost" }, alt: { fr: "Une image absente", en: "A missing image" }, type: "public" }]; }),
   "overlay.elements": (f) => editManifest(f, (m) => { m.minCore = "0.5.0"; m.overlayElements = [{ id: "ghost", label: { fr: "Fantôme", en: "Ghost" }, fit: "fluid" }]; }),
   "admin.ergonomics": (f) => editManifest(f, (m) => { m.settings[0].label.fr = "Titre de la page :"; }), // avec une base vide : le NOUVEL écart (R10) échoue

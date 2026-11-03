@@ -510,3 +510,71 @@ test("résumé de « Plus d'options » : une période ouverte se dit en une phra
   assert.deepEqual(H.valueErrorKey("period", { type: "period", openEnded: true }, tr), { key: "instances.error.periodOpen", vars: {} });
   assert.deepEqual(H.valueErrorKey("period", { type: "period" }, tr), { key: "instances.error.period", vars: {} });
 });
+
+/* ───────────── vignette d'une cellule de tableau (image) ───────────── */
+
+test("vignette : liste fermée — pages du site et hôtes déclarés, rien d'autre", async () => {
+  const { checkImageSrc } = await import("@/core/adminkit/image");
+  const ok = (src, hosts = []) => assert.equal(checkImageSrc(src, hosts).ok, true, String(src));
+  const no = (src, hosts = [], why) => { const r = checkImageSrc(src, hosts); assert.equal(r.ok, false, String(src)); if (why) assert.equal(r.problem, why, String(src)); };
+  ok("/uploads/abc.webp"); ok("/m/jeux/image?id=3"); ok("https://media.rawg.io/a/b.jpg", ["media.rawg.io"]); ok("https://MEDIA.rawg.io/a.jpg", ["media.rawg.io"]);
+  assert.equal(checkImageSrc("/uploads/a/../b.webp").src, "/uploads/b.webp", "normalisée");
+  no("https://media.rawg.io/a.jpg", [], "host-not-declared");
+  no("https://autre.example.org/a.jpg", ["media.rawg.io"], "host-not-declared");
+  no("https://sub.media.rawg.io/a.jpg", ["media.rawg.io"], "host-not-declared"); // pas de joker, pas de sous-domaine implicite
+  no("https://media.rawg.io.evil.example/a.jpg", ["media.rawg.io"], "host-not-declared");
+  no("http://media.rawg.io/a.jpg", ["media.rawg.io"], "scheme");
+  no("javascript:alert(1)", ["media.rawg.io"], "invalid"); no("data:image/svg+xml,<svg/>", [], "invalid"); no("ftp://media.rawg.io/a", ["media.rawg.io"], "scheme");
+  no("//media.rawg.io/a.jpg", ["media.rawg.io"], "invalid");
+  no("https://user:pw@media.rawg.io/a.jpg", ["media.rawg.io"], "invalid"); no("https://media.rawg.io:8443/a.jpg", ["media.rawg.io"], "invalid");
+  no("https://127.0.0.1/a.jpg", ["127.0.0.1"], "invalid"); no("https://localhost/a.jpg", ["localhost"], "invalid"); no("https://intranet.local/a.jpg", ["intranet.local"], "invalid");
+  no("/api/admin/modules/x/delete", [], "site-path"); no("/API/anything", [], "site-path"); no("/admin/users", [], "site-path"); no("/%61pi/x", [], "site-path"); no("/uploads/%2e%2e/api/x", [], "site-path");
+  no("/uploads\\x.webp", [], "invalid"); no("/uploads/x y.webp", [], "invalid"); no("/uploads/\u0000.webp", [], "invalid");
+  no("", [], "empty"); no(undefined, [], "empty"); no(42, [], "empty"); no("/" + "a".repeat(2001), [], "too-long");
+});
+
+test("vignette : le texte alternatif est obligatoire ; une image refusée devient une cellule de texte, le reste du bloc est intact", async () => {
+  const { cleanAlt, validCellImage, sanitizeTableImages } = await import("@/core/adminkit/image");
+  assert.equal(cleanAlt("  Jaquette   de Zelda "), "Jaquette de Zelda");
+  assert.equal(cleanAlt(""), null); assert.equal(cleanAlt("   "), null); assert.equal(cleanAlt(undefined), null);
+  assert.equal(Array.from(cleanAlt("é".repeat(500))).length, 160);
+  assert.equal(validCellImage({ src: "/uploads/a.webp" }), null, "sans alt : pas d'image");
+  assert.deepEqual(validCellImage({ src: "/uploads/a.webp", alt: "Zelda", fit: "contain" }), { src: "/uploads/a.webp", alt: "Zelda", fit: "contain" });
+  assert.deepEqual(validCellImage({ src: "/uploads/a.webp", alt: "Zelda", fit: "stretch", extra: "x" }), { src: "/uploads/a.webp", alt: "Zelda" }, "fit inconnu et clés en trop ignorés");
+  const block = { type: "table", columns: ["Jeu"], rows: [
+    [{ text: "Zelda", image: { src: "https://media.rawg.io/z.jpg", alt: "Jaquette de Zelda" } }],
+    [{ text: "Mario", image: { src: "https://tracker.example.net/p.gif", alt: "Jaquette de Mario" } }],
+    [{ text: "Sans alt", image: { src: "/uploads/a.webp", alt: "" } }],
+    ["texte"],
+  ] };
+  const plain = { type: "table", columns: ["A"], rows: [["a"], [{ text: "b", badge: "ok" }]] };
+  assert.equal(sanitizeTableImages(plain, ["media.rawg.io"]), plain, "un tableau sans image est rendu tel quel (même objet)");
+  const out = sanitizeTableImages(block, ["media.rawg.io"]);
+  assert.deepEqual(out.rows[0][0].image, { src: "https://media.rawg.io/z.jpg", alt: "Jaquette de Zelda" });
+  assert.deepEqual(out.rows[1][0], { text: "Mario" }, "hôte non déclaré : texte seul");
+  assert.deepEqual(out.rows[2][0], { text: "Sans alt" });
+  assert.equal(out.rows[3][0], "texte");
+  assert.ok(block.rows[1][0].image, "l'entrée n'est pas modifiée");
+  const site = sanitizeTableImages(block, []);
+  assert.deepEqual(site.rows[0][0], { text: "Zelda" }, "sans déclaration : seulement les pages du site");
+});
+
+test("vignette : un tableau avec une image est un tableau enrichi ; sa cellule se lit par son texte, à défaut par son texte alternatif", () => {
+  const block = { type: "table", columns: ["Jeu"], rows: [[{ text: "Zelda", image: { src: "/uploads/a.webp", alt: "Jaquette" } }]] };
+  assert.equal(T.isEnhancedTable(block), true);
+  assert.equal(T.cellText({ text: "Zelda", image: { src: "/a", alt: "Jaquette" } }), "Zelda");
+  assert.equal(T.cellText({ image: { src: "/a", alt: "Jaquette" } }), "Jaquette");
+});
+
+test("manifeste : imageHosts — noms d'hôte exacts, 5 au plus, sans doublon ni adresse numérique ni nom interne ; absent = rien de plus que le site", async () => {
+  const { manifestSchema } = await import("@/core/modules/manifest");
+  const { declaredImageHosts } = await import("@/core/modules/imageHosts");
+  const base = { apiVersion: 1, id: "demo", name: "Démo", version: "1.0.0", main: "index.mjs" };
+  const parse = (imageHosts) => manifestSchema.safeParse({ ...base, ...(imageHosts === undefined ? {} : { imageHosts }) });
+  assert.equal(parse(undefined).success, true);
+  assert.equal(parse(["media.rawg.io", "cdn.example.org"]).success, true);
+  for (const bad of [["*.rawg.io"], ["https://media.rawg.io"], ["media.rawg.io/path"], ["media.rawg.io:8443"], ["MEDIA.rawg.io"], ["127.0.0.1"], ["localhost"], ["nas.local"], ["rawg"], [""], ["a.b.c.d.e.f".replace(/\./g, "..")],
+    ["a.example.org", "b.example.org", "c.example.org", "d.example.org", "e.example.org", "f.example.org"], ["a.example.org", "a.example.org"]]) assert.equal(parse(bad).success, false, JSON.stringify(bad));
+  assert.deepEqual(declaredImageHosts({ imageHosts: ["Media.rawg.io", "media.rawg.io"] }), ["media.rawg.io"]);
+  assert.deepEqual(declaredImageHosts(undefined), []);
+});

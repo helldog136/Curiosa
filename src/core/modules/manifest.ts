@@ -16,6 +16,7 @@ import { MAX_TAB_ENTRIES, TAB_ID_RE, TAB_LABEL_MAX, tabIssues } from "./tabs";
 import { moduleSkinIssues, moduleSkinSchema } from "./skinDecl";
 import { overlayElementIssues, overlayElementsSchema } from "../overlays/decl";
 import { previewIssues, previewsSchema } from "./previews";
+import { MAX_IMAGE_HOSTS, isDeclarableImageHost } from "../adminkit/image";
 import { MAX_ADDRESS_DECLS, returnAddressIssues, returnAddressSchema, siteAddressUseSchema } from "./addressDecl";
 
 const localized = z.union([z.string().max(500), z.record(z.string(), z.string().max(500))]);
@@ -355,6 +356,13 @@ export const manifestSchema = z.object({
    * AJOUT SANS DANGER : un cœur plus ancien ignore la clé et affiche la fiche comme avant, donc aucun `minCore` n'est à déclarer pour elle.
    */
   previews: previewsSchema.optional(),
+  /**
+   * (cœur 0.6.5) HÔTES D'IMAGES que le module peut afficher en vignette dans les tableaux de son administration (cellule `{ text, image: { src, alt } }`) : des noms d'hôte exacts
+   * (« media.rawg.io »), 5 au plus, sans joker, sans adresse numérique ni nom interne. Sans cette clé, seules les pages du site (`/uploads/…`) sont permises. Toute autre adresse est écartée
+   * côté serveur. AJOUT SANS DANGER : un cœur plus ancien ignore la clé (et la vignette) et affiche le texte de la cellule ; aucun `minCore` n'est à déclarer pour elle.
+   */
+  imageHosts: z.array(z.string().refine(isDeclarableImageHost, "an image host is a plain lowercase host name like media.example.org (no port, wildcard, IP address or internal name)")).max(MAX_IMAGE_HOSTS).optional()
+    .refine((hosts) => !hosts || new Set(hosts).size === hosts.length, "imageHosts lists the same host twice"),
   /**
    * Droits du module (0.2.0), proposés dans les rôles de la page Équipe. Identifiant LOCAL (« email.view ») : le cœur le préfixe par l'identifiant du module
    * (« <module>:email.view »), un module ne peut donc pas déclarer le droit d'un autre. `open` (ouvrir la page d'admin du module) est implicite.
