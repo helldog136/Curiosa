@@ -5,12 +5,38 @@ import { allSettings, compareVersions, missingLangs, stripComments } from "./uti
 
 const MAX_BYTES = 10 * 1024 * 1024; // même plafond que l'installateur du cœur
 
+/** `ctx.api.log.write(` sans `?.` et sans test visible de `ctx.api.log` (typeof, if, &&, ??) : plante sur un cœur d'avant la 0.6.0. */
+function usesBareLogWrite(code) {
+  if (!/\bapi\s*\.\s*log\s*\.\s*write\b/.test(code)) return false;
+  return !/typeof\s+[\w.?]*\bapi\s*\??\.\s*log\b|\bif\s*\(\s*!?\s*[\w.?]*\bapi\s*\??\.\s*log\s*\)|\bapi\s*\??\.\s*log\s*(?:&&|\?\?|\|\|)|["']log["']\s+in\s+[\w.?]*\bapi\b/.test(code);
+}
+
+/** Une lecture de `ctx.timezone` qui ne prévoit pas son absence (ni `typeof`, ni `??`, `||`, `?`, ni comparaison) : sur un cœur d'avant la 0.6.4 elle vaut `undefined`. */
+function usesBareTimezone(code) {
+  if (/typeof\s+[\w.]*\bctx\s*\??\.\s*timezone\b|["']timezone["']\s+in\s+[\w.]*\bctx\b/.test(code)) return false;
+  for (const hit of code.matchAll(/\bctx\s*\??\.\s*timezone\b(?!\s*:)/g)) {
+    const after = code.slice(hit.index + hit[0].length, hit.index + hit[0].length + 12);
+    if (!/^\s*(?:\?\?|\|\||\?[^.]|===|!==|==|!=)/.test(after)) return true;
+  }
+  return false;
+}
+
 /**
  * Version du cœur qui a apporté chaque fonction. Un module qui s'en sert doit déclarer `minCore` au moins égal, sinon un cœur plus ancien l'installe puis le
  * fait mal fonctionner (ou le refuse sans explication). Source : l'historique des versions du cœur (CHANGELOG.md).
  * Les fonctions d'avant la 0.1.10 ne sont pas listées : aucun site à jour n'a un cœur aussi ancien, une exigence là-dessus ne ferait que du bruit.
+ * Volontairement ABSENTES : les clés de manifeste que le cœur plus ancien ignore sans rien perdre et que la documentation dit sans `minCore` à déclarer
+ * (`previews` 0.6.1, `shortLink` 0.6.1, `social` 0.6.1, `suggestInMenu` 0.6.1, `returnAddresses` et `siteAddressUses` 0.6.2, `dashboard` 0.6.2, `content.templates` 0.6.3, `logEvents`
+ * 0.6.0). En exiger un `minCore` exclurait des sites à jour pour rien. Déjà exigées ailleurs : `overlayElements` (0.5.0, par parseManifest). `catalogue/profiles.json`
+ * est un fichier du dépôt de modules, pas d'un module. `advice: true` : conseil (exigence `compat.minCoreAdvice`) au lieu de `compat.minCore`.
  */
 export const FEATURES = [
+  // Cœur 0.6.4. `openEnded` : un cœur plus ancien refuse toute valeur ouverte et ne propose que deux dates. `ctx.timezone` : absent d'un cœur plus ancien, et l'oublier change
+  // le jour au mauvais moment sans rien casser (d'où un simple conseil, et rien si le code teste la présence ou garde un repli).
+  { since: "0.6.4", label: "« openEnded » sur une période (début seul ou fin seule)", test: (m, man) => allSettings(man).some((s) => s.openEnded !== undefined) || /\bopenEnded\s*:\s*true\b/.test(stripComments(m.code)) },
+  { since: "0.6.4", advice: true, label: "ctx.timezone (fuseau du site) sans tester sa présence", test: (m) => usesBareTimezone(stripComments(m.code)) },
+  // Cœur 0.6.0. `ctx.api.log` n'existe pas avant : l'appeler tel quel plante. `ctx.api.log?.write(…)` ou un test préalable ne sont pas signalés.
+  { since: "0.6.0", label: "ctx.api.log.write (écrire au journal du cœur) sans tester que ctx.api.log existe", test: (m) => usesBareLogWrite(stripComments(m.code)) },
   { since: "0.6.0", label: "un réglage « period », « datetime » ou « duration » (période, date et heure, durée en un seul champ)", test: (m, man) => allSettings(man).some((s) => s.type === "period" || s.type === "datetime" || s.type === "duration") },
   { since: "0.6.0", label: "un réglage avec « min », « max », « step », « unit », « example », « rare » ou « display »", test: (m, man) => allSettings(man).some((s) => s.min !== undefined || s.max !== undefined || s.step !== undefined || s.unit !== undefined || s.example !== undefined || s.rare !== undefined || s.display !== undefined) },
   { since: "0.6.0", label: "un bloc du panneau avec un tableau enrichi (« searchable », « filters », cellule « badge » ou « switch », action « inMenu »)", test: (m) => /\bsearchable\s*:\s*true|\bfilters\s*:\s*\[\s*\{\s*column|\bbadge\s*:\s*["']|\binMenu\s*:\s*true|\bswitch\s*:\s*\{\s*on\b/.test(stripComments(m.code)) && /type\s*:\s*["']table["']/.test(stripComments(m.code)) },
@@ -47,6 +73,20 @@ export const FEATURES = [
   { since: "0.1.14", label: "un service « each » / ctx.api.services.callAll", test: (m, man) => (man.offers ?? []).some((o) => o.each) || /\bcallAll\b/.test(stripComments(m.code)) },
   { since: "0.1.10", label: "la permission « rawg » (jaquettes de jeux)", test: (m, man) => (man.permissions ?? []).includes("rawg") || /\bapi\s*\??\.\s*rawg\b(?!\.io\b)/.test(stripComments(m.code)) },
 ];
+
+/** Les fonctions de FEATURES retenues par `keep` que le module utilise sans le `minCore` qu'il faut. */
+function minCoreProblems(m, keep) {
+  if (!m.parsed?.ok && !m.manifest) return { skip: "module.json illisible" };
+  const man = m.parsed?.ok ? m.parsed.manifest : m.manifest;
+  const need = FEATURES.filter((f) => keep(f) && (() => { try { return f.test(m, man); } catch { return false; } })());
+  if (!need.length) return { na: "aucune fonction récente du cœur n'est utilisée" };
+  const out = [];
+  for (const f of need) {
+    if (!man.minCore) out.push(`le module utilise ${f.label} (cœur ${f.since} ou plus) mais ne déclare pas « minCore »: « ${f.since} »`);
+    else if (/^\d+\.\d+\.\d+$/.test(man.minCore) && compareVersions(man.minCore, f.since) < 0) out.push(`le module utilise ${f.label} (cœur ${f.since} ou plus) mais « minCore » vaut ${man.minCore}`);
+  }
+  return out;
+}
 
 const requirements = [
   {
@@ -159,18 +199,15 @@ const requirements = [
     what: "Si le module utilise une fonction apportée par une version récente du cœur (par exemple « optional » : 0.1.22), « minCore » est au moins cette version.",
     why: "Sans « minCore », un site dont le cœur est plus ancien installe quand même le module, et celui-ci se comporte mal (réglage qui n'existe pas, manifeste refusé…). Avec « minCore », le site répond clairement « mettez d'abord le site à jour ».",
     fix: "Ajoutez dans module.json « minCore »: « x.y.z » avec la version indiquée dans le message (trois nombres, rien d'autre).",
-    run(m) {
-      if (!m.parsed?.ok && !m.manifest) return { skip: "module.json illisible" };
-      const man = m.parsed?.ok ? m.parsed.manifest : m.manifest;
-      const need = FEATURES.filter((f) => { try { return f.test(m, man); } catch { return false; } });
-      if (!need.length) return { na: "aucune fonction récente du cœur n'est utilisée" };
-      const out = [];
-      for (const f of need) {
-        if (!man.minCore) out.push(`le module utilise ${f.label} (cœur ${f.since} ou plus) mais ne déclare pas « minCore »: « ${f.since} »`);
-        else if (/^\d+\.\d+\.\d+$/.test(man.minCore) && compareVersions(man.minCore, f.since) < 0) out.push(`le module utilise ${f.label} (cœur ${f.since} ou plus) mais « minCore » vaut ${man.minCore}`);
-      }
-      return out;
-    },
+    run(m) { return minCoreProblems(m, (f) => !f.advice); },
+  },
+  {
+    id: "compat.minCoreAdvice", level: "advice", group: "compat",
+    title: "minCore couvre aussi les nouveautés qu'un cœur plus ancien lit de travers",
+    what: "Si le module lit une nouveauté du cœur qu'un cœur plus ancien n'a pas et ne signale pas (par exemple « ctx.timezone » : cœur 0.6.4) sans prévoir son absence, « minCore » est au moins cette version.",
+    why: "Rien ne plante : sur un cœur plus ancien la valeur manque, le module retombe sur autre chose et change de jour à la mauvaise heure, sans que personne ne le voie. Avec « minCore », le site répond « mettez d'abord le site à jour », ou le module garde un repli volontaire.",
+    fix: "Soit ajoutez « minCore »: « x.y.z » avec la version indiquée dans le message, soit gardez un repli visible dans le code : `typeof ctx.timezone === \"string\" ? ctx.timezone : repli`, ou `ctx.timezone ?? repli`.",
+    run(m) { return minCoreProblems(m, (f) => f.advice === true); },
   },
   {
     id: "compat.minCoreKnown", level: "advice", group: "compat",
