@@ -27,7 +27,6 @@ export type ImageSrcProblem = "empty" | "too-long" | "invalid" | "site-path" | "
 export type ImageSrcCheck = { ok: true; src: string } | { ok: false; problem: ImageSrcProblem };
 
 const SITE = "https://site.invalid";
-// eslint-disable-next-line no-control-regex
 const BAD_CHARS = /[\u0000- \u007f\\]/;
 
 /** `src` est-il une image que ce module a le droit d'afficher ? `hosts` : les hôtes déclarés (liste vide : seulement les pages du site). */
