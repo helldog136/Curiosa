@@ -720,16 +720,17 @@ legacy?: { keys(): string[]; get(key: string): Promise<string | number | boolean
 
 ### b. Sémantique
 
-- **Balayage** dans `register()` (`src/instrumentation.ts:2`, qui appelle déjà `retireLegacyOff`). Selon la doc Next (`instrumentation.md:18`), `register` se termine avant de servir. Budget total : 20 s. Étapes idempotentes :
-  1. `retireLegacyOff` ;
-  2. migrations de modules en attente (instances avec `__dataVersion` < cible), une instance à la fois, dans le budget ;
+- **Balayage** dans `register()` (`src/instrumentation.ts:2`). Selon la doc Next (`instrumentation.md:18`), `register` se termine avant de servir. Budget total : 20 s. Étapes idempotentes :
+  1. migrations de modules en attente (instances avec `__dataVersion` < cible), une instance à la fois, dans le budget ;
+  2. effacement des valeurs vides de `legacySettings` et de réglages orphelins ;
   3. conversion `fromText` des réglages `choice` (contrat 1) ;
-  4. lignes `bundled` / `builtin` : **sans réseau**. Elles sont comptées et laissées telles quelles ; le code de conversion est conservé (`installer.ts:366-368,408-413`).
+  4. marqueur.
+  **Retiré (phase 3, fait avec `minFrom` 0.2.0)** : `retireLegacyOff` au démarrage (modules « éteints » avant la 0.1.20) et la conversion des lignes `bundled` / `builtin` (balayage, mise à jour, réinstallation : `bundledUpdate.ts`, `convertSourceRowsOffline`, `localTreeHash`). Le démarrage de la 0.2.0, que tout site plus ancien traverse d'abord, les a faits. `retireLegacyOff` ne sert plus qu'à la restauration d'une sauvegarde d'avant la 0.1.20 (un fichier de sauvegarde garde son format).
 - Si tout est terminé, le marqueur `core.legacyCleared` est écrit. Sinon, il ne l'est pas ; le démarrage suivant reprend.
-- **Garde** : marqueur absent → le site public est servi normalement. L'admin affiche en tête une explication « La conversion des anciennes données n'est pas terminée », avec le rapport et « Relancer » (propriétaire). En 0.2.0, c'est un **avertissement**, pas un blocage, puisque le code hérité est encore là. Il deviendra bloquant en phase 3.
+- **Garde** : marqueur absent → le site public est servi normalement. L'admin affiche en tête une explication « La conversion des anciennes données n'est pas terminée », avec le rapport et « Relancer » (propriétaire). Décision de la phase 3 : cela reste un **avertissement**, jamais un blocage (il protège aussi les conversions de données de modules, toujours vivantes). Une ligne `bundled` / `builtin` qui resterait retient le marqueur jusqu'à ce que la personne la retire (données gardées) ou la garde telle quelle.
 - **Rapport d'héritage** (lecture seule, page `/admin/maintenance/legacy` et outil MCP de maintenance). Il compte :
-  - les lignes `bundled` / `builtin` ;
-  - les entités `enabled=false` ;
+  - les lignes `bundled` / `builtin` (plus aucun code ne les convertit) ;
+  - ~~les entités `enabled=false`~~ (plus comptées : le démarrage de la 0.2.0 les a toutes rangées ; `switchedOff` reste dans la réponse, vide) ;
   - les instances en retard, `failed` ou `newer` ;
   - les valeurs présentes dans des `legacySettings` ;
   - les réglages orphelins (clé ni déclarée, ni `legacySettings`, ni `__*`) ;
@@ -747,7 +748,7 @@ legacy?: { keys(): string[]; get(key: string): Promise<string | number | boolean
 
 ### d. Compatibilité
 
-- La chaîne 0.1.28 → 0.2.0 est directe (`upgrade.json` garde `minFrom: "0.1.4"`). La phase 3 imposera `minFrom: "0.2.0"` et une ligne `REMOVED` (`tests/core/temporary-code.test.mjs:9,18`). Le `removeAfter: "0.2.99"` de `legacyOff.ts` reste valable.
+- La chaîne 0.1.28 → 0.2.0 était directe (`minFrom: "0.1.4"`). La phase 3 a imposé `minFrom: "0.2.0"` et une ligne `REMOVED` (`tests/core/temporary-code.test.mjs`) : un site plus ancien passe d'abord par la 0.2.0. `legacyOff.ts` reste pour la seule restauration d'une sauvegarde d'avant la 0.1.20 (échéance du test d'échéance relevée).
 - Un cœur ancien ignore `legacySettings` : ces clés ne s'affichent pas (non déclarées), mais `ctx.setting` ne les lit pas non plus.
 
 ### e. Fichiers

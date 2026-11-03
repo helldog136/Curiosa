@@ -27,7 +27,6 @@ const SHOWN_NAMES = 8;
 /** Les petits repères d'une ligne : quoi exactement (des noms, jamais des valeurs). */
 function chipsOf(row: UpkeepRow, r: LegacyReport, t: Translator, advanced: boolean): string[] {
   switch (row.id) {
-    case "sourceRows": return r.sourceRows.filter((m) => m.state !== "absent").map((m) => `${m.id} ${m.version}`);
     case "behind": return r.behind.map((i) => `${i.key} (${i.from} → ${i.to})`);
     case "newer": return r.newer.map((i) => `${i.key} (${i.from} > ${i.to})`);
     case "failed": return r.failed.map((i) => `${i.key} · ${t(`legacy.reason.${i.reason}`)}`);
@@ -52,7 +51,7 @@ export default async function LegacyPage({ searchParams }: { searchParams: Promi
   const rows = upkeepRows(r);
   const sum = upkeepSummary(rows);
   const byGroup = (g: UpkeepGroup) => rows.filter((row) => row.group === g);
-  const needsRerun = rows.some((row) => row.group === "todo" && (["finish", "switchedOff", "behind", "failed"] as UpkeepId[]).includes(row.id));
+  const needsRerun = rows.some((row) => row.group === "todo" && (["finish", "behind", "failed"] as UpkeepId[]).includes(row.id));
   const titleOf = (row: UpkeepRow) => (row.id === "absent" && row.moduleId ? t("upkeep.row.absent.named", { name: row.moduleId }) : t(`upkeep.row.${row.id}`));
   const textOf = (row: UpkeepRow) => (row.id === "finish" ? t(`legacy.${status === "done" ? "pending" : status}`) : t(`upkeep.row.${row.id}.text`));
   const versionOf = (id: string) => r.sourceRows.find((m) => m.id === id)?.version ?? "";
@@ -61,7 +60,7 @@ export default async function LegacyPage({ searchParams }: { searchParams: Promi
     const chips = row.group === "done" ? [] : chipsOf(row, r, t, advanced);
     const shownChips = chips.slice(0, SHOWN_NAMES);
     const title = titleOf(row);
-    const toUpdates = row.group === "todo" && (row.id === "sourceRows" || row.id === "newer");
+    const toUpdates = row.group === "todo" && row.id === "newer";
     return (
       <li key={`${row.id}-${row.moduleId ?? ""}`} data-live-item="upkeep" data-live-state={row.group} data-search={searchText([title, row.group === "done" ? "" : textOf(row), ...chips])} data-testid={`upkeep-row-${row.id}`} className="space-y-1.5 py-3">
         <p className="min-w-0 break-words font-medium">{title}</p>

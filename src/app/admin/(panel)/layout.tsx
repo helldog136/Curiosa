@@ -42,7 +42,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   // Modules en retard : jamais d'attente du réseau ici (menu de toutes les pages) ; la vérification se fait en arrière-plan et reste en mémoire quelques minutes.
   const modulesBehind = can(user, "core:modules.install") ? (peekModulesReport()?.outdated.length ?? 0) : 0;
   const aiWaiting = can(user, "core:mcp.tokens") ? (await maintenanceSummary().catch(() => null))?.total ?? 0 : 0;
-  // Garde du démarrage (0.2.0) : un AVERTISSEMENT seulement si la mise à niveau des données n'est pas terminée (le site public reste servi ; bloquant en phase 3).
+  // Garde du démarrage (0.2.0) : un AVERTISSEMENT seulement si la mise à niveau des données n'est pas terminée (le site public reste servi, jamais bloqué : la mise à niveau reprend à chaque démarrage).
   const legacyPending = canManage ? await legacyConversionPending() : false;
   // Entretien : la pastille du menu ne compte que ce que la personne a À FAIRE ; une copie de sécurité gardée a son propre état (jamais une alerte).
   const upkeep = can(user, "core:updates") ? await legacyUpkeepSummary() : null;

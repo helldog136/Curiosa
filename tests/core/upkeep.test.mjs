@@ -69,8 +69,8 @@ test("ce qui demande une action est « à faire » et compte dans la pastille ; 
   });
   const rows = U.upkeepRows(r);
   assert.deepEqual(groupOf(rows, "finish"), ["todo"], "le marqueur de fin manque : la mise à niveau est à terminer");
-  assert.deepEqual(groupOf(rows, "absent"), ["todo", "todo"], "une ligne par extension que le catalogue ne propose plus");
-  assert.deepEqual(groupOf(rows, "sourceRows"), ["todo"]);
+  assert.deepEqual(groupOf(rows, "absent"), ["todo", "todo", "todo"], "une ligne par extension copiée par une très ancienne version, listée ou non par le catalogue : plus rien ne les convertit");
+  assert.deepEqual(groupOf(rows, "sourceRows"), [], "la rubrique « à faire passer au catalogue » n'existe plus");
   assert.deepEqual(groupOf(rows, "behind"), ["todo"]);
   assert.deepEqual(groupOf(rows, "orphans"), ["kept"]);
   assert.deepEqual(U.upkeepSummary(rows), { state: "todo", todo: 5, kept: 1 });
@@ -83,7 +83,7 @@ test("les extensions gardées telles quelles par la personne sont « gardées »
 });
 
 test("chaque rubrique du rapport est classée une fois, et les rubriques « à faire » sont celles qui ont un geste possible", () => {
-  assert.deepEqual(Object.entries(U.UPKEEP_GROUP).filter(([, g]) => g === "todo").map(([k]) => k).sort(), ["behind", "failed", "newer", "sourceRows", "switchedOff"]);
+  assert.deepEqual(Object.entries(U.UPKEEP_GROUP).filter(([, g]) => g === "todo").map(([k]) => k).sort(), ["behind", "failed", "newer"]);
   assert.deepEqual(Object.entries(U.UPKEEP_GROUP).filter(([, g]) => g === "kept").map(([k]) => k).sort(), ["collections", "legacyValues", "orphans", "seedsMissing"]);
   const ids = new Set(U.upkeepRows(report()).map((r) => r.id));
   for (const id of U.UPKEEP_ORDER) assert.ok(ids.has(id), id);
@@ -286,7 +286,7 @@ test("textes : chaque clé que la page, le menu et la mise en page demandent exi
   const files = ["src/app/admin/(panel)/maintenance/legacy/page.tsx", "src/app/admin/(panel)/layout.tsx"];
   const wanted = new Set();
   for (const f of files) for (const m of read(f).matchAll(/\bt\(\s*["`]((?:upkeep|nav\.upkeep|legacy)[\w.${}]*)["`]/g)) wanted.add(m[1]);
-  const ids = ["finish", "absent", "sourceRows", "switchedOff", "behind", "failed", "newer", "keptRows", "collections", "seedsMissing", "legacyValues", "orphans"];
+  const ids = ["finish", "absent", "behind", "failed", "newer", "keptRows", "collections", "seedsMissing", "legacyValues", "orphans"];
   for (const k of wanted) {
     const keys = k.includes("${") ? (k.startsWith("upkeep.row.${row.id}") ? ids.map((i) => `upkeep.row.${i}`) : k.startsWith("upkeep.group.${id}") ? (k.endsWith(".help") ? ["todo", "kept"] : ["todo", "kept", "done"]).map((g) => k.replace("${id}", g)) : k.startsWith("upkeep.group.${g.id}") ? ["todo", "kept", "done"].map((g) => k.replace("${g.id}", g)) : []) : [k];
     for (const key of keys) for (const [lang, d] of [["fr", fr], ["en", en]]) assert.ok(d[key] !== undefined, `${lang} : clé « ${key} » absente`);

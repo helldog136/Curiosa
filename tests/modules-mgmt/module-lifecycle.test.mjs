@@ -316,12 +316,12 @@ test("migration des éteints : module éteint = désinstallé, données gardées
   assert.equal((await prisma.moduleInstance.findUnique({ where: { id: off.inst.id } })).enabled, true, "revenue allumée : il n'y a plus d'autre état");
 });
 
-test("code temporaire : la migration des éteints est signalée dans son fichier et déclarée dans le test d'échéance", () => {
+test("code temporaire : la migration des éteints est signalée dans son fichier, déclarée dans le test d'échéance, appelée par la restauration et plus par le démarrage", () => {
   const file = fs.readFileSync("src/core/modules/legacyOff.ts", "utf8");
   assert.match(file, /TEMPORAIRE — À SUPPRIMER APRÈS LA /);
-  assert.match(file, /phase 3/);
   assert.match(fs.readFileSync("src/instrumentation.ts", "utf8"), /runLegacySweep/);
-  assert.match(fs.readFileSync("src/core/modules/legacySweep.ts", "utf8"), /await retireLegacyOff\(\)/, "le balayage du démarrage appelle la migration des éteints");
+  assert.doesNotMatch(fs.readFileSync("src/core/modules/legacySweep.ts", "utf8"), /retireLegacyOff/, "le démarrage ne range plus les éteints (version minimale de mise à jour 0.2.0)");
+  assert.match(fs.readFileSync("src/core/backup/restore.ts", "utf8"), /await retireLegacyOff\(\)/, "la restauration d'une sauvegarde d'avant la 0.1.20 les range encore");
   assert.match(fs.readFileSync("tests/core/temporary-code.test.mjs", "utf8"), /legacyOff\.ts/);
 });
 

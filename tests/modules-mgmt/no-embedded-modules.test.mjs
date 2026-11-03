@@ -17,7 +17,6 @@ const R = await import("@/core/modules/registry");
 const Cat = await import("@/core/modules/catalogue");
 const Rec = await import("@/core/modules/recognized");
 const S = await import("@/core/modules/starter");
-const X = await import("@/core/modules/reinstall");
 const Upd = await import("@/core/modules/updateStatus");
 const { createInstance } = await import("@/core/instanceService");
 const { setSetting, getSetting } = await import("@/core/settings");
@@ -126,12 +125,12 @@ test("aucune lecture locale de modules dans le cœur : plus de listBundled, BUND
   const files = walk("src").filter((f) => /\.(ts|tsx)$/.test(f));
   const banned = /\b(listBundled|BUNDLED|appRoot|installBundled|copyBundled|provisionBundled|provisionModule\b.*offline|readBundledManifest|bundledManifests|suggestedModuleIds|readSnapshot|CURIOSA_EXTRAS_DIR|CURIOSA_CATALOGUE_RUNTIME|extras\/(modules|examples|catalogue)|"snapshot")\b|"examples"|"extras"/;
   for (const f of files) assert.ok(!banned.test(stripComments(read(f))), `${f} lit encore un dossier de modules local`);
-  // `bundled` ne subsiste que comme lignes d'anciens sites, chaque fichier le disant (« à retirer en phase 3 d'entretien »).
+  // `bundled` ne subsiste que comme lignes laissées par les premières versions, chaque fichier le disant.
   for (const f of files) {
     if (!/["`]bundled["`]|source: "bundled"|kind: "bundled"/.test(stripComments(read(f)))) continue;
-    assert.match(read(f), /phase 3/i, `${f} : « bundled » doit être marqué « compatibilité sites anciens, à retirer en phase 3 d'entretien »`);
+    assert.match(read(f), /premières versions|très ancienne version/i, `${f} : « bundled » doit être marqué comme reste des premières versions du cœur`);
   }
-  assert.match(read("src/core/modules/bundledUpdate.ts"), /COMPATIBILIT[ÉE] SITES ANCIENS, À RETIRER EN PHASE 3/);
+  assert.ok(!fs.existsSync("src/core/modules/bundledUpdate.ts"), "la conversion des lignes `bundled` est retirée");
 });
 
 test("neutralité : le cœur ne connaît aucun identifiant de module (ni suggéré, ni installé d'office)", () => {
@@ -162,7 +161,7 @@ test("documentation : README, INSTALL, MODULES et catalogue/README disent que Cu
 
 /* ───────────── Sites existants : ligne `bundled` ───────────── */
 
-test("ancien site (ligne `bundled`) : fonctionne sans catalogue (son dossier est sur le disque), se met à jour depuis le catalogue sans rien perdre, erreur claire hors ligne", async () => {
+test("site d'une des premières versions (ligne `bundled`) : son dossier est sur le disque, il fonctionne sans catalogue ; aucune source, donc ni mise à jour ni conversion ; il reste installé", async () => {
   const dir = R.moduleDir("carnet");
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, "module.json"), JSON.stringify({ apiVersion: 2, id: "carnet", name: "Carnet", version: "1.0.0", main: "index.mjs" }));
@@ -170,39 +169,37 @@ test("ancien site (ligne `bundled`) : fonctionne sans catalogue (son dossier est
   await db.prisma.module.create({ data: { id: "carnet", source: "bundled", version: "1.0.0", enabled: true } });
   await cat.down({ forget: true });
 
-  // 1. hors ligne : il marche, il est activable, une instance se crée, le rapport de mises à jour ne casse pas
+  // 1. hors ligne : il marche, une instance se crée, le rapport de mises à jour ne casse pas
   assert.equal((await R.getModule("carnet")).def.marker, "ancien");
   const inst = await createInstance(db.prisma, { manifest: (await R.getModule("carnet")).manifest, nickname: "Carnet", names: { fr: "Carnet" } });
   await setSetting(`instance.${inst.id}.titre`, "Mon carnet");
   await db.prisma.moduleRecord.create({ data: { instanceId: inst.id, collection: "items", data: JSON.stringify({ t: "x" }) } });
   const report = await Upd.getModulesReport(true);
-  assert.deepEqual(report.outdated, []);
-  assert.deepEqual(report.unchecked, ["carnet"], "non vérifiable hors ligne : dit, pas « à jour »");
-  const offline = await I.updateModule("carnet");
-  assert.deepEqual([offline.ok, offline.error], [false, "modules.error.catalogue"]);
-  assert.equal((await db.prisma.module.findUnique({ where: { id: "carnet" } })).source, "bundled");
+  assert.deepEqual([report.outdated, report.unchecked], [[], []], "sans source : ni proposé, ni « non vérifiable »");
+  assert.equal((await I.updateModule("carnet")).error, "modules.error.unknownSource");
 
-  // 2. le catalogue revient avec une version plus récente : « Mises à jour » la propose, la mise à jour conserve tout
+  // 2. le catalogue revient avec une version plus récente : plus rien ne convertit la ligne, elle ne bouge pas
   await cat.up();
   await cat.add("carnet", { manifest: { name: "Carnet", version: "1.1.0" }, marker: "nouveau" });
-  const rep2 = await Upd.getModulesReport(true);
-  assert.deepEqual(rep2.outdated.map((o) => [o.id, o.current, o.target]), [["carnet", "1.0.0", "1.1.0"]]);
-  const r = await I.updateModule("carnet");
-  assert.equal(r.ok, true);
+  assert.deepEqual((await Upd.getModulesReport(true)).outdated, []);
+  assert.equal((await I.updateModule("carnet")).error, "modules.error.unknownSource");
   const row = await db.prisma.module.findUnique({ where: { id: "carnet" } });
-  assert.deepEqual([row.source, row.version, row.enabled, row.repoUrl], ["git", "1.1.0", true, cat.https]);
-  assert.equal((await R.getModule("carnet")).def.marker, "nouveau");
+  assert.deepEqual([row.source, row.version, row.enabled, row.repoUrl], ["bundled", "1.0.0", true, null]);
+  assert.equal((await R.getModule("carnet")).def.marker, "ancien");
   assert.equal(await getSetting(`instance.${inst.id}.titre`), "Mon carnet");
   assert.equal(await db.prisma.moduleRecord.count({ where: { instanceId: inst.id } }), 1);
-  assert.equal(await db.prisma.moduleInstance.count({ where: { moduleId: "carnet" } }), 1);
 
-  // 3. un autre ancien module que le catalogue ne liste plus : il reste installé, « source inconnue »
-  fs.mkdirSync(R.moduleDir("orphelin"), { recursive: true });
-  fs.writeFileSync(path.join(R.moduleDir("orphelin"), "module.json"), JSON.stringify({ apiVersion: 2, id: "orphelin", name: "O", version: "1.0.0" }));
-  await db.prisma.module.create({ data: { id: "orphelin", source: "bundled", version: "1.0.0", enabled: true } });
-  assert.equal((await I.updateModule("orphelin")).error, "modules.error.unknownSource");
-  assert.equal((await X.diagnoseModule("orphelin")).catalogue, undefined);
-  assert.ok(await db.prisma.module.findUnique({ where: { id: "orphelin" } }), "il reste installé");
+  // 3. le chemin proposé par la page Entretien : le retirer en gardant ses données, puis le réinstaller depuis le catalogue (rien n'est perdu)
+  assert.equal((await I.uninstallModule("carnet", { keepData: true })).ok, true);
+  assert.equal(await db.prisma.module.findUnique({ where: { id: "carnet" } }), null);
+  const back = await I.installFromCatalogue("carnet");
+  assert.equal(back.ok, true);
+  assert.deepEqual(back.restored, [inst.key]);
+  assert.equal(await getSetting(`instance.${inst.id}.titre`), "Mon carnet");
+  assert.equal(await db.prisma.moduleRecord.count({ where: { instanceId: inst.id } }), 1);
+  assert.equal((await db.prisma.module.findUnique({ where: { id: "carnet" } })).source, "git");
+  assert.equal((await R.getModule("carnet")).def.marker, "nouveau");
   const fr = JSON.parse(read("src/locales/fr.json"));
   assert.match(fr["maintenance.source.unknown"], /source inconnue/);
 });
+
