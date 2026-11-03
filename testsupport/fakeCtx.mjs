@@ -13,7 +13,7 @@ import { loadCore } from "./core.mjs";
  * - `ctx.setting(k)` lit `settings` (valeur absente → undefined, comme le vrai contexte sans défaut)
  * - `ctx.params` (cœur 0.2.14) : option `params` (par ex. `{ slug: "abc" }` pour tester une route « go/:slug »), `{}` par défaut
  * - `ctx.theme` : le thème du site (option `theme`)
- * - `ctx.timezone` (cœur après 0.6.3) : le fuseau du site, un nom IANA valide. Option `timezone` (défaut « UTC », pour des tests qui ne dépendent pas de la machine). Un nom inconnu, vide ou
+ * - `ctx.timezone` (cœur 0.6.4) : le fuseau du site, un nom IANA valide. Option `timezone` (défaut « UTC », pour des tests qui ne dépendent pas de la machine). Un nom inconnu, vide ou
  *   illisible donne le fuseau de la machine puis « UTC », comme le vrai cœur. `timezone: null` simule un cœur plus ancien : `ctx.timezone` n'existe pas (testez `typeof ctx.timezone === "string"`).
  * - `ctx.t(k, vars)` lit `messages` (clé → texte, variables {x} remplacées) ; clé inconnue → la clé
  * - `ctx.api.store` : stockage en mémoire, isolé par appel de fakeCtx (mêmes méthodes que le vrai)
@@ -214,7 +214,7 @@ export function fakeCtx(opts = {}) {
     moduleId,
     instance: { id: `id-${key}`, key, basePath, name },
     locale, defaultLocale, locales,
-    ...(timezone === null ? {} : { timezone: siteZone }),   // cœur après 0.6.3 ; `timezone: null` = un cœur plus ancien, sans cette clé
+    ...(timezone === null ? {} : { timezone: siteZone }),   // cœur 0.6.4 ; `timezone: null` = un cœur plus ancien, sans cette clé
     params: Object.freeze({ ...(opts.params ?? {}) }),   // cœur 0.2.14 : `{ slug }` dans une route « …/:slug », `{}` ailleurs
     setting: (k) => (cleared.has(k) ? undefined : settings[k]),
     async resolveChoice(k) {
