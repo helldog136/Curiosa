@@ -152,6 +152,8 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 | [`manifest.version`](#manifestversion) | obligatoire | La version est au format x.y.z |
 | [`manifest.id`](#manifestid) | conseil | L'identifiant correspond au nom du dossier |
 | [`manifest.previews`](#manifestpreviews) | obligatoire | Les visuels de la fiche sont des images valables |
+| [`manifest.inertCollections`](#manifestinertcollections) | obligatoire | Les copies déclarées inertes sont des collections héritées |
+| [`manifest.inertCollections.unused`](#manifestinertcollectionsunused) | conseil | Le code ne cite plus les copies déclarées inertes |
 | [`manifest.catalogue`](#manifestcatalogue) | conseil | La fiche du module est complète pour le catalogue |
 | [`compat.apiVersion`](#compatapiversion) | obligatoire | Le module vise la bonne version de l'API des modules |
 | [`compat.minCore`](#compatmincore) | obligatoire | minCore couvre les fonctions du cœur utilisées |
@@ -225,7 +227,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 | [`admin.ergonomics.known`](#adminergonomicsknown) | conseil | Écarts d'ergonomie connus, à résorber |
 | [`dashboard.valid`](#dashboardvalid) | obligatoire | Ce que le module propose au tableau de bord est complet et valide |
 
-45 exigences obligatoires et 32 conseils.
+46 exigences obligatoires et 33 conseils.
 
 ### Le fichier module.json
 
@@ -268,6 +270,22 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 - **Ce qui est vérifié.** Chaque visuel de « previews » (6 au plus) est un fichier « previews/….webp » ou « .png » du module : 150 Ko au plus, de vraies images (pas un autre format renommé), de 240 à 2400 pixels de côté, avec une légende et un texte alternatif en français et en anglais. Sans « previews », rien à vérifier.
 - **Pourquoi.** Le cœur lit ces images lui-même et les montre dans la fiche du module, avant et après l'installation. Une image trop lourde, d'un autre format ou absente est simplement écartée : la fiche paraît alors incomplète à la personne qui hésite à installer.
 - **Comment corriger.** Exportez chaque capture en WebP (ou PNG) de moins de 150 Ko, rangez-la dans « previews/ », déclarez-la dans « previews » avec « file », « caption », « alt » et « type » (public, admin ou overlay). Ne montrez jamais de vraies données personnelles : utilisez des exemples inventés.
+
+#### `manifest.inertCollections`
+
+**Les copies déclarées inertes sont des collections héritées** — niveau : **obligatoire**
+
+- **Ce qui est vérifié.** Chaque nom de « inertLegacyCollections » figure aussi dans « legacyCollections », sans doublon. Sans « inertLegacyCollections », rien à vérifier.
+- **Pourquoi.** Le cœur propose de supprimer une copie de sécurité seulement si le module la déclare inerte. Une collection déclarée inerte hors de « legacyCollections » n'est jamais comptée par la page Entretien : la déclaration ne servirait à rien, ou cacherait une erreur.
+- **Comment corriger.** Ajoutez le nom à « legacyCollections », ou retirez-le de « inertLegacyCollections ». Ne déclarez inerte que ce que votre module ne lit plus et n'écrit plus.
+
+#### `manifest.inertCollections.unused`
+
+**Le code ne cite plus les copies déclarées inertes** — niveau : **conseil**
+
+- **Ce qui est vérifié.** Aucune collection de « inertLegacyCollections » n'apparaît, entre guillemets, dans le code du module (« index.mjs »). Sans « inertLegacyCollections », rien à vérifier.
+- **Pourquoi.** Une copie déclarée inerte peut être supprimée par la personne propriétaire. Si le code la lit encore (état d'une reprise, compteur), cette suppression lui ferait perdre des données qu'il utilise.
+- **Comment corriger.** Retirez la collection de « inertLegacyCollections » si le module la lit encore (par exemple l'état de la reprise). Si le code la cite seulement pour l'effacer ou la copier une dernière fois, vérifiez que la reprise est finie avant de la déclarer inerte.
 
 #### `manifest.catalogue`
 
