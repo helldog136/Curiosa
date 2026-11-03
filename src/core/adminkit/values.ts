@@ -68,6 +68,24 @@ export function parsePeriod(raw: string, opts: PeriodOptions = {}): { ok: true; 
   return { ok: false, reason: "format" };
 }
 
+/** Suffixe du champ caché qui accompagne un champ période (`<nom>__period` : « closed » ou « open »). */
+export const PERIOD_MARK = "__period";
+
+/** Une période « à moitié remplie » telle que l'écrit le champ : une seule date et une barre (« 2026-12-01/ » ou « /2026-12-24 »). Jamais « pas de période » : vide seulement si la personne l'a effacée. */
+export const isHalfPeriod = (raw: string): boolean => /^\s*(\d{4}-\d{2}-\d{2}\/|\/\d{4}-\d{2}-\d{2})\s*$/.test(raw);
+
+/**
+ * Pourquoi une valeur de période non vide est refusée, en clé de texte SANS nom de champ (le message s'affiche sous le champ) ; null si elle est acceptée.
+ * Une valeur vide n'est pas jugée ici : c'est « aucune période » (effacement voulu), au module d'en exiger une ou non.
+ */
+export function periodErrorKey(raw: string, openEnded: boolean): "period.errorHalf" | "period.order" | "period.errorFormat" | "period.errorFormatOpen" | null {
+  if (raw.trim() === "") return null;
+  const c = parsePeriod(raw, { openEnded });
+  if (c.ok) return null;
+  if (isHalfPeriod(raw)) return "period.errorHalf";
+  return c.reason === "order" ? "period.order" : openEnded ? "period.errorFormatOpen" : "period.errorFormat";
+}
+
 export function serializePeriod(p: Period | OpenPeriod): string {
   if (!p.yearly) {
     const day = (x: Required<DayRef> | null) => (x ? `${String(x.y).padStart(4, "0")}-${pad(x.m)}-${pad(x.d)}` : "");

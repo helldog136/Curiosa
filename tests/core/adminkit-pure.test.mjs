@@ -510,3 +510,42 @@ test("résumé de « Plus d'options » : une période ouverte se dit en une phra
   assert.deepEqual(H.valueErrorKey("period", { type: "period", openEnded: true }, tr), { key: "instances.error.periodOpen", vars: {} });
   assert.deepEqual(H.valueErrorKey("period", { type: "period" }, tr), { key: "instances.error.period", vars: {} });
 });
+
+test("période incomplète : jamais enregistrée comme « pas de période » (une date, fin avant début, effacement voulu, période ouverte)", () => {
+  const sent = (from, to, yearly = false, open = false) => { const s = PI.periodState(from, to, yearly, open); return PI.periodSent(from, to, s.period); };
+  const key = (raw, open = false) => V.periodErrorKey(raw, open);
+  // Deux dates : valeur normale, acceptée.
+  assert.equal(sent("2026-12-01", "2026-12-15"), "2026-12-01/2026-12-15"); assert.equal(key("2026-12-01/2026-12-15"), null);
+  // Aucune date : vide, c'est l'effacement voulu (« Effacer la période »), jamais une erreur.
+  assert.equal(sent("", ""), ""); assert.equal(sent("", "", false, true), ""); assert.equal(key(""), null);
+  // Une seule date, période fermée : valeur NON vide, refusée avec le message « remplissez les deux dates ».
+  assert.equal(sent("2026-12-01", ""), "2026-12-01/"); assert.equal(sent("", "2026-12-15"), "/2026-12-15");
+  assert.equal(sent("2026-12-01", "", true), "2026-12-01/", "même avec « chaque année » coché");
+  assert.equal(key("2026-12-01/"), "period.errorHalf"); assert.equal(key("/2026-12-15"), "period.errorHalf");
+  // Une seule date, période ouverte demandée : valide.
+  assert.equal(sent("2026-12-01", "", false, true), "2026-12-01/"); assert.equal(sent("", "2026-12-24", false, true), "/2026-12-24");
+  assert.equal(key("2026-12-01/", true), null); assert.equal(key("/2026-12-24", true), null);
+  // Fin avant début : valeur non vide, refusée avec le message d'ordre ; « chaque année » enjambe l'année sans erreur.
+  assert.equal(sent("2026-12-15", "2026-12-01"), "2026-12-15/2026-12-01"); assert.equal(key("2026-12-15/2026-12-01"), "period.order");
+  assert.equal(key("2026-12-15/2026-12-01", true), "period.order");
+  assert.equal(sent("2026-12-15", "2026-12-01", true), "12-15/12-01"); assert.equal(key("12-15/12-01"), null);
+  // Illisible : message sans nom de champ.
+  assert.equal(key("novembre"), "period.errorFormat"); assert.equal(key("novembre", true), "period.errorFormatOpen");
+  assert.equal(key("2026-13-01/2026-13-02"), "period.errorFormat");
+  // Réglage de manifeste : checkFieldInput refuse la moitié de période (jamais convertie en vide), accepte l'ouverte.
+  assert.deepEqual(checkFieldInput({ type: "period" }, "2026-12-01/"), { ok: false, reason: "period" });
+  assert.deepEqual(checkFieldInput({ type: "period", openEnded: true }, "2026-12-01/"), { ok: true, value: "2026-12-01/" });
+  // Raccourcis : mois entier et période toute prête donnent toujours deux dates, donc une valeur complète.
+  const m = PI.monthInputs(12, false, "", 2026); assert.equal(sent(m.from, m.to), "2026-12-01/2026-12-31");
+  const y = PI.monthInputs(11, true, "", 2026); assert.equal(sent(y.from, y.to, true), "11-01/11-30");
+  const noel = PI.toInputs(PP.presetValue("christmas", { y: 2026, m: 11, d: 3 }), 2026); assert.equal(key(sent(noel.from, noel.to, noel.yearly)), null);
+});
+
+test("période incomplète : textes d'erreur FR et EN à parité, un exemple, sans code ni point d'exclamation", () => {
+  const fr = JSON.parse(fs.readFileSync("src/locales/fr.json", "utf8")), en = JSON.parse(fs.readFileSync("src/locales/en.json", "utf8"));
+  for (const k of ["period.errorHalf", "period.errorFormat", "period.errorFormatOpen"]) {
+    assert.ok(fr[k] && en[k], k); assert.ok(!/!/.test(fr[k] + en[k]) && /exemple/.test(fr[k]) && /example/.test(en[k]), k);
+  }
+  assert.equal(fr["period.errorHalf"], "Remplissez les deux dates, par exemple du 1er au 15 décembre 2026.");
+  const keys = Object.keys(fr); assert.ok(keys.indexOf("period.errorHalf") < keys.indexOf("theme.ember"), "avant le groupe final theme.*");
+});

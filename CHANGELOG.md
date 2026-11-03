@@ -7,6 +7,19 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## Prochaine version (non publiée)
+
+### Corrections
+
+- **Une période à moitié remplie n'efface plus l'ancienne.** Si vous n'aviez rempli qu'une seule des deux dates d'une période, l'enregistrement la prenait pour « aucune période » et supprimait celle qui existait, sans rien dire. Maintenant, un message sous le champ vous dit de remplir les deux dates, avec un exemple, et rien n'est enregistré. Vos dates restent à l'écran.
+- **Une fin avant le début est refusée de la même façon.** Le message dit de mettre la fin après le début.
+- **Effacer une période reste possible.** Le bouton « Effacer la période » vide bien les deux dates, et c'est alors voulu. Dans un réglage qui accepte une période ouverte, une seule date reste valable.
+
+### Pour les développeurs
+
+- **`PeriodField` n'envoie plus jamais une valeur vide pour une période incomplète.** Une seule date (`"2026-12-01/"`) ou une fin avant le début est envoyée telle quelle, pour que le serveur la refuse ; vide seulement quand les deux dates sont vides. Le champ ajoute un champ caché `<nom>__period` (`closed` ou `open`).
+- **Refus côté serveur.** `runModuleAdminAction` refuse une valeur de période à moitié remplie, à l'envers ou illisible AVANT d'appeler l'action du module (erreur sous le champ, `values` sans le champ caché). L'enregistrement des réglages refuse la valeur à moitié remplie avec le même message. Nouveaux : `periodErrorKey`, `isHalfPeriod`, `PERIOD_MARK` (`adminkit/values.ts`), `periodSent` (`adminkit/periodInputs.ts`) ; textes `period.errorHalf`, `period.errorFormat`, `period.errorFormatOpen`. Une action de module doit toujours revérifier ses valeurs.
+
 ## 0.6.4 — 2026-11-03
 
 **En bref.** Une entrée « Entretien » apparaît dans le menu d'administration, avec une pastille qui dit « À jour » ou combien de choses vous avez à faire. Les copies de sécurité d'anciennes données ne sont plus présentées comme une tâche : le site les garde par prudence, sans rien vous demander. Une période part maintenant de « une seule fois », et un réglage peut accepter une seule date. Le journal passe en dernier sur le tableau de bord. Un ménage interne n'a aucun effet visible. Le changement qui compte : la version minimale de mise à jour passe à 0.2.0. Un site plus ancien est amené tout seul à la 0.2.0 puis à la version choisie ; rien ne change pour un site en 0.2.0 ou plus récent.
