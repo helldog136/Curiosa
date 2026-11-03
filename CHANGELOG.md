@@ -22,12 +22,21 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **La personne doit choisir son propre mot de passe à sa première connexion, sans exception.** Ce réglage est maintenant posé en même temps que la création du compte, et non juste après : une coupure au mauvais moment ne peut plus laisser un compte sans cette obligation.
 - **La même phrase partout.** La boîte « Définir un mot de passe temporaire » dit aussi « Vous ne le reverrez plus ».
 
+### Vérification des extensions
+
+- **Rien ne change pour votre site.** Les personnes qui écrivent des extensions ont un outil de contrôle un peu plus complet : il repère maintenant une extension qui s'appuie sur une nouveauté récente du site sans le dire. Les extensions du dépôt officiel sont déjà en règle.
+
 ### Pour les développeurs
 
 - `createMember(actorId, { …, mustChangePassword: true })` pose le drapeau dans l'écriture qui crée le compte (`createUser` ne fait plus de seconde écriture). Seul `true` compte.
 - `ActionState` gagne `secret?: OneTimeSecret` (`src/components/admin/OneTimeSecret.tsx`) : valeur, titre, notes et boutons déjà traduits côté serveur. `ActionForm` l'affiche avec `SecretReveal` et ne le garde que dans l'état de la page ; `SecretValue` (valeur + « Copier ») est aussi utilisé par `TemporaryPasswordButton`.
 - Clés de langue : `users.added.generated` n'a plus de `{password}` ; nouvelles clés `users.secret.*`. Test : `tests/core/team-first-password.test.mjs`.
 - **Cellule de tableau `image`.** `{ text, image: { src, alt, fit? } }` : vignette de 40 px, `alt` obligatoire. `src` est validé côté serveur (`core/adminkit/image.ts`) : page du site, ou `https://` d'un hôte du nouveau champ `imageHosts` de `module.json` (additif). Kit de test : `manifest.imageHosts`, R28 et R16.
+- **Kit de test : `compat.minCore` connaît deux fonctions de plus.** `openEnded` sur une période (cœur 0.6.4) et `ctx.api.log.write` appelé sans `?.` ni test préalable de `ctx.api.log` (cœur 0.6.0) exigent le `minCore` correspondant. Mesuré sur `curiosa-extras` (dev, 71 modules) : aucun module ne devient averti ni en échec.
+- **Nouveau conseil `compat.minCoreAdvice`.** Une lecture de `ctx.timezone` sans repli (`typeof`, `??`, `||`, ternaire) conseille `minCore` 0.6.4 ; elle ne fait jamais échouer le module. `FEATURES` accepte `advice: true`.
+- **Volontairement hors de `FEATURES`.** `previews`, `shortLink`, `social`, `suggestInMenu`, `returnAddresses`, `siteAddressUses`, `dashboard`, `content.templates` et `logEvents` : un cœur plus ancien les ignore sans rien perdre, la documentation dit « aucun `minCore` à déclarer » ; `overlayElements` est déjà exigé par `parseManifest`. La raison est écrite au-dessus de `FEATURES`.
+- **Documentation.** `docs/MODULES.md` : le défaut « une seule fois » est daté « cœur 0.6.4 » (et non « après 0.6.3 »), l'exigence du kit s'appelle `compat.minCore`. `docs/TESTSUPPORT.md` régénéré.
+
 
 ## 0.6.4 — 2026-11-03
 

@@ -325,7 +325,7 @@ test("page produite par du code : un tableau enrichi (recherche, pastilles, inte
 
 test("exigences : un module qui utilise un contrôle de la 0.6.0 doit déclarer « minCore » 0.6.0", async () => {
   const { FEATURES } = await import("../testsupport/requirements/manifest.mjs");
-  const news = FEATURES.filter((f) => f.since === "0.6.0");
+  const news = FEATURES.filter((f) => f.since === "0.6.0" && !/journal/.test(f.label)); // le journal du cœur (ctx.api.log) a son propre test (tests/testsupport.test.mjs)
   assert.equal(news.length, 4);
   const code = (src, man = { settings: [] }) => news.filter((f) => f.test({ code: src }, man)).length;
   assert.equal(code("blocks.push({ type: 'table', columns: [], rows: [], searchable: true })"), 1);

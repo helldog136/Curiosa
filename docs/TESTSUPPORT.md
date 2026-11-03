@@ -156,6 +156,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 | [`manifest.catalogue`](#manifestcatalogue) | conseil | La fiche du module est complète pour le catalogue |
 | [`compat.apiVersion`](#compatapiversion) | obligatoire | Le module vise la bonne version de l'API des modules |
 | [`compat.minCore`](#compatmincore) | obligatoire | minCore couvre les fonctions du cœur utilisées |
+| [`compat.minCoreAdvice`](#compatmincoreadvice) | conseil | minCore couvre aussi les nouveautés qu'un cœur plus ancien lit de travers |
 | [`compat.minCoreKnown`](#compatmincoreknown) | conseil | minCore n'est pas plus récent que ce cœur |
 | [`def.loads`](#defloads) | obligatoire | Le code se charge sans erreur |
 | [`def.matches`](#defmatches) | obligatoire | Ce que module.json annonce est ce que le code fait |
@@ -225,7 +226,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 | [`admin.ergonomics.known`](#adminergonomicsknown) | conseil | Écarts d'ergonomie connus, à résorber |
 | [`dashboard.valid`](#dashboardvalid) | obligatoire | Ce que le module propose au tableau de bord est complet et valide |
 
-46 exigences obligatoires et 31 conseils.
+46 exigences obligatoires et 32 conseils.
 
 ### Le fichier module.json
 
@@ -302,6 +303,14 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 - **Ce qui est vérifié.** Si le module utilise une fonction apportée par une version récente du cœur (par exemple « optional » : 0.1.22), « minCore » est au moins cette version.
 - **Pourquoi.** Sans « minCore », un site dont le cœur est plus ancien installe quand même le module, et celui-ci se comporte mal (réglage qui n'existe pas, manifeste refusé…). Avec « minCore », le site répond clairement « mettez d'abord le site à jour ».
 - **Comment corriger.** Ajoutez dans module.json « minCore »: « x.y.z » avec la version indiquée dans le message (trois nombres, rien d'autre).
+
+#### `compat.minCoreAdvice`
+
+**minCore couvre aussi les nouveautés qu'un cœur plus ancien lit de travers** — niveau : **conseil**
+
+- **Ce qui est vérifié.** Si le module lit une nouveauté du cœur qu'un cœur plus ancien n'a pas et ne signale pas (par exemple « ctx.timezone » : cœur 0.6.4) sans prévoir son absence, « minCore » est au moins cette version.
+- **Pourquoi.** Rien ne plante : sur un cœur plus ancien la valeur manque, le module retombe sur autre chose et change de jour à la mauvaise heure, sans que personne ne le voie. Avec « minCore », le site répond « mettez d'abord le site à jour », ou le module garde un repli volontaire.
+- **Comment corriger.** Soit ajoutez « minCore »: « x.y.z » avec la version indiquée dans le message, soit gardez un repli visible dans le code : `typeof ctx.timezone === "string" ? ctx.timezone : repli`, ou `ctx.timezone ?? repli`.
 
 #### `compat.minCoreKnown`
 

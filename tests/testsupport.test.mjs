@@ -27,7 +27,7 @@ test("un module conforme réussit toutes les exigences (aucune en échec, aucune
   assert.equal(report.summary.ok, true);
   // « neutrality.clean » est sautée sans liste de neutralité, vérifiée (et réussie) avec : les deux sont corrects.
   const notPassed = report.results.filter((r) => r.status !== "pass" && r.id !== "neutrality.clean" && !(r.group === "skin" && r.status === "na")).map((r) => `${r.id}:${r.status}`);
-  assert.deepEqual(notPassed.sort(), ["manifest.imageHosts:na", "manifest.previews:na", "overlay.elements:na", "srp.single:na"]);
+  assert.deepEqual(notPassed.sort(), ["compat.minCoreAdvice:na", "manifest.imageHosts:na", "manifest.previews:na", "overlay.elements:na", "srp.single:na"]);
   // avec un voisin sans rapport, « un propriétaire par donnée » est vérifié et réussit
   void other;
   assert.equal(status(await checkModule(dir, { siblings: [path.join(path.dirname(other), "full-mod")] }), "srp.single").status, "pass");
@@ -61,6 +61,7 @@ const FAULTS = {
   "manifest.catalogue": (f) => editManifest(f, (m) => { delete m.description; delete m.license; }),
   "compat.apiVersion": (f) => editManifest(f, (m) => { m.apiVersion = 99; }),
   "compat.minCore": (f) => editManifest(f, (m) => { delete m.minCore; }),
+  "compat.minCoreAdvice": (f) => { editManifest(f, (m) => { m.minCore = "0.6.3"; }); append(f, "index.mjs", "export const today = (ctx) => new Intl.DateTimeFormat('en-CA', { timeZone: ctx.timezone }).format(new Date());"); },
   "compat.minCoreKnown": (f) => editManifest(f, (m) => { m.minCore = "9.9.9"; }),
   "def.loads": (f) => append(f, "index.mjs", "export const broken = ;"),
   "def.matches": (f) => editManifest(f, (m) => { m.sections.push({ id: "ghost", label: { en: "Ghost", fr: "Fantôme" } }); }),
@@ -495,4 +496,41 @@ test("skin : le principe fondateur — un module ne peut pas utiliser un jeton p
   assert.equal(status(other, "skin.fallback").problems.length, 2);
   const core = await checkModule(mk((f) => withSkin(f, { code: `${SKIN_CSS}\nexport const H = '<li data-skin-part=\\"card\\">';` })), { siblings: [] });
   assert.equal(status(core, "skin.parts").status, "fail");
+});
+
+// ── Nouveautés 0.6.x de compat.minCore (openEnded, ctx.api.log.write) et de compat.minCoreAdvice (ctx.timezone) ─────────────
+const withMinCore = (min, edit) => mk((f) => { editManifest(f, (m) => { m.minCore = min; }); edit?.(f); });
+const problemsOf = async (dir, id) => (status(await checkModule(dir, { siblings: [] }), id).problems ?? []).join("\n");
+
+test("openEnded (cœur 0.6.4) : sans minCore 0.6.4, compat.minCore échoue ; avec, il réussit", async () => {
+  const add = (f) => editManifest(f, (m) => { m.settings.push({ key: "until", type: "period", label: { fr: "Période", en: "Period" }, openEnded: true }); });
+  assert.match(await problemsOf(withMinCore("0.6.3", add), "compat.minCore"), /openEnded[\s\S]*0\.6\.4/);
+  assert.equal(status(await checkModule(withMinCore("0.6.4", add), { siblings: [] }), "compat.minCore").status, "pass");
+  // une période ouverte d'un champ d'adminForm, écrite dans le code
+  assert.match(await problemsOf(withMinCore("0.6.3", (f) => append(f, "index.mjs", "export const F = { kind: 'period', name: 'p', openEnded: true };")), "compat.minCore"), /0\.6\.4/);
+});
+
+test("ctx.api.log.write (cœur 0.6.0) : appel nu signalé sous 0.5.0 ; `?.`, un test préalable ou minCore 0.6.0 le dispensent", async () => {
+  const call = (line) => (f) => append(f, "index.mjs", line);
+  assert.match(await problemsOf(withMinCore("0.5.0", call("export const w = (ctx) => ctx.api.log.write({ action: 'x' });")), "compat.minCore"), /log\.write[\s\S]*0\.6\.0/);
+  assert.equal(status(await checkModule(withMinCore("0.6.0", call("export const w = (ctx) => ctx.api.log.write({ action: 'x' });")), { siblings: [] }), "compat.minCore").status, "pass");
+  for (const safe of ["export const w = (ctx) => ctx.api.log?.write({ action: 'x' });", "export const w = (ctx) => { if (ctx.api.log) ctx.api.log.write({ action: 'x' }); };", "export const w = (ctx) => typeof ctx.api.log === 'object' && ctx.api.log.write({ action: 'x' });"]) {
+    assert.notEqual(status(await checkModule(withMinCore("0.5.0", call(safe)), { siblings: [] }), "compat.minCore").status, "fail", safe);
+  }
+});
+
+test("ctx.timezone (cœur 0.6.4) : lecture sans repli = conseil ; typeof, `??`, `||`, ternaire ou minCore 0.6.4 = rien ; jamais une raison d'échec", async () => {
+  const read = (line) => withMinCore("0.6.3", (f) => append(f, "index.mjs", line));
+  const bare = await checkModule(read("export const tz = (ctx) => ctx.timezone;"), { siblings: [] });
+  assert.equal(status(bare, "compat.minCoreAdvice").status, "fail");
+  assert.match((status(bare, "compat.minCoreAdvice").problems ?? []).join("\n"), /ctx\.timezone[\s\S]*0\.6\.4/);
+  assert.equal(bare.summary.ok, true, "un conseil ne fait pas échouer le module");
+  assert.equal(status(bare, "compat.minCore").status, "pass");
+  for (const safe of ["export const tz = (ctx) => ctx.timezone ?? 'UTC';", "export const tz = (ctx) => ctx.timezone || 'UTC';", "export const tz = (ctx) => (ctx.timezone ? ctx.timezone : 'UTC');", "export const tz = (ctx) => (typeof ctx.timezone === 'string' ? ctx.timezone : 'UTC');"]) {
+    assert.notEqual(status(await checkModule(read(safe), { siblings: [] }), "compat.minCoreAdvice").status, "fail", safe);
+  }
+  const declared = withMinCore("0.6.4", (f) => append(f, "index.mjs", "export const tz = (ctx) => ctx.timezone;"));
+  assert.equal(status(await checkModule(declared, { siblings: [] }), "compat.minCoreAdvice").status, "pass");
+  // le réglage « timezone » lu par ctx.setting, ou le champ d'un autre objet, ne sont pas ctx.timezone
+  assert.equal(status(await checkModule(read("export const z = (ctx, it) => [ctx.setting('timezone'), it.timezone];"), { siblings: [] }), "compat.minCoreAdvice").status, "na");
 });
