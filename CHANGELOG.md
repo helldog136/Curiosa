@@ -7,6 +7,19 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## Prochaine version (non publiée)
+
+### Vérification des extensions
+
+- **Rien ne change pour votre site.** Les personnes qui écrivent des extensions ont un outil de contrôle un peu plus complet : il repère maintenant une extension qui s'appuie sur une nouveauté récente du site sans le dire. Les extensions du dépôt officiel sont déjà en règle.
+
+### Pour les développeurs
+
+- **Kit de test : `compat.minCore` connaît deux fonctions de plus.** `openEnded` sur une période (cœur 0.6.4) et `ctx.api.log.write` appelé sans `?.` ni test préalable de `ctx.api.log` (cœur 0.6.0) exigent le `minCore` correspondant. Mesuré sur `curiosa-extras` (dev, 71 modules) : aucun module ne devient averti ni en échec.
+- **Nouveau conseil `compat.minCoreAdvice`.** Une lecture de `ctx.timezone` sans repli (`typeof`, `??`, `||`, ternaire) conseille `minCore` 0.6.4 ; elle ne fait jamais échouer le module. `FEATURES` accepte `advice: true`.
+- **Volontairement hors de `FEATURES`.** `previews`, `shortLink`, `social`, `suggestInMenu`, `returnAddresses`, `siteAddressUses`, `dashboard`, `content.templates` et `logEvents` : un cœur plus ancien les ignore sans rien perdre, la documentation dit « aucun `minCore` à déclarer » ; `overlayElements` est déjà exigé par `parseManifest`. La raison est écrite au-dessus de `FEATURES`.
+- **Documentation.** `docs/MODULES.md` : le défaut « une seule fois » est daté « cœur 0.6.4 » (et non « après 0.6.3 »), l'exigence du kit s'appelle `compat.minCore`. `docs/TESTSUPPORT.md` régénéré.
+
 ## 0.6.4 — 2026-11-03
 
 **En bref.** Une entrée « Entretien » apparaît dans le menu d'administration, avec une pastille qui dit « À jour » ou combien de choses vous avez à faire. Les copies de sécurité d'anciennes données ne sont plus présentées comme une tâche : le site les garde par prudence, sans rien vous demander. Une période part maintenant de « une seule fois », et un réglage peut accepter une seule date. Le journal passe en dernier sur le tableau de bord. Un ménage interne n'a aucun effet visible. Le changement qui compte : la version minimale de mise à jour passe à 0.2.0. Un site plus ancien est amené tout seul à la 0.2.0 puis à la version choisie ; rien ne change pour un site en 0.2.0 ou plus récent.
