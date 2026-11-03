@@ -11,7 +11,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Extensions
 
-- **La présentation d'une extension ne vous noie plus de termes techniques.** Dans la fiche d'une extension, le texte de présentation écrit par son auteur est maintenant replié sous « Lire la présentation complète », avec une phrase de résumé qui reste visible. La description courte et les images restent en haut.
+- **La présentation d'une extension ne vous noie plus de termes techniques.** Dans la fiche d'une extension, le texte de présentation écrit par la personne qui a créé l'extension est maintenant replié sous « Lire la présentation complète », avec une phrase de résumé qui reste visible. La description courte et les images restent en haut.
 - **Le mode avancé garde tout ouvert.** En mode avancé, la présentation s'affiche en entier dès l'ouverture de la fiche, comme avant.
 
 ### Équipe
