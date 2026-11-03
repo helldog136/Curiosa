@@ -11,9 +11,9 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Visites de personnes et de robots
 
-- **Les robots ne sont plus mêlés à vos visiteurs.** Sur le tableau de bord, le bloc « Visites » montre une nouvelle ligne « Robots et IA » : le nombre de visites de robots sur 30 jours, et combien viennent d'intelligences artificielles. Avant, ces visites étaient simplement jetées.
+- **Les robots ne sont plus mêlés aux personnes qui visitent.** Sur le tableau de bord, le bloc « Visites » montre une nouvelle ligne « Robots et IA » : le nombre de visites de robots sur 30 jours, et combien viennent d'intelligences artificielles. Avant, ces visites étaient simplement jetées.
 - **Rien n'est gardé d'eux.** Un robot ajoute 1 à un compteur du jour (moteurs de recherche, IA, aperçus de liens, outils), et c'est tout : ni adresse IP, ni nom de navigateur, ni page lue. Les personnes qui refusent le suivi et l'équipe connectée ne comptent jamais, robots compris.
-- **Les chiffres de vos visiteurs ne changent pas.** La page « Confidentialité » du site le dit en une phrase.
+- **Les chiffres des personnes qui visitent ne changent pas.** La page « Confidentialité » du site le dit en une phrase.
 - Seuls les robots qui chargent la page comme un navigateur sont vus. Aucun réglage à faire.
 
 ### Pour les développeurs
