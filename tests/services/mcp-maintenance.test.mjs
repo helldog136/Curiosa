@@ -32,7 +32,7 @@ let latest = { tag: "v0.1.15", notes: "Corrections." };
 let report = { checkedAt: Date.now(), checked: 0, outdated: [], unchecked: [] };
 let moduleCheck = { check: { available: false }, failed: false };
 let summary = { updated: [], failed: [], skipped: [], stoppedOn: null };
-let reinstallResult = { ok: true, id: "x", changed: true, before: { version: "1.0.0", hash: "a", commit: null }, after: { version: "1.0.1", hash: "b", commit: null }, migrations: [], restartAdvised: false };
+let reinstallResult = { ok: true, id: "x", changed: true, before: { version: "1.0.0", hash: "a", commit: null }, after: { version: "1.0.1", hash: "b", commit: null }, migrations: [] };
 let uninstallResult = { ok: true, id: "x" };
 let retryResult = { key: "k", from: 1, to: 2, status: "ok" };
 

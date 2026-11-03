@@ -136,10 +136,8 @@ test("un fichier secondaire modifié est rechargé avec le reste : plus aucun re
   assert.equal((await R.getModule("planning")).def.v, 0);
   await publish({ marker: "a", files: { "index.mjs": withLib("a"), "lib.mjs": "export const v = 1;\n" } });
   const r = await X.reinstallModule("planning");
-  assert.equal(r.restartAdvised, false);
   assert.equal((await R.getModule("planning")).def.v, 1, "le voisin importé statiquement est celui de la source, sans redémarrage");
   tamper();
-  assert.equal((await X.reinstallModule("planning")).restartAdvised, false);
 });
 
 test("le catalogue propose plus récent : la réinstallation remet la version PROPOSÉE (jamais l'ancienne), catalogue injoignable → erreur claire et rien ne bouge", async () => {
@@ -306,8 +304,8 @@ test("réinstaller laisse le module installé et actif, et ne touche pas à ses 
 test("bilan lisible et i18n : toutes les clés existent en français et en anglais", async () => {
   const t = (k, p) => `${k}|${JSON.stringify(p ?? {})}`;
   const results = [
-    { ok: true, id: "p", changed: true, before: { version: "1", hash: "a".repeat(64), commit: null }, after: { version: "1", hash: "b".repeat(64), commit: null }, migrations: [{ status: "failed" }], restartAdvised: true },
-    { ok: true, id: "p", changed: false, before: { version: "1", hash: "a", commit: null }, after: { version: "1", hash: "a", commit: null }, migrations: [], restartAdvised: false },
+    { ok: true, id: "p", changed: true, before: { version: "1", hash: "a".repeat(64), commit: null }, after: { version: "1", hash: "b".repeat(64), commit: null }, migrations: [{ status: "failed" }] },
+    { ok: true, id: "p", changed: false, before: { version: "1", hash: "a", commit: null }, after: { version: "1", hash: "a", commit: null }, migrations: [] },
     { ok: false, id: "p", error: "modules.error.reinstallPerms", detail: "mail", rolledBack: true },
     { ok: false, id: "p", error: "autre", rolledBack: false },
   ];

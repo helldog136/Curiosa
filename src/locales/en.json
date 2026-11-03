@@ -2861,7 +2861,6 @@
   "maintenance.result.same": "Identical code: nothing changed.",
   "maintenance.result.changed": "Code put back to brand new: {before} → {after}.",
   "maintenance.result.migration": "An instance's data could not be converted: it has been set aside (see its page).",
-  "maintenance.result.restart": "Some secondary files of the module changed: restart the site so everything serves the new version.",
   "maintenance.source.unknown": "unknown source (the catalogue no longer lists this module; it stays installed as is)",
   "modules.error.reinstallNoSource": "This module was installed by hand: it has no source to reinstall it from.",
   "modules.error.catalogue": "The catalogue cannot be reached, please try again.",

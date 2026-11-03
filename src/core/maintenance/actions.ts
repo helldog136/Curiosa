@@ -104,7 +104,7 @@ async function doReinstall(id: string): Promise<Outcome> {
   const r = await deps.reinstall(id);
   if (!r.ok) return { ok: false, message: `Reinstall of "${id}" failed: ${reason(r.error)}${r.rolledBack ? " (the previous code was put back)" : ""}.${r.loadError ? ` Cause: ${redactSecrets(r.loadError, 200)}.` : ""}` };
   const bad = r.migrations.some((x) => x.status === "failed" || x.status === "newer");
-  return { ok: !bad, message: `${r.changed ? `Code of "${id}" renewed (${r.before.version} to ${r.after.version}); data, settings and instances are untouched.` : `"${id}" was already identical to its source; nothing changed.`}${bad ? " A data conversion failed: check maintenance_modules." : ""}${r.restartAdvised ? " A restart of the site may be needed for secondary files." : ""}`, details: { changed: r.changed } };
+  return { ok: !bad, message: `${r.changed ? `Code of "${id}" renewed (${r.before.version} to ${r.after.version}); data, settings and instances are untouched.` : `"${id}" was already identical to its source; nothing changed.`}${bad ? " A data conversion failed: check maintenance_modules." : ""}`, details: { changed: r.changed } };
 }
 
 async function doRestart(key: string): Promise<Outcome> {
