@@ -12,7 +12,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 ### Tableaux de l'administration
 
 - **Une petite image devant le texte d'une ligne.** Une extension peut maintenant montrer une jaquette, un logo ou une photo à côté du nom, dans ses tableaux. Toutes les lignes gardent la même hauteur, sur ordinateur comme sur téléphone, et si une image ne se charge pas, une pastille neutre prend sa place.
-- **Seules les images permises s'affichent.** L'image doit venir de votre site ou d'un site que l'extension a déclaré, et avoir un texte alternatif. Sinon elle est écartée et la ligne garde son texte. Rien venu d'ailleurs n'est exécuté.
+- **Seules les images permises s'affichent.** Elles doivent venir de votre site ou d'un site que l'extension a déclaré, et avoir un texte alternatif. Sinon la ligne garde son texte, et rien venu d'ailleurs n'est exécuté.
 - **Rien ne change pour les extensions actuelles.** Un site plus ancien affiche simplement le texte de la cellule.
 
 ### Équipe
