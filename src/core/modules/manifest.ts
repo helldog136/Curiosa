@@ -44,7 +44,7 @@ export const settingField = z.object({
   unit: localized.optional(),
   example: localized.optional(),
   rare: z.boolean().optional(),
-  /** (cœur après 0.6.3) `period` : accepte un début seul ou une fin seule. Désactivé par défaut : un module qui ne le demande pas ne reçoit jamais de période ouverte. */
+  /** (cœur 0.6.4) `period` : accepte un début seul ou une fin seule. Désactivé par défaut : un module qui ne le demande pas ne reçoit jamais de période ouverte. */
   openEnded: z.boolean().optional(),
   display: z.enum(["segmented"]).optional(),
   translatable: z.boolean().optional(),
