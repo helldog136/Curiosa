@@ -24,8 +24,9 @@ const memberErrors = (reason: MemberFailure, t: (key: string) => string): Action
 /**
  * Nouveau compte. Les règles (qui peut attribuer quel niveau) sont dans `core/auth/members.ts` et `team.ts`, qui relisent l'acteur en base : seul le texte du
  * formulaire vient du navigateur. Un administrateur n'invite que des éditeurs ; un coordinateur, des administrateurs et des éditeurs ; le propriétaire seul nomme un coordinateur.
- * Le formulaire ne demande que l'e-mail et le rôle : sans nom, on prend le début de l'e-mail ; sans mot de passe de départ, le site en crée un (affiché une seule fois)
- * et la personne devra en choisir un à sa première connexion, comme pour un mot de passe temporaire.
+ * Le formulaire ne demande que l'e-mail et le rôle : sans nom, on prend le début de l'e-mail ; sans mot de passe de départ, le site en crée un et la personne devra en choisir
+ * un à sa première connexion, comme pour un mot de passe temporaire. Ce mot de passe est renvoyé UNE fois, dans `secret` (jamais dans le texte `ok`, que la page garde affiché) :
+ * ni la base (seulement son empreinte), ni le journal, ni l'adresse ne le retiennent, et le compte est créé « doit choisir le sien » dans la même écriture.
  */
 export async function createUser(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const { user, t } = await adminCtx("admin");
@@ -34,11 +35,18 @@ export async function createUser(_prev: ActionState, formData: FormData): Promis
   const generated = typed === "";
   const password = generated ? generateTemporaryPassword() : typed;
   const name = String(formData.get("name") ?? "").trim() || nameFromEmail(email);
-  const r = await createMember(user.id, { name, email, password, role: formData.get("role") });
+  const r = await createMember(user.id, { name, email, password, role: formData.get("role"), mustChangePassword: generated });
   if (!r.ok) return memberErrors(r.reason, t);
-  if (generated) await prisma.user.update({ where: { id: r.id }, data: { mustChangePassword: true } });
   revalidatePath("/admin/users");
-  return { ok: generated ? t("users.added.generated", { name, password }) : t("users.added", { name }) };
+  if (!generated) return { ok: t("users.added", { name }) };
+  return {
+    ok: t("users.added.generated", { name }),
+    secret: {
+      value: password, title: t("users.secret.title", { name }),
+      notes: [t("users.secret.once"), t("users.secret.mustChange", { name }), t("users.secret.handOver")],
+      copy: t("users.temp.copy"), copied: t("users.temp.copied"), done: t("users.secret.done"),
+    },
+  };
 }
 
 /**

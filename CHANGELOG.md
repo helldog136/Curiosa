@@ -14,8 +14,18 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **La présentation d'une extension ne vous noie plus de termes techniques.** Dans la fiche d'une extension, le texte de présentation écrit par son auteur est maintenant replié sous « Lire la présentation complète », avec une phrase de résumé qui reste visible. La description courte et les images restent en haut.
 - **Le mode avancé garde tout ouvert.** En mode avancé, la présentation s'affiche en entier dès l'ouverture de la fiche, comme avant.
 
+### Équipe
+
+- **Le mot de passe provisoire d'une nouvelle personne s'affiche dans un encadré à part.** Vous le voyez une seule fois, avec un bouton « Copier » et ce message : « Vous ne le reverrez plus : notez-le ou copiez-le maintenant ». Avant, il était écrit dans une phrase qui restait affichée.
+- **Il disparaît dès que vous cliquez sur « J'ai noté le mot de passe », que vous changez de page ou que vous rechargez.** Le site n'en garde aucune copie lisible : ni dans sa base, ni dans le Journal, ni dans l'adresse de la page.
+- **La personne doit choisir son propre mot de passe à sa première connexion, sans exception.** Ce réglage est maintenant posé en même temps que la création du compte, et non juste après : une coupure au mauvais moment ne peut plus laisser un compte sans cette obligation.
+- **La même phrase partout.** La boîte « Définir un mot de passe temporaire » dit aussi « Vous ne le reverrez plus ».
+
 ### Pour les développeurs
 
+- `createMember(actorId, { …, mustChangePassword: true })` pose le drapeau dans l'écriture qui crée le compte (`createUser` ne fait plus de seconde écriture). Seul `true` compte.
+- `ActionState` gagne `secret?: OneTimeSecret` (`src/components/admin/OneTimeSecret.tsx`) : valeur, titre, notes et boutons déjà traduits côté serveur. `ActionForm` l'affiche avec `SecretReveal` et ne le garde que dans l'état de la page ; `SecretValue` (valeur + « Copier ») est aussi utilisé par `TemporaryPasswordButton`.
+- Clés de langue : `users.added.generated` n'a plus de `{password}` ; nouvelles clés `users.secret.*`. Test : `tests/core/team-first-password.test.mjs`.
 - **Fiche d'extension.** `ReadmeFold` (`<details>` natif, sans script) replie le README en mode simple ; `readmeSummary` (`core/modules/ficheView.ts`) en tire une phrase sans Markdown. Le README reste rendu par `Markdown untrusted` : pas de HTML brut, pas de script, liens relatifs inertes, aucune image distante. Textes `fiche.readme.*` (FR et EN).
 
 ## 0.6.4 — 2026-11-03
