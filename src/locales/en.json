@@ -2925,6 +2925,8 @@
   "fiche.gallery.loading": "Loading the images…",
   "fiche.retry": "Try again",
   "fiche.retrying": "Trying again…",
+  "fiche.readme.open": "Read the full description",
+  "fiche.readme.hint": "Written by the author, sometimes technical",
   "fiche.slow": "Reading the repository… This is taking a little longer than usual.",
   "catalogue.previewRateLimit": "The site hosting this extension is limiting reads right now. Wait a minute, then try again. Nothing was installed.",
   "catalogue.previewSlow": "Reading these details is taking longer than expected. Nothing was installed. You can try again.",

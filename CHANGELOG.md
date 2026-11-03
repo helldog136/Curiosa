@@ -7,6 +7,17 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## Prochaine version (non publiée)
+
+### Extensions
+
+- **La présentation d'une extension ne vous noie plus de termes techniques.** Dans la fiche d'une extension, le texte de présentation écrit par son auteur est maintenant replié sous « Lire la présentation complète », avec une phrase de résumé qui reste visible. La description courte et les images restent en haut.
+- **Le mode avancé garde tout ouvert.** En mode avancé, la présentation s'affiche en entier dès l'ouverture de la fiche, comme avant.
+
+### Pour les développeurs
+
+- **Fiche d'extension.** `ReadmeFold` (`<details>` natif, sans script) replie le README en mode simple ; `readmeSummary` (`core/modules/ficheView.ts`) en tire une phrase sans Markdown. Le README reste rendu par `Markdown untrusted` : pas de HTML brut, pas de script, liens relatifs inertes, aucune image distante. Textes `fiche.readme.*` (FR et EN).
+
 ## 0.6.4 — 2026-11-03
 
 **En bref.** Une entrée « Entretien » apparaît dans le menu d'administration, avec une pastille qui dit « À jour » ou combien de choses vous avez à faire. Les copies de sécurité d'anciennes données ne sont plus présentées comme une tâche : le site les garde par prudence, sans rien vous demander. Une période part maintenant de « une seule fois », et un réglage peut accepter une seule date. Le journal passe en dernier sur le tableau de bord. Un ménage interne n'a aucun effet visible. Le changement qui compte : la version minimale de mise à jour passe à 0.2.0. Un site plus ancien est amené tout seul à la 0.2.0 puis à la version choisie ; rien ne change pour un site en 0.2.0 ou plus récent.
