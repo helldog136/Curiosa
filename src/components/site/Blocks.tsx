@@ -23,6 +23,8 @@ import { mayShowDownload } from "@/core/modules/downloadAccess";
 import { SuggestInstall } from "../admin/SuggestInstall";
 import { AdminTable } from "../admin/AdminTable";
 import { isEnhancedTable } from "@/core/adminkit/table";
+import { sanitizeTableImages } from "@/core/adminkit/image";
+import { imageHostsOfInstance } from "@/core/modules/imageHosts";
 import { formLabels, tableLabels } from "../admin/kitLabels";
 
 const TONES = {
@@ -225,7 +227,9 @@ export async function Blocks({ blocks, locale, adminInstanceId: panelInstanceId,
       case "table":
         // (0.6.0) Tableau enrichi (recherche en direct, pastilles, interrupteur, menu « ⋯ », cartes sur téléphone) : seulement si le module a demandé l'une de ces choses.
         if (isEnhancedTable(block)) {
-          out.push(<AdminTable key={i} block={block} instanceId={adminInstanceId} entry={entryScope} labels={tableLabels(makeTranslator(locale))} />);
+          // Les vignettes (`image`) sont validées ICI, côté serveur : pages du site, ou hôtes déclarés dans le manifeste du module (jamais d'autre hôte). Sur le site public : pages du site seulement.
+          const safe = sanitizeTableImages(block, await imageHostsOfInstance(adminInstanceId));
+          out.push(<AdminTable key={i} block={safe} instanceId={adminInstanceId} entry={entryScope} labels={tableLabels(makeTranslator(locale))} />);
           break;
         }
         out.push(

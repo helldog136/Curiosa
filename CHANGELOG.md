@@ -9,6 +9,12 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ## Prochaine version (non publiée)
 
+### Tableaux de l'administration
+
+- **Une petite image devant le texte d'une ligne.** Une extension peut maintenant montrer une jaquette, un logo ou une photo à côté du nom, dans ses tableaux. Toutes les lignes gardent la même hauteur, sur ordinateur comme sur téléphone, et si une image ne se charge pas, une pastille neutre prend sa place.
+- **Seules les images permises s'affichent.** Elles doivent venir de votre site ou d'un site que l'extension a déclaré, et avoir un texte alternatif. Sinon la ligne garde son texte, et rien venu d'ailleurs n'est exécuté.
+- **Rien ne change pour les extensions actuelles.** Un site plus ancien affiche simplement le texte de la cellule.
+
 ### Corrections
 
 - **Une période à moitié remplie n'efface plus l'ancienne.** Avec une seule date remplie, l'enregistrement supprimait la période existante sans rien dire. Un message sous le champ demande maintenant les deux dates, et rien n'est enregistré.
@@ -34,11 +40,11 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - `createMember(actorId, { …, mustChangePassword: true })` pose le drapeau dans l'écriture qui crée le compte (`createUser` ne fait plus de seconde écriture). Seul `true` compte.
 - `ActionState` gagne `secret?: OneTimeSecret` (`src/components/admin/OneTimeSecret.tsx`) : valeur, titre, notes et boutons déjà traduits côté serveur. `ActionForm` l'affiche avec `SecretReveal` et ne le garde que dans l'état de la page ; `SecretValue` (valeur + « Copier ») est aussi utilisé par `TemporaryPasswordButton`.
 - Clés de langue : `users.added.generated` n'a plus de `{password}` ; nouvelles clés `users.secret.*`. Test : `tests/core/team-first-password.test.mjs`.
+- **Cellule de tableau `image`.** `{ text, image: { src, alt, fit? } }` : vignette de 40 px, `alt` obligatoire. `src` est validé côté serveur (`core/adminkit/image.ts`) : page du site, ou `https://` d'un hôte du nouveau champ `imageHosts` de `module.json` (additif). Kit de test : `manifest.imageHosts`, R28 et R16.
 - **`PeriodField` n'envoie plus de valeur vide pour une période incomplète.** Une seule date (`"2026-12-01/"`) ou une fin avant le début est envoyée telle quelle pour être refusée ; vide seulement sans aucune date.
 - **Refus côté serveur.** `runModuleAdminAction` refuse une période à moitié remplie, à l'envers ou illisible avant d'appeler le module, et retire le champ caché `<nom>__period`. Nouveaux : `periodErrorKey`, `isHalfPeriod`, `PERIOD_MARK`, `periodSent` et trois textes `period.error*`.
 - `settingKeysReadByCore(manifest)` (`src/core/modules/manifest.ts`) liste les clés de réglages lues par le cœur d'après le manifeste (`pageSetting`, `shortLink.enabled`, `shortLink.name`, `shortLink.target.setting`). Le test « chaque clé de `settings` est lue par le code du module » (dépôt de modules présent) les accepte : un réglage d'adresse courte n'est pas un champ mort.
 - Le test d'architecture « aucun module connu par son identifiant » ne trouve plus `social/page.tsx` fautif ; le test d'événements de `backup-async` mesure chaque phase jusqu'à 3 fois avec la gigue du moment (un blocage réel échoue à chaque essai).
-
 - **Kit de test : `compat.minCore` connaît deux fonctions de plus.** `openEnded` sur une période (cœur 0.6.4) et `ctx.api.log.write` appelé sans `?.` ni test préalable de `ctx.api.log` (cœur 0.6.0) exigent le `minCore` correspondant. Mesuré sur `curiosa-extras` (dev, 71 modules) : aucun module ne devient averti ni en échec.
 - **Nouveau conseil `compat.minCoreAdvice`.** Une lecture de `ctx.timezone` sans repli (`typeof`, `??`, `||`, ternaire) conseille `minCore` 0.6.4 ; elle ne fait jamais échouer le module. `FEATURES` accepte `advice: true`.
 - **Volontairement hors de `FEATURES`.** `previews`, `shortLink`, `social`, `suggestInMenu`, `returnAddresses`, `siteAddressUses`, `dashboard`, `content.templates` et `logEvents` : un cœur plus ancien les ignore sans rien perdre, la documentation dit « aucun `minCore` à déclarer » ; `overlayElements` est déjà exigé par `parseManifest`. La raison est écrite au-dessus de `FEATURES`.
