@@ -310,6 +310,12 @@ export const manifestSchema = z.object({
   legacySettings: z.array(z.object({ key: z.string().regex(/^[a-zA-Z][a-zA-Z0-9_]{0,40}$/), secret: z.boolean().optional() })).max(20).optional(),
   /** (0.2.0) Collections du stockage qu'une version précédente remplissait et que le module vide après reprise : comptées par le rapport d'entretien, jamais lues par le cœur. */
   legacyCollections: z.array(z.string().regex(/^[a-zA-Z][a-zA-Z0-9_.-]{0,60}$/)).max(10).optional(),
+  /**
+   * (cœur 0.6.5) Parmi `legacyCollections`, celles que le module PROMET INERTES : une copie de sécurité qu'il ne lit plus, n'écrit plus et ne relira jamais (ex. Partenariats : `legacyContacts`).
+   * Seules celles-ci peuvent être supprimées, par la personne propriétaire, en mode avancé, depuis la page Entretien. Ne déclarez JAMAIS ici une collection que le module lit encore
+   * (état de la reprise, compteur, marqueur : `meta`). Clé séparée, et non une forme objet de `legacyCollections`, pour qu'un cœur plus ancien (qui attend une liste de textes) l'ignore sans refuser le manifeste.
+   */
+  inertLegacyCollections: z.array(z.string().regex(/^[a-zA-Z][a-zA-Z0-9_.-]{0,60}$/)).max(10).optional(),
   onboarding: z
     .object({
       home: z.object({ section: z.string(), count: z.number().int().min(1).max(50).optional() }).optional(),
@@ -394,6 +400,8 @@ export const manifestSchema = z.object({
   const legacy = m.legacySettings ?? [];
   for (const [i, l] of legacy.entries()) if (declared.has(l.key)) ctx.addIssue({ code: "custom", path: ["legacySettings", i, "key"], message: `"${l.key}" is both a setting and a legacy setting` });
   if (new Set(legacy.map((l) => l.key)).size < legacy.length) ctx.addIssue({ code: "custom", path: ["legacySettings"], message: "duplicate legacy setting" });
+  for (const [i, c] of (m.inertLegacyCollections ?? []).entries()) if (!(m.legacyCollections ?? []).includes(c)) ctx.addIssue({ code: "custom", path: ["inertLegacyCollections", i], message: `"${c}" must also be listed in legacyCollections` });
+  if (new Set(m.inertLegacyCollections ?? []).size < (m.inertLegacyCollections ?? []).length) ctx.addIssue({ code: "custom", path: ["inertLegacyCollections"], message: "duplicate inert collection" });
   if (m.dataFloor !== undefined && m.dataFloor > (m.dataVersion ?? 1)) ctx.addIssue({ code: "custom", path: ["dataFloor"], message: "dataFloor must be ≤ dataVersion" });
   // Un `choice` interroge le service AU NOM de l'instance : le service doit être déclaré dans `requires` (sinon le cœur ne peut pas l'appeler).
   const required = new Set((m.requires ?? []).map((r) => r.service));
