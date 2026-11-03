@@ -15,8 +15,18 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Une fin avant le début est refusée de la même façon.** Le message dit de mettre la fin après le début.
 - **Effacer une période reste possible.** Le bouton « Effacer la période » vide bien les deux dates, et c'est alors voulu. Dans un réglage qui accepte une période ouverte, une seule date reste valable.
 
+### Équipe
+
+- **Le mot de passe provisoire d'une nouvelle personne s'affiche dans un encadré à part.** Vous le voyez une seule fois, avec un bouton « Copier » et ce message : « Vous ne le reverrez plus : notez-le ou copiez-le maintenant ». Avant, il était écrit dans une phrase qui restait affichée.
+- **Il disparaît dès que vous cliquez sur « J'ai noté le mot de passe », que vous changez de page ou que vous rechargez.** Le site n'en garde aucune copie lisible : ni dans sa base, ni dans le Journal, ni dans l'adresse de la page.
+- **La personne doit choisir son propre mot de passe à sa première connexion, sans exception.** Ce réglage est maintenant posé en même temps que la création du compte, et non juste après : une coupure au mauvais moment ne peut plus laisser un compte sans cette obligation.
+- **La même phrase partout.** La boîte « Définir un mot de passe temporaire » dit aussi « Vous ne le reverrez plus ».
+
 ### Pour les développeurs
 
+- `createMember(actorId, { …, mustChangePassword: true })` pose le drapeau dans l'écriture qui crée le compte (`createUser` ne fait plus de seconde écriture). Seul `true` compte.
+- `ActionState` gagne `secret?: OneTimeSecret` (`src/components/admin/OneTimeSecret.tsx`) : valeur, titre, notes et boutons déjà traduits côté serveur. `ActionForm` l'affiche avec `SecretReveal` et ne le garde que dans l'état de la page ; `SecretValue` (valeur + « Copier ») est aussi utilisé par `TemporaryPasswordButton`.
+- Clés de langue : `users.added.generated` n'a plus de `{password}` ; nouvelles clés `users.secret.*`. Test : `tests/core/team-first-password.test.mjs`.
 - **`PeriodField` n'envoie plus jamais une valeur vide pour une période incomplète.** Une seule date (`"2026-12-01/"`) ou une fin avant le début est envoyée telle quelle, pour que le serveur la refuse ; vide seulement quand les deux dates sont vides. Le champ ajoute un champ caché `<nom>__period` (`closed` ou `open`).
 - **Refus côté serveur.** `runModuleAdminAction` refuse une valeur de période à moitié remplie, à l'envers ou illisible AVANT d'appeler l'action du module (erreur sous le champ, `values` sans le champ caché). L'enregistrement des réglages refuse la valeur à moitié remplie avec le même message. Nouveaux : `periodErrorKey`, `isHalfPeriod`, `PERIOD_MARK` (`adminkit/values.ts`), `periodSent` (`adminkit/periodInputs.ts`) ; textes `period.errorHalf`, `period.errorFormat`, `period.errorFormatOpen`. Une action de module doit toujours revérifier ses valeurs.
 
