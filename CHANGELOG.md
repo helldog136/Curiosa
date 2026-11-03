@@ -7,6 +7,20 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## Prochaine version (non publiée)
+
+### Visites de personnes et de robots
+
+- **Les robots ne sont plus mêlés aux personnes qui visitent.** Sur le tableau de bord, le bloc « Visites » montre une nouvelle ligne « Robots et IA » : le nombre de visites de robots sur 30 jours, et combien viennent d'intelligences artificielles. Avant, ces visites étaient simplement jetées.
+- **Rien n'est gardé d'eux.** Un robot ajoute 1 à un compteur du jour (moteurs de recherche, IA, aperçus de liens, outils), et c'est tout : ni adresse IP, ni nom de navigateur, ni page lue. Les personnes qui refusent le suivi et l'équipe connectée ne comptent jamais, robots compris.
+- **Les chiffres des personnes qui visitent ne changent pas.** La page « Confidentialité » du site le dit en une phrase.
+- Seuls les robots qui chargent la page comme un navigateur sont vus. Aucun réglage à faire.
+
+### Pour les développeurs
+
+- **Une seule liste d'agents non humains** (`src/core/agents.ts`, `classifyAgent` : `person`, `search`, `ai`, `preview`, `tool`). `redirectStats.ts` (`isHumanVisit`, comportement inchangé) et `stats.ts` l'utilisent ; l'ancienne liste de `redirectStats.ts` et l'expression courte de `stats.ts` disparaissent. Quelques noms d'IA ajoutés (`google-extended`, `cohere`, `mistralai`, `diffbot`…).
+- **Compteur de robots** : lignes `VisitDaily` de genre `bot` (`ROBOT_KIND`), clé = catégorie, `views` = visites, 4 lignes par jour au plus. Aucun changement de schéma, aucune migration. `recordVisit` renvoie `"robot"` pour ces visites (avant : `"ignored"`). `statsSummary().robots` (`last7`, `last30` : `search`, `ai`, `preview`, `tool`, `total`) est additif.
+
 ## 0.6.6 — 2026-11-03
 
 **En bref.** La recherche du site montre d'abord ce qui vient de votre site (pages, articles), puis les vidéos et les liens vers d'autres sites. Rien à régler.

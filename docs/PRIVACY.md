@@ -37,7 +37,8 @@ L'équipe du site, elle, reçoit un cookie de **session** à la connexion à l'a
 
 - Elles ne déposent **rien** dans le navigateur : le navigateur envoie seulement la page vue, et le serveur compte.
 - Pour ne compter qu'une fois une personne qui visite par jour, le serveur calcule une empreinte à partir de son adresse IP et de son navigateur, **mélangée à un sel tiré au hasard chaque jour** ; l'adresse IP n'est jamais enregistrée, l'empreinte est supprimée le lendemain avec le sel de la veille. Il est impossible de reconnaître quelqu'un d'un jour à l'autre.
-- Ne sont pas comptés : les robots, les personnes qui visitent qui envoient « Do Not Track » ou « Global Privacy Control », et l'équipe connectée à l'admin.
+- Les robots (moteurs de recherche, intelligences artificielles, aperçus de liens, outils) ne sont pas mêlés aux personnes : chaque visite de robot ajoute 1 à un compteur par jour et par catégorie (4 lignes par jour au plus). Rien d'autre n'est gardé d'eux : ni navigateur, ni adresse IP, ni empreinte, ni page. La page `/privacy` le dit.
+- Ne sont pas comptés du tout : les personnes qui visitent qui envoient « Do Not Track » ou « Global Privacy Control », et l'équipe connectée à l'admin.
 - Elles se coupent dans Réglages → Confidentialité.
 
 ## La recherche dans le site

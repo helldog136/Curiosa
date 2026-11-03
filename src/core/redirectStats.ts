@@ -1,3 +1,4 @@
+import { classifyAgent } from "./agents";
 import { prisma } from "./db";
 import { dayKey, lastDays, siteTimezone } from "./siteTime";
 
@@ -20,26 +21,12 @@ export const MAX_PENDING = 500;
 export const FLUSH_CHUNK = 200;
 const PRUNE_EVERY_MS = 6 * 3600_000;
 
-/**
- * Agents connus qui ne sont pas des personnes : robots d'indexation, aperçus de liens des messageries et réseaux, outils de contrôle, scripts, navigateurs sans écran.
- * La liste est volontairement large : mieux vaut ne pas compter un vrai clic que gonfler les chiffres.
- */
-const NOT_A_PERSON = new RegExp([
-  "bot\\b", "bot/", "bots?[ ;)_-]", "crawl", "spider", "slurp", "scrap", "fetch", "preview", "unfurl", "headless", "lighthouse", "pagespeed", "monitor", "uptime", "pingdom", "check_http", "validator",
-  "facebookexternalhit", "facebot", "meta-externalagent", "whatsapp/", "telegrambot", "slackbot", "slack-imgproxy", "discordbot", "skypeuripreview", "linkedinbot", "twitterbot", "pinterest/", "pinterestbot", "tumblr/", "redditbot", "mastodon", "cardyb", "embedly", "quora link", "vkshare", "viber/", "kakaotalk-scrap", "line-poker", "snapchat/", "imessage", "applebot", "yahoo! slurp",
-  "googlebot", "google-", "adsbot", "mediapartners", "apis-google", "bingbot", "bingpreview", "duckduck", "yandex", "baidu", "sogou", "exabot", "ia_archiver", "applebot", "petalbot", "semrush", "ahrefs", "mj12", "dotbot",
-  "curl/", "wget/", "python", "go-http", "java/", "okhttp", "httpclient", "libwww", "node-fetch", "axios", "undici", "postman", "insomnia", "php/", "ruby", "perl", "scrapy", "http_request",
-  "gptbot", "chatgpt", "oai-searchbot", "claude", "anthropic", "perplexity", "bytespider", "ccbot", "amazonbot",
-].join("|"), "i");
-
 /** Ce passage est-il celui d'une personne ? Un texte d'agent vide (script) ou d'un robot connu ne l'est pas ; une demande d'avance (préchargement) non plus. */
 export function isHumanVisit(visit: { userAgent?: string | null; prefetch?: boolean; team?: boolean } | undefined): boolean {
   if (!visit) return true; // aucun renseignement (appel interne) : compté
   // `team` : la personne est connectée à l'administration (elle teste son lien) ; comme pour les visites du site, l'équipe n'est pas un visiteur.
   if (visit.prefetch || visit.team) return false;
-  const ua = (visit.userAgent ?? "").trim();
-  if (ua.length < 8 || ua.length > 1000) return false;
-  return !NOT_A_PERSON.test(ua);
+  return classifyAgent(visit.userAgent) === "person"; // liste unique du cœur : src/core/agents.ts
 }
 
 /** Demande d'avance du navigateur (préchargement, aperçu) d'après ses en-têtes : à ne pas compter. */
