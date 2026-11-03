@@ -12,12 +12,12 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 ### Tableaux de l'administration
 
 - **Une petite image devant le texte d'une ligne.** Une extension peut maintenant montrer une jaquette, un logo ou une photo à côté du nom, dans ses tableaux. Toutes les lignes gardent la même hauteur, sur ordinateur comme sur téléphone, et si une image ne se charge pas, une pastille neutre prend sa place.
-- **Seules les images permises s'affichent.** L'image doit venir de votre site ou d'un site que l'extension a déclaré à l'avance, et elle doit avoir un texte alternatif. Toute autre adresse est écartée sans message : la ligne garde son texte. Aucun contenu venu d'ailleurs n'est exécuté.
+- **Seules les images permises s'affichent.** L'image doit venir de votre site ou d'un site que l'extension a déclaré, et avoir un texte alternatif. Sinon elle est écartée et la ligne garde son texte. Rien venu d'ailleurs n'est exécuté.
 - **Rien ne change pour les extensions actuelles.** Un site plus ancien affiche simplement le texte de la cellule.
 
 ### Pour les développeurs
 
-- **Cellule de tableau `image`.** `{ text, image: { src, alt, fit? } }` dans un bloc `table` du panneau d'administration : vignette de 40 px, `alt` obligatoire, chargement paresseux, `object-fit`, repli neutre. `src` est validé côté serveur (`core/adminkit/image.ts`) : page du site (jamais `/api` ni `/admin`) ou `https://` d'un hôte listé dans le nouveau champ `imageHosts` de `module.json` (5 noms exacts au plus, additif, ignoré par un ancien cœur). Sur le site public, pages du site seulement. Le kit de test ajoute `manifest.imageHosts` et les règles R28 et R16 de `admin.ergonomics` pour les pages.
+- **Cellule de tableau `image`.** `{ text, image: { src, alt, fit? } }` : vignette de 40 px, `alt` obligatoire. `src` est validé côté serveur (`core/adminkit/image.ts`) : page du site, ou `https://` d'un hôte du nouveau champ `imageHosts` de `module.json` (additif). Kit de test : `manifest.imageHosts`, R28 et R16.
 
 ## 0.6.4 — 2026-11-03
 

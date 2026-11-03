@@ -524,7 +524,7 @@ test("vignette : liste fermée — pages du site et hôtes déclarés, rien d'au
   no("https://sub.media.rawg.io/a.jpg", ["media.rawg.io"], "host-not-declared"); // pas de joker, pas de sous-domaine implicite
   no("https://media.rawg.io.evil.example/a.jpg", ["media.rawg.io"], "host-not-declared");
   no("http://media.rawg.io/a.jpg", ["media.rawg.io"], "scheme");
-  no("javascript:alert(1)", ["media.rawg.io"], "invalid"); no("data:image/svg+xml,<svg/>", [], "invalid"); no("ftp://media.rawg.io/a", ["media.rawg.io"], "scheme");
+  no("javascript:alert(1)", ["media.rawg.io"], "scheme"); no("data:image/svg+xml,<svg/>", [], "scheme"); no("ftp://media.rawg.io/a", ["media.rawg.io"], "scheme");
   no("//media.rawg.io/a.jpg", ["media.rawg.io"], "invalid");
   no("https://user:pw@media.rawg.io/a.jpg", ["media.rawg.io"], "invalid"); no("https://media.rawg.io:8443/a.jpg", ["media.rawg.io"], "invalid");
   no("https://127.0.0.1/a.jpg", ["127.0.0.1"], "invalid"); no("https://localhost/a.jpg", ["localhost"], "invalid"); no("https://intranet.local/a.jpg", ["intranet.local"], "invalid");
