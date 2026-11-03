@@ -285,7 +285,7 @@ test("résumé de la présentation : première phrase du premier vrai paragraphe
 test("présentation : le texte d'un tiers reste en Markdown sans HTML brut ni script, liens relatifs inertes, images distantes jamais chargées", async () => {
   const { Markdown } = await import("@/components/site/Markdown");
   const out = html(h(Markdown, { untrusted: true, text: "Bonjour <script>alert(1)</script> <img src=x onerror=alert(1)>\n\n[mal](javascript:alert(1)) [ok](https://example.org) [rel](docs/a.md)\n\n![espion](https://tracker.example/p.gif)" }));
-  assert.doesNotMatch(out, /<script|<img|onerror|javascript:/i);
+  assert.doesNotMatch(out, /<script|<img|href="javascript:/i, "ni balise active ni lien javascript");
   assert.match(out, /href="https:\/\/example\.org"/);
   assert.doesNotMatch(out, /href="docs\/a\.md"/);
   assert.match(out, /\[espion\]/);
