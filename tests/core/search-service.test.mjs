@@ -259,6 +259,36 @@ test("éléments proposés par des modules (feed.item) : cherchés par titre et 
   assert.deepEqual(titles(await find("concert")), ["Compte rendu du concert"], "un module écarté dans les réglages n'est pas cherché");
 });
 
+const MIXED_PROVIDER = {
+  "module.json": { apiVersion: 2, version: "1.0.0", id: "agenda", name: "Agenda", provides: [{ topic: "feed.item" }], main: "index.mjs" },
+  "index.mjs": `export default { exports: { "feed.item": () => [
+    { id: "y1", title: "Tesla vidéo 1", url: "https://www.youtube.com/watch?v=1", publishedAt: "2026-10-30T10:00:00Z" },
+    { id: "y2", title: "Tesla vidéo 2", url: "https://www.youtube.com/watch?v=2", publishedAt: "2026-10-29T10:00:00Z" },
+    { id: "y3", title: "Tesla vidéo 3", url: "https://autre.exemple.org/3", publishedAt: "2026-10-28T10:00:00Z" },
+    { id: "i1", title: "Tesla à l'agenda", url: "/agenda/tesla", publishedAt: "2020-01-01T10:00:00Z" },
+  ] } };`,
+};
+
+test("classement dans le service : le contenu du site (entrées, adresse relative) avant les externes plus récents ; pages, compteur et page 2 cohérents", async () => {
+  await installModule(makeRepo(MIXED_PROVIDER).url);
+  const mod = await R.getModule("agenda");
+  await createInstance(db.prisma, { manifest: mod.manifest, names: { fr: "Agenda", en: "Agenda" } });
+  const a = await blog("Actus");
+  await publish(a.id, "Autre", { summary: "parle de Tesla", at: new Date("2025-01-01") });
+  await publish(a.id, "Mes partenariats", { body: "Tesla : des réductions", at: new Date("2024-01-01") });
+  const r = await find("tesla");
+  assert.deepEqual(titles(r), ["Tesla à l'agenda", "Autre", "Mes partenariats", "Tesla vidéo 1", "Tesla vidéo 2", "Tesla vidéo 3"], "site : titre, résumé, texte ; puis externes");
+  assert.equal(r.total, 6);
+  assert.deepEqual(r.items.map((i) => i.external), [false, false, false, true, true, true]);
+  assert.equal(r.items[3].typeLabel, "Agenda", "le type reste affiché");
+  await setSetting("search.perPage", 5);
+  const p1 = await find("tesla"), p2 = await find("tesla", { page: "2" });
+  assert.deepEqual([...titles(p1), ...titles(p2)], titles(r), "la page 2 prolonge la page 1 dans le même ordre");
+  assert.equal(p2.total, 6);
+  assert.deepEqual(titles(await find("vidéo")), ["Tesla vidéo 1", "Tesla vidéo 2", "Tesla vidéo 3"], "externes seuls : classement habituel");
+  assert.equal((await find("introuvable")).items.length, 0);
+});
+
 test("RIEN n'est écrit : ni ligne en base (réglages, journal, visites…), ni cookie ; le code de la recherche ne contient aucune écriture", async () => {
   const a = await blog("Actus"); await publish(a.id, "Zèbre");
   const tables = (await db.prisma.$queryRawUnsafe("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE '\\_%' ESCAPE '\\' AND name NOT LIKE 'sqlite_%'")).map((r) => r.name);
