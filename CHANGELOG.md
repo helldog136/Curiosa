@@ -7,6 +7,20 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## Prochaine version (non publiée)
+
+### Recherche dans le site
+
+- **Les pages et articles de votre site passent avant les vidéos et les autres sites.** En cherchant un mot, vous voyez d'abord ce qui est à vous, puis ce qui mène ailleurs (vidéos YouTube, réseaux…). Avant, une vidéo récente pouvait passer devant votre page.
+- **Rien d'autre ne change.** Chaque résultat garde son type (« YouTube », « Mes partenariats »…), et le nombre de résultats, les pages, la recherche sans accents et le respect de la vie privée sont les mêmes. Aucun réglage à faire.
+
+### Pour les développeurs
+
+- **Règle de classement** (`src/core/search/rank.ts`). `SearchDoc.own` vaut vrai pour une entrée du cœur, ou si l'adresse est relative ou sur le même nom de domaine que `SITE_URL` (`isOwnAddress`).
+- **Domaine.** `www.` et le port sont ignorés ; un sous-domaine est un autre domaine.
+- **Tri.** Site d'abord, puis externes ; dans chaque groupe, rang puis récence comme avant. Le plafond de 200 coupe donc les externes d'abord.
+- Aucun nouveau texte de langue ni réglage.
+
 ## 0.6.5 — 2026-11-03
 
 **En bref.** Le mot de passe provisoire d'une nouvelle personne s'affiche une seule fois, avec un bouton « Copier ». Une période à moitié remplie est refusée avec un message, au lieu d'effacer l'ancienne. La longue présentation d'une extension est repliée en mode simple. Les tableaux peuvent montrer une petite image devant le texte. En mode avancé, Entretien permet de supprimer une copie de sécurité devenue inutile, pour les extensions qui l'indiquent. Le reste est du ménage de tests, sans effet visible.

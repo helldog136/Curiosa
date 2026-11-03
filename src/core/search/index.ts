@@ -7,7 +7,9 @@ import { hasPublicPage } from "@/core/modules/publicPage";
 import { getActiveInstances } from "@/core/modules/registry";
 import { collectForCore } from "@/core/services/topics";
 import { getSiteConfig } from "@/core/settings";
+import { siteUrl } from "@/core/config";
 import { isSafeExternalUrl } from "@/core/url";
+import { isOwnAddress } from "./rank";
 import { BODY_CHARS, fold, plainText } from "./text";
 export { BODY_CHARS };
 
@@ -52,6 +54,8 @@ export type SearchDoc = {
   /** Adresse relative au site (`/fr/blog/x`) ou https. */
   url: string;
   external: boolean;
+  /** Contenu du site (entrée du cœur, ou adresse qui reste sur le site) : classé avant ce qui mène ailleurs (voir rank.ts). */
+  own: boolean;
   /** Langue réellement affichée (peut différer de la langue demandée : repli de langue). */
   locale: string;
   publishedAt: number | null;
@@ -103,11 +107,11 @@ export async function contentSignature(extra: string): Promise<string> {
 }
 
 /** Fabrique la fiche d'une entrée. Pure (testée seule). */
-export function docFromParts(p: { id: string; kind: SearchDoc["kind"]; entryId?: string; typeKey: string; typeLabel: string; title: string; summary: string; tags?: readonly string[]; body?: string; url: string; external: boolean; locale: string; publishedAt: Date | null }): SearchDoc {
+export function docFromParts(p: { id: string; kind: SearchDoc["kind"]; entryId?: string; typeKey: string; typeLabel: string; title: string; summary: string; tags?: readonly string[]; body?: string; url: string; external: boolean; /** Par défaut : une entrée, ou une adresse non externe. */ own?: boolean; locale: string; publishedAt: Date | null }): SearchDoc {
   const title = cut(p.title.replace(/\s+/g, " ").trim(), TITLE_CHARS);
   const summary = cut(p.summary.replace(/\s+/g, " ").trim(), SUMMARY_CHARS);
   return {
-    id: p.id, kind: p.kind, entryId: p.entryId, typeKey: p.typeKey, typeLabel: p.typeLabel, title, summary, url: p.url, external: p.external, locale: p.locale,
+    id: p.id, kind: p.kind, entryId: p.entryId, typeKey: p.typeKey, typeLabel: p.typeLabel, title, summary, url: p.url, external: p.external, own: p.own ?? (p.kind === "entry" || !p.external), locale: p.locale,
     publishedAt: p.publishedAt ? p.publishedAt.getTime() : null,
     fTitle: fold(title),
     fSummary: fold([summary, ...(p.tags ?? [])].join(" ")),
@@ -161,7 +165,8 @@ async function build(locale: string, exclude: readonly string[], signature: stri
       if (urls.has(url)) continue;
       urls.add(url);
       const owner = active.find((a) => a.instance.key === key);
-      docs.push(docFromParts({ id: `item:${String(i.id ?? `${key}:${url}`)}`, kind: "item", typeKey: key, typeLabel: owner ? pickName(owner.instance, locale, site.defaultLocale) : key, title: String(i.title), summary: String(i.summary ?? ""), url, external: !url.startsWith("/"), locale, publishedAt }));
+      const own = isOwnAddress(url, siteUrl);
+      docs.push(docFromParts({ id: `item:${String(i.id ?? `${key}:${url}`)}`, kind: "item", typeKey: key, typeLabel: owner ? pickName(owner.instance, locale, site.defaultLocale) : key, title: String(i.title), summary: String(i.summary ?? ""), url, external: !own, own, locale, publishedAt }));
       count++;
     }
   }
