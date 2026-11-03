@@ -11,9 +11,8 @@ import { forgetModule, getModule, moduleDir, readGitManifest, verifyModuleLoad }
 import { LoadCheckFailed, preflightModule } from "./loadCheck";
 import { clearBlockedUpdate, noteBlockedUpdate as noteBlocked } from "./blockedUpdate";
 import { staticImportsWarning } from "./staticImports";
-import { catalogueUnreachable, findCatalogueEntry, getCatalogue, type CatalogueEntry } from "./catalogue";
+import { findCatalogueEntry, getCatalogue, type CatalogueEntry } from "./catalogue";
 import { hardNeeds, offerVersionOf, satisfiesVersion } from "./serviceVersions";
-import { checkBundledRow, convertToCatalogue } from "./bundledUpdate";
 import { dependentsOf } from "./dependencies";
 import { eraseOwnedFiles } from "../services/files";
 import { eraseRetired, restoreModuleInstances, retireModuleInstances } from "./retired";
@@ -464,7 +463,7 @@ async function latestRemoteTag(repoUrl: string): Promise<string | null> {
  *   - épinglé sur une ÉTIQUETTE (`#v1.2.0`, le cas recommandé) : la plus haute version stable du dépôt ;
  *   - épinglé sur un commit : jamais (c'est le but) ;
  *   - sur une branche (ou la branche par défaut) : le dernier commit de cette branche ;
- *   - ligne `bundled` d'un ancien site (compatibilité, à retirer en phase 3 d'entretien) : la version du catalogue (qui la convertit en module du catalogue).
+ *   - ligne `bundled` d'une très ancienne version : pas de source, donc pas de mise à jour proposée (voir la page Entretien).
  */
 export async function checkForUpdate(id: string): Promise<ModuleUpdateCheck> {
   return (await checkForUpdateDetailed(id)).check;
@@ -473,9 +472,6 @@ export async function checkForUpdate(id: string): Promise<ModuleUpdateCheck> {
 /** Comme `checkForUpdate`, mais dit si la vérification elle-même a échoué (réseau, dépôt absent) plutôt que de la confondre avec « à jour ». */
 export async function checkForUpdateDetailed(id: string): Promise<{ check: ModuleUpdateCheck; failed: boolean }> {
   const row = await prisma.module.findUnique({ where: { id } });
-  if (row?.source === "bundled") {
-    return checkBundledRow(row, await findCatalogueEntry(id).catch(() => undefined));
-  }
   if (!row || row.source !== "git" || !row.repoUrl) return { check: { available: false }, failed: false };
   const res = await checkGitUpdate(row);
   if (res.check.available && !res.check.needsCore && !row.subdir) {
@@ -526,18 +522,7 @@ function noteModulesChanged(): void {
 /** `chain` : chaîne des modules en cours de mise à jour ou d'installation (un fournisseur mis à jour par la cascade ne peut pas redemander l'un d'eux). */
 async function updateModuleWithin(id: string, chain: string[]): Promise<InstallResult> {
   const row = await prisma.module.findUnique({ where: { id } });
-  if (row?.source === "bundled") {
-    // Compatibilité sites anciens, à retirer en phase 3 d'entretien : le catalogue est la source, jamais une copie locale.
-    const entry = await findCatalogueEntry(id);
-    if (entry) {
-      const r = await convertToCatalogue(row, entry, (manifest) => settleBeforeMigrations(manifest, chain));   // voir bundledUpdate.ts
-      if (!r.ok) return r;
-      const late = await settleDependencies(id);   // besoins couverts par un semis : vérifiés après les migrations (voir afterMigrations)
-      const provided = [...new Set([...(r.provided ?? []), ...(late.provided ?? [])])];
-      return { ...r, ...(provided.length ? { provided } : {}), ...(late.missing?.length ? { missing: late.missing } : {}) };
-    }
-    return { ok: false, error: (await catalogueUnreachable()) ? "modules.error.catalogue" : "modules.error.unknownSource" };
-  }
+  if (row?.source === "bundled") return { ok: false, error: "modules.error.unknownSource" };   // très ancienne version : pas de source (page Entretien)
   if (!row || row.source !== "git" || !row.repoUrl) return { ok: false, error: "modules.error.notfound" };
   if (row.subdir) return updateSubdirModule(row, chain);
   const dir = moduleDir(id);
