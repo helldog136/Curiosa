@@ -9,14 +9,25 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ## Prochaine version (non publiée)
 
+### Équipe
+
+- **Le mot de passe provisoire d'une nouvelle personne s'affiche dans un encadré à part.** Vous le voyez une seule fois, avec un bouton « Copier » et ce message : « Vous ne le reverrez plus : notez-le ou copiez-le maintenant ». Avant, il était écrit dans une phrase qui restait affichée.
+- **Il disparaît dès que vous cliquez sur « J'ai noté le mot de passe », que vous changez de page ou que vous rechargez.** Le site n'en garde aucune copie lisible : ni dans sa base, ni dans le Journal, ni dans l'adresse de la page.
+- **La personne doit choisir son propre mot de passe à sa première connexion, sans exception.** Ce réglage est maintenant posé en même temps que la création du compte, et non juste après : une coupure au mauvais moment ne peut plus laisser un compte sans cette obligation.
+- **La même phrase partout.** La boîte « Définir un mot de passe temporaire » dit aussi « Vous ne le reverrez plus ».
+
 ### Ménage interne
 
 - **Un seul détail visible : l'exemple de la page Réseaux sociaux.** Sous le champ « Coller l'adresse d'un profil », l'exemple est celui du premier réseau du Catalogue qui en donne un, et non plus toujours celui d'Instagram. Le site ne cite plus aucun réseau par son nom.
 
 ### Pour les développeurs
 
+- `createMember(actorId, { …, mustChangePassword: true })` pose le drapeau dans l'écriture qui crée le compte (`createUser` ne fait plus de seconde écriture). Seul `true` compte.
+- `ActionState` gagne `secret?: OneTimeSecret` (`src/components/admin/OneTimeSecret.tsx`) : valeur, titre, notes et boutons déjà traduits côté serveur. `ActionForm` l'affiche avec `SecretReveal` et ne le garde que dans l'état de la page ; `SecretValue` (valeur + « Copier ») est aussi utilisé par `TemporaryPasswordButton`.
+- Clés de langue : `users.added.generated` n'a plus de `{password}` ; nouvelles clés `users.secret.*`. Test : `tests/core/team-first-password.test.mjs`.
 - `settingKeysReadByCore(manifest)` (`src/core/modules/manifest.ts`) liste les clés de réglages lues par le cœur d'après le manifeste (`pageSetting`, `shortLink.enabled`, `shortLink.name`, `shortLink.target.setting`). Le test « chaque clé de `settings` est lue par le code du module » (dépôt de modules présent) les accepte : un réglage d'adresse courte n'est pas un champ mort.
 - Le test d'architecture « aucun module connu par son identifiant » ne trouve plus `social/page.tsx` fautif ; le test d'événements de `backup-async` mesure chaque phase jusqu'à 3 fois avec la gigue du moment (un blocage réel échoue à chaque essai).
+
 
 ## 0.6.4 — 2026-11-03
 

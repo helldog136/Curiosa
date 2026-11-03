@@ -30,8 +30,8 @@ async function actorOf(actorId: string): Promise<Actor | null> {
   return RANK[level] >= RANK.admin ? { id: row.id, email: row.email, level } : null;
 }
 
-/** Nouveau compte avec mot de passe initial. Le niveau doit être de ceux que l'acteur peut attribuer (`grantableLevels`) : seul le propriétaire crée un coordinateur ou un administrateur... */
-export async function createMember(actorId: string, input: { name?: unknown; email?: unknown; password?: unknown; role?: unknown }): Promise<MemberResult<{ id: string; level: Level }>> {
+/** Nouveau compte avec mot de passe initial (`mustChangePassword: true` : posé dans la MÊME écriture, la personne devra en choisir un à sa première connexion). Le niveau doit être de ceux que l'acteur peut attribuer (`grantableLevels`) : seul le propriétaire crée un coordinateur ou un administrateur... */
+export async function createMember(actorId: string, input: { name?: unknown; email?: unknown; password?: unknown; role?: unknown; mustChangePassword?: unknown }): Promise<MemberResult<{ id: string; level: Level }>> {
   const actor = await actorOf(actorId);
   if (!actor) return { ok: false, reason: "denied" };
   const email = String(input.email ?? "").trim().toLowerCase();
@@ -42,7 +42,7 @@ export async function createMember(actorId: string, input: { name?: unknown; ema
   // Jamais « owner » ni « none » (un rôle personnalisé s'affecte ensuite) ; « coordinator » : propriétaire seul.
   if (!grantableLevels(actor.level).includes(level)) return { ok: false, reason: "level" };
   if (await prisma.user.findUnique({ where: { email } })) return { ok: false, reason: "exists" };
-  const created = await prisma.user.create({ data: { email, name, ...columnsOf(level), passwordHash: await bcrypt.hash(String(input.password), 12) } });
+  const created = await prisma.user.create({ data: { email, name, ...columnsOf(level), passwordHash: await bcrypt.hash(String(input.password), 12), ...(input.mustChangePassword === true ? { mustChangePassword: true } : {}) } });
   await assignInitialRole(created.id);
   await audit(actor.email, "user.create", level === "coordinator" || level === "admin" ? `${email}:${level}` : email);
   return { ok: true, id: created.id, level };
