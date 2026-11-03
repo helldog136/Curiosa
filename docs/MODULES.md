@@ -1330,7 +1330,7 @@ L'interrupteur appelle l'`adminAction` nommée par `switch.action` avec `values.
 - **Aucun contenu exécuté.** La vignette est une balise `<img>` : pas de cadre, pas de script, pas de `srcset`. L'adresse de la page d'administration n'est pas envoyée à l'hôte de l'image (`referrerpolicy="no-referrer"`).
 - **Chargement paresseux.** Les images hors écran ne sont demandées qu'à l'approche ; une page compte 50 lignes au plus.
 - **Repli propre.** Si l'image ne se charge pas, une pastille neutre (la première lettre du texte) prend sa place : jamais d'icône cassée. Une colonne qui a des vignettes **réserve** leur place à chaque ligne, même pour une ligne sans image.
-- **Sur le site public**, seules les pages du site sont permises : un visiteur ne contacte jamais un hôte tiers à cause d'un tableau. L'`imageHosts` du module ne vaut que pour son administration.
+- **Sur le site public**, seules les pages du site sont permises : aucune personne qui visite ne contacte un hôte tiers à cause d'un tableau. L'`imageHosts` du module ne vaut que pour son administration.
 - **Vie privée.** Une image d'un hôte déclaré est demandée par le navigateur de la personne qui administre : dites-le dans le `README.md` et dans `privacy` si l'hôte reçoit des données (au minimum son adresse IP). Pour ne contacter aucun hôte, enregistrez l'image sur le site (`/uploads/…`).
 
 Une page du cœur n'exécute **aucun script** venu d'un module : ces briques natives sont le moyen d'avoir une recherche en direct, un interrupteur ou un champ de période dans l'administration d'un module (n'essayez pas de les refaire avec un bloc `html`).
