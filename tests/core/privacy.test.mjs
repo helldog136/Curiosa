@@ -50,3 +50,10 @@ test("confidentialité : page publique, lien permanent en pied de page, chemin r
   assert.match(page, /mod\.manifest\.privacy/, "ce que déclarent les modules actifs");
   assert.match(read("src/app/admin/(panel)/settings/page.tsx"), /name=\{`privacy\.extra__\$\{l\}`\}/);
 });
+
+test("confidentialité : le texte dit que les robots sont comptés à part, sans rien garder d'eux (FR et EN)", () => {
+  for (const loc of ["fr", "en"]) {
+    const t = makeTranslator(loc);
+    assert.match(buildPrivacyPolicy({ ...base, statsEnabled: true, t }), loc === "fr" ? /Les robots .*à part.*sans rien garder d'eux/ : /Robots .*separately.*without keeping anything about them/);
+  }
+});
