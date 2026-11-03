@@ -56,7 +56,8 @@ test("administration : une période ouverte est enregistrée seulement par un r�
   for (const bad of ["2026-12-01/", "/2026-12-24"]) {
     const r = await saveInstanceSettings(null, form(inst, [["s__closed", bad]]));
     assert.ok(!r.ok && r.errors?.s__closed, `${bad} : ${JSON.stringify(r)}`);
-    assert.match(r.errors.s__closed, /(par exemple du 1er novembre au 30 novembre|for example from 1 November to 30 November)/);
+    // Une moitié de période dit de remplir les deux dates (jamais prise pour « aucune période »).
+    assert.match(r.errors.s__closed, /(Remplissez les deux dates, par exemple du 1er au 15 décembre 2026|Fill in both dates, for example from 1 to 15 December 2026)/);
     assert.equal(await stored(inst, "closed"), undefined);
   }
   // Réglage qui l'a demandée : début seul, fin seule.

@@ -77,3 +77,13 @@ export function periodState(from: string, to: string, yearly: boolean, openEnded
   const yearlyOn = yearly && !oneSide;
   return { oneSide, yearlyOn, period: toPeriod(from, to, yearlyOn, openEnded), wrongOrder: from !== "" && to !== "" && !yearlyOn && from > to };
 }
+
+/**
+ * La valeur que le champ envoie sous son nom : la période comprise ; vide SEULEMENT quand les deux dates sont vides (« aucune période », effacement voulu).
+ * Une période à moitié remplie ou à l'envers est envoyée telle quelle (« 2026-12-01/ », « 2026-12-15/2026-12-01 ») pour que le serveur la REFUSE sous le champ
+ * au lieu de la prendre pour « toujours actif » et de supprimer la période enregistrée.
+ */
+export function periodSent(from: string, to: string, period: Period | OpenPeriod | null): string {
+  if (period) return serializePeriod(period);
+  return from === "" && to === "" ? "" : `${from}/${to}`;
+}

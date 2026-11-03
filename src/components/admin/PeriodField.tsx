@@ -1,13 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { HelpBelow, HelpTip } from "./HelpTip";
-import { FieldErrorText, ERROR_BORDER } from "./FieldErrors";
+import { FieldErrorText, ERROR_BORDER, useFieldErrorsContext } from "./FieldErrors";
 import { isLongHelp } from "./helpRule";
-import { describePeriod, monthName, serializePeriod } from "@/core/adminkit/values";
-import { monthInputs, monthShown, periodState, toInputs } from "@/core/adminkit/periodInputs";
+import { describePeriod, monthName } from "@/core/adminkit/values";
+import { monthInputs, monthShown, periodSent, periodState, toInputs } from "@/core/adminkit/periodInputs";
 import { PRESETS, isMovable, presetValue } from "@/core/adminkit/periodPresets";
 import { PeriodPresetPicker, type PresetLabels } from "./PeriodPresetPicker";
+import { PERIOD_MARK } from "@/core/adminkit/values";
 import { ui } from "./ui";
 
 /** Les textes d'un champ période (déjà traduits). */
@@ -32,6 +33,9 @@ export function PeriodField({ label, name, defaultValue = "", required, help, ex
   const [to, setTo] = useState(start.to);
   const [yearly, setYearly] = useState(start.yearly);
   const [touched, setTouched] = useState(false);
+  const fromRef = useRef<HTMLInputElement>(null);
+  const toRef = useRef<HTMLInputElement>(null);
+  const serverErrors = useFieldErrorsContext();
   const [applied, setApplied] = useState<{ id: string; from: string; to: string } | null>(null);
   // Avec un seul bout, la période ne peut pas revenir chaque année : l'interrupteur se range et la valeur est « une seule fois » (voir periodState).
   const { oneSide, yearlyOn, period, wrongOrder } = periodState(from, to, yearly, openEnded);
@@ -49,13 +53,19 @@ export function PeriodField({ label, name, defaultValue = "", required, help, ex
   const note = applied && applied.from === from && applied.to === to && !yearlyOn ? applied : null; // disparaît dès qu'un jour est modifié à la main
   const noteKind = note ? PRESETS.find((p) => p.id === note.id)?.note : undefined;
   const setYearlyKeepingMonth = (next: boolean) => { setYearly(next); if (month !== null) pickMonth(month, next); };
-  const value = period ? serializePeriod(period) : "";
+  const value = periodSent(from, to, period);
   const sentence = period ? describePeriod(period, locale, { yearly: labels.sentenceYearly, once: labels.sentenceOnce, since: labels.sentenceSince, until: labels.sentenceUntil }) : "";
   const tip = isLongHelp(help) ? help : undefined;
   // R22 : pas d'erreur à l'ouverture ; elle vient après un essai d'enregistrement ou en quittant le champ à moitié rempli.
   const incomplete = touched && ((!openEnded && (from === "") !== (to === "")) || (required === true && from === "" && to === ""));
-  const msg = error ?? (wrongOrder ? labels.order : incomplete ? (openEnded ? labels.incompleteOpen ?? labels.incomplete : labels.incomplete) : undefined);
+  const halfFilled = !openEnded && (from === "") !== (to === "");
+  const msg = error ?? serverErrors.errors[name] ?? (wrongOrder ? labels.order : incomplete ? (openEnded ? labels.incompleteOpen ?? labels.incomplete : labels.incomplete) : undefined);
   // Période ouverte et « obligatoire » : une date suffit, donc seule la date qui manque encore est exigée tant que les deux sont vides.
+  // Une seule date d'une période fermée : le navigateur refuse l'envoi et met le focus sur la date qui manque, la saisie reste (R22).
+  useEffect(() => {
+    fromRef.current?.setCustomValidity(halfFilled && from === "" ? labels.incomplete : "");
+    toRef.current?.setCustomValidity(halfFilled && to === "" ? labels.incomplete : "");
+  }, [halfFilled, from, to, labels.incomplete]);
   const needDate = required === true && (!openEnded || (from === "" && to === ""));
   const described = [example ? `ex-${name}` : "", openEnded && labels.openHint ? `oh-${name}` : "", msg ? `err-${name}` : "", `pv-${name}`].filter(Boolean).join(" ");
   return (
@@ -65,6 +75,8 @@ export function PeriodField({ label, name, defaultValue = "", required, help, ex
         <HelpTip help={tip} name={label} />
       </div>
       <input type="hidden" name={name} value={value} />
+      {/* Dit au serveur que ce champ est une période (fermée ou ouverte) : il refuse une valeur à moitié remplie avant même d'appeler le module. */}
+      <input type="hidden" name={`${name}${PERIOD_MARK}`} value={openEnded ? "open" : "closed"} />
       <div className="mb-2 flex flex-wrap items-start gap-x-6 gap-y-2">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <label htmlFor={`${name}__month`} className="text-sm text-muted">{labels.month}</label>
@@ -77,9 +89,9 @@ export function PeriodField({ label, name, defaultValue = "", required, help, ex
       </div>
       <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-2 gap-y-2 sm:grid-cols-[auto_minmax(0,1fr)_auto_minmax(0,1fr)]">
         <span className="text-sm text-muted">{openEnded ? labels.openFrom ?? labels.from : labels.from}</span>
-        <input id={`${name}__from`} type="date" value={from} onChange={(e) => setFrom(e.target.value)} onInvalid={() => setTouched(true)} required={needDate} aria-describedby={described} aria-invalid={msg ? true : undefined} className={`${ui.input} min-h-11${msg ? ` ${ERROR_BORDER}` : ""}`} />
+        <input ref={fromRef} id={`${name}__from`} type="date" value={from} onChange={(e) => { setFrom(e.target.value); serverErrors.clear(name); }} onInvalid={() => setTouched(true)} required={needDate} aria-describedby={described} aria-invalid={msg ? true : undefined} className={`${ui.input} min-h-11${msg ? ` ${ERROR_BORDER}` : ""}`} />
         <span className="text-sm text-muted">{openEnded ? labels.openTo ?? labels.to : labels.to}</span>
-        <input id={`${name}__to`} type="date" value={to} min={yearlyOn ? undefined : from || undefined} onChange={(e) => setTo(e.target.value)} onInvalid={() => setTouched(true)} required={needDate} aria-label={openEnded ? labels.openTo ?? labels.to : labels.to} aria-describedby={described} className={`${ui.input} min-h-11`} />
+        <input ref={toRef} id={`${name}__to`} type="date" value={to} min={yearlyOn ? undefined : from || undefined} onChange={(e) => { setTo(e.target.value); serverErrors.clear(name); }} onInvalid={() => setTouched(true)} required={needDate} aria-label={openEnded ? labels.openTo ?? labels.to : labels.to} aria-describedby={described} className={`${ui.input} min-h-11`} />
       </div>
       {openEnded && labels.openHint && <p id={`oh-${name}`} className={`${ui.help} mt-1`}>{labels.openHint}</p>}
       <div className="mt-2 flex flex-wrap items-center gap-x-4">
