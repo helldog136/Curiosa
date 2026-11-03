@@ -250,6 +250,8 @@ export type ModuleManifest = {
   legacySettings?: { key: string; secret?: boolean }[];
   /** (0.2.0) Collections du stockage d'une version précédente, vidées par le module après reprise (comptées par le rapport d'entretien). */
   legacyCollections?: string[];
+  /** (0.6.5) Parmi `legacyCollections`, les copies de sécurité INERTES (jamais relues par le module) que la personne propriétaire peut supprimer, en mode avancé. */
+  inertLegacyCollections?: string[];
   /** Groupes de réglages facultatifs (un bouton « Ajouter… » les ouvre). */
   optionalGroups?: OptionalGroupDecl[];
   /** (0.2.2) Onglets de la page d'admin : ajout, nouveau nom ou retrait d'un onglet par défaut (voir tabs.ts). Absent : Utiliser · Réglages · Sources · Général. */

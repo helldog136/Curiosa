@@ -11,7 +11,7 @@ import { ConfirmButton } from "@/components/admin/ConfirmButton";
 import { searchText } from "@/core/adminkit/search";
 import type { Translator } from "@/core/i18n/dictionary";
 import type { BadgeTone } from "@/core/blocks";
-import { keepLegacyRowAction, removeLegacyRowAction, rerunLegacySweep, undoKeepLegacyRowAction } from "./actions";
+import { deleteInertCopyAction, keepLegacyRowAction, removeLegacyRowAction, rerunLegacySweep, undoKeepLegacyRowAction } from "./actions";
 import { PendingButton } from "@/components/admin/PendingButton";
 
 export const dynamic = "force-dynamic";
@@ -73,6 +73,23 @@ export default async function LegacyPage({ searchParams }: { searchParams: Promi
                 {chips.length > shownChips.length && <li className="text-xs text-muted">{t("upkeep.more", { n: chips.length - shownChips.length })}</li>}
               </ul>
             )}
+            {/* Mode avancé seulement : une copie que l'extension déclare inerte peut être supprimée, à part, nommée, après confirmation. Jamais le bouton par défaut. */}
+            {advanced && row.id === "collections" && r.collections.some((c) => c.inert) && (
+              <div className="space-y-2 rounded-xl border border-line bg-surface p-4" data-testid="legacy-copies">
+                <p className="font-medium">{t("legacy.copy.title")}</p>
+                <p className="text-sm leading-6 text-muted">{t("legacy.copy.help")}</p>
+                <ul className="divide-y divide-line">
+                  {r.collections.filter((c) => c.inert).map((c) => (
+                    <li key={`${c.key}/${c.collection}`} className="flex flex-wrap items-center justify-between gap-3 py-2">
+                      <span className="min-w-0 break-all text-sm">{c.key} · {c.collection} ({c.count})</span>
+                      <form action={deleteInertCopyAction.bind(null, c.key, c.collection)}>
+                        <ConfirmButton confirmLabel={t("legacy.copy.confirmYes")} message={t("legacy.copy.confirm", { n: c.count })}>{t("legacy.copy.delete")}</ConfirmButton>
+                      </form>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             {toUpdates && <a href={EXTENSIONS_UPDATES_HREF} className="inline-flex min-h-11 items-center text-sm font-medium text-accent underline underline-offset-2">{t("upkeep.action.updates")}</a>}
           </>
         )}
@@ -104,7 +121,7 @@ export default async function LegacyPage({ searchParams }: { searchParams: Promi
   return (
     <div className="space-y-6">
       <PageHeader title={t("legacy.title")} intro={t("upkeep.intro")} />
-      {done && <Callout tone={done === "refused" ? "warn" : "ok"} role="status" testid="legacy-result">{t(`legacy.result.${done === "kept" || done === "removed" || done === "erased" ? done : "refused"}`)}</Callout>}
+      {done && <Callout tone={done === "refused" || done === "copyRefused" ? "warn" : "ok"} role="status" testid="legacy-result">{t(`legacy.result.${done === "kept" || done === "removed" || done === "erased" || done === "copyDeleted" || done === "copyPartial" || done === "copyRefused" ? done : "refused"}`)}</Callout>}
       {/* Un seul message, dit sans alarme : le site public fonctionne dans tous les cas. */}
       <Callout tone={sum.state === "todo" ? "warn" : "ok"} role="status" testid={`upkeep-status-${sum.state}`}>
         {sum.state === "todo" ? t("upkeep.status.todo", { n: sum.todo }) : sum.state === "kept" ? t("upkeep.status.kept") : t("upkeep.status.clean")}

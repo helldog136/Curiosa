@@ -42,7 +42,7 @@ export type LegacyReport = {
   failed: (InstanceItem & { reason: "floor" | "timeout" | "error"; floor?: number })[];
   newer: InstanceItem[];
   seedsMissing: { key: string; module: string }[];
-  collections: { key: string; module: string; collection: string; count: number }[];
+  collections: { key: string; module: string; collection: string; count: number; /** (0.6.5) Le module promet cette copie inerte (`inertLegacyCollections`) : elle peut être supprimée, en mode avancé. */ inert: boolean }[];
   legacyValues: { key: string; module: string; settings: string[] }[];
   orphans: { key: string; module: string; settings: string[] }[];
   /** Totaux exacts (les listes ci-dessus sont bornées). */
@@ -133,7 +133,7 @@ export async function legacyReport(): Promise<LegacyReport> {
 
     for (const collection of manifest.legacyCollections ?? []) {
       const count = await prisma.moduleRecord.count({ where: { instanceId: inst.id, collection } });
-      if (count) collections.push({ key: inst.key, module: inst.moduleId, collection, count });
+      if (count) collections.push({ key: inst.key, module: inst.moduleId, collection, count, inert: (manifest.inertLegacyCollections ?? []).includes(collection) });
     }
 
     const declared = new Set(manifest.settings.map((f) => f.key));

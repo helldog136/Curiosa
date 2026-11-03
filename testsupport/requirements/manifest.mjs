@@ -183,6 +183,36 @@ const requirements = [
     },
   },
   {
+    id: "manifest.inertCollections", level: "mandatory", group: "manifest",
+    title: "Les copies déclarées inertes sont des collections héritées",
+    what: "Chaque nom de « inertLegacyCollections » figure aussi dans « legacyCollections », sans doublon. Sans « inertLegacyCollections », rien à vérifier.",
+    why: "Le cœur propose de supprimer une copie de sécurité seulement si le module la déclare inerte. Une collection déclarée inerte hors de « legacyCollections » n'est jamais comptée par la page Entretien : la déclaration ne servirait à rien, ou cacherait une erreur.",
+    fix: "Ajoutez le nom à « legacyCollections », ou retirez-le de « inertLegacyCollections ». Ne déclarez inerte que ce que votre module ne lit plus et n'écrit plus.",
+    run(m) {
+      const man = m.manifest;
+      const inert = man?.inertLegacyCollections;
+      if (inert === undefined) return { na: "le module ne déclare aucune copie inerte" };
+      if (!Array.isArray(inert)) return ["« inertLegacyCollections » doit être une liste de noms de collections"];
+      const legacy = Array.isArray(man.legacyCollections) ? man.legacyCollections : [];
+      const out = inert.filter((c) => !legacy.includes(c)).map((c) => `« ${c} » est déclarée inerte mais absente de « legacyCollections »`);
+      if (new Set(inert).size !== inert.length) out.push("une même collection est déclarée inerte deux fois");
+      return out;
+    },
+  },
+  {
+    id: "manifest.inertCollections.unused", level: "advice", group: "manifest",
+    title: "Le code ne cite plus les copies déclarées inertes",
+    what: "Aucune collection de « inertLegacyCollections » n'apparaît, entre guillemets, dans le code du module (« index.mjs »). Sans « inertLegacyCollections », rien à vérifier.",
+    why: "Une copie déclarée inerte peut être supprimée par la personne propriétaire. Si le code la lit encore (état d'une reprise, compteur), cette suppression lui ferait perdre des données qu'il utilise.",
+    fix: "Retirez la collection de « inertLegacyCollections » si le module la lit encore (par exemple l'état de la reprise). Si le code la cite seulement pour l'effacer ou la copier une dernière fois, vérifiez que la reprise est finie avant de la déclarer inerte.",
+    run(m) {
+      const inert = m.manifest?.inertLegacyCollections;
+      if (!Array.isArray(inert) || inert.length === 0) return { na: "le module ne déclare aucune copie inerte" };
+      const code = stripComments(m.code ?? "");
+      return inert.filter((c) => new RegExp(`["'\x60]${String(c).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}["'\x60]`).test(code)).map((c) => `le code cite encore « ${c} » : vérifiez qu'il ne la lit plus`);
+    },
+  },
+  {
     id: "manifest.catalogue", level: "advice", group: "manifest",
     title: "La fiche du module est complète pour le catalogue",
     what: "Le module a un nom et une description en français et en anglais, le nom de la personne qui l'a écrit et une licence.",

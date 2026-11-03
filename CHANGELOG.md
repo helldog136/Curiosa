@@ -40,6 +40,11 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 - **Rien ne change pour votre site.** Les personnes qui écrivent des extensions ont un outil de contrôle un peu plus complet : il repère maintenant une extension qui s'appuie sur une nouveauté récente du site sans le dire. Les extensions du dépôt officiel sont déjà en règle.
 
+### Entretien
+
+- **Supprimer une copie de sécurité devenue inutile, en mode avancé.** Quand une extension dit qu'une ancienne copie ne lui sert plus, un bouton « Supprimer cette copie » apparaît dans Entretien. Il demande confirmation et dit ce qui sera perdu : la copie reste dans vos sauvegardes.
+- **Le site refuse ce qui servirait encore.** Une copie que l'extension utilise toujours, ou dont la reprise n'est pas finie, ne peut pas être supprimée. Rien ne change sans ce bouton.
+
 ### Pour les développeurs
 
 - `createMember(actorId, { …, mustChangePassword: true })` pose le drapeau dans l'écriture qui crée le compte (`createUser` ne fait plus de seconde écriture). Seul `true` compte.
@@ -55,6 +60,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Nouveau conseil `compat.minCoreAdvice`.** Une lecture de `ctx.timezone` sans repli (`typeof`, `??`, `||`, ternaire) conseille `minCore` 0.6.4 ; elle ne fait jamais échouer le module. `FEATURES` accepte `advice: true`.
 - **Volontairement hors de `FEATURES`.** `previews`, `shortLink`, `social`, `suggestInMenu`, `returnAddresses`, `siteAddressUses`, `dashboard`, `content.templates` et `logEvents` : un cœur plus ancien les ignore sans rien perdre, la documentation dit « aucun `minCore` à déclarer » ; `overlayElements` est déjà exigé par `parseManifest`. La raison est écrite au-dessus de `FEATURES`.
 - **Documentation.** `docs/MODULES.md` : le défaut « une seule fois » est daté « cœur 0.6.4 » (et non « après 0.6.3 »), l'exigence du kit s'appelle `compat.minCore`. `docs/TESTSUPPORT.md` régénéré.
+- **Copies inertes.** Nouveau champ de manifeste `inertLegacyCollections` (additif, sous-ensemble de `legacyCollections` ; clé séparée car la forme objet casserait les cœurs plus anciens). `deleteInertCollection` (`core/modules/legacyCollections.ts`) relit le manifeste au clic, refuse le reste et supprime par tranches bornées. Kit : `manifest.inertCollections` et `manifest.inertCollections.unused`.
 
 ## 0.6.4 — 2026-11-03
 
