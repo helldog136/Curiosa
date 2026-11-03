@@ -32,6 +32,10 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Un site plus ancien que la 0.2.0 passe d'abord par la 0.2.0.** La page Mises à jour installe cette étape toute seule, redémarre le site, puis installe la suite. Sans redémarrage automatique, redémarrez le site après la première étape puis cliquez de nouveau sur « Installer ».
 - **Une extension venue des toutes premières versions est signalée dans Entretien.** Elle fonctionne, mais ne se met plus à jour toute seule. Vous la retirez en gardant ses données puis vous la réinstallez depuis Extensions, ou vous la gardez telle quelle.
 
+### Ménage interne
+
+- **Rien ne change pour vous.** Nous avons retiré du code interne que plus rien n'utilisait (des constantes et de petites fonctions oubliées). Votre site, vos extensions et vos données se comportent exactement comme avant.
+
 ### Pour les développeurs
 
 - **Retrait du code d'avant la 0.2.0.** `minFrom` de `upgrade.json` passe à `0.2.0` (ligne `REMOVED` ajoutée au test d'échéance). Retirés : le rangement des « éteints » au démarrage et la conversion des lignes `bundled` / `builtin` (`bundledUpdate.ts`, `convertSourceRowsOffline`, `localTreeHash`). `SweepCounts` n'a plus que `migrated`, `setAside`, `emptied`.
@@ -43,6 +47,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Période ouverte (additif).** Clé `openEnded` d'un réglage `period` ou d'un champ `period` d'`adminForm`, désactivée par défaut : valeurs `"AAAA-MM-JJ/"` (début seul) et `"/AAAA-MM-JJ"` (fin seule), toujours « une seule fois ». `parsePeriod(raw, { openEnded })` et `checkFieldInput` les refusent sans la clé ; `describePeriod` et `periodContains` les lisent. Voir docs/MODULES.md.
 - **`ctx.timezone` (additif).** Fuseau du site : `site.timezone` s'il est valide, sinon celui du serveur, « UTC » en dernier repli. Un ancien module l'ignore ; un nouveau teste `typeof ctx.timezone === "string"`. `fakeCtx({ timezone })` du kit de test (`null` simule un cœur plus ancien).
 - **Valeur de départ de `PeriodField`.** Sans valeur enregistrée, « Chaque année » est décoché (avant : coché) ; une valeur `MM-JJ/MM-JJ` s'ouvre cochée. Logique pure dans `src/core/adminkit/periodInputs.ts` (`toInputs`, `periodState`).
+- **Code mort retiré.** Vingt-trois exports sans aucun usage (cœur, tests, docs, `testsupport/`, `scripts/`, `curiosa-extras`), par exemple `RESERVED_NAMES`, `describeGroups`, `planForManifest`, `stampNewInstance`. Aucun contrat de module ni de `testsupport` n'est touché.
 
 ## 0.6.3 — 2026-11-03
 

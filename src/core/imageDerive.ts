@@ -21,11 +21,9 @@ export const MAX_INPUT_PIXELS = 40_000_000;
 const MAX_PARALLEL = 2;
 const MAX_WAITING = 24;
 /** Une fabrication qui dépasse ce temps est abandonnée : sa place est rendue, sinon quelques images bloquées suffiraient à en bloquer tout le site (« occupé »). */
-let jobMs = 45_000;
-/** Pour les tests. */
-export function setDeriveTimeout(ms?: number): void { jobMs = ms ?? 45_000; }
+const JOB_MS = 45_000;
 const bounded = async (work: () => Promise<DeriveResult>): Promise<DeriveResult> => {
-  const done = await withDeadline(work, jobMs);
+  const done = await withDeadline(work, JOB_MS);
   return done === TIMED_OUT ? { ok: false, reason: "failed" } : done;
 };
 const CACHE_MAX_FILES = 3000;

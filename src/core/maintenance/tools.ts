@@ -145,7 +145,6 @@ const DEFS: Def[] = [
 
 /** Catalogue statique (nom, niveau, droits) : sert à l'admin, aux tests et à la documentation. */
 export const MAINTENANCE_TOOLS = DEFS.map((d) => ({ name: `maintenance_${d.name}`, level: d.level, readOnly: d.readOnly ?? d.level === 1, destructive: d.level === 3 }));
-export const isMaintenanceTool = (name: string) => name.startsWith("maintenance_");
 
 export const maintenanceToolProvider: McpToolProvider = {
   id: "maintenance",
