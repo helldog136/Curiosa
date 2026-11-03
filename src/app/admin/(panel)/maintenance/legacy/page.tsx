@@ -64,10 +64,7 @@ export default async function LegacyPage({ searchParams }: { searchParams: Promi
     const toUpdates = row.group === "todo" && (row.id === "sourceRows" || row.id === "newer");
     return (
       <li key={`${row.id}-${row.moduleId ?? ""}`} data-live-item="upkeep" data-live-state={row.group} data-search={searchText([title, row.group === "done" ? "" : textOf(row), ...chips])} data-testid={`upkeep-row-${row.id}`} className="space-y-1.5 py-3">
-        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-          <span className="min-w-0 break-words font-medium">{title}</span>
-          {row.group !== "done" && row.n > 0 && !["finish", "absent", "keptRows"].includes(row.id) && <span className="text-sm text-muted" data-testid={`upkeep-count-${row.id}`}>{t("upkeep.count", { n: row.n })}</span>}
-        </div>
+        <p className="min-w-0 break-words font-medium">{title}</p>
         {row.group !== "done" && row.id !== "absent" && (
           <>
             <p className="text-sm leading-6 text-muted">{textOf(row)}</p>
@@ -114,8 +111,11 @@ export default async function LegacyPage({ searchParams }: { searchParams: Promi
         {sum.state === "todo" ? t("upkeep.status.todo", { n: sum.todo }) : sum.state === "kept" ? t("upkeep.status.kept") : t("upkeep.status.clean")}
       </Callout>
 
-      <LiveSearch scope="upkeep" placeholder={t("upkeep.search")} noneLabel={t("search.none")} clearLabel={t("search.clear")} countLabel={t("search.count")}
-        filters={[{ key: "state", allLabel: t("upkeep.filter.all"), options: GROUPS.map((g) => ({ value: g.id, label: t(`upkeep.group.${g.id}`), count: counts[g.id] })) }]} />
+      {/* La recherche et les filtres servent dès qu'il y a quelque chose à lire ; sur un site propre il n'y a que la liste « Terminé », repliée. */}
+      {sum.todo + sum.kept > 0 && (
+        <LiveSearch scope="upkeep" placeholder={t("upkeep.search")} noneLabel={t("search.none")} clearLabel={t("search.clear")} countLabel={t("search.count")}
+          filters={[{ key: "state", allLabel: t("upkeep.filter.all"), options: GROUPS.map((g) => ({ value: g.id, label: t(`upkeep.group.${g.id}`), count: counts[g.id] })) }]} />
+      )}
 
       {GROUPS.map(({ id, tone }) => {
         const list = byGroup(id);

@@ -281,3 +281,16 @@ test("le menu et la page : Entretien est rangé entre Mises à jour et le Journa
   assert.match(layout, /legacyConversionPending\(\)/, "le bandeau reste pour l'urgent");
   assert.match(read("tests/core/admin-simple-mode.test.mjs"), /maintenance\/legacy\/page\.tsx/);
 });
+
+test("textes : chaque clé que la page, le menu et la mise en page demandent existe en français et en anglais (aucune clé brute à l'écran)", () => {
+  const files = ["src/app/admin/(panel)/maintenance/legacy/page.tsx", "src/app/admin/(panel)/layout.tsx"];
+  const wanted = new Set();
+  for (const f of files) for (const m of read(f).matchAll(/\bt\(\s*["`]((?:upkeep|nav\.upkeep|legacy)[\w.${}]*)["`]/g)) wanted.add(m[1]);
+  const ids = ["finish", "absent", "sourceRows", "switchedOff", "behind", "failed", "newer", "keptRows", "collections", "seedsMissing", "legacyValues", "orphans"];
+  for (const k of wanted) {
+    const keys = k.includes("${") ? (k.startsWith("upkeep.row.${row.id}") ? ids.map((i) => `upkeep.row.${i}`) : k.startsWith("upkeep.group.${id}") ? (k.endsWith(".help") ? ["todo", "kept"] : ["todo", "kept", "done"]).map((g) => k.replace("${id}", g)) : k.startsWith("upkeep.group.${g.id}") ? ["todo", "kept", "done"].map((g) => k.replace("${g.id}", g)) : []) : [k];
+    for (const key of keys) for (const [lang, d] of [["fr", fr], ["en", en]]) assert.ok(d[key] !== undefined, `${lang} : clé « ${key} » absente`);
+  }
+  assert.ok(wanted.size > 15);
+  for (const id of ids.filter((i) => !["finish", "absent"].includes(i))) for (const d of [fr, en]) assert.ok(d[`upkeep.row.${id}`] && d[`upkeep.row.${id}.text`], id);
+});
