@@ -25,6 +25,10 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Les skins peuvent habiller le champ et le mot mis en valeur.** Deux nouvelles pièces, « search » et « mark », sont documentées pour les personnes qui écrivent un skin.
 - **La page de confidentialité le dit** : une courte section explique que ce que l'on tape n'est ni gardé ni transmis.
 
+### Ménage interne
+
+- **Rien ne change pour vous.** Nous avons vérifié le code marqué « ancien » et retiré trois petits restes inutiles. Votre site, vos extensions et vos données se comportent comme avant ; ce qui sert encore à convertir d'anciens sites est gardé.
+
 ### Pour les développeurs
 
 - `catalogue/profiles.json` (dépôt de modules) : profils de départ, lus avec l'index et gardés avec sa dernière copie reçue ; fichier absent ou abîmé = aucune question. `suggested.json` ne change pas.
@@ -32,6 +36,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **`src/core/search/`.** `text.ts` (repli sans accents, saisie bornée, extrait), `rank.ts` (titre, résumé, texte, puis récence), `index.ts` (index en mémoire : 4 000 fiches par langue, 60 s), `limit.ts` (30 par minute), `service.ts`, `settings.ts` (`search.*`).
 - **Page et pièces.** `/search` (chemin réservé, `noindex`, jamais en cache partagé), composants `SearchForm` et `SearchView`, pièces `search` et `mark` ajoutées à la liste blanche et au banc d'essai des skins. `SearchAction` ajoutée au JSON-LD du site. Détails : `docs/PLATFORM.md`, `docs/SKINS.md`, `docs/SECURITE.md`.
 - **Lecture par tranches.** `entriesChunk` (`src/core/content/entries.ts`) lit les entrées publiques d'une instance 250 par 250.
+- **Code ancien retiré.** `guardOwner` (alias de `guardBackup`), `AI_AND_SCRAPER_BOTS` (`seo.ts`) et `restartAdvised` du bilan de réinstallation (faux depuis la 0.2.13), avec `maintenance.result.restart`. Restent : `legacyOff.ts` (échéance 0.6.99), lignes `bundled` / `builtin`, `legacySettings`, colonnes `enabled`, `minFrom`.
 
 ## 0.6.2 — 2026-11-02
 

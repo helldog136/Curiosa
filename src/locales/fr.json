@@ -2861,7 +2861,6 @@
   "maintenance.result.same": "Code identique : rien n'a changé.",
   "maintenance.result.changed": "Code remis à neuf : {before} → {after}.",
   "maintenance.result.migration": "Les données d'une instance n'ont pas pu être converties : elle est mise à l'écart (voir sa page).",
-  "maintenance.result.restart": "Certains fichiers secondaires du module ont changé : redémarrez le site pour que tout serve la nouvelle version.",
   "maintenance.source.unknown": "source inconnue (le catalogue ne liste plus ce module ; il reste installé tel quel)",
   "modules.error.reinstallNoSource": "Ce module a été installé à la main : il n'a pas de source d'où le réinstaller.",
   "modules.error.catalogue": "Le catalogue n'est pas joignable, réessayez.",

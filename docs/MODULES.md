@@ -925,7 +925,7 @@ Quand un module se comporte comme une ancienne version alors que son numéro est
 
 Garde-fous : refus si le module est inconnu, si une mise à jour du site est en cours, si le manifeste porte un autre `id`, un `main` absent, plus de 10 Mo ou un `minCore` plus récent que le cœur, et si la source demande de **nouvelles permissions** (jamais accordées en silence : passer par « Mettre à jour »). L'ancien dossier est mis de côté pendant l'échange (`.previous-<pid>`) et revient tel quel au moindre échec, y compris si le nouveau code ne se charge pas (voir « Mise à jour sûre »). Si la `dataVersion` change, les migrations de données sont rejouées comme après une mise à jour. Action de journal : `module.reinstall` (identifiant, versions et empreintes, jamais d'adresse ni de réglage). Idempotente : sur un code déjà identique, « Code identique : rien n'a changé ».
 
-**Cache d'imports.** Voir la section suivante : depuis le cœur 0.2.13, un module est toujours rechargé depuis une copie neuve de tout son dossier ; la réinstallation ne demande plus jamais de redémarrer le site (le champ `restartAdvised` du bilan reste, toujours faux).
+**Cache d'imports.** Voir la section suivante : depuis le cœur 0.2.13, un module est toujours rechargé depuis une copie neuve de tout son dossier ; la réinstallation ne demande plus jamais de redémarrer le site.
 
 ### Mise à jour sûre : chargement à chaud et contrôle de chargement (cœur 0.2.13)
 

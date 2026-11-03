@@ -159,8 +159,6 @@ export type ReinstallResult =
     changed: boolean;
     before: Snapshot; after: Snapshot;
     migrations: MigrationOutcome[];
-    /** Toujours faux depuis le cœur 0.2.13 (champ gardé pour compatibilité) : les fichiers secondaires sont rechargés avec le fichier principal, depuis une copie neuve (snapshot.ts). */
-    restartAdvised: boolean;
     /** Remarque (jamais un refus) : voir staticImports.ts. */
     warnings?: LoadWarning[];
   }
@@ -245,7 +243,7 @@ export async function reinstallModule(id: string, opts: ReinstallOptions = {}): 
       }
       bumpImportStamp(id);
       forgetModule(id);
-      return { ok: true, id, changed: false, before, after: { ...after, commit: source.commit ?? row.commit }, migrations: [], restartAdvised: false };
+      return { ok: true, id, changed: false, before, after: { ...after, commit: source.commit ?? row.commit }, migrations: [] };
     }
 
     // Contrôle de chargement dans un processus tout neuf, AVANT de toucher au dossier installé : un code qui ne se charge pas n'est pas échangé.
@@ -274,9 +272,8 @@ export async function reinstallModule(id: string, opts: ReinstallOptions = {}): 
 
     await clearBlockedUpdate(id);
     const warning = staticImportsWarning(target);
-    // Plus jamais « redémarrez le site » pour des fichiers secondaires : chaque chargement part d'une copie neuve de tout le dossier (snapshot.ts). Le champ reste (compatibilité).
-    const restartAdvised = false;
-    return { ok: true, id, changed: true, before, after, migrations, restartAdvised, ...(warning ? { warnings: [warning] } : {}) };
+    // Jamais « redémarrez le site » pour des fichiers secondaires : chaque chargement part d'une copie neuve de tout le dossier (snapshot.ts).
+    return { ok: true, id, changed: true, before, after, migrations, ...(warning ? { warnings: [warning] } : {}) };
   } catch (error) {
     let rolledBack = false;
     if (swapped) {
@@ -319,6 +316,5 @@ export function describeReinstall(r: ReinstallResult, t: T): { ok: boolean; line
   const s = (x: Snapshot) => `${x.version} · ${shortHash(x.hash)}`;
   const lines = [r.changed ? t("maintenance.result.changed", { before: s(r.before), after: s(r.after) }) : t("maintenance.result.same")];
   if (r.migrations.some((m) => m.status === "failed" || m.status === "newer")) lines.push(t("maintenance.result.migration"));
-  if (r.restartAdvised) lines.push(t("maintenance.result.restart"));
   return { ok: !r.migrations.some((m) => m.status === "failed" || m.status === "newer"), lines };
 }

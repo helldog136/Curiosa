@@ -47,7 +47,7 @@ test("robots : défauts = entraînement bloqué, réponse autorisée ; chaque fa
   assert.deepEqual(agents(S.robotsRules({ blockTraining: true, blockAnswers: true })), [...S.AI_TRAINING_BOTS, ...S.AI_ANSWER_BOTS]);
   assert.equal(S.robotsRules({ blockTraining: false, blockAnswers: false }).length, 1);
   // ancienne forme (un booléen) : les deux familles ensemble
-  assert.deepEqual(agents(S.robotsRules(true)), S.AI_AND_SCRAPER_BOTS);
+  assert.deepEqual(agents(S.robotsRules(true)), [...S.AI_TRAINING_BOTS, ...S.AI_ANSWER_BOTS]);
   assert.equal(S.robotsRules(false).length, 1);
 });
 

@@ -31,9 +31,6 @@ export const AI_ANSWER_BOTS = [
   "MistralAI-User", "YouBot", "Meta-ExternalFetcher", "Amzn-SearchBot", "Amzn-User",
 ];
 
-/** Les deux familles ensemble (ancien nom, gardé pour les outils qui l'importaient). */
-export const AI_AND_SCRAPER_BOTS = [...AI_TRAINING_BOTS, ...AI_ANSWER_BOTS];
-
 /** Ce que l'administrateur a ENREGISTRÉ (absent = jamais touché). `legacy` : l'ancien réglage unique « bloquer les robots IA ». */
 export type StoredAiBlocking = { training?: unknown; answers?: unknown; legacy?: unknown };
 export type AiBlocking = { blockTraining: boolean; blockAnswers: boolean };
