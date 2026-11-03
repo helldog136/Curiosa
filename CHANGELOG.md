@@ -25,8 +25,17 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Une extension peut accepter une période ouverte.** Quand elle le permet, une seule date suffit : « À partir du 1er décembre 2026 » ou « Jusqu'au 24 décembre 2026 », sans inventer l'autre date. Une phrase sous les dates dit ce qui a été compris ; les autres extensions gardent leurs deux dates.
 - **Les extensions connaissent le fuseau horaire de votre site.** Elles changent de jour à la même heure que vous, même si votre hébergeur est réglé sur un autre fuseau. Aucun réglage à faire.
 
+### Mise à jour depuis une version plus ancienne
+
+- **Rien ne change pour votre site tel qu'il est aujourd'hui.** Si vous êtes en version 0.2.0 ou plus récente, la mise à jour se fait comme d'habitude, en une seule étape. Vos extensions, vos réglages et vos données restent tels quels.
+- **Un site plus ancien que la 0.2.0 passe d'abord par la 0.2.0.** La page Mises à jour installe cette étape toute seule, redémarre le site, puis installe la suite. Sans redémarrage automatique, redémarrez le site après la première étape puis cliquez de nouveau sur « Installer ».
+- **Une extension venue des toutes premières versions est signalée dans Entretien.** Elle fonctionne, mais ne se met plus à jour toute seule. Vous la retirez en gardant ses données puis vous la réinstallez depuis Extensions, ou vous la gardez telle quelle.
+
 ### Pour les développeurs
 
+- **Retrait du code d'avant la 0.2.0.** `minFrom` de `upgrade.json` passe à `0.2.0` (ligne `REMOVED` ajoutée au test d'échéance). Retirés : le rangement des « éteints » au démarrage et la conversion des lignes `bundled` / `builtin` (`bundledUpdate.ts`, `convertSourceRowsOffline`, `localTreeHash`). `SweepCounts` n'a plus que `migrated`, `setAside`, `emptied`.
+- **Gardé, avec sa raison.** `legacyOff.ts` sert encore à restaurer une sauvegarde d'avant la 0.1.20 (échéance `0.9.99`). Les formats de sauvegarde `builtin` / `bundled` restent lus, les colonnes `enabled` restent. `legacySettings`, `ctx.legacy`, `dataFloor`, `legacyCollections` et le relais RAWG sont inchangés.
+- **Rapport d'héritage et `maintenance_legacy`.** `switchedOff` et `totals.switchedOff*` restent, vides ou à 0. Une ligne `bundled` / `builtin` est « à faire » quel que soit le catalogue. `Diagnostic.catalogue` et `catalogueOnly` disparaissent ; une telle ligne rend `modules.error.unknownSource` à la mise à jour.
 - `src/core/modules/legacyUpkeep.ts` : classement des lignes du rapport d'héritage en `todo` / `kept` / `done` (`upkeepRows`, `upkeepSummary`, `legacyUpkeepSummary` avec une mémoire de 15 secondes). Le contrat `legacyCollections` ne dit pas si l'extension vide la collection ou la garde : le cœur ne la supprime jamais et la classe « gardée ».
 - `legacyReportForAssistant()` gagne un champ `upkeep` (`state`, `toDo`, `keptAsPrecaution`) ; `collectionsToEmpty` et les autres champs sont inchangés.
 - `NavLink` accepte une pastille d'état écrite (`status`) en plus du nombre.
