@@ -414,6 +414,22 @@ export function effectiveType(m: Pick<ParsedManifest, "type" | "content">): NonN
   return m.type ?? (m.content ? "content" : "widget");
 }
 
+/**
+ * Les clés de réglages que le CŒUR lit lui-même d'après le manifeste : le code du module ne les cite jamais.
+ * `pageSetting` (page allumée par une case), `shortLink.enabled` / `shortLink.name` / `shortLink.target.setting` (adresse courte demandée). Le test « chaque réglage est
+ * lu par le code du module » (tests/core/legacy-labels.test.mjs) s'en sert : un réglage consommé par le cœur n'est pas un champ mort.
+ */
+export function settingKeysReadByCore(m: Pick<ParsedManifest, "pageSetting" | "shortLink">): string[] {
+  const out: string[] = [];
+  if (m.pageSetting !== undefined) out.push(m.pageSetting);
+  if (m.shortLink) {
+    out.push(m.shortLink.enabled);
+    if (m.shortLink.name !== undefined) out.push(m.shortLink.name);
+    if (typeof m.shortLink.target === "object") out.push(m.shortLink.target.setting);
+  }
+  return out;
+}
+
 /** Une instance de ce module a-t-elle une page publique ? */
 export function hasPage(m: Pick<ParsedManifest, "page" | "content" | "type">): boolean {
   return m.page ?? (!!m.content && m.type !== "overlay");
