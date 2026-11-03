@@ -96,13 +96,6 @@ function snapshotOf(op: Op): OpSnapshot {
   return { ...snap, steps: snap.steps ? [...snap.steps] : null, unit: snap.unit ? { ...snap.unit } : null, fraction: fractionOf(snap) };
 }
 
-/** Une opération en cours pour cette clé (pour montrer « en cours » à l'ouverture d'une page) : son identifiant, si `viewer` y a droit. */
-export function runningOperation(key: string, viewer: { email: string; owner: boolean }): OpSnapshot | null {
-  sweep();
-  for (const op of store().ops.values()) if (op.key === key && op.state === "running" && (op.owner === viewer.email || viewer.owner)) return snapshotOf(op);
-  return null;
-}
-
 /**
  * Lance `fn` comme opération suivie. Une opération déjà en cours pour la même `key` est REJOINTE (son résultat est rendu, `joined: true`).
  * `opId` : identifiant choisi par le navigateur (pour lire l'avancement avant même la fin de l'action) ; ignoré s'il est invalide ou déjà pris.

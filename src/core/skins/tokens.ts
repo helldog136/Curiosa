@@ -29,9 +29,6 @@ export type TokenDef = {
 
 const t = (name: string, group: TokenGroup, type: TokenType, basic: string | null, role: string): TokenDef => ({ name, group, type, basic, role });
 
-/** Les couleurs de base : obligatoires dans chaque mode d'un skin (§5.4). `--v-accent2` est facultatif. */
-export const BASE_COLOR_TOKENS = ["--v-bg", "--v-surface", "--v-fg", "--v-accent"] as const;
-
 /** Couleurs dérivées : le cœur les calcule (buildPalette) quand le skin ne les fixe pas (§4.3). */
 export const DERIVED_COLOR_TOKENS = [
   "--v-muted", "--v-line", "--v-accent-fg", "--v-success", "--v-success-fg", "--v-warning", "--v-warning-fg", "--v-danger", "--v-danger-fg",
@@ -150,9 +147,6 @@ export const TOKEN_DEFS: readonly TokenDef[] = [
 export const TOKEN_BY_NAME: ReadonlyMap<string, TokenDef> = new Map(TOKEN_DEFS.map((d) => [d.name, d]));
 export const isKnownToken = (name: string): boolean => TOKEN_BY_NAME.has(name);
 
-/** Jetons que seule la personne (ou le cœur) définit : l'administration n'en a pas et un skin ne peut pas les fixer. */
-export const RESERVED_NAMES: readonly string[] = [];
-
 /** Valeurs de basic, par nom (jetons facultatifs exclus). */
 export function basicTokenValues(): Record<string, string> {
   const out: Record<string, string> = {};
@@ -165,9 +159,6 @@ export function basicTokenValues(): Record<string, string> {
 
 export const MODULE_TOKEN_TYPES = ["color", "length", "shadow", "number", "font", "duration", "text-transform"] as const;
 export type ModuleTokenType = (typeof MODULE_TOKEN_TYPES)[number];
-
-/** Le jeton d'une pièce de module : `--sk-<idDuModule>-<pièce>-<propriété>`. */
-export const MODULE_TOKEN_RE = /^--sk-[a-z][a-z0-9-]{1,100}$/;
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Validation par type

@@ -99,7 +99,6 @@ export function remainingBudgetMs(): number | null {
   const left = remainingMs();
   return left === null ? null : Math.max(0, left);
 }
-export const inPublicPage = (): boolean => runtime().scope.getStore() !== undefined;
 
 /**
  * Appel fait PAR un module (ou pour une page) vers un autre module : service, sujet. Dans une page publique, il a un délai un peu plus court que la section qui

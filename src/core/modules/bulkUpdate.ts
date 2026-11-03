@@ -37,7 +37,6 @@ export type Summary = {
 };
 
 const clean = (v: string) => v.replace(/^v(?=\d)/, "");
-export const displayVersion = clean;
 
 /** Vérifie chaque module (lecture seule, quelques-uns à la fois) ; une vérification qui lève une erreur compte comme un échec, jamais comme une exception. */
 export async function collectReport(modules: SourcedModule[], check: (id: string) => Promise<CheckOutcome>, now: () => number = Date.now, concurrency = 3): Promise<ModulesReport> {

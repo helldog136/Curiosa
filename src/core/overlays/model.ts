@@ -51,7 +51,6 @@ export type OverlayPageData = {
 };
 
 export const UID_RE = /^[a-z0-9]{6,16}$/;
-export const INSTANCE_KEY_RE = /^[a-z][a-z0-9-]{1,30}$/;
 
 /** Un élément de page, tel que le catalogue des modules actifs le décrit (pour valider et dessiner). */
 export type CatalogElement = {

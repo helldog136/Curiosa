@@ -78,8 +78,6 @@ export function describeGroup(g: Group, t: Translator, defaultLocale = ""): Grou
   };
 }
 
-export const describeGroups = (groups: readonly Group[], t: Translator, defaultLocale = ""): GroupView[] => groups.map((g) => describeGroup(g, t, defaultLocale));
-
 /** Le verdict, en un mot : jamais un chiffre. `none` : aucune vérification n'a encore eu lieu. Les remarques « pour info » seules ne changent pas le verdict. */
 export type Verdict = "none" | "good" | "look";
 export function verdictOf(counts: Record<Severity, number> | null | undefined): Verdict {

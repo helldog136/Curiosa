@@ -21,8 +21,6 @@ export function newRecoveryCode(): string {
 const normalizeRecovery = (input: string): string => input.toLowerCase().replace(/[^a-z0-9]/g, "");
 const looksLikeRecovery = (input: string): boolean => /^[a-z0-9]{10}$/.test(normalizeRecovery(input));
 
-export const hasTwoFactor = (u: { totpEnabledAt: Date | null }): boolean => !!u.totpEnabledAt;
-
 /** Commence l'activation : une clé neuve, gardée « en attente » jusqu'à ce que l'utilisateur prouve qu'il sait générer un code. */
 export async function beginEnroll(userId: string, issuer: string): Promise<{ secret: string; uri: string } | null> {
   const user = await prisma.user.findUnique({ where: { id: userId } });

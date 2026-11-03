@@ -234,12 +234,6 @@ export const ANIMATION_KEYWORDS: readonly string[] = [
 /** Mots-clés de taille de police trop petits (< 0.6875rem) ou relatifs imprévisibles. */
 export const TINY_FONT_SIZE_KEYWORDS: readonly string[] = ["xx-small", "x-small", "smaller"];
 
-/** Polices génériques (sans guillemets) toujours permises dans `font-family`. */
-export const GENERIC_FONT_FAMILIES: readonly string[] = [
-  "serif", "sans-serif", "monospace", "cursive", "fantasy", "system-ui", "ui-serif", "ui-sans-serif", "ui-monospace", "ui-rounded", "emoji", "math",
-  "-apple-system", "blinkmacsystemfont",
-];
-
 // ---------------------------------------------------------------------------------------------------------------------
 // Pièces qui ne se masquent jamais (§9.3) : tout ce qui n'est pas du décor est traité comme porteur de contenu ou d'action.
 

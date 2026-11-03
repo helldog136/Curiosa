@@ -40,8 +40,6 @@ export const SMALL_SOURCE_PX = 360;
 
 export type Crop = { ratio: number | null; zoom: number; x: number; y: number; fill: string };
 
-export const DEFAULT_CROP: Crop = { ratio: null, zoom: 1, x: 0.5, y: 0.5, fill: "ffffff" };
-
 /** Le morceau d'adresse qui porte le cadrage ; toutes les listes d'images acceptées du cœur le partagent. */
 export const CROP_QUERY_SOURCE = String.raw`(?:\?c=[0-9a-z._-]{1,60}(?:&s=1)?)?`;
 

@@ -26,6 +26,10 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Une extension peut accepter une période ouverte.** Quand elle le permet, une seule date suffit : « À partir du 1er décembre 2026 » ou « Jusqu'au 24 décembre 2026 », sans inventer l'autre date. Une phrase sous les dates dit ce qui a été compris ; les autres extensions gardent leurs deux dates.
 - **Les extensions connaissent le fuseau horaire de votre site.** Elles changent de jour à la même heure que vous, même si votre hébergeur est réglé sur un autre fuseau. Aucun réglage à faire.
 
+### Ménage interne
+
+- **Rien ne change pour vous.** Nous avons retiré du code interne que plus rien n'utilisait (des constantes et de petites fonctions oubliées). Votre site, vos extensions et vos données se comportent exactement comme avant.
+
 ### Pour les développeurs
 
 - `src/core/modules/legacyUpkeep.ts` : classement des lignes du rapport d'héritage en `todo` / `kept` / `done` (`upkeepRows`, `upkeepSummary`, `legacyUpkeepSummary` avec une mémoire de 15 secondes). Le contrat `legacyCollections` ne dit pas si l'extension vide la collection ou la garde : le cœur ne la supprime jamais et la classe « gardée ».
@@ -34,6 +38,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Période ouverte (additif).** Clé `openEnded` d'un réglage `period` ou d'un champ `period` d'`adminForm`, désactivée par défaut : valeurs `"AAAA-MM-JJ/"` (début seul) et `"/AAAA-MM-JJ"` (fin seule), toujours « une seule fois ». `parsePeriod(raw, { openEnded })` et `checkFieldInput` les refusent sans la clé ; `describePeriod` et `periodContains` les lisent. Voir docs/MODULES.md.
 - **`ctx.timezone` (additif).** Fuseau du site : `site.timezone` s'il est valide, sinon celui du serveur, « UTC » en dernier repli. Un ancien module l'ignore ; un nouveau teste `typeof ctx.timezone === "string"`. `fakeCtx({ timezone })` du kit de test (`null` simule un cœur plus ancien).
 - **Valeur de départ de `PeriodField`.** Sans valeur enregistrée, « Chaque année » est décoché (avant : coché) ; une valeur `MM-JJ/MM-JJ` s'ouvre cochée. Logique pure dans `src/core/adminkit/periodInputs.ts` (`toInputs`, `periodState`).
+- **Code mort retiré.** Vingt-trois exports sans aucun usage (cœur, tests, docs, `testsupport/`, `scripts/`, `curiosa-extras`), par exemple `RESERVED_NAMES`, `describeGroups`, `planForManifest`, `stampNewInstance`. Aucun contrat de module ni de `testsupport` n'est touché.
 
 ## 0.6.3 — 2026-11-03
 

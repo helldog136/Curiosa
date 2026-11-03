@@ -23,6 +23,3 @@ export function fixHref(f: unknown, defaultLocale = ""): string | null {
     default: return null;
   }
 }
-
-/** Les écrans que fixHref peut désigner (modèles de route de app/admin/(panel)), pour le test de cohérence. */
-export const FIX_ROUTES = ["entries/[id]", "entries", "instances/[id]", "navigation", "redirects", "social", "settings", "appearance"] as const;
