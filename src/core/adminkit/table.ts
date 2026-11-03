@@ -20,4 +20,4 @@ export function splitActions<T extends { inMenu?: boolean; danger?: boolean }>(a
 }
 
 /** Le texte d'une cellule (pour la recherche, les tests et les lecteurs d'écran). */
-export const cellText = (c: TableCell | undefined): string => (typeof c === "string" ? c : c?.text ?? (c?.switch ? c.switch.label : ""));
+export const cellText = (c: TableCell | undefined): string => (typeof c === "string" ? c : c?.text ?? (c?.switch ? c.switch.label : c?.image?.alt ?? ""));

@@ -146,6 +146,7 @@ Validé à l'installation et au chargement (zod, `src/core/modules/manifest.ts`)
 | `skin` | (cœur 0.4.0, `"minCore": "0.4.0"`) Facultatif : les **pièces d'apparence** que les skins peuvent restyler et les jetons de style propres au module (`--sk-m-<module>-…`), avec leur valeur d'aujourd'hui par défaut. Apparence seulement : jamais de contenu, de texte ni de masquage. Un cœur plus ancien ignore la clé. Sans la clé : rien ne change. Voir [Rendre un module stylable par les skins](#rendre-un-module-stylable-par-les-skins-skin-cœur-040). |
 | `overlayElements` | (cœur 0.5.0, `"minCore": "0.5.0"`) Facultatif : les **éléments** que le module propose aux **pages d'overlay** (section « Overlays » de l'administration) : `id`, `label` et `description` FR/EN, `fit` (`scale` par défaut, `ratio`, `fluid`), `size` ou `referenceHeight`, `ratios`, `minSize`, `followsStyle`, `options` (choix, oui/non, nombre, texte court ; 20 au plus), `demo`. Sans la clé : aucun élément, rien ne change. Voir [Proposer des éléments pour les pages d'overlay](OVERLAY-ELEMENTS.md). |
 | `previews` | (cœur 0.6.1, aucun `minCore` à déclarer : un cœur plus ancien ignore la clé et montre la fiche comme avant) Facultatif : **6 visuels au plus** qui montrent dans la fiche de l'extension ce que le module ajoute. Chaque visuel : `file` (`previews/<nom>.webp` ou `.png`), `caption` (légende, vouvoiement, 140 caractères au plus), `alt` (texte alternatif, 250 au plus), tous deux en `fr` **et** `en`, et `type` (`public`, `admin` ou `overlay`). Voir « Visuels de la fiche (`previews`) ». |
+| `imageHosts` | (cœur 0.6.5, aucun `minCore` à déclarer : un cœur plus ancien ignore la clé et la vignette, et montre le texte de la cellule) Facultatif : **5 noms d'hôte au plus** dont le module peut afficher des **vignettes** dans les tableaux de son administration (cellule `{ text, image }`, voir « Tableau enrichi »). Un nom d'hôte exact en minuscules (`media.example.org`) : pas de joker, de port, d'adresse numérique ni de nom interne. Sans cette clé, seules les pages du site (`/uploads/…`) sont permises. |
 | `privacy` | Facultatif : ce que le module collecte comme données personnelles, pourquoi et comment les faire effacer (texte simple, traduisible comme `description`). **Un module qui collecte des données des personnes qui visitent doit le déclarer** : le cœur reprend ce texte tel quel, sous le nom de l'instance, dans la page « Politique de confidentialité » du site (`/privacy`, lien permanent du pied de page). Un module qui ne collecte rien n'a rien à écrire. |
 | `icon` | Emoji affiché dans l'admin. |
 | `main` | Fichier ES module du code, relatif à la racine. Absent : module « sans code » (réglages, contenu). |
@@ -1303,7 +1304,7 @@ Un bloc `table` reste le même tant qu'il n'utilise aucune des clés ci-dessous 
 | `truncate: [colonnes]` | Les colonnes dont le texte long est coupé avec « … » (le texte complet est dans l'info-bulle) : des lignes de même hauteur (règle R16). |
 | `pageSize` | Lignes par page (50 par défaut, `0` = tout sur une page). |
 | `empty` | La phrase affichée quand il n'y a aucune ligne : dites quoi faire (règle R18). |
-| cellules | Une cellule peut être un objet `TableCell` : `{ text, badge?, href?, title?, switch? }`. **`badge`** (`accent`, `info`, `ok`, `warn`, `danger`, `neutral`) : une **pastille colorée ET écrite** (`text`), pour une colonne d'origine, de type ou de source (règle R30) ; **`href`** : le texte est un lien ; **`title`** : l'info-bulle ; **`switch: { on, action, label, onText?, offText? }`** : un **interrupteur d'état** dans la ligne (règle R17). |
+| cellules | Une cellule peut être un objet `TableCell` : `{ text, badge?, href?, title?, image?, switch? }`. **`badge`** (`accent`, `info`, `ok`, `warn`, `danger`, `neutral`) : une **pastille colorée ET écrite** (`text`), pour une colonne d'origine, de type ou de source (règle R30) ; **`href`** : le texte est un lien ; **`title`** : l'info-bulle ; **`switch: { on, action, label, onText?, offText? }`** : un **interrupteur d'état** dans la ligne (règle R17). **`image: { src, alt, fit? }`** : une **vignette** devant le texte (règle R16, voir « Vignette dans une cellule »). |
 | `rowActions[].inMenu` | Range l'action dans le menu **« ⋯ »** de la ligne. Dans un tableau enrichi, **deux actions** au plus restent visibles ; les suivantes, celles marquées `inMenu` et celles marquées `danger` vont dans le menu (règle R16). |
 
 L'interrupteur appelle l'`adminAction` nommée par `switch.action` avec `values.id` (pris dans `rowIds`, même ordre que `rows`) et `values.enabled` : `"1"` ou `"0"`. **L'action DIT l'état voulu, elle n'inverse rien** (un double clic ne défait donc jamais le premier). Elle renvoie `{ ok }` (le message s'affiche à côté de l'interrupteur) ou `{ error }` (l'interrupteur revient en arrière et le message s'affiche). Hors du panneau d'admin, la cellule n'est que le texte de l'état.
@@ -1314,6 +1315,23 @@ L'interrupteur appelle l'`adminAction` nommée par `switch.action` avec `values.
     { text: c.on ? "Actif" : "Désactivé", switch: { on: c.on, action: "setEnabled", label: `Commande ${c.name} active`, onText: "Actif", offText: "Désactivé" } }]),
   rowActions: [{ label: "Modifier", href: "?edit={id}" }, { label: "Supprimer", action: "remove", danger: true, confirm: "Supprimer cette commande ?" }] }
 ```
+
+##### Vignette dans une cellule (`image`, cœur 0.6.5)
+
+`{ text: "Zelda", image: { src: "/uploads/zelda.webp", alt: "Jaquette de Zelda" } }` met une **vignette de 40 × 40 px** devant le texte : toutes les lignes ont la même hauteur (règle R16), sur 1280 px comme sur 390 px (la carte d'une ligne la garde). `text` peut rester vide : le texte alternatif sert alors de texte de la cellule.
+
+| Clé | Rôle |
+|---|---|
+| `src` | Une **page du site** (`/uploads/…`, `/m/<clé>/image`…) ou une adresse **`https://`** dont l'hôte est l'un de ceux que le module déclare dans `imageHosts` de `module.json`. Rien d'autre : ni `http:`, ni `data:`, ni `//hôte`, ni port, identifiant ou adresse numérique, ni sous-domaine non déclaré. Une page du site ne peut pas viser `/api/…` ni `/admin…` (une image est chargée avec les cookies de la personne connectée) et ne contient ni `..` ni `\`. |
+| `alt` | **Obligatoire** (règle R28) : la description de l'image, 160 caractères au plus. **Sans texte alternatif, l'image n'est pas montrée** (la cellule garde son texte). |
+| `fit` | `cover` (défaut : la vignette est remplie) ou `contain` (l'image entière, avec des marges). |
+
+- **Validation côté serveur.** Le cœur contrôle chaque `src` avant d'envoyer le tableau au navigateur ; une image refusée devient simplement la cellule de texte, sans erreur. Le navigateur ne reçoit que des adresses déjà validées.
+- **Aucun contenu exécuté.** La vignette est une balise `<img>` : pas de cadre, pas de script, pas de `srcset`. L'adresse de la page d'administration n'est pas envoyée à l'hôte de l'image (`referrerpolicy="no-referrer"`).
+- **Chargement paresseux.** Les images hors écran ne sont demandées qu'à l'approche ; une page compte 50 lignes au plus.
+- **Repli propre.** Si l'image ne se charge pas, une pastille neutre (la première lettre du texte) prend sa place : jamais d'icône cassée. Une colonne qui a des vignettes **réserve** leur place à chaque ligne, même pour une ligne sans image.
+- **Sur le site public**, seules les pages du site sont permises : aucune personne qui visite ne contacte un hôte tiers à cause d'un tableau. L'`imageHosts` du module ne vaut que pour son administration.
+- **Vie privée.** Une image d'un hôte déclaré est demandée par le navigateur de la personne qui administre : dites-le dans le `README.md` et dans `privacy` si l'hôte reçoit des données (au minimum son adresse IP). Pour ne contacter aucun hôte, enregistrez l'image sur le site (`/uploads/…`).
 
 Une page du cœur n'exécute **aucun script** venu d'un module : ces briques natives sont le moyen d'avoir une recherche en direct, un interrupteur ou un champ de période dans l'administration d'un module (n'essayez pas de les refaire avec un bloc `html`).
 

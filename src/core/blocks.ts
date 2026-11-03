@@ -58,13 +58,17 @@ export type BadgeTone = "accent" | "info" | "ok" | "warn" | "danger" | "neutral"
  *  - `badge` : la cellule est une PASTILLE colorée ET écrite (`text`), par exemple l'origine « Les vôtres » / « Partenaires » ;
  *  - `switch` : un INTERRUPTEUR d'état dans la ligne (panneau d'admin seulement ; ailleurs, `text` s'affiche). Un clic appelle l'adminAction `action` avec
  *    `{ id: <rowIds[ligne]>, enabled: "1" | "0" }` ; l'action DIT l'état voulu (rien à inverser) et renvoie `{ ok }` ou `{ error }` ;
- *  - `href` : le texte est un lien (page du site ou adresse https) ; `title` : l'info-bulle (texte complet d'un texte coupé).
+ *  - `href` : le texte est un lien (page du site ou adresse https) ; `title` : l'info-bulle (texte complet d'un texte coupé) ;
+ *  - `image` : une VIGNETTE à taille fixe devant le texte. `alt` (texte alternatif) est OBLIGATOIRE : sans lui l'image n'est pas montrée. `src` : une page du site (`/uploads/…`)
+ *    ou une adresse `https://` d'un hôte déclaré dans le manifeste du module (`imageHosts`) ; toute autre adresse est écartée côté serveur (voir adminkit/image.ts).
+ *    `fit` : `cover` (défaut, remplit la vignette) ou `contain` (image entière). Chargée paresseusement ; si elle ne charge pas, une pastille neutre prend sa place.
  */
 export type TableCell = string | {
   text?: string;
   badge?: BadgeTone;
   href?: string;
   title?: string;
+  image?: { src: string; alt: string; fit?: "cover" | "contain" };
   switch?: { on: boolean; action: string; /** Nom accessible : décrit la chose, pas l'action (« Commande !bonjour active »). */ label: string; onText?: string; offText?: string };
 };
 
