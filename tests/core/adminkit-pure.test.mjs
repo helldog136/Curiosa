@@ -379,3 +379,134 @@ test("textes du kit : mêmes clés et mêmes {variables} en français et en angl
     assert.ok(!/\bveuillez\b|\btu\b|\bton\b/i.test(fr[k]), `${k} : vouvoiement`);
   }
 });
+
+/* ───────────── période : « une seule fois » par défaut, période ouverte (début seul, fin seule) ───────────── */
+
+test("période ouverte : refusée tant que le réglage ne la demande pas, lue et dite en une phrase quand il la demande", () => {
+  // Sans la demande, EXACTEMENT comme avant : un module d'avant ne reçoit jamais de valeur ouverte.
+  for (const open of ["2026-12-01/", "/2026-12-24", "/"]) {
+    assert.deepEqual(V.parsePeriod(open), { ok: false, reason: "format" }, open);
+    assert.deepEqual(V.parsePeriod(open, { openEnded: false }), { ok: false, reason: "format" }, `${open} (openEnded: false)`);
+    assert.deepEqual(checkFieldInput({ type: "period" }, open), { ok: false, reason: "period" }, `checkFieldInput ${open}`);
+    assert.deepEqual(checkFieldInput({ type: "period", openEnded: false }, open), { ok: false, reason: "period" });
+  }
+  // Avec la demande : début seul, fin seule ; les formes habituelles restent lues telles quelles.
+  const since = V.parsePeriod("2026-12-01/", { openEnded: true });
+  assert.deepEqual(since, { ok: true, period: { yearly: false, from: { y: 2026, m: 12, d: 1 }, to: null } });
+  const until = V.parsePeriod("/2026-12-24", { openEnded: true });
+  assert.deepEqual(until, { ok: true, period: { yearly: false, from: null, to: { y: 2026, m: 12, d: 24 } } });
+  assert.equal(V.serializePeriod(since.period), "2026-12-01/");
+  assert.equal(V.serializePeriod(until.period), "/2026-12-24");
+  assert.deepEqual(V.parsePeriod("11-01/11-30", { openEnded: true }), V.parsePeriod("11-01/11-30"), "chaque année : même lecture");
+  assert.deepEqual(V.parsePeriod("2026-11-01/2026-11-30", { openEnded: true }), V.parsePeriod("2026-11-01/2026-11-30"), "une fois : même lecture");
+  assert.deepEqual(V.parsePeriod("2026-11-30/2026-11-01", { openEnded: true }), { ok: false, reason: "order" });
+  // Un bout ouvert est une vraie date : 2027 n'a pas de 29 février, l'année est bornée, rien ne passe pour « chaque année ».
+  for (const bad of ["2027-02-29/", "/1999-01-01", "/2101-01-01", "2026-13-01/", "12-01/", "/12-24", "", "//", "2026-12-01//", "novembre/"]) assert.equal(V.parsePeriod(bad, { openEnded: true }).ok, false, bad);
+  assert.deepEqual(checkFieldInput({ type: "period", openEnded: true }, "2026-12-01/"), { ok: true, value: "2026-12-01/" });
+  assert.deepEqual(checkFieldInput({ type: "period", openEnded: true }, "/2026-12-24"), { ok: true, value: "/2026-12-24" });
+  assert.deepEqual(checkFieldInput({ type: "period", openEnded: true }, "11-01/11-30"), { ok: true, value: "11-01/11-30" });
+  assert.deepEqual(checkFieldInput({ type: "period", openEnded: true }, "12-01/"), { ok: false, reason: "period" });
+  // Phrase d'aperçu unique, FR et EN.
+  const fr = { yearly: "Du {from} au {to}, chaque année", once: "Du {from} au {to}", since: "À partir du {from}", until: "Jusqu'au {to}" };
+  assert.equal(V.describePeriod(since.period, "fr", fr), "À partir du 1er décembre 2026");
+  assert.equal(V.describePeriod(until.period, "fr", fr), "Jusqu'au 24 décembre 2026");
+  const en = { yearly: "From {from} to {to}, every year", once: "From {from} to {to}", since: "From {from}", until: "Until {to}" };
+  assert.equal(V.describePeriod(since.period, "en", en), "From 1 December 2026");
+  assert.equal(V.describePeriod(until.period, "en", en), "Until 24 December 2026");
+  assert.equal(V.describePeriod(V.parsePeriod("2026-12-01/2026-12-15").period, "fr", fr), "Du 1er décembre 2026 au 15 décembre 2026", "période fermée : phrase d'avant");
+  // « Aujourd'hui » dans une période ouverte : un bout absent ne limite pas.
+  assert.equal(V.periodContains(since.period, { y: 2026, m: 11, d: 30 }), false);
+  assert.equal(V.periodContains(since.period, { y: 2026, m: 12, d: 1 }), true, "le premier jour compte");
+  assert.equal(V.periodContains(since.period, { y: 2040, m: 1, d: 1 }), true, "pas de fin");
+  assert.equal(V.periodContains(until.period, { y: 2000, m: 1, d: 1 }), true, "pas de début");
+  assert.equal(V.periodContains(until.period, { y: 2026, m: 12, d: 24 }), true, "le dernier jour compte");
+  assert.equal(V.periodContains(until.period, { y: 2026, m: 12, d: 25 }), false);
+});
+
+test("période : une période NOUVELLE est « une seule fois » ; une valeur déjà enregistrée garde son sens, « chaque année » compris", () => {
+  // Nouvelle période (rien d'enregistré, ou valeur illisible) : « chaque année » décoché.
+  assert.deepEqual(PI.toInputs("", 2026), { from: "", to: "", yearly: false });
+  assert.deepEqual(PI.toInputs("n'importe quoi", 2026), { from: "", to: "", yearly: false });
+  assert.deepEqual(PI.toInputs("2026-12-01/", 2026), { from: "", to: "", yearly: false }, "début seul sans la demande : illisible, comme avant");
+  // Valeurs existantes : jamais changées de sens.
+  assert.deepEqual(PI.toInputs("11-01/11-30", 2026), { from: "2026-11-01", to: "2026-11-30", yearly: true });
+  assert.deepEqual(PI.toInputs("12-20/01-05", 2026), { from: "2026-12-20", to: "2027-01-05", yearly: true });
+  assert.deepEqual(PI.toInputs("02-01/02-29", 2026), { from: "2028-02-01", to: "2028-02-29", yearly: true });
+  assert.deepEqual(PI.toInputs("2026-12-20/2026-12-31", 2026), { from: "2026-12-20", to: "2026-12-31", yearly: false });
+  // Ouverte : les dates reviennent dans les sélecteurs, un bout reste vide.
+  assert.deepEqual(PI.toInputs("2026-12-01/", 2026, true), { from: "2026-12-01", to: "", yearly: false });
+  assert.deepEqual(PI.toInputs("/2026-12-24", 2026, true), { from: "", to: "2026-12-24", yearly: false });
+});
+
+test("période : ce que disent les deux sélecteurs (fermée comme avant, ouverte sur demande, fin avant début)", () => {
+  const state = (from, to, yearly, open = false) => { const s = PI.periodState(from, to, yearly, open); return { ...s, value: s.period ? V.serializePeriod(s.period) : "" }; };
+  // Période fermée, sans la demande : comme avant (un seul bout = incomplet = rien d'enregistré).
+  assert.equal(state("2026-12-01", "2026-12-15", false).value, "2026-12-01/2026-12-15");
+  assert.equal(state("2026-11-01", "2026-11-30", true).value, "11-01/11-30");
+  assert.equal(state("2026-12-01", "", false).value, "", "début seul sans la demande : incomplet");
+  assert.equal(state("", "2026-12-24", false).value, "");
+  assert.equal(state("2026-12-01", "", true).value, "", "même avec « chaque année » coché");
+  // Fin avant début : une seule fois, erreur ; « chaque année » enjambe l'année sans erreur.
+  assert.equal(state("2026-12-15", "2026-12-01", false).wrongOrder, true);
+  assert.equal(state("2026-12-15", "2026-12-01", false).value, "", "rien d'enregistré tant que l'ordre est faux");
+  assert.equal(state("2026-12-15", "2026-12-01", true).wrongOrder, false);
+  assert.equal(state("2026-12-15", "2027-01-01", false, true).wrongOrder, false);
+  // Période ouverte demandée : début seul, fin seule, jamais « chaque année » avec un seul bout.
+  const since = state("2026-12-01", "", false, true), until = state("", "2026-12-24", false, true);
+  assert.equal(since.value, "2026-12-01/"); assert.equal(until.value, "/2026-12-24");
+  assert.equal(since.oneSide, true); assert.equal(until.oneSide, true);
+  assert.equal(state("2026-12-01", "", true, true).value, "2026-12-01/", "« chaque année » coché + un seul bout : une seule fois");
+  assert.equal(state("2026-12-01", "", true, true).yearlyOn, false);
+  assert.equal(state("2026-11-01", "2026-11-30", true, true).value, "11-01/11-30", "deux bouts + chaque année : comme avant");
+  assert.equal(state("2026-11-01", "2026-11-30", true, true).oneSide, false);
+  assert.equal(state("", "", false, true).value, "", "aucune date : rien d'enregistré");
+  assert.equal(state("2026-12-15", "2026-12-01", false, true).wrongOrder, true, "ouverte ou non, la fin ne précède pas le début");
+  assert.equal(state("pas-une-date", "", false, true).value, "");
+});
+
+test("période : les raccourcis gardent leur comportement (mois entier, saisons et fêtes fixes récurrentes, fêtes mobiles avec année)", () => {
+  // « Tout le mois de » : mêmes dates qu'avant, « chaque année » ou une seule fois.
+  assert.deepEqual(PI.monthInputs(11, true, "", 2026), { from: "2026-11-01", to: "2026-11-30" });
+  assert.deepEqual(PI.monthInputs(11, false, "", 2026), { from: "2026-11-01", to: "2026-11-30" });
+  assert.deepEqual(PI.monthInputs(2, true, "", 2026), { from: "2028-02-01", to: "2028-02-29" });
+  assert.deepEqual(PI.monthInputs(2, false, "2027-05-01", 2026), { from: "2027-02-01", to: "2027-02-28" });
+  // Saisons et fêtes à date fixe : toujours « chaque année ».
+  const today = { y: 2026, m: 11, d: 3 };
+  const expected = { spring: "03-20/06-20", summer: "06-21/09-22", autumn: "09-23/12-20", winter: "12-21/03-19", epiphany: "01-06/01-06", valentine: "02-14/02-14", labour: "05-01/05-01",
+    halloween: "10-25/10-31", allSaints: "11-01/11-01", stNicholas: "12-06/12-06", christmas: "12-24/12-26", newYear: "12-31/01-02" };
+  for (const p of PP.PRESETS.filter((x) => x.group !== "movable")) {
+    assert.equal(PP.presetValue(p.id, today), expected[p.id], p.id);
+    assert.equal(PI.toInputs(PP.presetValue(p.id, today), 2026).yearly, true, `${p.id} reste récurrent`);
+  }
+  // Fêtes mobiles : les dates de la prochaine occurrence, avec l'année, « chaque année » décoché.
+  for (const p of PP.PRESETS.filter((x) => x.group === "movable")) {
+    const v = PP.presetValue(p.id, today);
+    assert.match(v, /^\d{4}-\d{2}-\d{2}\/\d{4}-\d{2}-\d{2}$/, p.id);
+    assert.equal(PI.toInputs(v, 2026).yearly, false, `${p.id} : une seule fois`);
+  }
+});
+
+test("manifeste : openEnded n'existe que pour une période, désactivé par défaut ; le défaut ouvert n'est permis qu'avec lui", () => {
+  const ok = (f) => assert.equal(settingField.safeParse(field(f)).success, true, JSON.stringify(f));
+  const bad = (f, why) => assert.equal(settingField.safeParse(field(f)).success, false, why);
+  ok({ type: "period", openEnded: true });
+  ok({ type: "period", openEnded: false });
+  ok({ type: "period" });
+  ok({ type: "period", openEnded: true, default: "2026-12-01/" });
+  ok({ type: "period", openEnded: true, default: "11-01/11-30" });
+  bad({ type: "period", default: "2026-12-01/" }, "défaut ouvert sans openEnded");
+  bad({ type: "period", openEnded: false, default: "/2026-12-24" }, "défaut ouvert, openEnded faux");
+  bad({ type: "datetime", openEnded: true }, "openEnded sur une date et heure");
+  bad({ type: "text", openEnded: true }, "openEnded sur un texte");
+  assert.equal(settingField.parse(field({ type: "period" })).openEnded, undefined, "rien n'est ajouté tout seul");
+});
+
+test("résumé de « Plus d'options » : une période ouverte se dit en une phrase", () => {
+  const f = { key: "p", label: "Période", type: "period", openEnded: true };
+  assert.equal(Sum.summarizeField(f, "2026-12-01/", "fr", tr), "À partir du 1er décembre 2026");
+  assert.equal(Sum.summarizeField(f, "/2026-12-24", "fr", tr), "Jusqu'au 24 décembre 2026");
+  assert.equal(Sum.summarizeField(f, "11-01/11-30", "fr", tr), "Du 1er novembre au 30 novembre, chaque année");
+  assert.equal(Sum.summarizeField({ ...f, openEnded: false }, "2026-12-01/", "fr", tr), "Période", "sans la demande, une valeur ouverte n'est pas lue");
+  assert.deepEqual(H.valueErrorKey("period", { type: "period", openEnded: true }, tr), { key: "instances.error.periodOpen", vars: {} });
+  assert.deepEqual(H.valueErrorKey("period", { type: "period" }, tr), { key: "instances.error.period", vars: {} });
+});

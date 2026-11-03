@@ -44,6 +44,8 @@ export const settingField = z.object({
   unit: localized.optional(),
   example: localized.optional(),
   rare: z.boolean().optional(),
+  /** (cœur 0.6.4) `period` : accepte un début seul ou une fin seule. Désactivé par défaut : un module qui ne le demande pas ne reçoit jamais de période ouverte. */
+  openEnded: z.boolean().optional(),
   display: z.enum(["segmented"]).optional(),
   translatable: z.boolean().optional(),
   advanced: z.boolean().optional(),
@@ -100,11 +102,12 @@ export const settingField = z.object({
     if (f.step !== undefined) ctx.addIssue({ code: "custom", message: "a duration has no step (it is a whole number of seconds)" });
     for (const k of ["min", "max"] as const) if (f[k] !== undefined && (!Number.isInteger(f[k]) || (f[k] as number) < 0)) ctx.addIssue({ code: "custom", message: `${k} of a duration is a whole number of seconds, 0 or more` });
   }
+  if (f.openEnded !== undefined && f.type !== "period") ctx.addIssue({ code: "custom", message: "openEnded is only for a period setting" });
   if (f.type === "period" || f.type === "datetime" || f.type === "duration") {
     if (f.translatable) ctx.addIssue({ code: "custom", message: `a ${f.type} setting cannot be translatable` });
     if (f.default !== undefined) {
-      const ok = f.type === "period" ? typeof f.default === "string" && parsePeriod(f.default).ok : f.type === "datetime" ? typeof f.default === "string" && checkDateTime(f.default) : typeof f.default === "number" && Number.isInteger(f.default) && f.default >= 0;
-      if (!ok) ctx.addIssue({ code: "custom", message: `the default of a ${f.type} setting must be ${f.type === "period" ? "like \"11-01/11-30\" (every year) or \"2026-11-01/2026-11-30\"" : f.type === "datetime" ? "like \"2026-11-30T18:30\"" : "a whole number of seconds"}` });
+      const ok = f.type === "period" ? typeof f.default === "string" && parsePeriod(f.default, { openEnded: f.openEnded === true }).ok : f.type === "datetime" ? typeof f.default === "string" && checkDateTime(f.default) : typeof f.default === "number" && Number.isInteger(f.default) && f.default >= 0;
+      if (!ok) ctx.addIssue({ code: "custom", message: `the default of a ${f.type} setting must be ${f.type === "period" ? "like \"11-01/11-30\" (every year) or \"2026-11-01/2026-11-30\"" + (f.openEnded ? " (or \"2026-12-01/\" and \"/2026-12-24\" with openEnded)" : "") : f.type === "datetime" ? "like \"2026-11-30T18:30\"" : "a whole number of seconds"}` });
     }
   }
   if (f.display === "segmented") {

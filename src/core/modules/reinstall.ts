@@ -6,7 +6,6 @@ import { prisma } from "../db";
 import { MODULES_DIR } from "../config";
 import { readUpdateState } from "../updates/service";
 import { opStep } from "../operations/tracker";
-import { catalogueUnreachable, findCatalogueEntry } from "./catalogue";
 import { incompatWithThisCore, requirementOf } from "./compat";
 import { migrateModuleInstances, type MigrationOutcome } from "./dataMigrations";
 import { CoreTooOld, dirSize, git, isCommitRef, isInside, copyModuleFiles, subdirTarget } from "./installer";
@@ -22,8 +21,8 @@ import type { LoadWarning } from "./installer";
  * (le cas qui piège la mise à jour : un module de base n'était comparé que par son numéro). Tout le reste est conservé : instances, réglages,
  * données, état activé/désactivé, rangement, placements d'accueil, droits MCP (rien de cela n'est touché : seule la ligne `Module` et son dossier le sont).
  *
- * Sources : dépôt git (en sous-dossier ou à la racine : même référence que la mise à jour, voir `subdirTarget`) ; le catalogue pour une ligne `bundled` d'un ancien site
- * (compatibilité, à retirer en phase 3 d'entretien : réinstaller la CONVERTIT en module du catalogue, version épinglée, sans AUCUN repli local : catalogue injoignable → erreur claire) ; sinon refus. « Réinstaller = remettre la version actuellement proposée par la source du module », jamais plus.
+ * Source : le dépôt git du module (en sous-dossier ou à la racine : même référence que la mise à jour, voir `subdirTarget`) ; sinon refus (une ligne `bundled` d'une
+ * très ancienne version n'a plus de source : la page Entretien propose de la retirer en gardant ses données, puis de la réinstaller depuis le catalogue). « Réinstaller = remettre la version actuellement proposée par la source du module », jamais plus.
  * Sécurité : l'ancien dossier est mis de côté pendant l'échange (`.previous-<pid>`) et revient tel quel au moindre échec ; jamais de nouvelle permission accordée en silence.
  */
 
@@ -87,14 +86,6 @@ async function fetchGitSource(row: Module): Promise<Source> {
   }
 }
 
-/** Ligne `bundled` d'un ancien site (compatibilité, à retirer en phase 3 d'entretien) que le catalogue liste : la ligne telle qu'elle serait une fois convertie (dépôt, étiquette épinglée, dossier). Sinon null. */
-async function catalogueSource(row: Module): Promise<{ row: Module; version?: string } | null> {
-  if (row.source !== "bundled") return null;
-  const entry = await findCatalogueEntry(row.id).catch(() => undefined);
-  if (!entry?.repo || !entry.compatible) return null;
-  return { row: { ...row, source: "git", repoUrl: entry.repo, ref: entry.ref ?? null, subdir: entry.subdir ?? null }, version: entry.version };
-}
-
 function readManifestAt(dir: string): ParsedManifest | null {
   try { const p = parseManifest(JSON.parse(fs.readFileSync(path.join(dir, "module.json"), "utf8"))); return p.ok ? p.manifest : null; } catch { return null; }
 }
@@ -110,8 +101,6 @@ export type Diagnostic = {
   ref?: string;
   subdir?: string;
   commit?: string;
-  /** Ligne `bundled` d'un ancien site que le catalogue liste : sa source est le catalogue (dépôt, étiquette). */
-  catalogue?: { repoUrl: string; ref?: string; subdir?: string; version?: string };
   /** Empreinte du dossier installé, calculée à la demande. */
   installedHash: string | null;
   /** Null : pas comparé (la source est sur le réseau et on n'a pas demandé la comparaison). */
@@ -132,8 +121,6 @@ export async function diagnoseModule(id: string, opts: { compare?: "none" | "loc
     ...(kind === "git" ? { repoUrl: row.repoUrl!, ...(row.ref ? { ref: row.ref } : {}), ...(row.subdir ? { subdir: row.subdir } : {}), ...(row.commit ? { commit: row.commit } : {}) } : {}),
   };
   const mode = opts.compare ?? "none";
-  const cat = await catalogueSource(row);
-  if (cat) out.catalogue = { repoUrl: cat.row.repoUrl!, ...(cat.row.ref ? { ref: cat.row.ref } : {}), ...(cat.row.subdir ? { subdir: cat.row.subdir } : {}), ...(cat.version ? { version: cat.version } : {}) };
   const compareTo = (root: string, cleanup?: () => void): Comparison => {
     try {
       const src = fingerprintDir(root);
@@ -141,9 +128,7 @@ export async function diagnoseModule(id: string, opts: { compare?: "none" | "loc
       return { state: installed && installed.hash === src.hash ? "identical" : "different", sourceHash: src.hash, ...(sv ? { sourceVersion: sv } : {}) };
     } catch { return { state: "unavailable" }; } finally { cleanup?.(); }
   };
-  if (cat && mode === "network") {
-    try { const s = await fetchGitSource(cat.row); out.comparison = compareTo(s.root, s.cleanup); } catch { out.comparison = { state: "unavailable" }; }
-  } else if (kind === "git" && mode === "network") {
+  if (kind === "git" && mode === "network") {
     try { const s = await fetchGitSource(row); out.comparison = compareTo(s.root, s.cleanup); } catch { out.comparison = { state: "unavailable" }; }
   }
   return out;
@@ -167,8 +152,6 @@ export type ReinstallResult =
 export type ReinstallOptions = {
   /** Dossier de l'état des mises à jour du site (tests). */
   dataDir?: string;
-  /** Mise à jour d'une ligne `bundled` vers le catalogue : suit le manifeste du catalogue, même avec de nouvelles permissions (montrées par la mise à jour). */
-  catalogueOnly?: boolean;
   /** Appelé juste après l'échange des fichiers, avant la base (tests : simule un échec en cours d'échange). */
   afterSwap?: () => Promise<void> | void;
   /**
@@ -184,7 +167,7 @@ export async function reinstallModule(id: string, opts: ReinstallOptions = {}): 
   const row = await prisma.module.findUnique({ where: { id } });
   if (!row) return fail(id, "modules.error.notfound");
   const kind = sourceKind(row);
-  if (kind === "none") return fail(id, "modules.error.reinstallNoSource");
+  if (kind !== "git") return fail(id, kind === "bundled" ? "modules.error.unknownSource" : "modules.error.reinstallNoSource");
   if (busy.has(id) || readUpdateState(opts.dataDir).status === "running") return fail(id, "modules.error.reinstallBusy");
   busy.add(id);
 
@@ -193,21 +176,11 @@ export async function reinstallModule(id: string, opts: ReinstallOptions = {}): 
   let source: Source | null = null;
   let swapped = false;
   let dbChanged = false;
-  let viaCatalogue: { row: Module; version?: string } | null = null;
   let targetVersion = "?";
   try {
-    // 1. La source : le dépôt git du module ; pour une ligne `bundled`, le catalogue (jamais une copie locale).
+    // 1. La source : le dépôt git du module.
     opStep("download");
-    if (kind === "bundled") {
-      viaCatalogue = await catalogueSource(row);
-      if (!viaCatalogue) return fail(id, (await catalogueUnreachable()) ? "modules.error.catalogue" : "modules.error.unknownSource");
-      try { source = await fetchGitSource(viaCatalogue.row); } catch (error) {
-        console.error("[modules] catalogue repository unreachable:", (error as Error)?.message);
-        return fail(id, "modules.error.catalogue");
-      }
-    } else {
-      source = await fetchGitSource(row);
-    }
+    source = await fetchGitSource(row);
 
     // 2. Contrôles, AVANT de toucher à quoi que ce soit.
     opStep("verify");
@@ -220,9 +193,8 @@ export async function reinstallModule(id: string, opts: ReinstallOptions = {}): 
     const inc = incompatWithThisCore(requirementOf(manifest));
     if (inc) return fail(id, "modules.error.core", { detail: inc.needs, needsCore: inc.needs });
     // Réinstaller ne doit jamais élargir les permissions en silence : une version qui en demande de nouvelles passe par la mise à jour / le catalogue (où elles sont montrées).
-    // La mise à jour vers le catalogue (`catalogueOnly`) EST ce chemin : comme toute mise à jour, elle suit le manifeste du catalogue.
     const installedManifest = readGitManifest(id);
-    if (installedManifest && !opts.catalogueOnly) {
+    if (installedManifest) {
       const added = manifest.permissions.filter((p) => !installedManifest.permissions.includes(p));
       if (added.length) return fail(id, "modules.error.reinstallPerms", { detail: added.join(", ") });
     }
@@ -231,15 +203,13 @@ export async function reinstallModule(id: string, opts: ReinstallOptions = {}): 
     const newFp = fingerprintDir(source.root);
     const before: Snapshot = { version: row.version, hash: oldFp?.hash ?? null, commit: row.commit };
     const after: Snapshot = { version: manifest.version, hash: newFp.hash, commit: source.commit ?? row.commit };
-    // Données de la ligne `Module` après l'opération : un module de base lu dans le catalogue DEVIENT un module du catalogue (source git épinglée).
-    const data = viaCatalogue
-      ? { source: "git", repoUrl: viaCatalogue.row.repoUrl, ref: viaCatalogue.row.ref, subdir: viaCatalogue.row.subdir, version: manifest.version, commit: source.commit, tree: source.tree }
-      : kind === "git" ? { version: manifest.version, commit: source.commit, tree: source.tree } : { version: manifest.version };
+    // Données de la ligne `Module` après l'opération.
+    const data = { version: manifest.version, commit: source.commit, tree: source.tree };
 
     // 3. Déjà identique : rien à échanger (on vide seulement la mémoire du module, au cas où le processus en garderait une autre copie).
     if (oldFp && oldFp.hash === newFp.hash && row.version === manifest.version) {
-      if (viaCatalogue || (source.commit && (source.commit !== row.commit || (source.tree ?? null) !== (row.tree ?? null)))) {
-        await prisma.module.update({ where: { id }, data: viaCatalogue ? data : { commit: source.commit, tree: source.tree } });
+      if (source.commit && (source.commit !== row.commit || (source.tree ?? null) !== (row.tree ?? null))) {
+        await prisma.module.update({ where: { id }, data: { commit: source.commit, tree: source.tree } });
       }
       bumpImportStamp(id);
       forgetModule(id);
@@ -259,7 +229,7 @@ export async function reinstallModule(id: string, opts: ReinstallOptions = {}): 
     else copyModuleFiles(source.root, target);
     await opts.afterSwap?.();
     // Puis dans le processus du site, depuis une copie neuve, AVANT de basculer la ligne en base.
-    const next = { id, version: manifest.version, commit: (data as { commit?: string | null }).commit ?? row.commit };
+    const next = { id, version: manifest.version, commit: data.commit ?? row.commit };
     const verdict = await verifyModuleLoad(next);
     if (!verdict.ok) throw new LoadCheckFailed(verdict.reason);
     await prisma.module.update({ where: { id }, data });

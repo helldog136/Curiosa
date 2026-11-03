@@ -59,6 +59,13 @@ export type SettingField = {
   example?: LocalizedString;
   /** (0.6.0) Réglage rare : rangé sous « Plus d'options » (replié, avec un résumé de ce qui y est réglé, ouvert d'office si une valeur y est déjà). Contrairement à `advanced`, il reste visible en mode simple. */
   rare?: boolean;
+  /**
+   * (cœur 0.6.4) `period` : accepte une période OUVERTE, avec un début seul (« À partir du 1er décembre 2026 », valeur `"2026-12-01/"`) ou une fin seule
+   * (« Jusqu'au 24 décembre 2026 », valeur `"/2026-12-24"`), en plus des deux formes habituelles. Absent ou `false` (défaut) : la valeur reste toujours `MM-JJ/MM-JJ` ou
+   * `AAAA-MM-JJ/AAAA-MM-JJ`, ce que lisent les modules d'avant. Une période ouverte est toujours « une seule fois ». Un cœur plus ancien ignore la clé : déclarez
+   * `minCore` à la version qui l'apporte.
+   */
+  openEnded?: boolean;
   /** (0.6.0) `select` de 2 à 4 options : `"segmented"` les montre en boutons côte à côte au lieu d'une liste. */
   display?: "segmented";
   /** Obligatoire pour `choice` : d'où viennent les options. */
@@ -535,6 +542,13 @@ export type ModuleContext = {
   params?: Readonly<{ slug?: string }>;
   defaultLocale: string;
   locales: string[];
+  /**
+   * (cœur 0.6.4) Le fuseau horaire du SITE, un nom IANA valide (« Europe/Brussels », « UTC ») : celui du réglage `site.timezone`, sinon celui du serveur (le même
+   * repli que partout dans le cœur : liens courts, tableau de bord), « UTC » si la plateforme ne le dit pas. Jamais vide, jamais un nom que `Intl.DateTimeFormat` refuse.
+   * C'est dans ce fuseau que « aujourd'hui » change pour le site : comparez-y les dates d'un réglage `period` ou `datetime`. Absent sur un cœur plus ancien : testez sa
+   * présence (`typeof ctx.timezone === "string"`) et gardez votre repli d'avant.
+   */
+  timezone?: string;
   /** Réglage de l'instance, résolu pour la langue courante, avec sa valeur par défaut. */
   setting<T = string>(key: string): T | undefined;
   /**

@@ -65,11 +65,6 @@ export async function requirementGaps(manifest: ParsedManifest): Promise<Gap[]> 
   return gaps;
 }
 
-/** Services dont ce module a besoin et qu'aucune instance active ne fournit (dans la version voulue). */
-export async function unmetRequirements(manifest: ParsedManifest): Promise<string[]> {
-  return (await requirementGaps(manifest)).map((g) => g.service);
-}
-
 /** Modules actifs qui cesseraient de fonctionner si `moduleId` s'arrêtait : ils exigent un service que lui seul fournit (version comprise). Un besoin facultatif ne retient pas le fournisseur. */
 export async function dependentsOf(moduleId: string): Promise<string[]> {
   const mine = await getModule(moduleId);

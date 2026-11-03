@@ -2,7 +2,6 @@ import { getCatalogue, type CatalogueEntry } from "./catalogue";
 import { liveProviders } from "./dependencies";
 import { listModuleRows, getModule } from "./registry";
 import { hardNeeds, normalizeOffers, offerVersionOf, satisfiesVersion, type ServiceNeed, type ServiceOffer } from "./serviceVersions";
-import type { ParsedManifest } from "./manifest";
 
 /**
  * RÉSOLUTION DES DÉPENDANCES — QUI fournira un service qui manque (choix + aperçu). Ne modifie rien : l'installation réelle est dans
@@ -117,10 +116,5 @@ export async function planDependencies(rootId: string, needs: ServiceNeed[], opt
   }
   await resolve(rootId, needs, opts.path ?? [rootId]);
   return plan;
-}
-
-/** Aperçu pour un module DÉJÀ installé (page du module, activation). */
-export async function planForManifest(manifest: ParsedManifest): Promise<DependencyPlan> {
-  return planDependencies(manifest.id, hardNeeds(manifest.requires));
 }
 

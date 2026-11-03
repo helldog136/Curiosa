@@ -371,13 +371,22 @@ test("créer : les extensions d'abord, le cœur pour le reste, filtré par droit
   assert.equal(Q.mergeQuick([], lots).length, 6);
 });
 
+test("blocs : le journal (ce qui s'est passé) est le dernier bloc, dans tous les modes et pour tous les paliers", () => {
+  for (const u of [owner, admin, coordinator, editor, none]) for (const adv of [false, true]) {
+    const b = L.dashboardPlan(u, adv).blocks;
+    assert.equal(b.at(-1), "activity");
+    assert.equal(b.filter((x) => x === "activity").length, 1);
+  }
+  assert.equal(L.BLOCKS.at(-1), "activity");
+});
+
 test("blocs : chaque palier voit les siens, le mode simple en a moins", () => {
   const plan = (u, advanced) => L.dashboardPlan(u, advanced);
-  assert.deepEqual(plan(editor, false).blocks, ["todo", "drafts", "create", "visits", "activity", "modules", "numbers"]);
-  assert.deepEqual(plan(coordinator, false).blocks, ["health", "todo", "activity", "modules", "numbers"]);
-  assert.deepEqual(plan(admin, false).blocks, ["setup", "health", "todo", "drafts", "create", "activity", "visits", "modules", "numbers"]);
+  assert.deepEqual(plan(editor, false).blocks, ["todo", "drafts", "create", "visits", "modules", "numbers", "activity"]);
+  assert.deepEqual(plan(coordinator, false).blocks, ["health", "todo", "modules", "numbers", "activity"]);
+  assert.deepEqual(plan(admin, false).blocks, ["setup", "health", "todo", "drafts", "create", "visits", "modules", "numbers", "activity"]);
   assert.deepEqual(plan(owner, true).blocks, plan(admin, false).blocks);
-  assert.deepEqual(plan(none, true).blocks, ["todo", "drafts", "create", "activity", "modules", "numbers"]);
+  assert.deepEqual(plan(none, true).blocks, ["todo", "drafts", "create", "modules", "numbers", "activity"]);
   assert.deepEqual([plan(admin, false).cards, plan(admin, true).cards], [2, 4]);
   assert.ok(!plan(editor, true).blocks.includes("setup") && !plan(editor, true).blocks.includes("health"));
   for (const u of [owner, admin, coordinator, editor, none]) for (const adv of [false, true]) assert.ok(L.dashboardPlan(u, adv).blocks.every((b) => L.BLOCKS.includes(b)));

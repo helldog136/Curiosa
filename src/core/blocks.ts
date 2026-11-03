@@ -44,6 +44,8 @@ export type AdminField = {
   unit?: string;
   /** (0.6.0) `datetime` : l'heure peut rester vide. */
   optionalTime?: boolean;
+  /** (cœur 0.6.4) `period` : une seule date suffit (début seul : `2026-12-01/`, fin seule : `/2026-12-24`). Désactivé par défaut : sans lui, le module reçoit toujours `MM-JJ/MM-JJ` ou `AAAA-MM-JJ/AAAA-MM-JJ`. Un cœur plus ancien ignore la clé. */
+  openEnded?: boolean;
   /** (0.6.0) Champ rare : rangé sous « Plus d'options » (replié, avec un résumé de ce qui y est réglé, ouvert d'office si une valeur y est déjà). Il ne compte plus dans le budget de champs visibles. */
   folded?: boolean;
 };

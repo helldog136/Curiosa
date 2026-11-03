@@ -15,12 +15,13 @@ const R = await import("@/core/modules/registry");
 const D = await import("@/core/modules/dataMigrations");
 const C = await import("@/core/modules/compat");
 const { createInstance } = await import("@/core/instanceService");
-const { setSetting, getSetting } = await import("@/core/settings");
+const { setSetting } = await import("@/core/settings");
 
-// Le cœur n'embarque aucun module : le catalogue est un faux dépôt curiosa-extras local. Une ligne `bundled` est celle d'un SITE ANCIEN (compatibilité) :
-// son dossier est déjà sur le disque, le catalogue est sa seule source.
+// Le cœur n'embarque aucun module : un module est installé depuis un dépôt git (ici un faux dépôt local par module). Une ligne `bundled` est celle d'une des
+// premières versions du cœur : plus aucun code ne la convertit ni ne la réinstalle (elle reste telle quelle, la page Entretien propose de la retirer).
 const cat = createCatalogue();
-beforeEach(async () => { await db.reset(); await cat.clear(); C.setCoreVersionForTests(null); });
+const repos = new Map();
+beforeEach(async () => { await db.reset(); await cat.clear(); repos.clear(); C.setCoreVersionForTests(null); });
 after(() => { cat.close(); return db.close(); });
 
 const manifest = (over = {}) => ({ apiVersion: 2, id: "planning", name: "Planning", version: "1.1.0", main: "index.mjs", ...over });
@@ -40,22 +41,28 @@ function makeDir(files) {
   }
   return dir;
 }
-/** Ce que le catalogue publie pour « planning » (ou un autre id) : le code « nouveau », éventuellement avec d'autres fichiers ou un autre manifeste. */
-const publish = (over = {}, id = "planning") => cat.add(id, { manifest: { name: "Planning", version: "1.1.0", ...over.manifest }, marker: over.marker ?? "nouveau", files: over.files ?? {} });
-/** Un site d'avant : dossier posé sur le disque (ancien code) + ligne `bundled`, comme les anciennes versions du cœur l'ont laissés. */
-function legacyFolder(id = "planning", { files = { "index.mjs": code("ancien") }, manifest: m = {}, enabled = true } = {}) {
-  const dir = installed(id);
-  fs.rmSync(dir, { recursive: true, force: true });
-  fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(path.join(dir, "module.json"), JSON.stringify(manifest({ id, ...m })));
-  for (const [name, content] of Object.entries(files)) fs.writeFileSync(path.join(dir, name), content);
-  return db.prisma.module.create({ data: { id, source: "bundled", version: manifest({ id, ...m }).version, enabled } });
+/** Ce que la source publie pour « planning » (ou un autre id) : le code « nouveau », éventuellement avec d'autres fichiers ou un autre manifeste (nouveau commit du dépôt du module). */
+function publish(over = {}, id = "planning") {
+  const repo = repos.get(id);
+  for (const n of fs.readdirSync(repo.dir)) if (n !== ".git") fs.rmSync(path.join(repo.dir, n), { recursive: true, force: true });   // chaque publication remplace le contenu
+  fs.writeFileSync(path.join(repo.dir, "module.json"), JSON.stringify(manifest({ id, ...over.manifest })));
+  fs.writeFileSync(path.join(repo.dir, "index.mjs"), code(over.marker ?? "nouveau"));
+  for (const [name, content] of Object.entries(over.files ?? {})) { fs.mkdirSync(path.dirname(path.join(repo.dir, name)), { recursive: true }); fs.writeFileSync(path.join(repo.dir, name), content); }
+  repo.g("add", "-A"); repo.g("commit", "-q", "--allow-empty", "--no-verify", "-m", "publication");
+}
+/** Un module installé depuis son dépôt git (à la racine), dont le dossier installé « a dérivé » : un autre code (« ancien ») sous le même numéro de version. */
+async function legacyFolder(id = "planning", { files = { "index.mjs": code("ancien") }, manifest: m = {}, enabled = true } = {}) {
+  const repo = makeRepo({ "module.json": manifest({ id, ...m }), ...Object.fromEntries(Object.entries(files).map(([n, c]) => [n, c])) });
+  repos.set(id, repo);
+  assert.equal((await I.installModule(repo.url)).ok, true);
+  if (!enabled) await db.prisma.module.update({ where: { id }, data: { enabled } });
+  return row(id);
 }
 
-/** Site d'avant : module `bundled` installé, activé, avec une instance, des réglages et des données ; le catalogue publie le nouveau code (même numéro de version). */
+/** Module installé, activé, avec une instance, des réglages et des données ; la source publie un nouveau code (même numéro de version). */
 async function bundledWithData(extra = {}) {
   await legacyFolder("planning", { manifest: extra.manifest });
-  await publish({ manifest: extra.manifest });
+  publish({ manifest: extra.manifest });
 
   const inst = await createInstance(db.prisma, { manifest: (await R.getModule("planning")).manifest, nickname: "Agenda", names: { fr: "Agenda" } });
   await setSetting(`instance.${inst.id}.titre`, "Mon planning");
@@ -75,34 +82,22 @@ test("empreinte : stable, sensible au moindre octet, ignore .git", () => {
   assert.notEqual(X.fingerprintDir(dir).hash, a);
 });
 
-test("ligne `bundled` d'un site ancien : le diagnostic voit l'ancien code sous le même numéro, la réinstallation le CONVERTIT en module du catalogue et garde tout le reste", async () => {
-  const inst = await bundledWithData();
-  const early = await X.diagnoseModule("planning", { compare: "local" });
-  assert.deepEqual([early.kind, early.comparison, early.catalogue.repoUrl, early.catalogue.version], ["bundled", null, cat.https, "1.1.0"], "pas de comparaison sans réseau ; la source affichée est le catalogue");
-  // Le clash : le numéro est le même, la mise à jour du cœur dit « à jour ».
-  assert.equal((await I.checkForUpdate("planning")).available, false, "le cœur ne voit rien : c'est le piège");
+test("ligne `bundled` d'une des premières versions : plus de conversion — le module fonctionne, aucune source, aucune mise à jour, réinstallation refusée, rien ne bouge", async () => {
+  const dir = installed("planning");
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, "module.json"), JSON.stringify(manifest()));
+  fs.writeFileSync(path.join(dir, "index.mjs"), code("ancien"));
+  await db.prisma.module.create({ data: { id: "planning", source: "bundled", version: "1.1.0", enabled: true } });
+  await cat.add("planning", { manifest: { version: "1.2.0" }, marker: "nouveau" });   // même si le catalogue le propose, plus rien ne le convertit
+  const hash = X.fingerprintDir(dir).hash;
   const d = await X.diagnoseModule("planning", { compare: "network" });
-  assert.equal(d.comparison.state, "different");
-  assert.equal(d.comparison.sourceVersion, "1.1.0");
-  const before = await row();
-  await setSetting("autre.reglage", "garde");
-
-  const r = await X.reinstallModule("planning");
-  assert.equal(r.ok, true);
-  assert.equal(r.changed, true);
-  assert.equal(r.before.version, "1.1.0"); assert.equal(r.after.version, "1.1.0");
-  assert.notEqual(r.before.hash, r.after.hash);
-  assert.match(read("index.mjs"), /nouveau/);
-  assert.equal((await X.diagnoseModule("planning", { compare: "network" })).comparison.state, "identical");
-  // Converti : module du catalogue (source git épinglée). Conservé : activé, instance, réglages, données.
-  const after = await row();
-  assert.deepEqual([after.source, after.repoUrl, after.subdir, after.ref], ["git", cat.https, "modules/planning", "planning-v1.1.0"]);
-  assert.equal(after.enabled, true);
-  assert.equal(after.installedAt.getTime(), before.installedAt.getTime());
-  assert.equal(await db.prisma.moduleInstance.count({ where: { moduleId: "planning" } }), 1);
-  assert.equal(await getSetting(`instance.${inst.id}.titre`), "Mon planning");
-  assert.equal(await getSetting("autre.reglage"), "garde");
-  assert.equal(await db.prisma.moduleRecord.count({ where: { instanceId: inst.id } }), 1);
+  assert.deepEqual([d.kind, d.comparison, d.catalogue], ["bundled", null, undefined]);
+  assert.equal((await I.checkForUpdate("planning")).available, false, "pas de source : aucune mise à jour proposée");
+  assert.equal((await I.updateModule("planning")).ok, false);
+  assert.equal((await X.reinstallModule("planning")).error, "modules.error.unknownSource");
+  assert.equal(X.fingerprintDir(dir).hash, hash);
+  assert.equal((await row()).source, "bundled", "la ligne n'a pas bougé");
+  assert.equal((await R.getModule("planning")).def.marker, "ancien", "le module continue de fonctionner");
   assert.deepEqual(leftovers(), []);
 });
 
@@ -138,29 +133,6 @@ test("un fichier secondaire modifié est rechargé avec le reste : plus aucun re
   const r = await X.reinstallModule("planning");
   assert.equal((await R.getModule("planning")).def.v, 1, "le voisin importé statiquement est celui de la source, sans redémarrage");
   tamper();
-});
-
-test("le catalogue propose plus récent : la réinstallation remet la version PROPOSÉE (jamais l'ancienne), catalogue injoignable → erreur claire et rien ne bouge", async () => {
-  await bundledWithData();
-  await publish({ manifest: { version: "1.2.0" }, marker: "v12" });
-  const r = await X.reinstallModule("planning");
-  assert.equal(r.ok, true);
-  assert.equal((await row()).version, "1.2.0");
-  assert.match(read("index.mjs"), /v12/);
-  // Un autre site d'avant, catalogue en panne : aucun repli local.
-  await legacyFolder("autre", { files: { "index.mjs": code("ancien") } });
-  await publish({}, "autre");
-  const hash = X.fingerprintDir(installed("autre")).hash;
-  await cat.down({ forget: true });
-  const down = await quiet(() => X.reinstallModule("autre"));
-  assert.deepEqual([down.ok, down.error, down.rolledBack], [false, "modules.error.catalogue", false]);
-  assert.equal(X.fingerprintDir(installed("autre")).hash, hash);
-  assert.equal((await row("autre")).source, "bundled", "la ligne n'a pas bougé");
-  assert.equal((await R.getModule("autre")).def.marker, "ancien", "le module continue de fonctionner");
-  // Le catalogue répond mais ne liste plus ce module : « source inconnue ».
-  await cat.up(); await cat.unlist("autre");
-  assert.equal((await quiet(() => X.reinstallModule("autre"))).error, "modules.error.unknownSource");
-  assert.equal((await row("autre")).source, "bundled");
 });
 
 test("module git en sous-dossier : code identique, puis différent sous le même numéro ; commit et empreinte git suivent", async () => {
@@ -260,7 +232,7 @@ test("échec en cours d'échange : retour arrière complet (fichiers et base), l
   assert.equal(r.rolledBack, true);
   assert.equal(X.fingerprintDir(installed()).hash, hash, "l'ancien dossier est revenu tel quel");
   const after = await row();
-  assert.equal(after.version, before.version); assert.equal(after.enabled, true); assert.equal(after.source, "bundled", "la ligne d'avant est rétablie telle quelle");
+  assert.equal(after.version, before.version); assert.equal(after.enabled, true); assert.equal(after.source, "git", "la ligne d'avant est rétablie telle quelle");
   assert.deepEqual(leftovers(), []);
   assert.equal((await R.getModule("planning")).def.marker, "ancien");
   assert.match(X.describeReinstall(r, (k) => k).lines.join(), /maintenance\.rolledBack/);

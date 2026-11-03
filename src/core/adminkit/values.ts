@@ -2,6 +2,8 @@
  * Valeurs des contrôles « une notion = un champ » (pur, testé sans navigateur) : période, date et heure, durée, nombre borné.
  * Format ENREGISTRÉ (et reçu par un module) :
  *   period    "11-01/11-30" (chaque année : mois-jour/mois-jour, la fin peut passer au-delà du 31 décembre) ou "2026-11-01/2026-11-30" (une seule fois)
+ *             Seulement pour un réglage qui déclare `openEnded: true` : "2026-12-01/" (à partir du 1er décembre 2026, sans fin) ou "/2026-12-24" (jusqu'au 24 décembre 2026, sans début).
+ *             Une période ouverte est toujours « une seule fois » : sans les deux bouts, « chaque année » n'a pas de sens.
  *   datetime  "2026-11-30T18:30" (date et heure du site, sans fuseau)
  *   duration  un nombre entier de SECONDES ("90")
  *   number    un nombre
@@ -19,12 +21,27 @@ const validDay = (m: number, d: number, y?: number): boolean => Number.isInteger
 
 export type DayRef = { m: number; d: number; y?: number };
 export type Period = { yearly: true; from: DayRef; to: DayRef } | { yearly: false; from: Required<DayRef>; to: Required<DayRef> };
+/** Période ouverte (réglage `openEnded`) : une seule fois, avec un début, une fin, ou les deux ; jamais aucun des deux. */
+export type OpenPeriod = { yearly: false; from: Required<DayRef> | null; to: Required<DayRef> | null };
 export type PeriodReason = "format" | "date" | "order";
+export type PeriodOptions = { openEnded?: boolean };
 
 const YEARLY_RE = /^(\d{2})-(\d{2})\/(\d{2})-(\d{2})$/;
 const ONCE_RE = /^(\d{4})-(\d{2})-(\d{2})\/(\d{4})-(\d{2})-(\d{2})$/;
+const SINCE_RE = /^(\d{4})-(\d{2})-(\d{2})\/$/;
+const UNTIL_RE = /^\/(\d{4})-(\d{2})-(\d{2})$/;
 
-export function parsePeriod(raw: string): { ok: true; period: Period } | { ok: false; reason: PeriodReason } {
+/** Un jour avec année « AAAA-MM-JJ » (déjà découpé en nombres) : une vraie date de 2000 à 2100. */
+const realDay = (y: number, m: number, d: number): boolean => y >= 2000 && y <= 2100 && validDay(m, d, y);
+
+/**
+ * Lit une période enregistrée. Sans `opts.openEnded`, EXACTEMENT comme avant : « 2026-12-01/ » et « /2026-12-24 » sont refusées (`format`), pour que le cœur ne
+ * laisse jamais passer une valeur ouverte dans un réglage qui n'a pas demandé cette forme. Avec `{ openEnded: true }`, elles sont lues en plus des deux formes
+ * habituelles (période une seule fois, début seul, fin seule).
+ */
+export function parsePeriod(raw: string): { ok: true; period: Period } | { ok: false; reason: PeriodReason };
+export function parsePeriod(raw: string, opts: PeriodOptions): { ok: true; period: Period | OpenPeriod } | { ok: false; reason: PeriodReason };
+export function parsePeriod(raw: string, opts: PeriodOptions = {}): { ok: true; period: Period | OpenPeriod } | { ok: false; reason: PeriodReason } {
   const text = raw.trim();
   const y = YEARLY_RE.exec(text);
   if (y) {
@@ -38,11 +55,25 @@ export function parsePeriod(raw: string): { ok: true; period: Period } | { ok: f
     if (fy * 10000 + fm * 100 + fd > ty * 10000 + tm * 100 + td) return { ok: false, reason: "order" };
     return { ok: true, period: { yearly: false, from: { y: fy, m: fm, d: fd }, to: { y: ty, m: tm, d: td } } };
   }
+  if (opts.openEnded === true) {
+    const since = SINCE_RE.exec(text), until = since ? null : UNTIL_RE.exec(text);
+    const hit = since ?? until;
+    if (hit) {
+      const [yy, mm, dd] = hit.slice(1).map(Number) as [number, number, number];
+      if (!realDay(yy, mm, dd)) return { ok: false, reason: "date" };
+      const day = { y: yy, m: mm, d: dd };
+      return { ok: true, period: since ? { yearly: false, from: day, to: null } : { yearly: false, from: null, to: day } };
+    }
+  }
   return { ok: false, reason: "format" };
 }
 
-export function serializePeriod(p: Period): string {
-  const one = (x: DayRef) => (p.yearly ? `${pad(x.m)}-${pad(x.d)}` : `${String(x.y).padStart(4, "0")}-${pad(x.m)}-${pad(x.d)}`);
+export function serializePeriod(p: Period | OpenPeriod): string {
+  if (!p.yearly) {
+    const day = (x: Required<DayRef> | null) => (x ? `${String(x.y).padStart(4, "0")}-${pad(x.m)}-${pad(x.d)}` : "");
+    return `${day(p.from)}/${day(p.to)}`;
+  }
+  const one = (x: DayRef) => `${pad(x.m)}-${pad(x.d)}`;
   return `${one(p.from)}/${one(p.to)}`;
 }
 
@@ -76,20 +107,25 @@ export function dateWords(x: DayRef, locale: string, withYear = false): string {
   return `${day} ${month}${withYear && x.y !== undefined ? ` ${x.y}` : ""}`;
 }
 
-/** La phrase d'aperçu : « Du 1er novembre au 30 novembre, chaque année ». `templates` : textes déjà traduits avec {from} et {to}. */
-export function describePeriod(p: Period, locale: string, templates: { yearly: string; once: string }): string {
+/**
+ * La phrase d'aperçu : « Du 1er novembre au 30 novembre, chaque année ». `templates` : textes déjà traduits avec {from} et {to}.
+ * Une période ouverte se dit en une phrase aussi : `since` « À partir du {from} » (début seul), `until` « Jusqu'au {to} » (fin seule).
+ */
+export function describePeriod(p: Period | OpenPeriod, locale: string, templates: { yearly: string; once: string; since?: string; until?: string }): string {
   const fill = (tpl: string, from: string, to: string) => tpl.replace("{from}", from).replace("{to}", to);
-  return p.yearly
-    ? fill(templates.yearly, dateWords(p.from, locale), dateWords(p.to, locale))
-    : fill(templates.once, dateWords(p.from, locale, true), dateWords(p.to, locale, true));
+  if (p.yearly) return fill(templates.yearly, dateWords(p.from, locale), dateWords(p.to, locale));
+  if (p.from && p.to) return fill(templates.once, dateWords(p.from, locale, true), dateWords(p.to, locale, true));
+  if (p.from) return fill(templates.since ?? "{from}", dateWords(p.from, locale, true), "");
+  if (p.to) return fill(templates.until ?? "{to}", "", dateWords(p.to, locale, true));
+  return "";
 }
 
-/** Le jour `now` (année, mois, jour dans l'heure du site) tombe-t-il dans la période ? Une période « chaque année » peut enjamber le 31 décembre. */
-export function periodContains(p: Period, now: { y: number; m: number; d: number }): boolean {
+/** Le jour `now` (année, mois, jour dans l'heure du site) tombe-t-il dans la période ? Une période « chaque année » peut enjamber le 31 décembre ; un bout ouvert ne limite pas. */
+export function periodContains(p: Period | OpenPeriod, now: { y: number; m: number; d: number }): boolean {
   const key = (m: number, d: number) => m * 100 + d;
   if (!p.yearly) {
     const k = now.y * 10000 + now.m * 100 + now.d;
-    return k >= p.from.y * 10000 + p.from.m * 100 + p.from.d && k <= p.to.y * 10000 + p.to.m * 100 + p.to.d;
+    return (p.from === null || k >= p.from.y * 10000 + p.from.m * 100 + p.from.d) && (p.to === null || k <= p.to.y * 10000 + p.to.m * 100 + p.to.d);
   }
   const a = key(p.from.m, p.from.d), b = key(p.to.m, p.to.d), k = key(now.m, now.d);
   return a <= b ? k >= a && k <= b : k >= a || k <= b;

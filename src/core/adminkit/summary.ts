@@ -4,7 +4,7 @@
  */
 import { describeDate, describeDateTime, describeDuration, parsePeriod, describePeriod } from "./values";
 
-export type RareField = { key: string; label: string; type: string; default?: unknown; options?: { value: string; label: string }[]; unit?: string };
+export type RareField = { key: string; label: string; type: string; openEnded?: boolean; default?: unknown; options?: { value: string; label: string }[]; unit?: string };
 type T = (key: string, vars?: Record<string, string | number>) => string;
 
 /** Le réglage a-t-il une valeur propre (différente de son défaut) ? */
@@ -19,7 +19,7 @@ export function summarizeField(f: RareField, stored: unknown, locale: string, t:
   switch (f.type) {
     case "boolean": return stored === true ? f.label : t("field.summary.off", { label: f.label });
     case "select": return f.options?.find((o) => o.value === stored)?.label ?? f.label;
-    case "period": { const p = parsePeriod(String(stored)); return p.ok ? describePeriod(p.period, locale, { yearly: t("period.sentenceYearly"), once: t("period.sentenceOnce") }) : f.label; }
+    case "period": { const p = parsePeriod(String(stored), { openEnded: f.openEnded === true }); return p.ok ? describePeriod(p.period, locale, { yearly: t("period.sentenceYearly"), once: t("period.sentenceOnce"), since: t("period.sentenceSince"), until: t("period.sentenceUntil") }) : f.label; }
     case "datetime": return `${f.label} : ${describeDateTime(String(stored), locale, t("datetime.at"))}`;
     case "duration": return `${f.label} : ${describeDuration(Number(stored), t("unit.day"))}`;
     case "number": return `${f.label} : ${stored}${f.unit ? ` ${f.unit}` : ""}`;

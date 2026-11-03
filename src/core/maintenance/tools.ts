@@ -75,7 +75,7 @@ const DEFS: Def[] = [
       return { requestId: r.id, action: r.action, status: r.status === "pending" ? "pending_approval" : r.status, plan: r.plan, createdAt: new Date(r.createdAt).toISOString(), expiresAt: new Date(r.expiresAt).toISOString(), ...(r.result ? { result: r.result } : {}) };
     },
   },
-  { name: "legacy", level: 1, title: "Data upgrade report", description: "What is left to upgrade after an update from an earlier version of the site: old module rows, switched-off items, instances whose data is behind or set aside, takeovers not done, hidden settings still filled in, unknown settings. Read-only; counts and names only, never a setting value.", input: NONE, run: () => legacyReportForAssistant() },
+  { name: "legacy", level: 1, title: "Data upgrade report", description: "What is left to upgrade after an update from an earlier version of the site: old module rows, switched-off items, instances whose data is behind or set aside, takeovers not done, hidden settings still filled in, unknown settings. The `upkeep` field says what is really left to do (`toDo`) and what is only kept as a precaution (`keptAsPrecaution`, nothing to do, for example safety copies of old data that stay in backups); `collectionsToEmpty` lists those copies and is never a task. Read-only; counts and names only, never a setting value.", input: NONE, run: () => legacyReportForAssistant() },
   {
     name: "catalog_list", level: 1, title: "Modules available to install",
     description: "Lists the modules of the official catalogue that this site does NOT have yet (or all of them with include=all, the installed ones marked). Use it to guide the owner: search with a few short words (French or English, try several), then read the sheet of the best candidates with maintenance_catalog_get. Each item says what the module is for, whether it is verified, whether it can be installed on this site (and if not, why in plain words), the services it needs or offers. Paged (50 at most, use nextOffset). Read-only; reads the same catalogue as the admin (cached 15 minutes). If the catalogue cannot be reached the answer says so (available: false): try again later.",
@@ -145,7 +145,6 @@ const DEFS: Def[] = [
 
 /** Catalogue statique (nom, niveau, droits) : sert à l'admin, aux tests et à la documentation. */
 export const MAINTENANCE_TOOLS = DEFS.map((d) => ({ name: `maintenance_${d.name}`, level: d.level, readOnly: d.readOnly ?? d.level === 1, destructive: d.level === 3 }));
-export const isMaintenanceTool = (name: string) => name.startsWith("maintenance_");
 
 export const maintenanceToolProvider: McpToolProvider = {
   id: "maintenance",

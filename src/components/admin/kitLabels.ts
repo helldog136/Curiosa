@@ -30,7 +30,7 @@ export function formLabels(t: Translator, locale: string, block: Extract<Block, 
   }
   const folded = block.fields.filter((f) => f.folded && f.kind !== "hidden");
   const fold = folded.length
-    ? summarizeGroup(folded.map((f) => ({ key: f.name, label: f.label, type: f.kind === "switch" || f.kind === "checkbox" ? "boolean" : f.kind === "select" || f.kind === "segmented" ? "select" : f.kind ?? "text", default: undefined, options: f.options, unit: f.unit })),
+    ? summarizeGroup(folded.map((f) => ({ key: f.name, label: f.label, type: f.kind === "switch" || f.kind === "checkbox" ? "boolean" : f.kind === "select" || f.kind === "segmented" ? "select" : f.kind ?? "text", default: undefined, options: f.options, unit: f.unit, openEnded: f.openEnded })),
       (key) => { const f = folded.find((x) => x.name === key); const v = f?.value; return f && (f.kind === "switch" || f.kind === "checkbox") ? (["on", "1", "true"].includes(v ?? "") ? true : undefined) : v; }, locale, t)
     : undefined;
   return {

@@ -52,11 +52,6 @@ export async function markMigrationTimeout(instanceId: string): Promise<void> {
   await setSetting(statusKey(instanceId), { status: "failed", error: "timeout" });
 }
 
-/** Une instance neuve naît à la version courante des données de son module (aucune migration à lui appliquer). */
-export async function stampNewInstance(instanceId: string, mod: Pick<LoadedModule, "manifest">): Promise<void> {
-  if (targetVersion(mod) > 1) await setSetting(versionKey(instanceId), targetVersion(mod));
-}
-
 /** Migre les données d'une instance jusqu'à la version du module. Ne lève jamais. */
 export async function migrateInstance(mod: LoadedModule, instance: InstanceView): Promise<MigrationOutcome> {
   const from = await dataVersionOf(instance.id);

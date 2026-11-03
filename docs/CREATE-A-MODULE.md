@@ -97,7 +97,7 @@ la langue courante, ou la valeur par défaut.
 |---|---|
 | `text`, `textarea`, `url` | texte court, long, adresse |
 | `number`, `boolean`, `select` | nombre (cœur 0.6.0 : avec `min`, `max`, `step`, `unit`), case à cocher, liste (`options`, ou `display: "segmented"` pour 2 à 4 boutons) |
-| `period`, `datetime`, `duration` | (cœur 0.6.0, `minCore` 0.6.0) une période (« Du 1er novembre au 30 novembre, chaque année »), une date et une heure, une durée : **un seul champ** chacune, jamais un champ par composant |
+| `period`, `datetime`, `duration` | (cœur 0.6.0, `minCore` 0.6.0) une période (« Du 1er novembre au 30 novembre, chaque année » ; `openEnded` pour un début seul ou une fin seule), une date et une heure, une durée : **un seul champ** chacune, jamais un champ par composant |
 | `color` | couleur `#RRGGBB` ; avec `"default": "theme:accent"` elle **suit le thème du site** tant que l'administrateur n'en choisit pas |
 | `image` | téléversement ou adresse ; l'administrateur peut **recadrer** les images téléversées (voir « Images recadrées » plus bas) |
 | `video` | téléversement d'une vidéo MP4 ou WebM (50 Mo au plus), **réservée aux fichiers du site** (`/uploads/…`) ; vérifiez la valeur avant de l'utiliser, comme le fait le module « Bandeau d'accueil » |
@@ -361,7 +361,7 @@ Voir `adminPanel` et `adminActions` dans l'exemple (modifier un message : `?edit
 - **Une colonne d'origine colorée ET écrite** : une cellule `{ text: "Partenaires", badge: "info" }` (`accent`, `info`, `ok`, `warn`, `danger`, `neutral`). Plusieurs listes de mêmes colonnes ne font qu'un tableau, dont l'origine est une colonne avec ses pastilles de filtre.
 - **Un interrupteur dans la ligne** : une cellule `{ text: "Actif", switch: { on: true, action: "setEnabled", label: "Commande !bonjour active" } }`. L'action reçoit `values.id` et `values.enabled` (`"1"` ou `"0"`) : elle **dit l'état voulu**, elle n'inverse rien, et renvoie `{ ok }` ou `{ error }` (alors l'interrupteur revient en arrière). Plus de bouton « Activer / désactiver ».
 - **Au plus deux boutons par ligne** : les suivants, ceux marqués `inMenu: true` et ceux marqués `danger: true` vont dans un menu « ⋯ ».
-- **Un champ par notion** : dans un `adminForm`, `kind: "period"` (valeur `"11-01/11-30"` chaque année, ou `"2026-11-01/2026-11-30"`), `"datetime"` (`"2026-11-30T18:30"`), `"duration"` (secondes) ou `"number"` avec `min`, `max`, `unit` ; dans `module.json`, les mêmes en `type` de réglage (`period`, `datetime`, `duration`, et `number` avec `min` / `max` / `step` / `unit`). Le serveur revérifie les réglages et dit les bornes avec un exemple.
+- **Un champ par notion** : dans un `adminForm`, `kind: "period"` (valeur `"11-01/11-30"` chaque année, ou `"2026-11-01/2026-11-30"` ; une période nouvelle part de « une seule fois » ; avec `openEnded: true`, cœur 0.6.4, une seule date suffit : `"2026-12-01/"` ou `"/2026-12-24"`), `"datetime"` (`"2026-11-30T18:30"`), `"duration"` (secondes) ou `"number"` avec `min`, `max`, `unit` ; dans `module.json`, les mêmes en `type` de réglage (`period`, `datetime`, `duration`, et `number` avec `min` / `max` / `step` / `unit`). Le serveur revérifie les réglages et dit les bornes avec un exemple.
 - **2 à 4 choix en boutons** : `kind: "segmented"` (formulaire) ou `"display": "segmented"` (réglage `select`). **Un oui/non en interrupteur** : `kind: "switch"`.
 - **Les options rares repliées** : `folded: true` sur un champ de formulaire, `"rare": true` sur un réglage : ils vont sous « Plus d'options », qui résume ce qui y est déjà réglé et ne compte plus dans le budget de champs (5 par formulaire, 7 par onglet).
 - **Un exemple et l'erreur sous le champ** : `example: "insta, ig"` (le cœur écrit « Par exemple : »), et `errors: { champ: "Écrivez un nombre entier, par exemple 500." }` dans le résultat d'une action.
@@ -479,7 +479,7 @@ Les journaux propres aux modules (Bot Twitch, Participation, Home Assistant, Son
 
 ## 12 quater. Se montrer au tableau de bord (`dashboard`)
 
-Le tableau de bord de l'administration dit à la personne **ce qui attend une action**, **ce qui s'est passé**, de quoi **créer** quelque chose et quelques chiffres utiles. Votre module peut y apporter trois choses, toutes **facultatives**, en les déclarant dans `module.json` :
+Le tableau de bord de l'administration dit à la personne **ce qui attend une action**, de quoi **créer** quelque chose, quelques chiffres utiles et, tout en bas, **ce qui s'est passé** (le journal est toujours le dernier bloc). Votre module peut y apporter trois choses, toutes **facultatives**, en les déclarant dans `module.json` :
 
 ```json
 "rights": [{ "id": "moderate", "label": { "fr": "Valider les avis", "en": "Approve reviews" } }],
@@ -564,7 +564,7 @@ ctx.t("mailSubject", { name })   // repli : langue par défaut, puis « en », p
 **Règle pour la `description`** (affichée dans le catalogue) : dites ce que fait **votre** module, pour la personne qui l'installe, en une ou deux phrases. Ne citez jamais un autre module (ni ce qui vous consomme, ni ce qui vous alimente) : ces liens se déclarent dans `offers` / `requires` / `provides` / `consumes`, et l'admin les affiche à part. Pas de jargon technique non plus (noms de sujets, d'API…).
 
 Les libellés de `module.json` (`name`, `label`, `help`, `description`…) sont du texte ou `{ "en": "…", "fr": "…" }`. Les réglages `translatable` donnent une valeur par langue.
-Le contexte porte `ctx.locale`, `ctx.defaultLocale`, `ctx.locales`. Quand vous construisez un lien interne, préfixez la langue si elle n'est pas la langue par défaut (`/fr/guestbook`) — voir `pageHref()` dans l'exemple.
+Le contexte porte `ctx.locale`, `ctx.defaultLocale`, `ctx.locales`, et (cœur 0.6.4) `ctx.timezone`, le fuseau horaire du site (nom IANA valide) : c'est dans ce fuseau que « aujourd'hui » change. Pour savoir si une annonce est dans sa période, comparez-y le jour (`new Intl.DateTimeFormat("en-CA", { timeZone: ctx.timezone }).format(new Date())`) ; un cœur plus ancien ne le fournit pas, testez `typeof ctx.timezone === "string"` et gardez votre repli. Quand vous construisez un lien interne, préfixez la langue si elle n'est pas la langue par défaut (`/fr/guestbook`) — voir `pageHref()` dans l'exemple.
 
 ### Rendre son module stylable par les skins (cœur 0.4.0)
 

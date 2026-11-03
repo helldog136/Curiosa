@@ -11,7 +11,6 @@ import { DEFAULT_STYLE } from "./model";
  */
 export const OV_TOKEN_NAMES = ["--ov-fg", "--ov-surface", "--ov-radius", "--ov-border"] as const;
 export const OV_PARTS = ["page", "frame", "test-frame", "label", "empty"] as const;
-export const OV_REGIONS = ["page", "element"] as const;
 
 export const STYLE_CHOICES = {
   text: ["light", "dark"],

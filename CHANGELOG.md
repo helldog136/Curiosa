@@ -7,6 +7,48 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.6.4 — 2026-11-03
+
+**En bref.** Une entrée « Entretien » apparaît dans le menu d'administration, avec une pastille qui dit « À jour » ou combien de choses vous avez à faire. Les copies de sécurité d'anciennes données ne sont plus présentées comme une tâche : le site les garde par prudence, sans rien vous demander. Une période part maintenant de « une seule fois », et un réglage peut accepter une seule date. Le journal passe en dernier sur le tableau de bord. Un ménage interne n'a aucun effet visible. Le changement qui compte : la version minimale de mise à jour passe à 0.2.0. Un site plus ancien est amené tout seul à la 0.2.0 puis à la version choisie ; rien ne change pour un site en 0.2.0 ou plus récent.
+
+### Nouveautés
+
+- **Le journal passe en bas du tableau de bord.** Le cadre « Ce qui s'est passé » est maintenant le dernier, en mode simple comme en mode avancé : ce qui demande votre attention reste en haut. Rien d'autre ne change de place.
+- **« Entretien » dans le menu d'administration, pour la personne propriétaire.** Sa pastille dit « À jour », « Copie gardée » (rien à faire) ou un nombre quand une action vous attend. Le bandeau reste réservé à l'urgent.
+- **Une page Entretien plus claire.** Chaque ligne est dans « À faire », « Gardé par prudence » ou « Terminé » (replié). Une recherche et des filtres retrouvent une ligne.
+- **Un texte juste pour les copies de sécurité.** La page disait que l'extension viderait elle-même ces données. Elle dit maintenant ce qui est vrai : la copie est gardée par prudence, comprise dans vos sauvegardes, jamais supprimée par le site, et ne demande aucune action de votre part.
+- **Les assistants IA font la même différence.** L'outil de maintenance qui liste ce qui reste sépare maintenant ce qui est à faire de ce qui est seulement gardé par prudence. Les champs existants ne changent pas.
+
+### Périodes et fuseau horaire
+
+- **Une période nouvelle ne revient plus chaque année toute seule.** Quand vous choisissez des dates, la case « Chaque année » est maintenant décochée : une annonce ponctuelle comme « Soldes du 1er au 15 décembre » ne reparaît pas l'an prochain sans que vous l'ayez voulu. Cochez-la pour une fête qui revient.
+- **Rien ne change pour ce qui est déjà réglé.** Les périodes déjà enregistrées, y compris celles qui reviennent chaque année, gardent leur sens. Les saisons et les fêtes toutes prêtes, et « Tout le mois de », fonctionnent comme avant.
+- **Une extension peut accepter une période ouverte.** Quand elle le permet, une seule date suffit : « À partir du 1er décembre 2026 » ou « Jusqu'au 24 décembre 2026 », sans inventer l'autre date. Une phrase sous les dates dit ce qui a été compris ; les autres extensions gardent leurs deux dates.
+- **Les extensions connaissent le fuseau horaire de votre site.** Elles changent de jour à la même heure que vous, même si votre hébergeur est réglé sur un autre fuseau. Aucun réglage à faire.
+
+### Mise à jour depuis une version plus ancienne
+
+- **Rien ne change pour votre site tel qu'il est aujourd'hui.** Si vous êtes en version 0.2.0 ou plus récente, la mise à jour se fait comme d'habitude, en une seule étape. Vos extensions, vos réglages et vos données restent tels quels.
+- **Un site plus ancien que la 0.2.0 passe d'abord par la 0.2.0.** La page Mises à jour installe cette étape toute seule, redémarre le site, puis installe la suite. Sans redémarrage automatique, redémarrez le site après la première étape puis cliquez de nouveau sur « Installer ».
+- **Une extension venue des toutes premières versions est signalée dans Entretien.** Elle fonctionne, mais ne se met plus à jour toute seule. Vous la retirez en gardant ses données puis vous la réinstallez depuis Extensions, ou vous la gardez telle quelle.
+
+### Ménage interne
+
+- **Rien ne change pour vous.** Nous avons retiré du code interne que plus rien n'utilisait (des constantes et de petites fonctions oubliées). Votre site, vos extensions et vos données se comportent exactement comme avant.
+
+### Pour les développeurs
+
+- **Retrait du code d'avant la 0.2.0.** `minFrom` de `upgrade.json` passe à `0.2.0` (ligne `REMOVED` ajoutée au test d'échéance). Retirés : le rangement des « éteints » au démarrage et la conversion des lignes `bundled` / `builtin` (`bundledUpdate.ts`, `convertSourceRowsOffline`, `localTreeHash`). `SweepCounts` n'a plus que `migrated`, `setAside`, `emptied`.
+- **Gardé, avec sa raison.** `legacyOff.ts` sert encore à restaurer une sauvegarde d'avant la 0.1.20 (échéance `0.9.99`). Les formats de sauvegarde `builtin` / `bundled` restent lus, les colonnes `enabled` restent. `legacySettings`, `ctx.legacy`, `dataFloor`, `legacyCollections` et le relais RAWG sont inchangés.
+- **Rapport d'héritage et `maintenance_legacy`.** `switchedOff` et `totals.switchedOff*` restent, vides ou à 0. Une ligne `bundled` / `builtin` est « à faire » quel que soit le catalogue. `Diagnostic.catalogue` et `catalogueOnly` disparaissent ; une telle ligne rend `modules.error.unknownSource` à la mise à jour.
+- `src/core/modules/legacyUpkeep.ts` : classement des lignes du rapport d'héritage en `todo` / `kept` / `done` (`upkeepRows`, `upkeepSummary`, `legacyUpkeepSummary` avec une mémoire de 15 secondes). Le contrat `legacyCollections` ne dit pas si l'extension vide la collection ou la garde : le cœur ne la supprime jamais et la classe « gardée ».
+- `legacyReportForAssistant()` gagne un champ `upkeep` (`state`, `toDo`, `keptAsPrecaution`) ; `collectionsToEmpty` et les autres champs sont inchangés.
+- `NavLink` accepte une pastille d'état écrite (`status`) en plus du nombre.
+- **Période ouverte (additif).** Clé `openEnded` d'un réglage `period` ou d'un champ `period` d'`adminForm`, désactivée par défaut : valeurs `"AAAA-MM-JJ/"` (début seul) et `"/AAAA-MM-JJ"` (fin seule), toujours « une seule fois ». `parsePeriod(raw, { openEnded })` et `checkFieldInput` les refusent sans la clé ; `describePeriod` et `periodContains` les lisent. Voir docs/MODULES.md.
+- **`ctx.timezone` (additif).** Fuseau du site : `site.timezone` s'il est valide, sinon celui du serveur, « UTC » en dernier repli. Un ancien module l'ignore ; un nouveau teste `typeof ctx.timezone === "string"`. `fakeCtx({ timezone })` du kit de test (`null` simule un cœur plus ancien).
+- **Valeur de départ de `PeriodField`.** Sans valeur enregistrée, « Chaque année » est décoché (avant : coché) ; une valeur `MM-JJ/MM-JJ` s'ouvre cochée. Logique pure dans `src/core/adminkit/periodInputs.ts` (`toInputs`, `periodState`).
+- **Code mort retiré.** Vingt-trois exports sans aucun usage (cœur, tests, docs, `testsupport/`, `scripts/`, `curiosa-extras`), par exemple `RESERVED_NAMES`, `describeGroups`, `planForManifest`, `stampNewInstance`. Aucun contrat de module ni de `testsupport` n'est touché.
+
 ## 0.6.3 — 2026-11-03
 
 **En bref.** La recherche dans le site est là : un champ « Rechercher » apparaît dans l'en-tête de votre site et mène à une page de résultats. Elle est activée par défaut ; vous pouvez la couper dans « Réglages du site », onglet « Recherche ». À l'installation, une question facultative « Vous êtes… ? » coche d'avance les extensions qui vont avec et propose des pages d'exemple en brouillon ; une liste de pages peut aussi partir d'un modèle. Un petit ménage interne n'a aucun effet visible. Vos réglages actuels sont conservés.

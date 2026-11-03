@@ -7,6 +7,7 @@ import { can, type AdminUser } from "@/core/auth/access";
 import { makeApi, type CallerRef } from "./api";
 import { makeLegacy } from "./legacySettings";
 import type { LoadedModule } from "./registry";
+import { siteTimezone } from "@/core/siteTime";
 import { followsSite, readMulti, resolveDefault } from "./settingValues";
 import type { ModuleContext } from "./types";
 
@@ -51,6 +52,8 @@ export async function buildContext(mod: LoadedModule, instance: InstanceView, lo
     locale: loc,
     defaultLocale: config.defaultLocale,
     locales: config.locales,
+    // Fuseau du site (réglage `site.timezone`, sinon celui du serveur) : toujours un nom valide (voir siteTime.ts).
+    timezone: await siteTimezone(),
     setting: <T = string>(key: string) => values[key] as T | undefined,
     theme,
     visit: { lastVisit: lastVisit ?? (await currentVisit().catch(() => ({ lastVisit: new Date(0) }))).lastVisit },
