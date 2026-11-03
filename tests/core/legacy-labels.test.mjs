@@ -8,6 +8,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { findExtrasDir } from "../helpers/extras.mjs";
 
+const { settingKeysReadByCore } = await import("@/core/modules/manifest");
+
 const root = findExtrasDir();
 const skip = root ? false : "dépôt de modules absent (CURIOSA_EXTRAS_DIR) : rien à vérifier";
 
@@ -72,6 +74,13 @@ test("règles : mots entiers, français et anglais, liste blanche par module/fic
   assert.deepEqual(strings.map(([p]) => p), ["name", "settings[0].label.fr", "settings[0].help"]);
 });
 
+test("réglages lus par le cœur d'après le manifeste : pageSetting et shortLink, rien d'autre", () => {
+  assert.deepEqual(settingKeysReadByCore({}), []);
+  assert.deepEqual(settingKeysReadByCore({ pageSetting: "publicPage" }), ["publicPage"]);
+  assert.deepEqual(settingKeysReadByCore({ shortLink: { enabled: "createShortLink", name: "shortLinkName", default: "discord", target: "social.link" } }), ["createShortLink", "shortLinkName"]);
+  assert.deepEqual(settingKeysReadByCore({ shortLink: { enabled: "on", default: "x", target: { setting: "url" } } }), ["on", "url"]);
+});
+
 const modules = root ? fs.readdirSync(path.join(root, "modules")).filter((id) => fs.existsSync(path.join(root, "modules", id, "module.json"))).sort() : [];
 const readJson = (f) => JSON.parse(fs.readFileSync(f, "utf8"));
 const walkFiles = (d) => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.name === "node_modules" || e.name === ".git" ? [] : e.isDirectory() ? walkFiles(path.join(d, e.name)) : [path.join(d, e.name)]));
@@ -97,7 +106,9 @@ test("dépôt de modules : chaque clé de `settings` est lue par le code du modu
     const dir = path.join(root, "modules", id);
     const manifest = readJson(path.join(dir, "module.json"));
     const code = walkFiles(dir).filter((f) => /\.(m?js|cjs|tsx?)$/.test(f) && !/(^|[\\/])tests?[\\/]/.test(path.relative(dir, f)) && !/\.test\./.test(f)).map((f) => fs.readFileSync(f, "utf8")).join("\n");
-    for (const s of manifest.settings ?? []) if (!new RegExp(`["'\`.]${s.key}\\b`).test(code)) unread.push(`${id} : ${s.key}`);
+    // Une clé que le CŒUR lit d'après le manifeste (pageSetting, shortLink) n'apparaît jamais dans le code du module : elle n'est pas pour autant un champ mort.
+    const byCore = new Set(settingKeysReadByCore(manifest));
+    for (const s of manifest.settings ?? []) if (!byCore.has(s.key) && !new RegExp(`["'\`.]${s.key}\\b`).test(code)) unread.push(`${id} : ${s.key}`);
   }
   assert.deepEqual(unread, [], `Réglages déclarés mais jamais lus (à retirer, ou à passer en legacySettings) :\n${unread.join("\n")}`);
 });
