@@ -7,9 +7,7 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
-## 0.6.6 — 2026-11-03
-
-**En bref.** La recherche du site montre d'abord ce qui vient de votre site (pages, articles), puis les vidéos et les liens vers d'autres sites. Rien à régler.
+## Prochaine version (non publiée)
 
 ### Visites de personnes et de robots
 
@@ -18,6 +16,15 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Les chiffres de vos visiteurs ne changent pas.** La page « Confidentialité » du site le dit en une phrase.
 - Seuls les robots qui chargent la page comme un navigateur sont vus. Aucun réglage à faire.
 
+### Pour les développeurs
+
+- **Une seule liste d'agents non humains** (`src/core/agents.ts`, `classifyAgent` : `person`, `search`, `ai`, `preview`, `tool`). `redirectStats.ts` (`isHumanVisit`, comportement inchangé) et `stats.ts` l'utilisent ; l'ancienne liste de `redirectStats.ts` et l'expression courte de `stats.ts` disparaissent. Quelques noms d'IA ajoutés (`google-extended`, `cohere`, `mistralai`, `diffbot`…).
+- **Compteur de robots** : lignes `VisitDaily` de genre `bot` (`ROBOT_KIND`), clé = catégorie, `views` = visites, 4 lignes par jour au plus. Aucun changement de schéma, aucune migration. `recordVisit` renvoie `"robot"` pour ces visites (avant : `"ignored"`). `statsSummary().robots` (`last7`, `last30` : `search`, `ai`, `preview`, `tool`, `total`) est additif.
+
+## 0.6.6 — 2026-11-03
+
+**En bref.** La recherche du site montre d'abord ce qui vient de votre site (pages, articles), puis les vidéos et les liens vers d'autres sites. Rien à régler.
+
 ### Recherche dans le site
 
 - **Les pages et articles de votre site passent avant les vidéos et les autres sites.** En cherchant un mot, vous voyez d'abord ce qui est à vous, puis ce qui mène ailleurs (vidéos YouTube, réseaux…). Avant, une vidéo récente pouvait passer devant votre page.
@@ -25,8 +32,6 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Pour les développeurs
 
-- **Une seule liste d'agents non humains** (`src/core/agents.ts`, `classifyAgent` : `person`, `search`, `ai`, `preview`, `tool`). `redirectStats.ts` (`isHumanVisit`, comportement inchangé) et `stats.ts` l'utilisent ; l'ancienne liste de `redirectStats.ts` et l'expression courte de `stats.ts` disparaissent. Quelques noms d'IA ajoutés (`google-extended`, `cohere`, `mistralai`, `diffbot`…).
-- **Compteur de robots** : lignes `VisitDaily` de genre `bot` (`ROBOT_KIND`), clé = catégorie, `views` = visites, 4 lignes par jour au plus. Aucun changement de schéma, aucune migration. `recordVisit` renvoie `"robot"` pour ces visites (avant : `"ignored"`). `statsSummary().robots` (`last7`, `last30` : `search`, `ai`, `preview`, `tool`, `total`) est additif.
 - **Règle de classement** (`src/core/search/rank.ts`). `SearchDoc.own` vaut vrai pour une entrée du cœur, ou si l'adresse est relative ou sur le même nom de domaine que `SITE_URL` (`isOwnAddress`).
 - **Domaine.** `www.` et le port sont ignorés ; un sous-domaine est un autre domaine.
 - **Tri.** Site d'abord, puis externes ; dans chaque groupe, rang puis récence comme avant. Le plafond de 200 coupe donc les externes d'abord.
