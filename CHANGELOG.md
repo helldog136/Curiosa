@@ -27,7 +27,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Ménage interne
 
-- **Rien ne change pour vous.** Nous avons vérifié le code marqué « ancien » et retiré trois petits restes qui ne servaient plus à rien. Votre site, vos extensions, vos données et la mise à jour elle-même se comportent exactement comme avant. Tout ce qui sert encore à convertir d'anciens sites est gardé.
+- **Rien ne change pour vous.** Nous avons vérifié le code marqué « ancien » et retiré trois petits restes inutiles. Votre site, vos extensions et vos données se comportent comme avant ; ce qui sert encore à convertir d'anciens sites est gardé.
 
 ### Pour les développeurs
 
@@ -36,7 +36,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **`src/core/search/`.** `text.ts` (repli sans accents, saisie bornée, extrait), `rank.ts` (titre, résumé, texte, puis récence), `index.ts` (index en mémoire : 4 000 fiches par langue, 60 s), `limit.ts` (30 par minute), `service.ts`, `settings.ts` (`search.*`).
 - **Page et pièces.** `/search` (chemin réservé, `noindex`, jamais en cache partagé), composants `SearchForm` et `SearchView`, pièces `search` et `mark` ajoutées à la liste blanche et au banc d'essai des skins. `SearchAction` ajoutée au JSON-LD du site. Détails : `docs/PLATFORM.md`, `docs/SKINS.md`, `docs/SECURITE.md`.
 - **Lecture par tranches.** `entriesChunk` (`src/core/content/entries.ts`) lit les entrées publiques d'une instance 250 par 250.
-- **Code ancien retiré.** `guardOwner` (alias de `guardBackup`, aucun appel), `AI_AND_SCRAPER_BOTS` (`src/core/seo.ts`, lu seulement par un test) et le champ `restartAdvised` du bilan de réinstallation (toujours faux depuis la 0.2.13) avec sa phrase `maintenance.result.restart`. Rien d'autre : `legacyOff.ts` (échéance 0.6.99), les lignes `bundled` / `builtin`, `legacySettings`, les colonnes `enabled` et `minFrom` restent en place.
+- **Code ancien retiré.** `guardOwner` (alias de `guardBackup`), `AI_AND_SCRAPER_BOTS` (`seo.ts`) et `restartAdvised` du bilan de réinstallation (faux depuis la 0.2.13), avec `maintenance.result.restart`. Restent : `legacyOff.ts` (échéance 0.6.99), lignes `bundled` / `builtin`, `legacySettings`, colonnes `enabled`, `minFrom`.
 
 ## 0.6.2 — 2026-11-02
 
