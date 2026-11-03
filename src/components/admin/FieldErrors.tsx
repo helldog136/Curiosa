@@ -61,6 +61,8 @@ export function useFieldErrorsDom(form: RefObject<HTMLElement | null>, errors: F
     const undo: (() => void)[] = [];
     for (const [key, message] of Object.entries(errors)) {
       const found = (root as HTMLFormElement).elements?.namedItem?.(key) ?? root.querySelector(`[name="${CSS.escape(key)}"]`);
+      // Le champ période affiche lui-même son erreur (sous la ligne des dates) : on ne la double pas.
+      if (found && !(found instanceof RadioNodeList) && (found as HTMLElement).closest("[data-period-field]")) continue;
       let el = found instanceof RadioNodeList ? (found[0] as HTMLElement | undefined) : (found as HTMLElement | null);
       // Valeur portée par un champ caché (image, choix parmi…) : le message va sous la saisie visible du même réglage.
       if (el && (el as HTMLInputElement).type === "hidden") el = el.closest("[data-setting], [data-choice]")?.querySelector<HTMLElement>('input:not([type="hidden"]), textarea, select') ?? null;

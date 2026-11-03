@@ -16,6 +16,7 @@ import { MAX_TAB_ENTRIES, TAB_ID_RE, TAB_LABEL_MAX, tabIssues } from "./tabs";
 import { moduleSkinIssues, moduleSkinSchema } from "./skinDecl";
 import { overlayElementIssues, overlayElementsSchema } from "../overlays/decl";
 import { previewIssues, previewsSchema } from "./previews";
+import { MAX_IMAGE_HOSTS, isDeclarableImageHost } from "../adminkit/image";
 import { MAX_ADDRESS_DECLS, returnAddressIssues, returnAddressSchema, siteAddressUseSchema } from "./addressDecl";
 
 const localized = z.union([z.string().max(500), z.record(z.string(), z.string().max(500))]);
@@ -362,6 +363,13 @@ export const manifestSchema = z.object({
    */
   previews: previewsSchema.optional(),
   /**
+   * (cœur 0.6.5) HÔTES D'IMAGES que le module peut afficher en vignette dans les tableaux de son administration (cellule `{ text, image: { src, alt } }`) : des noms d'hôte exacts
+   * (« media.rawg.io »), 5 au plus, sans joker, sans adresse numérique ni nom interne. Sans cette clé, seules les pages du site (`/uploads/…`) sont permises. Toute autre adresse est écartée
+   * côté serveur. AJOUT SANS DANGER : un cœur plus ancien ignore la clé (et la vignette) et affiche le texte de la cellule ; aucun `minCore` n'est à déclarer pour elle.
+   */
+  imageHosts: z.array(z.string().refine(isDeclarableImageHost, "an image host is a plain lowercase host name like media.example.org (no port, wildcard, IP address or internal name)")).max(MAX_IMAGE_HOSTS).optional()
+    .refine((hosts) => !hosts || new Set(hosts).size === hosts.length, "imageHosts lists the same host twice"),
+  /**
    * Droits du module (0.2.0), proposés dans les rôles de la page Équipe. Identifiant LOCAL (« email.view ») : le cœur le préfixe par l'identifiant du module
    * (« <module>:email.view »), un module ne peut donc pas déclarer le droit d'un autre. `open` (ouvrir la page d'admin du module) est implicite.
    * `default` : ce que reçoivent les rôles prédéfinis (administrateur : oui sauf `admin: false` ; éditeur : non sauf `editor: true`). Un cœur ancien ignore cette clé.
@@ -420,6 +428,22 @@ export type ParsedManifest = z.infer<typeof manifestSchema>;
 /** Catégorie effective d'un module. */
 export function effectiveType(m: Pick<ParsedManifest, "type" | "content">): NonNullable<ParsedManifest["type"]> {
   return m.type ?? (m.content ? "content" : "widget");
+}
+
+/**
+ * Les clés de réglages que le CŒUR lit lui-même d'après le manifeste : le code du module ne les cite jamais.
+ * `pageSetting` (page allumée par une case), `shortLink.enabled` / `shortLink.name` / `shortLink.target.setting` (adresse courte demandée). Le test « chaque réglage est
+ * lu par le code du module » (tests/core/legacy-labels.test.mjs) s'en sert : un réglage consommé par le cœur n'est pas un champ mort.
+ */
+export function settingKeysReadByCore(m: Pick<ParsedManifest, "pageSetting" | "shortLink">): string[] {
+  const out: string[] = [];
+  if (m.pageSetting !== undefined) out.push(m.pageSetting);
+  if (m.shortLink) {
+    out.push(m.shortLink.enabled);
+    if (m.shortLink.name !== undefined) out.push(m.shortLink.name);
+    if (typeof m.shortLink.target === "object") out.push(m.shortLink.target.setting);
+  }
+  return out;
 }
 
 /** Une instance de ce module a-t-elle une page publique ? */

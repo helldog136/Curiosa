@@ -152,6 +152,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 | [`manifest.version`](#manifestversion) | obligatoire | La version est au format x.y.z |
 | [`manifest.id`](#manifestid) | conseil | L'identifiant correspond au nom du dossier |
 | [`manifest.previews`](#manifestpreviews) | obligatoire | Les visuels de la fiche sont des images valables |
+| [`manifest.imageHosts`](#manifestimagehosts) | obligatoire | Les hôtes d'images déclarés sont de simples noms d'hôte |
 | [`manifest.inertCollections`](#manifestinertcollections) | obligatoire | Les copies déclarées inertes sont des collections héritées |
 | [`manifest.inertCollections.unused`](#manifestinertcollectionsunused) | conseil | Le code ne cite plus les copies déclarées inertes |
 | [`manifest.catalogue`](#manifestcatalogue) | conseil | La fiche du module est complète pour le catalogue |
@@ -227,7 +228,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 | [`admin.ergonomics.known`](#adminergonomicsknown) | conseil | Écarts d'ergonomie connus, à résorber |
 | [`dashboard.valid`](#dashboardvalid) | obligatoire | Ce que le module propose au tableau de bord est complet et valide |
 
-46 exigences obligatoires et 33 conseils.
+47 exigences obligatoires et 33 conseils.
 
 ### Le fichier module.json
 
@@ -270,6 +271,14 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 - **Ce qui est vérifié.** Chaque visuel de « previews » (6 au plus) est un fichier « previews/….webp » ou « .png » du module : 150 Ko au plus, de vraies images (pas un autre format renommé), de 240 à 2400 pixels de côté, avec une légende et un texte alternatif en français et en anglais. Sans « previews », rien à vérifier.
 - **Pourquoi.** Le cœur lit ces images lui-même et les montre dans la fiche du module, avant et après l'installation. Une image trop lourde, d'un autre format ou absente est simplement écartée : la fiche paraît alors incomplète à la personne qui hésite à installer.
 - **Comment corriger.** Exportez chaque capture en WebP (ou PNG) de moins de 150 Ko, rangez-la dans « previews/ », déclarez-la dans « previews » avec « file », « caption », « alt » et « type » (public, admin ou overlay). Ne montrez jamais de vraies données personnelles : utilisez des exemples inventés.
+
+#### `manifest.imageHosts`
+
+**Les hôtes d'images déclarés sont de simples noms d'hôte** — niveau : **obligatoire**
+
+- **Ce qui est vérifié.** « imageHosts » (5 au plus) liste des noms d'hôte exacts en minuscules (« media.example.org ») : pas de joker, d'adresse complète, de port, d'adresse numérique ni de nom interne, et aucun nom en double. Sans « imageHosts », rien à vérifier.
+- **Pourquoi.** Le cœur n'affiche une vignette de tableau (cellule « image ») que si son adresse est une page du site ou vient d'un hôte déclaré ici. Un hôte mal écrit n'est jamais reconnu : les vignettes disparaîtraient sans bruit, ou le cœur refuserait le manifeste.
+- **Comment corriger.** Écrivez seulement le nom : « media.rawg.io », pas « https://media.rawg.io/ » ni « *.rawg.io ». Pour ne contacter aucun hôte, retirez « imageHosts » et enregistrez l'image sur le site (« /uploads/… »).
 
 #### `manifest.inertCollections`
 
