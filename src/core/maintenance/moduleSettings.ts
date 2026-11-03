@@ -108,7 +108,7 @@ const EXAMPLE: Record<string, string> = { period: "11-01/11-30", datetime: "2026
 function allowedText(field: SettingField, c: Ctx): string {
   switch (field.type) {
     case "number": return `a number${field.min !== undefined && field.max !== undefined ? ` between ${field.min} and ${field.max}` : field.min !== undefined ? ` of at least ${field.min}` : field.max !== undefined ? ` of at most ${field.max}` : ""}${field.unit ? ` (${c.L(field.unit)})` : ""}`;
-    case "period": return "a period written \"MM-DD/MM-DD\" (every year, for example 11-01/11-30) or \"YYYY-MM-DD/YYYY-MM-DD\" (once)";
+    case "period": return `a period written "MM-DD/MM-DD" (every year, for example 11-01/11-30) or "YYYY-MM-DD/YYYY-MM-DD" (once)${field.openEnded ? `, or with one date only: "YYYY-MM-DD/" (from that day, no end) or "/YYYY-MM-DD" (until that day, no start)` : ""}`;
     case "datetime": return "a date and time of the site written \"YYYY-MM-DDTHH:mm\", for example 2026-11-30T18:30";
     case "duration": return `a whole number of seconds${field.min !== undefined && field.max !== undefined ? `, between ${field.min} and ${field.max}` : field.min !== undefined ? `, at least ${field.min}` : field.max !== undefined ? `, at most ${field.max}` : ""}`;
     case "boolean": return "true or false";

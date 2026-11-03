@@ -81,7 +81,7 @@ export type FieldCheck = { ok: true; value: unknown } | { ok: false; reason: "co
  * Valide la saisie (texte déjà « trimé », non vide) d'un réglage selon son type — LA règle commune à l'admin (formulaire des réglages d'une instance)
  * et à la création d'une instance semée par une migration (`ctx.seedInstance`). Un booléen ne passe pas par ici (il vaut « coché » ou non).
  */
-export function checkFieldInput(field: Pick<SettingField, "type" | "options" | "min" | "max" | "step">, raw: string): FieldCheck {
+export function checkFieldInput(field: Pick<SettingField, "type" | "options" | "min" | "max" | "step" | "openEnded">, raw: string): FieldCheck {
   switch (field.type) {
     case "color": return isHexColor(raw) ? { ok: true, value: raw.slice(0, 5000) } : { ok: false, reason: "color" };
     // Un nombre sans borne reste accepté tel quel (comme avant) ; avec `min` / `max` / `step` (0.6.0), il doit y rester.
@@ -90,7 +90,8 @@ export function checkFieldInput(field: Pick<SettingField, "type" | "options" | "
       const c = checkBoundedNumber(raw, field);
       return c.ok ? { ok: true, value: c.value } : { ok: false, reason: c.reason };
     }
-    case "period": { const c = parsePeriod(raw); return c.ok ? { ok: true, value: serializePeriod(c.period) } : { ok: false, reason: "period" }; }
+    // Début seul ou fin seule : seulement si le réglage l'a demandé (`openEnded`), sinon la valeur reste refusée comme avant.
+    case "period": { const c = parsePeriod(raw, { openEnded: field.openEnded === true }); return c.ok ? { ok: true, value: serializePeriod(c.period) } : { ok: false, reason: "period" }; }
     case "datetime": return checkDateTime(raw) ? { ok: true, value: raw.trim() } : { ok: false, reason: "datetime" };
     case "duration": { const c = checkDuration(raw, field); return c.ok ? { ok: true, value: c.value } : { ok: false, reason: c.reason === "range" ? "range" : "duration" }; }
     case "select": return field.options?.some((o) => o.value === raw) ? { ok: true, value: raw } : { ok: false, reason: "select" };

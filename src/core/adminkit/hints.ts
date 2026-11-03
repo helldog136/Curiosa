@@ -2,7 +2,7 @@
 import { describeDuration, exampleNumber } from "./values";
 
 type T = (key: string, vars?: Record<string, string | number>) => string;
-type Bounded = { type: string; min?: number; max?: number; step?: number; default?: unknown };
+type Bounded = { type: string; min?: number; max?: number; step?: number; default?: unknown; openEnded?: boolean };
 
 /** Un nombre de secondes pour un message : « 1 h 30 ». */
 const secondsText = (t: T, n: number) => describeDuration(n, t("unit.day"));
@@ -23,7 +23,7 @@ export function numberHint(t: T, f: Bounded, unit = ""): string {
 /** Le message d'erreur d'un réglage de type nombre, durée, période ou date et heure : la clé de texte et ses variables (toujours un exemple). */
 export function valueErrorKey(reason: "number" | "range" | "duration" | "period" | "datetime", f: Bounded, t: T): { key: string; vars: Record<string, string | number> } {
   const example = exampleNumber({ min: f.min, max: f.max, step: f.step, default: typeof f.default === "number" ? f.default : undefined });
-  if (reason === "period") return { key: "instances.error.period", vars: {} };
+  if (reason === "period") return { key: f.openEnded === true ? "instances.error.periodOpen" : "instances.error.period", vars: {} };
   if (reason === "datetime") return { key: "instances.error.datetime", vars: {} };
   if (reason === "duration") return { key: "instances.error.duration", vars: { example: secondsText(t, typeof f.default === "number" ? f.default : 90) } };
   if (reason === "number") return { key: "instances.error.number", vars: { example } };

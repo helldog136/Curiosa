@@ -319,3 +319,93 @@ test("câblage : le tableau enrichi n'est choisi que sur demande, le bloc d'avan
   assert.match(types, /rows: TableCell\[\]\[\]/);
   assert.match(types, /columns: string\[\];/, "columns reste un tableau de textes");
 });
+
+/* ───────────── période : une seule fois par défaut, période ouverte ───────────── */
+
+const { periodLabels: realPeriodLabels } = await import("@/components/admin/periodLabels");
+const trEn = makeTranslator("en");
+const yearlyBox = (out) => /<input type="checkbox"([^>]*)>/.exec(out)?.[1] ?? null;
+
+test("période : sur une période NOUVELLE, « Chaque année » est décoché ; une valeur enregistrée garde son sens", () => {
+  const labels = realPeriodLabels(tr);
+  const fresh = html(wrap(h(PeriodField, { label: "Période", name: "p", locale: "fr", labels, refYear: 2026 })));
+  assert.ok(yearlyBox(fresh) !== null, "la case est là");
+  assert.doesNotMatch(yearlyBox(fresh), /checked/, "une annonce ponctuelle ne revient pas toute seule");
+  assert.match(fresh, /<input type="hidden" name="p" value=""/);
+  const yearly = html(wrap(h(PeriodField, { label: "Période", name: "p", defaultValue: "12-01/12-24", locale: "fr", labels, refYear: 2026 })));
+  assert.match(yearlyBox(yearly), /checked/, "« chaque année » déjà enregistré : toujours coché");
+  assert.match(yearly, /value="12-01\/12-24"/); assert.match(yearly, /Du 1er décembre au 24 décembre, chaque année/);
+  const once = html(wrap(h(PeriodField, { label: "Période", name: "p", defaultValue: "2026-12-01/2026-12-15", locale: "fr", labels })));
+  assert.doesNotMatch(yearlyBox(once), /checked/);
+  assert.match(once, /value="2026-12-01\/2026-12-15"/); assert.match(once, /Du 1er décembre 2026 au 15 décembre 2026/);
+  // Le défaut d'un module (twitch-bot et d'autres déclarent « chaque année ») est lu comme avant.
+  const fromDefault = html(wrap(h(PeriodField, { label: "Période", name: "p", defaultValue: "11-01/11-30", locale: "fr", labels, refYear: 2026 })));
+  assert.match(yearlyBox(fromDefault), /checked/);
+  assert.match(fromDefault, /value="11-01\/11-30"/);
+});
+
+test("période : sans la demande `openEnded`, rien ne change (étiquettes, aucune indication, une valeur ouverte n'est pas lue)", () => {
+  const labels = realPeriodLabels(tr);
+  const out = html(wrap(h(PeriodField, { label: "Période", name: "p", defaultValue: "2026-12-01/", locale: "fr", labels })));
+  assert.match(out, /<span[^>]*>Du<\/span>/); assert.match(out, /<span[^>]*>au<\/span>/);
+  assert.doesNotMatch(out, /À partir du|jusqu&#x27;au|Une seule date suffit/);
+  assert.match(out, /<input type="hidden" name="p" value=""/, "une valeur ouverte n'est jamais acceptée sans la demande");
+  assert.match(out, /Aucune période choisie/);
+  assert.equal((out.match(/required=""/g) ?? []).length, 0);
+});
+
+test("période ouverte : début seul et fin seule, une seule phrase d'aperçu, FR et EN, un seul contrôle", () => {
+  const fr = realPeriodLabels(tr), en = realPeriodLabels(trEn);
+  const since = html(wrap(h(PeriodField, { label: "Période", name: "p", defaultValue: "2026-12-01/", locale: "fr", labels: fr, openEnded: true })));
+  assert.match(since, /<input type="hidden" name="p" value="2026-12-01\/"/);
+  assert.match(since, /À partir du 1er décembre 2026/);
+  assert.match(since, /<span[^>]*>À partir du<\/span>/); assert.match(since, /<span[^>]*>jusqu&#x27;au<\/span>/);
+  assert.match(since, /Une seule date suffit : l&#x27;autre peut rester vide\./);
+  assert.equal((since.match(/type="date"/g) ?? []).length, 2, "toujours deux sélecteurs de date, pas de champ en plus");
+  assert.equal((since.match(/type="checkbox"/g) ?? []).length, 0, "un seul bout : « Chaque année » se range");
+  assert.equal((since.match(/pv-p/g) ?? []).length >= 2, true);
+  const until = html(wrap(h(PeriodField, { label: "Période", name: "p", defaultValue: "/2026-12-24", locale: "fr", labels: fr, openEnded: true })));
+  assert.match(until, /<input type="hidden" name="p" value="\/2026-12-24"/);
+  assert.match(until, /Jusqu&#x27;au 24 décembre 2026/);
+  assert.match(until, /value="2026-12-24"/);
+  const enSince = html(wrap(h(PeriodField, { label: "Period", name: "p", defaultValue: "2026-12-01/", locale: "en", labels: en, openEnded: true })));
+  assert.match(enSince, /From 1 December 2026/);
+  const enUntil = html(wrap(h(PeriodField, { label: "Period", name: "p", defaultValue: "/2026-12-24", locale: "en", labels: en, openEnded: true })));
+  assert.match(enUntil, /Until 24 December 2026/);
+  // Les deux bouts : la phrase d'avant et la case « Chaque année » reviennent ; vide : rien d'enregistré.
+  const both = html(wrap(h(PeriodField, { label: "Période", name: "p", defaultValue: "2026-12-01/2026-12-15", locale: "fr", labels: fr, openEnded: true })));
+  assert.match(both, /Du 1er décembre 2026 au 15 décembre 2026/); assert.equal((both.match(/type="checkbox"/g) ?? []).length, 1);
+  const yearly = html(wrap(h(PeriodField, { label: "Période", name: "p", defaultValue: "11-01/11-30", locale: "fr", labels: fr, openEnded: true, refYear: 2026 })));
+  assert.match(yearly, /Du 1er novembre au 30 novembre, chaque année/); assert.match(yearlyBox(yearly), /checked/);
+  const empty = html(wrap(h(PeriodField, { label: "Période", name: "p", locale: "fr", labels: fr, openEnded: true })));
+  assert.match(empty, /<input type="hidden" name="p" value=""/); assert.match(empty, /Aucune période choisie/);
+  assert.doesNotMatch(yearlyBox(empty), /checked/, "période nouvelle : une seule fois");
+  // Obligatoire : une date suffit, donc l'exigence ne pèse que tant que les deux sont vides.
+  const req = html(wrap(h(PeriodField, { label: "Période", name: "p", required: true, locale: "fr", labels: fr, openEnded: true })));
+  assert.equal((req.match(/required=""/g) ?? []).length, 2);
+  const reqSince = html(wrap(h(PeriodField, { label: "Période", name: "p", required: true, defaultValue: "2026-12-01/", locale: "fr", labels: fr, openEnded: true })));
+  assert.equal((reqSince.match(/required=""/g) ?? []).length, 0);
+  const reqClosed = html(wrap(h(PeriodField, { label: "Période", name: "p", required: true, locale: "fr", labels: fr })));
+  assert.equal((reqClosed.match(/required=""/g) ?? []).length, 2, "sans la demande : les deux dates, comme avant");
+});
+
+test("période : les messages disent quoi faire avec un exemple (fin avant début, aucune date) en FR et EN, sans mot interdit", () => {
+  for (const t of [tr, trEn]) {
+    for (const k of ["period.order", "period.incomplete", "period.incompleteOpen", "instances.error.period", "instances.error.periodOpen"]) assert.match(t(k, { field: "X" }), /par exemple|for example/, k);
+  }
+  assert.match(tr("period.order"), /fin doit venir après le début/);
+  // Les nouveaux textes visibles : courts (R10, R11), neutres, sans point d'exclamation.
+  for (const t of [tr, trEn]) {
+    for (const k of ["period.openFrom", "period.openTo", "period.sentenceSince", "period.sentenceUntil", "period.openHint"]) { const v = t(k, { from: "", to: "" }); assert.ok(v.length <= 60, `${k} : ${v.length}`); assert.doesNotMatch(v, /!|:\s*$/, k); }
+  }
+});
+
+test("formulaire de module : un champ `period` avec `openEnded` accepte une seule date ; sans, comme avant", () => {
+  const b = (extra) => ({ type: "adminForm", action: "save", submitLabel: "Enregistrer l'annonce", fields: [{ name: "p", label: "Période", kind: "period", value: "2026-12-01/", ...extra }] });
+  const open = b({ openEnded: true });
+  const o = html(wrap(h(AdminBlockForm, { instanceId: "i1", block: open, labels: formLabels(tr, "fr", open) })));
+  assert.match(o, /name="p" value="2026-12-01\/"/); assert.match(o, /À partir du 1er décembre 2026/);
+  const closed = b({});
+  const c = html(wrap(h(AdminBlockForm, { instanceId: "i1", block: closed, labels: formLabels(tr, "fr", closed) })));
+  assert.match(c, /name="p" value=""/); assert.doesNotMatch(c, /À partir du/);
+});

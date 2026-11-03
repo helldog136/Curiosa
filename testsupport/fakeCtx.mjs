@@ -13,6 +13,8 @@ import { loadCore } from "./core.mjs";
  * - `ctx.setting(k)` lit `settings` (valeur absente → undefined, comme le vrai contexte sans défaut)
  * - `ctx.params` (cœur 0.2.14) : option `params` (par ex. `{ slug: "abc" }` pour tester une route « go/:slug »), `{}` par défaut
  * - `ctx.theme` : le thème du site (option `theme`)
+ * - `ctx.timezone` (cœur après 0.6.3) : le fuseau du site, un nom IANA valide. Option `timezone` (défaut « UTC », pour des tests qui ne dépendent pas de la machine). Un nom inconnu, vide ou
+ *   illisible donne le fuseau de la machine puis « UTC », comme le vrai cœur. `timezone: null` simule un cœur plus ancien : `ctx.timezone` n'existe pas (testez `typeof ctx.timezone === "string"`).
  * - `ctx.t(k, vars)` lit `messages` (clé → texte, variables {x} remplacées) ; clé inconnue → la clé
  * - `ctx.api.store` : stockage en mémoire, isolé par appel de fakeCtx (mêmes méthodes que le vrai)
  * - `ctx.api.topics.collect(topic)` renvoie `topics[topic]` ; `ctx.api.entries.list()` renvoie `entries`
@@ -68,7 +70,11 @@ export function fakeCtx(opts = {}) {
     net: netOverride, netLimits, netBudgetMs = null, choices = {},
     uploads = [], person = { id: "u1", email: "admin@example.test" }, filesQuota = {},
     logEvents = [], actor: logActor = "module",
+    timezone = "UTC",
   } = opts;
+  // Fuseau du site : mêmes règles que le cœur (core/siteTime.ts) : un nom IANA que la plateforme connaît, sinon celui de la machine, sinon « UTC ».
+  const validZone = (tz) => { if (typeof tz !== "string" || tz.length < 1 || tz.length > 64 || !/^[A-Za-z0-9_+\-/]+$/.test(tz)) return false; try { new Intl.DateTimeFormat("en-US", { timeZone: tz }); return true; } catch { return false; } };
+  const siteZone = validZone(timezone) ? timezone : (() => { try { const tz = Intl.DateTimeFormat().resolvedOptions().timeZone; return validZone(tz) ? tz : "UTC"; } catch { return "UTC"; } })();
   const rows = new Map();
   let seq = 0;
   const calls = { topics: [], qr: [], entries: [], mail: [], png: [], services: [], rawg: [], rawgCandidates: [], files: [], seeds: [], cleared: [], legacyCleared: [], writes: [], denied: [], net: [], netLog: [], choices: [], log: [] };
@@ -208,6 +214,7 @@ export function fakeCtx(opts = {}) {
     moduleId,
     instance: { id: `id-${key}`, key, basePath, name },
     locale, defaultLocale, locales,
+    ...(timezone === null ? {} : { timezone: siteZone }),   // cœur après 0.6.3 ; `timezone: null` = un cœur plus ancien, sans cette clé
     params: Object.freeze({ ...(opts.params ?? {}) }),   // cœur 0.2.14 : `{ slug }` dans une route « …/:slug », `{}` ailleurs
     setting: (k) => (cleared.has(k) ? undefined : settings[k]),
     async resolveChoice(k) {

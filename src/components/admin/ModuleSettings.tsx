@@ -99,7 +99,7 @@ export function ModuleSettings({ t, locale, defaultLocale, locales, fields, allF
       }
       case "period":
         return <PeriodField key={name} name={name} label={label} help={common.help} example={example} required={required} defaultValue={str} locale={locale}
-          labels={periodLabels(t)} />;
+          labels={periodLabels(t)} openEnded={f.openEnded === true} />;
       case "datetime":
         return <DateTimeField key={name} name={name} label={label} help={common.help} example={example} required={required} defaultValue={str} locale={locale}
           labels={{ date: t("datetime.date"), time: t("datetime.time"), clear: t("datetime.clear"), at: t("datetime.at"), preview: t("datetime.preview") }} />;
@@ -232,7 +232,7 @@ export function ModuleSettings({ t, locale, defaultLocale, locales, fields, allF
   ];
   const rareSlots = slots.filter(isRare);
   const rareFields = rareSlots.flatMap((s) => (s.kind === "field" ? [s.field] : []));
-  const rareView = summarizeGroup(rareFields.map((f) => ({ key: f.key, label: L(f.label), type: f.type, default: f.default, options: f.options?.map((o) => ({ value: o.value, label: L(o.label) })), unit: f.unit ? L(f.unit) : undefined })),
+  const rareView = summarizeGroup(rareFields.map((f) => ({ key: f.key, label: L(f.label), type: f.type, openEnded: f.openEnded, default: f.default, options: f.options?.map((o) => ({ value: o.value, label: L(o.label) })), unit: f.unit ? L(f.unit) : undefined })),
     (key) => stored[key]?.[rareFields.find((f) => f.key === key)?.translatable ? defaultLocale : ""], locale, t);
   const technical = slots.filter(isAdvanced);
   const hasEveryday = sections.some((s) => s.slots.length > 0) || rareSlots.length > 0;
