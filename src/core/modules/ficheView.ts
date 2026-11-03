@@ -59,3 +59,31 @@ export function installBarState(i: {
   if (i.problems > 0) return { kind: "blocked", reason: "deps" };
   return { kind: "ready", confirm: !i.entry || i.entry.origin === "extra" };
 }
+
+/**
+ * Une phrase de résumé tirée de la présentation (README), pour la fiche en mode simple : la première phrase du premier vrai paragraphe, sans Markdown
+ * (titres, badges, images, tableaux, listes, blocs de code et HTML sont passés), 160 caractères au plus. Vide si rien de lisible, ou si elle ne fait que répéter
+ * la description déjà affichée au-dessus. Logique pure : le texte vient d'un tiers, il n'est ici que lu, jamais interprété.
+ */
+export function readmeSummary(markdown: string, description = "", max = 160): string {
+  const text = String(markdown ?? "").replace(/\r\n?/g, "\n").replace(/```[\s\S]*?(?:```|$)/g, "\n\n").replace(/~~~[\s\S]*?(?:~~~|$)/g, "\n\n").replace(/<!--[\s\S]*?-->/g, " ");
+  for (const raw of text.split(/\n\s*\n/).slice(0, 40)) {
+    const para = raw.trim();
+    if (!para || /^(?:#|\||>|<|[-*+]\s|\d+[.)]\s|[-=_*]{3,}\s*$|\s{4}|!\[|\[!\[)/.test(para) || /^\s{4}/.test(raw)) continue;
+    const plain = para
+      .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")
+      .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+      .replace(/<[^>]*>/g, " ")
+      .replace(/[`*_~]/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (Array.from(plain).length < 20) continue;
+    const first = /^(.+?[.!?…])(?:\s|$)/u.exec(plain)?.[1] ?? plain;
+    const chars = Array.from(first);
+    const out = chars.length > max ? `${chars.slice(0, max - 1).join("").replace(/\s+\S*$/, "")}…` : first;
+    const norm = (v: string) => v.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+    const d = norm(description);
+    return d && (norm(out) === d || d.includes(norm(out))) ? "" : out;
+  }
+  return "";
+}
