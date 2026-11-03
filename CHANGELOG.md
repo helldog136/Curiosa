@@ -7,6 +7,17 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## Prochaine version (non publiée)
+
+### Ménage interne
+
+- **Un seul détail visible : l'exemple de la page Réseaux sociaux.** Sous le champ « Coller l'adresse d'un profil », l'exemple est celui du premier réseau du Catalogue qui en donne un, et non plus toujours celui d'Instagram. Le site ne cite plus aucun réseau par son nom.
+
+### Pour les développeurs
+
+- `settingKeysReadByCore(manifest)` (`src/core/modules/manifest.ts`) liste les clés de réglages lues par le cœur d'après le manifeste (`pageSetting`, `shortLink.enabled`, `shortLink.name`, `shortLink.target.setting`). Le test « chaque clé de `settings` est lue par le code du module » (dépôt de modules présent) les accepte : un réglage d'adresse courte n'est pas un champ mort.
+- Le test d'architecture « aucun module connu par son identifiant » ne trouve plus `social/page.tsx` fautif ; le test d'événements de `backup-async` mesure chaque phase jusqu'à 3 fois avec la gigue du moment (un blocage réel échoue à chaque essai).
+
 ## 0.6.4 — 2026-11-03
 
 **En bref.** Une entrée « Entretien » apparaît dans le menu d'administration, avec une pastille qui dit « À jour » ou combien de choses vous avez à faire. Les copies de sécurité d'anciennes données ne sont plus présentées comme une tâche : le site les garde par prudence, sans rien vous demander. Une période part maintenant de « une seule fois », et un réglage peut accepter une seule date. Le journal passe en dernier sur le tableau de bord. Un ménage interne n'a aucun effet visible. Le changement qui compte : la version minimale de mise à jour passe à 0.2.0. Un site plus ancien est amené tout seul à la 0.2.0 puis à la version choisie ; rien ne change pour un site en 0.2.0 ou plus récent.

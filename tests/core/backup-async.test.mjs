@@ -109,34 +109,40 @@ test("boucle d'événements : exporter puis restaurer 20 000 enregistrements ne 
   for (let i = 0; i < 20; i++) await s.addMany("big", Array.from({ length: 1000 }, (_, n) => ({ data: { n, i, texte: "lorem ipsum ".repeat(8) }, key: `k${i}-${n}` })));
   assert.equal(await db.prisma.moduleRecord.count(), 20_000);
 
-  // Machine chargée (la suite tourne à plusieurs) : la gigue du système elle-même retarde un minuteur. On la mesure au repos et on la tolère en plus des 200 ms.
-  const idle = await worstLag(() => new Promise((r) => setTimeout(r, 600)));
-  const limit = 200 + 2 * idle.worst;
-  console.log(`  gigue au repos ${Math.round(idle.worst)} ms, seuil ${Math.round(limit)} ms`);
+  // Un blocage RÉEL du code (travail synchrone) retarde le minuteur à CHAQUE essai ; une pause de la machine (autres processus, gigue de l'hôte) n'en touche qu'un.
+  // Chaque phase est donc mesurée jusqu'à 3 fois, avec une gigue au repos relevée juste avant chaque essai (et non une fois pour toutes en début de test) :
+  // elle réussit si UN essai reste sous 200 ms + 2 × la gigue du moment. Le seuil n'est pas relevé : seule la mesure cesse de dépendre d'un accident isolé.
+  const steady = async (label, run) => {
+    const tries = [];
+    for (let i = 0; i < 3; i++) {
+      const idle = await worstLag(() => new Promise((r) => setTimeout(r, 400)));
+      const limit = 200 + 2 * idle.worst;
+      const r = await worstLag(run);
+      tries.push(`${Math.round(r.worst)} ms (seuil ${Math.round(limit)})`);
+      if (r.worst < limit) { console.log(`  ${label} : retard maximal ${Math.round(r.worst)} ms, seuil ${Math.round(limit)} ms (essai ${i + 1})`); return r; }
+    }
+    assert.fail(`${label} : la boucle d'événements a été bloquée à chaque essai : ${tries.join(" ; ")}`);
+  };
 
   // Mot de passe réel : 600 000 itérations (c'est elles qui bloquaient 2 à 3 s).
-  const exported = await worstLag(() => B.createBackup(PW));
+  const exported = await steady("export", () => B.createBackup(PW));
   assert.equal(exported.result.manifest.counts.records, 20_000);
-  console.log(`  export : retard maximal de la boucle ${Math.round(exported.worst)} ms`);
-  assert.ok(exported.worst < limit, `export : la boucle d'événements a été bloquée ${Math.round(exported.worst)} ms`);
 
-  const restored = await worstLag(async () => {
+  const restored = await steady("lecture pour restauration", async () => {
     const opened = await Rs.openBackupAsync(exported.result.buffer, PW);
     assert.equal(opened.ok, true);
     const again = await Rs.parseBackupAsync(opened.plain);
     assert.equal(again.ok, true);
     return opened;
   });
-  console.log(`  lecture pour restauration : retard maximal ${Math.round(restored.worst)} ms`);
-  assert.ok(restored.worst < limit, `restauration (lecture) : la boucle d'événements a été bloquée ${Math.round(restored.worst)} ms`);
   assert.equal(restored.result.backup.data.records.length, 20_000);
 
-  await db.prisma.moduleRecord.deleteMany();
-  const applied = await worstLag(() => Rs.applyRestore(restored.result.backup, { confirmCustom: [], actor: "o" }));
-  console.log(`  écriture de la restauration : retard maximal ${Math.round(applied.worst)} ms`);
+  const applied = await steady("écriture de la restauration", async () => {
+    await db.prisma.moduleRecord.deleteMany();
+    return Rs.applyRestore(restored.result.backup, { confirmCustom: [], actor: "o" });
+  });
   assert.equal(applied.result.ok, true);
   assert.equal(await db.prisma.moduleRecord.count(), 20_000);
-  assert.ok(applied.worst < limit, `restauration (écriture) : la boucle d'événements a été bloquée ${Math.round(applied.worst)} ms`);
 });
 
 test("la mesure est valable : la dérivation de clé SYNCHRONE (ancien code) retarde bien un minuteur de plus de 50 ms", async () => {
