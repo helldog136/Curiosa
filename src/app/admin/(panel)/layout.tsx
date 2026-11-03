@@ -5,6 +5,7 @@ import { adminBugReportUrl } from "@/core/bugReport";
 import { BugReportLink } from "@/components/admin/BugReportLink";
 import { maintenanceSummary } from "@/core/maintenance/summary";
 import { legacyConversionPending } from "@/core/modules/legacyReport";
+import { legacyUpkeepSummary } from "@/core/modules/legacyUpkeep";
 import { LegacyBanner } from "@/components/admin/LegacyBanner";
 import { NavLink } from "@/components/admin/NavLink";
 import { NavGroup } from "@/components/admin/NavGroup";
@@ -43,6 +44,8 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   const aiWaiting = can(user, "core:mcp.tokens") ? (await maintenanceSummary().catch(() => null))?.total ?? 0 : 0;
   // Garde du démarrage (0.2.0) : un AVERTISSEMENT seulement si la mise à niveau des données n'est pas terminée (le site public reste servi ; bloquant en phase 3).
   const legacyPending = canManage ? await legacyConversionPending() : false;
+  // Entretien : la pastille du menu ne compte que ce que la personne a À FAIRE ; une copie de sécurité gardée a son propre état (jamais une alerte).
+  const upkeep = can(user, "core:updates") ? await legacyUpkeepSummary() : null;
   const bugUrl = await adminBugReportUrl(t);
   const menu = buildMenuLayout(nav);
   const navState = parseNavState((await cookies()).get(NAV_STATE_COOKIE)?.value);
@@ -69,6 +72,9 @@ export default async function PanelLayout({ children }: { children: React.ReactN
     health: <NavLink key="health" href="/admin/maintenance/content">{t("nav.health")}</NavLink>,
     backup: <NavLink key="backup" href="/admin/backup">{t("nav.backup")}</NavLink>,
     updates: <NavLink key="updates" href="/admin/updates" badge={updateAvailable ? 1 : 0} badgeLabel={t("nav.badge.update")}>{t("nav.updates")}</NavLink>,
+    upkeep: upkeep?.state === "todo"
+      ? <NavLink key="upkeep" href="/admin/maintenance/legacy" badge={upkeep.todo} badgeLabel={t("nav.upkeep.todo")}>{t("nav.upkeep")}</NavLink>
+      : <NavLink key="upkeep" href="/admin/maintenance/legacy" status={upkeep ? (upkeep.state === "kept" ? { label: t("nav.upkeep.kept"), tone: "info", hint: t("nav.upkeep.keptHint") } : { label: t("nav.upkeep.clean"), tone: "ok" }) : undefined}>{t("nav.upkeep")}</NavLink>,
     audit: <NavLink key="audit" href="/admin/audit">{t("nav.audit")}</NavLink>,
   };
 
