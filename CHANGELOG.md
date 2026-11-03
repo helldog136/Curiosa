@@ -7,6 +7,21 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## Prochaine version (non publiée)
+
+### Périodes et fuseau horaire
+
+- **Une période nouvelle ne revient plus chaque année toute seule.** Quand vous choisissez des dates, la case « Chaque année » est maintenant décochée : une annonce ponctuelle comme « Soldes du 1er au 15 décembre » ne reparaît pas l'an prochain sans que vous l'ayez voulu. Cochez-la pour une fête qui revient.
+- **Rien ne change pour ce qui est déjà réglé.** Les périodes déjà enregistrées, y compris celles qui reviennent chaque année, gardent leur sens. Les saisons et les fêtes toutes prêtes, et « Tout le mois de », fonctionnent comme avant.
+- **Une extension peut accepter une période ouverte.** Quand elle le permet, une seule date suffit : « À partir du 1er décembre 2026 » ou « Jusqu'au 24 décembre 2026 », sans inventer l'autre date. Une phrase sous les dates dit ce qui a été compris ; les autres extensions gardent leurs deux dates.
+- **Les extensions connaissent le fuseau horaire de votre site.** Elles changent de jour à la même heure que vous, même si votre hébergeur est réglé sur un autre fuseau. Aucun réglage à faire.
+
+### Pour les développeurs
+
+- **Période ouverte (additif).** Clé `openEnded` d'un réglage `period` ou d'un champ `period` d'`adminForm`, désactivée par défaut : valeurs `"AAAA-MM-JJ/"` (début seul) et `"/AAAA-MM-JJ"` (fin seule), toujours « une seule fois ». `parsePeriod(raw, { openEnded })` et `checkFieldInput` les refusent sans la clé ; `describePeriod` et `periodContains` les lisent. Voir docs/MODULES.md.
+- **`ctx.timezone` (additif).** Fuseau du site : `site.timezone` s'il est valide, sinon celui du serveur, « UTC » en dernier repli. Un ancien module l'ignore ; un nouveau teste `typeof ctx.timezone === "string"`. `fakeCtx({ timezone })` du kit de test (`null` simule un cœur plus ancien).
+- **Valeur de départ de `PeriodField`.** Sans valeur enregistrée, « Chaque année » est décoché (avant : coché) ; une valeur `MM-JJ/MM-JJ` s'ouvre cochée. Logique pure dans `src/core/adminkit/periodInputs.ts` (`toInputs`, `periodState`).
+
 ## 0.6.3 — 2026-11-03
 
 **En bref.** La recherche dans le site est là : un champ « Rechercher » apparaît dans l'en-tête de votre site et mène à une page de résultats. Elle est activée par défaut ; vous pouvez la couper dans « Réglages du site », onglet « Recherche ». À l'installation, une question facultative « Vous êtes… ? » coche d'avance les extensions qui vont avec et propose des pages d'exemple en brouillon ; une liste de pages peut aussi partir d'un modèle. Un petit ménage interne n'a aucun effet visible. Vos réglages actuels sont conservés.
@@ -31,13 +46,6 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 - **Rien ne change pour vous.** Nous avons vérifié le code marqué « ancien » et retiré trois petits restes inutiles. Votre site, vos extensions et vos données se comportent comme avant ; ce qui sert encore à convertir d'anciens sites est gardé.
 
-### Périodes et fuseau horaire
-
-- **Une période nouvelle ne revient plus chaque année toute seule.** Quand vous choisissez des dates, la case « Chaque année » est maintenant décochée : une annonce ponctuelle comme « Soldes du 1er au 15 décembre » ne reparaît pas l'an prochain sans que vous l'ayez voulu. Cochez-la pour une fête qui revient.
-- **Rien ne change pour ce qui est déjà réglé.** Les périodes déjà enregistrées, y compris celles qui reviennent chaque année, gardent leur sens. Les saisons et les fêtes toutes prêtes, et « Tout le mois de », fonctionnent comme avant.
-- **Une extension peut accepter une période ouverte.** Quand elle le permet, une seule date suffit : « À partir du 1er décembre 2026 » ou « Jusqu'au 24 décembre 2026 », sans inventer l'autre date. Une phrase sous les dates dit ce qui a été compris ; les autres extensions gardent leurs deux dates.
-- **Les extensions connaissent le fuseau horaire de votre site.** Elles changent de jour à la même heure que vous, même si votre hébergeur est réglé sur un autre fuseau. Aucun réglage à faire.
-
 ### Pour les développeurs
 
 - `catalogue/profiles.json` (dépôt de modules) : profils de départ, lus avec l'index et gardés avec sa dernière copie reçue ; fichier absent ou abîmé = aucune question. `suggested.json` ne change pas.
@@ -46,9 +54,6 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Page et pièces.** `/search` (chemin réservé, `noindex`, jamais en cache partagé), composants `SearchForm` et `SearchView`, pièces `search` et `mark` ajoutées à la liste blanche et au banc d'essai des skins. `SearchAction` ajoutée au JSON-LD du site. Détails : `docs/PLATFORM.md`, `docs/SKINS.md`, `docs/SECURITE.md`.
 - **Lecture par tranches.** `entriesChunk` (`src/core/content/entries.ts`) lit les entrées publiques d'une instance 250 par 250.
 - **Code ancien retiré.** `guardOwner` (alias de `guardBackup`), `AI_AND_SCRAPER_BOTS` (`seo.ts`) et `restartAdvised` du bilan de réinstallation (faux depuis la 0.2.13), avec `maintenance.result.restart`. Restent : `legacyOff.ts` (échéance 0.6.99), lignes `bundled` / `builtin`, `legacySettings`, colonnes `enabled`, `minFrom`.
-- **Période ouverte (additif).** Clé `openEnded` d'un réglage `period` ou d'un champ `period` d'`adminForm`, désactivée par défaut : valeurs `"AAAA-MM-JJ/"` (début seul) et `"/AAAA-MM-JJ"` (fin seule), toujours « une seule fois ». `parsePeriod(raw, { openEnded })` et `checkFieldInput` les refusent sans la clé ; `describePeriod` et `periodContains` les lisent. Voir docs/MODULES.md.
-- **`ctx.timezone` (additif).** Fuseau du site : `site.timezone` s'il est valide, sinon celui du serveur, « UTC » en dernier repli. Un ancien module l'ignore ; un nouveau teste `typeof ctx.timezone === "string"`. `fakeCtx({ timezone })` du kit de test (`null` simule un cœur plus ancien).
-- **Valeur de départ de `PeriodField`.** Sans valeur enregistrée, « Chaque année » est décoché (avant : coché) ; une valeur `MM-JJ/MM-JJ` s'ouvre cochée. Logique pure dans `src/core/adminkit/periodInputs.ts` (`toInputs`, `periodState`).
 
 ## 0.6.2 — 2026-11-02
 
