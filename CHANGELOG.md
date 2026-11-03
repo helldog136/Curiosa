@@ -7,7 +7,9 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
-## Prochaine version (non publiée)
+## 0.6.3 — 2026-11-03
+
+**En bref.** La recherche dans le site est là : un champ « Rechercher » apparaît dans l'en-tête de votre site et mène à une page de résultats. Elle est activée par défaut ; vous pouvez la couper dans « Réglages du site », onglet « Recherche ». À l'installation, une question facultative « Vous êtes… ? » coche d'avance les extensions qui vont avec et propose des pages d'exemple en brouillon ; une liste de pages peut aussi partir d'un modèle. Un petit ménage interne n'a aucun effet visible. Vos réglages actuels sont conservés.
 
 ### Nouveautés
 
