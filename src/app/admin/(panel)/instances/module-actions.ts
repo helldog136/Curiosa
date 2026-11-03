@@ -9,6 +9,7 @@ import { audit, auditDenied, type AdminUser } from "@/core/permissions";
 import { decideAdminAction } from "@/core/modules/adminActionAccess";
 import type { AdminActionHandler } from "@/core/modules/types";
 import type { ActionState } from "@/components/admin/ActionForm";
+import { PERIOD_MARK, periodErrorKey } from "@/core/adminkit/values";
 import { sanitizeFieldErrors } from "@/core/fieldErrors";
 import { parseGeneratedGrid, type GridData } from "@/core/gridEditor";
 
@@ -34,6 +35,17 @@ export async function runModuleAdminAction(instanceId: string, action: string, _
 
   const values: Record<string, string> = {};
   for (const [k, v] of formData.entries()) if (typeof v === "string" && !k.startsWith("$ACTION")) values[k] = v.slice(0, 20000);
+
+  // Champs période : une valeur à moitié remplie ou à l'envers est refusée ICI, sous le champ, avant d'appeler le module (sinon elle serait lue comme « pas de période »).
+  const periodErrors: Record<string, string> = {};
+  for (const [k, mode] of Object.entries(values)) {
+    if (!k.endsWith(PERIOD_MARK) || k.length === PERIOD_MARK.length) continue;
+    const name = k.slice(0, -PERIOD_MARK.length);
+    const key = periodErrorKey(values[name] ?? "", mode === "open");
+    if (key) periodErrors[name] = t(key);
+    delete values[k];
+  }
+  if (Object.keys(periodErrors).length) return { errors: periodErrors };
 
   let result;
   try {
