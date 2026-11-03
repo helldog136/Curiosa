@@ -12,7 +12,7 @@ export function demoConfig(over = {}) {
     footerText: "", contactEmail: "contact@example.org",
     accent: "#e8a23b", background: "#121214", accent2: "", surface: "", textColor: "", font: "sans",
     glow: { level: "none", custom: {} }, bg: { preset: "none", custom: "", image: null, svg: { markup: "", fit: "cover", align: "center", tile: 200 } },
-    statsEnabled: false, newsToggle: true, feedLink: true, nav: [],
+    statsEnabled: false, newsToggle: true, feedLink: true, search: { enabled: true, placement: "header" }, nav: [],
     header: { layout: "classic", socials: true, secondary: { label: fr ? "Confidentialité" : "Privacy", href: "/privacy" }, button: { label: fr ? "Me suivre" : "Follow me", href: "/contact" } },
     homeSections: [], setupCompleted: true,
     ...over,

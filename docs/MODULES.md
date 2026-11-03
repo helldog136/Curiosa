@@ -658,7 +658,8 @@ Quand la personne change de nom de domaine, la page *Adresse du site* (réglages
   "features": ["cover", "summary", "body"],   // cover icon summary body url code expiresAt featured tags
   "basePath": "blog", "showInNav": true,
   "allowGoLinks": false, "fallbackToDefault": true,
-  "fieldSchema": [{ "key": "price", "label": "Price", "type": "number" }]
+  "fieldSchema": [{ "key": "price", "label": "Price", "type": "number" }],
+  "templates": [{ "id": "about-us", "name": { "fr": "Qui sommes-nous", "en": "Who we are" }, "title": { "fr": "Qui sommes-nous", "en": "Who we are" }, "body": { "fr": "…", "en": "…" } }]
 }
 ```
 
@@ -672,6 +673,8 @@ Quand la personne change de nom de domaine, la page *Adresse du site* (réglages
 | `fallbackToDefault` | Retomber sur la langue par défaut quand une entrée n'est pas traduite. |
 | `basePath` | Chemin public proposé à la création d'une instance. |
 | `showInNav` | **Suggère** que la page de l'instance soit au menu du site (même effet que `suggestInMenu`, qui l'emporte s'il est déclaré). Depuis cette version le cœur n'ajoute plus rien au menu sans la décision de la personne. |
+
+| `templates` | (cœur après 0.6.2) **Modèles d'entrée**, 8 au plus : `{ id, name, description?, title, summary?, body? }` (textes en français ET en anglais ; `name` 60 caractères, `description` 120, `title` 120, `summary` 300, `body` 6 000). Le cœur ajoute « Partir d'un modèle » à la liste des entrées (en-tête et état vide) : un modèle crée **toujours un brouillon** prérempli, dans la langue par défaut du site, que la personne modifie ensuite. Les profils de départ de l'assistant d'installation peuvent proposer ces modèles comme pages d'exemple (voir « Profils de départ »). Un cœur ancien ignore la clé : le bouton n'apparaît pas, rien d'autre ne change, aucun `minCore` n'est à déclarer. Mettez un texte d'exemple reconnaissable en tête du corps (« Texte d'exemple : modifiez-le avant de publier. »), jamais de texte juridique, de nom réel ni d'adresse réelle. |
 
 Avec `content`, le cœur fournit gratuitement l'éditeur d'entrées (multilingue, brouillons, dates, image), les pages publiques (liste +
 entrée), le sitemap, le flux RSS, les liens `/go/…`, la section d'accueil `latest`, le sujet `core.entry` et quatre actions MCP
@@ -922,7 +925,7 @@ Quand un module se comporte comme une ancienne version alors que son numéro est
 
 Garde-fous : refus si le module est inconnu, si une mise à jour du site est en cours, si le manifeste porte un autre `id`, un `main` absent, plus de 10 Mo ou un `minCore` plus récent que le cœur, et si la source demande de **nouvelles permissions** (jamais accordées en silence : passer par « Mettre à jour »). L'ancien dossier est mis de côté pendant l'échange (`.previous-<pid>`) et revient tel quel au moindre échec, y compris si le nouveau code ne se charge pas (voir « Mise à jour sûre »). Si la `dataVersion` change, les migrations de données sont rejouées comme après une mise à jour. Action de journal : `module.reinstall` (identifiant, versions et empreintes, jamais d'adresse ni de réglage). Idempotente : sur un code déjà identique, « Code identique : rien n'a changé ».
 
-**Cache d'imports.** Voir la section suivante : depuis le cœur 0.2.13, un module est toujours rechargé depuis une copie neuve de tout son dossier ; la réinstallation ne demande plus jamais de redémarrer le site (le champ `restartAdvised` du bilan reste, toujours faux).
+**Cache d'imports.** Voir la section suivante : depuis le cœur 0.2.13, un module est toujours rechargé depuis une copie neuve de tout son dossier ; la réinstallation ne demande plus jamais de redémarrer le site.
 
 ### Mise à jour sûre : chargement à chaud et contrôle de chargement (cœur 0.2.13)
 
@@ -1759,7 +1762,7 @@ Un `rel` déclaré **remplace** le défaut (ne demandez pas `noreferrer` si vous
 
 **Masquer, ordonner (cœur 0.6.1).** La page « Réseaux sociaux » du cœur permet de masquer un bouton et de changer leur ordre (réglages du cœur `social.hidden` et `social.order`, listes de clés d'instances). Un module n'a rien à faire. L'en-tête garde 10 boutons au plus ; au-delà, ou pour une adresse déjà affichée, la page le dit.
 
-Le flux RSS est une fonctionnalité du cœur (`/feed.xml`). Les modules à contenu y sont déjà. Un autre module y ajoute ses éléments en fournissant le sujet `feed.item` : `"provides": [{ "topic": "feed.item" }]` et `exports["feed.item"] = (ctx, { locale, limit }) => [{ title, url, summary?, publishedAt?, id?, topics? }]`. `title` et `url` sont obligatoires (`url` : chemin du site `/…` ou adresse http(s) ; les autres schémas sont écartés), `publishedAt` est une date ISO **en texte**. `topics` : les rubriques **partagées** sur lesquelles publier (`["announcement", "concert"]`). Elles sont communes à tous les modules : si le blog et votre agenda publient tous deux sur `announcement`, tout abonnement à `announcement` reçoit les deux. Le cœur ajoute lui-même `@<instance>` ; un module ne peut pas le déclarer. Ne mettez que des éléments **publics** (jamais un message en attente de modération) : le flux est lisible par tous. Le cœur échappe le XML : donnez du texte brut.
+Le flux RSS est une fonctionnalité du cœur (`/feed.xml`). Les modules à contenu y sont déjà. Un autre module y ajoute ses éléments en fournissant le sujet `feed.item` : `"provides": [{ "topic": "feed.item" }]` et `exports["feed.item"] = (ctx, { locale, limit }) => [{ title, url, summary?, publishedAt?, id?, topics? }]`. `title` et `url` sont obligatoires (`url` : chemin du site `/…` ou adresse http(s) ; les autres schémas sont écartés), `publishedAt` est une date ISO **en texte**. `topics` : les rubriques **partagées** sur lesquelles publier (`["announcement", "concert"]`). Elles sont communes à tous les modules : si le blog et votre agenda publient tous deux sur `announcement`, tout abonnement à `announcement` reçoit les deux. Le cœur ajoute lui-même `@<instance>` ; un module ne peut pas le déclarer. Ne mettez que des éléments **publics** (jamais un message en attente de modération) : le flux est lisible par tous. Les éléments de `feed.item` sont aussi **cherchés par la recherche du site** (`/search`, après la 0.6.2 : titre et résumé, mêmes règles de dates et d'adresses) ; un module qui a sa propre recherche (annuaire, agenda…) la garde telle quelle et n'a rien à faire de plus. Le cœur échappe le XML : donnez du texte brut.
 
 ## Overlay (type `overlay`)
 

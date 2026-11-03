@@ -669,6 +669,8 @@ les pages publiques, le sitemap, le flux RSS et la section d'accueil « dernièr
 `display` : `cards`, `list`, `links`, `codes` ; `clickAction` : `detail` ou `external` ; `features` : `cover`, `icon`, `summary`, `body`, `url`, `code`, `expiresAt`, `featured`, `tags` ; `fieldSchema` ajoute des champs
 personnalisés. Les entrées alimentent le sujet `core.entry` : n'importe quel overlay ou module peut les lire sans une ligne de code. `showInNav` (ou `suggestInMenu` pour un module sans `content`) **suggère** que la page soit au menu du site : la personne décide, le cœur n'ajoute rien tout seul. Voir la référence : « Module à contenu ».
 
+**Modèles d'entrée (`content.templates`).** Un module de contenu peut déclarer jusqu'à 8 modèles (`id`, `name`, `description`, `title`, `summary`, `body`, textes en français ET en anglais) : le cœur ajoute « Partir d'un modèle » à la liste des entrées et crée un **brouillon** prérempli, jamais une entrée publiée. Commencez le corps par une ligne qui dit que c'est un texte d'exemple, sans texte juridique, sans nom ni site réel (`example.com` seulement). Le dépôt de modules peut ensuite faire proposer ces modèles par l'assistant d'installation, selon la réponse à « Vous êtes… ? » (`catalogue/profiles.json`, voir [MODULES.md](MODULES.md), « Profils de départ »). Un cœur plus ancien ignore la clé : aucun `minCore`.
+
 ## 17. Tester son module
 
 ### Sur votre machine, dans le vrai framework

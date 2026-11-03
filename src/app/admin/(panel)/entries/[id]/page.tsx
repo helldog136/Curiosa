@@ -52,6 +52,7 @@ export default async function EditEntryPage({ params, searchParams }: {
           <span className={CHIP[state]}>{t(`entries.state.${state}`)}</span>
         </div>
       </div>
+      {created === "template" && <p role="status" className="rounded-lg border border-emerald-500/50 bg-emerald-500/10 p-3 text-sm text-emerald-700" data-testid="created-from-template">{t("entries.createdFromTemplate")}</p>}
       {created === "1" && <p role="status" className="rounded-lg border border-emerald-500/50 bg-emerald-500/10 p-3 text-sm text-emerald-700">{t("entries.created")}</p>}
       <EntryForm
         refOptions={refOptions} advanced={advanced} adminLocale={adminLocale} t={t} collection={collection} locales={config.locales} locale={locale}

@@ -11,6 +11,7 @@ import { PLATFORM_PATTERN } from "./platform";
 import { parseSocialSpec, type SocialSpec } from "../socialSpec";
 import { sanitizePreviews, type PreviewDecl } from "./previews";
 import { rawBase, rawGet } from "./rawRead";
+import { sanitizeProfiles, type SetupProfile } from "./profiles";
 
 export type RecognizedItem = {
   id: string;
@@ -46,12 +47,13 @@ export type RecognizedItem = {
 
 /** D'où vient la liste affichée : le dépôt du catalogue (à jour), ou la dernière copie reçue de lui ; « none » = catalogue injoignable et jamais reçu (liste vide, jamais une copie locale). */
 export type RecognizedSource = "repository" | "cache" | "none";
-export type RecognizedResult = { items: RecognizedItem[]; source: RecognizedSource; fetchedAt: number | null; origin: string | null; /** Identifiants que le dépôt du catalogue suggère (`catalogue/suggested.json`). */ suggested: string[] };
+export type RecognizedResult = { items: RecognizedItem[]; source: RecognizedSource; fetchedAt: number | null; origin: string | null; /** Identifiants que le dépôt du catalogue suggère (`catalogue/suggested.json`). */ suggested: string[]; /** Profils de départ de l'assistant (`catalogue/profiles.json`, facultatif). */ profiles: SetupProfile[] };
 
 const run = promisify(execFile);
 const ID_RE = /^[a-z][a-z0-9-]{1,39}$/;
 const INDEX_PATH = "catalogue/index.json";
 const SUGGESTED_PATH = "catalogue/suggested.json";
+const PROFILES_PATH = "catalogue/profiles.json";
 const TTL = 15 * 60_000;
 const MAX_INDEX_BYTES = 1024 * 1024;
 const str = (v: unknown, max: number) => (typeof v === "string" ? v.slice(0, max) : undefined);
@@ -106,7 +108,7 @@ export function resolveIndexRepo(): string | null {
 }
 
 /** Lit `catalogue/index.json` et `catalogue/suggested.json` (facultatif) dans le dépôt, sans rien écrire dans l'installation : un dépôt temporaire, une récupération superficielle. */
-export async function fetchCatalogueFromRepo(url: string, ref = "HEAD", git: IndexGit = defaultGit): Promise<{ index: unknown; suggested: unknown }> {
+export async function fetchCatalogueFromRepo(url: string, ref = "HEAD", git: IndexGit = defaultGit): Promise<{ index: unknown; suggested: unknown; profiles?: unknown }> {
   if (!/^[\w./-]{1,100}$/.test(ref)) throw new Error("bad-ref");
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-index-"));
   try {
@@ -116,7 +118,9 @@ export async function fetchCatalogueFromRepo(url: string, ref = "HEAD", git: Ind
     if (text.length > MAX_INDEX_BYTES) throw new Error("too-large");
     let suggested: unknown = [];
     try { suggested = JSON.parse(await git(["show", `FETCH_HEAD:${SUGGESTED_PATH}`], tmp)); } catch { /* pas de liste : rien n'est suggéré */ }
-    return { index: JSON.parse(text), suggested };
+    let profiles: unknown = [];
+    try { profiles = JSON.parse(await git(["show", `FETCH_HEAD:${PROFILES_PATH}`], tmp)); } catch { /* pas de fichier : aucun profil de départ */ }
+    return { index: JSON.parse(text), suggested, profiles };
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }
@@ -126,15 +130,17 @@ export async function fetchCatalogueFromRepo(url: string, ref = "HEAD", git: Ind
  * Les deux fichiers du catalogue lus DIRECTEMENT (deux requêtes sur raw.githubusercontent.com, voir rawRead.ts) au lieu d'un dépôt récupéré : bien plus rapide.
  * null = pas applicable (dépôt hors GitHub) ou impossible (panne, limite de débit, fichier absent) : la récupération par git prend alors le relais.
  */
-async function fetchCatalogueOverHttps(url: string, ref: string): Promise<{ index: unknown; suggested: unknown } | null> {
+async function fetchCatalogueOverHttps(url: string, ref: string): Promise<{ index: unknown; suggested: unknown; profiles?: unknown } | null> {
   const base = rawBase(url, ref === "HEAD" ? undefined : ref);
   if (!base) return null;
   try {
-    const [i, s] = await Promise.all([rawGet(`${base}/${INDEX_PATH}`, MAX_INDEX_BYTES), rawGet(`${base}/${SUGGESTED_PATH}`, 64 * 1024).catch(() => null)]);
+    const [i, s, pr] = await Promise.all([rawGet(`${base}/${INDEX_PATH}`, MAX_INDEX_BYTES), rawGet(`${base}/${SUGGESTED_PATH}`, 64 * 1024).catch(() => null), rawGet(`${base}/${PROFILES_PATH}`, 64 * 1024).catch(() => null)]);
     if (!i) return null;
     let suggested: unknown = [];
     try { if (s) suggested = JSON.parse(s.toString("utf8")); } catch { /* pas de liste : rien n'est suggéré */ }
-    return { index: JSON.parse(i.toString("utf8")), suggested };
+    let profiles: unknown = [];
+    try { if (pr) profiles = JSON.parse(pr.toString("utf8")); } catch { /* pas de fichier : aucun profil de départ */ }
+    return { index: JSON.parse(i.toString("utf8")), suggested, profiles };
   } catch { return null; }
 }
 
@@ -142,10 +148,10 @@ async function fetchCatalogueOverHttps(url: string, ref: string): Promise<{ inde
 export const sanitizeSuggested = (raw: unknown): string[] => (Array.isArray(raw) ? raw.filter((id): id is string => typeof id === "string" && ID_RE.test(id)) : []);
 
 const cacheFile = () => path.join(DATA_DIR, "cache", "recognized-index.json");
-function readPersisted(): { items: RecognizedItem[]; suggested: string[]; fetchedAt: number; origin: string | null } | null {
+function readPersisted(): { items: RecognizedItem[]; suggested: string[]; profiles: SetupProfile[]; fetchedAt: number; origin: string | null } | null {
   try {
     const raw = JSON.parse(fs.readFileSync(cacheFile(), "utf8"));
-    return { items: sanitizeEntries(raw), suggested: sanitizeSuggested(raw.suggested), fetchedAt: Number(raw.fetchedAt) || 0, origin: typeof raw.origin === "string" ? raw.origin : null };
+    return { items: sanitizeEntries(raw), suggested: sanitizeSuggested(raw.suggested), profiles: sanitizeProfiles(raw.profiles), fetchedAt: Number(raw.fetchedAt) || 0, origin: typeof raw.origin === "string" ? raw.origin : null };
   } catch { return null; }
 }
 
@@ -197,7 +203,7 @@ export async function getRecognizedDetailed(opts: RecognizedOptions = {}): Promi
   if (persisted.length) {
     const kept = readPersisted()!;
     void reading.catch(() => {});
-    return { items: persisted.map((i) => ({ ...i, catalogueOrigin: "official" as const })), source: "cache", fetchedAt: kept.fetchedAt, origin: kept.origin, suggested: kept.suggested };
+    return { items: persisted.map((i) => ({ ...i, catalogueOrigin: "official" as const })), source: "cache", fetchedAt: kept.fetchedAt, origin: kept.origin, suggested: kept.suggested, profiles: kept.profiles };
   }
   return reading;
 }
@@ -205,7 +211,7 @@ export async function getRecognizedDetailed(opts: RecognizedOptions = {}): Promi
 async function readRecognized(opts: RecognizedOptions, key: string): Promise<RecognizedResult> {
   const { fetchImpl = fetch, git = defaultGit, now = Date.now } = opts;
   const extraUrl = process.env.MODULES_INDEX_URL;
-  let base: RecognizedResult = { items: [], source: "none", fetchedAt: null, origin: null, suggested: [] };
+  let base: RecognizedResult = { items: [], source: "none", fetchedAt: null, origin: null, suggested: [], profiles: [] };
   const repo = resolveIndexRepo();
   if (repo) {
     try {
@@ -214,16 +220,17 @@ async function readRecognized(opts: RecognizedOptions, key: string): Promise<Rec
       const got = (!opts.git ? await fetchCatalogueOverHttps(repo, ref) : null) ?? await fetchCatalogueFromRepo(repo, ref, git);
       const items = sanitizeEntries(got.index);
       const suggested = sanitizeSuggested(got.suggested);
-      base = { items, source: "repository", fetchedAt: now(), origin: repo, suggested };
+      const profiles = sanitizeProfiles(got.profiles);
+      base = { items, source: "repository", fetchedAt: now(), origin: repo, suggested, profiles };
       try {
         fs.mkdirSync(path.dirname(cacheFile()), { recursive: true });
-        fs.writeFileSync(cacheFile(), JSON.stringify({ version: 1, fetchedAt: base.fetchedAt, origin: repo, modules: items, suggested }));
+        fs.writeFileSync(cacheFile(), JSON.stringify({ version: 1, fetchedAt: base.fetchedAt, origin: repo, modules: items, suggested, profiles }));
       } catch { /* la copie locale est un plus */ }
     } catch { /* injoignable : on retombe sur la dernière copie reçue */ }
   }
   if (base.source === "none") {
     const kept = readPersisted();
-    if (kept && kept.items.length + (kept.fetchedAt ? 1 : 0) > 0) base = { items: kept.items, source: "cache", fetchedAt: kept.fetchedAt, origin: kept.origin, suggested: kept.suggested };
+    if (kept && kept.items.length + (kept.fetchedAt ? 1 : 0) > 0) base = { items: kept.items, source: "cache", fetchedAt: kept.fetchedAt, origin: kept.origin, suggested: kept.suggested, profiles: kept.profiles };
   }
 
   // Le dépôt du catalogue (ou sa dernière copie reçue, qui ne contient que lui) : « official ». L'index supplémentaire : « extra ».

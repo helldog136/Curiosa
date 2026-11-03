@@ -299,8 +299,16 @@ Elle ne touche **jamais** au compte d'une autre personne que la personne propri�
 
 - La route `GET /api/admin/operations/<id>` est en lecture seule. Le suivi d'une personne n'est lisible que par elle ou par une personne propriétaire ; un suivi inconnu, oublié ou interdit donne la même réponse (404), pour ne rien révéler. `core-update` (mise à jour du site) est réservé à la personne propriétaire.
 - Le suivi ne contient jamais de secret, de jeton ni de chemin disque : étapes nommées, numéros, nom lisible d'un module, texte d'erreur nettoyé (`safeText`). Il est en mémoire du processus, borné (40 opérations, 10 minutes après la fin, 2 heures au plus pour une opération « en cours ») et sans minuteur de fond.
-- Les droits des actions ne changent pas : le contrôle (`adminCtx("owner")`, `guardOwner`…) passe AVANT le suivi. Un second lancement avec la même clé rejoint l'opération en cours ; la clé d'une sauvegarde contient une empreinte salée du mot de passe, pour que personne ne reçoive le fichier chiffré d'un autre.
+- Les droits des actions ne changent pas : le contrôle (`adminCtx("owner")`, `guardBackup`…) passe AVANT le suivi. Un second lancement avec la même clé rejoint l'opération en cours ; la clé d'une sauvegarde contient une empreinte salée du mot de passe, pour que personne ne reçoive le fichier chiffré d'un autre.
 - L'identifiant d'une opération est choisi par le navigateur, mais le serveur le valide (16 à 64 caractères sûrs), refuse un identifiant déjà pris par quelqu'un d'autre et lie toujours l'opération à la personne authentifiée.
+
+## Recherche dans le site (après la 0.6.2) : modèle de menace
+
+- **Contenu non public.** L'index ne lit que des entrées publiées, datées d'avant maintenant, non expirées, d'instances dont la page publique existe ; jamais de brouillon (`status`), de publication programmée, d'instance sans page. Les éléments de modules viennent du sujet `feed.item`, déjà public par contrat (adresses `javascript:` et dates futures écartées).
+- **Injection.** La saisie n'est jamais interprétée : pas d'expression régulière, pas de requête construite avec elle (la base n'est pas interrogée avec la saisie : le tri et le filtre se font en mémoire sur l'index), pas de HTML (React échappe titre, extrait et saisie ; la mise en évidence est une liste de segments). Longueur, nombre de mots, caractères de contrôle et paramètres répétés sont bornés avant tout travail.
+- **Déni de service.** Coût borné par des plafonds (voir PLATFORM.md) : 4 000 fiches par langue, 200 résultats parcourables, 50 par page, 100 caractères et 6 mots par requête, 4 langues en mémoire, un seul calcul d'index à la fois, délai de 1,5 s pour les modules. Limite de débit par empreinte (30/min) et pour tout le site (600/min). L'adresse prise en compte est celle de `clientIp` (l'entrée ajoutée par notre proxy, jamais la première de `X-Forwarded-For`).
+- **Fuite et traces.** Rien n'est écrit : ni base, ni fichier, ni cookie, ni journal du texte cherché. La page de résultats est `noindex` et jamais mise en cache partagée.
+- **Chemin réservé.** `/search` ne peut pas être pris par une instance ou un lien court (`RESERVED_PATHS`), donc personne ne peut y poser une page qui ressemble à la recherche.
 
 ## Menu du site (cœur 0.6.1)
 

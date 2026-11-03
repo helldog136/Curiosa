@@ -5,6 +5,7 @@ import { isBackgroundImage, isPreset, type BackgroundPreset } from "./background
 import { isGlowLevel, normalizeTuning, type GlowLevel, type GlowTuning } from "./glow";
 import { prisma } from "./db";
 import { isHexColor, type ThemeExtra } from "./color";
+import { normalizePlacement, type SearchPlacementConfig } from "./search/config";
 
 type Stored = Record<string, Record<string, unknown>>; // key → locale → value
 
@@ -104,6 +105,8 @@ export type SiteConfig = {
   newsToggle: boolean;
   /** Montrer l'icône du flux RSS dans le pied de page (par défaut oui ; elle n'apparaît de toute façon que si le site a de quoi alimenter un flux : voir core/feeds.ts). */
   feedLink: boolean;
+  /** Recherche dans le site (voir core/search/) : active par défaut ; `placement` dit où se met le champ (en-tête, pied de page, ou nulle part : la page /search seule). */
+  search: SearchPlacementConfig;
   nav: NavItem[];
   /** Mise en page de l'en-tête et ses éléments facultatifs (voir core/header.ts). */
   header: HeaderConfig;
@@ -162,6 +165,7 @@ export const getSiteConfig = cache(async (locale?: string): Promise<SiteConfig> 
     statsEnabled: (await getSetting<boolean>("stats.enabled")) !== false,
     newsToggle: (await getSetting<boolean>("news.toggle")) === true,
     feedLink: (await getSetting<boolean>("feed.showLink")) !== false,
+    search: { enabled: (await getSetting<boolean>("search.enabled")) !== false, placement: normalizePlacement(await getSetting("search.placement")) },
     nav: (await getSetting<NavItem[]>("nav.custom")) ?? [],
     header: {
       layout: isHeaderLayout(all["header.layout"]?.[""]) ? (all["header.layout"]![""] as HeaderLayout) : "classic",

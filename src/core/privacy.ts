@@ -13,6 +13,8 @@ export type PrivacyInput = {
   newsToggle: boolean;
   /** Le skin du site fournit clair ET sombre : le visiteur peut choisir, et son choix reste dans le stockage local de son navigateur (docs/SKINS.md §3.8). */
   modeSwitch?: boolean;
+  /** La recherche dans le site est active : une courte section dit que la saisie n'est ni gardée ni transmise (core/search/). */
+  search?: boolean;
   /** Fonctionnalités qui collectent des données : nom de l'instance + ce que son module déclare. */
   features: { name: string; text: string }[];
   /** Ajout du propriétaire (Markdown), après le texte obligatoire. */
@@ -20,7 +22,7 @@ export type PrivacyInput = {
   t: Translator;
 };
 
-export function buildPrivacyPolicy({ siteName, contactEmail, statsEnabled, newsToggle, modeSwitch = false, features, extra, t }: PrivacyInput): string {
+export function buildPrivacyPolicy({ siteName, contactEmail, statsEnabled, newsToggle, modeSwitch = false, search = false, features, extra, t }: PrivacyInput): string {
   const out: string[] = [t("privacy.intro", { name: siteName }), ""];
   out.push(`## ${t("privacy.who")}`, "", contactEmail ? t("privacy.whoContact", { name: siteName, email: contactEmail }) : t("privacy.whoNoContact", { name: siteName }), "");
   out.push(`## ${t("privacy.cookies")}`, "", `- ${t("privacy.cookies.locale")}`);
@@ -28,6 +30,7 @@ export function buildPrivacyPolicy({ siteName, contactEmail, statsEnabled, newsT
   if (modeSwitch) out.push(`- ${t("privacy.cookies.mode")}`);
   out.push(`- ${t("privacy.cookies.none")}`, "");
   out.push(`## ${t("privacy.stats")}`, "", statsEnabled ? t("privacy.stats.on") : t("privacy.stats.off"), "");
+  if (search) out.push(`## ${t("privacy.search")}`, "", t("privacy.search.text"), "");
   if (features.length > 0) {
     out.push(`## ${t("privacy.features")}`, "");
     for (const f of features) out.push(`### ${f.name}`, "", f.text.trim(), "");

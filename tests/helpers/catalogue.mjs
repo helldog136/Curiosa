@@ -28,6 +28,7 @@ export function createCatalogue() {
   process.env.CURIOSA_ALLOW_LOCAL_MODULES = "1";
   const indexFile = path.join(repo.dir, "catalogue/index.json");
   const suggestedFile = path.join(repo.dir, "catalogue/suggested.json");
+  const profilesFile = path.join(repo.dir, "catalogue/profiles.json");
   const index = () => JSON.parse(fs.readFileSync(indexFile, "utf8"));
   const forget = async () => (await import("@/core/modules/recognized")).clearRecognizedCache();
   const commit = (message) => { repo.g("add", "-A"); repo.g("commit", "-q", "--allow-empty", "--no-verify", "-m", message); };
@@ -75,6 +76,11 @@ export function createCatalogue() {
     writeIndex(...entries) { fs.writeFileSync(indexFile, JSON.stringify({ version: 1, modules: entries })); commit("index"); },
     /** Remplace la liste « suggérés » du dépôt du catalogue. */
     async suggest(ids) { fs.writeFileSync(suggestedFile, JSON.stringify(ids)); commit("suggested"); await forget(); },
+    /** Remplace les profils de départ (`catalogue/profiles.json`) ; `null` supprime le fichier (un dépôt sans profils). `raw` : texte tel quel (fichier abîmé). */
+    async profiles(value, { raw = false } = {}) {
+      if (value === null) fs.rmSync(profilesFile, { force: true }); else fs.writeFileSync(profilesFile, raw ? value : JSON.stringify(value));
+      commit("profiles"); await forget();
+    },
     /** Retire un module de l'index (son dossier reste dans le dépôt). */
     async unlist(id) { const idx = index(); idx.modules = idx.modules.filter((x) => x.id !== id); fs.writeFileSync(indexFile, JSON.stringify(idx)); commit(`unlist ${id}`); await forget(); },
     /** Catalogue injoignable (panne réseau). `forget` : la dernière copie reçue (data/cache) est oubliée aussi. */
@@ -87,7 +93,7 @@ export function createCatalogue() {
     /** Remet le catalogue à zéro (entre deux tests). */
     async clear() {
       fs.rmSync(path.join(repo.dir, "modules"), { recursive: true, force: true });
-      fs.writeFileSync(indexFile, JSON.stringify({ version: 1, modules: [] })); fs.writeFileSync(suggestedFile, "[]");
+      fs.writeFileSync(indexFile, JSON.stringify({ version: 1, modules: [] })); fs.writeFileSync(suggestedFile, "[]"); fs.rmSync(profilesFile, { force: true });
       commit("clear");
       for (const t of repo.g("tag", "-l").toString().split("\n").filter(Boolean)) repo.g("tag", "-d", t);
       await self.up();

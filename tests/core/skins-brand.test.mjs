@@ -34,7 +34,8 @@ test("la pièce `brand-mark` est dans l'allowlist (ajout additif, juste après `
   assert.equal(PARTS[PARTS.indexOf("credit") + 1], "brand-mark");
   const baseline = JSON.parse(fs.readFileSync("docs/skins-parts-baseline.json", "utf8"));
   assert.ok(baseline.parts.includes("brand-mark"));
-  assert.deepEqual(baseline.parts, [...PARTS], "la référence suit l'allowlist, dans le même ordre");
+  // La référence est celle de la dernière version PUBLIÉE : une pièce ajoutée depuis (« nouvelle », signalée par `skin:official`) n'y figure pas encore ; aucune pièce publiée ne disparaît ni ne change d'ordre.
+  assert.deepEqual([...PARTS].filter((p) => baseline.parts.includes(p)), baseline.parts, "la référence est une sous-suite ordonnée de l'allowlist");
   assert.equal(sanitizeSkinCss('[data-skin-part="brand-mark"]{color:red}', { skinId: ID }).ok, true);
 });
 

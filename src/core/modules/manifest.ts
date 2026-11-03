@@ -152,6 +152,20 @@ const jsonSchemaLite = z.object({
   required: z.array(z.string()).optional(),
 });
 
+/**
+ * (cœur après 0.6.2) MODÈLES d'entrée d'un module à contenu : « Partir d'un modèle » dans la liste des entrées, et pages d'exemple proposées par l'assistant d'installation
+ * (selon le profil choisi). Un modèle crée toujours un BROUILLON à modifier ; textes en français ET en anglais. Un cœur plus ancien ignore la clé (le bouton n'apparaît pas) :
+ * aucun `minCore` à déclarer.
+ */
+const entryTemplate = z.object({
+  id: z.string().regex(/^[a-z][a-z0-9-]{1,39}$/),
+  name: z.union([z.string().max(60), z.record(z.string(), z.string().max(60))]),
+  description: z.union([z.string().max(120), z.record(z.string(), z.string().max(120))]).optional(),
+  title: z.union([z.string().max(120), z.record(z.string(), z.string().max(120))]),
+  summary: z.union([z.string().max(300), z.record(z.string(), z.string().max(300))]).optional(),
+  body: z.union([z.string().max(6000), z.record(z.string(), z.string().max(6000))]).optional(),
+});
+
 const content = z.object({
   display: z.enum(["cards", "list", "links", "codes"]),
   clickAction: z.enum(["detail", "external"]),
@@ -164,6 +178,7 @@ const content = z.object({
   fallbackToDefault: z.boolean().optional(),
   basePath: z.string().regex(/^[a-z0-9-]*$/).optional(),
   showInNav: z.boolean().optional(),
+  templates: z.array(entryTemplate).max(8).optional(),
 });
 
 /** Nom d'onglet : court (limite dure ; le kit conseille moins), en français ET en anglais de préférence. */

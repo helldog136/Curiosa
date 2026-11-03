@@ -182,6 +182,26 @@ dans `<head>` ; aucun module n'est nécessaire.
 Le catalogue de ce qu'on peut suivre (nom lisible, nombre d'éléments, instances qui l'alimentent) est sur `/feed/topics.json`.
 Une rubrique inconnue est ignorée ; si toutes le sont, la réponse est 404 (une faute de frappe ne donne pas un flux vide en silence).
 
+## La recherche dans le site : une fonctionnalité du cœur (après la 0.6.2)
+
+`/search` (et `/<langue>/search`) : la recherche des **personnes qui visitent**. Distincte de la recherche de l'administration (`core/adminkit/search.ts`, réservée à l'équipe). Code : `src/core/search/` ; page : `src/app/(site)/search/page.tsx` + `components/site/SearchView.tsx` ; champ : `components/site/SearchForm.tsx`, posé dans la région `tools` de l'en-tête (ou le pied de page, ou nulle part) selon le réglage.
+
+**Principes.** Sans JavaScript (formulaire GET `?q=`, aucun script ajouté au site public). « Vitrine sans état » : aucun journal des recherches, aucun cookie posé par la recherche, aucune statistique de requêtes, aucun service tiers, aucun minuteur. Le texte cherché n'est jamais écrit ni journalisé. Tout ce qui est affiché (titre, extrait, saisie) passe par React : jamais de HTML construit à la main, la mise en évidence est une pièce `mark` autour de segments de texte.
+
+**Ce qui est cherché.** Uniquement du PUBLIC : les entrées publiées dont la date est atteinte, non expirées, des instances à contenu dont la **page publique existe** (`hasPublicPage`), dans la langue de la personne qui visite avec le repli de langue de l'instance ; plus les éléments `feed.item` que des modules proposent déjà au flux RSS (titre et résumé). Jamais un brouillon, une publication programmée, une entrée expirée, une instance sans page. Les instances à lien externe (`clickAction: "external"`) mènent à leur lien (http/https seulement). Les recherches propres aux modules (annuaire, agenda, vidéos, carte, boîte à idées, FAQ) restent telles quelles : leurs filtres (catégorie, date, lieu) n'ont pas de sens dans une recherche générale ; un module y apparaît seulement en fournissant `feed.item`, comme pour le flux. Une personne peut écarter des types de contenu dans les réglages.
+
+**Texte et classement** (`search/text.ts`, `search/rank.ts`, purs). Insensible à la casse et aux accents : le repli (`fold`) ne change jamais la longueur du texte, donc la mise en évidence et l'extrait gardent les accents d'origine. La recherche est un `indexOf` sur des mots (jamais une expression régulière construite avec la saisie). Un résultat répond si CHAQUE mot saisi est trouvé (titre, résumé, étiquettes ou début du texte) ; rang 0 : tous les mots dans le titre ; rang 1 : chaque mot dans le titre ou le résumé ; rang 2 : il faut aussi le texte ; à rang égal le plus récent d'abord, puis le titre, puis l'identifiant (ordre déterministe). Un type lisible (« Page », « Article ») est le **nom de l'instance** dans la langue de la personne qui visite.
+
+**L'index** (`search/index.ts`). Construit à la demande, en mémoire (sur `globalThis`), jamais écrit : titre, résumé et étiquettes, et les 3 000 premiers caractères du corps, sous forme pliée. Invalidé par une **signature du contenu** (nombre et dernière modification des entrées publiées, de leurs traductions et des instances : trois agrégats, rien de lu en entier) à chaque recherche, et de toute façon après 60 secondes (publication programmée, expiration, modules). Un seul calcul à la fois par langue. **Plafonds** : 4 000 fiches d'entrées par langue (les plus récentes d'abord ; le dépassement est dit sur la page), 500 éléments de modules (200 par module, 1,5 s accordées aux modules, sinon la recherche se fait sans eux et l'index n'est gardé que 10 s), titre 200, résumé 600, corps 3 000 caractères par fiche (≈ 12 Mo de texte au plus par langue), 4 langues en mémoire, lecture de la base par tranches de 250. Testés dans `tests/core/search-service.test.mjs` (4 300 entrées).
+
+**Requête et réponse.** 100 caractères, 6 mots, 40 caractères par mot (le reste est ignoré et la page le dit) ; contrôles et guillemets séparent les mots ; `?q=` répété : le premier. Résultats parcourables : 200 au plus, 5 à 50 par page (10 par défaut), `?page=` invalide ramené dans les bornes. La page de résultats est `noindex, follow` (balise et `X-Robots-Tag` dans `next.config.mjs`), dynamique donc `Cache-Control: private, no-store` (Next) : aucun cache partagé ne garde une recherche. Une page de Next ne sait répondre qu'en 200 ou 404 : une limite atteinte est un message sur la page (200), pas un 429.
+
+**Limite de débit** (`search/limit.ts`). 30 recherches par minute et par visiteur, 600 pour tout le site, par l'empreinte `visitorFingerprint("core.search", requête, "q")` (celle de `ctx.api.visitor.fingerprint` : condensé salé non réversible, sel au hasard en mémoire renouvelé chaque jour). Compteurs en mémoire du processus, une minute, 2 000 au plus, oubliés à la recherche suivante (aucun minuteur). Un champ vide ne compte pas.
+
+**Réglages** (page *Réglages du site*, onglet « Recherche »). `search.enabled` (**vrai par défaut** : la recherche est utile sans rien régler ; un seul interrupteur la coupe, et la page répond alors 404 comme avant), `search.placement` (`header` par défaut, `footer`, `none`), `search.perPage` (5 à 50, 10 par défaut), `search.exclude` (clés d'instances écartées ; une instance nouvelle est donc cherchée d'office). `/search` est un chemin **réservé** (`RESERVED_PATHS`) : aucune instance ni lien court ne peut le prendre. Le JSON-LD du site ajoute la `SearchAction` de schema.org quand la recherche est active ; la page `/privacy` ajoute une courte section.
+
+**Habillage.** Pièces `search` (le formulaire, `data-variant="tool|page"`) et `mark` (le terme mis en évidence), plus les pièces communes (`input`, `button`, `list`, `list-item`, `heading`, `link`, `badge`, `prose`, `notice`, `pagination`). Voir [SKINS.md](SKINS.md) §9.2.
+
 ## Liens courts (redirections) : une fonctionnalité du cœur
 
 `/<nom>` envoie vers une adresse saisie dans l'administration (« Raccourcis de liens » en mode simple, « Redirections » en mode avancé). Le module « Liens courts » imaginé à part a été abandonné : tout son travail vit ici, sans doublon.
@@ -232,8 +252,8 @@ Le cœur construit lui-même chaque lien d'icône de l'en-tête (`loadSocialLink
 ## Ce que le cœur ne fait pas
 
 - Il ne cite **aucun module par son identifiant**. L'assistant de première installation propose les modules que suggère
-  le Catalogue (`catalogue/suggested.json`, tenu par le dépôt de modules) et lit leurs manifestes (`onboarding.home`, `onboarding.sample`,
-  `onboarding.collectsLinks`) au lieu de connaître « blog » ou « hero ».
+  le Catalogue (`catalogue/suggested.json`, tenu par le dépôt de modules), les profils de départ (`catalogue/profiles.json`, même dépôt) et lit leurs manifestes (`onboarding.home`, `onboarding.sample`,
+  `onboarding.collectsLinks`, `content.templates`) au lieu de connaître « blog » ou « hero ».
 - Il ne contient aucune fonctionnalité de sponsor, de partenaire, d'overlay… Les cartes de sponsors, les fiches de partenaires, le
   labyrinthe sont des modules ; le cœur ne fournit que de quoi les faire (QR, stockage, sujets, MCP, formulaires d'admin).
 

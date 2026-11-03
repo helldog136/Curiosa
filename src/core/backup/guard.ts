@@ -23,9 +23,6 @@ export async function guardBackup(request: Request): Promise<Response | null> {
   return null;
 }
 
-/** Ancien nom, gardé pour les routes existantes. */
-export const guardOwner = guardBackup;
-
 export const MAX_UPLOAD = 1024 * 1024 * 1024;
 
 function safeEqual(a: string, b: string): boolean {

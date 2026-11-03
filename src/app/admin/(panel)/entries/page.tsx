@@ -36,18 +36,24 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
   const fmt = new Intl.DateTimeFormat(locale, { dateStyle: "medium" });
   const newHref = `/admin/entries/new?c=${collection.key}`;
   const canConfigure = hasRole(user, "admin");
+  const active = (await getActiveInstances()).find((a) => a.instance.id === collection.id);
+  // Modèles déclarés par le module (`content.templates`) : un lien « Partir d'un modèle », jamais une obligation.
+  const templatesHref = (active?.mod.manifest.content?.templates ?? []).length ? `/admin/entries/templates?c=${collection.key}` : null;
   const name = (await getInstanceLabeler(locale, config.defaultLocale)).label(collection);
 
   return (
     <div className="space-y-6">
       <InstanceTabs t={t} id={collection.id} keyName={collection.key} name={name}
-        icon={(await getActiveInstances()).find((a) => a.instance.id === collection.id)?.mod.manifest.icon ?? "🧩"} active="entries" content canConfigure={canConfigure} />
+        icon={active?.mod.manifest.icon ?? "🧩"} active="entries" content canConfigure={canConfigure} />
 
       {list.total === 0 && !filtered ? (
         <div className={`${ui.card} flex flex-col items-center gap-4 py-12 text-center`}>
           <p className="text-lg font-semibold">{t("entries.emptyTitle")}</p>
           <p className="max-w-md text-sm text-muted">{t("entries.emptyHelp")}</p>
-          <a href={newHref} className={ui.btnPrimary}>{t("entries.createFirst")}</a>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <a href={newHref} className={ui.btnPrimary}>{t("entries.createFirst")}</a>
+            {templatesHref && <a href={templatesHref} className={ui.btn} data-testid="entries-templates-link">{t("entries.templates.open")}</a>}
+          </div>
         </div>
       ) : (
         <>
@@ -56,7 +62,10 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
               {list.pages > 1 ? t("entries.rangeCount", { from: (list.page - 1) * list.perPage + 1, to: (list.page - 1) * list.perPage + entries.length, n: list.total }) : t("entries.count", { n: list.total })} · {t("entries.orderedBy", { sort: t(`sort.${sort}`) })}
               {canConfigure && <> · <a href={`/admin/instances/${collection.id}`} className="underline hover:text-accent">{t("entries.changeOrder")}</a></>}
             </p>
-            <a href={newHref} className={ui.btnPrimary}>{t("entries.new")}</a>
+            <div className="flex flex-wrap items-center gap-2">
+              {templatesHref && <a href={templatesHref} className={ui.btn} data-testid="entries-templates-link">{t("entries.templates.open")}</a>}
+              <a href={newHref} className={ui.btnPrimary}>{t("entries.new")}</a>
+            </div>
           </div>
           {list.titleSortCapped && <p className={`${ui.card} border-amber-500/40 text-sm`} role="status" data-testid="title-sort-capped">{t("entries.titleSortCapped")}</p>}
           <nav aria-label={t("entries.stateLabel")} data-testid="entries-state-chips" className="flex flex-wrap gap-2">

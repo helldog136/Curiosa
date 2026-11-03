@@ -5,7 +5,14 @@ import { systemTimezone, TIMEZONE_SETTING } from "@/core/siteTime";
 import { KNOWN_LOCALES, localeName } from "@/core/i18n/locales";
 import { UI_LOCALES } from "@/core/i18n/dictionary";
 import { ActionForm } from "@/components/admin/ActionForm";
-import { Checkbox, Select, TextArea, TextField } from "@/components/admin/Field";
+import { Checkbox, CheckboxGroup, Select, TextArea, TextField } from "@/components/admin/Field";
+import { NumberField } from "@/components/admin/NumberField";
+import { Segmented } from "@/components/admin/Segmented";
+import { SwitchField } from "@/components/admin/Switch";
+import { numberHint } from "@/core/adminkit/hints";
+import { PER_PAGE_DEFAULT, PER_PAGE_MAX, PER_PAGE_MIN } from "@/core/search/config";
+import { searchableTypes } from "@/core/search";
+import { getSearchSettings } from "@/core/search/settings";
 import { ImageField } from "@/components/admin/ImageField";
 import { Tabs } from "@/components/admin/Tabs";
 import { ui } from "@/components/admin/ui";
@@ -16,6 +23,7 @@ import { getAiBlocking, getSiteEntity, isLlmsTxtEnabled } from "@/core/seoSettin
 import { saveSettings } from "./actions";
 
 import { saveMail, sendTestMail } from "./mail-actions";
+import { saveSearch } from "./search-actions";
 import { retryRawgHandover } from "./rawg-actions";
 import { providerInstance } from "@/core/modules/dependencies";
 import { COVERS_MODULE, COVERS_SERVICE, ensureRawgHandover, handoverPending } from "@/core/services/rawgHandover";
@@ -26,7 +34,9 @@ import { LegacyHash } from "@/components/admin/LegacyHash";
 const TRANSLATABLE = ["site.name", "site.tagline", "site.about", "footer.text", "privacy.extra"] as const;
 
 export default async function SettingsPage() {
-  const { t, config, advanced, user } = await adminCtx("admin");
+  const { t, config, advanced, user, locale } = await adminCtx("admin");
+  const search = await getSearchSettings();
+  const searchTypes = await searchableTypes(locale);
   const mail = await getMailConfig();
   const isOwner = hasRole(user, "owner");
   // Jaquettes de jeux (voir services/rawgHandover.ts) : la clé et les corrections se règlent dans le module « Jaquettes de jeux ». Si le cœur garde encore celles de l'ancien service
@@ -70,7 +80,7 @@ export default async function SettingsPage() {
         {advanced && <p className={`${ui.help} mt-1`}>{t("settings.addressHint")} <Link href="/admin/settings/address" className="font-medium text-accent hover:underline" data-testid="to-address">{t("settings.addressOpen")} →</Link></p>}
       </header>
       <LegacyHash map={{ appearance: "/admin/appearance", header: "/admin/navigation#header" }} />
-      <Tabs tabs={[{ id: "site", label: t("settings.identity") }, { id: "languages", label: t("settings.languages") }, { id: "privacy", label: t("settings.privacy") }, ...(hasRole(user, "owner") ? [{ id: "mail", label: t("settings.mail") }, ...(rawgModule || rawgPending ? [{ id: "services", label: t("settings.services") }] : [])] : [])]}>
+      <Tabs tabs={[{ id: "site", label: t("settings.identity") }, { id: "languages", label: t("settings.languages") }, { id: "privacy", label: t("settings.privacy") }, { id: "search", label: t("settings.search") }, ...(hasRole(user, "owner") ? [{ id: "mail", label: t("settings.mail") }, ...(rawgModule || rawgPending ? [{ id: "services", label: t("settings.services") }] : [])] : [])]}>
       <div data-tab="site languages privacy">
       <ActionForm action={saveSettings} floating={floatingLabels(t)} submitLabel={t("action.save")} className="space-y-8" submitTabs="site languages privacy">
         {advanced && <input type="hidden" name="__adv" value="1" />}
@@ -188,6 +198,38 @@ export default async function SettingsPage() {
 
       </ActionForm>
       </div>
+
+      <section data-tab="search" className="space-y-5">
+        <p className={ui.help}>{t("settings.searchIntro")}</p>
+        <ActionForm action={saveSearch} submitLabel={t("settings.searchSave")} pendingLabel={t("progress.saving")} className="space-y-5">
+          <div className={`${ui.card} space-y-3`}>
+            <SwitchField name="searchEnabled" label={t("settings.searchSwitch")} defaultChecked={search.enabled} onText={t("settings.searchOn")} offText={t("settings.searchOff")} />
+            {search.enabled && <a href="/search" target="_blank" rel="noopener" className="inline-block text-sm font-medium text-accent hover:underline">{t("settings.searchTry")} ↗</a>}
+            {searchTypes.length === 0 && <p className={ui.help} data-testid="search-empty">{t("settings.searchEmpty")}</p>}
+          </div>
+          {(() => {
+            const fields = (
+              <>
+                <Segmented name="searchPlacement" label={t("settings.searchPlacement")} help={t("settings.searchPlacementHelp")} defaultValue={search.placement}
+                  options={[{ value: "header", label: t("settings.searchPlace.header") }, { value: "footer", label: t("settings.searchPlace.footer") }, { value: "none", label: t("settings.searchPlace.none") }]} />
+                <NumberField name="searchPerPage" label={t("settings.searchPerPage")} unit={t("settings.searchPerPageUnit")} min={PER_PAGE_MIN} max={PER_PAGE_MAX} step={1} emptyValue={PER_PAGE_DEFAULT}
+                  hint={numberHint(t, { type: "number", min: PER_PAGE_MIN, max: PER_PAGE_MAX, step: 1, default: PER_PAGE_DEFAULT }, t("settings.searchPerPageUnit"))}
+                  defaultValue={search.perPage === PER_PAGE_DEFAULT ? "" : search.perPage}
+                  invalidText={t("settings.searchPerPageError", { min: PER_PAGE_MIN, max: PER_PAGE_MAX, example: PER_PAGE_DEFAULT })} />
+                {searchTypes.length > 0 && (
+                  <CheckboxGroup name="searchTypes" label={t("settings.searchTypes")} help={t("settings.searchTypesHelp")}
+                    options={searchTypes.map((x) => ({ value: x.key, label: x.label }))} checked={searchTypes.filter((x) => !search.exclude.includes(x.key)).map((x) => x.key)} />
+                )}
+              </>
+            );
+            if (advanced) return <div className={`${ui.card} space-y-4`}><h3 className="font-semibold">{t("settings.searchMore")}</h3>{fields}</div>;
+            const where = t(`settings.searchPlace.${search.placement}`);
+            const kept = searchTypes.filter((x) => !search.exclude.includes(x.key)).length;
+            const summary = [where, t("settings.searchPerPageSummary", { n: search.perPage }), searchTypes.length > 0 && kept < searchTypes.length ? t("settings.searchTypesSummary", { n: kept, total: searchTypes.length }) : t("settings.searchAllContent")].join(" · ");
+            return <MoreOptions title={t("settings.searchMore")} summary={summary} defaultOpen={search.placement !== "header" || search.perPage !== PER_PAGE_DEFAULT || search.exclude.length > 0}>{fields}</MoreOptions>;
+          })()}
+        </ActionForm>
+      </section>
 
       {isOwner && (
         <section data-tab="mail" className="space-y-5">

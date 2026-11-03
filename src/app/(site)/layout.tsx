@@ -12,7 +12,7 @@ import { runSlot } from "@/core/modules/runtime";
 import { getSiteConfig } from "@/core/settings";
 import { siteUrl } from "@/core/config";
 import { feedPath } from "@/core/feeds";
-import { jsonLd, languageAlternates, pageUrl, sameAsList, siteJsonLd, socialMeta } from "@/core/seo";
+import { jsonLd, languageAlternates, pageUrl, SEARCH_TERM_PLACEHOLDER, sameAsList, siteJsonLd, socialMeta } from "@/core/seo";
 import { getSiteEntity } from "@/core/seoSettings";
 import { loadSocialLinks } from "@/core/social";
 import { prisma } from "@/core/db";
@@ -94,7 +94,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
         {look.modeScriptUrl && <script src={look.modeScriptUrl} />}
         <style dangerouslySetInnerHTML={{ __html: css }} />
         <link rel="alternate" type="application/rss+xml" title={localized.name} href={`${siteUrl}${feedPath(locale)}`} />
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(siteJsonLd({ url: siteUrl, name: localized.name, tagline: localized.tagline, logo: pickLogo(localized.logos, "any", look.appearance.dark), locale, entity, sameAs: profiles, homeUrl: pageUrl(siteUrl, locale, config.defaultLocale, "/").replace(/\/$/, "") || siteUrl })) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(siteJsonLd({ url: siteUrl, name: localized.name, tagline: localized.tagline, logo: pickLogo(localized.logos, "any", look.appearance.dark), locale, entity, sameAs: profiles, homeUrl: pageUrl(siteUrl, locale, config.defaultLocale, "/").replace(/\/$/, "") || siteUrl, ...(localized.search.enabled ? { searchUrl: `${pageUrl(siteUrl, locale, config.defaultLocale, "/search")}?q=${SEARCH_TERM_PLACEHOLDER}` } : {}) })) }} />
         <HeadTags blocks={headBlocks} />
       </head>
       <body className="min-h-screen bg-bg text-fg antialiased" data-skin-root="">

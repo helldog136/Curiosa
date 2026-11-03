@@ -6,6 +6,8 @@ const KEYS = [
   "setup.language.title", "setup.language.default", "setup.language.defaultHelp", "setup.language.extra", "setup.language.extraHelp",
   "setup.identity.title", "setup.identity.name", "setup.identity.tagline",
   "setup.modules.title", "setup.modules.help", "setup.modules.skip", "setup.modules.skipButton", "setup.modules.none", "setup.modules.unreachable",
+  "setup.profile.title", "setup.profile.help", "setup.profile.other", "setup.profile.otherHelp", "setup.profile.skip", "setup.profile.skipButton",
+  "setup.samples.title", "setup.samples.help", "setup.samples.summary", "setup.samples.summary.one",
   "setup.links.title", "setup.links.help", "setup.links.label", "setup.links.url", "setup.links.icon", "setup.links.iconHelp", "setup.links.add", "setup.links.shortcut",
   "setup.welcome.title", "setup.welcome.text", "setup.welcome.name", "setup.welcome.nameHelp", "setup.account.help",
   "setup.account.title", "setup.account.name", "setup.account.email", "setup.account.password", "setup.account.passwordHelp", "setup.account.token", "setup.account.tokenHelp", "setup.account.emailExample", "setup.account.confirm", "progress.showPassword", "progress.hidePassword",

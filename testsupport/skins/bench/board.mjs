@@ -13,6 +13,7 @@ export const SECTIONS = [
   ["blocks", "Blocs de page", "Page blocks", ["block-hero-plain", "block-panel-media", "block-panel-tabs", "block-panel-stats", "block-panel-media-bg", "block-banners", "block-misc"]],
   ["forms", "Formulaires (repos, erreur, envoyé)", "Forms (idle, error, sent)", ["form", "form-error", "form-done"]],
   ["navigation", "Pagination", "Pagination", ["pagination"]],
+  ["search", "Recherche dans le site (champ, résultats, aucun résultat)", "Site search (field, results, no results)", ["page-search", "page-search-none", "page-search-limited"]],
   ["home", "Accueil fluide (morceaux de toutes les tailles)", "Fluid home (pieces of every size)", ["page-home"]],
 ];
 
