@@ -42,7 +42,7 @@ export type LegacyReport = {
   failed: (InstanceItem & { reason: "floor" | "timeout" | "error"; floor?: number })[];
   newer: InstanceItem[];
   seedsMissing: { key: string; module: string }[];
-  collections: { key: string; module: string; collection: string; count: number; /** (0.6.5) Le module promet cette copie inerte (`inertLegacyCollections`) : elle peut être supprimée, en mode avancé. */ inert: boolean }[];
+  collections: { key: string; module: string; collection: string; count: number; /** (cœur 0.6.5) Le module promet cette copie inerte (`inertLegacyCollections`) : elle peut être supprimée, en mode avancé. */ inert: boolean }[];
   legacyValues: { key: string; module: string; settings: string[] }[];
   orphans: { key: string; module: string; settings: string[] }[];
   /** Totaux exacts (les listes ci-dessus sont bornées). */

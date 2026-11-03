@@ -7,7 +7,9 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
-## Prochaine version (non publiée)
+## 0.6.5 — 2026-11-03
+
+**En bref.** Le mot de passe provisoire d'une nouvelle personne s'affiche une seule fois, avec un bouton « Copier ». Une période à moitié remplie est refusée avec un message, au lieu d'effacer l'ancienne. La longue présentation d'une extension est repliée en mode simple. Les tableaux peuvent montrer une petite image devant le texte. En mode avancé, Entretien permet de supprimer une copie de sécurité devenue inutile, pour les extensions qui l'indiquent. Le reste est du ménage de tests, sans effet visible.
 
 ### Extensions
 

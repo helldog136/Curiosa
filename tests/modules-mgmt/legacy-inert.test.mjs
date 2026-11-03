@@ -1,4 +1,4 @@
-// Copies de sécurité INERTES (0.6.5) : une extension promet qu'une collection héritée ne sert plus (`inertLegacyCollections`) ; la personne propriétaire peut la
+// Copies de sécurité INERTES (cœur 0.6.5) : une extension promet qu'une collection héritée ne sert plus (`inertLegacyCollections`) ; la personne propriétaire peut la
 // supprimer en mode avancé depuis Entretien. Ici : le contrat du manifeste, le rapport, et surtout ce que le cœur REFUSE de supprimer.
 import test, { beforeEach, after } from "node:test";
 import assert from "node:assert/strict";
