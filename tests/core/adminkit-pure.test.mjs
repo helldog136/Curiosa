@@ -549,3 +549,8 @@ test("période incomplète : textes d'erreur FR et EN à parité, un exemple, sa
   assert.equal(fr["period.errorHalf"], "Remplissez les deux dates, par exemple du 1er au 15 décembre 2026.");
   const keys = Object.keys(fr); assert.ok(keys.indexOf("period.errorHalf") < keys.indexOf("theme.ember"), "avant le groupe final theme.*");
 });
+
+test("période ouverte : une date impossible n'est jamais présentée comme une moitié de période", () => {
+  assert.equal(V.periodErrorKey("/2027-02-29", true), "period.errorFormatOpen");
+  assert.equal(V.periodErrorKey("/2027-02-29", false), "period.errorHalf");
+});

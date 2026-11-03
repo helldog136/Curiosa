@@ -82,7 +82,7 @@ export function periodErrorKey(raw: string, openEnded: boolean): "period.errorHa
   if (raw.trim() === "") return null;
   const c = parsePeriod(raw, { openEnded });
   if (c.ok) return null;
-  if (isHalfPeriod(raw)) return "period.errorHalf";
+  if (!openEnded && isHalfPeriod(raw)) return "period.errorHalf";
   return c.reason === "order" ? "period.order" : openEnded ? "period.errorFormatOpen" : "period.errorFormat";
 }
 

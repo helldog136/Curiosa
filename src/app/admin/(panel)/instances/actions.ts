@@ -224,7 +224,7 @@ export async function saveInstanceSettings(_prev: ActionState, formData: FormDat
       if (!checked.ok) {
         const { reason } = checked;
         // Un nombre, une durée, une période ou une date : le message dit les bornes et donne un exemple (R22).
-        if (reason === "period" && isHalfPeriod(raw)) return { errors: { [name]: t("period.errorHalf") } };
+        if (reason === "period" && field.openEnded !== true && isHalfPeriod(raw)) return { errors: { [name]: t("period.errorHalf") } };
         if (reason === "number" || reason === "range" || reason === "duration" || reason === "period" || reason === "datetime") {
           const e = valueErrorKey(reason, field, t);
           return { errors: { [name]: t(e.key, { field: L(field.label), ...e.vars }) } };
