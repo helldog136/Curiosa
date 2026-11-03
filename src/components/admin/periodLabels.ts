@@ -9,6 +9,7 @@ export function periodLabels(t: Translator): PeriodLabels {
     none: t("period.none"), clear: t("period.clear"), order: t("period.order"), month: t("period.month"), monthPick: t("period.monthPick"), incomplete: t("period.incomplete"),
     preset: t("period.preset"), presetPick: t("period.presetPick"), presetSearch: t("period.presetSearch"), presetEmpty: t("period.presetEmpty"), presetClear: t("period.presetClear"),
     presetNote: t("period.presetNote"), presetMoon: t("period.presetMoon"), presetEve: t("period.presetEve"),
+    openFrom: t("period.openFrom"), openTo: t("period.openTo"), sentenceSince: t("period.sentenceSince"), sentenceUntil: t("period.sentenceUntil"), openHint: t("period.openHint"), incompleteOpen: t("period.incompleteOpen"),
     groups: { season: t("period.presetGroup.season"), fixed: t("period.presetGroup.fixed"), movable: t("period.presetGroup.movable") },
     names: Object.fromEntries(PRESETS.map((p) => [p.id, t(`period.preset.${p.id}`)])),
   };
