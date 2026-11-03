@@ -7,6 +7,23 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## Prochaine version (non publiée)
+
+**En bref.** Une entrée « Entretien » apparaît dans le menu d'administration, avec une pastille qui dit « À jour » ou combien de choses vous avez à faire. Les copies de sécurité d'anciennes données ne sont plus présentées comme une tâche : le site les garde par prudence, sans rien vous demander.
+
+### Nouveautés
+
+- **« Entretien » dans le menu d'administration, pour la personne propriétaire.** Sa pastille dit « À jour », « Copie gardée » (rien à faire) ou un nombre quand une action vous attend. Le bandeau reste réservé à l'urgent.
+- **Une page Entretien plus claire.** Chaque ligne est dans « À faire », « Gardé par prudence » ou « Terminé » (replié). Une recherche et des filtres retrouvent une ligne.
+- **Un texte juste pour les copies de sécurité.** La page disait que l'extension viderait elle-même ces données. Elle dit maintenant ce qui est vrai : la copie est gardée par prudence, comprise dans vos sauvegardes, jamais supprimée par le site, et ne demande aucune action de votre part.
+- **Les assistants IA font la même différence.** L'outil de maintenance qui liste ce qui reste sépare maintenant ce qui est à faire de ce qui est seulement gardé par prudence. Les champs existants ne changent pas.
+
+### Pour les développeurs
+
+- `src/core/modules/legacyUpkeep.ts` : classement des lignes du rapport d'héritage en `todo` / `kept` / `done` (`upkeepRows`, `upkeepSummary`, `legacyUpkeepSummary` avec une mémoire de 15 secondes). Le contrat `legacyCollections` ne dit pas si l'extension vide la collection ou la garde : le cœur ne la supprime jamais et la classe « gardée ».
+- `legacyReportForAssistant()` gagne un champ `upkeep` (`state`, `toDo`, `keptAsPrecaution`) ; `collectionsToEmpty` et les autres champs sont inchangés.
+- `NavLink` accepte une pastille d'état écrite (`status`) en plus du nombre.
+
 ## 0.6.3 — 2026-11-03
 
 **En bref.** La recherche dans le site est là : un champ « Rechercher » apparaît dans l'en-tête de votre site et mène à une page de résultats. Elle est activée par défaut ; vous pouvez la couper dans « Réglages du site », onglet « Recherche ». À l'installation, une question facultative « Vous êtes… ? » coche d'avance les extensions qui vont avec et propose des pages d'exemple en brouillon ; une liste de pages peut aussi partir d'un modèle. Un petit ménage interne n'a aucun effet visible. Vos réglages actuels sont conservés.

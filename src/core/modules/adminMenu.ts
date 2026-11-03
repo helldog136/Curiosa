@@ -2,7 +2,7 @@ import type { Level } from "../auth/rights";
 import { levelHolds } from "../auth/team";
 
 /** Les entrées de la rubrique « Administration » du menu, dans l'ordre d'affichage. */
-export type AdminEntry = "extensions" | "overlays" | "assistants" | "users" | "health" | "backup" | "updates" | "audit";
+export type AdminEntry = "extensions" | "overlays" | "assistants" | "users" | "health" | "backup" | "updates" | "upkeep" | "audit";
 
 /** Les entrées d'« Administration » réservées au mode avancé : jamais dans le menu d'une personne en mode simple (test : tests/core/admin-simple-mode.test.mjs). */
 export const ADVANCED_ONLY_ENTRIES: readonly AdminEntry[] = ["audit"];
@@ -11,6 +11,7 @@ export const ADVANCED_ONLY_ENTRIES: readonly AdminEntry[] = ["audit"];
  * Quelles entrées d'« Administration » voit cette personne ? Logique pure, testée.
  * - Assistants IA : qui détient `core:mcp.tokens` (personne propriétaire, coordination technique), en mode simple comme en mode avancé (c'est la page qu'une personne non technique utilise pour brancher une IA) ;
  * - Sauvegardes, Mises à jour : `core:backup`, `core:updates` ; Journal d'audit : `core:security`, mode avancé seulement (la table est dans rights.ts, `LEVEL_RESERVED`) ;
+ * - Entretien (0.6.4) : ce qui reste d'une ancienne version du site, avec sa pastille d'état ; même droit que Mises à jour (`core:updates`), en mode simple comme avancé ;
  * - Santé de mon site (contrôle du contenu) : administrateur et propriétaire, en mode simple comme avancé ;
  */
 export function administrationEntries({ role, advanced }: { role: Level; advanced: boolean }): AdminEntry[] {
@@ -24,7 +25,7 @@ export function administrationEntries({ role, advanced }: { role: Level; advance
   if (levelHolds(role, "core:mcp.tokens")) out.push("assistants");
   if (manage) out.push("users", "health");
   if (levelHolds(role, "core:backup")) out.push("backup");
-  if (levelHolds(role, "core:updates")) out.push("updates");
+  if (levelHolds(role, "core:updates")) out.push("updates", "upkeep");
   if (levelHolds(role, "core:security")) out.push("audit");
   return advanced ? out : out.filter((e) => !ADVANCED_ONLY_ENTRIES.includes(e));
 }

@@ -433,5 +433,5 @@ test("page Entretien : un seul message, jamais « terminée » avec des élémen
   assert.match(page, /RemoveChoices/);
   const fr = JSON.parse(fs.readFileSync("src/locales/fr.json", "utf8")), en = JSON.parse(fs.readFileSync("src/locales/en.json", "utf8"));
   for (const k of Object.keys(fr).filter((x) => x.startsWith("legacy.") || x.startsWith("audit.action.core.legacy"))) assert.ok(en[k], `${k} sans anglais`);
-  for (const k of ["legacy.row.seedsMissing", "legacy.row.collections"]) for (const bad of [/reprise/i, /takeover/i]) { assert.doesNotMatch(fr[k], bad); assert.doesNotMatch(en[k], bad); }
+  for (const k of ["upkeep.row.seedsMissing", "upkeep.row.collections"]) for (const bad of [/reprise/i, /takeover/i]) { assert.doesNotMatch(fr[k], bad); assert.doesNotMatch(en[k], bad); }
 });

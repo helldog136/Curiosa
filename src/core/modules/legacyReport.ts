@@ -4,6 +4,7 @@ import { readDismissed } from "./legacyDismiss";
 import { readGitManifest } from "./registry";
 import { isEmptyStored } from "./legacySettings";
 import type { ParsedManifest } from "./manifest";
+import { upkeepRows, upkeepSummary } from "./legacyUpkeep";
 
 /**
  * RAPPORT D'HÉRITAGE (0.2.0, contrat 10) — LECTURE SEULE. Ce qui reste d'une ancienne installation, compté sans rien modifier :
@@ -167,7 +168,16 @@ export async function legacyReport(): Promise<LegacyReport> {
 /** Pour l'outil MCP de maintenance : la même chose, en anglais simple, sans aucune valeur de réglage. */
 export async function legacyReportForAssistant() {
   const r = await legacyReport();
+  // Ce que la page Entretien et la pastille du menu disent à la personne : « à faire » (une action utile) ou « gardé par prudence » (rien à faire).
+  const rows = upkeepRows(r), sum = upkeepSummary(rows);
+  const listed = (group: "todo" | "kept") => rows.filter((row) => row.group === group).map((row) => ({ what: row.id, count: row.n, names: row.names.slice(0, 20) }));
   return {
+    upkeep: {
+      state: sum.state === "todo" ? "to_do" : sum.state === "kept" ? "nothing_to_do_kept_as_precaution" : "up_to_date",
+      toDo: listed("todo"),
+      keptAsPrecaution: listed("kept"),
+      note: "toDo = the owner has something useful to do (see the admin page /admin/maintenance/legacy). keptAsPrecaution = nothing to do: safety copies of old data (collectionsToEmpty), hidden settings and the like are kept, are included in backups, and are never deleted by the site itself. Do not present them as a problem.",
+    },
     conversionFinished: r.marker !== null,
     ...(r.marker ? { finishedAt: r.marker.at, finishedBy: r.marker.version } : { note: "The startup conversion of data from older versions has not finished yet. The public site works normally. It is retried at every start; the owner can also start it again from the admin page /admin/maintenance/legacy." }),
     totals: r.totals,

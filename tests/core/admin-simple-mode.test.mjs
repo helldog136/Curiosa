@@ -41,7 +41,7 @@ const PAGES = [
   ["updates", "updates/page.tsx"], ["health", "maintenance/content/page.tsx"], ["redirects", "redirects/page.tsx"], ["social", "social/page.tsx"],
   ["ai-visibility", "ai-visibility/page.tsx"], ["navigation", "navigation/page.tsx"], ["home", "home/page.tsx"], ["overlay-pages", "overlay-pages/page.tsx"],
   ["assistants", "assistants/page.tsx"], ["account", "account/page.tsx"], ["mode", "mode/page.tsx"], ["extensions", "extensions/page.tsx"],
-  ["extensions/add", "extensions/add/page.tsx"], ["extensions/updates", "extensions/updates/page.tsx"],
+  ["extensions/add", "extensions/add/page.tsx"], ["extensions/updates", "extensions/updates/page.tsx"], ["maintenance/legacy", "maintenance/legacy/page.tsx"],
 ];
 /** Pages qu'on ne peut pas rendre sans réseau ni dépôt : la raison est écrite ici. Vide aujourd'hui : tout se rend. */
 const SKIPPED = new Map();

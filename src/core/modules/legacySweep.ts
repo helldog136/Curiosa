@@ -1,3 +1,4 @@
+import { forgetUpkeepSummary } from "./legacyUpkeep";
 import { execFile } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
@@ -209,7 +210,7 @@ export async function runLegacySweep(opts: SweepOptions = {}): Promise<SweepResu
       done = false;
     }
     return { done, timedOut, counts, remaining: report.totals };
-  })().finally(() => { globalSweep.curiosaLegacySweep = false; });
+  })().finally(() => { globalSweep.curiosaLegacySweep = false; forgetUpkeepSummary(); });
   try {
     // Délai dur : un peu plus que le budget, pour que l'étape en cours puisse noter son propre dépassement (instance mise à l'écart).
     const result = await withDeadline(() => work, budget + 1_000);
