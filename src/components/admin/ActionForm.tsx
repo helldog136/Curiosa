@@ -12,9 +12,14 @@ import { OperationProgress } from "./OperationProgress";
 import { useProgressText } from "./ProgressLabels";
 import { clearSecrets } from "./keepValues";
 import { useTrackedRun } from "./useTrackedRun";
+import { SecretReveal, type OneTimeSecret } from "./OneTimeSecret";
 
 /** `error` : erreur GÉNÉRALE (bandeau). `errors` : erreurs PAR CHAMP, affichées sous chaque champ (voir FieldErrors.tsx) ; une action peut renvoyer l'une, l'autre ou les deux. */
-export type ActionState = { ok?: string; error?: string; errors?: FieldErrorMap } | null;
+export type ActionState = {
+  ok?: string; error?: string; errors?: FieldErrorMap;
+  /** Un secret à montrer UNE SEULE FOIS (mot de passe provisoire), avec « Copier » : voir OneTimeSecret.tsx. Il n'existe que dans la réponse de cette action, jamais dans l'adresse ni le stockage. */
+  secret?: OneTimeSecret;
+} | null;
 
 type Props = {
   action: (prev: ActionState, formData: FormData) => Promise<ActionState>;
@@ -147,6 +152,7 @@ export function ActionForm({ action, children, submitLabel, className = "space-y
       <FieldErrorsProvider value={fieldErrorsValue}>{children}</FieldErrorsProvider>
       {state?.error && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm text-red-700">{state.error}</p>}
       {state?.ok && <p role="status" className="rounded-lg border border-emerald-500/50 bg-emerald-500/10 p-3 text-sm text-emerald-700">{state.ok}</p>}
+      {state?.secret && <SecretReveal key={state.secret.value} secret={state.secret} />}
       {!hideSubmit && !floating && (
         <div data-tab={submitTabs}>
           <PendingButton pending={pending} pendingLabel={busyLabel} variant={secondary ? "btn" : "primary"}>{submitLabel}</PendingButton>
