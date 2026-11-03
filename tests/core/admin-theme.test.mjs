@@ -21,7 +21,7 @@ test("thème de l'admin : clair par défaut ; sombre si choisi ; « auto » ne d
 test("thème de l'admin : chaque couleur d'état (erreur, succès, alerte) est éclaircie sur fond sombre — chaque sélecteur est préfixé par le thème", () => {
   const css = T.adminThemeCss();
   for (const scope of [':root[data-admin-theme="dark"]', ':root[data-admin-theme="auto"]']) {
-    for (const cls of ["text-red-700", "text-red-600", "text-red-500", "text-emerald-700", "text-emerald-800", "text-emerald-900", "text-amber-700"])
+    for (const cls of ["text-red-700", "text-red-600", "text-red-500", "text-emerald-700", "text-emerald-800", "text-emerald-900", "text-amber-700", "text-amber-900"])
       assert.ok(css.includes(`${scope} .${cls}`), `${scope} .${cls}`);
   }
   // aucune règle de classe « nue » hors du thème sombre (elle s'appliquerait aussi en clair)

@@ -9,6 +9,15 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ## Prochaine version (non publiée)
 
+**En bref.** Une entrée « Entretien » apparaît dans le menu d'administration, avec une pastille qui dit « À jour » ou combien de choses vous avez à faire. Les copies de sécurité d'anciennes données ne sont plus présentées comme une tâche : le site les garde par prudence, sans rien vous demander.
+
+### Nouveautés
+
+- **« Entretien » dans le menu d'administration, pour la personne propriétaire.** Sa pastille dit « À jour », « Copie gardée » (rien à faire) ou un nombre quand une action vous attend. Le bandeau reste réservé à l'urgent.
+- **Une page Entretien plus claire.** Chaque ligne est dans « À faire », « Gardé par prudence » ou « Terminé » (replié). Une recherche et des filtres retrouvent une ligne.
+- **Un texte juste pour les copies de sécurité.** La page disait que l'extension viderait elle-même ces données. Elle dit maintenant ce qui est vrai : la copie est gardée par prudence, comprise dans vos sauvegardes, jamais supprimée par le site, et ne demande aucune action de votre part.
+- **Les assistants IA font la même différence.** L'outil de maintenance qui liste ce qui reste sépare maintenant ce qui est à faire de ce qui est seulement gardé par prudence. Les champs existants ne changent pas.
+
 ### Périodes et fuseau horaire
 
 - **Une période nouvelle ne revient plus chaque année toute seule.** Quand vous choisissez des dates, la case « Chaque année » est maintenant décochée : une annonce ponctuelle comme « Soldes du 1er au 15 décembre » ne reparaît pas l'an prochain sans que vous l'ayez voulu. Cochez-la pour une fête qui revient.
@@ -18,6 +27,9 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Pour les développeurs
 
+- `src/core/modules/legacyUpkeep.ts` : classement des lignes du rapport d'héritage en `todo` / `kept` / `done` (`upkeepRows`, `upkeepSummary`, `legacyUpkeepSummary` avec une mémoire de 15 secondes). Le contrat `legacyCollections` ne dit pas si l'extension vide la collection ou la garde : le cœur ne la supprime jamais et la classe « gardée ».
+- `legacyReportForAssistant()` gagne un champ `upkeep` (`state`, `toDo`, `keptAsPrecaution`) ; `collectionsToEmpty` et les autres champs sont inchangés.
+- `NavLink` accepte une pastille d'état écrite (`status`) en plus du nombre.
 - **Période ouverte (additif).** Clé `openEnded` d'un réglage `period` ou d'un champ `period` d'`adminForm`, désactivée par défaut : valeurs `"AAAA-MM-JJ/"` (début seul) et `"/AAAA-MM-JJ"` (fin seule), toujours « une seule fois ». `parsePeriod(raw, { openEnded })` et `checkFieldInput` les refusent sans la clé ; `describePeriod` et `periodContains` les lisent. Voir docs/MODULES.md.
 - **`ctx.timezone` (additif).** Fuseau du site : `site.timezone` s'il est valide, sinon celui du serveur, « UTC » en dernier repli. Un ancien module l'ignore ; un nouveau teste `typeof ctx.timezone === "string"`. `fakeCtx({ timezone })` du kit de test (`null` simule un cœur plus ancien).
 - **Valeur de départ de `PeriodField`.** Sans valeur enregistrée, « Chaque année » est décoché (avant : coché) ; une valeur `MM-JJ/MM-JJ` s'ouvre cochée. Logique pure dans `src/core/adminkit/periodInputs.ts` (`toInputs`, `periodState`).

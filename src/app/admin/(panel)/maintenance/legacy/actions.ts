@@ -7,6 +7,7 @@ import { audit } from "@/core/permissions";
 import { runLegacySweep } from "@/core/modules/legacySweep";
 import { dismissLegacyRow, undoDismissLegacyRow } from "@/core/modules/legacyDismiss";
 import { legacyReport } from "@/core/modules/legacyReport";
+import { forgetUpkeepSummary } from "@/core/modules/legacyUpkeep";
 import { uninstallModule } from "@/core/modules/installer";
 import type { ActionState } from "@/components/admin/ActionForm";
 
@@ -16,6 +17,7 @@ export async function rerunLegacySweep(): Promise<ActionState> {
   const r = await runLegacySweep();
   if (r.busy) return { error: t("legacy.rerun.busy") };
   await audit(user.email, "core.legacy.sweep", r.done ? "done" : r.timedOut ? "timeout" : "pending");
+  forgetUpkeepSummary();
   revalidatePath("/admin", "layout");
   if (r.done) return { ok: t("legacy.rerun.done") };
   return r.timedOut ? { error: t("legacy.rerun.timeout") } : { error: t("legacy.rerun.pending") };
@@ -35,6 +37,7 @@ export async function keepLegacyRowAction(id: string): Promise<void> {
     await audit(user.email, "core.legacy.keep", id);
     await runLegacySweep();
   }
+  forgetUpkeepSummary();
   revalidatePath("/admin", "layout");
   redirect(`${PAGE}?done=${row?.state === "absent" ? "kept" : "refused"}`);
 }
@@ -45,6 +48,7 @@ export async function undoKeepLegacyRowAction(id: string): Promise<void> {
   await undoDismissLegacyRow(id);
   await audit(user.email, "core.legacy.keep.undo", id);
   await runLegacySweep();
+  forgetUpkeepSummary();
   revalidatePath("/admin", "layout");
   redirect(PAGE);
 }
@@ -57,6 +61,7 @@ export async function removeLegacyRowAction(id: string, keepData: boolean): Prom
   const result = await uninstallModule(id, { keepData });
   if (result.ok) await audit(user.email, keepData ? "module.uninstall.keep" : "module.uninstall.erase", id);
   if (result.ok) await runLegacySweep();
+  forgetUpkeepSummary();
   revalidatePath("/", "layout");
   redirect(`${PAGE}?done=${result.ok ? (keepData ? "removed" : "erased") : "refused"}`);
 }

@@ -18,7 +18,7 @@ const vars = (p: Record<string, string>) => Object.entries(p).map(([k, v]) => `$
 const STATE_OVERRIDES: [string[], string][] = [
   [["text-red-700", "text-red-600", "text-red-500"], "#fca5a5"],
   [["text-emerald-700", "text-emerald-800", "text-emerald-900"], "#6ee7b7"],
-  [["text-amber-700"], "#fcd34d"],
+  [["text-amber-700", "text-amber-900"], "#fcd34d"],
   [["text-sky-800"], "#7dd3fc"],
   [["text-violet-800"], "#c4b5fd"],
 ];
