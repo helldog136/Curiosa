@@ -479,7 +479,7 @@ Les journaux propres aux modules (Bot Twitch, Participation, Home Assistant, Son
 
 ## 12 quater. Se montrer au tableau de bord (`dashboard`)
 
-Le tableau de bord de l'administration dit à la personne **ce qui attend une action**, **ce qui s'est passé**, de quoi **créer** quelque chose et quelques chiffres utiles. Votre module peut y apporter trois choses, toutes **facultatives**, en les déclarant dans `module.json` :
+Le tableau de bord de l'administration dit à la personne **ce qui attend une action**, de quoi **créer** quelque chose, quelques chiffres utiles et, tout en bas, **ce qui s'est passé** (le journal est toujours le dernier bloc). Votre module peut y apporter trois choses, toutes **facultatives**, en les déclarant dans `module.json` :
 
 ```json
 "rights": [{ "id": "moderate", "label": { "fr": "Valider les avis", "en": "Approve reviews" } }],
