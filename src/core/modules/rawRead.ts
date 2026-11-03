@@ -32,7 +32,6 @@ export function setRawFetch(f: Fetch | null): void { fetchImpl = f; limitedUntil
 
 /** Après un refus « trop de requêtes » : on ne réessaie pas avant l'heure indiquée par GitHub (au plus 10 minutes), la copie ou le clonage prend le relais. */
 let limitedUntil = 0;
-export const rawLimitedUntil = () => limitedUntil;
 
 /** Adresse de base `https://raw.githubusercontent.com/<propriétaire>/<dépôt>/<étiquette>` pour un dépôt github.com, sinon null (le clonage prend le relais). */
 export function rawBase(repoUrl: string, ref?: string): string | null {

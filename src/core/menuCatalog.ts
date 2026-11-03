@@ -109,11 +109,6 @@ export async function searchCatalog(group: CatalogGroup, rawQuery: string, rawCu
   return { group, items: rows.map((r) => ({ kind: "redirect" as const, ref: r.id, title: `/${r.path}`, sub: r.targetUrl.slice(0, 120), path: `/${r.path}` })), next };
 }
 
-/** Une première page de chaque groupe (recherche vide) : ce que montre le sélecteur à l'ouverture. */
-export async function firstCatalog(ctx: Ctx): Promise<CatalogPage[]> {
-  return Promise.all(CATALOG_GROUPS.map((g) => searchCatalog(g, "", null, ctx)));
-}
-
 export const MAX_NOT_IN_MENU = 60;
 
 /** « Pages qui ne sont pas dans le menu » : pages du site et pages des extensions, celles que les extensions suggèrent d'abord. Borné. */

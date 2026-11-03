@@ -7,7 +7,6 @@ import { isKnownLocale } from "./locales";
 export const LOCALE_HEADER = "x-curiosa-locale";
 /** Chemin demandé sans préfixe de langue (posé par proxy.ts). */
 export const PATH_HEADER = "x-curiosa-path";
-export const VISITOR_COOKIE = "curiosa_locale";
 export const ADMIN_COOKIE = "curiosa_admin_locale";
 
 /** Langue du visiteur : préfixe d'URL (posé par proxy.ts) sinon langue par défaut. */
@@ -40,7 +39,3 @@ export async function getAdminTranslator(userLocale?: string | null): Promise<{ 
   return { t: makeTranslator(locale), locale };
 }
 
-/** Préfixe d'URL pour une langue ("" pour la langue par défaut). */
-export function localePrefix(locale: string, defaultLocale: string): string {
-  return locale === defaultLocale ? "" : `/${locale}`;
-}
