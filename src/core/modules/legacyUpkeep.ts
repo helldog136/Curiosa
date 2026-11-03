@@ -9,7 +9,7 @@ import { legacyReport, type LegacyReport } from "./legacyReport";
  *                se fera à la prochaine mise à jour de l'extension). Jamais « à faire » : rien à cliquer, rien d'urgent.
  *   - « done »  (Terminé) : la ligne est à zéro.
  * Les COPIES DE SÉCURITÉ ne sont jamais « à faire » : le contrat `legacyCollections` (docs/MODULES.md) ne dit pas si l'extension videra la collection ou la gardera
- * (Partenariats garde une copie inerte et l'état de sa reprise) ; dans les deux cas la personne n'a rien à décider, et le cœur ne supprime jamais ces données.
+ * (Partenariats garde une copie inerte et l'état de sa reprise) ; dans les deux cas la personne n'a rien à décider, et le cœur ne supprime ces données que sur demande de la personne propriétaire, en mode avancé, quand le module les déclare INERTES (`inertLegacyCollections`, legacyCollections.ts).
  * Logique pure sur le rapport (testée) ; seule `legacyUpkeepSummary` lit la base, avec une mémoire de 15 secondes pour le menu de toutes les pages.
  */
 export type UpkeepGroup = "todo" | "kept" | "done";

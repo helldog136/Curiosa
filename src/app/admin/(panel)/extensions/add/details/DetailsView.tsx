@@ -14,7 +14,6 @@ import { normalizeNeeds } from "@/core/modules/serviceVersions";
 import { DependencyPlanBox } from "@/components/admin/DependencyPlanBox";
 import { ActionForm } from "@/components/admin/ActionForm";
 import { Checkbox } from "@/components/admin/Field";
-import { ui } from "@/components/admin/ui";
 import { Markdown } from "@/components/site/Markdown";
 import { InstallButton } from "@/components/admin/InstallButton";
 import { installCustomAction, installExtraAction } from "../actions";
@@ -22,7 +21,7 @@ import { galleryLabels } from "@/components/admin/FicheParts";
 import { ExtensionFiche, FicheFrame } from "@/components/admin/ExtensionFiche";
 import { PreviewGallery, type GalleryItem } from "@/components/admin/PreviewGallery";
 import { FicheSkeleton, GallerySkeleton } from "@/components/admin/FicheSkeleton";
-import { installBarState, techSummary, whatItAdds } from "@/core/modules/ficheView";
+import { installBarState, readmeSummary, techSummary, whatItAdds } from "@/core/modules/ficheView";
 import { previewUrl, readInstalledPreviews, type PreviewSource } from "@/core/modules/previewServe";
 import { describeMissing } from "@/core/modules/dependencyMessages";
 
@@ -126,8 +125,9 @@ async function FicheBody({ embedded, entry, custom, target }: { embedded: boolea
       description={entry ? L(entry.description) : m?.description ? L(m.description) : undefined}
       noModule={!!custom && !failed && !m} failed={failed} timedOut={timedOut} rateLimited={rateLimited} keptCount={kept.length}
       gallery={gallery} gallerySlot={remoteGallery} galleryLabels={galleryLabels(t)} adds={m ? whatItAdds(m, L) : []}
+      readmeSummary={preview?.readme ? readmeSummary(preview.readme, entry ? L(entry.description) : m?.description ? L(m.description) : "") : undefined}
       readme={preview?.readme ? (
-        <article className={`${ui.card} overflow-x-auto !p-6 text-[16px] sm:!p-8 [&_h2:first-child]:mt-0 [&>div>*:first-child]:mt-0`}>
+        <article className="overflow-x-auto text-[16px] [&_h2:first-child]:mt-0 [&>div>*:first-child]:mt-0">
           <Markdown text={preview.readme} untrusted />
           {preview.truncated && <p className="mt-6 text-xs text-muted">{t("catalogue.truncated")}</p>}
         </article>

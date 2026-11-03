@@ -8,6 +8,7 @@ import { runLegacySweep } from "@/core/modules/legacySweep";
 import { dismissLegacyRow, undoDismissLegacyRow } from "@/core/modules/legacyDismiss";
 import { legacyReport } from "@/core/modules/legacyReport";
 import { forgetUpkeepSummary } from "@/core/modules/legacyUpkeep";
+import { deleteInertCollection } from "@/core/modules/legacyCollections";
 import { uninstallModule } from "@/core/modules/installer";
 import type { ActionState } from "@/components/admin/ActionForm";
 
@@ -61,4 +62,23 @@ export async function removeLegacyRowAction(id: string, keepData: boolean): Prom
   forgetUpkeepSummary();
   revalidatePath("/", "layout");
   redirect(`${PAGE}?done=${result.ok ? (keepData ? "removed" : "erased") : "refused"}`);
+}
+
+/**
+ * « Supprimer cette copie » : une copie de sécurité que son extension a déclarée INERTE (`inertLegacyCollections`). Réservé au mode avancé (contrôlé ICI, pas seulement caché dans la page),
+ * au droit `core:updates`, à une collection de la liste « ce qui reste ». Le cœur relit le manifeste au moment du clic et refuse tout le reste (voir legacyCollections.ts).
+ * Le journal garde le nom de l'extension, de l'instance et de la collection et un nombre, jamais un contenu.
+ */
+export async function deleteInertCopyAction(instanceKey: string, collection: string): Promise<void> {
+  const { user, advanced } = await adminCtx({ right: "core:updates" });
+  const listed = advanced && (await legacyReport()).collections.some((c) => c.key === instanceKey && c.collection === collection && c.inert);
+  const r = listed ? await deleteInertCollection(instanceKey, collection) : null;
+  if (!r || !r.ok) {
+    await audit(user.email, "core.legacy.copy.refused", `${instanceKey}/${collection}`.slice(0, 200), { level: "warn" });
+    redirect(`${PAGE}?done=copyRefused`);
+  }
+  await audit(user.email, "core.legacy.copy.delete", `${collection} · ${r.deleted}`.slice(0, 200), { module: r.moduleId, instance: instanceKey, level: "warn" });
+  forgetUpkeepSummary();
+  revalidatePath("/admin", "layout");
+  redirect(`${PAGE}?done=${r.remaining > 0 ? "copyPartial" : "copyDeleted"}`);
 }

@@ -43,6 +43,27 @@ export function TechnicalDetails({ summary, open, t, children }: { summary: stri
 }
 
 /**
+ * La présentation (le texte de l'auteur) : repliée en mode simple sous « Lire la présentation complète », avec une phrase de résumé qui reste visible ; ouverte d'office
+ * en mode avancé. Un `<details>` natif : aucun script, le texte n'est de toute façon rendu qu'en Markdown sans HTML brut (voir Markdown `untrusted`).
+ */
+export function ReadmeFold({ summary, open, t, children }: { summary?: string; open: boolean; t: Translator; children: React.ReactNode }) {
+  return (
+    <section className="space-y-3" data-testid="fiche-presentation">
+      <h2 className="text-lg font-semibold">{t("catalogue.presentation")}</h2>
+      {!open && summary && <p data-testid="readme-summary" className="max-w-2xl text-[16px] leading-7">{summary}</p>}
+      <details open={open} data-testid="readme-fold" className="group rounded-2xl border border-line bg-surface">
+        <summary className="flex min-h-11 cursor-pointer list-none flex-wrap items-center gap-x-3 gap-y-1 rounded-2xl px-5 py-3 marker:hidden focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent [&::-webkit-details-marker]:hidden">
+          <span aria-hidden className="text-muted transition-transform group-open:rotate-90">▸</span>
+          <span className="font-semibold">{t("fiche.readme.open")}</span>
+          <span className="min-w-0 basis-full text-sm text-muted sm:basis-auto">{t("fiche.readme.hint")}</span>
+        </summary>
+        <div className="border-t border-line px-5 py-5 sm:px-8">{children}</div>
+      </details>
+    </section>
+  );
+}
+
+/**
  * La barre d'installation : collée en bas de la fenêtre, donc visible sans défiler. Elle dit l'état (version et « installation possible », ou la raison qui bloque, avec un lien),
  * et porte le bouton principal, unique. Dans le flux de la page (pas en superposition permanente) : elle ne cache jamais la fin du contenu. `embedded` : dans la fenêtre du catalogue.
  */

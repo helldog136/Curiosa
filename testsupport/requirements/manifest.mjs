@@ -5,12 +5,38 @@ import { allSettings, compareVersions, missingLangs, stripComments } from "./uti
 
 const MAX_BYTES = 10 * 1024 * 1024; // même plafond que l'installateur du cœur
 
+/** `ctx.api.log.write(` sans `?.` et sans test visible de `ctx.api.log` (typeof, if, &&, ??) : plante sur un cœur d'avant la 0.6.0. */
+function usesBareLogWrite(code) {
+  if (!/\bapi\s*\.\s*log\s*\.\s*write\b/.test(code)) return false;
+  return !/typeof\s+[\w.?]*\bapi\s*\??\.\s*log\b|\bif\s*\(\s*!?\s*[\w.?]*\bapi\s*\??\.\s*log\s*\)|\bapi\s*\??\.\s*log\s*(?:&&|\?\?|\|\|)|["']log["']\s+in\s+[\w.?]*\bapi\b/.test(code);
+}
+
+/** Une lecture de `ctx.timezone` qui ne prévoit pas son absence (ni `typeof`, ni `??`, `||`, `?`, ni comparaison) : sur un cœur d'avant la 0.6.4 elle vaut `undefined`. */
+function usesBareTimezone(code) {
+  if (/typeof\s+[\w.]*\bctx\s*\??\.\s*timezone\b|["']timezone["']\s+in\s+[\w.]*\bctx\b/.test(code)) return false;
+  for (const hit of code.matchAll(/\bctx\s*\??\.\s*timezone\b(?!\s*:)/g)) {
+    const after = code.slice(hit.index + hit[0].length, hit.index + hit[0].length + 12);
+    if (!/^\s*(?:\?\?|\|\||\?[^.]|===|!==|==|!=)/.test(after)) return true;
+  }
+  return false;
+}
+
 /**
  * Version du cœur qui a apporté chaque fonction. Un module qui s'en sert doit déclarer `minCore` au moins égal, sinon un cœur plus ancien l'installe puis le
  * fait mal fonctionner (ou le refuse sans explication). Source : l'historique des versions du cœur (CHANGELOG.md).
  * Les fonctions d'avant la 0.1.10 ne sont pas listées : aucun site à jour n'a un cœur aussi ancien, une exigence là-dessus ne ferait que du bruit.
+ * Volontairement ABSENTES : les clés de manifeste que le cœur plus ancien ignore sans rien perdre et que la documentation dit sans `minCore` à déclarer
+ * (`previews` 0.6.1, `shortLink` 0.6.1, `social` 0.6.1, `suggestInMenu` 0.6.1, `returnAddresses` et `siteAddressUses` 0.6.2, `dashboard` 0.6.2, `content.templates` 0.6.3, `logEvents`
+ * 0.6.0). En exiger un `minCore` exclurait des sites à jour pour rien. Déjà exigées ailleurs : `overlayElements` (0.5.0, par parseManifest). `catalogue/profiles.json`
+ * est un fichier du dépôt de modules, pas d'un module. `advice: true` : conseil (exigence `compat.minCoreAdvice`) au lieu de `compat.minCore`.
  */
 export const FEATURES = [
+  // Cœur 0.6.4. `openEnded` : un cœur plus ancien refuse toute valeur ouverte et ne propose que deux dates. `ctx.timezone` : absent d'un cœur plus ancien, et l'oublier change
+  // le jour au mauvais moment sans rien casser (d'où un simple conseil, et rien si le code teste la présence ou garde un repli).
+  { since: "0.6.4", label: "« openEnded » sur une période (début seul ou fin seule)", test: (m, man) => allSettings(man).some((s) => s.openEnded !== undefined) || /\bopenEnded\s*:\s*true\b/.test(stripComments(m.code)) },
+  { since: "0.6.4", advice: true, label: "ctx.timezone (fuseau du site) sans tester sa présence", test: (m) => usesBareTimezone(stripComments(m.code)) },
+  // Cœur 0.6.0. `ctx.api.log` n'existe pas avant : l'appeler tel quel plante. `ctx.api.log?.write(…)` ou un test préalable ne sont pas signalés.
+  { since: "0.6.0", label: "ctx.api.log.write (écrire au journal du cœur) sans tester que ctx.api.log existe", test: (m) => usesBareLogWrite(stripComments(m.code)) },
   { since: "0.6.0", label: "un réglage « period », « datetime » ou « duration » (période, date et heure, durée en un seul champ)", test: (m, man) => allSettings(man).some((s) => s.type === "period" || s.type === "datetime" || s.type === "duration") },
   { since: "0.6.0", label: "un réglage avec « min », « max », « step », « unit », « example », « rare » ou « display »", test: (m, man) => allSettings(man).some((s) => s.min !== undefined || s.max !== undefined || s.step !== undefined || s.unit !== undefined || s.example !== undefined || s.rare !== undefined || s.display !== undefined) },
   { since: "0.6.0", label: "un bloc du panneau avec un tableau enrichi (« searchable », « filters », cellule « badge » ou « switch », action « inMenu »)", test: (m) => /\bsearchable\s*:\s*true|\bfilters\s*:\s*\[\s*\{\s*column|\bbadge\s*:\s*["']|\binMenu\s*:\s*true|\bswitch\s*:\s*\{\s*on\b/.test(stripComments(m.code)) && /type\s*:\s*["']table["']/.test(stripComments(m.code)) },
@@ -47,6 +73,20 @@ export const FEATURES = [
   { since: "0.1.14", label: "un service « each » / ctx.api.services.callAll", test: (m, man) => (man.offers ?? []).some((o) => o.each) || /\bcallAll\b/.test(stripComments(m.code)) },
   { since: "0.1.10", label: "la permission « rawg » (jaquettes de jeux)", test: (m, man) => (man.permissions ?? []).includes("rawg") || /\bapi\s*\??\.\s*rawg\b(?!\.io\b)/.test(stripComments(m.code)) },
 ];
+
+/** Les fonctions de FEATURES retenues par `keep` que le module utilise sans le `minCore` qu'il faut. */
+function minCoreProblems(m, keep) {
+  if (!m.parsed?.ok && !m.manifest) return { skip: "module.json illisible" };
+  const man = m.parsed?.ok ? m.parsed.manifest : m.manifest;
+  const need = FEATURES.filter((f) => keep(f) && (() => { try { return f.test(m, man); } catch { return false; } })());
+  if (!need.length) return { na: "aucune fonction récente du cœur n'est utilisée" };
+  const out = [];
+  for (const f of need) {
+    if (!man.minCore) out.push(`le module utilise ${f.label} (cœur ${f.since} ou plus) mais ne déclare pas « minCore »: « ${f.since} »`);
+    else if (/^\d+\.\d+\.\d+$/.test(man.minCore) && compareVersions(man.minCore, f.since) < 0) out.push(`le module utilise ${f.label} (cœur ${f.since} ou plus) mais « minCore » vaut ${man.minCore}`);
+  }
+  return out;
+}
 
 const requirements = [
   {
@@ -125,6 +165,54 @@ const requirements = [
     },
   },
   {
+    id: "manifest.imageHosts", level: "mandatory", group: "manifest",
+    title: "Les hôtes d'images déclarés sont de simples noms d'hôte",
+    what: "« imageHosts » (5 au plus) liste des noms d'hôte exacts en minuscules (« media.example.org ») : pas de joker, d'adresse complète, de port, d'adresse numérique ni de nom interne, et aucun nom en double. Sans « imageHosts », rien à vérifier.",
+    why: "Le cœur n'affiche une vignette de tableau (cellule « image ») que si son adresse est une page du site ou vient d'un hôte déclaré ici. Un hôte mal écrit n'est jamais reconnu : les vignettes disparaîtraient sans bruit, ou le cœur refuserait le manifeste.",
+    fix: "Écrivez seulement le nom : « media.rawg.io », pas « https://media.rawg.io/ » ni « *.rawg.io ». Pour ne contacter aucun hôte, retirez « imageHosts » et enregistrez l'image sur le site (« /uploads/… »).",
+    async run(m) {
+      const hosts = m.manifest?.imageHosts;
+      if (hosts === undefined) return { na: "le module ne déclare aucun hôte d'images" };
+      if (!Array.isArray(hosts)) return ["« imageHosts » doit être une liste de noms d'hôte"];
+      const { isDeclarableImageHost, MAX_IMAGE_HOSTS } = await import("@/core/adminkit/image");
+      const out = [];
+      if (hosts.length > MAX_IMAGE_HOSTS) out.push(`${hosts.length} hôtes déclarés : ${MAX_IMAGE_HOSTS} au plus`);
+      for (const h of hosts) if (!isDeclarableImageHost(h)) out.push(`« ${String(h).slice(0, 80)} » n'est pas un nom d'hôte valable (exemple : media.example.org)`);
+      if (new Set(hosts).size !== hosts.length) out.push("un même hôte est déclaré deux fois");
+      return out;
+    },
+  },
+  {
+    id: "manifest.inertCollections", level: "mandatory", group: "manifest",
+    title: "Les copies déclarées inertes sont des collections héritées",
+    what: "Chaque nom de « inertLegacyCollections » figure aussi dans « legacyCollections », sans doublon. Sans « inertLegacyCollections », rien à vérifier.",
+    why: "Le cœur propose de supprimer une copie de sécurité seulement si le module la déclare inerte. Une collection déclarée inerte hors de « legacyCollections » n'est jamais comptée par la page Entretien : la déclaration ne servirait à rien, ou cacherait une erreur.",
+    fix: "Ajoutez le nom à « legacyCollections », ou retirez-le de « inertLegacyCollections ». Ne déclarez inerte que ce que votre module ne lit plus et n'écrit plus.",
+    run(m) {
+      const man = m.manifest;
+      const inert = man?.inertLegacyCollections;
+      if (inert === undefined) return { na: "le module ne déclare aucune copie inerte" };
+      if (!Array.isArray(inert)) return ["« inertLegacyCollections » doit être une liste de noms de collections"];
+      const legacy = Array.isArray(man.legacyCollections) ? man.legacyCollections : [];
+      const out = inert.filter((c) => !legacy.includes(c)).map((c) => `« ${c} » est déclarée inerte mais absente de « legacyCollections »`);
+      if (new Set(inert).size !== inert.length) out.push("une même collection est déclarée inerte deux fois");
+      return out;
+    },
+  },
+  {
+    id: "manifest.inertCollections.unused", level: "advice", group: "manifest",
+    title: "Le code ne cite plus les copies déclarées inertes",
+    what: "Aucune collection de « inertLegacyCollections » n'apparaît, entre guillemets, dans le code du module (« index.mjs »). Sans « inertLegacyCollections », rien à vérifier.",
+    why: "Une copie déclarée inerte peut être supprimée par la personne propriétaire. Si le code la lit encore (état d'une reprise, compteur), cette suppression lui ferait perdre des données qu'il utilise.",
+    fix: "Retirez la collection de « inertLegacyCollections » si le module la lit encore (par exemple l'état de la reprise). Si le code la cite seulement pour l'effacer ou la copier une dernière fois, vérifiez que la reprise est finie avant de la déclarer inerte.",
+    run(m) {
+      const inert = m.manifest?.inertLegacyCollections;
+      if (!Array.isArray(inert) || inert.length === 0) return { na: "le module ne déclare aucune copie inerte" };
+      const code = stripComments(m.code ?? "");
+      return inert.filter((c) => new RegExp(`["'\x60]${String(c).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}["'\x60]`).test(code)).map((c) => `le code cite encore « ${c} » : vérifiez qu'il ne la lit plus`);
+    },
+  },
+  {
     id: "manifest.catalogue", level: "advice", group: "manifest",
     title: "La fiche du module est complète pour le catalogue",
     what: "Le module a un nom et une description en français et en anglais, le nom de la personne qui l'a écrit et une licence.",
@@ -159,18 +247,15 @@ const requirements = [
     what: "Si le module utilise une fonction apportée par une version récente du cœur (par exemple « optional » : 0.1.22), « minCore » est au moins cette version.",
     why: "Sans « minCore », un site dont le cœur est plus ancien installe quand même le module, et celui-ci se comporte mal (réglage qui n'existe pas, manifeste refusé…). Avec « minCore », le site répond clairement « mettez d'abord le site à jour ».",
     fix: "Ajoutez dans module.json « minCore »: « x.y.z » avec la version indiquée dans le message (trois nombres, rien d'autre).",
-    run(m) {
-      if (!m.parsed?.ok && !m.manifest) return { skip: "module.json illisible" };
-      const man = m.parsed?.ok ? m.parsed.manifest : m.manifest;
-      const need = FEATURES.filter((f) => { try { return f.test(m, man); } catch { return false; } });
-      if (!need.length) return { na: "aucune fonction récente du cœur n'est utilisée" };
-      const out = [];
-      for (const f of need) {
-        if (!man.minCore) out.push(`le module utilise ${f.label} (cœur ${f.since} ou plus) mais ne déclare pas « minCore »: « ${f.since} »`);
-        else if (/^\d+\.\d+\.\d+$/.test(man.minCore) && compareVersions(man.minCore, f.since) < 0) out.push(`le module utilise ${f.label} (cœur ${f.since} ou plus) mais « minCore » vaut ${man.minCore}`);
-      }
-      return out;
-    },
+    run(m) { return minCoreProblems(m, (f) => !f.advice); },
+  },
+  {
+    id: "compat.minCoreAdvice", level: "advice", group: "compat",
+    title: "minCore couvre aussi les nouveautés qu'un cœur plus ancien lit de travers",
+    what: "Si le module lit une nouveauté du cœur qu'un cœur plus ancien n'a pas et ne signale pas (par exemple « ctx.timezone » : cœur 0.6.4) sans prévoir son absence, « minCore » est au moins cette version.",
+    why: "Rien ne plante : sur un cœur plus ancien la valeur manque, le module retombe sur autre chose et change de jour à la mauvaise heure, sans que personne ne le voie. Avec « minCore », le site répond « mettez d'abord le site à jour », ou le module garde un repli volontaire.",
+    fix: "Soit ajoutez « minCore »: « x.y.z » avec la version indiquée dans le message, soit gardez un repli visible dans le code : `typeof ctx.timezone === \"string\" ? ctx.timezone : repli`, ou `ctx.timezone ?? repli`.",
+    run(m) { return minCoreProblems(m, (f) => f.advice === true); },
   },
   {
     id: "compat.minCoreKnown", level: "advice", group: "compat",

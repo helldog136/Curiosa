@@ -773,6 +773,10 @@ Une personne qui hésite à installer votre module veut **voir** ce qu'il ajoute
 
 Aucun `minCore` n'est à déclarer : un cœur plus ancien ignore la clé et montre la fiche comme avant. Sans `previews`, rien ne change. Le cœur lit lui-même les images (le navigateur ne contacte aucun site tiers) et le kit `npm run module:check` vérifie type, poids et dimensions (exigence `manifest.previews`). Toutes les limites : [MODULES.md](MODULES.md), « Visuels de la fiche (`previews`) ». Pour le catalogue, le script qui génère `catalogue/index.json` recopie `previews` dans l'entrée du module.
 
+### Vignettes dans un tableau : `imageHosts`
+
+Un tableau de l'administration peut montrer une petite image devant le texte d'une cellule (`{ text: "Zelda", image: { src: "/uploads/zelda.webp", alt: "Jaquette de Zelda" } }`). Le texte alternatif `alt` est obligatoire. `src` est une page du site, ou une adresse `https://` d'un hôte que vous déclarez dans `module.json` : `"imageHosts": ["media.example.org"]` (5 noms exacts au plus, sans joker). Toute autre adresse est écartée par le cœur. Aucun `minCore` : un cœur plus ancien montre le texte seul. Détail : [MODULES.md](MODULES.md), « Vignette dans une cellule ».
+
 ## 19. Règles de sécurité
 
 Un module est **du code de confiance** : il tourne sur le serveur avec les droits du site, et la personne propriétaire l'installe en connaissance de cause. Cela ne dispense pas d'être irréprochable :

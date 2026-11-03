@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { ui } from "./ui";
 import { PendingButton } from "./PendingButton";
+import { SecretValue } from "./OneTimeSecret";
 
 export type TemporaryPasswordResult = { error?: string; password?: string; mailed?: boolean; name?: string; chosen?: boolean };
 
@@ -24,10 +25,9 @@ export function TemporaryPasswordButton({ memberName, action, labels, menu = fal
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<TemporaryPasswordResult | null>(null);
-  const [copied, setCopied] = useState(false);
   const id = useId();
 
-  function reset() { setMode("generate"); setCustom(""); setBusy(false); setError(null); setResult(null); setCopied(false); }
+  function reset() { setMode("generate"); setCustom(""); setBusy(false); setError(null); setResult(null); }
   function show() { reset(); dialog.current?.showModal(); }
   function hide() { dialog.current?.close(); }
   // Quelle que soit la façon de fermer (bouton, Échap), tout est effacé.
@@ -51,12 +51,6 @@ export function TemporaryPasswordButton({ memberName, action, labels, menu = fal
     }
   }
 
-  async function copy() {
-    if (!result?.password) return;
-    try { await navigator.clipboard.writeText(result.password); setCopied(true); window.setTimeout(() => setCopied(false), 2000); }
-    catch { const node = document.getElementById(`${id}-pw`); if (node) { const range = document.createRange(); range.selectNodeContents(node); const sel = window.getSelection(); sel?.removeAllRanges(); sel?.addRange(range); } }
-  }
-
   return (
     <>
       <button type="button" role={menu ? "menuitem" : undefined} className={menu ? "flex min-h-11 w-full items-center justify-start px-4 text-left text-sm transition hover:bg-bg" : ui.btnDanger} onClick={show} data-testid="temp-password-open">{labels.open}</button>
@@ -67,10 +61,7 @@ export function TemporaryPasswordButton({ memberName, action, labels, menu = fal
             {result.password ? (
               <>
                 <p className="text-sm leading-6">{labels.shownOnce}</p>
-                <div className="flex flex-col gap-2 rounded-xl border border-line bg-bg p-3 sm:flex-row sm:items-center">
-                  <code id={`${id}-pw`} translate="no" data-testid="temp-password-value" className="min-w-0 flex-1 select-all break-all font-mono text-xl tracking-wide">{result.password}</code>
-                  <button type="button" onClick={copy} className={`${ui.btn} shrink-0`} aria-live="polite" data-testid="temp-password-copy">{copied ? `✓ ${labels.copied}` : labels.copy}</button>
-                </div>
+                <SecretValue value={result.password} copy={labels.copy} copied={labels.copied} testid="temp-password" />
               </>
             ) : (
               <p className="text-sm leading-6">{labels.savedCustom}</p>

@@ -244,3 +244,57 @@ test("textes : français et anglais de la fiche, ton neutre, aucun mot technique
     assert.deepEqual([...fr[k].matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort(), [...enj[k].matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort(), `${k} : variables`);
   }
 });
+
+/* ───────────── la présentation (README) : repliée en mode simple, ouverte en mode avancé ───────────── */
+
+test("présentation en mode simple : repliée sous « Lire la présentation complète », une phrase de résumé visible, description et visuels restent en haut", () => {
+  const out = html(h(ExtensionFiche, props({ readme: h("article", null, "Le README technique : webhook, JSON, OAuth"), readmeSummary: "Ajoute une page de commandes pour votre chaîne." })));
+  assert.match(out, /<details[^>]*data-testid="readme-fold"(?![^>]*\bopen)/, "repliée");
+  assert.match(out, /Lire la présentation complète/);
+  assert.match(out, /data-testid="readme-summary"[^>]*>Ajoute une page de commandes pour votre chaîne\./);
+  const at = (n) => out.indexOf(n);
+  assert.ok(at("Une page de commandes pour votre chaîne.") < at('data-testid="preview-gallery"') && at('data-testid="preview-gallery"') < at('data-testid="module-adds"') && at('data-testid="module-adds"') < at('data-testid="readme-fold"'), "description, visuels, ajouts, puis la présentation repliée");
+  assert.ok(at('data-testid="readme-summary"') < at('data-testid="readme-fold"'), "le résumé est AVANT le pli");
+  assert.match(out, /min-h-11/, "cible de 44 px");
+});
+
+test("présentation en mode avancé : ouverte d'office, sans phrase de résumé en double", () => {
+  const out = html(h(ExtensionFiche, props({ advanced: true, readme: h("article", null, "Le README"), readmeSummary: "Une phrase." })));
+  assert.match(out, /<details[^>]*data-testid="readme-fold"[^>]* open=""|<details[^>]* open=""[^>]*data-testid="readme-fold"/);
+  assert.doesNotMatch(out, /readme-summary/);
+});
+
+test("présentation absente : message inchangé, pas de pli vide ; lecture en échec : rien", () => {
+  assert.doesNotMatch(html(h(ExtensionFiche, props({ readme: null }))), /readme-fold/);
+  assert.match(html(h(ExtensionFiche, props({ readme: null }))), /Ce module n&#x27;a pas de README\./);
+  assert.doesNotMatch(html(h(ExtensionFiche, props({ readme: null, failed: true, bar: { kind: "blocked", reason: "read" } }))), /n&#x27;a pas de README|readme-fold/);
+});
+
+test("résumé de la présentation : première phrase du premier vrai paragraphe, sans Markdown, 160 caractères au plus ; rien si rien de lisible ou si c'est la description", () => {
+  const S = V.readmeSummary;
+  const md = "# Commandes\n\n[![ci](https://x.example/b.svg)](https://x.example)\n\n![logo](a.png)\n\n> Note\n\n| a | b |\n|---|---|\n\n```js\nconst x = 1;\n```\n\nCe module ajoute une **page de commandes** avec [un lien](https://example.org) et `du code`. Deuxième phrase.\n\n- liste\n";
+  assert.equal(S(md), "Ce module ajoute une page de commandes avec un lien et du code.");
+  assert.equal(S("<script>alert(1)</script>\n\nTexte <b>gras</b> assez long pour faire un résumé."), "Texte gras assez long pour faire un résumé.");
+  assert.equal(S("# Titre\n\n- a\n- b\n"), ""); assert.equal(S(""), ""); assert.equal(S("court"), "");
+  const long = S("x".repeat(30) + " " + "mot ".repeat(80));
+  assert.ok(Array.from(long).length <= 160 && long.endsWith("…"), long.length);
+  assert.equal(S("Une page de commandes pour votre chaîne.\n", "Une page de commandes pour votre chaîne."), "", "répète la description");
+  assert.equal(S("Avec un adresse http://x.example/a.b. Suite du texte ici."), "Avec un adresse http://x.example/a.b.", "coupe à la première phrase");
+});
+
+test("présentation : le texte d'un tiers reste en Markdown sans HTML brut ni script, liens relatifs inertes, images distantes jamais chargées", async () => {
+  const { Markdown } = await import("@/components/site/Markdown");
+  const out = html(h(Markdown, { untrusted: true, text: "Bonjour <script>alert(1)</script> <img src=x onerror=alert(1)>\n\n[mal](javascript:alert(1)) [ok](https://example.org) [rel](docs/a.md)\n\n![espion](https://tracker.example/p.gif)" }));
+  assert.doesNotMatch(out, /<script|<img|href="javascript:/i, "ni balise active ni lien javascript");
+  assert.match(out, /href="https:\/\/example\.org"/);
+  assert.doesNotMatch(out, /href="docs\/a\.md"/);
+  assert.match(out, /\[espion\]/);
+  const src = read("src/app/admin/(panel)/extensions/add/details/DetailsView.tsx");
+  assert.match(src, /<Markdown text=\{preview\.readme\} untrusted \/>/, "toujours rendu comme venant d'un tiers");
+});
+
+test("présentation : textes FR et EN, courts, en mots simples", () => {
+  const fr = JSON.parse(read("src/locales/fr.json")), enj = JSON.parse(read("src/locales/en.json"));
+  for (const k of ["fiche.readme.open", "fiche.readme.hint"]) { assert.ok(fr[k] && enj[k], k); assert.ok(fr[k].length <= 60 && !/[:!]/.test(fr[k]), k); }
+  const keys = Object.keys(fr); assert.ok(keys.indexOf("fiche.readme.open") < keys.indexOf("theme.custom") && keys.at(-1) === "settings.contrast.accent2");
+});

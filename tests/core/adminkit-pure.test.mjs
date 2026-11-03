@@ -510,3 +510,115 @@ test("résumé de « Plus d'options » : une période ouverte se dit en une phra
   assert.deepEqual(H.valueErrorKey("period", { type: "period", openEnded: true }, tr), { key: "instances.error.periodOpen", vars: {} });
   assert.deepEqual(H.valueErrorKey("period", { type: "period" }, tr), { key: "instances.error.period", vars: {} });
 });
+
+/* ───────────── vignette d'une cellule de tableau (image) ───────────── */
+
+test("vignette : liste fermée — pages du site et hôtes déclarés, rien d'autre", async () => {
+  const { checkImageSrc } = await import("@/core/adminkit/image");
+  const ok = (src, hosts = []) => assert.equal(checkImageSrc(src, hosts).ok, true, String(src));
+  const no = (src, hosts = [], why) => { const r = checkImageSrc(src, hosts); assert.equal(r.ok, false, String(src)); if (why) assert.equal(r.problem, why, String(src)); };
+  ok("/uploads/abc.webp"); ok("/m/jeux/image?id=3"); ok("https://media.rawg.io/a/b.jpg", ["media.rawg.io"]); ok("https://MEDIA.rawg.io/a.jpg", ["media.rawg.io"]);
+  assert.equal(checkImageSrc("/uploads/a/../b.webp").src, "/uploads/b.webp", "normalisée");
+  no("https://media.rawg.io/a.jpg", [], "host-not-declared");
+  no("https://autre.example.org/a.jpg", ["media.rawg.io"], "host-not-declared");
+  no("https://sub.media.rawg.io/a.jpg", ["media.rawg.io"], "host-not-declared"); // pas de joker, pas de sous-domaine implicite
+  no("https://media.rawg.io.evil.example/a.jpg", ["media.rawg.io"], "host-not-declared");
+  no("http://media.rawg.io/a.jpg", ["media.rawg.io"], "scheme");
+  no("javascript:alert(1)", ["media.rawg.io"], "scheme"); no("data:image/svg+xml,<svg/>", [], "scheme"); no("ftp://media.rawg.io/a", ["media.rawg.io"], "scheme");
+  no("//media.rawg.io/a.jpg", ["media.rawg.io"], "invalid");
+  no("https://user:pw@media.rawg.io/a.jpg", ["media.rawg.io"], "invalid"); no("https://media.rawg.io:8443/a.jpg", ["media.rawg.io"], "invalid");
+  no("https://127.0.0.1/a.jpg", ["127.0.0.1"], "invalid"); no("https://localhost/a.jpg", ["localhost"], "invalid"); no("https://intranet.local/a.jpg", ["intranet.local"], "invalid");
+  no("/api/admin/modules/x/delete", [], "site-path"); no("/API/anything", [], "site-path"); no("/admin/users", [], "site-path"); no("/%61pi/x", [], "site-path"); no("/uploads/%2e%2e/api/x", [], "site-path");
+  no("/uploads\\x.webp", [], "invalid"); no("/uploads/x y.webp", [], "invalid"); no("/uploads/\u0000.webp", [], "invalid");
+  no("", [], "empty"); no(undefined, [], "empty"); no(42, [], "empty"); no("/" + "a".repeat(2001), [], "too-long");
+});
+
+test("vignette : le texte alternatif est obligatoire ; une image refusée devient une cellule de texte, le reste du bloc est intact", async () => {
+  const { cleanAlt, validCellImage, sanitizeTableImages } = await import("@/core/adminkit/image");
+  assert.equal(cleanAlt("  Jaquette   de Zelda "), "Jaquette de Zelda");
+  assert.equal(cleanAlt(""), null); assert.equal(cleanAlt("   "), null); assert.equal(cleanAlt(undefined), null);
+  assert.equal(Array.from(cleanAlt("é".repeat(500))).length, 160);
+  assert.equal(validCellImage({ src: "/uploads/a.webp" }), null, "sans alt : pas d'image");
+  assert.deepEqual(validCellImage({ src: "/uploads/a.webp", alt: "Zelda", fit: "contain" }), { src: "/uploads/a.webp", alt: "Zelda", fit: "contain" });
+  assert.deepEqual(validCellImage({ src: "/uploads/a.webp", alt: "Zelda", fit: "stretch", extra: "x" }), { src: "/uploads/a.webp", alt: "Zelda" }, "fit inconnu et clés en trop ignorés");
+  const block = { type: "table", columns: ["Jeu"], rows: [
+    [{ text: "Zelda", image: { src: "https://media.rawg.io/z.jpg", alt: "Jaquette de Zelda" } }],
+    [{ text: "Mario", image: { src: "https://tracker.example.net/p.gif", alt: "Jaquette de Mario" } }],
+    [{ text: "Sans alt", image: { src: "/uploads/a.webp", alt: "" } }],
+    ["texte"],
+  ] };
+  const plain = { type: "table", columns: ["A"], rows: [["a"], [{ text: "b", badge: "ok" }]] };
+  assert.equal(sanitizeTableImages(plain, ["media.rawg.io"]), plain, "un tableau sans image est rendu tel quel (même objet)");
+  const out = sanitizeTableImages(block, ["media.rawg.io"]);
+  assert.deepEqual(out.rows[0][0].image, { src: "https://media.rawg.io/z.jpg", alt: "Jaquette de Zelda" });
+  assert.deepEqual(out.rows[1][0], { text: "Mario" }, "hôte non déclaré : texte seul");
+  assert.deepEqual(out.rows[2][0], { text: "Sans alt" });
+  assert.equal(out.rows[3][0], "texte");
+  assert.ok(block.rows[1][0].image, "l'entrée n'est pas modifiée");
+  const site = sanitizeTableImages(block, []);
+  assert.deepEqual(site.rows[0][0], { text: "Zelda" }, "sans déclaration : seulement les pages du site");
+});
+
+test("vignette : un tableau avec une image est un tableau enrichi ; sa cellule se lit par son texte, à défaut par son texte alternatif", () => {
+  const block = { type: "table", columns: ["Jeu"], rows: [[{ text: "Zelda", image: { src: "/uploads/a.webp", alt: "Jaquette" } }]] };
+  assert.equal(T.isEnhancedTable(block), true);
+  assert.equal(T.cellText({ text: "Zelda", image: { src: "/a", alt: "Jaquette" } }), "Zelda");
+  assert.equal(T.cellText({ image: { src: "/a", alt: "Jaquette" } }), "Jaquette");
+});
+
+test("manifeste : imageHosts — noms d'hôte exacts, 5 au plus, sans doublon ni adresse numérique ni nom interne ; absent = rien de plus que le site", async () => {
+  const { manifestSchema } = await import("@/core/modules/manifest");
+  const { declaredImageHosts } = await import("@/core/modules/imageHosts");
+  const base = { apiVersion: 1, id: "demo", name: "Démo", version: "1.0.0", main: "index.mjs" };
+  const parse = (imageHosts) => manifestSchema.safeParse({ ...base, ...(imageHosts === undefined ? {} : { imageHosts }) });
+  assert.equal(parse(undefined).success, true);
+  assert.equal(parse(["media.rawg.io", "cdn.example.org"]).success, true);
+  for (const bad of [["*.rawg.io"], ["https://media.rawg.io"], ["media.rawg.io/path"], ["media.rawg.io:8443"], ["MEDIA.rawg.io"], ["127.0.0.1"], ["localhost"], ["nas.local"], ["rawg"], [""], ["a.b.c.d.e.f".replace(/\./g, "..")],
+    ["a.example.org", "b.example.org", "c.example.org", "d.example.org", "e.example.org", "f.example.org"], ["a.example.org", "a.example.org"]]) assert.equal(parse(bad).success, false, JSON.stringify(bad));
+  assert.deepEqual(declaredImageHosts({ imageHosts: ["Media.rawg.io", "media.rawg.io"] }), ["media.rawg.io"]);
+  assert.deepEqual(declaredImageHosts(undefined), []);
+});
+
+test("période incomplète : jamais enregistrée comme « pas de période » (une date, fin avant début, effacement voulu, période ouverte)", () => {
+  const sent = (from, to, yearly = false, open = false) => { const s = PI.periodState(from, to, yearly, open); return PI.periodSent(from, to, s.period); };
+  const key = (raw, open = false) => V.periodErrorKey(raw, open);
+  // Deux dates : valeur normale, acceptée.
+  assert.equal(sent("2026-12-01", "2026-12-15"), "2026-12-01/2026-12-15"); assert.equal(key("2026-12-01/2026-12-15"), null);
+  // Aucune date : vide, c'est l'effacement voulu (« Effacer la période »), jamais une erreur.
+  assert.equal(sent("", ""), ""); assert.equal(sent("", "", false, true), ""); assert.equal(key(""), null);
+  // Une seule date, période fermée : valeur NON vide, refusée avec le message « remplissez les deux dates ».
+  assert.equal(sent("2026-12-01", ""), "2026-12-01/"); assert.equal(sent("", "2026-12-15"), "/2026-12-15");
+  assert.equal(sent("2026-12-01", "", true), "2026-12-01/", "même avec « chaque année » coché");
+  assert.equal(key("2026-12-01/"), "period.errorHalf"); assert.equal(key("/2026-12-15"), "period.errorHalf");
+  // Une seule date, période ouverte demandée : valide.
+  assert.equal(sent("2026-12-01", "", false, true), "2026-12-01/"); assert.equal(sent("", "2026-12-24", false, true), "/2026-12-24");
+  assert.equal(key("2026-12-01/", true), null); assert.equal(key("/2026-12-24", true), null);
+  // Fin avant début : valeur non vide, refusée avec le message d'ordre ; « chaque année » enjambe l'année sans erreur.
+  assert.equal(sent("2026-12-15", "2026-12-01"), "2026-12-15/2026-12-01"); assert.equal(key("2026-12-15/2026-12-01"), "period.order");
+  assert.equal(key("2026-12-15/2026-12-01", true), "period.order");
+  assert.equal(sent("2026-12-15", "2026-12-01", true), "12-15/12-01"); assert.equal(key("12-15/12-01"), null);
+  // Illisible : message sans nom de champ.
+  assert.equal(key("novembre"), "period.errorFormat"); assert.equal(key("novembre", true), "period.errorFormatOpen");
+  assert.equal(key("2026-13-01/2026-13-02"), "period.errorFormat");
+  // Réglage de manifeste : checkFieldInput refuse la moitié de période (jamais convertie en vide), accepte l'ouverte.
+  assert.deepEqual(checkFieldInput({ type: "period" }, "2026-12-01/"), { ok: false, reason: "period" });
+  assert.deepEqual(checkFieldInput({ type: "period", openEnded: true }, "2026-12-01/"), { ok: true, value: "2026-12-01/" });
+  // Raccourcis : mois entier et période toute prête donnent toujours deux dates, donc une valeur complète.
+  const m = PI.monthInputs(12, false, "", 2026); assert.equal(sent(m.from, m.to), "2026-12-01/2026-12-31");
+  const y = PI.monthInputs(11, true, "", 2026); assert.equal(sent(y.from, y.to, true), "11-01/11-30");
+  const noel = PI.toInputs(PP.presetValue("christmas", { y: 2026, m: 11, d: 3 }), 2026); assert.equal(key(sent(noel.from, noel.to, noel.yearly)), null);
+});
+
+test("période incomplète : textes d'erreur FR et EN à parité, un exemple, sans code ni point d'exclamation", () => {
+  const fr = JSON.parse(fs.readFileSync("src/locales/fr.json", "utf8")), en = JSON.parse(fs.readFileSync("src/locales/en.json", "utf8"));
+  for (const k of ["period.errorHalf", "period.errorFormat", "period.errorFormatOpen"]) {
+    assert.ok(fr[k] && en[k], k); assert.ok(!/!/.test(fr[k] + en[k]) && /exemple/.test(fr[k]) && /example/.test(en[k]), k);
+  }
+  assert.equal(fr["period.errorHalf"], "Remplissez les deux dates, par exemple du 1er au 15 décembre 2026.");
+  const keys = Object.keys(fr); assert.ok(keys.indexOf("period.errorHalf") < keys.indexOf("theme.ember"), "avant le groupe final theme.*");
+});
+
+test("période ouverte : une date impossible n'est jamais présentée comme une moitié de période", () => {
+  assert.equal(V.periodErrorKey("/2027-02-29", true), "period.errorFormatOpen");
+  assert.equal(V.periodErrorKey("/2027-02-29", false), "period.errorHalf");
+});

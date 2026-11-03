@@ -17,6 +17,7 @@ import { setInstanceInMenu } from "@/core/menuStore";
 import { defaultPlacement, parsePlacement, placementSettingKey, placementsFor } from "@/core/modules/menuPlacement";
 import { groupFlagName, judgeGroup } from "@/core/modules/groups";
 import { valueErrorKey } from "@/core/adminkit/hints";
+import { isHalfPeriod } from "@/core/adminkit/values";
 import { checkFieldInput, checkMultiInput, resolveDefault, shouldStore } from "@/core/modules/settingValues";
 import { localized } from "@/core/modules/types";
 import { getModule } from "@/core/modules/registry";
@@ -223,6 +224,7 @@ export async function saveInstanceSettings(_prev: ActionState, formData: FormDat
       if (!checked.ok) {
         const { reason } = checked;
         // Un nombre, une durée, une période ou une date : le message dit les bornes et donne un exemple (R22).
+        if (reason === "period" && field.openEnded !== true && isHalfPeriod(raw)) return { errors: { [name]: t("period.errorHalf") } };
         if (reason === "number" || reason === "range" || reason === "duration" || reason === "period" || reason === "datetime") {
           const e = valueErrorKey(reason, field, t);
           return { errors: { [name]: t(e.key, { field: L(field.label), ...e.vars }) } };

@@ -325,7 +325,7 @@ test("page produite par du code : un tableau enrichi (recherche, pastilles, inte
 
 test("exigences : un module qui utilise un contrôle de la 0.6.0 doit déclarer « minCore » 0.6.0", async () => {
   const { FEATURES } = await import("../testsupport/requirements/manifest.mjs");
-  const news = FEATURES.filter((f) => f.since === "0.6.0");
+  const news = FEATURES.filter((f) => f.since === "0.6.0" && !/journal/.test(f.label)); // le journal du cœur (ctx.api.log) a son propre test (tests/testsupport.test.mjs)
   assert.equal(news.length, 4);
   const code = (src, man = { settings: [] }) => news.filter((f) => f.test({ code: src }, man)).length;
   assert.equal(code("blocks.push({ type: 'table', columns: [], rows: [], searchable: true })"), 1);
@@ -337,4 +337,17 @@ test("exigences : un module qui utilise un contrôle de la 0.6.0 doit déclarer 
   assert.equal(code("", { settings: [{ key: "k", type: "period" }] }), 1);
   assert.equal(code("", { settings: [{ key: "k", type: "number", min: 1 }] }), 1);
   assert.equal(code("", { settings: [{ key: "k", type: "number" }] }), 0);
+});
+
+/* ───────────── vignettes de tableau (cellule `image`) : R28 et R16 ───────────── */
+test("vignette de tableau : sans texte alternatif (R28) ou sans adresse affichable (R16), la page est signalée ; une image valable passe", () => {
+  const table = (image) => [{ type: "table", columns: ["Jeu"], rows: [[{ text: "Zelda", image }]] }];
+  const rules = (image, opts) => adminPageErgonomicsProblems(table(image), opts).map((p) => p.rule);
+  assert.deepEqual(rules({ src: "/uploads/z.webp", alt: "Jaquette de Zelda" }), []);
+  assert.deepEqual(rules({ src: "https://media.example.org/z.jpg", alt: "Jaquette" }, { imageHosts: ["media.example.org"] }), []);
+  assert.deepEqual(rules({ src: "/uploads/z.webp", alt: "" }), ["R28"]);
+  assert.deepEqual(rules({ src: "/uploads/z.webp" }), ["R28"]);
+  assert.deepEqual(rules({ src: "https://tiers.example.net/z.jpg", alt: "x" }, { imageHosts: ["media.example.org"] }), ["R16"], "hôte non déclaré");
+  assert.deepEqual(rules({ src: "https://tiers.example.net/z.jpg", alt: "x" }), [], "sans liste d'hôtes, seule la forme est contrôlée");
+  for (const src of ["/api/admin/x", "/admin/users", "/a/../b", "//x.example/y", "http://media.example.org/z", "javascript:alert(1)", "https://u@media.example.org/z", ""]) assert.deepEqual(rules({ src, alt: "x" }, { imageHosts: ["media.example.org"] }), ["R16"], src);
 });

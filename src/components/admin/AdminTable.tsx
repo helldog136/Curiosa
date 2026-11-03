@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { BadgeTone, Block, TableCell } from "@/core/blocks";
 import { splitActions } from "@/core/adminkit/table";
 import { TABLE_PAGE_SIZE, pageSlice, pillOptions, rowPasses, searchText } from "@/core/adminkit/search";
@@ -9,6 +9,7 @@ import { BADGE } from "./Badge";
 import { RowMenu } from "./RowMenu";
 import { RowActionButton, RowMenuItem, RowSwitch, type EntryScope } from "./AdminBlocks";
 import { safeHref } from "@/core/url";
+import type { CellImage } from "@/core/adminkit/image";
 import { ui } from "./ui";
 
 type TableBlock = Extract<Block, { type: "table" }>;
@@ -19,8 +20,13 @@ export type TableLabels = {
   on: string; off: string;
 };
 
-type Cell = { text: string; badge?: BadgeTone; href?: string; title?: string; sw?: Extract<TableCell, object>["switch"] };
-const norm = (c: TableCell | undefined): Cell => (typeof c === "string" || c === undefined ? { text: c ?? "" } : { text: c.text ?? "", badge: c.badge, href: c.href, title: c.title, sw: c.switch });
+type Cell = { text: string; badge?: BadgeTone; href?: string; title?: string; sw?: Extract<TableCell, object>["switch"]; image?: CellImage };
+const norm = (c: TableCell | undefined): Cell => (typeof c === "string" || c === undefined ? { text: c ?? "" } : { text: c.text ?? "", badge: c.badge, href: c.href, title: c.title, sw: c.switch, image: shownImage(c.image) });
+/** Dernier garde-fou côté navigateur : le serveur a DÉJÀ validé l'image (hôte déclaré, texte alternatif) ; ici on n'accepte plus qu'une page du site ou du https, avec un texte alternatif. */
+function shownImage(image: CellImage | undefined): CellImage | undefined {
+  if (!image || typeof image.alt !== "string" || image.alt.trim() === "" || typeof image.src !== "string") return undefined;
+  return (/^\/(?!\/)/.test(image.src) || /^https:\/\//i.test(image.src)) ? image : undefined;
+}
 
 export function AdminTable({ block, instanceId, entry, labels }: { block: TableBlock; instanceId?: string; entry?: EntryScope; labels: TableLabels }) {
   const [query, setQuery] = useState("");
@@ -49,6 +55,8 @@ export function AdminTable({ block, instanceId, entry, labels }: { block: TableB
   const { visible: visibleActions, menu: menuActions } = splitActions(block.rowActions ?? []);
   const hasActions = Boolean(instanceId && (block.rowActions ?? []).length > 0);
   const cut = new Set(block.truncate ?? []);
+  // Une colonne qui a des vignettes réserve la place de la vignette à chaque ligne (lignes de même hauteur, R16), même quand une ligne n'en a pas.
+  const pictured = new Set(rows.flatMap((r) => r.cells.flatMap((c, i) => (c.image ? [i] : []))));
   const href = (a: { href?: string }, id?: string) => a.href?.replace("{id}", encodeURIComponent(id ?? ""));
 
   if (rows.length === 0) return block.empty ? <div className={`${ui.card} text-[15px]`}>{block.empty}</div> : null;
@@ -87,7 +95,7 @@ export function AdminTable({ block, instanceId, entry, labels }: { block: TableB
                   {r.cells.map((c, i) => (
                     <td key={i} role="cell" data-skin-part="table-cell" data-label={block.columns[i]}
                       className={`px-3 py-2 max-sm:flex max-sm:items-center max-sm:justify-between max-sm:gap-3 max-sm:px-1 max-sm:py-1.5 max-sm:before:shrink-0 max-sm:before:text-xs max-sm:before:text-muted max-sm:before:content-[attr(data-label)] ${cut.has(i) ? "max-w-[26ch] max-sm:max-w-none" : "whitespace-pre-wrap"}`}>
-                      <CellView cell={c} cut={cut.has(i)} instanceId={instanceId} entry={entry} id={id} labels={labels} />
+                      <CellView cell={c} cut={cut.has(i)} pictured={pictured.has(i)} instanceId={instanceId} entry={entry} id={id} labels={labels} />
                     </td>
                   ))}
                   {hasActions && (
@@ -122,7 +130,7 @@ export function AdminTable({ block, instanceId, entry, labels }: { block: TableB
   );
 }
 
-function CellView({ cell, cut, instanceId, entry, id, labels }: { cell: Cell; cut: boolean; instanceId?: string; entry?: EntryScope; id?: string; labels: TableLabels }) {
+function CellView({ cell, cut, pictured, instanceId, entry, id, labels }: { cell: Cell; cut: boolean; pictured?: boolean; instanceId?: string; entry?: EntryScope; id?: string; labels: TableLabels }) {
   if (cell.sw) {
     // Interrupteur : actif dans le panneau d'admin ; ailleurs (ou sans identifiant de ligne), seulement l'état écrit.
     if (instanceId) return <RowSwitch instanceId={instanceId} action={cell.sw.action} id={id} on={cell.sw.on} label={cell.sw.label} onText={cell.sw.onText ?? labels.on} offText={cell.sw.offText ?? labels.off} entry={entry} failedText={labels.failed} savedText={labels.saved} />;
@@ -131,5 +139,35 @@ function CellView({ cell, cut, instanceId, entry, id, labels }: { cell: Cell; cu
   const body = cell.badge
     ? <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${BADGE[cell.badge]}`}>{cell.text}</span>
     : cell.href ? <a href={safeHref(cell.href)} className="underline-offset-2 hover:text-accent hover:underline">{cell.text}</a> : cell.text;
-  return cut ? <span className="block truncate" title={cell.title ?? cell.text}>{body}</span> : cell.title ? <span title={cell.title}>{body}</span> : <>{body}</>;
+  const text = cut ? <span className="block truncate" title={cell.title ?? cell.text}>{body}</span> : cell.title ? <span title={cell.title}>{body}</span> : <>{body}</>;
+  if (!pictured) return text;
+  return (
+    <span className="flex min-w-0 items-center gap-3">
+      <Thumb image={cell.image} initial={cell.text} />
+      {cell.text !== "" && <span className="min-w-0">{text}</span>}
+    </span>
+  );
+}
+
+/** Vignette à taille fixe (40 px, comme les autres lignes) : chargement paresseux, `object-fit`, et si l'image ne charge pas, une pastille neutre à sa place (jamais d'icône cassée). Sans `image` : la même place, vide. */
+function Thumb({ image, initial }: { image?: CellImage; initial: string }) {
+  const [failed, setFailed] = useState(false);
+  const ref = useRef<HTMLImageElement>(null);
+  // L'erreur peut survenir avant l'hydratation : on relit l'état de l'image à l'affichage.
+  useEffect(() => { const el = ref.current; if (el && el.complete && el.naturalWidth === 0) setFailed(true); }, []);
+  return <ThumbView image={image} initial={initial} failed={failed} imgRef={ref} onError={() => setFailed(true)} />;
+}
+
+/** L'aspect d'une vignette (sans état : testable et photographiable dans ses trois cas — image, case vide, image tombée). */
+export function ThumbView({ image, initial, failed, imgRef, onError }: { image?: CellImage; initial: string; failed: boolean; imgRef?: React.Ref<HTMLImageElement>; onError?: () => void }) {
+  const box = "inline-flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-line bg-surface";
+  if (!image) return <span className={box} aria-hidden="true" />;
+  if (failed) return <span className={`${box} text-sm font-semibold text-muted`} role="img" aria-label={image.alt}>{Array.from(initial.trim())[0]?.toUpperCase() ?? ""}</span>;
+  return (
+    <span className={box}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img ref={imgRef} src={image.src} alt={image.alt} width={40} height={40} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={onError}
+        data-testid="table-thumb" className={`h-full w-full ${image.fit === "contain" ? "object-contain" : "object-cover"}`} />
+    </span>
+  );
 }

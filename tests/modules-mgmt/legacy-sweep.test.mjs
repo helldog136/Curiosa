@@ -311,7 +311,7 @@ test("rapport à zéro sur une base propre ; reprises pas faites et collections 
   await prisma.moduleRecord.create({ data: { instanceId: a.id, collection: "vieuxContacts", data: "{}" } });
   const r = await Rp.legacyReport();
   assert.deepEqual(r.seedsMissing, [{ key: a.key, module: "carnet" }]);
-  assert.deepEqual(r.collections, [{ key: a.key, module: "carnet", collection: "vieuxContacts", count: 1 }]);
+  assert.deepEqual(r.collections, [{ key: a.key, module: "carnet", collection: "vieuxContacts", count: 1, inert: false }]);
   await setSetting(`instance.${a.id}.__seeds.adresse`, { module: "fournisseur", instance: "x" });
   assert.equal((await Rp.legacyReport()).totals.seedsMissing, 0);
 });

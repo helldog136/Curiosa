@@ -7,6 +7,63 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.6.5 — 2026-11-03
+
+**En bref.** Le mot de passe provisoire d'une nouvelle personne s'affiche une seule fois, avec un bouton « Copier ». Une période à moitié remplie est refusée avec un message, au lieu d'effacer l'ancienne. La longue présentation d'une extension est repliée en mode simple. Les tableaux peuvent montrer une petite image devant le texte. En mode avancé, Entretien permet de supprimer une copie de sécurité devenue inutile, pour les extensions qui l'indiquent. Le reste est du ménage de tests, sans effet visible.
+
+### Extensions
+
+- **La présentation d'une extension ne vous noie plus de termes techniques.** Dans la fiche, le texte écrit par la personne qui a créé l'extension est replié sous « Lire la présentation complète », avec une phrase de résumé toujours visible. La description courte et les images restent en haut.
+- **Le mode avancé garde tout ouvert.** En mode avancé, la présentation s'affiche en entier dès l'ouverture de la fiche, comme avant.
+
+### Tableaux de l'administration
+
+- **Une petite image devant le texte d'une ligne.** Une extension peut maintenant montrer une jaquette, un logo ou une photo à côté du nom, dans ses tableaux. Toutes les lignes gardent la même hauteur, sur ordinateur comme sur téléphone, et si une image ne se charge pas, une pastille neutre prend sa place.
+- **Seules les images permises s'affichent.** Elles doivent venir de votre site ou d'un site que l'extension a déclaré, et avoir un texte alternatif. Sinon la ligne garde son texte, et rien venu d'ailleurs n'est exécuté.
+- **Rien ne change pour les extensions actuelles.** Un site plus ancien affiche simplement le texte de la cellule.
+
+### Corrections
+
+- **Une période à moitié remplie n'efface plus l'ancienne.** Avec une seule date remplie, l'enregistrement supprimait la période existante sans rien dire. Un message sous le champ demande maintenant les deux dates, et rien n'est enregistré.
+- **Une fin avant le début est refusée de la même façon.** Effacer une période reste possible, et un réglage qui accepte une période ouverte garde une seule date valable.
+
+### Équipe
+
+- **Le mot de passe provisoire d'une nouvelle personne s'affiche dans un encadré à part.** Vous le voyez une seule fois, avec un bouton « Copier » et ce message : « Vous ne le reverrez plus : notez-le ou copiez-le maintenant ». Avant, il était écrit dans une phrase qui restait affichée.
+- **Il disparaît dès que vous cliquez sur « J'ai noté le mot de passe », que vous changez de page ou que vous rechargez.** Le site n'en garde aucune copie lisible : ni dans sa base, ni dans le Journal, ni dans l'adresse de la page.
+- **La personne doit choisir son propre mot de passe à sa première connexion, sans exception.** Ce réglage est maintenant posé en même temps que la création du compte, et non juste après : une coupure au mauvais moment ne peut plus laisser un compte sans cette obligation.
+- **La même phrase partout.** La boîte « Définir un mot de passe temporaire » dit aussi « Vous ne le reverrez plus ».
+
+### Ménage interne
+
+- **Un seul détail visible : l'exemple de la page Réseaux sociaux.** Sous le champ « Coller l'adresse d'un profil », l'exemple est celui du premier réseau du Catalogue qui en donne un, et non plus toujours celui d'Instagram. Le site ne cite plus aucun réseau par son nom.
+
+### Vérification des extensions
+
+- **Rien ne change pour votre site.** Les personnes qui écrivent des extensions ont un outil de contrôle un peu plus complet : il repère maintenant une extension qui s'appuie sur une nouveauté récente du site sans le dire. Les extensions du dépôt officiel sont déjà en règle.
+
+### Entretien
+
+- **Supprimer une copie de sécurité devenue inutile, en mode avancé.** Quand une extension dit qu'une ancienne copie ne lui sert plus, un bouton « Supprimer cette copie » apparaît dans Entretien. Il demande confirmation et dit ce qui sera perdu : la copie reste dans vos sauvegardes.
+- **Le site refuse ce qui servirait encore.** Une copie que l'extension utilise toujours, ou dont la reprise n'est pas finie, ne peut pas être supprimée. Rien ne change sans ce bouton.
+
+### Pour les développeurs
+
+- `createMember(actorId, { …, mustChangePassword: true })` pose le drapeau dans l'écriture qui crée le compte (`createUser` ne fait plus de seconde écriture). Seul `true` compte.
+- `ActionState` gagne `secret?: OneTimeSecret` (`src/components/admin/OneTimeSecret.tsx`) : valeur, titre, notes et boutons déjà traduits côté serveur. `ActionForm` l'affiche avec `SecretReveal` et ne le garde que dans l'état de la page ; `SecretValue` (valeur + « Copier ») est aussi utilisé par `TemporaryPasswordButton`.
+- Clés de langue : `users.added.generated` n'a plus de `{password}` ; nouvelles clés `users.secret.*`. Test : `tests/core/team-first-password.test.mjs`.
+- **Fiche d'extension.** `ReadmeFold` (`<details>` natif, sans script) replie le README en mode simple ; `readmeSummary` (`core/modules/ficheView.ts`) en tire une phrase sans Markdown. Le README reste rendu par `Markdown untrusted` : pas de HTML brut, pas de script, liens relatifs inertes, aucune image distante. Textes `fiche.readme.*` (FR et EN).
+- **Cellule de tableau `image`.** `{ text, image: { src, alt, fit? } }` : vignette de 40 px, `alt` obligatoire. `src` est validé côté serveur (`core/adminkit/image.ts`) : page du site, ou `https://` d'un hôte du nouveau champ `imageHosts` de `module.json` (additif). Kit de test : `manifest.imageHosts`, R28 et R16.
+- **`PeriodField` n'envoie plus de valeur vide pour une période incomplète.** Une seule date (`"2026-12-01/"`) ou une fin avant le début est envoyée telle quelle pour être refusée ; vide seulement sans aucune date.
+- **Refus côté serveur.** `runModuleAdminAction` refuse une période à moitié remplie, à l'envers ou illisible avant d'appeler le module, et retire le champ caché `<nom>__period`. Nouveaux : `periodErrorKey`, `isHalfPeriod`, `PERIOD_MARK`, `periodSent` et trois textes `period.error*`.
+- `settingKeysReadByCore(manifest)` (`src/core/modules/manifest.ts`) liste les clés de réglages lues par le cœur d'après le manifeste (`pageSetting`, `shortLink.enabled`, `shortLink.name`, `shortLink.target.setting`). Le test « chaque clé de `settings` est lue par le code du module » (dépôt de modules présent) les accepte : un réglage d'adresse courte n'est pas un champ mort.
+- Le test d'architecture « aucun module connu par son identifiant » ne trouve plus `social/page.tsx` fautif ; le test d'événements de `backup-async` mesure chaque phase jusqu'à 3 fois avec la gigue du moment (un blocage réel échoue à chaque essai).
+- **Kit de test : `compat.minCore` connaît deux fonctions de plus.** `openEnded` sur une période (cœur 0.6.4) et `ctx.api.log.write` appelé sans `?.` ni test préalable de `ctx.api.log` (cœur 0.6.0) exigent le `minCore` correspondant. Mesuré sur `curiosa-extras` (dev, 71 modules) : aucun module ne devient averti ni en échec.
+- **Nouveau conseil `compat.minCoreAdvice`.** Une lecture de `ctx.timezone` sans repli (`typeof`, `??`, `||`, ternaire) conseille `minCore` 0.6.4 ; elle ne fait jamais échouer le module. `FEATURES` accepte `advice: true`.
+- **Volontairement hors de `FEATURES`.** `previews`, `shortLink`, `social`, `suggestInMenu`, `returnAddresses`, `siteAddressUses`, `dashboard`, `content.templates` et `logEvents` : un cœur plus ancien les ignore sans rien perdre, la documentation dit « aucun `minCore` à déclarer » ; `overlayElements` est déjà exigé par `parseManifest`. La raison est écrite au-dessus de `FEATURES`.
+- **Documentation.** `docs/MODULES.md` : le défaut « une seule fois » est daté « cœur 0.6.4 » (et non « après 0.6.3 »), l'exigence du kit s'appelle `compat.minCore`. `docs/TESTSUPPORT.md` régénéré.
+- **Copies inertes.** Nouveau champ de manifeste `inertLegacyCollections` (additif, sous-ensemble de `legacyCollections` ; clé séparée car la forme objet casserait les cœurs plus anciens). `deleteInertCollection` (`core/modules/legacyCollections.ts`) relit le manifeste au clic, refuse le reste et supprime par tranches bornées. Kit : `manifest.inertCollections` et `manifest.inertCollections.unused`.
+
 ## 0.6.4 — 2026-11-03
 
 **En bref.** Une entrée « Entretien » apparaît dans le menu d'administration, avec une pastille qui dit « À jour » ou combien de choses vous avez à faire. Les copies de sécurité d'anciennes données ne sont plus présentées comme une tâche : le site les garde par prudence, sans rien vous demander. Une période part maintenant de « une seule fois », et un réglage peut accepter une seule date. Le journal passe en dernier sur le tableau de bord. Un ménage interne n'a aucun effet visible. Le changement qui compte : la version minimale de mise à jour passe à 0.2.0. Un site plus ancien est amené tout seul à la 0.2.0 puis à la version choisie ; rien ne change pour un site en 0.2.0 ou plus récent.
