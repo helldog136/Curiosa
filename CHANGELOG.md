@@ -15,8 +15,18 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Seules les images permises s'affichent.** L'image doit venir de votre site ou d'un site que l'extension a déclaré, et avoir un texte alternatif. Sinon elle est écartée et la ligne garde son texte. Rien venu d'ailleurs n'est exécuté.
 - **Rien ne change pour les extensions actuelles.** Un site plus ancien affiche simplement le texte de la cellule.
 
+### Équipe
+
+- **Le mot de passe provisoire d'une nouvelle personne s'affiche dans un encadré à part.** Vous le voyez une seule fois, avec un bouton « Copier » et ce message : « Vous ne le reverrez plus : notez-le ou copiez-le maintenant ». Avant, il était écrit dans une phrase qui restait affichée.
+- **Il disparaît dès que vous cliquez sur « J'ai noté le mot de passe », que vous changez de page ou que vous rechargez.** Le site n'en garde aucune copie lisible : ni dans sa base, ni dans le Journal, ni dans l'adresse de la page.
+- **La personne doit choisir son propre mot de passe à sa première connexion, sans exception.** Ce réglage est maintenant posé en même temps que la création du compte, et non juste après : une coupure au mauvais moment ne peut plus laisser un compte sans cette obligation.
+- **La même phrase partout.** La boîte « Définir un mot de passe temporaire » dit aussi « Vous ne le reverrez plus ».
+
 ### Pour les développeurs
 
+- `createMember(actorId, { …, mustChangePassword: true })` pose le drapeau dans l'écriture qui crée le compte (`createUser` ne fait plus de seconde écriture). Seul `true` compte.
+- `ActionState` gagne `secret?: OneTimeSecret` (`src/components/admin/OneTimeSecret.tsx`) : valeur, titre, notes et boutons déjà traduits côté serveur. `ActionForm` l'affiche avec `SecretReveal` et ne le garde que dans l'état de la page ; `SecretValue` (valeur + « Copier ») est aussi utilisé par `TemporaryPasswordButton`.
+- Clés de langue : `users.added.generated` n'a plus de `{password}` ; nouvelles clés `users.secret.*`. Test : `tests/core/team-first-password.test.mjs`.
 - **Cellule de tableau `image`.** `{ text, image: { src, alt, fit? } }` : vignette de 40 px, `alt` obligatoire. `src` est validé côté serveur (`core/adminkit/image.ts`) : page du site, ou `https://` d'un hôte du nouveau champ `imageHosts` de `module.json` (additif). Kit de test : `manifest.imageHosts`, R28 et R16.
 
 ## 0.6.4 — 2026-11-03
