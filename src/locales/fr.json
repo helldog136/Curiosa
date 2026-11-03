@@ -2930,6 +2930,8 @@
   "fiche.gallery.loading": "Chargement des images…",
   "fiche.retry": "Réessayer",
   "fiche.retrying": "Nouvelle tentative…",
+  "fiche.readme.open": "Lire la présentation complète",
+  "fiche.readme.hint": "Texte d'origine de l'extension, parfois technique",
   "fiche.slow": "Lecture du dépôt… Cela prend un peu plus de temps que d'habitude.",
   "catalogue.previewRateLimit": "Le site qui héberge cette extension limite les lectures pour le moment. Patientez une minute, puis réessayez. Rien n'a été installé.",
   "catalogue.previewSlow": "La lecture de cette fiche prend plus de temps que prévu. Rien n'a été installé. Vous pouvez réessayer.",

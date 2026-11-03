@@ -3,7 +3,7 @@ import type { AddItem, BarState } from "@/core/modules/ficheView";
 import { EXTENSIONS_ADD_HREF } from "@/core/modules/extensionsLinks";
 import { Callout } from "./Page";
 import { ui } from "./ui";
-import { AddsList, InstallBar, InstallBlockedButton, TechnicalDetails } from "./FicheParts";
+import { AddsList, InstallBar, InstallBlockedButton, ReadmeFold, TechnicalDetails } from "./FicheParts";
 import { PreviewGallery, type GalleryItem, type GalleryLabels } from "./PreviewGallery";
 import { RetryButton } from "./RetryButton";
 
@@ -44,6 +44,8 @@ export type FicheProps = {
   adds: AddItem[];
   /** README déjà rendu (Markdown non fiable, sans HTML brut) ; null = pas de README. */
   readme: React.ReactNode;
+  /** Une phrase tirée de la présentation, visible quand elle est repliée (mode simple). */
+  readmeSummary?: string;
   /** Le manifeste a pu être lu : autorisations et données sont connues. */
   hasManifest: boolean;
   /** Autorisations que la fiche sait dire en clair. */
@@ -106,10 +108,12 @@ export function ExtensionFiche(p: FicheProps) {
       {p.gallerySlot ?? <PreviewGallery items={p.gallery} labels={p.galleryLabels} />}
       <AddsList items={p.adds} t={t} />
 
-      <section className="space-y-3">
-        <h2 className="text-lg font-semibold">{t("catalogue.presentation")}</h2>
-        {p.readme ?? (!p.failed ? <p className="text-sm text-muted">{t("catalogue.noReadme")}</p> : null)}
-      </section>
+      {p.readme ? <ReadmeFold summary={p.readmeSummary} open={p.advanced} t={t}>{p.readme}</ReadmeFold> : !p.failed && (
+        <section className="space-y-3">
+          <h2 className="text-lg font-semibold">{t("catalogue.presentation")}</h2>
+          <p className="text-sm text-muted">{t("catalogue.noReadme")}</p>
+        </section>
+      )}
 
       {/* Avant d'installer : l'avertissement d'un module non vérifié reste dans la page (la case à cocher est dans la barre du bas). */}
       {bar.kind === "ready" && bar.confirm && <p className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm" data-testid={p.origin === "extra" ? "extra-warning" : "custom-warning"}>{p.origin === "extra" ? t("catalogue.extraWarning") : t("catalogue.customWarning")}</p>}
