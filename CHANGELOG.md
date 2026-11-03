@@ -13,6 +13,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Nouveautés
 
+- **Le journal passe en bas du tableau de bord.** Le cadre « Ce qui s'est passé » est maintenant le dernier, en mode simple comme en mode avancé : ce qui demande votre attention reste en haut. Rien d'autre ne change de place.
 - **« Entretien » dans le menu d'administration, pour la personne propriétaire.** Sa pastille dit « À jour », « Copie gardée » (rien à faire) ou un nombre quand une action vous attend. Le bandeau reste réservé à l'urgent.
 - **Une page Entretien plus claire.** Chaque ligne est dans « À faire », « Gardé par prudence » ou « Terminé » (replié). Une recherche et des filtres retrouvent une ligne.
 - **Un texte juste pour les copies de sécurité.** La page disait que l'extension viderait elle-même ces données. Elle dit maintenant ce qui est vrai : la copie est gardée par prudence, comprise dans vos sauvegardes, jamais supprimée par le site, et ne demande aucune action de votre part.
