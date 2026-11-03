@@ -458,3 +458,13 @@ test("tableau enrichi, vignette tombée : une pastille neutre avec la première 
   assert.match(out, /role="img" aria-label="Jaquette de Zelda"[^>]*>Z</);
   assert.match(out, /h-10 w-10/, "même taille que l'image : la ligne ne bouge pas");
 });
+
+test("période incomplète : le champ envoie une valeur NON vide (une date, fin avant début), vide seulement sans aucune date", () => {
+  const labels = realPeriodLabels(tr);
+  const mk = (defaultValue, openEnded = false) => html(wrap(h(PeriodField, { label: "Période", name: "p", defaultValue, locale: "fr", labels, openEnded })));
+  assert.match(mk("2026-12-01/2026-12-15"), /name="p" value="2026-12-01\/2026-12-15"/);
+  assert.match(mk(""), /name="p" value=""/);
+  assert.match(mk("", true), /name="p__period" value="open"/);
+  assert.match(mk(""), /name="p__period" value="closed"/);
+  assert.match(mk("2026-12-01/", true), /name="p" value="2026-12-01\/"/, "période ouverte : une date suffit");
+});
