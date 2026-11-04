@@ -37,7 +37,7 @@ const owner = { email: "owner@example.org", owner: true };
 test("outil : font_set est une demande (niveau 3), jamais active d'office ; il n'existe aucun outil pour envoyer ou supprimer un fichier de police", async () => {
   const tools = await maintenanceToolProvider.list();
   const t = tools.find((x) => x.name === "maintenance_font_set");
-  assert.deepEqual([t.readOnly, t.default, t.profileDefault, t.destructive], [false, false, false, true]);
+  assert.deepEqual([t.readOnly, t.default, t.profileDefault, t.destructive, t.request], [false, false, false, false, true]);
   assert.deepEqual(tools.map((x) => x.name).filter((n) => /font/.test(n)), ["maintenance_font_set"]);
   assert.match(t.description, /cannot upload a font file/);
   const { token } = await maintenanceToken();

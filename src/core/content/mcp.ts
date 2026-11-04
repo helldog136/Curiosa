@@ -10,15 +10,18 @@ import { isSafeExternalUrl } from "@/core/url";
 import type { McpTool, McpToolProvider } from "@/core/services/mcp/types";
 import { McpToolError, validateArgs } from "@/core/services/mcp/validate";
 import type { JsonSchemaLite } from "@/core/modules/types";
+import { callLevel3 } from "@/core/maintenance/actions";
+import { publishInput } from "@/core/maintenance/publish";
 
 /**
- * FOURNISSEUR D'OUTILS MCP — le moteur de contenu.
+ * MCP TOOL PROVIDER: the content engine.
  *
- * Toute instance à contenu (blog, sponsors, liste de liens…) reçoit des actions éditoriales :
- * lister, lire, créer un brouillon, éditer un brouillon. C'est une fonctionnalité du moteur de contenu
- * (il connaît les entrées), pas du mécanisme MCP. Le moteur de contenu ne propose volontairement ni publication
- * ni suppression : un module peut en proposer (actions `destructive`, désactivées par défaut) ; ici, seuls les
- * brouillons sont modifiables.
+ * Every content instance (blog, sponsors, list of links...) gets editorial tools: list, read, create a draft, edit a draft, and (separate rights, never granted
+ * by default) publish a draft and return an entry to draft. This is a feature of the content engine (it knows the entries), not of the MCP mechanism, so every present and
+ * future content module gets them with no change of its own. Deleting is never offered here: a module can offer it itself (`destructive` actions, off by default).
+ *
+ * Publishing never edits content, only publishes an existing draft of THIS instance, and follows the approval setting of the access like updates do
+ * (maintenance/publish.ts and maintenance/actions.ts, `callLevel3`). A module that declares its own `publish` / `unpublish` action keeps it: no second tool of that name.
  */
 /** Curseur opaque de `list_entries` : (date de création, identifiant) de la dernière entrée rendue. */
 const encodeCreatedCursor = (e: { createdAt: Date; id: string }) => Buffer.from(`${e.createdAt.getTime()}|${e.id}`, "utf8").toString("base64url");
@@ -27,6 +30,7 @@ function decodeCreatedCursor(raw: string): { createdAt: Date; id: string } | nul
   return m ? { createdAt: new Date(Number(m[1])), id: m[2]! } : null;
 }
 
+const pickPublishArgs = (a: Record<string, unknown>) => ({ id: a.id, ids: a.ids, locale: a.locale });
 const str = (max = 2000) => ({ type: "string" as const, maxLength: max });
 
 export const contentToolProvider: McpToolProvider = {
@@ -40,7 +44,7 @@ export const contentToolProvider: McpToolProvider = {
     for (const { instance, mod } of await getActiveInstances()) {
       if (!mod.manifest.content) continue;
       const label = labeler.label(instance);
-      const add = (name: string, t: Pick<McpTool, "description" | "readOnly" | "input" | "call"> & { default?: boolean }) =>
+      const add = (name: string, t: Pick<McpTool, "description" | "readOnly" | "input" | "call"> & { default?: boolean; request?: boolean; audited?: boolean }) =>
         tools.push({ name: `${instance.key}__${name}`, title: `${label}: ${name}`, source: instance.key, instanceId: instance.id, default: t.default ?? true, destructive: false, ...t });
 
       const listSchema: JsonSchemaLite = { type: "object", properties: { status: { type: "string", enum: ["published", "draft", "all"] }, locale: { type: "string", enum: locales }, limit: { type: "integer", minimum: 1, maximum: 100 }, cursor: str(200) } };
@@ -136,6 +140,24 @@ export const contentToolProvider: McpToolProvider = {
           return { id: entry.id, status: "draft", locale };
         },
       });
+
+      // Publishing: a separate right per instance, off by default. One tool for the engine, so every content module has it.
+      const own = new Set((mod.manifest.mcp ?? []).map((m) => m.name));
+      const pubSchema = publishInput(locales);
+      if (!own.has("publish")) {
+        add("publish", {
+          description: `[${label}] PUBLISH existing DRAFT entries (id, or ids for several: one request for all). It never edits content: it only changes the status of a draft that already exists in this list, after the same checks as the admin's Publish button (every language version has a title, and every site language exists when this list shows each language only when it is written; otherwise it says which version is missing and publishes nothing). It follows the owner's approval setting for this access: either a request the owner approves in Admin > AI assistants (poll maintenance_request_status), or done at once. A published entry is never overwritten: use it only for drafts.`,
+          readOnly: false, default: false, request: true, audited: true, input: pubSchema,
+          call: (raw, actor) => callLevel3("entry_publish", { instance: instance.key, ...pickPublishArgs(validateArgs(pubSchema, raw)) }, actor),
+        });
+      }
+      if (!own.has("unpublish")) {
+        add("unpublish", {
+          description: `[${label}] Return PUBLISHED entries to draft (id, or ids for several). Content is not changed and nothing is deleted: the entry just stops showing on the site until it is published again. Follows the owner's approval setting for this access, like publish.`,
+          readOnly: false, default: false, request: true, audited: true, input: pubSchema,
+          call: (raw, actor) => callLevel3("entry_unpublish", { instance: instance.key, ...pickPublishArgs(validateArgs(pubSchema, raw)) }, actor),
+        });
+      }
     }
     return tools;
   },

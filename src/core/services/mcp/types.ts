@@ -14,8 +14,13 @@ export type McpTool = {
   profileDefault?: boolean;
   /** L'outil consigne lui-même son action dans l'audit : le serveur n'ajoute pas sa ligne générique. */
   audited?: boolean;
-  /** Irréversible (suppression…) : jamais accordée par défaut, confirmation à l'octroi. */
+  /** Irreversible (deletion...): never granted by default, confirmation when granted. */
   destructive: boolean;
+  /**
+   * The tool does not act by itself: it creates a request the owner approves (or, when the owner chose "act without asking" for this access, acts at once).
+   * Distinct from `destructive`: a request is not a deletion. Profiles, the rights page and the confirmations read this field.
+   */
+  request?: boolean;
   input: JsonSchemaLite;
   /** D'où vient l'outil : « core », ou la clé d'une instance (affiché dans l'admin). */
   source: string;

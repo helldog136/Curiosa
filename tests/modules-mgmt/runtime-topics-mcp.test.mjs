@@ -274,8 +274,10 @@ test("MCP contenu : lister, lire, créer et modifier des BROUILLONS — jamais p
   const blog = BUILTIN_MODULES.find((b) => b.manifest.id === "blog").manifest;
   const inst = await createInstance(db.prisma, { manifest: blog, names: { fr: "Blog" } });
   const tools = (await listMcpTools()).filter((t) => t.source === "blog");
-  assert.deepEqual(tools.map((t) => t.name).sort(), ["blog__create_draft", "blog__get_entry", "blog__list_entries", "blog__update_draft"]);
-  assert.ok(!tools.some((t) => /publish|delete|remove/.test(t.name)));
+  // Publishing is a separate right, never granted by default (see tests/services/mcp-publish.test.mjs); deleting is never offered.
+  assert.deepEqual(tools.map((t) => t.name).sort(), ["blog__create_draft", "blog__get_entry", "blog__list_entries", "blog__publish", "blog__unpublish", "blog__update_draft"]);
+  assert.ok(tools.filter((t) => /publish/.test(t.name)).every((t) => t.default === false && t.request === true && t.readOnly === false));
+  assert.ok(!tools.some((t) => /delete|remove/.test(t.name)));
   const T = Object.fromEntries(tools.map((t) => [t.name.split("__")[1], t]));
   const actor = { name: "agent" };
 
@@ -313,7 +315,8 @@ test("MCP contenu : les actions éditoriales ne sont jamais destructives et cré
   await createInstance(db.prisma, { manifest: blog, names: { en: "Blog" } });
   for (const t of (await listMcpTools()).filter((x) => x.source === "blog")) {
     assert.equal(t.destructive, false, t.name);
-    if (!t.readOnly) assert.ok(t.name.endsWith("_draft"), t.name);
+    if (!t.readOnly) assert.ok(t.name.endsWith("_draft") || /__(un)?publish$/.test(t.name), t.name);
+    if (/__(un)?publish$/.test(t.name)) assert.equal(t.default, false, `${t.name}: publishing is never granted by default`);
   }
   assert.ok(parseManifest({ apiVersion: 2, id: "zz", name: "Z", version: "1.0.0" }).ok);
 });

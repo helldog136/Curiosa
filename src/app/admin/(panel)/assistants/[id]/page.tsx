@@ -5,9 +5,8 @@ import { listInstances } from "@/core/instances";
 import { getInstanceLabeler } from "@/core/modules/labels";
 import { listMcpToolCatalogue } from "@/core/platform";
 import { getActiveInstances } from "@/core/modules/registry";
-import { localized } from "@/core/modules/types";
 import { siteUrl } from "@/core/config";
-import { canUse, defaultFor, isGranted, MAINTENANCE_PROFILE, parseGrants, withinCeiling } from "@/core/services/mcp/access";
+import { canUse, isGranted, MAINTENANCE_PROFILE, parseGrants, withinCeiling } from "@/core/services/mcp/access";
 import { abilities } from "@/core/services/mcp/accessView";
 import { assistantHistoryHref } from "@/core/services/mcp/teamView";
 import { TEAM_HREF } from "@/core/services/mcp/assistantsLinks";
@@ -15,10 +14,14 @@ import { getApprovalMode } from "@/core/maintenance/settings";
 import { MAINTENANCE_TOOLS } from "@/core/maintenance/tools";
 import { isUrlAccessEnabled } from "@/core/services/mcp/tokens";
 import { ConfirmButton } from "@/components/admin/ConfirmButton";
-import { GrantToggle } from "@/components/admin/GrantToggle";
+import { ApprovalChoice } from "@/components/admin/ApprovalChoice";
+import { GrantsEditor } from "@/components/admin/GrantsEditor";
+import type { GrantSection, GrantTool } from "@/components/admin/grantsModel";
+import { approvalLabels, grantsLabels } from "./grantsLabels";
+import { placementOf } from "@/core/services/mcp/profiles";
 import { Callout, DangerZone } from "@/components/admin/Page";
 import { ui } from "@/components/admin/ui";
-import { resetGrantsAction, revokeTokenAction, setGrantAction, setUrlAccessAction } from "../actions";
+import { applyGrantsAction, resetGrantsAction, revokeTokenAction, setUrlAccessAction } from "../actions";
 import { setApprovalAction } from "../requestsActions";
 import { PendingButton } from "@/components/admin/PendingButton";
 
@@ -46,8 +49,60 @@ export default async function AccessPage({ params }: { params: Promise<{ id: str
   for (const tool of catalogue) groups.set(tool.source, [...(groups.get(tool.source) ?? []), tool]);
   const usable = catalogue.filter((x) => !x.instanceOptedOut && canUse(x, token));
   const can = abilities(usable.map((x) => ({ readOnly: x.readOnly, destructive: x.destructive, source: x.source })));
-  const shown = [...groups.entries()].filter(([source]) => advanced || source === "maintenance");
+  // Publishing is a right of its own, per content list: in simple mode it gets a section in plain words (in advanced mode each list shows its own tools).
+  const publishing = catalogue.filter((x) => !x.instanceOptedOut && !!x.instanceId && /__(publish|unpublish)$/.test(x.name));
+  const shown: [string, typeof catalogue][] = [...groups.entries()].filter(([source]) => advanced || source === "maintenance");
+  if (!advanced && publishing.length) shown.push(["publishing", publishing]);
+  const labelOfSource = (source: string) => { const i = instances.find((x) => x.key === source); return i ? labeler.label(i) : source; };
 
+  // The rights page works on sections: the maintenance tools by level (the third one is "Risky actions", with its approval choice), then, in advanced mode, one per module.
+  const sections: GrantSection[] = [];
+  for (const [source, tools] of shown) {
+    const inst = instances.find((i) => i.key === source);
+    const mod = active.find((a) => a.instance.key === source)?.mod;
+    const isMaintenance = source === "maintenance";
+    const isPublishing = source === "publishing";
+    const title = isPublishing ? `📣 ${t("aim.publish.group")}` : isMaintenance ? `🛠️ ${t("aim.group")}` : source === "core" ? t("mcp.platform") : `${mod?.manifest.icon ?? "🧩"} ${inst ? labeler.label(inst) : source}`;
+    const toGrantTool = (tool: (typeof tools)[number]): GrantTool => {
+      const ceilingBlocks = !withinCeiling(tool, token.scope);
+      const short = tool.name.includes("__") ? tool.name.split("__")[1]! : tool.name;
+      const plain = isMaintenance ? t(`aim.tool.${short.replace(/^maintenance_/, "")}`) : isPublishing ? t(`aim.tool.${short}`, { name: labelOfSource(tool.source) }) : "";
+      const placement = placementOf(tool);
+      return {
+        name: tool.name, label: advanced ? `${title} — ${short}` : plain || short, code: advanced ? short : undefined,
+        help: isMaintenance || isPublishing ? plain : advanced ? tool.description : undefined,
+        kind: tool.destructive ? "destructive" : tool.readOnly ? "read" : "write",
+        kindLabel: tool.destructive ? t("mcp.destructive") : tool.readOnly ? t("mcp.action.read") : t("mcp.action.write"),
+        initial: !ceilingBlocks && isGranted(tool, token.grants), blocked: ceilingBlocks, locked: revoked || tool.instanceOptedOut,
+        confirm: tool.destructive ? t(advanced ? "mcp.confirmDestructive" : "assistants.confirmDestructive", { action: advanced ? short : t(`aim.action.${short.replace(/^maintenance_/, "")}`) }) : undefined,
+        rank: placement === "read" || placement === "assistant" || placement === "full" ? placement : null,
+      };
+    };
+    const reset = source !== "core" && !isPublishing && !revoked ? (
+      <div className="flex flex-wrap gap-2">
+        <form action={resetGrantsAction.bind(null, id, source, "defaults")}><PendingButton>{t("mcp.resetDefaults")}</PendingButton></form>
+        <form action={resetGrantsAction.bind(null, id, source, "none")}><PendingButton>{t("mcp.disableAll")}</PendingButton></form>
+      </div>
+    ) : null;
+    const optedOut = tools[0]?.instanceOptedOut ? <p className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-2 text-sm">{t("mcp.instanceOptedOut")}</p> : null;
+    if (!isMaintenance) {
+      sections.push({ id: source, group: "", title, ...(isPublishing ? { help: t("aim.publish.help") } : {}), tools: tools.map(toGrantTool), header: <>{reset}{optedOut}</> });
+      continue;
+    }
+    for (const level of [1, 2, 3] as const) {
+      const here = tools.filter((x) => levelOf.get(x.name) === level);
+      if (!here.length) continue;
+      sections.push({
+        id: `maintenance-${level}`, group: title, title: t(`aim.level.${level}`), help: t(`aim.level.${level}.help`), risky: level === 3, tools: here.map(toGrantTool),
+        header: level === 3 ? (
+          <div className="space-y-3 rounded-xl border border-line bg-bg p-4 text-sm" data-testid="maintenance-approval">
+            {revoked ? <p className="text-muted">{approval === "human" ? t("aim.approval.askHelp") : t("aim.approval.actHelp")} {t("aim.approval.installNote")}</p> : <ApprovalChoice current={approval} onChange={setApprovalAction.bind(null, id)} labels={approvalLabels(t, row.name)} />}
+            {advanced && token.grants[MAINTENANCE_PROFILE] === true && <p className="text-muted">{t("mcp.profile.maintenance")}</p>}
+          </div>
+        ) : level === 1 ? <>{reset}{optedOut}</> : undefined,
+      });
+    }
+  }
   return (
     <div className="space-y-6">
       <div>
@@ -78,79 +133,8 @@ export default async function AccessPage({ params }: { params: Promise<{ id: str
         </section>
       )}
 
-      {shown.map(([source, tools]) => {
-        const inst = instances.find((i) => i.key === source);
-        const mod = active.find((a) => a.instance.key === source)?.mod;
-        const isMaintenance = source === "maintenance";
-        const title = isMaintenance ? `🛠️ ${t("aim.group")}` : source === "core" ? t("mcp.platform") : `${mod?.manifest.icon ?? "🧩"} ${inst ? labeler.label(inst) : source}`;
-        return (
-          <section key={source} className={`${ui.card} space-y-3`} aria-label={title}>
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-lg font-semibold">
-                {title}
-                {mod && advanced && <span className="ml-2 text-xs font-normal text-muted">{localized(mod.manifest.name, locale, config.defaultLocale)} · {source}</span>}
-              </h2>
-              {source !== "core" && !revoked && (
-                <div className="flex flex-wrap gap-2">
-                  <form action={resetGrantsAction.bind(null, id, source, "defaults")}><PendingButton>{t("mcp.resetDefaults")}</PendingButton></form>
-                  <form action={resetGrantsAction.bind(null, id, source, "none")}><PendingButton>{t("mcp.disableAll")}</PendingButton></form>
-                </div>
-              )}
-            </div>
-            {isMaintenance && (
-              <div className="space-y-3 rounded-xl border border-line bg-bg p-4 text-sm" data-testid="maintenance-approval">
-                <p className="font-medium">{t("aim.approval.title")}</p>
-                <p className="text-muted">{approval === "human" ? t("aim.approval.humanHelp") : t("aim.approval.directHelp")}</p>
-                {!revoked && (
-                  <form action={setApprovalAction.bind(null, id, approval === "human" ? "direct" : "human")}>
-                    {approval === "human"
-                      ? <ConfirmButton message={t("aim.approval.directConfirm", { token: row.name })}>{t("aim.approval.direct")}</ConfirmButton>
-                      : <PendingButton>{t("aim.approval.human")}</PendingButton>}
-                  </form>
-                )}
-                {advanced && token.grants[MAINTENANCE_PROFILE] === true && <p className="text-muted">{t("mcp.profile.maintenance")}</p>}
-              </div>
-            )}
-            {tools[0]?.instanceOptedOut && <p className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-2 text-sm">{t("mcp.instanceOptedOut")}</p>}
-            <ul className="divide-y divide-line">
-              {tools.map((tool) => {
-                const ceilingBlocks = !withinCeiling(tool, token.scope);
-                const effective = !ceilingBlocks && isGranted(tool, token.grants);
-                const short = tool.name.includes("__") ? tool.name.split("__")[1]! : tool.name;
-                const plain = isMaintenance ? t(`aim.tool.${short.replace(/^maintenance_/, "")}`) : "";
-                const level = levelOf.get(tool.name);
-                const firstOfLevel = isMaintenance && level !== undefined && tools.findIndex((x) => levelOf.get(x.name) === level) === tools.indexOf(tool);
-                return (
-                  <li key={tool.name} className="py-3">
-                    {firstOfLevel && <div className="mb-3 rounded-lg bg-surface p-3 text-sm"><p className="font-semibold">{t(`aim.level.${level}`)}</p><p className="text-muted">{t(`aim.level.${level}.help`)}</p></div>}
-                    <div className="flex items-start gap-4">
-                      <div className="pt-0.5">
-                        <GrantToggle
-                          label={advanced ? `${title} — ${short}` : plain}
-                          checked={effective}
-                          disabled={revoked || ceilingBlocks || tool.instanceOptedOut}
-                          confirmMessage={tool.destructive ? t(advanced ? "mcp.confirmDestructive" : "assistants.confirmDestructive", { action: advanced ? short : t(`aim.action.${short.replace(/^maintenance_/, "")}`) }) : undefined}
-                          onToggle={setGrantAction.bind(null, id, tool.name)}
-                        />
-                      </div>
-                      <div className="min-w-0 flex-1 text-sm">
-                        <p>
-                          {advanced && <span className="break-all font-mono">{short}</span>}{" "}
-                          <span className={`rounded px-1.5 py-0.5 text-xs ${tool.destructive ? "bg-red-500/20 text-red-700" : tool.readOnly ? "bg-surface" : "bg-amber-500/20"}`}>
-                            {tool.destructive ? t("mcp.destructive") : tool.readOnly ? t("mcp.action.read") : t("mcp.action.write")}
-                          </span>
-                          {advanced && <span className="ml-1 text-xs text-muted">{defaultFor(tool, token.grants) ? t("mcp.onByDefault") : t("mcp.offByDefault")}</span>}
-                        </p>
-                        {isMaintenance ? <p className="mt-0.5 text-muted">{plain}</p> : advanced && <p className="mt-0.5 text-muted">{tool.description}</p>}
-                      </div>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
-        );
-      })}
+      <GrantsEditor sections={sections} labels={grantsLabels(t)} save={applyGrantsAction.bind(null, id)}
+        riskyApproval={t(approval === "human" ? "grants.risky.approval.human" : "grants.risky.approval.direct")} />
 
       {!advanced && groups.size > 1 && <Callout tone="info" testid="assistants-more-advanced">{t("assistants.detail.moreInAdvanced")} <a href="/admin/mode" className="underline">{t("assistants.detail.modeLink")}</a></Callout>}
 

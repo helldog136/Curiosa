@@ -1,13 +1,14 @@
 import type { JsonSchemaLite } from "@/core/modules/types";
 import { McpToolError } from "@/core/services/mcp/validate";
-import { chooseSkin } from "@/core/skins/appearance";
+import { chooseSkin, saveColorChoices, saveFontChoices } from "@/core/skins/appearance";
 import { loadAppearanceView } from "@/core/skins/appearanceView";
 import { BASIC_ID } from "@/core/skins/constants";
 import { issueText } from "@/core/skins/messages";
 import { probableIllegibility, type ProbableIssue } from "@/core/skins/readability";
 import { SKIN_ID_RE } from "@/core/skins/allowlist";
 import * as skins from "@/core/skins/service";
-import { fontStatus } from "./fonts";
+import { isHexColor } from "@/core/color";
+import { fontStatus, prepareFont } from "./fonts";
 import type { Outcome } from "./actions";
 import type { Plan } from "./requests";
 
@@ -29,6 +30,22 @@ export const SKIN_ARG: JsonSchemaLite = { type: "object", properties: { skin: ID
 export const SKIN_LIST_INPUT: JsonSchemaLite = {
   type: "object",
   properties: { include: { type: "string", enum: ["not_installed", "all"], description: "not_installed (default): installed skins plus the catalogue skins this site does not have yet. all: also the catalogue skins already installed, marked as such." } },
+};
+
+const COLOR_FIELD_ARGS = { background: "background", surface: "surface", textColor: "text", accent: "accent", accent2: "accent2" } as const;
+const colorArg = (what: string) => ({ type: "string" as const, maxLength: 9, description: `${what} as a hex colour (for example #1a2b3c), or an empty string to go back to the skin's own value. Omit to leave it unchanged.` });
+export const SKIN_OPTIONS_ARG: JsonSchemaLite = {
+  type: "object",
+  properties: {
+    mode: { type: "string", enum: ["light", "dark"], description: "Only for a skin that has both a light and a dark mode (see maintenance_skin_status > activeSkin.modes): which mode the colours are for. The other mode keeps its values." },
+    background: colorArg("Page background"),
+    surface: colorArg("Cards and panels"),
+    textColor: colorArg("Text"),
+    accent: colorArg("Main colour (links, buttons)"),
+    accent2: colorArg("Second accent"),
+    fontTitles: { type: "string", maxLength: 60, description: "Font of titles: \"skin\" or a value listed in maintenance_skin_status > fonts.available. Omit to leave it unchanged." },
+    fontText: { type: "string", maxLength: 60, description: "Font of body text: same values as fontTitles. Omit to leave it unchanged." },
+  },
 };
 
 export const SKIN_ACTIONS = ["skin_install", "skin_activate", "skin_remove"] as const;
@@ -122,6 +139,63 @@ export async function prepareSkin(action: SkinAction, args: { skin?: unknown }):
   }
   if (id === BASIC_ID) refuse("The basic skin is built in and cannot be removed.");
   return { skin: id, name: card.name.en, from: card.version };
+}
+
+const MODE_TEXT = { light: "light mode", dark: "dark mode" } as const;
+
+/** Level 3, preparation (read only): checks the colours and fonts against the skin contract and freezes what will change. */
+export async function prepareSkinOptions(args: Record<string, unknown>): Promise<Plan> {
+  const refuse = (m: string): never => { throw new McpToolError(m); };
+  const view = await loadAppearanceView();
+  const colors: Record<string, string> = {};
+  for (const [arg, field] of Object.entries(COLOR_FIELD_ARGS)) {
+    const v = args[arg];
+    if (v === undefined) continue;
+    if (typeof v !== "string") return refuse(`argument "${arg}" must be a hex colour such as #1a2b3c`);
+    const hex = v.trim();
+    if (hex !== "" && !isHexColor(hex)) return refuse(`"${arg}" is not a valid colour: write it as #rrggbb, for example #1a2b3c. An empty string puts the skin's own colour back.`);
+    colors[field] = hex;
+  }
+  const mode = args.mode === "light" || args.mode === "dark" ? args.mode : undefined;
+  const hasColors = Object.keys(colors).length > 0;
+  const two = view.base.id !== BASIC_ID && view.base.modes.length === 2;
+  if (hasColors && two && !mode) return refuse('This skin has a light and a dark mode: say which one the colours are for ("mode": "light" or "dark").');
+  if (hasColors && !two && mode && !view.base.modes.includes(mode)) return refuse(`This skin has only its ${view.base.modes[0] ?? "dark"} mode: do not pass "mode", or pass "${view.base.modes[0] ?? "dark"}".`);
+  let fonts: Plan["fonts"];
+  if (args.fontTitles !== undefined || args.fontText !== undefined) {
+    try { fonts = (await prepareFont({ titles: args.fontTitles, text: args.fontText })).fonts; } catch (error) {
+      // "already in place" is not an error when colours change too.
+      if (!(hasColors && error instanceof McpToolError && /already in place/.test(error.message))) throw error;
+    }
+  }
+  if (!hasColors && !fonts) return refuse("Give at least one colour (background, surface, textColor, accent, accent2) or one font (fontTitles, fontText).");
+  const effectiveMode = two ? mode : undefined;
+  const names = [hasColors ? `colours${effectiveMode ? ` (${MODE_TEXT[effectiveMode]})` : ""}: ${Object.entries(colors).map(([f, v]) => `${f} ${v || "skin's own"}`).join(", ")}` : "", fonts ? `fonts: ${fonts.names}` : ""].filter(Boolean).join("; ");
+  return { skin: view.activeId, ...(hasColors ? { options: { ...(effectiveMode ? { mode: effectiveMode } : {}), colors, names } } : {}), ...(fonts ? { fonts } : {}) };
+}
+
+/** Level 3, execution: the same writes as the Appearance page; hard-to-read colours are saved anyway and reported as tips (the rendering corrects them). */
+export async function executeSkinOptions(plan: Plan, actorLabel: string): Promise<Outcome> {
+  const view = await loadAppearanceView();
+  if (view.activeId !== plan.skin) return { ok: false, message: "Not done: the skin of the site changed since the request. Ask again." };
+  let changed = 0;
+  if (plan.options) {
+    const r = await saveColorChoices(view.base, { mode: plan.options.mode, colors: plan.options.colors }, { actor: actorLabel });
+    if (!r.ok) return { ok: false, message: "Not done: one of these colours was refused. Check maintenance_skin_status and ask again." };
+    changed += r.changed;
+  }
+  if (plan.fonts) {
+    const r = await saveFontChoices({ heading: plan.fonts.titles, body: plan.fonts.text }, { actor: actorLabel });
+    if (!r.ok) return { ok: false, message: "Not done: one of these fonts no longer exists. Check maintenance_skin_status and ask again." };
+    changed += r.changed;
+  }
+  const after = await loadAppearanceView();
+  const tips = readabilityTips(after).map((t) => `${t.mode}: ${t.tip}`);
+  const fixed = after.notices.map((n) => n.en);
+  return {
+    ok: true,
+    message: `${changed ? `Appearance updated (${[plan.options?.names, plan.fonts ? `fonts: ${plan.fonts.names}` : ""].filter(Boolean).join("; ")}).` : "Nothing needed to change: these values were already in place."} The owner can undo in Admin > Appearance.${fixed.length ? ` Adjusted for readability by the site: ${fixed.join(" ")}` : ""}${tips.length ? ` Readability tips (advice only, the colours are applied): ${tips.join(" ")}` : ""}`,
+  };
 }
 
 /** Niveau 3, exécution (après l'accord de la personne propriétaire) : revérifie que la demande vise toujours la même chose, puis passe par les mêmes fonctions que l'admin. */

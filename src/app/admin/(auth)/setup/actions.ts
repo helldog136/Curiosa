@@ -17,6 +17,9 @@ import { isSafeExternalUrl } from "@/core/url";
 import { slugify } from "@/core/slug";
 import type { ActionState } from "@/components/admin/ActionForm";
 
+/** The optional last step ("Connect your AI assistant"); skipping it leads to the dashboard. */
+const SETUP_NEXT = "/admin/setup/assistant";
+
 function localizedText(v: string | Record<string, string> | undefined, locale: string): string {
   if (!v) return "";
   return typeof v === "string" ? v : (v[locale] ?? v.en ?? "");
@@ -154,7 +157,7 @@ export async function completeSetup(_prev: ActionState, formData: FormData): Pro
   for (const id of createdIds) await runInstanceCreateHook(id);
   await audit(email, "setup.completed", failed.length ? `modules not installed (catalogue): ${failed.join(", ")}` : "");
   try {
-    await signIn("credentials", { email, password, redirectTo: !failed.length ? "/admin?welcome=1" : wanted.length ? "/admin?welcome=1&modules=partial" : "/admin?welcome=1&modules=failed" });
+    await signIn("credentials", { email, password, redirectTo: !failed.length ? SETUP_NEXT : wanted.length ? `${SETUP_NEXT}?modules=partial` : `${SETUP_NEXT}?modules=failed` });
   } catch (error) {
     if (error instanceof AuthError) return { error: t("setup.error.generic") };
     throw error;

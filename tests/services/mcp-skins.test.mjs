@@ -53,7 +53,8 @@ test("outils : deux de lecture (actifs avec le profil maintenance), trois demand
   const tools = await maintenanceToolProvider.list();
   const by = Object.fromEntries(tools.map((t) => [t.name, t]));
   for (const n of ["maintenance_skin_status", "maintenance_skin_list"]) assert.deepEqual([by[n].readOnly, by[n].default, by[n].profileDefault, by[n].destructive], [true, false, true, false], n);
-  for (const n of ["maintenance_skin_install", "maintenance_skin_activate", "maintenance_skin_remove"]) assert.deepEqual([by[n].readOnly, by[n].default, by[n].profileDefault, by[n].destructive], [false, false, false, true], n);
+  // Requests, not deletions: only removing a skin is destructive.
+  for (const n of ["maintenance_skin_install", "maintenance_skin_activate", "maintenance_skin_remove"]) assert.deepEqual([by[n].readOnly, by[n].default, by[n].profileDefault, by[n].destructive, by[n].request], [false, false, false, n === "maintenance_skin_remove", true], n);
   const plain = await T.createToken("Brouillons", "write", "o");
   assert.deepEqual((await listed(plain)).filter((n) => n.includes("skin")), []);
   const { token } = await maintenanceToken();
