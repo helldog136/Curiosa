@@ -154,7 +154,7 @@ test("accès : la page d'un accès réunit droits et validation, le détail par 
   const page = read(`${PANEL}/assistants/[id]/page.tsx`);
   assert.match(page, /const shown = \[\.\.\.groups\.entries\(\)\]\.filter\(\(\[source\]\) => advanced \|\| source === "maintenance"\)/);
   assert.match(page, /data-testid="maintenance-approval"/);
-  assert.match(page, /ConfirmButton message=\{t\("aim\.approval\.directConfirm", \{ token: row\.name \}\)\}/, "la confirmation de l'exécution directe est conservée");
-  assert.match(page, /confirmMessage=\{tool\.destructive \?/, "la confirmation d'une action irréversible est conservée");
+  assert.match(read(`${PANEL}/assistants/[id]/grantsLabels.ts`), /actConfirm: t\("aim\.approval\.directConfirm", \{ token: name \}\)/, "la confirmation de l'exécution directe est conservée (choix à deux options)");
+  assert.match(page, /confirm: tool\.destructive \?/, "la confirmation d'une action irréversible cochée seule est conservée");
   assert.match(page, /adminCtx\(\{ right: "core:[a-z.]+" \}\)/);
 });
