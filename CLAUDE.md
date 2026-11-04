@@ -11,3 +11,9 @@
 # Ergonomie des pages de configuration : règles obligatoires
 
 @docs/ERGONOMIE-ADMIN.md
+
+# Language of the repository
+
+- Everything in the repository is English: docs, comments, identifiers, tests, commit messages, PR descriptions.
+- User-visible texts live in the EN+FR language files (`src/locales/`) with exact parity.
+- Exception: existing French files stay as they are until they are touched; translate them when you edit them.
