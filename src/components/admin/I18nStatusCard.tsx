@@ -13,7 +13,8 @@ export const TRANSLATING_GUIDE = "https://github.com/helldog136/Curiosa/blob/mai
  * and extensions are ("complete" or "partial: 82%"), then the installed extensions that miss an English or French text.
  */
 export function I18nStatusCard({ status, t }: { status: I18nStatus; t: Translator }) {
-  const label = (percent: number) => (percent >= 100 ? t("i18n.complete") : t("i18n.partial", { percent }));
+  // An official language (English, French) below 100% is "incomplete"; "partial" is only for community languages, where it is allowed.
+  const label = (percent: number, official: boolean) => (percent >= 100 ? t("i18n.complete") : t(official ? "i18n.incomplete" : "i18n.partial", { percent }));
   const gaps = status.modules.filter((m) => m.errors > 0);
   return (
     <div className={`${ui.card} space-y-5`} data-testid="i18n-status">
@@ -23,11 +24,11 @@ export function I18nStatusCard({ status, t }: { status: I18nStatus; t: Translato
       </div>
       <ul className="divide-y divide-line">
         {status.languages.map((l) => (
-          <li key={l.code} data-testid={`i18n-language-${l.code}`} className="grid min-h-11 grid-cols-[1fr_auto] items-center gap-x-4 gap-y-1 py-2 sm:grid-cols-[1fr_auto_10rem_10rem]">
+          <li key={l.code} data-testid={`i18n-language-${l.code}`} className="grid min-h-11 grid-cols-[1fr_auto] items-center gap-x-4 gap-y-1 py-2 sm:grid-cols-[1fr_auto_auto_auto] sm:gap-x-6">
             <span className="min-w-0 font-medium">{l.name} <span className="text-sm font-normal text-muted">{l.code}</span></span>
             <span className="justify-self-end"><Badge tone={l.status === "official" ? "ok" : "info"}>{t(l.status === "official" ? "i18n.official" : "i18n.community")}</Badge></span>
-            <span className="text-sm"><span className="text-muted">{t("i18n.interface")}</span> {label(l.interface.percent)}</span>
-            <span className="text-sm"><span className="text-muted">{t("i18n.extensions")}</span> {label(l.modules.percent)}</span>
+            <span className="text-sm sm:whitespace-nowrap"><span className="text-muted">{t("i18n.interface")}</span> {label(l.interface.percent, l.status === "official")}</span>
+            <span className="text-sm sm:whitespace-nowrap"><span className="text-muted">{t("i18n.extensions")}</span> {label(l.modules.percent, l.status === "official")}</span>
           </li>
         ))}
       </ul>

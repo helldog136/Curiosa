@@ -1,7 +1,7 @@
 // MODULE I18N: the pure rules of the language system (no import, no I/O).
 //
 // ONE SOURCE. The runtime (TypeScript, `audit.d.mts` gives the types), the test kit (`testsupport/i18n.mjs`) and the modules repository
-// (`tests/helpers/i18nAudit.mjs`, a verbatim COPY that a test compares with this file) all use these functions.
+// (`scripts/i18n-audit.mjs`, a verbatim COPY that a test compares with this file) all use these functions.
 //
 // Rules (docs/TRANSLATING.md):
 //   - English and French are ALWAYS supported: every visible text of the core and of every module exists in both, with the same {variables}.
@@ -214,7 +214,10 @@ export function auditDictionaries(dictionaries, opts = {}) {
   return out;
 }
 
-/** The status of a language for a person: "official" (English, French), else "community"; "complete" or "partial: 82%". */
+/**
+ * The status of a language for a person: "official" (English, French), else "community"; "complete" or "partial: 82%".
+ * An official language below 100% is not "partial" (partial is allowed): it is "incomplete" and the tests refuse it.
+ */
 export function languageLabel({ status, percent }) {
-  return { status, coverage: percent >= 100 ? "complete" : `partial: ${percent}%` };
+  return { status, coverage: percent >= 100 ? "complete" : status === "official" ? `incomplete: ${percent}%` : `partial: ${percent}%` };
 }

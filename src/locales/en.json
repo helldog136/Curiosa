@@ -3542,6 +3542,7 @@
   "i18n.extensions": "Extensions",
   "i18n.complete": "complete",
   "i18n.partial": "partial: {percent}%",
+  "i18n.incomplete": "incomplete: {percent}%",
   "i18n.noGaps": "Every installed extension has its English and French texts.",
   "i18n.gapsTitle": "Extensions with missing texts ({n})",
   "i18n.search": "Search an extension",

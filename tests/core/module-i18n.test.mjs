@@ -49,6 +49,12 @@ test("pickText: requested language, then the site main language, then English; n
   assert.deepEqual(A.chain("pt-BR", "fr"), ["pt-BR", "pt", "fr", "en"]);
 });
 
+test("language labels: community languages are partial, an official language below 100% is incomplete", () => {
+  assert.deepEqual(A.languageLabel({ status: "community", percent: 82 }), { status: "community", coverage: "partial: 82%" });
+  assert.equal(A.languageLabel({ status: "official", percent: 99 }).coverage, "incomplete: 99%");
+  assert.equal(A.languageLabel({ status: "official", percent: 100 }).coverage, "complete");
+});
+
 test("localized (module values) follows the same chain", () => {
   assert.equal(localized({ en: "Blog", fr: "Journal" }, "fr", "en"), "Journal");
   assert.equal(localized({ en: "Blog", fr: "Journal" }, "de", "en"), "Blog");

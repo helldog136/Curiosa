@@ -8,6 +8,7 @@ import { requirementGaps } from "@/core/modules/dependencies";
 import { listModuleRows, loadModule, moduleDir } from "@/core/modules/registry";
 import { readBlockedUpdate, type BlockedUpdate } from "@/core/modules/blockedUpdate";
 import { staticImportsWarning } from "@/core/modules/staticImports";
+import { languageLabel } from "@/core/i18n/audit.mjs";
 import { i18nStatus } from "@/core/i18n/status";
 import { moduleI18nReport, readModuleTexts } from "@/core/i18n/moduleStatus";
 import { sourceKind } from "@/core/modules/reinstall";
@@ -190,8 +191,7 @@ export async function modules(): Promise<{ modules: ModuleLine[]; truncated: boo
     });
   }
   const status = await i18nStatus().catch(() => null);
-  const share = (percent: number) => (percent >= 100 ? "complete" : `partial: ${percent}%`);
-  const languages = (status?.languages ?? []).map((l): LanguageLine => ({ code: l.code, name: l.name, status: l.status, enabled: l.enabled, interface: l.interface.label, modules: share(l.modules.percent) }));
+  const languages = (status?.languages ?? []).map((l): LanguageLine => ({ code: l.code, name: l.name, status: l.status, enabled: l.enabled, interface: l.interface.label, modules: languageLabel({ status: l.status, percent: l.modules.percent }).coverage }));
   return { modules: lines, truncated: rows.length > MAX_MODULES, languages };
 }
 
