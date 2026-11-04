@@ -45,9 +45,50 @@ test("stats : un visiteur est compté une fois par jour, ses pages vues s'additi
 test("stats : provenances comptées ; robots, « Do Not Track » et user-agent absent ne le sont pas", async () => {
   await S.recordVisit(hit({ referrer: "https://www.mastodon.example/@x" }), NOW);
   assert.deepEqual((await S.statsSummary({ now: NOW })).topSources, [{ host: "mastodon.example", views: 1 }]);
-  for (const over of [{ userAgent: "Googlebot/2.1" }, { userAgent: "curl/8" }, { userAgent: "" }, { doNotTrack: true }, { path: "/admin" }])
+  for (const over of [{ userAgent: "" }, { doNotTrack: true }, { path: "/admin" }, { userAgent: "Googlebot/2.1", doNotTrack: true }])
     assert.equal(await S.recordVisit(hit(over), NOW), "ignored", JSON.stringify(over));
-  assert.equal((await S.statsSummary({ now: NOW })).totals.today.views, 1);
+  for (const over of [{ userAgent: "Googlebot/2.1" }, { userAgent: "curl/8.5.0" }])
+    assert.equal(await S.recordVisit(hit(over), NOW), "robot", JSON.stringify(over));
+  const s = await S.statsSummary({ now: NOW });
+  assert.equal(s.totals.today.views, 1, "les robots ne gonflent ni les visiteurs ni les pages vues");
+  assert.deepEqual(s.topPages, [{ path: "/blog", views: 1 }]);
+});
+
+test("stats : un robot est compté par catégorie, à part, sans rien garder de lui", async () => {
+  const UAS = {
+    search: "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+    ai: "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; GPTBot/1.0; +https://openai.com/gptbot)",
+    preview: "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)",
+    tool: "Mozilla/5.0 (compatible; AhrefsBot/7.0)",
+  };
+  const ai2 = "Mozilla/5.0 (compatible; ClaudeBot/1.0; +claudebot@anthropic.com)";
+  await S.recordVisit(hit(), NOW);
+  for (const [k, ua] of Object.entries(UAS)) await S.recordVisit(hit({ userAgent: ua, ip: "6.6.6." + k.length, path: "/secret-" + k }), NOW);
+  await S.recordVisit(hit({ userAgent: ai2, ip: "6.6.6.9" }), NOW);
+  const s = await S.statsSummary({ now: NOW });
+  assert.deepEqual(s.robots.last30, { search: 1, ai: 2, preview: 1, tool: 1, total: 5 });
+  assert.deepEqual(s.robots.last7, s.robots.last30);
+  assert.deepEqual(s.totals.today, { visitors: 1, views: 1 }, "les personnes ne changent pas");
+  // Rien d'eux n'est gardé : 4 lignes au plus, aucune empreinte, ni agent, ni IP, ni page.
+  const rows = await db.prisma.visitDaily.findMany({ where: { kind: S.ROBOT_KIND } });
+  assert.equal(rows.length, 4);
+  assert.equal(await db.prisma.visitSeen.count(), 2, "seule la personne a une empreinte (site + page)");
+  const dump = JSON.stringify([await db.prisma.visitDaily.findMany(), await db.prisma.visitSeen.findMany(), await db.prisma.setting.findMany()]);
+  for (const bad of ["6.6.6.", "Googlebot", "GPTBot", "Claude", "facebookexternalhit", "Ahrefs", "secret-"]) assert.ok(!dump.includes(bad), bad);
+  // Un autre jour : encore 4 lignes au plus par jour.
+  await S.recordVisit(hit({ userAgent: UAS.ai }), new Date(NOW.getTime() + 86_400_000));
+  assert.equal(await db.prisma.visitDaily.count({ where: { kind: S.ROBOT_KIND } }), 5);
+});
+
+test("stats : « Do Not Track », désactivées : un robot n'est pas compté non plus", async () => {
+  assert.equal(await S.recordVisit(hit({ userAgent: "GPTBot/1.0", doNotTrack: true }), NOW), "ignored");
+  await setSetting("stats.enabled", false);
+  assert.equal(await S.recordVisit(hit({ userAgent: "GPTBot/1.0" }), NOW), "disabled");
+  assert.equal(await db.prisma.visitDaily.count(), 0);
+});
+
+test("stats : le résumé sans robot donne des zéros", async () => {
+  assert.deepEqual((await S.statsSummary({ now: NOW })).robots.last30, { search: 0, ai: 0, preview: 0, tool: 0, total: 0 });
 });
 
 test("stats : désactivées dans les réglages → rien n'est enregistré", async () => {

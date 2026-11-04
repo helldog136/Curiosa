@@ -11,11 +11,15 @@ import { PasswordInput } from "@/components/admin/PasswordInput";
 import { useFieldErrorsDom } from "@/components/admin/FieldErrors";
 import { MoreOptions } from "@/components/admin/MoreOptions";
 import { applyProfile, profileSamples } from "./profileChoice";
+import { ProgressLabelsProvider } from "@/components/admin/ProgressLabels";
 
 type Props = {
   strings: Record<string, Record<string, string>>;
   uiLocales: string[];
   locales: { code: string; name: string }[];
+  /** The language the wizard starts in (from the browser, else English). */
+  initialLang?: string;
+  /** Texts below are resolved on the server for every language (requested language -> English): the wizard never picks another language by itself. */
   presets: { id: string; icon: string; collectsLinks: boolean; names: Record<string, string>; descriptions: Record<string, string>; templates?: { id: string; name: Record<string, string>; description: Record<string, string> }[] }[];
   /** Profils de départ (« Vous êtes… ? ») tenus par le dépôt de modules ; aucun : la question n'est pas posée. */
   profiles?: { id: string; icon: string; names: Record<string, string>; descriptions: Record<string, string>; modules: string[]; samples: string[] }[];
@@ -26,10 +30,10 @@ type Props = {
 
 const STEPS = ["welcome", "identity", "profile", "modules", "links", "account"] as const;
 
-export function SetupWizard({ strings, uiLocales, locales, presets, profiles = [], needsToken, catalogueUnreachable = false }: Props) {
+export function SetupWizard({ strings, uiLocales, locales, initialLang = "en", presets, profiles = [], needsToken, catalogueUnreachable = false }: Props) {
   const [mode, setMode] = useState<"new" | "restore">("new");
   const [step, setStep] = useState(0);
-  const [lang, setLang] = useState("fr");
+  const [lang, setLang] = useState(initialLang);
   const [ownerName, setOwnerName] = useState("");
   // L'e-mail se retient d'une étape à l'autre ; le mot de passe, jamais (la section « accès » n'existe dans la page qu'à la dernière étape).
   const [ownerEmail, setOwnerEmail] = useState("");
@@ -51,7 +55,8 @@ export function SetupWizard({ strings, uiLocales, locales, presets, profiles = [
   // L'assistant parle à la personne par son prénom dès qu'elle l'a donné.
   const first = ownerName.trim().split(/\s+/)[0] ?? "";
   const t = (key: string) => (ui18n[key] ?? key).replaceAll("{name}", first || "…");
-  const pick = (m: Record<string, string>) => m[lang] ?? m.en ?? Object.values(m)[0] ?? "";
+  // Requested language, then English. Never "the first language of the object".
+  const pick = (m: Record<string, string>) => m[lang] || m.en || "";
 
   // L'étape "liens" n'a de sens que si la collection de liens est choisie.
   const wantsLinks = presets.some((p) => p.collectsLinks && chosen.includes(p.id));
@@ -78,6 +83,10 @@ export function SetupWizard({ strings, uiLocales, locales, presets, profiles = [
   };
   const keptSamples = offeredSamples.filter((ref) => samples.includes(ref));
 
+  // The page language follows the wizard language (screen readers, hyphenation), and the action buttons speak it too.
+  useEffect(() => { document.documentElement.lang = lang; }, [lang]);
+  const progressLabels = Object.fromEntries(Object.entries(ui18n).filter(([k]) => k.startsWith("progress.")).map(([k, v]) => [k.slice(9), v]));
+
   const section = (id: (typeof STEPS)[number]) => ({ "data-step": id, hidden: current !== id, className: "space-y-4" });
 
   // Restaurer une sauvegarde : une autre façon de configurer un site neuf (les textes de la restauration viennent du dictionnaire « backup. »).
@@ -86,6 +95,7 @@ export function SetupWizard({ strings, uiLocales, locales, presets, profiles = [
 
   if (mode === "restore") {
     return (
+      <ProgressLabelsProvider labels={progressLabels}>
       <div className="mx-auto max-w-xl px-4 py-12">
         <h1 className="text-3xl font-bold">{t("setup.restore.title")}</h1>
         <p className="mt-2 text-sm text-muted">{t("setup.restore.help")}</p>
@@ -94,10 +104,12 @@ export function SetupWizard({ strings, uiLocales, locales, presets, profiles = [
         </div>
         <button type="button" className={`${ui.btn} mt-8`} onClick={() => setMode("new")}>{t("setup.restore.back")}</button>
       </div>
+      </ProgressLabelsProvider>
     );
   }
 
   return (
+    <ProgressLabelsProvider labels={progressLabels}>
     <div className="mx-auto max-w-xl px-4 py-10 sm:py-16">
       <div className="mb-6 flex items-center gap-3" role="progressbar" aria-valuenow={progressPercent(step, isLast)} aria-valuemin={0} aria-valuemax={100} aria-label={`${t("setup.step")} ${stepNumber(step)}`}>
         <div className="h-2 flex-1 overflow-hidden rounded-full bg-line"><div className="h-full rounded-full bg-accent transition-all" style={{ width: `${progressPercent(step, isLast)}%` }} /></div>
@@ -283,5 +295,6 @@ export function SetupWizard({ strings, uiLocales, locales, presets, profiles = [
       </form>
       </div>
     </div>
+    </ProgressLabelsProvider>
   );
 }

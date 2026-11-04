@@ -1,3 +1,4 @@
+import { pickText } from "@/core/i18n/audit.mjs";
 import { adminCtx } from "@/core/admin";
 import { can as canDo } from "@/core/auth/access";
 import { getCatalogue } from "@/core/modules/catalogue";
@@ -59,7 +60,7 @@ export default async function SocialPage({ searchParams }: { searchParams: Promi
   const icons: Record<string, { svg?: string; text?: string } | null> = {};
   for (const src of sources) { const r = resolveIcon(src.spec.icon ?? null); icons[src.id] = r ? ("svg" in r ? { svg: r.svg } : { text: r.text }) : null; }
   // Le cœur ne connaît aucun réseau par son identifiant : l'exemple est celui du premier réseau du Catalogue qui en donne un.
-  const example = (() => { const first = (sources.find((x) => x.spec.example !== undefined) ?? sources[0])?.spec.example; return typeof first === "string" ? first : first?.[locale] ?? first?.fr ?? Object.values(first ?? {})[0] ?? ""; })();
+  const example = (() => { const first = (sources.find((x) => x.spec.example !== undefined) ?? sources[0])?.spec.example; return pickText(first, locale, config.defaultLocale); })();
   const paste: SocialPasteLabels = {
     label: t("social.paste.label"), help: t("social.paste.help"), example: example ? t("field.example", { example }) : "", placeholder: "",
     add: t("social.paste.add"), addOne: t("social.paste.addOne"), addMany: t("social.paste.addMany", { n: "{n}" }), running: t("social.paste.running", { name: "{name}", n: "{n}", total: "{total}" }),

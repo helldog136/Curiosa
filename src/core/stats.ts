@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { classifyAgent, ROBOT_CATEGORIES, type RobotCategory } from "@/core/agents";
 import { prisma } from "@/core/db";
 import { deleteSetting, getSetting, setSetting } from "@/core/settings";
 
@@ -9,12 +10,15 @@ import { deleteSetting, getSetting, setSetting } from "@/core/settings";
  * identifiant de navigateur, cookie, agent utilisateur. Pour ne compter qu'une fois un visiteur par jour, on garde seulement une empreinte
  * `sha256(sel du jour + IP + navigateur)` ; le sel est tiré au hasard chaque jour et le précédent est détruit, les empreintes de la veille sont
  * supprimées : il est impossible de reconnaître quelqu'un d'un jour à l'autre, ni de remonter à lui.
- * Les visiteurs qui envoient « Do Not Track » ou « Global Privacy Control » ne sont pas comptés, ni les robots, ni les personnes connectées à l'admin.
+ * Les visiteurs qui envoient « Do Not Track » ou « Global Privacy Control » ne sont pas comptés, ni les personnes connectées à l'admin.
+ * Les ROBOTS (moteurs, IA, aperçus de liens, outils : `src/core/agents.ts`) ne sont pas mêlés aux personnes : chaque visite de robot ajoute 1 à UN compteur
+ * par jour et par catégorie (4 lignes par jour au plus). Rien d'autre d'eux n'est gardé : ni agent utilisateur, ni IP, ni empreinte, ni page.
  */
 export const MAX_PAGES_PER_DAY = 500;
 export const MAX_REFS_PER_DAY = 200;
 export const MAX_KEYS_PER_VISITOR = 400;
-const BOT_RE = /bot|crawl|spider|slurp|scrap|preview|facebookexternalhit|headless|lighthouse|monitor|uptime|curl|wget|python|go-http|java\/|httpclient|node-fetch|axios|okhttp|libwww/i;
+/** Genre de ligne `VisitDaily` des robots : une ligne par jour et par catégorie (4 au plus par jour), clé = la catégorie, `views` = le nombre de visites. */
+export const ROBOT_KIND = "bot";
 const SKIP_PREFIXES = ["/admin", "/api", "/m/", "/overlays", "/uploads", "/go/", "/_next", "/feed"];
 
 export const STATS_SETTING = "stats.enabled";
@@ -62,11 +66,22 @@ async function dailySalt(day: string): Promise<string> {
 
 export type Hit = { path: unknown; referrer?: unknown; ip: string; userAgent: string; doNotTrack?: boolean; ownHost?: string };
 
-export async function recordVisit(hit: Hit, now = new Date()): Promise<"counted" | "ignored" | "disabled"> {
+export async function recordVisit(hit: Hit, now = new Date()): Promise<"counted" | "robot" | "ignored" | "disabled"> {
   if (!(await statsEnabled())) return "disabled";
-  if (hit.doNotTrack || !hit.userAgent || BOT_RE.test(hit.userAgent)) return "ignored";
+  if (hit.doNotTrack || !hit.userAgent) return "ignored";
   const path = normalizePath(hit.path);
   if (!path) return "ignored";
+  const kind = classifyAgent(hit.userAgent);
+  if (kind !== "person") {
+    // Un simple compteur : l'agent utilisateur a servi à classer, il n'est pas gardé ; ni IP, ni empreinte, ni page.
+    const day = dayOf(now);
+    await prisma.visitDaily.upsert({
+      where: { day_kind_key: { day, kind: ROBOT_KIND, key: kind } },
+      create: { day, kind: ROBOT_KIND, key: kind, views: 1, visitors: 0 },
+      update: { views: { increment: 1 } },
+    });
+    return "robot";
+  }
   const ref = refHost(hit.referrer, hit.ownHost);
   const day = dayOf(now);
   const hash = crypto.createHash("sha256").update(`${await dailySalt(day)}|${hit.ip}|${hit.userAgent}`).digest("hex").slice(0, 24);
@@ -94,11 +109,17 @@ export async function recordVisit(hit: Hit, now = new Date()): Promise<"counted"
   return "counted";
 }
 
+/** Visites de robots par catégorie, `total` en plus ; `ai` est aussi dans `total`. */
+export type RobotCounts = Record<RobotCategory, number> & { total: number };
+const noRobots = (): RobotCounts => ({ search: 0, ai: 0, preview: 0, tool: 0, total: 0 });
+
 export type StatsSummary = {
   days: { day: string; visitors: number; views: number }[];
   totals: { today: { visitors: number; views: number }; last7: { visitors: number; views: number }; last30: { visitors: number; views: number } };
   topPages: { path: string; views: number }[];
   topSources: { host: string; views: number }[];
+  /** Visites de robots (jamais mêlées aux visiteurs ci-dessus), additionnées sur 7 et 30 jours. */
+  robots: { last7: RobotCounts; last30: RobotCounts };
 };
 
 /** Résumé pour le tableau de bord : les `days` derniers jours (jours sans visite compris), pages les plus lues et provenances sur 30 jours. */
@@ -115,11 +136,23 @@ export async function statsSummary(opts: { days?: number; now?: Date } = {}): Pr
     for (const r of rows.filter((x) => x.kind === kind)) acc.set(r.key, (acc.get(r.key) ?? 0) + r.views);
     return [...acc.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 8);
   };
+  const robots = (n: number): RobotCounts => {
+    const from = dayList[span - Math.min(n, span)]!;
+    const out = noRobots();
+    for (const r of rows) {
+      if (r.kind !== ROBOT_KIND || r.day < from) continue;
+      const cat = (ROBOT_CATEGORIES as readonly string[]).includes(r.key) ? (r.key as RobotCategory) : "tool";
+      out[cat] += r.views;
+      out.total += r.views;
+    }
+    return out;
+  };
   return {
     days,
     totals: { today: days[days.length - 1] ? { visitors: days[days.length - 1]!.visitors, views: days[days.length - 1]!.views } : { visitors: 0, views: 0 }, last7: sum(7), last30: sum(30) },
     topPages: top("page").map(([path, views]) => ({ path, views })),
     topSources: top("ref").map(([host, views]) => ({ host, views })),
+    robots: { last7: robots(7), last30: robots(30) },
   };
 }
 

@@ -4,7 +4,9 @@ import { revalidatePath } from "next/cache";
 import { adminCtx } from "@/core/admin";
 import { listMcpToolCatalogue } from "@/core/platform";
 import { defaultFor, MAINTENANCE_PROFILE, setGrant, withinCeiling, type Grants } from "@/core/services/mcp/access";
-import { createToken, findTokenId, getTokenGrants, revokeToken, saveTokenGrants, setUrlAccess, type TokenScope } from "@/core/services/mcp/tokens";
+import { applyGrantChanges, type GrantRejection } from "@/core/services/mcp/grantChanges";
+import { createAccess } from "@/core/mcpAccess";
+import { findTokenId, getTokenGrants, revokeToken, saveTokenGrants, setUrlAccess, type TokenScope } from "@/core/services/mcp/tokens";
 import { audit } from "@/core/permissions";
 import { setApprovalMode, setNotifyMode } from "@/core/maintenance/settings";
 import { setSetting } from "@/core/settings";
@@ -31,8 +33,7 @@ export async function createTokenAction(_prev: CreateTokenState, formData: FormD
   const scope: TokenScope = maintenance || formData.get("scope") === "write" ? "write" : "read";
   const byUrl = formData.get("byUrl") === "on";
   if (!name) return { error: t("assistants.error.name") };
-  const token = await createToken(name, scope, user.email, { byUrl, ...(maintenance ? { grants: { [MAINTENANCE_PROFILE]: true } } : {}) });
-  await audit(user.email, "mcp.token.create", maintenance ? `${name} (maintenance)` : name);
+  const { token } = await createAccess({ name, scope, actorEmail: user.email, byUrl, grants: maintenance ? { [MAINTENANCE_PROFILE]: true } : undefined, note: maintenance ? "maintenance" : undefined });
   if (maintenance) {
     const id = await findTokenId(token);
     // Validation humaine par défaut ; l'exécution directe doit être choisie explicitement.
@@ -41,7 +42,6 @@ export async function createTokenAction(_prev: CreateTokenState, formData: FormD
     await setNotifyMode(notify);
     await audit(user.email, "mcp.maintenance.notify", notify);
   }
-  if (byUrl) await audit(user.email, "mcp.token.url.on", name);
   revalidatePath(ASSISTANTS_HREF);
   revalidatePath(TEAM_HREF);
   return { created: { name, token, byUrl } };
@@ -87,6 +87,27 @@ export async function setGrantAction(tokenId: string, toolName: string, enabled:
   revalidatePath(accessHref(tokenId));
   revalidatePath(TEAM_HREF);
   return { ok: true };
+}
+
+/**
+ * Applies the changes made on the rights page in one go (after the owner reviewed the summary). Same rules as one single change; refused changes
+ * come back with their reason. The journal gets one line with the counts and the names of the tools, never a value.
+ */
+export async function applyGrantsAction(tokenId: string, changes: Record<string, boolean>): Promise<{ ok: boolean; applied: string[]; rejected: GrantRejection[] }> {
+  const { user } = await adminCtx({ right: "core:mcp.tokens" });
+  const [token, catalogue] = await Promise.all([getTokenGrants(tokenId), listMcpToolCatalogue()]);
+  if (!token) return { ok: false, applied: [], rejected: [] };
+  const clean = Object.fromEntries(Object.entries(changes ?? {}).slice(0, 500).filter(([, v]) => typeof v === "boolean"));
+  const result = applyGrantChanges(token.grants, token.scope, catalogue, clean);
+  if (result.applied.length) {
+    await saveTokenGrants(tokenId, result.grants);
+    const on = result.applied.filter((n) => clean[n]);
+    const off = result.applied.filter((n) => !clean[n]);
+    await audit(user.email, "mcp.grants.apply", `${tokenId}: +${on.length} -${off.length} (${result.applied.slice(0, 20).join(", ")})`);
+  }
+  revalidatePath(accessHref(tokenId));
+  revalidatePath(TEAM_HREF);
+  return { ok: result.rejected.length === 0, applied: result.applied, rejected: result.rejected };
 }
 
 /** Remet les actions d'une instance (ou de tout le jeton) aux défauts de leurs modules, ou les retire toutes. */

@@ -373,6 +373,8 @@ Voir `adminPanel` et `adminActions` dans l'exemple (modifier un message : `?edit
   rowActions: [{ label: "Modifier", href: "?edit={id}" }, { label: "Supprimer", action: "remove", danger: true, confirm: "Supprimer cette commande ?" }] }
 ```
 
+- **Edit in a window above the list (next core release, optional)**: add `presentation: "dialog"` to the row button (`{ label: "Edit", href: "?edit={id}", presentation: "dialog" }`) and to the `adminForm` that `adminPanel` returns for `?edit=…`. The form opens in a window (same look as the extension details), keeps the list's search and position, closes on a success and highlights the saved row. An older core ignores the key and keeps the form at the top of the page, so `minCore` does not change. Example and rules: [MODULES.md](MODULES.md) (« Edit dialog »).
+
 Le détail de chaque clé est dans [MODULES.md](MODULES.md) (« Contrôles `period`, `datetime`, `duration` », « Tableau enrichi »). Le kit de test mesure ce qui peut l'être (`admin.ergonomics`, `assertAdminPageErgonomics`) et exige `minCore` 0.6.0 si vous utilisez l'une de ces briques.
 
 ### Un export à télécharger, un fichier à envoyer (`adminDownloads`, champ `file`)
@@ -608,7 +610,7 @@ Plusieurs modules peuvent contribuer au même emplacement : les blocs sont mis b
 export default { filters: { entryBody: (body, ctx) => body.replaceAll(":wave:", "👋") } };
 ```
 
-Permission : `filters`. Le filtre s'applique en chaîne avec ceux des autres modules. **Lecture du site** : `ctx.api.site()` (nom, accroche, logo), `ctx.api.brand()` (identité visuelle complète),
+Permission : `filters`. Le filtre s'applique en chaîne avec ceux des autres modules. **Lecture du site** : `ctx.api.site()` (nom, accroche, logo), `ctx.api.brand()` (identité visuelle complète), `ctx.api.adminTheme()` (l'apparence de l'administration pour vos pages secrètes : [MODULES.md](MODULES.md), « Thème de l'admin pour vos pages secrètes »),
 `ctx.api.instances.list()`, `ctx.api.entries.list()` (entrées publiées d'un module à contenu), `ctx.api.siteUrl`, et `ctx.api.qr(texte)` (QR code en SVG) et `ctx.api.png({ width, height, tree })` (image PNG à partir d'une arborescence de boîtes : voir la route `image` du module *planning*), `ctx.api.seo.jsonLd(données)` (données structurées pour `layout.head`, voir la section suivante).
 
 ### Le temps que le site vous laisse (8 secondes)
@@ -831,6 +833,7 @@ Le cœur reprend ce texte tel quel, sous le nom de l'instance. Un module qui ne 
 - [ ] Si le module collecte des données des personnes qui visitent : champ `privacy` renseigné (en **et** fr) ; aucun cookie, stockage navigateur ni service tiers non essentiel sans consentement.
 - [ ] Un module qui met en forme une page publique déclare ses pièces de skin (`skin`, `minCore` 0.4.0) avec la **chaîne de repli complète** (`var(jeton-du-module, var(jeton-commun, valeur-actuelle))`) : rendu par défaut inchangé, jamais de jeton dans `display`, `opacity`, `content`…
 - [ ] Si le module ajoute quelque chose qui se voit (page, écran, élément d'overlay) : 2 à 6 `previews` (WebP de 150 Ko au plus, légende et texte alternatif en français et en anglais), **sans vraies données personnelles** sur les captures.
+- [ ] **Languages.** Every text of `module.json` is `{ "en": "...", "fr": "..." }` (no plain string), messages in `locales/en.json` and `locales/fr.json` with the same keys and `{variables}`; MCP tool descriptions in English, translated through the optional `i18n` block. The kit checks it (`i18n.complete`, `i18n.parity`). Other languages come from the community as files only: see [MODULES.md](MODULES.md#languages-i18n-core-after-066) and [TRANSLATING.md](TRANSLATING.md).
 - [ ] `license` choisie dans `module.json` (elle n'a pas à être celle du framework).
 - [ ] Essayé en vrai : installation locale, instance, page, formulaire, admin, désinstallation en gardant les données puis réinstallation (tout revient), désinstallation en effaçant tout.
 - [ ] Rien ne suppose un état « éteint » : un module installé tourne ; `hooks.onInstanceDelete` n'est appelé que quand les données sont effacées (en « garder », elles sont rangées, pas détruites).

@@ -129,6 +129,8 @@ const FAULTS = {
   "manifest.previews": (f) => editManifest(f, (m) => { m.previews = [{ file: "previews/fantome.webp", caption: { fr: "Fantôme", en: "Ghost" }, alt: { fr: "Une image absente", en: "A missing image" }, type: "public" }]; }),
   "overlay.elements": (f) => editManifest(f, (m) => { m.minCore = "0.5.0"; m.overlayElements = [{ id: "ghost", label: { fr: "Fantôme", en: "Ghost" }, fit: "fluid" }]; }),
   "admin.ergonomics": (f) => editManifest(f, (m) => { m.settings[0].label.fr = "Titre de la page :"; }), // avec une base vide : le NOUVEL écart (R10) échoue
+  "i18n.complete": (f) => editManifest(f, (m) => { m.description = "A plain English description without a language"; }), // a plain string has no language: a NEW gap fails
+  "i18n.complete.known": (f) => editManifest(f, (m) => { m.description = "A plain English description without a language"; }), // a known gap (listed in the baseline) is advice
   "admin.ergonomics.known": (f) => editManifest(f, (m) => { m.settings[0].label.fr = "Titre de la page :"; }), // sans base : l'écart est un avertissement
   "routes.visitorIp": null, // vérifié à part : demande un cœur 0.2.6 (voir plus bas)
   "srp.single": null, // voir plus bas : demande un voisin
@@ -161,7 +163,7 @@ for (const r of REQUIREMENTS) {
     if (r.id === "neutrality.clean") process.env.NEUTRALITY_TERMS = "forbiddenword";
     let rep;
     try {
-      rep = await checkModule(mk(edit), { siblings: [], ...(r.id === "admin.ergonomics" ? { ergonomicsBaseline: { version: 1, modules: { "full-mod": [] } } } : {}) });
+      rep = await checkModule(mk(edit), { siblings: [], ...(r.id === "admin.ergonomics" ? { ergonomicsBaseline: { version: 1, modules: { "full-mod": [] } } } : {}), ...(r.id === "i18n.complete.known" ? { i18nBaseline: { version: 1, modules: { "full-mod": ["description[*] untagged"] } } } : {}) });
     } finally { if (r.id === "neutrality.clean") delete process.env.NEUTRALITY_TERMS; }
     const res = status(rep, r.id);
     assert.equal(res.status, "fail", `${r.id} aurait dû échouer : ${JSON.stringify(res)}`);

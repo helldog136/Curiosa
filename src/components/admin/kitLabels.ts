@@ -39,5 +39,6 @@ export function formLabels(t: Translator, locale: string, block: Extract<Block, 
     datetime: { date: t("datetime.date"), time: t("datetime.time"), clear: t("datetime.clear"), at: t("datetime.at"), preview: t("datetime.preview") },
     duration: { s: t("unit.s"), min: t("unit.min"), h: t("unit.h"), d: t("unit.d"), day: t("unit.day") },
     hints, invalid, fold,
+    dialog: { close: t("modal.close"), cancel: t("editDialog.cancel"), saved: t("action.saved"), discard: { message: t("editDialog.message"), discard: t("editDialog.discard"), keep: t("editDialog.keep") } },
   };
 }

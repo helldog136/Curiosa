@@ -77,7 +77,7 @@ Tout s'importe depuis `testsupport/index.mjs` (stable) :
 |---|---|
 | `checkModule(dir, opts)` | Lance toutes les exigences sur un dossier et renvoie le rapport (celui de `--json`). `opts.siblings` : dossiers des autres modules ; `opts.only` : identifiants à lancer. Ne lève jamais pour un module fautif. |
 | `registerConformanceTests(dir, { test, siblings, only, prefix })` | Adaptateur node:test : une exigence = un test nommé. |
-| `fakeCtx(options)` | Faux contexte de module (réglages, stockage en mémoire, e-mail enregistré, sujets, services…). Option `permissions` : le contexte refuse ce qui n'est pas déclaré. `ctx.api.files` (cœur 0.2.13) : mêmes règles et mêmes refus que le cœur, options `uploads`, `person`, `filesQuota`, appels dans `ctx.calls.files`, `ctx.dumpFiles()` pour constater qu'un fichier a disparu. `ctx.api.rawg` : `cover` et `candidates` (options `rawgCover`, `rawgCandidates` ; appels dans `ctx.calls.rawg` et `ctx.calls.rawgCandidates`). `ctx.api.net` est le vrai client réseau du cœur (état neuf par contexte ; options `netLimits`, `netBudgetMs`), branché sur `globalThis.fetch`. `ctx.api.log.write` (cœur après 0.5.1) : option `logEvents` (celle de votre `module.json`), mêmes règles que le cœur (liste blanche, 200 caractères, secrets écartés, clé invalide : `false`), option `actor`, lignes dans `ctx.calls.log` et `ctx.dumpLog()`. `ctx.params` (cœur 0.2.14) : option `params` (par exemple `{ slug: "abc" }` pour une route `"go/:slug"`). `ctx.timezone` (cœur 0.6.4) : option `timezone` (nom IANA, `UTC` par défaut ; un nom inconnu donne le fuseau de la machine, comme le cœur ; `null` simule un cœur plus ancien, sans cette clé). `ctx.calls` garde les appels, `ctx.dumpStore()` le contenu du stockage ; le stockage gère aussi les clés d'index (`add(collection, data, { key })`, `getByKey`, `listByKey`, `page({ key })`, `addMany`). Voir l'en-tête de `testsupport/fakeCtx.mjs`. |
+| `fakeCtx(options)` | Faux contexte de module (réglages, stockage en mémoire, e-mail enregistré, sujets, services…). Option `permissions` : le contexte refuse ce qui n'est pas déclaré. `ctx.api.files` (cœur 0.2.13) : mêmes règles et mêmes refus que le cœur, options `uploads`, `person`, `filesQuota`, appels dans `ctx.calls.files`, `ctx.dumpFiles()` pour constater qu'un fichier a disparu. `ctx.api.rawg` : `cover` et `candidates` (options `rawgCover`, `rawgCandidates` ; appels dans `ctx.calls.rawg` et `ctx.calls.rawgCandidates`). `ctx.api.net` est le vrai client réseau du cœur (état neuf par contexte ; options `netLimits`, `netBudgetMs`), branché sur `globalThis.fetch`. `ctx.api.log.write` (cœur après 0.5.1) : option `logEvents` (celle de votre `module.json`), mêmes règles que le cœur (liste blanche, 200 caractères, secrets écartés, clé invalide : `false`), option `actor`, lignes dans `ctx.calls.log` et `ctx.dumpLog()`. `ctx.api.adminTheme` (cœur après 0.6.6) : `{ css, scheme, wordmark }` d'exemple, appels dans `ctx.calls.adminTheme`. `ctx.params` (cœur 0.2.14) : option `params` (par exemple `{ slug: "abc" }` pour une route `"go/:slug"`). `ctx.timezone` (cœur 0.6.4) : option `timezone` (nom IANA, `UTC` par défaut ; un nom inconnu donne le fuseau de la machine, comme le cœur ; `null` simule un cœur plus ancien, sans cette clé). `ctx.calls` garde les appels, `ctx.dumpStore()` le contenu du stockage ; le stockage gère aussi les clés d'index (`add(collection, data, { key })`, `getByKey`, `listByKey`, `page({ key })`, `addMany`). Voir l'en-tête de `testsupport/fakeCtx.mjs`. |
 | `loadModuleDir(dir)` | Charge un dossier de module comme le cœur (manifeste, code, textes), sans jamais lever. |
 | `fakeFetch(routes)`, `withFakeFetch(routes, fn)`, `blockNetwork(fn)` | Faux `fetch` pour tester un module qui appelle un service, sans réseau. La clé `"*"` répond à toutes les adresses ; le `signal` d'annulation est respecté. |
 | `netReplies`, `makeNetClient(options)` | Pannes prêtes à l'emploi pour `fakeFetch` : `rateLimited(120)` (429 + Retry-After), `rateLimitedBody(s)`, `rateLimitedReset(époque)`, `quotaExceeded()` (403), `silence()` (jamais de réponse), `truncatedJson()`, `slow(ms, réponse)`, `down()`, `status(code)`. `makeNetClient` : le vrai client `ctx.api.net`, état neuf. |
@@ -134,6 +134,7 @@ assertAdminPageErgonomics(blocks, { errors: ["Écrivez un nombre entier, par exe
 | R15 | un tableau de plus de 10 lignes sans champ de recherche (un `<input type="search">` dans un bloc `html`, un champ `q` / `search` / « Rechercher » dans un `adminForm`, ou `searchable: true` sur le tableau) |
 | R17 | un bouton de ligne, un lien ou un bouton nommé « Activer / désactiver » (la réponse : une cellule `switch`, voir `docs/MODULES.md` › Tableau enrichi) |
 | R22 | les messages d'erreur donnés dans `errors` : un exemple (« par exemple 500 »), jamais de code, de trace ni d'« erreur 500 » |
+| R24 | un formulaire `presentation: "dialog"` sans `cancelHref` (la fenêtre ne sait pas revenir à la liste), un bouton de ligne `presentation: "dialog"` qui n'est pas un lien `href`. Les champs d'un tel formulaire comptent pour R4 (5 champs visibles) mais pas pour la section de la liste |
 
 **Briques du cœur 0.6.0.** Les cellules de tableau peuvent être des objets (`{ text, badge, switch }`) et les champs d'un formulaire des champs `switch`, `segmented`, `period`, `datetime`, `duration` : l'aide les comprend (texte de la cellule, champs `folded` non comptés). L'exigence `compat.minCore` demande `"minCore": "0.6.0"` à un module qui en utilise une.
 
@@ -174,6 +175,8 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 | [`i18n.parity`](#i18nparity) | obligatoire | Les fichiers de langue fr et en sont alignés |
 | [`i18n.keys`](#i18nkeys) | obligatoire | Toutes les clés de traduction utilisées existent |
 | [`i18n.unused`](#i18nunused) | conseil | Pas de traduction inutilisée |
+| [`i18n.complete`](#i18ncomplete) | obligatoire | Every text of module.json is declared in English and in French |
+| [`i18n.complete.known`](#i18ncompleteknown) | conseil | Known translation gaps, to be fixed |
 | [`settings.sane`](#settingssane) | obligatoire | Les réglages sont bien formés |
 | [`tabs.reasonable`](#tabsreasonable) | conseil | Les onglets ajoutés restent peu nombreux et bien nommés |
 | [`settings.optional`](#settingsoptional) | obligatoire | Un réglage « facultatif » le déclare |
@@ -228,7 +231,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 | [`admin.ergonomics.known`](#adminergonomicsknown) | conseil | Écarts d'ergonomie connus, à résorber |
 | [`dashboard.valid`](#dashboardvalid) | obligatoire | Ce que le module propose au tableau de bord est complet et valide |
 
-47 exigences obligatoires et 33 conseils.
+48 exigences obligatoires et 34 conseils.
 
 ### Le fichier module.json
 
@@ -455,6 +458,22 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 - **Ce qui est vérifié.** Chaque clé des fichiers de langue est utilisée quelque part dans le code.
 - **Pourquoi.** Les clés oubliées alourdissent les fichiers et laissent croire qu'un texte existe alors qu'il n'est plus affiché.
 - **Comment corriger.** Supprimez les clés citées des deux fichiers de langue (après vérification qu'aucun code ne les construit dynamiquement).
+
+#### `i18n.complete`
+
+**Every text of module.json is declared in English and in French** — niveau : **obligatoire**
+
+- **Ce qui est vérifié.** Name, description, privacy statement, setting labels and help, tab and group labels, rights, panels, overlay elements, dashboard texts, entry templates and onboarding texts are written as { "en": "...", "fr": "..." }: both languages present, not empty, with the same {variables}, valid language codes. A plain string has no language and is refused. Other languages may be added and may be partial (missing texts fall back to English). Known gaps listed in tests/i18n-baseline.json are tolerated (see i18n.complete.known); a NEW gap fails, and a known gap that disappeared must be removed from the baseline.
+- **Pourquoi.** English and French are always supported. A text that exists in one language only shows an empty line or, worse, another language to the person who reads it. The fallback chain is the requested language, then the main language of the site, then English, never French by accident.
+- **Comment corriger.** Replace the plain string by { "en": "...", "fr": "..." } (see docs/TRANSLATING.md). Never add a line to the baseline to silence a new gap.
+
+#### `i18n.complete.known`
+
+**Known translation gaps, to be fixed** — niveau : **conseil**
+
+- **Ce qui est vérifié.** Texts of module.json that are still missing in English or French (the ones listed in tests/i18n-baseline.json).
+- **Pourquoi.** They are debt: the baseline may only shrink.
+- **Comment corriger.** Translate the text, then remove its line from the baseline (node scripts/i18n-baseline.mjs --write in the modules repository).
 
 ### Les réglages
 

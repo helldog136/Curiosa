@@ -182,3 +182,48 @@ Le cœur n'exécute **jamais** de mise à jour vers une version candidate (`X.Y.
 - 12 actions de niveau 2 ou 3 par heure et par jeton ; 5 demandes en attente au plus ; une seule opération à la fois (sinon la réponse dit « Another maintenance operation is running » : réessaie plus tard).
 - Une demande vaut 24 heures.
 - Tout ce que tu fais est inscrit au journal d'audit (`mcp.maintenance.<outil>`), avec le nom de ton jeton.
+
+---
+
+## Publishing, access and plans (English addendum)
+
+This addendum is in English on purpose (the repository language); the French guide above keeps its text until it is rewritten as a whole. Everything here is additive: older clients simply do not see the new tools.
+
+### Publishing drafts: `<instance>__publish` and `<instance>__unpublish`
+
+Every content module (blog, pages, links, sponsors...) gets two more tools from the content engine (`src/core/content/mcp.ts`), so present and future content modules have them with no change of their own. A module that declares its own `publish` or `unpublish` action keeps it.
+
+| Rule | What it means |
+|---|---|
+| Separate right | `aim.tool.publish` / `aim.tool.unpublish` in the rights page (section "Publishing" in simple mode). Never granted by default. Part of the "full" preset in `src/core/services/mcp/profiles.ts`. |
+| Only an existing draft | `{ id }` or `{ ids: [...] }` (12 at most, one request for all). The entry must be a draft of THIS instance: an entry of another instance is "not found"; a published entry is refused ("nothing to do"); `unpublish` only accepts a published entry. |
+| Never edits content | The only write is the status of the entry (and the publication date when it had none; a date set by a person is kept). A published entry is never overwritten. Texts, slugs and fields are untouched. |
+| Same checks as the admin | Every language version has a title. When the content list shows each language only when it is written (`fallbackToDefault: false`), every language of the site must exist; otherwise the answer names the missing language and NOTHING is published ("do not publish half"). `locale` makes the call insist that this version exists. The entry is published as a whole, all its languages together. |
+| Follows the approval setting | Exactly like updates and uninstalls (`callLevel3`): "I approve every request" gives `{ status: "pending_approval", requestId }` and the owner approves in Admin > AI assistants (poll `maintenance_request_status`); "act without asking" publishes at once and answers `{ status: "done" }`. |
+| What was approved is what is published | The request keeps a fingerprint of the texts. A draft edited after the request is not published on approval: the answer says so and the AI asks again. |
+| Journal | `entry.publish` / `entry.unpublish` with `<instance>/<entry id>`, actor `mcp:<access name>`, kind `assistant`; plus `mcp.maintenance.request`, `.approve` and `.entry_publish` for the request flow. Never a title or a text. |
+| Limits | The 12 level-2/3 actions per hour and per access, 12 entries per call, 120 requests per minute per access, 1 MB per body, like the other tools. |
+
+### `maintenance_my_access` (level 1, read, granted by default)
+
+Returns what this access can and cannot do: `granted` (tool, kind, one sentence), `notGranted` (tool, kind, `why`: `box_not_ticked` or `access_is_read_only`, and `rightToTick`, the same plain-words sentence as the rights page), the ceiling, the approval setting (`ask_first` / `act_without_asking`) and the requests that always wait for the owner, and the reconnection notice. It never returns a value, a secret or anything about other accesses. An assistant calls it first, and whenever a tool it expects is missing.
+
+### Why a tool granted later does not show up: the server cannot tell a connected client
+
+The list of tools is recomputed on EVERY request (`tools/list` and `tools/call` both call `canUse` with the rights read from the database), so a granted right works at once for any call. What does not exist is a way to tell a connected client that its list changed:
+
+- `initialize` announces `capabilities.tools.listChanged: false` (`src/core/services/mcp/server.ts`), there is no session (`Mcp-Session-Id` is never issued) and `GET /api/mcp` answers 405 (`src/app/api/mcp/route.ts`, allowed by the Streamable HTTP transport): there is no stream to send `notifications/tools/list_changed` on.
+- A client keeps the list it received when it connected. Rights ticked later, and modules installed later, only show up after the client reconnects. A granted tool missing from the list can still be called by its name.
+
+Offering `listChanged` would need a long-lived `GET` event stream per connection, held in the memory of the process, pushed to when a right or a module changes. It was evaluated and NOT done: it is not small (stream registry, cleanup, resumption with event ids, one stream per process so it breaks with several workers or behind a buffering proxy), it cannot be kept alive without timers (this feature adds none: an idle stream is cut by proxies after about a minute), and nothing here can show that the clients honour the notification. The reconnection notice (`maintenance_my_access`, the server instructions, the rights page intro) is the supported answer.
+
+### Plans and bundles
+
+- `maintenance_catalog_plan { modules: [...] }` (level 1, 12 at most): for each module its sheet (what it is for, what visitors see, personal data declared, permissions, required and optional dependencies, settings to fill in afterwards, secrets the owner types), then the plan as a whole: install order, modules that come along, every permission with who asks for it, which modules collect personal data, and `readyToRequest`, the real verdict of the checks the installation request does.
+- `maintenance_module_install { modules: [...] }` (12 at most): ONE request that the owner approves as a whole. Every module is checked like a single install and one refusal refuses everything. The owner sees every module, what comes with it and every permission. It still never installs by itself, whatever the approval setting. A module another one needs is installed first. A failure stops the bundle and the result lists what was installed and what was not. A bundle counts as ONE pending request (the ceiling is 5 pending requests per access).
+- `maintenance_instance_add { module, nickname }` (level 3): another instance of an installed module that allows several. Refused for a "single" module or a nickname already used. Like an installation it ALWAYS waits for the owner (a new instance may get a public page). Removing an instance stays human.
+- `maintenance_skin_set_options { background?, surface?, textColor?, accent?, accent2?, mode?, fontTitles?, fontText? }` (level 3): colours (`#rrggbb`, empty = back to the skin's own) and fonts within the active skin, with the rules of `maintenance_font_set`. Only what differs from the skin is kept, as on the Appearance page; a skin with a light and a dark mode needs `mode`. A colour that is hard to read is applied anyway and reported as a tip (the rendering corrects it). Follows the approval setting. The owner can undo in Admin > Appearance.
+
+### Tool metadata: `request` is not `destructive`
+
+`McpTool.request` marks a tool that creates a request (or acts at once when the owner chose so). `destructive` is now reserved for what deletes (`maintenance_module_uninstall`, `maintenance_skin_remove`, `redirects_delete`, a module's own destructive actions). Profiles and the rights page read both: a request needs no "this deletes data" confirmation but is shown as a request.

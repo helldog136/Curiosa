@@ -112,7 +112,7 @@ test("fenêtre de réglages : elle suit la largeur du navigateur (94 %), plafonn
   const cap = (s) => Number(/(\d+)px/.exec(s)[1]);
   assert.ok(cap(MODAL_WIDTH.wide) >= 1200 && cap(MODAL_WIDTH.wide) <= 1400);
   assert.ok(cap(MODAL_WIDTH.medium) < cap(MODAL_WIDTH.wide));
-  const modal = read("src/components/admin/RouteModal.tsx");
+  const modal = read("src/components/admin/ModalWindow.tsx");
   assert.doesNotMatch(modal, /max-w-3xl/, "plus de largeur fixe étroite");
   assert.match(modal, /h-full w-full \$\{MODAL_WIDTH\[size\]\}/, "pleine largeur sur mobile, plafonnée seulement à partir de « sm »");
   assert.match(modal, /overflow-x-hidden/, "pas de défilement horizontal");

@@ -11,12 +11,19 @@ import { PLATFORM_PATTERN } from "./platform";
 import { parseSocialSpec, type SocialSpec } from "../socialSpec";
 import { sanitizePreviews, type PreviewDecl } from "./previews";
 import { rawBase, rawGet } from "./rawRead";
+import { LANG_CODE_RE } from "../i18n/audit.mjs";
 import { sanitizeProfiles, type SetupProfile } from "./profiles";
+
+/** Name and description of a catalogue entry in one language. */
+export type EntryTexts = { name?: string; description?: string };
 
 export type RecognizedItem = {
   id: string;
+  /** Plain name. By convention of the index it is the ENGLISH text (older indexes: a text of unknown language, treated as such). The other languages are in `i18n`. */
   name: string;
   description: string;
+  /** (index after 1.42.1) Name and description per language: `{ "en": { "name", "description" }, "fr": { ... } }`. Additive: an older core ignores the key and shows the plain (English) text. */
+  i18n?: Record<string, EntryTexts>;
   repo: string;
   /** Étiquette ou commit à installer (sinon la branche par défaut) — épinglez-en un relu. */
   ref?: string;
@@ -58,6 +65,29 @@ const TTL = 15 * 60_000;
 const MAX_INDEX_BYTES = 1024 * 1024;
 const str = (v: unknown, max: number) => (typeof v === "string" ? v.slice(0, max) : undefined);
 
+/** `i18n` of an index entry: valid language codes only, texts trimmed and bounded, 30 languages at most; empty or damaged parts are dropped (never replaced by another language). */
+export function sanitizeEntryTexts(value: unknown): Record<string, EntryTexts> | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const out: Record<string, EntryTexts> = {};
+  for (const [lang, raw] of Object.entries(value as Record<string, unknown>).slice(0, 30)) {
+    if (!LANG_CODE_RE.test(lang) || !raw || typeof raw !== "object") continue;
+    const name = str((raw as EntryTexts).name, 120)?.trim();
+    const description = str((raw as EntryTexts).description, 500)?.trim();
+    if (name || description) out[lang] = { ...(name ? { name } : {}), ...(description ? { description } : {}) };
+  }
+  return Object.keys(out).length ? out : undefined;
+}
+
+/** The name or description of an entry as a localized value: a record when the index gives languages, else the plain text. */
+export function entryText(item: Pick<RecognizedItem, "name" | "description" | "i18n">, field: "name" | "description"): string | Record<string, string> {
+  const plain = item[field];
+  if (!item.i18n) return plain;
+  const record: Record<string, string> = {};
+  for (const [lang, texts] of Object.entries(item.i18n)) if (texts[field]) record[lang] = texts[field]!;
+  if (!record.en && plain) record.en = plain; // the plain text of the index is English
+  return Object.keys(record).length ? record : plain;
+}
+
 /** Valide une liste d'entrées (tableau, ou `{ modules: [...] }`) : identifiant, dépôt https sur un hôte autorisé, doublons écartés. */
 export function sanitizeEntries(json: unknown): RecognizedItem[] {
   const list = Array.isArray(json) ? json : Array.isArray((json as { modules?: unknown })?.modules) ? (json as { modules: unknown[] }).modules : [];
@@ -69,7 +99,7 @@ export function sanitizeEntries(json: unknown): RecognizedItem[] {
     if (!repo.ok || repo.repo.url.startsWith("file:")) continue;
     seen.add(i.id);
     items.push({
-      id: i.id, name: str(i.name, 120) || i.id, description: str(i.description, 500) ?? "", repo: repo.repo.url,
+      id: i.id, name: str(i.name, 120) || i.id, description: str(i.description, 500) ?? "", i18n: sanitizeEntryTexts(i.i18n), repo: repo.repo.url,
       ref: typeof i.ref === "string" && /^[\w./-]{1,100}$/.test(i.ref) ? i.ref : undefined,
       subdir: isSubdir(i.subdir) ? i.subdir : undefined,
       version: str(i.version, 40), author: str(i.author, 120), icon: str(i.icon, 8),

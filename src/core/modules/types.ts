@@ -1,4 +1,5 @@
 import type { LogEventDecl } from "../journal/events";
+import { pickText } from "../i18n/audit.mjs";
 import type { Theme } from "../color";
 import type { Block, PanelBlock, Slot } from "../blocks";
 import type { StorePage, StoreRecord } from "../services/store";
@@ -342,6 +343,13 @@ export type LogEntryInput = {
   data?: Record<string, string | number | boolean>;
 };
 
+/** Résultat de `ctx.api.adminTheme()` (voir src/core/adminTheme.ts). */
+export type ModuleAdminTheme = {
+  css: string;
+  scheme: "light" | "dark" | "auto";
+  wordmark: { html: string; css: string };
+};
+
 export type ModuleApi = {
   /**
    * Journal central du site (cœur 0.6.0 ; aucune permission). Ne lève jamais : une ligne refusée (clé invalide) renvoie `false`. Le cœur déduit QUI agit
@@ -373,6 +381,12 @@ export type ModuleApi = {
   site(locale?: string): Promise<{ name: string; tagline: string; logo: string | null }>;
   /** Identité visuelle (nom, présentation, logo, palette, police) : exactement ce que le site utilise. */
   brand(locale?: string): Promise<ModuleBrand>;
+  /**
+   * Apparence de l'ADMINISTRATION pour les pages secrètes d'un module (télécommande, dock OBS…) (cœur après 0.6.6 ; aucune permission). Ne lève jamais, ne lit rien du site.
+   * `css` : variables `--cur-*` seulement (jamais d'adresse ni de police externe), à poser dans un `<style nonce>` ; `scheme` : le mode obtenu ; `wordmark` : le nom « Curiosa »
+   * (`html` + `css`) à utiliser tel quel. Un cœur plus ancien n'a pas `ctx.api.adminTheme` : écrire `ctx.api.adminTheme?.(…)` et garder ses couleurs de repli.
+   */
+  adminTheme(opts?: { scheme?: "light" | "dark" | "auto" }): ModuleAdminTheme;
   instances: {
     /** `id` et `adminPath` (« /admin/instances/<id> ») : pour renvoyer l'administrateur vers les réglages d'une instance d'un autre module. */
     list(opts?: { locale?: string; module?: string }): Promise<{ id: string; key: string; module: string; basePath: string | null; name: string; adminPath: string }[]>;
@@ -834,10 +848,12 @@ export function defineModule(def: ModuleDefinition): ModuleDefinition {
   return def;
 }
 
+/**
+ * The text of a module value for a person: requested language -> site main language -> English. Nothing else (never the "first" language of the object, never French
+ * by default). A plain string is returned as written. Empty when no language of the chain exists: the caller shows its own neutral fallback (the identifier).
+ */
 export function localized(value: LocalizedString | undefined, locale: string, defaultLocale: string): string {
-  if (!value) return "";
-  if (typeof value === "string") return value;
-  return value[locale] ?? value[defaultLocale] ?? value.en ?? Object.values(value)[0] ?? "";
+  return pickText(value, locale, defaultLocale);
 }
 
 /** Autorisation de semer : le module cible, et pourquoi (affiché à l'administrateur). */

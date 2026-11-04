@@ -204,6 +204,18 @@ export async function VisitsBlock({ c }: { c: BlockCtx }) {
           </div>
         </>
       )}
+      <div data-testid="robots">
+        <h3 className="mb-1 text-sm font-semibold">{t("dash.robots.title")}</h3>
+        {stats.robots.last30.total === 0 ? (
+          <p className="text-sm text-muted">{t("dash.robots.none")}</p>
+        ) : (
+          <div className="grid grid-cols-2 gap-3">
+            <div><p className="text-2xl font-bold">{stats.robots.last30.total}</p><p className="text-xs text-muted">{t("dash.robots.total")}</p></div>
+            <div><p className="text-2xl font-bold">{stats.robots.last30.ai}</p><p className="text-xs text-muted">{t("dash.robots.ai")}</p></div>
+          </div>
+        )}
+        <p className="mt-1 text-xs text-muted">{t("dash.robots.hint")}</p>
+      </div>
       {(pages.length > 0 || links.links.length > 0 || stats.topSources.length > 0) && (
         <div className="grid gap-4 sm:grid-cols-2">
           {pages.length > 0 && (

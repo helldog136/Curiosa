@@ -281,6 +281,42 @@ export async function saveFontChoices(input: { heading?: string; body?: string }
 }
 
 /**
+ * Sets only some colours of the active skin (the assistant, after the owner's approval; same keys and same "keep only what differs from the skin" rule as the
+ * Appearance page). `colors`: field -> hex, "" = back to the skin's own value. A skin with two modes needs `mode` (the other mode keeps its values).
+ * A colour that is hard to read is saved anyway: the rendering corrects it (readability ladder), the caller reads the tips. Nothing else is touched.
+ */
+export async function saveColorChoices(base: SkinBase, input: { mode?: "light" | "dark"; colors: ColorSetInput }, opts: { actor?: string } = {}): Promise<{ ok: true; changed: number } | Failure> {
+  const legacy = base.id === BASIC_ID;
+  const two = !legacy && base.modes.length === 2;
+  if (two && !input.mode) return fail("error.generic");
+  const mode = two ? input.mode! : (base.modes[0] ?? "dark");
+  const prefix = two ? `theme.${mode}.` : "theme.";
+  const keys = [...COLOR_FIELDS.map((c) => `${prefix}${c}`), "theme.palette"];
+  const before = await readKeys(keys);
+  const target = new Map<string, unknown>();
+  if (two) target.set("theme.palette", "both");
+  for (const c of COLOR_FIELDS) {
+    const v = input.colors[c];
+    if (v === undefined) continue;
+    if (v !== "" && !isHexColor(v)) return fail("error.generic");
+    const skinValue = legacy ? "" : (base.colors[mode]?.[c] ?? "");
+    target.set(`${prefix}${c}`, v === "" || (skinValue && skinValue.toLowerCase() === v.toLowerCase()) ? undefined : (c === "background" || c === "accent" ? v : v.toLowerCase()));
+  }
+  let changed = 0;
+  for (const [key, value] of target) {
+    const had = before.has(key);
+    if (value === undefined) { if (had) { await deleteSetting(key); changed++; } }
+    else if (!had || !same(before.get(key), value)) { await setSetting(key, value); changed++; }
+  }
+  if (changed > 0) {
+    await dropSnapshot();
+    invalidateSkinCache();
+    await audit(opts.actor ?? "system", "appearance.update", `${base.id}:colors`);
+  }
+  return { ok: true, changed };
+}
+
+/**
  * Enregistre les retouches. `base` : le skin actif (valeurs sans retouches) ; basic = le comportement d'avant les skins, écriture pour écriture.
  * Rend le nombre de réglages qui ont VRAIMENT changé (0 : rien n'a été touché, le « Annuler » du dernier changement reste possible).
  */

@@ -147,6 +147,8 @@ const requirements = [
           else if (b.type === "links" && (!Array.isArray(b.items) || b.items.some((x) => typeof x?.label !== "string" || typeof x?.href !== "string"))) out.push(`${whereOf(o)} : un bloc links doit avoir des « items » avec « label » et « href »`);
           else if (b.type === "form" && (typeof b.action !== "string" || !Array.isArray(b.fields) || typeof b.submitLabel !== "string" || typeof b.successText !== "string")) out.push(`${whereOf(o)} : un bloc form doit avoir action, fields, submitLabel et successText`);
           else if (b.type === "table" && (!Array.isArray(b.columns) || !Array.isArray(b.rows))) out.push(`${whereOf(o)} : un bloc table doit avoir « columns » et « rows »`);
+          else if (b.type === "adminForm" && b.presentation !== undefined && b.presentation !== "dialog") out.push(`${whereOf(o)} : adminForm.presentation must be "dialog" (or absent)`);
+          else if (b.type === "table" && (b.rowActions ?? []).some((a) => a?.presentation !== undefined && (a.presentation !== "dialog" || typeof a.href !== "string"))) out.push(`${whereOf(o)} : a rowActions entry with presentation must be "dialog" and have an href (for example "?edit={id}")`);
         });
       };
       for (const run of obs.plain) for (const o of run.outputs) {

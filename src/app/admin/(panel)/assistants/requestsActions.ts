@@ -32,7 +32,7 @@ export async function denyRequestAction(id: string): Promise<void> {
 export async function setApprovalAction(tokenId: string, mode: ApprovalMode): Promise<void> {
   const { user } = await adminCtx({ right: "core:mcp.tokens" });
   const row = await prisma.apiToken.findUnique({ where: { id: String(tokenId) } });
-  if (!row || row.revokedAt) return;
+  if (!row || row.revokedAt) throw new Error("unknown access");
   const next: ApprovalMode = mode === "direct" ? "direct" : "human";
   await setApprovalMode(row.id, next);
   await audit(user.email, "mcp.maintenance.mode", `${row.name}: ${next}`);

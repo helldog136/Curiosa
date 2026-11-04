@@ -4,7 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { useTestDb } from "../helpers/db.mjs";
 import { makeRepo } from "../helpers/repo.mjs";
-import { createCatalogue } from "../helpers/catalogue.mjs";
+import { createCatalogue, withoutI18nNote } from "../helpers/catalogue.mjs";
 
 const db = await useTestDb();
 const cat = createCatalogue();
@@ -69,7 +69,7 @@ test("index reconnu : entrées invalides écartées (identifiant, dépôt non ht
 
 test("installation d'un module du catalogue : cloné à l'étiquette épinglée, actif, source git", async () => {
   await cat.fixtures(["demo-planner"]);
-  assert.deepEqual(await installFromCatalogue("demo-planner"), { ok: true, id: "demo-planner" });
+  assert.deepEqual(withoutI18nNote(await installFromCatalogue("demo-planner")), { ok: true, id: "demo-planner" });
   const row = await db.prisma.module.findUnique({ where: { id: "demo-planner" } });
   assert.deepEqual([row.source, row.enabled, row.repoUrl, row.subdir], ["git", true, cat.https, "modules/demo-planner"]);
   assert.ok(row.commit);
@@ -120,7 +120,7 @@ test("dépôt personnel : installable (non vérifié) ; un dépôt reconnu ne pe
   const repo = makeRepo({ "module.json": base({ id: "perso" }) });
   assert.equal((await installModule(repo.url, { expectId: "attendu" })).error, "modules.error.idmismatch");
   assert.equal(await db.prisma.module.findUnique({ where: { id: "perso" } }), null, "rien d'installé");
-  assert.deepEqual(await installModule(repo.url, { expectId: "perso" }), { ok: true, id: "perso" });
+  assert.deepEqual(withoutI18nNote(await installModule(repo.url, { expectId: "perso" })), { ok: true, id: "perso" });
 });
 
 test("installation depuis le catalogue : inconnu, incompatible → refus ; listé → installé", async () => {
@@ -131,6 +131,6 @@ test("installation depuis le catalogue : inconnu, incompatible → refus ; list�
   try {
     assert.equal((await installFromCatalogue("nexiste-pas")).error, "modules.error.notfound");
     assert.equal((await installFromCatalogue("ancien")).error, "modules.error.incompatible");
-    assert.deepEqual(await installFromCatalogue("demo-sponsors"), { ok: true, id: "demo-sponsors" });
+    assert.deepEqual(withoutI18nNote(await installFromCatalogue("demo-sponsors")), { ok: true, id: "demo-sponsors" });
   } finally { globalThis.fetch = realFetch; }
 });

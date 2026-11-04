@@ -137,7 +137,7 @@ Validé à l'installation et au chargement (zod, `src/core/modules/manifest.ts`)
 | `platform` | **Plateforme** concernée, facultative : `^[a-z][a-z0-9-]{0,30}$` (`twitch`, `discord`, `youtube`, `instagram`, `tiktok`, `x`…). Regroupe à l'écran les instances d'une même plateforme (voir « Plateformes »). Libellé affiché : table du cœur pour les plateformes connues (`twitch` → Twitch, `youtube` → YouTube, `tiktok` → TikTok, `x` → X, `kofi` → Ko-fi, `github` → GitHub… voir `src/core/modules/platform.ts`), sinon l'identifiant avec une majuscule initiale. Une autre forme est refusée (`module.json: platform — …`). Absent = aucune plateforme. Un cœur plus ancien ignore la clé. |
 | `minCore` | **Version minimale du cœur** (`"0.1.10"` : trois nombres, rien d'autre ; une autre forme est refusée). Absent = aucune exigence. Voir [Version minimale du cœur](#version-minimale-du-cœur-mincore). |
 | `id` | Identifiant du module, stable à jamais (les instances et les sauvegardes s'y réfèrent). |
-| `name`, `description` | Texte ou `{ langue: texte }` (500 caractères au plus). Langue absente : langue par défaut du site, puis `en`. |
+| `name`, `description` | `{ "en": "...", "fr": "..." }` (500 characters at most per text). A plain string has no language and is refused by the test kit (`i18n.complete`). Missing language: the main language of the site, then English, never another language. See [Languages](#languages-i18n-core-after-066). |
 | `version` | `x.y.z`. Sert à détecter les mises à jour (comparée à la version du catalogue). |
 | `author`, `license`, `homepage` | Informatifs (`homepage` : URL valide). |
 | `pageSetting` | (cœur 0.2.12, `"minCore": "0.2.12"`) Facultatif : clé d'un réglage **booléen** du module (case à cocher) qui allume ou éteint la page publique de l'instance. Tant qu'il est faux (ou jamais enregistré et sans `default: true`), la page n'existe pour personne : 404 sur l'adresse et sur son `page-script`, et rien dans le plan du site, `llms.txt`, le menu ni l'éditeur de menu. Refusé si la clé n'est pas celle d'un réglage booléen du module, ou si le module n'a pas de page. Sans le champ : rien ne change. L'administration de l'instance dit si la page est allumée. Règle unique : `hasPublicPage` (`src/core/modules/publicPage.ts`). |
@@ -664,6 +664,27 @@ Quand la personne change de nom de domaine, la page *Adresse du site* (réglages
 - `siteAddressUses` (5 au plus) : un endroit **hors du site** où la personne a tapé l'adresse du site (`label`, `where`).
 - Lecture seule : le cœur ne contacte jamais le service tiers et ne modifie rien. Seules les instances **actives** sont listées.
 - **Sans danger pour un cœur plus ancien** : il ignore les clés, donc aucun `minCore` à déclarer. Une clé mal formée rend le manifeste invalide, comme toute autre. Les retours de connexion ne sont jamais redirigés depuis un ancien domaine (voir [MIGRER-DOMAINE.md](MIGRER-DOMAINE.md)).
+
+### Languages (`i18n`, core after 0.6.6)
+
+**English and French are always supported.** Every text a person reads is written in both, with the same `{variables}`; other languages are optional and may be partial.
+
+| Where | How |
+|---|---|
+| `name`, `description`, `privacy`, setting `label` / `help` / `unit` / `example` / option labels, tab, group, right, panel, overlay element, dashboard, `logEvents`, `previews`, `content.templates`, `onboarding.sample` | a record `{ "en": "...", "fr": "..." }`. Add `"nl": "..."` for a third language if you want; or leave it to the community (below). Only `example` may be a plain string (a value to type, the same in every language). |
+| MCP tool `description` | stays **one English string** (it is read by an AI assistant, and an older core refuses a record there). Translate it with the optional top-level block `"i18n": { "fr": { "mcp.list_items": "..." } }`. Keys are `mcp.<tool name>` and must match a declared tool; an older core ignores `i18n` (the English string is used). |
+| Messages of the module's code (`ctx.t("key")`) | `locales/en.json` and `locales/fr.json`, same keys, same `{variables}`. |
+| A community language | `locales/<code>.json` only: messages by key, and manifest texts under `manifest.<path>` keys (`manifest.name`, `manifest.setting:color.label`...). The core merges them when the module loads; `module.json` is not edited. `node scripts/i18n-add-language.mjs <code> --modules <repo>` writes the skeleton. |
+
+**Fallback chain** for any text: the requested language, then the main language of the site, then English. Never "the first language of the object", never French by default (`pickText` in `src/core/i18n/audit.mjs`; `localized()` uses it). An empty text counts as missing.
+
+**Unknown keys.** `module.json` is read by `manifestSchema` (zod): unknown top-level keys are *stripped*, not refused, which is why an older core ignores `i18n`. Inside some objects (`tabs`, `logEvents` fields, dashboard blocks) the schema is `.strict()`: an unknown key there refuses the manifest. Do not invent keys inside those objects.
+
+**Checks.** The test kit has `i18n.complete` (every manifest text in English and French, no plain string, no empty text, same `{variables}`, valid language codes, valid `i18n` block) and `i18n.parity` (locale files). `i18n.complete` works like the ergonomics baseline: a repository lists its known gaps in `tests/i18n-baseline.json`; a **new** gap fails, a gap that disappeared must be removed from the baseline, so it can only shrink. At install and update time a module with missing English or French texts is installed with a **warning** (`warnings: [{ code: "i18n", ... }]` in the result and a line in the log), never refused: the missing texts fall back to English. The state is visible in the admin (Settings > Languages > Translations) and through the MCP tool `maintenance_modules` (`translations` per module, `languages` for the site).
+
+**Catalogue index.** Each entry of `catalogue/index.json` has `name` and `description` in **English** (what an older core reads) and `i18n: { "en": { "name", "description" }, "fr": { ... } }`. The core uses the language of the person (setup wizard, Extensions > Add, MCP catalogue tools). See `catalogue/README.md`.
+
+See [TRANSLATING.md](TRANSLATING.md) to add a language.
 
 ### Actions MCP (`mcp`)
 
@@ -1239,6 +1260,7 @@ Deux familles : les **services** du cœur (génériques, voir [PLATFORM.md](PLAT
 | `ctx.api.net.budgetMs()` | service | temps restant (ms) de la page publique en cours, ou `null` hors page publique |
 | `ctx.api.site(locale?)` | lecture | `{ name, tagline, logo }` du site |
 | `ctx.api.brand(locale?)` | lecture | identité visuelle complète (`ModuleBrand`, ci-dessous) |
+| `ctx.api.adminTheme({ scheme? })` | lecture | (cœur après 0.6.6, aucune permission) l'apparence de l'**administration** pour une page secrète du module : `{ css, scheme, wordmark }`. Voir « Thème de l'admin pour vos pages secrètes ». |
 | `ctx.api.instances.list({ module?, locale? })` | lecture | `[{ id, key, module, basePath, name, adminPath }]` des instances actives ; `adminPath` (`/admin/instances/<id>`) est la page de réglages de l'instance : de quoi y renvoyer l'administrateur par un lien (`href`) |
 | `ctx.api.entries.list({ instance?, locale?, limit? })` | lecture | entrées publiées (`EntrySummary`) ; par défaut celles de l'instance courante ; **200 au plus** (sans `limit`, ou au-delà : 200), dans l'ordre de la liste publique (non expirées d'abord, puis expirées) ; pour tout lire, passez par `ctx.api.topics.collectPage` |
 | `ctx.api.siteUrl` | lecture | adresse publique du site, sans `/` final |
@@ -1326,6 +1348,39 @@ L'interrupteur appelle l'`adminAction` nommée par `switch.action` avec `values.
     { text: c.on ? "Actif" : "Désactivé", switch: { on: c.on, action: "setEnabled", label: `Commande ${c.name} active`, onText: "Actif", offText: "Désactivé" } }]),
   rowActions: [{ label: "Modifier", href: "?edit={id}" }, { label: "Supprimer", action: "remove", danger: true, confirm: "Supprimer cette commande ?" }] }
 ```
+
+##### Edit dialog (`presentation: "dialog"`, next core release)
+
+Editing an item from a list should not push the list down: the form opens in a **window above the admin interface** (the same window as the extension details before an installation: same backdrop, same panel, same "Close" button, full screen on a phone). The module declares it, it runs no script (the core executes none): the address stays the source of truth, as with `?edit={id}`.
+
+| Where | Key | Role |
+|---|---|---|
+| `table.rowActions[]` | `presentation: "dialog"` | The link `href` (for example `"?edit={id}"`) opens **without reloading the page** (the list keeps its search, filter and scroll) and adds a history entry, so "Back" closes the window. Needs an `href`, not an `action`. |
+| `links.items[]` | `presentation: "dialog"` | Same, for a "New item" button (`href: "?new=1"`; a relative `?…` address is accepted for such a link). |
+| `adminForm` | `presentation: "dialog"` | The form returned by `adminPanel` shows in the window instead of in the page. `title` names the window (and is its heading), `submitLabel` is the ONE main button (a precise verb, R3), `cancelHref` is where the window returns when it closes (for example `"?"`). A form with a `file` field stays in the page. |
+
+How it behaves, for the person: the form is the SAME form (same fields, same `adminAction`, same validation). A field error shows under the field with its example and the first field in error gets the focus; what was typed is kept; the main button shows its pending state. A success closes the window and the saved row shows a visible "Saved." (the list is refreshed in place). "Esc", the "Close" button, "Cancel" and a click beside the panel close it; if fields were edited the person is first asked "Discard changes?". The focus enters the window, stays inside it, and returns to the link that opened it. The page behind does not scroll. A reload or a shared link reopens the window (the address is `?edit=…`); without JavaScript the link opens the same page in full.
+
+**Older cores.** Every key is optional and additive: a core without it ignores the key, `href: "?edit={id}"` navigates and the form shows at the top of the page, exactly as before. So a module can adopt it **without raising `minCore`**. The one exception is a "New item" `links` entry with a `?…` address: an older core shows it as `#` (it only accepts site pages and https addresses), so use a `rowActions`/toolbar fallback or raise `minCore` for that button.
+
+**What the module does.** Return the form only when the address asks for it, and let the action answer `{ ok }` (not `redirect`: the core closes the window on a success; with a redirect the window disappears but the row is not highlighted).
+
+```js
+async adminPanel(ctx, { query }) {
+  const rows = await ctx.api.store.list("commands");
+  const editing = query.edit ? rows.find((r) => r.id === query.edit) : query.new ? { id: "", data: {} } : null;
+  return [
+    ...(editing ? [{ type: "adminForm", presentation: "dialog", action: "save", cancelHref: "?",
+      title: query.new ? "New command" : "Edit command", submitLabel: "Save the command",
+      fields: [{ name: "id", kind: "hidden", label: "id", value: editing.id }, { name: "name", label: "Name", required: true, value: editing.data.name ?? "", example: "hello" }] }] : []),
+    { type: "links", items: [{ label: "New command", href: "?new=1", presentation: "dialog" }] },
+    { type: "table", columns: ["Command"], rows: rows.map((r) => [r.data.name]), rowIds: rows.map((r) => r.id), searchable: true,
+      rowActions: [{ label: "Edit", href: "?edit={id}", presentation: "dialog" }, { label: "Delete", action: "remove", danger: true, confirm: "Delete this command?" }] },
+  ];
+},
+```
+
+Keep the destructive action ("Delete the command") in the row menu (`danger: true`, with `confirm` saying what is lost), separate from the dialog's main button. The form's hidden field named `id` is how the list knows which row to highlight after the save. The test kit (`admin.ergonomics`) counts the fields of such a form against R4 (5 visible fields) like any form, ignores them for the section of the list, and asks for a `cancelHref` (R24).
 
 ##### Vignette dans une cellule (`image`, cœur 0.6.5)
 
@@ -1565,6 +1620,8 @@ export default {
 Le cœur héberge un serveur MCP (`/api/mcp`, désactivable depuis l'admin → *Assistants IA*, qui s'intitule aussi « API & MCP » en mode avancé) **sans aucun outil codé
 en dur** : il collecte les actions déclarées par tous les modules actifs. Le cœur y ajoute ses propres outils `site_info`, `redirects_…` (liens courts : voir [PLATFORM.md](PLATFORM.md)) et `maintenance_…` (maintenance du site par une IA : voir [MAINTENANCE-IA.md](MAINTENANCE-IA.md)) ; un jeton « Maintenance » n'a que ceux-là, jamais vos actions de module sans que vous les lui accordiez.
 
+**Content modules and the AI (English note).** A module with a `content` block needs to do nothing to be editable by an assistant: the content engine (`src/core/content/mcp.ts`) gives its instance `list_entries`, `get_entry`, `create_draft`, `update_draft` and, as separate rights that are never granted by default, `publish` and `unpublish` (`<instance key>__publish`). Publishing only turns an existing draft of that instance into a published entry (same checks as the admin's Publish button, no edit of content) and follows the approval setting of the access: a request the owner approves, or done at once when the owner chose "act without asking". If your module declares its own `mcp` action named `publish` or `unpublish`, yours is kept and the generic one is not added. Every tool the core adds must be assigned to a preset or explicitly excluded in `src/core/services/mcp/profiles.ts`; module tools are classified by what they declare (`readOnly`, `default`, `destructive`). See [MAINTENANCE-IA.md](MAINTENANCE-IA.md).
+
 ```jsonc
 // module.json
 "mcp": [
@@ -1654,6 +1711,26 @@ Le thème réglé dans l'admin (*Réglages › Apparence*) atteint les modules d
 - **Couleurs par défaut qui suivent le thème** : `{ "key": "accent", "type": "color", "default": "theme:accent" }` (jetons : `accent`, `accentFg`, `bg`, `surface`, `fg`, `muted`, `line`, `success`, `successFg`, `warning`, `warningFg`, `danger`, `dangerFg`, `accent2`, `accent2Fg`). Tant que l'administrateur n'a pas choisi sa propre couleur — case « Suivre le thème du site », cochée par défaut — la valeur change avec le thème.
 
 Un module peut en plus déclarer **ses propres réglages d'apparence** (la texture des murs du labyrinthe, la couleur du sol, le style d'un bandeau…) avec `"group": "appearance"` : ils sont regroupés sous « Apparence de ce module » dans son panneau d'admin, séparés de ses réglages de comportement. Types utiles : `color`, `image` (téléversement), `select`.
+
+## Thème de l'admin pour vos pages secrètes
+
+Une page servie par votre module **hors de l'administration** mais réservée à l'équipe (télécommande pour téléphone, dock OBS) doit ressembler à l'administration, pas au site public. `ctx.api.adminTheme({ scheme })` (cœur après 0.6.6, aucune permission, ne lève jamais) vous donne :
+
+- `css` : du texte CSS prêt à poser dans un `<style nonce>`. Il ne contient que des **variables** `--cur-*` (et `color-scheme`) : aucune adresse, aucune police à charger, aucun `@import`. Il respecte donc la vie privée et la politique de sécurité de votre page.
+- `scheme` : `"light"`, `"dark"` ou `"auto"` (clair, et sombre si l'appareil l'est). Sans choix, ou si la valeur est inconnue : `"auto"`. Pour un dock OBS, demandez `"dark"`.
+- `wordmark` : le nom « Curiosa » comme dans l'administration, `{ html, css }`. Posez `html` tel quel (un lien) et `css` avec le reste : ne réécrivez jamais le mot à la main (Fraunces italique 600, 1,15 em, souligné). La police n'est pas chargée par le cœur ; sans elle, l'appareil prend une police à empattement en italique.
+
+Les variables (noms **stables** : un nom n'est jamais retiré) : `--cur-bg` (fond), `--cur-fg` (texte), `--cur-muted` (texte secondaire), `--cur-surface` (cartes), `--cur-line` (filets), `--cur-accent` et `--cur-accent-fg` (accent et son texte), `--cur-ok`, `--cur-warn`, `--cur-danger` (états) avec leur `-fg`, `--cur-focus` (anneau de focus), `--cur-radius`, `--cur-radius-lg`, `--cur-shadow`, `--cur-space`, `--cur-font` (police du système). Les textes sont lisibles (4,5:1 au moins) sur `--cur-bg` et `--cur-surface` ; l'accent et le focus font 3:1 au moins. `--cur-line` est décoratif : il ne porte jamais seul une information.
+
+```js
+const t = ctx.api.adminTheme?.({ scheme: "dark" }); // absent sur un cœur plus ancien
+const css = t
+  ? t.css + `body{background:var(--cur-bg);color:var(--cur-fg);font-family:var(--cur-font)}button{background:var(--cur-accent);color:var(--cur-accent-fg);border-radius:var(--cur-radius)}` + t.wordmark.css
+  : ANCIENNES_COULEURS; // le module continue de marcher avec ses couleurs actuelles
+return html(`<style nonce="${nonce}">${css}</style>…<footer>${t ? t.wordmark.html : ""}</footer>`);
+```
+
+Gardez les couleurs de votre module comme repli : un cœur plus ancien n'a pas cette méthode (déclarez `minCore` seulement si le thème est indispensable). Pourquoi un jeu de variables à part, et ce qu'un futur skin d'admin pourrait changer ou jamais : [ideas/skins-admin.md](ideas/skins-admin.md).
 
 ## Envoyer un e-mail
 

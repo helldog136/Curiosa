@@ -214,7 +214,7 @@ test("INSTALLATION d'un module qui ne se charge pas : refusée AVANT d'installer
 test("INSTALLATION d'un module sain à 2 fichiers (imports statiques) : installé, avec la remarque sur les imports statiques", async () => {
   const repo = repoOf(GOOD("1.0.0"));
   const r = await I.installModule(`${repo.url}#v1.0.0`);
-  assert.equal(r.ok, true); assert.deepEqual(r.warnings, [{ code: "staticImports", files: ["index.mjs"] }]);
+  assert.equal(r.ok, true); assert.deepEqual(r.warnings.filter((w) => w.code !== "i18n"), [{ code: "staticImports", files: ["index.mjs"] }]);
   assert.equal((await R.getModule("demo")).def.marker, "v1.0.0");
 });
 

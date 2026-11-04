@@ -1,4 +1,5 @@
 import test, { beforeEach, after } from "node:test";
+import { withoutI18nNote } from "../helpers/catalogue.mjs";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
@@ -85,7 +86,7 @@ test("installer depuis un dépôt ajouté : un seul module, désactivé, « pers
   const list = await S.discoverModules(src);
   const rss = list.find((m) => m.id === "rss");
   assert.equal(S.sourceAddress(src, rss), `${repo.url}#:modules/rss`);
-  assert.deepEqual(await I.installModule(S.sourceAddress(src, rss)), { ok: true, id: "rss" });
+  assert.deepEqual(withoutI18nNote(await I.installModule(S.sourceAddress(src, rss))), { ok: true, id: "rss" });
   const row = await db.prisma.module.findUnique({ where: { id: "rss" } });
   assert.deepEqual([row.enabled, row.subdir, row.source], [true, "modules/rss", "git"]);
   assert.equal(await db.prisma.module.findUnique({ where: { id: "agenda" } }), null, "les autres modules du dépôt ne sont pas installés");

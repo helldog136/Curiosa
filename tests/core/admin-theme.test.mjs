@@ -12,9 +12,12 @@ test("thème de l'admin : auto par défaut, valeurs inconnues ramenées à auto"
 
 test("thème de l'admin : clair par défaut ; sombre si choisi ; « auto » ne devient sombre que si le système l'est", () => {
   const css = T.adminThemeCss();
-  assert.match(css, /^:root\{--v-bg:#faf7f2;/, "variables claires sur :root");
-  assert.match(css, /:root\[data-admin-theme="dark"\]\{--v-bg:#15141a;[^}]*color-scheme:dark\}/);
-  assert.match(css, /@media \(prefers-color-scheme: dark\)\{:root\[data-admin-theme="auto"\]\{--v-bg:#15141a;/);
+  // Les jetons `--cur-*` portent les valeurs (src/core/adminTheme.ts) ; `--v-*` (Tailwind) les lit.
+  assert.match(css, /^:root\{--cur-bg:#faf7f2;/, "jetons clairs sur :root");
+  assert.match(css, /:root\[data-admin-theme="dark"\]\{--cur-bg:#15141a;[^}]*color-scheme:dark\}/);
+  assert.match(css, /@media \(prefers-color-scheme: dark\)\{:root\[data-admin-theme="auto"\]\{--cur-bg:#15141a;/);
+  for (const [v, cur] of [["bg", "bg"], ["fg", "fg"], ["surface", "surface"], ["line", "line"], ["muted", "muted"], ["accent", "accent"], ["accent-fg", "accent-fg"], ["success", "ok"], ["warning", "warn"], ["danger", "danger"], ["font", "font"]])
+    assert.equal(css.split(`--v-${v}:var(--cur-${cur})`).length, 4, `--v-${v} lit --cur-${cur} (clair, sombre, auto)`);
   assert.ok(!/:root\[data-admin-theme="light"\]/.test(css), "« clair » = les variables par défaut");
 });
 

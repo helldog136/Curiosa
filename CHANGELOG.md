@@ -7,6 +7,81 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.6.7 — 2026-11-04
+
+**En bref.** Le tableau de bord compte maintenant à part les visites de robots et d'intelligences artificielles (« Robots et IA »), sans rien garder d'eux. Le logo de Curiosa est disponible. Les extensions pourront reprendre l'apparence de l'administration. L'anglais et le français sont toujours complets ; d'autres langues peuvent être proposées par la communauté, avec un guide de traduction. L'assistant d'installation permet de connecter une IA, avec des profils de droits, « Tout cocher » et un choix d'approbation plus clair. L'assistant IA peut aussi publier vos brouillons si vous l'autorisez, connaître ses droits, préparer plusieurs installations d'un coup et demander un exemplaire de plus. Modifier un élément d'une liste ouvre une fenêtre au-dessus de la page. Rien à régler.
+
+### Identité visuelle
+
+- **Le logo de Curiosa est disponible.** Une page de marque réunit le logo pour fond clair et fond sombre, la marque seule, l'icône et un aperçu pour les réseaux, avec la palette et les règles d'usage. Votre site n'en change pas : le logo est celui de Curiosa, pas celui de votre site.
+
+### Apparence de l'administration
+
+- **Les pages secrètes des modules pourront reprendre l'apparence de l'administration.** Une télécommande ou un dock OBS aura vos couleurs d'administration, claires ou sombres, au lieu de celles du site public. Votre administration ne change pas d'aspect et il n'y a rien à régler.
+
+### Visites de personnes et de robots
+
+- **Les robots ne sont plus mêlés aux personnes qui visitent.** Sur le tableau de bord, le bloc « Visites » montre une nouvelle ligne « Robots et IA » : le nombre de visites de robots sur 30 jours, et combien viennent d'intelligences artificielles. Avant, ces visites étaient simplement jetées.
+- **Rien n'est gardé d'eux.** Un robot ajoute 1 à un compteur du jour (moteurs de recherche, IA, aperçus de liens, outils), et c'est tout : ni adresse IP, ni nom de navigateur, ni page lue. Les personnes qui refusent le suivi et l'équipe connectée ne comptent jamais, robots compris.
+- **Les chiffres des personnes qui visitent ne changent pas.** La page « Confidentialité » du site le dit en une phrase.
+- Seuls les robots qui chargent la page comme un navigateur sont vus. Aucun réglage à faire.
+
+### Assistants IA
+
+- **Votre assistant IA peut publier à votre place, si vous le lui permettez.** Un droit « Publication » existe pour chaque liste de contenu (articles, pages, liens…). Il ne publie que des brouillons qui existent déjà, sans changer leur texte, et suit votre réglage : vous validez chaque demande, ou vous le laissez agir.
+- **Rien n'est publié à moitié.** S'il manque une langue, l'assistant reçoit un message clair qui dit laquelle, et rien ne part. Chaque publication est inscrite au journal, sans le texte.
+- **Votre assistant sait ce qu'il peut faire.** Il peut lire la liste de ses droits et de ce qui lui manque, avec la phrase à cocher pour vous. Après un changement de droits, il doit se reconnecter pour le voir.
+- **Un plan complet, une seule demande.** Il prépare l'installation de plusieurs fonctionnalités d'un coup (12 au plus) et vous la soumet en une demande : vous voyez chacune et tout ce qu'elle demande. Il peut aussi demander un exemplaire de plus d'une fonctionnalité, et des couleurs ou polices.
+- **(English) Your AI assistant can publish drafts for you, if you allow it.** It never changes their text and follows your setting: you approve each request, or you let it act. A missing language is reported and nothing is published half-way.
+- **(English) Your assistant knows what it can do.** It can read its rights and what it lacks, with the sentence for you to tick. After a change of rights it has to reconnect to see it.
+- **(English) A full plan, one request.** It prepares the installation of several features at once (12 at most) and sends you one request: you see each one and everything it asks for. It can also ask for one more copy of a feature, and for colors or fonts.
+
+### Langues
+
+- **L'assistant d'installation parle enfin la langue choisie.** En anglais, les extensions proposées (blog, liens, pages…) s'affichent avec leur description anglaise ; avant, un texte français pouvait s'y glisser. Il démarre dans la langue de votre navigateur, ou en anglais, et ses boutons et messages suivent la langue choisie.
+- **L'anglais et le français sont toujours complets, les autres langues peuvent l'être à moitié.** Quand un texte manque dans une langue, Curiosa montre celui de la langue principale du site, puis l'anglais, jamais une autre langue par hasard.
+- **Un état des traductions dans Réglages › Langues.** Chaque langue est « officielle » (anglais, français) ou « communautaire », « complète » ou « partielle : 82 % », et la liste des extensions auxquelles il manque des textes s'y trouve. Votre assistant IA lit la même chose.
+- **Ajouter une langue ne demande que des fichiers.** Un guide pas à pas (le document TRANSLATING) et une commande qui prépare les fichiers à traduire permettent à chacun de proposer sa langue.
+
+### Fenêtres de modification
+
+- **Modifier un élément d'une liste ouvre une fenêtre au-dessus de la page.** La liste ne descend plus et garde sa recherche. Échap ou « Fermer » referment la fenêtre ; si vous avez écrit quelque chose, Curiosa demande d'abord si vous voulez l'abandonner.
+- **La fenêtre est la même partout.** Elle a l'aspect de la fiche d'une extension avant son installation, prend tout l'écran sur téléphone et se manipule au clavier. Le bouton « Retour » du navigateur la ferme.
+- **Edit windows (English).** Editing an item of a list opens a window above the page: the list keeps its search, Esc closes it, and Curiosa asks before discarding what you typed.
+
+### Assistants IA
+
+- **Un assistant IA peut vous aider à finir la mise en place.** Une dernière étape facultative, « Connecter votre assistant IA », suit la création de votre compte : un nom, un profil, un clic. Vous passez l'étape sans risque : rien n'est créé.
+- **Trois profils règlent les droits d'un clic.** « Lecture seule » (par défaut), « Assistant » et « Installation complète ». Une IA ne lit jamais un mot de passe ni un secret, et tout est noté dans le journal.
+- **Régler les droits d'un assistant est bien plus rapide.** Les profils en haut, « Tout cocher » par section avec un compteur (« 9 sur 11 »), une confirmation pour les actions à risque, et un résumé à relire avant d'enregistrer.
+- **Qui approuve les actions à risque est enfin clair.** Deux boutons montrent toujours votre choix, et la page dit que l'installation demande toujours votre accord.
+
+### Pour les développeurs
+- **AI publishing** (`src/core/maintenance/publish.ts`, tools generated in `src/core/content/mcp.ts`): `<instance>__publish` / `__unpublish` as level 3 actions `entry_publish` / `entry_unpublish` of `callLevel3`, so they follow the per-access approval setting. A bundle is `plan.entry.items` with a text fingerprint; a draft edited after the request is not published.
+- **New core tools** (all additive): `maintenance_my_access` (default on), `maintenance_catalog_plan`, `maintenance_instance_add` (always waits for the owner, like installs), `maintenance_skin_set_options` (`saveColorChoices` in `skins/appearance.ts`), and `maintenance_module_install { modules }` (`plan.bundle`, one pending request).
+- **`McpTool.request`** (optional boolean) marks tools that create requests; `destructive` is now only for deletions (uninstall, skin removal). `MAINTENANCE_TOOLS` carries both. The rights page and the requests tab read both.
+- **Profile definition** `src/core/services/mcp/profiles.ts`: new tools are assigned (`read`: my_access, catalog_plan; `full`: instance_add, skin_set_options, publish, unpublish). Same file as the AI-access onboarding branch: merge by keeping both lists.
+- **`listChanged` is still `false`**: evaluated and documented in `docs/MAINTENANCE-IA.md` (no session, no stream, no timers).
+- **Edit dialog (`presentation: "dialog"`).** Accepted on `rowActions[]`, `links.items[]` and `adminForm`, with no `minCore`: an older core keeps the form in the page. See `docs/MODULES.md`.
+- **The address is the open state.** The row link soft-navigates and `adminPanel` returns the form for `?edit=…`; reload and "Back" work, and without JavaScript the link opens the full page.
+- **One window.** `ModalWindow.tsx` (the old `RouteModal` body) now also serves `EditDialog`; `RouteModal` is a thin wrapper. New: title, sticky footer, animation, window stack, optional discard `guard`.
+- **Test kit.** R4 counts a dialog form on its own; R24 asks for `cancelHref`; `blocks.valid` rejects other values. Fixture: `tests/fixtures/edit-dialog`.
+- **Languages and modules (i18n).** One pure source, `src/core/i18n/audit.mjs`: `pickText` (requested language, site main language, English; no French default), `auditManifest`, `auditDictionaries`, `applyTranslations`, `manifestSkeleton`. `localized()`, `pickLocalized`, `pickWords`, `renderEvent` and the MCP catalogue tools use it.
+- `makeTranslator(locale, siteDefault?)` follows the same chain and treats an empty text as missing.
+- **Languages are data.** `src/locales/languages.json` (name, `official` or `community`, `rtl`) replaces the list of `locales.ts`; `src/locales/index.ts` is generated. `node scripts/i18n-add-language.mjs <code> [--modules <repo>] [--only prefixes]` writes the skeletons (empty texts, translations kept); `--sync` rebuilds the index.
+- **Manifest** (additive, no `minCore`): optional `i18n: { "<lang>": { "mcp.<tool>": "..." } }` translates MCP tool descriptions. A community language is a module's `locales/<code>.json` with `manifest.<path>` keys, merged at load time. Unknown top-level keys are still stripped, so an older core ignores `i18n`.
+- **Catalogue index**: entries may carry `i18n: { "<lang>": { "name", "description" } }`; the plain `name` / `description` are English. The wizard resolves every text on the server per language (`setup/view.ts`) and reads the manifest of each suggested module first.
+- **Checks**: kit requirements `i18n.complete` (ratchet on `tests/i18n-baseline.json`) and `i18n.complete.known`. A module with missing English or French texts installs with a `warnings: [{ code: "i18n" }]` note and a log line. `maintenance_modules` returns `translations` and `languages`; the admin shows them in Settings > Languages.
+- **Setup wizard sweep**: no French start, language from `Accept-Language`, `pick()` never falls back to the first language of an object, buttons receive the `progress.*` texts of the wizard language, `<html lang>` follows it.
+- **Jetons visuels de l'admin** (`src/core/adminTheme.ts`) : liste unique de variables `--cur-*`, noms figés par test, contrastes AA testés ; l'admin les lit sans changement visible. `ctx.api.adminTheme({ scheme })` (additif, sans permission) rend `{ css, scheme, wordmark }` ; absent des cœurs plus anciens. Voir `docs/MODULES.md`.
+- **Identité visuelle** : fichiers dans `docs/brand/` (SVG avec lettres en contours, PNG, `README.md`) ; rien dans `src/`, aucun changement de l'application.
+- **Une seule liste d'agents non humains** (`src/core/agents.ts`, `classifyAgent` : `person`, `search`, `ai`, `preview`, `tool`). `redirectStats.ts` (`isHumanVisit`, comportement inchangé) et `stats.ts` l'utilisent ; l'ancienne liste de `redirectStats.ts` et l'expression courte de `stats.ts` disparaissent. Quelques noms d'IA ajoutés (`google-extended`, `cohere`, `mistralai`, `diffbot`…).
+- **Compteur de robots** : lignes `VisitDaily` de genre `bot` (`ROBOT_KIND`), clé = catégorie, `views` = visites, 4 lignes par jour au plus. Aucun changement de schéma, aucune migration. `recordVisit` renvoie `"robot"` pour ces visites (avant : `"ignored"`). `statsSummary().robots` (`last7`, `last30` : `search`, `ai`, `preview`, `tool`, `total`) est additif.
+- **AI access profiles** (`src/core/services/mcp/profiles.ts`): one definition (`read`, `assistant`, `full`) for the setup step and the rights page, checked against the real catalogue by `tests/core/ai-access-profiles.test.mjs`.
+- **Creating an access** goes through `createAccess` (`src/core/mcpAccess.ts`), shared with the team form. The clear code is only in the action result, never in the journal. No migration.
+- **Setup step** at `/admin/setup/assistant`: it follows the account creation (an access needs an owner); `completeSetup` redirects there.
+- **Rights page**: `GrantsEditor` keeps a draft; `applyGrantsAction` saves the differences with the rules of `setGrantAction`. New journal action `mcp.grants.apply`; `GrantToggle` is removed; `ApprovalChoice` replaces the approve button.
+
 ## 0.6.6 — 2026-11-03
 
 **En bref.** La recherche du site montre d'abord ce qui vient de votre site (pages, articles), puis les vidéos et les liens vers d'autres sites. Rien à régler.
