@@ -9,6 +9,8 @@ import { legacyConfig, legacyRedirectTarget, requestHost } from "@/core/siteAddr
 
 const LOCALE_HEADER = "x-curiosa-locale";
 const PATH_HEADER = "x-curiosa-path";
+/** Set by this proxy to the short-link path whose end date has passed: next.config.mjs rewrites the request to the 410 page. */
+const GONE_HEADER = "x-curiosa-gone";
 const COOKIE = "curiosa_locale";
 /**
  * Preuve que l'en-tête de langue vient de CE proxy et non du visiteur. Next relance le proxy sur l'adresse réécrite (/en/privacy → /privacy) : sans preuve,
@@ -33,10 +35,9 @@ async function endedRewrite(request: NextRequest, path: string, headers: Headers
   if (short.length === 0 || short.length > 80 || !SHORT_PATH.test(short)) return null;
   const ended = await withDeadline(() => isRedirectEnded(short), GATE_MAX_MS).catch(() => false);
   if (ended === TIMED_OUT || !ended) return null;
-  const url = request.nextUrl.clone();
-  url.pathname = "/api/redirect-gone";
-  url.search = `?p=${encodeURIComponent(short)}`;
-  return NextResponse.rewrite(url, { request: { headers } });
+  // The rewrite itself is a config rewrite (next.config.mjs): an absolute rewrite built here is not internal behind a TLS-terminating reverse proxy.
+  headers.set(GONE_HEADER, short);
+  return NextResponse.next({ request: { headers } });
 }
 
 /**
@@ -63,6 +64,7 @@ export async function proxy(request: NextRequest) {
   headers.delete(LOCALE_HEADER);
   headers.delete(PROOF_HEADER);
   headers.delete(PATH_HEADER);
+  headers.delete(GONE_HEADER);
   headers.delete(SINCE_HEADER);
   // Aperçu d'un skin (page Apparence) : le jeton de l'adresse est recopié dans un en-tête interne ; il n'est cru qu'après vérification de sa signature, par le gabarit du site.
   headers.delete(PREVIEW_HEADER);
@@ -104,9 +106,8 @@ export async function proxy(request: NextRequest) {
     headers.set(PATH_HEADER, rest);
     const gone = await endedRewrite(request, rest, headers);
     if (gone) return stamp(gone);
-    const url = request.nextUrl.clone();
-    url.pathname = rest;
-    const res = NextResponse.rewrite(url, { request: { headers } });
+    // /fr/blog -> /blog is applied by the config rewrite of next.config.mjs (the visitor's address is unchanged), from the header set above.
+    const res = NextResponse.next({ request: { headers } });
     res.cookies.set(COOKIE, locale, { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
     return stamp(res);
   }

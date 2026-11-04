@@ -17,7 +17,8 @@ const PATH_RE = /^[a-z0-9][a-z0-9_/-]{0,79}$/;
  * Elle ne dit rien d'autre que « ce lien est terminé » : jamais la destination. Pour tout autre cas (lien inconnu, désactivé, pas terminé), 404.
  */
 async function gone(request: Request, withBody: boolean): Promise<Response> {
-  const path = (new URL(request.url).searchParams.get("p") ?? "").toLowerCase();
+  // The proxy hands the path over in a header (it strips it from visitors' requests); `?p=` stays accepted for the same shape of address.
+  const path = (request.headers.get("x-curiosa-gone") ?? new URL(request.url).searchParams.get("p") ?? "").toLowerCase();
   if (!PATH_RE.test(path)) return NOT_FOUND();
   const row = await prisma.redirect.findUnique({ where: { path }, select: { active: true, expiresAt: true, endMessage: true } });
   if (!row || !row.active || !row.expiresAt || row.expiresAt.getTime() > Date.now()) return NOT_FOUND();

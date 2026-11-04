@@ -7,6 +7,9 @@ import { hashVersion } from "./scripts/update-lib.mjs";
 // qui répond est bien le nouveau. Un ancien serveur, resté en mémoire sur ses anciens fichiers, répond toujours l'ancienne empreinte.
 const VERSION = (() => { try { return JSON.parse(fs.readFileSync(new URL("./package.json", import.meta.url), "utf8")).version; } catch { return "0.0.0"; } })();
 
+// Language codes of src/locales/languages.json (the same list as core/i18n/locales.ts): the only URL prefixes that are rewritten, see rewrites() below.
+const LANGUAGE_CODES = Object.keys(JSON.parse(fs.readFileSync(new URL("./src/locales/languages.json", import.meta.url), "utf8"))).filter((code) => /^[a-z]{2}$/.test(code));
+
 /** @type {import("next").NextConfig} */
 const nextConfig = {
   poweredByHeader: false,
@@ -15,6 +18,22 @@ const nextConfig = {
   // Les modules installés vivent dans data/modules et sont chargés à l'exécution :
   // ils ne doivent jamais être analysés ni embarqués par le bundler.
   serverExternalPackages: ["@prisma/client", "bcryptjs", "sharp"],
+  /**
+   * Language prefix (/fr/blog -> /blog) and the "link ended" page (410), as CONFIG rewrites with a path-only destination. They used to be
+   * `NextResponse.rewrite(absoluteUrl)` in src/proxy.ts, and the server only treats an absolute rewrite as internal when its origin equals the one it
+   * computes for itself. Behind nginx (`next start -H 127.0.0.1`, `X-Forwarded-Proto: https`) it never does, so Next fetched `https://localhost:<port>`
+   * and every prefixed page answered a bare 500 "Internal Server Error". The proxy only DECIDES (it sets x-curiosa-locale / x-curiosa-gone, which it
+   * strips from visitors' requests first, and only for the addresses it handles); these rules apply the decision.
+   */
+  async rewrites() {
+    return {
+      beforeFiles: [
+        // Never for the addresses the proxy leaves alone (admin, API, modules, overlays, uploads, files with a dot): a header forged there changes nothing.
+        { source: "/:path((?!(?:api|admin|_next|m|overlays|uploads)(?:/|$))[^.]*)", has: [{ type: "header", key: "x-curiosa-gone" }], destination: "/api/redirect-gone" },
+        { source: `/:locale(${LANGUAGE_CODES.join("|")})/:path*`, has: [{ type: "header", key: "x-curiosa-locale" }], destination: "/:path*" },
+      ],
+    };
+  },
   async headers() {
     return [
       {
