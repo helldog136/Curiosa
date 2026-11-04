@@ -9,7 +9,7 @@ export type SvgUploadResult = { url: string } | { error: "format" } | { error: "
 /**
  * Envoi d'un SVG (logos seulement) : le dessin est relu élément par élément et RÉÉCRIT à partir de ce qui est reconnu (voir core/svg.ts) ;
  * ce qui est enregistré est la version nettoyée, jamais le fichier reçu. Scripts, styles, textes, images intégrées et liens externes sont refusés
- * avec un message précis.
+ * avec un message précis ; les indications d'accessibilité (role, aria-label, title, desc en texte simple) sont conservées.
  */
 export async function saveSvgUpload(buf: Buffer): Promise<SvgUploadResult> {
   if (!looksLikeSvg(buf)) return { error: "format" };

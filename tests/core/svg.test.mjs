@@ -35,7 +35,7 @@ test("svg : l'aspect est fixé par le framework — remplir (slice), contenir (m
   assert.match(ok(wrap("<rect width='1' height='1'/>"), "contain"), /preserveAspectRatio="xMidYMid meet"/);
   assert.match(ok(wrap("<rect width='1' height='1'/>"), "tile"), /preserveAspectRatio="xMidYMid meet"/);
   assert.match(bad('<svg xmlns="http://www.w3.org/2000/svg"><rect width="1" height="1"/></svg>'), /viewBox/);
-  assert.match(bad(wrap("<rect/>", 'viewBox="a b c d"')), /viewBox invalide/);
+  assert.match(bad(wrap("<rect/>", 'viewBox="a b c d"')), /invalid viewBox/);
 });
 
 test("svg : la mise en forme `style=\"…\"` d'Inkscape/Figma est convertie en attributs, propriété par propriété", () => {
@@ -43,7 +43,7 @@ test("svg : la mise en forme `style=\"…\"` d'Inkscape/Figma est convertie en a
   assert.match(out, /<rect [^>]*fill="#ff0000"[^>]*stroke="none"[^>]*opacity="0\.5"/);
   const dropped = ok(wrap('<rect width="1" height="1" style="background:url(http://evil.example/x);font:x"/>'));
   assert.ok(!dropped.includes("evil") && !dropped.includes("background"), "propriété inconnue : écartée, jamais recopiée");
-  assert.match(bad(wrap('<rect style="fill:url(https://evil.example/x.svg)"/>')), /url\(#identifiant\)/);
+  assert.match(bad(wrap('<rect style="fill:url(https://evil.example/x.svg)"/>')), /url\(#id\)/);
 });
 
 test("svg : tout ce qui s'exécute ou sort du dessin est refusé, avec un message précis", () => {
@@ -55,37 +55,37 @@ test("svg : tout ce qui s'exécute ou sort du dessin est refusé, avec un messag
     [wrap('<a href="javascript:alert(1)"><rect/></a>'), /<a>/],
     [wrap('<text x="0" y="0">bonjour</text>'), /<text>/],
     [wrap('<animate attributeName="x"/>'), /animate/],
-    [wrap('<rect onload="alert(1)"/>'), /événement/],
-    [wrap('<rect onclick="x()"/>'), /événement/],
-    [wrap('<use href="http://evil.example/x.svg#a"/>'), /#identifiant|caractères spéciaux/],
-    [wrap('<use xlink:href="data:image/svg+xml;base64,AAAA"/>'), /#identifiant|caractères spéciaux|non accept/],
-    [wrap('<rect fill="url(http://evil.example/x)"/>'), /url\(#identifiant\)/],
-    [wrap('<rect width="url(#a)"/>'), /url\(#identifiant\)/],
-    [wrap('<rect fill="javascript:alert(1)"/>'), /non accept|couleur/],
-    [wrap('<rect x="&#106;avascript:"/>'), /caractères spéciaux/],
-    [wrap('<rect x="&amp;"/>'), /caractères spéciaux/],
-    [wrap('<rect x=1/>'), /illisible/],
-    [wrap('<rect bidule="1"/>'), /« bidule »/],
-    [wrap('<unknown/>'), /inconnu/],
+    [wrap('<rect onload="alert(1)"/>'), /event/],
+    [wrap('<rect onclick="x()"/>'), /event/],
+    [wrap('<use href="http://evil.example/x.svg#a"/>'), /#id|special characters/],
+    [wrap('<use xlink:href="data:image/svg+xml;base64,AAAA"/>'), /#id|special characters|not accept/],
+    [wrap('<rect fill="url(http://evil.example/x)"/>'), /url\(#id\)/],
+    [wrap('<rect width="url(#a)"/>'), /url\(#id\)/],
+    [wrap('<rect fill="javascript:alert(1)"/>'), /not accepted|colour/],
+    [wrap('<rect x="&#106;avascript:"/>'), /special characters/],
+    [wrap('<rect x="&amp;"/>'), /special characters/],
+    [wrap('<rect x=1/>'), /unreadable/],
+    [wrap('<rect bidule="1"/>'), /“bidule”/],
+    [wrap('<unknown/>'), /unknown/],
     ['<!DOCTYPE svg [<!ENTITY x "y">]>' + wrap("<rect/>"), /DOCTYPE/],
     [wrap("<![CDATA[x]]>"), /CDATA|DOCTYPE/],
-    [wrap("du texte libre"), /texte/],
-    ['<svg viewBox="0 0 1 1"><svg viewBox="0 0 1 1"/></svg>', /imbriqué/],
-    [wrap("<g><rect/></rect></g>"), /mal placée/],
-    [wrap("<g><rect/>"), /mal placée|jamais fermée/],
-    ["<rect/>", /commencer par <svg>/],
-    ["", /vide/],
-    ["pas du svg", /svg|balise|texte/],
-    [wrap('<rect fill="expression(alert(1))"/>'), /non accept|couleur/],
-    [wrap('<rect filter="url(#a) url(#b)"/>'), /url\(#identifiant\)/],
-    [wrap('<rect stroke-width="1;background:url(x)"/>'), /caractères spéciaux/],
+    [wrap("du texte libre"), /text/],
+    ['<svg viewBox="0 0 1 1"><svg viewBox="0 0 1 1"/></svg>', /nested/],
+    [wrap("<g><rect/></rect></g>"), /misplaced/],
+    [wrap("<g><rect/>"), /misplaced|never closed/],
+    ["<rect/>", /start with <svg>/],
+    ["", /empty/],
+    ["pas du svg", /svg|tag|text/],
+    [wrap('<rect fill="expression(alert(1))"/>'), /not accepted|colour/],
+    [wrap('<rect filter="url(#a) url(#b)"/>'), /url\(#id\)/],
+    [wrap('<rect stroke-width="1;background:url(x)"/>'), /special characters/],
   ];
   for (const [svg, re] of cases) assert.match(bad(svg), re, svg.slice(0, 80));
 });
 
 test("svg : taille bornée (24 Ko, 1500 éléments) et sortie jamais issue d'un contenu non reconnu", () => {
-  assert.match(bad(wrap(" ".repeat(MAX_SVG_BYTES))), /trop lourd/);
-  assert.match(bad(wrap("<rect/>".repeat(1600))), /trop d'éléments/);
+  assert.match(bad(wrap(" ".repeat(MAX_SVG_BYTES))), /too heavy/);
+  assert.match(bad(wrap("<rect/>".repeat(1600))), /too many elements/);
   const out = ok(wrap('<rect width="1" height="1" class="x" id="r1"/>'));
   assert.ok(!out.includes("class"), "classe ignorée");
   // ré-écriture : la sortie ne contient que des balises et attributs de la liste blanche
@@ -100,7 +100,7 @@ test("svg : les jetons du thème {accent}, {bg}… suivent les couleurs du site"
   const b = sanitizeSvg(template, { accent: "#d6336c", bg: "#1c1020", fg: "#fafafa" });
   assert.ok(b.svg.includes('fill="#d6336c"') && !b.svg.includes("#1a9aa3"));
   assert.equal(sanitizeSvg(template).ok, true, "à la validation, un gris neutre remplace les jetons");
-  assert.match(bad(wrap('<rect fill="{inconnu}"/>')), /caractères spéciaux|couleur/);
+  assert.match(bad(wrap('<rect fill="{inconnu}"/>')), /special characters|colour/);
 });
 
 test("fond : une couche « svg » devient une image de fond (data URI), remplit, contient ou se répète, avec estompage facultatif", () => {
@@ -114,7 +114,7 @@ test("fond : une couche « svg » devient une image de fond (data URI), remplit,
   assert.match(css({ fit: "tile", tile: 120 }), /background-size:120px auto;background-position:center;background-repeat:repeat;/);
   assert.match(css({ fit: "contain" }), /meet/.source ? /background-size:100% 100%/ : /x/);
   assert.match(css({ side: "left", span: 30, edge: "hard" }), /mask-image:linear-gradient\(to right,#000 30%,transparent 30%\)/);
-  assert.match(B.parseBackground([{ type: "svg", svg: "<svg viewBox='0 0 1 1'><script/></svg>" }]).error, /couche 1\.svg : l'élément <script>/);
+  assert.match(B.parseBackground([{ type: "svg", svg: "<svg viewBox='0 0 1 1'><script/></svg>" }]).error, /couche 1\.svg : the <script> element/);
   assert.match(B.parseBackground([{ type: "svg", svg, fit: "zoom" }]).error, /fit/);
 });
 

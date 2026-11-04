@@ -368,3 +368,23 @@ test("the owner's button: one server action, the right that manages the accesses
   const page = fs.readFileSync("src/app/admin/(panel)/assistants/[id]/page.tsx", "utf8");
   assert.match(page, /resetLimitsAction/);
 });
+
+test("upload: every brand svg of docs/brand (role, aria-label and title) goes through media_upload; hidden scripts in those features do not", async () => {
+  const { token } = await access();
+  const dir = path.join(process.cwd(), "docs", "brand");
+  const brand = fs.readdirSync(dir).filter((f) => f.endsWith(".svg"));
+  assert.ok(brand.length >= 5);
+  for (const file of brand) {
+    const res = await upload(token, fs.readFileSync(path.join(dir, file)));
+    assert.ok(res.value, `${file}: ${res.error}`);
+    assert.match(res.value.address, /\.svg$/);
+    const stored = fs.readFileSync(path.join(UPLOADS_DIR, res.value.id), "utf8");
+    assert.ok(stored.includes('role="img"') && stored.includes("<title>Curiosa</title>"), `${file}: accessibility features kept`);
+  }
+  const before = files().length;
+  const head = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"';
+  for (const evil of [`${head}><title><script>alert(1)</script></title><rect width="1" height="1"/></svg>`, `${head} role="button"><rect width="1" height="1"/></svg>`, `${head} aria-label="${"x".repeat(5000)}"><rect width="1" height="1"/></svg>`]) {
+    assert.match((await upload(token, Buffer.from(evil))).error, /svg was refused/);
+  }
+  assert.equal(files().length, before, "nothing stored for the refused ones");
+});
