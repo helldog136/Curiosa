@@ -1,6 +1,6 @@
 # An AI that can run the site: MCP tools to add
 
-Status: **batch 1 and publication are coded** (branch `feat/mcp-publish-and-access`: `maintenance_my_access`, `maintenance_catalog_plan`, `maintenance_module_install { modules }`, `maintenance_instance_add`, `maintenance_skin_set_options`, `<instance>__publish` / `__unpublish`, the separate `request` field; see `docs/MAINTENANCE-IA.md`). Publication was built directly as a tool that follows the approval setting instead of the `request_publish` of section 3 (row 8); everything else below is still an idea. Everything marked "proposal" is yet to be decided; the rest describes what exists today, with the file that proves it.
+Status: **batch 1 and publication are coded** (branch `feat/mcp-publish-and-access`: `maintenance_my_access`, `maintenance_catalog_plan`, `maintenance_module_install { modules }`, `maintenance_instance_add`, `maintenance_skin_set_options`, `<instance>__publish` / `__unpublish`, the separate `request` field; see `docs/MAINTENANCE-IA.md`). Publication was built directly as a tool that follows the approval setting instead of the `request_publish` of section 3 (row 8); **the menu and the home page are coded** (branch `feat/mcp-navigation-and-home`: `navigation_get` / `navigation_set`, `home_sections_list` / `home_sections_set`, see the addendum of `docs/MAINTENANCE-IA.md`; the design is one "send the whole list" writer per target instead of the `*_propose` pair of section 3, row 7: it follows the approval setting and keeps a restore point); everything else below is still an idea. Everything marked "proposal" is yet to be decided; the rest describes what exists today, with the file that proves it.
 
 
 **Starting decision**: an AI whose access is fully set up must be able to do **at least** what the Editorial role does in the admin, and more: install and configure modules. Without changing the security model: an AI never publishes anything, anything broad or destructive is a request that a human approves, no secret is ever read or written, everything is logged, each right is ticked separately, and everything is additive.
@@ -62,8 +62,8 @@ Roles: `src/core/auth/rights.ts`. Editorial (`editor`) has `core:entries.edit` a
 | Upload a media file, alternative text | Editorial (`/api/admin/upload`) | none | media (3.6) |
 | Short links | Editorial | `redirects_*` | nothing (already covered) |
 | Site settings: name, tagline, about, languages, logos, footer | Administration | none | 3.5 |
-| Menu and header links | Administration | none | 3.7 |
-| Home page sections | Administration | none | 3.7 |
+| Menu and header links | Administration | `navigation_get`, `navigation_set` (the menu; the secondary link and button of the header are not covered) | done (3.7) |
+| Home page sections | Administration | `home_sections_list`, `home_sections_set` | done (3.7) |
 | Skin, colors, fonts | Administration | `skin_*` (read), `skin_activate`, `font_set` (requests, **poorly visible**, § 1.2) | 3.4 |
 | Social networks shown | Administration | none | 3.7 |
 | Install / remove / configure a module | `core:modules.install` | `module_*` | extra instance (3.2) |

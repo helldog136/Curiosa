@@ -4,14 +4,17 @@ import { BLOCK_LABEL_KEYS } from "@/components/admin/blockLabels";
 import { floatingLabels } from "@/components/admin/floating";
 import { adminCtx } from "@/core/admin";
 import { getInstanceLabeler } from "@/core/modules/labels";
-import { getActiveInstances, sectionsOf } from "@/core/modules/registry";
+import { ENTRY_SECTION_ID, getActiveInstances, sectionsOf } from "@/core/modules/registry";
+import { publishedEntryChoices } from "@/core/content/entries";
 import { localized, type SettingField } from "@/core/modules/types";
 import { ActionForm } from "@/components/admin/ActionForm";
 import { ui } from "@/components/admin/ui";
 import { resolveSize } from "@/core/home";
 import { SECTION_SIZES, type SectionSize } from "@/core/modules/types";
 import { HomeBuilder, type HomeBlock, type HomeChoice } from "@/components/admin/HomeBuilder";
-import { saveHome } from "./actions";
+import { AssistantUndoNotice } from "@/components/admin/AssistantUndoNotice";
+import { homeRestorePoint } from "@/core/maintenance/siteHome";
+import { restoreAssistantHome, saveHome } from "./actions";
 
 export default async function HomeAdminPage() {
   const { t, locale, config, advanced } = await adminCtx("admin");
@@ -20,6 +23,8 @@ export default async function HomeAdminPage() {
   const L = (v: Parameters<typeof localized>[0]) => localized(v, locale, config.defaultLocale);
 
   // Toutes les sections proposables : une par (instance, section déclarée par son module).
+  // The "page to show" chooser lists the published entries of each content instance (nothing to type by hand).
+  const entryChoices = new Map(await Promise.all(active.filter(({ mod }) => !!mod.manifest.content).map(async ({ instance }) => [instance.key, await publishedEntryChoices(instance.id, locale, config.defaultLocale)] as const)));
   const choices: HomeChoice[] = active.flatMap(({ instance, mod }) =>
     sectionsOf(mod.manifest).map((s) => ({
       value: `${instance.key}|${s.id}`,
@@ -27,7 +32,9 @@ export default async function HomeAdminPage() {
       title: L(s.label),
       subtitle: labeler.label(instance),
       defaultSize: resolveSize({}, s.size),
-      options: ((s.options ?? []) as SettingField[]).map((o) => ({ key: o.key, type: o.type, label: L(o.label), default: o.default, options: o.options?.map((op) => ({ value: op.value, label: L(op.label) })) })),
+      options: ((s.options ?? []) as SettingField[]).map((o) => s.id === ENTRY_SECTION_ID && o.key === "entry"
+        ? { key: o.key, type: o.type, label: L(o.label), default: entryChoices.get(instance.key)?.[0]?.id, options: (entryChoices.get(instance.key) ?? []).map((e) => ({ value: e.id, label: e.title })) }
+        : { key: o.key, type: o.type, label: L(o.label), default: o.default, options: o.options?.map((op) => ({ value: op.value, label: L(op.label) })) }),
     })),
   );
   // Blocs de page du cœur : créés ici, sans module (voir core/homeBlocks.ts).
@@ -43,6 +50,7 @@ export default async function HomeAdminPage() {
     return c ? [{ uid: row.id || `s${i}`, value: c.value, size: resolveSize(row, c.defaultSize as SectionSize), isolated: row.isolated === true, options: { ...Object.fromEntries(c.options.filter((o) => o.default !== undefined).map((o) => [o.key, o.default])), ...row.options } }] : [];
   });
 
+  const undo = await homeRestorePoint();
   const blockLabels = Object.fromEntries(BLOCK_LABEL_KEYS.map((k) => [k, t(`block.${k}`)]));
   return (
     <div className="space-y-6">
@@ -50,6 +58,7 @@ export default async function HomeAdminPage() {
         <h1 className={ui.pageTitle}>{t("nav.home")}</h1>
         <p className={ui.pageIntro}>{advanced ? t("home.intro") : t("home.intro.simple")}</p>
       </div>
+      {undo && <AssistantUndoNotice text={t("aim.undo.home", { name: undo.by, date: new Date(undo.at).toLocaleString(locale) })} button={t("aim.undo.home.button")} action={restoreAssistantHome} />}
       <ActionForm action={saveHome} floating={floatingLabels(t)} submitLabel={t("action.save")}>
         <HomeBuilder choices={choices} initial={initial} locales={config.locales.map((l) => ({ code: l, name: localeName(l) }))} blockLabels={blockLabels}
           labels={{ editBlock: t("home.editBlock"), coreGroup: t("home.coreGroup"), modulesGroup: t("home.modulesGroup"), noFeatures: t("home.noFeatures"), cancel: t("home.cancel"), layoutHelpTitle: t("home.layoutHelpTitle"), empty: t("home.empty"), add: t("home.addBlock"), pick: t("home.pick"), up: t("home.up"), down: t("home.down"), remove: t("home.removeBlock"), size: t("home.size"), alone: t("home.isolated"), aloneHelp: t("home.isolatedHelp"), adjust: t("home.adjust"),

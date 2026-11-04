@@ -18,7 +18,7 @@ export const REQUEST_TTL_MS = 24 * 60 * 60_000;
 const KEEP = 50;
 const KEY = "maintenance.requests";
 
-export const LEVEL3_ACTIONS = ["module_update", "modules_update_all", "core_update", "module_uninstall", "module_install", "skin_install", "skin_activate", "skin_remove", "font_set", "skin_set_options", "instance_add", "entry_publish", "entry_unpublish", "site_settings_set"] as const;
+export const LEVEL3_ACTIONS = ["module_update", "modules_update_all", "core_update", "module_uninstall", "module_install", "skin_install", "skin_activate", "skin_remove", "font_set", "skin_set_options", "instance_add", "entry_publish", "entry_unpublish", "site_settings_set", "navigation_set", "home_sections_set"] as const;
 export type Level3Action = (typeof LEVEL3_ACTIONS)[number];
 
 export type Plan = {
@@ -54,6 +54,11 @@ export type Plan = {
    */
   site?: { changes: { field: string; locale?: string; from: string; fromFp: string; to: string }[]; names: string };
   entry?: { instance: string; locale?: string; items: { id: string; title: string; locales: string[]; fp: string }[] };
+  /**
+   * `navigation_set` / `home_sections_set`: the whole new menu (`entries`: menu nodes) or home page (`entries`: sections), frozen when the request is made, with a
+   * fingerprint of the state it was made from (`before`: a change made by someone else in between is NOT overwritten) and a summary in labels only for the owner.
+   */
+  change?: { target: "navigation" | "home"; before: string; entries: unknown[]; summary: { beforeCount: number; afterCount: number; added: string[]; removed: string[]; changed?: string[]; reordered: boolean; same: boolean } };
 };
 export type RequestStatus = "pending" | "running" | "done" | "failed" | "denied" | "expired";
 export type MaintenanceRequest = {

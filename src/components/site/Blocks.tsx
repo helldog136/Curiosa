@@ -12,6 +12,8 @@ import { makeTranslator } from "@/core/i18n/dictionary";
 import { describeNetHealth } from "@/core/netHealthText";
 import { EntryList } from "./EntryList";
 import { Markdown } from "./Markdown";
+import { CoverImage } from "./CoverImage";
+import { EntryIcon } from "./EntryIcon";
 import { ModuleForm } from "./ModuleForm";
 import { CopyCode } from "./CopyCode";
 import { CopyText } from "./CopyText";
@@ -171,6 +173,22 @@ export async function Blocks({ blocks, locale, adminInstanceId: panelInstanceId,
           </ul>,
         );
         break;
+      case "entryContent": {
+        // Same formatting as the entry page (title, summary, cover, body in Markdown, sanitised by Markdown), without the page chrome. A fallback language is announced like there.
+        const t = makeTranslator(locale);
+        out.push(
+          <article key={i} lang={block.lang} className="mx-auto max-w-[var(--sk-prose-width-wide,48rem)] space-y-4">
+            {block.fallback && <p data-skin-part="notice" data-tone="info" className="rounded-card border-token border-line bg-surface p-3 text-sm text-muted">{t("site.fallbackNotice", { lang: block.lang.toUpperCase() })}</p>}
+            {block.cover && <CoverImage src={block.cover} variant="article" />}
+            <header className="space-y-2">
+              <h2 data-skin-part="heading" data-level="2" className="flex items-center gap-3 text-2xl font-semibold"><EntryIcon icon={block.icon ?? null} className="h-6 w-6" />{block.title}</h2>
+              {block.summary && <p data-skin-part="lead" className="text-lg text-muted">{block.summary}</p>}
+            </header>
+            {block.body && <Markdown text={block.body} />}
+          </article>,
+        );
+        break;
+      }
       case "entries": {
         const instance = await getInstanceByKey(block.instance);
         if (!instance) break;

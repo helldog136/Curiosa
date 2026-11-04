@@ -20,12 +20,20 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **(English) Your assistant can send images to your site.** It sends the image in its message with a text that describes it. The site checks what the file really contains, gives it a random name and refuses anything that is not a safe image (3 MB at most).
 - **(English) It can set the identity of the site.** Name, tagline and presentation in each language, contact e-mail and logos, never languages, addresses or people. It follows your approval setting; the old values stay in the journal.
 - **(English) Hourly limits are split in two.** Everyday actions (publishing, images, settings) get a big allowance, risky ones (installing, updating) stay careful. You see what is left, reset it in one click on the access page, and set both limits in advanced mode.
+- **L'IA peut régler le menu et la page d'accueil.** Selon votre réglage, vous approuvez d'abord ou elle agit tout de suite. Si une entrée est fausse, rien n'est enregistré.
+- **Vous pouvez tout remettre comme avant.** Dans Navigation et dans Accueil, un bouton « Remettre l'ancien menu » (ou « l'ancienne page d'accueil ») apparaît après un changement de l'IA, tant que personne n'a modifié la page depuis.
+- **In English.** An AI you allow can now arrange your menu and compose your home page without opening the admin. You approve first or it acts at once, depending on your setting, and a button in Navigation and Home puts the previous version back.
+- **Une page entière sur l'accueil.** Vous pouvez choisir une page publiée et en montrer tout le contenu sur la page d'accueil, dans la langue de la personne qui visite. Une page retirée ne laisse rien à l'écran.
 
 ### Pour les développeurs
 
 - **New core tools:** `media_upload`, `media_list`, `media_set_alt`, `site_settings_get`, `site_settings_set` (`src/core/siteMcp.ts`, `mediaMcp.ts`, `maintenance/siteSettings.ts`), with `aim.tool.*` rights, profiles (read / assistant) and the "Site identity" section of the rights page. `site_settings_set` is the level 3 action `site_settings_set` (`Plan.site`).
 - **`media_upload` reuses the admin's pipeline** (`sniffImage`, `saveUpload`, `saveSvgUpload`, `MAX_INPUT_PIXELS`); the MCP body limit is 4.3 MB for a single `media_upload` call only (1 MB otherwise). Alternative texts are the settings `media.alt.<file>` (no migration); journal lines `media.upload`, `media.alt`.
 - **Shared hourly limits API in `src/core/maintenance/slots.ts`:** `takeSlot(tokenId, "risky" | "content")` (now async), `remainingSlots`, `resetSlots`, `getLimits`, `setLimits`. Defaults 12 and 120, bounded 1 to 60 and 10 to 1000 (setting `maintenance.limits`). `LEVEL3_CLASS` in `actions.ts` classes every level 3 action. `maintenance_my_access` reports `hourlyLimits`.
+- **New MCP tools `navigation_get`, `navigation_set`, `home_sections_list`, `home_sections_set`** (`src/core/maintenance/siteNavigation.ts`, `siteHome.ts`). Writers are level 3 requests through `callLevel3` (approval setting); `Plan.change` freezes the list and a fingerprint, so an approval never overwrites a later change. See `docs/MAINTENANCE-IA.md`.
+- **Restore point** in the core settings `mcp.undo.navigation` / `mcp.undo.home` (previous state, access name, time, fingerprint of the applied state), used by the new `AssistantUndoNotice` on the Navigation and Home admin pages. No migration.
+- **`Def.bare`** in `src/core/maintenance/tools.ts`: a maintenance tool that keeps its own name instead of the `maintenance_` prefix; not part of the old "Maintenance" token profile.
+- **Home section `entry`** (offered by every content instance with a page): renders one published entry through the `entryContent` block with the same Markdown renderer as the entry page; `home_sections_list` reports a broken one. The writers use the shared limiter: class "content" in `LEVEL3_CLASS`.
 
 ## 0.6.8 — 2026-11-04
 

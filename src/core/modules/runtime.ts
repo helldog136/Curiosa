@@ -5,7 +5,8 @@ import { getSiteConfig } from "../settings";
 import { boxed, STALLED } from "./budget";
 import { buildContext } from "./context";
 import { currentVisit, hasNewEntries } from "../visit";
-import { getActiveInstances, sectionsOf, type ActiveInstance } from "./registry";
+import { findEntryById } from "../content/entries";
+import { ENTRY_SECTION_ID, getActiveInstances, sectionsOf, type ActiveInstance } from "./registry";
 import type { PageResult, SlotContext } from "./types";
 
 type SlotExtras = Pick<SlotContext, "page" | "entry">;
@@ -83,6 +84,14 @@ export async function runSection(
       const config = await getSiteConfig();
       const limit = Math.min(50, Math.max(1, Number(options.count) || 3));
       return [{ type: "entries", instance: instance.key, limit, title: pickName(instance, locale, config.defaultLocale), link: true }];
+    }
+    // The full content of one published entry of this instance. Nothing when it does not exist, is not published, or belongs to another instance.
+    if (sectionId === ENTRY_SECTION_ID && mod.manifest.content && sectionsOf(mod.manifest).some((s) => s.id === ENTRY_SECTION_ID) && !mod.def.sections?.[ENTRY_SECTION_ID]) {
+      const id = typeof options.entry === "string" ? options.entry : "";
+      const entry = id ? await findEntryById(id, locale) : undefined;
+      if (!entry || entry.instanceId !== instance.id) return [];
+      const body = await filterEntryBody(entry.body, locale, { page: { key: instance.key, basePath: instance.basePath }, entry: { id: entry.id, title: entry.title, slug: entry.slug } });
+      return [{ type: "entryContent", lang: entry.locale, fallback: entry.isFallback, title: entry.title, summary: entry.summary || undefined, body, cover: entry.cover, icon: entry.icon }];
     }
     // Entrée(s) au hasard : proposée aux modules dont les entrées portent un code (codes promo…).
     if (sectionId === "random" && mod.manifest.content && sectionsOf(mod.manifest).some((s) => s.id === "random")) {

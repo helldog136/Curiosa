@@ -20,6 +20,14 @@ export function describeRequest(r: MaintenanceRequest, t: Translator, name: (id:
     const items = p.entry?.items ?? [];
     return t(`aim.req.${r.action}`, { n: items.length, list: items.map((i) => `“${i.title || i.id}”`).join(", "), instance: p.entry?.instance ?? "?" });
   }
+  if ((r.action === "navigation_set" || r.action === "home_sections_set") && p.change) {
+    const c = p.change.summary;
+    const detail = [
+      c.added.length ? t("aim.req.change.added", { list: c.added.join(", ") }) : "", c.removed.length ? t("aim.req.change.removed", { list: c.removed.join(", ") }) : "",
+      c.changed?.length ? t("aim.req.change.changed", { list: c.changed.join(", ") }) : "", c.reordered ? t("aim.req.change.reordered") : "", c.same ? t("aim.req.change.same") : "",
+    ].filter(Boolean).join(" ");
+    return t(`aim.req.${r.action}`, { before: c.beforeCount, after: c.afterCount, detail });
+  }
   if (r.action === "instance_add") return t("aim.req.instance_add", { name: name(p.module ?? ""), nickname: p.newInstance?.nickname ?? "?" });
   if (r.action === "skin_set_options") {
     const colors = p.options ? `${Object.entries(p.options.colors).map(([f, v]) => `${t(`aim.req.color.${f}`)} ${v || t("aim.req.color.reset")}`).join(", ")}${p.options.mode ? ` (${t(`aim.req.mode.${p.options.mode}`)})` : ""}` : "";

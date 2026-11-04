@@ -16,6 +16,8 @@ import { runContentCheck } from "./content/service";
 import { executeInstall, executeInstallBundle, prepareInstall, prepareInstallBundle, samePlan } from "./install";
 import { executeInstanceAdd, prepareInstanceAdd } from "./instances";
 import { executeEntryPublish, prepareEntryPublish } from "./publish";
+import { executeNavigationSet, prepareNavigationSet } from "./siteNavigation";
+import { executeHomeSectionsSet, prepareHomeSectionsSet } from "./siteHome";
 import { applyConfigure, parseConfigureArgs } from "./moduleSettings";
 import { executeFont, prepareFont } from "./fonts";
 import { executeSiteSettings, prepareSiteSettings } from "./siteSettings";
@@ -40,6 +42,7 @@ export type Params = { module?: string; instance?: string; /** Skins : l'identif
   /** `instance_add`: the nickname of the new instance. */ nickname?: unknown;
   /** `entry_publish` / `entry_unpublish`: the entry (or entries) of the instance named by `instance`, and the language to insist on. */ id?: unknown; ids?: unknown; locale?: unknown;
   /** `skin_set_options`: colours and fonts, as given to the tool. */ options?: Record<string, unknown>;
+  /** `navigation_set`: the whole menu; `home_sections_set`: the whole home page, as given to the tool. */ entries?: unknown; sections?: unknown;
   /** `site_settings_set`: the arguments, as given to the tool. */ site?: Record<string, unknown> };
 
 /* ───────────── Verrou et cadence ───────────── */
@@ -49,7 +52,7 @@ const g = globalThis as unknown as { curiosaMaintenanceBusy?: string | null };
 const LEVEL2_CLASS: Record<Level2Tool, SlotClass> = { check_updates: "content", backup_run: "content", content_check_run: "content", module_reinstall: "risky", module_restart: "risky" };
 const LEVEL3_CLASS: Record<Level3Action, SlotClass> = {
   module_update: "risky", modules_update_all: "risky", core_update: "risky", module_uninstall: "risky", module_install: "risky", skin_install: "risky", skin_activate: "risky", skin_remove: "risky", instance_add: "risky",
-  font_set: "content", skin_set_options: "content", entry_publish: "content", entry_unpublish: "content", site_settings_set: "content",
+  font_set: "content", skin_set_options: "content", entry_publish: "content", entry_unpublish: "content", site_settings_set: "content", navigation_set: "content", home_sections_set: "content",
 };
 /** Kept for compatibility: the default limit of the "risky" class (see slots.ts for the two classes). */
 export const MAX_ACTIONS_PER_HOUR = DEFAULT_LIMITS.risky;
@@ -217,6 +220,8 @@ export async function prepare(action: Level3Action, args: Params): Promise<Plan>
   }
   if (action === "instance_add") return prepareInstanceAdd({ module: args.module, nickname: args.nickname });
   if (action === "skin_set_options") return prepareSkinOptions(args.options ?? {});
+  if (action === "navigation_set") return prepareNavigationSet({ entries: args.entries });
+  if (action === "home_sections_set") return prepareHomeSectionsSet({ sections: args.sections });
   if (action === "site_settings_set") return prepareSiteSettings(args.site ?? {});
   if (action === "entry_publish" || action === "entry_unpublish") return prepareEntryPublish(action, { instance: args.instance, id: args.id, ids: args.ids, locale: args.locale });
   if (isSkinAction(action)) return prepareSkin(action, { skin: args.skin });
@@ -259,6 +264,8 @@ async function execute(action: Level3Action, plan: Plan, actorLabel: string): Pr
   // These re-read and compare by themselves (see publish.ts, install.ts, instances.ts, skins.ts).
   if (action === "entry_publish" || action === "entry_unpublish") return executeEntryPublish(action, plan, actorLabel);
   if (action === "skin_set_options") return executeSkinOptions(plan, actorLabel);
+  if (action === "navigation_set") return executeNavigationSet(plan, actorLabel);
+  if (action === "home_sections_set") return executeHomeSectionsSet(plan, actorLabel);
   if (action === "site_settings_set") return executeSiteSettings(plan, actorLabel);
   if (action === "module_install" && plan.bundle) return executeInstallBundle(plan, actorLabel);
   if (action === "instance_add") {
@@ -306,7 +313,7 @@ async function execute(action: Level3Action, plan: Plan, actorLabel: string): Pr
   return { ok: s.failed.length === 0 && !s.stoppedOn && s.updated.length > 0, message: parts.join("; ") || "Nothing was updated.", details: { updated: s.updated } };
 }
 
-const paramsText = (plan: Plan): string => plan.site ? plan.site.names : plan.bundle ? plan.bundle.map((p) => `${p.module} ${p.to}`).join(", ") : plan.entry ? `${plan.entry.instance}/${plan.entry.items.map((i) => i.id).join(",")}${plan.entry.locale ? ` ${plan.entry.locale}` : ""}` : plan.newInstance ? `${plan.module} "${plan.newInstance.nickname}"` : plan.options ? `${plan.skin}: ${plan.options.names}${plan.fonts ? `; fonts: ${plan.fonts.names}` : ""}` : paramsTextOther(plan);
+const paramsText = (plan: Plan): string => plan.change ? `${plan.change.target}: ${plan.change.summary.beforeCount} > ${plan.change.summary.afterCount}` : plan.site ? plan.site.names : plan.bundle ? plan.bundle.map((p) => `${p.module} ${p.to}`).join(", ") : plan.entry ? `${plan.entry.instance}/${plan.entry.items.map((i) => i.id).join(",")}${plan.entry.locale ? ` ${plan.entry.locale}` : ""}` : plan.newInstance ? `${plan.module} "${plan.newInstance.nickname}"` : plan.options ? `${plan.skin}: ${plan.options.names}${plan.fonts ? `; fonts: ${plan.fonts.names}` : ""}` : paramsTextOther(plan);
 const paramsTextOther = (plan: Plan) => plan.fonts ? plan.fonts.names : plan.skin ? `${plan.skin}${plan.to ? ` ${plan.to}` : ""}` : (plan.adds ? `${plan.module} ${plan.to}${plan.instanceKey ? ` key=${plan.instanceKey}` : ""}${plan.adds.length ? ` + ${plan.adds.map((a) => a.id).join(", ")}` : ""}` : plan.module ? (plan.keepData === undefined ? plan.module : `${plan.module}${plan.keepData ? " keepData" : " erase"}`) : null) ?? (plan.modules ? plan.modules.map((m) => `${m.id} ${m.from}>${m.to}`).join(", ") : plan.to ? `${plan.from}>${plan.to}` : "");
 
 /** Verrou + audit + avertissement autour d'une exécution de niveau 3. */

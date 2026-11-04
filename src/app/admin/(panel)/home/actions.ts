@@ -7,6 +7,7 @@ import { getActiveInstances, sectionsOf } from "@/core/modules/registry";
 import { audit } from "@/core/permissions";
 import { isSectionSize } from "@/core/home";
 import { setSetting, type HomeSection } from "@/core/settings";
+import { restoreHome } from "@/core/maintenance/siteHome";
 import type { ActionState } from "@/components/admin/ActionForm";
 
 export async function saveHome(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -51,4 +52,11 @@ export async function saveHome(_prev: ActionState, formData: FormData): Promise<
   await audit(user.email, "home.update");
   revalidatePath("/", "layout");
   return { ok: t("action.saved") };
+}
+
+/** Brings back the home page from before the last change made by an AI assistant (only while nobody edited it since). */
+export async function restoreAssistantHome(): Promise<void> {
+  const { user } = await adminCtx("admin");
+  await restoreHome(user.email);
+  revalidatePath("/admin/home");
 }
