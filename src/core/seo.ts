@@ -157,7 +157,8 @@ export function breadcrumbJsonLd(items: readonly BreadcrumbItem[]): Record<strin
 export function pageUrl(site: string, locale: string, defaultLocale: string, path: string): string {
   const prefix = locale === defaultLocale ? "" : `/${locale}`;
   const clean = ("/" + path.replace(/[?#].*$/, "").replace(/^\/+/, "")).replace(/\/+$/, "");
-  return `${site}${prefix}${clean === "" ? "/" : clean}`;
+  // The home of a prefixed language is "/fr", never "/fr/": the server answers the latter with a 308 redirect, so it must not be a canonical, hreflang or sitemap address.
+  return `${site}${prefix}${clean === "" && prefix === "" ? "/" : clean}`;
 }
 
 /** `canonical` + `hreflang` (dont `x-default` = langue par défaut) pour une page qui existe dans TOUTES les langues activées. */
