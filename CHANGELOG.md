@@ -28,6 +28,8 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Il connaît l'adresse de chaque page.** Quand il lit vos pages ou vos articles, il voit aussi leur adresse sur le site, dans chaque langue.
 - **(English) Your assistant can fix the description of a published page.** You tick a separate right, the page stays online and the old text is kept.
 - **(English) It knows the address of each page.** When it reads your pages or posts, it also sees their address on the site, in each language.
+- **Les logos de Curiosa sont acceptés par le site.** Un logo qui porte un texte pour les lecteurs d'écran (un nom et un titre cachés dans le dessin) n'est plus refusé, que vous l'envoyiez vous-même ou que votre assistant le fasse. Les dessins qui contiennent des scripts, des liens extérieurs ou du texte affiché restent refusés.
+- **(English) Curiosa's own logos are accepted by the site.** A logo that carries a text for screen readers (a name and a hidden title inside the drawing) is no longer refused, whether you send it yourself or your assistant does. Drawings with scripts, outside links or visible text are still refused.
 
 ### Pour les développeurs
 
@@ -39,6 +41,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **`Def.bare`** in `src/core/maintenance/tools.ts`: a maintenance tool that keeps its own name instead of the `maintenance_` prefix; not part of the old "Maintenance" token profile.
 - **Home section `entry`** (offered by every content instance with a page): renders one published entry through the `entryContent` block with the same Markdown renderer as the entry page; `home_sections_list` reports a broken one. The writers use the shared limiter: class "content" in `LEVEL3_CLASS`.
 - **Content tools:** `list_entries` and `get_entry` also return `path` and `paths` (`entryPath()`). New `<instance>__update_published_meta` (summary of a published entry; class "content"; journal `entry.meta.update`; restore point `mcp.undo.entryMeta`). See `docs/MAINTENANCE-IA.md`.
+- **`sanitizeSvg` (`src/core/svg.ts`) accepts safe accessibility features:** `role` (img, presentation, none, graphics-document), `aria-label`, `aria-labelledby`, `aria-hidden`, `focusable`, plain-text `<title>`/`<desc>` (capped, escaped). `docs/brand/*.svg` now upload; no rule relaxed. Its messages are English now.
 
 ## 0.6.8 — 2026-11-04
 
