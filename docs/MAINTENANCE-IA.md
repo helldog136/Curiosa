@@ -204,6 +204,22 @@ Every content module (blog, pages, links, sponsors...) gets two more tools from 
 | Journal | `entry.publish` / `entry.unpublish` with `<instance>/<entry id>`, actor `mcp:<access name>`, kind `assistant`; plus `mcp.maintenance.request`, `.approve` and `.entry_publish` for the request flow. Never a title or a text. |
 | Limits | The "everyday" counter of the access (120 per hour by default, shared with media, site settings and the other everyday actions), 12 entries per call, 120 requests per minute per access, 1 MB per body, like the other tools. |
 
+### Entry paths and correcting a published summary
+
+**Paths (additive).** `<instance>__list_entries` and `<instance>__get_entry` return, next to every field they already had (`id`, `status`, `title`, `locale`, `languages`, `summary`, `url`, `code`, `tags`, `publishedAt`, and for `get_entry` `body`), two more: `path`, the public path of the entry in the language shown (`/blog/hello`, `/fr/blog/bonjour`), and `paths`, `{ <language>: path }` for every translation. They come from `entryPath()` in `src/core/content/entries.ts` with the `basePath` of the instance: the default language of the site has no prefix, the others have `/<language>`. `status` tells whether the path is live (a draft has a path that is not public).
+
+**`<instance>__update_published_meta`.** Lets an AI correct the description of a PUBLISHED entry without taking it off the site (before, the page had to be unpublished and published again, and disappeared meanwhile). The data model only has a `summary` per language version, so that is the one field it changes: no migration, no new field.
+
+| Rule | What it means |
+|---|---|
+| Separate right | `aim.tool.update_published_meta` in the rights page (section "Publishing" in simple mode). `default: false`, `readOnly: false`, `audited: true`. Part of the "full" preset (`profiles.ts`). It does not use the approval setting: like the other everyday writes it acts at once, and the rights line says so. |
+| Input | Exactly `id`, `locale`, `summary` (2000 characters at most), all three required. Any other property (title, slug, body, status, url...) is refused as `unexpected argument`. |
+| Only a published entry | A draft is refused (use `update_draft`), as is an entry of another instance ("not found") or a language version that does not exist. Same summary as now: `changed: false`, no journal line. |
+| One write | Only the summary of that language version, with the previous value as a condition (a person saving at the same moment is never overwritten). The entry stays published. |
+| Journal | `entry.meta.update`, target `<instance>/<entry id>`, actor `mcp:<access name>`; `data` holds the language and the two LENGTHS, never the text. |
+| Restore point | Setting `mcp.undo.entryMeta` (20 points at most, one per entry and language): who, when, the previous summary and the text the AI wrote. `restoreEntrySummary(key, id, locale)` in `src/core/maintenance/entryMeta.ts` puts the previous text back only while the version still has the text the AI wrote. There is no admin button yet. |
+| Limits | The shared "everyday" counter, `takeSlot(tokenId, "content")`. |
+
 ### `maintenance_my_access` (level 1, read, granted by default)
 
 Returns what this access can and cannot do: `granted` (tool, kind, one sentence), `notGranted` (tool, kind, `why`: `box_not_ticked` or `access_is_read_only`, and `rightToTick`, the same plain-words sentence as the rights page), the ceiling, the approval setting (`ask_first` / `act_without_asking`) and the requests that always wait for the owner, and the reconnection notice. It never returns a value, a secret or anything about other accesses. An assistant calls it first, and whenever a tool it expects is missing.
@@ -262,7 +278,7 @@ Goal: an AI with the right to do it sets up the identity of a whole site without
 |---|---|
 | Bytes only in the call | `media_upload { dataBase64, alt, name? }`. The server never fetches an address (no `url` argument, no third-party request, nothing to point at an internal server). The call body may reach 4.3 MB for this one call only (3 MB of image in base64); every other call, and any batch, stays at 1 MB. |
 | Type read from the bytes | `sniffImage` of the admin's own upload route (png, jpeg, webp, gif). The file name and the declared type are ignored. A video is refused even though the admin accepts it. |
-| SVG | Only through the logo pipeline (`saveSvgUpload` in `logoUpload.ts`): the drawing is re-written from the recognised elements, scripts, styles, texts, images and outside links are refused, 300 KB at most, and what is stored is the cleaned copy. |
+| SVG | Only through the logo pipeline (`saveSvgUpload` in `logoUpload.ts`, which uses `sanitizeSvg` in `svg.ts`, the same sanitiser as the admin logo upload): the drawing is re-written from the recognised elements, scripts, styles, texts, images, `foreignObject`, event attributes, outside links and entities are refused, 300 KB at most, and what is stored is the cleaned copy. The safe accessibility features are accepted, so the project's own brand files (`docs/brand/*.svg`) upload fine: `role` (only `img`, `presentation`, `none`, `graphics-document`), `aria-label` (120 characters at most), `aria-labelledby`, `aria-hidden`, `focusable`, and `<title>` (200 characters) / `<desc>` (500) holding plain text only (no markup, no entity, written back escaped). The alternative text of the media is still the one given at upload; it is not read from the drawing. |
 | Size and pixels | 3 MB at most; 40 million pixels at most (`MAX_INPUT_PIXELS` of `imageDerive.ts`, read from the header with `sharp`, no decoding). A file the engine cannot read is refused. |
 | Name | Random (`/uploads/<uuid>.<ext>`, `storeUpload`). The `name` sent by the AI is only a label for the journal, cut to its last path part and to letters, digits and `. _ -`. |
 | EXIF | Like the admin's upload, the stored original is not rewritten: only the resized copies lose their metadata. |
