@@ -24,6 +24,16 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Les chiffres des personnes qui visitent ne changent pas.** La page « Confidentialité » du site le dit en une phrase.
 - Seuls les robots qui chargent la page comme un navigateur sont vus. Aucun réglage à faire.
 
+### Assistants IA
+
+- **Votre assistant IA peut publier à votre place, si vous le lui permettez.** Un droit « Publication » existe pour chaque liste de contenu (articles, pages, liens…). Il ne publie que des brouillons qui existent déjà, sans changer leur texte, et suit votre réglage : vous validez chaque demande, ou vous le laissez agir.
+- **Rien n'est publié à moitié.** S'il manque une langue, l'assistant reçoit un message clair qui dit laquelle, et rien ne part. Chaque publication est inscrite au journal, sans le texte.
+- **Votre assistant sait ce qu'il peut faire.** Il peut lire la liste de ses droits et de ce qui lui manque, avec la phrase à cocher pour vous. Après un changement de droits, il doit se reconnecter pour le voir.
+- **Un plan complet, une seule demande.** Il prépare l'installation de plusieurs fonctionnalités d'un coup (12 au plus) et vous la soumet en une demande : vous voyez chacune et tout ce qu'elle demande. Il peut aussi demander un exemplaire de plus d'une fonctionnalité, et des couleurs ou polices.
+- **(English) Your AI assistant can publish drafts for you, if you allow it.** It never changes their text and follows your setting: you approve each request, or you let it act. A missing language is reported and nothing is published half-way.
+- **(English) Your assistant knows what it can do.** It can read its rights and what it lacks, with the sentence for you to tick. After a change of rights it has to reconnect to see it.
+- **(English) A full plan, one request.** It prepares the installation of several features at once (12 at most) and sends you one request: you see each one and everything it asks for. It can also ask for one more copy of a feature, and for colors or fonts.
+
 ### Langues
 
 - **L'assistant d'installation parle enfin la langue choisie.** En anglais, les extensions proposées (blog, liens, pages…) s'affichent avec leur description anglaise ; avant, un texte français pouvait s'y glisser. Il démarre dans la langue de votre navigateur, ou en anglais, et ses boutons et messages suivent la langue choisie.
@@ -32,6 +42,12 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Ajouter une langue ne demande que des fichiers.** Un guide pas à pas (le document TRANSLATING) et une commande qui prépare les fichiers à traduire permettent à chacun de proposer sa langue.
 
 ### Pour les développeurs
+
+- **AI publishing** (`src/core/maintenance/publish.ts`, tools generated in `src/core/content/mcp.ts`): `<instance>__publish` / `__unpublish` as level 3 actions `entry_publish` / `entry_unpublish` of `callLevel3`, so they follow the per-access approval setting. A bundle is `plan.entry.items` with a text fingerprint; a draft edited after the request is not published.
+- **New core tools** (all additive): `maintenance_my_access` (default on), `maintenance_catalog_plan`, `maintenance_instance_add` (always waits for the owner, like installs), `maintenance_skin_set_options` (`saveColorChoices` in `skins/appearance.ts`), and `maintenance_module_install { modules }` (`plan.bundle`, one pending request).
+- **`McpTool.request`** (optional boolean) marks tools that create requests; `destructive` is now only for deletions (uninstall, skin removal). `MAINTENANCE_TOOLS` carries both. The rights page and the requests tab read both.
+- **Profile definition** `src/core/services/mcp/profiles.ts`: new tools are assigned (`read`: my_access, catalog_plan; `full`: instance_add, skin_set_options, publish, unpublish). Same file as the AI-access onboarding branch: merge by keeping both lists.
+- **`listChanged` is still `false`**: evaluated and documented in `docs/MAINTENANCE-IA.md` (no session, no stream, no timers).
 
 - **Languages and modules (i18n).** One pure source, `src/core/i18n/audit.mjs`: `pickText` (requested language, site main language, English; no French default), `auditManifest`, `auditDictionaries`, `applyTranslations`, `manifestSkeleton`. `localized()`, `pickLocalized`, `pickWords`, `renderEvent` and the MCP catalogue tools use it.
 - `makeTranslator(locale, siteDefault?)` follows the same chain and treats an empty text as missing.

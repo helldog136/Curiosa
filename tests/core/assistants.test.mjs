@@ -152,7 +152,10 @@ test("page : sous-titre « API & MCP » et réglages techniques seulement en mod
 
 test("accès : la page d'un accès réunit droits et validation, le détail par outil est réservé au mode avancé", () => {
   const page = read(`${PANEL}/assistants/[id]/page.tsx`);
-  assert.match(page, /const shown = \[\.\.\.groups\.entries\(\)\]\.filter\(\(\[source\]\) => advanced \|\| source === "maintenance"\)/);
+  assert.match(page, /const shown: \[string, typeof catalogue\]\[\] = \[\.\.\.groups\.entries\(\)\]\.filter\(\(\[source\]\) => advanced \|\| source === "maintenance"\)/);
+  // Publishing: a section of its own in plain words in simple mode (a right of its own, per content list).
+  assert.match(page, /if \(!advanced && publishing\.length\) shown\.push\(\["publishing", publishing\]\)/);
+  assert.match(page, /data-testid="publishing-help"/);
   assert.match(page, /data-testid="maintenance-approval"/);
   assert.match(page, /ConfirmButton message=\{t\("aim\.approval\.directConfirm", \{ token: row\.name \}\)\}/, "la confirmation de l'exécution directe est conservée");
   assert.match(page, /confirmMessage=\{tool\.destructive \?/, "la confirmation d'une action irréversible est conservée");

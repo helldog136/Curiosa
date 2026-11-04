@@ -21,7 +21,10 @@ export function describeRequest(r: MaintenanceRequest, t: Translator, name: (id:
     return t(`aim.req.${r.action}`, { n: items.length, list: items.map((i) => `“${i.title || i.id}”`).join(", "), instance: p.entry?.instance ?? "?" });
   }
   if (r.action === "instance_add") return t("aim.req.instance_add", { name: name(p.module ?? ""), nickname: p.newInstance?.nickname ?? "?" });
-  if (r.action === "skin_set_options") return t("aim.req.skin_set_options", { list: [p.options?.names, p.fonts ? `fonts: ${p.fonts.names}` : ""].filter(Boolean).join("; ") || "?" });
+  if (r.action === "skin_set_options") {
+    const colors = p.options ? `${Object.entries(p.options.colors).map(([f, v]) => `${t(`aim.req.color.${f}`)} ${v || t("aim.req.color.reset")}`).join(", ")}${p.options.mode ? ` (${t(`aim.req.mode.${p.options.mode}`)})` : ""}` : "";
+    return t("aim.req.skin_set_options", { list: [colors, p.fonts?.names].filter(Boolean).join("; ") || "?" });
+  }
   if (r.action === "module_install") {
     const also = (p.adds ?? []).map((a) => a.name ?? name(a.id));
     const perms = (p.permissions ?? []).map((x) => t(`perm.${x}`)).filter((x, i) => x !== `perm.${(p.permissions ?? [])[i]}`);

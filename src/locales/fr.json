@@ -3814,5 +3814,13 @@
   "aim.risk.instance_add": "Un exemplaire de plus de la fonctionnalité est créé avec ses réglages de départ, sans contenu. Il peut avoir sa page publique ; vous décidez où il apparaît dans le menu. Cette demande ne s'exécute jamais sans votre accord.",
   "aim.risk.skin_set_options": "L'apparence de votre site change tout de suite. Rien n'est perdu : « Annuler », dans Apparence, remet tout. Les couleurs difficiles à lire sont corrigées à l'affichage.",
   "aim.risk.entry_publish": "Ces entrées deviennent visibles pour toutes les personnes qui visitent votre site. L'IA ne peut pas changer leur texte avec cette demande, et vous pouvez les remettre en brouillon à tout moment.",
-  "aim.risk.entry_unpublish": "Ces entrées n'apparaissent plus sur votre site tant qu'elles ne sont pas publiées de nouveau. Rien n'est supprimé."
+  "aim.risk.entry_unpublish": "Ces entrées n'apparaissent plus sur votre site tant qu'elles ne sont pas publiées de nouveau. Rien n'est supprimé.",
+  "aim.req.color.background": "fond",
+  "aim.req.color.surface": "panneaux",
+  "aim.req.color.text": "texte",
+  "aim.req.color.accent": "couleur principale",
+  "aim.req.color.accent2": "seconde couleur",
+  "aim.req.color.reset": "celle du skin",
+  "aim.req.mode.light": "mode clair",
+  "aim.req.mode.dark": "mode sombre"
 }

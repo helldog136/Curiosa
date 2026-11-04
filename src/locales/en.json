@@ -3814,5 +3814,13 @@
   "aim.risk.instance_add": "Another copy of the feature is created with its default settings, with no content. It may get a public page; you decide where it shows in the menu. This request never runs without your approval.",
   "aim.risk.skin_set_options": "Your site's look changes right away. Nothing is lost: “Undo”, in Appearance, puts everything back. Colors that are hard to read are corrected when the site is displayed.",
   "aim.risk.entry_publish": "These entries become visible to everyone who visits your site. The AI cannot change their text with this request, and you can bring them back to draft at any time.",
-  "aim.risk.entry_unpublish": "These entries stop showing on your site until they are published again. Nothing is deleted."
+  "aim.risk.entry_unpublish": "These entries stop showing on your site until they are published again. Nothing is deleted.",
+  "aim.req.color.background": "background",
+  "aim.req.color.surface": "panels",
+  "aim.req.color.text": "text",
+  "aim.req.color.accent": "main color",
+  "aim.req.color.accent2": "second color",
+  "aim.req.color.reset": "the skin's own",
+  "aim.req.mode.light": "light mode",
+  "aim.req.mode.dark": "dark mode"
 }

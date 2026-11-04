@@ -5,6 +5,7 @@ import { createCatalogue } from "../helpers/catalogue.mjs";
 
 // maintenance_my_access, maintenance_catalog_plan, installing several modules in ONE request, maintenance_instance_add, maintenance_skin_set_options,
 // and the description fixes. The catalogue is a real local git repository (tests/helpers/catalogue.mjs).
+// eslint-disable-next-line react-hooks/rules-of-hooks -- useTestDb is not a React hook
 const db = await useTestDb();
 const cat = createCatalogue();
 const T = await import("@/core/services/mcp/tokens");
@@ -208,7 +209,7 @@ test("skin_set_options: colours within the skin; follows the approval setting; t
   const ask = (await call(token, "maintenance_skin_set_options", { accent: "#2244aa", background: "#101820" })).value;
   assert.equal(ask.status, "pending_approval");
   assert.equal(await getSetting("theme.accent"), undefined, "nothing changes before the approval");
-  assert.match(describeRequest(await Q.getRequest(ask.requestId), makeTranslator("en"), (x) => x), /Change the colors and fonts of your site: colours: accent #2244aa/);
+  assert.match(describeRequest(await Q.getRequest(ask.requestId), makeTranslator("en"), (x) => x), /Change the colors and fonts of your site: background #101820, main color #2244aa/);
   const done = await M.approveRequest(ask.requestId, owner);
   assert.equal(done.ok, true, done.message);
   assert.equal(await getSetting("theme.accent"), "#2244aa");
