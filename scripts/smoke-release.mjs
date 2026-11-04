@@ -51,7 +51,7 @@ async function boot(name, prepare) {
   execFileSync("npx", ["prisma", "migrate", "deploy"], { cwd: app, env, stdio: "pipe" });
   if (prepare) await prepare(env);
   const port = await freePort();
-  const child = spawn("npx", ["next", "start", "-p", String(port)], { cwd: app, env, stdio: "pipe", detached: true });
+  const child = spawn("npx", ["next", "start", "-H", "127.0.0.1", "-p", String(port)], { cwd: app, env, stdio: "pipe", detached: true });
   let log = "";
   child.stdout.on("data", (d) => (log += d)); child.stderr.on("data", (d) => (log += d));
   const base = `http://127.0.0.1:${port}`;
@@ -84,6 +84,8 @@ const q = (env, code) => execFileSync(process.execPath, ["-e", code], { cwd: app
         await p.user.create({ data: { email: "o@example.org", name: "O", role: "owner", passwordHash: "x" } });
         await p.setting.create({ data: { key: "setup.completed", locale: "", value: "true" } });
         await p.setting.create({ data: { key: "site.name", locale: "", value: JSON.stringify("Site d'avant") } });
+        await p.setting.create({ data: { key: "i18n.default", locale: "", value: JSON.stringify("en") } });
+        await p.setting.create({ data: { key: "i18n.enabled", locale: "", value: JSON.stringify(["en", "fr"]) } });
         await p.$disconnect();
       })();`);
   });
@@ -96,6 +98,15 @@ const q = (env, code) => execFileSync(process.execPath, ["-e", code], { cwd: app
     check(owner === "owner:0:null", "mise à jour : le compte propriétaire est intact, sans double vérification imposée");
     const tables = q(s.env, `const { PrismaClient } = require("@prisma/client"); const p = new PrismaClient(); Promise.all([p.authLock.count(), p.passkey.count(), p.recoveryCode.count(), p.passkeyChallenge.count()]).then((r) => console.log(r.join(","))).finally(() => p.$disconnect())`);
     check(tables === "0,0,0,0", "mise à jour : les tables de sécurité (verrouillage, clés d'accès, codes de secours) existent");
+    // Conditions de production : `next start -H 127.0.0.1` (ci-dessus) derrière un serveur web en HTTPS (X-Forwarded-Proto: https). Une page sous le préfixe
+    // de la seconde langue ne doit jamais répondre 500 (réécriture absolue non interne) ; une adresse inconnue sous ce préfixe est un 404.
+    {
+      const via = { headers: { "x-forwarded-proto": "https" } };
+      for (const p of ["/fr", "/fr/privacy"]) { const r = await fetch(`${s.base}${p}`, via); check(r.status === 200, `langue secondaire derrière HTTPS : ${p} répond 200 (${r.status})`); }
+      const r404 = await fetch(`${s.base}/fr/introuvable`, via);
+      check(r404.status === 404, `langue secondaire derrière HTTPS : une adresse inconnue répond 404 (${r404.status})`);
+      check(/lang="fr"/.test(await (await fetch(`${s.base}/fr/privacy`, via)).text()), "langue secondaire derrière HTTPS : la page est bien en français");
+    }
     const login = await fetch(`${s.base}/admin/login`);
     check(login.status === 200, "mise à jour : la page de connexion répond");
     // Polices embarquées (fonts/ de l'archive) : une police de la bibliothèque est servie par le site, au bon type, avec son cache éternel.

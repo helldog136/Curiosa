@@ -40,7 +40,11 @@ if (!validManifestPaths(PATHS)) { console.error("Liste de chemins invalide."); p
  */
 export const NOT_SHIPPED = ["node_modules/@next/swc-*", "node_modules/next/next-swc-fallback", "node_modules/@img/sharp-*wasm32", "node_modules/typescript", "node_modules/simple-icons/icons", "node_modules/@prisma/client/runtime/*wasm*", "node_modules/prisma/libquery_engine-*", "node_modules/@prisma/engines/libquery_engine-*"];
 
-fs.writeFileSync("release.json", JSON.stringify({ name: "curiosa", version, platform: platformId(), repo, node: process.versions.node, builtAt: new Date().toISOString(), paths: PATHS }, null, 2));
+// `languages`: the archive has no src/, and next.config.mjs needs the language codes at startup (URL prefixes /fr, /de...).
+function languageCodes() {
+  try { return Object.keys(JSON.parse(fs.readFileSync("src/locales/languages.json", "utf8"))); } catch { return undefined; }
+}
+fs.writeFileSync("release.json", JSON.stringify({ name: "curiosa", version, platform: platformId(), repo, node: process.versions.node, builtAt: new Date().toISOString(), paths: PATHS, languages: languageCodes() }, null, 2));
 fs.mkdirSync(outDir, { recursive: true });
 const file = path.join(outDir, assetName(`v${version}`));
 execFileSync("tar", ["-czf", file, "--exclude=.next/cache", "--exclude=node_modules/.cache", ...NOT_SHIPPED.map((p) => `--exclude=${p}`), ...PATHS], { stdio: "inherit" });
