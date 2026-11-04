@@ -107,7 +107,7 @@ export async function mediaUpload(rawArgs: Record<string, unknown>, actor: { nam
   if (looksLikeSvg(buf)) {
     // The logo pipeline: re-written, never stored as received.
     const r = await saveSvgUpload(buf);
-    if ("error" in r) throw new McpToolError(r.error === "svg" ? `This svg was refused: only simple shapes, gradients and filters are accepted; scripts, styles, texts, embedded images and outside links are not. Send a simpler svg or a png. Detail from the site (in French): ${r.detail}` : "This is not a usable image. Send png, jpeg, webp or gif.");
+    if ("error" in r) throw new McpToolError(r.error === "svg" ? `This svg was refused: only simple shapes, gradients and filters are accepted; scripts, styles, texts other than a plain <title>/<desc>, embedded images and outside links are not. Send a simpler svg or a png. Detail from the site: ${r.detail}` : "This is not a usable image. Send png, jpeg, webp or gif.");
     address = r.url; kind = "svg";
   } else {
     const type = sniffImage(buf);
