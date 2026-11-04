@@ -11,6 +11,7 @@ import { forgetModule, getModule, moduleDir, readGitManifest, verifyModuleLoad }
 import { LoadCheckFailed, preflightModule } from "./loadCheck";
 import { clearBlockedUpdate, noteBlockedUpdate as noteBlocked } from "./blockedUpdate";
 import { staticImportsWarning } from "./staticImports";
+import { i18nWarning, type I18nWarning } from "../i18n/moduleStatus";
 import { findCatalogueEntry, getCatalogue, type CatalogueEntry } from "./catalogue";
 import { hardNeeds, offerVersionOf, satisfiesVersion } from "./serviceVersions";
 import { dependentsOf } from "./dependencies";
@@ -30,7 +31,23 @@ const MAX_MODULE_BYTES = 10 * 1024 * 1024;
 const DEFAULT_HOSTS = "github.com,gitlab.com,codeberg.org,bitbucket.org";
 
 /** Remarque sur un module qui s'installe : ses fichiers voisins sont importés de façon statique (fragile hors du cœur 0.2.13+, voir staticImports.ts). */
-export type LoadWarning = { code: "staticImports"; files: string[] };
+export type LoadWarning = { code: "staticImports"; files: string[] } | I18nWarning;
+
+/**
+ * Every note for a module that has just been installed or updated: neighbour files imported statically, texts missing in English or French.
+ * A note is never a refusal (the module works; the missing texts fall back to English, never to another language by accident). The i18n note is also written to the log.
+ */
+export function loadWarnings(dir: string, id: string): LoadWarning[] {
+  const out: LoadWarning[] = [];
+  const statics = staticImportsWarning(dir);
+  if (statics) out.push(statics);
+  const i18n = i18nWarning(dir);
+  if (i18n) {
+    out.push(i18n);
+    console.warn(`[i18n] module "${id}" is missing ${i18n.errors} text(s) in ${i18n.languages.join(" and ") || "English or French"} (e.g. ${i18n.examples.slice(0, 2).join("; ")}). Missing texts fall back to English.`);
+  }
+  return out;
+}
 
 export type InstallResult = {
   ok: true; id: string; migrations?: MigrationOutcome[];
@@ -288,9 +305,9 @@ export async function installModule(input: string, opts: {
     if (deps) await commitJournal(deps);
     opStep("data");
     const kept = opts.restoreKept === false ? null : await restoreModuleInstances(m.id);
-    const warning = staticImportsWarning(moduleDir(m.id));
+    const warnings = loadWarnings(moduleDir(m.id), m.id);
     return {
-      ok: true, id: m.id, ...(warning ? { warnings: [warning] } : {}), ...(deps?.provided.length ? { provided: deps.provided } : {}),
+      ok: true, id: m.id, ...(warnings.length ? { warnings } : {}), ...(deps?.provided.length ? { provided: deps.provided } : {}),
       ...(kept?.restored.length ? { restored: kept.restored.map((r) => r.key) } : {}), ...(kept?.migrations.length ? { migrations: kept.migrations } : {}),
     };
   } catch (error) {
@@ -428,8 +445,8 @@ async function updateSubdirModule(row: Module, chain: string[]): Promise<Install
     opStep("activate");
     const after = await afterMigrations(id, settled);
     await clearBlockedUpdate(id);
-    const warning = staticImportsWarning(target);
-    return { ok: true, id, migrations, ...(warning ? { warnings: [warning] } : {}), ...(after.provided.length ? { provided: after.provided } : {}), ...(after.missing ? { missing: after.missing } : {}) };
+    const warnings = loadWarnings(target, id);
+    return { ok: true, id, migrations, ...(warnings.length ? { warnings } : {}), ...(after.provided.length ? { provided: after.provided } : {}), ...(after.missing ? { missing: after.missing } : {}) };
   } catch (error) {
     if (pending) await unwind(pending);   // panne exceptionnelle pendant les migrations (elles ne lèvent pas d'ordinaire) : tout est défait
     if (swapped) { fs.rmSync(target, { recursive: true, force: true }); fs.renameSync(backup, target); }
@@ -595,8 +612,8 @@ async function updateModuleWithin(id: string, chain: string[]): Promise<InstallR
     const after = await afterMigrations(id, settled);
     provided.push(...after.provided);
     await clearBlockedUpdate(id);
-    const warning = staticImportsWarning(dir);
-    return { ok: true, id, migrations, ...(warning ? { warnings: [warning] } : {}), ...(provided.length ? { provided: [...new Set(provided)] } : {}), ...(after.missing ? { missing: after.missing } : {}) };
+    const warnings = loadWarnings(dir, id);
+    return { ok: true, id, migrations, ...(warnings.length ? { warnings } : {}), ...(provided.length ? { provided: [...new Set(provided)] } : {}), ...(after.missing ? { missing: after.missing } : {}) };
   } catch (error) {
     // Retour en arrière : à la version d'avant, ou à la dernière version intermédiaire dont les données ont été migrées (jamais du code plus ancien que les données).
     if (pending) await unwind(pending);   // panne exceptionnelle pendant les migrations (elles ne lèvent pas d'ordinaire) : la cascade est défaite aussi

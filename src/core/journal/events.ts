@@ -5,6 +5,7 @@
  * il DÉCLARE dans son manifeste (`logEvents`) chaque type d'événement : clé, libellé français et anglais, champs autorisés. Tout champ non déclaré est écarté,
  * chaque valeur tient en 200 caractères, aucun secret ni texte libre du public n'est conservé. Un module sans déclaration écrit des lignes génériques SANS données.
  */
+import { pickText } from "../i18n/audit.mjs";
 
 /** Toutes les bornes du journal en un seul endroit (jamais de minuteur de fond : la purge se fait à l'écriture, par petites tranches). */
 export const JOURNAL_LIMITS = {
@@ -158,9 +159,9 @@ export function actorKindOf(actor: string): ActorKind {
   return actor.includes("@") ? "person" : "system";
 }
 
-/** La phrase d'un événement : le libellé de la langue demandée (sinon celle du site, l'anglais, le français), `{champ}` remplacé par la valeur. */
+/** La phrase d'un événement : le libellé de la langue demandée (sinon celle du site, puis l'anglais), `{champ}` remplacé par la valeur. */
 export function renderEvent(decl: Pick<LogEventDecl, "label">, data: Record<string, string | number | boolean>, opts: { locale: string; defaultLocale: string; yes: string; no: string }): string {
-  const label = decl.label[opts.locale] ?? decl.label[opts.defaultLocale] ?? decl.label.en ?? decl.label.fr ?? Object.values(decl.label)[0] ?? "";
+  const label = pickText(decl.label, opts.locale, opts.defaultLocale);
   return label.replace(PLACEHOLDER_RE, (_all, name: string) => {
     const v = data[name];
     if (v === undefined) return "—";

@@ -13,8 +13,7 @@ import { parseManifest, type ParsedManifest } from "./manifest";
 import { bumpImportStamp, forgetModule, moduleDir, readGitManifest, verifyModuleLoad } from "./registry";
 import { LoadCheckFailed, preflightModule } from "./loadCheck";
 import { clearBlockedUpdate, noteBlockedUpdate } from "./blockedUpdate";
-import { staticImportsWarning } from "./staticImports";
-import type { LoadWarning } from "./installer";
+import { loadWarnings, type LoadWarning } from "./installer";
 
 /**
  * RÉINSTALLATION D'UN MODULE (maintenance). Remet le CODE d'un module installé à neuf depuis sa source, même si le numéro de version est identique
@@ -241,9 +240,9 @@ export async function reinstallModule(id: string, opts: ReinstallOptions = {}): 
     swapped = false;
 
     await clearBlockedUpdate(id);
-    const warning = staticImportsWarning(target);
+    const warnings = loadWarnings(target, id);
     // Jamais « redémarrez le site » pour des fichiers secondaires : chaque chargement part d'une copie neuve de tout le dossier (snapshot.ts).
-    return { ok: true, id, changed: true, before, after, migrations, ...(warning ? { warnings: [warning] } : {}) };
+    return { ok: true, id, changed: true, before, after, migrations, ...(warnings.length ? { warnings } : {}) };
   } catch (error) {
     let rolledBack = false;
     if (swapped) {

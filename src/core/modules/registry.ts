@@ -15,6 +15,7 @@ import { invalidateModuleSkinLayer } from "../skins/moduleParts";
 import { pageIsOn, pageSettingStorageKey } from "./publicPage";
 import { discardSnapshot, pruneSnapshots, snapshotModule } from "./snapshot";
 import { cleanReason, describeShape, shapeProblems } from "./loadCheck";
+import { applyTranslations } from "../i18n/audit.mjs";
 
 export type LoadedModule = {
   row: Module;
@@ -98,7 +99,9 @@ async function importModule(row: Module): Promise<LoadedModule & { hasDefault: b
       throw error;
     }
   }
-  return { row, manifest, def, locales: readLocales(moduleDir(row.id)), hasDefault };
+  const locales = readLocales(moduleDir(row.id));
+  // Languages other than English and French come from the module's language files (`manifest.<path>` keys): no code, no change to module.json.
+  return { row, manifest: applyTranslations(manifest, locales), def, locales, hasDefault };
 }
 
 const cacheKeyOf = (row: Pick<Module, "id" | "version" | "commit">) => `${row.id}@${row.version}@${row.commit ?? ""}`;

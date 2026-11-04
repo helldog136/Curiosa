@@ -1,0 +1,23 @@
+export const REQUIRED_LANGUAGES: string[];
+export const LAST_RESORT: string;
+export const LANG_CODE_RE: RegExp;
+export function textVariables(text: unknown): string[];
+export function pickText(value: string | Record<string, string> | undefined | null, locale: string, siteDefault?: string): string;
+export function chain(locale: string, siteDefault?: string): string[];
+export type TextEntry = { path: string; kind: "text" | "agent"; value: unknown; apply: (lang: string, text: string) => void };
+export function manifestTextEntries(man: unknown): TextEntry[];
+export type Gap = { path: string; lang: string; problem: "untagged" | "missing" | "empty" | "variables" | "code" | "overlay"; detail: string; severity: "error" | "advisory"; key: string };
+export type ManifestAudit = {
+  total: number;
+  gaps: Gap[];
+  errors: Gap[];
+  advisories: Gap[];
+  languages: Record<string, { translated: number; total: number; percent: number }>;
+};
+export function auditManifest(man: unknown, opts?: { required?: string[] }): ManifestAudit;
+export type DictionaryAudit = { total: number; translated: number; percent: number; missing: string[]; empty: string[]; variables: string[]; extra: string[]; required: boolean };
+export function auditDictionaries(dictionaries: Record<string, Record<string, string>>, opts?: { required?: string[]; reference?: string }): Record<string, DictionaryAudit>;
+export function languageLabel(input: { status: string; percent: number }): { status: string; coverage: string };
+export const MANIFEST_KEY_PREFIX: string;
+export function applyTranslations<T>(man: T, locales: Record<string, Record<string, string>>): T;
+export function manifestSkeleton(man: unknown): { key: string; english: string }[];

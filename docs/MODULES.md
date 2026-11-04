@@ -137,7 +137,7 @@ Validé à l'installation et au chargement (zod, `src/core/modules/manifest.ts`)
 | `platform` | **Plateforme** concernée, facultative : `^[a-z][a-z0-9-]{0,30}$` (`twitch`, `discord`, `youtube`, `instagram`, `tiktok`, `x`…). Regroupe à l'écran les instances d'une même plateforme (voir « Plateformes »). Libellé affiché : table du cœur pour les plateformes connues (`twitch` → Twitch, `youtube` → YouTube, `tiktok` → TikTok, `x` → X, `kofi` → Ko-fi, `github` → GitHub… voir `src/core/modules/platform.ts`), sinon l'identifiant avec une majuscule initiale. Une autre forme est refusée (`module.json: platform — …`). Absent = aucune plateforme. Un cœur plus ancien ignore la clé. |
 | `minCore` | **Version minimale du cœur** (`"0.1.10"` : trois nombres, rien d'autre ; une autre forme est refusée). Absent = aucune exigence. Voir [Version minimale du cœur](#version-minimale-du-cœur-mincore). |
 | `id` | Identifiant du module, stable à jamais (les instances et les sauvegardes s'y réfèrent). |
-| `name`, `description` | Texte ou `{ langue: texte }` (500 caractères au plus). Langue absente : langue par défaut du site, puis `en`. |
+| `name`, `description` | `{ "en": "...", "fr": "..." }` (500 characters at most per text). A plain string has no language and is refused by the test kit (`i18n.complete`). Missing language: the main language of the site, then English, never another language. See [Languages](#languages-i18n-core-after-066). |
 | `version` | `x.y.z`. Sert à détecter les mises à jour (comparée à la version du catalogue). |
 | `author`, `license`, `homepage` | Informatifs (`homepage` : URL valide). |
 | `pageSetting` | (cœur 0.2.12, `"minCore": "0.2.12"`) Facultatif : clé d'un réglage **booléen** du module (case à cocher) qui allume ou éteint la page publique de l'instance. Tant qu'il est faux (ou jamais enregistré et sans `default: true`), la page n'existe pour personne : 404 sur l'adresse et sur son `page-script`, et rien dans le plan du site, `llms.txt`, le menu ni l'éditeur de menu. Refusé si la clé n'est pas celle d'un réglage booléen du module, ou si le module n'a pas de page. Sans le champ : rien ne change. L'administration de l'instance dit si la page est allumée. Règle unique : `hasPublicPage` (`src/core/modules/publicPage.ts`). |
@@ -664,6 +664,27 @@ Quand la personne change de nom de domaine, la page *Adresse du site* (réglages
 - `siteAddressUses` (5 au plus) : un endroit **hors du site** où la personne a tapé l'adresse du site (`label`, `where`).
 - Lecture seule : le cœur ne contacte jamais le service tiers et ne modifie rien. Seules les instances **actives** sont listées.
 - **Sans danger pour un cœur plus ancien** : il ignore les clés, donc aucun `minCore` à déclarer. Une clé mal formée rend le manifeste invalide, comme toute autre. Les retours de connexion ne sont jamais redirigés depuis un ancien domaine (voir [MIGRER-DOMAINE.md](MIGRER-DOMAINE.md)).
+
+### Languages (`i18n`, core after 0.6.6)
+
+**English and French are always supported.** Every text a person reads is written in both, with the same `{variables}`; other languages are optional and may be partial.
+
+| Where | How |
+|---|---|
+| `name`, `description`, `privacy`, setting `label` / `help` / `unit` / `example` / option labels, tab, group, right, panel, overlay element, dashboard, `logEvents`, `previews`, `content.templates`, `onboarding.sample` | a record `{ "en": "...", "fr": "..." }`. Add `"nl": "..."` for a third language if you want; or leave it to the community (below). Only `example` may be a plain string (a value to type, the same in every language). |
+| MCP tool `description` | stays **one English string** (it is read by an AI assistant, and an older core refuses a record there). Translate it with the optional top-level block `"i18n": { "fr": { "mcp.list_items": "..." } }`. Keys are `mcp.<tool name>` and must match a declared tool; an older core ignores `i18n` (the English string is used). |
+| Messages of the module's code (`ctx.t("key")`) | `locales/en.json` and `locales/fr.json`, same keys, same `{variables}`. |
+| A community language | `locales/<code>.json` only: messages by key, and manifest texts under `manifest.<path>` keys (`manifest.name`, `manifest.setting:color.label`...). The core merges them when the module loads; `module.json` is not edited. `node scripts/i18n-add-language.mjs <code> --modules <repo>` writes the skeleton. |
+
+**Fallback chain** for any text: the requested language, then the main language of the site, then English. Never "the first language of the object", never French by default (`pickText` in `src/core/i18n/audit.mjs`; `localized()` uses it). An empty text counts as missing.
+
+**Unknown keys.** `module.json` is read by `manifestSchema` (zod): unknown top-level keys are *stripped*, not refused, which is why an older core ignores `i18n`. Inside some objects (`tabs`, `logEvents` fields, dashboard blocks) the schema is `.strict()`: an unknown key there refuses the manifest. Do not invent keys inside those objects.
+
+**Checks.** The test kit has `i18n.complete` (every manifest text in English and French, no plain string, no empty text, same `{variables}`, valid language codes, valid `i18n` block) and `i18n.parity` (locale files). `i18n.complete` works like the ergonomics baseline: a repository lists its known gaps in `tests/i18n-baseline.json`; a **new** gap fails, a gap that disappeared must be removed from the baseline, so it can only shrink. At install and update time a module with missing English or French texts is installed with a **warning** (`warnings: [{ code: "i18n", ... }]` in the result and a line in the log), never refused: the missing texts fall back to English. The state is visible in the admin (Settings > Languages > Translations) and through the MCP tool `maintenance_modules` (`translations` per module, `languages` for the site).
+
+**Catalogue index.** Each entry of `catalogue/index.json` has `name` and `description` in **English** (what an older core reads) and `i18n: { "en": { "name", "description" }, "fr": { ... } }`. The core uses the language of the person (setup wizard, Extensions > Add, MCP catalogue tools). See `catalogue/README.md`.
+
+See [TRANSLATING.md](TRANSLATING.md) to add a language.
 
 ### Actions MCP (`mcp`)
 

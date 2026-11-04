@@ -24,8 +24,22 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Les chiffres des personnes qui visitent ne changent pas.** La page « Confidentialité » du site le dit en une phrase.
 - Seuls les robots qui chargent la page comme un navigateur sont vus. Aucun réglage à faire.
 
+### Langues
+
+- **L'assistant d'installation parle enfin la langue choisie.** En anglais, les extensions proposées (blog, liens, pages…) s'affichent avec leur description anglaise ; avant, un texte français pouvait s'y glisser. Il démarre dans la langue de votre navigateur, ou en anglais, et ses boutons et messages suivent la langue choisie.
+- **L'anglais et le français sont toujours complets, les autres langues peuvent l'être à moitié.** Quand un texte manque dans une langue, Curiosa montre celui de la langue principale du site, puis l'anglais, jamais une autre langue par hasard.
+- **Un état des traductions dans Réglages › Langues.** Chaque langue est « officielle » (anglais, français) ou « communautaire », « complète » ou « partielle : 82 % », et la liste des extensions auxquelles il manque des textes s'y trouve. Votre assistant IA lit la même chose.
+- **Ajouter une langue ne demande que des fichiers.** Un guide pas à pas (le document TRANSLATING) et une commande qui prépare les fichiers à traduire permettent à chacun de proposer sa langue.
+
 ### Pour les développeurs
 
+- **Languages and modules (i18n).** One pure source, `src/core/i18n/audit.mjs`: `pickText` (requested language, site main language, English; no French default), `auditManifest`, `auditDictionaries`, `applyTranslations`, `manifestSkeleton`. `localized()`, `pickLocalized`, `pickWords`, `renderEvent` and the MCP catalogue tools use it.
+- `makeTranslator(locale, siteDefault?)` follows the same chain and treats an empty text as missing.
+- **Languages are data.** `src/locales/languages.json` (name, `official` or `community`, `rtl`) replaces the list of `locales.ts`; `src/locales/index.ts` is generated. `node scripts/i18n-add-language.mjs <code> [--modules <repo>] [--only prefixes]` writes the skeletons (empty texts, translations kept); `--sync` rebuilds the index.
+- **Manifest** (additive, no `minCore`): optional `i18n: { "<lang>": { "mcp.<tool>": "..." } }` translates MCP tool descriptions. A community language is a module's `locales/<code>.json` with `manifest.<path>` keys, merged at load time. Unknown top-level keys are still stripped, so an older core ignores `i18n`.
+- **Catalogue index**: entries may carry `i18n: { "<lang>": { "name", "description" } }`; the plain `name` / `description` are English. The wizard resolves every text on the server per language (`setup/view.ts`) and reads the manifest of each suggested module first.
+- **Checks**: kit requirements `i18n.complete` (ratchet on `tests/i18n-baseline.json`) and `i18n.complete.known`. A module with missing English or French texts installs with a `warnings: [{ code: "i18n" }]` note and a log line. `maintenance_modules` returns `translations` and `languages`; the admin shows them in Settings > Languages.
+- **Setup wizard sweep**: no French start, language from `Accept-Language`, `pick()` never falls back to the first language of an object, buttons receive the `progress.*` texts of the wizard language, `<html lang>` follows it.
 - **Jetons visuels de l'admin** (`src/core/adminTheme.ts`) : liste unique de variables `--cur-*`, noms figés par test, contrastes AA testés ; l'admin les lit sans changement visible. `ctx.api.adminTheme({ scheme })` (additif, sans permission) rend `{ css, scheme, wordmark }` ; absent des cœurs plus anciens. Voir `docs/MODULES.md`.
 - **Identité visuelle** : fichiers dans `docs/brand/` (SVG avec lettres en contours, PNG, `README.md`) ; rien dans `src/`, aucun changement de l'application.
 - **Une seule liste d'agents non humains** (`src/core/agents.ts`, `classifyAgent` : `person`, `search`, `ai`, `preview`, `tool`). `redirectStats.ts` (`isHumanVisit`, comportement inchangé) et `stats.ts` l'utilisent ; l'ancienne liste de `redirectStats.ts` et l'expression courte de `stats.ts` disparaissent. Quelques noms d'IA ajoutés (`google-extended`, `cohere`, `mistralai`, `diffbot`…).

@@ -8,6 +8,8 @@ import { requirementGaps } from "@/core/modules/dependencies";
 import { listModuleRows, loadModule, moduleDir } from "@/core/modules/registry";
 import { readBlockedUpdate, type BlockedUpdate } from "@/core/modules/blockedUpdate";
 import { staticImportsWarning } from "@/core/modules/staticImports";
+import { i18nStatus } from "@/core/i18n/status";
+import { moduleI18nReport, readModuleTexts } from "@/core/i18n/moduleStatus";
 import { sourceKind } from "@/core/modules/reinstall";
 import { getInstallInfo, getUpdateChannel, readUpdateLog, readUpdateState, readVersion } from "@/core/updates/service";
 import { compareVersions } from "@/core/updates/versions";
@@ -150,6 +152,8 @@ export type ModuleLine = {
   lastRefusedUpdate?: { at: string; stayedOn: string; refusedVersion: string; cause: string };
   /** Fichiers qui importent un voisin de façon statique (fragile sur un cœur avant 0.2.13 ; sans effet ici : chaque chargement part d'une copie neuve). */
   staticNeighbourImports?: string[];
+  /** Translations: texts missing in English or French (0 = complete) and, per language, the share of the module's texts that exist. Other languages may be partial. */
+  translations?: { missing: number; languages: Record<string, number>; examples?: string[] };
 };
 
 const refused = (b: BlockedUpdate | null, row: { version: string }): ModuleLine["lastRefusedUpdate"] =>
@@ -157,7 +161,10 @@ const refused = (b: BlockedUpdate | null, row: { version: string }): ModuleLine[
 
 const isStableTagRef = (ref: string | null | undefined) => !!ref && /^v?\d+\.\d+\.\d+$/.test(ref);
 
-export async function modules(): Promise<{ modules: ModuleLine[]; truncated: boolean }> {
+/** Languages as the assistant reads them: status ("official" or "community"), coverage of the interface ("complete" or "partial: 82%") and of the installed modules. */
+export type LanguageLine = { code: string; name: string; status: string; enabled: boolean; interface: string; modules: string };
+
+export async function modules(): Promise<{ modules: ModuleLine[]; truncated: boolean; languages: LanguageLine[] }> {
   const rows = await listModuleRows();
   const instances = await listInstances();
   const report = await deps.modulesReport(false).catch(() => null);
@@ -171,7 +178,10 @@ export async function modules(): Promise<{ modules: ModuleLine[]; truncated: boo
     for (const i of mine) { const s = await dataStatusOf(i.id); lineInstances.push({ key: i.key, ...(s ? { error: `${s.status}${s.error ? `: ${redactSecrets(s.error, 160)}` : ""}` } : {}) }); }
     const lastRefused = refused(await readBlockedUpdate(row.id), row);
     const neighbours = staticImportsWarning(moduleDir(row.id));
+    const texts = readModuleTexts(moduleDir(row.id));
+    const i18n = texts ? moduleI18nReport(texts.manifest, texts.locales) : null;
     lines.push({
+      ...(i18n ? { translations: { missing: i18n.errors, languages: i18n.languages, ...(i18n.errors ? { examples: i18n.gaps.slice(0, 5).map((g) => `${g.where} [${g.lang}] ${g.problem}`) } : {}) } } : {}),
       ...(lastRefused ? { lastRefusedUpdate: lastRefused } : {}), ...(neighbours ? { staticNeighbourImports: neighbours.files } : {}),
       id: row.id, version: row.version, source: sourceKind(row), repository: publicRepo(row.repoUrl), ref: row.ref ? redactSecrets(row.ref, 60) : null,
       loadable: !!mod, instances: lineInstances,
@@ -179,7 +189,10 @@ export async function modules(): Promise<{ modules: ModuleLine[]; truncated: boo
       update: { available: !!outdated, ...(outdated ? { target: outdated.target, level: outdated.level, ...(outdated.needsCore ? { needsCore: outdated.needsCore } : {}) } : {}), followsStableTag: row.source !== "git" || isStableTagRef(row.ref) },
     });
   }
-  return { modules: lines, truncated: rows.length > MAX_MODULES };
+  const status = await i18nStatus().catch(() => null);
+  const share = (percent: number) => (percent >= 100 ? "complete" : `partial: ${percent}%`);
+  const languages = (status?.languages ?? []).map((l): LanguageLine => ({ code: l.code, name: l.name, status: l.status, enabled: l.enabled, interface: l.interface.label, modules: share(l.modules.percent) }));
+  return { modules: lines, truncated: rows.length > MAX_MODULES, languages };
 }
 
 export type UpdatesView = {

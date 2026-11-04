@@ -1,4 +1,7 @@
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
+import { initialSetupLanguage } from "./language";
+import { setupView } from "./view";
 import { UI_LOCALES } from "@/core/i18n/dictionary";
 import { KNOWN_LOCALES } from "@/core/i18n/locales";
 import { setupModules } from "@/core/modules/starter";
@@ -12,25 +15,17 @@ export const dynamic = "force-dynamic";
 export default async function SetupPage() {
   if ((await countUsers()) > 0) redirect("/admin/login");
   const { modules, profiles, unreachable } = await setupModules();
+  const locales = Object.entries(KNOWN_LOCALES).map(([code, name]) => ({ code, name }));
+  const view = setupView({ modules, profiles }, locales.map((l) => l.code));
   return (
     <SetupWizard
       strings={getAllSetupStrings()}
       uiLocales={UI_LOCALES}
-      locales={Object.entries(KNOWN_LOCALES).map(([code, name]) => ({ code, name }))}
+      locales={locales}
+      initialLang={initialSetupLanguage((await headers()).get("accept-language"), locales.map((l) => l.code))}
       catalogueUnreachable={unreachable}
-      presets={modules.map((m) => ({
-        id: m.id,
-        icon: m.icon ?? "🧩",
-        collectsLinks: m.collectsLinks,
-        templates: m.templates.map((tpl) => ({
-          id: tpl.id,
-          name: (typeof tpl.name === "string" ? { en: tpl.name } : tpl.name) as Record<string, string>,
-          description: (typeof tpl.description === "string" ? { en: tpl.description } : (tpl.description ?? {})) as Record<string, string>,
-        })),
-        names: (typeof m.name === "string" ? { en: m.name } : m.name) as Record<string, string>,
-        descriptions: ((typeof m.description === "string" ? { en: m.description } : m.description) ?? {}) as Record<string, string>,
-      }))}
-      profiles={profiles.map((p) => ({ id: p.id, icon: p.icon, names: p.name, descriptions: p.description, modules: p.modules, samples: p.samples }))}
+      presets={view.presets}
+      profiles={view.profiles}
       needsToken={!!process.env.SETUP_TOKEN}
     />
   );
