@@ -91,7 +91,6 @@ export default async function AccessPage({ params }: { params: Promise<{ id: str
         id: `maintenance-${level}`, group: title, title: t(`aim.level.${level}`), help: t(`aim.level.${level}.help`), risky: level === 3, tools: here.map(toGrantTool),
         header: level === 3 ? (
           <div className="space-y-3 rounded-xl border border-line bg-bg p-4 text-sm" data-testid="maintenance-approval">
-            <p className="font-medium">{t("aim.approval.title")}</p>
             {revoked ? <p className="text-muted">{approval === "human" ? t("aim.approval.askHelp") : t("aim.approval.actHelp")} {t("aim.approval.installNote")}</p> : <ApprovalChoice current={approval} onChange={setApprovalAction.bind(null, id)} labels={approvalLabels(t, row.name)} />}
             {advanced && token.grants[MAINTENANCE_PROFILE] === true && <p className="text-muted">{t("mcp.profile.maintenance")}</p>}
           </div>
@@ -99,8 +98,6 @@ export default async function AccessPage({ params }: { params: Promise<{ id: str
       });
     }
   }
-  const signature = JSON.stringify([token.scope, revoked, sections.map((s) => s.tools.map((x) => [x.name, x.initial, x.blocked]))]);
-
   return (
     <div className="space-y-6">
       <div>
@@ -131,8 +128,7 @@ export default async function AccessPage({ params }: { params: Promise<{ id: str
         </section>
       )}
 
-      <GrantsEditor key={signature} sections={sections} labels={grantsLabels(t)} save={applyGrantsAction.bind(null, id)}
-        ceilingNote={token.scope === "read" && !revoked ? t("grants.ceiling.why") : undefined}
+      <GrantsEditor sections={sections} labels={grantsLabels(t)} save={applyGrantsAction.bind(null, id)}
         riskyApproval={t(approval === "human" ? "grants.risky.approval.human" : "grants.risky.approval.direct")} />
 
       {!advanced && groups.size > 1 && <Callout tone="info" testid="assistants-more-advanced">{t("assistants.detail.moreInAdvanced")} <a href="/admin/mode" className="underline">{t("assistants.detail.modeLink")}</a></Callout>}

@@ -232,7 +232,8 @@ test("page des droits : composant — aria-live sur les compteurs, confirmation 
 
 test("page des droits : le plafond « lecture » est expliqué, la page n'applique rien sans enregistrer, la logique de plafond du serveur est celle d'avant", () => {
   const page = read("src/app/admin/(panel)/assistants/[id]/page.tsx");
-  assert.match(page, /grants\.ceiling\.why/);
+  assert.match(page, /assistants\.detail\.readOnly|mcp\.readCeiling/, "le plafond « lecture » est dit en haut de la page");
+  assert.match(read("src/components/admin/GrantsEditor.tsx"), /sectionBlocked/, "et chaque section dit combien d'actions restent coupées");
   assert.match(page, /blocked: ceilingBlocks/);
   assert.match(page, /applyGrantsAction\.bind\(null, id\)/);
   assert.match(read("src/app/admin/(panel)/assistants/actions.ts"), /withinCeiling\(tool, token\.scope\)/, "setGrantAction inchangée");

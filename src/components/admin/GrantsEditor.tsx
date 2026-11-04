@@ -22,21 +22,29 @@ type SaveResult = { ok: boolean; applied: string[]; rejected: { name: string; re
  * "Select all / Clear all" with a visible counter, and selecting the whole "Risky actions" section asks for a confirmation that lists what it allows.
  * The summary compares with what is saved now; "Save" sends only the differences (same rules as one single change, nothing fails silently).
  */
-export function GrantsEditor({ sections, labels, save, ceilingNote, riskyApproval }: {
+export function GrantsEditor({ sections, labels, save, riskyApproval }: {
   sections: GrantSection[]; labels: GrantsLabels; save: (changes: Record<string, boolean>) => Promise<SaveResult>;
-  /** Shown when the access is read only: why writes cannot be allowed. */
-  ceilingNote?: string;
   /** The risky-section confirmation sentence that matches how this access is set (approve each request, or act without asking). */
   riskyApproval: string;
 }) {
   const [saved, setSaved] = useState<Draft>(() => initialDraft(sections));
   const [draft, setDraft] = useState<Draft>(saved);
+  const [done, setDone] = useState(false);
+  // The server renders the page again after a save. When what comes back is exactly what we saved, keep the draft and the "saved" notice; when it differs
+  // (a reset button, another tab), start again from the server's state.
+  const incoming = initialDraft(sections);
+  const incomingSig = JSON.stringify(incoming);
+  const [seen, setSeen] = useState(incomingSig);
+  if (incomingSig !== seen) {
+    setSeen(incomingSig);
+    if (JSON.stringify(saved) !== incomingSig) { setSaved(incoming); setDraft(incoming); setDone(false); }
+  }
   const [live, setLive] = useState("");
   const [profileNote, setProfileNote] = useState("");
-  const [done, setDone] = useState(false);
   const [problem, setProblem] = useState("");
   const [pending, start] = useTransition();
   const summary = useRef<HTMLDialogElement>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
   const risky = useRef<HTMLDialogElement>(null);
   const [riskySection, setRiskySection] = useState<GrantSection | null>(null);
   const id = useId();
@@ -66,6 +74,7 @@ export function GrantsEditor({ sections, labels, save, ceilingNote, riskyApprova
     if (riskySection) { const next = setSection(riskySection, draft, true); setDraft(next); setDone(false); setLive(fill(labels.countIn, { n: countOn(riskySection, next), total: riskySection.tools.length, section: riskySection.title })); }
     risky.current?.close();
   }
+  function openSummary() { summary.current?.showModal(); heading.current?.focus(); }
   function cancelAll() { setDraft(saved); setProfileNote(""); setProblem(""); }
   function doSave() {
     const sent = changes;
@@ -105,7 +114,6 @@ export function GrantsEditor({ sections, labels, save, ceilingNote, riskyApprova
         </div>
       )}
       {problem && <p role="alert" className="rounded-xl border border-red-500/50 bg-red-500/10 p-3 text-sm" data-testid="grants-problem">⚠ {problem}</p>}
-      {ceilingNote && <p className="rounded-lg border border-line bg-surface p-3 text-sm" data-testid="grants-ceiling">{ceilingNote}</p>}
 
       <section className={`${ui.card} space-y-3`} aria-labelledby={`${id}-p`} data-testid="grants-profiles">
         <div>
@@ -132,6 +140,8 @@ export function GrantsEditor({ sections, labels, save, ceilingNote, riskyApprova
             const on = countOn(s, draft);
             const blockedHere = s.tools.filter((t) => t.blocked).length;
             const canEdit = s.tools.some(editable);
+            // R14: a label that is the same on every row says nothing; the kind only shows when the rows differ.
+            const mixed = new Set(s.tools.map((x) => x.kind)).size > 1;
             return (
               <section key={s.id} className={`${ui.card} space-y-3`} aria-labelledby={`${id}-${s.id}`} data-testid={`grants-section-${s.id}`}>
                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -161,8 +171,8 @@ export function GrantsEditor({ sections, labels, save, ceilingNote, riskyApprova
                         <span className="min-w-0 flex-1 text-sm">
                           <span className="block">
                             {t.code && <span className="break-all font-mono">{t.code} </span>}
-                            <span className={`rounded px-1.5 py-0.5 text-xs ${t.kind === "destructive" ? "bg-red-500/20 text-red-700" : t.kind === "read" ? "bg-surface" : "bg-amber-500/20"}`}>{t.kindLabel}</span>
-                            {t.blocked && <span className="ml-1.5 rounded bg-line px-1.5 py-0.5 text-xs">{labels.needsWrite}</span>}
+                            {mixed && <span className={`rounded px-1.5 py-0.5 text-xs ${t.kind === "destructive" ? "bg-red-500/20 text-red-700" : t.kind === "read" ? "bg-surface" : "bg-amber-500/20"}`}>{t.kindLabel}</span>}
+                            {t.blocked && <span className="sr-only"> ({labels.needsWrite})</span>}
                           </span>
                           {t.help && <span className="mt-0.5 block text-muted">{t.help}</span>}
                           {!t.code && <span className="sr-only">{t.label}</span>}
@@ -182,7 +192,7 @@ export function GrantsEditor({ sections, labels, save, ceilingNote, riskyApprova
           <p className="text-sm font-medium" aria-live="polite">{fill(n === 1 ? labels.barChangesOne : labels.barChanges, { n })}</p>
           <div className="flex flex-wrap gap-2">
             <button type="button" className={btn} onClick={cancelAll} data-action="cancel-changes">{labels.cancelChanges}</button>
-            <button type="button" className={primary} onClick={() => summary.current?.showModal()} data-action="review">{labels.review}</button>
+            <button type="button" className={primary} onClick={() => openSummary()} data-action="review">{labels.review}</button>
           </div>
         </div>
       )}
@@ -190,7 +200,7 @@ export function GrantsEditor({ sections, labels, save, ceilingNote, riskyApprova
       <dialog ref={summary} aria-labelledby={`${id}-sum`} className={dialogClass} onClick={(e) => { if (e.target === summary.current) summary.current?.close(); }} data-testid="grants-summary">
         <div className="space-y-4 p-5 sm:p-6">
           <div>
-            <h2 id={`${id}-sum`} className="text-lg font-semibold">{labels.summaryTitle}</h2>
+            <h2 id={`${id}-sum`} ref={heading} tabIndex={-1} className="text-lg font-semibold outline-none">{labels.summaryTitle}</h2>
             <p className="mt-1 text-sm leading-6 text-muted">{labels.summaryIntro}</p>
           </div>
           {([true, false] as const).map((flag) => {
@@ -202,14 +212,14 @@ export function GrantsEditor({ sections, labels, save, ceilingNote, riskyApprova
                 <ul className="mt-1 space-y-1 text-sm" data-testid={flag ? "summary-on" : "summary-off"}>
                   {rows.map(({ tool, section }) => (
                     <li key={tool.name} className="flex gap-2"><span aria-hidden="true">{flag ? "＋" : "－"}</span>
-                      <span className="min-w-0 [overflow-wrap:anywhere]">{tool.code ?? tool.label}{" "}<span className="text-muted">· {section.title}</span>{flag && tool.kind === "destructive" && <span className="ml-1 rounded bg-red-500/20 px-1.5 py-0.5 text-xs text-red-700">{labels.summaryRisky}</span>}</span></li>
+                      <span className="min-w-0 [overflow-wrap:anywhere]">{tool.code ?? short(tool.help ?? tool.label)}{" "}<span className="text-muted">· {section.title}</span>{flag && tool.kind === "destructive" && <span className="ml-1 rounded bg-red-500/20 px-1.5 py-0.5 text-xs text-red-700">{labels.summaryRisky}</span>}</span></li>
                   ))}
                 </ul>
               </div>
             );
           })}
           {Object.entries(changes).some(([name, v]) => v && byName.get(name)?.section.risky) && <p className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm leading-6">{riskyApproval}</p>}
-          <div className="flex flex-wrap justify-end gap-2">
+          <div className="sticky bottom-0 -mx-5 flex flex-wrap justify-end gap-2 border-t border-line bg-surface px-5 py-3 sm:-mx-6 sm:px-6">
             <button type="button" className={btn} onClick={() => summary.current?.close()} disabled={pending}>{labels.summaryBack}</button>
             <button type="button" className={primary} onClick={doSave} disabled={pending} aria-busy={pending || undefined} data-action="save">{pending ? labels.saving : labels.summarySave}</button>
           </div>
@@ -235,4 +245,5 @@ export function GrantsEditor({ sections, labels, save, ceilingNote, riskyApprova
     </div>
   );
 }
+const short = (text: string) => text.split(/\.\s/)[0]!.replace(/\.$/, "");
 export type { GrantTool };
