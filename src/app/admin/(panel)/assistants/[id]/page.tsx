@@ -162,8 +162,8 @@ export default async function AccessPage({ params }: { params: Promise<{ id: str
           </form>
           {advanced && (
             <ActionForm action={saveLimitsAction.bind(null, id)} submitLabel={t("aim.limits.save")} secondary className="max-w-md space-y-3 border-t border-line pt-3">
-              <NumberField label={t("aim.limits.riskyLabel")} name="risky" defaultValue={slots.risky.limit} min={1} max={60} unit={t("aim.limits.perHour")} hint={t("aim.limits.riskyHint")} />
-              <NumberField label={t("aim.limits.contentLabel")} name="content" defaultValue={slots.content.limit} min={10} max={1000} unit={t("aim.limits.perHour")} hint={t("aim.limits.contentHint")} />
+              <NumberField label={t("aim.limits.riskyLabel")} name="risky" defaultValue={slots.risky.limit} min={1} max={60} unit={t("aim.limits.perHour")} hint={t("aim.limits.riskyHint")} invalidText={t("aim.limits.error", { min: 1, max: 60, example: 12 })} />
+              <NumberField label={t("aim.limits.contentLabel")} name="content" defaultValue={slots.content.limit} min={10} max={1000} unit={t("aim.limits.perHour")} hint={t("aim.limits.contentHint")} invalidText={t("aim.limits.error", { min: 10, max: 1000, example: 120 })} />
             </ActionForm>
           )}
         </section>
