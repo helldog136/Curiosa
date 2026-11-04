@@ -4,7 +4,7 @@ import { UPLOADS_DIR } from "@/core/config";
 import { LOGO_KEYS } from "@/core/logos";
 import { looksLikeSvg, saveSvgUpload } from "@/core/logoUpload";
 import { prisma } from "@/core/db";
-import { MAX_INPUT_PIXELS } from "@/core/imageDerive";
+import { MAX_INPUT_PIXELS, readImageSize } from "@/core/imageDerive";
 import { audit } from "@/core/permissions";
 import { uploadNameOf } from "@/core/services/files";
 import { saveUpload, sniffImage } from "@/core/services/uploads";
@@ -81,13 +81,10 @@ function decode(raw: string): Buffer {
 
 /** The size in pixels, read from the header (no decoding). Refuses what is too big; a file the engine cannot read is refused too. */
 async function checkPixels(buf: Buffer): Promise<{ width: number; height: number } | null> {
-  let sharp: typeof import("sharp").default;
-  try { const m = await import("sharp"); sharp = m.default ?? (m as unknown as typeof sharp); } catch { return null; /* no engine on this machine: the size on disk and the type are still checked */ }
-  let meta;
-  try { meta = await sharp(buf, { limitInputPixels: false, animated: false }).metadata(); } catch { throw new McpToolError("This file looks like an image but cannot be read. Export it again as png, jpeg or webp and send it again."); }
-  if (!meta.width || !meta.height) throw new McpToolError("This file looks like an image but has no readable size. Export it again as png, jpeg or webp.");
-  if (meta.width * meta.height > MAX_INPUT_PIXELS) throw new McpToolError(`The image has too many pixels (${meta.width} x ${meta.height}). Reduce it to ${Math.floor(Math.sqrt(MAX_INPUT_PIXELS))} pixels on a side at most.`);
-  return { width: meta.width, height: meta.height };
+  const size = await readImageSize(buf);
+  if (size === "unreadable") throw new McpToolError("This file looks like an image but cannot be read. Export it again as png, jpeg or webp and send it again.");
+  if (size === "toolarge") throw new McpToolError(`The image has too many pixels (more than ${MAX_INPUT_PIXELS / 1_000_000} million). Reduce it to ${Math.floor(Math.sqrt(MAX_INPUT_PIXELS))} pixels on a side at most.`);
+  return size;
 }
 
 /** What the assistants uploaded in the last 24 hours, counted from the journal (nothing else to keep, nothing to clean). */

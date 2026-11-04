@@ -3683,7 +3683,7 @@
   "aim.tool.site_settings_set": "Changer le nom, l'accroche, la présentation, l'e-mail de contact et les logos. Suit votre réglage d'approbation ; les anciennes valeurs restent au journal.",
   "aim.action.site_settings_set": "changer les réglages du site",
   "aim.req.site_settings_set": "Changer les réglages de votre site : {list}.",
-  "aim.risk.site_settings_set": "Ce que lisent les visiteurs dans l'en-tête, le pied de page et les aperçus de partage change tout de suite. Rien d'autre n'est touché : langues, adresses et personnes restent telles quelles. Les anciennes valeurs sont au journal, et vous pouvez les remettre dans Réglages.",
+  "aim.risk.site_settings_set": "Ce que lisent les personnes qui visitent dans l'en-tête, le pied de page et les aperçus de partage change tout de suite. Rien d'autre n'est touché : langues, adresses et personnes restent telles quelles. Les anciennes valeurs sont au journal, et vous pouvez les remettre dans Réglages.",
   "aim.setup.group": "Identité du site",
   "aim.setup.help": "Laisser l'IA envoyer des images et régler le nom, l'accroche, l'e-mail de contact et les logos de votre site.",
   "audit.action.media.upload": "Image envoyée par une IA",
