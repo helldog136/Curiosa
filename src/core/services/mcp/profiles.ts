@@ -4,7 +4,9 @@
  *
  *   read       the AI looks and advises (reads only)
  *   assistant  + prepares drafts and adjusts installed modules (safe, reversible actions)
- *   full       + asks to install modules and skins, change fonts and switch skin: always requests the owner approves
+ *   full       + asks to install modules (one or several at once) and skins, add instances, change colours, fonts and skin, and publishes drafts (`<instance>__publish`,
+ *              `__unpublish`): requests the owner approves, or done at once when the owner chose "act without asking" for that access (installs and new instances
+ *              always wait for the owner)
  *
  * Each profile includes the ones before it. A tool is either assigned to the profile that first allows it, or explicitly EXCLUDED (never part of a preset:
  * the owner ticks it one by one). A test compares this file with the real tool catalogue: a new core tool must be assigned or excluded here.
@@ -25,7 +27,7 @@ export const PROFILE_TOOLS: Record<AccessProfile, readonly string[]> = {
     "site_info",
     "maintenance_status", "maintenance_health", "maintenance_modules", "maintenance_updates", "maintenance_diagnose", "maintenance_audit",
     "maintenance_request_status", "maintenance_legacy", "maintenance_catalog_list", "maintenance_catalog_get", "maintenance_skin_status",
-    "maintenance_skin_list", "maintenance_content_check",
+    "maintenance_skin_list", "maintenance_content_check", "maintenance_my_access", "maintenance_catalog_plan",
     "redirects_list", "redirects_stats", "redirects_summary",
   ],
   assistant: [
@@ -33,7 +35,7 @@ export const PROFILE_TOOLS: Record<AccessProfile, readonly string[]> = {
     "maintenance_module_settings", "maintenance_module_configure",
     "redirects_create", "redirects_update",
   ],
-  full: ["maintenance_module_install", "maintenance_skin_install", "maintenance_skin_activate", "maintenance_font_set"],
+  full: ["maintenance_module_install", "maintenance_instance_add", "maintenance_skin_install", "maintenance_skin_activate", "maintenance_font_set", "maintenance_skin_set_options"],
 };
 
 /** Core tools that no profile allows, each with the reason. They stay one-by-one choices (the risky ones behind a confirmation). */
@@ -63,6 +65,8 @@ export function placementOf(tool: ProfileTool): Placement {
   for (const p of ACCESS_PROFILES) if (PROFILE_TOOLS[p].includes(tool.name)) return p;
   if (tool.name in PROFILE_EXCLUDED) return "excluded";
   if (!tool.instanceId) return "unassigned";
+  // Publishing a draft is a separate right of every content instance, part of the "full" preset (it follows the access's approval setting). Checked before `destructive`.
+  if (/__(publish|unpublish)$/.test(tool.name) && !tool.destructive) return "full";
   if (tool.destructive) return "excluded";
   if (/__(create_draft|update_draft)$/.test(tool.name)) return "assistant";
   return tool.readOnly && tool.default ? "read" : "excluded";

@@ -47,7 +47,7 @@ async function handle(rpc: RpcRequest, token: AuthedToken, listTools: () => Prom
         protocolVersion: SUPPORTED_VERSIONS.includes(asked) ? asked : SUPPORTED_VERSIONS[0],
         capabilities: { tools: { listChanged: false } },
         serverInfo: { name: config.name, title: config.name, version: "1.0.0" },
-        instructions: "Tools come from the modules installed on this site. Nothing you create is ever published: drafts are reviewed by a human.",
+        instructions: "Tools come from the modules installed on this site. What you create stays a draft: publishing is a separate right that the owner may grant, and it follows the owner's approval setting. If a tool you expect is missing, the owner may not have granted it yet (call maintenance_my_access if you have it, and reconnect after a change).",
       });
     }
     case "ping":

@@ -12,10 +12,12 @@ import { redactSecrets } from "./redact";
 import { claimRequest, createRequest, denyRequest, finishRequest, reopenRequest, type Level3Action, type Plan } from "./requests";
 import { getApprovalMode } from "./settings";
 import { runContentCheck } from "./content/service";
-import { executeInstall, prepareInstall, samePlan } from "./install";
+import { executeInstall, executeInstallBundle, prepareInstall, prepareInstallBundle, samePlan } from "./install";
+import { executeInstanceAdd, prepareInstanceAdd } from "./instances";
+import { executeEntryPublish, prepareEntryPublish } from "./publish";
 import { applyConfigure, parseConfigureArgs } from "./moduleSettings";
 import { executeFont, prepareFont } from "./fonts";
-import { executeSkin, isSkinAction, prepareSkin } from "./skins";
+import { executeSkin, executeSkinOptions, isSkinAction, prepareSkin, prepareSkinOptions } from "./skins";
 
 /**
  * ACTIONS de maintenance : niveau 2 (sans risque : revérifier, sauvegarder, réinstaller, relancer) et niveau 3 (à risque : mises à jour, désinstallation).
@@ -31,7 +33,11 @@ import { executeSkin, isSkinAction, prepareSkin } from "./skins";
  */
 export type Outcome = { ok: boolean; message: string; details?: unknown; /** L'opération n'a pas commencé (verrou pris) : rien n'a été fait. */ busy?: boolean };
 export type Level2Tool = "check_updates" | "backup_run" | "module_reinstall" | "module_restart" | "content_check_run";
-export type Params = { module?: string; instance?: string; /** Skins : l'identifiant du skin. */ skin?: string; /** Polices (`font_set`) : choix des titres et du texte. */ titles?: unknown; text?: unknown; /** Installation : clé facultative de la première instance. */ instanceKey?: string; /** Contrôle du contenu : reprendre la vérification commencée au lieu d'en commencer une. */ continue?: boolean; /** Désinstallation : garder (défaut) ou effacer les données. */ keepData?: boolean };
+export type Params = { module?: string; instance?: string; /** Skins : l'identifiant du skin. */ skin?: string; /** Polices (`font_set`) : choix des titres et du texte. */ titles?: unknown; text?: unknown; /** Installation : clé facultative de la première instance. */ instanceKey?: string; /** Contrôle du contenu : reprendre la vérification commencée au lieu d'en commencer une. */ continue?: boolean; /** Désinstallation : garder (défaut) ou effacer les données. */ keepData?: boolean;
+  /** Installation de plusieurs modules en une demande (`module_install`) : la liste d'identifiants. */ modules?: unknown;
+  /** `instance_add`: the nickname of the new instance. */ nickname?: unknown;
+  /** `entry_publish` / `entry_unpublish`: the entry (or entries) of the instance named by `instance`, and the language to insist on. */ id?: unknown; ids?: unknown; locale?: unknown;
+  /** `skin_set_options`: colours and fonts, as given to the tool. */ options?: Record<string, unknown> };
 
 /* ───────────── Verrou et cadence ───────────── */
 
@@ -202,7 +208,16 @@ export async function prepare(action: Level3Action, args: Params): Promise<Plan>
     return { from: current, to: tag.replace(/^v/, ""), level: classify(current, tag) ?? undefined };
   }
 
-  if (action === "module_install") return prepareInstall({ module: args.module, instanceKey: args.instanceKey });
+  if (action === "module_install") {
+    if (args.modules !== undefined) {
+      if (args.module !== undefined || args.instanceKey !== undefined) refuse('Use either "module" (one module) or "modules" (a list), not both, and no "instanceKey" with a list.');
+      return prepareInstallBundle(args.modules);
+    }
+    return prepareInstall({ module: args.module, instanceKey: args.instanceKey });
+  }
+  if (action === "instance_add") return prepareInstanceAdd({ module: args.module, nickname: args.nickname });
+  if (action === "skin_set_options") return prepareSkinOptions(args.options ?? {});
+  if (action === "entry_publish" || action === "entry_unpublish") return prepareEntryPublish(action, { instance: args.instance, id: args.id, ids: args.ids, locale: args.locale });
   if (isSkinAction(action)) return prepareSkin(action, { skin: args.skin });
   if (action === "font_set") return prepareFont({ titles: args.titles, text: args.text });
 
@@ -240,6 +255,17 @@ export async function prepare(action: Level3Action, args: Params): Promise<Plan>
 /* ───────────── Niveau 3 : exécution (revérifie tout) ───────────── */
 
 async function execute(action: Level3Action, plan: Plan, actorLabel: string): Promise<Outcome> {
+  // These re-read and compare by themselves (see publish.ts, install.ts, instances.ts, skins.ts).
+  if (action === "entry_publish" || action === "entry_unpublish") return executeEntryPublish(action, plan, actorLabel);
+  if (action === "skin_set_options") return executeSkinOptions(plan, actorLabel);
+  if (action === "module_install" && plan.bundle) return executeInstallBundle(plan, actorLabel);
+  if (action === "instance_add") {
+    try { await prepareInstanceAdd({ module: plan.module, nickname: plan.newInstance?.nickname }); } catch (error) {
+      if (error instanceof McpToolError) return { ok: false, message: `Not done: ${error.message}` };
+      throw error;
+    }
+    return executeInstanceAdd(plan, actorLabel);
+  }
   // Les conditions sont relues maintenant : la demande a pu attendre des heures.
   let fresh: Plan;
   try { fresh = await prepare(action, { module: plan.module, keepData: plan.keepData, instanceKey: plan.instanceKey, skin: plan.skin, ...(action === "font_set" ? { titles: plan.fonts?.titles === undefined ? undefined : plan.fonts.titles || "skin", text: plan.fonts?.text === undefined ? undefined : plan.fonts.text || "skin" } : {}) }); } catch (error) {
@@ -278,7 +304,8 @@ async function execute(action: Level3Action, plan: Plan, actorLabel: string): Pr
   return { ok: s.failed.length === 0 && !s.stoppedOn && s.updated.length > 0, message: parts.join("; ") || "Nothing was updated.", details: { updated: s.updated } };
 }
 
-const paramsText = (plan: Plan) => plan.fonts ? plan.fonts.names : plan.skin ? `${plan.skin}${plan.to ? ` ${plan.to}` : ""}` : (plan.adds ? `${plan.module} ${plan.to}${plan.instanceKey ? ` key=${plan.instanceKey}` : ""}${plan.adds.length ? ` + ${plan.adds.map((a) => a.id).join(", ")}` : ""}` : plan.module ? (plan.keepData === undefined ? plan.module : `${plan.module}${plan.keepData ? " keepData" : " erase"}`) : null) ?? (plan.modules ? plan.modules.map((m) => `${m.id} ${m.from}>${m.to}`).join(", ") : plan.to ? `${plan.from}>${plan.to}` : "");
+const paramsText = (plan: Plan): string => plan.bundle ? plan.bundle.map((p) => `${p.module} ${p.to}`).join(", ") : plan.entry ? `${plan.entry.instance}/${plan.entry.items.map((i) => i.id).join(",")}${plan.entry.locale ? ` ${plan.entry.locale}` : ""}` : plan.newInstance ? `${plan.module} "${plan.newInstance.nickname}"` : plan.options ? `${plan.skin}: ${plan.options.names}${plan.fonts ? `; fonts: ${plan.fonts.names}` : ""}` : paramsTextOther(plan);
+const paramsTextOther = (plan: Plan) => plan.fonts ? plan.fonts.names : plan.skin ? `${plan.skin}${plan.to ? ` ${plan.to}` : ""}` : (plan.adds ? `${plan.module} ${plan.to}${plan.instanceKey ? ` key=${plan.instanceKey}` : ""}${plan.adds.length ? ` + ${plan.adds.map((a) => a.id).join(", ")}` : ""}` : plan.module ? (plan.keepData === undefined ? plan.module : `${plan.module}${plan.keepData ? " keepData" : " erase"}`) : null) ?? (plan.modules ? plan.modules.map((m) => `${m.id} ${m.from}>${m.to}`).join(", ") : plan.to ? `${plan.from}>${plan.to}` : "");
 
 /** Verrou + audit + avertissement autour d'une exécution de niveau 3. */
 async function runGuarded(action: Level3Action, plan: Plan, who: { tokenName: string; tokenId?: string; via: "direct" | "approved" }): Promise<Outcome> {
@@ -298,12 +325,16 @@ async function runGuarded(action: Level3Action, plan: Plan, who: { tokenName: st
  * Appel d'une action de niveau 3 par une IA. « Validation humaine » (défaut) : seule une DEMANDE est créée. « Exécution directe » (choix explicite de l'administrateur
  * pour ce jeton) : exécutée tout de suite.
  */
+/** Requests that wait for the owner even when the access is set to "act without asking": they bring code or a public page onto the site. */
+export const ALWAYS_HUMAN: readonly Level3Action[] = ["module_install", "skin_install", "instance_add"];
+
 export async function callLevel3(action: Level3Action, args: Params, actor: { name: string; tokenId?: string }): Promise<unknown> {
   takeSlot(actor.tokenId);
   const plan = await prepare(action, args);
   // Installer du code sur le site n'est JAMAIS exécuté sans l'accord de la personne propriétaire, même pour un jeton en « exécution directe » : le réglage vaut pour
   // les mises à jour et désinstallations, et rien dans le modèle ne dit quel module est « sans danger ».
-  if (action !== "module_install" && action !== "skin_install" && (await getApprovalMode(actor.tokenId)) === "direct") {
+  // Same for a new instance (it may get a public page).
+  if (!ALWAYS_HUMAN.includes(action) && (await getApprovalMode(actor.tokenId)) === "direct") {
     const outcome = await runGuarded(action, plan, { tokenName: actor.name, tokenId: actor.tokenId, via: "direct" });
     if (outcome.busy) throw new McpToolError(outcome.message);
     return { status: outcome.ok ? "done" : "failed", message: outcome.message };

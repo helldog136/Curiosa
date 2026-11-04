@@ -1,6 +1,7 @@
 # An AI that can run the site: MCP tools to add
 
-Status: **idea; only the starting profiles of the rights page and the setup step are coded** (`src/core/services/mcp/profiles.ts`). Everything marked "proposal" is yet to be decided; the rest describes what exists today, with the file that proves it.
+Status: **batch 1 and publication are coded** (branch `feat/mcp-publish-and-access`: `maintenance_my_access`, `maintenance_catalog_plan`, `maintenance_module_install { modules }`, `maintenance_instance_add`, `maintenance_skin_set_options`, `<instance>__publish` / `__unpublish`, the separate `request` field; see `docs/MAINTENANCE-IA.md`). Publication was built directly as a tool that follows the approval setting instead of the `request_publish` of section 3 (row 8); everything else below is still an idea. Everything marked "proposal" is yet to be decided; the rest describes what exists today, with the file that proves it.
+
 
 **Starting decision**: an AI whose access is fully set up must be able to do **at least** what the Editorial role does in the admin, and more: install and configure modules. Without changing the security model: an AI never publishes anything, anything broad or destructive is a request that a human approves, no secret is ever read or written, everything is logged, each right is ticked separately, and everything is additive.
 

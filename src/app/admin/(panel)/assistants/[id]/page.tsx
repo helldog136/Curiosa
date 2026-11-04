@@ -49,7 +49,11 @@ export default async function AccessPage({ params }: { params: Promise<{ id: str
   for (const tool of catalogue) groups.set(tool.source, [...(groups.get(tool.source) ?? []), tool]);
   const usable = catalogue.filter((x) => !x.instanceOptedOut && canUse(x, token));
   const can = abilities(usable.map((x) => ({ readOnly: x.readOnly, destructive: x.destructive, source: x.source })));
-  const shown = [...groups.entries()].filter(([source]) => advanced || source === "maintenance");
+  // Publishing is a right of its own, per content list: in simple mode it gets a section in plain words (in advanced mode each list shows its own tools).
+  const publishing = catalogue.filter((x) => !x.instanceOptedOut && !!x.instanceId && /__(publish|unpublish)$/.test(x.name));
+  const shown: [string, typeof catalogue][] = [...groups.entries()].filter(([source]) => advanced || source === "maintenance");
+  if (!advanced && publishing.length) shown.push(["publishing", publishing]);
+  const labelOfSource = (source: string) => { const i = instances.find((x) => x.key === source); return i ? labeler.label(i) : source; };
 
   // The rights page works on sections: the maintenance tools by level (the third one is "Risky actions", with its approval choice), then, in advanced mode, one per module.
   const sections: GrantSection[] = [];
@@ -57,15 +61,16 @@ export default async function AccessPage({ params }: { params: Promise<{ id: str
     const inst = instances.find((i) => i.key === source);
     const mod = active.find((a) => a.instance.key === source)?.mod;
     const isMaintenance = source === "maintenance";
-    const title = isMaintenance ? `🛠️ ${t("aim.group")}` : source === "core" ? t("mcp.platform") : `${mod?.manifest.icon ?? "🧩"} ${inst ? labeler.label(inst) : source}`;
+    const isPublishing = source === "publishing";
+    const title = isPublishing ? `📣 ${t("aim.publish.group")}` : isMaintenance ? `🛠️ ${t("aim.group")}` : source === "core" ? t("mcp.platform") : `${mod?.manifest.icon ?? "🧩"} ${inst ? labeler.label(inst) : source}`;
     const toGrantTool = (tool: (typeof tools)[number]): GrantTool => {
       const ceilingBlocks = !withinCeiling(tool, token.scope);
       const short = tool.name.includes("__") ? tool.name.split("__")[1]! : tool.name;
-      const plain = isMaintenance ? t(`aim.tool.${short.replace(/^maintenance_/, "")}`) : "";
+      const plain = isMaintenance ? t(`aim.tool.${short.replace(/^maintenance_/, "")}`) : isPublishing ? t(`aim.tool.${short}`, { name: labelOfSource(tool.source) }) : "";
       const placement = placementOf(tool);
       return {
         name: tool.name, label: advanced ? `${title} — ${short}` : plain || short, code: advanced ? short : undefined,
-        help: isMaintenance ? plain : advanced ? tool.description : undefined,
+        help: isMaintenance || isPublishing ? plain : advanced ? tool.description : undefined,
         kind: tool.destructive ? "destructive" : tool.readOnly ? "read" : "write",
         kindLabel: tool.destructive ? t("mcp.destructive") : tool.readOnly ? t("mcp.action.read") : t("mcp.action.write"),
         initial: !ceilingBlocks && isGranted(tool, token.grants), blocked: ceilingBlocks, locked: revoked || tool.instanceOptedOut,
@@ -73,7 +78,7 @@ export default async function AccessPage({ params }: { params: Promise<{ id: str
         rank: placement === "read" || placement === "assistant" || placement === "full" ? placement : null,
       };
     };
-    const reset = source !== "core" && !revoked ? (
+    const reset = source !== "core" && !isPublishing && !revoked ? (
       <div className="flex flex-wrap gap-2">
         <form action={resetGrantsAction.bind(null, id, source, "defaults")}><PendingButton>{t("mcp.resetDefaults")}</PendingButton></form>
         <form action={resetGrantsAction.bind(null, id, source, "none")}><PendingButton>{t("mcp.disableAll")}</PendingButton></form>
@@ -81,7 +86,7 @@ export default async function AccessPage({ params }: { params: Promise<{ id: str
     ) : null;
     const optedOut = tools[0]?.instanceOptedOut ? <p className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-2 text-sm">{t("mcp.instanceOptedOut")}</p> : null;
     if (!isMaintenance) {
-      sections.push({ id: source, group: "", title, tools: tools.map(toGrantTool), header: <>{reset}{optedOut}</> });
+      sections.push({ id: source, group: "", title, ...(isPublishing ? { help: t("aim.publish.help") } : {}), tools: tools.map(toGrantTool), header: <>{reset}{optedOut}</> });
       continue;
     }
     for (const level of [1, 2, 3] as const) {

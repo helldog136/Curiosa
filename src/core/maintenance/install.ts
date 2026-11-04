@@ -151,3 +151,60 @@ export async function executeInstall(plan: Plan, actorLabel: string): Promise<Ou
     details: { module: id, version: plan.to, provided: result.provided ?? [], instance: instanceKey, settingsToFill: toFill },
   };
 }
+
+/* ───────────── Several modules in ONE request ───────────── */
+
+export const MAX_BUNDLE = 12;
+
+/**
+ * `maintenance_module_install { modules: [...] }`: ONE request, ONE approval for a whole plan. The owner sees every module, what comes with it and every permission asked;
+ * nothing is hidden by the grouping. Each module is checked exactly like a single install (`prepareInstall`); one refusal refuses the whole request (nothing partial is asked).
+ * The order is fixed here: a module that another one of the list needs comes first, and the `adds` of the later one no longer list it (it will already be there).
+ */
+export async function prepareInstallBundle(ids: unknown, instanceKeys?: unknown): Promise<Plan> {
+  if (!Array.isArray(ids) || !ids.length) throw new McpToolError('argument "modules" must be a list of module identifiers (see maintenance_catalog_list)');
+  if (ids.length > MAX_BUNDLE) throw new McpToolError(`At most ${MAX_BUNDLE} modules per request.`);
+  const list = [...new Set(ids.map((v) => String(v)))];
+  const keys = instanceKeys && typeof instanceKeys === "object" && !Array.isArray(instanceKeys) ? (instanceKeys as Record<string, unknown>) : {};
+  const results = await Promise.all(list.map(async (id) => {
+    try { return { id, plan: await prepareInstall({ module: id, instanceKey: typeof keys[id] === "string" ? (keys[id] as string) : undefined }) }; } catch (error) {
+      if (error instanceof McpToolError) return { id, error: error.message };
+      throw error;
+    }
+  }));
+  const bad = results.filter((r) => "error" in r);
+  if (bad.length) throw new McpToolError(`Nothing was asked. ${bad.map((r) => `"${r.id}": ${(r as { error: string }).error}`).join(" ")}`);
+  let rest = results.map((r) => (r as { plan: Plan }).plan);
+  const ordered: Plan[] = [];
+  const placed = new Set<string>();
+  while (rest.length) {
+    const ready = rest.filter((p) => !(p.adds ?? []).some((a) => rest.some((o) => o !== p && o.module === a.id)));
+    if (!ready.length) throw new McpToolError("These modules need each other: ask for them one at a time.");
+    for (const p of ready) {
+      ordered.push({ ...p, adds: (p.adds ?? []).filter((a) => !placed.has(a.id)) });
+      placed.add(p.module!);
+    }
+    rest = rest.filter((p) => !ready.includes(p));
+  }
+  return { bundle: ordered };
+}
+
+/** Executes the bundle one module after the other (same function as a single install). Stops at the first failure and says what was done and what was not. */
+export async function executeInstallBundle(plan: Plan, actorLabel: string): Promise<Outcome> {
+  const done: string[] = [];
+  const notes: string[] = [];
+  const items = plan.bundle ?? [];
+  for (const item of items) {
+    let fresh: Plan;
+    try { fresh = await prepareInstall({ module: item.module, instanceKey: item.instanceKey }); } catch (error) {
+      if (error instanceof McpToolError) return { ok: false, message: `Not done for "${item.module}": ${error.message}${done.length ? ` Already installed: ${done.join(", ")}.` : ""} Not tried: ${items.slice(done.length + 1).map((i) => i.module).join(", ") || "none"}. Ask again for what is left.` };
+      throw error;
+    }
+    if (!samePlan(item, fresh)) return { ok: false, message: `Not done for "${item.module}": what its installation would do changed since the request (version, or the modules that come with it).${done.length ? ` Already installed: ${done.join(", ")}.` : ""} Ask again for what is left.` };
+    const out = await executeInstall(item, actorLabel);
+    if (!out.ok) return { ok: false, message: `${out.message}${done.length ? ` Already installed before: ${done.join(", ")}.` : ""} Not tried: ${items.slice(done.length + 1).map((i) => i.module).join(", ") || "none"}.` };
+    done.push(item.module!);
+    notes.push(out.message);
+  }
+  return { ok: true, message: `${done.length} modules installed: ${done.join(", ")}. ${notes.join(" ")}`.slice(0, 1800), details: { modules: done } };
+}

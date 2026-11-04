@@ -18,7 +18,7 @@ export const REQUEST_TTL_MS = 24 * 60 * 60_000;
 const KEEP = 50;
 const KEY = "maintenance.requests";
 
-export const LEVEL3_ACTIONS = ["module_update", "modules_update_all", "core_update", "module_uninstall", "module_install", "skin_install", "skin_activate", "skin_remove", "font_set"] as const;
+export const LEVEL3_ACTIONS = ["module_update", "modules_update_all", "core_update", "module_uninstall", "module_install", "skin_install", "skin_activate", "skin_remove", "font_set", "skin_set_options", "instance_add", "entry_publish", "entry_unpublish"] as const;
 export type Level3Action = (typeof LEVEL3_ACTIONS)[number];
 
 export type Plan = {
@@ -42,6 +42,17 @@ export type Plan = {
   skin?: string;
   /** Polices (`font_set`) : ce qui change (`titles`, `text` : valeur choisie, "" = celle du skin ; absent = inchangé) et son résumé lisible pour la personne propriétaire. */
   fonts?: { titles?: string; text?: string; names: string };
+  /** Installation of several modules at once (one request, one approval): one plan per module, in the order they will be installed. */
+  bundle?: Plan[];
+  /** `skin_set_options`: the colours to set (field -> hex, "" = back to the skin's own) for one mode, with a readable summary for the owner. */
+  options?: { mode?: "light" | "dark"; colors: Record<string, string>; names: string };
+  /** `instance_add`: the module is `module`; the nickname that tells the new instance apart from the existing ones. */
+  newInstance?: { nickname: string };
+  /**
+   * `entry_publish` / `entry_unpublish`: the instance key and the entries as they were when the request was made (title and languages for the owner to read,
+   * a fingerprint of the text so that a draft edited after the request is NOT published without a new look).
+   */
+  entry?: { instance: string; locale?: string; items: { id: string; title: string; locales: string[]; fp: string }[] };
 };
 export type RequestStatus = "pending" | "running" | "done" | "failed" | "denied" | "expired";
 export type MaintenanceRequest = {
@@ -100,6 +111,7 @@ export async function pendingCount(now = Date.now()): Promise<number> {
 }
 
 const same = (a: Plan, b: Plan) => JSON.stringify(a) === JSON.stringify(b);
+/** Pending requests per access. A bundle (several modules in one request) counts as ONE. */
 export const MAX_PENDING_PER_TOKEN = 5;
 
 /** Crée une demande, ou renvoie celle qui attend déjà pour la même chose (un appel répété ne remplit pas la file). */

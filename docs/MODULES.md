@@ -1587,6 +1587,8 @@ export default {
 Le cœur héberge un serveur MCP (`/api/mcp`, désactivable depuis l'admin → *Assistants IA*, qui s'intitule aussi « API & MCP » en mode avancé) **sans aucun outil codé
 en dur** : il collecte les actions déclarées par tous les modules actifs. Le cœur y ajoute ses propres outils `site_info`, `redirects_…` (liens courts : voir [PLATFORM.md](PLATFORM.md)) et `maintenance_…` (maintenance du site par une IA : voir [MAINTENANCE-IA.md](MAINTENANCE-IA.md)) ; un jeton « Maintenance » n'a que ceux-là, jamais vos actions de module sans que vous les lui accordiez.
 
+**Content modules and the AI (English note).** A module with a `content` block needs to do nothing to be editable by an assistant: the content engine (`src/core/content/mcp.ts`) gives its instance `list_entries`, `get_entry`, `create_draft`, `update_draft` and, as separate rights that are never granted by default, `publish` and `unpublish` (`<instance key>__publish`). Publishing only turns an existing draft of that instance into a published entry (same checks as the admin's Publish button, no edit of content) and follows the approval setting of the access: a request the owner approves, or done at once when the owner chose "act without asking". If your module declares its own `mcp` action named `publish` or `unpublish`, yours is kept and the generic one is not added. Every tool the core adds must be assigned to a preset or explicitly excluded in `src/core/services/mcp/profiles.ts`; module tools are classified by what they declare (`readOnly`, `default`, `destructive`). See [MAINTENANCE-IA.md](MAINTENANCE-IA.md).
+
 ```jsonc
 // module.json
 "mcp": [
