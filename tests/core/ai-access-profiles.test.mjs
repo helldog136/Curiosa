@@ -252,7 +252,7 @@ test("approbation des actions à risque : deux choix côte à côte, l'état cou
   assert.match(page, /<ApprovalChoice current=\{approval\}/);
   assert.doesNotMatch(page, /aim\.approval\.direct"\)\}<\/ConfirmButton>|aim\.approval\.human"\)\}<\/PendingButton>/, "plus de bouton-verbe");
   assert.match(read("src/app/admin/(panel)/assistants/requestsActions.ts"), /setApprovalMode\(row\.id, next\)/, "même réglage, même valeur stockée");
-  assert.match(en["aim.approval.installNote"], /Installing a feature always asks for your approval, whatever you choose\./);
+  assert.match(en["aim.approval.installNote"], /Installing a feature or adding another copy always asks for your approval, whatever you choose\./);
   assert.match(en["aim.approval.ask"], /recommended/);
 });
 

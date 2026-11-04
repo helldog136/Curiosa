@@ -1885,7 +1885,7 @@
   "ai.profile.assistant.l3": "Elle ajuste les réglages des fonctionnalités installées et les liens courts.",
   "ai.profile.assistant.l4": "Elle fait des copies de sécurité et cherche les mises à jour.",
   "ai.profile.full.l1": "L'IA demande aussi d'installer des fonctionnalités et des habillages.",
-  "ai.profile.full.l2": "Elle peut demander de changer les polices, les couleurs et l'habillage, d'ajouter un exemplaire de plus d'une fonctionnalité et de publier des brouillons.",
+  "ai.profile.full.l2": "Elle peut demander de changer l'apparence, d'ajouter un exemplaire d'une fonctionnalité et de publier.",
   "ai.profile.full.l3": "Chacune de ces actions est une demande que vous approuvez.",
   "ai.profile.full.l4": "Elle fait aussi tout ce que fait l'Assistant.",
   "ai.profile.always": "Elle ne lit jamais de mot de passe ni de secret. Les installations attendent votre accord. Tout est noté dans le journal.",
