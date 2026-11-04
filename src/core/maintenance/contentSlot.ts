@@ -5,9 +5,10 @@ import { deps } from "./deps";
  * Rate limit of the "content" class of actions (menu and home page changes made by an AI). It is NOT the 12-per-hour counter of the risky actions
  * (updates, installs, uninstalls): editing the structure of a site while building it takes many more calls.
  *
- * THIS FILE IS THE ONE PLACE TO SWITCH when the shared limiter of `actions.ts` offers classes (`takeSlot(tokenId, "content")`, `remainingSlots`, `resetSlots`):
- * replace the body of `takeContentSlot` with that call and delete the local map. Until then the content class has its own small counter here, so that it
- * never uses up (and is never blocked by) the risky counter.
+ * THIS FILE IS THE ONE PLACE TO SWITCH when the shared limiter (`slots.ts` of the branch feat/mcp-media-and-site-settings: `takeSlot(tokenId, "content")`,
+ * `remainingSlots`, `resetSlots`) is in origin/dev: make `takeContentSlot` call `takeSlot(tokenId, "content")` (it is async there), delete the local map and
+ * `resetContentSlots`, and use `resetAllSlots` in the tests. Until then the content class has its own small counter here, so that it never uses up
+ * (and is never blocked by) the risky counter. Same default: 120 per hour per access.
  */
 export const MAX_CONTENT_ACTIONS_PER_HOUR = 120;
 

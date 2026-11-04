@@ -17,7 +17,7 @@ import { executeInstanceAdd, prepareInstanceAdd } from "./instances";
 import { executeEntryPublish, prepareEntryPublish } from "./publish";
 import { executeNavigationSet, prepareNavigationSet } from "./siteNavigation";
 import { executeHomeSectionsSet, prepareHomeSectionsSet } from "./siteHome";
-import { takeContentSlot } from "./slots";
+import { takeContentSlot } from "./contentSlot";
 import { applyConfigure, parseConfigureArgs } from "./moduleSettings";
 import { executeFont, prepareFont } from "./fonts";
 import { executeSkin, executeSkinOptions, isSkinAction, prepareSkin, prepareSkinOptions } from "./skins";
