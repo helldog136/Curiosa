@@ -1,6 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/core/db";
-import { parseTags, uniqueSlug } from "@/core/content/entries";
+import { entryPath, parseTags, uniqueSlug } from "@/core/content/entries";
 import { createEntry } from "@/core/content/service";
 import { getInstanceLabeler } from "@/core/modules/labels";
 import { getActiveInstances } from "@/core/modules/registry";
@@ -12,6 +12,7 @@ import { McpToolError, validateArgs } from "@/core/services/mcp/validate";
 import type { JsonSchemaLite } from "@/core/modules/types";
 import { callLevel3 } from "@/core/maintenance/actions";
 import { publishInput } from "@/core/maintenance/publish";
+import { updatePublishedSummary } from "@/core/maintenance/entryMeta";
 
 /**
  * MCP TOOL PROVIDER: the content engine.
@@ -33,6 +34,10 @@ function decodeCreatedCursor(raw: string): { createdAt: Date; id: string } | nul
 const pickPublishArgs = (a: Record<string, unknown>) => ({ id: a.id, ids: a.ids, locale: a.locale });
 const str = (max = 2000) => ({ type: "string" as const, maxLength: max });
 
+/** Public path of each language version of an entry (`/blog/hello`, `/fr/blog/bonjour`), and of the one shown. Additive: the list and the read keep every earlier field. */
+const pathsOf = (basePath: string | null, translations: { locale: string; slug: string }[], defaultLocale: string): Record<string, string> =>
+  Object.fromEntries(translations.map((x) => [x.locale, entryPath({ basePath: basePath ?? "", slug: x.slug, locale: x.locale }, defaultLocale)]));
+
 export const contentToolProvider: McpToolProvider = {
   id: "content",
   async list() {
@@ -49,7 +54,7 @@ export const contentToolProvider: McpToolProvider = {
 
       const listSchema: JsonSchemaLite = { type: "object", properties: { status: { type: "string", enum: ["published", "draft", "all"] }, locale: { type: "string", enum: locales }, limit: { type: "integer", minimum: 1, maximum: 100 }, cursor: str(200) } };
       add("list_entries", {
-        description: `[${label}] List entries (id, title, status, summary, link, code, tags), newest first. Default: published only, 30 per call (100 at most). With no "cursor" and nothing left, the answer is the plain list; when more remain (or when a "cursor" was given) it is { items, next }: pass "next" as "cursor" to read the following page; next is null on the last page.`,
+        description: `[${label}] List entries (id, title, status, summary, public path, paths per language, link, code, tags), newest first. Default: published only, 30 per call (100 at most). With no "cursor" and nothing left, the answer is the plain list; when more remain (or when a "cursor" was given) it is { items, next }: pass "next" as "cursor" to read the following page; next is null on the last page.`,
         readOnly: true,
         input: listSchema,
         call: async (raw) => {
@@ -68,7 +73,8 @@ export const contentToolProvider: McpToolProvider = {
           const rows = found.slice(0, take);
           const items = rows.map((e) => {
             const tr = e.translations.find((x) => x.locale === locale) ?? e.translations[0];
-            return { id: e.id, status: e.status, title: tr?.title, locale: tr?.locale, languages: e.translations.map((x) => x.locale), summary: tr?.summary || undefined, url: e.url ?? undefined, code: e.code ?? undefined, tags: parseTags(e.tags), publishedAt: e.publishedAt?.toISOString() };
+            const paths = pathsOf(instance.basePath, e.translations, config.defaultLocale);
+            return { id: e.id, status: e.status, title: tr?.title, locale: tr?.locale, languages: e.translations.map((x) => x.locale), path: tr ? paths[tr.locale] : undefined, paths, summary: tr?.summary || undefined, url: e.url ?? undefined, code: e.code ?? undefined, tags: parseTags(e.tags), publishedAt: e.publishedAt?.toISOString() };
           });
           const next = found.length > take ? encodeCreatedCursor(rows[rows.length - 1]!) : null;
           // Forme d'avant (un tableau) tant qu'il n'y a ni curseur ni page suivante ; sinon { items, next }.
@@ -78,7 +84,7 @@ export const contentToolProvider: McpToolProvider = {
 
       const getSchema: JsonSchemaLite = { type: "object", required: ["id"], properties: { id: str(60), locale: { type: "string", enum: locales } } };
       add("get_entry", {
-        description: `[${label}] Read one entry with its full text.`,
+        description: `[${label}] Read one entry with its full text, its public path and the path of each language version.`,
         readOnly: true,
         input: getSchema,
         call: async (raw) => {
@@ -86,7 +92,8 @@ export const contentToolProvider: McpToolProvider = {
           const e = await prisma.entry.findFirst({ where: { id: a.id as string, instanceId: instance.id }, include: { translations: true } });
           if (!e) throw new McpToolError("entry not found");
           const tr = e.translations.find((x) => x.locale === ((a.locale as string) ?? config.defaultLocale)) ?? e.translations[0];
-          return { id: e.id, status: e.status, locale: tr?.locale, title: tr?.title, summary: tr?.summary, body: tr?.body, url: e.url, code: e.code, tags: parseTags(e.tags), languages: e.translations.map((x) => x.locale) };
+          const paths = pathsOf(instance.basePath, e.translations, config.defaultLocale);
+          return { id: e.id, status: e.status, locale: tr?.locale, title: tr?.title, summary: tr?.summary, body: tr?.body, url: e.url, code: e.code, tags: parseTags(e.tags), languages: e.translations.map((x) => x.locale), path: tr ? paths[tr.locale] : undefined, paths };
         },
       });
 
@@ -156,6 +163,24 @@ export const contentToolProvider: McpToolProvider = {
           description: `[${label}] Return PUBLISHED entries to draft (id, or ids for several). Content is not changed and nothing is deleted: the entry just stops showing on the site until it is published again. Follows the owner's approval setting for this access, like publish.`,
           readOnly: false, default: false, request: true, audited: true, input: pubSchema,
           call: (raw, actor) => callLevel3("entry_unpublish", { instance: instance.key, ...pickPublishArgs(validateArgs(pubSchema, raw)) }, actor),
+        });
+      }
+      if (!own.has("update_published_meta")) {
+        const metaSchema: JsonSchemaLite = {
+          type: "object", required: ["id", "locale", "summary"],
+          properties: {
+            id: { type: "string", maxLength: 60, description: "Identifier of a PUBLISHED entry, as returned by list_entries." },
+            locale: { type: "string", enum: locales, description: "The language version to correct." },
+            summary: { type: "string", maxLength: 2000, description: "The new summary (description) of that language version." },
+          },
+        };
+        add("update_published_meta", {
+          description: `[${label}] Correct the SUMMARY (short description) of one language version of a PUBLISHED entry, without taking it off the site. Only id, locale and summary are accepted: the title, address, text and status cannot be changed here. Refuses drafts (use update_draft). The previous summary is kept so the owner can put it back.`,
+          readOnly: false, default: false, audited: true, input: metaSchema,
+          call: (raw, actor) => {
+            const a = validateArgs(metaSchema, raw);
+            return updatePublishedSummary(instance, actor, { id: a.id as string, locale: a.locale as string, summary: a.summary as string });
+          },
         });
       }
     }

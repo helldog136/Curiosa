@@ -6,7 +6,7 @@
  *   assistant  + prepares drafts and adjusts installed modules (safe, reversible actions), sends images, and sets the site identity (name, tagline, contact e-mail, logos) and arranges the menu and the home page
  *              (the last two follow the access's approval setting; reversible: the owner can restore the previous menu or home page)
  *   full       + asks to install modules (one or several at once) and skins, add instances, change colours, fonts and skin, and publishes drafts (`<instance>__publish`,
- *              `__unpublish`): requests the owner approves, or done at once when the owner chose "act without asking" for that access (installs and new instances
+ *              `__unpublish`) and corrects the summary of a published page (`__update_published_meta`): requests the owner approves, or done at once when the owner chose "act without asking" for that access (installs and new instances
  *              always wait for the owner)
  *
  * Each profile includes the ones before it. A tool is either assigned to the profile that first allows it, or explicitly EXCLUDED (never part of a preset:
@@ -71,7 +71,7 @@ export function placementOf(tool: ProfileTool): Placement {
   if (tool.name in PROFILE_EXCLUDED) return "excluded";
   if (!tool.instanceId) return "unassigned";
   // Publishing a draft is a separate right of every content instance, part of the "full" preset (it follows the access's approval setting). Checked before `destructive`.
-  if (/__(publish|unpublish)$/.test(tool.name) && !tool.destructive) return "full";
+  if (/__(publish|unpublish|update_published_meta)$/.test(tool.name) && !tool.destructive) return "full";
   if (tool.destructive) return "excluded";
   if (/__(create_draft|update_draft)$/.test(tool.name)) return "assistant";
   return tool.readOnly && tool.default ? "read" : "excluded";

@@ -55,7 +55,7 @@ export default async function AccessPage({ params }: { params: Promise<{ id: str
   const usable = catalogue.filter((x) => !x.instanceOptedOut && canUse(x, token));
   const can = abilities(usable.map((x) => ({ readOnly: x.readOnly, destructive: x.destructive, source: x.source })));
   // Publishing is a right of its own, per content list: in simple mode it gets a section in plain words (in advanced mode each list shows its own tools).
-  const publishing = catalogue.filter((x) => !x.instanceOptedOut && !!x.instanceId && /__(publish|unpublish)$/.test(x.name));
+  const publishing = catalogue.filter((x) => !x.instanceOptedOut && !!x.instanceId && /__(publish|unpublish|update_published_meta)$/.test(x.name));
   const setup = catalogue.filter((x) => SETUP_TOOLS.includes(x.name));
   const shown: [string, typeof catalogue][] = [...groups.entries()].filter(([source]) => advanced || source === "maintenance");
   if (!advanced && publishing.length) shown.push(["publishing", publishing]);
