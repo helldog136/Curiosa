@@ -9,20 +9,31 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ## Prochaine version (non publiée)
 
-**En bref.** Une IA à qui vous donnez le droit peut maintenant ranger le menu de votre site et composer sa page d'accueil, sans ouvrir l'administration. Rien à configurer.
+**En bref.** Un assistant IA à qui vous en donnez le droit peut maintenant mettre en place l'identité de votre site sans ouvrir l'administration : envoyer des images, régler le nom, l'accroche, la présentation, l'e-mail de contact et les logos. Les limites d'actions par heure sont aussi séparées, visibles et réglables.
 
 ### Assistants IA
 
+- **Votre assistant peut envoyer des images sur votre site.** Il fournit l'image dans son message, avec un texte qui la décrit. Le site vérifie ce que le fichier contient vraiment, lui donne un nom au hasard et refuse tout ce qui n'est pas une image sûre (3 Mo au plus).
+- **Il peut régler l'identité du site.** Nom, accroche et présentation dans chaque langue, e-mail de contact et logos, jamais les langues, les adresses ni les personnes. Il suit votre réglage : vous validez chaque demande, ou vous le laissez agir avec les anciennes valeurs gardées au journal.
+- **Les limites d'actions par heure sont séparées en deux.** Les actions courantes (publier, images, réglages) ont une grande réserve, les actions à risque (installer, mettre à jour) restent prudentes. Vous voyez ce qu'il reste et remettez tout à zéro d'un clic, dans la page de l'accès.
+- **Le message de limite dit quoi faire.** Il indique la limite, dans combien de minutes la prochaine action se libère et que vous pouvez remettre le compteur à zéro.
+- **(English) Your assistant can send images to your site.** It sends the image in its message with a text that describes it. The site checks what the file really contains, gives it a random name and refuses anything that is not a safe image (3 MB at most).
+- **(English) It can set the identity of the site.** Name, tagline and presentation in each language, contact e-mail and logos, never languages, addresses or people. It follows your approval setting; the old values stay in the journal.
+- **(English) Hourly limits are split in two.** Everyday actions (publishing, images, settings) get a big allowance, risky ones (installing, updating) stay careful. You see what is left, reset it in one click on the access page, and set both limits in advanced mode.
 - **L'IA peut régler le menu et la page d'accueil.** Selon votre réglage, vous approuvez d'abord ou elle agit tout de suite. Si une entrée est fausse, rien n'est enregistré.
 - **Vous pouvez tout remettre comme avant.** Dans Navigation et dans Accueil, un bouton « Remettre l'ancien menu » (ou « l'ancienne page d'accueil ») apparaît après un changement de l'IA, tant que personne n'a modifié la page depuis.
 - **In English.** An AI you allow can now arrange your menu and compose your home page without opening the admin. You approve first or it acts at once, depending on your setting, and a button in Navigation and Home puts the previous version back.
+- **Une page entière sur l'accueil.** Vous pouvez choisir une page publiée et en montrer tout le contenu sur la page d'accueil, dans la langue de la personne qui visite. Une page retirée ne laisse rien à l'écran.
 
 ### Pour les développeurs
 
+- **New core tools:** `media_upload`, `media_list`, `media_set_alt`, `site_settings_get`, `site_settings_set` (`src/core/siteMcp.ts`, `mediaMcp.ts`, `maintenance/siteSettings.ts`), with `aim.tool.*` rights, profiles (read / assistant) and the "Site identity" section of the rights page. `site_settings_set` is the level 3 action `site_settings_set` (`Plan.site`).
+- **`media_upload` reuses the admin's pipeline** (`sniffImage`, `saveUpload`, `saveSvgUpload`, `MAX_INPUT_PIXELS`); the MCP body limit is 4.3 MB for a single `media_upload` call only (1 MB otherwise). Alternative texts are the settings `media.alt.<file>` (no migration); journal lines `media.upload`, `media.alt`.
+- **Shared hourly limits API in `src/core/maintenance/slots.ts`:** `takeSlot(tokenId, "risky" | "content")` (now async), `remainingSlots`, `resetSlots`, `getLimits`, `setLimits`. Defaults 12 and 120, bounded 1 to 60 and 10 to 1000 (setting `maintenance.limits`). `LEVEL3_CLASS` in `actions.ts` classes every level 3 action. `maintenance_my_access` reports `hourlyLimits`.
 - **New MCP tools `navigation_get`, `navigation_set`, `home_sections_list`, `home_sections_set`** (`src/core/maintenance/siteNavigation.ts`, `siteHome.ts`). Writers are level 3 requests through `callLevel3` (approval setting); `Plan.change` freezes the list and a fingerprint, so an approval never overwrites a later change. See `docs/MAINTENANCE-IA.md`.
 - **Restore point** in the core settings `mcp.undo.navigation` / `mcp.undo.home` (previous state, access name, time, fingerprint of the applied state), used by the new `AssistantUndoNotice` on the Navigation and Home admin pages. No migration.
-- **Rate limit class "content"** (`src/core/maintenance/slots.ts`, 120 per hour and per access) for these writers, separate from the 12-per-hour counter of risky actions. `contentSlot.ts` is the single place to switch to the shared limiter classes when they land.
 - **`Def.bare`** in `src/core/maintenance/tools.ts`: a maintenance tool that keeps its own name instead of the `maintenance_` prefix; not part of the old "Maintenance" token profile.
+- **Home section `entry`** (offered by every content instance with a page): renders one published entry through the `entryContent` block with the same Markdown renderer as the entry page; `home_sections_list` reports a broken one. The writers use the shared limiter: class "content" in `LEVEL3_CLASS`.
 
 ## 0.6.8 — 2026-11-04
 

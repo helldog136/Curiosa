@@ -6,7 +6,7 @@ import { fakeCtx } from "../fakeCtx.mjs";
 import { makeCtx, observe } from "../probes.mjs";
 import { NET_RULES_LEVEL, compareVersions, stripComments, walkValue, whereOf } from "./util.mjs";
 
-const KNOWN_BLOCKS = ["markdown", "html", "banner", "links", "entries", "hero", "panel", "embed", "form", "table", "copy", "downloads", "gridEditor", "head", "heading", "swatches", "adminForm", "netHealth", "suggestInstall", "download"];
+const KNOWN_BLOCKS = ["markdown", "html", "banner", "links", "entries", "entryContent", "hero", "panel", "embed", "form", "table", "copy", "downloads", "gridEditor", "head", "heading", "swatches", "adminForm", "netHealth", "suggestInstall", "download"];
 export { KNOWN_BLOCKS };
 
 // ── Lecture des sorties ─────────────────────────────────────────────────────────────────────────────────────────────

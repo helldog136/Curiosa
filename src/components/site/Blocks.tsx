@@ -177,7 +177,7 @@ export async function Blocks({ blocks, locale, adminInstanceId: panelInstanceId,
         // Same formatting as the entry page (title, summary, cover, body in Markdown, sanitised by Markdown), without the page chrome. A fallback language is announced like there.
         const t = makeTranslator(locale);
         out.push(
-          <article key={i} lang={block.lang} data-skin-part="entry-content" className="mx-auto max-w-[var(--sk-prose-width-wide,48rem)] space-y-4">
+          <article key={i} lang={block.lang} className="mx-auto max-w-[var(--sk-prose-width-wide,48rem)] space-y-4">
             {block.fallback && <p data-skin-part="notice" data-tone="info" className="rounded-card border-token border-line bg-surface p-3 text-sm text-muted">{t("site.fallbackNotice", { lang: block.lang.toUpperCase() })}</p>}
             {block.cover && <CoverImage src={block.cover} variant="article" />}
             <header className="space-y-2">

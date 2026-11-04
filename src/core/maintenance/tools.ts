@@ -71,7 +71,7 @@ const LEVEL3_INPUT: Record<Level3Action, unknown> = {
   core_update: NONE, modules_update_all: NONE, module_update: MODULE_ARG, module_uninstall: UNINSTALL_ARG, module_install: INSTALL_ARG,
   skin_install: SKIN_ARG, skin_activate: SKIN_ARG, skin_remove: SKIN_ARG, skin_set_options: SKIN_OPTIONS_ARG, font_set: FONT_SET_ARG, instance_add: INSTANCE_ADD_ARG,
   // Published by the content engine (content/mcp.ts) under the name of each instance; listed here so that the table is complete.
-  entry_publish: NONE, entry_unpublish: NONE,
+  entry_publish: NONE, entry_unpublish: NONE, site_settings_set: NONE,
   navigation_set: NAVIGATION_SET_INPUT, home_sections_set: HOME_SET_INPUT,
 };
 const level3 = (name: Level3Action): Def["run"] => (args, actor) => {

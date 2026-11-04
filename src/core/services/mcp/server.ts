@@ -20,6 +20,8 @@ import { McpToolError } from "./validate";
  */
 const SUPPORTED_VERSIONS = ["2025-06-18", "2025-03-26", "2024-11-05"];
 const MAX_BODY = 1_000_000;
+/** Only one call may be bigger: `media_upload` (an image of 3 MB sent as base64). Everything else stays at 1 MB. */
+const MAX_BODY_MEDIA = 4_300_000;
 
 type RpcRequest = { jsonrpc?: string; id?: string | number | null; method?: string; params?: Record<string, unknown>; result?: unknown; error?: unknown };
 
@@ -47,7 +49,7 @@ async function handle(rpc: RpcRequest, token: AuthedToken, listTools: () => Prom
         protocolVersion: SUPPORTED_VERSIONS.includes(asked) ? asked : SUPPORTED_VERSIONS[0],
         capabilities: { tools: { listChanged: false } },
         serverInfo: { name: config.name, title: config.name, version: "1.0.0" },
-        instructions: "Tools come from the modules installed on this site. What you create stays a draft: publishing is a separate right that the owner may grant, and it follows the owner's approval setting. The menu and the home page have their own tools (navigation_get / navigation_set, home_sections_list / home_sections_set): read, change the whole list, send it back; they follow the same approval setting. If a tool you expect is missing, the owner may not have granted it yet (call maintenance_my_access if you have it, and reconnect after a change).",
+        instructions: "Tools come from the modules installed on this site. What you create stays a draft: publishing is a separate right that the owner may grant, and it follows the owner's approval setting. The menu and the home page have their own tools (navigation_get / navigation_set, home_sections_list / home_sections_set): read, change the whole list, send it back; they follow the same approval setting. If a tool you expect is missing, the owner may not have granted it yet (call maintenance_my_access if you have it, and reconnect after a change). To set up the identity of the site: upload images with media_upload (base64, alternative text required, 3 MB), then use site_settings_get and site_settings_set (name, tagline, presentation per language, contact e-mail, logos); changing settings follows the owner's approval setting.",
       });
     }
     case "ping":
@@ -117,13 +119,15 @@ async function run(request: Request, token: AuthedToken, listTools: () => Promis
   if (rateLimited(token.id)) return json(rpcError(null, -32002, "Too many requests."), 429);
 
   const raw = await request.text();
-  if (raw.length > MAX_BODY) return json(rpcError(null, -32600, "Request too large."), 413);
+  if (raw.length > MAX_BODY_MEDIA) return json(rpcError(null, -32600, "Request too large."), 413);
   let body: unknown;
   try {
     body = JSON.parse(raw);
   } catch {
-    return json(rpcError(null, -32700, "Parse error."), 400);
+    return json(rpcError(null, -32700, "Parse error."), raw.length > MAX_BODY ? 413 : 400);
   }
+  // Above 1 MB only a single media_upload call is accepted (not in a batch).
+  if (raw.length > MAX_BODY && !(!Array.isArray(body) && (body as RpcRequest)?.method === "tools/call" && (body as RpcRequest).params?.name === "media_upload")) return json(rpcError(null, -32600, "Request too large."), 413);
   const batch = Array.isArray(body);
   if (batch && (body as unknown[]).length === 0) return json(rpcError(null, -32600, "Invalid Request."), 400);
   const responses = (await Promise.all(((batch ? body : [body]) as RpcRequest[]).slice(0, 20).map((r) => safeHandle(r, token, listTools)))).filter((r) => r !== null);

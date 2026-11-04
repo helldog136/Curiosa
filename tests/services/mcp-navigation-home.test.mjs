@@ -15,7 +15,7 @@ const { listMcpTools, listMcpToolCatalogue } = await import("@/core/platform");
 const M = await import("@/core/maintenance/actions");
 const Q = await import("@/core/maintenance/requests");
 const S = await import("@/core/maintenance/settings");
-const SL = await import("@/core/maintenance/contentSlot");
+const SL = await import("@/core/maintenance/slots");
 const P = await import("@/core/services/mcp/profiles");
 const NAV = await import("@/core/maintenance/siteNavigation");
 const HOME = await import("@/core/maintenance/siteHome");
@@ -39,7 +39,7 @@ const both = (en, fr) => ({ en, fr });
 beforeEach(async () => {
   await db.reset();
   M.resetMaintenanceState();
-  SL.resetContentSlots();
+  SL.resetAllSlots();
   await setSetting("i18n.default", "en");
   await setSetting("i18n.enabled", ["en", "fr"]);
   for (const id of ["blog", "pages", "hero"]) await db.fixture(id);
@@ -417,17 +417,17 @@ test("journal: who, what, when, labels only (never a text); the request and its 
 });
 
 test("rate limit: the menu and the home page use the \"content\" class (120 per hour), not the 12-per-hour counter of risky actions", async () => {
-  const { token, id } = await direct(["navigation_get", "navigation_set", "maintenance_backup_run"]);
+  const { token, id } = await direct(["navigation_get", "navigation_set", "maintenance_module_restart"]);
   const actor = { name: "Camille", tokenId: id };
   const set = () => M.callLevel3("navigation_set", { entries: [{ page: "home" }] }, actor);
-  for (let i = 0; i < SL.MAX_CONTENT_ACTIONS_PER_HOUR; i++) assert.equal((await set()).status, "done", `call ${i + 1}`);
-  await assert.rejects(set, /Too many menu or home page changes.*limit 120/);
+  for (let i = 0; i < SL.DEFAULT_LIMITS.content; i++) assert.equal((await set()).status, "done", `call ${i + 1}`);
+  await assert.rejects(set, /Limit reached: 120 content actions per hour/);
   // the risky counter was not used up by these 120 calls
-  assert.ok(!/Too many maintenance actions/.test((await call(token, "maintenance_backup_run")).error ?? ""));
+  assert.ok(!/Limit reached: 12 risky/.test((await call(token, "maintenance_backup_run")).error ?? ""));
   // and the other way round: using up the risky counter does not block the menu
-  SL.resetContentSlots();
-  for (let i = 0; i < M.MAX_ACTIONS_PER_HOUR; i++) await call(token, "maintenance_backup_run");
-  assert.match((await call(token, "maintenance_backup_run")).error ?? "", /Too many maintenance actions/);
+  SL.resetAllSlots();
+  for (let i = 0; i < M.MAX_ACTIONS_PER_HOUR; i++) await call(token, "maintenance_module_restart", { instance: blog.key });
+  assert.match((await call(token, "maintenance_module_restart", { instance: blog.key })).error ?? "", /Limit reached: 12 risky/);
   assert.equal((await set()).status, "done");
 });
 

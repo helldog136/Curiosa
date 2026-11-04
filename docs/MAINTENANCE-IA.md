@@ -38,7 +38,7 @@ Une IA ne peut agir sur votre site que par un **jeton** : c'est son mot de passe
 - Lire ou télécharger le contenu d'une sauvegarde, lire un fichier du serveur, lancer une commande.
 - **Restaurer une sauvegarde** : cela remplace tout le site et demande le mot de passe de la sauvegarde, qui ne doit jamais passer par une IA. Cela se fait dans **Admin › Sauvegarde**.
 - Installer une **version d'essai** de Curiosa (« candidate », en `-rc`) ou un instantané de développement, ni revenir à une version plus ancienne. Même si votre site est réglé sur le canal des versions d'essai, une IA ne s'en sert jamais : c'est à vous de le faire à la main si vous le souhaitez.
-- Faire plus de 12 actions par heure avec le même jeton, ou deux opérations de maintenance en même temps.
+- Exceed the hourly limits of the access (12 risky and 120 everyday actions by default, see "Hourly limits" below), or run two maintenance operations at the same time.
 
 ### Valider une demande
 
@@ -179,7 +179,7 @@ Le cœur n'exécute **jamais** de mise à jour vers une version candidate (`X.Y.
 
 ### Limites
 
-- 12 actions de niveau 2 ou 3 par heure et par jeton ; 5 demandes en attente au plus ; une seule opération à la fois (sinon la réponse dit « Another maintenance operation is running » : réessaie plus tard).
+- Two hourly counters per access (risky: 12, everyday: 120, see "Hourly limits" below); 5 pending requests at most; une seule opération à la fois (sinon la réponse dit « Another maintenance operation is running » : réessaie plus tard).
 - Une demande vaut 24 heures.
 - Tout ce que tu fais est inscrit au journal d'audit (`mcp.maintenance.<outil>`), avec le nom de ton jeton.
 
@@ -202,7 +202,7 @@ Every content module (blog, pages, links, sponsors...) gets two more tools from 
 | Follows the approval setting | Exactly like updates and uninstalls (`callLevel3`): "I approve every request" gives `{ status: "pending_approval", requestId }` and the owner approves in Admin > AI assistants (poll `maintenance_request_status`); "act without asking" publishes at once and answers `{ status: "done" }`. |
 | What was approved is what is published | The request keeps a fingerprint of the texts. A draft edited after the request is not published on approval: the answer says so and the AI asks again. |
 | Journal | `entry.publish` / `entry.unpublish` with `<instance>/<entry id>`, actor `mcp:<access name>`, kind `assistant`; plus `mcp.maintenance.request`, `.approve` and `.entry_publish` for the request flow. Never a title or a text. |
-| Limits | The 12 level-2/3 actions per hour and per access, 12 entries per call, 120 requests per minute per access, 1 MB per body, like the other tools. |
+| Limits | The "everyday" counter of the access (120 per hour by default, shared with media, site settings and the other everyday actions), 12 entries per call, 120 requests per minute per access, 1 MB per body, like the other tools. |
 
 ### `maintenance_my_access` (level 1, read, granted by default)
 
@@ -247,7 +247,48 @@ Rules, checked by `tests/services/mcp-navigation-home.test.mjs`:
 - **Approval setting** (`callLevel3`): "I approve every request" creates a request (`navigation_set` / `home_sections_set`) whose `plan.change` holds the new list and a summary (counts, labels added, removed, changed, reordered) that Admin > AI assistants shows in plain words; "act without asking" applies it at once. The request keeps a fingerprint of the state it was made from: if a person changed the menu or the home page in between, the approval does NOT overwrite it ("changed by someone else", ask again). Targets are checked again at execution.
 - **Undo**: when a change is applied, the previous state, the name of the access and the time are kept as a restore point (core settings `mcp.undo.navigation`, `mcp.undo.home`; structure only, never a secret). Admin > Navigation and Admin > Home show "An AI assistant changed this ... / Restore the previous ..." while the current state is still the one the AI produced. Once a person edits, or restores, the point is no longer offered, so a restore never erases a person's later work. One point per target; the next AI change replaces it.
 - **Journal**: `navigation.update` / `home.update`, actor `mcp:<access name>`, kind `assistant`, target = counts and labels only ("3 -> 6 entries; added: Home, Blog"), never a text; plus the usual `mcp.maintenance.request`, `.approve` and `.navigation_set` / `.home_sections_set` lines. A restore is journalled with the person's address.
-- **Limits**: these writers belong to the "content" class of the rate limit (`contentSlot.ts`, 120 per hour and per access), not to the strict 12-per-hour counter of risky actions (updates, installs); 120 requests per minute per access and 1 MB per body apply as for every tool; pending requests are capped at 5 per access.
+- **Limits**: these writers belong to the "content" class of the shared hourly limits (`slots.ts`, 120 per hour and per access by default, see the addendum below), not to the strict "risky" class (12 per hour: updates, installs); 120 requests per minute per access and 1 MB per body apply as for every tool; pending requests are capped at 5 per access.
 - **Rights**: `aim.tool.navigation_get`, `navigation_set`, `home_sections_list`, `home_sections_set` (FR and EN). The readers are in the "Read only" profile; the writers in "Assistant" (and so in "Full setup"): they are reversible and follow the approval setting. They are not part of the old "Maintenance" token profile. `maintenance_my_access` lists them like any other tool.
 
 Typical use: `navigation_get`, edit the list, `navigation_set`; `home_sections_list`, edit, `home_sections_set`. On a fresh site the showcase menu (Home, What is Curiosa, Install, Blog, Press kit, Contact) and a home page with the banner followed by a page are built in two calls each (see the scenario test).
+
+## Addendum: images, site settings and hourly limits
+
+Goal: an AI with the right to do it sets up the identity of a whole site without opening the admin (name, tagline, contact e-mail, logos and images). Code: `src/core/mediaMcp.ts`, `src/core/maintenance/siteSettings.ts`, `src/core/siteMcp.ts` (the provider), `src/core/maintenance/slots.ts` (the limits).
+
+### Images: `media_upload`, `media_list`, `media_set_alt`
+
+| Rule | What happens |
+|---|---|
+| Bytes only in the call | `media_upload { dataBase64, alt, name? }`. The server never fetches an address (no `url` argument, no third-party request, nothing to point at an internal server). The call body may reach 4.3 MB for this one call only (3 MB of image in base64); every other call, and any batch, stays at 1 MB. |
+| Type read from the bytes | `sniffImage` of the admin's own upload route (png, jpeg, webp, gif). The file name and the declared type are ignored. A video is refused even though the admin accepts it. |
+| SVG | Only through the logo pipeline (`saveSvgUpload` in `logoUpload.ts`): the drawing is re-written from the recognised elements, scripts, styles, texts, images and outside links are refused, 300 KB at most, and what is stored is the cleaned copy. |
+| Size and pixels | 3 MB at most; 40 million pixels at most (`MAX_INPUT_PIXELS` of `imageDerive.ts`, read from the header with `sharp`, no decoding). A file the engine cannot read is refused. |
+| Name | Random (`/uploads/<uuid>.<ext>`, `storeUpload`). The `name` sent by the AI is only a label for the journal, cut to its last path part and to letters, digits and `. _ -`. |
+| EXIF | Like the admin's upload, the stored original is not rewritten: only the resized copies lose their metadata. |
+| Alternative text | Required, 125 characters at most, one line. Stored in the setting `media.alt.<file name>` (no migration). `media_set_alt` changes it; the old text goes to the journal. |
+| `media_list` | 50 per page, newest first: id, address, type, alt, bytes, date, `usedBy` (best effort: logos, settings, text of the content). Read only. There is no deletion tool. |
+| Limits | The everyday counter of the access (see below) plus a daily quota for the whole site: 100 images or 60 MB per 24 hours, counted from the journal. |
+| Journal | `media.upload` (file name, size in bytes, the label sent) and `media.alt` (old and new text), actor `mcp:<access name>`, kind `assistant`. Never the bytes. |
+
+### Site settings: `site_settings_get`, `site_settings_set`
+
+- `site_settings_get` (read): name, tagline and presentation for each language, public contact e-mail, the languages (default and enabled, read only) and the six logo slots with their current address. No secret exists in these fields.
+- `site_settings_set` (a level 3 request, action `site_settings_set`) changes only what is given: `name`, `tagline`, `presentation` as `{ "<language>": "…" }`, `contactEmail`, `logos` as `{ wide | square | wideDark | squareDark | favicon | share: "/uploads/….png" }` (an empty string removes). Limits: name 80 characters, tagline 200, presentation 20,000, 30,000 in total per call; a language must be enabled; the e-mail is one address; a logo must be an image already on this site (a bare `/uploads/<uuid>.<ext>` address that exists; no outside address, no crop query), and the sharing image cannot be a svg. Everything is checked first: one wrong value saves nothing and every problem is listed with an example.
+- It cannot change the default language, the enabled languages, the time zone, domains, roles, secrets, sign-in, mail sending or anything that affects security or addresses. Those names are refused with a sentence that says the owner does it in Admin > Settings.
+- It FOLLOWS the approval setting of the access, like publishing and colours. "Ask me first": a request whose summary lists old and new values (Admin > AI assistants > Requests); the plan keeps a fingerprint of each old value and the execution refuses when somebody changed it since ("changed since the request"). "Act without asking": applied at once. In both cases the journal gets one `settings.update` line (actor `mcp:<access name>`) with the old values (cut at 200 characters each), so the owner can type them back in Admin > Settings.
+- The Press kit module (and any module) takes an uploaded image in its image settings: `maintenance_module_configure { instance, changes: { <image setting>: "/uploads/….png" } }` already accepts a `/uploads/…` address (tested with an upload from `media_upload`).
+
+### Hourly limits (`src/core/maintenance/slots.ts`)
+
+One small shared API, in memory, rolling hour, per access and per class:
+
+| Class | Default | Covers |
+|---|---|---|
+| `risky` | 12 per hour | install, update, uninstall, core update, skin install / activate / remove, adding an instance, reinstall, restart |
+| `content` | 120 per hour | publish / unpublish, `media_upload`, `media_set_alt`, `site_settings_set`, module settings, fonts and colours, content check, backups, check for updates, and the writers of the menu and the home page |
+
+- API: `takeSlot(tokenId, class)` (async, throws a plain message), `remainingSlots(tokenId)` (per class: limit, used, remaining, `nextSlotInMinutes`), `resetSlots(tokenId)`, plus `getLimits` / `setLimits` (bounded: risky 1 to 60, content 10 to 1000). A new writer calls `takeSlot(actor.tokenId, "content")` once, after validating its arguments; a new level 3 action must be added to `LEVEL3_CLASS` in `actions.ts` (the compiler asks for it).
+- The message: "Limit reached: 12 risky actions per hour for this access. Next slot in 14 min, or the owner can reset it in Admin > AI assistants."
+- `maintenance_my_access` reports `hourlyLimits` for both classes. The access page (Admin > AI assistants > the access) shows the same figures, a "Reset the limits" button (one click and a confirmation line, journalled as `mcp.limits.reset`) and, in advanced mode, the two limits (`mcp.limits.set`).
+- Rights: `aim.tool.media_list`, `media_upload`, `media_set_alt`, `site_settings_get`, `site_settings_set` (EN and FR). Profiles: read = `media_list`, `site_settings_get`; assistant = `media_upload`, `media_set_alt`, `site_settings_set`; full = everything.
