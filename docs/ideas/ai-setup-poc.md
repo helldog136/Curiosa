@@ -46,7 +46,7 @@ MCP with every right ticked and the approval setting on "act without asking".
 | 2 | Install and skin tools were described in other tools' text but absent from the list (see 1). | Confusing, looks like a bug. | Descriptions to fix. |
 | 3 | A maximum of 5 pending requests, one request per module. | A showcase site needs about ten approvals. | One approval for a whole plan proposed (`catalog_plan`, bundled install). |
 | 4 | Content tools create drafts only; there is no publish tool, even with the approval setting on "act without asking". | The human must publish by hand, which defeats the purpose. | Generic publish tool proposed; it follows the approval setting. |
-| 5 | No tool for the menu, the home page sections, the site name and tagline, the logo (media upload). | Five lines of the "Getting started" list cannot be done by an AI. | Planned (lot 3 of the tool proposal). |
+| 5 | No tool for the menu, the home page sections, the site name and tagline, the logo (media upload). | Five lines of the "Getting started" list cannot be done by an AI. | Menu and home page sections done (`navigation_*`, `home_sections_*`); site name and tagline, logo (media upload) in progress elsewhere. |
 | 6 | Some modules expose no setting an AI can see (for example the press kit). | The AI cannot fill them. | Press kit settings in progress. |
 | 7 | The catalogue and the setup assistant mixed languages. | A site whose main language is English showed French module texts. | Fixed (module internationalisation). |
 | 8 | The rights page needed one click per tool, and one control was ambiguous. | Slow and confusing. | Profiles, per-section buttons and a clear control in progress. |

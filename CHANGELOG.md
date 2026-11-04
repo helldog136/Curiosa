@@ -7,6 +7,23 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## Prochaine version (non publiée)
+
+**En bref.** Une IA à qui vous donnez le droit peut maintenant ranger le menu de votre site et composer sa page d'accueil, sans ouvrir l'administration. Rien à configurer.
+
+### Assistants IA
+
+- **L'IA peut régler le menu et la page d'accueil.** Elle lit le menu et les sections de l'accueil, puis propose la liste complète. Selon votre réglage, vous approuvez d'abord, ou elle agit tout de suite. Si une entrée est fausse, rien n'est enregistré.
+- **Vous pouvez tout remettre comme avant.** Dans Navigation et dans Accueil, un bouton « Remettre l'ancien menu » (ou « l'ancienne page d'accueil ») apparaît après un changement de l'IA, tant que personne n'a modifié la page depuis.
+- **In English.** An AI you allow can now arrange your menu and compose your home page without opening the admin. You approve first or it acts at once, depending on your setting, and a button in Navigation and Home puts the previous version back.
+
+### Pour les développeurs
+
+- **New MCP tools `navigation_get`, `navigation_set`, `home_sections_list`, `home_sections_set`** (`src/core/maintenance/siteNavigation.ts`, `siteHome.ts`). Writers are level 3 requests through `callLevel3` (approval setting); `Plan.change` freezes the list and a fingerprint, so an approval never overwrites a later change. See `docs/MAINTENANCE-IA.md`.
+- **Restore point** in the core settings `mcp.undo.navigation` / `mcp.undo.home` (previous state, access name, time, fingerprint of the applied state), used by the new `AssistantUndoNotice` on the Navigation and Home admin pages. No migration.
+- **Rate limit class "content"** (`src/core/maintenance/slots.ts`, 120 per hour and per access) for these writers, separate from the 12-per-hour counter of risky actions. `slots.ts` is the single place to switch to the shared limiter classes when they land.
+- **`Def.bare`** in `src/core/maintenance/tools.ts`: a maintenance tool that keeps its own name instead of the `maintenance_` prefix; not part of the old "Maintenance" token profile.
+
 ## 0.6.8 — 2026-11-04
 
 **En bref.** La version française d'un site dont la langue principale est l'anglais fonctionne de nouveau : ses pages s'ouvrent au lieu d'afficher une erreur. Il en va de même pour la page « lien terminé » du module Redirections. Rien à configurer.

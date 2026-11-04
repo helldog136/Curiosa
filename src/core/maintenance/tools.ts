@@ -14,6 +14,8 @@ import { legacyReportForAssistant } from "@/core/modules/legacyReport";
 import { redactDeep } from "./redact";
 import { getRequest, type Level3Action } from "./requests";
 import { FONT_SET_ARG } from "./fonts";
+import { NAVIGATION_GET_INPUT, NAVIGATION_SET_INPUT, navigationGet } from "./siteNavigation";
+import { HOME_LIST_INPUT, HOME_SET_INPUT, homeSectionsList } from "./siteHome";
 import { SKIN_ARG, SKIN_LIST_INPUT, SKIN_OPTIONS_ARG, skinList, skinStatus } from "./skins";
 
 /**
@@ -35,6 +37,8 @@ const MODULE_ARG = { type: "object", properties: { module: { type: "string", max
 
 type Def = {
   name: string; level: 1 | 2 | 3;
+  /** The tool keeps its own name (`navigation_get`) instead of the `maintenance_` prefix. */
+  bare?: boolean;
   /** Lecture seule malgré un niveau 2 (les réglages d'une instance : leurs valeurs ne se lisent que si le propriétaire l'a accordé). Défaut : niveau 1 seulement. */
   readOnly?: boolean;
   /** Granted by default to every access (not only to a "maintenance" one). Only the read tool that tells an AI what it lacks. */
@@ -68,13 +72,22 @@ const LEVEL3_INPUT: Record<Level3Action, unknown> = {
   skin_install: SKIN_ARG, skin_activate: SKIN_ARG, skin_remove: SKIN_ARG, skin_set_options: SKIN_OPTIONS_ARG, font_set: FONT_SET_ARG, instance_add: INSTANCE_ADD_ARG,
   // Published by the content engine (content/mcp.ts) under the name of each instance; listed here so that the table is complete.
   entry_publish: NONE, entry_unpublish: NONE,
+  navigation_set: NAVIGATION_SET_INPUT, home_sections_set: HOME_SET_INPUT,
 };
 const level3 = (name: Level3Action): Def["run"] => (args, actor) => {
+  if (name === "navigation_set" || name === "home_sections_set") {
+    const listKey = name === "navigation_set" ? "entries" : "sections";
+    const extra = Object.keys(args ?? {}).find((k) => k !== listKey);
+    if (extra) throw new McpToolError(`unexpected argument "${extra}"`);
+    return callLevel3(name, { [listKey]: (args as Record<string, unknown>)[listKey] }, actor);
+  }
   const valid = validateArgs(LEVEL3_INPUT[name] as JsonSchemaLite, args);
   return callLevel3(name, name === "skin_set_options" ? { options: valid } : valid, actor);
 };
 /** What makes a level 3 tool a deletion (red chip, confirmation when granted). Everything else at level 3 is a request, not a deletion. */
 const DESTRUCTIVE_LEVEL3: ReadonlySet<string> = new Set(["module_uninstall", "skin_remove"]);
+
+const toolName = (d: Pick<Def, "name" | "bare">) => (d.bare ? d.name : `maintenance_${d.name}`);
 
 const DEFS: Def[] = [
   {
@@ -180,22 +193,44 @@ const DEFS: Def[] = [
   { name: "modules_update_all", level: 3, title: "Update all modules", description: "Updates every module that has a STABLE update, one by one. By default this only creates a request that the owner approves; then poll request_status.", input: NONE, run: level3("modules_update_all") },
   { name: "core_update", level: 3, title: "Update the core", description: "Updates Curiosa to the highest STABLE release, only if it is newer (never a release candidate or snapshot, never a downgrade). By default this only creates a request that the owner approves; then poll request_status. Make a backup first.", input: NONE, run: level3("core_update") },
   { name: "module_uninstall", level: 3, title: "Uninstall a module", description: "Uninstalls a module: no more page, menu, tasks, tools or public route. By default its settings and data are KEPT aside (inert, never readable by anyone) and come back if the module is installed again; pass keepData=false to erase everything for good (irreversible). By default this only creates a request that the owner approves; then poll request_status.", input: UNINSTALL_ARG, run: level3("module_uninstall") },
+
+  {
+    name: "navigation_get", bare: true, level: 1, title: "Menu of the site",
+    description: "The menu of the site as visitors get it, in display order: for each entry its label in every language, its target (a site page, a module page, a published content entry, a short link or an https address), whether it is shown, and its submenu. Also the languages and limits, and what can be added. The entries come in the exact shape navigation_set accepts. Read-only; no secret.",
+    input: NAVIGATION_GET_INPUT, run: () => navigationGet(),
+  },
+  {
+    name: "navigation_set", bare: true, level: 3, title: "Change the menu of the site",
+    description: "Replaces the WHOLE menu (read it first with navigation_get, change the list, send all of it back: add = a new item, remove = leave it out, reorder = change the order). Targets must exist: a site page {page}, a module page {instance}, a published entry {instance, entry}, a known address {path: \"/contact\"}, or another site {externalUrl: \"https://...\"} (https only). Labels are written in every language of the site. 40 entries at most, 8 per submenu, two levels. Checked like the admin's menu form; nothing is saved if one entry is wrong and every problem is listed with an example. Follows the token's approval setting: a request the owner approves in Admin > AI assistants (poll maintenance_request_status), or done at once when the owner chose that, with the previous menu kept so the owner can restore it in Admin > Navigation. Never HTML or scripts.",
+    input: NAVIGATION_SET_INPUT, run: level3("navigation_set"),
+  },
+  {
+    name: "home_sections_list", bare: true, level: 1, title: "Home page sections",
+    description: "The sections of the home page in order: kind (module section or text block), the module and instance it comes from, its title, its options, size, and whether it is shown. Also what can be added: the sections offered by the installed modules (banner, latest entries of a list...) with their options, the kinds of text block, and the languages and limits. The sections come in the shape home_sections_set accepts. Read-only; no secret.",
+    input: HOME_LIST_INPUT, run: () => homeSectionsList(),
+  },
+  {
+    name: "home_sections_set", bare: true, level: 3, title: "Change the home page",
+    description: "Replaces the WHOLE home page (read it first with home_sections_list). A section that stays is sent as {id} alone; remove = leave it out; reorder = change the order; add = {instance, section, options?, size?, isolated?} for a section a module offers, or {block: {kind, title, text, buttonLabel, buttonUrl, images...}} for a text block with every language of the site. Plain text only: never HTML, scripts or styles; images are pictures of the site or https; links are pages of the site or https. 30 sections at most. Nothing is saved if one section is wrong and every problem is listed. Follows the token's approval setting like the menu, with the previous home page kept so the owner can restore it in Admin > Home.",
+    input: HOME_SET_INPUT, run: level3("home_sections_set"),
+  },
 ];
 
 /** Catalogue statique (nom, niveau, droits) : sert à l'admin, aux tests et à la documentation. */
-export const MAINTENANCE_TOOLS = DEFS.map((d) => ({ name: `maintenance_${d.name}`, level: d.level, readOnly: d.readOnly ?? d.level === 1, destructive: DESTRUCTIVE_LEVEL3.has(d.name), request: d.level === 3 }));
+export const MAINTENANCE_TOOLS = DEFS.map((d) => ({ name: toolName(d), level: d.level, readOnly: d.readOnly ?? d.level === 1, destructive: DESTRUCTIVE_LEVEL3.has(d.name), request: d.level === 3 }));
 
 export const maintenanceToolProvider: McpToolProvider = {
   id: "maintenance",
   async list() {
     return DEFS.map((d): McpTool => ({
-      name: `maintenance_${d.name}`,
+      name: toolName(d),
       title: d.title,
       description: `[Maintenance, level ${d.level}] ${d.description}`,
       readOnly: d.readOnly ?? d.level === 1,
       // Aucune de ces actions n'est active par défaut pour un jeton ordinaire ; le profil « Maintenance » accorde le niveau 1 (lecture) et rien d'autre.
       default: d.default ?? false,
-      profileDefault: d.level === 1,
+      // The menu and home page readers are not part of the old "Maintenance" profile (it only watches the health of the site).
+      profileDefault: d.level === 1 && !d.bare,
       destructive: DESTRUCTIVE_LEVEL3.has(d.name),
       // Level 3 = a request the owner approves (or an action done at once when the owner chose so): not a deletion.
       request: d.level === 3,

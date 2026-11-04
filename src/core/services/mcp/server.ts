@@ -47,7 +47,7 @@ async function handle(rpc: RpcRequest, token: AuthedToken, listTools: () => Prom
         protocolVersion: SUPPORTED_VERSIONS.includes(asked) ? asked : SUPPORTED_VERSIONS[0],
         capabilities: { tools: { listChanged: false } },
         serverInfo: { name: config.name, title: config.name, version: "1.0.0" },
-        instructions: "Tools come from the modules installed on this site. What you create stays a draft: publishing is a separate right that the owner may grant, and it follows the owner's approval setting. If a tool you expect is missing, the owner may not have granted it yet (call maintenance_my_access if you have it, and reconnect after a change).",
+        instructions: "Tools come from the modules installed on this site. What you create stays a draft: publishing is a separate right that the owner may grant, and it follows the owner's approval setting. The menu and the home page have their own tools (navigation_get / navigation_set, home_sections_list / home_sections_set): read, change the whole list, send it back; they follow the same approval setting. If a tool you expect is missing, the owner may not have granted it yet (call maintenance_my_access if you have it, and reconnect after a change).",
       });
     }
     case "ping":

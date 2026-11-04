@@ -50,8 +50,8 @@ export async function myAccess(actor: { name: string; tokenId?: string }): Promi
     approvalSetting: {
       value: approval === "direct" ? "act_without_asking" : "ask_first",
       meaning: approval === "direct"
-        ? "Updates, uninstalls, font and colour changes and publishing happen at once, without the owner's approval; the owner is told afterwards."
-        : "Updates, uninstalls, font and colour changes and publishing only create a request that the owner approves in Admin > AI assistants. Poll maintenance_request_status.",
+        ? "Updates, uninstalls, font and colour changes, publishing and changes to the menu or the home page happen at once, without the owner's approval; the owner is told afterwards."
+        : "Updates, uninstalls, font and colour changes, publishing and changes to the menu or the home page only create a request that the owner approves in Admin > AI assistants. Poll maintenance_request_status.",
       alwaysAskedWhateverTheSetting: ALWAYS_HUMAN.map((a) => `maintenance_${a}`),
     },
     granted,

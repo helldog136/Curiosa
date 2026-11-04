@@ -15,6 +15,9 @@ import { runContentCheck } from "./content/service";
 import { executeInstall, executeInstallBundle, prepareInstall, prepareInstallBundle, samePlan } from "./install";
 import { executeInstanceAdd, prepareInstanceAdd } from "./instances";
 import { executeEntryPublish, prepareEntryPublish } from "./publish";
+import { executeNavigationSet, prepareNavigationSet } from "./siteNavigation";
+import { executeHomeSectionsSet, prepareHomeSectionsSet } from "./siteHome";
+import { takeContentSlot } from "./slots";
 import { applyConfigure, parseConfigureArgs } from "./moduleSettings";
 import { executeFont, prepareFont } from "./fonts";
 import { executeSkin, executeSkinOptions, isSkinAction, prepareSkin, prepareSkinOptions } from "./skins";
@@ -37,7 +40,8 @@ export type Params = { module?: string; instance?: string; /** Skins : l'identif
   /** Installation de plusieurs modules en une demande (`module_install`) : la liste d'identifiants. */ modules?: unknown;
   /** `instance_add`: the nickname of the new instance. */ nickname?: unknown;
   /** `entry_publish` / `entry_unpublish`: the entry (or entries) of the instance named by `instance`, and the language to insist on. */ id?: unknown; ids?: unknown; locale?: unknown;
-  /** `skin_set_options`: colours and fonts, as given to the tool. */ options?: Record<string, unknown> };
+  /** `skin_set_options`: colours and fonts, as given to the tool. */ options?: Record<string, unknown>;
+  /** `navigation_set`: the whole menu; `home_sections_set`: the whole home page, as given to the tool. */ entries?: unknown; sections?: unknown };
 
 /* ───────────── Verrou et cadence ───────────── */
 
@@ -217,6 +221,8 @@ export async function prepare(action: Level3Action, args: Params): Promise<Plan>
   }
   if (action === "instance_add") return prepareInstanceAdd({ module: args.module, nickname: args.nickname });
   if (action === "skin_set_options") return prepareSkinOptions(args.options ?? {});
+  if (action === "navigation_set") return prepareNavigationSet({ entries: args.entries });
+  if (action === "home_sections_set") return prepareHomeSectionsSet({ sections: args.sections });
   if (action === "entry_publish" || action === "entry_unpublish") return prepareEntryPublish(action, { instance: args.instance, id: args.id, ids: args.ids, locale: args.locale });
   if (isSkinAction(action)) return prepareSkin(action, { skin: args.skin });
   if (action === "font_set") return prepareFont({ titles: args.titles, text: args.text });
@@ -258,6 +264,8 @@ async function execute(action: Level3Action, plan: Plan, actorLabel: string): Pr
   // These re-read and compare by themselves (see publish.ts, install.ts, instances.ts, skins.ts).
   if (action === "entry_publish" || action === "entry_unpublish") return executeEntryPublish(action, plan, actorLabel);
   if (action === "skin_set_options") return executeSkinOptions(plan, actorLabel);
+  if (action === "navigation_set") return executeNavigationSet(plan, actorLabel);
+  if (action === "home_sections_set") return executeHomeSectionsSet(plan, actorLabel);
   if (action === "module_install" && plan.bundle) return executeInstallBundle(plan, actorLabel);
   if (action === "instance_add") {
     try { await prepareInstanceAdd({ module: plan.module, nickname: plan.newInstance?.nickname }); } catch (error) {
@@ -304,7 +312,7 @@ async function execute(action: Level3Action, plan: Plan, actorLabel: string): Pr
   return { ok: s.failed.length === 0 && !s.stoppedOn && s.updated.length > 0, message: parts.join("; ") || "Nothing was updated.", details: { updated: s.updated } };
 }
 
-const paramsText = (plan: Plan): string => plan.bundle ? plan.bundle.map((p) => `${p.module} ${p.to}`).join(", ") : plan.entry ? `${plan.entry.instance}/${plan.entry.items.map((i) => i.id).join(",")}${plan.entry.locale ? ` ${plan.entry.locale}` : ""}` : plan.newInstance ? `${plan.module} "${plan.newInstance.nickname}"` : plan.options ? `${plan.skin}: ${plan.options.names}${plan.fonts ? `; fonts: ${plan.fonts.names}` : ""}` : paramsTextOther(plan);
+const paramsText = (plan: Plan): string => plan.change ? `${plan.change.target}: ${plan.change.summary.beforeCount} > ${plan.change.summary.afterCount}` : plan.bundle ? plan.bundle.map((p) => `${p.module} ${p.to}`).join(", ") : plan.entry ? `${plan.entry.instance}/${plan.entry.items.map((i) => i.id).join(",")}${plan.entry.locale ? ` ${plan.entry.locale}` : ""}` : plan.newInstance ? `${plan.module} "${plan.newInstance.nickname}"` : plan.options ? `${plan.skin}: ${plan.options.names}${plan.fonts ? `; fonts: ${plan.fonts.names}` : ""}` : paramsTextOther(plan);
 const paramsTextOther = (plan: Plan) => plan.fonts ? plan.fonts.names : plan.skin ? `${plan.skin}${plan.to ? ` ${plan.to}` : ""}` : (plan.adds ? `${plan.module} ${plan.to}${plan.instanceKey ? ` key=${plan.instanceKey}` : ""}${plan.adds.length ? ` + ${plan.adds.map((a) => a.id).join(", ")}` : ""}` : plan.module ? (plan.keepData === undefined ? plan.module : `${plan.module}${plan.keepData ? " keepData" : " erase"}`) : null) ?? (plan.modules ? plan.modules.map((m) => `${m.id} ${m.from}>${m.to}`).join(", ") : plan.to ? `${plan.from}>${plan.to}` : "");
 
 /** Verrou + audit + avertissement autour d'une exécution de niveau 3. */
@@ -328,8 +336,11 @@ async function runGuarded(action: Level3Action, plan: Plan, who: { tokenName: st
 /** Requests that wait for the owner even when the access is set to "act without asking": they bring code or a public page onto the site. */
 export const ALWAYS_HUMAN: readonly Level3Action[] = ["module_install", "skin_install", "instance_add"];
 
+/** Changes to the structure of the site (menu, home page): the "content" class of the rate limit, not the strict counter of the risky actions. */
+export const CONTENT_ACTIONS: readonly Level3Action[] = ["navigation_set", "home_sections_set"];
+
 export async function callLevel3(action: Level3Action, args: Params, actor: { name: string; tokenId?: string }): Promise<unknown> {
-  takeSlot(actor.tokenId);
+  if (CONTENT_ACTIONS.includes(action)) takeContentSlot(actor.tokenId); else takeSlot(actor.tokenId);
   const plan = await prepare(action, args);
   // Installer du code sur le site n'est JAMAIS exécuté sans l'accord de la personne propriétaire, même pour un jeton en « exécution directe » : le réglage vaut pour
   // les mises à jour et désinstallations, et rien dans le modèle ne dit quel module est « sans danger ».
