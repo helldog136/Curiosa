@@ -12,10 +12,10 @@ let openedBy: string | null = null;
  * history entry, so "Back" closes the window. Without JavaScript, with a modifier key (new tab) or for an address outside the admin, it stays an ordinary link
  * that opens the same page in full.
  */
-export function DialogLink({ href, className, children, role, label }: { href: string; className?: string; children: React.ReactNode; role?: string; label?: string }) {
+export function DialogLink({ href, className, children, role, label, chip }: { href: string; className?: string; children: React.ReactNode; role?: string; label?: string; /** A chip-like link: gets the 44 px tap target. */ chip?: boolean }) {
   const router = useRouter();
   return (
-    <a href={href} role={role} aria-label={label} aria-haspopup="dialog" className={className}
+    <a href={href} role={role} aria-label={label} aria-haspopup="dialog" className={chip ? `${className ?? ""} inline-flex min-h-11 items-center` : className}
       onClick={(e) => {
         if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
         const target = softOpenTarget(href, window.location.href);
@@ -44,5 +44,5 @@ export function EditDialog({ title, closeLabel, closeHref, guard, footer, testid
     const target = (closeHref && softOpenTarget(closeHref, window.location.href)) ?? pathname;
     router.replace(target, { scroll: false });
   };
-  return <ModalWindow size="form" title={title} closeLabel={closeLabel} guard={guard} footer={footer} testid={testid} onClose={leave}>{children}</ModalWindow>;
+  return <ModalWindow size="form" title={title} closeLabel={closeLabel} closeHref={closeHref} guard={guard} footer={footer} testid={testid} onClose={leave}>{children}</ModalWindow>;
 }

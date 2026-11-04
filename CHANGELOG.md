@@ -31,8 +31,17 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Un état des traductions dans Réglages › Langues.** Chaque langue est « officielle » (anglais, français) ou « communautaire », « complète » ou « partielle : 82 % », et la liste des extensions auxquelles il manque des textes s'y trouve. Votre assistant IA lit la même chose.
 - **Ajouter une langue ne demande que des fichiers.** Un guide pas à pas (le document TRANSLATING) et une commande qui prépare les fichiers à traduire permettent à chacun de proposer sa langue.
 
-### Pour les développeurs
+### Fenêtres de modification
 
+- **Modifier un élément d'une liste ouvre une fenêtre au-dessus de la page.** La liste ne descend plus et garde sa recherche. Échap ou « Fermer » referment la fenêtre ; si vous avez écrit quelque chose, Curiosa demande d'abord si vous voulez l'abandonner.
+- **La fenêtre est la même partout.** Elle a l'aspect de la fiche d'une extension avant son installation, prend tout l'écran sur téléphone et se manipule au clavier. Le bouton « Retour » du navigateur la ferme.
+- **Edit windows (English).** Editing an item of a list opens a window above the page: the list keeps its search, Esc closes it, and Curiosa asks before discarding what you typed.
+
+### Pour les développeurs
+- **Edit dialog (`presentation: "dialog"`).** Accepted on `rowActions[]`, `links.items[]` and `adminForm`, with no `minCore`: an older core keeps the form in the page. See `docs/MODULES.md`.
+- **The address is the open state.** The row link soft-navigates and `adminPanel` returns the form for `?edit=…`; reload and "Back" work, and without JavaScript the link opens the full page.
+- **One window.** `ModalWindow.tsx` (the old `RouteModal` body) now also serves `EditDialog`; `RouteModal` is a thin wrapper. New: title, sticky footer, animation, window stack, optional discard `guard`.
+- **Test kit.** R4 counts a dialog form on its own; R24 asks for `cancelHref`; `blocks.valid` rejects other values. Fixture: `tests/fixtures/edit-dialog`.
 - **Languages and modules (i18n).** One pure source, `src/core/i18n/audit.mjs`: `pickText` (requested language, site main language, English; no French default), `auditManifest`, `auditDictionaries`, `applyTranslations`, `manifestSkeleton`. `localized()`, `pickLocalized`, `pickWords`, `renderEvent` and the MCP catalogue tools use it.
 - `makeTranslator(locale, siteDefault?)` follows the same chain and treats an empty text as missing.
 - **Languages are data.** `src/locales/languages.json` (name, `official` or `community`, `rtl`) replaces the list of `locales.ts`; `src/locales/index.ts` is generated. `node scripts/i18n-add-language.mjs <code> [--modules <repo>] [--only prefixes]` writes the skeletons (empty texts, translations kept); `--sync` rebuilds the index.

@@ -219,7 +219,7 @@ function DialogBlockForm({ instanceId, block, labels, dialog }: { instanceId: st
   const title = block.title ?? block.submitLabel;
   return (
     <EditDialog title={title} closeLabel={dialog.close} closeHref={block.cancelHref} guard={dialog.discard}
-      footer={<DialogFooter formId={formId} submitLabel={block.submitLabel} cancel={dialog.cancel} pending={pending} error={state?.error} />}>
+      footer={<DialogFooter formId={formId} submitLabel={block.submitLabel} cancel={dialog.cancel} cancelHref={block.cancelHref} pending={pending} error={state?.error} />}>
       <DialogOutcome state={state} formRef={formRef} instanceId={instanceId} saved={dialog.saved} />
       <form id={formId} ref={formRef} onSubmit={submitKeepingValues(action)} className="space-y-4" data-testid="edit-dialog-form">
         <FormFields fields={block.fields} labels={labels} />
@@ -229,13 +229,18 @@ function DialogBlockForm({ instanceId, block, labels, dialog }: { instanceId: st
 }
 
 /** Footer of the edit dialog: a general error (when it concerns no field), then ONE main button with a specific verb and a discreet "Cancel". */
-function DialogFooter({ formId, submitLabel, cancel, pending, error }: { formId: string; submitLabel: string; cancel: string; pending: boolean; error?: string }) {
+function DialogFooter({ formId, submitLabel, cancel, cancelHref, pending, error }: { formId: string; submitLabel: string; cancel: string; cancelHref?: string; pending: boolean; error?: string }) {
   const win = useModalWindow();
   return (
     <div className="space-y-2">
       {error && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm text-red-700">{error}</p>}
       <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end sm:gap-3">
-        <button type="button" onClick={() => win?.close()} className="inline-flex min-h-11 items-center justify-center rounded-xl px-4 text-sm text-muted underline-offset-2 hover:text-fg hover:underline" data-testid="edit-dialog-cancel">{cancel}</button>
+        {(() => {
+          const look = "inline-flex min-h-11 items-center justify-center rounded-xl px-4 text-sm text-muted underline-offset-2 hover:text-fg hover:underline";
+          return cancelHref
+            ? <a href={cancelHref} onClick={(e) => { e.preventDefault(); win?.close(); }} className={look} data-testid="edit-dialog-cancel">{cancel}</a>
+            : <button type="button" onClick={() => win?.close()} className={look} data-testid="edit-dialog-cancel">{cancel}</button>;
+        })()}
         <PendingButton pending={pending} variant="primary" form={formId} testid="edit-dialog-submit">{submitLabel}</PendingButton>
       </div>
     </div>

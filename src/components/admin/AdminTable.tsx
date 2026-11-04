@@ -114,12 +114,12 @@ export function AdminTable({ block, instanceId, entry, labels }: { block: TableB
                     <td key={i} role="cell" data-skin-part="table-cell" data-label={block.columns[i]}
                       className={`px-3 py-2 max-sm:flex max-sm:items-center max-sm:justify-between max-sm:gap-3 max-sm:px-1 max-sm:py-1.5 max-sm:before:shrink-0 max-sm:before:text-xs max-sm:before:text-muted max-sm:before:content-[attr(data-label)] ${cut.has(i) ? "max-w-[26ch] max-sm:max-w-none" : "whitespace-pre-wrap"}`}>
                       <CellView cell={c} cut={cut.has(i)} pictured={pictured.has(i)} instanceId={instanceId} entry={entry} id={id} labels={labels} />
+                      {i === 0 && noticeRow === r && <span aria-hidden="true" className="ml-2 inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-medium text-emerald-800">✓ {notice?.message}</span>}
                     </td>
                   ))}
                   {hasActions && (
                     <td role="cell" className="whitespace-nowrap px-3 py-2 max-sm:flex max-sm:justify-end max-sm:px-1 max-sm:pt-2">
                       <div className="flex items-center gap-2">
-                        {noticeRow === r && <span aria-hidden="true" className="mr-1 inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-1 text-xs font-medium text-emerald-800">✓ {notice?.message}</span>}
                         {visibleActions.map((a) => (
                           <RowActionButton key={a.label} instanceId={instanceId!} label={a.label} action={a.action} href={href(a, id)} id={id} confirm={a.confirm} danger={a.danger} entry={entry} presentation={a.presentation} />
                         ))}

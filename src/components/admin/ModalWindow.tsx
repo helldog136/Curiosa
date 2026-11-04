@@ -15,6 +15,9 @@ type WindowControls = {
   /** Forgets the edits (after a successful save, so that closing does not ask anything). */
   markClean: () => void;
 };
+/** Open windows, the last one on top: a window opened above another one (an edit dialog above the settings of an extension) alone answers the keyboard. */
+const openWindows: symbol[] = [];
+
 const WindowContext = createContext<WindowControls | null>(null);
 /** The controls of the window the caller is rendered in (null outside any window). */
 export const useModalWindow = () => useContext(WindowContext);
@@ -28,12 +31,14 @@ export const useModalWindow = () => useContext(WindowContext);
  * With `guard`, closing a window whose fields were edited asks first ("Discard changes?"). On a phone the panel takes the whole screen; never a horizontal scroll.
  * `title` adds a heading in the top bar (the window is then named by it); `footer` is a bar that stays visible at the bottom while the body scrolls.
  */
-export function ModalWindow({ children, label, title, closeLabel, onClose, guard, footer, testid = "route-modal", size = "wide" }: {
+export function ModalWindow({ children, label, title, closeLabel, closeHref, onClose, guard, footer, testid = "route-modal", size = "wide" }: {
   children: React.ReactNode;
   /** Name of the window for screen readers (when there is no `title`). */
   label?: string;
   title?: string;
   closeLabel: string;
+  /** Where "Close" leads without JavaScript (the button is then a real link; with JavaScript it closes the window as usual). */
+  closeHref?: string;
   /** Called when the window must go away (after the guard, if any, agreed). */
   onClose: () => void;
   guard?: DiscardGuard;
@@ -44,19 +49,14 @@ export function ModalWindow({ children, label, title, closeLabel, onClose, guard
   const panel = useRef<HTMLDivElement>(null);
   const titleId = useId();
   const dirty = useRef(false);
-  const asking = useRef(false);
   const latest = useRef({ onClose, guard });
   useEffect(() => { latest.current = { onClose, guard }; });
 
   const close = useCallback((force = false) => {
     const { onClose: leave, guard: ask } = latest.current;
     if (force || !ask || !dirty.current) { leave(); return; }
-    if (asking.current) return;
-    asking.current = true;
-    void askConfirm(ask.message, { confirmLabel: ask.discard, cancelLabel: ask.keep, danger: true, focusCancel: true }).then((discard) => {
-      asking.current = false;
-      if (discard) leave();
-    });
+    // The question is a modal box: the page (so this window) is inert while it is open, and Esc or a click beside answer the box, not the window.
+    void askConfirm(ask.message, { confirmLabel: ask.discard, cancelLabel: ask.keep, danger: true, focusCancel: true }).then((discard) => { if (discard) leave(); });
   }, []);
   const controls = useMemo<WindowControls>(() => ({ close, markClean: () => { dirty.current = false; } }), [close]);
 
@@ -65,9 +65,11 @@ export function ModalWindow({ children, label, title, closeLabel, onClose, guard
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     panel.current?.focus();
+    const me = Symbol("window");
+    openWindows.push(me);
     const key = (e: KeyboardEvent) => {
       const el = panel.current;
-      if (!el) return;
+      if (!el || openWindows[openWindows.length - 1] !== me) return;
       // A confirmation box is open above: it answers Esc and Tab by itself.
       if (document.querySelector("dialog[open]")) return;
       if (e.key === "Escape") { e.preventDefault(); close(); return; }
@@ -84,6 +86,7 @@ export function ModalWindow({ children, label, title, closeLabel, onClose, guard
     return () => {
       document.body.style.overflow = previous;
       window.removeEventListener("keydown", key);
+      openWindows.splice(openWindows.indexOf(me), 1);
       if (opener && opener.isConnected) opener.focus();
     };
   }, [close]);
@@ -98,10 +101,13 @@ export function ModalWindow({ children, label, title, closeLabel, onClose, guard
         {/* The top bar stays visible while the body scrolls: the "Close" button is never lost, and the content passes under it without hiding it. */}
         <div className={`sticky top-0 z-10 -mx-4 mb-2 flex items-center gap-3 border-b border-line/60 bg-surface px-3 py-2 sm:-mx-8 sm:px-5 ${title ? "justify-between" : "justify-end"}`}>
           {title && <h2 id={titleId} className="min-w-0 truncate pl-1 text-lg font-semibold sm:pl-0" title={title}>{title}</h2>}
-          <button type="button" onClick={() => close()} data-testid="modal-close"
-            className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border border-line bg-surface px-4 text-sm font-medium text-fg shadow-sm transition-colors hover:border-accent hover:text-accent">
-            <span aria-hidden>✕</span>{closeLabel}
-          </button>
+          {(() => {
+            const look = "inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border border-line bg-surface px-4 text-sm font-medium text-fg shadow-sm transition-colors hover:border-accent hover:text-accent";
+            const inner = <><span aria-hidden>✕</span>{closeLabel}</>;
+            return closeHref
+              ? <a href={closeHref} onClick={(e) => { e.preventDefault(); close(); }} data-testid="modal-close" className={look}>{inner}</a>
+              : <button type="button" onClick={() => close()} data-testid="modal-close" className={look}>{inner}</button>;
+          })()}
         </div>
         <WindowContext.Provider value={controls}>
           <div className="min-w-0 flex-1 pt-3 [overflow-wrap:anywhere]">{children}</div>

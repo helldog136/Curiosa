@@ -160,7 +160,7 @@ export async function Blocks({ blocks, locale, adminInstanceId: panelInstanceId,
             {block.items.map((item) => (
               <li key={`${item.href}-${item.label}`} data-skin-part="list-item">
                 {item.presentation === "dialog" && adminInstanceId && !entryScope
-                  ? <DialogLink href={item.href.startsWith("?") ? item.href : safeHref(item.href)} className="inline-flex min-h-11 items-center rounded-chip border-token border-line px-4 py-2 text-sm hover:border-accent hover:text-accent">{item.label}</DialogLink>
+                  ? <DialogLink chip href={item.href.startsWith("?") ? item.href : safeHref(item.href)} className="rounded-chip border-token border-line px-4 py-2 text-sm hover:border-accent hover:text-accent">{item.label}</DialogLink>
                   : (
                     <a href={safeHref(item.href)} data-chip="" data-skin-part="chip" className="rounded-chip border-token border-line px-4 py-2 text-sm hover:border-accent hover:text-accent">
                       {item.label}

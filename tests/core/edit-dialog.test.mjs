@@ -112,7 +112,7 @@ test("une seule fenêtre : la fiche d'une extension et la fenêtre de modificati
   assert.match(win, /sticky bottom-0/);
   assert.match(win, /min-h-11/);
   assert.match(win, /modal-panel/);
-  assert.match(read("src/app/globals.css"), /\.modal-panel \{ animation/);
+  assert.match(read("src/app/globals.css"), /\.modal-panel \{ animation[^}]*backwards/);
   assert.match(read("src/app/globals.css"), /prefers-reduced-motion: reduce\)[^}]*animation: none !important/s, "l'animation est supprimée si le mouvement est réduit");
   assert.equal(MODAL_WIDTH.form, "sm:max-w-[min(94vw,640px)]");
 });
