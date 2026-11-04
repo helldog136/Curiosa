@@ -127,7 +127,7 @@ Côté technique : variable d'environnement facultative `CURIOSA_SECTION_TIMEOUT
 
 ## Ce que le cœur lit pour les modules (hors services)
 
-`ctx.api.site()`, `ctx.api.brand()`, `ctx.api.instances.list()`, `ctx.api.entries.list()` : lecture seule, pour que les modules
+`ctx.api.site()`, `ctx.api.brand()`, `ctx.api.adminTheme()` (l'apparence de l'administration pour les pages secrètes des modules, `src/core/adminTheme.ts`), `ctx.api.instances.list()`, `ctx.api.entries.list()` : lecture seule, pour que les modules
 s'articulent avec le reste du site. Ce ne sont pas des services (ils exposent le site, pas un mécanisme).
 
 **`ctx.api.brand()`** — l'identité visuelle : nom, accroche, présentation, logo, email de contact, palette (couleurs nommées et leur

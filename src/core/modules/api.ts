@@ -1,6 +1,7 @@
 import { isDarkBackground, pickLogo } from "../logos";
 import type { AdminUser } from "../auth/access";
 import { getBrand } from "@/core/brand";
+import { moduleAdminTheme } from "@/core/adminTheme";
 import { siteUrl } from "@/core/config";
 import { moduleJsonLd } from "@/core/seo";
 import { measuredHref } from "@/core/redirectMeasure";
@@ -41,7 +42,7 @@ import type { ModuleApi } from "./types";
  *     (MCP : pas d'appel côté module ; un module déclare ses actions `mcp`, le cœur les expose)
  *
  *   LECTURE DU SITE (en lecture seule, pour que les modules s'articulent avec le reste)
- *     site, brand (identité visuelle), instances, entries
+ *     site, brand (identité visuelle), adminTheme (apparence de l'admin pour les pages secrètes), instances, entries
  *
  * Voir docs/PLATFORM.md.
  */
@@ -180,6 +181,7 @@ export function makeApi(instance: InstanceView, locale: string, permissions: rea
       return { name: c.name, tagline: c.tagline, logo: pickLogo(c.logos, "any", isDarkBackground(c.background)) };
     },
     brand: (loc) => getBrand(loc ?? locale),
+    adminTheme: (opts) => moduleAdminTheme(opts),
     instances: {
       async list({ locale: loc, module } = {}) {
         const config = await getSiteConfig();
