@@ -7,9 +7,9 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
-## Prochaine version (non publiée)
+## 0.6.9 — 2026-11-04
 
-**En bref.** Un assistant IA à qui vous en donnez le droit peut maintenant mettre en place l'identité de votre site sans ouvrir l'administration : envoyer des images, régler le nom, l'accroche, la présentation, l'e-mail de contact et les logos. Les limites d'actions par heure sont aussi séparées, visibles et réglables.
+**En bref.** Un assistant IA à qui vous en donnez le droit peut maintenant mettre en place l'identité de votre site sans ouvrir l'administration : envoyer des images, régler le nom, l'accroche, la présentation, l'e-mail de contact et les logos. Il peut aussi arranger le menu et composer la page d'accueil, avec un bouton pour tout remettre comme avant. Les limites d'actions par heure sont aussi séparées, visibles et réglables.
 
 ### Assistants IA
 
