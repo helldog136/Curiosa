@@ -1,114 +1,114 @@
-# Une IA qui sait tenir le site : outils MCP à ajouter
+# An AI that can run the site: MCP tools to add
 
-Statut : **idée, rien n'est codé**. Tout ce qui est marqué « proposition » est à décider ; le reste décrit l'existant, avec le fichier qui le prouve.
+Status: **idea, nothing is coded**. Everything marked "proposal" is yet to be decided; the rest describes what exists today, with the file that proves it.
 
-**Décision de départ** : une IA dont tous les accès sont réglés doit pouvoir **au moins** faire ce que fait le rôle Rédaction dans l'admin, et même plus : installer et configurer des fonctionnalités. Sans rien changer à la sécurité : rien n'est publié par une IA, ce qui est large ou destructif est une demande que l'humain approuve, aucun secret n'est lu ni écrit, tout est journalisé, chaque droit se coche à part, et tout est additif.
+**Starting decision**: an AI whose access is fully set up must be able to do **at least** what the Editorial role does in the admin, and more: install and configure modules. Without changing the security model: an AI never publishes anything, anything broad or destructive is a request that a human approves, no secret is ever read or written, everything is logged, each right is ticked separately, and everything is additive.
 
-## 1. État des lieux
+## 1. Current state
 
-### 1.1 Les outils qui existent
+### 1.1 The tools that exist
 
-Droit requis : l'accès (jeton) doit avoir le plafond « écriture » pour un outil qui écrit, **et** la case de l'outil cochée, ou le défaut de l'outil (`src/core/services/mcp/access.ts:180-186`). Le profil « Maintenance » ne coche d'office que le niveau 1 (`src/core/maintenance/tools.ts:157-159`).
+Required right: the access (token) must have the "write" ceiling for a tool that writes, **and** the tool's box ticked, or the tool's default (`src/core/services/mcp/access.ts:180-186`). The "Maintenance" profile only ticks level 1 by default (`src/core/maintenance/tools.ts:157-159`).
 
-| Outil | Niveau | Lecture / écriture | Accordé d'office | Approbation humaine |
+| Tool | Level | Read / write | Granted by default | Human approval |
 |---|---|---|---|---|
-| `site_info` (`src/core/platform.ts:24`) | 1 | lecture | oui | non |
-| `maintenance_status`, `_health`, `_modules`, `_updates`, `_diagnose`, `_audit`, `_request_status`, `_legacy`, `_catalog_list`, `_catalog_get`, `_skin_status`, `_skin_list`, `_content_check` (`tools.ts:61-91`) | 1 | lecture | profil Maintenance seulement | non |
-| `maintenance_module_settings` (`tools.ts:100`) | 2 | lecture | non | non |
-| `maintenance_check_updates`, `_backup_run`, `_module_reinstall`, `_module_restart`, `_content_check_run` (`tools.ts:93-97`) | 2 | écriture sûre | non | non |
-| `maintenance_module_configure`, `_module_configure_advanced` (`tools.ts:104-113`) | 2 | écriture, jamais un secret | non | non |
-| `maintenance_module_install`, `_skin_install` (`tools.ts:115-124`) | 3 | demande | non | **toujours**, même en « agir sans demander » (`actions.ts:306`) |
-| `maintenance_skin_activate`, `_skin_remove`, `_font_set`, `_module_update`, `_modules_update_all`, `_core_update`, `_module_uninstall` (`tools.ts:125-143`) | 3 | demande | non | oui par défaut ; directe seulement si la personne propriétaire choisit « agir sans demander » pour ce jeton |
-| `redirects_list`, `_stats`, `_summary` (`src/core/redirectMcp.ts:77-96`) | 1 | lecture | oui | non |
-| `redirects_create`, `_update` (`redirectMcp.ts:113,125`) | 2 | écriture directe | non | non |
-| `redirects_delete` (`redirectMcp.ts:144`) | destructif | écriture | non | non (case avec confirmation) |
-| `log_list` (`src/core/journalMcp.ts:37`) | 1 | lecture | non | non |
-| `rawg_covers_to_check`, `rawg_cover_set` (`src/core/rawgMcp.ts`) | module | lecture / écriture | selon le module | non |
-| `<clé>__list_entries`, `__get_entry` (`src/core/content/mcp.ts`) | contenu | lecture | oui | non |
-| `<clé>__create_draft`, `__update_draft` (`content/mcp.ts`) | contenu | brouillon seulement | oui | non (publier reste humain) |
-| `<clé>__<action>` déclarées par un module (`src/core/modules/mcpProvider.ts:212-240`) | module | selon `readOnly` / `destructive` | lecture oui, écriture non | non |
+| `site_info` (`src/core/platform.ts:24`) | 1 | read | yes | no |
+| `maintenance_status`, `_health`, `_modules`, `_updates`, `_diagnose`, `_audit`, `_request_status`, `_legacy`, `_catalog_list`, `_catalog_get`, `_skin_status`, `_skin_list`, `_content_check` (`tools.ts:61-91`) | 1 | read | Maintenance profile only | no |
+| `maintenance_module_settings` (`tools.ts:100`) | 2 | read | no | no |
+| `maintenance_check_updates`, `_backup_run`, `_module_reinstall`, `_module_restart`, `_content_check_run` (`tools.ts:93-97`) | 2 | safe write | no | no |
+| `maintenance_module_configure`, `_module_configure_advanced` (`tools.ts:104-113`) | 2 | write, never a secret | no | no |
+| `maintenance_module_install`, `_skin_install` (`tools.ts:115-124`) | 3 | request | no | **always**, even in "act without asking" mode (`actions.ts:306`) |
+| `maintenance_skin_activate`, `_skin_remove`, `_font_set`, `_module_update`, `_modules_update_all`, `_core_update`, `_module_uninstall` (`tools.ts:125-143`) | 3 | request | no | yes by default; direct only if the owner chooses "act without asking" for this token |
+| `redirects_list`, `_stats`, `_summary` (`src/core/redirectMcp.ts:77-96`) | 1 | read | yes | no |
+| `redirects_create`, `_update` (`redirectMcp.ts:113,125`) | 2 | direct write | no | no |
+| `redirects_delete` (`redirectMcp.ts:144`) | destructive | write | no | no (box with confirmation) |
+| `log_list` (`src/core/journalMcp.ts:37`) | 1 | read | no | no |
+| `rawg_covers_to_check`, `rawg_cover_set` (`src/core/rawgMcp.ts`) | module | read / write | per module | no |
+| `<key>__list_entries`, `__get_entry` (`src/core/content/mcp.ts`) | content | read | yes | no |
+| `<key>__create_draft`, `__update_draft` (`content/mcp.ts`) | content | drafts only | yes | no (publishing stays human) |
+| `<key>__<action>` declared by a module (`src/core/modules/mcpProvider.ts:212-240`) | module | per `readOnly` / `destructive` | reads yes, writes no | no |
 
-Il n'existe **aucun** outil du cœur pour : les réglages du site, le menu, l'accueil, les médias, les langues, le SEO, les rôles, l'assistant de première installation.
+There is **no** core tool for: site settings, menu, home page, media, languages, SEO, roles, the first-run setup wizard.
 
-### 1.2 Pourquoi `module_install`, `skin_install`, `skin_activate` n'apparaissent pas
+### 1.2 Why `module_install`, `skin_install`, `skin_activate` do not show up
 
-**Ce n'est pas un oubli de code.** Les trois outils sont écrits (`tools.ts:115-128`), branchés (`src/core/platform.ts:57` : `maintenanceToolProvider` est dans la liste) et sans condition de niveau, de jeton, de mode « demander / agir » ou de canal :
+**It is not a code omission.** The three tools are written (`tools.ts:115-128`), registered (`src/core/platform.ts:57`: `maintenanceToolProvider` is in the provider list) and have no condition on level, token, "ask / act" mode or channel:
 
-- Le serveur ne garde aucune session. Il recalcule la liste **à chaque requête** : `tools/list` filtre par `canUse` (`src/core/services/mcp/server.ts:55-57`), `tools/call` refait le même contrôle (`server.ts:65-69`). Les droits changent donc en direct côté serveur (`docs/MODULES.md`, « Qui a accès à quoi »).
-- Le réglage « Je valide chaque demande / j'agis sans demander » n'est lu qu'**à l'appel**, pas à l'affichage (`actions.ts:306`). Il ne masque rien.
-- Aucun filtre de niveau : `canUse` ne regarde que le plafond et la case (`access.ts:185`). Les outils du niveau 3 ont le même schéma d'arguments que des outils visibles (`module_update` et `module_reinstall` partagent `MODULE_ARG`), donc ce n'est pas un schéma refusé par le client.
-- La page des droits liste bien ces outils avec leur case (`src/app/admin/(panel)/assistants/[id]/page.tsx`).
+- The server keeps no session. It recomputes the list **on every request**: `tools/list` filters with `canUse` (`src/core/services/mcp/server.ts:55-57`) and `tools/call` repeats the same check (`server.ts:65-69`). Rights therefore change live on the server side (`docs/MODULES.md`, "Qui a accès à quoi").
+- The "I approve each request / act without asking" setting is only read **at call time**, not when listing (`actions.ts:306`). It hides nothing.
+- There is no level filter: `canUse` only looks at the ceiling and the box (`access.ts:185`). Level 3 tools have the same argument schema as visible tools (`module_update` and `module_reinstall` share `MODULE_ARG`), so the client is not rejecting a schema.
+- The rights page does list these tools with their box (`src/app/admin/(panel)/assistants/[id]/page.tsx`).
 
-**Cause la plus probable, la seule que le code permette** : la liste vue par l'IA est **figée à la connexion**. Le serveur annonce `capabilities: { tools: { listChanged: false } }` (`server.ts:48`), ne parle qu'en POST sans flux (`src/app/api/mcp/route.ts`, GET renvoie 405) et ne peut donc **jamais prévenir** le client qu'une case vient d'être cochée. Le client MCP garde la liste reçue à sa connexion ; il ne redemande rien. Les cases cochées après la connexion restent invisibles pour l'IA jusqu'à une reconnexion. Un détail concorde : l'IA voit aussi les lectures (accordées d'office) mais pas `redirects_create` / `_update` / `_delete` ni `log_list`, tous décochés par défaut.
+**Most probable cause, and the only one the code allows**: the list the AI sees is **frozen at connection time**. The server announces `capabilities: { tools: { listChanged: false } }` (`server.ts:48`), only speaks POST with no stream (`src/app/api/mcp/route.ts`, GET returns 405) and therefore **can never tell** the client that a box was just ticked. The MCP client keeps the list received when it connected and never asks again. Boxes ticked after the connection stay invisible to the AI until it reconnects. One detail fits: the AI also sees the reads (granted by default) but not `redirects_create` / `_update` / `_delete` nor `log_list`, which are all unticked by default.
 
-**Preuve qui manque, à faire par la personne propriétaire sans rien casser** : (1) fermer puis rouvrir la connexion de l'IA (nouveau `tools/list`) ; (2) sinon, faire appeler `maintenance_module_install` **par son nom** : l'appel passe si la case est cochée, même si la liste cachée ne le montre pas (`server.ts:67-69`). Si (1) ou (2) fonctionne, la cause est prouvée. Si rien ne fonctionne, la case n'est pas réellement enregistrée : `GrantToggle` annule la case et affiche « ! » si `setGrantAction` répond `ok: false` (`src/components/admin/GrantToggle.tsx:20-26`), ce qui arrive si le jeton est en « lecture » (`assistants/actions.ts`, plafond). Je n'ai pas appelé le site : cette vérification reste à faire.
+**Missing proof, which the owner can get without breaking anything**: (1) close and reopen the AI's connection (new `tools/list`); (2) otherwise, have the AI call `maintenance_module_install` **by name**: the call goes through if the box is ticked, even if the cached list does not show it (`server.ts:67-69`). If (1) or (2) works, the cause is proven. If neither works, the box is not really saved: `GrantToggle` reverts the box and shows "!" when `setGrantAction` answers `ok: false` (`src/components/admin/GrantToggle.tsx:20-26`), which happens if the token is "read" (`assistants/actions.ts`, ceiling). I did not call the site: this check is still to be done.
 
-**Défauts réels, à corriger (propositions minimales)**
-1. Les descriptions de `catalog_get` et `skin_list` promettent des outils que l'IA ne voit pas toujours (`tools.ts:86,90`). Ajouter : « Si cet outil n'est pas dans votre liste, demandez à la personne propriétaire de cocher la case, puis de vous reconnecter. »
-2. Après chaque case cochée, la page des droits dit : « Reconnectez l'assistant pour qu'il voie ce changement. » (texte FR / EN en parité).
-3. Nouvel outil de lecture `maintenance_my_access` (niveau 1, accordé d'office) : liste les outils **non accordés** avec la phrase de leur case, pour que l'IA sache quoi demander au lieu de supposer qu'ils n'existent pas.
-4. Les demandes ne sont pas « destructives » au même titre qu'une suppression, mais `destructive: d.level === 3` (`tools.ts:147,160`) les range avec elles : confirmation à chaque case, aucun lot possible. Proposition : un champ `request: true` à part, pour accorder « toutes les demandes » d'un clic dans un profil.
+**Real defects to fix (minimal proposals)**
+1. The descriptions of `catalog_get` and `skin_list` promise tools that the AI does not always see (`tools.ts:86,90`). Add: "If this tool is not in your list, ask the owner to tick its box, then reconnect."
+2. After each box is ticked, the rights page says: "Reconnect the assistant so that it sees this change." (FR and EN texts in parity).
+3. New read tool `maintenance_my_access` (level 1, granted by default): lists the tools that are **not granted**, with the sentence of their box, so the AI knows what to ask for instead of assuming they do not exist.
+4. Requests are not "destructive" in the same way as a deletion, yet `destructive: d.level === 3` (`tools.ts:147,160`) groups them together: confirmation for every box, no batch possible. Proposal: a separate `request: true` field, so that "all requests" can be granted in one click in a profile.
 
-## 2. Ce que fait le rôle Rédaction, et ce que le MCP permet
+## 2. What the Editorial role does, and what MCP allows
 
-Rôles : `src/core/auth/rights.ts`. Rédaction (`editor`) a `core:entries.edit` et `core:entries.publish` et les droits de module marqués `default.editor`. Les pages d'admin sans droit réservé sont au palier `editor` : contenus, brouillons, modèles, **liens courts** (`entries/*`, `drafts`, `redirects/*`). Le reste (accueil, menu, réglages, apparence, réseaux, visibilité IA, extensions) est au palier Administration (`adminCtx("admin")`). Comme la décision dit « et même plus », la matrice couvre les deux.
+Roles: `src/core/auth/rights.ts`. Editorial (`editor`) has `core:entries.edit` and `core:entries.publish`, plus the module rights marked `default.editor`. The admin pages without a reserved right are at the `editor` tier: content, drafts, templates, **short links** (`entries/*`, `drafts`, `redirects/*`). The rest (home, menu, settings, appearance, social networks, AI visibility, extensions) is at the Administration tier (`adminCtx("admin")`). Since the decision says "and more", the matrix covers both.
 
-| Action dans l'admin | Palier | Outil MCP aujourd'hui | Manque |
+| Action in the admin | Tier | MCP tool today | Missing |
 |---|---|---|---|
-| Lire / lister les contenus | Rédaction | `<clé>__list_entries`, `__get_entry` | — |
-| Créer / modifier un brouillon, ajouter une langue | Rédaction | `__create_draft`, `__update_draft` | image de couverture, étiquettes avancées, champs propres au module |
-| **Publier** / retirer / supprimer | Rédaction | aucun, voulu | demande de publication (3.8) |
-| Téléverser un média, texte alternatif | Rédaction (`/api/admin/upload`) | aucun | médias (3.6) |
-| Liens courts | Rédaction | `redirects_*` | rien (déjà couvert) |
-| Réglages du site : nom, accroche, présentation, langues, logos, pied de page | Administration | aucun | 3.5 |
-| Menu et liens d'en-tête | Administration | aucun | 3.7 |
-| Sections de la page d'accueil | Administration | aucun | 3.7 |
-| Skin, couleurs, polices | Administration | `skin_*` (lecture), `skin_activate`, `font_set` (demande, **peu visibles**, § 1.2) | 3.4 |
-| Réseaux sociaux affichés | Administration | aucun | 3.7 |
-| Installer / retirer / régler une fonctionnalité | `core:modules.install` | `module_*` | instance supplémentaire (3.2) |
-| Contacts, sondages, FAQ… | module | outils du module | selon chaque module |
-| Assistant de première installation | personne propriétaire | aucun | 3.10 |
+| Read / list content | Editorial | `<key>__list_entries`, `__get_entry` | — |
+| Create / edit a draft, add a language | Editorial | `__create_draft`, `__update_draft` | cover image, advanced tags, module-specific fields |
+| **Publish** / unpublish / delete | Editorial | none, on purpose | publication request (3.8) |
+| Upload a media file, alternative text | Editorial (`/api/admin/upload`) | none | media (3.6) |
+| Short links | Editorial | `redirects_*` | nothing (already covered) |
+| Site settings: name, tagline, about, languages, logos, footer | Administration | none | 3.5 |
+| Menu and header links | Administration | none | 3.7 |
+| Home page sections | Administration | none | 3.7 |
+| Skin, colors, fonts | Administration | `skin_*` (read), `skin_activate`, `font_set` (requests, **poorly visible**, § 1.2) | 3.4 |
+| Social networks shown | Administration | none | 3.7 |
+| Install / remove / configure a module | `core:modules.install` | `module_*` | extra instance (3.2) |
+| Contacts, polls, FAQ… | module | the module's tools | per module |
+| First-run setup wizard | owner | none | 3.10 |
 
-## 3. Outils à ajouter (proposition, par priorité)
+## 3. Tools to add (proposal, by priority)
 
-Niveaux : **1** lecture ; **2** écriture sûre et annulable (journalisée avec l'ancienne valeur) ; **3** demande que la personne propriétaire approuve, exécutée une fois, revérifiée au moment d'agir (modèle de `src/core/maintenance/actions.ts`). Aucun outil ne lit ni n'écrit un secret ; toute sortie passe par `redactDeep`.
+Levels: **1** read; **2** safe, reversible write (logged with the old value); **3** request that the owner approves, run once and re-checked at execution time (model: `src/core/maintenance/actions.ts`). No tool reads or writes a secret; every output goes through `redactDeep`.
 
-| # | Nom | Fait | Niveau | Entrées → sorties | Garde-fous, ce qui reste humain |
+| # | Name | Does | Level | Inputs → outputs | Safeguards, what stays human |
 |---|---|---|---|---|---|
-| 1 | `maintenance_module_install` (existe) **à fiabiliser**, plus `maintenance_catalog_plan {module}` | Lit la fiche, calcule le plan : dépendances exigées, permissions, données collectées, instance proposée | 1 puis 3 | `module`, `instanceKey?` → plan, `requestId` | Fiche lue d'abord (refus de l'installation sans plan relu). L'installation attend toujours un clic, même en « agir sans demander ». Seul le catalogue officiel |
-| 2 | `maintenance_instance_add {module, key}` | Crée une instance de plus d'un module `instances: "multiple"` (`manifest.ts:239`) | 3 | `module`, `key` → `requestId` | Refus si le module est « single ». La suppression d'instance reste humaine |
-| 3 | `maintenance_module_configure` (existe) + `maintenance_module_setup_status {instance}` | Dit ce qui reste à remplir pour qu'une instance marche | 1 | `instance` → liste des réglages obligatoires vides | Jamais de secret : seulement « à saisir dans l'admin » avec le chemin |
-| 4 | `maintenance_skin_options {skin}` et `maintenance_skin_set_options {changes}` | Lit puis règle couleurs et polices **dans les limites du skin** (contraste vérifié comme dans Apparence) | 2 pour couleurs d'un skin déjà actif ; 3 pour un changement de skin | `changes` ≤ 20 clés → réglages résultants + couleurs corrigées | Une couleur illisible est corrigée et dite. Un skin personnel ou une police téléversée : humain. Annulation par « Annuler » d'Apparence |
-| 5 | `site_settings_get`, `site_settings_set {name?, tagline?, about?, footer?, locales?}` | Réglages du site (`settings/actions.ts`) | 1 / 2 | textes par langue ≤ 20 000 car. | Pas d'adresse du site, de fuseau, de sécurité, de courrier. Retirer une langue : demande (3) |
-| 6 | `media_upload {name, dataBase64, alt}`, `media_list`, `media_set_alt` | Téléverse une image validée (`sniffImage`, 5 Mo, `uploads.ts`), la liste, règle son texte alternatif | 2 | image ≤ 5 Mo → `/uploads/…` | Pas de SVG ni de vidéo en v1. Logo et icône de marque : se posent par `site_settings_set` après contrôle ; le SVG reste humain |
-| 7 | `navigation_get`, `navigation_propose {items}`, `home_sections_list`, `home_sections_propose {ops}` | Lit le menu et l'accueil ; **propose** un changement complet (ajouter, ordonner, retirer des sections) | 1 / 3 | arbre validé par `validateMenuInput` → aperçu en mots simples + `requestId` | Le changement s'applique seulement à l'approbation, avec l'aperçu avant / après. Liens vers des pages qui n'existent pas : refus |
-| 8 | `<clé>__request_publish {id}` (dans le moteur de contenu) | Demande la publication d'un brouillon | 3 | `id` → `requestId` | Jamais de publication directe (`content/mcp.ts` : brouillons seulement). Retirer / supprimer : humain |
-| 9 | `<clé>__entry_seo {id, locale, title?, description?}` + `entry_translations_missing {id}` | Titre et description pour les moteurs de recherche d'un brouillon ; langues manquantes | 2 / 1 | textes ≤ 300 car. | Brouillons seulement ; entrée publiée : passe par 8 |
-| 10 | `redirects_*` (existent) | rien à ajouter ; garder `delete` humain par la case | — | — | — |
-| 11 | `maintenance_onboarding_status`, `maintenance_onboarding_finish` | Dit quelles étapes de l'assistant manquent ; termine avec les réponses déjà données | 1 / 3 | → étapes | Compte propriétaire, mot de passe, double vérification : jamais |
-| 12 | `maintenance_content_check` (existe) | Ajouter un champ `fix` : l'outil qui corrige chaque remarque | 1 | — | — |
+| 1 | `maintenance_module_install` (exists) **to make reliable**, plus `maintenance_catalog_plan {module}` | Reads the sheet, computes the plan: required dependencies, permissions, collected data, proposed instance | 1 then 3 | `module`, `instanceKey?` → plan, `requestId` | Sheet read first (installation refused without a re-read plan). Installation always waits for a click, even in "act without asking". Official catalogue only |
+| 2 | `maintenance_instance_add {module, key}` | Creates one more instance of a module with `instances: "multiple"` (`manifest.ts:239`) | 3 | `module`, `key` → `requestId` | Refused if the module is "single". Deleting an instance stays human |
+| 3 | `maintenance_module_configure` (exists) + `maintenance_module_setup_status {instance}` | Says what is left to fill in for an instance to work | 1 | `instance` → list of empty required settings | Never a secret: only "to enter in the admin" with the path |
+| 4 | `maintenance_skin_options {skin}` and `maintenance_skin_set_options {changes}` | Reads then sets colors and fonts **within the skin's limits** (contrast checked as in Appearance) | 2 for colors of an already active skin; 3 for a skin change | `changes` ≤ 20 keys → resulting settings + corrected colors | An unreadable color is corrected and reported. A personal skin or an uploaded font: human. Undo with Appearance's "Undo" |
+| 5 | `site_settings_get`, `site_settings_set {name?, tagline?, about?, footer?, locales?}` | Site settings (`settings/actions.ts`) | 1 / 2 | texts per language ≤ 20,000 chars | No site address, time zone, security or mail settings. Removing a language: request (3) |
+| 6 | `media_upload {name, dataBase64, alt}`, `media_list`, `media_set_alt` | Uploads a validated image (`sniffImage`, 5 MB, `uploads.ts`), lists it, sets its alternative text | 2 | image ≤ 5 MB → `/uploads/…` | No SVG or video in v1. Logo and brand icon: set through `site_settings_set` after checking; SVG stays human |
+| 7 | `navigation_get`, `navigation_propose {items}`, `home_sections_list`, `home_sections_propose {ops}` | Reads the menu and the home page; **proposes** a full change (add, order, remove sections) | 1 / 3 | tree validated by `validateMenuInput` → preview in plain words + `requestId` | The change applies only on approval, with a before / after preview. Links to pages that do not exist: refused |
+| 8 | `<key>__request_publish {id}` (in the content engine) | Asks for a draft to be published | 3 | `id` → `requestId` | Never direct publication (`content/mcp.ts`: drafts only). Unpublish / delete: human |
+| 9 | `<key>__entry_seo {id, locale, title?, description?}` + `entry_translations_missing {id}` | Title and description for search engines of a draft; missing languages | 2 / 1 | texts ≤ 300 chars | Drafts only; a published entry goes through 8 |
+| 10 | `redirects_*` (exist) | nothing to add; keep `delete` human through its box | — | — | — |
+| 11 | `maintenance_onboarding_status`, `maintenance_onboarding_finish` | Says which wizard steps are missing; finishes with the answers already given | 1 / 3 | → steps | Owner account, password, two-step verification: never |
+| 12 | `maintenance_content_check` (exists) | Add a `fix` field: the tool that fixes each remark | 1 | — | — |
 
-**Top 10 à faire d'abord** : 1) `maintenance_my_access` + messages « reconnectez » ; 2) `maintenance_catalog_plan` ; 3) `maintenance_instance_add` ; 4) `maintenance_skin_set_options` ; 5) `site_settings_get/set` ; 6) `media_upload / list / set_alt` ; 7) `navigation_propose` ; 8) `home_sections_propose` ; 9) `<clé>__request_publish` ; 10) `<clé>__entry_seo` et `entry_translations_missing`.
+**Top 10 to do first**: 1) `maintenance_my_access` + "reconnect" messages; 2) `maintenance_catalog_plan`; 3) `maintenance_instance_add`; 4) `maintenance_skin_set_options`; 5) `site_settings_get/set`; 6) `media_upload / list / set_alt`; 7) `navigation_propose`; 8) `home_sections_propose`; 9) `<key>__request_publish`; 10) `<key>__entry_seo` and `entry_translations_missing`.
 
-## 4. Contrat commun (proposition)
+## 4. Shared contract (proposal)
 
-- **Déclaration par un module** : nouvelle clé de manifeste **de haut niveau** `mcpRequests: [{ name, description, input, summary }]`, à côté de `mcp` (`src/core/modules/manifest.ts:259`). Raison : dans `mcp`, une clé inconnue est **retirée sans bruit** et l'action deviendrait une écriture directe sur un cœur plus ancien. Une clé de haut niveau inconnue est ignorée en entier : un ancien cœur n'expose rien. Le module met `minCore`.
-- **Demande** : le module renvoie un `plan` (texte simple, avant / après) ; le cœur crée la demande, la garde 24 h, l'affiche dans « Demandes à valider », la rejoue une fois à l'approbation (même mécanisme que `requests.ts`, `LEVEL3_ACTIONS` devient extensible par module).
-- **Noms** : cœur `maintenance_*` (entretien), `site_*`, `media_*`, `navigation_*`, `home_*` ; module `<clé>__<verbe_objet>`. Verbes : `list`, `get`, `create_draft`, `update_draft`, `request_<action>`.
-- **Droits** : une entrée `aim.tool.<nom>` en FR et EN, même phrase courte, pour chaque outil du cœur (les clés actuelles sont dans `src/locales/fr.json`) ; test de parité existant. Les outils de module gardent leur description de manifeste.
-- **Niveaux** : 1 lecture ; 2 écriture sûre ; 3 demande (nouveau champ `request`, distinct de `destructive`).
-- **Page des droits** : mode simple = trois groupes « Regarder / Modifier / Demander » avec profils (« Rédaction IA » : niveau 1 + 2 + brouillons + demandes de publication) ; mode avancé = chaque outil, comme aujourd'hui.
-- **Journal** : chaque appel d'écriture écrit `mcp.<outil>` avec la cible, jamais la valeur d'un secret ; l'ancienne valeur est gardée pour les niveaux 2.
-- **Limites** : 120 requêtes par minute et par jeton (`tokens.ts:83-90`), 12 actions de niveau 2-3 par heure (`actions.ts`, `takeSlot`) ; corps ≤ 1 Mo (`server.ts`) ; 20 changements par appel ; image ≤ 5 Mo ; textes ≤ 20 000 caractères ; demandes en attente ≤ 50.
-- **Secrets** : aucun outil ne prend ni ne renvoie un secret, un jeton, un mot de passe, une adresse secrète.
-- **Compatibilité** : tout est ajout ; clés inconnues ignorées par les anciens cœurs ; les outils actuels et leurs noms ne changent pas.
+- **Declaration by a module**: new **top-level** manifest key `mcpRequests: [{ name, description, input, summary }]`, next to `mcp` (`src/core/modules/manifest.ts:259`). Reason: inside `mcp`, an unknown key is **silently stripped** and the action would become a direct write on an older core. An unknown top-level key is ignored as a whole: an older core exposes nothing. The module sets `minCore`.
+- **Request**: the module returns a `plan` (plain text, before / after); the core creates the request, keeps it 24 h, shows it in "Requests to approve", and replays it once on approval (same mechanism as `requests.ts`; `LEVEL3_ACTIONS` becomes extensible by modules).
+- **Names**: core `maintenance_*` (upkeep), `site_*`, `media_*`, `navigation_*`, `home_*`; module `<key>__<verb_object>`. Verbs: `list`, `get`, `create_draft`, `update_draft`, `request_<action>`.
+- **Rights**: one `aim.tool.<name>` entry in FR and EN, the same short sentence, for every core tool (the current keys are in `src/locales/fr.json`); the existing parity test applies. Module tools keep their manifest description.
+- **Levels**: 1 read; 2 safe write; 3 request (new `request` field, distinct from `destructive`).
+- **Rights page**: simple mode = three groups "Look / Change / Request" with profiles (an "Editorial AI" profile: level 1 + 2 + drafts + publication requests); advanced mode = each tool, as today.
+- **Log**: every write call records `mcp.<tool>` with the target, never the value of a secret; the old value is kept for level 2.
+- **Limits**: 120 requests per minute per token (`tokens.ts:83-90`), 12 level 2-3 actions per hour (`actions.ts`, `takeSlot`); body ≤ 1 MB (`server.ts`); 20 changes per call; image ≤ 5 MB; texts ≤ 20,000 characters; pending requests ≤ 50.
+- **Secrets**: no tool takes or returns a secret, token, password or secret address.
+- **Compatibility**: everything is additive; unknown keys are ignored by older cores; the current tools and their names do not change.
 
-## 5. Feuille de route
+## 5. Roadmap (proposal)
 
-| Lot | Contenu | Taille | Dépend de |
+| Batch | Content | Size | Depends on |
 |---|---|---|---|
-| **1. Débloquer l'installation et l'apparence** | Correctifs § 1.2 (textes, `maintenance_my_access`, champ `request`), `catalog_plan`, `instance_add`, `skin_set_options` | petit à moyen | rien |
-| **2. Contenu et médias** | `mcpRequests` + demandes de module, `request_publish`, `entry_seo`, traductions, `media_*` | gros | lot 1 (champ `request`) |
-| **3. Finition** | `site_settings_*`, `navigation_propose`, `home_sections_propose`, onboarding, profils de la page des droits | moyen à gros | lots 1 et 2 |
+| **1. Unblock installation and appearance** | Fixes of § 1.2 (texts, `maintenance_my_access`, `request` field), `catalog_plan`, `instance_add`, `skin_set_options` | small to medium | nothing |
+| **2. Content and media** | `mcpRequests` + module requests, `request_publish`, `entry_seo`, translations, `media_*` | large | batch 1 (`request` field) |
+| **3. Finishing** | `site_settings_*`, `navigation_propose`, `home_sections_propose`, onboarding, rights-page profiles | medium to large | batches 1 and 2 |
 
-Chaque lot : doc `MAINTENANCE-IA.md` et `MODULES.md`, droits FR / EN, tests de parité, journal, et section « Ergonomie » pour la page des droits.
+Each batch: update `MAINTENANCE-IA.md` and `MODULES.md`, FR / EN rights, parity tests, log, and an "Ergonomie" section in the PR for the rights page.
