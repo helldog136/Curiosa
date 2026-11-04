@@ -55,7 +55,7 @@ test("release archive: next.config.mjs starts without src/ (languages come from 
     fs.writeFileSync(`${dir}/release.json`, "{");
     assert.deepEqual(codes(await load("corrupt")), ["en", "fr"]);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
-  assert.match(pack, /languages: Object\.keys\(JSON\.parse\(fs\.readFileSync\("src\/locales\/languages\.json"/, "the pack step writes the language codes into release.json");
+  assert.match(pack, /Object\.keys\(JSON\.parse\(fs\.readFileSync\("src\/locales\/languages\.json"[\s\S]*languages: languageCodes\(\)/, "the pack step writes the language codes into release.json");
 });
 
 test("smoke test: the archive is started like production (-H 127.0.0.1, X-Forwarded-Proto: https) and a secondary-language path must not fail", () => {
