@@ -18,7 +18,7 @@ export const REQUEST_TTL_MS = 24 * 60 * 60_000;
 const KEEP = 50;
 const KEY = "maintenance.requests";
 
-export const LEVEL3_ACTIONS = ["module_update", "modules_update_all", "core_update", "module_uninstall", "module_install", "skin_install", "skin_activate", "skin_remove", "font_set", "skin_set_options", "instance_add", "entry_publish", "entry_unpublish"] as const;
+export const LEVEL3_ACTIONS = ["module_update", "modules_update_all", "core_update", "module_uninstall", "module_install", "skin_install", "skin_activate", "skin_remove", "font_set", "skin_set_options", "instance_add", "entry_publish", "entry_unpublish", "site_settings_set"] as const;
 export type Level3Action = (typeof LEVEL3_ACTIONS)[number];
 
 export type Plan = {
@@ -52,6 +52,7 @@ export type Plan = {
    * `entry_publish` / `entry_unpublish`: the instance key and the entries as they were when the request was made (title and languages for the owner to read,
    * a fingerprint of the text so that a draft edited after the request is NOT published without a new look).
    */
+  site?: { changes: { field: string; locale?: string; from: string; fromFp: string; to: string }[]; names: string };
   entry?: { instance: string; locale?: string; items: { id: string; title: string; locales: string[]; fp: string }[] };
 };
 export type RequestStatus = "pending" | "running" | "done" | "failed" | "denied" | "expired";

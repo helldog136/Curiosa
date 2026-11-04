@@ -29,11 +29,13 @@ export const PROFILE_TOOLS: Record<AccessProfile, readonly string[]> = {
     "maintenance_request_status", "maintenance_legacy", "maintenance_catalog_list", "maintenance_catalog_get", "maintenance_skin_status",
     "maintenance_skin_list", "maintenance_content_check", "maintenance_my_access", "maintenance_catalog_plan",
     "redirects_list", "redirects_stats", "redirects_summary",
+    "media_list", "site_settings_get",
   ],
   assistant: [
     "maintenance_check_updates", "maintenance_backup_run", "maintenance_module_reinstall", "maintenance_module_restart", "maintenance_content_check_run",
     "maintenance_module_settings", "maintenance_module_configure",
     "redirects_create", "redirects_update",
+    "media_upload", "media_set_alt", "site_settings_set",
   ],
   full: ["maintenance_module_install", "maintenance_instance_add", "maintenance_skin_install", "maintenance_skin_activate", "maintenance_font_set", "maintenance_skin_set_options"],
 };

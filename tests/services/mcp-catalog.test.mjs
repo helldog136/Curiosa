@@ -12,6 +12,7 @@ const A = await import("@/core/services/mcp/access");
 const { handleMcpRequest } = await import("@/core/services/mcp/server");
 const D = await import("@/core/maintenance/deps");
 const M = await import("@/core/maintenance/actions");
+const SL = await import("@/core/maintenance/slots");
 const Q = await import("@/core/maintenance/requests");
 const S = await import("@/core/maintenance/settings");
 const { maintenanceToolProvider } = await import("@/core/maintenance/tools");
@@ -362,11 +363,13 @@ test("install : échec au téléchargement → rien de laissé à moitié, résu
   assert.equal((await call(token, "maintenance_request_status", { requestId: r.requestId })).value.status, "failed");
 });
 
-test("quotas : 12 actions par heure et par jeton, comptées aussi pour l'installation et les réglages ; 5 demandes en attente au plus", async () => {
-  const { token } = await maintenanceToken(["module_install", "module_configure"]);
-  for (let i = 0; i < 12; i++) await call(token, "maintenance_module_configure", { instance: "nulle-part", changes: { a: 1 } });
-  assert.match((await call(token, "maintenance_module_configure", { instance: "nulle-part", changes: { a: 1 } })).error, /Too many maintenance actions/);
-  assert.match((await call(token, "maintenance_module_install", { module: "atelier" })).error, /Too many maintenance actions/);
+test("quotas : deux compteurs séparés (courantes / à risque) ; 5 demandes en attente au plus", async () => {
+  const { token, id } = await maintenanceToken(["module_install", "module_configure"]);
+  await SL.setLimits(id, { content: 10 });
+  for (let i = 0; i < 10; i++) await call(token, "maintenance_module_configure", { instance: "nulle-part", changes: { a: 1 } });
+  assert.match((await call(token, "maintenance_module_configure", { instance: "nulle-part", changes: { a: 1 } })).error, /Limit reached: 10 content actions per hour/);
+  // the risky counter is untouched by the everyday actions
+  assert.equal((await call(token, "maintenance_module_install", { module: "atelier" })).value.status, "pending_approval");
   M.resetMaintenanceState();
   const fresh = await maintenanceToken(["module_install"], "write", "Autre jeton");
   for (const id of ["atelier", "carnet", "courrier", "solo"]) assert.equal((await call(fresh.token, "maintenance_module_install", { module: id })).value.status, "pending_approval", id);
