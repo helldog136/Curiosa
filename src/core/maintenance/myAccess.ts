@@ -35,7 +35,7 @@ export async function myAccess(actor: { name: string; tokenId?: string }): Promi
     const short = tool.name.includes("__") ? tool.name.split("__")[1]! : SETUP_TOOLS.includes(tool.name) ? tool.name : tool.name.replace(/^maintenance_/, "");
     const key = `aim.tool.${short}`;
     const text = t(key, { name: tool.source });
-    if (text && text !== key && (tool.source === "maintenance" || SETUP_TOOLS.includes(tool.name) || (!!tool.instanceId && /^(publish|unpublish)$/.test(short)))) return text;
+    if (text && text !== key && (tool.source === "maintenance" || SETUP_TOOLS.includes(tool.name) || (!!tool.instanceId && /^(publish|unpublish|update_published_meta)$/.test(short)))) return text;
     return tool.description.replace(/^\[[^\]]*\]\s*/, "").split(/(?<=[.!?])\s/)[0]!.slice(0, 200);
   };
 

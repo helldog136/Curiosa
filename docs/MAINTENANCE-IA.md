@@ -204,6 +204,22 @@ Every content module (blog, pages, links, sponsors...) gets two more tools from 
 | Journal | `entry.publish` / `entry.unpublish` with `<instance>/<entry id>`, actor `mcp:<access name>`, kind `assistant`; plus `mcp.maintenance.request`, `.approve` and `.entry_publish` for the request flow. Never a title or a text. |
 | Limits | The "everyday" counter of the access (120 per hour by default, shared with media, site settings and the other everyday actions), 12 entries per call, 120 requests per minute per access, 1 MB per body, like the other tools. |
 
+### Entry paths and correcting a published summary
+
+**Paths (additive).** `<instance>__list_entries` and `<instance>__get_entry` return, next to every field they already had (`id`, `status`, `title`, `locale`, `languages`, `summary`, `url`, `code`, `tags`, `publishedAt`, and for `get_entry` `body`), two more: `path`, the public path of the entry in the language shown (`/blog/hello`, `/fr/blog/bonjour`), and `paths`, `{ <language>: path }` for every translation. They come from `entryPath()` in `src/core/content/entries.ts` with the `basePath` of the instance: the default language of the site has no prefix, the others have `/<language>`. `status` tells whether the path is live (a draft has a path that is not public).
+
+**`<instance>__update_published_meta`.** Lets an AI correct the description of a PUBLISHED entry without taking it off the site (before, the page had to be unpublished and published again, and disappeared meanwhile). The data model only has a `summary` per language version, so that is the one field it changes: no migration, no new field.
+
+| Rule | What it means |
+|---|---|
+| Separate right | `aim.tool.update_published_meta` in the rights page (section "Publishing" in simple mode). `default: false`, `readOnly: false`, `audited: true`. Part of the "full" preset (`profiles.ts`). It does not use the approval setting: like the other everyday writes it acts at once, and the rights line says so. |
+| Input | Exactly `id`, `locale`, `summary` (2000 characters at most), all three required. Any other property (title, slug, body, status, url...) is refused as `unexpected argument`. |
+| Only a published entry | A draft is refused (use `update_draft`), as is an entry of another instance ("not found") or a language version that does not exist. Same summary as now: `changed: false`, no journal line. |
+| One write | Only the summary of that language version, with the previous value as a condition (a person saving at the same moment is never overwritten). The entry stays published. |
+| Journal | `entry.meta.update`, target `<instance>/<entry id>`, actor `mcp:<access name>`; `data` holds the language and the two LENGTHS, never the text. |
+| Restore point | Setting `mcp.undo.entryMeta` (20 points at most, one per entry and language): who, when, the previous summary and the text the AI wrote. `restoreEntrySummary(key, id, locale)` in `src/core/maintenance/entryMeta.ts` puts the previous text back only while the version still has the text the AI wrote. There is no admin button yet. |
+| Limits | The shared "everyday" counter, `takeSlot(tokenId, "content")`. |
+
 ### `maintenance_my_access` (level 1, read, granted by default)
 
 Returns what this access can and cannot do: `granted` (tool, kind, one sentence), `notGranted` (tool, kind, `why`: `box_not_ticked` or `access_is_read_only`, and `rightToTick`, the same plain-words sentence as the rights page), the ceiling, the approval setting (`ask_first` / `act_without_asking`) and the requests that always wait for the owner, and the reconnection notice. It never returns a value, a secret or anything about other accesses. An assistant calls it first, and whenever a tool it expects is missing.
