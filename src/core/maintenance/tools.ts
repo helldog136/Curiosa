@@ -3,6 +3,10 @@ import type { McpTool, McpToolProvider } from "@/core/services/mcp/types";
 import { McpToolError, validateArgs } from "@/core/services/mcp/validate";
 import { callLevel3, runConfigure, runLevel2, type Level2Tool } from "./actions";
 import { CATALOG_GET_INPUT, CATALOG_LIST_INPUT, catalogGet, catalogList } from "./catalog";
+import { CATALOG_PLAN_INPUT, catalogPlan } from "./catalogPlan";
+import { INSTANCE_ADD_ARG } from "./instances";
+import { MAX_BUNDLE } from "./install";
+import { myAccess } from "./myAccess";
 import { CONFIGURE_INPUT, SETTINGS_INPUT, readSettings } from "./moduleSettings";
 import { auditTrail, diagnose, health, modules, status, updates } from "./inspect";
 import { contentCheckView } from "./content/service";
@@ -10,7 +14,7 @@ import { legacyReportForAssistant } from "@/core/modules/legacyReport";
 import { redactDeep } from "./redact";
 import { getRequest, type Level3Action } from "./requests";
 import { FONT_SET_ARG } from "./fonts";
-import { SKIN_ARG, SKIN_LIST_INPUT, skinList, skinStatus } from "./skins";
+import { SKIN_ARG, SKIN_LIST_INPUT, SKIN_OPTIONS_ARG, skinList, skinStatus } from "./skins";
 
 /**
  * OUTILS MCP DU CŒUR pour la maintenance (préfixe `maintenance_`) : une IA diagnostique et entretient le site. Ce ne sont pas des outils d'un module :
@@ -18,7 +22,8 @@ import { SKIN_ARG, SKIN_LIST_INPUT, skinList, skinStatus } from "./skins";
  *
  *   Niveau 1  lecture / diagnostic        lecture seule ; actif pour un jeton « maintenance », désactivé pour tout autre jeton
  *   Niveau 2  actions sans risque         désactivées par défaut, à accorder jeton par jeton
- *   Niveau 3  actions à risque            désactivées par défaut, `destructive: true` ; avec validation humaine par défaut (voir actions.ts)
+ *   Niveau 3  actions à risque            désactivées par défaut, `request: true` (une DEMANDE, pas une suppression) ; `destructive: true` seulement pour ce qui efface
+ *                                         (désinstaller, retirer un skin) ; avec validation humaine par défaut (voir actions.ts)
  *
  * JAMAIS exposés ici : secrets, mots de passe, jetons, variables d'environnement, contenu des sauvegardes, réglages de sécurité, utilisateurs, fichiers
  * arbitraires, commandes arbitraires. Toute sortie passe par le masquage des secrets et par des bornes de taille.
@@ -32,6 +37,8 @@ type Def = {
   name: string; level: 1 | 2 | 3;
   /** Lecture seule malgré un niveau 2 (les réglages d'une instance : leurs valeurs ne se lisent que si le propriétaire l'a accordé). Défaut : niveau 1 seulement. */
   readOnly?: boolean;
+  /** Granted by default to every access (not only to a "maintenance" one). Only the read tool that tells an AI what it lacks. */
+  default?: boolean;
   title: string; description: string; input: McpTool["input"];
   run: (args: Record<string, unknown>, actor: { name: string; tokenId?: string }) => Promise<unknown>;
 };
@@ -50,14 +57,31 @@ const UNINSTALL_ARG = {
 const INSTALL_ARG: JsonSchemaLite = {
   type: "object",
   properties: {
-    module: { type: "string", maxLength: 40, description: "Module identifier from maintenance_catalog_list (for example blog)." },
+    module: { type: "string", maxLength: 40, description: "Module identifier from maintenance_catalog_list (for example blog). Use module OR modules." },
+    modules: { type: "array", items: { type: "string" }, description: `Several module identifiers (${MAX_BUNDLE} at most) asked in ONE request that the owner approves as a whole; plan them first with maintenance_catalog_plan. No instanceKey with a list.` },
     instanceKey: { type: "string", maxLength: 31, description: "Optional, only for a module that allows several instances: the key of its first instance (lowercase letters, digits and dashes, for example blog-news). Default: derived from the module identifier." },
   },
-  required: ["module"],
 };
-const level3 = (name: Level3Action): Def["run"] => (args, actor) => callLevel3(name, validateArgs(name === "core_update" || name === "modules_update_all" ? NONE : name.startsWith("skin_") ? SKIN_ARG : name === "font_set" ? FONT_SET_ARG : name === "module_uninstall" ? UNINSTALL_ARG : name === "module_install" ? INSTALL_ARG : MODULE_ARG, args), actor);
+/** The arguments each request accepts. `skin_*` actions take a skin identifier, except the options (colours and fonts). */
+const LEVEL3_INPUT: Record<Level3Action, unknown> = {
+  core_update: NONE, modules_update_all: NONE, module_update: MODULE_ARG, module_uninstall: UNINSTALL_ARG, module_install: INSTALL_ARG,
+  skin_install: SKIN_ARG, skin_activate: SKIN_ARG, skin_remove: SKIN_ARG, skin_set_options: SKIN_OPTIONS_ARG, font_set: FONT_SET_ARG, instance_add: INSTANCE_ADD_ARG,
+  // Published by the content engine (content/mcp.ts) under the name of each instance; listed here so that the table is complete.
+  entry_publish: NONE, entry_unpublish: NONE,
+};
+const level3 = (name: Level3Action): Def["run"] => (args, actor) => {
+  const valid = validateArgs(LEVEL3_INPUT[name] as JsonSchemaLite, args);
+  return callLevel3(name, name === "skin_set_options" ? { options: valid } : valid, actor);
+};
+/** What makes a level 3 tool a deletion (red chip, confirmation when granted). Everything else at level 3 is a request, not a deletion. */
+const DESTRUCTIVE_LEVEL3: ReadonlySet<string> = new Set(["module_uninstall", "skin_remove"]);
 
 const DEFS: Def[] = [
+  {
+    name: "my_access", level: 1, default: true, title: "What this access can do",
+    description: "What THIS access can and cannot do: the tools granted, the tools NOT granted (each with the right the owner has to tick, in plain words), the ceiling of the access (read only or read and write), the approval setting (requests wait for the owner, or actions happen at once) and the reminder that tools granted or modules installed after you connected only show up after you reconnect. Call it first, and whenever a tool you expect is missing from your list. Read-only; no secret, nothing about other accesses.",
+    input: NONE, run: (_args, actor) => myAccess(actor),
+  },
   { name: "status", level: 1, title: "Site status", description: "Core version and update channel, Node version, uptime, number of modules, state of the update in progress. Start here.", input: NONE, run: () => status() },
   { name: "health", level: 1, title: "Site health", description: "Disk space, database state, date of the last backup (and whether it is recent), recent errors (limited and with secrets masked).", input: NONE, run: () => health() },
   { name: "modules", level: 1, title: "Installed modules", description: "Installed modules: version, source, instances in error, missing dependencies, update available, missing English or French texts (translations). Also the languages of the site: official or community, complete or partial.", input: NONE, run: () => modules() },
@@ -82,12 +106,17 @@ const DEFS: Def[] = [
     input: CATALOG_LIST_INPUT, run: (args) => catalogList(args),
   },
   {
+    name: "catalog_plan", level: 1, title: "Plan for several catalogue modules",
+    description: `The whole plan for up to ${MAX_BUNDLE} modules in ONE answer: for each module its sheet (what it is for, what visitors see, personal data collected, permissions asked, modules it needs, what to configure afterwards), then the plan as a whole (install order, modules that come along, every permission and who asks for it, which modules collect personal data, readyToRequest = the real verdict of the checks the installation request does). Read-only. Then ask for everything in one request with maintenance_module_install {modules: [...]}; the owner approves it as a whole. If a tool is missing from your list, call maintenance_my_access.`,
+    input: CATALOG_PLAN_INPUT, run: (args) => catalogPlan(args),
+  },
+  {
     name: "catalog_get", level: 1, title: "Sheet of a catalogue module",
-    description: "The full sheet of one module, in plain words, to help the owner choose: what it is for, what visitors see, what personal data it collects (the author's declaration), what permissions it asks for, the modules it needs (required) and the ones that make it work better (optional) with what each brings, whether it fits this site's Curiosa version, whether it is already installed, which settings to plan (never a value, never a secret) and which modules go well with it. Read-only. To install it, use maintenance_module_install (the owner approves).",
+    description: "The full sheet of one module, in plain words, to help the owner choose: what it is for, what visitors see, what personal data it collects (the author's declaration), what permissions it asks for, the modules it needs (required) and the ones that make it work better (optional) with what each brings, whether it fits this site's Curiosa version, whether it is already installed, which settings to plan (never a value, never a secret) and which modules go well with it. Read-only. To install it, use maintenance_module_install (the owner approves it; it needs that tool to be granted to you). If maintenance_module_install is missing from your list, call maintenance_my_access: it says whether the owner has to grant it, and that you may have to reconnect.",
     input: CATALOG_GET_INPUT, run: (args) => catalogGet(args),
   },
   { name: "skin_status", level: 1, title: "Appearance of the site", description: "The skin in use, whether the owner adjusted colors, glow, background or header, the font of titles and of text (with tips, and the fonts that can be chosen), whether visitors get a Light / Dark button, and colors that were adjusted so they can be read. Start here for any question about how the site looks. Nothing here can be changed without the owner's approval.", input: NONE, run: () => skinStatus() },
-  { name: "skin_list", level: 1, title: "Skins installed and available", description: "The skins installed on this site, and the skins of the official catalogue that it does not have yet (name, description, author, light / dark modes). A skin only changes the look, never the content. Use it to guide the owner; to act, use maintenance_skin_install or maintenance_skin_activate (both are requests the owner approves).", input: SKIN_LIST_INPUT, run: (args) => skinList(args) },
+  { name: "skin_list", level: 1, title: "Skins installed and available", description: "The skins installed on this site, and the skins of the official catalogue that it does not have yet (name, description, author, light / dark modes). A skin only changes the look, never the content. Use it to guide the owner. To act you need maintenance_skin_install or maintenance_skin_activate (both are requests the owner approves) and they are only in your list when the owner granted them: if they are missing, call maintenance_my_access.", input: SKIN_LIST_INPUT, run: (args) => skinList(args) },
   { name: "content_check", level: 1, title: "Content check result", description: "The result of the last check of the site's content (images without text, titles, descriptions for search engines, missing translations, menu entries and links that lead nowhere, outside links). READ-ONLY: it shows the last result and contacts no site. Each remark has an importance (important / advised / info), a short sentence, why it matters and, where there is one, the admin screen that fixes it. Never a score.", input: NONE, run: () => contentCheckView() },
 
   { name: "check_updates", level: 2, title: "Check for updates again", description: "Clears the version caches and checks the core and the modules again (the admin's \"Check again\" button).", input: NONE, run: level2("check_updates") },
@@ -114,8 +143,13 @@ const DEFS: Def[] = [
 
   {
     name: "module_install", level: 3, title: "Install a catalogue module",
-    description: "Asks to install a module of the official catalogue (id from maintenance_catalog_list). It NEVER installs by itself: it creates a request that the owner approves in Admin > AI assistants, whatever the token's approval setting is; then poll maintenance_request_status. Checked before asking: the module exists and is verified, fits this Curiosa version, is not installed yet, and every module it requires can be put in place (they are listed in the request, the owner sees them, nothing comes in secretly). After approval the first instance is created with default settings; then use maintenance_module_settings and maintenance_module_configure. Optional instanceKey for a module that allows several instances.",
+    description: "Asks to install a module of the official catalogue (id from maintenance_catalog_list). It NEVER installs by itself: it creates a request that the owner approves in Admin > AI assistants, whatever the token's approval setting is; then poll maintenance_request_status. Checked before asking: the module exists and is verified, fits this Curiosa version, is not installed yet, and every module it requires can be put in place (they are listed in the request, the owner sees them, nothing comes in secretly). After approval the first instance is created with default settings; then use maintenance_module_settings and maintenance_module_configure. Optional instanceKey for a module that allows several instances. To install several modules, pass modules: [...] (up to ${MAX_BUNDLE}): it creates ONE request that the owner approves as a whole, and the owner sees every module and every permission; plan it first with maintenance_catalog_plan.",
     input: INSTALL_ARG, run: level3("module_install"),
+  },
+  {
+    name: "instance_add", level: 3, title: "Add another instance of a module",
+    description: "Asks for one more instance (a second blog, a second list of links) of an INSTALLED module that allows several instances. Give a nickname that tells it apart from the others. Like an installation, it NEVER happens without the owner's approval, whatever the token's approval setting, because a new instance may get a public page; then poll maintenance_request_status. A module that allows only one instance is refused. Removing an instance stays with the owner.",
+    input: INSTANCE_ADD_ARG, run: level3("instance_add"),
   },
   {
     name: "skin_install", level: 3, title: "Install a catalogue skin",
@@ -137,6 +171,11 @@ const DEFS: Def[] = [
     description: "Asks to change the font of titles and/or of body text (Admin > Appearance > Fonts). Values: \"skin\" (the skin's own font, nothing retouched) or a value listed in maintenance_skin_status > fonts.available (a library font such as lib:lora, a system font such as sys:serif, or a font the owner uploaded). By default this only creates a request that the owner approves; then poll maintenance_request_status. The chosen font is always applied; tips (no bold version, a poster font used for long text) are advice, never a block. You cannot upload a font file: only the owner can, because they take responsibility for its license. The owner can undo with \"Back to the skin\".",
     input: FONT_SET_ARG, run: level3("font_set"),
   },
+  {
+    name: "skin_set_options", level: 3, title: "Change the colours and fonts of the site",
+    description: "Sets colours (background, surface, textColor, accent, accent2 as #rrggbb; an empty string puts the skin's own colour back) and/or the fonts of titles and text (same values as maintenance_font_set), within the active skin: only what differs from the skin is kept, and nothing else is touched (no skin change, no content). A skin with a light and a dark mode needs mode. A colour that is hard to read is applied anyway; the site corrects it when displaying, and the answer carries readability tips. Follows the token's approval setting like the other changes: a request the owner approves, or done at once when the owner chose that. The owner can undo in Admin > Appearance. Nothing here can upload a font file.",
+    input: SKIN_OPTIONS_ARG, run: level3("skin_set_options"),
+  },
   { name: "module_update", level: 3, title: "Update a module", description: "Updates one module to its latest STABLE version (never a pre-release). By default this only creates a request that the owner approves; then poll request_status.", input: MODULE_ARG, run: level3("module_update") },
   { name: "modules_update_all", level: 3, title: "Update all modules", description: "Updates every module that has a STABLE update, one by one. By default this only creates a request that the owner approves; then poll request_status.", input: NONE, run: level3("modules_update_all") },
   { name: "core_update", level: 3, title: "Update the core", description: "Updates Curiosa to the highest STABLE release, only if it is newer (never a release candidate or snapshot, never a downgrade). By default this only creates a request that the owner approves; then poll request_status. Make a backup first.", input: NONE, run: level3("core_update") },
@@ -144,7 +183,7 @@ const DEFS: Def[] = [
 ];
 
 /** Catalogue statique (nom, niveau, droits) : sert à l'admin, aux tests et à la documentation. */
-export const MAINTENANCE_TOOLS = DEFS.map((d) => ({ name: `maintenance_${d.name}`, level: d.level, readOnly: d.readOnly ?? d.level === 1, destructive: d.level === 3 }));
+export const MAINTENANCE_TOOLS = DEFS.map((d) => ({ name: `maintenance_${d.name}`, level: d.level, readOnly: d.readOnly ?? d.level === 1, destructive: DESTRUCTIVE_LEVEL3.has(d.name), request: d.level === 3 }));
 
 export const maintenanceToolProvider: McpToolProvider = {
   id: "maintenance",
@@ -155,9 +194,11 @@ export const maintenanceToolProvider: McpToolProvider = {
       description: `[Maintenance, level ${d.level}] ${d.description}`,
       readOnly: d.readOnly ?? d.level === 1,
       // Aucune de ces actions n'est active par défaut pour un jeton ordinaire ; le profil « Maintenance » accorde le niveau 1 (lecture) et rien d'autre.
-      default: false,
+      default: d.default ?? false,
       profileDefault: d.level === 1,
-      destructive: d.level === 3,
+      destructive: DESTRUCTIVE_LEVEL3.has(d.name),
+      // Level 3 = a request the owner approves (or an action done at once when the owner chose so): not a deletion.
+      request: d.level === 3,
       input: d.input,
       source: MAINTENANCE_SOURCE,
       // Niveau 2 et 3 : l'action se consigne elle-même dans l'audit (`mcp.maintenance.<outil>`), avec son résultat.

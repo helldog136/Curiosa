@@ -28,11 +28,11 @@ export async function RequestsTab({ t, locale, defaultLocale, notice }: { t: Tra
   const pending = requests.filter((r) => r.status === "pending");
 
   // Les accès qui ont au moins une action d'entretien autorisée (type « Entretien du site » ou droit accordé à la main).
-  const upkeepTools = catalogue.filter((x) => x.source === "maintenance");
+  const upkeepTools = catalogue.filter((x) => x.source === "maintenance" || x.request);
   const mine = tokens
     .map((k) => ({ row: k, token: { scope: k.scope === "write" ? ("write" as const) : ("read" as const), grants: parseGrants(k.grants) } }))
     .filter((k) => upkeepTools.some((x) => canUse(x, k.token)))
-    .map((k) => ({ ...k, risky: upkeepTools.some((x) => x.destructive && canUse(x, k.token)) }));
+    .map((k) => ({ ...k, risky: upkeepTools.some((x) => (x.destructive || x.request) && canUse(x, k.token)) }));
 
   return (
     <div className="space-y-8" data-testid="assistants-requests">

@@ -40,13 +40,17 @@ export default async function AccessPage({ params }: { params: Promise<{ id: str
   const active = await getActiveInstances();
   const instances = await listInstances();
   const labeler = await getInstanceLabeler(locale, config.defaultLocale);
+  const labelOfSource = (source: string) => { const i = instances.find((x) => x.key === source); return i ? labeler.label(i) : source; };
 
   // Regroupement par source : la plateforme, puis chaque instance de module. En mode simple, seul l'entretien du site se règle ici (le détail, module par module, est réservé au mode avancé).
   const groups = new Map<string, typeof catalogue>();
   for (const tool of catalogue) groups.set(tool.source, [...(groups.get(tool.source) ?? []), tool]);
   const usable = catalogue.filter((x) => !x.instanceOptedOut && canUse(x, token));
   const can = abilities(usable.map((x) => ({ readOnly: x.readOnly, destructive: x.destructive, source: x.source })));
-  const shown = [...groups.entries()].filter(([source]) => advanced || source === "maintenance");
+  // Publishing is a right of its own, per content list: in simple mode it gets a section in plain words (in advanced mode each list shows its own tools).
+  const publishing = catalogue.filter((x) => !x.instanceOptedOut && !!x.instanceId && /__(publish|unpublish)$/.test(x.name));
+  const shown: [string, typeof catalogue][] = [...groups.entries()].filter(([source]) => advanced || source === "maintenance");
+  if (!advanced && publishing.length) shown.push(["publishing", publishing]);
 
   return (
     <div className="space-y-6">
@@ -82,7 +86,8 @@ export default async function AccessPage({ params }: { params: Promise<{ id: str
         const inst = instances.find((i) => i.key === source);
         const mod = active.find((a) => a.instance.key === source)?.mod;
         const isMaintenance = source === "maintenance";
-        const title = isMaintenance ? `🛠️ ${t("aim.group")}` : source === "core" ? t("mcp.platform") : `${mod?.manifest.icon ?? "🧩"} ${inst ? labeler.label(inst) : source}`;
+        const isPublishing = source === "publishing";
+        const title = isPublishing ? `📣 ${t("aim.publish.group")}` : isMaintenance ? `🛠️ ${t("aim.group")}` : source === "core" ? t("mcp.platform") : `${mod?.manifest.icon ?? "🧩"} ${inst ? labeler.label(inst) : source}`;
         return (
           <section key={source} className={`${ui.card} space-y-3`} aria-label={title}>
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -90,13 +95,14 @@ export default async function AccessPage({ params }: { params: Promise<{ id: str
                 {title}
                 {mod && advanced && <span className="ml-2 text-xs font-normal text-muted">{localized(mod.manifest.name, locale, config.defaultLocale)} · {source}</span>}
               </h2>
-              {source !== "core" && !revoked && (
+              {source !== "core" && !isPublishing && !revoked && (
                 <div className="flex flex-wrap gap-2">
                   <form action={resetGrantsAction.bind(null, id, source, "defaults")}><PendingButton>{t("mcp.resetDefaults")}</PendingButton></form>
                   <form action={resetGrantsAction.bind(null, id, source, "none")}><PendingButton>{t("mcp.disableAll")}</PendingButton></form>
                 </div>
               )}
             </div>
+            {isPublishing && <p className="text-sm text-muted" data-testid="publishing-help">{t("aim.publish.help")}</p>}
             {isMaintenance && (
               <div className="space-y-3 rounded-xl border border-line bg-bg p-4 text-sm" data-testid="maintenance-approval">
                 <p className="font-medium">{t("aim.approval.title")}</p>
@@ -117,7 +123,7 @@ export default async function AccessPage({ params }: { params: Promise<{ id: str
                 const ceilingBlocks = !withinCeiling(tool, token.scope);
                 const effective = !ceilingBlocks && isGranted(tool, token.grants);
                 const short = tool.name.includes("__") ? tool.name.split("__")[1]! : tool.name;
-                const plain = isMaintenance ? t(`aim.tool.${short.replace(/^maintenance_/, "")}`) : "";
+                const plain = isMaintenance ? t(`aim.tool.${short.replace(/^maintenance_/, "")}`) : isPublishing ? t(`aim.tool.${short}`, { name: labelOfSource(tool.source) }) : "";
                 const level = levelOf.get(tool.name);
                 const firstOfLevel = isMaintenance && level !== undefined && tools.findIndex((x) => levelOf.get(x.name) === level) === tools.indexOf(tool);
                 return (
@@ -141,7 +147,7 @@ export default async function AccessPage({ params }: { params: Promise<{ id: str
                           </span>
                           {advanced && <span className="ml-1 text-xs text-muted">{defaultFor(tool, token.grants) ? t("mcp.onByDefault") : t("mcp.offByDefault")}</span>}
                         </p>
-                        {isMaintenance ? <p className="mt-0.5 text-muted">{plain}</p> : advanced && <p className="mt-0.5 text-muted">{tool.description}</p>}
+                        {isMaintenance || isPublishing ? <p className="mt-0.5 text-muted">{plain}</p> : advanced && <p className="mt-0.5 text-muted">{tool.description}</p>}
                       </div>
                     </div>
                   </li>
