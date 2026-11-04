@@ -14,6 +14,7 @@ const { listMcpTools, listMcpToolCatalogue } = await import("@/core/platform");
 const M = await import("@/core/maintenance/actions");
 const Q = await import("@/core/maintenance/requests");
 const S = await import("@/core/maintenance/settings");
+const SL = await import("@/core/maintenance/slots");
 const P = await import("@/core/services/mcp/profiles");
 const { createInstance } = await import("@/core/instanceService");
 const { createEntry } = await import("@/core/content/service");
@@ -201,15 +202,17 @@ test("journal: who, what, when, never the content; the request and its approval 
   assert.equal((await audits("entry.unpublish")).length, 1);
 });
 
-test("limits: 12 actions per hour and per access (shared with the other tools), 12 entries per call", async () => {
+test("limits: publishing is an everyday action (its own counter, 120 per hour by default), 12 entries per call", async () => {
   const { token, id } = await access();
   await S.setApprovalMode(id, "direct");
+  assert.equal((await SL.remainingSlots(id)).content.limit, 120);
+  await SL.setLimits(id, { content: 10 });
   const many = Array.from({ length: 13 }, (_, i) => `e${i}`);
   assert.match((await call(token, "news__publish", { ids: many })).error, /At most 12 entries/);
-  for (let i = 0; i < 11; i++) await call(token, "news__publish", { id: "missing" });
-  // 12 calls so far (the oversized one counted): the next is refused
+  for (let i = 0; i < 9; i++) await call(token, "news__publish", { id: "missing" });
+  // 10 calls so far (the oversized one counted): the next is refused, in plain words
   const last = await call(token, "news__publish", { id: "missing" });
-  assert.match(last.error, /Too many maintenance actions/);
+  assert.match(last.error, /Limit reached: 10 content actions per hour for this access\. Next slot in \d+ min, or the owner can reset it in Admin > AI assistants\./);
 });
 
 test("profiles: both tools are assigned to the \"full\" preset only; every tool of the real catalogue is assigned or excluded", async () => {

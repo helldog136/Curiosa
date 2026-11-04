@@ -3,7 +3,8 @@
  * (Admin > AI assistants > an assistant). A profile is a preset of the same per-tool rights the rights page edits; it adds nothing the page cannot show.
  *
  *   read       the AI looks and advises (reads only)
- *   assistant  + prepares drafts and adjusts installed modules (safe, reversible actions)
+ *   assistant  + prepares drafts and adjusts installed modules (safe, reversible actions), sends images, and sets the site identity (name, tagline, contact e-mail, logos:
+ *              that last one follows the access's approval setting)
  *   full       + asks to install modules (one or several at once) and skins, add instances, change colours, fonts and skin, and publishes drafts (`<instance>__publish`,
  *              `__unpublish`): requests the owner approves, or done at once when the owner chose "act without asking" for that access (installs and new instances
  *              always wait for the owner)
@@ -29,11 +30,13 @@ export const PROFILE_TOOLS: Record<AccessProfile, readonly string[]> = {
     "maintenance_request_status", "maintenance_legacy", "maintenance_catalog_list", "maintenance_catalog_get", "maintenance_skin_status",
     "maintenance_skin_list", "maintenance_content_check", "maintenance_my_access", "maintenance_catalog_plan",
     "redirects_list", "redirects_stats", "redirects_summary",
+    "media_list", "site_settings_get",
   ],
   assistant: [
     "maintenance_check_updates", "maintenance_backup_run", "maintenance_module_reinstall", "maintenance_module_restart", "maintenance_content_check_run",
     "maintenance_module_settings", "maintenance_module_configure",
     "redirects_create", "redirects_update",
+    "media_upload", "media_set_alt", "site_settings_set",
   ],
   full: ["maintenance_module_install", "maintenance_instance_add", "maintenance_skin_install", "maintenance_skin_activate", "maintenance_font_set", "maintenance_skin_set_options"],
 };

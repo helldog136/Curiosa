@@ -3,8 +3,10 @@ import { canUse, withinCeiling } from "@/core/services/mcp/access";
 import { getTokenGrants } from "@/core/services/mcp/tokens";
 import type { McpTool } from "@/core/services/mcp/types";
 import { getSiteConfig } from "@/core/settings";
+import { SETUP_TOOLS } from "@/core/services/mcp/profileTexts";
 import { ALWAYS_HUMAN } from "./actions";
 import { getApprovalMode } from "./settings";
+import { remainingSlots } from "./slots";
 
 /**
  * `maintenance_my_access` (level 1, read): what THIS access can and cannot do, so that an assistant never assumes a tool does not exist.
@@ -30,10 +32,10 @@ export async function myAccess(actor: { name: string; tokenId?: string }): Promi
   const tools = await listMcpTools();
 
   const plain = (tool: McpTool): string => {
-    const short = tool.name.includes("__") ? tool.name.split("__")[1]! : tool.name.replace(/^maintenance_/, "");
+    const short = tool.name.includes("__") ? tool.name.split("__")[1]! : SETUP_TOOLS.includes(tool.name) ? tool.name : tool.name.replace(/^maintenance_/, "");
     const key = `aim.tool.${short}`;
     const text = t(key, { name: tool.source });
-    if (text && text !== key && (tool.source === "maintenance" || (!!tool.instanceId && /^(publish|unpublish)$/.test(short)))) return text;
+    if (text && text !== key && (tool.source === "maintenance" || SETUP_TOOLS.includes(tool.name) || (!!tool.instanceId && /^(publish|unpublish)$/.test(short)))) return text;
     return tool.description.replace(/^\[[^\]]*\]\s*/, "").split(/(?<=[.!?])\s/)[0]!.slice(0, 200);
   };
 
@@ -45,14 +47,20 @@ export async function myAccess(actor: { name: string; tokenId?: string }): Promi
   }
   const approval = await getApprovalMode(actor.tokenId);
   const readOnly = token.scope === "read";
+  const slots = await remainingSlots(actor.tokenId);
   return {
     access: { name: actor.name, ceiling: token.scope, ceilingMeaning: readOnly ? "Read only: no tool that writes can ever be granted to this access, whatever boxes are ticked. The owner must create or change the access to lift this." : "Read and write: a tool that writes works once its box is ticked." },
     approvalSetting: {
       value: approval === "direct" ? "act_without_asking" : "ask_first",
       meaning: approval === "direct"
-        ? "Updates, uninstalls, font and colour changes and publishing happen at once, without the owner's approval; the owner is told afterwards."
-        : "Updates, uninstalls, font and colour changes and publishing only create a request that the owner approves in Admin > AI assistants. Poll maintenance_request_status.",
+        ? "Updates, uninstalls, font and colour changes, publishing and changes to the site settings (name, tagline, presentation, contact e-mail, logos) happen at once, without the owner's approval; the owner is told afterwards."
+        : "Updates, uninstalls, font and colour changes, publishing and changes to the site settings (name, tagline, presentation, contact e-mail, logos) only create a request that the owner approves in Admin > AI assistants. Poll maintenance_request_status.",
       alwaysAskedWhateverTheSetting: ALWAYS_HUMAN.map((a) => `maintenance_${a}`),
+    },
+    hourlyLimits: {
+      meaning: "Each counter covers a rolling hour. When one is used up, calls of that kind are refused until the next slot frees up; the owner can reset the counters in Admin > AI assistants > this access.",
+      risky: { ...slots.risky, covers: "install, update, uninstall, core update, skins, adding an instance, reinstall, restart" },
+      content: { ...slots.content, covers: "publishing, images, site settings, module settings, fonts and colours, content check, backups, and the menu and home page" },
     },
     granted,
     notGranted: notGranted.slice(0, 300),

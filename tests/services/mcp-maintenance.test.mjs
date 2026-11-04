@@ -12,6 +12,7 @@ const { handleMcpRequest } = await import("@/core/services/mcp/server");
 const { setSetting } = await import("@/core/settings");
 const D = await import("@/core/maintenance/deps");
 const M = await import("@/core/maintenance/actions");
+const SL = await import("@/core/maintenance/slots");
 const Q = await import("@/core/maintenance/requests");
 const S = await import("@/core/maintenance/settings");
 const I = await import("@/core/maintenance/inspect");
@@ -386,12 +387,26 @@ test("verrou : une seule opération de niveau 2/3 à la fois ; la seconde est re
   assert.equal((await call(token, "maintenance_check_updates")).value.ok, true, "verrou rendu");
 });
 
-test("cadence : au plus 12 actions de niveau 2/3 par heure et par jeton ; un autre jeton n'est pas gêné", async () => {
-  const a = await maintenanceToken(["check_updates"], "A");
+test("cadence : deux compteurs séparés par jeton (à risque : 12 par heure, courantes : 120) ; un autre jeton n'est pas gêné", async () => {
+  const a = await maintenanceToken(["check_updates", "module_reinstall"], "A");
   const b = await maintenanceToken(["check_updates"], "B");
-  for (let i = 0; i < M.MAX_ACTIONS_PER_HOUR; i++) assert.equal((await call(a.token, "maintenance_check_updates")).value.ok, true);
-  assert.match((await call(a.token, "maintenance_check_updates")).error, /Too many maintenance actions/);
+  assert.equal(M.MAX_ACTIONS_PER_HOUR, 12);
+  for (let i = 0; i < 12; i++) await call(a.token, "maintenance_module_reinstall", { module: "alpha" });
+  assert.match((await call(a.token, "maintenance_module_reinstall", { module: "alpha" })).error, /Limit reached: 12 risky actions per hour/);
+  // everyday actions are not affected by the risky counter
+  assert.equal((await SL.remainingSlots(a.id)).content.limit, 120, "default");
+  await SL.setLimits(a.id, { content: 10 });   // the web rate limit (120 calls a minute) would stop a loop of 120 calls first
+  for (let i = 0; i < 10; i++) assert.equal((await call(a.token, "maintenance_check_updates")).value.ok, true);
+  assert.match((await call(a.token, "maintenance_check_updates")).error, /Limit reached: 10 content actions per hour.*Next slot in \d+ min/);
   assert.equal((await call(b.token, "maintenance_check_updates")).value.ok, true);
+  // remaining slots and reset
+  const left = await SL.remainingSlots(a.id);
+  assert.deepEqual([left.risky.remaining, left.content.remaining], [0, 0]);
+  assert.ok(left.risky.nextSlotInMinutes >= 1 && left.content.nextSlotInMinutes >= 1);
+  SL.resetSlots(a.id);
+  assert.equal((await SL.remainingSlots(a.id)).content.remaining, 10);
+  assert.equal((await call(a.token, "maintenance_module_reinstall", { module: "alpha" })).error, undefined);
+  assert.equal((await SL.remainingSlots(b.id)).content.used, 1, "another access keeps its own counters");
 });
 
 // ── Niveau 3 : validation humaine ───────────────────────────────────────────────────────────────────────────────────────────

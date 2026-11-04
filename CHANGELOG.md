@@ -7,6 +7,26 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## Prochaine version (non publiée)
+
+**En bref.** Un assistant IA à qui vous en donnez le droit peut maintenant mettre en place l'identité de votre site sans ouvrir l'administration : envoyer des images, régler le nom, l'accroche, la présentation, l'e-mail de contact et les logos. Les limites d'actions par heure sont aussi séparées, visibles et réglables.
+
+### Assistants IA
+
+- **Votre assistant peut envoyer des images sur votre site.** Il fournit l'image dans son message, avec un texte qui la décrit. Le site vérifie ce que le fichier contient vraiment, lui donne un nom au hasard et refuse tout ce qui n'est pas une image sûre (3 Mo au plus).
+- **Il peut régler l'identité du site.** Nom, accroche et présentation dans chaque langue, e-mail de contact et logos, jamais les langues, les adresses ni les personnes. Il suit votre réglage : vous validez chaque demande, ou vous le laissez agir avec les anciennes valeurs gardées au journal.
+- **Les limites d'actions par heure sont séparées en deux.** Les actions courantes (publier, images, réglages) ont une grande réserve, les actions à risque (installer, mettre à jour) restent prudentes. Vous voyez ce qu'il reste et remettez tout à zéro d'un clic, dans la page de l'accès.
+- **Le message de limite dit quoi faire.** Il indique la limite, dans combien de minutes la prochaine action se libère et que vous pouvez remettre le compteur à zéro.
+- **(English) Your assistant can send images to your site.** It sends the image in its message with a text that describes it. The site checks what the file really contains, gives it a random name and refuses anything that is not a safe image (3 MB at most).
+- **(English) It can set the identity of the site.** Name, tagline and presentation in each language, contact e-mail and logos, never languages, addresses or people. It follows your approval setting; the old values stay in the journal.
+- **(English) Hourly limits are split in two.** Everyday actions (publishing, images, settings) get a big allowance, risky ones (installing, updating) stay careful. You see what is left, reset it in one click on the access page, and set both limits in advanced mode.
+
+### Pour les développeurs
+
+- **New core tools:** `media_upload`, `media_list`, `media_set_alt`, `site_settings_get`, `site_settings_set` (`src/core/siteMcp.ts`, `mediaMcp.ts`, `maintenance/siteSettings.ts`), with `aim.tool.*` rights, profiles (read / assistant) and the "Site identity" section of the rights page. `site_settings_set` is the level 3 action `site_settings_set` (`Plan.site`).
+- **`media_upload` reuses the admin's pipeline** (`sniffImage`, `saveUpload`, `saveSvgUpload`, `MAX_INPUT_PIXELS`); the MCP body limit is 4.3 MB for a single `media_upload` call only (1 MB otherwise). Alternative texts are the settings `media.alt.<file>` (no migration); journal lines `media.upload`, `media.alt`.
+- **Shared hourly limits API in `src/core/maintenance/slots.ts`:** `takeSlot(tokenId, "risky" | "content")` (now async), `remainingSlots`, `resetSlots`, `getLimits`, `setLimits`. Defaults 12 and 120, bounded 1 to 60 and 10 to 1000 (setting `maintenance.limits`). `LEVEL3_CLASS` in `actions.ts` classes every level 3 action. `maintenance_my_access` reports `hourlyLimits`.
+
 ## 0.6.8 — 2026-11-04
 
 **En bref.** La version française d'un site dont la langue principale est l'anglais fonctionne de nouveau : ses pages s'ouvrent au lieu d'afficher une erreur. Il en va de même pour la page « lien terminé » du module Redirections. Rien à configurer.

@@ -25,6 +25,7 @@ export function describeRequest(r: MaintenanceRequest, t: Translator, name: (id:
     const colors = p.options ? `${Object.entries(p.options.colors).map(([f, v]) => `${t(`aim.req.color.${f}`)} ${v || t("aim.req.color.reset")}`).join(", ")}${p.options.mode ? ` (${t(`aim.req.mode.${p.options.mode}`)})` : ""}` : "";
     return t("aim.req.skin_set_options", { list: [colors, p.fonts?.names].filter(Boolean).join("; ") || "?" });
   }
+  if (r.action === "site_settings_set") return t("aim.req.site_settings_set", { list: p.site?.names ?? "?" });
   if (r.action === "module_install") {
     const also = (p.adds ?? []).map((a) => a.name ?? name(a.id));
     const perms = (p.permissions ?? []).map((x) => t(`perm.${x}`)).filter((x, i) => x !== `perm.${(p.permissions ?? [])[i]}`);
