@@ -3,7 +3,8 @@
  * (Admin > AI assistants > an assistant). A profile is a preset of the same per-tool rights the rights page edits; it adds nothing the page cannot show.
  *
  *   read       the AI looks and advises (reads only)
- *   assistant  + prepares drafts and adjusts installed modules (safe, reversible actions)
+ *   assistant  + prepares drafts and adjusts installed modules (safe, reversible actions), sends images, and sets the site identity (name, tagline, contact e-mail, logos) and arranges the menu and the home page
+ *              (the last two follow the access's approval setting; reversible: the owner can restore the previous menu or home page)
  *   full       + asks to install modules (one or several at once) and skins, add instances, change colours, fonts and skin, and publishes drafts (`<instance>__publish`,
  *              `__unpublish`): requests the owner approves, or done at once when the owner chose "act without asking" for that access (installs and new instances
  *              always wait for the owner)
@@ -28,12 +29,16 @@ export const PROFILE_TOOLS: Record<AccessProfile, readonly string[]> = {
     "maintenance_status", "maintenance_health", "maintenance_modules", "maintenance_updates", "maintenance_diagnose", "maintenance_audit",
     "maintenance_request_status", "maintenance_legacy", "maintenance_catalog_list", "maintenance_catalog_get", "maintenance_skin_status",
     "maintenance_skin_list", "maintenance_content_check", "maintenance_my_access", "maintenance_catalog_plan",
+    "navigation_get", "home_sections_list",
     "redirects_list", "redirects_stats", "redirects_summary",
+    "media_list", "site_settings_get",
   ],
   assistant: [
     "maintenance_check_updates", "maintenance_backup_run", "maintenance_module_reinstall", "maintenance_module_restart", "maintenance_content_check_run",
     "maintenance_module_settings", "maintenance_module_configure",
+    "navigation_set", "home_sections_set",
     "redirects_create", "redirects_update",
+    "media_upload", "media_set_alt", "site_settings_set",
   ],
   full: ["maintenance_module_install", "maintenance_instance_add", "maintenance_skin_install", "maintenance_skin_activate", "maintenance_font_set", "maintenance_skin_set_options"],
 };

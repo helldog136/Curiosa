@@ -12,6 +12,7 @@ const { handleMcpRequest } = await import("@/core/services/mcp/server");
 const { setSetting } = await import("@/core/settings");
 const D = await import("@/core/maintenance/deps");
 const M = await import("@/core/maintenance/actions");
+const SL = await import("@/core/maintenance/slots");
 const Q = await import("@/core/maintenance/requests");
 const S = await import("@/core/maintenance/settings");
 const I = await import("@/core/maintenance/inspect");
@@ -87,13 +88,14 @@ const auditRows = (action) => db.prisma.auditLog.findMany({ where: { action: { s
 
 // ── Catalogue et défauts ────────────────────────────────────────────────────────────────────────────────────────────────────
 
-test("catalogue: the 34 tools (levels 1, 2 and 3) with the right annotations; none is on by default except the one that tells an AI what it lacks; only deletions are destructive; level 3 are requests", async () => {
+test("catalogue: the 38 tools (levels 1, 2 and 3) with the right annotations; none is on by default except the one that tells an AI what it lacks; only deletions are destructive; level 3 are requests", async () => {
   const tools = await LIST();
   assert.deepEqual(tools.map((t) => t.name), [
     "maintenance_my_access", "maintenance_status", "maintenance_health", "maintenance_modules", "maintenance_updates", "maintenance_diagnose", "maintenance_audit", "maintenance_request_status", "maintenance_legacy", "maintenance_catalog_list", "maintenance_catalog_plan", "maintenance_catalog_get", "maintenance_skin_status", "maintenance_skin_list", "maintenance_content_check",
     "maintenance_check_updates", "maintenance_backup_run", "maintenance_module_reinstall", "maintenance_module_restart", "maintenance_content_check_run",
     "maintenance_module_settings", "maintenance_module_configure", "maintenance_module_configure_advanced",
     "maintenance_module_install", "maintenance_instance_add", "maintenance_skin_install", "maintenance_skin_activate", "maintenance_skin_remove", "maintenance_font_set", "maintenance_skin_set_options", "maintenance_module_update", "maintenance_modules_update_all", "maintenance_core_update", "maintenance_module_uninstall",
+    "navigation_get", "navigation_set", "home_sections_list", "home_sections_set",
   ]);
   for (const t of tools) {
     const level = MAINTENANCE_TOOLS.find((m) => m.name === t.name).level;
@@ -103,7 +105,7 @@ test("catalogue: the 34 tools (levels 1, 2 and 3) with the right annotations; no
     // A request is not a deletion: only uninstalling and removing a skin are destructive.
     assert.equal(t.request === true, level === 3, `${t.name}: request`);
     assert.equal(t.destructive, t.name === "maintenance_module_uninstall" || t.name === "maintenance_skin_remove", `${t.name}: destructive`);
-    assert.equal(t.profileDefault === true, level === 1, `${t.name}: only level 1 is on for the maintenance profile`);
+    assert.equal(t.profileDefault === true, level === 1 && t.name.startsWith("maintenance_"), `${t.name}: only level 1 upkeep tools are on for the maintenance profile (the menu and home page readers are not)`);
     if (t.destructive) assert.ok(!t.default && !t.profileDefault, `${t.name}: destructive, so never on by default`);
     assert.equal(t.source, "maintenance");
   }
@@ -386,12 +388,26 @@ test("verrou : une seule opération de niveau 2/3 à la fois ; la seconde est re
   assert.equal((await call(token, "maintenance_check_updates")).value.ok, true, "verrou rendu");
 });
 
-test("cadence : au plus 12 actions de niveau 2/3 par heure et par jeton ; un autre jeton n'est pas gêné", async () => {
-  const a = await maintenanceToken(["check_updates"], "A");
+test("cadence : deux compteurs séparés par jeton (à risque : 12 par heure, courantes : 120) ; un autre jeton n'est pas gêné", async () => {
+  const a = await maintenanceToken(["check_updates", "module_reinstall"], "A");
   const b = await maintenanceToken(["check_updates"], "B");
-  for (let i = 0; i < M.MAX_ACTIONS_PER_HOUR; i++) assert.equal((await call(a.token, "maintenance_check_updates")).value.ok, true);
-  assert.match((await call(a.token, "maintenance_check_updates")).error, /Too many maintenance actions/);
+  assert.equal(M.MAX_ACTIONS_PER_HOUR, 12);
+  for (let i = 0; i < 12; i++) await call(a.token, "maintenance_module_reinstall", { module: "alpha" });
+  assert.match((await call(a.token, "maintenance_module_reinstall", { module: "alpha" })).error, /Limit reached: 12 risky actions per hour/);
+  // everyday actions are not affected by the risky counter
+  assert.equal((await SL.remainingSlots(a.id)).content.limit, 120, "default");
+  await SL.setLimits(a.id, { content: 10 });   // the web rate limit (120 calls a minute) would stop a loop of 120 calls first
+  for (let i = 0; i < 10; i++) assert.equal((await call(a.token, "maintenance_check_updates")).value.ok, true);
+  assert.match((await call(a.token, "maintenance_check_updates")).error, /Limit reached: 10 content actions per hour.*Next slot in \d+ min/);
   assert.equal((await call(b.token, "maintenance_check_updates")).value.ok, true);
+  // remaining slots and reset
+  const left = await SL.remainingSlots(a.id);
+  assert.deepEqual([left.risky.remaining, left.content.remaining], [0, 0]);
+  assert.ok(left.risky.nextSlotInMinutes >= 1 && left.content.nextSlotInMinutes >= 1);
+  SL.resetSlots(a.id);
+  assert.equal((await SL.remainingSlots(a.id)).content.remaining, 10);
+  assert.equal((await call(a.token, "maintenance_module_reinstall", { module: "alpha" })).error, undefined);
+  assert.equal((await SL.remainingSlots(b.id)).content.used, 1, "another access keeps its own counters");
 });
 
 // ── Niveau 3 : validation humaine ───────────────────────────────────────────────────────────────────────────────────────────

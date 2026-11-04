@@ -10,7 +10,9 @@ import { ui } from "@/components/admin/ui";
 import { MENU_MAX_CHILDREN, MENU_MAX_TOTAL, refKey, type MenuNode } from "@/core/menu";
 import { describeMenuRefs, pagesNotInMenu } from "@/core/menuCatalog";
 import { ensureMenuMigrated, loadMenu } from "@/core/menuStore";
-import { saveHeaderLinks, saveNavigation } from "./actions";
+import { AssistantUndoNotice } from "@/components/admin/AssistantUndoNotice";
+import { navigationRestorePoint } from "@/core/maintenance/siteNavigation";
+import { restoreAssistantMenu, saveHeaderLinks, saveNavigation } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -49,6 +51,7 @@ export default async function NavigationPage() {
   const buttonHref = String((await getSetting<string>("header.buttonHref")) ?? "");
   const lang = (l: string) => (config.locales.length > 1 ? ` — ${localeName(l)}` : "");
 
+  const undo = await navigationRestorePoint();
   const strings = Object.fromEntries(STRINGS.map((k) => [k, t(`navigation.${k}`)]));
   return (
     <div className="space-y-6">
@@ -56,6 +59,7 @@ export default async function NavigationPage() {
         <h1 className={ui.pageTitle}>{advanced ? t("nav.navigation") : t("nav.navigation.simple")}</h1>
         <p className={ui.pageIntro}>{t("navigation.intro")}</p>
       </div>
+      {undo && <AssistantUndoNotice text={t("aim.undo.navigation", { name: undo.by, date: new Date(undo.at).toLocaleString(locale) })} button={t("aim.undo.navigation.button")} action={restoreAssistantMenu} />}
       <Tabs tabs={[{ id: "menu", label: t("navigation.tab.menu") }, { id: "header", label: t("navigation.tab.header") }]}>
         <div data-tab="menu">
           <ActionForm action={saveNavigation} floating={floatingLabels(t)} submitLabel={t("action.save")}>

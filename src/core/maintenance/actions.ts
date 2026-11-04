@@ -11,12 +11,16 @@ import { notifyOwner } from "./notify";
 import { redactSecrets } from "./redact";
 import { claimRequest, createRequest, denyRequest, finishRequest, reopenRequest, type Level3Action, type Plan } from "./requests";
 import { getApprovalMode } from "./settings";
+import { DEFAULT_LIMITS, resetAllSlots, takeSlot, type SlotClass } from "./slots";
 import { runContentCheck } from "./content/service";
 import { executeInstall, executeInstallBundle, prepareInstall, prepareInstallBundle, samePlan } from "./install";
 import { executeInstanceAdd, prepareInstanceAdd } from "./instances";
 import { executeEntryPublish, prepareEntryPublish } from "./publish";
+import { executeNavigationSet, prepareNavigationSet } from "./siteNavigation";
+import { executeHomeSectionsSet, prepareHomeSectionsSet } from "./siteHome";
 import { applyConfigure, parseConfigureArgs } from "./moduleSettings";
 import { executeFont, prepareFont } from "./fonts";
+import { executeSiteSettings, prepareSiteSettings } from "./siteSettings";
 import { executeSkin, executeSkinOptions, isSkinAction, prepareSkin, prepareSkinOptions } from "./skins";
 
 /**
@@ -37,25 +41,24 @@ export type Params = { module?: string; instance?: string; /** Skins : l'identif
   /** Installation de plusieurs modules en une demande (`module_install`) : la liste d'identifiants. */ modules?: unknown;
   /** `instance_add`: the nickname of the new instance. */ nickname?: unknown;
   /** `entry_publish` / `entry_unpublish`: the entry (or entries) of the instance named by `instance`, and the language to insist on. */ id?: unknown; ids?: unknown; locale?: unknown;
-  /** `skin_set_options`: colours and fonts, as given to the tool. */ options?: Record<string, unknown> };
+  /** `skin_set_options`: colours and fonts, as given to the tool. */ options?: Record<string, unknown>;
+  /** `navigation_set`: the whole menu; `home_sections_set`: the whole home page, as given to the tool. */ entries?: unknown; sections?: unknown;
+  /** `site_settings_set`: the arguments, as given to the tool. */ site?: Record<string, unknown> };
 
 /* ───────────── Verrou et cadence ───────────── */
 
-const g = globalThis as unknown as { curiosaMaintenanceBusy?: string | null; curiosaMaintenanceHits?: Map<string, number[]> };
-const hits: Map<string, number[]> = (g.curiosaMaintenanceHits ??= new Map<string, number[]>());
-export const MAX_ACTIONS_PER_HOUR = 12;
+const g = globalThis as unknown as { curiosaMaintenanceBusy?: string | null };
+/** Which counter an action uses (slots.ts): what brings code or changes the whole site is "risky"; the day-to-day setup and content work is "content". */
+const LEVEL2_CLASS: Record<Level2Tool, SlotClass> = { check_updates: "content", backup_run: "content", content_check_run: "content", module_reinstall: "risky", module_restart: "risky" };
+const LEVEL3_CLASS: Record<Level3Action, SlotClass> = {
+  module_update: "risky", modules_update_all: "risky", core_update: "risky", module_uninstall: "risky", module_install: "risky", skin_install: "risky", skin_activate: "risky", skin_remove: "risky", instance_add: "risky",
+  font_set: "content", skin_set_options: "content", entry_publish: "content", entry_unpublish: "content", site_settings_set: "content", navigation_set: "content", home_sections_set: "content",
+};
+/** Kept for compatibility: the default limit of the "risky" class (see slots.ts for the two classes). */
+export const MAX_ACTIONS_PER_HOUR = DEFAULT_LIMITS.risky;
 
-/** Tests : vide la cadence et le verrou. */
-export function resetMaintenanceState(): void { hits.clear(); g.curiosaMaintenanceBusy = null; }
-
-function takeSlot(tokenId: string | undefined): void {
-  const key = tokenId ?? "unknown";
-  const now = deps.now();
-  const recent = (hits.get(key) ?? []).filter((t) => now - t < 3_600_000);
-  if (recent.length >= MAX_ACTIONS_PER_HOUR) { hits.set(key, recent); throw new McpToolError(`Too many maintenance actions from this token in the last hour (limit ${MAX_ACTIONS_PER_HOUR}). Wait before trying again.`); }
-  recent.push(now);
-  hits.set(key, recent);
-}
+/** Tests: clears the counters and the lock. */
+export function resetMaintenanceState(): void { resetAllSlots(); g.curiosaMaintenanceBusy = null; }
 
 async function withLock<T extends Outcome>(name: string, fn: () => Promise<T>): Promise<T | Outcome> {
   if (g.curiosaMaintenanceBusy) return { ok: false, busy: true, message: `Another maintenance operation is running (${g.curiosaMaintenanceBusy}). Try again in a minute.` };
@@ -137,7 +140,7 @@ export async function runLevel2(tool: Level2Tool, args: Params, actor: { name: s
   const id = tool === "module_reinstall" ? moduleId(args.module) : undefined;
   const key = tool === "module_restart" ? String(args.instance ?? "") : undefined;
   if (tool === "module_restart" && !/^[a-z0-9][a-z0-9_-]{0,63}$/.test(key!)) throw new McpToolError('argument "instance" must be an instance key (see maintenance_modules)');
-  takeSlot(actor.tokenId);
+  await takeSlot(actor.tokenId, LEVEL2_CLASS[tool]);
   const outcome = await withLock(tool, async () => {
     try {
       if (tool === "check_updates") {
@@ -168,7 +171,7 @@ export async function runLevel2(tool: Level2Tool, args: Params, actor: { name: s
 export async function runConfigure(advanced: boolean, rawArgs: Record<string, unknown>, actor: { name: string; tokenId?: string }): Promise<unknown> {
   const input = parseConfigureArgs(rawArgs);
   const tool = advanced ? "module_configure_advanced" : "module_configure";
-  takeSlot(actor.tokenId);
+  await takeSlot(actor.tokenId, "content");
   let reply: Record<string, unknown> = {};
   let params = input.instance;
   const outcome = await withLock(tool, async () => {
@@ -217,6 +220,9 @@ export async function prepare(action: Level3Action, args: Params): Promise<Plan>
   }
   if (action === "instance_add") return prepareInstanceAdd({ module: args.module, nickname: args.nickname });
   if (action === "skin_set_options") return prepareSkinOptions(args.options ?? {});
+  if (action === "navigation_set") return prepareNavigationSet({ entries: args.entries });
+  if (action === "home_sections_set") return prepareHomeSectionsSet({ sections: args.sections });
+  if (action === "site_settings_set") return prepareSiteSettings(args.site ?? {});
   if (action === "entry_publish" || action === "entry_unpublish") return prepareEntryPublish(action, { instance: args.instance, id: args.id, ids: args.ids, locale: args.locale });
   if (isSkinAction(action)) return prepareSkin(action, { skin: args.skin });
   if (action === "font_set") return prepareFont({ titles: args.titles, text: args.text });
@@ -258,6 +264,9 @@ async function execute(action: Level3Action, plan: Plan, actorLabel: string): Pr
   // These re-read and compare by themselves (see publish.ts, install.ts, instances.ts, skins.ts).
   if (action === "entry_publish" || action === "entry_unpublish") return executeEntryPublish(action, plan, actorLabel);
   if (action === "skin_set_options") return executeSkinOptions(plan, actorLabel);
+  if (action === "navigation_set") return executeNavigationSet(plan, actorLabel);
+  if (action === "home_sections_set") return executeHomeSectionsSet(plan, actorLabel);
+  if (action === "site_settings_set") return executeSiteSettings(plan, actorLabel);
   if (action === "module_install" && plan.bundle) return executeInstallBundle(plan, actorLabel);
   if (action === "instance_add") {
     try { await prepareInstanceAdd({ module: plan.module, nickname: plan.newInstance?.nickname }); } catch (error) {
@@ -304,7 +313,7 @@ async function execute(action: Level3Action, plan: Plan, actorLabel: string): Pr
   return { ok: s.failed.length === 0 && !s.stoppedOn && s.updated.length > 0, message: parts.join("; ") || "Nothing was updated.", details: { updated: s.updated } };
 }
 
-const paramsText = (plan: Plan): string => plan.bundle ? plan.bundle.map((p) => `${p.module} ${p.to}`).join(", ") : plan.entry ? `${plan.entry.instance}/${plan.entry.items.map((i) => i.id).join(",")}${plan.entry.locale ? ` ${plan.entry.locale}` : ""}` : plan.newInstance ? `${plan.module} "${plan.newInstance.nickname}"` : plan.options ? `${plan.skin}: ${plan.options.names}${plan.fonts ? `; fonts: ${plan.fonts.names}` : ""}` : paramsTextOther(plan);
+const paramsText = (plan: Plan): string => plan.change ? `${plan.change.target}: ${plan.change.summary.beforeCount} > ${plan.change.summary.afterCount}` : plan.site ? plan.site.names : plan.bundle ? plan.bundle.map((p) => `${p.module} ${p.to}`).join(", ") : plan.entry ? `${plan.entry.instance}/${plan.entry.items.map((i) => i.id).join(",")}${plan.entry.locale ? ` ${plan.entry.locale}` : ""}` : plan.newInstance ? `${plan.module} "${plan.newInstance.nickname}"` : plan.options ? `${plan.skin}: ${plan.options.names}${plan.fonts ? `; fonts: ${plan.fonts.names}` : ""}` : paramsTextOther(plan);
 const paramsTextOther = (plan: Plan) => plan.fonts ? plan.fonts.names : plan.skin ? `${plan.skin}${plan.to ? ` ${plan.to}` : ""}` : (plan.adds ? `${plan.module} ${plan.to}${plan.instanceKey ? ` key=${plan.instanceKey}` : ""}${plan.adds.length ? ` + ${plan.adds.map((a) => a.id).join(", ")}` : ""}` : plan.module ? (plan.keepData === undefined ? plan.module : `${plan.module}${plan.keepData ? " keepData" : " erase"}`) : null) ?? (plan.modules ? plan.modules.map((m) => `${m.id} ${m.from}>${m.to}`).join(", ") : plan.to ? `${plan.from}>${plan.to}` : "");
 
 /** Verrou + audit + avertissement autour d'une exécution de niveau 3. */
@@ -329,7 +338,7 @@ async function runGuarded(action: Level3Action, plan: Plan, who: { tokenName: st
 export const ALWAYS_HUMAN: readonly Level3Action[] = ["module_install", "skin_install", "instance_add"];
 
 export async function callLevel3(action: Level3Action, args: Params, actor: { name: string; tokenId?: string }): Promise<unknown> {
-  takeSlot(actor.tokenId);
+  await takeSlot(actor.tokenId, LEVEL3_CLASS[action]);
   const plan = await prepare(action, args);
   // Installer du code sur le site n'est JAMAIS exécuté sans l'accord de la personne propriétaire, même pour un jeton en « exécution directe » : le réglage vaut pour
   // les mises à jour et désinstallations, et rien dans le modèle ne dit quel module est « sans danger ».

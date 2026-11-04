@@ -85,6 +85,8 @@ export type Block =
   | { type: "html"; html: string }
   | { type: "banner"; text: string; href?: string; tone?: "info" | "success" | "warning" }
   | { type: "links"; items: { label: string; href: string; icon?: string; /** (next core release, optional: an older core ignores it and follows `href`) In the admin panel, opens the target of `href` as a window above the page. See `adminForm.presentation`. */ presentation?: "dialog" }[] }
+  /** (home section `entry`) The full content of ONE published entry, resolved for the visitor's language by the core: same formatting as the entry page (title, summary, cover, body in Markdown). */
+  | { type: "entryContent"; lang: string; fallback: boolean; title: string; summary?: string; body: string; cover?: string | null; icon?: string | null }
   | { type: "entries"; instance: string; limit?: number; title?: string; link?: boolean; /** "random" : `limit` entrées tirées au hasard (au lieu des plus récentes). */ pick?: "random" }
   | { type: "hero"; title: string; text?: string; image?: string; /** Petite ligne au-dessus du titre. */ eyebrow?: string; /** Bouton d'appel à l'action (libellé + page du site ou adresse https). */ button?: { label: string; href: string }; video?: string; videoPoster?: string; videoSound?: boolean }
   /**

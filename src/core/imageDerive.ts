@@ -102,6 +102,20 @@ async function prune(now = Date.now()): Promise<void> {
   } catch { /* le cache est facultatif */ }
 }
 
+/**
+ * The size of an image read from its header only (no decoding), for the checks of the MCP upload (`mediaMcp.ts`; this file is the only one that uses `sharp`).
+ * null: no engine on this machine. "unreadable": the engine cannot read the file. "toolarge": more than MAX_INPUT_PIXELS.
+ */
+export async function readImageSize(buf: Buffer): Promise<{ width: number; height: number } | null | "unreadable" | "toolarge"> {
+  const sharp = await loadEngine();
+  if (!sharp) return null;
+  try {
+    const meta = await sharp(buf, { limitInputPixels: false, animated: false }).metadata();
+    if (!meta.width || !meta.height) return "unreadable";
+    return meta.width * meta.height > MAX_INPUT_PIXELS ? "toolarge" : { width: meta.width, height: meta.height };
+  } catch { return "unreadable"; }
+}
+
 /** Fabrique (ou retrouve en cache) la version cadrée de l'envoi `name` (nom déjà validé par UPLOAD_NAME_RE). */
 export async function deriveImage(name: string, crop: Crop, share = false): Promise<DeriveResult> {
   const target = path.join(CROP_CACHE_DIR, cacheName(name, crop, share));

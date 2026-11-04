@@ -8,6 +8,7 @@ import { existingRefs, saveMenu } from "@/core/menuStore";
 import { headerLink } from "@/core/header";
 import { normalizeLinkInput } from "@/core/url";
 import { deleteSetting, setSetting } from "@/core/settings";
+import { restoreNavigation } from "@/core/maintenance/siteNavigation";
 import type { ActionState } from "@/components/admin/ActionForm";
 
 /**
@@ -56,4 +57,11 @@ export async function saveHeaderLinks(_prev: ActionState, formData: FormData): P
   await audit(user.email, "settings.update");
   revalidatePath("/", "layout");
   return { ok: t("action.saved") };
+}
+
+/** Brings back the menu from before the last change made by an AI assistant (only while nobody edited the menu since). */
+export async function restoreAssistantMenu(): Promise<void> {
+  const { user } = await adminCtx("admin");
+  await restoreNavigation(user.email);
+  revalidatePath("/admin/navigation");
 }

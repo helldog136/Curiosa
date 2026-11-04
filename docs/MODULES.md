@@ -488,7 +488,7 @@ L'administrateur peut aussi **isoler** un morceau : retour à la ligne avant, ce
 
 Le rendu d'une section doit rester lisible quelle que soit la place qu'on lui laisse : titre court, peu de texte, pas de largeur fixe.
 Chaque placement est `(instance, section)` + options + taille : plusieurs instances = plusieurs sections indépendantes.
-Le cœur fournit déjà deux sections aux modules à contenu : `latest` (les dernières entrées, option `count`) et, pour ceux dont les
+Le cœur fournit déjà trois sections aux modules à contenu : `latest` (les dernières entrées, option `count`), `entry` (le contenu complet d'UNE entrée publiée, option `entry` = son identifiant ; rien si elle n'existe plus ou n'est pas publiée) et, pour ceux dont les
 entrées portent un code (codes promo…), `random` (un code au hasard, `small`).
 
 ### Sujets (`consumes`, `provides`)
@@ -1297,6 +1297,7 @@ Un module renvoie des **blocs déclaratifs** ; le cœur se charge du rendu, des 
 | `banner` | `text`, `href?`, `tone?` (`info` · `success` · `warning`) |
 | `links` | `items: [{ label, href, icon? }]` — les adresses non sûres deviennent `#` |
 | `entries` | `instance` (clé), `limit?`, `title?`, `link?`, `pick?` (`"random"`) — entrées d'une instance, rendues par le cœur |
+| `entryContent` | `lang`, `fallback`, `title`, `summary?`, `body` (Markdown), `cover?`, `icon?` — le contenu complet d'UNE entrée publiée, déjà résolu pour la langue de la personne qui visite ; produit par le cœur pour la section d'accueil `entry` (tout module à contenu avec une page l'offre), pas à renvoyer depuis un module |
 | `embed` | `src` (https uniquement), `title`, `ratio?` |
 | `form` | `action` (`<clé d'instance>/<route>`), `fields: [{ name, label, kind?, required? }]` (`kind` : `text`, `email`, `textarea`), `submitLabel`, `successText` |
 | `table` | `columns`, `rows` (tableaux de texte ; cœur 0.6.0 : ou de cellules `TableCell`), `rowIds?`, `rowActions?` (admin seulement, voir plus bas) et, depuis le cœur 0.6.0, `searchable?`, `searchPlaceholder?`, `filters?`, `truncate?`, `pageSize?`, `empty?` : voir « Tableau enrichi » |

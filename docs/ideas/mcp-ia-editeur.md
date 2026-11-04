@@ -1,6 +1,6 @@
 # An AI that can run the site: MCP tools to add
 
-Status: **batch 1 and publication are coded** (branch `feat/mcp-publish-and-access`: `maintenance_my_access`, `maintenance_catalog_plan`, `maintenance_module_install { modules }`, `maintenance_instance_add`, `maintenance_skin_set_options`, `<instance>__publish` / `__unpublish`, the separate `request` field; see `docs/MAINTENANCE-IA.md`). Publication was built directly as a tool that follows the approval setting instead of the `request_publish` of section 3 (row 8); everything else below is still an idea. Everything marked "proposal" is yet to be decided; the rest describes what exists today, with the file that proves it.
+Status: **batch 1 and publication are coded** (branch `feat/mcp-publish-and-access`: `maintenance_my_access`, `maintenance_catalog_plan`, `maintenance_module_install { modules }`, `maintenance_instance_add`, `maintenance_skin_set_options`, `<instance>__publish` / `__unpublish`, the separate `request` field; see `docs/MAINTENANCE-IA.md`). Publication was built directly as a tool that follows the approval setting instead of the `request_publish` of section 3 (row 8); **the menu and the home page are coded** (branch `feat/mcp-navigation-and-home`: `navigation_get` / `navigation_set`, `home_sections_list` / `home_sections_set`, see the addendum of `docs/MAINTENANCE-IA.md`; the design is one "send the whole list" writer per target instead of the `*_propose` pair of section 3, row 7: it follows the approval setting and keeps a restore point); everything else below is still an idea. Everything marked "proposal" is yet to be decided; the rest describes what exists today, with the file that proves it.
 
 
 **Starting decision**: an AI whose access is fully set up must be able to do **at least** what the Editorial role does in the admin, and more: install and configure modules. Without changing the security model: an AI never publishes anything, anything broad or destructive is a request that a human approves, no secret is ever read or written, everything is logged, each right is ticked separately, and everything is additive.
@@ -29,7 +29,7 @@ Required right: the access (token) must have the "write" ceiling for a tool that
 | `<key>__create_draft`, `__update_draft` (`content/mcp.ts`) | content | drafts only | yes | no (publishing stays human) |
 | `<key>__<action>` declared by a module (`src/core/modules/mcpProvider.ts:212-240`) | module | per `readOnly` / `destructive` | reads yes, writes no | no |
 
-There is **no** core tool for: site settings, menu, home page, media, languages, SEO, roles, the first-run setup wizard.
+There is **no** core tool for: menu, home page, languages, SEO, roles, the first-run setup wizard. (Done since: `media_upload`, `media_list`, `media_set_alt`, `site_settings_get`, `site_settings_set`; see `docs/MAINTENANCE-IA.md`, addendum.)
 
 ### 1.2 Why `module_install`, `skin_install`, `skin_activate` do not show up
 
@@ -62,8 +62,8 @@ Roles: `src/core/auth/rights.ts`. Editorial (`editor`) has `core:entries.edit` a
 | Upload a media file, alternative text | Editorial (`/api/admin/upload`) | none | media (3.6) |
 | Short links | Editorial | `redirects_*` | nothing (already covered) |
 | Site settings: name, tagline, about, languages, logos, footer | Administration | none | 3.5 |
-| Menu and header links | Administration | none | 3.7 |
-| Home page sections | Administration | none | 3.7 |
+| Menu and header links | Administration | `navigation_get`, `navigation_set` (the menu; the secondary link and button of the header are not covered) | done (3.7) |
+| Home page sections | Administration | `home_sections_list`, `home_sections_set` | done (3.7) |
 | Skin, colors, fonts | Administration | `skin_*` (read), `skin_activate`, `font_set` (requests, **poorly visible**, § 1.2) | 3.4 |
 | Social networks shown | Administration | none | 3.7 |
 | Install / remove / configure a module | `core:modules.install` | `module_*` | extra instance (3.2) |
@@ -80,8 +80,8 @@ Levels: **1** read; **2** safe, reversible write (logged with the old value); **
 | 2 | `maintenance_instance_add {module, key}` | Creates one more instance of a module with `instances: "multiple"` (`manifest.ts:239`) | 3 | `module`, `key` → `requestId` | Refused if the module is "single". Deleting an instance stays human |
 | 3 | `maintenance_module_configure` (exists) + `maintenance_module_setup_status {instance}` | Says what is left to fill in for an instance to work | 1 | `instance` → list of empty required settings | Never a secret: only "to enter in the admin" with the path |
 | 4 | `maintenance_skin_options {skin}` and `maintenance_skin_set_options {changes}` | Reads then sets colors and fonts **within the skin's limits** (contrast checked as in Appearance) | 2 for colors of an already active skin; 3 for a skin change | `changes` ≤ 20 keys → resulting settings + corrected colors | An unreadable color is corrected and reported. A personal skin or an uploaded font: human. Undo with Appearance's "Undo" |
-| 5 | `site_settings_get`, `site_settings_set {name?, tagline?, about?, footer?, locales?}` | Site settings (`settings/actions.ts`) | 1 / 2 | texts per language ≤ 20,000 chars | No site address, time zone, security or mail settings. Removing a language: request (3) |
-| 6 | `media_upload {name, dataBase64, alt}`, `media_list`, `media_set_alt` | Uploads a validated image (`sniffImage`, 5 MB, `uploads.ts`), lists it, sets its alternative text | 2 | image ≤ 5 MB → `/uploads/…` | No SVG or video in v1. Logo and brand icon: set through `site_settings_set` after checking; SVG stays human |
+| 5 | **Done (name, tagline, presentation, contact e-mail, logos; languages and footer stay human)** `site_settings_get`, `site_settings_set {name?, tagline?, about?, footer?, locales?}` | Site settings (`settings/actions.ts`) | 1 / 2 | texts per language ≤ 20,000 chars | No site address, time zone, security or mail settings. Removing a language: request (3) |
+| 6 | **Done (3 MB, svg through the logo pipeline, daily quota)** `media_upload {name, dataBase64, alt}`, `media_list`, `media_set_alt` | Uploads a validated image (`sniffImage`, 5 MB, `uploads.ts`), lists it, sets its alternative text | 2 | image ≤ 5 MB → `/uploads/…` | No SVG or video in v1. Logo and brand icon: set through `site_settings_set` after checking; SVG stays human |
 | 7 | `navigation_get`, `navigation_propose {items}`, `home_sections_list`, `home_sections_propose {ops}` | Reads the menu and the home page; **proposes** a full change (add, order, remove sections) | 1 / 3 | tree validated by `validateMenuInput` → preview in plain words + `requestId` | The change applies only on approval, with a before / after preview. Links to pages that do not exist: refused |
 | 8 | `<key>__request_publish {id}` (in the content engine) | Asks for a draft to be published | 3 | `id` → `requestId` | Never direct publication (`content/mcp.ts`: drafts only). Unpublish / delete: human |
 | 9 | `<key>__entry_seo {id, locale, title?, description?}` + `entry_translations_missing {id}` | Title and description for search engines of a draft; missing languages | 2 / 1 | texts ≤ 300 chars | Drafts only; a published entry goes through 8 |
