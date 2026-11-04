@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState, type FormEvent } from "react";
+import { useActionState, useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { clearSecrets, submitKeepingValues } from "./keepValues";
 import { useFieldErrorsDom } from "./FieldErrors";
 import { PendingButton } from "./PendingButton";
@@ -20,6 +20,9 @@ import { DateTimeField, type DateTimeLabels } from "./DateTimeField";
 import { DurationField, type DurationLabels } from "./DurationField";
 import { useCropLabels } from "./CropLabels";
 import { askConfirm } from "./confirmDialog";
+import { EditDialog, DialogLink } from "./EditDialog";
+import { useModalWindow, type DiscardGuard } from "./ModalWindow";
+import { SAVED_EVENT, type SavedDetail } from "./savedEvent";
 import { runModuleAdminAction } from "@/app/admin/(panel)/instances/module-actions";
 import { runEntryPanelAction } from "@/app/admin/(panel)/entries/panel-actions";
 import type { ActionState } from "./ActionForm";
@@ -47,7 +50,12 @@ export type FormLabels = {
   /** Le message d'un nombre hors bornes (par champ), à la place de la bulle du navigateur. */
   invalid?: Record<string, string>;
   fold?: { summary: string; count: number };
+  /** Texts of the edit dialog (`presentation: "dialog"`); absent: the form stays in the page. */
+  dialog?: DialogLabels;
 };
+
+/** Texts of the edit dialog, already translated by the server. */
+export type DialogLabels = { close: string; cancel: string; saved: string; discard: DiscardGuard };
 
 /** Rend un champ déclaré par un module (formulaires d'admin pilotés par les modules). */
 function Field({ f, labels }: { f: AdminField; labels?: FormLabels }) {
@@ -167,6 +175,8 @@ function FileBlockForm({ instanceId, block, labels, form }: { instanceId: string
 }
 
 export function AdminBlockForm({ instanceId, block, entry, fileLabels, labels }: { instanceId: string; block: FormBlock; entry?: EntryScope; fileLabels?: FileLabels; labels?: FormLabels }) {
+  // `presentation: "dialog"` (next core release): the same form, in a window above the page. Not in an entry editor, not with a file field, not without the texts.
+  if (!entry && block.presentation === "dialog" && labels?.dialog && !block.fields.some((f) => f.kind === "file")) return <DialogBlockForm instanceId={instanceId} block={block} labels={labels} dialog={labels.dialog} />;
   // Un champ fichier n'existe que dans le panneau d'une instance (route dédiée) ; dans l'éditeur d'une entrée il est écarté.
   if (!entry && fileLabels && block.fields.some((f) => f.kind === "file")) return <FileBlockForm instanceId={instanceId} block={block} labels={fileLabels} form={labels} />;
   return <ActionBlockForm instanceId={instanceId} block={entry ? { ...block, fields: block.fields.filter((f) => f.kind !== "file") } : block} entry={entry} labels={labels} />;
@@ -196,11 +206,62 @@ function ActionBlockForm({ instanceId, block, entry, labels }: { instanceId: str
   );
 }
 
-export function RowActionButton({ instanceId, label, action, href, id, confirm: confirmText, danger, entry }: {
-  instanceId: string; label: string; action?: string; href?: string; id?: string; confirm?: string; danger?: boolean; entry?: EntryScope;
+/**
+ * The form of a module in an edit dialog (`presentation: "dialog"`): the SAME fields, the same server action and the same validation as `ActionBlockForm`, in the
+ * shared window. Errors stay under the fields (the first one gets the focus) and the typed values are kept; the single main button is in the sticky footer
+ * (it submits the form through the `form` attribute); a success closes the window, announces itself near the saved row (see `savedEvent`) and shows the list again.
+ */
+function DialogBlockForm({ instanceId, block, labels, dialog }: { instanceId: string; block: FormBlock; labels: FormLabels; dialog: DialogLabels }) {
+  const [state, action, pending] = useActionState(runner(instanceId, block.action), null);
+  const formRef = useRef<HTMLFormElement>(null);
+  const formId = useId();
+  useFieldErrorsDom(formRef, state?.errors, state);
+  const title = block.title ?? block.submitLabel;
+  return (
+    <EditDialog title={title} closeLabel={dialog.close} closeHref={block.cancelHref} guard={dialog.discard}
+      footer={<DialogFooter formId={formId} submitLabel={block.submitLabel} cancel={dialog.cancel} pending={pending} error={state?.error} />}>
+      <DialogOutcome state={state} formRef={formRef} instanceId={instanceId} saved={dialog.saved} />
+      <form id={formId} ref={formRef} onSubmit={submitKeepingValues(action)} className="space-y-4" data-testid="edit-dialog-form">
+        <FormFields fields={block.fields} labels={labels} />
+      </form>
+    </EditDialog>
+  );
+}
+
+/** Footer of the edit dialog: a general error (when it concerns no field), then ONE main button with a specific verb and a discreet "Cancel". */
+function DialogFooter({ formId, submitLabel, cancel, pending, error }: { formId: string; submitLabel: string; cancel: string; pending: boolean; error?: string }) {
+  const win = useModalWindow();
+  return (
+    <div className="space-y-2">
+      {error && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm text-red-700">{error}</p>}
+      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end sm:gap-3">
+        <button type="button" onClick={() => win?.close()} className="inline-flex min-h-11 items-center justify-center rounded-xl px-4 text-sm text-muted underline-offset-2 hover:text-fg hover:underline" data-testid="edit-dialog-cancel">{cancel}</button>
+        <PendingButton pending={pending} variant="primary" form={formId} testid="edit-dialog-submit">{submitLabel}</PendingButton>
+      </div>
+    </div>
+  );
+}
+
+/** Renders nothing: on a success, closes the window without asking and tells the list which row was saved. */
+function DialogOutcome({ state, formRef, instanceId, saved }: { state: ActionState; formRef: React.RefObject<HTMLFormElement | null>; instanceId: string; saved: string }) {
+  const win = useModalWindow();
+  useEffect(() => {
+    if (!state || state.error || state.errors) return;
+    const id = (formRef.current?.elements.namedItem("id") as HTMLInputElement | null)?.value;
+    const detail: SavedDetail = { instanceId, id: id || undefined, message: state.ok || saved };
+    win?.markClean();
+    win?.close(true);
+    window.dispatchEvent(new CustomEvent(SAVED_EVENT, { detail }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
+  return null;
+}
+
+export function RowActionButton({ instanceId, label, action, href, id, confirm: confirmText, danger, entry, presentation }: {
+  instanceId: string; label: string; action?: string; href?: string; id?: string; confirm?: string; danger?: boolean; entry?: EntryScope; presentation?: "dialog";
 }) {
   const [state, formAction, pending] = useActionState(runner(instanceId, action ?? "", entry), null);
-  if (href) return <a href={href} className={ui.btn}>{label}</a>;
+  if (href) return presentation === "dialog" && !entry ? <DialogLink href={href} className={ui.btn}>{label}</DialogLink> : <a href={href} className={ui.btn}>{label}</a>;
   return (
     <form onSubmit={submitKeepingValues(formAction)}>
       <input type="hidden" name="id" value={id ?? ""} />
@@ -240,12 +301,12 @@ export function RowSwitch({ instanceId, action, id, on, label, onText, offText, 
 }
 
 /** (0.6.0) Une action de ligne rangée dans le menu « ⋯ » : un élément de menu pleine largeur (cible de 44 px), même confirmation et même retour qu'un bouton de ligne. */
-export function RowMenuItem({ instanceId, label, action, href, id, confirm: confirmText, danger, entry }: {
-  instanceId: string; label: string; action?: string; href?: string; id?: string; confirm?: string; danger?: boolean; entry?: EntryScope;
+export function RowMenuItem({ instanceId, label, action, href, id, confirm: confirmText, danger, entry, presentation }: {
+  instanceId: string; label: string; action?: string; href?: string; id?: string; confirm?: string; danger?: boolean; entry?: EntryScope; presentation?: "dialog";
 }) {
   const [state, formAction, pending] = useActionState(runner(instanceId, action ?? "", entry), null);
   const item = `flex min-h-11 w-full items-center px-4 text-left text-sm transition-colors hover:bg-bg disabled:cursor-progress disabled:opacity-60 ${danger ? "font-medium text-red-700" : ""}`;
-  if (href) return <a href={href} role="menuitem" className={item}>{label}</a>;
+  if (href) return presentation === "dialog" && !entry ? <DialogLink href={href} role="menuitem" className={item}>{label}</DialogLink> : <a href={href} role="menuitem" className={item}>{label}</a>;
   return (
     <form onSubmit={submitKeepingValues(formAction)}>
       <input type="hidden" name="id" value={id ?? ""} />

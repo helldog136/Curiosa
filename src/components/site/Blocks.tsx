@@ -16,6 +16,8 @@ import { ModuleForm } from "./ModuleForm";
 import { CopyCode } from "./CopyCode";
 import { CopyText } from "./CopyText";
 import { AdminBlockForm, RowActionButton, type FileLabels } from "../admin/AdminBlocks";
+import { DialogLink } from "../admin/EditDialog";
+import { dialogsLast } from "@/core/adminkit/dialog";
 import { ui } from "../admin/ui";
 import { GridEditor } from "../admin/GridEditor";
 import { floatingLabels } from "../admin/floating";
@@ -56,7 +58,8 @@ export async function Blocks({ blocks, locale, adminInstanceId: panelInstanceId,
   const entryScope = adminEntry ? { panelId: adminEntry.panelId, entryId: adminEntry.entryId } : undefined;
   const config = await getSiteConfig();
   const out: React.ReactNode[] = [];
-  for (const [i, block] of blocks.entries()) {
+  // An edit dialog (`presentation: "dialog"`) comes last: opening it does not shift the position (so the identity and the state, search and filter) of the list under it.
+  for (const [i, block] of dialogsLast(blocks, { admin: Boolean(adminInstanceId), entry: Boolean(entryScope) }).entries()) {
     switch (block.type) {
       case "markdown":
         out.push(<Markdown key={i} text={block.text} />);
@@ -156,9 +159,13 @@ export async function Blocks({ blocks, locale, adminInstanceId: panelInstanceId,
           <ul key={i} data-skin-part="list" data-kind="links" className="flex flex-wrap gap-3">
             {block.items.map((item) => (
               <li key={`${item.href}-${item.label}`} data-skin-part="list-item">
-                <a href={safeHref(item.href)} data-chip="" data-skin-part="chip" className="rounded-chip border-token border-line px-4 py-2 text-sm hover:border-accent hover:text-accent">
-                  {item.label}
-                </a>
+                {item.presentation === "dialog" && adminInstanceId && !entryScope
+                  ? <DialogLink href={item.href.startsWith("?") ? item.href : safeHref(item.href)} className="inline-flex min-h-11 items-center rounded-chip border-token border-line px-4 py-2 text-sm hover:border-accent hover:text-accent">{item.label}</DialogLink>
+                  : (
+                    <a href={safeHref(item.href)} data-chip="" data-skin-part="chip" className="rounded-chip border-token border-line px-4 py-2 text-sm hover:border-accent hover:text-accent">
+                      {item.label}
+                    </a>
+                  )}
               </li>
             ))}
           </ul>,
@@ -250,7 +257,7 @@ export async function Blocks({ blocks, locale, adminInstanceId: panelInstanceId,
                         <div className="flex items-start gap-2">
                           {block.rowActions.map((a) => (
                             <RowActionButton key={a.label} instanceId={adminInstanceId} label={a.label} action={a.action}
-                              href={a.href?.replace("{id}", encodeURIComponent(block.rowIds?.[r] ?? ""))} id={block.rowIds?.[r]} confirm={a.confirm} danger={a.danger} entry={entryScope} />
+                              href={a.href?.replace("{id}", encodeURIComponent(block.rowIds?.[r] ?? ""))} id={block.rowIds?.[r]} confirm={a.confirm} danger={a.danger} entry={entryScope} presentation={a.presentation} />
                           ))}
                         </div>
                       </td>

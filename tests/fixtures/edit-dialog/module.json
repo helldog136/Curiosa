@@ -1,0 +1,16 @@
+{
+  "apiVersion": 2,
+  "id": "edit-dialog-demo",
+  "name": { "en": "Edit dialog demo", "fr": "Démo de la fenêtre de modification" },
+  "version": "1.0.0",
+  "main": "index.mjs",
+  "description": {
+    "en": "A list of commands whose edit form opens in a window above the page (test fixture).",
+    "fr": "Une liste de commandes dont le formulaire de modification s'ouvre dans une fenêtre au-dessus de la page (module de test)."
+  },
+  "author": "Tests",
+  "license": "MIT",
+  "icon": "🧪",
+  "permissions": ["storage", "admin"],
+  "settings": []
+}

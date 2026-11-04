@@ -43,6 +43,8 @@ export type PendingButtonProps = {
   className?: string;
   testid?: string;
   onClick?: React.MouseEventHandler<HTMLButtonElement>;
+  /** Submits the form with this `id` even when the button is outside it (the sticky footer of an edit dialog). */
+  form?: string;
   title?: string;
   "aria-label"?: string;
 };
@@ -51,7 +53,7 @@ export type PendingButtonProps = {
  * Bouton d'un formulaire qui lance une action sur le serveur. Dès le clic il est inactif (pas de double envoi) ; après un court instant il montre un rouet et
  * « en cours » (`aria-busy`), puis « Terminé » quelques secondes. Sa largeur ne bouge pas. Annonce début et fin aux lecteurs d'écran (`aria-live`).
  */
-export function PendingButton({ children, variant = "btn", pendingLabel, doneLabel, pending: controlled, disabled = false, type = "submit", className = "", testid, onClick, title, "aria-label": ariaLabel }: PendingButtonProps) {
+export function PendingButton({ children, variant = "btn", pendingLabel, doneLabel, pending: controlled, disabled = false, type = "submit", className = "", testid, onClick, form, title, "aria-label": ariaLabel }: PendingButtonProps) {
   const status = useFormStatus();
   const p = useProgressText();
   const pending = controlled ?? status.pending;
@@ -74,7 +76,7 @@ export function PendingButton({ children, variant = "btn", pendingLabel, doneLab
   const labels = [children, <><Spinner />{working}</>, ...(doneLabel ? [<><span aria-hidden="true">✓</span>{doneLabel}</>] : [])];
   return (
     <>
-      <button type={type} disabled={disabled || pending} aria-busy={pending ? true : undefined} aria-label={ariaLabel} title={title} onClick={onClick}
+      <button type={type} disabled={disabled || pending} aria-busy={pending ? true : undefined} aria-label={ariaLabel} title={title} onClick={onClick} form={form}
         data-testid={testid} data-pending={pending ? "true" : "false"} data-phase={busy ? "working" : showDone ? "done" : "idle"}
         className={`${VARIANTS[variant]} ${disabled && !pending ? "opacity-60" : ""} ${className}`}>
         <LabelStack labels={labels} shown={shown} />
