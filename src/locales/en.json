@@ -1882,7 +1882,7 @@
   "ai.profile.read.l3": "It changes nothing and prepares nothing.",
   "ai.profile.assistant.l1": "The AI prepares drafts and adjusts what is installed.",
   "ai.profile.assistant.l2": "It prepares drafts that you publish yourself.",
-  "ai.profile.assistant.l3": "It adjusts the settings of installed features and short links.",
+  "ai.profile.assistant.l3": "It adjusts features and short links, sends images, and sets the name and logos of your site.",
   "ai.profile.assistant.l4": "It makes safety copies and checks for updates.",
   "ai.profile.full.l1": "The AI also asks to install features and skins.",
   "ai.profile.full.l2": "It can ask to change fonts, colors and skin, to add another copy of a feature, and to publish drafts.",

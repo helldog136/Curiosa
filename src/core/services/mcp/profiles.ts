@@ -3,7 +3,8 @@
  * (Admin > AI assistants > an assistant). A profile is a preset of the same per-tool rights the rights page edits; it adds nothing the page cannot show.
  *
  *   read       the AI looks and advises (reads only)
- *   assistant  + prepares drafts and adjusts installed modules (safe, reversible actions)
+ *   assistant  + prepares drafts and adjusts installed modules (safe, reversible actions), sends images, and sets the site identity (name, tagline, contact e-mail, logos:
+ *              that last one follows the access's approval setting)
  *   full       + asks to install modules (one or several at once) and skins, add instances, change colours, fonts and skin, and publishes drafts (`<instance>__publish`,
  *              `__unpublish`): requests the owner approves, or done at once when the owner chose "act without asking" for that access (installs and new instances
  *              always wait for the owner)

@@ -32,7 +32,7 @@ export const PAGE_SIZE = 50;
 /** For the whole site, all accesses together, over the last 24 hours. */
 export const DAILY_FILES = 100;
 export const DAILY_BYTES = 60 * 1024 * 1024;
-const MAX_BASE64 = Math.ceil(MAX_MEDIA_BYTES / 3) * 4 + 8;
+
 const IMAGE_NAME = /^[0-9a-f-]{36}\.(png|jpg|webp|gif|svg)$/;
 const ALT_KEY = (name: string) => `media.alt.${name}`;
 const TYPE_OF: Record<string, string> = { png: "image/png", jpg: "image/jpeg", webp: "image/webp", gif: "image/gif", svg: "image/svg+xml" };
@@ -40,7 +40,7 @@ const TYPE_OF: Record<string, string> = { png: "image/png", jpg: "image/jpeg", w
 export const MEDIA_UPLOAD_INPUT: JsonSchemaLite = {
   type: "object",
   properties: {
-    dataBase64: { type: "string", maxLength: MAX_BASE64, description: "The image bytes as plain base64 (no \"data:\" prefix). png, jpeg, webp or gif, 3 MB at most; svg only for logos (300 KB at most, it is cleaned). The site never downloads from an address: the bytes must be here." },
+    dataBase64: { type: "string", maxLength: 4_300_000, description: "The image bytes as plain base64 (no \"data:\" prefix). png, jpeg, webp or gif, 3 MB at most; svg only for logos (300 KB at most, it is cleaned). The site never downloads from an address: the bytes must be here." },
     alt: { type: "string", maxLength: MAX_ALT + 40, description: `Alternative text that describes the image for people who cannot see it, ${MAX_ALT} characters at most, for example "Blue logo of Etoile Nord". Required.` },
     name: { type: "string", maxLength: 120, description: "Optional: the original file name, only written in the journal as a label. The stored name is chosen by the site." },
   },
@@ -110,7 +110,7 @@ export async function mediaUpload(rawArgs: Record<string, unknown>, actor: { nam
   if (looksLikeSvg(buf)) {
     // The logo pipeline: re-written, never stored as received.
     const r = await saveSvgUpload(buf);
-    if ("error" in r) throw new McpToolError(r.error === "svg" ? `This svg was refused: ${r.detail}. Remove scripts, styles, texts, embedded images and outside links, or send a png.` : "This is not a usable image. Send png, jpeg, webp or gif.");
+    if ("error" in r) throw new McpToolError(r.error === "svg" ? `This svg was refused: only simple shapes, gradients and filters are accepted; scripts, styles, texts, embedded images and outside links are not. Send a simpler svg or a png. Detail from the site (in French): ${r.detail}` : "This is not a usable image. Send png, jpeg, webp or gif.");
     address = r.url; kind = "svg";
   } else {
     const type = sniffImage(buf);

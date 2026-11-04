@@ -1882,7 +1882,7 @@
   "ai.profile.read.l3": "Elle ne change rien et ne prépare rien.",
   "ai.profile.assistant.l1": "L'IA prépare des brouillons et ajuste ce qui est installé.",
   "ai.profile.assistant.l2": "Elle prépare des brouillons que vous publiez vous-même.",
-  "ai.profile.assistant.l3": "Elle ajuste les réglages des fonctionnalités installées et les liens courts.",
+  "ai.profile.assistant.l3": "Elle ajuste les fonctionnalités et les liens courts, envoie des images et règle le nom et les logos du site.",
   "ai.profile.assistant.l4": "Elle fait des copies de sécurité et cherche les mises à jour.",
   "ai.profile.full.l1": "L'IA demande aussi d'installer des fonctionnalités et des habillages.",
   "ai.profile.full.l2": "Elle peut demander de changer l'apparence, d'ajouter un exemplaire d'une fonctionnalité et de publier.",
