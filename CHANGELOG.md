@@ -41,6 +41,13 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Un état des traductions dans Réglages › Langues.** Chaque langue est « officielle » (anglais, français) ou « communautaire », « complète » ou « partielle : 82 % », et la liste des extensions auxquelles il manque des textes s'y trouve. Votre assistant IA lit la même chose.
 - **Ajouter une langue ne demande que des fichiers.** Un guide pas à pas (le document TRANSLATING) et une commande qui prépare les fichiers à traduire permettent à chacun de proposer sa langue.
 
+### Assistants IA
+
+- **Un assistant IA peut vous aider à finir la mise en place.** Une dernière étape facultative, « Connecter votre assistant IA », suit la création de votre compte : un nom, un profil, un clic. Vous passez l'étape sans risque : rien n'est créé.
+- **Trois profils règlent les droits d'un clic.** « Lecture seule » (par défaut), « Assistant » et « Installation complète ». Une IA ne lit jamais un mot de passe ni un secret, et tout est noté dans le journal.
+- **Régler les droits d'un assistant est bien plus rapide.** Les profils en haut, « Tout cocher » par section avec un compteur (« 9 sur 11 »), une confirmation pour les actions à risque, et un résumé à relire avant d'enregistrer.
+- **Qui approuve les actions à risque est enfin clair.** Deux boutons montrent toujours votre choix, et la page dit que l'installation demande toujours votre accord.
+
 ### Pour les développeurs
 
 - **AI publishing** (`src/core/maintenance/publish.ts`, tools generated in `src/core/content/mcp.ts`): `<instance>__publish` / `__unpublish` as level 3 actions `entry_publish` / `entry_unpublish` of `callLevel3`, so they follow the per-access approval setting. A bundle is `plan.entry.items` with a text fingerprint; a draft edited after the request is not published.
@@ -60,6 +67,10 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Identité visuelle** : fichiers dans `docs/brand/` (SVG avec lettres en contours, PNG, `README.md`) ; rien dans `src/`, aucun changement de l'application.
 - **Une seule liste d'agents non humains** (`src/core/agents.ts`, `classifyAgent` : `person`, `search`, `ai`, `preview`, `tool`). `redirectStats.ts` (`isHumanVisit`, comportement inchangé) et `stats.ts` l'utilisent ; l'ancienne liste de `redirectStats.ts` et l'expression courte de `stats.ts` disparaissent. Quelques noms d'IA ajoutés (`google-extended`, `cohere`, `mistralai`, `diffbot`…).
 - **Compteur de robots** : lignes `VisitDaily` de genre `bot` (`ROBOT_KIND`), clé = catégorie, `views` = visites, 4 lignes par jour au plus. Aucun changement de schéma, aucune migration. `recordVisit` renvoie `"robot"` pour ces visites (avant : `"ignored"`). `statsSummary().robots` (`last7`, `last30` : `search`, `ai`, `preview`, `tool`, `total`) est additif.
+- **AI access profiles** (`src/core/services/mcp/profiles.ts`): one definition (`read`, `assistant`, `full`) for the setup step and the rights page, checked against the real catalogue by `tests/core/ai-access-profiles.test.mjs`.
+- **Creating an access** goes through `createAccess` (`src/core/mcpAccess.ts`), shared with the team form. The clear code is only in the action result, never in the journal. No migration.
+- **Setup step** at `/admin/setup/assistant`: it follows the account creation (an access needs an owner); `completeSetup` redirects there.
+- **Rights page**: `GrantsEditor` keeps a draft; `applyGrantsAction` saves the differences with the rules of `setGrantAction`. New journal action `mcp.grants.apply`; `GrantToggle` is removed; `ApprovalChoice` replaces the approve button.
 
 ## 0.6.6 — 2026-11-03
 

@@ -155,9 +155,9 @@ test("accès : la page d'un accès réunit droits et validation, le détail par 
   assert.match(page, /const shown: \[string, typeof catalogue\]\[\] = \[\.\.\.groups\.entries\(\)\]\.filter\(\(\[source\]\) => advanced \|\| source === "maintenance"\)/);
   // Publishing: a section of its own in plain words in simple mode (a right of its own, per content list).
   assert.match(page, /if \(!advanced && publishing\.length\) shown\.push\(\["publishing", publishing\]\)/);
-  assert.match(page, /data-testid="publishing-help"/);
+  assert.match(page, /aim\.publish\.help/);
   assert.match(page, /data-testid="maintenance-approval"/);
-  assert.match(page, /ConfirmButton message=\{t\("aim\.approval\.directConfirm", \{ token: row\.name \}\)\}/, "la confirmation de l'exécution directe est conservée");
-  assert.match(page, /confirmMessage=\{tool\.destructive \?/, "la confirmation d'une action irréversible est conservée");
+  assert.match(read(`${PANEL}/assistants/[id]/grantsLabels.ts`), /actConfirm: t\("aim\.approval\.directConfirm", \{ token: name \}\)/, "la confirmation de l'exécution directe est conservée (choix à deux options)");
+  assert.match(page, /confirm: tool\.destructive \?/, "la confirmation d'une action irréversible cochée seule est conservée");
   assert.match(page, /adminCtx\(\{ right: "core:[a-z.]+" \}\)/);
 });

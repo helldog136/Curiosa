@@ -2,6 +2,7 @@
 
 Status: **batch 1 and publication are coded** (branch `feat/mcp-publish-and-access`: `maintenance_my_access`, `maintenance_catalog_plan`, `maintenance_module_install { modules }`, `maintenance_instance_add`, `maintenance_skin_set_options`, `<instance>__publish` / `__unpublish`, the separate `request` field; see `docs/MAINTENANCE-IA.md`). Publication was built directly as a tool that follows the approval setting instead of the `request_publish` of section 3 (row 8); everything else below is still an idea. Everything marked "proposal" is yet to be decided; the rest describes what exists today, with the file that proves it.
 
+
 **Starting decision**: an AI whose access is fully set up must be able to do **at least** what the Editorial role does in the admin, and more: install and configure modules. Without changing the security model: an AI never publishes anything, anything broad or destructive is a request that a human approves, no secret is ever read or written, everything is logged, each right is ticked separately, and everything is additive.
 
 ## 1. Current state
@@ -97,7 +98,7 @@ Levels: **1** read; **2** safe, reversible write (logged with the old value); **
 - **Names**: core `maintenance_*` (upkeep), `site_*`, `media_*`, `navigation_*`, `home_*`; module `<key>__<verb_object>`. Verbs: `list`, `get`, `create_draft`, `update_draft`, `request_<action>`.
 - **Rights**: one `aim.tool.<name>` entry in FR and EN, the same short sentence, for every core tool (the current keys are in `src/locales/fr.json`); the existing parity test applies. Module tools keep their manifest description.
 - **Levels**: 1 read; 2 safe write; 3 request (new `request` field, distinct from `destructive`).
-- **Rights page**: simple mode = three groups "Look / Change / Request" with profiles (an "Editorial AI" profile: level 1 + 2 + drafts + publication requests); advanced mode = each tool, as today.
+- **Rights page** (profiles done: `src/core/services/mcp/profiles.ts`, three presets Read only / Assistant / Full setup, also offered in the setup step): simple mode = three groups "Look / Change / Request" with profiles (an "Editorial AI" profile: level 1 + 2 + drafts + publication requests); advanced mode = each tool, as today.
 - **Log**: every write call records `mcp.<tool>` with the target, never the value of a secret; the old value is kept for level 2.
 - **Limits**: 120 requests per minute per token (`tokens.ts:83-90`), 12 level 2-3 actions per hour (`actions.ts`, `takeSlot`); body ≤ 1 MB (`server.ts`); 20 changes per call; image ≤ 5 MB; texts ≤ 20,000 characters; pending requests ≤ 50.
 - **Secrets**: no tool takes or returns a secret, token, password or secret address.
