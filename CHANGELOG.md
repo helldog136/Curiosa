@@ -13,6 +13,10 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 - **Le logo de Curiosa est disponible.** Une page de marque réunit le logo pour fond clair et fond sombre, la marque seule, l'icône et un aperçu pour les réseaux, avec la palette et les règles d'usage. Votre site n'en change pas : le logo est celui de Curiosa, pas celui de votre site.
 
+### Apparence de l'administration
+
+- **Les pages secrètes des modules pourront reprendre l'apparence de l'administration.** Une télécommande ou un dock OBS aura vos couleurs d'administration, claires ou sombres, au lieu de celles du site public. Votre administration ne change pas d'aspect et il n'y a rien à régler.
+
 ### Visites de personnes et de robots
 
 - **Les robots ne sont plus mêlés aux personnes qui visitent.** Sur le tableau de bord, le bloc « Visites » montre une nouvelle ligne « Robots et IA » : le nombre de visites de robots sur 30 jours, et combien viennent d'intelligences artificielles. Avant, ces visites étaient simplement jetées.
@@ -22,6 +26,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Pour les développeurs
 
+- **Jetons visuels de l'admin** (`src/core/adminTheme.ts`) : liste unique de variables `--cur-*`, noms figés par test, contrastes AA testés ; l'admin les lit sans changement visible. `ctx.api.adminTheme({ scheme })` (additif, sans permission) rend `{ css, scheme, wordmark }` ; absent des cœurs plus anciens. Voir `docs/MODULES.md`.
 - **Identité visuelle** : fichiers dans `docs/brand/` (SVG avec lettres en contours, PNG, `README.md`) ; rien dans `src/`, aucun changement de l'application.
 - **Une seule liste d'agents non humains** (`src/core/agents.ts`, `classifyAgent` : `person`, `search`, `ai`, `preview`, `tool`). `redirectStats.ts` (`isHumanVisit`, comportement inchangé) et `stats.ts` l'utilisent ; l'ancienne liste de `redirectStats.ts` et l'expression courte de `stats.ts` disparaissent. Quelques noms d'IA ajoutés (`google-extended`, `cohere`, `mistralai`, `diffbot`…).
 - **Compteur de robots** : lignes `VisitDaily` de genre `bot` (`ROBOT_KIND`), clé = catégorie, `views` = visites, 4 lignes par jour au plus. Aucun changement de schéma, aucune migration. `recordVisit` renvoie `"robot"` pour ces visites (avant : `"ignored"`). `statsSummary().robots` (`last7`, `last30` : `search`, `ai`, `preview`, `tool`, `total`) est additif.

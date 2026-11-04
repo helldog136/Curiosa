@@ -84,7 +84,7 @@ Valeur finale d'un jeton = la plus forte couche qui le définit. **Repli valeur 
 - Le site n'a **qu'un mode** (clair OU sombre, selon la luminance du fond choisi) ; il n'y a pas de `prefers-color-scheme` aujourd'hui.
 - Les modules écrivent leur HTML dans des blocs `{ type: "html" }` avec leur propre `<style>` en ligne (non superposé en `@layer`), des classes préfixées (`.ev-`, `.gal-`, `.cpl-`…), et des `var(--v-…)`.
 - Les overlays OBS (`/overlays/[key]`) n'importent ni Tailwind ni `globals.css` : seulement `themeCss(theme)` (les `--v-*`) + le CSS du module. Les pages autonomes de modules (`<!doctype html>` propres) ne passent pas par le layout.
-- L'administration importe la même `globals.css` et a son propre thème (`adminThemeCss`, `src/core/adminTheme.ts`).
+- L'administration importe la même `globals.css` et a son propre thème (`adminThemeCss`, `src/core/adminTheme.ts`). Ses jetons `--cur-*` suivent le même principe que les skins ; ce qu'un futur skin d'admin pourrait changer : [ideas/skins-admin.md](ideas/skins-admin.md).
 
 ---
 

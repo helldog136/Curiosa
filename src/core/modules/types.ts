@@ -342,6 +342,13 @@ export type LogEntryInput = {
   data?: Record<string, string | number | boolean>;
 };
 
+/** Résultat de `ctx.api.adminTheme()` (voir src/core/adminTheme.ts). */
+export type ModuleAdminTheme = {
+  css: string;
+  scheme: "light" | "dark" | "auto";
+  wordmark: { html: string; css: string };
+};
+
 export type ModuleApi = {
   /**
    * Journal central du site (cœur 0.6.0 ; aucune permission). Ne lève jamais : une ligne refusée (clé invalide) renvoie `false`. Le cœur déduit QUI agit
@@ -373,6 +380,12 @@ export type ModuleApi = {
   site(locale?: string): Promise<{ name: string; tagline: string; logo: string | null }>;
   /** Identité visuelle (nom, présentation, logo, palette, police) : exactement ce que le site utilise. */
   brand(locale?: string): Promise<ModuleBrand>;
+  /**
+   * Apparence de l'ADMINISTRATION pour les pages secrètes d'un module (télécommande, dock OBS…) (cœur après 0.6.6 ; aucune permission). Ne lève jamais, ne lit rien du site.
+   * `css` : variables `--cur-*` seulement (jamais d'adresse ni de police externe), à poser dans un `<style nonce>` ; `scheme` : le mode obtenu ; `wordmark` : le nom « Curiosa »
+   * (`html` + `css`) à utiliser tel quel. Un cœur plus ancien n'a pas `ctx.api.adminTheme` : écrire `ctx.api.adminTheme?.(…)` et garder ses couleurs de repli.
+   */
+  adminTheme(opts?: { scheme?: "light" | "dark" | "auto" }): ModuleAdminTheme;
   instances: {
     /** `id` et `adminPath` (« /admin/instances/<id> ») : pour renvoyer l'administrateur vers les réglages d'une instance d'un autre module. */
     list(opts?: { locale?: string; module?: string }): Promise<{ id: string; key: string; module: string; basePath: string | null; name: string; adminPath: string }[]>;

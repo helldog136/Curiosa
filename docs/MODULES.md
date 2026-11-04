@@ -1239,6 +1239,7 @@ Deux familles : les **services** du cœur (génériques, voir [PLATFORM.md](PLAT
 | `ctx.api.net.budgetMs()` | service | temps restant (ms) de la page publique en cours, ou `null` hors page publique |
 | `ctx.api.site(locale?)` | lecture | `{ name, tagline, logo }` du site |
 | `ctx.api.brand(locale?)` | lecture | identité visuelle complète (`ModuleBrand`, ci-dessous) |
+| `ctx.api.adminTheme({ scheme? })` | lecture | (cœur après 0.6.6, aucune permission) l'apparence de l'**administration** pour une page secrète du module : `{ css, scheme, wordmark }`. Voir « Thème de l'admin pour vos pages secrètes ». |
 | `ctx.api.instances.list({ module?, locale? })` | lecture | `[{ id, key, module, basePath, name, adminPath }]` des instances actives ; `adminPath` (`/admin/instances/<id>`) est la page de réglages de l'instance : de quoi y renvoyer l'administrateur par un lien (`href`) |
 | `ctx.api.entries.list({ instance?, locale?, limit? })` | lecture | entrées publiées (`EntrySummary`) ; par défaut celles de l'instance courante ; **200 au plus** (sans `limit`, ou au-delà : 200), dans l'ordre de la liste publique (non expirées d'abord, puis expirées) ; pour tout lire, passez par `ctx.api.topics.collectPage` |
 | `ctx.api.siteUrl` | lecture | adresse publique du site, sans `/` final |
@@ -1654,6 +1655,26 @@ Le thème réglé dans l'admin (*Réglages › Apparence*) atteint les modules d
 - **Couleurs par défaut qui suivent le thème** : `{ "key": "accent", "type": "color", "default": "theme:accent" }` (jetons : `accent`, `accentFg`, `bg`, `surface`, `fg`, `muted`, `line`, `success`, `successFg`, `warning`, `warningFg`, `danger`, `dangerFg`, `accent2`, `accent2Fg`). Tant que l'administrateur n'a pas choisi sa propre couleur — case « Suivre le thème du site », cochée par défaut — la valeur change avec le thème.
 
 Un module peut en plus déclarer **ses propres réglages d'apparence** (la texture des murs du labyrinthe, la couleur du sol, le style d'un bandeau…) avec `"group": "appearance"` : ils sont regroupés sous « Apparence de ce module » dans son panneau d'admin, séparés de ses réglages de comportement. Types utiles : `color`, `image` (téléversement), `select`.
+
+## Thème de l'admin pour vos pages secrètes
+
+Une page servie par votre module **hors de l'administration** mais réservée à l'équipe (télécommande pour téléphone, dock OBS) doit ressembler à l'administration, pas au site public. `ctx.api.adminTheme({ scheme })` (cœur après 0.6.6, aucune permission, ne lève jamais) vous donne :
+
+- `css` : du texte CSS prêt à poser dans un `<style nonce>`. Il ne contient que des **variables** `--cur-*` (et `color-scheme`) : aucune adresse, aucune police à charger, aucun `@import`. Il respecte donc la vie privée et la politique de sécurité de votre page.
+- `scheme` : `"light"`, `"dark"` ou `"auto"` (clair, et sombre si l'appareil l'est). Sans choix, ou si la valeur est inconnue : `"auto"`. Pour un dock OBS, demandez `"dark"`.
+- `wordmark` : le nom « Curiosa » comme dans l'administration, `{ html, css }`. Posez `html` tel quel (un lien) et `css` avec le reste : ne réécrivez jamais le mot à la main (Fraunces italique 600, 1,15 em, souligné). La police n'est pas chargée par le cœur ; sans elle, l'appareil prend une police à empattement en italique.
+
+Les variables (noms **stables** : un nom n'est jamais retiré) : `--cur-bg` (fond), `--cur-fg` (texte), `--cur-muted` (texte secondaire), `--cur-surface` (cartes), `--cur-line` (filets), `--cur-accent` et `--cur-accent-fg` (accent et son texte), `--cur-ok`, `--cur-warn`, `--cur-danger` (états) avec leur `-fg`, `--cur-focus` (anneau de focus), `--cur-radius`, `--cur-radius-lg`, `--cur-shadow`, `--cur-space`, `--cur-font` (police du système). Les textes sont lisibles (4,5:1 au moins) sur `--cur-bg` et `--cur-surface` ; l'accent et le focus font 3:1 au moins. `--cur-line` est décoratif : il ne porte jamais seul une information.
+
+```js
+const t = ctx.api.adminTheme?.({ scheme: "dark" }); // absent sur un cœur plus ancien
+const css = t
+  ? t.css + `body{background:var(--cur-bg);color:var(--cur-fg);font-family:var(--cur-font)}button{background:var(--cur-accent);color:var(--cur-accent-fg);border-radius:var(--cur-radius)}` + t.wordmark.css
+  : ANCIENNES_COULEURS; // le module continue de marcher avec ses couleurs actuelles
+return html(`<style nonce="${nonce}">${css}</style>…<footer>${t ? t.wordmark.html : ""}</footer>`);
+```
+
+Gardez les couleurs de votre module comme repli : un cœur plus ancien n'a pas cette méthode (déclarez `minCore` seulement si le thème est indispensable). Pourquoi un jeu de variables à part, et ce qu'un futur skin d'admin pourrait changer ou jamais : [ideas/skins-admin.md](ideas/skins-admin.md).
 
 ## Envoyer un e-mail
 

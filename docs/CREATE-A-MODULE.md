@@ -608,7 +608,7 @@ Plusieurs modules peuvent contribuer au même emplacement : les blocs sont mis b
 export default { filters: { entryBody: (body, ctx) => body.replaceAll(":wave:", "👋") } };
 ```
 
-Permission : `filters`. Le filtre s'applique en chaîne avec ceux des autres modules. **Lecture du site** : `ctx.api.site()` (nom, accroche, logo), `ctx.api.brand()` (identité visuelle complète),
+Permission : `filters`. Le filtre s'applique en chaîne avec ceux des autres modules. **Lecture du site** : `ctx.api.site()` (nom, accroche, logo), `ctx.api.brand()` (identité visuelle complète), `ctx.api.adminTheme()` (l'apparence de l'administration pour vos pages secrètes : [MODULES.md](MODULES.md), « Thème de l'admin pour vos pages secrètes »),
 `ctx.api.instances.list()`, `ctx.api.entries.list()` (entrées publiées d'un module à contenu), `ctx.api.siteUrl`, et `ctx.api.qr(texte)` (QR code en SVG) et `ctx.api.png({ width, height, tree })` (image PNG à partir d'une arborescence de boîtes : voir la route `image` du module *planning*), `ctx.api.seo.jsonLd(données)` (données structurées pour `layout.head`, voir la section suivante).
 
 ### Le temps que le site vous laisse (8 secondes)

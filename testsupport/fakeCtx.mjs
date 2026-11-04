@@ -31,6 +31,7 @@ import { loadCore } from "./core.mjs";
  *   le vrai cœur peut y ajouter `name`, `id` et `ambiguous`, tous facultatifs). `candidates(title)` (cœur 0.2.10) enregistre dans `ctx.calls.rawgCandidates` ; résultat réglable via `rawgCandidates`
  *   (défaut `{ status: "none", candidates: [] }` ; un candidat est `{ id, name, year, platforms, url }`, 6 au plus dans le vrai cœur)
  * - `ctx.api.visitor.fingerprint(request, scope?)` (cœur 0.2.6) : même règle que le cœur (DERNIÈRE entrée de `X-Forwarded-For`, sinon `X-Real-IP`, sinon « local »), empreinte de 22 caractères avec un sel fixe de test (jamais l'adresse) ; propre à `scope` et au module
+ * - `ctx.api.adminTheme({ scheme? })` (cœur après 0.6.6) : `{ css, scheme, wordmark }` d'exemple ; les appels sont dans `ctx.calls.adminTheme`.
  * - `ctx.api.links.measured(url, opts?)` (cœur après 0.5.0) : renvoie l'adresse telle quelle (il n'y a pas de lien court hors d'un vrai site).
  * - `ctx.api.privacy.declarations()` (permission « privacy », cœur 0.2.6) : renvoie `privacyDeclarations` (option ; défaut `{ modules: [], truncated: false }`) ; sans la permission déclarée : `{ modules: [], truncated: false }`
  * - `ctx.api.files` (permission « files », cœur 0.2.13) : `claim(url)`, `remove(url)`, `owns(url)`, `usage()` avec les MÊMES règles et les mêmes codes de refus que le cœur.
@@ -77,7 +78,7 @@ export function fakeCtx(opts = {}) {
   const siteZone = validZone(timezone) ? timezone : (() => { try { const tz = Intl.DateTimeFormat().resolvedOptions().timeZone; return validZone(tz) ? tz : "UTC"; } catch { return "UTC"; } })();
   const rows = new Map();
   let seq = 0;
-  const calls = { topics: [], qr: [], entries: [], mail: [], png: [], services: [], rawg: [], rawgCandidates: [], files: [], seeds: [], cleared: [], legacyCleared: [], writes: [], denied: [], net: [], netLog: [], choices: [], log: [] };
+  const calls = { topics: [], qr: [], entries: [], mail: [], png: [], services: [], rawg: [], rawgCandidates: [], files: [], seeds: [], cleared: [], legacyCleared: [], writes: [], denied: [], net: [], netLog: [], choices: [], log: [], adminTheme: [] };
   let netClient;
   const client = () => (netClient ??= makeNetClient({ limits: { retryMinMs: 1, retryMaxMs: 5, ...netLimits }, log: (line) => calls.netLog.push(line) }));
   const net = netOverride ?? {
@@ -286,6 +287,13 @@ export function fakeCtx(opts = {}) {
       net,
       site: async () => site,
       brand: async () => brand,
+      // `ctx.api.adminTheme({ scheme })` (cœur après 0.6.6) : même forme que le cœur, avec de petites valeurs d'exemple (clair/sombre) ; ne pas s'appuyer sur les couleurs exactes.
+      adminTheme: (o) => {
+        const scheme = ["light", "dark"].includes(o?.scheme) ? o.scheme : "auto";
+        const pick = { light: ":root{--cur-bg:#faf7f2;--cur-fg:#2b2622;--cur-accent:#6c5ce7;color-scheme:light}", dark: ":root{--cur-bg:#15141a;--cur-fg:#ecebf2;--cur-accent:#9b8cff;color-scheme:dark}" };
+        calls.adminTheme.push(o ?? {});
+        return { css: scheme === "auto" ? `${pick.light}@media (prefers-color-scheme: dark){${pick.dark}}` : pick[scheme], scheme, wordmark: { html: '<a class="cur-wordmark" data-curiosa-wordmark="" href="https://github.com/helldog136/Curiosa" rel="noopener">Curiosa</a>', css: ".cur-wordmark{font-style:italic;font-weight:600}" } };
+      },
       instances: { list: async () => instances },
       entries: { list: async (o) => { calls.entries.push(o); return entries; } },
     }, {
