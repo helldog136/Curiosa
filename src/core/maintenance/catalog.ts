@@ -1,3 +1,4 @@
+import { pickText } from "@/core/i18n/audit.mjs";
 import type { JsonSchemaLite } from "@/core/modules/types";
 import { prisma } from "@/core/db";
 import { makeTranslator } from "@/core/i18n/dictionary";
@@ -76,7 +77,9 @@ const text = (value: string | undefined, max: number): string => redactSecrets((
 
 const lang = async () => {
   const config = await getSiteConfig();
-  return { locale: config.defaultLocale, adminLocale: config.adminLocale ?? config.defaultLocale };
+  // The language the owner reads (admin language), then the main language of the site, then English: never another language by accident.
+  const adminLocale = config.adminLocale ?? config.defaultLocale;
+  return { locale: adminLocale, adminLocale, main: config.defaultLocale };
 };
 
 export type CatalogueRead =
@@ -121,23 +124,23 @@ export async function catalogList(args: Record<string, unknown>) {
 
   const cat = await readCatalogue();
   if (!cat.ok) return cat.reply;
-  const { locale } = await lang();
+  const { locale, main } = await lang();
   const installed = new Map((await listModuleRows()).map((r) => [r.id, r.version]));
 
-  const searchable = (e: CatalogueEntry) => foldText([e.id, localized(e.name, locale, "en"), localized(e.description, locale, "en"), e.platform ?? "", ...(e.provides ?? []), ...(e.offers ?? []).map((o) => o.service), ...(e.needs ?? []).map((n) => n.service)].join(" "));
+  const searchable = (e: CatalogueEntry) => foldText([e.id, localized(e.name, locale, main), localized(e.description, locale, main), e.platform ?? "", ...(e.provides ?? []), ...(e.offers ?? []).map((o) => o.service), ...(e.needs ?? []).map((n) => n.service)].join(" "));
   const matches = cat.entries
     .filter((e) => (all || !installed.has(e.id)) && (!platform || e.platform === platform) && (!provides || (e.provides ?? []).includes(provides)) && (!query || matchesQuery(searchable(e), query)))
     // Les suggérés d'abord, puis les modules vérifiés, puis par nom : un ordre stable, sans hasard.
-    .sort((x, y) => Number(!!y.suggested) - Number(!!x.suggested) || Number(x.origin === "extra") - Number(y.origin === "extra") || localized(x.name, locale, "en").localeCompare(localized(y.name, locale, "en")));
+    .sort((x, y) => Number(!!y.suggested) - Number(!!x.suggested) || Number(x.origin === "extra") - Number(y.origin === "extra") || localized(x.name, locale, main).localeCompare(localized(y.name, locale, main)));
 
   const page = matches.slice(offset, offset + limit);
   const items = page.map((e) => {
     const can = installability(e);
     return {
       id: e.id,
-      name: text(localized(e.name, locale, "en"), 80) || e.id,
+      name: text(localized(e.name, locale, main), 80) || e.id,
       icon: e.icon,
-      summary: text(localized(e.description, locale, "en"), 300),
+      summary: text(localized(e.description, locale, main), 300),
       version: e.version,
       installed: installed.has(e.id),
       ...(installed.has(e.id) ? { installedVersion: installed.get(e.id) } : {}),
@@ -201,9 +204,9 @@ export async function catalogGet(args: Record<string, unknown>) {
   const entry = entries.find((e) => e.id === id);
   if (!entry && !row) throw new McpToolError(`Unknown module "${id}": it is not in the catalogue (see maintenance_catalog_list).`);
 
-  const { locale, adminLocale } = await lang();
+  const { locale, adminLocale, main } = await lang();
   const t = makeTranslator(adminLocale);
-  const L = (v: Parameters<typeof localized>[0]) => text(localized(v, locale, "en"), 400);
+  const L = (v: Parameters<typeof localized>[0]) => text(localized(v, locale, main), 400);
 
   // Le manifeste : celui du module installé (local), sinon celui du dépôt du catalogue lu SANS l'installer (même lecture que la fiche de l'admin).
   let manifest: ParsedManifest | null = null;
@@ -225,7 +228,7 @@ export async function catalogGet(args: Record<string, unknown>) {
   const needs: ServiceNeed[] = manifest ? normalizeNeeds(manifest.requires) : entry?.needs?.map((n) => ({ service: n.service, min: n.min ?? 1, ...(n.optional ? { optional: true as const } : {}) })) ?? [];
   const labelOfNeed = (n: ServiceNeed) => {
     const declared = manifest?.requires?.find((r) => r.service === n.service)?.label;
-    return text(declared ? localized(declared, locale, "en") : names.service(n.service), 120);
+    return text(declared ? localized(declared, locale, main) : names.service(n.service), 120);
   };
   const plan = needs.some((n) => !n.optional) ? await planDependencies(id, needs, { catalogue: entries }).catch(() => null) : null;
   const live = await liveProviders(id).catch(() => []);
@@ -263,7 +266,7 @@ export async function catalogGet(args: Record<string, unknown>) {
 
   // Ce qu'il collecte (déclaration `privacy`) et les droits demandés.
   const declared = manifest ? privacyByLanguage(manifest.privacy, locale) : {};
-  const declaredText = declared[locale] ?? declared[adminLocale] ?? declared.en ?? Object.values(declared)[0];
+  const declaredText = pickText(declared, locale, adminLocale) || undefined;
   const permissions = (manifest?.permissions ?? []).map((p) => { const k = `perm.${p}`; const plain = t(k); return { permission: p, meaning: text(plain === k ? p : plain, 200) }; });
   const rights = (manifest?.rights ?? []).slice(0, 20).map((r) => ({ id: r.id, label: L(r.label), ...(r.sensitive ? { sensitive: true } : {}) }));
 
@@ -275,7 +278,7 @@ export async function catalogGet(args: Record<string, unknown>) {
   const settingsToPlan = settings.map((f) => ({
     key: f.key,
     label: L(f.label),
-    ...(f.help ? { help: text(localized(f.help, locale, "en"), 200) } : {}),
+    ...(f.help ? { help: text(localized(f.help, locale, main), 200) } : {}),
     type: f.type,
     needsValue: needValue.has(f.key),
     ...(f.type === "secret" ? { secret: true, whoEntersIt: "The owner types it in the admin; an AI can neither read nor set it." } : {}),
@@ -290,12 +293,12 @@ export async function catalogGet(args: Record<string, unknown>) {
   return {
     notice: NOTICE,
     id,
-    name: manifest ? L(manifest.name) : text(localized(entry?.name, locale, "en"), 80) || id,
+    name: manifest ? L(manifest.name) : text(localized(entry?.name, locale, main), 80) || id,
     icon: manifest?.icon ?? entry?.icon,
     family: manifest ? extensionFamily(manifest) : null,
     ...(manifest?.type ? { category: manifest.type } : {}),
     ...(entry?.platform ?? manifest?.platform ? { platform: entry?.platform ?? manifest?.platform } : {}),
-    whatItIsFor: manifest?.description ? L(manifest.description) : text(localized(entry?.description, locale, "en"), 400),
+    whatItIsFor: manifest?.description ? L(manifest.description) : text(localized(entry?.description, locale, main), 400),
     ...(manifest?.author ?? entry?.author ? { author: text(manifest?.author ?? entry?.author, 120) } : {}),
     ...(manifest?.license ? { license: text(manifest.license, 60) } : {}),
     catalogue: cat.ok ? catalogueInfo(cat) : { source: "unreachable", note: "The catalogue did not answer: this sheet comes from the installed module only." },

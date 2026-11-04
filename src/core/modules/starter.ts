@@ -39,7 +39,12 @@ export async function setupModules(): Promise<SetupModules> {
   const modules = await Promise.all(suggested.map(async (e): Promise<SetupModule> => {
     const target = targetOf(e);
     const preview = target ? await getModulePreview(target).catch(() => null) : null;
-    return { ...e, collectsLinks: !!preview?.manifest?.onboarding?.collectsLinks, templates: templatesOf(preview?.manifest) };
+    // The manifest carries the texts in every language: it wins over the index entry (an older index only holds one plain text of unknown language).
+    const manifest = preview?.manifest;
+    return {
+      ...e, ...(manifest?.name ? { name: manifest.name } : {}), ...(manifest?.description ? { description: manifest.description } : {}),
+      collectsLinks: !!manifest?.onboarding?.collectsLinks, templates: templatesOf(manifest),
+    };
   }));
   const profiles = resolveProfiles((await getRecognizedDetailed().catch(() => null))?.profiles ?? [], modules);
   return {

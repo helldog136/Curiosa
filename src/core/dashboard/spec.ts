@@ -9,6 +9,7 @@
  * Le cœur lit, valide (tout est strict), décide de l'ordre et de la place. Jamais de HTML, de style ni de script venant d'un module : du texte, des nombres, des adresses d'administration.
  * Un cœur plus ancien ignore la clé : un module qui la déclare marche comme avant (le tableau de bord n'affichera rien de lui).
  */
+import { pickText } from "../i18n/audit.mjs";
 import { z } from "zod";
 import { cleanText } from "../journal/events";
 import { RIGHT_ID_RE, HISTORY, OPEN } from "../auth/rights";
@@ -147,8 +148,7 @@ export function itemRight(moduleId: string, local: string | undefined): string |
 
 /** Texte du manifeste dans la langue de la personne : sa langue, puis la langue du site, puis l'anglais, puis la première. */
 export function pickWords(text: Words | undefined, locale: string, defaultLocale: string): string {
-  if (!text) return "";
-  return text[locale] ?? text[defaultLocale] ?? text.en ?? Object.values(text)[0] ?? "";
+  return pickText(text, locale, defaultLocale);
 }
 
 /** Remplace `{n}` par le nombre. Le libellé doit se lire au singulier comme au pluriel (« {n} avis à valider »). */

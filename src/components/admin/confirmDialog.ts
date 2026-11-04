@@ -4,7 +4,7 @@
  * sans aucun message. Cette boîte-ci s'affiche toujours et se ferme au clavier (Échap = annuler).
  */
 export function askConfirm(message: string, opts: { /** Texte du bouton qui valide (par défaut « Continuer »). */ confirmLabel?: string; /** Bouton de validation en rouge : pour ce qui efface. */ danger?: boolean } = {}): Promise<boolean> {
-  const fr = (document.documentElement.lang || "fr").toLowerCase().startsWith("fr");
+  const fr = (document.documentElement.lang || "en").toLowerCase().startsWith("fr");
   return new Promise((resolve) => {
     const dialog = document.createElement("dialog");
     dialog.className = "m-auto w-[min(92vw,28rem)] rounded-2xl border border-line bg-surface p-6 text-fg shadow-2xl backdrop:bg-black/60";

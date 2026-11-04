@@ -38,7 +38,7 @@ test("un module qui les utilise sans minCore 0.2.14 échoue compat.minCore (une 
   const edit = (minCore) => (f) => {
     editManifest(f, (m) => {
       m.minCore = minCore; m.family = "content"; m.sitemapFromPage = true;
-      m.settings.push({ key: "topics", type: "multichoice", label: { en: "Interests", fr: "Centres d'intérêt" }, options: [{ value: "a", label: "A" }, { value: "b", label: "B" }], defaultValues: ["a"] });
+      m.settings.push({ key: "topics", type: "multichoice", label: { en: "Interests", fr: "Centres d'intérêt" }, options: [{ value: "a", label: { en: "A", fr: "A" } }, { value: "b", label: { en: "B", fr: "B" } }], defaultValues: ["a"] });
     });
     f["index.mjs"] = f["index.mjs"]
       .replace("title: ctx.setting(\"title\") || ctx.t(\"title\"),", "title: ctx.setting(\"title\") || ctx.t(\"title\"), robots: \"noindex\", sitemap: [\"/\" + ctx.instance.basePath + \"/more\"],")

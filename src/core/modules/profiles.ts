@@ -1,4 +1,5 @@
 import type { LocalizedString } from "./types";
+import { pickText } from "../i18n/audit.mjs";
 
 /**
  * PROFILS DE DÉPART de l'assistant d'installation (« Vous êtes… ? »). La liste vit dans le dépôt du catalogue (`catalogue/profiles.json`, comme `catalogue/suggested.json`) :
@@ -97,7 +98,5 @@ export function parseSampleRef(ref: string): { module: string; template: string 
 
 /** Le texte d'un modèle dans la langue demandée (puis sa langue de base, l'anglais, la première disponible). */
 export function pickLocalized(v: LocalizedString | undefined, locale: string): string {
-  if (typeof v === "string") return v;
-  if (!v) return "";
-  return v[locale] ?? v[locale.split("-")[0]!] ?? v.en ?? Object.values(v)[0] ?? "";
+  return pickText(v, locale);
 }

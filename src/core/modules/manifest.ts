@@ -17,6 +17,7 @@ import { moduleSkinIssues, moduleSkinSchema } from "./skinDecl";
 import { overlayElementIssues, overlayElementsSchema } from "../overlays/decl";
 import { previewIssues, previewsSchema } from "./previews";
 import { MAX_IMAGE_HOSTS, isDeclarableImageHost } from "../adminkit/image";
+import { LANG_CODE_RE } from "../i18n/audit.mjs";
 import { MAX_ADDRESS_DECLS, returnAddressIssues, returnAddressSchema, siteAddressUseSchema } from "./addressDecl";
 
 const localized = z.union([z.string().max(500), z.record(z.string(), z.string().max(500))]);
@@ -257,6 +258,12 @@ export const manifestSchema = z.object({
     help: localized.optional(),
   })).max(5).optional(),
   mcp: z.array(z.object({ name: z.string().regex(/^[a-z][a-z0-9_]{1,39}$/), description: z.string().max(1000), readOnly: z.boolean().optional(), default: z.boolean().optional(), destructive: z.boolean().optional(), input: jsonSchemaLite.optional() }).refine((a) => !a.destructive || a.default !== true, "a destructive action cannot be enabled by default").refine((a) => !(a.readOnly && a.destructive), "a read-only action cannot be destructive")).max(60).optional(),
+  /**
+   * (core after 0.6.6) Per-language overlay for the few texts that older cores read as a plain English string: `{ "fr": { "mcp.<tool>": "..." } }` translates the
+   * description of an MCP tool. Every other text is already `{ "en": "...", "fr": "..." }`. Additive: an older core ignores the key (the English string is used).
+   * See docs/MODULES.md, "Languages", and docs/TRANSLATING.md.
+   */
+  i18n: z.record(z.string().regex(LANG_CODE_RE), z.record(z.string().regex(/^mcp\.[a-z][a-z0-9_]{1,39}$/), z.string().trim().min(1).max(1000))).refine((r) => Object.keys(r).length <= 30, "at most 30 languages").optional(),
   content: content.optional(),
   page: z.boolean().optional(),
   /** (cœur 0.6.1) « Je suggère d'être au menu du site » : la page de l'instance est proposée à la personne dans « Pages qui ne sont pas dans le menu », jamais ajoutée d'office. Défaut : `content.showInNav`, sinon non. Un cœur ancien ignore la clé. */
@@ -390,6 +397,8 @@ export const manifestSchema = z.object({
     else if (field.type !== "boolean") ctx.addIssue({ code: "custom", path: ["pageSetting"], message: `pageSetting "${m.pageSetting}" must be a boolean setting (checkbox)` });
     if (!hasPage(m)) ctx.addIssue({ code: "custom", path: ["pageSetting"], message: "pageSetting needs a module with a public page (page: true)" });
   }
+  const tools = new Set((m.mcp ?? []).map((t) => t.name));
+  for (const [lang, table] of Object.entries(m.i18n ?? {})) for (const key of Object.keys(table)) if (!tools.has(key.slice(4))) ctx.addIssue({ code: "custom", path: ["i18n", lang, key], message: `"${key}" does not match any tool of "mcp"` });
   if (m.sitemapFromPage && !hasPage(m)) ctx.addIssue({ code: "custom", path: ["sitemapFromPage"], message: "sitemapFromPage needs a module with a public page (page: true)" });
   for (const issue of previewIssues(m.previews)) ctx.addIssue({ code: "custom", path: ["previews", ...issue.path], message: issue.message });
   for (const message of shortLinkIssues(m.shortLink, m.settings, { provides: m.provides.map((p) => p.topic) })) ctx.addIssue({ code: "custom", path: ["shortLink"], message });

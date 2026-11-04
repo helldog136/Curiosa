@@ -33,6 +33,8 @@
 }
 ```
 
+Facultatif : `i18n` (index published after core 0.6.6) : le nom et la description **par langue**, `{ "en": { "name": "...", "description": "..." }, "fr": { ... } }` (codes de langue valides, 30 langues au plus, 120 et 500 caractères au plus). Le texte simple `name` / `description` de l'entrée est alors l'**anglais** (c'est ce que lit un cœur plus ancien, qui ignore `i18n`). Le cœur affiche la langue de la personne, puis la langue principale du site, puis l'anglais, jamais une autre langue. Un index plus ancien (un seul texte, de langue inconnue) reste lisible : l'assistant d'installation lit alors les textes dans le manifeste du module. `scripts/build-index.mjs` du dépôt des modules écrit ces textes à partir de `module.json` (et des fichiers de langue `locales/<code>.json`).
+
 `id` doit être **celui du `module.json`** du dépôt (sinon l'installation est refusée). `ref` : **épinglez une étiquette ou un commit relus** —
 c'est ce qui rend la mention « vérifié » vraie ; une branche mouvante ne l'est pas. `apiVersion` : la version de l'API des modules visée
 (autre que celle du framework = listé comme incompatible).

@@ -4,7 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { useTestDb } from "../helpers/db.mjs";
 import { makeRepo } from "../helpers/repo.mjs";
-import { createCatalogue } from "../helpers/catalogue.mjs";
+import { createCatalogue, withoutI18nNote } from "../helpers/catalogue.mjs";
 
 // Le cœur n'embarque aucun module : TOUS les modules de ces tests viennent d'un catalogue (dépôts git locaux joints par une adresse https réécrite vers eux, index factice). Aucun réseau.
 const db = await useTestDb();
@@ -537,7 +537,7 @@ test("restauration : ordre topologique stable, cycles et inconnus gardent leur p
 
 test("anciens modules sans dépendance et manifestes existants : mêmes comportements qu'avant", async () => {
   bundled("simple");
-  assert.deepEqual(await I.installFromCatalogue("simple"), { ok: true, id: "simple" });
+  assert.deepEqual(withoutI18nNote(await I.installFromCatalogue("simple")), { ok: true, id: "simple" });
   assert.deepEqual(await Auto.readAuto(), {});
   assert.deepEqual((await Plan.planDependencies("simple", [])).steps, []);
 });

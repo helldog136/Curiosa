@@ -7,6 +7,7 @@ import skin from "./skin.mjs";
 import overlay from "./overlay.mjs";
 import ergonomics from "./ergonomics.mjs";
 import dashboard from "./dashboard.mjs";
+import i18n from "./i18n.mjs";
 
 /** Rubriques, dans l'ordre où le rapport les présente. */
 export const GROUPS = {
@@ -34,7 +35,7 @@ export const GROUPS = {
 
 export const LEVELS = { mandatory: "obligatoire", advice: "conseil" };
 
-const all = [...manifest, ...code, ...text, ...runtime, ...skin, ...overlay, ...ergonomics, ...dashboard];
+const all = [...manifest, ...code, ...text, ...runtime, ...skin, ...overlay, ...ergonomics, ...dashboard, ...i18n];
 const order = Object.keys(GROUPS);
 /** Toutes les exigences, rangées par rubrique (l'ordre à l'intérieur d'une rubrique est celui des fichiers). */
 export const REQUIREMENTS = order.flatMap((g) => all.filter((r) => r.group === g));

@@ -1,5 +1,5 @@
 import { MODULE_API_VERSION } from "../config";
-import { getRecognizedDetailed, readRecognizedCacheOffline, type RecognizedItem, type RecognizedResult } from "./recognized";
+import { entryText, getRecognizedDetailed, readRecognizedCacheOffline, type RecognizedItem, type RecognizedResult } from "./recognized";
 import { incompatWithThisCore, type CoreRequirement } from "./compat";
 import type { LocalizedString } from "./types";
 import type { SocialSpec } from "../socialSpec";
@@ -60,7 +60,7 @@ function recognizedEntry(c: RecognizedItem, suggested: Set<string>): CatalogueEn
   const offers = normalizeOffers(c.offers);
   const needs = normalizeNeeds(c.needs);
   return {
-    id: c.id, name: c.name, description: c.description, version: c.version, icon: c.icon, author: c.author, suggested: c.catalogueOrigin !== "extra" && suggested.has(c.id),
+    id: c.id, name: entryText(c, "name"), description: entryText(c, "description"), version: c.version, icon: c.icon, author: c.author, suggested: c.catalogueOrigin !== "extra" && suggested.has(c.id),
     kind: "recognized", provides: c.provides, social: c.social, platform: c.platform, repo: c.repo, ref: c.ref, subdir: c.subdir, compatible: c.apiVersion === undefined || c.apiVersion === MODULE_API_VERSION,
     requires: c.requires, needsNewerCore: incompatWithThisCore(c.requires)?.needs,
     offers: offers?.length ? offers : undefined, needs: needs?.length ? needs : undefined, previews: c.previews,

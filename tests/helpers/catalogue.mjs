@@ -11,6 +11,17 @@ import { makeTempDir } from "./tmp.mjs";
 const fixtures = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../fixtures/extras");
 export const CATALOGUE_HTTPS = "https://github.com/test/curiosa-extras";
 const code = (marker) => `export default { marker: ${JSON.stringify(marker)} };\n`;
+/**
+ * Name and description of an index entry, as the modules repository publishes them: the plain `name` / `description` are ENGLISH, and `i18n` has every language.
+ * A manifest that gives plain strings has no language: the plain text is kept and there is no `i18n`.
+ */
+export function entryTexts(m, id, fallbackDescription = "") {
+  const plain = (v, d) => (typeof v === "string" ? v : v?.en ?? d);
+  const out = { name: plain(m.name, id), description: plain(m.description, fallbackDescription) };
+  const langs = new Set([...Object.keys(typeof m.name === "object" ? m.name : {}), ...Object.keys(typeof m.description === "object" ? m.description ?? {} : {})]);
+  if (langs.size) out.i18n = Object.fromEntries([...langs].map((l) => [l, { ...(m.name?.[l] ? { name: m.name[l] } : {}), ...(m.description?.[l] ? { description: m.description[l] } : {}) }]));
+  return out;
+}
 const man = (id, over = {}) => ({ apiVersion: 2, id, name: id, version: "1.0.0", main: "index.mjs", ...over });
 
 /**
@@ -46,7 +57,7 @@ export function createCatalogue() {
       const tag = `${id}-v${m.version}`;
       commit(`${id} ${m.version}`);
       repo.g("tag", "-f", tag);
-      const item = { id, name: m.name, description: m.description ?? "d", repo: CATALOGUE_HTTPS, subdir: `modules/${id}`, ref: tag, version: m.version, apiVersion: m.apiVersion, ...entry };
+      const item = { id, ...entryTexts(m, id, "d"), repo: CATALOGUE_HTTPS, subdir: `modules/${id}`, ref: tag, version: m.version, apiVersion: m.apiVersion, ...entry };
       if (listed) { const idx = index(); idx.modules = [...idx.modules.filter((x) => x.id !== id), item]; fs.writeFileSync(indexFile, JSON.stringify(idx)); commit(`index ${id}`); }
       await forget();
       return item;
@@ -63,7 +74,7 @@ export function createCatalogue() {
         commit(`${id} ${m.version}`);
         repo.g("tag", "-f", tag);
         const idx = index();
-        idx.modules = [...idx.modules.filter((x) => x.id !== id), { id, name: typeof m.name === "string" ? m.name : (m.name.fr ?? m.name.en ?? id), description: typeof m.description === "string" ? m.description : (m.description?.fr ?? m.description?.en ?? ""), repo: CATALOGUE_HTTPS, subdir: `modules/${id}`, ref: tag, version: m.version, apiVersion: m.apiVersion }];
+        idx.modules = [...idx.modules.filter((x) => x.id !== id), { id, ...entryTexts(m, id), repo: CATALOGUE_HTTPS, subdir: `modules/${id}`, ref: tag, version: m.version, apiVersion: m.apiVersion }];
         fs.writeFileSync(indexFile, JSON.stringify(idx));
       }
       if (suggested) fs.writeFileSync(suggestedFile, JSON.stringify(suggested));
@@ -102,4 +113,12 @@ export function createCatalogue() {
   };
   process.env.CURIOSA_CATALOGUE_REPO = repo.url;
   return self;
+}
+
+/** An install or update result without the (informational) translation note: tests about something else compare the rest. */
+export function withoutI18nNote(result) {
+  if (!result || !Array.isArray(result.warnings)) return result;
+  const warnings = result.warnings.filter((w) => w.code !== "i18n");
+  const { warnings: _dropped, ...rest } = result;
+  return warnings.length ? { ...rest, warnings } : rest;
 }

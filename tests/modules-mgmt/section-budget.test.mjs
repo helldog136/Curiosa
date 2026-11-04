@@ -70,6 +70,7 @@ async function setup() {
   // L'installation de A a déjà posé une instance de B (« pb », le fournisseur dont A dépend) ; on en ajoute une seconde. « pb » est la plus ancienne : c'est elle que `call` interroge.
   await mk("pb", "b2");
   await mk("pa", "alpha"); await mk("pa", "beta");
+  lines = lines.filter(([, l]) => !l.startsWith("[i18n]")); // the install-time translation note (these fixtures have plain-string names) is not what the tests below count
 }
 const active = async (key) => (await R.getActiveInstances()).find((a) => a.instance.key === key);
 

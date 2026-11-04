@@ -1,12 +1,11 @@
 import { FALLBACK_UI_LOCALE } from "./locales";
-import fr from "@/locales/fr.json";
-import en from "@/locales/en.json";
+import { DICTIONARIES } from "@/locales/index";
 
 /**
- * Textes de l'interface (site public + admin). Pour ajouter une langue
- * d'interface : créer src/locales/<code>.json et l'enregistrer ici.
+ * Interface texts (public site + admin). To add a language: create `src/locales/<code>.json` and run `node scripts/i18n-add-language.mjs --sync`
+ * (it lists the file in `src/locales/index.ts`); no code to write. See docs/TRANSLATING.md.
  */
-const DICTIONARIES: Record<string, Record<string, string>> = { fr, en };
+export { DICTIONARIES };
 
 export const UI_LOCALES = Object.keys(DICTIONARIES);
 
@@ -25,13 +24,21 @@ const countOf = (vars?: Record<string, string | number>): number | null => {
   return Number.isFinite(n) ? n : null;
 };
 
-export function makeTranslator(locale: string): Translator {
+/**
+ * Translator. Fallback chain for a missing text: requested language -> site main language (`siteDefault`) -> English. Never another language by accident.
+ * A language without a dictionary uses the chain as if all its texts were missing.
+ */
+export function makeTranslator(locale: string, siteDefault?: string): Translator {
   const primary = DICTIONARIES[locale];
+  const main = siteDefault && siteDefault !== locale ? DICTIONARIES[siteDefault] : undefined;
   const fallback = DICTIONARIES[FALLBACK_UI_LOCALE] ?? {};
   return (key, vars) => {
+    // The first dictionary of the chain that has the text (an empty text, as in a language skeleton, counts as missing); the singular variant and the plural rule come from that same language.
+    const found: [string, Record<string, string> | undefined][] = [[locale, primary], [siteDefault ?? "", main], [FALLBACK_UI_LOCALE, fallback]];
+    const [from, source] = found.find(([, dict]) => !!dict?.[key]?.trim()) ?? [FALLBACK_UI_LOCALE, fallback];
     const n = countOf(vars);
-    const one = n !== null && isSingular(primary ? locale : FALLBACK_UI_LOCALE, n) ? (primary?.[`${key}.one`] ?? fallback[`${key}.one`]) : undefined;
-    let text = one ?? primary?.[key] ?? fallback[key] ?? key;
+    const one = n !== null && isSingular(from, n) ? source?.[`${key}.one`] : undefined;
+    let text = one ?? source?.[key] ?? key;
     if (vars) {
       for (const [name, value] of Object.entries(vars)) {
         text = text.replaceAll(`{${name}}`, String(value));

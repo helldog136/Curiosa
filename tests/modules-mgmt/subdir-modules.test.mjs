@@ -1,4 +1,5 @@
 import test, { beforeEach, after } from "node:test";
+import { withoutI18nNote } from "../helpers/catalogue.mjs";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
@@ -45,7 +46,7 @@ test("adresse : dépôt#étiquette:dossier, dépôt#:dossier ; dossiers dangereu
 
 test("installation d'un module d'un dépôt qui en regroupe plusieurs : seul son dossier est copié, le module est identifié par son manifeste", async () => {
   const repo = monorepo();
-  const r = await I.installModule(`${repo.url}#:alpha`, { expectId: "alpha" });
+  const r = withoutI18nNote(await I.installModule(`${repo.url}#:alpha`, { expectId: "alpha" }));
   assert.deepEqual(r, { ok: true, id: "alpha" });
   const files = fs.readdirSync(moduleDir("alpha")).sort();
   assert.deepEqual(files, ["README.md", "index.mjs", "module.json"], "pas de .git, pas le dossier d'un autre module");

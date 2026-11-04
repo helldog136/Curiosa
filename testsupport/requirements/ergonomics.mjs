@@ -21,7 +21,9 @@ export function findBaseline(m) {
 }
 
 function inspect(m) {
-  const gaps = analyzeModule({ id: m.manifest.id ?? m.name, manifest: m.manifest, locales: m.locales });
+  // The word lists and tone rules are English and French: community languages (locales/<code>.json) are reviewed by their own maintainers.
+  const locales = Object.fromEntries(Object.entries(m.locales ?? {}).filter(([lang]) => lang === "en" || lang === "fr"));
+  const gaps = analyzeModule({ id: m.manifest.id ?? m.name, manifest: m.manifest, locales });
   const baseline = findBaseline(m);
   return { gaps, baseline, ...(baseline ? compareToBaseline(gaps, baseline.modules[m.name] ?? []) : { tolerated: [], fresh: [], stale: [] }) };
 }

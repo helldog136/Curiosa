@@ -1,4 +1,5 @@
 import test, { beforeEach, after } from "node:test";
+import { withoutI18nNote } from "../helpers/catalogue.mjs";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
@@ -125,7 +126,7 @@ const SIMPLE = (over = {}) => ({ "module.json": base({ main: "index.mjs", ...ove
 
 test("installation : installé = actif, il n'y a pas d'état intermédiaire", async () => {
   const repo = makeRepo(SIMPLE());
-  const r = await installModule(repo.url);
+  const r = withoutI18nNote(await installModule(repo.url));
   assert.deepEqual(r, { ok: true, id: "demo" });
   const row = await db.prisma.module.findUnique({ where: { id: "demo" } });
   assert.equal(row.enabled, true);

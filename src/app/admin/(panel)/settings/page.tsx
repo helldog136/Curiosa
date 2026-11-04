@@ -29,6 +29,8 @@ import { providerInstance } from "@/core/modules/dependencies";
 import { COVERS_MODULE, COVERS_SERVICE, ensureRawgHandover, handoverPending } from "@/core/services/rawgHandover";
 import { trackRawgJob } from "@/core/services/rawgNote";
 import Link from "next/link";
+import { I18nStatusCard } from "@/components/admin/I18nStatusCard";
+import { i18nStatus } from "@/core/i18n/status";
 import { LegacyHash } from "@/components/admin/LegacyHash";
 
 const TRANSLATABLE = ["site.name", "site.tagline", "site.about", "footer.text", "privacy.extra"] as const;
@@ -51,6 +53,7 @@ export default async function SettingsPage() {
   const ai = await getAiBlocking();
   const llmsTxt = await isLlmsTxtEnabled();
   const entity = await getSiteEntity();
+  const i18n = await i18nStatus();
 
   // Icône de l'onglet et image de partage : dans la grille en mode avancé, sous « Plus d'images » en mode simple (sans eux le site se débrouille).
   const extraLogos = (
@@ -198,6 +201,11 @@ export default async function SettingsPage() {
 
       </ActionForm>
       </div>
+
+      {/* Translation status: outside the settings form (a search field inside it would submit it), in the same "Languages" tab. */}
+      <section data-tab="languages" className="space-y-5">
+        <I18nStatusCard status={i18n} t={t} />
+      </section>
 
       <section data-tab="search" className="space-y-5">
         <p className={ui.help}>{t("settings.searchIntro")}</p>

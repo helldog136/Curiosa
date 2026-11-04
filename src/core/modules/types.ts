@@ -1,4 +1,5 @@
 import type { LogEventDecl } from "../journal/events";
+import { pickText } from "../i18n/audit.mjs";
 import type { Theme } from "../color";
 import type { Block, PanelBlock, Slot } from "../blocks";
 import type { StorePage, StoreRecord } from "../services/store";
@@ -847,10 +848,12 @@ export function defineModule(def: ModuleDefinition): ModuleDefinition {
   return def;
 }
 
+/**
+ * The text of a module value for a person: requested language -> site main language -> English. Nothing else (never the "first" language of the object, never French
+ * by default). A plain string is returned as written. Empty when no language of the chain exists: the caller shows its own neutral fallback (the identifier).
+ */
 export function localized(value: LocalizedString | undefined, locale: string, defaultLocale: string): string {
-  if (!value) return "";
-  if (typeof value === "string") return value;
-  return value[locale] ?? value[defaultLocale] ?? value.en ?? Object.values(value)[0] ?? "";
+  return pickText(value, locale, defaultLocale);
 }
 
 /** Autorisation de semer : le module cible, et pourquoi (affiché à l'administrateur). */
