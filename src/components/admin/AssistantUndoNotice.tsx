@@ -7,9 +7,9 @@ import { ui } from "@/components/admin/ui";
  */
 export function AssistantUndoNotice({ text, button, action }: { text: string; button: string; action: () => Promise<void> }) {
   return (
-    <div className={`${ui.card} flex flex-wrap items-center justify-between gap-3`} data-testid="assistant-undo">
-      <p className="min-w-0 flex-1 text-[15px]">{text}</p>
-      <form action={action}><PendingButton>{button}</PendingButton></form>
+    <div className={`${ui.card} flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between`} data-testid="assistant-undo">
+      <p className="text-[15px] sm:min-w-0 sm:flex-1">{text}</p>
+      <form action={action} className="self-start sm:self-auto"><PendingButton>{button}</PendingButton></form>
     </div>
   );
 }

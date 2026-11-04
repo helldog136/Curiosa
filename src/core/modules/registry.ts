@@ -206,6 +206,14 @@ const LATEST: SectionDecl = {
   options: [{ key: "count", type: "number", label: { en: "How many", fr: "Combien" }, default: 3 }],
 };
 
+/** Offered to content modules with a page: the full content of one published entry (an "About" page on the home page). The entry is chosen in the option `entry` (its identifier). */
+export const ENTRY_SECTION_ID = "entry";
+const ENTRY: SectionDecl = {
+  id: ENTRY_SECTION_ID,
+  label: { en: "The full content of one page", fr: "Le contenu complet d'une page" },
+  options: [{ key: "entry", type: "select", label: { en: "Page to show", fr: "Page à afficher" }, options: [] }],
+};
+
 const RANDOM: SectionDecl = {
   id: "random",
   label: { en: "A random entry", fr: "Une entrée au hasard" },
@@ -223,6 +231,7 @@ export function sectionsOf(manifest: ParsedManifest): SectionDecl[] {
   if (!manifest.content || manifest.page === false) return declared;
   return [
     ...(declared.some((s) => s.id === "latest") ? [] : [LATEST]),
+    ...(declared.some((s) => s.id === ENTRY_SECTION_ID) ? [] : [ENTRY]),
     ...(manifest.content.features.includes("code") && !declared.some((s) => s.id === "random") ? [RANDOM] : []),
     ...declared,
   ];

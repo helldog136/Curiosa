@@ -384,3 +384,9 @@ export async function uniqueSlug(
   }
   return `${base}-${Date.now()}`;
 }
+
+/** Published entries of an instance as (id, title) pairs for a chooser: newest first, the title in the given language (else the site language, else any), at most `limit`. */
+export async function publishedEntryChoices(instanceId: string, locale: string, defaultLocale: string, limit = 100): Promise<{ id: string; title: string }[]> {
+  const rows = await prisma.entry.findMany({ where: { instanceId, ...publishedWhere() }, orderBy: [{ publishedAt: "desc" }, { id: "asc" }], take: Math.min(Math.max(limit, 1), 200), include: { translations: { select: { locale: true, title: true } } } });
+  return rows.map((r) => ({ id: r.id, title: (r.translations.find((t) => t.locale === locale) ?? r.translations.find((t) => t.locale === defaultLocale) ?? r.translations[0])?.title || r.id }));
+}

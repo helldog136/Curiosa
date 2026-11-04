@@ -4,7 +4,8 @@ import { BLOCK_LABEL_KEYS } from "@/components/admin/blockLabels";
 import { floatingLabels } from "@/components/admin/floating";
 import { adminCtx } from "@/core/admin";
 import { getInstanceLabeler } from "@/core/modules/labels";
-import { getActiveInstances, sectionsOf } from "@/core/modules/registry";
+import { ENTRY_SECTION_ID, getActiveInstances, sectionsOf } from "@/core/modules/registry";
+import { publishedEntryChoices } from "@/core/content/entries";
 import { localized, type SettingField } from "@/core/modules/types";
 import { ActionForm } from "@/components/admin/ActionForm";
 import { ui } from "@/components/admin/ui";
@@ -22,6 +23,8 @@ export default async function HomeAdminPage() {
   const L = (v: Parameters<typeof localized>[0]) => localized(v, locale, config.defaultLocale);
 
   // Toutes les sections proposables : une par (instance, section déclarée par son module).
+  // The "page to show" chooser lists the published entries of each content instance (nothing to type by hand).
+  const entryChoices = new Map(await Promise.all(active.filter(({ mod }) => !!mod.manifest.content).map(async ({ instance }) => [instance.key, await publishedEntryChoices(instance.id, locale, config.defaultLocale)] as const)));
   const choices: HomeChoice[] = active.flatMap(({ instance, mod }) =>
     sectionsOf(mod.manifest).map((s) => ({
       value: `${instance.key}|${s.id}`,
@@ -29,7 +32,9 @@ export default async function HomeAdminPage() {
       title: L(s.label),
       subtitle: labeler.label(instance),
       defaultSize: resolveSize({}, s.size),
-      options: ((s.options ?? []) as SettingField[]).map((o) => ({ key: o.key, type: o.type, label: L(o.label), default: o.default, options: o.options?.map((op) => ({ value: op.value, label: L(op.label) })) })),
+      options: ((s.options ?? []) as SettingField[]).map((o) => s.id === ENTRY_SECTION_ID && o.key === "entry"
+        ? { key: o.key, type: o.type, label: L(o.label), default: entryChoices.get(instance.key)?.[0]?.id, options: (entryChoices.get(instance.key) ?? []).map((e) => ({ value: e.id, label: e.title })) }
+        : { key: o.key, type: o.type, label: L(o.label), default: o.default, options: o.options?.map((op) => ({ value: op.value, label: L(op.label) })) }),
     })),
   );
   // Blocs de page du cœur : créés ici, sans module (voir core/homeBlocks.ts).

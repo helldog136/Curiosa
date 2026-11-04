@@ -25,6 +25,8 @@ const { setSetting, getSetting } = await import("@/core/settings");
 const { loadMenu } = await import("@/core/menuStore");
 const { resolvePublicMenu } = await import("@/core/menuResolve");
 const { runSection } = await import("@/core/modules/runtime");
+const { renderToStaticMarkup } = await import("react-dom/server");
+const { Markdown } = await import("../../src/components/site/Markdown.tsx");
 const { describeRequest } = await import("../../src/app/admin/(panel)/assistants/requestsShared.ts");
 const { makeTranslator } = await import("@/core/i18n/dictionary");
 const { FIXTURE_MODULES } = await import("../helpers/fixtureModules.mjs");
@@ -134,23 +136,67 @@ test("showcase scenario: the menu (Home, What is Curiosa, Install, Blog, Press k
   const hero = list.canAdd.moduleSections.find((s) => s.instance === banner.key && s.section === "hero");
   assert.ok(hero, "the banner of the installed hero module is offered");
   assert.ok(list.canAdd.moduleSections.some((s) => s.instance === "pages" && s.section === "latest"), "the latest entries of the pages instance are offered");
+  const chooser = list.canAdd.moduleSections.find((s) => s.instance === "pages" && s.section === "entry");
+  assert.deepEqual(chooser.options[0].choices.map((c) => c.id).sort(), [aboutPage, contactPage, installPage].sort(), "the full content of a page can be chosen among the published entries");
   assert.ok(list.canAdd.textBlocks.some((b) => b.kind === "cta"));
   const set = (await call(token, "home_sections_set", { sections: [
     { instance: banner.key, section: "hero", isolated: true },
-    { instance: "pages", section: "latest", options: { count: 1 } },
+    { instance: "pages", section: "entry", options: { entry: aboutPage } },
     { block: { kind: "cta", title: both("Try it", "Essayez"), text: both("Install in ten minutes.", "Installez en dix minutes."), buttonLabel: both("Install", "Installer"), buttonUrl: "/install" } },
   ] })).value;
   assert.equal(set.status, "done", JSON.stringify(set));
   const stored = await getSetting("home.sections");
-  assert.deepEqual(stored.map((s) => [s.instance, s.section]), [[banner.key, "hero"], ["pages", "latest"], ["core", "block"]]);
+  assert.deepEqual(stored.map((s) => [s.instance, s.section]), [[banner.key, "hero"], ["pages", "entry"], ["core", "block"]]);
   assert.equal(stored[0].isolated, true);
-  assert.deepEqual(stored[1].options, { count: 1 });
-  const rendered = await runSection("pages", "latest", stored[1].options, "en");
-  assert.equal(rendered[0].type, "entries");
+  assert.deepEqual(stored[1].options, { entry: aboutPage });
+  const rendered = await runSection("pages", "entry", stored[1].options, "en");
+  assert.deepEqual([rendered[0].type, rendered[0].title, rendered[0].body], ["entryContent", "What is Curiosa", "Plain text"], "the FULL content of the page, not a card");
   const cta = await runSection("core", "block", stored[2].options, "fr");
   assert.equal(cta[0].title, "Essayez");
   const back = (await call(token, "home_sections_list")).value.sections;
   assert.deepEqual(back.map((s) => s.kind), ["module_section", "module_section", "text_block"]);
+});
+
+test("section \"entry\": the full content of one published page, in the visitor's language with the fallback chain; broken when unpublished; nothing is injected", async () => {
+  const { token } = await direct();
+  await db.prisma.entryTranslation.create({ data: { entryId: aboutPage, instanceId: pages.id, locale: "fr", slug: "quest-ce-que-curiosa", title: "Qu'est-ce que Curiosa", summary: "Résumé", body: "Corps **gras**" } });
+  const set = await call(token, "home_sections_set", { sections: [{ instance: "pages", section: "entry", options: { entry: aboutPage } }] });
+  assert.equal(set.value.status, "done", JSON.stringify(set));
+  const opts = { entry: aboutPage };
+  const fr = await runSection("pages", "entry", opts, "fr");
+  assert.deepEqual([fr[0].lang, fr[0].fallback, fr[0].title, fr[0].summary, fr[0].body], ["fr", false, "Qu'est-ce que Curiosa", "Résumé", "Corps **gras**"]);
+  // a language the page was not written in falls back along the i18n chain (site language), and says so
+  const de = await runSection("pages", "entry", opts, "de");
+  assert.deepEqual([de[0].lang, de[0].fallback, de[0].title], ["en", true, "What is Curiosa"]);
+  // the list reports it as shown, then broken once unpublished; the section then renders nothing
+  assert.equal((await call(token, "home_sections_list")).value.sections[0].shown, true);
+  await db.prisma.entry.update({ where: { id: aboutPage }, data: { status: "draft" } });
+  assert.deepEqual(await runSection("pages", "entry", opts, "en"), []);
+  const broken = (await call(token, "home_sections_list")).value.sections[0];
+  assert.deepEqual([broken.shown, /not published any more/.test(broken.problem)], [false, true]);
+  // an entry of another instance is never shown by this instance's section
+  const other = await createEntry(db.prisma, { instanceId: blog.id, locale: "en", title: "Post", body: "x", status: "published" });
+  assert.deepEqual(await runSection("pages", "entry", { entry: other.id }, "en"), []);
+  // nothing is injected: HTML in the text is escaped by the page renderer (the same Markdown component as the entry page)
+  await db.prisma.entry.update({ where: { id: aboutPage }, data: { status: "published" } });
+  await db.prisma.entryTranslation.updateMany({ where: { entryId: aboutPage, locale: "en" }, data: { body: 'Hi <script>alert(1)</script> <img src=x onerror=alert(2)> [bad](javascript:alert(3))' } });
+  const [block] = await runSection("pages", "entry", opts, "en");
+  const html = renderToStaticMarkup(Markdown({ text: block.body }));
+  assert.ok(!/<(script|img)/i.test(html) && !/href="javascript:/i.test(html) && html.includes("&lt;script&gt;"), html);
+});
+
+test("section \"entry\" is validated: a published entry of THAT instance is required; unknown instance, draft, other instance and missing entry are refused", async () => {
+  const { token } = await direct();
+  const draft = (await createEntry(db.prisma, { instanceId: pages.id, locale: "en", title: "Draft", status: "draft" })).id;
+  const post = (await createEntry(db.prisma, { instanceId: blog.id, locale: "en", title: "Post", status: "published" })).id;
+  const bad = async (options, re, instance = "pages") => { const r = await call(token, "home_sections_set", { sections: [{ instance, section: "entry", options }] }); assert.match(r.error ?? "", re, JSON.stringify(options)); assert.equal(await getSetting("home.sections"), undefined); };
+  await bad({}, /give the id of a PUBLISHED entry of "pages".*Example/);
+  await bad({ entry: draft }, /PUBLISHED entry/);
+  await bad({ entry: post }, /PUBLISHED entry of "pages"/);
+  await bad({ entry: "nope" }, /PUBLISHED entry/);
+  await bad({ entry: aboutPage }, /Unknown instance: "ghost"/, "ghost");
+  await bad({ entry: aboutPage, colour: 1 }, /"colour" is not an option/);
+  assert.equal((await call(token, "home_sections_set", { sections: [{ instance: "pages", section: "entry", options: { entry: aboutPage } }] })).value.status, "done");
 });
 
 test("add, reorder and remove: all are \"send the new list\"; the summary says what changed", async () => {

@@ -4,7 +4,8 @@ import { prisma } from "@/core/db";
 import { isSectionSize } from "@/core/home";
 import { BG_POSITIONS, BLOCK_KINDS, CORE_INSTANCE, CORE_SECTION, blockToBlocks, isBlockImage, isBlockKind, isBlockLink, isBlockVideo, normalizeBlockDef, type BlockDef } from "@/core/homeBlocks";
 import { pickName } from "@/core/instances";
-import { getActiveInstances, sectionsOf, type ActiveInstance } from "@/core/modules/registry";
+import { publishedEntryChoices } from "@/core/content/entries";
+import { ENTRY_SECTION_ID, getActiveInstances, sectionsOf, type ActiveInstance } from "@/core/modules/registry";
 import { SECTION_SIZES, localized, type JsonSchemaLite, type SettingField } from "@/core/modules/types";
 import { deleteSetting, getSetting, getSiteConfig, setSetting, type HomeSection } from "@/core/settings";
 import { McpToolError } from "@/core/services/mcp/validate";
@@ -56,6 +57,9 @@ async function current(): Promise<HomeSection[]> {
   return Array.isArray(v) ? v.filter((s) => isRow(s) && typeof s.id === "string") : [];
 }
 
+/** Is this a published entry of THIS instance (the only thing an `entry` section can show)? */
+const entryShown = async (instanceId: string, id: unknown): Promise<boolean> => typeof id === "string" && !!id && !!(await prisma.entry.findFirst({ where: { id, instanceId, status: "published", publishedAt: { lte: new Date() } }, select: { id: true } }));
+
 /* ───────────── Reading ───────────── */
 
 const optionView = (o: SettingField, locale: string, def: string) => ({
@@ -69,7 +73,7 @@ export async function homeSectionsList(): Promise<unknown> {
   const active = await getActiveInstances();
   const loc = config.defaultLocale;
   const list = await current();
-  const rows = list.map((s): Row => {
+  const rows = await Promise.all(list.map(async (s): Promise<Row> => {
     const base = { id: s.id, ...(s.size ? { size: s.size } : {}), ...(s.isolated ? { isolated: true } : {}) };
     if (isBlockRow(s)) {
       const block = normalizeBlockDef((s.options as { block?: unknown })?.block, config.locales);
@@ -77,16 +81,21 @@ export async function homeSectionsList(): Promise<unknown> {
     }
     const a = active.find((x) => x.instance.key === s.instance);
     const decl = a ? sectionsOf(a.mod.manifest).find((d) => d.id === s.section) : undefined;
+    const brokenEntry = !!a && !!decl && s.section === ENTRY_SECTION_ID && !(await entryShown(a.instance.id, (s.options as { entry?: unknown })?.entry));
     return {
       ...base, kind: "module_section", instance: s.instance, section: s.section, options: s.options ?? {},
-      title: decl ? localized(decl.label, loc, "en") : s.section, module: a ? pickName(a.instance, loc, loc) : s.instance, shown: !!decl,
+      title: decl ? localized(decl.label, loc, "en") : s.section, module: a ? pickName(a.instance, loc, loc) : s.instance, shown: !!decl && !brokenEntry,
       ...(decl ? {} : { problem: "The module that offered this section is not active any more: nothing is shown. Remove it from the list." }),
+      ...(brokenEntry ? { problem: "The page this section shows does not exist or is not published any more: nothing is shown. Choose another page (see canAdd) or remove the section." } : {}),
     };
-  });
-  const modules = active.flatMap((a) => sectionsOf(a.mod.manifest).map((d) => ({
+  }));
+  const modules = await Promise.all(active.flatMap((a) => sectionsOf(a.mod.manifest).map(async (d) => ({
     kind: "module_section", instance: a.instance.key, section: d.id, title: localized(d.label, loc, "en"), module: pickName(a.instance, loc, loc),
-    recommendedSize: d.size ?? "full", options: (d.options ?? []).map((o) => optionView(o, loc, "en")),
-  })));
+    recommendedSize: d.size ?? "full",
+    options: d.id === ENTRY_SECTION_ID
+      ? [{ key: "entry", type: "choice", label: "Page to show", required: true, example: '{"instance": "pages", "section": "entry", "options": {"entry": "<id below>"}}', choices: await publishedEntryChoices(a.instance.id, loc, loc, 50) }]
+      : (d.options ?? []).map((o) => optionView(o, loc, "en")),
+  }))));
   return {
     languages: config.locales, defaultLanguage: loc, limits: { sections: MAX_HOME_SECTIONS, bytes: MAX_BYTES },
     sections: rows,
@@ -94,7 +103,7 @@ export async function homeSectionsList(): Promise<unknown> {
       moduleSections: modules,
       textBlocks: BLOCK_KINDS.map((kind) => ({ kind, fields: kind === "stats" || kind === "tabs" ? "title/text per language, items: [{title, heading, text, image}] (a number and its caption for stats)" : kind === "video" ? "title, text, buttonLabel, buttonUrl, video (an uploaded file), poster" : "eyebrow, title, text, buttonLabel, buttonUrl, images (up to 3), imageSide, tone" })),
       sizes: SECTION_SIZES,
-      note: "A module section shows what its module offers (for example a banner, or the latest entries of a list: the \"latest\" section of a content instance, option count). The core has no section that shows the full content of one page: write the text in a text block, or use the latest entries of the pages instance with count 1.",
+      note: "A module section shows what its module offers (for example a banner, or the latest entries of a list: the \"latest\" section of a content instance, option count). To show the FULL content of one published page, use the section \"entry\" of its instance with options {entry: <id>} (the id is in that section's choices).",
     },
     howToChange: "Change the list and send ALL of it back with home_sections_set: keep = {id}, new = a description, remove = leave it out, reorder = change the order.",
   };
@@ -178,7 +187,7 @@ function parseOptions(raw: unknown, fields: SettingField[], where: string, probl
     if (f.type === "boolean") { if (typeof v !== "boolean") problems.push(`${where}.options.${f.key}: true or false`); else out[f.key] = v; }
     else if (f.type === "number") { if (typeof v !== "number" || !Number.isFinite(v) || (f.min !== undefined && v < f.min) || (f.max !== undefined && v > f.max)) problems.push(`${where}.options.${f.key}: a number${f.min !== undefined || f.max !== undefined ? ` between ${f.min ?? "…"} and ${f.max ?? "…"}` : ""}, for example ${f.default ?? 3}`); else out[f.key] = v; }
     else if (typeof v !== "string" || v.length > 500 || /<\/?[a-z!][^>]*>/i.test(v)) problems.push(`${where}.options.${f.key}: plain text of 500 characters at most`);
-    else if (f.options && !f.options.some((o) => o.value === v)) problems.push(`${where}.options.${f.key}: one of ${f.options.map((o) => o.value).join(", ")}`);
+    else if (f.options?.length && !f.options.some((o) => o.value === v)) problems.push(`${where}.options.${f.key}: one of ${f.options.map((o) => o.value).join(", ")}`);
     else out[f.key] = v.trim();
   }
   return out;
@@ -209,6 +218,7 @@ async function parseSection(raw: unknown, i: number, ctx: Ctx, problems: string[
     const decl = sectionsOf(a.mod.manifest).find((d) => d.id === raw.section);
     if (!decl) { problems.push(`${where}: "${a.instance.key}" does not offer a section "${redactSecrets(String(raw.section ?? ""), 30)}". It offers: ${sectionsOf(a.mod.manifest).map((d) => d.id).join(", ") || "none"}`); return null; }
     const options = parseOptions(raw.options, (decl.options ?? []) as SettingField[], where, problems);
+    if (decl.id === ENTRY_SECTION_ID && !(await entryShown(a.instance.id, options.entry))) problems.push(`${where}.options.entry: give the id of a PUBLISHED entry of "${a.instance.key}" (ids come from ${a.instance.key}__list_entries or home_sections_list > canAdd). Example: {"instance": "${a.instance.key}", "section": "entry", "options": {"entry": "<id>"}}`);
     section = { id: id ?? newId(), instance: a.instance.key, section: decl.id, options };
     if (raw.size !== undefined && isSectionSize(raw.size) && raw.size !== (decl.size ?? "full")) section.size = raw.size;
   }
