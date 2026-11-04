@@ -1,6 +1,9 @@
 <div align="center">
 
-# Curiosa
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/brand/curiosa-logo-dark.svg">
+  <img src="docs/brand/curiosa-logo.svg" alt="Curiosa" width="360">
+</picture>
 
 **Le site de votre activité, sans agence ni abonnement.**
 Un site personnel complet pour les personnes qui créent, en solo ou en petite équipe : vous l'installez une fois, vous le gérez vous-même depuis un espace d'administration pensé pour les personnes sans bagage technique.
