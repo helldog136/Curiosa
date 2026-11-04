@@ -156,7 +156,7 @@ test("llms.txt : une version par langue (/llms.txt = langue principale, /<langue
   assert.ok(resFr.headers.get("cache-control").includes("max-age"), "mis en cache");
   const fr = await resFr.text();
   assert.match(fr, /^# Ada FR\n\n> Créatrice/); assert.match(fr, /\[Bonjour\]\(http[^)]*\/fr\/blog\/bonjour\)/);
-  assert.match(fr, /\[Accueil\]\(http[^)]*\/fr\/\)/);
+  assert.match(fr, /\[Accueil\]\(http[^)]*\/fr\)/);
   assert.equal((await llmsLang(new Request("http://x/de/llms.txt"), { params: Promise.resolve({ lang: "de" }) })).status, 404);
   const same = await llmsLang(new Request("http://x/en/llms.txt"), { params: Promise.resolve({ lang: "en" }) });
   assert.equal(same.status, 308, "la langue principale a une seule adresse");
@@ -256,7 +256,7 @@ test("JSON-LD des modules : l'API du module renvoie une balise de head que le c�
 
 test("métadonnées : adresse canonique et versions par langue (hreflang + x-default)", () => {
   assert.equal(S.pageUrl("https://x.test", "en", "en", "/"), "https://x.test/");
-  assert.equal(S.pageUrl("https://x.test", "fr", "en", "/"), "https://x.test/fr/");
+  assert.equal(S.pageUrl("https://x.test", "fr", "en", "/"), "https://x.test/fr");
   assert.equal(S.pageUrl("https://x.test", "fr", "en", "/blog/billet/"), "https://x.test/fr/blog/billet");
   assert.equal(S.pageUrl("https://x.test", "en", "en", "/blog?x=1#a"), "https://x.test/blog");
   const one = S.languageAlternates("https://x.test", ["en"], "en", "en", "/blog");
@@ -291,7 +291,7 @@ test("sitemap : accueil et pages dans chaque langue avec leurs versions, lastmod
   const urls = await sitemap();
   const home = urls.find((u) => u.url.endsWith("/") && !u.url.includes("/fr"));
   assert.deepEqual(Object.keys(home.alternates.languages).sort(), ["en", "fr", "x-default"]);
-  assert.ok(urls.some((u) => u.url.endsWith("/fr/")));
+  assert.ok(urls.some((u) => u.url.endsWith("/fr")));
   const entry = urls.find((u) => u.url.endsWith("/hello"));
   assert.equal(entry.lastModified.toISOString().slice(0, 10), "2026-01-02");
   assert.ok(urls.filter((u) => !u.url.endsWith("/hello")).every((u) => u.lastModified === undefined), "pas de date inventée");

@@ -20,7 +20,8 @@ const overridden = (res) => Object.fromEntries((res.headers.get("x-middleware-ov
 
 test("proxy : /en/privacy est réécrit vers /privacy et transmet « en » aux pages ; sans préfixe, aucune langue transmise ; un en-tête de langue venant du visiteur est ignoré", async () => {
   const en = await through("/en/privacy");
-  assert.equal(en.headers.get("x-middleware-rewrite")?.endsWith("/privacy"), true);
+  assert.equal(en.headers.get("x-middleware-rewrite"), null, "the rewrite itself is a config rewrite (next.config.mjs), never an absolute URL built here");
+  assert.equal(en.headers.get("x-middleware-next"), "1");
   assert.equal(forwarded(en, LOCALE_HEADER), "en");
   assert.equal(forwarded(en, "x-curiosa-path"), "/privacy");
   const plain = await through("/privacy", { [LOCALE_HEADER]: "en" });
@@ -79,23 +80,66 @@ test("proxy : la preuve de langue (/en/…) ET la porte 410 des liens terminés 
   invalidateRedirectGate();
   // 1. Lien terminé, sans préfixe : détourné vers la page 410 ; la page voit le chemin d'origine.
   const gone = await through("/fini");
-  assert.match(gone.headers.get("x-middleware-rewrite") ?? "", /\/api\/redirect-gone\?p=fini$/);
+  assert.equal(forwarded(gone, "x-curiosa-gone"), "fini");
   assert.equal(forwarded(gone, "x-curiosa-path"), "/fini");
   // 2. Lien terminé sous /en/ : détourné aussi (410), et la langue (avec sa preuve) est transmise à la page 410.
   const goneEn = await through("/en/fini");
-  assert.match(goneEn.headers.get("x-middleware-rewrite") ?? "", /\/api\/redirect-gone\?p=fini$/);
+  assert.equal(forwarded(goneEn, "x-curiosa-gone"), "fini");
   assert.equal(forwarded(goneEn, LOCALE_HEADER), "en");
   assert.ok(forwarded(goneEn, "x-curiosa-lp"), "la preuve de langue accompagne la réécriture 410");
   assert.equal(forwarded(goneEn, "x-curiosa-path"), "/fini");
   // 3. Lien non terminé, éteint ou inconnu : aucune porte ; la preuve de langue reste exacte, /en/ → /futur et second passage garde « en ».
-  for (const p of ["/futur", "/eteint", "/inconnu"]) assert.equal((await through(p)).headers.get("x-middleware-rewrite"), null, p);
+  for (const p of ["/futur", "/eteint", "/inconnu"]) assert.equal(forwarded(await through(p), "x-curiosa-gone") ?? "", "", p);
   const first = await through("/en/futur");
-  assert.equal(first.headers.get("x-middleware-rewrite")?.endsWith("/futur"), true);
+  assert.equal(forwarded(first, "x-curiosa-path"), "/futur");
+  assert.equal(forwarded(first, "x-curiosa-gone") ?? "", "");
   assert.equal(forwarded(first, LOCALE_HEADER), "en");
   const second = await through("/futur", overridden(first));
   assert.equal(forwarded(second, LOCALE_HEADER), "en", "second passage : la langue survit même avec la porte active");
   // 4. Une preuve forgée n'est pas acceptée, la porte non plus ne change pas ça ; un POST sur un lien terminé n'est pas détourné.
   assert.equal(forwarded(await through("/futur", { [LOCALE_HEADER]: "en", "x-curiosa-lp": "devine" }), LOCALE_HEADER) ?? "", "");
   const post = await proxy(new NextRequest("http://127.0.0.1:4104/fini", { method: "POST" }));
-  assert.equal(post.headers.get("x-middleware-rewrite"), null);
+  assert.equal(forwarded(post, "x-curiosa-gone") ?? "", "");
+});
+
+test("BUG fixed: a language prefix never produces an absolute rewrite (a bare 500 on every /fr page behind a TLS-terminating reverse proxy)", async () => {
+  // `next start -H 127.0.0.1` behind nginx (X-Forwarded-Proto: https): an absolute x-middleware-rewrite never has the server's own origin, so Next
+  // fetched it as an external site over TLS and answered 500. The proxy must not emit one, for the official languages and for a community one (de).
+  const { setSetting } = await import("@/core/settings");
+  for (const [def, locales] of [["en", ["en", "fr"]], ["fr", ["fr", "en"]], ["en", ["en", "de"]]]) {
+    await setSetting("i18n.default", def); await setSetting("i18n.enabled", locales);
+    for (const code of locales) for (const path of [`/${code}`, `/${code}/blog`, `/${code}/blog/hello`, `/${code}/unknown/deep/path`]) {
+      const res = await proxy(new NextRequest(`https://127.0.0.1:4104${path}?page=2`, { headers: { "x-forwarded-proto": "https", host: "example.org" } }));
+      assert.equal(res.headers.get("x-middleware-rewrite"), null, `${def}/${code} ${path}`);
+      assert.equal(forwarded(res, LOCALE_HEADER), code, path);
+      assert.equal(forwarded(res, "x-curiosa-path"), path.slice(code.length + 1) || "/", path);
+    }
+  }
+});
+
+test("next.config.mjs: the language prefix and the 410 page are config rewrites with a path-only destination, limited to what the proxy decided", async () => {
+  const { default: config } = await import("../../next.config.mjs");
+  const { beforeFiles } = await config.rewrites();
+  const { pathToRegexp } = (await import("next/dist/compiled/path-to-regexp/index.js")).default;
+  const lang = beforeFiles.find((r) => r.destination === "/:path*");
+  const gone = beforeFiles.find((r) => r.destination === "/api/redirect-gone");
+  assert.ok(lang && gone);
+  for (const r of beforeFiles) assert.doesNotMatch(r.destination, /^[a-z]+:/i, "no origin in a destination");
+  assert.deepEqual(lang.has, [{ type: "header", key: "x-curiosa-locale" }], "only when the proxy recognised the language");
+  assert.deepEqual(gone.has, [{ type: "header", key: "x-curiosa-gone" }]);
+  const matches = (rule, url) => pathToRegexp(rule.source).test(url);
+  for (const url of ["/fr", "/fr/blog", "/de/blog/x", "/en/a/b/c"]) assert.equal(matches(lang, url), true, url);
+  for (const url of ["/zz/blog", "/frx/blog", "/blog", "/"]) assert.equal(matches(lang, url), false, url);
+  for (const url of ["/fini", "/a/b", "/fr/fini"]) assert.equal(matches(gone, url), true, url);
+  for (const url of ["/api/health", "/admin/x", "/m/inst/x", "/overlays/k", "/uploads/a", "/photo.png"]) assert.equal(matches(gone, url), false, url);
+});
+
+test("addresses: the home of a prefixed language is /fr (the server redirects /fr/ with a 308), in canonical, hreflang and for every default language", async () => {
+  const { pageUrl, languageAlternates } = await import("@/core/seo");
+  assert.equal(pageUrl("https://x.example", "fr", "en", "/"), "https://x.example/fr");
+  assert.equal(pageUrl("https://x.example", "en", "en", "/"), "https://x.example/");
+  assert.equal(pageUrl("https://x.example", "en", "fr", "/"), "https://x.example/en");
+  assert.equal(pageUrl("https://x.example", "de", "en", "/blog/"), "https://x.example/de/blog");
+  const alt = languageAlternates("https://x.example", ["en", "fr", "de"], "fr", "en", "/");
+  assert.deepEqual(alt, { canonical: "https://x.example/fr", languages: { en: "https://x.example/", fr: "https://x.example/fr", de: "https://x.example/de", "x-default": "https://x.example/" } });
 });

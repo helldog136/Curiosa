@@ -9,7 +9,8 @@ test("proxy : la porte des liens terminés est bornée dans le temps et ne touch
   const proxy = read("src/proxy.ts");
   assert.match(proxy, /isRedirectEnded/); assert.match(proxy, /withDeadline\(/); assert.match(proxy, /GATE_MAX_MS = 1500/);
   assert.match(proxy, /request\.method !== "GET" && request\.method !== "HEAD"/);
-  assert.match(proxy, /\/api\/redirect-gone/);
+  assert.match(proxy, /x-curiosa-gone/);
+  assert.match(read("next.config.mjs"), /\/api\/redirect-gone/);
 });
 
 test("page publique : un lien désactivé ne réclame pas le chemin (même réponse qu'un lien inconnu) ; l'équipe connectée et les aperçus ne comptent pas", () => {
