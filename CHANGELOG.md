@@ -7,7 +7,9 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
-## Prochaine version (non publiée)
+## 0.6.7 — 2026-11-04
+
+**En bref.** Le tableau de bord compte maintenant à part les visites de robots et d'intelligences artificielles (« Robots et IA »), sans rien garder d'eux. Le logo de Curiosa est disponible. Les extensions pourront reprendre l'apparence de l'administration. L'anglais et le français sont toujours complets ; d'autres langues peuvent être proposées par la communauté, avec un guide de traduction. L'assistant d'installation permet de connecter une IA, avec des profils de droits, « Tout cocher » et un choix d'approbation plus clair. L'assistant IA peut aussi publier vos brouillons si vous l'autorisez, connaître ses droits, préparer plusieurs installations d'un coup et demander un exemplaire de plus. Modifier un élément d'une liste ouvre une fenêtre au-dessus de la page. Rien à régler.
 
 ### Identité visuelle
 
