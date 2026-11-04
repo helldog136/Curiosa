@@ -1349,6 +1349,39 @@ L'interrupteur appelle l'`adminAction` nommée par `switch.action` avec `values.
   rowActions: [{ label: "Modifier", href: "?edit={id}" }, { label: "Supprimer", action: "remove", danger: true, confirm: "Supprimer cette commande ?" }] }
 ```
 
+##### Edit dialog (`presentation: "dialog"`, next core release)
+
+Editing an item from a list should not push the list down: the form opens in a **window above the admin interface** (the same window as the extension details before an installation: same backdrop, same panel, same "Close" button, full screen on a phone). The module declares it, it runs no script (the core executes none): the address stays the source of truth, as with `?edit={id}`.
+
+| Where | Key | Role |
+|---|---|---|
+| `table.rowActions[]` | `presentation: "dialog"` | The link `href` (for example `"?edit={id}"`) opens **without reloading the page** (the list keeps its search, filter and scroll) and adds a history entry, so "Back" closes the window. Needs an `href`, not an `action`. |
+| `links.items[]` | `presentation: "dialog"` | Same, for a "New item" button (`href: "?new=1"`; a relative `?…` address is accepted for such a link). |
+| `adminForm` | `presentation: "dialog"` | The form returned by `adminPanel` shows in the window instead of in the page. `title` names the window (and is its heading), `submitLabel` is the ONE main button (a precise verb, R3), `cancelHref` is where the window returns when it closes (for example `"?"`). A form with a `file` field stays in the page. |
+
+How it behaves, for the person: the form is the SAME form (same fields, same `adminAction`, same validation). A field error shows under the field with its example and the first field in error gets the focus; what was typed is kept; the main button shows its pending state. A success closes the window and the saved row shows a visible "Saved." (the list is refreshed in place). "Esc", the "Close" button, "Cancel" and a click beside the panel close it; if fields were edited the person is first asked "Discard changes?". The focus enters the window, stays inside it, and returns to the link that opened it. The page behind does not scroll. A reload or a shared link reopens the window (the address is `?edit=…`); without JavaScript the link opens the same page in full.
+
+**Older cores.** Every key is optional and additive: a core without it ignores the key, `href: "?edit={id}"` navigates and the form shows at the top of the page, exactly as before. So a module can adopt it **without raising `minCore`**. The one exception is a "New item" `links` entry with a `?…` address: an older core shows it as `#` (it only accepts site pages and https addresses), so use a `rowActions`/toolbar fallback or raise `minCore` for that button.
+
+**What the module does.** Return the form only when the address asks for it, and let the action answer `{ ok }` (not `redirect`: the core closes the window on a success; with a redirect the window disappears but the row is not highlighted).
+
+```js
+async adminPanel(ctx, { query }) {
+  const rows = await ctx.api.store.list("commands");
+  const editing = query.edit ? rows.find((r) => r.id === query.edit) : query.new ? { id: "", data: {} } : null;
+  return [
+    ...(editing ? [{ type: "adminForm", presentation: "dialog", action: "save", cancelHref: "?",
+      title: query.new ? "New command" : "Edit command", submitLabel: "Save the command",
+      fields: [{ name: "id", kind: "hidden", label: "id", value: editing.id }, { name: "name", label: "Name", required: true, value: editing.data.name ?? "", example: "hello" }] }] : []),
+    { type: "links", items: [{ label: "New command", href: "?new=1", presentation: "dialog" }] },
+    { type: "table", columns: ["Command"], rows: rows.map((r) => [r.data.name]), rowIds: rows.map((r) => r.id), searchable: true,
+      rowActions: [{ label: "Edit", href: "?edit={id}", presentation: "dialog" }, { label: "Delete", action: "remove", danger: true, confirm: "Delete this command?" }] },
+  ];
+},
+```
+
+Keep the destructive action ("Delete the command") in the row menu (`danger: true`, with `confirm` saying what is lost), separate from the dialog's main button. The form's hidden field named `id` is how the list knows which row to highlight after the save. The test kit (`admin.ergonomics`) counts the fields of such a form against R4 (5 visible fields) like any form, ignores them for the section of the list, and asks for a `cancelHref` (R24).
+
 ##### Vignette dans une cellule (`image`, cœur 0.6.5)
 
 `{ text: "Zelda", image: { src: "/uploads/zelda.webp", alt: "Jaquette de Zelda" } }` met une **vignette de 40 × 40 px** devant le texte : toutes les lignes ont la même hauteur (règle R16), sur 1280 px comme sur 390 px (la carte d'une ligne la garde). `text` peut rester vide : le texte alternatif sert alors de texte de la cellule.

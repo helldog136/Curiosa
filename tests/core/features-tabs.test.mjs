@@ -51,7 +51,7 @@ test("menu : « Modules » n'est plus en haut ni en surbrillance ; le catalogue 
   assert.ok(fs.existsSync("src/app/admin/(panel)/extensions/add/@modal/(.)details/page.tsx"));
   assert.ok(fs.existsSync("src/app/admin/(panel)/extensions/add/@modal/default.tsx"));
   assert.match(read("src/app/admin/(panel)/extensions/add/layout.tsx"), /\{children\}\{modal\}/);
-  assert.match(read("src/components/admin/RouteModal.tsx"), /key === "Escape"/);
+  assert.match(read("src/components/admin/ModalWindow.tsx"), /key === "Escape"/);
   const view = read("src/app/admin/(panel)/extensions/add/details/DetailsView.tsx");
   assert.match(read("src/components/admin/ExtensionFiche.tsx"), /<InstallBar /, "barre d'installation collée en bas (voir tests/core/extension-fiche.test.mjs)");
   assert.match(read("src/components/admin/FicheParts.tsx"), /data-testid="install-bar"[\s\S]*sticky z-20|sticky z-20[\s\S]*data-testid="install-bar"/);

@@ -387,7 +387,7 @@ test("interface : les réglages s'ouvrent dans une fenêtre (route interceptée)
   // le menu d'admin garde des liens de page pleine (ancres natives, pas de navigation douce)
   assert.ok(!/next\/link/.test(read("src/components/admin/NavLink.tsx")));
   // la fenêtre : Échap, clic dehors, bouton visible, focus rendu, plein écran sur mobile, pas de défilement horizontal
-  const modal = read("src/components/admin/RouteModal.tsx");
+  const modal = read("src/components/admin/ModalWindow.tsx");
   assert.match(modal, /key === "Escape"/);
   assert.match(modal, /e\.target === e\.currentTarget/);
   assert.match(modal, /data-testid="modal-close"/);

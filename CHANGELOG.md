@@ -41,6 +41,12 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Un état des traductions dans Réglages › Langues.** Chaque langue est « officielle » (anglais, français) ou « communautaire », « complète » ou « partielle : 82 % », et la liste des extensions auxquelles il manque des textes s'y trouve. Votre assistant IA lit la même chose.
 - **Ajouter une langue ne demande que des fichiers.** Un guide pas à pas (le document TRANSLATING) et une commande qui prépare les fichiers à traduire permettent à chacun de proposer sa langue.
 
+### Fenêtres de modification
+
+- **Modifier un élément d'une liste ouvre une fenêtre au-dessus de la page.** La liste ne descend plus et garde sa recherche. Échap ou « Fermer » referment la fenêtre ; si vous avez écrit quelque chose, Curiosa demande d'abord si vous voulez l'abandonner.
+- **La fenêtre est la même partout.** Elle a l'aspect de la fiche d'une extension avant son installation, prend tout l'écran sur téléphone et se manipule au clavier. Le bouton « Retour » du navigateur la ferme.
+- **Edit windows (English).** Editing an item of a list opens a window above the page: the list keeps its search, Esc closes it, and Curiosa asks before discarding what you typed.
+
 ### Assistants IA
 
 - **Un assistant IA peut vous aider à finir la mise en place.** Une dernière étape facultative, « Connecter votre assistant IA », suit la création de votre compte : un nom, un profil, un clic. Vous passez l'étape sans risque : rien n'est créé.
@@ -49,13 +55,15 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Qui approuve les actions à risque est enfin clair.** Deux boutons montrent toujours votre choix, et la page dit que l'installation demande toujours votre accord.
 
 ### Pour les développeurs
-
 - **AI publishing** (`src/core/maintenance/publish.ts`, tools generated in `src/core/content/mcp.ts`): `<instance>__publish` / `__unpublish` as level 3 actions `entry_publish` / `entry_unpublish` of `callLevel3`, so they follow the per-access approval setting. A bundle is `plan.entry.items` with a text fingerprint; a draft edited after the request is not published.
 - **New core tools** (all additive): `maintenance_my_access` (default on), `maintenance_catalog_plan`, `maintenance_instance_add` (always waits for the owner, like installs), `maintenance_skin_set_options` (`saveColorChoices` in `skins/appearance.ts`), and `maintenance_module_install { modules }` (`plan.bundle`, one pending request).
 - **`McpTool.request`** (optional boolean) marks tools that create requests; `destructive` is now only for deletions (uninstall, skin removal). `MAINTENANCE_TOOLS` carries both. The rights page and the requests tab read both.
 - **Profile definition** `src/core/services/mcp/profiles.ts`: new tools are assigned (`read`: my_access, catalog_plan; `full`: instance_add, skin_set_options, publish, unpublish). Same file as the AI-access onboarding branch: merge by keeping both lists.
 - **`listChanged` is still `false`**: evaluated and documented in `docs/MAINTENANCE-IA.md` (no session, no stream, no timers).
-
+- **Edit dialog (`presentation: "dialog"`).** Accepted on `rowActions[]`, `links.items[]` and `adminForm`, with no `minCore`: an older core keeps the form in the page. See `docs/MODULES.md`.
+- **The address is the open state.** The row link soft-navigates and `adminPanel` returns the form for `?edit=…`; reload and "Back" work, and without JavaScript the link opens the full page.
+- **One window.** `ModalWindow.tsx` (the old `RouteModal` body) now also serves `EditDialog`; `RouteModal` is a thin wrapper. New: title, sticky footer, animation, window stack, optional discard `guard`.
+- **Test kit.** R4 counts a dialog form on its own; R24 asks for `cancelHref`; `blocks.valid` rejects other values. Fixture: `tests/fixtures/edit-dialog`.
 - **Languages and modules (i18n).** One pure source, `src/core/i18n/audit.mjs`: `pickText` (requested language, site main language, English; no French default), `auditManifest`, `auditDictionaries`, `applyTranslations`, `manifestSkeleton`. `localized()`, `pickLocalized`, `pickWords`, `renderEvent` and the MCP catalogue tools use it.
 - `makeTranslator(locale, siteDefault?)` follows the same chain and treats an empty text as missing.
 - **Languages are data.** `src/locales/languages.json` (name, `official` or `community`, `rtl`) replaces the list of `locales.ts`; `src/locales/index.ts` is generated. `node scripts/i18n-add-language.mjs <code> [--modules <repo>] [--only prefixes]` writes the skeletons (empty texts, translations kept); `--sync` rebuilds the index.

@@ -134,6 +134,7 @@ assertAdminPageErgonomics(blocks, { errors: ["Écrivez un nombre entier, par exe
 | R15 | un tableau de plus de 10 lignes sans champ de recherche (un `<input type="search">` dans un bloc `html`, un champ `q` / `search` / « Rechercher » dans un `adminForm`, ou `searchable: true` sur le tableau) |
 | R17 | un bouton de ligne, un lien ou un bouton nommé « Activer / désactiver » (la réponse : une cellule `switch`, voir `docs/MODULES.md` › Tableau enrichi) |
 | R22 | les messages d'erreur donnés dans `errors` : un exemple (« par exemple 500 »), jamais de code, de trace ni d'« erreur 500 » |
+| R24 | un formulaire `presentation: "dialog"` sans `cancelHref` (la fenêtre ne sait pas revenir à la liste), un bouton de ligne `presentation: "dialog"` qui n'est pas un lien `href`. Les champs d'un tel formulaire comptent pour R4 (5 champs visibles) mais pas pour la section de la liste |
 
 **Briques du cœur 0.6.0.** Les cellules de tableau peuvent être des objets (`{ text, badge, switch }`) et les champs d'un formulaire des champs `switch`, `segmented`, `period`, `datetime`, `duration` : l'aide les comprend (texte de la cellule, champs `folded` non comptés). L'exigence `compat.minCore` demande `"minCore": "0.6.0"` à un module qui en utilise une.
 

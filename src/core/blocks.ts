@@ -84,7 +84,7 @@ export type Block =
   /** HTML brut : le module est un code de confiance (voir docs/MODULES.md). */
   | { type: "html"; html: string }
   | { type: "banner"; text: string; href?: string; tone?: "info" | "success" | "warning" }
-  | { type: "links"; items: { label: string; href: string; icon?: string }[] }
+  | { type: "links"; items: { label: string; href: string; icon?: string; /** (next core release, optional: an older core ignores it and follows `href`) In the admin panel, opens the target of `href` as a window above the page. See `adminForm.presentation`. */ presentation?: "dialog" }[] }
   | { type: "entries"; instance: string; limit?: number; title?: string; link?: boolean; /** "random" : `limit` entrées tirées au hasard (au lieu des plus récentes). */ pick?: "random" }
   | { type: "hero"; title: string; text?: string; image?: string; /** Petite ligne au-dessus du titre. */ eyebrow?: string; /** Bouton d'appel à l'action (libellé + page du site ou adresse https). */ button?: { label: string; href: string }; video?: string; videoPoster?: string; videoSound?: boolean }
   /**
@@ -122,7 +122,14 @@ export type Block =
        * Boutons par ligne : `action` exécute une adminAction du module, `href` navigue ({id} est remplacé).
        * (0.6.0) Dans un tableau enrichi, deux actions au plus restent visibles ; les suivantes, celles marquées `inMenu` et celles `danger` vont dans un menu « ⋯ ».
        */
-      rowActions?: { label: string; action?: string; href?: string; confirm?: string; danger?: boolean; inMenu?: boolean }[];
+      rowActions?: {
+        label: string; action?: string; href?: string; confirm?: string; danger?: boolean; inMenu?: boolean;
+        /**
+         * (next core release, optional) `"dialog"`: the link `href` (for example `"?edit={id}"`) opens WITHOUT reloading the page; pair it with an `adminForm` that declares
+         * `presentation: "dialog"` so that the form shows in a window above the list. An older core ignores the key: the link then navigates as before.
+         */
+        presentation?: "dialog";
+      }[];
       /**
        * (cœur 0.6.0, `minCore: "0.6.0"` ; un cœur plus ancien montre le tableau simple) TABLEAU ENRICHI — l'une de ces clés suffit à l'activer :
        *  - `searchable` : champ « Rechercher » qui filtre EN DIRECT (sans seuil, sans tenir compte des accents ni de la casse, dans tout ce qui est affiché), avec « Aucun
@@ -148,8 +155,15 @@ export type Block =
       title?: string;
       submitLabel: string;
       fields: AdminField[];
-      /** Lien « Annuler » (par exemple retour à la liste après une modification). */
+      /** Lien « Annuler » (par exemple retour à la liste après une modification). Avec `presentation: "dialog"` : l'adresse où l'on revient quand la fenêtre se ferme. */
       cancelHref?: string;
+      /**
+       * (next core release, optional; an older core ignores it and shows the form in the page, as before) `"dialog"`: the form is shown in a window above the admin interface
+       * (title, scrolling body, sticky footer with the single main button; "Esc" and the "Close" button close it, and ask before discarding edits). The module keeps
+       * returning the form only when the address asks for it (`?edit=…`, `?new=1`): the address IS the open state, so a reload, "Back" and a shared link work. `cancelHref`
+       * is where the window returns when it closes. A form with a `file` field stays in the page.
+       */
+      presentation?: "dialog";
     }
   /**
    * Éditeur de GRILLE (panneau d'admin uniquement) : on choisit un pinceau dans la palette puis on peint les cases à la souris ou au doigt ;

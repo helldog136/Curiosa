@@ -3,7 +3,7 @@
  * n'est pas au premier plan (outils de développement, autre fenêtre, clic relayé) : la réponse est alors « non » et l'action ne part jamais,
  * sans aucun message. Cette boîte-ci s'affiche toujours et se ferme au clavier (Échap = annuler).
  */
-export function askConfirm(message: string, opts: { /** Texte du bouton qui valide (par défaut « Continuer »). */ confirmLabel?: string; /** Bouton de validation en rouge : pour ce qui efface. */ danger?: boolean } = {}): Promise<boolean> {
+export function askConfirm(message: string, opts: { /** Texte du bouton qui valide (par défaut « Continuer »). */ confirmLabel?: string; /** Bouton de validation en rouge : pour ce qui efface. */ danger?: boolean; /** Texte du bouton qui renonce (par défaut « Annuler »). */ cancelLabel?: string; /** Le focus arrive sur le bouton qui renonce (pour ce qui fait perdre du travail). */ focusCancel?: boolean } = {}): Promise<boolean> {
   const fr = (document.documentElement.lang || "en").toLowerCase().startsWith("fr");
   return new Promise((resolve) => {
     const dialog = document.createElement("dialog");
@@ -17,7 +17,7 @@ export function askConfirm(message: string, opts: { /** Texte du bouton qui vali
     const cancel = document.createElement("button");
     cancel.type = "button";
     cancel.className = "min-h-11 rounded-full border border-line px-5 py-2 text-sm font-medium";
-    cancel.textContent = fr ? "Annuler" : "Cancel";
+    cancel.textContent = opts.cancelLabel ?? (fr ? "Annuler" : "Cancel");
     const ok = document.createElement("button");
     ok.type = "button";
     ok.className = `min-h-11 rounded-full px-5 py-2 text-sm font-semibold ${opts.danger ? "bg-red-600 text-white" : "bg-accent text-accent-fg"}`;
@@ -30,6 +30,6 @@ export function askConfirm(message: string, opts: { /** Texte du bouton qui vali
     dialog.append(text, row);
     document.body.append(dialog);
     dialog.showModal();
-    ok.focus();
+    (opts.focusCancel ? cancel : ok).focus();
   });
 }

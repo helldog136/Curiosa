@@ -11,6 +11,7 @@ import { RowActionButton, RowMenuItem, RowSwitch, type EntryScope } from "./Admi
 import { safeHref } from "@/core/url";
 import type { CellImage } from "@/core/adminkit/image";
 import { ui } from "./ui";
+import { SAVED_EVENT, type SavedDetail } from "./savedEvent";
 
 type TableBlock = Extract<Block, { type: "table" }>;
 
@@ -50,6 +51,22 @@ export function AdminTable({ block, instanceId, entry, labels }: { block: TableB
   const setPage = (n: number) => setPageAt({ key: filterKey, page: n });
   const view = pageSlice(shown, page, size);
 
+  // An edit dialog above this list was saved: the row gets a visible confirmation (until the next search or filter), announced to screen readers.
+  const [saved, setSaved] = useState<{ key: string; id?: string; message: string } | null>(null);
+  useEffect(() => {
+    const on = (e: Event) => {
+      const d = (e as CustomEvent<SavedDetail>).detail;
+      if (d.instanceId === instanceId) setSaved({ key: filterKey, id: d.id, message: d.message });
+    };
+    window.addEventListener(SAVED_EVENT, on);
+    return () => window.removeEventListener(SAVED_EVENT, on);
+  }, [instanceId, filterKey]);
+  const notice = saved && saved.key === filterKey ? saved : null;
+  const noticeRow = notice?.id !== undefined ? view.items.find((r) => block.rowIds?.[r.index] === notice.id) : undefined;
+  useEffect(() => {
+    if (noticeRow) top.current?.querySelector("[data-row-saved]")?.scrollIntoView({ block: "nearest" });
+  }, [noticeRow, notice]);
+
   const clear = () => { setQuery(""); setPills({}); };
   const active = query.trim() !== "" || Object.values(pills).some((v) => v !== "all");
   const { visible: visibleActions, menu: menuActions } = splitActions(block.rowActions ?? []);
@@ -72,6 +89,7 @@ export function AdminTable({ block, instanceId, entry, labels }: { block: TableB
           <p className="min-h-5 text-sm text-muted" role="status" aria-live="polite">{active && shown.length > 0 ? labels.count.replace("{shown}", String(shown.length)).replace("{total}", String(rows.length)) : ""}</p>
         </div>
       )}
+      {notice && <p role="status" data-testid="table-saved" className={noticeRow ? "sr-only" : "rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-2.5 text-sm font-medium text-emerald-800"}>{noticeRow ? "" : "✓ "}{notice.message}</p>}
       {shown.length === 0 ? (
         <div role="status" className={`${ui.card} space-y-2 text-[15px]`} data-testid="live-search-none">
           <p className="font-medium">{labels.none}</p>
@@ -91,22 +109,23 @@ export function AdminTable({ block, instanceId, entry, labels }: { block: TableB
             {view.items.map((r) => {
               const id = block.rowIds?.[r.index];
               return (
-                <tr key={r.index} role="row" data-skin-part="table-row" className="border-t-token border-line align-middle max-sm:mb-3 max-sm:block max-sm:rounded-2xl max-sm:border max-sm:border-line max-sm:bg-surface max-sm:p-3">
+                <tr key={r.index} role="row" data-skin-part="table-row" data-row-saved={noticeRow === r ? "" : undefined} className={`${noticeRow === r ? "bg-emerald-500/10 " : ""}border-t-token border-line align-middle max-sm:mb-3 max-sm:block max-sm:rounded-2xl max-sm:border max-sm:border-line max-sm:bg-surface max-sm:p-3`}>
                   {r.cells.map((c, i) => (
                     <td key={i} role="cell" data-skin-part="table-cell" data-label={block.columns[i]}
                       className={`px-3 py-2 max-sm:flex max-sm:items-center max-sm:justify-between max-sm:gap-3 max-sm:px-1 max-sm:py-1.5 max-sm:before:shrink-0 max-sm:before:text-xs max-sm:before:text-muted max-sm:before:content-[attr(data-label)] ${cut.has(i) ? "max-w-[26ch] max-sm:max-w-none" : "whitespace-pre-wrap"}`}>
                       <CellView cell={c} cut={cut.has(i)} pictured={pictured.has(i)} instanceId={instanceId} entry={entry} id={id} labels={labels} />
+                      {i === 0 && noticeRow === r && <span aria-hidden="true" className="ml-2 inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-medium text-emerald-800">✓ {notice?.message}</span>}
                     </td>
                   ))}
                   {hasActions && (
                     <td role="cell" className="whitespace-nowrap px-3 py-2 max-sm:flex max-sm:justify-end max-sm:px-1 max-sm:pt-2">
                       <div className="flex items-center gap-2">
                         {visibleActions.map((a) => (
-                          <RowActionButton key={a.label} instanceId={instanceId!} label={a.label} action={a.action} href={href(a, id)} id={id} confirm={a.confirm} danger={a.danger} entry={entry} />
+                          <RowActionButton key={a.label} instanceId={instanceId!} label={a.label} action={a.action} href={href(a, id)} id={id} confirm={a.confirm} danger={a.danger} entry={entry} presentation={a.presentation} />
                         ))}
                         {menuActions.length > 0 && (
                           <RowMenu label={labels.menu}>
-                            {menuActions.map((a) => <RowMenuItem key={a.label} instanceId={instanceId!} label={a.label} action={a.action} href={href(a, id)} id={id} confirm={a.confirm} danger={a.danger} entry={entry} />)}
+                            {menuActions.map((a) => <RowMenuItem key={a.label} instanceId={instanceId!} label={a.label} action={a.action} href={href(a, id)} id={id} confirm={a.confirm} danger={a.danger} entry={entry} presentation={a.presentation} />)}
                           </RowMenu>
                         )}
                       </div>

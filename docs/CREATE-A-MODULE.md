@@ -373,6 +373,8 @@ Voir `adminPanel` et `adminActions` dans l'exemple (modifier un message : `?edit
   rowActions: [{ label: "Modifier", href: "?edit={id}" }, { label: "Supprimer", action: "remove", danger: true, confirm: "Supprimer cette commande ?" }] }
 ```
 
+- **Edit in a window above the list (next core release, optional)**: add `presentation: "dialog"` to the row button (`{ label: "Edit", href: "?edit={id}", presentation: "dialog" }`) and to the `adminForm` that `adminPanel` returns for `?edit=…`. The form opens in a window (same look as the extension details), keeps the list's search and position, closes on a success and highlights the saved row. An older core ignores the key and keeps the form at the top of the page, so `minCore` does not change. Example and rules: [MODULES.md](MODULES.md) (« Edit dialog »).
+
 Le détail de chaque clé est dans [MODULES.md](MODULES.md) (« Contrôles `period`, `datetime`, `duration` », « Tableau enrichi »). Le kit de test mesure ce qui peut l'être (`admin.ergonomics`, `assertAdminPageErgonomics`) et exige `minCore` 0.6.0 si vous utilisez l'une de ces briques.
 
 ### Un export à télécharger, un fichier à envoyer (`adminDownloads`, champ `file`)
