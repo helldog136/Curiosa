@@ -64,7 +64,10 @@ function register(code) {
   let name = option("name");
   if (!name) { try { const n = new Intl.DisplayNames([code], { type: "language" }).of(code); if (n && n !== code) name = n.charAt(0).toLocaleUpperCase(code) + n.slice(1); } catch { /* unknown to this system */ } }
   if (!name) fail(`this system does not know the name of "${code}": add --name "<the name of the language, in that language>".`);
-  languages[code] = { name, status: "community", ...(flag("rtl") || ["ar", "he", "fa", "ur"].includes(code) ? { rtl: true } : {}) };
+  // Right-to-left: asked with --rtl, or known to the system (Intl text direction).
+  const locale = new Intl.Locale(code);
+  const direction = locale.getTextInfo?.().direction ?? locale.textInfo?.direction;
+  languages[code] = { name, status: "community", ...(flag("rtl") || direction === "rtl" ? { rtl: true } : {}) };
   writeJson(file, languages);
 }
 
