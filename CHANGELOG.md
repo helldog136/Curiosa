@@ -15,7 +15,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Apparence de l'administration
 
-- **Les pages secrètes des modules peuvent reprendre l'apparence de l'administration.** La télécommande ou un dock OBS d'un module pourront avoir les mêmes couleurs que votre administration (clair, sombre ou selon l'appareil), au lieu de celles du site public. Votre administration ne change pas d'aspect. Rien à régler : chaque module décidera de l'adopter dans une prochaine mise à jour.
+- **Les pages secrètes des modules pourront reprendre l'apparence de l'administration.** Une télécommande ou un dock OBS aura vos couleurs d'administration, claires ou sombres, au lieu de celles du site public. Votre administration ne change pas d'aspect et il n'y a rien à régler.
 
 ### Visites de personnes et de robots
 
@@ -26,7 +26,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Pour les développeurs
 
-- **Jetons visuels de l'admin** (`src/core/adminTheme.ts`) : liste unique de variables `--cur-*` (`ADMIN_TOKENS`, noms figés par `tests/core/admin-theme-tokens.test.mjs`, valeurs claires et sombres, contrastes AA testés). L'admin les lit : `--v-*` vaut `var(--cur-*)`, sans changement visible. `ctx.api.adminTheme({ scheme })` (additif, sans permission) rend `{ css, scheme, wordmark }` : variables seulement, aucune adresse ni police ; un cœur plus ancien ne l'a pas (`ctx.api.adminTheme?.(…)`). Voir `docs/MODULES.md` et `docs/ideas/skins-admin.md`.
+- **Jetons visuels de l'admin** (`src/core/adminTheme.ts`) : liste unique de variables `--cur-*`, noms figés par test, contrastes AA testés ; l'admin les lit sans changement visible. `ctx.api.adminTheme({ scheme })` (additif, sans permission) rend `{ css, scheme, wordmark }` ; absent des cœurs plus anciens. Voir `docs/MODULES.md`.
 - **Identité visuelle** : fichiers dans `docs/brand/` (SVG avec lettres en contours, PNG, `README.md`) ; rien dans `src/`, aucun changement de l'application.
 - **Une seule liste d'agents non humains** (`src/core/agents.ts`, `classifyAgent` : `person`, `search`, `ai`, `preview`, `tool`). `redirectStats.ts` (`isHumanVisit`, comportement inchangé) et `stats.ts` l'utilisent ; l'ancienne liste de `redirectStats.ts` et l'expression courte de `stats.ts` disparaissent. Quelques noms d'IA ajoutés (`google-extended`, `cohere`, `mistralai`, `diffbot`…).
 - **Compteur de robots** : lignes `VisitDaily` de genre `bot` (`ROBOT_KIND`), clé = catégorie, `views` = visites, 4 lignes par jour au plus. Aucun changement de schéma, aucune migration. `recordVisit` renvoie `"robot"` pour ces visites (avant : `"ignored"`). `statsSummary().robots` (`last7`, `last30` : `search`, `ai`, `preview`, `tool`, `total`) est additif.

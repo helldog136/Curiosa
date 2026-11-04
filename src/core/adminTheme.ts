@@ -118,7 +118,9 @@ export type ModuleAdminTheme = {
 
 /** Règle du nom « Curiosa » (Fraunces italique 600, 1,15 em, souligné) pour une page de module. La police n'est pas chargée : sans elle, le navigateur prend une empattée italique du système. */
 const WORDMARK_CSS = '.cur-wordmark{--cur-wordmark-font:Fraunces,ui-serif,Georgia,serif;font-family:var(--cur-wordmark-font);font-style:italic;font-weight:600;font-size:1.15em;text-decoration:underline;text-underline-offset:2px;text-transform:none;letter-spacing:normal}';
-const WORDMARK_HTML = `<a class="cur-wordmark" data-curiosa-wordmark="" href="${CREDIT_URL}" target="_blank" rel="noopener">Curiosa</a>`;
+// Le mot vient d'une constante : CuriosaMark (composant React) reste le seul endroit qui écrit le lien à la main ; ici c'est son équivalent pour une page de module qui n'a pas React.
+const WORDMARK_NAME = "Curiosa";
+const WORDMARK_HTML = `<a class="cur-wordmark" data-curiosa-wordmark="" href="${CREDIT_URL}" target="_blank" rel="noopener">${WORDMARK_NAME}</a>`;
 
 /** Les jetons de l'admin pour la page secrète d'un module. `scheme` inconnu ou absent : `auto`. Pur et borné : même entrée, même sortie. */
 export function moduleAdminTheme(opts?: { scheme?: unknown }): ModuleAdminTheme {
