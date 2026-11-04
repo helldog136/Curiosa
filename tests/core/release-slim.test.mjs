@@ -34,3 +34,33 @@ test("le serveur de production n'a besoin ni du compilateur ni de TypeScript : c
   const walk = (d) => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(`${d}/${e.name}`) : [`${d}/${e.name}`]));
   for (const f of walk("src").filter((x) => /\.(ts|tsx)$/.test(x))) assert.ok(!/next\/image|from "typescript"/.test(fs.readFileSync(f, "utf8")) && (f.endsWith("imageDerive.ts") || !/sharp/.test(fs.readFileSync(f, "utf8").replace(/\/\/.*|\/\*[\s\S]*?\*\//g, ""))), `${f} emploie un paquet que l'archive n'embarque pas`);
 });
+
+test("release archive: next.config.mjs starts without src/ (languages come from release.json) and still exposes the language rewrites", async () => {
+  const { makeTempDir } = await import("../helpers/tmp.mjs");
+  const dir = makeTempDir("archive-like-");
+  try {
+    // What the archive ships: no src/, but next.config.mjs, package.json, scripts/ and release.json (written by release-pack.mjs).
+    fs.copyFileSync("next.config.mjs", `${dir}/next.config.mjs`);
+    fs.copyFileSync("package.json", `${dir}/package.json`);
+    fs.cpSync("scripts", `${dir}/scripts`, { recursive: true });
+    assert.equal(fs.existsSync(`${dir}/src`), false);
+    const load = async (name) => (await import(`file://${dir}/next.config.mjs?${name}`)).default.rewrites();
+    const codes = (rewrites) => /\/:locale\(([^)]*)\)/.exec(rewrites.beforeFiles.find((r) => r.destination === "/:path*").source)[1].split("|");
+    // 1. Neither src/ nor release.json: never throws, falls back to English and French.
+    assert.deepEqual(codes(await load("none")), ["en", "fr"]);
+    // 2. release.json written by the pack step: a community language keeps its prefix.
+    fs.writeFileSync(`${dir}/release.json`, JSON.stringify({ languages: ["en", "fr", "de", "NOT_A_CODE"] }));
+    assert.deepEqual(codes(await load("pack")), ["en", "fr", "de"]);
+    // 3. Corrupt release.json: still no throw.
+    fs.writeFileSync(`${dir}/release.json`, "{");
+    assert.deepEqual(codes(await load("corrupt")), ["en", "fr"]);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+  assert.match(pack, /languages: Object\.keys\(JSON\.parse\(fs\.readFileSync\("src\/locales\/languages\.json"/, "the pack step writes the language codes into release.json");
+});
+
+test("smoke test: the archive is started like production (-H 127.0.0.1, X-Forwarded-Proto: https) and a secondary-language path must not fail", () => {
+  assert.match(smoke, /"next", "start", "-H", "127\.0\.0\.1"/);
+  assert.match(smoke, /x-forwarded-proto/);
+  assert.match(smoke, /"\/fr", "\/fr\/privacy"/);
+  assert.match(smoke, /\/fr\/introuvable/);
+});

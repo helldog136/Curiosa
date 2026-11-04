@@ -7,8 +7,16 @@ import { hashVersion } from "./scripts/update-lib.mjs";
 // qui répond est bien le nouveau. Un ancien serveur, resté en mémoire sur ses anciens fichiers, répond toujours l'ancienne empreinte.
 const VERSION = (() => { try { return JSON.parse(fs.readFileSync(new URL("./package.json", import.meta.url), "utf8")).version; } catch { return "0.0.0"; } })();
 
-// Language codes of src/locales/languages.json (the same list as core/i18n/locales.ts): the only URL prefixes that are rewritten, see rewrites() below.
-const LANGUAGE_CODES = Object.keys(JSON.parse(fs.readFileSync(new URL("./src/locales/languages.json", import.meta.url), "utf8"))).filter((code) => /^[a-z]{2}$/.test(code));
+// Language codes (the same list as core/i18n/locales.ts): the only URL prefixes that are rewritten, see rewrites() below.
+// Read from src/locales/languages.json in a repository (dev, build), else from `languages` of release.json (written by scripts/release-pack.mjs: a release
+// archive has no src/), else English and French. Never throws: a missing file must not stop the server from starting.
+const LANGUAGE_CODES = (() => {
+  const read = (file) => { try { return JSON.parse(fs.readFileSync(new URL(file, import.meta.url), "utf8")); } catch { return null; } };
+  const fromSource = read("./src/locales/languages.json");
+  const codes = fromSource && typeof fromSource === "object" ? Object.keys(fromSource) : read("./release.json")?.languages;
+  const valid = (Array.isArray(codes) ? codes : []).filter((code) => typeof code === "string" && /^[a-z]{2}$/.test(code));
+  return valid.length > 0 ? valid : ["en", "fr"];
+})();
 
 /** @type {import("next").NextConfig} */
 const nextConfig = {
