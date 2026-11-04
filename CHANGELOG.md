@@ -7,6 +7,20 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.6.8 — 2026-11-04
+
+**En bref.** La version française d'un site dont la langue principale est l'anglais fonctionne de nouveau : ses pages s'ouvrent au lieu d'afficher une erreur. Il en va de même pour la page « lien terminé » du module Redirections. Rien à configurer.
+
+### Langues
+
+- **Les pages dans la deuxième langue s'ouvrent de nouveau.** Sur certains sites, toutes les pages précédées d'un code de langue répondaient « Internal Server Error », alors que celles de la langue principale marchaient. Rien à régler.
+- **L'accueil dans une autre langue a une adresse plus propre.** Le plan du site et les moteurs de recherche annoncent la page d'accueil sans barre oblique finale, qui évite un détour.
+
+### Pour les développeurs
+
+- **Language prefix rewrite moved to `next.config.mjs` (`rewrites().beforeFiles`).** An absolute `NextResponse.rewrite` is internal only if its origin equals the server's own; `NextURL` turns 127.0.0.1 into `localhost`, so with `-H 127.0.0.1` behind HTTPS nginx every `/<lang>/…` page got a bare 500. The proxy now sets `x-curiosa-locale` / `x-curiosa-gone`; path-only config rewrites apply them.
+- **`pageUrl()` returns `/fr`, not `/fr/`, for the home of a prefixed language** (canonical, hreflang, sitemap, JSON-LD breadcrumbs).
+
 ## 0.6.7 — 2026-11-04
 
 **En bref.** Le tableau de bord compte maintenant à part les visites de robots et d'intelligences artificielles (« Robots et IA »), sans rien garder d'eux. Le logo de Curiosa est disponible. Les extensions pourront reprendre l'apparence de l'administration. L'anglais et le français sont toujours complets ; d'autres langues peuvent être proposées par la communauté, avec un guide de traduction. L'assistant d'installation permet de connecter une IA, avec des profils de droits, « Tout cocher » et un choix d'approbation plus clair. L'assistant IA peut aussi publier vos brouillons si vous l'autorisez, connaître ses droits, préparer plusieurs installations d'un coup et demander un exemplaire de plus. Modifier un élément d'une liste ouvre une fenêtre au-dessus de la page. Rien à régler.
@@ -38,8 +52,6 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Langues
 
-- **Les pages dans la deuxième langue s'ouvrent de nouveau.** Sur certains sites, toutes les pages précédées d'un code de langue répondaient « Internal Server Error », alors que celles de la langue principale marchaient. Rien à régler.
-- **L'accueil dans une autre langue a une adresse plus propre.** Le plan du site et les moteurs de recherche annoncent la page d'accueil sans barre oblique finale, qui évite un détour.
 - **L'assistant d'installation parle enfin la langue choisie.** En anglais, les extensions proposées (blog, liens, pages…) s'affichent avec leur description anglaise ; avant, un texte français pouvait s'y glisser. Il démarre dans la langue de votre navigateur, ou en anglais, et ses boutons et messages suivent la langue choisie.
 - **L'anglais et le français sont toujours complets, les autres langues peuvent l'être à moitié.** Quand un texte manque dans une langue, Curiosa montre celui de la langue principale du site, puis l'anglais, jamais une autre langue par hasard.
 - **Un état des traductions dans Réglages › Langues.** Chaque langue est « officielle » (anglais, français) ou « communautaire », « complète » ou « partielle : 82 % », et la liste des extensions auxquelles il manque des textes s'y trouve. Votre assistant IA lit la même chose.
@@ -59,8 +71,6 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Qui approuve les actions à risque est enfin clair.** Deux boutons montrent toujours votre choix, et la page dit que l'installation demande toujours votre accord.
 
 ### Pour les développeurs
-- **Language prefix rewrite moved to `next.config.mjs` (`rewrites().beforeFiles`).** An absolute `NextResponse.rewrite` is internal only if its origin equals the server's own; `NextURL` turns 127.0.0.1 into `localhost`, so with `-H 127.0.0.1` behind HTTPS nginx every `/<lang>/…` page got a bare 500. The proxy now sets `x-curiosa-locale` / `x-curiosa-gone`; path-only config rewrites apply them.
-- **`pageUrl()` returns `/fr`, not `/fr/`, for the home of a prefixed language** (canonical, hreflang, sitemap, JSON-LD breadcrumbs).
 - **AI publishing** (`src/core/maintenance/publish.ts`, tools generated in `src/core/content/mcp.ts`): `<instance>__publish` / `__unpublish` as level 3 actions `entry_publish` / `entry_unpublish` of `callLevel3`, so they follow the per-access approval setting. A bundle is `plan.entry.items` with a text fingerprint; a draft edited after the request is not published.
 - **New core tools** (all additive): `maintenance_my_access` (default on), `maintenance_catalog_plan`, `maintenance_instance_add` (always waits for the owner, like installs), `maintenance_skin_set_options` (`saveColorChoices` in `skins/appearance.ts`), and `maintenance_module_install { modules }` (`plan.bundle`, one pending request).
 - **`McpTool.request`** (optional boolean) marks tools that create requests; `destructive` is now only for deletions (uninstall, skin removal). `MAINTENANCE_TOOLS` carries both. The rights page and the requests tab read both.
