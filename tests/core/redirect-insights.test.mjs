@@ -323,7 +323,7 @@ test("boutons du site : le menu, l'en-tête et les listes passent par la réécr
   assert.equal(entryHref({ url: "javascript:alert(1)", slug: "s", locale: "fr" }, { clickAction: "external" }, "fr", map).href.startsWith("javascript:"), false);
   const footer = fs.readFileSync("src/components/site/Footer.tsx", "utf8");
   assert.deepEqual([...footer.matchAll(/href=\{([^}]+)\}/g)].map((m) => m[1].replace(/^`\$\{/, "").split("(")[0]), ["withLocale", "withLocale", "feedPath"]);
-  assert.match(fs.readFileSync("src/components/brand/CuriosaMark.tsx", "utf8"), /href=\{CREDIT_URL\}/, "le lien du crédit (constante du cœur) vit dans CuriosaMark");
+  assert.match(fs.readFileSync("src/components/brand/CuriosaMark.tsx", "utf8"), /creditSiteUrl\(locale\)/, "le lien du crédit (constantes du cœur, core/credit.ts) vit dans CuriosaMark");
 });
 
 /* ───────────── B. Assistant pour les modules ───────────── */

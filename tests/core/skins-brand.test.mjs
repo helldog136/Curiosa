@@ -165,7 +165,7 @@ test("un seul composant écrit le nom : pied public et pied d'administration pas
   assert.match(mark, /data-skin-part="brand-mark"/);
   assert.match(mark, /data-curiosa-wordmark=""/);
   assert.match(mark, /wordmark\.className \+?\}?[^`]*wordmark\.variable|\$\{wordmark\.className\} \$\{wordmark\.variable\}/);
-  assert.match(fs.readFileSync("src/components/site/Footer.tsx", "utf8"), /<CuriosaMark \/>/);
+  assert.match(fs.readFileSync("src/components/site/Footer.tsx", "utf8"), /<CuriosaMark locale=\{locale\} \/>/);
   assert.match(fs.readFileSync("src/app/admin/(panel)/layout.tsx", "utf8"), /<CuriosaMark newTab \/>/);
   const users = sources("src").filter((f) => /brand\/wordmark"/.test(fs.readFileSync(f, "utf8")) && !f.endsWith("CuriosaMark.tsx"));
   assert.deepEqual(users, [], "la police du nom n'est importée que par CuriosaMark");
@@ -176,7 +176,8 @@ test("un seul composant écrit le nom : pied public et pied d'administration pas
 test("banc d'essai : le pied est celui du vrai composant, et la vraie police du nom est servie au navigateur", async () => {
   for (const L of ["fr", "en"]) {
     const html = fs.readFileSync(`testsupport/skins/bench/fragments/${L}/footer.html`, "utf8");
-    assert.match(html, /<a href="https:\/\/github\.com\/helldog136\/Curiosa" rel="noopener" data-skin-part="brand-mark" data-curiosa-wordmark="" class="bench-font bench-font-var /);
+    const href = L === "fr" ? "https:\\/\\/curiosa\\.helldog136\\.be\\/fr" : "https:\\/\\/curiosa\\.helldog136\\.be";
+    assert.match(html, new RegExp(`<a href="${href}" rel="noopener" data-skin-part="brand-mark" data-curiosa-wordmark="" class="bench-font bench-font-var `));
   }
   const { BRAND_FONT_URL } = await import("../../testsupport/skins/bench/site.mjs");
   assert.equal(BRAND_FONT_URL, "/__bench/curiosa-wordmark.woff2");
