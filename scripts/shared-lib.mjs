@@ -199,6 +199,8 @@ export async function runStartup(o) {
     if (r?.stdout) log(String(r.stdout).trim().split("\n").slice(-5).join("\n"));
   } catch (e) {
     log(`✘ migration failed: ${String(e?.message ?? e).split("\n")[0]}`);
+    // What the command printed is the only clue to WHY (permissions, a missing engine, a locked file…): keep its last lines in the journal.
+    for (const part of [e?.stderr, e?.stdout]) { const tail = String(part ?? "").trim().split("\n").slice(-12).join("\n"); if (tail) log(tail); }
     let restored = false;
     if (backup && dbFile) { try { restoreBackup(backup, dbFile); restored = true; log("database restored from the copy made just before"); } catch (x) { log(`✘ could not restore the copy: ${x?.message}`); } }
     return refuse("migrate-failed", `The database could not be updated${restored ? " and was put back as it was" : ""}. ${backup ? `A copy is in ${backup}.` : ""}`.trim(), { backup, restored });

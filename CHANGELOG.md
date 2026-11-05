@@ -37,6 +37,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 ### Pour les développeurs
 
 - **Docker image and release workflow.** `Dockerfile` only unpacks the release archive (tested); archives for x64 and arm64 with `upgrade.json`; images pushed to GHCR after the release (tags `X.Y.Z`, `X.Y`, `latest` for stable); dry run with `workflow_dispatch`. Old source build: `Dockerfile.source`.
+- **Image fixes.** The Prisma CLI is pointed at the shipped engines (non-root, offline); smoke failures print logs and `docker inspect`; `workflow_dispatch` `release_tag` rebuilds images for an existing release; `publish-arm` is idempotent.
 - **Shared update code.** `scripts/shared-lib.mjs`, `scripts/install-kind.mjs` (the one `installKind()`) and `scripts/update-plan.mjs --json`; the in-place updater calls the same functions. `maintenance_core_update` returns the plan on Docker. Design: `docs/ideas/update-paths.md`.
 - **Long actions in the background** (`maintenance/background.ts`): `modules_update_all`, `module_update`, `module_reinstall`, `check_updates`, approved `module_install` / `skin_install` answer `{status: "started", requestId}` after `deps.quickWaitMs` (8 s, 20 s at most).
 - **Follow-up**: `maintenance_request_status` returns `progress` (per module) and `result.details`. Direct runs are `run_…` records (setting `maintenance.runs`); a `running` record that no work of the process stands behind is closed as failed after 2 minutes.

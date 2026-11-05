@@ -190,3 +190,13 @@ test("start-up copies: a data-version change makes a pre-update copy (last 3 kep
     assert.equal((await go("0.7.3")).backupKind, "pre-update");
   } finally { v.cleanup(); }
 });
+
+test("start-up: a failing migration keeps what the command printed in the journal (the only clue to why)", async () => {
+  const v = volume(); try {
+    const lines = [];
+    const exec = v.exec(() => { throw Object.assign(new Error("Command failed: node prisma migrate deploy"), { stderr: "Error: Can't write to /app/node_modules/@prisma/engines\nplease check permissions", stdout: "" }); });
+    const r = await runStartup({ appDir: v.appDir, dataDir: v.dataDir, version: "0.7.0", databaseUrl: v.databaseUrl, exec, log: (l) => lines.push(l) });
+    assert.equal(r.error, "migrate-failed");
+    assert.ok(lines.some((l) => /Can't write to \/app\/node_modules\/@prisma\/engines/.test(l)), lines.join("|"));
+  } finally { v.cleanup(); }
+});
