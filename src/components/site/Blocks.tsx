@@ -17,15 +17,13 @@ import { EntryIcon } from "./EntryIcon";
 import { ModuleForm } from "./ModuleForm";
 import { CopyCode } from "./CopyCode";
 import { CopyText } from "./CopyText";
-import { AdminBlockForm, RowActionButton, type FileLabels } from "../admin/AdminBlocks";
-import { DialogLink } from "../admin/EditDialog";
+import type { FileLabels } from "../admin/AdminBlocks";
+import { TableView } from "../admin/TableView";
+import type { AdminKit } from "./adminKit";
 import { dialogsLast } from "@/core/adminkit/dialog";
 import { ui } from "../admin/ui";
-import { GridEditor } from "../admin/GridEditor";
 import { floatingLabels } from "../admin/floating";
 import { mayShowDownload } from "@/core/modules/downloadAccess";
-import { SuggestInstall } from "../admin/SuggestInstall";
-import { AdminTable } from "../admin/AdminTable";
 import { isEnhancedTable } from "@/core/adminkit/table";
 import { sanitizeTableImages } from "@/core/adminkit/image";
 import { imageHostsOfInstance } from "@/core/modules/imageHosts";
@@ -55,11 +53,16 @@ function pickRandom<T>(items: T[], n: number): T[] {
  * `adminInstanceId` : blocs du panneau d'admin d'une instance (formulaires et boutons actifs). `adminEntry` : blocs d'une section ajoutée à l'éditeur d'une entrée —
  * les formulaires et boutons passent par les actions de la section (voir core/modules/entryPanels.ts) ; l'éditeur de grille n'y existe pas.
  */
-export async function Blocks({ blocks, locale, adminInstanceId: panelInstanceId, adminEntry }: { blocks: Block[]; locale: string; adminInstanceId?: string; adminEntry?: { instanceId: string; panelId: string; entryId: string } }) {
+export async function Blocks({ blocks, locale, adminInstanceId: panelInstanceId, adminEntry, kit }: { blocks: Block[]; locale: string; kit?: AdminKit; adminInstanceId?: string; adminEntry?: { instanceId: string; panelId: string; entryId: string } }) {
   const adminInstanceId = adminEntry?.instanceId ?? panelInstanceId;
   const entryScope = adminEntry ? { panelId: adminEntry.panelId, entryId: adminEntry.entryId } : undefined;
   const config = await getSiteConfig();
   const out: React.ReactNode[] = [];
+  // The admin components come from `kit`, given by the admin pages only (see adminKit.ts). Each use below sits in a branch that needs an admin panel (`adminInstanceId`),
+  // which only those pages set, so the names are defined whenever they are reached.
+  const { AdminBlockForm, RowActionButton, DialogLink, GridEditor, SuggestInstall } = kit ?? ({} as AdminKit);
+  // Admin pages get the table with its row buttons and switches; public pages get the same view without them (search, pills, pages, badges).
+  const Table = kit?.AdminTable ?? TableView;
   // An edit dialog (`presentation: "dialog"`) comes last: opening it does not shift the position (so the identity and the state, search and filter) of the list under it.
   for (const [i, block] of dialogsLast(blocks, { admin: Boolean(adminInstanceId), entry: Boolean(entryScope) }).entries()) {
     switch (block.type) {
@@ -254,7 +257,7 @@ export async function Blocks({ blocks, locale, adminInstanceId: panelInstanceId,
         if (isEnhancedTable(block)) {
           // Les vignettes (`image`) sont validées ICI, côté serveur : pages du site, ou hôtes déclarés dans le manifeste du module (jamais d'autre hôte). Sur le site public : pages du site seulement.
           const safe = sanitizeTableImages(block, await imageHostsOfInstance(adminInstanceId));
-          out.push(<AdminTable key={i} block={safe} instanceId={adminInstanceId} entry={entryScope} labels={tableLabels(makeTranslator(locale))} />);
+          out.push(<Table key={i} block={safe} instanceId={adminInstanceId} entry={entryScope} labels={tableLabels(makeTranslator(locale))} />);
           break;
         }
         out.push(
