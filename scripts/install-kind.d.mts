@@ -17,4 +17,5 @@ export const DATA_VERSION_FILE: string;
 export const STARTUP_STATE_FILE: string;
 export function imageTag(step: string): string;
 export function imageTagsFor(version: string): string[];
+export function imageTagsForExisting(version: string, stable?: string[]): string[];
 export function dockerCommands(tags: string[]): string[];

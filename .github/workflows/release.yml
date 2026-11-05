@@ -29,6 +29,10 @@ on:
         description: "Essai à blanc : construire archives et image, envoyer l'image sous dry-run-<sha> (sans release, sans latest)"
         type: boolean
         default: true
+      release_tag:
+        description: "Images d'une release EXISTANTE (ex. v0.6.14) : reconstruites depuis les archives publiées de cette release et envoyées avec les étiquettes habituelles. Remplace l'essai à blanc. Sert aussi à relancer un envoi d'image échoué."
+        type: string
+        default: ""
 permissions:
   contents: read
 jobs:
@@ -42,6 +46,8 @@ jobs:
       pack: ${{ steps.v.outputs.pack }}
       image: ${{ steps.v.outputs.image }}
       dry_run: ${{ steps.v.outputs.dry_run }}
+      retag: ${{ steps.v.outputs.retag }}
+      revision: ${{ steps.v.outputs.revision }}
       image_name: ${{ steps.v.outputs.image_name }}
       image_tags: ${{ steps.v.outputs.image_tags }}
     steps:
@@ -54,12 +60,24 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           EVENT: ${{ github.event_name }}
           DRY_RUN: ${{ inputs.image_dry_run }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
           base=$(node -p "require('./package.json').version")
           echo "version=$base" >> "$GITHUB_OUTPUT"
           echo "dry_run=false" >> "$GITHUB_OUTPUT"
           echo "image=false" >> "$GITHUB_OUTPUT"
-          if [[ "$EVENT" == "workflow_dispatch" ]]; then
+          echo "retag=false" >> "$GITHUB_OUTPUT"
+          echo "revision=$GITHUB_SHA" >> "$GITHUB_OUTPUT"
+          if [[ "$EVENT" == "workflow_dispatch" && -n "$RELEASE_TAG" ]]; then
+            # Images d'une release EXISTANTE : rien n'est empaqueté ni publié, les archives viennent de la release elle-même.
+            [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$ ]] || { echo "::error::release_tag doit être vX.Y.Z ou vX.Y.Z-rc.N"; exit 1; }
+            gh release view "$RELEASE_TAG" >/dev/null || { echo "::error::la release $RELEASE_TAG n'existe pas"; exit 1; }
+            base="${RELEASE_TAG#v}"
+            echo "version=$base" >> "$GITHUB_OUTPUT"
+            echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"; echo "pre=false" >> "$GITHUB_OUTPUT"; echo "publish=false" >> "$GITHUB_OUTPUT"; echo "pack=false" >> "$GITHUB_OUTPUT"
+            echo "image=true" >> "$GITHUB_OUTPUT"; echo "retag=true" >> "$GITHUB_OUTPUT"
+            echo "revision=$(gh api "repos/$GITHUB_REPOSITORY/commits/$RELEASE_TAG" --jq .sha)" >> "$GITHUB_OUTPUT"
+          elif [[ "$EVENT" == "workflow_dispatch" ]]; then
             # Essai à blanc : rien n'est publié ; on construit tout pour pouvoir vérifier l'image.
             echo "tag=dry-run-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"; echo "pre=true" >> "$GITHUB_OUTPUT"; echo "publish=false" >> "$GITHUB_OUTPUT"
             echo "pack=true" >> "$GITHUB_OUTPUT"
@@ -86,12 +104,18 @@ jobs:
           fi
           # Nom de l'image : le dépôt, en minuscules (GHCR l'exige) ; étiquettes : la politique de scripts/install-kind.mjs (latest seulement pour une stable).
           echo "image_name=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
-          if [[ "$EVENT" == "workflow_dispatch" ]]; then tags="dry-run-${GITHUB_SHA::7}"; else tags=$(node --input-type=module -e 'import { imageTagsFor } from "./scripts/install-kind.mjs"; console.log(imageTagsFor(process.argv[1]).join(" "))' "$base"); fi
+          if [[ "$EVENT" == "workflow_dispatch" && -n "$RELEASE_TAG" ]]; then
+            # Même politique d'étiquettes, mais X.Y et latest ne reculent jamais (on peut reconstruire une ancienne release).
+            stable=$(gh release list --exclude-pre-releases --limit 100 --json tagName --jq '.[].tagName' | tr '\n' ' ')
+            tags=$(node --input-type=module -e 'import { imageTagsForExisting } from "./scripts/install-kind.mjs"; console.log(imageTagsForExisting(process.argv[1], process.argv.slice(2)).join(" "))' "$base" $stable)
+          elif [[ "$EVENT" == "workflow_dispatch" ]]; then tags="dry-run-${GITHUB_SHA::7}"
+          else tags=$(node --input-type=module -e 'import { imageTagsFor } from "./scripts/install-kind.mjs"; console.log(imageTagsFor(process.argv[1]).join(" "))' "$base"); fi
           echo "image_tags=$tags" >> "$GITHUB_OUTPUT"
 
   # x64 : l'archive de référence. CI complète (failles, types, tests, build), empaquetage, test de fumée de l'archive RÉELLE : obligatoire.
   build:
     needs: plan
+    if: needs.plan.outputs.retag != 'true'
     runs-on: ubuntu-latest # linux-x64 : la plateforme des serveurs d'hébergement
     steps:
       - uses: actions/checkout@v4
@@ -238,7 +262,7 @@ jobs:
         with:
           name: dist-arm64
           path: dist
-      - name: Ajouter l'archive arm64 à la release
+      - name: Ajouter l'archive arm64 à la release (seulement ce qui manque)
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ needs.plan.outputs.tag }}
@@ -247,13 +271,19 @@ jobs:
           set -euo pipefail
           archive=$(ls dist/curiosa-*-linux-arm64.tar.gz)
           (cd dist && sha256sum -c "$(basename "$archive").sha256")
-          gh release upload "$TAG" "$archive" "$archive.sha256" --repo "$REPO"
+          # `publish` joint déjà l'archive arm64 quand elle est prête avant lui : on ne remonte que les fichiers absents, sans jamais en remplacer un.
+          existing=$(gh release view "$TAG" --repo "$REPO" --json assets --jq '.assets[].name')
+          missing=()
+          for f in "$archive" "$archive.sha256"; do
+            if grep -qxF "$(basename "$f")" <<<"$existing"; then echo "déjà présent : $(basename "$f")"; else missing+=("$f"); fi
+          done
+          if [[ ${#missing[@]} -gt 0 ]]; then gh release upload "$TAG" "${missing[@]}" --repo "$REPO"; fi
 
   # Une image par architecture, sur un exécuteur de cette architecture (aucune émulation) : construite depuis l'archive de `build`, démarrée et vérifiée
   # (scripts/smoke-image.mjs), puis seulement ENVOYÉE (par empreinte, sans étiquette). Après `publish` : si l'image échoue, la release existe déjà.
   image-arch:
     needs: [plan, build, build-arm, publish, publish-required]
-    if: ${{ !cancelled() && needs.build.result == 'success' && needs.plan.outputs.image == 'true' && (needs.publish.result == 'success' || needs.publish-required.result == 'success' || needs.plan.outputs.dry_run == 'true') }}
+    if: ${{ !cancelled() && (needs.build.result == 'success' || needs.plan.outputs.retag == 'true') && needs.plan.outputs.image == 'true' && (needs.publish.result == 'success' || needs.publish-required.result == 'success' || needs.plan.outputs.dry_run == 'true' || needs.plan.outputs.retag == 'true') }}
     continue-on-error: true
     strategy:
       fail-fast: false
@@ -268,17 +298,26 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@v4
-        if: ${{ matrix.arch == 'x64' || needs.build-arm.outputs.ok == 'true' }}
+        if: ${{ matrix.arch == 'x64' || needs.build-arm.outputs.ok == 'true' || needs.plan.outputs.retag == 'true' }}
       - uses: actions/setup-node@v4
-        if: ${{ matrix.arch == 'x64' || needs.build-arm.outputs.ok == 'true' }}
+        if: ${{ matrix.arch == 'x64' || needs.build-arm.outputs.ok == 'true' || needs.plan.outputs.retag == 'true' }}
         with: { node-version: 22 }
+      # Release normale : l'archive vient du job de build (celle qui a passé le test de fumée).
       - uses: actions/download-artifact@v4
-        if: ${{ matrix.arch == 'x64' || needs.build-arm.outputs.ok == 'true' }}
+        if: ${{ needs.plan.outputs.retag != 'true' && (matrix.arch == 'x64' || needs.build-arm.outputs.ok == 'true') }}
         with:
           name: dist-${{ matrix.arch }}
           path: dist
+      # Images d'une release existante : l'archive publiée sur la release (vérifiée par son sha256 à l'étape suivante).
+      - name: Archive de la release existante
+        if: ${{ needs.plan.outputs.retag == 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.plan.outputs.tag }}
+          ARCH: ${{ matrix.arch }}
+        run: gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "curiosa-*-linux-${ARCH}.tar.gz" --pattern "curiosa-*-linux-${ARCH}.tar.gz.sha256" --dir dist
       - name: Contexte de construction (l'archive vérifiée, rien d'autre)
-        if: ${{ matrix.arch == 'x64' || needs.build-arm.outputs.ok == 'true' }}
+        if: ${{ matrix.arch == 'x64' || needs.build-arm.outputs.ok == 'true' || needs.plan.outputs.retag == 'true' }}
         env:
           DOCKER_ARCH: ${{ matrix.docker_arch }}
         run: |
@@ -290,15 +329,15 @@ jobs:
           cp "$archive" "docker-context/archive-${DOCKER_ARCH}.tar.gz"
           cp Dockerfile docker-context/Dockerfile
       - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
-        if: ${{ matrix.arch == 'x64' || needs.build-arm.outputs.ok == 'true' }}
+        if: ${{ matrix.arch == 'x64' || needs.build-arm.outputs.ok == 'true' || needs.plan.outputs.retag == 'true' }}
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ github.token }}
       - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
-        if: ${{ matrix.arch == 'x64' || needs.build-arm.outputs.ok == 'true' }}
+        if: ${{ matrix.arch == 'x64' || needs.build-arm.outputs.ok == 'true' || needs.plan.outputs.retag == 'true' }}
       - name: Image locale (pour la vérification)
-        if: ${{ matrix.arch == 'x64' || needs.build-arm.outputs.ok == 'true' }}
+        if: ${{ matrix.arch == 'x64' || needs.build-arm.outputs.ok == 'true' || needs.plan.outputs.retag == 'true' }}
         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           context: docker-context
@@ -307,10 +346,10 @@ jobs:
           tags: curiosa-smoke:${{ matrix.arch }}
           build-args: |
             VERSION=${{ needs.plan.outputs.version }}
-            REVISION=${{ github.sha }}
+            REVISION=${{ needs.plan.outputs.revision }}
             SOURCE=${{ github.server_url }}/${{ github.repository }}
       - name: Image précédente (si elle existe)
-        if: ${{ matrix.arch == 'x64' || needs.build-arm.outputs.ok == 'true' }}
+        if: ${{ matrix.arch == 'x64' || needs.build-arm.outputs.ok == 'true' || needs.plan.outputs.retag == 'true' }}
         id: prev
         env:
           GH_TOKEN: ${{ github.token }}
@@ -320,7 +359,7 @@ jobs:
           prev=$(gh release list --exclude-pre-releases --limit 5 --json tagName --jq '.[].tagName' | sed 's/^v//' | grep -vx "$VERSION" | head -1 || true)
           if [[ -n "$prev" ]] && docker pull "$IMAGE:$prev" >/dev/null 2>&1; then echo "ref=$IMAGE:$prev" >> "$GITHUB_OUTPUT"; echo "image précédente : $IMAGE:$prev"; else echo "aucune image précédente : le scénario de mise à jour est sauté"; fi
       - name: Test de fumée de l'image (volume vide, PUID/PGID, refus, données précédentes)
-        if: ${{ matrix.arch == 'x64' || needs.build-arm.outputs.ok == 'true' }}
+        if: ${{ matrix.arch == 'x64' || needs.build-arm.outputs.ok == 'true' || needs.plan.outputs.retag == 'true' }}
         env:
           VERSION: ${{ needs.plan.outputs.version }}
           ARCH: ${{ matrix.arch }}
@@ -328,7 +367,7 @@ jobs:
         run: node scripts/smoke-image.mjs "curiosa-smoke:$ARCH" --version "$VERSION" ${PREVIOUS:+--previous "$PREVIOUS"}
       # La vérification a réussi : on envoie, par empreinte (aucune étiquette ici ; elles sont posées une fois les deux architectures prêtes).
       - name: Envoi de l'image par empreinte (avec provenance et SBOM)
-        if: ${{ matrix.arch == 'x64' || needs.build-arm.outputs.ok == 'true' }}
+        if: ${{ matrix.arch == 'x64' || needs.build-arm.outputs.ok == 'true' || needs.plan.outputs.retag == 'true' }}
         id: push
         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
@@ -339,17 +378,17 @@ jobs:
           sbom: true
           build-args: |
             VERSION=${{ needs.plan.outputs.version }}
-            REVISION=${{ github.sha }}
+            REVISION=${{ needs.plan.outputs.revision }}
             SOURCE=${{ github.server_url }}/${{ github.repository }}
       - name: Garder l'empreinte
-        if: ${{ matrix.arch == 'x64' || needs.build-arm.outputs.ok == 'true' }}
+        if: ${{ matrix.arch == 'x64' || needs.build-arm.outputs.ok == 'true' || needs.plan.outputs.retag == 'true' }}
         env:
           DIGEST: ${{ steps.push.outputs.digest }}
         run: |
           [[ "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
           mkdir -p digests && touch "digests/${DIGEST#sha256:}"
       - uses: actions/upload-artifact@v4
-        if: ${{ matrix.arch == 'x64' || needs.build-arm.outputs.ok == 'true' }}
+        if: ${{ matrix.arch == 'x64' || needs.build-arm.outputs.ok == 'true' || needs.plan.outputs.retag == 'true' }}
         with:
           name: digests-${{ matrix.arch }}
           path: digests/*

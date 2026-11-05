@@ -40,7 +40,7 @@ function fakeDocker(opts = {}) {
     if (cmd === "inspect") { const c = containers[args[args.length - 1]]; return ok(c?.running ? `running ${c.healthy ? "healthy" : "starting"}` : "exited "); }
     if (cmd === "exec") {
       const c = containers[args[1]]; const rest = args.slice(2).join(" ");
-      if (rest === "id -u") return ok(String(opts.root ? 0 : c.uid)); if (rest === "id -g") return ok(String(c.gid));
+      if (rest.includes("/proc/1/status")) return ok(String(rest.includes("^Uid:") ? (opts.root ? 0 : c.uid) : c.gid)); // `docker exec id -u` would say root: the site is PID 1
       if (rest.startsWith("stat")) return ok(opts.wrongOwner ? "0:0" : volumes[c.v].owner);
       if (rest.startsWith("cat")) return ok(opts.noMarker ? "" : volumes[c.v].marker);
       if (rest.includes("wc -l")) return ok(String((volumes[c.v].backups ?? []).length));
@@ -93,4 +93,17 @@ test("the smoke test cleans up even when a check fails", async () => {
   const fd = fakeDocker({ root: true });
   await run(fd);
   assert.deepEqual([Object.keys(fd.volumes).length, Object.keys(fd.containers).length], [0, 0]);
+});
+
+test("a failing smoke prints the container logs and docker inspect State so the CI log says why", async () => {
+  const fd = fakeDocker({ neverHealthy: true });
+  const out = [];
+  const r = await run(fd, { http: async () => { throw new Error("refused"); }, log: (l) => out.push(l) });
+  assert.equal(r.ok, false);
+  const text = out.join("\n");
+  assert.match(text, /--- diagnostic for curiosa-smoke-t-fresh-c ---/);
+  assert.match(text, /docker inspect \(State\)/);
+  assert.ok(fd.calls.some((c) => c.startsWith("logs --tail 80")) && fd.calls.some((c) => c.startsWith("inspect --format {{json .State}}")));
+  const lax = []; await run(fakeDocker({ neverRefuse: true }), { log: (l) => lax.push(l) });
+  assert.ok(lax.join("\n").includes("--- output (exit code 0) ---"), "a refusal that did not refuse shows what the container printed");
 });

@@ -6,7 +6,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { makeTempDir } from "../helpers/tmp.mjs";
-import { IMAGE_NAME, imageTagsFor } from "../../scripts/install-kind.mjs";
+import { IMAGE_NAME, imageTagsFor, imageTagsForExisting } from "../../scripts/install-kind.mjs";
 
 const read = (f) => fs.readFileSync(f, "utf8");
 const docker = read("Dockerfile");
@@ -170,7 +170,9 @@ test("workflow: arm64 is NON-BLOCKING for the release while unproven (and blocki
   assert.match(add, /needs: \[plan, build-arm, publish\]/);
   assert.match(add, /needs\.publish\.result == 'success' && needs\.build-arm\.outputs\.ok == 'true'/);
   assert.match(add, /continue-on-error: true/);
-  assert.match(add, /gh release upload "\$TAG" "\$archive" "\$archive\.sha256"/);
+  assert.match(add, /gh release view "\$TAG" --repo "\$REPO" --json assets/, "idempotent: the release's assets are listed first");
+  assert.match(add, /gh release upload "\$TAG" "\$\{missing\[@\]\}"/, "only the missing files are uploaded");
+  assert.match(add, /déjà présent/, "already published by `publish` (arm64 finished first): nothing to do, no failure");
   assert.ok(!/--clobber|gh release (delete|edit|create)/.test(add), "adds files, never replaces, edits or deletes");
   // Required mode: the same release job, but it waits for the arm64 build.
   assert.match(J["publish-required"], /needs: \[plan, build, build-arm\]/);
@@ -182,5 +184,39 @@ test("workflow: arm64 is NON-BLOCKING for the release while unproven (and blocki
   assert.match(J.image, /name: digests-x64/, "the amd64 digest is mandatory");
   assert.match(J.image, /manifeste amd64 seul/);
   const legs = J["image-arch"].split("    steps:\n")[1].split(/\n(?=      - )/);
-  assert.ok(legs.every((st) => st.includes("matrix.arch == 'x64' || needs.build-arm.outputs.ok == 'true'")), "every step of the arm64 leg is skipped when no valid arm64 archive exists");
+  const gated = (st) => st.includes("matrix.arch == 'x64' || needs.build-arm.outputs.ok == 'true' || needs.plan.outputs.retag == 'true'") || st.includes("needs.plan.outputs.retag != 'true' && (matrix.arch == 'x64' || needs.build-arm.outputs.ok == 'true')") || st.includes("if: ${{ needs.plan.outputs.retag == 'true' }}");
+  assert.ok(legs.every(gated), "every step of the arm64 leg is skipped when no valid arm64 archive exists (unless images are rebuilt from a release)");
+});
+
+test("Dockerfile: the Prisma CLI is pointed at the engines of the archive (it ran as non-root and tried to write/download them: the first real image smoke failed there)", () => {
+  // One stage per architecture sets the engine name; the CLI then never looks for (or downloads) anything.
+  assert.match(lines, /FROM node:22-bookworm-slim AS target-amd64\s+ENV PRISMA_ENGINE_TARGET=debian-openssl-3\.0\.x/);
+  assert.match(lines, /FROM node:22-bookworm-slim AS target-arm64\s+ENV PRISMA_ENGINE_TARGET=linux-arm64-openssl-3\.0\.x/);
+  assert.match(lines, /FROM target-\$\{TARGETARCH\}/);
+  assert.match(lines, /ENV PRISMA_SCHEMA_ENGINE_BINARY=\/app\/node_modules\/@prisma\/engines\/schema-engine-\$\{PRISMA_ENGINE_TARGET\}/);
+  assert.match(lines, /ENV PRISMA_QUERY_ENGINE_LIBRARY=\/app\/node_modules\/\.prisma\/client\/libquery_engine-\$\{PRISMA_ENGINE_TARGET\}\.so\.node/);
+  // The names match what the archive carries: the client engine per release-pack, the schema engine per the installed Prisma.
+  const pack = read("scripts/release-pack.mjs");
+  assert.ok(pack.includes('"debian-openssl-3.0.x"') && pack.includes('"linux-arm64-openssl-3.0.x"'));
+  if (process.arch === "x64") assert.ok(fs.existsSync("node_modules/@prisma/engines/schema-engine-debian-openssl-3.0.x"), "the schema engine file name the Dockerfile expects");
+});
+
+test("workflow: images can be rebuilt for an EXISTING release from its published archives (also the way to retry a failed push), tags never move backwards", () => {
+  assert.match(wf, /release_tag:[\s\S]*type: string/);
+  assert.match(J.plan, /RELEASE_TAG: \$\{\{ inputs\.release_tag \}\}/, "through env, never interpolated in the shell");
+  assert.match(J.plan, /\[\[ "\$RELEASE_TAG" =~ \^v\[0-9\]\+\\\.\[0-9\]\+\\\.\[0-9\]\+\(-rc\\\.\[0-9\]\+\)\?\$ \]\]/, "the tag is validated");
+  assert.match(J.plan, /gh release view "\$RELEASE_TAG"/, "the release must exist");
+  assert.match(J.plan, /imageTagsForExisting/);
+  assert.match(J.plan, /echo "publish=false"[\s\S]*echo "pack=false"[\s\S]*echo "retag=true"/, "no release, no packaging");
+  assert.match(J.build, /if: needs\.plan\.outputs\.retag != 'true'/, "no CI rebuild");
+  assert.match(J["image-arch"], /gh release download "\$TAG" --repo "\$GITHUB_REPOSITORY" --pattern "curiosa-\*-linux-\$\{ARCH\}\.tar\.gz" --pattern "curiosa-\*-linux-\$\{ARCH\}\.tar\.gz\.sha256"/);
+  assert.match(J["image-arch"], /sha256sum -c/, "the downloaded archive is verified against its published checksum");
+  assert.match(J["image-arch"], /needs\.plan\.outputs\.retag == 'true'/);
+  assert.match(J["image-arch"], /REVISION=\$\{\{ needs\.plan\.outputs\.revision \}\}/, "the revision label is the release's commit, not the workflow's");
+  assert.match(J.plan, /repos\/\$GITHUB_REPOSITORY\/commits\/\$RELEASE_TAG/);
+  assert.ok(!/gh release (create|upload|delete|edit)/.test(J["image-arch"] + J.image), "the image jobs never touch the release");
+  assert.deepEqual(imageTagsForExisting("0.6.14", ["v0.6.14", "v0.6.13"]), ["0.6.14", "0.6", "latest"], "the highest release: the usual tags");
+  assert.deepEqual(imageTagsForExisting("0.6.13", ["v0.6.14", "v0.6.13", "v0.5.0"]), ["0.6.13"], "an older patch moves neither 0.6 nor latest");
+  assert.deepEqual(imageTagsForExisting("0.6.14", ["0.6.14", "0.7.0"]), ["0.6.14", "0.6"], "newest of its series, not of everything");
+  assert.deepEqual(imageTagsForExisting("0.8.0-rc.1", ["0.7.0"]), ["0.8.0-rc.1"]);
 });

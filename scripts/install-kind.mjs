@@ -45,6 +45,23 @@ export function imageTagsFor(version) {
   return m ? [v, `${m[1]}.${m[2]}`, "latest"] : [v];
 }
 
+/**
+ * Tags for an image rebuilt from an EXISTING release (retry of a failed push, or images for a release published before they existed): the same policy,
+ * except that `X.Y` and `latest` never move BACKWARDS. `stable` lists every stable version published (with or without the leading v).
+ */
+export function imageTagsForExisting(version, stable = []) {
+  const tags = imageTagsFor(version);
+  if (tags.length === 1) return tags;
+  const cmp = (a, b) => { const x = a.split(".").map(Number), y = b.split(".").map(Number); for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return x[i] - y[i]; return 0; };
+  const others = stable.map(imageTag).filter((v) => /^\d+\.\d+\.\d+$/.test(v));
+  const v = imageTag(version);
+  const [exact, series, latest] = tags;
+  const out = [exact];
+  if (!others.some((o) => o.startsWith(`${series}.`) && cmp(o, v) > 0)) out.push(series);
+  if (!others.some((o) => cmp(o, v) > 0)) out.push(latest);
+  return out;
+}
+
 /** Commands to run, in order, for the tags of a plan: one line when the site is above the floor, one pinned line per step otherwise (compose pulls a tag it does not have yet). */
 export function dockerCommands(tags) {
   if (!Array.isArray(tags) || tags.length <= 1) return [DOCKER_UPDATE_COMMAND];
