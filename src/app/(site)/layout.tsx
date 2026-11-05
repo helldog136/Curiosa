@@ -24,6 +24,8 @@ import { withLocale } from "@/core/links";
 import { Footer } from "@/components/site/Footer";
 import { Header } from "@/components/site/Header";
 import { VisitBeacon } from "@/components/site/VisitBeacon";
+import { CodeCopyProvider } from "@/components/site/CodeBlock";
+import { codeCopyLabels } from "@/components/site/codeCopyLabels";
 import "../globals.css";
 
 /** Chemin demandé SANS préfixe de langue (posé par proxy.ts) ; « / » à défaut. */
@@ -108,7 +110,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
           <div data-skin-region="banner"><Blocks blocks={bannerBlocks} locale={locale} /></div>
           <Header config={headerConfig} locale={locale} appearance={look.appearance} />
           <main id="content" data-skin-region="main">
-            <div data-skin-region="content">{children}</div>
+            <CodeCopyProvider labels={codeCopyLabels(t)}><div data-skin-region="content">{children}</div></CodeCopyProvider>
           </main>
           <Footer config={localized} locale={locale} />
         </div>

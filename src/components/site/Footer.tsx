@@ -30,7 +30,7 @@ export async function Footer({ config, locale }: { config: SiteConfig; locale: s
         </p>
         {/* Crédit exigé par la licence (section 4) : ne pas retirer. */}
         <p data-testid="credit" data-skin-part="credit" className="text-xs">
-          {t("site.poweredBy")} <CuriosaMark />
+          {t("site.poweredBy")} <CuriosaMark locale={locale} />
         </p>
     </footer>
   );
