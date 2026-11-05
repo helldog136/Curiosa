@@ -2,6 +2,8 @@ import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { DATA_DIR } from "@/core/config";
+import { dockerCommands, imageTag, installKind, STARTUP_STATE_FILE, type InstallKind } from "../../../scripts/install-kind.mjs";
+import { fetchTextHttps, planUpdate, writeDataVersion } from "../../../scripts/shared-lib.mjs";
 import { audit } from "@/core/permissions";
 import { getSetting, setSetting } from "@/core/settings";
 import { classify, compareVersions, isPrerelease, pickLatestRelease, releaseNotes, TAG_RC_RE, TAG_RE, type UpdateChannel, type UpdateLevel } from "./versions";
@@ -21,8 +23,14 @@ const assetName = (tag: string) => `curiosa-${tag}-${platformId()}.tar.gz`;
 export type InstallMode = "release" | "docker" | "manual";
 export type InstallInfo = {
   mode: InstallMode;
-  /** Peut-on se mettre à jour depuis l'admin ? */
+  /** How the code got here (the single read of CURIOSA_INSTALL is installKind(), scripts/install-kind.mjs). */
+  kind: InstallKind;
+  /** Peut-on se mettre à jour depuis l'admin ? (= canApplyInPlace : jamais vrai dans Docker) */
   canUpdate: boolean;
+  /** Can the site apply an update itself (download, swap, restart)? Derived from the install kind ONLY, never from files: an image is replaced, not changed. */
+  canApplyInPlace: boolean;
+  /** Can the site look for a new version, show its notes and the steps? True for bare metal installed from an archive AND for Docker. */
+  canCheck: boolean;
   version: string;
   /** Dépôt qui publie les releases (« propriétaire/nom »). */
   repo: string | null;
@@ -55,10 +63,11 @@ export function getInstallInfo(appDir = process.cwd()): InstallInfo {
   const repo = REPO_RE.test(configured) ? configured : REPO_RE.test(release?.repo ?? "") ? release!.repo! : null;
   const restart = process.env.CURIOSA_RESTART_COMMAND ? "command" : process.env.CURIOSA_SUPERVISED === "1" ? "supervised" : "manual";
   const base = { version: readVersion(appDir), repo, restart } as const;
-  // Image Docker : on la remplace, on ne la met pas à jour en place.
-  if (process.env.CURIOSA_INSTALL === "docker") return { ...base, mode: "docker", canUpdate: false };
-  if (!release || !repo) return { ...base, mode: "manual", canUpdate: false };
-  return { ...base, mode: "release", canUpdate: true };
+  const kind = installKind();
+  // Image Docker : on la remplace, on ne la met pas à jour en place (mais on vérifie, et on dit quoi lancer).
+  if (kind === "docker") return { ...base, kind, mode: "docker", canUpdate: false, canApplyInPlace: false, canCheck: !!repo };
+  if (!release || !repo) return { ...base, kind, mode: "manual", canUpdate: false, canApplyInPlace: false, canCheck: false };
+  return { ...base, kind, mode: "release", canUpdate: true, canApplyInPlace: true, canCheck: true };
 }
 
 const KEYS = { channel: "updates.channel", auto: "updates.auto", latest: "updates.latest", at: "updates.checkedAt", error: "updates.error", notes: "updates.notes" } as const;
@@ -94,7 +103,7 @@ export async function getUpdateCheck(appDir = process.cwd()): Promise<UpdateChec
 export async function checkForUpdate(opts: { appDir?: string; fetchJson?: JsonFetcher; now?: () => number } = {}): Promise<UpdateCheck> {
   const { appDir = process.cwd(), fetchJson = defaultFetchJson, now = Date.now } = opts;
   const info = getInstallInfo(appDir);
-  if (!info.canUpdate) return getUpdateCheck(appDir);
+  if (!info.canCheck) return getUpdateCheck(appDir);
   try {
     const releases = await fetchJson(`https://api.github.com/repos/${info.repo}/releases?per_page=30`);
     const latest = pickLatestRelease(releases, assetName, await getUpdateChannel()) ?? ((await getSetting<string>(KEYS.latest)) || null);
@@ -115,7 +124,7 @@ export async function checkForUpdate(opts: { appDir?: string; fetchJson?: JsonFe
 export async function findLatestStable(opts: { appDir?: string; fetchJson?: JsonFetcher } = {}): Promise<{ tag: string; notes: string } | null> {
   const { appDir = process.cwd(), fetchJson = defaultFetchJson } = opts;
   const info = getInstallInfo(appDir);
-  if (!info.canUpdate) return null;
+  if (!info.canCheck) return null;
   const releases = await fetchJson(`https://api.github.com/repos/${info.repo}/releases?per_page=30`);
   const tag = pickLatestRelease(releases, assetName, "stable");
   return tag ? { tag, notes: releaseNotes(releases, tag) } : null;
@@ -158,6 +167,34 @@ export function reconcileInterruptedUpdate(opts: { dataDir?: string; version?: s
   } catch { return null; }
 }
 
+/** What a Docker install must run to get to `target`: the image tags in order (more than one below the support floor) and the exact commands. */
+export type DockerPlan = { tags: string[]; commands: string[]; /** False: the steps could not be computed (release files unreachable); one step is shown and the container start refuses a jump over the floor. */ planned: boolean };
+
+/** Same planUpdate as the in-place updater (scripts/shared-lib.mjs), mapped to image tags. Never throws. */
+export async function dockerUpdatePlan(target: string, opts: { appDir?: string; fetchText?: (url: string) => Promise<string | null> } = {}): Promise<DockerPlan> {
+  const { appDir = process.cwd(), fetchText = fetchTextHttps } = opts;
+  const info = getInstallInfo(appDir);
+  try {
+    if (!info.repo) throw new Error("no repo");
+    const steps = await planUpdate({ current: info.version, target, repo: info.repo, fetchText });
+    const tags = steps.map(imageTag);
+    return { tags, commands: dockerCommands(tags), planned: true };
+  } catch {
+    return { tags: [imageTag(target)], commands: dockerCommands([target]), planned: false };
+  }
+}
+
+/** Result of the last container start (copy of the database, migrations, or the reason it refused); null outside Docker or before any start. */
+export type StartupState = { status: "ok" | "refused"; version?: string; at?: number; backup?: string | null; error?: string; message?: string };
+export function readStartupState(dataDir = DATA_DIR): StartupState | null {
+  try { const s = JSON.parse(fs.readFileSync(path.join(dataDir, "update", STARTUP_STATE_FILE), "utf8")); return s && (s.status === "ok" || s.status === "refused") ? s : null; } catch { return null; }
+}
+
+/** Called once the server has started and its module conversions are done: this version is now the last that ran on this data (see checkDataVersion). */
+export function recordStartedVersion(dataDir = DATA_DIR, version = readVersion()): boolean {
+  return writeDataVersion(dataDir, version);
+}
+
 /** Fin du journal de la dernière mise à jour. */
 export function readUpdateLog(lines = 40, dataDir = DATA_DIR): string {
   try { return fs.readFileSync(path.join(dataDir, "update", "update.log"), "utf8").trim().split("\n").slice(-lines).join("\n"); } catch { return ""; }
@@ -183,7 +220,7 @@ export async function startUpdate(tag: string, actor: string, opts: { appDir?: s
   if (!(opts.stableOnly ? TAG_RE : TAG_RC_RE).test(tag)) return { ok: false, error: "invalid-tag" };
   if (isPrerelease(tag) && (opts.stableOnly || (await getUpdateChannel()) !== "rc")) return { ok: false, error: "invalid-tag" };
   const info = getInstallInfo(appDir);
-  if (!info.canUpdate) return { ok: false, error: "unsupported" };
+  if (!info.canApplyInPlace) return { ok: false, error: "unsupported" };
   if (compareVersions(tag, info.version) <= 0) return { ok: false, error: "not-newer" };
   const state = readUpdateState(dataDir);
   if (state.status === "running" && Date.now() - (state.startedAt ?? 0) < 60 * 60_000) return { ok: false, error: "running" };

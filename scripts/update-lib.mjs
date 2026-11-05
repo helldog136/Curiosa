@@ -7,68 +7,23 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { applyMigrations, assetUrl, backupDatabase, compareVersions, planUpdate, resolveSqlitePath, restoreBackup, UPGRADE_FILE } from "./shared-lib.mjs";
 import { cgroupUnit, confirmNewServer, diagnosePort, explainBlocker, explainNotBack, findSiteProcesses, resolveSitePort, stopSite, systemProc, timeouts as computeTimeouts } from "./update-proc.mjs";
 
 export const TAG_RE = /^v?\d+\.\d+\.\d+(-rc\.\d+)?$/; // stable ou release candidate (le choix du canal se fait côté admin)
 export const REPO_RE = /^[A-Za-z0-9._-]{1,100}\/[A-Za-z0-9._-]{1,100}$/;
 const STALE_LOCK_MS = 60 * 60_000;
-const KEEP_BACKUPS = 5;
 const STAGING = ".curiosa-staging";
 const PREVIOUS = ".curiosa-previous";
 /** Ce que l'archive n'a jamais le droit de remplacer : les données de l'exploitant. */
 const PROTECTED = new Set(["data", ".env", ".git", STAGING, PREVIOUS]);
 
-/** Fichier publié avec chaque release (asset `upgrade.json`) : la plus ancienne version depuis laquelle elle s'installe directement. */
-export const UPGRADE_FILE = "upgrade.json";
-const PLAIN_VERSION_RE = /^\d+\.\d+\.\d+$/;
-const MAX_STEPS = 6;
-
-/** Compare deux versions stables « 1.2.3 » (ou « v1.2.3 ») ; une release candidate compte comme sa stable. */
-export function compareVersions(a, b) {
-  const n = (v) => String(v).replace(/^v/, "").replace(/-rc\.\d+$/, "").split(".").map(Number);
-  const x = n(a), y = n(b);
-  for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return x[i] < y[i] ? -1 : 1;
-  return 0;
-}
-
-/**
- * Par quelles versions passer pour atteindre `target` depuis `current` ? Chaque release peut déclarer (asset `upgrade.json`, {"minFrom":"0.1.4"})
- * la plus ancienne version depuis laquelle elle s'installe directement — typiquement parce qu'elle a retiré le code qui convertissait les données
- * d'avant. Le chemin se déduit en remontant : la cible exige 0.1.4, qui n'exige rien → [0.1.4, cible]. Rien exigé → [cible].
- * `fetchText(url)` renvoie le texte, null si le fichier n'existe pas (404) et rejette pour toute autre erreur : un réseau en panne ne doit jamais
- * faire croire qu'aucune étape n'est nécessaire.
- */
-export async function planUpdate({ current, target, repo, fetchText }) {
-  const minFrom = async (tag) => {
-    const text = await fetchText(assetUrl(repo, tag, UPGRADE_FILE));
-    if (text === null) return null;
-    const need = JSON.parse(text)?.minFrom;
-    if (need === undefined) return null;
-    if (typeof need !== "string" || !PLAIN_VERSION_RE.test(need)) throw new Error("upgrade.json invalide");
-    return need;
-  };
-  const steps = [target];
-  let need = await minFrom(target);
-  while (need && compareVersions(current, need) < 0) {
-    // Une étape est toujours strictement plus ancienne que la suivante, et le chemin reste court : sinon, fichier incohérent.
-    if (steps.length >= MAX_STEPS || compareVersions(need, steps[0]) >= 0) throw new Error("chemin de mise à jour incohérent");
-    steps.unshift(`v${need}`);
-    need = await minFrom(`v${need}`);
-  }
-  return steps;
-}
+// Plan (planUpdate, compareVersions, UPGRADE_FILE), backup / migrations / restore and the support floor live in shared-lib.mjs:
+// the container start-up (runStartup) calls the very same code. Re-exported here so every existing import keeps working.
+export { assetUrl, compareVersions, planUpdate, resolveSqlitePath, UPGRADE_FILE };
 
 export const platformId = () => `${process.platform}-${process.arch}`;
 export const assetName = (tag, platform = platformId()) => `curiosa-${tag}-${platform}.tar.gz`;
-export const assetUrl = (repo, tag, name) => `https://github.com/${repo}/releases/download/${tag}/${name}`;
-
-/** Chemin du fichier SQLite d'une DATABASE_URL `file:` (relatif = relatif au dossier prisma/, comme Prisma). */
-export function resolveSqlitePath(databaseUrl, appDir) {
-  const m = /^file:(.+)$/.exec(String(databaseUrl ?? ""));
-  if (!m) return null;
-  const p = m[1].split("?")[0];
-  return path.isAbsolute(p) ? p : path.resolve(appDir, "prisma", p);
-}
 
 export function readState(dataDir) {
   try { return JSON.parse(fs.readFileSync(path.join(dataDir, "update", "state.json"), "utf8")); } catch { return { status: "idle" }; }
@@ -164,15 +119,7 @@ export async function runUpdate(o) {
   let dbBackup = null, dbFile = null;
   try {
     dbFile = resolveSqlitePath(databaseUrl, appDir);
-    if (dbFile && fs.existsSync(dbFile)) {
-      save({ step: "backup" });
-      const backups = path.join(dataDir, "backups");
-      fs.mkdirSync(backups, { recursive: true });
-      dbBackup = path.join(backups, `pre-update-${tag}-${now()}.db`);
-      fs.copyFileSync(dbFile, dbBackup);
-      log(`sauvegarde : ${dbBackup}`);
-      for (const old of fs.readdirSync(backups).filter((f) => f.startsWith("pre-update-")).sort().slice(0, -KEEP_BACKUPS)) fs.rmSync(path.join(backups, old), { force: true });
-    }
+    dbBackup = backupDatabase({ dbFile, dataDir, label: tag, now, beforeCopy: () => save({ step: "backup" }), log });
   } catch { return fail("backup-failed"); }
 
   // 3. téléchargement, vérification, extraction, bascule, migrations
@@ -220,7 +167,7 @@ export async function runUpdate(o) {
     log(`${paths.length} éléments remplacés`);
     migrated = true;
     save({ step: "migrate" });
-    await run("migrate", "npx", ["prisma", "migrate", "deploy"]);
+    await applyMigrations((cmd, args) => run("migrate", cmd, args));
   } catch (e) {
     const reason = e?.code === "checksum-mismatch" || e?.code === "bad-archive" ? e.code : `step-failed:${state.step}`;
     log(`✘ échec à l'étape « ${state.step} » : ${String(e?.message ?? e).split("\n")[0]}`);
@@ -232,7 +179,7 @@ export async function runUpdate(o) {
           fs.rmSync(path.join(appDir, p), { recursive: true, force: true });
           if (had) fs.renameSync(path.join(previousDir, p), path.join(appDir, p));
         }
-        if (migrated && dbBackup && dbFile) { const tmp = `${dbFile}.restore`; fs.copyFileSync(dbBackup, tmp); fs.renameSync(tmp, dbFile); log("base restaurée"); }
+        if (migrated && dbBackup && dbFile) { restoreBackup(dbBackup, dbFile); log("base restaurée"); }
       } catch (x) { rollbackOk = false; log(`✘ retour arrière impossible : ${x?.message}`); }
     }
     cleanup();

@@ -9,7 +9,12 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ## Prochaine version (non publiée)
 
-**En bref.** Les assistants IA ne s'arrêtent plus sur un délai dépassé : mises à jour des modules, diagnostic et vérifications répondent vite, et le travail long continue en coulisse.
+### Docker
+
+- **Un site Docker voit maintenant les nouvelles versions.** La page Mises à jour montre la version disponible, ce qu'elle change et la commande exacte à lancer sur votre serveur. Rien ne s'installe depuis l'admin.
+- **(English) A Docker site now sees new versions.** The Updates page shows the new version, what it changes and the exact command to run on your server. Nothing is installed from the admin.
+- **Vos données sont protégées au démarrage du conteneur.** Une copie de la base est faite avant chaque démarrage, et un conteneur trop ancien ou trop récent pour vos données refuse de démarrer en expliquant quoi faire.
+- **(English) Your data is protected when the container starts.** A copy of the database is made before every start, and a container too old or too new for your data refuses to start and explains what to do.
 
 ### Assistants IA
 
@@ -24,6 +29,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Pour les développeurs
 
+- **Shared update code.** `scripts/shared-lib.mjs`, `scripts/install-kind.mjs` (the one `installKind()`) and `scripts/update-plan.mjs --json`; the in-place updater calls the same functions. `maintenance_core_update` returns the plan on Docker. Design: `docs/ideas/update-paths.md`.
 - **Long actions in the background** (`maintenance/background.ts`): `modules_update_all`, `module_update`, `module_reinstall`, `check_updates`, approved `module_install` / `skin_install` answer `{status: "started", requestId}` after `deps.quickWaitMs` (8 s, 20 s at most).
 - **Follow-up**: `maintenance_request_status` returns `progress` (per module) and `result.details`. Direct runs are `run_…` records (setting `maintenance.runs`); a `running` record that no work of the process stands behind is closed as failed after 2 minutes.
 - **Lock**: the busy message names the action, the access, the request and the time; a lock older than 30 minutes is ignored.

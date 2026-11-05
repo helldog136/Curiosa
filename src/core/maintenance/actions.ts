@@ -3,7 +3,7 @@ import { prisma } from "@/core/db";
 import { getInstanceByKey } from "@/core/instances";
 import { dependentsOf } from "@/core/modules/dependencies";
 import { classify, compareVersions } from "@/core/updates/versions";
-import { getInstallInfo, readVersion } from "@/core/updates/service";
+import { dockerUpdatePlan, getInstallInfo, readVersion } from "@/core/updates/service";
 import { McpToolError } from "@/core/services/mcp/validate";
 import { deps } from "./deps";
 import { isStableVersion, moduleUpdateRefusal, updateRunning } from "./inspect";
@@ -241,7 +241,8 @@ export async function prepare(action: Level3Action, args: Params, opts: { patien
 
   if (action === "core_update") {
     const info = getInstallInfo(deps.appDir ?? process.cwd());
-    if (!info.canUpdate) refuse("This installation cannot be updated from the admin (container image or manual install). Tell the owner.");
+    if (info.kind === "docker") refuse("This site runs in a container image: it is updated by replacing the image, never from the admin. Call maintenance_core_update to get the exact commands for the owner.");
+    if (!info.canUpdate) refuse("This installation cannot be updated from the admin (manual install). Tell the owner.");
     const latest = await deps.latestStable().catch(() => null);
     if (!latest) refuse("No stable release was found (the release list may be unreachable). Try again later.");
     const tag = latest!.tag;
@@ -437,7 +438,28 @@ async function callDirectInBackground(action: Level3Action, args: Params, actor:
 /** Requests that wait for the owner even when the access is set to "act without asking": they bring code or a public page onto the site. */
 export const ALWAYS_HUMAN: readonly Level3Action[] = ["module_install", "skin_install", "instance_add"];
 
+/**
+ * `core_update` on a Docker install: nothing can be executed (the image is replaced by the owner), so no request is created and no approval is asked.
+ * The answer is the plan: the target, the image tags to pass through in order (several below the support floor) and the exact commands.
+ */
+async function dockerCoreUpdateGuide(): Promise<unknown> {
+  const appDir = deps.appDir ?? process.cwd();
+  const latest = await deps.latestStable().catch(() => null);
+  if (!latest) throw new McpToolError("No stable release was found (the release list may be unreachable). Try again later.");
+  const current = readVersion(appDir);
+  const tag = latest.tag;
+  if (!isStableVersion(tag)) throw new McpToolError("Only a stable release can be proposed by an AI.");
+  if (compareVersions(tag, current) <= 0) return { status: "up_to_date", install: "docker", current, message: `Nothing to do: the site is on ${current} and the highest stable release is ${tag.replace(/^v/, "")}.` };
+  const plan = await dockerUpdatePlan(tag, { appDir, fetchText: deps.fetchText });
+  return {
+    status: "manual_update_required", install: "docker", from: current, to: tag.replace(/^v/, ""), level: classify(current, tag) ?? undefined,
+    steps: plan.tags, commands: plan.commands, stepsComputed: plan.planned,
+    message: "Nothing was done and nothing can be done from here: this site runs in a container image, so the owner updates it by running these commands on the host, in this order, waiting for the site to answer between steps. A copy of the database is made automatically at each start.",
+  };
+}
+
 export async function callLevel3(action: Level3Action, args: Params, actor: { name: string; tokenId?: string }): Promise<unknown> {
+  if (action === "core_update" && getInstallInfo(deps.appDir ?? process.cwd()).kind === "docker") return dockerCoreUpdateGuide();
   await takeSlot(actor.tokenId, LEVEL3_CLASS[action]);
   // Installer du code sur le site n'est JAMAIS exécuté sans l'accord de la personne propriétaire, même pour un jeton en « exécution directe » : le réglage vaut pour
   // les mises à jour et désinstallations, et rien dans le modèle ne dit quel module est « sans danger ».
