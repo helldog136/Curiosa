@@ -32,7 +32,8 @@ test("Dockerfile: health check on /api/health, labels, shared start-up entrypoin
 
 test("the source-built Dockerfile is a separate, clearly development-only file; compose keeps it as `build:`", () => {
   assert.match(read("Dockerfile.source"), /^# DEVELOPMENT alternative/);
-  assert.match(read("docker-compose.yml"), /build:\s*\n\s*context: \.\s*\n\s*dockerfile: Dockerfile\.source/);
+  assert.match(read("docker-compose.build.yml"), /build:\s*\n\s*context: \.\s*\n\s*dockerfile: Dockerfile\.source/);
+  assert.ok(!/^\s*build:/m.test(read("docker-compose.yml")), "the main compose file only pulls the published image");
 });
 
 test("entrypoint: calls the shared start-up executor and nothing of the in-place updater", () => {

@@ -193,32 +193,63 @@ si le dépôt est injoignable, le site tient avec la dernière liste reçue (gar
 
 ## Docker
 
-Docker runs Curiosa in a container, for a local trial or for a real site. The image is built on your machine from this repository (the first build downloads and compiles several GB; no ready-made image is published). Everything you may change is a variable in a `.env` file next to `docker-compose.yml`.
+Docker runs Curiosa in a container, for a local trial or for a real site. **Nothing is built on your machine:** the image is published on the GitHub Container Registry at every release (`ghcr.io/helldog136/curiosa`, for Intel/AMD and for ARM, which covers most NAS and Raspberry Pi; the manifest lists the platforms that were published). It is the release archive unpacked, tested before it is published, and it never runs as root. The admin does not update it in place: you pull a new image. Everything you may change is a variable in `.env` (see [Variables](#variables)).
 
-### Local trial
+### Guided install (recommended)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/helldog136/Curiosa/master/scripts/install-docker.sh -o install-docker.sh
+less install-docker.sh                  # read it first
+bash install-docker.sh --dry-run        # shows everything, changes nothing
+bash install-docker.sh
+```
+
+It checks Docker and Docker Compose (Compose 2.24 or newer is needed for the Traefik file), asks at most three questions (domain, e-mail for the HTTPS certificate, setup code), picks how HTTPS is served (the bundled Caddy, your Traefik, or a web server already on the machine), writes `.env`, downloads the compose file of the latest release (whatever version you pin), runs `docker compose pull && docker compose up -d` and waits until the site answers. It never installs Docker unless you pass `--install-docker`, never deletes anything, and can be run again: it keeps what is in `.env`. Options (`--domain`, `--email`, `--proxy`, `--version 0.6.15`, `--data-dir`, `--puid`, `--pgid`, `--yes`, `--lang fr|en`...): `bash install-docker.sh --help`.
+
+### By hand: local trial
 
 ```bash
 cp .env.example .env
-docker compose up -d --build
+docker compose up -d
 ```
 
 Open http://localhost:3000: the setup wizard starts. The default `SITE_URL` (`http://localhost:3000`) is only good for this trial.
 
-### Real site with automatic HTTPS
+### By hand: real site with automatic HTTPS
 
 1. Point your domain's DNS to the server and open ports 80 and 443.
-2. Copy `.env.example` to `.env` and set, in the Docker block and above it: `SITE_URL="https://example.org"` and `CURIOSA_DOMAIN="example.org"` (same domain). Also set `SETUP_TOKEN` to a secret of your choice: until the wizard is done, anyone reaching the site could claim it.
-3. Run `docker compose --profile https up -d --build`. A Caddy container gets and renews the certificate by itself (kept in the `caddy_data` volume) and forwards visitors to the site. `CURIOSA_TRUSTED_PROXIES` already defaults to 1, which is right for this proxy.
+2. Copy `.env.example` to `.env` and set, in the Docker block and above it: `SITE_URL="https://example.org"` and `CURIOSA_DOMAIN="example.org"` (same domain), and optionally `CURIOSA_ACME_EMAIL`. Also set `SETUP_TOKEN` to a secret of your choice: until the wizard is done, anyone reaching the site could claim it.
+3. Run `docker compose --profile https up -d`. A Caddy container gets and renews the certificate by itself (kept in the `caddy_data` volume) and forwards visitors to the site. `CURIOSA_TRUSTED_PROXIES` already defaults to 1, which is right for this proxy.
 4. Open `https://example.org/admin/setup` and give the `SETUP_TOKEN`. Once the site is set up, you can remove `SETUP_TOKEN` from `.env` and run `docker compose up -d` again.
+
+To make the plain `docker compose pull && docker compose up -d` keep your choice, put `COMPOSE_PROFILES="https"` (or `COMPOSE_FILE="docker-compose.yml:docker-compose.traefik.yml"`) in `.env`: Compose reads both from there. The guided script does it for you.
+
+### Versions and tags
+
+| Tag | Meaning | Use it for |
+|---|---|---|
+| `0.6.15` | Exactly this version, never changes. | Pinning (`CURIOSA_VERSION="0.6.15"` in `.env`). |
+| `0.6` | The latest fix of the 0.6 series. | **The only tag an automatic updater such as Watchtower may follow.** |
+| `latest` | The latest stable release (never a pre-release). The default. | Manual updates. Never give it to an automatic updater: it could jump over the versions a very old site must pass through (the container then refuses to start rather than damaging your data, but you would have to fix it by hand). |
+
+### Update
+
+On the **Updates** page of the admin you see when a new version exists, what it changes and the exact command. In a terminal, in the folder of `docker-compose.yml`:
+
+```bash
+docker compose pull && docker compose up -d
+```
+
+A site older than the support floor of the new version must pass through intermediate versions: the page lists them in order, one pinned command each (`CURIOSA_VERSION=0.6.10 docker compose up -d`, wait until the site answers, then the next one). At every start the container copies the database to `backups/` in the data folder (`pre-update-…` when the version changes, `start-…` for a simple restart), refuses to start on data that is too old or newer than the image, and applies the migrations. To go back, pin the previous version **and** restore the `pre-update-` copy (a migrated database cannot be read by an older version).
 
 ### Which proxy?
 
 | Your situation | What to run | Notes |
 |---|---|---|
-| Local trial, no proxy | `docker compose up -d --build` | Port 3000 on 127.0.0.1 only. |
-| Nothing on the server yet, you want HTTPS | `docker compose --profile https up -d --build` | Bundled Caddy, automatic certificate on 80/443. Needs `CURIOSA_DOMAIN`. |
-| You already run Traefik (v2 or v3) | `docker compose -f docker-compose.yml -f docker-compose.traefik.yml up -d --build` | Labels, no host port. Needs `CURIOSA_DOMAIN`; Compose 2.24 or newer. Never together with the Caddy profile (the override switches it off). |
-| nginx, Apache or Caddy installed on the host | `docker compose up -d --build` | Proxy to `http://127.0.0.1:3000` (or `CURIOSA_PORT`). Keep `CURIOSA_BIND` at its default. Send `X-Forwarded-For` and keep `CURIOSA_TRUSTED_PROXIES=1`. |
+| Local trial, no proxy | `docker compose up -d` | Port 3000 on 127.0.0.1 only. |
+| Nothing on the server yet, you want HTTPS | `docker compose --profile https up -d` | Bundled Caddy, automatic certificate on 80/443. Needs `CURIOSA_DOMAIN`. |
+| You already run Traefik (v2 or v3) | `docker compose -f docker-compose.yml -f docker-compose.traefik.yml up -d` | Labels, no host port. Needs `CURIOSA_DOMAIN`; Compose 2.24 or newer. Never together with the Caddy profile (the override switches it off). |
+| nginx, Apache or Caddy installed on the host | `docker compose up -d` | Proxy to `http://127.0.0.1:3000` (or `CURIOSA_PORT`). Keep `CURIOSA_BIND` at its default. Send `X-Forwarded-For` and keep `CURIOSA_TRUSTED_PROXIES=1`. |
 
 Traefik override settings (all optional): `TRAEFIK_NETWORK` (the Docker network your Traefik shares with its services, default `traefik`; it must already exist), `TRAEFIK_ENTRYPOINT` (default `websecure`), `TRAEFIK_CERTRESOLVER` (default `letsencrypt`). To redirect http to https, set it once on your Traefik `web` entrypoint.
 
@@ -260,6 +291,9 @@ Any other reverse proxy: do not use the profile or the override; point it to `12
 | Variable | Default | Meaning |
 |---|---|---|
 | `SITE_URL` | `http://localhost:3000` | Public address of the site. Set it for any real site. |
+| `CURIOSA_VERSION` | `latest` | Image tag: an exact version (`0.6.15`), a series (`0.6`) or `latest`. |
+| `CURIOSA_ACME_EMAIL` | none | E-mail given to the certificate authority by the bundled Caddy (optional). |
+| `COMPOSE_FILE`, `COMPOSE_PROFILES` | none | Which compose files and profiles `docker compose` uses by default (set by the guided script). |
 | `CURIOSA_DOMAIN` | none | Domain of the site. Required with `--profile https` and with the Traefik override. |
 | `CURIOSA_DATA_DIR` | Docker volume | Full path of a host folder for the data instead of the volume (easier to back up). |
 | `CURIOSA_PORT` | `3000` | Port published on the host. |
@@ -277,12 +311,13 @@ Any other reverse proxy: do not use the profile or the override; point it to `12
 ### Data, backups and updates
 
 - Data (SQLite database, uploads, installed modules, session secret) lives in the `curiosa_data` volume, or in the folder set by `CURIOSA_DATA_DIR`. Back it up with the admin's backup page (see [BACKUP.md](BACKUP.md)), or copy the volume (`docker run --rm -v <project>_curiosa_data:/data -v "$PWD":/backup alpine tar czf /backup/curiosa-data.tgz -C /data .`; `docker volume ls` shows the exact name).
-- The admin does **not install** updates in Docker (the image sets `CURIOSA_INSTALL=docker`; the container is replaced, not changed in place). The *Updates* page still checks for new versions, shows what they change and the exact command to run, including the ordered versions to pass through for a very old site. To update: `git pull`, then `docker compose build --pull && docker compose up -d` (add `--profile https` if you use it). The volume is kept and migrations run at start.
+- The admin does **not install** updates in Docker (the image sets `CURIOSA_INSTALL=docker`; the container is replaced, not changed in place): see [Update](#update) above. The *Updates* page checks for new versions and shows the commands.
+- Development only: `docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build` builds the image from this source tree (`Dockerfile.source`) instead of pulling it.
 - Modules installed from the admin live in the volume and survive an image replacement.
 
 ### On a NAS
 
-Synology (Container Manager) and similar: see the step-by-step recipe [DOCKER-NAS.md](DOCKER-NAS.md). It uses a host folder for the data (`CURIOSA_DATA_DIR`) and the NAS's own reverse proxy.
+Synology (Container Manager) and similar: see the step-by-step recipe [DOCKER-NAS.md](DOCKER-NAS.md). It pulls the published image (nothing to build on the NAS), uses a host folder for the data (`CURIOSA_DATA_DIR`), `PUID`/`PGID` for its owner, and the NAS's own reverse proxy.
 
 ### Why not ports 80 and 443 by default?
 
