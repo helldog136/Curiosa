@@ -16,8 +16,12 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Vos données sont protégées au démarrage du conteneur.** Une copie de la base est faite avant chaque démarrage, et un conteneur trop ancien ou trop récent pour vos données refuse de démarrer en expliquant quoi faire.
 - **(English) Your data is protected when the container starts.** A copy of the database is made before every start, and a container too old or too new for your data refuses to start and explains what to do.
 
+- **Curiosa existe en image Docker prête à l'emploi, pour PC et NAS ARM.** Plus rien à compiler chez vous : l'image est celle de la release, testée avant d'être publiée. Elle ne tourne jamais en administrateur.
+- **(English) Curiosa now comes as a ready-made Docker image, for PCs and ARM NAS.** Nothing to build on your side: the image is the tested release. It never runs as an administrator.
+
 ### Pour les développeurs
 
+- **Docker image and release workflow.** `Dockerfile` only unpacks the release archive (tested); archives for x64 and arm64 with `upgrade.json`; images pushed to GHCR after the release (tags `X.Y.Z`, `X.Y`, `latest` for stable); dry run with `workflow_dispatch`. Old source build: `Dockerfile.source`.
 - **Shared update code.** `scripts/shared-lib.mjs`, `scripts/install-kind.mjs` (the one `installKind()`) and `scripts/update-plan.mjs --json`; the in-place updater calls the same functions. `maintenance_core_update` returns the plan on Docker. Design: `docs/ideas/update-paths.md`.
 
 ## 0.6.13 — 2026-11-05

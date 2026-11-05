@@ -269,6 +269,8 @@ Any other reverse proxy: do not use the profile or the override; point it to `12
 | `LEGACY_HOSTS` | none | Old domains redirected to `SITE_URL` (see [MIGRER-DOMAINE.md](MIGRER-DOMAINE.md)). |
 | `CURIOSA_TRUSTED_PROXIES` | `1` | Number of reverse proxies in front of the site. |
 | `TZ` | `UTC` | Time zone of the container. |
+| `PUID`, `PGID` | `1000` | User and group the site runs as in the published image (never root). The image hands the data folder to them at start. On a NAS, use the owner of the shared folder (for example `1026` and `100` on Synology). Or use `user: "uid:gid"` in compose and make the folder writable for it. |
+| `CURIOSA_REFUSE_DELAY_SECONDS` | `10` | Seconds the container waits before it exits when it refuses to start (data too old or too new for this image), so that a restart policy does not loop at full speed. |
 
 `DATABASE_URL` and `DATA_DIR` from `.env.example` are **not** used by Docker: the compose file points them into the `curiosa_data` volume, so a copied `.env` cannot break the setup. A variable already set in your shell wins over `.env`.
 

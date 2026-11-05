@@ -4,33 +4,64 @@ name: Release
 # - release candidate vX.Y.Z-rc.N : proposée seulement aux instances qui ont choisi le canal « rc » (mode avancé). Elle est publiée quand `package.json`
 #   porte une version `X.Y.Z-rc.N` sur dev (ou quand on pose l'étiquette vX.Y.Z-rc.N) ;
 # - fusion de dev dans master (ou main) : RELEASE STABLE vX.Y.Z, où X.Y.Z est la version de package.json (rien si cette version est déjà publiée).
+#
+# Jobs (docs/ideas/update-paths.md) :
+#   plan        quoi publier (version, étiquette, pré-version ?) et si l'image Docker suit ;
+#   build       une archive par architecture (x64, et arm64 sur un exécuteur arm64 NATIF), chacune testée (« smoke ») avant d'être gardée ;
+#   publish     la release GitHub (archives, upgrade.json, install.sh) — la seule étape qui écrit dans le dépôt ;
+#   image-arch  l'image Docker de chaque architecture, construite DEPUIS l'archive (aucune compilation), démarrée et vérifiée, PUIS envoyée à GHCR ;
+#   image       la liste de manifestes multi-architecture et ses étiquettes (X.Y.Z, X.Y et latest seulement pour une stable).
+# Une image qui échoue ne fait JAMAIS échouer ni ne supprime la release (jobs en continue-on-error, `publish` ne dépend d'aucun job d'image).
+# Essai à blanc : « Run workflow » sur n'importe quelle branche construit et vérifie les archives et l'image, et envoie l'image sous l'étiquette jetable
+# `dry-run-<sha>` (jamais `latest`, jamais une étiquette de version) ; aucune release n'est créée.
 on:
   push:
     branches: [dev, master, main]
     tags: ["v[0-9]+.[0-9]+.[0-9]+-rc.[0-9]+"]
+  workflow_dispatch:
+    inputs:
+      image_dry_run:
+        description: "Essai à blanc : construire archives et image, envoyer l'image sous dry-run-<sha> (sans release, sans latest)"
+        type: boolean
+        default: true
 permissions:
-  contents: write
+  contents: read
 jobs:
-  release:
-    runs-on: ubuntu-latest # linux-x64 : la plateforme des serveurs d'hébergement
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      tag: ${{ steps.v.outputs.tag }}
+      pre: ${{ steps.v.outputs.pre }}
+      publish: ${{ steps.v.outputs.publish }}
+      pack: ${{ steps.v.outputs.pack }}
+      image: ${{ steps.v.outputs.image }}
+      dry_run: ${{ steps.v.outputs.dry_run }}
+      image_name: ${{ steps.v.outputs.image_name }}
+      image_tags: ${{ steps.v.outputs.image_tags }}
+      matrix: ${{ steps.v.outputs.matrix }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
-      - run: npm ci --ignore-scripts
-      - run: npx prisma generate
-      # une release n'existe que si tout passe : failles connues, types, tests, build
-      - run: npm run audit
-      - run: npx tsc --noEmit
-      - run: node scripts/migrations-sunset.mjs --check
-      - run: npm test
-      - run: npm run build
       - name: Version à publier
         id: v
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          DRY_RUN: ${{ inputs.image_dry_run }}
+          ARM_RUNNER: ${{ vars.CURIOSA_ARM_RUNNER }}
         run: |
           base=$(node -p "require('./package.json').version")
           echo "version=$base" >> "$GITHUB_OUTPUT"
-          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+          echo "dry_run=false" >> "$GITHUB_OUTPUT"
+          echo "image=false" >> "$GITHUB_OUTPUT"
+          if [[ "$EVENT" == "workflow_dispatch" ]]; then
+            # Essai à blanc : rien n'est publié ; on construit tout pour pouvoir vérifier l'image.
+            echo "tag=dry-run-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"; echo "pre=true" >> "$GITHUB_OUTPUT"; echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "pack=true" >> "$GITHUB_OUTPUT"
+            if [[ "$DRY_RUN" == "true" ]]; then echo "image=true" >> "$GITHUB_OUTPUT"; echo "dry_run=true" >> "$GITHUB_OUTPUT"; fi
+          elif [[ "$GITHUB_REF" == refs/tags/v* ]]; then
             echo "tag=$GITHUB_REF_NAME" >> "$GITHUB_OUTPUT"; echo "pre=true" >> "$GITHUB_OUTPUT"; echo "publish=true" >> "$GITHUB_OUTPUT"
           elif [[ "$GITHUB_REF" == refs/heads/dev && "$base" == *-rc.* ]]; then
             # version de package.json = release candidate : on publie vX.Y.Z-rc.N (une seule fois), sans avoir à poser d'étiquette
@@ -43,28 +74,225 @@ jobs:
             echo "tag=v$base" >> "$GITHUB_OUTPUT"; echo "pre=false" >> "$GITHUB_OUTPUT"
             if gh release view "v$base" >/dev/null 2>&1; then echo "publish=false" >> "$GITHUB_OUTPUT"; echo "v$base est déjà publiée : rien à faire (montez la version dans package.json)"; else echo "publish=true" >> "$GITHUB_OUTPUT"; fi
           fi
-        env:
-          GH_TOKEN: ${{ github.token }}
+          # Les archives sont construites quand on publie ; l'image suit une version (stable ou rc), jamais un instantané dev-…
+          if [[ "$EVENT" != "workflow_dispatch" ]]; then
+            publish=$(grep '^publish=' "$GITHUB_OUTPUT" | tail -1 | cut -d= -f2)
+            tag=$(grep '^tag=' "$GITHUB_OUTPUT" | tail -1 | cut -d= -f2)
+            echo "pack=$publish" >> "$GITHUB_OUTPUT"
+            if [[ "$publish" == "true" && "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$ ]]; then echo "image=true" >> "$GITHUB_OUTPUT"; fi
+          fi
+          # Nom de l'image : le dépôt, en minuscules (GHCR l'exige) ; étiquettes : la politique de scripts/install-kind.mjs (latest seulement pour une stable).
+          echo "image_name=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+          if [[ "$EVENT" == "workflow_dispatch" ]]; then tags="dry-run-${GITHUB_SHA::7}"; else tags=$(node --input-type=module -e 'import { imageTagsFor } from "./scripts/install-kind.mjs"; console.log(imageTagsFor(process.argv[1]).join(" "))' "$base"); fi
+          echo "image_tags=$tags" >> "$GITHUB_OUTPUT"
+          # Matrice des archives : x64 toujours (c'est aussi la CI complète) ; arm64 seulement quand on empaquette, sur un exécuteur arm64 natif.
+          arm="${ARM_RUNNER:-ubuntu-24.04-arm}"
+          if ! [[ "$arm" =~ ^[A-Za-z0-9._-]+$ ]]; then echo "::error::CURIOSA_ARM_RUNNER invalide"; exit 1; fi
+          pack=$(grep '^pack=' "$GITHUB_OUTPUT" | tail -1 | cut -d= -f2)
+          if [[ "$pack" == "true" ]]; then
+            echo "matrix={\"include\":[{\"arch\":\"x64\",\"docker_arch\":\"amd64\",\"runner\":\"ubuntu-latest\",\"full\":true},{\"arch\":\"arm64\",\"docker_arch\":\"arm64\",\"runner\":\"$arm\",\"full\":false}]}" >> "$GITHUB_OUTPUT"
+          else
+            echo 'matrix={"include":[{"arch":"x64","docker_arch":"amd64","runner":"ubuntu-latest","full":true}]}' >> "$GITHUB_OUTPUT"
+          fi
+
+  build:
+    needs: plan
+    strategy:
+      fail-fast: true
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm ci --ignore-scripts
+      - run: npx prisma generate
+      # une release n'existe que si tout passe : failles connues, types, tests, build (une fois, sur x64 ; l'archive arm64 est compilée et testée sur arm64)
+      - run: npm run audit
+        if: matrix.full
+      - run: npx tsc --noEmit
+        if: matrix.full
+      - run: node scripts/migrations-sunset.mjs --check
+        if: matrix.full
+      - run: npm test
+        if: matrix.full
+      - run: npm run build
       - run: npm prune --omit=dev
       - run: npx prisma generate
       # Le cœur s'installe SEUL : l'archive ne contient aucun module (les modules s'installent depuis le catalogue, dépôt curiosa-extras par défaut)
       - name: Empaqueter
-        if: steps.v.outputs.publish == 'true'
-        run: node scripts/release-pack.mjs "${{ steps.v.outputs.version }}" dist
+        if: needs.plan.outputs.pack == 'true'
+        env:
+          VERSION: ${{ needs.plan.outputs.version }}
+        run: node scripts/release-pack.mjs "$VERSION" dist
       # une archive qui ne démarre pas n'est jamais publiée : on la décompresse ailleurs et on la démarre (installation neuve ET mise à jour d'un site existant)
       - name: Test de fumée de l'archive
-        if: steps.v.outputs.publish == 'true'
+        if: needs.plan.outputs.pack == 'true'
         run: node scripts/smoke-release.mjs dist/*.tar.gz
+      - uses: actions/upload-artifact@v4
+        if: needs.plan.outputs.pack == 'true'
+        with:
+          name: dist-${{ matrix.arch }}
+          path: dist/
+          retention-days: 14
+          if-no-files-found: error
+
+  publish:
+    needs: [plan, build]
+    if: needs.plan.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: dist-*
+          path: dist
+          merge-multiple: true
       - name: Notes de version
-        if: steps.v.outputs.publish == 'true'
+        env:
+          VERSION: ${{ needs.plan.outputs.version }}
         # Le texte de la release est la section du CHANGELOG.md de cette version (ce qui change depuis la précédente) ; à défaut, un renvoi vers le fichier.
-        run: node scripts/changelog.mjs "${{ steps.v.outputs.version }}" > "$RUNNER_TEMP/notes.md" || echo "Voir le CHANGELOG.md du dépôt." > "$RUNNER_TEMP/notes.md"
+        run: node scripts/changelog.mjs "$VERSION" > "$RUNNER_TEMP/notes.md" || echo "Voir le CHANGELOG.md du dépôt." > "$RUNNER_TEMP/notes.md"
       - name: Publier
-        if: steps.v.outputs.publish == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.plan.outputs.tag }}
+          PRE: ${{ needs.plan.outputs.pre }}
         run: |
           flags="--target $GITHUB_SHA"
-          [[ "${{ steps.v.outputs.pre }}" == "true" ]] && flags="$flags --prerelease"
+          [[ "$PRE" == "true" ]] && flags="$flags --prerelease"
           [[ "$GITHUB_REF" == refs/tags/* ]] && flags="--prerelease"
-          gh release create "${{ steps.v.outputs.tag }}" dist/* --title "${{ steps.v.outputs.tag }}" --notes-file "$RUNNER_TEMP/notes.md" $flags
+          gh release create "$TAG" dist/* --title "$TAG" --notes-file "$RUNNER_TEMP/notes.md" $flags
+
+  # Une image par architecture, sur un exécuteur de cette architecture (aucune émulation) : construite depuis l'archive de `build`, démarrée et vérifiée
+  # (scripts/smoke-image.mjs), puis seulement ENVOYÉE (par empreinte, sans étiquette). Après `publish` : si l'image échoue, la release existe déjà.
+  image-arch:
+    needs: [plan, build, publish]
+    if: ${{ !cancelled() && needs.build.result == 'success' && needs.plan.outputs.image == 'true' && (needs.publish.result == 'success' || needs.plan.outputs.dry_run == 'true') }}
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { arch: x64, docker_arch: amd64, runner: ubuntu-latest }
+          - { arch: arm64, docker_arch: arm64, runner: "${{ vars.CURIOSA_ARM_RUNNER || 'ubuntu-24.04-arm' }}" }
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist-${{ matrix.arch }}
+          path: dist
+      - name: Contexte de construction (l'archive vérifiée, rien d'autre)
+        env:
+          DOCKER_ARCH: ${{ matrix.docker_arch }}
+        run: |
+          set -euo pipefail
+          archive=$(ls dist/curiosa-*-linux-*.tar.gz)
+          [[ $(echo "$archive" | wc -l) == 1 ]]
+          (cd dist && sha256sum -c "$(basename "$archive").sha256")
+          mkdir docker-context
+          cp "$archive" "docker-context/archive-${DOCKER_ARCH}.tar.gz"
+          cp Dockerfile docker-context/Dockerfile
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+      - name: Image locale (pour la vérification)
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: docker-context
+          platforms: linux/${{ matrix.docker_arch }}
+          load: true
+          tags: curiosa-smoke:${{ matrix.arch }}
+          build-args: |
+            VERSION=${{ needs.plan.outputs.version }}
+            REVISION=${{ github.sha }}
+            SOURCE=${{ github.server_url }}/${{ github.repository }}
+      - name: Image précédente (si elle existe)
+        id: prev
+        env:
+          GH_TOKEN: ${{ github.token }}
+          IMAGE: ${{ needs.plan.outputs.image_name }}
+          VERSION: ${{ needs.plan.outputs.version }}
+        run: |
+          prev=$(gh release list --exclude-pre-releases --limit 5 --json tagName --jq '.[].tagName' | sed 's/^v//' | grep -vx "$VERSION" | head -1 || true)
+          if [[ -n "$prev" ]] && docker pull "$IMAGE:$prev" >/dev/null 2>&1; then echo "ref=$IMAGE:$prev" >> "$GITHUB_OUTPUT"; echo "image précédente : $IMAGE:$prev"; else echo "aucune image précédente : le scénario de mise à jour est sauté"; fi
+      - name: Test de fumée de l'image (volume vide, PUID/PGID, refus, données précédentes)
+        env:
+          VERSION: ${{ needs.plan.outputs.version }}
+          ARCH: ${{ matrix.arch }}
+          PREVIOUS: ${{ steps.prev.outputs.ref }}
+        run: node scripts/smoke-image.mjs "curiosa-smoke:$ARCH" --version "$VERSION" ${PREVIOUS:+--previous "$PREVIOUS"}
+      # La vérification a réussi : on envoie, par empreinte (aucune étiquette ici ; elles sont posées une fois les deux architectures prêtes).
+      - name: Envoi de l'image par empreinte (avec provenance et SBOM)
+        id: push
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: docker-context
+          platforms: linux/${{ matrix.docker_arch }}
+          outputs: type=image,name=${{ needs.plan.outputs.image_name }},push-by-digest=true,name-canonical=true,push=true
+          provenance: mode=max
+          sbom: true
+          build-args: |
+            VERSION=${{ needs.plan.outputs.version }}
+            REVISION=${{ github.sha }}
+            SOURCE=${{ github.server_url }}/${{ github.repository }}
+      - name: Garder l'empreinte
+        env:
+          DIGEST: ${{ steps.push.outputs.digest }}
+        run: |
+          [[ "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
+          mkdir -p digests && touch "digests/${DIGEST#sha256:}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: digests-${{ matrix.arch }}
+          path: digests/*
+          retention-days: 7
+          if-no-files-found: error
+
+  image:
+    needs: [plan, image-arch]
+    if: ${{ !cancelled() && needs.image-arch.result == 'success' }}
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: digests-*
+          path: digests
+          merge-multiple: true
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+      - name: Liste de manifestes multi-architecture et étiquettes
+        env:
+          IMAGE: ${{ needs.plan.outputs.image_name }}
+          TAGS: ${{ needs.plan.outputs.image_tags }}
+        run: |
+          set -euo pipefail
+          [[ $(ls digests | wc -l) == 2 ]] # amd64 et arm64, rien de moins
+          args=()
+          for t in $TAGS; do [[ "$t" =~ ^[A-Za-z0-9._-]+$ ]] && args+=(-t "$IMAGE:$t"); done
+          refs=()
+          for d in digests/*; do refs+=("$IMAGE@sha256:$(basename "$d")"); done
+          docker buildx imagetools create "${args[@]}" "${refs[@]}"
+          first=$(echo "$TAGS" | cut -d' ' -f1)
+          docker buildx imagetools inspect "$IMAGE:$first" | tee -a "$GITHUB_STEP_SUMMARY"

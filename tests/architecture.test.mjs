@@ -153,7 +153,7 @@ test("installation : chaque variable CURIOSA_* lue par le code est documentée (
   const doc = read(".env.example") + read("docs/INSTALL.md");
   const internal = new Set(["CURIOSA_SERVER_PID"]); // passée par le serveur à la tâche de mise à jour, pas un réglage
   const used = new Set();
-  for (const f of [...code("src"), "scripts/update.mjs", "scripts/update-lib.mjs", "scripts/install-kind.mjs", "scripts/shared-lib.mjs"]) for (const m of read(f).matchAll(/\benv\.(CURIOSA_[A-Z_]+)/g)) used.add(m[1]);
+  for (const f of [...code("src"), "scripts/update.mjs", "scripts/update-lib.mjs", "scripts/install-kind.mjs", "scripts/shared-lib.mjs", "scripts/docker-entrypoint.mjs"]) for (const m of read(f).matchAll(/\benv\.(CURIOSA_[A-Z_]+)/g)) used.add(m[1]);
   assert.ok(used.has("CURIOSA_RESTART_COMMAND") && used.has("CURIOSA_SUPERVISED") && used.has("CURIOSA_INSTALL"));
   for (const v of used) if (!internal.has(v)) assert.ok(doc.includes(v), `${v} est lue par le code mais absente de .env.example / docs/INSTALL.md`);
 });

@@ -11,7 +11,10 @@
 # published on this machine (127.0.0.1), never directly on the Internet.
 services:
   site:
-    build: .
+    # The image built from this source tree (a development alternative: it does not use the published release archive).
+    build:
+      context: .
+      dockerfile: Dockerfile.source
     ports:
       - "${CURIOSA_BIND:-127.0.0.1}:${CURIOSA_PORT:-3000}:3000"
     environment:
