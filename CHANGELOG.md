@@ -18,11 +18,19 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **(English) Older sites update in two steps.** A site older than 0.6.10 first goes through 0.6.10, then to the version you choose; the site does it by itself and the Updates page shows the current step. A site already on 0.6.10 or newer updates directly.
 - **(English) The site starts faster.** The conversion checks that ran on every start now run again only when something changed (module installed or updated, settings, instances).
 
+### Vitesse
+
+- **Le plan du site (sitemap) et le flux RSS se génèrent environ vingt fois plus vite.** Sur un site de démonstration avec 74 extensions : 680 ms et 607 lectures de la base pour le plan du site, 40 ms et 29 lectures maintenant. Les robots et les lecteurs de flux ne ralentissent plus le site.
+- **Le démarrage lit moins la base** (environ un quart de lectures en moins), et les réglages ne sont relus que lorsqu'ils changent.
+- **(English) The sitemap and the RSS feed are generated about twenty times faster.** On a demo site with 74 modules: 680 ms and 607 database reads for the sitemap, now 40 ms and 29 reads. Search engines and feed readers no longer slow the site down.
+- **(English) Start-up reads the database less** (about a quarter fewer reads), and settings are only read again when they change.
+
 ### Pour les développeurs
 
 - **Migration policy** (`docs/MIGRATIONS.md`): conversions run once, as update steps; registry `src/core/updates/migrations-registry.json` ({id, introducedIn, removableAtFloor}); `npm run migrations:sunset [-- --floor X]` lists what a floor raise deletes (also a release check, `--check`); `tests/core/migration-registry.test.mjs` fails when an expired conversion is still present.
 - **Support floor raised to 0.6.10** (`upgrade.json`). Removed: the one-time overlay placement freeze (0.2.6, `placementFreeze.ts`) and the start-up menu freeze call (0.2.6). The menu freeze itself stays for new instances and restored old backups (registry `menu-freeze`).
 - **`runLegacySweep({ startup: true })`** skips the whole sweep when the last complete one ran on the same state (`core.legacySweepState`: core version, module versions/sources/commits, number of settings and instances). The admin "Run again" button and every other caller always sweep.
+- **Settings cache** (`settings.ts`, `settingsGeneration.ts`, `db.ts`): raw `Setting` rows cached per process, invalidated by a counter that the extended Prisma client bumps on every `Setting` write (also in transactions); 15 s safety age; `resetSettingsCache()` for tests. Before, `getSetting` outside a render re-read the table on each call.
 
 ## 0.6.11 — 2026-11-05
 
@@ -80,15 +88,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **In English.** An AI you allow can now arrange your menu and compose your home page without opening the admin. You approve first or it acts at once, depending on your setting, and a button in Navigation and Home puts the previous version back.
 - **Une page entière sur l'accueil.** Vous pouvez choisir une page publiée et en montrer tout le contenu sur la page d'accueil, dans la langue de la personne qui visite. Une page retirée ne laisse rien à l'écran.
 
-### Vitesse
-
-- **Le plan du site (sitemap) et le flux RSS se génèrent environ vingt fois plus vite.** Sur un site de démonstration avec 74 extensions : 680 ms et 607 lectures de la base pour le plan du site, 40 ms et 29 lectures maintenant. Les robots et les lecteurs de flux ne ralentissent plus le site.
-- **Le démarrage lit moins la base** (environ un quart de lectures en moins), et les réglages ne sont relus que lorsqu'ils changent.
-- **(English) The sitemap and the RSS feed are generated about twenty times faster.** On a demo site with 74 modules: 680 ms and 607 database reads for the sitemap, now 40 ms and 29 reads. Search engines and feed readers no longer slow the site down.
-- **(English) Start-up reads the database less** (about a quarter fewer reads), and settings are only read again when they change.
-
 ### Pour les développeurs
-- **Settings cache** (`settings.ts`, `settingsGeneration.ts`, `db.ts`): raw `Setting` rows cached per process, invalidated by a counter that the extended Prisma client bumps on every `Setting` write (also in transactions); 15 s safety age; `resetSettingsCache()` for tests. Before, `getSetting` outside a render re-read the table on each call.
 
 - **New core tools:** `media_upload`, `media_list`, `media_set_alt`, `site_settings_get`, `site_settings_set` (`src/core/siteMcp.ts`, `mediaMcp.ts`, `maintenance/siteSettings.ts`), with `aim.tool.*` rights, profiles (read / assistant) and the "Site identity" section of the rights page. `site_settings_set` is the level 3 action `site_settings_set` (`Plan.site`).
 - **`media_upload` reuses the admin's pipeline** (`sniffImage`, `saveUpload`, `saveSvgUpload`, `MAX_INPUT_PIXELS`); the MCP body limit is 4.3 MB for a single `media_upload` call only (1 MB otherwise). Alternative texts are the settings `media.alt.<file>` (no migration); journal lines `media.upload`, `media.alt`.
