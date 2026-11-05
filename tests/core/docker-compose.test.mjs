@@ -10,10 +10,13 @@ import YAML from "yaml";
  */
 const root = path.resolve(import.meta.dirname, "../..");
 const composeText = fs.readFileSync(path.join(root, "docker-compose.yml"), "utf8");
+const traefikText = fs.readFileSync(path.join(root, "docker-compose.traefik.yml"), "utf8");
 const envExample = fs.readFileSync(path.join(root, ".env.example"), "utf8");
 const compose = YAML.parse(composeText);
 const site = compose.services.site;
 const caddy = compose.services.caddy;
+// Compose-only tags (!reset, !override) are not plain YAML: drop the tag, keep the value.
+const traefik = YAML.parse(traefikText.replace(/!(reset|override)\s+/g, ""));
 
 test("compose: the public address is read from SITE_URL, never hard-coded", () => {
   assert.match(site.environment.SITE_URL, /^\$\{SITE_URL(:-[^}]*)?\}$/);
@@ -51,13 +54,26 @@ test("compose: the https profile adds Caddy on 80, 443 and 443/udp with persiste
   assert.equal(composeText.includes("CURIOSA_DOMAIN:?"), false);
 });
 
-test("compose: every ${VAR} it reads is documented in .env.example (and the reverse for Docker-only names)", () => {
-  const used = new Set([...composeText.matchAll(/\$\{([A-Z][A-Z0-9_]*)/g)].map((m) => m[1]));
+test("compose: every ${VAR} it reads is documented in .env.example, in every compose file", () => {
+  const used = new Set([...(composeText + "\n" + traefikText).matchAll(/\$\{([A-Z][A-Z0-9_]*)/g)].map((m) => m[1]));
   assert.ok(used.size >= 8, "the compose file reads its settings from variables");
   const documented = new Set([...envExample.matchAll(/^#?\s*([A-Z][A-Z0-9_]*)=/gm)].map((m) => m[1]));
   const missing = [...used].filter((v) => !documented.has(v));
   assert.deepEqual(missing, [], `variables read by docker-compose.yml but missing from .env.example: ${missing.join(", ")}`);
   const dockerBlock = envExample.slice(envExample.indexOf("# ─── Docker (docker-compose.yml)"));
   assert.ok(dockerBlock.length > 0 && dockerBlock.length < envExample.length, "a separate Docker block exists");
-  for (const v of ["CURIOSA_DOMAIN", "CURIOSA_PORT", "CURIOSA_BIND", "TZ"]) assert.ok(dockerBlock.includes(v + "="), `${v} is in the Docker block`);
+  for (const v of ["CURIOSA_DOMAIN", "CURIOSA_PORT", "CURIOSA_BIND", "TZ", "TRAEFIK_NETWORK", "TRAEFIK_ENTRYPOINT", "TRAEFIK_CERTRESOLVER"]) assert.ok(dockerBlock.includes(v + "="), `${v} is in the Docker block`);
+});
+
+test("traefik override: labels, no host port, external network, domain required, no Caddy", () => {
+  const labels = traefik.services.site.labels.join("\n");
+  for (const needle of ["traefik.enable=true", "Host(`${CURIOSA_DOMAIN:?", "${TRAEFIK_ENTRYPOINT:-websecure}", "tls=true", "${TRAEFIK_CERTRESOLVER:-letsencrypt}", "loadbalancer.server.port=3000", "traefik.docker.network="]) {
+    assert.ok(labels.includes(needle), `label missing: ${needle}`);
+  }
+  assert.match(traefikText, /ports: !reset \[\]/, "the base host port mapping is removed");
+  assert.equal(traefik.services.site.environment.CURIOSA_TRUSTED_PROXIES, "1");
+  assert.deepEqual(traefik.services.site.networks, ["default", "traefik"]);
+  assert.equal(traefik.networks.traefik.external, true);
+  assert.equal(traefik.networks.traefik.name, "${TRAEFIK_NETWORK:-traefik}");
+  assert.match(traefikText, /caddy:\n\s+profiles: !override \["disabled-with-traefik"\]/, "the Caddy profile cannot start with Traefik");
 });

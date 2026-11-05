@@ -193,14 +193,56 @@ Open http://localhost:3000: the setup wizard starts. The default `SITE_URL` (`ht
 3. Run `docker compose --profile https up -d --build`. A Caddy container gets and renews the certificate by itself (kept in the `caddy_data` volume) and forwards visitors to the site. `CURIOSA_TRUSTED_PROXIES` already defaults to 1, which is right for this proxy.
 4. Open `https://example.org/admin/setup` and give the `SETUP_TOKEN`. Once the site is set up, you can remove `SETUP_TOKEN` from `.env` and run `docker compose up -d` again.
 
-Already have your own reverse proxy (nginx, Traefik...)? Do not use the profile: point it to `127.0.0.1:3000` (or to `CURIOSA_PORT`), and keep `CURIOSA_BIND` at its default so the app is not reachable from outside.
+### Which proxy?
+
+| Your situation | What to run | Notes |
+|---|---|---|
+| Local trial, no proxy | `docker compose up -d --build` | Port 3000 on 127.0.0.1 only. |
+| Nothing on the server yet, you want HTTPS | `docker compose --profile https up -d --build` | Bundled Caddy, automatic certificate on 80/443. Needs `CURIOSA_DOMAIN`. |
+| You already run Traefik (v2 or v3) | `docker compose -f docker-compose.yml -f docker-compose.traefik.yml up -d --build` | Labels, no host port. Needs `CURIOSA_DOMAIN`; Compose 2.24 or newer. Never together with the Caddy profile (the override switches it off). |
+| nginx, Apache or Caddy installed on the host | `docker compose up -d --build` | Proxy to `http://127.0.0.1:3000` (or `CURIOSA_PORT`). Keep `CURIOSA_BIND` at its default. Send `X-Forwarded-For` and keep `CURIOSA_TRUSTED_PROXIES=1`. |
+
+Traefik override settings (all optional): `TRAEFIK_NETWORK` (the Docker network your Traefik shares with its services, default `traefik`; it must already exist), `TRAEFIK_ENTRYPOINT` (default `websecure`), `TRAEFIK_CERTRESOLVER` (default `letsencrypt`). To redirect http to https, set it once on your Traefik `web` entrypoint.
+
+**No Traefik yet, but you prefer it to Caddy?** A minimal one, in its own folder (`traefik/compose.yml`):
+
+```yaml
+services:
+  traefik:
+    image: traefik:v3.1
+    command:
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:80
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      - --entrypoints.websecure.address=:443
+      - --certificatesresolvers.letsencrypt.acme.email=you@example.org
+      - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
+      - --certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web
+    ports: ["80:80", "443:443"]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - letsencrypt:/letsencrypt
+    networks: [traefik]
+    restart: unless-stopped
+volumes:
+  letsencrypt:
+networks:
+  traefik:
+    name: traefik
+```
+
+Start it with `docker compose up -d` there; the named volume gets the right permissions for `acme.json` (with a folder on the host, run `chmod 600` on that file). Use your own e-mail address. The Docker socket is read-only but still powerful: keep this folder private.
+
+Any other reverse proxy: do not use the profile or the override; point it to `127.0.0.1:3000` (or `CURIOSA_PORT`) and keep `CURIOSA_BIND` at its default so the app is not reachable from outside.
 
 ### Variables
 
 | Variable | Default | Meaning |
 |---|---|---|
 | `SITE_URL` | `http://localhost:3000` | Public address of the site. Set it for any real site. |
-| `CURIOSA_DOMAIN` | none | Domain for automatic HTTPS. Required with `--profile https`. |
+| `CURIOSA_DOMAIN` | none | Domain of the site. Required with `--profile https` and with the Traefik override. |
 | `CURIOSA_PORT` | `3000` | Port published on the host. |
 | `CURIOSA_BIND` | `127.0.0.1` | Host address the port is published on. `0.0.0.0` exposes the app directly, without HTTPS: for a quick public test only. Docker bypasses most host firewalls for published ports. |
 | `SETUP_TOKEN` | none | Secret asked by the setup wizard. |
