@@ -7,7 +7,11 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
-## Prochaine version (non publiée)
+## 0.6.14 — 2026-11-05
+
+**En bref.** Un assistant IA qui entretient votre site n'est plus coupé par un délai : vérifier les modules passe de 48 secondes à 1,4 seconde sur un site de test de 71 modules, et les actions longues continuent en arrière-plan avec un suivi. Docker : une image toute prête est publiée à chaque version (PC, et ARM quand elle est disponible), les vérifications et copies de sauvegarde se font toutes seules au démarrage, et la page Mises à jour affiche la commande exacte à lancer. Les données du site sont protégées contre un saut de version.
+
+**In short.** An AI assistant maintaining your site is no longer cut off by a time limit: checking the modules goes from 48 seconds to 1.4 seconds on a 71-module test site, and long actions carry on in the background with progress reporting. Docker: a ready-made image is published with every version (PC, and ARM when available), checks and backups run by themselves at start-up, and the Updates page shows the exact command to run. Your site data is protected against skipped versions.
 
 ### Docker
 
