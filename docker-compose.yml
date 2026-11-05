@@ -29,7 +29,9 @@ services:
       DATA_DIR: /app/data
       DATABASE_URL: file:/app/data/curiosa.db
     volumes:
-      - curiosa_data:/app/data            # database, uploads, installed modules, session secret
+      # database, uploads, installed modules, session secret. CURIOSA_DATA_DIR: empty = Docker
+      # volume "curiosa_data"; a full path (for example /volume1/docker/curiosa/data) = that folder.
+      - ${CURIOSA_DATA_DIR:-curiosa_data}:/app/data
     healthcheck:
       # Migrations run at each start, so allow a generous first start.
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then((r)=>process.exit(r.ok?0:1),()=>process.exit(1))"]

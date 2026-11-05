@@ -243,6 +243,7 @@ Any other reverse proxy: do not use the profile or the override; point it to `12
 |---|---|---|
 | `SITE_URL` | `http://localhost:3000` | Public address of the site. Set it for any real site. |
 | `CURIOSA_DOMAIN` | none | Domain of the site. Required with `--profile https` and with the Traefik override. |
+| `CURIOSA_DATA_DIR` | Docker volume | Full path of a host folder for the data instead of the volume (easier to back up). |
 | `CURIOSA_PORT` | `3000` | Port published on the host. |
 | `CURIOSA_BIND` | `127.0.0.1` | Host address the port is published on. `0.0.0.0` exposes the app directly, without HTTPS: for a quick public test only. Docker bypasses most host firewalls for published ports. |
 | `SETUP_TOKEN` | none | Secret asked by the setup wizard. |
@@ -255,9 +256,13 @@ Any other reverse proxy: do not use the profile or the override; point it to `12
 
 ### Data, backups and updates
 
-- Data (SQLite database, uploads, installed modules, session secret) lives in the `curiosa_data` volume. Back it up with the admin's backup page (see [BACKUP.md](BACKUP.md)), or copy the volume (`docker run --rm -v <project>_curiosa_data:/data -v "$PWD":/backup alpine tar czf /backup/curiosa-data.tgz -C /data .`; `docker volume ls` shows the exact name).
+- Data (SQLite database, uploads, installed modules, session secret) lives in the `curiosa_data` volume, or in the folder set by `CURIOSA_DATA_DIR`. Back it up with the admin's backup page (see [BACKUP.md](BACKUP.md)), or copy the volume (`docker run --rm -v <project>_curiosa_data:/data -v "$PWD":/backup alpine tar czf /backup/curiosa-data.tgz -C /data .`; `docker volume ls` shows the exact name).
 - Updating from the admin is **not supported** in Docker (the image sets `CURIOSA_INSTALL=docker`; the container is replaced, not changed in place). To update: `git pull`, then `docker compose build --pull && docker compose up -d` (add `--profile https` if you use it). The volume is kept and migrations run at start.
 - Modules installed from the admin live in the volume and survive an image replacement.
+
+### On a NAS
+
+Synology (Container Manager) and similar: see the step-by-step recipe [DOCKER-NAS.md](DOCKER-NAS.md). It uses a host folder for the data (`CURIOSA_DATA_DIR`) and the NAS's own reverse proxy.
 
 ### Why not ports 80 and 443 by default?
 

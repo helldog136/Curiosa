@@ -16,7 +16,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Pour les développeurs
 
-- **`docker-compose.yml` is driven by `.env`:** `SITE_URL` (default `http://localhost:3000`, trial only), `SETUP_TOKEN`, `AUTH_SECRET`, `LEGACY_HOSTS`, `CURIOSA_TRUSTED_PROXIES`, `TZ`, `CURIOSA_PORT`, `CURIOSA_BIND` (default `127.0.0.1`). `DATABASE_URL` and `DATA_DIR` stay fixed in the volume (no `env_file`).
+- **`docker-compose.yml` is driven by `.env`:** `SITE_URL` (default `http://localhost:3000`, trial only), `SETUP_TOKEN`, `AUTH_SECRET`, `LEGACY_HOSTS`, `CURIOSA_TRUSTED_PROXIES`, `TZ`, `CURIOSA_PORT`, `CURIOSA_BIND` (default `127.0.0.1`), `CURIOSA_DATA_DIR` (host folder instead of the volume; `docs/DOCKER-NAS.md`). `DATABASE_URL` and `DATA_DIR` stay fixed in the volume (no `env_file`).
 - **Profile `https`:** Caddy on 80, 443 and 443/udp; `CURIOSA_DOMAIN` is checked at start, not with `:?` (Compose reads every service). `docker-compose.traefik.yml`: override for an existing Traefik (labels, external network, no host port, Caddy switched off). Healthcheck on `/api/health`. Guard: `tests/core/docker-compose.test.mjs`.
 
 ## 0.6.12 — 2026-11-05

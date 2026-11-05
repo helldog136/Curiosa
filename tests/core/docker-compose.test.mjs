@@ -30,7 +30,8 @@ test("compose: data paths are fixed into the volume, so a copied .env cannot bre
   assert.equal(site.environment.DATABASE_URL, "file:/app/data/curiosa.db");
   assert.equal(site.environment.DATA_DIR, "/app/data");
   assert.equal(site.env_file, undefined, "no env_file: .env.example carries non-Docker values");
-  assert.ok(site.volumes.some((v) => v.startsWith("curiosa_data:/app/data")));
+  assert.deepEqual(site.volumes, ["${CURIOSA_DATA_DIR:-curiosa_data}:/app/data"], "named volume by default, host folder when CURIOSA_DATA_DIR is a path");
+  assert.ok(Object.keys(compose.volumes).includes("curiosa_data"));
 });
 
 test("compose: the site port is published on CURIOSA_BIND:CURIOSA_PORT, loopback by default", () => {
@@ -62,7 +63,7 @@ test("compose: every ${VAR} it reads is documented in .env.example, in every com
   assert.deepEqual(missing, [], `variables read by docker-compose.yml but missing from .env.example: ${missing.join(", ")}`);
   const dockerBlock = envExample.slice(envExample.indexOf("# ─── Docker (docker-compose.yml)"));
   assert.ok(dockerBlock.length > 0 && dockerBlock.length < envExample.length, "a separate Docker block exists");
-  for (const v of ["CURIOSA_DOMAIN", "CURIOSA_PORT", "CURIOSA_BIND", "TZ", "TRAEFIK_NETWORK", "TRAEFIK_ENTRYPOINT", "TRAEFIK_CERTRESOLVER"]) assert.ok(dockerBlock.includes(v + "="), `${v} is in the Docker block`);
+  for (const v of ["CURIOSA_DOMAIN", "CURIOSA_PORT", "CURIOSA_BIND", "CURIOSA_DATA_DIR", "TZ", "TRAEFIK_NETWORK", "TRAEFIK_ENTRYPOINT", "TRAEFIK_CERTRESOLVER"]) assert.ok(dockerBlock.includes(v + "="), `${v} is in the Docker block`);
 });
 
 test("traefik override: labels, no host port, external network, domain required, no Caddy", () => {
