@@ -213,19 +213,17 @@ Le détail (variables d'environnement, canal des *release candidates*, publicati
 
 **Venir d'un autre site ?** Un site **Grav CMS** peut être converti en sauvegarde Curiosa : voir [docs/IMPORT-GRAV.md](docs/IMPORT-GRAV.md).
 
-### Avec Docker (pour essayer chez soi, pas pour publier)
+### With Docker
 
-Docker n'est **pas** le chemin pour mettre un site en ligne : l'image se **construit sur votre machine** (long, plusieurs Go de téléchargement et de compilation), aucune image prête à l'emploi n'est publiée, il n'y a **pas de HTTPS** (il faudrait ajouter un proxy à côté) et la mise à jour depuis l'admin n'y fonctionne pas (on reconstruit l'image). Il reste utile pour **essayer** Curiosa sur son ordinateur :
+Docker works for a local trial and, with the optional `https` profile, for a real site with automatic HTTPS. The image is **built on your machine** (slow the first time: several GB to download and compile), no ready-made image is published, and updates replace the image instead of running from the admin. Full guide: [docs/INSTALL.md](docs/INSTALL.md#docker).
 
 ```bash
-docker compose up -d --build
+cp .env.example .env                     # then set SITE_URL (and CURIOSA_DOMAIN for HTTPS)
+docker compose up -d --build             # local trial: http://localhost:3000
+docker compose --profile https up -d --build   # production: automatic HTTPS on 80/443
 ```
 
-Puis ouvrir http://localhost:3000 : l'assistant de première installation démarre.
-Les données (base SQLite, images envoyées, modules installés) vivent dans le volume `curiosa_data`.
-Pour mettre à jour : `docker compose build --pull && docker compose up -d`.
-
-Site exposé sur Internet avant d'être configuré ? Définissez `SETUP_TOKEN` : l'assistant l'exigera, et personne d'autre ne pourra réclamer le site.
+The app listens on port 3000 in plain HTTP, on this machine only by default; the `https` profile adds a Caddy proxy that serves 80 and 443. Data (SQLite database, uploads, installed modules) lives in the `curiosa_data` volume. Exposed to the Internet before being set up? Set `SETUP_TOKEN` in `.env`: the setup wizard will ask for it.
 
 ### Développer
 
