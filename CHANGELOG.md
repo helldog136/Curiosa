@@ -16,7 +16,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **(English) The license credit link points to the project site.** Section 4 of the license now names the address the footer already shows, instead of the code repository. Nothing else changes in your obligations.
 - **(English) New sites installed with nginx send compressed pages.** Sites already online are not touched; the install guide explains how to add the same lines by hand.
 - **Vous pouvez demander le certificat HTTPS à l'installation avec nginx ou Apache.** Ajoutez les options certbot et e-mail à la commande d'installation (voir le guide d'installation) : le certificat est obtenu pour votre domaine seulement, et si cela échoue le site reste en ligne en HTTP. Sans cette option, rien ne change.
-- **(English) You can ask for the HTTPS certificate at install time with nginx or Apache.** Add the certbot and e-mail options to the install command (see the install guide). If it fails, the site stays online in HTTP. Without this option, nothing changes.
+- **(English) You can ask for the HTTPS certificate at install time with nginx or Apache.** Add the certbot and e-mail options to the install command. If it fails, the site stays in HTTP; without the option, nothing changes.
 
 ### Installation
 
