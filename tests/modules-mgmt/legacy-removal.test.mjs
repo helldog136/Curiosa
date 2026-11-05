@@ -114,17 +114,20 @@ test("outil MCP maintenance_legacy : répond toujours, avec tous ses champs (les
   assert.doesNotMatch(JSON.stringify(withRow), /https?:|github/);
 });
 
-test("version minimale de mise à jour : upgrade.json exige la 0.2.0 ; un site plus ancien passe d'abord par la 0.2.0, un site récent est mis à jour directement", async () => {
+test("support floor: upgrade.json requires the 0.6.10 bridge; an older site is carried through every published bridge in order, a recent one updates directly", async () => {
   const minFrom = JSON.parse(fs.readFileSync("upgrade.json", "utf8")).minFrom;
-  assert.equal(minFrom, "0.2.0");
-  const files = { "v9.9.9": { minFrom }, "v0.2.0": { minFrom: "0.1.4" } };
+  assert.equal(minFrom, "0.6.10");
+  // upgrade.json of the published bridges, as GitHub serves them (checked against the real releases): 0.6.10 -> 0.2.0, 0.2.0 -> 0.1.4, 0.1.4 has none.
+  const files = { "v9.9.9": { minFrom }, "v0.6.10": { minFrom: "0.2.0" }, "v0.2.0": { minFrom: "0.1.4" } };
   const fetchText = async (url) => {
     const m = /\/download\/(v[^/]+)\/upgrade\.json$/.exec(url);
     return m && files[m[1]] ? JSON.stringify(files[m[1]]) : null;
   };
   const plan = (current) => planUpdate({ current, target: "v9.9.9", repo: "o/curiosa", fetchText });
-  assert.deepEqual(await plan("0.6.3"), ["v9.9.9"], "site récent : direct");
-  assert.deepEqual(await plan("0.2.0"), ["v9.9.9"], "site déjà en 0.2.0 : direct");
-  assert.deepEqual(await plan("0.1.28"), ["v0.2.0", "v9.9.9"], "0.1.28 : d'abord la 0.2.0 (son démarrage convertit), puis la suite");
-  assert.deepEqual(await plan("0.1.2"), ["v0.1.4", "v0.2.0", "v9.9.9"], "encore plus ancien : étapes de proche en proche");
+  assert.deepEqual(await plan("0.6.10"), ["v9.9.9"], "site on the bridge: direct");
+  assert.deepEqual(await plan("0.7.2"), ["v9.9.9"], "newer site: direct");
+  assert.deepEqual(await plan("0.6.3"), ["v0.6.10", "v9.9.9"], "older site: two steps");
+  assert.deepEqual(await plan("0.2.0"), ["v0.6.10", "v9.9.9"], "0.2.0: two steps (the first start of 0.6.10 runs the old conversions)");
+  assert.deepEqual(await plan("0.1.28"), ["v0.2.0", "v0.6.10", "v9.9.9"], "before 0.2.0: three steps");
+  assert.deepEqual(await plan("0.1.1"), ["v0.1.4", "v0.2.0", "v0.6.10", "v9.9.9"], "oldest published release (v0.1.1): four steps, within the limit of six");
 });

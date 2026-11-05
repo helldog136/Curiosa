@@ -22,6 +22,7 @@ jobs:
       # une release n'existe que si tout passe : failles connues, types, tests, build
       - run: npm run audit
       - run: npx tsc --noEmit
+      - run: node scripts/migrations-sunset.mjs --check
       - run: npm test
       - run: npm run build
       - name: Version à publier
