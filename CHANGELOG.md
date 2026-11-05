@@ -7,9 +7,9 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
-## Prochaine version (non publiée)
+## 0.6.12 — 2026-11-05
 
-**En bref.** Les sites plus anciens que la 0.6.10 se mettent à jour en deux étapes, que le site enchaîne tout seul. Le démarrage du site ne refait plus ses contrôles de conversion quand rien n'a changé.
+**En bref.** Le site est plus rapide : les réglages sont lus une seule fois au lieu de centaines, les pages publiques envoient moins de code et le site redémarre plus vite. Les sites plus anciens que la 0.6.10 se mettent à jour en deux étapes, que le site enchaîne tout seul. Une règle de migration est posée pour les versions suivantes.
 
 ### Mises à jour
 
