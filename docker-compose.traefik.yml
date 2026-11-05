@@ -1,0 +1,36 @@
+# Override for an EXISTING Traefik (v2 or v3) that already runs on this server.
+# Needs Docker Compose 2.24 or newer (for !reset / !override).
+#
+#   docker compose -f docker-compose.yml -f docker-compose.traefik.yml up -d --build
+#
+# Traefik terminates TLS and talks to the site over a shared Docker network, so
+# no port is published on the host. Do not combine with the bundled Caddy:
+# the `https` profile is switched off by this file.
+# Set CURIOSA_DOMAIN (and SITE_URL=https://<same domain>) in .env.
+# For a redirect from http to https, define it once on your Traefik entrypoint
+# (web -> websecure); nothing to add here.
+services:
+  site:
+    ports: !reset []
+    environment:
+      CURIOSA_TRUSTED_PROXIES: "1"
+    networks:
+      - default
+      - traefik
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=${TRAEFIK_NETWORK:-traefik}"
+      - "traefik.http.routers.curiosa.rule=Host(`${CURIOSA_DOMAIN:?set CURIOSA_DOMAIN in .env}`)"
+      - "traefik.http.routers.curiosa.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}"
+      - "traefik.http.routers.curiosa.tls=true"
+      - "traefik.http.routers.curiosa.tls.certresolver=${TRAEFIK_CERTRESOLVER:-letsencrypt}"
+      - "traefik.http.services.curiosa.loadbalancer.server.port=3000"
+
+  # The two proxies cannot share ports 80 and 443: never start the bundled one here.
+  caddy:
+    profiles: !override ["disabled-with-traefik"]
+
+networks:
+  traefik:
+    name: ${TRAEFIK_NETWORK:-traefik}
+    external: true
