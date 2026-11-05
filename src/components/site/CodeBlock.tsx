@@ -19,7 +19,7 @@ export function CopyButtonView({ state, labels, onCopy }: { state: CopyState; la
   return (
     <>
       <button type="button" data-skin-part="copy-code" data-state={state} onClick={onCopy} aria-label={labels.aria}
-        className="absolute end-2 top-2 inline-flex min-h-11 min-w-[5.5rem] items-center justify-center rounded-chip border-token border-line bg-surface px-3 text-sm text-fg transition-colors hover:border-accent hover:text-accent">
+        className="absolute end-2 top-2 inline-flex min-h-target min-w-[5.5rem] items-center justify-center rounded-chip border-token border-line bg-surface px-3 text-sm text-fg transition-colors hover:border-accent hover:text-accent">
         {state === "copied" ? labels.copied : labels.copy}
       </button>
       {/* One persistent live region: "Copied" is announced politely, the failure message is also shown as plain text under the block. */}

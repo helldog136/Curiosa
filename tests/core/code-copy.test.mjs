@@ -73,7 +73,7 @@ test("button: label and aria-label per language, 44 px target, skin part, keyboa
     assert.match(out, /<button type="button"/);
     assert.ok(out.includes(`aria-label="${l.aria}"`));
     assert.ok(out.includes(`>${l.copy}</button>`));
-    assert.match(out, /min-h-11/, "44 px");
+    assert.match(out, /min-h-target/, "44 px target token");
     assert.match(out, /data-skin-part="copy-code"/);
     assert.doesNotMatch(out, /tabindex|<script|onclick/i);
     assert.match(out, /role="status" aria-live="polite"[^>]*class="sr-only"/, "live region, silent when idle");
