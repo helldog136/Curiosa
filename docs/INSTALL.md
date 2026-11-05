@@ -22,6 +22,24 @@ Points à retenir :
 **Développer le framework** : cloner le dépôt (`git clone`, branche `dev`), puis `npm ci && npm run bootstrap && npm run build && npm start`. Un clone de
 développement ne se met pas à jour depuis l'admin (c'est à vous de faire `git pull`).
 
+## nginx: compression and kept-open connection (new sites and existing sites)
+
+Since the next release the installer writes gzip compression and a kept-open connection to the site into the nginx site it creates. A site that nginx already serves is **never** modified: the short snippet to add the same lines by hand, the HTTP/2 line per nginx version, and an optional (off by default, with caveats) cache recipe for `/sitemap.xml` and `/feed.xml` are in [PERFORMANCE.md](PERFORMANCE.md#nginx-settings).
+
+## HTTPS certificate with nginx or Apache (`--certbot`, opt-in)
+
+Caddy gets its certificate by itself. With nginx or Apache the installer only prints the certbot command, unless you ask for it:
+
+```
+sudo bash install.sh --site mysite --domain example.org --certbot --email you@example.org
+```
+
+- **Opt-in only**: nothing is requested without `--certbot` (in a terminal, without the flag, the installer asks one question at the end of the web server step, default No, and asks for the e-mail only on yes). `--yes` alone never requests a certificate. By using `--certbot` (or answering yes) you accept the Let's Encrypt terms; the `--dry-run` output and the final message say so. The e-mail is only used by Let's Encrypt for expiry notices.
+- **When**: only if the web server is nginx or Apache, the DNS of the domain already points to this server, and no certificate for the domain exists yet. Otherwise it is skipped with the reason, and the usual command stays in the final message. Certbot and its plugin (`python3-certbot-nginx` or `python3-certbot-apache`) are installed with apt if missing.
+- **Scope**: `certbot --nginx|--apache -d <domain> --non-interactive --agree-tos -m <email> --redirect`; `-d` only, so the other sites of the server are not touched. Extra certbot options (for example `--staging` to try without limits) go in the `CURIOSA_CERTBOT_ARGS` environment variable.
+- **If it fails**: the site keeps running in HTTP, the reason is written in plain words, certbot's own output is in the installation log, and the command to retry is printed.
+- **Re-running the installer** never removes the certificate: a site file that certbot already edited is kept as it is.
+
 ## Languages / Langues
 
 Le script `install.sh` parle **français et anglais**. Il choisit la langue dans cet ordre :

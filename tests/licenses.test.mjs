@@ -14,7 +14,7 @@ test("le projet a sa licence (Curiosa License) et la déclare ; chaque module li
   assert.match(text, /multi-tenant or white-label\s+service/);
   assert.match(text, /Provide hosting infrastructure on which a customer's own, independent installation/, "un hébergeur peut préinstaller Curiosa sur un VPS");
   assert.match(text, /the price pays for the infrastructure and services, not for the Software itself/);
-  assert.match(text, /Powered by Curiosa", where "Curiosa" is a link to the project\s+repository \(https:\/\/github\.com\/helldog136\/Curiosa\)/);
+  assert.match(text, /Powered by Curiosa", where "Curiosa" is a link to the project\s+site \(https:\/\/curiosa\.helldog136\.be, or its French version\s+https:\/\/curiosa\.helldog136\.be\/fr\)/);
   assert.match(text, /3\. WHAT YOU MAY NOT DO[\s\S]*6\. THIRD-PARTY MODULES[\s\S]*free of the restrictions of section 3/);
   assert.match(text, /Versions of the Software released before version 0\.1\.2-rc\.4 were published under the MIT/);
 });
@@ -24,7 +24,9 @@ test("le crédit « développé par » est affiché sur toutes les pages publiqu
   assert.match(footer, /data-testid="credit"/);
   assert.match(footer, /<CuriosaMark locale=\{locale\} \/>/, "le nom passe par le composant verrouillé (src/components/brand/CuriosaMark.tsx)");
   assert.match(fs.readFileSync("src/components/brand/CuriosaMark.tsx", "utf8"), /href=\{[^}]*creditSiteUrl\(locale\)[^}]*\}[\s\S]*>\s*Curiosa\s*<\/a>/);
-  assert.match(fs.readFileSync("src/core/credit.ts", "utf8"), /CREDIT_URL = "https:\/\/github\.com\/helldog136\/Curiosa"/);
+  const credit = fs.readFileSync("src/core/credit.ts", "utf8");
+  assert.ok(fs.readFileSync("LICENSE", "utf8").includes(credit.match(/CREDIT_SITE_URL = "([^"]+)"/)[1] + ","), "LICENSE et le pied de page nomment la même adresse");
+  assert.match(credit, /CREDIT_URL = "https:\/\/github\.com\/helldog136\/Curiosa"/);
   assert.ok(!/readVersion|version/i.test(footer), "jamais de numéro de version côté public");
   assert.match(fs.readFileSync("src/app/(site)/layout.tsx", "utf8"), /<Footer /);
 });

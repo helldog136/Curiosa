@@ -9,6 +9,15 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ## Prochaine version (non publiée)
 
+### Licence et vitesse
+
+- **Le lien « Powered by Curiosa » de la licence pointe vers le site du projet.** La licence (section 4) cite maintenant l'adresse que le pied de page affiche déjà, au lieu du dépôt de code. Rien d'autre ne change dans vos obligations.
+- **Les nouveaux sites installés avec nginx envoient leurs pages compressées.** Les sites déjà en ligne ne sont pas touchés ; le guide d'installation explique comment ajouter les mêmes lignes à la main.
+- **(English) The license credit link points to the project site.** Section 4 of the license now names the address the footer already shows, instead of the code repository. Nothing else changes in your obligations.
+- **(English) New sites installed with nginx send compressed pages.** Sites already online are not touched; the install guide explains how to add the same lines by hand.
+- **Vous pouvez demander le certificat HTTPS à l'installation avec nginx ou Apache.** Ajoutez les options certbot et e-mail à la commande d'installation (voir le guide d'installation) : le certificat est obtenu pour votre domaine seulement, et si cela échoue le site reste en ligne en HTTP. Sans cette option, rien ne change.
+- **(English) You can ask for the HTTPS certificate at install time with nginx or Apache.** Add the certbot and e-mail options to the install command. If it fails, the site stays in HTTP; without the option, nothing changes.
+
 ### Installation
 
 - **Docker : un vrai site en ligne avec HTTPS automatique.** Une seule ligne ajoute le certificat et les ports 80 et 443, un fichier prêt à l'emploi sert aux sites qui ont déjà Traefik, et l'adresse du site se règle dans le fichier de réglages .env au lieu d'être écrite dans le fichier de démarrage.
@@ -18,6 +27,11 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 - **`docker-compose.yml` is driven by `.env`:** `SITE_URL` (default `http://localhost:3000`, trial only), `SETUP_TOKEN`, `AUTH_SECRET`, `LEGACY_HOSTS`, `CURIOSA_TRUSTED_PROXIES`, `TZ`, `CURIOSA_PORT`, `CURIOSA_BIND` (default `127.0.0.1`), `CURIOSA_DATA_DIR` (host folder instead of the volume; `docs/DOCKER-NAS.md`). `DATABASE_URL` and `DATA_DIR` stay fixed in the volume (no `env_file`).
 - **Profile `https`:** Caddy on 80, 443 and 443/udp; `CURIOSA_DOMAIN` is checked at start, not with `:?` (Compose reads every service). `docker-compose.traefik.yml`: override for an existing Traefik (labels, external network, no host port, Caddy switched off). Healthcheck on `/api/health`. Guard: `tests/core/docker-compose.test.mjs`.
+- **`install.sh --certbot --email`** (opt-in, nginx/Apache only): `plan_certbot` checks and announces it in `--dry-run`; `obtain_certificate` runs at the end of `configure_proxy` and is never fatal. It needs DNS ready, skips when `certbot certificates -d` finds one, installs certbot and its plugin with apt if missing.
+- **Certbot command and re-runs**: `certbot --nginx|--apache -d <domain> --non-interactive --agree-tos -m <email> --redirect`, plus `CURIOSA_CERTBOT_ARGS`. A site file edited by certbot is kept on re-runs; `--yes` alone never requests a certificate.
+- **LICENSE section 4b**: the credit link target is `https://curiosa.helldog136.be` (or `/fr`), the value of `CREDIT_SITE_URL`; `tests/licenses.test.mjs` now compares the LICENSE text with `src/core/credit.ts`. `CREDIT_URL` (the repository: issues, guides, admin footer) is unchanged.
+- **`install.sh` nginx template**: `gzip` (+ `gzip_vary`, `gzip_proxied any`, min length 1024) and an `upstream curiosa_<site>` block (`keepalive 16`, `keepalive_timeout 4s`) when `nginx -v` reports 1.15.3 or newer. No `http2` (the template only listens on 80), no `proxy_cache`.
+- **nginx re-runs**: a managed site equal to the previous template is left untouched (`x.nginx_kept`); `--dry-run` announces the extras. Hand-applied snippet, HTTP/2 syntax per version and the optional cache recipe: `docs/PERFORMANCE.md`.
 
 ## 0.6.12 — 2026-11-05
 
