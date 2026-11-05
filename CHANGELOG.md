@@ -39,7 +39,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **(English) Start-up reads the database less** (about a quarter fewer reads), and settings are only read again when they change.
 
 ### Pour les développeurs
-- **Settings cache** (`src/core/settings.ts`, `settingsGeneration.ts`, `db.ts`): raw `Setting` rows cached per process, invalidated by a generation counter that the extended Prisma client bumps on every write to `Setting` (also in transactions); 15 s safety age; `resetSettingsCache()` for tests and tools. Previously `getSetting` outside a page render (sitemap, feeds, routes, MCP, start-up) reloaded the whole table on every call. `prisma` is still typed `PrismaClient`.
+- **Settings cache** (`settings.ts`, `settingsGeneration.ts`, `db.ts`): raw `Setting` rows cached per process, invalidated by a counter that the extended Prisma client bumps on every `Setting` write (also in transactions); 15 s safety age; `resetSettingsCache()` for tests. Before, `getSetting` outside a render re-read the table on each call.
 
 - **New core tools:** `media_upload`, `media_list`, `media_set_alt`, `site_settings_get`, `site_settings_set` (`src/core/siteMcp.ts`, `mediaMcp.ts`, `maintenance/siteSettings.ts`), with `aim.tool.*` rights, profiles (read / assistant) and the "Site identity" section of the rights page. `site_settings_set` is the level 3 action `site_settings_set` (`Plan.site`).
 - **`media_upload` reuses the admin's pipeline** (`sniffImage`, `saveUpload`, `saveSvgUpload`, `MAX_INPUT_PIXELS`); the MCP body limit is 4.3 MB for a single `media_upload` call only (1 MB otherwise). Alternative texts are the settings `media.alt.<file>` (no migration); journal lines `media.upload`, `media.alt`.
