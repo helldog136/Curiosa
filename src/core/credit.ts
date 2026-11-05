@@ -1,8 +1,17 @@
 /**
- * Crédit exigé par la licence (section 4) : « Powered by Curiosa », « Curiosa » étant un lien vers le dépôt du projet.
- * Une seule adresse, utilisée par le pied de page du site (sans numéro de version : jamais de version côté public) et par celui de l'admin.
+ * Crédit exigé par la licence (section 4) : « Powered by Curiosa ». Le dépôt du projet : adresse des signalements et des guides, et lien du pied de l'administration.
  */
 export const CREDIT_URL = "https://github.com/helldog136/Curiosa";
+
+/**
+ * Le lien « Curiosa » du crédit dans le pied de page PUBLIC de chaque site : la page du projet, en anglais par défaut et en français pour une personne qui visite en français
+ * (toute autre langue : l'adresse anglaise). SEUL endroit qui écrit cette adresse ; pas de numéro de version, jamais.
+ */
+export const CREDIT_SITE_URL = "https://curiosa.helldog136.be";
+export const CREDIT_SITE_URL_FR = `${CREDIT_SITE_URL}/fr`;
+export function creditSiteUrl(locale: string): string {
+  return locale === "fr" ? CREDIT_SITE_URL_FR : CREDIT_SITE_URL;
+}
 
 /**
  * Signalement d'un défaut : les « issues » du dépôt du projet (même adresse que le crédit), avec un titre et un corps PRÉREMPLIS par l'adresse.

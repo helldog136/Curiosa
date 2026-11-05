@@ -1,6 +1,7 @@
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { isExternalHref } from "@/core/url";
+import { CodeBlock } from "./CodeBlock";
 
 const components: Components = {
   a: ({ href, children }) => {
@@ -28,8 +29,9 @@ const components: Components = {
   del: ({ children }) => <del className="text-muted">{children}</del>,
   code: ({ children }) => <code data-skin-part="code" className="rounded-sm bg-surface px-1.5 py-0.5 font-mono text-[0.9em]">{children}</code>,
   // Blocs de code : fond sombre lisible, défilement horizontal plutôt que de déborder (l'inline `code` ci-dessus y perd son style).
+  // Chaque bloc de code a un bouton « Copier » (JavaScript seulement ; le code reste lisible et sélectionnable sans lui) : voir CodeBlock.
   pre: ({ children }) => (
-    <pre data-skin-part="code-block" className="mt-4 overflow-x-auto rounded-card border-token border-line bg-surface p-4 text-sm leading-6 [&>code]:bg-transparent [&>code]:p-0 [&>code]:text-[1em]">{children}</pre>
+    <CodeBlock className="overflow-x-auto rounded-card border-token border-line bg-surface p-4 text-sm leading-6 [&>code]:bg-transparent [&>code]:p-0 [&>code]:text-[1em]">{children}</CodeBlock>
   ),
   // Tableaux (GFM) : défilement horizontal sur petit écran, lignes fines.
   table: ({ children }) => <div className="relative mt-4 overflow-x-auto rounded-card border-token border-line"><table data-skin-part="table" className="w-full min-w-max text-left text-sm">{children}</table></div>,

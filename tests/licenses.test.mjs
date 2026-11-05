@@ -22,8 +22,8 @@ test("le projet a sa licence (Curiosa License) et la déclare ; chaque module li
 test("le crédit « développé par » est affiché sur toutes les pages publiques (pied de page du site)", () => {
   const footer = fs.readFileSync("src/components/site/Footer.tsx", "utf8");
   assert.match(footer, /data-testid="credit"/);
-  assert.match(footer, /<CuriosaMark \/>/, "le nom passe par le composant verrouillé (src/components/brand/CuriosaMark.tsx)");
-  assert.match(fs.readFileSync("src/components/brand/CuriosaMark.tsx", "utf8"), /href=\{CREDIT_URL\}[\s\S]*>\s*Curiosa\s*<\/a>/);
+  assert.match(footer, /<CuriosaMark locale=\{locale\} \/>/, "le nom passe par le composant verrouillé (src/components/brand/CuriosaMark.tsx)");
+  assert.match(fs.readFileSync("src/components/brand/CuriosaMark.tsx", "utf8"), /href=\{[^}]*creditSiteUrl\(locale\)[^}]*\}[\s\S]*>\s*Curiosa\s*<\/a>/);
   assert.match(fs.readFileSync("src/core/credit.ts", "utf8"), /CREDIT_URL = "https:\/\/github\.com\/helldog136\/Curiosa"/);
   assert.ok(!/readVersion|version/i.test(footer), "jamais de numéro de version côté public");
   assert.match(fs.readFileSync("src/app/(site)/layout.tsx", "utf8"), /<Footer /);

@@ -58,7 +58,7 @@ Curiosa est **gratuit** et son code source est **lisible et modifiable**. Préci
 - ✅ **Vous pouvez monter, personnaliser et entretenir un site pour une personne cliente** et facturer ce travail, tant que vous ne lui vendez pas Curiosa lui-même.
 - ✅ **Une société d'hébergement peut le proposer préinstallé** (par exemple un serveur loué avec Curiosa déjà prêt à l'emploi) : elle facture l'hébergement et le support, chaque personne cliente garde sa propre installation, qu'elle contrôle entièrement.
 - ❌ **On ne peut pas vendre Curiosa** (ni une version modifiée), ni en faire une plateforme où une seule installation sert les sites de nombreuses personnes clientes, ni facturer l'accès à ses fonctionnalités.
-- 🏷️ **Le crédit « Propulsé par Curiosa » reste affiché** dans le pied de page du site (« Curiosa » est un lien vers le dépôt du projet), et les mentions de la personne qui a écrit le code restent dans le code.
+- 🏷️ **Le crédit « Propulsé par Curiosa » reste affiché** dans le pied de page du site (« Curiosa » est un lien vers la page du projet, en français ou en anglais selon la langue de la personne qui visite), et les mentions de la personne qui a écrit le code restent dans le code.
 - 🧩 **Les modules écrits par des tiers leur appartiennent** : la personne qui les écrit choisit leur licence, garde tout le mérite et peut les vendre.
 
 Le texte juridique complet est dans [`LICENSE`](LICENSE). Une personne qui écrit un module peut aussi proposer un don volontaire dans la description de son module ; rien n'est jamais conditionné à un paiement.
