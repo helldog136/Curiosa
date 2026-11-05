@@ -4,6 +4,9 @@ import { getSiteConfig } from "@/core/settings";
 import { canUse } from "./access";
 import { authenticate, authenticateByUrl, isMcpEnabled, rateLimited, type AuthedToken } from "./tokens";
 import type { McpTool } from "./types";
+
+/** The source of the tools. `hint.name`: the tool being called, so that a source can avoid computing tools that cannot be it (see platform.ts). */
+export type ListTools = (hint?: { name?: string }) => Promise<McpTool[]>;
 import { McpToolError } from "./validate";
 
 /**
@@ -34,7 +37,7 @@ const rpcResult = (id: RpcRequest["id"], result: unknown) => ({ jsonrpc: "2.0", 
 /** Ce que ce jeton voit : plafond (lecture/écriture) ET accès accordé action par action. Recalculé à chaque requête. */
 const visible = (tools: McpTool[], token: AuthedToken) => tools.filter((t) => canUse(t, token));
 
-async function handle(rpc: RpcRequest, token: AuthedToken, listTools: () => Promise<McpTool[]>): Promise<unknown | null> {
+async function handle(rpc: RpcRequest, token: AuthedToken, listTools: ListTools): Promise<unknown | null> {
   if (!rpc || typeof rpc !== "object" || Array.isArray(rpc) || rpc.jsonrpc !== "2.0") return rpcError(null, -32600, "Invalid Request.");
   // Une réponse du client à une requête du serveur (nous n'en envoyons jamais) : acceptée, sans réponse.
   if (rpc.method === undefined && ("result" in rpc || "error" in rpc)) return null;
@@ -66,7 +69,7 @@ async function handle(rpc: RpcRequest, token: AuthedToken, listTools: () => Prom
       });
     case "tools/call": {
       const name = String(rpc.params?.name ?? "");
-      const tool = (await listTools()).find((t) => t.name === name);
+      const tool = (await listTools({ name })).find((t) => t.name === name);
       // Même réponse que l'outil existe ou non : un jeton ne découvre rien de ce qu'on ne lui a pas accordé.
       if (!tool || !canUse(tool, token)) return rpcError(rpc.id, -32602, `Unknown tool: ${name}`);
       try {
@@ -84,7 +87,7 @@ async function handle(rpc: RpcRequest, token: AuthedToken, listTools: () => Prom
   }
 }
 
-async function safeHandle(rpc: RpcRequest, token: AuthedToken, listTools: () => Promise<McpTool[]>): Promise<unknown | null> {
+async function safeHandle(rpc: RpcRequest, token: AuthedToken, listTools: ListTools): Promise<unknown | null> {
   try {
     return await handle(rpc, token, listTools);
   } catch (error) {
@@ -103,7 +106,7 @@ export function methodNotAllowed(): Response {
  * `viaUrl` : l'adresse secrète `/api/mcp/<jeton>` ; sinon le jeton vient de l'en-tête `Authorization: Bearer`.
  * Le jeton n'est ni journalisé ni renvoyé : en cas d'échec par adresse, la réponse est la même pour tout.
  */
-export async function handleMcpRequest(request: Request, listTools: () => Promise<McpTool[]>, viaUrl?: { token: string }): Promise<Response> {
+export async function handleMcpRequest(request: Request, listTools: ListTools, viaUrl?: { token: string }): Promise<Response> {
   if (!(await isMcpEnabled())) return json(rpcError(null, -32000, "MCP is disabled on this site."), 503);
   if (viaUrl) {
     const token = await authenticateByUrl(viaUrl.token);
@@ -115,7 +118,7 @@ export async function handleMcpRequest(request: Request, listTools: () => Promis
   return run(request, token, listTools);
 }
 
-async function run(request: Request, token: AuthedToken, listTools: () => Promise<McpTool[]>): Promise<Response> {
+async function run(request: Request, token: AuthedToken, listTools: ListTools): Promise<Response> {
   if (rateLimited(token.id)) return json(rpcError(null, -32002, "Too many requests."), 429);
 
   const raw = await request.text();

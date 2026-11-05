@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import { AsyncLocalStorage } from "node:async_hooks";
 import { noteRawgModulesChanged } from "@/core/services/rawgNote";
 import fs from "node:fs";
 import path from "node:path";
@@ -340,10 +341,28 @@ export type ModuleUpdateCheck = {
 type Fetched = { root: string; commit: string; tree: string; manifest: ParsedManifest | null; cleanup: () => void };
 
 /**
- * Récupère (superficiellement) un dépôt à une étiquette, une branche ou un commit, et lit le dossier du module. L'empreinte `tree` est celle du CONTENU de ce
- * dossier : elle ne change que si ce module change, pas quand un autre module du même dépôt évolue.
+ * One pass over several modules of the SAME repository (checking 70 modules for updates, updating 30 of them) must not download that repository once per module:
+ * a shallow copy of the whole repository is ~25 MB, so 70 modules meant ~1.8 GB and over a minute for a single check. Inside `withSharedSources`, the copy of a
+ * given (repository, reference) is fetched ONCE and shared by every module of the pass, and the remote commit of a reference is read once (a few bytes).
+ * The shared copies are only ever read; they are deleted when the pass ends. Outside a pass nothing changes: each call fetches its own copy.
  */
-async function fetchSubdirSource(url: string, ref: string | null | undefined, subdir: string): Promise<Fetched> {
+type SharedSource = { checkout: string; commit: string; cleanup: () => void };
+type SharedPass = { heads: Map<string, Promise<string | null>>; sources: Map<string, Promise<SharedSource>> };
+const sharedPass = new AsyncLocalStorage<SharedPass>();
+const passKey = (url: string, ref: string | null | undefined) => `${url}\0${ref ?? ""}`;
+
+export async function withSharedSources<T>(fn: () => Promise<T>): Promise<T> {
+  if (sharedPass.getStore()) return fn();
+  const pass: SharedPass = { heads: new Map(), sources: new Map() };
+  try {
+    return await sharedPass.run(pass, fn);
+  } finally {
+    for (const source of pass.sources.values()) void source.then((s) => s.cleanup(), () => {});
+  }
+}
+
+/** A shallow copy of `url` at `ref` in a temporary folder of the modules directory. */
+async function fetchSource(url: string, ref: string | null | undefined): Promise<SharedSource> {
   fs.mkdirSync(MODULES_DIR, { recursive: true });
   const tmp = fs.mkdtempSync(path.join(MODULES_DIR, ".incoming-"));
   const cleanup = () => fs.rmSync(tmp, { recursive: true, force: true });
@@ -356,13 +375,59 @@ async function fetchSubdirSource(url: string, ref: string | null | undefined, su
       throw e;
     });
     await git(["-c", "advice.detachedHead=false", "checkout", "-q", "--detach", isCommitRef(ref) ? ref! : "FETCH_HEAD"], checkout);
-    const root = path.join(checkout, subdir);
-    if (!isInside(checkout, root)) throw Object.assign(new Error("subdir"), { code: "modules.error.nosubdir" });
-    const commit = await git(["rev-parse", "HEAD"], checkout);
-    const tree = await git(["rev-parse", `HEAD:${subdir}`], checkout);
+    return { checkout, commit: await git(["rev-parse", "HEAD"], checkout), cleanup };
+  } catch (error) {
+    cleanup();
+    throw error;
+  }
+}
+
+/**
+ * The commit a reference points to on the remote, read WITHOUT downloading anything (one `ls-remote`), or null when it cannot be told for sure (the caller then
+ * fetches). An annotated tag is read through its peeled line, so the answer is comparable with the commit stored at install time.
+ */
+export async function remoteCommitOf(url: string, ref: string | null | undefined): Promise<string | null> {
+  const read = async (): Promise<string | null> => {
+    try {
+      const out = await git(["ls-remote", "--", url, ref || "HEAD", ...(ref ? [`${ref}^{}`] : [])], undefined, undefined, 30_000);
+      const refs = new Map(out.split("\n").map((l) => l.trim().split(/\s+/)).filter((p) => p.length === 2 && /^[0-9a-f]{40}$/.test(p[0]!)).map((p) => [p[1]!, p[0]!]));
+      if (!ref) return refs.get("HEAD") ?? null;
+      return refs.get(`refs/tags/${ref}^{}`) ?? refs.get(`refs/tags/${ref}`) ?? refs.get(`refs/heads/${ref}`) ?? null;
+    } catch { return null; }
+  };
+  const pass = sharedPass.getStore();
+  if (!pass) return read();
+  const key = passKey(url, ref);
+  let hit = pass.heads.get(key);
+  if (!hit) { hit = read(); pass.heads.set(key, hit); }
+  return hit;
+}
+
+const sameCommit = (a: string, b: string) => a.length >= 7 && b.length >= 7 && (a.startsWith(b) || b.startsWith(a));
+
+/**
+ * Récupère (superficiellement) un dépôt à une étiquette, une branche ou un commit, et lit le dossier du module. L'empreinte `tree` est celle du CONTENU de ce
+ * dossier : elle ne change que si ce module change, pas quand un autre module du même dépôt évolue.
+ */
+async function fetchSubdirSource(url: string, ref: string | null | undefined, subdir: string): Promise<Fetched> {
+  const pass = sharedPass.getStore();
+  let source: SharedSource;
+  if (pass) {
+    const key = passKey(url, ref);
+    let hit = pass.sources.get(key);
+    if (!hit) { hit = fetchSource(url, ref); pass.sources.set(key, hit); }
+    source = await hit;
+  } else {
+    source = await fetchSource(url, ref);
+  }
+  const cleanup = pass ? () => {} : source.cleanup;
+  try {
+    const root = path.join(source.checkout, subdir);
+    if (!isInside(source.checkout, root)) throw Object.assign(new Error("subdir"), { code: "modules.error.nosubdir" });
+    const tree = await git(["rev-parse", `HEAD:${subdir}`], source.checkout);
     let manifest: ParsedManifest | null = null;
     try { const p = parseManifest(JSON.parse(fs.readFileSync(path.join(root, "module.json"), "utf8"))); manifest = p.ok ? p.manifest : null; } catch { manifest = null; }
-    return { root, commit, tree, manifest, cleanup };
+    return { root, commit: source.commit, tree, manifest, cleanup };
   } catch (error) {
     cleanup();
     throw error;
@@ -384,6 +449,11 @@ export async function subdirTarget(row: Module): Promise<{ ref: string | null; f
 async function checkSubdirUpdate(row: Module): Promise<ModuleUpdateCheck> {
   const { ref, fromCatalogue } = await subdirTarget(row);
   if (!fromCatalogue && isCommitRef(row.ref)) return { available: false };   // épinglé sur un commit : c'est le but
+  // Same commit as the one installed: same content, nothing to download (the common case of a check where nothing was released).
+  if (row.commit) {
+    const head = isCommitRef(ref) ? ref! : await remoteCommitOf(row.repoUrl!, ref);
+    if (head && sameCommit(head, row.commit)) return { available: false, remote: row.commit };
+  }
   const f = await fetchSubdirSource(row.repoUrl!, ref, row.subdir!);
   try {
     const available = f.tree !== row.tree;
@@ -852,4 +922,44 @@ export async function installFromCatalogue(id: string, opts: { dependencies?: bo
   const result = await installModule(`${entry.repo}${fragment}`, { expectId: id, ...rest });
   if (result.ok) noteModulesChanged();
   return result;
+}
+
+/**
+ * At startup: puts right what a site that stopped in the middle of a module swap left behind. During an update or a reinstall the old folder is set aside as
+ * `<id>.previous-<pid>` and comes back by itself at the first failure; a process that DIES in between (a restart, a crash) cannot do that. So, for every such folder whose
+ * process is gone: if the module folder in place is the version the database knows, the swap was complete and the old copy is deleted; otherwise (folder missing,
+ * unreadable or another version) the old copy is put back. Temporary download folders (`.incoming-*`, `<id>.incoming-<pid>`) of a process that is gone are deleted.
+ * Returns what it did (for the log). Never throws.
+ */
+export async function recoverInterruptedSwaps(): Promise<{ restored: string[]; removed: string[] }> {
+  const done = { restored: [] as string[], removed: [] as string[] };
+  let names: string[] = [];
+  try { names = fs.readdirSync(MODULES_DIR); } catch { return done; }
+  const alive = (pid: number) => { try { process.kill(pid, 0); return true; } catch (e) { return (e as NodeJS.ErrnoException).code === "EPERM"; } };
+  for (const name of names) {
+    try {
+      const full = path.join(MODULES_DIR, name);
+      const tmp = /^\.incoming-/.test(name) || /\.incoming-(\d+)$/.exec(name);
+      if (tmp) {
+        const pid = Array.isArray(tmp) ? Number(tmp[1]) : 0;
+        if (pid && (pid === process.pid || alive(pid))) continue;
+        fs.rmSync(full, { recursive: true, force: true }); done.removed.push(name); continue;
+      }
+      const m = /^(.+)\.previous-(\d+)$/.exec(name);
+      if (!m) continue;
+      const pid = Number(m[2]);
+      if (pid === process.pid || alive(pid)) continue;
+      const id = m[1]!;
+      const target = path.join(MODULES_DIR, id);
+      const row = await prisma.module.findUnique({ where: { id } });
+      let inPlace: string | null = null;
+      try { inPlace = String(JSON.parse(fs.readFileSync(path.join(target, "module.json"), "utf8")).version); } catch { inPlace = null; }
+      if (row && inPlace === row.version) { fs.rmSync(full, { recursive: true, force: true }); done.removed.push(name); continue; }
+      fs.rmSync(target, { recursive: true, force: true });
+      fs.renameSync(full, target);
+      forgetModule(id);
+      done.restored.push(id);
+    } catch (error) { console.error(`[modules] could not recover ${name}:`, (error as Error)?.message); }
+  }
+  return done;
 }

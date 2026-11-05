@@ -12,6 +12,14 @@ export async function register() {
   }
   // One-time conversions (placement freeze 0.2.6, menu freeze 0.2.x) are NOT run here any more: a site older than the support floor (upgrade.json `minFrom`) is carried
   // through the bridge release that still runs them, then updated to this version (docs/MIGRATIONS.md, src/core/updates/migrations-registry.json).
+  // Module folders left half-swapped by a process that died (restart in the middle of an update): put right before anything loads a module. Never throws.
+  try {
+    const { recoverInterruptedSwaps } = await import("@/core/modules/installer");
+    const fixed = await recoverInterruptedSwaps();
+    if (fixed.restored.length || fixed.removed.length) console.log(`[modules] interrupted swap recovered at startup: restored ${fixed.restored.join(", ") || "none"}; removed ${fixed.removed.length} leftover folder(s)`);
+  } catch (error) {
+    console.error("[modules] recovery failed:", (error as Error)?.message);
+  }
   // Rôles (0.2.0) : les trois rôles prédéfinis existent et chaque personne a celui de son niveau (`User.role`). Idempotent, ne lève jamais.
   const { initRoles } = await import("@/core/auth/roles");
   await initRoles();
@@ -32,4 +40,7 @@ export async function register() {
   const { ensureRawgHandover } = await import("@/core/services/rawgHandover");
   const { trackRawgJob } = await import("@/core/services/rawgNote");
   trackRawgJob(ensureRawgHandover({ install: true, force: true }));
+  // Warm the caches an AI maintenance call would otherwise pay for after a restart (a few seconds after the start, only when the site has an AI access).
+  const { scheduleMaintenanceWarmup } = await import("@/core/maintenance/warmup");
+  scheduleMaintenanceWarmup();
 }

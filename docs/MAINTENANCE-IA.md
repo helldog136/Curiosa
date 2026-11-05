@@ -149,7 +149,7 @@ Avec la validation humaine (le défaut), un outil de niveau 3 renvoie `{"status"
 2. attends, puis interroge `maintenance_request_status` avec le `requestId` (pas plus d'une fois par minute) ; **ne redemande pas** : une demande identique qui attend est renvoyée telle quelle ;
 3. à `done` : vérifie avec `maintenance_status` (le site peut redémarrer après une mise à jour du cœur) ; à `failed` : lis `result.message` et `maintenance_health`, puis explique ; à `denied` ou `expired` : n'insiste pas, redemande seulement si la personne propriétaire te le demande.
 
-Si la personne propriétaire a choisi l'**exécution directe** pour ton jeton, l'outil agit tout de suite et répond `done` ou `failed`. Cela ne change rien à ta prudence.
+Si la personne propriétaire a choisi l'**exécution directe** pour ton jeton, l'outil agit tout de suite et répond `done` ou `failed`. Cela ne change rien à ta prudence. Une action **longue** peut répondre `started` : voir « Long actions » dans l'addendum anglais plus bas.
 
 ### Jaquettes de jeux douteuses (0.2.10)
 
@@ -308,3 +308,42 @@ One small shared API, in memory, rolling hour, per access and per class:
 - The message: "Limit reached: 12 risky actions per hour for this access. Next slot in 14 min, or the owner can reset it in Admin > AI assistants."
 - `maintenance_my_access` reports `hourlyLimits` for both classes. The access page (Admin > AI assistants > the access) shows the same figures, a "Reset the limits" button (one click and a confirmation line, journalled as `mcp.limits.reset`) and, in advanced mode, the two limits (`mcp.limits.set`).
 - Rights: `aim.tool.media_list`, `media_upload`, `media_set_alt`, `site_settings_get`, `site_settings_set` (EN and FR). Profiles: read = `media_list`, `site_settings_get`; assistant = `media_upload`, `media_set_alt`, `site_settings_set`; full = everything.
+
+## Addendum: long actions, the diagnosis and the lock (English)
+
+An AI client gives up on a tool call after about 60 seconds. Before 0.6.14 an update of many modules, a reinstall or the check of every repository could take longer, and the client reported a failure although the work finished on the server (the next call then said "nothing to update"). Three things changed.
+
+### Long actions answer "started" (`src/core/maintenance/background.ts`)
+
+`maintenance_modules_update_all`, `maintenance_module_update`, `maintenance_module_reinstall`, `maintenance_check_updates` (and the approved `module_install` / `skin_install`) run **in the background**, like `core_update`:
+
+- The call takes the maintenance lock, writes a record, starts the work and waits for it `quickWaitMs` (8 s by default, 20 s at most). If the work is over, the answer is the same as before (`{status: "done" | "failed", message}`, or the level 2 `{ok, message}`).
+- Otherwise the answer is `{status: "started", requestId, message}`. **Do not start it again.** Poll `maintenance_request_status` with the `requestId` every 10 to 20 seconds: `status` is `running` (with `progress`: `total`, `done`, and for each module `{id, status: "updated" | "failed", reason?}`), then `done` or `failed` with `result.message` and `result.details` (`updated`, `failed` with the reason, `needsNewerCore`, `notTried`, `changedSinceRequest`).
+- The work does **not** depend on the connection: a client that goes away changes nothing. The lock is given back when the work ends, whatever happens; the audit line (`mcp.maintenance.<tool>`) and the owner's notice are written by the work when it ends, once.
+- Same rights, same approval rules: a direct access starts the work at once (its record is a `run_…`, readable only by the access that made it); with the human approval (the default) the request is created as before and the owner's **Approve** answers at once, the request then shows `running`, its progress and its result. Nothing was added to the approval rules and `module_install`, `skin_install` and `instance_add` still always wait for the owner.
+- A "nothing to update" or "unknown module" refusal is still a tool error, not a `started`.
+- If the site restarts while a record says `running`, nothing of the new process works on it: the next read closes it as `failed` ("Interrupted: the site restarted…"). At startup the core also puts right a module folder that a dead process left half swapped (`<id>.previous-<pid>`: the old copy comes back, or is deleted when the swap was complete) and removes leftover `.incoming-*` folders.
+
+### The lock says who holds it
+
+"Another maintenance operation is running (modules_update_all, started by "Claude" 47 s ago). Follow it with maintenance_request_status (requestId run_…), or try again in a minute." A lock older than 30 minutes is ignored (and logged), so a bug can never block the site for ever. `maintenance_diagnose` also lists a running operation.
+
+### `maintenance_diagnose` never waits for the network
+
+Its independent checks (health, modules, updates of the core and of the modules, content summary) run **at the same time**, each with `checkTimeoutMs` (5 s). A check that does not answer in time is listed in `unknown` (`{check, reason}`) and the others are still reported; `summary.complete` says whether everything was checked. The module update report comes from the last check **saved** in the setting `updates.modulesReport` (served at once after a restart, with its time in `notes`, `maintenance_updates` and `maintenance_modules` mark it `stale`) while a new check runs in the background. A diagnosis with a hung network therefore answers in about 5 s.
+
+### Why it was slow (measured, 71 modules, 30 updates, a local git host with no latency)
+
+| Stage | Before | After |
+|---|---|---|
+| Check of the 71 modules (cold) | 48.6 s | 1.4 s |
+| `maintenance_diagnose`, first call after a restart | 36 to 44 s | 3.1 s |
+| `maintenance_modules_update_all`, 30 updates, cold | 87.8 s | 5.3 s |
+
+Cause: a module that lives in a folder of a repository with many modules was checked, and updated, by downloading **the whole repository** (a shallow copy of 26 MB for this one) once per module. `withSharedSources` (`src/core/modules/installer.ts`) now shares one download per (repository, reference) in a pass, and a check whose reference still points to the installed commit (`remoteCommitOf`, one `git ls-remote`) downloads nothing.
+
+### Other changes for developers
+
+- `deps.quickWaitMs`, `deps.checkTimeoutMs`, `deps.savedModulesReport()` and `deps.updateModules(ids, onEach)` (progress) are injectable in tests; `within(ms, fn)` (`within.ts`) is the small time limit used by the diagnosis.
+- `tools/call` looks the tool up with `listTools({ name })`; for a `maintenance_*` name the module providers are not asked, so a maintenance call after a restart no longer loads every module. The "withdrawn from MCP" settings are read in parallel.
+- A few seconds after the start, a site that has an AI access warms the caches in the background (`warmup.ts`: modules, catalogue, health, check of the versions).

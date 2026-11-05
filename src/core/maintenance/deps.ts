@@ -7,7 +7,7 @@ import { getCatalogue, getCatalogueSource, type CatalogueEntry } from "@/core/mo
 import { getModulePreview, targetOf, type ModulePreview } from "@/core/modules/readme";
 import { retryInstanceMigration, type MigrationOutcome } from "@/core/modules/dataMigrations";
 import { reinstallModule, type ReinstallResult } from "@/core/modules/reinstall";
-import { getModulesReport, updateModules } from "@/core/modules/updateStatus";
+import { getModulesReport, readSavedModulesReport, updateModules } from "@/core/modules/updateStatus";
 import { sendMail, type MailResult } from "@/core/services/mail";
 import { checkForUpdate, findLatestStable, startUpdate, type JsonFetcher, type Spawner } from "@/core/updates/service";
 
@@ -24,7 +24,10 @@ export type MaintenanceDeps = {
   spawner?: Spawner;
   modulesReport(force: boolean): Promise<ModulesReport>;
   checkModule(id: string): Promise<{ check: ModuleUpdateCheck; failed: boolean }>;
-  updateModules(ids: string[]): Promise<Summary>;
+  /** `onEach` is told as each module ends (progress for the AI that follows the update). */
+  updateModules(ids: string[], onEach?: (done: { id: string; ok: boolean; error?: string }) => void): Promise<Summary>;
+  /** The last update report that was saved (however old), without any network; null if there is none. */
+  savedModulesReport(): Promise<ModulesReport | null>;
   reinstall(id: string): Promise<ReinstallResult>;
   uninstall(id: string, opts: { keepData: boolean }): Promise<InstallResult>;
   retryInstance(instanceId: string): Promise<MigrationOutcome | null>;
@@ -49,6 +52,10 @@ export type MaintenanceDeps = {
   installFromCatalogue(id: string): Promise<InstallResult>;
   /** Borne dure (ms) des lectures réseau du catalogue : au-delà, la réponse dit « injoignable pour l'instant ». */
   catalogTimeoutMs: number;
+  /** How long a tool call waits for a long action before answering "started" (ms; never more than 20 s, see background.ts). */
+  quickWaitMs: number;
+  /** Each check of the diagnosis has this long (ms); a check that is not over is reported as "unknown" and the others are still answered. */
+  checkTimeoutMs: number;
 };
 
 const STABLE_CACHE_MS = 10 * 60_000;
@@ -58,7 +65,8 @@ export const realDeps = (): MaintenanceDeps => ({
   now: () => Date.now(),
   modulesReport: (force) => getModulesReport(force),
   checkModule: (id) => checkForUpdateDetailed(id),
-  updateModules: (ids) => updateModules(ids),
+  updateModules: (ids, onEach) => updateModules(ids, async (id, ok, r) => { onEach?.({ id, ok, ...(r.ok ? {} : { error: r.error }) }); }),
+  savedModulesReport: () => readSavedModulesReport(),
   reinstall: (id) => reinstallModule(id),
   uninstall: (id, opts) => uninstallModule(id, opts),
   async catalogue() {
@@ -71,6 +79,8 @@ export const realDeps = (): MaintenanceDeps => ({
   },
   installFromCatalogue: (id) => installFromCatalogue(id),
   catalogTimeoutMs: 20_000,
+  quickWaitMs: 8_000,
+  checkTimeoutMs: 5_000,
   retryInstance: (instanceId) => retryInstanceMigration(instanceId),
   async latestStable(force = false) {
     if (!force && stableCache && Date.now() - stableCache.at < STABLE_CACHE_MS) return stableCache.value;

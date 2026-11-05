@@ -9,7 +9,9 @@ import { deps } from "./deps";
 import { isStableVersion, moduleUpdateRefusal, updateRunning } from "./inspect";
 import { notifyOwner } from "./notify";
 import { redactSecrets } from "./redact";
-import { claimRequest, createRequest, denyRequest, finishRequest, reopenRequest, type Level3Action, type Plan } from "./requests";
+import { claimRequest, createRequest, denyRequest, finishRequest, reopenRequest, setRequestProgress, type Level3Action, type Plan } from "./requests";
+import { openRun, resetLock, runInBackground, takeLock, type Outcome, type RecordStore, type RunContext, type RunDone, type Started } from "./background";
+import { within } from "./within";
 import { getApprovalMode } from "./settings";
 import { DEFAULT_LIMITS, resetAllSlots, takeSlot, type SlotClass } from "./slots";
 import { runContentCheck } from "./content/service";
@@ -35,7 +37,7 @@ import { executeSkin, executeSkinOptions, isSkinAction, prepareSkin, prepareSkin
  *  - le propriétaire est averti (voir notify.ts).
  * Les messages renvoyés à l'IA sont en anglais, courts, masqués et jamais techniques.
  */
-export type Outcome = { ok: boolean; message: string; details?: unknown; /** L'opération n'a pas commencé (verrou pris) : rien n'a été fait. */ busy?: boolean };
+export type { Outcome } from "./background";
 export type Level2Tool = "check_updates" | "backup_run" | "module_reinstall" | "module_restart" | "content_check_run";
 export type Params = { module?: string; instance?: string; /** Skins : l'identifiant du skin. */ skin?: string; /** Polices (`font_set`) : choix des titres et du texte. */ titles?: unknown; text?: unknown; /** Installation : clé facultative de la première instance. */ instanceKey?: string; /** Contrôle du contenu : reprendre la vérification commencée au lieu d'en commencer une. */ continue?: boolean; /** Désinstallation : garder (défaut) ou effacer les données. */ keepData?: boolean;
   /** Installation de plusieurs modules en une demande (`module_install`) : la liste d'identifiants. */ modules?: unknown;
@@ -47,7 +49,6 @@ export type Params = { module?: string; instance?: string; /** Skins : l'identif
 
 /* ───────────── Verrou et cadence ───────────── */
 
-const g = globalThis as unknown as { curiosaMaintenanceBusy?: string | null };
 /** Which counter an action uses (slots.ts): what brings code or changes the whole site is "risky"; the day-to-day setup and content work is "content". */
 const LEVEL2_CLASS: Record<Level2Tool, SlotClass> = { check_updates: "content", backup_run: "content", content_check_run: "content", module_reinstall: "risky", module_restart: "risky" };
 const LEVEL3_CLASS: Record<Level3Action, SlotClass> = {
@@ -58,12 +59,37 @@ const LEVEL3_CLASS: Record<Level3Action, SlotClass> = {
 export const MAX_ACTIONS_PER_HOUR = DEFAULT_LIMITS.risky;
 
 /** Tests: clears the counters and the lock. */
-export function resetMaintenanceState(): void { resetAllSlots(); g.curiosaMaintenanceBusy = null; }
+export function resetMaintenanceState(): void { resetAllSlots(); resetLock(); }
 
-async function withLock<T extends Outcome>(name: string, fn: () => Promise<T>): Promise<T | Outcome> {
-  if (g.curiosaMaintenanceBusy) return { ok: false, busy: true, message: `Another maintenance operation is running (${g.curiosaMaintenanceBusy}). Try again in a minute.` };
-  g.curiosaMaintenanceBusy = name;
-  try { return await fn(); } finally { g.curiosaMaintenanceBusy = null; }
+async function withLock<T extends Outcome>(name: string, by: string, fn: () => Promise<T>): Promise<T | Outcome> {
+  const lock = takeLock({ name, by });
+  if (!lock.ok) return lock.outcome;
+  try { return await fn(); } finally { lock.release(); }
+}
+
+/**
+ * Actions that can take longer than the 60 seconds an AI client waits (downloads, one pass over every repository, data conversions). They are started in the
+ * background and answered "started" with a requestId when they are not over within a few seconds: see background.ts. Everything else answers when it is done.
+ */
+const BACKGROUND_LEVEL2: ReadonlySet<Level2Tool> = new Set(["check_updates", "module_reinstall"]);
+const BACKGROUND_LEVEL3: ReadonlySet<Level3Action> = new Set(["module_update", "modules_update_all", "module_install", "skin_install"]);
+
+/** Where the record of an approved request is kept up to date. */
+const requestStore = (id: string): RecordStore => ({ setPlan: async () => {}, setProgress: (p) => setRequestProgress(id, p), finish: (r) => finishRequest(id, r, deps.now()) });
+
+/** Takes the lock, opens the record (the approved request, or a run of its own) and starts `work` in the background. */
+async function launch(o: { action: string; actor: { name: string; tokenId?: string }; requestId?: string; work: (ctx: RunContext) => Promise<Outcome>; after: (outcome: Outcome) => Promise<void> }): Promise<Started | RunDone | { busy: true; outcome: Outcome }> {
+  const lock = takeLock({ name: o.action, by: o.actor.name, requestId: o.requestId });
+  if (!lock.ok) return { busy: true, outcome: lock.outcome };
+  let id: string;
+  let store: RecordStore;
+  try {
+    if (o.requestId) { id = o.requestId; store = requestStore(id); } else {
+      const run = await openRun({ action: o.action, tokenId: o.actor.tokenId ?? "unknown", tokenName: o.actor.name });
+      id = run.id; store = run.store; lock.tag(id);
+    }
+  } catch (error) { lock.release(); throw error; }
+  return runInBackground({ id, store, lock, work: o.work, after: o.after });
 }
 
 /* ───────────── Messages ───────────── */
@@ -136,17 +162,18 @@ async function doContentCheck(resume: boolean): Promise<Outcome> {
 }
 
 /** Exécute une action de niveau 2 (droit déjà vérifié par le serveur MCP). */
-export async function runLevel2(tool: Level2Tool, args: Params, actor: { name: string; tokenId?: string }): Promise<Outcome> {
+export async function runLevel2(tool: Level2Tool, args: Params, actor: { name: string; tokenId?: string }): Promise<Outcome | { ok: true; status: "started"; requestId: string; message: string }> {
   const id = tool === "module_reinstall" ? moduleId(args.module) : undefined;
   const key = tool === "module_restart" ? String(args.instance ?? "") : undefined;
   if (tool === "module_restart" && !/^[a-z0-9][a-z0-9_-]{0,63}$/.test(key!)) throw new McpToolError('argument "instance" must be an instance key (see maintenance_modules)');
   await takeSlot(actor.tokenId, LEVEL2_CLASS[tool]);
-  const outcome = await withLock(tool, async () => {
+  const param = id ?? key ?? (tool === "content_check_run" && args.continue === true ? "continue" : "");
+  const work = async (): Promise<Outcome> => {
     try {
       if (tool === "check_updates") {
         await deps.recheckCore().catch(() => {});
         const report = await deps.modulesReport(true);
-        return { ok: true, message: "Caches cleared and versions checked again.", details: { moduleUpdates: report.outdated.length, notChecked: report.unchecked } } as Outcome;
+        return { ok: true, message: "Caches cleared and versions checked again.", details: { moduleUpdates: report.outdated.length, notChecked: report.unchecked } };
       }
       if (tool === "backup_run") return await doBackup();
       if (tool === "content_check_run") return await doContentCheck(args.continue === true);
@@ -154,13 +181,22 @@ export async function runLevel2(tool: Level2Tool, args: Params, actor: { name: s
       return await doRestart(key!);
     } catch (error) {
       console.error(`[maintenance] ${tool} failed:`, (error as Error)?.message);
-      return { ok: false, message: "The action failed unexpectedly. Check maintenance_health." } as Outcome;
+      return { ok: false, message: "The action failed unexpectedly. Check maintenance_health." };
     }
-  });
+  };
+  const after = async (outcome: Outcome) => {
+    await record(actor.name, tool, param, outcome, "level2");
+    await notifyOwner({ kind: "executed", tokenName: actor.name, actionKey: tool, detail: param, ok: outcome.ok });
+  };
+  if (BACKGROUND_LEVEL2.has(tool)) {
+    const run = await launch({ action: tool, actor, work, after });
+    if ("busy" in run) return run.outcome;
+    if (run.started) return { ok: true, status: "started", requestId: run.requestId, message: run.message };
+    return run.outcome;
+  }
+  const outcome = await withLock(tool, actor.name, work);
   if (outcome.busy) return outcome;
-  const param = id ?? key ?? (tool === "content_check_run" && args.continue === true ? "continue" : "");
-  await record(actor.name, tool, param, outcome, "level2");
-  await notifyOwner({ kind: "executed", tokenName: actor.name, actionKey: tool, detail: param, ok: outcome.ok });
+  await after(outcome);
   return outcome;
 }
 
@@ -174,7 +210,7 @@ export async function runConfigure(advanced: boolean, rawArgs: Record<string, un
   await takeSlot(actor.tokenId, "content");
   let reply: Record<string, unknown> = {};
   let params = input.instance;
-  const outcome = await withLock(tool, async () => {
+  const outcome = await withLock(tool, actor.name, async () => {
     try {
       const r = await applyConfigure(input, advanced);
       reply = r.reply; params = r.auditParams;
@@ -195,7 +231,11 @@ export async function runConfigure(advanced: boolean, rawArgs: Record<string, un
 
 /* ───────────── Niveau 3 : préparation (lecture seule, ne change rien) ───────────── */
 
-export async function prepare(action: Level3Action, args: Params): Promise<Plan> {
+/**
+ * `patient`: wait for the real check of every module (the work runs in the background, nobody is waiting). Otherwise (the plan of a request, built while the AI
+ * waits) the check has `2 x checkTimeoutMs`; past that the last report saved is used (it is re-verified when the request is executed), or the AI is told to ask again.
+ */
+export async function prepare(action: Level3Action, args: Params, opts: { patient?: boolean } = {}): Promise<Plan> {
   const refuse = (m: string): never => { throw new McpToolError(m); };
   if (action !== "module_uninstall" && updateRunning()) refuse("A core update is running. Wait for it to finish (maintenance_status).");
 
@@ -246,7 +286,14 @@ export async function prepare(action: Level3Action, args: Params): Promise<Plan>
   }
 
   // modules_update_all
-  const report = await deps.modulesReport(false);
+  let report: Awaited<ReturnType<typeof deps.modulesReport>>;
+  if (opts.patient) report = await deps.modulesReport(false);
+  else {
+    const got = await within(deps.checkTimeoutMs * 2, () => deps.modulesReport(false));
+    const saved = got.ok ? null : await deps.savedModulesReport();
+    if (!got.ok && !saved) refuse("The check of the module versions is still running (it goes on in the background). Ask again in a minute.");
+    report = got.ok ? got.value : saved!;
+  }
   const rows = new Map((await prisma.module.findMany()).map((r) => [r.id, r]));
   const modules: NonNullable<Plan["modules"]> = [];
   for (const o of report.outdated) {
@@ -260,7 +307,7 @@ export async function prepare(action: Level3Action, args: Params): Promise<Plan>
 
 /* ───────────── Niveau 3 : exécution (revérifie tout) ───────────── */
 
-async function execute(action: Level3Action, plan: Plan, actorLabel: string): Promise<Outcome> {
+async function execute(action: Level3Action, plan: Plan, actorLabel: string, ctx?: RunContext): Promise<Outcome> {
   // These re-read and compare by themselves (see publish.ts, install.ts, instances.ts, skins.ts).
   if (action === "entry_publish" || action === "entry_unpublish") return executeEntryPublish(action, plan, actorLabel);
   if (action === "skin_set_options") return executeSkinOptions(plan, actorLabel);
@@ -277,7 +324,7 @@ async function execute(action: Level3Action, plan: Plan, actorLabel: string): Pr
   }
   // Les conditions sont relues maintenant : la demande a pu attendre des heures.
   let fresh: Plan;
-  try { fresh = await prepare(action, { module: plan.module, keepData: plan.keepData, instanceKey: plan.instanceKey, skin: plan.skin, ...(action === "font_set" ? { titles: plan.fonts?.titles === undefined ? undefined : plan.fonts.titles || "skin", text: plan.fonts?.text === undefined ? undefined : plan.fonts.text || "skin" } : {}) }); } catch (error) {
+  try { fresh = await prepare(action, { module: plan.module, keepData: plan.keepData, instanceKey: plan.instanceKey, skin: plan.skin, ...(action === "font_set" ? { titles: plan.fonts?.titles === undefined ? undefined : plan.fonts.titles || "skin", text: plan.fonts?.text === undefined ? undefined : plan.fonts.text || "skin" } : {}) }, { patient: true }); } catch (error) {
     if (error instanceof McpToolError) return { ok: false, message: `Not done: ${error.message}` };
     throw error;
   }
@@ -308,26 +355,79 @@ async function execute(action: Level3Action, plan: Plan, actorLabel: string): Pr
   const ids = wanted.filter((m) => still.get(m.id) === m.to).map((m) => m.id);
   const changed = wanted.filter((m) => still.get(m.id) !== m.to).map((m) => m.id);
   if (!ids.length) return { ok: false, message: "Not done: the available versions changed since the request. Ask again." };
-  const s = await deps.updateModules(ids);
+  const s = await deps.updateModules(ids, (d) => ctx?.step(ids.length, { id: d.id, status: d.ok ? "updated" : "failed", ...(d.error ? { reason: reason(d.error) } : {}) }));
   const parts = [s.updated.length ? `updated: ${s.updated.join(", ")}` : "", s.failed.length ? `failed: ${s.failed.map((f) => `${f.id} (${reason(f.error)})`).join(", ")}` : "", s.incompatible?.length ? `needs a newer core: ${s.incompatible.map((i) => i.id).join(", ")}` : "", s.skipped.length ? `not tried: ${s.skipped.join(", ")}` : "", changed.length ? `skipped (changed since the request): ${changed.join(", ")}` : ""].filter(Boolean);
-  return { ok: s.failed.length === 0 && !s.stoppedOn && s.updated.length > 0, message: parts.join("; ") || "Nothing was updated.", details: { updated: s.updated } };
+  return { ok: s.failed.length === 0 && !s.stoppedOn && s.updated.length > 0, message: parts.join("; ") || "Nothing was updated.", details: {
+    updated: s.updated,
+    ...(s.failed.length ? { failed: s.failed.map((f) => ({ id: f.id, reason: reason(f.error) })) } : {}),
+    ...(s.incompatible?.length ? { needsNewerCore: s.incompatible.map((i) => i.id) } : {}),
+    ...(s.skipped.length ? { notTried: s.skipped } : {}),
+    ...(changed.length ? { changedSinceRequest: changed } : {}),
+  } };
 }
 
 const paramsText = (plan: Plan): string => plan.change ? `${plan.change.target}: ${plan.change.summary.beforeCount} > ${plan.change.summary.afterCount}` : plan.site ? plan.site.names : plan.bundle ? plan.bundle.map((p) => `${p.module} ${p.to}`).join(", ") : plan.entry ? `${plan.entry.instance}/${plan.entry.items.map((i) => i.id).join(",")}${plan.entry.locale ? ` ${plan.entry.locale}` : ""}` : plan.newInstance ? `${plan.module} "${plan.newInstance.nickname}"` : plan.options ? `${plan.skin}: ${plan.options.names}${plan.fonts ? `; fonts: ${plan.fonts.names}` : ""}` : paramsTextOther(plan);
 const paramsTextOther = (plan: Plan) => plan.fonts ? plan.fonts.names : plan.skin ? `${plan.skin}${plan.to ? ` ${plan.to}` : ""}` : (plan.adds ? `${plan.module} ${plan.to}${plan.instanceKey ? ` key=${plan.instanceKey}` : ""}${plan.adds.length ? ` + ${plan.adds.map((a) => a.id).join(", ")}` : ""}` : plan.module ? (plan.keepData === undefined ? plan.module : `${plan.module}${plan.keepData ? " keepData" : " erase"}`) : null) ?? (plan.modules ? plan.modules.map((m) => `${m.id} ${m.from}>${m.to}`).join(", ") : plan.to ? `${plan.from}>${plan.to}` : "");
 
-/** Verrou + audit + avertissement autour d'une exécution de niveau 3. */
-async function runGuarded(action: Level3Action, plan: Plan, who: { tokenName: string; tokenId?: string; via: "direct" | "approved" }): Promise<Outcome> {
-  const outcome = await withLock(action, async () => {
-    try { return await execute(action, plan, `mcp:${who.tokenName}`); } catch (error) {
+const executedBy = (who: { tokenName: string }) => `mcp:${who.tokenName}`;
+
+/**
+ * Verrou + audit + avertissement autour d'une exécution de niveau 3. Une action longue (voir BACKGROUND_LEVEL3) est lancée en arrière-plan : si elle n'est pas finie
+ * au bout de quelques secondes, la réponse est `Started` et son audit, son avertissement et le résultat de la demande sont écrits quand elle se termine.
+ * `requestId` : la demande approuvée à laquelle le résultat est rendu.
+ */
+async function runGuarded(action: Level3Action, plan: Plan, who: { tokenName: string; tokenId?: string; via: "direct" | "approved"; requestId?: string }): Promise<Outcome | Started> {
+  const after = async (outcome: Outcome) => {
+    await record(who.tokenName, action, paramsText(plan), outcome, who.via);
+    await notifyOwner({ kind: "executed", tokenName: who.tokenName, actionKey: action, detail: paramsText(plan), ok: outcome.ok });
+  };
+  const work = async (ctx?: RunContext): Promise<Outcome> => {
+    try { return await execute(action, plan, executedBy(who), ctx); } catch (error) {
       console.error(`[maintenance] ${action} failed:`, (error as Error)?.message);
-      return { ok: false, message: "The action failed unexpectedly. Check maintenance_health." } as Outcome;
+      return { ok: false, message: "The action failed unexpectedly. Check maintenance_health." };
     }
-  });
+  };
+  if (BACKGROUND_LEVEL3.has(action) && who.requestId) {
+    const run = await launch({ action, actor: { name: who.tokenName, tokenId: who.tokenId }, requestId: who.requestId, work, after });
+    if ("busy" in run) return run.outcome;
+    return run.started ? run : run.outcome;
+  }
+  const outcome = await withLock(action, who.tokenName, () => work());
   if (outcome.busy) return outcome;
-  await record(who.tokenName, action, paramsText(plan), outcome, who.via);
-  await notifyOwner({ kind: "executed", tokenName: who.tokenName, actionKey: action, detail: paramsText(plan), ok: outcome.ok });
+  await after(outcome);
+  if (who.requestId) await finishRequest(who.requestId, outcome, deps.now());
   return outcome;
+}
+
+/**
+ * Exécution directe d'une action longue : la préparation (qui peut interroger tous les dépôts) ET l'exécution tournent en arrière-plan, sous le verrou. Une demande
+ * refusée avant tout travail (rien à mettre à jour…) répond comme avant, par une erreur d'outil.
+ */
+async function callDirectInBackground(action: Level3Action, args: Params, actor: { name: string; tokenId?: string }): Promise<unknown> {
+  let plan: Plan | null = null;
+  const run = await launch({
+    action, actor,
+    work: async (ctx) => {
+      try { plan = await prepare(action, args, { patient: true }); } catch (error) {
+        if (error instanceof McpToolError) return { ok: false, refused: true, message: error.message };
+        throw error;
+      }
+      ctx.setPlan(plan);
+      try { return await execute(action, plan, executedBy({ tokenName: actor.name }), ctx); } catch (error) {
+        console.error(`[maintenance] ${action} failed:`, (error as Error)?.message);
+        return { ok: false, message: "The action failed unexpectedly. Check maintenance_health." };
+      }
+    },
+    after: async (outcome) => {
+      if (!plan) return;
+      await record(actor.name, action, paramsText(plan), outcome, "direct");
+      await notifyOwner({ kind: "executed", tokenName: actor.name, actionKey: action, detail: paramsText(plan), ok: outcome.ok });
+    },
+  });
+  if ("busy" in run) throw new McpToolError(run.outcome.message);
+  if (run.started) return { status: "started", requestId: run.requestId, action, message: run.message };
+  if (run.outcome.refused) throw new McpToolError(run.outcome.message);
+  return { status: run.outcome.ok ? "done" : "failed", message: run.outcome.message };
 }
 
 /**
@@ -339,12 +439,15 @@ export const ALWAYS_HUMAN: readonly Level3Action[] = ["module_install", "skin_in
 
 export async function callLevel3(action: Level3Action, args: Params, actor: { name: string; tokenId?: string }): Promise<unknown> {
   await takeSlot(actor.tokenId, LEVEL3_CLASS[action]);
-  const plan = await prepare(action, args);
   // Installer du code sur le site n'est JAMAIS exécuté sans l'accord de la personne propriétaire, même pour un jeton en « exécution directe » : le réglage vaut pour
   // les mises à jour et désinstallations, et rien dans le modèle ne dit quel module est « sans danger ».
   // Same for a new instance (it may get a public page).
-  if (!ALWAYS_HUMAN.includes(action) && (await getApprovalMode(actor.tokenId)) === "direct") {
+  const direct = !ALWAYS_HUMAN.includes(action) && (await getApprovalMode(actor.tokenId)) === "direct";
+  if (direct && BACKGROUND_LEVEL3.has(action)) return callDirectInBackground(action, args, actor);
+  const plan = await prepare(action, args);
+  if (direct) {
     const outcome = await runGuarded(action, plan, { tokenName: actor.name, tokenId: actor.tokenId, via: "direct" });
+    if ("started" in outcome) return { status: "started", requestId: outcome.requestId, message: outcome.message };
     if (outcome.busy) throw new McpToolError(outcome.message);
     return { status: outcome.ok ? "done" : "failed", message: outcome.message };
   }
@@ -364,7 +467,7 @@ export async function callLevel3(action: Level3Action, args: Params, actor: { na
 
 /** Qui décide : `owner` vient de `can(user, "core:mcp.tokens")` (personne relue en base), jamais d'un formulaire. */
 export type Decider = { email: string; owner: boolean };
-export type DecisionResult = { ok: boolean; message: string; reason?: "forbidden" | "unknown" | "not-pending" | "expired" | "busy" | "failed" };
+export type DecisionResult = { ok: boolean; message: string; reason?: "forbidden" | "unknown" | "not-pending" | "expired" | "busy" | "failed" | "running" };
 
 /** Le propriétaire approuve : la demande est exécutée UNE fois, avec les mêmes fonctions que l'admin et les mêmes vérifications. */
 export async function approveRequest(id: string, by: Decider): Promise<DecisionResult> {
@@ -373,9 +476,10 @@ export async function approveRequest(id: string, by: Decider): Promise<DecisionR
   if (!claim.ok) return { ok: false, reason: claim.reason, message: `Request ${claim.reason === "expired" ? "expired" : claim.reason === "unknown" ? "not found" : "already answered"}.` };
   const r = claim.request;
   await prisma.auditLog.create({ data: { actor: by.email, action: "mcp.maintenance.approve", target: redactSecrets(`${r.id} ${r.action}`, 200) } }).catch(() => {});
-  const outcome = await runGuarded(r.action, r.plan, { tokenName: r.tokenName, tokenId: r.tokenId, via: "approved" });
+  const outcome = await runGuarded(r.action, r.plan, { tokenName: r.tokenName, tokenId: r.tokenId, via: "approved", requestId: r.id });
+  // A long action still running: the approval is done, the work goes on and the request shows its progress and result (the page and the AI read them there).
+  if ("started" in outcome) return { ok: true, reason: "running", message: "The action runs in the background; its result will appear on this request." };
   if (outcome.busy) { await reopenRequest(r.id); return { ok: false, reason: "busy", message: outcome.message }; }
-  await finishRequest(r.id, outcome, deps.now());
   return { ok: outcome.ok, reason: outcome.ok ? undefined : "failed", message: outcome.message };
 }
 
