@@ -7,10 +7,15 @@ name: Release
 #
 # Jobs (docs/ideas/update-paths.md) :
 #   plan        quoi publier (version, étiquette, pré-version ?) et si l'image Docker suit ;
-#   build       une archive par architecture (x64, et arm64 sur un exécuteur arm64 NATIF), chacune testée (« smoke ») avant d'être gardée ;
-#   publish     la release GitHub (archives, upgrade.json, install.sh) — la seule étape qui écrit dans le dépôt ;
+#   build       l'archive x64 (CI complète, empaquetage, smoke) : OBLIGATOIRE et stricte, c'est ce que `publish` attend ;
+#   build-arm   l'archive arm64 sur un exécuteur arm64 NATIF, testée de la même façon : NON BLOQUANTE tant que ce chemin n'a pas fait ses preuves
+#               (continue-on-error + `publish` ne l'attend pas). Variable de dépôt CURIOSA_ARM_REQUIRED=true : elle devient bloquante ;
+#   publish     la release GitHub (archive x64, upgrade.json, install.sh) — la seule étape qui crée la release. `publish-required` fait la même
+#               chose en attendant aussi l'arm64 (CURIOSA_ARM_REQUIRED=true) ; `publish-arm` ajoute l'archive arm64 à la release SI elle a réussi,
+#               sans jamais modifier ni supprimer un autre fichier ;
 #   image-arch  l'image Docker de chaque architecture, construite DEPUIS l'archive (aucune compilation), démarrée et vérifiée, PUIS envoyée à GHCR ;
-#   image       la liste de manifestes multi-architecture et ses étiquettes (X.Y.Z, X.Y et latest seulement pour une stable).
+#   image       la liste de manifestes (arm64 seulement si son image a réussi, sinon amd64 seul, et le résumé le dit) et ses étiquettes
+#               (X.Y.Z, X.Y et latest seulement pour une stable).
 # Une image qui échoue ne fait JAMAIS échouer ni ne supprime la release (jobs en continue-on-error, `publish` ne dépend d'aucun job d'image).
 # Essai à blanc : « Run workflow » sur n'importe quelle branche construit et vérifie les archives et l'image, et envoie l'image sous l'étiquette jetable
 # `dry-run-<sha>` (jamais `latest`, jamais une étiquette de version) ; aucune release n'est créée.
@@ -39,7 +44,6 @@ jobs:
       dry_run: ${{ steps.v.outputs.dry_run }}
       image_name: ${{ steps.v.outputs.image_name }}
       image_tags: ${{ steps.v.outputs.image_tags }}
-      matrix: ${{ steps.v.outputs.matrix }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -50,7 +54,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           EVENT: ${{ github.event_name }}
           DRY_RUN: ${{ inputs.image_dry_run }}
-          ARM_RUNNER: ${{ vars.CURIOSA_ARM_RUNNER }}
         run: |
           base=$(node -p "require('./package.json').version")
           echo "version=$base" >> "$GITHUB_OUTPUT"
@@ -85,37 +88,22 @@ jobs:
           echo "image_name=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
           if [[ "$EVENT" == "workflow_dispatch" ]]; then tags="dry-run-${GITHUB_SHA::7}"; else tags=$(node --input-type=module -e 'import { imageTagsFor } from "./scripts/install-kind.mjs"; console.log(imageTagsFor(process.argv[1]).join(" "))' "$base"); fi
           echo "image_tags=$tags" >> "$GITHUB_OUTPUT"
-          # Matrice des archives : x64 toujours (c'est aussi la CI complète) ; arm64 seulement quand on empaquette, sur un exécuteur arm64 natif.
-          arm="${ARM_RUNNER:-ubuntu-24.04-arm}"
-          if ! [[ "$arm" =~ ^[A-Za-z0-9._-]+$ ]]; then echo "::error::CURIOSA_ARM_RUNNER invalide"; exit 1; fi
-          pack=$(grep '^pack=' "$GITHUB_OUTPUT" | tail -1 | cut -d= -f2)
-          if [[ "$pack" == "true" ]]; then
-            echo "matrix={\"include\":[{\"arch\":\"x64\",\"docker_arch\":\"amd64\",\"runner\":\"ubuntu-latest\",\"full\":true},{\"arch\":\"arm64\",\"docker_arch\":\"arm64\",\"runner\":\"$arm\",\"full\":false}]}" >> "$GITHUB_OUTPUT"
-          else
-            echo 'matrix={"include":[{"arch":"x64","docker_arch":"amd64","runner":"ubuntu-latest","full":true}]}' >> "$GITHUB_OUTPUT"
-          fi
 
+  # x64 : l'archive de référence. CI complète (failles, types, tests, build), empaquetage, test de fumée de l'archive RÉELLE : obligatoire.
   build:
     needs: plan
-    strategy:
-      fail-fast: true
-      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
-    runs-on: ${{ matrix.runner }}
+    runs-on: ubuntu-latest # linux-x64 : la plateforme des serveurs d'hébergement
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
       - run: npm ci --ignore-scripts
       - run: npx prisma generate
-      # une release n'existe que si tout passe : failles connues, types, tests, build (une fois, sur x64 ; l'archive arm64 est compilée et testée sur arm64)
+      # une release n'existe que si tout passe : failles connues, types, tests, build
       - run: npm run audit
-        if: matrix.full
       - run: npx tsc --noEmit
-        if: matrix.full
       - run: node scripts/migrations-sunset.mjs --check
-        if: matrix.full
       - run: npm test
-        if: matrix.full
       - run: npm run build
       - run: npm prune --omit=dev
       - run: npx prisma generate
@@ -132,14 +120,51 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: needs.plan.outputs.pack == 'true'
         with:
-          name: dist-${{ matrix.arch }}
+          name: dist-x64
           path: dist/
           retention-days: 14
           if-no-files-found: error
 
+  # arm64 : même empaquetage et même test de fumée, sur un exécuteur arm64 natif (le moteur Prisma et sharp viennent d'un `npm ci` natif).
+  # NON BLOQUANT : un échec (exécuteur absent, moteur, sharp…) ne touche ni `publish` ni la release x64 ; `ok` n'est vrai que si tout a réussi.
+  # CURIOSA_ARM_REQUIRED=true (variable de dépôt) le rend bloquant : `publish-required` l'attend.
+  build-arm:
+    needs: plan
+    if: needs.plan.outputs.pack == 'true'
+    continue-on-error: ${{ vars.CURIOSA_ARM_REQUIRED != 'true' }}
+    runs-on: ${{ vars.CURIOSA_ARM_RUNNER || 'ubuntu-24.04-arm' }}
+    timeout-minutes: 60
+    outputs:
+      ok: ${{ steps.done.outputs.ok }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm ci --ignore-scripts
+      - run: npx prisma generate
+      - run: npm run build
+      - run: npm prune --omit=dev
+      - run: npx prisma generate
+      - name: Empaqueter
+        env:
+          VERSION: ${{ needs.plan.outputs.version }}
+        run: node scripts/release-pack.mjs "$VERSION" dist
+      - name: Test de fumée de l'archive
+        run: node scripts/smoke-release.mjs dist/*.tar.gz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-arm64
+          path: dist/
+          retention-days: 14
+          if-no-files-found: error
+      - name: Archive arm64 prête
+        id: done
+        run: echo "ok=true" >> "$GITHUB_OUTPUT"
+
+  # La release : seulement ce que `build` (x64, strict) a produit. N'attend PAS l'arm64 : un exécuteur arm64 absent ou en panne ne retarde ni n'empêche rien.
   publish:
     needs: [plan, build]
-    if: needs.plan.outputs.publish == 'true'
+    if: ${{ needs.plan.outputs.publish == 'true' && vars.CURIOSA_ARM_REQUIRED != 'true' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -168,17 +193,74 @@ jobs:
           [[ "$GITHUB_REF" == refs/tags/* ]] && flags="--prerelease"
           gh release create "$TAG" dist/* --title "$TAG" --notes-file "$RUNNER_TEMP/notes.md" $flags
 
+  # CURIOSA_ARM_REQUIRED=true : même release, mais l'archive arm64 doit exister (et avoir passé son test) : elle est publiée avec les autres fichiers.
+  publish-required:
+    needs: [plan, build, build-arm]
+    if: ${{ needs.plan.outputs.publish == 'true' && vars.CURIOSA_ARM_REQUIRED == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: dist-*
+          path: dist
+          merge-multiple: true
+      - name: Notes de version
+        env:
+          VERSION: ${{ needs.plan.outputs.version }}
+        # Le texte de la release est la section du CHANGELOG.md de cette version (ce qui change depuis la précédente) ; à défaut, un renvoi vers le fichier.
+        run: node scripts/changelog.mjs "$VERSION" > "$RUNNER_TEMP/notes.md" || echo "Voir le CHANGELOG.md du dépôt." > "$RUNNER_TEMP/notes.md"
+      - name: Publier
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.plan.outputs.tag }}
+          PRE: ${{ needs.plan.outputs.pre }}
+        run: |
+          flags="--target $GITHUB_SHA"
+          [[ "$PRE" == "true" ]] && flags="$flags --prerelease"
+          [[ "$GITHUB_REF" == refs/tags/* ]] && flags="--prerelease"
+          gh release create "$TAG" dist/* --title "$TAG" --notes-file "$RUNNER_TEMP/notes.md" $flags
+
+  # Ajoute l'archive arm64 à la release déjà publiée, seulement si elle a réussi son test. Ne remplace, ne modifie et ne supprime AUCUN fichier (pas de --clobber).
+  publish-arm:
+    needs: [plan, build-arm, publish]
+    if: ${{ !cancelled() && needs.publish.result == 'success' && needs.build-arm.outputs.ok == 'true' }}
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist-arm64
+          path: dist
+      - name: Ajouter l'archive arm64 à la release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.plan.outputs.tag }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          archive=$(ls dist/curiosa-*-linux-arm64.tar.gz)
+          (cd dist && sha256sum -c "$(basename "$archive").sha256")
+          gh release upload "$TAG" "$archive" "$archive.sha256" --repo "$REPO"
+
   # Une image par architecture, sur un exécuteur de cette architecture (aucune émulation) : construite depuis l'archive de `build`, démarrée et vérifiée
   # (scripts/smoke-image.mjs), puis seulement ENVOYÉE (par empreinte, sans étiquette). Après `publish` : si l'image échoue, la release existe déjà.
   image-arch:
-    needs: [plan, build, publish]
-    if: ${{ !cancelled() && needs.build.result == 'success' && needs.plan.outputs.image == 'true' && (needs.publish.result == 'success' || needs.plan.outputs.dry_run == 'true') }}
+    needs: [plan, build, build-arm, publish, publish-required]
+    if: ${{ !cancelled() && needs.build.result == 'success' && needs.plan.outputs.image == 'true' && (needs.publish.result == 'success' || needs.publish-required.result == 'success' || needs.plan.outputs.dry_run == 'true') }}
     continue-on-error: true
     strategy:
       fail-fast: false
       matrix:
         include:
           - { arch: x64, docker_arch: amd64, runner: ubuntu-latest }
+          # arm64 : sans archive arm64 valide (build-arm en échec), cette branche ne fait rien et n'envoie rien ; le manifeste sera alors amd64 seul.
           - { arch: arm64, docker_arch: arm64, runner: "${{ vars.CURIOSA_ARM_RUNNER || 'ubuntu-24.04-arm' }}" }
     runs-on: ${{ matrix.runner }}
     permissions:
@@ -186,13 +268,17 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@v4
+        if: ${{ matrix.arch == 'x64' || needs.build-arm.outputs.ok == 'true' }}
       - uses: actions/setup-node@v4
+        if: ${{ matrix.arch == 'x64' || needs.build-arm.outputs.ok == 'true' }}
         with: { node-version: 22 }
       - uses: actions/download-artifact@v4
+        if: ${{ matrix.arch == 'x64' || needs.build-arm.outputs.ok == 'true' }}
         with:
           name: dist-${{ matrix.arch }}
           path: dist
       - name: Contexte de construction (l'archive vérifiée, rien d'autre)
+        if: ${{ matrix.arch == 'x64' || needs.build-arm.outputs.ok == 'true' }}
         env:
           DOCKER_ARCH: ${{ matrix.docker_arch }}
         run: |
@@ -204,12 +290,15 @@ jobs:
           cp "$archive" "docker-context/archive-${DOCKER_ARCH}.tar.gz"
           cp Dockerfile docker-context/Dockerfile
       - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        if: ${{ matrix.arch == 'x64' || needs.build-arm.outputs.ok == 'true' }}
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ github.token }}
       - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+        if: ${{ matrix.arch == 'x64' || needs.build-arm.outputs.ok == 'true' }}
       - name: Image locale (pour la vérification)
+        if: ${{ matrix.arch == 'x64' || needs.build-arm.outputs.ok == 'true' }}
         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           context: docker-context
@@ -221,6 +310,7 @@ jobs:
             REVISION=${{ github.sha }}
             SOURCE=${{ github.server_url }}/${{ github.repository }}
       - name: Image précédente (si elle existe)
+        if: ${{ matrix.arch == 'x64' || needs.build-arm.outputs.ok == 'true' }}
         id: prev
         env:
           GH_TOKEN: ${{ github.token }}
@@ -230,6 +320,7 @@ jobs:
           prev=$(gh release list --exclude-pre-releases --limit 5 --json tagName --jq '.[].tagName' | sed 's/^v//' | grep -vx "$VERSION" | head -1 || true)
           if [[ -n "$prev" ]] && docker pull "$IMAGE:$prev" >/dev/null 2>&1; then echo "ref=$IMAGE:$prev" >> "$GITHUB_OUTPUT"; echo "image précédente : $IMAGE:$prev"; else echo "aucune image précédente : le scénario de mise à jour est sauté"; fi
       - name: Test de fumée de l'image (volume vide, PUID/PGID, refus, données précédentes)
+        if: ${{ matrix.arch == 'x64' || needs.build-arm.outputs.ok == 'true' }}
         env:
           VERSION: ${{ needs.plan.outputs.version }}
           ARCH: ${{ matrix.arch }}
@@ -237,6 +328,7 @@ jobs:
         run: node scripts/smoke-image.mjs "curiosa-smoke:$ARCH" --version "$VERSION" ${PREVIOUS:+--previous "$PREVIOUS"}
       # La vérification a réussi : on envoie, par empreinte (aucune étiquette ici ; elles sont posées une fois les deux architectures prêtes).
       - name: Envoi de l'image par empreinte (avec provenance et SBOM)
+        if: ${{ matrix.arch == 'x64' || needs.build-arm.outputs.ok == 'true' }}
         id: push
         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
@@ -250,12 +342,14 @@ jobs:
             REVISION=${{ github.sha }}
             SOURCE=${{ github.server_url }}/${{ github.repository }}
       - name: Garder l'empreinte
+        if: ${{ matrix.arch == 'x64' || needs.build-arm.outputs.ok == 'true' }}
         env:
           DIGEST: ${{ steps.push.outputs.digest }}
         run: |
           [[ "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
           mkdir -p digests && touch "digests/${DIGEST#sha256:}"
       - uses: actions/upload-artifact@v4
+        if: ${{ matrix.arch == 'x64' || needs.build-arm.outputs.ok == 'true' }}
         with:
           name: digests-${{ matrix.arch }}
           path: digests/*
@@ -264,18 +358,23 @@ jobs:
 
   image:
     needs: [plan, image-arch]
-    if: ${{ !cancelled() && needs.image-arch.result == 'success' }}
+    if: ${{ !cancelled() && needs.plan.outputs.image == 'true' && needs.image-arch.result != 'skipped' }}
     continue-on-error: true
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
     steps:
+      # amd64 est obligatoire ; arm64 seulement s'il a été envoyé (sinon le manifeste est amd64 seul, et le résumé le dit).
       - uses: actions/download-artifact@v4
         with:
-          pattern: digests-*
-          path: digests
-          merge-multiple: true
+          name: digests-x64
+          path: digests/amd64
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: digests-arm64
+          path: digests/arm64
       - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
           registry: ghcr.io
@@ -288,11 +387,16 @@ jobs:
           TAGS: ${{ needs.plan.outputs.image_tags }}
         run: |
           set -euo pipefail
-          [[ $(ls digests | wc -l) == 2 ]] # amd64 et arm64, rien de moins
+          [[ $(ls digests/amd64 | wc -l) == 1 ]] # amd64 : obligatoire
           args=()
           for t in $TAGS; do [[ "$t" =~ ^[A-Za-z0-9._-]+$ ]] && args+=(-t "$IMAGE:$t"); done
-          refs=()
-          for d in digests/*; do refs+=("$IMAGE@sha256:$(basename "$d")"); done
+          refs=("$IMAGE@sha256:$(ls digests/amd64)")
+          if [[ -d digests/arm64 && $(ls digests/arm64 | wc -l) == 1 ]]; then
+            refs+=("$IMAGE@sha256:$(ls digests/arm64)")
+          else
+            echo "::warning::l'image arm64 n'est pas disponible : manifeste amd64 seul"
+            echo "**Manifeste amd64 seul** : l'image arm64 n'a pas été produite (voir les jobs image-arch / build-arm)." >> "$GITHUB_STEP_SUMMARY"
+          fi
           docker buildx imagetools create "${args[@]}" "${refs[@]}"
           first=$(echo "$TAGS" | cut -d' ' -f1)
           docker buildx imagetools inspect "$IMAGE:$first" | tee -a "$GITHUB_STEP_SUMMARY"

@@ -71,19 +71,19 @@ test("workflow safety: no expression is interpolated in a shell (everything goes
 test("workflow permissions: read-only by default, packages: write only on the two image jobs, contents: write only on publish, no id-token", () => {
   assert.match(wf, /^permissions:\n  contents: read\n/m);
   assert.ok(!/id-token/.test(wf), "no OIDC token: provenance is attached by buildx, nothing signs with the job identity");
-  assert.deepEqual(Object.keys(J), ["plan", "build", "publish", "image-arch", "image"]);
+  assert.deepEqual(Object.keys(J), ["plan", "build", "build-arm", "publish", "publish-required", "publish-arm", "image-arch", "image"]);
   for (const [name, text] of Object.entries(J)) {
     const pkgs = /packages: write/.test(text), cw = /contents: write/.test(text);
     assert.equal(pkgs, name === "image-arch" || name === "image", `${name}: packages: write`);
-    assert.equal(cw, name === "publish", `${name}: contents: write`);
+    assert.equal(cw, ["publish", "publish-required", "publish-arm"].includes(name), `${name}: contents: write`);
   }
 });
 
 test("workflow: the GitHub release never depends on the image — image jobs come after `publish`, are continue-on-error, and nothing needs them", () => {
   assert.ok(!/needs:[^\n]*image/.test(J.publish) && !/needs:[^\n]*image/.test(J.build) && !/needs:[^\n]*image/.test(J.plan));
-  assert.match(J["image-arch"], /needs: \[plan, build, publish\]/);
+  assert.match(J["image-arch"], /needs: \[plan, build, build-arm, publish, publish-required\]/);
   assert.match(J["image-arch"], /continue-on-error: true/); assert.match(J.image, /continue-on-error: true/);
-  assert.match(J["image-arch"], /needs\.publish\.result == 'success' \|\| needs\.plan\.outputs\.dry_run == 'true'/, "after a successful release, or in a dry run (no release)");
+  assert.match(J["image-arch"], /needs\.publish\.result == 'success' \|\| needs\.publish-required\.result == 'success' \|\| needs\.plan\.outputs\.dry_run == 'true'/, "after a successful release, or in a dry run (no release)");
   assert.ok(!/gh release (delete|edit)|--cleanup-tag|git push --delete/.test(wf), "no step can delete or alter a release");
   assert.match(J.publish, /gh release create "\$TAG" dist\/\* /);
   assert.ok(/image-arch:[\s\S]*Test de fumée de l'image[\s\S]*Envoi de l'image par empreinte/.test(wf), "the image is smoke-tested BEFORE it is pushed");
@@ -100,7 +100,7 @@ test("workflow: third-party actions are pinned by full commit SHA; official acti
 
 test("workflow: both architectures, arm64 on a native runner, provenance and SBOM, one multi-arch manifest", () => {
   assert.match(wf, /ubuntu-24\.04-arm/);
-  assert.match(wf, /docker_arch\\":\\"arm64|docker_arch: arm64/);
+  assert.match(wf, /docker_arch: arm64/);
   assert.match(wf, /provenance: mode=max/); assert.match(wf, /sbom: true/);
   assert.match(wf, /push-by-digest=true/);
   assert.match(wf, /docker buildx imagetools create/);
@@ -144,17 +144,43 @@ test("release-pack: the archive of this architecture carries upgrade.json and it
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 
-test("workflow: every archive is packed and smoke-tested (smoke-release.mjs) in `build`, and `publish` needs ALL build legs — nothing is released from an untested archive", () => {
+test("workflow: the x64 archive is packed and smoke-tested (smoke-release.mjs) in `build`, and `publish` needs `build` — nothing is released from an untested archive", () => {
   const b = J.build;
+  assert.ok(!/matrix|continue-on-error/.test(b), "x64 is a plain, strict job");
+  assert.match(b, /runs-on: ubuntu-latest/);
+  for (const step of ["npm run audit", "npx tsc --noEmit", "node scripts/migrations-sunset.mjs --check", "npm test", "npm run build"]) assert.ok(b.includes(step), `the full CI still runs on x64: ${step}`);
   assert.match(b, /node scripts\/release-pack\.mjs "\$VERSION" dist/);
   assert.match(b, /node scripts\/smoke-release\.mjs dist\/\*\.tar\.gz/);
   assert.ok(b.indexOf("release-pack.mjs") < b.indexOf("smoke-release.mjs") && b.indexOf("smoke-release.mjs") < b.indexOf("upload-artifact"), "pack, then smoke, then the artifact is kept");
-  assert.ok(!/smoke-release[\s\S]{0,200}continue-on-error/.test(b) && !/continue-on-error/.test(b), "no step of `build` may fail without failing the job");
-  assert.match(J.publish, /needs: \[plan, build\]/, "publish waits for every matrix leg (x64 and arm64)");
-  assert.match(b, /matrix: \$\{\{ fromJSON\(needs\.plan\.outputs\.matrix\) \}\}/);
-  assert.ok(!/fail-fast: false/.test(b), "one failing leg stops the others");
-  // The matrix always has the x64 leg with the full CI (audit, tsc, tests, build) as before.
-  assert.match(J.plan, /"arch\\":\\"x64\\",\\"docker_arch\\":\\"amd64\\",\\"runner\\":\\"ubuntu-latest\\",\\"full\\":true/);
+  assert.match(J.publish, /needs: \[plan, build\]\n/, "publish waits for the x64 build only");
+  assert.match(J.publish, /vars\.CURIOSA_ARM_REQUIRED != 'true'/);
+  assert.ok(!/build-arm/.test(J.publish), "publish never waits for (or reads) the arm64 build");
   // What the 0.6.8 packaging bug needed: the archive must contain next.config.mjs, checked by smoke-release on the real archive.
   assert.match(read("scripts/smoke-release.mjs"), /next\.config\.mjs.*!fs\.existsSync\(path\.join\(app, "next\.config\.ts"\)\)/);
+});
+
+test("workflow: arm64 is NON-BLOCKING for the release while unproven (and blocking with CURIOSA_ARM_REQUIRED=true)", () => {
+  const a = J["build-arm"];
+  assert.match(a, /continue-on-error: \$\{\{ vars\.CURIOSA_ARM_REQUIRED != 'true' \}\}/);
+  assert.match(a, /runs-on: \$\{\{ vars\.CURIOSA_ARM_RUNNER \|\| 'ubuntu-24\.04-arm' \}\}/);
+  assert.ok(a.indexOf("release-pack.mjs") < a.indexOf("smoke-release.mjs") && a.indexOf("smoke-release.mjs") < a.indexOf("upload-artifact") && a.indexOf("upload-artifact") < a.indexOf("id: done"), "ok is set only after pack, smoke and upload all passed");
+  assert.match(a, /ok: \$\{\{ steps\.done\.outputs\.ok \}\}/);
+  // The release itself: x64 only, created by `publish`; the arm64 archive is ADDED later, only if it passed, never replacing or deleting anything.
+  const add = J["publish-arm"];
+  assert.match(add, /needs: \[plan, build-arm, publish\]/);
+  assert.match(add, /needs\.publish\.result == 'success' && needs\.build-arm\.outputs\.ok == 'true'/);
+  assert.match(add, /continue-on-error: true/);
+  assert.match(add, /gh release upload "\$TAG" "\$archive" "\$archive\.sha256"/);
+  assert.ok(!/--clobber|gh release (delete|edit|create)/.test(add), "adds files, never replaces, edits or deletes");
+  // Required mode: the same release job, but it waits for the arm64 build.
+  assert.match(J["publish-required"], /needs: \[plan, build, build-arm\]/);
+  assert.match(J["publish-required"], /vars\.CURIOSA_ARM_REQUIRED == 'true'/);
+  assert.match(J["publish-required"], /gh release create "\$TAG" dist\/\* /);
+  // The multi-arch manifest lists arm64 only if its image was pushed; otherwise amd64 only, said in the summary.
+  assert.match(J.image, /name: digests-arm64\n\s+path: digests\/arm64/);
+  assert.match(J.image, /continue-on-error: true\n\s+with:\n\s+name: digests-arm64/, "the arm64 digest is optional");
+  assert.match(J.image, /name: digests-x64/, "the amd64 digest is mandatory");
+  assert.match(J.image, /manifeste amd64 seul/);
+  const legs = J["image-arch"].split("    steps:\n")[1].split(/\n(?=      - )/);
+  assert.ok(legs.every((st) => st.includes("matrix.arch == 'x64' || needs.build-arm.outputs.ok == 'true'")), "every step of the arm64 leg is skipped when no valid arm64 archive exists");
 });
