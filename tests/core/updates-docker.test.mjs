@@ -56,7 +56,7 @@ test("update plan for the page: one command above the floor, the ordered tags be
   assert.deepEqual(await plan("1.2.0", files), { tags: ["1.3.0"], commands: ["docker compose pull && docker compose up -d"], planned: true });
   const old = await plan("1.0.0", files);
   assert.deepEqual([old.tags, old.planned, old.commands.length], [["1.1.0", "1.2.0", "1.3.0"], true, 3]);
-  assert.match(old.commands[0], /^CURIOSA_VERSION=1\.1\.0 docker compose pull && CURIOSA_VERSION=1\.1\.0 docker compose up -d$/);
+  assert.match(old.commands[0], /^CURIOSA_VERSION=1\.1\.0 docker compose up -d$/);
   const down = await plan("1.0.0", { "v1.3.0": "panne" });
   assert.deepEqual([down.tags, down.planned, down.commands], [["1.3.0"], false, ["docker compose pull && docker compose up -d"]]);
 });

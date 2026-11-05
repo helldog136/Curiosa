@@ -33,8 +33,8 @@ test("Docker commands: one line above the floor, one pinned line per step below 
   assert.deepEqual(dockerCommands([]), [DOCKER_UPDATE_COMMAND]);
   const many = dockerCommands(["v0.6.10", "v0.7.0"]);
   assert.equal(many.length, 2);
-  assert.equal(many[0], `${VERSION_ENV}=0.6.10 docker compose pull && ${VERSION_ENV}=0.6.10 docker compose up -d`);
-  assert.match(many[1], /CURIOSA_VERSION=0\.7\.0 docker compose pull/);
+  assert.equal(many[0], `${VERSION_ENV}=0.6.10 docker compose up -d`);
+  assert.equal(many[1], `${VERSION_ENV}=0.7.0 docker compose up -d`);
   assert.equal(DOCKER_UPDATE_COMMAND, "docker compose pull && docker compose up -d");
   assert.equal(KEEP_BACKUPS, 5);
 });

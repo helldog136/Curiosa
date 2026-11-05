@@ -108,7 +108,7 @@ test("start-up: a normal start copies the database FIRST (even with nothing pend
     assert.deepEqual(order, ["migrate-sees-1-copy"], "the copy exists before Prisma runs");
     assert.deepEqual(v.calls, ["node node_modules/prisma/build/index.js migrate deploy"]);
     assert.equal(fs.readFileSync(path.join(v.dataDir, "backups", backups(v)[0]), "utf8"), "DB-BEFORE");
-    assert.match(backups(v)[0], /^pre-update-v0\.7\.0-5\.db$/);
+    assert.match(backups(v)[0], /^start-v0\.7\.0-5\.db$/, "same version restarting: a start copy");
     assert.deepEqual([state(v).status, state(v).version, state(v).backup === r.backup], ["ok", "0.7.0", true]);
     assert.match(fs.readFileSync(path.join(v.dataDir, "update", "update.log"), "utf8"), /container start, version 0\.7\.0[\s\S]*migrations applied/);
   } finally { v.cleanup(); }
@@ -166,5 +166,27 @@ test("start-up: data from before markers existed starts (and says so in the jour
     const r = await runStartup({ appDir: v.appDir, dataDir: v.dataDir, version: "0.7.0", databaseUrl: v.databaseUrl, exec: v.exec() });
     assert.equal(r.ok, true);
     assert.match(fs.readFileSync(path.join(v.dataDir, "update", "update.log"), "utf8"), /without a version marker/);
+  } finally { v.cleanup(); }
+});
+
+test("start-up copies: a data-version change makes a pre-update copy (last 3 kept), a plain restart a start copy (last 2 kept) — a restart loop never evicts the pre-update copy", async () => {
+  const v = volume(); try {
+    writeDataVersion(v.dataDir, "0.6.10");
+    let t = 100;
+    const go = (version) => runStartup({ appDir: v.appDir, dataDir: v.dataDir, version, databaseUrl: v.databaseUrl, exec: v.exec(), now: () => ++t });
+    const update = await go("0.7.0");
+    assert.deepEqual([update.ok, update.backupKind], [true, "pre-update"]);
+    writeDataVersion(v.dataDir, "0.7.0"); // the server's first good start
+    for (let i = 0; i < 12; i++) assert.equal((await go("0.7.0")).backupKind, "start");
+    const names = backups(v);
+    assert.deepEqual(names.filter((n) => n.startsWith("pre-update-")).map((n) => n.split("-")[2]), ["v0.7.0"], "the copy taken before the update survived 12 restarts");
+    assert.equal(names.filter((n) => n.startsWith("start-")).length, 2, "only the last 2 start copies");
+    // Three more updates: the last 3 pre-update copies are kept, the oldest goes.
+    for (const next of ["0.7.1", "0.7.2", "0.7.3"]) { assert.equal((await go(next)).backupKind, "pre-update"); writeDataVersion(v.dataDir, next); }
+    assert.deepEqual(backups(v).filter((n) => n.startsWith("pre-update-")).map((n) => n.split("-")[2]), ["v0.7.1", "v0.7.2", "v0.7.3"]);
+    assert.equal(state(v).backupKind, "pre-update");
+    // Data from before markers existed counts as a change, not a restart.
+    fs.rmSync(path.join(v.dataDir, DATA_VERSION_FILE));
+    assert.equal((await go("0.7.3")).backupKind, "pre-update");
   } finally { v.cleanup(); }
 });

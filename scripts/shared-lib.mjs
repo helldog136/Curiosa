@@ -6,7 +6,7 @@
 //   start-up  runStartup: gate -> backup -> migrations (-> the server starts; its first start runs the module conversions)
 import fs from "node:fs";
 import path from "node:path";
-import { BACKUP_PREFIX, DATA_VERSION_FILE, DOCKER_UPDATE_COMMAND, KEEP_BACKUPS, STARTUP_STATE_FILE, VERSION_ENV } from "./install-kind.mjs";
+import { BACKUP_PREFIX, DATA_VERSION_FILE, DOCKER_UPDATE_COMMAND, KEEP_BACKUPS, KEEP_PRE_UPDATE_BACKUPS, KEEP_START_BACKUPS, START_BACKUP_PREFIX, STARTUP_STATE_FILE, VERSION_ENV } from "./install-kind.mjs";
 
 /* ───────────── Plan: the versions to pass through ───────────── */
 
@@ -80,19 +80,19 @@ export function resolveSqlitePath(databaseUrl, appDir) {
 }
 
 /**
- * Copies the database file to `<dataDir>/backups/pre-update-<label>-<time>.db` and keeps the last KEEP_BACKUPS. Returns the copy's path, or null when
+ * Copies the database file to `<dataDir>/backups/<prefix><label>-<time>.db` (prefix `pre-update-` by default) and keeps the last `keep` (KEEP_BACKUPS) of that prefix. Returns the copy's path, or null when
  * there is no database file yet (fresh install: nothing to protect). Throws when the copy cannot be made: the caller must stop, never migrate without it.
  * @param {{ dbFile: string | null, dataDir: string, label: string, now?: () => number, keep?: number, beforeCopy?: () => void, log?: (line: string) => void }} o
  */
-export function backupDatabase({ dbFile, dataDir, label, now = Date.now, keep = KEEP_BACKUPS, beforeCopy, log }) {
+export function backupDatabase({ dbFile, dataDir, label, now = Date.now, keep = KEEP_BACKUPS, prefix = BACKUP_PREFIX, beforeCopy, log }) {
   if (!dbFile || !fs.existsSync(dbFile)) return null;
   beforeCopy?.();
   const backups = path.join(dataDir, "backups");
   fs.mkdirSync(backups, { recursive: true });
-  const dbBackup = path.join(backups, `${BACKUP_PREFIX}${label}-${now()}.db`);
+  const dbBackup = path.join(backups, `${prefix}${label}-${now()}.db`);
   fs.copyFileSync(dbFile, dbBackup);
   log?.(`sauvegarde : ${dbBackup}`);
-  for (const old of fs.readdirSync(backups).filter((f) => f.startsWith(BACKUP_PREFIX)).sort().slice(0, -keep)) fs.rmSync(path.join(backups, old), { force: true });
+  for (const old of fs.readdirSync(backups).filter((f) => f.startsWith(prefix)).sort().slice(0, -keep)) fs.rmSync(path.join(backups, old), { force: true });
   return dbBackup;
 }
 
@@ -148,7 +148,7 @@ export function checkDataVersion({ dataDir, version, floor, hasData = false }) {
     return { ok: false, code: "newer-than-image", marker, floor, message: `This data was last used by Curiosa ${marker}, a newer version than this one (${v}). Starting an older version on newer data could damage it, so nothing was changed. Use image version ${marker} or newer. To go back on purpose, restore the newest pre-update copy from the backups folder over the database, then delete the file ${DATA_VERSION_FILE} in the data folder.` };
   }
   if (floor && compareVersions(marker, floor) < 0) {
-    return { ok: false, code: "below-floor", marker, floor, message: `This data was last used by Curiosa ${marker}. Version ${v} can only update data from ${floor} or newer, because the conversions of older data were removed. Nothing was changed. First start version ${floor} (${VERSION_ENV}=${floor} docker compose pull && ${VERSION_ENV}=${floor} docker compose up -d), wait until the site answers, then come back to ${v} (${DOCKER_UPDATE_COMMAND}).` };
+    return { ok: false, code: "below-floor", marker, floor, message: `This data was last used by Curiosa ${marker}. Version ${v} can only update data from ${floor} or newer, because the conversions of older data were removed. Nothing was changed. First start version ${floor} (${VERSION_ENV}=${floor} docker compose up -d), wait until the site answers, then come back to ${v} (${DOCKER_UPDATE_COMMAND}).` };
   }
   return { ok: true, marker, unknown: false };
 }
@@ -165,7 +165,7 @@ export function makeLog(dataDir, now = Date.now, echo) {
 }
 
 /**
- * What a container does before the server starts: check the data-version marker, ALWAYS copy the database (even when no migration is pending),
+ * What a container does before the server starts: check the data-version marker, ALWAYS copy the database (even when no migration is pending; see the two kinds of copy below),
  * apply the migrations, and record the result in `data/update/startup.json`. The server itself runs the module conversions on its first start
  * (register() in src/instrumentation.ts) and writes the marker once they are done. A failed migration puts the copy back.
  * @param {{ appDir: string, dataDir: string, version: string, databaseUrl?: string, exec: (cmd: string, args: string[], opts?: object) => Promise<{ stdout?: string }>, prismaBin?: string, now?: () => number, log?: (line: string) => void }} o
@@ -184,8 +184,13 @@ export async function runStartup(o) {
   if (!gate.ok) return refuse(gate.code, gate.message);
   if (gate.unknown) log("data without a version marker (created before markers existed): starting anyway; the marker is written after a good start");
 
+  // A copy is ALWAYS made, but not all copies are equal. When the data version changes (an update, so migrations may be pending) or is unknown, it is the
+  // `pre-update-` copy: the last 3 are kept. A plain restart of the same version makes a `start-` copy: only the last 2 are kept. A restart loop can
+  // therefore never push the copy taken before an update out of the folder.
+  const pending = gate.marker === null || compareVersions(gate.marker, version) !== 0;
+  const backupKind = pending ? "pre-update" : "start";
   let backup = null;
-  try { backup = backupDatabase({ dbFile, dataDir, label: `v${version}`, now, log }); }
+  try { backup = backupDatabase({ dbFile, dataDir, label: `v${version}`, now, log, prefix: pending ? BACKUP_PREFIX : START_BACKUP_PREFIX, keep: pending ? KEEP_PRE_UPDATE_BACKUPS : KEEP_START_BACKUPS }); }
   catch { return refuse("backup-failed", "The database copy could not be made (is the data folder full or read-only?). Nothing was changed."); }
 
   try {
@@ -198,7 +203,7 @@ export async function runStartup(o) {
     if (backup && dbFile) { try { restoreBackup(backup, dbFile); restored = true; log("database restored from the copy made just before"); } catch (x) { log(`✘ could not restore the copy: ${x?.message}`); } }
     return refuse("migrate-failed", `The database could not be updated${restored ? " and was put back as it was" : ""}. ${backup ? `A copy is in ${backup}.` : ""}`.trim(), { backup, restored });
   }
-  record({ status: "ok", backup, marker: gate.marker });
+  record({ status: "ok", backup, backupKind: backup ? backupKind : null, marker: gate.marker });
   log(`✔ migrations applied${backup ? `, copy kept in ${backup}` : ""}`);
-  return { ok: true, backup, marker: gate.marker };
+  return { ok: true, backup, backupKind: backup ? backupKind : null, marker: gate.marker };
 }

@@ -407,6 +407,7 @@
   "users.firstPassword": "Mot de passe de départ",
   "users.securityTitle": "Sécurité de l'équipe",
   "updates.intro": "Gardez votre site à jour : voyez où vous en êtes, ce que la nouvelle version change, puis installez-la en un clic.",
+  "updates.introDocker": "Gardez votre site à jour : voyez où vous en êtes, ce que la nouvelle version change, puis lancez une commande.",
   "updates.yourVersion": "Ma version",
   "updates.newVersion": "Nouvelle version",
   "updates.whatChanges": "Ce que ça change",

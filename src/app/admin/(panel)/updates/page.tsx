@@ -5,7 +5,6 @@ import { describeProgress, failureKey, hasRemaining } from "@/core/updates/progr
 import { ActionForm } from "@/components/admin/ActionForm";
 import { UpdateButton } from "@/components/admin/UpdateButton";
 import { CoreUpdateProgress } from "@/components/admin/CoreUpdateProgress";
-import { CopyBlock } from "@/components/admin/CopyBlock";
 import { coreUpdateSnapshot } from "@/core/operations/coreUpdate";
 import { Markdown } from "@/components/site/Markdown";
 import { Checkbox } from "@/components/admin/Field";
@@ -74,7 +73,7 @@ export default async function UpdatesPage() {
 
   return (
     <div className="space-y-8">
-      <PageHeader title={t("nav.updates")} intro={t("updates.intro")} />
+      <PageHeader title={t("nav.updates")} intro={t(docker ? "updates.introDocker" : "updates.intro")} />
 
       {!info.canCheck && (
         <Panel title={t("updates.yourVersion")}>
@@ -189,9 +188,15 @@ export default async function UpdatesPage() {
             <div className="space-y-3 border-t border-line pt-5" data-testid="update-docker">
               <h2 className="text-base font-semibold">{t("updates.docker.title")}</h2>
               <p className="text-sm leading-6 text-muted">{plan.tags.length > 1 ? t("updates.docker.many") : t("updates.docker.one")}</p>
-              {plan.commands.map((cmd, i) => (
-                <CopyBlock key={cmd} text={cmd} copyLabel={t("site.copy")} copiedLabel={t("site.copied")} label={plan.tags.length > 1 ? t("updates.docker.step", { index: i + 1, total: plan.tags.length, version: plan.tags[i] ?? "" }) : undefined} />
-              ))}
+              {/* The core's code block brings its own "Copy" button (44 px, announced): nothing custom here. */}
+              <ol className="space-y-4" data-testid="update-docker-commands">
+                {plan.commands.map((cmd, i) => (
+                  <li key={cmd} className="list-none [&_div.relative]:!mt-1 [&_pre]:whitespace-pre-wrap [&_pre]:[overflow-wrap:anywhere]">
+                    {plan.tags.length > 1 && <p className="text-sm font-medium">{t("updates.docker.step", { index: i + 1, total: plan.tags.length, version: plan.tags[i] ?? "" })}</p>}
+                    <Markdown text={"```sh\n" + cmd + "\n```"} />
+                  </li>
+                ))}
+              </ol>
               {plan.tags.length > 1 && <p className="text-sm leading-6 text-muted">{t("updates.docker.wait")}</p>}
               {!plan.planned && <Callout tone="info">{t("updates.docker.unplanned")}</Callout>}
               <p className="text-sm leading-6 text-muted">{t("updates.docker.backup")}</p>

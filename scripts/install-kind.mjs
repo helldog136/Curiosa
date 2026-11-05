@@ -23,6 +23,10 @@ export const DOCKER_UPDATE_COMMAND = "docker compose pull && docker compose up -
 /** Database copies kept in `data/backups/` (pre-update-<tag>-<time>.db), by both paths. */
 export const KEEP_BACKUPS = 5;
 export const BACKUP_PREFIX = "pre-update-";
+/** Container start-up copies: `pre-update-` when the data version changes (an update, migrations may be pending), `start-` when the same version simply restarts. */
+export const START_BACKUP_PREFIX = "start-";
+export const KEEP_PRE_UPDATE_BACKUPS = 3;
+export const KEEP_START_BACKUPS = 2;
 /** Health route and the header that carries the hashed version (see hashVersion in update-lib.mjs and next.config.mjs). */
 export const HEALTH_PATH = "/api/health";
 export const VERSION_HEADER = "x-curiosa-version";
@@ -41,8 +45,8 @@ export function imageTagsFor(version) {
   return m ? [v, `${m[1]}.${m[2]}`, "latest"] : [v];
 }
 
-/** Commands to run, in order, for the tags of a plan: one line when the site is above the floor, one pinned line per step otherwise. */
+/** Commands to run, in order, for the tags of a plan: one line when the site is above the floor, one pinned line per step otherwise (compose pulls a tag it does not have yet). */
 export function dockerCommands(tags) {
   if (!Array.isArray(tags) || tags.length <= 1) return [DOCKER_UPDATE_COMMAND];
-  return tags.map((tag) => `${VERSION_ENV}=${imageTag(tag)} docker compose pull && ${VERSION_ENV}=${imageTag(tag)} docker compose up -d`);
+  return tags.map((tag) => `${VERSION_ENV}=${imageTag(tag)} docker compose up -d`);
 }

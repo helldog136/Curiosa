@@ -19,7 +19,7 @@ Implemented in PR A:
 
 Moved to PR B (image): `upgrade.json` into the release archive (the gate reads it from the image; it changes the bare-metal archive contents, so it ships with the image work), the entrypoint (calls `runStartup`, then starts the server), arm64 archive and engine target, workflow, `HEALTHCHECK`, labels.
 
-Known limits: the copy at every start can push the useful pre-update copy out of the 5 kept if a container restart-loops (the retention is shared with bare metal on purpose); the copy is a plain file copy of the database, as the bare-metal path does today.
+Container copies are of two kinds so that a restart loop can never evict the copy taken before an update: when the data version changes (or is unknown) the copy is `pre-update-v<version>-<time>.db` and the last 3 are kept; a plain restart of the same version makes `start-v<version>-<time>.db` and the last 2 are kept. The bare-metal updater keeps its own last 5 `pre-update-` copies. The copy is a plain file copy of the database, as the bare-metal path does today.
 
 ## 1. As-is inventory
 

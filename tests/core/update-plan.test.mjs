@@ -16,7 +16,7 @@ test("plan: a site above the floor goes straight to the target; an older one is 
   assert.deepEqual(old.steps, ["v0.1.4", "v0.2.0", "v0.6.10", "v0.7.0"]);
   assert.deepEqual(old.tags, ["0.1.4", "0.2.0", "0.6.10", "0.7.0"]);
   assert.equal(old.commands.length, 4);
-  assert.match(old.commands[0], /^CURIOSA_VERSION=0\.1\.4 docker compose pull && CURIOSA_VERSION=0\.1\.4 docker compose up -d$/);
+  assert.match(old.commands[0], /^CURIOSA_VERSION=0\.1\.4 docker compose up -d$/);
   assert.equal((await plan("0.7.0")).upToDate, true);
   assert.deepEqual((await plan("0.8.0")).steps, [], "a newer site has nothing to do");
   assert.equal((await plan("v0.6.10", "0.7.0")).to, "0.7.0", "v prefix optional on both sides");

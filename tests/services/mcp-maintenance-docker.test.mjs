@@ -46,7 +46,7 @@ test("Docker: a site below the support floor gets the ordered steps (one pinned 
   const r = await M.callLevel3("core_update", {}, actor);
   assert.deepEqual(r.steps, ["0.6.10", "0.7.0"]);
   assert.equal(r.commands.length, 2);
-  assert.match(r.commands[0], /^CURIOSA_VERSION=0\.6\.10 docker compose pull/);
+  assert.match(r.commands[0], /^CURIOSA_VERSION=0\.6\.10 docker compose up -d$/);
 });
 
 test("Docker: already up to date, or no release found, says so; the in-place path is refused if it is ever reached", async () => {
