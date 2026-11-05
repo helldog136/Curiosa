@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { installKind } from "../../scripts/install-kind.mjs";
 
 /**
  * COMMANDES À COPIER SUR LE SERVEUR pour un changement de domaine. Le cœur ne modifie JAMAIS le fichier `.env`, la configuration du serveur web ni le DNS : il écrit ce qu'il faut
@@ -41,7 +42,7 @@ export function detectServerContext(env: Record<string, string | undefined> = pr
   let supervisor: Supervisor = { kind: "manual" };
   const restart = (env.CURIOSA_RESTART_COMMAND ?? "").trim();
   if (restart) supervisor = { kind: "command", command: restart.slice(0, 300) };
-  else if (env.CURIOSA_INSTALL === "docker") supervisor = { kind: "docker" };
+  else if (installKind(env) === "docker") supervisor = { kind: "docker" };
   else if (env.PM2_HOME !== undefined || env.pm_id !== undefined) supervisor = { kind: "pm2" };
   else if (env.INVOCATION_ID !== undefined || env.JOURNAL_STREAM !== undefined) supervisor = { kind: "systemd", unit: siteName ?? (/^[a-z0-9][a-z0-9_-]{0,31}$/.test(path.basename(cwd)) ? path.basename(cwd) : null) };
   else if (env.CURIOSA_SUPERVISED === "1") supervisor = { kind: "systemd", unit: siteName };

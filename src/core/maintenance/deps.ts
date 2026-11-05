@@ -21,6 +21,8 @@ export type MaintenanceDeps = {
   appDir?: string;
   dataDir?: string;
   fetchJson?: JsonFetcher;
+  /** Reads a release file (upgrade.json) for the update plan: null when it does not exist. */
+  fetchText?: (url: string) => Promise<string | null>;
   spawner?: Spawner;
   modulesReport(force: boolean): Promise<ModulesReport>;
   checkModule(id: string): Promise<{ check: ModuleUpdateCheck; failed: boolean }>;

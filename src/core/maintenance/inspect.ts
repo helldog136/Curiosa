@@ -12,7 +12,7 @@ import { languageLabel } from "@/core/i18n/audit.mjs";
 import { i18nStatus } from "@/core/i18n/status";
 import { moduleI18nReport, readModuleTexts } from "@/core/i18n/moduleStatus";
 import { sourceKind } from "@/core/modules/reinstall";
-import { getInstallInfo, getUpdateChannel, readUpdateLog, readUpdateState, readVersion } from "@/core/updates/service";
+import { dockerUpdatePlan, getInstallInfo, getUpdateChannel, readUpdateLog, readUpdateState, readVersion } from "@/core/updates/service";
 import { compareVersions } from "@/core/updates/versions";
 import { deps } from "./deps";
 import { contentSummary } from "./content/service";
@@ -196,7 +196,7 @@ export async function modules(): Promise<{ modules: ModuleLine[]; truncated: boo
 }
 
 export type UpdatesView = {
-  core: { current: string; channel: string; canUpdateFromAdmin: boolean; latestStable: string | null; available: boolean; level?: string; notes?: string; note?: string };
+  core: { current: string; channel: string; install?: string; canUpdateFromAdmin: boolean; /** Docker: what the owner runs, in order (nothing is executed from here). */ docker?: { steps: string[]; commands: string[] }; latestStable: string | null; available: boolean; level?: string; notes?: string; note?: string };
   modules: { id: string; current: string; target: string; level?: string; needsCore?: string; aiCanUpdate: boolean; reason?: string; /** Cette version précise a déjà été essayée et refusée (elle ne se charge pas). */ alreadyRefused?: { at: string; cause: string } }[];
   unchecked: string[];
   checkedAt: string | null;
@@ -213,15 +213,20 @@ export function moduleUpdateRefusal(o: { ref: string | null | undefined; source:
 export async function updates(): Promise<UpdatesView> {
   const current = readVersion(appDir());
   const info = getInstallInfo(appDir());
-  let core: UpdatesView["core"] = { current, channel: await getUpdateChannel(), canUpdateFromAdmin: info.canUpdate, latestStable: null, available: false };
+  let core: UpdatesView["core"] = { current, channel: await getUpdateChannel(), install: info.kind, canUpdateFromAdmin: info.canUpdate, latestStable: null, available: false };
   try {
-    const latest = info.canUpdate ? await deps.latestStable() : null;
-    if (!info.canUpdate) core.note = "this installation cannot be updated from the admin (container image or manual install)";
+    const latest = info.canCheck ? await deps.latestStable() : null;
+    if (!info.canCheck) core.note = "this installation cannot be updated from the admin (manual install, or a container image whose release source is unknown)";
     else if (!latest) core.note = "no stable release found (the release list may be unreachable)";
     else {
       const level = classify(current, latest.tag);
       core = { ...core, latestStable: latest.tag.replace(/^v/, ""), available: level !== null, ...(level ? { level, notes: redactSecrets(latest.notes.replace(/\s+/g, " "), 600) } : {}) };
       if (!level && compareVersions(latest.tag, current) <= 0) core.note = "already on the latest stable release (or newer: release candidates are never offered)";
+      if (level && info.kind === "docker") {
+        const plan = await dockerUpdatePlan(latest.tag, { appDir: appDir(), fetchText: deps.fetchText });
+        core.docker = { steps: plan.tags, commands: plan.commands };
+        core.note = "this site runs in a container image: the owner updates it by running the commands, in order, on the host. Nothing can be done from here.";
+      }
     }
   } catch { core.note = "the release list could not be reached"; }
 

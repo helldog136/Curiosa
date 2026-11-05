@@ -7,6 +7,19 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## Prochaine version
+
+### Docker
+
+- **Un site Docker voit maintenant les nouvelles versions.** La page Mises à jour montre la version disponible, ce qu'elle change et la commande exacte à lancer sur votre serveur. Rien ne s'installe depuis l'admin.
+- **(English) A Docker site now sees new versions.** The Updates page shows the new version, what it changes and the exact command to run on your server. Nothing is installed from the admin.
+- **Vos données sont protégées au démarrage du conteneur.** Une copie de la base est faite avant chaque démarrage, et un conteneur trop ancien ou trop récent pour vos données refuse de démarrer en expliquant quoi faire.
+- **(English) Your data is protected when the container starts.** A copy of the database is made before every start, and a container too old or too new for your data refuses to start and explains what to do.
+
+### Pour les développeurs
+
+- **Shared update code.** `scripts/shared-lib.mjs`, `scripts/install-kind.mjs` (the one `installKind()`) and `scripts/update-plan.mjs --json`; the in-place updater calls the same functions. `maintenance_core_update` returns the plan on Docker. Design: `docs/ideas/update-paths.md`.
+
 ## 0.6.13 — 2026-11-05
 
 **En bref.** Docker devient une vraie façon de mettre un site en ligne : réglages dans un fichier .env, HTTPS automatique en option, prise en charge de Traefik et guide pour NAS. L'installateur peut aussi obtenir le certificat HTTPS tout seul avec nginx ou Apache (option certbot), et les nouveaux sites nginx envoient des pages compressées. Le lien de crédit de la licence mène maintenant au site du projet.

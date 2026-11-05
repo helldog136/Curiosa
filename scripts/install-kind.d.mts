@@ -1,0 +1,17 @@
+export type InstallKind = "bare-metal" | "docker";
+export const INSTALL_KINDS: InstallKind[];
+export function installKind(env?: Record<string, string | undefined>): InstallKind;
+export const DEFAULT_REPO: string;
+export const IMAGE_NAME: string;
+export const IMAGE_PLATFORMS: string[];
+export const VERSION_ENV: string;
+export const DOCKER_UPDATE_COMMAND: string;
+export const KEEP_BACKUPS: number;
+export const BACKUP_PREFIX: string;
+export const HEALTH_PATH: string;
+export const VERSION_HEADER: string;
+export const DATA_VERSION_FILE: string;
+export const STARTUP_STATE_FILE: string;
+export function imageTag(step: string): string;
+export function imageTagsFor(version: string): string[];
+export function dockerCommands(tags: string[]): string[];
