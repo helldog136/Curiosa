@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { prisma } from "@/core/db";
 import { redactSecrets } from "./redact";
+import { boundResult, closeInterrupted, type RunProgress, type RunResult } from "./background";
 
 /**
  * FILE DES DEMANDES d'actions à risque (niveau 3). Avec la « validation humaine » (le défaut), l'appel d'une IA ne fait QUE créer une demande ici ;
@@ -69,7 +70,9 @@ export type MaintenanceRequest = {
   decidedAt?: number;
   /** « human » : approuvée ou refusée par un propriétaire connecté (son adresse n'est pas gardée ici : elle est dans le journal d'audit). */
   decidedBy?: "owner";
-  result?: { ok: boolean; message: string };
+  result?: RunResult;
+  /** A long action (updating all modules…) that is running: how far it is, module by module. */
+  progress?: RunProgress;
 };
 
 let chain: Promise<unknown> = Promise.resolve();
@@ -103,7 +106,9 @@ function sweep(list: MaintenanceRequest[], now: number): boolean {
 export async function listRequests(now = Date.now()): Promise<MaintenanceRequest[]> {
   return exclusive(async () => {
     const list = await load();
-    if (sweep(list, now)) await save(list);
+    // Two sweeps, both saved at once: pending requests whose time is over, and approved requests whose work died with a restart.
+    const expired = sweep(list, now);
+    if (closeInterrupted(list, now) || expired) await save(list);
     return list.slice().reverse();
   });
 }
@@ -182,14 +187,25 @@ export async function reopenRequest(id: string): Promise<void> {
 }
 
 /** Garde le résultat de l'exécution (texte court, masqué). */
-export async function finishRequest(id: string, result: { ok: boolean; message: string }, now = Date.now()): Promise<void> {
+export async function finishRequest(id: string, result: RunResult, now = Date.now()): Promise<void> {
   await exclusive(async () => {
     const list = await load();
     const r = list.find((x) => x.id === id);
     if (!r) return;
     r.status = result.ok ? "done" : "failed";
-    r.result = { ok: result.ok, message: redactSecrets(result.message, 400) };
+    r.result = boundResult(result);
     r.decidedAt ??= now;
+    await save(list);
+  });
+}
+
+/** The progress of the long action an approved request is running (module by module). */
+export async function setRequestProgress(id: string, progress: RunProgress): Promise<void> {
+  await exclusive(async () => {
+    const list = await load();
+    const r = list.find((x) => x.id === id);
+    if (!r || r.status !== "running") return;
+    r.progress = progress;
     await save(list);
   });
 }

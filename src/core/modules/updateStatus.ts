@@ -2,7 +2,7 @@ import { prisma } from "@/core/db";
 import { bulkUpdateCopy } from "@/core/backup/files";
 import { listModuleRows, loadModule } from "./registry";
 import { localized } from "./types";
-import { checkForUpdateDetailed, updateModule } from "./installer";
+import { checkForUpdateDetailed, updateModule, withSharedSources } from "./installer";
 import { clearRecognizedCache } from "./recognized";
 import { collectReport, createReportCache, orderForUpdate, updateSequentially, type ModulesReport, type Summary, type UpdateLinks } from "./bulkUpdate";
 import { getCatalogue, type CatalogueEntry } from "./catalogue";
@@ -16,7 +16,34 @@ async function sourcedModules() {
   return rows.filter((r) => r.source === "git" && !!r.repoUrl).map((r) => ({ id: r.id, version: r.version }));
 }
 
-const cache = createReportCache(async () => collectReport(await sourcedModules(), (id) => checkForUpdateDetailed(id)));
+/** The last report is kept in a setting: after a restart it can be served at once (marked as old) while a new check runs in the background. */
+const REPORT_KEY = "updates.modulesReport";
+
+function validReport(v: unknown): v is ModulesReport {
+  const r = v as ModulesReport | null;
+  return !!r && typeof r === "object" && typeof r.checkedAt === "number" && typeof r.checked === "number" && Array.isArray(r.outdated) && Array.isArray(r.unchecked);
+}
+
+/** The last report saved, however old, or null. Never throws, never touches the network. */
+export async function readSavedModulesReport(): Promise<ModulesReport | null> {
+  try {
+    const row = await prisma.setting.findUnique({ where: { key_locale: { key: REPORT_KEY, locale: "" } } });
+    const v = row ? JSON.parse(row.value) : null;
+    return validReport(v) ? v : null;
+  } catch { return null; }
+}
+
+async function saveModulesReport(report: ModulesReport): Promise<void> {
+  const json = JSON.stringify(report);
+  await prisma.setting.upsert({ where: { key_locale: { key: REPORT_KEY, locale: "" } }, create: { key: REPORT_KEY, locale: "", value: json }, update: { value: json } }).catch(() => {});
+}
+
+// One pass for the whole check: modules of the same repository share one download (see withSharedSources).
+const cache = createReportCache(async () => {
+  const report = await withSharedSources(async () => collectReport(await sourcedModules(), (id) => checkForUpdateDetailed(id)));
+  await saveModulesReport(report);
+  return report;
+});
 
 /** Modules en retard (vérification réelle, gardée quelques minutes). Ne lève jamais : un échec global donne un rapport vide. */
 export async function getModulesReport(force = false): Promise<ModulesReport> {
@@ -45,6 +72,11 @@ async function updateLinks(ids: string[]): Promise<UpdateLinks[]> {
 
 /** Met à jour ces modules un par un, fournisseurs avant consommateurs (voir orderForUpdate, updateSequentially), puis retire du rapport ceux qui ont réussi. */
 export async function updateModules(ids: string[], onEach?: (id: string, ok: boolean, result: Awaited<ReturnType<typeof updateModule>>) => Promise<void>, nameOf: (id: string) => string = (id) => id): Promise<Summary> {
+  // One pass: the modules of the same repository share one download of it.
+  return withSharedSources(() => updateModulesIn(ids, onEach, nameOf));
+}
+
+async function updateModulesIn(ids: string[], onEach: ((id: string, ok: boolean, result: Awaited<ReturnType<typeof updateModule>>) => Promise<void>) | undefined, nameOf: (id: string) => string): Promise<Summary> {
   // UNE copie de la base avant le premier module (jamais une par module). Pas de place ou copie impossible : on ne touche à rien.
   if (ids.length) {
     const copy = await bulkUpdateCopy().catch((): { ok: false; error: "failed" } => ({ ok: false, error: "failed" }));
@@ -62,6 +94,9 @@ export async function updateModules(ids: string[], onEach?: (id: string, ok: boo
     return r;
   });
   cache.markUpdated(summary.updated);
+  // The saved copy (served after a restart) must not keep offering what was just updated.
+  const saved = await readSavedModulesReport();
+  if (saved && summary.updated.length) await saveModulesReport({ ...saved, outdated: saved.outdated.filter((o) => !summary.updated.includes(o.id)) });
   if (summary.stoppedOn) cache.clear();   // fichiers changés mais données en retard : on revérifie plutôt que de deviner
   return summary;
 }
