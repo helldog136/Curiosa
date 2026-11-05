@@ -92,6 +92,13 @@ assistant créer ou modifier que des brouillons. Côté admin, une seule entrée
 - **Setting** : clé/valeur JSON, avec une valeur par langue pour les réglages traduisibles.
 - **User**, **AuditLog**.
 
+## Settings cache (`src/core/settings.ts`, `src/core/db.ts`)
+
+`getSetting` reads from a process-level cache of the raw `Setting` rows (JSON text only, parsed per read, so a caller that mutates a value never changes the next request).
+The cache is valid for the current **settings generation**: the database client is extended (`db.ts`) so that every write to `Setting`, also inside an interactive transaction,
+bumps the generation, and the next read reloads the table. A 15 s age limit covers a writer in another process (a maintenance script); a test or a tool that changes the
+database behind the client calls `resetSettingsCache()`. Never cache admin or per-visitor data this way: settings are site-wide.
+
 ## Résolution d'une URL (`src/app/(site)/[...path]/page.tsx`)
 
 1. `/go/<instance>/<entrée>` — redirection courte (si l'instance l'autorise).
