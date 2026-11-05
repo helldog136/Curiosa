@@ -769,7 +769,7 @@ Contraintes de rendu du cœur, pour que ces régions soient pilotables : (1) les
 | `heading` (`data-level="1…6"`), `eyebrow`, `lead` | titres de page, petite ligne, chapeau | `data-marker` |
 | `prose` | texte Markdown (`Markdown.tsx`) | |
 | `quote` | citation (`blockquote`) | |
-| `code`, `code-block`, `copy-code` | code en ligne / en bloc / copier | |
+| `code`, `code-block`, `copy-code` | code en ligne / en bloc / copier | The "Copy" button of every Markdown code block is a `copy-code` button (`CodeBlock.tsx`), added with JavaScript only, laid over the top-right corner of the block (`position:absolute`, 44 px) inside a plain `div` that wraps the `code-block` `<pre>` |
 | `image` (`media`), `avatar`, `cover` | images de contenu, logo rond du héros, couvertures (`CoverImage`) | |
 | `divider` | filets (`hr`, `divide-y`, séparateurs) — **décor**, masquable | |
 | `link` | liens dans le texte | |
@@ -798,6 +798,8 @@ Le kit refuse tout `display:none`, `visibility:hidden`, `opacity < 0.6`, `clip`,
 ### 9.4 Ce qu'un skin ne peut jamais changer : le nom Curiosa
 
 Règle de la personne propriétaire : **le nom « Curiosa » du crédit « Propulsé par Curiosa » ne change jamais de police de DA, pour aucun skin.** Il a sa propre pièce, `brand-mark` (le lien du pied porte aussi `data-curiosa-wordmark`), posée par le composant `CuriosaMark` (`src/components/brand/CuriosaMark.tsx`) ; le pied du site public et le pied de l'administration l'utilisent, donc c'est le même mot au même rendu. Tout nouvel endroit qui écrit le nom de Curiosa passe par ce composant, jamais par un lien écrit à la main.
+
+Where the credit link goes: in the public footer, "Curiosa" links to the project site, `https://curiosa.helldog136.be` (English and any language without its own page) or `https://curiosa.helldog136.be/fr` for a French visitor. The address lives in one place, `src/core/credit.ts` (`creditSiteUrl(locale)`). The admin footer keeps the link to the project repository. A skin can neither change nor hide the link.
 
 **Ce qui est verrouillé** : `font`, `font-family`, `font-weight`, `font-style`, `font-variant*`, `font-feature-settings`, `font-variation-settings`, `font-kerning`, `font-stretch`, `font-synthesis`, `font-optical-sizing`, `text-transform`, `letter-spacing`, `word-spacing`, `font-size` (la taille reste `1.15em` du texte du crédit) et le soulignement de lien du cœur (`text-decoration*`, `text-underline-offset`, `text-underline-position`).
 

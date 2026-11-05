@@ -16,6 +16,7 @@ const TEMPORARY = [
 // d'abord. C'est `upgrade.json` (asset de release, lu par le système de mise à jour) qui l'impose : en supprimant du code jetable, remontez `minFrom`
 // et ajoutez ici une ligne.
 const REMOVED = [
+  { what: "one-time freeze of overlay placements (0.2.6) and the start-up menu freeze (see src/core/updates/migrations-registry.json)", needs: "0.6.10" },
   { what: "migrations « modules intégrés » et « Blocs de page » (0.1.2, 0.1.3-rc.x)", needs: "0.1.4" },
   { what: "rangement au démarrage des modules et instances « éteints » (avant la 0.1.20) et conversion des lignes de modules `bundled` / `builtin` en modules du catalogue (balayage de démarrage, mise à jour, réinstallation) : le démarrage de la 0.2.0 les a faits", needs: "0.2.0" },
 ];

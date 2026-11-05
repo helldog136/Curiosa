@@ -139,7 +139,7 @@ traduction (`findEntryBySlug`). Les liens `hreflang` sont générés pour les en
 
 - Redirections : seules les URLs saisies (ou le lien d'une entrée) sont atteignables ;
   schémas limités à `http(s)`/`mailto`.
-- Markdown rendu **sans HTML brut** ; liens sortants `noopener`.
+- Markdown rendu **sans HTML brut** ; liens sortants `noopener`. Each fenced code block gets a "Copy" button (`src/components/site/CodeBlock.tsx`, client component, labels `site.code.*` given by the site and admin layouts through `CodeCopyProvider`; copy helper with fallback: `src/core/copyText.ts`).
 - Envois d'images : détection par signature, SVG refusé, 5 Mo max, nom aléatoire.
 - Admin : session JWT (Auth.js), droits revérifiés en base à chaque page/action, limitation
   des tentatives de connexion, première installation protégeable par `SETUP_TOKEN`.

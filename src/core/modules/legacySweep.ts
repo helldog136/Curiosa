@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { forgetUpkeepSummary } from "./legacyUpkeep";
 import { prisma } from "@/core/db";
 import { withDeadline, TIMED_OUT } from "@/core/deadline";
@@ -45,7 +46,26 @@ export type SweepOptions = {
   /** Tests : remplace la migration d'une instance (trou noir, lenteur). */
   migrate?: typeof migrateInstance;
   log?: (line: string) => void;
+  /**
+   * Server start: skip the whole sweep when the last COMPLETE sweep ran on exactly the same state (core version, installed module versions and sources, number of
+   * settings and instances). Admin "Run again" and every other caller leave this off and always sweep.
+   */
+  startup?: boolean;
 };
+
+/** Setting that remembers the state the last complete sweep ran on. */
+export const SWEEP_FINGERPRINT = "core.legacySweepState";
+
+/** A short digest of what the sweep looks at; any install, update, removal, restore or setting added/removed changes it. */
+export async function sweepFingerprint(): Promise<string> {
+  const [modules, settings, instances] = await Promise.all([
+    prisma.module.findMany({ select: { id: true, version: true, source: true, commit: true }, orderBy: { id: "asc" } }),
+    prisma.setting.count({ where: { NOT: { key: SWEEP_FINGERPRINT } } }),
+    prisma.moduleInstance.count(),
+  ]);
+  const text = JSON.stringify([readVersion(), modules.map((m) => [m.id, m.version, m.source, m.commit ?? ""]), settings, instances]);
+  return createHash("sha256").update(text).digest("hex").slice(0, 32);
+}
 
 const globalSweep = globalThis as unknown as { curiosaLegacySweep?: boolean };
 
@@ -91,6 +111,15 @@ export async function sweepEmptyValues(): Promise<number> {
 /** Le balayage complet (voir en tête). Ne lève jamais ; borné par `budgetMs`. */
 export async function runLegacySweep(opts: SweepOptions = {}): Promise<SweepResult> {
   const counts: SweepCounts = { migrated: 0, setAside: 0, emptied: 0 };
+  if (opts.startup) {
+    try {
+      const [marker, last] = await Promise.all([readLegacyMarker(), prisma.setting.findUnique({ where: { key_locale: { key: SWEEP_FINGERPRINT, locale: "" } } })]);
+      if (marker && last && JSON.parse(last.value) === (await sweepFingerprint())) {
+        (opts.log ?? ((line: string) => console.log(line)))("[legacy] startup conversion skipped: nothing changed since the last complete sweep");
+        return { done: true, timedOut: false, counts, remaining: null };
+      }
+    } catch { /* unreadable state: sweep as before */ }
+  }
   if (globalSweep.curiosaLegacySweep) return { done: false, timedOut: false, busy: true, counts, remaining: null };
   globalSweep.curiosaLegacySweep = true;
   const now = opts.now ?? Date.now;
@@ -138,6 +167,10 @@ export async function runLegacySweep(opts: SweepOptions = {}): Promise<SweepResu
       // Des lignes héritées sont revenues (sauvegarde ancienne restaurée) : la conversion n'est plus terminée.
       await prisma.setting.deleteMany({ where: { key: LEGACY_MARKER } });
       done = false;
+    }
+    if (done && !timedOut) {
+      const value = JSON.stringify(await sweepFingerprint());
+      await prisma.setting.upsert({ where: { key_locale: { key: SWEEP_FINGERPRINT, locale: "" } }, create: { key: SWEEP_FINGERPRINT, locale: "", value }, update: { value } }).catch(() => {});
     }
     return { done, timedOut, counts, remaining: report.totals };
   })().finally(() => { globalSweep.curiosaLegacySweep = false; forgetUpkeepSummary(); });

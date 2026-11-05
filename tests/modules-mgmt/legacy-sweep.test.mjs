@@ -410,3 +410,31 @@ test("page Entretien : un seul message, jamais « terminée » avec des élémen
   for (const k of Object.keys(fr).filter((x) => x.startsWith("legacy.") || x.startsWith("audit.action.core.legacy"))) assert.ok(en[k], `${k} sans anglais`);
   for (const k of ["upkeep.row.seedsMissing", "upkeep.row.collections"]) for (const bad of [/reprise/i, /takeover/i]) { assert.doesNotMatch(fr[k], bad); assert.doesNotMatch(en[k], bad); }
 });
+
+test("start-up sweep runs once per state: skipped when nothing changed since the last complete sweep, runs again after any change; the admin button always sweeps", async () => {
+  await module("carnet", { dataVersion: 2 }, MIGRATING);
+  const a = await instance("carnet", "Un");
+  await setSetting(`instance.${a.id}.__dataVersion`, 1);
+  const first = await S.runLegacySweep({ ...silent, startup: true });
+  assert.equal(first.done, true);
+  assert.equal(first.counts.migrated, 1, "first start: the pending conversion is done");
+  assert.ok(await prisma.setting.findUnique({ where: { key_locale: { key: S.SWEEP_FINGERPRINT, locale: "" } } }), "the state of the complete sweep is remembered");
+
+  const lines = [];
+  let called = 0;
+  const second = await S.runLegacySweep({ log: (l) => lines.push(l), startup: true, migrate: async () => { called++; throw new Error("must not run"); } });
+  assert.equal(second.done, true);
+  assert.equal(called, 0);
+  assert.match(lines.join("\n"), /skipped/);
+
+  // A change of state (here a setting added) makes the next start sweep again.
+  await setSetting("some.new.setting", 1);
+  const lines2 = [];
+  await S.runLegacySweep({ log: (l) => lines2.push(l), startup: true });
+  assert.doesNotMatch(lines2.join("\n"), /skipped/);
+
+  // An instance that falls behind without any other change is still caught by the admin button (no startup flag).
+  await setSetting(`instance.${a.id}.__dataVersion`, 1);
+  const forced = await S.runLegacySweep(silent);
+  assert.equal(forced.counts.migrated, 1);
+});

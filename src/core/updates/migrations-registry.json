@@ -1,0 +1,52 @@
+{
+  "$comment": "`bridge`: the last PUBLISHED release that still runs every conversion below; upgrade.json `minFrom` (the support floor) may point at it. Registry of every one-time conversion the core still carries (docs/MIGRATIONS.md). `removableAtFloor`: once upgrade.json `minFrom` reaches this version, every site has already run the conversion in a bridge release, so the code MUST be gone (tests/core/migration-registry.test.mjs fails otherwise). null = not removable by a floor raise (reason given). `present`: files or code symbols that prove the code still exists. `removed`: conversions already deleted, with the floor that made it safe.",
+  "bridge": "0.6.10",
+  "active": [
+    {
+      "id": "startup-sweep",
+      "what": "Start-up sweep: pending module data conversions (dataVersion contract), empty legacy settings, old choice texts; runs once per state (core.legacySweepState).",
+      "introducedIn": "0.2.0",
+      "removableAtFloor": null,
+      "why": "Permanent contract: a module declares dataVersion and its migrations; the sweep resumes interrupted ones.",
+      "present": { "files": ["src/core/modules/legacySweep.ts"], "symbols": [] }
+    },
+    {
+      "id": "menu-freeze",
+      "what": "Old menu (instances shown in the menu + nav.custom) frozen into nav.menu when an instance is created or the navigation page opens; legacy fallback while nav.menu is absent (restored old backup, brand-new site).",
+      "introducedIn": "0.2.6",
+      "removableAtFloor": "0.7.0",
+      "present": { "files": [], "symbols": ["ensureMenuMigrated", "legacyMenuFromDb"] }
+    },
+    {
+      "id": "rawg-handover",
+      "what": "Hands the old core RAWG key and cover fixes to the Game covers module (installs it once).",
+      "introducedIn": "0.3.0",
+      "removableAtFloor": "0.7.0",
+      "present": { "files": ["src/core/services/rawgHandover.ts"], "symbols": [] }
+    },
+    {
+      "id": "legacy-off",
+      "what": "Restoring a backup made before 0.1.20: modules/instances that were switched off become uninstalled, data kept.",
+      "introducedIn": "0.1.20",
+      "removableAtFloor": "0.10.0",
+      "present": { "files": ["src/core/modules/legacyOff.ts"], "symbols": [] }
+    }
+  ],
+  "removed": [
+    {
+      "id": "placement-freeze",
+      "what": "One-time freeze of overlay placements of existing instances (0.2.6).",
+      "introducedIn": "0.2.6",
+      "removedWithFloor": "0.6.10",
+      "absentSymbols": ["freezeOverlayPlacements", "core.placementFrozen"]
+    },
+    {
+      "id": "startup-menu-freeze",
+      "what": "Start-up call that froze the menu into nav.menu (the freeze itself stays, see menu-freeze).",
+      "introducedIn": "0.2.6",
+      "removedWithFloor": "0.6.10",
+      "absentSymbols": ["ensureMenuMigrated"],
+      "absentIn": ["src/instrumentation.ts"]
+    }
+  ]
+}
