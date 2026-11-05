@@ -56,7 +56,7 @@ Do not use the `https` profile or the Traefik file here: DSM already owns ports 
 
 - **First setup.** Open `https://example.org/admin/setup` and enter the `SETUP_TOKEN` you chose. Once the site is configured you can empty `SETUP_TOKEN` in `.env` and rebuild the project.
 - **Backup.** Include `/volume1/docker/curiosa/data` in Hyper Backup or a snapshot schedule. The admin's backup page (see [BACKUP.md](BACKUP.md)) also works.
-- **Updating Curiosa.** The admin's update page does **not** update the core in Docker (the container is replaced, not changed in place; `CURIOSA_INSTALL=docker` is set in the image). To update: download the new release source, copy it over `/volume1/docker/curiosa` (keep `.env` and `data`), then Container Manager > Project > `curiosa` > **Action > Build** (or Stop, then Clean, then Build and Start). Data is kept and migrations run at start.
+- **Updating Curiosa.** The admin's update page does **not** install the core in Docker (the container is replaced, not changed in place; `CURIOSA_INSTALL=docker` is set in the image), but it tells you when a new version exists and what to run. To update: download the new release source, copy it over `/volume1/docker/curiosa` (keep `.env` and `data`), then Container Manager > Project > `curiosa` > **Action > Build** (or Stop, then Clean, then Build and Start). Data is kept and migrations run at start.
 - **What still works from the admin in Docker:** installing and updating modules, backups, and all site settings.
 - **What does not:** updating the core, and the automatic restart options (`CURIOSA_RESTART_COMMAND`); Docker restarts the container by itself (`restart: unless-stopped`).
 

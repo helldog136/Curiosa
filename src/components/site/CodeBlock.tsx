@@ -51,7 +51,7 @@ export function CodeBlock({ children, className }: { children: React.ReactNode; 
 
   return (
     <div className="relative mt-4">
-      <pre ref={pre} data-skin-part="code-block" className={labels ? `${className} min-h-[3.75rem] pe-14` : className}>{children}</pre>
+      <pre ref={pre} data-skin-part="code-block" className={labels ? `${className} min-h-[3.75rem] pe-24` : className}>{children}</pre>
       {labels && live && <CopyButtonView state={state} labels={labels} onCopy={onCopy} />}
     </div>
   );

@@ -15,15 +15,20 @@ if (pkg.version !== version) { console.error(`package.json est en ${pkg.version}
 const repo = process.env.GITHUB_REPOSITORY ?? process.env.CURIOSA_RELEASE_REPO ?? "";
 if (!REPO_RE.test(repo)) { console.error("Dépôt inconnu : GITHUB_REPOSITORY (ou CURIOSA_RELEASE_REPO) doit valoir « compte/nom »."); process.exit(1); }
 
-/** Tout ce que le site lit à l'exécution ; rien d'autre. `fonts` : les polices libres livrées avec le cœur (inventaire, fichiers, licences), servies par le site lui-même (docs/POLICES.md). Les données de l'exploitant n'y sont jamais, ni AUCUN module : Curiosa s'installe seul, ses modules viennent du catalogue. */
+/** `upgrade.json` : le plancher de support de CETTE version (aussi publié comme asset) ; la barrière de démarrage Docker le lit dans l'image (scripts/shared-lib.mjs, readFloor). Tout ce que le site lit à l'exécution ; rien d'autre. `fonts` : les polices libres livrées avec le cœur (inventaire, fichiers, licences), servies par le site lui-même (docs/POLICES.md). Les données de l'exploitant n'y sont jamais, ni AUCUN module : Curiosa s'installe seul, ses modules viennent du catalogue. */
 const PATHS = [
   ".next", "node_modules", "package.json", "package-lock.json", "next.config.mjs", "release.json",
   "prisma/schema.prisma", "prisma/migrations", "scripts", "fonts",
   ".env.example", "LICENSE", "THIRD-PARTY-NOTICES.md",
+  "upgrade.json",
 ].filter((p) => p === "release.json" || fs.existsSync(p));
 if (!PATHS.includes(".next")) { console.error("Pas de build (.next) : lancez `npm run build` d'abord."); process.exit(1); }
 if (!fs.existsSync("node_modules/.prisma/client")) { console.error("Client Prisma absent : lancez `npx prisma generate` après `npm prune --omit=dev`."); process.exit(1); }
-for (const engine of ["debian-openssl-1.1.x", "debian-openssl-3.0.x"]) {
+// Engines the archive of THIS architecture must carry (x64: OpenSSL 1.1 and 3.0 on Debian/Ubuntu; arm64: OpenSSL 3.0). The other architecture's engines are left out.
+export const ENGINES = { x64: ["debian-openssl-1.1.x", "debian-openssl-3.0.x"], arm64: ["linux-arm64-openssl-3.0.x"] };
+export const FOREIGN_ENGINES = { x64: ["linux-arm64-openssl-1.1.x", "linux-arm64-openssl-3.0.x"], arm64: ["debian-openssl-1.1.x", "debian-openssl-3.0.x", "rhel-openssl-1.0.x", "rhel-openssl-3.0.x", "linux-musl-openssl-3.0.x"] };
+if (!ENGINES[process.arch]) { console.error(`Architecture ${process.arch} non prise en charge (x64 et arm64).`); process.exit(1); }
+for (const engine of ENGINES[process.arch]) {
   if (!fs.existsSync(`node_modules/.prisma/client/libquery_engine-${engine}.so.node`)) { console.error(`Moteur de base de données « ${engine} » absent : vérifiez binaryTargets dans prisma/schema.prisma, puis relancez \`npx prisma generate\`.`); process.exit(1); }
 }
 if (!validManifestPaths(PATHS)) { console.error("Liste de chemins invalide."); process.exit(1); }
@@ -47,7 +52,7 @@ function languageCodes() {
 fs.writeFileSync("release.json", JSON.stringify({ name: "curiosa", version, platform: platformId(), repo, node: process.versions.node, builtAt: new Date().toISOString(), paths: PATHS, languages: languageCodes() }, null, 2));
 fs.mkdirSync(outDir, { recursive: true });
 const file = path.join(outDir, assetName(`v${version}`));
-execFileSync("tar", ["-czf", file, "--exclude=.next/cache", "--exclude=node_modules/.cache", ...NOT_SHIPPED.map((p) => `--exclude=${p}`), ...PATHS], { stdio: "inherit" });
+execFileSync("tar", ["-czf", file, "--exclude=.next/cache", "--exclude=node_modules/.cache", ...NOT_SHIPPED.map((p) => `--exclude=${p}`), ...FOREIGN_ENGINES[process.arch].map((e) => `--exclude=node_modules/.prisma/client/libquery_engine-${e}.so.node`), ...PATHS], { stdio: "inherit" });
 const hash = crypto.createHash("sha256").update(fs.readFileSync(file)).digest("hex");
 fs.writeFileSync(`${file}.sha256`, `${hash}  ${path.basename(file)}\n`);
 // Publié à côté de l'archive : les installations existantes y lisent, AVANT de rien télécharger, depuis quelle version cette release s'installe directement.

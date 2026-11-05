@@ -7,6 +7,45 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.6.14 — 2026-11-05
+
+**En bref.** Un assistant IA qui entretient votre site n'est plus coupé par un délai : vérifier les modules passe de 48 secondes à 1,4 seconde sur un site de test de 71 modules, et les actions longues continuent en arrière-plan avec un suivi. Docker : une image toute prête est publiée à chaque version (PC, et ARM quand elle est disponible), les vérifications et copies de sauvegarde se font toutes seules au démarrage, et la page Mises à jour affiche la commande exacte à lancer. Les données du site sont protégées contre un saut de version.
+
+**In short.** An AI assistant maintaining your site is no longer cut off by a time limit: checking the modules goes from 48 seconds to 1.4 seconds on a 71-module test site, and long actions carry on in the background with progress reporting. Docker: a ready-made image is published with every version (PC, and ARM when available), checks and backups run by themselves at start-up, and the Updates page shows the exact command to run. Your site data is protected against skipped versions.
+
+### Docker
+
+- **Un site Docker voit maintenant les nouvelles versions.** La page Mises à jour montre la version disponible, ce qu'elle change et la commande exacte à lancer sur votre serveur. Rien ne s'installe depuis l'admin.
+- **(English) A Docker site now sees new versions.** The Updates page shows the new version, what it changes and the exact command to run on your server. Nothing is installed from the admin.
+- **Vos données sont protégées au démarrage du conteneur.** Une copie de la base est faite avant chaque démarrage, et un conteneur trop ancien ou trop récent pour vos données refuse de démarrer en expliquant quoi faire.
+- **(English) Your data is protected when the container starts.** A copy of the database is made before every start, and a container too old or too new for your data refuses to start and explains what to do.
+
+- **Curiosa existe en image Docker prête à l'emploi, pour PC et NAS ARM.** Plus rien à compiler chez vous : l'image est celle de la release, testée avant d'être publiée. Elle ne tourne jamais en administrateur.
+- **(English) Curiosa now comes as a ready-made Docker image, for PCs and ARM NAS.** Nothing to build on your side: the image is the tested release. It never runs as an administrator.
+
+### Assistants IA
+
+- **Les appels de maintenance par une IA n'échouent plus par dépassement de délai.** Mettre à jour tous les modules, réinstaller un module ou vérifier les mises à jour répond tout de suite « démarré » si c'est long, et l'IA suit l'avancement module par module. Votre accord reste demandé comme avant.
+- **Le diagnostic répond en quelques secondes, même juste après un redémarrage.** Ce qui ne répond pas à temps est indiqué comme « inconnu » au lieu de tout bloquer, et la dernière vérification des mises à jour est gardée.
+- **Quand une autre opération est en cours, le message dit laquelle, depuis quand et par quel accès.**
+- **Une mise à jour interrompue par un redémarrage est signalée comme telle**, et un dossier de module laissé à moitié remplacé est remis en ordre au démarrage.
+- **(English) AI maintenance calls no longer time out.** Updating all modules, reinstalling a module or checking for updates answers "started" at once when it is long, and the AI follows the progress module by module. Your approval is still asked as before.
+- **(English) The diagnosis answers in a few seconds, even right after a restart.** What does not answer in time is shown as "unknown" instead of blocking everything, and the last update check is kept.
+- **(English) When another operation is running, the message says which one, since when and by which access.**
+- **(English) An update cut short by a restart is reported as such**, and a module folder left half replaced is put right at startup.
+
+### Pour les développeurs
+
+- **Docker image and release workflow.** `Dockerfile` only unpacks the release archive (tested); archives for x64 and arm64 with `upgrade.json`; images pushed to GHCR after the release (tags `X.Y.Z`, `X.Y`, `latest` for stable); dry run with `workflow_dispatch`. Old source build: `Dockerfile.source`.
+- **Shared update code.** `scripts/shared-lib.mjs`, `scripts/install-kind.mjs` (the one `installKind()`) and `scripts/update-plan.mjs --json`; the in-place updater calls the same functions. `maintenance_core_update` returns the plan on Docker. Design: `docs/ideas/update-paths.md`.
+- **Long actions in the background** (`maintenance/background.ts`): `modules_update_all`, `module_update`, `module_reinstall`, `check_updates`, approved `module_install` / `skin_install` answer `{status: "started", requestId}` after `deps.quickWaitMs` (8 s, 20 s at most).
+- **Follow-up**: `maintenance_request_status` returns `progress` (per module) and `result.details`. Direct runs are `run_…` records (setting `maintenance.runs`); a `running` record that no work of the process stands behind is closed as failed after 2 minutes.
+- **Lock**: the busy message names the action, the access, the request and the time; a lock older than 30 minutes is ignored.
+- **Diagnosis**: parallel checks with `deps.checkTimeoutMs` (5 s), `unknown`, `notes`, `summary.complete`. The module report is saved in the setting `updates.modulesReport` and served `stale` while a new check runs.
+- **Root cause of the 60 s**: a module living in a folder of a multi-module repository downloaded the whole repository (26 MB) once per module. `withSharedSources` shares one download per pass and `remoteCommitOf` (one `ls-remote`) skips it when nothing was released: 71 modules, 48.6 s down to 1.4 s.
+- **MCP layer**: `listTools({ name })` skips the module providers for a `maintenance_*` call; `warmup.ts` warms the caches after the start when the site has an AI access; `recoverInterruptedSwaps` restores or removes `<id>.previous-<pid>` and `.incoming-*` folders left by a dead process.
+- Tests: `tests/services/mcp-maintenance-background.test.mjs`, `tests/modules-mgmt/shared-sources.test.mjs`. Docs: `docs/MAINTENANCE-IA.md` (English addendum).
+
 ## 0.6.13 — 2026-11-05
 
 **En bref.** Docker devient une vraie façon de mettre un site en ligne : réglages dans un fichier .env, HTTPS automatique en option, prise en charge de Traefik et guide pour NAS. L'installateur peut aussi obtenir le certificat HTTPS tout seul avec nginx ou Apache (option certbot), et les nouveaux sites nginx envoient des pages compressées. Le lien de crédit de la licence mène maintenant au site du projet.

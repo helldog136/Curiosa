@@ -153,9 +153,21 @@ test("installation : chaque variable CURIOSA_* lue par le code est documentée (
   const doc = read(".env.example") + read("docs/INSTALL.md");
   const internal = new Set(["CURIOSA_SERVER_PID"]); // passée par le serveur à la tâche de mise à jour, pas un réglage
   const used = new Set();
-  for (const f of [...code("src"), "scripts/update.mjs", "scripts/update-lib.mjs"]) for (const m of read(f).matchAll(/process\.env\.(CURIOSA_[A-Z_]+)/g)) used.add(m[1]);
+  for (const f of [...code("src"), "scripts/update.mjs", "scripts/update-lib.mjs", "scripts/install-kind.mjs", "scripts/shared-lib.mjs", "scripts/docker-entrypoint.mjs"]) for (const m of read(f).matchAll(/\benv\.(CURIOSA_[A-Z_]+)/g)) used.add(m[1]);
   assert.ok(used.has("CURIOSA_RESTART_COMMAND") && used.has("CURIOSA_SUPERVISED") && used.has("CURIOSA_INSTALL"));
   for (const v of used) if (!internal.has(v)) assert.ok(doc.includes(v), `${v} est lue par le code mais absente de .env.example / docs/INSTALL.md`);
+});
+
+test("mises à jour : le code partagé par les deux chemins (Docker et archive) ne dépend d'aucun processus ni d'aucun port, et rien n'est réimplémenté", () => {
+  for (const f of ["scripts/install-kind.mjs", "scripts/shared-lib.mjs", "scripts/update-plan.mjs"]) {
+    assert.ok(!/update-proc|update-lib|child_process|\/proc\b/.test(read(f).replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "")), `${f} : code partagé, importable par le site et par le conteneur sans tirer la gestion des processus`);
+  }
+  const lib = read("scripts/update-lib.mjs");
+  assert.ok(/from "\.\/shared-lib\.mjs"/.test(lib), "le chemin « archive » appelle le code partagé");
+  for (const dup of [/function planUpdate\b/, /function compareVersions\b/, /function resolveSqlitePath\b/, /fs\.copyFileSync\(dbBackup/, /"prisma", "migrate", "deploy"/]) assert.ok(!dup.test(lib), `update-lib.mjs ne réimplémente pas ${dup} (scripts/shared-lib.mjs)`);
+  // Le site (admin, MCP) lit le plan et le type d'installation aux mêmes endroits que les scripts.
+  const service = read("src/core/updates/service.ts");
+  assert.ok(service.includes("scripts/shared-lib.mjs") && service.includes("scripts/install-kind.mjs"));
 });
 
 test("mises à jour : le redémarrage n'est jamais supposé — sans commande ni superviseur, le serveur n'est pas coupé", () => {

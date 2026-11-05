@@ -30,7 +30,14 @@ for (const dir of ["node_modules/@prisma/client/runtime", "node_modules/prisma",
   const left = fs.readdirSync(path.join(app, dir)).filter((f) => /wasm|^libquery_engine/.test(f));
   check(left.length === 0, `l'archive n'embarque pas les variantes inutiles de « ${dir} »`);
 }
-check(fs.existsSync(path.join(app, "node_modules/.prisma/client/libquery_engine-debian-openssl-3.0.x.so.node")) && fs.existsSync(path.join(app, "node_modules/.prisma/client/libquery_engine-debian-openssl-1.1.x.so.node")), "les deux moteurs de base de données du client restent (OpenSSL 1.1 et 3.0)");
+{
+  // x64 : les deux moteurs Debian (OpenSSL 1.1 et 3.0) ; arm64 : le moteur OpenSSL 3.0 d'ARM. L'autre architecture n'est pas embarquée.
+  const engines = process.arch === "arm64" ? ["linux-arm64-openssl-3.0.x"] : ["debian-openssl-1.1.x", "debian-openssl-3.0.x"];
+  const foreign = process.arch === "arm64" ? ["debian-openssl-1.1.x", "debian-openssl-3.0.x"] : ["linux-arm64-openssl-3.0.x"];
+  check(engines.every((e) => fs.existsSync(path.join(app, `node_modules/.prisma/client/libquery_engine-${e}.so.node`))), `le moteur de base de données du client de cette architecture reste (${engines.join(", ")})`);
+  check(foreign.every((e) => !fs.existsSync(path.join(app, `node_modules/.prisma/client/libquery_engine-${e}.so.node`))), "les moteurs de l'autre architecture ne sont pas embarqués");
+}
+check(fs.existsSync(path.join(app, "upgrade.json")) && fs.existsSync(path.join(app, "scripts/docker-entrypoint.mjs")), "upgrade.json (plancher de mise à jour) et le démarrage du conteneur sont dans l'archive");
 check(fs.existsSync(path.join(app, "next.config.mjs")) && !fs.existsSync(path.join(app, "next.config.ts")), "la configuration de Next est du JavaScript (next.config.mjs)");
 {
   const n = execFileSync(process.execPath, ["-e", "const s=require('simple-icons');console.log(Object.values(s).filter((v)=>v&&v.slug&&v.path).length)"], { cwd: app, encoding: "utf8" }).trim();

@@ -98,7 +98,7 @@ test("without JavaScript (server render): the code is a plain readable <pre>, no
   assert.equal((out.match(/<div class="relative mt-4"><pre data-skin-part="code-block"/g) ?? []).length, 2);
   assert.doesNotMatch(out, /<button|<script|copy-code/);
   assert.match(out, /<code[^>]*>first block\n<\/code>/);
-  assert.match(out, /pe-14/, "room for the button at the end of the first lines");
+  assert.match(out, /pe-24/, "room for the button at the end of the first lines");
   assert.match(out, /min-h-\[3\.75rem\]/, "a one-line block is tall enough for the 44 px button");
   assert.match(out, /overflow-x-auto/, "long lines scroll inside the block");
   assert.match(out, /<code data-skin-part="code" class="[^"]*">code<\/code>/, "inline code has no block wrapper");
@@ -107,7 +107,7 @@ test("without JavaScript (server render): the code is a plain readable <pre>, no
 test("without a provider (page outside the site and admin layouts) the block is as before: no padding for a button that is not there", () => {
   const out = renderToStaticMarkup(h(Markdown, { text: "```\nx\n```" }));
   assert.match(out, /<pre data-skin-part="code-block"/);
-  assert.doesNotMatch(out, /pe-14|<button/);
+  assert.doesNotMatch(out, /pe-24|<button/);
 });
 
 test("wiring: Markdown uses CodeBlock; the site and the admin layouts give the translated labels", () => {

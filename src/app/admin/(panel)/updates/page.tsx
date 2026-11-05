@@ -1,6 +1,6 @@
 import { adminCtx } from "@/core/admin";
 import { inspectHosting } from "@/core/updates/hosting";
-import { checkForUpdate, getInstallInfo, getUpdateCheck, isAutoUpdateEnabled, readUpdateLog, readUpdateState } from "@/core/updates/service";
+import { checkForUpdate, dockerUpdatePlan, getInstallInfo, getUpdateCheck, isAutoUpdateEnabled, readStartupState, readUpdateLog, readUpdateState } from "@/core/updates/service";
 import { describeProgress, failureKey, hasRemaining } from "@/core/updates/progress";
 import { ActionForm } from "@/components/admin/ActionForm";
 import { UpdateButton } from "@/components/admin/UpdateButton";
@@ -33,9 +33,13 @@ function VersionCard({ label, version, tone, children }: { label: string; versio
 export default async function UpdatesPage() {
   const { t, locale, advanced, config } = await adminCtx({ right: "core:updates" });
   const info = getInstallInfo();
+  // Docker : même vérification, mêmes notes, mêmes étapes ; mais on ne peut rien installer d'ici, on montre la commande exacte à lancer.
+  const docker = info.kind === "docker";
   // Première visite : on interroge le dépôt une fois pour ne pas montrer « jamais vérifié ».
   let check = await getUpdateCheck();
-  if (check.checkedAt === null && info.canUpdate) check = await checkForUpdate();
+  if (check.checkedAt === null && info.canCheck) check = await checkForUpdate();
+  const plan = docker && check.available && check.latest ? await dockerUpdatePlan(check.latest) : null;
+  const startup = docker ? readStartupState() : null;
   const state = readUpdateState();
   // Avant d'installer : un second gestionnaire pour CE site, ou une unité lancée par npx (lecture de /proc, jamais bloquant).
   const hosting = info.canUpdate && state.status !== "running" ? await inspectHosting({ supervised: info.restart === "supervised" }) : [];
@@ -69,9 +73,9 @@ export default async function UpdatesPage() {
 
   return (
     <div className="space-y-8">
-      <PageHeader title={t("nav.updates")} intro={t("updates.intro")} />
+      <PageHeader title={t("nav.updates")} intro={t(docker ? "updates.introDocker" : "updates.intro")} />
 
-      {!info.canUpdate && (
+      {!info.canCheck && (
         <Panel title={t("updates.yourVersion")}>
           <p className="text-2xl font-bold">{current}</p>
           <Callout tone="warn">{t(`updates.mode.${info.mode}`)}</Callout>
@@ -136,7 +140,7 @@ export default async function UpdatesPage() {
 
       {highlightModules && modulesSection}
 
-      {info.canUpdate && !running && (
+      {info.canCheck && !running && (
         <section className={`${ui.card} space-y-5`} data-testid="update-journey">
           <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
             <VersionCard label={t("updates.yourVersion")} version={current} tone="now" />
@@ -167,7 +171,7 @@ export default async function UpdatesPage() {
             </div>
           )}
 
-          {check.available && (
+          {check.available && !docker && (
             <div className="space-y-3 border-t border-line pt-5">
               <h2 className="text-base font-semibold">{t("updates.whatHappens")}</h2>
               <ul className="list-disc space-y-1 pl-5 text-sm leading-6 text-muted">
@@ -180,11 +184,42 @@ export default async function UpdatesPage() {
             </div>
           )}
 
+          {plan && (
+            <div className="space-y-3 border-t border-line pt-5" data-testid="update-docker">
+              <h2 className="text-base font-semibold">{t("updates.docker.title")}</h2>
+              <p className="text-sm leading-6 text-muted">{plan.tags.length > 1 ? t("updates.docker.many") : t("updates.docker.one")}</p>
+              {/* The core's code block brings its own "Copy" button (44 px, announced): nothing custom here. */}
+              <ol className="space-y-4" data-testid="update-docker-commands">
+                {plan.commands.map((cmd, i) => (
+                  <li key={cmd} className="list-none [&_div.relative]:!mt-1 [&_pre]:whitespace-pre-wrap [&_pre]:[overflow-wrap:anywhere]">
+                    {plan.tags.length > 1 && <p className="text-sm font-medium">{t("updates.docker.step", { index: i + 1, total: plan.tags.length, version: plan.tags[i] ?? "" })}</p>}
+                    <Markdown text={"```sh\n" + cmd + "\n```"} />
+                  </li>
+                ))}
+              </ol>
+              {plan.tags.length > 1 && <p className="text-sm leading-6 text-muted">{t("updates.docker.wait")}</p>}
+              {!plan.planned && <Callout tone="info">{t("updates.docker.unplanned")}</Callout>}
+              <p className="text-sm leading-6 text-muted">{t("updates.docker.backup")}</p>
+            </div>
+          )}
+
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
             <p className="text-sm text-muted">{t("updates.checkedAt")} {when(check.checkedAt)}</p>
             <ActionForm action={checkNow} submitLabel={t("updates.check")} pendingLabel={t("progress.checking")} secondary className="space-y-2">{null}</ActionForm>
           </div>
         </section>
+      )}
+
+      {startup && (
+        <Callout tone={startup.status === "ok" ? "info" : "warn"} testid="update-startup">
+          {startup.status === "ok" ? t("updates.docker.lastOk") : (
+            <>
+              <p className="font-semibold">{t("updates.docker.lastRefused")}</p>
+              <p className="mt-1">{startup.error && ["below-floor", "newer-than-image", "backup-failed", "migrate-failed"].includes(startup.error) ? t(`updates.docker.refused.${startup.error}`) : null}</p>
+              {advanced && startup.message && <p className="mt-1 font-mono text-xs text-muted">{startup.message}</p>}
+            </>
+          )}
+        </Callout>
       )}
 
       {!highlightModules && modulesSection}

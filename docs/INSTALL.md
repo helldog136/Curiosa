@@ -126,7 +126,7 @@ Comme il n'y a ni compilation ni réinstallation de dépendances, la mise à jou
 
 - L'installation doit venir d'une **archive de release** (présence de `release.json`) et son dossier appartenir à l'utilisateur qui fait tourner le site, sinon : « mise à jour non disponible ».
 - `tar` doit être disponible (présent partout sous Linux). La plateforme de l'archive doit être celle du serveur (`linux-x64`).
-- Avec **Docker**, on remplace l'image au lieu de mettre à jour en place (`CURIOSA_INSTALL=docker` est déjà réglé dans l'image) : voir [Docker](#docker).
+- Avec **Docker**, on remplace l'image au lieu de mettre à jour en place (`CURIOSA_INSTALL=docker` est déjà réglé dans l'image) : la page *Mises à jour* indique la nouvelle version, ce qu'elle change et la commande exacte à lancer, sans rien installer elle-même. Voir [Docker](#docker).
 - **Mises à jour en plusieurs étapes.** Certaines versions ne s'installent directement qu'à partir d'une version assez récente (elles ont retiré le code qui convertissait les données d'avant). Chaque release publie pour cela un fichier `upgrade.json` (`{"minFrom":"0.2.0"}`) : le système de mise à jour le lit avant de télécharger quoi que ce soit, installe d'abord les versions intermédiaires nécessaires, redémarre le serveur, attend qu'il réponde (c'est ce premier démarrage qui convertit les données), puis installe la suivante. Sans redémarrage automatique (ni `CURIOSA_RESTART_COMMAND` ni `CURIOSA_SUPERVISED`), il s'arrête après chaque étape : redémarrez, puis cliquez de nouveau sur « Installer ». **Aujourd'hui** (`minFrom` = 0.6.10) : un site plus ancien que la 0.6.10 passe d'abord par la 0.6.10 (et par la 0.2.0, puis la 0.1.4, s'il est encore plus ancien), dont le premier démarrage fait les dernières conversions ; la page *Mises à jour* montre l'étape (« à suivre », « en cours », « installée »). Un site en 0.6.10 ou plus récent se met à jour directement. La règle (relever ce plancher à chaque release, supprimer les conversions échues) est dans [MIGRATIONS.md](MIGRATIONS.md). **Pour qui publie une release** : en supprimant du code de conversion temporaire (voir `tests/core/temporary-code.test.mjs`), remontez `minFrom` dans `upgrade.json` à la dernière version qui le contenait encore, et ajoutez une ligne `REMOVED` à ce test.
 - Pour suivre un autre dépôt de releases (un fork) : `CURIOSA_UPDATE_REPO=<propriétaire>/<dépôt>`.
 
@@ -269,13 +269,15 @@ Any other reverse proxy: do not use the profile or the override; point it to `12
 | `LEGACY_HOSTS` | none | Old domains redirected to `SITE_URL` (see [MIGRER-DOMAINE.md](MIGRER-DOMAINE.md)). |
 | `CURIOSA_TRUSTED_PROXIES` | `1` | Number of reverse proxies in front of the site. |
 | `TZ` | `UTC` | Time zone of the container. |
+| `PUID`, `PGID` | `1000` | User and group the site runs as in the published image (never root). The image hands the data folder to them at start. On a NAS, use the owner of the shared folder (for example `1026` and `100` on Synology). Or use `user: "uid:gid"` in compose and make the folder writable for it. |
+| `CURIOSA_REFUSE_DELAY_SECONDS` | `10` | Seconds the container waits before it exits when it refuses to start (data too old or too new for this image), so that a restart policy does not loop at full speed. |
 
 `DATABASE_URL` and `DATA_DIR` from `.env.example` are **not** used by Docker: the compose file points them into the `curiosa_data` volume, so a copied `.env` cannot break the setup. A variable already set in your shell wins over `.env`.
 
 ### Data, backups and updates
 
 - Data (SQLite database, uploads, installed modules, session secret) lives in the `curiosa_data` volume, or in the folder set by `CURIOSA_DATA_DIR`. Back it up with the admin's backup page (see [BACKUP.md](BACKUP.md)), or copy the volume (`docker run --rm -v <project>_curiosa_data:/data -v "$PWD":/backup alpine tar czf /backup/curiosa-data.tgz -C /data .`; `docker volume ls` shows the exact name).
-- Updating from the admin is **not supported** in Docker (the image sets `CURIOSA_INSTALL=docker`; the container is replaced, not changed in place). To update: `git pull`, then `docker compose build --pull && docker compose up -d` (add `--profile https` if you use it). The volume is kept and migrations run at start.
+- The admin does **not install** updates in Docker (the image sets `CURIOSA_INSTALL=docker`; the container is replaced, not changed in place). The *Updates* page still checks for new versions, shows what they change and the exact command to run, including the ordered versions to pass through for a very old site. To update: `git pull`, then `docker compose build --pull && docker compose up -d` (add `--profile https` if you use it). The volume is kept and migrations run at start.
 - Modules installed from the admin live in the volume and survive an image replacement.
 
 ### On a NAS
