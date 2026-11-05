@@ -469,7 +469,10 @@ test("release : chaque release publie `upgrade.json` (minFrom) à côté de l'ar
   const up = JSON.parse(fs.readFileSync("upgrade.json", "utf8"));
   const version = JSON.parse(fs.readFileSync("package.json", "utf8")).version;
   assert.match(up.minFrom, /^\d+\.\d+\.\d+$/);
-  assert.ok(V.compareVersions(up.minFrom, version) <= 0, "on n'exige pas une version plus récente que soi");
+  // `dev` can still carry the number of an older release while the bridge (the last published release that still runs the conversions) is newer: the registry names it.
+  const bridge = JSON.parse(fs.readFileSync("src/core/updates/migrations-registry.json", "utf8")).bridge;
+  const newest = V.compareVersions(bridge, version) > 0 ? bridge : version;
+  assert.ok(V.compareVersions(up.minFrom, newest) <= 0, "on n'exige pas une version plus récente que soi (ni que le pont publié)");
   const pack = fs.readFileSync("scripts/release-pack.mjs", "utf8");
   assert.match(pack, /copyFileSync\("upgrade\.json"/);
   assert.match(fs.readFileSync(".github/workflows/release.yml", "utf8"), /gh release create .* dist\/\*/, "tout dist/ est publié, upgrade.json compris");

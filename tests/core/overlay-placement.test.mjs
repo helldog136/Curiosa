@@ -1,6 +1,7 @@
 // Rangement dans Extensions (0.2.6) : la permission « overlay » ne fait plus d'un module à page ou à sections un simple overlay ; les sites existants ne bougent pas.
 import test, { after, beforeEach } from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import { useTestDb } from "../helpers/db.mjs";
 import { makeRepo } from "../helpers/repo.mjs";
 
@@ -11,7 +12,6 @@ const { installModule } = await import("@/core/modules/installer");
 const { getModule } = await import("@/core/modules/registry");
 const { createInstance } = await import("@/core/instanceService");
 const { getSetting, setSetting } = await import("@/core/settings");
-const { freezeOverlayPlacements, PLACEMENT_FREEZE_MARKER } = await import("@/core/modules/placementFreeze");
 
 beforeEach(() => db.reset());
 after(() => db.close());
@@ -53,21 +53,10 @@ async function withInstance(id, extra) {
   return createInstance(db.prisma, { manifest: (await getModule(id)).manifest, nickname: id, names: { fr: id } });
 }
 
-test("sites existants : une instance qui était rangée dans Overlays le reste (une fois), sans écraser un choix ni toucher un simple overlay ; les nouvelles suivent la règle", async () => {
-  const withPage = await withInstance("paged", { page: true });
-  const chosen = await withInstance("choosy", { page: true });
-  const simple = await withInstance("plain", {});
-  await setSetting(P.placementSettingKey(chosen.id), "menu");
-  assert.equal(await freezeOverlayPlacements(), 2 - 1, "une seule instance figée (celle sans choix)");
-  assert.equal(await getSetting(P.placementSettingKey(withPage.id)), "overlays");
-  assert.equal(await getSetting(P.placementSettingKey(chosen.id)), "menu", "le choix de la personne reste");
-  assert.equal(await getSetting(P.placementSettingKey(simple.id)), undefined, "un simple overlay garde sa règle par défaut");
-  assert.ok(await getSetting(PLACEMENT_FREEZE_MARKER));
-  // Une instance créée APRÈS suit la nouvelle règle ; un second passage ne touche à rien.
+test("new instances follow the rule; the one-time freeze of existing placements was removed (floor 0.6.10, see src/core/updates/migrations-registry.json)", async () => {
   const later = await withInstance("later", { page: true });
-  assert.equal(await freezeOverlayPlacements(), 0);
   assert.equal(await getSetting(P.placementSettingKey(later.id)), undefined);
   const mod = (await getModule("later")).manifest;
   assert.equal(P.resolvePlacement(mod, await getSetting(P.placementSettingKey(later.id))), "integrations");
-  assert.equal(P.resolvePlacement((await getModule("paged")).manifest, await getSetting(P.placementSettingKey(withPage.id))), "overlays", "l'ancienne instance n'a pas bougé");
+  assert.equal(fs.existsSync("src/core/modules/placementFreeze.ts"), false, "the freeze code is gone: sites older than 0.6.10 pass through the 0.6.10 bridge first");
 });
