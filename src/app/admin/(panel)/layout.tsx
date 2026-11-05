@@ -1,5 +1,7 @@
 import { signOut } from "@/auth";
 import { CuriosaMark } from "@/components/brand/CuriosaMark";
+import { CodeCopyProvider } from "@/components/site/CodeBlock";
+import { codeCopyLabels } from "@/components/site/codeCopyLabels";
 import { adminCtx } from "@/core/admin";
 import { adminBugReportUrl } from "@/core/bugReport";
 import { BugReportLink } from "@/components/admin/BugReportLink";
@@ -158,7 +160,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
           {legacyPending && (
             <LegacyBanner title={t("legacy.banner.title")} text={t("legacy.banner.text")} link={can(user, "core:updates") ? t("legacy.banner.link") : null} ownerNote={can(user, "core:updates") ? null : t("legacy.banner.owner")} />
           )}
-          <CropLabelsProvider advanced={advanced} labels={Object.fromEntries(CROP_LABEL_KEYS.map((k) => [k, t(`crop.${k}`)]))}><HelpTipProvider label={t("help.tip")}>{children}</HelpTipProvider></CropLabelsProvider></div>
+          <CropLabelsProvider advanced={advanced} labels={Object.fromEntries(CROP_LABEL_KEYS.map((k) => [k, t(`crop.${k}`)]))}><HelpTipProvider label={t("help.tip")}><CodeCopyProvider labels={codeCopyLabels(t)}>{children}</CodeCopyProvider></HelpTipProvider></CropLabelsProvider></div>
       </main>
       </div>
       {/* Tout en bas de la page, pour tous les rôles et dans les deux modes : crédit exigé par la licence, et numéro de version à donner pour un signalement ou une mise à jour. */}
