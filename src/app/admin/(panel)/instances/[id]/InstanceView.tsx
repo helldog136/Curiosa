@@ -22,6 +22,7 @@ import { mcpInstanceKey } from "@/core/modules/mcpProvider";
 import { getInstanceLabeler } from "@/core/modules/labels";
 import { pageIsOn, pageSettingStorageKey } from "@/core/modules/publicPage";
 import { Blocks } from "@/components/site/Blocks";
+import * as adminKit from "@/components/site/adminKit";
 import { siteUrl } from "@/core/config";
 import { effectiveType } from "@/core/modules/manifest";
 import { getSources, providersOf } from "@/core/services/topics";
@@ -147,7 +148,7 @@ export async function InstanceView({ id, query: sp, inModal = false }: { id: str
   /** Les blocs du panneau qui s'affichent dans l'onglet `tab` (dans l'ordre du panneau), au-dessus du reste de l'onglet. */
   const panelFor = (tab: string) => {
     const mine = panel.filter((b) => panelTab(plan, b, manage) === tab);
-    return mine.length > 0 ? <Blocks blocks={mine} locale={locale} adminInstanceId={instance.id} /> : null;
+    return mine.length > 0 ? <Blocks blocks={mine} locale={locale} kit={adminKit} adminInstanceId={instance.id} /> : null;
   };
 
   /** Les réglages du module affichés dans l'onglet `tab` : un formulaire par onglet (il n'enregistre que les siens), la barre « Enregistrer » les enregistre tous. */
