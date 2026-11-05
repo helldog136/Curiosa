@@ -9,7 +9,62 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ## Prochaine version (non publiée)
 
-**En bref.** Un assistant IA à qui vous en donnez le droit peut maintenant mettre en place l'identité de votre site sans ouvrir l'administration : envoyer des images, régler le nom, l'accroche, la présentation, l'e-mail de contact et les logos. Les limites d'actions par heure sont aussi séparées, visibles et réglables.
+**En bref.** Les sites plus anciens que la 0.6.10 se mettent à jour en deux étapes, que le site enchaîne tout seul. Le démarrage du site ne refait plus ses contrôles de conversion quand rien n'a changé.
+
+### Mises à jour
+
+- **Les sites plus anciens se mettent à jour en deux étapes.** Un site plus ancien que la 0.6.10 passe d'abord par la 0.6.10, puis par la version choisie ; le site s'en charge tout seul, la page Mises à jour montre l'étape en cours. Un site déjà en 0.6.10 ou plus récent se met à jour directement.
+- **Le site démarre plus vite.** Les contrôles de conversion faits à chaque démarrage ne se refont que si quelque chose a changé (extension installée ou mise à jour, réglages, instances).
+- **(English) Older sites update in two steps.** A site older than 0.6.10 first goes through 0.6.10, then to the version you choose; the site does it by itself and the Updates page shows the current step. A site already on 0.6.10 or newer updates directly.
+- **(English) The site starts faster.** The conversion checks that ran on every start now run again only when something changed (module installed or updated, settings, instances).
+
+### Pour les développeurs
+
+- **Migration policy** (`docs/MIGRATIONS.md`): conversions run once, as update steps; registry `src/core/updates/migrations-registry.json` ({id, introducedIn, removableAtFloor}); `npm run migrations:sunset [-- --floor X]` lists what a floor raise deletes (also a release check, `--check`); `tests/core/migration-registry.test.mjs` fails when an expired conversion is still present.
+- **Support floor raised to 0.6.10** (`upgrade.json`). Removed: the one-time overlay placement freeze (0.2.6, `placementFreeze.ts`) and the start-up menu freeze call (0.2.6). The menu freeze itself stays for new instances and restored old backups (registry `menu-freeze`).
+- **`runLegacySweep({ startup: true })`** skips the whole sweep when the last complete one ran on the same state (`core.legacySweepState`: core version, module versions/sources/commits, number of settings and instances). The admin "Run again" button and every other caller always sweep.
+
+## 0.6.11 — 2026-11-05
+
+**En bref.** Chaque bloc de code de vos pages et articles a maintenant un bouton pour le copier en un clic. Le crédit « Propulsé par Curiosa » du pied de page mène à la page du projet.
+
+### Pages et pied de page
+
+- **Un bouton « Copier » sur chaque bloc de code.** Dans vos pages, articles et sections d'accueil, un bloc de code (par exemple un message à coller dans un assistant IA) se copie en un clic. Le bouton dit « Copié » pendant deux secondes ; si la copie est refusée, un message vous invite à sélectionner le texte.
+- **Le crédit « Propulsé par Curiosa » mène à la page du projet.** Le lien ouvre la page de Curiosa en français pour une personne qui visite en français, en anglais sinon.
+- **(English) A "Copy" button on every code block.** In your pages, posts and home sections, a code block (for example a message to paste into an AI assistant) copies in one click. The button says "Copied" for two seconds; if copying is refused, a message asks you to select the text.
+- **(English) The "Powered by Curiosa" credit leads to the project page.** The link opens Curiosa's page in French for a French-speaking visitor, in English otherwise.
+
+### Pour les développeurs
+
+- **Copy button on code blocks:** `Markdown.tsx` renders each fenced block with the client component `components/site/CodeBlock.tsx`; the button (a `copy-code` part) appears after hydration only. Labels `site.code.*` come from `codeCopyLabels(t)` through `CodeCopyProvider` (site and admin layouts; no provider, no button).
+- **Copy helper:** `copyText` in `src/core/copyText.ts` tries the Clipboard API, then a hidden textarea with `execCommand`, then returns `false`. No inline script. Skin bench fragments refreshed.
+- **Footer credit address:** `creditSiteUrl(locale)` in `src/core/credit.ts` is the only place of the address; `CuriosaMark` takes an optional `locale`. The admin footer keeps `CREDIT_URL` (the repository), and LICENSE section 4 still names it.
+
+## 0.6.10 — 2026-11-04
+
+**En bref.** Les logos de Curiosa et tout dessin SVG accessible sont maintenant acceptés à l'envoi. Un assistant IA voit l'adresse de chaque page ou article et peut, si vous lui en donnez le droit, corriger la description d'une page publiée sans la retirer du site.
+
+### Assistants IA
+
+- **Votre assistant peut corriger la description d'une page publiée.** Vous cochez ce droit à part, la page reste en ligne et l'ancien texte est gardé.
+- **Il connaît l'adresse de chaque page.** Quand il lit vos pages ou vos articles, il voit aussi leur adresse sur le site, dans chaque langue.
+- **(English) Your assistant can fix the description of a published page.** You tick a separate right, the page stays online and the old text is kept.
+- **(English) It knows the address of each page.** When it reads your pages or posts, it also sees their address on the site, in each language.
+
+### Images
+
+- **Les logos de Curiosa sont acceptés par le site.** Un logo qui porte un texte pour les lecteurs d'écran (un nom et un titre cachés dans le dessin) n'est plus refusé, que vous l'envoyiez vous-même ou que votre assistant le fasse. Les dessins qui contiennent des scripts, des liens extérieurs ou du texte affiché restent refusés.
+- **(English) Curiosa's own logos are accepted by the site.** A logo that carries a text for screen readers (a name and a hidden title inside the drawing) is no longer refused, whether you send it yourself or your assistant does. Drawings with scripts, outside links or visible text are still refused.
+
+### Pour les développeurs
+
+- **Content tools:** `list_entries` and `get_entry` also return `path` and `paths` (`entryPath()`). New `<instance>__update_published_meta` (summary of a published entry; class "content"; journal `entry.meta.update`; restore point `mcp.undo.entryMeta`). See `docs/MAINTENANCE-IA.md`.
+- **`sanitizeSvg` (`src/core/svg.ts`) accepts safe accessibility features:** `role` (img, presentation, none, graphics-document), `aria-label`, `aria-labelledby`, `aria-hidden`, `focusable`, plain-text `<title>`/`<desc>` (capped, escaped). `docs/brand/*.svg` now upload; no rule relaxed. Its messages are English now.
+
+## 0.6.9 — 2026-11-04
+
+**En bref.** Un assistant IA à qui vous en donnez le droit peut maintenant mettre en place l'identité de votre site sans ouvrir l'administration : envoyer des images, régler le nom, l'accroche, la présentation, l'e-mail de contact et les logos. Il peut aussi arranger le menu et composer la page d'accueil, avec un bouton pour tout remettre comme avant. Les limites d'actions par heure sont aussi séparées, visibles et réglables.
 
 ### Assistants IA
 
@@ -24,31 +79,8 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Vous pouvez tout remettre comme avant.** Dans Navigation et dans Accueil, un bouton « Remettre l'ancien menu » (ou « l'ancienne page d'accueil ») apparaît après un changement de l'IA, tant que personne n'a modifié la page depuis.
 - **In English.** An AI you allow can now arrange your menu and compose your home page without opening the admin. You approve first or it acts at once, depending on your setting, and a button in Navigation and Home puts the previous version back.
 - **Une page entière sur l'accueil.** Vous pouvez choisir une page publiée et en montrer tout le contenu sur la page d'accueil, dans la langue de la personne qui visite. Une page retirée ne laisse rien à l'écran.
-- **Votre assistant peut corriger la description d'une page publiée.** Vous cochez ce droit à part, la page reste en ligne et l'ancien texte est gardé.
-- **Il connaît l'adresse de chaque page.** Quand il lit vos pages ou vos articles, il voit aussi leur adresse sur le site, dans chaque langue.
-- **(English) Your assistant can fix the description of a published page.** You tick a separate right, the page stays online and the old text is kept.
-- **(English) It knows the address of each page.** When it reads your pages or posts, it also sees their address on the site, in each language.
-- **Les logos de Curiosa sont acceptés par le site.** Un logo qui porte un texte pour les lecteurs d'écran (un nom et un titre cachés dans le dessin) n'est plus refusé, que vous l'envoyiez vous-même ou que votre assistant le fasse. Les dessins qui contiennent des scripts, des liens extérieurs ou du texte affiché restent refusés.
-- **(English) Curiosa's own logos are accepted by the site.** A logo that carries a text for screen readers (a name and a hidden title inside the drawing) is no longer refused, whether you send it yourself or your assistant does. Drawings with scripts, outside links or visible text are still refused.
-
-### Mises à jour
-
-- **Les sites plus anciens se mettent à jour en deux étapes.** Un site plus ancien que la 0.6.10 passe d'abord par la 0.6.10, puis par la version choisie ; le site s'en charge tout seul, la page Mises à jour montre l'étape en cours. Un site déjà en 0.6.10 ou plus récent se met à jour directement.
-- **Le site démarre plus vite.** Les contrôles de conversion faits à chaque démarrage ne se refont que si quelque chose a changé (extension installée ou mise à jour, réglages, instances).
-- **(English) Older sites update in two steps.** A site older than 0.6.10 first goes through 0.6.10, then to the version you choose; the site does it by itself and the Updates page shows the current step. A site already on 0.6.10 or newer updates directly.
-- **(English) The site starts faster.** The conversion checks that ran on every start now run again only when something changed (module installed or updated, settings, instances).
-
-### Pages et pied de page
-
-- **Un bouton « Copier » sur chaque bloc de code.** Dans vos pages, articles et sections d'accueil, un bloc de code (par exemple un message à coller dans un assistant IA) se copie en un clic. Le bouton dit « Copié » pendant deux secondes ; si la copie est refusée, un message vous invite à sélectionner le texte.
-- **Le crédit « Propulsé par Curiosa » mène à la page du projet.** Le lien ouvre la page de Curiosa en français pour une personne qui visite en français, en anglais sinon.
-- **(English) A "Copy" button on every code block.** In your pages, posts and home sections, a code block (for example a message to paste into an AI assistant) copies in one click. The button says "Copied" for two seconds; if copying is refused, a message asks you to select the text.
-- **(English) The "Powered by Curiosa" credit leads to the project page.** The link opens Curiosa's page in French for a French-speaking visitor, in English otherwise.
 
 ### Pour les développeurs
-- **Migration policy** (`docs/MIGRATIONS.md`): conversions run once, as update steps; registry `src/core/updates/migrations-registry.json` ({id, introducedIn, removableAtFloor}); `npm run migrations:sunset [-- --floor X]` lists what a floor raise deletes (also a release check, `--check`); `tests/core/migration-registry.test.mjs` fails when an expired conversion is still present.
-- **Support floor raised to 0.6.10** (`upgrade.json`). Removed: the one-time overlay placement freeze (0.2.6, `placementFreeze.ts`) and the start-up menu freeze call (0.2.6). The menu freeze itself stays for new instances and restored old backups (registry `menu-freeze`).
-- **`runLegacySweep({ startup: true })`** skips the whole sweep when the last complete one ran on the same state (`core.legacySweepState`: core version, module versions/sources/commits, number of settings and instances). The admin "Run again" button and every other caller always sweep.
 
 - **New core tools:** `media_upload`, `media_list`, `media_set_alt`, `site_settings_get`, `site_settings_set` (`src/core/siteMcp.ts`, `mediaMcp.ts`, `maintenance/siteSettings.ts`), with `aim.tool.*` rights, profiles (read / assistant) and the "Site identity" section of the rights page. `site_settings_set` is the level 3 action `site_settings_set` (`Plan.site`).
 - **`media_upload` reuses the admin's pipeline** (`sniffImage`, `saveUpload`, `saveSvgUpload`, `MAX_INPUT_PIXELS`); the MCP body limit is 4.3 MB for a single `media_upload` call only (1 MB otherwise). Alternative texts are the settings `media.alt.<file>` (no migration); journal lines `media.upload`, `media.alt`.
@@ -57,11 +89,6 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Restore point** in the core settings `mcp.undo.navigation` / `mcp.undo.home` (previous state, access name, time, fingerprint of the applied state), used by the new `AssistantUndoNotice` on the Navigation and Home admin pages. No migration.
 - **`Def.bare`** in `src/core/maintenance/tools.ts`: a maintenance tool that keeps its own name instead of the `maintenance_` prefix; not part of the old "Maintenance" token profile.
 - **Home section `entry`** (offered by every content instance with a page): renders one published entry through the `entryContent` block with the same Markdown renderer as the entry page; `home_sections_list` reports a broken one. The writers use the shared limiter: class "content" in `LEVEL3_CLASS`.
-- **Content tools:** `list_entries` and `get_entry` also return `path` and `paths` (`entryPath()`). New `<instance>__update_published_meta` (summary of a published entry; class "content"; journal `entry.meta.update`; restore point `mcp.undo.entryMeta`). See `docs/MAINTENANCE-IA.md`.
-- **`sanitizeSvg` (`src/core/svg.ts`) accepts safe accessibility features:** `role` (img, presentation, none, graphics-document), `aria-label`, `aria-labelledby`, `aria-hidden`, `focusable`, plain-text `<title>`/`<desc>` (capped, escaped). `docs/brand/*.svg` now upload; no rule relaxed. Its messages are English now.
-- **Copy button on code blocks:** `Markdown.tsx` renders each fenced block with the client component `components/site/CodeBlock.tsx`; the button (a `copy-code` part) appears after hydration only. Labels `site.code.*` come from `codeCopyLabels(t)` through `CodeCopyProvider` (site and admin layouts; no provider, no button).
-- **Copy helper:** `copyText` in `src/core/copyText.ts` tries the Clipboard API, then a hidden textarea with `execCommand`, then returns `false`. No inline script. Skin bench fragments refreshed.
-- **Footer credit address:** `creditSiteUrl(locale)` in `src/core/credit.ts` is the only place of the address; `CuriosaMark` takes an optional `locale`. The admin footer keeps `CREDIT_URL` (the repository), and LICENSE section 4 still names it.
 
 ## 0.6.8 — 2026-11-04
 

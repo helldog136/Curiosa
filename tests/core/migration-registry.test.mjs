@@ -23,6 +23,7 @@ test("registry: well formed, ids unique, versions plain X.Y.Z, bridge not older 
   assert.equal(new Set(ids).size, ids.length);
   assert.match(registry.bridge, V);
   assert.ok(cmp(floor, registry.bridge) <= 0, "the floor cannot be newer than the published bridge");
+  assert.ok(cmp(registry.bridge, version) <= 0, "the bridge is a published release: not newer than package.json");
   for (const m of registry.active) {
     assert.match(m.introducedIn, V, m.id);
     if (m.removableAtFloor === null) assert.ok(m.why, `${m.id}: a permanent entry says why`);
