@@ -46,11 +46,13 @@ test("installation : clone git de développement ou archive sans dépôt → pas
   assert.deepEqual([noRepo.mode, noRepo.canUpdate, noRepo.repo], ["manual", false, null]);
 });
 
-test("installation : une image Docker se remplace, elle ne se met pas à jour en place", async () => {
+test("installation : une image Docker se remplace, elle ne se met pas à jour en place — mais elle vérifie et annonce les nouvelles versions", async () => {
   process.env.CURIOSA_INSTALL = "docker";
   const info = S.getInstallInfo(app());
-  assert.deepEqual([info.mode, info.canUpdate], ["docker", false]);
-  assert.equal((await S.checkForUpdate({ appDir: app(), fetchJson: fakeApi({ tags: TAGS }) })).available, false);
+  assert.deepEqual([info.mode, info.kind, info.canUpdate, info.canApplyInPlace, info.canCheck], ["docker", "docker", false, false, true]);
+  const check = await S.checkForUpdate({ appDir: app(), fetchJson: fakeApi({ tags: TAGS }) });
+  assert.deepEqual([check.available, check.latest], [true, "v1.1.0"], "Docker sites are told that a new version exists (check + notes)");
+  assert.equal(S.getInstallInfo(app({ release: false })).canCheck, false, "no release source known: nothing to check");
 });
 
 test("installation : redémarrage — commande de l'exploitant, superviseur, ou manuel ; dépôt configurable mais validé", () => {

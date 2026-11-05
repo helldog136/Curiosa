@@ -1,9 +1,25 @@
 # Update paths: bare metal vs Docker
 
-Status: design proposal, no code. Written against core 0.6.12 (`dev` aligned with `master`).
+Status: design **validated by the owner** (all recommendations of section 5 accepted); phase 1 in progress: PR A (shared code, section 0) is implemented, PR B (image and release workflow) and PR C (compose, guided script, user docs) follow. Written against core 0.6.12 (`dev` aligned with `master`).
 Goal: make Docker a first-class install (prebuilt multi-arch image on GHCR at every release, guided install script, NAS users) **without a second update system to maintain**.
 
 Reading guide: section 1 is the as-is inventory (from the code), section 2 the matrix, section 3 the design, section 4 the maintenance checklist, section 5 the recommendation and the decisions needed.
+
+## 0. Decisions and what the code does (PR A; where this differs from the sections below, this section wins)
+
+Owner decisions: (1) no in-place core update in Docker; (2) ARM from day one (`linux/amd64` + `linux/arm64`; the bare-metal installer keeps choosing x64 only, arm64 for bare metal is out of scope); (3) GHCR only, `ghcr.io/helldog136/curiosa`; (4) tags `X.Y.Z`, `X.Y`, `latest` (`latest` only for stable releases, never a pre-release); (5) Watchtower-style updaters are supported on the `X.Y` series tag only, never `latest`; (6) a database copy is ALWAYS made at container start, even when no migration is pending, kept in `data/backups/` with the bare-metal retention (5); (7) non-root by default with `PUID`/`PGID`; (8) the Updates page and `maintenance_core_update` show the plan and the commands on Docker, never install; (9) user docs live in `docs/INSTALL.md`.
+
+Implemented in PR A:
+- `scripts/install-kind.mjs`: `installKind()` (`bare-metal` | `docker`) is the only reader of `CURIOSA_INSTALL` (`tests/core/install-kind.test.mjs` enforces it), plus the shared constants: image name, platforms, `CURIOSA_VERSION`, the one Docker update command, `KEEP_BACKUPS`, health path and header, marker file names, `imageTag()`, `imageTagsFor()` (the tag policy), `dockerCommands()`.
+- `scripts/shared-lib.mjs` (no process or port code, importable by the site and by the container): `planUpdate`, `compareVersions`, `backupDatabase`, `applyMigrations`, `restoreBackup`, the data-version marker and its gate, and `runStartup` (gate, copy, migrations, result in `data/update/startup.json`). `scripts/update-lib.mjs` imports and re-exports them: the bare-metal behaviour is unchanged (the existing update tests pass untouched).
+- `getInstallInfo()` returns `kind`, `canCheck` and `canApplyInPlace` next to the old `canUpdate` (= `canApplyInPlace`, derived from the kind only, never from files). Docker checks for updates (the repository comes from `CURIOSA_UPDATE_REPO` or the `release.json` of the image) and is told about new versions; `startUpdate` refuses on Docker even with a `release.json`; automatic updates never apply there.
+- Data-version marker `data/.curiosa-data-version`: written by the server (`register()`) after a start whose module conversions completed, never after an incomplete one, on both install kinds. The gate (`checkDataVersion`, used by `runStartup`, so only by containers) refuses data below the floor of the code or newer than the image, in plain words, before anything is copied or migrated. **No marker** (a volume from an image that predates markers) is allowed and logged: the first good start writes it. That first jump cannot be checked; the support floor protects every later one.
+- `scripts/update-plan.mjs --json [--from] [--to] [--repo]` prints the ordered steps, image tags and commands from `planUpdate`.
+- Updates page on Docker: same version cards, notes and chain, then "run this" blocks (one command above the floor, one pinned command per step below it, copy buttons), the last container start result; no Install button, no automatic-update switch. `maintenance_core_update` returns `{ status: "manual_update_required", steps, commands }` without creating a request; `maintenance_updates` carries the same plan.
+
+Moved to PR B (image): `upgrade.json` into the release archive (the gate reads it from the image; it changes the bare-metal archive contents, so it ships with the image work), the entrypoint (calls `runStartup`, then starts the server), arm64 archive and engine target, workflow, `HEALTHCHECK`, labels.
+
+Container copies are of two kinds so that a restart loop can never evict the copy taken before an update: when the data version changes (or is unknown) the copy is `pre-update-v<version>-<time>.db` and the last 3 are kept; a plain restart of the same version makes `start-v<version>-<time>.db` and the last 2 are kept. The bare-metal updater keeps its own last 5 `pre-update-` copies. The copy is a plain file copy of the database, as the bare-metal path does today.
 
 ## 1. As-is inventory
 
