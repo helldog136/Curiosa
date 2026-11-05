@@ -7,6 +7,23 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.6.15 — 2026-11-05
+
+**En bref.** L'image Docker démarre maintenant correctement sous un utilisateur ordinaire, sans droits d'administrateur, et elle est publiée à chaque version (PC, et ARM quand elle est disponible). Il est aussi possible de reconstruire les images d'une version déjà publiée.
+
+**In short.** The Docker image now starts correctly as an ordinary user, without administrator rights, and it is published with every version (PC, and ARM when available). The images of an already published version can also be rebuilt.
+
+### Docker
+
+- **L'image Docker démarre correctement sous un utilisateur ordinaire.** La préparation de la base de données ne demande plus d'accès à Internet ni de droits d'administrateur au démarrage du conteneur.
+- **(English) The Docker image starts correctly as an ordinary user.** Preparing the database no longer needs Internet access or administrator rights when the container starts.
+- **L'image est publiée avec chaque version, pour PC et, quand elle est disponible, pour ARM.** Si la publication d'une image échoue, elle peut être refaite pour la même version sans toucher à la release.
+- **(English) The image is published with every version, for PC and, when available, for ARM.** If publishing an image fails, it can be redone for the same version without touching the release.
+
+### Pour les développeurs
+
+- **Image fixes.** The Prisma CLI is pointed at the shipped engines (non-root, offline); smoke failures print logs and `docker inspect`; `workflow_dispatch` `release_tag` rebuilds images for an existing release; `publish-arm` is idempotent.
+
 ## 0.6.14 — 2026-11-05
 
 **En bref.** Un assistant IA qui entretient votre site n'est plus coupé par un délai : vérifier les modules passe de 48 secondes à 1,4 seconde sur un site de test de 71 modules, et les actions longues continuent en arrière-plan avec un suivi. Docker : une image toute prête est publiée à chaque version (PC, et ARM quand elle est disponible), les vérifications et copies de sauvegarde se font toutes seules au démarrage, et la page Mises à jour affiche la commande exacte à lancer. Les données du site sont protégées contre un saut de version.
@@ -37,7 +54,6 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 ### Pour les développeurs
 
 - **Docker image and release workflow.** `Dockerfile` only unpacks the release archive (tested); archives for x64 and arm64 with `upgrade.json`; images pushed to GHCR after the release (tags `X.Y.Z`, `X.Y`, `latest` for stable); dry run with `workflow_dispatch`. Old source build: `Dockerfile.source`.
-- **Image fixes.** The Prisma CLI is pointed at the shipped engines (non-root, offline); smoke failures print logs and `docker inspect`; `workflow_dispatch` `release_tag` rebuilds images for an existing release; `publish-arm` is idempotent.
 - **Shared update code.** `scripts/shared-lib.mjs`, `scripts/install-kind.mjs` (the one `installKind()`) and `scripts/update-plan.mjs --json`; the in-place updater calls the same functions. `maintenance_core_update` returns the plan on Docker. Design: `docs/ideas/update-paths.md`.
 - **Long actions in the background** (`maintenance/background.ts`): `modules_update_all`, `module_update`, `module_reinstall`, `check_updates`, approved `module_install` / `skin_install` answer `{status: "started", requestId}` after `deps.quickWaitMs` (8 s, 20 s at most).
 - **Follow-up**: `maintenance_request_status` returns `progress` (per module) and `result.details`. Direct runs are `run_…` records (setting `maintenance.runs`); a `running` record that no work of the process stands behind is closed as failed after 2 minutes.
