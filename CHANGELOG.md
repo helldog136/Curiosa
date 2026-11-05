@@ -7,6 +7,24 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## Prochaine version (non publiée)
+
+### Licence et vitesse
+
+- **Le lien « Powered by Curiosa » de la licence pointe vers le site du projet.** La licence (section 4) cite maintenant l'adresse que le pied de page affiche déjà, au lieu du dépôt de code. Rien d'autre ne change dans vos obligations.
+- **Les nouveaux sites installés avec nginx envoient leurs pages compressées.** Les sites déjà en ligne ne sont pas touchés ; le guide d'installation explique comment ajouter les mêmes lignes à la main.
+- **(English) The license credit link points to the project site.** Section 4 of the license now names the address the footer already shows, instead of the code repository. Nothing else changes in your obligations.
+- **(English) New sites installed with nginx send compressed pages.** Sites already online are not touched; the install guide explains how to add the same lines by hand.
+
+- **Vous pouvez demander le certificat HTTPS à l'installation avec nginx ou Apache.** Ajoutez `--certbot` et `--email` à la commande : le certificat est obtenu pour votre domaine seulement, et si cela échoue le site reste en ligne en HTTP. Sans cette option, rien ne change.
+- **(English) You can ask for the HTTPS certificate at install time with nginx or Apache.** Add `--certbot` and `--email` to the command: the certificate is obtained for your domain only, and if it fails the site stays online in HTTP. Without this option, nothing changes.
+
+### Pour les développeurs
+
+- **`scripts/install.sh --certbot --email`** (opt-in, nginx/Apache only, never Caddy): `plan_certbot` (checks, dry-run text) and `obtain_certificate` (end of `configure_proxy`, never fatal): needs DNS ready, skips when `certbot certificates -d` finds one, installs certbot + plugin with apt if missing, runs `certbot --nginx|--apache -d <domain> --non-interactive --agree-tos --no-eff-email -m <email> --redirect $CURIOSA_CERTBOT_ARGS`. A managed site file containing "managed by Certbot" (nginx) or certbot's HTTPS redirect (Apache) is now kept on re-runs. Interactive without the flag: one question, default No. `--yes` alone never requests a certificate. FR/EN catalogs in parity; tests in `tests/core/install-script.test.mjs`.
+- **LICENSE section 4b**: the credit link target is `https://curiosa.helldog136.be` (or `/fr`), the value of `CREDIT_SITE_URL`; `tests/licenses.test.mjs` now compares the LICENSE text with `src/core/credit.ts`. `CREDIT_URL` (the repository: issues, guides, admin footer) is unchanged.
+- **`scripts/install.sh` nginx template**: `gzip` (+ `gzip_vary`, `gzip_proxied any`, min length 1024), and an `upstream curiosa_<site>` block with `keepalive 16` / `keepalive_timeout 4s` when `nginx -v` reports 1.15.3 or newer (no upstream block otherwise). No `http2` (the template only listens on 80; certbot adds TLS), no `proxy_cache`. A managed site equal to the previous template is left untouched (`x.nginx_kept`); `--dry-run` announces the extras. Hand-applied snippet, HTTP/2 syntax per version and the optional cache recipe: `docs/PERFORMANCE.md`.
+
 ## 0.6.12 — 2026-11-05
 
 **En bref.** Le site est plus rapide : les réglages sont lus une seule fois au lieu de centaines, les pages publiques envoient moins de code et le site redémarre plus vite. Les sites plus anciens que la 0.6.10 se mettent à jour en deux étapes, que le site enchaîne tout seul. Une règle de migration est posée pour les versions suivantes.
