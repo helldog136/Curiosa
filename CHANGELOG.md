@@ -7,7 +7,9 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
-## Prochaine version (non publiée)
+## 0.6.13 — 2026-11-05
+
+**En bref.** Docker devient une vraie façon de mettre un site en ligne : réglages dans un fichier .env, HTTPS automatique en option, prise en charge de Traefik et guide pour NAS. L'installateur peut aussi obtenir le certificat HTTPS tout seul avec nginx ou Apache (option certbot), et les nouveaux sites nginx envoient des pages compressées. Le lien de crédit de la licence mène maintenant au site du projet.
 
 ### Licence et vitesse
 
