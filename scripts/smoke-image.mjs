@@ -52,20 +52,27 @@ export async function smokeImage({ image, version, previous, docker = defaultDoc
     return { ok: false, why: "no healthy answer in time" };
   }
   const exec = (name, args) => dk(["exec", name, ...args]);
+  // `docker exec` runs as the image's default user (root): the user the SITE runs as is the one of PID 1 (the entrypoint drops privileges itself).
+  const pid1 = async (name, field) => (await exec(name, ["sh", "-c", `sed -n 's/^${field}:[[:space:]]*\\([0-9]*\\).*/\\1/p' /proc/1/status`])).stdout.trim();
   async function stop(name) { await dk(["stop", "-t", "30", name]); }
-  const logsOf = async (name) => { const r = await dk(["logs", "--tail", "40", name]); return `${r.stdout}\n${r.stderr}`; };
+  // On any failure: what the container printed and what Docker knows of its state (exit code, health check output), so the CI log says WHY.
+  const diagnose = async (name) => {
+    const logs = await dk(["logs", "--tail", "80", name]);
+    const state = await dk(["inspect", "--format", "{{json .State}}", name]);
+    log(`--- diagnostic for ${name} ---\n${`${logs.stdout}\n${logs.stderr}`.trim()}\n--- docker inspect (State) ---\n${state.stdout.trim()}\n--- end ---`);
+  };
+  const failedSince = (from) => results.slice(from).some((r) => !r.ok);
 
   try {
     // 1. empty volume
     {
-      const vol = await volume(make("fresh")), name = make("fresh-c");
+      const vol = await volume(make("fresh")), name = make("fresh-c"), from = results.length;
       check(await start(name, vol, image), "empty volume: the container starts");
       const h = await waitHealthy(name);
       check(h.ok, `empty volume: ${h.ok ? "the site answers /api/health" : `the site does not answer (${h.why})`}`);
-      if (!h.ok) log((await logsOf(name)).trim());
-      else {
+      if (h.ok) {
         check(h.version === hashVersion(version), `empty volume: the site reports version ${version}`);
-        check(Number((await exec(name, ["id", "-u"])).stdout.trim()) !== 0, "empty volume: the site does not run as root");
+        check(Number(await pid1(name, "Uid")) !== 0, "empty volume: the site does not run as root");
         const owner = (await exec(name, ["stat", "-c", "%u:%g", "/app/data"])).stdout.trim();
         check(owner === "1000:1000", `empty volume: the data folder belongs to the default user 1000:1000 (${owner})`);
         let marker = "";
@@ -73,18 +80,20 @@ export async function smokeImage({ image, version, previous, docker = defaultDoc
         check(marker.includes(version), "empty volume: the data version is recorded after the start");
         check(Number((await exec(name, ["sh", "-c", "ls /app/data/backups 2>/dev/null | wc -l"])).stdout.trim() || 0) === 0, "empty volume: nothing to copy yet (no database before the first start)");
       }
+      if (failedSince(from)) await diagnose(name);
       await stop(name);
     }
     // 2. PUID / PGID
     {
-      const vol = await volume(make("ids")), name = make("ids-c");
+      const vol = await volume(make("ids")), name = make("ids-c"), from = results.length;
       await start(name, vol, image, ["-e", "PUID=1026", "-e", "PGID=100"]);
       const h = await waitHealthy(name);
       check(h.ok, "PUID/PGID: the site starts");
       if (h.ok) {
-        check((await exec(name, ["id", "-u"])).stdout.trim() === "1026" && (await exec(name, ["id", "-g"])).stdout.trim() === "100", "PUID/PGID: the site runs as 1026:100");
+        check((await pid1(name, "Uid")) === "1026" && (await pid1(name, "Gid")) === "100", "PUID/PGID: the site runs as 1026:100");
         check((await exec(name, ["stat", "-c", "%u:%g", "/app/data"])).stdout.trim() === "1026:100", "PUID/PGID: the data folder follows");
       }
+      if (failedSince(from)) await diagnose(name);
       await stop(name);
     }
     // 3. refusals: the data is never touched
@@ -92,16 +101,18 @@ export async function smokeImage({ image, version, previous, docker = defaultDoc
       const vol = await volume(make(`refuse-${marker.split(".")[0]}`));
       await dk(["run", "--rm", "--entrypoint", "sh", "-v", `${vol}:/data`, image, "-c", `echo ${marker} > /data/${DATA_VERSION_FILE}`]);
       const r = await dk(["run", "--rm", "-v", `${vol}:/app/data`, "-e", "CURIOSA_REFUSE_DELAY_SECONDS=0", ...baseEnv, image]);
-      check(r.code !== 0 && expect.test(r.stderr + r.stdout), `${what}: the container refuses to start and says why`);
+      const refused = check(r.code !== 0 && expect.test(r.stderr + r.stdout), `${what}: the container refuses to start and says why`);
+      if (!refused) log(`--- output (exit code ${r.code}) ---\n${`${r.stdout}\n${r.stderr}`.trim()}\n--- end ---`);
       const left = await dk(["run", "--rm", "--entrypoint", "sh", "-v", `${vol}:/data`, image, "-c", "ls /data"]);
       check(!/curiosa\.db|backups/.test(left.stdout), `${what}: no database, no copy: nothing was touched`);
     }
     // 4. the previous release's data
     if (previous) {
-      const vol = await volume(make("upgrade")), old = make("old-c"), next = make("new-c");
+      const vol = await volume(make("upgrade")), old = make("old-c"), next = make("new-c"), from = results.length;
       await start(old, vol, previous);
       const ho = await waitHealthy(old);
       check(ho.ok, "previous image: starts and creates its data");
+      if (!ho.ok) await diagnose(old);
       await stop(old);
       await dk(["rm", old]); created.containers.delete(old);
       await start(next, vol, image);
@@ -110,7 +121,8 @@ export async function smokeImage({ image, version, previous, docker = defaultDoc
       if (hn.ok) {
         const copies = (await exec(next, ["sh", "-c", "ls /app/data/backups"])).stdout;
         check(/^pre-update-/m.test(copies), "previous data: a pre-update copy of the database was made");
-      } else log((await logsOf(next)).trim());
+      }
+      if (failedSince(from)) await diagnose(next);
       await stop(next);
     } else log("(no previous image given: the upgrade scenario was skipped)");
   } finally {
